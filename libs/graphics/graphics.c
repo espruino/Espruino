@@ -91,8 +91,8 @@ void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
 #ifndef SAVE_ON_FLASH
   gfx->data.modMinX=0;
   gfx->data.modMinY=0;
-  gfx->data.modMaxX=gfx->data.width-1;
-  gfx->data.modMaxY=gfx->data.height-1;
+  gfx->data.modMaxX=(unsigned short)(gfx->data.width-1);
+  gfx->data.modMaxY=(unsigned short)(gfx->data.height-1);
 #endif
 }
 
@@ -106,21 +106,33 @@ void graphicsStructResetState(JsGraphics *gfx) {
   gfx->data.fontAlignX = 3;
   gfx->data.fontAlignY = 3;
   gfx->data.fontRotate = 0;
+  gfx->data.clipRect.x1 = 0;
+  gfx->data.clipRect.y1 = 0;
+  gfx->data.clipRect.x2 = gfx->data.width-1;
+  gfx->data.clipRect.y2 = gfx->data.height-1;
 #endif
   gfx->data.cursorX = 0;
   gfx->data.cursorY = 0;
 }
 
-void graphicsStructInit(JsGraphics *gfx) {
+void graphicsStructInit(JsGraphics *gfx, int width, int height, int bpp) {
   // type/width/height/bpp should be set elsewhere...
   gfx->data.flags = JSGRAPHICSFLAGS_NONE;
   graphicsStructResetState(gfx);
+  gfx->data.width = (unsigned short)width;
+  gfx->data.height = (unsigned short)height;
+  gfx->data.bpp = (unsigned char)bpp;
 #ifndef SAVE_ON_FLASH
   gfx->data.modMaxX = -32768;
   gfx->data.modMaxY = -32768;
   gfx->data.modMinX = 32767;
   gfx->data.modMinY = 32767;
+  gfx->data.clipRect.x1 = 0;
+  gfx->data.clipRect.y1 = 0;
+  gfx->data.clipRect.x2 = LCD_WIDTH-1;
+  gfx->data.clipRect.y2 = LCD_HEIGHT-1;
 #endif
+
 }
 
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
@@ -202,7 +214,14 @@ void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y) {
 // ----------------------------------------------------------------------------------------------
 
 static void graphicsSetPixelDevice(JsGraphics *gfx, int x, int y, unsigned int col) {
+#ifdef SAVE_ON_FLASH
   if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
+#else
+  if (x<gfx->data.clipRect.x1 ||
+      y<gfx->data.clipRect.y1 ||
+      x>gfx->data.clipRect.x2 ||
+      y>gfx->data.clipRect.y2) return;
+#endif
 #ifndef SAVE_ON_FLASH
   if (x < gfx->data.modMinX) gfx->data.modMinX=(short)x;
   if (x > gfx->data.modMaxX) gfx->data.modMaxX=(short)x;
@@ -228,10 +247,17 @@ static void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int 
     y1 = y2;
     y2 = t;
   }
-  if (x1<0) x1=0;
-  if (y1<0) y1=0;
+#ifdef SAVE_ON_FLASH
+  if (x1<0) x1 = 0;
+  if (y1<0) y1 = 0;
   if (x2>=gfx->data.width) x2 = gfx->data.width - 1;
   if (y2>=gfx->data.height) y2 = gfx->data.height - 1;
+#else
+  if (x1<gfx->data.clipRect.x1) x1 = gfx->data.clipRect.x1;
+  if (y1<gfx->data.clipRect.y1) y1 = gfx->data.clipRect.y1;
+  if (x2>gfx->data.clipRect.x2) x2 = gfx->data.clipRect.x2;
+  if (y2>gfx->data.clipRect.y2) y2 = gfx->data.clipRect.y2;
+#endif
   if (x2<x1 || y2<y1) return; // nope
 #ifndef SAVE_ON_FLASH
   if (x1 < gfx->data.modMinX) gfx->data.modMinX=(short)x1;

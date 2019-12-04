@@ -628,13 +628,10 @@ void jswrap_banglejs_init() {
   JsVar *graphics = jspNewObject(0, "Graphics");
   if (!graphics) return; // low memory
   JsGraphics gfx;
-  graphicsStructInit(&gfx);
+  graphicsStructInit(&gfx, LCD_WIDTH, LCD_HEIGHT, LCD_BPP);
   gfx.data.type = JSGRAPHICSTYPE_SPILCD;
   gfx.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
   gfx.graphicsVar = graphics;
-  gfx.data.width = LCD_WIDTH;
-  gfx.data.height = LCD_HEIGHT;
-  gfx.data.bpp = LCD_BPP;
 
   //gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8;
   lcdInit_SPILCD(&gfx);

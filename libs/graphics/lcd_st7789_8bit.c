@@ -52,7 +52,10 @@ static const uint8_t ST7789_INIT_CODE[] = {
 const int LCD_BUFFER_HEIGHT = 320;
 LCDST7789Mode lcdMode;
 int lcdNextX, lcdNextY;
+/// Vertical scrolling (change the scan start address on the LCD)
 int lcdScrollY;
+/// For notifications, we keep lcdScroll the same but then shift the LCD start address anyway
+int lcdOffsetY;
 
 #ifdef EMSCRIPTEN
 #define EMSCRIPTEN_GFX_STRIDE (240*2)
@@ -127,9 +130,37 @@ void lcdST7789_cmd(int cmd, int dataLen, const uint8_t *data) {
   }
   LCD_CS_SET();
 #else
-  EMSCRIPTEN_GFX_YSTART = lcdScrollY;
-  EMSCRIPTEN_GFX_CHANGED = true;
+  if (cmd == 0x37) {
+    EMSCRIPTEN_GFX_YSTART = (data[0]<<8)|data[1];
+    if (EMSCRIPTEN_GFX_WIDESCREEN)
+      EMSCRIPTEN_GFX_YSTART += 40;
+    if (EMSCRIPTEN_GFX_YSTART>=320)
+      EMSCRIPTEN_GFX_YSTART -= 320;
+    EMSCRIPTEN_GFX_CHANGED = true;
+  }
 #endif
+}
+
+// Update LCD scroll position
+void lcdST7789_scrollCmd() {
+  int offs = lcdScrollY + lcdOffsetY;
+  if (lcdMode == LCDST7789_MODE_DOUBLEBUFFERED)
+    offs += 120;
+  if (offs>=320) offs -= 320;
+  if (offs<0) offs += 320;
+  uint8_t buf[2];
+  buf[0] = offs>>8;
+  buf[1] = offs;
+  lcdST7789_cmd(0x37,2,buf);
+}
+
+/** Allow the LCD to be shifted vertically while still drawing in the normal position.
+ * Use this to display notifications while keeping the original data on the screen */
+void lcdST7789_setYOffset(int y) {
+  if (y<-80) y=-80;
+  if (y>80) y=80;
+  lcdOffsetY = y;
+  lcdST7789_scrollCmd();
 }
 
 void lcdST7789_setMode(LCDST7789Mode mode) {
@@ -140,15 +171,17 @@ void lcdST7789_setMode(LCDST7789Mode mode) {
     case LCDST7789_MODE_UNBUFFERED:
     case LCDST7789_MODE_BUFFER_120x120:
     case LCDST7789_MODE_BUFFER_80x80:
-      lcdST7789_cmd(0x13,0,NULL);
-      buf[0] = 0;
-      buf[1] = 0;
-      lcdST7789_cmd(0x37,2,buf);
 #ifdef EMSCRIPTEN
       EMSCRIPTEN_GFX_WIDESCREEN = false;
 #endif
+      lcdST7789_cmd(0x13,0,NULL);
+      lcdScrollY = 0;
+      lcdST7789_scrollCmd();
       break;
     case LCDST7789_MODE_DOUBLEBUFFERED:
+#ifdef EMSCRIPTEN
+      EMSCRIPTEN_GFX_WIDESCREEN = true;
+#endif
       buf[0] = 0;
       buf[1] = 40;
       buf[2] = 0;
@@ -156,15 +189,14 @@ void lcdST7789_setMode(LCDST7789Mode mode) {
       lcdST7789_cmd(0x30,4,buf);
       lcdST7789_cmd(0x12,0,NULL);
       lcdScrollY = 0;
-      buf[0] = 0;
-      buf[1] = 120;
-      lcdST7789_cmd(0x37,2,buf);
-#ifdef EMSCRIPTEN
-      EMSCRIPTEN_GFX_WIDESCREEN = true;
-#endif
+      lcdST7789_scrollCmd();
       break;
     }
   }
+}
+
+LCDST7789Mode lcdST7789_getMode() {
+  return lcdMode;
 }
 
 void lcdST7789_flip(JsGraphics *gfx) {
@@ -178,14 +210,10 @@ void lcdST7789_flip(JsGraphics *gfx) {
       unsigned short offs;
       if (lcdScrollY==0) {
         lcdScrollY = 160;
-        offs = 280;
       } else {
         lcdScrollY = 0;
-        offs = 120;
       }
-      buf[0] = offs>>8;
-      buf[1] = offs;
-      lcdST7789_cmd(0x37,2,buf);
+      lcdST7789_scrollCmd();
     } break;
     case LCDST7789_MODE_BUFFER_120x120: {
       // offscreen buffer - BLIT
@@ -195,9 +223,8 @@ void lcdST7789_flip(JsGraphics *gfx) {
       jsvUnLock(buffer);
       if (dataPtr && len>=(120*120)) {
         // reset scroll to 0
-        buf[0] = 0;
-        buf[1] = 0;
-        lcdST7789_cmd(0x37,2,buf);
+        lcdScrollY = 0;
+        lcdST7789_scrollCmd();
         // blit
         lcdST7789_blitStart(0,0,239,239);
         for (int y=0;y<240;y++) {
@@ -220,9 +247,8 @@ void lcdST7789_flip(JsGraphics *gfx) {
       jsvUnLock(buffer);
       if (dataPtr && len>=(80*80)) {
         // reset scroll to 0
-        buf[0] = 0;
-        buf[1] = 0;
-        lcdST7789_cmd(0x37,2,buf);
+        lcdScrollY = 0;
+        lcdST7789_scrollCmd();
         // blit
         lcdST7789_blitStart(0,0,239,239);
         for (int y=0;y<80;y++) {
@@ -435,10 +461,7 @@ void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir) {
   lcdScrollY-=ydir;
   while (lcdScrollY<0) lcdScrollY+=LCD_BUFFER_HEIGHT;
   while (lcdScrollY>=LCD_BUFFER_HEIGHT) lcdScrollY-=LCD_BUFFER_HEIGHT;
-  unsigned char buf[2];
-  buf[0] = lcdScrollY>>8;
-  buf[1] = lcdScrollY;
-  lcdST7789_cmd(0x37, 2, buf);
+  lcdST7789_scrollCmd();
 }
 
 
@@ -480,11 +503,14 @@ void lcdST7789_init(JsGraphics *gfx) {
   lcdNextX = -1;
   lcdNextY = -1;
   lcdScrollY = 0;
+  lcdOffsetY = 0;
   lcdMode = LCDST7789_MODE_UNBUFFERED;
 }
 
 void lcdST7789_setCallbacks(JsGraphics *gfx) {
-  if (lcdMode==LCDST7789_MODE_BUFFER_120x120 ||
+  if (lcdMode==LCDST7789_MODE_NULL) {
+    // nothing - ignores all draw commands!
+  } else if (lcdMode==LCDST7789_MODE_BUFFER_120x120 ||
       lcdMode==LCDST7789_MODE_BUFFER_80x80) {
     size_t expectedLen = (lcdMode==LCDST7789_MODE_BUFFER_120x120) ? (120*120) : (80*80);
     JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);

@@ -98,12 +98,9 @@ void jswrap_graphics_init() {
     JsVar *parentObj = jsvSkipName(parent);
     jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, parentObj);
     JsGraphics gfx;
-    graphicsStructInit(&gfx);
+    graphicsStructInit(&gfx,320,240,16);
     gfx.data.type = JSGRAPHICSTYPE_FSMC;
     gfx.graphicsVar = parentObj;
-    gfx.data.width = 320;
-    gfx.data.height = 240;
-    gfx.data.bpp = 16;
     lcdInit_FSMC(&gfx);
     lcdSetCallbacks_FSMC(&gfx);
     graphicsSplash(&gfx);
@@ -171,13 +168,10 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   if (!parent) return 0; // low memory
 
   JsGraphics gfx;
-  graphicsStructInit(&gfx);
+  graphicsStructInit(&gfx,width,height,bpp);
   gfx.data.type = JSGRAPHICSTYPE_ARRAYBUFFER;
   gfx.data.flags = JSGRAPHICSFLAGS_NONE;
   gfx.graphicsVar = parent;
-  gfx.data.width = (unsigned short)width;
-  gfx.data.height = (unsigned short)height;
-  gfx.data.bpp = (unsigned char)bpp;
 
   if (jsvIsObject(options)) {
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "zigzag", 0)))
@@ -271,12 +265,9 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   if (!parent) return 0; // low memory
 
   JsGraphics gfx;
-  graphicsStructInit(&gfx);
+  graphicsStructInit(&gfx,width,height,bpp);
   gfx.data.type = JSGRAPHICSTYPE_JS;
   gfx.graphicsVar = parent;
-  gfx.data.width = (unsigned short)width;
-  gfx.data.height = (unsigned short)height;
-  gfx.data.bpp = (unsigned char)bpp;
   lcdInit_JS(&gfx, callbackSetPixel, callbackFillRect);
   graphicsSetVar(&gfx);
   jsvUnLock2(callbackSetPixel, callbackFillRect);
@@ -309,12 +300,9 @@ JsVar *jswrap_graphics_createSDL(int width, int height, int bpp) {
   JsVar *parent = jspNewObject(0, "Graphics");
   if (!parent) return 0; // low memory
   JsGraphics gfx;
-  graphicsStructInit(&gfx);
+  graphicsStructInit(&gfx,width,height,bpp);
   gfx.data.type = JSGRAPHICSTYPE_SDL;
   gfx.graphicsVar = parent;
-  gfx.data.width = (unsigned short)width;
-  gfx.data.height = (unsigned short)height;
-  gfx.data.bpp = bpp;
   lcdInit_SDL(&gfx);
   graphicsSetVar(&gfx);
   return parent;
@@ -804,7 +792,7 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
         int dd = dr*dr+dg*dg+db*db;
         if (dd<d) {
           d=dd;
-          color=i;
+          color=(unsigned int)i;
         }
       }
 #endif
@@ -901,6 +889,44 @@ JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   return (JsVarInt)((isForeground ? gfx.data.fgColor : gfx.data.bgColor) & ((1UL<<gfx.data.bpp)-1));
 }
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setClipRect",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_setClipRect",
+  "params" : [
+    ["x1","int","Top left X coordinate"],
+    ["y1","int","Top left Y coordinate"],
+    ["x2","int","Bottom right X coordinate"],
+    ["y2","int","Bottom right Y coordinate"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+This sets the 'clip rect' that subsequent drawing operations are clipped to
+sit between.
+
+These values are inclusive - eg `g.setClipRect(1,0,5,0)` will ensure that only
+pixel rows 1,2,3,4,5 are touched on column 0.
+
+**Note:** For maximum flexibility, the values here are not range checked. For normal
+use, unsure X and Y are between 0 and `getWidth`/`getHeight`.
+*/
+JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+#ifndef SAVE_ON_FLASH
+  gfx.data.clipRect.x1 = (unsigned short)x1;
+  gfx.data.clipRect.y1 = (unsigned short)y1;
+  gfx.data.clipRect.x2 = (unsigned short)x2;
+  gfx.data.clipRect.y2 = (unsigned short)y2;
+  graphicsSetVar(&gfx);
+#endif
+  return jsvLockAgain(parent);
+}
+
 
 /*JSON{
   "type" : "method",
@@ -1795,7 +1821,8 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
           // Try and write pixel!
           if (imageTransparentCol!=col) {
             if (palettePtr) col = palettePtr[col&paletteMask];
-            if (xp>=0 && xp<gfx.data.width && yp>=0 && yp<gfx.data.height)
+            if (xp>=gfx.data.clipRect.x1 && xp<=gfx.data.clipRect.x2 &&
+                yp>=gfx.data.clipRect.y1 && yp<=gfx.data.clipRect.y2)
               gfx.setPixel(&gfx, xp, yp, col);
           }
           xp++;
@@ -1804,10 +1831,10 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       }
       // update modified area since we went direct
       int x1=xPos, y1=yPos, x2=xPos+imageWidth, y2=yPos+imageHeight;
-      if (x1<0) x1=0;
-      if (y1<0) y1=0;
-      if (x2>=gfx.data.width) x2 = gfx.data.width - 1;
-      if (y2>=gfx.data.height) y2 = gfx.data.height - 1;
+      if (x1<gfx.data.clipRect.x1) x1 = gfx.data.clipRect.x1;
+      if (y1<gfx.data.clipRect.y1) y1 = gfx.data.clipRect.y1;
+      if (x2>gfx.data.clipRect.x2) x2 = gfx.data.clipRect.x2;
+      if (y2>gfx.data.clipRect.y2) y2 = gfx.data.clipRect.y2;
       if (x1 < gfx.data.modMinX) gfx.data.modMinX=(short)x1;
       if (x2 > gfx.data.modMaxX) gfx.data.modMaxX=(short)x2;
       if (y1 < gfx.data.modMinY) gfx.data.modMinY=(short)y1;
@@ -1886,10 +1913,10 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
             unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
             bits -= imageBpp;
             // Try and write pixel!
-            if (imageTransparentCol!=col && yp>=0 && yp<gfx.data.height) {
+            if (imageTransparentCol!=col && yp>=gfx.data.clipRect.y1 && yp<=gfx.data.clipRect.y2) {
               if (palettePtr) col = palettePtr[col&paletteMask];
               for (int ix=0;ix<s;ix++) {
-                if (xp>=0 && xp<gfx.data.width)
+                if (xp>=gfx.data.clipRect.x1 && xp<=gfx.data.clipRect.x2)
                   gfx.setPixel(&gfx, xp, yp, col);
                 xp++;
               }
@@ -1900,10 +1927,10 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       }
       // update modified area since we went direct
       int x1=xPos, y1=yPos, x2=xPos+s*imageWidth, y2=yPos+s*imageHeight;
-      if (x1<0) x1=0;
-      if (y1<0) y1=0;
-      if (x2>=gfx.data.width) x2 = gfx.data.width - 1;
-      if (y2>=gfx.data.height) y2 = gfx.data.height - 1;
+      if (x1<gfx.data.clipRect.x1) x1 = gfx.data.clipRect.x1;
+      if (y1<gfx.data.clipRect.y1) y1 = gfx.data.clipRect.y1;
+      if (x2>gfx.data.clipRect.x2) x2 = gfx.data.clipRect.x2;
+      if (y2>gfx.data.clipRect.y2) y2 = gfx.data.clipRect.y2;
       if (x1 < gfx.data.modMinX) gfx.data.modMinX=(short)x1;
       if (x2 > gfx.data.modMaxX) gfx.data.modMaxX=(short)x2;
       if (y1 < gfx.data.modMinY) gfx.data.modMinY=(short)y1;

@@ -17,6 +17,7 @@ void lcdST7789_init(JsGraphics *gfx);
 void lcdST7789_setCallbacks(JsGraphics *gfx);
 
 typedef enum {
+  LCDST7789_MODE_NULL, // ignore draw calls
   LCDST7789_MODE_UNBUFFERED, // normal, 240x240
   LCDST7789_MODE_DOUBLEBUFFERED, // 240x160 widescreen, double-buffered
   LCDST7789_MODE_BUFFER_120x120, // 120x120 8 bit buffer
@@ -32,8 +33,12 @@ extern bool EMSCRIPTEN_GFX_WIDESCREEN; // are we 160px high?
 
 /// Send a command direct to the screen
 void lcdST7789_cmd(int cmd, int dataLen, const uint8_t *data);
+/** Allow the LCD to be shifted vertically while still drawing in the normal position.
+ * Use this to display notifications while keeping the original data on the screen */
+void lcdST7789_setYOffset(int y);
 /// Set double buffered or normal modes
 void lcdST7789_setMode(LCDST7789Mode mode);
+LCDST7789Mode lcdST7789_getMode();
 /// When in double-buffered mode, flip the screen
 void lcdST7789_flip(JsGraphics *gfx);
 

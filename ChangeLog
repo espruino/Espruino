@@ -53,6 +53,9 @@
             Fixed lex tokenToString for 'break'
             Bangle.js: add fake LED/LED1/LED2 as @allObjects suggested
             Add Graphics.toColor, and allow 4 bit Mac palette to be mapped to 8 bit web palette
+            Add Graphics.setClipRect to allow draw ops to be restricted to a certain area
+            Bangle.js: add 'null' LCD mode to stop apps from drawing
+            Bangle.js: add Bangle.getLCDMode
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

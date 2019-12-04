@@ -395,7 +395,7 @@ void lcd_flip(JsVar *parent) {
 char clipi8(int x) {
   if (x<-128) return -128;
   if (x>127) return 127;
-  return x;
+  return (char)x;
 }
 
 #ifndef EMSCRIPTEN
@@ -754,6 +754,8 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   LCDST7789Mode lcdMode = LCDST7789_MODE_UNBUFFERED;
   if (jsvIsUndefined(mode) || jsvIsStringEqual(mode,"direct"))
     lcdMode = LCDST7789_MODE_UNBUFFERED;
+  else if (jsvIsStringEqual(mode,"null"))
+    lcdMode = LCDST7789_MODE_NULL;
   else if (jsvIsStringEqual(mode,"doublebuffered"))
     lcdMode = LCDST7789_MODE_DOUBLEBUFFERED;
   else if (jsvIsStringEqual(mode,"120x120"))
@@ -770,6 +772,7 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   // remove the buffer if it was defined
   jsvObjectSetOrRemoveChild(gfx.graphicsVar, "buffer", 0);
   switch (lcdMode) {
+    case LCDST7789_MODE_NULL:
     case LCDST7789_MODE_UNBUFFERED:
       gfx.data.width = LCD_WIDTH;
       gfx.data.height = LCD_HEIGHT;
@@ -793,9 +796,62 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
       jsvObjectSetChildAndUnLock(gfx.graphicsVar, "buffer", jswrap_arraybuffer_constructor(80*80));
       break;
   }
+  graphicsStructResetState(&gfx); // reset colour, cliprect, etc
   graphicsSetVar(&gfx);
   jsvUnLock(graphics);
   lcdST7789_setMode( lcdMode );
+}
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "getLCDMode",
+    "generate" : "jswrap_banglejs_getLCDMode",
+    "return" : ["JsVar","The LCD mode as a String"],
+    "ifdef" : "BANGLEJS"
+}
+The current LCD mode.
+
+See `Bangle.setLCDMode` for examples.
+*/
+JsVar *jswrap_banglejs_getLCDMode() {
+  const char *name=0;
+  switch (lcdST7789_getMode()) {
+    case LCDST7789_MODE_NULL:
+      name = "null";
+      break;
+    case LCDST7789_MODE_UNBUFFERED:
+      name = "direct";
+      break;
+    case LCDST7789_MODE_DOUBLEBUFFERED:
+      name = "doublebuffered";
+      break;
+    case LCDST7789_MODE_BUFFER_120x120:
+      name = "120x120";
+      break;
+    case LCDST7789_MODE_BUFFER_80x80:
+      name = "80x80";
+      break;
+  }
+  if (!name) return 0;
+  return jsvNewFromString(name);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setLCDOffset",
+    "generate" : "jswrap_banglejs_setLCDOffset",
+    "params" : [
+      ["y","int","The amount of pixels to shift the LCD up or down"]
+    ],
+    "ifdef" : "BANGLEJS"
+}
+This can be used to move the displayed memory area up or down temporarily. It's
+used for displaying notifications while keeping the main display contents
+intact.
+*/
+void jswrap_banglejs_setLCDOffset(int y) {
+  lcdST7789_setYOffset(y);
 }
 
 /*JSON{
@@ -1094,14 +1150,11 @@ void jswrap_banglejs_init() {
   JsVar *graphics = jspNewObject(0, "Graphics");
   if (!graphics) return; // low memory
   JsGraphics gfx;
-  graphicsStructInit(&gfx);
+  graphicsStructInit(&gfx, LCD_WIDTH, LCD_HEIGHT, LCD_BPP);
   gfx.data.type = JSGRAPHICSTYPE_ST7789_8BIT;
   gfx.data.flags = 0;
   gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
   gfx.graphicsVar = graphics;
-  gfx.data.width = LCD_WIDTH;
-  gfx.data.height = LCD_HEIGHT;
-  gfx.data.bpp = LCD_BPP;
 
   //gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8;
   lcdST7789_init(&gfx);
