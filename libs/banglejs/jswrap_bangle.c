@@ -2103,3 +2103,45 @@ E.showAlert("These are\nLots of\nLines","My Title").then(function() {
 To remove the window, call `E.showAlert()` with no arguments.
 */
 
+/*JSON{
+    "type" : "variable",
+    "name" : "LED",
+    "generate" : "gen_jswrap_LED1",
+    "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
+    "ifdef" : "BANGLEJS"
+}
+
+On most Espruino board there are LEDs, in which case `LED` will be an actual Pin.
+
+On Bangle.js there are no LEDs, so to remain compatible with example code that might
+expect an LED, this is an object that behaves like a pin, but which just displays
+a circle on the display
+*/
+/*JSON{
+    "type" : "variable",
+    "name" : "LED1",
+    "generate_js" : "libs/js/banglejs/LED1.min.js",
+    "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
+    "ifdef" : "BANGLEJS"
+}
+
+On most Espruino board there are LEDs, in which case `LED1` will be an actual Pin.
+
+On Bangle.js there are no LEDs, so to remain compatible with example code that might
+expect an LED, this is an object that behaves like a pin, but which just displays
+a circle on the display
+*/
+/*JSON{
+    "type" : "variable",
+    "name" : "LED2",
+    "generate_js" : "libs/js/banglejs/LED2.min.js",
+    "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
+    "ifdef" : "BANGLEJS"
+}
+
+On most Espruino board there are LEDs, in which case `LED2` will be an actual Pin.
+
+On Bangle.js there are no LEDs, so to remain compatible with example code that might
+expect an LED, this is an object that behaves like a pin, but which just displays
+a circle on the display
+*/

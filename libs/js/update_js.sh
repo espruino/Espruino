@@ -34,5 +34,7 @@ node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMenu.js banglejs/E_showM
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMessage.js banglejs/E_showMessage.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showPrompt.js banglejs/E_showPrompt.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showAlert.js banglejs/E_showAlert.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/LED1.js banglejs/LED1.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/LED2.js banglejs/LED2.min.js
 
 

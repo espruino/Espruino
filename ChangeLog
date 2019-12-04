@@ -50,6 +50,8 @@
             Bangle.js: Added heart rate autocorrelation, setHRMPower and 'HRM' event
             Bangle.js: New 120x120 and 80x80 high speed buffered modes
             Fixed REPL to allow chars with char code >=128
+            Fixed lex tokenToString for 'break'
+            Bangle.js: add fake LED/LED1/LED2 as @allObjects suggested
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
