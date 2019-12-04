@@ -33,8 +33,15 @@ bool jsGfxChanged() {
   EMSCRIPTEN_GFX_CHANGED = false;
   return b;
 }
-char *jsGfxGetPtr() {
-  return EMSCRIPTEN_GFX_BUFFER;
+char *jsGfxGetPtr(int line) {
+  line += EMSCRIPTEN_GFX_YSTART;
+  if (line>=320) line-=320;
+  if (EMSCRIPTEN_GFX_WIDESCREEN) {
+    line -= 40;
+    if (line<0 || line>=160)
+      return 0;
+  }
+  return &EMSCRIPTEN_GFX_BUFFER[line*240*2];
 }
 void jsSendPinWatchEvent(int pin) {
   extern IOEventFlags jshGetEventFlagsForPin(Pin pin);

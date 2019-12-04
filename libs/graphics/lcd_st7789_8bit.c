@@ -56,9 +56,17 @@ int lcdScrollY;
 
 #ifdef EMSCRIPTEN
 #define EMSCRIPTEN_GFX_STRIDE (240*2)
-char EMSCRIPTEN_GFX_BUFFER[240*240*2];
-char EMSCRIPTEN_GFX_BUFFER_OFFSCREEN[240*160*2];
+int EMSCRIPTEN_GFX_YSTART = 0;
+char EMSCRIPTEN_GFX_BUFFER[240*320*2];
 bool EMSCRIPTEN_GFX_CHANGED;
+bool EMSCRIPTEN_GFX_WIDESCREEN = false; // are we 160px high, not 240?
+
+int EMSCRIPTEN_GFX_BLIT_X;
+int EMSCRIPTEN_GFX_BLIT_Y;
+int EMSCRIPTEN_GFX_BLIT_X1;
+int EMSCRIPTEN_GFX_BLIT_X2;
+int EMSCRIPTEN_GFX_BLIT_Y1;
+int EMSCRIPTEN_GFX_BLIT_Y2;
 #endif
 
 #ifndef EMSCRIPTEN
@@ -118,6 +126,9 @@ void lcdST7789_cmd(int cmd, int dataLen, const uint8_t *data) {
     }
   }
   LCD_CS_SET();
+#else
+  EMSCRIPTEN_GFX_YSTART = lcdScrollY;
+  EMSCRIPTEN_GFX_CHANGED = true;
 #endif
 }
 
@@ -133,6 +144,9 @@ void lcdST7789_setMode(LCDST7789Mode mode) {
       buf[0] = 0;
       buf[1] = 0;
       lcdST7789_cmd(0x37,2,buf);
+#ifdef EMSCRIPTEN
+      EMSCRIPTEN_GFX_WIDESCREEN = false;
+#endif
       break;
     case LCDST7789_MODE_DOUBLEBUFFERED:
       buf[0] = 0;
@@ -145,13 +159,15 @@ void lcdST7789_setMode(LCDST7789Mode mode) {
       buf[0] = 0;
       buf[1] = 120;
       lcdST7789_cmd(0x37,2,buf);
+#ifdef EMSCRIPTEN
+      EMSCRIPTEN_GFX_WIDESCREEN = true;
+#endif
       break;
     }
   }
 }
 
 void lcdST7789_flip(JsGraphics *gfx) {
-#ifndef EMSCRIPTEN
   unsigned char buf[2];
   switch (lcdMode) {
     case LCDST7789_MODE_UNBUFFERED:
@@ -224,62 +240,10 @@ void lcdST7789_flip(JsGraphics *gfx) {
       }
     } break;
   }
-#else
-  switch (lcdMode) {
-    case LCDST7789_MODE_UNBUFFERED:
-      // unbuffered - flip has no effect
-    break;
-    case LCDST7789_MODE_DOUBLEBUFFERED: {
-      memcpy(&EMSCRIPTEN_GFX_BUFFER[EMSCRIPTEN_GFX_STRIDE*40],
-             EMSCRIPTEN_GFX_BUFFER_OFFSCREEN,
-             sizeof(EMSCRIPTEN_GFX_BUFFER_OFFSCREEN));
-    } break;
-    case LCDST7789_MODE_BUFFER_120x120: {
-      JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
-      size_t len = 0;
-      unsigned char *dataPtr = (unsigned char*)jsvGetDataPointer(buffer, &len);
-      jsvUnLock(buffer);
-      if (dataPtr && len>=(120*120)) {
-        uint16_t *o = (uint16_t*)EMSCRIPTEN_GFX_BUFFER;
-        for (int y=0;y<240;y++) {
-          for (int x=0;x<120;x++) {
-            uint16_t c = PALETTE_8BIT[*(dataPtr++)];
-            *(o++) = c;
-            *(o++) = c;
-          }
-          // display the same row twice
-          if (!(y&1)) dataPtr -= 120;
-        }
-      }
-    } break;
-    case LCDST7789_MODE_BUFFER_80x80: {
-      JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
-      size_t len = 0;
-      unsigned char *dataPtr = (unsigned char*)jsvGetDataPointer(buffer, &len);
-      jsvUnLock(buffer);
-      if (dataPtr && len>=(80*80)) {
-        uint16_t *o = (uint16_t*)EMSCRIPTEN_GFX_BUFFER;
-        for (int y=0;y<80;y++) {
-          for (int n=0;n<3;n++) {
-            for (int x=0;x<80;x++) {
-              uint16_t c = PALETTE_8BIT[*(dataPtr++)];
-              *(o++) = c;
-              *(o++) = c;
-              *(o++) = c;
-            }
-            if (n<2) dataPtr -= 80;
-          }
-        }
-      }
-    } break;
-  }
-  EMSCRIPTEN_GFX_CHANGED = true;
-#endif
 }
 
 /// Starts a blit operation - call this, then blitPixel (a lot) then blitEnd. No bounds checking
 void lcdST7789_blitStart(int x, int y, int w, int h) {
-#ifndef EMSCRIPTEN
   lcdNextY=-1;
   lcdNextX=-1;
   int x1 = x;
@@ -289,6 +253,7 @@ void lcdST7789_blitStart(int x, int y, int w, int h) {
   int y2 = y+h+lcdScrollY;
   if (y2>=LCD_BUFFER_HEIGHT) y2-=LCD_BUFFER_HEIGHT;
   y += lcdScrollY;
+#ifndef EMSCRIPTEN
   LCD_CS_CLR();
   LCD_DC_COMMAND(); // command
   LCD_WR8(0x2A);
@@ -307,6 +272,13 @@ void lcdST7789_blitStart(int x, int y, int w, int h) {
   LCD_DC_COMMAND(); // command
   LCD_WR8(0x2C);
   LCD_DC_DATA(); // data
+#else
+  EMSCRIPTEN_GFX_BLIT_X = x1;
+  EMSCRIPTEN_GFX_BLIT_Y = y1;
+  EMSCRIPTEN_GFX_BLIT_X1 = x1;
+  EMSCRIPTEN_GFX_BLIT_Y1 = y1;
+  EMSCRIPTEN_GFX_BLIT_X2 = x2;
+  EMSCRIPTEN_GFX_BLIT_Y2 = y2;
 #endif
 }
 inline void lcdST7789_blitPixel(unsigned int col) {
@@ -322,6 +294,18 @@ inline void lcdST7789_blitPixel(unsigned int col) {
   asm("nop");asm("nop");
   LCD_SCK_CLR_FAST();
   LCD_SCK_SET_FAST();
+#else
+  ((uint16_t*)EMSCRIPTEN_GFX_BUFFER)[EMSCRIPTEN_GFX_BLIT_X+EMSCRIPTEN_GFX_BLIT_Y*240] = col;
+  EMSCRIPTEN_GFX_CHANGED = true;
+
+  EMSCRIPTEN_GFX_BLIT_X++;
+  if (EMSCRIPTEN_GFX_BLIT_X>EMSCRIPTEN_GFX_BLIT_X2) {
+    EMSCRIPTEN_GFX_BLIT_X = EMSCRIPTEN_GFX_BLIT_X1;
+    EMSCRIPTEN_GFX_BLIT_Y++;
+    if (EMSCRIPTEN_GFX_BLIT_Y>EMSCRIPTEN_GFX_BLIT_Y2) {
+      EMSCRIPTEN_GFX_BLIT_Y = EMSCRIPTEN_GFX_BLIT_Y1;
+    }
+  }
 #endif
 }
 void lcdST7789_blitEnd() {
@@ -368,21 +352,10 @@ void lcdST7789_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
   LCD_SCK_SET_FAST();
   LCD_CS_SET();
 #else // EMSCRIPTEN
-  switch (lcdMode) {
-    case LCDST7789_MODE_UNBUFFERED:
-      ((uint16_t*)EMSCRIPTEN_GFX_BUFFER)[x+y*240] = col;
-      EMSCRIPTEN_GFX_CHANGED = true;
-    break;
-    case LCDST7789_MODE_DOUBLEBUFFERED: {
-      ((uint16_t*)EMSCRIPTEN_GFX_BUFFER_OFFSCREEN)[x+y*240] = col;
-    } break;
-    case LCDST7789_MODE_BUFFER_120x120: {
-      EMSCRIPTEN_GFX_BUFFER_OFFSCREEN[x+y*120] = col;
-    } break;
-    case LCDST7789_MODE_BUFFER_80x80: {
-      EMSCRIPTEN_GFX_BUFFER_OFFSCREEN[x+y*80] = col;
-    } break;
-  }
+  y += lcdScrollY;
+  if (y>=LCD_BUFFER_HEIGHT) y-=LCD_BUFFER_HEIGHT;
+  ((uint16_t*)EMSCRIPTEN_GFX_BUFFER)[x+y*240] = col;
+  EMSCRIPTEN_GFX_CHANGED = true;
 #endif
 }
 
@@ -456,33 +429,16 @@ void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir) {
     // No way this is going to work double buffered!
     return;
   }
-#ifndef EMSCRIPTEN
   /* We can't read data back, so we can't do left/right scrolling!
   However we can change our index in the memory buffer window
   which allows us to use the LCD itself for scrolling */
   lcdScrollY-=ydir;
   while (lcdScrollY<0) lcdScrollY+=LCD_BUFFER_HEIGHT;
   while (lcdScrollY>=LCD_BUFFER_HEIGHT) lcdScrollY-=LCD_BUFFER_HEIGHT;
-
   unsigned char buf[2];
   buf[0] = lcdScrollY>>8;
   buf[1] = lcdScrollY;
   lcdST7789_cmd(0x37, 2, buf);
-#else // EMSCRIPTEN
-  int pixels = ydir*EMSCRIPTEN_GFX_STRIDE;
-  if (pixels>0) {
-    memcpy(
-        &EMSCRIPTEN_GFX_BUFFER[pixels],
-        &EMSCRIPTEN_GFX_BUFFER[0],
-        (EMSCRIPTEN_GFX_STRIDE*240)-pixels);
-  } else if (pixels<0) {
-    memcpy(
-        &EMSCRIPTEN_GFX_BUFFER[0],
-        &EMSCRIPTEN_GFX_BUFFER[-pixels],
-        (EMSCRIPTEN_GFX_STRIDE*240)+pixels);
-  }
-  EMSCRIPTEN_GFX_CHANGED=true;
-#endif
 }
 
 

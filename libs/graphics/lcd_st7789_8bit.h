@@ -24,8 +24,10 @@ typedef enum {
 } LCDST7789Mode;
 
 #ifdef EMSCRIPTEN
-extern char EMSCRIPTEN_GFX_BUFFER[240*240*2];
+extern int EMSCRIPTEN_GFX_YSTART;
+extern char EMSCRIPTEN_GFX_BUFFER[240*320*2];
 extern bool EMSCRIPTEN_GFX_CHANGED;
+extern bool EMSCRIPTEN_GFX_WIDESCREEN; // are we 160px high?
 #endif
 
 /// Send a command direct to the screen
