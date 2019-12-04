@@ -774,7 +774,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
         /*LEX_R_DO :       */ "do\0"
         /*LEX_R_WHILE :    */ "while\0"
         /*LEX_R_FOR :      */ "for\0"
-        /*LEX_R_BREAK :    */ "return\0"
+        /*LEX_R_BREAK :    */ "break\0"
         /*LEX_R_CONTINUE   */ "continue\0"
         /*LEX_R_FUNCTION   */ "function\0"
         /*LEX_R_RETURN     */ "return\0"
@@ -804,6 +804,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
         /*LEX_R_EXTENDS :  */ "extends\0"
         /*LEX_R_SUPER :  */   "super\0"
         /*LEX_R_STATIC :   */ "static\0"
+        /*LEX_R_OF    :   */ "of\0"
         ;
     unsigned int p = 0;
     int n = token-_LEX_OPERATOR_START;

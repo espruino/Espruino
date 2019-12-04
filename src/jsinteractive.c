@@ -1624,7 +1624,7 @@ void jsiHandleChar(char ch) {
     } else if (ch=='\t' && jsiEcho()) {
       jsiTabComplete();
 #endif
-    } else if (ch>=32 || ch=='\t') {
+    } else if (((unsigned char)ch)>=32 || ch=='\t') {
       char buf[2] = {ch,0};
       const char *strToAppend = (ch=='\t') ? "    " : buf;
       jsiAppendStringToInputLine(strToAppend);
