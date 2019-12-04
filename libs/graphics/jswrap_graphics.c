@@ -62,6 +62,8 @@ const uint16_t PALETTE_8BIT[256] = {
     0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
     0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xffff
  };
+// map Mac to web-safe palette. Must be uint16_t because drawImage uses uint16_t* for palette
+const uint16_t PALETTE_4BIT_TO_8BIT[16] = { 0, 43, 129, 172, 121, 78, 12, 18, 23, 4, 39, 183, 144, 192, 210, 215 };
 #endif
 
 
@@ -656,7 +658,7 @@ JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   unsigned int col = gfx.data.fgColor;
   if (!jsvIsUndefined(color))
-    col = (unsigned int)jsvGetInteger(color);
+    col = jswrap_graphics_toColor(parent,color,0,0);
   graphicsSetPixel(&gfx, x, y, col);
   gfx.data.cursorX = (short)x;
   gfx.data.cursorY = (short)y;
@@ -667,53 +669,29 @@ JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
-  "name" : "setColor",
-  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true)",
+  "name" : "toColor",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_toColor",
   "params" : [
     ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#012345'`"],
     ["g","JsVar","Green (between 0 and 1)"],
     ["b","JsVar","Blue (between 0 and 1)"]
   ],
-  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return" : ["int","The color index represented by the arguments"]
 }
-Set the color to use for subsequent drawing operations.
+Work out the color value to be used in the current bit depth based on the arguments.
 
-If just `r` is specified as an integer, the numeric value will be written directly into a pixel. eg. On a 24 bit `Graphics` instance you set bright blue with either `g.setColor(0,0,1)` or `g.setColor(0x0000FF)`.
+This is used internally by setColor and setBgColor
 
-The mapping is as follows:
-
-* 32 bit: `r,g,b` => `0xFFrrggbb`
-* 24 bit: `r,g,b` => `0xrrggbb`
-* 16 bit: `r,g,b` => `0brrrrrggggggbbbbb` (RGB565)
-* Other bpp: `r,g,b` => white if `r+g+b > 50%`, otherwise black (use `r` on its own as an integer)
-
-If you specified `color_order` when creating the `Graphics` instance, `r`,`g` and `b` will be swapped as you specified.
-
-**Note:** On devices with low flash memory, `r` **must** be an integer representing the color in the current bit depth. It cannot
-be a floating point value, and `g` and `b` are ignored.
+```
+// 1 bit
+g.toColor(1,1,1) => 1
+// 16 bit
+g.toColor(1,0,0) => 0xF800
+```
 */
-/*JSON{
-  "type" : "method",
-  "class" : "Graphics",
-  "name" : "setBgColor",
-  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false)",
-  "params" : [
-    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#012345'`"],
-    ["g","JsVar","Green (between 0 and 1)"],
-    ["b","JsVar","Blue (between 0 and 1)"]
-  ],
-  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
-}
-Set the background color to use for subsequent drawing operations. 
 
-See `Graphics.setColor` for more information on the mapping of `r`, `g`, and `b` to pixel values.
-
-**Note:** On devices with low flash memory, `r` **must** be an integer representing the color in the current bit depth. It cannot
-be a floating point value, and `g` and `b` are ignored.
-*/
-JsVar *jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground) {
+unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   unsigned int color = 0;
 #ifdef SAVE_ON_FLASH
@@ -837,6 +815,62 @@ JsVar *jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bo
     // just rgb
     color = (unsigned int)jsvGetInteger(r);
   }
+  return color;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setColor",
+  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true)",
+  "params" : [
+    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#012345'`"],
+    ["g","JsVar","Green (between 0 and 1)"],
+    ["b","JsVar","Blue (between 0 and 1)"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Set the color to use for subsequent drawing operations.
+
+If just `r` is specified as an integer, the numeric value will be written directly into a pixel. eg. On a 24 bit `Graphics` instance you set bright blue with either `g.setColor(0,0,1)` or `g.setColor(0x0000FF)`.
+
+The mapping is as follows:
+
+* 32 bit: `r,g,b` => `0xFFrrggbb`
+* 24 bit: `r,g,b` => `0xrrggbb`
+* 16 bit: `r,g,b` => `0brrrrrggggggbbbbb` (RGB565)
+* Other bpp: `r,g,b` => white if `r+g+b > 50%`, otherwise black (use `r` on its own as an integer)
+
+If you specified `color_order` when creating the `Graphics` instance, `r`,`g` and `b` will be swapped as you specified.
+
+**Note:** On devices with low flash memory, `r` **must** be an integer representing the color in the current bit depth. It cannot
+be a floating point value, and `g` and `b` are ignored.
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setBgColor",
+  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false)",
+  "params" : [
+    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#012345'`"],
+    ["g","JsVar","Green (between 0 and 1)"],
+    ["b","JsVar","Blue (between 0 and 1)"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Set the background color to use for subsequent drawing operations.
+
+See `Graphics.setColor` for more information on the mapping of `r`, `g`, and `b` to pixel values.
+
+**Note:** On devices with low flash memory, `r` **must** be an integer representing the color in the current bit depth. It cannot
+be a floating point value, and `g` and `b` are ignored.
+*/
+
+JsVar *jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  unsigned int color = jswrap_graphics_toColor(parent,r,g,b);
   if (isForeground)
     gfx.data.fgColor = color;
   else
@@ -1712,6 +1746,9 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     } else if (gfx.data.bpp==16 && imageBpp==8) { // palette is 16 bits, so don't use it for other things
       palettePtr = PALETTE_8BIT;
       paletteMask = 255;
+    } else if (gfx.data.bpp==8 && imageBpp==4) {
+      palettePtr = PALETTE_4BIT_TO_8BIT;
+      paletteMask = 15;
   #endif
     }
   }
