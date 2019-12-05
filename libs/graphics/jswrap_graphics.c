@@ -1274,8 +1274,10 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     y -= customHeight * (gfx.data.fontAlignY+1)/2;
 #endif
 
-  int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
-  int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
+  int minX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y1 : gfx.data.clipRect.x1;
+  int minY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x1 : gfx.data.clipRect.y1;
+  int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y2 : gfx.data.clipRect.x2;
+  int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x2 : gfx.data.clipRect.y2;
   int startx = x;
   JsVar *str = jsvAsString(var);
   JsvStringIterator it;
@@ -1291,17 +1293,17 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     if (font == JSGRAPHICS_FONTSIZE_VECTOR) {
 #ifndef NO_VECTOR_FONT
       int w = (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
-      if (x>-w && x<maxX  && y>-gfx.data.fontSize && y<maxY)
+      if (x>minX-w && x<maxX  && y>minY-gfx.data.fontSize && y<maxY)
         graphicsFillVectorChar(&gfx, x, y, gfx.data.fontSize, ch);
       x+=w;
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_4X6) {
-      if (x>-4 && x<maxX && y>-6 && y<maxY)
+      if (x>minX-4 && x<maxX && y>minY-6 && y<maxY)
         graphicsDrawChar4x6(&gfx, x, y, ch, scale, solidBackground);
       x+=4*scale;
 #ifdef USE_FONT_6X8
     } else if (font == JSGRAPHICS_FONTSIZE_6X8) {
-      if (x>-6 && x<maxX && y>-8 && y<maxY)
+      if (x>minX-6 && x<maxX && y>minY-8 && y<maxY)
         graphicsDrawChar6x8(&gfx, x, y, ch, scale, solidBackground);
       x+=6*scale;
 #endif
@@ -1323,7 +1325,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
         width = (int)jsvGetInteger(customWidth);
         bmpOffset = width*(ch-customFirstChar);
       }
-      if (ch>=customFirstChar && (x>-width) && (x<maxX) && (y>-customHeight) && y<maxY) {
+      if (ch>=customFirstChar && (x>minX-width) && (x<maxX) && (y>minY-customHeight) && y<maxY) {
         int ch = customHeight/scale;
         bmpOffset *= ch;
         // now render character
