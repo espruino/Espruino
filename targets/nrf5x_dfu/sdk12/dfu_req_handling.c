@@ -131,8 +131,10 @@ static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_
 {
     dfu_init_command_t const *  p_init = &p_command->command.init;
     uint32_t                    err_code;
+#ifndef NRF_BL_DFU_INSECURE
     uint32_t                    hw_version = NRF_DFU_HW_VERSION;
     uint32_t                    fw_version = 0;
+#endif
 
     // check for init command found during decoding
     if(!p_init_cmd || !init_cmd_len)
@@ -151,6 +153,7 @@ static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_
     if (p_init->has_is_debug == false || p_init->is_debug == false)
     {
 #endif
+#ifndef NRF_BL_DFU_INSECURE
         if (p_init->has_hw_version == false)
         {
             return NRF_DFU_RES_CODE_OPERATION_FAILED;
@@ -161,7 +164,7 @@ static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_
         {
             return NRF_DFU_RES_CODE_OPERATION_FAILED;
         }
-
+#endif
         // Precheck the SoftDevice version
         bool found_sd_ver = false;
         for(int i = 0; i < p_init->sd_req_count; i++)
@@ -176,7 +179,7 @@ static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_
         {
             return NRF_DFU_RES_CODE_OPERATION_FAILED;
         }
-
+#ifndef NRF_BL_DFU_INSECURE
         // Get the fw version
         switch (p_init->type)
         {
@@ -209,6 +212,7 @@ static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_
 
         NRF_LOG_INFO("Req version: %d, Present: %d\r\n", p_init->fw_version, fw_version);
 
+
         // Check of init command FW version
         switch (p_init->type)
         {
@@ -232,6 +236,7 @@ static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_
                 // do not care about fw_version in the case of a softdevice transfer
                 break;
         }
+#endif
 
 #ifdef NRF_DFU_DEBUG_VERSION
     }
