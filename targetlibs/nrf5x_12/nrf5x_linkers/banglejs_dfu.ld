@@ -97,3 +97,5 @@ SECTIONS
 } INSERT AFTER .data
 
 INCLUDE "../components/toolchain/gcc/nrf52_common.ld"
+
+ASSERT((__data_end__ - __data_start__) + __etext <= (ORIGIN(FLASH) + LENGTH(FLASH)),"region FLASH overflowed")
