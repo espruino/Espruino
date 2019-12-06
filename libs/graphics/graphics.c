@@ -127,10 +127,12 @@ void graphicsStructInit(JsGraphics *gfx, int width, int height, int bpp) {
   gfx->data.modMaxY = -32768;
   gfx->data.modMinX = 32767;
   gfx->data.modMinY = 32767;
+#ifdef USE_LCD_SDL | USE_LCD_SPI | USE_LCD_ST7789_8BIT
   gfx->data.clipRect.x1 = 0;
   gfx->data.clipRect.y1 = 0;
   gfx->data.clipRect.x2 = LCD_WIDTH-1;
   gfx->data.clipRect.y2 = LCD_HEIGHT-1;
+#endif
 #endif
 
 }
