@@ -442,7 +442,6 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
     short cross[MAX_CROSSES];
     bool slopes[MAX_CROSSES];
     int crosscnt = 0;
-
     // work out all the times lines cross the scanline
     j = points-1;
     for (i=0;i<points;i++) {
@@ -478,7 +477,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
     for (i=0;i<crosscnt;i++) {
       if (s==0) x=cross[i];
       if (slopes[i]) s++; else s--;
-      if (!s) graphicsFillRectDevice(gfx,x,y,cross[i],y,gfx->data.fgColor);
+      if (!s || i==crosscnt-1) graphicsFillRectDevice(gfx,x,y,cross[i],y,gfx->data.fgColor);
       if (jspIsInterrupted()) break;
     }
   }
@@ -508,7 +507,6 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, c
     idx+=2;
     if (READ_FLASH_UINT8(&vectorFontPolys[vertOffset+i+1]) & VECTOR_FONT_POLY_SEPARATOR) {
       graphicsFillPoly(gfx,idx/2, verts);
-
       if (jspIsInterrupted()) break;
       idx=0;
     }
