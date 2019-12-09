@@ -311,65 +311,59 @@ void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
 void graphicsDrawEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int posY2){
   graphicsToDeviceCoordinates(gfx, &posX1, &posY1);
   graphicsToDeviceCoordinates(gfx, &posX2, &posY2);
-  int posX = (posX1+posX2)/2;
-  int posY = (posY1+posY2)/2;
-  int width = (posX2-posX1)/2;
-  int height = (posY2-posY1)/2;
-  if (width<0) width=-width;
-  if (height<0) height=-height;
-  int hh = height * height;
-  int ww = width * width;
-  int hhww = hh * ww;
-  int x0 = width;
+
+  int posX =  (posX1+posX2)/2;
+  int posY =  (posY1+posY2)/2;
+  int a = (posX2-posX1)/2;
+  int b = (posY2-posY1)/2;
   int dx = 0;
-  int y;
-  graphicsSetPixelDevice(gfx,posX - width,posY,gfx->data.fgColor);
-  graphicsSetPixelDevice(gfx,posX + width,posY,gfx->data.fgColor);
-  for (y = 1; y <= height; y++) {
-    int x1 = x0 - (dx - 1);
-    for(; x1> 0; x1--)
-      if (x1 * x1 * hh + y * y * ww <= hhww)
-        break;
-    dx = x0 - x1;
-    x0 = x1;
-    if(dx<2){
-      graphicsSetPixelDevice(gfx,posX - x0, posY - y,gfx->data.fgColor);
-      graphicsSetPixelDevice(gfx,posX + x0, posY - y,gfx->data.fgColor);
-      graphicsSetPixelDevice(gfx,posX - x0, posY + y,gfx->data.fgColor);
-      graphicsSetPixelDevice(gfx,posX + x0, posY + y,gfx->data.fgColor);
-    } else {
-      graphicsFillRectDevice(gfx,posX - x0, posY - y, posX - x0 - dx + 1, posY - y,gfx->data.fgColor);
-      graphicsFillRectDevice(gfx,posX + x0, posY - y, posX + x0 + dx - 1, posY	- y,gfx->data.fgColor);
-      graphicsFillRectDevice(gfx,posX - x0, posY + y, posX - x0 - dx + 1, posY + y,gfx->data.fgColor);
-      graphicsFillRectDevice(gfx,posX + x0, posY + y, posX + x0 + dx - 1, posY + y,gfx->data.fgColor);
-    }
+  int dy = b;
+  int a2 = a*a;
+  int b2 = b*b;
+  int err = b2-(2*b-1)*a2;
+  int e2; 
+
+  do {
+       graphicsSetPixelDevice(gfx,posX+dx,posY+dy,gfx->data.fgColor);
+       graphicsSetPixelDevice(gfx,posX-dx,posY+dy,gfx->data.fgColor);
+       graphicsSetPixelDevice(gfx,posX+dx,posY-dy,gfx->data.fgColor);
+       graphicsSetPixelDevice(gfx,posX-dx,posY-dy,gfx->data.fgColor);
+       e2 = 2*err;
+       if (e2 <  (2*dx+1)*b2) { dx++; err += (2*dx+1)*b2; }
+       if (e2 > -(2*dy-1)*a2) { dy--; err -= (2*dy-1)*a2; }
+  } while (dy >= 0);
+
+  while (dx++ < a) { /* erroneous termination in flat ellipses (b=1) */
+       graphicsSetPixelDevice(gfx,posX+dx,posY,gfx->data.fgColor);
+       graphicsSetPixelDevice(gfx,posX-dx,posY,gfx->data.fgColor);
   }
 }
 
 void graphicsFillEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int posY2){
   graphicsToDeviceCoordinates(gfx, &posX1, &posY1);
   graphicsToDeviceCoordinates(gfx, &posX2, &posY2);
-  int posX = (posX1+posX2)/2;
-  int posY = (posY1+posY2)/2;
-  int width = (posX2-posX1)/2;
-  int height = (posY2-posY1)/2;
-  if (width<0) width=-width;
-  if (height<0) height=-height;
-  int hh = height * height;
-  int ww = width * width;
-  int hhww = hh * ww;
-  int x0 = width;
+
+  int posX =  (posX1+posX2)/2;
+  int posY =  (posY1+posY2)/2;
+  int a = (posX2-posX1)/2;
+  int b = (posY2-posY1)/2;
   int dx = 0;
-  graphicsFillRectDevice(gfx, posX - width, posY, posX + width, posY,gfx->data.fgColor);
-  for (int y = 1; y <= height; y++) {
-    int x1 = x0 - (dx - 1);
-    for ( ; x1 > 0; x1--)
-      if (x1*x1*hh + y*y*ww <= hhww)
-        break;
-    dx = x0 - x1;  
-    x0 = x1;
-	  graphicsFillRectDevice(gfx, posX - x0, posY - y, posX + x0, posY - y,gfx->data.fgColor);
-	  graphicsFillRectDevice(gfx, posX - x0, posY + y, posX + x0, posY + y,gfx->data.fgColor);
+  int dy = b;
+  int a2 = a*a;
+  int b2 = b*b;
+  int err = b2-(2*b-1)*a2;
+  int e2; 
+
+  do {
+       graphicsFillRectDevice(gfx,posX+dx,posY+dy,posX-dx,posY+dy,gfx->data.fgColor);
+       graphicsFillRectDevice(gfx,posX+dx,posY-dy,posX-dx,posY-dy,gfx->data.fgColor);
+       e2 = 2*err;
+       if (e2 <  (2*dx+1)*b2) { dx++; err += (2*dx+1)*b2; }
+       if (e2 > -(2*dy-1)*a2) { dy--; err -= (2*dy-1)*a2; }
+  } while (dy >= 0);
+
+  while (dx++ < a) { /* erroneous termination in flat ellipses(b=1) */
+       graphicsFillRectDevice(gfx,posX+dx,posY,posX-dx,posY,gfx->data.fgColor );
   }
 }
 
