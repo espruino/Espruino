@@ -333,7 +333,7 @@ void graphicsDrawEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int p
        if (e2 > -(2*dy-1)*a2) { dy--; err -= (2*dy-1)*a2; }
   } while (dy >= 0);
 
-  while (dx++ < a) { /* fehlerhafter Abbruch bei flachen Ellipsen (b=1) */
+  while (dx++ < a) { /* erroneous termination in flat ellipses (b=1) */
        graphicsSetPixelDevice(gfx,posX+dx,posY,gfx->data.fgColor);
        graphicsSetPixelDevice(gfx,posX-dx,posY,gfx->data.fgColor);
   }
@@ -362,7 +362,7 @@ void graphicsFillEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int p
        if (e2 > -(2*dy-1)*a2) { dy--; err -= (2*dy-1)*a2; }
   } while (dy >= 0);
 
-  while (dx++ < a) { /* fehlerhafter Abbruch bei flachen Ellipsen (b=1) */
+  while (dx++ < a) { /* erroneous termination in flat ellipses(b=1) */
        graphicsFillRectDevice(gfx,posX+dx,posY,posX-dx,posY,gfx->data.fgColor );
   }
 }
