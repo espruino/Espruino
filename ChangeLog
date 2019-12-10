@@ -57,6 +57,7 @@
             Bangle.js: add 'null' LCD mode to stop apps from drawing
             Bangle.js: add Bangle.getLCDMode
             Bangle.js: skip firmware version checks to save some bytes in bootloader
+            Graphics: new g.fillPoly to handle irregular polygons
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
