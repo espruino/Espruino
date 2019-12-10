@@ -404,70 +404,81 @@ void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
   }
 }
 
-static inline void graphicsFillPolyCreateScanLines(JsGraphics *gfx, short *minx, short *maxx, short x1, short y1,short x2, short y2) {
-  if (y2 < y1) {
-    short t;
-    t=x1;x1=x2;x2=t;
-    t=y1;y1=y2;y2=t;
-  }
-  int xh = x1*256 + 128/*do rounding here rather than when we >>8*/;
-  int yl = (1+y2)-y1;
-  int stepx = ((x2-x1)*256 + (yl/2)/*rounding*/) / yl;
-  short y;
-  int x = xh>>8;
-  if (x<-32768) x=-32768;
-  if (x>32767) x=32767;
-  for (y=y1;y<=y2;y++) {
-    int oldx = x;
-    xh += stepx;
-    x = xh>>8;
-    if (x<-32768) x=-32768;
-    if (x>32767) x=32767;
-    if (y>=0 && y<gfx->data.height) {
-      if (oldx<minx[y]) minx[y] = (short)oldx;
-      if (oldx>maxx[y]) maxx[y] = (short)oldx;
-      if (x<minx[y]) minx[y] = (short)x;
-      if (x>maxx[y]) maxx[y] = (short)x;
-    }
-  }
-}
+
 
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
-  int i;
+  typedef struct {
+    short x,y;
+  } VertXY;
+  VertXY *v = (VertXY*)vertices;
+
+  int i,j,y;
   int miny = (int)(gfx->data.height-1);
   int maxy = 0;
-  for (i=0;i<points*2;i+=2) {
+  for (i=0;i<points;i++) {
     // convert into device coordinates...
-    graphicsToDeviceCoordinates(gfx, &vertices[i], &vertices[i+1]);
-    short y = vertices[i+1];
+    int vx = v[i].x;
+    int vy = v[i].y;
+    graphicsToDeviceCoordinates(gfx, &vx, &vy);
+    v[i].x = (short)vx;
+    v[i].y = (short)vy;
+    // work out min and max
+    short y = v[i].y;
     if (y<miny) miny=y;
     if (y>maxy) maxy=y;
   }
+#ifndef SAVE_ON_FLASH
+  if (miny < gfx->data.clipRect.y1) miny=gfx->data.clipRect.y1;
+  if (maxy > gfx->data.clipRect.y2) maxy=gfx->data.clipRect.y2;
+#else
   if (miny<0) miny=0;
   if (maxy>=gfx->data.height) maxy=(int)(gfx->data.height-1);
-  short minx[gfx->data.height];
-  short maxx[gfx->data.height];
-  int y;
+#endif
+
+  const int MAX_CROSSES = 64;
+
+  // for each scanline
   for (y=miny;y<=maxy;y++) {
-    minx[y] = (short)(gfx->data.width);
-    maxx[y] = -1;
-  }
-  int j = (points-1)*2;
-  for (i=0;i<points*2;i+=2) {
-    graphicsFillPolyCreateScanLines(gfx, minx, maxx, vertices[j+0], vertices[j+1], vertices[i+0], vertices[i+1]);
-    j = i;
-  }
-  for (y=miny;y<=maxy;y++) {
-    if (maxx[y]>=minx[y] && maxx[y]>=0 && minx[y]<gfx->data.width) {
-      // clip
-      if (minx[y]<0) minx[y]=0;
-      if (maxx[y]>=gfx->data.width) maxx[y]=(short)(gfx->data.width-1);
-      // try and expand the rect that we fill
-      int oldy = y;
-      while (y<maxy && minx[y+1]==minx[oldy] && maxx[y+1]==maxx[oldy])
-        y++;
-      // actually fill
-      graphicsFillRectDevice(gfx,minx[y],oldy,maxx[y],y,gfx->data.fgColor);
+    short cross[MAX_CROSSES];
+    bool slopes[MAX_CROSSES];
+    int crosscnt = 0;
+    // work out all the times lines cross the scanline
+    j = points-1;
+    for (i=0;i<points;i++) {
+      if ((y==miny && (v[i].y==y || v[j].y==y)) || // special-case top line
+          (v[i].y<y && v[j].y>=y) ||
+          (v[j].y<y && v[i].y>=y)) {
+        if (crosscnt < MAX_CROSSES) {
+          int l = v[j].y - v[i].y;
+          if (l) { // don't do horiz lines - rely on the ends of the lines that join onto them
+            cross[crosscnt] = (short)(v[i].x + ((y - v[i].y) * (v[j].x-v[i].x)) / l);
+            slopes[crosscnt] = (l>1)?1:0;
+            crosscnt++;
+          }
+        }
+      }
+      j = i;
+    }
+
+    // bubble sort
+    for (i=0;i<crosscnt-1;) {
+      if (cross[i]>cross[i+1]) {
+        short t=cross[i];
+        cross[i]=cross[i+1];
+        cross[i+1]=t;
+        bool ts=slopes[i];
+        slopes[i]=slopes[i+1];
+        slopes[i+1]=ts;
+        if (i) i--;
+      } else i++;
+    }
+
+    //  Fill the pixels between node pairs.
+    int x = 0,s = 0;
+    for (i=0;i<crosscnt;i++) {
+      if (s==0) x=cross[i];
+      if (slopes[i]) s++; else s--;
+      if (!s || i==crosscnt-1) graphicsFillRectDevice(gfx,x,y,cross[i],y,gfx->data.fgColor);
       if (jspIsInterrupted()) break;
     }
   }
@@ -497,7 +508,6 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, c
     idx+=2;
     if (READ_FLASH_UINT8(&vectorFontPolys[vertOffset+i+1]) & VECTOR_FONT_POLY_SEPARATOR) {
       graphicsFillPoly(gfx,idx/2, verts);
-
       if (jspIsInterrupted()) break;
       idx=0;
     }
