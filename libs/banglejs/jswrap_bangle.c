@@ -1885,9 +1885,6 @@ void jswrap_banglejs_off() {
     "class" : "Bangle",
     "name" : "getLogo",
     "generate" : "jswrap_banglejs_getLogo",
-    "params" : [
-      ["menu","JsVar","Get the Bangle.js logo as an image that can be used with `g.drawImage`"]
-    ],
     "return" : ["JsVar", "An image to be used with `g.drawImage` - 222 x 104 x 2 bits" ],
     "ifdef" : "BANGLEJS"
 }
