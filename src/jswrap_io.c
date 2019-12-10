@@ -775,7 +775,9 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
-      jshPinWatch(jshGetPinFromVar(watchPin), false);
+      Pin pin = jshGetPinFromVar(watchPin);
+      if (!jshGetPinShouldStayWatched(pin))
+        jshPinWatch(pin, false);
       jsvUnLock2(watchPin, watchPtr);
       jsvObjectIteratorNext(&it);
     }

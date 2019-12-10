@@ -17,6 +17,8 @@
 # make flash         # Try and flash using the platform's normal flash tool
 # make serialflash   # flash over USB serial bootloader (STM32)
 # make lst           # Make listing files
+# make boardjson     # JSON file for a board
+# make docs          # Reference HTML for a board
 #
 # Also:
 #
@@ -367,6 +369,7 @@ INCLUDE += -I$(ROOT)/libs/graphics
 WRAPPERSOURCES += libs/graphics/jswrap_graphics.c
 SOURCES += \
 libs/graphics/bitmap_font_4x6.c \
+libs/graphics/bitmap_font_6x8.c \
 libs/graphics/graphics.c \
 libs/graphics/lcd_arraybuffer.c \
 libs/graphics/lcd_js.c
@@ -381,6 +384,16 @@ endif
 ifdef USE_LCD_FSMC
   DEFINES += -DUSE_LCD_FSMC
   SOURCES += libs/graphics/lcd_fsmc.c
+endif
+
+ifdef USE_LCD_SPI
+  DEFINES += -DUSE_LCD_SPI
+  SOURCES += libs/graphics/lcd_spilcd.c
+endif
+
+ifdef USE_LCD_ST7789_8BIT
+  DEFINES += -DUSE_LCD_ST7789_8BIT
+  SOURCES += libs/graphics/lcd_st7789_8bit.c
 endif
 
 
@@ -567,10 +580,28 @@ ifeq ($(USE_NFC),1)
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/uri
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/record
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_pair_msg
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ac_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/le_oob_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_oob_advdata
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ep_oob_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/common
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/launchapp
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_msg.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_rec.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message/nfc_ndef_msg.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/generic/record/nfc_ndef_record.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_pair_msg/nfc_ble_pair_msg.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec/nfc_hs_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/le_oob_rec/nfc_le_oob_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ep_oob_rec/nfc_ep_oob_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ac_rec/nfc_ac_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec/nfc_hs_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_oob_advdata/nfc_ble_oob_advdata.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/common/nfc_ble_pair_common.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/launchapp/nfc_launchapp_msg.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/launchapp/nfc_launchapp_rec.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 endif
 
@@ -682,6 +713,11 @@ else
 	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 endif
 
+docs:
+	@echo Generating Board docs
+	$(Q)python scripts/build_docs.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
+	@echo functions.html created
+
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
@@ -746,6 +782,8 @@ quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 
 ifdef LINUX # ---------------------------------------------------
 include make/targets/LINUX.make
+else ifdef EMSCRIPTEN
+include make/targets/EMSCRIPTEN.make
 else ifdef ESP32
 include make/targets/ESP32.make
 else ifdef ESP8266

@@ -62,13 +62,15 @@ uint8_t wizchip_read() {
 
 /*JSON{
   "type" : "library",
-  "class" : "WIZnet"
+  "class" : "WIZnet",
+  "ifdef" : "USE_WIZNET"
 }
 Library for communication with the WIZnet Ethernet module
 */
 /*JSON{
   "type" : "staticmethod",
   "class" : "WIZnet",
+  "ifdef" : "USE_WIZNET",
   "name" : "connect",
   "generate" : "jswrap_wiznet_connect",
   "params" : [
@@ -158,7 +160,8 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
 
 /*JSON{
   "type" : "class",
-  "class" : "Ethernet"
+  "class" : "Ethernet",
+  "ifdef" : "USE_WIZNET"
 }
 An instantiation of an Ethernet network adaptor
 */
@@ -166,6 +169,7 @@ An instantiation of an Ethernet network adaptor
 /*JSON{
   "type" : "method",
   "class" : "Ethernet",
+  "ifdef" : "USE_WIZNET",
   "name" : "getIP",
   "generate" : "jswrap_ethernet_getIP",
   "params" : [
@@ -226,6 +230,7 @@ static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *pt
 /*JSON{
   "type" : "method",
   "class" : "Ethernet",
+  "ifdef" : "USE_WIZNET",
   "name" : "setIP",
   "generate" : "jswrap_ethernet_setIP",
   "params" : [

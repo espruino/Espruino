@@ -2,9 +2,62 @@
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
             nRF52: If a central is connected to Espruino but isn't reading from UART, don't block waiting to send data
             ESP8266: reverse fix #1679
+            Added Graphics.getFont/setFont/getFonts
+            Added Graphics.getFontHeight
+            Added option to compile in 6x8 fixed-width fonts
+            Fix issue where Util Timer timers could break after a call to setTime
+            nRF52: Enable DMA for SPI send
             Added option to build in TensorFlow Lite for AI
             Documentation for modules now includes require('...') in the call type to be less confusing
             ESP8266: warning: Empty loadable segment detected (fix #1690) 
+            nRF52: Add NRF.nfcPair(...) and OOB pairing to allow tap to pair over BLE
+            nRF52: Add NRF.nfcAndroidApp(...) to launch an Android app on touch
+            Pixl.js remove SHA512 to make room for new NFC functionality
+            Graphics.setFont("4x6",2) will now double the size of a bitmap font
+            Graphics.drawImage can now take a String of data for an image (eg. direct from Storage)
+            nRF5x: Support connection to devices with RANDOM_PRIVATE_RESOLVABLE and RANDOM_PRIVATE_NON_RESOLVABLE addresses
+            Pixl.js: Move SCK pin used during Neopixel writes to ensure it doesn't interfere with BTN3
+            nRF52: Fix alignment issue with Nordic's SDK12 code that stopped passkey pairing from working sometimes
+            Storage lib now doesn't bother reading to end of flash to ensure pages are clear
+            Allow heatshrink compress/decompress to work even if flat buffers can't be allocated
+            require("Flash").write operations no longer need to be aligned
+            require("Storage").open added - for appendable files
+            Pixl.js: Removed AES functionality - unfortunately we're running low on space for it
+            Original Espruino Board: Removed Vector font and don't add rotated drawImage to save flash
+            nRF5x: Add NRF.filterDevices to allow scanned devices to be easily filtered after scanning
+            nRF52: Fix 'BLE task completed that wasn't scheduled' warning regression (peripheral disconnect)
+            Can now get a data pointer even from a single JsVar string (it doesn't have to be flat)
+            Add option to specify a palette when drawing images with drawImage
+            Add XON/XOFF flow control to Bluetooth LE UART (on by default)
+            Lower thresholds for XON/XOFF to give more headroom with devices that are slow to respond
+            Add a fast path for non-rotated non-scaled Graphics.drawImage
+            Add argument check for heatshrink compress/decompress
+            nRF5x: Ensure gatt.connect silently succeeds if we're already connected to the device
+            Add E.showMenu, deprecate Pixl.menu - use a common function to ease porting between devices
+            Added E.showPrompt, E.showAlert for Bangle.js
+            Pixl.js - check '.splash' file at startup and use it for splash screen if it's there
+            Improve free list ordering when Flat Strings are freed
+            Added E.defrag to perform defragmentation - still beta!
+            nRF52: fix issue where restarting the softdevice would reset the RTC
+              - fixes Bangle.js watchdog reset
+            nRF52: fix issue where advertising flags could get out of sync after SD restart
+            Bangle.js: fix units for GPS speed (was knots, now km/h)
+            Bangle.js: Add Bangle.setLCDBrightness
+            nRF52: Fix passkey pairing if setSecurity is after setServices
+            Bangle.js: EVents for 'swipe' and 'touch' on the touchscreen
+            Added ability to compile Espruino to JavaScript with Emscripten
+            Allow g.setColor/setBgColor to take hex Strings of the form `'#00ff00'`
+            Bangle.js: Added heart rate autocorrelation, setHRMPower and 'HRM' event
+            Bangle.js: New 120x120 and 80x80 high speed buffered modes
+            Fixed REPL to allow chars with char code >=128
+            Fixed lex tokenToString for 'break'
+            Bangle.js: add fake LED/LED1/LED2 as @allObjects suggested
+            Add Graphics.toColor, and allow 4 bit Mac palette to be mapped to 8 bit web palette
+            Add Graphics.setClipRect to allow draw ops to be restricted to a certain area
+            Bangle.js: add 'null' LCD mode to stop apps from drawing
+            Bangle.js: add Bangle.getLCDMode
+            Bangle.js: skip firmware version checks to save some bytes in bootloader
+            Graphics: new g.fillPoly to handle irregular polygons
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

@@ -306,6 +306,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf);
 int jshSPISend(IOEventFlags device, int data);
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data);
+/** Send data in tx through the given SPI device and return the response in
+ * rx (if supplied). Returns true on success. A weak version of this function is provided in jshardware_common.c */
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)());
 /** Set whether to send 16 bits or 8 over SPI */
 void jshSPISet16(IOEventFlags device, bool is16);
 /** Set whether to use the receive interrupt or not */
@@ -349,6 +352,8 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len);
 /** Write data to flash memory from the buffer, the buffer address and flash address are
   * guaranteed to be 4-byte aligned, and length is a multiple of 4.  */
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len);
+/** Like FlashWrite but can be unaligned (it uses a read first). This is in jshardware_common.c */
+void jshFlashWriteAligned(void *buf, uint32_t addr, uint32_t len);
 
 /** On most platforms, the address of something really is that address.
  * In ESP32/ESP8266 the flash memory is mapped up at a much higher address,
@@ -458,7 +463,7 @@ JshPinState jshVirtualPinGetState(Pin pin);
 #define WAIT_UNTIL(CONDITION, REASON) { \
     int timeout = WAIT_UNTIL_N_CYCLES;                                              \
     while (!(CONDITION) && !jspIsInterrupted() && (timeout--)>0);                  \
-    if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_INTERNALERROR, "Timeout on "REASON); }  \
+    if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_INTERNALERROR, "Timeout on " REASON); }  \
 }
 
 #endif /* JSHARDWARE_H_ */

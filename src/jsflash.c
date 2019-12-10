@@ -67,6 +67,12 @@ JsfFileName jsfNameFromVar(JsVar *name) {
   return *(JsfFileName*)nameBuf;
 }
 
+JsfFileName jsfNameFromVarAndUnLock(JsVar *name) {
+  JsfFileName n = jsfNameFromVar(name);
+  jsvUnLock(name);
+  return n;
+}
+
 /// Return the size in bytes of a file based on the header
 uint32_t jsfGetFileSize(JsfFileHeader *header) {
   return (uint32_t)(header->size & 0x00FFFFFF);
@@ -82,34 +88,42 @@ static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
   assert(header);
   if (!addr) return false;
   jshFlashRead(header, addr, sizeof(JsfFileHeader));
+  //DBG("Header 0x%x size 0x%x repl 0x%x\n", addr, header->size, header->replacement);
   return (header->size != JSF_WORD_UNSET) &&
+         (jsfGetFileSize(header) < FLASH_SAVED_CODE_LENGTH) && // flags are stored in top byte of length
          (addr+(uint32_t)sizeof(JsfFileHeader)+jsfGetFileSize(header) < JSF_END_ADDRESS);
 }
 
 /// Is an area of flash completely erased?
 static bool jsfIsErased(uint32_t addr, uint32_t len) {
-  uint32_t x;
   /* Read whole blocks at the alignment size and check
    * everything (even slightly past the length) */
-  unsigned char buf[JSF_ALIGNMENT];
-  for (x=0;x<len;x+=JSF_ALIGNMENT) {
-    jshFlashRead(&buf, addr+x, JSF_ALIGNMENT);
-    int i;
-    for (i=0;i<JSF_ALIGNMENT;i++)
+  unsigned char buf[128];
+  assert((sizeof(buf)&(JSF_ALIGNMENT-1))==0);
+  while (len) {
+    uint32_t l = len;
+    if (l>sizeof(buf)) l=sizeof(buf);
+    jshFlashRead(&buf, addr, l);
+    for (uint32_t i=0;i<l;i++)
       if (buf[i]!=0xFF) return false;
+    addr += l;
+    len -= l;
   }
   return true;
 }
 
 /// Is an area of flash equal to something that's in RAM?
 static bool jsfIsEqual(uint32_t addr, const unsigned char *data, uint32_t len) {
-  uint32_t x, buflen;
-  unsigned char buf[JSF_ALIGNMENT];
-  for (x=0;x<len;x+=JSF_ALIGNMENT) {
-    jshFlashRead(&buf, addr+x,JSF_ALIGNMENT);
-
-    buflen = (x<=len-JSF_ALIGNMENT) ? JSF_ALIGNMENT : (len-x);
-    if (memcmp(buf, &data[x], buflen)) return false;
+  unsigned char buf[128];
+  assert((sizeof(buf)&(JSF_ALIGNMENT-1))==0);
+  uint32_t x=0;
+  while (len) {
+    uint32_t l = len;
+    if (l>sizeof(buf)) l=sizeof(buf);
+    jshFlashRead(&buf, addr+x, l);
+    if (memcmp(buf, &data[x], l)) return false;
+    x += l;
+    len -= l;
   }
   return true;
 }
@@ -144,11 +158,12 @@ static void jsfEraseFileInternal(uint32_t addr, JsfFileHeader *header) {
   jshFlashWrite(&header->replacement,addr,(uint32_t)sizeof(JsfWord));
 }
 
-void jsfEraseFile(JsfFileName name) {
+bool jsfEraseFile(JsfFileName name) {
   JsfFileHeader header;
   uint32_t addr = jsfFindFile(name, &header);
-  if (!addr) return;
+  if (!addr) return false;
   jsfEraseFileInternal(addr, &header);
+  return true;
 }
 
 // Get the address of the page after the current one, or 0. THE NEXT PAGE MAY HAVE A PREVIOUS PAGE'S DATA SPANNING OVER IT
@@ -168,13 +183,11 @@ static uint32_t jsfGetSpaceLeftInPage(uint32_t addr) {
   if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
     return 0;
   uint32_t nextPageStart = pageAddr+pageLen;
-  // if the next page is empty, skip forward
+  // if the next page is empty, assume it's empty until the end of flash
   JsfFileHeader header;
-  while (nextPageStart<JSF_END_ADDRESS &&
-         !jsfGetFileHeader(nextPageStart, &header)) {
-    if (!jshFlashGetPage(nextPageStart, &pageAddr, &pageLen))
-        return 0;
-    nextPageStart = pageAddr+pageLen;
+  if (nextPageStart<JSF_END_ADDRESS &&
+      !jsfGetFileHeader(nextPageStart, &header)) {
+    nextPageStart = JSF_END_ADDRESS;
   }
   return nextPageStart - addr;
 }
@@ -201,11 +214,13 @@ static bool jsfGetNextFileHeader(uint32_t *addr, JsfFileHeader *header, jsfGetNe
   if (newAddr+sizeof(JsfFileHeader)>JSF_END_ADDRESS) return 0; // not enough space
   *addr = newAddr;
   bool valid = jsfGetFileHeader(newAddr, header);
-  while ((type==GNFH_GET_ALL) && !valid) {
+  if ((type==GNFH_GET_ALL) && !valid) {
+    // there wasn't another header in this page - check the next page
     newAddr = jsfGetAddressOfNextPage(newAddr);
     *addr = newAddr;
     if (!newAddr) return false; // no valid address
     valid = jsfGetFileHeader(newAddr, header);
+    // we can't have a blank page and then a header, so stop our search
   }
   return valid;
 }
@@ -364,7 +379,7 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
       if (jsfGetFileHeader(addr, &header)) do {
         // check for something with the same name
         if (header.replacement == JSF_WORD_UNSET &&
-            header.name == name)
+            header.name.n == name.n)
           existingAddr = addr;
       } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_EMPTY));
       // If not enough space, skip to next page
@@ -375,6 +390,7 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
     } while (addr && (newPage || jsfGetSpaceLeftInPage(addr)<requiredSize));
     // do we have an existing file? Erase it.
     if (existingAddr) {
+      DBG("Erase existing file at 0x%x\n", existingAddr);
       jsfGetFileHeader(existingAddr, &header);
       jsfEraseFileInternal(existingAddr+(uint32_t)sizeof(JsfFileHeader), &header);
     }
@@ -426,7 +442,7 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
   if (jsfGetFileHeader(addr, &header)) do {
     // check for something with the same name that hasn't been replaced
     if (header.replacement == JSF_WORD_UNSET &&
-        header.name == name) {
+        header.name.n == name.n) {
       uint32_t endOfFile = addr + (uint32_t)sizeof(JsfFileHeader) + jsfGetFileSize(&header);
       if (endOfFile<addr || endOfFile>JSF_END_ADDRESS)
         return 0; // corrupt - file too long
@@ -489,7 +505,27 @@ JsVar *jsfReadFile(JsfFileName name) {
   return v;
 #else
   size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
-  return jsvNewNativeString((char*)mappedAddr, jsfGetFileSize(&header));
+  uint32_t len = jsfGetFileSize(&header);
+#ifdef SPIFLASH_BASE // if using SPI flash it can't be memory-mapped
+  if (!mappedAddr) {
+    JsVar *v = jsvNewStringOfLength(len, NULL);
+    if (v) {
+      JsvStringIterator it;
+      jsvStringIteratorNew(&it, v, 0);
+      while (len && jsvStringIteratorHasChar(&it)) {
+        unsigned char *data;
+        unsigned int l = 0;
+        jsvStringIteratorGetPtrAndNext(&it, &data, &l);
+        jshFlashRead(data, addr, l);
+        addr += l;
+        len -= l;
+      }
+      jsvStringIteratorFree(&it);
+    }
+    return v;
+  }
+#endif
+  return jsvNewNativeString((char*)mappedAddr, len);
 #endif
 }
 
@@ -534,36 +570,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
     return false;
   }
   DBG("jsfWriteFile write contents\n");
-  // Cope with unaligned first write
-  uint32_t alignOffset = addr & (JSF_ALIGNMENT-1);
-  if (alignOffset) {
-    char buf[JSF_ALIGNMENT];
-    jshFlashRead(buf, addr-alignOffset, JSF_ALIGNMENT);
-    uint32_t alignRemainder = JSF_ALIGNMENT-alignOffset;
-    if (alignRemainder > dLen)
-      alignRemainder = (uint32_t)dLen;
-    memcpy(&buf[alignOffset], dPtr, alignRemainder);
-    dPtr += alignRemainder;
-    jshFlashWrite(buf, addr-alignOffset, JSF_ALIGNMENT);
-    addr += alignRemainder;
-    if (alignRemainder >= dLen)
-      return true; // we're done!
-    dLen -= alignRemainder;
-  }
-  // Do aligned write
-  alignOffset = dLen & (JSF_ALIGNMENT-1);
-  dLen -= alignOffset;
-  if (dLen)
-    jshFlashWrite(dPtr, addr, (uint32_t)dLen);
-  addr += (uint32_t)dLen;
-  dPtr += dLen;
-  // Do final unaligned write
-  if (alignOffset) {
-    char buf[JSF_ALIGNMENT];
-    jshFlashRead(buf, addr, JSF_ALIGNMENT);
-    memcpy(buf, dPtr, alignOffset);
-    jshFlashWrite(buf, addr, JSF_ALIGNMENT);
-  }
+  jshFlashWriteAligned(dPtr, addr, (uint32_t)dLen);
   DBG("jsfWriteFile written contents\n");
   return true;
 }
@@ -608,11 +615,11 @@ static uint32_t getBuildHash() {
 }
 
 typedef struct {
-  uint32_t address;
-  uint32_t endAddress;
+  uint32_t address;          // current address in memory
+  uint32_t endAddress;       // address at which to end
   int byteCount;
-  unsigned char buffer[128];
-  uint32_t bufferCnt;
+  unsigned char buffer[128]; // buffer for read/written data
+  uint32_t bufferCnt;        // where are we in the buffer?
 } jsfcbData;
 // cbdata = struct jsfcbData
 void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
@@ -638,9 +645,15 @@ int jsfLoadFromFlash_readcb(uint32_t *cbdata) {
   jsfcbData *data = (jsfcbData*)cbdata;
 
   if (data->address >= data->endAddress) return -1; // at end
-  unsigned char d;
-  jshFlashRead(&d, data->address++, 1);
-  return d;
+  if (data->byteCount==0 || data->bufferCnt>=data->byteCount) {
+    data->byteCount = data->endAddress - data->address;
+    if (data->byteCount > sizeof(data->buffer))
+      data->byteCount = sizeof(data->buffer);
+    jshFlashRead(data->buffer, data->address, data->byteCount);
+    data->bufferCnt = 0;
+  }
+  data->address++;
+  return data->buffer[data->bufferCnt++];
 }
 
 /// Save the RAM image to flash (this is the actual interpreter state)
@@ -706,6 +719,7 @@ void jsfLoadStateFromFlash() {
   unsigned char* varPtr = (unsigned char *)_jsvGetAddressOf(1);
 
   jsfcbData cbData;
+  memset(&cbData, 0, sizeof(cbData));
   cbData.address = savedCode;
   cbData.endAddress = savedCode+jsfGetFileSize(&header);
 

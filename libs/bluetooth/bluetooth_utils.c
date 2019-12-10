@@ -89,6 +89,10 @@ bool bleVarToAddr(JsVar *mac, ble_gap_addr_t *addr) {
       addr->addr_type = BLE_GAP_ADDR_TYPE_PUBLIC; // default
     else if (jsvIsStringEqualOrStartsWithOffset(mac, " random", false, 17, false))
       addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_STATIC;
+    else if (jsvIsStringEqualOrStartsWithOffset(mac, " private-resolvable", false, 17, false))
+      addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE;
+    else if (jsvIsStringEqualOrStartsWithOffset(mac, " private-nonresolvable", false, 17, false))
+      addr->addr_type = BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE;
     else return false;
   }
   return true;
@@ -101,6 +105,11 @@ JsVar *bleAddrToStr(ble_gap_addr_t addr) {
     typeStr = " public";
   else if (addr.addr_type == BLE_GAP_ADDR_TYPE_RANDOM_STATIC)
     typeStr = " random";
+  else if (addr.addr_type == BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE)
+    typeStr = " private-resolvable";
+  else if (addr.addr_type == BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE)
+    typeStr = " private-nonresolvable";
+  else typeStr = "";
   return jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x%s",
       addr.addr[5],
       addr.addr[4],
@@ -148,11 +157,12 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
     jsvStringIteratorNext(&it);
     int lo = chtod(jsvStringIteratorGetChar(&it));
     jsvStringIteratorNext(&it);
-    if (hi<0 || lo<0) {
+    int v = hexToByte(hi,lo);
+    if (v<0) {
       jsvStringIteratorFree(&it);
       return "UUID string should only contain hex characters and dashes";
     }
-    data[expectedLength - (dataLen+1)] = (unsigned)((hi<<4) | lo);
+    data[expectedLength - (dataLen+1)] = (unsigned)v;
     dataLen++;
   }
   if (jsvStringIteratorHasChar(&it)) dataLen++; // make sure we fail is string too long

@@ -1273,6 +1273,7 @@ void jswrap_ESP8266_wifi_soft_init() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "ping",
   "generate" : "jswrap_wifi_ping",
   "params"   : [

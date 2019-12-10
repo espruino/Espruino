@@ -103,6 +103,16 @@ int flash_strcmp(const char *mem, const char *flash);
 
 #endif
 
+#ifdef FLASH_64BITS_ALIGNMENT
+typedef uint64_t JsfWord;
+#define JSF_ALIGNMENT 8
+#define JSF_WORD_UNSET 0xFFFFFFFFFFFFFFFFULL
+#else
+typedef uint32_t JsfWord;
+#define JSF_ALIGNMENT 4
+#define JSF_WORD_UNSET 0xFFFFFFFF
+#endif
+
 
 #if defined(ESP8266)
 /** For the esp8266 we need to add CALLED_FROM_INTERRUPT to all functions that may execute at
@@ -375,6 +385,8 @@ const char *escapeCharacter(char ch);
 int getRadix(const char **s, int forceRadix, bool *hasError);
 /// Convert a character to the hexadecimal equivalent (or -1)
 int chtod(char ch);
+/// Convert 2 characters to the hexadecimal equivalent (or -1)
+int hexToByte(char hi, char lo);
 /* convert a number in the given radix to an int */
 long long stringToIntWithRadix(const char *s,
                int forceRadix, //!< if radix=0, autodetect

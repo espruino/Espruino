@@ -11,20 +11,16 @@
  * JavaScript Flash IO functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSFLASH_H_
+#define JSFLASH_H_
+
 #include "jsvar.h"
 
 /// Simple filename used for Flash Storage. We use uint here so we don't have to memcpy/memcmp all the time
-typedef uint64_t JsfFileName;
-
-#ifdef FLASH_64BITS_ALIGNMENT
-typedef uint64_t JsfWord;
-#define JSF_ALIGNMENT 8
-#define JSF_WORD_UNSET 0xFFFFFFFFFFFFFFFFULL
-#else
-typedef uint32_t JsfWord;
-#define JSF_ALIGNMENT 4
-#define JSF_WORD_UNSET 0xFFFFFFFF
-#endif
+typedef union {
+  uint64_t n;
+  char c[8];
+} JsfFileName;
 
 /// Max length of filename in chars
 #define JSF_MAX_FILENAME_LENGTH (sizeof(JsfFileName))
@@ -47,6 +43,7 @@ typedef enum {
 JsfFileName jsfNameFromString(const char *name);
 /// utility function for creating JsfFileName
 JsfFileName jsfNameFromVar(JsVar *name);
+JsfFileName jsfNameFromVarAndUnLock(JsVar *name);
 /// Return the size in bytes of a file based on the header
 uint32_t jsfGetFileSize(JsfFileHeader *header);
 /// Return the flags for this file based on the header
@@ -57,8 +54,8 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader);
 JsVar *jsfReadFile(JsfFileName name);
 /// Write a file. For simple stuff just leave offset and size as 0
 bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt offset, JsVarInt _size);
-/// Erase the given file
-void jsfEraseFile(JsfFileName name);
+/// Erase the given file, return true on success
+bool jsfEraseFile(JsfFileName name);
 /// Erase the entire contents of the memory store
 bool jsfEraseAll();
 /// Try and compact saved data so it'll fit in Flash again
@@ -88,3 +85,5 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset);
 bool jsfFlashContainsCode();
 /** Completely clear any saved code from flash. */
 void jsfRemoveCodeFromFlash();
+
+#endif //JSFLASH_H_

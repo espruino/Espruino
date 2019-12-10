@@ -109,7 +109,7 @@ int nativeCallGetCType() {
   }
   if (lex->tk == LEX_ID) {
     int t = -1;
-    char *name = jslGetTokenValueAsString(lex);
+    char *name = jslGetTokenValueAsString();
     if (strcmp(name,"int")==0) t=JSWAT_INT32;
     if (strcmp(name,"double")==0) t=JSWAT_JSVARFLOAT;
     if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
@@ -1092,14 +1092,17 @@ void jswrap_espruino_dumpFreeList() {
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "RELEASE",
   "class" : "E",
   "name" : "dumpFragmentation",
   "generate" : "jswrap_e_dumpFragmentation"
 }
-Show fragmentation
+Show fragmentation.
+
+* ` ` is free space
+* `#` is a normal variable
+* `L` is a locked variable (address used, cannopt be moved)
+* `=` represents data in a Flat String (must be contiguous)
  */
-#ifndef RELEASE
 void jswrap_e_dumpFragmentation() {
   int l = 0;
   for (int i=0;i<jsvGetMemoryTotal();i++) {
@@ -1108,12 +1111,14 @@ void jswrap_e_dumpFragmentation() {
       jsiConsolePrint(" ");
       if (l++>80) { jsiConsolePrint("\n");l=0; }
     } else {
-      jsiConsolePrint("#");
+      if (jsvGetLocks(v)) jsiConsolePrint("L");
+      else jsiConsolePrint("#");
       if (l++>80) { jsiConsolePrint("\n");l=0; }
       if (jsvIsFlatString(v)) {
         int b = jsvGetFlatStringBlocks(v);
+        i += b; // skip forward
         while (b--) {
-          jsiConsolePrint("-");
+          jsiConsolePrint("=");
           if (l++>80) { jsiConsolePrint("\n");l=0; }
         }
       }
@@ -1121,7 +1126,67 @@ void jswrap_e_dumpFragmentation() {
   }
   jsiConsolePrint("\n");
 }
-#endif
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "dumpVariables",
+  "generate" : "jswrap_e_dumpVariables"
+}
+Dumps a comma-separated list of all allocated variables
+along with the variables they link to. Can be used
+to visualise where memory is used.
+ */
+void jswrap_e_dumpVariables() {
+  int l = 0;
+  jsiConsolePrintf("ref,size,name,links...\n");
+  for (int i=0;i<jsvGetMemoryTotal();i++) {
+    JsVarRef ref = i+1;
+    JsVar *v = _jsvGetAddressOf(ref);
+    if ((v->flags&JSV_VARTYPEMASK)==JSV_UNUSED) continue;
+    if (jsvIsStringExt(v)) continue;
+    int size = 1;
+    if (jsvIsFlatString(v)) {
+      int b = jsvGetFlatStringBlocks(v);
+      i += b; // skip forward
+      size += b;
+    } else if (jsvHasCharacterData(v)) {
+      JsVarRef childref = jsvGetLastChild(v);
+      while (childref) {
+        JsVar *child = jsvLock(childref);
+        size++;
+        childref = jsvGetLastChild(child);
+        jsvUnLock(child);
+      }
+    }
+    jsiConsolePrintf("%d,%d,",ref,size);
+    if (jsvIsName(v)) jsiConsolePrintf("%q,",v);
+    else jsiConsolePrintf(",",v);
+
+    if (jsvHasSingleChild(v) || jsvHasChildren(v)) {
+      JsVarRef childref = jsvGetFirstChild(v);
+      while (childref) {
+        JsVar *child = jsvLock(childref);
+        jsiConsolePrintf("%d,",childref);
+        if (jsvHasChildren(v)) childref = jsvGetNextSibling(child);
+        else childref = 0;
+        jsvUnLock(child);
+      }
+    }
+    jsiConsolePrint("\n");
+  }
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "defrag",
+  "generate" : "jsvDefragment"
+}
+BETA: defragment memory!
+ */
 
 /*JSON{
   "type" : "staticmethod",
@@ -1725,7 +1790,7 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr) {
 
 /*JSON{
   "type" : "staticmethod",
-  "#if" : "defined(PUCKJS) || defined(PIXLJS)",
+  "#if" : "defined(PUCKJS) || defined(PIXLJS) || defined(BANGLEJS)",
   "class" : "E",
   "name" : "getBattery",
   "generate" : "jswrap_espruino_getBattery",
@@ -1740,12 +1805,9 @@ from it at the time `E.getBattery` is called) will affect the
 readings.
 */
 JsVarInt jswrap_espruino_getBattery() {
-#if defined(PUCKJS) || defined(PIXLJS)
-  JsVarFloat v = jshReadVRef();
-  int pc = (v-2.2)*100/0.6;
-  if (pc>100) pc=100;
-  if (pc<0) pc=0;
-  return pc;
+#if defined(CUSTOM_GETBATTERY)
+  JsVarInt CUSTOM_GETBATTERY();
+  return CUSTOM_GETBATTERY();
 #else
   return 0;
 #endif

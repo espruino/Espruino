@@ -42,6 +42,7 @@ info = {
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\'',
+     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_puck_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://puck-js.com/go"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
@@ -79,7 +80,8 @@ devices = {
   'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' },
   'CAPSENSE' : { 'pin_rx' : 'D11', 'pin_tx' : 'D12' },
   'NFC': { 'pin_a':'D9', 'pin_b':'D10' },
-  'MAG': { 'pin_pwr':'D18',
+  'MAG': { 'device': 'MAG3110',
+           'pin_pwr':'D18',
            'pin_int':'D17',
            'pin_sda':'D20',
            'pin_scl':'D19' }
@@ -95,6 +97,7 @@ board = {
   '_notes' : {
     'D11' : "Capacitive sense. D12 is connected to this pin via a 1 MOhm resistor",
     'D28' : "If pulled up to 1 on startup, D28 and D29 become Serial1",
+    'D22' : "This is used as SCK when driving Neopixels with 'require('neopixel').write'"
   }
 };
 

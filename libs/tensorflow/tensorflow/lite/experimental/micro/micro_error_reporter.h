@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-// Minor modifications made for Espruino Microcontroller build by Gordon Williams <gw@pur3.co.uk>
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_MICRO_MICRO_ERROR_REPORTER_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_MICRO_MICRO_ERROR_REPORTER_H_
 
@@ -27,6 +26,7 @@ class MicroErrorReporter : public ErrorReporter {
  public:
   ~MicroErrorReporter() {}
   int Report(const char* format, va_list args) override;
+
   TF_LITE_REMOVE_VIRTUAL_DELETE
 };
 

@@ -54,15 +54,17 @@ if "check_output" not in dir( subprocess ):
 #
 # Comments look like:
 #
-#/*JSON{ "type":"staticmethod|staticproperty|constructor|method|property|function|variable|class|library|idle|init|kill",
+#/*JSON{ "type":"staticmethod|staticproperty|constructor|method|property|function|variable|class|library|idle|init|kill|EV_xxx",
 #                      // class = built-in class that does not require instantiation
 #                      // library = built-in class that needs require('classname')
 #                      // idle = function to run on idle regardless
 #                      // init = function to run on initialisation
 #                      // kill = function to run on deinitialisation
+#                      // EV_xxx = Something to be called with a character in an IRQ when it is received (eg. EV_SERIAL1)
 #         "class" : "Double", "name" : "doubleToIntBits",
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
 #         "generate_full|generate|wrap" : "*(JsVarInt*)&x", // if generate=false, it'll only be used for docs
+#         "generate_js" : "full/file/path.js", // you can supply a JS file instead of 'generate' above. Should be of the form '(function(args) { ... })'
 #         "description" : " Convert the floating point value given into an integer representing the bits contained in it",
 #         "params" : [ [ "x" , "float|int|int32|bool|pin|JsVar|JsVarName|JsVarArray", "A floating point number"] ],
 #                               // float - parses into a JsVarFloat which is passed to the function
@@ -86,22 +88,21 @@ if "check_output" not in dir( subprocess ):
 # description can be an array of strings as well as a simple string (in which case each element is separated by a newline),
 # and adding ```sometext``` in the description surrounds it with HTML code tags
 #
-
+# COMMAND LINE OPTIONS
+# -Ddefinition
+# -BBOARDFILE
 
 def get_jsondata(is_for_document, parseArgs = True, board = False):
     scriptdir = os.path.dirname	(os.path.realpath(__file__))
     print("Script location "+scriptdir)
     os.chdir(scriptdir+"/..")
 
+    ignore_ifdefs = is_for_document
+
     # C files that we'll scan for JSON data
     jswraps = []
     # definitions that are used when evaluating IFDEFs/etc
     defines = []
-
-    if board and ("build" in board.info)  and ("defines" in board.info["build"]):
-        for i in board.info["build"]["defines"]:
-          print("Got define from board: " + i);
-          defines.append(i)
 
     explicit_files = False
     if parseArgs and len(sys.argv)>1:
@@ -112,12 +113,10 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           if arg[1]=="D":
             defines.append(arg[2:])
           elif arg[1]=="B":
-            board = importlib.import_module(arg[2:])
-            if "usart" in board.chip: defines.append("USART_COUNT="+str(board.chip["usart"]));
-            if "spi" in board.chip: defines.append("SPI_COUNT="+str(board.chip["spi"]));
-            if "i2c" in board.chip: defines.append("I2C_COUNT="+str(board.chip["i2c"]));
-            if "USB" in board.devices: defines.append("defined(USB)=True");
-            else: defines.append("defined(USB)=False");
+            print("BOARD "+arg[2:]);
+            print("Now ignore_ifdefs = False");
+            ignore_ifdefs = False
+            board = importlib.import_module(arg[2:])            
           elif arg[1]=="F":
             "" # -Fxxx.yy in args is filename xxx.yy, which is mandatory for build_jswrapper.py
           else:
@@ -129,9 +128,31 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           jswraps.append(arg)
         else:
           print("WARNING: Ignoring unknown file type: " + arg)
-    else:
+    if not explicit_files:
       print("Scanning for jswrap.c files")
       jswraps = subprocess.check_output(["find", ".", "-name", "jswrap*.c"]).strip().split("\n")
+
+    if board:
+      if "usart" in board.chip: defines.append("USART_COUNT="+str(board.chip["usart"]));
+      if "spi" in board.chip: defines.append("SPI_COUNT="+str(board.chip["spi"]));
+      if "i2c" in board.chip: defines.append("I2C_COUNT="+str(board.chip["i2c"]));
+      if "USB" in board.devices: defines.append("defined(USB)=True");
+      else: defines.append("defined(USB)=False");
+      if "build" in board.info:
+        if "defines" in board.info["build"]:
+          for i in board.info["build"]["defines"]:
+            print("board.defines: " + i);
+            defines.append(i)
+        if "makefile" in board.info["build"]:
+          for i in board.info["build"]["makefile"]:           
+            print("board.makefile: " + i);
+            i = i.strip()
+            if i.startswith("DEFINES"): 
+              defs = i[7:].strip()[2:].strip().split() # array of -Dsomething
+              for d in defs: 
+                if not d.startswith("-D"):
+                  print("WARNING: expecting -Ddefine, got " + d)
+                defines.append(d[2:])
 
     if len(defines)>1:
       print("Got #DEFINES:")
@@ -172,8 +193,8 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           if "name" in jsondata: dropped_prefix += jsondata["name"]+" "
           elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "
           drop = False
-          if not is_for_document:
-            if ("generate" in jsondata) and jsondata["generate"]==False:
+          if not ignore_ifdefs:
+            if ("generate" in jsondata) and jsondata["generate"]==False and not is_for_document:
               print(dropped_prefix+" because of generate=false")
               drop = True
             if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
@@ -381,6 +402,7 @@ def get_ifdef_description(d):
   if d=="ESPRUINOWIFI": return "Espruino WiFi boards"
   if d=="ESPRUINOBOARD": return "'Original' Espruino boards"
   if d=="PICO": return "Espruino Pico boards"
+  if d=="BANGLEJS": return "Bangle.js smartwatches"
   if d=="ESP8266": return "ESP8266 boards running Espruino"
   if d=="ESP32": return "ESP32 boards"
   if d=="EFM32": return "EFM32 devices"

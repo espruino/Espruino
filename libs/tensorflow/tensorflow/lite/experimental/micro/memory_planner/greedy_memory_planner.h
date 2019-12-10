@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-// Minor modifications made for Espruino Microcontroller build by Gordon Williams <gw@pur3.co.uk>
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_MICRO_MEMORY_PLANNER_GREEDY_MEMORY_PLANNER_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_MICRO_MEMORY_PLANNER_GREEDY_MEMORY_PLANNER_H_
 

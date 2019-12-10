@@ -107,8 +107,16 @@ JsVar *jswrap_tfmicrointerpreter_tensorToArrayBuffer(JsVar *parent, TfLiteTensor
   switch (tensor->type) {
   case kTfLiteFloat32 :
     abType = ARRAYBUFFERVIEW_FLOAT32; break;
+  case kTfLiteInt32 :
+    abType = ARRAYBUFFERVIEW_INT32; break;
+  case kTfLiteUInt8 :
+    abType = ARRAYBUFFERVIEW_UINT8; break;
+  case kTfLiteInt16 :
+    abType = ARRAYBUFFERVIEW_INT16; break;
+  case kTfLiteInt8 :
+    abType = ARRAYBUFFERVIEW_INT8; break;
   default:
-    jsExceptionHere(JSET_TYPEERROR, "Unknown Tensor format");
+    jsExceptionHere(JSET_TYPEERROR, "Unsupported Tensor format TfLiteType:%d", tensor->type);
     return 0;
   }
 

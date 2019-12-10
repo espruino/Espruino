@@ -218,6 +218,11 @@ Pin jshGetPinFromVarAndUnLock(JsVar *pinv);
 bool jshGetPinStateIsManual(Pin pin);
 /// Set whether the pin state is manual (has the user asked us explicitly to change it?)
 void jshSetPinStateIsManual(Pin pin, bool manual);
+/// Should a pin stay watched even after the user does clearWatch? Is it used by something internally?
+bool jshGetPinShouldStayWatched(Pin pin);
+/// Should a pin stay watched even after the user does clearWatch? Is it used by something internally?
+void jshSetPinShouldStayWatched(Pin pin, bool manual);
+
 // Reset our list of which pins are set manually - called from jshResetDevices
 void jshResetPinStateIsManual();
 

@@ -39,6 +39,8 @@ typedef struct {
 #define BLE_GATT_HANDLE_INVALID (0)
 #define BLE_GAP_ADDR_TYPE_PUBLIC (0)
 #define BLE_GAP_ADDR_TYPE_RANDOM_STATIC (1)
+#define BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE (2)
+#define BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE (3)
 #define BLE_GAP_ADV_MAX_SIZE (31)
 #define BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE   0x02
 #define BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE         0x03
@@ -100,6 +102,9 @@ typedef enum  {
   BLE_ADVERTISING_MULTIPLE_ONE = 65536,
   BLE_ADVERTISING_MULTIPLE_SHIFT = 16,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
+
+  /// These are flags that should be reset when the softdevice starts up
+  BLE_RESET_ON_SOFTDEVICE_START = BLE_IS_SENDING|BLE_IS_SCANNING|BLE_IS_ADVERTISING
 } BLEStatus;
 
 typedef enum {
@@ -131,7 +136,8 @@ typedef enum {
   BLEP_WRITE,                       //< One of our characteristics written by someone else
   BLEP_NOTIFICATION,                //< A characteristic we were watching has changes
   BLEP_TASK_PASSKEY_DISPLAY,        //< We're pairing and have been provided with a passkey to display
-  BLEP_TASK_PASSKEY_REQUEST,        //< We're pairing and the device wants a passkey from us
+  BLEP_TASK_AUTH_KEY_REQUEST,       //< We're pairing and the device wants a passkey from us
+  BLEP_TASK_AUTH_STATUS             //< Data on how authentication was going has been received
 } BLEPending;
 
 

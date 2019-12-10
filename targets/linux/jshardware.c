@@ -38,11 +38,19 @@
 #define FAKE_FLASH_BLOCKSIZE FLASH_PAGE_SIZE
 #define FAKE_FLASH_BLOCKS    (FLASH_TOTAL/FLASH_PAGE_SIZE)
 
+#ifdef DEBUG
+#define FAKE_FLASH_DBG(...) jsiConsolePrintf(__VA_ARGS__)
+#else
+#define FAKE_FLASH_DBG(...)
+#endif
+
 #ifndef FLASH_64BITS_ALIGNMENT
 #define FLASH_UNITARY_WRITE_SIZE 4
 #else
 #define FLASH_UNITARY_WRITE_SIZE 8
 #endif
+
+
 
 #ifdef USE_WIRINGPI
 // see http://wiringpi.com/download-and-install/
@@ -869,10 +877,13 @@ static FILE *jshFlashOpenFile(bool dontCreate) {
     memset(buf,0xFF, pad);
     fwrite(buf, 1, pad, f);
     free(buf);
+    fclose(f);
+    f = fopen(FAKE_FLASH_FILENAME, "r+b");
   }
   return f;
 }
 void jshFlashErasePage(uint32_t addr) {
+  FAKE_FLASH_DBG("FlashErasePage 0x%08x\n", addr);
   FILE *f = jshFlashOpenFile(true);
   if (!f) return; // if no file and we're erasing, we don't have to do anything
   uint32_t startAddr, pageSize;
@@ -887,6 +898,7 @@ void jshFlashErasePage(uint32_t addr) {
   fclose(f);
 }
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+  FAKE_FLASH_DBG("FlashRead 0x%08x %d\n", addr,len);
   //assert(!(addr&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
   //assert(!(len&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
   if (addr<FLASH_START || addr>=FLASH_START+FLASH_TOTAL) {
@@ -901,10 +913,12 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
     return;
   }
   fseek(f, addr, SEEK_SET);
-  fread(buf, 1, len, f);
+  size_t r = fread(buf, 1, len, f);
+  assert(r==len);
   fclose(f);
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+  FAKE_FLASH_DBG("FlashWrite 0x%08x %d\n", addr,len);
   uint32_t i;
   assert(!(addr&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
   assert(!(len&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
@@ -924,8 +938,10 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   if (!f) return;
 
   char *wbuf = malloc(len);
-  fseek(f, addr, SEEK_SET);
-  fread(wbuf, 1, len, f);
+  int err = fseek(f, addr, SEEK_SET);
+  assert(err==0);
+  size_t r = fread(wbuf, 1, len, f);
+  assert(r==len);
 
   for (i=0;i<len;i++) {
     //jsiConsolePrintf("Write %d to 0x%08x\n", ((char*)buf)[i], FLASH_START+addr+i);

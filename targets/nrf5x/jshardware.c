@@ -40,6 +40,7 @@
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 #include "jsflags.h"
+#include "jsspi.h"
 
 #include "app_util_platform.h"
 #ifdef BLUETOOTH
@@ -261,6 +262,39 @@ JshPinFunction pinStates[JSH_PIN_COUNT];
 #if SPI_ENABLED
 static const nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
 bool spi0Initialised = false;
+unsigned char *spi0RxPtr;
+unsigned char *spi0TxPtr;
+size_t spi0Cnt;
+
+// Handler for async SPI transfers
+volatile bool spi0Sending = false;
+void (*volatile spi0Callback)() = NULL;
+void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event
+#if NRF_SD_BLE_API_VERSION>=5
+                      ,void *                    p_context
+#endif
+                      ) {
+  /* SPI can only send max 255 bytes at once, so we
+   * have to use the IRQ to fire off the next send */
+  if (spi0Cnt>0) {
+    size_t c = spi0Cnt;
+    if (c>255) c=255;
+    unsigned char *tx = spi0TxPtr;
+    unsigned char *rx = spi0RxPtr;
+    spi0Cnt -= c;
+    if (spi0TxPtr) spi0TxPtr += c;
+    if (spi0RxPtr) spi0RxPtr += c;
+    uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+    if (err_code == NRF_SUCCESS)
+      return;
+    // if fails, we drop through as if we succeeded
+  }
+  spi0Sending = false;
+  if (spi0Callback) {
+    spi0Callback();
+    spi0Callback=NULL;
+  }
+}
 #endif
 
 static const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
@@ -316,6 +350,46 @@ typedef struct {
 static jshUARTState uart[USART_COUNT];
 
 void jshUSARTUnSetup(IOEventFlags device);
+
+#ifdef SPIFLASH_BASE
+static void spiFlashReadWrite(unsigned char *tx, unsigned char *rx, unsigned int len) {
+  for (unsigned int i=0;i<len;i++) {
+    int data = tx[i];
+    int result = 0;
+    for (int bit=7;bit>=0;bit--) {
+      nrf_gpio_pin_write((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, (data>>bit)&1 );
+      nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+      result = (result<<1) | nrf_gpio_pin_read((uint32_t)pinInfo[SPIFLASH_PIN_MISO].pin);
+      nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+    }
+    if (rx) rx[i] = result;
+  }
+}
+static void spiFlashWrite(unsigned char *tx, unsigned int len) {
+  for (unsigned int i=0;i<len;i++) {
+    int data = tx[i];
+    for (int bit=7;bit>=0;bit--) {
+      nrf_gpio_pin_write((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, (data>>bit)&1 );
+      nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+      nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+    }
+  }
+}
+static void spiFlashWriteCS(unsigned char *tx, unsigned int len) {
+  nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  spiFlashWrite(tx,len);
+  nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+}
+static unsigned char spiFlashStatus() {
+  unsigned char buf[2] = {5,0};
+  nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  spiFlashReadWrite(buf, buf, 2);
+  nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  return buf[1];
+}
+#endif
+
+
 
 const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
@@ -465,6 +539,43 @@ void jshResetPeripherals() {
 #if JSH_PORTV_COUNT>0
   jshVirtualPinInitialise();
 #endif
+#if SPI_ENABLED
+  spi0Sending = false;
+  spi0Callback = NULL;
+#endif
+
+#ifdef SPIFLASH_BASE
+  // set CS to default
+#ifdef SPIFLASH_PIN_WP
+  jshPinSetValue(SPIFLASH_PIN_WP, 0);
+  jshPinSetState(SPIFLASH_PIN_WP, JSHPINSTATE_GPIO_OUT);
+#endif
+  jshPinSetValue(SPIFLASH_PIN_CS, 1);
+  jshPinSetValue(SPIFLASH_PIN_MOSI, 1);
+  jshPinSetValue(SPIFLASH_PIN_SCK, 1);
+  jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_OUT);
+#ifdef SPIFLASH_PIN_RST
+  jshPinSetValue(SPIFLASH_PIN_RST, 0);
+  jshPinSetState(SPIFLASH_PIN_RST, JSHPINSTATE_GPIO_OUT);
+  jshDelayMicroseconds(100);
+  jshPinSetValue(SPIFLASH_PIN_RST, 1); // reset off
+#endif
+  jshDelayMicroseconds(100);
+  // disable lock bits
+  unsigned char buf[2];
+  // wait for write enable
+  int timeout = 1000;
+  while (timeout-- && !(spiFlashStatus()&2)) {
+    buf[0] = 6; // write enable
+    spiFlashWriteCS(buf,1);
+  }
+  buf[0] = 1; // write status register
+  buf[1] = 0;
+  spiFlashWriteCS(buf,2);
+#endif
 }
 
 void jshInit() {
@@ -590,6 +701,7 @@ void jshInit() {
 #endif
 
 
+
 #ifdef LED1_PININDEX
   jshPinOutput(LED1_PININDEX, !LED1_ONSTATE);
 #endif
@@ -651,7 +763,9 @@ JsSysTime jshGetSystemTime() {
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
 void jshSetSystemTime(JsSysTime time) {
+  // Set baseSystemTime to 0 so 'jshGetSystemTime' isn't affected
   baseSystemTime = 0;
+  // now set baseSystemTime based on the value from jshGetSystemTime()
   baseSystemTime = time - jshGetSystemTime();
 }
 
@@ -1412,17 +1526,11 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     freq = SPI_FREQUENCY_FREQUENCY_M2;
   else if (inf->baudRate<((4000000+8000000)/2))
     freq = SPI_FREQUENCY_FREQUENCY_M4;
-#ifndef NRF52840
   else
     freq = SPI_FREQUENCY_FREQUENCY_M8;
-#else
-  else if (inf->baudRate<((8000000+16000000)/2))
-    freq = SPI_FREQUENCY_FREQUENCY_M8;
-  else if (inf->baudRate<((16000000+32000000)/2))
-    freq = 0x0A000000;//SPI_FREQUENCY_FREQUENCY_M16;
-  else
-    freq = 0x14000000;//SPI_FREQUENCY_FREQUENCY_M32;
-#endif
+  /* Numbers for SPI_FREQUENCY_FREQUENCY_M16/SPI_FREQUENCY_FREQUENCY_M32
+  are in the nRF52 datasheet but they don't appear to actually work (and
+  aren't in the header files either). */
   spi_config.frequency =  freq;
   spi_config.mode = inf->spiMode;
   spi_config.bit_order = inf->spiMSB ? NRF_DRV_SPI_BIT_ORDER_MSB_FIRST : NRF_DRV_SPI_BIT_ORDER_LSB_FIRST;
@@ -1437,9 +1545,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   spi0Initialised = true;
   // No event handler means SPI transfers are blocking
 #if NRF_SD_BLE_API_VERSION<5
-  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL);
+  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, spi0EvtHandler);
 #else
-  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, NULL, NULL);
+  uint32_t err_code = nrf_drv_spi_init(&spi0, &spi_config, spi0EvtHandler, NULL);
 #endif
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "SPI Initialisation Error %d\n", err_code);
@@ -1463,11 +1571,16 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 int jshSPISend(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return -1;
+  jshSPIWait(device);
   uint8_t tx = (uint8_t)data;
   uint8_t rx = 0;
+  spi0Sending = true;
   uint32_t err_code = nrf_drv_spi_transfer(&spi0, &tx, 1, &rx, 1);
-  if (err_code != NRF_SUCCESS)
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+  }
+  jshSPIWait(device);
   return rx;
 #endif
 }
@@ -1476,11 +1589,47 @@ int jshSPISend(IOEventFlags device, int data) {
 void jshSPISend16(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return;
+  jshSPIWait(device);
   uint16_t tx = (uint16_t)data;
-  uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 1, 0, 0);
-  if (err_code != NRF_SUCCESS)
+  spi0Sending = true;
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 2, 0, 0);
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+  }
+  jshSPIWait(device);
 #endif
+}
+
+/** Send data in tx through the given SPI device and return the response in
+ * rx (if supplied). Returns true on success. if callback is nonzero this call
+ * will be async */
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+#if SPI_ENABLED
+  if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return false;
+  jshSPIWait(device);
+  spi0Sending = true;
+
+  size_t c = count;
+  if (c>255)
+    c=255;
+
+  spi0TxPtr = tx ? tx+c : 0;
+  spi0RxPtr = rx ? rx+c : 0;
+  spi0Cnt = count-c;
+  if (callback) spi0Callback = callback;
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+  if (err_code != NRF_SUCCESS) {
+    spi0Sending = false;
+    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
+    return false;
+  }
+  if (!callback) jshSPIWait(device);
+  return true;
+#else
+  return false;
+#endif
+
 }
 
 /** Set whether to send 16 bits or 8 over SPI */
@@ -1493,6 +1642,9 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 
 /** Wait until SPI send is finished, and flush all received data */
 void jshSPIWait(IOEventFlags device) {
+#if SPI_ENABLED
+  WAIT_UNTIL(!spi0Sending, "SPI0");
+#endif
 }
 
 /** Set up I2C, if pins are -1 they will be guessed */
@@ -1547,21 +1699,28 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 bool jshFlashWriteProtect(uint32_t addr) {
   // allow protection to be overwritten
   if (jsfGetFlag(JSF_UNSAFE_FLASH)) return false;
-#if defined(PUCKJS) || defined(PIXLJS)
+#if defined(PUCKJS) || defined(PIXLJS) || defined(MDBT42Q) || defined(BANGLEJS)
   /* It's vital we don't let anyone screw with the softdevice or bootloader.
    * Recovering from changes would require soldering onto SWDIO and SWCLK pads!
    */
   if (addr<0x1f000) return true; // softdevice
-  if (addr>=0x78000) return true; // bootloader
+  if (addr>=0x78000 && addr<0x80000) return true; // bootloader
 #endif
   return false;
 }
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize) {
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    *startAddr = (uint32_t)(addr & ~(SPIFLASH_PAGESIZE-1));
+    *pageSize = SPIFLASH_PAGESIZE;
+    return true;
+  }
+#endif
   if (addr > (NRF_FICR->CODEPAGESIZE * NRF_FICR->CODESIZE))
     return false;
-  *startAddr = (uint32_t) (floor(addr / NRF_FICR->CODEPAGESIZE) * NRF_FICR->CODEPAGESIZE);
+  *startAddr = (uint32_t)(addr & ~(NRF_FICR->CODEPAGESIZE-1));
   *pageSize = NRF_FICR->CODEPAGESIZE;
   return true;
 }
@@ -1590,6 +1749,25 @@ JsVar *jshFlashGetFree() {
 
 /// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr) {
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    addr &= 0xFFFFFF;
+    //jsiConsolePrintf("SPI Erase %d\n",addr);
+    unsigned char b[4];
+    // WREN
+    b[0] = 0x06;
+    spiFlashWriteCS(b,1);
+    // Erase
+    b[0] = 0x20;
+    b[1] = addr>>16;
+    b[2] = addr>>8;
+    b[3] = addr;
+    spiFlashWriteCS(b,4);
+    // Check busy
+    WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashErasePage");
+    return;
+  }
+#endif
   uint32_t startAddr;
   uint32_t pageSize;
   if (!jshFlashGetPage(addr, &startAddr, &pageSize))
@@ -1611,6 +1789,24 @@ void jshFlashErasePage(uint32_t addr) {
  * Reads a byte from memory. Addr doesn't need to be word aligned and len doesn't need to be a multiple of 4.
  */
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    addr &= 0xFFFFFF;
+    //jsiConsolePrintf("SPI Read %d %d\n",addr,len);
+    unsigned char b[4];
+    // Read
+    b[0] = 0x03;
+    b[1] = addr>>16;
+    b[2] = addr>>8;
+    b[3] = addr;
+    jshPinSetValue(SPIFLASH_PIN_CS,0);
+    spiFlashWrite(b,4);
+    memset(buf,0,len); // ensure we just send 0
+    spiFlashReadWrite((unsigned char*)buf,(unsigned char*)buf,len);
+    jshPinSetValue(SPIFLASH_PIN_CS,1);
+    return;
+  }
+#endif
   memcpy(buf, (void*)addr, len);
 }
 
@@ -1619,6 +1815,62 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
  */
 void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
   //jsiConsolePrintf("\njshFlashWrite 0x%x addr 0x%x -> 0x%x, len %d\n", *(uint32_t*)buf, (uint32_t)buf, addr, len);
+#ifdef SPIFLASH_BASE
+  if (addr >= SPIFLASH_BASE) {
+    addr &= 0xFFFFFF;
+    //jsiConsolePrintf("SPI Write %d %d\n",addr, len);
+    unsigned char b[5];
+#if defined(BANGLEF5)
+    /* Hack - for some reason the F5 doesn't seem to like writing >1 byte
+     * quickly. Also this way works around paging issues. */
+    for (unsigned int i=0;i<len;i++) {
+      // WREN
+      b[0] = 0x06;
+      spiFlashWriteCS(b,1);
+      // Write
+      b[0] = 0x02;
+      b[1] = addr>>16;
+      b[2] = addr>>8;
+      b[3] = addr;
+      b[4] = ((unsigned char*)buf)[i];
+      spiFlashWriteCS(b,5);
+      // Check busy
+      WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashWrite");
+      addr++;
+    }
+#else // Bangle.js is fine though - write quickly
+    /* we need to split on 256 byte boundaries. We can
+     * start halfway but don't want to write past the end
+     * of the page */
+    unsigned char *bufPtr = (unsigned char *)buf;
+    while (len) {
+      uint32_t l = len;
+      uint32_t pageOffset = addr & 255;
+      uint32_t bytesLeftInPage = 256-pageOffset;
+      if (l>bytesLeftInPage) l=bytesLeftInPage;
+      // WREN
+      b[0] = 0x06;
+      spiFlashWriteCS(b,1);
+      // Write
+      b[0] = 0x02;
+      b[1] = addr>>16;
+      b[2] = addr>>8;
+      b[3] = addr;
+      jshPinSetValue(SPIFLASH_PIN_CS,0);
+      spiFlashWrite(b,4);
+      spiFlashWrite(bufPtr,l);
+      jshPinSetValue(SPIFLASH_PIN_CS,1);
+      // Check busy
+      WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashWrite");
+      // go to next chunk
+      len -= l;
+      addr += l;
+      bufPtr += l;
+    }
+#endif
+    return;
+  }
+#endif
   if (jshFlashWriteProtect(addr)) return;
   uint32_t err = 0;
 
@@ -1659,7 +1911,12 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 }
 
 // Just pass data through, since we can access flash at the same address we wrote it
-size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
+size_t jshFlashGetMemMapAddress(size_t ptr) {
+#ifdef SPIFLASH_BASE
+  if (ptr > SPIFLASH_BASE) return 0;
+#endif
+  return ptr;
+}
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {

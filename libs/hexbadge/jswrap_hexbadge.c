@@ -273,13 +273,10 @@ void jswrap_badge_init() {
   JsVar *graphics = jspNewObject(0, "Graphics");
   if (!graphics) return; // low memory
   JsGraphics gfx;
-  graphicsStructInit(&gfx);
+  graphicsStructInit(&gfx,128,64,1);
   gfx.data.type = JSGRAPHICSTYPE_ARRAYBUFFER;
   gfx.data.flags = JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE | JSGRAPHICSFLAGS_INVERT_X;
   gfx.graphicsVar = graphics;
-  gfx.data.width = 128;
-  gfx.data.height = 64;
-  gfx.data.bpp = 1;
   lcdInit_ArrayBuffer(&gfx);
   graphicsSetVar(&gfx);
   jsvObjectSetChild(execInfo.root,"g",graphics);

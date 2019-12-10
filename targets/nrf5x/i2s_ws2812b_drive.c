@@ -38,7 +38,13 @@ ret_code_t i2s_ws2812b_drive_xfer(rgb_led_t *led_array, uint16_t num_leds, uint8
 	
 	// define configs
 	nrf_drv_i2s_config_t config;
-	config.sck_pin      = 22; // Don't set NRF_DRV_I2S_PIN_NOT_USED for I2S_CONFIG_SCK_PIN. (The program will stack.) 
+	/* The I2S interface refuses to work if SCK isn't defined,
+	 * so we have to define it on a pin where it doesn't matter. */
+#ifdef NEOPIXEL_SCK_PIN
+	config.sck_pin      = NEOPIXEL_SCK_PIN;
+#else
+	config.sck_pin      = 22;
+#endif
 	config.lrck_pin     = NRF_DRV_I2S_PIN_NOT_USED;
 	config.mck_pin      = NRF_DRV_I2S_PIN_NOT_USED;
 	config.sdout_pin    = drive_pin;

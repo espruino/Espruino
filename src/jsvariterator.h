@@ -18,6 +18,10 @@
 
 /// Callback function to be used with jsvIterateCallback
 typedef void (*jsvIterateCallbackFn)(int item, void *callbackData);
+/// Callback function to be used with jsvIterateBufferCallback
+typedef void (*jsvIterateBufferCallbackFn)(unsigned char *data, unsigned int len, void *callbackData);
+
+
 
 /** Iterate over the contents of var, calling callback for each. Contents may be:
  *   * numeric -> output
@@ -27,8 +31,15 @@ typedef void (*jsvIterateCallbackFn)(int item, void *callbackData);
  */
 bool jsvIterateCallback(JsVar *var, jsvIterateCallbackFn callback, void *callbackData);
 
+// Like jsvIterateCallback, but iterates over just bytes and calls with a pointer and length wherever it can
+bool jsvIterateBufferCallback(
+    JsVar *data,
+    jsvIterateBufferCallbackFn callback,
+    void *callbackData
+  );
+
 /** If jsvIterateCallback is called, how many times will it call the callback function? */
-int jsvIterateCallbackCount(JsVar *var);
+uint32_t jsvIterateCallbackCount(JsVar *var);
 
 /** Write all data in array to the data pointer (of size dataSize bytes) */
 unsigned int jsvIterateCallbackToBytes(JsVar *var, unsigned char *data, unsigned int dataSize);
@@ -42,7 +53,7 @@ typedef struct JsvStringIterator {
   char  *ptr; ///< a pointer to string data
 } JsvStringIterator;
 
-// slight hack to enure we can use string iterator with const JsVars
+// slight hack to ensure we can use string iterator with const JsVars
 #define jsvStringIteratorNewConst(it,str,startIdx) jsvStringIteratorNew(it, (JsVar*)str, startIdx)
 
 /// Create a new String iterator from a string, starting from a specific character. NOTE: This does not keep a lock to the first element, so make sure you do or the string will be freed!
@@ -79,6 +90,9 @@ static ALWAYS_INLINE size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
 /// Move to next character
 void jsvStringIteratorNext(JsvStringIterator *it);
 
+/// Returns a pointer to the next block of data and its length, and moves on to the data after
+void jsvStringIteratorGetPtrAndNext(JsvStringIterator *it, unsigned char **data, unsigned int *len);
+
 /// Move to next character (this one is inlined where speed is needed)
 static ALWAYS_INLINE void jsvStringIteratorNextInline(JsvStringIterator *it) {
   it->charIdx++;
@@ -104,6 +118,9 @@ static ALWAYS_INLINE void jsvStringIteratorNextInline(JsvStringIterator *it) {
 
 /// Go to the end of the string iterator - for use with jsvStringIteratorAppend
 void jsvStringIteratorGotoEnd(JsvStringIterator *it);
+
+/// Go to the given position in the string iterator. Needs the string again in case we're going back and need to start from the beginning
+void jsvStringIteratorGoto(JsvStringIterator *it, JsVar *str, size_t startIdx);
 
 /// Append a character TO THE END of a string iterator
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch);

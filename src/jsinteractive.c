@@ -23,6 +23,7 @@
 #include "jswrap_stream.h"
 #include "jswrap_espruino.h" // jswrap_espruino_getErrorFlagArray
 #include "jsflash.h" // load and save to flash
+#include "jswrap_interactive.h" // jswrap_interactive_setTimeout
 #include "jswrap_object.h" // jswrap_object_keys_or_property_names
 #include "jsnative.h" // jsnSanityTest
 #ifdef BLUETOOTH
@@ -830,7 +831,7 @@ void jsiSemiInit(bool autoLoad) {
           " "JS_VERSION" (c) 2019 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
-#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS)
+#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS) && !defined(BANGLEJS) && !defined(EMSCRIPTEN)
           "\n"
           "Espruino is Open Source. Our work is supported\n"
           "only by sales of official boards and donations:\n"
@@ -841,7 +842,10 @@ void jsiSemiInit(bool autoLoad) {
       jshPrintBanner();
 #endif
     }
-    jsiConsolePrint("\n"); // output new line
+#ifdef USE_TERMINAL
+    if (consoleDevice != EV_TERMINAL) // don't spam the terminal
+#endif
+      jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
   }
 }
@@ -910,7 +914,7 @@ int jsiCountBracketsInInput() {
     if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
     if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
     if (brackets<0) break; // closing bracket before opening!
-    jslGetNextToken(&lex);
+    jslGetNextToken();
   }
   if (lex.tk==LEX_UNFINISHED_STR)
     brackets=0; // execute immediately so it can error
@@ -954,7 +958,9 @@ static JsVar *jsiGetHistory() {
 
 // Add a new line to the command history
 void jsiHistoryAddLine(JsVar *newLine) {
-  if (!newLine || jsvGetStringLength(newLine)==0) return;
+  if (!newLine) return;
+  size_t len = jsvGetStringLength(newLine);
+  if (len==0 || len>500) return; // don't store history for lines of text over 500 chars
   JsVar *history = jsiGetHistory();
   if (!history) return; // out of memory
   // if it was already in history, remove it - we'll put it back in front
@@ -1311,7 +1317,7 @@ void jsiTabComplete() {
       data.partial = 0;
     } else if (lex.tk==LEX_ID) {
       jsvUnLock(data.partial);
-      data.partial = jslGetTokenValueAsVar(&lex);
+      data.partial = jslGetTokenValueAsVar();
       partialStart = jsvStringIteratorGetIndex(&lex.tokenStart.it);
     } else {
       jsvUnLock(object);
@@ -1319,7 +1325,7 @@ void jsiTabComplete() {
       jsvUnLock(data.partial);
       data.partial = 0;
     }
-    jslGetNextToken(&lex);
+    jslGetNextToken();
   }
   jslKill();
   jslSetLex(oldLex);
@@ -1618,7 +1624,7 @@ void jsiHandleChar(char ch) {
     } else if (ch=='\t' && jsiEcho()) {
       jsiTabComplete();
 #endif
-    } else if (ch>=32 || ch=='\t') {
+    } else if (((unsigned char)ch)>=32 || ch=='\t') {
       char buf[2] = {ch,0};
       const char *strToAppend = (ch=='\t') ? "    " : buf;
       jsiAppendStringToInputLine(strToAppend);
@@ -1738,6 +1744,15 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsig
   return true;
 }
 
+/// Create a timeout in JS to execute the given native function (outside of an IRQ). Returns the index
+JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds) {
+  JsVar *fn = jsvNewNativeFunction((void (*)(void))functionPtr, JSWAT_VOID);
+  if (!fn) return 0;
+  JsVar *idx = jswrap_interface_setTimeout(fn, milliseconds, 0);
+  jsvUnLock(fn);
+  return idx;
+}
+
 bool jsiHasTimers() {
   if (!timerArray) return false;
   JsVar *timerArrayPtr = jsvLock(timerArray);
@@ -1755,6 +1770,8 @@ bool jsiShouldExecuteWatch(JsVar *watchPtr, bool pinIsHigh) {
 }
 
 bool jsiIsWatchingPin(Pin pin) {
+  if (jshGetPinShouldStayWatched(pin))
+    return true;
   bool isWatched = false;
   JsVar *watchArrayPtr = jsvLock(watchArray);
   JsvObjectIterator it;
@@ -1988,10 +2005,7 @@ void jsiIdle() {
 
   // Reset Flow control if it was set...
   if (jshGetEventsUsed() < IOBUFFER_XON) {
-    jshSetFlowControlXON(EV_USBSERIAL, true);
-    int i;
-    for (i=0;i<USART_COUNT;i++)
-      jshSetFlowControlXON(EV_SERIAL1+i, true);
+    jshSetFlowControlAllReady();
   }
 
   // Check timers
@@ -2133,16 +2147,15 @@ void jsiIdle() {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     JsiStatus s = jsiStatus;
     if ((s&JSIS_TODO_RESET) == JSIS_TODO_RESET) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_RESET;
       // shut down everything and start up again
       jsiKill();
       jsvKill();
       jshReset();
       jsvInit(0);
       jsiSemiInit(false); // don't autoload
+      jsiStatus &= (JsiStatus)~JSIS_TODO_RESET;
     }
     if ((s&JSIS_TODO_FLASH_SAVE) == JSIS_TODO_FLASH_SAVE) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_SAVE;
       jsvGarbageCollect(); // nice to have everything all tidy!
       jsiSoftKill();
       jspSoftKill();
@@ -2152,9 +2165,9 @@ void jsiIdle() {
       jsvSoftInit();
       jspSoftInit();
       jsiSoftInit(false /* not been reset */);
+      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_SAVE;
     }
     if ((s&JSIS_TODO_FLASH_LOAD) == JSIS_TODO_FLASH_LOAD) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_LOAD;
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
@@ -2165,9 +2178,11 @@ void jsiIdle() {
       jsvSoftInit();
       jspSoftInit();
       jsiSoftInit(false /* not been reset */);
+      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_LOAD;
     }
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }
+
 
   /* if we've been around this loop, there is nothing to do, and
    * we have a spare 10ms then let's do some Garbage Collection
@@ -2187,7 +2202,7 @@ void jsiIdle() {
 
   // Go to sleep!
   if (loopsIdling>=1 && // once around the idle loop without having done any work already (just in case)
-#ifdef USB
+#if defined(USB) && !defined(EMSCRIPTEN)
       !jshIsUSBSERIALConnected() && // if USB is on, no point sleeping (later, sleep might be more drastic)
 #endif
       !jshHasEvents() && //no events have arrived in the mean time
@@ -2385,7 +2400,7 @@ void jsiDebuggerLoop() {
     // Get a string fo the form '1234    ' for the line number
     // ... but only if the line number was set, otherwise use spaces
     if (lex->lineNumberOffset) {
-      itostr((JsVarInt)jslGetLineNumber(lex) + (JsVarInt)lex->lineNumberOffset - 1, lineStr, 10);
+      itostr((JsVarInt)jslGetLineNumber() + (JsVarInt)lex->lineNumberOffset - 1, lineStr, 10);
     } else {
       lineStr[0]=0;
     }
@@ -2472,7 +2487,7 @@ void jsiDebuggerLine(JsVar *line) {
     // continue is a reserved word!
 
     handled = true;
-    char *id = jslGetTokenValueAsString(&lex);
+    char *id = jslGetTokenValueAsString();
 
     if (!strcmp(id,"help") || !strcmp(id,"h")) {
       jsiConsolePrint("Commands:\n"
@@ -2504,7 +2519,7 @@ void jsiDebuggerLine(JsVar *line) {
       jsiStatus |= JSIS_EXIT_DEBUGGER;
       execInfo.execute |= EXEC_DEBUGGER_FINISH_FUNCTION;
     } else if (!strcmp(id,"print") || !strcmp(id,"p")) {
-      jslGetNextToken(&lex);
+      jslGetNextToken();
       JsExecInfo oldExecInfo = execInfo;
       execInfo.execute = EXEC_YES;
       JsVar *v = jsvSkipNameAndUnLock(jspParse());
@@ -2514,8 +2529,8 @@ void jsiDebuggerLine(JsVar *line) {
       jsiConsolePrint("\n");
       jsvUnLock(v);
     } else if (!strcmp(id,"info") || !strcmp(id,"i")) {
-       jslGetNextToken(&lex);
-       id = jslGetTokenValueAsString(&lex);
+       jslGetNextToken();
+       id = jslGetTokenValueAsString();
        if (!strcmp(id,"locals") || !strcmp(id,"l")) {
          JsVar *scope = jspeiGetTopScope();
          if (scope == execInfo.root)

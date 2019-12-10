@@ -27,4 +27,14 @@ wget https://www.espruino.com/modules/EspruinoWiFi.min.js -O espruino_wifi/Wifi.
 node ../../../EspruinoDocs/bin/minify.js nordic/Thingy.js nordic/Thingy.min.js
 node ../../../EspruinoDocs/bin/minify.js rak/RAK8211.js rak/RAK8211.min.js
 node ../../../EspruinoDocs/bin/minify.js rak/RAK8212.js rak/RAK8212.min.js
+node ../../../EspruinoDocs/bin/minify.js nordic/Thingy.js nordic/Thingy.min.js
+
+node ../../../EspruinoDocs/bin/minify.js pixljs/E_showMenu.js pixljs/E_showMenu.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMenu.js banglejs/E_showMenu.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMessage.js banglejs/E_showMessage.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showPrompt.js banglejs/E_showPrompt.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showAlert.js banglejs/E_showAlert.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/LED1.js banglejs/LED1.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/LED2.js banglejs/LED2.min.js
+
 

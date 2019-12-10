@@ -182,9 +182,10 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
         // decode percent escape chars
         if (ch=='%') {
           jsvStringIteratorNext(&it);
-          ch = jsvStringIteratorGetChar(&it);
+          char hi = jsvStringIteratorGetChar(&it);
           jsvStringIteratorNext(&it);
-          ch = (char)((chtod(ch)<<4) | chtod(jsvStringIteratorGetChar(&it)));
+          char lo = jsvStringIteratorGetChar(&it);
+          ch = (char)hexToByte(hi,lo);
         }
 
         if (hadEquals) jsvAppendCharacter(val, ch);

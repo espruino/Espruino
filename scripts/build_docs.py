@@ -16,17 +16,24 @@
 # Needs:
 #    pip install markdown
 #    pip install markdown-urlize
+#
+# See common.py -> get_jsondata for command line options
 
 import subprocess;
 import re;
 import json;
 import sys;
 import os;
-sys.path.append(".");
 import common
 import urllib2
 import markdown
 import htmlentitydefs
+
+sys.path.append(".");
+scriptdir = os.path.dirname(os.path.realpath(__file__))
+basedir = scriptdir+"/../"
+sys.path.append(basedir+"scripts");
+sys.path.append(basedir+"boards");
 
 # Scans files for comments of the form /*JSON......*/ and then writes out an HTML file describing
 # all the functions

@@ -6,6 +6,9 @@
 #ifdef USE_APP_CONFIG
 #include "app_config.h"
 #endif
+
+
+#define NFC_NDEF_MSG_ENABLED 1
 // <h> nRF_BLE
 
 //==========================================================
@@ -1268,7 +1271,7 @@
 
 
 #ifndef SPI0_USE_EASY_DMA
-#define SPI0_USE_EASY_DMA 0 // FIXME: This breaks SPI send on Espruino (just returns 0)
+#define SPI0_USE_EASY_DMA 1
 #endif
 
 #endif //SPI0_ENABLED

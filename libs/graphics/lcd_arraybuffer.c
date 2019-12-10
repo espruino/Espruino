@@ -16,6 +16,13 @@
 #include "jsvar.h"
 #include "jsvariterator.h"
 
+#ifndef SAVE_ON_FLASH
+#ifndef ESPRUINOBOARD
+// If an arraybuffer is flat, swap to faster arraybuffer ops
+#define GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
+#endif
+#endif
+
 // returns the BIT index, so the bottom 3 bits specify the bit in the byte
 unsigned int lcdGetPixelIndex_ArrayBuffer(JsGraphics *gfx, int x, int y, int pixelCount) {
   if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG) {
@@ -36,7 +43,7 @@ unsigned int lcdGetPixelIndex_ArrayBuffer(JsGraphics *gfx, int x, int y, int pix
     return (unsigned int)((x + y*gfx->data.width)*gfx->data.bpp);
 }
 
-unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {
+unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, int x, int y) {
   unsigned int col = 0;
   JsVar *buf = (JsVar*)gfx->backendData;
   unsigned int idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,1);
@@ -60,7 +67,7 @@ unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {
 }
 
 // set pixelCount pixels starting at x,y
-void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCount, unsigned int col) {
+void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, int x, int y, int pixelCount, unsigned int col) {
   JsVar *buf = (JsVar*)gfx->backendData;
   unsigned int idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,pixelCount);
   JsvArrayBufferIterator it;
@@ -83,7 +90,7 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
         int wholeBytes = (gfx->data.bpp*(pixelCount+1)) >> 3;
         if (wholeBytes) {
           char c = (char)(col?0xFF:0);
-          pixelCount = (short)(pixelCount+1 - (wholeBytes*8/gfx->data.bpp));
+          pixelCount = pixelCount+1 - (wholeBytes*8/gfx->data.bpp);
           while (wholeBytes--) {
             jsvArrayBufferIteratorSetByteValue(&it,  c);
             jsvArrayBufferIteratorNext(&it);
@@ -112,19 +119,19 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
   jsvArrayBufferIteratorFree(&it);
 }
 
-void lcdSetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y, unsigned int col) {
+void lcdSetPixel_ArrayBuffer(JsGraphics *gfx, int x, int y, unsigned int col) {
   lcdSetPixels_ArrayBuffer(gfx, x, y, 1, col);
 }
 
-void  lcdFillRect_ArrayBuffer(struct JsGraphics *gfx, short x1, short y1, short x2, short y2) {
-  short y;
+void  lcdFillRect_ArrayBuffer(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  int y;
   for (y=y1;y<=y2;y++)
-    lcdSetPixels_ArrayBuffer(gfx, x1, y, (short)(1+x2-x1), gfx->data.fgColor);
+    lcdSetPixels_ArrayBuffer(gfx, x1, y, 1+x2-x1, col);
 }
 
-#ifndef SAVE_ON_FLASH
+#ifndef GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
 // Faster implementation for where we have a flat memory area
-unsigned int lcdGetPixel_ArrayBuffer_flat(JsGraphics *gfx, short x, short y) {
+unsigned int lcdGetPixel_ArrayBuffer_flat(JsGraphics *gfx, int x, int y) {
   unsigned int col = 0;
   unsigned char *ptr = (unsigned char*)gfx->backendData;
   unsigned int idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,1);
@@ -147,7 +154,7 @@ unsigned int lcdGetPixel_ArrayBuffer_flat(JsGraphics *gfx, short x, short y) {
 
 // set pixelCount pixels starting at x,y
 // Faster implementation for where we have a flat memory area
-void lcdSetPixels_ArrayBuffer_flat(JsGraphics *gfx, short x, short y, short pixelCount, unsigned int col) {
+void lcdSetPixels_ArrayBuffer_flat(JsGraphics *gfx, int x, int y, int pixelCount, unsigned int col) {
   unsigned char *ptr = (unsigned char*)gfx->backendData;
   unsigned int idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,pixelCount);
   ptr += idx>>3;
@@ -169,7 +176,7 @@ void lcdSetPixels_ArrayBuffer_flat(JsGraphics *gfx, short x, short y, short pixe
         int wholeBytes = (gfx->data.bpp*(pixelCount+1)) >> 3;
         if (wholeBytes) {
           char c = (char)(col?0xFF:0);
-          pixelCount = (short)(pixelCount+1 - (wholeBytes*8/gfx->data.bpp));
+          pixelCount = pixelCount+1 - (wholeBytes*8/gfx->data.bpp);
           while (wholeBytes--) {
             *ptr = c;
             ptr++;
@@ -199,17 +206,17 @@ void lcdSetPixels_ArrayBuffer_flat(JsGraphics *gfx, short x, short y, short pixe
 }
 
 // Faster implementation for where we have a flat memory area
-void lcdSetPixel_ArrayBuffer_flat(JsGraphics *gfx, short x, short y, unsigned int col) {
+void lcdSetPixel_ArrayBuffer_flat(JsGraphics *gfx, int x, int y, unsigned int col) {
   lcdSetPixels_ArrayBuffer_flat(gfx, x, y, 1, col);
 }
 
 // Faster implementation for where we have a flat memory area
-void  lcdFillRect_ArrayBuffer_flat(struct JsGraphics *gfx, short x1, short y1, short x2, short y2) {
-  short y;
+void  lcdFillRect_ArrayBuffer_flat(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  int y;
   for (y=y1;y<=y2;y++)
-    lcdSetPixels_ArrayBuffer_flat(gfx, x1, y, (short)(1+x2-x1), gfx->data.fgColor);
+    lcdSetPixels_ArrayBuffer_flat(gfx, x1, y, 1+x2-x1, col);
 }
-#endif // SAVE_ON_FLASH
+#endif // GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
 
 void lcdInit_ArrayBuffer(JsGraphics *gfx) {
   // create buffer
@@ -219,12 +226,12 @@ void lcdInit_ArrayBuffer(JsGraphics *gfx) {
 
 void lcdSetCallbacks_ArrayBuffer(JsGraphics *gfx) {
   JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
-#ifndef SAVE_ON_FLASH
+#ifndef GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
   size_t len = 0;
   char *dataPtr = jsvGetDataPointer(buf, &len);
 #endif
   jsvUnLock(buf);
-#ifndef SAVE_ON_FLASH
+#ifndef GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
   if (dataPtr && len>=graphicsGetMemoryRequired(gfx)) {
     // nice fast mode
     gfx->backendData = dataPtr;

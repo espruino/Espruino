@@ -20,8 +20,12 @@
 
 #define MAX_ARGS 12
 
-#if defined(__i386__) || defined(__x86_64__)
-    #define USE_SEPARATE_DOUBLES // cdecl on x86 puts FP args elsewhere!
+#if defined(__i386__) && !defined(USE_CALLFUNCTION_HACK)
+  #error USE_CALLFUNCTION_HACK is required to make i386 builds work correctly
+#endif
+
+#if defined(__x86_64__)
+    #define USE_SEPARATE_DOUBLES
 #endif
 
 #if defined(__WORDSIZE) && __WORDSIZE == 64
@@ -46,8 +50,17 @@
   #define USE_SEPARATE_DOUBLES
 #endif
 
+#if defined(EMSCRIPTEN) && !defined(USE_CALLFUNCTION_HACK)
+  #error USE_CALLFUNCTION_HACK is required to make i386 builds work correctly
+#endif
+
+
 /** Call a function with the given argument specifiers */
 JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {
+#ifdef USE_CALLFUNCTION_HACK
+  // on Emscripten we cant easily hack around function calls with floats/etc so we must just do this brute-force by handling every call pattern we use
+  return jswCallFunctionHack(function, argumentSpecifier, thisParam, paramData, paramCount);
+#else
 #ifndef SAVE_ON_FLASH
   // Handle common call types quickly:
   // ------- void(void)
@@ -252,6 +265,7 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     assert(0);
     return 0;
   }
+#endif // USE_CALLFUNCTION_HACK
 }
 
 // -----------------------------------------------------------------------------------------

@@ -138,8 +138,16 @@ bool jstStopBufferTimerTask(JsVar *var);
 /// Stop ALL timer tasks (including digitalPulse - use this when resetting the VM)
 void jstReset();
 
+/** when system time is changed, also change the time in the timers.
+This should be done with interrupts off */
+void jstSystemTimeChanged(JsSysTime diff);
+
 /// Dump the current list of timers
 void jstDumpUtilityTimers();
+
+/* Restart the utility timer with the right period. This should not normally
+need to be called by anything outside jstimer.c */
+void  jstRestartUtilTimer();
 
 // Queue a task up to be executed when a timer fires... return false on failure
 bool utilTimerInsertTask(UtilTimerTask *task);
@@ -149,6 +157,7 @@ bool utilTimerRemoveTask(bool (checkCallback)(UtilTimerTask *task, void* data), 
 
 /// If 'checkCallback' returns true for a task, set 'task' to it and return true. Returns false if none found
 bool utilTimerGetLastTask(bool (checkCallback)(UtilTimerTask *task, void* data), void *checkCallbackData, UtilTimerTask *task);
+
 
 #endif /* JSTIMER_H_ */
 

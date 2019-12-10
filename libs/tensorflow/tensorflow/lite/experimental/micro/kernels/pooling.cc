@@ -15,6 +15,7 @@ limitations under the License.
 #include "tensorflow/lite/kernels/internal/reference/pooling.h"
 
 #include "tensorflow/lite/c/builtin_op_data.h"
+#include "tensorflow/lite/kernels/internal/reference/integer_ops/pooling.h"
 #include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
 #include "tensorflow/lite/kernels/kernel_util.h"
 #include "tensorflow/lite/kernels/padding.h"
@@ -94,6 +95,27 @@ void AverageEvalUint8(const TfLiteContext* context, const TfLiteNode* node,
       GetTensorShape(output), GetTensorData<uint8_t>(output));
 }
 
+void AverageEvalInt8(const TfLiteContext* context, const TfLiteNode* node,
+                     const TfLitePoolParams* params, const OpData* data,
+                     const TfLiteTensor* input, TfLiteTensor* output) {
+  int32_t activation_min, activation_max;
+  CalculateActivationRangeInt8(params->activation, output, &activation_min,
+                               &activation_max);
+
+  PoolParams op_params;
+  op_params.stride_height = params->stride_height;
+  op_params.stride_width = params->stride_width;
+  op_params.filter_height = params->filter_height;
+  op_params.filter_width = params->filter_width;
+  op_params.padding_values.height = data->padding.height;
+  op_params.padding_values.width = data->padding.width;
+  op_params.quantized_activation_min = activation_min;
+  op_params.quantized_activation_max = activation_max;
+  reference_integer_ops::AveragePool(
+      op_params, GetTensorShape(input), GetTensorData<int8_t>(input),
+      GetTensorShape(output), GetTensorData<int8_t>(output));
+}
+
 void MaxEvalFloat(TfLiteContext* context, TfLiteNode* node,
                   TfLitePoolParams* params, OpData* data,
                   const TfLiteTensor* input, TfLiteTensor* output) {
@@ -136,6 +158,27 @@ void MaxEvalQuantizedUInt8(TfLiteContext* context, TfLiteNode* node,
                          GetTensorData<uint8_t>(output));
 }
 
+void MaxEvalQuantizedInt8(TfLiteContext* context, TfLiteNode* node,
+                           TfLitePoolParams* params, OpData* data,
+                           const TfLiteTensor* input, TfLiteTensor* output) {
+  int32_t activation_min, activation_max;
+  CalculateActivationRangeInt8(params->activation, output, &activation_min,
+                               &activation_max);
+
+  tflite::PoolParams op_params;
+  op_params.stride_height = params->stride_height;
+  op_params.stride_width = params->stride_width;
+  op_params.filter_height = params->filter_height;
+  op_params.filter_width = params->filter_width;
+  op_params.padding_values.height = data->padding.height;
+  op_params.padding_values.width = data->padding.width;
+  op_params.quantized_activation_min = activation_min;
+  op_params.quantized_activation_max = activation_max;
+  reference_integer_ops::MaxPool(op_params, GetTensorShape(input),
+                                 GetTensorData<int8_t>(input), GetTensorShape(output),
+                                 GetTensorData<int8_t>(output));
+}
+
 }  // namespace
 
 void* Init(TfLiteContext* context, const char* buffer, size_t length) {
@@ -165,6 +208,9 @@ TfLiteStatus AverageEval(TfLiteContext* context, TfLiteNode* node) {
     case kTfLiteUInt8:
       AverageEvalUint8(context, node, params, &data, input, output);
       break;
+    case kTfLiteInt8:
+      AverageEvalInt8(context, node, params, &data, input, output);
+      break;
     default:
       context->ReportError(context, "Input type %s is not currently supported",
                            TfLiteTypeGetName(input->type));
@@ -188,6 +234,9 @@ TfLiteStatus MaxEval(TfLiteContext* context, TfLiteNode* node) {
       break;
     case kTfLiteUInt8:
       MaxEvalQuantizedUInt8(context, node, params, &data, input, output);
+      break;
+    case kTfLiteInt8:
+      MaxEvalQuantizedInt8(context, node, params, &data, input, output);
       break;
     default:
       context->ReportError(context, "Type %s not currently supported.",

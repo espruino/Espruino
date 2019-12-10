@@ -78,11 +78,11 @@ JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space) {
 
 JsVar *jswrap_json_parse_internal() {
   switch (lex->tk) {
-  case LEX_R_TRUE:  jslGetNextToken(lex); return jsvNewFromBool(true);
-  case LEX_R_FALSE: jslGetNextToken(lex); return jsvNewFromBool(false);
-  case LEX_R_NULL:  jslGetNextToken(lex); return jsvNewWithFlags(JSV_NULL);
+  case LEX_R_TRUE:  jslGetNextToken(); return jsvNewFromBool(true);
+  case LEX_R_FALSE: jslGetNextToken(); return jsvNewFromBool(false);
+  case LEX_R_NULL:  jslGetNextToken(); return jsvNewWithFlags(JSV_NULL);
   case '-': {
-    jslGetNextToken(lex);
+    jslGetNextToken();
     if (lex->tk!=LEX_INT && lex->tk!=LEX_FLOAT) return 0;
     JsVar *v = jswrap_json_parse_internal(lex);
     JsVar *zero = jsvNewFromInteger(0);
@@ -91,23 +91,23 @@ JsVar *jswrap_json_parse_internal() {
     return r;
   }
   case LEX_INT: {
-    long long v = stringToInt(jslGetTokenValueAsString(lex));
-    jslGetNextToken(lex);
+    long long v = stringToInt(jslGetTokenValueAsString());
+    jslGetNextToken();
     return jsvNewFromLongInteger(v);
   }
   case LEX_FLOAT: {
-    JsVarFloat v = stringToFloat(jslGetTokenValueAsString(lex));
-    jslGetNextToken(lex);
+    JsVarFloat v = stringToFloat(jslGetTokenValueAsString());
+    jslGetNextToken();
     return jsvNewFromFloat(v);
   }
   case LEX_STR: {
-    JsVar *a = jslGetTokenValueAsVar(lex);
-    jslGetNextToken(lex);
+    JsVar *a = jslGetTokenValueAsVar();
+    jslGetNextToken();
     return a;
   }
   case '[': {
     JsVar *arr = jsvNewEmptyArray(); if (!arr) return 0;
-    jslGetNextToken(lex); // [
+    jslGetNextToken(); // [
     while (lex->tk != ']' && !jspHasError()) {
       JsVar *value = jswrap_json_parse_internal(lex);
       if (!value ||
@@ -126,10 +126,10 @@ JsVar *jswrap_json_parse_internal() {
   }
   case '{': {
     JsVar *obj = jsvNewObject(); if (!obj) return 0;
-    jslGetNextToken(lex); // {
+    jslGetNextToken(); // {
     while (lex->tk == LEX_STR && !jspHasError()) {
-      JsVar *key = jsvAsArrayIndexAndUnLock(jslGetTokenValueAsVar(lex));
-      jslGetNextToken(lex);
+      JsVar *key = jsvAsArrayIndexAndUnLock(jslGetTokenValueAsVar());
+      jslGetNextToken();
       JsVar *value = 0;
       if (!jslMatch(':') ||
           !(value=jswrap_json_parse_internal(lex)) ||
