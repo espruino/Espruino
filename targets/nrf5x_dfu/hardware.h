@@ -21,18 +21,21 @@
 
 // Using a macro means we hard-code values from pinInfo, and can ditch the pinInfo array
 #define jshPinSetValue(PIN,value) \
-  nrf_gpio_pin_write((uint32_t)pinInfo[PIN].pin, value)
+  nrf_gpio_pin_write((uint32_t)pinInfo[PIN].pin, value ^ ((pinInfo[PIN].port&JSH_PIN_NEGATED)!=0))
 
 #define jshPinGetValue(PIN) \
   (nrf_gpio_pin_read(pinInfo[PIN].pin) ^ ((pinInfo[PIN].port&JSH_PIN_NEGATED)!=0))
 
-#define jshPinOutput(PIN,value) { \
-  nrf_gpio_pin_write((uint32_t)pinInfo[PIN].pin, (value!=0) ^ ((pinInfo[PIN].port&JSH_PIN_NEGATED)!=0)); \
-  nrf_gpio_cfg_output(pinInfo[PIN].pin); \
-}
+#define jshPinOutput(PIN,value) nrf_gpio_pin_write_output((uint32_t)pinInfo[PIN].pin, (value!=0) ^ ((pinInfo[PIN].port&JSH_PIN_NEGATED)!=0))
 
 #define jshDelayMicroseconds(US) \
   nrf_delay_us(US)
+
+static void __attribute__((noinline)) nrf_gpio_pin_write_output(uint32_t pin, bool value)
+{
+  nrf_gpio_pin_write(pin, value);
+  nrf_gpio_cfg_output(pin);
+}
 
 static void set_led_state(bool btn, bool progress)
 {

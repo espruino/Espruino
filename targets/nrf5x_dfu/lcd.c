@@ -365,8 +365,6 @@ static const char ST7789_INIT_CODE[] = {
     0xC4,1,0x20,
     0xC5,1,0xF,
     0xD0,2,0xA4,0xA1,
-    0xe0,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
-    0xe1,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
     0x29,0,
     0x21,0,
     // End
@@ -431,7 +429,6 @@ void lcd_flip() {
 #endif
 }
 #define nrf_delay_ms(X) jshDelayMicroseconds(X*1000)
-#define digitalWrite(X,Y) jshPinOutput(X,Y)
 
 void lcd_send_cmd(uint8_t cmd) {
   jshPinSetValue(LCD_PIN_CS, 0);
@@ -447,7 +444,7 @@ void lcd_send_data(uint8_t cmd) {
 }
 
 void lcd_init() {
-  //jshPinOutput(13,1); // Vibrate
+  jshPinOutput(13,0); // Vibrate off
   nrf_gpio_cfg_input(I2C_SDA, NRF_GPIO_PIN_PULLUP);
   nrf_gpio_cfg_input(I2C_SCL, NRF_GPIO_PIN_PULLUP);
 
@@ -457,10 +454,10 @@ void lcd_init() {
   for (int i=0;i<8;i++)
     jshPinOutput(i,0);
 
-  digitalWrite(18,0); // not needed?
-  digitalWrite(28,0); // IO expander reset
+  jshPinOutput(18,0); // not needed?
+  jshPinOutput(28,0); // IO expander reset
   nrf_delay_ms(10);
-  digitalWrite(28,1);
+  jshPinSetValue(28,1);
   nrf_delay_ms(0x32);
 
   ioexpander_write(0,1);
@@ -478,7 +475,7 @@ void lcd_init() {
     cmd += 2 + cmd[CMDINDEX_DATALEN];
   }
 
-  jshPinOutput(13,0); // Vibrate
+
 }
 
 void lcd_kill() {
@@ -621,6 +618,7 @@ void lcd_char(int x1, int y1, char ch) {
   // char replacements so we don't waste font space
   if (ch=='.') ch='\\';
   if (ch=='+') ch='@';
+  if (ch>='a') ch-='a'-'A';
   int idx = ch - '0';
   if (idx<0 || idx>=LCD_FONT_3X5_CHARS) return; // no char for this - just return
   int cidx = idx % 5; // character index
@@ -659,11 +657,18 @@ void lcd_println(char *ch) {
   lcd_print(ch);
   lcd_print("\r\n");
 }
+void lcd_clear() {
+  memset(lcd_data,0,sizeof(lcd_data));
+  lcdx=0;
+  lcdy=LCD_START_Y;
+  lcd_flip();
+}
 
 #else
 // No LCD
 void lcd_init() {}
 void lcd_kill() {}
+void lcd_clear(); // clear screen
 void lcd_print(char *ch) {}
 void lcd_println(char *ch) {}
 #endif
