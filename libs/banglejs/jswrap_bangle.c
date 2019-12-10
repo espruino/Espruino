@@ -343,6 +343,7 @@ bool stepWasLow;
 /// What state was the touchscreen last in
 uint8_t touchLastState;
 uint8_t touchLastState2;
+bool touchHasSwiped;
 
 int8_t hrmHistory[HRM_HISTORY_LEN];
 volatile uint8_t hrmHistoryIdx;
@@ -598,19 +599,23 @@ void btnTouchHandler() {
   uint8_t state =
       (jshPinGetValue(BTN4_PININDEX)?1:0) |
       (jshPinGetValue(BTN5_PININDEX)?2:0);
-
-  if (!touchLastState2 &&
-      touchLastState &&
-      !state) {
-    if (touchLastState==1) bangleTasks |= JSBT_TOUCH_LEFT;
-    if (touchLastState==2) bangleTasks |= JSBT_TOUCH_RIGHT;
-  }
-  if ((touchLastState==3 && state==1) ||
-      (touchLastState==2 && state==1))
+  if ((touchLastState2==2 && touchLastState==3 && state==1) ||
+      (touchLastState==2 && state==1)) {
+    touchHasSwiped = true;
     bangleTasks |= JSBT_SWIPE_LEFT;
-  if ((touchLastState==3 && state==2) ||
-      (touchLastState==1 && state==2))
+  }
+  if ((touchLastState2==1 && touchLastState==3 && state==2) ||
+      (touchLastState==1 && state==2)) {
+    touchHasSwiped = true;
     bangleTasks |= JSBT_SWIPE_RIGHT;
+  }
+  if (!state) {
+    if (touchLastState && !touchHasSwiped) {
+      if (touchLastState==1) bangleTasks |= JSBT_TOUCH_LEFT;
+      if (touchLastState==2) bangleTasks |= JSBT_TOUCH_RIGHT;
+    }
+    touchHasSwiped = false;
+  }
   touchLastState2 = touchLastState;
   touchLastState = state;
 }
@@ -1240,6 +1245,7 @@ void jswrap_banglejs_init() {
   // Other IO
   jshPinSetState(BAT_PIN_CHARGING, JSHPINSTATE_GPIO_IN_PULLUP);
   // touch
+  touchHasSwiped = false;
   touchLastState = 0;
   touchLastState2 = 0;
 
