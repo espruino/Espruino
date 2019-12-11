@@ -428,7 +428,6 @@ void lcd_flip() {
   ymax=0;
 #endif
 }
-#define nrf_delay_ms(X) jshDelayMicroseconds(X*1000)
 
 void lcd_send_cmd(uint8_t cmd) {
   jshPinSetValue(LCD_PIN_CS, 0);
@@ -444,7 +443,6 @@ void lcd_send_data(uint8_t cmd) {
 }
 
 void lcd_init() {
-  jshPinOutput(13,0); // Vibrate off
   nrf_gpio_cfg_input(I2C_SDA, NRF_GPIO_PIN_PULLUP);
   nrf_gpio_cfg_input(I2C_SCL, NRF_GPIO_PIN_PULLUP);
 
@@ -452,7 +450,7 @@ void lcd_init() {
   jshPinOutput(LCD_PIN_DC,1);
   jshPinOutput(LCD_PIN_SCK,1);
   for (int i=0;i<8;i++)
-    jshPinOutput(i,0);
+    nrf_gpio_pin_write_output(i, 0);
 
   jshPinOutput(18,0); // not needed?
   jshPinOutput(28,0); // IO expander reset
@@ -637,9 +635,9 @@ void lcd_print(char *ch) {
     lcd_char(lcdx,lcdy,*ch);
     if ('\n'==*ch) {
       lcdy += 6;
-      if (lcdy>=LCD_HEIGHT-4) {
-        memcpy(lcd_data,&lcd_data[LCD_ROWSTRIDE*8],LCD_ROWSTRIDE*(LCD_HEIGHT-8)); // shift up 8 pixels
-        memset(&lcd_data[LCD_ROWSTRIDE*(LCD_HEIGHT-8)],0,LCD_ROWSTRIDE*8); // fill bottom 8 rows
+      if (lcdy>=LCD_DATA_HEIGHT-4) {
+        memcpy(lcd_data,&lcd_data[LCD_ROWSTRIDE*8],LCD_ROWSTRIDE*(LCD_DATA_HEIGHT-8)); // shift up 8 pixels
+        memset(&lcd_data[LCD_ROWSTRIDE*(LCD_DATA_HEIGHT-8)],0,LCD_ROWSTRIDE*8); // fill bottom 8 rows
         lcdy-=8;
 #ifdef LCD_STORE_MODIFIED
         ymin=0;

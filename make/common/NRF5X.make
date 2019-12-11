@@ -282,8 +282,8 @@ else # NRF_BL_DFU_INSECURE
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/sha256/sha256.c
-endif
-else
+endif # NRF_BL_DFU_INSECURE
+else # NRF5X_SDK_12
   DEFINES += -DAPP_TIMER_V2
   DEFINES += -DAPP_TIMER_V2_RTC1_ENABLED
   DEFINES += -DNRF_DFU_SETTINGS_VERSION=1

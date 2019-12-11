@@ -26,7 +26,11 @@
 #define jshPinGetValue(PIN) \
   (nrf_gpio_pin_read(pinInfo[PIN].pin) ^ ((pinInfo[PIN].port&JSH_PIN_NEGATED)!=0))
 
-#define jshPinOutput(PIN,value) nrf_gpio_pin_write_output((uint32_t)pinInfo[PIN].pin, (value!=0) ^ ((pinInfo[PIN].port&JSH_PIN_NEGATED)!=0))
+#define jshPinOutput(PIN,value) \
+  if (pinInfo[PIN].port&JSH_PIN_NEGATED) \
+    nrf_gpio_pin_write_output((uint32_t)pinInfo[PIN].pin, value==0); \
+  else \
+    nrf_gpio_pin_write_output((uint32_t)pinInfo[PIN].pin, value!=0);
 
 #define jshDelayMicroseconds(US) \
   nrf_delay_us(US)
@@ -67,12 +71,22 @@ static void hardware_init(void) {
 #endif
   set_led_state(false, false);
 
-  bool polarity = (BTN1_ONSTATE==1) ^ ((pinInfo[BTN1_PININDEX].port&JSH_PIN_NEGATED)!=0);
-  nrf_gpio_cfg_input(pinInfo[BTN1_PININDEX].pin,
+  bool polarity;
+  uint32_t pin;
+  if (pinInfo[BTN1_PININDEX].port&JSH_PIN_NEGATED)
+    polarity = BTN1_ONSTATE!=1;
+  else
+    polarity = BTN1_ONSTATE==1;
+  pin = pinInfo[BTN1_PININDEX].pin;
+  nrf_gpio_cfg_input(pin,
           polarity ? NRF_GPIO_PIN_PULLDOWN : NRF_GPIO_PIN_PULLUP);
 #ifdef BTN2_PININDEX
-  polarity = (BTN2_ONSTATE==1) ^ ((pinInfo[BTN2_PININDEX].port&JSH_PIN_NEGATED)!=0);
-  nrf_gpio_cfg_input(pinInfo[BTN2_PININDEX].pin,
+  if (pinInfo[BTN2_PININDEX].port&JSH_PIN_NEGATED)
+    polarity = BTN2_ONSTATE!=1;
+  else
+    polarity = BTN2_ONSTATE==1;
+  pin = pinInfo[BTN2_PININDEX].pin;
+  nrf_gpio_cfg_input(pin,
           polarity ? NRF_GPIO_PIN_PULLDOWN : NRF_GPIO_PIN_PULLUP);
 #endif
 #ifdef VIBRATE_PIN
