@@ -341,9 +341,16 @@ uint32_t stepCounter;
 /// has acceleration counter passed stepCounterThresholdLow?
 bool stepWasLow;
 /// What state was the touchscreen last in
-uint8_t touchLastState;
-uint8_t touchLastState2;
-bool touchHasSwiped;
+typedef enum {
+  TS_NONE = 0,
+  TS_LEFT = 1,
+  TS_RIGHT = 2,
+  TS_BOTH = 3,
+  TS_SWIPED = 4
+} TouchState;
+TouchState touchLastState; /// What happened in the last event?
+TouchState touchLastState2; /// What happened in the event before last?
+TouchState touchStatus; ///< What has happened *while the current touch is in progress*
 
 int8_t hrmHistory[HRM_HISTORY_LEN];
 volatile uint8_t hrmHistoryIdx;
@@ -596,25 +603,26 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
 }
 
 void btnTouchHandler() {
-  uint8_t state =
-      (jshPinGetValue(BTN4_PININDEX)?1:0) |
-      (jshPinGetValue(BTN5_PININDEX)?2:0);
-  if ((touchLastState2==2 && touchLastState==3 && state==1) ||
-      (touchLastState==2 && state==1)) {
-    touchHasSwiped = true;
+  TouchState state =
+      (jshPinGetValue(BTN4_PININDEX)?TS_LEFT:0) |
+      (jshPinGetValue(BTN5_PININDEX)?TS_RIGHT:0);
+  touchStatus |= state;
+  if ((touchLastState2==TS_RIGHT && touchLastState==TS_BOTH && state==TS_LEFT) ||
+      (touchLastState==TS_RIGHT && state==1)) {
+    touchStatus |= TS_SWIPED;
     bangleTasks |= JSBT_SWIPE_LEFT;
   }
-  if ((touchLastState2==1 && touchLastState==3 && state==2) ||
-      (touchLastState==1 && state==2)) {
-    touchHasSwiped = true;
+  if ((touchLastState2==TS_LEFT && touchLastState==TS_BOTH && state==TS_RIGHT) ||
+      (touchLastState==TS_LEFT && state==TS_RIGHT)) {
+    touchStatus |= TS_SWIPED;
     bangleTasks |= JSBT_SWIPE_RIGHT;
   }
   if (!state) {
-    if (touchLastState && !touchHasSwiped) {
-      if (touchLastState==1) bangleTasks |= JSBT_TOUCH_LEFT;
-      if (touchLastState==2) bangleTasks |= JSBT_TOUCH_RIGHT;
+    if (touchLastState && !(touchStatus&TS_SWIPED)) {
+      if (touchStatus&TS_LEFT) bangleTasks |= JSBT_TOUCH_LEFT;
+      if (touchStatus&TS_RIGHT) bangleTasks |= JSBT_TOUCH_RIGHT;
     }
-    touchHasSwiped = false;
+    touchStatus = TS_NONE;
   }
   touchLastState2 = touchLastState;
   touchLastState = state;
@@ -1245,7 +1253,7 @@ void jswrap_banglejs_init() {
   // Other IO
   jshPinSetState(BAT_PIN_CHARGING, JSHPINSTATE_GPIO_IN_PULLUP);
   // touch
-  touchHasSwiped = false;
+  touchStatus = TS_NONE;
   touchLastState = 0;
   touchLastState2 = 0;
 
@@ -1582,7 +1590,8 @@ bool jswrap_banglejs_idle() {
     jsvUnLock(o);
   }
   if (bangle && (bangleTasks & JSBT_TOUCH_MASK)) {
-    JsVar *o = jsvNewFromInteger((bangleTasks & JSBT_TOUCH_LEFT)?1:2);
+    JsVar *o = jsvNewFromInteger(((bangleTasks & JSBT_TOUCH_LEFT)?1:0) |
+                                 ((bangleTasks & JSBT_TOUCH_RIGHT)?2:0));
     jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"touch", &o, 1);
     jsvUnLock(o);
   }
