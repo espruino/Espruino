@@ -300,6 +300,8 @@ int jswrap_storage_getFree() {
 Open a file in the Storage area. This can be used for appending data
 (normal read/write operations only write the entire file).
 
+Please see `StorageFile` for more information (and examples).
+
 **Note:** These files write through immediately - they do not need closing.
 
 */
@@ -390,6 +392,45 @@ JsVar *jswrap_storage_open(JsVar *name, JsVar *modeVar) {
 
 These objects are created from `require("Storage").open`
 and allow Storage items to be read/written.
+
+The `Storage` library writes into Flash memory (which
+can only be erased in chunks), and unlike a normal filesystem
+it allocates files in one long contiguous area to allow them
+to be accessed easily from Espruino.
+
+This presents a challenge for `StorageFile` which allows you
+to append to a file, so instead `StorageFile` stores files
+in chunks. It uses 7 character filenames and uses the last
+character to denote the chunk number (eg `"foobar\1"`, `"foobar\2"`, etc).
+
+This means that while `StorageFile` files exist in the same
+area as those from `Storage`, they should be
+read using `StorageFile.open` (and not `Storage.read`).
+
+```
+f = s.open("foobar","w");
+f.write("Hell");
+f.write("o World\n");
+f.write("Hello\n");
+f.write("World 2\n");
+// there's no need to call 'close'
+// then
+f = s.open("foobar","r");
+f.read(13) // "Hello World\nH"
+f.read(13) // "ello\nWorld 2\n"
+f.read(13) // "Hello World 3"
+f.read(13) // "\n"
+f.read(13) // undefined
+// or
+f = s.open("foobar","r");
+f.readLine() // "Hello World\n"
+f.readLine() // "Hello\n"
+f.readLine() // "World 2\n"
+f.readLine() // "Hello World 3\n"
+f.readLine() // undefined
+// now get rid of file
+f.erase();
+```
 
 **Note:** `StorageFile` uses the fact that all bits of erased flash memory
 are 1 to detect the end of a file. As such you should not write character
@@ -514,10 +555,10 @@ JsVar *jswrap_storagefile_readLine(JsVar *f) {
   "name" : "write",
   "generate" : "jswrap_storagefile_write",
   "params" : [
-    ["data","JsVar","The data to write"]
+    ["data","JsVar","The data to write. This should not include `'\\xFF'` (character code 255)"]
   ]
 }
-Append the given data to a file
+Append the given data to a file. You should not attempt to append  `"\xFF"` (character code 255).
 */
 void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
   char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"mode",0));
