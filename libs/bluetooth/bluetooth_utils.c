@@ -185,9 +185,15 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
   }
   return err_code ? "BLE device error adding UUID" : 0;
 #else
-  uuid->uuid = ((data[13]<<8) | data[12]);
-  for(int i = 0; i < 16; i++){
-	uuid->uuid128[i] = data[i];
+  if (expectedLength == 2) {
+    uuid->type = BLE_UUID_TYPE_BLE;
+    uuid->uuid = ((data[1]<<8) | data[0]);
+  } else {
+    uuid->type = BLE_UUID_TYPE_128;
+    uuid->uuid = ((data[13]<<8) | data[12]);
+    for(int i = 0; i < 16; i++){
+      uuid->uuid128[i] = data[i];
+    }
   }
   return 0;
 #endif
