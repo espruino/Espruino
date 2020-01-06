@@ -73,7 +73,7 @@ const uint16_t PALETTE_4BIT_TO_8BIT[16] = { 0, 43, 129, 172, 121, 78, 12, 18, 23
 }
 This class provides Graphics operations that can be applied to a surface.
 
-Use Graphics.createXXX to create a graphics object that renders in the way you want. See [the Graphics page](/Graphics) for more information.
+Use Graphics.createXXX to create a graphics object that renders in the way you want. See [the Graphics page](https://www.espruino.com/Graphics) for more information.
 
 **Note:** On boards that contain an LCD, there is a built-in 'LCD' object of type Graphics. For instance to draw a line you'd type: ```LCD.drawLine(0,0,100,100)```
 */
