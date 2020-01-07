@@ -784,6 +784,7 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   if (!graphicsGetFromVar(&gfx, graphics)) return;
   // remove the buffer if it was defined
   jsvObjectSetOrRemoveChild(gfx.graphicsVar, "buffer", 0);
+  unsigned int bufferSize = 0;
   switch (lcdMode) {
     case LCDST7789_MODE_NULL:
     case LCDST7789_MODE_UNBUFFERED:
@@ -800,14 +801,27 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
       gfx.data.width = 120;
       gfx.data.height = 120;
       gfx.data.bpp = 8;
-      jsvObjectSetChildAndUnLock(gfx.graphicsVar, "buffer", jswrap_arraybuffer_constructor(120*120));
+      bufferSize = 120*120;
       break;
     case LCDST7789_MODE_BUFFER_80x80:
       gfx.data.width = 80;
       gfx.data.height = 80;
       gfx.data.bpp = 8;
-      jsvObjectSetChildAndUnLock(gfx.graphicsVar, "buffer", jswrap_arraybuffer_constructor(80*80));
+      bufferSize = 80*80;
       break;
+  }
+  if (bufferSize) {
+    jsvGarbageCollect();
+    jsvDefragment();
+    JsVar *arrData = jsvNewFlatStringOfLength(bufferSize);
+    if (arrData) {
+      jsvObjectSetChildAndUnLock(gfx.graphicsVar, "buffer", jsvNewArrayBufferFromString(arrData, (unsigned int)bufferSize));
+    } else {
+      jsExceptionHere(JSET_ERROR, "Not enough memory to allocate offscreen buffer");
+      jswrap_banglejs_setLCDMode(0); // go back to default mode
+      return;
+    }
+    jsvUnLock(arrData);
   }
   graphicsStructResetState(&gfx); // reset colour, cliprect, etc
   graphicsSetVar(&gfx);
