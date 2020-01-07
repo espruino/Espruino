@@ -322,16 +322,18 @@ void graphicsDrawEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int p
   int b2 = b*b;
   int err = b2-(2*b-1)*a2;
   int e2; 
+  bool changed = false;
 
   do {
-       graphicsSetPixelDevice(gfx,posX+dx,posY+dy,gfx->data.fgColor);
-       graphicsSetPixelDevice(gfx,posX-dx,posY+dy,gfx->data.fgColor);
-       graphicsSetPixelDevice(gfx,posX+dx,posY-dy,gfx->data.fgColor);
-       graphicsSetPixelDevice(gfx,posX-dx,posY-dy,gfx->data.fgColor);
-       e2 = 2*err;
-       if (e2 <  (2*dx+1)*b2) { dx++; err += (2*dx+1)*b2; }
-       if (e2 > -(2*dy-1)*a2) { dy--; err -= (2*dy-1)*a2; }
-  } while (dy >= 0);
+    changed = false;
+    graphicsSetPixelDevice(gfx,posX+dx,posY+dy,gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx,posX-dx,posY+dy,gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx,posX+dx,posY-dy,gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx,posX-dx,posY-dy,gfx->data.fgColor);
+    e2 = 2*err;
+    if (e2 <  (2*dx+1)*b2) { dx++; err += (2*dx+1)*b2; changed=true; }
+    if (e2 > -(2*dy-1)*a2) { dy--; err -= (2*dy-1)*a2; changed=true; }
+  } while (changed && dy >= 0);
 
   while (dx++ < a) { /* erroneous termination in flat ellipses (b=1) */
        graphicsSetPixelDevice(gfx,posX+dx,posY,gfx->data.fgColor);
@@ -353,14 +355,16 @@ void graphicsFillEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int p
   int b2 = b*b;
   int err = b2-(2*b-1)*a2;
   int e2; 
+  bool changed = false;
 
   do {
-       graphicsFillRectDevice(gfx,posX+dx,posY+dy,posX-dx,posY+dy,gfx->data.fgColor);
-       graphicsFillRectDevice(gfx,posX+dx,posY-dy,posX-dx,posY-dy,gfx->data.fgColor);
-       e2 = 2*err;
-       if (e2 <  (2*dx+1)*b2) { dx++; err += (2*dx+1)*b2; }
-       if (e2 > -(2*dy-1)*a2) { dy--; err -= (2*dy-1)*a2; }
-  } while (dy >= 0);
+    changed = false;
+    graphicsFillRectDevice(gfx,posX+dx,posY+dy,posX-dx,posY+dy,gfx->data.fgColor);
+    graphicsFillRectDevice(gfx,posX+dx,posY-dy,posX-dx,posY-dy,gfx->data.fgColor);
+    e2 = 2*err;
+    if (e2 <  (2*dx+1)*b2) { dx++; err += (2*dx+1)*b2; changed=true; }
+    if (e2 > -(2*dy-1)*a2) { dy--; err -= (2*dy-1)*a2; changed=true; }
+  } while (changed && dy >= 0);
 
   while (dx++ < a) { /* erroneous termination in flat ellipses(b=1) */
        graphicsFillRectDevice(gfx,posX+dx,posY,posX-dx,posY,gfx->data.fgColor );

@@ -59,6 +59,7 @@
             Bangle.js: skip firmware version checks to save some bytes in bootloader
             Graphics: new g.fillPoly to handle irregular polygons
             Bangle.js: Bangle.setLCDMode now errors if it can't allocate a flat string (also garbage collects and defrags to try and ensure it can)
+            Graphics: drawEllipse/fillEllipse now work correctly for very small ellipses
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
