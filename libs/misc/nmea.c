@@ -24,10 +24,10 @@ double nmea_decode_latlon(char *nmea, char *comma) {
   char *dp = nmea;
   while (*dp && *dp!='.' && *dp!=',') dp++; // find decimal pt
   *comma = 0;
-  double minutes = stringToFloat(&dp[-2]);
+  double minutes = stringToFloatWithRadix(&dp[-2], 10, NULL);
   *comma = ',';
   dp[-2] = 0;
-  int x = stringToInt(nmea);
+  int x = stringToIntWithRadix(nmea, 10, NULL, NULL);
   return x+(minutes/60);
 }
 double nmea_decode_float(char *nmea, char *comma) {
