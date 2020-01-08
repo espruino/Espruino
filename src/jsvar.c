@@ -3337,7 +3337,8 @@ bool jsvMathsOpTypeEqual(JsVar *a, JsVar *b) {
     // Check whether both are numbers, otherwise check the variable
     // type flags themselves
     eql = ((jsvIsInt(a)||jsvIsFloat(a)) && (jsvIsInt(b)||jsvIsFloat(b))) ||
-        ((a->flags & JSV_VARTYPEMASK) == (b->flags & JSV_VARTYPEMASK));
+          (jsvIsString(a) && jsvIsString(b)) ||
+          ((a->flags & JSV_VARTYPEMASK) == (b->flags & JSV_VARTYPEMASK));
   }
   if (eql) {
     JsVar *contents = jsvMathsOp(a,b, LEX_EQUAL);
