@@ -2233,3 +2233,62 @@ void jswrap_graphics_dump(JsVar *parent) {
   jsvUnLock(url);
   jsiConsolePrint("\n");
 }
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "squaredBezier",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
+  "generate" : "jswrap_graphics_squaredBezier",
+  "params" : [
+    ["arr","JsVar","An array of three vertices, six enties in form of ```[x0,y0,x1,y1,x2,y2]```"]
+  ],
+  "return" : ["JsVar", "Array with calculated points" ]
+}
+ Calculate the square area under a Bezier curve.
+
+ x0,y0: start point
+ x1,y1: control point
+ y2,y2: end point
+
+ Max 10 points without start and end points.
+*/
+JsVar *jswrap_graphics_squaredBezier( JsVar *parent, JsVar *arr ){
+
+  JsVar *result = jsvNewEmptyArray();
+  if (!result) return 0;
+
+  if (jsvGetArrayLength(arr) != 6) return result; 
+
+  float s,t,t2,tp2, tpt;
+  int sn = 6; 
+  int dx, dy;
+  int x0, x1, x2, y0, y1, y2;
+
+  JsvIterator it;
+  jsvIteratorNew(&it, arr, JSIF_EVERY_ARRAY_ELEMENT);
+  x0 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
+  y0 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
+  x1 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
+  y1 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
+  x2 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
+  y2 = jsvIteratorGetIntegerValue(&it);
+  jsvIteratorFree(&it);
+  
+  // calc s and force to be between 0.1 and 0.5
+  dx = (x0 - x2) < 0 ? (x2-x0):(x0-x2);
+  dy = (y0 - y2) < 0 ? (y2-y0):(y0-y2); 
+  s = sn / (( dx < dy ) ? dx : dy);
+  if ( s > 1)  s = 0.5;
+  if ( s < 0.1) s = 0.1;
+
+  for ( t = s; t <= 1; t += s ) {
+    t2 = t*t;
+    tp2 = (1 - t) * (1 - t);
+    tpt = 2 * (1 - t) * t;
+    jsvArrayPushAndUnLock(result, jsvNewFromInteger(x0 * tp2 + x1 * tpt + x2 * t2 + 0.5));
+    jsvArrayPushAndUnLock(result, jsvNewFromInteger(y0 * tp2 + y1 * tpt + y2 * t2 + 0.5));
+  }
+
+  return  result;
+}
