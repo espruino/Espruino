@@ -61,6 +61,7 @@
             Bangle.js: Bangle.setLCDMode now errors if it can't allocate a flat string (also garbage collects and defrags to try and ensure it can)
             Graphics: drawEllipse/fillEllipse now work correctly for very small ellipses
             Fix type compare of string and flatstring
+            Graphics: add function squaredBezier 
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
