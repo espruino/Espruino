@@ -43,6 +43,7 @@ info = {
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"MDBT42Q"\'',
+     'DEFINES+=-DNEOPIXEL_SCK_PIN=23',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C'
    ]
@@ -74,7 +75,7 @@ devices = {
   'LED2' : { 'pin' : 'D2', 'no_bootloader':True }, # don't use LED2 in the bootloader since we may be using a bare module
   'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' },
   'NFC': { 'pin_a':'D9', 'pin_b':'D10' },
-  # Pin D22 is used for clock when driving neopixels - as not specifying a pin seems to break things
+  # Pin D23 is used for clock when driving neopixels - as not specifying a pin seems to break things
 };
 
 # left-right, or top-bottom order
@@ -85,7 +86,7 @@ board_module = {
   'bottom' : [ 'GND','D0','D1','D2','D3','D4','D5','D6','D7','D8','D9','D10','GND' ],
   '_notes' : {
     'D21' : "Also NRST if configured",
-    'D22' : "This is used as SCK when driving Neopixels with 'require('neopixel').write'. If not driving neopixels this behaves like any other pin.",
+    'D23' : "This is used as SCK when driving Neopixels with 'require('neopixel').write'. This pin is not accessible.",
   }
 };
 
