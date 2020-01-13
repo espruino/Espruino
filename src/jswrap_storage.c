@@ -82,7 +82,9 @@ void jswrap_storage_erase(JsVar *name) {
   "name" : "read",
   "generate" : "jswrap_storage_read",
   "params" : [
-    ["name","JsVar","The filename - max 8 characters (case sensitive)"]
+    ["name","JsVar","The filename - max 8 characters (case sensitive)"],
+    ["offset","int","(optional) The offset in bytes to start from"],
+    ["length","int","(optional) The length to read in bytes (if <=0, the entire file is read)"]
   ],
   "return" : ["JsVar","A string of data"]
 }
@@ -96,8 +98,8 @@ If you evaluate this string with `eval`, any functions
 contained in the String will keep their code stored
 in flash memory.
 */
-JsVar *jswrap_storage_read(JsVar *name) {
-  return jsfReadFile(jsfNameFromVar(name));
+JsVar *jswrap_storage_read(JsVar *name, int offset, int length) {
+  return jsfReadFile(jsfNameFromVar(name), offset, length);
 }
 
 /*JSON{
@@ -118,7 +120,7 @@ and parse JSON in it into a JavaScript object.
 This is identical to `JSON.parse(require("Storage").read(...))`
 */
 JsVar *jswrap_storage_readJSON(JsVar *name) {
-  JsVar *v = jsfReadFile(jsfNameFromVar(name));
+  JsVar *v = jsfReadFile(jsfNameFromVar(name),0,0);
   if (!v) return 0;
   JsVar *r = jswrap_json_parse(v);
   jsvUnLock(v);
@@ -146,7 +148,7 @@ This can be used:
 * In a `Uint8Array/Float32Array/etc` with `new Uint8Array(require("Storage").readArrayBuffer("x"))`
 */
 JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
-  JsVar *v = jsfReadFile(jsfNameFromVar(name));
+  JsVar *v = jsfReadFile(jsfNameFromVar(name),0,0);
   if (!v) return 0;
   JsVar *r = jsvNewArrayBufferFromString(v, 0);
   jsvUnLock(v);

@@ -414,7 +414,7 @@ void jswrap_pixljs_init() {
    * With bootloader this means apply power while holding button for >3 secs */
   static bool firstStart = true;
 
-  JsVar *splashScreen = jsfReadFile(jsfNameFromString(".splash"));
+  JsVar *splashScreen = jsfReadFile(jsfNameFromString(".splash"),0,0);
   if (jsvIsString(splashScreen)) {
     if (jsvGetStringLength(splashScreen)) {
       graphicsSetVar(&gfx);

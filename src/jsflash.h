@@ -51,7 +51,7 @@ JsfFileFlags jsfGetFileFlags(JsfFileHeader *header);
 /// Find a 'file' in the memory store. Return the address of data start (and header if returnedHeader!=0). Returns 0 if not found
 uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader);
 /// Return the contents of a file as a memory mapped var
-JsVar *jsfReadFile(JsfFileName name);
+JsVar *jsfReadFile(JsfFileName name, int offset, int length);
 /// Write a file. For simple stuff just leave offset and size as 0
 bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt offset, JsVarInt _size);
 /// Erase the given file, return true on success
