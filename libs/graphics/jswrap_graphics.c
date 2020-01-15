@@ -431,10 +431,31 @@ int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "reset",
+  "generate" : "jswrap_graphics_reset",
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Reset the state of Graphics to the defaults (eg. Color, Font, etc)
+that would have been used when Graphics was initialised.
+*/
+JsVar *jswrap_graphics_reset(JsVar *parent) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  // reset font, which will unreference any custom fonts stored inside the instance
+  jswrap_graphics_setFontSizeX(parent, 1+JSGRAPHICS_FONTSIZE_4X6, false);
+  // properly reset state
+  graphicsStructResetState(&gfx);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+  return jsvLockAgain(parent);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "clear",
   "generate" : "jswrap_graphics_clear",
   "params" : [
-    ["reset","bool","If `true`, resets the state of Graphics to the default (eg. Color, Font, etc)"]
+    ["reset","bool","If `true`, resets the state of Graphics to the default (eg. Color, Font, etc) as if calling `Graphics.reset`"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
@@ -442,12 +463,14 @@ int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
 Clear the LCD with the Background Color
 */
 JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState) {
+  if (resetState) jsvUnLock(jswrap_graphics_reset(parent));
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  if (resetState) graphicsStructResetState(&gfx);
   graphicsClear(&gfx);
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
+
+
 
 /*JSON{
   "type" : "method",
@@ -1062,8 +1085,8 @@ JsVar *jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_setFont",
   "params" : [
-    ["name","JsVar","The name of the current font"],
-    ["size","int","The size of the font"]
+    ["name","JsVar","The name of the font to use (if undefined, the standard 4x6 font will be used)"],
+    ["size","int","The size of the font (or undefined)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
@@ -1075,17 +1098,18 @@ For bitmap fonts you can also specify a size multiplier, for example `g.setFont(
 JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size) {
 #ifndef SAVE_ON_FLASH
   if (!jsvIsString(name)) return 0;
-  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   unsigned short sz = 0xFFFF;
+  bool isVector = false;
 #ifndef NO_VECTOR_FONT
   if (jsvIsStringEqualOrStartsWith(name, "Vector", true)) {
     sz = (unsigned short)jsvGetIntegerAndUnLock(jsvNewFromStringVar(name, 6, JSVAPPENDSTRINGVAR_MAXLENGTH));
     if (size>0) sz = (unsigned short)size;
+    isVector = true;
   }
 #endif
-  if (size<=0) size=1;
+  if (size<1) size=1;
   if (size>JSGRAPHICS_FONTSIZE_SCALE_MASK) size=JSGRAPHICS_FONTSIZE_SCALE_MASK;
-  if (jsvIsStringEqual(name, "4x6"))
+  if (jsvIsUndefined(name) || jsvIsStringEqual(name, "4x6"))
     sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_4X6);
 #ifdef USE_FONT_6X8
   if (jsvIsStringEqual(name, "6x8"))
@@ -1095,9 +1119,7 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size) {
   if (sz==0xFFFF) {
     jsExceptionHere(JSET_ERROR, "Unknown font %j", name);
   }
-  gfx.data.fontSize=sz;
-  graphicsSetVar(&gfx);
-  return jsvLockAgain(parent);
+  jswrap_graphics_setFontSizeX(parent, sz, isVector);
 #else
   return 0;
 #endif

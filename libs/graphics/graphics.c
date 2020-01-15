@@ -118,19 +118,15 @@ void graphicsStructResetState(JsGraphics *gfx) {
 void graphicsStructInit(JsGraphics *gfx, int width, int height, int bpp) {
   // type/width/height/bpp should be set elsewhere...
   gfx->data.flags = JSGRAPHICSFLAGS_NONE;
-  graphicsStructResetState(gfx);
   gfx->data.width = (unsigned short)width;
   gfx->data.height = (unsigned short)height;
   gfx->data.bpp = (unsigned char)bpp;
+  graphicsStructResetState(gfx);
 #ifndef SAVE_ON_FLASH
   gfx->data.modMaxX = -32768;
   gfx->data.modMaxY = -32768;
   gfx->data.modMinX = 32767;
   gfx->data.modMinY = 32767;
-  gfx->data.clipRect.x1 = 0;
-  gfx->data.clipRect.y1 = 0;
-  gfx->data.clipRect.x2 = width-1;
-  gfx->data.clipRect.y2 = height-1;
 #endif
 
 }

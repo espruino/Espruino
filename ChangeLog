@@ -63,6 +63,7 @@
             Fix type compare of string and flatstring
             Allow Storage.read to make partial file reads (fix #1744)
             Fix SyntaxError when using pretokenise + getters (fix #1745)
+            Add Graphics.reset, and ensure it (and g.clear(1)) unreference custom fonts
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

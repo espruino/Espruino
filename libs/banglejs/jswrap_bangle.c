@@ -780,6 +780,7 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
 
   JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
   if (!graphics) return;
+  jswrap_graphics_setFont(graphics, NULL, 1); // reset fonts - this will free any memory associated with a custom font
   JsGraphics gfx;
   if (!graphicsGetFromVar(&gfx, graphics)) return;
   // remove the buffer if it was defined
