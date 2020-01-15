@@ -894,9 +894,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
     if ((lex->tk==LEX_ID || lex->tk==LEX_FLOAT || lex->tk==LEX_INT) &&
         ( lastTk==LEX_ID ||  lastTk==LEX_FLOAT ||  lastTk==LEX_INT)) {
-      jsExceptionHere(JSET_SYNTAXERROR, "ID/number following ID/number isn't valid JS");
-      length = 0;
-      break;
+      length++; // we need to insert a space
     }
     if (lex->tk==LEX_ID ||
         lex->tk==LEX_INT ||
@@ -905,7 +903,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
         lex->tk==LEX_TEMPLATE_LITERAL) {
       length += jsvStringIteratorGetIndex(&lex->it)-jsvStringIteratorGetIndex(&lex->tokenStart.it);
     } else {
-      length++;
+      length++; // for single token
     }
     lastTk = lex->tk;
     jslGetNextToken();
@@ -918,12 +916,18 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
     jsvStringIteratorNew(&dstit, var, 0);
     // now start appending
     jslSeekToP(charFrom);
+    lastTk = LEX_EOF;
     while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
+      if ((lex->tk==LEX_ID || lex->tk==LEX_FLOAT || lex->tk==LEX_INT) &&
+          ( lastTk==LEX_ID ||  lastTk==LEX_FLOAT ||  lastTk==LEX_INT)) {
+        jsvStringIteratorSetCharAndNext(&dstit, ' ');
+      }
       if (lex->tk==LEX_ID ||
           lex->tk==LEX_INT ||
           lex->tk==LEX_FLOAT ||
           lex->tk==LEX_STR ||
           lex->tk==LEX_TEMPLATE_LITERAL) {
+        // copy in string verbatim
         jsvStringIteratorSetCharAndNext(&dstit, lex->tokenStart.currCh);
         JsvStringIterator it = jsvStringIteratorClone(&lex->tokenStart.it);
         while (jsvStringIteratorGetIndex(&it)+1 < jsvStringIteratorGetIndex(&lex->it)) {
@@ -931,7 +935,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
           jsvStringIteratorNext(&it);
         }
         jsvStringIteratorFree(&it);
-      } else {
+      } else { // single char for the token
         jsvStringIteratorSetCharAndNext(&dstit, (char)lex->tk);
       }
       lastTk = lex->tk;
