@@ -502,15 +502,7 @@ void jsiSoftInit(bool hasBeenReset) {
   // to fiddle with them.
 
   // Execute `init` events on `E`
-  JsVar *E = jsvObjectGetChild(execInfo.root, "E", 0);
-  if (E) {
-    JsVar *callback = jsvObjectGetChild(E, INIT_CALLBACK_NAME, 0);
-    if (callback) {
-      jsiExecuteEventCallback(0, callback, 0, 0);
-      jsvUnLock(callback);
-    }
-    jsvUnLock(E);
-  }
+  jsiExecuteEventCallbackOn("E", INIT_CALLBACK_NAME, 0, 0);
   // Execute the `onInit` function
   JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);
   if (onInit) {
@@ -719,11 +711,13 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
 // Used when shutting down before flashing
 // 'release' anything we are using, but ensure that it doesn't get freed
 void jsiSoftKill() {
+  // Execute `kill` events on `E`
+  jsiExecuteEventCallbackOn("E", KILL_CALLBACK_NAME, 0, 0);
+  // Clear input line...
   inputCursorPos = 0;
   jsiInputLineCursorMoved();
   jsvUnLock(inputLine);
   inputLine=0;
-
   // kill any wrapped stuff
   jswKill();
   // Stop all active timer tasks
@@ -897,7 +891,6 @@ void jsiOneSecondAfterStartup() {
 
 void jsiKill() {
   jsiSoftKill();
-
   jspKill();
 }
 
@@ -1158,16 +1151,9 @@ void jsiCheckErrors() {
   bool reportedError = false;
   JsVar *exception = jspGetException();
   if (exception) {
-    JsVar *process = jsvObjectGetChild(execInfo.root, "process", 0);
-    if (process) {
-      JsVar *callback = jsvObjectGetChild(process, JS_EVENT_PREFIX"uncaughtException", 0);
-      if (callback) {
-        jsiExecuteEventCallback(0, callback, 1, &exception);
-        jsvUnLock2(callback, exception);
-        exception = 0;
-      }
-      jsvUnLock(process);
-    }
+    jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"uncaughtException", 1, &exception);
+    jsvUnLock(exception);
+    exception = 0;
   }
   if (exception) {
     jsiConsoleRemoveInputLine();
@@ -1208,15 +1194,7 @@ void jsiCheckErrors() {
     JsErrorFlags newErrors = jsErrorFlags & ~lastJsErrorFlags;
     if (newErrors & ~JSERR_WARNINGS_MASK) {
       JsVar *v = jswrap_espruino_getErrorFlagArray(newErrors);
-      JsVar *E = jsvObjectGetChild(execInfo.root, "E", 0);
-      if (E) {
-        JsVar *callback = jsvObjectGetChild(E, JS_EVENT_PREFIX"errorFlag", 0);
-        if (callback) {
-          jsiExecuteEventCallback(0, callback, 1, &v);
-          jsvUnLock(callback);
-        }
-        jsvUnLock(E);
-      }
+      jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"errorFlag", 1, &v);
       if (v) {
         jsiConsoleRemoveInputLine();
         jsiConsolePrintf("New interpreter error: %v\n", v);
@@ -1743,6 +1721,17 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsig
   }
   return true;
 }
+
+void jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsigned int argCount, JsVar **argPtr) {
+  JsVar *obj = jsvObjectGetChild(execInfo.root, objectName, 0);
+  if (jsvHasChildren(obj)) {
+    JsVar *callback = jsvObjectGetChild(obj, cbName, 0);
+    if (callback)
+      jsiExecuteEventCallback(obj, callback, argCount, argPtr);
+    jsvUnLock2(callback, obj);
+  }
+}
+
 
 /// Create a timeout in JS to execute the given native function (outside of an IRQ). Returns the index
 JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds) {

@@ -49,6 +49,26 @@ E.on('init', function() {
 rather than replacing the last one. This allows you to write modular code -
 something that was not possible with `onInit`.
  */
+/*JSON{
+  "type" : "event",
+  "class" : "E",
+  "name" : "kill"
+}
+This event is called just before the device shuts down for commands such as
+`reset()`, `load()`, `save()`, `E.reboot()` or `Bangle.off()`
+
+For example to write `"Bye!"` just before shutting down use:
+
+```
+E.on('kill', function() {
+  console.log("Bye!");
+});
+```
+
+**NOTE:** This event is not called when the device is 'hard reset' - for
+example by removing power, hitting an actual reset button, or via
+a Watchdog timer reset.
+*/
 
 /*JSON{
   "type" : "event",
@@ -1747,6 +1767,11 @@ reset of Espruino (resetting the interpreter and pin states, but not
 all the hardware)
 */
 void jswrap_espruino_reboot() {
+  // ensure `E.on('kill',...` gets called and everything is torn down correctly
+  jsiKill();
+  jsvKill();
+  jshKill();
+
   jshReboot();
 }
 

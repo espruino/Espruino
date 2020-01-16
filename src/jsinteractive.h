@@ -58,6 +58,8 @@ void jsiExecuteObjectCallbacks(JsVar *object, const char *callbackName, JsVar **
 bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr);
 /// Same as above, but with a JsVarArray (this calls jsiExecuteEventCallback, so use jsiExecuteEventCallback where possible)
 bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar *argsArray);
+/// Utility version of jsiExecuteEventCallback for calling events on global variables
+void jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsigned int argCount, JsVar **argPtr);
 
 /// Create a timeout in JS to execute the given native function (outside of an IRQ). Returns the index
 JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds);
@@ -130,6 +132,7 @@ void jsiSetSleep(JsiSleepType isSleep);
 #define USART_BAUDRATE_NAME "_baudrate"
 #define DEVICE_OPTIONS_NAME "_options"
 #define INIT_CALLBACK_NAME JS_EVENT_PREFIX"init" ///< Callback for `E.on('init'`
+#define KILL_CALLBACK_NAME JS_EVENT_PREFIX"kill" ///< Callback for `E.on('kill'`
 #define PASSWORD_VARIABLE_NAME "pwd"
 
 typedef enum {
