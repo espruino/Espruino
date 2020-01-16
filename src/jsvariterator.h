@@ -112,7 +112,7 @@ static void jsvStringIteratorLoadFlashString(JsvStringIterator *it) {
     it->charsInVar = l - it->varIndex;
     if (it->charsInVar > sizeof(it->flashStringBuffer))
       it->charsInVar = sizeof(it->flashStringBuffer);
-    jshFlashRead(it->flashStringBuffer, it->varIndex+(uint32_t)it->var->varData.nativeStr.ptr, it->charsInVar);
+    jshFlashRead(it->flashStringBuffer, (uint32_t)it->varIndex+(uint32_t)(size_t)it->var->varData.nativeStr.ptr, (uint32_t)it->charsInVar);
     it->ptr = (char*)it->flashStringBuffer;
   }
 }

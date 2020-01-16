@@ -91,8 +91,8 @@ void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
 #ifndef SAVE_ON_FLASH
   gfx->data.modMinX=0;
   gfx->data.modMinY=0;
-  gfx->data.modMaxX=(unsigned short)(gfx->data.width-1);
-  gfx->data.modMaxY=(unsigned short)(gfx->data.height-1);
+  gfx->data.modMaxX=(short)(gfx->data.width-1);
+  gfx->data.modMaxY=(short)(gfx->data.height-1);
 #endif
 }
 
@@ -108,8 +108,8 @@ void graphicsStructResetState(JsGraphics *gfx) {
   gfx->data.fontRotate = 0;
   gfx->data.clipRect.x1 = 0;
   gfx->data.clipRect.y1 = 0;
-  gfx->data.clipRect.x2 = gfx->data.width-1;
-  gfx->data.clipRect.y2 = gfx->data.height-1;
+  gfx->data.clipRect.x2 = (unsigned short)(gfx->data.width-1);
+  gfx->data.clipRect.y2 = (unsigned short)(gfx->data.height-1);
 #endif
   gfx->data.cursorX = 0;
   gfx->data.cursorY = 0;
@@ -191,7 +191,7 @@ void graphicsSetVar(JsGraphics *gfx) {
 
 /// Get the memory requires for this graphics's pixels if everything was packed as densely as possible
 size_t graphicsGetMemoryRequired(const JsGraphics *gfx) {
-  return (gfx->data.width * gfx->data.height * gfx->data.bpp + 7) >> 3;
+  return (size_t)(gfx->data.width * gfx->data.height * gfx->data.bpp + 7) >> 3;
 };
 
 // ----------------------------------------------------------------------------------------------
@@ -518,7 +518,6 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, c
 // returns the width of a character
 unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int size, char ch) {
   NOT_USED(gfx);
-  if (size<0) return 0;
   if (ch<vectorFontOffset || ch-vectorFontOffset>=vectorFontCount) return 0;
   unsigned char width = READ_FLASH_UINT8(&vectorFonts[ch-vectorFontOffset].width);
   return (width * (unsigned int)size)/(VECTOR_FONT_POLY_SIZE*2);

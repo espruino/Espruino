@@ -1188,7 +1188,7 @@ void jsiCheckErrors() {
     // don't report an issue - we get unreported errors is process.on('unhandledException',)/etc is used
     //if (!reportedError) jsiConsolePrint("Error.\n");
     // remove any error flags
-    execInfo.execute &= ~EXEC_ERROR_MASK;
+    execInfo.execute &= (JsExecFlags)~EXEC_ERROR_MASK;
   }
   if (lastJsErrorFlags != jsErrorFlags) {
     JsErrorFlags newErrors = jsErrorFlags & ~lastJsErrorFlags;
