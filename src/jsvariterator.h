@@ -258,6 +258,7 @@ union JsvIteratorUnion {
 /** General Purpose iterator, for Strings, Arrays, Objects, Typed Arrays */
 typedef struct JsvIterator {
   enum {
+    JSVI_NONE,
     JSVI_STRING,
     JSVI_OBJECT,
     JSVI_ARRAYBUFFER,

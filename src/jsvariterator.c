@@ -656,7 +656,10 @@ void jsvIteratorNew(JsvIterator *it, JsVar *obj, JsvIteratorFlags flags) {
   } else if (jsvHasCharacterData(obj)) {
     it->type = JSVI_STRING;
     jsvStringIteratorNew(&it->it.str, obj, 0);
-  } else assert(0);
+  } else {
+    it->type = JSVI_NONE;
+    assert(0);
+  }
 }
 
 JsVar *jsvIteratorGetKey(JsvIterator *it) {
@@ -771,7 +774,7 @@ void jsvIteratorClone(JsvIterator *dstit, JsvIterator *it) {
   dstit->type = it->type;
   switch (it->type) {
   case JSVI_FULLARRAY: dstit->it.obj.index = it->it.obj.index;
-                        dstit->it.obj.var = jsvLockAgain(it->it.obj.var);  // intentionally no break
+                       dstit->it.obj.var = jsvLockAgain(it->it.obj.var);  // intentionally no break
   case JSVI_OBJECT : jsvObjectIteratorClone(&dstit->it.obj.it, &it->it.obj.it); break;
   case JSVI_STRING : jsvStringIteratorClone(&dstit->it.str, &it->it.str); break;
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorClone(&dstit->it.buf, &it->it.buf); break;
