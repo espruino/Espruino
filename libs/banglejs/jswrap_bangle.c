@@ -2022,17 +2022,28 @@ JsVar *jswrap_banglejs_getLogo() {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
-    "name" : "menu",
-    "generate" : "gen_jswrap_E_showMenu",
-    "params" : [
-      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
-    ],
-    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
+    "name" : "loadWidgets",
+    "generate_js" : "libs/js/banglejs/Bangle_loadWidgets.min.js",
     "ifdef" : "BANGLEJS"
 }
-Display a menu on the screen, and set up the buttons to navigate through it.
+Load all widgets from flash Storage. Call this once at the beginning
+of your application if you want any on-screen widgets to be loaded.
 
-DEPRECATED: Use `E.showMenu`
+They will be loaded into a global `WIDGETS` array, and
+can be rendered with `Bangle.drawWidgets`.
+*/
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "drawWidgets",
+    "generate_js" : "libs/js/banglejs/Bangle_drawWidgets.min.js",
+    "ifdef" : "BANGLEJS"
+}
+Draw any onscreen widgets that were loaded with `Bangle.loadWidgets()`.
+
+Widgets should redraw themselves when something changes - you'll only
+need to call drawWidgets if you decide to clear the entire screen
+with `g.clear()`.
 */
 
 /*JSON{

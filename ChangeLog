@@ -70,6 +70,8 @@
             Add `E.on('kill'` event for executing code before load/reset/save/etc
             JSON.stringify now escapes using the less efficient JSON subset of escape characters (fix #1737)
             Allow optional `load("filename")` to load a JS file from Storage (was just `load()`)
+            Bangle.js: add Bangle.loadWidgets/drawWidgets
+            Bangle.js: Remove deprecated Bangle.menu
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
