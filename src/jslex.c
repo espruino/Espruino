@@ -25,11 +25,9 @@ void jslCharPosFree(JslCharPos *pos) {
   jsvStringIteratorFree(&pos->it);
 }
 
-JslCharPos jslCharPosClone(JslCharPos *pos) {
-  JslCharPos p;
-  p.it = jsvStringIteratorClone(&pos->it);
-  p.currCh = pos->currCh;
-  return p;
+void jslCharPosClone(JslCharPos *dstpos, JslCharPos *pos) {
+  jsvStringIteratorClone(&dstpos->it, &pos->it);
+  dstpos->currCh = pos->currCh;
 }
 
 /// Return the next character (do not move to the next character)
@@ -45,19 +43,26 @@ static void NO_INLINE jslGetNextCh() {
    * The String iterator we're basing on does, so every
    * time we touch the iterator we have to re-lock it
    */
+  // This is basically just jsvStringIteratorNextInline
+  // but without the locking and unlocking
   lex->it.charIdx++;
   if (lex->it.charIdx >= lex->it.charsInVar) {
     lex->it.charIdx -= lex->it.charsInVar;
+    lex->it.varIndex += lex->it.charsInVar;
+#ifdef SPIFLASH_BASE
+    if (jsvIsFlashString(lex->it.var))
+      return jsvStringIteratorLoadFlashString(&lex->it);
+#endif
     if (lex->it.var && jsvGetLastChild(lex->it.var)) {
       lex->it.var = _jsvGetAddressOf(jsvGetLastChild(lex->it.var));
       lex->it.ptr = &lex->it.var->varData.str[0];
-      lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = jsvGetCharactersInVar(lex->it.var);
     } else {
       lex->it.var = 0;
       lex->it.ptr = 0;
-      lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = 0;
+      lex->it.varIndex += lex->it.charIdx;
+      lex->it.charIdx = 0;
     }
   }
 }
@@ -688,7 +693,7 @@ void jslSeekTo(size_t seekToChar) {
 void jslSeekToP(JslCharPos *seekToChar) {
   if (lex->it.var) jsvLockAgain(lex->it.var); // see jslGetNextCh
   jsvStringIteratorFree(&lex->it);
-  lex->it = jsvStringIteratorClone(&seekToChar->it);
+  jsvStringIteratorClone(&lex->it, &seekToChar->it);
   jsvUnLock(lex->it.var); // see jslGetNextCh
   lex->currCh = seekToChar->currCh;
   lex->tokenStart.it.var = 0;
@@ -929,7 +934,8 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
           lex->tk==LEX_TEMPLATE_LITERAL) {
         // copy in string verbatim
         jsvStringIteratorSetCharAndNext(&dstit, lex->tokenStart.currCh);
-        JsvStringIterator it = jsvStringIteratorClone(&lex->tokenStart.it);
+        JsvStringIterator it;
+        jsvStringIteratorClone(&it, &lex->tokenStart.it);
         while (jsvStringIteratorGetIndex(&it)+1 < jsvStringIteratorGetIndex(&lex->it)) {
           jsvStringIteratorSetCharAndNext(&dstit, jsvStringIteratorGetChar(&it));
           jsvStringIteratorNext(&it);
@@ -962,7 +968,8 @@ JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo) {
       // Flat string
       char *flatPtr = jsvGetFlatStringPointer(var);
       *(flatPtr++) = charFrom->currCh;
-      JsvStringIterator it = jsvStringIteratorClone(&charFrom->it);
+      JsvStringIterator it;
+      jsvStringIteratorClone(&it, &charFrom->it);
       while (jsvStringIteratorHasChar(&it) && (--maxLength>0)) {
         *(flatPtr++) = jsvStringIteratorGetChar(&it);
         jsvStringIteratorNext(&it);
@@ -984,7 +991,8 @@ JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo) {
 
   size_t l = maxLength;
   // now start appending
-  JsvStringIterator it = jsvStringIteratorClone(&charFrom->it);
+  JsvStringIterator it;
+  jsvStringIteratorClone(&it, &charFrom->it);
   while (jsvStringIteratorHasChar(&it) && (--maxLength>0)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (blockChars >= jsvGetMaxCharactersInVar(block)) {

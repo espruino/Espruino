@@ -15,6 +15,9 @@
 #define JSVARITERATOR_H_
 
 #include "jsvar.h"
+#ifdef SPIFLASH_BASE
+#include "jshardware.h"
+#endif
 
 /// Callback function to be used with jsvIterateCallback
 typedef void (*jsvIterateCallbackFn)(int item, void *callbackData);
@@ -51,6 +54,9 @@ typedef struct JsvStringIterator {
   size_t varIndex; ///< index in string of the start of this var
   JsVar *var; ///< current StringExt we're looking at
   char  *ptr; ///< a pointer to string data
+#ifdef SPIFLASH_BASE // when using flash strings, we need somewhere to put the data
+  char flashStringBuffer[16];
+#endif
 } JsvStringIterator;
 
 // slight hack to ensure we can use string iterator with const JsVars
@@ -60,7 +66,7 @@ typedef struct JsvStringIterator {
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx);
 
 /// Clone the string iterator
-JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it);
+void jsvStringIteratorClone(JsvStringIterator *dstit, JsvStringIterator *it);
 
 /// Gets the current character (or 0)
 static ALWAYS_INLINE char jsvStringIteratorGetChar(JsvStringIterator *it) {
@@ -93,28 +99,56 @@ void jsvStringIteratorNext(JsvStringIterator *it);
 /// Returns a pointer to the next block of data and its length, and moves on to the data after
 void jsvStringIteratorGetPtrAndNext(JsvStringIterator *it, unsigned char **data, unsigned int *len);
 
+#ifdef SPIFLASH_BASE
+// For 'Flash Strings' only - loads each block from flash memory as required
+static void jsvStringIteratorLoadFlashString(JsvStringIterator *it) {
+  it->varIndex += it->charIdx;
+  it->charIdx = 0;
+  uint32_t l = (uint32_t)it->var->varData.nativeStr.len;
+  if (it->varIndex >= l) {
+    it->ptr = 0; // past end of string
+    it->charsInVar = 0;
+  } else {
+    it->charsInVar = l - it->varIndex;
+    if (it->charsInVar > sizeof(it->flashStringBuffer))
+      it->charsInVar = sizeof(it->flashStringBuffer);
+    jshFlashRead(it->flashStringBuffer, it->varIndex+(uint32_t)it->var->varData.nativeStr.ptr, it->charsInVar);
+    it->ptr = (char*)it->flashStringBuffer;
+  }
+}
+#endif
+
+/// Ensures that the correct JsVar is loaded with data for the Iterator. ONLY FOR INTERNAL USE
+static ALWAYS_INLINE void jsvStringIteratorLoadInline(JsvStringIterator *it) {
+  it->charIdx -= it->charsInVar;
+  it->varIndex += it->charsInVar;
+#ifdef SPIFLASH_BASE
+  if (jsvIsFlashString(it->var))
+    return jsvStringIteratorLoadFlashString(it);
+#endif
+  if (it->var && jsvGetLastChild(it->var)) {
+    JsVar *next = jsvLock(jsvGetLastChild(it->var));
+    jsvUnLock(it->var);
+    it->var = next;
+    it->ptr = &next->varData.str[0];
+    it->charsInVar = jsvGetCharactersInVar(it->var);
+  } else {
+    jsvUnLock(it->var);
+    it->var = 0;
+    it->ptr = 0;
+    it->charsInVar = 0;
+    it->varIndex += it->charIdx;
+    it->charIdx = 0;
+  }
+}
+
 /// Move to next character (this one is inlined where speed is needed)
 static ALWAYS_INLINE void jsvStringIteratorNextInline(JsvStringIterator *it) {
   it->charIdx++;
   if (it->charIdx >= it->charsInVar) {
-    it->charIdx -= it->charsInVar;
-    if (it->var && jsvGetLastChild(it->var)) {
-      JsVar *next = jsvLock(jsvGetLastChild(it->var));
-      jsvUnLock(it->var);
-      it->var = next;
-      it->ptr = &next->varData.str[0];
-      it->varIndex += it->charsInVar;
-      it->charsInVar = jsvGetCharactersInVar(it->var);
-    } else {
-      jsvUnLock(it->var);
-      it->var = 0;
-      it->ptr = 0;
-      it->varIndex += it->charsInVar;
-      it->charsInVar = 0;
-    }
+    jsvStringIteratorLoadInline(it);
   }
 }
-
 
 /// Go to the end of the string iterator - for use with jsvStringIteratorAppend
 void jsvStringIteratorGotoEnd(JsvStringIterator *it);
@@ -143,7 +177,7 @@ typedef struct JsvObjectIterator {
 void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj);
 
 /// Clone the iterator
-JsvObjectIterator jsvObjectIteratorClone(JsvObjectIterator *it);
+void jsvObjectIteratorClone(JsvObjectIterator *dstit, JsvObjectIterator *it);
 
 /// Gets the current object element key (or 0)
 static ALWAYS_INLINE JsVar *jsvObjectIteratorGetKey(JsvObjectIterator *it) {
@@ -191,7 +225,7 @@ typedef struct JsvArrayBufferIterator {
 void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer, size_t index);
 
 /// Clone the iterator
-JsvArrayBufferIterator jsvArrayBufferIteratorClone(JsvArrayBufferIterator *it);
+void jsvArrayBufferIteratorClone(JsvArrayBufferIterator *dstit, JsvArrayBufferIterator *it);
 
 /** ArrayBuffers have the slightly odd side-effect that you can't write an element
  * once you have read it. That's why we have jsvArrayBufferIteratorGetValueAndRewind
@@ -249,7 +283,7 @@ JsVar *jsvIteratorSetValue(JsvIterator *it, JsVar *value); // set the value - re
 bool jsvIteratorHasElement(JsvIterator *it);
 void jsvIteratorNext(JsvIterator *it);
 void jsvIteratorFree(JsvIterator *it);
-JsvIterator jsvIteratorClone(JsvIterator *it);
+void jsvIteratorClone(JsvIterator *dstit, JsvIterator *it);
 
 
 

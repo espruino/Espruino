@@ -249,21 +249,7 @@ unsigned int jsvIterateCallbackToBytes(JsVar *var, unsigned char *data, unsigned
 // If charIdx doesn't fit in the current stringext, go forward along the string
 static void jsvStringIteratorCatchUp(JsvStringIterator *it) {
   while (it->charIdx>0 && it->charIdx >= it->charsInVar) {
-    it->charIdx -= it->charsInVar;
-    it->varIndex += it->charsInVar;
-    if (it->var && jsvGetLastChild(it->var)) {
-      JsVar *next = jsvLock(jsvGetLastChild(it->var));
-      jsvUnLock(it->var);
-      it->var = next;
-      it->ptr = &next->varData.str[0];
-      it->charsInVar = jsvGetCharactersInVar(it->var);
-    } else {
-      jsvUnLock(it->var);
-      it->var = 0;
-      it->ptr = 0;
-      it->charsInVar = 0;
-      return; // at end of string - get out of loop
-    }
+    jsvStringIteratorLoadInline(it);
   }
 }
 
@@ -277,16 +263,26 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
     it->ptr = jsvGetFlatStringPointer(it->var);
   } else if (jsvIsNativeString(str)) {
     it->ptr = (char*)it->var->varData.nativeStr.ptr;
+#ifdef SPIFLASH_BASE
+  } else if (jsvIsFlashString(str)) {
+    it->charsInVar = 0;
+    return jsvStringIteratorLoadFlashString(it);
+#endif
   } else{
     it->ptr = &it->var->varData.str[0];
   }
   jsvStringIteratorCatchUp(it);
 }
 
-JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it) {
-  JsvStringIterator i = *it;
-  if (i.var) jsvLockAgain(i.var);
-  return i;
+void jsvStringIteratorClone(JsvStringIterator *dstit, JsvStringIterator *it) {
+  *dstit = *it;
+  if (dstit->var) {
+    jsvLockAgain(dstit->var);
+#ifdef SPIFLASH_BASE
+    if (jsvIsFlashString(dstit->var))
+      dstit->ptr = &dstit->flashStringBuffer;
+#endif
+  }
 }
 
 /// Gets the current (>=0) character (or -1)
@@ -396,10 +392,9 @@ void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
 }
 
 /// Clone the iterator
-JsvObjectIterator jsvObjectIteratorClone(JsvObjectIterator *it) {
-  JsvObjectIterator i = *it;
-  if (i.var) jsvLockAgain(i.var);
-  return i;
+void jsvObjectIteratorClone(JsvObjectIterator *dstit, JsvObjectIterator *it) {
+  *dstit = *it;
+  if (dstit->var) jsvLockAgain(dstit->var);
 }
 
 /// Move to next item
@@ -447,10 +442,9 @@ void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer,
 }
 
 /// Clone the iterator
-ALWAYS_INLINE JsvArrayBufferIterator jsvArrayBufferIteratorClone(JsvArrayBufferIterator *it) {
-  JsvArrayBufferIterator i = *it;
-  i.it = jsvStringIteratorClone(&it->it);
-  return i;
+ALWAYS_INLINE void jsvArrayBufferIteratorClone(JsvArrayBufferIterator *dstit, JsvArrayBufferIterator *it) {
+  *dstit = *it;
+  jsvStringIteratorClone(&dstit->it, &it->it);
 }
 
 static void jsvArrayBufferIteratorGetValueData(JsvArrayBufferIterator *it, char *data) {
@@ -506,7 +500,8 @@ JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it) {
 }
 
 JsVar *jsvArrayBufferIteratorGetValueAndRewind(JsvArrayBufferIterator *it) {
-  JsvStringIterator oldIt = jsvStringIteratorClone(&it->it);
+  JsvStringIterator oldIt;
+  jsvStringIteratorClone(&oldIt, &it->it);
   JsVar *v = jsvArrayBufferIteratorGetValue(it);
   jsvStringIteratorFree(&it->it);
   it->it = oldIt;
@@ -608,10 +603,12 @@ void jsvArrayBufferIteratorSetByteValue(JsvArrayBufferIterator *it, char c) {
 }
 
 void jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *value) {
-  JsvStringIterator oldIt = jsvStringIteratorClone(&it->it);
+  JsvStringIterator oldIt;
+  jsvStringIteratorClone(&oldIt, &it->it);
   jsvArrayBufferIteratorSetValue(it, value);
   jsvStringIteratorFree(&it->it);
-  it->it = oldIt;
+  jsvStringIteratorClone(&it->it, &oldIt);
+  jsvStringIteratorFree(&oldIt);
   it->hasAccessedElement = false;
 }
 
@@ -770,16 +767,14 @@ void jsvIteratorFree(JsvIterator *it) {
   }
 }
 
-JsvIterator jsvIteratorClone(JsvIterator *it) {
-  JsvIterator newit;
-  newit.type = it->type;
+void jsvIteratorClone(JsvIterator *dstit, JsvIterator *it) {
+  dstit->type = it->type;
   switch (it->type) {
-  case JSVI_FULLARRAY: newit.it.obj.index = it->it.obj.index;
-                       newit.it.obj.var = jsvLockAgain(it->it.obj.var);  // intentionally no break
-  case JSVI_OBJECT : newit.it.obj.it = jsvObjectIteratorClone(&it->it.obj.it); break;
-  case JSVI_STRING : newit.it.str = jsvStringIteratorClone(&it->it.str); break;
-  case JSVI_ARRAYBUFFER : newit.it.buf = jsvArrayBufferIteratorClone(&it->it.buf); break;
+  case JSVI_FULLARRAY: dstit->it.obj.index = it->it.obj.index;
+                        dstit->it.obj.var = jsvLockAgain(it->it.obj.var);  // intentionally no break
+  case JSVI_OBJECT : jsvObjectIteratorClone(&dstit->it.obj.it, &it->it.obj.it); break;
+  case JSVI_STRING : jsvStringIteratorClone(&dstit->it.str, &it->it.str); break;
+  case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorClone(&dstit->it.buf, &it->it.buf); break;
   default: assert(0); break;
   }
-  return newit;
 }

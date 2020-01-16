@@ -109,7 +109,7 @@ typedef struct JslCharPos {
 } JslCharPos;
 
 void jslCharPosFree(JslCharPos *pos);
-JslCharPos jslCharPosClone(JslCharPos *pos);
+void jslCharPosClone(JslCharPos *dstpos, JslCharPos *pos);
 
 typedef struct JsLex
 {

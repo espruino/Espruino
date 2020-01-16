@@ -66,8 +66,13 @@ typedef enum {
     JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
     JSV_FLAT_STRING = JSV_STRING_MAX+1, ///< Flat strings store the length (in chars) as an int, and then the subsequent JsVars (in memory) store data
     JSV_NATIVE_STRING = JSV_FLAT_STRING+1, ///< Native strings store an address and length, and reference the underlying data directly
-  _JSV_STRING_END = JSV_NATIVE_STRING,
-    JSV_STRING_EXT_0 = JSV_NATIVE_STRING+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
+#ifdef SPIFLASH_BASE
+    JSV_FLASH_STRING = JSV_NATIVE_STRING+1, ///< Like a native String, but not writable and uses jshFlashRead
+    _JSV_STRING_END = JSV_FLASH_STRING,
+#else
+    _JSV_STRING_END = JSV_NATIVE_STRING,
+#endif
+    JSV_STRING_EXT_0 = _JSV_STRING_END+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
     JSV_STRING_EXT_MAX = JSV_STRING_EXT_0+JSVAR_DATA_STRING_MAX_LEN,
     _JSV_VAR_END     = JSV_STRING_EXT_MAX, ///< End of variable types
     // _JSV_VAR_END is:
@@ -332,6 +337,9 @@ JsVar *jsvNewEmptyArray(); ///< Create a new array
 JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array containing the given elements
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes); ///< Create an array containing the given elements
 JsVar *jsvNewNativeString(char *ptr, size_t len); ///< Create a Native String pointing to the given memory area
+#ifdef SPIFLASH_BASE
+JsVar *jsvNewFlashString(char *ptr, size_t len); ///< Create a Flash String pointing to the given memory area
+#endif
 JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
 
 /// Turns var into a Variable name that links to the given value... No locking so no need to unlock var
@@ -397,6 +405,7 @@ extern bool jsvIsBasicString(const JsVar *v); ///< Just a string (NOT a name)
 extern bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
 extern bool jsvIsFlatString(const JsVar *v);
 extern bool jsvIsNativeString(const JsVar *v);
+extern bool jsvIsFlashString(const JsVar *v);
 extern bool jsvIsNumeric(const JsVar *v);
 extern bool jsvIsFunction(const JsVar *v);
 extern bool jsvIsFunctionReturn(const JsVar *v); ///< Is this a function with an implicit 'return' at the start?

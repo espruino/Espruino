@@ -94,13 +94,13 @@ static JsVar *match(char *regexp, JsVar *str, size_t startIndex, bool ignoreCase
   JsvStringIterator txtIt, txtIt2;
   jsvStringIteratorNew(&txtIt, str, startIndex);
   /* must look even if string is empty */
-  txtIt2 = jsvStringIteratorClone(&txtIt);
+  jsvStringIteratorClone(&txtIt2, &txtIt);
   rmatch = matchhere(regexp, &txtIt2, info);
   jsvStringIteratorFree(&txtIt2);
   jsvStringIteratorNext(&txtIt);
   while (!rmatch && jsvStringIteratorHasChar(&txtIt)) {
     info.startIndex++;
-    txtIt2 = jsvStringIteratorClone(&txtIt);
+    jsvStringIteratorClone(&txtIt2, &txtIt);
     rmatch = matchhere(regexp, &txtIt2, info);
     jsvStringIteratorFree(&txtIt2);
     jsvStringIteratorNext(&txtIt);
@@ -225,7 +225,7 @@ static JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) 
     char *regexpAfterStar = regexp+charLength+1;
     JsvStringIterator txtIt2;
     // Try and match everything after right now
-    txtIt2 = jsvStringIteratorClone(txtIt);
+    jsvStringIteratorClone(&txtIt2, txtIt);
     JsVar *lastrmatch = matchhere(regexpAfterStar, &txtIt2, info);
     jsvStringIteratorFree(&txtIt2);
     // Otherwise try and match more than one
@@ -234,7 +234,7 @@ static JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) 
       jsvStringIteratorNext(txtIt);
       charMatched = matchcharacter(regexp, txtIt, &charLength, &info);
       // See if we can match after the character...
-      txtIt2 = jsvStringIteratorClone(txtIt);
+      jsvStringIteratorClone(&txtIt2, txtIt);
       JsVar *rmatch = matchhere(regexpAfterStar, &txtIt2, info);
       jsvStringIteratorFree(&txtIt2);
       // can't match with this - use the last one

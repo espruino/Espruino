@@ -505,19 +505,10 @@ JsVar *jsfReadFile(JsfFileName name, int offset, int length) {
   // now increment address by offset
   addr += offset;
 
-#ifdef LINUX
-  // linux fakes flash with a file, so we can't just return a pointer to it!
-  uint32_t alignedSize = jsfAlignAddress(length);
-  char *d = (char*)malloc(alignedSize);
-  jshFlashRead(d, addr, alignedSize);
-  JsVar *v = jsvNewStringOfLength(length, d);
-  free(d);
-  return v;
-#else
   size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
 #ifdef SPIFLASH_BASE // if using SPI flash it can't be memory-mapped
   if (!mappedAddr) {
-    JsVar *v = jsvNewStringOfLength(length, NULL);
+    /*JsVar *v = jsvNewStringOfLength(length, NULL);
     if (v) {
       JsvStringIterator it;
       jsvStringIteratorNew(&it, v, 0);
@@ -531,10 +522,20 @@ JsVar *jsfReadFile(JsfFileName name, int offset, int length) {
       }
       jsvStringIteratorFree(&it);
     }
-    return v;
+    return v;*/
+    return jsvNewFlashString((char*)addr, length);
   }
 #endif
-  return jsvNewNativeString((char*)mappedAddr, len);
+#ifdef LINUX
+  // linux fakes flash with a file, so we can't just return a pointer to it!
+  uint32_t alignedSize = jsfAlignAddress(length);
+  char *d = (char*)malloc(alignedSize);
+  jshFlashRead(d, addr, alignedSize);
+  JsVar *v = jsvNewStringOfLength(length, d);
+  free(d);
+  return v;
+#else
+  return jsvNewNativeString((char*)mappedAddr, length);
 #endif
 }
 
