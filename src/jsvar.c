@@ -3651,7 +3651,11 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
     if (jsvIsFlatString(var)) {
       blocks += jsvGetFlatStringBlocks(var);
     }
-    jsiConsolePrintf("%sString [%d blocks] %q", jsvIsFlatString(var)?"Flat":(jsvIsNativeString(var)?"Native":""), blocks, var);
+    const char *name = "";
+    if (jsvIsFlatString(var)) name="Flat";
+    if (jsvIsNativeString(var)) name="Native";
+    if (jsvIsFlashString(var)) name="Flash";
+    jsiConsolePrintf("%sString [%d blocks] %q", name, blocks, var);
   } else {
     jsiConsolePrintf("Unknown %d", var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
   }
