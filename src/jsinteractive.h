@@ -21,7 +21,8 @@
 #define JSI_TIMERS_NAME "timers"
 #define JSI_DEBUG_HISTORY_NAME "dbghist"
 #define JSI_HISTORY_NAME "history"
-#define JSI_INIT_CODE_NAME "init"
+#define JSI_INIT_CODE_NAME "init" ///< used to temporarily store initialisation JS code for state in save()
+#define JSI_LOAD_CODE_NAME "load" ///< used to temporarily store the name of a file to load from Storage when load(xyz) is used
 #define JSI_JSFLAGS_NAME "flags"
 #define JSI_ONINIT_NAME "onInit"
 

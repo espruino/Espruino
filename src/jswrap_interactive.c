@@ -144,7 +144,10 @@ Note: 'Internal' functions are currently not handled correctly. You will need to
 /*JSON{
   "type" : "function",
   "name" : "load",
-  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_LOAD;"
+  "generate" : "jswrap_interface_load",
+  "params" : [
+    ["filename","JsVar","optional: The name of a text JS file to load from Storage after reset"]
+  ]
 }
 Restart and load the program out of flash - this has an effect similar to
 completely rebooting Espruino (power off/power on), but without actually
@@ -159,7 +162,16 @@ If you want code to be executed right after loading (for instance to initialise
 devices connected to Espruino), add an `init` event handler to `E` with
 `E.on('init', function() { ... your_code ... });`. This will then be automatically
 executed by Espruino every time it starts.
+
+**If you specify a filename in the argument then that file will be loaded
+from Storage after reset** in much the same way as calling `reset()` then `eval(require("Storage").read(filename))`
  */
+void jswrap_interface_load(JsVar *storageName) {
+  jsiStatus |= JSIS_TODO_FLASH_LOAD;
+  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot,JSI_LOAD_CODE_NAME,storageName);
+}
+
+
 /*JSON{
   "type" : "function",
   "name" : "save",

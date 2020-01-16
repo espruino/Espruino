@@ -2157,16 +2157,32 @@ void jsiIdle() {
       jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_SAVE;
     }
     if ((s&JSIS_TODO_FLASH_LOAD) == JSIS_TODO_FLASH_LOAD) {
-      jsiSoftKill();
-      jspSoftKill();
-      jsvSoftKill();
-      jsvKill();
-      jshReset();
-      jsvInit(0);
-      jsfLoadStateFromFlash();
-      jsvSoftInit();
-      jspSoftInit();
-      jsiSoftInit(false /* not been reset */);
+      JsVar *filenameVar = jsvObjectGetChild(execInfo.hiddenRoot,JSI_LOAD_CODE_NAME,0);
+      if (filenameVar) {
+        JsfFileName filename = jsfNameFromVarAndUnLock(filenameVar);
+        // no need to jsvObjectRemoveChild as we're shutting down anyway!
+        // go through steps as if we're resetting
+        jsiKill();
+        jsvKill();
+        jshReset();
+        jsvInit(0);
+        jsiSemiInit(false); // don't autoload code
+        // load the code we specified
+        JsVar *code = jsfReadFile(filename,0,0);
+        if (code)
+          jsvUnLock2(jspEvaluateVar(code,0,0), code);
+      } else {
+        jsiSoftKill();
+        jspSoftKill();
+        jsvSoftKill();
+        jsvKill();
+        jshReset();
+        jsvInit(0);
+        jsfLoadStateFromFlash();
+        jsvSoftInit();
+        jspSoftInit();
+        jsiSoftInit(false /* not been reset */);
+      }
       jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_LOAD;
     }
     jsiSetBusy(BUSY_INTERACTIVE, false);
