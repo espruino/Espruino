@@ -66,6 +66,7 @@
             Add Graphics.reset, and ensure it (and g.clear(1)) unreference custom fonts
             Iterator cloners now take a reference to the iterator rather than returning it
             Flash Strings: On Bangle.js allow JS code (and other Strings) to be accessed without loading them completely from Flash
+            Added E.CRC32 for easy testing of data validity
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
