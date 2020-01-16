@@ -59,19 +59,20 @@ bool isIDString(const char *s) {
 }
 
 /** escape a character - if it is required. This may return a reference to a static array,
-so you can't store the value it returns in a variable and call it again. */
-const char *escapeCharacter(char ch) {
+so you can't store the value it returns in a variable and call it again.
+If jsonStyle=true, only string escapes supported by JSON are used */
+const char *escapeCharacter(char ch, bool jsonStyle) {
   if (ch=='\b') return "\\b"; // 8
   if (ch=='\t') return "\\t"; // 9
   if (ch=='\n') return "\\n"; // A
-  if (ch=='\v') return "\\v"; // B
+  if (ch=='\v' && !jsonStyle) return "\\v"; // B
   if (ch=='\f') return "\\f"; // C
   if (ch=='\r') return "\\r"; // D
   if (ch=='\\') return "\\\\";
   if (ch=='"') return "\\\"";
-  static char buf[5];
+  static char buf[7];
   unsigned char uch = (unsigned char)ch;
-  if (uch<8) {
+  if (uch<8 && !jsonStyle) {
     // encode less than 8 as \#
     buf[0]='\\';
     buf[1] = (char)('0'+uch);
@@ -81,12 +82,19 @@ const char *escapeCharacter(char ch) {
     /** just encode as hex - it's more understandable
      * and doesn't have the issue of "\16"+"1" != "\161" */
     buf[0]='\\';
-    buf[1]='x';
+    int o=2;
+    if (jsonStyle) {
+      buf[1]='u';
+      buf[o++] = '0';
+      buf[o++] = '0';
+    } else {
+      buf[1]='x';
+    }
     int n = (uch>>4)&15;
-    buf[2] = (char)((n<10)?('0'+n):('A'+n-10));
+    buf[o++] = (char)((n<10)?('0'+n):('A'+n-10));
     n=uch&15;
-    buf[3] = (char)((n<10)?('0'+n):('A'+n-10));
-    buf[4] = 0;
+    buf[o++] = (char)((n<10)?('0'+n):('A'+n-10));
+    buf[o++] = 0;
     return buf;
   }
   buf[1] = 0;
@@ -698,6 +706,7 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
  * * `%c` = char
  * * `%v` = JsVar * (doesn't have to be a string - it'll be converted)
  * * `%q` = JsVar * (in quotes, and escaped)
+ * * `%Q` = JsVar * (in quotes, and escaped the JSON subset of escape chars)
  * * `%j` = Variable printed as JSON
  * * `%t` = Type of variable
  * * `%p` = Pin
@@ -758,8 +767,10 @@ void vcbprintf(
       case 's': user_callback(va_arg(argp, char *), user_data); break;
       case 'c': buf[0]=(char)va_arg(argp, int/*char*/);buf[1]=0; user_callback(buf, user_data); break;
       case 'q':
+      case 'Q':
       case 'v': {
-        bool quoted = fmtChar=='q';
+        bool quoted = fmtChar!='v';
+        bool isJSONStyle = fmtChar=='Q';
         if (quoted) user_callback("\"",user_data);
         JsVar *v = jsvAsString(va_arg(argp, JsVar*));
         buf[1] = 0;
@@ -770,7 +781,7 @@ void vcbprintf(
           while (jsvStringIteratorHasChar(&it)) {
             buf[0] = jsvStringIteratorGetChar(&it);
             if (quoted) {
-              user_callback(escapeCharacter(buf[0]), user_data);
+              user_callback(escapeCharacter(buf[0], isJSONStyle), user_data);
             } else {
               user_callback(buf,user_data);
             }

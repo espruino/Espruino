@@ -68,6 +68,7 @@
             Flash Strings: On Bangle.js allow JS code (and other Strings) to be accessed without loading them completely from Flash
             Added E.CRC32 for easy testing of data validity
             Add `E.on('kill'` event for executing code before load/reset/save/etc
+            JSON.stringify now escapes using the less efficient JSON subset of escape characters (fix #1737)
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

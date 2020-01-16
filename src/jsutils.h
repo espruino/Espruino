@@ -371,8 +371,9 @@ bool isAlpha(char ch);
 bool isIDString(const char *s);
 
 /** escape a character - if it is required. This may return a reference to a static array,
-so you can't store the value it returns in a variable and call it again. */
-const char *escapeCharacter(char ch);
+so you can't store the value it returns in a variable and call it again.
+If jsonStyle=true, only string escapes supported by JSON are used */
+const char *escapeCharacter(char ch, bool jsonStyle);
 /** Parse radix prefixes, or return 0 */
 int getRadix(const char **s, int forceRadix, bool *hasError);
 /// Convert a character to the hexadecimal equivalent (or -1)
@@ -474,21 +475,24 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size);
 
 
 typedef void (*vcbprintf_callback)(const char *str, void *user_data);
-/** Espruino-special printf with a callback
- * Supported are:
- *   %d = int
- *   %0#d = int padded to length # with 0s
- *   %x = int as hex
- *   %L = JsVarInt
- *   %Lx = JsVarInt as hex
- *   %f = JsVarFloat
- *   %s = string (char *)
- *   %c = char
- *   %v = JsVar * (doesn't have to be a string - it'll be converted)
- *   %q = JsVar * (in quotes, and escaped)
- *   %j = Variable printed as JSON
- *   %t = Type of variable
- *   %p = Pin
+/**
+ * Espruino-special printf with a callback.
+ *
+ * The supported format specifiers are:
+ * * `%d` = int
+ * * `%0#d` or `%0#x` = int padded to length # with 0s
+ * * `%x` = int as hex
+ * * `%L` = JsVarInt
+ * * `%Lx`= JsVarInt as hex
+ * * `%f` = JsVarFloat
+ * * `%s` = string (char *)
+ * * `%c` = char
+ * * `%v` = JsVar * (doesn't have to be a string - it'll be converted)
+ * * `%q` = JsVar * (in quotes, and escaped)
+ * * `%Q` = JsVar * (in quotes, and escaped the JSON subset of escape chars)
+ * * `%j` = Variable printed as JSON
+ * * `%t` = Type of variable
+ * * `%p` = Pin
  *
  * Anything else will assert
  */

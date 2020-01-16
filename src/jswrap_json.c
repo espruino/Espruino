@@ -55,7 +55,7 @@ Convert the given object into a JSON string which can subsequently be parsed wit
  */
 JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space) {
   NOT_USED(replacer);
-  JSONFlags flags = JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY;
+  JSONFlags flags = JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY|JSON_UNICODE_ESCAPE;
   JsVar *result = jsvNewFromEmptyString();
   if (result) {// could be out of memory
     char whitespace[11] = "";
@@ -244,19 +244,6 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
   jsvUnLock(codeVar);
 }
 
-void jsfGetEscapedString(JsVar *var, vcbprintf_callback user_callback, void *user_data) {
-  user_callback("\"",user_data);
-  JsvStringIterator it;
-  jsvStringIteratorNew(&it, var, 0);
-  while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
-    user_callback(escapeCharacter(ch), user_data);
-    jsvStringIteratorNext(&it);
-  }
-  jsvStringIteratorFree(&it);
-  user_callback("\"",user_data);
-}
-
 bool jsonNeedsNewLine(JsVar *v) {
   return !(jsvIsUndefined(v) || jsvIsNull(v) || jsvIsNumeric(v));
   // we're skipping strings here because they're usually long and want printing on multiple lines
@@ -304,7 +291,7 @@ static bool jsfGetJSONForObjectItWithCallback(JsvObjectIterator *it, JSONFlags f
           if (isIDString(buf)) addQuotes=false;
         }
       }
-      cbprintf(user_callback, user_data, addQuotes?"%q%s":"%v%s", index, (flags&JSON_PRETTY)?": ":":");
+      cbprintf(user_callback, user_data, addQuotes?((flags&JSON_UNICODE_ESCAPE)?"%Q%s":"%q%s"):"%v%s", index, (flags&JSON_PRETTY)?": ":":");
       if (first)
         first = false;
       jsfGetJSONWithCallback(item, nflags, whitespace, user_callback, user_data);
@@ -480,7 +467,7 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace,
         cbprintf(user_callback, user_data, "%q%s%q", var1, JSON_LIMIT_TEXT, var2);
         jsvUnLock2(var1, var2);
       } else {
-        cbprintf(user_callback, user_data, "%q", var);
+        cbprintf(user_callback, user_data, (flags&JSON_UNICODE_ESCAPE)?"%Q":"%q", var);
       }
     } else {
       cbprintf(user_callback, user_data, "%v", var);
