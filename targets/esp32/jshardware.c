@@ -164,6 +164,9 @@ void jshInit() {
   jshPinDefaultPullup();
 } // End of jshInit
 
+void jshKill() {
+}
+
 /**
  * Reset the Espruino environment.
  */

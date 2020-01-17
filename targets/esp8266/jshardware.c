@@ -138,6 +138,9 @@ void jshInit() {
   os_printf("< jshInit\n");
 } // End of jshInit
 
+void jshKill() {
+}
+
 /**
  * Handle a GPIO interrupt.
  * We have arrived in this callback function because the state of a GPIO pin has changed
