@@ -2158,6 +2158,7 @@ void jsiIdle() {
     }
     if ((s&JSIS_TODO_FLASH_LOAD) == JSIS_TODO_FLASH_LOAD) {
       JsVar *filenameVar = jsvObjectGetChild(execInfo.hiddenRoot,JSI_LOAD_CODE_NAME,0);
+      // TODO: why can't we follow the same steps here for both?
       if (filenameVar) {
         JsfFileName filename = jsfNameFromVarAndUnLock(filenameVar);
         // no need to jsvObjectRemoveChild as we're shutting down anyway!
