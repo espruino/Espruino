@@ -2045,6 +2045,16 @@ Widgets should redraw themselves when something changes - you'll only
 need to call drawWidgets if you decide to clear the entire screen
 with `g.clear()`.
 */
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "showLauncher",
+    "generate_js" : "libs/js/banglejs/Bangle_showLauncher.min.js",
+    "ifdef" : "BANGLEJS"
+}
+Load the Bangle.js app launcher, which will allow the user
+to select an application to launch.
+*/
 
 /*JSON{
     "type" : "staticmethod",

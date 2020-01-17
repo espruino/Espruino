@@ -38,5 +38,6 @@ node ../../../EspruinoDocs/bin/minify.js banglejs/LED1.js banglejs/LED1.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/LED2.js banglejs/LED2.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_drawWidgets.js banglejs/Bangle_drawWidgets.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_loadWidgets.js banglejs/Bangle_loadWidgets.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_showLauncher.js banglejs/Bangle_showLauncher.min.js
 
 
