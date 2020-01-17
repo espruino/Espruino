@@ -176,9 +176,9 @@ void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, unsigned shor
   for (y=0;y<6;y++) {
     int line = READ_FLASH_UINT16(&LCD_FONT_4X6[idx + y]) >> (cidx*3);
     int ly = y*size + y1;
-    if (line&4) graphicsFillRect(gfx, x1+0*size, ly, x1+s+0*size, ly+s, (line&4) ? gfx->data.fgColor : gfx->data.bgColor);
-    if (line&2) graphicsFillRect(gfx, x1+1*size, ly, x1+s+1*size, ly+s, (line&2) ? gfx->data.fgColor : gfx->data.bgColor);
-    if (line&1) graphicsFillRect(gfx, x1+2*size, ly, x1+s+2*size, ly+s, (line&1) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || line&4) graphicsFillRect(gfx, x1+0*size, ly, x1+s+0*size, ly+s, (line&4) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || line&2) graphicsFillRect(gfx, x1+1*size, ly, x1+s+1*size, ly+s, (line&2) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || line&1) graphicsFillRect(gfx, x1+2*size, ly, x1+s+2*size, ly+s, (line&1) ? gfx->data.fgColor : gfx->data.bgColor);
   }
 }
 
