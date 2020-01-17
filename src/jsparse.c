@@ -1998,7 +1998,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
         else if (op==LEX_RSHIFTUNSIGNEDEQUAL) op=LEX_RSHIFTUNSIGNED;
         if (op=='+' && jsvIsName(lhs)) {
           JsVar *currentValue = jsvSkipName(lhs);
-          if (jsvIsString(currentValue) && !jsvIsFlatString(currentValue) && jsvGetRefs(currentValue)==1 && rhs!=currentValue) {
+          if (jsvIsBasicString(currentValue) && jsvGetRefs(currentValue)==1 && rhs!=currentValue) {
             /* A special case for string += where this is the only use of the string
              * and we're not appending to ourselves. In this case we can do a
              * simple append (rather than clone + append)*/
