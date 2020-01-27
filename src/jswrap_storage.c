@@ -523,10 +523,13 @@ JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
   "params" : [
     ["len","int","How many bytes to read"]
   ],
-  "return" : ["JsVar","A String"],
+  "return" : ["JsVar","A String, or undefined "],
   "return_object" : "StorageFile"
 }
-Read data from the file
+Read 'len' bytes of data from the file, and return a String containing those bytes.
+
+If the end of the file is reached, the String may be smaller than the amount of bytes
+requested, or if the file is already at the end, `undefined` is returned.
 */
 JsVar *jswrap_storagefile_read(JsVar *f, int len) {
   if (len<0) len=0;
