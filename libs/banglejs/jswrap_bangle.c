@@ -74,13 +74,15 @@ The Bangle.js's vibration motor.
   "params" : [["xyz","JsVar",""]],
   "ifdef" : "BANGLEJS"
 }
-Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter
+Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter.
 
 * `x` is X axis (left-right) in `g`
 * `y` is Y axis (up-down) in `g`
 * `z` is Z axis (in-out) in `g`
 * `diff` is difference between this and the last reading in `g`
 * `mag` is the magnitude of the acceleration in `g`
+
+You can also retrieve the most recent reading with `Bangle.getAccel()`.
  */
 /*JSON{
   "type" : "event",
@@ -124,6 +126,8 @@ Magnetometer/Compass data available with `{x,y,z,dx,dy,dz,heading}` object as a 
 
 To get this event you must turn the compass on
 with `Bangle.setCompassPower(1)`.
+
+You can also retrieve the most recent reading with `Bangle.getCompass()`.
  */
 /*JSON{
   "type" : "event",
@@ -1130,6 +1134,76 @@ void jswrap_banglejs_setCompassPower(bool isOn) {
   magmax.z = 0;
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "getCompass",
+    "generate" : "jswrap_banglejs_getCompass",
+    "return" : ["JsVar","An object containing magnetometer readings (as below)"],
+    "ifdef" : "BANGLEJS"
+}
+Get the most recent Magnetometer/Compass reading. Data is in the same format as the `Bangle.on('mag',` event.
+
+Returns an `{x,y,z,dx,dy,dz,heading}` object
+
+* `x/y/z` raw x,y,z magnetometer readings
+* `dx/dy/dz` readings based on calibration since magnetometer turned on
+* `heading` in degrees based on calibrated readings (will be NaN if magnetometer hasn't been rotated around 360 degrees)
+
+To get this event you must turn the compass on
+with `Bangle.setCompassPower(1)`.*/
+JsVar *jswrap_banglejs_getCompass() {
+  JsVar *o = jsvNewObject();
+  if (o) {
+    jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger(mag.x));
+    jsvObjectSetChildAndUnLock(o, "y", jsvNewFromInteger(mag.y));
+    jsvObjectSetChildAndUnLock(o, "z", jsvNewFromInteger(mag.z));
+    int dx = mag.x - ((magmin.x+magmax.x)/2);
+    int dy = mag.y - ((magmin.y+magmax.y)/2);
+    int dz = mag.z - ((magmin.z+magmax.z)/2);
+    jsvObjectSetChildAndUnLock(o, "dx", jsvNewFromInteger(dx));
+    jsvObjectSetChildAndUnLock(o, "dy", jsvNewFromInteger(dy));
+    jsvObjectSetChildAndUnLock(o, "dz", jsvNewFromInteger(dz));
+    int cx = magmax.x-magmin.x;
+    int cy = magmax.y-magmin.y;
+    int c = cx*cx+cy*cy;
+    double h = NAN;
+    if (c>3000) { // only give a heading if we think we have valid data (eg enough magnetic field difference in min/max
+      h = jswrap_math_atan2(dx,dy)*180/PI;
+      if (h<0) h+=360;
+    }
+    jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(h));
+  }
+  return o;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "getAccel",
+    "generate" : "jswrap_banglejs_getAccel",
+    "return" : ["JsVar","An object containing accelerometer readings (as below)"],
+    "ifdef" : "BANGLEJS"
+}
+Get the most recent accelerometer reading. Data is in the same format as the `Bangle.on('accel',` event.
+
+* `x` is X axis (left-right) in `g`
+* `y` is Y axis (up-down) in `g`
+* `z` is Z axis (in-out) in `g`
+* `diff` is difference between this and the last reading in `g`
+* `mag` is the magnitude of the acceleration in `g`
+*/
+JsVar *jswrap_banglejs_getAccel() {
+  JsVar *o = jsvNewObject();
+  if (o) {
+    jsvObjectSetChildAndUnLock(o, "x", jsvNewFromFloat(acc.x/8192.0));
+    jsvObjectSetChildAndUnLock(o, "y", jsvNewFromFloat(acc.y/8192.0));
+    jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(acc.z/8192.0));
+    jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(accMagSquared)/8192.0));
+    jsvObjectSetChildAndUnLock(o, "diff", jsvNewFromFloat(sqrt(accdiff)/8192.0));
+  }
+  return o;
+}
 
 /*JSON{
   "type" : "init",
@@ -1358,13 +1432,8 @@ bool jswrap_banglejs_idle() {
   if (bangleTasks & JSBT_LCD_ON) jswrap_banglejs_setLCDPower(1);
   if (bangleTasks & JSBT_ACCEL_DATA) {
     if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"accel")) {
-      JsVar *o = jsvNewObject();
+      JsVar *o = jswrap_banglejs_getAccel();
       if (o) {
-        jsvObjectSetChildAndUnLock(o, "x", jsvNewFromFloat(acc.x/8192.0));
-        jsvObjectSetChildAndUnLock(o, "y", jsvNewFromFloat(acc.y/8192.0));
-        jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(acc.z/8192.0));
-        jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(accMagSquared)/8192.0));
-        jsvObjectSetChildAndUnLock(o, "diff", jsvNewFromFloat(sqrt(accdiff)/8192.0));
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"accel", &o, 1);
         jsvUnLock(o);
       }
@@ -1424,26 +1493,8 @@ bool jswrap_banglejs_idle() {
   }
   if (bangle && (bangleTasks & JSBT_MAG_DATA)) {
     if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"mag")) {
-      JsVar *o = jsvNewObject();
+      JsVar *o = jswrap_banglejs_getCompass();
       if (o) {
-        jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger(mag.x));
-        jsvObjectSetChildAndUnLock(o, "y", jsvNewFromInteger(mag.y));
-        jsvObjectSetChildAndUnLock(o, "z", jsvNewFromInteger(mag.z));
-        int dx = mag.x - ((magmin.x+magmax.x)/2);
-        int dy = mag.y - ((magmin.y+magmax.y)/2);
-        int dz = mag.z - ((magmin.z+magmax.z)/2);
-        jsvObjectSetChildAndUnLock(o, "dx", jsvNewFromInteger(dx));
-        jsvObjectSetChildAndUnLock(o, "dy", jsvNewFromInteger(dy));
-        jsvObjectSetChildAndUnLock(o, "dz", jsvNewFromInteger(dz));
-        int cx = magmax.x-magmin.x;
-        int cy = magmax.y-magmin.y;
-        int c = cx*cx+cy*cy;
-        double h = NAN;
-        if (c>3000) { // only give a heading if we think we have valid data (eg enough magnetic field difference in min/max
-          h = jswrap_math_atan2(dx,dy)*180/PI;
-          if (h<0) h+=360;
-        }
-        jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(h));
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"mag", &o, 1);
         jsvUnLock(o);
       }
@@ -1718,6 +1769,7 @@ int jswrap_banglejs_accelRd(JsVarInt reg) {
   return 0;
 #endif
 }
+
 
 /*JSON{
     "type" : "staticmethod",

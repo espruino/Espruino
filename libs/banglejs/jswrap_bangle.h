@@ -29,6 +29,8 @@ JsVarInt jswrap_banglejs_getBattery();
 void jswrap_banglejs_setHRMPower(bool isOn);
 void jswrap_banglejs_setGPSPower(bool isOn);
 void jswrap_banglejs_setCompassPower(bool isOn);
+JsVar *jswrap_banglejs_getCompass();
+JsVar *jswrap_banglejs_getAccel();
 
 JsVar *jswrap_banglejs_dbg();
 void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data);
