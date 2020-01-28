@@ -137,7 +137,7 @@ JsVar *jswrap_eval(JsVar *v) {
 Convert a string representing a number into an integer
  */
 JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
-  int radix = 0/*don't force radix*/;
+  int radix = 0;
   if (jsvIsNumeric(radixVar))
     radix = (int)jsvGetInteger(radixVar);
 
@@ -146,12 +146,19 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
 
   // otherwise convert to string
   char buffer[JS_NUMBER_BUFFER_SIZE];
+  char *bufferStart = buffer;
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
   bool hasError = false;
-  if (!radix && buffer[0]=='0' && isNumeric(buffer[1]))
-    radix = 10; // DON'T assume a number is octal if it starts with 0
+  if (((!radix) || (radix==16)) &&
+      buffer[0]=='0' && (buffer[1]=='x' || buffer[1]=='X')) { // special-case for '0x' for parseInt
+    radix = 16;
+    bufferStart += 2;
+  }
+  if (!radix) {
+    radix = 10; // default to radix 10
+  }
   const char *endOfInteger;
-  long long i = stringToIntWithRadix(buffer, radix, &hasError, &endOfInteger);
+  long long i = stringToIntWithRadix(bufferStart, radix, &hasError, &endOfInteger);
   if (hasError) return jsvNewFromFloat(NAN);
   // If the integer went right to the end of our buffer then we
   // probably had to miss some stuff off the end of the string

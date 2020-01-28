@@ -76,6 +76,7 @@
             Bangle.js: Add Bangle.showLauncher
             Add append optimisation for string '+', and don't append to flat/native/etc strings (fix #1746)
             Add Bangle.getCompass and Bangle.getAccel to get the latest compass/accelerometer readings without a callback
+            Fix `parseInt("0b",16)` as well as some other non-compliant behaviour (fix #1722)
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
