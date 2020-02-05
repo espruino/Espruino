@@ -156,7 +156,7 @@ GPS data, as an object. Contains:
   "alt": number,      // altitude in M
   "speed": number,    // Speed in kph
   "course": number,   // Course in degrees
-  "time": Date,       // Current Time
+  "time": Date,       // Current Time (or undefined if not known)
   "satellites": 7,    // Number of satellites
   "fix": 1            // NMEA Fix state - 0 is no fix
 }

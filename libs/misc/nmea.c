@@ -74,9 +74,15 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
     gpsFix->course = nmea_decode_float(nmea, nextComma);
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // date
-    gpsFix->day = nmea_decode_2(&nmea[0]);
-    gpsFix->month = nmea_decode_2(&nmea[2]);
-    gpsFix->year = nmea_decode_2(&nmea[4]);
+    if (nmea[0]==',') {
+      gpsFix->day = 0;
+      gpsFix->month = 0;
+      gpsFix->year = 0;
+    } else {
+      gpsFix->day = nmea_decode_2(&nmea[0]);
+      gpsFix->month = nmea_decode_2(&nmea[2]);
+      gpsFix->year = nmea_decode_2(&nmea[4]);
+    }
     // ....
   }
   if (nmea[3]=='G' && nmea[4]=='G' && nmea[5]=='A') {
@@ -127,18 +133,22 @@ JsVar *nmea_to_jsVar(NMEAFixInfo *gpsFix) {
     jsvObjectSetChildAndUnLock(o, "alt", jsvNewFromFloat(gpsFix->alt));
     jsvObjectSetChildAndUnLock(o, "speed", jsvNewFromFloat(gpsFix->speed));
     jsvObjectSetChildAndUnLock(o, "course", jsvNewFromFloat(gpsFix->course));
-    CalendarDate date;
-    date.day = gpsFix->day;
-    date.month = gpsFix->month-1; // 1 based to 0 based
-    date.year = 2000+gpsFix->year;
-    TimeInDay td;
-    td.daysSinceEpoch = fromCalenderDate(&date);
-    td.hour = gpsFix->hour;
-    td.min = gpsFix->min;
-    td.sec = gpsFix->sec;
-    td.ms = gpsFix->ms;
-    td.zone = 0; // jsdGetTimeZone(); - no! GPS time is always in UTC :)
-    jsvObjectSetChildAndUnLock(o, "time", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
+    if (gpsFix->day) {
+      CalendarDate date;
+      date.day = gpsFix->day;
+      date.month = gpsFix->month-1; // 1 based to 0 based
+      date.year = 2000+gpsFix->year;
+      TimeInDay td;
+      td.daysSinceEpoch = fromCalenderDate(&date);
+      td.hour = gpsFix->hour;
+      td.min = gpsFix->min;
+      td.sec = gpsFix->sec;
+      td.ms = gpsFix->ms;
+      td.zone = 0; // jsdGetTimeZone(); - no! GPS time is always in UTC :)
+      jsvObjectSetChildAndUnLock(o, "time", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
+    } else {
+      jsvObjectSetChildAndUnLock(o, "time", 0);
+    }
     jsvObjectSetChildAndUnLock(o, "satellites", jsvNewFromInteger(gpsFix->satellites));
     jsvObjectSetChildAndUnLock(o, "fix", jsvNewFromInteger(gpsFix->quality));
   }
