@@ -666,7 +666,7 @@ void lcd_clear() {
 // No LCD
 void lcd_init() {}
 void lcd_kill() {}
-void lcd_clear(); // clear screen
+void lcd_clear() {}; // clear screen
 void lcd_print(char *ch) {}
 void lcd_println(char *ch) {}
 #endif
