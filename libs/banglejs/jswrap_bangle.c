@@ -300,6 +300,8 @@ volatile uint16_t flipTimer; // in ms
 volatile uint16_t btn1Timer; // in ms
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
 int lcdPowerTimeout; // in ms
+/// If a button was pressed to wake the LCD up, which one was it?
+char lcdWakeButton;
 /// Is the LCD on?
 bool lcdPowerOn;
 /// LCD Brightness - 255=full
@@ -592,14 +594,21 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
     if (button<=3) {
       // if a 'hard' button, turn LCD on
       flipTimer = 0;
-      if (!lcdPowerOn) {
+      if (!lcdPowerOn && state) {
         bangleTasks |= JSBT_LCD_ON;
+        lcdWakeButton = button;
         return; // don't push button event if the LCD is off
+      }
+      if (button == lcdWakeButton && !state) {
+        lcdWakeButton = 0;
+        return;
       }
     } else {
       // on touchscreen, keep LCD on if it was in previously
       if (lcdPowerOn)
         flipTimer = 0;
+      else // else don't push the event
+        return;
     }
   }
   // Add to the event queue for normal processing for watches
@@ -1090,6 +1099,7 @@ void jswrap_banglejs_setGPSPower(bool isOn) {
     jshUSARTSetup(GPS_UART, &inf);
     jswrap_banglejs_ioWr(IOEXP_GPS, 1); // GPS on
     nmeaCount = 0;
+    memset(&gpsFix,0,sizeof(gpsFix));
   } else {
     jswrap_banglejs_ioWr(IOEXP_GPS, 0); // GPS off
     // setting pins to pullup will cause jshardware.c to disable the UART, saving power
@@ -1248,6 +1258,7 @@ void jswrap_banglejs_init() {
   lcdPowerOn = true;
   lcdBrightness = 255;
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
+  lcdWakeButton = 0;
   // Create backing graphics for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
   if (!graphics) return; // low memory
