@@ -16,6 +16,7 @@
 
   RTC0 not usable (SoftDevice)
   RTC1 used by app_timer.c
+  RTC2 (NRF52 only) free
   TIMER0 (32 bit) not usable (softdevice)
   TIMER1 (16 bit on nRF51, 32 bit on nRF52) used by jshardware util timer
   TIMER2 (16 bit) free
