@@ -700,9 +700,9 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
   if (isOn) { // wake
     lcdST7789_cmd(0x11, 0, NULL); // SLPOUT
     jshDelayMicroseconds(20);
-    lcdST7789_cmd(0x29, 0, NULL);
+    lcdST7789_cmd(0x29, 0, NULL); // DISPON
   } else { // sleep
-    lcdST7789_cmd(0x28, 0, NULL);
+    lcdST7789_cmd(0x28, 0, NULL); // DISPOFF
     jshDelayMicroseconds(20);
     lcdST7789_cmd(0x10, 0, NULL); // SLPIN
   }
@@ -1314,7 +1314,7 @@ void jswrap_banglejs_init() {
   jsvUnLock(graphics);
 
 #ifndef EMSCRIPTEN
-  // accelerometer init
+  // KX023-1025 accelerometer init
   jswrap_banglejs_accelWr(0x18,0x0a); // CNTL1 Off (top bit)
   jswrap_banglejs_accelWr(0x19,0x80); // CNTL2 Software reset
   jshDelayMicroseconds(2000);
@@ -1963,6 +1963,8 @@ void jswrap_banglejs_off() {
   jswrap_banglejs_ioWr(IOEXP_GPS, 0); // GPS off
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
   jswrap_banglejs_setLCDPower(0);
+  jswrap_banglejs_accelWr(0x18,0x0a); // accelerometer off
+  jswrap_banglejs_compassWr(0x31,0); // compass off
 
   nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
   nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);

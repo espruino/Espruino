@@ -108,6 +108,14 @@ bool dfu_enter_check(void) {
 #else
       lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                      >\r");
 #endif
+#ifdef BANGLEJS
+      int count = 23;
+      while (get_btn1_state() && --count) {
+        // the screen update takes long enough that
+        // we don't need a delay
+        lcd_print("=");
+      }
+#else
       int count = 3000;
       while (get_btn1_state() && count) {
         nrf_delay_us(999);
@@ -115,17 +123,21 @@ bool dfu_enter_check(void) {
         if ((count&127)==0) lcd_print("=");
         count--;
       }
+#endif
       if (!count) {
         dfu_start = false;
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
         if (jshPinGetValue(BTN2_PININDEX)) {
           lcd_kill();
           jshPinOutput(VIBRATE_PIN,1); // vibrate on
-          while (get_btn1_state()) {};
+          while (get_btn1_state() || get_btn2_state()) {};
           jshPinSetValue(VIBRATE_PIN,0); // vibrate off
           set_led_state(0,0);
+          nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
+          nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
           nrf_gpio_cfg_sense_input(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
           nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
+          NRF_POWER->TASKS_LOWPWR = 1;
           NRF_POWER->SYSTEMOFF = 1;
           while (true) {};
           //NVIC_SystemReset(); // just in case!

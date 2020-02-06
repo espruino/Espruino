@@ -81,6 +81,9 @@
             Bangle.js: Don't send 'up' event for a button that was used to wake the screen
             Bangle.js: GPS event.time set to undefined if GPS time is not initialised
             Fix regression that removed exception reporting in console
+            Bangle.js: speed up bootloader progress bar
+            Bangle.js: fix problems turning off via bootloader sometimes
+            Bangle.js: improve power consumption when off, now ~0.08mA (fix #1727)
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

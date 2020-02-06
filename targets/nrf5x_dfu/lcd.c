@@ -191,20 +191,25 @@ void i2c_wr(uint8_t data) {
   scl1();
   scl0();
 }
-void ioexpander_write(int mask, bool value) {
-  static uint8_t state = 0;
-  if (value) state|=mask;
-  else state&=~mask;
+// I2C write. Address is 8 bit (not 7 as on normal Espruino functions) (ignore value if <0)
+void i2c_wrreg(int addr, int reg, int value) {
   // start
   sda0();
   scl0();
   // write
-  i2c_wr(0x40);
-  i2c_wr(state);
+  i2c_wr(addr);
+  i2c_wr(reg);
+  if (value>=0) i2c_wr(value);
   // stop
   sda0();
   scl1();
   sda1();
+}
+void ioexpander_write(int mask, bool value) {
+  static uint8_t state = 0;
+  if (value) state|=mask;
+  else state&=~mask;
+  i2c_wrreg(0x20<<1,state,-1);
 }
 #endif
 
@@ -452,7 +457,6 @@ void lcd_init() {
   for (int i=0;i<8;i++)
     nrf_gpio_pin_write_output(i, 0);
 
-  jshPinOutput(18,0); // not needed?
   jshPinOutput(28,0); // IO expander reset
   nrf_delay_ms(10);
   jshPinSetValue(28,1);
@@ -460,9 +464,9 @@ void lcd_init() {
 
   ioexpander_write(0,1);
   ioexpander_write(0,0);
-  ioexpander_write(0x80,1);
+  ioexpander_write(0x80,1); // HRM off
   nrf_delay_ms(100);
-  ioexpander_write(0x40,1);
+  ioexpander_write(0x40,1); // LCD reset off
   // ioexpander_write(0x20,0); // backlight on (default)
   nrf_delay_ms(0x78);
 
@@ -472,14 +476,17 @@ void lcd_init() {
     lcd_cmd(cmd[CMDINDEX_CMD], cmd[CMDINDEX_DATALEN], &cmd[2]);
     cmd += 2 + cmd[CMDINDEX_DATALEN];
   }
-
-
 }
 
 void lcd_kill() {
+  lcd_send_cmd(0x28); // DISPOFF
+  lcd_send_cmd(0x10); // SLPIN
   ioexpander_write(0x20,1); // backlight off
-  lcd_send_cmd(0x28);
-  lcd_send_cmd(0x10);
+  /* TODO: not convinced accelerometer is being turned off - power consumption
+  is higher if we just rebooted from Bangle.js. Maybe this I2C impl. is too
+  noncompliant for it. */
+  i2c_wrreg(ACCEL_ADDR<<1, 0x18,0x0a);  // accelerometer off
+  i2c_wrreg(MAG_ADDR<<1, 0x31,0); // compass off
 }
 #endif
 
