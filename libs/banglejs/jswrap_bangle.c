@@ -105,6 +105,16 @@ Has the watch been moved so that it is face-up, or not face up?
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
+  "name" : "twist",
+  "ifdef" : "BANGLEJS"
+}
+This event happens when the watch has been twisted around it's axis - for instance as if it was rotated so someone could look at the time.
+
+To tweak when this happens, see the `twist*` options in `Bangle.setOptions()`
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
   "name" : "charging",
   "params" : [["charging","bool","`true` if charging"]],
   "ifdef" : "BANGLEJS"
@@ -328,6 +338,8 @@ volatile uint8_t accGestureRecordedCount;
 volatile uint8_t accIdleCount;
 /// data on how watch was tapped
 unsigned char tapInfo;
+/// time since watch was last twisted enough past twistThreshold
+volatile uint16_t twistTimer; // in ms
 // Gesture settings
 /// how big a difference before we consider a gesture started?
 int accelGestureStartThresh = 800*800;
@@ -342,6 +354,13 @@ int accelGestureMinLength = 10;
 int stepCounterThresholdLow = (8192-80)*(8192-80);
 /// How high must acceleration magnitude squared get before we consider it a step?
 int stepCounterThresholdHigh = (8192+80)*(8192+80);
+/// How much acceleration to register a twist of the watch strap?
+int twistThreshold = 800;
+/// Maximum acceleration in Y to trigger a twist (low Y means watch is facing the right way up)
+int twistMaxY = -800;
+/// How little time (in ms) must a twist take from low->high acceleration?
+int twistTimeout = 1000;
+
 /// Current steps since reset
 uint32_t stepCounter;
 /// has acceleration counter passed stepCounterThresholdLow?
@@ -373,9 +392,10 @@ typedef enum {
   JSBF_WAKEON_BTN2   = 4,
   JSBF_WAKEON_BTN3   = 8,
   JSBF_WAKEON_TOUCH  = 16,
+  JSBF_WAKEON_TWIST  = 32,
 
   JSBF_DEFAULT =
-      JSBF_WAKEON_FACEUP|
+      JSBF_WAKEON_TWIST|
       JSBF_WAKEON_BTN1|JSBF_WAKEON_BTN2|JSBF_WAKEON_BTN3
 } JsBangleFlags;
 volatile JsBangleFlags bangleFlags;
@@ -400,6 +420,7 @@ typedef enum {
   JSBT_TOUCH_RIGHT = 16384, ///< touch rhs of touchscreen
   JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
   JSBT_HRM_DATA = 32768, ///< Heart rate data is ready for analysis
+  JSBT_TWIST_EVENT = 65536, ///< Watch was twisted
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -532,6 +553,26 @@ void peripheralPollHandler() {
       stepCounter++;
       bangleTasks |= JSBT_STEP_EVENT;
     }
+    // check for twist action
+    if (twistTimer < TIMER_MAX)
+      twistTimer += pollInterval;
+    int tdy = dy;
+    int tthresh = twistThreshold;
+    if (tthresh<0) {
+      tthresh = -tthresh;
+      tdy = -tdy;
+    }
+    if (tdy>tthresh) twistTimer=0;
+    if (tdy<-tthresh && twistTimer<twistTimeout && acc.y<twistMaxY) {
+      twistTimer = TIMER_MAX; // ensure we don't trigger again until tdy>tthresh
+      bangleTasks |= JSBT_TWIST_EVENT;
+      if (bangleFlags&JSBF_WAKEON_TWIST) {
+        flipTimer = 0;
+        if (!lcdPowerOn)
+          bangleTasks |= JSBT_LCD_ON;
+      }
+    }
+
     // checking for gestures
     if (accGestureCount==0) { // no gesture yet
       // if movement is eniugh, start one
@@ -985,8 +1026,12 @@ Set internal options used for gestures, step counting, etc...
 * `wakeOnBTN1` should the LCD turn on when BTN1 is pressed? default = `true`
 * `wakeOnBTN2` should the LCD turn on when BTN2 is pressed? default = `true`
 * `wakeOnBTN3` should the LCD turn on when BTN3 is pressed? default = `true`
-* `wakeOnFaceUp` should the LCD turn on when the watch is turned face up? default = `true`
+* `wakeOnFaceUp` should the LCD turn on when the watch is turned face up? default = `false`
 * `wakeOnTouch` should the LCD turn on when the touchscreen is pressed? default = `false`
+* `wakeOnTwist` should the LCD turn on when the watch is twisted? default = `true`
+* `twistThreshold`  How much acceleration to register a twist of the watch strap? Can be negative for oppsite direction. default = `800`
+* `twistMaxY` Maximum acceleration in Y to trigger a twist (low Y means watch is facing the right way up). default = `-800`
+* `twistTimeout`  How little time (in ms) must a twist take from low->high acceleration? default = `1000`
 
 * `gestureStartThresh` how big a difference before we consider a gesture started? default = `sqr(800)`
 * `gestureEndThresh` how small a difference before we consider a gesture ended? default = `sqr(2000)`
@@ -996,6 +1041,8 @@ Set internal options used for gestures, step counting, etc...
 * `stepCounterThresholdLow` How low must acceleration magnitude squared get before we consider the next rise a step? default = `sqr(8192-80)`
 * `stepCounterThresholdHigh` How high must acceleration magnitude squared get before we consider it a step? default = `sqr(8192+80)`
 
+Where accelerations are used they are in internal units, where `8192 = 1g`
+
 */
 void jswrap_banglejs_setOptions(JsVar *options) {
   bool wakeOnBTN1 = bangleFlags&JSBF_WAKEON_BTN1;
@@ -1003,6 +1050,7 @@ void jswrap_banglejs_setOptions(JsVar *options) {
   bool wakeOnBTN3 = bangleFlags&JSBF_WAKEON_BTN3;
   bool wakeOnFaceUp = bangleFlags&JSBF_WAKEON_FACEUP;
   bool wakeOnTouch = bangleFlags&JSBF_WAKEON_TOUCH;
+  bool wakeOnTwist = bangleFlags&JSBF_WAKEON_TWIST;
   jsvConfigObject configs[] = {
       {"gestureStartThresh", JSV_INTEGER, &accelGestureStartThresh},
       {"gestureEndThresh", JSV_INTEGER, &accelGestureEndThresh},
@@ -1010,11 +1058,15 @@ void jswrap_banglejs_setOptions(JsVar *options) {
       {"gestureMinLength", JSV_INTEGER, &accelGestureMinLength},
       {"stepCounterThresholdLow", JSV_INTEGER, &stepCounterThresholdLow},
       {"stepCounterThresholdHigh", JSV_INTEGER, &stepCounterThresholdHigh},
+      {"twistThreshold", JSV_INTEGER, &twistThreshold},
+      {"twistTimeout", JSV_INTEGER, &twistTimeout},
+      {"twistMaxY", JSV_INTEGER, &twistMaxY},
       {"wakeOnBTN1", JSV_BOOLEAN, &wakeOnBTN1},
       {"wakeOnBTN2", JSV_BOOLEAN, &wakeOnBTN2},
       {"wakeOnBTN3", JSV_BOOLEAN, &wakeOnBTN3},
       {"wakeOnFaceUp", JSV_BOOLEAN, &wakeOnFaceUp},
       {"wakeOnTouch", JSV_BOOLEAN, &wakeOnTouch},
+      {"wakeOnTwist", JSV_BOOLEAN, &wakeOnTwist},
   };
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
     bangleFlags = (bangleFlags&~JSBF_WAKEON_BTN1) | (wakeOnBTN1?JSBF_WAKEON_BTN1:0);
@@ -1022,6 +1074,7 @@ void jswrap_banglejs_setOptions(JsVar *options) {
     bangleFlags = (bangleFlags&~JSBF_WAKEON_BTN3) | (wakeOnBTN3?JSBF_WAKEON_BTN3:0);
     bangleFlags = (bangleFlags&~JSBF_WAKEON_FACEUP) | (wakeOnFaceUp?JSBF_WAKEON_FACEUP:0);
     bangleFlags = (bangleFlags&~JSBF_WAKEON_TOUCH) | (wakeOnTouch?JSBF_WAKEON_TOUCH:0);
+    bangleFlags = (bangleFlags&~JSBF_WAKEON_TWIST) | (wakeOnTwist?JSBF_WAKEON_TWIST:0);
   }
 }
 
@@ -1569,7 +1622,7 @@ bool jswrap_banglejs_idle() {
     if (o) {
       const int BPM_MIN = 40;
       const int BPM_MAX = 200;
-      const int SAMPLES_PER_SEC = 1000 / HRM_POLL_INTERVAL;
+      //const int SAMPLES_PER_SEC = 1000 / HRM_POLL_INTERVAL;
       const int CMIN = 60000 / (BPM_MAX*HRM_POLL_INTERVAL);
       const int CMAX = 60000 / (BPM_MIN*HRM_POLL_INTERVAL);
       assert(CMAX<HRM_HISTORY_LEN);
@@ -1608,7 +1661,7 @@ bool jswrap_banglejs_idle() {
 
       jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromInteger(60000 / (minIdx*HRM_POLL_INTERVAL)));
       jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(confidence));
-      JsVar *s = jsvNewNativeString(hrmHistory, sizeof(hrmHistory));
+      JsVar *s = jsvNewNativeString((char*)hrmHistory, sizeof(hrmHistory));
       JsVar *ab = jsvNewArrayBufferFromString(s,0);
       jsvObjectSetChildAndUnLock(o,"raw",jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT8,ab,0,0));
       jsvUnLock2(ab,s);
@@ -1713,6 +1766,9 @@ bool jswrap_banglejs_idle() {
     JsVar *steps = jsvNewFromInteger(stepCounter);
     jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"step", &steps, 1);
     jsvUnLock(steps);
+  }
+  if (bangle && (bangleTasks & JSBT_TWIST_EVENT)) {
+    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"twist", NULL, 0);
   }
   if (bangle && (bangleTasks & JSBT_SWIPE_MASK)) {
     JsVar *o = jsvNewFromInteger((bangleTasks & JSBT_SWIPE_LEFT)?-1:1);
@@ -2131,7 +2187,7 @@ JsVar *jswrap_banglejs_getLogo() {
           247, 227, 97, 62, 3, 107, 224, 102, 225, 70, 215, 192, 35, 227, 97,
           58, 0, 177, 0
  };
-  JsVar *v = jsvNewNativeString(&img_compressed[0], sizeof(img_compressed));
+  JsVar *v = jsvNewNativeString((char*)&img_compressed[0], sizeof(img_compressed));
   JsVar *img = jswrap_heatshrink_decompress(v);
   jsvUnLock(v);
   return img;
