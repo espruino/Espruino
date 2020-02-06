@@ -84,6 +84,7 @@
             Bangle.js: speed up bootloader progress bar
             Bangle.js: fix problems turning off via bootloader sometimes
             Bangle.js: improve power consumption when off, now ~0.08mA (fix #1727)
+            Bangle.js: add Bangle.setOptions({wakeOn*}) for when LCD should light
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

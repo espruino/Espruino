@@ -367,6 +367,20 @@ JsVar *promiseBeep;
 JsVar *promiseBuzz;
 
 typedef enum {
+  JSBF_NONE,
+  JSBF_WAKEON_FACEUP = 1,
+  JSBF_WAKEON_BTN1   = 2,
+  JSBF_WAKEON_BTN2   = 4,
+  JSBF_WAKEON_BTN3   = 8,
+  JSBF_WAKEON_TOUCH  = 16,
+
+  JSBF_DEFAULT =
+      JSBF_WAKEON_FACEUP|
+      JSBF_WAKEON_BTN1|JSBF_WAKEON_BTN2|JSBF_WAKEON_BTN3
+} JsBangleFlags;
+volatile JsBangleFlags bangleFlags;
+
+typedef enum {
   JSBT_NONE,
   JSBT_LCD_ON = 1,
   JSBT_LCD_OFF = 2,
@@ -591,17 +605,15 @@ void backlightOffHandler() {
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
   // wake up
   if (lcdPowerTimeout) {
-    if (button<=3) {
+    if (((bangleFlags&JSBF_WAKEON_BTN1)&&(button==1)) ||
+        ((bangleFlags&JSBF_WAKEON_BTN2)&&(button==2)) ||
+        ((bangleFlags&JSBF_WAKEON_BTN3)&&(button==3))){
       // if a 'hard' button, turn LCD on
       flipTimer = 0;
       if (!lcdPowerOn && state) {
         bangleTasks |= JSBT_LCD_ON;
         lcdWakeButton = button;
         return; // don't push button event if the LCD is off
-      }
-      if (button == lcdWakeButton && !state) {
-        lcdWakeButton = 0;
-        return;
       }
     } else {
       // on touchscreen, keep LCD on if it was in previously
@@ -611,11 +623,26 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
         return;
     }
   }
+  /* This stops the button 'up' event being
+   propagated if the button down was used to wake
+   the LCD up */
+  if (button == lcdWakeButton && !state) {
+    lcdWakeButton = 0;
+    return;
+  }
   // Add to the event queue for normal processing for watches
   jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
 }
 
-void btnTouchHandler() {
+// returns true if handled and shouldn't create a normal watch event
+bool btnTouchHandler() {
+  if (bangleFlags&JSBF_WAKEON_TOUCH) {
+    flipTimer = 0; // ensure LCD doesn't sleep if we're touching it
+    if (!lcdPowerOn) {
+      bangleTasks |= JSBT_LCD_ON;
+      return true; // eat the event
+    }
+  }
   TouchState state =
       (jshPinGetValue(BTN4_PININDEX)?TS_LEFT:0) |
       (jshPinGetValue(BTN5_PININDEX)?TS_RIGHT:0);
@@ -639,6 +666,7 @@ void btnTouchHandler() {
   }
   touchLastState2 = touchLastState;
   touchLastState = state;
+  return false;
 }
 void btn1Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(1,state,flags);
@@ -650,11 +678,11 @@ void btn3Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(3,state,flags);
 }
 void btn4Handler(bool state, IOEventFlags flags) {
-  btnTouchHandler();
+  if (btnTouchHandler()) return;
   btnHandlerCommon(4,state,flags);
 }
 void btn5Handler(bool state, IOEventFlags flags) {
-  btnTouchHandler();
+  if (btnTouchHandler()) return;
   btnHandlerCommon(5,state,flags);
 }
 
@@ -954,23 +982,47 @@ void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
 }
 Set internal options used for gestures, step counting, etc...
 
-* `gestureStartThresh`  how big a difference before we consider a gesture started? default = `sqr(800)`
+* `wakeOnBTN1` should the LCD turn on when BTN1 is pressed? default = `true`
+* `wakeOnBTN2` should the LCD turn on when BTN2 is pressed? default = `true`
+* `wakeOnBTN3` should the LCD turn on when BTN3 is pressed? default = `true`
+* `wakeOnFaceUp` should the LCD turn on when the watch is turned face up? default = `true`
+* `wakeOnTouch` should the LCD turn on when the touchscreen is pressed? default = `false`
+
+* `gestureStartThresh` how big a difference before we consider a gesture started? default = `sqr(800)`
 * `gestureEndThresh` how small a difference before we consider a gesture ended? default = `sqr(2000)`
 * `gestureInactiveCount` how many samples do we keep after a gesture has ended? default = `4`
 * `gestureMinLength` how many samples must a gesture have before we notify about it? default = `10`
+*
 * `stepCounterThresholdLow` How low must acceleration magnitude squared get before we consider the next rise a step? default = `sqr(8192-80)`
 * `stepCounterThresholdHigh` How high must acceleration magnitude squared get before we consider it a step? default = `sqr(8192+80)`
+
 */
 void jswrap_banglejs_setOptions(JsVar *options) {
+  bool wakeOnBTN1 = bangleFlags&JSBF_WAKEON_BTN1;
+  bool wakeOnBTN2 = bangleFlags&JSBF_WAKEON_BTN2;
+  bool wakeOnBTN3 = bangleFlags&JSBF_WAKEON_BTN3;
+  bool wakeOnFaceUp = bangleFlags&JSBF_WAKEON_FACEUP;
+  bool wakeOnTouch = bangleFlags&JSBF_WAKEON_TOUCH;
   jsvConfigObject configs[] = {
       {"gestureStartThresh", JSV_INTEGER, &accelGestureStartThresh},
       {"gestureEndThresh", JSV_INTEGER, &accelGestureEndThresh},
       {"gestureInactiveCount", JSV_INTEGER, &accelGestureInactiveCount},
       {"gestureMinLength", JSV_INTEGER, &accelGestureMinLength},
       {"stepCounterThresholdLow", JSV_INTEGER, &stepCounterThresholdLow},
-      {"stepCounterThresholdHigh", JSV_INTEGER, &stepCounterThresholdHigh}
+      {"stepCounterThresholdHigh", JSV_INTEGER, &stepCounterThresholdHigh},
+      {"wakeOnBTN1", JSV_BOOLEAN, &wakeOnBTN1},
+      {"wakeOnBTN2", JSV_BOOLEAN, &wakeOnBTN2},
+      {"wakeOnBTN3", JSV_BOOLEAN, &wakeOnBTN3},
+      {"wakeOnFaceUp", JSV_BOOLEAN, &wakeOnFaceUp},
+      {"wakeOnTouch", JSV_BOOLEAN, &wakeOnTouch},
   };
-  jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject));
+  if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    bangleFlags = (bangleFlags&~JSBF_WAKEON_BTN1) | (wakeOnBTN1?JSBF_WAKEON_BTN1:0);
+    bangleFlags = (bangleFlags&~JSBF_WAKEON_BTN2) | (wakeOnBTN2?JSBF_WAKEON_BTN2:0);
+    bangleFlags = (bangleFlags&~JSBF_WAKEON_BTN3) | (wakeOnBTN3?JSBF_WAKEON_BTN3:0);
+    bangleFlags = (bangleFlags&~JSBF_WAKEON_FACEUP) | (wakeOnFaceUp?JSBF_WAKEON_FACEUP:0);
+    bangleFlags = (bangleFlags&~JSBF_WAKEON_TOUCH) | (wakeOnTouch?JSBF_WAKEON_TOUCH:0);
+  }
 }
 
 /*JSON{
@@ -1255,6 +1307,7 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT,0); // backlight on
   jshDelayMicroseconds(10000);
 #endif
+  bangleFlags = JSBF_DEFAULT;
   lcdPowerOn = true;
   lcdBrightness = 255;
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
@@ -1461,7 +1514,7 @@ bool jswrap_banglejs_idle() {
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"faceUp", &v, 1);
         jsvUnLock(v);
       }
-      if (faceUp && lcdPowerTimeout && !lcdPowerOn) {
+      if (faceUp && lcdPowerTimeout && !lcdPowerOn && (bangleFlags&JSBF_WAKEON_FACEUP)) {
         // LCD was turned off, turn it back on
         jswrap_banglejs_setLCDPower(1);
         flipTimer = 0;
