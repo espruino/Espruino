@@ -18,7 +18,7 @@
   menudata[""].x=0;
   menudata[""].x2=w-2;
   menudata[""].y=40;
-  menudata[""].y2=200;
+  menudata[""].y2=202;
   menudata[""].preflip=function() {
     g.drawImage(im([
       0b00010000,
