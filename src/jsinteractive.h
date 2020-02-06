@@ -60,7 +60,7 @@ bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int ar
 /// Same as above, but with a JsVarArray (this calls jsiExecuteEventCallback, so use jsiExecuteEventCallback where possible)
 bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar *argsArray);
 /// Utility version of jsiExecuteEventCallback for calling events on global variables
-void jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsigned int argCount, JsVar **argPtr);
+bool jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsigned int argCount, JsVar **argPtr);
 
 /// Create a timeout in JS to execute the given native function (outside of an IRQ). Returns the index
 JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds);
