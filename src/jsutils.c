@@ -778,7 +778,7 @@ void vcbprintf(
       } break;
       case 'j': {
         JsVar *v = va_arg(argp, JsVar*);
-        jsfGetJSONWithCallback(v, JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, 0, user_callback, user_data);
+        jsfGetJSONWithCallback(v, NULL, JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_ALLOW_TOJSON, 0, user_callback, user_data);
         break;
       }
       case 't': {
