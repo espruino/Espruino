@@ -540,7 +540,7 @@ var submenu = {
   "< Back" : function() { E.showMenu(mainmenu); },
 };
 // Actually display the menu
-Pixl.menu(mainmenu);
+E.showMenu(mainmenu);
 ```
 
 See http://www.espruino.com/graphical_menu for more detailed information.
