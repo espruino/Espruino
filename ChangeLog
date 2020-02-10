@@ -90,6 +90,7 @@
             Bangle.js: E.showMenu now has some colour, bigger, with next/prev indicators, and works with widgets 
             Pixl.js: Add E.showPrompt/Alert/Message (fix #1747)
             Add .toJSON handling for JSON.stringify, and add Date.toJSON (fix #1754)
+            Remove broken Graphics.drawImage centerx/y (fix #1742)
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
