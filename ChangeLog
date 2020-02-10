@@ -75,6 +75,8 @@
             Ensure it's possible to get a solid background when using 4x6 font
             Bangle.js: Add Bangle.showLauncher
             Add append optimisation for string '+', and don't append to flat/native/etc strings (fix #1746)
+            ESP8266_4MB: add optional build flag FLASH_1MB for ESP8255  & ESP01s with 1MB flash
+            ESP8266: add optional build flag NO_FOTA to remove flash over the air functionality
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

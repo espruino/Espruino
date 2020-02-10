@@ -125,9 +125,9 @@ def get_pins():
    { "name":"PD9",  "sortingname":"D09", "port":"D", "num":"9",  "functions":{}, "csv":{} }, 
    { "name":"PD10", "sortingname":"D10", "port":"D", "num":"10", "functions":{}, "csv":{} },
    { "name":"PD11", "sortingname":"D11", "port":"D", "num":"11", "functions":{}, "csv":{} },
-   { "name":"PD12", "sortingname":"D12", "port":"D", "num":"12", "functions":{}, "csv":{} },
-   { "name":"PD13", "sortingname":"D13", "port":"D", "num":"13", "functions":{}, "csv":{} },
-   { "name":"PD14", "sortingname":"D14", "port":"D", "num":"14", "functions":{}, "csv":{} },
+   { "name":"PD12", "sortingname":"D12", "port":"D", "num":"12", "functions":{"SPI1_MISO":0}, "csv":{} },
+   { "name":"PD13", "sortingname":"D13", "port":"D", "num":"13", "functions":{"SPI1_MOSI":0}, "csv":{} },
+   { "name":"PD14", "sortingname":"D14", "port":"D", "num":"14", "functions":{"SPI1_SCK":0}, "csv":{} },
    { "name":"PD15", "sortingname":"D15", "port":"D", "num":"15", "functions":{}, "csv":{} },
    { "name":"PD16", "sortingname":"D16", "port":"D", "num":"16", "functions":{}, "csv":{} },
    { "name":"PA0", "sortingname":"A00",  "port":"A", "num":"17",   "functions":{ "ADC1_IN0":0 }, "csv":{} }

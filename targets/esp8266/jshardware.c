@@ -1411,6 +1411,8 @@ JsVar *jshFlashGetFree() {
   if (!jsFreeFlash) return 0;
 
   uint32_t map = system_get_flash_size_map();
+  extern uint16_t espFlashKB; // in user_main,c
+
   if ( map == 6 ) {
     addFlashArea(jsFreeFlash, 0x200000, 0x100000);
     addFlashArea(jsFreeFlash, 0x300000, 0x40000);
@@ -1419,9 +1421,11 @@ JsVar *jshFlashGetFree() {
     addFlashArea(jsFreeFlash, 0x3C0000, 0x40000-0x5000);
     return jsFreeFlash;
   }
-
+  // there is no flash for running on 1MB flash without FOTA 
+  if ( map == 2  && espFlashKB == 1024  && strcmp(PC_BOARD_ID, "ESP8266_4MB") == 0)
+     return jsFreeFlash;
+   
   // need 1MB of flash to have more space...
-  extern uint16_t espFlashKB; // in user_main,c
   if (espFlashKB > 512) {
     addFlashArea(jsFreeFlash, 0x80000, 0x1000);
     if (espFlashKB > 1024) {
