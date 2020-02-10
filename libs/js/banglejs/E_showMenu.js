@@ -6,11 +6,6 @@
   g.clear(1);g.flip(); // clear screen if no menu supplied
   Bangle.drawWidgets();
   if (!menudata) return;
-  function im(b) {
-    return {
-      width:8,height:b.length,bpp:1,buffer:new Uint8Array(b).buffer
-    };
-  }
   if (!menudata[""]) menudata[""]={};
   var w = g.getWidth()-9;
   var h = g.getHeight();
@@ -26,7 +21,7 @@
     g.setFont('6x8',2);g.setFontAlign(-1,-1,0);
   };
   menudata[""].preflip=function(g,less,more) {
-    g.drawImage(im([
+    g.drawImage(E.toString(8,8,1,
       0b00010000,
       0b00111000,
       0b01111100,
@@ -35,8 +30,8 @@
       0b00010000,
       0b00010000,
       0b00010000,
-    ]),w,40);
-    g.drawImage(im([
+    ),w,40);
+    g.drawImage(E.toString(8,8,1,
       0b00010000,
       0b00010000,
       0b00010000,
@@ -45,8 +40,8 @@
       0b01111100,
       0b00111000,
       0b00010000,
-    ]),w,194);
-    g.drawImage(im([
+    ),w,194);
+    g.drawImage(E.toString(8,8,1,
       0b00000000,
       0b00001000,
       0b00001100,
@@ -55,7 +50,7 @@
       0b00001110,
       0b00001100,
       0b00001000,
-    ]),w,116);
+    ),w,116);
     g.setColor(more?-1:0);
     g.fillPoly([104,220,136,220,120,228]);
   };
