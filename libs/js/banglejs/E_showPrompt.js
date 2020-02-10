@@ -43,15 +43,15 @@
                   x-bw-4,y-8,
                   x-bw,y-12];
       if (idx==options.selected) {
-        g.setColor(0,0.5,1);
+        g.setColor(0x02F7);
         g.fillPoly(poly);
-        g.setColor(1,1,1);
+        g.setColor(-1);
       }
       g.drawPoly(poly);
       g.drawString(btn,x,y+1);
       x += (buttonPadding+w)/2;
     });
-    g.setColor(1,1,1);
+    g.setColor(-1);
     g.flip();
   }
   

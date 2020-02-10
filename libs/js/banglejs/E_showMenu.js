@@ -4,6 +4,7 @@
     Bangle.btnWatches = undefined;
   }
   g.clear(1);g.flip(); // clear screen if no menu supplied
+  Bangle.drawWidgets();
   if (!menudata) return;
   function im(b) {
     return {
@@ -11,15 +12,20 @@
     };
   }
   if (!menudata[""]) menudata[""]={};
-  g.setFont('6x8',2);g.setFontAlign(-1,-1,0);
   var w = g.getWidth()-9;
   var h = g.getHeight();
   menudata[""].fontHeight=16;
   menudata[""].x=0;
   menudata[""].x2=w-2;
-  menudata[""].y=40;
-  menudata[""].y2=202;
-  menudata[""].preflip=function() {
+  menudata[""].y=24;
+  menudata[""].y2=220;
+  menudata[""].cB=0x0007;
+  menudata[""].cHlB=0x02F7;
+  menudata[""].cHlF=-1;
+  menudata[""].predraw=function() {
+    g.setFont('6x8',2);g.setFontAlign(-1,-1,0);
+  };
+  menudata[""].preflip=function(g,less,more) {
     g.drawImage(im([
       0b00010000,
       0b00111000,
@@ -50,8 +56,8 @@
       0b00001100,
       0b00001000,
     ]),w,116);
-    //g.drawLine(7,0,7,h);
-    //g.drawLine(w,0,w,h);
+    g.setColor(more?-1:0);
+    g.fillPoly([104,220,136,220,120,228]);
   };
   var m = require("graphical_menu").list(g, menudata);
   Bangle.btnWatches = [
