@@ -2255,3 +2255,75 @@ void jswrap_graphics_dump(JsVar *parent) {
   jsvUnLock(url);
   jsiConsolePrint("\n");
 }
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "quadraticBezier",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
+  "generate" : "jswrap_graphics_quadraticBezier",
+  "params" : [
+    ["arr","JsVar","An array of three vertices, six enties in form of ```[x0,y0,x1,y1,x2,y2]```"],
+    ["options","JsVar","number of points to calulate"]
+  ],
+  "return" : ["JsVar", "Array with calculated points" ]
+}
+ Calculate the square area under a Bezier curve.
+
+ x0,y0: start point
+ x1,y1: control point
+ y2,y2: end point
+
+ Max 10 points without start point.
+*/
+JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *options ){
+
+  JsVar *result = jsvNewEmptyArray();
+  if (!result) return 0;
+
+  if (jsvGetArrayLength(arr) != 6) return result; 
+
+  float s,t,t2,tp2, tpt;
+  int sn = 5;
+  int dx, dy;
+  int x0, x1, x2, y0, y1, y2;
+  int count = 0;
+
+  JsvIterator it;
+  jsvIteratorNew(&it, arr, JSIF_EVERY_ARRAY_ELEMENT);
+  x0 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
+  y0 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
+  x1 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
+  y1 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
+  x2 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
+  y2 = jsvIteratorGetIntegerValue(&it); jsvIteratorFree(&it);
+
+  if (jsvIsObject(options)) {
+    count = jsvGetIntegerAndUnLock(jsvObjectGetChild(options,"count",0));
+    jsiConsolePrintf("count: %d\n",count);
+  } 
+  
+
+  dx = (x0 - x2) < 0 ? (x2-x0):(x0-x2);
+  dy = (y0 - y2) < 0 ? (y2-y0):(y0-y2); 
+  s =  1 / (float) (((dx < dy) ? dx : dy ) / sn ); 
+  if ( s >= 1)  s = 0.33;
+  if ( s < 0.1) s = 0.1;
+  if (count > 0) s = (float) 1 / count;
+
+  jsvArrayPushAndUnLock(result, jsvNewFromInteger(x0));
+  jsvArrayPushAndUnLock(result, jsvNewFromInteger(y0));
+
+  for ( t = s; t <= 1; t += s ) {
+    t2 = t*t;
+    tp2 = (1 - t) * (1 - t);
+    tpt = 2 * (1 - t) * t;
+    jsvArrayPushAndUnLock(result, jsvNewFromInteger(x0 * tp2 + x1 * tpt + x2 * t2 + 0.5));
+    jsvArrayPushAndUnLock(result, jsvNewFromInteger(y0 * tp2 + y1 * tpt + y2 * t2 + 0.5));
+  }
+
+  jsvArrayPushAndUnLock(result, jsvNewFromInteger(x2));
+  jsvArrayPushAndUnLock(result, jsvNewFromInteger(y2));
+
+  return  result;
+}
