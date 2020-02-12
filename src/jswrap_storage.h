@@ -20,6 +20,7 @@ JsVar *jswrap_storage_read(JsVar *name, int offset, int length);
 JsVar *jswrap_storage_readJSON(JsVar *name);
 JsVar *jswrap_storage_readArrayBuffer(JsVar *name);
 bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt size);
+bool jswrap_storage_writeJSON(JsVar *name, JsVar *data);
 void jswrap_storage_erase(JsVar *name);
 void jswrap_storage_compact();
 JsVar *jswrap_storage_list();

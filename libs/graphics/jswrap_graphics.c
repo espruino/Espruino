@@ -846,6 +846,8 @@ Set the color to use for subsequent drawing operations.
 
 If just `r` is specified as an integer, the numeric value will be written directly into a pixel. eg. On a 24 bit `Graphics` instance you set bright blue with either `g.setColor(0,0,1)` or `g.setColor(0x0000FF)`.
 
+A good shortcut to ensure you get white on all platforms is to use `g.setColor(-1)`
+
 The mapping is as follows:
 
 * 32 bit: `r,g,b` => `0xFFrrggbb`
