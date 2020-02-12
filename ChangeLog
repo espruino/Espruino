@@ -93,6 +93,7 @@
             Remove broken Graphics.drawImage centerx/y (fix #1742)
             Add Storage.writeJSON to avoid any confusion of writing arrays/numbers/etc
             Bangle.js: Keep widget area free when using showPrompt/Alert/etc (fix #1756)
+            Add more info about flash memory to process.env/process.memory
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
