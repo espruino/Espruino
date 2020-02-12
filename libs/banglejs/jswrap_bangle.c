@@ -1361,6 +1361,7 @@ void jswrap_banglejs_init() {
   jshDelayMicroseconds(10000);
 #endif
   bangleFlags = JSBF_DEFAULT;
+  flipTimer = 0; // reset the LCD timeout timer
   lcdPowerOn = true;
   lcdBrightness = 255;
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
