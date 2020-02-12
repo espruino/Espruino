@@ -117,7 +117,9 @@ Read a file from the flash storage area that has
 been written with `require("Storage").write(...)`,
 and parse JSON in it into a JavaScript object.
 
-This is identical to `JSON.parse(require("Storage").read(...))`
+This is identical to `JSON.parse(require("Storage").read(...))`.
+It will throw an exception if the data in the file is not
+valid JSON.
 */
 JsVar *jswrap_storage_readJSON(JsVar *name) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name),0,0);
@@ -183,6 +185,9 @@ If you supply:
 * An object, it will automatically be converted to
 a JSON string before being written.
 
+**Note:** If an array is supplied it will not be converted to JSON.
+To be explicit about the conversion you can use `Storage.writeJSON`
+
 You may also create a file and then populate data later **as long as you
 don't try and overwrite data that already exists**. For instance:
 
@@ -208,6 +213,33 @@ bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt _s
   bool success = jsfWriteFile(jsfNameFromVar(name), d, JSFF_NONE, offset, _size);
   jsvUnLock(d);
   return success;
+}
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Storage",
+  "name" : "writeJSON",
+  "generate" : "jswrap_storage_writeJSON",
+  "params" : [
+    ["name","JsVar","The filename - max 8 characters (case sensitive)"],
+    ["data","JsVar","The JSON data to write"]
+  ],
+  "return" : ["bool","True on success, false on failure"]
+}
+Write/create a file in the flash storage area. This is
+nonvolatile and will not disappear when the device resets
+or power is lost.
+
+Simply write `require("Storage").writeJSON("MyFile", [1,2,3])` to write
+a new file, and `require("Storage").readJSON("MyFile")` to read it.
+
+This is equivalent to: `require("Storage").write(name, JSON.stringify(data))`
+*/
+bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
+  JsVar *d = jswrap_json_stringify(data,0,0);
+  return jsfWriteFile(jsfNameFromVar(name), d, JSFF_NONE, 0, 0);
 }
 
 /*JSON{
