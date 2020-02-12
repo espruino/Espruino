@@ -10,15 +10,16 @@
   if (!options.selected)
     options.selected = 0;
   function draw() {
-    g.clear(1);
+    g.reset();
+    g.clearRect(0,24,239,215); // leave room for widgets
     g.setFont("6x8",2);
     g.setFontAlign(0,0);
     var W = g.getWidth();
     var H = g.getHeight();
     if (options.title) {
-      g.drawString(options.title,W/2,24);
+      g.drawString(options.title,W/2,34);
       var w = (g.stringWidth(options.title)+16)/2;
-      g.fillRect((W/2)-w,34,(W/2)+w,35);
+      g.fillRect((W/2)-w,44,(W/2)+w,44);
     }
     var lines = msg.split("\n");
     var offset = (H - lines.length*16)/2;
@@ -52,7 +53,7 @@
       x += (buttonPadding+w)/2;
     });
     g.setColor(-1);
-    g.flip();
+    g.flip();  // turn screen on
   }
   
   if (Bangle.btnWatches) {
@@ -60,8 +61,8 @@
     Bangle.btnWatches = undefined;
   }
   if (!msg) {
-    g.clear(1);
-    g.flip();
+	g.clearRect(0,24,239,215); // leave room for widgets
+    g.flip(); // turn screen on
     return Promise.resolve();
   }
   draw();
