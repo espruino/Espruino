@@ -2298,11 +2298,7 @@ JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *option
   x2 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
   y2 = jsvIteratorGetIntegerValue(&it); jsvIteratorFree(&it);
 
-  if (jsvIsObject(options)) {
-    count = jsvGetIntegerAndUnLock(jsvObjectGetChild(options,"count",0));
-    jsiConsolePrintf("count: %d\n",count);
-  } 
-  
+  if (jsvIsObject(options)) count = jsvGetIntegerAndUnLock(jsvObjectGetChild(options,"count",0));
 
   dx = (x0 - x2) < 0 ? (x2-x0):(x0-x2);
   dy = (y0 - y2) < 0 ? (y2-y0):(y0-y2); 
