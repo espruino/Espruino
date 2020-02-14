@@ -76,3 +76,4 @@ JsVar *jswrap_graphics_scroll(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_asBMP(JsVar *parent);
 JsVar *jswrap_graphics_asURL(JsVar *parent);
 void jswrap_graphics_dump(JsVar *parent);
+JsVar *jswrap_graphics_quadraticBezier(JsVar *parent, JsVar * arr, JsVar *options);
