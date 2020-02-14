@@ -846,6 +846,8 @@ Set the color to use for subsequent drawing operations.
 
 If just `r` is specified as an integer, the numeric value will be written directly into a pixel. eg. On a 24 bit `Graphics` instance you set bright blue with either `g.setColor(0,0,1)` or `g.setColor(0x0000FF)`.
 
+A good shortcut to ensure you get white on all platforms is to use `g.setColor(-1)`
+
 The mapping is as follows:
 
 * 32 bit: `r,g,b` => `0xFFrrggbb`
@@ -1680,14 +1682,12 @@ Draw an image at the specified position.
 * Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first
 
 If `options` is supplied, `drawImage` will allow images to be rendered at any scale or angle. If `options.rotate` is set it will
-center images at `x,y` unless centerx/centery are specified. `options` must be an object of the form:
+center images at `x,y`. `options` must be an object of the form:
 
 ```
 {
   rotate : float, // the amount to rotate the image in radians (default 0)
   scale : float, // the amount to scale the image in radians (default 1)
-  centerx : int, // the center to rotate around (default image width/2)
-  centery : int  // the center to rotate around (default image height/2)
 }
 ```
 */
@@ -1892,7 +1892,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #else
     // fancy rotation/scaling
     int imageStride = (imageWidth*imageBpp + 7)>>3;
-    // rotate, scale, centerx, centery
+    // rotate, scale
     double scale = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"scale",0));
     if (!isfinite(scale) || scale<=0) scale=1;
     double rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"rotate",0));
@@ -1965,11 +1965,6 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #endif
       int centerx = imageWidth*128;
       int centery = imageHeight*128;
-      JsVar *v;
-      v = jsvObjectGetChild(options,"centerx",0);
-      if (v) centerx = jsvGetIntegerAndUnLock(v)*256;
-      v = jsvObjectGetChild(options,"centery",0);
-      if (v) centery = jsvGetIntegerAndUnLock(v)*256;
       // step values for blitting rotated image
       double vcos = cos(rotate);
       double vsin = sin(rotate);

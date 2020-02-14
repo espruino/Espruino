@@ -29,14 +29,20 @@ typedef enum {
   JSON_SHOW_OBJECT_NAMES    = 256, //< Show 'Promise {}'/etc for objects if the type is global
   JSON_DROP_QUOTES       = 512, //< When outputting objects, drop quotes for alphanumeric field names
   JSON_UNICODE_ESCAPE    = 1024, //< Only use unicode for escape characters - needed for JSON compatibility
+  JSON_ALLOW_TOJSON      = 2048, //< If there's a .toJSON function in an object, use it and parse that
   // ...
-  JSON_INDENT            = 2048, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
+  JSON_INDENT            = 4096, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
 } JSONFlags;
 
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */
 void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user_callback, void *user_data);
-/* Dump to JSON, using the given callbacks for printing data */
-void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, const char *whitespace, vcbprintf_callback user_callback, void *user_data);
+/* Dump to JSON, using the given callbacks for printing data
+
+var = what we'll turn into a string
+varName = if we were going through an object/array this is the name of the current field
+flags = control how stuff is rendered
+*/
+void jsfGetJSONWithCallback(JsVar *var, JsVar *varName, JSONFlags flags, const char *whitespace, vcbprintf_callback user_callback, void *user_data);
 
 /* Convenience function for using jsfGetJSONWithCallback - print to var */
 void jsfGetJSONWhitespace(JsVar *var, JsVar *result, JSONFlags flags, const char *whitespace);

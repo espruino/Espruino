@@ -10,15 +10,16 @@
   if (!options.selected)
     options.selected = 0;
   function draw() {
-    g.clear(1);
+    g.reset();
+    g.clearRect(0,24,239,215); // leave room for widgets
     g.setFont("6x8",2);
     g.setFontAlign(0,0);
     var W = g.getWidth();
     var H = g.getHeight();
     if (options.title) {
-      g.drawString(options.title,W/2,24);
+      g.drawString(options.title,W/2,34);
       var w = (g.stringWidth(options.title)+16)/2;
-      g.fillRect((W/2)-w,34,(W/2)+w,35);
+      g.fillRect((W/2)-w,44,(W/2)+w,44);
     }
     var lines = msg.split("\n");
     var offset = (H - lines.length*16)/2;
@@ -43,16 +44,16 @@
                   x-bw-4,y-8,
                   x-bw,y-12];
       if (idx==options.selected) {
-        g.setColor(0,0.5,1);
+        g.setColor(0x02F7);
         g.fillPoly(poly);
-        g.setColor(1,1,1);
+        g.setColor(-1);
       }
       g.drawPoly(poly);
       g.drawString(btn,x,y+1);
       x += (buttonPadding+w)/2;
     });
-    g.setColor(1,1,1);
-    g.flip();
+    g.setColor(-1);
+    g.flip();  // turn screen on
   }
   
   if (Bangle.btnWatches) {
@@ -60,8 +61,8 @@
     Bangle.btnWatches = undefined;
   }
   if (!msg) {
-    g.clear(1);
-    g.flip();
+	g.clearRect(0,24,239,215); // leave room for widgets
+    g.flip(); // turn screen on
     return Promise.resolve();
   }
   draw();

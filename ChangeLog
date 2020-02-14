@@ -75,6 +75,25 @@
             Ensure it's possible to get a solid background when using 4x6 font
             Bangle.js: Add Bangle.showLauncher
             Add append optimisation for string '+', and don't append to flat/native/etc strings (fix #1746)
+            Add Bangle.getCompass and Bangle.getAccel to get the latest compass/accelerometer readings without a callback
+            Fix `parseInt("0b",16)` as well as some other non-compliant behaviour (fix #1722)
+            Bangle.js: Disable touch buttons if screen off
+            Bangle.js: Don't send 'up' event for a button that was used to wake the screen
+            Bangle.js: GPS event.time set to undefined if GPS time is not initialised
+            Fix regression that removed exception reporting in console
+            Bangle.js: speed up bootloader progress bar
+            Bangle.js: fix problems turning off via bootloader sometimes
+            Bangle.js: improve power consumption when off, now ~0.08mA (fix #1727)
+            Bangle.js: add Bangle.setOptions({wakeOn*}) for when LCD should light
+            Bangle.js: Add 'twist' event and 'wakeOnTwist' (wakeOnTwist now default true, waveOnFaceUp default false)
+            Bangle.js/Pixl.js: Updated E.showMenu
+            Bangle.js: E.showMenu now has some colour, bigger, with next/prev indicators, and works with widgets 
+            Pixl.js: Add E.showPrompt/Alert/Message (fix #1747)
+            Add .toJSON handling for JSON.stringify, and add Date.toJSON (fix #1754)
+            Remove broken Graphics.drawImage centerx/y (fix #1742)
+            Add Storage.writeJSON to avoid any confusion of writing arrays/numbers/etc
+            Bangle.js: Keep widget area free when using showPrompt/Alert/etc (fix #1756)
+            Add more info about flash memory to process.env/process.memory
             Add Graphics.quadraticBezier() 
 
      2v04 : Allow \1..\9 escape codes in RegExp

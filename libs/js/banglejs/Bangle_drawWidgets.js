@@ -1,3 +1,3 @@
 (function() {
-  for (var w of WIDGETS) w.draw();
+  if (global.WIDGETS) for (var w of WIDGETS) w.draw();
 })

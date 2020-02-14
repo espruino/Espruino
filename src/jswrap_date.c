@@ -632,6 +632,15 @@ Converts to a ISO 8601 String, eg: `2014-06-20T14:52:20.123Z`
 
  **Note:** This always assumes a timezone of GMT
  */
+/*JSON{
+  "type" : "method",
+  "class" : "Date",
+  "name" : "toJSON",
+  "generate" : "jswrap_date_toISOString",
+  "return" : ["JsVar","A String"]
+}
+Calls `Date.toISOString` to output this date to JSON
+*/
 JsVar *jswrap_date_toISOString(JsVar *parent) {
   TimeInDay time = getTimeFromDateVar(parent, true/*GMT*/);
   CalendarDate date = getCalendarDate(time.daysSinceEpoch);

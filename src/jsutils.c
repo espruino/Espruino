@@ -103,38 +103,24 @@ const char *escapeCharacter(char ch, bool jsonStyle) {
 }
 
 /** Parse radix prefixes, or return 0 */
-NO_INLINE int getRadix(const char **s, int forceRadix, bool *hasError) {
+NO_INLINE int getRadix(const char **s, bool *hasError) {
   int radix = 10;
-
-  if (forceRadix > 36) {
-    if (hasError) *hasError = true;
-    return 0;
-  }
-
   if (**s == '0') {
     radix = 8;
     (*s)++;
-
     // OctalIntegerLiteral: 0o01, 0O01
     if (**s == 'o' || **s == 'O') {
       radix = 8;
-      if (forceRadix && forceRadix!=8 && forceRadix<25) return 0;
       (*s)++;
-
       // HexIntegerLiteral: 0x01, 0X01
     } else if (**s == 'x' || **s == 'X') {
       radix = 16;
-      if (forceRadix && forceRadix!=16 && forceRadix<34) return 0;
       (*s)++;
-
       // BinaryIntegerLiteral: 0b01, 0B01
     } else if (**s == 'b' || **s == 'B') {
       radix = 2;
-      if (forceRadix && forceRadix!=2 && forceRadix<12)
-        return 0;
-      else
-        (*s)++;
-    } else if (!forceRadix) {
+      (*s)++;
+    } else {
       // check for '.' or digits 8 or 9 - if so it's decimal
       const char *p;
       for (p=*s;*p;p++)
@@ -143,9 +129,6 @@ NO_INLINE int getRadix(const char **s, int forceRadix, bool *hasError) {
         else if (*p<'0' || *p>'9') break;
     }
   }
-  if (forceRadix>0 && forceRadix<=36)
-    radix = forceRadix;
-
   return radix;
 }
 
@@ -170,7 +153,7 @@ int hexToByte(char hi, char lo) {
 
 /* convert a number in the given radix to an int */
 long long stringToIntWithRadix(const char *s,
-               int forceRadix, //!< if radix=0, autodetect
+               int forceRadix, //!< if radix=0, autodetect. if radix
                bool *hasError, //!< If nonzero, set to whether there was an error or not
                const char **endOfInteger //!<  If nonzero, this is set to the point at which the integer finished in the string
                ) {
@@ -189,7 +172,8 @@ long long stringToIntWithRadix(const char *s,
   const char *numberStart = s;
   if (endOfInteger) (*endOfInteger)=s;
 
-  int radix = getRadix(&s, forceRadix, hasError);
+
+  int radix = forceRadix ? forceRadix : getRadix(&s, hasError);
   if (!radix) return 0;
 
   while (*s) {
@@ -523,7 +507,7 @@ JsVarFloat stringToFloatWithRadix(
   const char *numberStart = s;
   if (endOfFloat) (*endOfFloat)=s;
 
-  int radix = getRadix(&s, forceRadix, 0);
+  int radix = forceRadix ? forceRadix : getRadix(&s, 0);
   if (!radix) return NAN;
 
 
@@ -794,7 +778,7 @@ void vcbprintf(
       } break;
       case 'j': {
         JsVar *v = va_arg(argp, JsVar*);
-        jsfGetJSONWithCallback(v, JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, 0, user_callback, user_data);
+        jsfGetJSONWithCallback(v, NULL, JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES | JSON_ALLOW_TOJSON, 0, user_callback, user_data);
         break;
       }
       case 't': {

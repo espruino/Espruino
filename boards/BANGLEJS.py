@@ -132,7 +132,7 @@ devices = {
             'pin_miso' : 'D20', # D1
             'pin_wp' : 'D31', # D2
             'pin_rst' : 'D17', # D3
-            'size' : 2097152
+            'size' : 4096*1024 # 4MB
           }
 };
 

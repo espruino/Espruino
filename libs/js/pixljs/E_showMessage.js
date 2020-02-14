@@ -1,14 +1,13 @@
 (function(msg,title) {
-  g.reset();
-  g.clearRect(0,24,239,215); // leave room for widgets
+  g.clear(1);
   g.setFont("6x8",2);
   g.setFontAlign(0,0);
   var W = g.getWidth();
   var H = g.getHeight();
   if (title) {
-    g.drawString(title,W/2,34);
+    g.drawString(title,W/2,24);
     var w = (g.stringWidth(title)+16)/2;
-    g.fillRect((W/2)-w,44,(W/2)+w,45);
+    g.fillRect((W/2)-w,34,(W/2)+w,35);
   }
   var lines = msg.split("\n");
   var offset = (H - lines.length*16)/2;
