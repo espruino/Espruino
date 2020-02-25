@@ -991,7 +991,8 @@ JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) 
     if (size<1) size=1;
     if (size>1023) size=1023;
   }
-  if ((gfx.data.fontSize&JSGRAPHICS_FONTSIZE_FONT_MASK) == JSGRAPHICS_FONTSIZE_CUSTOM) {
+  if ((gfx.data.fontSize&JSGRAPHICS_FONTSIZE_FONT_MASK) == JSGRAPHICS_FONTSIZE_CUSTOM &&
+      (size&JSGRAPHICS_FONTSIZE_FONT_MASK) != JSGRAPHICS_FONTSIZE_CUSTOM) {
     jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_BMP);
     jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH);
     jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT);
@@ -1118,6 +1119,15 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size) {
     sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_6X8);
 #endif
   // TODO: if function named 'setFontXYZ' exists, run it
+  if (sz==0xFFFF) {
+    JsVar *setterName = jsvVarPrintf("setFont%v",name);
+    JsVar *fontSetter = jspGetNamedField(parent,setterName,false);
+    if (fontSetter) {
+      jsvUnLock(jspExecuteFunction(fontSetter,parent,0,NULL));
+      sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_CUSTOM);
+    }
+    jsvUnLock2(fontSetter,setterName);
+  }
   if (sz==0xFFFF) {
     jsExceptionHere(JSET_ERROR, "Unknown font %j", name);
   }
