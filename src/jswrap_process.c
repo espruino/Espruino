@@ -17,6 +17,7 @@
 #include "jsparse.h"
 #include "jswrap_process.h"
 #include "jswrap_interactive.h"
+#include "jswrap_espruino.h" // jswrap_espruino_getConsole
 #include "jswrapper.h"
 #include "jsinteractive.h"
 
@@ -115,7 +116,7 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "STORAGE", jsvNewFromInteger(FLASH_SAVED_CODE_LENGTH));
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
-  jsvObjectSetChildAndUnLock(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice())));
+  jsvObjectSetChildAndUnLock(obj, "CONSOLE", jswrap_espruino_getConsole());
   jsvObjectSetChildAndUnLock(obj, "MODULES", jsvNewFromString(jswGetBuiltInLibraryNames()));
 #ifndef SAVE_ON_FLASH
   // Pointer to a list of predefined exports - eventually we'll get rid of the array above

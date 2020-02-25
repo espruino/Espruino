@@ -1047,6 +1047,87 @@ int jswrap_espruino_setClock(JsVar *options) {
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
+  "name" : "setConsole",
+  "generate" : "jswrap_espruino_setConsole",
+  "params" : [
+    ["device","JsVar",""],
+    ["options","JsVar","(optional) object of options, see below"]
+  ]
+}
+Changes the device that the JS console (otherwise known as the REPL)
+is attached to. If the console is on a device, that
+device can be used for programming Espruino.
+
+Rather than calling `Serial.setConsole` you can call
+`E.setConsole("DeviceName")`.
+
+This is particularly useful if you just want to
+remove the console. `E.setConsole(null)` will
+make the console completely inaccessible.
+
+`device` may be `"Serial1"`,`"USB"`,`"Bluetooth"`,`"Telnet"`,`"Terminal"`,
+any other *hardware* `Serial` device, or `null` to disable the console completely.
+
+`options` is of the form:
+
+```
+{
+  force : bool // default false, force the console onto this device so it does not move
+               //   if false, changes in connection state (eg USB/Bluetooth) can move
+               //   the console automatically.
+}
+```
+*/
+void jswrap_espruino_setConsole(JsVar *deviceVar, JsVar *options) {
+  bool force = false;
+  jsvConfigObject configs[] = {
+    {"force", JSV_BOOLEAN, &force}
+  };
+  if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject)))
+    return;
+
+  IOEventFlags device = EV_NONE;
+  if (jsvIsObject(deviceVar)) {
+    device = jsiGetDeviceFromClass(deviceVar);
+  } else if (jsvIsString(deviceVar)) {
+    char name[JSLEX_MAX_TOKEN_LENGTH];
+    jsvGetString(deviceVar, name, JSLEX_MAX_TOKEN_LENGTH);
+    device = jshFromDeviceString(name);
+  }
+
+  if (device==EV_NONE && !jsvIsNull(deviceVar)) {
+    jsExceptionHere(JSET_ERROR, "Unknown device type %q", device);
+    return;
+  }
+
+  if (device!=EV_NONE && !DEVICE_IS_SERIAL(device)) {
+    jsExceptionHere(JSET_ERROR, "setConsole can't be used on 'soft' or non-Serial devices");
+    return;
+  }
+  jsiSetConsoleDevice(device, force);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "getConsole",
+  "generate" : "jswrap_espruino_getConsole",
+  "return" : ["JsVar","The current console device as a string, or just `null` if the console is null"]
+
+}
+Returns the current console device - see `E.setConsole` for more information.
+*/
+JsVar *jswrap_espruino_getConsole() {
+  IOEventFlags dev = jsiGetConsoleDevice();
+  if (dev == EV_NONE) return jsvNewNull();
+  return jsvNewFromString(jshGetDeviceString(dev));
+}
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
   "name" : "reverseByte",
   "generate" : "jswrap_espruino_reverseByte",
   "params" : [
