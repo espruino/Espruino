@@ -1523,6 +1523,7 @@ void jswrap_banglejs_kill() {
   promiseBeep = 0;
   jsvUnLock(promiseBuzz);
   promiseBuzz = 0;
+
   jshSetPinShouldStayWatched(BTN1_PININDEX,false);
   jshSetPinShouldStayWatched(BTN2_PININDEX,false);
   jshSetPinShouldStayWatched(BTN3_PININDEX,false);
@@ -2070,6 +2071,7 @@ void jswrap_banglejs_off() {
   jsvKill();
   jshKill();
 
+  jswrap_banglejs_ioWr(IOEXP_HRM,1); // HRM off
   jswrap_banglejs_ioWr(IOEXP_GPS, 0); // GPS off
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
   jswrap_banglejs_setLCDPower(0);
