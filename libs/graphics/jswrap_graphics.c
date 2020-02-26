@@ -1121,7 +1121,7 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size) {
   // TODO: if function named 'setFontXYZ' exists, run it
   if (sz==0xFFFF) {
     JsVar *setterName = jsvVarPrintf("setFont%v",name);
-    JsVar *fontSetter = jspGetNamedField(parent,setterName,false);
+    JsVar *fontSetter = jspGetVarNamedField(parent,setterName,false);
     if (fontSetter) {
       jsvUnLock(jspExecuteFunction(fontSetter,parent,0,NULL));
       sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_CUSTOM);
@@ -1131,7 +1131,7 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size) {
   if (sz==0xFFFF) {
     jsExceptionHere(JSET_ERROR, "Unknown font %j", name);
   }
-  jswrap_graphics_setFontSizeX(parent, sz, isVector);
+  return jswrap_graphics_setFontSizeX(parent, sz, isVector);
 #else
   return 0;
 #endif
