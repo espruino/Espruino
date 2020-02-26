@@ -779,7 +779,7 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
       // LCD is paletted - look up in our palette to find the best match
       int d = 0x7FFFFFFF;
       color = 0;
-      for (int i=0;i<16;i++) {
+      for (unsigned int i=0;i<16;i++) {
         int p = PALETTE_4BIT[i];
         int pr = (p>>8)&0xF8;
         int pg = (p>>3)&0xFC;
@@ -1729,7 +1729,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         palettePtr = (uint16_t *)jsvGetDataPointer(v, &l);
         jsvUnLock(v);
         if (l==2 || l==4 || l==16)
-          paletteMask = l-1;
+          paletteMask = (uint32_t)(l-1);
         else {
           palettePtr = 0;
         }
@@ -1773,31 +1773,31 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 
   if (palettePtr==0) {
     if (imageBpp==1) {
-      simplePalette[0] = gfx.data.bgColor;
-      simplePalette[1] = gfx.data.fgColor;
+      simplePalette[0] = (uint16_t)gfx.data.bgColor;
+      simplePalette[1] = (uint16_t)gfx.data.fgColor;
       palettePtr = simplePalette;
       paletteMask = 1;
   #ifdef GRAPHICS_PALETTED_IMAGES
     } else if (gfx.data.bpp==16 && imageBpp==2) { // Blend from bg to fg
-      int b = gfx.data.bgColor;
-      int br = (b>>8)&0xF8;
-      int bg = (b>>3)&0xFC;
-      int bb = (b<<3)&0xF8;
-      int f = gfx.data.fgColor;
-      int fr = (f>>8)&0xF8;
-      int fg = (f>>3)&0xFC;
-      int fb = (f<<3)&0xF8;
-      simplePalette[0] = gfx.data.bgColor;
-      int ri,gi,bi;
+      unsigned int b = gfx.data.bgColor;
+      unsigned int br = (b>>8)&0xF8;
+      unsigned int bg = (b>>3)&0xFC;
+      unsigned int bb = (b<<3)&0xF8;
+      unsigned int f = gfx.data.fgColor;
+      unsigned int fr = (f>>8)&0xF8;
+      unsigned int fg = (f>>3)&0xFC;
+      unsigned int fb = (f<<3)&0xF8;
+      simplePalette[0] = (uint16_t)gfx.data.bgColor;
+      unsigned int ri,gi,bi;
       ri = (br*2 + fr)/3;
       gi = (bg*2 + fg)/3;
       bi = (bb*2 + fb)/3;
-      simplePalette[1] = (bi>>3) | (gi>>2)<<5 | (ri>>3)<<11;
+      simplePalette[1] = (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
       ri = (br + fr*2)/3;
       gi = (bg + fg*2)/3;
       bi = (bb + fb*2)/3;
-      simplePalette[2] = (bi>>3) | (gi>>2)<<5 | (ri>>3)<<11;
-      simplePalette[3] = gfx.data.fgColor;
+      simplePalette[2] = (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
+      simplePalette[3] = (uint16_t)gfx.data.fgColor;
       palettePtr = simplePalette;
       paletteMask = 3;
     } else if (gfx.data.bpp==16 && imageBpp==4) { // palette is 16 bits, so don't use it for other things
@@ -1822,7 +1822,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     return 0;
   }
   unsigned int imageBitMask = (unsigned int)((1L<<imageBpp)-1L);
-  unsigned int imagePixelsPerByteMask = (imageBpp<8)?(8/imageBpp)-1:0;
+  unsigned int imagePixelsPerByteMask = (unsigned int)((imageBpp<8)?(8/imageBpp)-1:0);
   // jsvGetArrayBufferBackingString is fine to be passed a string
   JsVar *imageBufferString = jsvGetArrayBufferBackingString(imageBuffer);
   jsvUnLock(imageBuffer);
@@ -1831,7 +1831,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   int bits=0;
   unsigned int colData = 0;
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, imageBufferString, imageBufferOffset);
+  jsvStringIteratorNew(&it, imageBufferString, (size_t)imageBufferOffset);
 
   if (jsvIsUndefined(options)) {
     // Standard 1:1 blitting
@@ -2000,11 +2000,11 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
           int imagey = (qy+127)>>8;
           if (imagex>=0 && imagey>=0 && imagex<imageWidth && imagey<imageHeight) {
             if (imageBpp==8) { // fast path for 8 bits
-              jsvStringIteratorGoto(&it, imageBufferString, imageBufferOffset+imagex+(imagey*imageStride));
+              jsvStringIteratorGoto(&it, imageBufferString, (size_t)(imageBufferOffset+imagex+(imagey*imageStride)));
               colData = (unsigned char)jsvStringIteratorGetChar(&it);
             } else {
               int bitOffset = (imagex+(imagey*imageWidth))*imageBpp;
-              jsvStringIteratorGoto(&it, imageBufferString, imageBufferOffset+(bitOffset>>3));
+              jsvStringIteratorGoto(&it, imageBufferString, (size_t)(imageBufferOffset+(bitOffset>>3)));
               colData = (unsigned char)jsvStringIteratorGetChar(&it);
               for (int b=8;b<imageBpp;b+=8) {
                 jsvStringIteratorNext(&it);
@@ -2282,13 +2282,13 @@ void jswrap_graphics_dump(JsVar *parent) {
  Max 10 points without start point.
 */
 JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *options ){
-
+  NOT_USED(parent);
   JsVar *result = jsvNewEmptyArray();
   if (!result) return 0;
 
   if (jsvGetArrayLength(arr) != 6) return result; 
 
-  float s,t,t2,tp2, tpt;
+  double s,t,t2,tp2, tpt;
   int sn = 5;
   int dx, dy;
   int x0, x1, x2, y0, y1, y2;
@@ -2307,10 +2307,10 @@ JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *option
 
   dx = (x0 - x2) < 0 ? (x2-x0):(x0-x2);
   dy = (y0 - y2) < 0 ? (y2-y0):(y0-y2); 
-  s =  1 / (float) (((dx < dy) ? dx : dy ) / sn ); 
+  s =  1 / (double) (((dx < dy) ? dx : dy ) / sn );
   if ( s >= 1)  s = 0.33;
   if ( s < 0.1) s = 0.1;
-  if (count > 0) s = (float) 1 / count;
+  if (count > 0) s = 1.0 / count;
 
   jsvArrayPushAndUnLock(result, jsvNewFromInteger(x0));
   jsvArrayPushAndUnLock(result, jsvNewFromInteger(y0));
@@ -2319,8 +2319,8 @@ JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *option
     t2 = t*t;
     tp2 = (1 - t) * (1 - t);
     tpt = 2 * (1 - t) * t;
-    jsvArrayPushAndUnLock(result, jsvNewFromInteger(x0 * tp2 + x1 * tpt + x2 * t2 + 0.5));
-    jsvArrayPushAndUnLock(result, jsvNewFromInteger(y0 * tp2 + y1 * tpt + y2 * t2 + 0.5));
+    jsvArrayPushAndUnLock(result, jsvNewFromInteger((int)(x0 * tp2 + x1 * tpt + x2 * t2 + 0.5)));
+    jsvArrayPushAndUnLock(result, jsvNewFromInteger((int)(y0 * tp2 + y1 * tpt + y2 * t2 + 0.5)));
   }
 
   jsvArrayPushAndUnLock(result, jsvNewFromInteger(x2));
