@@ -457,6 +457,7 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
   return 0;
 }
 
+
 /// Output debug info for files stored in flash storage
 void jsfDebugFiles() {
   uint32_t addr = JSF_START_ADDRESS;
@@ -500,13 +501,13 @@ JsVar *jsfReadFile(JsfFileName name, int offset, int length) {
   if (!addr) return 0;
   // clip requested read lengths
   if (offset<0) offset=0;
-  uint32_t fileLen = jsfGetFileSize(&header);
+  int fileLen = (int)jsfGetFileSize(&header);
   if (length<=0) length=fileLen;
   if (offset>fileLen) offset=fileLen;
   if (offset+length>fileLen) length=fileLen-offset;
   if (length<=0) return jsvNewFromEmptyString();
   // now increment address by offset
-  addr += offset;
+  addr += (uint32_t)offset;
 
   size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
 #ifdef SPIFLASH_BASE // if using SPI flash it can't be memory-mapped
@@ -526,15 +527,15 @@ JsVar *jsfReadFile(JsfFileName name, int offset, int length) {
       jsvStringIteratorFree(&it);
     }
     return v;*/
-    return jsvNewFlashString((char*)addr, length);
+    return jsvNewFlashString((char*)(size_t)addr, (size_t)length);
   }
 #endif
 #ifdef LINUX
   // linux fakes flash with a file, so we can't just return a pointer to it!
-  uint32_t alignedSize = jsfAlignAddress(length);
+  uint32_t alignedSize = jsfAlignAddress((uint32_t)length);
   char *d = (char*)malloc(alignedSize);
   jshFlashRead(d, addr, alignedSize);
-  JsVar *v = jsvNewStringOfLength(length, d);
+  JsVar *v = jsvNewStringOfLength((uint32_t)length, d);
   free(d);
   return v;
 #else
@@ -630,7 +631,7 @@ static uint32_t getBuildHash() {
 typedef struct {
   uint32_t address;          // current address in memory
   uint32_t endAddress;       // address at which to end
-  int byteCount;
+  uint32_t byteCount;
   unsigned char buffer[128]; // buffer for read/written data
   uint32_t bufferCnt;        // where are we in the buffer?
 } jsfcbData;
