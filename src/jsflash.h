@@ -18,8 +18,8 @@
 
 /// Simple filename used for Flash Storage. We use uint here so we don't have to memcpy/memcmp all the time
 typedef union {
-  uint64_t n;
-  char c[8];
+  struct { uint64_t a,b,c; } n;
+  char c[24];
 } JsfFileName;
 
 /// Max length of filename in chars

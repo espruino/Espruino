@@ -53,7 +53,7 @@ static uint32_t jsfAlignAddress(uint32_t addr) {
 }
 
 JsfFileName jsfNameFromString(const char *name) {
-  assert(strlen(name)<=8);
+  assert(strlen(name)<=sizeof(JsfFileName));
   char nameBuf[sizeof(JsfFileName)+1];
   memset(nameBuf,0,sizeof(nameBuf));
   strcpy(nameBuf,name);
@@ -379,7 +379,9 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
       if (jsfGetFileHeader(addr, &header)) do {
         // check for something with the same name
         if (header.replacement == JSF_WORD_UNSET &&
-            header.name.n == name.n)
+            header.name.n.a == name.n.a &&
+            header.name.n.b == name.n.b &&
+            header.name.n.c == name.n.c)
           existingAddr = addr;
       } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_EMPTY));
       // If not enough space, skip to next page
@@ -442,7 +444,9 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
   if (jsfGetFileHeader(addr, &header)) do {
     // check for something with the same name that hasn't been replaced
     if (header.replacement == JSF_WORD_UNSET &&
-        header.name.n == name.n) {
+        header.name.n.a == name.n.a &&
+        header.name.n.b == name.n.b &&
+        header.name.n.c == name.n.c) {
       uint32_t endOfFile = addr + (uint32_t)sizeof(JsfFileHeader) + jsfGetFileSize(&header);
       if (endOfFile<addr || endOfFile>JSF_END_ADDRESS)
         return 0; // corrupt - file too long
