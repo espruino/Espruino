@@ -1306,12 +1306,17 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     x -= jswrap_graphics_stringWidth(parent, var) * (gfx.data.fontAlignX+1)/2;
   if (gfx.data.fontAlignY<2)  // 0=center, 1=bottom, 2=undefined, 3=top
     y -= customHeight * (gfx.data.fontAlignY+1)/2;
-#endif
 
   int minX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y1 : gfx.data.clipRect.x1;
   int minY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x1 : gfx.data.clipRect.y1;
   int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y2 : gfx.data.clipRect.x2;
   int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x2 : gfx.data.clipRect.y2;
+#else
+  int minX = 0;
+  int minY = 0;
+  int maxX = ((gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height) - 1;
+  int maxY = ((gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width) - 1;
+#endif
   int startx = x;
   JsVar *str = jsvAsString(var);
   JsvStringIterator it;
