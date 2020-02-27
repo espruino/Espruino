@@ -16,10 +16,10 @@
 
 #include "jsvar.h"
 
-/// Simple filename used for Flash Storage. We use uint here so we don't have to memcpy/memcmp all the time
+/// Simple filename used for Flash Storage. We use firstChars so we can do a quick first pass check for equality
 typedef union {
-  struct { uint64_t a,b,c; } n;
-  char c[24];
+  uint32_t firstChars; ///< Set these all to 0 to indicate a replaced/deleted file
+  char c[28]; // whatever is left after 'size'
 } JsfFileName;
 
 /// Max length of filename in chars
@@ -27,8 +27,7 @@ typedef union {
 
 /// Structure for File Storage. It's important this is 8 byte aligned for platforms that only support 64 bit writes
 typedef struct {
-  JsfWord size; ///< Total size (and flags in the top 8 bits)
-  JsfWord replacement; ///< pointer to a replacement (eventually). For now this is 0xFFFFFFFF if ok, 0 if erased
+  uint32_t size; ///< Total size (and flags in the top 8 bits)
   JsfFileName name; ///< 0-padded filename
 } JsfFileHeader;
 
