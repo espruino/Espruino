@@ -2,6 +2,10 @@
 
 language: c
 
+# Ensure we clone the last 1000 commits, which allows us to get the commit counter correct!
+git:
+  depth: 1000
+
 before_script:
  - source ./scripts/provision.sh $BOARD
  - python --version
