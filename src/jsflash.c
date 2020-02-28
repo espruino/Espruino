@@ -90,8 +90,7 @@ static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header, bool readFull
   if (!addr) return false;
   jshFlashRead(header, addr, readFullName ? sizeof(JsfFileHeader) : 8/* size + name.firstChars */);
   return (header->size != JSF_WORD_UNSET) &&
-      (jsfGetFileSize(header) < FLASH_SAVED_CODE_LENGTH) && // flags are stored in top byte of length
-      (addr+(uint32_t)sizeof(JsfFileHeader)+jsfGetFileSize(header) < JSF_END_ADDRESS);
+    (addr+(uint32_t)sizeof(JsfFileHeader)+jsfGetFileSize(header) < JSF_END_ADDRESS);
 }
 
 /// Is an area of flash completely erased?

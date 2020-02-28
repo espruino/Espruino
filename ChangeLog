@@ -104,6 +104,8 @@
               - increase filename to 28 bytes, but file search now more efficient
             Bangle.js: Increase Storage area to full 4MB of flash
             Bangle.js: NEEDS NEW APPS - Move away from using first char as file descriptor and use file extensions instead
+            Add StorageFile.getLength() to get the current length of a StorageFile
+            StorageFile also writes files with a 'JSFF_STORAGEFILE' flag (not currently used)
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

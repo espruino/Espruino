@@ -33,6 +33,7 @@ typedef struct {
 
 typedef enum {
   JSFF_NONE,
+  JSFF_STORAGEFILE = 64,  // This file is a 'storage file' created by Storage.open
   JSFF_COMPRESSED = 128   // This file contains compressed data
 } JsfFileFlags; // these are stored in the top 8 bits of JsfFileHeader.size
 
