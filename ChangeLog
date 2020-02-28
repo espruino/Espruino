@@ -102,6 +102,7 @@
             Increase 'Storage' library's max filename size to 24 bytes (from 8)
             Remove header.replacement in 'Storage' lib and just zero header.name
               - increase filename to 28 bytes, but file search now more efficient
+            Bangle.js: Increase Storage area to full 4MB of flash
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

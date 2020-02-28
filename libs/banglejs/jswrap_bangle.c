@@ -1472,8 +1472,9 @@ void jswrap_banglejs_init() {
     for (unsigned int i=0;i<sizeof(buf);i++)
       if (buf[i]) allZero=false;
     if (allZero) {
-      jsiConsolePrintf("Erasing Storage Area\n");
+      jsiConsolePrintf("Erasing Storage Area...\n");
       jsfEraseAll();
+      jsiConsolePrintf("Erase complete.\n");
     }
   }
 #endif
