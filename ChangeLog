@@ -110,6 +110,7 @@
             MDBT42Q: Remove AES encryption libs by default to free up more flash memory
             Microbit: Add SAVE_ON_FLASH_EXTREME flag to ensure builds keep working
             Bangle.js: Added built-in 'locale' module to handle common conversions - this can be overwritten by a Storage File to change language
+            Storage.readJSON now has optional 2nd arg that stops it from creating exceptions on bad JSON
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

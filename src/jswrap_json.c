@@ -84,7 +84,7 @@ JsVar *jswrap_json_parse_internal() {
   case '-': {
     jslGetNextToken();
     if (lex->tk!=LEX_INT && lex->tk!=LEX_FLOAT) return 0;
-    JsVar *v = jswrap_json_parse_internal(lex);
+    JsVar *v = jswrap_json_parse_internal();
     JsVar *zero = jsvNewFromInteger(0);
     JsVar *r = jsvMathsOp(zero, v, '-');
     jsvUnLock2(v, zero);
@@ -109,7 +109,7 @@ JsVar *jswrap_json_parse_internal() {
     JsVar *arr = jsvNewEmptyArray(); if (!arr) return 0;
     jslGetNextToken(); // [
     while (lex->tk != ']' && !jspHasError()) {
-      JsVar *value = jswrap_json_parse_internal(lex);
+      JsVar *value = jswrap_json_parse_internal();
       if (!value ||
           (lex->tk!=']' && !jslMatch(','))) {
         jsvUnLock2(value, arr);
@@ -132,7 +132,7 @@ JsVar *jswrap_json_parse_internal() {
       jslGetNextToken();
       JsVar *value = 0;
       if (!jslMatch(':') ||
-          !(value=jswrap_json_parse_internal(lex)) ||
+          !(value=jswrap_json_parse_internal()) ||
           (lex->tk!='}' && !jslMatch(','))) {
         jsvUnLock3(key, value, obj);
         return 0;

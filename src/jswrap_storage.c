@@ -109,7 +109,8 @@ JsVar *jswrap_storage_read(JsVar *name, int offset, int length) {
   "name" : "readJSON",
   "generate" : "jswrap_storage_readJSON",
   "params" : [
-    ["name","JsVar","The filename - max 8 characters (case sensitive)"]
+    ["name","JsVar","The filename - max 8 characters (case sensitive)"],
+    ["noExceptions","bool","If true and the JSON is not valid, just return `undefined` - otherwise an `Exception` is thrown"]
   ],
   "return" : ["JsVar","An object containing parsed JSON from the file, or undefined"]
 }
@@ -121,11 +122,12 @@ This is identical to `JSON.parse(require("Storage").read(...))`.
 It will throw an exception if the data in the file is not
 valid JSON.
 */
-JsVar *jswrap_storage_readJSON(JsVar *name) {
+JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name),0,0);
   if (!v) return 0;
   JsVar *r = jswrap_json_parse(v);
   jsvUnLock(v);
+  if (noExceptions) jsvUnLock(jspGetException());
   return r;
 }
 

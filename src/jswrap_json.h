@@ -14,6 +14,7 @@
 #include "jsvar.h"
 
 JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space);
+JsVar *jswrap_json_parse_ext(JsVar *v, bool throwExceptions);
 JsVar *jswrap_json_parse(JsVar *v);
 
 typedef enum {
