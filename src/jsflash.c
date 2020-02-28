@@ -15,6 +15,7 @@
 #include "jshardware.h"
 #include "jsvariterator.h"
 #include "jsinteractive.h"
+#include "jswrap_string.h" //jswrap_string_match
 
 #define SAVED_CODE_BOOTCODE_RESET ".bootrst" // bootcode that runs even after reset
 #define SAVED_CODE_BOOTCODE ".bootcde" // bootcode that doesn't run after reset
@@ -588,8 +589,8 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
   return true;
 }
 
-/// Return all files in flash as a JsVar array of names
-JsVar *jsfListFiles() {
+/// Return all files in flash as a JsVar array of names. If regex is supplied, it is used to filter the filenames using String.match(regexp)
+JsVar *jsfListFiles(JsVar *regex) {
   JsVar *files = jsvNewEmptyArray();
   if (!files) return 0;
 
@@ -601,7 +602,15 @@ JsVar *jsfListFiles() {
     if (header.name.firstChars != 0) { // if not replaced
       memcpy(nameBuf, &header.name, sizeof(JsfFileName));
       nameBuf[sizeof(JsfFileName)]=0;
-      jsvArrayPushAndUnLock(files, jsvNewFromString(nameBuf));
+      JsVar *v = jsvNewFromString(nameBuf);
+      bool match = true;
+      if (regex) {
+        JsVar *m = jswrap_string_match(v,regex);
+        match = !(jsvIsUndefined(m) || jsvIsNull(m));
+        jsvUnLock(m);
+      }
+      if (match) jsvArrayPushAndUnLock(files, v);
+      else jsvUnLock(v);
     }
   } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL));
   return files;

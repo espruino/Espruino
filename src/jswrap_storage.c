@@ -248,6 +248,9 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
   "class" : "Storage",
   "name" : "list",
   "generate" : "jswrap_storage_list",
+  "params" : [
+    ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being returned"]
+  ],
   "return" : ["JsVar","An array of filenames"]
 }
 List all files in the flash storage area. An array of Strings is returned.
@@ -255,8 +258,8 @@ List all files in the flash storage area. An array of Strings is returned.
 **Note:** This will output system files (eg. saved code) as well as
 files that you may have written.
  */
-JsVar *jswrap_storage_list() {
-  return jsfListFiles();
+JsVar *jswrap_storage_list(JsVar *regex) {
+  return jsfListFiles(regex);
 }
 
 /*JSON{

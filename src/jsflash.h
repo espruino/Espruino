@@ -60,8 +60,8 @@ bool jsfEraseFile(JsfFileName name);
 bool jsfEraseAll();
 /// Try and compact saved data so it'll fit in Flash again
 bool jsfCompact();
-/// Return all files in flash as a JsVar array of names
-JsVar *jsfListFiles();
+/// Return all files in flash as a JsVar array of names. If regex is supplied, it is used to filter the filenames using String.match(regexp)
+JsVar *jsfListFiles(JsVar *regex);
 /// Output debug info for files stored in flash storage
 void jsfDebugFiles();
 // Get the amount of space free in this page (or all pages). addr=0 uses start page
