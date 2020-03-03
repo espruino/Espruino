@@ -111,6 +111,7 @@
             Microbit: Add SAVE_ON_FLASH_EXTREME flag to ensure builds keep working
             Bangle.js: Added built-in 'locale' module to handle common conversions - this can be overwritten by a Storage File to change language
             Storage.readJSON now has optional 2nd arg that stops it from creating exceptions on bad JSON
+            Bangle.js: Tweak LCD gamma curves to provide better gradients on new watches (fix #1758)
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
