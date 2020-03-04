@@ -955,22 +955,13 @@ void nus_transmit_string() {
 
 #if NRF_SD_BLE_API_VERSION>5
     uint32_t err_code = ble_nus_data_send(&m_nus, nusTxBuf, &nuxTxBufLength, m_peripheral_conn_handle);
-    if (err_code == NRF_SUCCESS) nuxTxBufLength=0; // everything sent Ok
 #elif NRF_SD_BLE_API_VERSION<5
     uint32_t err_code = ble_nus_string_send(&m_nus, nusTxBuf, nuxTxBufLength);
-    if (err_code == NRF_SUCCESS) nuxTxBufLength=0; // everything sent Ok
-#else
-    uint16_t bytesSent = nuxTxBufLength;
-    uint32_t err_code = ble_nus_string_send(&m_nus, nusTxBuf, &bytesSent);
-    if (nuxTxBufLength==bytesSent) {
-      nuxTxBufLength = 0;
-    } else if (bytesSent) {
-      for (uint16_t n=bytesSent;n<nuxTxBufLength;n++)
-        nusTxBuf[n-bytesSent] = nusTxBuf[n];
-      nuxTxBufLength -= bytesSent;
-    }
+#else // NRF_SD_BLE_API_VERSION==5
+    uint32_t err_code = ble_nus_string_send(&m_nus, nusTxBuf, &nuxTxBufLength);
 #endif
     if (err_code == NRF_SUCCESS) {
+      nuxTxBufLength=0; // everything sent Ok
       bleStatus |= BLE_IS_SENDING;
     } else if (err_code==NRF_ERROR_INVALID_STATE) {
       // If no notifications we are connected but the central isn't reading, so sends will fail.
