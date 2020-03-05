@@ -54,7 +54,7 @@
         g.fillRect(x,iy,x2,iy+options.fontHeight-1);
         g.setColor(hl ? cHighlightFg : cFg);
         g.setFontAlign(-1,-1);
-        g.drawString(loc.translate(name),x,iy+1);
+        g.drawString(loc.translate(name),x,iy);
         if ("object" == typeof item) {
           var xo = x2;
           var v = item.value;
@@ -68,7 +68,7 @@
             g.drawImage("\x0c\x05\x81\x00 \x07\x00\xF9\xF0\x0E\x00@",xo,iy+(options.fontHeight-10)/2,{scale:2});
           }
           g.setFontAlign(1,-1);
-          g.drawString(v,xo-2,iy+1);
+          g.drawString(v,xo-2,iy);
         }
         g.setColor(cFg);
         iy += options.fontHeight;

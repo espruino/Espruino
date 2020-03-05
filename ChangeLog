@@ -117,6 +117,7 @@
             Bangle.js: Use 'locale' library to translate E.showMenu/Prompt/Alert/etc
             Bangle.js: remove graphical_menu lib and inline specialised version into E.showMenu
             Bangle.js: Modify handling of widgets to allow variable width widgets (requires new widget JS)
+            Changed 6x8 builtin font to a modified Dina_r400-6 supporting non-ASCII characters
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
