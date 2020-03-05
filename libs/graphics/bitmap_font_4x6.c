@@ -25,8 +25,8 @@
 #define PACK_5_TO_16(A,B,C,D,E) ((A) | (B<<3) | (C<<6) | (D<<9) | (E<<12))
  // 48
 
-#define LCD_FONT_4X6_CHARS 95
-const unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 127
+#define LCD_FONT_4X6_CHARS 100
+const unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 133
     PACK_5_TO_16( _X_ , X_X , X_X , _X_ , X_X ),
     PACK_5_TO_16( _X_ , X_X , XXX , XXX , __X ),
     PACK_5_TO_16( _X_ , ___ , X_X , XX_ , _X_ ),
@@ -158,7 +158,14 @@ const unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 127
     PACK_5_TO_16( XX_ , _X_ , _XX , ___ , XXX ),
     PACK_5_TO_16( _X_ , _X_ , _X_ , ___ , XXX ),
     PACK_5_TO_16( _XX , _X_ , XX_ , ___ , XXX ),
-    PACK_5_TO_16( ___ , ___ , ___ , ___ , XXX )
+    PACK_5_TO_16( ___ , ___ , ___ , ___ , XXX ),
+             // 128 euro
+    PACK_5_TO_16( _XX , ___ , ___ , ___ , ___ ),
+    PACK_5_TO_16( X__ , ___ , ___ , ___ , ___ ),
+    PACK_5_TO_16( XX_ , ___ , ___ , ___ , ___ ),
+    PACK_5_TO_16( XX_ , ___ , ___ , ___ , ___ ),
+    PACK_5_TO_16( X__ , ___ , ___ , ___ , ___ ),
+    PACK_5_TO_16( _XX , ___ , ___ , ___ , ___ )
 };
 
 void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, unsigned short size, bool solidBackground) {

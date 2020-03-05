@@ -113,6 +113,7 @@
             Storage.readJSON now has optional 2nd arg that stops it from creating exceptions on bad JSON
             Bangle.js: Tweak LCD gamma curves to provide better gradients on new watches (fix #1758)
             Bangle.js: fix BLE UART transmit bug when compiling for SDK14 (thanks @fanoush!)
+            Add euro symbol to 6x8 and 4x6 fonts as char code 128 (ISO10646-1)
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

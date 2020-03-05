@@ -83,8 +83,8 @@
 #define PACK_5_TO_32(A,B,C,D,E) ((A) | (B<<6) | (C<<12) | (D<<18) | (E<<24))
  // 48
 
-#define LCD_FONT_6X8_CHARS 95
-const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up to 128
+#define LCD_FONT_6X8_CHARS 100
+const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up to 133
     PACK_5_TO_32( __X___ , _X_X__ , _X_X__ , __X___ , XX___X ),
     PACK_5_TO_32( __X___ , _X_X__ , _X_X__ , _XXXX_ , XX___X ),
     PACK_5_TO_32( __X___ , ______ , XXXXX_ , X_X___ , ____X_ ),
@@ -254,8 +254,17 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up to 128
     PACK_5_TO_32( __X___ , ______ , __X___ , ______ , XX___X ),
     PACK_5_TO_32( __X___ , __X___ , __X___ , ______ , X_XX_X ),
     PACK_5_TO_32( __X___ , __X___ , __X___ , ______ , _X__X_ ),
-    PACK_5_TO_32( ___X__ , __X___ , _X____ , ______ , __XX__ )
+    PACK_5_TO_32( ___X__ , __X___ , _X____ , ______ , __XX__ ),
 
+           //   128 - euro
+    PACK_5_TO_32( __XX__ , ______ , ______ , ______ , ______ ),
+    PACK_5_TO_32( _X__X_ , ______ , ______ , ______ , ______ ),
+    PACK_5_TO_32( XXX___ , ______ , ______ , ______ , ______ ),
+    PACK_5_TO_32( _X____ , ______ , ______ , ______ , ______ ),
+    PACK_5_TO_32( XXX___ , ______ , ______ , ______ , ______ ),
+    PACK_5_TO_32( _X____ , ______ , ______ , ______ , ______ ),
+    PACK_5_TO_32( _X__X_ , ______ , ______ , ______ , ______ ),
+    PACK_5_TO_32( __XX__ , ______ , ______ , ______ , ______ )
 };
 
 
