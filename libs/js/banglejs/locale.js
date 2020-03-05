@@ -1,9 +1,9 @@
 exports = { name : "en_GB", currencySym:"£",
   translate : str=>str, // as-is
   date : (d,short) => short?("0"+d.getDate()).substr(-2)+"/"+("0"+(d.getMonth()+1)).substr(-2)+"/"+d.getFullYear():d.toString().substr(4,11), // Date to "Feb 28 2020" or "28/02/2020"(short)
-  time : (d,short) => { // Date to  "4:15.28 pm" or "15:42.59"(short)
+  time : (d,short) => { // Date to  "4:15.28 pm" or "15:42"(short)
     if (short)
-      return d.toString().substr(16,5)+"."+d.toString().substr(22,2);
+      return d.toString().substr(16,5);
     else {
       var h = d.getHours(), m = d.getMinutes(), r = "am";
       if (h==0) { h=12; }
