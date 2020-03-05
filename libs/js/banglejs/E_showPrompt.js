@@ -6,6 +6,7 @@
   if (!options) options={};
   if (!options.buttons)
     options.buttons = {"Yes":true,"No":false};
+  var loc = require("locale");
   var btns = Object.keys(options.buttons);
   if (!options.selected)
     options.selected = 0;
@@ -16,21 +17,24 @@
     g.setFontAlign(0,0);
     var W = g.getWidth();
     var H = g.getHeight();
-    if (options.title) {
-      g.drawString(options.title,W/2,34);
-      var w = (g.stringWidth(options.title)+16)/2;
+    var title = options.title;
+    if (title) {
+      title = loc.translate(title);
+      g.drawString(title,W/2,34);
+      var w = (g.stringWidth(title)+16)/2;
       g.fillRect((W/2)-w,44,(W/2)+w,44);
     }
     var lines = msg.split("\n");
     var offset = (H - lines.length*16)/2;
     lines.forEach((line,y)=>
-      g.drawString(line,W/2,offset + y*16));    
+      g.drawString(loc.translate(line),W/2,offset + y*16));    
     var buttonWidths = 0;
     var buttonPadding = 16;
-    btns.forEach(btn=>buttonWidths += buttonPadding+g.stringWidth(btn));
+    btns.forEach(btn=>buttonWidths += buttonPadding+g.stringWidth(loc.translate(btn)));
     var x = (W-buttonWidths)/2;
     var y = H-40;
     btns.forEach((btn,idx)=>{
+      btn = loc.translate(btn);
       var w = g.stringWidth(btn);
       x += (buttonPadding+w)/2;      
       var bw = 2+w/2;
