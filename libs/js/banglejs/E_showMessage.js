@@ -1,8 +1,7 @@
 (function(msg,title) {
-  g.reset();
-  g.clearRect(0,24,239,215); // leave room for widgets
-  g.setFont("6x8",2);
-  g.setFontAlign(0,0);
+  g.clear(1).flip(); // clear screen
+  Bangle.drawWidgets(); // redraw widgets
+  g.reset().setFont("6x8",2).setFontAlign(0,0);
   var loc = require("locale");
   var W = g.getWidth();
   var H = g.getHeight();
