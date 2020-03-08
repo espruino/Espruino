@@ -319,7 +319,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( XXXXX , XXXXX , XXXXX , _XXX_ , _XXX_ , _XXX_ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
 // 207 - 212
-    PACK_6_TO_32( _X_X__ , _____ , X_XX_ ,_XX__ , __XX_ , _X_X_ ),
+    PACK_6_TO_32( _X_X_ , _____ , X_XX_ ,_XX__ , __XX_ , _X_X_ ),
     PACK_6_TO_32( _XXX_ , _XX__ , X___X , _XXX_ , _XXX_ , _XXX_ ),
     PACK_6_TO_32( __X__ , _X_X_ , XX__X , X___X , X___X , X___X ),
     PACK_6_TO_32( __X__ , XXX_X , X_X_X , X___X , X___X , X___X ),
