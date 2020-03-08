@@ -57,6 +57,7 @@
 
 #define LCD_FONT_6X8_CHARS 223 // also 4 extra>255 that we don't have right now
 const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
+// 33 - 38 
     PACK_6_TO_32( _____ , _X_X_ , _____ , __X__ , XX__X , __X__ ),
     PACK_6_TO_32( __X__ , _X_X_ , _X_X_ , _XXX_ , XX_X_ , _X_X_ ),
     PACK_6_TO_32( __X__ , _X_X_ , XXXXX , X_X__ , ___X_ , __X__ ),
@@ -65,7 +66,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( _____ , _____ , XXXXX , X_X_X , _X_XX , X__X_ ),
     PACK_6_TO_32( __X__ , _____ , _X_X_ , _XXX_ , X__XX , _XX_X ),
     PACK_6_TO_32( _____ , _____ , _____ , __X__ , _____ , _____ ),
-
+// 39 - 44
     PACK_6_TO_32( __X__ , ___X_ , _X___ , _____ , _____ , _____ ),
     PACK_6_TO_32( __X__ , __X__ , __X__ , _____ , _____ , _____ ),
     PACK_6_TO_32( __X__ , _X___ , ___X_ , _X_X_ , __X__ , _____ ),
@@ -74,7 +75,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( _____ , _X___ , ___X_ , __X__ , __X__ , __X__ ),
     PACK_6_TO_32( _____ , __X__ , __X__ , _X_X_ , __X__ , __X__ ),
     PACK_6_TO_32( _____ , ___X_ , _X___ , _____ , _____ , _X___ ),
-
+// 45 - 50
     PACK_6_TO_32( _____ , _____ , ____X , _____ , _____ , _____ ),
     PACK_6_TO_32( _____ , _____ , ___X_ , _XXX_ , __X__ , _XXX_ ),
     PACK_6_TO_32( _____ , _____ , ___X_ , X__XX , _XX__ , X___X ),
@@ -83,7 +84,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( _____ , __X__ , _X___ , XX__X , __X__ , X____ ),
     PACK_6_TO_32( _____ , __X__ , _X___ , _XXX_ , XXXXX , XXXXX ),
     PACK_6_TO_32( _____ , _____ , X____ , _____ , _____ , _____ ),
-
+// 51 - 56
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( _XXX_ , ___X_ , XXXXX , __XX_ , XXXXX , _XXX_ ),
     PACK_6_TO_32( X___X , __XX_ , X____ , _X___ , ____X , X___X ),
@@ -92,7 +93,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X___X , XXXXX , X___X , X___X , _X___ , X___X ),
     PACK_6_TO_32( _XXX_ , ___X_ , _XXX_ , _XXX_ , _X___ , _XXX_ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-
+// 57 - 62
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( _XXX_ , _____ , _____ , ___X_ , _____ , X____ ),
     PACK_6_TO_32( X___X , __X__ , __X__ , __X__ , _____ , _X___ ),
@@ -101,7 +102,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( ____X , __X__ , __X__ , _X___ , XXXXX , __X__ ),
     PACK_6_TO_32( _XXX_ , __X__ , __X__ , __X__ , _____ , _X___ ),
     PACK_6_TO_32( _____ , _____ , _X___ , ___X_ , _____ , X____ ),
-
+// 63 - 68
     PACK_6_TO_32( _____ , _XXX_ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( _XXX_ , X___X , __X__ , XXXX_ , _XXX_ , XXX__ ),
     PACK_6_TO_32( X___X , X__XX , __X__ , X___X , X___X , X__X_ ),
@@ -110,7 +111,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( _____ , X__XX , X___X , X___X , X___X , X__X_ ),
     PACK_6_TO_32( __X__ , X____ , X___X , XXXX_ , _XXX_ , XXX__ ),
     PACK_6_TO_32( _____ , _XXXX , _____ , _____ , _____ , _____ ),
-
+// 69 - 74
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( XXXXX , XXXXX , _XXX_ , X___X , _XXX_ , __XXX ),
     PACK_6_TO_32( X____ , X____ , X____ , X___X , __X__ , ____X ),
@@ -119,8 +120,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X____ , X____ , X___X , X___X , __X__ , X___X ),
     PACK_6_TO_32( XXXXX , X____ , _XXX_ , X___X , _XXX_ , _XXX_ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-//  PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-
+// 75 - 80
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( X___X , X____ , X___X , X___X , _XXX_ , XXXX_ ),
     PACK_6_TO_32( X__X_ , X____ , XX_XX , XX__X , X___X , X___X ),
@@ -129,7 +129,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X__X_ , X____ , X___X , X___X , X___X , X____ ),
     PACK_6_TO_32( X___X , XXXXX , X___X , X___X , _XXX_ , X____ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-
+// 81 - 86
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( _XXX_ , XXXX_ , _XXX_ , XXXXX , X___X , X___X ),
     PACK_6_TO_32( X___X , X___X , X____ , __X__ , X___X , X___X ),
@@ -138,7 +138,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X__X_ , X___X , X___X , __X__ , X___X , _X_X_ ),
     PACK_6_TO_32( _XX_X , X___X , _XXX_ , __X__ , _XXX_ , __X__ ),
     PACK_6_TO_32( ____X , _____ , _____ , _____ , _____ , _____ ),
-
+// 87 - 92 
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _XXX_ , X____ ),
     PACK_6_TO_32( X___X , X___X , X___X , XXXXX , _X___ , _X___ ),
     PACK_6_TO_32( X___X , _X_X_ , X___X , ___X_ , _X___ , _X___ ),
@@ -147,7 +147,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( _XXX_ , X___X , __X__ , X____ , _X___ , ___X_ ),
     PACK_6_TO_32( _X_X_ , X___X , __X__ , XXXXX , _X___ , ___X_ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _XXX_ , ____X ),
-
+// 93 - 98
     PACK_6_TO_32( _XXX_ , __X__ , _____ , _X___ , _____ , X____ ),
     PACK_6_TO_32( ___X_ , __X__ , _____ , __X__ , _____ , X____ ),
     PACK_6_TO_32( ___X_ , _X_X_ , _____ , _____ , _XXX_ , XXXX_ ),
@@ -156,7 +156,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( ___X_ , _____ , _____ , _____ , X___X , X___X ),
     PACK_6_TO_32( ___X_ , _____ , _____ , _____ , _XXXX , XXXX_ ),
     PACK_6_TO_32( _XXX_ , _____ , XXXXX , _____ , _____ , _____ ),
-
+// 99 - 104
     PACK_6_TO_32( _____ , ____X , _____ , __XXX , _____ , X____ ),
     PACK_6_TO_32( _____ , ____X , _____ , _X___ , _____, X____ ),
     PACK_6_TO_32( _XXX_ , _XXXX , _XXX_ , XXXX_ , _XXXX, XXXX_ ),
@@ -165,8 +165,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X____ , X___X , X____ , _X___ , _XXXX, X___X ),
     PACK_6_TO_32( _XXXX , _XXXX , _XXXX , _X___ , ____X, X___X ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _XXX_, _____ ),
-
-
+// 105 - 110
     PACK_6_TO_32( __X__ , ___X_ , X____ , _XX__ , _____ , _____ ),
     PACK_6_TO_32( _____ , _____ , X____ , __X__ , _____ , _____ ),
     PACK_6_TO_32( _XX__ , _XXX_ , X___X , __X__ , XX_X_ , XXXX_ ),
@@ -175,7 +174,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( __X__ , ___X_ , X__X_ , __X__ , X_X_X , X___X ),
     PACK_6_TO_32( _XXX_ , ___X_ , X___X , __XX_ , X_X_X , X___X ),
     PACK_6_TO_32( _____ , XXX__ , _____ , _____ , _____ , _____ ),
-
+// 111 - 116
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _X___ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _X___ ),
     PACK_6_TO_32( _XXX_ , XXXX_ , _XXXX , X_XX_ , _XXX_ , XXXX_ ),
@@ -184,8 +183,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X___X , XXXX_ , _XXXX , X____ , ____X , _X___ ),
     PACK_6_TO_32( _XXX_ , X____ , ____X , X____ , XXXX_ , __XXX ),
     PACK_6_TO_32( _____ , X____ , ____X , _____ , _____ , _____ ),
-
-
+// 117 - 122
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( X___X , X___X , X___X , X___X , X___X , XXXXX ),
@@ -194,16 +192,16 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X___X , _X_X_ , X_X_X , _X_X_ , _XXXX , _X___ ),
     PACK_6_TO_32( _XXXX , __X__ , _X_X_ , X___X , ____X , XXXXX ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _XXX_ , _____ ),
-
-    PACK_6_TO_32( ___XX , X____ , XX___ , _____ , _____ , __XX_ ),
-    PACK_6_TO_32( __X__ , X____ , __X__ , _____ , _____ , _X__X ),
-    PACK_6_TO_32( __X__ , X____ , __X__ , _____ , _____ , XXX__ ),
-    PACK_6_TO_32( XX___ , X____ , ___XX , _X__X , _____ , _X___ ),
-    PACK_6_TO_32( XX___ , X____ , ___XX , X_X_X , _____ , XXX__ ),
-    PACK_6_TO_32( __X__ , X____ , __X__ , X__X_ , _____ , _X__X ),
-    PACK_6_TO_32( __X__ , X____ , __X__ , _____ , _____ , __XX_ ),
-    PACK_6_TO_32( ___XX , X____ , XX___ , _____ , _____ , _____ ),
-
+// 123 - 128
+    PACK_6_TO_32( ___XX , __X__ , XX___ , _____ , _____ , __XX_ ),
+    PACK_6_TO_32( __X__ , __X__ , __X__ , _____ , _____ , _X__X ),
+    PACK_6_TO_32( __X__ , __X__ , __X__ , _____ , _____ , XXX__ ),
+    PACK_6_TO_32( XX___ , __X__ , ___XX , _X__X , _____ , _X___ ),
+    PACK_6_TO_32( XX___ , __X__ , ___XX , X_X_X , _____ , XXX__ ),
+    PACK_6_TO_32( __X__ , __X__ , __X__ , X__X_ , _____ , _X__X ),
+    PACK_6_TO_32( __X__ , __X__ , __X__ , _____ , _____ , __XX_ ),
+    PACK_6_TO_32( ___XX , __X__ , XX___ , _____ , _____ , _____ ),
+// 129 - 134
     PACK_6_TO_32( _____ , _____ , ___XX , _____ , _____ , _____ ),
     PACK_6_TO_32( _____ , _____ , __X__ , _____ , _____ , __X__ ),
     PACK_6_TO_32( _____ , _____ , __X__ , _____ , _____ , __X__ ),
@@ -212,7 +210,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( _____ , _XX__ , __X__ , XX_XX , _____ , __X__ ),
     PACK_6_TO_32( _____ , __X__ , __X__ , _X__X , X_X_X , __X__ ),
     PACK_6_TO_32( _____ , _X___ , XX___ , X__X_ , _____ , __X__ ),
-
+// 135 - 140
     PACK_6_TO_32( __X__ , _____ , XX__X , __X__ , _____ , _____ ),
     PACK_6_TO_32( __X__ , __X__ , XX_X_ , _XXX_ , _____ , _XXXX ),
     PACK_6_TO_32( XXXXX , _X_X_ , __X__ , X____ , ___X_ , X_X__ ),
@@ -221,16 +219,16 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( XXXXX , _____ , XX_XX , X___X , __X__ , X_X__ ),
     PACK_6_TO_32( __X__ , _____ , XX_XX , _XXX_ , ___X_ , _XXXX ),
     PACK_6_TO_32( __X__ , _____ , _____ , _____ , _____ , _____ ),
-
+// 141 - 146
     PACK_6_TO_32( _____ , __X__ , _____ , _____ , __X__ , _XX__ ),
     PACK_6_TO_32( _____ , XXXXX , _____ , _____ , _X___ , __X__ ),
-    PACK_6_TO_32( _____ , ___X_ , _____ , _____ , _XX__ , _X___ ),
-    PACK_6_TO_32( _____ , __X__ , _____ , _____ , _____ , _____ ),
-    PACK_6_TO_32( _____ , _X___ , _____ , _____ , _____ , _____ ),
-    PACK_6_TO_32( _____ , X____ , _____ , _____ , _____ , _____ ),
-    PACK_6_TO_32( _____ , XXXXX , _____ , _____ , _____ , _____ ),
+    PACK_6_TO_32( _XXXX , ___X_ , _____ , _____ , _XX__ , _X___ ),
+    PACK_6_TO_32( X_X__ , __X__ , _____ , _____ , _____ , _____ ),
+    PACK_6_TO_32( X_XX_ , _X___ , _____ , _____ , _____ , _____ ),
+    PACK_6_TO_32( X_X__ , X____ , _____ , _____ , _____ , _____ ),
+    PACK_6_TO_32( _XXXX , XXXXX , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-
+// 147 - 152
     PACK_6_TO_32( _X__X , XX_XX , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( X__X_ , _X__X , _____ , _____ , _____ , _XX_X ),
     PACK_6_TO_32( XX_XX , X__X_ , __X__ , _____ , _____ , X_XX_ ),
@@ -239,7 +237,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( _____ , _____ , _XXX_ , _____ , _____ , _____ ),
     PACK_6_TO_32( _____ , _____ , __X__ , _____ , _____ , _____ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-
+// 153 - 158
     PACK_6_TO_32( _____ , __X__ , _____ , _____ , _____ , __X__ ),
     PACK_6_TO_32( XXXXX , _____ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( _X_XX , _XXX_ , X____ , _X_X_ , _____ , XXXXX ),
@@ -248,7 +246,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( _____ , ____X , _X___ , X_X__ , _____ , _X___ ),
     PACK_6_TO_32( _____ , XXXX_ , X____ , _X_XX , _____ , XXXXX ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-
+// 159 - 164
     PACK_6_TO_32( _____ , _____ , _____ , __X__ , _____ , _____ ),
     PACK_6_TO_32( X___X , _____ , _____ , __X__ , __XX_ , _____ ),
     PACK_6_TO_32( X___X , _____ , __X__ , _XXX_ , _X___ , X___X ),
@@ -257,7 +255,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( __X__ , _____ , __X__ , _XXXX , _X___ , _XXX_ ),
     PACK_6_TO_32( __X__ , _____ , __X__ , __X__ , X_XXX , X___X ),
     PACK_6_TO_32( _____ , _____ , __X__ , __X__ , _____ , _____ ),
-
+// 165 - 170
     PACK_6_TO_32( X___X , __X__ , _XXX_ , _X_X_ , _XXX_ , _XX__ ),
     PACK_6_TO_32( X___X , __X__ , X____ , _____ , X___X , ___X_ ),
     PACK_6_TO_32( _X_X_ , __X__ , _XX__ , _____ , X_X_X , _XXX_ ),
@@ -266,7 +264,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( XXXXX , __X__ , __XX_ , _____ , X_X_X , _____ ),
     PACK_6_TO_32( __X__ , __X__ , ____X , _____ , X___X , _____ ),
     PACK_6_TO_32( _____ , __X__ , XXXX_ , _____ , _XXX_ , _____ ),
-
+// 171 - 176
     PACK_6_TO_32( _____ , _____ , _____ , _XXX_ , XXXXX , _XX__ ),
     PACK_6_TO_32( _____ , _____ , _____ , X___X , _____ , X__X_ ),
     PACK_6_TO_32( __X_X , _____ , _____ , XXX_X , _____ , X__X_ ),
@@ -275,7 +273,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( _X_X_ , ___X_ , _____ , XX_XX , _____ , _____ ),
     PACK_6_TO_32( __X_X , ___X_ , _____ , X___X , _____ , _____ ),
     PACK_6_TO_32( _____ , _____ , _____ , _XXX_ , _____ , _____ ),
-
+// 177 - 182
     PACK_6_TO_32( _____ , _XX__ , _XX__ , ___X_ , _____ , _____ ),
     PACK_6_TO_32( __X__ , ___X_ , ___X_ , __X__ , _X__X , _XXXX ),
     PACK_6_TO_32( __X__ , __X__ , __X__ , _____ , _X__X , XXX_X ),
@@ -284,7 +282,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( __X__ , _____ , _____ , _____ , _X_X_ , __X_X ),
     PACK_6_TO_32( XXXXX , _____ , _____ , _____ , _X___ , __X_X ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , X____ , __X_X ),
-
+// 183 - 188
     PACK_6_TO_32( _____ , _____ , __X__ , _XX__ , _____ , X__X_ ),
     PACK_6_TO_32( _____ , _____ , _XX__ , X__X_ , _____ , X__X_ ),
     PACK_6_TO_32( _____ , _____ , __X__ , X__X_ , X_X__ , X_X__ ),
@@ -293,26 +291,26 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( _____ , _X___ , _____ , _____ , _X_X_ , _X_XX ),
     PACK_6_TO_32( _____ , __X__ , _____ , _____ , X_X__ , X_XXX ),
     PACK_6_TO_32( _____ , XX___ , _____ , _____ , _____ , X___X ),
-
-    PACK_6_TO_32( X__X_ , X____ , _____ , __X__ , __X__ , _X_X_ ),
-    PACK_6_TO_32( X__X_ , _X_X_ , _____ , __X__ , __X__ , _____ ),
+// 189 - 194
+    PACK_6_TO_32( X__X_ , X____ , _____ , _XX__ , __XX_ , _XXX_ ),
+    PACK_6_TO_32( X__X_ , _X_X_ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( X_X__ , X__X_ , __X__ , __X__ , __X__ , __X__ ),
     PACK_6_TO_32( __X__ , _XX__ , _____ , _X_X_ , _X_X_ , _X_X_ ),
     PACK_6_TO_32( _X_XX , X_X__ , __X__ , _XXX_ , _XXX_ , _XXX_ ),
     PACK_6_TO_32( _X__X , _X__X , _X___ , X___X , X___X , X___X ),
     PACK_6_TO_32( X__X_ , _X_XX , X___X , X___X , X___X , X___X ),
-    PACK_6_TO_32( X__XX , X_X_X , _XXX_ , _____ , _____ , _____ ),
-
-    PACK_6_TO_32( X_XX_ , _____ , _X_X_ , _____ , _____ , __X__ ),
-    PACK_6_TO_32( __X__ , __X__ , __X__ , __XXX , _XXX_ , XXXXX ),
+    PACK_6_TO_32( X__XX , X___X , _XXX_ , _____ , _____ , _____ ),
+// 195 - 200
+    PACK_6_TO_32( X_XX_ , _X_X_ , __X__ , _____ , _____ , _XX__ ),
+    PACK_6_TO_32( __X__ , __X__ , _____ , __XXX , _XXX_ , XXXXX ),
     PACK_6_TO_32( __X__ , __X__ , __X__ , _XX__ , X___X , X____ ),
     PACK_6_TO_32( _X_X_ , _X_X_ , _X_X_ , X_XX_ , X____ , XXX__ ),
     PACK_6_TO_32( _XXX_ , _XXX_ , _XXX_ , XXX__ , X____ , X____ ),
     PACK_6_TO_32( X___X , X___X , X___X , X_X__ , X___X , X____ ),
     PACK_6_TO_32( X___X , X___X , X___X , X_XXX , _XXX_ , XXXXX ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , __X__ , _____ ),
-
-    PACK_6_TO_32( __X__ , _X_X_ , _____ , __X__ , __X__ , _X_X_ ),
+// 201 - 206
+    PACK_6_TO_32( __XX_ , _X_X_ , _____ , _XX__ , __XX_ , _XXX_ ),
     PACK_6_TO_32( XXXXX , XXXXX , XXXXX , _XXX_ , _XXX_ , _XXX_ ),
     PACK_6_TO_32( X____ , X____ , X____ , __X__ , __X__ , __X__ ),
     PACK_6_TO_32( XXX__ , XXX__ , XXX__ , __X__ , __X__ , __X__ ),
@@ -320,8 +318,8 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X____ , X____ , X____ , __X__ , __X__ , __X__ ),
     PACK_6_TO_32( XXXXX , XXXXX , XXXXX , _XXX_ , _XXX_ , _XXX_ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-
-    PACK_6_TO_32( _____ , _____ , X_XX_ , __X__ , __X__ , _X_X_ ),
+// 207 - 212
+    PACK_6_TO_32( _X_X__ , _____ , X_XX_ ,_XX__ , __XX_ , _X_X_ ),
     PACK_6_TO_32( _XXX_ , _XX__ , X___X , _XXX_ , _XXX_ , _XXX_ ),
     PACK_6_TO_32( __X__ , _X_X_ , XX__X , X___X , X___X , X___X ),
     PACK_6_TO_32( __X__ , XXX_X , X_X_X , X___X , X___X , X___X ),
@@ -329,8 +327,8 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( __X__ , _X_X_ , X___X , X___X , X___X , X___X ),
     PACK_6_TO_32( _XXX_ , _XX__ , X___X , _XXX_ , _XXX_ , _XXX_ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-
-    PACK_6_TO_32( X_XX_ , _____ , _____ , ____X , __X__ , __X__ ),
+// 213 - 218
+    PACK_6_TO_32( X_XX_ , _X_X_ , _____ , ____X , _XX__ , __XX_ ),
     PACK_6_TO_32( _XXX_ , _XXX_ , _____ , _XXX_ , X___X , X___X ),
     PACK_6_TO_32( X___X , X___X , _____ , X__XX , X___X , X___X ),
     PACK_6_TO_32( X___X , X___X , _X_X_ , X_X_X , X___X , X___X ),
@@ -338,8 +336,8 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X___X , X___X , _X_X_ , XX__X , X___X , X___X ),
     PACK_6_TO_32( _XXX_ , _XXX_ , _____ , _XXX_ , _XXX_ , _XXX_ ),
     PACK_6_TO_32( _____ , _____ , _____ , X____ , _____ , _____ ),
-
-    PACK_6_TO_32( _X_X_ , _____ , __X__ , _____ , _____ , __X__ ),
+// 219 - 224
+    PACK_6_TO_32( _X_X_ , _X_X_ , __X__ , _____ , _____ , _XX__ ),
     PACK_6_TO_32( X___X , X___X , X___X , X____ , _XX__ , _____ ),
     PACK_6_TO_32( X___X , X___X , X___X , XXXX_ , X__X_ , _XXX_ ),
     PACK_6_TO_32( X___X , X___X , _X_X_ , X___X , X_X__ , ____X ),
@@ -347,8 +345,8 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X___X , X___X , __X__ , XXXX_ , X___X , X___X ),
     PACK_6_TO_32( _XXX_ , _XXX_ , __X__ , X____ , X_XX_ , _XXXX ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-
-    PACK_6_TO_32( __X__ , _X_X_ , X_XX_ , _X_X_ , _X_X_ , _____ ),
+// 225 - 230
+    PACK_6_TO_32( __X__ , _XXX_ , X_XX_ , _X_X_ , _X_X_ , _____ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , __X__ , _____ ),
     PACK_6_TO_32( _XXX_ , _XXX_ , _XXX_ , _XXX_ , _XXX_ , XXXX_ ),
     PACK_6_TO_32( ____X , ____X , ____X , ____X , ____X , __X_X ),
@@ -356,8 +354,8 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X___X , X___X , X___X , X___X , X___X , X_X__ ),
     PACK_6_TO_32( _XXXX , _XXXX , _XXXX , _XXXX , _XXXX , _X_XX ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-
-    PACK_6_TO_32( _____ , __X__ , __X__ , _X_X_ , _X_X_ , __X__ ),
+// 231 - 236
+    PACK_6_TO_32( _____ , _XX__ , __XX_ , _X_X_ , _X_X_ , _XX__ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( _XXX_ , _XXX_ , _XXX_ , _XXX_ , _XXX_ , _XX__ ),
     PACK_6_TO_32( X____ , X___X , X___X , X___X , X___X , __X__ ),
@@ -365,17 +363,17 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X____ , X____ , X____ , X____ , X____ , __X__ ),
     PACK_6_TO_32( _XXXX , _XXXX , _XXXX , _XXXX , _XXXX , _XXX_ ),
     PACK_6_TO_32( __X__ , _____ , _____ , _____ , _____ , _____ ),
-
-    PACK_6_TO_32( _X___ , X_X__ , X_X__ , _X_X_ , X_XX_ , __X__ ),
+// 237 - 242
+    PACK_6_TO_32( __XX_ , _X_X_ , _X_X_ , _X_X_ , X_XX_ , _XX__ ),
     PACK_6_TO_32( _____ , _____ , _____ , _XX__ , _____ , _____ ),
-    PACK_6_TO_32( XX___ , XX___ , XX___ , ___X_ , XXXX_ , _XXX_ ),
-    PACK_6_TO_32( _X___ , _X___ , _X___ , _XXX_ , X___X , X___X ),
-    PACK_6_TO_32( _X___ , _X___ , _X___ , X___X , X___X , X___X ),
-    PACK_6_TO_32( _X___ , _X___ , _X___ , X___X , X___X , X___X ),
-    PACK_6_TO_32( XXX__ , XXX__ , XXX__ , _XXX_ , X___X , _XXX_ ),
+    PACK_6_TO_32( _XX__ , _XX__ , _XX__ , ___X_ , XXXX_ , _XXX_ ),
+    PACK_6_TO_32( __X__ , __X__ , __X__ , _XXX_ , X___X , X___X ),
+    PACK_6_TO_32( __X__ , __X__ , __X__ , X___X , X___X , X___X ),
+    PACK_6_TO_32( __X__ , __X__ , __X__ , X___X , X___X , X___X ),
+    PACK_6_TO_32( _XXX_ , _XXX_ , _XXX_ , _XXX_ , X___X , _XXX_ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
-
-    PACK_6_TO_32( __X__ , _X_X_ , X_XX_ , _X_X_ , _____ , _____ ),
+// 243 - 248
+    PACK_6_TO_32( __XX_ , _X_X_ , X_XX_ , _X_X_ , _____ , _____ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , ____X ),
     PACK_6_TO_32( _XXX_ , _XXX_ , _XXX_ , _XXX_ , __X__ , _XXX_ ),
     PACK_6_TO_32( X___X , X___X , X___X , X___X , _____ , X__XX ),
@@ -383,8 +381,8 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X___X , X___X , X___X , X___X , _____ , XX__X ),
     PACK_6_TO_32( _XXX_ , _XXX_ , _XXX_ , _XXX_ , __X__ , _XXX_ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , X____ ),
-
-    PACK_6_TO_32( __X__ , __X__ , _X_X_ , _X_X_ , __X__ , X____ ),
+// 249 - 254
+    PACK_6_TO_32( _XX__ , __XX_ , _X_X_ , _X_X_ , __X__ , X____ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , X____ ),
     PACK_6_TO_32( X___X , X___X , X___X , X___X , X___X , X_XX_ ),
     PACK_6_TO_32( X___X , X___X , X___X , X___X , X___X , XX__X ),
@@ -392,7 +390,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
     PACK_6_TO_32( X___X , X___X , X___X , X___X , _XXXX , X_XX_ ),
     PACK_6_TO_32( _XXXX , _XXXX , _XXXX , _XXXX , ____X , X____ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _XXX_ , X____ ),
-
+// 255
     PACK_6_TO_32( _X_X_ , _____ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( _____ , _____ , _____ , _____ , _____ , _____ ),
     PACK_6_TO_32( X___X , _____ , _____ , _____ , _____ , _____ ),
