@@ -27,7 +27,6 @@ typedef long long int64_t;
 #include <jsinteractive.h>
 #include <jswrap_esp8266_network.h>
 #include <jswrap_esp8266.h>
-#include <ota.h>
 #include <log.h>
 #include "ESP8266_board.h"
 
@@ -90,6 +89,10 @@ char *flash_maps[] = { // used in jswrap_ESP8266_network.c
   "512KB:256/256", "256KB", "1MB:512/512", "2MB:512/512", "4MB:512/512",
   "2MB:1024/1024", "4MB:1024/1024"
 };
+char *flash_maps_alt[] = { // used in jswrap_ESP8266_network.c
+  "512KB:256/256", "256KB", "1MB:1024", "2MB:1024", "4MB:512/512",
+  "2MB:1024/1024", "4MB:1024/1024"
+};
 uint16_t flash_kb[] = { // used in jswrap_ESP8266_network.c
   512, 256, 1024, 2048, 4096, 2048, 4096,
 };
@@ -122,8 +125,9 @@ void jshPrintBanner() {
   os_printf("Espruino "JS_VERSION"\nFlash map %s, manuf 0x%lx chip 0x%lx\n",
       flash_maps[map], (long unsigned int) (fid & 0xff), (long unsigned int)chip);
   jsiConsolePrintf(
-    "Flash map %s, manuf 0x%x chip 0x%x\n",
-    flash_maps[map], fid & 0xff, chip);
+    "Flash map %s, manuf 0x%x chip 0x%x\n", 
+    (( map == 2  && flash_kb[map] == 1024  && strcmp(PC_BOARD_ID, "ESP8266_4MB") == 0) ? flash_maps_alt[map] : flash_maps[map]),
+    fid & 0xff, chip);
   if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4 && map != 6)) {  
     jsiConsolePrint("WARNING: *** Your flash chip does not match your flash map ***\n");
   }
@@ -238,7 +242,11 @@ static void mainLoop() {
  */
 static void initDone() {
   os_printf("> initDone\n");
+
+#ifndef NO_FOTA
+  #include <ota.h>
   otaInit(88);
+#endif
 
 #ifdef DEBUG
    extern void gdbstub_init();

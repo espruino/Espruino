@@ -518,8 +518,13 @@ ifeq ($(USE_NET),1)
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
  libs/network/esp8266/network_esp8266.c\
- libs/network/esp8266/pktbuf.c\
- libs/network/esp8266/ota.c
+ libs/network/esp8266/pktbuf.c
+ endif
+
+ ifndef NO_FOTA
+   SOURCES += libs/network/esp8266/ota.c
+ else
+   DEFINES += -DNO_FOTA
  endif
 
  ifdef USE_TELNET

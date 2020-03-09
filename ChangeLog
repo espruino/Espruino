@@ -75,6 +75,8 @@
             Ensure it's possible to get a solid background when using 4x6 font
             Bangle.js: Add Bangle.showLauncher
             Add append optimisation for string '+', and don't append to flat/native/etc strings (fix #1746)
+            ESP8266_4MB: add optional build flag FLASH_1MB for ESP8255  & ESP01s with 1MB flash
+            ESP8266: add optional build flag NO_FOTA to remove flash over the air functionality
             Add Bangle.getCompass and Bangle.getAccel to get the latest compass/accelerometer readings without a callback
             Fix `parseInt("0b",16)` as well as some other non-compliant behaviour (fix #1722)
             Bangle.js: Disable touch buttons if screen off
