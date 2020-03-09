@@ -14,6 +14,7 @@ OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 endif
 
 ET_FM               ?= qio      # Valid values are keep, qio, qout, dio, dout
+
 ifdef FLASH_4MB
 ESP_FLASH_MAX       ?= 831488   # max bin file: 940KB
 ESP_FLASH_SIZE      ?= 6        # 6->4MB (1024KB+1024KB)       
@@ -23,6 +24,7 @@ ET_FS               ?= 4MB-c1   # 32Mbit (4MB) flash size in esptool flash comma
 ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin
 ET_DEFAULTS         ?= 0x3FC000 # where to flash esp_init_data_default.bin to default SDK settings
+CFLAGS              += -mforce-l32
 else ifdef 2MB
 ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 ESP_FLASH_SIZE      ?= 3        # 3->2MB (512KB+512KB)
@@ -46,34 +48,43 @@ ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 ESP_FLASH_SIZE      ?= 0        # 0->512KB
 ESP_FLASH_MODE      ?= 0        # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0        # 0->40Mhz
-ET_FS               ?= 4m       # 4Mbit (512KB) flash size in esptool flash command
+ET_FS               ?= 512KB    # 4Mbit (512KB) flash size in esptool flash command
 ET_FF               ?= 40m      # 40Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x7E000  # where to flash blank.bin
 ET_DEFAULTS         ?= 0x7C000  # where to flash esp_init_data_default.bin to default SDK settings
 endif
 
-FLASH_BAUD ?= 115200 # The flash baud rate
+
+ifdef FLASH_1MB
+ESP_FLASH_MAX       = 831488    # max bin file: 812KB
+ESP_FLASH_SIZE      = 2         # 2->1MB (1024)
+ESP_FLASH_MODE      = 0         # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  = 15        # 15->80Mhz
+ET_FS               = 1MB       # 8Mbit (1MB) flash size in esptool flash command
+ET_FF               = 80m       # 80Mhz flash speed in esptool flash command
+ET_FM               = dout      # Valid values are keep, qio, qout, dio, dout
+ET_BLANK            = 0xFE000   # where to flash blank.bin
+ET_DEFAULTS         = 0xFC000   # where to flash esp_init_data_default.bin to default SDK settings
+DEFINES             += -DFLASH_1MB
+CFLAGS              += -mforce-l32
+endif
+
+FLASH_BAUD          ?= 115200 # The flash baud rate
 
 
 # move os_printf strings into flash to save RAM space
 DEFINES += -DUSE_OPTIMIZE_PRINTF
 DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_US_TIMER
-LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip_536 -lwpa -lmain -lpwm -lcrypto
-CFLAGS+= -fno-builtin \
+LIBS    += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip_536 -lwpa -lmain -lpwm -lcrypto
+CFLAGS  += -fno-builtin \
 -Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
--Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
+-Wno-unused-parameter -Wno-ignored-qualifiers \
 -Wno-parentheses -Wno-type-limits -Wno-unused-function -Wno-unused-value \
 -Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals \
 -fno-guess-branch-probability -freorder-blocks-and-partition -fno-cse-follow-jumps \
 -fno-tree-fre -fno-ipa-sra -fno-signed-zeros -fno-trapping-math -fassociative-math \
 -fno-caller-saves -fno-move-loop-invariants -fno-tree-tail-merge -fno-tree-copy-prop 
 
-# only use mfore-l32 if 4MB board for now
-ifdef FLASH_4MB 
-CFLAGS += -mforce-l32
-endif
-
-#
 # The Root of the ESP8266_SDK distributed by Espressif
 # This must be supplied as a Make environment variable.
 ifndef ESP8266_SDK_ROOT
