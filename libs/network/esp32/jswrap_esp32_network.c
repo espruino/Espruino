@@ -1360,7 +1360,7 @@ void jswrap_wifi_restore(void) {
   jsDebug("jswrap_wifi_restore");
   
   JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
-  JsVar *o = jswrap_storage_readJSON(name);
+  JsVar *o = jswrap_storage_readJSON(name, true);
   if (!o) { // no data 
     jsDebug("jswrap_wifi_restore: No data - Starting default AP");
     esp_wifi_start();

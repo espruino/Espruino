@@ -45,7 +45,7 @@ info = {
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
      'SOURCES += libs/misc/nmea.c',
-     'JSMODULESOURCES += libs/js/graphical_menu.min.js',
+     'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
      'NRF_BL_DFU_INSECURE=1',
      'LINKER_BOOTLOADER=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_dfu.ld',
      'LINKER_ESPRUINO=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_espruino.ld'
@@ -69,7 +69,7 @@ chip = {
   'saved_code' : {
     'address' : 0x40000000, # put this in external flash
     'page_size' : 4096,
-    'pages' : 256, # 1024kb - still loads left
+    'pages' : 1024, # Entire 4MB of external flash
     'flash_available' : 512 - ((31 + 8 + 2)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2. Each page is 4 kb.
   },
 };
@@ -132,7 +132,7 @@ devices = {
             'pin_miso' : 'D20', # D1
             'pin_wp' : 'D31', # D2
             'pin_rst' : 'D17', # D3
-            'size' : 2097152
+            'size' : 4096*1024 # 4MB
           }
 };
 

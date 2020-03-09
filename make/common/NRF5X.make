@@ -27,6 +27,7 @@ endif #DFU_UPDATE_BUILD
 
 # Just try and get rid of the compile warnings.
 CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
+CFLAGS+=-Wno-expansion-to-defined # remove warnings created by Nordic's libs
 DEFINES += -D$(BOARD) -D$(CHIP) -DNRF5X -DNRF5X_SDK_$(NRF5X_SDK)
 
 ARM = 1

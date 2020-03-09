@@ -523,7 +523,7 @@ void jsiDumpJSON(vcbprintf_callback user_callback, void *user_data, JsVar *data,
     cbprintf(user_callback, user_data, "%v", name);
   } else {
     // if it doesn't, print JSON
-    jsfGetJSONWithCallback(data, JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, 0, user_callback, user_data);
+    jsfGetJSONWithCallback(data, NULL, JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, 0, user_callback, user_data);
   }
 }
 
@@ -601,7 +601,7 @@ void jsiDumpSerialInitialisation(vcbprintf_callback user_callback, void *user_da
       cbprintf(user_callback, user_data, "%s.setup(%d", serialName, baudrate);
       if (jsvIsObject(options)) {
         user_callback(", ", user_data);
-        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, 0, user_callback, user_data);
+        jsfGetJSONWithCallback(options, NULL, JSON_SHOW_DEVICES, 0, user_callback, user_data);
       }
       user_callback(");\n", user_data);
     }
@@ -618,7 +618,7 @@ void jsiDumpDeviceInitialisation(vcbprintf_callback user_callback, void *user_da
     if (options) {
       cbprintf(user_callback, user_data, "%s.setup(", deviceName);
       if (jsvIsObject(options))
-        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, 0, user_callback, user_data);
+        jsfGetJSONWithCallback(options, NULL, JSON_SHOW_DEVICES, 0, user_callback, user_data);
       user_callback(");\n", user_data);
     }
     jsvUnLock2(options, deviceVar);
@@ -1151,9 +1151,10 @@ void jsiCheckErrors() {
   bool reportedError = false;
   JsVar *exception = jspGetException();
   if (exception) {
-    jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"uncaughtException", 1, &exception);
-    jsvUnLock(exception);
-    exception = 0;
+    if (jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"uncaughtException", 1, &exception)) {
+      jsvUnLock(exception);
+      exception = 0;
+    }
   }
   if (exception) {
     jsiConsoleRemoveInputLine();
@@ -1722,14 +1723,19 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsig
   return true;
 }
 
-void jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsigned int argCount, JsVar **argPtr) {
+// Execute the named Event callback on the named object, and return true if it exists
+bool jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsigned int argCount, JsVar **argPtr) {
+  bool executed = false;
   JsVar *obj = jsvObjectGetChild(execInfo.root, objectName, 0);
   if (jsvHasChildren(obj)) {
     JsVar *callback = jsvObjectGetChild(obj, cbName, 0);
-    if (callback)
+    if (callback) {
       jsiExecuteEventCallback(obj, callback, argCount, argPtr);
+      executed = true;
+    }
     jsvUnLock2(callback, obj);
   }
+  return executed;
 }
 
 

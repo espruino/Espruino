@@ -564,6 +564,7 @@ const char *jshGetDeviceString(
     IOEventFlags device //!< The device to be examined.
   ) {
   switch (device) {
+  case EV_NONE: return "null";
   case EV_LOOPBACKA: return "LoopbackA";
   case EV_LOOPBACKB: return "LoopbackB";
   case EV_LIMBO: return "Limbo";

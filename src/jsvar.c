@@ -1790,7 +1790,7 @@ bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
     buf[1] = jsvStringIteratorGetChar(&it);
     buf[2] = 0;
     const char *p = buf;
-    radix = getRadix(&p,0,0);
+    radix = getRadix(&p,0);
     if (p>&buf[1]) jsvStringIteratorNext(&it);
   }
   if (radix==0) radix=10;

@@ -375,7 +375,7 @@ so you can't store the value it returns in a variable and call it again.
 If jsonStyle=true, only string escapes supported by JSON are used */
 const char *escapeCharacter(char ch, bool jsonStyle);
 /** Parse radix prefixes, or return 0 */
-int getRadix(const char **s, int forceRadix, bool *hasError);
+int getRadix(const char **s,  bool *hasError);
 /// Convert a character to the hexadecimal equivalent (or -1)
 int chtod(char ch);
 /// Convert 2 characters to the hexadecimal equivalent (or -1)

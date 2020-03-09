@@ -196,6 +196,8 @@ Set this Serial port as the port for the JavaScript console (REPL).
 
 Unless `force` is set to true, changes in the connection state of the board
 (for instance plugging in USB) will cause the console to change.
+
+See `E.setConsole` for a more flexible version of this function.
  */
 void jswrap_serial_setConsole(JsVar *parent, bool force) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);

@@ -38,6 +38,8 @@ JsVar *jswrap_espruino_toJS(JsVar *v);
 JsVar *jswrap_espruino_memoryArea(int addr, int len);
 void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec);
 int jswrap_espruino_setClock(JsVar *options);
+void jswrap_espruino_setConsole(JsVar *device, JsVar *options);
+JsVar *jswrap_espruino_getConsole();
 
 int jswrap_espruino_reverseByte(int v);
 void jswrap_espruino_dumpTimers();

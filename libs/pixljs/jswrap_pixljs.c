@@ -540,9 +540,105 @@ var submenu = {
   "< Back" : function() { E.showMenu(mainmenu); },
 };
 // Actually display the menu
-Pixl.menu(mainmenu);
+E.showMenu(mainmenu);
 ```
 
 See http://www.espruino.com/graphical_menu for more detailed information.
 */
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showMessage",
+    "generate_js" : "libs/js/pixljs/E_showMessage.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["title","JsVar","(optional) a title for the message"]
+    ],
+    "ifdef" : "PIXLJS"
+}
+
+A utility function for displaying a full screen message on the screen.
+
+Draws to the screen and returns immediately.
+
+```
+E.showMessage("These are\nLots of\nLines","My Title")
+```
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showPrompt",
+    "generate_js" : "libs/js/pixljs/E_showPrompt.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["options","JsVar","(optional) an object of options (see below)"]
+    ],
+    "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
+    "ifdef" : "PIXLJS"
+}
+
+Displays a full screen prompt on the screen, with the buttons
+requested (or `Yes` and `No` for defaults).
+
+When the button is pressed the promise is resolved with the
+requested values (for the `Yes` and `No` defaults, `true` and `false`
+are returned).
+
+```
+E.showPrompt("Do you like fish?").then(function(v) {
+  if (v) print("'Yes' chosen");
+  else print("'No' chosen");
+});
+// Or
+E.showPrompt("How many fish\ndo you like?",{
+  title:"Fish",
+  buttons : {"One":1,"Two":2,"Three":3}
+}).then(function(v) {
+  print("You like "+v+" fish");
+});
+```
+
+To remove the prompt, call `E.showPrompt()` with no arguments.
+
+The second `options` argument can contain:
+
+```
+{
+  title: "Hello",                      // optional Title
+  buttons : {"Ok":true,"Cancel":false} // list of button text & return value
+}
+```
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showAlert",
+    "generate_js" : "libs/js/pixljs/E_showAlert.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["options","JsVar","(optional) a title for the message"]
+    ],
+    "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
+    "ifdef" : "PIXLJS"
+}
+
+Displays a full screen prompt on the screen, with a single 'Ok' button.
+
+When the button is pressed the promise is resolved.
+
+```
+E.showAlert("Hello").then(function() {
+  print("Ok pressed");
+});
+// or
+E.showAlert("These are\nLots of\nLines","My Title").then(function() {
+  print("Ok pressed");
+});
+```
+
+To remove the window, call `E.showAlert()` with no arguments.
+*/

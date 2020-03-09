@@ -5,11 +5,6 @@
   }
   g.clear();g.flip(); // clear screen if no menu supplied
   if (!menudata) return;
-  function im(b) {
-    return {
-      width:8,height:b.length,bpp:1,buffer:new Uint8Array(b).buffer
-    };
-  }
   if (!menudata[""]) menudata[""]={};
   g.setFontBitmap();g.setFontAlign(-1,-1,0);
   var w = g.getWidth()-9;
@@ -17,7 +12,7 @@
   menudata[""].x=9;
   menudata[""].x2=w-2;
   menudata[""].preflip=function() {
-    g.drawImage(im([
+    g.drawImage(E.toString(8,8,1,
       0b00010000,
       0b00111000,
       0b01111100,
@@ -26,8 +21,8 @@
       0b00010000,
       0b00010000,
       0b00010000,
-    ]),0,4);
-    g.drawImage(im([
+    ),0,4);
+    g.drawImage(E.toString(8,8,1,
       0b00010000,
       0b00010000,
       0b00010000,
@@ -36,8 +31,8 @@
       0b01111100,
       0b00111000,
       0b00010000,
-    ]),0,h-12);
-    g.drawImage(im([
+    ),0,h-12);
+    g.drawImage(E.toString(8,8,1,
       0b00000000,
       0b00001000,
       0b00001100,
@@ -46,7 +41,7 @@
       0b00001110,
       0b00001100,
       0b00001000,
-    ]),w+1,h-12);
+    ),w+1,h-12);
     //g.drawLine(7,0,7,h);
     //g.drawLine(w,0,w,h);
   };

@@ -16,10 +16,10 @@
 
 #include "jsvar.h"
 
-/// Simple filename used for Flash Storage. We use uint here so we don't have to memcpy/memcmp all the time
+/// Simple filename used for Flash Storage. We use firstChars so we can do a quick first pass check for equality
 typedef union {
-  uint64_t n;
-  char c[8];
+  uint32_t firstChars; ///< Set these all to 0 to indicate a replaced/deleted file
+  char c[28]; // whatever is left after 'size'
 } JsfFileName;
 
 /// Max length of filename in chars
@@ -27,13 +27,13 @@ typedef union {
 
 /// Structure for File Storage. It's important this is 8 byte aligned for platforms that only support 64 bit writes
 typedef struct {
-  JsfWord size; ///< Total size (and flags in the top 8 bits)
-  JsfWord replacement; ///< pointer to a replacement (eventually). For now this is 0xFFFFFFFF if ok, 0 if erased
+  uint32_t size; ///< Total size (and flags in the top 8 bits)
   JsfFileName name; ///< 0-padded filename
 } JsfFileHeader;
 
 typedef enum {
   JSFF_NONE,
+  JSFF_STORAGEFILE = 64,  // This file is a 'storage file' created by Storage.open
   JSFF_COMPRESSED = 128   // This file contains compressed data
 } JsfFileFlags; // these are stored in the top 8 bits of JsfFileHeader.size
 
@@ -60,8 +60,8 @@ bool jsfEraseFile(JsfFileName name);
 bool jsfEraseAll();
 /// Try and compact saved data so it'll fit in Flash again
 bool jsfCompact();
-/// Return all files in flash as a JsVar array of names
-JsVar *jsfListFiles();
+/// Return all files in flash as a JsVar array of names. If regex is supplied, it is used to filter the filenames using String.match(regexp)
+JsVar *jsfListFiles(JsVar *regex);
 /// Output debug info for files stored in flash storage
 void jsfDebugFiles();
 // Get the amount of space free in this page (or all pages). addr=0 uses start page

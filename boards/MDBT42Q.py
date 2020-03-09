@@ -33,7 +33,7 @@ info = {
      'NET',
      'GRAPHICS',
      'CRYPTO','SHA256','SHA512',
-     'AES',
+     #'AES',
      'NFC',
      'NEOPIXEL',
      'FILESYSTEM'
