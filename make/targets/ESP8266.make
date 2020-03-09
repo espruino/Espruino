@@ -99,7 +99,9 @@ $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
 	$(Q)cp $(USER1_BIN) $(USER2_BIN) scripts/wiflash.sh $(BLANK) \
-	  $(INIT_DATA) $(BOOTLOADER) targets/esp8266/README_flash.txt \
+	  $(INIT_DATA) $(BOOTLOADER) \
+	  targets/esp8266/README_flash.txt \
+	  targets/esp8266/Makefile \
 	  build/$(basename $(ESP_ZIP))
 	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
 
