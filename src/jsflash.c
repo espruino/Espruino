@@ -499,8 +499,8 @@ JsVar *jsfReadFile(JsfFileName name, int offset, int length) {
   if (offset<0) offset=0;
   uint32_t fileLen = jsfGetFileSize(&header);
   if (length<=0) length=fileLen;
-  if ((unsigned) offset>fileLen) offset=fileLen;
-  if ((unsigned) offset+length>fileLen) length=fileLen-offset;
+  if (offset>fileLen) offset=fileLen;
+  if (offset+length>fileLen) length=fileLen-offset;
   if (length<=0) return jsvNewFromEmptyString();
   // now increment address by offset
   addr += offset;
@@ -655,9 +655,9 @@ int jsfLoadFromFlash_readcb(uint32_t *cbdata) {
   jsfcbData *data = (jsfcbData*)cbdata;
 
   if (data->address >= data->endAddress) return -1; // at end
-  if ( (unsigned) data->byteCount==0 || data->bufferCnt>= (unsigned) data->byteCount) {
+  if (data->byteCount==0 || data->bufferCnt>=data->byteCount) {
     data->byteCount = data->endAddress - data->address;
-    if ( (unsigned) data->byteCount > sizeof(data->buffer))
+    if (data->byteCount > sizeof(data->buffer))
       data->byteCount = sizeof(data->buffer);
     jshFlashRead(data->buffer, data->address, data->byteCount);
     data->bufferCnt = 0;

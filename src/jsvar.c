@@ -3865,7 +3865,7 @@ void jsvDefragment() {
   JsVarRef defragVars[DEFRAGVARS];
   memset(defragVars, 0, sizeof(defragVars));
   int defragVarIdx = 0;
-  for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
+  for (int i=0;i<jsvGetMemoryTotal();i++) {
     JsVarRef vr = i+1;
     JsVar *v = _jsvGetAddressOf(vr);
     if ((v->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
@@ -3895,7 +3895,7 @@ void jsvDefragment() {
     *defragTo = *defragFrom;
     defragFrom->flags = JSV_UNUSED;
     // find references!
-    for ( unsigned int i=0;i<jsvGetMemoryTotal();i++) {
+    for (int i=0;i<jsvGetMemoryTotal();i++) {
       JsVarRef vr = i+1;
       JsVar *v = _jsvGetAddressOf(vr);
       if ((v->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {

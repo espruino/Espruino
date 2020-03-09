@@ -76,7 +76,7 @@ htmlFile = open('functions.html', 'w')
 def html(s): htmlFile.write(s+"\n");
 
 def htmlify(d,current):
-  d = markdown.markdown(d, extensions=['markdown_include.include'])
+  d = markdown.markdown(d, extensions=['urlize'])
   # replace <code> with newlines with pre
   idx = d.find("<code>")
   end = d.find("</code>", idx)

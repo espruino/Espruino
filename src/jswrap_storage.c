@@ -353,14 +353,14 @@ JsVar *jswrap_storage_open(JsVar *name, JsVar *modeVar) {
       char buf[64];
       bool foundEnd = false;
       while (!foundEnd) {
-        unsigned int l = STORAGEFILE_CHUNKSIZE-offset;
+        int l = STORAGEFILE_CHUNKSIZE-offset;
         if (l<=0) {
           foundEnd = true;
           break;
         }
-        if ( l>sizeof(buf)) l=sizeof(buf);
+        if (l>sizeof(buf)) l=sizeof(buf);
         jshFlashRead(buf, addr+offset, l);
-        for (unsigned int i=0;i<l;i++) {
+        for (int i=0;i<l;i++) {
           if (buf[i]==(char)255) {
             l = i;
             foundEnd = true;
@@ -480,11 +480,11 @@ JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
         return result;
       }
     }
-    unsigned int l = len;
+    int l = len;
     if (l>sizeof(buf)) l=sizeof(buf);
-    if (l> (unsigned) remaining) l=remaining;
+    if (l>remaining) l=remaining;
     jshFlashRead(buf, addr+offset, l);
-    for (unsigned int i=0;i<l;i++) {
+    for (int i=0;i<l;i++) {
       if (buf[i]==(char)255) {
         // end of file!
         l = i;
@@ -597,7 +597,7 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
     jsvUnLock(data);
     return;
   }
-  if (len< (unsigned) remaining) {
+  if (len<remaining) {
     DBG("Write Append Chunk\n");
     // Great, it all fits in
     jswrap_flash_write(data, addr+offset);
