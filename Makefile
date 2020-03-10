@@ -519,12 +519,12 @@ ifeq ($(USE_NET),1)
  SOURCES += \
  libs/network/esp8266/network_esp8266.c\
  libs/network/esp8266/pktbuf.c
- endif
 
  ifndef NO_FOTA
    SOURCES += libs/network/esp8266/ota.c
  else
    DEFINES += -DNO_FOTA
+ endif
  endif
 
  ifdef USE_TELNET
