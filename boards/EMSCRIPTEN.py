@@ -41,7 +41,7 @@ info = {
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
      'SOURCES += libs/misc/nmea.c',
-     'JSMODULESOURCES += libs/js/graphical_menu.min.js',
+     'JSMODULESOURCES += libs/js/banglejs/locale.min.js'
    ]
  }
 };

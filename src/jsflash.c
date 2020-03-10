@@ -138,6 +138,8 @@ static bool jsfEraseFrom(uint32_t startAddr) {
       jshFlashErasePage(addr);
     if (!jshFlashGetPage(addr+len, &addr, &len))
       return true;
+    // Erasing can take a while, so kick the watchdog throughout
+    jshKickWatchDog();
   }
   return true;
 }
