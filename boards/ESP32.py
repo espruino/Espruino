@@ -37,7 +37,8 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DESP_PLATFORM -DESP32=1',
-     'DEFINES+=-DJSVAR_MALLOC' # Allocate space for variables at jsvInit time
+     'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
+     'ESP32_FLASH_MAX=1572864'
    ]
  }
 };
@@ -55,7 +56,7 @@ chip = {
   'adc'     : 2,
   'dac'     : 0,
   'saved_code' : {
-    'address' : 0x2C0000,
+    'address' : 0x320000,
     'page_size' : 4096,
     'pages' : 64,
     'flash_available' : 1344, # firmware can be up to this size - see partitions_espruino.csv
