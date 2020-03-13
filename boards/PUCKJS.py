@@ -76,15 +76,34 @@ devices = {
   'LED1' : { 'pin' : 'D5' },
   'LED2' : { 'pin' : 'D4' },
   'LED3' : { 'pin' : 'D3' },
-  'IR'   : { 'pin_anode' : 'D25', 'pin_cathode' : 'D26' },
+  'IR'   : { 'pin_anode' : 'D25',   # on v2 this just goes to a FET
+             'pin_cathode' : 'D26'  # on v2 this is the powered output named 'FET'
+           },
   'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' },
   'CAPSENSE' : { 'pin_rx' : 'D11', 'pin_tx' : 'D12' },
   'NFC': { 'pin_a':'D9', 'pin_b':'D10' },
-  'MAG': { 'device': 'MAG3110',
+  #'MAG': { 'device': 'MAG3110', 'addr' : 0x0E, # v1.0
+  #         'pin_pwr':'D18',
+  #         'pin_int':'D17',
+  #         'pin_sda':'D20',
+  #         'pin_scl':'D19' }
+  # V2.0
+  'MAG': { 'device': 'LIS3MDL', 'addr' : 60, # v2.0
            'pin_pwr':'D18',
            'pin_int':'D17',
            'pin_sda':'D20',
-           'pin_scl':'D19' }
+           'pin_scl':'D19',
+           },
+  'ACCEL': { 'device': 'LSM6DS3TR', 'addr' : 106, # v2.0
+           'pin_pwr':'D16',
+           'pin_int':'D13',
+           'pin_sda':'D14',
+           'pin_scl':'D15' },
+  'TEMP': { 'device': 'PCT2075TP', 'addr' : 78, # v2.0
+           'pin_pwr':'D8',
+           'pin_sda':'D7',
+           'pin_scl':'D6' }
+
   # Pin D22 is used for clock when driving neopixels - as not specifying a pin seems to break things
 };
 

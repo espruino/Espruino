@@ -446,6 +446,9 @@ if "MAG" in board.devices:
     codeOut("#define MAG_ADDR "+str(board.devices["MAG"]["addr"]))
   codeOutDevicePins("MAG", "MAG")
 
+if "TEMP" in board.devices:
+  codeOutDevicePins("TEMP", "TEMP")
+
 if "PRESSURE" in board.devices:
   codeOut("#define PRESSURE_DEVICE \""+board.devices["PRESSURE"]["device"].upper()+"\"")
   codeOut("#define PRESSURE_ADDR "+str(board.devices["PRESSURE"]["addr"]))
