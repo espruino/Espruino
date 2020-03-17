@@ -17,13 +17,14 @@
 Puck.js v2 TODO
 ---------------
 
-LIS3MDL Magnetometer
-LSM6DS3TR Accel / Gyro
-PCT2075TP temp sensor
-FET pin
-New IR output
-IR input?
-NFC tuning
+[ ] LIS3MDL Magnetometer
+[ ] LSM6DS3TR Accel / Gyro
+[ ] PCT2075TP temp sensor
+[ ] IR input?
+[ ] NFC tuning
+[ ] Light input scaling
+[x] FET pin
+[x] New IR output
  */
 
 
@@ -39,8 +40,10 @@ NFC tuning
 #include "nrf_delay.h"
 #include "nrf5x_utils.h"
 #include "jsflash.h" // for jsfRemoveCodeFromFlash
+#include "jsi2c.h" // accelerometer/etc
 
 #define MAG3110_ADDR 0x0E
+#define LIS3MDL_ADDR MAG_ADDR
 #define I2C_TIMEOUT 100000
 
 JshI2CInfo i2cMag;
@@ -50,85 +53,16 @@ bool isPuckV2 = false;
 
 const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 
-// Has the magnetometer been turned on?
-bool mag_enabled = false;
+bool mag_enabled = false; //< Has the magnetometer been turned on?
 int16_t mag_reading[3];  //< magnetometer xyz reading
+bool mag_reading_new;
+
+bool accel_enabled = false; //< Has the accelerometer been turned on?
+int16_t accel_reading[3];
+int16_t gyro_reading[3];
 
 
-/* TODO: Use software I2C for this instead. Since we're relying
- * on the internal pullup resistors there might be some gotchas
- * since we force high here for 0.1uS here before going open circuit. */
-
-// Turn magnetometer on and configure
-bool mag_on(int milliHz) {
-  int reg1 = 0;
-  if (milliHz == 80000) reg1 = (0x00)<<3; // 900uA
-  else if (milliHz == 40000) reg1 = (0x04)<<3; // 550uA
-  else if (milliHz == 20000) reg1 = (0x08)<<3; // 275uA
-  else if (milliHz == 10000) reg1 = (0x0C)<<3; // 137uA
-  else if (milliHz == 5000) reg1 = (0x10)<<3; // 69uA
-  else if (milliHz == 2500) reg1 = (0x14)<<3; // 34uA
-  else if (milliHz == 1250) reg1 = (0x18)<<3; // 17uA
-  else if (milliHz == 630) reg1 = (0x1C)<<3; // 8uA
-  else if (milliHz == 310) reg1 = (0x1D)<<3; // 8uA
-  else if (milliHz == 160) reg1 = (0x1E)<<3; // 8uA
-  else if (milliHz == 80) reg1 = (0x1F)<<3; // 8uA
-  else return false;
-
-  nrf_gpio_pin_set(MAG_PWR);
-  nrf_gpio_cfg_output(MAG_PWR);
-  nrf_gpio_cfg_input(MAG_INT, NRF_GPIO_PIN_NOPULL);
-  wr(MAG_SDA, 1);
-  wr(MAG_SCL, 1);
-  jshDelayMicroseconds(2000); // 1.7ms from power on to ok
-
-  unsigned char buf[2];
-  buf[0] = 0x11;
-  buf[1] = 0x80/*AUTO_MRST_EN*/ + 0x20/*RAW*/;
-  jsi2cWrite(&i2cMag, MAG3110_ADDR, 2, buf, true);
-  reg1 |= 1; // Active bit
-  buf[0] = 0x10;
-  buf[1] = reg1;
-  jsi2cWrite(&i2cMag, MAG3110_ADDR, 2, buf, true);
-  return true;
-}
-
-// Wait for magnetometer IRQ line to be set
-void mag_wait() {
-  int timeout = I2C_TIMEOUT*2;
-  while (!nrf_gpio_pin_read(MAG_INT) && --timeout);
-  if (!timeout) jsExceptionHere(JSET_INTERNALERROR, "Timeout (Magnetometer)");
-}
-
-// Read a value
-void mag_read() {
-  unsigned char buf[6];
-  buf[0] = 1;
-  jsi2cWrite(&i2cMag, MAG3110_ADDR, 1, buf, false);
-  jsi2cRead(&i2cMag, MAG3110_ADDR, 6, buf, true);
-  mag_reading[0] = (buf[0]<<8) | buf[1];
-  mag_reading[1] = (buf[2]<<8) | buf[3];
-  mag_reading[2] = (buf[4]<<8) | buf[5];
-}
-
-// Get temperature
-int8_t mag_read_temp() {
-  unsigned char buf[1];
-  buf[0] = 15; // DIE_TEMP
-  jsi2cWrite(&i2cMag, MAG3110_ADDR, 1, buf, false);
-  jsi2cRead(&i2cMag, MAG3110_ADDR, 1, buf, true);
-  return buf[0];
-}
-
-// Turn magnetometer off
-void mag_off() {
-  nrf_gpio_cfg_input(MAG_SDA, NRF_GPIO_PIN_NOPULL);
-  nrf_gpio_cfg_input(MAG_SCL, NRF_GPIO_PIN_NOPULL);
-  nrf_gpio_pin_clear(MAG_PWR);
-  nrf_gpio_cfg_output(MAG_PWR);
-}
-
-JsVar *mag_to_xyz(int16_t d[3]) {
+JsVar *to_xyz(int16_t d[3]) {
   JsVar *obj = jsvNewObject();
   if (!obj) return 0;
   jsvObjectSetChildAndUnLock(obj,"x",jsvNewFromInteger(d[0]));
@@ -137,12 +71,226 @@ JsVar *mag_to_xyz(int16_t d[3]) {
   return obj;
 }
 
+/* TODO: Use software I2C for this instead. Since we're relying
+ * on the internal pullup resistors there might be some gotchas
+ * since we force high here for 0.1uS here before going open circuit. */
+
+void mag_pin_on() {
+  /*nrf_gpio_pin_set(MAG_PIN_PWR);
+  nrf_gpio_pin_set(MAG_PIN_SDA);
+  nrf_gpio_pin_set(MAG_PIN_SCL);
+  nrf_gpio_cfg_output(MAG_PIN_PWR);
+  nrf_gpio_cfg_output(MAG_PIN_SDA);
+  nrf_gpio_cfg_output(MAG_PIN_SCL);
+  nrf_gpio_cfg_input(MAG_PIN_INT, NRF_GPIO_PIN_PULLUP);*/
+  jshPinSetValue(MAG_PIN_PWR, 1);
+  jshPinSetValue(MAG_PIN_SCL, 1);
+  jshPinSetValue(MAG_PIN_SDA, 1);
+  jshPinSetState(MAG_PIN_PWR, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(MAG_PIN_SCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  jshPinSetState(MAG_PIN_SDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  jshPinSetState(MAG_PIN_INT, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+}
+
+// Turn magnetometer on and configure
+bool mag_on(int milliHz) {
+  //jsiConsolePrintf("mag_on\n");
+  mag_pin_on();
+  unsigned char buf[2];
+  if (isPuckV2) { // LIS3MDL
+    jshDelayMicroseconds(10000); // takes ages to start up
+    bool lowPower = false;
+    int reg1 = 0x80; // temp sensor, low power
+    if (milliHz == 80000) reg1 = 7<<2; // 900uA
+    else if (milliHz == 40000) reg1 = 6<<2; // 550uA
+    else if (milliHz == 20000) reg1 = 5<<2; // 275uA
+    else if (milliHz == 10000) reg1 = 4<<2; // 137uA
+    else if (milliHz == 5000) reg1 = 3<<2; // 69uA
+    else if (milliHz == 2500) reg1 = 2<<2; // 34uA
+    else if (milliHz == 1250) reg1 = 1<<2; // 17uA
+    else if (milliHz <= 630) { /*if (milliHz == 630 || milliHz == 625)*/
+      // We just go for the lowest power mode and because we're polling,
+      // lower rates are fine
+      reg1 = 0<<2; // 8uA
+      lowPower = true;
+    }
+    else return false;
+
+    buf[0] = 0x21; buf[1]=0x00; // CTRL_REG2 - full scale +-4 gauss
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    buf[0] = 0x20; buf[1]=reg1; // CTRL_REG1
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    buf[0] = 0x23; buf[1]=0x02; // CTRL_REG4 - low power, LSb at higher address (to match MAG3110)
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    buf[0] = 0x22; buf[1]=lowPower ? 0x20 : 0x00; // CTRL_REG3 - normal or low power, continuous measurement
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    buf[0] = 0x24; buf[1]=0x40; // CTRL_REG5 - block data update
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    // Enable IRQ, all axes threshold 0 - should trigger basically every time new data is available
+    // ... but this doesn't work as it seems to be unlatched
+    /*buf[0] = 0x30; buf[1]=0xE9; // INT_CFG - all axes, enabled
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    buf[0] = 0x32; buf[1]=0x00; // INT_THS_L
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    buf[0] = 0x33; buf[1]=0x00; // INT_THS_H
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);*/
+    /*buf[0] = 0x22;
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, true);
+    jsi2cRead(&i2cMag, LIS3MDL_ADDR, 1, buf, true);
+    jsiConsolePrintf("REG3 %d\n",buf[0]);*/
+  } else { // MAG3110
+    jshDelayMicroseconds(2000); // 1.7ms from power on to ok
+    int reg1 = 0;
+    if (milliHz == 80000) reg1 = (0x00)<<3; // 900uA
+    else if (milliHz == 40000) reg1 = (0x04)<<3; // 550uA
+    else if (milliHz == 20000) reg1 = (0x08)<<3; // 275uA
+    else if (milliHz == 10000) reg1 = (0x0C)<<3; // 137uA
+    else if (milliHz == 5000) reg1 = (0x10)<<3; // 69uA
+    else if (milliHz == 2500) reg1 = (0x14)<<3; // 34uA
+    else if (milliHz == 1250) reg1 = (0x18)<<3; // 17uA
+    else if (milliHz == 630) reg1 = (0x1C)<<3; // 8uA
+    else if (milliHz == 310) reg1 = (0x1D)<<3; // 8uA
+    else if (milliHz == 160) reg1 = (0x1E)<<3; // 8uA
+    else if (milliHz == 80) reg1 = (0x1F)<<3; // 8uA
+    else return false;
+
+
+    buf[0] = 0x11;
+    buf[1] = 0x80/*AUTO_MRST_EN*/ + 0x20/*RAW*/;
+    jsi2cWrite(&i2cMag, MAG3110_ADDR, 2, buf, true);
+    reg1 |= 1; // Active bit
+    buf[0] = 0x10;
+    buf[1] = reg1;
+    jsi2cWrite(&i2cMag, MAG3110_ADDR, 2, buf, true);
+  }
+  return true;
+}
+
+// Wait for magnetometer IRQ line to be set
+void mag_wait() {
+  int timeout;
+  if (isPuckV2) {
+    unsigned char buf[1];
+    timeout = 400;
+    do {
+      buf[0] = 0x27; // STATUS_REG
+      jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, false);
+      jsi2cRead(&i2cMag, LIS3MDL_ADDR, 1, buf, true);
+      //jsiConsolePrintf("M %d\n", buf[0]);
+    } while (!(buf[0]&0x08) && --timeout); // ZYXDA
+  } else {
+    timeout = I2C_TIMEOUT*2;
+    while (!nrf_gpio_pin_read(MAG_PIN_INT) && --timeout);
+  }
+  if (!timeout) jsExceptionHere(JSET_INTERNALERROR, "Timeout (Magnetometer)");
+}
+
+// Read a value
+void mag_read() {
+  unsigned char buf[6];
+  if (isPuckV2) {
+    buf[0] = 0x28;
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, false);
+    jsi2cRead(&i2cMag, LIS3MDL_ADDR, 6, buf, true);
+  } else {
+    buf[0] = 1;
+    jsi2cWrite(&i2cMag, MAG3110_ADDR, 1, buf, false);
+    jsi2cRead(&i2cMag, MAG3110_ADDR, 6, buf, true);
+  }
+  mag_reading[0] = (buf[0]<<8) | buf[1];
+  mag_reading[1] = (buf[2]<<8) | buf[3];
+  mag_reading[2] = (buf[4]<<8) | buf[5];
+}
+
+// Get temperature
+int mag_read_temp() {
+  unsigned char buf[2];
+  if (isPuckV2) {
+    buf[0] = 0x2E; // TEMP_OUT_L
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, false);
+    jsi2cRead(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    int16_t t = buf[0] | (buf[1]<<8);
+    return (int)t;
+  } else {
+    buf[0] = 15; // DIE_TEMP
+    jsi2cWrite(&i2cMag, MAG3110_ADDR, 1, buf, false);
+    jsi2cRead(&i2cMag, MAG3110_ADDR, 1, buf, true);
+    return buf[0]<<8;
+  }
+}
+
+void magPollHandler() {
+  // isPuckV2=true
+  mag_read();
+  mag_reading_new = true;
+}
+
+// Turn magnetometer off
+void mag_off() {
+  //jsiConsolePrintf("mag_off\n");
+  if (isPuckV2)
+    jstStopExecuteFn(magPollHandler, 0);
+  nrf_gpio_cfg_input(MAG_PIN_SDA, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_cfg_input(MAG_PIN_SCL, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_cfg_input(MAG_PIN_INT, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_pin_clear(MAG_PIN_PWR);
+  nrf_gpio_cfg_output(MAG_PIN_PWR);
+}
+
+bool accel_on(int milliHz) {
+  unsigned char buf[2];
+  nrf_gpio_pin_set(ACCEL_PIN_PWR);
+  nrf_gpio_cfg_output(ACCEL_PIN_PWR);
+  nrf_gpio_cfg_output(ACCEL_PIN_SDA);
+  nrf_gpio_cfg_output(ACCEL_PIN_SCL);
+  nrf_gpio_cfg_input(ACCEL_PIN_INT, NRF_GPIO_PIN_NOPULL);
+
+  jshDelayMicroseconds(2000);
+  // LSM6DS3TR
+  //buf[0] = 0x20; buf[1]=reg1; // CTRL_REG1
+  //jsi2cWrite(&i2cMag, ACCEL_ADDR, 2, buf, true);
+  return true;
+}
+
+// Read a value
+void accel_read() {
+  unsigned char buf[12];
+  buf[0] = 0x22; // OUTX_L_G
+  jsi2cWrite(&i2cMag, ACCEL_ADDR, 1, buf, false);
+  jsi2cRead(&i2cMag, ACCEL_ADDR, 6, buf, true);
+  gyro_reading[0] = (buf[1]<<8) | buf[0];
+  gyro_reading[1] = (buf[3]<<8) | buf[2];
+  gyro_reading[2] = (buf[5]<<8) | buf[4];
+  accel_reading[0] = (buf[7]<<8) | buf[6];
+  accel_reading[1] = (buf[9]<<8) | buf[8];
+  accel_reading[2] = (buf[11]<<8) | buf[10];
+}
+
+// Turn accelerometer off
+void accel_off() {
+  nrf_gpio_cfg_input(ACCEL_PIN_SDA, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_cfg_input(ACCEL_PIN_SCL, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_cfg_input(ACCEL_PIN_INT, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_pin_clear(ACCEL_PIN_PWR);
+  nrf_gpio_cfg_output(ACCEL_PIN_PWR);
+}
+
+
 /*JSON{
     "type": "class",
     "class" : "Puck",
     "ifdef" : "PUCKJS"
 }
 Class containing [Puck.js's](http://www.puck-js.com) utility functions.
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "FET",
+  "generate_full" : "26",
+  "ifdef" : "PUCKJS",
+  "return" : ["pin",""]
+}
+On Puck.js V2 (not v1.0) this is the pin that controls the FET.
 */
 
 /*JSON{
@@ -180,7 +328,7 @@ JsVar *jswrap_puck_mag() {
     mag_read();
     mag_off();
   }
-  return mag_to_xyz(mag_reading);
+  return to_xyz(mag_reading);
 }
 
 /*JSON{
@@ -278,7 +426,12 @@ void jswrap_puck_magOn(JsVarFloat hz) {
   if (!mag_on(milliHz)) {
     jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - must be 80, 40, 20, 10, 5, 2.5, 1.25, 0.63, 0.31, 0.16 or 0.08 Hz", hz);
   }
-  jshPinWatch(MAG_INT, true);
+  if (isPuckV2) {
+    JsSysTime t = jshGetTimeFromMilliseconds(1000000/milliHz);
+    jstExecuteFn(magPollHandler, NULL, jshGetSystemTime()+t, t);
+  }
+  jshPinWatch(MAG_PIN_INT, true);
+  jshPinSetState(MAG_PIN_INT, JSHPINSTATE_GPIO_IN_PULLUP);
   mag_enabled = true;
 }
 
@@ -293,22 +446,63 @@ Turn the magnetometer off
 */
 void jswrap_puck_magOff() {
   if (mag_enabled) {
-    jshPinWatch(MAG_INT, false);
+    jshPinWatch(MAG_PIN_INT, false);
     mag_off();
   }
   mag_enabled = false;
 }
 
 
-// Called when we're done with the IR transmission
-void _jswrap_puck_IR_done(JsSysTime t, void *data) {
-  uint32_t d = (uint32_t)data;
-  Pin cathode = d&255;
-  Pin anode = (d>>8)&255;
-  // set as input - so no signal
-  jshPinSetState(anode, JSHPINSTATE_GPIO_IN);
-  // this one also stops the PWM
-  jshPinSetState(cathode, JSHPINSTATE_GPIO_IN);
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Puck",
+  "name" : "accelOn",
+  "ifdef" : "PUCKJS",
+  "generate" : "jswrap_puck_accelOn",
+  "params" : [
+      ["samplerate","float","The sample rate in Hz, or undefined"]
+  ]
+}
+*/
+void jswrap_puck_accelOn(JsVarFloat hz) {
+  if (!isPuckV2) {
+    jsExceptionHere(JSET_ERROR, "Not available on Puck.js v1");
+    return;
+  }
+  if (accel_enabled) {
+    jswrap_puck_accelOff();
+    // wait 1ms for power-off
+    jshDelayMicroseconds(1000);
+  }
+  int milliHz = (int)((hz*1000)+0.5);
+  if (milliHz==0) milliHz=630;
+  if (!accel_on(milliHz)) {
+    jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - must be 80, 40, 20, 10, 5, 2.5, 1.25, 0.63, 0.31, 0.16 or 0.08 Hz", hz);
+  }
+  jshPinWatch(ACCEL_PIN_INT, true);
+  jshPinSetState(ACCEL_PIN_INT, JSHPINSTATE_GPIO_IN_PULLUP);
+  accel_enabled = true;
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Puck",
+  "name" : "accelOff",
+  "ifdef" : "PUCKJS",
+  "generate" : "jswrap_puck_accelOff"
+}
+Turn the magnetometer off
+*/
+void jswrap_puck_accelOff() {
+  if (!isPuckV2) {
+    jsExceptionHere(JSET_ERROR, "Not available on Puck.js v1");
+    return;
+  }
+  if (accel_enabled) {
+    jshPinWatch(ACCEL_PIN_INT, false);
+    accel_off();
+  }
+  accel_enabled = false;
 }
 
 /*JSON{
@@ -334,6 +528,23 @@ you can just execute `Puck.IR(pulseTimes, led_cathode, led_anode)`
 
 
 */
+Pin _jswrap_puck_IR_pin;
+void _jswrap_puck_IR_on() {
+  jshPinAnalogOutput(_jswrap_puck_IR_pin, 0.75, 38000, 0);
+}
+void _jswrap_puck_IR_off() {
+  jshPinOutput(_jswrap_puck_IR_pin, 1);
+}
+// Called when we're done with the IR transmission
+void _jswrap_puck_IR_done(JsSysTime t, void *data) {
+  uint32_t d = (uint32_t)data;
+  Pin cathode = d&255;
+  Pin anode = (d>>8)&255;
+  // set as input - so no signal
+  jshPinSetState(anode, JSHPINSTATE_GPIO_IN);
+  // this one also stops the PWM
+  jshPinSetState(cathode, JSHPINSTATE_GPIO_IN);
+}
 void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
   if (!jsvIsIterable(data)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting an array, got %t", data);
@@ -341,30 +552,47 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
   }
 
   if (!jshIsPinValid(anode)) anode = IR_ANODE_PIN;
-  if (!jshIsPinValid(cathode)) cathode = IR_CATHODE_PIN;
-  jshPinAnalogOutput(cathode, 0.75, 38000, 0);
+  if (!isPuckV2) {
+    if (!jshIsPinValid(cathode)) cathode = IR_CATHODE_PIN;
+  }
+  bool twoPin = jshIsPinValid(cathode);
+  bool pulsePolarity = true;
 
+  if (twoPin) {
+    jshPinAnalogOutput(cathode, 0.75, 38000, 0);
+    jshPinSetValue(anode, pulsePolarity);
+  } else {
+    // Otherwise we're just doing stuff on a single pin
+    _jswrap_puck_IR_pin = anode;
+  }
   JsSysTime time = jshGetSystemTime();
   bool hasPulses = false;
-  bool pulsePolarity = true;
-  jshPinSetValue(anode, pulsePolarity);
 
   JsvIterator it;
   jsvIteratorNew(&it, data, JSIF_EVERY_ARRAY_ELEMENT);
   while (jsvIteratorHasElement(&it)) {
     JsVarFloat pulseTime = jsvIteratorGetFloatValue(&it);
-    if (hasPulses) jstPinOutputAtTime(time, &anode, 1, pulsePolarity);
-    else jshPinSetState(anode, JSHPINSTATE_GPIO_OUT);
+    if (twoPin) {
+      if (hasPulses) jstPinOutputAtTime(time, &anode, 1, pulsePolarity);
+      else jshPinSetState(anode, JSHPINSTATE_GPIO_OUT);
+    } else {
+      if (pulsePolarity) jstExecuteFn(_jswrap_puck_IR_on, NULL, time, 0);
+      else jstExecuteFn(_jswrap_puck_IR_off, NULL, time, 0);
+    }
     hasPulses = true;
     time += jshGetTimeFromMilliseconds(pulseTime);
     pulsePolarity = !pulsePolarity;
-   jsvIteratorNext(&it);
+    jsvIteratorNext(&it);
   }
   jsvIteratorFree(&it);
 
   if (hasPulses) {
-    uint32_t d = cathode | anode<<8;
-    jstExecuteFn(_jswrap_puck_IR_done, (void*)d, time, 0);
+    if (twoPin) {
+      uint32_t d = cathode | anode<<8;
+      jstExecuteFn(_jswrap_puck_IR_done, (void*)d, time, 0);
+    } else {
+      jstExecuteFn(_jswrap_puck_IR_off, NULL, time, 0);
+    }
   }
 }
 
@@ -638,25 +866,27 @@ bool jswrap_puck_selfTest() {
 void jswrap_puck_init() {
   // Set up I2C
   jshI2CInitInfo(&i2cMag);
-  i2cMag.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  //i2cMag.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cMag.pinSDA = MAG_PIN_SDA;
   i2cMag.pinSCL = MAG_PIN_SCL;
-  jshPinSetValue(MAG_PIN_PWR, 1);
-  jshPinSetState(i2cMag.MAG_PIN_PWR, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
-  jshPinSetValue(i2cMag.pinSCL, 1);
-  jshPinSetState(i2cMag.pinSCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
-  jshPinSetValue(i2cMag.pinSDA, 1);
-  jshPinSetState(i2cMag.pinSDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  mag_pin_on();
+
   // MAG3110 WHO_AM_I
   unsigned char buf[2];
   buf[0] = 0x07;
   jsi2cWrite(&i2cMag, MAG3110_ADDR, 1, buf, false);
   jsi2cRead(&i2cMag, MAG3110_ADDR, 1, buf, true);
+  jsvUnLock(jspGetException());
+  isPuckV2 = false;
+  jsiConsolePrintf("M3110 %d\n", buf[0]);
   if (buf[0]!=0xC4) {
     // Not found, check for LIS3MDL - Puck.js v2
+    nrf_delay_ms(1); // LIS3MDL takes longer to boot
     buf[0] = 0x0F;
-    jsi2cWrite(&i2cMag, MAG3110_ADDR, 1, buf, false);
-    jsi2cRead(&i2cMag, MAG3110_ADDR, 1, buf, true);
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, false);
+    jsi2cRead(&i2cMag, LIS3MDL_ADDR, 1, buf, true);
+    jsvUnLock(jspGetException());
+    jsiConsolePrintf("LIS3 %d\n", buf[0]);
     if (buf[0] == 0b00111101) {
       // all good, MAG3110 - Puck.js v2
       isPuckV2 = true;
@@ -667,7 +897,7 @@ void jswrap_puck_init() {
     // all good, MAG3110 - Puck.js v1
   }
   // Power off
-  jshPinSetValue(MAG_PIN_PWR, 0);
+  mag_off();
 
 
   /* If the button is pressed during reset, perform a self test.
@@ -711,14 +941,41 @@ void jswrap_puck_kill() {
 bool jswrap_puck_idle() {
   /* jshPinWatch should mean that we wake up whenever a new
    * magnetometer reading is ready */
-  if (mag_enabled && nrf_gpio_pin_read(MAG_INT)) {
-    mag_read();
-    JsVar *xyz = mag_to_xyz(mag_reading);
-    JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
-    if (jsvHasChildren(puck))
-        jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"mag", &xyz, 1);
-    jsvUnLock2(puck, xyz);
-    return true; // don't sleep - handle this now
+  if (mag_enabled) {
+    if (isPuckV2) {
+      if (mag_reading_new) {
+        mag_reading_new = false;
+        /*jsiConsolePrintf("irq\n");
+        mag_read();
+        unsigned char buf[3];
+        buf[0] = 0x32; buf[1]=0xFF;buf[1]=0x7F; // INT_THS_L,H - turn off IRQ by writing big values
+        jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+        buf[0] = 0x31; // read INT_SRC - latch IRQ pin
+        jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, true);
+        jsi2cRead(&i2cMag, LIS3MDL_ADDR, 1, buf, true);
+        jsiConsolePrintf("irq %d\n",nrf_gpio_pin_read(MAG_PIN_INT));
+        buf[0] = 0x32; buf[1]=0;buf[1]=0; // INT_THS_L,H - turn on by writing 0
+        jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+        jsiConsolePrintf("irq %d\n",nrf_gpio_pin_read(MAG_PIN_INT));*/
+
+        JsVar *xyz = to_xyz(mag_reading);
+        JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
+        if (jsvHasChildren(puck))
+            jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"mag", &xyz, 1);
+        jsvUnLock2(puck, xyz);
+        return true; // don't sleep - handle this now
+      }
+    } else {
+      if (nrf_gpio_pin_read(MAG_PIN_INT)) {
+        mag_read();
+        JsVar *xyz = to_xyz(mag_reading);
+        JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
+        if (jsvHasChildren(puck))
+            jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"mag", &xyz, 1);
+        jsvUnLock2(puck, xyz);
+        return true; // don't sleep - handle this now
+      }
+    }
   }
   return false;
 }

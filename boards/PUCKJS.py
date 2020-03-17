@@ -88,7 +88,7 @@ devices = {
   #         'pin_sda':'D20',
   #         'pin_scl':'D19' }
   # V2.0
-  'MAG': { 'device': 'LIS3MDL', 'addr' : 60, # v2.0
+  'MAG': { 'device': 'LIS3MDL', 'addr' : 30, # v2.0
            'pin_pwr':'D18',
            'pin_int':'D17',
            'pin_sda':'D20',

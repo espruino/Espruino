@@ -20,6 +20,9 @@
 #include "jswrap_espruino.h" // jswrap_espruino_getConsole
 #include "jswrapper.h"
 #include "jsinteractive.h"
+#ifdef PUCKJS
+#include "jswrap_puck.h" // process.env
+#endif
 
 /*JSON{
   "type" : "class",
@@ -112,6 +115,9 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "FLASH", jsvNewFromInteger(FLASH_TOTAL));
 #ifdef SPIFLASH_LENGTH
   jsvObjectSetChildAndUnLock(obj, "SPIFLASH", jsvNewFromInteger(SPIFLASH_LENGTH));
+#endif
+#ifdef PUCKJS
+  jsvObjectSetChildAndUnLock(obj, "HWVERSION", jsvNewFromInteger(isPuckV2?2:1));
 #endif
   jsvObjectSetChildAndUnLock(obj, "STORAGE", jsvNewFromInteger(FLASH_SAVED_CODE_LENGTH));
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
