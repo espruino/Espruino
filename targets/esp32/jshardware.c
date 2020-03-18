@@ -735,9 +735,9 @@ JsVar *jshFlashGetFree() {
   if (!jsFreeFlash) return 0;
   // Space reserved here in the parition table -  using sub type 0x40
   // This should be read from the partition table
-  addFlashArea(jsFreeFlash, 0xE000,  0x2000);
-  addFlashArea(jsFreeFlash, 0x2B0000, 0x10000);
-
+  addFlashArea(jsFreeFlash, 0xE000, 0x2000);
+  addFlashArea(jsFreeFlash, 0x310000, 0x10000);
+  addFlashArea(jsFreeFlash, 0x360000, 0xA0000);
   return jsFreeFlash;
 }
 
