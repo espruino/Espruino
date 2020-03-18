@@ -32,7 +32,6 @@ info = {
      'TELNET',
      'NEOPIXEL',
      'FILESYSTEM',
-     'FLASHFS',
      'BLUETOOTH'	 
    ],
    'makefile' : [
