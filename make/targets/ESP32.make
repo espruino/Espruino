@@ -25,10 +25,13 @@ $(ESP_ZIP): $(PROJ_NAME).bin
 
 proj: $(PROJ_NAME).bin $(ESP_ZIP)
 
-flash:
+flash: $(PROJ_NAME).bin
+ifndef COMPORT
+	$(error "In order to flash, we need to have the COMPORT variable defined")
+endif
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
-	--port "/dev/ttyUSB0" \
+	--port ${COMPORT} \
 	--baud 921600 \
 	write_flash \
 	-z \
@@ -39,8 +42,11 @@ flash:
 	0x8000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_espruino.bin
 
 erase_flash:
+ifndef COMPORT
+	$(error "In order to flash, we need to have the COMPORT variable defined")
+endif
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
-	--port "/dev/ttyUSB0" \
+	--port ${COMPORT}\
 	--baud 921600 \
 	erase_flash

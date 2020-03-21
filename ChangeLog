@@ -122,6 +122,7 @@
             Changed 6x8 builtin font to a modified Dina_r400-6 supporting non-ASCII characters
             Bangle.js: Modify E.showMessage/Prompt/Alert to clear the entire screen and redraw widgets (fix #1771)
             Bangle.js: Modify Bangle.drawWidgets to only clear the areas where widgets actually are, not the whole top&bottom bar
+            ESP32: add environment variable COMPORT to be used with make flash 
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
