@@ -1,5 +1,7 @@
 ESP_ZIP     = $(PROJ_NAME).tgz
 
+COMPORT?=/dev/ttyUSB0
+
 $(PROJ_NAME).bin: $(OBJS)
 	$(LD) $(LDFLAGS) -o $(PROJ_NAME).elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
@@ -26,9 +28,6 @@ $(ESP_ZIP): $(PROJ_NAME).bin
 proj: $(PROJ_NAME).bin $(ESP_ZIP)
 
 flash: $(PROJ_NAME).bin
-ifndef COMPORT
-	$(error "In order to flash, we need to have the COMPORT variable defined")
-endif
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
 	--port ${COMPORT} \
@@ -42,9 +41,6 @@ endif
 	0x8000 $(ESP_APP_TEMPLATE_PATH)/build/partitions_espruino.bin
 
 erase_flash:
-ifndef COMPORT
-	$(error "In order to flash, we need to have the COMPORT variable defined")
-endif
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
 	--port ${COMPORT}\
