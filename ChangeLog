@@ -125,6 +125,7 @@
             Kick Watchdog when erasing flash (it can take so long on 4MB external flash that it reboots)
             KICKSTARTER BUILD
             Bangle.js: Add 'meridian' to locale library
+            ESP32: add environment variable COMPORT to be used with make flash 
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
