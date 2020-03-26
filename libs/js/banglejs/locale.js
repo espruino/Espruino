@@ -20,5 +20,6 @@ exports = { name : "en_GB", currencySym:"£",
   currency : n => "£"+n.toFixed(2), // number to "£1.00"
   distance : m => (m<1000)?Math.round(m)+"m":Math.round(m/160.934)/10+"mi", // meters to "123m" or "1.2mi" depending on size
   speed : s => Math.round(s)+"mph",// kph to "123mph"
-  temp : t => Math.round(t)+"'C" // degrees C to degrees C
+  temp : t => Math.round(t)+"'C", // degrees C to degrees C
+  meridian: d => (d.getHours() <= 12) ? "am":"pm" // Date to am/pm
 };
