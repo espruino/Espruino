@@ -14,6 +14,8 @@
  * ----------------------------------------------------------------------------
  */
 
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py */
+
 #include <jswrap_banglef5.h>
 #include "jsinteractive.h"
 #include "jsdevices.h"
