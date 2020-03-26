@@ -251,11 +251,13 @@ bool accel_on(int milliHz) {
   else if (milliHz==1660000) reg=8<<4; // 1.66 kHz (high performance)
   else return false;
 
+
   jshPinSetValue(ACCEL_PIN_PWR, 1);
-  jshPinSetState(ACCEL_PIN_PWR, JSHPINSTATE_GPIO_OUT);
-  jshDelayMicroseconds(100000);
   jshPinSetValue(ACCEL_PIN_SCL, 1);
   jshPinSetValue(ACCEL_PIN_SDA, 1);
+  jshPinSetState(ACCEL_PIN_PWR, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(ACCEL_PIN_SCL, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(ACCEL_PIN_SDA, JSHPINSTATE_GPIO_OUT);
   jshPinSetState(ACCEL_PIN_SCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   jshPinSetState(ACCEL_PIN_SDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   jshPinSetState(ACCEL_PIN_INT, JSHPINSTATE_GPIO_IN);
@@ -263,14 +265,21 @@ bool accel_on(int milliHz) {
 
   // LSM6DS3TR
   unsigned char buf[2];
+  jsiConsolePrintf("x %d\n",execInfo.execute);
   buf[0] = 0x10; buf[1]=reg | 0b00001011; // CTRL1_XL  +-4g, 50Hz AA filter
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jsiConsolePrintf("x %d\n",execInfo.execute);
   buf[0] = 0x11; buf[1]=reg | 0; // CTRL1_G  250 dps, no 125dps limit
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jsiConsolePrintf("x %d\n",execInfo.execute);
   buf[0] = 0x12; buf[1]=0x44; // CTRL3_C, BDU, irq active high, push pull, auto-inc
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jsiConsolePrintf("x %d\n",execInfo.execute);
   buf[0] = 0x0D; buf[1]=3; // INT1_CTRL - Gyro/accel data ready IRQ
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jsiConsolePrintf("x %d\n",execInfo.execute);
+
+
 
   return true;
 }
@@ -697,7 +706,7 @@ you can just execute `Puck.IR(pulseTimes, led_cathode, led_anode)`
 */
 Pin _jswrap_puck_IR_pin;
 void _jswrap_puck_IR_on() {
-  jshPinAnalogOutput(_jswrap_puck_IR_pin, 0.75, 38000, 0);
+  jshPinAnalogOutput(_jswrap_puck_IR_pin, 0.1, 38000, 0);
 }
 void _jswrap_puck_IR_off() {
   jshPinOutput(_jswrap_puck_IR_pin, 1);
