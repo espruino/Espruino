@@ -1,14 +1,15 @@
 # Travis-CI file for Espruino
 
 language: c
-
+python:
+  - "3.6"
 # Ensure we clone the last 1000 commits, which allows us to get the commit counter correct!
 git:
   depth: 1000
 
 before_script:
- - source ./scripts/provision.sh $BOARD
  - python --version
+ - source ./scripts/provision.sh $BOARD
 
 after_script:
   - "if [[ -n \"$UPLOADTOKEN\" ]]; then
