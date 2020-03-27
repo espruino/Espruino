@@ -95,7 +95,7 @@ devices = {
            'pin_scl':'D19',
            },
   'ACCEL': { 'device': 'LSM6DS3TR', 'addr' : 106, # v2.0
-           'pin_pwr':'D16',
+#           'pin_pwr':'D16', # can't actually power this from an IO pin due to undocumented, massive power draw on startup
            'pin_int':'D13',
            'pin_sda':'D14',
            'pin_scl':'D15' },

@@ -21,6 +21,9 @@
 #include "jswrapper.h"
 #include "jsinteractive.h"
 #include "jstimer.h"
+#ifdef PUCKJS
+#include "jswrap_puck.h" // jswrap_puck_getTemperature
+#endif
 
 /*JSON{
   "type" : "class",
@@ -94,15 +97,24 @@ so that you do get a callback each time a flag is set, call `E.getErrorFlags()`.
   "type" : "staticmethod",
   "class" : "E",
   "name" : "getTemperature",
-  "generate_full" : "jshReadTemperature()",
+  "generate" : "jswrap_espruino_getTemperature",
   "return" : ["float","The temperature in degrees C"]
 }
-Use the STM32's internal thermistor to work out the temperature.
+Use the microcontroller's internal thermistor to work out the temperature.
+
+On Puck.js v2.0 this will use the on-board PCT2075TP temperature sensor, but on other devices it may not be desperately well calibrated.
 
 While this is implemented on Espruino boards, it may not be implemented on other devices. If so it'll return NaN.
 
  **Note:** This is not entirely accurate and varies by a few degrees from chip to chip. It measures the **die temperature**, so when connected to USB it could be reading 10 over degrees C above ambient temperature. When running from battery with `setDeepSleep(true)` it is much more accurate though.
 */
+float jswrap_espruino_getTemperature() {
+#ifdef PUCKJS
+  return jswrap_puck_getTemperature();
+#else
+  return jshReadTemperature();
+#endif
+}
 
 /*JSON{
   "type" : "staticmethod",

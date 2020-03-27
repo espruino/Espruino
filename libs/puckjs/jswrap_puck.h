@@ -21,6 +21,7 @@ JsVar *jswrap_puck_mag();
 JsVarInt jswrap_puck_magTemp();
 void jswrap_puck_magWr(JsVarInt reg, JsVarInt data);
 int jswrap_puck_magRd(JsVarInt reg);
+JsVarFloat jswrap_puck_getTemperature();
 
 void jswrap_puck_accelOn(JsVarFloat hz);
 void jswrap_puck_accelOff();

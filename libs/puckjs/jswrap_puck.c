@@ -13,18 +13,6 @@
  * Contains JavaScript interface for Puck.js
  * ----------------------------------------------------------------------------
 
-
-Puck.js v2 TODO
----------------
-
-[ ] LIS3MDL Magnetometer
-[ ] LSM6DS3TR Accel / Gyro
-[ ] PCT2075TP temp sensor
-[ ] IR input?
-[ ] NFC tuning
-[ ] Light input scaling
-[x] FET pin
-[x] New IR output
  */
 
 
@@ -39,6 +27,7 @@ Puck.js v2 TODO
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf5x_utils.h"
+#include "ble_gap.h"
 #include "jsflash.h" // for jsfRemoveCodeFromFlash
 #include "jsi2c.h" // accelerometer/etc
 
@@ -52,6 +41,8 @@ JshI2CInfo i2cTemp;
 bool isPuckV2 = false;
 
 const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
+#define IR_INPUT_PIN 25 // Puck v2
+#define IR_FET_PIN 27 // Puck v2
 
 bool mag_enabled = false; //< Has the magnetometer been turned on?
 int16_t mag_reading[3];  //< magnetometer xyz reading
@@ -252,34 +243,31 @@ bool accel_on(int milliHz) {
   else return false;
 
 
-  jshPinSetValue(ACCEL_PIN_PWR, 1);
-  jshPinSetValue(ACCEL_PIN_SCL, 1);
-  jshPinSetValue(ACCEL_PIN_SDA, 1);
+  jshPinSetState(ACCEL_PIN_INT, JSHPINSTATE_GPIO_IN);
+#ifdef ACCEL_PIN_PWR
   jshPinSetState(ACCEL_PIN_PWR, JSHPINSTATE_GPIO_OUT);
-  jshPinSetState(ACCEL_PIN_SCL, JSHPINSTATE_GPIO_OUT);
-  jshPinSetState(ACCEL_PIN_SDA, JSHPINSTATE_GPIO_OUT);
+#endif
   jshPinSetState(ACCEL_PIN_SCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   jshPinSetState(ACCEL_PIN_SDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
-  jshPinSetState(ACCEL_PIN_INT, JSHPINSTATE_GPIO_IN);
-  jshDelayMicroseconds(100000);
+#ifdef ACCEL_PIN_PWR
+  jshPinSetValue(ACCEL_PIN_PWR, 1);
+#endif
+  jshPinSetValue(ACCEL_PIN_SCL, 1);
+  jshPinSetValue(ACCEL_PIN_SDA, 1);
+  jshDelayMicroseconds(20000); // 20ms boot from app note
 
   // LSM6DS3TR
   unsigned char buf[2];
-  jsiConsolePrintf("x %d\n",execInfo.execute);
+  buf[0] = 0x18; buf[1]=0x38; // CTRL9_XL  Acc X, Y, Z axes enabled
+  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
   buf[0] = 0x10; buf[1]=reg | 0b00001011; // CTRL1_XL  +-4g, 50Hz AA filter
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
-  jsiConsolePrintf("x %d\n",execInfo.execute);
-  buf[0] = 0x11; buf[1]=reg | 0; // CTRL1_G  250 dps, no 125dps limit
+  buf[0] = 0x11; buf[1]=reg | 0; // CTRL2_G  250 dps, no 125dps limit
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
-  jsiConsolePrintf("x %d\n",execInfo.execute);
   buf[0] = 0x12; buf[1]=0x44; // CTRL3_C, BDU, irq active high, push pull, auto-inc
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
-  jsiConsolePrintf("x %d\n",execInfo.execute);
   buf[0] = 0x0D; buf[1]=3; // INT1_CTRL - Gyro/accel data ready IRQ
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
-  jsiConsolePrintf("x %d\n",execInfo.execute);
-
-
 
   return true;
 }
@@ -313,11 +301,19 @@ void accel_wait() {
 
 // Turn accelerometer off
 void accel_off() {
+#ifdef ACCEL_PIN_PWR
   nrf_gpio_cfg_input(ACCEL_PIN_SDA, NRF_GPIO_PIN_NOPULL);
   nrf_gpio_cfg_input(ACCEL_PIN_SCL, NRF_GPIO_PIN_NOPULL);
   nrf_gpio_cfg_input(ACCEL_PIN_INT, NRF_GPIO_PIN_NOPULL);
   nrf_gpio_pin_clear(ACCEL_PIN_PWR);
   nrf_gpio_cfg_output(ACCEL_PIN_PWR);
+#else
+  unsigned char buf[2];
+  buf[0] = 0x10; buf[1]=0; // CTRL1_XL  - power down
+  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  buf[0] = 0x11; buf[1]=0; // CTRL2_G   - power down
+  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+#endif
 }
 
 
@@ -555,6 +551,61 @@ int jswrap_puck_magRd(JsVarInt reg) {
 }
 
 
+// Turn temp sensor on
+void temp_on() {
+  jshPinSetValue(TEMP_PIN_PWR, 1);
+  jshPinSetValue(TEMP_PIN_SCL, 1);
+  jshPinSetValue(TEMP_PIN_SDA, 1);
+  jshPinSetState(TEMP_PIN_PWR, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(TEMP_PIN_SCL, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(TEMP_PIN_SDA, JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(TEMP_PIN_SCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  jshPinSetState(TEMP_PIN_SDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  jshDelayMicroseconds(20000); // wait for startup and first conversion
+}
+
+// Turn temp sensor off
+void temp_off() {
+  nrf_gpio_cfg_input(TEMP_PIN_SDA, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_cfg_input(TEMP_PIN_SCL, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_pin_clear(TEMP_PIN_PWR);
+  nrf_gpio_cfg_output(TEMP_PIN_PWR);
+}
+
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Puck",
+  "name" : "getTemperature",
+  "ifdef" : "PUCKJS",
+  "generate" : "jswrap_puck_getTemperature",
+  "return" : ["float", "Temperature in degrees C" ]
+}
+On Puck.js v2.0 this will use the on-board PCT2075TP temperature sensor, but on Puck.js the less accurate on-chip Temperature sensor is used.
+*/
+JsVarFloat jswrap_puck_getTemperature() {
+  if (isPuckV2) {
+    temp_on();
+    unsigned char buf[2];
+    // 'on' is the default
+    //buf[1] = 1; // CONF
+    //buf[0] = 0; // on
+    //jsi2cWrite(&i2cTemp,TEMP_ADDR, 1, buf, false);
+    // get temperature
+    buf[0] = 0; // TEMP
+    jsi2cWrite(&i2cTemp,TEMP_ADDR, 1, buf, false);
+    jsi2cRead(&i2cTemp, TEMP_ADDR, 2, buf, true);
+    int t = (buf[0]<<3) | (buf[1]>>5);
+    if (t&1024) t-=2048; // negative
+    temp_off();
+    return t / 8.0;
+  } else {
+    return jshReadTemperature();
+  }
+}
+
+
 /*JSON{
   "type" : "staticmethod",
   "class" : "Puck",
@@ -729,7 +780,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
 
   if (!jshIsPinValid(anode)) anode = IR_ANODE_PIN;
   if (!isPuckV2) {
-    if (!jshIsPinValid(cathode)) cathode = IR_CATHODE_PIN;
+    if (!jshIsPinValid(cathode)) cathode = IR_FET_PIN;
   }
   bool twoPin = jshIsPinValid(cathode);
   bool pulsePolarity = true;
@@ -865,13 +916,19 @@ JsVarInt jswrap_puck_getBattery() {
   return pc;
 }
 
-static bool selftest_check_pin(Pin pin) {
+static bool selftest_check_pin(Pin pin, char *err) {
   unsigned int i;
+  char pinStr[4];
+  pinStr[0]='-';
+  itostr(pin,&pinStr[1],10);
+
   bool ok = true;
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
   jshPinSetValue(pin, 1);
   jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLUP);
   if (!jshPinGetValue(pin)) {
+    pinStr[0]='l';
+    if (!err[0]) strcpy(err,pinStr);
     jsiConsolePrintf("Pin %p forced low\n", pin);
     ok = false;
   }
@@ -879,6 +936,8 @@ static bool selftest_check_pin(Pin pin) {
     if (PUCK_IO_PINS[i]!=pin)
       jshPinOutput(PUCK_IO_PINS[i], 0);
   if (!jshPinGetValue(pin)) {
+    pinStr[0]='L';
+    if (!err[0]) strcpy(err,pinStr);
     jsiConsolePrintf("Pin %p shorted low\n", pin);
     ok = false;
   }
@@ -887,6 +946,8 @@ static bool selftest_check_pin(Pin pin) {
   jshPinSetValue(pin, 0);
   jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLDOWN);
   if (jshPinGetValue(pin)) {
+    pinStr[0]='h';
+    if (!err[0]) strcpy(err,pinStr);
     jsiConsolePrintf("Pin %p forced high\n", pin);
     ok = false;
   }
@@ -894,12 +955,15 @@ static bool selftest_check_pin(Pin pin) {
      if (PUCK_IO_PINS[i]!=pin)
        jshPinOutput(PUCK_IO_PINS[i], 1);
    if (jshPinGetValue(pin)) {
+     pinStr[0]='H';
+     if (!err[0]) strcpy(err,pinStr);
      jsiConsolePrintf("Pin %p shorted high\n", pin);
      ok = false;
    }
   jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
   return ok;
 }
+
 
 /*JSON{
     "type" : "staticmethod",
@@ -917,11 +981,15 @@ down while inserting the battery, leave it pressed for 3 seconds (while
 the green LED is lit) and release it soon after all LEDs turn on. 5
 red blinks is a fail, 5 green is a pass.
 
+If the self test fails, it'll set the Puck.js Bluetooth advertising name
+to `Puck.js !ERR` where ERR is a 3 letter error code.
+
 */
 bool jswrap_puck_selfTest() {
   unsigned int timeout, i;
   JsVarFloat v;
   bool ok = true;
+  char err[4] = {0,0,0,0};
 
   // light up all LEDs white
   jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
@@ -934,6 +1002,7 @@ bool jswrap_puck_selfTest() {
     nrf_delay_ms(1);
   if (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE) {
     jsiConsolePrintf("Timeout waiting for button to be released.\n");
+    if (!err[0]) strcpy(err,"BTN");
     ok = false;
   }
   nrf_delay_ms(100);
@@ -947,7 +1016,8 @@ bool jswrap_puck_selfTest() {
   nrf_delay_ms(1);
   v = jshPinAnalog(LED1_PININDEX);
   jshPinSetState(LED1_PININDEX, JSHPINSTATE_GPIO_IN);
-  if (v<0.3 || v>0.65) {
+  if (v<0.2 || v>0.65) {
+    if (!err[0]) strcpy(err,"LD1");
     jsiConsolePrintf("LED1 pullup voltage out of range (%f) - disconnected?\n", v);
     ok = false;
   }
@@ -957,6 +1027,7 @@ bool jswrap_puck_selfTest() {
   v = jshPinAnalog(LED2_PININDEX);
   jshPinSetState(LED2_PININDEX, JSHPINSTATE_GPIO_IN);
   if (v<0.55 || v>0.85) {
+    if (!err[0]) strcpy(err,"LD2");
     jsiConsolePrintf("LED2 pullup voltage out of range (%f) - disconnected?\n", v);
     ok = false;
   }
@@ -966,6 +1037,7 @@ bool jswrap_puck_selfTest() {
   v = jshPinAnalog(LED3_PININDEX);
   jshPinSetState(LED3_PININDEX, JSHPINSTATE_GPIO_IN);
   if (v<0.65 || v>0.90) {
+    if (!err[0]) strcpy(err,"LD3");
     jsiConsolePrintf("LED3 pullup voltage out of range (%f) - disconnected?\n", v);
     ok = false;
   }
@@ -975,17 +1047,39 @@ bool jswrap_puck_selfTest() {
   jshPinSetValue(IR_CATHODE_PIN, 1);
   nrf_delay_ms(1);
   if (jshPinGetValue(IR_ANODE_PIN)) {
+    if (!err[0]) strcpy(err,"IRs");
     jsiConsolePrintf("IR LED wrong way around/shorted?\n");
     ok = false;
   }
 
-  jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
-  jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(IR_ANODE_PIN, 1);
-  nrf_delay_ms(1);
-  if (!jshPinGetValue(IR_CATHODE_PIN)) {
-    jsiConsolePrintf("IR LED disconnected?\n");
-    ok = false;
+
+  if (isPuckV2) {
+    jshPinSetState(IR_INPUT_PIN, JSHPINSTATE_GPIO_IN);
+    nrf_delay_ms(5);
+    if (!jshPinGetValue(IR_INPUT_PIN)) {
+      if (!err[0]) strcpy(err,"IRd");
+      jsiConsolePrintf("IR LED disconnected?\n");
+      ok = false;
+    }
+    jshPinSetState(IR_FET_PIN, JSHPINSTATE_GPIO_OUT);
+    jshPinSetValue(IR_FET_PIN, 1);
+    nrf_delay_us(0.5);
+    if (jshPinGetValue(IR_INPUT_PIN)) {
+      if (!err[0]) strcpy(err,"IRF");
+      jsiConsolePrintf("IR FET disconnected?\n");
+      ok = false;
+    }
+    jshPinSetValue(IR_FET_PIN, 0);
+  } else {
+    jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+    jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_OUT);
+    jshPinSetValue(IR_ANODE_PIN, 1);
+    nrf_delay_ms(1);
+    if (!jshPinGetValue(IR_CATHODE_PIN)) {
+      if (!err[0]) strcpy(err,"IRd");
+      jsiConsolePrintf("IR LED disconnected?\n");
+      ok = false;
+    }
   }
 
   jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN);
@@ -997,8 +1091,31 @@ bool jswrap_puck_selfTest() {
   mag_off();
   mag_enabled = false;
   if (mag_reading[0]==-1 && mag_reading[1]==-1 && mag_reading[2]==-1) {
+    if (!err[0]) strcpy(err,"MAG");
     jsiConsolePrintf("Magnetometer not working?\n");
     ok = false;
+  }
+
+  if (isPuckV2) {
+    accel_on(1660000);
+    unsigned char buf[1];
+    buf[0] = 0x0F; // WHOAMI
+    jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, false);
+    jsi2cRead(&i2cAccel, ACCEL_ADDR, 1, buf, true);
+    accel_off();
+    if (buf[0]!=106) {
+      if (!err[0]) strcpy(err,"ACC");
+      jsiConsolePrintf("Accelerometer WHOAMI failed\n");
+      ok = false;
+    }
+
+    JsVarFloat t = jswrap_puck_getTemperature();
+    if (t<0 || t>40) {
+      if (!err[0]) strcpy(err,"TMP");
+      jsiConsolePrintf("Unexpected temperature\n");
+      ok = false;
+    }
+
   }
 
   jshPinSetState(CAPSENSE_TX_PIN, JSHPINSTATE_GPIO_OUT);
@@ -1006,31 +1123,46 @@ bool jswrap_puck_selfTest() {
   jshPinSetValue(CAPSENSE_TX_PIN, 1);
   nrf_delay_ms(1);
   if (!jshPinGetValue(CAPSENSE_RX_PIN)) {
+    if (!err[0]) strcpy(err,"CPu");
     jsiConsolePrintf("Capsense resistor disconnected? (pullup)\n");
     ok = false;
   }
   jshPinSetValue(CAPSENSE_TX_PIN, 0);
   nrf_delay_ms(1);
   if (jshPinGetValue(CAPSENSE_RX_PIN)) {
+    if (!err[0]) strcpy(err,"CPd");
     jsiConsolePrintf("Capsense resistor disconnected? (pulldown)\n");
     ok = false;
   }
   jshPinSetState(CAPSENSE_TX_PIN, JSHPINSTATE_GPIO_IN);
 
 
-  ok &= selftest_check_pin(1);
-  ok &= selftest_check_pin(2);
-  ok &= selftest_check_pin(6);
-  ok &= selftest_check_pin(7);
-  ok &= selftest_check_pin(8);
-  ok &= selftest_check_pin(28);
-  ok &= selftest_check_pin(29);
-  ok &= selftest_check_pin(30);
-  ok &= selftest_check_pin(31);
+  ok &= selftest_check_pin(1,err);
+  ok &= selftest_check_pin(2,err);
+  if (!isPuckV2) {
+    ok &= selftest_check_pin(6,err);
+    ok &= selftest_check_pin(7,err);
+    ok &= selftest_check_pin(8,err);
+  }
+  ok &= selftest_check_pin(28,err);
+  ok &= selftest_check_pin(29,err);
+  ok &= selftest_check_pin(30,err);
+  ok &= selftest_check_pin(31,err);
 
   for (i=0;i<sizeof(PUCK_IO_PINS)/sizeof(Pin);i++)
     jshPinSetState(PUCK_IO_PINS[i], JSHPINSTATE_GPIO_IN);
 
+  if (err[0]) {
+    char deviceName[BLE_GAP_DEVNAME_MAX_LEN];
+    strcpy(deviceName,"Puck.js !");
+    strcat(deviceName,err);
+    ble_gap_conn_sec_mode_t sec_mode;
+    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
+    sd_ble_gap_device_name_set(&sec_mode,
+                              (const uint8_t *)deviceName,
+                              strlen(deviceName));
+    jsiConsolePrintf("Error code %s\n",err);
+  }
 
   return ok;
 }
@@ -1046,13 +1178,15 @@ void jswrap_puck_init() {
   i2cMag.pinSDA = MAG_PIN_SDA;
   i2cMag.pinSCL = MAG_PIN_SCL;
   jshI2CInitInfo(&i2cAccel);
-  //i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cAccel.pinSDA = ACCEL_PIN_SDA;
   i2cAccel.pinSCL = ACCEL_PIN_SCL;
   jshI2CInitInfo(&i2cTemp);
-  //i2cTemp.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cTemp.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cTemp.pinSDA = TEMP_PIN_SDA;
   i2cTemp.pinSCL = TEMP_PIN_SCL;
+  accel_off();
+  temp_off();
   mag_pin_on();
 
   // MAG3110 WHO_AM_I
