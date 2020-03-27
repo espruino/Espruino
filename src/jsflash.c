@@ -774,13 +774,18 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset) {
 }
 
 bool jsfLoadBootCodeFromFlash(bool isReset) {
-  // Load code in .boot0/1/2/3
-  char filename[7] = ".bootX";
-  for (int i=0;i<4;i++) {
-    filename[5] = (char)('0'+i);
-    JsVar *code = jsfReadFile(jsfNameFromString(filename),0,0);
-    if (code)
-      jsvUnLock2(jspEvaluateVar(code,0,0), code);
+  // Load code in .boot0/1/2/3 UNLESS BTN1 is HELD DOWN
+#ifdef BANGLEJS
+  if (jshPinGetValue(BTN1_PININDEX)!=BTN1_ONSTATE)
+#endif
+  {
+    char filename[7] = ".bootX";
+    for (int i=0;i<4;i++) {
+      filename[5] = (char)('0'+i);
+      JsVar *code = jsfReadFile(jsfNameFromString(filename),0,0);
+      if (code)
+        jsvUnLock2(jspEvaluateVar(code,0,0), code);
+    }
   }
   // Load normal boot code
   JsVar *code = jsfGetBootCodeFromFlash(isReset);

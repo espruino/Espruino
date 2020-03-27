@@ -129,6 +129,7 @@
             Puck.js: v2 Support: Accelerometer/Gyro/temp
             Puck.js: Self test now sets Puck.js BLE name if there's an error
             Fix bitwise rshift by 0 to be unsigned (fix #1784)
+            Bangle.js: Don't load .boot0/1/2/3 if BTN1 is pressed
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)
