@@ -108,7 +108,7 @@ While this is implemented on Espruino boards, it may not be implemented on other
 
  **Note:** This is not entirely accurate and varies by a few degrees from chip to chip. It measures the **die temperature**, so when connected to USB it could be reading 10 over degrees C above ambient temperature. When running from battery with `setDeepSleep(true)` it is much more accurate though.
 */
-float jswrap_espruino_getTemperature() {
+JsVarFloat jswrap_espruino_getTemperature() {
 #ifdef PUCKJS
   return jswrap_puck_getTemperature();
 #else
