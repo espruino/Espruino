@@ -905,7 +905,8 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
         lex->tk==LEX_INT ||
         lex->tk==LEX_FLOAT ||
         lex->tk==LEX_STR ||
-        lex->tk==LEX_TEMPLATE_LITERAL) {
+        lex->tk==LEX_TEMPLATE_LITERAL ||
+        lex->tk==LEX_REGEX) {
       length += jsvStringIteratorGetIndex(&lex->it)-jsvStringIteratorGetIndex(&lex->tokenStart.it);
     } else {
       length++; // for single token
@@ -931,7 +932,8 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
           lex->tk==LEX_INT ||
           lex->tk==LEX_FLOAT ||
           lex->tk==LEX_STR ||
-          lex->tk==LEX_TEMPLATE_LITERAL) {
+          lex->tk==LEX_TEMPLATE_LITERAL ||
+          lex->tk==LEX_REGEX) {
         // copy in string verbatim
         jsvStringIteratorSetCharAndNext(&dstit, lex->tokenStart.currCh);
         JsvStringIterator it;
