@@ -133,6 +133,9 @@
             Puck.js: Allow D21(RST) to be used as normal IO pin
             Fix recent E.getTemperature regression (fix #1788)
             Fix pretokenise of RegExp literals (fix #1786)
+            Add ability to turn off software I2C clock stretching (not accessible from JS)
+            Puck.js: disable clock stretching for built-in sensors
+           
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

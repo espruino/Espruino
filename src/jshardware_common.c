@@ -44,6 +44,7 @@ void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->pinSDA = PIN_UNDEFINED;
   inf->bitrate = 100000;
   inf->started = false;
+  inf->clockStretch = true;
 }
 
 void jshFlashWriteAligned(void *buf, uint32_t addr, uint32_t len) {

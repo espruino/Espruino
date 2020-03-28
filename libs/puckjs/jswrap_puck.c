@@ -561,7 +561,7 @@ void temp_on() {
   jshPinSetState(TEMP_PIN_SDA, JSHPINSTATE_GPIO_OUT);
   jshPinSetState(TEMP_PIN_SCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   jshPinSetState(TEMP_PIN_SDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
-  jshDelayMicroseconds(20000); // wait for startup and first conversion
+  jshDelayMicroseconds(50000); // wait for startup and first reading... could this be faster?
 }
 
 // Turn temp sensor off
@@ -592,7 +592,6 @@ JsVarFloat jswrap_puck_getTemperature() {
     //buf[1] = 1; // CONF
     //buf[0] = 0; // on
     //jsi2cWrite(&i2cTemp,TEMP_ADDR, 1, buf, false);
-    // get temperature
     buf[0] = 0; // TEMP
     jsi2cWrite(&i2cTemp,TEMP_ADDR, 1, buf, false);
     jsi2cRead(&i2cTemp, TEMP_ADDR, 2, buf, true);
@@ -1177,24 +1176,26 @@ void jswrap_puck_init() {
   i2cMag.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cMag.pinSDA = MAG_PIN_SDA;
   i2cMag.pinSCL = MAG_PIN_SCL;
+  i2cMag.clockStretch = false;
   jshI2CInitInfo(&i2cAccel);
   i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cAccel.pinSDA = ACCEL_PIN_SDA;
   i2cAccel.pinSCL = ACCEL_PIN_SCL;
+  i2cAccel.clockStretch = false;
   jshI2CInitInfo(&i2cTemp);
   i2cTemp.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cTemp.pinSDA = TEMP_PIN_SDA;
   i2cTemp.pinSCL = TEMP_PIN_SCL;
+  i2cTemp.clockStretch = false;
   accel_off();
   temp_off();
   mag_pin_on();
-
   // MAG3110 WHO_AM_I
   unsigned char buf[2];
   buf[0] = 0x07;
   jsi2cWrite(&i2cMag, MAG3110_ADDR, 1, buf, false);
   jsi2cRead(&i2cMag, MAG3110_ADDR, 1, buf, true);
-  jsvUnLock(jspGetException());
+  // clock stretch is off, so no need to trap exceptions
   isPuckV2 = false;
   //jsiConsolePrintf("M3110 %d\n", buf[0]);
   if (buf[0]!=0xC4) {
@@ -1203,7 +1204,6 @@ void jswrap_puck_init() {
     buf[0] = 0x0F;
     jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, false);
     jsi2cRead(&i2cMag, LIS3MDL_ADDR, 1, buf, true);
-    jsvUnLock(jspGetException());
     //jsiConsolePrintf("LIS3 %d\n", buf[0]);
     if (buf[0] == 0b00111101) {
       // all good, MAG3110 - Puck.js v2
@@ -1216,7 +1216,6 @@ void jswrap_puck_init() {
   }
   // Power off
   mag_off();
-
 
   /* If the button is pressed during reset, perform a self test.
    * With bootloader this means apply power while holding button for >3 secs */
@@ -1305,5 +1304,5 @@ bool jswrap_puck_idle() {
     jsvUnLock2(puck, d);
     busy = true;
   }
-  return false;
+  return busy;
 }
