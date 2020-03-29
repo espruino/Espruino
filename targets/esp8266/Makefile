@@ -29,25 +29,25 @@ erase: ## Erase flash before updating to a new version
 
 flash-512k: ## Flash a 512KB esp8266 (e.g. esp-01) using the serial
 	esptool.py --port ${PORT} --baud 115200 write_flash \
-		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 4m \
+		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 512KB \
 		0x0000 "boot_v1.6.bin" 0x1000 espruino_esp8266_user1.bin \
 		0x7C000 esp_init_data_default.bin 0x7E000 blank.bin
 
 flash-1MB: ## Flash a 1MB esp8266 using the serial
 	esptool.py --port ${PORT} --baud 115200 write_flash \
-		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 4m \
+		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 1MB \
 		0x0000 "boot_v1.6.bin" 0x1000 espruino_esp8266_user1.bin \
 		0xFC000 esp_init_data_default.bin 0xFE000 blank.bin
 
 flash-2MB: ## Flash a 2MB esp8266 using the serial
 	esptool.py --port ${PORT} --baud 115200 write_flash \
-		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 4m \
+		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 2MB \
 		0x0000 "boot_v1.6.bin" 0x1000 espruino_esp8266_user1.bin \
 		0x1FC000 esp_init_data_default.bin 0x1FE000 blank.bin
 
 flash-4MB: ## Flash a 4MB esp8266 (e.g. esp-12) using the serial
 	esptool.py --port ${PORT} --baud 115200 write_flash \
-		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 32m \
+		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 4MB \
 		0x0000 "boot_v1.6.bin" 0x1000 espruino_esp8266_user1.bin \
 		0x3FC000 esp_init_data_default.bin 0x3FE000 blank.bin
 
