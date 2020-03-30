@@ -18,40 +18,42 @@
 ##
 
 
-PORT=/dev/wchusbserial*
+FLASH_FREQ=80m
+FLASH_MODE=qio
+PORT=/dev/tty.wchusbserial*
 
-.PHONY: erase flash-esp-512k flash-esp-1MB flash-esp-2MB flash-esp-4MB flash-esp-4MB-1024
+.PHONY: erase flash-512k flash-1MB flash-2MB flash-4MB flash-4MB-1024
 
 erase: ## Erase flash before updating to a new version 
 	esptool.py --port ${PORT} --baud 115200 erase_flash
 
-flash-esp-512k: ## Flash a 512KB esp8266 (e.g. esp-01) using the serial port use:
+flash-512k: ## Flash a 512KB esp8266 (e.g. esp-01) using the serial
 	esptool.py --port ${PORT} --baud 115200 write_flash \
-		--flash_freq 40m --flash_mode qio --flash_size 4m \
+		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 512KB \
 		0x0000 "boot_v1.6.bin" 0x1000 espruino_esp8266_user1.bin \
 		0x7C000 esp_init_data_default.bin 0x7E000 blank.bin
 
-flash-esp-1MB: ## Flash a 1MB esp8266 using the serial port use:
+flash-1MB: ## Flash a 1MB esp8266 using the serial
 	esptool.py --port ${PORT} --baud 115200 write_flash \
-		--flash_freq 40m --flash_mode qio --flash_size 4m \
+		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 1MB \
 		0x0000 "boot_v1.6.bin" 0x1000 espruino_esp8266_user1.bin \
 		0xFC000 esp_init_data_default.bin 0xFE000 blank.bin
 
-flash-esp-2MB: ## Flash a 2MB esp8266 using the serial port use:
+flash-2MB: ## Flash a 2MB esp8266 using the serial
 	esptool.py --port ${PORT} --baud 115200 write_flash \
-		--flash_freq 40m --flash_mode qio --flash_size 4m \
+		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 2MB \
 		0x0000 "boot_v1.6.bin" 0x1000 espruino_esp8266_user1.bin \
 		0x1FC000 esp_init_data_default.bin 0x1FE000 blank.bin
 
-flash-esp-4MB: ## Flash a 4MB esp8266 (e.g. esp-12) using the serial port use:
+flash-4MB: ## Flash a 4MB esp8266 (e.g. esp-12) using the serial
 	esptool.py --port ${PORT} --baud 115200 write_flash \
-		--flash_freq 80m --flash_mode qio --flash_size 32m \
+		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 4MB \
 		0x0000 "boot_v1.6.bin" 0x1000 espruino_esp8266_user1.bin \
 		0x3FC000 esp_init_data_default.bin 0x3FE000 blank.bin
 
-flash-esp-4MB-1024: ## Flash a 4MB eps866 with Flash map 4MB:1024/1024 (BOARD=ESP8266_4MB)
+flash-4MB-1024: ## Flash a 4MB eps866 with Flash map 4MB:1024/1024 (BOARD=ESP8266_4MB) using the serial
 	esptool.py --port ${PORT} --baud 460800 write_flash \
-		--flash_freq 80m --flash_mode qio --flash_size 4MB-c1 \
+		--flash_freq ${FLASH_FREQ} --flash_mode ${FLASH_MODE} --flash_size 4MB-c1 \
 		0x0000 "boot_v1.6.bin" 0x1000 espruino_esp8266_user1.bin \
 		0x3FC000  esp_init_data_default.bin 0x3FE000 blank.bin
 
