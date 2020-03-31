@@ -135,6 +135,7 @@
             Fix pretokenise of RegExp literals (fix #1786)
             Add ability to turn off software I2C clock stretching (not accessible from JS)
             Puck.js: disable clock stretching for built-in sensors
+            Bangle.js: Now clear entire top/bottom row if there are widgets in it (fix #1790)
            
 
      2v04 : Allow \1..\9 escape codes in RegExp
