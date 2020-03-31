@@ -64,6 +64,11 @@ bool jsfCompact();
 JsVar *jsfListFiles(JsVar *regex);
 /// Output debug info for files stored in flash storage
 void jsfDebugFiles();
+/** Return false if the current storage is not valid
+ * or is corrupt somehow. Basically that means if
+ * jsfGet[Next]FileHeader returns false but the header isn't all FF
+ */
+bool jsfIsStorageValid();
 // Get the amount of space free in this page (or all pages). addr=0 uses start page
 uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages);
 

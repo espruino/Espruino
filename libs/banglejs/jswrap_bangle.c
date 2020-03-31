@@ -1465,21 +1465,6 @@ void jswrap_banglejs_init() {
   touchLastState2 = 0;
 
 #ifndef EMSCRIPTEN
-  { // Flash memory - on first boot we might need to erase it
-    char buf[sizeof(JsfFileHeader)];
-    jshFlashRead(buf, FLASH_SAVED_CODE_START, sizeof(buf));
-    bool allZero = true;
-    for (unsigned int i=0;i<sizeof(buf);i++)
-      if (buf[i]) allZero=false;
-    if (allZero) {
-      jsiConsolePrintf("Erasing Storage Area...\n");
-      jsfEraseAll();
-      jsiConsolePrintf("Erase complete.\n");
-    }
-  }
-#endif
-
-#ifndef EMSCRIPTEN
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
   // This gets killed when _kill / _init happens
   //  - the bootloader probably already set this up so the

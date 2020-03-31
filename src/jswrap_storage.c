@@ -560,7 +560,7 @@ JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
     ["len","int","How many bytes to read"]
   ],
   "return" : ["JsVar","A String, or undefined "],
-  "return_object" : "StorageFile"
+  "return_object" : "String"
 }
 Read 'len' bytes of data from the file, and return a String containing those bytes.
 
@@ -578,7 +578,7 @@ JsVar *jswrap_storagefile_read(JsVar *f, int len) {
   "name" : "readLine",
   "generate" : "jswrap_storagefile_readLine",
   "return" : ["JsVar","A line of data"],
-  "return_object" : "StorageFile"
+  "return_object" : "String"
 }
 Read a line of data from the file (up to and including `"\n"`)
 */
@@ -591,8 +591,7 @@ JsVar *jswrap_storagefile_readLine(JsVar *f) {
   "class" : "StorageFile",
   "name" : "getLength",
   "generate" : "jswrap_storagefile_getLength",
-  "return" : ["int","The current length in bytes of the file"],
-  "return_object" : "StorageFile"
+  "return" : ["int","The current length in bytes of the file"]
 }
 Return the length of the current file.
 

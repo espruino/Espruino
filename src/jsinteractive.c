@@ -469,6 +469,16 @@ void jsiSoftInit(bool hasBeenReset) {
     jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_JSFLAGS_NAME);
   }
 
+  // Search for invalid storage and remove it
+#ifndef EMSCRIPTEN
+  if (!jsfIsStorageValid()) {
+    jsiConsolePrintf("Storage is corrupt.\n");
+    jsiConsolePrintf("Erasing Storage Area...\n");
+    jsfEraseAll();
+    jsiConsolePrintf("Erase complete.\n");
+  }
+#endif
+
   // Run wrapper initialisation stuff
   jswInit();
 

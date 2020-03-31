@@ -497,6 +497,25 @@ void jsfDebugFiles() {
   } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL));
 }
 
+/** Return false if the current storage is not valid
+ * or is corrupt somehow. Basically that means if
+ * jsfGet[Next]FileHeader returns false but the header isn't all FF
+ */
+bool jsfIsStorageValid() {
+  uint32_t addr = JSF_START_ADDRESS;
+  uint32_t pageAddr = 0, pageLen = 0, pageEndAddr = 0;
+
+  JsfFileHeader header;
+  unsigned char *headerPtr = (unsigned char *)&header;
+
+  bool valid = jsfGetFileHeader(addr, &header, true);
+  if (valid) while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL)) {};
+  bool allFF = true;
+  for (int i=0;i<sizeof(JsfFileHeader);i++)
+    if (headerPtr[i]!=0xFF) allFF=false;
+  return allFF;
+}
+
 JsVar *jsfReadFile(JsfFileName name, int offset, int length) {
   JsfFileHeader header;
   uint32_t addr = jsfFindFile(name, &header);
