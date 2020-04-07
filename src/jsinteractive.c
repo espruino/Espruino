@@ -469,6 +469,9 @@ void jsiSoftInit(bool hasBeenReset) {
     jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_JSFLAGS_NAME);
   }
 
+  // Run wrapper initialisation stuff
+  jswInit();
+
   // Search for invalid storage and remove it
 #ifndef EMSCRIPTEN
   if (!jsfIsStorageValid()) {
@@ -478,9 +481,6 @@ void jsiSoftInit(bool hasBeenReset) {
     jsiConsolePrintf("Erase complete.\n");
   }
 #endif
-
-  // Run wrapper initialisation stuff
-  jswInit();
 
   // Run 'boot code' - textual JS in flash
   jsfLoadBootCodeFromFlash(hasBeenReset);
