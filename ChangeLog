@@ -137,6 +137,7 @@
             Puck.js: disable clock stretching for built-in sensors
             Bangle.js: Now clear entire top/bottom row if there are widgets in it (fix #1790)
             Add Storage check at startup and erase everything if storage looks corrupt (fix #1766)
+            Fix restriction on StorageFile filename length (8 to 28)
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

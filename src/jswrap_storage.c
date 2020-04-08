@@ -42,6 +42,9 @@ memory of your device using a filesystem-like API.
 
 Also see the `Flash` library, which provides a low level, more dangerous way
 to access all parts of your flash memory.
+
+**Note:** In firmware 2v05 and later, the maximum length for filenames
+is 28 characters. However in 2v04 and earlier the max length is 8.
 */
 
 /*JSON{
@@ -66,7 +69,7 @@ void jswrap_storage_eraseAll() {
   "name" : "erase",
   "generate" : "jswrap_storage_erase",
   "params" : [
-    ["name","JsVar","The filename - max 8 characters (case sensitive)"]
+    ["name","JsVar","The filename - max 28 characters (case sensitive)"]
   ]
 }
 Erase a single file from the flash storage area.
@@ -82,7 +85,7 @@ void jswrap_storage_erase(JsVar *name) {
   "name" : "read",
   "generate" : "jswrap_storage_read",
   "params" : [
-    ["name","JsVar","The filename - max 8 characters (case sensitive)"],
+    ["name","JsVar","The filename - max 28 characters (case sensitive)"],
     ["offset","int","(optional) The offset in bytes to start from"],
     ["length","int","(optional) The length to read in bytes (if <=0, the entire file is read)"]
   ],
@@ -109,7 +112,7 @@ JsVar *jswrap_storage_read(JsVar *name, int offset, int length) {
   "name" : "readJSON",
   "generate" : "jswrap_storage_readJSON",
   "params" : [
-    ["name","JsVar","The filename - max 8 characters (case sensitive)"],
+    ["name","JsVar","The filename - max 28 characters (case sensitive)"],
     ["noExceptions","bool","If true and the JSON is not valid, just return `undefined` - otherwise an `Exception` is thrown"]
   ],
   "return" : ["JsVar","An object containing parsed JSON from the file, or undefined"]
@@ -138,7 +141,7 @@ JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions) {
   "name" : "readArrayBuffer",
   "generate" : "jswrap_storage_readArrayBuffer",
   "params" : [
-    ["name","JsVar","The filename - max 8 characters (case sensitive)"]
+    ["name","JsVar","The filename - max 28 characters (case sensitive)"]
   ],
   "return" : ["JsVar","An ArrayBuffer containing data from the file, or undefined"]
 }
@@ -166,7 +169,7 @@ JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
   "name" : "write",
   "generate" : "jswrap_storage_write",
   "params" : [
-    ["name","JsVar","The filename - max 8 characters (case sensitive)"],
+    ["name","JsVar","The filename - max 28 characters (case sensitive)"],
     ["data","JsVar","The data to write"],
     ["offset","int","The offset within the file to write"],
     ["size","int","The size of the file (if a file is to be created that is bigger than the data)"]
@@ -225,7 +228,7 @@ bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt _s
   "name" : "writeJSON",
   "generate" : "jswrap_storage_writeJSON",
   "params" : [
-    ["name","JsVar","The filename - max 8 characters (case sensitive)"],
+    ["name","JsVar","The filename - max 28 characters (case sensitive)"],
     ["data","JsVar","The JSON data to write"]
   ],
   "return" : ["bool","True on success, false on failure"]
@@ -359,7 +362,7 @@ JsVar *jswrap_storage_open(JsVar *name, JsVar *modeVar) {
 
   int chunk = 1;
 
-  JsVar *n = jsvNewFromStringVar(name,0,8);
+  JsVar *n = jsvNewFromStringVar(name,0,sizeof(JsfFileName));
   JsfFileName fname = jsfNameFromVar(n);
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;
