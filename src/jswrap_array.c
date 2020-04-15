@@ -724,7 +724,9 @@ Returns true if the provided object is an array
 NO_INLINE static JsVarInt _jswrap_array_sort_compare(JsVar *a, JsVar *b, JsVar *compareFn) {
   if (compareFn) {
     JsVar *args[2] = {a,b};
-    return jsvGetIntegerAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
+    JsVarFloat f = jsvGetFloatAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
+    if (f==0) return 0;
+    return (f<0)?-1:1;
   } else {
     JsVar *sa = jsvAsString(a);
     JsVar *sb = jsvAsString(b);
