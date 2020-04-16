@@ -46,7 +46,7 @@
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flags, uint32_t startAddr, JsfFileHeader *returnedHeader);
+static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flags, JsfFileHeader *returnedHeader);
 
 /// Aligns a block, pushing it along in memory until it reaches the required alignment
 static uint32_t jsfAlignAddress(uint32_t addr) {
@@ -133,7 +133,7 @@ static bool jsfEraseFrom(uint32_t startAddr) {
   uint32_t addr, len;
   if (!jshFlashGetPage(startAddr, &addr, &len))
     return false;
-  while (addr<JSF_END_ADDRESS) {
+  while (addr<JSF_END_ADDRESS && !jspIsInterrupted()) {
     if (!jsfIsErased(addr,len))
       jshFlashErasePage(addr);
     if (!jshFlashGetPage(addr+len, &addr, &len))
@@ -141,7 +141,7 @@ static bool jsfEraseFrom(uint32_t startAddr) {
     // Erasing can take a while, so kick the watchdog throughout
     jshKickWatchDog();
   }
-  return true;
+  return !jspIsInterrupted();
 }
 
 /// Erase the entire contents of the memory store
@@ -317,7 +317,7 @@ static bool jsfCompactInternal(uint32_t startAddress, uint32_t allocated) {
       memcpy(&header, swapBufferPtr, sizeof(JsfFileHeader));
       swapBufferPtr += sizeof(JsfFileHeader);
       JsfFileHeader newHeader;
-      uint32_t newFile = jsfCreateFile(header.name, jsfGetFileSize(&header), jsfGetFileFlags(&header), JSF_START_ADDRESS, &newHeader);
+      uint32_t newFile = jsfCreateFile(header.name, jsfGetFileSize(&header), jsfGetFileFlags(&header), &newHeader);
       uint32_t alignedSize = jsfAlignAddress(jsfGetFileSize(&header));
       if (newFile) jshFlashWrite(swapBufferPtr, newFile, alignedSize);
       swapBufferPtr += alignedSize;
@@ -364,49 +364,38 @@ bool jsfCompact() {
   return false;
 }
 
-/// Create a new 'file' in the memory store. Return the address of data start, or 0 on error
-static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flags, uint32_t startAddr, JsfFileHeader *returnedHeader) {
+/// Create a new 'file' in the memory store - DOES NOT remove existing files with same name. Return the address of data start, or 0 on error
+static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flags, JsfFileHeader *returnedHeader) {
   DBG("CreateFile (%d bytes)\n", size);
   uint32_t requiredSize = jsfAlignAddress(size)+(uint32_t)sizeof(JsfFileHeader);
-  assert(startAddr);
   bool compacted = false;
   uint32_t addr = 0;
   JsfFileHeader header;
-  while (!addr) {
-    addr = startAddr;
-    uint32_t existingAddr = 0;
+  uint32_t freeAddr = 0;
+  while (!freeAddr) {
+    addr = JSF_START_ADDRESS;
+    freeAddr = 0;
     // Find a hole that's big enough for our file
-    bool newPage = false;
     do {
-      newPage = false;
-      if (jsfGetFileHeader(addr, &header, true)) do {
-        // check for something with the same name
-        if (header.name.firstChars == name.firstChars &&
-            memcmp(header.name.c, name.c, sizeof(name.c))==0)
-          existingAddr = addr;
+      if (jsfGetFileHeader(addr, &header, false)) do {
       } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_EMPTY));
       // If not enough space, skip to next page
       if (jsfGetSpaceLeftInPage(addr)<requiredSize) {
         addr = jsfGetAddressOfNextPage(addr);
-        newPage = true; // check again to see if there is anything in that new page...
+      } else { // if enough space, we can write a file!
+        freeAddr = addr;
       }
-    } while (addr && (newPage || jsfGetSpaceLeftInPage(addr)<requiredSize));
-    // do we have an existing file? Erase it.
-    if (existingAddr) {
-      DBG("Erase existing file at 0x%x\n", existingAddr);
-      jsfGetFileHeader(existingAddr, &header, true);
-      jsfEraseFileInternal(existingAddr+(uint32_t)sizeof(JsfFileHeader), &header);
-    }
+    } while (addr && !freeAddr);
     // If we don't have space, compact
-    if ((!addr) || (jsfGetSpaceLeftInPage(addr)<size)) {
+    if (!freeAddr) {
       // check this for sanity - in future we might compact forward into other pages, and don't compact if so
-      if (!compacted && startAddr == JSF_START_ADDRESS) {
+      if (!compacted) {
         compacted = true;
         if (!jsfCompact()) {
           DBG("CreateFile - Compact failed\n");
           return 0;
         }
-        addr = 0; // addr->0 = restart
+        addr = JSF_START_ADDRESS; // addr->startAddr = restart
       } else {
         DBG("CreateFile - Not enough space\n");
         return 0;
@@ -415,6 +404,7 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
   };
   // If we were going to straddle the next page and there's enough space,
   // push this file forwards so it starts on a clean page boundary
+  addr = freeAddr;
   uint32_t spaceAvailable = jsfGetSpaceLeftInPage(addr);
   uint32_t nextPage = jsfGetAddressOfNextPage(addr);
   if (nextPage && // there is a next page
@@ -422,7 +412,7 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
       (spaceAvailable > (size + nextPage - addr)) && // there is space
       (requiredSize < 512) && // it's not too big. We should always try and put big files as near the start as possible. See note in jsfCompact
       !jsfGetFileHeader(nextPage, &header, false)) { // the next page is free
-    DBG("CreateFile positioning file on page boundary (0x%08x -> 0x%08x)\n", addr, nextPage);
+    DBG("CreateFile straddles page boundary, pushed to next page (0x%08x -> 0x%08x)\n", addr, nextPage);
     addr = nextPage;
   }
   // write out the header
@@ -503,15 +493,13 @@ void jsfDebugFiles() {
  */
 bool jsfIsStorageValid() {
   uint32_t addr = JSF_START_ADDRESS;
-  uint32_t pageAddr = 0, pageLen = 0, pageEndAddr = 0;
-
   JsfFileHeader header;
   unsigned char *headerPtr = (unsigned char *)&header;
 
   bool valid = jsfGetFileHeader(addr, &header, true);
   if (valid) while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL)) {};
   bool allFF = true;
-  for (int i=0;i<sizeof(JsfFileHeader);i++)
+  for (size_t i=0;i<sizeof(JsfFileHeader);i++)
     if (headerPtr[i]!=0xFF) allFF=false;
   return allFF;
 }
@@ -585,11 +573,15 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
         flags==jsfGetFileFlags(&header) &&
         dLen==size && // setting all in one go
         jsfIsEqual(addr, (unsigned char*)dPtr, (uint32_t)dLen)) {
-      DBG("Equal\n");
+      DBG("jsfWriteFile files Equal\n");
       return true;
     }
+    if (addr) { // file exists, remove it!
+      DBG("jsfWriteFile remove existing file\n");
+      jsfEraseFileInternal(addr, &header);
+    }
     DBG("jsfWriteFile create file\n");
-    addr = jsfCreateFile(name, (uint32_t)size, flags, JSF_START_ADDRESS, &header);
+    addr = jsfCreateFile(name, (uint32_t)size, flags, &header);
   }
   if (!addr) {
     jsExceptionHere(JSET_ERROR, "Unable to find or create file");
@@ -705,15 +697,16 @@ void jsfSaveToFlash() {
   unsigned char* varPtr = (unsigned char *)_jsvGetAddressOf(1);
 
   jsiConsolePrint("Compacting Flash...\n");
+  JsfFileName name = jsfNameFromString(SAVED_CODE_VARIMAGE);
   // Ensure we get rid of any saved code we had before
-  jsfEraseFile(jsfNameFromString(SAVED_CODE_VARIMAGE));
+  jsfEraseFile(name);
   // Try and compact, just to ensure we get the maximum amount saved
   jsfCompact();
   jsiConsolePrint("Calculating Size...\n");
   // Work out how much data this'll take, plus 4 bytes for build hash
   uint32_t compressedSize = 4 + COMPRESS(varPtr, varSize, NULL, NULL);
   // How much data do we have?
-  uint32_t savedCodeAddr = jsfCreateFile(jsfNameFromString(SAVED_CODE_VARIMAGE), compressedSize, JSFF_COMPRESSED, JSF_START_ADDRESS, 0);
+  uint32_t savedCodeAddr = jsfCreateFile(name, compressedSize, JSFF_COMPRESSED, NULL);
   if (!savedCodeAddr) {
     jsiConsolePrintf("ERROR: Too big to save to flash (%d vs %d bytes)\n", compressedSize, jsfGetFreeSpace(0,true));
     jsvSoftInit();
@@ -722,7 +715,7 @@ void jsfSaveToFlash() {
     while (jsiFreeMoreMemory());
     jspSoftKill();
     jsvSoftKill();
-    savedCodeAddr = jsfCreateFile(jsfNameFromString(SAVED_CODE_VARIMAGE), compressedSize, JSFF_COMPRESSED, JSF_START_ADDRESS, 0);
+    savedCodeAddr = jsfCreateFile(name, compressedSize, JSFF_COMPRESSED, NULL);
   }
   if (!savedCodeAddr) {
     if (jsfGetAllocatedSpace(JSF_START_ADDRESS, true, 0))
