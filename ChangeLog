@@ -140,6 +140,7 @@
             Fix restriction on StorageFile filename length (8 to 28)
             Fix array sort when compare fn returns floats <1 (fix #1798)
             Fix Storage.write duplicate file issue in some rare cases (fix #1801)
+            Bangle.js: fix post-kickstarter issue adding widgets in bottom of screen (#1790)
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

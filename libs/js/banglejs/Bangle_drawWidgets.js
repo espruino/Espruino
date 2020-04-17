@@ -17,7 +17,7 @@
     }
     g.reset();
     if (pos.tl.c || pos.tr.c) g.clearRect(0,0,w-1,23);
-    if (pos.bl.c || pos.br.c) g.clearRect(0,h-24,w-1,x,h-1);
+    if (pos.bl.c || pos.br.c) g.clearRect(0,h-24,w-1,h-1);
     for (wd of WIDGETS) wd.draw(wd);
   }
 })
