@@ -31,7 +31,7 @@
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
 #
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet W5500 support
-#   W5100=1               # Compile for WIZnet W5100 (not W5500)
+# W5100=1                 # Compile for WIZnet W5100 (not W5500)
 # CC3000=1                # If compiling for a non-linux target that has internet support, use CC3000 support
 # USB_PRODUCT_ID=0x1234   # force a specific USB Product ID (default 0x5740)
 #
@@ -300,10 +300,14 @@ else
 ifneq ($(FAMILY),ESP8266)
 # If we have enough flash, include the debugger
 # ESP8266 can't do it because it expects tasks to finish within set time
+ifneq ($(USE_DEBUGGER),0)
 DEFINES+=-DUSE_DEBUGGER
 endif
+endif
 # Use use tab complete
+ifneq ($(USE_TAB_COMPLETE),0)
 DEFINES+=-DUSE_TAB_COMPLETE
+endif
 
 # Heatshrink compression library and wrapper - better compression when saving code to flash
 DEFINES+=-DUSE_HEATSHRINK
@@ -417,10 +421,12 @@ ifeq ($(USE_NET),1)
  libs/network/socketserver.c \
  libs/network/socketerrors.c
 
+ifneq ($(USE_NETWORK_JS),0)
+ DEFINES += -DUSE_NETWORK_JS
  WRAPPERSOURCES += libs/network/js/jswrap_jsnetwork.c
  INCLUDE += -I$(ROOT)/libs/network/js
- SOURCES += \
- libs/network/js/network_js.c
+ SOURCES += libs/network/js/network_js.c
+endif
 
  ifdef LINUX
  INCLUDE += -I$(ROOT)/libs/network/linux

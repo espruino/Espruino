@@ -26,8 +26,8 @@ info = {
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_espruino_1r3.bin',
  'binaries' : [
-  { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking (no crypto lib, no vector font)"},
-  { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "AT Command Networking only"},
+  { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking (No crypto lib, AT Command WiFi, vector font, debugger or tab complete)"},
+  { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "AT Command WiFi + all features"},
  ],
  'build' : {
    'optimizeflags' : '-Os',

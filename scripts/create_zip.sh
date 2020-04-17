@@ -27,12 +27,12 @@ mkdir $ZIPDIR
 # Binaries
 rm -f bootloader_espruino_$VERSION* espruino_$VERSION*
 # ESP8266
-rm -rf esp_iot_sdk_v2.0.0*
-rm -rf xtensa-lx106-elf
+#rm -rf esp_iot_sdk_v2.0.0*
+#rm -rf xtensa-lx106-elf
 # ESP32
-rm -rf esp-idf
-rm -rf app
-rm -rf xtensa-esp32-elf
+#rm -rf esp-idf
+#rm -rf app
+#rm -rf xtensa-esp32-elf
 # Install everything
 source scripts/provision.sh ALL
 
@@ -42,9 +42,9 @@ echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 # The following have been removed because it's too hard to keep the build going:
-# STM32F3DISCOVERY OLIMEXINO_STM32 HYSTM32_32
+# STM32F3DISCOVERY OLIMEXINO_STM32 HYSTM32_32 HYSTM32_28 
 # 
-for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_WIZ  PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINOWIFI PUCKJS PIXLJS MDBT42Q NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F4DISCOVERY STM32L496GDISCOVERY HYSTM32_24 HYSTM32_28  RASPBERRYPI MICROBIT ESP8266_BOARD ESP8266_4MB RUUVITAG ESP32 WIO_LTE RAK8211 RAK8212 SMARTIBOT THINGY52
+for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_WIZ PICO_1V3 PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINOWIFI PUCKJS PIXLJS MDBT42Q NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F4DISCOVERY STM32L496GDISCOVERY HYSTM32_24 RASPBERRYPI MICROBIT ESP8266_BOARD ESP8266_4MB RUUVITAG ESP32 WIO_LTE RAK8211 RAK8212 SMARTIBOT THINGY52
 do
   echo ------------------------------
   echo                  $BOARDNAME
@@ -57,19 +57,23 @@ do
   fi
   if [ "$BOARDNAME" == "ESPRUINO_1V3_WIZ" ]; then
     BOARDNAME=ESPRUINOBOARD
-    EXTRADEFS="WIZNET=1 USE_CRYPTO=0 DEFINES=-DNO_VECTOR_FONT=1"
+    EXTRADEFS="WIZNET=1 USE_CRYPTO=0 USE_DEBUGGER=0 USE_TAB_COMPLETE=0 USE_NETWORK_JS=0 DEFINES=-DNO_VECTOR_FONT=1"
     # we must now disable crypto in order to get WIZnet support in on the Original board
     EXTRANAME=_wiznet
   fi
   if [ "$BOARDNAME" == "PICO_1V3_CC3000" ]; then
     BOARDNAME=PICO_R1_3
-    EXTRADEFS=CC3000=1
+    EXTRADEFS="CC3000=1 USE_DEBUGGER=0 USE_NETWORK_JS=0 DEFINES=-DNO_VECTOR_FONT=1"
     EXTRANAME=_cc3000
   fi
   if [ "$BOARDNAME" == "PICO_1V3_WIZ" ]; then
     BOARDNAME=PICO_R1_3
-    EXTRADEFS=WIZNET=1
+    EXTRADEFS="WIZNET=1 USE_DEBUGGER=0 USE_NETWORK_JS=0 DEFINES=-DNO_VECTOR_FONT=1"
     EXTRANAME=_wiznet
+  fi
+  if [ "$BOARDNAME" == "PICO_1V3" ]; then
+    BOARDNAME=PICO_R1_3
+    EXTRADEFS=
   fi
 
   # actually build

@@ -39,7 +39,9 @@
   #include "mbedtls/ctr_drbg.h"
   #include "jswrap_crypto.h"
 #endif
+#if defined(USE_NETWORK_JS)
 #include "network_js.h"
+#endif
 
 JsNetworkState networkState =
 #ifdef LINUX
@@ -248,7 +250,9 @@ bool networkGetFromVar(JsNetwork *net) {
 #if defined(LINUX)
   case JSNETWORKTYPE_SOCKET : netSetCallbacks_linux(net); break;
 #endif
+#if defined(USE_NETWORK_JS)
   case JSNETWORKTYPE_JS : netSetCallbacks_js(net); break;
+#endif
   default:
     jsExceptionHere(JSET_INTERNALERROR, "Unknown network device %d", net->data.type);
     networkFree(net);

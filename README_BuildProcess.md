@@ -119,6 +119,9 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `JSVAR_MALLOC` - Allocate space for variables at jsvInit time, rather than statically
 * `NO_VECTOR_FONT=1` - don't compile in the vector font (this is usually only done for SAVE_ON_FLASH)
 * `USE_FONT_6X8=1` - Also include in a 6x8 fixed width bitmap font
+* `USE_TAB_COMPLETE=0` - Don't include tab completion (default is yes unless SAVE_ON_FLASH is defined)
+* `USE_DEBUGGER=0` - Don't include the debugger (default is yes unless SAVE_ON_FLASH is defined)
+* `USE_NETWORK_JS=0` - Don't include JS networking lib used for handling AT commands (default is yes if networking is enabled)
 
 
 ### chip
