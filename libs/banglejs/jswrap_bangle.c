@@ -1241,12 +1241,12 @@ void jswrap_banglejs_setCompassPower(bool isOn) {
   mag.x = 0;
   mag.y = 0;
   mag.z = 0;
-  magmin.x = 0;
-  magmin.y = 0;
-  magmin.z = 0;
-  magmax.x = 0;
-  magmax.y = 0;
-  magmax.z = 0;
+  magmin.x = 32767;
+  magmin.y = 32767;
+  magmin.z = 32767;
+  magmax.x = -32768;
+  magmax.y = -32768;
+  magmax.z = -32768;
 }
 
 /*JSON{
