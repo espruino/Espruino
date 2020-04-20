@@ -2442,7 +2442,11 @@ void jsble_kill() {
 
   uint32_t err_code;
 
+#if NRF_SD_BLE_API_VERSION < 5
   err_code = sd_softdevice_disable();
+#else
+  err_code = nrf_sdh_disable_request();
+#endif
   APP_ERROR_CHECK(err_code);
 }
 
