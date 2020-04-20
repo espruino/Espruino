@@ -387,7 +387,7 @@ Note:
 * For your host OS (Windows or MacOS)
   * Download and install [VirtualBox](https://www.virtualbox.org/)
   * Download and install [Vagrant](https://www.vagrantup.com/downloads.html)
-  * Note: for MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](http://caskroom.io)
+  * Note: for MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](https://brew.sh)
     * `brew cask install virtualbox vagrant`
 * Clone this repository and navigate with the command prompt to the contents
 * Install the auto-network plugin
