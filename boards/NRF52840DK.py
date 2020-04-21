@@ -49,7 +49,7 @@ info = {
 chip = {
   'part' : "NRF52840",
   'family' : "NRF52",
-  'package' : "QFN48",
+  'package' : "AQFN73",
   'ram' : 256,
   'flash' : 1024,
   'speed' : 64,
