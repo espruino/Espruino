@@ -1,4 +1,4 @@
-     2v06 : ...
+     2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
