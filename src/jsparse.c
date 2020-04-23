@@ -348,7 +348,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
   }
   // Get the line number (if needed)
   JsVarInt lineNumber = 0;
-  if (funcVar && lex->lineNumberOffset) {
+  if (funcVar && lex->lineNumberOffset && !(forcePretokenise||jsfGetFlag(JSF_PRETOKENISE))) {
     // jslGetLineNumber is slow, so we only do it if we have debug info
     lineNumber = (JsVarInt)jslGetLineNumber() + (JsVarInt)lex->lineNumberOffset - 1;
   }
