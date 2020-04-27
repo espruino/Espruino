@@ -2,6 +2,8 @@
             Don't store line numbers for pretokenised functions
             Fix 1-byte overflow when using UDP (#1799)
             Remove 1-byte padding in Graphics lib
+            Bangle.js: Make SPI flash memory map address configurable, and check end bounds (#1807)
+            Bangle.js: More SPI flash memory map address to 0x60000000 to avoid ARM/nRF52 registers
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

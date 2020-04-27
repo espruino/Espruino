@@ -67,7 +67,7 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : 0x40000000, # put this in external flash
+    'address' : 0x60000000, # put this in external spiflash (see below)
     'page_size' : 4096,
     'pages' : 1024, # Entire 4MB of external flash
     'flash_available' : 512 - ((31 + 8 + 2)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2. Each page is 4 kb.
@@ -132,7 +132,8 @@ devices = {
             'pin_miso' : 'D20', # D1
             'pin_wp' : 'D31', # D2
             'pin_rst' : 'D17', # D3
-            'size' : 4096*1024 # 4MB
+            'size' : 4096*1024, # 4MB
+            'memmap_base' : 0x60000000 # map into the address space (in software)
           }
 };
 

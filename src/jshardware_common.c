@@ -49,7 +49,7 @@ void jshI2CInitInfo(JshI2CInfo *inf) {
 
 void jshFlashWriteAligned(void *buf, uint32_t addr, uint32_t len) {
 #ifdef SPIFLASH_BASE
-  if (addr >= SPIFLASH_BASE) {
+  if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
     // If using external flash it doesn't care about alignment, so don't bother
     jshFlashWrite(buf, addr, len);
     return;

@@ -457,9 +457,9 @@ if "PRESSURE" in board.devices:
   codeOutDevicePins("PRESSURE", "PRESSURE")
 
 if "SPIFLASH" in board.devices:
-  codeOut("#define SPIFLASH_BASE 0x40000000UL")
   codeOut("#define SPIFLASH_PAGESIZE 4096")
   codeOut("#define SPIFLASH_LENGTH "+str(board.devices["SPIFLASH"]["size"]))
+  codeOut("#define SPIFLASH_BASE "+str(board.devices["SPIFLASH"]["memmap_base"])+"UL")
   codeOutDevicePins("SPIFLASH", "SPIFLASH")
 
 #for device in ["USB","SD","LCD","JTAG","ESP8266","IR","GPS","ACCEL","MAG","TEMP","PRESSURE","SPIFLASH"]:
