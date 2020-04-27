@@ -388,8 +388,8 @@ void socketReceivedUDP(JsVar *connection, JsVar **receiveData) {
   // Get the header
   size_t len = jsvGetStringLength(*receiveData);
   if (len < sizeof(JsNetUDPPacketHeader)) return; // not enough data for header!
-  char buf[sizeof(JsNetUDPPacketHeader)+1]; // trailing 0 from jsvGetStringChars
-  jsvGetStringChars(*receiveData, 0, buf, sizeof(JsNetUDPPacketHeader)+1);
+  char buf[sizeof(JsNetUDPPacketHeader)];
+  jsvGetStringChars(*receiveData, 0, buf, sizeof(JsNetUDPPacketHeader));
   JsNetUDPPacketHeader *header = (JsNetUDPPacketHeader*)buf;
   if (sizeof(JsNetUDPPacketHeader)+header->length < len) return; // not enough data yet
 

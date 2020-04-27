@@ -1309,7 +1309,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
     // Try and get as a JsVar string, and try again
     JsVar *stringVar = jsvAsString((JsVar*)v); // we know we're casting to non-const here
     if (stringVar) {
-      size_t l = jsvGetString(stringVar, str, len); // call again - but this time with converted var
+      size_t l = jsvGetStringChars(stringVar, 0, str, len); // call again - but this time with converted var
       jsvUnLock(stringVar);
       return l;
     } else {
@@ -1320,7 +1320,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
   }
 }
 
-/// Get len bytes of string data from this string. Does not error if string len is not equal to len
+/// Get len bytes of string data from this string. Does not error if string len is not equal to len, no terminating 0
 size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len) {
   assert(jsvHasCharacterData(v));
   size_t l = len;
@@ -1335,7 +1335,6 @@ size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
-  *str = 0;
   return len-l;
 }
 

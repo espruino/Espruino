@@ -136,7 +136,7 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
   JsVar *data = jsvObjectGetChild(parent, JS_HIDDEN_CHAR_STR"gfx", 0);
   assert(data);
   if (data) {
-    jsvGetString(data, (char*)&gfx->data, sizeof(JsGraphicsData)+1/*trailing zero*/);
+    jsvGetStringChars(data,0,(char*)&gfx->data, sizeof(JsGraphicsData));
     jsvUnLock(data);
     gfx->setPixel = graphicsFallbackSetPixel;
     gfx->getPixel = graphicsFallbackGetPixel;

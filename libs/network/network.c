@@ -230,7 +230,7 @@ bool networkGetFromVar(JsNetwork *net) {
 
   // Retrieve the data for the network var and save in the data property of the JsNetwork
   // structure.
-  jsvGetString(net->networkVar, (char *)&net->data, sizeof(JsNetworkData)+1/*trailing zero*/);
+  jsvGetStringChars(net->networkVar,0,(char *)&net->data, sizeof(JsNetworkData));
 
   // Now we know which kind of network we are working with, invoke the corresponding initialization
   // function to set the callbacks for this network tyoe.

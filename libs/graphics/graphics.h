@@ -95,7 +95,6 @@ typedef struct {
 typedef struct JsGraphics {
   JsVar *graphicsVar; // this won't be locked again - we just know that it is already locked by something else
   JsGraphicsData data;
-  unsigned char _blank; ///< this is needed as jsvGetString for 'data' wants to add a trailing zero
   void *backendData; ///< Data used by the graphics backend
 
   void (*setPixel)(struct JsGraphics *gfx, int x, int y, unsigned int col);
