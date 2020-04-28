@@ -525,7 +525,7 @@ int jsble_exec_pending(IOEvent *event) {
          JsVar *evt = jsvNewObject();
          if (evt) {
            jsvObjectSetChild(evt, "target", characteristic);
-           jsiQueueObjectCallbacks(characteristic, JS_EVENT_PREFIX"characteristicvaluechanged", &evt, 1);
+           jsiExecuteEventCallbackName(characteristic, JS_EVENT_PREFIX"characteristicvaluechanged", 1, &evt);
            jshHadEvent();
            jsvUnLock(evt);
          }

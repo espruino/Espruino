@@ -4,6 +4,8 @@
             Remove 1-byte padding in Graphics lib
             Bangle.js: Make SPI flash memory map address configurable, and check end bounds (#1807)
             Bangle.js: More SPI flash memory map address to 0x60000000 to avoid ARM/nRF52 registers
+            nRF52: Fix issue with fast Notifications causing Notification data to be duplicated
+              http://forum.espruino.com/conversations/345949
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

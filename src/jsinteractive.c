@@ -1733,18 +1733,26 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsig
   return true;
 }
 
-// Execute the named Event callback on the named object, and return true if it exists
-bool jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsigned int argCount, JsVar **argPtr) {
+
+// Execute the named Event callback on object, and return true if it exists
+bool jsiExecuteEventCallbackName(JsVar *obj, const char *cbName, unsigned int argCount, JsVar **argPtr) {
   bool executed = false;
-  JsVar *obj = jsvObjectGetChild(execInfo.root, objectName, 0);
   if (jsvHasChildren(obj)) {
     JsVar *callback = jsvObjectGetChild(obj, cbName, 0);
     if (callback) {
       jsiExecuteEventCallback(obj, callback, argCount, argPtr);
       executed = true;
     }
-    jsvUnLock2(callback, obj);
+    jsvUnLock(callback);
   }
+  return executed;
+}
+
+// Execute the named Event callback on the named object, and return true if it exists
+bool jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsigned int argCount, JsVar **argPtr) {
+  JsVar *obj = jsvObjectGetChild(execInfo.root, objectName, 0);
+  bool executed = jsiExecuteEventCallbackName(obj, cbName, argCount, argPtr);
+  jsvUnLock(obj);
   return executed;
 }
 
