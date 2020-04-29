@@ -7,6 +7,7 @@
             nRF52: Fix issue with fast Notifications causing Notification data to be duplicated
               http://forum.espruino.com/conversations/345949
             Bangle.js: allow custom splash screen with .splash file
+            Pixl.js: Fix E.showMessage
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
