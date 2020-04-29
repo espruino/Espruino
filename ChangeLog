@@ -6,6 +6,7 @@
             Bangle.js: More SPI flash memory map address to 0x60000000 to avoid ARM/nRF52 registers
             nRF52: Fix issue with fast Notifications causing Notification data to be duplicated
               http://forum.espruino.com/conversations/345949
+            Bangle.js: allow custom splash screen with .splash file
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

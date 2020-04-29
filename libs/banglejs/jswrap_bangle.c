@@ -1398,23 +1398,37 @@ void jswrap_banglejs_init() {
 
   graphicsClear(&gfx);
   if (showSplashScreen) {
-    JsVar *img = jswrap_banglejs_getLogo();
+    bool drawInfo = false;
+    JsVar *img = jsfReadFile(jsfNameFromString(".splash"),0,0);
+    int w,h;
+    if (!jsvIsString(img) || !jsvGetStringLength(img)) {
+      jsvUnLock(img);
+      drawInfo = true;
+      img = jswrap_banglejs_getLogo();
+      w = 222;
+      h = 104;
+    } else {
+      w = (int)(unsigned char)jsvGetCharInString(img, 0);
+      h = (int)(unsigned char)jsvGetCharInString(img, 1);
+    }
     graphicsSetVar(&gfx);
-    int y=(240-104)/2;
-    jsvUnLock(jswrap_graphics_drawImage(graphics,img,(240-222)/2,y,0));
+    int y=(240-h)/2;
+    jsvUnLock(jswrap_graphics_drawImage(graphics,img,(240-w)/2,y,0));
     jsvUnLock(img);
-    y += 104-28;
-    char addrStr[20];
+    if (drawInfo) {
+      y += h-28;
+      char addrStr[20];
 #ifndef EMSCRIPTEN
-    JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
+      JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
 #else
-    JsVar *addr = jsvNewFromString("");
+      JsVar *addr = jsvNewFromString("");
 #endif
-    jsvGetString(addr, addrStr, sizeof(addrStr));
-    jsvUnLock(addr);
-    jswrap_graphics_drawCString(&gfx,8,y,JS_VERSION);
-    jswrap_graphics_drawCString(&gfx,8,y+10,addrStr);
-    jswrap_graphics_drawCString(&gfx,8,y+20,"Copyright 2019 G.Williams");
+      jsvGetString(addr, addrStr, sizeof(addrStr));
+      jsvUnLock(addr);
+      jswrap_graphics_drawCString(&gfx,8,y,JS_VERSION);
+      jswrap_graphics_drawCString(&gfx,8,y+10,addrStr);
+      jswrap_graphics_drawCString(&gfx,8,y+20,"Copyright 2019 G.Williams");
+    }
   }
   graphicsSetVar(&gfx);
 
