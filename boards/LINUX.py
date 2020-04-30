@@ -32,7 +32,7 @@ info = {
    'makefile' : [
 #     'DEFINES+=-DFLASH_64BITS_ALIGNMENT=1', For testing 64 bit flash writes
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES',
-     'DEFINES+=-DSPIFLASH_BASE=0', # For Testing Flash Strings
+     'DEFINES+=-DSPIFLASH_BASE=0 -DSPIFLASH_LENGTH=FLASH_SAVED_CODE_LENGTH', # For Testing Flash Strings
      'LINUX=1',
    ]
  }
