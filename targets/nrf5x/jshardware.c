@@ -1740,11 +1740,35 @@ JsVar *jshFlashGetFree() {
   /* Try and find pages after the end of firmware but before saved code */
   extern uint32_t LINKER_ETEXT_VAR; // end of flash text (binary) section
   uint32_t firmwareEnd = (uint32_t)&LINKER_ETEXT_VAR;
+  extern uint32_t __isr_vector; // defined in gcc_startup_nrf5x.S, first address of binary
+  uint32_t firmwareStart = (uint32_t)& __isr_vector;
   uint32_t pAddr, pSize;
   jshFlashGetPage(firmwareEnd, &pAddr, &pSize);
   firmwareEnd = pAddr+pSize;
+#ifdef SPIFLASH_BASE
+#if SPIFLASH_BASE <= FLASH_SAVED_CODE_START
+  // we have storage in external flash (so we cannot take is as end of free internal flash)
+  if (firmwareEnd < firmwareStart+FLASH_AVAILABLE_FOR_CODE)
+    addFlashArea(jsFreeFlash, firmwareEnd, FLASH_AVAILABLE_FOR_CODE-(firmwareEnd-firmwareStart)); // size = available flash - size of binary
+#if SPIFLASH_BASE < FLASH_SAVED_CODE_START
+  // add SPI FLASH below code start
+  addFlashArea(jsFreeFlash, SPIFLASH_BASE, FLASH_SAVED_CODE_START-SPIFLASH_BASE);
+#endif
+#if (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH) < (SPIFLASH_BASE+SPIFLASH_LENGTH)
+  // add SPI flash space between code end and end of flash
+  addFlashArea(jsFreeFlash, (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH), (SPIFLASH_BASE+SPIFLASH_LENGTH)-(FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH));
+#endif
+#else
+  // we have storage in internal flash
   if (firmwareEnd < FLASH_SAVED_CODE_START)
     addFlashArea(jsFreeFlash, firmwareEnd, FLASH_SAVED_CODE_START-firmwareEnd);
+  // add whole SPI flash as free
+  addFlashArea(jsFreeFlash, SPIFLASH_BASE, SPIFLASH_LENGTH);
+#endif
+#else
+  if (firmwareEnd < FLASH_SAVED_CODE_START)
+    addFlashArea(jsFreeFlash, firmwareEnd, FLASH_SAVED_CODE_START-firmwareEnd);
+#endif
   return jsFreeFlash;
 }
 
