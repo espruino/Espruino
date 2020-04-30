@@ -8,6 +8,8 @@
               http://forum.espruino.com/conversations/345949
             Bangle.js: allow custom splash screen with .splash file
             Pixl.js: Fix E.showMessage
+            Puck.js v1: Fix regression that stopped Puck.IR(data) working - Puck.IR(data,D26,D25) required
+            Puck.js v2: Ensure FET is used for IR output, fix selfTest errors for IR and Blue LED
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

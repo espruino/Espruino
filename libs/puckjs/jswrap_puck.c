@@ -43,6 +43,7 @@ bool isPuckV2 = false;
 const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 #define IR_INPUT_PIN 25 // Puck v2
 #define IR_FET_PIN 27 // Puck v2
+#define FET_PIN 26 // Puck v2
 
 bool mag_enabled = false; //< Has the magnetometer been turned on?
 int16_t mag_reading[3];  //< magnetometer xyz reading
@@ -752,7 +753,8 @@ for a full example.
 You can also attach an external LED to Puck.js, in which case
 you can just execute `Puck.IR(pulseTimes, led_cathode, led_anode)`
 
-
+It is also possible to just supply a single pin for IR transmission
+with `Puck.IR(pulseTimes, led_anode)` (on 2v05 and above).
 */
 Pin _jswrap_puck_IR_pin;
 void _jswrap_puck_IR_on() {
@@ -776,12 +778,20 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting an array, got %t", data);
     return;
   }
-
-  if (!jshIsPinValid(anode)) anode = IR_ANODE_PIN;
-  if (!isPuckV2) {
-    if (!jshIsPinValid(cathode)) cathode = IR_FET_PIN;
+  if (jshIsPinValid(anode) && !jshIsPinValid(cathode)) {
+    jsExceptionHere(JSET_TYPEERROR, "Invalid pin combination");
+    return;
   }
-  bool twoPin = jshIsPinValid(cathode);
+
+  if (!(jshIsPinValid(cathode) || jshIsPinValid(anode))) {
+    if (isPuckV2) {
+      cathode = IR_FET_PIN;
+    } else { // Puck v1
+      anode = IR_ANODE_PIN;
+      cathode = IR_CATHODE_PIN;
+    }
+  }
+  bool twoPin = jshIsPinValid(anode) && jshIsPinValid(cathode);
   bool pulsePolarity = true;
 
   if (twoPin) {
@@ -789,7 +799,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
     jshPinSetValue(anode, pulsePolarity);
   } else {
     // Otherwise we're just doing stuff on a single pin
-    _jswrap_puck_IR_pin = anode;
+    _jswrap_puck_IR_pin = cathode;
   }
   JsSysTime time = jshGetSystemTime();
   bool hasPulses = false;
@@ -1035,7 +1045,7 @@ bool jswrap_puck_selfTest() {
   nrf_delay_ms(1);
   v = jshPinAnalog(LED3_PININDEX);
   jshPinSetState(LED3_PININDEX, JSHPINSTATE_GPIO_IN);
-  if (v<0.65 || v>0.90) {
+  if (v<0.55 || v>0.90) {
     if (!err[0]) strcpy(err,"LD3");
     jsiConsolePrintf("LED3 pullup voltage out of range (%f) - disconnected?\n", v);
     ok = false;
@@ -1053,21 +1063,23 @@ bool jswrap_puck_selfTest() {
 
 
   if (isPuckV2) {
-    jshPinSetState(IR_INPUT_PIN, JSHPINSTATE_GPIO_IN);
-    nrf_delay_ms(5);
+    jshPinSetValue(IR_FET_PIN, 0);
+    jshPinSetState(IR_FET_PIN, JSHPINSTATE_GPIO_OUT);
+    jshPinSetState(IR_INPUT_PIN, JSHPINSTATE_GPIO_IN_PULLUP);
+    nrf_delay_ms(1);
     if (!jshPinGetValue(IR_INPUT_PIN)) {
-      if (!err[0]) strcpy(err,"IRd");
-      jsiConsolePrintf("IR LED disconnected?\n");
+      if (!err[0]) strcpy(err,"IRs");
+      jsiConsolePrintf("IR LED short?\n");
       ok = false;
     }
-    jshPinSetState(IR_FET_PIN, JSHPINSTATE_GPIO_OUT);
     jshPinSetValue(IR_FET_PIN, 1);
-    nrf_delay_us(0.5);
+    nrf_delay_ms(1);
     if (jshPinGetValue(IR_INPUT_PIN)) {
       if (!err[0]) strcpy(err,"IRF");
       jsiConsolePrintf("IR FET disconnected?\n");
       ok = false;
     }
+    jshPinSetState(IR_INPUT_PIN, JSHPINSTATE_GPIO_IN);
     jshPinSetValue(IR_FET_PIN, 0);
   } else {
     jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
@@ -1216,6 +1228,13 @@ void jswrap_puck_init() {
   }
   // Power off
   mag_off();
+  // If Puck.js v2 ensure FETs are forced off
+  if (isPuckV2) {
+    jshPinSetValue(IR_FET_PIN, 0);
+    jshPinSetState(IR_FET_PIN, JSHPINSTATE_GPIO_OUT);
+    jshPinSetValue(FET_PIN, 0);
+    jshPinSetState(FET_PIN, JSHPINSTATE_GPIO_OUT);
+  }
 
   /* If the button is pressed during reset, perform a self test.
    * With bootloader this means apply power while holding button for >3 secs */
