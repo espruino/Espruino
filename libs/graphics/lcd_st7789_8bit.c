@@ -310,7 +310,7 @@ void lcdST7789_blitStart(int x, int y, int w, int h) {
   EMSCRIPTEN_GFX_BLIT_Y2 = y2;
 #endif
 }
-inline void lcdST7789_blitPixel(unsigned int col) {
+ALWAYS_INLINE void lcdST7789_blitPixel(unsigned int col) {
 #ifndef EMSCRIPTEN
   /* FIXME: Handle case where scrolling means
    * we wrap around the memory area - see what
@@ -479,6 +479,15 @@ unsigned int lcdST7789buf_getPixel(struct JsGraphics *gfx, int x, int y) {
   return ((uint8_t*)gfx->backendData)[x + y*gfx->data.width];
 }
 
+void lcdST7789buf_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  if (!gfx->backendData) return;
+  for (int y=y1;y<=y2;y++) {
+    uint8_t *p = &((uint8_t*)gfx->backendData)[x1 + y*gfx->data.width];
+    for (int x=x1;x<=x2;x++)
+      *(p++) = col;
+  }
+}
+
 void lcdST7789buf_scroll(JsGraphics *gfx, int xdir, int ydir) {
   if (!gfx->backendData) return;
   int pixels = -(xdir + ydir*gfx->data.width);
@@ -524,7 +533,7 @@ void lcdST7789_setCallbacks(JsGraphics *gfx) {
       gfx->backendData = dataPtr;
       gfx->setPixel = lcdST7789buf_setPixel;
       gfx->getPixel = lcdST7789buf_getPixel;
-      // gfx->fillRect = lcdST7789buf_fillRect; // maybe later...
+      gfx->fillRect = lcdST7789buf_fillRect;
       gfx->scroll = lcdST7789buf_scroll;
     }
   } else {
