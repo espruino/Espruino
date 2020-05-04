@@ -286,7 +286,7 @@ void lcdSetCallbacks_ArrayBuffer(JsGraphics *gfx) {
         !(gfx->data.flags & (JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG|JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE|JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX))
         ) { // super fast path for 1 bit
       gfx->setPixel = lcdSetPixel_ArrayBuffer_flat1;
-      gfx->getPixel = lcdSetPixel_ArrayBuffer_flat;
+      gfx->getPixel = lcdGetPixel_ArrayBuffer_flat;
       gfx->fillRect = lcdFillRect_ArrayBuffer_flat1;
     } else if (gfx->data.bpp==8 &&
                !(gfx->data.flags & (JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG|JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE|JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX))
