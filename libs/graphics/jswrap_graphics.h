@@ -17,6 +17,15 @@
 #include "jsvar.h"
 #include "graphics.h"
 
+#ifndef SAVE_ON_FLASH
+#ifndef ESPRUINOBOARD
+#define GRAPHICS_DRAWIMAGE_ROTATED
+#endif
+#endif
+#if defined(LINUX) || defined(BANGLEJS)
+#define GRAPHICS_FAST_PATHS // execute more optimised code when no rotation/etc
+#endif
+
 #ifdef GRAPHICS_PALETTED_IMAGES
 // 16 color MAC OS palette
 extern const uint16_t PALETTE_4BIT[16];

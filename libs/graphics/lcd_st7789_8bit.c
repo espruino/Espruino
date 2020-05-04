@@ -16,6 +16,7 @@
 #include "jsutils.h"
 #include "lcd_st7789_8bit.h"
 #include "jswrap_graphics.h"
+#include "lcd_arraybuffer.h" // for lcd*_ArrayBuffer_flat8
 #ifndef EMSCRIPTEN
 #include "jshardware.h"
 #include "nrf_gpio.h"
@@ -203,14 +204,12 @@ LCDST7789Mode lcdST7789_getMode() {
 }
 
 void lcdST7789_flip(JsGraphics *gfx) {
-  unsigned char buf[2];
   switch (lcdMode) {
     case LCDST7789_MODE_UNBUFFERED:
       // unbuffered - flip has no effect
     break;
     case LCDST7789_MODE_DOUBLEBUFFERED: {
       // buffered - flip using LCD itself
-      unsigned short offs;
       if (lcdScrollY==0) {
         lcdScrollY = 160;
       } else {
@@ -467,34 +466,6 @@ void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir) {
   lcdST7789_scrollCmd();
 }
 
-
-// ====================================================================================
-void lcdST7789buf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
-  if (!gfx->backendData) return;
-  ((uint8_t*)gfx->backendData)[x + y*gfx->data.width] = col;
-}
-
-unsigned int lcdST7789buf_getPixel(struct JsGraphics *gfx, int x, int y) {
-  if (!gfx->backendData) return 0;
-  return ((uint8_t*)gfx->backendData)[x + y*gfx->data.width];
-}
-
-void lcdST7789buf_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
-  if (!gfx->backendData) return;
-  for (int y=y1;y<=y2;y++) {
-    uint8_t *p = &((uint8_t*)gfx->backendData)[x1 + y*gfx->data.width];
-    for (int x=x1;x<=x2;x++)
-      *(p++) = col;
-  }
-}
-
-void lcdST7789buf_scroll(JsGraphics *gfx, int xdir, int ydir) {
-  if (!gfx->backendData) return;
-  int pixels = -(xdir + ydir*gfx->data.width);
-  int l = gfx->data.width*gfx->data.height;
-  if (pixels>0) memcpy(&((uint8_t*)gfx->backendData)[0],&((uint8_t*)gfx->backendData)[pixels],l-pixels);
-  else if (pixels<0) memcpy(&((uint8_t*)gfx->backendData)[-pixels],&((uint8_t*)gfx->backendData)[0],l+pixels);
-}
 // ====================================================================================
 
 void lcdST7789_init(JsGraphics *gfx) {
@@ -531,10 +502,10 @@ void lcdST7789_setCallbacks(JsGraphics *gfx) {
     jsvUnLock(buf);
     if (dataPtr && len>=expectedLen) {
       gfx->backendData = dataPtr;
-      gfx->setPixel = lcdST7789buf_setPixel;
-      gfx->getPixel = lcdST7789buf_getPixel;
-      gfx->fillRect = lcdST7789buf_fillRect;
-      gfx->scroll = lcdST7789buf_scroll;
+      gfx->setPixel = lcdSetPixel_ArrayBuffer_flat8;
+      gfx->getPixel = lcdGetPixel_ArrayBuffer_flat8;
+      gfx->fillRect = lcdFillRect_ArrayBuffer_flat8;
+      gfx->scroll = lcdScroll_ArrayBuffer_flat8;
     }
   } else {
     gfx->setPixel = lcdST7789_setPixel;

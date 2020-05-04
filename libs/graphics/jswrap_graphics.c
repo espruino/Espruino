@@ -31,15 +31,6 @@
 #include "bitmap_font_4x6.h"
 #include "bitmap_font_6x8.h"
 
-#ifndef SAVE_ON_FLASH
-#ifndef ESPRUINOBOARD
-#define GRAPHICS_DRAWIMAGE_ROTATED
-#endif
-#endif
-#if defined(LINUX) || defined(BANGLEJS)
-#define GRAPHICS_FAST_PATHS // execute more optimised code when no rotation/etc
-#endif
-
 #ifdef GRAPHICS_PALETTED_IMAGES
 // 16 color MAC OS palette
 const uint16_t PALETTE_4BIT[16] = { 0x0,0x4228,0x8c51,0xbdd7,0x9b26,0x6180,0x320,0x540,0x4df,0x19,0x3013,0xf813,0xd800,0xfb20,0xffe0,0xffff };
