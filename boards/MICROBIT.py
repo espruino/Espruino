@@ -35,6 +35,7 @@ info = {
      'SAVE_ON_FLASH=1',
      'DEFINES+=-DSAVE_ON_FLASH_EXTREME',
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
+     'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves a bunch of flash
 #     'DEFINES+=-DUSE_TAB_COMPLETE -DUSE_DEBUGGER', # Removed  due to firmware size issues
      'INCLUDE += -I$(ROOT)/libs/microbit',
      'WRAPPERSOURCES += libs/microbit/jswrap_microbit.c'

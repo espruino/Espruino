@@ -17,6 +17,8 @@
             Graphics.drawImage docs improvements (fix #1812)
             Fix issue where it was possible to get an address of a non-memory-mapped FlashString
             Graphics.drawImage: Allow 8 bit palettes to be specified
+            Bangle.js: Remove dumping of hardware state - saves some flash memory
+            microbit: Remove dumping of hardware state - saves some flash memory
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

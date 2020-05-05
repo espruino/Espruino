@@ -637,6 +637,7 @@ void jsiDumpDeviceInitialisation(vcbprintf_callback user_callback, void *user_da
 
 /** Dump all the code required to initialise hardware to this string */
 void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_data, bool humanReadableDump) {
+#ifndef NO_DUMP_HARDWARE_INITIALISATION // eg. Banglejs doesn't need to dump hardware initialisation
   if (jsiStatus&JSIS_ECHO_OFF) user_callback("echo(0);", user_data);
 #ifndef SAVE_ON_FLASH
   if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
@@ -715,6 +716,7 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
 #ifdef BLUETOOTH
   if (humanReadableDump)
     jswrap_ble_dumpBluetoothInitialisation(user_callback, user_data);
+#endif
 #endif
 }
 
