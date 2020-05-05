@@ -1914,11 +1914,9 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         (imageBpp==8 || imageBpp==1) &&
         !imageIsTransparent &&
         xPos>=0 && yPos>=0 && // check it's all on-screen
-        (xPos+imageWidth)<=LCD_WIDTH && (yPos+imageHeight)<=LCD_HEIGHT &&
-        (pixelPtr=(uint8_t*)jsvGetDataPointer(imageBufferString,&pixelLen)) &&
-        (int)(pixelLen-imageBufferOffset)*8 >= imageWidth*imageHeight*imageBpp) {
-      if (imageBpp==1) lcdST7789_blit1Bit(xPos, yPos, imageWidth, imageHeight, 1, &pixelPtr[imageBufferOffset], palettePtr);
-      else if (imageBpp==8) lcdST7789_blit8Bit(xPos, yPos, imageWidth, imageHeight, 1, &pixelPtr[imageBufferOffset], palettePtr);
+        (xPos+imageWidth)<=LCD_WIDTH && (yPos+imageHeight)<=LCD_HEIGHT) {
+      if (imageBpp==1) lcdST7789_blit1Bit(xPos, yPos, imageWidth, imageHeight, 1, &it, palettePtr);
+      else if (imageBpp==8) lcdST7789_blit8Bit(xPos, yPos, imageWidth, imageHeight, 1, &it, palettePtr);
     } else
 #endif
     if (fastPath) { // fast path for standard blit
@@ -2012,11 +2010,9 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
           (imageBpp==8 || imageBpp==1) &&
           !imageIsTransparent &&
           xPos>=0 && yPos>=0 && // check it's all on-screen
-          (xPos+imageWidth*s)<=LCD_WIDTH && (yPos+imageHeight*s)<=LCD_HEIGHT &&
-          (pixelPtr=(uint8_t*)jsvGetDataPointer(imageBufferString,&pixelLen)) &&
-          (int)(pixelLen-imageBufferOffset)*8 >= imageWidth*imageHeight*imageBpp) {
-        if (imageBpp==1) lcdST7789_blit1Bit(xPos, yPos, imageWidth, imageHeight, s, &pixelPtr[imageBufferOffset], palettePtr);
-        else lcdST7789_blit8Bit(xPos, yPos, imageWidth, imageHeight, s, &pixelPtr[imageBufferOffset], palettePtr);
+          (xPos+imageWidth*s)<=LCD_WIDTH && (yPos+imageHeight*s)<=LCD_HEIGHT) {
+        if (imageBpp==1) lcdST7789_blit1Bit(xPos, yPos, imageWidth, imageHeight, s, &it, palettePtr);
+        else lcdST7789_blit8Bit(xPos, yPos, imageWidth, imageHeight, s, &it, palettePtr);
       } else
 #endif
       {
