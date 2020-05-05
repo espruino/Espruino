@@ -1752,8 +1752,20 @@ center images at `x,y`. `options` must be an object of the form:
 ```
 {
   rotate : float, // the amount to rotate the image in radians (default 0)
-  scale : float, // the amount to scale the image in radians (default 1)
+  scale : float, // the amount to scale the image up (default 1)
 }
+```
+
+For example:
+
+```
+// In the top left of the screen
+g.drawImage(img,0,0);
+// In the top left of the screen, twice as big
+g.drawImage(img,0,0,{scale:2});
+// In the center of the screen, twice as big, 45 degrees
+g.drawImage(img, g.getWidth()/2, g.getHeight()/2,
+            {scale:2, rotate:Math.PI/4});
 ```
 */
 JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos, JsVar *options) {
