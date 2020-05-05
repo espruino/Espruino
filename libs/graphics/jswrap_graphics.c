@@ -1795,7 +1795,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         size_t l = 0;
         palettePtr = (uint16_t *)jsvGetDataPointer(v, &l);
         jsvUnLock(v);
-        if (l==2 || l==4 || l==16)
+        if (l==2 || l==4 || l==16 || l==256)
           paletteMask = (uint32_t)(l-1);
         else {
           palettePtr = 0;
@@ -1803,7 +1803,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       } else
         jsvUnLock(v);
       if (!palettePtr) {
-        jsExceptionHere(JSET_ERROR, "palette specified, but must be a flat Uint16Array of 2,4, or 16 elements");
+        jsExceptionHere(JSET_ERROR, "palette specified, but must be a flat Uint16Array of 2,4,16,256 elements");
         return 0;
       }
     }
