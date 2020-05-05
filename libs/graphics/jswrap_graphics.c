@@ -2365,7 +2365,7 @@ void jswrap_graphics_dump(JsVar *parent) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "quadraticBezier",
-  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD) && !defined(BANGLEJS)",
   "generate" : "jswrap_graphics_quadraticBezier",
   "params" : [
     ["arr","JsVar","An array of three vertices, six enties in form of ```[x0,y0,x1,y1,x2,y2]```"],
