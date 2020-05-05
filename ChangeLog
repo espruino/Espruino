@@ -15,6 +15,7 @@
             Add specific Graphics optimisations for 1 and 8 bit rendering
             Bangle.js: drawImage - add fast path for non-transparent 1 or 8bpp image blit (fix #1794)
             Graphics.drawImage docs improvements (fix #1812)
+            Fix issue where it was possible to get an address of a non-memory-mapped FlashString
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

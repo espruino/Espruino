@@ -1543,7 +1543,7 @@ char *jsvGetDataPointer(JsVar *v, size_t *len) {
     *len = jsvGetStringLength(v);
     return jsvGetFlatStringPointer(v);
   }
-  if (jsvIsString(v) && !jsvGetLastChild(v)) {
+  if (jsvIsBasicString(v) && !jsvGetLastChild(v)) {
     // It's a normal string but is small enough to have all the data in
     *len = jsvGetCharactersInVar(v);
     return (char*)v->varData.str;
