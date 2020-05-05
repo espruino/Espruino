@@ -13,6 +13,7 @@
             Bangle.js: Big speed improvements for 120x120 and 80x80 gfx modes
             Enable Graphics arraybuffer optimisations on all but low-end devices
             Add specific Graphics optimisations for 1 and 8 bit rendering
+            Bangle.js: drawImage - add fast path for non-transparent 1 or 8bpp image blit (fix #1794)
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

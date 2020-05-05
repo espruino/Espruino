@@ -25,6 +25,9 @@
 #ifdef USE_LCD_FSMC
 #include "lcd_fsmc.h"
 #endif
+#ifdef USE_LCD_ST7789_8BIT
+#include "lcd_st7789_8bit.h"
+#endif
 
 #include "jswrap_functions.h" // for asURL
 
@@ -1890,6 +1893,22 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #ifdef GRAPHICS_FAST_PATHS
     bool fastPath =
         (gfx.data.flags & (JSGRAPHICSFLAGS_SWAP_XY|JSGRAPHICSFLAGS_INVERT_X|JSGRAPHICSFLAGS_INVERT_Y))==0; // no messing with coordinates
+#ifdef USE_LCD_ST7789_8BIT // can we blit directly to the display?
+    uint8_t *pixelPtr;
+    size_t pixelLen;
+    if (fastPath &&
+        gfx.data.type==JSGRAPHICSTYPE_ST7789_8BIT &&
+        gfx.data.bpp==16 &&
+        (imageBpp==8 || imageBpp==1) &&
+        !imageIsTransparent &&
+        xPos>=0 && yPos>=0 && // check it's all on-screen
+        (xPos+imageWidth)<=LCD_WIDTH && (yPos+imageHeight)<=LCD_HEIGHT &&
+        (pixelPtr=(uint8_t*)jsvGetDataPointer(imageBufferString,&pixelLen)) &&
+        (int)(pixelLen-imageBufferOffset)*8 >= imageWidth*imageHeight*imageBpp) {
+      if (imageBpp==1) lcdST7789_blit1Bit(xPos, yPos, imageWidth, imageHeight, 1, &pixelPtr[imageBufferOffset], palettePtr);
+      else if (imageBpp==8) lcdST7789_blit8Bit(xPos, yPos, imageWidth, imageHeight, 1, &pixelPtr[imageBufferOffset], palettePtr);
+    } else
+#endif
     if (fastPath) { // fast path for standard blit
       int yp = yPos;
       for (y=0;y<imageHeight;y++) {
@@ -1972,55 +1991,72 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
        * that on direct-coupled displays we can optimise away
        * coordinate setting
        */
-
-      int yp = yPos;
-      for (y=0;y<imageHeight;y++) {
-        // Store current pos as we need to rewind
-        size_t lastIt = jsvStringIteratorGetIndex(&it);
-        int lastBits = bits;
-        unsigned int lastColData = colData;
-        // do a new iteration for each line we're scaling
-        for (int iy=0;iy<s;iy++) {
-          if (iy) { // rewind for all but the first line of scaling
-            jsvStringIteratorGoto(&it, imageBufferString, lastIt);
-            bits = lastBits;
-            colData = lastColData;
-          }
-          // iterate over x
-          int xp = xPos;
-          for (x=0;x<imageWidth;x++) {
-            // Get the data we need...
-            while (bits < imageBpp) {
-              colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
-              jsvStringIteratorNext(&it);
-              bits += 8;
+#ifdef USE_LCD_ST7789_8BIT // can we blit directly to the display?
+      uint8_t *pixelPtr;
+      size_t pixelLen;
+      if (gfx.data.type==JSGRAPHICSTYPE_ST7789_8BIT &&
+          gfx.data.bpp==16 &&
+          s>=1 &&
+          (imageBpp==8 || imageBpp==1) &&
+          !imageIsTransparent &&
+          xPos>=0 && yPos>=0 && // check it's all on-screen
+          (xPos+imageWidth*s)<=LCD_WIDTH && (yPos+imageHeight*s)<=LCD_HEIGHT &&
+          (pixelPtr=(uint8_t*)jsvGetDataPointer(imageBufferString,&pixelLen)) &&
+          (int)(pixelLen-imageBufferOffset)*8 >= imageWidth*imageHeight*imageBpp) {
+        if (imageBpp==1) lcdST7789_blit1Bit(xPos, yPos, imageWidth, imageHeight, s, &pixelPtr[imageBufferOffset], palettePtr);
+        else lcdST7789_blit8Bit(xPos, yPos, imageWidth, imageHeight, s, &pixelPtr[imageBufferOffset], palettePtr);
+      } else
+#endif
+      {
+        int yp = yPos;
+        for (y=0;y<imageHeight;y++) {
+          // Store current pos as we need to rewind
+          size_t lastIt = jsvStringIteratorGetIndex(&it);
+          int lastBits = bits;
+          unsigned int lastColData = colData;
+          // do a new iteration for each line we're scaling
+          for (int iy=0;iy<s;iy++) {
+            if (iy) { // rewind for all but the first line of scaling
+              jsvStringIteratorGoto(&it, imageBufferString, lastIt);
+              bits = lastBits;
+              colData = lastColData;
             }
-            // extract just the bits we want
-            unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
-            bits -= imageBpp;
-            // Try and write pixel!
-            if (imageTransparentCol!=col && yp>=gfx.data.clipRect.y1 && yp<=gfx.data.clipRect.y2) {
-              if (palettePtr) col = palettePtr[col&paletteMask];
-              for (int ix=0;ix<s;ix++) {
-                if (xp>=gfx.data.clipRect.x1 && xp<=gfx.data.clipRect.x2)
-                  gfx.setPixel(&gfx, xp, yp, col);
-                xp++;
+            // iterate over x
+            int xp = xPos;
+            for (x=0;x<imageWidth;x++) {
+              // Get the data we need...
+              while (bits < imageBpp) {
+                colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
+                jsvStringIteratorNext(&it);
+                bits += 8;
               }
-            } else xp += s;
+              // extract just the bits we want
+              unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
+              bits -= imageBpp;
+              // Try and write pixel!
+              if (imageTransparentCol!=col && yp>=gfx.data.clipRect.y1 && yp<=gfx.data.clipRect.y2) {
+                if (palettePtr) col = palettePtr[col&paletteMask];
+                for (int ix=0;ix<s;ix++) {
+                  if (xp>=gfx.data.clipRect.x1 && xp<=gfx.data.clipRect.x2)
+                    gfx.setPixel(&gfx, xp, yp, col);
+                  xp++;
+                }
+              } else xp += s;
+            }
+            yp++;
           }
-          yp++;
         }
+        // update modified area since we went direct
+        int x1=xPos, y1=yPos, x2=xPos+s*imageWidth, y2=yPos+s*imageHeight;
+        if (x1<gfx.data.clipRect.x1) x1 = gfx.data.clipRect.x1;
+        if (y1<gfx.data.clipRect.y1) y1 = gfx.data.clipRect.y1;
+        if (x2>gfx.data.clipRect.x2) x2 = gfx.data.clipRect.x2;
+        if (y2>gfx.data.clipRect.y2) y2 = gfx.data.clipRect.y2;
+        if (x1 < gfx.data.modMinX) gfx.data.modMinX=(short)x1;
+        if (x2 > gfx.data.modMaxX) gfx.data.modMaxX=(short)x2;
+        if (y1 < gfx.data.modMinY) gfx.data.modMinY=(short)y1;
+        if (y2 > gfx.data.modMaxY) gfx.data.modMaxY=(short)y2;
       }
-      // update modified area since we went direct
-      int x1=xPos, y1=yPos, x2=xPos+s*imageWidth, y2=yPos+s*imageHeight;
-      if (x1<gfx.data.clipRect.x1) x1 = gfx.data.clipRect.x1;
-      if (y1<gfx.data.clipRect.y1) y1 = gfx.data.clipRect.y1;
-      if (x2>gfx.data.clipRect.x2) x2 = gfx.data.clipRect.x2;
-      if (y2>gfx.data.clipRect.y2) y2 = gfx.data.clipRect.y2;
-      if (x1 < gfx.data.modMinX) gfx.data.modMinX=(short)x1;
-      if (x2 > gfx.data.modMaxX) gfx.data.modMaxX=(short)x2;
-      if (y1 < gfx.data.modMinY) gfx.data.modMinY=(short)y1;
-      if (y2 > gfx.data.modMaxY) gfx.data.modMaxY=(short)y2;
     } else { // handle rotation, and default to center the image
 #else
     if (true) {
