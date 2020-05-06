@@ -2,10 +2,11 @@ exports = { name : "en_GB", currencySym:"£",
   translate : str=>str, // as-is
   date : (d,short) => short?("0"+d.getDate()).substr(-2)+"/"+("0"+(d.getMonth()+1)).substr(-2)+"/"+d.getFullYear():d.toString().substr(4,11), // Date to "Feb 28 2020" or "28/02/2020"(short)
   time : (d,short) => { // Date to  "4:15.28 pm" or "15:42"(short)
+	var h = d.getHours(), m = d.getMinutes()
     if (short)
-      return d.toString().substr(16,5);
+      return (" "+h).substr(-2)+":"+("0"+m).substr(-2);
     else {
-      var h = d.getHours(), m = d.getMinutes(), r = "am";
+      var h = r = "am";
       if (h==0) { h=12; }
       else if (h>=12) {
         if (h>12) h-=12;
