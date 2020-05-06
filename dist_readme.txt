@@ -25,7 +25,7 @@ espruino_#v##_pico_1r3_wiznet.bin
      If you don't need networking, use espruino_#v##_pico_1r3.bin
 
 espruino_#v##_espruino_1r3.bin  
-   - AT command WiFi
+   - AT command WiFi (without vector font)
 espruino_#v##_espruino_1r3_wiznet.bin   
    - WIZNET W5500 ethernet (without crypto lib, debugger, vector font)
 
