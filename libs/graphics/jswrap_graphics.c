@@ -2203,11 +2203,11 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-Draws multiple images *at once* - which
-avoids flicker on unbuffered systems.
+Draws multiple images *at once* - which avoids flicker on unbuffered systems
+like Bangle.js. Maximum layer count right now is 4.
 
 ```
-layes = [ {
+layers = [ {
   {x : int, // x start position
    y : int, // y start position
    image : string/object,
@@ -2216,7 +2216,7 @@ layes = [ {
    center : bool // center on x,y? default is top left
    }
 ]
-options = { // the area to render. Defaults to rendering entire screen
+options = { // the area to render. Defaults to rendering just enough to cover what's requested
  x,y,
  width,height
 }
@@ -2231,10 +2231,39 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
     jsExceptionHere(JSET_TYPEERROR,"Expecting array for first argument with <%d entries", MAXIMAGES);
     return 0;
   }
-  // parse options
-  int x=0,y=0;
+  // default bounds (=nothing)
+  int x=10000,y=10000;
   int width=10000;
   int height=10000;
+  // now run through all layers getting stuff ready and checking
+  bool ok = true;
+  for (i=0;i<layerCount;i++) {
+    JsVar *layer = jsvGetArrayItem(layersVar, i);
+    if (jsvIsObject(layer)) {
+      JsVar *image = jsvObjectGetChild(layer,"image",0);
+      if (_jswrap_graphics_parseImage(&gfx, image, &layers[i].img)) {
+        layers[i].x1 = jsvGetIntegerAndUnLock(jsvObjectGetChild(layer,"x",0));
+        layers[i].y1 = jsvGetIntegerAndUnLock(jsvObjectGetChild(layer,"y",0));
+        // rotate, scale
+        layers[i].scale = jsvGetFloatAndUnLock(jsvObjectGetChild(layer,"scale",0));
+        if (!isfinite(layers[i].scale) || layers[i].scale<=0)
+          layers[i].scale=1;
+        layers[i].rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(layer,"rotate",0));
+        if (!isfinite(layers[i].rotate)) layers[i].rotate=0;
+        layers[i].center = jsvGetBoolAndUnLock(jsvObjectGetChild(layer,"center",0));
+        _jswrap_drawImageLayerInit(&layers[i]);
+        // add the calculated bounds to our default bounds
+        if (layers[i].x1<x) x=layers[i].x1;
+        if (layers[i].y1<y) y=layers[i].y1;
+        if (layers[i].x2>x+width) width=layers[i].x2-x;
+        if (layers[i].y2>y+height) height=layers[i].y2-y;
+      } else ok = false;
+      jsvUnLock(image);
+    } else ok = false;
+    jsvUnLock(layer);
+  }
+
+  // TODO: figure out default bounds based on bounds of images?
   jsvConfigObject configs[] = {
       {"x", JSV_INTEGER, &x},
       {"y", JSV_INTEGER, &y},
@@ -2242,8 +2271,8 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
       {"height", JSV_INTEGER, &height}
   };
   if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject)))
-    return 0;
-  // clipping
+    ok =  false;
+  // clipping to screen
   if (x<0) {
     width += x;
     x = 0;
@@ -2256,34 +2285,10 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
     width = graphicsGetWidth(&gfx)-x;
   if (y+height > graphicsGetHeight(&gfx))
     height = graphicsGetHeight(&gfx)-y;
-  // now run through all layers getting stuff ready and checking
-  bool ok = true;
-  for (i=0;i<layerCount;i++) {
-    JsVar *layer = jsvGetArrayItem(layersVar, i);
-    if (jsvIsObject(layer)) {
-      JsVar *image = jsvObjectGetChild(layer,"image",0);
-      if (_jswrap_graphics_parseImage(&gfx, image, &layers[i].img)) {
-        layers[i].x1 = jsvGetIntegerAndUnLock(jsvObjectGetChild(layer,"x",0));
-        layers[i].y1 = jsvGetIntegerAndUnLock(jsvObjectGetChild(layer,"y",0));
-        layers[i].scale = 1; // FIXME
-        layers[i].rotate = 0;
-        // rotate, scale
-        layers[i].scale = jsvGetFloatAndUnLock(jsvObjectGetChild(layer,"scale",0));
-        if (!isfinite(layers[i].scale) || layers[i].scale<=0)
-          layers[i].scale=1;
-        layers[i].rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(layer,"rotate",0));
-        if (!isfinite(layers[i].rotate)) layers[i].rotate=0;
-        layers[i].center = jsvGetBoolAndUnLock(jsvObjectGetChild(layer,"center",0));
-      } else ok = false;
-      jsvUnLock(image);
-    } else ok = false;
-    jsvUnLock(layer);
-  }
   // If all good, start rendering!
   if (ok) {
     for (i=0;i<layerCount;i++) {
       jsvStringIteratorNew(&layers[i].it, layers[i].img.buffer, (size_t)layers[i].img.bufferOffset);
-      _jswrap_drawImageLayerInit(&layers[i]);
       _jswrap_drawImageLayerSetStart(&layers[i], x, y);
     }
     // scan across image
