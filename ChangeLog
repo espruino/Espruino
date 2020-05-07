@@ -20,6 +20,7 @@
             Bangle.js: Remove dumping of hardware state - saves some flash memory
             microbit: Remove dumping of hardware state - saves some flash memory
             Bangle.js: fix 'short' time for built-in locale
+            Bangle.js: fix 'speed' units for built-in locale
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
