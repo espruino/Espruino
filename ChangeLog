@@ -21,6 +21,9 @@
             microbit: Remove dumping of hardware state - saves some flash memory
             Bangle.js: fix 'short' time for built-in locale
             Bangle.js: fix 'speed' units for built-in locale
+            Graphics.createArrayBuffer now honors `msb:true` if `bpp>8`
+            Graphics.asImage: handle >8bpp correctly (fix #1797)
+            Graphics.asImage: Allow 'string' output type, reference Graphics buffer if possible
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

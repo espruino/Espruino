@@ -191,12 +191,12 @@ static bool isValidBPP(int bpp) {
     ["height","int32","Pixels high"],
     ["bpp","int32","Number of bits per pixel"],
     ["options","JsVar",[
-      "An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default), msb : true/false(default), color_order: 'rgb'(default),'bgr',etc }```",
-      "zigzag = whether to alternate the direction of scanlines for rows",
-      "vertical_byte = whether to align bits in a byte vertically or not",
-      "msb = when bits<8, store pixels msb first",
-      "interleavex = Pixels 0,2,4,etc are from the top half of the image, 1,3,5,etc from the bottom half. Used for P3 LED panels.",
-      "color_order = re-orders the colour values that are supplied via setColor"
+      "An object of other options. `{ zigzag : true/false(default), vertical_byte : true/false(default), msb : true/false(default), color_order: 'rgb'(default),'bgr',etc }`",
+      "`zigzag` = whether to alternate the direction of scanlines for rows",
+      "`vertical_byte` = whether to align bits in a byte vertically or not",
+      "`msb` = when bits<8, store pixels most significant bit first, when bits>8, store most significant byte first",
+      "`interleavex` = Pixels 0,2,4,etc are from the top half of the image, 1,3,5,etc from the bottom half. Used for P3 LED panels.",
+      "`color_order` = re-orders the colour values that are supplied via setColor"
     ]]
   ],
   "return" : ["JsVar","The new Graphics object"],
@@ -2107,7 +2107,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
                 colData = (colData<<8) | (unsigned char)jsvStringIteratorGetChar(&it);
               }
               //jsiConsolePrintf("%d %d %d\n", bitOffset, imagePixelsPerByteMask, (imagePixelsPerByteMask-(bitOffset&imagePixelsPerByteMask))*imageBpp);
-              colData = (colData>>((imagePixelsPerByteMask-(bitOffset&imagePixelsPerByteMask))*imageBpp)) & imageBitMask;
+              colData = (colData>>((imagePixelsPerByteMask-((unsigned)bitOffset&imagePixelsPerByteMask))*(unsigned)imageBpp)) & imageBitMask;
             }
             if (imageTransparentCol!=colData) {
               if (palettePtr) colData = palettePtr[colData&paletteMask];
@@ -2135,33 +2135,77 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   "name" : "asImage",
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_asImage",
+  "params" : [
+    ["type","JsVar","The type of image to return. Either `object`/undefined to return an image object, or `string` to return an image string"]
+  ],
   "return" : ["JsVar","An Image that can be used with `Graphics.drawImage`"]
 }
 Return this Graphics object as an Image that can be used with `Graphics.drawImage`.
-Will return undefined if data can't be allocated for it.
+Check out [the Graphics reference page](http://www.espruino.com/Graphics#images-bitmaps)
+for more information on images.
+
+Will return undefined if data can't be allocated for the image.
+
+The image data itself will be referenced rather than copied if:
+
+* An image `object` was requested (not `string`)
+* The Graphics instance was created with `Graphics.createArrayBuffer`
+* Is 8 bpp *OR* the `{msb:true}` option was given
+* No other format options (zigzag/etc) were given
+
+Otherwise data will be copied, which takes up more space and
+may be quite slow.
 */
-JsVar *jswrap_graphics_asImage(JsVar *parent) {
+JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  JsVar *img = jsvNewObject();
-  if (!img) return 0;
+  bool isObject;
+  if (jsvIsUndefined(imgType) || jsvIsStringEqual(imgType,"object"))
+    isObject = true;
+  else if (jsvIsStringEqual(imgType,"string")) {
+    isObject = false;
+  } else {
+    jsExceptionHere(JSET_ERROR, "Unknown image type %j", imgType);
+    return 0;
+  }
   int w = jswrap_graphics_getWidthOrHeight(parent,false);
   int h = jswrap_graphics_getWidthOrHeight(parent,true);
   int bpp = gfx.data.bpp;
-  jsvObjectSetChildAndUnLock(img,"width",jsvNewFromInteger(w));
-  jsvObjectSetChildAndUnLock(img,"height",jsvNewFromInteger(h));
-  if (bpp!=1) jsvObjectSetChildAndUnLock(img,"bpp",jsvNewFromInteger(bpp));
   int len = (w*h*bpp+7)>>3;
+
+  JsVar *img = 0;
+  if (isObject) {
+    img = jsvNewObject();
+    if (!img) return 0;
+    jsvObjectSetChildAndUnLock(img,"width",jsvNewFromInteger(w));
+    jsvObjectSetChildAndUnLock(img,"height",jsvNewFromInteger(h));
+    if (bpp!=1) jsvObjectSetChildAndUnLock(img,"bpp",jsvNewFromInteger(bpp));
+    /* IF we have an arraybuffer of the right form then
+    we can return the original buffer directly */
+    if (gfx.data.type == JSGRAPHICSTYPE_ARRAYBUFFER &&
+        (bpp==8 || // 8 bit data is fine
+        ((gfx.data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) && // must be MSB first
+          !(gfx.data.flags & JSGRAPHICSFLAGS_NONLINEAR)))) { // must be in-order
+      jsvObjectSetChildAndUnLock(img,"buffer",jsvObjectGetChild(gfx.graphicsVar, "buffer", 0));
+    }
+    return img;
+  } else {
+    len += 3; // for the header!
+  }
   JsVar *buffer = jsvNewStringOfLength((unsigned)len, NULL);
   if (!buffer) { // not enough memory
     jsvUnLock(img);
     return 0;
   }
-
   int x=0, y=0;
   unsigned int pixelBits = 0;
   unsigned int pixelBitCnt = 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, buffer, 0);
+  if (!isObject) { // if not an object, add the header
+    jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)w);
+    jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)h);
+    jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)bpp);
+  }
   while (jsvStringIteratorHasChar(&it)) {
     pixelBits = (pixelBits<<bpp) | graphicsGetPixel(&gfx, x, y);
     pixelBitCnt += (unsigned)bpp;
@@ -2172,13 +2216,15 @@ JsVar *jswrap_graphics_asImage(JsVar *parent) {
     }
     while (pixelBitCnt>=8) {
       jsvStringIteratorSetCharAndNext(&it, (char)(pixelBits>>(pixelBitCnt-8)));
-      pixelBits = pixelBits>>8;
       pixelBitCnt -= 8;
     }
   }
   jsvStringIteratorFree(&it);
-  jsvObjectSetChildAndUnLock(img,"buffer",buffer);
-  return img;
+  if (isObject) {
+    jsvObjectSetChildAndUnLock(img,"buffer",buffer);
+    return img;
+  } else
+    return buffer;
 }
 
 /*JSON{
