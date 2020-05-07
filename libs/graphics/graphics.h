@@ -120,6 +120,8 @@ void graphicsSetVar(JsGraphics *gfx);
 size_t graphicsGetMemoryRequired(const JsGraphics *gfx);
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y);
+unsigned short graphicsGetWidth(const JsGraphics *gfx);
+unsigned short graphicsGetHeight(const JsGraphics *gfx);
 // drawing functions - all coordinates are in USER coordinates, not DEVICE coordinates
 void         graphicsSetPixel(JsGraphics *gfx, int x, int y, unsigned int col);
 unsigned int graphicsGetPixel(JsGraphics *gfx, int x, int y);

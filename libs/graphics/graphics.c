@@ -207,6 +207,13 @@ void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y) {
   if (gfx->data.flags & JSGRAPHICSFLAGS_INVERT_Y) *y = (int)(gfx->data.height - (*y+1));
 }
 
+unsigned short graphicsGetWidth(const JsGraphics *gfx) {
+  return (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx->data.height : gfx->data.width;
+}
+unsigned short graphicsGetHeight(const JsGraphics *gfx) {
+  return (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx->data.width : gfx->data.height;
+}
+
 // ----------------------------------------------------------------------------------------------
 
 static void graphicsSetPixelDevice(JsGraphics *gfx, int x, int y, unsigned int col) {
