@@ -1850,6 +1850,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
 typedef struct {
   int x1,y1,x2,y2;
   double rotate,scale;
+  bool center;
   GfxDrawImageInfo img;
   // for rendering
   JsvStringIterator it;
@@ -1868,14 +1869,15 @@ bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) 
      jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+imagex+(imagey*l->img.stride)));
      colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
    } else {
-     int bitOffset = (imagex+(imagey*l->img.width))*l->img.bpp;
+     int pixelOffset = (imagex+(imagey*l->img.width));
+     int bitOffset = pixelOffset*l->img.bpp;
      jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+(bitOffset>>3)));
      colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
      for (int b=8;b<l->img.bpp;b+=8) {
        jsvStringIteratorNext(&l->it);
        colData = (colData<<8) | (unsigned char)jsvStringIteratorGetChar(&l->it);
      }
-     colData = (colData>>((l->img.pixelsPerByteMask-((unsigned)bitOffset&l->img.pixelsPerByteMask))*(unsigned)l->img.bpp)) & l->img.bitMask;
+     colData = (colData>>(8-(l->img.bpp + (bitOffset&7)))) & l->img.bitMask;
    }
    if (l->img.transparentCol!=colData) {
      if (l->img.palettePtr) colData = l->img.palettePtr[colData&l->img.paletteMask];
@@ -1885,7 +1887,7 @@ bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) 
   }
   return false;
 }
-ALWAYS_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l, bool centerImage) {
+ALWAYS_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
   // step values for blitting rotated image
   double vcos = cos(l->rotate);
   double vsin = sin(l->rotate);
@@ -1895,7 +1897,7 @@ ALWAYS_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l, bool centerI
   int iw = (int)(0.5 + l->scale*(l->img.width*fabs(vcos) + l->img.height*fabs(vsin)));
   int ih = (int)(0.5 + l->scale*(l->img.width*fabs(vsin) + l->img.height*fabs(vcos)));
   // if rotating, offset our start position from center
-  if (centerImage) {
+  if (l->center) {
     l->x1 -= iw/2;
     l->y1 -= ih/2;
   }
@@ -2165,7 +2167,8 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       l.it = it;
       l.rotate = rotate;
       l.scale = scale;
-      _jswrap_drawImageLayerInit(&l, centerImage);
+      l.center = centerImage;
+      _jswrap_drawImageLayerInit(&l);
       // scan across image
       for (y = l.y1; y < l.y2; y++) {
         _jswrap_drawImageLayerStartX(&l);
@@ -2195,21 +2198,33 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_drawImages",
   "params" : [
-    ["layers","JsVar","An array of objects {x,y,image} (up to 3)"],
+    ["layers","JsVar","An array of objects {x,y,image,scale,rotate,center} (up to 3)"],
     ["options","JsVar","options for rendering - see below"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
+Draws multiple images *at once* - which
+avoids flicker on unbuffered systems.
 
 ```
-options = {
- x,y,width,height
+layes = [ {
+  {x : int, // x start position
+   y : int, // y start position
+   image : string/object,
+   scale : float, // scale factor, default 1
+   rotate : float, // angle in radians
+   center : bool // center on x,y? default is top left
+   }
+]
+options = { // the area to render. Defaults to rendering entire screen
+ x,y,
+ width,height
 }
 ```
 */
 JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *options) {
-  const int MAXIMAGES = 3;
+  const int MAXIMAGES = 4;
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   GfxDrawImageLayer layers[MAXIMAGES];
   int i,layerCount;
@@ -2253,6 +2268,13 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
         layers[i].y1 = jsvGetIntegerAndUnLock(jsvObjectGetChild(layer,"y",0));
         layers[i].scale = 1; // FIXME
         layers[i].rotate = 0;
+        // rotate, scale
+        layers[i].scale = jsvGetFloatAndUnLock(jsvObjectGetChild(layer,"scale",0));
+        if (!isfinite(layers[i].scale) || layers[i].scale<=0)
+          layers[i].scale=1;
+        layers[i].rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(layer,"rotate",0));
+        if (!isfinite(layers[i].rotate)) layers[i].rotate=0;
+        layers[i].center = jsvGetBoolAndUnLock(jsvObjectGetChild(layer,"center",0));
       } else ok = false;
       jsvUnLock(image);
     } else ok = false;
@@ -2261,7 +2283,8 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
   // If all good, start rendering!
   if (ok) {
     for (i=0;i<layerCount;i++) {
-      _jswrap_drawImageLayerInit(&layers[i], false/*centerImage*/);
+      jsvStringIteratorNew(&layers[i].it, layers[i].img.buffer, (size_t)layers[i].img.bufferOffset);
+      _jswrap_drawImageLayerInit(&layers[i]);
       _jswrap_drawImageLayerSetStart(&layers[i], x, y);
     }
     // scan across image
@@ -2288,10 +2311,13 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
       for (i=0;i<layerCount;i++)
         _jswrap_drawImageLayerNextY(&layers[i]);
     }
+    for (i=0;i<layerCount;i++)
+      jsvStringIteratorFree(&layers[i].it);
   }
   // tidy up
-  for (i=0;i<layerCount;i++)
+  for (i=0;i<layerCount;i++) {
     jsvUnLock(layers[i].img.buffer);
+  }
   return jsvLockAgain(parent);
 }
 
