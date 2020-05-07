@@ -95,15 +95,18 @@ __attribute__((weak)) bool jshSPISendMany(IOEventFlags device, unsigned char *tx
   while (txPtr<count && !jspIsInterrupted()) {
     int data = jshSPISend(device, tx[txPtr++]);
     if (data>=0) {
-      if (rx) rx[rxPtr] = (char)data;
-      rxPtr++;
+      if (rx) rx[rxPtr++] = (char)data;
     }
   }
   // clear the rx buffer
-  while (rxPtr<count && !jspIsInterrupted()) {
-    int data = jshSPISend(device, -1);
-    if (rx) rx[rxPtr] = (char)data;
-    rxPtr++;
+  if (rx) {
+    while (rxPtr<count && !jspIsInterrupted()) {
+      int data = jshSPISend(device, -1);
+      rx[rxPtr++] = (char)data;
+    }
+  } else {
+    // wait for it to finish so we can clear the buffer
+    jshSPIWait(device);
   }
   // call the callback
   if (callback) callback();

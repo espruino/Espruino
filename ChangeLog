@@ -24,6 +24,7 @@
             Graphics.createArrayBuffer now honors `msb:true` if `bpp>8`
             Graphics.asImage: handle >8bpp correctly (fix #1797)
             Graphics.asImage: Allow 'string' output type, reference Graphics buffer if possible
+            STM32: Fix 2v05 regression in hardware SPI.write (RX timeout)
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
