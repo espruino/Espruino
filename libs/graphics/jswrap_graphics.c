@@ -491,12 +491,11 @@ that would have been used when Graphics was initialised.
 */
 JsVar *jswrap_graphics_reset(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  // reset font, which will unreference any custom fonts stored inside the instance
-  jswrap_graphics_setFontSizeX(parent, 1+JSGRAPHICS_FONTSIZE_4X6, false);
   // properly reset state
   graphicsStructResetState(&gfx);
   graphicsSetVar(&gfx); // gfx data changed because modified area
-  return jsvLockAgain(parent);
+  // reset font, which will unreference any custom fonts stored inside the instance
+  return jswrap_graphics_setFontSizeX(parent, 1+JSGRAPHICS_FONTSIZE_4X6, false);
 }
 
 /*JSON{
