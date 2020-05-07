@@ -1876,7 +1876,7 @@ bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) 
        jsvStringIteratorNext(&l->it);
        colData = (colData<<8) | (unsigned char)jsvStringIteratorGetChar(&l->it);
      }
-     colData = (colData>>(8-(l->img.bpp + (bitOffset&7)))) & l->img.bitMask;
+     colData = (colData>>((l->img.pixelsPerByteMask-((unsigned)pixelOffset&l->img.pixelsPerByteMask))*(unsigned)l->img.bpp)) & l->img.bitMask;
    }
    if (l->img.transparentCol!=colData) {
      if (l->img.palettePtr) colData = l->img.palettePtr[colData&l->img.paletteMask];
