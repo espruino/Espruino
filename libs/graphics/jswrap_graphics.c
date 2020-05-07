@@ -2159,6 +2159,12 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     if (true) {
 #endif
       GfxDrawImageLayer l;
+      l.x1 = xPos;
+      l.y1 = yPos;
+      l.img = img;
+      l.it = it;
+      l.rotate = rotate;
+      l.scale = scale;
       _jswrap_drawImageLayerInit(&l, centerImage);
       // scan across image
       for (y = l.y1; y < l.y2; y++) {
