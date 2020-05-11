@@ -46,6 +46,9 @@ print("BOARD "+boardname)
 board = importlib.import_module(boardname)
 pins = board.get_pins()
 # -----------------------------------------------------------------------------------------
+if "boardname" in board.info:
+  boardname = board.info["boardname"]
+  print("BOARDNAME "+boardname)
 
 LINUX = board.chip["family"]=="LINUX"
 EMSCRIPTEN = board.chip["family"]=="EMSCRIPTEN"
