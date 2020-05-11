@@ -1886,7 +1886,7 @@ bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) 
   }
   return false;
 }
-ALWAYS_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
+NO_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
   // step values for blitting rotated image
   double vcos = cos(l->rotate);
   double vsin = sin(l->rotate);
@@ -1908,7 +1908,7 @@ ALWAYS_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
   l->px = centerx - (1 + (l->sx*iw) + (l->sy*ih)) / 2;
   l->py = centery - (1 + (l->sx*ih) - (l->sy*iw)) / 2;
 }
-void _jswrap_drawImageLayerSetStart(GfxDrawImageLayer *l, int x, int y) {
+NO_INLINE void _jswrap_drawImageLayerSetStart(GfxDrawImageLayer *l, int x, int y) {
   int dx = x - l->x1;
   int dy = y - l->y1;
   l->px += l->sx*dx + l->sy*dy;
