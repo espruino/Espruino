@@ -357,7 +357,7 @@ JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
   return conv;
 }
 
-#ifdef SAVE_ON_FLASH_MATH
+#if defined(SAVE_ON_FLASH_MATH) || defined(BANGLEJS)
 #define FFTDATATYPE double
 #else
 #define FFTDATATYPE float
@@ -531,96 +531,6 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   _jswrap_espruino_FFT_setData(arrReal, vReal, hasImagResult?0:vImag, pow2);
   if (hasImagResult)
     _jswrap_espruino_FFT_setData(arrImag, vImag, 0, pow2);
-}
-
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "E",
-  "name" : "interpolate",
-  "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_espruino_interpolate",
-  "params" : [
-    ["array","JsVar","A Typed Array to interpolate between"],
-    ["index","float","Floating point index to access"]
-  ],
-  "return" : ["float","The result of interpolating between (int)index and (int)(index+1)"]
-}
-Interpolate between two adjacent values in the Typed Array
- */
-JsVarFloat jswrap_espruino_interpolate(JsVar *array, JsVarFloat findex) {
-  if (!jsvIsArrayBuffer(array)) return 0;
-  size_t idx = (size_t)findex;
-  JsVarFloat a = findex - (int)idx;
-  if (findex<0) {
-    idx = 0;
-    a = 0;
-  }
-  if (findex>=jsvGetArrayBufferLength(array)-1) {
-    idx = jsvGetArrayBufferLength(array)-1;
-    a = 0;
-  }
-  JsvArrayBufferIterator it;
-  jsvArrayBufferIteratorNew(&it, array, idx);
-  JsVarFloat fa = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorNext(&it);
-  JsVarFloat fb = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorFree(&it);
-  return fa*(1-a) + fb*a;
-}
-
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "E",
-  "name" : "interpolate2d",
-  "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_espruino_interpolate2d",
-  "params" : [
-    ["array","JsVar","A Typed Array to interpolate between"],
-    ["width","int32","Integer 'width' of 2d array"],
-    ["x","float","Floating point X index to access"],
-    ["y","float","Floating point Y index to access"]
-  ],
-  "return" : ["float","The result of interpolating in 2d between the 4 surrounding cells"]
-}
-Interpolate between four adjacent values in the Typed Array, in 2D.
- */
-JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, JsVarFloat y) {
-  if (!jsvIsArrayBuffer(array)) return 0;
-  int yidx = (int)y;
-  JsVarFloat ay = y-yidx;
-  if (y<0) {
-    yidx = 0;
-    ay = 0;
-  }
-
-  JsVarFloat findex = x + (JsVarFloat)(yidx*width);
-  size_t idx = (size_t)findex;
-  JsVarFloat ax = findex-(int)idx;
-  if (x<0) {
-    idx = (size_t)(yidx*width);
-    ax = 0;
-  }
-
-  JsvArrayBufferIterator it;
-  jsvArrayBufferIteratorNew(&it, array, idx);
-
-  JsVarFloat xa,xb;
-  int i;
-
-  xa = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorNext(&it);
-  xb = jsvArrayBufferIteratorGetFloatValue(&it);
-  JsVarFloat ya = xa*(1-ax) + xb*ax;
-
-  for (i=1;i<width;i++) jsvArrayBufferIteratorNext(&it);
-
-  xa = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorNext(&it);
-  xb = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorFree(&it);
-  JsVarFloat yb = xa*(1-ax) + xb*ax;
-
-  return ya*(1-ay) + yb*ay;
 }
 
 /*JSON{

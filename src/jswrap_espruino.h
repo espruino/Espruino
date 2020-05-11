@@ -24,9 +24,6 @@ JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean);
 JsVarFloat jswrap_espruino_convolve(JsVar *a, JsVar *b, int offset);
 void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse);
 
-JsVarFloat jswrap_espruino_interpolate(JsVar *array, JsVarFloat findex);
-JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, JsVarFloat y);
-
 void jswrap_espruino_enableWatchdog(JsVarFloat time, JsVar *isAuto);
 void jswrap_espruino_kickWatchdog();
 /// Return an array of errors based on the current flags

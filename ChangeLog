@@ -27,6 +27,8 @@
             STM32: Fix 2v05 regression in hardware SPI.write (RX timeout)
             Graphics: fix lock leak in g.reset()/g.clear(1)
             Graphics: added drawImages to allow layers of rotated/scaled images to be composited 
+            Remove E.interpolate/2D (not used much, just using flash)
+            Bangle.js: use double math FFT to save a few bytes of flash
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
