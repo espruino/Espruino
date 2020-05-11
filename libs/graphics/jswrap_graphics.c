@@ -1848,11 +1848,14 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
 /// This is for rotating and scaling layers
 typedef struct {
   int x1,y1,x2,y2;
-  double rotate,scale;
-  bool center;
+  double rotate; // radians
+  double scale; // 1 = 1:1, 2 = big
+  bool center; // center on x1/y1 (which are then offset)
+  bool repeat; // tile the image
   GfxDrawImageInfo img;
   // for rendering
   JsvStringIterator it;
+  int mx,my; //< max - width and height << 8
   int sx,sy; //< iterator X increment
   int px,py; //< y iterator position
   int qx,qy; //< x iterator position
@@ -1860,9 +1863,9 @@ typedef struct {
 
 bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) {
   unsigned int colData = 0;
-  int imagex = (l->qx+127)>>8;
-  int imagey = (l->qy+127)>>8;
-  if (imagex>=0 && imagey>=0 && imagex<l->img.width && imagey<l->img.height) {
+  if (l->qx>=0 && l->qy>=0 && l->qx<l->mx && l->qy<l->my) {
+    int imagex = (l->qx+127)>>8;
+    int imagey = (l->qy+127)>>8;
    // TODO: getter callback for speed?
    if (l->img.bpp==8) { // fast path for 8 bits
      jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+imagex+(imagey*l->img.stride)));
@@ -1887,6 +1890,9 @@ bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) 
   return false;
 }
 NO_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
+  // image max
+  l->mx = l->img.width<<8;
+  l->my = l->img.height<<8;
   // step values for blitting rotated image
   double vcos = cos(l->rotate);
   double vsin = sin(l->rotate);
@@ -1907,6 +1913,14 @@ NO_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
   int centery = l->img.height*128;
   l->px = centerx - (1 + (l->sx*iw) + (l->sy*ih)) / 2;
   l->py = centery - (1 + (l->sx*ih) - (l->sy*iw)) / 2;
+  // handle repetition
+  if (l->repeat) {
+    // for the range we're in, it's quicker/easier than modulo
+    while (l->px < 0) l->px += l->mx;
+    while (l->px >= l->mx) l->px -= l->mx;
+    while (l->py < 0) l->py += l->my;
+    while (l->py >= l->my) l->py -= l->my;
+  }
 }
 NO_INLINE void _jswrap_drawImageLayerSetStart(GfxDrawImageLayer *l, int x, int y) {
   int dx = x - l->x1;
@@ -1914,7 +1928,7 @@ NO_INLINE void _jswrap_drawImageLayerSetStart(GfxDrawImageLayer *l, int x, int y
   l->px += l->sx*dx + l->sy*dy;
   l->py += l->sx*dy - l->sy*dx;
 }
-ALWAYS_INLINE void _jswrap_drawImageLayerStartX(GfxDrawImageLayer *l) {
+NO_INLINE void _jswrap_drawImageLayerStartX(GfxDrawImageLayer *l) {
   l->qx = l->px;
   l->qy = l->py;
 }
@@ -1922,9 +1936,26 @@ ALWAYS_INLINE void _jswrap_drawImageLayerNextX(GfxDrawImageLayer *l) {
   l->qx += l->sx;
   l->qy -= l->sy;
 }
-ALWAYS_INLINE void _jswrap_drawImageLayerNextY(GfxDrawImageLayer *l) {
+// Handle repeats
+ALWAYS_INLINE void _jswrap_drawImageLayerNextXRepeat(GfxDrawImageLayer *l) {
+  if (l->repeat) {
+    // for the range we're in, it's quicker/easier than modulo
+    if (l->qx < 0) l->qx += l->mx;
+    if (l->qx >= l->mx) l->qx -= l->mx;
+    if (l->qy < 0) l->qy += l->my;
+    if (l->qy >= l->my) l->qy -= l->my;
+  }
+}
+NO_INLINE void _jswrap_drawImageLayerNextY(GfxDrawImageLayer *l) {
   l->px += l->sy;
   l->py += l->sx;
+  if (l->repeat) {
+    // for the range we're in, it's quicker/easier than modulo
+    if (l->px < 0) l->px += l->mx;
+    if (l->px >= l->mx) l->px -= l->mx;
+    if (l->py < 0) l->py += l->my;
+    if (l->py >= l->my) l->py -= l->my;
+  }
 }
 
 
@@ -2214,7 +2245,9 @@ layers = [ {
    scale : float, // scale factor, default 1
    rotate : float, // angle in radians
    center : bool // center on x,y? default is top left
-   }
+   repeat : should this image be repeated (tiled?)
+   nobounds : bool // if true, the bounds of the image are not used to work out the default area to draw
+  }
 ]
 options = { // the area to render. Defaults to rendering just enough to cover what's requested
  x,y,
@@ -2251,12 +2284,15 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
         layers[i].rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(layer,"rotate",0));
         if (!isfinite(layers[i].rotate)) layers[i].rotate=0;
         layers[i].center = jsvGetBoolAndUnLock(jsvObjectGetChild(layer,"center",0));
+        layers[i].repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(layer,"repeat",0));
         _jswrap_drawImageLayerInit(&layers[i]);
         // add the calculated bounds to our default bounds
-        if (layers[i].x1<x) x=layers[i].x1;
-        if (layers[i].y1<y) y=layers[i].y1;
-        if (layers[i].x2>x+width) width=layers[i].x2-x;
-        if (layers[i].y2>y+height) height=layers[i].y2-y;
+        if (!jsvGetBoolAndUnLock(jsvObjectGetChild(layer,"nobounds",0))) {
+          if (layers[i].x1<x) x=layers[i].x1;
+          if (layers[i].y1<y) y=layers[i].y1;
+          if (layers[i].x2>x+width) width=layers[i].x2-x;
+          if (layers[i].y2>y+height) height=layers[i].y2-y;
+        }
       } else ok = false;
       jsvUnLock(image);
     } else ok = false;
@@ -2309,8 +2345,10 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
         if (solid)
           graphicsSetPixel(&gfx, xi+x, yi+y, colData);
         // next in layers!
-        for (i=0;i<layerCount;i++)
+        for (i=0;i<layerCount;i++) {
           _jswrap_drawImageLayerNextX(&layers[i]);
+          _jswrap_drawImageLayerNextXRepeat(&layers[i]);
+        }
       }
       for (i=0;i<layerCount;i++)
         _jswrap_drawImageLayerNextY(&layers[i]);
