@@ -6,7 +6,7 @@
   var W = g.getWidth();
   var H = g.getHeight();
   if (title) {
-	title = loc.translate(title);
+	  title = loc.translate(title);
     g.drawString(title,W/2,34);
     var w = (g.stringWidth(title)+16)/2;
     g.fillRect((W/2)-w,44,(W/2)+w,45);
