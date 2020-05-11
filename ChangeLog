@@ -29,6 +29,7 @@
             Graphics: added drawImages to allow layers of rotated/scaled images to be composited 
             Remove E.interpolate/2D (not used much, just using flash)
             Bangle.js: use double math FFT to save a few bytes of flash
+            Storage.writeJSON (fix memory leak)
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

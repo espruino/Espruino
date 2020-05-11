@@ -244,7 +244,9 @@ This is equivalent to: `require("Storage").write(name, JSON.stringify(data))`
 */
 bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
   JsVar *d = jswrap_json_stringify(data,0,0);
-  return jsfWriteFile(jsfNameFromVar(name), d, JSFF_NONE, 0, 0);
+  bool r = jsfWriteFile(jsfNameFromVar(name), d, JSFF_NONE, 0, 0);
+  jsvUnLock(d);
+  return r;
 }
 
 /*JSON{
