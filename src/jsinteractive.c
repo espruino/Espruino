@@ -269,11 +269,10 @@ void jsiConsolePrintStringVarUntilEOL(JsVar *v, size_t fromCharacter, size_t max
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, fromCharacter);
   while (jsvStringIteratorHasChar(&it) && chars<maxChars) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch == '\n') break;
     jsiConsolePrintChar(ch);
     chars++;
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   if (andBackup) {
@@ -288,11 +287,10 @@ void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, size_t fromCharacter, cha
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, fromCharacter);
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch == '\n') jsiConsolePrintChar('\r');
     jsiConsolePrintChar(ch);
     if (ch == '\n' && newLineCh) jsiConsolePrintChar(newLineCh);
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
 }

@@ -74,6 +74,9 @@ static ALWAYS_INLINE char jsvStringIteratorGetChar(JsvStringIterator *it) {
   return (char)READ_FLASH_UINT8(&it->ptr[it->charIdx]);
 }
 
+/// Gets the current character (or 0) and increment iterator. Not inlined for speed
+char jsvStringIteratorGetCharAndNext(JsvStringIterator *it);
+
 /// Gets the current (>=0) character (or -1)
 int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it);
 

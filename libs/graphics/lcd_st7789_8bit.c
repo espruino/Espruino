@@ -327,8 +327,7 @@ void lcdST7789_blit1Bit(int x, int y, int w, int h, int scale, JsvStringIterator
   if (y1>=LCD_BUFFER_HEIGHT) y1-=LCD_BUFFER_HEIGHT;
   if (y2>=LCD_BUFFER_HEIGHT) y2-=LCD_BUFFER_HEIGHT;
   lcdST7789_blitStartRaw(x,y1, x+(w*scale)-1,(y2>y1)?y2:239);
-  int bitData = jsvStringIteratorGetChar(pixels);
-  jsvStringIteratorNext(pixels);
+  int bitData = jsvStringIteratorGetCharAndNext(pixels);
   int bitCnt = 8;
   for (int y=0;y<h;y++) {
     JsvStringIterator lastPixels;
@@ -346,8 +345,7 @@ void lcdST7789_blit1Bit(int x, int y, int w, int h, int scale, JsvStringIterator
         bitData <<= 1;
         bitCnt--;
         if (bitCnt==0) {
-          bitData = jsvStringIteratorGetChar(pixels);
-          jsvStringIteratorNext(pixels);
+          bitData = jsvStringIteratorGetCharAndNext(pixels);
           bitCnt = 8;
         }
         for (int s=0;s<scale;s++)
@@ -383,28 +381,24 @@ void lcdST7789_blit8Bit(int x, int y, int w, int h, int scale, JsvStringIterator
       }
       if (scale==1) {
         for (int x=0;x<w;x++) {
-          lcdST7789_blitPixel(palette[(uint8_t)jsvStringIteratorGetChar(pixels)]);
-          jsvStringIteratorNext(pixels);
+          lcdST7789_blitPixel(palette[(uint8_t)jsvStringIteratorGetCharAndNext(pixels)]);
         }
       } else if (scale==2) {
         for (int x=0;x<w;x++) {
-          uint16_t c = palette[(uint8_t)jsvStringIteratorGetChar(pixels)];
-          jsvStringIteratorNext(pixels);
+          uint16_t c = palette[(uint8_t)jsvStringIteratorGetCharAndNext(pixels)];
           lcdST7789_blitPixel(c);
           lcdST7789_blitPixel(c);
         }
       } else if (scale==3) {
         for (int x=0;x<w;x++) {
-          uint16_t c = palette[(uint8_t)jsvStringIteratorGetChar(pixels)];
-          jsvStringIteratorNext(pixels);
+          uint16_t c = palette[(uint8_t)jsvStringIteratorGetCharAndNext(pixels)];
           lcdST7789_blitPixel(c);
           lcdST7789_blitPixel(c);
           lcdST7789_blitPixel(c);
         }
       } else { // fallback for not 1/2/3 scale
         for (int x=0;x<w;x++) {
-          uint16_t c = palette[(uint8_t)jsvStringIteratorGetChar(pixels)];
-          jsvStringIteratorNext(pixels);
+          uint16_t c = palette[(uint8_t)jsvStringIteratorGetCharAndNext(pixels)];
           for (int s=0;s<scale;s++)
             lcdST7789_blitPixel(c);
         }

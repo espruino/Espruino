@@ -66,9 +66,8 @@ bool jsvIterateCallback(
     JsvStringIterator it;
     jsvStringIteratorNew(&it, data, 0);
     while (jsvStringIteratorHasChar(&it) && ok) {
-      char ch = jsvStringIteratorGetChar(&it);
+      char ch = jsvStringIteratorGetCharAndNext(&it);
       callback(ch, callbackData);
-      jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&it);
   }
@@ -285,11 +284,19 @@ void jsvStringIteratorClone(JsvStringIterator *dstit, JsvStringIterator *it) {
   }
 }
 
+char jsvStringIteratorGetCharAndNext(JsvStringIterator *it) {
+  char ch = jsvStringIteratorGetChar(it);
+  jsvStringIteratorNextInline(it);
+  return ch;
+}
+
+
 /// Gets the current (>=0) character (or -1)
 int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it) {
   if (!it->ptr || it->charIdx>=it->charsInVar) return -1;
   return (int)(unsigned char)READ_FLASH_UINT8(&it->ptr[it->charIdx]);
 }
+
 
 void jsvStringIteratorSetChar(JsvStringIterator *it, char c) {
   if (jsvStringIteratorHasChar(it))
@@ -378,8 +385,7 @@ void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str, size_t sta
   JsvStringIterator sit;
   jsvStringIteratorNew(&sit, str, startIdx);
   while (jsvStringIteratorHasChar(&sit)) {
-    jsvStringIteratorAppend(it, jsvStringIteratorGetChar(&sit));
-    jsvStringIteratorNext(&sit);
+    jsvStringIteratorAppend(it, jsvStringIteratorGetCharAndNext(&sit));
   }
   jsvStringIteratorFree(&sit);
 }

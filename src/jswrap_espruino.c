@@ -723,8 +723,7 @@ a copy or other allocation. The same applies if there's a single argument which
 is itself a flat string.
  */
 void (_jswrap_espruino_toString_char)(int ch,  JsvStringIterator *it) {
-  jsvStringIteratorSetChar(it, (char)ch);
-  jsvStringIteratorNext(it);
+  jsvStringIteratorSetCharAndNext(it, (char)ch);
 }
 
 JsVar *jswrap_espruino_toString(JsVar *args) {

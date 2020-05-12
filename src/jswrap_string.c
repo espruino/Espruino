@@ -347,10 +347,9 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
         JsvStringIterator src;
         jsvStringIteratorNew(&src, replace, 0);
         while (jsvStringIteratorHasChar(&src)) {
-          char ch = jsvStringIteratorGetChar(&src);
+          char ch = jsvStringIteratorGetCharAndNext(&src);
           if (ch=='$') {
-            jsvStringIteratorNext(&src);
-            ch = jsvStringIteratorGetChar(&src);
+            ch = jsvStringIteratorGetCharAndNext(&src);
             JsVar *group = 0;
             if (ch>'0' && ch<='9')
               group = jsvGetArrayItem(match, ch-'0');
@@ -364,7 +363,6 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
           } else {
             jsvStringIteratorAppend(&dst, ch);
           }
-          jsvStringIteratorNext(&src);
         }
         jsvStringIteratorFree(&src);
       }
@@ -594,10 +592,9 @@ JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
   jsvStringIteratorNew(&itdst, res, 0);
 
   while (jsvStringIteratorHasChar(&itsrc)) {
-    char ch = jsvStringIteratorGetChar(&itsrc);
+    char ch = jsvStringIteratorGetCharAndNext(&itsrc);
     ch = upper ? jsvStringCharToUpper(ch) : jsvStringCharToLower(ch);
     jsvStringIteratorAppend(&itdst, ch);
-    jsvStringIteratorNext(&itsrc);
   }
 
   jsvStringIteratorFree(&itsrc);
@@ -628,12 +625,12 @@ JsVar *jswrap_string_trim(JsVar *parent) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, s, 0);
   while (jsvStringIteratorHasChar(&it)) {
-    bool ws = isWhitespace(jsvStringIteratorGetChar(&it));
+    size_t idx = jsvStringIteratorGetIndex(&it);
+    bool ws = isWhitespace(jsvStringIteratorGetCharAndNext(&it));
     if (!ws) {
-      if (end<0) start = (unsigned int)jsvStringIteratorGetIndex(&it);
-      end = (int)jsvStringIteratorGetIndex(&it); // last
+      if (end<0) start = (unsigned int)idx;
+      end = (int)idx; // last
     }
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   // work out length

@@ -939,8 +939,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
         JsvStringIterator it;
         jsvStringIteratorClone(&it, &lex->tokenStart.it);
         while (jsvStringIteratorGetIndex(&it)+1 < jsvStringIteratorGetIndex(&lex->it)) {
-          jsvStringIteratorSetCharAndNext(&dstit, jsvStringIteratorGetChar(&it));
-          jsvStringIteratorNext(&it);
+          jsvStringIteratorSetCharAndNext(&dstit, jsvStringIteratorGetCharAndNext(&it));
         }
         jsvStringIteratorFree(&it);
       } else { // single char for the token
@@ -973,8 +972,7 @@ JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo) {
       JsvStringIterator it;
       jsvStringIteratorClone(&it, &charFrom->it);
       while (jsvStringIteratorHasChar(&it) && (--maxLength>0)) {
-        *(flatPtr++) = jsvStringIteratorGetChar(&it);
-        jsvStringIteratorNext(&it);
+        *(flatPtr++) = jsvStringIteratorGetCharAndNext(&it);
       }
       jsvStringIteratorFree(&it);
       return var;
@@ -996,7 +994,7 @@ JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   JsvStringIterator it;
   jsvStringIteratorClone(&it, &charFrom->it);
   while (jsvStringIteratorHasChar(&it) && (--maxLength>0)) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (blockChars >= jsvGetMaxCharactersInVar(block)) {
       jsvSetCharactersInVar(block, blockChars);
       JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
@@ -1008,7 +1006,6 @@ JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo) {
       blockChars=0; // it's new, so empty
     }
     block->varData.str[blockChars++] = ch;
-    jsvStringIteratorNext(&it);
   }
   jsvSetCharactersInVar(block, blockChars);
   jsvUnLock(block);
@@ -1043,12 +1040,11 @@ void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void
   JsvStringIterator it;
   jsvStringIteratorNew(&it, code, 0);
   while (jsvStringIteratorHasChar(&it)) {
-    unsigned char ch = (unsigned char)jsvStringIteratorGetChar(&it);
+    unsigned char ch = (unsigned char)jsvStringIteratorGetCharAndNext(&it);
     if (jslNeedSpaceBetween(lastch, ch))
       user_callback(" ", user_data);
     jslFunctionCharAsString(ch, buf, sizeof(buf));
     user_callback(buf, user_data);
-    jsvStringIteratorNext(&it);
     lastch = ch;
   }
   jsvStringIteratorFree(&it);
@@ -1091,7 +1087,7 @@ void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, 
   jsvStringIteratorNew(&it, lex->sourceVar, startOfLine);
   unsigned char lastch = 0;
   while (jsvStringIteratorHasChar(&it) && chars<60) {
-    unsigned char ch = (unsigned char)jsvStringIteratorGetChar(&it);
+    unsigned char ch = (unsigned char)jsvStringIteratorGetCharAndNext(&it);
     if (ch == '\n') break;
     if (jslNeedSpaceBetween(lastch, ch)) {
       col++;
@@ -1104,7 +1100,6 @@ void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, 
     user_callback(buf, user_data);
     chars++;
     lastch = ch;
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
 

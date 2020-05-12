@@ -1097,8 +1097,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
           ext = ext2;
           nChars = 0;
         }
-        ext->varData.str[nChars++] = jsvStringIteratorGetChar(&it);
-        jsvStringIteratorNext(&it);
+        ext->varData.str[nChars++] = jsvStringIteratorGetCharAndNext(&it);
       }
       jsvStringIteratorFree(&it);
       if (ext) {
@@ -1200,8 +1199,8 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
     jsvStringIteratorNew(&ita, a, 0);
     jsvStringIteratorNew(&itb, b, 0);
     while (true) {
-      char a = jsvStringIteratorGetChar(&ita);
-      char b = jsvStringIteratorGetChar(&itb);
+      char a = jsvStringIteratorGetCharAndNext(&ita);
+      char b = jsvStringIteratorGetCharAndNext(&itb);
       if (a != b) {
         jsvStringIteratorFree(&ita);
         jsvStringIteratorFree(&itb);
@@ -1212,8 +1211,6 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
         jsvStringIteratorFree(&itb);
         return true;
       }
-      jsvStringIteratorNext(&ita);
-      jsvStringIteratorNext(&itb);
     }
     // we never get here
     return false; // make compiler happy
@@ -1331,8 +1328,7 @@ size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len
       jsvStringIteratorFree(&it);
       return len;
     }
-    *(str++) = jsvStringIteratorGetChar(&it);
-    jsvStringIteratorNext(&it);
+    *(str++) = jsvStringIteratorGetCharAndNext(&it);
   }
   jsvStringIteratorFree(&it);
   return len-l;
@@ -1349,8 +1345,7 @@ void jsvSetString(JsVar *v, const char *str, size_t len) {
   jsvStringIteratorNew(&it, v, 0);
   size_t i;
   for (i=0;i<len;i++) {
-    jsvStringIteratorSetChar(&it, str[i]);
-    jsvStringIteratorNext(&it);
+    jsvStringIteratorSetCharAndNext(&it, str[i]);
   }
   jsvStringIteratorFree(&it);
 }
@@ -1422,11 +1417,7 @@ JsVar *jsvAsFlatString(JsVar *var) {
     jsvStringIteratorNew(&src, str, 0);
     jsvStringIteratorNew(&dst, flat, 0);
     while (len--) {
-      jsvStringIteratorSetChar(&dst, jsvStringIteratorGetChar(&src));
-      if (len>0) {
-        jsvStringIteratorNext(&src);
-        jsvStringIteratorNext(&dst);
-      }
+      jsvStringIteratorSetCharAndNext(&dst, jsvStringIteratorGetCharAndNext(&src));
     }
     jsvStringIteratorFree(&src);
     jsvStringIteratorFree(&dst);
@@ -1557,8 +1548,7 @@ size_t jsvGetLinesInString(JsVar *v) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, 0);
   while (jsvStringIteratorHasChar(&it)) {
-    if (jsvStringIteratorGetChar(&it)=='\n') lines++;
-    jsvStringIteratorNext(&it);
+    if (jsvStringIteratorGetCharAndNext(&it)=='\n') lines++;
   }
   jsvStringIteratorFree(&it);
   return lines;
@@ -1571,11 +1561,10 @@ size_t jsvGetCharsOnLine(JsVar *v, size_t line) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, 0);
   while (jsvStringIteratorHasChar(&it)) {
-    if (jsvStringIteratorGetChar(&it)=='\n') {
+    if (jsvStringIteratorGetCharAndNext(&it)=='\n') {
       currentLine++;
       if (currentLine > line) break;
     } else if (currentLine==line) chars++;
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   return chars;
@@ -1591,7 +1580,7 @@ void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, 0);
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (n==charIdx) {
       jsvStringIteratorFree(&it);
       *line = y;
@@ -1603,7 +1592,6 @@ void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col) {
       x=1; y++;
     }
     n++;
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   // uh-oh - not found
@@ -1619,7 +1607,7 @@ size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, 0);
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if ((y==line && x>=col) || y>line) {
       jsvStringIteratorFree(&it);
       return (y>line) ? (n-1) : n;
@@ -1629,7 +1617,6 @@ size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col) {
       x=1; y++;
     }
     n++;
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   return n;
@@ -1712,9 +1699,8 @@ void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxL
   JsvStringIterator it;
   jsvStringIteratorNewConst(&it, str, stridx);
   while (jsvStringIteratorHasChar(&it) && (maxLength-->0)) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     jsvStringIteratorAppend(&dst, ch);
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   jsvStringIteratorFree(&dst);
@@ -1798,7 +1784,7 @@ bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
   int chars=0;
   while (jsvStringIteratorHasChar(&it)) {
     chars++;
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='.' && allowDecimalPoint) {
       allowDecimalPoint = false; // there can be only one
     } else {
@@ -1808,7 +1794,6 @@ bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
         return false;
       }
     }
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   return chars>0;
@@ -1825,7 +1810,7 @@ bool jsvIsStringNumericStrict(const JsVar *var) {
   int chars = 0;
   while (jsvStringIteratorHasChar(&it)) {
     chars++;
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (!isNumeric(ch)) {
       // test for leading zero ensures int_to_string(string_to_int(var))==var
       jsvStringIteratorFree(&it);
@@ -1833,7 +1818,6 @@ bool jsvIsStringNumericStrict(const JsVar *var) {
     }
     if (!hadNonZero && ch=='0') hasLeadingZero=true;
     if (ch!='0') hadNonZero=true;
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   return chars>0 && (!hasLeadingZero || chars==1);
@@ -3988,8 +3972,7 @@ JsVar *jsvStringTrimRight(JsVar *srcString) {
   jsvStringIteratorNew(&dst, dstString, 0);
   int spaces = 0;
   while (jsvStringIteratorHasChar(&src)) {
-    char ch = jsvStringIteratorGetChar(&src);
-    jsvStringIteratorNext(&src);
+    char ch = jsvStringIteratorGetCharAndNext(&src);
 
     if (ch==' ') spaces++;
     else if (ch=='\n') {

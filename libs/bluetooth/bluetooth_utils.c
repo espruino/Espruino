@@ -153,10 +153,8 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
     if (expectedLength==16 && jsvStringIteratorGetChar(&it)=='-')
       jsvStringIteratorNext(&it);
     // Read a byte
-    char hi = jsvStringIteratorGetChar(&it);
-    jsvStringIteratorNext(&it);
-    char lo = jsvStringIteratorGetChar(&it);
-    jsvStringIteratorNext(&it);
+    char hi = jsvStringIteratorGetCharAndNext(&it);
+    char lo = jsvStringIteratorGetCharAndNext(&it);
     int v = hexToByte(hi,lo);
     if (v<0) {
       jsvStringIteratorFree(&it);

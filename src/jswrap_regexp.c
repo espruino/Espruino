@@ -397,8 +397,7 @@ bool jswrap_regexp_hasFlag(JsVar *parent, char flag) {
     JsvStringIterator it;
     jsvStringIteratorNew(&it, flags, 0);
     while (jsvStringIteratorHasChar(&it)) {
-      has |= jsvStringIteratorGetChar(&it)==flag;
-      jsvStringIteratorNext(&it);
+      has |= jsvStringIteratorGetCharAndNext(&it)==flag;
     }
     jsvStringIteratorFree(&it);
   }

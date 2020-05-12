@@ -763,13 +763,12 @@ void vcbprintf(
           jsvStringIteratorNew(&it, v, 0);
           // OPT: this could be faster than it is (sending whole blocks at once)
           while (jsvStringIteratorHasChar(&it)) {
-            buf[0] = jsvStringIteratorGetChar(&it);
+            buf[0] = jsvStringIteratorGetCharAndNext(&it);
             if (quoted) {
               user_callback(escapeCharacter(buf[0], isJSONStyle), user_data);
             } else {
               user_callback(buf,user_data);
             }
-            jsvStringIteratorNext(&it);
           }
           jsvStringIteratorFree(&it);
           jsvUnLock(v);

@@ -235,11 +235,10 @@ bool jswrap_isNaN(JsVar *v) {
     JsvStringIterator it;
     jsvStringIteratorNew(&it,v,0);
     while (jsvStringIteratorHasChar(&it)) {
-      if (!isWhitespace(jsvStringIteratorGetChar(&it))) {
+      if (!isWhitespace(jsvStringIteratorGetCharAndNext(&it))) {
         allWhiteSpace = false;
         break;
       }
-      jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&it);
     if (allWhiteSpace) return false;
@@ -363,8 +362,7 @@ JsVar *jswrap_atob(JsVar *base64Data) {
     int i, valid=0;
     for (i=0;i<4;i++) {
       if (jsvStringIteratorHasChar(&itsrc)) {
-        int sextet = jswrap_atob_decode(jsvStringIteratorGetChar(&itsrc));
-        jsvStringIteratorNext(&itsrc);
+        int sextet = jswrap_atob_decode(jsvStringIteratorGetCharAndNext(&itsrc));
         if (sextet>=0) {
           triple |= (unsigned int)(sextet) << ((3-i)*6);
           valid=i;
@@ -405,7 +403,7 @@ JsVar *jswrap_encodeURIComponent(JsVar *arg) {
     JsvStringIterator dst;
     jsvStringIteratorNew(&dst, result, 0);
     while (jsvStringIteratorHasChar(&it)) {
-      char ch = jsvStringIteratorGetChar(&it);
+      char ch = jsvStringIteratorGetCharAndNext(&it);
       if (isAlpha(ch) || isNumeric(ch) ||
           ch=='-' || // _ in isAlpha
           ch=='.' ||
@@ -423,7 +421,6 @@ JsVar *jswrap_encodeURIComponent(JsVar *arg) {
         d = ((unsigned)ch)&15;
         jsvStringIteratorAppend(&dst, (char)((d>9)?('A'+d-10):('0'+d)));
       }
-      jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&dst);
     jsvStringIteratorFree(&it);
@@ -454,7 +451,7 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg) {
     JsvStringIterator dst;
     jsvStringIteratorNew(&dst, result, 0);
     while (jsvStringIteratorHasChar(&it)) {
-      char ch = jsvStringIteratorGetChar(&it);
+      char ch = jsvStringIteratorGetCharAndNext(&it);
       if (ch>>7) {
         jsExceptionHere(JSET_ERROR, "ASCII only\n");
         break;
@@ -462,10 +459,8 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg) {
       if (ch!='%') {
         jsvStringIteratorAppend(&dst, ch);
       } else {
-        jsvStringIteratorNext(&it);
-        int hi = jsvStringIteratorGetChar(&it);
-        jsvStringIteratorNext(&it);
-        int lo = jsvStringIteratorGetChar(&it);
+        int hi = jsvStringIteratorGetCharAndNext(&it);
+        int lo = jsvStringIteratorGetCharAndNext(&it);
         int v = (char)hexToByte(hi,lo);
         if (v<0) {
           jsExceptionHere(JSET_ERROR, "Invalid URI\n");
@@ -474,7 +469,6 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg) {
         ch = (char)v;
         jsvStringIteratorAppend(&dst, ch);
       }
-      jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&dst);
     jsvStringIteratorFree(&it);

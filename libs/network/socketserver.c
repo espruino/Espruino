@@ -100,7 +100,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
   JsvStringIterator it;
   jsvStringIteratorNew(&it, *receiveData, 0);
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch == '\r') {
       if (newlineIdx==0) newlineIdx=1;
       else if (newlineIdx==2) newlineIdx=3;
@@ -111,7 +111,6 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
         break;
       }
     } else newlineIdx=0;
-    jsvStringIteratorNext(&it);
     strIdx++;
   }
   jsvStringIteratorFree(&it);
@@ -131,7 +130,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
   //jsiConsolePrintStringVar(receiveData);
   jsvStringIteratorNew(&it, *receiveData, 0);
     while (jsvStringIteratorHasChar(&it)) {
-      char ch = jsvStringIteratorGetChar(&it);
+      char ch = jsvStringIteratorGetCharAndNext(&it);
       if (ch==' ' || ch=='\r') {
         if (firstSpace<0) firstSpace = strIdx;
         else if (secondSpace<0) secondSpace = strIdx;
@@ -158,8 +157,6 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
       if (ch == '\r' || ch == '\n') {
         lastLineStart = strIdx+1;
       }
-
-      jsvStringIteratorNext(&it);
       strIdx++;
     }
     jsvStringIteratorFree(&it);
@@ -198,8 +195,7 @@ size_t httpStringGet(JsVar *v, char *str, size_t len) {
       jsvStringIteratorFree(&it);
       return len;
     }
-    *(str++) = jsvStringIteratorGetChar(&it);
-    jsvStringIteratorNext(&it);
+    *(str++) = jsvStringIteratorGetCharAndNext(&it);
   }
   jsvStringIteratorFree(&it);
   return len-l;

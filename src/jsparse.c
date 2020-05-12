@@ -1378,9 +1378,8 @@ JsVar *jspeTemplateLiteral() {
       jsvStringIteratorNew(&it, template, 0);
       jsvStringIteratorNew(&dit, a, 0);
       while (jsvStringIteratorHasChar(&it)) {
-        char ch = jsvStringIteratorGetChar(&it);
+        char ch = jsvStringIteratorGetCharAndNext(&it);
         if (ch=='$') {
-          jsvStringIteratorNext(&it);
           ch = jsvStringIteratorGetChar(&it);
           if (ch=='{') {
             // Now parse out the expression
@@ -1391,8 +1390,7 @@ JsVar *jspeTemplateLiteral() {
             JsvStringIterator eit;
             jsvStringIteratorNew(&eit, expr, 0);
             while (jsvStringIteratorHasChar(&it)) {
-              ch = jsvStringIteratorGetChar(&it);
-              jsvStringIteratorNext(&it);
+              ch = jsvStringIteratorGetCharAndNext(&it);
               if (ch=='{') brackets++;
               if (ch=='}') {
                 brackets--;
@@ -1411,7 +1409,6 @@ JsVar *jspeTemplateLiteral() {
           }
         } else {
           jsvStringIteratorAppend(&dit, ch);
-          jsvStringIteratorNext(&it);
         }
       }
       jsvStringIteratorFree(&it);
@@ -1643,9 +1640,8 @@ NO_INLINE JsVar *jspeFactor() {
     jsvStringIteratorNew(&it, regex, 0);
     while (jsvStringIteratorHasChar(&it)) {
       regexLen++;
-      if (jsvStringIteratorGetChar(&it)=='/')
+      if (jsvStringIteratorGetCharAndNext(&it)=='/')
         regexEnd = regexLen;
-      jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&it);
     JsVar *flags = 0;

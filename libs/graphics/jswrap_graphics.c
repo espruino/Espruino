@@ -402,7 +402,7 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
   // First iterate and work out width and height
   jsvStringIteratorNew(&it,data,0);
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
       if (x==0 && y==0) startCharacter = 1; // ignore first character
       x=0;
@@ -412,7 +412,6 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
       x++;
       if (x>width) width=x;
     }
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   // Sorted - now create the object, set it up and create the buffer
@@ -432,7 +431,7 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
   y=0;
   jsvStringIteratorNew(&it,data,startCharacter);
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
       x=0;
       y++;
@@ -446,7 +445,6 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
       }
       x++;
     }
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   jsvObjectSetChildAndUnLock(img, "buffer", buffer);
@@ -1369,11 +1367,10 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
       x = startx;
       y += customHeight;
-      jsvStringIteratorNext(&it);
       continue;
     }
     if (font == JSGRAPHICS_FONTSIZE_VECTOR) {
@@ -1401,8 +1398,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
           JsvStringIterator wit;
           jsvStringIteratorNew(&wit, customWidth, 0);
           while (jsvStringIteratorHasChar(&wit) && (int)jsvStringIteratorGetIndex(&wit)<(ch-customFirstChar)) {
-            bmpOffset += (unsigned char)jsvStringIteratorGetChar(&wit);
-            jsvStringIteratorNext(&wit);
+            bmpOffset += (unsigned char)jsvStringIteratorGetCharAndNext(&wit);
           }
           width = (unsigned char)jsvStringIteratorGetChar(&wit);
           jsvStringIteratorFree(&wit);
@@ -1441,7 +1437,6 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
       x += width*scale;
     }
     if (jspIsInterrupted()) break;
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   jsvUnLock3(str, customBitmap, customWidth);
@@ -2047,8 +2042,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         for (x=0;x<img.width;x++) {
           // Get the data we need...
           while (bits < img.bpp) {
-            colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
-            jsvStringIteratorNext(&it);
+            colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetCharAndNext(&it));
             bits += 8;
           }
           // extract just the bits we want
@@ -2083,8 +2077,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         for (x=0;x<img.width;x++) {
           // Get the data we need...
           while (bits < img.bpp) {
-            colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
-            jsvStringIteratorNext(&it);
+            colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetCharAndNext(&it));
             bits += 8;
           }
           // extract just the bits we want
@@ -2155,8 +2148,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
             for (x=0;x<img.width;x++) {
               // Get the data we need...
               while (bits < img.bpp) {
-                colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
-                jsvStringIteratorNext(&it);
+                colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetCharAndNext(&it));
                 bits += 8;
               }
               // extract just the bits we want
