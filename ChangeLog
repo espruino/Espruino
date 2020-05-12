@@ -32,6 +32,7 @@
             Storage.writeJSON (fix memory leak)
             dump() is now aware of pretokenised code (fix #1821)
             Merge jsvStringIteratorGetChar + jsvStringIteratorNext into jsvStringIteratorGetCharAndNext (fix #1816)
+            Fix 2v05 regression that stopped process.uncaughtException from working (had been moved to E.uncaughtException)
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

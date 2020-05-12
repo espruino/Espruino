@@ -1161,7 +1161,7 @@ void jsiCheckErrors() {
   bool reportedError = false;
   JsVar *exception = jspGetException();
   if (exception) {
-    if (jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"uncaughtException", 1, &exception)) {
+    if (jsiExecuteEventCallbackOn("process", JS_EVENT_PREFIX"uncaughtException", 1, &exception)) {
       jsvUnLock(exception);
       exception = 0;
     }
