@@ -222,21 +222,7 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
         if (jsvIsFunctionReturn(var))
           user_callback("return ", user_data);
         // reconstruct the tokenised output into something more readable
-        char buf[32];
-        unsigned char lastch = 0;
-        JsvStringIterator it;
-        jsvStringIteratorNew(&it, codeVar, 0);
-        while (jsvStringIteratorHasChar(&it)) {
-          unsigned char ch = (unsigned char)jsvStringIteratorGetChar(&it);
-          if (jslNeedSpaceBetween(lastch, ch))
-            user_callback(" ", user_data);
-          jslFunctionCharAsString(ch, buf, sizeof(buf));
-          user_callback(buf, user_data);
-          jsvStringIteratorNext(&it);
-          lastch = ch;
-        }
-        jsvStringIteratorFree(&it);
-
+        jslPrintTokenisedString(codeVar, user_callback, user_data);
         user_callback(hasNewLine?"\n}":"}", user_data);
       }
     } else cbprintf(user_callback, user_data, "{}");

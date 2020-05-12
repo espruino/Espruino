@@ -1035,6 +1035,25 @@ bool jslNeedSpaceBetween(unsigned char lastch, unsigned char ch) {
          (ch>=_LEX_R_LIST_START || isAlpha((char)ch) || isNumeric((char)ch));
 }
 
+/// Output a tokenised string, replacing tokens with their text equivalents
+void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void *user_data) {
+  // reconstruct the tokenised output into something more readable
+  char buf[32];
+  unsigned char lastch = 0;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, code, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    unsigned char ch = (unsigned char)jsvStringIteratorGetChar(&it);
+    if (jslNeedSpaceBetween(lastch, ch))
+      user_callback(" ", user_data);
+    jslFunctionCharAsString(ch, buf, sizeof(buf));
+    user_callback(buf, user_data);
+    jsvStringIteratorNext(&it);
+    lastch = ch;
+  }
+  jsvStringIteratorFree(&it);
+}
+
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos) {
   size_t line,col;
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);

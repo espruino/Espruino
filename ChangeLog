@@ -30,6 +30,7 @@
             Remove E.interpolate/2D (not used much, just using flash)
             Bangle.js: use double math FFT to save a few bytes of flash
             Storage.writeJSON (fix memory leak)
+            dump() is now aware of pretokenised code (fix #1821)
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

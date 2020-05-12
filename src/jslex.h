@@ -176,6 +176,9 @@ unsigned int jslGetLineNumber();
 /// Do we need a space between these two characters when printing a function's text?
 bool jslNeedSpaceBetween(unsigned char lastch, unsigned char ch);
 
+/// Output a tokenised string, replacing tokens with their text equivalents
+void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void *user_data);
+
 /// Print position in the form 'line X col Y'
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos);
 
