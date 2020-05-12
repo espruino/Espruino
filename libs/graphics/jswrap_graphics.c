@@ -1857,10 +1857,12 @@ typedef struct {
 } GfxDrawImageLayer;
 
 bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) {
-  unsigned int colData = 0;
-  if (l->qx>=0 && l->qy>=0 && l->qx<l->mx && l->qy<l->my) {
-    int imagex = (l->qx+127)>>8;
-    int imagey = (l->qy+127)>>8;
+  int qx = l->qx+127;
+  int qy = l->qy+127;
+  if (qx>=0 && qy>=0 && qx<l->mx && qy<l->my) {
+    unsigned int colData = 0;
+    int imagex = qx>>8;
+    int imagey = qy>>8;
    // TODO: getter callback for speed?
    if (l->img.bpp==8) { // fast path for 8 bits
      jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+imagex+(imagey*l->img.stride)));
@@ -2190,6 +2192,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       l.rotate = rotate;
       l.scale = scale;
       l.center = centerImage;
+      l.repeat = false;
       _jswrap_drawImageLayerInit(&l);
       // scan across image
       for (y = l.y1; y < l.y2; y++) {
@@ -2201,6 +2204,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         }
         _jswrap_drawImageLayerNextY(&l);
       }
+      it = l.it; // make sure it gets freed properly
     }
 #endif
   }
