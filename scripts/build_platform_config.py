@@ -46,6 +46,7 @@ print("BOARD "+boardname)
 board = importlib.import_module(boardname)
 pins = board.get_pins()
 # -----------------------------------------------------------------------------------------
+#allow to override board name so we can build for same board from multiple board files
 if "boardname" in board.info:
   boardname = board.info["boardname"]
   print("BOARDNAME "+boardname)
