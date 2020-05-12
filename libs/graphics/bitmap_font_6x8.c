@@ -402,7 +402,7 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
 };
 
 
-void graphicsDrawChar6x8(JsGraphics *gfx, int x1, int y1, char ch, unsigned short size, bool solidBackground) {
+NO_INLINE void graphicsDrawChar6x8(JsGraphics *gfx, int x1, int y1, char ch, unsigned short size, bool solidBackground) {
   int idx = ((unsigned char)ch) - 33;
   if (idx<0 || idx>=LCD_FONT_6X8_CHARS) {
     // no char for this

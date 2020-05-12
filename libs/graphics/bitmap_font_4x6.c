@@ -168,7 +168,7 @@ const unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 133
     PACK_5_TO_16( _XX , ___ , ___ , ___ , ___ )
 };
 
-void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, unsigned short size, bool solidBackground) {
+NO_INLINE void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, unsigned short size, bool solidBackground) {
   int idx = ((unsigned char)ch) - 33;
   if (idx<0 || idx>=LCD_FONT_4X6_CHARS) {
     // no char for this
