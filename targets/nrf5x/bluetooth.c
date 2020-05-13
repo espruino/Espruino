@@ -1909,11 +1909,13 @@ static ble_gap_sec_params_t get_gap_sec_params() {
 
 void jsble_update_security() {
 #if PEER_MANAGER_ENABLED
+  bool encryptUart = false;
   ble_gap_sec_params_t sec_param = get_gap_sec_params();
+  // encrypt UART for out of band pairing
+  if (sec_param.oob) encryptUart = true;
 
   uint32_t err_code = pm_sec_params_set(&sec_param);
   jsble_check_error(err_code);
-#endif
 
   JsVar *options = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
   if (jsvIsObject(options)) {
@@ -1925,10 +1927,23 @@ void jsble_update_security() {
     jsvUnLock(v);
     //jsiConsolePrintf("PASSKEY %d %d %d %d %d %d\n",passkey[0],passkey[1],passkey[2],passkey[3],passkey[4],passkey[5]);
     ble_opt_t pin_option;
-    pin_option.gap_opt.passkey.p_passkey = passkey[0] ? passkey : NULL;
+    pin_option.gap_opt.passkey.p_passkey = NULL;
+    if (passkey[0]) {
+      pin_option.gap_opt.passkey.p_passkey = passkey;
+      encryptUart = true;
+    }
     uint32_t err_code =  sd_ble_opt_set(BLE_GAP_OPT_PASSKEY, &pin_option);
     jsble_check_error(err_code);
   }
+  // If UART encryption status changed, we need to update flags and restart Bluetooth
+  if ((bleStatus&BLE_ENCRYPT_UART) != encryptUart) {
+    if (encryptUart) bleStatus |= BLE_ENCRYPT_UART;
+    else bleStatus &= ~BLE_ENCRYPT_UART;
+    // But only restart if the UART was enabled
+    if (bleStatus & BLE_NUS_INITED)
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+  }
+#endif
 }
 
 #if PEER_MANAGER_ENABLED
@@ -2140,6 +2155,14 @@ static void services_init() {
       ble_nus_init_t nus_init;
       memset(&nus_init, 0, sizeof(nus_init));
       nus_init.data_handler = nus_data_handler;
+#if (NRF_SD_BLE_API_VERSION==3) || (NRF_SD_BLE_API_VERSION==6)
+      if (bleStatus & BLE_ENCRYPT_UART)
+        nus_init.encrypt = true;
+#else
+#if PEER_MANAGER_ENABLED
+#warning "No security on Nordic UART for this softdevice"
+#endif
+#endif
       err_code = ble_nus_init(&m_nus, &nus_init);
       APP_ERROR_CHECK(err_code);
       bleStatus |= BLE_NUS_INITED;

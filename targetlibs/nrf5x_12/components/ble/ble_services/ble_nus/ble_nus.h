@@ -87,6 +87,7 @@ typedef void (*ble_nus_data_handler_t) (ble_nus_t * p_nus, uint8_t * p_data, uin
 typedef struct
 {
     ble_nus_data_handler_t data_handler; /**< Event handler to be called for handling received data. */
+    bool encrypt; //< GW added - require encryption
 } ble_nus_init_t;
 
 /**@brief Nordic UART Service structure.

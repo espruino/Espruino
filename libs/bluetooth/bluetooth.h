@@ -95,12 +95,12 @@ typedef enum  {
   BLE_IS_NOT_CONNECTABLE = 2048, //< Is the device connectable?
   BLE_IS_NOT_SCANNABLE = 4096, //< Is the device scannable? eg, scan response
   BLE_WHITELIST_ON_BOND = 8192,  //< Should we write to the whitelist whenever we bond to a device?
-
   BLE_DISABLE_DYNAMIC_INTERVAL = 16384, //< Disable automatically changing interval based on BLE peripheral activity
+  BLE_ENCRYPT_UART = 32768,  //< Has security with encryption been requested (if so UART must require it)
 
-  BLE_IS_ADVERTISING_MULTIPLE = 32768, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_ONE = 65536,
-  BLE_ADVERTISING_MULTIPLE_SHIFT = 16,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_IS_ADVERTISING_MULTIPLE = 65536, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_ONE = 131072,
+  BLE_ADVERTISING_MULTIPLE_SHIFT = 17,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 
   /// These are flags that should be reset when the softdevice starts up
