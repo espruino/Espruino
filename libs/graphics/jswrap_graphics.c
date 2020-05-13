@@ -1359,8 +1359,8 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
 #else
   int minX = 0;
   int minY = 0;
-  int maxX = graphicsGetWidth(gfx) - 1;
-  int maxY = graphicsGetHeight(gfx) - 1;
+  int maxX = graphicsGetWidth(&gfx) - 1;
+  int maxY = graphicsGetHeight(&gfx) - 1;
 #endif
   int startx = x;
   JsVar *str = jsvAsString(var);
