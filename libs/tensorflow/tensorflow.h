@@ -1,4 +1,4 @@
-#include "tensorflow/lite/c/c_api_internal.h"
+#include "tensorflow/lite/c/common.h"
 
 size_t tf_get_size(size_t arena_size, const char *model_data);
 bool tf_create(void *dataPtr, size_t arena_size, const char *model_data);
