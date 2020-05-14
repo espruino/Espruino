@@ -1519,28 +1519,25 @@ void jswrap_banglejs_init() {
   // Read settings and change beep/buzz behaviour...
   JsVar *settingsFN = jsvNewFromString("setting.json");
   JsVar *settings = jswrap_storage_readJSON(settingsFN,true);
-  if (jsvIsObject(settings)) {
-    JsVar *v;
-    v = jsvObjectGetChild(settings,"beep",0);
-    if (v && jsvGetBool(v)==false) {
-      bangleFlags &= ~JSBF_ENABLE_BEEP;
-    } else {
-      bangleFlags |= JSBF_ENABLE_BEEP;
-      if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
-        bangleFlags |= JSBF_BEEP_VIBRATE;
-      else
-        bangleFlags &= ~JSBF_BEEP_VIBRATE;
-    }
-    jsvUnLock(v);
-    v = jsvObjectGetChild(settings,"vibrate",0);
-    if (v && jsvGetBool(v)==false) {
-      bangleFlags &= ~JSBF_ENABLE_BUZZ;
-    } else {
-      bangleFlags |= JSBF_ENABLE_BUZZ;
-    }
-    jsvUnLock(v);
+  JsVar *v;
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"beep",0) : 0;
+  if (v && jsvGetBool(v)==false) {
+    bangleFlags &= ~JSBF_ENABLE_BEEP;
+  } else {
+    bangleFlags |= JSBF_ENABLE_BEEP;
+    if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
+      bangleFlags |= JSBF_BEEP_VIBRATE;
+    else
+      bangleFlags &= ~JSBF_BEEP_VIBRATE;
   }
-  jsvUnLock2(settings,settingsFN);
+  jsvUnLock(v);
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"vibrate",0) : 0;
+  if (v && jsvGetBool(v)==false) {
+    bangleFlags &= ~JSBF_ENABLE_BUZZ;
+  } else {
+    bangleFlags |= JSBF_ENABLE_BUZZ;
+  }
+  jsvUnLock3(v,settings,settingsFN);
 
 }
 
