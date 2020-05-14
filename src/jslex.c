@@ -744,6 +744,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
   case LEX_REGEX : strcpy(str, "REGEX"); return;
   case LEX_UNFINISHED_REGEX : strcpy(str, "UNFINISHED REGEX"); return;
   case LEX_UNFINISHED_COMMENT : strcpy(str, "UNFINISHED COMMENT"); return;
+  case 255 : strcpy(str, "[ERASED]"); return;
   }
   if (token>=_LEX_OPERATOR_START && token<_LEX_R_LIST_END) {
     const char tokenNames[] =
@@ -1086,7 +1087,7 @@ void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, 
   JsvStringIterator it;
   jsvStringIteratorNew(&it, lex->sourceVar, startOfLine);
   unsigned char lastch = 0;
-  while (jsvStringIteratorHasChar(&it) && chars<60) {
+  while (jsvStringIteratorHasChar(&it) && chars<60 && lastch!=255) {
     unsigned char ch = (unsigned char)jsvStringIteratorGetCharAndNext(&it);
     if (ch == '\n') break;
     if (jslNeedSpaceBetween(lastch, ch)) {
