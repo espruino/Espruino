@@ -13,9 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/lite/micro/kernels/all_ops_resolver.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
+#ifdef TENSORFLOW_ALL_OPS
+#include "tensorflow/lite/micro/kernels/all_ops_resolver.h"
+#else
+#include "tensorflow/lite/micro/kernels/micro_ops.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+#endif
+
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 extern "C" {
@@ -24,11 +30,18 @@ extern "C" {
 
 void DebugLog(const char* s) { jsiConsolePrint(s); }
 
+
+
 typedef struct {
   // logging
   tflite::MicroErrorReporter micro_error_reporter;
-  // This pulls in all the operation implementations we need
+  // This pulls in the operation implementations we need
+#ifdef TENSORFLOW_ALL_OPS
   tflite::ops::micro::AllOpsResolver resolver;
+#else
+#define TENSORFLOW_OP_COUNT 6
+  tflite::MicroOpResolver<TENSORFLOW_OP_COUNT> resolver;
+#endif
   // Build an interpreter to run the model with
   tflite::MicroInterpreter interpreter;
   // Create an area of memory to use for input, output, and intermediate arrays.
@@ -58,7 +71,24 @@ bool tf_create(void *dataPtr, size_t arena_size, const char *model_data) {
     return false;
   }
 
+#ifdef TENSORFLOW_ALL_OPS
   new (&tf->resolver)tflite::ops::micro::AllOpsResolver();
+#else
+  // Pull in only the operation implementations we need.
+  new (&tf->resolver)tflite::MicroOpResolver<TENSORFLOW_OP_COUNT>();
+  tf->resolver.AddBuiltin( tflite::BuiltinOperator_DEPTHWISE_CONV_2D,
+                           tflite::ops::micro::Register_DEPTHWISE_CONV_2D(), 1, 3);
+  tf->resolver.AddBuiltin( tflite::BuiltinOperator_CONV_2D,
+                           tflite::ops::micro::Register_CONV_2D(), 1, 3);
+  tf->resolver.AddBuiltin( tflite::BuiltinOperator_AVERAGE_POOL_2D,
+                           tflite::ops::micro::Register_AVERAGE_POOL_2D(), 1, 2);
+  tf->resolver.AddBuiltin( tflite::BuiltinOperator_MAX_POOL_2D,
+                           tflite::ops::micro::Register_MAX_POOL_2D(), 1, 2);
+  tf->resolver.AddBuiltin( tflite::BuiltinOperator_FULLY_CONNECTED,
+                           tflite::ops::micro::Register_FULLY_CONNECTED(), 1, 4);
+  tf->resolver.AddBuiltin( tflite::BuiltinOperator_SOFTMAX,
+                           tflite::ops::micro::Register_SOFTMAX(), 1, 2);
+#endif
 
   // Build an interpreter to run the model with
   new (&tf->interpreter)tflite::MicroInterpreter(

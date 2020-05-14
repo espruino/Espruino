@@ -34,6 +34,8 @@
             Merge jsvStringIteratorGetChar + jsvStringIteratorNext into jsvStringIteratorGetCharAndNext (fix #1816)
             Fix 2v05 regression that stopped process.uncaughtException from working (had been moved to E.uncaughtException)
             nRF52: If passkey or oob is set in setSecurity, ensure that the UART connection requires encryption (fix #1705)
+            Now report [ERASED] rather than ?[255] if we hit char code 255 while evaluating
+            Bangle.js: read `setting.json` at init and modify Bangle.beep/buzz behaviour accordingly
             Tensorflow: updated to v2.2
 
      2v05 : Add Array.includes
