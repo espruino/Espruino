@@ -36,6 +36,7 @@
             nRF52: If passkey or oob is set in setSecurity, ensure that the UART connection requires encryption (fix #1705)
             Now report [ERASED] rather than ?[255] if we hit char code 255 while evaluating
             Bangle.js: read `setting.json` at init and modify Bangle.beep/buzz behaviour accordingly
+            Tensorflow: remove some as-yet unused operators to free space
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
