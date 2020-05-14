@@ -16,18 +16,36 @@ limitations under the License.
 #include "tensorflow/lite/experimental/micro/kernels/all_ops_resolver.h"
 #include "tensorflow/lite/experimental/micro/micro_error_reporter.h"
 #include "tensorflow/lite/experimental/micro/micro_interpreter.h"
+#include "tensorflow/lite/core/api/error_reporter.h"
+#include "tensorflow/lite/experimental/micro/compatibility.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 extern "C" {
 #include "jsinteractive.h"
 #include "tensorflow.h"
 
-void DebugLog(const char* s) { jsiConsolePrint(s); }
+//void DebugLog(const char* s) { jsiConsolePrint("TF:");jsiConsolePrint(s); }
+
+namespace tflite {
+
+class EspruinoErrorReporter : public ErrorReporter {
+ public:
+  ~EspruinoErrorReporter() {}
+  int Report(const char* format, va_list args) override {
+    char log_buffer[256];
+    espruino_snprintf_va(log_buffer, sizeof(log_buffer), format, args);
+    jsExceptionHere(JSET_ERROR, "%s", log_buffer);
+    return 0;
+  }
+  TF_LITE_REMOVE_VIRTUAL_DELETE
+};
+
+}
 
 typedef struct {
   // logging
-  tflite::MicroErrorReporter micro_error_reporter;
-  // This pulls in all the operation implementations we need
+  tflite::EspruinoErrorReporter micro_error_reporter;
+  // This pulls in the operation implementations we need
   tflite::ops::micro::AllOpsResolver resolver;
   // Build an interpreter to run the model with
   tflite::MicroInterpreter interpreter;
@@ -43,7 +61,7 @@ size_t tf_get_size(size_t arena_size, const char *model_data) {
 
 bool tf_create(void *dataPtr, size_t arena_size, const char *model_data) {
   TFData *tf = (TFData*)dataPtr;
-  new (&tf->micro_error_reporter)tflite::MicroErrorReporter();
+  new (&tf->micro_error_reporter)tflite::EspruinoErrorReporter();
   // Set up logging
   tflite::ErrorReporter* error_reporter = &tf->micro_error_reporter;
 
