@@ -709,6 +709,7 @@ void vcbprintf(
       fmt++;
       char fmtChar = *fmt++;
       switch (fmtChar) {
+      case ' ':
       case '0':
       case '1':
       case '2':
@@ -823,22 +824,30 @@ void espruino_snprintf_cb(const char *str, void *userdata) {
 }
 
 /// a snprintf replacement so mbedtls doesn't try and pull in the whole stdlib to cat two strings together
-int espruino_snprintf( char * s, size_t n, const char * fmt, ... ) {
+int espruino_snprintf_va( char * s, size_t n, const char * fmt, va_list argp ) {
   espruino_snprintf_data d;
   d.outPtr = s;
   d.idx = 0;
   d.len = n;
 
-  va_list argp;
-  va_start(argp, fmt);
   vcbprintf(espruino_snprintf_cb,&d, fmt, argp);
-  va_end(argp);
 
   if (d.idx < d.len) d.outPtr[d.idx] = 0;
   else d.outPtr[d.len-1] = 0;
 
   return (int)d.idx;
 }
+
+/// a snprintf replacement so mbedtls doesn't try and pull in the whole stdlib to cat two strings together
+int espruino_snprintf( char * s, size_t n, const char * fmt, ... ) {
+  va_list argp;
+  va_start(argp, fmt);
+  int l = espruino_snprintf_va(s,n,fmt,argp);
+  va_end(argp);
+  return l;
+}
+
+
 
 #ifdef ARM
 extern uint32_t LINKER_END_VAR; // should be 'void', but 'int' avoids warnings

@@ -2,12 +2,10 @@ TENSOR_ROOT := $(ROOT)/libs/tensorflow
 CCSOURCES += \
 $(TENSOR_ROOT)/tensorflow/lite/micro/simple_memory_allocator.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/memory_helpers.cc \
-$(TENSOR_ROOT)/tensorflow/lite/micro/micro_error_reporter.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/test_helpers.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/micro_interpreter.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/micro_utils.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/micro_allocator.cc \
-$(TENSOR_ROOT)/tensorflow/lite/micro/micro_string.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/kernels/depthwise_conv.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/kernels/conv.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/kernels/pooling.cc \
@@ -54,6 +52,8 @@ $(TENSOR_ROOT)/tensorflow.cc
 #$(TENSOR_ROOT)/tensorflow/lite/micro/micro_mutable_op_resolver.cc \
 #$(TENSOR_ROOT)/tensorflow/lite/micro/debug_log_numbers.cc \
 #$(TENSOR_ROOT)/tensorflow/lite/micro/debug_log.cc 
+#$(TENSOR_ROOT)/tensorflow/lite/micro/micro_string.cc \
+#$(TENSOR_ROOT)/tensorflow/lite/micro/micro_error_reporter.cc \
 
 SOURCES += \
 $(TENSOR_ROOT)/tensorflow/lite/c/common.c \

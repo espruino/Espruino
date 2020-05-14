@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #ifdef TENSORFLOW_ALL_OPS
 #include "tensorflow/lite/micro/kernels/all_ops_resolver.h"
@@ -21,20 +20,36 @@ limitations under the License.
 #include "tensorflow/lite/micro/kernels/micro_ops.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #endif
-
+#include "tensorflow/lite/core/api/error_reporter.h"
+#include "tensorflow/lite/micro/compatibility.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 extern "C" {
 #include "jsinteractive.h"
 #include "tensorflow.h"
 
-void DebugLog(const char* s) { jsiConsolePrint(s); }
+//void DebugLog(const char* s) { jsiConsolePrint("TF:");jsiConsolePrint(s); }
 
+namespace tflite {
+
+class EspruinoErrorReporter : public ErrorReporter {
+ public:
+  ~EspruinoErrorReporter() {}
+  int Report(const char* format, va_list args) override {
+    char log_buffer[256];
+    espruino_snprintf_va(log_buffer, sizeof(log_buffer), format, args);
+    jsExceptionHere(JSET_ERROR, "%s", log_buffer);
+    return 0;
+  }
+  TF_LITE_REMOVE_VIRTUAL_DELETE
+};
+
+}  // namespace tflite
 
 
 typedef struct {
   // logging
-  tflite::MicroErrorReporter micro_error_reporter;
+  tflite::EspruinoErrorReporter micro_error_reporter;
   // This pulls in the operation implementations we need
 #ifdef TENSORFLOW_ALL_OPS
   tflite::ops::micro::AllOpsResolver resolver;
@@ -56,7 +71,7 @@ size_t tf_get_size(size_t arena_size, const char *model_data) {
 
 bool tf_create(void *dataPtr, size_t arena_size, const char *model_data) {
   TFData *tf = (TFData*)dataPtr;
-  new (&tf->micro_error_reporter)tflite::MicroErrorReporter();
+  new (&tf->micro_error_reporter)tflite::EspruinoErrorReporter();
   // Set up logging
   tflite::ErrorReporter* error_reporter = &tf->micro_error_reporter;
 
