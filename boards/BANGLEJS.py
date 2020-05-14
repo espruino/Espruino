@@ -35,6 +35,7 @@ info = {
    'makefile' : [
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
+     'DEFINES += -DDFU_APP_DATA_RESERVED=0', # allow firmware updates right up to the amount of available flash
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
