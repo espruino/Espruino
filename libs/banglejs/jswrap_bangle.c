@@ -384,6 +384,9 @@ volatile uint8_t hrmHistoryIdx;
 JsVar *promiseBeep;
 /// Promise when buzz is finished
 JsVar *promiseBuzz;
+//
+unsigned short beepFreq;
+unsigned char buzzAmt;
 
 typedef enum {
   JSBF_NONE,
@@ -393,12 +396,16 @@ typedef enum {
   JSBF_WAKEON_BTN3   = 8,
   JSBF_WAKEON_TOUCH  = 16,
   JSBF_WAKEON_TWIST  = 32,
+  JSBF_BEEP_VIBRATE  = 64, // use vibration motor for beep
+  JSBF_ENABLE_BEEP  = 128,
+  JSBF_ENABLE_BUZZ  = 256,
 
   JSBF_DEFAULT =
       JSBF_WAKEON_TWIST|
       JSBF_WAKEON_BTN1|JSBF_WAKEON_BTN2|JSBF_WAKEON_BTN3
 } JsBangleFlags;
 volatile JsBangleFlags bangleFlags;
+
 
 typedef enum {
   JSBT_NONE,
@@ -1506,6 +1513,35 @@ void jswrap_banglejs_init() {
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn4Handler);
   channel = jshPinWatch(BTN5_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn5Handler);
+
+  buzzAmt = 0;
+  beepFreq = 0;
+  // Read settings and change beep/buzz behaviour...
+  JsVar *settingsFN = jsvNewFromString("setting.json");
+  JsVar *settings = jswrap_storage_readJSON(settingsFN,true);
+  if (jsvIsObject(settings)) {
+    JsVar *v;
+    v = jsvObjectGetChild(settings,"beep",0);
+    if (v && jsvGetBool(v)==false) {
+      bangleFlags &= ~JSBF_ENABLE_BEEP;
+    } else {
+      bangleFlags |= JSBF_ENABLE_BEEP;
+      if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
+        bangleFlags |= JSBF_BEEP_VIBRATE;
+      else
+        bangleFlags &= ~JSBF_BEEP_VIBRATE;
+    }
+    jsvUnLock(v);
+    v = jsvObjectGetChild(settings,"vibrate",0);
+    if (v && jsvGetBool(v)==false) {
+      bangleFlags &= ~JSBF_ENABLE_BUZZ;
+    } else {
+      bangleFlags |= JSBF_ENABLE_BUZZ;
+    }
+    jsvUnLock(v);
+  }
+  jsvUnLock2(settings,settingsFN);
+
 }
 
 /*JSON{
@@ -1823,6 +1859,19 @@ bool jswrap_banglejs_gps_character(char ch) {
 }
 
 /*JSON{
+    "type" : "staticproperty",
+    "class" : "Bangle",
+    "name" : "F_BEEPSET",
+    "generate_full" : "true",
+    "return" : ["bool",""],
+    "ifdef" : "BANGLEJS"
+}
+Feature flag - If true, this Bangle.js firmware reads `setting.json` and
+modifies beep & buzz behaviour accordingly (the bootloader
+doesn't need to do it).
+*/
+
+/*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
     "name" : "dbg",
@@ -1977,6 +2026,21 @@ JsVar *jswrap_banglejs_project(JsVar *latlong) {
   return o;
 }
 
+
+static NO_INLINE void _jswrap_banglejs_setVibration() {
+  int beep = 0;
+  if (bangleFlags & JSBF_BEEP_VIBRATE)
+    beep = beepFreq;
+
+  if (buzzAmt==0 && beep==0)
+    jshPinOutput(VIBRATE_PIN,0); // vibrate off
+  else if (beep==0) { // vibrate only
+    jshPinAnalogOutput(VIBRATE_PIN, 0.4 + buzzAmt*0.6/255, 1000, JSAOF_NONE);
+  } else { // beep and vibrate
+    jshPinAnalogOutput(VIBRATE_PIN, 0.2 + buzzAmt*0.6/255, beep, JSAOF_NONE);
+  }
+}
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -1993,7 +2057,12 @@ JsVar *jswrap_banglejs_project(JsVar *latlong) {
 Use the piezo speaker to Beep for a certain time period and frequency
 */
 void jswrap_banglejs_beep_callback() {
-  jshPinSetState(SPEAKER_PIN, JSHPINSTATE_GPIO_IN);
+  beepFreq = 0;
+  if (bangleFlags & JSBF_BEEP_VIBRATE) {
+    _jswrap_banglejs_setVibration();
+  } else {
+    jshPinSetState(SPEAKER_PIN, JSHPINSTATE_GPIO_IN);
+  }
 
   jspromise_resolve(promiseBeep, 0);
   jsvUnLock(promiseBeep);
@@ -2002,6 +2071,7 @@ void jswrap_banglejs_beep_callback() {
 
 JsVar *jswrap_banglejs_beep(int time, int freq) {
   if (freq<=0) freq=4000;
+  if (freq>60000) freq=60000;
   if (time<=0) time=200;
   if (time>5000) time=5000;
   if (promiseBeep) {
@@ -2011,7 +2081,14 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
   promiseBeep = jspromise_create();
   if (!promiseBeep) return 0;
 
-  jshPinAnalogOutput(SPEAKER_PIN, 0.5, freq, JSAOF_NONE);
+  if (bangleFlags & JSBF_ENABLE_BEEP) {
+    beepFreq = freq;
+    if (bangleFlags & JSBF_BEEP_VIBRATE) {
+      _jswrap_banglejs_setVibration();
+    } else {
+      jshPinAnalogOutput(SPEAKER_PIN, 0.5, freq, JSAOF_NONE);
+    }
+  }
   jsiSetTimeout(jswrap_banglejs_beep_callback, time);
   return jsvLockAgain(promiseBeep);
 }
@@ -2032,7 +2109,8 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
 Use the vibration motor to buzz for a certain time period
 */
 void jswrap_banglejs_buzz_callback() {
-  jshPinOutput(VIBRATE_PIN,0); // vibrate off
+  buzzAmt = 0;
+  _jswrap_banglejs_setVibration();
 
   jspromise_resolve(promiseBuzz, 0);
   jsvUnLock(promiseBuzz);
@@ -2051,7 +2129,11 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
   promiseBuzz = jspromise_create();
   if (!promiseBuzz) return 0;
 
-  jshPinAnalogOutput(VIBRATE_PIN, 0.4 + amt*0.6, 1000, JSAOF_NONE);
+  if (bangleFlags & JSBF_ENABLE_BUZZ) {
+    buzzAmt = (unsigned char)(amt*255);
+    _jswrap_banglejs_setVibration();
+  }
+
   jsiSetTimeout(jswrap_banglejs_buzz_callback, time);
   return jsvLockAgain(promiseBuzz);
 }
