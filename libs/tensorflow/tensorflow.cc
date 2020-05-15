@@ -24,7 +24,7 @@ extern "C" {
 #include "jsinteractive.h"
 #include "tensorflow.h"
 
-//void DebugLog(const char* s) { jsiConsolePrint("TF:");jsiConsolePrint(s); }
+void DebugLog(const char* s) { jsiConsolePrint("TF:");jsiConsolePrint(s); }
 
 namespace tflite {
 
