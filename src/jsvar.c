@@ -1431,7 +1431,7 @@ JsVar *jsvAsFlatString(JsVar *var) {
  * a["0"] is actually translated to a[0]
  */
 JsVar *jsvAsArrayIndex(JsVar *index) {
-  if (jsvIsSimpleInt(index)) {
+  if (jsvIsSimpleInt(index) && jsvGetInteger(index)>=0) {
     return jsvLockAgain(index); // we're ok!
   } else if (jsvIsString(index)) {
     /* Index filtering (bug #19) - if we have an array index A that is:
