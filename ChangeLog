@@ -37,6 +37,7 @@
             Now report [ERASED] rather than ?[255] if we hit char code 255 while evaluating
             Bangle.js: read `setting.json` at init and modify Bangle.beep/buzz behaviour accordingly
             Tensorflow: remove some as-yet unused operators to free space
+            nRF52: Speed up bootloader, remove pauses on Pixl.js
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

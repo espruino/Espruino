@@ -153,7 +153,9 @@ bool dfu_enter_check(void) {
     if (!dfu_start) {
 #ifdef LCD
       lcd_println("\r\nBOOTING...");
-      nrf_delay_us(500000);
+#ifdef BANGLEJS
+      nrf_delay_us(100000);
+#endif
 #endif
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
       // turn on watchdog - bootloader should override this if it starts,
@@ -257,7 +259,9 @@ int main(void)
     // Clear reset reason flags
     NRF_POWER->RESETREAS = 0xFFFFFFFF;
     lcd_println("DFU " JS_VERSION "\n");
-    nrf_delay_us(1000000); // 1 sec delay
+#ifdef BANGLEJS
+    nrf_delay_us(500000); // 500ms delay
+#endif
 #endif
 
 #if NRF_SD_BLE_API_VERSION < 5
