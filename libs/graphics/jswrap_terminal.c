@@ -18,6 +18,7 @@
 #include "graphics.h"
 #include "jsparse.h"
 #include "jsdevices.h"
+#include "jshardware.h"
 
 /*JSON{
   "type" : "object",
@@ -89,7 +90,10 @@ void terminalScroll() {
   JsGraphics gfx;
   if (terminalGetGFX(&gfx)) {
     graphicsScroll(&gfx, 0, -TERMINAL_CHAR_H);
-    terminalSetGFX(&gfx); // save and flip
+    terminalSetGFX(&gfx); // save
+    // if we're not in an IRQ, flip this now
+    if (!jshIsInInterrupt())
+      jswrap_terminal_idle();
   }
 }
 
