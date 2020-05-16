@@ -109,40 +109,37 @@ bool run_test(const char *filename) {
   return pass;
 }
 
-
-bool run_all_tests() {
+bool run_test_dir(const char* testdir) {
   int count = 0;
   int passed = 0;
+  char absdir[PATH_MAX];
+
+  realpath(testdir, absdir);
 
   char *fails = malloc(1);
   fails[0] = 0;
 
-  DIR *dir = opendir(TEST_DIR);
+  DIR *dir = opendir(absdir);
   if(dir) {
     struct dirent *pDir=NULL;
     while((pDir = readdir(dir)) != NULL) {
-      char *fn = (*pDir).d_name;
-      size_t l = strlen(fn);
-      if (l>3 && fn[l-3]=='.' && fn[l-2]=='j' && fn[l-1]=='s') {
-        char *full_fn = (char *)malloc(1+l+strlen(TEST_DIR));
-        strcpy(full_fn, TEST_DIR);
-        strcat(full_fn, fn);
-        if (run_test(full_fn)) {
-          passed++;
-        } else {
-          char *t = malloc(strlen(fails)+3+strlen(full_fn));
-          strcpy(t, fails);
-          strcat(t,full_fn);
-          strcat(t,"\r\n");
-          free(fails);
-          fails  =t;
-        }
-        count++;
+      char fn[PATH_MAX];
+      snprintf(fn, sizeof(fn), "%s/%s", absdir, (*pDir).d_name);
+      if (run_test(fn)) {
+        passed++;
+      } else {
+        char *t = malloc(strlen(fails)+3+strlen(fn));
+        strcpy(t, fails);
+        strcat(t,fn);
+        strcat(t,"\r\n");
+        free(fails);
+        fails  =t;
       }
+      count++;
     }
     closedir(dir);
   } else {
-    printf(TEST_DIR" directory not found");
+    printf("%s directory not found", testdir);
   }
 
   if (count==0) printf("No tests found in "TEST_DIR"test*.js!\r\n");
@@ -154,6 +151,10 @@ bool run_all_tests() {
   printf("--------------------------------------------------\r\n");
   free(fails);
   return passed == count;
+}
+
+bool run_all_tests() {
+  return run_test_dir(TEST_DIR);
 }
 
 bool run_memory_test(const char *fn, int vars) {
@@ -217,6 +218,7 @@ void show_help() {
     printf("   --telnet                Enable internal telnet server on port 2323\n");
 #endif
     printf("   --test-all              Run all tests (in 'tests' directory)\n");
+    printf("   --test-dir dir          Run all tests in directory 'dir'\n");
     printf("   --test test.js          Run the supplied test\n");
     printf("   --test-mem-all          Run all Exhaustive Memory crash tests\n");
     printf("   --test-mem test.js      Run the supplied Exhaustive Memory crash test\n");
@@ -285,6 +287,9 @@ int main(int argc, char **argv) {
       } else if (!strcmp(a,"--test")) {
         if (i+1>=argc) die("Expecting an extra argument\n");
         bool ok = run_test(argv[i+1]);
+        exit(ok ? 0 : 1);
+      } else if (!strcmp(a,"--test-dir")) {
+        bool ok = run_test_dir(argv[i+1]);
         exit(ok ? 0 : 1);
       } else if (!strcmp(a,"--test-all")) {
         bool ok = run_all_tests();
