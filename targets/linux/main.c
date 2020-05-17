@@ -1,4 +1,5 @@
 #include <ftw.h>
+#include <errno.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdio.h>
@@ -125,23 +126,40 @@ void nativeQuit() { isRunning = false; }
 
 void nativeInterrupt() { jspSetInterrupted(true); }
 
-char *read_file(const char *filename) {
-  struct stat results;
-  if (!stat(filename, &results) == 0) {
-    perror_exit(1, filename);
+static char *read_file(const char *filename) {
+  FILE *f;
+  char *buf;
+  size_t buf_len;
+  long lret;
+
+  f = fopen(filename, "rb");
+  if (!f)
+    return NULL;
+  if (fseek(f, 0, SEEK_END) < 0)
+    goto fail;
+  lret = ftell(f);
+  if (lret < 0)
+    goto fail;
+  if (lret == LONG_MAX) { // it's a directory
+    errno = EISDIR;
+    goto fail;
   }
-  size_t size = (size_t)results.st_size;
-  FILE *file = fopen(filename, "rb");
-  /* if we open as text, the number of bytes read may be > the size we read */
-  if (!file) {
-    perror_exit(1, filename);
+  buf_len = lret;
+  if (fseek(f, 0, SEEK_SET) < 0)
+    goto fail;
+  buf = malloc(buf_len + 1);
+  if (!buf)
+    goto fail;
+  if (fread(buf, 1, buf_len, f) != buf_len) {
+    errno = EIO;
+    free(buf);
+  fail:
+    fclose(f);
+    return NULL;
   }
-  char *buffer = (char *)malloc(size + 1);
-  size_t actualRead = fread(buffer, 1, size, file);
-  buffer[actualRead] = 0;
-  buffer[size] = 0;
-  fclose(file);
-  return buffer;
+  buf[buf_len] = '\0';
+  fclose(f);
+  return buf;
 }
 
 bool run_test(const char *filename) {
@@ -149,7 +167,10 @@ bool run_test(const char *filename) {
   warning("----------------------------- TEST %s", filename);
   char *buffer = read_file(filename);
   if (!buffer)
-    fatal(1, "could not retrieve buffer for %s", filename);
+  {
+    warning("cannot load %s: %s", filename, strerror(errno));
+    return 0;
+  }
 
   jshInit();
   jsvInit(0);
@@ -415,7 +436,7 @@ int main(int argc, char **argv) {
     // single file - just run it
     char *buffer = read_file(singleArg);
     if (!buffer)
-      exit(1);
+      perror_exit(1, singleArg);
     // check for '#' as the first char, and if so, skip the first line
     char *cmd = buffer;
     if (cmd[0] == '#') {
