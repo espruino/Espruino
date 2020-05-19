@@ -33,6 +33,7 @@
 
 #include "bitmap_font_4x6.h"
 #include "bitmap_font_6x8.h"
+#include "vector_font.h"
 
 #ifdef GRAPHICS_PALETTED_IMAGES
 // 16 color MAC OS palette
@@ -652,7 +653,7 @@ JsVar *jswrap_graphics_fillEllipse(JsVar *parent, int x, int y, int x2, int y2) 
    graphicsSetVar(&gfx); // gfx data changed because modified area
    return jsvLockAgain(parent);
  }
- 
+
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
@@ -2659,7 +2660,7 @@ JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *option
   JsVar *result = jsvNewEmptyArray();
   if (!result) return 0;
 
-  if (jsvGetArrayLength(arr) != 6) return result; 
+  if (jsvGetArrayLength(arr) != 6) return result;
 
   double s,t,t2,tp2, tpt;
   int sn = 5;
@@ -2679,7 +2680,7 @@ JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *option
   if (jsvIsObject(options)) count = jsvGetIntegerAndUnLock(jsvObjectGetChild(options,"count",0));
 
   dx = (x0 - x2) < 0 ? (x2-x0):(x0-x2);
-  dy = (y0 - y2) < 0 ? (y2-y0):(y0-y2); 
+  dy = (y0 - y2) < 0 ? (y2-y0):(y0-y2);
   s =  1 / (double) (((dx < dy) ? dx : dy ) / sn );
   if ( s >= 1)  s = 0.33;
   if ( s < 0.1) s = 0.1;
