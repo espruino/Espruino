@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Machine geneated vector font header (by build_vector_font.sh)
+ * Machine generated vector font header (by build_vector_font.sh)
  * ----------------------------------------------------------------------------
  */
 
