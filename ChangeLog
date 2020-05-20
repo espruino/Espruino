@@ -40,6 +40,7 @@
             nRF52: Speed up bootloader, remove pauses on Pixl.js
             Pixl.js: fix self-test/terminal print - write to screen immediately after newline unless in IRQ
             Fix issue with iteration over arrays with negative entries (these should be converted to Strings)
+            Linux: improve command-line, allow recursive test directory and more than one test (eg wildcard + shell expansion)
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

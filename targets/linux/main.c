@@ -324,6 +324,7 @@ void show_help() {
   warning("   --test-all              Run all tests (in 'tests' directory)");
   warning("   --test-dir dir          Run all tests in directory 'dir'");
   warning("   --test test.js          Run the supplied test");
+  warning("   --test test.js          Run the supplied test");
   warning("   --test-mem-all          Run all Exhaustive Memory crash tests");
   warning("   --test-mem test.js      Run the supplied Exhaustive Memory crash "
           "test");
@@ -392,9 +393,16 @@ int main(int argc, char **argv) {
         telnetEnabled = true;
 #endif
       } else if (!strcmp(a, "--test")) {
-        if (i + 1 >= argc)
+        bool ok;
+        if (i + 1 >= argc) {
           fatal(1, "Expecting an extra arguments");
-        bool ok = run_test(argv[i + 1]);
+        } else if (i + 2 == argc) {
+          ok = run_test(argv[i + 1]);
+        } else {
+          i++;
+          while (i<argc) filelist_add(&test_files, argv[i++]);
+          ok = run_test_list(&test_files);
+        }
         exit(ok ? 0 : 1);
       } else if (!strcmp(a, "--test-dir")) {
         enumerate_tests(argv[i + 1]);
