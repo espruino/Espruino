@@ -435,8 +435,8 @@ static const uint8_t *vfGetCharPtr(char sch, const uint8_t **accentPtr, int *acc
   unsigned char ch = (unsigned char)sch;
   if (ch>=192) {
     // 012345 correspond to 0=grave,1=acute,2=circumflex,3=tilde,4=umlaut,5=ring
-    char *chrMap = "AAAAAAACEEEEIIIIDNOOOOOxOUUUUYIBaaaaaaaceeeeiiiionooooo-ouuuuyIy";
-    char *accMap = "012345E,01240124-301234 /01241o 012345e,01240124+301234:/01241o4";
+    char *chrMap = "AAAAAAACEEEEIIIIDNOOOOOxOUUUUYIBaaaaaaaceeeeiiiionooooo-ouuuuyly";
+    char *accMap = "012345E,01240124-301234 /01241o 012345e,01240124+301234:/01241p4";
     if (ch>=192) {
       int i = ch-192;
       ch = (unsigned char)chrMap[i];
@@ -448,16 +448,20 @@ static const uint8_t *vfGetCharPtr(char sch, const uint8_t **accentPtr, int *acc
           *accentPtr = &vfAccentPolys[vfAccentPolyIndices[acc-'0']];
           if (ch>='a' && ch<='z') { // lowercase
             *accentX = -2;
-            *accentY = -5;
+            *accentY = -4;
           } else {
-            *accentY = -10;
+            *accentY = -9;
           }
+          if (ch=='I') *accentX -= 3;
+          if (ch=='i') *accentX -= 2;
         } else if (acc!=' ') {
           *accentPtr = vfGetCharPtr(acc, NULL,NULL,NULL);
           if (acc=='E') *accentX = 8;
           if (acc=='e') *accentX = 4;
           if (acc==',') *accentX = 4;
           if (acc=='+') *accentY = -4;
+          if (acc==':') { *accentX = 2;*accentY = -2; }
+          if (acc=='o') { *accentX = 2;*accentY = -1; }
         }
 
       }

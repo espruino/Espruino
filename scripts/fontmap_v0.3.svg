@@ -45,7 +45,8 @@
      inkscape:snap-smooth-nodes="true"
      inkscape:bbox-nodes="true"
      inkscape:bbox-paths="true"
-     inkscape:snap-global="false">
+     inkscape:snap-global="false"
+     showguides="false">
     <inkscape:grid
        empspacing="4"
        spacingy="0.26458333"
