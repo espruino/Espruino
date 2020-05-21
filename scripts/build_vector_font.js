@@ -5,36 +5,36 @@ and creates an Espruino vector font from it.
 */
 
 // SVG contents from http://forum.espruino.com/conversations/347368/#comment15288563
-// Converted with https://nebbishhacker.github.io/svg2bangle/
+// Converted with https://nebbishhacker.github.io/svg2bangle/ tolerance 0
 var polyImg = [
-  "ZDRiNWY2ZzdnOWY6ZDpkPGg7aTloNWY0",
+  "ZDRiNWQ2ZjZnN2c5ZjpkOmQ8ZjxoO2k5aTdoNWY0",
   "ZDBiMWEzYTliO2Q8ZDpjOWM3ZDZjNWMzZDJmMmYw",
-  "JDAkMiYyJzQiOCE8KTwpOiM6IzskOSg2KTQoMSYw",
+  "JDAkMiYyJzMnNCY1IjghOiE8KTwpOiM6IzskOSg2KTQpMygxJjA=",
   "IUAhTCNMI0A=",
-  "I0ImQidEJkUjRSNHJ0coSSdKI0ojTCdMKUsqSChFKEYpRChBJkAjQA==",
-  "Q0JHQ0hFR0lDSkNMRkxJSkpISkRIQUZAQ0A=",
+  "I0ImQidDJ0QmRSNFI0cnRyhIKEknSiNKI0wnTClLKkkqSClGKEUoRilEKUMoQSZAI0A=",
+  "Q0JFQkdDSEVIR0dJRUpDSkNMRkxIS0lKSkhKRElCSEFGQENA",
   "Q0BBQEFMQ0w=",
   "WUxZSlNKU0dXR1dFU0VTQllCWUBRQFFM",
   "YUBhTGNMY0dnR2dFY0VjQmlCaUA=",
   "E0wRTBVAF0A=",
-  "F0AWQxlMG0w=",
-  "FWYTZxNpF2sUbBJrEWcSZRRkF2U=",
-  "FmUWZBhkGGwWbBVqFmkWZxVm",
+  "F0AWQxhJGUwbTA==",
+  "FWYUZhNnE2kUahVqF2sVbBRsEmsRaRFnEmUUZBVkF2U=",
+  "FmUWZBhkGGwWbBZrFWoWaRZnFWY=",
   "NWQ3ZThnNmc1Zg==",
-  "NWwyazFpMmU0ZDVkNWYzZzNpNWo=",
+  "NWw0bDJrMWkxZzJlNGQ1ZDVmNGYzZzNpNGo1ag==",
   "NWo2aThpN2s1bA==",
-  "JGYmZyZpImslbCdrKGcnZSVkImU=",
-  "I2UjYCFgIWwjbCRqI2kjZyRm",
-  "VGRXZVhpU2lTZ1ZnVGY=",
-  "VGZTZ1NpV2tVbFJrUWlSZVRk",
-  "YmxiZmFmYWRiZGNhZmBmYmRjZGRmZGZmZGZkbA==",
-  "9WbzZ/Np9Wr1bPRs8mvxZ/Jl9WQ=",
-  "dW1xbHJudG93bnhseGN2Y3VldmZ2aHVpdmp2bA==",
-  "dWVzZnNod2p0a3JqcWZyZHRjd2Q=",
+  "JGYlZiZnJmklaiRqImskbCVsJ2soaShnJ2UlZCRkImU=",
+  "I2UjYCFgIWwjbCNrJGojaSNnJGY=",
+  "VGRVZFdlWGdYaVNpU2dWZ1VmVGY=",
+  "VGZTZ1NpVGpWaldrVWxUbFJrUWlRZ1JlVGQ=",
+  "YmxiZmFmYWRiZGJjY2FlYGZgZmJlYmRjZGRmZGZmZGZkbA==",
+  "9Wb0ZvNn82n0avVq9Wz0bPJr8WnxZ/Jl9GT1ZA==",
+  "dW10bXNscWxybnRvdW93bnhseGN2Y3ZkdWV2ZnZodWl2anZs",
+  "dWV0ZXNmc2h0aXVpd2p1a3RrcmpxaHFmcmR0Y3Vjd2Q=",
   "gUCBTINMg0eIR4hFg0WDQA==",
   "iECKQIpMiEw=",
   "kkCRQJFCkkKSSpFKkUyVTJVKlEqUQpVClUCUQA==",
-  "p0ykTKJLoUmjSKRKo0mmSg==",
+  "p0ykTKJLoUmjSKRKo0mlSqZK",
   "sUCxTLNMs0i1RrNGs0A=",
   "uECzRrhMuky1RrpA",
   "wUDBTMlMyUrDSsNA",
@@ -46,16 +46,16 @@ var polyImg = [
   "1krXStdI00DTRA==",
   "10rWSNpA2kQ=",
   "AVABXANcA1A=",
-  "A1IGUgdTB1UGVgNWA1gGWAhXCVUIUQZQA1A=",
-  "GFAXUhlTGlcZWRdaGl4cXRpbHFgcVBpR",
+  "A1IGUgdTB1UGVgNWA1gGWAhXCVUJUwhRBlADUA==",
+  "GFAXUhlTGlUaVxlZF1oYXBpeHF0aWxtaHFgcVBtSGlE=",
   "IVAhXCNcI1A=",
-  "NFAyUTFTMlY2VzdYNlo0WjRcOFs5WThWNFUzVDRSNlI2UA==",
+  "NFAyUTFTMVQyVjRXNlc3WDdZNlo0WjRcNlw4WzlZOVg4VjZVNFUzVDNTNFI2UjZQ",
   "M1k0WjRcMlsxWQ==",
   "N1M2UjZQOFE5Uw==",
-  "I1ImUidTJ1UmViNWI1gmWChXKVUoUSZQI1A=",
+  "I1ImUidTJ1UmViNWI1gmWChXKVUpUyhRJlAjUA==",
   "QVBBUkVSRVxHXEdSS1JLUA==",
   "WFBYWFdaWFlWWldcWVtaWVpQ",
-  "V1xUXFJbUVlRUFNQU1hUWlNZVlo=",
+  "V1xUXFJbUVlRUFNQU1hUWlNZVVpWWg==",
   "ZVxnXGNQYVA=",
   "Z1xlXGlQa1A=",
   "dFx2XHNQcVA=",
@@ -66,53 +66,53 @@ var polyImg = [
   "i1CDXIFciVA=",
   "m1CXV5dclVyVV5lQ",
   "oVCpUKlSo1qpWqlcoVyhWqdSoVI=",
-  "F1IUUxNVFFkXWhhcFVwSWhFYEVQTURVQGFA=",
-  "90L0Q/NF9En3SvhM9UzzS/FI8UTzQfVA+EA=",
-  "90L5Q/pF+Un3SvhM+0r8SPxE+kH4QA==",
-  "d0J0Q3NFdEl3SnhMdUxySnFIcURzQXVAeEA=",
-  "d0J5Q3tCeEA=",
-  "d0p5SXlId0h3RntGe0p4TA==",
-  "N0I0QzNFNEk3SjhMNUwySjFIMUQzQTVAOEA=",
-  "N0o4TDtKOUk=",
-  "N0I4QDtCOUM=",
-  "hGaGZ4ZsiGyIZ4dlhGSCZQ==",
+  "F1IWUhRTE1UTVxRZFloXWhhcFVwTWxJaEVgRVBJSE1EVUBhQ",
+  "90L2QvRD80XzR/RJ9kr3SvhM9UzzS/JK8UjxRPJC80H1QPhA",
+  "90L5Q/pF+kf5SfdK+Ez6S/tK/Ej8RPtC+kH4QA==",
+  "d0J2QnRDc0VzR3RJdkp3SnhMdUxzS3JKcUhxRHJCc0F1QHhA",
+  "d0J5Q3tCekF4QA==",
+  "d0p5SXlId0h3RntGe0p6S3hM",
+  "N0I2QjRDM0UzRzRJNko3SjhMNUwzSzJKMUgxRDJCM0E1QDhA",
+  "N0o4TDpLO0o5SQ==",
+  "N0I4QDpBO0I5Qw==",
+  "hGaFZoZnhmyIbIhnh2WFZIRkgmU=",
   "g2WDYIFggWyDbINnhGY=",
   "kWSTZJNskWw=",
   "kWCTYJNikWI=",
   "qkCqSalLp0ymSqhJp0qoSKhA",
-  "pWSlbKRuoW+hbaNso2Q=",
+  "pWSlbKRuom+hb6Ftom2jbKNk",
   "o2ClYKVio2I=",
   "sWCxbLNss2q1aLNos2A=",
   "tmSzaLZsuGy1aLhk",
   "wWDDYMNswWw=",
-  "1GbWZ9Zs2GzYZ9lm1WTSZQ==",
+  "1GbVZtZn1mzYbNhn2WbVZNRk0mU=",
   "02XTZNFk0WzTbNNn1GY=",
-  "2WbbZ9ts3WzdZ9xl2mTXZQ==",
-  "5GbmZ+Zs6GzoZ+dl5GTiZQ==",
+  "2WbaZttn22zdbN1n3GXaZNlk12U=",
+  "5GblZuZn5mzobOhn52XlZORk4mU=",
   "42XjZOFk4WzjbONn5GY=",
-  "9Wb2Z/Vs92v4afdl9WQ=",
-  "RWZDZ0NpR2tEbEJrQWdCZURkR2U=",
-  "RmVGYEhgSGxGbEVqRmlGZ0Vm",
-  "BHoGeQZ3AnUFdAd1CHkHewV8Ans=",
-  "A3sDfwF/AXQDdAR2A3cDeQR6",
-  "FXoTeRN3F3UUdBJ1EXkSexR8F3s=",
-  "FnsWfxh/GHQWdBV2FncWeRV6",
-  "JHYmdyh2JXQidQ==",
+  "9Wb2Z/Zp9Wr1bPdr+Gn4Z/dl9WQ=",
+  "RWZEZkNnQ2lEakVqR2tFbERsQmtBaUFnQmVEZEVkR2U=",
+  "RmVGYEhgSGxGbEZrRWpGaUZnRWY=",
+  "BHoFegZ5BncFdgR2AnUEdAV0B3UIdwh5B3sFfAR8Ans=",
+  "A3sDfwF/AXQDdAN1BHYDdwN5BHo=",
+  "FXoUehN5E3cUdhV2F3UVdBR0EnURdxF5EnsUfBV8F3s=",
+  "FnsWfxh/GHQWdBZ1FXYWdxZ5FXo=",
+  "JHYldiZ3KHYndSV0JHQidQ==",
   "I3UjdCF0IXwjfCN3JHY=",
-  "NXw3ezh5M3YzdzR2N3c4djV0MnUxdzZ6Nnk1ejJ5MXo0fA==",
-  "QnBCdEF0QXZCdkJ5Q3tGfEZ6RHlEdkZ2RnREdERw",
-  "VXpTeVN0UXRReVJ7VHxXew==",
+  "NXw3ezh5N3g1dzR3M3YzdzR2NXY3dzh2N3U1dDR0MnUxdzJ4NHk1eTZ6Nnk1ejR6MnkxejJ7NHw=",
+  "QnBCdEF0QXZCdkJ5Q3tFfEZ8RnpFekR5RHZGdkZ0RHREcA==",
+  "VXpUelN5U3RRdFF5UntUfFV8V3s=",
   "VntWfFh8WHRWdFZ5VXo=",
   "ZHxmfGN0YXQ=",
   "ZnxkfGd0aXQ=",
   "gXSDdIl8h3w=",
   "iXSHdIF8g3w=",
-  "mnSVfpJ/kn2UfJh0",
+  "mnSWfJV+k3+Sf5J9k32UfJh0",
   "kXSVfJZ6k3Q=",
   "oXSodKh2pHqoeqh8oXyheqV2oXY=",
-  "BDwIOwk5CTMIMQYwBDAEMgYyBzMHOQY6BDo=",
+  "BDwGPAg7CTkJMwgxBjAEMAQyBjIHMwc5BjoEOg==",
   "BDwCOwE5ATMCMQQwBDIDMwM5BDo=",
-  "NDI2MjczNjU0NTQ3Njc3ODY6NDo0PDY8ODs5OTg2OTM4MTQw",
+  "NDI2MjczNzQ2NTQ1NDc2Nzc4Nzk2OjQ6NDw2PDg7OTk5ODg2OTQ5MzgxNjA0MA==",
   "IjEhMyMzJDIkMA==",
   "MjExMzMzNDI0MA==",
   "MjsxOTM5NDo0PA==",
@@ -120,13 +120,13 @@ var polyImg = [
   "RjBGN0E3QTlGOUY8SDxIOUk5STdIN0gw",
   "QTdDN0gwRjA=",
   "UzdRN1EwWTBZMlMyUzVUNg==",
-  "UjVUNFg1WTdYO1Q8VDpWOlc5VzdWNlQ2",
+  "UjVUNFY0WDVZN1k5WDtWPFQ8VDpWOlc5VzdWNlQ2",
   "UjtROVM5VDpUPA==",
   "aDFpM2czZjJmMA==",
   "cTBxMncyczx1PHkyeTA=",
-  "hDCCMYEzgjaBOYI7hDyGPIY6hDqDOIQ3hjeGNYQ1gzOEMoYyhjA=",
-  "hjCGMoczhjWGN4c4hjyIO4k5iDaJM4gx",
-  "ljiYN5Q2kzWTM5QyljKWMJIxkTOSN5Q4",
+  "hDCCMYEzgTSCNoE4gTmCO4Q8hjyGOoQ6gzmDOIQ3hjeGNYQ1gzSDM4QyhjKGMA==",
+  "hjCGMoczhzSGNYY3hziHOYY6hjyIO4k5iTiINok0iTOIMQ==",
+  "ljiYN5Y2lDaTNZMzlDKWMpYwlDCSMZEzkTWSN5Q4",
   "ljyYO5k5mTOYMZYwljKXM5c1ljaXN5c5ljqUOpQ8",
   "kjuROZM5lDqUPA==",
   "ETIUMBQyETQ=",
@@ -154,54 +154,54 @@ var polyImg = [
   "RCFCIkEkQiZEJ0QlQyREIw==",
   "RSVFJ0YoRSlFK0cqSChHJg==",
   "ZiZoJWkjaCFmIGYiZyNmJA==",
-  "ZipkKmMpZCdmJmYkYiZhKGIrZiw=",
-  "ZixpKmsmaSZmKg==",
-  "ZiBkIWMjaSxrLGUjZiI=",
+  "ZipkKmMpYyhkJ2YmZiRkJWImYShhKWIrZCxmLA==",
+  "ZixoK2kqayZpJmgoZio=",
+  "ZiBkIWMjZCVpLGssZiVlI2Yi",
   "cSBzIHMkcSQ=",
-  "hiKDJoMphi2GL4IsgSmCI4Yg",
-  "kSKUJpQpkS2RL5UslimVI5Eg",
+  "hiKEJIMmgymEK4Ythi+ELoIsgSmBJoIjhCGGIA==",
+  "kSKTJJQmlCmTK5EtkS+TLpUslimWJpUjkyGRIA==",
   "tCK0JbElsSe0J7Qqtiq2J7knuSW2JbYi",
   "0SXXJdcn0Sc=",
   "pCimKKYgpCA=",
   "pCKiIaEjoyShJaInpCY=",
   "piKoIakjpySpJagnpiY=",
-  "wS7DLsQqwirCLA==",
+  "wS7DLsQsxCrCKsIs",
   "4SrjKuMs4Sw=",
   "+CD6IPMu8S4=",
   "oTSjNKM2oTY=",
   "oTqjOqM8oTw=",
-  "sT6zPrQ6sjqyPA==",
+  "sT6zPrQ8tDqyOrI8",
   "sjS0NLQ2sjY=",
   "yTLBNsk6yTjFNsk0",
   "0TPZM9k10TU=",
   "0TfZN9k50Tk=",
   "4TLpNuE64TjlNuE0",
   "8jHxM/Mz9DL0MA==",
-  "9DD0MvYy9zP2NfQ29Dj2OPY3+Db5NPgx9jA=",
+  "9DD0MvYy9zP3NPY19TX0NvQ49jj2N/g2+TT5M/gx9jA=",
   "9Dr2OvY89Dw=",
   "sVCxX7Zftl2zXbNStlK2UA==",
   "1lDWX9Ff0V3UXdRS0VLRUA==",
   "w1DBUMheyl4=",
   "5VDhVuNW5VM=",
   "8V35Xflf8V8=",
-  "tnC0cbJ3s3axd7F4s3myeLR+tn+3f7d9tXy1erN3s3i1dbVzt3K3cA==",
+  "tnC0cbNzs3Wyd7N2sXexeLN5snizerN8tH62f7d/t322fbV8tXq0eLN3s3i0d7V1tXO2crdyt3A=",
   "wXDDcMN/wX8=",
-  "0nDUcdZ31XbXd9d41XnWeNR+0n/Rf9F903zTetV31XjTddNz0XLRcA==",
-  "5HPidOF343fkdQ==",
-  "5HPkdeZ46Hnod+Z0",
-  "6XXoeep463U=",
+  "0nDUcdVz1XXWd9V213fXeNV51njVetV81H7Sf9F/0X3SfdN803rUeNV31XjUd9N103PSctFy0XA=",
+  "5HPidOF24Xfjd+N25HU=",
+  "5HPkdeV25njoeeh353bmdA==",
+  "6XXpduh36HnqeOt263U=",
   "AWADYAZkBGQ=",
-  "CEYGRwZICkoHSwVKBEcFRQdECkU=",
-  "C0QLSAxJC0sISQlICEYJRA==",
-  "Ck8GTwROAkwBSQJDBkAKQAlCB0IERANGA0kFTAlN",
-  "CU0LTA1NCk8=",
-  "CkAOQw9FD0gOSgxLC0sNSA1GC0MJQg==",
+  "CEYHRgZHBkgHSQhJCkoISwdLBUoESARHBUUHRAhECkU=",
+  "C0QLSAxJC0sISQlICUcIRglFCUQ=",
+  "Ck8GTwROAkwBSQFGAkMEQQZACkAJQgdCBUMERANGA0kESwVMB00JTQ==",
+  "CU0LTA1NDE4KTw==",
+  "CkAMQQ5DD0UPSA5KDEsLSwxJDUgNRgxEC0MJQg==",
   "JVcoXCpcJ1c=",
   "FEcTSRlJGEc=",
   "5VDpVudW5VM=",
-  "B4IEgwSEBoQGhQSFBIcGhwaIBIgEiQeKCIwFjAKKAogAiACHAocChQCFAIQChAKCBYAIgA==",
+  "B4IGggSDBIQGhAaFBIUEhwaHBogEiASJBooHigiMBYwDiwKKAogAiACHAocChQCFAIQChAKCA4EFgAiA",
   "B4oIjAqLC4oJiQ==",
-  "B4IIgAuCCYM=",
+  "B4IIgAqBC4IJgw==",
   "A7AFsAaxBrMFtAO0A7MFswWxA7E=",
   "A7QCswKxA7A=",
   "BPQG9Aj3Bvc=",
@@ -284,7 +284,8 @@ const uint8_t vfFirstChar = ${firstChar};
 const uint8_t vfLastChar = ${lastChar};
 #define VF_END_OF_POLY 0xFE
 #define VF_END_OF_CHAR 0xFF
-#define VF_OFFSET_Y (2)
+#define VF_SCALE 12
+#define VF_OFFSET_Y (0)
 static const uint8_t vfPolys[] IN_FLASH_MEMORY = {
 `;
 for (var c=firstChar;c<=lastChar;c++) {
@@ -325,8 +326,8 @@ static const uint8_t *vfGetCharPtr(char sch, const uint8_t **accentPtr, int *acc
           if (ch>='a' && ch<='z') { // lowercase
             *accentX = -2;
             *accentY = -4;
-          } else {
-            *accentY = -9;
+          } else { // uppercase
+            *accentY = -8;
           }
           if (ch=='I') *accentX -= 3;
           if (ch=='i') *accentX -= 2;
@@ -358,6 +359,8 @@ static const uint8_t *vfGetCharPtr(char sch, const uint8_t **accentPtr, int *acc
 
 // prints character, returns width
 unsigned int vfDrawCharPtr(JsGraphics *gfx, int x1, int y1, int size, const uint8_t *charPtr) {
+  x1 = x1<<4;
+  y1 = y1<<4;
   short poly[${maxPolyLen*2}];
   int polyLen = 0;
   int w = 0;
@@ -370,14 +373,14 @@ unsigned int vfDrawCharPtr(JsGraphics *gfx, int x1, int y1, int size, const uint
       int vx = vertex&15;
       int vy = vertex>>4;
       if (vx>w) w=vx;
-      poly[polyLen*2  ] = (short)(x1 + ((vx*size+8)>>4));
-      poly[polyLen*2+1] = (short)(y1 + ((vy*size+8)>>4) + VF_OFFSET_Y);
+      poly[polyLen*2  ] = (short)(x1 + vx*size*16/VF_SCALE);
+      poly[polyLen*2+1] = (short)(y1 + (vy+VF_OFFSET_Y)*size*16/VF_SCALE);
       polyLen++;
     }
     charPtr++;
   }
   graphicsFillPoly(gfx, polyLen, poly);
-  return (unsigned int)(((w+1)*size+7)>>4);
+  return (unsigned int)(((w+1)*size*16/VF_SCALE+7)>>4);
 }
 
 // returns the width of a character
@@ -394,7 +397,7 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int size, char ch
     }
     p++;
   }
-  return (unsigned int)(((w+1)*size+7)>>4);
+  return (unsigned int)(((w+1)*size*16/VF_SCALE+7)>>4);
 }
 
 // prints character, returns width
@@ -406,7 +409,7 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, c
   unsigned int w = vfDrawCharPtr(gfx, x1, y1, size, charPtr);
   unsigned int w2 = 0;
   if (accentPtr)
-    w2 = vfDrawCharPtr(gfx, x1 + ((accentX*size)>>4), y1 + ((accentY*size)>>4), size, accentPtr);
+    w2 = vfDrawCharPtr(gfx, x1 + ((accentX*size*16/VF_SCALE)>>4), y1 + ((accentY*size*16/VF_SCALE)>>4), size, accentPtr);
   return (w2>w)?w2:w;
 }
 

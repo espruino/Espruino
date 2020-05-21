@@ -1653,7 +1653,7 @@ JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
   JsvIterator it;
   jsvIteratorNew(&it, poly, JSIF_EVERY_ARRAY_ELEMENT);
   while (jsvIteratorHasElement(&it) && idx<maxVerts) {
-    verts[idx++] = (short)jsvIteratorGetIntegerValue(&it);
+    verts[idx++] = (short)(0.5 + jsvIteratorGetFloatValue(&it)*16);
     jsvIteratorNext(&it);
   }
   jsvIteratorFree(&it);
