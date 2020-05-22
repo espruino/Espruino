@@ -1360,7 +1360,7 @@ void jswrap_banglejs_init() {
   jshDelayMicroseconds(50000);
   jswrap_banglejs_ioWr(0,0);
   jswrap_banglejs_ioWr(IOEXP_HRM,1); // HRM off
-  jswrap_banglejs_ioWr(1,0); // ?
+  jswrap_banglejs_ioWr(IOEXP_GPS,0); // GPS off
   jswrap_banglejs_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
   jshDelayMicroseconds(100000);
   jswrap_banglejs_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
