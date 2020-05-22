@@ -1936,7 +1936,7 @@ void jsble_update_security() {
     jsble_check_error(err_code);
   }
   // If UART encryption status changed, we need to update flags and restart Bluetooth
-  if ((bleStatus&BLE_ENCRYPT_UART) != encryptUart) {
+  if (((bleStatus&BLE_ENCRYPT_UART)!=0) != encryptUart) {
     if (encryptUart) bleStatus |= BLE_ENCRYPT_UART;
     else bleStatus &= ~BLE_ENCRYPT_UART;
     // But only restart if the UART was enabled
