@@ -1154,7 +1154,7 @@ void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
 }
 Set the power to the Heart rate monitor
 
-When on, data is output via the `GPS` event on `Bangle`:
+When on, data is output via the `HRM` event on `Bangle`:
 
 ```
 Bangle.setHRMPower(1);
