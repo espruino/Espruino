@@ -7,6 +7,7 @@ and creates an Espruino vector font from it.
 // SVG contents from http://forum.espruino.com/conversations/347368/#comment15288563
 // Converted with https://nebbishhacker.github.io/svg2bangle/ tolerance 0
 var polyImg = [
+  "NqI3ozmiOKE2oA==",
   "ZDRiNWQ2ZjZnN2c5ZjpkOmQ8ZjxoO2k5aTdoNWY0",
   "ZDBiMWEzYTliO2Q8ZDpjOWM3ZDZjNWMzZDJmMmYw",
   "JDAkMiYyJzMnNCY1IjghOiE8KTwpOiM6IzskOSg2KTQpMygxJjA=",
@@ -17,7 +18,7 @@ var polyImg = [
   "WUxZSlNKU0dXR1dFU0VTQllCWUBRQFFM",
   "YUBhTGNMY0dnR2dFY0VjQmlCaUA=",
   "E0wRTBVAF0A=",
-  "F0AWQxhJGUwbTA==",
+  "F0AWQxlMG0w=",
   "FWYUZhNnE2kUahVqF2sVbBRsEmsRaRFnEmUUZBVkF2U=",
   "FmUWZBhkGGwWbBZrFWoWaRZnFWY=",
   "NWQ3ZThnNmc1Zg==",
@@ -29,11 +30,9 @@ var polyImg = [
   "VGZTZ1NpVGpWaldrVWxUbFJrUWlRZ1JlVGQ=",
   "YmxiZmFmYWRiZGJjY2FlYGZgZmJlYmRjZGRmZGZmZGZkbA==",
   "9Wb0ZvNn82n0avVq9Wz0bPJr8WnxZ/Jl9GT1ZA==",
-  "dW10bXNscWxybnRvdW93bnhseGN2Y3ZkdWV2ZnZodWl2anZs",
-  "dWV0ZXNmc2h0aXVpd2p1a3RrcmpxaHFmcmR0Y3Vjd2Q=",
   "gUCBTINMg0eIR4hFg0WDQA==",
   "iECKQIpMiEw=",
-  "kkCRQJFCkkKSSpFKkUyVTJVKlEqUQpVClUCUQA==",
+  "kUCRQpJCkkqRSpFMlUyVSpRKlEKVQpVA",
   "p0ykTKJLoUmjSKRKo0mlSqZK",
   "sUCxTLNMs0i1RrNGs0A=",
   "uECzRrhMuky1RrpA",
@@ -52,7 +51,7 @@ var polyImg = [
   "NFAyUTFTMVQyVjRXNlc3WDdZNlo0WjRcNlw4WzlZOVg4VjZVNFUzVDNTNFI2UjZQ",
   "M1k0WjRcMlsxWQ==",
   "N1M2UjZQOFE5Uw==",
-  "I1ImUidTJ1UmViNWI1gmWChXKVUpUyhRJlAjUA==",
+  "I1ImUidTJ1UmViNWI1gmWCVXKFwqXCdXJ1goVylVKVMoUSZQI1A=",
   "QVBBUkVSRVxHXEdSS1JLUA==",
   "WFBYWFdaWFlWWldcWVtaWVpQ",
   "V1xUXFJbUVlRUFNQU1hUWlNZVVpWWg==",
@@ -67,8 +66,8 @@ var polyImg = [
   "m1CXV5dclVyVV5lQ",
   "oVCpUKlSo1qpWqlcoVyhWqdSoVI=",
   "F1IWUhRTE1UTVxRZFloXWhhcFVwTWxJaEVgRVBJSE1EVUBhQ",
-  "90L2QvRD80XzR/RJ9kr3SvhM9UzzS/JK8UjxRPJC80H1QPhA",
-  "90L5Q/pF+kf5SfdK+Ez6S/tK/Ej8RPtC+kH4QA==",
+  "maGVoZOikqSSqJOqlauZq5mslayTq5KqkaiRpJKik6GVoJmg",
+  "maGbopyknKibqpmrmaybq5yqnaidpJyim6GZoA==",
   "d0J2QnRDc0VzR3RJdkp3SnhMdUxzS3JKcUhxRHJCc0F1QHhA",
   "d0J5Q3tCekF4QA==",
   "d0p5SXlId0h3RntGe0p6S3hM",
@@ -117,7 +116,7 @@ var polyImg = [
   "MjExMzMzNDI0MA==",
   "MjsxOTM5NDo0PA==",
   "FDAUOhE6ETwZPBk6FjoWMA==",
-  "RjBGN0E3QTlGOUY8SDxIOUk5STdIN0gw",
+  "RjBGPEg8SDA=",
   "QTdDN0gwRjA=",
   "UzdRN1EwWTBZMlMyUzVUNg==",
   "UjVUNFY0WDVZN1k5WDtWPFQ8VDpWOlc5VzdWNlQ2",
@@ -155,16 +154,12 @@ var polyImg = [
   "RSVFJ0YoRSlFK0cqSChHJg==",
   "ZiZoJWkjaCFmIGYiZyNmJA==",
   "ZipkKmMpYyhkJ2YmZiRkJWImYShhKWIrZCxmLA==",
-  "ZixoK2kqayZpJmgoZio=",
+  "ZixoK2kqayZpJmgoZylmKg==",
   "ZiBkIWMjZCVpLGssZiVlI2Yi",
   "cSBzIHMkcSQ=",
   "hiKEJIMmgymEK4Ythi+ELoIsgSmBJoIjhCGGIA==",
   "kSKTJJQmlCmTK5EtkS+TLpUslimWJpUjkyGRIA==",
-  "tCK0JbElsSe0J7Qqtiq2J7knuSW2JbYi",
-  "0SXXJdcn0Sc=",
-  "pCimKKYgpCA=",
-  "pCKiIaEjoyShJaInpCY=",
-  "piKoIakjpySpJagnpiY=",
+  "0SXWJdYn0Sc=",
   "wS7DLsQsxCrCKsIs",
   "4SrjKuMs4Sw=",
   "+CD6IPMu8S4=",
@@ -196,14 +191,10 @@ var polyImg = [
   "Ck8GTwROAkwBSQFGAkMEQQZACkAJQgdCBUMERANGA0kESwVMB00JTQ==",
   "CU0LTA1NDE4KTw==",
   "CkAMQQ5DD0UPSA5KDEsLSwxJDUgNRgxEC0MJQg==",
-  "JVcoXCpcJ1c=",
   "FEcTSRlJGEc=",
   "5VDpVudW5VM=",
-  "B4IGggSDBIQGhAaFBIUEhwaHBogEiASJBooHigiMBYwDiwKKAogAiACHAocChQCFAIQChAKCA4EFgAiA",
-  "B4oIjAqLC4oJiQ==",
-  "B4IIgAqBC4IJgw==",
-  "A7AFsAaxBrMFtAO0A7MFswWxA7E=",
-  "A7QCswKxA7A=",
+  "ArAEsAWxBbMEtAK0ArMEswSxArE=",
+  "ArQBswGxArA=",
   "BPQG9Aj3Bvc=",
   "GfQX9BX3F/c=",
   "I/cm9Cn3J/cm9iX3",
@@ -211,7 +202,106 @@ var polyImg = [
   "R/dH9Un1Sfc=",
   "VfRX9Fj1WPdX+FX4VfdX91f1VfU=",
   "VfhU91T1VfQ=",
-  "M/U18zf1OfM59Tf3NfUz9w=="
+  "M/U18zf1OfM59Tf3NfUz9w==",
+  "dW10bXJscW1ybnRvdW93bnhseGR2ZHZldWZ2Z3ZpdWp2a3Zs",
+  "dWZ0ZnNnc2l0anVqd2t1bHRscmtxaXFncmV0ZHVkd2U=",
+  "BoAEgQOCAoQChQGFAYYChgKHAYcBiAKIA4oEiwaMCYwIigeKBYkEiAmICYcEhwSGCYYJhQSFBYMHggiCCYA=",
+  "CIoJjAuLCok=",
+  "CIIJgAuBCoM=",
+  "mKqWqpSpk6eTpZSjlqKYopiklqSVpZWnlqiYqA==",
+  "6aHloeOi4qTiqOOq5avpq+ms5azjq+Kq4ajhpOKi46HloOmg",
+  "6aHrouyk7Kjrqumr6azrq+yq7ajtpOyi66HpoA==",
+  "5KLkquaq5qI=",
+  "5qTopOim5qbmqOio56foquqq6afqpuqk6KLmog==",
+  "MqgyozOhNaA2oDaiNaI0ozSoM6o5qjmsMawxqg==",
+  "9NL10vbT9tT11fXW9tf32PfZ9tr02vTc9tz42/na+dj41/fW99X41PjT99H10PTQ",
+  "8tHx0/Hc89zz0/TS9NA=",
+  "EaQTpBOiEaI=",
+  "Ea4TrhOmEaY=",
+  "JaMnpCimJqYlpQ==",
+  "JKsiqiGoIaYipCSjJKUjpiOoJKk=",
+  "JakmqCioJ6olqw==",
+  "JKIloiWsJKw=",
+  "mKKao5ulmaWYpA==",
+  "mKiZp5unmqmYqg==",
+  "QaZCpEGjQqJDo0WiRqREpEOlQ6dEqEaoRapDqUKqQalCqA==",
+  "SaZIpEmjSKJHo0WiRqRHpUenRqhFqkepSKpJqUio",
+  "W6BXp1esVaxVp1mg",
+  "UaBVp1enU6A=",
+  "UqZaplqnUqc=",
+  "UqhaqFqpUqk=",
+  "YaljqWOvYa8=",
+  "YaBjoGOmYaY=",
+  "gaKBoIOgg6I=",
+  "haKFoIegh6I=",
+  "tKSxp7Sqtamzp7Wl",
+  "t6S0p7equKm2p7il",
+  "waXBp8enx6rJqsml",
+  "8aD5oPmi8aI=",
+  "FLEUtBG0EbYUthS5FrkWthm2GbQWtBax",
+  "EboZuhm8Ebw=",
+  "RbBDsEGzQ7M=",
+  "VbpUulK7VLxVvFe7",
+  "VrtWvFi8WLRWtFa5Vbo=",
+  "U7tTv1G/UbRTtFO5VLo=",
+  "cbdzt3O5cbk=",
+  "gryDvIS9hL6Dv4G/gb6CvoO9g76CvQ==",
+  "tbS4t7W6tLm2t7S1",
+  "srS1t7K6sbmzt7G1",
+  "2bDbsNS80rw=",
+  "27zbu9m727nbuNq32LfYuNq42rnYu9i8",
+  "ybDLsMS8wrw=",
+  "w7TCtMK1xbXFtMS0xLDDsA==",
+  "wrHDsMOxwrI=",
+  "x7rHu8u7y7rIusq3ybc=",
+  "ybfJvMq8yrc=",
+  "6bDrsOS84rw=",
+  "+L35u/e79rz2vg==",
+  "9r72vPS887vzuvS59bn2uPa29Lb0t/K48brxu/K99L4=",
+  "9rT0tPSy9rI=",
+  "Y8xhzGbAaMA=",
+  "Z8Bnx2THY8lnyWfMbcxtymnKacdsx2zFacVpwm3CbcA=",
+  "BNIG0gjTCdUJ1wjZBtoE2gTcB9wJ2wraC9gL1ArSCdEH0ATQ",
+  "BNAC0ALcBNw=",
+  "AdUG1QbXAdc=",
+  "cdNy0nnZeNo=",
+  "eNJ503Lacdk=",
+  "90L2QvRD80XzR/RJ9kr3SvhM9UzzS/JK8UjxRPJC80H1QPhA",
+  "90L5Q/pF+kf5SfdK+Ez6S/tK/Ej8RPtC+kH4QA==",
+  "h9KG0oTTg9WD14TZhtqH2ojchdyD24LagdiB1ILSg9GF0IjQ",
+  "h9KJ04rViteJ2YfaiNyK24vajNiM1IvSitGI0A==",
+  "gdyK0IzQg9w=",
+  "4dDj0OPc4dw=",
+  "49rm2ujZ6dfp1ejT5tLj0uPU5tTn1efX5tjj2A==",
+  "5Prl+ub55vfl9uT24vXk9OX05/Xo9+j55/vl/OT84vs=",
+  "4/vj/+H/4fDj8OP15Pbj9+P55Po=",
+  "aeRp5mrma+dj52HpYepj7GXsZepk6mPpY+pk6W3pbeds5Wrk",
+  "ZORi5WPmZeZm52bpZepl7Gfraexq7Gzra+pp6mjpaOdp5mnkZ+Vl5A==",
+  "cfV59Xn3cfc=",
+  "dPJ28nb0dPQ=",
+  "dPh2+Hb6dPo=",
+  "hfaE9oP3g/mE+oX6hfyE/IL7gfmB94L1hPSF9A==",
+  "hfaG94b5hfqF/If7iPmI94f1hfQ=",
+  "gfyG9Ij0g/w=",
+  "YfRj9GP8Yfw=",
+  "dMBywXHCcMRwyHHKcst0zHXMdc12znbNdc50znTPds93znfNdsx3zHbKdcpzyXLHcsVzw3XCdsJ3wA==",
+  "dsp3zHnLesp4yQ==",
+  "dsJ3wHnBesJ4ww==",
+  "deR35Xjndud15g==",
+  "dORy5XHncely63TsdO117nXtdO5z7nPvde927nbtdex16nTqc+lz53TmdeZ15A==",
+  "dep26Xjpd+t17A==",
+  "MaU3pTenMac=",
+  "07TStNK11bXVtNS01LDTsA==",
+  "0rHTsNOx0rI=",
+  "57rnu+u767rouuq36bc=",
+  "6bfpvOq86rc=",
+  "4rDiseSx5LLjsuOz5LPktOK04rXkteW05bPksuSz5bLlseSw",
+  "pCimKKYgpCA=",
+  "qCepJaIhoSM=",
+  "oiehJaghqSM=",
+  "sSW5JbknsSc=",
+  "tiK2KrQqtCI=",
+  "QTdJN0k5QTk="
 ];
 
 var charData = [];
@@ -299,7 +389,7 @@ vector_font_c += `};
 static const uint8_t vfAccentPolys[] IN_FLASH_MEMORY = {
 `;
 var n = 0;
-for (var c=240;c<246;c++) {
+for (var c=240;c<247;c++) {
   var char = charData[c];
   accentIndices[c-240] = n;
   n += outputCharCode(c, char);
@@ -311,36 +401,36 @@ static const uint8_t vfAccentPolyIndices[] = {${accentIndices.join(",")}};
 static const uint8_t *vfGetCharPtr(char sch, const uint8_t **accentPtr, int *accentX, int *accentY) {
   unsigned char ch = (unsigned char)sch;
   if (ch>=192) {
-    // 012345 correspond to 0=grave,1=acute,2=circumflex,3=tilde,4=umlaut,5=ring
-    char *chrMap = "AAAAAAACEEEEIIIIDNOOOOOxOUUUUYIBaaaaaaaceeeeiiiionooooo-ouuuuyly";
-    char *accMap = "012345E,01240124-301234 /01241o 012345e,01240124+301234:/01241p4";
+    // 012345 correspond to 0=grave,1=acute,2=circumflex,3=tilde,4=umlaut,5=ring,6=i without dot
+    char *chrMap = "AAAAAA  EEEEIIII NOOOOO  UUUUY  aaaaaa  eeeeiiiionooooo  uuuuy y";
+    char *accMap = "012345  01240124 301234  01241  012345  01240124+301234  01241 4";
     if (ch>=192) {
       int i = ch-192;
-      ch = (unsigned char)chrMap[i];
-      if (accentPtr) {
-        char acc = accMap[i];
-        *accentX = 0;
-        *accentY = 0;
-        if (acc>='0' && acc<='5') {
-          *accentPtr = &vfAccentPolys[vfAccentPolyIndices[acc-'0']];
-          if (ch>='a' && ch<='z') { // lowercase
-            *accentX = -2;
-            *accentY = -4;
-          } else { // uppercase
-            *accentY = -8;
+      unsigned char chReplacement = (unsigned char)chrMap[i];
+      if (chReplacement!=' ') {
+        ch = chReplacement;
+        if (accentPtr) {
+          char acc = accMap[i];
+          *accentX = 0;
+          *accentY = 0;
+          if (acc>='0' && acc<='5') {
+            *accentPtr = &vfAccentPolys[vfAccentPolyIndices[acc-'0']];
+            if (ch>='a' && ch<='z') { // lowercase
+              *accentX = -2;
+              *accentY = -4;
+            } else { // uppercase
+              *accentY = -8;
+            }
+            if (ch=='I') *accentX -= 3;
+            if (ch=='i') {
+              *accentX -= 2;
+              return &vfAccentPolys[vfAccentPolyIndices[6]]; // use i without .
+            }
+          } else if (acc!=' ') {
+            *accentPtr = vfGetCharPtr(acc, NULL,NULL,NULL);
+            if (acc=='+') *accentY = -4;
           }
-          if (ch=='I') *accentX -= 3;
-          if (ch=='i') *accentX -= 2;
-        } else if (acc!=' ') {
-          *accentPtr = vfGetCharPtr(acc, NULL,NULL,NULL);
-          if (acc=='E') *accentX = 8;
-          if (acc=='e') *accentX = 4;
-          if (acc==',') *accentX = 4;
-          if (acc=='+') *accentY = -4;
-          if (acc==':') { *accentX = 2;*accentY = -2; }
-          if (acc=='o') { *accentX = 2;*accentY = -1; }
         }
-
       }
     }
   }
