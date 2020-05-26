@@ -1573,6 +1573,27 @@ int jshSPISend(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return -1;
   jshSPIWait(device);
+#if defined(SPI0_USE_EASY_DMA)
+  // Hack for https://infocenter.nordicsemi.com/topic/­errata_nRF52832_Rev2/ERR/nRF52832/Rev2/l­atest/anomaly_832_58.html?cp=4_2_1_0_1_8
+  // Can't use DMA for single bytes as it's broken
+  NRF_SPI_Type *p_spi = (NRF_SPI_Type *)spi0.p_registers;
+  NRF_SPIM_Type *p_spim = (NRF_SPIM_Type *)spi0.p_registers;
+  nrf_spim_disable(p_spim);
+  nrf_spi_enable(p_spi); // enable SPI mode (non-DMA)
+  nrf_spi_int_disable(p_spi, NRF_SPI_INT_READY_MASK);
+  nrf_spi_event_clear(p_spi, NRF_SPI_EVENT_READY);
+  // start transfer
+  spi0Sending = true;
+  nrf_spi_txd_set(p_spi, data);
+  // wait for rx data
+  while (!nrf_spi_event_check(p_spi, NRF_SPI_EVENT_READY)) {}
+  nrf_spi_event_clear(p_spi, NRF_SPI_EVENT_READY);
+  int rx = nrf_spi_rxd_get(p_spi);
+  spi0Sending = false;
+  nrf_spi_disable(p_spi);
+  nrf_spim_enable(p_spim); // enable SPIM mode (DMA)
+  return rx;
+#else
   uint8_t tx = (uint8_t)data;
   uint8_t rx = 0;
   spi0Sending = true;
@@ -1584,6 +1605,8 @@ int jshSPISend(IOEventFlags device, int data) {
   jshSPIWait(device);
   return rx;
 #endif
+#endif
+
 }
 
 /** Send 16 bit data through the given SPI device. */
@@ -1608,6 +1631,15 @@ void jshSPISend16(IOEventFlags device, int data) {
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return false;
+#if defined(SPI0_USE_EASY_DMA)
+  // Hack for https://infocenter.nordicsemi.com/topic/­errata_nRF52832_Rev2/ERR/nRF52832/Rev2/l­atest/anomaly_832_58.html?cp=4_2_1_0_1_8­
+  if (count==1) {
+    int r = jshSPISend(device, tx?*tx:-1);
+    if (rx) *rx = r;
+    if (callback) callback();
+    return true;
+  }
+#endif
   jshSPIWait(device);
   spi0Sending = true;
 
