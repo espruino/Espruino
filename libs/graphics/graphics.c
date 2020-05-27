@@ -460,8 +460,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
     // work out all the times lines cross the scanline
     j = points-1;
     for (i=0;i<points;i++) {
-      if ((v[i].y<y && v[j].y>=y) ||
-          (v[j].y<y && v[i].y>=y)) {
+      if ((v[i].y<=y && v[j].y>y) || (v[j].y<=y && v[i].y>y)) {
         if (crosscnt < MAX_CROSSES) {
           int l = v[j].y - v[i].y;
           if (l) { // don't do horiz lines - rely on the ends of the lines that join onto them

@@ -1654,8 +1654,8 @@ g.fillPoly([
   0, 27 ]);
 ```
 
-This fills from the bottom left hand side of the polygon (low X, high Y)
-*up to but not including* the top right. When placed together polygons
+This fills from the top left hand side of the polygon (low X, low Y)
+*down to but not including* the bottom right. When placed together polygons
 will align perfectly without overdraw - but this will not fill the
 same pixels as `drawPoly` (drawing a line around the edge of the polygon).
 */
