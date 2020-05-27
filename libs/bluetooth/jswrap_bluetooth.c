@@ -3098,7 +3098,12 @@ JsVar *jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
   } else {
     // no connection - try and cancel the connect attempt (assume we have one)
 #ifdef NRF52
-    err_code = sd_ble_gap_connect_cancel();
+    if (bleInTask(BLETASK_CONNECT)) {
+      bleCompleteTaskFailAndUnLock(BLETASK_CONNECT, jsvNewFromString("Connection cancelled"));
+      err_code = sd_ble_gap_connect_cancel();
+    } else {
+      jsExceptionHere(JSET_ERROR, "Not connected");
+    }
 #endif
 #ifdef ESP32
     jsWarn("connect cancel not implemented yet\n");
