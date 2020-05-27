@@ -45,6 +45,7 @@
             Graphics.fillPoly now uses 4 bit fixed point internally
             nRF52: Fix 2v05 hardware SPI regression (chip errata when sending 1 byte)
             Graphics.fillPoly now uses a more normal fill algorithm that doesn't attempt to fill to the top right (fix #1796)
+            Fix setTimeout/Interval accuracy when new timeouts scheduled within timeout (fix #1829)
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
