@@ -1642,7 +1642,22 @@ JsVar *jswrap_graphics_drawPoly(JsVar *parent, JsVar *poly, bool closed) {
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-Draw a filled polygon in the current foreground color
+Draw a filled polygon in the current foreground color.
+
+```
+g.fillPoly([
+  16, 0,
+  31, 31,
+  26, 31,
+  16, 12,
+  6, 28,
+  0, 27 ]);
+```
+
+This fills from the bottom left hand side of the polygon (low X, high Y)
+*up to but not including* the top right. When placed together polygons
+will align perfectly without overdraw - but this will not fill the
+same pixels as `drawPoly` (drawing a line around the edge of the polygon).
 */
 JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
