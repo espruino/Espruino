@@ -47,7 +47,6 @@ const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 
 bool mag_enabled = false; //< Has the magnetometer been turned on?
 int16_t mag_reading[3];  //< magnetometer xyz reading
-bool mag_reading_new;
 
 bool accel_enabled = false; //< Has the accelerometer been turned on?
 int16_t accel_reading[3];
@@ -68,21 +67,19 @@ JsVar *to_xyz(int16_t d[3], double scale) {
  * since we force high here for 0.1uS here before going open circuit. */
 
 void mag_pin_on() {
-  /*nrf_gpio_pin_set(MAG_PIN_PWR);
-  nrf_gpio_pin_set(MAG_PIN_SDA);
-  nrf_gpio_pin_set(MAG_PIN_SCL);
-  nrf_gpio_cfg_output(MAG_PIN_PWR);
-  nrf_gpio_cfg_output(MAG_PIN_SDA);
-  nrf_gpio_cfg_output(MAG_PIN_SCL);
-  nrf_gpio_cfg_input(MAG_PIN_INT, NRF_GPIO_PIN_PULLUP);*/
   jshPinSetValue(MAG_PIN_PWR, 1);
   jshPinSetValue(MAG_PIN_SCL, 1);
   jshPinSetValue(MAG_PIN_SDA, 1);
   jshPinSetState(MAG_PIN_PWR, JSHPINSTATE_GPIO_OUT);
   jshPinSetState(MAG_PIN_SCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   jshPinSetState(MAG_PIN_SDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
-  if (!isPuckV2) // IRQ line on Puck.js is often 0 - don't pull up
-    jshPinSetState(MAG_PIN_INT, NRF_GPIO_PIN_NOPULL);
+  if (!isPuckV2) {
+    // IRQ line on Puck.js is often 0 - don't pull up
+    jshPinSetState(MAG_PIN_INT, JSHPINSTATE_GPIO_IN);
+  } else {
+    // using DRDY for data
+    jshPinSetState(MAG_PIN_DRDY, JSHPINSTATE_GPIO_IN);
+  }
 }
 
 // Turn magnetometer on and configure
@@ -212,20 +209,13 @@ int mag_read_temp() {
   }
 }
 
-void magPollHandler() {
-  // isPuckV2=true
-  mag_read();
-  mag_reading_new = true;
-}
-
 // Turn magnetometer off
 void mag_off() {
   //jsiConsolePrintf("mag_off\n");
-  if (isPuckV2)
-    jstStopExecuteFn(magPollHandler, 0);
-  nrf_gpio_cfg_input(MAG_PIN_SDA, NRF_GPIO_PIN_NOPULL);
-  nrf_gpio_cfg_input(MAG_PIN_SCL, NRF_GPIO_PIN_NOPULL);
-  nrf_gpio_cfg_input(MAG_PIN_INT, NRF_GPIO_PIN_NOPULL);
+  nrf_gpio_cfg_default(MAG_PIN_SDA);
+  nrf_gpio_cfg_default(MAG_PIN_SCL);
+  nrf_gpio_cfg_default(MAG_PIN_INT);
+  nrf_gpio_cfg_default(MAG_PIN_DRDY);
   nrf_gpio_pin_clear(MAG_PIN_PWR);
   nrf_gpio_cfg_output(MAG_PIN_PWR);
 }
@@ -233,7 +223,11 @@ void mag_off() {
 bool accel_on(int milliHz) {
   // CTRL1_XL / CTRL2_G
   int reg = 0;
-  if (milliHz==12500) reg=1<<4; // 12.5 Hz (low power)
+  bool gyro = true;
+  if (milliHz<12500) { // 1.6Hz, no gyro
+    reg = 11<<4;
+    gyro = false;
+  } else if (milliHz==12500) reg=1<<4; // 12.5 Hz (low power)
   else if (milliHz==26000) reg=2<<4; // 26 Hz (low power)
   else if (milliHz==52000) reg=3<<4; // 52 Hz (low power)
   else if (milliHz==104000) reg=4<<4; // 104 Hz (normal mode)
@@ -259,11 +253,15 @@ bool accel_on(int milliHz) {
 
   // LSM6DS3TR
   unsigned char buf[2];
+  buf[0] = 0x15; buf[1]=0x10; // CTRL6-C - XL_HM_MODE=1, low power accelerometer
+  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  buf[0] = 0x16; buf[1]=0x80; //  CTRL6-C - G_HM_MODE=1, low power gyro
+  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
   buf[0] = 0x18; buf[1]=0x38; // CTRL9_XL  Acc X, Y, Z axes enabled
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
-  buf[0] = 0x10; buf[1]=reg | 0b00001011; // CTRL1_XL  +-4g, 50Hz AA filter
+  buf[0] = 0x10; buf[1]=reg | 0b00001011; // CTRL1_XL Accelerometer, +-4g, 50Hz AA filter
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
-  buf[0] = 0x11; buf[1]=reg | 0; // CTRL2_G  250 dps, no 125dps limit
+  buf[0] = 0x11; buf[1]=gyro ? reg : 0; // CTRL2_G  Gyro, 250 dps, no 125dps limit
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
   buf[0] = 0x12; buf[1]=0x44; // CTRL3_C, BDU, irq active high, push pull, auto-inc
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
@@ -483,11 +481,11 @@ void jswrap_puck_magOn(JsVarFloat hz) {
     jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - must be 80, 40, 20, 10, 5, 2.5, 1.25, 0.63, 0.31, 0.16 or 0.08 Hz", hz);
   }
   if (isPuckV2) {
-    JsSysTime t = jshGetTimeFromMilliseconds(1000000/milliHz);
-    jstExecuteFn(magPollHandler, NULL, jshGetSystemTime()+t, t);
+    jshPinWatch(MAG_PIN_DRDY, true);
+    jshPinSetState(MAG_PIN_DRDY, JSHPINSTATE_GPIO_IN);
   } else {
     jshPinWatch(MAG_PIN_INT, true);
-    jshPinSetState(MAG_PIN_INT, JSHPINSTATE_GPIO_IN_PULLUP);
+    jshPinSetState(MAG_PIN_INT, JSHPINSTATE_GPIO_IN);
   }
   mag_enabled = true;
 }
@@ -503,7 +501,11 @@ Turn the magnetometer off
 */
 void jswrap_puck_magOff() {
   if (mag_enabled) {
-    jshPinWatch(MAG_PIN_INT, false);
+    if (isPuckV2) {
+      jshPinWatch(MAG_PIN_DRDY, false);
+    } else {
+      jshPinWatch(MAG_PIN_INT, false);
+    }
     mag_off();
   }
   mag_enabled = false;
@@ -616,6 +618,19 @@ JsVarFloat jswrap_puck_getTemperature() {
       ["samplerate","float","The sample rate in Hz, or undefined"]
   ]
 }
+
+Accepted values are:
+
+* 1.6 Hz (No Gyro) - 40uA
+* 12.5 Hz - 350uA
+* 26 Hz - 450 uA
+* 52 Hz - 600 uA
+* 104 Hz - 900 uA
+* 208 Hz - 1500 uA
+* 416 Hz (not recommended)
+* 833 Hz (not recommended)
+* 1660 Hz (not recommended)
+
 */
 void jswrap_puck_accelOn(JsVarFloat hz) {
   if (!isPuckV2) {
@@ -630,7 +645,7 @@ void jswrap_puck_accelOn(JsVarFloat hz) {
   int milliHz = (int)((hz*1000)+0.5);
   if (milliHz==0) milliHz=12500;
   if (!accel_on(milliHz)) {
-    jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - must be 1660, 833, 416, 208, 104, 52, 26, 12.5 Hz", hz);
+    jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - must be 1660, 833, 416, 208, 104, 52, 26, 12.5, 1.6 Hz", hz);
   }
   jshPinWatch(ACCEL_PIN_INT, true);
   accel_enabled = true;
@@ -727,7 +742,7 @@ int jswrap_puck_accelRd(JsVarInt reg) {
   }
   unsigned char buf[1];
   buf[0] = (unsigned char)reg;
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, true);
+  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, false);
   jsi2cRead(&i2cAccel, ACCEL_ADDR, 1, buf, true);
   return buf[0];
 }
@@ -1280,8 +1295,7 @@ bool jswrap_puck_idle() {
    * magnetometer reading is ready */
   if (mag_enabled) {
     if (isPuckV2) {
-      if (mag_reading_new) {
-        mag_reading_new = false;
+      if (nrf_gpio_pin_read(MAG_PIN_DRDY)) {
         /*jsiConsolePrintf("irq\n");
         mag_read();
         unsigned char buf[3];
@@ -1294,7 +1308,7 @@ bool jswrap_puck_idle() {
         buf[0] = 0x32; buf[1]=0;buf[1]=0; // INT_THS_L,H - turn on by writing 0
         jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
         jsiConsolePrintf("irq %d\n",nrf_gpio_pin_read(MAG_PIN_INT));*/
-
+        mag_read();
         JsVar *xyz = to_xyz(mag_reading, 1);
         JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
         if (jsvHasChildren(puck))
