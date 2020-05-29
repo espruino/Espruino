@@ -50,6 +50,8 @@ typedef enum {
   JSGRAPHICSFLAGS_COLOR_RBG = JSGRAPHICSFLAGS_COLOR_BASE*5, //< All devices: color order is RBG
   JSGRAPHICSFLAGS_COLOR_MASK = JSGRAPHICSFLAGS_COLOR_BASE*7, //< All devices: color order is BRG
 
+  /// If any bits here are set, X and Y get modified before being used
+  JSGRAPHICSFLAGS_MAPPEDXY = JSGRAPHICSFLAGS_SWAP_XY|JSGRAPHICSFLAGS_INVERT_X|JSGRAPHICSFLAGS_INVERT_Y,
   /// If any bits in this mark are set, pixel data is not laid out linearly
   JSGRAPHICSFLAGS_NONLINEAR = JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG|JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE|JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX
 } JsGraphicsFlags;
@@ -105,6 +107,7 @@ typedef struct JsGraphics {
   unsigned int (*getPixel)(struct JsGraphics *gfx, int x, int y);
   void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); // scroll - leave unscrolled area undefined
 } PACKED_FLAGS JsGraphics;
+typedef void (*JsGraphicsSetPixelFn)(struct JsGraphics *gfx, int x, int y, unsigned int col);
 
 // ---------------------------------- these are in graphics.c
 /// Reset graphics structure state (eg font size, color, etc)
@@ -116,12 +119,22 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
 /// Access the Graphics Instance JsVar and set the relevant info from JsGraphics structure
 void graphicsSetVar(JsGraphics *gfx);
 // ----------------------------------------------------------------------------------------------
+
+
+
 /// Get the memory requires for this graphics's pixels if everything was packed as densely as possible
 size_t graphicsGetMemoryRequired(const JsGraphics *gfx);
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y);
 unsigned short graphicsGetWidth(const JsGraphics *gfx);
 unsigned short graphicsGetHeight(const JsGraphics *gfx);
+// Set the area modified (inclusive of x2,y2) by a draw command and also clip to the screen/clipping bounds. Returns true if clipped
+bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int *y2);
+/// Get a setPixel function (assuming coordinates already clipped with graphicsSetModifiedAndClip) - if all is ok it can choose a faster draw function
+JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx);
+/// Get a setPixel function and set modified area (assuming no clipping) (inclusive of x2,y2) - if all is ok it can choose a faster draw function
+JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2);
+
 // drawing functions - all coordinates are in USER coordinates, not DEVICE coordinates
 void         graphicsSetPixel(JsGraphics *gfx, int x, int y, unsigned int col);
 unsigned int graphicsGetPixel(JsGraphics *gfx, int x, int y);

@@ -49,6 +49,7 @@
             nRF52: Fix 'BLE task 2 is already in progress' if disconnect called during connection process
             Puck.js: Put accelerometer into lower power mode by default
             Puck.js: Switch to IRQs for magnetometer (lower power consumption)
+            Improve Graphics.drawImage speed and simplify code by allowing fast path for non-rotated graphics
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

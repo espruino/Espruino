@@ -1858,7 +1858,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
 
 /// This is for rotating and scaling layers
 typedef struct {
-  int x1,y1,x2,y2;
+  int x1,y1,x2,y2; //x2/y2 is exclusive
   double rotate; // radians
   double scale; // 1 = 1:1, 2 = big
   bool center; // center on x1/y1 (which are then offset)
@@ -2034,65 +2034,30 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   JsvStringIterator it;
   jsvStringIteratorNew(&it, img.buffer, (size_t)img.bufferOffset);
 
+#ifdef USE_LCD_ST7789_8BIT // can we blit directly to the display?
+  bool isST7789 =
+        gfx.data.type==JSGRAPHICSTYPE_ST7789_8BIT && // it's the display
+        (gfx.data.flags & JSGRAPHICSFLAGS_MAPPEDXY)==0 && // no messing with coordinates
+        gfx.data.bpp==16 && // normal BPP
+        (img.bpp==8 || img.bpp==1) && // image bpp is handled by fast path
+        !img.isTransparent; // not transparent
+#endif
+
   if (jsvIsUndefined(options)) {
     // Standard 1:1 blitting
-#ifdef GRAPHICS_FAST_PATHS
-    bool fastPath =
-        (gfx.data.flags & (JSGRAPHICSFLAGS_SWAP_XY|JSGRAPHICSFLAGS_INVERT_X|JSGRAPHICSFLAGS_INVERT_Y))==0; // no messing with coordinates
 #ifdef USE_LCD_ST7789_8BIT // can we blit directly to the display?
-    uint8_t *pixelPtr;
-    size_t pixelLen;
-    if (fastPath &&
-        gfx.data.type==JSGRAPHICSTYPE_ST7789_8BIT &&
-        gfx.data.bpp==16 &&
-        (img.bpp==8 || img.bpp==1) &&
-        !img.isTransparent &&
-        xPos>=0 && yPos>=0 && // check it's all on-screen
-        (xPos+img.width)<=LCD_WIDTH && (yPos+img.height)<=LCD_HEIGHT) {
+    if (isST7789 &&
+        xPos>=gfx.data.clipRect.x1 && yPos>=gfx.data.clipRect.y1 && // check it's all on-screen
+        (xPos+img.width)<=gfx.data.clipRect.x2 && (yPos+img.height)<=gfx.data.clipRect.y2) {
       if (img.bpp==1) lcdST7789_blit1Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
       else if (img.bpp==8) lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
-    } else
-#endif
-    if (fastPath) { // fast path for standard blit
-      int yp = yPos;
-      for (y=0;y<img.height;y++) {
-        int xp = xPos;
-        for (x=0;x<img.width;x++) {
-          // Get the data we need...
-          while (bits < img.bpp) {
-            colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetCharAndNext(&it));
-            bits += 8;
-          }
-          // extract just the bits we want
-          unsigned int col = (colData>>(bits-img.bpp))&img.bitMask;
-          bits -= img.bpp;
-          // Try and write pixel!
-          if (img.transparentCol!=col) {
-            if (img.palettePtr) col = img.palettePtr[col&img.paletteMask];
-            if (xp>=gfx.data.clipRect.x1 && xp<=gfx.data.clipRect.x2 &&
-                yp>=gfx.data.clipRect.y1 && yp<=gfx.data.clipRect.y2)
-              gfx.setPixel(&gfx, xp, yp, col);
-          }
-          xp++;
-        }
-        yp++;
-      }
-      // update modified area since we went direct
-      int x1=xPos, y1=yPos, x2=xPos+img.width, y2=yPos+img.height;
-      if (x1<gfx.data.clipRect.x1) x1 = gfx.data.clipRect.x1;
-      if (y1<gfx.data.clipRect.y1) y1 = gfx.data.clipRect.y1;
-      if (x2>gfx.data.clipRect.x2) x2 = gfx.data.clipRect.x2;
-      if (y2>gfx.data.clipRect.y2) y2 = gfx.data.clipRect.y2;
-      if (x1 < gfx.data.modMinX) gfx.data.modMinX=(short)x1;
-      if (x2 > gfx.data.modMaxX) gfx.data.modMaxX=(short)x2;
-      if (y1 < gfx.data.modMinY) gfx.data.modMinY=(short)y1;
-      if (y2 > gfx.data.modMaxY) gfx.data.modMaxY=(short)y2;
-    } else { // handle rotation, and default to center the image
+    } else {
 #else
-    if (true) {
+    {
 #endif
-      for (y=0;y<img.height;y++) {
-        for (x=0;x<img.width;x++) {
+      JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelUnclippedFn(&gfx, xPos, yPos, xPos+img.width-1, yPos+img.height-1);
+      for (y=yPos;y<yPos+img.height;y++) {
+        for (x=xPos;x<xPos+img.width;x++) {
           // Get the data we need...
           while (bits < img.bpp) {
             colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetCharAndNext(&it));
@@ -2104,7 +2069,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
           // Try and write pixel!
           if (img.transparentCol!=col) {
             if (img.palettePtr) col = img.palettePtr[col&img.paletteMask];
-            graphicsSetPixel(&gfx, x+xPos, y+yPos, col);
+            setPixel(&gfx, x, y, col);
           }
         }
       }
@@ -2125,7 +2090,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     bool fastPath =
         (!centerImage) &&  // not rotating
         (scale-floor(scale))==0 && // integer scale
-        (gfx.data.flags & (JSGRAPHICSFLAGS_SWAP_XY|JSGRAPHICSFLAGS_INVERT_X|JSGRAPHICSFLAGS_INVERT_Y))==0; // no messing with coordinates
+        (gfx.data.flags & JSGRAPHICSFLAGS_MAPPEDXY)==0; // no messing with coordinates
     if (fastPath) { // fast path for non-rotated, integer scale
       int s = (int)scale;
       // Scaled blitting
@@ -2134,15 +2099,10 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
        * coordinate setting
        */
 #ifdef USE_LCD_ST7789_8BIT // can we blit directly to the display?
-      uint8_t *pixelPtr;
-      size_t pixelLen;
-      if (gfx.data.type==JSGRAPHICSTYPE_ST7789_8BIT &&
-          gfx.data.bpp==16 &&
+      if (isST7789 &&
           s>=1 &&
-          (img.bpp==8 || img.bpp==1) &&
-          !img.isTransparent &&
-          xPos>=0 && yPos>=0 && // check it's all on-screen
-          (xPos+img.width*s)<=LCD_WIDTH && (yPos+img.height*s)<=LCD_HEIGHT) {
+          xPos>=gfx.data.clipRect.x1 && yPos>=gfx.data.clipRect.y1 && // check it's all on-screen
+          (xPos+img.width*s)<=gfx.data.clipRect.x2 && (yPos+img.height*s)<=gfx.data.clipRect.y2) {
         if (img.bpp==1) lcdST7789_blit1Bit(xPos, yPos, img.width, img.height, s, &it, img.palettePtr);
         else lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, s, &it, img.palettePtr);
       } else
@@ -2187,14 +2147,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         }
         // update modified area since we went direct
         int x1=xPos, y1=yPos, x2=xPos+s*img.width, y2=yPos+s*img.height;
-        if (x1<gfx.data.clipRect.x1) x1 = gfx.data.clipRect.x1;
-        if (y1<gfx.data.clipRect.y1) y1 = gfx.data.clipRect.y1;
-        if (x2>gfx.data.clipRect.x2) x2 = gfx.data.clipRect.x2;
-        if (y2>gfx.data.clipRect.y2) y2 = gfx.data.clipRect.y2;
-        if (x1 < gfx.data.modMinX) gfx.data.modMinX=(short)x1;
-        if (x2 > gfx.data.modMaxX) gfx.data.modMaxX=(short)x2;
-        if (y1 < gfx.data.modMinY) gfx.data.modMinY=(short)y1;
-        if (y2 > gfx.data.modMaxY) gfx.data.modMaxY=(short)y2;
+        graphicsSetModifiedAndClip(&gfx,&x1,&y1,&x2,&y2);
       }
     } else { // handle rotation, and default to center the image
 #else
@@ -2210,12 +2163,17 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       l.center = centerImage;
       l.repeat = false;
       _jswrap_drawImageLayerInit(&l);
+      int x1=l.x1, y1=l.y1, x2=l.x2-1, y2=l.y2-1;
+      graphicsSetModifiedAndClip(&gfx, &x1, &y1, &x2, &y2);
+      _jswrap_drawImageLayerSetStart(&l, x1, y1);
+      JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelFn(&gfx);
+
       // scan across image
-      for (y = l.y1; y < l.y2; y++) {
+      for (y = y1; y <= y2; y++) {
         _jswrap_drawImageLayerStartX(&l);
-        for (x = l.x1; x < l.x2 ; x++) {
+        for (x = x1; x <= x2 ; x++) {
           if (_jswrap_drawImageLayerGetPixel(&l, &colData))
-            graphicsSetPixel(&gfx, x, y, colData);
+            setPixel(&gfx, x, y, colData);
           _jswrap_drawImageLayerNextX(&l);
         }
         _jswrap_drawImageLayerNextY(&l);
@@ -2311,7 +2269,6 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
     jsvUnLock(layer);
   }
 
-  // TODO: figure out default bounds based on bounds of images?
   jsvConfigObject configs[] = {
       {"x", JSV_INTEGER, &x},
       {"y", JSV_INTEGER, &y},
@@ -2320,19 +2277,10 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
   };
   if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject)))
     ok =  false;
-  // clipping to screen
-  if (x<0) {
-    width += x;
-    x = 0;
-  }
-  if (y<0) {
-    height += y;
-    y = 0;
-  }
-  if (x+width > graphicsGetWidth(&gfx))
-    width = graphicsGetWidth(&gfx)-x;
-  if (y+height > graphicsGetHeight(&gfx))
-    height = graphicsGetHeight(&gfx)-y;
+  int x2 = x+width-1, y2 = y+height-1;
+  graphicsSetModifiedAndClip(&gfx, &x, &y, &x2, &y2);
+  JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelFn(&gfx);
+
   // If all good, start rendering!
   if (ok) {
     for (i=0;i<layerCount;i++) {
@@ -2340,10 +2288,10 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
       _jswrap_drawImageLayerSetStart(&layers[i], x, y);
     }
     // scan across image
-    for (int yi = 0; yi < height; yi++) {
+    for (int yi = y; yi <= y2; yi++) {
       for (i=0;i<layerCount;i++)
         _jswrap_drawImageLayerStartX(&layers[i]);
-      for (int xi = 0; xi < width ; xi++) {
+      for (int xi = x; xi <= x2 ; xi++) {
         // scan backwards until we hit a 'solid' pixel
         bool solid = false;
         unsigned int colData = 0;
@@ -2355,7 +2303,7 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
         }
         // if nontransparent, draw it!
         if (solid)
-          graphicsSetPixel(&gfx, xi+x, yi+y, colData);
+          setPixel(&gfx, xi, yi, colData);
         // next in layers!
         for (i=0;i<layerCount;i++) {
           _jswrap_drawImageLayerNextX(&layers[i]);
