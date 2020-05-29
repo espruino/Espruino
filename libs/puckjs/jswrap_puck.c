@@ -99,8 +99,7 @@ bool mag_on(int milliHz) {
     else if (milliHz == 2500) reg1 = 2<<2; // 34uA
     else if (milliHz == 1250) reg1 = 1<<2; // 17uA
     else if (milliHz <= 630) { /*if (milliHz == 630 || milliHz == 625)*/
-      // We just go for the lowest power mode and because we're polling,
-      // lower rates are fine
+      // We just go for the lowest power mode
       reg1 = 0<<2; // 8uA
       lowPower = true;
     }
@@ -116,18 +115,6 @@ bool mag_on(int milliHz) {
     jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
     buf[0] = 0x24; buf[1]=0x40; // CTRL_REG5 - block data update
     jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
-    // Enable IRQ, all axes threshold 0 - should trigger basically every time new data is available
-    // ... but this doesn't work as it seems to be unlatched
-    /*buf[0] = 0x30; buf[1]=0xE9; // INT_CFG - all axes, enabled
-    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
-    buf[0] = 0x32; buf[1]=0x00; // INT_THS_L
-    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
-    buf[0] = 0x33; buf[1]=0x00; // INT_THS_H
-    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);*/
-    /*buf[0] = 0x22;
-    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, true);
-    jsi2cRead(&i2cMag, LIS3MDL_ADDR, 1, buf, true);
-    jsiConsolePrintf("REG3 %d\n",buf[0]);*/
   } else { // MAG3110
     jshDelayMicroseconds(2000); // 1.7ms from power on to ok
     int reg1 = 0;
@@ -330,7 +317,7 @@ Class containing [Puck.js's](http://www.puck-js.com) utility functions.
   "ifdef" : "PUCKJS",
   "return" : ["pin",""]
 }
-On Puck.js V2 (not v1.0) this is the pin that controls the FET.
+On Puck.js V2 (not v1.0) this is the pin that controls the FET, for high-powered outputs.
 */
 
 /*JSON{
@@ -443,6 +430,7 @@ a 'mag' event on 'Puck':
 Puck.magOn();
 Puck.on('mag', function(xyz) {
   console.log(xyz);
+  // {x:..., y:..., z:...}
 });
 // Turn events off with Puck.magOff();
 ```
@@ -467,6 +455,9 @@ The sample rate must be one of the following (resulting in the given power consu
 When the battery level drops too low while sampling is turned on,
 the magnetometer may stop sampling without warning, even while other
 Puck functions continue uninterrupted.
+
+Check out [the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals)
+for more information.
 
 */
 void jswrap_puck_magOn(JsVarFloat hz) {
@@ -522,7 +513,10 @@ void jswrap_puck_magOff() {
     ],
     "ifdef" : "PUCKJS"
 }
-Writes a register on the LIS3MDL / MAX3110 Magnetometer
+Writes a register on the LIS3MDL / MAX3110 Magnetometer. Can be used for configuring advanced functions.
+
+Check out [the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals)
+for more information and links to modules that use this function.
 */
 void jswrap_puck_magWr(JsVarInt reg, JsVarInt data) {
   unsigned char buf[2];
@@ -542,7 +536,10 @@ void jswrap_puck_magWr(JsVarInt reg, JsVarInt data) {
     "return" : ["int",""],
     "ifdef" : "PUCKJS"
 }
-Reads a register from the LIS3MDL / MAX3110 Magnetometer
+Reads a register from the LIS3MDL / MAX3110 Magnetometer. Can be used for configuring advanced functions.
+
+Check out [the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals)
+for more information and links to modules that use this function.
 */
 int jswrap_puck_magRd(JsVarInt reg) {
   unsigned char buf[1];
@@ -621,15 +618,18 @@ JsVarFloat jswrap_puck_getTemperature() {
 
 Accepted values are:
 
-* 1.6 Hz (No Gyro) - 40uA
-* 12.5 Hz - 350uA
-* 26 Hz - 450 uA
-* 52 Hz - 600 uA
-* 104 Hz - 900 uA
-* 208 Hz - 1500 uA
-* 416 Hz (not recommended)
-* 833 Hz (not recommended)
-* 1660 Hz (not recommended)
+* 1.6 Hz (no Gyro) - 40uA (2v05 and later firmware)
+* 12.5 Hz (with Gyro)- 350uA
+* 26 Hz (with Gyro) - 450 uA
+* 52 Hz (with Gyro) - 600 uA
+* 104 Hz (with Gyro) - 900 uA
+* 208 Hz (with Gyro) - 1500 uA
+* 416 Hz (with Gyro) (not recommended)
+* 833 Hz (with Gyro) (not recommended)
+* 1660 Hz (with Gyro) (not recommended)
+
+Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals)
+for more information.
 
 */
 void jswrap_puck_accelOn(JsVarFloat hz) {
@@ -658,7 +658,7 @@ void jswrap_puck_accelOn(JsVarFloat hz) {
   "ifdef" : "PUCKJS",
   "generate" : "jswrap_puck_accelOff"
 }
-Turn the magnetometer off
+Turn the accelerometer off
 */
 void jswrap_puck_accelOff() {
   if (!isPuckV2) {
@@ -681,7 +681,6 @@ void jswrap_puck_accelOff() {
   "return" : ["JsVar", "An Object `{acc:{x,y,z}, gyro:{x,y,z}}` of accelerometer/gyro readings" ]
 }
 Turn on the accelerometer, take a single reading, and then turn it off again.
-
 */
 JsVar *jswrap_puck_accel() {
   /* If not enabled, turn on and read. If enabled,
@@ -709,7 +708,10 @@ JsVar *jswrap_puck_accel() {
     ],
     "ifdef" : "PUCKJS"
 }
-Writes a register on the LSM6DS3 Accelerometer
+Writes a register on the LSM6DS3TR-C Accelerometer. Can be used for configuring advanced functions.
+
+Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals)
+for more information and links to modules that use this function.
 */
 void jswrap_puck_accelWr(JsVarInt reg, JsVarInt data) {
   if (!isPuckV2) {
@@ -733,7 +735,10 @@ void jswrap_puck_accelWr(JsVarInt reg, JsVarInt data) {
     "return" : ["int",""],
     "ifdef" : "PUCKJS"
 }
-Reads a register from the LSM6DS3 Accelerometer
+Reads a register from the LSM6DS3TR-C Accelerometer. Can be used for configuring advanced functions.
+
+Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals)
+for more information and links to modules that use this function.
 */
 int jswrap_puck_accelRd(JsVarInt reg) {
   if (!isPuckV2) {
