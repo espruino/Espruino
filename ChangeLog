@@ -36,7 +36,24 @@
             nRF52: If passkey or oob is set in setSecurity, ensure that the UART connection requires encryption (fix #1705)
             Now report [ERASED] rather than ?[255] if we hit char code 255 while evaluating
             Bangle.js: read `setting.json` at init and modify Bangle.beep/buzz behaviour accordingly
+<<<<<<< HEAD
             Tensorflow: updated to v2.2
+=======
+            Tensorflow: remove some as-yet unused operators to free space
+            nRF52: Speed up bootloader, remove pauses on Pixl.js
+            Pixl.js: fix self-test/terminal print - write to screen immediately after newline unless in IRQ
+            Fix issue with iteration over arrays with negative entries (these should be converted to Strings)
+            Linux: improve command-line, allow recursive test directory and more than one test (eg wildcard + shell expansion)
+            Added new vector fonts supporting most of ISO8859-1
+            Graphics.fillPoly now uses 4 bit fixed point internally
+            nRF52: Fix 2v05 hardware SPI regression (chip errata when sending 1 byte)
+            Graphics.fillPoly now uses a more normal fill algorithm that doesn't attempt to fill to the top right (fix #1796)
+            Fix setTimeout/Interval accuracy when new timeouts scheduled within timeout (fix #1829)
+            nRF52: Fix 'BLE task 2 is already in progress' if disconnect called during connection process
+            Puck.js: Put accelerometer into lower power mode by default
+            Puck.js: Switch to IRQs for magnetometer (lower power consumption)
+            Improve Graphics.drawImage speed and simplify code by allowing fast path for non-rotated graphics
+>>>>>>> master
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

@@ -372,6 +372,7 @@ WRAPPERSOURCES += libs/graphics/jswrap_graphics.c
 SOURCES += \
 libs/graphics/bitmap_font_4x6.c \
 libs/graphics/bitmap_font_6x8.c \
+libs/graphics/vector_font.c \
 libs/graphics/graphics.c \
 libs/graphics/lcd_arraybuffer.c \
 libs/graphics/lcd_js.c

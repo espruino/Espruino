@@ -13,22 +13,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/lite/micro/micro_interpreter.h"
-#ifdef TENSORFLOW_ALL_OPS
-#include "tensorflow/lite/micro/kernels/all_ops_resolver.h"
-#else
-#include "tensorflow/lite/micro/kernels/micro_ops.h"
-#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
-#endif
+#include "tensorflow/lite/experimental/micro/kernels/all_ops_resolver.h"
+#include "tensorflow/lite/experimental/micro/micro_error_reporter.h"
+#include "tensorflow/lite/experimental/micro/micro_interpreter.h"
 #include "tensorflow/lite/core/api/error_reporter.h"
-#include "tensorflow/lite/micro/compatibility.h"
+#include "tensorflow/lite/experimental/micro/compatibility.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 extern "C" {
 #include "jsinteractive.h"
 #include "tensorflow.h"
 
-//void DebugLog(const char* s) { jsiConsolePrint("TF:");jsiConsolePrint(s); }
+void DebugLog(const char* s) { jsiConsolePrint("TF:");jsiConsolePrint(s); }
 
 namespace tflite {
 
@@ -43,9 +39,7 @@ class EspruinoErrorReporter : public ErrorReporter {
   }
   TF_LITE_REMOVE_VIRTUAL_DELETE
 };
-
 }  // namespace tflite
-
 
 typedef struct {
   // logging

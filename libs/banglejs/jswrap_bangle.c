@@ -1154,7 +1154,7 @@ void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
 }
 Set the power to the Heart rate monitor
 
-When on, data is output via the `GPS` event on `Bangle`:
+When on, data is output via the `HRM` event on `Bangle`:
 
 ```
 Bangle.setHRMPower(1);
@@ -1360,7 +1360,7 @@ void jswrap_banglejs_init() {
   jshDelayMicroseconds(50000);
   jswrap_banglejs_ioWr(0,0);
   jswrap_banglejs_ioWr(IOEXP_HRM,1); // HRM off
-  jswrap_banglejs_ioWr(1,0); // ?
+  jswrap_banglejs_ioWr(IOEXP_GPS,0); // GPS off
   jswrap_banglejs_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
   jshDelayMicroseconds(100000);
   jswrap_banglejs_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
@@ -1519,28 +1519,25 @@ void jswrap_banglejs_init() {
   // Read settings and change beep/buzz behaviour...
   JsVar *settingsFN = jsvNewFromString("setting.json");
   JsVar *settings = jswrap_storage_readJSON(settingsFN,true);
-  if (jsvIsObject(settings)) {
-    JsVar *v;
-    v = jsvObjectGetChild(settings,"beep",0);
-    if (v && jsvGetBool(v)==false) {
-      bangleFlags &= ~JSBF_ENABLE_BEEP;
-    } else {
-      bangleFlags |= JSBF_ENABLE_BEEP;
-      if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
-        bangleFlags |= JSBF_BEEP_VIBRATE;
-      else
-        bangleFlags &= ~JSBF_BEEP_VIBRATE;
-    }
-    jsvUnLock(v);
-    v = jsvObjectGetChild(settings,"vibrate",0);
-    if (v && jsvGetBool(v)==false) {
-      bangleFlags &= ~JSBF_ENABLE_BUZZ;
-    } else {
-      bangleFlags |= JSBF_ENABLE_BUZZ;
-    }
-    jsvUnLock(v);
+  JsVar *v;
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"beep",0) : 0;
+  if (v && jsvGetBool(v)==false) {
+    bangleFlags &= ~JSBF_ENABLE_BEEP;
+  } else {
+    bangleFlags |= JSBF_ENABLE_BEEP;
+    if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
+      bangleFlags |= JSBF_BEEP_VIBRATE;
+    else
+      bangleFlags &= ~JSBF_BEEP_VIBRATE;
   }
-  jsvUnLock2(settings,settingsFN);
+  jsvUnLock(v);
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"vibrate",0) : 0;
+  if (v && jsvGetBool(v)==false) {
+    bangleFlags &= ~JSBF_ENABLE_BUZZ;
+  } else {
+    bangleFlags |= JSBF_ENABLE_BUZZ;
+  }
+  jsvUnLock3(v,settings,settingsFN);
 
 }
 
