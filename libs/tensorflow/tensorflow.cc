@@ -13,11 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/lite/experimental/micro/kernels/all_ops_resolver.h"
-#include "tensorflow/lite/experimental/micro/micro_error_reporter.h"
-#include "tensorflow/lite/experimental/micro/micro_interpreter.h"
+#include "tensorflow/lite/micro/micro_interpreter.h"
+#ifdef TENSORFLOW_ALL_OPS
+#include "tensorflow/lite/micro/kernels/all_ops_resolver.h"
+#else
+#include "tensorflow/lite/micro/kernels/micro_ops.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+#endif
 #include "tensorflow/lite/core/api/error_reporter.h"
-#include "tensorflow/lite/experimental/micro/compatibility.h"
+#include "tensorflow/lite/micro/compatibility.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 extern "C" {
@@ -48,7 +52,7 @@ typedef struct {
 #ifdef TENSORFLOW_ALL_OPS
   tflite::ops::micro::AllOpsResolver resolver;
 #else
-#define TENSORFLOW_OP_COUNT 6
+#define TENSORFLOW_OP_COUNT 16 // op count refers to sum of (version_max+1-version_min) for all actual ops
   tflite::MicroOpResolver<TENSORFLOW_OP_COUNT> resolver;
 #endif
   // Build an interpreter to run the model with
@@ -106,20 +110,6 @@ bool tf_create(void *dataPtr, size_t arena_size, const char *model_data) {
 
   // Allocate memory from the tensor_arena for the model's tensors
   tf->interpreter.AllocateTensors();
-
-
-  /*
-   TfLiteTensor* input = tf->interpreter.input(0);
-   TfLiteTensor* output = tf->interpreter.output(0);
-
-  // Place our calculated x value in the model's input tensor
-  input->data.f[0] = x_val;
-
-
-
-  // Read the predicted y value from the model's output tensor
-  float y_val = output->data.f[0];*/
-
   return true;
 }
 
