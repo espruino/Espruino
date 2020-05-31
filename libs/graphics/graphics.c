@@ -531,9 +531,8 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
       if (slopes[i]) s++; else s--;
       if (!s || i==crosscnt-1) {
         int x1 = x>>4;
-        int x2 = (cross[i]>>4);
-        if (x2>x1) x2--;
-        graphicsFillRectDevice(gfx,x1,y>>4,x2,y>>4,gfx->data.fgColor);
+        int x2 = cross[i]>>4;
+        if (x2>x1) graphicsFillRectDevice(gfx,x1,y>>4,x2-1,y>>4,gfx->data.fgColor);
       }
       if (jspIsInterrupted()) break;
     }
