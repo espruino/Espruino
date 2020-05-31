@@ -6,7 +6,7 @@ g.dump = _=>{
   for (var y=0;y<g.getHeight();y++) {
     s+="\n";
     for (var x=0;x<g.getWidth();x++) 
-      s+=".#"[b[n++]?1:0];
+      s+=".#XO+"[b[n++]];
   }
   return s;
 }
@@ -22,7 +22,9 @@ function SHOULD_BE(a) {
   }
 }
 
-g.clear().fillPoly([ 16, 0, 31, 31, 26, 31, 16, 12, 6, 28, 0, 27 ]);
+g.clear();
+g.setColor(1);
+g.fillPoly([ 16, 0, 31, 31, 26, 31, 16, 12, 6, 28, 0, 27 ]);
 SHOULD_BE(`
 ...............#................
 ...............#................
@@ -58,6 +60,7 @@ SHOULD_BE(`
 ................................`);
 
 g.clear();
+g.setColor(1);
 g.fillPoly([16,2, 30,16, 16,30, 2,16]);
 SHOULD_BE(`
 ................................
@@ -94,6 +97,7 @@ SHOULD_BE(`
 ................................`);
 
 g.clear();
+g.setColor(1);
 g.fillPoly([16,2, 30,12, 16,30, 2,20]);
 SHOULD_BE(`
 ................................
@@ -131,6 +135,7 @@ SHOULD_BE(`
 
 
 g.clear();
+g.setColor(1);
 g.fillPoly([4,4, 27,4, 27,27, 4,27]);
 SHOULD_BE(`
 ................................
@@ -168,6 +173,7 @@ SHOULD_BE(`
 
 g.clear();
 g.setFont("Vector",32);
+g.setColor(1);
 g.drawString("X");
 SHOULD_BE(`
 ...#####...............#####....
@@ -204,6 +210,7 @@ SHOULD_BE(`
 ...#####...............#####....`);
 
 g.clear();
+g.setColor(1);
 g.fillPoly([ 12, 0, 18, 0, 18, 15, 30, 24, 27, 30, 18, 24, 18, 36, 12, 36, 12, 24, 3, 30, 0, 24, 12, 15, 12, 0 ]);
 SHOULD_BE(`
 ............######..............
@@ -238,5 +245,44 @@ SHOULD_BE(`
 ..#.........######........#.....
 ............######..............
 ............######..............`);
+
+g.clear();
+g.setColor(1).fillPoly([1.5,1.5, 15.5,2.5, 16.5,16.5, 2.5,15.5]);
+g.setColor(2).fillPoly([15.5,2.5, 29.5,3.5, 30.5,17.5, 16.5,16.5]);
+g.setColor(3).fillPoly([2.5,15.5, 16.5,16.5, 17.5,30.5, 3.5,29.5]);
+g.setColor(4).fillPoly([16.5,16.5, 30.5,17.5, 31.5,31.5, 17.5,30.5]);
+SHOULD_BE(`
+................................
+.#..............................
+.##############X................
+.##############XXXXXXXXXXXXXX...
+.##############XXXXXXXXXXXXXX...
+.##############XXXXXXXXXXXXXX...
+.##############XXXXXXXXXXXXXX...
+.##############XXXXXXXXXXXXXX...
+..#############XXXXXXXXXXXXXX...
+..##############XXXXXXXXXXXXX...
+..##############XXXXXXXXXXXXXX..
+..##############XXXXXXXXXXXXXX..
+..##############XXXXXXXXXXXXXX..
+..##############XXXXXXXXXXXXXX..
+..##############XXXXXXXXXXXXXX..
+..O#############XXXXXXXXXXXXXX..
+..OOOOOOOOOOOOOO+XXXXXXXXXXXXX..
+..OOOOOOOOOOOOOO++++++++++++++..
+..OOOOOOOOOOOOOO++++++++++++++..
+..OOOOOOOOOOOOOO++++++++++++++..
+..OOOOOOOOOOOOOO++++++++++++++..
+..OOOOOOOOOOOOOO++++++++++++++..
+...OOOOOOOOOOOOO++++++++++++++..
+...OOOOOOOOOOOOOO+++++++++++++..
+...OOOOOOOOOOOOOO++++++++++++++.
+...OOOOOOOOOOOOOO++++++++++++++.
+...OOOOOOOOOOOOOO++++++++++++++.
+...OOOOOOOOOOOOOO++++++++++++++.
+...OOOOOOOOOOOOOO++++++++++++++.
+...OOOOOOOOOOOOOO++++++++++++++.
+.................++++++++++++++.
+................................`);
 
 result = ok;
