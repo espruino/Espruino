@@ -223,7 +223,7 @@ polyImg.forEach(function(polyb64) {
   var dy = maxy>>4;
   if (cx!=dx || cy!=dy) console.log("Char straddles boundary!");
   var charNumber = cx + (cy*16);
-  if (charNumber < 240 && charNumber > lastChar) lastChar = charNumber;
+  if (charNumber > lastChar) lastChar = charNumber;
   if (charNumber < firstChar) firstChar = charNumber;
 
   if (charData[charNumber]===undefined)
@@ -274,8 +274,12 @@ const uint8_t vfLastChar = ${lastChar};
 static const uint8_t vfPolys[] IN_FLASH_MEMORY = {
 `;
 for (var c=firstChar;c<=lastChar;c++) {
-  var char = charData[c];
-  outputCharCode(c, char);
+  if (c < 240 || c >= 247) {
+    var char = charData[c];
+    outputCharCode(c, char);
+  } else {
+    outputCharCode(c, undefined);
+  }
 }
 
 var accentIndices = [];
@@ -321,9 +325,6 @@ static const uint8_t *vfGetCharPtr(char sch, const uint8_t **accentPtr, int *acc
               *accentX -= 2;
               return &vfAccentPolys[vfAccentPolyIndices[6]]; // use i without .
             }
-          } else if (acc!=' ') {
-            *accentPtr = vfGetCharPtr(acc, NULL,NULL,NULL);
-            if (acc=='+') *accentY = -4;
           }
         }
       }

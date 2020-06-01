@@ -16,7 +16,7 @@
 #include "graphics.h"
 
 const uint8_t vfFirstChar = 33;
-const uint8_t vfLastChar = 231;
+const uint8_t vfLastChar = 254;
 #define VF_END_OF_POLY 0xFE
 #define VF_END_OF_CHAR 0xFF
 #define VF_SCALE 12
@@ -469,6 +469,55 @@ VF_END_OF_CHAR,
 68,82,99,101,118,150,165,164,147,163,148,150,118,115,145,161,195,197,183,201,202,188,171,169,152,120,105,106,123,120,152,157,125,92,74,73,87,69,VF_END_OF_CHAR,
 // 231
 68,82,113,145,178,196,212,229,213,228,227,243,245,230,214,197,183,152,150,165,164,147,115,100,101,118,120,87,69,VF_END_OF_CHAR,
+// 232
+VF_END_OF_CHAR,
+// 233
+VF_END_OF_CHAR,
+// 234
+VF_END_OF_CHAR,
+// 235
+VF_END_OF_CHAR,
+// 236
+VF_END_OF_CHAR,
+// 237
+VF_END_OF_CHAR,
+// 238
+VF_END_OF_CHAR,
+// 239
+VF_END_OF_CHAR,
+// 240
+VF_END_OF_CHAR,
+// 241
+VF_END_OF_CHAR,
+// 242
+VF_END_OF_CHAR,
+// 243
+VF_END_OF_CHAR,
+// 244
+VF_END_OF_CHAR,
+// 245
+VF_END_OF_CHAR,
+// 246
+VF_END_OF_CHAR,
+// 247
+81,89,121,113,VF_END_OF_POLY,
+36,38,70,68,VF_END_OF_POLY,
+132,134,166,164,VF_END_OF_CHAR,
+// 248
+68,82,113,145,178,196,197,165,164,147,115,100,101,118,150,165,197,183,152,120,87,69,VF_END_OF_POLY,
+193,70,72,195,VF_END_OF_CHAR,
+// 249
+VF_END_OF_CHAR,
+// 250
+VF_END_OF_CHAR,
+// 251
+VF_END_OF_CHAR,
+// 252
+VF_END_OF_CHAR,
+// 253
+VF_END_OF_CHAR,
+// 254
+1,241,243,115,100,101,118,150,165,164,147,178,196,197,183,152,120,87,69,68,82,83,3,VF_END_OF_CHAR,
 };
 
 static const uint8_t vfAccentPolys[] IN_FLASH_MEMORY = {
@@ -495,8 +544,8 @@ static const uint8_t *vfGetCharPtr(char sch, const uint8_t **accentPtr, int *acc
   unsigned char ch = (unsigned char)sch;
   if (ch>=192) {
     // 012345 correspond to 0=grave,1=acute,2=circumflex,3=tilde,4=umlaut,5=ring,6=i without dot
-    char *chrMap = "AAAAAA  EEEEIIII NOOOOO  UUUUY  aaaaaa  eeeeiiiionooooo  uuuuy y";
-    char *accMap = "012345  01240124 301234  01241  012345  01240124+301234  01241 4";
+    char *chrMap = "AAAAAA  EEEEIIII NOOOOO  UUUUY  aaaaaa  eeeeiiii nooooo  uuuuy y";
+    char *accMap = "012345  01240124 301234  01241  012345  01240124 301234  01241 4";
     if (ch>=192) {
       int i = ch-192;
       unsigned char chReplacement = (unsigned char)chrMap[i];
@@ -519,9 +568,6 @@ static const uint8_t *vfGetCharPtr(char sch, const uint8_t **accentPtr, int *acc
               *accentX -= 2;
               return &vfAccentPolys[vfAccentPolyIndices[6]]; // use i without .
             }
-          } else if (acc!=' ') {
-            *accentPtr = vfGetCharPtr(acc, NULL,NULL,NULL);
-            if (acc=='+') *accentY = -4;
           }
         }
       }
