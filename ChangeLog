@@ -53,6 +53,7 @@
             Tensorflow: updated to v2.2, removed un-needed ops (reduces size by 24k)
             Puck.js: Fix Puck.magTemp();
             Puck.js v1: Fix magnetometer reading after puck.magOn (2v05 regression) - use old software I2C implementation
+            I2C: Improve software I2C (now quickly forces I2C high before pullup, to help improve clock speed)
             Bangle.js: Changed GPS-raw event type from string to ArrayBuffer and handle u-blox UBX Protocol messages (fix #1838)
 
      2v05 : Add Array.includes
