@@ -502,7 +502,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
         if (crosscnt < MAX_CROSSES) {
           int l = v[j].y - v[i].y;
           if (l) { // don't do horiz lines - rely on the ends of the lines that join onto them
-            cross[crosscnt] = (short)(8 + v[i].x + ((y - v[i].y) * (v[j].x-v[i].x)) / l);
+            cross[crosscnt] = (short)(v[i].x + ((y - v[i].y) * (v[j].x-v[i].x)) / l);
             slopes[crosscnt] = (l>1)?1:0;
             crosscnt++;
           }
@@ -530,10 +530,9 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
       if (s==0) x=cross[i];
       if (slopes[i]) s++; else s--;
       if (!s || i==crosscnt-1) {
-        int x1 = x>>4;
-        int x2 = (cross[i]>>4);
-        if (x2>x1) x2--;
-        graphicsFillRectDevice(gfx,x1,y>>4,x2,y>>4,gfx->data.fgColor);
+        int x1 = (x+15)>>4;
+        int x2 = (cross[i]+15)>>4;
+        if (x2>x1) graphicsFillRectDevice(gfx,x1,y>>4,x2-1,y>>4,gfx->data.fgColor);
       }
       if (jspIsInterrupted()) break;
     }
