@@ -62,9 +62,112 @@ JsVar *to_xyz(int16_t d[3], double scale) {
   return obj;
 }
 
-/* TODO: Use software I2C for this instead. Since we're relying
- * on the internal pullup resistors there might be some gotchas
- * since we force high here for 0.1uS here before going open circuit. */
+/// MAG3110 I2C implementation - write pin
+void wr(int pin, bool state) {
+  if (state) {
+    nrf_gpio_pin_set(pin); nrf_gpio_cfg_output(pin);
+    nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_PULLUP);
+  } else {
+    nrf_gpio_pin_clear(pin);
+    nrf_gpio_cfg_output(pin);
+  }
+}
+
+/// MAG3110 I2C implementation - read pin
+bool rd(int pin) {
+  return nrf_gpio_pin_read(pin);
+}
+
+/// MAG3110 I2C implementation - delay
+void dly() {
+  volatile int i;
+  for (i=0;i<10;i++);
+}
+
+/// MAG3110 I2C implementation - show error
+void err(const char *s) {
+  jsiConsolePrintf("I2C: %s\n", s);
+}
+
+/// MAG3110 I2C implementation has i2c started?
+bool started = false;
+/// MAG3110 I2C implementation - start bit
+void i2c_start() {
+  if (started) {
+    // reset
+    wr(MAG_PIN_SDA, 1);
+    dly();
+    wr(MAG_PIN_SCL, 1);
+    int timeout = I2C_TIMEOUT;
+    while (!rd(MAG_PIN_SCL) && --timeout); // clock stretch
+    if (!timeout) err("Timeout (start)");
+    dly();
+  }
+  if (!rd(MAG_PIN_SDA)) err("Arbitration (start)");
+  wr(MAG_PIN_SDA, 0);
+  dly();
+  wr(MAG_PIN_SCL, 0);
+  dly();
+  started = true;
+}
+/// MAG3110 I2C implementation - stop bit
+void i2c_stop() {
+  wr(MAG_PIN_SDA, 0);
+  dly();
+  wr(MAG_PIN_SCL, 1);
+  int timeout = I2C_TIMEOUT;
+  while (!rd(MAG_PIN_SCL) && --timeout); // clock stretch
+  if (!timeout) err("Timeout (stop)");
+  dly();
+  wr(MAG_PIN_SDA, 1);
+  dly();
+  if (!rd(MAG_PIN_SDA)) err("Arbitration (stop)");
+  dly();
+  started = false;
+}
+/// MAG3110 I2C implementation - write bit
+void i2c_wr_bit(bool b) {
+  wr(MAG_PIN_SDA, b);
+  dly();
+  wr(MAG_PIN_SCL, 1);
+  dly();
+  int timeout = I2C_TIMEOUT;
+  while (!rd(MAG_PIN_SCL) && --timeout); // clock stretch
+  if (!timeout) err("Timeout (wr)");
+  wr(MAG_PIN_SCL, 0);
+  wr(MAG_PIN_SDA, 1); // stop forcing SDA (needed?)
+}
+/// MAG3110 I2C implementation - read bit
+bool i2c_rd_bit() {
+  wr(MAG_PIN_SDA, 1); // stop forcing SDA
+  dly();
+  wr(MAG_PIN_SCL, 1); // stop forcing SDA
+  int timeout = I2C_TIMEOUT;
+  while (!rd(MAG_PIN_SCL) && --timeout); // clock stretch
+  if (!timeout) err("Timeout (rd)");
+  dly();
+  bool b = rd(MAG_PIN_SDA);
+  wr(MAG_PIN_SCL, 0);
+  return b;
+}
+/// MAG3110 I2C implementation - write byte, true on ack, false on nack
+bool i2c_wr(uint8_t data) {
+  int i;
+  for (i=0;i<8;i++) {
+    i2c_wr_bit(data&128);
+    data <<= 1;
+  }
+  return !i2c_rd_bit();
+}
+/// MAG3110 I2C implementation - read byte
+uint8_t i2c_rd(bool nack) {
+  int i;
+  int data = 0;
+  for (i=0;i<8;i++)
+    data = (data<<1) | (i2c_rd_bit()?1:0);
+  i2c_wr_bit(nack);
+  return data;
+}
 
 void mag_pin_on() {
   jshPinSetValue(MAG_PIN_PWR, 1);
@@ -116,7 +219,7 @@ bool mag_on(int milliHz) {
     buf[0] = 0x24; buf[1]=0x40; // CTRL_REG5 - block data update
     jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
   } else { // MAG3110
-    jshDelayMicroseconds(2000); // 1.7ms from power on to ok
+    jshDelayMicroseconds(2500); // 1.7ms from power on to ok
     int reg1 = 0;
     if (milliHz == 80000) reg1 |= (0x00)<<3; // 900uA
     else if (milliHz == 40000) reg1 |= (0x04)<<3; // 550uA
@@ -131,14 +234,20 @@ bool mag_on(int milliHz) {
     else if (milliHz == 80) reg1 |= (0x1F)<<3; // 8uA
     else return false;
 
-
-    buf[0] = 0x11;
-    buf[1] = 0x80/*AUTO_MRST_EN*/ + 0x20/*RAW*/;
-    jsi2cWrite(&i2cMag, MAG3110_ADDR, 2, buf, true);
+    wr(MAG_PIN_SDA, 1);
+    wr(MAG_PIN_SCL, 1);
+    jshDelayMicroseconds(2000); // 1.7ms from power on to ok
+    i2c_start();
+    i2c_wr(MAG3110_ADDR<<1); // CTRL_REG2, AUTO_MRST_EN
+    i2c_wr(0x11);
+    i2c_wr(0x80/*AUTO_MRST_EN*/ + 0x20/*RAW*/);
+    i2c_stop();
+    i2c_start();
+    i2c_wr(MAG3110_ADDR<<1); // CTRL_REG1, active mode 80 Hz ODR with OSR = 0
+    i2c_wr(0x10);
     reg1 |= 1; // Active bit
-    buf[0] = 0x10;
-    buf[1] = reg1;
-    jsi2cWrite(&i2cMag, MAG3110_ADDR, 2, buf, true);
+    i2c_wr(reg1);
+    i2c_stop();
   }
   return true;
 }
@@ -169,17 +278,29 @@ void mag_read() {
     buf[0] = 0x28;
     jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, false);
     jsi2cRead(&i2cMag, LIS3MDL_ADDR, 6, buf, true);
-  } else {
+    mag_reading[0] = (buf[0]<<8) | buf[1];
+    mag_reading[1] = (buf[2]<<8) | buf[3];
+    mag_reading[2] = (buf[4]<<8) | buf[5];
+  } else { // Puck.js v1
     buf[0] = 1;
     jsi2cWrite(&i2cMag, MAG3110_ADDR, 1, buf, false);
     jsi2cRead(&i2cMag, MAG3110_ADDR, 6, buf, true);
+    i2c_start();
+    i2c_wr(MAG3110_ADDR<<1);
+    i2c_wr(1); // OUT_X_MSB
+    i2c_start();
+    i2c_wr(1|(MAG3110_ADDR<<1));
+    mag_reading[0] = i2c_rd(false)<<8;
+    mag_reading[0] |= i2c_rd(false);
+    mag_reading[1] = i2c_rd(false)<<8;
+    mag_reading[1] |= i2c_rd(false);
+    mag_reading[2] = i2c_rd(false)<<8;
+    mag_reading[2] |= i2c_rd(true);
+    i2c_stop();
   }
-  mag_reading[0] = (buf[0]<<8) | buf[1];
-  mag_reading[1] = (buf[2]<<8) | buf[3];
-  mag_reading[2] = (buf[4]<<8) | buf[5];
 }
 
-// Get temperature
+// Get temperature, shifted right 8 bits
 int mag_read_temp() {
   unsigned char buf[2];
   if (isPuckV2) {
@@ -188,11 +309,15 @@ int mag_read_temp() {
     jsi2cRead(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
     int16_t t = buf[0] | (buf[1]<<8);
     return (int)t;
-  } else {
-    buf[0] = 15; // DIE_TEMP
-    jsi2cWrite(&i2cMag, MAG3110_ADDR, 1, buf, false);
-    jsi2cRead(&i2cMag, MAG3110_ADDR, 1, buf, true);
-    return buf[0]<<8;
+  } else { // Puck.js v1
+    i2c_start();
+    i2c_wr(MAG3110_ADDR<<1);
+    i2c_wr(15); // DIE_TEMP
+    i2c_start();
+    i2c_wr(1|(MAG3110_ADDR<<1));
+    int8_t temp = i2c_rd(true);
+    i2c_stop();
+    return temp<<8;
   }
 }
 
@@ -364,7 +489,7 @@ JsVar *jswrap_puck_mag() {
   "name" : "magTemp",
   "ifdef" : "PUCKJS",
   "generate" : "jswrap_puck_magTemp",
-  "return" : ["int", "Temperature in degrees C" ]
+  "return" : ["float", "Temperature in degrees C" ]
 }
 Turn on the magnetometer, take a single temperature reading from the MAG3110 chip, and then turn it off again.
 
@@ -375,7 +500,7 @@ Turn on the magnetometer, take a single temperature reading from the MAG3110 chi
 The reading obtained is an integer (so no decimal places), but the sensitivity is factory trimmed. to 1&deg;C, however the temperature
 offset isn't - so absolute readings may still need calibrating.
 */
-JsVarInt jswrap_puck_magTemp() {
+JsVarFloat jswrap_puck_magTemp() {
   JsVarInt t;
   if (!mag_enabled) {
     mag_on(80000);
@@ -384,7 +509,7 @@ JsVarInt jswrap_puck_magTemp() {
     mag_off();
   } else
     t = mag_read_temp();
-  return t;
+  return t / 256.0;
 }
 
 /*JSON{
@@ -1321,7 +1446,7 @@ bool jswrap_puck_idle() {
         jsvUnLock2(puck, xyz);
         busy = true; // don't sleep - handle this now
       }
-    } else {
+    } else { // Puck.js v1
       if (nrf_gpio_pin_read(MAG_PIN_INT)) {
         mag_read();
         JsVar *xyz = to_xyz(mag_reading, 1);

@@ -51,6 +51,8 @@
             Puck.js: Switch to IRQs for magnetometer (lower power consumption)
             Improve Graphics.drawImage speed and simplify code by allowing fast path for non-rotated graphics
             Tensorflow: updated to v2.2, removed un-needed ops (reduces size by 24k)
+            Puck.js: Fix Puck.magTemp();
+            Puck.js v1: Fix magnetometer reading after puck.magOn (2v05 regression) - use old software I2C implementation
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

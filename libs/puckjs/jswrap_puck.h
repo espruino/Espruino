@@ -18,7 +18,7 @@ extern bool isPuckV2;
 void jswrap_puck_magOn();
 void jswrap_puck_magOff();
 JsVar *jswrap_puck_mag();
-JsVarInt jswrap_puck_magTemp();
+JsVarFloat jswrap_puck_magTemp();
 void jswrap_puck_magWr(JsVarInt reg, JsVarInt data);
 int jswrap_puck_magRd(JsVarInt reg);
 JsVarFloat jswrap_puck_getTemperature();
