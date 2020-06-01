@@ -62,7 +62,7 @@ sudo apt-get install -y \
   lib32z1 lib32ncurses5
 wget https://launchpad.net/gcc-arm-embedded/5.0/5-2016-q3-update/+download/gcc-arm-none-eabi-5_4-2016q3-20160926-linux.tar.bz2
 tar xjf gcc-arm-none-eabi-5_4-2016q3-20160926-linux.tar.bz2
-sudo mv gcc-arm-none-eabi-5_4-2016q3-20160926 /usr/local
+sudo mv gcc-arm-none-eabi-5_4-2016q3 /usr/local
 export PATH=/usr/local/gcc-arm-none-eabi-5_4-2016q3/bin:$PATH
 cd ~/source/repos/github/espruino/Espruino
 make clean && DFU_UPDATE_BUILD=1 BOARD=PUCKJS RELEASE=1 make
