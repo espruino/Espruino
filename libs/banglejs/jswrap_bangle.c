@@ -146,7 +146,7 @@ You can also retrieve the most recent reading with `Bangle.getCompass()`.
   "params" : [["nmea","JsVar",""]],
   "ifdef" : "BANGLEJS"
 }
-Raw NMEA GPS / u-blox data messages received in an ArrayBuffer
+Raw NMEA GPS / u-blox data messages received as a string
 
 To get this event you must turn the GPS on
 with `Bangle.setGPSPower(1)`.
@@ -1649,7 +1649,7 @@ bool jswrap_banglejs_idle() {
     }
   }
   if (bangle && (bangleTasks & JSBT_GPS_DATA_LINE)) {
-    JsVar *line = jsvNewArrayBufferWithData(ubloxMsgLength, ubloxMsg);
+    JsVar *line = jsvNewStringOfLength(ubloxMsgLength, ubloxMsg);
     if (line) {
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw", &line, 1);
     }
