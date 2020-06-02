@@ -146,7 +146,7 @@ You can also retrieve the most recent reading with `Bangle.getCompass()`.
   "params" : [["nmea","JsVar",""]],
   "ifdef" : "BANGLEJS"
 }
-Raw NMEA GPS data lines received as a string
+Raw NMEA GPS / u-blox data messages received as a string
 
 To get this event you must turn the GPS on
 with `Bangle.setGPSPower(1)`.
@@ -277,9 +277,16 @@ or right hand side.
 #define ACCEL_HISTORY_LEN 50 ///< Number of samples of accelerometer history
 #define HRM_HISTORY_LEN 256
 
-uint8_t nmeaCount = 0; // how many characters of NMEA data do we have?
-char nmeaIn[NMEA_MAX_SIZE]; //  82 is the max for NMEA
-char nmeaLine[NMEA_MAX_SIZE]; // A line of received NMEA data
+#define UBLOX_PROTOCOL_NOT_DETECTED 0
+#define UBLOX_PROTOCOL_NMEA 1
+#define UBLOX_PROTOCOL_UBX 2
+#define UBLOX_IN_MAX_SIZE 172 // UBX-MGA-DBD Navigation database dump entry message max size
+uint8_t inComingUbloxProtocol = UBLOX_PROTOCOL_NOT_DETECTED;
+uint16_t ubloxCount = 0; // how many characters of NMEA/UBX data do we have?
+uint8_t ubloxIn[UBLOX_IN_MAX_SIZE]; //  82 is the max for NMEA
+uint8_t ubloxMsgLength = 0;
+uint16_t ubloxMsgPayloadEnd = 0;
+char ubloxMsg[UBLOX_IN_MAX_SIZE]; // Received u-blox data
 NMEAFixInfo gpsFix;
 
 typedef struct {
@@ -1179,6 +1186,11 @@ void jswrap_banglejs_setHRMPower(bool isOn) {
 #endif
 }
 
+void resetUbloxIn() {
+  ubloxCount = 0;
+  inComingUbloxProtocol = UBLOX_PROTOCOL_NOT_DETECTED;
+}
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -1210,7 +1222,7 @@ void jswrap_banglejs_setGPSPower(bool isOn) {
     inf.pinTX = GPS_PIN_TX;
     jshUSARTSetup(GPS_UART, &inf);
     jswrap_banglejs_ioWr(IOEXP_GPS, 1); // GPS on
-    nmeaCount = 0;
+    resetUbloxIn();
     memset(&gpsFix,0,sizeof(gpsFix));
   } else {
     jswrap_banglejs_ioWr(IOEXP_GPS, 0); // GPS off
@@ -1637,7 +1649,7 @@ bool jswrap_banglejs_idle() {
     }
   }
   if (bangle && (bangleTasks & JSBT_GPS_DATA_LINE)) {
-    JsVar *line = jsvNewFromString(nmeaLine);
+    JsVar *line = jsvNewStringOfLength(ubloxMsgLength, ubloxMsg);
     if (line) {
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw", &line, 1);
     }
@@ -1829,29 +1841,59 @@ bool jswrap_banglejs_idle() {
   "generate" : "jswrap_banglejs_gps_character"
 }*/
 bool jswrap_banglejs_gps_character(char ch) {
-  if (ch=='\r') return true; // we don't care
   // if too many chars, roll over since it's probably because we skipped a newline
-  if (nmeaCount>=sizeof(nmeaIn)) nmeaCount=0;
-  nmeaIn[nmeaCount++]=ch;
-  if (ch!='\n') return true; // now handled
-  // Now we have a line of GPS data...
-/*  $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
-    $GNVTG,,T,,M,1.530,N,2.834,K,A*37
-    $GNGGA,161945.00,5139.11397,N,00116.07202,W,1,06,1.29,71.1,M,47.0,M,,*64
-    $GNGSA,A,3,09,06,23,07,03,29,,,,,,,1.96,1.29,1.48*14
-    $GPGSV,3,1,12,02,45,293,13,03,10,109,16,05,13,291,,06,56,213,25*73
-    $GPGSV,3,2,12,07,39,155,18,09,76,074,33,16,08,059,,19,02,218,18*7E
-    $GPGSV,3,3,12,23,40,066,23,26,08,033,18,29,07,342,20,30,14,180,*7F
-    $GNGLL,5139.11397,N,00116.07202,W,161945.00,A,A*69 */
-  // Let's just chuck it over into JS-land for now
-  if (nmeaCount>1) {
-    memcpy(nmeaLine, nmeaIn, nmeaCount);
-    nmeaLine[nmeaCount-1]=0; // just overwriting \n
-    bangleTasks |= JSBT_GPS_DATA_LINE;
-    if (nmea_decode(&gpsFix, nmeaLine))
-      bangleTasks |= JSBT_GPS_DATA;
+  // or messed the message length
+  if (ubloxCount >= sizeof(ubloxIn)) {
+    resetUbloxIn();
   }
-  nmeaCount = 0;
+  if (inComingUbloxProtocol == UBLOX_PROTOCOL_NOT_DETECTED) {
+    ubloxCount = 0;
+    if (ch == '$') {
+      inComingUbloxProtocol = UBLOX_PROTOCOL_NMEA;
+    } else if (ch == 0xB5) {
+      inComingUbloxProtocol = UBLOX_PROTOCOL_UBX;
+      ubloxMsgPayloadEnd = 0;
+    }
+  }
+  ubloxIn[ubloxCount++] = ch;
+  if (inComingUbloxProtocol == UBLOX_PROTOCOL_NMEA && ch == '\n') {
+    // Now we have a line of GPS data...
+    /*$GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
+      $GNVTG,,T,,M,1.530,N,2.834,K,A*37
+      $GNGGA,161945.00,5139.11397,N,00116.07202,W,1,06,1.29,71.1,M,47.0,M,,*64
+      $GNGSA,A,3,09,06,23,07,03,29,,,,,,,1.96,1.29,1.48*14
+      $GPGSV,3,1,12,02,45,293,13,03,10,109,16,05,13,291,,06,56,213,25*73
+      $GPGSV,3,2,12,07,39,155,18,09,76,074,33,16,08,059,,19,02,218,18*7E
+      $GPGSV,3,3,12,23,40,066,23,26,08,033,18,29,07,342,20,30,14,180,*7F
+      $GNGLL,5139.11397,N,00116.07202,W,161945.00,A,A*69 */
+    // Let's just chuck it over into JS-land for now
+    if (ubloxCount > 2 && ubloxCount <= NMEA_MAX_SIZE && ubloxIn[ubloxCount - 2] =='\r') {
+      memcpy(ubloxMsg, ubloxIn, ubloxCount);
+      ubloxMsg[ubloxCount - 2] = 0; // just overwriting \r\n
+      ubloxMsg[ubloxCount - 1] = 0;
+      ubloxMsgLength = ubloxCount - 2;
+      bangleTasks |= JSBT_GPS_DATA_LINE;
+      if (nmea_decode(&gpsFix, ubloxMsg))
+        bangleTasks |= JSBT_GPS_DATA;
+    }
+    resetUbloxIn();
+  } else if (inComingUbloxProtocol == UBLOX_PROTOCOL_UBX) {
+    if (ubloxCount == 2 && ch != 0x62) { // Invalid u-blox protocol message, missing header second byte
+      resetUbloxIn();
+    } else if (ubloxCount == 6) { // Header: 0xB5 0x62, Class: 1 byte, ID: 1 byte, Length: 2 bytes
+      ubloxMsgPayloadEnd = 6 + (ubloxIn[5] << 8) | ubloxIn[4];
+      if (ubloxMsgPayloadEnd < ubloxCount) { // Length is some odd way horribly wrong
+        resetUbloxIn();
+      }
+    }
+    if (ubloxCount >= 6 && ubloxCount == ubloxMsgPayloadEnd) {
+      // TODO: Check checksum
+      memcpy(ubloxMsg, ubloxIn, ubloxCount);
+      ubloxMsgLength = ubloxCount;
+      bangleTasks |= JSBT_GPS_DATA_LINE;
+      resetUbloxIn();
+    }
+  }
   return true; // handled
 }
 
