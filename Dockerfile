@@ -34,7 +34,6 @@ RUN pip install pyserial
 RUN pip install nrfutil
 
 COPY ./scripts /espruino/scripts
-COPY ./targets /espruino/targets
 COPY ./targetlibs /espruino/targetlibs
 COPY ./boards /espruino/boards
 
