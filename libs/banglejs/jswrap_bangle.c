@@ -285,9 +285,7 @@ uint8_t inComingUbloxProtocol = UBLOX_PROTOCOL_NOT_DETECTED;
 uint16_t ubloxCount = 0; // how many characters of NMEA/UBX data do we have?
 uint8_t ubloxIn[UBLOX_IN_MAX_SIZE]; //  82 is the max for NMEA
 uint8_t ubloxMsgLength = 0;
-uint8_t ubloxCkA = 0;
-uint8_t ubloxCkB = 0;
-uint16_t ubloxMsgEnd = 0;
+uint16_t ubloxMsgPayloadEnd = 0;
 char ubloxMsg[UBLOX_IN_MAX_SIZE]; // Received u-blox data
 NMEAFixInfo gpsFix;
 
@@ -1190,8 +1188,6 @@ void jswrap_banglejs_setHRMPower(bool isOn) {
 
 void resetUbloxIn() {
   ubloxCount = 0;
-  ubloxCkA = 0;
-  ubloxCkB = 0;
   inComingUbloxProtocol = UBLOX_PROTOCOL_NOT_DETECTED;
 }
 
@@ -1856,7 +1852,7 @@ bool jswrap_banglejs_gps_character(char ch) {
       inComingUbloxProtocol = UBLOX_PROTOCOL_NMEA;
     } else if (ch == 0xB5) {
       inComingUbloxProtocol = UBLOX_PROTOCOL_UBX;
-      ubloxMsgEnd = 0;
+      ubloxMsgPayloadEnd = 0;
     }
   }
   ubloxIn[ubloxCount++] = ch;
@@ -1885,22 +1881,17 @@ bool jswrap_banglejs_gps_character(char ch) {
     if (ubloxCount == 2 && ch != 0x62) { // Invalid u-blox protocol message, missing header second byte
       resetUbloxIn();
     } else if (ubloxCount == 6) { // Header: 0xB5 0x62, Class: 1 byte, ID: 1 byte, Length: 2 bytes
-      ubloxMsgEnd = 6 + ((ubloxIn[5] << 8) | ubloxIn[4]) + 2; // Header, Class, ID, payload, checksum bytes
-      if (ubloxMsgEnd < ubloxCount) { // Length is some odd way horribly wrong
+      ubloxMsgPayloadEnd = 6 + (ubloxIn[5] << 8) | ubloxIn[4];
+      if (ubloxMsgPayloadEnd < ubloxCount) { // Length is some odd way horribly wrong
         resetUbloxIn();
       }
     }
-    if (ubloxCount == ubloxMsgEnd) {
-      if (ubloxIn[ubloxMsgEnd - 2] == ubloxCkA && ubloxIn[ubloxMsgEnd - 1] == ubloxCkB) { // Check checksum
-        memcpy(ubloxMsg, ubloxIn, ubloxMsgEnd);
-        ubloxMsgLength = ubloxMsgEnd;
-        bangleTasks |= JSBT_GPS_DATA_LINE;
-      }
+    if (ubloxCount >= 6 && ubloxCount == ubloxMsgPayloadEnd) {
+      // TODO: Check checksum
+      memcpy(ubloxMsg, ubloxIn, ubloxCount);
+      ubloxMsgLength = ubloxCount;
+      bangleTasks |= JSBT_GPS_DATA_LINE;
       resetUbloxIn();
-    }
-    if (ubloxCount > 2 && (ubloxMsgEnd == 0 || ubloxCount <= ubloxMsgEnd - 2)) { // Exclude Header and checksum from checksum
-      ubloxCkA += (uint8_t)ch;
-      ubloxCkB += ubloxCkA;
     }
   }
   return true; // handled
