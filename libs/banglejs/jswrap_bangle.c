@@ -1913,8 +1913,9 @@ bool jswrap_banglejs_gps_character(char ch) {
     if (!ubloxMsgPayloadEnd) {
       if (ubloxInLength == 2 && ch != 0x62) { // Invalid u-blox protocol message, missing header second byte
         resetUbloxIn();
-      } else if (ubloxInLength == 6) { // Header: 0xB5 0x62, Class: 1 byte, ID: 1 byte, Length: 2 bytes
-        ubloxMsgPayloadEnd = 6 + ((ubloxIn[5] << 8) | ubloxIn[4]);
+      } else if (ubloxInLength == 6) {
+        // Header: 0xB5 0x62, Class: 1 byte, ID: 1 byte, Length: 2 bytes, data..., CRC: 2 bytes
+        ubloxMsgPayloadEnd = 6 + ((ubloxIn[5] << 8) | ubloxIn[4]) + 2;
         if (ubloxMsgPayloadEnd < ubloxInLength) { // Length is some odd way horribly wrong
           resetUbloxIn();
         }
