@@ -55,6 +55,7 @@
             Puck.js v1: Fix magnetometer reading after puck.magOn (2v05 regression) - use old software I2C implementation
             I2C: Improve software I2C (now quickly forces I2C high before pullup, to help improve clock speed)
             Bangle.js: Fix GPS-raw events to provde also u-blox UBX Protocol messages (fix #1838)
+            Bangle.js: Save RAM in GPS handling, allow arbitrary length data returned (fix #1843)
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
