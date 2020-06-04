@@ -87,8 +87,6 @@ MicroInterpreter::MicroInterpreter(const Model* model,
     return;
   }
   subgraph_ = (*subgraphs)[0];
-  tensors_ = subgraph_->tensors();
-  operators_ = subgraph_->operators();
 
   context_.impl_ = static_cast<void*>(&context_helper_);
   context_.ReportError = context_helper_.ReportOpError;
@@ -112,7 +110,7 @@ MicroInterpreter::MicroInterpreter(const Model* model,
 
 MicroInterpreter::~MicroInterpreter() {
   if (node_and_registrations_ != nullptr) {
-    for (size_t i = 0; i < operators_->size(); ++i) {
+    for (size_t i = 0; i < subgraph_->operators()->size(); ++i) {
       TfLiteNode* node = &(node_and_registrations_[i].node);
       const TfLiteRegistration* registration =
           node_and_registrations_[i].registration;
@@ -171,7 +169,7 @@ TfLiteStatus MicroInterpreter::AllocateTensors() {
   context_.RequestScratchBufferInArena = nullptr;
   context_.GetScratchBuffer = nullptr;
 
-  for (size_t i = 0; i < operators_->size(); ++i) {
+  for (size_t i = 0; i < subgraph_->operators()->size(); ++i) {
     context_helper_.SetNodeIndex(i);
     auto* node = &(node_and_registrations_[i].node);
     auto* registration = node_and_registrations_[i].registration;
@@ -195,7 +193,7 @@ TfLiteStatus MicroInterpreter::AllocateTensors() {
   // in Prepare stage.
   context_.RequestScratchBufferInArena =
       context_helper_.RequestScratchBufferInArena;
-  for (size_t i = 0; i < operators_->size(); ++i) {
+  for (size_t i = 0; i < subgraph_->operators()->size(); ++i) {
     // Set node idx to annotate the lifetime for scratch buffers.
     context_helper_.SetNodeIndex(i);
     auto* node = &(node_and_registrations_[i].node);
@@ -223,6 +221,7 @@ TfLiteStatus MicroInterpreter::AllocateTensors() {
   tensors_allocated_ = true;
   return kTfLiteOk;
 }
+
 TfLiteStatus MicroInterpreter::Invoke() {
   if (initialization_status_ != kTfLiteOk) {
     TF_LITE_REPORT_ERROR(error_reporter_,
@@ -233,10 +232,10 @@ TfLiteStatus MicroInterpreter::Invoke() {
   // Ensure tensors are allocated before the interpreter is invoked to avoid
   // difficult to debug segfaults.
   if (!tensors_allocated_) {
-    AllocateTensors();
+    TF_LITE_ENSURE_OK(&context_, AllocateTensors());
   }
 
-  for (size_t i = 0; i < operators_->size(); ++i) {
+  for (size_t i = 0; i < subgraph_->operators()->size(); ++i) {
     auto* node = &(node_and_registrations_[i].node);
     auto* registration = node_and_registrations_[i].registration;
 
@@ -257,32 +256,30 @@ TfLiteStatus MicroInterpreter::Invoke() {
 }
 
 TfLiteTensor* MicroInterpreter::input(size_t index) {
-  const flatbuffers::Vector<int32_t>* inputs = subgraph_->inputs();
-  const size_t length = inputs->size();
+  const size_t length = inputs_size();
   if ((index < 0) || (index >= length)) {
     TF_LITE_REPORT_ERROR(error_reporter_,
                          "Input index %d out of range (length is %d)", index,
                          length);
     return nullptr;
   }
-  return &(context_.tensors[inputs->Get(index)]);
+  return &(context_.tensors[inputs().Get(index)]);
 }
 
 TfLiteTensor* MicroInterpreter::output(size_t index) {
-  const flatbuffers::Vector<int32_t>* outputs = subgraph_->outputs();
-  const size_t length = outputs->size();
-  if ((index < 0) || (index >= outputs->size())) {
+  const size_t length = outputs_size();
+  if ((index < 0) || (index >= length)) {
     TF_LITE_REPORT_ERROR(error_reporter_,
                          "Output index %d out of range (length is %d)", index,
                          length);
     return nullptr;
   }
-  return &(context_.tensors[outputs->Get(index)]);
+  return &(context_.tensors[outputs().Get(index)]);
 }
 
 TfLiteTensor* MicroInterpreter::tensor(size_t index) {
   const size_t length = tensors_size();
-  if ((index < 0) || (index >= tensors_size())) {
+  if ((index < 0) || (index >= length)) {
     TF_LITE_REPORT_ERROR(error_reporter_,
                          "Tensor index %d out of range (length is %d)", index,
                          length);

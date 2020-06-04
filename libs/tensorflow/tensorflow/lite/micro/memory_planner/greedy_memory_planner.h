@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-// Minor modifications made for Espruino Microcontroller build by Gordon Williams <gw@pur3.co.uk>
+
 #ifndef TENSORFLOW_LITE_MICRO_MEMORY_PLANNER_GREEDY_MEMORY_PLANNER_H_
 #define TENSORFLOW_LITE_MICRO_MEMORY_PLANNER_GREEDY_MEMORY_PLANNER_H_
 
@@ -85,6 +85,17 @@ class GreedyMemoryPlanner : public MemoryPlanner {
     int requirements_index;
     int next_entry_index;
   };
+
+  // Number of bytes required in order to plan a buffer.
+  static size_t per_buffer_size() {
+    const int per_buffer_size =
+        sizeof(BufferRequirements) +  // requirements_
+        sizeof(int) +                 // buffer_sizes_sorted_by_size_
+        sizeof(int) +                 // buffer_ids_sorted_by_size_
+        sizeof(ListEntry) +           // buffers_sorted_by_offset_
+        sizeof(int);                  // buffer_offsets_;
+    return per_buffer_size;
+  }
 
  private:
   // Whether a buffer is active in a given time range.

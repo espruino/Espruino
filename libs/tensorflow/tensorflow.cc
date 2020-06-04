@@ -52,7 +52,7 @@ typedef struct {
 #ifdef TENSORFLOW_ALL_OPS
   tflite::ops::micro::AllOpsResolver resolver;
 #else
-#define TENSORFLOW_OP_COUNT 16 // op count refers to sum of (version_max+1-version_min) for all actual ops
+#define TENSORFLOW_OP_COUNT 6
   tflite::MicroOpResolver<TENSORFLOW_OP_COUNT> resolver;
 #endif
   // Build an interpreter to run the model with
@@ -90,17 +90,17 @@ bool tf_create(void *dataPtr, size_t arena_size, const char *model_data) {
   // Pull in only the operation implementations we need.
   new (&tf->resolver)tflite::MicroOpResolver<TENSORFLOW_OP_COUNT>();
   tf->resolver.AddBuiltin( tflite::BuiltinOperator_DEPTHWISE_CONV_2D,
-                           tflite::ops::micro::Register_DEPTHWISE_CONV_2D(), 1, 3);
+                           tflite::ops::micro::Register_DEPTHWISE_CONV_2D(), tflite::MicroOpResolverAnyVersion());
   tf->resolver.AddBuiltin( tflite::BuiltinOperator_CONV_2D,
-                           tflite::ops::micro::Register_CONV_2D(), 1, 3);
+                           tflite::ops::micro::Register_CONV_2D(), tflite::MicroOpResolverAnyVersion());
   tf->resolver.AddBuiltin( tflite::BuiltinOperator_AVERAGE_POOL_2D,
-                           tflite::ops::micro::Register_AVERAGE_POOL_2D(), 1, 2);
+                           tflite::ops::micro::Register_AVERAGE_POOL_2D(), tflite::MicroOpResolverAnyVersion());
   tf->resolver.AddBuiltin( tflite::BuiltinOperator_MAX_POOL_2D,
-                           tflite::ops::micro::Register_MAX_POOL_2D(), 1, 2);
+                           tflite::ops::micro::Register_MAX_POOL_2D(), tflite::MicroOpResolverAnyVersion());
   tf->resolver.AddBuiltin( tflite::BuiltinOperator_FULLY_CONNECTED,
-                           tflite::ops::micro::Register_FULLY_CONNECTED(), 1, 4);
+                           tflite::ops::micro::Register_FULLY_CONNECTED(), tflite::MicroOpResolverAnyVersion());
   tf->resolver.AddBuiltin( tflite::BuiltinOperator_SOFTMAX,
-                           tflite::ops::micro::Register_SOFTMAX(), 1, 2);
+                           tflite::ops::micro::Register_SOFTMAX(), tflite::MicroOpResolverAnyVersion());
 #endif
 
   // Build an interpreter to run the model with
