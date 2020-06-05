@@ -506,7 +506,7 @@ DEPRECATED: Use `E.showMenu`
     ],
     "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
 }
-Display a menu on Pixl.js's screen, and set up the buttons to navigate through it.
+Display a menu on the screen, and set up the buttons to navigate through it.
 
 Supply an object containing menu items. When an item is selected, the
 function it references will be executed. For example:
@@ -530,7 +530,7 @@ var mainmenu = {
     min:0,max:100,step:10,
     onchange : v => { number=v; }
   },
-  "Exit" : function() { E.showMenu(); },
+  "Exit" : function() { E.showMenu(); }, // remove the menu
 };
 // Submenu
 var submenu = {
@@ -542,6 +542,9 @@ var submenu = {
 // Actually display the menu
 E.showMenu(mainmenu);
 ```
+
+The menu will stay onscreen and active until explicitly removed,
+which you can do by calling `E.showMenu()` without arguments.
 
 See http://www.espruino.com/graphical_menu for more detailed information.
 */

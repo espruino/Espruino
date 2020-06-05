@@ -2423,7 +2423,7 @@ var mainmenu = {
     min:0,max:100,step:10,
     onchange : v => { number=v; }
   },
-  "Exit" : function() { E.showMenu(); },
+  "Exit" : function() { E.showMenu(); }, // remove the menu
 };
 // Submenu
 var submenu = {
@@ -2435,6 +2435,9 @@ var submenu = {
 // Actually display the menu
 E.showMenu(mainmenu);
 ```
+
+The menu will stay onscreen and active until explicitly removed,
+which you can do by calling `E.showMenu()` without arguments.
 
 See http://www.espruino.com/graphical_menu for more detailed information.
 */

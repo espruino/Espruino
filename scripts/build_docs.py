@@ -190,6 +190,21 @@ def insert_mdn_link(jsondata):
     if code==200:
       html("<p><a href=\""+url+"\">View MDN documentation</a></p>")
 
+
+# Remove duplicates
+existingSymbols = {}
+unduplicatedjsondatas = []
+for jsondata in jsondatas:
+  duplicate = False
+  if "name" in jsondata:
+    n = get_fullname(jsondata)
+    if n in existingSymbols:
+      print("WARNING: Duplicate symbol "+n);
+      duplicate = True
+    existingSymbols[n] = jsondata
+  if not duplicate: unduplicatedjsondatas.append(jsondata)
+jsondatas = unduplicatedjsondatas
+
 html("<html>")
 html(" <head>")
 html("  <title>Espruino Reference</title>")
@@ -329,7 +344,7 @@ for jsondata in detail:
     html("  </ul>")
 
   # Otherwise just output detail
-  link = get_link(jsondata)
+  link = get_link(jsondata)  
   html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a>")
   #html("<!-- "+json.dumps(jsondata, sort_keys=True, indent=2)+"-->");
   if "githublink" in jsondata:
