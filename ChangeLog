@@ -57,6 +57,7 @@
             Bangle.js: Fix GPS-raw events to provde also u-blox UBX Protocol messages (fix #1838)
             Bangle.js: Save RAM in GPS handling, allow arbitrary length data returned (fix #1843)
             Tensorflow updated to current 'master' version
+            Bangle.js: Improve SPI flash speed by with specific function for reading and keeping CS asserted (fix #1849)
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
