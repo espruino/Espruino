@@ -490,6 +490,11 @@ void peripheralPollHandler() {
       if (btn1Timer >= BTN_LOAD_TIMEOUT) {
         bangleTasks |= JSBT_RESET;
         btn1Timer = TIMER_MAX;
+        // Allow BTN3 to break out of debugger
+        if (jsiStatus & JSIS_IN_DEBUGGER) {
+          jsiStatus |= JSIS_EXIT_DEBUGGER;
+          execInfo.execute |= EXEC_INTERRUPTED;
+        }
         // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
       }
     }
