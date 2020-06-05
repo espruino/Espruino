@@ -357,19 +357,6 @@ void jshUSARTUnSetup(IOEventFlags device);
 and we're in the middle of reading We'd never be at 0
 anyway because we're always expecting to have read something.  */
 uint32_t spiFlashLastAddress = 0;
-static void spiFlashReadWrite(unsigned char *tx, unsigned char *rx, unsigned int len) {
-  for (unsigned int i=0;i<len;i++) {
-    int data = tx[i];
-    int result = 0;
-    for (int bit=7;bit>=0;bit--) {
-      nrf_gpio_pin_write((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, (data>>bit)&1 );
-      nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
-      result = (result<<1) | nrf_gpio_pin_read((uint32_t)pinInfo[SPIFLASH_PIN_MISO].pin);
-      nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
-    }
-    if (rx) rx[i] = result;
-  }
-}
 /// Read data while sending 0
 static void spiFlashRead(unsigned char *rx, unsigned int len) {
   nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin);
@@ -400,11 +387,12 @@ static void spiFlashWriteCS(unsigned char *tx, unsigned int len) {
   nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
 }
 static unsigned char spiFlashStatus() {
-  unsigned char buf[2] = {5,0};
+  unsigned char buf = 5;
   nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
-  spiFlashReadWrite(buf, buf, 2);
+  spiFlashWrite(&buf, 1);
+  spiFlashRead(&buf, 1);
   nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
-  return buf[1];
+  return buf;
 }
 #endif
 
