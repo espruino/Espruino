@@ -1875,11 +1875,16 @@ bool jswrap_banglejs_gps_character(char ch) {
   if (ubloxInLength >= sizeof(ubloxIn)) {
     if (inComingUbloxProtocol == UBLOX_PROTOCOL_UBX &&
         ubloxMsgPayloadEnd > ubloxInLength) {
-      memcpy(ubloxMsg, ubloxIn, ubloxInLength);
-      ubloxMsgLength = ubloxInLength;
+      if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
+        // we were already waiting to post data, so lets not overwrite it
+        jsErrorFlags |= JSERR_RX_FIFO_FULL;
+      } else {
+        memcpy(ubloxMsg, ubloxIn, ubloxInLength);
+        ubloxMsgLength = ubloxInLength;
+        bangleTasks |= JSBT_GPS_DATA_PARTIAL;
+      }
       ubloxMsgPayloadEnd -= ubloxInLength;
       ubloxInLength = 0;
-      bangleTasks |= JSBT_GPS_DATA_PARTIAL;
     } else
       resetUbloxIn();
   }
@@ -1905,13 +1910,18 @@ bool jswrap_banglejs_gps_character(char ch) {
       $GNGLL,5139.11397,N,00116.07202,W,161945.00,A,A*69 */
     // Let's just chuck it over into JS-land for now
     if (ubloxInLength > 2 && ubloxInLength <= NMEA_MAX_SIZE && ubloxIn[ubloxInLength - 2] =='\r') {
-      memcpy(ubloxMsg, ubloxIn, ubloxInLength);
-      ubloxMsg[ubloxInLength - 2] = 0; // just overwriting \r\n
-      ubloxMsg[ubloxInLength - 1] = 0;
-      ubloxMsgLength = ubloxInLength - 2;
-      bangleTasks |= JSBT_GPS_DATA_LINE;
-      if (nmea_decode(&gpsFix, ubloxMsg))
+      ubloxIn[ubloxInLength - 2] = 0; // just overwriting \r\n
+      ubloxIn[ubloxInLength - 1] = 0;
+      if (nmea_decode(&gpsFix, ubloxIn))
         bangleTasks |= JSBT_GPS_DATA;
+      if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
+        // we were already waiting to post data, so lets not overwrite it
+        jsErrorFlags |= JSERR_RX_FIFO_FULL;
+      } else {
+        memcpy(ubloxMsg, ubloxIn, ubloxInLength);
+        ubloxMsgLength = ubloxInLength - 2;
+        bangleTasks |= JSBT_GPS_DATA_LINE;
+      }
     }
     resetUbloxIn();
   } else if (inComingUbloxProtocol == UBLOX_PROTOCOL_UBX) {
@@ -1926,10 +1936,14 @@ bool jswrap_banglejs_gps_character(char ch) {
         }
       }
     } else if (ubloxInLength >= ubloxMsgPayloadEnd) {
-      // TODO: Check checksum
-      memcpy(ubloxMsg, ubloxIn, ubloxInLength);
-      ubloxMsgLength = ubloxInLength;
-      bangleTasks |= JSBT_GPS_DATA_LINE;
+      if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
+        // we were already waiting to post data, so lets not overwrite it
+        jsErrorFlags |= JSERR_RX_FIFO_FULL;
+      } else {
+        memcpy(ubloxMsg, ubloxIn, ubloxInLength);
+        ubloxMsgLength = ubloxInLength;
+        bangleTasks |= JSBT_GPS_DATA_LINE;
+      }
       resetUbloxIn();
     }
   }
