@@ -60,6 +60,7 @@
             Bangle.js: Improve SPI flash speed by with specific function for reading and keeping CS asserted (fix #1849)
             Bangle.js: Ensure BTN3 exits debug mode (fix #1842)
             Bangle.js: Now warn if GPS data overflows (fix #1847)
+            Fix double unlock in load()
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)

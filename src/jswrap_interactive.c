@@ -168,7 +168,7 @@ from Storage after reset** in much the same way as calling `reset()` then `eval(
  */
 void jswrap_interface_load(JsVar *storageName) {
   jsiStatus |= JSIS_TODO_FLASH_LOAD;
-  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot,JSI_LOAD_CODE_NAME,storageName);
+  jsvObjectSetChild(execInfo.hiddenRoot,JSI_LOAD_CODE_NAME,storageName);
 }
 
 
