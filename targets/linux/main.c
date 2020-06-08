@@ -341,14 +341,14 @@ int handleErrors() {
   int e = 0;
   JsVar *exception = jspGetException();
   if (exception) {
-    jsiConsolePrintf("Uncaught %v", exception);
+    jsiConsolePrintf("Uncaught %v\n", exception);
     jsvUnLock(exception);
     e = 1;
   }
 
   if (jspIsInterrupted()) {
     jsiConsoleRemoveInputLine();
-    jsiConsolePrint("Execution Interrupted.");
+    jsiConsolePrint("Execution Interrupted.\n");
     jspSetInterrupted(false);
     e = 1;
   }
