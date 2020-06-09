@@ -1583,8 +1583,13 @@ int jshSPISend(IOEventFlags device, int data) {
 #if defined(SPI0_USE_EASY_DMA)
   // Hack for https://infocenter.nordicsemi.com/topic/­errata_nRF52832_Rev2/ERR/nRF52832/Rev2/l­atest/anomaly_832_58.html?cp=4_2_1_0_1_8
   // Can't use DMA for single bytes as it's broken
+#if NRF_SD_BLE_API_VERSION>5
+  NRF_SPI_Type *p_spi = (NRF_SPI_Type *)spi0.u.spi.p_reg;
+  NRF_SPIM_Type *p_spim = (NRF_SPIM_Type *)spi0.u.spim.p_reg;
+#else
   NRF_SPI_Type *p_spi = (NRF_SPI_Type *)spi0.p_registers;
   NRF_SPIM_Type *p_spim = (NRF_SPIM_Type *)spi0.p_registers;
+#endif
   nrf_spim_disable(p_spim);
   nrf_spi_enable(p_spi); // enable SPI mode (non-DMA)
   nrf_spi_int_disable(p_spi, NRF_SPI_INT_READY_MASK);
