@@ -2707,15 +2707,17 @@ JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *tra
   double m[6];
 
   if (jsvIsObject(transformation)) {
-    double x = jsvGetFloatAndUnLock(jsvObjectGetChild(transformation,"x",0));
-    if (!isfinite(x)) x = 0;
-    double y = jsvGetFloatAndUnLock(jsvObjectGetChild(transformation,"y",0));
-    if (!isfinite(y)) y = 0;
-    double scale = jsvGetFloatAndUnLock(jsvObjectGetChild(transformation,"scale",0));
-    if (!isfinite(scale)) scale = 1;
+    double x=0, y=0, scale=1, rotate=0;
+    jsvConfigObject configs[] = {
+        {"x", JSV_FLOAT, &x},
+        {"y", JSV_FLOAT, &y},
+        {"scale", JSV_FLOAT, &scale},
+        {"rotate", JSV_FLOAT, &rotate}
+    };
+    if (!jsvReadConfigObject(transformation, configs, sizeof(configs) / sizeof(jsvConfigObject)))
+        return result;
     double cosr = 1, sinr = 0;
-    double rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(transformation,"rotate",0));
-    if (isfinite(rotate)) {
+    if (rotate) {
       cosr = cos(rotate);
       sinr = sin(rotate);
     }
