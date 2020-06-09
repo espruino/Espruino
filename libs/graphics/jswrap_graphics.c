@@ -2625,43 +2625,47 @@ JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *option
 
   if (jsvGetArrayLength(arr) != 6) return result;
 
-  double s,t,t2,tp2, tpt;
   int sn = 5;
-  int dx, dy;
-  int x0, x1, x2, y0, y1, y2;
+  typedef struct { int x,y; } XY;
+  XY xy[3];
   int count = 0;
 
   JsvIterator it;
   jsvIteratorNew(&it, arr, JSIF_EVERY_ARRAY_ELEMENT);
-  x0 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
-  y0 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
-  x1 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
-  y1 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
-  x2 = jsvIteratorGetIntegerValue(&it); jsvIteratorNext(&it);
-  y2 = jsvIteratorGetIntegerValue(&it); jsvIteratorFree(&it);
+  for (int i=0;i<6;i++) {
+    ((int*)xy)[i] = jsvIteratorGetIntegerValue(&it);
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+
 
   if (jsvIsObject(options)) count = jsvGetIntegerAndUnLock(jsvObjectGetChild(options,"count",0));
 
-  dx = (x0 - x2) < 0 ? (x2-x0):(x0-x2);
-  dy = (y0 - y2) < 0 ? (y2-y0):(y0-y2);
-  s =  1 / (double) (((dx < dy) ? dx : dy ) / sn );
-  if ( s >= 1)  s = 0.33;
-  if ( s < 0.1) s = 0.1;
-  if (count > 0) s = 1.0 / count;
+  const int FP_MUL = 4096;
+  const int FP_SHIFT = 12;
+  int dx = xy[0].x - xy[2].x;
+  if (dx<0) dx=-dx;
+  int dy = xy[0].y - xy[2].y;
+  if (dy<0) dy=-dy;
+  int dmin = (dx < dy) ? dx : dy;
+  if (dmin==0) dmin=1;
+  int s =  FP_MUL*sn / dmin;
+  if ( s >= FP_MUL)  s = FP_MUL/3;
+  if ( s < FP_MUL/10) s = FP_MUL/10;
+  if (count > 0) s = FP_MUL / count;
 
-  jsvArrayPushAndUnLock(result, jsvNewFromInteger(x0));
-  jsvArrayPushAndUnLock(result, jsvNewFromInteger(y0));
+  jsvArrayPush2Int(result, xy[0].x, xy[0].y);
 
-  for ( t = s; t <= 1; t += s ) {
-    t2 = t*t;
-    tp2 = (1 - t) * (1 - t);
-    tpt = 2 * (1 - t) * t;
-    jsvArrayPushAndUnLock(result, jsvNewFromInteger((int)(x0 * tp2 + x1 * tpt + x2 * t2 + 0.5)));
-    jsvArrayPushAndUnLock(result, jsvNewFromInteger((int)(y0 * tp2 + y1 * tpt + y2 * t2 + 0.5)));
+  for ( int t = s; t <= FP_MUL; t += s ) {
+    int t2 = (t*t) >> FP_SHIFT;
+    int tp2 = ((FP_MUL - t) * (FP_MUL - t)) >> FP_SHIFT;
+    int tpt = (2 * (FP_MUL - t) * t) >> FP_SHIFT;
+    jsvArrayPush2Int(result,
+        (xy[0].x * tp2 + xy[1].x * tpt + xy[2].x * t2 + (FP_MUL/2)) >> FP_SHIFT,
+        (xy[0].y * tp2 + xy[1].y * tpt + xy[2].y * t2 + (FP_MUL/2)) >> FP_SHIFT);
   }
 
-  jsvArrayPushAndUnLock(result, jsvNewFromInteger(x2));
-  jsvArrayPushAndUnLock(result, jsvNewFromInteger(y2));
+  jsvArrayPush2Int(result, xy[2].x, xy[2].y);
 
   return  result;
 }

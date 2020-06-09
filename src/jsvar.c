@@ -3161,6 +3161,12 @@ JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value) {
   return l;
 }
 
+// Push 2 integers onto the end of an array
+void jsvArrayPush2Int(JsVar *arr, JsVarInt a, JsVarInt b) {
+  jsvArrayPushAndUnLock(arr, jsvNewFromInteger(a));
+  jsvArrayPushAndUnLock(arr, jsvNewFromInteger(b));
+}
+
 /// Append all values from the source array to the target array
 void jsvArrayPushAll(JsVar *target, JsVar *source, bool checkDuplicates) {
   assert(jsvIsArray(target));
