@@ -26,8 +26,8 @@ var PINS = {
 var i2c = new I2C();
 i2c.setup({sda:PINS.NRF_SDA, scl:PINS.NRF_SCL, bitrate:400000});
 
-// SHTC3 humidity + temp
-// LPS22 pressure
+// SHTC3 humidity + temp - needs module
+// LPS22HB pressure - we have a module for this
 
 /// Returns a LIS3DH instance. callback when initialised. Then use 'read' to get data
 exports.setAccelOn = function(isOn, callback) {
@@ -63,16 +63,10 @@ exports.setCellOn = function(isOn, callback) {
       Serial1.removeAllListeners();
       Serial1.on('data', function(x) {}); // suck up any data that gets transmitted from the modem as it boots (RDY, etc)
       Serial1.setup(115200,{tx:PINS.LTE_TXD, rx:PINS.LTE_RXD, cts:PINS.LTE_RTS});
-      PINS.PWR_GPRS_ON.reset();
+      PINS.GPRS_PWRKEY.reset();
       setTimeout(resolve,200);
     }).then(function() {
-      PINS.PWR_GPRS_ON.set();
-      return new Promise(function(resolve){setTimeout(resolve,200);});
-    }).then(function() {
       PINS.GPRS_PWRKEY.set();
-      return new Promise(function(resolve){setTimeout(resolve,2000);});
-    }).then(function() {
-      PINS.GPRS_PWRKEY.reset();
       return new Promise(function(resolve){setTimeout(resolve,5000);});
     }).then(function() {
       this.cellOn = true;
@@ -81,8 +75,11 @@ exports.setCellOn = function(isOn, callback) {
     });
   } else {
     this.cellOn = false;
-    PINS.PWR_GPRS_ON.reset(); // turn power off.
-    if (callback) setTimeout(callback,1000);
+    PINS.GPRS_PWRKEY.reset(); // turn power off.
+    setTimeout(function() {
+      PINS.GPRS_PWRKEY.set();
+      if (callback) setTimeout(callback,1000);
+    }, 800);
   }
 };
 
