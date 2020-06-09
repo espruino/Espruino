@@ -2665,3 +2665,88 @@ JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *option
 
   return  result;
 }
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "transformVertices",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_transformVertices",
+  "params" : [
+    ["verts","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"],
+    ["transformation","JsVar","The transformation to apply, either an Object or an Array (see below)"]
+  ],
+  "return" : ["JsVar", "Array of transformed vertices" ]
+}
+Transformation can be:
+
+* An object of the form
+```
+{
+  x: float, // x offset (default 0)
+  y: float, // y offset (default 0)
+  scale: float, // scale factor (default 1)
+  rotation: float, // angle in radians (default 0)
+}
+```
+* A six-element array of the form `[a,b,c,d,e,f]`, which represents the 2D transformation matrix
+```
+a c e
+b d f
+0 0 1
+```
+
+ Apply a transformation to an array of vertices.
+*/
+JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *transformation) {
+  NOT_USED(parent);
+  JsVar *result = jsvNewEmptyArray();
+  if (!result) return 0;
+  if (!jsvIsIterable(verts)) return result;
+
+  double m[6];
+
+  if (jsvIsObject(transformation)) {
+    double x = jsvGetFloatAndUnLock(jsvObjectGetChild(transformation,"x",0));
+    if (!isfinite(x)) x = 0;
+    double y = jsvGetFloatAndUnLock(jsvObjectGetChild(transformation,"y",0));
+    if (!isfinite(y)) y = 0;
+    double scale = jsvGetFloatAndUnLock(jsvObjectGetChild(transformation,"scale",0));
+    if (!isfinite(scale)) scale = 1;
+    double cosr = 1, sinr = 0;
+    double rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(transformation,"rotate",0));
+    if (isfinite(rotate)) {
+      cosr = cos(rotate);
+      sinr = sin(rotate);
+    }
+    m[0] = cosr*scale; m[2] = -sinr*scale; m[4] = x;
+    m[1] = sinr*scale; m[3] = cosr*scale; m[5] = y;
+  } else if (jsvIsIterable(transformation) && jsvGetLength(transformation) == 6) {
+    JsvIterator it;
+    jsvIteratorNew(&it, transformation, JSIF_EVERY_ARRAY_ELEMENT);
+    for (int i = 0; i < 6; ++i) {
+      m[i] = jsvIteratorGetFloatValue(&it);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+  } else {
+    jsExceptionHere(JSET_TYPEERROR,"Expected either an object or an array with 6 entries for second argument");
+    return 0;
+  }
+
+  JsvIterator it;
+  jsvIteratorNew(&it, verts, JSIF_EVERY_ARRAY_ELEMENT);
+  while (jsvIteratorHasElement(&it)) {
+    double x = jsvIteratorGetFloatValue(&it);
+    jsvIteratorNext(&it);
+    if (!jsvIteratorHasElement(&it)) break;
+    double y = jsvIteratorGetFloatValue(&it);
+    jsvIteratorNext(&it);
+
+    jsvArrayPushAndUnLock(result, jsvNewFromFloat(m[0]*x + m[2]*y + m[4]));
+    jsvArrayPushAndUnLock(result, jsvNewFromFloat(m[1]*x + m[3]*y + m[5]));
+  }
+  jsvIteratorFree(&it);
+
+  return result;
+}
