@@ -248,9 +248,6 @@ typedef int64_t JsSysTime;
 #define JS_VARS_BEFORE_IDLE_GC 32
 #endif
 
-
-#define JSPARSE_MAX_SCOPES  8
-
 #define STRINGIFY_HELPER(x) #x
 #define STRINGIFY(x) STRINGIFY_HELPER(x)
 #define NOT_USED(x) ( (void)(x) )
