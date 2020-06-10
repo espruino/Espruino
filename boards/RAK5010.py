@@ -21,7 +21,7 @@ import pinutils;
 
 info = {
  'name' : "RAK5010 WisTrio NB-IoT Tracker",
- 'link' :  [ "https://doc.rakwireless.com/datasheet/rakproducts/interfaces---rak5010-wistrio-nb-iot" ],
+ 'link' :  [ "https://doc.rakwireless.com/datasheet/rakproducts/rak5010-wistrio-nb-iot-tracker-datasheet" ],
  'espruino_page_link' : 'RAK5010',
  'variables' : 12500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
 # 'bootloader' : 1,
