@@ -86,7 +86,8 @@ if [ "$PROVISION_ESP32" = "1" ]; then
     if ! type xtensa-esp32-elf-gcc 2> /dev/null > /dev/null; then
         echo installing xtensa-esp32-elf-gcc
         if [ ! -d "xtensa-esp32-elf" ]; then
-           curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz | tar xfz - --no-same-owner
+           #curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz | tar xfz - --no-same-owner
+           curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz | tar xfz - --no-same-owner
         else
            echo "Folder found"
         fi
@@ -155,11 +156,13 @@ fi
 if [ "$PROVISION_NRF_SDK15" = "1" ]; then
     if [ ! -d "targetlibs/nrf5x_15/components" ]; then
         echo Installing NRF SDK 15.0 to targetlibs/nrf5x_15/components
-        curl https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v15.x.x/nRF5_SDK_15.0.0_a53641a.zip -o nRF5_SDK_15.0.0_a53641a.zip
+        # curl https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v15.x.x/nRF5_SDK_15.0.0_a53641a.zip -o nRF5_SDK_15.0.0_a53641a.zip
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5_SDK_15.0.0_a53641a_no_docs.zip -o nRF5_SDK_15.0.0_a53641a.zip
         unzip -q -o nRF5_SDK_15.0.0_a53641a.zip
         mv nRF5_SDK_15.0.0_a53641a/* targetlibs/nrf5x_15
         rm -rf nRF5_SDK_15.0.0_a53641a.zip nRF5_SDK_15.0.0_a53641a
         # convert line endings for patch
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y dos2unix
         find targetlibs/nrf5x_15/components -type f -exec dos2unix {} \;
         find targetlibs/nrf5x_15/modules -type f -exec dos2unix {} \;
         echo ======================================================
