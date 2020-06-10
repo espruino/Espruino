@@ -278,8 +278,8 @@ void jsvStringIteratorClone(JsvStringIterator *dstit, JsvStringIterator *it) {
   if (dstit->var) {
     jsvLockAgain(dstit->var);
 #ifdef SPIFLASH_BASE
-    if (it->ptr == &it->flashStringBuffer)
-      dstit->ptr = &dstit->flashStringBuffer;
+    if (it->ptr == it->flashStringBuffer)
+      dstit->ptr = dstit->flashStringBuffer;
 #endif
   }
 }

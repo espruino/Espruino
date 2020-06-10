@@ -376,8 +376,13 @@ void jslGetNextToken() {
   // record beginning of this token
   lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it) - 1;
   /* we don't lock here, because we know that the string itself will be locked
-   * because of lex->sourceVar */
+   * because of lex->sourceVar. DANGER! This is like a jsvStringIteratorClone
+   * without the lock. */
   lex->tokenStart.it = lex->it;
+#ifdef SPIFLASH_BASE
+    if (lex->it.ptr == lex->it.flashStringBuffer)
+      lex->tokenStart.it.ptr = lex->tokenStart.it.flashStringBuffer;
+#endif
   lex->tokenStart.currCh = lex->currCh;
   // tokens
   if (((unsigned char)lex->currCh) < jslJumpTableStart ||
