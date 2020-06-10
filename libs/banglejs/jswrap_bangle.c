@@ -433,19 +433,20 @@ typedef enum {
   JSBT_GPS_DATA = 1<<4, ///< we got a complete set of GPS data in 'gpsFix'
   JSBT_GPS_DATA_LINE = 1<<5, ///< we got a line of GPS data
   JSBT_GPS_DATA_PARTIAL = 1<<6, ///< we got some GPS data but it needs storing for later because it was too big to go in our buffer
-  JSBT_MAG_DATA = 1<<7, ///< need to push magnetometer data to JS
-  JSBT_RESET = 1<<8, ///< reset the watch and reload code from flash
-  JSBT_GESTURE_DATA = 1<<9, ///< we have data from a gesture
-  JSBT_CHARGE_EVENT = 1<<10, ///< we need to fire a charging event
-  JSBT_STEP_EVENT = 1<<11, ///< we've detected a step via the pedometer
-  JSBT_SWIPE_LEFT = 1<<12, ///< swiped left over touchscreen
-  JSBT_SWIPE_RIGHT = 1<<13, ///< swiped right over touchscreen
+  JSBT_GPS_DATA_OVERFLOW = 1<<7, ///< we got more GPS data than we could handle and had to drop some
+  JSBT_MAG_DATA = 1<<8, ///< need to push magnetometer data to JS
+  JSBT_RESET = 1<<9, ///< reset the watch and reload code from flash
+  JSBT_GESTURE_DATA = 1<<10, ///< we have data from a gesture
+  JSBT_CHARGE_EVENT = 1<<11, ///< we need to fire a charging event
+  JSBT_STEP_EVENT = 1<<12, ///< we've detected a step via the pedometer
+  JSBT_SWIPE_LEFT = 1<<13, ///< swiped left over touchscreen
+  JSBT_SWIPE_RIGHT = 1<<14, ///< swiped right over touchscreen
   JSBT_SWIPE_MASK = JSBT_SWIPE_LEFT | JSBT_SWIPE_RIGHT,
-  JSBT_TOUCH_LEFT = 1<<14, ///< touch lhs of touchscreen
-  JSBT_TOUCH_RIGHT = 1<<15, ///< touch rhs of touchscreen
+  JSBT_TOUCH_LEFT = 1<<15, ///< touch lhs of touchscreen
+  JSBT_TOUCH_RIGHT = 1<<16, ///< touch rhs of touchscreen
   JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
-  JSBT_HRM_DATA = 1<<16, ///< Heart rate data is ready for analysis
-  JSBT_TWIST_EVENT = 1<<17, ///< Watch was twisted
+  JSBT_HRM_DATA = 1<<17, ///< Heart rate data is ready for analysis
+  JSBT_TWIST_EVENT = 1<<18, ///< Watch was twisted
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -1666,23 +1667,35 @@ bool jswrap_banglejs_idle() {
     }
   }
   if (bangle && (bangleTasks & JSBT_GPS_DATA_PARTIAL)) {
-    JsVar *data = jsvObjectGetChild(bangle,"_gpsdata",0);
-    if (!data) {
-      data = jsvNewFromEmptyString();
-      jsvObjectSetChild(bangle,"_gpsdata",data);
+    if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw")) {
+      JsVar *data = jsvObjectGetChild(bangle,"_gpsdata",0);
+      if (!data) {
+        data = jsvNewFromEmptyString();
+        jsvObjectSetChild(bangle,"_gpsdata",data);
+      }
+      jsvAppendStringBuf(data, ubloxMsg, ubloxMsgLength);
+      jsvUnLock(data);
     }
-    jsvAppendStringBuf(data, ubloxMsg, ubloxMsgLength);
-    jsvUnLock(data);
   }
   if (bangle && (bangleTasks & JSBT_GPS_DATA_LINE)) {
-    JsVar *line = jsvObjectGetChild(bangle,"_gpsdata",0);
-    if (line) {
+    if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw")) {
+      // if GPS data had overflowed, report it
+      if (bangleTasks & JSBT_GPS_DATA_OVERFLOW) {
+        jsErrorFlags |= JSERR_RX_FIFO_FULL;
+      }
+      // Get any data previously added with JSBT_GPS_DATA_PARTIAL
+      JsVar *line = jsvObjectGetChild(bangle,"_gpsdata",0);
+      if (line) {
+        jsvObjectRemoveChild(bangle,"_gpsdata");
+        jsvAppendStringBuf(line, ubloxMsg, ubloxMsgLength);
+      } else line = jsvNewStringOfLength(ubloxMsgLength, ubloxMsg);
+      // if we have any data, queue it
+      if (line)
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw", &line, 1);
+      jsvUnLock(line);
+    } else {
       jsvObjectRemoveChild(bangle,"_gpsdata");
-      jsvAppendStringBuf(line, ubloxMsg, ubloxMsgLength);
-    } else line = jsvNewStringOfLength(ubloxMsgLength, ubloxMsg);
-    if (line)
-      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw", &line, 1);
-    jsvUnLock(line);
+    }
   }
   if (bangle && (bangleTasks & JSBT_MAG_DATA)) {
     if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"mag")) {
@@ -1877,7 +1890,7 @@ bool jswrap_banglejs_gps_character(char ch) {
         ubloxMsgPayloadEnd > ubloxInLength) {
       if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
         // we were already waiting to post data, so lets not overwrite it
-        jsErrorFlags |= JSERR_RX_FIFO_FULL;
+        bangleTasks |= JSBT_GPS_DATA_OVERFLOW;
       } else {
         memcpy(ubloxMsg, ubloxIn, ubloxInLength);
         ubloxMsgLength = ubloxInLength;
@@ -1916,7 +1929,7 @@ bool jswrap_banglejs_gps_character(char ch) {
         bangleTasks |= JSBT_GPS_DATA;
       if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
         // we were already waiting to post data, so lets not overwrite it
-        jsErrorFlags |= JSERR_RX_FIFO_FULL;
+        bangleTasks |= JSBT_GPS_DATA_OVERFLOW;
       } else {
         memcpy(ubloxMsg, ubloxIn, ubloxInLength);
         ubloxMsgLength = ubloxInLength - 2;
@@ -1938,7 +1951,7 @@ bool jswrap_banglejs_gps_character(char ch) {
     } else if (ubloxInLength >= ubloxMsgPayloadEnd) {
       if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
         // we were already waiting to post data, so lets not overwrite it
-        jsErrorFlags |= JSERR_RX_FIFO_FULL;
+        bangleTasks |= JSBT_GPS_DATA_OVERFLOW;
       } else {
         memcpy(ubloxMsg, ubloxIn, ubloxInLength);
         ubloxMsgLength = ubloxInLength;
