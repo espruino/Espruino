@@ -493,8 +493,8 @@ static const uint8_t *vfGetCharPtr(char sch, int *charLen) {
 
 // prints character, returns width
 unsigned int vfDrawCharPtr(JsGraphics *gfx, int x1, int y1, int size, const uint8_t *charPtr, int charLen) {
-  x1 = x1<<4;
-  y1 = y1<<4;
+  x1 = (x1<<4) - 8;
+  y1 = (y1<<4) - 8;
   int w = 0;
   for (int i = 0; i < charLen; ++i) {
     short poly[${maxPolyLen*2}];

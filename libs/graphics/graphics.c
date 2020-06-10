@@ -473,8 +473,8 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
     int vx = v[i].x;
     int vy = v[i].y;
     graphicsToDeviceCoordinates16x(gfx, &vx, &vy);
-    v[i].x = (short)(vx-8);
-    v[i].y = (short)(vy-8);
+    v[i].x = (short)vx;
+    v[i].y = (short)vy;
     // work out min and max
     short y = v[i].y>>4;
     if (y<miny) miny=y;
