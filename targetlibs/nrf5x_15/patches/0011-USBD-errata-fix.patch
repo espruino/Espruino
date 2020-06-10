@@ -1,5 +1,5 @@
---- targetlibs/nrf5x_15/components/drivers_nrf/usbd/nrf_drv_usbd_errata.h	2018-03-22 15:25:08.000000000 +0000
-+++ targetlibs/nrf5x_15/components/drivers_nrf/usbd/nrf_drv_usbd_errata.h	2020-06-10 10:36:05.840257060 +0100
+--- a/targetlibs/nrf5x_15/components/drivers_nrf/usbd/nrf_drv_usbd_errata.h
++++ b/targetlibs/nrf5x_15/components/drivers_nrf/usbd/nrf_drv_usbd_errata.h
 @@ -93,8 +93,10 @@
   */
  static inline bool nrf_drv_usbd_errata_type_52840_fp1(void)
