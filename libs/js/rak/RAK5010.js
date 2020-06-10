@@ -15,7 +15,8 @@ var PINS = {
 
   GPRS_RESET : D28, 
   GPRS_PWRKEY : D2,
-  OPT_INT : D15,
+  OPT_INT : D15, // OPT3001 interrupt
+  LPS22_INT : D17, // LPS22HB interrupt
 
   BAT_SET : D41,
   CHG_DET : D40,
@@ -50,6 +51,25 @@ exports.setOptoOn = function(isOn, callback) {
     return this.OPT3001 = require("OPT3001").connectI2C(i2c, { int : PINS.OPT_INT });
   }
 };//tested ok
+
+/// Returns a LPS22HB instance. callback when initialised. Then use 'get' to get data, or the `on('data'` event
+exports.setPressureOn = function(isOn, callback) {
+  if (this.LPS22HB) this.LPS22HB.stop();
+  delete this.LPS22HB;
+  if (isOn) {
+    if (callback) setTimeout(callback, 1000, this.LPS22HB); // wait for first reading
+    return this.LPS22HB = require("LPS22HB").connectI2C(i2c, { int : PINS.LPS22_INT });
+  }
+};
+
+/// Returns a SHT3C instance. callback when initialised. Then use 'read(callback)' to get data
+exports.setEnvOn = function(isOn, callback) {
+  delete this.SHT3C;
+  if (isOn) {
+    if (callback) setTimeout(callback, 100, this.SHT3C); // wait for first startup
+    return this.SHT3C = require("SHT3C").connectI2C(i2c);
+  }
+};
 
 // Turn cell connectivity on - will take around 8 seconds. Calls the `callback(usart)` when done. You then need to connect either SMS or QuectelM35 to the serial device `usart`
 exports.setCellOn = function(isOn, callback) {
@@ -88,13 +108,14 @@ exports.setCharging = function(isCharging) {
   PINS.BAT_SET.write(!isCharging);
 };
 
-/// Set whether the TP4054 should charge the battery (default is yes)
+/// Get whether the TP4054 is charging the battery
 exports.isCharging = function(isCharging) {
   return !PINS.CHG_DET.read();
 };//tested ok
 
 // Return GPS instance. callback is called whenever data is available!
 exports.setGPSOn = function(isOn, callback) {
+// FIXME: GPS_EN pin?
   if (!isOn) this.setCellOn(false,callback);
   else this.setCellOn(isOn, function(usart) {
     var at = require("AT").connect(usart);
@@ -133,23 +154,12 @@ exports.setGPSOn = function(isOn, callback) {
     });
   });
 };
+
+exports.i2c = i2c;
 exports.PINS = PINS;
 exports.AIN = D5;
 exports.NRF_IO1 = D19;
 exports.NRF_IO2 = D20;
 exports.NRF_IO3 = D34;
 exports.NRF_IO4 = D33;
-
-
-/*
-var i = require("iTracker");
-var e = i.setAccelOn(true, function() {
-  console.log(e.read()); // {x,y,z}
-});
-
-o=i.setOptoOn(true, function() {  
-:  console.log(o.read());
-:});
-
-*/
 

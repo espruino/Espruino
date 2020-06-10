@@ -23,7 +23,7 @@ info = {
  'name' : "RAK5010 WisTrio NB-IoT Tracker",
  'link' :  [ "https://doc.rakwireless.com/datasheet/rakproducts/interfaces---rak5010-wistrio-nb-iot" ],
  'espruino_page_link' : 'RAK5010',
- 'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 12500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
 # 'bootloader' : 1,
 # 'default_console' : "EV_SERIAL1",
 # 'default_console_tx' : "D34", # IO3
@@ -39,7 +39,7 @@ info = {
    'makefile' : [
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES+=-DCONFIG_NFCT_PINS_AS_GPIOS', # Don't use NFC - the pins are used for GPS
-#     'DEFINES += -DNRF_USB=1 -DUSB', # USB appears to think it is connected all the time
+     'DEFINES += -DNRF_USB=1 -DUSB', # USB only works if connected at startup
      'NRF_SDK15=1'
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"iTracker"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
@@ -48,9 +48,11 @@ info = {
      'JSMODULESOURCES += libs/js/GPS.min.js',
      'JSMODULESOURCES += libs/js/LIS3DH.min.js',
      'JSMODULESOURCES += libs/js/OPT3001.min.js',
+     'JSMODULESOURCES += libs/js/LPS22HB.min.js',
+     'JSMODULESOURCES += libs/js/SHT3C.min.js',
      'JSMODULESOURCES += libs/js/ATSMS.min.js',
      'JSMODULESOURCES += libs/js/QuectelBG96.min.js',
-     'JSMODULESOURCES += iTracker:libs/js/rak/RAK5010.js' # FIXME - use minified
+     'JSMODULESOURCES += iTracker:libs/js/rak/RAK5010.js' # should probably use minified
    ]
  }
 };
@@ -68,23 +70,32 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((246 - 10) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
+# Use this for on-chip flash
+    'address' : ((246 - 20) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
     'page_size' : 4096,
-    'pages' : 10,
-    'flash_available' : 1024 - ((31 + 8 + 2 + 10)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
+    'pages' : 20,
+    'flash_available' : 1024 - ((31 + 8 + 2 + 20)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 20. Each page is 4 kb.
+# Use this for the 8mb external flash if chip is installed in board
+#    'address' : 0x60000000, # put this in external spiflash (see below)
+#    'page_size' : 4096,
+#    'pages' : 2048, # Entire 8MB of external flash
+#    'flash_available' : 512 - ((31 + 8 + 2)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2. Each page is 4 kb.
   },
 };
 
 devices = {
   'LED1' : { 'pin' : 'D12' },
-#  'BTN1' : { 'pin' : '', 'pinstate' : 'IN_PULLDOWN' },
-# IS25WP064A QSPI flash
-#  d0 D3 P0.03
-#  d1    P1.15
-#  d2    P1.14 
-#  d3    P1.13
-#  clk   P1.11
-#  cs    P1.10
+  # IS25WP064A QSPI flash
+#  'SPIFLASH' : { # Chip is not installed in board
+#            'pin_cs' : 'D42',  #  cs    P1.10
+#            'pin_sck' : 'D43', #  clk   P1.11
+#            'pin_mosi' : 'D3', #  d0    P0.03
+#            'pin_miso' : 'D47', #  d1    P1.15
+#            'pin_wp' : 'D46', #  d2    P1.14 
+#            'pin_rst' : 'D45', #  d3    P1.13
+#            'size' : 8192*1024, # 8MB
+#            'memmap_base' : 0x60000000 # map into the address space (in software)
+#          }
 };
 
 # left-right, or top-bottom order
@@ -92,6 +103,7 @@ board = {
  'right' : [ 'GND', 'VBAT', 'D5', 'D19', '',
              'VREF', 'D20', 'D34', 'D33', '',
              '3V', 'SWDIO', 'SWDCLK', 'GND' ],
+ 'bottom' : ['MODEM PWR','RESET'],
   '_hide_not_on_connectors' : True,
   '_notes' : {
     'D21' : "Also RESET if configured",
@@ -102,10 +114,11 @@ board = {
     'D5' : "Labelled AIN"
   }
 };
+board["right"].reverse();
 
 board["_css"] = """
 #board {
-  width: 480px;
+  width: 465px;
   height: 526px;
   top: 0px;
   left : 0px;
@@ -115,11 +128,19 @@ board["_css"] = """
   height: 506px;
 }
 #right {
-  top: 59px;
-  left: 480px;
+  top: 55px;
+  left: 470px;
 }
 .rightpin {
   height: 26px;
+}
+#bottom {
+  top: 504px;
+  left: 172px;
+}
+.bottompin {
+  transform: none;
+  width : 120px; 
 }
 """;
 
