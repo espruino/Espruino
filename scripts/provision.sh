@@ -157,14 +157,11 @@ if [ "$PROVISION_NRF_SDK15" = "1" ]; then
     if [ ! -d "targetlibs/nrf5x_15/components" ]; then
         echo Installing NRF SDK 15.0 to targetlibs/nrf5x_15/components
         # curl https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v15.x.x/nRF5_SDK_15.0.0_a53641a.zip -o nRF5_SDK_15.0.0_a53641a.zip
-        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5_SDK_15.0.0_a53641a_no_docs.zip -o nRF5_SDK_15.0.0_a53641a.zip
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5_SDK_15.0.0_a53641a_no_docs_unix.zip -o nRF5_SDK_15.0.0_a53641a.zip
+        # This is nRF5_SDK_15.0.0_a53641a.zip without the docs/examples folder, and with line endings converted to unix (for patch)
         unzip -q -o nRF5_SDK_15.0.0_a53641a.zip
         mv nRF5_SDK_15.0.0_a53641a/* targetlibs/nrf5x_15
         rm -rf nRF5_SDK_15.0.0_a53641a.zip nRF5_SDK_15.0.0_a53641a
-        # convert line endings for patch
-        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y dos2unix
-        find targetlibs/nrf5x_15/components -type f -exec dos2unix {} \;
-        find targetlibs/nrf5x_15/modules -type f -exec dos2unix {} \;
         echo ======================================================
         echo "FIXME - SDK15 NFC patches don't apply cleanly"
         echo ======================================================
