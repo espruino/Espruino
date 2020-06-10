@@ -40,3 +40,5 @@
      ble_nus_data_handler_t data_handler; /**< Event handler to be called for handling received data. */
 +    bool encrypt; //< GW added - require encryption
  } ble_nus_init_t;
+
+
