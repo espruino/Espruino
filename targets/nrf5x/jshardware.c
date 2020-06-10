@@ -1439,14 +1439,14 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     return;
 
   unsigned int num = device-EV_SERIAL1;
-  jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
-  jshSetErrorHandlingEnabled(device, inf->errorHandling);
-
   nrf_uart_baudrate_t baud = (nrf_uart_baudrate_t)nrf_utils_get_baud_enum(inf->baudRate);
   if (baud==0)
     return jsError("Invalid baud rate %d", inf->baudRate);
   if (!jshIsPinValid(inf->pinRX) && !jshIsPinValid(inf->pinTX))
     return jsError("Invalid RX or TX pins");
+
+  jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
+  jshSetErrorHandlingEnabled(device, inf->errorHandling);
 
   if (uart[num].isInitialised) {
     uart[num].isInitialised = false;
