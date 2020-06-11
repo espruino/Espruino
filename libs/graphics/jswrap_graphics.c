@@ -2195,7 +2195,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   "type" : "method",
   "class" : "Graphics",
   "name" : "drawImages",
-  "ifndef" : "SAVE_ON_FLASH",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_drawImages",
   "params" : [
     ["layers","JsVar","An array of objects {x,y,image,scale,rotate,center} (up to 3)"],
@@ -2674,7 +2674,7 @@ JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *option
   "type" : "method",
   "class" : "Graphics",
   "name" : "transformVertices",
-  "ifndef" : "SAVE_ON_FLASH",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_transformVertices",
   "params" : [
     ["verts","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"],

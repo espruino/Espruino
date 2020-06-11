@@ -113,14 +113,14 @@ do
   echo
   rm -f $BINARY_NAME
   if [ "$BOARDNAME" == "ESPRUINOBOARD" ]; then
-    bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo "Build of $EXTRADEFS $BOARDNAME failed" ; exit 1; }
+    bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 1; }
   elif [ "$BOARDNAME" == "PICO_R1_3" ]; then
-    bash -c "$EXTRADEFS scripts/create_pico_image_1v3.sh" || { echo "Build of $EXTRADEFS $BOARDNAME failed" ; exit 1; }
+    bash -c "$EXTRADEFS scripts/create_pico_image_1v3.sh" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 1; }
   elif [ "$BOARDNAME" == "ESPRUINOWIFI" ]; then
-    bash -c "$EXTRADEFS scripts/create_espruinowifi_image.sh" || { echo "Build of $EXTRADEFS $BOARDNAME failed" ; exit 1; }
+    bash -c "$EXTRADEFS scripts/create_espruinowifi_image.sh" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 1; }
   else
     bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make clean"
-    bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make" || { echo "Build of $EXTRADEFS $BOARDNAME failed" ; exit 1; }
+    bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 1; }
   fi
   # rename binary if needed
   if [ -n "$EXTRANAME" ]; then
@@ -130,25 +130,25 @@ do
   fi
   # copy...
   if [ "$BOARDNAME" == "ESP8266_BOARD" ]; then
-    tar -C $ZIPDIR -xzf ${ESP_BINARY_NAME}.tgz || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    tar -C $ZIPDIR -xzf ${ESP_BINARY_NAME}.tgz || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
     # build a combined image
-    bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make combined" || { echo "Build of $BOARDNAME failed" ; exit 1; }
-    cp ${ESP_BINARY_NAME}_combined_512.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make combined" || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
+    cp ${ESP_BINARY_NAME}_combined_512.bin $ZIPDIR || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
   elif [ "$BOARDNAME" == "ESP8266_4MB" ]; then
-    tar -C $ZIPDIR -xzf ${ESP_BINARY_NAME}.tgz || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    tar -C $ZIPDIR -xzf ${ESP_BINARY_NAME}.tgz || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
     # build a combined image
-    bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make combined" || { echo "Build of $BOARDNAME failed" ; exit 1; }
-    cp ${ESP_BINARY_NAME}_combined_4096.bin $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make combined" || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
+    cp ${ESP_BINARY_NAME}_combined_4096.bin $ZIPDIR || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
   else
     echo Copying ${ESP_BINARY_NAME} to $ZIPDIR/$NEW_BINARY_NAME
-    cp ${ESP_BINARY_NAME} $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    cp ${ESP_BINARY_NAME} $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
     if [ "$BOARDNAME" == "ESP32" ]; then
-      tar -C $ZIPDIR -xzf  `basename $ESP_BINARY_NAME .bin`.tgz || { echo "Build of $BOARDNAME failed" ; exit 1; }
+      tar -C $ZIPDIR -xzf  `basename $ESP_BINARY_NAME .bin`.tgz || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
     fi
   fi
   # Copy second binary
   if [ -n "$ESP_BINARY2_NAME" ]; then
-    cp ${ESP_BINARY2_NAME} $ZIPDIR || { echo "Build of $BOARDNAME failed" ; exit 1; }
+    cp ${ESP_BINARY2_NAME} $ZIPDIR || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
   fi
 
 done
