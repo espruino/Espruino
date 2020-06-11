@@ -35,6 +35,7 @@ info = {
      'EMSCRIPTEN=1',
      'DEFINES += -DUSE_TENSORFLOW',
      'DEFINES += -DBANGLEJS',
+     'DEFINES += -DSPIFLASH_BASE=0x8000000 -DSPIFLASH_LENGTH=4194304',
 #     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DUSE_LCD_EMSCRTIPTEN',
@@ -50,13 +51,19 @@ chip = {
   'family' : "EMSCRIPTEN",
   'package' : "",
   'ram' : 0,
-  'flash' : 256, # size of file used to fake flash memory (kb)
+  'flash' : 4096, # size of file used to fake flash memory (kb)
   'speed' : -1,
   'usart' : 1,
   'spi' : 1,
   'i2c' : 1,
   'adc' : 0,
   'dac' : 0,
+  'saved_code' : {
+    'address' : 0x8000000,
+    'page_size' : 4096,
+    'pages' : 1024, # Entire 4MB of external flash
+    'flash_available' : 1024 # lots - this is fake
+  },
 };
 
 devices = {

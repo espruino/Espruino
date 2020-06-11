@@ -64,6 +64,7 @@
             Bangle.js: Fix occasional execution errors when executing from Flash (fix #1854)
             Add Graphics.transformVertices()
             Re-add Graphics.quadraticBezier for Bangle.js, move to integer math to halve fn size
+            Emscripten: (fake) Flash memory support
 
      2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
