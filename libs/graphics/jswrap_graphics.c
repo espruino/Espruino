@@ -2381,8 +2381,8 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
         ((gfx.data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) && // must be MSB first
           !(gfx.data.flags & JSGRAPHICSFLAGS_NONLINEAR)))) { // must be in-order
       jsvObjectSetChildAndUnLock(img,"buffer",jsvObjectGetChild(gfx.graphicsVar, "buffer", 0));
+      return img;
     }
-    return img;
   } else {
     len += 3; // for the header!
   }
