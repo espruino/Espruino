@@ -211,6 +211,23 @@ bool bleHighInterval;
 
 static ble_gap_sec_params_t get_gap_sec_params();
 
+/// for BLEP_ADV_REPORT
+typedef struct {
+  ble_gap_addr_t            peer_addr;
+  int8_t                    rssi;                  /**< Received Signal Strength Indication in dBm of the last packet received. */
+  uint8_t        dlen;                  /**< Advertising or scan response data length. */
+  uint8_t        data[BLE_GAP_ADV_MAX_SIZE];    /**< Advertising or scan response data. */
+} BLEAdvReportData;
+
+#if NRF_SD_BLE_API_VERSION>5
+ // if m_scan_param.extended=1, use BLE_GAP_SCAN_BUFFER_EXTENDED_MIN
+uint8_t m_scan_buffer_data[BLE_GAP_SCAN_BUFFER_MIN]; /**< buffer where advertising reports will be stored by the SoftDevice. */
+ble_data_t m_scan_buffer = {
+   m_scan_buffer_data,
+   BLE_GAP_SCAN_BUFFER_MIN
+};
+#endif
+
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
@@ -326,16 +343,10 @@ int jsble_exec_pending(IOEvent *event) {
      break;
    }
    case BLEP_ADV_REPORT: {
-     ble_gap_evt_adv_report_t *p_adv = (ble_gap_evt_adv_report_t *)buffer;
-#if NRF_SD_BLE_API_VERSION<6
-     int dataLen = p_adv->dlen;
-     char *dataPtr = (char*)p_adv->data;
-#else
-     int dataLen = p_adv->data.len;
-     char *dataPtr = (char*)p_adv->data.p_data;
-#endif
-     size_t len = sizeof(ble_gap_evt_adv_report_t) + dataLen - BLE_GAP_ADV_MAX_SIZE;
+     BLEAdvReportData *p_adv = (BLEAdvReportData *)buffer;
+     size_t len = sizeof(BLEAdvReportData) + p_adv->dlen - BLE_GAP_ADV_MAX_SIZE;
      if (bufferLen != len) {
+       jsiConsolePrintf("%d %d %d\n", bufferLen,len,p_adv->dlen);
        assert(0);
        break;
      }
@@ -344,9 +355,9 @@ int jsble_exec_pending(IOEvent *event) {
        jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
        //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(blePendingAdvReport.peer_addr.addr_type));
        jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
-       JsVar *data = jsvNewStringOfLength(dataLen, dataPtr);
+       JsVar *data = jsvNewStringOfLength(p_adv->dlen, (char*)p_adv->data);
        if (data) {
-         JsVar *ab = jsvNewArrayBufferFromString(data, dataLen);
+         JsVar *ab = jsvNewArrayBufferFromString(data, p_adv->dlen);
          jsvUnLock(data);
          jsvObjectSetChildAndUnLock(evt, "data", ab);
        }
@@ -1359,14 +1370,23 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_ADV_REPORT: {
         // Advertising data received
         const ble_gap_evt_adv_report_t *p_adv = &p_ble_evt->evt.gap_evt.params.adv_report;
+        BLEAdvReportData adv;
+        adv.peer_addr = p_adv->peer_addr;
+        adv.rssi = p_adv->rssi;
 #if NRF_SD_BLE_API_VERSION<6
-        size_t dlen = p_adv->dlen;
+        adv.dlen = p_adv->dlen;
+        memcpy(adv.data, p_adv->data, adv.dlen);
 #else
-        // FIXME - we're no longer including the actual advertising data in the packet, just a pointer!
-        size_t dlen = p_adv->data.len;
+        adv.dlen = p_adv->data.len;
+        memcpy(adv.data, p_adv->data.p_data, adv.dlen);
 #endif
-        size_t len = sizeof(ble_gap_evt_adv_report_t) + dlen - BLE_GAP_ADV_MAX_SIZE;
-        jsble_queue_pending_buf(BLEP_ADV_REPORT, 0, (char*)p_adv, len);
+        size_t len = sizeof(BLEAdvReportData) + adv.dlen - BLE_GAP_ADV_MAX_SIZE;
+        jsble_queue_pending_buf(BLEP_ADV_REPORT, 0, (char*)&adv, len);
+#if NRF_SD_BLE_API_VERSION>5
+        // On new APIs we need to continue scanning
+        err_code = sd_ble_gap_scan_start(NULL, &m_scan_buffer);
+        APP_ERROR_CHECK(err_code);
+#endif
         break;
         }
 
@@ -2359,9 +2379,8 @@ uint32_t jsble_advertising_start() {
 
   //jsiConsolePrintf("adv_data_set %d %d\n", advPtr, advLen);
 #if NRF_SD_BLE_API_VERSION>5
-  uint8_t m_enc_advdata[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
   ble_gap_adv_data_t d;
-  d.adv_data.p_data = advPtr;
+  d.adv_data.p_data = (uint8_t*)advPtr;
   d.adv_data.len = advLen;
   d.scan_rsp_data.p_data = m_enc_scan_response_data;
   d.scan_rsp_data.len = m_enc_scan_response_data_len;
@@ -2502,18 +2521,16 @@ uint32_t jsble_set_scanning(bool enabled, bool activeScan) {
      if (bleStatus & BLE_IS_SCANNING) return 0;
      bleStatus |= BLE_IS_SCANNING;
      ble_gap_scan_params_t     m_scan_param;
+     memset(&m_scan_param,0,sizeof(m_scan_param));
 #if NRF_SD_BLE_API_VERSION>5
-     static uint8_t m_scan_buffer_data[BLE_GAP_SCAN_BUFFER_EXTENDED_MIN]; /**< buffer where advertising reports will be stored by the SoftDevice. */
-     static ble_data_t m_scan_buffer = {
-         m_scan_buffer_data,
-         BLE_GAP_SCAN_BUFFER_EXTENDED_MIN
-     };
+     m_scan_param.scan_phys         = BLE_GAP_PHY_AUTO;
+     m_scan_param.filter_policy     = BLE_GAP_SCAN_FP_ACCEPT_ALL;
 #endif
      // non-selective scan
      m_scan_param.active       = activeScan;   // Active scanning set.
      m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
      m_scan_param.window       = SCAN_WINDOW;  // Scan window.
-     m_scan_param.timeout      = 0x0000;       // No timeout.
+     m_scan_param.timeout      = 0x0000;       // No timeout - BLE_GAP_SCAN_TIMEOUT_UNLIMITED
 
      err_code = sd_ble_gap_scan_start(&m_scan_param
 #if NRF_SD_BLE_API_VERSION>5
