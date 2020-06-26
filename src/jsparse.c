@@ -354,7 +354,8 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
   }
   // Get the code - parse it and figure out where it stops
   JslCharPos funcBegin;
-  jslCharPosClone(&funcBegin, &lex->tokenStart);
+  jslSkipWhiteSpace();
+  jslCharPosNew(&funcBegin, lex->sourceVar, lex->tokenStart);
   int lastTokenEnd = -1;
   if (!expressionOnly) {
     int brackets = 0;
@@ -364,12 +365,13 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
       lastTokenEnd = (int)jsvStringIteratorGetIndex(&lex->it)-1;
       JSP_ASSERT_MATCH(lex->tk);
     }
+    // FIXME: we might be including whitespace after the last token
   } else {
     JsExecFlags oldExec = execInfo.execute;
     execInfo.execute = EXEC_NO;
     jsvUnLock(jspeAssignmentExpression());
     execInfo.execute = oldExec;
-    lastTokenEnd = (int)jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
+    lastTokenEnd = (int)lex->tokenStart;
   }
   // Then create var and set (if there was any code!)
   if (funcVar && lastTokenEnd>0) {
@@ -769,7 +771,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
               #ifdef USE_DEBUGGER
                 // we didn't parse a statement so wouldn't trigger the debugger otherwise
                 if (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE && JSP_SHOULD_EXECUTE) {
-                  lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
+                  lex->tokenLastStart = lex->tokenStart;
                   jsiDebuggerLoop();
                 }
               #endif
@@ -2258,18 +2260,22 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   JslCharPos whileCondStart;
   // We do repetition by pulling out the string representing our statement
   // there's definitely some opportunity for optimisation here
-  JSP_ASSERT_MATCH(isWhile ? LEX_R_WHILE : LEX_R_DO);
+
   bool wasInLoop = (execInfo.execute&EXEC_IN_LOOP)!=0;
+  JslCharPos whileBodyStart;
   if (isWhile) { // while loop
-    JSP_MATCH('(');
-    jslCharPosClone(&whileCondStart, &lex->tokenStart);
+    JSP_ASSERT_MATCH(LEX_R_WHILE);
+    jslCharPosFromLex(&whileCondStart);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN('(',jslCharPosFree(&whileBodyStart);,0);
     cond = jspeAssignmentExpression();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jslCharPosFree(&whileCondStart);,0);
+    jslCharPosFromLex(&whileBodyStart);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jslCharPosFree(&whileBodyStart);jslCharPosFree(&whileCondStart);,0);
+  } else {
+    jslCharPosFromLex(&whileBodyStart);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_DO, jslCharPosFree(&whileBodyStart);,0);
   }
-  JslCharPos whileBodyStart;
-  jslCharPosClone(&whileBodyStart, &lex->tokenStart);
   JSP_SAVE_EXECUTE();
   // actually try and execute first bit of while loop (we'll do the rest in the actual loop later)
   if (!loopCond) jspSetNoExecute();
@@ -2287,8 +2293,8 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
 
   if (!isWhile) { // do..while loop
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_WHILE,jslCharPosFree(&whileBodyStart);,0);
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN('(',jslCharPosFree(&whileBodyStart);if (isWhile)jslCharPosFree(&whileCondStart);,0);
-    jslCharPosClone(&whileCondStart, &lex->tokenStart);
+    jslCharPosFromLex(&whileCondStart);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN('(',jslCharPosFree(&whileBodyStart);jslCharPosFree(&whileCondStart);,0);
     cond = jspeAssignmentExpression();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
@@ -2296,7 +2302,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   }
 
   JslCharPos whileBodyEnd;
-  jslCharPosClone(&whileBodyEnd, &lex->tokenStart);
+  jslCharPosNew(&whileBodyEnd, lex->sourceVar, lex->tokenStart);
 
   while (!hasHadBreak && loopCond
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
@@ -2376,9 +2382,11 @@ NO_INLINE JsVar *jspeStatementFor() {
 
     JSP_ASSERT_MATCH(lex->tk); // skip over in/of
     JsVar *array = jsvSkipNameAndUnLock(jspeExpression());
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock2(forStatement, array), 0);
+
     JslCharPos forBodyStart;
-    jslCharPosClone(&forBodyStart, &lex->tokenStart);
+    jslCharPosFromLex(&forBodyStart);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock2(forStatement, array);jslCharPosFree(&forBodyStart), 0);
+
     // Simply scan over the loop the first time without executing to figure out where it ends
     // OPT: we could skip the first parse and actually execute the first time
     JSP_SAVE_EXECUTE();
@@ -2386,7 +2394,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     execInfo.execute |= EXEC_IN_LOOP;
     jsvUnLock(jspeBlockOrStatement());
     JslCharPos forBodyEnd;
-    jslCharPosClone(&forBodyEnd, &lex->tokenStart);
+    jslCharPosNew(&forBodyEnd, lex->sourceVar, lex->tokenStart);
     if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
     JSP_RESTORE_EXECUTE();
     // Now start executing properly
@@ -2471,33 +2479,36 @@ NO_INLINE JsVar *jspeStatementFor() {
     bool hasHadBreak = false;
 
     jsvUnLock(forStatement);
-    JSP_MATCH(';');
     JslCharPos forCondStart;
-    jslCharPosClone(&forCondStart, &lex->tokenStart);
+    jslCharPosFromLex(&forCondStart);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(';',jslCharPosFree(&forCondStart);,0);
+
     if (lex->tk != ';') {
       JsVar *cond = jspeAssignmentExpression(); // condition
       loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
       jsvUnLock(cond);
     }
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(';',jslCharPosFree(&forCondStart);,0);
     JslCharPos forIterStart;
-    jslCharPosClone(&forIterStart, &lex->tokenStart);
+    jslCharPosFromLex(&forIterStart);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(';',jslCharPosFree(&forCondStart);jslCharPosFree(&forIterStart);,0);
     if (lex->tk != ')')  { // we could have 'for (;;)'
       JSP_SAVE_EXECUTE();
       jspSetNoExecute();
       jsvUnLock(jspeExpression()); // iterator
       JSP_RESTORE_EXECUTE();
     }
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jslCharPosFree(&forCondStart);jslCharPosFree(&forIterStart);,0);
-
     JslCharPos forBodyStart;
-    jslCharPosClone(&forBodyStart, &lex->tokenStart); // actual for body
+    jslSkipWhiteSpace();
+    jslCharPosFromLex(&forBodyStart); // actual for body
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jslCharPosFree(&forCondStart);jslCharPosFree(&forIterStart);jslCharPosFree(&forBodyStart);,0);
+
     JSP_SAVE_EXECUTE();
     if (!loopCond) jspSetNoExecute();
     execInfo.execute |= EXEC_IN_LOOP;
     jsvUnLock(jspeBlockOrStatement());
     JslCharPos forBodyEnd;
-    jslCharPosClone(&forBodyEnd, &lex->tokenStart);
+    jslSkipWhiteSpace();
+    jslCharPosNew(&forBodyEnd, lex->sourceVar, lex->tokenStart);
     if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
     if (loopCond || !JSP_SHOULD_EXECUTE) {
       if (execInfo.execute & EXEC_CONTINUE)
@@ -2698,7 +2709,7 @@ NO_INLINE JsVar *jspeStatement() {
   if (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE &&
       lex->tk!=';' &&
       JSP_SHOULD_EXECUTE) {
-    lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
+    lex->tokenLastStart = lex->tokenStart;
     jsiDebuggerLoop();
   }
 #endif

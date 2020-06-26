@@ -110,6 +110,8 @@ typedef struct JslCharPos {
 
 void jslCharPosFree(JslCharPos *pos);
 void jslCharPosClone(JslCharPos *dstpos, JslCharPos *pos);
+void jslCharPosFromLex(JslCharPos *dstpos);
+void jslCharPosNew(JslCharPos *dstpos, JsVar *src, size_t tokenStart);
 
 typedef struct JsLex
 {
@@ -117,7 +119,7 @@ typedef struct JsLex
   char currCh;
   short tk; ///< The type of the token that we have
 
-  JslCharPos tokenStart; ///< Position in the data at the beginning of the token we have here
+  size_t tokenStart; ///< Position in the data of the first character of this token
   size_t tokenLastStart; ///< Position in the data of the first character of the last token
   char token[JSLEX_MAX_TOKEN_LENGTH]; ///< Data contained in the token we have here
   JsVar *tokenValue; ///< JsVar containing the current token - used only for strings/regex
@@ -160,6 +162,9 @@ char *jslGetTokenValueAsString();
 int jslGetTokenLength();
 JsVar *jslGetTokenValueAsVar();
 bool jslIsIDOrReservedWord();
+
+// Only for more 'internal' use - skip over any whitespace
+void jslSkipWhiteSpace();
 
 // Only for more 'internal' use
 void jslGetNextToken(); ///< Get the text token from our text string

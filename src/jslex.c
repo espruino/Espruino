@@ -30,6 +30,16 @@ void jslCharPosClone(JslCharPos *dstpos, JslCharPos *pos) {
   dstpos->currCh = pos->currCh;
 }
 
+void jslCharPosFromLex(JslCharPos *dstpos) {
+  jsvStringIteratorClone(&dstpos->it, &lex->it);
+  dstpos->currCh = lex->currCh;
+}
+
+void jslCharPosNew(JslCharPos *dstpos, JsVar *src, size_t tokenStart) {
+  jsvStringIteratorNew(&dstpos->it, src, tokenStart);
+  dstpos->currCh = jsvStringIteratorGetCharAndNext(&dstpos->it);
+}
+
 /// Return the next character (do not move to the next character)
 static ALWAYS_INLINE char jslNextCh() {
   return (char)(lex->it.ptr ? READ_FLASH_UINT8(&lex->it.ptr[lex->it.charIdx]) : 0);
@@ -337,8 +347,8 @@ static void jslLexRegex() {
   jsvStringIteratorFree(&it);
 }
 
-void jslGetNextToken() {
-  jslGetNextToken_start:
+void jslSkipWhiteSpace() {
+  jslSkipWhiteSpace_start:
   // Skip whitespace
   while (isWhitespace(lex->currCh))
     jslGetNextCh();
@@ -348,7 +358,7 @@ void jslGetNextToken() {
     if (jslNextCh()=='/') {
       while (lex->currCh && lex->currCh!='\n') jslGetNextCh();
       jslGetNextCh();
-      goto jslGetNextToken_start;
+      goto jslSkipWhiteSpace_start;
     }
     // block comments
     if (jslNextCh()=='*') {
@@ -363,9 +373,13 @@ void jslGetNextToken() {
       }
       jslGetNextCh();
       jslGetNextCh();
-      goto jslGetNextToken_start;
+      goto jslSkipWhiteSpace_start;
     }
   }
+}
+
+void jslGetNextToken() {
+  jslSkipWhiteSpace();
   int lastToken = lex->tk;
   lex->tk = LEX_EOF;
   lex->tokenl = 0; // clear token string
@@ -374,16 +388,8 @@ void jslGetNextToken() {
     lex->tokenValue = 0;
   }
   // record beginning of this token
-  lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it) - 1;
-  /* we don't lock here, because we know that the string itself will be locked
-   * because of lex->sourceVar. DANGER! This is like a jsvStringIteratorClone
-   * without the lock. */
-  lex->tokenStart.it = lex->it;
-#ifdef SPIFLASH_BASE
-    if (lex->it.ptr == lex->it.flashStringBuffer)
-      lex->tokenStart.it.ptr = lex->tokenStart.it.flashStringBuffer;
-#endif
-  lex->tokenStart.currCh = lex->currCh;
+  lex->tokenLastStart = lex->tokenStart;
+  lex->tokenStart = jsvStringIteratorGetIndex(&lex->it) - 1;
   // tokens
   if (((unsigned char)lex->currCh) < jslJumpTableStart ||
       ((unsigned char)lex->currCh) > jslJumpTableEnd) {
@@ -660,8 +666,7 @@ void jslInit(JsVar *var) {
   lex->sourceVar = jsvLockAgain(var);
   // reset stuff
   lex->tk = 0;
-  lex->tokenStart.it.var = 0;
-  lex->tokenStart.currCh = 0;
+  lex->tokenStart = 0;
   lex->tokenLastStart = 0;
   lex->tokenl = 0;
   lex->tokenValue = 0;
@@ -681,8 +686,6 @@ void jslKill() {
     lex->tokenValue = 0;
   }
   jsvUnLock(lex->sourceVar);
-  lex->tokenStart.it.var = 0;
-  lex->tokenStart.currCh = 0;
 }
 
 void jslSeekTo(size_t seekToChar) {
@@ -690,8 +693,8 @@ void jslSeekTo(size_t seekToChar) {
   jsvStringIteratorFree(&lex->it);
   jsvStringIteratorNew(&lex->it, lex->sourceVar, seekToChar);
   jsvUnLock(lex->it.var); // see jslGetNextCh
-  lex->tokenStart.it.var = 0;
-  lex->tokenStart.currCh = 0;
+  lex->tokenStart = 0;
+  lex->tokenLastStart = 0;
   jslPreload();
 }
 
@@ -701,8 +704,8 @@ void jslSeekToP(JslCharPos *seekToChar) {
   jsvStringIteratorClone(&lex->it, &seekToChar->it);
   jsvUnLock(lex->it.var); // see jslGetNextCh
   lex->currCh = seekToChar->currCh;
-  lex->tokenStart.it.var = 0;
-  lex->tokenStart.currCh = 0;
+  lex->tokenStart = 0;
+  lex->tokenLastStart = 0;
   jslGetNextToken();
 }
 
@@ -880,7 +883,7 @@ static void jslMatchError(int expected_tk) {
   jslTokenAsString(expected_tk, expStr, sizeof(expStr));
 
   size_t oldPos = lex->tokenLastStart;
-  lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
+  lex->tokenLastStart = lex->tokenStart;
   jsExceptionHere(JSET_SYNTAXERROR, "Got %s expected %s", gotStr, expStr);
   lex->tokenLastStart = oldPos;
   // Sod it, skip this token anyway - stops us looping
@@ -919,7 +922,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
         lex->tk==LEX_STR ||
         lex->tk==LEX_TEMPLATE_LITERAL ||
         lex->tk==LEX_REGEX) {
-      length += jsvStringIteratorGetIndex(&lex->it)-jsvStringIteratorGetIndex(&lex->tokenStart.it);
+      length += jsvStringIteratorGetIndex(&lex->it)-(lex->tokenStart+1);
     } else {
       length++; // for single token
     }
@@ -934,6 +937,9 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
     jsvStringIteratorNew(&dstit, var, 0);
     // now start appending
     jslSeekToP(charFrom);
+    JsvStringIterator it;
+    char itch = charFrom->currCh;
+    jsvStringIteratorClone(&it, &charFrom->it);
     lastTk = LEX_EOF;
     while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
       if ((lex->tk==LEX_ID || lex->tk==LEX_FLOAT || lex->tk==LEX_INT) &&
@@ -947,19 +953,21 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
           lex->tk==LEX_TEMPLATE_LITERAL ||
           lex->tk==LEX_REGEX) {
         // copy in string verbatim
-        jsvStringIteratorSetCharAndNext(&dstit, lex->tokenStart.currCh);
-        JsvStringIterator it;
-        jsvStringIteratorClone(&it, &lex->tokenStart.it);
+        jsvStringIteratorSetCharAndNext(&dstit, itch);
         while (jsvStringIteratorGetIndex(&it)+1 < jsvStringIteratorGetIndex(&lex->it)) {
           jsvStringIteratorSetCharAndNext(&dstit, jsvStringIteratorGetCharAndNext(&it));
         }
-        jsvStringIteratorFree(&it);
       } else { // single char for the token
         jsvStringIteratorSetCharAndNext(&dstit, (char)lex->tk);
       }
       lastTk = lex->tk;
+      jslSkipWhiteSpace();
+      jsvStringIteratorFree(&it);
+      jsvStringIteratorClone(&it, &lex->it);
+      itch = lex->currCh;
       jslGetNextToken();
     }
+    jsvStringIteratorFree(&it);
     jsvStringIteratorFree(&dstit);
   }
   // restore lex
@@ -1033,7 +1041,7 @@ JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo) {
 unsigned int jslGetLineNumber() {
   size_t line;
   size_t col;
-  jsvGetLineAndCol(lex->sourceVar, jsvStringIteratorGetIndex(&lex->tokenStart.it)-1, &line, &col);
+  jsvGetLineAndCol(lex->sourceVar, lex->tokenStart, &line, &col);
   return (unsigned int)line;
 }
 
@@ -1108,7 +1116,7 @@ void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, 
     char buf[32];
     jslFunctionCharAsString(ch, buf, sizeof(buf));
     size_t len = strlen(buf);
-    col += len-1;
+    if (len) col += len-1;
     user_callback(buf, user_data);
     chars++;
     lastch = ch;

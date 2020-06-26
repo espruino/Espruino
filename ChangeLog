@@ -2,6 +2,7 @@
             nRF52 SDK15: Fix NRF.setScan/findDevices/etc
             nRF52: reduce input buffer space taken by advertising packets
             Pretokenisation: reserved words can now be used as function names (fix #1868)
+            jslGetNextToken now avoids iterator clone for each token (fix #1857)
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions

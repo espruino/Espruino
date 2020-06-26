@@ -1299,7 +1299,7 @@ void jsiTabComplete() {
   JsLex lex;
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(inputLine);
-  while (lex.tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex.tokenStart.it)<=inputCursorPos) {
+  while (lex.tk!=LEX_EOF && (lex.tokenStart+1)<=inputCursorPos) {
     if (lex.tk=='.') {
       jsvUnLock(object);
       object = data.partial;
@@ -1307,7 +1307,7 @@ void jsiTabComplete() {
     } else if (lex.tk==LEX_ID) {
       jsvUnLock(data.partial);
       data.partial = jslGetTokenValueAsVar();
-      partialStart = jsvStringIteratorGetIndex(&lex.tokenStart.it);
+      partialStart = lex.tokenStart+1;
     } else {
       jsvUnLock(object);
       object = 0;
