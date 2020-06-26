@@ -844,6 +844,12 @@ void jslGetTokenString(char *str, size_t len) {
 char *jslGetTokenValueAsString() {
   assert(lex->tokenl < JSLEX_MAX_TOKEN_LENGTH);
   lex->token[lex->tokenl]  = 0; // add final null
+  if (lex->tokenl==0 && lex->tk >= _LEX_R_LIST_START && lex->tk <= _LEX_R_LIST_END) {
+    // pretokenised - so we'll work out the name from our token name list
+    // this isn't fast, but won't be called very often
+    jslTokenAsString(lex->tk, lex->token, sizeof(lex->token));
+    lex->tokenl = (unsigned char)strlen(lex->token);
+  }
   return lex->token;
 }
 

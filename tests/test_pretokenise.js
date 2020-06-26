@@ -25,5 +25,17 @@ results.push((function () {
   return X.x;
 })()==42);
 
+// https://github.com/espruino/Espruino/issues/1868
+function go() {
+  Promise.resolve().then(function() {
+    console.log("Ok");
+  }).catch(function(e) {
+    console.log("ERROR",e);
+  });
+}
+go()
+// Uncaught Error: Function "" not found!
+// So if this works, it'll fall through without modifying results
+
 
 result = results.reduce((a,b)=>a&&b,true);
