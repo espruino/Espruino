@@ -3,6 +3,7 @@
             nRF52: reduce input buffer space taken by advertising packets
             Pretokenisation: reserved words can now be used as function names (fix #1868)
             jslGetNextToken now avoids iterator clone for each token (fix #1857)
+            nRF52: fix instability when accessing ADC from IRQs and event loop at the same time (fix #1861)
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions

@@ -635,6 +635,11 @@ void peripheralPollHandler() {
 }
 
 void hrmPollHandler() {
+  extern nrf_saadc_value_t nrf_analog_read();
+  extern bool nrf_analog_read_start();
+  extern void nrf_analog_read_end(bool adcInUse);
+  extern bool nrf_analog_read_interrupted;
+
   //jswrap_banglejs_ioWr(IOEXP_HRM,0); // on
   nrf_saadc_input_t ain = 1 + (pinInfo[HEARTRATE_PIN_ANALOG].analog & JSH_MASK_ANALOG_CH);
 
@@ -647,14 +652,21 @@ void hrmPollHandler() {
   config.reference = NRF_SAADC_REFERENCE_INTERNAL;
   config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
   config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+  bool adcInUse = nrf_analog_read_start();
 
   // make reading
-  nrf_saadc_enable();
-  nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_8BIT);
-  nrf_saadc_channel_init(0, &config);
+  int v;
+  do {
+    nrf_analog_read_interrupted = false;
+    nrf_saadc_enable();
+    nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_8BIT);
+    nrf_saadc_channel_init(0, &config);
 
-  extern nrf_saadc_value_t nrf_analog_read();
-  int v = nrf_analog_read();
+    v = nrf_analog_read();
+  } while (nrf_analog_read_interrupted);
+
+  nrf_analog_read_end(adcInUse);
+
   if (v<-128) v=-128;
   if (v>127) v=127;
   hrmHistory[hrmHistoryIdx] = v;

@@ -984,54 +984,56 @@ JshPinState jshPinGetState(Pin pin) {
 }
 
 #ifdef NRF52
+volatile bool nrf_analog_read_interrupted = false;
+
 nrf_saadc_value_t nrf_analog_read() {
+
   nrf_saadc_value_t result;
   nrf_saadc_buffer_init(&result,1);
 
   nrf_saadc_task_trigger(NRF_SAADC_TASK_START);
 
-  while(!nrf_saadc_event_check(NRF_SAADC_EVENT_STARTED));
+  WAIT_UNTIL(nrf_analog_read_interrupted||nrf_saadc_event_check(NRF_SAADC_EVENT_STARTED),"ADC_START");
   nrf_saadc_event_clear(NRF_SAADC_EVENT_STARTED);
+  if (nrf_analog_read_interrupted) return -16384;
 
   nrf_saadc_task_trigger(NRF_SAADC_TASK_SAMPLE);
 
 
-  while(!nrf_saadc_event_check(NRF_SAADC_EVENT_END));
+  WAIT_UNTIL(nrf_analog_read_interrupted||nrf_saadc_event_check(NRF_SAADC_EVENT_END),"ADC_END");
   nrf_saadc_event_clear(NRF_SAADC_EVENT_END);
+  if (nrf_analog_read_interrupted) return -16384;
 
   nrf_saadc_task_trigger(NRF_SAADC_TASK_STOP);
-  while(!nrf_saadc_event_check(NRF_SAADC_EVENT_STOPPED));
+  WAIT_UNTIL(nrf_analog_read_interrupted||nrf_saadc_event_check(NRF_SAADC_EVENT_STOPPED),"ADC_STOP");
   nrf_saadc_event_clear(NRF_SAADC_EVENT_STOPPED);
+  if (nrf_analog_read_interrupted) return -16384;
 
   return result;
 }
 
-JsVarFloat nrf_analog_read_pin(int channel /*0..7*/) {
-  // sanity checks for channel
-    assert(NRF_SAADC_INPUT_AIN0 == 1);
-    assert(NRF_SAADC_INPUT_AIN1 == 2);
-    assert(NRF_SAADC_INPUT_AIN2 == 3);
-
-    nrf_saadc_input_t ain = channel+1;
-    nrf_saadc_channel_config_t config;
-    config.acq_time = NRF_SAADC_ACQTIME_3US;
-    config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
-    config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
-    config.pin_p = ain;
-    config.pin_n = ain;
-    config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
-    config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
-    config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
-
-    // make reading
-    nrf_saadc_enable();
-    nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
-    nrf_saadc_channel_init(0, &config);
-
-    JsVarFloat f = nrf_analog_read() / 16384.0;
-    nrf_saadc_channel_input_set(0, NRF_SAADC_INPUT_DISABLED, NRF_SAADC_INPUT_DISABLED); // give us back our pin!
+bool nrf_analog_read_start() {
+  // Were we already doing a read? We might have jumped in via IRQ and
+  // interrupted an existing reading...
+  if (nrf_saadc_enable_check()) {
+    // if so, cancel old reading
+    nrf_saadc_task_trigger(NRF_SAADC_TASK_STOP);
+    WAIT_UNTIL(nrf_saadc_event_check(NRF_SAADC_EVENT_STOPPED),"ADC_STOP2");
+    nrf_saadc_event_clear(NRF_SAADC_EVENT_STOPPED);
+    nrf_saadc_event_clear(NRF_SAADC_EVENT_STARTED);
+    nrf_saadc_event_clear(NRF_SAADC_EVENT_END);
     nrf_saadc_disable();
-    return f;
+    nrf_saadc_channel_input_set(0, NRF_SAADC_INPUT_DISABLED, NRF_SAADC_INPUT_DISABLED); // give us back our pin!
+    return true;
+  }
+  return false;
+}
+
+void nrf_analog_read_end(bool adcInUse) {
+  if (adcInUse)
+    nrf_analog_read_interrupted = true;
+  nrf_saadc_disable();
+  nrf_saadc_channel_input_set(0, NRF_SAADC_INPUT_DISABLED, NRF_SAADC_INPUT_DISABLED); // give us back our pin!
 }
 #endif
 
@@ -1046,7 +1048,37 @@ JsVarFloat jshPinAnalog(Pin pin) {
   if (!jshGetPinStateIsManual(pin))
     jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 #ifdef NRF52
-  return nrf_analog_read_pin(pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
+  int channel = pinInfo[pin].analog & JSH_MASK_ANALOG_CH;
+  assert(NRF_SAADC_INPUT_AIN0 == 1);
+  assert(NRF_SAADC_INPUT_AIN1 == 2);
+  assert(NRF_SAADC_INPUT_AIN2 == 3);
+
+  nrf_saadc_input_t ain = channel+1;
+  nrf_saadc_channel_config_t config;
+  config.acq_time = NRF_SAADC_ACQTIME_3US;
+  config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
+  config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
+  config.pin_p = ain;
+  config.pin_n = ain;
+  config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
+  config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
+  config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+  bool adcInUse = nrf_analog_read_start();
+
+  // make reading
+  JsVarFloat f;
+  do {
+    nrf_analog_read_interrupted = false;
+    nrf_saadc_enable();
+    nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
+    nrf_saadc_channel_init(0, &config);
+
+    f = nrf_analog_read() / 16384.0;
+  } while (nrf_analog_read_interrupted);
+
+  nrf_analog_read_end(adcInUse);
+
+  return f;
 #else
   const nrf_adc_config_t nrf_adc_config =  {
       NRF_ADC_CONFIG_RES_10BIT,
@@ -1082,13 +1114,21 @@ int jshPinAnalogFast(Pin pin) {
   config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
   config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
   config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+  bool adcInUse = nrf_analog_read_start();
 
   // make reading
-  nrf_saadc_enable();
-  nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_8BIT);
-  nrf_saadc_channel_init(0, &config);
+  nrf_saadc_value_t f;
+  do {
+    nrf_analog_read_interrupted = false;
+    nrf_saadc_enable();
+    nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_8BIT);
+    nrf_saadc_channel_init(0, &config);
 
-  return nrf_analog_read() << 8;
+    f = nrf_analog_read();
+  } while (nrf_analog_read_interrupted);
+
+  nrf_analog_read_end(adcInUse);
+  return f << 8;
 #else
   const nrf_adc_config_t nrf_adc_config =  {
         NRF_ADC_CONFIG_RES_8BIT, // 8 bit for speed (hopefully!)
