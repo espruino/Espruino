@@ -3434,7 +3434,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       case '/': return jsvNewFromFloat(da/db);
       case '%': return jsvNewFromFloat(jswrap_math_mod(da, db));
       case LEX_EQUAL:
-      case LEX_NEQUAL:  { bool equal = da==db;
+      case LEX_NEQUAL:  { bool equal = da==db && jsvIsNull(a)==jsvIsNull(b);
       if ((jsvIsNull(a) && jsvIsUndefined(b)) ||
           (jsvIsNull(b) && jsvIsUndefined(a))) equal = true; // JS quirk :)
       return jsvNewFromBool((op==LEX_EQUAL) ? equal : ((bool)!equal));
