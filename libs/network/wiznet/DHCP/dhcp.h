@@ -7,6 +7,8 @@ Define Part
 ********************************************************************************
 */
 
+#define DHCP_HOST_NAME "WIZnet010203\0"
+
 /* DHCP state machine. */
 #define	STATE_DHCP_DISCOVER			1
 #define	STATE_DHCP_REQUEST			2
@@ -150,7 +152,6 @@ typedef union _un_l2cval {
 	uint8_t	cVal[4];
 }un_l2cval;
 
-
 /*
 ********************************************************************************
 Function Prototype Definition Part
@@ -168,5 +169,9 @@ extern void check_Timeout(uint8_t s, wiz_NetInfo *pWIZNETINFO);
 extern int8_t check_leasedIP(uint8_t s, wiz_NetInfo *pWIZNETINFO);
 
 extern int8_t parseDHCPMSG(uint8_t s, uint16_t length, wiz_NetInfo *pWIZNETINFO);
+
+extern uint8_t setHostname(char *);
+extern char* getHostname();
+char nibbleToHex(uint8_t nibble);
 
 #endif	/* _DHCP_H_ */

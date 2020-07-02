@@ -44,10 +44,14 @@ uint32_t DHCP_XID;
 
 RIP_MSG  MSG;
 
-uint8_t HOST_NAME[] = "WIZnet";
+static uint8_t HOST_NAME[] = DHCP_HOST_NAME;
+
 uint8_t Cip[4] = {0,0,0,0};
 
 extern void set_default_netinfo(void);
+
+// convert a nibble to lowercase hex
+
 
 /*
 ********************************************************************************
@@ -133,17 +137,26 @@ void send_DHCP_DISCOVER(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 	
 	// host name
 	MSG.OPT[k++] = hostName;
-	MSG.OPT[k++] = 9; // length of hostname
-	MSG.OPT[k++] = HOST_NAME[0];
-	MSG.OPT[k++] = HOST_NAME[1];
-	MSG.OPT[k++] = HOST_NAME[2];
-	MSG.OPT[k++] = HOST_NAME[3];
-	MSG.OPT[k++] = HOST_NAME[4];
-	MSG.OPT[k++] = HOST_NAME[5];
-	MSG.OPT[k++] = (*pWIZNETINFO).mac[3];
-	MSG.OPT[k++] = (*pWIZNETINFO).mac[4];
-	MSG.OPT[k++] = (*pWIZNETINFO).mac[5];
-
+	if (strcmp (DHCP_HOST_NAME, HOST_NAME) == 0) { // If Default Host Name.
+		MSG.OPT[k++] = 12; // length of hostname
+		MSG.OPT[k++] = HOST_NAME[0];
+		MSG.OPT[k++] = HOST_NAME[1];
+		MSG.OPT[k++] = HOST_NAME[2];
+		MSG.OPT[k++] = HOST_NAME[3];
+		MSG.OPT[k++] = HOST_NAME[4];
+		MSG.OPT[k++] = HOST_NAME[5];
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[3] >> 4); 
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[3]); 
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[4] >> 4); 
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[4]); 
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[5] >> 4); 
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[5]); 
+    }  else {
+    	MSG.OPT[k++] = strlen(HOST_NAME);
+    	for ( i = 0; i < strlen(HOST_NAME);i++) {
+    		MSG.OPT[k++] = HOST_NAME[i];
+    	}
+    }
 
 	MSG.OPT[k++] = dhcpParamRequest;
 	MSG.OPT[k++] = 0x06;	// length of request
@@ -259,7 +272,9 @@ void send_DHCP_REQUEST(uint8_t s, uint8_t *Cip, uint8_t *d_addr, wiz_NetInfo *pW
 	}
 
 	// host name
+
 	MSG.OPT[k++] = hostName;
+	/*
 	MSG.OPT[k++] = 9; // length of hostname
 	MSG.OPT[k++] = HOST_NAME[0];
 	MSG.OPT[k++] = HOST_NAME[1];
@@ -270,7 +285,27 @@ void send_DHCP_REQUEST(uint8_t s, uint8_t *Cip, uint8_t *d_addr, wiz_NetInfo *pW
 	MSG.OPT[k++] = (*pWIZNETINFO).mac[3];
 	MSG.OPT[k++] = (*pWIZNETINFO).mac[4];
 	MSG.OPT[k++] = (*pWIZNETINFO).mac[5];
-	
+	*/
+	if (strcmp (DHCP_HOST_NAME, HOST_NAME) == 0) { // If Default Host Name.
+		MSG.OPT[k++] = 12; // length of hostname
+		MSG.OPT[k++] = HOST_NAME[0];
+		MSG.OPT[k++] = HOST_NAME[1];
+		MSG.OPT[k++] = HOST_NAME[2];
+		MSG.OPT[k++] = HOST_NAME[3];
+		MSG.OPT[k++] = HOST_NAME[4];
+		MSG.OPT[k++] = HOST_NAME[5];
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[3] >> 4); 
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[3]); 
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[4] >> 4); 
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[4]); 
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[5] >> 4); 
+		MSG.OPT[k++] = nibbleToHex(MSG.chaddr[5]); 
+    }  else {
+    	MSG.OPT[k++] = strlen(HOST_NAME);
+    	for ( i = 0; i < strlen(HOST_NAME);i++) {
+    		MSG.OPT[k++] = HOST_NAME[i];
+    	}
+    }
 	MSG.OPT[k++] = dhcpParamRequest;
 	MSG.OPT[k++] = 0x08;
 	MSG.OPT[k++] = subnetMask;
@@ -805,3 +840,16 @@ uint8_t getIP_DHCPS(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 	return 1;
 }
 
+uint8_t setHostname(char *hostname) {
+	strcpy(HOST_NAME,hostname);
+	return 0; 
+}
+
+char * getHostname() {
+	return HOST_NAME;
+}
+
+char nibbleToHex(uint8_t nibble){
+	nibble &= 0x0F;
+   	return (nibble < 10) ? nibble + '0' : nibble - 10 + 'a';
+}
