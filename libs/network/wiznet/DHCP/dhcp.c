@@ -173,7 +173,9 @@ void send_DHCP_DISCOVER(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 	// send broadcasting packet
 	for (i = 0; i < 4; i++) ip[i] = 255;
 
+	#ifndef RELEASE
 	jsiConsolePrintf("> Send DHCP_DISCOVER\r\n");
+	#endif
 	sendto(s, (uint8_t *)(&MSG.op), RIP_MSG_SIZE, ip, DHCP_SERVER_PORT);
 }
 
@@ -322,9 +324,9 @@ void send_DHCP_REQUEST(uint8_t s, uint8_t *Cip, uint8_t *d_addr, wiz_NetInfo *pW
 
 	// send broadcasting packet
 	for (i = 0; i < 4; i++) ip[i] = d_addr[i];
-
+	#ifndef RELEASE
 	jsiConsolePrintf("> Send DHCP_Request\r\n");
-	
+	#endif	
 	sendto(s, (uint8_t *)(&MSG.op), RIP_MSG_SIZE, ip, DHCP_SERVER_PORT);
 
 }
@@ -429,8 +431,9 @@ void send_DHCP_DECLINE(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 	ip[2] = 255;
 	ip[3] = 255;
 
-//	jsiConsolePrintf("\r\n> send DHCP_Decline\r\n");
-
+	#ifndef RELEASE
+    jsiConsolePrintf("\r\n> send DHCP_Decline\r\n");
+	#endif
 	sendto(s, (uint8_t *)(&MSG.op), RIP_MSG_SIZE, ip, DHCP_SERVER_PORT);
 }
 
@@ -579,8 +582,9 @@ void check_DHCP_state(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 	switch ( dhcp_state ) {
 		case STATE_DHCP_DISCOVER :
 			if (type == DHCP_OFFER) {
+				#ifndef RELEASE
 				jsiConsolePrintf("> Receive DHCP_OFFER\r\n");
-				
+				#endif
 				for (i = 0; i < 4; i++) d_addr[i] = 0xff;
 				send_DHCP_REQUEST(s, Cip, d_addr, pWIZNETINFO);
 				
@@ -591,9 +595,9 @@ void check_DHCP_state(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 		case STATE_DHCP_REQUEST :
 			if (type == DHCP_ACK) {
 				
-
+				#ifndef RELEASE
 				jsiConsolePrintf("> Receive DHCP_ACK\r\n");
-				
+				#endif
 				if (check_leasedIP(s, pWIZNETINFO)) {
 					//iinchip_init() - WIZnet chip reset & Delay (10ms);
 					//Set_network();
@@ -616,8 +620,9 @@ void check_DHCP_state(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 					retry_count = 0;
 					//dhcp_state = STATE_DHCP_DISCOVER;
 					dhcp_state = STATE_DHCP_LEASED;
+					#ifndef RELEASE
 					jsiConsolePrintf("> => Recceived IP is invalid\r\n");
-					
+					#endif
 					//iinchip_init();
 					//Set_Default();
 					//Set_network();
@@ -626,8 +631,9 @@ void check_DHCP_state(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 					//ctlnetwork(CN_SET_NETINFO, (void*)&(*pWIZNETINFO));
 				}
 			} else if (type == DHCP_NAK) {
+				#ifndef RELEASE
 				jsiConsolePrintf("> Receive DHCP_NACK\r\n");
-
+				#endif
 				next_time = jshGetSystemTime() + DHCP_WAIT_TIME;
 				retry_count = 0;
 				dhcp_state = STATE_DHCP_DISCOVER;
@@ -636,9 +642,9 @@ void check_DHCP_state(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 
 		case STATE_DHCP_LEASED :
 			if ((lease_time.lVal != 0xffffffff) && ((lease_time.lVal/2) < jshGetSystemTime())) {
-				
+				#ifndef RELEASE
 				jsiConsolePrintf("> Renewal IP address \r\n");
-
+				#endif
 				type = 0;
 				for (i = 0; i < 4; i++)	OLD_SIP[i] = (*pWIZNETINFO).ip[i];
 				for (i = 0; i < 4; i++)	d_addr[i] = DHCP_SIP[i];
@@ -680,7 +686,9 @@ void check_DHCP_state(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 				next_time = jshGetSystemTime() + DHCP_WAIT_TIME;
 				retry_count = 0;
 				dhcp_state = STATE_DHCP_DISCOVER;
-//				jsiConsolePrintf("state : STATE_DHCP_DISCOVER\r\n");
+				#ifndef RELEASE
+				jsiConsolePrintf("state : STATE_DHCP_DISCOVER\r\n");
+				#endif
 			} else check_Timeout(s, pWIZNETINFO);
 		break;
 
@@ -712,20 +720,24 @@ void check_Timeout(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 			retry_count++;
 			switch ( dhcp_state ) {
 				case STATE_DHCP_DISCOVER :
-//					jsiConsolePrintf("<<timeout>> state : STATE_DHCP_DISCOVER\r\n");
+				    #ifndef RELEASE
+					jsiConsolePrintf("<<timeout>> state : STATE_DHCP_DISCOVER\r\n");
+					#endif
 					send_DHCP_DISCOVER(s, pWIZNETINFO);
 				break;
 		
 				case STATE_DHCP_REQUEST :
-//					jsiConsolePrintf("<<timeout>> state : STATE_DHCP_REQUEST\r\n");
-
+				    #ifndef RELEASE
+					jsiConsolePrintf("<<timeout>> state : STATE_DHCP_REQUEST\r\n");
+					#endif
 					for (i = 0; i < 4; i++) d_addr[i] = 0xff;
 					send_DHCP_REQUEST(s, Cip, d_addr, pWIZNETINFO);
 				break;
 
 				case STATE_DHCP_REREQUEST :
-//					jsiConsolePrintf("<<timeout>> state : STATE_DHCP_REREQUEST\r\n");
-					
+					#ifndef RELEASE
+					jsiConsolePrintf("<<timeout>> state : STATE_DHCP_REREQUEST\r\n");
+					#endif
 					for (i = 0; i < 4; i++)	d_addr[i] = DHCP_SIP[i];
 					send_DHCP_REQUEST(s, (*pWIZNETINFO).ip, d_addr, pWIZNETINFO);
 					
@@ -831,7 +843,9 @@ uint8_t getIP_DHCPS(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 		//if (Recv_ConfigMsg() == MSG_SETTING_REQ) return(2);
 
 		if (DHCP_timeout == 1 || jspIsInterrupted()) {
+			#ifndef RELEASE
 			jsiConsolePrintf("> => DHCP Timeout occurred\r\n");
+			#endif
 			return(0);
 		}
 		check_DHCP_state(s, pWIZNETINFO);
