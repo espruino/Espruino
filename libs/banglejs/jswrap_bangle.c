@@ -313,8 +313,21 @@ typedef struct {
 #define ACCEL_POLL_INTERVAL_MAX 5000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
 #define BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
+
+#ifdef SMAQ3
+JshI2CInfo i2cAccel;
+JshI2CInfo i2cMag;
+// TODO: pressure, hrm...
+#define ACCEL_I2C &i2cAccel
+#define MAG_I2C &i2cMag
+#else
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo i2cInternal;
+#define ACCEL_I2C &i2cInternal
+#define MAG_I2C &i2cInternal
+#endif
+
+
 /// Is I2C busy? if so we'll skip one reading in our interrupt so we don't overlap
 bool i2cBusy;
 /// How often should be poll for accelerometer/compass data?
@@ -537,8 +550,8 @@ void peripheralPollHandler() {
   // check the magnetometer if we had it on
   if (compassPowerOn) {
     buf[0]=0x10;
-    jsi2cWrite(&i2cInternal, MAG_ADDR, 1, buf, true);
-    jsi2cRead(&i2cInternal, MAG_ADDR, 7, buf, true);
+    jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
+    jsi2cRead(MAG_I2C, MAG_ADDR, 7, buf, true);
     if (buf[0]&1) { // then we have data (hopefully? No datasheet)
       mag.y = buf[1] | (buf[2]<<8);
       mag.x = buf[3] | (buf[4]<<8);
@@ -555,8 +568,8 @@ void peripheralPollHandler() {
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
   // read interrupt source data
   buf[0]=0x12; // INS1
-  jsi2cWrite(&i2cInternal, ACCEL_ADDR, 1, buf, true);
-  jsi2cRead(&i2cInternal, ACCEL_ADDR, 2, buf, true);
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 2, buf, true);
   // 0 -> 0x12 INS1 - tap event
   // 1 -> 0x13 INS2 - what kind of event
   bool hasAccelData = (buf[1]&16)!=0; // DRDY
@@ -567,13 +580,13 @@ void peripheralPollHandler() {
     bangleTasks |= JSBT_ACCEL_TAPPED;
     // clear the IRQ flags
     buf[0]=0x17;
-    jsi2cWrite(&i2cInternal, ACCEL_ADDR, 1, buf, true);
-    jsi2cRead(&i2cInternal, ACCEL_ADDR, 1, buf, true);
+    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+    jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
   }
   if (hasAccelData) {
     buf[0]=6;
-    jsi2cWrite(&i2cInternal, ACCEL_ADDR, 1, buf, true);
-    jsi2cRead(&i2cInternal, ACCEL_ADDR, 6, buf, true);
+    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+    jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 6, buf, true);
     // work out current reading in 16 bit
     short newx = (buf[1]<<8)|buf[0];
     short newy = (buf[3]<<8)|buf[2];
@@ -1435,14 +1448,24 @@ void jswrap_banglejs_init() {
 
   // Set up I2C
   i2cBusy = true;
+#ifdef SMAQ3
+  jshI2CInitInfo(&i2cAccel);
+  i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cAccel.pinSDA = ACCEL_PIN_SDA;
+  i2cAccel.pinSCL = ACCEL_PIN_SCL;
+  jsi2cSetup(&i2cMag);
+  jshI2CInitInfo(&i2cMag);
+  i2cMag.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cMag.pinSDA = MAG_PIN_SDA;
+  i2cMag.pinSCL = MAG_PIN_SCL;
+  jsi2cSetup(&i2cMag);
+#else
   jshI2CInitInfo(&i2cInternal);
   i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cInternal.pinSDA = ACCEL_PIN_SDA;
   i2cInternal.pinSCL = ACCEL_PIN_SCL;
-  jshPinSetValue(i2cInternal.pinSCL, 1);
-  jshPinSetState(i2cInternal.pinSCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
-  jshPinSetValue(i2cInternal.pinSDA, 1);
-  jshPinSetState(i2cInternal.pinSDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  jsi2cSetup(&i2cInternal);
+#endif
 #ifndef SMAQ3
   // LCD pin init
   jshPinOutput(LCD_PIN_CS, 1);
@@ -2102,7 +2125,7 @@ void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
   buf[0] = (unsigned char)reg;
   buf[1] = (unsigned char)data;
   i2cBusy = true;
-  jsi2cWrite(&i2cInternal, ACCEL_ADDR, 2, buf, true);
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 2, buf, true);
   i2cBusy = false;
 #endif
 }
@@ -2125,8 +2148,8 @@ int jswrap_banglejs_accelRd(JsVarInt reg) {
   unsigned char buf[1];
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
-  jsi2cWrite(&i2cInternal, ACCEL_ADDR, 1, buf, true);
-  jsi2cRead(&i2cInternal, ACCEL_ADDR, 1, buf, true);
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
   i2cBusy = false;
   return buf[0];
 #else
@@ -2154,7 +2177,7 @@ void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data) {
   buf[0] = (unsigned char)reg;
   buf[1] = (unsigned char)data;
   i2cBusy = true;
-  jsi2cWrite(&i2cInternal, MAG_ADDR, 2, buf, true);
+  jsi2cWrite(MAG_I2C, MAG_ADDR, 2, buf, true);
   i2cBusy = false;
 #endif
 }
@@ -2173,6 +2196,7 @@ void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data) {
 Changes a pin state on the IO expander
 */
 void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
+#ifndef SMAQ3
 #ifndef EMSCRIPTEN
   static unsigned char state;
   if (on) state |= mask;
@@ -2180,6 +2204,7 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
   i2cBusy = true;
   jsi2cWrite(&i2cInternal, 0x20, 1, &state, true);
   i2cBusy = false;
+#endif
 #endif
 }
 

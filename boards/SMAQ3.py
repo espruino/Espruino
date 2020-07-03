@@ -111,14 +111,14 @@ devices = {
           },
   'ACCEL' : {
             'device' : 'KX023', 'addr' : 0x1e,
-            'pin_sda' : 'D37',
-            'pin_scl' : 'D38'
+            'pin_sda' : 'D38',
+            'pin_scl' : 'D37'
           },
   'MAG' : { # Magnetometer/compass
             'device' : 'unknown', 
             'addr' : 0x0C,
-            'pin_sda' : 'D45',
-            'pin_scl' : 'D44'
+            'pin_sda' : 'D44',
+            'pin_scl' : 'D45'
           },
 # PRESSURE
   'SPIFLASH' : {
