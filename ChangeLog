@@ -5,6 +5,7 @@
             jslGetNextToken now avoids iterator clone for each token (fix #1857)
             nRF52: fix instability when accessing ADC from IRQs and event loop at the same time (fix #1861)
             Fix 0.0==null comparison (fix #1865)
+            WIZNet: add setHostname(), geHostname(), getStatus()
             Fix XON not sent after reset() (fix #1872)
             Remove USBSERIAL enum for non-USB devices
 
