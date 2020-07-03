@@ -5,6 +5,8 @@
             jslGetNextToken now avoids iterator clone for each token (fix #1857)
             nRF52: fix instability when accessing ADC from IRQs and event loop at the same time (fix #1861)
             Fix 0.0==null comparison (fix #1865)
+            Fix XON not sent after reset() (fix #1872)
+            Remove USBSERIAL enum for non-USB devices
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions
