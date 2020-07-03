@@ -1,0 +1,92 @@
+/*
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
+ *
+ * Copyright (C) 2019 Gordon Williams <gw@pur3.co.uk>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * Graphics Backend for drawing to SPI displays
+ * ----------------------------------------------------------------------------
+ */
+
+#include "platform_config.h"
+#include "jsutils.h"
+#include "jshardware.h"
+#include "jsinteractive.h"
+#include "lcd_memlcd.h"
+
+// ======================================================================
+
+#define LCD_STRIDE (2+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
+unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/];
+
+#define LCD_SPI EV_SPI1
+
+// ======================================================================
+
+unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
+#if LCD_BPP==4
+  int addr = 2 + (x>>1) + (y*LCD_STRIDE);
+  unsigned char b = lcdBuffer[addr];
+  return (x&1) ? (b&15) : (b>>4);
+#endif
+}
+
+
+void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
+#if LCD_BPP==4
+  int addr = 2 + (x>>1) + (y*LCD_STRIDE);
+  if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (col&0x0F);
+  else lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (col << 4);
+#endif
+}
+
+void lcdMemLCD_flip(JsGraphics *gfx) {
+  //if (gfx->data.modMinY > gfx->data.modMaxY) return; // nothing to do!
+  // TODO: modified lines only?
+  jshPinSetValue(LCD_SPI_CS, 1);
+  jshDelayMicroseconds(10000);
+  jshSPISendMany(LCD_SPI, lcdBuffer, NULL, sizeof(lcdBuffer), NULL);
+  jshDelayMicroseconds(10000);
+  jshPinSetValue(LCD_SPI_CS, 0);
+  // Reset modified-ness
+  gfx->data.modMaxX = -32768;
+  gfx->data.modMaxY = -32768;
+  gfx->data.modMinX = 32767;
+  gfx->data.modMinY = 32767;
+}
+
+
+void lcdMemLCD_init(JsGraphics *gfx) {
+  gfx->data.width = LCD_WIDTH;
+  gfx->data.height = LCD_HEIGHT;
+  gfx->data.bpp = LCD_BPP;
+
+  for (int y=0;y<LCD_HEIGHT;y++) {
+    lcdBuffer[(y*LCD_STRIDE)  ]=0b10010000;
+    lcdBuffer[(y*LCD_STRIDE)+1]=y;
+  }
+  lcdBuffer[LCD_HEIGHT*LCD_STRIDE] = 0;
+  lcdBuffer[LCD_HEIGHT*LCD_STRIDE+1] = 0;
+
+  jshPinOutput(LCD_SPI_CS,0);
+  jshPinOutput(LCD_SPI_DISP,1);
+  jshPinOutput(LCD_SPI_SCK,0);
+  jshPinOutput(LCD_SPI_MOSI,1);
+
+  JshSPIInfo inf;
+  jshSPIInitInfo(&inf);
+  inf.baudRate = 4000000;
+  inf.pinMOSI = LCD_SPI_MOSI;
+  inf.pinSCK = LCD_SPI_SCK;
+  jshSPISetup(LCD_SPI, &inf);
+}
+
+void lcdMemLCD_setCallbacks(JsGraphics *gfx) {
+  gfx->setPixel = lcdMemLCD_setPixel;
+  gfx->getPixel = lcdMemLCD_getPixel;
+}
+

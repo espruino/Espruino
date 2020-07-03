@@ -28,7 +28,8 @@ typedef enum {
   JSGRAPHICSTYPE_FSMC,        ///< FSMC (or fake FSMC) ILI9325 16bit-wide LCDs
   JSGRAPHICSTYPE_SDL,         ///< SDL graphics library for linux
   JSGRAPHICSTYPE_SPILCD,      ///< SPI LCD library
-  JSGRAPHICSTYPE_ST7789_8BIT  ///< ST7789 in 8 bit mode
+  JSGRAPHICSTYPE_ST7789_8BIT, ///< ST7789 in 8 bit mode
+  JSGRAPHICSTYPE_MEMLCD,      ///< Memory LCD
 } JsGraphicsType;
 
 typedef enum {

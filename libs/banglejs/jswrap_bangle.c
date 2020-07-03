@@ -42,7 +42,11 @@
 #endif
 
 #include "jswrap_graphics.h"
+#ifdef LCD_CONTROLLER_LPM013M126
+#include "lcd_memlcd.h"
+#else // LCD_CONTROLLER_ST7789_8BIT
 #include "lcd_st7789_8bit.h"
+#endif
 #include "nmea.h"
 #ifdef USE_TENSORFLOW
 #include "jswrap_tensorflow.h"
@@ -462,7 +466,11 @@ void lcd_flip(JsVar *parent) {
   if (!graphics) return;
   JsGraphics gfx;
   if (!graphicsGetFromVar(&gfx, graphics)) return;
+#ifdef LCD_CONTROLLER_LPM013M126
+  lcdMemLCD_flip(&gfx);
+#else
   lcdST7789_flip(&gfx);
+#endif
   graphicsSetVar(&gfx);
   jsvUnLock(graphics);
 }
@@ -479,13 +487,22 @@ char clipi8(int x) {
 void peripheralPollHandler() {
   //jswrap_banglejs_ioWr(IOEXP_HRM,0);  // debug using HRM LED
   // Handle watchdog
-  if (!(jshPinGetValue(BTN1_PININDEX) && jshPinGetValue(BTN2_PININDEX)))
+  if (!(jshPinGetValue(BTN1_PININDEX)
+#ifdef BTN2_PININDEX
+       && jshPinGetValue(BTN2_PININDEX)
+#endif
+       ))
     jshKickWatchDog();
   // power on display if a button is pressed
   if (flipTimer < TIMER_MAX)
     flipTimer += pollInterval;
+#ifdef BTN3_PININDEX
   // If BTN3 is held down, trigger a soft reset so we go back to the clock
   if (jshPinGetValue(BTN3_PININDEX)) {
+#else
+  // If BTN1 is held down, trigger a soft reset so we go back to the clock
+  if (jshPinGetValue(BTN1_PININDEX)) {
+#endif
     if (btn1Timer < TIMER_MAX) {
       btn1Timer += pollInterval;
       if (btn1Timer >= BTN_LOAD_TIMEOUT) {
@@ -635,6 +652,7 @@ void peripheralPollHandler() {
 }
 
 void hrmPollHandler() {
+#ifdef HEARTRATE_PIN_ANALOG
   extern nrf_saadc_value_t nrf_analog_read();
   extern bool nrf_analog_read_start();
   extern void nrf_analog_read_end(bool adcInUse);
@@ -674,6 +692,7 @@ void hrmPollHandler() {
   if (hrmHistoryIdx==0)
     bangleTasks |= JSBT_HRM_DATA;
   //jswrap_banglejs_ioWr(IOEXP_HRM,1); // off
+#endif
 }
 
 void backlightOnHandler() {
@@ -718,6 +737,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
   jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
 }
 
+#ifdef BTN4_PININDEX
 // returns true if handled and shouldn't create a normal watch event
 bool btnTouchHandler() {
   if (bangleFlags&JSBF_WAKEON_TOUCH) {
@@ -752,9 +772,11 @@ bool btnTouchHandler() {
   touchLastState = state;
   return false;
 }
+#endif
 void btn1Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(1,state,flags);
 }
+#ifdef BTN2_PININDEX
 void btn2Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(2,state,flags);
 }
@@ -769,6 +791,7 @@ void btn5Handler(bool state, IOEventFlags flags) {
   if (btnTouchHandler()) return;
   btnHandlerCommon(5,state,flags);
 }
+#endif
 
 /// Turn just the backlight on or off (or adjust brightness)
 static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
@@ -809,6 +832,9 @@ This function can be used to turn Bangle.js's LCD off or on.
 When brightness using `Bange.setLCDBrightness`.
 */
 void jswrap_banglejs_setLCDPower(bool isOn) {
+#ifdef LCD_CONTROLLER_LPM013M126
+  jshPinSetState(LCD_SPI_DISP, isOn);
+#else
   if (isOn) { // wake
     lcdST7789_cmd(0x11, 0, NULL); // SLPOUT
     jshDelayMicroseconds(20);
@@ -818,6 +844,7 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
     jshDelayMicroseconds(20);
     lcdST7789_cmd(0x10, 0, NULL); // SLPIN
   }
+#endif
   jswrap_banglejs_setLCDPowerBacklight(isOn);
   if (lcdPowerOn != isOn) {
     JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
@@ -889,6 +916,8 @@ Available options for `Bangle.setLCDMode` are:
 You can also call `Bangle.setLCDMode()` to return to normal, unbuffered `"direct"` mode.
 */
 void jswrap_banglejs_setLCDMode(JsVar *mode) {
+#ifdef LCD_CONTROLLER_LPM013M126
+#else
   LCDST7789Mode lcdMode = LCDST7789_MODE_UNBUFFERED;
   if (jsvIsUndefined(mode) || jsvIsStringEqual(mode,"direct"))
     lcdMode = LCDST7789_MODE_UNBUFFERED;
@@ -953,6 +982,7 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   graphicsSetVar(&gfx);
   jsvUnLock(graphics);
   lcdST7789_setMode( lcdMode );
+#endif
 }
 /*JSON{
     "type" : "staticmethod",
@@ -968,6 +998,8 @@ See `Bangle.setLCDMode` for examples.
 */
 JsVar *jswrap_banglejs_getLCDMode() {
   const char *name=0;
+#ifdef LCD_CONTROLLER_LPM013M126
+#else
   switch (lcdST7789_getMode()) {
     case LCDST7789_MODE_NULL:
       name = "null";
@@ -985,6 +1017,7 @@ JsVar *jswrap_banglejs_getLCDMode() {
       name = "80x80";
       break;
   }
+#endif
   if (!name) return 0;
   return jsvNewFromString(name);
 }
@@ -1004,7 +1037,10 @@ used for displaying notifications while keeping the main display contents
 intact.
 */
 void jswrap_banglejs_setLCDOffset(int y) {
+#ifdef LCD_CONTROLLER_LPM013M126
+#else
   lcdST7789_setYOffset(y);
+#endif
 }
 
 /*JSON{
@@ -1146,11 +1182,16 @@ int jswrap_banglejs_isLCDOn() {
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isCharging() {
+#ifdef BAT_PIN_CHARGING
   return !jshPinGetValue(BAT_PIN_CHARGING);
+#else
+  return 0;
+#endif
 }
 
 /// get battery percentage
 JsVarInt jswrap_banglejs_getBattery() {
+#ifdef BAT_PIN_VOLTAGE
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
   const JsVarFloat vlo = 0.51;
   const JsVarFloat vhi = 0.62;
@@ -1158,6 +1199,9 @@ JsVarInt jswrap_banglejs_getBattery() {
   if (pc>100) pc=100;
   if (pc<0) pc=0;
   return pc;
+#else
+  return 50;
+#endif
 }
 
 /*JSON{
@@ -1174,8 +1218,11 @@ JsVarInt jswrap_banglejs_getBattery() {
 Writes a command directly to the ST7735 LCD controller
 */
 void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
+#ifdef LCD_CONTROLLER_LPM013M126
+#else
   JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
   lcdST7789_cmd(cmd, dLen, (const uint8_t *)dPtr);
+#endif
 }
 
 /*JSON{
@@ -1203,7 +1250,9 @@ void jswrap_banglejs_setHRMPower(bool isOn) {
 #ifndef EMSCRIPTEN
   jstStopExecuteFn(hrmPollHandler, 0);
   if (isOn) {
+#ifdef HEARTRATE_PIN_ANALOG
     jshPinAnalog(HEARTRATE_PIN_ANALOG);
+#endif
     jswrap_banglejs_ioWr(IOEXP_HRM, 0); // HRM on
     memset(hrmHistory, 0, sizeof(hrmHistory));
     hrmHistoryIdx = 0;
@@ -1375,10 +1424,14 @@ JsVar *jswrap_banglejs_getAccel() {
 }*/
 void jswrap_banglejs_init() {
 #ifndef EMSCRIPTEN
+#ifndef SMAQ3
   jshPinOutput(18,0); // what's this?
+#endif
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
 
+#ifndef LCD_CONTROLLER_LPM013M126
   jswrap_ble_setTxPower(4);
+#endif
 
   // Set up I2C
   i2cBusy = true;
@@ -1390,6 +1443,7 @@ void jswrap_banglejs_init() {
   jshPinSetState(internalI2C.pinSCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   jshPinSetValue(internalI2C.pinSDA, 1);
   jshPinSetState(internalI2C.pinSDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+#ifndef SMAQ3
   // LCD pin init
   jshPinOutput(LCD_PIN_CS, 1);
   jshPinOutput(LCD_PIN_DC, 1);
@@ -1409,6 +1463,7 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT,0); // backlight on
   jshDelayMicroseconds(10000);
 #endif
+#endif
   bangleFlags = JSBF_DEFAULT;
   flipTimer = 0; // reset the LCD timeout timer
   lcdPowerOn = true;
@@ -1420,13 +1475,21 @@ void jswrap_banglejs_init() {
   if (!graphics) return; // low memory
   JsGraphics gfx;
   graphicsStructInit(&gfx, LCD_WIDTH, LCD_HEIGHT, LCD_BPP);
+#ifdef LCD_CONTROLLER_LPM013M126
+  gfx.data.type = JSGRAPHICSTYPE_MEMLCD;
+#else
   gfx.data.type = JSGRAPHICSTYPE_ST7789_8BIT;
+#endif
   gfx.data.flags = 0;
   gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
   gfx.graphicsVar = graphics;
 
   //gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8;
+#ifdef LCD_CONTROLLER_LPM013M126
+  lcdMemLCD_init(&gfx);
+#else
   lcdST7789_init(&gfx);
+#endif
   graphicsSetVar(&gfx);
   jsvObjectSetChild(execInfo.root, "g", graphics);
   jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, graphics);
@@ -1461,8 +1524,8 @@ void jswrap_banglejs_init() {
       h = (int)(unsigned char)jsvGetCharInString(img, 1);
     }
     graphicsSetVar(&gfx);
-    int y=(240-h)/2;
-    jsvUnLock(jswrap_graphics_drawImage(graphics,img,(240-w)/2,y,0));
+    int y=(LCD_HEIGHT-h)/2;
+    jsvUnLock(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,0));
     jsvUnLock(img);
     if (drawInfo) {
       y += h-28;
@@ -1479,6 +1542,9 @@ void jswrap_banglejs_init() {
       jswrap_graphics_drawCString(&gfx,8,y+20,"Copyright 2019 G.Williams");
     }
   }
+#ifdef SMAQ3
+  lcdMemLCD_flip(&gfx);
+#endif
   graphicsSetVar(&gfx);
 
   jsvUnLock(graphics);
@@ -1541,12 +1607,15 @@ void jswrap_banglejs_init() {
 
   IOEventFlags channel;
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
+#ifdef BTN2_PININDEX
   jshSetPinShouldStayWatched(BTN2_PININDEX,true);
   jshSetPinShouldStayWatched(BTN3_PININDEX,true);
   jshSetPinShouldStayWatched(BTN4_PININDEX,true);
   jshSetPinShouldStayWatched(BTN5_PININDEX,true);
+#endif
   channel = jshPinWatch(BTN1_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn1Handler);
+#ifdef BTN2_PININDEX
   channel = jshPinWatch(BTN2_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn2Handler);
   channel = jshPinWatch(BTN3_PININDEX, true);
@@ -1555,6 +1624,7 @@ void jswrap_banglejs_init() {
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn4Handler);
   channel = jshPinWatch(BTN5_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn5Handler);
+#endif
 
   buzzAmt = 0;
   beepFreq = 0;
@@ -1567,10 +1637,14 @@ void jswrap_banglejs_init() {
     bangleFlags &= ~JSBF_ENABLE_BEEP;
   } else {
     bangleFlags |= JSBF_ENABLE_BEEP;
+#ifdef SPEAKER_PIN
     if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
       bangleFlags |= JSBF_BEEP_VIBRATE;
     else
       bangleFlags &= ~JSBF_BEEP_VIBRATE;
+#else
+    bangleFlags |= JSBF_BEEP_VIBRATE;
+#endif
   }
   jsvUnLock(v);
   v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"vibrate",0) : 0;
@@ -1600,15 +1674,17 @@ void jswrap_banglejs_kill() {
   promiseBuzz = 0;
 
   jshSetPinShouldStayWatched(BTN1_PININDEX,false);
+  jshPinWatch(BTN1_PININDEX, false);
+#ifdef BTN2_PININDEX
   jshSetPinShouldStayWatched(BTN2_PININDEX,false);
   jshSetPinShouldStayWatched(BTN3_PININDEX,false);
   jshSetPinShouldStayWatched(BTN4_PININDEX,false);
   jshSetPinShouldStayWatched(BTN5_PININDEX,false);
-  jshPinWatch(BTN1_PININDEX, false);
   jshPinWatch(BTN2_PININDEX, false);
   jshPinWatch(BTN3_PININDEX, false);
   jshPinWatch(BTN4_PININDEX, false);
   jshPinWatch(BTN5_PININDEX, false);
+#endif
 }
 
 /*JSON{
@@ -2178,7 +2254,9 @@ void jswrap_banglejs_beep_callback() {
   if (bangleFlags & JSBF_BEEP_VIBRATE) {
     _jswrap_banglejs_setVibration();
   } else {
+#ifdef SPEAKER_PIN
     jshPinSetState(SPEAKER_PIN, JSHPINSTATE_GPIO_IN);
+#endif
   }
 
   jspromise_resolve(promiseBeep, 0);
@@ -2203,7 +2281,9 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
     if (bangleFlags & JSBF_BEEP_VIBRATE) {
       _jswrap_banglejs_setVibration();
     } else {
+#ifdef SPEAKER_PIN
       jshPinAnalogOutput(SPEAKER_PIN, 0.5, freq, JSAOF_NONE);
+#endif
     }
   }
   jsiSetTimeout(jswrap_banglejs_beep_callback, time);
@@ -2277,8 +2357,10 @@ void jswrap_banglejs_off() {
   jswrap_banglejs_accelWr(0x18,0x0a); // accelerometer off
   jswrap_banglejs_compassWr(0x31,0); // compass off
 
+#ifdef BTN2_PININDEX
   nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
   nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
+#endif
   nrf_gpio_cfg_sense_set(BTN1_PININDEX, NRF_GPIO_PIN_SENSE_LOW);
   sd_power_system_off();
 #else
@@ -2588,7 +2670,7 @@ To remove the window, call `E.showAlert()` with no arguments.
     "name" : "LED",
     "generate" : "gen_jswrap_LED1",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "ifdef" : "BANGLEJS"
+    "#if" : "defined(BANGLEJS) && !defined(SMAQ3)"
 }
 
 On most Espruino board there are LEDs, in which case `LED` will be an actual Pin.
@@ -2602,7 +2684,7 @@ a circle on the display
     "name" : "LED1",
     "generate_js" : "libs/js/banglejs/LED1.min.js",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "ifdef" : "BANGLEJS"
+    "#if" : "defined(BANGLEJS) && !defined(SMAQ3)"
 }
 
 On most Espruino board there are LEDs, in which case `LED1` will be an actual Pin.

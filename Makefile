@@ -399,6 +399,12 @@ ifdef USE_LCD_ST7789_8BIT
   SOURCES += libs/graphics/lcd_st7789_8bit.c
 endif
 
+ifdef USE_LCD_MEMLCD
+  DEFINES += -DUSE_LCD_MEMLCD
+  SOURCES += libs/graphics/lcd_memlcd.c
+endif
+
+
 
 ifeq ($(USE_TERMINAL),1)
   DEFINES += -DUSE_TERMINAL
