@@ -202,6 +202,9 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj, JsVar *callback) {
   networkPutAddressAsString(data, "ip", &gWIZNETINFO.ip[0], 4, 10, '.');
   networkPutAddressAsString(data, "subnet", &gWIZNETINFO.sn[0], 4, 10, '.');
   networkPutAddressAsString(data, "gateway", &gWIZNETINFO.gw[0], 4, 10, '.');
+  if ( !gWIZNETINFO.gw[0] ) {
+    gWIZNETINFO.dns[0] = gWIZNETINFO.dns[1] = gWIZNETINFO.dns[2] = gWIZNETINFO.dns[3] = 0;
+  }
   networkPutAddressAsString(data, "dns", &gWIZNETINFO.dns[0], 4, 10, '.');
   networkPutAddressAsString(data, "mac", &gWIZNETINFO.mac[0], 6, 16, ':');
 
