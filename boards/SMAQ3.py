@@ -123,9 +123,9 @@ devices = {
 # PRESSURE
   'SPIFLASH' : {
             'pin_cs' : 'D14',
-            'pin_sck' : 'D0',
+            'pin_sck' : 'D16',
             'pin_mosi' : 'D15', # D0
-            'pin_miso' : 'D2', # D1
+            'pin_miso' : 'D13', # D1
 #            'pin_wp' : 'D', # D2
 #            'pin_rst' : 'D', # D3
             'size' : 4096*1024, # 4MB
