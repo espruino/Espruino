@@ -42,7 +42,6 @@ DSTATUS disk_initialize (
 {
   if (drv != 0)
      return STA_NODISK;
-  //jsDebug("Flash Disk Init %d",drv);
   return RES_OK;
 }
 
@@ -76,7 +75,7 @@ DRESULT disk_read (
   uint16_t size =  (uint16_t)(count * FS_SECTOR_SIZE);
   uint32_t addr = sector * FS_SECTOR_SIZE + fs_flash_base;
   
-  jsDebug("Flash disk_read sector: %d, buff: mem: %d buff: %d len: %d", sector, addr, buff, size);
+  jsDebug(DBG_INFO,"Flash disk_read sector: %d, buff: mem: %d buff: %d len: %d", sector, addr, buff, size);
   jshFlashRead( buff, addr, size);
   return RES_OK;
 }
@@ -98,7 +97,7 @@ DRESULT disk_write (
   uint16_t size =  (uint16_t)(count * FS_SECTOR_SIZE);
   uint32_t addr = sector * FS_SECTOR_SIZE + fs_flash_base;
 
-  jsDebug("Flash disk_write sector:  %d, buff: mem: %d buff: %d len: %d", sector, addr, buff, size);
+  jsDebug(DBG_INFO,"Flash disk_write sector:  %d, buff: mem: %d buff: %d len: %d", sector, addr, buff, size);
   jshFlashErasePage(addr);
   jshFlashWrite( (void *)buff, addr,size);  
 
@@ -123,7 +122,7 @@ DRESULT disk_ioctl (
   switch (ctrl) {
   case CTRL_SYNC : /// Make sure that no pending write process
     res = RES_OK;
-    jsDebug("Flash disk_ioctl CTRL_SYNC");
+    jsDebug(DBG_INFO,"Flash disk_ioctl CTRL_SYNC");
     break;
 
   case GET_SECTOR_COUNT :   // Get number of sectors on the disk (DWORD)

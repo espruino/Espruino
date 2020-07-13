@@ -124,8 +124,8 @@ void jshSPISetup(
 		.flags=flags
     };
   if(SPIChannels[channelPnt].spi){
-	SPIChannelReset(channelPnt);
-	jsWarn("spi was already in use, removed old assignment");
+	  SPIChannelReset(channelPnt);
+	  jsDebug(DBG_INFO, "spi was already in use, removed old assignment");
   }
   esp_err_t ret=spi_bus_initialize(SPIChannels[channelPnt].HOST, &buscfg, 1);
   assert(ret==ESP_OK);
@@ -150,24 +150,22 @@ int jshSPISend(
     // Send 8 bits of data taken from "data" over the selected spi and store the returned
     // data for subsequent retrieval.
     //spiTransferBits(_spi[which_spi], (uint32_t)data, &g_lastSPIRead, 8);
-	esp_err_t ret;
+    esp_err_t ret;
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));       //Zero out the transaction
     t.length=8;                     //Command is 8 bits
     t.tx_buffer=&data;               //The data is the cmd itself
 	// https://esp-idf.readthedocs.io/en/latest/api/spi_master.html#type-definitions
 	// should this be a switch or always read?
-	t.flags=SPI_TRANS_USE_RXDATA;
+	  t.flags=SPI_TRANS_USE_RXDATA;
     ret=spi_device_transmit(SPIChannels[channelPnt].spi, &t);  //Transmit - blocks until result - need to change this?
-	assert(ret == ESP_OK);
-	SPIChannels[channelPnt].g_lastSPIRead=t.rx_data[0];
-	
+	  assert(ret == ESP_OK);
+	  SPIChannels[channelPnt].g_lastSPIRead=t.rx_data[0];
   } else {
     SPIChannels[channelPnt].g_lastSPIRead = (uint32_t)-1;
   }
   return (int)retData;
 }
-
 
 /**
  * Send 16 bit data through the given SPI device.

@@ -400,6 +400,22 @@ typedef enum {
 
 void jsAssertFail(const char *file, int line, const char *expr);
 
+#define DBG_INFO 0
+#define DBG_VERBOSE 1
+
+/*
+#if defined(DEBUG) || __FILE__ == DEBUG_FILE
+   #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__) 
+ #else 
+   #define jsDebug(dbg_type, format, ...) do { } while(0) 
+ #endif
+ */
+#if (defined DEBUG ) ||  ( defined __FILE__ == DEBUG_FILE)
+  #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__) 
+#else 
+  #define jsDebug(dbg_type, format, ...) do { } while(0) 
+#endif
+
 #ifndef USE_FLASH_MEMORY
 // Normal functions thet place format string in ram
 void jsExceptionHere(JsExceptionType type, const char *fmt, ...);

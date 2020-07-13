@@ -41,7 +41,10 @@ void jsble_init(){
 	esp_err_t ret;
 	if(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)){
 		ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
-		if(ret) {jsWarn("mem release failed:%x\n",ret); return;}
+		if(ret) {
+			jsDebug(DBG_INFO, "mem release failed:%x\n",ret);
+			return;
+		}
 	
 		if(initController()) return;
 		if(initBluedroid()) return;
@@ -51,16 +54,16 @@ void jsble_init(){
 	}
 	else{
 		ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT); 
-		jsWarn("Bluetooth is disabled per ESP32.enableBLE(false)\n");		
+		jsDebug(DBG_INFO, "Bluetooth is disabled per ESP32.enableBLE(false)\n");
 	}
 }
 /** Completely deinitialise the BLE stack */
 void jsble_kill(){
-	jsWarn("kill not implemented yet\n");
+	jsError("kill not implemented yet\n");
 }
 
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len){
-	jsWarn("queue_pending_buf not implemented yet");
+	jsError("queue_pending_buf not implemented yet");
 	UNUSED(blep);	
 	UNUSED(data);
 	UNUSED(ptr);
@@ -68,13 +71,13 @@ void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t l
 }
 
 void jsble_queue_pending(BLEPending blep, uint16_t data){
-	jsWarn("queue_pending not implemented yet");
+	jsError("queue_pending not implemented yet");
 	UNUSED(blep);
 	UNUSED(data);
 }
 
 int jsble_exec_pending(IOEvent *event){
-	jsWarn("exec_pending not implemented yet");
+	jsError("exec_pending not implemented yet");
 	UNUSED(event);
 	return 0;
 }
@@ -96,7 +99,9 @@ uint32_t jsble_advertising_start(){
 void jsble_advertising_stop(){
 	esp_err_t status;
 	status = bluetooth_gap_startAdvertizing(false);
-	if(status) jsWarn("error in stop advertising:0X%x\n",status);
+	if(status){
+	   jsExceptionHere(JSET_ERROR,"error in stop advertising:0X%x",status);
+	}
 }
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection(){
@@ -124,20 +129,22 @@ bool jsble_has_peripheral_connection(){
 
 /// Checks for error and reports an exception if there was one. Return true on error
 bool jsble_check_error(uint32_t err_code){
-	jsWarn("check error not implemented yet:%x\n",err_code);
+	jsError("check error not implemented yet:%x\n",err_code);
 	UNUSED(err_code);
 	return false;
 }
 /// Scanning for advertisign packets
 uint32_t jsble_set_scanning(bool enabled, bool activeScan){
-  if (activeScan) jsWarn("active scan not implemented\n");
+  if (activeScan) {
+  	jsError("active scan not implemented\n");
+  }
 	bluetooth_gap_setScan(enabled);
 	return 0;
 }
 
 /// returning RSSI values for current connection
 uint32_t jsble_set_rssi_scan(bool enabled){
-	jsWarn("set rssi scan not implemeted yet\n");
+	jsError("set rssi scan not implemeted yet\n");
 	UNUSED(enabled);
 	return 0;
 }
@@ -157,7 +164,7 @@ uint32_t jsble_disconnect(uint16_t conn_handle){
 
 /// For BLE HID, send an input report to the receiver. Must be <= HID_KEYS_MAX_LEN
 void jsble_send_hid_input_report(uint8_t *data, int length){
-	jsWarn("send hid input report not implemented yet\n");
+	jsError("send hid input report not implemented yet\n");
 	UNUSED(data);
 	UNUSED(length);
 }
@@ -188,28 +195,28 @@ void jsble_central_characteristicRead(JsVar *characteristic){
 }
 // Discover descriptors of characteristic
 void jsble_central_characteristicDescDiscover(JsVar *characteristic){
-	jsWarn("Central characteristicDescDiscover not implemented yet\n");
+	jsDebug(DBG_INFO, "Central characteristicDescDiscover not implemented yet\n");
 	UNUSED(characteristic);
 }
 // Set whether to notify on the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicNotify(JsVar *characteristic, bool enable){
-	jsWarn("central characteristic notify not implemented yet\n");
+	jsDebug(DBG_INFO, "central characteristic notify not implemented yet\n");
 	UNUSED(characteristic);
 	UNUSED(enable);
 }
 /// Start bonding on the current central connection
 void jsble_central_startBonding(bool forceRePair){
-	jsWarn("central start bonding not implemented yet\n");
+	jsDebug(DBG_INFO, "central start bonding not implemented yet\n");
 	UNUSED(forceRePair);
 }
 /// RSSI monitoring in central mode
 uint32_t jsble_set_central_rssi_scan(bool enabled){
-	jsWarn("central set rssi scan not implemented yet\n");
+	jsDebug(DBG_INFO, "central set rssi scan not implemented yet\n");
 	return 0;
 }
 // Set whether or not the whitelist is enabled
 void jsble_central_setWhitelist(bool whitelist){
-	jsWarn("central set Whitelist not implemented yet\n");
+	jsDebug(DBG_INFO, "central set Whitelist not implemented yet\n");
 	return 0;
 }
 
@@ -222,6 +229,6 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
 }
 
 uint32_t jsble_central_send_passkey(char *passkey) {
-  jsWarn("central set Whitelist not implemented yet\n");
+  jsDebug(DBG_INFO, "central set Whitelist not implemented yet\n");
   return 0;
 }
