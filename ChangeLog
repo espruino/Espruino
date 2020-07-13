@@ -8,6 +8,7 @@
             WIZNet: add setHostname(), geHostname(), getStatus()
             Fix XON not sent after reset() (fix #1872)
             Remove USBSERIAL enum for non-USB devices
+            Shrink new vector font sizes to allow multi-line use (fix #1873)
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions
