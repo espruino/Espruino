@@ -754,7 +754,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
   case LEX_UNFINISHED_COMMENT : strcpy(str, "UNFINISHED COMMENT"); return;
   case 255 : strcpy(str, "[ERASED]"); return;
   }
-  if (token>=_LEX_OPERATOR_START && token<_LEX_R_LIST_END) {
+  if (token>=_LEX_OPERATOR_START && token<=_LEX_R_LIST_END) {
     const char tokenNames[] =
         /* LEX_EQUAL      :   */ "==\0"
         /* LEX_TYPEEQUAL  :   */ "===\0"

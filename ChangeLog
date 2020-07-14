@@ -12,6 +12,7 @@
             Stop Object.setPrototypeOf overwriting Object.prototype sometimes (fix #1875)
             Arrow functions now always overwrite `this` (fix #1878)
             Implement Streaming Storage compaction to allow compact with less RAM (fix #1598,#1707,#1828)
+            jslTokenAsString now works for 'of'
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions
