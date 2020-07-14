@@ -154,11 +154,6 @@ void jshInit() {
   if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
     jsError("JshPinState #defines have changed, please update pinStateToString()");
   }
-  /*
-  jsWarn( "JSHPINSTATE_I2C %d\n",JSHPINSTATE_I2C );
-  jsWarn( "JSHPINSTATE_GPIO_IN_PULLDOWN %d\n",JSHPINSTATE_GPIO_IN_PULLDOWN );
-  jsWarn( "JSHPINSTATE_MASK %d\n",JSHPINSTATE_MASK );
-  */
   gpio_isr_register(gpio_intr_handler,NULL,0,NULL);  //changed to automatic assign of interrupt
   // Initialize something for each of the possible pins.
   jshPinDefaultPullup();

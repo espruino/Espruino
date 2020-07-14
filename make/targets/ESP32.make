@@ -31,7 +31,7 @@ flash: $(PROJ_NAME).bin
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
 	--port ${COMPORT} \
-	--baud 921600 \
+	--baud $(FLASH_BAUD) \
 	write_flash \
 	-z \
 	--flash_mode "dio" \
@@ -43,6 +43,6 @@ flash: $(PROJ_NAME).bin
 erase_flash:
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
-	--port ${COMPORT}\
-	--baud 921600 \
+	--port ${COMPORT} \
+	--baud $(FLASH_BAUD) \
 	erase_flash
