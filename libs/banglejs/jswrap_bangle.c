@@ -317,9 +317,11 @@ typedef struct {
 #ifdef SMAQ3
 JshI2CInfo i2cAccel;
 JshI2CInfo i2cMag;
+JshI2CInfo i2cTouch;
 // TODO: pressure, hrm...
 #define ACCEL_I2C &i2cAccel
 #define MAG_I2C &i2cMag
+#define TOUCH_I2C &i2cTouch
 #else
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo i2cInternal;
@@ -464,6 +466,7 @@ typedef enum {
   JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
   JSBT_HRM_DATA = 1<<17, ///< Heart rate data is ready for analysis
   JSBT_TWIST_EVENT = 1<<18, ///< Watch was twisted
+
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -803,6 +806,45 @@ void btn4Handler(bool state, IOEventFlags flags) {
 void btn5Handler(bool state, IOEventFlags flags) {
   if (btnTouchHandler()) return;
   btnHandlerCommon(5,state,flags);
+}
+#endif
+
+#ifdef SMAQ3
+
+void touchHandler(bool state, IOEventFlags flags) {
+  if (state) return; // only interested in when low
+  // Ok, now get touch info
+  unsigned char buf[6];
+  buf[0]=1;
+  jsi2cWrite(TOUCH_I2C, TOUCH_ADDR, 1, buf, true);
+  jsi2cRead(TOUCH_I2C, TOUCH_ADDR, 6, buf, true);
+  // 0: Gesture type
+  // 1: touch pts (0 or 1)
+  // 2: Event?
+  // 3: X
+  // 4: ?
+  // 5: Y
+  int x = buf[3], y = buf[5];
+  int gesture = buf[0];
+  static int lastGesture = 0;
+  if (gesture!=lastGesture) {
+    switch (gesture) { // gesture
+    case 0:break; // no gesture
+    case 1:break; // slide down
+    case 2:break; // slide up
+    case 3: // slide left
+        bangleTasks |= JSBT_SWIPE_LEFT;
+        break;
+    case 4: // slide right
+        bangleTasks |= JSBT_SWIPE_RIGHT;
+        break;
+    case 5: // single click
+      if (x<80) bangleTasks |= JSBT_TOUCH_LEFT;
+      else bangleTasks |= JSBT_TOUCH_RIGHT;
+      break;
+    }
+  }
+  lastGesture = gesture;
 }
 #endif
 
@@ -1436,6 +1478,7 @@ JsVar *jswrap_banglejs_getAccel() {
   "generate" : "jswrap_banglejs_init"
 }*/
 void jswrap_banglejs_init() {
+  IOEventFlags channel;
 #ifndef EMSCRIPTEN
 #ifndef SMAQ3
   jshPinOutput(18,0); // what's this?
@@ -1453,12 +1496,19 @@ void jswrap_banglejs_init() {
   i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cAccel.pinSDA = ACCEL_PIN_SDA;
   i2cAccel.pinSCL = ACCEL_PIN_SCL;
-  jsi2cSetup(&i2cMag);
+  jsi2cSetup(&i2cAccel);
+
   jshI2CInitInfo(&i2cMag);
   i2cMag.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cMag.pinSDA = MAG_PIN_SDA;
   i2cMag.pinSCL = MAG_PIN_SCL;
   jsi2cSetup(&i2cMag);
+
+  jshI2CInitInfo(&i2cTouch);
+  i2cTouch.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cTouch.pinSDA = TOUCH_PIN_SDA;
+  i2cTouch.pinSCL = TOUCH_PIN_SCL;
+  jsi2cSetup(&i2cTouch);
 #else
   jshI2CInitInfo(&i2cInternal);
   i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
@@ -1466,7 +1516,15 @@ void jswrap_banglejs_init() {
   i2cInternal.pinSCL = ACCEL_PIN_SCL;
   jsi2cSetup(&i2cInternal);
 #endif
-#ifndef SMAQ3
+#ifdef SMAQ3
+  // Touch init
+  jshPinOutput(TOUCH_PIN_RST, 0);
+  jshDelayMicroseconds(1000);
+  jshPinOutput(TOUCH_PIN_RST, 1);
+  jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
+  channel = jshPinWatch(TOUCH_PIN_IRQ, true);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
+#else
   // LCD pin init
   jshPinOutput(LCD_PIN_CS, 1);
   jshPinOutput(LCD_PIN_DC, 1);
@@ -1633,7 +1691,6 @@ void jswrap_banglejs_init() {
   jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
 #endif
 
-  IOEventFlags channel;
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
 #ifdef BTN2_PININDEX
   jshSetPinShouldStayWatched(BTN2_PININDEX,true);

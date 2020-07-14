@@ -465,6 +465,11 @@ if "PRESSURE" in board.devices:
   codeOut("#define PRESSURE_ADDR "+str(board.devices["PRESSURE"]["addr"]))
   codeOutDevicePins("PRESSURE", "PRESSURE")
 
+if "TOUCH" in board.devices:
+  codeOut("#define TOUCH_DEVICE \""+board.devices["TOUCH"]["device"].upper()+"\"")
+  codeOut("#define TOUCH_ADDR "+str(board.devices["TOUCH"]["addr"]))
+  codeOutDevicePins("TOUCH", "TOUCH")
+
 if "SPIFLASH" in board.devices:
   codeOut("#define SPIFLASH_PAGESIZE 4096")
   codeOut("#define SPIFLASH_LENGTH "+str(board.devices["SPIFLASH"]["size"]))
