@@ -21,12 +21,6 @@
 #define SAVED_CODE_BOOTCODE ".bootcde" // bootcode that doesn't run after reset
 #define SAVED_CODE_VARIMAGE ".varimg" // Image of all JsVars written to flash
 
-#ifdef DEBUG
-#define DBG(...) jsiConsolePrintf("[Flash] "__VA_ARGS__)
-#else
-#define DBG(...)
-#endif
-
 #define JSF_START_ADDRESS FLASH_SAVED_CODE_START
 #define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
 
@@ -146,13 +140,13 @@ static bool jsfEraseFrom(uint32_t startAddr) {
 
 /// Erase the entire contents of the memory store
 bool jsfEraseAll() {
-  DBG("EraseAll\n");
+  jsDebug(DBG_INFO,"EraseAll\n");
   return jsfEraseFrom(JSF_START_ADDRESS);
 }
 
 /// When a file is found in memory, erase it (by setting first bytes of name to 0). addr=ptr to data, NOT header
 static void jsfEraseFileInternal(uint32_t addr, JsfFileHeader *header) {
-  DBG("EraseFile 0x%08x\n", addr);
+  jsDebug(DBG_INFO,"EraseFile 0x%08x\n", addr);
 
   addr -= (uint32_t)sizeof(JsfFileHeader);
   addr += (uint32_t)((char*)&header->name.firstChars - (char*)header);
@@ -280,93 +274,138 @@ static uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages, uint32_t *unc
   return allocated;
 }
 
+// Copy one memory buffer to another *circular buffer*
+static void memcpy_circular(char *dst, uint32_t *dstIndex, uint32_t dstSize, char *src, size_t len) {
+  while (len--) {
+    dst[*dstIndex] = *(src++);
+    *dstIndex = (*dstIndex+1) % dstSize;
+  }
+}
+
+static void jsfCompactWriteBuffer(uint32_t *writeAddress, uint32_t readAddress, char *swapBuffer, uint32_t swapBufferSize, uint32_t *swapBufferUsed, uint32_t *swapBufferTail) {
+  uint32_t nextFlashPage = jsfGetAddressOfNextPage(*writeAddress);
+  // write any data between swapBufferTail and the end of the buffer
+  while (*swapBufferUsed) {
+    uint32_t s = *swapBufferUsed;
+    // don't read past end - it's circular
+    if (s+*swapBufferTail > swapBufferSize)
+      s = swapBufferSize - *swapBufferTail;
+    // don't write into a new page
+    if (s+*writeAddress > nextFlashPage)
+      s = nextFlashPage-*writeAddress;
+    if (readAddress < nextFlashPage) {
+      jsDebug(DBG_INFO,"compact> skip write (0x%08x) as we're still reading from the page (0x%08x)\n", &writeAddress, readAddress);
+      return;
+    }
+    jsDebug(DBG_INFO,"compact> write %d from buf[%d] => 0x%08x\n", s, *swapBufferTail, *writeAddress);
+    if (!jsfIsErased(*writeAddress, s)) {
+      jshFlashErasePage(*writeAddress);
+    }
+    assert(jsfIsErased(*writeAddress, s));
+    jshFlashWrite(&swapBuffer[*swapBufferTail], *writeAddress, s);
+    *writeAddress += s;
+    nextFlashPage = jsfGetAddressOfNextPage(*writeAddress);
+    *swapBufferTail = (*swapBufferTail+s) % swapBufferSize;
+    *swapBufferUsed -= s;
+  }
+}
+
 /* Try and compact saved data so it'll fit in Flash again.
  * TO RUN THIS, 'ALLOCATED' MUST BE CORRECT, AND THERE MUST BE ENOUGH STACK FREE
  */
-static bool jsfCompactInternal(uint32_t startAddress, uint32_t allocated) {
-  DBG("Compacting from 0x%08x\n", startAddress);
-  if (allocated>0) {
-    // allocated = amount of RAM needed to compact all pages
-    // All our allocated data will fit in RAM - awesome!
-    // Allocate RAM
-    char *swapBuffer = alloca(allocated);
-    char *swapBufferPtr = swapBuffer;
-    // Copy all data to swap
-    DBG("Compacting - copy data to swap\n");
-    JsfFileHeader header;
-    memset(&header,0,sizeof(JsfFileHeader));
-    uint32_t addr = startAddress;
-    if (jsfGetFileHeader(addr, &header, true)) do {
-      if (header.name.firstChars != 0) { // if not replaced
-        memcpy(swapBufferPtr, &header, sizeof(JsfFileHeader));
-        swapBufferPtr += sizeof(JsfFileHeader);
-        uint32_t alignedSize = jsfAlignAddress(jsfGetFileSize(&header));
-        jshFlashRead(swapBufferPtr, addr+(uint32_t)sizeof(JsfFileHeader), alignedSize);
-        memset(&swapBufferPtr[jsfGetFileSize(&header)], 0xFF, alignedSize-jsfGetFileSize(&header));
-        swapBufferPtr += alignedSize;
-      }
-    } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL));
-    // Erase everything
-    DBG("Compacting - erasing pages\n");
-    jsfEraseFrom(startAddress);
-    // Copy data back
-    DBG("Compacting - copy data from swap\n");
-    char *swapBufferEnd = swapBufferPtr;
-    swapBufferPtr = swapBuffer;
-    while (swapBufferPtr < swapBufferEnd) {
-      memcpy(&header, swapBufferPtr, sizeof(JsfFileHeader));
-      swapBufferPtr += sizeof(JsfFileHeader);
-      JsfFileHeader newHeader;
-      uint32_t newFile = jsfCreateFile(header.name, jsfGetFileSize(&header), jsfGetFileFlags(&header), &newHeader);
+static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t swapBufferSize) {
+  uint32_t writeAddress = startAddress;
+  jsDebug(DBG_INFO,"Compacting from 0x%08x (%d byte buffer)\n", startAddress, swapBufferSize);
+  uint32_t swapBufferHead = 0;
+  uint32_t swapBufferTail = 0;
+  uint32_t swapBufferUsed = 0;
+  JsfFileHeader header;
+  memset(&header,0,sizeof(JsfFileHeader));
+  uint32_t addr = startAddress;
+  if (jsfGetFileHeader(addr, &header, true)) do {
+    if (header.name.firstChars != 0) { // if not replaced
+      jsDebug(DBG_INFO,"compact> copying file at 0x%08x\n", addr);
+      // Copy the file into the circular buffer, one bit at a time.
+      // Write the header
+      memcpy_circular(swapBuffer, &swapBufferHead, swapBufferSize, (char*)&header, sizeof(JsfFileHeader));
+      swapBufferUsed += (uint32_t)sizeof(JsfFileHeader);
+      // Write the contents
       uint32_t alignedSize = jsfAlignAddress(jsfGetFileSize(&header));
-      if (newFile) jshFlashWrite(swapBufferPtr, newFile, alignedSize);
-      swapBufferPtr += alignedSize;
+      uint32_t alignedPtr = addr+(uint32_t)sizeof(JsfFileHeader);
+      jsfCompactWriteBuffer(&writeAddress, alignedPtr, swapBuffer, swapBufferSize, &swapBufferUsed, &swapBufferTail);
+      while (alignedSize) {
+        // How much space do we have available in our swapBuffer
+        uint32_t s = swapBufferSize-swapBufferUsed;
+        if (s > swapBufferSize-swapBufferHead)
+          s = swapBufferSize-swapBufferHead;
+        if ((swapBufferTail>swapBufferHead) && (s > (swapBufferTail-swapBufferHead)))
+          s = swapBufferTail-swapBufferHead;
+        if (s==0) {
+          jsDebug(DBG_INFO,"compact> error - no space left!\n");
+          return false;
+        }
+        if (s>alignedSize) s=alignedSize;
+        jsDebug(DBG_INFO,"compact> read %d from 0x%08x => buf[%d]\n", s, alignedPtr, swapBufferHead);
+        jshFlashRead(&swapBuffer[swapBufferHead], alignedPtr, s);
+        alignedSize -= s;
+        alignedPtr += s;
+        swapBufferUsed += s;
+        swapBufferHead = (swapBufferHead+s) % swapBufferSize;
+        // Is the buffer big enough to write?
+        jsfCompactWriteBuffer(&writeAddress, alignedPtr, swapBuffer, swapBufferSize, &swapBufferUsed, &swapBufferTail);
+      }
     }
-  } else {
-    DBG("Compacting - no data, just erasing page\n");
-    jsfEraseFrom(startAddress);
-  }
-  DBG("Compaction Complete\n");
+  } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL));
+  jsDebug(DBG_INFO,"compact> finished reading...\n");
+  // try and write the remaining
+  jsfCompactWriteBuffer(&writeAddress, JSF_END_ADDRESS, swapBuffer, swapBufferSize, &swapBufferUsed, &swapBufferTail);
+  // Finished - erase remaining
+  jsDebug(DBG_INFO,"compact> almost there - erase remaining pages\n");
+  writeAddress = jsfGetAddressOfNextPage(writeAddress-1);
+  jsfEraseFrom(writeAddress);
+  jsDebug(DBG_INFO,"Compaction Complete\n");
   return true;
 }
 
 
 // Try and compact saved data so it'll fit in Flash again
 bool jsfCompact() {
-  DBG("Compacting\n");
-  uint32_t addr = JSF_START_ADDRESS;
+  jsDebug(DBG_INFO,"Compacting\n");
+  uint32_t pageSize = jsfGetAddressOfNextPage(JSF_START_ADDRESS) - JSF_START_ADDRESS;
+  uint32_t maxRequired = pageSize + (uint32_t)sizeof(JsfFileHeader);
+  // TODO: We could skip forward pages if we think they are already fully compacted?
 
-  /* Try and compact the whole area first, but if that
-   * fails, keep skipping forward pages until we have
-   * enough RAM free that it's ok. */
-  while (addr) {
-    uint32_t uncompacted = 0;
-    uint32_t allocated = jsfGetAllocatedSpace(addr, true, &uncompacted);
-    if (!uncompacted) {
-      DBG("Already fully compacted\n");
-      return true;
-    }
-    if (allocated+1024 < jsuGetFreeStack()) {
-      DBG("Compacting - all data fits in RAM for 0x%08x (%d bytes)\n", addr, allocated);
-      return jsfCompactInternal(addr, allocated);
-    } else {
-      DBG("Compacting - Not enough memory for 0x%08x (%d bytes)\n", addr, allocated);
-    }
-    // move to the next available page and try from there
-    addr = jsfGetAddressOfNextStartPage(addr);
+  uint32_t uncompacted = 0;
+  uint32_t allocated = jsfGetAllocatedSpace(JSF_START_ADDRESS, true, &uncompacted);
+  if (!uncompacted) {
+    jsDebug(DBG_INFO,"Already fully compacted\n");
+    return true;
   }
-  DBG("Compacting - not enough memory to compact anything\n");
-  /* TODO: we should try and compact pages at the start as well.
-   * Currently we just skip pages from the front until we have
-   * enough RAM. By doing both we could work either side of a
-   * massive saved code area. */
-
+  uint32_t swapBufferSize = allocated;
+  if (swapBufferSize > maxRequired) swapBufferSize=maxRequired;
+  // See if we have enough memory...
+  if (swapBufferSize+256 < jsuGetFreeStack()) {
+    jsDebug(DBG_INFO,"Enough stack for %d byte buffer\n", swapBufferSize);
+    char *swapBuffer = alloca(swapBufferSize);
+    return jsfCompactInternal(JSF_START_ADDRESS, swapBuffer, swapBufferSize);
+  } else {
+    jsDebug(DBG_INFO,"Not enough stack for (%d bytes)\n", swapBufferSize);
+    JsVar *buf = jsvNewFlatStringOfLength(swapBufferSize);
+    if (buf) {
+      jsDebug(DBG_INFO,"Allocated data in JsVars\n");
+      char *swapBuffer = jsvGetFlatStringPointer(buf);
+      bool r = jsfCompactInternal(JSF_START_ADDRESS, swapBuffer, swapBufferSize);
+      jsvUnLock(buf);
+      return r;
+    }
+  }
+  jsDebug(DBG_INFO,"Not enough memory to compact anything\n");
   return false;
 }
 
 /// Create a new 'file' in the memory store - DOES NOT remove existing files with same name. Return the address of data start, or 0 on error
 static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flags, JsfFileHeader *returnedHeader) {
-  DBG("CreateFile (%d bytes)\n", size);
+  jsDebug(DBG_INFO,"CreateFile (%d bytes)\n", size);
   uint32_t requiredSize = jsfAlignAddress(size)+(uint32_t)sizeof(JsfFileHeader);
   bool compacted = false;
   uint32_t addr = 0;
@@ -392,12 +431,12 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
       if (!compacted) {
         compacted = true;
         if (!jsfCompact()) {
-          DBG("CreateFile - Compact failed\n");
+          jsDebug(DBG_INFO,"CreateFile - Compact failed\n");
           return 0;
         }
         addr = JSF_START_ADDRESS; // addr->startAddr = restart
       } else {
-        DBG("CreateFile - Not enough space\n");
+        jsDebug(DBG_INFO,"CreateFile - Not enough space\n");
         return 0;
       }
     }
@@ -412,16 +451,16 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
       (spaceAvailable > (size + nextPage - addr)) && // there is space
       (requiredSize < 512) && // it's not too big. We should always try and put big files as near the start as possible. See note in jsfCompact
       !jsfGetFileHeader(nextPage, &header, false)) { // the next page is free
-    DBG("CreateFile straddles page boundary, pushed to next page (0x%08x -> 0x%08x)\n", addr, nextPage);
+    jsDebug(DBG_INFO,"CreateFile straddles page boundary, pushed to next page (0x%08x -> 0x%08x)\n", addr, nextPage);
     addr = nextPage;
   }
   // write out the header
-  DBG("CreateFile new 0x%08x\n", addr+(uint32_t)sizeof(JsfFileHeader));
+  jsDebug(DBG_INFO,"CreateFile new 0x%08x\n", addr+(uint32_t)sizeof(JsfFileHeader));
   header.size = size | (flags<<24);
   header.name = name;
-  DBG("CreateFile write header\n");
+  jsDebug(DBG_INFO,"CreateFile write header\n");
   jshFlashWrite(&header,addr,(uint32_t)sizeof(JsfFileHeader));
-  DBG("CreateFile written header\n");
+  jsDebug(DBG_INFO,"CreateFile written header\n");
   if (returnedHeader) *returnedHeader = header;
   return addr+(uint32_t)sizeof(JsfFileHeader);
 }
@@ -573,14 +612,14 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
         flags==jsfGetFileFlags(&header) &&
         dLen==size && // setting all in one go
         jsfIsEqual(addr, (unsigned char*)dPtr, (uint32_t)dLen)) {
-      DBG("jsfWriteFile files Equal\n");
+      jsDebug(DBG_INFO,"jsfWriteFile files Equal\n");
       return true;
     }
     if (addr) { // file exists, remove it!
-      DBG("jsfWriteFile remove existing file\n");
+      jsDebug(DBG_INFO,"jsfWriteFile remove existing file\n");
       jsfEraseFileInternal(addr, &header);
     }
-    DBG("jsfWriteFile create file\n");
+    jsDebug(DBG_INFO,"jsfWriteFile create file\n");
     addr = jsfCreateFile(name, (uint32_t)size, flags, &header);
   }
   if (!addr) {
@@ -596,9 +635,9 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
     jsExceptionHere(JSET_ERROR, "File already written with different data");
     return false;
   }
-  DBG("jsfWriteFile write contents\n");
+  jsDebug(DBG_INFO,"jsfWriteFile write contents\n");
   jshFlashWriteAligned(dPtr, addr, (uint32_t)dLen);
-  DBG("jsfWriteFile written contents\n");
+  jsDebug(DBG_INFO,"jsfWriteFile written contents\n");
   return true;
 }
 
