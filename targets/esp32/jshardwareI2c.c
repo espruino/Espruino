@@ -40,19 +40,19 @@ static esp_err_t checkError( char * caller, esp_err_t ret ) {
   switch(ret) {
     case ESP_OK: break;
   case ESP_ERR_INVALID_ARG: {
-    jsError(  "%s:, Parameter error\n", caller );
+    jsExceptionHere(JSET_ERROR, "%s:, Parameter error\n", caller );
     break;
   }
   case ESP_FAIL: {
-    jsError(  "%s:, slave doesn't ACK the transfer.\n", caller );
+    jsExceptionHere(JSET_ERROR, "%s: slave doesn't ACK the transfer", caller);
     break;
   }
   case ESP_ERR_TIMEOUT: {
-    jsError(  "%s:, Operation timeout because the bus is busy.\n", caller );
+    jsExceptionHere(JSET_ERROR, "%s:, Operation timeout because the bus is busy", caller );
     break;
   }
   default: {
-    jsError(  "%s:, unknown error code %d, \n", caller, ret );
+    jsExceptionHere(JSET_ERROR, "%s:, unknown error code %d", caller, ret );
     break;
   }
   }
@@ -83,7 +83,7 @@ int getI2cFromDevice( IOEventFlags device  ) {
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   int i2c_master_port = getI2cFromDevice(device);
   if (i2c_master_port == -1) {
-    jsError("Only I2C1 and I2C2 supported"); 
+    jsExceptionHere(JSET_ERROR,"Only I2C1 and I2C2 supported"); 
     return;
   }
   if(jshIsDeviceInitialised(device)){
@@ -110,13 +110,13 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   conf.master.clk_speed = info->bitrate;
   esp_err_t err=i2c_param_config(i2c_master_port, &conf);
   if ( err == ESP_ERR_INVALID_ARG ) {
-    jsError("jshI2CSetup: Invalid arguments"); 
+    jsExceptionHere(JSET_ERROR,"jshI2CSetup: Invalid arguments"); 
   return;
   }
   err=i2c_driver_install(i2c_master_port, conf.mode, 0, 0, 0);
   if ( err == ESP_OK ) {
-	jsWarn("jshI2CSetup: driver installed, sda: %d scl: %d freq: %d, \n", sda, scl, info->bitrate);
-	jshSetDeviceInitialised(device, true);
+	  jsDebug(DBG_INFO, "jshI2CSetup: driver installed, sda: %d scl: %d freq: %d, \n", sda, scl, info->bitrate);
+    jshSetDeviceInitialised(device, true);
   } else {
     checkError("jshI2CSetup",err); 
   }
@@ -129,7 +129,7 @@ void jshI2CWrite(IOEventFlags device,
   bool sendStop) {  
   int i2c_master_port = getI2cFromDevice(device);
   if (i2c_master_port == -1) {
-    jsError("Only I2C1 and I2C2 supported"); 
+    jsExceptionHere(JSET_ERROR,"Only I2C1 and I2C2 supported"); 
     return;
   }
   esp_err_t ret;
@@ -153,8 +153,8 @@ void jshI2CRead(IOEventFlags device,
   }
   int i2c_master_port = getI2cFromDevice(device);
   if (i2c_master_port == -1) {
-  jsError("Only I2C1 and I2C2 supported"); 
-  return;
+    jsExceptionHere(JSET_ERROR,"Only I2C1 and I2C2 supported"); 
+    return;
   }  
   esp_err_t ret;
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();

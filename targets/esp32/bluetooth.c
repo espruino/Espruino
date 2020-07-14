@@ -41,7 +41,10 @@ void jsble_init(){
 	esp_err_t ret;
 	if(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)){
 		ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
-		if(ret) {jsWarn("mem release failed:%x\n",ret); return;}
+		if(ret) {
+			jsExceptionHere(JSET_ERROR,"mem release failed:%x\n",ret);
+			return;
+		}
 	
 		if(initController()) return;
 		if(initBluedroid()) return;
@@ -51,7 +54,7 @@ void jsble_init(){
 	}
 	else{
 		ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT); 
-		jsWarn("Bluetooth is disabled per ESP32.enableBLE(false)\n");		
+		jsWarn("Bluetooth is disabled per ESP32.enableBLE(false)\n");
 	}
 }
 /** Completely deinitialise the BLE stack */
@@ -96,7 +99,9 @@ uint32_t jsble_advertising_start(){
 void jsble_advertising_stop(){
 	esp_err_t status;
 	status = bluetooth_gap_startAdvertizing(false);
-	if(status) jsWarn("error in stop advertising:0X%x\n",status);
+	if(status){
+	   jsExceptionHere(JSET_ERROR,"error in stop advertising:0X%x",status);
+	}
 }
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection(){
@@ -130,7 +135,9 @@ bool jsble_check_error(uint32_t err_code){
 }
 /// Scanning for advertisign packets
 uint32_t jsble_set_scanning(bool enabled, bool activeScan){
-  if (activeScan) jsWarn("active scan not implemented\n");
+  if (activeScan) {
+  	jsWarn("active scan not implemented\n");
+  }
 	bluetooth_gap_setScan(enabled);
 	return 0;
 }
