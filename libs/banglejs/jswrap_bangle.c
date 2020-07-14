@@ -1536,20 +1536,25 @@ void jswrap_banglejs_init() {
     bool drawInfo = false;
     JsVar *img = jsfReadFile(jsfNameFromString(".splash"),0,0);
     int w,h;
+    JsVar *imgopts = 0;
     if (!jsvIsString(img) || !jsvGetStringLength(img)) {
       jsvUnLock(img);
       drawInfo = true;
       img = jswrap_banglejs_getLogo();
       w = 222;
       h = 104;
+#if LCD_WIDTH < 222
+      w /=2;
+      imgopts = jsvNewObject();
+      jsvObjectSetChildAndUnLock(imgopts, "scale", jsvNewFromFloat(0.5));
+#endif
     } else {
       w = (int)(unsigned char)jsvGetCharInString(img, 0);
       h = (int)(unsigned char)jsvGetCharInString(img, 1);
     }
     graphicsSetVar(&gfx);
     int y=(LCD_HEIGHT-h)/2;
-    jsvUnLock(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,0));
-    jsvUnLock(img);
+    jsvUnLock3(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,imgopts),img,imgopts);
     if (drawInfo) {
       y += h-28;
       char addrStr[20];
@@ -1985,6 +1990,19 @@ bool jswrap_banglejs_idle() {
     jsiStatus |= JSIS_TODO_FLASH_LOAD;
   jsvUnLock(bangle);
   bangleTasks = JSBT_NONE;
+#ifdef LCD_CONTROLLER_LPM013M126
+  // Automatically flip!
+  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
+  JsGraphics gfx;
+  if (graphics && graphicsGetFromVar(&gfx, graphics)) {
+    if (gfx.data.modMaxX >= gfx.data.modMinX) {
+      lcdMemLCD_flip(&gfx);
+      graphicsSetVar(&gfx);
+    }
+  }
+  jsvUnLock(graphics);
+#endif
+
   return false;
 }
 
