@@ -869,6 +869,20 @@ size_t jsuGetFreeStack() {
   const uint32_t max_stack = 1000000; // give it 1 megabyte of stack
   if (count>max_stack) return 0;
   return max_stack - count;
+#elif defined(ESP32)
+  char ptr; // this is on the stack
+
+  //RTOS task stacks work the opposite way to what you may expect.
+  //Early entries are in higher memory locations.
+  //Later entries are in lower memory locations.
+
+  
+  uint32_t stackPos   = (uint32_t)&ptr;
+  uint32_t stackStart = (uint32_t)espruino_stackHighPtr - ESP_STACK_SIZE;
+
+  if (stackPos < stackStart) return 0; // should never happen, but just in case of overflow!
+  
+  return stackPos - stackStart;
 #else
   // stack depth seems pretty platform-specific :( Default to a value that disables it
   return 1000000; // no stack depth check on this platform

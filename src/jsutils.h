@@ -530,4 +530,8 @@ void srand(unsigned int seed);
 /** get the amount of free stack we have, in bytes */
 size_t jsuGetFreeStack();
 
+#ifdef ESP32
+  void *espruino_stackHighPtr;  //Used by jsuGetFreeStack
+#endif
+
 #endif /* JSUTILS_H_ */
