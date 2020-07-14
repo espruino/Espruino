@@ -148,3 +148,4 @@ LDFLAGS+= -L$(ESP_APP_TEMPLATE_PATH)/build/components/bt/bluedroid/api \
 -L$(ESP_APP_TEMPLATE_PATH)/build/components/bt/bluedroid/bta 
 endif
 
+FLASH_BAUD          ?= 921600 # The flash baud rate

@@ -3266,23 +3266,26 @@ void jsvArrayAddUnique(JsVar *arr, JsVar *v) {
 JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
   JsVar *str = jsvNewFromEmptyString();
   if (!str) return 0; // out of memory
+  assert(!filler || jsvIsString(filler));
 
   JsvIterator it;
   jsvIteratorNew(&it, arr, JSIF_EVERY_ARRAY_ELEMENT);
+  JsvStringIterator itdst;
+  jsvStringIteratorNew(&itdst, str, 0);
   bool first = true;
   while (!jspIsInterrupted() && jsvIteratorHasElement(&it)) {
     JsVar *key = jsvIteratorGetKey(&it);
     if (jsvIsInt(key)) {
       // add the filler
       if (filler && !first)
-        jsvAppendStringVarComplete(str, filler);
+        jsvStringIteratorAppendString(&itdst, filler, 0);
       first = false;
       // add the value
       JsVar *value = jsvIteratorGetValue(&it);
       if (value && !jsvIsNull(value)) {
         JsVar *valueStr = jsvAsString(value);
         if (valueStr) { // could be out of memory
-          jsvAppendStringVarComplete(str, valueStr);
+          jsvStringIteratorAppendString(&itdst, valueStr, 0);
           jsvUnLock(valueStr);
         }
       }
@@ -3292,6 +3295,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
     jsvIteratorNext(&it);
   }
   jsvIteratorFree(&it);
+  jsvStringIteratorFree(&itdst);
   return str;
 }
 

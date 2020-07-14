@@ -1084,7 +1084,7 @@ void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
     "name" : "setPollInterval",
     "generate" : "jswrap_banglejs_setPollInterval",
     "params" : [
-      ["interval","float","Polling interval in milliseconds"]
+      ["interval","float","Polling interval in milliseconds (Default is 80ms - 12.5Hz to match accelerometer)"]
     ],
     "ifdef" : "BANGLEJS"
 }
@@ -2136,22 +2136,32 @@ void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
     "name" : "accelRd",
     "generate" : "jswrap_banglejs_accelRd",
     "params" : [
-      ["reg","int",""]
+      ["reg","int",""],
+      ["cnt","int","If specified, `accelRd` returns and array of the given length (max 128). If not (or 0) it returns a number"]
     ],
-    "return" : ["int",""],
+    "return" : ["JsVar",""],
     "ifdef" : "BANGLEJS"
 }
 Reads a register from the KX023 Accelerometer
+
+**Note:** On Espruino 2v06 and before this function only returns a number (`cnt` is ignored).
 */
-int jswrap_banglejs_accelRd(JsVarInt reg) {
+JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt) {
 #ifndef EMSCRIPTEN
-  unsigned char buf[1];
+  if (cnt<0) cnt=0;
+  unsigned char buf[128];
+  if (cnt>sizeof(buf)) cnt=sizeof(buf);
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
   jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
-  jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cRead(ACCEL_I2C, ACCEL_ADDR, cnt, buf, true);
   i2cBusy = false;
-  return buf[0];
+  if (cnt) {
+    JsVar *ab = jsvNewArrayBufferWithData(cnt, buf);
+    JsVar *d = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, ab,0,0);
+    jsvUnLock(ab);
+    return d;
+  } else return jsvNewFromInteger(buf[0]);
 #else
   return 0;
 #endif

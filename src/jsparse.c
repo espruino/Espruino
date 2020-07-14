@@ -1444,9 +1444,7 @@ NO_INLINE JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a) {
 
   bool expressionOnly = lex->tk!='{';
   jspeFunctionDefinitionInternal(funcVar, expressionOnly);
-  if (execInfo.thisVar) {
-    jsvObjectSetChild(funcVar, JSPARSE_FUNCTION_THIS_NAME, execInfo.thisVar);
-  }
+  jsvObjectSetChild(funcVar, JSPARSE_FUNCTION_THIS_NAME, execInfo.thisVar);
   return funcVar;
 }
 
@@ -1878,8 +1876,14 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
               char nameBuf[JSLEX_MAX_TOKEN_LENGTH];
               if (jsvGetString(av, nameBuf, sizeof(nameBuf)) < sizeof(nameBuf))
                 varFound = jswBinarySearch(syms, bv, nameBuf);
+              bool found = varFound!=0;
               jsvUnLock2(a, varFound);
-              a = jsvNewFromBool(varFound!=0);
+              if (!found && jsvIsArrayBuffer(bv)) {
+                JsVarFloat f = jsvGetFloat(av); // if not a number this will be NaN, f==floor(f) fails
+                if (f==floor(f) && f>=0 && f<jsvGetArrayBufferLength(bv))
+                  found = true;
+              }
+              a = jsvNewFromBool(found);
             } else { // not built-in, just assume we can't do it
               jsExceptionHere(JSET_ERROR, "Cannot use 'in' operator to search a %t", bv);
               jsvUnLock(a);

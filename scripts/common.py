@@ -421,6 +421,8 @@ def get_ifdef_description(d):
   if d=="USE_FLASHFS": return "devices with filesystem in Flash support enabled (ESP32 only)"
   if d=="USE_TERMINAL": return "devices with VT100 terminal emulation enabled (Pixl.js only)"
   if d=="USE_TELNET": return "devices with Telnet enabled (Linux, ESP8266 and ESP32)"
+  if d=="USE_WIZNET": return "builds with support for WIZnet Ethernet modules built in"
+  if d=="USE_NFC": return "NFC (Puck.js, Pixl.js, MDBT42Q)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 

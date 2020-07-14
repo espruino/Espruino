@@ -18,8 +18,8 @@
 const uint8_t vfFirstChar = 33;
 const uint8_t vfLastChar = 255;
 #define VF_CHAR_WIDTH 13
-#define VF_SCALE 12
-#define VF_OFFSET_Y (-3)
+#define VF_SCALE 16
+#define VF_OFFSET_Y (-2)
 #define VF_CHAR_SPACING 1
 static const uint8_t vfPolyVerts[] IN_FLASH_MEMORY = {
   169,171,197,195,
