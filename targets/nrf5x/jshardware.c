@@ -572,8 +572,11 @@ void jshResetPeripherals() {
 #endif
   spiFlashLastAddress = 0;
   jshDelayMicroseconds(100);
-  // disable lock bits
   unsigned char buf[2];
+  // wake up
+  buf[0] = 0xab; // wake up from deep sleep
+  spiFlashWriteCS(buf,1);
+  // disable lock bits
   // wait for write enable
   int timeout = 1000;
   while (timeout-- && !(spiFlashStatus()&2)) {
