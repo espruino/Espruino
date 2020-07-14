@@ -37,7 +37,7 @@ info = {
 #     'TENSORFLOW'  
    ],
    'makefile' : [
-     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
+#     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
@@ -67,8 +67,8 @@ chip = {
   'flash' : 1024,
   'speed' : 64,
   'usart' : 2,
-  'spi' : 3,
-  'i2c' : 2,
+  'spi' : 1,
+  'i2c' : 1,
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
@@ -84,7 +84,7 @@ devices = {
   'LED1' : { 'pin' : 'D8' }, # Backlight
   'LCD' : {
             'width' : 176, 'height' : 176, 
-            'bpp' : 4, # FIXME: bpp 3 and handle the packing
+            'bpp' : 3,
             'controller' : 'LPM013M126', # LPM013M126C
             'pin_cs' : 'D5',
             'pin_disp' : 'D7',

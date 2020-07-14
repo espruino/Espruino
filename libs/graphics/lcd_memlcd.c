@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Graphics Backend for drawing to SPI displays
+ * Graphics Backend for drawing to LPM013M126 displays
  * ----------------------------------------------------------------------------
  */
 
@@ -28,6 +28,12 @@ unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/];
 // ======================================================================
 
 unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
+#if LCD_BPP==3
+  int bitaddr = 2*8 + (x*3) + (y*LCD_STRIDE*8);
+  int bit = bitaddr&7;
+  uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]); // get in MSB format
+  return ((b<<bit) & 0xE000) >> 13;
+#endif
 #if LCD_BPP==4
   int addr = 2 + (x>>1) + (y*LCD_STRIDE);
   unsigned char b = lcdBuffer[addr];
@@ -37,6 +43,13 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 
 
 void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
+#if LCD_BPP==3
+  int bitaddr = 2*8 + (x*3) + (y*LCD_STRIDE*8);
+  int bit = bitaddr&7;
+  uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]);
+  b = (b & (~(0xE000>>bit))) | ((col&7)<<(13-bit));
+  *(uint16_t*)&lcdBuffer[bitaddr>>3] = __builtin_bswap16(b);
+#endif
 #if LCD_BPP==4
   int addr = 2 + (x>>1) + (y*LCD_STRIDE);
   if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (col&0x0F);
@@ -48,9 +61,9 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
   //if (gfx->data.modMinY > gfx->data.modMaxY) return; // nothing to do!
   // TODO: modified lines only?
   jshPinSetValue(LCD_SPI_CS, 1);
-  jshDelayMicroseconds(10000);
+  //jshDelayMicroseconds(10000);
   jshSPISendMany(LCD_SPI, lcdBuffer, NULL, sizeof(lcdBuffer), NULL);
-  jshDelayMicroseconds(10000);
+  //jshDelayMicroseconds(10000);
   jshPinSetValue(LCD_SPI_CS, 0);
   // Reset modified-ness
   gfx->data.modMaxX = -32768;
@@ -64,13 +77,16 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   gfx->data.width = LCD_WIDTH;
   gfx->data.height = LCD_HEIGHT;
   gfx->data.bpp = LCD_BPP;
-
+  memset(lcdBuffer,0,sizeof(lcdBuffer));
   for (int y=0;y<LCD_HEIGHT;y++) {
+#if LCD_BPP==3
+    lcdBuffer[(y*LCD_STRIDE)  ]=0b10000000;
+#endif
+#if LCD_BPP==4
     lcdBuffer[(y*LCD_STRIDE)  ]=0b10010000;
+#endif
     lcdBuffer[(y*LCD_STRIDE)+1]=y;
   }
-  lcdBuffer[LCD_HEIGHT*LCD_STRIDE] = 0;
-  lcdBuffer[LCD_HEIGHT*LCD_STRIDE+1] = 0;
 
   jshPinOutput(LCD_SPI_CS,0);
   jshPinOutput(LCD_SPI_DISP,1);
