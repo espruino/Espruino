@@ -34,7 +34,7 @@ JsVar *jswrap_banglejs_getAccel();
 
 JsVar *jswrap_banglejs_dbg();
 void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data);
-int jswrap_banglejs_accelRd(JsVarInt reg);
+JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt);
 void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data);
 void jswrap_banglejs_ioWr(JsVarInt mask, bool on);
 JsVar *jswrap_banglejs_project(JsVar *latlong);
