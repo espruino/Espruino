@@ -38,6 +38,7 @@ info = {
    'makefile' : [
      'DEFINES+=-DESP_PLATFORM -DESP32=1',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
+     'DEFINES+=-DUSE_FONT_6X8',
      'ESP32_FLASH_MAX=1572864'
    ]
  }
