@@ -176,10 +176,8 @@ int jshSPISend(
 }
 
 /** Send data in tx through the given SPI device and return the response in
- * rx (if supplied). Returns true on success. if callback is nonzero this call
- * will be async */
- //CALLBACK NOT SUPPORTED RIGHT NOW
- //But will do async if one is provided and so you need to do jshSPIWait before next transmit
+ * rx (if supplied). Returns true on success.
+ */
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
     if (!jshIsDeviceInitialised(device)) return false;
     if (count==1) {
@@ -195,14 +193,14 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
     spi_trans.tx_buffer=tx;
     spi_trans.rx_buffer=rx;
 	spi_Sending = true;
-	//if (callback) spi_Callback = callback;
     ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, portMAX_DELAY);
 	if (ret != ESP_OK) {
 	  spi_Sending = false;
       jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", ret);
       return false;
     }
-	if (!callback) jshSPIWait(device);
+	jshSPIWait(device);
+	if(callback)callback();
   return true;
 }
 
