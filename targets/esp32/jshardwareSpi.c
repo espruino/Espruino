@@ -81,6 +81,10 @@ Test with ILI9341 works, but could be faster.
 Espruino supports sendig byte by byte, no mass sending is supported.
 */
   
+  
+volatile spi_transaction_t spi_trans;
+volatile bool spi_Sending = false;
+
 /**
  * Initialize the hardware SPI device.
  * On the ESP32, hardware SPI is implemented via a set of default pins defined
@@ -92,7 +96,6 @@ void jshSPISetup(
     IOEventFlags device, //!< The identity of the SPI device being initialized.
     JshSPIInfo *inf      //!< Flags for the SPI device.
 ) {
-
   int channelPnt = getSPIChannelPnt(device);
   Pin sck, miso, mosi;
   if(SPIChannels[channelPnt].HOST == HSPI_HOST){
@@ -124,8 +127,8 @@ void jshSPISetup(
 		.flags=flags
     };
   if(SPIChannels[channelPnt].spi){
-	  SPIChannelReset(channelPnt);
-	  jsDebug(DBG_INFO, "spi was already in use, removed old assignment");
+	SPIChannelReset(channelPnt);
+	jsWarn("spi was already in use, removed old assignment");
   }
   esp_err_t ret=spi_bus_initialize(SPIChannels[channelPnt].HOST, &buscfg, 1);
   assert(ret==ESP_OK);
@@ -147,20 +150,25 @@ int jshSPISend(
   //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
   int retData = (int)SPIChannels[channelPnt].g_lastSPIRead;
   if (data >=0) {
+	jshSPIWait(device);
     // Send 8 bits of data taken from "data" over the selected spi and store the returned
     // data for subsequent retrieval.
     //spiTransferBits(_spi[which_spi], (uint32_t)data, &g_lastSPIRead, 8);
-    esp_err_t ret;
-    spi_transaction_t t;
-    memset(&t, 0, sizeof(t));       //Zero out the transaction
-    t.length=8;                     //Command is 8 bits
-    t.tx_buffer=&data;               //The data is the cmd itself
+	esp_err_t ret;
+    memset(&spi_trans, 0, sizeof(spi_trans));       //Zero out the transaction
+    spi_trans.length=8;                     //Command is 8 bits
+    spi_trans.tx_buffer=&data;               //The data is the cmd itself
 	// https://esp-idf.readthedocs.io/en/latest/api/spi_master.html#type-definitions
 	// should this be a switch or always read?
-	  t.flags=SPI_TRANS_USE_RXDATA;
-    ret=spi_device_transmit(SPIChannels[channelPnt].spi, &t);  //Transmit - blocks until result - need to change this?
-	  assert(ret == ESP_OK);
-	  SPIChannels[channelPnt].g_lastSPIRead=t.rx_data[0];
+	spi_Sending = true;
+    ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, portMAX_DELAY);  //Transmit - blocks until result - need to change this?
+	if (ret != ESP_OK) {
+	  spi_Sending = false;
+      jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", ret);
+      return false;
+    }
+	SPIChannels[channelPnt].g_lastSPIRead=spi_trans.rx_data[0];
+	jshSPIWait(device);
   } else {
     SPIChannels[channelPnt].g_lastSPIRead = (uint32_t)-1;
   }
@@ -170,18 +178,31 @@ int jshSPISend(
 /** Send data in tx through the given SPI device and return the response in
  * rx (if supplied). Returns true on success. if callback is nonzero this call
  * will be async */
+ //CALLBACK NOT SUPPORTED RIGHT NOW
+ //But will do async if one is provided and so you need to do jshSPIWait before next transmit
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
-  if (!jshIsDeviceInitialised(device)) return false;
-  // CALLBACK and RX not supported for now
+    if (!jshIsDeviceInitialised(device)) return false;
+    if (count==1) {
+      int r = jshSPISend(device, tx?*tx:-1);
+      if (rx) *rx = r;
+      return true;
+    }
+	jshSPIWait(device);
     int channelPnt = getSPIChannelPnt(device);
 	esp_err_t ret;
-    spi_transaction_t t;
-    memset(&t, 0, sizeof(t));
-    t.length=count*8;
-    t.tx_buffer=tx;
-    ret=spi_device_transmit(SPIChannels[channelPnt].spi, &t);
-	assert(ret == ESP_OK); 
-	
+    memset(&spi_trans, 0, sizeof(spi_trans));
+    spi_trans.length=count*8;
+    spi_trans.tx_buffer=tx;
+    spi_trans.rx_buffer=rx;
+	spi_Sending = true;
+	//if (callback) spi_Callback = callback;
+    ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, portMAX_DELAY);
+	if (ret != ESP_OK) {
+	  spi_Sending = false;
+      jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", ret);
+      return false;
+    }
+	if (!callback) jshSPIWait(device);
   return true;
 }
 
@@ -214,13 +235,16 @@ void jshSPISet16(
 /**
  * Wait until SPI send is finished.
  */
-void jshSPIWait(
-    IOEventFlags device //!< Unknown
-) {
+void jshSPIWait(IOEventFlags device) {
   int channelPnt = getSPIChannelPnt(device);
-  //spiWaitReady(_spi[which_spi]);
-  //jsError(">> jshSPIWait: Not implemented");  
-}
+  if(!spi_Sending)return;
+  esp_err_t ret;
+  ret=spi_device_get_trans_result(SPIChannels[channelPnt].spi, &spi_trans, portMAX_DELAY);
+  if (ret != ESP_OK) {
+    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", ret);
+  }
+  spi_Sending = false;
+  }
 
 
 /** Set whether to use the receive interrupt or not */
