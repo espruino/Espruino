@@ -89,7 +89,7 @@ devices = {
             'controller' : 'st7789_8bit', # 8 bit parallel mode
             'pin_dc' : 'D8',
             'pin_cs' : 'D10',
-#            'pin_rst' : '', # IO expander P7
+#            'pin_rst' : '', # IO expander P6
             'pin_sck' : 'D9',
             'pin_d0' : 'D0',
             'pin_d1' : 'D1',
@@ -99,7 +99,7 @@ devices = {
             'pin_d5' : 'D5',
             'pin_d6' : 'D6',
             'pin_d7' : 'D7',
-#            'pin_bl' : '', # IO expander P6
+#            'pin_bl' : '', # IO expander P5
           },
   'GPS' : {
             'device' : 'M8130-KT',
@@ -112,7 +112,7 @@ devices = {
             'pin_voltage' : 'D30'
           },
   'HEARTRATE' : {
-           # 'pin_led' : '', on IO expander
+           # 'pin_led' : '', IO expander P7
             'pin_analog' : 'D29'
           },
   'ACCEL' : {
