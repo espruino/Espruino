@@ -167,6 +167,24 @@ int jshSPISend(
   return (int)retData;
 }
 
+/** Send data in tx through the given SPI device and return the response in
+ * rx (if supplied). Returns true on success. if callback is nonzero this call
+ * will be async */
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+  if (!jshIsDeviceInitialised(device)) return false;
+  // CALLBACK and RX not supported for now
+    int channelPnt = getSPIChannelPnt(device);
+	esp_err_t ret;
+    spi_transaction_t t;
+    memset(&t, 0, sizeof(t));
+    t.length=count*8;
+    t.tx_buffer=tx;
+    ret=spi_device_transmit(SPIChannels[channelPnt].spi, &t);
+	assert(ret == ESP_OK); 
+	
+  return true;
+}
+
 /**
  * Send 16 bit data through the given SPI device.
  */
