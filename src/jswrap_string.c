@@ -265,7 +265,7 @@ JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
       jsvArrayPushAndUnLock(array, matchStr);
       // search again
       jsvUnLock(match);
-      jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(last));
+      jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(last + (len?0:1)));
       match = jswrap_regexp_exec(subStr, parent);
     }
     jsvUnLock(match);
@@ -318,6 +318,10 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
       replace = jsvAsString(newSubStr);
     jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
     bool global = jswrap_regexp_hasFlag(subStr,'g');
+    JsVar *newStr = jsvNewFromEmptyString();
+    JsvStringIterator dst;
+    jsvStringIteratorNew(&dst, newStr, 0);
+    JsVarInt lastIndex = 0;
     JsVar *match;
     match = jswrap_regexp_exec(subStr, str);
     while (match && !jsvIsNull(match) && !jspIsInterrupted()) {
@@ -326,10 +330,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
       JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
       JsVarInt len = (JsVarInt)jsvGetStringLength(matchStr);
       // do the replacement
-      JsVar *newStr = jsvNewFromStringVar(str, 0, (size_t)idx);
-      JsvStringIterator dst;
-      jsvStringIteratorNew(&dst, newStr, 0);
-      jsvStringIteratorGotoEnd(&dst);
+      jsvStringIteratorAppendString(&dst, str, lastIndex, (idx-lastIndex)); // the string before the match
       if (jsvIsFunction(replace)) {
         unsigned int argCount = 0;
         JsVar *args[13];
@@ -341,7 +342,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
         args[argCount++] = jsvObjectGetChild(match,"input",0);
         JsVar *result = jsvAsStringAndUnLock(jspeFunctionCall(replace, 0, 0, false, (JsVarInt)argCount, args));
         jsvUnLockMany(argCount, args);
-        jsvStringIteratorAppendString(&dst, result, 0);
+        jsvStringIteratorAppendString(&dst, result, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
         jsvUnLock(result);
       } else {
         JsvStringIterator src;
@@ -354,7 +355,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
             if (ch>'0' && ch<='9')
               group = jsvGetArrayItem(match, ch-'0');
             if (group) {
-              jsvStringIteratorAppendString(&dst, group, 0);
+              jsvStringIteratorAppendString(&dst, group, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
               jsvUnLock(group);
             } else {
               jsvStringIteratorAppend(&dst, '$');
@@ -366,25 +367,23 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
         }
         jsvStringIteratorFree(&src);
       }
-      JsVarInt lastIndex = 1+(JsVarInt)jsvStringIteratorGetIndex(&dst);
-      jsvStringIteratorAppendString(&dst, str, (size_t)(idx+len));
-      jsvStringIteratorFree(&dst);
-      jsvUnLock2(str,matchStr);
-      str = newStr;
+      lastIndex = idx+len;
+      jsvUnLock(matchStr);
       // search again if global
       jsvUnLock(match);
       match = 0;
       if (global) {
-        jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(lastIndex));
+        jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(lastIndex + (len?0:1)));
         match = jswrap_regexp_exec(subStr, str);
       }
     }
-    jsvUnLock(match);
-    jsvUnLock(replace);
+    jsvStringIteratorAppendString(&dst, str, lastIndex, JSVAPPENDSTRINGVAR_MAXLENGTH); // append the rest of the string
+    jsvStringIteratorFree(&dst);
+    jsvUnLock3(match,replace,str);
     // reset lastIndex if global
     if (global)
       jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
-    return str;
+    return newStr;
   }
 #endif
 

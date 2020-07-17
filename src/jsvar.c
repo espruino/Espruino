@@ -3278,14 +3278,14 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
     if (jsvIsInt(key)) {
       // add the filler
       if (filler && !first)
-        jsvStringIteratorAppendString(&itdst, filler, 0);
+        jsvStringIteratorAppendString(&itdst, filler, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
       first = false;
       // add the value
       JsVar *value = jsvIteratorGetValue(&it);
       if (value && !jsvIsNull(value)) {
         JsVar *valueStr = jsvAsString(value);
         if (valueStr) { // could be out of memory
-          jsvStringIteratorAppendString(&itdst, valueStr, 0);
+          jsvStringIteratorAppendString(&itdst, valueStr, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
           jsvUnLock(valueStr);
         }
       }

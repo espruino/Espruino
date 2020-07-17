@@ -163,7 +163,7 @@ void jsvStringIteratorGoto(JsvStringIterator *it, JsVar *str, size_t startIdx);
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch);
 
 /// Append an entire JsVar string TO THE END of a string iterator
-void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str, size_t startIdx);
+void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str, size_t startIdx, int maxLength);
 
 static ALWAYS_INLINE void jsvStringIteratorFree(JsvStringIterator *it) {
   jsvUnLock(it->var);

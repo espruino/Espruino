@@ -30,6 +30,8 @@
 
 #include "jsvar.h"
 
+extern void *espruino_stackHighPtr;  //Name spaced because this has to be a global variable.
+                                     //Used in jsuGetFreeStack().
 
 extern void initialise_wifi(void);
 
@@ -43,6 +45,14 @@ static void uartTask(void *data) {
 
 static void espruinoTask(void *data) {
   int heapVars;
+
+#ifdef ESP32
+    espruino_stackHighPtr = &heapVars;  //Ignore the name, 'heapVars' is on the stack!
+                          //I didn't use another variable becaue this function never ends so
+                          //all variables declared here consume stack space that is never freed. 
+#endif
+
+
   PWMInit();
   RMTInit();
   SPIChannelsInit();
@@ -101,10 +111,10 @@ int app_main(void)
 #ifdef RTOS
   queues_init();
   tasks_init();
-  task_init(espruinoTask,"EspruinoTask",25000,5,0);
+  task_init(espruinoTask,"EspruinoTask", ESP_STACK_SIZE, 5, 0);
   task_init(uartTask,"ConsoleTask",2200,20,0);
 #else
-  xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", 25000, NULL, 5, NULL, 0);
+  xTaskCreatePinnedToCore(&espruinoTask, "espruinoTask", ESP_STACK_SIZE, NULL, 5, NULL, 0);
   xTaskCreatePinnedToCore(&uartTask,"uartTask",2200,NULL,20,NULL,0);
 #endif
   return 0;

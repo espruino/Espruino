@@ -1404,7 +1404,7 @@ JsVar *jspeTemplateLiteral() {
             JsVar *result = jspEvaluateExpressionVar(expr);
             jsvUnLock(expr);
             result = jsvAsStringAndUnLock(result);
-            jsvStringIteratorAppendString(&dit, result, 0);
+            jsvStringIteratorAppendString(&dit, result, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
             jsvUnLock(result);
           } else {
             jsvStringIteratorAppend(&dit, '$');
