@@ -858,6 +858,9 @@ void touchHandler(bool state, IOEventFlags flags) {
   lastBtn2 = btn2;
   lastBtn3 = btn3;
 
+
+
+
   lastGesture = gesture;
 }
 #endif
@@ -2727,7 +2730,6 @@ Draws to the screen and returns immediately.
 E.showMessage("These are\nLots of\nLines","My Title")
 ```
 */
-
 /*JSON{
     "type" : "staticmethod",
     "class" : "E",
@@ -2772,6 +2774,19 @@ The second `options` argument can contain:
   buttons : {"Ok":true,"Cancel":false} // list of button text & return value
 }
 ```
+*/
+
+/*JSON{
+    "type" : "staticmethod", "class" : "E", "name" : "showMenu", "patch":true,
+    "generate_js" : "libs/js/banglejs/E_showMenu_SMAQ3.js",
+    "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
+}
+*/
+/*JSON{
+    "type" : "staticmethod", "class" : "E", "name" : "showPrompt", "patch":true,
+    "generate_js" : "libs/js/banglejs/E_showPrompt_SMAQ3.js",
+    "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
+}
 */
 
 /*JSON{
@@ -2882,4 +2897,3 @@ This is a fake pin, used only for injecting 'fake' button press events from the 
   "return" : ["pin",""]
 }
 */
-

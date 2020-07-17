@@ -50,6 +50,7 @@ info = {
      'SOURCES += libs/misc/nmea.c',
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
      'DEFINES += -DBANGLEJS',
+     'DEFINES += -D\'IS_PIN_A_BUTTON(PIN)=((PIN==17)||(PIN==40)||(PIN==41))\'',
 
  #    'DEFINES += -DBOARD_PCA10056',
   #   'DEFINES += -DNRF_USB=1 -DUSB',
@@ -107,7 +108,7 @@ devices = {
           },
   'BAT' : {
             'pin_charging' : 'D23', # active low
-#            'pin_voltage' : ''
+            'pin_voltage' : 'D3'
           },
   'HEARTRATE' : {
             'device' : 'VC31', 'addr' : 0x33,            

@@ -500,8 +500,9 @@ codeOut("")
 codeOut("// definition to avoid compilation when Pin/platform config is not defined")
 codeOut("#define IS_PIN_USED_INTERNALLY(PIN) (("+")||(".join(usedPinChecks)+"))")
 codeOut("#define IS_PIN_A_LED(PIN) (("+")||(".join(ledChecks)+"))")
+codeOut("#ifndef IS_PIN_A_BUTTON")
 codeOut("#define IS_PIN_A_BUTTON(PIN) (("+")||(".join(btnChecks)+"))")
-
+codeOut("#endif")
 
 codeOut("""
 #endif // _PLATFORM_CONFIG_H
