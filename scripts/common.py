@@ -242,7 +242,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
 
     if board:
       for device in pinutils.SIMPLE_DEVICES:
-        if device in board.devices:
+        if device in board.devices and not "novariable" in board.devices[device]:
           jsondatas.append({
             "type" : "variable",
             "name" : device,
@@ -260,7 +260,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           "filename" : "BOARD.py",
           "include" : "platform_config.h"
         })
-      if "BTN1" in board.devices:
+      if "BTN1" in board.devices and not "novariable" in board.devices["BTN1"]:
         jsondatas.append({
           "type" : "variable",
           "name" : "BTN",

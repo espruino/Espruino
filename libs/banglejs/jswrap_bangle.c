@@ -315,6 +315,8 @@ typedef struct {
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
 
 #ifdef SMAQ3
+IOEventFlags fakeBTN1Flags, fakeBTN2Flags, fakeBTN3Flags;
+
 JshI2CInfo i2cAccel;
 JshI2CInfo i2cMag;
 JshI2CInfo i2cTouch;
@@ -821,10 +823,11 @@ void touchHandler(bool state, IOEventFlags flags) {
   // 0: Gesture type
   // 1: touch pts (0 or 1)
   // 2: Event?
-  // 3: X
+  // 3: X (0..160)
   // 4: ?
-  // 5: Y
+  // 5: Y (0..160)
   int x = buf[3], y = buf[5];
+  bool touch = buf[1];
   int gesture = buf[0];
   static int lastGesture = 0;
   if (gesture!=lastGesture) {
@@ -844,6 +847,17 @@ void touchHandler(bool state, IOEventFlags flags) {
       break;
     }
   }
+  bool btn1 = touch && x>150 && y<50;
+  bool btn2 = touch && x>150 && y>50 && y<110;
+  bool btn3 = touch && x>150 && y>110;
+  static bool lastBtn1=0,lastBtn2=0,lastBtn3;
+  if (btn1!=lastBtn1) jshPushIOEvent(fakeBTN1Flags | (btn1?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
+  if (btn2!=lastBtn2) jshPushIOEvent(fakeBTN2Flags | (btn2?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
+  if (btn3!=lastBtn3) jshPushIOEvent(fakeBTN3Flags | (btn3?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
+  lastBtn1 = btn1;
+  lastBtn2 = btn2;
+  lastBtn3 = btn3;
+
   lastGesture = gesture;
 }
 #endif
@@ -1691,16 +1705,25 @@ void jswrap_banglejs_init() {
   jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
 #endif
 
+
+
+#ifdef SMAQ3
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
-#ifdef BTN2_PININDEX
+  fakeBTN2Flags = jshPinWatch(BTN1_PININDEX, true);
+  if (fakeBTN2Flags!=EV_NONE) jshSetEventCallback(fakeBTN2Flags, btn1Handler);
+  jshSetPinShouldStayWatched(FAKE_BTN1_PIN,true);
+  fakeBTN1Flags = jshPinWatch(FAKE_BTN1_PIN, true);
+  jshSetPinShouldStayWatched(FAKE_BTN3_PIN,true);
+  fakeBTN3Flags = jshPinWatch(FAKE_BTN3_PIN, true);
+  // TODO: FAKE_BTN1/2_PIN->input_pullup/disconnect input?
+#else
+  jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   jshSetPinShouldStayWatched(BTN2_PININDEX,true);
   jshSetPinShouldStayWatched(BTN3_PININDEX,true);
   jshSetPinShouldStayWatched(BTN4_PININDEX,true);
   jshSetPinShouldStayWatched(BTN5_PININDEX,true);
-#endif
   channel = jshPinWatch(BTN1_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn1Handler);
-#ifdef BTN2_PININDEX
   channel = jshPinWatch(BTN2_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn2Handler);
   channel = jshPinWatch(BTN3_PININDEX, true);
@@ -1758,13 +1781,19 @@ void jswrap_banglejs_kill() {
   jsvUnLock(promiseBuzz);
   promiseBuzz = 0;
 
+#ifdef SMAQ3
   jshSetPinShouldStayWatched(BTN1_PININDEX,false);
-  jshPinWatch(BTN1_PININDEX, false);
-#ifdef BTN2_PININDEX
+  jshSetPinShouldStayWatched(FAKE_BTN1_PIN,false);
+  jshSetPinShouldStayWatched(FAKE_BTN3_PIN,false);
+  jshPinWatch(FAKE_BTN1_PIN, false);
+  jshPinWatch(FAKE_BTN3_PIN, false);
+#else
+  jshSetPinShouldStayWatched(BTN1_PININDEX,false);
   jshSetPinShouldStayWatched(BTN2_PININDEX,false);
   jshSetPinShouldStayWatched(BTN3_PININDEX,false);
   jshSetPinShouldStayWatched(BTN4_PININDEX,false);
   jshSetPinShouldStayWatched(BTN5_PININDEX,false);
+  jshPinWatch(BTN1_PININDEX, false);
   jshPinWatch(BTN2_PININDEX, false);
   jshPinWatch(BTN3_PININDEX, false);
   jshPinWatch(BTN4_PININDEX, false);
@@ -2817,3 +2846,40 @@ On Bangle.js there are no LEDs, so to remain compatible with example code that m
 expect an LED, this is an object that behaves like a pin, but which just displays
 a circle on the display
 */
+
+
+/*JSON{
+  "type" : "variable",
+  "name" : "BTN1",
+  "generate_full" : "FAKE_BTN1_PIN",
+  "ifdef" : "SMAQ3",
+  "return" : ["pin",""]
+}
+This is a fake pin, used only for injecting 'fake' button press events from the touchscreen
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "BTN2",
+  "generate_full" : "BTN1_PININDEX",
+  "ifdef" : "SMAQ3",
+  "return" : ["pin",""]
+}
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "BTN3",
+  "generate_full" : "FAKE_BTN3_PIN",
+  "ifdef" : "SMAQ3",
+  "return" : ["pin",""]
+}
+This is a fake pin, used only for injecting 'fake' button press events from the touchscreen
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "BTN",
+  "generate_full" : "BTN1_PININDEX",
+  "ifdef" : "SMAQ3",
+  "return" : ["pin",""]
+}
+*/
+

@@ -47,3 +47,8 @@ void jswrap_banglejs_init();
 void jswrap_banglejs_kill();
 bool jswrap_banglejs_idle();
 bool jswrap_banglejs_gps_character(char ch);
+
+#ifdef SMAQ3
+#define FAKE_BTN1_PIN 40
+#define FAKE_BTN3_PIN 41
+#endif

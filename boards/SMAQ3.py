@@ -80,7 +80,7 @@ chip = {
 };
 
 devices = {
-  'BTN1' : { 'pin' : 'D17', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'BTN1' : { 'pin' : 'D17', 'pinstate' : 'IN_PULLDOWN', 'novariable':True }, # Pin negated in software. Do not automatically generate BTN/BTN1 vars for this
   'LED1' : { 'pin' : 'D8' }, # Backlight
   'LCD' : {
             'width' : 176, 'height' : 176, 
