@@ -1265,8 +1265,13 @@ int jswrap_banglejs_isCharging() {
 JsVarInt jswrap_banglejs_getBattery() {
 #ifdef BAT_PIN_VOLTAGE
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
+#ifdef SMAQ3
+  const JsVarFloat vlo = 0.22;   // guess
+  const JsVarFloat vhi = 0.296;  // guess
+#else
   const JsVarFloat vlo = 0.51;
   const JsVarFloat vhi = 0.62;
+#endif
   int pc = (v-vlo)*100/(vhi-vlo);
   if (pc>100) pc=100;
   if (pc<0) pc=0;
