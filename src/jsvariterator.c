@@ -381,11 +381,12 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
   jsvSetCharactersInVar(it->var, it->charsInVar);
 }
 
-void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str, size_t startIdx) {
+void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str, size_t startIdx, int maxLength) {
   JsvStringIterator sit;
   jsvStringIteratorNew(&sit, str, startIdx);
-  while (jsvStringIteratorHasChar(&sit)) {
+  while (jsvStringIteratorHasChar(&sit) && maxLength>0) {
     jsvStringIteratorAppend(it, jsvStringIteratorGetCharAndNext(&sit));
+    maxLength--;
   }
   jsvStringIteratorFree(&sit);
 }
