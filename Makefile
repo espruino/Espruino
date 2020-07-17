@@ -501,6 +501,7 @@ endif
    targets/esp32/jswrap_esp32.c
  INCLUDE += -I$(ROOT)/libs/network/esp32
  SOURCES +=  libs/network/esp32/network_esp32.c \
+  targets/esp32/jshardwareESP32.c \
   targets/esp32/jshardwareI2c.c \
   targets/esp32/jshardwareSpi.c \
   targets/esp32/jshardwareUart.c \
