@@ -130,22 +130,22 @@ JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options) {
 }
 
 void disp_spi_transfer_addrwin(int x1, int y1, int x2, int y2) {
-  uint32_t wd;
+  unsigned char wd[4];
   x1 += _colstart;
   y1 += _rowstart;
   x2 += _colstart;
   y2 += _rowstart;
   spi_cmd(0x2A);
-  wd = (uint32_t)(x1>>8);
-  wd |= (uint32_t)(x1&0xff) << 8;
-  wd |= (uint32_t)(x2>>8) << 16;
-  wd |= (uint32_t)(x2&0xff) << 24;
+  wd[0] = x1>>8;
+  wd[1] = x1 & 0xFF;
+  wd[2] = x2>>8;
+  wd[3] = x2 & 0xFF;
   spi_data((uint8_t *)&wd, 4);
   spi_cmd(0x2B);
-  wd = (uint32_t)(y1>>8);
-  wd |= (uint32_t)(y1&0xff) << 8;
-  wd |= (uint32_t)(y2>>8) << 16;
-  wd |= (uint32_t)(y2&0xff) << 24;
+  wd[0] = y1>>8;
+  wd[1] = y1 & 0xFF;
+  wd[2] = y2>>8;
+  wd[3] = y2 & 0xFF;
   spi_data((uint8_t *)&wd, 4);
   spi_cmd(0x2C);
 }
