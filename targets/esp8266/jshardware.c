@@ -938,6 +938,35 @@ void jshSPISet16(
   //os_printf("< jshSPISet16\n");
 }
 
+/** Send data in tx through the given SPI device and return the response in
+ * rx (if supplied). Returns true on success */
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+
+  size_t txPtr = 0;
+  size_t rxPtr = 0;
+  // transmit the data
+  while (txPtr<count && !jspIsInterrupted()) {
+    int data = jshSPISend(device, tx[txPtr++]);
+    if (data>=0) {
+      if (rx) rx[rxPtr++] = (char)data;
+    }
+  }
+  // clear the rx buffer
+  if (rx) {
+    while (rxPtr<count && !jspIsInterrupted()) {
+      int data = jshSPISend(device, -1);
+      rx[rxPtr++] = (char)data;
+    }
+  } else {
+    // wait for it to finish so we can clear the buffer
+    jshSPIWait(device);
+  }
+  
+  // call the callback
+  if (callback) callback();
+  
+  return true;
+}
 
 /**
  * Wait until SPI send is finished.
