@@ -67,7 +67,7 @@ JsVarInt jswrap_pixljs_getBattery() {
 /*JSON{
   "type" : "variable",
   "name" : "SDA",
-  "generate_full" : "4",
+  "generate_full" : "JSH_PORTA_OFFSET + 4",
   "ifdef" : "PIXLJS",
   "return" : ["pin",""]
 }
@@ -76,7 +76,7 @@ The pin marked SDA on the Arduino pin footprint. This is connected directly to p
 /*JSON{
   "type" : "variable",
   "name" : "SCL",
-  "generate_full" : "5",
+  "generate_full" : "JSH_PORTA_OFFSET + 5",
   "ifdef" : "PIXLJS",
   "return" : ["pin",""]
 }

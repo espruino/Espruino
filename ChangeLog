@@ -17,6 +17,7 @@
             Allow 'in' to be used with typed arrays (fix #1534)
             Fix global regex issues when match may be 0 chars (fix #1888) (fix #1889)
             Improve String.replace performance using iterator rather than repeated copy
+            Pixl.js: SDA/SCL constants should point to A4/A5, not D4/D5
             ESP32 & ESP8266: add jshSPISendMany()
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
