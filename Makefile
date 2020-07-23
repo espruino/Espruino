@@ -404,7 +404,10 @@ ifdef USE_LCD_MEMLCD
   SOURCES += libs/graphics/lcd_memlcd.c
 endif
 
-
+ifdef USE_LCD_SPI_UNBUF
+  DEFINES += -DUSE_LCD_SPI_UNBUF
+  WRAPPERSOURCES += libs/graphics/lcd_spi_unbuf.c
+endif
 
 ifeq ($(USE_TERMINAL),1)
   DEFINES += -DUSE_TERMINAL

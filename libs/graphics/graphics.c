@@ -37,6 +37,9 @@
 #ifdef USE_LCD_MEMLCD
 #include "lcd_memlcd.h"
 #endif
+#ifdef USE_LCD_SPI_UNBUF
+#include "lcd_spi_unbuf.h"
+#endif
 
 // ----------------------------------------------------------------------------------------------
 
@@ -169,6 +172,10 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
 #ifdef USE_LCD_MEMLCD
     } else if (gfx->data.type == JSGRAPHICSTYPE_MEMLCD) {
       lcdMemLCD_setCallbacks(gfx);
+#endif
+#ifdef USE_LCD_SPI_UNBUF
+    } else if (gfx->data.type == JSGRAPHICSTYPE_LCD_SPI_UNBUF) {
+      lcd_spi_unbuf_setCallbacks(gfx);
 #endif
     } else {
       jsExceptionHere(JSET_INTERNALERROR, "Unknown graphics type\n");
