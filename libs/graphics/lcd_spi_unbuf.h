@@ -26,7 +26,7 @@ typedef struct {
   int height;               //!< Display pixel size Y
   int colstart;             //!< Aditional starting address some pixels dont begin at 0
   int rowstart;             //!< Aditional starting address some pixels dont begin at 0
-} PACKED_FLAGS JshLCD_SPI_UNBUFInfo;
+} JshLCD_SPI_UNBUFInfo;
 
 JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options);
 void lcd_spi_unbuf_setCallbacks(JsGraphics *gfx);
