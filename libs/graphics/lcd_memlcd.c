@@ -58,11 +58,15 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 }
 
 void lcdMemLCD_flip(JsGraphics *gfx) {
-  //if (gfx->data.modMinY > gfx->data.modMaxY) return; // nothing to do!
-  // TODO: modified lines only?
+  if (gfx->data.modMinY > gfx->data.modMaxY) return; // nothing to do!
+
+  int y1 = gfx->data.modMinY;
+  int y2 = gfx->data.modMaxY;
+  int l = 1+y2-y1;
+
   jshPinSetValue(LCD_SPI_CS, 1);
   //jshDelayMicroseconds(10000);
-  jshSPISendMany(LCD_SPI, lcdBuffer, NULL, sizeof(lcdBuffer), NULL);
+  jshSPISendMany(LCD_SPI, &lcdBuffer[LCD_STRIDE*y1], NULL, (l*LCD_STRIDE)+2, NULL);
   //jshDelayMicroseconds(10000);
   jshPinSetValue(LCD_SPI_CS, 0);
   // Reset modified-ness
@@ -95,7 +99,7 @@ void lcdMemLCD_init(JsGraphics *gfx) {
 
   JshSPIInfo inf;
   jshSPIInitInfo(&inf);
-  inf.baudRate = 4000000;
+  inf.baudRate = 8000000;
   inf.pinMOSI = LCD_SPI_MOSI;
   inf.pinSCK = LCD_SPI_SCK;
   jshSPISetup(LCD_SPI, &inf);
