@@ -89,7 +89,7 @@ void lcdMemLCD_init(JsGraphics *gfx) {
 #if LCD_BPP==4
     lcdBuffer[(y*LCD_STRIDE)  ]=0b10010000;
 #endif
-    lcdBuffer[(y*LCD_STRIDE)+1]=y;
+    lcdBuffer[(y*LCD_STRIDE)+1]=y+1;
   }
 
   jshPinOutput(LCD_SPI_CS,0);
