@@ -605,8 +605,7 @@ JsVar *jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 Draw a filled circle in the Foreground Color
 */
  JsVar *jswrap_graphics_fillCircle(JsVar *parent, int x, int y, int rad) {
-   jswrap_graphics_fillEllipse(parent, x-rad, y-rad, x+rad, y+rad);
-   return jsvLockAgain(parent);
+   return jswrap_graphics_fillEllipse(parent, x-rad, y-rad, x+rad, y+rad);
  }
 
 /*JSON{
@@ -626,8 +625,7 @@ Draw a filled circle in the Foreground Color
 Draw an unfilled circle 1px wide in the Foreground Color
 */
 JsVar *jswrap_graphics_drawCircle(JsVar *parent, int x, int y, int rad) {
-  jswrap_graphics_drawEllipse(parent, x-rad, y-rad, x+rad, y+rad);
-  return jsvLockAgain(parent);
+  return jswrap_graphics_drawEllipse(parent, x-rad, y-rad, x+rad, y+rad);
 }
 
 /*JSON{
