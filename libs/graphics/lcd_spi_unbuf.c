@@ -65,7 +65,7 @@ bool jsspiPopulateOptionsInfo( JshLCD_SPI_UNBUFInfo *inf, JsVar *options){
   };  
   
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {	
-    if ( inf->pinDC == PIN_UNDEFINED  || inf->pinCS == PIN_UNDEFINED ) {
+    if ( inf->pinDC == PIN_UNDEFINED ) {
       return false;
     }
     return true;
