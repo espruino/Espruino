@@ -126,7 +126,7 @@ void jshPrintBanner() {
       flash_maps[map], (long unsigned int) (fid & 0xff), (long unsigned int)chip);
   jsiConsolePrintf(
     "Flash map %s, manuf 0x%x chip 0x%x\n", 
-    (( map == 2  && flash_kb[map] == 1024  && strcmp(PC_BOARD_ID, "ESP8266_4MB") == 0) ? flash_maps_alt[map] : flash_maps[map]),
+    (( map == 2  && flash_kb[map] == 1024  && ESP_COMBINED_SIZE >= 1024) ? flash_maps_alt[map] : flash_maps[map]),
     fid & 0xff, chip);
   if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4 && map != 6)) {  
     jsiConsolePrint("WARNING: *** Your flash chip does not match your flash map ***\n");
