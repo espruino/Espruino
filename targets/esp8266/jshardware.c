@@ -1422,7 +1422,7 @@ JsVar *jshFlashGetFree() {
     return jsFreeFlash;
   }
   // there is no flash for running on 1MB flash without FOTA 
-  if ( map == 2  && espFlashKB == 1024  && strcmp(PC_BOARD_ID, "ESP8266_4MB") == 0)
+  if ( map == 2  && espFlashKB == 1024  && ESP_COMBINED_SIZE >= 1024 )
      return jsFreeFlash;
    
   // need 1MB of flash to have more space...
