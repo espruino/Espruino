@@ -82,13 +82,13 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   gfx->data.height = LCD_HEIGHT;
   gfx->data.bpp = LCD_BPP;
   memset(lcdBuffer,0,sizeof(lcdBuffer));
-  for (int y=0;y<LCD_HEIGHT;y++) {
 #if LCD_BPP==3
-    lcdBuffer[(y*LCD_STRIDE)  ]=0b10000000;
+  lcdBuffer[0]=0b10000000;
 #endif
 #if LCD_BPP==4
-    lcdBuffer[(y*LCD_STRIDE)  ]=0b10010000;
+  lcdBuffer[0]=0b10010000;
 #endif
+  for (int y=0;y<LCD_HEIGHT;y++) {
     lcdBuffer[(y*LCD_STRIDE)+1]=y+1;
   }
 
