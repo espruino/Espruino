@@ -19,6 +19,7 @@
             Improve String.replace performance using iterator rather than repeated copy
             Pixl.js: SDA/SCL constants should point to A4/A5, not D4/D5
             Fix Graphics.fill/drawCircle lock leak
+            Fix issue when do..while loop condition has side effects
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions
