@@ -18,4 +18,4 @@ void lcdMemLCD_setCallbacks(JsGraphics *gfx);
 
 void lcdMemLCD_flip(JsGraphics *gfx); // run this to flip the offscreen buffer to the screen
 void lcdMemLCD_cmd(int cmd, int dataLen, const char *data); // to send specific commands to the display
-
+void lcdMemLCD_extcomin(); // toggle EXTCOMIN to avoid burn-in

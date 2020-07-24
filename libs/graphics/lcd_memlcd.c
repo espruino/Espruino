@@ -93,16 +93,25 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   }
 
   jshPinOutput(LCD_SPI_CS,0);
-  jshPinOutput(LCD_SPI_DISP,1);
   jshPinOutput(LCD_SPI_SCK,0);
   jshPinOutput(LCD_SPI_MOSI,1);
+  jshPinOutput(LCD_DISP,1);
+  jshPinOutput(LCD_EXTCOMIN,1);
 
   JshSPIInfo inf;
   jshSPIInitInfo(&inf);
-  inf.baudRate = 8000000;
+  inf.baudRate = 4000000; // it seems 8000000 is too fast to be reliable
   inf.pinMOSI = LCD_SPI_MOSI;
   inf.pinSCK = LCD_SPI_SCK;
   jshSPISetup(LCD_SPI, &inf);
+}
+
+
+// toggle EXTCOMIN to avoid burn-in
+void lcdMemLCD_extcomin() {
+  static bool extcomin = false;
+  extcomin = !extcomin;
+  jshPinSetValue(LCD_EXTCOMIN, extcomin);
 }
 
 void lcdMemLCD_setCallbacks(JsGraphics *gfx) {

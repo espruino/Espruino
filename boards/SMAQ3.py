@@ -88,6 +88,7 @@ devices = {
             'bpp' : 3,
             'controller' : 'LPM013M126', # LPM013M126C
             'pin_cs' : 'D5',
+            'pin_extcomin' : 'D6',
             'pin_disp' : 'D7',
             'pin_sck' : 'D26',
             'pin_mosi' : 'D27',

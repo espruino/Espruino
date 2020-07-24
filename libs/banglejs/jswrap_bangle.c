@@ -905,7 +905,7 @@ When brightness using `Bange.setLCDBrightness`.
 */
 void jswrap_banglejs_setLCDPower(bool isOn) {
 #ifdef LCD_CONTROLLER_LPM013M126
-  jshPinSetState(LCD_SPI_DISP, isOn);
+  jshPinSetState(LCD_DISP, isOn);
 #else
   if (isOn) { // wake
     lcdST7789_cmd(0x11, 0, NULL); // SLPOUT
@@ -2095,6 +2095,8 @@ bool jswrap_banglejs_idle() {
     }
   }
   jsvUnLock(graphics);
+  // toggle EXTCOMIN to avoid burn-in
+  lcdMemLCD_extcomin();
 #endif
 
   return false;
