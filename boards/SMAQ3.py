@@ -113,9 +113,10 @@ devices = {
           },
   'HEARTRATE' : {
             'device' : 'VC31', 'addr' : 0x33,            
-            'pin_sda' : 'D32', 
-            'pin_scl' : 'D24', 
-            'pin_en' : 'D21'
+            'pin_sda' : 'D24', 
+            'pin_scl' : 'D32', 
+            'pin_en' : 'D21', 
+            'pin_int' : 'D22'
           },
   'ACCEL' : {
             'device' : 'KX023', 'addr' : 0x1e,
