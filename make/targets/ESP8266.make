@@ -33,6 +33,10 @@ endif
 
 ifdef FLASH_1MB
 ESP_COMBINED_SIZE = 1024
+ifdef NO_FOTA
+LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.2048.ld
+LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.2048.ld
+endif
 endif
 
 LD_RENAME    = --rename-section .text=.irom.text --rename-section .literal=.irom.literal
