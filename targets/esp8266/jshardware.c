@@ -937,7 +937,43 @@ void jshSPISet16(
   //os_printf("> jshSPISet16 - device=%d, is16=%d\n", device, is16);
   //os_printf("< jshSPISet16\n");
 }
+// ToDo: implement spi_transaction64 to handle 16 x 4 byte which is the max possible buffer to send in one call
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
+  size_t txPtr = 0;
+  size_t rxPtr = 0;
 
+  // transmit the data
+  if (!count%4) { 
+    while (txPtr<count && !jspIsInterrupted()) {
+      int data = spi_transaction(HSPI, 32, *(int*)&tx[txPtr]);
+      txPtr +=4;
+      if (data>=0) {
+        if (rx) rx[rxPtr++] = (char)data;
+      }
+    }
+  } else { 
+    while (txPtr<count && !jspIsInterrupted()) {
+      int data = spi_transaction(HSPI, 8, tx[txPtr++]);
+      if (data>=0) {
+         if (rx) rx[rxPtr++] = (char)data;
+      }
+    }
+  }
+
+  // clear the rx buffer
+  if (rx) {
+    while (rxPtr<count && !jspIsInterrupted()) {
+      int data = jshSPISend(device, -1);
+      rx[rxPtr++] = (char)data;
+    }
+  } else {
+    jshSPIWait(device);
+  }
+
+  // call the callback
+  if (callback) callback();
+  return true;
+}
 
 /**
  * Wait until SPI send is finished.
