@@ -15,6 +15,7 @@
 /.vagrant/*
 /boards/*.html
 /boards/*.json
+/boards/*_CUSTOM.py
 /zipcontents
 /tmp
 /benchmark/*.txt
