@@ -95,6 +95,7 @@ These contain:
 ### info
 
 * Board name and link (for the HTML file)
+* `boardname` - override board name visible at runtime in process.env.BOARD, otherwise the filename of py file is used
 * Default console device, pins, and baus rate (the device Espruino goes to when USB is unplugged or not built in)
 * `variables` - The number of variables to use (this depends on the amount of RAM available). Less than 1023 vars use 12 bytes per var, more uses 16 bytes. You have to adjust this such that there is spare room for the stack and static variables (on Espruino boards this means leaving around 16kB free, but on smaller boards it can be reduced a lot)
 * `bootloader` - whether the binary image needs compiling with a special USB-VCP bootloader (Espruino boards only)
