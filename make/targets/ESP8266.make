@@ -21,18 +21,19 @@ USER2_ELF    = espruino_esp8266_user2.elf
 PARTIAL      = espruino_esp8266_partial.o
 
 ifdef FLASH_4MB
-ESP_COMBINED_SIZE = 4096
 ESP_FLASH_ADDONS  = $(ET_DEFAULTS) $(INIT_DATA) $(ET_BLANK) $(BLANK)
 LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.2048.ld
 LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.2048.ld
 else
-ESP_COMBINED_SIZE = 512
 LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
 endif
 
 ifdef FLASH_1MB
-ESP_COMBINED_SIZE = 1024
+ifdef NO_FOTA
+LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.2048.ld
+LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.2048.ld
+endif
 endif
 
 LD_RENAME    = --rename-section .text=.irom.text --rename-section .literal=.irom.literal

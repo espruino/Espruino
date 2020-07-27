@@ -16,6 +16,7 @@ endif
 ET_FM               ?= qio      # Valid values are keep, qio, qout, dio, dout
 
 ifdef FLASH_4MB
+ESP_COMBINED_SIZE   = 4096
 ESP_FLASH_MAX       ?= 831488   # max bin file: 940KB
 ESP_FLASH_SIZE      ?= 6        # 6->4MB (1024KB+1024KB)       
 ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
@@ -44,6 +45,7 @@ ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0xFE000  # where to flash blank.bin
 ET_DEFAULTS         ?= 0xFC000  # where to flash esp_init_data_default.bin to default SDK settings
 else # 512KB
+ESP_COMBINED_SIZE   = 512
 ESP_FLASH_MAX       ?= 479232   # max bin file: 468KB
 ESP_FLASH_SIZE      ?= 0        # 0->512KB
 ESP_FLASH_MODE      ?= 0        # 0->QIO
@@ -56,6 +58,7 @@ endif
 
 
 ifdef FLASH_1MB
+ESP_COMBINED_SIZE   = 1024
 ESP_FLASH_MAX       = 831488    # max bin file: 812KB
 ESP_FLASH_SIZE      = 2         # 2->1MB (1024)
 ESP_FLASH_MODE      = 0         # 0->QIO, 2->DIO
@@ -71,6 +74,7 @@ endif
 
 FLASH_BAUD          ?= 115200 # The flash baud rate
 
+DEFINES += -DESP_COMBINED_SIZE=$(ESP_COMBINED_SIZE)
 
 # move os_printf strings into flash to save RAM space
 DEFINES += -DUSE_OPTIMIZE_PRINTF
