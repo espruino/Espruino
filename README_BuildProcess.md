@@ -87,11 +87,15 @@ The board definition files are `.py` files that reside in the [`boards`](boards)
 * To create the HTML page on each individual board (referenced from [the top of the Reference](http://www.espruino.com/Reference)) using [`scripts/build_board_docs.py`](scripts/build_board_docs.py)
 * Converted to JSON (along with the pin declarations) and put [on espruino.com](http://www.espruino.com/json/PICO_R1_3.json) to help with autocomplete in the Web IDE (and auto-population of dropdowns in the Blockly editor). Converted by [`scripts/build_board_json.py`](scripts/build_board_json.py)
 
+To create a custom board based on one of the distributed board file copy e.g. `PICO_P1_3.py` to `PICO_P1_3_CUSTOM.py` and change the content of `PICO_P1_3_CUSTOM.py` as required for the planed project. The new board file name is than
+`PICO_P1_3_CUSTOM`. All created boards with the suffix `_CUSTOM.py` are ignored by git.
+
 These contain:
 
 ### info
 
 * Board name and link (for the HTML file)
+* `boardname` - override board name visible at runtime in process.env.BOARD, otherwise the filename of py file is used
 * Default console device, pins, and baus rate (the device Espruino goes to when USB is unplugged or not built in)
 * `variables` - The number of variables to use (this depends on the amount of RAM available). Less than 1023 vars use 12 bytes per var, more uses 16 bytes. You have to adjust this such that there is spare room for the stack and static variables (on Espruino boards this means leaving around 16kB free, but on smaller boards it can be reduced a lot)
 * `bootloader` - whether the binary image needs compiling with a special USB-VCP bootloader (Espruino boards only)

@@ -2255,9 +2255,6 @@ NO_INLINE JsVar *jspeStatementSwitch() {
 }
 
 NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
-#ifdef JSPARSE_MAX_LOOP_ITERATIONS
-  int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
-#endif
   JsVar *cond;
   bool loopCond = true; // true for do...while loops
   bool hasHadBreak = false;
@@ -2308,15 +2305,18 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   JslCharPos whileBodyEnd;
   jslCharPosNew(&whileBodyEnd, lex->sourceVar, lex->tokenStart);
 
+  int loopCount = 0;
   while (!hasHadBreak && loopCond
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
-      && loopCount-->0
+      && loopCount<JSPARSE_MAX_LOOP_ITERATIONS
 #endif
   ) {
-    jslSeekToP(&whileCondStart);
-    cond = jspeAssignmentExpression();
-    loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
-    jsvUnLock(cond);
+    if (isWhile || loopCount) { // don't check the start condition a second time if we're in a do..while loop
+      jslSeekToP(&whileCondStart);
+      cond = jspeAssignmentExpression();
+      loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
+      jsvUnLock(cond);
+    }
     if (loopCond) {
       jslSeekToP(&whileBodyStart);
       execInfo.execute |= EXEC_IN_LOOP;
@@ -2330,13 +2330,14 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
         hasHadBreak = true;
       }
     }
+    loopCount++;
   }
   jslSeekToP(&whileBodyEnd);
   jslCharPosFree(&whileCondStart);
   jslCharPosFree(&whileBodyStart);
   jslCharPosFree(&whileBodyEnd);
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
-  if (loopCount<=0) {
+  if (loopCount > JSPARSE_MAX_LOOP_ITERATIONS) {
     jsExceptionHere(JSET_ERROR, "WHILE Loop exceeded the maximum number of iterations (" STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS) ")");
   }
 #endif
