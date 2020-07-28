@@ -27,15 +27,16 @@ This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #include "esp32_neopixel.h"
 
 #define RMTCHANNEL	0
-#define MAX_PULSES	32
+#define MAX_PULSES	64
+#define BUFFERS         8
 #define DIVIDER		4 /* Above 4, timings start to deviate*/
 #define DURATION	12.5 /* minimum time of a single RMT duration */
 
-#define PULSE_T0H	(  350 / (DURATION * DIVIDER));
-#define PULSE_T1H	(  900 / (DURATION * DIVIDER));
-#define PULSE_T0L	(  900 / (DURATION * DIVIDER));
-#define PULSE_T1L	(  350 / (DURATION * DIVIDER));
-#define PULSE_TRS	(50000 / (DURATION * DIVIDER));
+#define PULSE_T0H	(  350 / (DURATION * DIVIDER))
+#define PULSE_T1H	(  900 / (DURATION * DIVIDER))
+#define PULSE_T0L	(  900 / (DURATION * DIVIDER))
+#define PULSE_T1L	(  350 / (DURATION * DIVIDER))
+#define PULSE_TRS	(50000 / (DURATION * DIVIDER))
 
 typedef union {
   struct {
@@ -48,16 +49,19 @@ typedef union {
 } rmtPulsePair;
 
 static uint8_t *neopixel_buffer = NULL;
-static unsigned int neopixel_pos, neopixel_len, neopixel_half;
+static unsigned int neopixel_pos, neopixel_len, neopixel_bufpart;
 static xSemaphoreHandle neopixel_sem = NULL;
 static intr_handle_t rmt_intr_handle = NULL;
-static rmtPulsePair neopixel_bits[2];
+static rmtPulsePair neopixel_bits[2]= {
+  {{PULSE_T0H,1,PULSE_T0L,0}},
+  {{PULSE_T1H,1,PULSE_T1L,0}}
+};
 
 void neopixel_initRMTChannel(int rmtChannel){
   RMT.apb_conf.fifo_mask = 1;  //enable memory access, instead of FIFO mode.
   RMT.apb_conf.mem_tx_wrap_en = 1; //wrap around when hitting end of buffer
   RMT.conf_ch[rmtChannel].conf0.div_cnt = DIVIDER;
-  RMT.conf_ch[rmtChannel].conf0.mem_size = 1;
+  RMT.conf_ch[rmtChannel].conf0.mem_size = BUFFERS;//1;
   RMT.conf_ch[rmtChannel].conf0.carrier_en = 0;
   RMT.conf_ch[rmtChannel].conf0.carrier_out_lv = 1;
   RMT.conf_ch[rmtChannel].conf0.mem_pd = 0;
@@ -73,14 +77,15 @@ void neopixel_initRMTChannel(int rmtChannel){
 }
 
 void neopixel_copy(){
-  unsigned int i, j, offset, len, bit;
-  offset = neopixel_half * MAX_PULSES;
-  neopixel_half = !neopixel_half;
+  unsigned int i, j, offset, offset2, len, bit;
+  offset = neopixel_bufpart * MAX_PULSES;
+  neopixel_bufpart = (neopixel_bufpart+1)%BUFFERS;
+  offset2 = neopixel_bufpart * MAX_PULSES;
   len = neopixel_len - neopixel_pos;
   if (len > (MAX_PULSES / 8)) len = (MAX_PULSES / 8);
   if (!len) {
-    for (i = 0; i < MAX_PULSES; i++)
-      RMTMEM.chan[RMTCHANNEL].data32[i + offset].val = 0;
+//    for (i = 0; i < MAX_PULSES; i++)
+//      RMTMEM.chan[RMTCHANNEL].data32[i + offset].val = 0;
     return;
   }
   for (i = 0; i < len; i++) {
@@ -92,6 +97,7 @@ void neopixel_copy(){
       RMTMEM.chan[RMTCHANNEL].data32[7 + i * 8 + offset].duration1 = PULSE_TRS;
   }
   for (i *= 8; i < MAX_PULSES; i++) RMTMEM.chan[RMTCHANNEL].data32[i + offset].val = 0;
+  RMTMEM.chan[RMTCHANNEL].data32[offset2].val = 0;
   neopixel_pos += len;
   return;
 }
@@ -121,34 +127,28 @@ void neopixel_init(int gpioNum){
   RMT.tx_lim_ch[RMTCHANNEL].limit = MAX_PULSES;
   RMT.int_ena.ch0_tx_thr_event = 1;
   RMT.int_ena.ch0_tx_end = 1;
-
-  neopixel_bits[0].level0 = 1;
-  neopixel_bits[0].level1 = 0;
-  neopixel_bits[0].duration0 = PULSE_T0H;
-  neopixel_bits[0].duration1 = PULSE_T0L;
-  neopixel_bits[1].level0 = 1;
-  neopixel_bits[1].level1 = 0;
-  neopixel_bits[1].duration0 = PULSE_T1H;
-  neopixel_bits[1].duration1 = PULSE_T1L;
-
-  esp_intr_alloc(ETS_RMT_INTR_SOURCE, 0, neopixel_handleInterrupt, NULL, &rmt_intr_handle);
+  esp_intr_alloc(ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_INTRDISABLED, neopixel_handleInterrupt, NULL, &rmt_intr_handle);
 
   return;
 }
 
 bool esp32_neopixelWrite(Pin pin,unsigned char *rgbData, size_t rgbSize){
-  neopixel_init(pin); 
-  neopixel_buffer = rgbData;
-  neopixel_len = rgbSize;
-  neopixel_pos = 0;
-  neopixel_half = 0;
-  neopixel_copy();
-  if (neopixel_pos < neopixel_len) neopixel_copy();
-  neopixel_sem = xSemaphoreCreateBinary();
-  RMT.conf_ch[RMTCHANNEL].conf1.mem_rd_rst = 1;
-  RMT.conf_ch[RMTCHANNEL].conf1.tx_start = 1;
-  xSemaphoreTake(neopixel_sem, portMAX_DELAY);
-  vSemaphoreDelete(neopixel_sem);
-  neopixel_sem = NULL;
+  if(rgbSize) {
+    neopixel_init(pin); 
+    neopixel_buffer = rgbData;
+    neopixel_len = rgbSize;
+    neopixel_pos = 0;
+    neopixel_bufpart = 0;
+    neopixel_sem = xSemaphoreCreateBinary();
+    for(int i=0;i<BUFFERS-1;i++) if (neopixel_pos < neopixel_len) neopixel_copy();
+    RMT.conf_ch[RMTCHANNEL].conf1.mem_rd_rst = 1;
+    esp_intr_enable(rmt_intr_handle);
+    RMT.conf_ch[RMTCHANNEL].conf1.tx_start = 1;
+    xSemaphoreTake(neopixel_sem, portMAX_DELAY);
+    vSemaphoreDelete(neopixel_sem);
+    esp_intr_free(rmt_intr_handle);
+    neopixel_sem = NULL;
+    rmt_intr_handle=0;
+  }
   return true;
 }
