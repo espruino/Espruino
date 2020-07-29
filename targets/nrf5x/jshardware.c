@@ -397,9 +397,10 @@ static unsigned char spiFlashStatus() {
   return buf;
 }
 static void spiFlashWakeUp() {
-  unsigned char buf[4];
+  /*unsigned char buf[4];
+  int tries = 10;
   do {
-    buf[0] = 0xab;
+    buf[0] = 0xAB;
     buf[1] = 0x00; // dummy
     buf[2] = 0x00; // dummy
     buf[3] = 0x00; // dummy
@@ -407,9 +408,16 @@ static void spiFlashWakeUp() {
     spiFlashWrite(buf,4);
     spiFlashRead(buf,3);
     nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
-  } while (buf[0] != 0x15 && buf[1] != 0x15 && buf[2] != 0x15);
+  } while (buf[0] != 0x15 && buf[1] != 0x15 && buf[2] != 0x15 && tries--);*/
+  unsigned char buf[1];
+  buf[0] = 0xAB;
+  spiFlashWriteCS(buf,1);
 }
 void spiFlashSleep() {
+  if (spiFlashLastAddress) {
+    nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+    spiFlashLastAddress = 0;
+  }
   unsigned char buf[1];
   buf[0] = 0xB9;
   spiFlashWriteCS(buf,1);
@@ -2097,7 +2105,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
   if (spiFlashAwake) {
     spiFlashSleep();
     spiFlashAwake = false;
-    spiFlashLastAddress = 0;
   }
 
   if (timeUntilWake < JSSYSTIME_MAX) {
