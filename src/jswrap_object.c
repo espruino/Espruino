@@ -647,7 +647,33 @@ void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (
     ["listener","JsVar","The listener to call when this event is received"]
   ]
 }
-Register an event listener for this object, for instance ```http.on('data', function(d) {...})```. See Node.js's EventEmitter.
+Register an event listener for this object, for instance `Serial1.on('data', function(d) {...})`.
+
+This is the same as Node.js's [EventEmitter](https://nodejs.org/api/events.html) but on Espruino
+the functionality is built into every object:
+
+* `Object.on`
+* `Object.emit`
+* `Object.removeListener`
+* `Object.removeAllListeners`
+
+```
+var o = {};
+function printAnswer(d) {
+  console.log("The answer is", d);
+}
+o.on('answer', x => console.log(x));
+o.on('answer', printAnswer);
+o.emit('answer', 42);
+// prints: 42
+// prints: The answer is 42
+o.removeListener('answer', printAnswer);
+o.emit('answer', 43);
+// prints: 43
+o.removeAllListeners()
+o.emit('answer', 44);
+// nothing printed
+```
  */
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
   if (!jsvHasChildren(parent)) {
@@ -708,7 +734,9 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     ["args","JsVarArray","Optional arguments"]
   ]
 }
-Call the event listeners for this object, for instance ```http.emit('data', 'Foo')```. See Node.js's EventEmitter.
+Call any event listeners that were added to this object with `Object.on`, for instance `obj.emit('data', 'Foo')`.
+
+For more information see `Object.on`
  */
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   if (!jsvHasChildren(parent)) {
@@ -767,6 +795,8 @@ function foo(d) {
 Serial1.on("data", foo);
 Serial1.removeListener("data", foo);
 ```
+
+For more information see `Object.on`
  */
 void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) {
   if (!jsvHasChildren(parent)) {
@@ -807,10 +837,19 @@ void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) 
   "name" : "removeAllListeners",
   "generate" : "jswrap_object_removeAllListeners",
   "params" : [
-    ["event","JsVar","The name of the event, for instance 'data'"]
+    ["event","JsVar","The name of the event, for instance `'data'`. If not specified *all* listeners are removed."]
   ]
 }
-Removes all listeners, or those of the specified event.
+Removes all listeners (if `event===undefined`), or those of the specified event.
+
+```
+Serial1.on("data", function(data) { ... });
+Serial1.removeAllListeners("data");
+// or
+Serial1.removeAllListeners(); // removes all listeners for all event types
+```
+
+For more information see `Object.on`
  */
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   if (!jsvHasChildren(parent)) {
