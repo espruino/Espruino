@@ -357,6 +357,8 @@ void jshUSARTUnSetup(IOEventFlags device);
 and we're in the middle of reading We'd never be at 0
 anyway because we're always expecting to have read something.  */
 uint32_t spiFlashLastAddress = 0;
+/// Is SPI flash awake?
+bool spiFlashAwake = false;
 /// Read data while sending 0
 static void spiFlashRead(unsigned char *rx, unsigned int len) {
   nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin);
@@ -393,6 +395,24 @@ static unsigned char spiFlashStatus() {
   spiFlashRead(&buf, 1);
   nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
   return buf;
+}
+static void spiFlashWakeUp() {
+  unsigned char buf[4];
+  do {
+    buf[0] = 0xab;
+    buf[1] = 0x00; // dummy
+    buf[2] = 0x00; // dummy
+    buf[3] = 0x00; // dummy
+    nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+    spiFlashWrite(buf,4);
+    spiFlashRead(buf,3);
+    nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  } while (buf[0] != 0x15 && buf[1] != 0x15 && buf[2] != 0x15);
+}
+void spiFlashSleep() {
+  unsigned char buf[1];
+  buf[0] = 0xB9;
+  spiFlashWriteCS(buf,1);
 }
 #endif
 
@@ -572,12 +592,12 @@ void jshResetPeripherals() {
 #endif
   spiFlashLastAddress = 0;
   jshDelayMicroseconds(100);
-  unsigned char buf[2];
-  // wake up
-  buf[0] = 0xab; // wake up from deep sleep
-  spiFlashWriteCS(buf,1);
+  spiFlashWakeUp();
+  spiFlashAwake = true;
+
   // disable lock bits
   // wait for write enable
+  unsigned char buf[2];
   int timeout = 1000;
   while (timeout-- && !(spiFlashStatus()&2)) {
     buf[0] = 6; // write enable
@@ -1869,6 +1889,7 @@ void jshFlashErasePage(uint32_t addr) {
 #ifdef SPIFLASH_BASE
   if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
     addr &= 0xFFFFFF;
+    if (!spiFlashAwake) spiFlashWakeUp();
     // disable CS if jshFlashRead had left it set
     if (spiFlashLastAddress) {
       nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
@@ -1915,6 +1936,7 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
   if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
     addr &= 0xFFFFFF;
     //jsiConsolePrintf("SPI Read %d %d\n",addr,len);
+    if (!spiFlashAwake) spiFlashWakeUp();
     if (spiFlashLastAddress==0 || spiFlashLastAddress!=addr) {
       nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
       unsigned char b[4];
@@ -1942,6 +1964,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 #ifdef SPIFLASH_BASE
   if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
     addr &= 0xFFFFFF;
+    if (!spiFlashAwake) spiFlashWakeUp();
     // disable CS if jshFlashRead had left it set
     if (spiFlashLastAddress) {
       nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
@@ -2071,6 +2094,11 @@ bool jshSleep(JsSysTime timeUntilWake) {
     if (timeUntilWake > max) timeUntilWake = max;
   }
 
+  if (spiFlashAwake) {
+    spiFlashSleep();
+    spiFlashAwake = false;
+    spiFlashLastAddress = 0;
+  }
 
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
