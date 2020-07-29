@@ -2094,6 +2094,16 @@ bool jshSleep(JsSysTime timeUntilWake) {
   }
   jsiSetSleep(JSI_SLEEP_ASLEEP);
   while (!hadEvent) {
+    /*
+     * Clear FPU exceptions.
+     * Without this step, the FPU interrupt is marked as pending,
+     * preventing system from sleeping.
+     */
+    uint32_t fpscr = __get_FPSCR();
+    __set_FPSCR(fpscr & ~0x9Fu);
+    __DMB();
+    NVIC_ClearPendingIRQ(FPU_IRQn);
+
     sd_app_evt_wait(); // Go to sleep, wait to be woken up
     jshGetSystemTime(); // check for RTC overflows
     #if defined(NRF_USB)
