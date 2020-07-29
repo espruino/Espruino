@@ -722,7 +722,12 @@ void jshReset() {
 }
 
 void jshKill() {
-
+#ifdef SPIFLASH_BASE
+  if (spiFlashLastAddress) {
+    nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+    spiFlashLastAddress = 0;
+  }
+#endif
 }
 
 // stuff to do on idle
@@ -1355,9 +1360,14 @@ bool jshCanWatch(Pin pin) {
 
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   if (!jshIsPinValid(pin)) return EV_NONE;
+#if JSH_PORTV_COUNT>0
+  // handle virtual ports (eg. pins on an IO Expander)
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTV)
+    return EV_NONE;
+#endif
   uint32_t p = (uint32_t)pinInfo[pin].pin;
   if (shouldWatch) {
-    nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true); // FIXME: Maybe we want low accuracy? Otherwise this will
+    nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true); // FIXME: Maybe we want low accuracy? Potentially this draws more power in sleep modes?
     cls_1_config.is_watcher = true; // stop this resetting the input state
     nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler);
     nrf_drv_gpiote_in_event_enable(p, true);
@@ -2063,6 +2073,10 @@ bool jshSleep(JsSysTime timeUntilWake) {
     if (timeUntilWake > max) timeUntilWake = max;
   }
 
+  if (spiFlashLastAddress) {
+    nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+    spiFlashLastAddress = 0;
+  }
 
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
