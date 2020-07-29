@@ -2511,6 +2511,8 @@ void jswrap_banglejs_off() {
   nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
 #endif
   nrf_gpio_cfg_sense_set(BTN1_PININDEX, NRF_GPIO_PIN_SENSE_LOW);
+  extern void spiFlashSleep();
+  spiFlashSleep(); // power down SPI flash to save a few uA
   sd_power_system_off();
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
@@ -2652,6 +2654,13 @@ Widgets should redraw themselves when something changes - you'll only
 need to call drawWidgets if you decide to clear the entire screen
 with `g.clear()`.
 */
+/*JSON{
+    "type" : "staticmethod", "class" : "Bangle", "name" : "drawWidgets", "patch":true,
+    "generate_js" : "libs/js/banglejs/Bangle_drawWidgets_SMAQ3.js",
+    "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
+}
+*/
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
