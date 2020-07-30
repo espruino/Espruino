@@ -23,6 +23,7 @@
             Bangle.js: Ensure SPI flash CS is disabled when sleeping/off
             nRF5x: clear FPU interrupt before sleeping
             micro:bit: Add support for LSM303 accelerometer/magnetometer
+            micro:bit: Add delays at first boot to wait for USB UART to init and connect vis USB
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions
