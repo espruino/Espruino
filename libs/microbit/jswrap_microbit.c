@@ -17,6 +17,7 @@
 #include "jswrap_microbit.h"
 #include "jswrapper.h"
 #include "jstimer.h"
+#include "jsparse.h"
 #include "jsvariterator.h"
 
 #include "nrf_gpio.h" // just go direct
@@ -33,6 +34,9 @@ show((new Uint32Array(g.buffer))[0])
 
 uint32_t microbitLEDState = 0;
 uint8_t microbitRow = 0;
+
+// Do we have the new version with the different magnetometer?
+bool microbitLSM303;
 
 // real NRF pins 4,5,6,7,8,9,10,11,12 (column pull down)
 // real NRF pins 13,14,15 (row pull up)
@@ -58,6 +62,8 @@ static const uint8_t MB_LED_MAPPING[] = {
 
 const int MMA8652_ADDR = 0x1D;
 const int MAG3110_ADDR = 0x0E;
+const int LSM303_ACC_ADDR = 0b0011001;
+const int LSM303_MAG_ADDR = 0b0011110;
 
 // called on a timer to scan rows out
 void jswrap_microbit_display_callback() {
@@ -116,14 +122,36 @@ void jswrap_microbit_init() {
   jshI2CSetup(EV_I2C1, &inf);
 
   unsigned char d[2];
-  // Enable MMA8652 Accelerometer
-  d[0] = 0x2A; d[1] = 0x19; // CTRL_REG1, 100Hz, turn on
-  jshI2CWrite(EV_I2C1, MMA8652_ADDR, 2, d, true);
-  // Enable MAG3110 magnetometer, 80Hz
-  d[0] = 0x11; d[1] = 0x80; // CTRL_REG2, AUTO_MRST_EN
-  jshI2CWrite(EV_I2C1, MAG3110_ADDR, 2, d, true);
-  d[0] = 0x10; d[1] = 0x01; // CTRL_REG1, active mode 80 Hz ODR with OSR = 1 
-  jshI2CWrite(EV_I2C1, MAG3110_ADDR, 2, d, true);
+  d[0] = 0x07; // WHO_AM_I
+  jshI2CWrite(EV_I2C1, MAG3110_ADDR, 1, d, true);
+  jshI2CRead(EV_I2C1, MAG3110_ADDR, 1, d, true);
+  jsvUnLock(jspGetException());
+  if (d[0]==0xC4) {
+    microbitLSM303 = false;
+    // Enable MMA8652 Accelerometer
+    d[0] = 0x2A; d[1] = 0x19; // CTRL_REG1, 100Hz, turn on
+    jshI2CWrite(EV_I2C1, MMA8652_ADDR, 2, d, true);
+    // Enable MAG3110 magnetometer, 80Hz
+    d[0] = 0x11; d[1] = 0x80; // CTRL_REG2, AUTO_MRST_EN
+    jshI2CWrite(EV_I2C1, MAG3110_ADDR, 2, d, true);
+    d[0] = 0x10; d[1] = 0x01; // CTRL_REG1, active mode 80 Hz ODR with OSR = 1
+    jshI2CWrite(EV_I2C1, MAG3110_ADDR, 2, d, true);
+  } else {
+    microbitLSM303 = true;
+    // LSM303_ACC_ADDR,0x0F => 51 // WHO_AM_I
+    // Init accelerometer
+    d[0] = 0x20; d[1] = 0b00110111; // CTRL_REG1_A, 25Hz
+    jshI2CWrite(EV_I2C1, LSM303_ACC_ADDR, 2, d, true);
+    d[0] = 0x22; d[1] = 0x10; // CTRL_REG3_A
+    jshI2CWrite(EV_I2C1, LSM303_ACC_ADDR, 2, d, true);
+    d[0] = 0x23; d[1] = 0b11011000; // CTRL_REG4_A - 4g range, MSB at low address, high res
+    jshI2CWrite(EV_I2C1, LSM303_ACC_ADDR, 2, d, true);
+    // Init magnetometer
+    d[0] = 0x60; d[1] = 0x04; // CFG_REG_A_M, 20Hz
+    jshI2CWrite(EV_I2C1, LSM303_MAG_ADDR, 2, d, true);
+    d[0] = 0x62; d[1] = 0b00001001; // CFG_REG_C_M - enable data ready IRQ (not that we use this), swap block order to match MAG3110
+    jshI2CWrite(EV_I2C1, LSM303_MAG_ADDR, 2, d, true);
+  }
 }
 
 /*JSON{
@@ -237,10 +265,19 @@ void jswrap_microbit_show(JsVar *image) {
 Get the current acceleration of the micro:bit from the on-board accelerometer
 */
 JsVar *jswrap_microbit_acceleration() {
-  unsigned char d[6];
-  d[0] = 1;
-  jshI2CWrite(EV_I2C1, MMA8652_ADDR, 1, d, true);
-  jshI2CRead(EV_I2C1, MMA8652_ADDR, 7, d, true);
+  unsigned char d[7];
+  JsVarFloat range;
+  if (microbitLSM303) {
+    d[0] = 0x28 | 0x80;
+    jshI2CWrite(EV_I2C1, LSM303_ACC_ADDR, 1, d, true);
+    jshI2CRead(EV_I2C1, LSM303_ACC_ADDR, 6, &d[1], true);
+    range = 8192;
+  } else {
+    d[0] = 1;
+    jshI2CWrite(EV_I2C1, MMA8652_ADDR, 1, d, true);
+    jshI2CRead(EV_I2C1, MMA8652_ADDR, 7, d, true);
+    range = 16384;
+  }
   JsVar *xyz = jsvNewObject();
   if (xyz) {
     int x = (d[1]<<8) | d[2];
@@ -250,9 +287,9 @@ JsVar *jswrap_microbit_acceleration() {
     int z = (d[5]<<8) | d[6];
     if (z>>15) z-=65536;
   // something is very broken here - why doesn't this work?
-    jsvObjectSetChildAndUnLock(xyz, "x", jsvNewFromFloat(((JsVarFloat)x) / (JsVarFloat)16384.0));
-    jsvObjectSetChildAndUnLock(xyz, "y", jsvNewFromFloat(((JsVarFloat)y) / (JsVarFloat)16384.0));
-    jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromFloat(((JsVarFloat)z) / (JsVarFloat)16384.0));
+    jsvObjectSetChildAndUnLock(xyz, "x", jsvNewFromFloat(((JsVarFloat)x) / range));
+    jsvObjectSetChildAndUnLock(xyz, "y", jsvNewFromFloat(((JsVarFloat)y) / range));
+    jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromFloat(((JsVarFloat)z) / range));
   }
   return xyz;
 }
@@ -269,9 +306,15 @@ Get the current compass position for the micro:bit from the on-board magnetomete
 */
 JsVar *jswrap_microbit_compass() {
   unsigned char d[6];
-  d[0] = 1;
-  jshI2CWrite(EV_I2C1, MAG3110_ADDR, 1, d, true);
-  jshI2CRead(EV_I2C1, MAG3110_ADDR, 6, d, true);
+  if (microbitLSM303) {
+    d[0] = 0x68 | 0x80;
+    jshI2CWrite(EV_I2C1, LSM303_MAG_ADDR, 1, d, true);
+    jshI2CRead(EV_I2C1, LSM303_MAG_ADDR, 6, d, true);
+  } else {
+    d[0] = 1;
+    jshI2CWrite(EV_I2C1, MAG3110_ADDR, 1, d, true);
+    jshI2CRead(EV_I2C1, MAG3110_ADDR, 6, d, true);
+  }
   JsVar *xyz = jsvNewObject();
   if (xyz) {
     int x = (d[0]<<8) | d[1];
