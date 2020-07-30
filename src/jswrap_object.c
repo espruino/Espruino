@@ -658,19 +658,26 @@ the functionality is built into every object:
 * `Object.removeAllListeners`
 
 ```
-var o = {};
+var o = {}; // o can be any object...
+// call an arrow function when the 'answer' event is received
+o.on('answer', x => console.log(x));
+// call a named function when the 'answer' event is received
 function printAnswer(d) {
   console.log("The answer is", d);
 }
-o.on('answer', x => console.log(x));
 o.on('answer', printAnswer);
+// emit the 'answer' event - functions added with 'on' will be executed
 o.emit('answer', 42);
 // prints: 42
 // prints: The answer is 42
+// If you have a named function, it can be removed by name
 o.removeListener('answer', printAnswer);
+// Now 'printAnswer' is removed
 o.emit('answer', 43);
 // prints: 43
-o.removeAllListeners()
+// Or you can remove all listeners for 'answer'
+o.removeAllListeners('answer')
+// Now nothing happens
 o.emit('answer', 44);
 // nothing printed
 ```
