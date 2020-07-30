@@ -2073,10 +2073,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
     if (timeUntilWake > max) timeUntilWake = max;
   }
 
+#ifdef SPIFLASH_BASE
   if (spiFlashLastAddress) {
     nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
     spiFlashLastAddress = 0;
   }
+#endif
 
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
@@ -2094,6 +2096,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
   }
   jsiSetSleep(JSI_SLEEP_ASLEEP);
   while (!hadEvent) {
+#ifdef NRF52
     /*
      * Clear FPU exceptions.
      * Without this step, the FPU interrupt is marked as pending,
@@ -2103,6 +2106,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     __set_FPSCR(fpscr & ~0x9Fu);
     __DMB();
     NVIC_ClearPendingIRQ(FPU_IRQn);
+#endif
 
     sd_app_evt_wait(); // Go to sleep, wait to be woken up
     jshGetSystemTime(); // check for RTC overflows
