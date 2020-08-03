@@ -641,6 +641,18 @@ void jshInit() {
   jshDelayMicroseconds(10);
   jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN);
   jshDelayMicroseconds(10);
+
+#ifdef MICROBIT
+  /* We must wait ~1 second for the USB interface to initialise
+   * or it won't raise the RX pin and we won't think anything
+   * is connected. */
+  bool waitForUART = !jshPinGetValue(DEFAULT_CONSOLE_RX_PIN);
+  for (int i=0;i<10 && !jshPinGetValue(DEFAULT_CONSOLE_RX_PIN);i++) {
+    nrf_delay_ms(100);
+    ticksSinceStart = 0;
+  }
+#endif
+
   if (jshPinGetValue(DEFAULT_CONSOLE_RX_PIN)) {
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
@@ -648,6 +660,18 @@ void jshInit() {
     inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
     inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
     jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
+#ifdef MICROBIT
+    /* Even after USB is initialised we must wait ~3 sec since otherwise
+     * the OS won't connect to the device and it'll lose what we're
+     * trying to send. 3 sec is a long time so only wait if we're sure
+     * the UART wasn't powered when we connected. */
+    if (waitForUART) {
+      for (int i=0;i<30;i++) {
+        nrf_delay_ms(100);
+        ticksSinceStart = 0;
+      }
+    }
+#endif
   } else {
     // If there's no UART, 'disconnect' the IO pin - this saves power when in deep sleep in noisy electrical environments
     jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_UNDEFINED);
@@ -753,7 +777,12 @@ void jshReset() {
 }
 
 void jshKill() {
-
+#ifdef SPIFLASH_BASE
+  if (spiFlashLastAddress) {
+    nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+    spiFlashLastAddress = 0;
+  }
+#endif
 }
 
 // stuff to do on idle
@@ -2102,10 +2131,16 @@ bool jshSleep(JsSysTime timeUntilWake) {
     if (timeUntilWake > max) timeUntilWake = max;
   }
 
+#ifdef SPIFLASH_BASE
+  if (spiFlashLastAddress) {
+    nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+    spiFlashLastAddress = 0;
+  }
   if (spiFlashAwake) {
     spiFlashSleep();
     spiFlashAwake = false;
   }
+#endif
 
   if (timeUntilWake < JSSYSTIME_MAX) {
 #ifdef BLUETOOTH
@@ -2123,6 +2158,18 @@ bool jshSleep(JsSysTime timeUntilWake) {
   }
   jsiSetSleep(JSI_SLEEP_ASLEEP);
   while (!hadEvent) {
+#ifdef NRF52
+    /*
+     * Clear FPU exceptions.
+     * Without this step, the FPU interrupt is marked as pending,
+     * preventing system from sleeping.
+     */
+    uint32_t fpscr = __get_FPSCR();
+    __set_FPSCR(fpscr & ~0x9Fu);
+    __DMB();
+    NVIC_ClearPendingIRQ(FPU_IRQn);
+#endif
+
     sd_app_evt_wait(); // Go to sleep, wait to be woken up
     jshGetSystemTime(); // check for RTC overflows
     #if defined(NRF_USB)
