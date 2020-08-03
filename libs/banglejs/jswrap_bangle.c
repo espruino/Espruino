@@ -2096,7 +2096,8 @@ bool jswrap_banglejs_idle() {
   }
   jsvUnLock(graphics);
   // toggle EXTCOMIN to avoid burn-in
-  lcdMemLCD_extcomin();
+  if (lcdPowerOn)
+    lcdMemLCD_extcomin();
 #endif
 
   return false;
