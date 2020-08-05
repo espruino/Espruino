@@ -36,7 +36,8 @@ info = {
      'DEFINES+=-DSAVE_ON_FLASH_EXTREME',
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves a bunch of flash
-#     'DEFINES+=-DUSE_TAB_COMPLETE -DUSE_DEBUGGER', # Removed  due to firmware size issues
+     'DEFINES+=-DUSE_TAB_COMPLETE',
+#     'DEFINES+=-DUSE_DEBUGGER', # Removed  due to firmware size issues
      'INCLUDE += -I$(ROOT)/libs/microbit',
      'WRAPPERSOURCES += libs/microbit/jswrap_microbit.c'
    ]
@@ -67,6 +68,8 @@ chip = {
 devices = {
   'BTN1' : { 'pin' : 'D5', 'pinstate' : 'IN_PULLDOWN' }, # 'P0_17' -  Pin negated in software
   'BTN2' : { 'pin' : 'D11', 'pinstate' : 'IN_PULLDOWN' }, # 'P0_26' -  Pin negated in software
+  # 'V' pins are virtual
+  'LED1' : { 'pin' : 'V0' },
 };
 
 # left-right, or top-bottom order
@@ -131,7 +134,8 @@ def get_pins():
    { "name":"PD19", "sortingname":"D19", "port":"D", "num":"0", "functions":{ "I2C1_SCL":0, "ADC1_IN0":0 }, "csv":{} },
    { "name":"PD20", "sortingname":"D20", "port":"D", "num":"30", "functions":{ "I2C1_SDA":0 }, "csv":{} },
    { "name":"PH0", "sortingname":"H0", "port":"D", "num":"24", "functions":{}, "csv":{} },
-   { "name":"PH1", "sortingname":"H1", "port":"D", "num":"25", "functions":{}, "csv":{} }
+   { "name":"PH1", "sortingname":"H1", "port":"D", "num":"25", "functions":{}, "csv":{} },
+   { "name":"PV0", "sortingname":"V0", "port":"V", "num":"0", "functions":{}, "csv":{} }
   ];
   # Make buttons negated
   pinutils.findpin(pins, "PD5", True)["functions"]["NEGATED"]=0;

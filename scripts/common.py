@@ -77,6 +77,7 @@ if "check_output" not in dir( subprocess ):
 #         "return" : ["int|float|JsVar", "The integer representation of x"],
 #         "return_object" : "ObjectName", // optional - used for tern's code analysis - so for example we can do hints for openFile(...).yyy
 #         "no_create_links":1                // optional - if this is set then hyperlinks are not created when this name is mentioned (good example = bit() )
+#         "no_docs":1                // optional - if this is set then documentation is not created for this entry
 #         "not_real_object" : "anything",    // optional - for classes, this means we shouldn't treat this as a built-in object, as internally it isn't stored in a JSV_OBJECT
 #         "prototype" : "Object",    // optional - for classes, this is what their prototype is. It's particlarly helpful if not_real_object, because there is no prototype var in that case
 #         "check" : "jsvIsFoo(var)", // for classes - this is code that returns true if 'var' is of the given type
@@ -193,6 +194,10 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           if "name" in jsondata: dropped_prefix += jsondata["name"]+" "
           elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "
           drop = False
+
+          if is_for_document and ("no_docs" in jsondata):
+            print(dropped_prefix+" because of 'no_docs' tag")
+            drop = True
           if not ignore_ifdefs:
             if ("generate" in jsondata) and jsondata["generate"]==False and not is_for_document:
               print(dropped_prefix+" because of generate=false")
