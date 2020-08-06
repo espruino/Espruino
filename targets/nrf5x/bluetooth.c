@@ -3042,9 +3042,10 @@ void jsble_central_characteristicNotify(JsVar *characteristic, bool enable) {
   if (!jsble_has_central_connection())
     return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_NOTIFY, jsvNewFromString("Not connected"));
 
-  uint16_t cccd_handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_cccd", 0));
-  if (!cccd_handle)
+  JsVar *cccdVar = jsvObjectGetChild(characteristic, "handle_cccd", 0);
+  if (!cccdVar)
     return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_NOTIFY, jsvNewFromString("handle_cccd not set"));
+  uint16_t cccd_handle = jsvGetIntegerAndUnLock(cccdVar);
 
   uint8_t buf[BLE_CCCD_VALUE_LEN];
   buf[0] = 0;

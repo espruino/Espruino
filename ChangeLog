@@ -26,6 +26,7 @@
             micro:bit: Add delays at first boot to wait for USB UART to init and connect vis USB
             micro:bit: Re-added tab complete (enough space now)
             micro:bit: Added a fake pin for LED/LED1 that uses the LED matrix
+            nRF52: Allow a cccd_handle of 0 for startNotifications
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions
