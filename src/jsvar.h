@@ -16,6 +16,12 @@
 
 #include "jsutils.h"
 
+#ifdef SAVE_ON_FLASH
+#ifndef BLUETOOTH
+#define NO_DATAVIEW
+#endif
+#endif
+
 /** To avoid confusion - JsVarRefCounter should be big enough
  * to store as many refs as can possibly be created - so it's
  * safe just to set it to the same size as JsVarRef. However
@@ -761,7 +767,7 @@ bool jsvIsInstanceOf(JsVar *var, const char *constructorName);
 /// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
 
-#ifndef SAVE_ON_FLASH
+#ifndef NO_DATAVIEW
 /// Create a new DataView of the given length (in elements), and fill it with the given data (if set)
 JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data);
 #endif

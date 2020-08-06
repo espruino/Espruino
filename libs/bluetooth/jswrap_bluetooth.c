@@ -3540,14 +3540,14 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
   JsVar *promise;
   
   // Check for existing cccd_handle 
-  uint16_t cccd = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic,"handle_cccd", 0));
-  if ( !cccd ) {
+  JsVar *cccdVar = jsvObjectGetChild(characteristic,"handle_cccd", 0);
+  if ( !cccdVar ) { // if it doesn't exist, try and find it
     if (!bleNewTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, characteristic))
       return 0;
     promise = jsvLockAgainSafe(blePromise);
     jsble_central_characteristicDescDiscover(characteristic);
-  }
-  else {
+  } else {
+    jsvUnLock(cccdVar);
     if (!bleNewTask(BLETASK_CHARACTERISTIC_NOTIFY, 0))
       return 0;
     promise = jsvLockAgainSafe(blePromise);    

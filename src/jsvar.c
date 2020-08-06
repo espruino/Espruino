@@ -4098,7 +4098,7 @@ JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length) {
   return array;
 }
 
-#ifndef SAVE_ON_FLASH
+#ifndef NO_DATAVIEW
 JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data) {
   JsVar *buf = jswrap_arraybuffer_constructor(length);
   if (!buf) return 0;

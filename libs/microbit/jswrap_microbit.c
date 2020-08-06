@@ -169,7 +169,8 @@ void jswrap_microbit_kill() {
   "generate" : "jswrap_microbit_show",
   "params" : [
      ["image","JsVar","The image to show"]
-  ]
+  ],
+  "ifdef" : "MICROBIT"
 }
 **Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
 
@@ -201,6 +202,30 @@ show(g.buffer)
 ```
 
 */
+void jswrap_microbit_show_raw(uint32_t newState) {
+  if ((newState!=0) && (microbitLEDState==0)) {
+    // we want to display something but we don't have an interval
+    JsSysTime period = jshGetTimeFromMilliseconds(5);
+    jstExecuteFn(jswrap_microbit_display_callback, 0, jshGetSystemTime()+period, (uint32_t)period);
+    // and also set pins to outputs
+    nrf_gpio_cfg_output(MB_LED_COL1);
+    nrf_gpio_cfg_output(MB_LED_COL2);
+    nrf_gpio_cfg_output(MB_LED_COL3);
+    nrf_gpio_cfg_output(MB_LED_COL4);
+    nrf_gpio_cfg_output(MB_LED_COL5);
+    nrf_gpio_cfg_output(MB_LED_COL6);
+    nrf_gpio_cfg_output(MB_LED_COL7);
+    nrf_gpio_cfg_output(MB_LED_COL8);
+    nrf_gpio_cfg_output(MB_LED_COL9);
+    nrf_gpio_cfg_output(MB_LED_ROW1);
+    nrf_gpio_cfg_output(MB_LED_ROW2);
+    nrf_gpio_cfg_output(MB_LED_ROW3);
+  } else  if ((newState==0) && (microbitLEDState!=0)) {
+    jswrap_microbit_stopDisplay();
+  }
+  microbitLEDState = newState;
+}
+
 void jswrap_microbit_show(JsVar *image) {
   uint32_t newState = 0;
   if (jsvIsIterable(image)) {
@@ -229,36 +254,16 @@ void jswrap_microbit_show(JsVar *image) {
     jsError("Expecting a number, got %t\n", image);
     return;
   }
-
-
-  if ((newState!=0) && (microbitLEDState==0)) {
-    // we want to display something but we don't have an interval
-    JsSysTime period = jshGetTimeFromMilliseconds(5);
-    jstExecuteFn(jswrap_microbit_display_callback, 0, jshGetSystemTime()+period, (uint32_t)period);
-    // and also set pins to outputs
-    nrf_gpio_cfg_output(MB_LED_COL1);
-    nrf_gpio_cfg_output(MB_LED_COL2);
-    nrf_gpio_cfg_output(MB_LED_COL3);
-    nrf_gpio_cfg_output(MB_LED_COL4);
-    nrf_gpio_cfg_output(MB_LED_COL5);
-    nrf_gpio_cfg_output(MB_LED_COL6);
-    nrf_gpio_cfg_output(MB_LED_COL7);
-    nrf_gpio_cfg_output(MB_LED_COL8);
-    nrf_gpio_cfg_output(MB_LED_COL9);
-    nrf_gpio_cfg_output(MB_LED_ROW1);
-    nrf_gpio_cfg_output(MB_LED_ROW2);
-    nrf_gpio_cfg_output(MB_LED_ROW3);
-  } else  if ((newState==0) && (microbitLEDState!=0)) {
-    jswrap_microbit_stopDisplay();
-  }
-  microbitLEDState = newState;
 }
+
+
 
 /*JSON{
   "type" : "function",
   "name" : "acceleration",
   "generate" : "jswrap_microbit_acceleration",
-  "return" : ["JsVar", "An object with x, y, and z fields in it"]
+  "return" : ["JsVar", "An object with x, y, and z fields in it"],
+  "ifdef" : "MICROBIT"
 }
 **Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
 
@@ -298,7 +303,8 @@ JsVar *jswrap_microbit_acceleration() {
   "type" : "function",
   "name" : "compass",
   "generate" : "jswrap_microbit_compass",
-  "return" : ["JsVar", "An object with x, y, and z fields in it"]
+  "return" : ["JsVar", "An object with x, y, and z fields in it"],
+  "ifdef" : "MICROBIT"
 }
 **Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
 
@@ -328,4 +334,28 @@ JsVar *jswrap_microbit_compass() {
     jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromInteger(z));
   }
   return xyz;
+}
+
+
+//------------------------ virtuial pins allow us to have a LED1
+void jshVirtualPinInitialise() {
+}
+
+void jshVirtualPinSetValue(Pin pin, bool state) {
+  jswrap_microbit_show_raw(state ? 0x1FFFFFF : 0);
+}
+
+bool jshVirtualPinGetValue(Pin pin) {
+  return 0;
+}
+
+JsVarFloat jshVirtualPinGetAnalogValue(Pin pin) {
+  return NAN;
+}
+
+void jshVirtualPinSetState(Pin pin, JshPinState state) {
+}
+
+JshPinState jshVirtualPinGetState(Pin pin) {
+  return JSHPINSTATE_UNDEFINED;
 }

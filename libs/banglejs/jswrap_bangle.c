@@ -2841,7 +2841,8 @@ To remove the window, call `E.showAlert()` with no arguments.
     "name" : "LED",
     "generate" : "gen_jswrap_LED1",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "#if" : "defined(BANGLEJS) && !defined(SMAQ3)"
+    "#if" : "defined(BANGLEJS) && !defined(SMAQ3)",
+    "no_docs":1
 }
 
 On most Espruino board there are LEDs, in which case `LED` will be an actual Pin.
@@ -2855,7 +2856,9 @@ a circle on the display
     "name" : "LED1",
     "generate_js" : "libs/js/banglejs/LED1.min.js",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "#if" : "defined(BANGLEJS) && !defined(SMAQ3)"
+    "#if" : "defined(BANGLEJS) && !defined(SMAQ3)",
+    "no_docs":1
+
 }
 
 On most Espruino board there are LEDs, in which case `LED1` will be an actual Pin.
@@ -2869,7 +2872,7 @@ a circle on the display
     "name" : "LED2",
     "generate_js" : "libs/js/banglejs/LED2.min.js",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS", "no_docs":1
 }
 
 On most Espruino board there are LEDs, in which case `LED2` will be an actual Pin.

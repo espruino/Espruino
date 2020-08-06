@@ -20,6 +20,9 @@
 
 #ifdef SAVE_ON_FLASH
 #define NO_VECTOR_FONT
+#ifndef PIXLJS
+#define NO_MODIFIED_AREA
+#endif
 #endif
 
 typedef enum {
@@ -93,7 +96,7 @@ typedef struct {
   unsigned char fontAlignY : 2;
   unsigned char fontRotate : 2;
 #endif
-#ifndef SAVE_ON_FLASH
+#ifndef NO_MODIFIED_AREA
   JsGraphicsClipRect clipRect;
   short modMinX, modMinY, modMaxX, modMaxY; ///< area that has been modified
 #endif
