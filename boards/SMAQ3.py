@@ -73,10 +73,14 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : 0x60000000, # put this in external spiflash (see below)
+    'address' : ((246 - 10) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
     'page_size' : 4096,
-    'pages' : 1024, # Entire 4MB of external flash
+    'pages' : 10,
     'flash_available' : 1024 - ((31 + 8 + 2 + 10)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
+#    'address' : 0x60000000, # put this in external spiflash (see below)
+#    'page_size' : 4096,
+#    'pages' : 1024, # Entire 4MB of external flash
+#    'flash_available' : 1024 - ((31 + 8 + 2 + 10)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
   },
 };
 
