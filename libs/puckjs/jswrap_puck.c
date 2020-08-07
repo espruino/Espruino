@@ -534,8 +534,10 @@ Only on Puck.js v2.0
 
 Called after `Puck.accelOn()` every time accelerometer data
 is sampled. There is one argument which is an object
-of the form `{acc:{x,y,z}, gyro:{x,y,z}}` containing the data
-(for more information see `Puck.accel()`).
+of the form `{acc:{x,y,z}, gyro:{x,y,z}}` containing the data.
+
+The data is as it comes off the accelerometer and is not
+scaled to 1g. For more information see `Puck.accel()`
  */
 
 /*JSON{
@@ -806,6 +808,11 @@ void jswrap_puck_accelOff() {
   "return" : ["JsVar", "An Object `{acc:{x,y,z}, gyro:{x,y,z}}` of accelerometer/gyro readings" ]
 }
 Turn on the accelerometer, take a single reading, and then turn it off again.
+
+The values reported are the raw values from the chip. In normal configuration:
+
+* accelerometer: full-scale (32768) is 4g, so you need to divide by 8192 to get correctly scaled values
+* gyro: full-scale (32768) is 245 dps, so you need to divide by 134 to get correctly scaled values
 */
 JsVar *jswrap_puck_accel() {
   /* If not enabled, turn on and read. If enabled,
