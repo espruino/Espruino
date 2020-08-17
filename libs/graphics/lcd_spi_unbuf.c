@@ -154,24 +154,25 @@ void disp_spi_transfer_color_many(uint16_t color, uint32_t len)
 {
   uint16_t buffer_color[BUFFER];
   uint8_t idx = 0;
-  uint32_t count = 0;	
+  uint32_t count = 0; 
   while (count < len) {
-  	buffer_color[idx] = color;			
-  	idx++;	
-  	count++;	
-  	if (idx == BUFFER) {
-  	  spi_data((uint8_t *)&buffer_color, idx*2);
-  	  idx = 0;
-  	}
+    buffer_color[idx] = (color>>8) | (color<<8);    
+    idx++;  
+    count++;  
+    if (idx == BUFFER) {
+      spi_data((uint8_t *)&buffer_color, idx*2);
+      idx = 0;
+    }
   }
   if (idx > 0) 
     spi_data((uint8_t *)&buffer_color, idx*2);
 }
 
 void lcd_spi_unbuf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
+  uint16_t color =   (col>>8) | (col<<8); 
   jshPinSetValue(_pin_cs, 0);
-  disp_spi_transfer_addrwin(x, y, x+1, y+1);	
-  spi_data((uint8_t *)&col, 2);
+  disp_spi_transfer_addrwin(x, y, x+1, y+1);  
+  spi_data((uint8_t *)&color, 2);
   jshPinSetValue(_pin_cs, 1);
 }
 
