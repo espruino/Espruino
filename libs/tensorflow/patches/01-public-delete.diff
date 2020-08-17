@@ -20,6 +20,7 @@ diff -uN -r tensorflow/lite/experimental/micro/tools/make/gen/make_x86_64/prj/he
  };
  
  }  // namespace micro
+
 diff -uN -r tensorflow/lite/experimental/micro/tools/make/gen/make_x86_64/prj/hello_world/make/tensorflow/lite/micro/micro_error_reporter.h /home/gw/workspace/Espruino/libs/tensorflow/tensorflow/lite/micro/micro_error_reporter.h
 --- a/libs/tensorflow/tensorflow/lite/micro/micro_error_reporter.h	2019-09-11 15:49:01.969141639 +0100
 +++ b/libs/tensorflow/tensorflow/lite/micro/micro_error_reporter.h	2019-09-11 15:46:25.167065911 +0100
@@ -39,6 +40,7 @@ diff -uN -r tensorflow/lite/experimental/micro/tools/make/gen/make_x86_64/prj/he
 - private:
    TF_LITE_REMOVE_VIRTUAL_DELETE
  };
+
 diff --git a/libs/tensorflow/tensorflow/lite/micro/micro_mutable_op_resolver.h b/libs/tensorflow/tensorflow/lite/micro/micro_mutable_op_resolver.h
 index 21066cf4..3428d5f5 100644
 --- a/libs/tensorflow/tensorflow/lite/micro/micro_mutable_op_resolver.h
