@@ -59,7 +59,7 @@ typedef struct {
   tflite::MicroInterpreter interpreter;
   // Create an area of memory to use for input, output, and intermediate arrays.
   // Finding the minimum value for your model may require some trial and error.
-  uint8_t tensor_arena[0];
+  alignas(16) uint8_t tensor_arena[0]; // the arena must now be 16 byte aligned
 } TFData;
 char tfDataPtr[sizeof(TFData)];
 

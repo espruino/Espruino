@@ -56,8 +56,8 @@ JsVar *jswrap_tensorflow_create(int arena_size, JsVar *model) {
   JsVar *tfmi = jspNewObject(NULL,"TFMicroInterpreter");
   if (!tfmi) return 0;
 
-  size_t tfSize = tf_get_size((size_t)arena_size, modelSize);
-  JsVar *mi = jsvNewFlatStringOfLength(tfSize);
+  size_t tfSize = tf_get_size((size_t)arena_size, modelPtr);
+  JsVar *mi = jsvNewFlatStringOfLength(tfSize+15); // need +15 in case the flast string isn't 16 bytes aligned
   if (!mi) {
     jsExceptionHere(JSET_ERROR, "Unable to allocate enough RAM for TensorFlow");
     jsvUnLock(tfmi);
@@ -68,7 +68,9 @@ JsVar *jswrap_tensorflow_create(int arena_size, JsVar *model) {
     assert(0);
     return 0; // should never get here
   }
-
+  // ensure that we are 16 byte aligned (for Tensorflow) within the memory we allocated
+  tfPtr = (char*)((((size_t)tfPtr)+15) & ~15);
+  // allocate tensorflow
   if (!tf_create(tfPtr, (size_t)arena_size, modelPtr)) {
     jsExceptionHere(JSET_ERROR, "MicroInterpreter creation failed");
     jsvUnLock2(tfmi, mi);
@@ -93,6 +95,7 @@ void *jswrap_tfmicrointerpreter_getTFMI(JsVar *parent) {
   jsvUnLock(mi);
   if (!tfPtr)
     jsExceptionHere(JSET_ERROR, "TFMicroInterpreter structure corrupted");
+  tfPtr = (char*)((((size_t)tfPtr)+15) & ~15);
   return tfPtr;
 }
 
