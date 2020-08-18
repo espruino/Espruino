@@ -54,6 +54,11 @@ JsVar *jswrap_arguments() {
     return 0;
   }
   JsVar *result = jsvGetFunctionArgumentLength(scope);
+  /* save 'arguments' as a variable into the scope. This stops us having
+  to recreate the array each time, but also stops #1691 - where using an
+  undefined argument after 'arguments' is freed leaves an unreferenced
+  NAME with an undefined value, which causes a ReferenceError. */
+  jsvObjectSetChild(scope,"arguments",result);
   jsvUnLock(scope);
   return result;
 }
