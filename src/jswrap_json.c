@@ -271,8 +271,8 @@ static bool jsfGetJSONForObjectItWithCallback(JsvObjectIterator *it, JSONFlags f
       bool addQuotes = true;
       if (flags&JSON_DROP_QUOTES) {
         if (jsvIsIntegerish(index)) addQuotes = false;
-        else if (jsvIsString(index) && jsvGetStringLength(index)<15) {
-          char buf[16];
+        else if (jsvIsString(index) && jsvGetStringLength(index)<63) {
+          char buf[64];
           jsvGetString(index,buf,sizeof(buf));
           if (isIDString(buf)) addQuotes=false;
         }

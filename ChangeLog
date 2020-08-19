@@ -29,6 +29,7 @@
             nRF52: Allow a cccd_handle of 0 for startNotifications
             Align Tensorflow arena to 16 bytes - new Tensorflow requires this (fix #1914)
             Fix ReferenceError when arguments[0] is used when an argument is undefined (fix #1691)
+            JSON conversion for console now removes quotes on key lengths bigger than 15 (63)
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions
