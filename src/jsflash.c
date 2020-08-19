@@ -274,6 +274,8 @@ static uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages, uint32_t *unc
   return allocated;
 }
 
+#ifndef SAVE_ON_FLASH
+
 // Copy one memory buffer to another *circular buffer*
 static void memcpy_circular(char *dst, uint32_t *dstIndex, uint32_t dstSize, char *src, size_t len) {
   while (len--) {
@@ -366,10 +368,11 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
   jsDebug(DBG_INFO,"Compaction Complete\n");
   return true;
 }
-
+#endif
 
 // Try and compact saved data so it'll fit in Flash again
 bool jsfCompact() {
+#ifndef SAVE_ON_FLASH
   jsDebug(DBG_INFO,"Compacting\n");
   uint32_t pageSize = jsfGetAddressOfNextPage(JSF_START_ADDRESS) - JSF_START_ADDRESS;
   uint32_t maxRequired = pageSize + (uint32_t)sizeof(JsfFileHeader);
@@ -400,6 +403,16 @@ bool jsfCompact() {
     }
   }
   jsDebug(DBG_INFO,"Not enough memory to compact anything\n");
+
+#else
+  /* If low on flash assume we only have a tiny bit of flash. Chances
+   * are there'll only be one file so just erasing flash will do it. */
+  bool allocated = jsvGetBoolAndUnLock(jsfListFiles(NULL));
+  if (!allocated) {
+    jsfEraseAll();
+    return true;
+  }
+#endif
   return false;
 }
 

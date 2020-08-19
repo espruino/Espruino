@@ -471,7 +471,7 @@ void jsiSoftInit(bool hasBeenReset) {
   jswInit();
 
   // Search for invalid storage and remove it
-#ifndef EMSCRIPTEN
+#if !defined(EMSCRIPTEN) && !defined(SAVE_ON_FLASH)
   if (!jsfIsStorageValid()) {
     jsiConsolePrintf("Storage is corrupt.\n");
     jsiConsolePrintf("Erasing Storage Area...\n");
