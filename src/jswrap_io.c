@@ -720,6 +720,7 @@ JsVar *jswrap_interface_setWatch(
       if (debounce>0) jsvObjectSetChildAndUnLock(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce)));
       if (edge) jsvObjectSetChildAndUnLock(watchPtr, "edge", jsvNewFromInteger(edge));
       jsvObjectSetChild(watchPtr, "callback", func); // no unlock intentionally
+      jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(jshPinInput(pin)));
     }
 
     // If nothing already watching the pin, set up a watch
