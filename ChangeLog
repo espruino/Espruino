@@ -33,6 +33,7 @@
             micro:bit: add Storage.write/etc even on space-constrained (SAVE_ON_FLASH) devices
             Remove flash compaction code on SAVE_ON_FLASH devices to save some space
             Fix occasional duplicate state changes when using setWatch with debounce (fix #1902)
+            JSON.stringify now outputs 'null' for non-finite numbers as the spec requires (fix #1919)
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions
