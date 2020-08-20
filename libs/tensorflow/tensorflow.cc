@@ -47,21 +47,20 @@ class EspruinoErrorReporter : public ErrorReporter {
 
 typedef struct {
   // logging
-  tflite::EspruinoErrorReporter micro_error_reporter;
+  alignas(16) tflite::EspruinoErrorReporter micro_error_reporter;
   // This pulls in the operation implementations we need
 #ifdef TENSORFLOW_ALL_OPS
-  tflite::ops::micro::AllOpsResolver resolver;
+  alignas(16) tflite::ops::micro::AllOpsResolver resolver;
 #else
 #define TENSORFLOW_OP_COUNT 6
-  tflite::MicroMutableOpResolver<TENSORFLOW_OP_COUNT> resolver;
+  alignas(16) tflite::MicroMutableOpResolver<TENSORFLOW_OP_COUNT> resolver;
 #endif
   // Build an interpreter to run the model with
-  tflite::MicroInterpreter interpreter;
+  alignas(16) tflite::MicroInterpreter interpreter;
   // Create an area of memory to use for input, output, and intermediate arrays.
   // Finding the minimum value for your model may require some trial and error.
   alignas(16) uint8_t tensor_arena[0]; // the arena must now be 16 byte aligned
 } TFData;
-char tfDataPtr[sizeof(TFData)];
 
 size_t tf_get_size(size_t arena_size, const char *model_data) {
   return sizeof(TFData) + arena_size;
@@ -132,6 +131,9 @@ tf_tensorfinfo tf_get(void *dataPtr, bool isInput) {
   tf_tensorfinfo inf;
   inf.data = 0;
   TfLiteTensor *tensor = isInput ? tf->interpreter.input(0) : tf->interpreter.output(0);
+  /* For some reason on recent tensorflows, the pointer that 'tensor' points to
+   * get trashed as soon as this function returns - so now we just copy out what
+   * we need and return it.   */
   if (tensor) {
     inf.type = tensor->type;
     inf.data = &tensor->data.f[0];
