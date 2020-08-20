@@ -2067,7 +2067,7 @@ void jsiIdle() {
           bool timerState = jsvGetBoolAndUnLock(jsvObjectGetChild(timerPtr, "state", 0));
           jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(timerState));
           exec = false;
-          if (watchState!=timerState && jsiShouldExecuteWatch(watchPtr, watchState)) {
+          if (watchState!=timerState && jsiShouldExecuteWatch(watchPtr, timerState)) {
             data = jsvNewObject();
             // if we were from a watch then we were delayed by the debounce time...
             if (data) {
