@@ -99,15 +99,16 @@ void *jswrap_tfmicrointerpreter_getTFMI(JsVar *parent) {
   return tfPtr;
 }
 
-JsVar *jswrap_tfmicrointerpreter_tensorToArrayBuffer(JsVar *parent, TfLiteTensor *tensor) {
+JsVar *jswrap_tfmicrointerpreter_tensorToArrayBuffer(JsVar *parent, bool isInput) {
   void *tfmi = jswrap_tfmicrointerpreter_getTFMI(parent);
   JsVar *mi = jsvObjectGetChild(parent, "mi", 0);
-  if (!tensor && !mi) {
+  tf_tensorfinfo tensor = tf_get(tfmi, isInput);
+  if (!tensor.data || !mi) {
     jsExceptionHere(JSET_ERROR, "Unable to get tensor");
     return 0;
   }
   JsVarDataArrayBufferViewType abType = ARRAYBUFFERVIEW_UNDEFINED;
-  switch (tensor->type) {
+  switch (tensor.type) {
   case kTfLiteFloat32 :
     abType = ARRAYBUFFERVIEW_FLOAT32; break;
   case kTfLiteInt32 :
@@ -119,12 +120,12 @@ JsVar *jswrap_tfmicrointerpreter_tensorToArrayBuffer(JsVar *parent, TfLiteTensor
   case kTfLiteInt8 :
     abType = ARRAYBUFFERVIEW_INT8; break;
   default:
-    jsExceptionHere(JSET_TYPEERROR, "Unsupported Tensor format TfLiteType:%d", tensor->type);
+    jsExceptionHere(JSET_TYPEERROR, "Unsupported Tensor format TfLiteType:%d", tensor.type);
     return 0;
   }
 
   JsVar *ab = jsvNewArrayBufferFromString(mi,0);
-  JsVar *b = jswrap_typedarray_constructor(abType, ab, ((size_t)&tensor->data.f[0])-(size_t)tfmi, tensor->bytes / JSV_ARRAYBUFFER_GET_SIZE(abType));
+  JsVar *b = jswrap_typedarray_constructor(abType, ab, ((size_t)tensor.data)-(size_t)tfmi, tensor.bytes / JSV_ARRAYBUFFER_GET_SIZE(abType));
   jsvUnLock2(ab,mi);
   return b;
 }
@@ -138,9 +139,7 @@ JsVar *jswrap_tfmicrointerpreter_tensorToArrayBuffer(JsVar *parent, TfLiteTensor
 }
 */
 JsVar *jswrap_tfmicrointerpreter_getInput(JsVar *parent) {
-  void *tfmi = jswrap_tfmicrointerpreter_getTFMI(parent);
-  if (!tfmi) return 0;
-  return jswrap_tfmicrointerpreter_tensorToArrayBuffer(parent, tf_get_input(tfmi, 0));
+  return jswrap_tfmicrointerpreter_tensorToArrayBuffer(parent, true);
 }
 /*JSON{
   "type" : "method",
@@ -152,9 +151,7 @@ JsVar *jswrap_tfmicrointerpreter_getInput(JsVar *parent) {
 }
 */
 JsVar *jswrap_tfmicrointerpreter_getOutput(JsVar *parent) {
-  void *tfmi = jswrap_tfmicrointerpreter_getTFMI(parent);
-  if (!tfmi) return 0;
-  return jswrap_tfmicrointerpreter_tensorToArrayBuffer(parent, tf_get_output(tfmi, 0));
+  return jswrap_tfmicrointerpreter_tensorToArrayBuffer(parent, false);
 }
 /*JSON{
   "type" : "method",

@@ -53,7 +53,7 @@ typedef struct {
   tflite::ops::micro::AllOpsResolver resolver;
 #else
 #define TENSORFLOW_OP_COUNT 6
-  tflite::MicroOpResolver<TENSORFLOW_OP_COUNT> resolver;
+  tflite::MicroMutableOpResolver<TENSORFLOW_OP_COUNT> resolver;
 #endif
   // Build an interpreter to run the model with
   tflite::MicroInterpreter interpreter;
@@ -88,19 +88,13 @@ bool tf_create(void *dataPtr, size_t arena_size, const char *model_data) {
   new (&tf->resolver)tflite::ops::micro::AllOpsResolver();
 #else
   // Pull in only the operation implementations we need.
-  new (&tf->resolver)tflite::MicroOpResolver<TENSORFLOW_OP_COUNT>();
-  tf->resolver.AddBuiltin( tflite::BuiltinOperator_DEPTHWISE_CONV_2D,
-                           tflite::ops::micro::Register_DEPTHWISE_CONV_2D(), tflite::MicroOpResolverAnyVersion());
-  tf->resolver.AddBuiltin( tflite::BuiltinOperator_CONV_2D,
-                           tflite::ops::micro::Register_CONV_2D(), tflite::MicroOpResolverAnyVersion());
-  tf->resolver.AddBuiltin( tflite::BuiltinOperator_AVERAGE_POOL_2D,
-                           tflite::ops::micro::Register_AVERAGE_POOL_2D(), tflite::MicroOpResolverAnyVersion());
-  tf->resolver.AddBuiltin( tflite::BuiltinOperator_MAX_POOL_2D,
-                           tflite::ops::micro::Register_MAX_POOL_2D(), tflite::MicroOpResolverAnyVersion());
-  tf->resolver.AddBuiltin( tflite::BuiltinOperator_FULLY_CONNECTED,
-                           tflite::ops::micro::Register_FULLY_CONNECTED(), tflite::MicroOpResolverAnyVersion());
-  tf->resolver.AddBuiltin( tflite::BuiltinOperator_SOFTMAX,
-                           tflite::ops::micro::Register_SOFTMAX(), tflite::MicroOpResolverAnyVersion());
+  new (&tf->resolver)tflite::MicroMutableOpResolver<TENSORFLOW_OP_COUNT>();
+  tf->resolver.AddDepthwiseConv2D();
+  tf->resolver.AddConv2D();
+  tf->resolver.AddAveragePool2D();
+  tf->resolver.AddMaxPool2D();
+  tf->resolver.AddFullyConnected();
+  tf->resolver.AddSoftmax();
 #endif
 
   // Build an interpreter to run the model with
@@ -133,16 +127,17 @@ bool tf_invoke(void *dataPtr) {
   return true;
 }
 
-TfLiteTensor *tf_get_input(void *dataPtr, int n) {
+tf_tensorfinfo tf_get(void *dataPtr, bool isInput) {
   TFData *tf = (TFData*)dataPtr;
-  // Obtain pointers to the model's input and output tensors
-  return tf->interpreter.input(0);
-}
-
-TfLiteTensor *tf_get_output(void *dataPtr, int n) {
-  TFData *tf = (TFData*)dataPtr;
-  // Obtain pointers to the model's input and output tensors
-  return tf->interpreter.output(0);
+  tf_tensorfinfo inf;
+  inf.data = 0;
+  TfLiteTensor *tensor = isInput ? tf->interpreter.input(0) : tf->interpreter.output(0);
+  if (tensor) {
+    inf.type = tensor->type;
+    inf.data = &tensor->data.f[0];
+    inf.bytes = tensor->bytes;
+  }
+  return inf;
 }
 
 } // extern "C"
