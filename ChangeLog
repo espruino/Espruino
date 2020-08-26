@@ -35,6 +35,7 @@
             Fix occasional duplicate state changes when using setWatch with debounce (fix #1902)
             JSON.stringify now outputs 'null' for non-finite numbers as the spec requires (fix #1919)
             Update Tensorflow to latest version, fix return 0 issue on ARM release builds (fix #1918)
+            Bangle.js: Accelerometer poll handler now uses RTC app_timer, not TIMER1. 1mA->0.5mA standby current (ref #1920)
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions

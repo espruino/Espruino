@@ -40,6 +40,7 @@
 #include "bluetooth.h" // for self-test
 #include "jsi2c.h" // accelerometer/etc
 #endif
+#include "app_timer.h"
 
 #include "jswrap_graphics.h"
 #include "lcd_st7789_8bit.h"
@@ -315,6 +316,9 @@ JshI2CInfo internalI2C;
 bool i2cBusy;
 /// How often should be poll for accelerometer/compass data?
 volatile uint16_t pollInterval; // in ms
+/// Nordic app timer to handle call of peripheralPollHandler
+APP_TIMER_DEF(m_peripheral_poll_timer_id);
+
 /// counter that counts up if watch has stayed face up or down
 volatile unsigned char faceUpCounter;
 /// Was the watch face-up? we use this when firing events
@@ -631,6 +635,10 @@ void peripheralPollHandler() {
     }
   }
 
+  /* TODO: could do this every time we set bangleTasks/etc
+   * but right now it basically happens every time this is
+   * called. */
+  jshHadEvent();
   //jswrap_banglejs_ioWr(IOEXP_HRM,1); // debug using HRM LED
 }
 
@@ -882,9 +890,9 @@ This function can be used to change the way graphics is handled on Bangle.js.
 Available options for `Bangle.setLCDMode` are:
 
 * `Bangle.setLCDMode()` or `Bangle.setLCDMode("direct")` (the default) - The drawable area is 240x240 16 bit. Unbuffered, so draw calls take effect immediately. Terminal and vertical scrolling work (horizontal scrolling doesn't).
-* `Bangle.setLCDMode("doublebuffered")` - The drawable area is 240x160 16 bit, terminal and scrolling will not work.
-* `Bangle.setLCDMode("120x120")` - The drawable area is 120x120 8 bit, `g.getPixel`, terminal, and full scrolling work.
-* `Bangle.setLCDMode("80x80")` - The drawable area is 80x80 8 bit, `g.getPixel`, terminal, and full scrolling work.
+* `Bangle.setLCDMode("doublebuffered")` - The drawable area is 240x160 16 bit, terminal and scrolling will not work. `g.flip()` must be called for draw operations to take effect.
+* `Bangle.setLCDMode("120x120")` - The drawable area is 120x120 8 bit, `g.getPixel`, terminal, and full scrolling work. Uses an offscreen buffer stored on Bangle.js, `g.flip()` must be called for draw operations to take effect.
+* `Bangle.setLCDMode("80x80")` - The drawable area is 80x80 8 bit, `g.getPixel`, terminal, and full scrolling work. Uses an offscreen buffer stored on Bangle.js, `g.flip()` must be called for draw operations to take effect.
 
 You can also call `Bangle.setLCDMode()` to return to normal, unbuffered `"direct"` mode.
 */
@@ -1048,9 +1056,11 @@ void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
   }
   pollInterval = (uint16_t)interval;
 #ifndef EMSCRIPTEN
-  JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
-  jstStopExecuteFn(peripheralPollHandler, 0);
-  jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+  //JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
+  //jstStopExecuteFn(peripheralPollHandler, 0);
+  //jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+  app_timer_stop(m_peripheral_poll_timer_id);
+  app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
 #endif
 }
 
@@ -1535,8 +1545,14 @@ void jswrap_banglejs_init() {
   jshEnableWatchDog(5); // 5 second watchdog
   // This timer kicks the watchdog, and does some other stuff as well
   pollInterval = DEFAULT_ACCEL_POLL_INTERVAL;
-  JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
-  jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+  //JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
+  //jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+  // requires APP_TIMER_OP_QUEUE_SIZE=3 in BOARD.py
+  uint32_t err_code = app_timer_create(&m_peripheral_poll_timer_id,
+                      APP_TIMER_MODE_REPEATED,
+                      peripheralPollHandler);
+  jsble_check_error(err_code);
+  app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
 #endif
 
   IOEventFlags channel;
@@ -1580,7 +1596,6 @@ void jswrap_banglejs_init() {
     bangleFlags |= JSBF_ENABLE_BUZZ;
   }
   jsvUnLock3(v,settings,settingsFN);
-
 }
 
 /*JSON{
@@ -1591,7 +1606,8 @@ void jswrap_banglejs_kill() {
 #ifndef EMSCRIPTEN
   jstStopExecuteFn(backlightOnHandler, 0);
   jstStopExecuteFn(backlightOffHandler, 0);
-  jstStopExecuteFn(peripheralPollHandler, 0);
+  //jstStopExecuteFn(peripheralPollHandler, 0);
+  app_timer_stop(&m_peripheral_poll_timer_id);
   jstStopExecuteFn(hrmPollHandler, 0);
 #endif
   jsvUnLock(promiseBeep);
