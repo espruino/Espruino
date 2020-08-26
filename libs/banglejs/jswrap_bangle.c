@@ -1555,6 +1555,7 @@ void jswrap_banglejs_init() {
   app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
 #endif
 
+
   IOEventFlags channel;
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   jshSetPinShouldStayWatched(BTN2_PININDEX,true);
@@ -1607,7 +1608,7 @@ void jswrap_banglejs_kill() {
   jstStopExecuteFn(backlightOnHandler, 0);
   jstStopExecuteFn(backlightOffHandler, 0);
   //jstStopExecuteFn(peripheralPollHandler, 0);
-  app_timer_stop(&m_peripheral_poll_timer_id);
+  app_timer_stop(m_peripheral_poll_timer_id);
   jstStopExecuteFn(hrmPollHandler, 0);
 #endif
   jsvUnLock(promiseBeep);
