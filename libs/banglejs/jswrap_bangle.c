@@ -304,10 +304,13 @@ typedef struct {
   short x,y,z;
 } Vector3;
 
-#define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 to match accelerometer
+#define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 hz to match accelerometer
+#define POWER_SAVE_ACCEL_POLL_INTERVAL 800 // in msec
+#define POWER_SAVE_MIN_ACCEL 2684354 // min acceleration before we exit power save... sqr(8192*0.2)
+#define POWER_SAVE_TIMEOUT 60000 // 60 seconds of inactivity
 #define DEFAULT_LCD_POWER_TIMEOUT 30000 // in msec - default for lcdPowerTimeout
 #define HRM_POLL_INTERVAL 20 // in msec
-#define ACCEL_POLL_INTERVAL_MAX 5000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
+#define ACCEL_POLL_INTERVAL_MAX 4000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
 #define BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
 /// Internal I2C used for Accelerometer/Pressure
@@ -318,6 +321,8 @@ bool i2cBusy;
 volatile uint16_t pollInterval; // in ms
 /// Nordic app timer to handle call of peripheralPollHandler
 APP_TIMER_DEF(m_peripheral_poll_timer_id);
+/// Timer used for power save (lowering the poll interval)
+volatile uint16_t powerSaveTimer;
 
 /// counter that counts up if watch has stayed face up or down
 volatile uint16_t faceUpTimer;
@@ -422,11 +427,13 @@ typedef enum {
   JSBF_BEEP_VIBRATE  = 64, // use vibration motor for beep
   JSBF_ENABLE_BEEP  = 128,
   JSBF_ENABLE_BUZZ  = 256,
-  JSBF_ACCEL_LISTENER = 512, // we have a listener for accelerometer data
+  JSBF_ACCEL_LISTENER = 512, ///< we have a listener for accelerometer data
+  JSBF_POWER_SAVE = 1024, ///< if no movement detected for a while, lower the accelerometer poll interval
 
   JSBF_DEFAULT =
       JSBF_WAKEON_TWIST|
-      JSBF_WAKEON_BTN1|JSBF_WAKEON_BTN2|JSBF_WAKEON_BTN3
+      JSBF_WAKEON_BTN1|JSBF_WAKEON_BTN2|JSBF_WAKEON_BTN3|
+      JSBF_POWER_SAVE
 } JsBangleFlags;
 volatile JsBangleFlags bangleFlags;
 
@@ -479,6 +486,17 @@ char clipi8(int x) {
   if (x<-128) return -128;
   if (x>127) return 127;
   return (char)x;
+}
+
+void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
+  pollInterval = (uint16_t)msec;
+#ifndef EMSCRIPTEN
+  //JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
+  //jstStopExecuteFn(peripheralPollHandler, 0);
+  //jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+  app_timer_stop(m_peripheral_poll_timer_id);
+  app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
+#endif
 }
 
 #ifndef EMSCRIPTEN
@@ -587,6 +605,23 @@ void peripheralPollHandler() {
     accHistory[accHistoryIdx  ] = clipi8(newx>>7);
     accHistory[accHistoryIdx+1] = clipi8(newy>>7);
     accHistory[accHistoryIdx+2] = clipi8(newz>>7);
+    // Power saving
+    if (bangleFlags & JSBF_POWER_SAVE) {
+      if (accdiff > POWER_SAVE_MIN_ACCEL) {
+        powerSaveTimer = 0;
+        if (pollInterval == POWER_SAVE_ACCEL_POLL_INTERVAL)
+          jswrap_banglejs_setPollInterval_internal(DEFAULT_ACCEL_POLL_INTERVAL);
+      } else {
+        if (powerSaveTimer < TIMER_MAX)
+          powerSaveTimer += pollInterval;
+        if (powerSaveTimer >= POWER_SAVE_TIMEOUT && // stationary for POWER_SAVE_TIMEOUT
+            pollInterval == DEFAULT_ACCEL_POLL_INTERVAL && // we are in high power mode
+            !(bangleFlags & JSBF_ACCEL_LISTENER) // nothing was listening to accelerometer data
+            ) {
+          jswrap_banglejs_setPollInterval_internal(POWER_SAVE_ACCEL_POLL_INTERVAL);
+        }
+      }
+    }
     // trigger accelerometer data task if needed
     if (bangleFlags & JSBF_ACCEL_LISTENER) {
       bangleTasks |= JSBT_ACCEL_DATA;
@@ -600,7 +635,7 @@ void peripheralPollHandler() {
       wasFaceUp = faceUp;
     }
     if (faceUpTimer<TIMER_MAX) faceUpTimer += pollInterval;
-    if (faceUpTimer>300 && !faceUpSent) {
+    if (faceUpTimer>=300 && !faceUpSent) {
       faceUpSent = true;
       bangleTasks |= JSBT_FACE_UP;
       jshHadEvent();
@@ -663,7 +698,6 @@ void peripheralPollHandler() {
         accIdleCount = 0; // it was inactive but not long enough to trigger a gesture
     }
   }
-
   //jswrap_banglejs_ioWr(IOEXP_HRM,1); // debug using HRM LED
 }
 
@@ -1072,21 +1106,19 @@ void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
     ],
     "ifdef" : "BANGLEJS"
 }
-Set how often the watch should poll for new acceleration/gyro data
+Set how often the watch should poll for new acceleration/gyro data and kick the Watchdog timer. It isn't
+recommended that you make this interval much larger than 1000ms, but values up to 4000ms are allowed.
+
+Calling this will set `Bangle.setOptions({powerSave: false})` - disabling the dynamic adjustment of
+poll interval to save battery power when Bangle.js is stationary.
 */
 void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
   if (!isfinite(interval) || interval<10 || interval>ACCEL_POLL_INTERVAL_MAX) {
     jsExceptionHere(JSET_ERROR, "Invalid interval");
     return;
   }
-  pollInterval = (uint16_t)interval;
-#ifndef EMSCRIPTEN
-  //JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
-  //jstStopExecuteFn(peripheralPollHandler, 0);
-  //jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
-  app_timer_stop(m_peripheral_poll_timer_id);
-  app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
-#endif
+  bangleFlags &= ~JSBF_POWER_SAVE; // turn off power save since it'll just overwrite the poll interval
+  jswrap_banglejs_setPollInterval_internal((uint16_t)interval);
 }
 
 /*JSON{
@@ -1119,6 +1151,10 @@ Set internal options used for gestures, step counting, etc...
 * `stepCounterThresholdLow` How low must acceleration magnitude squared get before we consider the next rise a step? default = `sqr(8192-80)`
 * `stepCounterThresholdHigh` How high must acceleration magnitude squared get before we consider it a step? default = `sqr(8192+80)`
 
+* `powerSave` after a minute of not being moved, Bangle.js will change the accelerometer poll interval down to 800ms (10x accelerometer samples).
+   On movement it'll be raised to the default 80ms. If `Bangle.setPollInterval` is used this is disabled, and for it to work the poll interval
+   must be either 80ms or 800ms. default = `true`
+
 Where accelerations are used they are in internal units, where `8192 = 1g`
 
 */
@@ -1129,6 +1165,7 @@ void jswrap_banglejs_setOptions(JsVar *options) {
   bool wakeOnFaceUp = bangleFlags&JSBF_WAKEON_FACEUP;
   bool wakeOnTouch = bangleFlags&JSBF_WAKEON_TOUCH;
   bool wakeOnTwist = bangleFlags&JSBF_WAKEON_TWIST;
+  bool powerSave = bangleFlags&JSBF_POWER_SAVE;
   jsvConfigObject configs[] = {
       {"gestureStartThresh", JSV_INTEGER, &accelGestureStartThresh},
       {"gestureEndThresh", JSV_INTEGER, &accelGestureEndThresh},
@@ -1145,6 +1182,7 @@ void jswrap_banglejs_setOptions(JsVar *options) {
       {"wakeOnFaceUp", JSV_BOOLEAN, &wakeOnFaceUp},
       {"wakeOnTouch", JSV_BOOLEAN, &wakeOnTouch},
       {"wakeOnTwist", JSV_BOOLEAN, &wakeOnTwist},
+      {"powerSave", JSV_BOOLEAN, &powerSave},
   };
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
     bangleFlags = (bangleFlags&~JSBF_WAKEON_BTN1) | (wakeOnBTN1?JSBF_WAKEON_BTN1:0);
@@ -1153,6 +1191,7 @@ void jswrap_banglejs_setOptions(JsVar *options) {
     bangleFlags = (bangleFlags&~JSBF_WAKEON_FACEUP) | (wakeOnFaceUp?JSBF_WAKEON_FACEUP:0);
     bangleFlags = (bangleFlags&~JSBF_WAKEON_TOUCH) | (wakeOnTouch?JSBF_WAKEON_TOUCH:0);
     bangleFlags = (bangleFlags&~JSBF_WAKEON_TWIST) | (wakeOnTwist?JSBF_WAKEON_TWIST:0);
+    bangleFlags = (bangleFlags&~JSBF_POWER_SAVE) | (powerSave?JSBF_POWER_SAVE:0);
   }
 }
 
