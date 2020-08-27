@@ -38,6 +38,7 @@
             Bangle.js: Accelerometer poll handler now uses RTC app_timer, not TIMER1. 1mA->0.5mA standby current (ref #1920)
             Bangle.js: SPI MISO is now input_pullup (shaves ~20uA)
             Espruino WiFi: Fix startAP function when open and no password supplied
+            Bangle.js: Accelerometer now runs in low power mode (saving ~150uA)
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions

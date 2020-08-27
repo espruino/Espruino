@@ -1514,11 +1514,12 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_accelWr(0x26, 0x65); // TTH Tap detect threshold high (0xCB default)
   jswrap_banglejs_accelWr(0x27, 0x0D); // TTL Tap detect threshold low (0x1A default)
   jswrap_banglejs_accelWr(0x30,1); // ATH low wakeup detect threshold
-  jswrap_banglejs_accelWr(0x35,0); // LP_CNTL no averaging of samples
-  //jswrap_banglejs_accelWr(0x35,2); // LP_CNTL 4x averaging of samples
+  //jswrap_banglejs_accelWr(0x35,0 << 4); // LP_CNTL no averaging of samples
+  jswrap_banglejs_accelWr(0x35,2 << 4); // LP_CNTL 4x averaging of samples
   jswrap_banglejs_accelWr(0x3e,0); // clear the buffer
-  jswrap_banglejs_accelWr(0x18,0b01101100);  // CNTL1 Off, high power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
-  jswrap_banglejs_accelWr(0x18,0b11101100);  // CNTL1 On, high power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
+  jswrap_banglejs_accelWr(0x18,0b00101100);  // CNTL1 Off, low power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
+  jswrap_banglejs_accelWr(0x18,0b10101100);  // CNTL1 On, low power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
+  // high power vs low power uses an extra 150uA
 #endif
   // Accelerometer variables init
   stepCounter = 0;
