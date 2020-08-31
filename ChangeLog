@@ -41,6 +41,7 @@
             Bangle.js: Accelerometer now runs in low power mode (saving ~150uA)
             Bangle.js: Peripheral polling now only fully wakes Bangle when an event requires JS processing (ref #1921)
             Bangle.js: When not moved for 1 minute, slow down accelerometer poll interval from 80 to 800ms (fix #1921)
+            Ensure software SPI/I2C/Serial don't leak a variable when initialised
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions
