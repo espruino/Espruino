@@ -64,7 +64,7 @@ Create a software SPI port. This has limited functionality (no baud rate), but i
 Use `SPI.setup` to configure this port.
  */
 JsVar *jswrap_spi_constructor() {
-  return jsvNewObject();
+  return jspNewObject(0,"SPI");
 }
 
 /*JSON{
@@ -502,7 +502,7 @@ Create a software I2C port. This has limited functionality (no baud rate), but i
 Use `I2C.setup` to configure this port.
  */
 JsVar *jswrap_i2c_constructor() {
-  return jsvNewObject();
+  return jspNewObject(0,"I2C");
 }
 
 /*JSON{

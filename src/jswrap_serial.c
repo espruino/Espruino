@@ -38,7 +38,7 @@ Create a software Serial port. This has limited functionality (only low baud rat
 Use `Serial.setup` to configure this port.
  */
 JsVar *jswrap_serial_constructor() {
-  return jsvNewWithFlags(JSV_OBJECT);
+  return jspNewObject(0,"Serial");
 }
 /*JSON{
   "type" : "event",
