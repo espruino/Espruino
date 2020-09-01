@@ -29,6 +29,7 @@ int _pin_cs;
 int _pin_dc;
 int _colstart;
 int _rowstart;
+int _lastx, _lasty, _LCD_WIDTH;
 IOEventFlags _device;
 
 static void spi_cmd(const uint8_t cmd) 
@@ -113,6 +114,7 @@ JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options) {
     return NULL;
   }  
 
+  _LCD_WIDTH = inf.width;
   JsGraphics gfx;
   graphicsStructInit(&gfx,inf.width,inf.height,16);
   gfx.data.type = JSGRAPHICSTYPE_LCD_SPI_UNBUF;
@@ -168,10 +170,14 @@ void disp_spi_transfer_color_many(uint16_t color, uint32_t len)
     spi_data((uint8_t *)&buffer_color, idx*2);
 }
 
-void lcd_spi_unbuf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
+void lcd_spi_unbuf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) { 
   uint16_t color =   (col>>8) | (col<<8); 
   jshPinSetValue(_pin_cs, 0);
-  disp_spi_transfer_addrwin(x, y, x+1, y+1);  
+  if (x!=_lastx+1 || y!=_lasty) {
+    disp_spi_transfer_addrwin(x, y, _LCD_WIDTH, y+1);  
+    _lastx = x;
+    _lasty = y;
+  } else _lastx++; 
   spi_data((uint8_t *)&color, 2);
   jshPinSetValue(_pin_cs, 1);
 }
