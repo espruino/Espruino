@@ -482,11 +482,7 @@ typedef enum {
   JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
   JSBT_HRM_DATA = 1<<17, ///< Heart rate data is ready for analysis
   JSBT_TWIST_EVENT = 1<<18, ///< Watch was twisted
-<<<<<<< HEAD
-
-=======
   JSBT_FACE_UP = 1<<19, ///< Watch was turned face up/down (faceUp holds the actual state)
->>>>>>> master
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -524,7 +520,11 @@ void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
   //jstStopExecuteFn(peripheralPollHandler, 0);
   //jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
   app_timer_stop(m_peripheral_poll_timer_id);
+  #if NRF_SD_BLE_API_VERSION<5
   app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
+  #else
+  app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval), NULL);
+  #endif
 #endif
 }
 
@@ -1794,7 +1794,11 @@ void jswrap_banglejs_init() {
                       APP_TIMER_MODE_REPEATED,
                       peripheralPollHandler);
   jsble_check_error(err_code);
+  #if NRF_SD_BLE_API_VERSION<5
   app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
+  #else
+  app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval), NULL);
+  #endif
 #endif
 
 
