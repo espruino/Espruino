@@ -30,14 +30,15 @@ Methods may be called on the USB, Serial1, Serial2, Serial3, Serial4, Serial5 an
   "type" : "constructor",
   "class" : "Serial",
   "name" : "Serial",
-  "generate" : "jswrap_serial_constructor"
+  "generate" : "jswrap_serial_constructor",
+  "return" : ["JsVar","A Serial object"]
 }
 Create a software Serial port. This has limited functionality (only low baud rates), but it can work on any pins.
 
 Use `Serial.setup` to configure this port.
  */
 JsVar *jswrap_serial_constructor() {
-  return jsvNewWithFlags(JSV_OBJECT);
+  return jspNewObject(0,"Serial");
 }
 /*JSON{
   "type" : "event",

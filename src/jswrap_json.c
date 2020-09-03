@@ -55,7 +55,7 @@ Convert the given object into a JSON string which can subsequently be parsed wit
  */
 JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space) {
   NOT_USED(replacer);
-  JSONFlags flags = JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY|JSON_UNICODE_ESCAPE|JSON_ALLOW_TOJSON;
+  JSONFlags flags = JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY|JSON_JSON_COMPATIBILE|JSON_ALLOW_TOJSON;
   JsVar *result = jsvNewFromEmptyString();
   if (result) {// could be out of memory
     char whitespace[11] = "";
@@ -271,13 +271,13 @@ static bool jsfGetJSONForObjectItWithCallback(JsvObjectIterator *it, JSONFlags f
       bool addQuotes = true;
       if (flags&JSON_DROP_QUOTES) {
         if (jsvIsIntegerish(index)) addQuotes = false;
-        else if (jsvIsString(index) && jsvGetStringLength(index)<15) {
-          char buf[16];
+        else if (jsvIsString(index) && jsvGetStringLength(index)<63) {
+          char buf[64];
           jsvGetString(index,buf,sizeof(buf));
           if (isIDString(buf)) addQuotes=false;
         }
       }
-      cbprintf(user_callback, user_data, addQuotes?((flags&JSON_UNICODE_ESCAPE)?"%Q%s":"%q%s"):"%v%s", index, (flags&JSON_PRETTY)?": ":":");
+      cbprintf(user_callback, user_data, addQuotes?((flags&JSON_JSON_COMPATIBILE)?"%Q%s":"%q%s"):"%v%s", index, (flags&JSON_PRETTY)?": ":":");
       if (first)
         first = false;
       jsfGetJSONWithCallback(item, index, nflags, whitespace, user_callback, user_data);
@@ -468,8 +468,10 @@ void jsfGetJSONWithCallback(JsVar *var, JsVar *varName, JSONFlags flags, const c
         cbprintf(user_callback, user_data, "%q%s%q", var1, JSON_LIMIT_TEXT, var2);
         jsvUnLock2(var1, var2);
       } else {
-        cbprintf(user_callback, user_data, (flags&JSON_UNICODE_ESCAPE)?"%Q":"%q", var);
+        cbprintf(user_callback, user_data, (flags&JSON_JSON_COMPATIBILE)?"%Q":"%q", var);
       }
+    } else if ((flags&JSON_JSON_COMPATIBILE) && jsvIsFloat(var) && !isfinite(jsvGetFloat(var))) {
+      cbprintf(user_callback, user_data, "null");
     } else {
       cbprintf(user_callback, user_data, "%v", var);
     }

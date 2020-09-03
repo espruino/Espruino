@@ -40,6 +40,7 @@
 #include "bluetooth.h" // for self-test
 #include "jsi2c.h" // accelerometer/etc
 #endif
+#include "app_timer.h"
 
 #include "jswrap_graphics.h"
 #ifdef LCD_CONTROLLER_LPM013M126
@@ -307,10 +308,13 @@ typedef struct {
   short x,y,z;
 } Vector3;
 
-#define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 to match accelerometer
+#define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 hz to match accelerometer
+#define POWER_SAVE_ACCEL_POLL_INTERVAL 800 // in msec
+#define POWER_SAVE_MIN_ACCEL 2684354 // min acceleration before we exit power save... sqr(8192*0.2)
+#define POWER_SAVE_TIMEOUT 60000 // 60 seconds of inactivity
 #define DEFAULT_LCD_POWER_TIMEOUT 30000 // in msec - default for lcdPowerTimeout
 #define HRM_POLL_INTERVAL 20 // in msec
-#define ACCEL_POLL_INTERVAL_MAX 5000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
+#define ACCEL_POLL_INTERVAL_MAX 4000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
 #define BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
 
@@ -336,10 +340,17 @@ JshI2CInfo i2cInternal;
 bool i2cBusy;
 /// How often should be poll for accelerometer/compass data?
 volatile uint16_t pollInterval; // in ms
+/// Nordic app timer to handle call of peripheralPollHandler
+APP_TIMER_DEF(m_peripheral_poll_timer_id);
+/// Timer used for power save (lowering the poll interval)
+volatile uint16_t powerSaveTimer;
+
 /// counter that counts up if watch has stayed face up or down
-volatile unsigned char faceUpCounter;
+volatile uint16_t faceUpTimer;
 /// Was the watch face-up? we use this when firing events
-volatile bool wasFaceUp;
+volatile bool wasFaceUp, faceUp;
+/// Was the FACE_UP event sent yet?
+bool faceUpSent;
 /// Was the watch charging? we use this when firing events
 volatile bool wasCharging;
 /// time since LCD contents were last modified
@@ -437,10 +448,13 @@ typedef enum {
   JSBF_BEEP_VIBRATE  = 64, // use vibration motor for beep
   JSBF_ENABLE_BEEP  = 128,
   JSBF_ENABLE_BUZZ  = 256,
+  JSBF_ACCEL_LISTENER = 512, ///< we have a listener for accelerometer data
+  JSBF_POWER_SAVE = 1024, ///< if no movement detected for a while, lower the accelerometer poll interval
 
   JSBF_DEFAULT =
       JSBF_WAKEON_TWIST|
-      JSBF_WAKEON_BTN1|JSBF_WAKEON_BTN2|JSBF_WAKEON_BTN3
+      JSBF_WAKEON_BTN1|JSBF_WAKEON_BTN2|JSBF_WAKEON_BTN3|
+      JSBF_POWER_SAVE
 } JsBangleFlags;
 volatile JsBangleFlags bangleFlags;
 
@@ -468,7 +482,11 @@ typedef enum {
   JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
   JSBT_HRM_DATA = 1<<17, ///< Heart rate data is ready for analysis
   JSBT_TWIST_EVENT = 1<<18, ///< Watch was twisted
+<<<<<<< HEAD
 
+=======
+  JSBT_FACE_UP = 1<<19, ///< Watch was turned face up/down (faceUp holds the actual state)
+>>>>>>> master
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -499,6 +517,17 @@ char clipi8(int x) {
   return (char)x;
 }
 
+void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
+  pollInterval = (uint16_t)msec;
+#ifndef EMSCRIPTEN
+  //JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
+  //jstStopExecuteFn(peripheralPollHandler, 0);
+  //jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+  app_timer_stop(m_peripheral_poll_timer_id);
+  app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
+#endif
+}
+
 #ifndef EMSCRIPTEN
 /* Scan peripherals for any data that's needed
  * Also, holding down both buttons will reboot */
@@ -525,6 +554,7 @@ void peripheralPollHandler() {
       btn1Timer += pollInterval;
       if (btn1Timer >= BTN_LOAD_TIMEOUT) {
         bangleTasks |= JSBT_RESET;
+        jshHadEvent();
         btn1Timer = TIMER_MAX;
         // Allow BTN3 to break out of debugger
         if (jsiStatus & JSIS_IN_DEBUGGER) {
@@ -541,6 +571,7 @@ void peripheralPollHandler() {
   if (lcdPowerTimeout && lcdPowerOn && flipTimer>=lcdPowerTimeout) {
     // 10 seconds of inactivity, turn off display
     bangleTasks |= JSBT_LCD_OFF;
+    jshHadEvent();
   }
 
   // check charge status
@@ -548,6 +579,7 @@ void peripheralPollHandler() {
   if (isCharging != wasCharging) {
     wasCharging = isCharging;
     bangleTasks |= JSBT_CHARGE_EVENT;
+    jshHadEvent();
   }
 
   if (i2cBusy) return;
@@ -568,6 +600,7 @@ void peripheralPollHandler() {
       if (mag.y>magmax.y) magmax.y=mag.y;
       if (mag.z>magmax.z) magmax.z=mag.z;
       bangleTasks |= JSBT_MAG_DATA;
+      jshHadEvent();
     }
   }
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
@@ -583,6 +616,7 @@ void peripheralPollHandler() {
     // report tap
     tapInfo = buf[0] | (tapType<<6);
     bangleTasks |= JSBT_ACCEL_TAPPED;
+    jshHadEvent();
     // clear the IRQ flags
     buf[0]=0x17;
     jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
@@ -609,8 +643,41 @@ void peripheralPollHandler() {
     accHistory[accHistoryIdx  ] = clipi8(newx>>7);
     accHistory[accHistoryIdx+1] = clipi8(newy>>7);
     accHistory[accHistoryIdx+2] = clipi8(newz>>7);
-    // trigger accelerometer data task
-    bangleTasks |= JSBT_ACCEL_DATA;
+    // Power saving
+    if (bangleFlags & JSBF_POWER_SAVE) {
+      if (accdiff > POWER_SAVE_MIN_ACCEL) {
+        powerSaveTimer = 0;
+        if (pollInterval == POWER_SAVE_ACCEL_POLL_INTERVAL)
+          jswrap_banglejs_setPollInterval_internal(DEFAULT_ACCEL_POLL_INTERVAL);
+      } else {
+        if (powerSaveTimer < TIMER_MAX)
+          powerSaveTimer += pollInterval;
+        if (powerSaveTimer >= POWER_SAVE_TIMEOUT && // stationary for POWER_SAVE_TIMEOUT
+            pollInterval == DEFAULT_ACCEL_POLL_INTERVAL && // we are in high power mode
+            !(bangleFlags & JSBF_ACCEL_LISTENER) // nothing was listening to accelerometer data
+            ) {
+          jswrap_banglejs_setPollInterval_internal(POWER_SAVE_ACCEL_POLL_INTERVAL);
+        }
+      }
+    }
+    // trigger accelerometer data task if needed
+    if (bangleFlags & JSBF_ACCEL_LISTENER) {
+      bangleTasks |= JSBT_ACCEL_DATA;
+      jshHadEvent();
+    }
+    // check for 'face up'
+    faceUp = (acc.z<-6700) && (acc.z>-9000) && abs(acc.x)<2048 && abs(acc.y)<2048;
+    if (faceUp!=wasFaceUp) {
+      faceUpTimer = 0;
+      faceUpSent = false;
+      wasFaceUp = faceUp;
+    }
+    if (faceUpTimer<TIMER_MAX) faceUpTimer += pollInterval;
+    if (faceUpTimer>=300 && !faceUpSent) {
+      faceUpSent = true;
+      bangleTasks |= JSBT_FACE_UP;
+      jshHadEvent();
+    }
     // check for step counter
     if (accMagSquared < stepCounterThresholdLow)
       stepWasLow = true;
@@ -618,6 +685,7 @@ void peripheralPollHandler() {
       stepWasLow = false;
       stepCounter++;
       bangleTasks |= JSBT_STEP_EVENT;
+      jshHadEvent();
     }
     // check for twist action
     if (twistTimer < TIMER_MAX)
@@ -632,6 +700,7 @@ void peripheralPollHandler() {
     if (tdy<-tthresh && twistTimer<twistTimeout && acc.y<twistMaxY) {
       twistTimer = TIMER_MAX; // ensure we don't trigger again until tdy>tthresh
       bangleTasks |= JSBT_TWIST_EVENT;
+      jshHadEvent();
       if (bangleFlags&JSBF_WAKEON_TWIST) {
         flipTimer = 0;
         if (!lcdPowerOn)
@@ -657,15 +726,16 @@ void peripheralPollHandler() {
           // inactive for long enough for a gesture, but not too long
           accGestureRecordedCount = accGestureCount;
           if ((accGestureCount >= accelGestureMinLength) &&
-              (accGestureCount < ACCEL_HISTORY_LEN))
+              (accGestureCount < ACCEL_HISTORY_LEN)) {
             bangleTasks |= JSBT_GESTURE_DATA; // trigger a gesture task
+            jshHadEvent();
+          }
           accGestureCount = 0; // stop the gesture
         }
       } else if (accIdleCount < accelGestureInactiveCount)
         accIdleCount = 0; // it was inactive but not long enough to trigger a gesture
     }
   }
-
   //jswrap_banglejs_ioWr(IOEXP_HRM,1); // debug using HRM LED
 }
 
@@ -981,9 +1051,9 @@ This function can be used to change the way graphics is handled on Bangle.js.
 Available options for `Bangle.setLCDMode` are:
 
 * `Bangle.setLCDMode()` or `Bangle.setLCDMode("direct")` (the default) - The drawable area is 240x240 16 bit. Unbuffered, so draw calls take effect immediately. Terminal and vertical scrolling work (horizontal scrolling doesn't).
-* `Bangle.setLCDMode("doublebuffered")` - The drawable area is 240x160 16 bit, terminal and scrolling will not work.
-* `Bangle.setLCDMode("120x120")` - The drawable area is 120x120 8 bit, `g.getPixel`, terminal, and full scrolling work.
-* `Bangle.setLCDMode("80x80")` - The drawable area is 80x80 8 bit, `g.getPixel`, terminal, and full scrolling work.
+* `Bangle.setLCDMode("doublebuffered")` - The drawable area is 240x160 16 bit, terminal and scrolling will not work. `g.flip()` must be called for draw operations to take effect.
+* `Bangle.setLCDMode("120x120")` - The drawable area is 120x120 8 bit, `g.getPixel`, terminal, and full scrolling work. Uses an offscreen buffer stored on Bangle.js, `g.flip()` must be called for draw operations to take effect.
+* `Bangle.setLCDMode("80x80")` - The drawable area is 80x80 8 bit, `g.getPixel`, terminal, and full scrolling work. Uses an offscreen buffer stored on Bangle.js, `g.flip()` must be called for draw operations to take effect.
 
 You can also call `Bangle.setLCDMode()` to return to normal, unbuffered `"direct"` mode.
 */
@@ -1147,19 +1217,19 @@ void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
     ],
     "ifdef" : "BANGLEJS"
 }
-Set how often the watch should poll for new acceleration/gyro data
+Set how often the watch should poll for new acceleration/gyro data and kick the Watchdog timer. It isn't
+recommended that you make this interval much larger than 1000ms, but values up to 4000ms are allowed.
+
+Calling this will set `Bangle.setOptions({powerSave: false})` - disabling the dynamic adjustment of
+poll interval to save battery power when Bangle.js is stationary.
 */
 void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
   if (!isfinite(interval) || interval<10 || interval>ACCEL_POLL_INTERVAL_MAX) {
     jsExceptionHere(JSET_ERROR, "Invalid interval");
     return;
   }
-  pollInterval = (uint16_t)interval;
-#ifndef EMSCRIPTEN
-  JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
-  jstStopExecuteFn(peripheralPollHandler, 0);
-  jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
-#endif
+  bangleFlags &= ~JSBF_POWER_SAVE; // turn off power save since it'll just overwrite the poll interval
+  jswrap_banglejs_setPollInterval_internal((uint16_t)interval);
 }
 
 /*JSON{
@@ -1192,6 +1262,10 @@ Set internal options used for gestures, step counting, etc...
 * `stepCounterThresholdLow` How low must acceleration magnitude squared get before we consider the next rise a step? default = `sqr(8192-80)`
 * `stepCounterThresholdHigh` How high must acceleration magnitude squared get before we consider it a step? default = `sqr(8192+80)`
 
+* `powerSave` after a minute of not being moved, Bangle.js will change the accelerometer poll interval down to 800ms (10x accelerometer samples).
+   On movement it'll be raised to the default 80ms. If `Bangle.setPollInterval` is used this is disabled, and for it to work the poll interval
+   must be either 80ms or 800ms. default = `true`
+
 Where accelerations are used they are in internal units, where `8192 = 1g`
 
 */
@@ -1202,6 +1276,7 @@ void jswrap_banglejs_setOptions(JsVar *options) {
   bool wakeOnFaceUp = bangleFlags&JSBF_WAKEON_FACEUP;
   bool wakeOnTouch = bangleFlags&JSBF_WAKEON_TOUCH;
   bool wakeOnTwist = bangleFlags&JSBF_WAKEON_TWIST;
+  bool powerSave = bangleFlags&JSBF_POWER_SAVE;
   jsvConfigObject configs[] = {
       {"gestureStartThresh", JSV_INTEGER, &accelGestureStartThresh},
       {"gestureEndThresh", JSV_INTEGER, &accelGestureEndThresh},
@@ -1218,6 +1293,7 @@ void jswrap_banglejs_setOptions(JsVar *options) {
       {"wakeOnFaceUp", JSV_BOOLEAN, &wakeOnFaceUp},
       {"wakeOnTouch", JSV_BOOLEAN, &wakeOnTouch},
       {"wakeOnTwist", JSV_BOOLEAN, &wakeOnTwist},
+      {"powerSave", JSV_BOOLEAN, &powerSave},
   };
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
     bangleFlags = (bangleFlags&~JSBF_WAKEON_BTN1) | (wakeOnBTN1?JSBF_WAKEON_BTN1:0);
@@ -1226,6 +1302,7 @@ void jswrap_banglejs_setOptions(JsVar *options) {
     bangleFlags = (bangleFlags&~JSBF_WAKEON_FACEUP) | (wakeOnFaceUp?JSBF_WAKEON_FACEUP:0);
     bangleFlags = (bangleFlags&~JSBF_WAKEON_TOUCH) | (wakeOnTouch?JSBF_WAKEON_TOUCH:0);
     bangleFlags = (bangleFlags&~JSBF_WAKEON_TWIST) | (wakeOnTwist?JSBF_WAKEON_TWIST:0);
+    bangleFlags = (bangleFlags&~JSBF_POWER_SAVE) | (powerSave?JSBF_POWER_SAVE:0);
   }
 }
 
@@ -1678,11 +1755,12 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_accelWr(0x26, 0x65); // TTH Tap detect threshold high (0xCB default)
   jswrap_banglejs_accelWr(0x27, 0x0D); // TTL Tap detect threshold low (0x1A default)
   jswrap_banglejs_accelWr(0x30,1); // ATH low wakeup detect threshold
-  jswrap_banglejs_accelWr(0x35,0); // LP_CNTL no averaging of samples
-  //jswrap_banglejs_accelWr(0x35,2); // LP_CNTL 4x averaging of samples
+  //jswrap_banglejs_accelWr(0x35,0 << 4); // LP_CNTL no averaging of samples
+  jswrap_banglejs_accelWr(0x35,2 << 4); // LP_CNTL 4x averaging of samples
   jswrap_banglejs_accelWr(0x3e,0); // clear the buffer
-  jswrap_banglejs_accelWr(0x18,0b01101100);  // CNTL1 Off, high power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
-  jswrap_banglejs_accelWr(0x18,0b11101100);  // CNTL1 On, high power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
+  jswrap_banglejs_accelWr(0x18,0b00101100);  // CNTL1 Off, low power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
+  jswrap_banglejs_accelWr(0x18,0b10101100);  // CNTL1 On, low power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
+  // high power vs low power uses an extra 150uA
 #endif
   // Accelerometer variables init
   stepCounter = 0;
@@ -1709,10 +1787,15 @@ void jswrap_banglejs_init() {
   jshEnableWatchDog(5); // 5 second watchdog
   // This timer kicks the watchdog, and does some other stuff as well
   pollInterval = DEFAULT_ACCEL_POLL_INTERVAL;
-  JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
-  jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+  //JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
+  //jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
+  // requires APP_TIMER_OP_QUEUE_SIZE=3 in BOARD.py
+  uint32_t err_code = app_timer_create(&m_peripheral_poll_timer_id,
+                      APP_TIMER_MODE_REPEATED,
+                      peripheralPollHandler);
+  jsble_check_error(err_code);
+  app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
 #endif
-
 
 
 #ifdef SMAQ3
@@ -1725,6 +1808,7 @@ void jswrap_banglejs_init() {
   fakeBTN3Flags = jshPinWatch(FAKE_BTN3_PIN, true);
   // TODO: FAKE_BTN1/2_PIN->input_pullup/disconnect input?
 #else
+  IOEventFlags channel;
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   jshSetPinShouldStayWatched(BTN2_PININDEX,true);
   jshSetPinShouldStayWatched(BTN3_PININDEX,true);
@@ -1770,7 +1854,6 @@ void jswrap_banglejs_init() {
     bangleFlags |= JSBF_ENABLE_BUZZ;
   }
   jsvUnLock3(v,settings,settingsFN);
-
 }
 
 /*JSON{
@@ -1781,7 +1864,8 @@ void jswrap_banglejs_kill() {
 #ifndef EMSCRIPTEN
   jstStopExecuteFn(backlightOnHandler, 0);
   jstStopExecuteFn(backlightOffHandler, 0);
-  jstStopExecuteFn(peripheralPollHandler, 0);
+  //jstStopExecuteFn(peripheralPollHandler, 0);
+  app_timer_stop(m_peripheral_poll_timer_id);
   jstStopExecuteFn(hrmPollHandler, 0);
 #endif
   jsvUnLock(promiseBeep);
@@ -1814,42 +1898,32 @@ void jswrap_banglejs_kill() {
   "generate" : "jswrap_banglejs_idle"
 }*/
 bool jswrap_banglejs_idle() {
-  /* TODO: Check jsiObjectHasCallbacks/etc here and then don't
-   * fire the event in our peripheralPollHandler/hrmPoll/etc if there's
-   * nothing to see the event
-   */
-  if (bangleTasks == JSBT_NONE) return false;
   JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
+  /* Check if we have an accelerometer listener, and set JSBF_ACCEL_LISTENER
+   * accordingly - so we don't get a wakeup if we have no listener. */
+  if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"accel"))
+    bangleFlags |= JSBF_ACCEL_LISTENER;
+  else
+    bangleFlags &= ~JSBF_ACCEL_LISTENER;
+  if (bangleTasks == JSBT_NONE) {
+    jsvUnLock(bangle);
+    return false;
+  }
   if (bangleTasks & JSBT_LCD_OFF) jswrap_banglejs_setLCDPower(0);
   if (bangleTasks & JSBT_LCD_ON) jswrap_banglejs_setLCDPower(1);
+  if (bangleTasks & JSBT_RESET) jsiStatus |= JSIS_TODO_FLASH_LOAD;
+  if (!bangle) {
+    bangleTasks = JSBT_NONE;
+    return false;
+  }
   if (bangleTasks & JSBT_ACCEL_DATA) {
-    if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"accel")) {
-      JsVar *o = jswrap_banglejs_getAccel();
-      if (o) {
-        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"accel", &o, 1);
-        jsvUnLock(o);
-      }
-    }
-    bool faceUp = (acc.z<-6700) && (acc.z>-9000) && abs(acc.x)<2048 && abs(acc.y)<2048;
-    if (faceUp!=wasFaceUp) {
-      faceUpCounter=0;
-      wasFaceUp = faceUp;
-    }
-    if (faceUpCounter<255) faceUpCounter++;
-    if (faceUpCounter==3) {
-      if (bangle) {
-        JsVar *v = jsvNewFromBool(faceUp);
-        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"faceUp", &v, 1);
-        jsvUnLock(v);
-      }
-      if (faceUp && lcdPowerTimeout && !lcdPowerOn && (bangleFlags&JSBF_WAKEON_FACEUP)) {
-        // LCD was turned off, turn it back on
-        jswrap_banglejs_setLCDPower(1);
-        flipTimer = 0;
-      }
+    JsVar *o = jswrap_banglejs_getAccel();
+    if (o) {
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"accel", &o, 1);
+      jsvUnLock(o);
     }
   }
-  if (bangle && (bangleTasks & JSBT_ACCEL_TAPPED)) {
+  if (bangleTasks & JSBT_ACCEL_TAPPED) {
     JsVar *o = jsvNewObject();
     if (o) {
       const char *string="";
@@ -1869,14 +1943,14 @@ bool jswrap_banglejs_idle() {
       jsvUnLock(o);
     }
   }
-  if (bangle && (bangleTasks & JSBT_GPS_DATA)) {
+  if (bangleTasks & JSBT_GPS_DATA) {
     JsVar *o = nmea_to_jsVar(&gpsFix);
     if (o) {
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS", &o, 1);
       jsvUnLock(o);
     }
   }
-  if (bangle && (bangleTasks & JSBT_GPS_DATA_PARTIAL)) {
+  if (bangleTasks & JSBT_GPS_DATA_PARTIAL) {
     if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw")) {
       JsVar *data = jsvObjectGetChild(bangle,"_gpsdata",0);
       if (!data) {
@@ -1887,7 +1961,7 @@ bool jswrap_banglejs_idle() {
       jsvUnLock(data);
     }
   }
-  if (bangle && (bangleTasks & JSBT_GPS_DATA_LINE)) {
+  if (bangleTasks & JSBT_GPS_DATA_LINE) {
     if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw")) {
       // if GPS data had overflowed, report it
       if (bangleTasks & JSBT_GPS_DATA_OVERFLOW) {
@@ -1907,7 +1981,7 @@ bool jswrap_banglejs_idle() {
       jsvObjectRemoveChild(bangle,"_gpsdata");
     }
   }
-  if (bangle && (bangleTasks & JSBT_MAG_DATA)) {
+  if (bangleTasks & JSBT_MAG_DATA) {
     if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"mag")) {
       JsVar *o = jswrap_banglejs_getCompass();
       if (o) {
@@ -1916,7 +1990,7 @@ bool jswrap_banglejs_idle() {
       }
     }
   }
-  if (bangle && (bangleTasks & JSBT_HRM_DATA)) {
+  if (bangleTasks & JSBT_HRM_DATA) {
     JsVar *o = jsvNewObject();
     if (o) {
       const int BPM_MIN = 40;
@@ -1977,8 +2051,8 @@ bool jswrap_banglejs_idle() {
       jsvUnLock(o);
     }
   }
-  if (bangle && (bangleTasks & JSBT_GESTURE_DATA)) {
-    if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"gesture")) {
+  if (bangleTasks & JSBT_GESTURE_DATA) {
+    if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"gesture")) {
       JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_INT8, accGestureRecordedCount*3);
       if (arr) {
         int idx = accHistoryIdx - (accGestureRecordedCount*3);
@@ -1996,7 +2070,7 @@ bool jswrap_banglejs_idle() {
       }
     }
 #ifdef USE_TENSORFLOW
-    if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"aiGesture")) {
+    if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"aiGesture")) {
       //JsVar *model = jsfReadFile(jsfNameFromString(".tfmodel"),0,0);
       JsfFileHeader header;
       uint32_t modelAddr = jsfFindFile(jsfNameFromString(".tfmodel"), &header);
@@ -2056,32 +2130,41 @@ bool jswrap_banglejs_idle() {
     }
 #endif
   }
-  if (bangle && (bangleTasks & JSBT_CHARGE_EVENT)) {
+  if (bangleTasks & JSBT_CHARGE_EVENT) {
     JsVar *charging = jsvNewFromBool(wasCharging);
     jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"charging", &charging, 1);
     jsvUnLock(charging);
   }
-  if (bangle && (bangleTasks & JSBT_STEP_EVENT)) {
+  if (bangleTasks & JSBT_STEP_EVENT) {
     JsVar *steps = jsvNewFromInteger(stepCounter);
     jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"step", &steps, 1);
     jsvUnLock(steps);
   }
-  if (bangle && (bangleTasks & JSBT_TWIST_EVENT)) {
+  if (bangleTasks & JSBT_TWIST_EVENT) {
     jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"twist", NULL, 0);
   }
-  if (bangle && (bangleTasks & JSBT_SWIPE_MASK)) {
+  if (bangleTasks & JSBT_FACE_UP) {
+    JsVar *v = jsvNewFromBool(faceUp);
+    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"faceUp", &v, 1);
+    jsvUnLock(v);
+    if (faceUp && lcdPowerTimeout && !lcdPowerOn && (bangleFlags&JSBF_WAKEON_FACEUP)) {
+      // LCD was turned off, turn it back on
+      jswrap_banglejs_setLCDPower(1);
+      flipTimer = 0;
+    }
+  }
+  if (bangleTasks & JSBT_SWIPE_MASK) {
     JsVar *o = jsvNewFromInteger((bangleTasks & JSBT_SWIPE_LEFT)?-1:1);
     jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"swipe", &o, 1);
     jsvUnLock(o);
   }
-  if (bangle && (bangleTasks & JSBT_TOUCH_MASK)) {
+  if (bangleTasks & JSBT_TOUCH_MASK) {
     JsVar *o = jsvNewFromInteger(((bangleTasks & JSBT_TOUCH_LEFT)?1:0) |
                                  ((bangleTasks & JSBT_TOUCH_RIGHT)?2:0));
     jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"touch", &o, 1);
     jsvUnLock(o);
   }
-  if (bangleTasks & JSBT_RESET)
-    jsiStatus |= JSIS_TODO_FLASH_LOAD;
+
   jsvUnLock(bangle);
   bangleTasks = JSBT_NONE;
 #ifdef LCD_CONTROLLER_LPM013M126

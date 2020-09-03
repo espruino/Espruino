@@ -1,4 +1,4 @@
-/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+/* Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,25 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#ifndef TENSORFLOW_LITE_MICRO_MICRO_ERROR_REPORTER_H_
-#define TENSORFLOW_LITE_MICRO_MICRO_ERROR_REPORTER_H_
 
-#include <cstdarg>
+#include "tensorflow/lite/micro/kernels/kernel_util.h"
 
-#include "tensorflow/lite/core/api/error_reporter.h"
-#include "tensorflow/lite/micro/compatibility.h"
+#include "tensorflow/lite/c/common.h"
 
 namespace tflite {
+namespace micro {
 
-class MicroErrorReporter : public ErrorReporter {
- public:
-  ~MicroErrorReporter() override {}
-  int Report(const char* format, va_list args) override;
+bool HaveSameShapes(const TfLiteEvalTensor* input1,
+                    const TfLiteEvalTensor* input2) {
+  TFLITE_DCHECK(input1 != nullptr);
+  TFLITE_DCHECK(input2 != nullptr);
+  return TfLiteIntArrayEqual(input1->dims, input2->dims);
+}
 
- private:
-  TF_LITE_REMOVE_VIRTUAL_DELETE
-};
-
+}  // namespace micro
 }  // namespace tflite
-
-#endif  // TENSORFLOW_LITE_MICRO_MICRO_ERROR_REPORTER_H_

@@ -43,13 +43,23 @@ memory of your device using a filesystem-like API.
 Also see the `Flash` library, which provides a low level, more dangerous way
 to access all parts of your flash memory.
 
+The `Storage` library provides two distinct types of file:
+
+* `require("Storage").write(...)`/`require("Storage").read(...)`/etc create simple
+contiguous files of fixed length. This is the recommended file type.
+* `require("Storage").open(...)` creates a `StorageFile`, which stores the file in
+numbered chunks (`"filename\1"`/`"filename\2"`/etc). It allows data to be appended
+and for the file to be read line by line.
+
+You must read a file using the same method you used to write it - eg. you can't create a
+file with `require("Storage").open(...)` and then read it with `require("Storage").read(...)`.
+
 **Note:** In firmware 2v05 and later, the maximum length for filenames
 is 28 characters. However in 2v04 and earlier the max length is 8.
 */
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
   "class" : "Storage",
   "name" : "eraseAll",
   "generate" : "jswrap_storage_eraseAll"
@@ -64,7 +74,6 @@ void jswrap_storage_eraseAll() {
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
   "class" : "Storage",
   "name" : "erase",
   "generate" : "jswrap_storage_erase",
@@ -73,6 +82,9 @@ void jswrap_storage_eraseAll() {
   ]
 }
 Erase a single file from the flash storage area.
+
+**Note:** This function should be used with normal files, and not
+`StorageFile`s created with `require("Storage").open(filename, ...)`
  */
 void jswrap_storage_erase(JsVar *name) {
   jsfEraseFile(jsfNameFromVar(name));
@@ -80,7 +92,6 @@ void jswrap_storage_erase(JsVar *name) {
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
   "class" : "Storage",
   "name" : "read",
   "generate" : "jswrap_storage_read",
@@ -94,12 +105,17 @@ void jswrap_storage_erase(JsVar *name) {
 Read a file from the flash storage area that has
 been written with `require("Storage").write(...)`.
 
-This function returns a String that points to the actual
+This function returns a memory-mapped String that points to the actual
 memory area in read-only memory, so it won't use up RAM.
+
+As such you can check if a file exists efficiently using `require("Storage").read(filename)!==undefined`.
 
 If you evaluate this string with `eval`, any functions
 contained in the String will keep their code stored
 in flash memory.
+
+**Note:** This function should be used with normal files, and not
+`StorageFile`s created with `require("Storage").open(filename, ...)`
 */
 JsVar *jswrap_storage_read(JsVar *name, int offset, int length) {
   return jsfReadFile(jsfNameFromVar(name), offset, length);
@@ -124,6 +140,9 @@ and parse JSON in it into a JavaScript object.
 This is identical to `JSON.parse(require("Storage").read(...))`.
 It will throw an exception if the data in the file is not
 valid JSON.
+
+**Note:** This function should be used with normal files, and not
+`StorageFile`s created with `require("Storage").open(filename, ...)`
 */
 JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name),0,0);
@@ -153,6 +172,9 @@ This can be used:
 
 * In a `DataView` with `new DataView(require("Storage").readArrayBuffer("x"))`
 * In a `Uint8Array/Float32Array/etc` with `new Uint8Array(require("Storage").readArrayBuffer("x"))`
+
+**Note:** This function should be used with normal files, and not
+`StorageFile`s created with `require("Storage").open(filename, ...)`
 */
 JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name),0,0);
@@ -164,7 +186,6 @@ JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
   "class" : "Storage",
   "name" : "write",
   "generate" : "jswrap_storage_write",
@@ -206,6 +227,9 @@ print(f.read("a"));
 
 This can be useful if you've got more data to write than you
 have RAM available.
+
+**Note:** This function should be used with normal files, and not
+`StorageFile`s created with `require("Storage").open(filename, ...)`
 */
 bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt _size) {
   JsVar *d;
@@ -241,6 +265,9 @@ Simply write `require("Storage").writeJSON("MyFile", [1,2,3])` to write
 a new file, and `require("Storage").readJSON("MyFile")` to read it.
 
 This is equivalent to: `require("Storage").write(name, JSON.stringify(data))`
+
+**Note:** This function should be used with normal files, and not
+`StorageFile`s created with `require("Storage").open(filename, ...)`
 */
 bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
   JsVar *d = jswrap_json_stringify(data,0,0);
@@ -251,7 +278,6 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
   "class" : "Storage",
   "name" : "list",
   "generate" : "jswrap_storage_list",
@@ -261,6 +287,9 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
   "return" : ["JsVar","An array of filenames"]
 }
 List all files in the flash storage area. An array of Strings is returned.
+
+This currently also lists files created by `StorageFile` (`require("Storage").open`)
+which have a file number (`"\1"`/`"\2"`/etc) appended to them.
 
 **Note:** This will output system files (eg. saved code) as well as
 files that you may have written.
@@ -443,8 +472,8 @@ to be accessed easily from Espruino.
 
 This presents a challenge for `StorageFile` which allows you
 to append to a file, so instead `StorageFile` stores files
-in chunks. It uses 7 character filenames and uses the last
-character to denote the chunk number (eg `"foobar\1"`, `"foobar\2"`, etc).
+in chunks. It uses the last character of the filename
+to denote the chunk number (eg `"foobar\1"`, `"foobar\2"`, etc).
 
 This means that while `StorageFile` files exist in the same
 area as those from `Storage`, they should be

@@ -27,6 +27,19 @@
 }
 */
 
+void *jswrap_tfmicrointerpreter_getTFMI(JsVar *parent) {
+  JsVar *mi = jsvObjectGetChild(parent, "mi", 0);
+  size_t tfSize;
+  char *tfPtr = jsvGetDataPointer(mi, &tfSize);
+  jsvUnLock(mi);
+  if (!tfPtr)
+    jsExceptionHere(JSET_ERROR, "TFMicroInterpreter structure corrupted");
+  //char *otf = tfPtr;
+  tfPtr = (char*)((((size_t)tfPtr)+15) & ~15);
+  //jsiConsolePrintf("TFMI 0x%08x -> 0x%08x\n", (int)otf, (int)tfPtr);;
+  return tfPtr;
+}
+
 /*JSON{
   "type" : "staticmethod",
   "class" : "tensorflow",
@@ -56,25 +69,27 @@ JsVar *jswrap_tensorflow_create(int arena_size, JsVar *model) {
   JsVar *tfmi = jspNewObject(NULL,"TFMicroInterpreter");
   if (!tfmi) return 0;
 
-  size_t tfSize = tf_get_size((size_t)arena_size, modelSize);
-  JsVar *mi = jsvNewFlatStringOfLength(tfSize);
+  size_t tfSize = tf_get_size((size_t)arena_size, modelPtr);
+  JsVar *mi = jsvNewFlatStringOfLength(tfSize+15); // need +15 in case the flast string isn't 16 bytes aligned
   if (!mi) {
     jsExceptionHere(JSET_ERROR, "Unable to allocate enough RAM for TensorFlow");
     jsvUnLock(tfmi);
     return 0;
   }
-  char *tfPtr = jsvGetDataPointer(mi, &tfSize);
-  if (!tfPtr) {
+  if (!jsvGetDataPointer(mi, &tfSize)) {
     assert(0);
     return 0; // should never get here
   }
-
-  if (!tf_create(tfPtr, (size_t)arena_size, modelPtr)) {
-    jsExceptionHere(JSET_ERROR, "MicroInterpreter creation failed");
-    jsvUnLock2(tfmi, mi);
-  }
+  // Now set up values and ensure we get the correct reference
   jsvObjectSetChild(tfmi, "model", model); // so we keep a reference
   jsvObjectSetChildAndUnLock(tfmi, "mi", mi); // so we keep a reference
+  char *tfPtr = jswrap_tfmicrointerpreter_getTFMI(tfmi);
+  // allocate tensorflow
+  if (!tf_create(tfPtr, (size_t)arena_size, modelPtr)) {
+    jsExceptionHere(JSET_ERROR, "MicroInterpreter creation failed");
+    jsvUnLock(tfmi);
+    return 0;
+  }
   return tfmi;
 }
 
@@ -86,25 +101,16 @@ JsVar *jswrap_tensorflow_create(int arena_size, JsVar *model) {
 }
 Class containing an instance of TFMicroInterpreter
 */
-void *jswrap_tfmicrointerpreter_getTFMI(JsVar *parent) {
-  JsVar *mi = jsvObjectGetChild(parent, "mi", 0);
-  size_t tfSize;
-  char *tfPtr = jsvGetDataPointer(mi, &tfSize);
-  jsvUnLock(mi);
-  if (!tfPtr)
-    jsExceptionHere(JSET_ERROR, "TFMicroInterpreter structure corrupted");
-  return tfPtr;
-}
-
-JsVar *jswrap_tfmicrointerpreter_tensorToArrayBuffer(JsVar *parent, TfLiteTensor *tensor) {
+JsVar *jswrap_tfmicrointerpreter_tensorToArrayBuffer(JsVar *parent, bool isInput) {
   void *tfmi = jswrap_tfmicrointerpreter_getTFMI(parent);
   JsVar *mi = jsvObjectGetChild(parent, "mi", 0);
-  if (!tensor && !mi) {
+  tf_tensorfinfo tensor = tf_get(tfmi, isInput);
+  if (!tensor.data || !mi) {
     jsExceptionHere(JSET_ERROR, "Unable to get tensor");
     return 0;
   }
   JsVarDataArrayBufferViewType abType = ARRAYBUFFERVIEW_UNDEFINED;
-  switch (tensor->type) {
+  switch (tensor.type) {
   case kTfLiteFloat32 :
     abType = ARRAYBUFFERVIEW_FLOAT32; break;
   case kTfLiteInt32 :
@@ -116,12 +122,16 @@ JsVar *jswrap_tfmicrointerpreter_tensorToArrayBuffer(JsVar *parent, TfLiteTensor
   case kTfLiteInt8 :
     abType = ARRAYBUFFERVIEW_INT8; break;
   default:
-    jsExceptionHere(JSET_TYPEERROR, "Unsupported Tensor format TfLiteType:%d", tensor->type);
+    jsExceptionHere(JSET_TYPEERROR, "Unsupported Tensor format TfLiteType:%d", tensor.type);
     return 0;
   }
 
+  size_t tfSize;
+  char *tfPtr = jsvGetDataPointer(mi, &tfSize);
+  /* We can't just use 'tfmi' here because that's the 16 byte aligned address.
+  We need this relative to the unaligned address (tfPtr) */
   JsVar *ab = jsvNewArrayBufferFromString(mi,0);
-  JsVar *b = jswrap_typedarray_constructor(abType, ab, ((size_t)&tensor->data.f[0])-(size_t)tfmi, tensor->bytes / JSV_ARRAYBUFFER_GET_SIZE(abType));
+  JsVar *b = jswrap_typedarray_constructor(abType, ab, ((size_t)tensor.data)-(size_t)tfPtr, tensor.bytes / JSV_ARRAYBUFFER_GET_SIZE(abType));
   jsvUnLock2(ab,mi);
   return b;
 }
@@ -135,9 +145,7 @@ JsVar *jswrap_tfmicrointerpreter_tensorToArrayBuffer(JsVar *parent, TfLiteTensor
 }
 */
 JsVar *jswrap_tfmicrointerpreter_getInput(JsVar *parent) {
-  void *tfmi = jswrap_tfmicrointerpreter_getTFMI(parent);
-  if (!tfmi) return 0;
-  return jswrap_tfmicrointerpreter_tensorToArrayBuffer(parent, tf_get_input(tfmi, 0));
+  return jswrap_tfmicrointerpreter_tensorToArrayBuffer(parent, true);
 }
 /*JSON{
   "type" : "method",
@@ -149,9 +157,7 @@ JsVar *jswrap_tfmicrointerpreter_getInput(JsVar *parent) {
 }
 */
 JsVar *jswrap_tfmicrointerpreter_getOutput(JsVar *parent) {
-  void *tfmi = jswrap_tfmicrointerpreter_getTFMI(parent);
-  if (!tfmi) return 0;
-  return jswrap_tfmicrointerpreter_tensorToArrayBuffer(parent, tf_get_output(tfmi, 0));
+  return jswrap_tfmicrointerpreter_tensorToArrayBuffer(parent, false);
 }
 /*JSON{
   "type" : "method",
