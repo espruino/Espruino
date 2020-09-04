@@ -545,6 +545,7 @@ void peripheralPollHandler() {
   }
 
   if (i2cBusy) return;
+  i2cBusy = true;
   unsigned char buf[7];
   // check the magnetometer if we had it on
   if (compassPowerOn) {
@@ -698,6 +699,7 @@ void peripheralPollHandler() {
         accIdleCount = 0; // it was inactive but not long enough to trigger a gesture
     }
   }
+  i2cBusy = false;
   //jswrap_banglejs_ioWr(IOEXP_HRM,1); // debug using HRM LED
 }
 
