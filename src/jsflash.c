@@ -286,6 +286,7 @@ static void memcpy_circular(char *dst, uint32_t *dstIndex, uint32_t dstSize, cha
 
 static void jsfCompactWriteBuffer(uint32_t *writeAddress, uint32_t readAddress, char *swapBuffer, uint32_t swapBufferSize, uint32_t *swapBufferUsed, uint32_t *swapBufferTail) {
   uint32_t nextFlashPage = jsfGetAddressOfNextPage(*writeAddress);
+  if (nextFlashPage==0) nextFlashPage=JSF_END_ADDRESS;
   // write any data between swapBufferTail and the end of the buffer
   while (*swapBufferUsed) {
     uint32_t s = *swapBufferUsed;
@@ -307,6 +308,7 @@ static void jsfCompactWriteBuffer(uint32_t *writeAddress, uint32_t readAddress, 
     jshFlashWrite(&swapBuffer[*swapBufferTail], *writeAddress, s);
     *writeAddress += s;
     nextFlashPage = jsfGetAddressOfNextPage(*writeAddress);
+    if (nextFlashPage==0) nextFlashPage=JSF_END_ADDRESS;
     *swapBufferTail = (*swapBufferTail+s) % swapBufferSize;
     *swapBufferUsed -= s;
   }
@@ -374,7 +376,9 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
 bool jsfCompact() {
 #ifndef SAVE_ON_FLASH
   jsDebug(DBG_INFO,"Compacting\n");
-  uint32_t pageSize = jsfGetAddressOfNextPage(JSF_START_ADDRESS) - JSF_START_ADDRESS;
+  uint32_t pageAddr,pageSize;
+  if (!jshFlashGetPage(JSF_START_ADDRESS, &pageAddr, &pageSize))
+    return 0;
   uint32_t maxRequired = pageSize + (uint32_t)sizeof(JsfFileHeader);
   // TODO: We could skip forward pages if we think they are already fully compacted?
 

@@ -44,6 +44,7 @@
             Ensure software SPI/I2C/Serial don't leak a variable when initialised
             Fix delay in scheduling after initial setTimeout call (from 2v06 and later)
             Espruino WiFi: Fix StorageFile on Espruino WiFi (use max storagefile size of 4k)
+            Espruino WiFi: Fix Storage compaction regression (introduced after 2v06 release)
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions
