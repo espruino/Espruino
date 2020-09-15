@@ -309,6 +309,7 @@ typedef struct {
 #define POWER_SAVE_MIN_ACCEL 2684354 // min acceleration before we exit power save... sqr(8192*0.2)
 #define POWER_SAVE_TIMEOUT 60000 // 60 seconds of inactivity
 #define DEFAULT_LCD_POWER_TIMEOUT 30000 // in msec - default for lcdPowerTimeout
+#define BACKLIGHT_PWM_INTERVAL 15 // in msec - 67Hz PWM
 #define HRM_POLL_INTERVAL 20 // in msec
 #define ACCEL_POLL_INTERVAL_MAX 4000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
 #define BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
@@ -319,8 +320,13 @@ JshI2CInfo internalI2C;
 bool i2cBusy;
 /// How often should be poll for accelerometer/compass data?
 volatile uint16_t pollInterval; // in ms
+#ifndef EMSCRIPTEN
 /// Nordic app timer to handle call of peripheralPollHandler
 APP_TIMER_DEF(m_peripheral_poll_timer_id);
+// Nordic app timer to handle backlight PWM
+APP_TIMER_DEF(m_backlight_on_timer_id);
+APP_TIMER_DEF(m_backlight_off_timer_id);
+#endif
 /// Timer used for power save (lowering the poll interval)
 volatile uint16_t powerSaveTimer;
 
@@ -491,9 +497,6 @@ char clipi8(int x) {
 void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
   pollInterval = (uint16_t)msec;
 #ifndef EMSCRIPTEN
-  //JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
-  //jstStopExecuteFn(peripheralPollHandler, 0);
-  //jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
   app_timer_stop(m_peripheral_poll_timer_id);
   app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
 #endif
@@ -748,6 +751,7 @@ void hrmPollHandler() {
 void backlightOnHandler() {
   if (i2cBusy) return;
   jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight on
+  app_timer_start(m_backlight_off_timer_id, APP_TIMER_TICKS(BACKLIGHT_PWM_INTERVAL, APP_TIMER_PRESCALER) * lcdBrightness >> 8, NULL);
 }
 void backlightOffHandler() {
   if (i2cBusy) return;
@@ -842,18 +846,14 @@ void btn5Handler(bool state, IOEventFlags flags) {
 /// Turn just the backlight on or off (or adjust brightness)
 static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
 #ifndef EMSCRIPTEN
-  jstStopExecuteFn(backlightOnHandler, 0);
-  jstStopExecuteFn(backlightOffHandler, 0);
+  app_timer_stop(m_backlight_on_timer_id);
+  app_timer_stop(m_backlight_off_timer_id);
   if (isOn) { // wake
-    if (lcdBrightness>0) {
-      jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight on
+    if (lcdBrightness > 0) {
       if (lcdBrightness < 255) { //  only do PWM if brightness isn't full
-        JsSysTime now = jshGetSystemTime();
-        JsSysTime interval = jshGetTimeFromMilliseconds(10); // how often do we switch - 100Hz
-        JsSysTime ontime = interval*lcdBrightness/255; // how long to we stay on for?
-        jstExecuteFn(backlightOnHandler, NULL, now+interval, interval);
-        jstExecuteFn(backlightOffHandler, NULL, now+interval+ontime, interval);
-      }
+        app_timer_start(m_backlight_on_timer_id, APP_TIMER_TICKS(BACKLIGHT_PWM_INTERVAL, APP_TIMER_PRESCALER), NULL);
+      } else // full brightness
+        jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight on
     } else { // lcdBrightness == 0
       jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
     }
@@ -1612,14 +1612,21 @@ void jswrap_banglejs_init() {
   jshEnableWatchDog(5); // 5 second watchdog
   // This timer kicks the watchdog, and does some other stuff as well
   pollInterval = DEFAULT_ACCEL_POLL_INTERVAL;
-  //JsSysTime t = jshGetTimeFromMilliseconds(pollInterval);
-  //jstExecuteFn(peripheralPollHandler, NULL, jshGetSystemTime()+t, t);
-  // requires APP_TIMER_OP_QUEUE_SIZE=3 in BOARD.py
+  // requires APP_TIMER_OP_QUEUE_SIZE=5 in BOARD.py
   uint32_t err_code = app_timer_create(&m_peripheral_poll_timer_id,
                       APP_TIMER_MODE_REPEATED,
                       peripheralPollHandler);
   jsble_check_error(err_code);
   app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
+  // Backlight PWM
+  err_code = app_timer_create(&m_backlight_on_timer_id,
+                        APP_TIMER_MODE_REPEATED,
+                        backlightOnHandler);
+  jsble_check_error(err_code);
+  err_code = app_timer_create(&m_backlight_off_timer_id,
+                      APP_TIMER_MODE_SINGLE_SHOT,
+                      backlightOffHandler);
+  jsble_check_error(err_code);
 #endif
 
 
@@ -1672,9 +1679,8 @@ void jswrap_banglejs_init() {
 }*/
 void jswrap_banglejs_kill() {
 #ifndef EMSCRIPTEN
-  jstStopExecuteFn(backlightOnHandler, 0);
-  jstStopExecuteFn(backlightOffHandler, 0);
-  //jstStopExecuteFn(peripheralPollHandler, 0);
+  app_timer_stop(m_backlight_on_timer_id);
+  app_timer_stop(m_backlight_off_timer_id);
   app_timer_stop(m_peripheral_poll_timer_id);
   jstStopExecuteFn(hrmPollHandler, 0);
 #endif
