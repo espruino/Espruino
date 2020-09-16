@@ -46,6 +46,7 @@
             Espruino WiFi: Fix StorageFile on Espruino WiFi (use max storagefile size of 4k)
             Espruino WiFi: Fix Storage compaction regression (introduced after 2v06 release)
             Bangle.js: Fix backlight flicker regression if at part brightness (fix #1925)
+            Fix ArrayBuffer.sort with negative numbers (it's not just Array.sort!)
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions
