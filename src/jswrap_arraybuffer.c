@@ -14,7 +14,9 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_arraybuffer.h"
+#include "jswrap_array.h"
 #include "jsparse.h"
+#include "jsnative.h"
 #include "jsinteractive.h"
 
 /*JSON{
@@ -631,7 +633,7 @@ Join all elements of this array together into one string, using 'separator' betw
   "class" : "ArrayBufferView",
   "name" : "sort",
   "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_array_sort",
+  "generate" : "jswrap_arraybufferview_sort",
   "params" : [
     ["var","JsVar","A function to use to compare array elements (or undefined)"]
   ],
@@ -640,6 +642,30 @@ Join all elements of this array together into one string, using 'separator' betw
 }
 Do an in-place quicksort of the array
  */
+static JsVarFloat _jswrap_arraybufferview_sort_float(JsVarFloat a, JsVarFloat b) {
+  return a-b;
+}
+static JsVarInt _jswrap_arraybufferview_sort_int(JsVarInt a, JsVarInt b) {
+  return a-b;
+}
+
+JsVar *jswrap_arraybufferview_sort(JsVar *array, JsVar *compareFn) {
+  if (!jsvIsArrayBuffer(array)) return 0;
+  bool isFloat = JSV_ARRAYBUFFER_IS_FLOAT(array->varData.arraybuffer.type);
+  if (compareFn)
+    return jswrap_array_sort(array, compareFn);
+  compareFn = isFloat ?
+      jsvNewNativeFunction(
+          (void (*)(void))_jswrap_arraybufferview_sort_float,
+          JSWAT_JSVARFLOAT|(JSWAT_JSVARFLOAT<<JSWAT_BITS)|(JSWAT_JSVARFLOAT<<(JSWAT_BITS*2))) :
+      jsvNewNativeFunction(
+                (void (*)(void))_jswrap_arraybufferview_sort_int,
+                JSWAT_INT32|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_INT32<<(JSWAT_BITS*2)));
+  JsVar *r = jswrap_array_sort(array, compareFn);
+  jsvUnLock(compareFn);
+  return r;
+}
+
 /*JSON{
   "type" : "method",
   "class" : "ArrayBufferView",

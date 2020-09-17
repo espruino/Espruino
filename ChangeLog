@@ -45,6 +45,12 @@
             Bangle.js: Peripheral polling now only fully wakes Bangle when an event requires JS processing (ref #1921)
             Bangle.js: When not moved for 1 minute, slow down accelerometer poll interval from 80 to 800ms (fix #1921)
             Ensure software SPI/I2C/Serial don't leak a variable when initialised
+            Fix delay in scheduling after initial setTimeout call (from 2v06 and later)
+            Espruino WiFi: Fix StorageFile on Espruino WiFi (use max storagefile size of 4k)
+            Espruino WiFi: Fix Storage compaction regression (introduced after 2v06 release)
+            Bangle.js: Fix backlight flicker regression if at part brightness (fix #1925)
+            Fix ArrayBuffer.sort with negative numbers (it's not just Array.sort!)
+            nRF52: Use the best available hardware timer for PWM taking frequency into account
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions

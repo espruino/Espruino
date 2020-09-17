@@ -2077,7 +2077,7 @@ void jsiIdle() {
               // Create the 'time' variable that will be passed to the user
               JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+timerTime-delay)/1000);
               // if it was a watch, set the last state up
-              jsvObjectSetChild(data, "state", jsvNewFromBool(timerState));
+              jsvObjectSetChildAndUnLock(data, "state", jsvNewFromBool(timerState));
               // set up the lastTime variable of data to what was in the watch
               jsvObjectSetChildAndUnLock(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0));
               // set up the watches lastTime to this one
