@@ -336,25 +336,26 @@ JshI2CInfo i2cTouch;
 #define ACCEL_I2C &i2cAccel
 #define MAG_I2C &i2cMag
 #define TOUCH_I2C &i2cTouch
-#else
+#endif
+#ifdef BANGLEJS_F18
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo i2cInternal;
 #define ACCEL_I2C &i2cInternal
 #define MAG_I2C &i2cInternal
+// Nordic app timer to handle backlight PWM
+APP_TIMER_DEF(m_backlight_on_timer_id);
+APP_TIMER_DEF(m_backlight_off_timer_id);
 #endif
 
+#ifndef EMSCRIPTEN
+/// Nordic app timer to handle call of peripheralPollHandler
+APP_TIMER_DEF(m_peripheral_poll_timer_id);
+#endif
 
 /// Is I2C busy? if so we'll skip one reading in our interrupt so we don't overlap
 bool i2cBusy;
 /// How often should be poll for accelerometer/compass data?
 volatile uint16_t pollInterval; // in ms
-#ifndef EMSCRIPTEN
-/// Nordic app timer to handle call of peripheralPollHandler
-APP_TIMER_DEF(m_peripheral_poll_timer_id);
-// Nordic app timer to handle backlight PWM
-APP_TIMER_DEF(m_backlight_on_timer_id);
-APP_TIMER_DEF(m_backlight_off_timer_id);
-#endif
 /// Timer used for power save (lowering the poll interval)
 volatile uint16_t powerSaveTimer;
 
@@ -795,6 +796,7 @@ void hrmPollHandler() {
 #endif
 }
 
+#ifdef BANGLEJS_F18
 void backlightOnHandler() {
   if (i2cBusy) return;
   jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight on
@@ -804,6 +806,7 @@ void backlightOffHandler() {
   if (i2cBusy) return;
   jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
 }
+#endif // BANGLEJS_F18
 #endif // !EMSCRIPTEN
 
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
@@ -895,7 +898,6 @@ void btn5Handler(bool state, IOEventFlags flags) {
 #endif
 
 #ifdef SMAQ3
-
 void touchHandler(bool state, IOEventFlags flags) {
   if (state) return; // only interested in when low
   // Ok, now get touch info
@@ -941,9 +943,6 @@ void touchHandler(bool state, IOEventFlags flags) {
   lastBtn2 = btn2;
   lastBtn3 = btn3;
 
-
-
-
   lastGesture = gesture;
 }
 #endif
@@ -951,6 +950,7 @@ void touchHandler(bool state, IOEventFlags flags) {
 /// Turn just the backlight on or off (or adjust brightness)
 static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
 #ifndef EMSCRIPTEN
+#ifdef BANGLEJS_F18
   app_timer_stop(m_backlight_on_timer_id);
   app_timer_stop(m_backlight_off_timer_id);
   if (isOn) { // wake
@@ -965,6 +965,7 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
   } else { // sleep
     jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
   }
+#endif
 #endif
 }
 /*JSON{
@@ -1353,7 +1354,7 @@ JsVarInt jswrap_banglejs_getBattery() {
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
 #ifdef SMAQ3
   const JsVarFloat vlo = 0.22;   // guess
-  const JsVarFloat vhi = 0.296;  // guess
+  const JsVarFloat vhi = 0.32;  // guess
 #else
   const JsVarFloat vlo = 0.51;
   const JsVarFloat vhi = 0.62;
@@ -1588,7 +1589,7 @@ JsVar *jswrap_banglejs_getAccel() {
 void jswrap_banglejs_init() {
   IOEventFlags channel;
 #ifndef EMSCRIPTEN
-#ifndef SMAQ3
+#ifdef BANGLEJS_F18
   jshPinOutput(18,0); // what's this?
 #endif
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
@@ -1617,7 +1618,8 @@ void jswrap_banglejs_init() {
   i2cTouch.pinSDA = TOUCH_PIN_SDA;
   i2cTouch.pinSCL = TOUCH_PIN_SCL;
   jsi2cSetup(&i2cTouch);
-#else
+#endif
+#ifdef BANGLEJS_F18
   jshI2CInitInfo(&i2cInternal);
   i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cInternal.pinSDA = ACCEL_PIN_SDA;
@@ -1632,7 +1634,8 @@ void jswrap_banglejs_init() {
   jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
   channel = jshPinWatch(TOUCH_PIN_IRQ, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
-#else
+#endif
+#ifdef BANGLEJS_F18
   // LCD pin init
   jshPinOutput(LCD_PIN_CS, 1);
   jshPinOutput(LCD_PIN_DC, 1);
@@ -1806,6 +1809,7 @@ void jswrap_banglejs_init() {
   #else
   app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval), NULL);
   #endif
+#ifdef BANGLEJS_F18
   // Backlight PWM
   err_code = app_timer_create(&m_backlight_on_timer_id,
                         APP_TIMER_MODE_REPEATED,
@@ -1815,6 +1819,7 @@ void jswrap_banglejs_init() {
                       APP_TIMER_MODE_SINGLE_SHOT,
                       backlightOffHandler);
   jsble_check_error(err_code);
+#endif
 #endif
 
 
@@ -1827,8 +1832,8 @@ void jswrap_banglejs_init() {
   jshSetPinShouldStayWatched(FAKE_BTN3_PIN,true);
   fakeBTN3Flags = jshPinWatch(FAKE_BTN3_PIN, true);
   // TODO: FAKE_BTN1/2_PIN->input_pullup/disconnect input?
-#else
-  IOEventFlags channel;
+#endif
+#ifdef BANGLEJS_F18
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   jshSetPinShouldStayWatched(BTN2_PININDEX,true);
   jshSetPinShouldStayWatched(BTN3_PININDEX,true);
@@ -1882,8 +1887,10 @@ void jswrap_banglejs_init() {
 }*/
 void jswrap_banglejs_kill() {
 #ifndef EMSCRIPTEN
+#ifdef BANGLEJS_F18
   app_timer_stop(m_backlight_on_timer_id);
   app_timer_stop(m_backlight_off_timer_id);
+#endif
   app_timer_stop(m_peripheral_poll_timer_id);
   jstStopExecuteFn(hrmPollHandler, 0);
 #endif
@@ -1898,7 +1905,8 @@ void jswrap_banglejs_kill() {
   jshSetPinShouldStayWatched(FAKE_BTN3_PIN,false);
   jshPinWatch(FAKE_BTN1_PIN, false);
   jshPinWatch(FAKE_BTN3_PIN, false);
-#else
+#endif
+#ifdef BANGLEJS_F18
   jshSetPinShouldStayWatched(BTN1_PININDEX,false);
   jshSetPinShouldStayWatched(BTN2_PININDEX,false);
   jshSetPinShouldStayWatched(BTN3_PININDEX,false);
@@ -2423,7 +2431,7 @@ void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data) {
 Changes a pin state on the IO expander
 */
 void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
-#ifndef SMAQ3
+#ifdef BANGLEJS_F18
 #ifndef EMSCRIPTEN
   static unsigned char state;
   if (on) state |= mask;
