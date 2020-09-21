@@ -331,7 +331,8 @@ for jsondata in detail:
       text = ""
       for j in instances:
         text = text + " * [`"+j["name"]+"`](#l__global_"+j["name"]+")";
-        if "description" in j: text = text + " " + j["description"]
+        if "description" in j:           
+          text = text + " " + j["description"].split("\n")[0]
         text = text + "\n"
       html_description(text, "")
 
