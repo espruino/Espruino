@@ -139,6 +139,8 @@ void jswrap_interface_trace(JsVar *root) {
 }
 Output current interpreter state in a text form such that it can be copied to a new device
 
+Espruino keeps its current state in RAM (even if the function code is stored in Flash). When you type `dump()` it dumps the current state of code in RAM plus the hardware state, then if there's code saved in flash it writes "// Code saved with E.setBootCode" and dumps that too.
+
 **Note:** 'Internal' functions are currently not handled correctly. You will need to recreate these in the `onInit` function.
  */
 /*JSON{
