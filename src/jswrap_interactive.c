@@ -139,7 +139,7 @@ void jswrap_interface_trace(JsVar *root) {
 }
 Output current interpreter state in a text form such that it can be copied to a new device
 
-Note: 'Internal' functions are currently not handled correctly. You will need to recreate these in the `onInit` function.
+**Note:** 'Internal' functions are currently not handled correctly. You will need to recreate these in the `onInit` function.
  */
 /*JSON{
   "type" : "function",
