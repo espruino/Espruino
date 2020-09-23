@@ -54,6 +54,13 @@ gcc-arm-none-eabi*
 /targetlibs/nrf5x_15_*
 /targetlibs/nrf5x_15x
 /targetlibs/nrf5x_mesh
+/targetlibs/nrf5x_17/components
+/targetlibs/nrf5x_17/examples
+/targetlibs/nrf5x_17/external
+/targetlibs/nrf5x_17/integration
+/targetlibs/nrf5x_17/modules
+/targetlibs/nrf5x_17/config
+/targetlibs/nrf5x_17/documentation
 /targetlibs/raspberrypi
 /.vscode
 /CURRENT_BOARD.make

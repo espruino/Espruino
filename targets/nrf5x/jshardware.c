@@ -62,7 +62,7 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_timer.h"
 #include "nrf_delay.h"
 #include "nrf_nvic.h"
-#ifdef NRF52
+#ifdef NRF52_SERIES
 #include "nrf_saadc.h"
 #include "nrf_pwm.h"
 #else
@@ -442,7 +442,7 @@ void SysTick_Handler(void)  {
   }
 }
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
 NRF_PWM_Type *nrf_get_pwm(JshPinFunction func) {
   if ((func&JSH_MASK_TYPE) == JSH_TIMER1) return NRF_PWM0;
   else if ((func&JSH_MASK_TYPE) == JSH_TIMER2) return NRF_PWM1;
@@ -461,7 +461,7 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
   JshPinFunction fInfo = func&JSH_MASK_INFO;
   switch (fType) {
   case JSH_NOTHING: break;
-#ifdef NRF52
+#ifdef NRF52_SERIES
   case JSH_TIMER1:
   case JSH_TIMER2:
   case JSH_TIMER3: {
@@ -653,7 +653,7 @@ void jshInit() {
 
   // Enable and sort out the timer
   nrf_timer_mode_set(NRF_TIMER1, NRF_TIMER_MODE_TIMER);
-#ifdef NRF52
+#ifdef NRF52_SERIES
   nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
   nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz);
   #define NRF_TIMER_FREQ 1000000
@@ -714,7 +714,7 @@ void jshInit() {
   // Enable PPI driver
   err_code = nrf_drv_ppi_init();
   APP_ERROR_CHECK(err_code);
-#ifdef NRF52  
+#ifdef NRF52_SERIES
   // Turn on SYSTICK - used for handling Ctrl-C behaviour
   SysTick_Config(0xFFFFFF);
 #endif
@@ -821,7 +821,7 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
 }
 
 void jshInterruptOff() {
-#if defined(BLUETOOTH) && defined(NRF52)
+#if defined(BLUETOOTH) && defined(NRF52_SERIES)
   // disable non-softdevice IRQs. This only seems available on Cortex M3 (not the nRF51's M0)
   __set_BASEPRI(4<<5); // Disabling interrupts completely is not reasonable when using one of the SoftDevices.
 #else
@@ -830,7 +830,7 @@ void jshInterruptOff() {
 }
 
 void jshInterruptOn() {
-#if defined(BLUETOOTH) && defined(NRF52)
+#if defined(BLUETOOTH) && defined(NRF52_SERIES)
   __set_BASEPRI(0);
 #else
   __enable_irq();
@@ -1016,7 +1016,7 @@ JshPinState jshPinGetState(Pin pin) {
   }
 }
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
 volatile bool nrf_analog_read_interrupted = false;
 
 nrf_saadc_value_t nrf_analog_read() {
@@ -1080,7 +1080,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
   if (!jshGetPinStateIsManual(pin))
     jshPinSetState(pin, JSHPINSTATE_ADC_IN);
-#ifdef NRF52
+#ifdef NRF52_SERIES
   int channel = pinInfo[pin].analog & JSH_MASK_ANALOG_CH;
   assert(NRF_SAADC_INPUT_AIN0 == 1);
   assert(NRF_SAADC_INPUT_AIN1 == 2);
@@ -1131,7 +1131,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
 int jshPinAnalogFast(Pin pin) {
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return 0;
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
   // sanity checks for channel
   assert(NRF_SAADC_INPUT_AIN0 == 1);
   assert(NRF_SAADC_INPUT_AIN1 == 2);
@@ -1208,7 +1208,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   if (value>1) value=1;
   if (value<0) value=0;
   bool alreadyConfigured = false;
-#ifdef NRF52
+#ifdef NRF52_SERIES
   // Try and use existing pin function
   JshPinFunction func = pinStates[pin];
   // Work out what speed we need this timer to be
@@ -1270,7 +1270,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
     if (freq<=0) freq=50;
     jstPinPWM(freq, value, pin);
     return JSH_NOTHING;
-#ifdef NRF52
+#ifdef NRF52_SERIES
   }
 
   if (!func) {
@@ -1325,7 +1325,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 
 /// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value) {
-#ifdef NRF52
+#ifdef NRF52_SERIES
   if (!JSH_PINFUNCTION_IS_TIMER(func))
     return;
 
@@ -2060,7 +2060,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
     uint32_t wordOffset = 0;
     while (len>0 && !jspIsInterrupted()) {
       uint32_t l = len;
-#ifdef NRF51
+#ifdef NRF51_SERIES
       if (l>1024) l=1024; // max write size
 #else
       if (l>4096) l=4096; // max write size
@@ -2131,7 +2131,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
   }
   jsiSetSleep(JSI_SLEEP_ASLEEP);
   while (!hadEvent) {
-#ifdef NRF52
+#ifdef NRF52_SERIES
     /*
      * Clear FPU exceptions.
      * Without this step, the FPU interrupt is marked as pending,
@@ -2215,7 +2215,7 @@ JsVarFloat jshReadTemperature() {
 
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef() {
-#ifdef NRF52
+#ifdef NRF52_SERIES
   nrf_saadc_channel_config_t config;
   config.acq_time = NRF_SAADC_ACQTIME_3US;
   config.gain = NRF_SAADC_GAIN1_6; // 1/6 of input volts

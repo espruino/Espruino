@@ -401,7 +401,7 @@ def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH_EXTREME": return "devices with extremely low flash memory (eg. HYSTM32_28)"
   if d=="STM32": return "STM32 devices (including Espruino Original, Pico and WiFi)"
   if d=="STM32F1": return "STM32F1 devices (including Original Espruino Board)"
-  if d=="NRF52": return "NRF52 devices (like Puck.js, Pixl.js, Bangle.js and MDBT42Q)"
+  if d=="NRF52_SERIES": return "NRF52 devices (like Puck.js, Pixl.js, Bangle.js and MDBT42Q)"
   if d=="PUCKJS": return "Puck.js devices"
   if d=="PIXLJS": return "Pixl.js boards"
   if d=="ESPRUINOWIFI": return "Espruino WiFi boards"

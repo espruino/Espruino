@@ -45,7 +45,9 @@
 
 /* Define NRF52_SERIES for common use in nRF52 series devices. */
 #if defined (NRF52832_XXAA) || defined (NRF52840_XXAA)
+#ifndef NRF52_SERIES
     #define NRF52_SERIES
+#endif
 #endif
 
 

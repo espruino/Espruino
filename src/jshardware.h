@@ -406,7 +406,7 @@ int jshGetRTCPrescalerValue(bool calibrate);
 void jshResetRTCTimer();
 #endif
 
-#if defined(NRF51) || defined(NRF52)
+#if defined(NRF51_SERIES) || defined(NRF52_SERIES)
 /// Called when we have had an event that means we should execute JS
 extern void jshHadEvent();
 #else
