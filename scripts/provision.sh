@@ -168,6 +168,18 @@ if [ "$PROVISION_NRF_SDK15" = "1" ]; then
         cat targetlibs/nrf5x_15/patches/* | patch -p1
     fi
 fi
+if [ "$PROVISION_NRF_SDK17" = "1" ]; then
+    if [ ! -d "targetlibs/nrf5x_17/components" ]; then
+        echo Installing NRF SDK 17.0 to targetlibs/nrf5x_17/components
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5SDK1702d674dde.zip -o nRF5_SDK_17.zip
+        # This is nRF5_SDK_15.0.0_a53641a.zip without the docs/examples folder, and with line endings converted to unix (for patch)
+        unzip -q -o nRF5_SDK_17.zip
+        mv nRF5_SDK_17.0.2_d674dde/* targetlibs/nrf5x_17
+        rm -rf nRF5_SDK_17.zip nRF5_SDK_17.0.2_d674dde
+        echo ======================================================
+        cat targetlibs/nrf5x_17/patches/* | patch -p1
+    fi
+fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_STM32F1" = "1" ]; then
     ARM=1

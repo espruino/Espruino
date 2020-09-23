@@ -47,6 +47,9 @@ endif
 ifdef NRF5X_SDK_15
 LDFLAGS += -L$(NRF5X_SDK_PATH)/modules/nrfx/mdk
 endif
+ifdef NRF5X_SDK_17
+LDFLAGS += -L$(NRF5X_SDK_PATH)/modules/nrfx/mdk
+endif
 
 # These files are the Espruino HAL implementation.
 INCLUDE += -I$(ROOT)/targets/nrf5x
@@ -137,10 +140,27 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/integration/nrfx/legacy
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/delay
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_link_ctx_manager
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/atomic_flags
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/experimental_memobj/nrf_memobj.c
+endif
+ifdef NRF5X_SDK_17
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/mdk
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/hal
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/legacy
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/drivers/include
+INCLUDE += -I$(NRF5X_SDK_PATH)/integration/nrfx
+INCLUDE += -I$(NRF5X_SDK_PATH)/integration/nrfx/legacy
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/delay
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_link_ctx_manager
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/atomic_flags
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log/src
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/mutex
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/memobj
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/memobj/nrf_memobj.c
 endif
 
-
-ifdef NRF5X_SDK_15
+ifneq ($(or $(NRF5X_SDK_15),$(NRF5X_SDK_17)),)
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_gpiote.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_spi.c \
@@ -169,6 +189,10 @@ $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
 endif
 
+ifndef NRF5X_SDK_17
+TARGETSOURCES += \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_mutex.c 
+endif
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
@@ -180,7 +204,6 @@ $(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_id.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_database.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_data_storage.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_buffer.c \
-$(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_mutex.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/id_manager.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/security_manager.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/security_dispatcher.c \
@@ -216,13 +239,8 @@ $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage_sd.c \
 $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c \
 $(NRF5X_SDK_PATH)/components/libraries/atomic_fifo/nrf_atfifo.c \
 $(NRF5X_SDK_PATH)/components/libraries/strerror/nrf_strerror.c \
-$(NRF5X_SDK_PATH)/components/libraries/experimental_memobj/nrf_memobj.c \
 $(NRF5X_SDK_PATH)/components/libraries/balloc/nrf_balloc.c
 endif
-
-
-
-# $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
 
 ifdef USE_BOOTLOADER
 ifdef BOOTLOADER

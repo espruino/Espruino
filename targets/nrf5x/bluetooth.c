@@ -2091,17 +2091,28 @@ static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     p_input_report->rep_ref.report_id   = HID_INPUT_REP_REF_ID;
     p_input_report->rep_ref.report_type = BLE_HIDS_REP_TYPE_INPUT;
 
+#if NRF_SD_BLE_API_VERSION>=7
+    p_input_report->sec.cccd_wr = SEC_JUST_WORKS;
+    p_input_report->sec.wr      = SEC_JUST_WORKS;
+    p_input_report->sec.rd      = SEC_JUST_WORKS;
+#else
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.cccd_write_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.write_perm);
+#endif
 
     p_output_report                      = &output_report_array[HID_OUTPUT_REPORT_INDEX];
     p_output_report->max_len             = HID_OUTPUT_REPORT_MAX_LEN;
     p_output_report->rep_ref.report_id   = HID_OUTPUT_REP_REF_ID;
     p_output_report->rep_ref.report_type = BLE_HIDS_REP_TYPE_OUTPUT;
 
+#if NRF_SD_BLE_API_VERSION>=7
+    p_output_report->sec.wr      = SEC_JUST_WORKS;
+    p_output_report->sec.rd      = SEC_JUST_WORKS;
+#else
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_output_report->security_mode.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_output_report->security_mode.write_perm);
+#endif
 
     hid_info_flags = HID_INFO_FLAG_REMOTE_WAKE_MSK | HID_INFO_FLAG_NORMALLY_CONNECTABLE_MSK;
 
@@ -2125,6 +2136,20 @@ static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     hids_init_obj.included_services_count        = 0;
     hids_init_obj.p_included_services_array      = NULL;
 
+#if NRF_SD_BLE_API_VERSION>=7
+    hids_init_obj.rep_map.rd_sec         = SEC_JUST_WORKS;
+    hids_init_obj.hid_information.rd_sec = SEC_JUST_WORKS;
+
+    hids_init_obj.boot_kb_inp_rep_sec.cccd_wr = SEC_JUST_WORKS;
+    hids_init_obj.boot_kb_inp_rep_sec.rd      = SEC_JUST_WORKS;
+
+    hids_init_obj.boot_kb_outp_rep_sec.rd = SEC_JUST_WORKS;
+    hids_init_obj.boot_kb_outp_rep_sec.wr = SEC_JUST_WORKS;
+
+    hids_init_obj.protocol_mode_rd_sec = SEC_JUST_WORKS;
+    hids_init_obj.protocol_mode_wr_sec = SEC_JUST_WORKS;
+    hids_init_obj.ctrl_point_wr_sec    = SEC_JUST_WORKS;
+#else
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.rep_map.security_mode.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&hids_init_obj.rep_map.security_mode.write_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.hid_information.security_mode.read_perm);
@@ -2141,6 +2166,7 @@ static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.security_mode_protocol.write_perm);
     BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&hids_init_obj.security_mode_ctrl_point.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.security_mode_ctrl_point.write_perm);
+#endif
 
     err_code = ble_hids_init(&m_hids, &hids_init_obj);
     APP_ERROR_CHECK(err_code);

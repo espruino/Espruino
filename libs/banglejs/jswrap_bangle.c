@@ -32,6 +32,7 @@
 #include "jsflash.h"
 #ifndef EMSCRIPTEN
 #include "jswrap_bluetooth.h"
+#include "app_timer.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_soc.h"
@@ -40,7 +41,7 @@
 #include "bluetooth.h" // for self-test
 #include "jsi2c.h" // accelerometer/etc
 #endif
-#include "app_timer.h"
+
 
 #include "jswrap_graphics.h"
 #include "lcd_st7789_8bit.h"
