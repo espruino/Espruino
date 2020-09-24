@@ -806,6 +806,10 @@ JsSysTime jshGetSystemTime() {
 void jshSetSystemTime(JsSysTime time) {
   // Set baseSystemTime to 0 so 'jshGetSystemTime' isn't affected
   baseSystemTime = 0;
+  // If the RTC has changed (eg softdevice reboot) ensure
+  // we don't end up incrementing baseSystemTime and then
+  // getting an invalid time when we call jshGetSystemTime (fixes #1933)
+  lastSystemTime = 0;
   // now set baseSystemTime based on the value from jshGetSystemTime()
   baseSystemTime = time - jshGetSystemTime();
 }
