@@ -175,6 +175,9 @@ void jshPinSetState(Pin pin, JshPinState state);
  * (like JSHPINSTATE_PIN_IS_ON if pin was set to output) */
 JshPinState jshPinGetState(Pin pin);
 
+/// Check if state is default - return true if default
+bool jshIsPinStateDefault(Pin pin, JshPinState state);
+
 /** Returns an analog value between 0 and 1. 0 is expected to be 0v, and
  * 1 means jshReadVRef() volts. On most devices jshReadVRef() would return
  * around 3.3, so a reading of 1 represents 3.3v. */
