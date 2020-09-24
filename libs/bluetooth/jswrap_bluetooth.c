@@ -398,7 +398,7 @@ NFC is started with `NRF.nfcURL` or `NRF.nfcRaw`
   "params" : [
     ["reason","int","The reason code reported back by the BLE stack - see Nordic's `ble_hci.h` file for more information"]
   ],
-  "ifdef" : "NRF52"
+  "ifdef" : "NRF52_SERIES"
 }
 Called when the device gets disconnected.
 
@@ -418,7 +418,7 @@ NRF.connect("aa:bb:cc:dd:ee:ff").then(function(gatt) {
   "type" : "event",
   "class" : "BluetoothRemoteGATTCharacteristic",
   "name" : "characteristicvaluechanged",
-  "ifdef" : "NRF52"
+  "ifdef" : "NRF52_SERIES"
 }
 Called when a characteristic's value changes, *after* `BluetoothRemoteGATTCharacteristic.startNotifications` has been called.
 
@@ -2407,7 +2407,7 @@ void jswrap_nfc_send(JsVar *payload) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "sendHIDReport",
-    "ifdef" : "NRF52",
+    "ifdef" : "NRF52_SERIES",
     "generate" : "jswrap_ble_sendHIDReport",
     "params" : [
       ["data","JsVar","Input report data as an array"],
@@ -2637,7 +2637,7 @@ JsVar *jswrap_ble_connect(JsVar *mac, JsVar *options) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "setWhitelist",
-    "ifdef" : "NRF52",
+    "ifdef" : "NRF52_SERIES",
     "generate" : "jswrap_ble_setWhitelist",
     "params" : [
       ["whitelisting","bool","Are we using a whitelist? (default false)"]
@@ -2662,7 +2662,7 @@ void jswrap_ble_setWhitelist(bool whitelist) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "setConnectionInterval",
-    "ifdef" : "NRF52",
+    "ifdef" : "NRF52_SERIES",
     "generate" : "jswrap_ble_setConnectionInterval",
     "params" : [
       ["interval","JsVar","The connection interval to use (see below)"]
@@ -2716,7 +2716,7 @@ void jswrap_ble_setConnectionInterval(JsVar *interval) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "setSecurity",
-    "ifdef" : "NRF52",
+    "ifdef" : "NRF52_SERIES",
     "generate" : "jswrap_ble_setSecurity",
     "params" : [
       ["options","JsVar","An object containing security-related options (see below)"]
@@ -2819,7 +2819,7 @@ void jswrap_ble_setSecurity(JsVar *options) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "getSecurityStatus",
-    "ifdef" : "NRF52",
+    "ifdef" : "NRF52_SERIES",
     "generate" : "jswrap_ble_getSecurityStatus",
     "return" : ["JsVar", "An object" ]
 }
@@ -2846,7 +2846,7 @@ JsVar *jswrap_ble_getSecurityStatus(JsVar *parent) {
 /*JSON{
   "type" : "class",
   "class" : "BluetoothDevice",
-  "ifdef" : "NRF52"
+  "ifdef" : "NRF52_SERIES"
 }
 A Web Bluetooth-style device - you can request one using `NRF.requestDevice(address)`
 
@@ -2897,7 +2897,7 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
     "type" : "property",
     "class" : "BluetoothDevice",
     "name" : "rssi",
-    "ifdef" : "NRF52",
+    "ifdef" : "NRF52_SERIES",
     "generate" : false,
     "return" : ["bool", "The last received RSSI (signal strength) for this device" ]
 }
@@ -2906,7 +2906,7 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
     "type" : "event",
     "class" : "BluetoothDevice",
     "name" : "passkey",
-    "ifdef" : "NRF52",
+    "ifdef" : "NRF52_SERIES",
     "params" : [
       ["passkey","JsVar","A 6 character numeric String to be displayed"]
     ]
@@ -2922,7 +2922,7 @@ specifically for Espruino.
     "type" : "event",
     "class" : "BluetoothDevice",
     "name" : "passkeyRequest",
-    "ifdef" : "NRF52"
+    "ifdef" : "NRF52_SERIES"
 }
 Called when the device pairs, displays a passkey, and wants Espruino to tell it what the passkey was.
 
@@ -2937,7 +2937,7 @@ specifically for Espruino.
     "type" : "method",
     "class" : "BluetoothDevice",
     "name" : "sendPasskey",
-    "ifdef" : "NRF52",
+    "ifdef" : "NRF52_SERIES",
     "generate" : "jswrap_ble_BluetoothDevice_sendPasskey",
     "params" : [
       ["passkey","JsVar","A 6 character numeric String to be returned to the device"]
@@ -3121,7 +3121,7 @@ JsVar *jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
     "type" : "method",
     "class" : "BluetoothRemoteGATTServer",
     "name" : "startBonding",
-    "ifdef" : "NRF52",
+    "ifdef" : "NRF52_SERIES",
     "generate" : "jswrap_ble_BluetoothRemoteGATTServer_startBonding",
     "params" : [
       ["forceRePair","bool","If the device is already bonded, re-pair it"]
@@ -3171,7 +3171,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool for
     "type" : "method",
     "class" : "BluetoothRemoteGATTServer",
     "name" : "getSecurityStatus",
-    "ifdef" : "NRF52",
+    "ifdef" : "NRF52_SERIES",
     "generate" : "jswrap_ble_BluetoothRemoteGATTServer_getSecurityStatus",
     "return" : ["JsVar", "An object" ]
 }
@@ -3480,7 +3480,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteris
     "generate" : "jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications",
     "return" : ["JsVar", "A `Promise` that is resolved (or rejected) with data when notifications have been added" ],
     "return_object" : "Promise",
-    "ifdef" : "NRF52"
+    "ifdef" : "NRF52_SERIES"
 }
 Starts notifications - whenever this characteristic's value changes, a `characteristicvaluechanged` event is fired
 and `characteristic.value` will then contain the new value as a `DataView`.
@@ -3567,7 +3567,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
     "generate" : "jswrap_ble_BluetoothRemoteGATTCharacteristic_stopNotifications",
     "return" : ["JsVar", "A `Promise` that is resolved (or rejected) with data when notifications have been removed" ],
     "return_object" : "Promise",
-    "ifdef" : "NRF52"
+    "ifdef" : "NRF52_SERIES"
 }
 Stop notifications (that were requested with `BluetoothRemoteGATTCharacteristic.startNotifications`)
 */
