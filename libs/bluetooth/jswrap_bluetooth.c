@@ -2693,7 +2693,7 @@ to specify a connection interval.
 **Note:** This overwrites any changes imposed by the deprecated `NRF.setLowPowerConnection`
 */
 void jswrap_ble_setConnectionInterval(JsVar *interval) {
-#if NRF52
+#if NRF52_SERIES
   if (jsvIsUndefined(interval) || jsvIsStringEqual(interval,"auto")) {
     // allow automatic interval setting
     bleStatus &= ~BLE_DISABLE_DYNAMIC_INTERVAL;
@@ -2948,7 +2948,7 @@ To be used as a response when the event `BluetoothDevice.sendPasskey` has been r
 **This is not part of the Web Bluetooth Specification.** It has been added
 specifically for Espruino.
 */
-#if NRF52
+#if NRF52_SERIES
 void jswrap_ble_BluetoothDevice_sendPasskey(JsVar *parent, JsVar *passkeyVar) {
   char passkey[BLE_GAP_PASSKEY_LEN+1];
   memset(passkey, 0, sizeof(passkey));
