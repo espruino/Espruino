@@ -703,7 +703,7 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
 #endif
 
       // don't bother with normal inputs, as they come up in this state (ish) anyway
-      if (statem != JSHPINSTATE_GPIO_IN && statem != JSHPINSTATE_ADC_IN) {
+      if (!jshIsPinStateDefault(pin, statem)) {
         // use getPinMode to get the correct string (remove some duplication)
         JsVar *s = jswrap_io_getPinMode(pin);
         if (s) cbprintf(user_callback, user_data, "pinMode(%p, %q%s);\n",pin,s,jshGetPinStateIsManual(pin)?"":", true");
@@ -1886,7 +1886,7 @@ void jsiIdle() {
        console device. It slows us down and just causes pain. */
     } else if (DEVICE_IS_SERIAL(eventType)) {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
-      JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(event.flags)));
+      JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(eventType));
       if (jsvIsObject(usartClass)) {
         maxEvents -= jsiHandleIOEventForUSART(usartClass, &event);
       }
@@ -1904,6 +1904,23 @@ void jsiIdle() {
 #ifdef BLUETOOTH
     } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
       maxEvents -= jsble_exec_pending(&event);
+#endif
+#ifdef I2C_SLAVE
+    } else if (DEVICE_IS_I2C(eventType)) {
+      // ------------------------------------------------------------------------ I2C CALLBACK
+      JsVar *i2cClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(eventType));
+      if (jsvIsObject(i2cClass)) {
+        uint8_t addr = event.data.time&0xff;
+        int len = event.data.time>>8;
+        JsVar *obj = jsvNewObject();
+        if (obj) {
+          jsvObjectSetChildAndUnLock(obj, "addr", jsvNewFromInteger(addr&0x7F));
+          jsvObjectSetChildAndUnLock(obj, "length", jsvNewFromInteger(len));
+          jsiExecuteObjectCallbacks(i2cClass, (addr&0x80) ? JS_EVENT_PREFIX"read" : JS_EVENT_PREFIX"write", &obj, 1);
+          jsvUnLock(obj);
+        }
+      }
+      jsvUnLock(i2cClass);
 #endif
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
       // we have an event... find out what it was for...
@@ -2037,7 +2054,8 @@ void jsiIdle() {
   JsvObjectIterator it;
   // Go through all intervals and decrement time
   jsvObjectIteratorNew(&it, timerArrayPtr);
-  while (jsvObjectIteratorHasValue(&it) && !(jsiStatus & JSIS_TIMERS_CHANGED)) {
+  while (jsvObjectIteratorHasValue(&it)) {
+    bool hasDeletedTimer = false;
     JsVar *timerPtr = jsvObjectIteratorGetValue(&it);
     JsSysTime timerTime = (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChild(timerPtr, "time", 0));
     JsSysTime timeUntilNext = timerTime - timePassed;
@@ -2076,7 +2094,7 @@ void jsiIdle() {
               // Create the 'time' variable that will be passed to the user
               JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+timerTime-delay)/1000);
               // if it was a watch, set the last state up
-              jsvObjectSetChild(data, "state", jsvNewFromBool(timerState));
+              jsvObjectSetChildAndUnLock(data, "state", jsvNewFromBool(timerState));
               // set up the lastTime variable of data to what was in the watch
               jsvObjectSetChildAndUnLock(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0));
               // set up the watches lastTime to this one

@@ -1,4 +1,6 @@
-            Graphics.asImage() now contains buffer when bpp != 8 (fix #1863)
+            nRF52: Added option to build in I2C slave support
+
+     2v07 : Graphics.asImage() now contains buffer when bpp != 8 (fix #1863)
             nRF52 SDK15: Fix NRF.setScan/findDevices/etc
             nRF52: reduce input buffer space taken by advertising packets
             Pretokenisation: reserved words can now be used as function names (fix #1868)
@@ -42,6 +44,15 @@
             Bangle.js: Peripheral polling now only fully wakes Bangle when an event requires JS processing (ref #1921)
             Bangle.js: When not moved for 1 minute, slow down accelerometer poll interval from 80 to 800ms (fix #1921)
             Ensure software SPI/I2C/Serial don't leak a variable when initialised
+            Fix delay in scheduling after initial setTimeout call (from 2v06 and later)
+            Espruino WiFi: Fix StorageFile on Espruino WiFi (use max storagefile size of 4k)
+            Espruino WiFi: Fix Storage compaction regression (introduced after 2v06 release)
+            Bangle.js: Fix backlight flicker regression if at part brightness (fix #1925)
+            Fix ArrayBuffer.sort with negative numbers (it's not just Array.sort!)
+            nRF52: Use the best available hardware timer for PWM taking frequency into account
+            Bangle.js: Report GPS HDOP (Horizontal Ditution of Precision => accuracy) values in 'GPS' event
+            Pixl.js: Remove SHA256 from build to free up a little extra code space
+            nRF52: Restarting softdevice no longer changes the system time by 5 mins sometimes (fix #1933)
 
      2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
             Don't store line numbers for pretokenised functions

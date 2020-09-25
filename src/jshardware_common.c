@@ -45,6 +45,9 @@ void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->bitrate = 100000;
   inf->started = false;
   inf->clockStretch = true;
+#ifdef I2C_SLAVE
+  inf->slaveAddr = -1; // master default
+#endif
 }
 
 void jshFlashWriteAligned(void *buf, uint32_t addr, uint32_t len) {
@@ -115,4 +118,9 @@ __attribute__((weak)) bool jshSPISendMany(IOEventFlags device, unsigned char *tx
 
 // Only define this if it's not used elsewhere
 __attribute__((weak)) void jshBusyIdle() {
+}
+
+// Only define this if it's not used elsewhere
+__attribute__((weak)) bool jshIsPinStateDefault(Pin pin, JshPinState state) {
+  return state == JSHPINSTATE_GPIO_IN || state == JSHPINSTATE_ADC_IN;
 }

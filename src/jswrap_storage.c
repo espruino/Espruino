@@ -29,7 +29,7 @@
 #define DBG(...)
 #endif
 
-const int STORAGEFILE_CHUNKSIZE = FLASH_PAGE_SIZE - sizeof(JsfFileHeader); // use 32 for testing
+const int STORAGEFILE_CHUNKSIZE = (((FLASH_PAGE_SIZE<4096)?FLASH_PAGE_SIZE:4096) - sizeof(JsfFileHeader)); // use 32 for testing
 
 /*JSON{
   "type" : "library",

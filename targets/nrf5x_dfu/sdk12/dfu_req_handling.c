@@ -42,9 +42,9 @@ STATIC_ASSERT(DFU_SIGNED_COMMAND_SIZE <= INIT_COMMAND_MAX_SIZE);
  *
  * @note If not set, this will default to 51 or 52 according to the architecture
  */
-#if defined ( NRF51 ) && !defined(NRF_DFU_HW_VERSION)
+#if defined ( NRF51_SERIES ) && !defined(NRF_DFU_HW_VERSION)
     #define NRF_DFU_HW_VERSION (51)
-#elif defined ( NRF52 ) && !defined(NRF_DFU_HW_VERSION)
+#elif defined ( NRF52_SERIES ) && !defined(NRF_DFU_HW_VERSION)
     #define NRF_DFU_HW_VERSION (52)
 #else
         #error No target set for HW version.
@@ -312,9 +312,9 @@ static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_
             }
             m_firmware_size_req += p_init->bl_size;
             // check that the size of the bootloader is not larger than the present one.
-#if defined ( NRF51 )
+#if defined ( NRF51_SERIES )
             if (p_init->bl_size > BOOTLOADER_SETTINGS_ADDRESS - BOOTLOADER_START_ADDR)
-#elif defined ( NRF52 )
+#elif defined ( NRF52_SERIES )
             if (p_init->bl_size > NRF_MBR_PARAMS_PAGE_ADDRESS - BOOTLOADER_START_ADDR)
 #endif
             {
@@ -342,9 +342,9 @@ static nrf_dfu_res_code_t dfu_handle_prevalidate(dfu_signed_command_t const * p_
             }
 
             // check that the size of the bootloader is not larger than the present one.
-#if defined ( NRF51 )
+#if defined ( NRF51_SERIES )
             if (p_init->bl_size > BOOTLOADER_SETTINGS_ADDRESS - BOOTLOADER_START_ADDR)
-#elif defined ( NRF52 )
+#elif defined ( NRF52_SERIES )
             if (p_init->bl_size > NRF_MBR_PARAMS_PAGE_ADDRESS - BOOTLOADER_START_ADDR)
 #endif
             {
@@ -502,7 +502,7 @@ static nrf_dfu_res_code_t nrf_dfu_postvalidate(dfu_init_command_t * p_init)
     // Store the settings to flash and reset after that
     while (nrf_dfu_settings_write(on_dfu_complete) == NRF_ERROR_BUSY)
     {        
-#ifdef NRF52        
+#ifdef NRF52_SERIES
         nrf_delay_us(100*1000);
 #endif
         nrf_dfu_wait();
@@ -715,7 +715,7 @@ static nrf_dfu_res_code_t nrf_dfu_data_req(void * p_context, nrf_dfu_req_t * p_r
     uint32_t            const * p_write_addr;
     nrf_dfu_res_code_t          ret_val = NRF_DFU_RES_CODE_SUCCESS;
 
-#ifndef NRF51
+#ifndef NRF51_SERIES
     if(p_req == NULL)
     {
         return NRF_DFU_RES_CODE_INVALID_PARAMETER;

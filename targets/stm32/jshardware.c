@@ -1081,7 +1081,11 @@ static void jshResetPeripherals() {
     }
   }
   // Initialise UART if we have a default console device on it
+#ifdef USB
   if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
+#else
+  if (true) {
+#endif
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
 #ifdef DEFAULT_CONSOLE_TX_PIN

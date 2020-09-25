@@ -75,19 +75,9 @@ espruino_#v##_nucleof401re.bin
 espruino_#v##_nucleof411re.bin
    - ST NUCLEO-F411RE board
 
-espruino_#v##_raspberrypi
-   - Raspberry Pi executable (just copy it to the device and run it)
-   NOTE: There is GPIO support (which requires you to run Espruino as root)
-   however there is no Serial, SPI, OneWire or I2C support at the moment so
-   you're pretty limited!
-
 espruino_#v##_microbit.hex
    - Espruino for the BBC micro:bit - just copy this file onto the
    flash drive that appears when you plug the micro:bit in.
-
-espruino_#v##_ruuvitag.zip
-   - The firmware image for Ruuvitag Devices
-     See http://www.espruino.com/Ruuvitag for more information
 
 espruino_#v##_Wio_LTE.zip
    - The firmware image for Seed Wio LTE Devices
@@ -108,11 +98,6 @@ espruino_#v##rak8212.hex
 espruino_#v##smartibot.zip
    - The firmware image for the Smartibot robot board
      See http://www.espruino.com/Smartibot for more information
-
-espruino_#v##_thingy52.hex
-   - The firmware image for Nordic Thing:52 Devices
-     See http://www.espruino.com/Thingy52 for more information
-
 
 ESP8266 / ESP32
 ---------------

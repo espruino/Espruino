@@ -58,7 +58,7 @@ typedef struct {
 #define BLE_NUS_MAX_DATA_LEN 20 //GATT_MTU_SIZE_DEFAULT - 3
 #endif
 
-#if defined(NRF52) || defined(ESP32)
+#if defined(NRF52_SERIES) || defined(ESP32)
 // nRF52 gets the ability to connect to other
 #define CENTRAL_LINK_COUNT              1                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/

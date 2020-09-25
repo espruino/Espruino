@@ -26,9 +26,9 @@
 #include <math.h>
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "2v06"
+#define JS_VERSION "2v07"
 #else
-#define JS_VERSION "2v06." BUILDNUMBER
+#define JS_VERSION "2v07." BUILDNUMBER
 #endif
 /*
   In code:
@@ -352,7 +352,7 @@ typedef int64_t JsSysTime;
 #define NIBBLEFIELD_CLEAR(BITFIELD) memset(BITFIELD, 0, sizeof(BITFIELD)) ///< Clear all elements
 */
 
-#if defined(NRF51)
+#if defined(NRF51_SERIES)
   // Cortex-M0 does not support unaligned reads
   #define UNALIGNED_UINT16(addr) ((((uint16_t)*((uint8_t*)(addr)+1)) << 8) | (*(uint8_t*)(addr)))
 #else
