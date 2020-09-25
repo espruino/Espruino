@@ -1886,7 +1886,7 @@ void jsiIdle() {
        console device. It slows us down and just causes pain. */
     } else if (DEVICE_IS_SERIAL(eventType)) {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
-      JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(event.flags)));
+      JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(eventType));
       if (jsvIsObject(usartClass)) {
         maxEvents -= jsiHandleIOEventForUSART(usartClass, &event);
       }
@@ -1904,6 +1904,23 @@ void jsiIdle() {
 #ifdef BLUETOOTH
     } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
       maxEvents -= jsble_exec_pending(&event);
+#endif
+#ifdef I2C_SLAVE
+    } else if (DEVICE_IS_I2C(eventType)) {
+      // ------------------------------------------------------------------------ I2C CALLBACK
+      JsVar *i2cClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(eventType));
+      if (jsvIsObject(i2cClass)) {
+        uint8_t addr = event.data.time&0xff;
+        int len = event.data.time>>8;
+        JsVar *obj = jsvNewObject();
+        if (obj) {
+          jsvObjectSetChildAndUnLock(obj, "addr", jsvNewFromInteger(addr&0x7F));
+          jsvObjectSetChildAndUnLock(obj, "length", jsvNewFromInteger(len));
+          jsiExecuteObjectCallbacks(i2cClass, (addr&0x80) ? JS_EVENT_PREFIX"read" : JS_EVENT_PREFIX"write", &obj, 1);
+          jsvUnLock(obj);
+        }
+      }
+      jsvUnLock(i2cClass);
 #endif
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
       // we have an event... find out what it was for...

@@ -326,6 +326,9 @@ typedef struct {
   Pin pinSDA;
   bool started; ///< Has I2C 'start' condition been sent so far?
   bool clockStretch; ///< In software I2C, should we wait for the device to respond, or do we just soldier on regardless?
+#ifdef I2C_SLAVE
+  int slaveAddr; ///< if >=0 this is a slave, otherwise master
+#endif
 } PACKED_FLAGS JshI2CInfo;
 
 /// Initialise a JshI2CInfo struct to default settings

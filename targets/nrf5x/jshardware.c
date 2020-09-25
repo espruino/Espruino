@@ -71,6 +71,9 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 
 #include "nrf_drv_uart.h"
 #include "nrf_drv_twi.h"
+#ifdef I2C_SLAVE
+#include "nrf_drv_twis.h"
+#endif
 #include "nrf_drv_gpiote.h"
 #include "nrf_drv_ppi.h"
 #include "nrf_drv_spi.h"
@@ -303,7 +306,13 @@ void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event
 #endif
 
 static const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
+#ifdef I2C_SLAVE
+static const nrf_drv_twis_t TWIS1 = NRF_DRV_TWIS_INSTANCE(1);
+static uint8_t twisRxBuf[32]; // receive buffer for I2C slave data
+static uint8_t twisAddr;
+#endif
 bool twi1Initialised = false;
+
 
 #ifdef NRF5X_SDK_11
 #include <nrf_drv_config.h>
@@ -406,6 +415,14 @@ const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
   return 0;
 }
+
+#ifdef I2C_SLAVE
+const nrf_drv_twis_t *jshGetTWIS(IOEventFlags device) {
+  if (device == EV_I2C1) return &TWIS1;
+  return 0;
+}
+#endif
+
 
 /// Called when we have had an event that means we should execute JS
 void jshHadEvent() {
@@ -1780,6 +1797,63 @@ void jshSPIWait(IOEventFlags device) {
   WAIT_UNTIL(!spi0Sending, "SPI0");
 #endif
 }
+#ifdef I2C_SLAVE
+static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
+{
+    switch (p_event->type)
+    {
+    case TWIS_EVT_READ_REQ:
+        if (p_event->data.buf_req) {
+          JsVar *i2c = jsvObjectGetChild(execInfo.root,"I2C1",0);
+          if (i2c) {
+            JsVar *buf = jsvObjectGetChild(i2c,"buffer",0);
+            size_t bufLen;
+            char *bufPtr = jsvGetDataPointer(buf, &bufLen);
+            if (bufPtr && bufLen>twisAddr)
+              nrf_drv_twis_tx_prepare(&TWIS1, bufPtr + twisAddr, bufLen - twisAddr);
+            jsvUnLock2(i2c,buf);
+          }
+        }
+        break;
+    case TWIS_EVT_READ_DONE:
+        jshPushIOEvent(EV_I2C1, twisAddr|0x80|(p_event->data.tx_amount<<8)); // send event to indicate a read
+        twisAddr += p_event->data.tx_amount;
+        break;
+    case TWIS_EVT_WRITE_REQ:
+        if (p_event->data.buf_req)
+          nrf_drv_twis_rx_prepare(&TWIS1, twisRxBuf, sizeof(twisRxBuf));
+        break;
+    case TWIS_EVT_WRITE_DONE:
+        if (p_event->data.rx_amount>0) {
+          twisAddr = twisRxBuf[0];
+          if (p_event->data.rx_amount>1) {
+            jshPushIOEvent(EV_I2C1, twisAddr|((p_event->data.rx_amount-1)<<8)); // send event to indicate a write
+            JsVar *i2c = jsvObjectGetChild(execInfo.root,"I2C1",0);
+            if (i2c) {
+              JsVar *buf = jsvObjectGetChild(i2c,"buffer",0);
+              size_t bufLen;
+              char *bufPtr = jsvGetDataPointer(buf, &bufLen);
+              for (unsigned int i=1;i<p_event->data.rx_amount;i++) {
+                if (bufPtr && twisAddr<bufLen)
+                  bufPtr[twisAddr] = twisRxBuf[i];
+                twisAddr++;
+              }
+              jsvUnLock2(i2c,buf);
+            }
+          }
+        }
+        break;
+
+    case TWIS_EVT_READ_ERROR:
+    case TWIS_EVT_WRITE_ERROR:
+    case TWIS_EVT_GENERAL_ERROR:
+        //m_error_flag = true;
+        break;
+    default:
+        break;
+    }
+}
+#endif
 
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
@@ -1787,21 +1861,46 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     jsError("SDA and SCL pins must be valid, got %d and %d\n", inf->pinSDA, inf->pinSCL);
     return;
   }
-  const nrf_drv_twi_t *twi = jshGetTWI(device);
-  if (!twi) return;
-  // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk51.v9.0.0%2Fhardware_driver_twi.html&cp=4_1_0_2_10
-  nrf_drv_twi_config_t    p_twi_config;
-  p_twi_config.scl = (uint32_t)pinInfo[inf->pinSCL].pin;
-  p_twi_config.sda = (uint32_t)pinInfo[inf->pinSDA].pin;
-  p_twi_config.frequency = (inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K);
-  p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
-  if (twi1Initialised) nrf_drv_twi_uninit(twi);
-  twi1Initialised = true;
-  uint32_t err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL, NULL);
-  if (err_code != NRF_SUCCESS)
-    jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
-  else
-    nrf_drv_twi_enable(twi);
+  uint32_t err_code;
+#ifdef I2C_SLAVE
+  if (inf->slaveAddr >=0) {
+    const nrf_drv_twis_t *twis = jshGetTWIS(device);
+    if (!twis) return;
+    const nrf_drv_twis_config_t config =
+    {
+        .addr               = {inf->slaveAddr, 0},
+        .scl                = (uint32_t)pinInfo[inf->pinSCL].pin,
+        .scl_pull           = NRF_GPIO_PIN_PULLUP,
+        .sda                = (uint32_t)pinInfo[inf->pinSDA].pin,
+        .sda_pull           = NRF_GPIO_PIN_PULLUP,
+        .interrupt_priority = APP_IRQ_PRIORITY_HIGH
+    };
+    err_code = nrf_drv_twis_init(twis, &config, twis_event_handler);
+    if (err_code != NRF_SUCCESS)
+      jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
+    else
+      nrf_drv_twis_enable(twis);
+  } else
+#endif
+
+
+  {
+    const nrf_drv_twi_t *twi = jshGetTWI(device);
+    if (!twi) return;
+    // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk51.v9.0.0%2Fhardware_driver_twi.html&cp=4_1_0_2_10
+    nrf_drv_twi_config_t    p_twi_config;
+    p_twi_config.scl = (uint32_t)pinInfo[inf->pinSCL].pin;
+    p_twi_config.sda = (uint32_t)pinInfo[inf->pinSDA].pin;
+    p_twi_config.frequency = (inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K);
+    p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
+    if (twi1Initialised) nrf_drv_twi_uninit(twi);
+    twi1Initialised = true;
+    err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL, NULL);
+    if (err_code != NRF_SUCCESS)
+      jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
+    else
+      nrf_drv_twi_enable(twi);
+  }
   
   // nrf_drv_spi_init will set pins, but this ensures we know so can reset state later
   if (jshIsPinValid(inf->pinSCL)) {

@@ -48,6 +48,9 @@
 #include "nrf_assert.h"
 #include "app_util_platform.h"
 #include "nrf_delay.h"
+#if TWIS_ENABLED==1
+#include "nrf_drv_twis.h"
+#endif
 
 #include <stdio.h>
 
@@ -1112,6 +1115,12 @@ static void irq_handler_twi(NRF_TWI_Type * p_twi, twi_control_block_t * p_cb)
 #if NRF_MODULE_ENABLED(TWI0)
 IRQ_HANDLER(0)
 {
+  #if (TWIS0_ENABLED == 1)
+      bool nrf_drv_twis_is_enabled(int p_instance_index);
+      void nrf_drv_twis_state_machine(uint8_t instNr);
+      if (nrf_drv_twis_is_enabled(TWIS0_INSTANCE_INDEX))
+          return nrf_drv_twis_state_machine(TWIS0_INSTANCE_INDEX);
+  #endif
     #if (TWI0_USE_EASY_DMA == 1)
         irq_handler_twim(NRF_TWIM0,
     #else
@@ -1124,6 +1133,12 @@ IRQ_HANDLER(0)
 #if NRF_MODULE_ENABLED(TWI1)
 IRQ_HANDLER(1)
 {
+    #if (TWIS1_ENABLED == 1)
+        bool nrf_drv_twis_is_enabled(int p_instance_index);
+        void nrf_drv_twis_state_machine(uint8_t instNr);
+        if (nrf_drv_twis_is_enabled(TWIS1_INSTANCE_INDEX))
+            return nrf_drv_twis_state_machine(TWIS1_INSTANCE_INDEX);
+    #endif
     #if (TWI1_USE_EASY_DMA == 1)
         irq_handler_twim(NRF_TWIM1,
     #else

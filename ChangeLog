@@ -1,4 +1,4 @@
-
+            nRF52: Added option to build in I2C slave support
 
      2v07 : Graphics.asImage() now contains buffer when bpp != 8 (fix #1863)
             nRF52 SDK15: Fix NRF.setScan/findDevices/etc

@@ -45,6 +45,9 @@ void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->bitrate = 100000;
   inf->started = false;
   inf->clockStretch = true;
+#ifdef I2C_SLAVE
+  inf->slaveAddr = -1; // master default
+#endif
 }
 
 void jshFlashWriteAligned(void *buf, uint32_t addr, uint32_t len) {
