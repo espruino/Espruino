@@ -48,7 +48,6 @@ process.on('uncaughtException', function(e) {
   lastError=e;
   print(e,e.stack?"\n"+e.stack:"")
 });
-
 function checkError() {
   if (!lastError) return print("No Error");
   print(lastError,lastError.stack?"\n"+lastError.stack:"")

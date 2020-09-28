@@ -223,7 +223,6 @@ Returns `null` if no match, or:
   index: 1,    // the start index of the match
   input: "b"   // the input string
  ]
-
 "abcdefabcdef".match(/bcd/) == [
   "bcd", index: 1,
   input: "abcdefabcdef"
