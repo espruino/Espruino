@@ -269,6 +269,28 @@ JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int
     return gfx->setPixel; // fast
 }
 
+/// Merge one color into another based on current bit depth
+uint32_t graphicsBlendColor(JsGraphics *gfx, double amt) {
+  assert(amt>=0 && amt<=1);
+  if (gfx->data.bpp==8) {
+    return gfx->data.bgColor*(1-amt) + gfx->data.fgColor*amt;
+  } else if (gfx->data.bpp==16) { // Blend from bg to fg
+    unsigned int b = gfx->data.bgColor;
+    unsigned int br = (b>>8)&0xF8;
+    unsigned int bg = (b>>3)&0xFC;
+    unsigned int bb = (b<<3)&0xF8;
+    unsigned int f = gfx->data.fgColor;
+    unsigned int fr = (f>>8)&0xF8;
+    unsigned int fg = (f>>3)&0xFC;
+    unsigned int fb = (f<<3)&0xF8;
+    unsigned int ri = br*(1-amt) + fr*amt;
+    unsigned int gi = bg*(1-amt) + fg*amt;
+    unsigned int bi = bb*(1-amt) + fb*amt;
+    return (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
+  }
+  return gfx->data.fgColor;
+}
+
 // ----------------------------------------------------------------------------------------------
 
 static void graphicsSetPixelDevice(JsGraphics *gfx, int x, int y, unsigned int col) {
@@ -464,6 +486,80 @@ void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
   }
 }
 
+// In 16x accuracy
+void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2) {
+  graphicsToDeviceCoordinates16x(gfx, &ix1, &iy1);
+  graphicsToDeviceCoordinates16x(gfx, &ix2, &iy2);
+  double x0 = ix1/16.0;
+  double y0 = iy1/16.0;
+  double x1 = ix2/16.0;
+  double y1 = iy2/16.0;
+
+  // https://en.wikipedia.org/wiki/Xiaolin_Wu%27s_line_algorithm
+  // fractional part of x
+#define fpart(x) (x - floor(x))
+#define rfpart(x) (1 - fpart(x))
+
+  bool steep = abs(y1 - y0) > abs(x1 - x0);
+
+  if (steep) {
+    double t;
+    t=x0;x0=y0;y0=t;
+    t=x1;x1=y1;y1=t;
+  }
+  if (x0 > x1) {
+    double t;
+    t=x0;x0=x1;x1=t;
+    t=y0;y0=y1;y1=t;
+  }
+
+  int dx = x1 - x0;
+  int dy = y1 - y0;
+  double gradient = dx ? (dy / (double)dx) : 1;
+
+  // handle first endpoint
+  int xend = (int)(x0+0.5);
+  double yend = y0 + gradient * (xend - x0);
+  double xgap = rfpart(x0 + 0.5);
+  int xpxl1 = xend; // this will be used in the main loop
+  int ypxl1 = (int)(yend);
+  if (steep) {
+    graphicsSetPixelDevice(gfx, ypxl1,   xpxl1, graphicsBlendColor(gfx, (1-fpart(yend))*xgap));
+    graphicsSetPixelDevice(gfx, ypxl1+1, xpxl1,  graphicsBlendColor(gfx, fpart(yend)*xgap));
+  } else {
+    graphicsSetPixelDevice(gfx, xpxl1, ypxl1  , graphicsBlendColor(gfx, (1-fpart(yend))*xgap));
+    graphicsSetPixelDevice(gfx, xpxl1, ypxl1+1,  graphicsBlendColor(gfx, fpart(yend)*xgap));
+  }
+  double intery = yend + gradient; // first y-intersection for the main loop
+  // handle second endpoint
+  xend = (int)(x1+0.5);
+  yend = y1 + gradient * (xend - x1);
+  xgap = fpart(x1 + 0.5);
+  int xpxl2 = xend; //this will be used in the main loop
+  int ypxl2 = (int)(yend);
+  double yendf = fpart(yend);
+  if (steep) {
+    graphicsSetPixelDevice(gfx, ypxl2  , xpxl2, graphicsBlendColor(gfx, (1-fpart(yend))*xgap));
+    graphicsSetPixelDevice(gfx, ypxl2+1, xpxl2, graphicsBlendColor(gfx, fpart(yend)*xgap));
+  } else {
+    graphicsSetPixelDevice(gfx, xpxl2, ypxl2,  graphicsBlendColor(gfx, (1-fpart(yend))*xgap));
+    graphicsSetPixelDevice(gfx, xpxl2, ypxl2+1, graphicsBlendColor(gfx, fpart(yend)*xgap));
+  }
+
+  // main loop
+  for (int x=xpxl1+1;x<xpxl2;x++) {
+    int y = (int)(intery);
+    double c = intery-y;
+    if (steep) {
+      graphicsSetPixelDevice(gfx, y  , x, graphicsBlendColor(gfx, 1-c));
+      graphicsSetPixelDevice(gfx, y+1, x,  graphicsBlendColor(gfx, c));
+    } else {
+      graphicsSetPixelDevice(gfx, x, y,  graphicsBlendColor(gfx, 1-c));
+      graphicsSetPixelDevice(gfx, x, y+1, graphicsBlendColor(gfx, c));
+    }
+    intery += gradient;
+  }
+}
 
 // Fill poly - each member of vertices is 1/16th pixel
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {

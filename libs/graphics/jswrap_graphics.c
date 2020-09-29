@@ -1537,6 +1537,33 @@ JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "drawLineAA",
+  "generate" : "jswrap_graphics_drawLineAA",
+  "params" : [
+    ["x1","float","The left"],
+    ["y1","float","The top"],
+    ["x2","float","The right"],
+    ["y2","float","The bottom"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Draw a line between x1,y1 and x2,y2 in the current foreground color
+*/
+JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2, double y2) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  graphicsDrawLineAA(&gfx,
+      (int)(x1*16+0.5),
+      (int)(y1*16+0.5),
+      (int)(x2*16+0.5),
+      (int)(y2*16+0.5));
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+  return jsvLockAgain(parent);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "lineTo",
   "generate" : "jswrap_graphics_lineTo",
   "params" : [

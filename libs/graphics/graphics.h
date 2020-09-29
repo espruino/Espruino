@@ -138,6 +138,8 @@ bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int 
 JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx);
 /// Get a setPixel function and set modified area (assuming no clipping) (inclusive of x2,y2) - if all is ok it can choose a faster draw function
 JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2);
+/// Merge one color into another based on current bit depth
+uint32_t graphicsBlendColor(JsGraphics *gfx, double amt);
 
 // drawing functions - all coordinates are in USER coordinates, not DEVICE coordinates
 void         graphicsSetPixel(JsGraphics *gfx, int x, int y, unsigned int col);
@@ -149,7 +151,8 @@ void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsDrawEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
 void graphicsFillEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
 void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2);
-void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); // each pixel is 1/16th a pixel may overwrite vertices...
+void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2); ///< antialiased drawline. each pixel is 1/16th
+void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); ///< each pixel is 1/16th a pixel may overwrite vertices...
 #ifndef NO_VECTOR_FONT
 unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, char ch); ///< prints character, returns width
 unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int size, char ch); ///< returns the width of a character
