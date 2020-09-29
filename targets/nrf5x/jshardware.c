@@ -1817,6 +1817,8 @@ static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
             char *bufPtr = jsvGetDataPointer(buf, &bufLen);
             if (bufPtr && bufLen>twisAddr)
               nrf_drv_twis_tx_prepare(&TWIS1, bufPtr + twisAddr, bufLen - twisAddr);
+            else
+              nrf_drv_twis_tx_prepare(&TWIS1, twisRxBuf, 0);
             jsvUnLock2(i2c,buf);
           }
         }
