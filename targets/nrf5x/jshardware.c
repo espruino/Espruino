@@ -773,6 +773,12 @@ void jshKill() {
     spiFlashLastAddress = 0;
   }
 #endif
+#ifdef I2C_SLAVE
+  if (nrf_drv_twis_is_enabled(TWIS1_INSTANCE_INDEX)) {
+    nrf_drv_twis_disable(&TWIS1);
+    nrf_drv_twis_uninit(&TWIS1);
+  }
+#endif
 }
 
 // stuff to do on idle
@@ -1811,12 +1817,15 @@ static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
             char *bufPtr = jsvGetDataPointer(buf, &bufLen);
             if (bufPtr && bufLen>twisAddr)
               nrf_drv_twis_tx_prepare(&TWIS1, bufPtr + twisAddr, bufLen - twisAddr);
+            else
+              nrf_drv_twis_tx_prepare(&TWIS1, twisRxBuf, 0);
             jsvUnLock2(i2c,buf);
           }
         }
         break;
     case TWIS_EVT_READ_DONE:
         jshPushIOEvent(EV_I2C1, twisAddr|0x80|(p_event->data.tx_amount<<8)); // send event to indicate a read
+        jshHadEvent();
         twisAddr += p_event->data.tx_amount;
         break;
     case TWIS_EVT_WRITE_REQ:
@@ -1828,6 +1837,7 @@ static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
           twisAddr = twisRxBuf[0];
           if (p_event->data.rx_amount>1) {
             jshPushIOEvent(EV_I2C1, twisAddr|((p_event->data.rx_amount-1)<<8)); // send event to indicate a write
+            jshHadEvent();
             JsVar *i2c = jsvObjectGetChild(execInfo.root,"I2C1",0);
             if (i2c) {
               JsVar *buf = jsvObjectGetChild(i2c,"buffer",0);
@@ -1863,6 +1873,10 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   }
   uint32_t err_code;
 #ifdef I2C_SLAVE
+  if ((device == EV_I2C1) && nrf_drv_twis_is_enabled(TWIS1_INSTANCE_INDEX)) {
+    nrf_drv_twis_disable(&TWIS1);
+    nrf_drv_twis_uninit(&TWIS1);
+  }
   if (inf->slaveAddr >=0) {
     const nrf_drv_twis_t *twis = jshGetTWIS(device);
     if (!twis) return;
