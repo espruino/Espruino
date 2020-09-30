@@ -429,6 +429,7 @@ def get_ifdef_description(d):
   if d=="USE_TELNET": return "devices with Telnet enabled (Linux, ESP8266 and ESP32)"
   if d=="USE_WIZNET": return "builds with support for WIZnet Ethernet modules built in"
   if d=="USE_NFC": return "NFC (Puck.js, Pixl.js, MDBT42Q)"
+  if d=="GRAPHICS_ANTIALIAS": return "devices with Antialiasing support included (Bangle.js or Linux)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 

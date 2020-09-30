@@ -1556,6 +1556,7 @@ JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "drawLineAA",
+  "ifdef" : "GRAPHICS_ANTIALIAS",
   "generate" : "jswrap_graphics_drawLineAA",
   "params" : [
     ["x1","float","The left"],
@@ -1629,7 +1630,7 @@ JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
   "class" : "Graphics",
   "name" : "drawPoly",
   "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_graphics_drawPoly",
+  "generate_full" : "jswrap_graphics_drawPoly_X(parent, poly, closed, false)",
   "params" : [
     ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"],
     ["closed","bool","Draw another line between the last element of the array and the first"]
@@ -1639,35 +1640,65 @@ JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
 }
 Draw a polyline (lines between each of the points in `poly`) in the current foreground color
 */
-JsVar *jswrap_graphics_drawPoly(JsVar *parent, JsVar *poly, bool closed) {
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "drawPolyAA",
+  "ifdef" : "GRAPHICS_ANTIALIAS",
+  "generate_full" : "jswrap_graphics_drawPoly_X(parent, poly, closed, true)",
+  "params" : [
+    ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"],
+    ["closed","bool","Draw another line between the last element of the array and the first"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Draw an **antialiased** polyline (lines between each of the points in `poly`) in the current foreground color
+*/
+JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool antiAlias) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   if (!jsvIsIterable(poly)) return 0;
-  int x,y;
+  int scale;
+  void (*drawFn)(JsGraphics *gfx, int x1, int y1, int x2, int y2);
+#ifdef GRAPHICS_ANTIALIAS
+  if (antiAlias) {
+    scale = 16;
+    drawFn = graphicsDrawLineAA;
+  } else
+#endif
+  {
+    scale = 1;
+    drawFn = graphicsDrawLine;
+  }
+
+  int lx,ly;
   int startx, starty;
   int idx = 0;
   JsvIterator it;
   jsvIteratorNew(&it, poly, JSIF_EVERY_ARRAY_ELEMENT);
   while (jsvIteratorHasElement(&it)) {
-    int el = jsvIteratorGetIntegerValue(&it);
-    if (idx&1) {
-      y = el;
-      if (idx==1) { // save xy positions of first point
-        startx = x;
-        starty = y;
-      } else {
-        // only start drawing between the first 2 points
-        graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, x, y);
-      }
-      gfx.data.cursorX = (short)x;
-      gfx.data.cursorY = (short)y;
-    } else x = el;
-    idx++;
+    int x,y;
+    x = (int)((jsvIteratorGetFloatValue(&it)*scale)+0.5);
     jsvIteratorNext(&it);
+    y = (int)((jsvIteratorGetFloatValue(&it)*scale)+0.5);
+    jsvIteratorNext(&it);
+    if (idx==0) { // save xy positions of first point
+      startx = x;
+      starty = y;
+    } else {
+      // only start drawing between the first 2 points
+      drawFn(&gfx, lx, ly, x, y);
+    }
+    lx = x;
+    ly = y;
+    idx++;
   }
   jsvIteratorFree(&it);
+  gfx.data.cursorX = (short)(lx/scale);
+  gfx.data.cursorY = (short)(ly/scale);
   // if closed, draw between first and last points
   if (closed)
-    graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, startx, starty);
+    drawFn(&gfx, lx, ly, startx, starty);
 
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
