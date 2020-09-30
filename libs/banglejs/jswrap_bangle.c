@@ -469,6 +469,8 @@ typedef enum {
   JSBT_HRM_DATA = 1<<17, ///< Heart rate data is ready for analysis
   JSBT_TWIST_EVENT = 1<<18, ///< Watch was twisted
   JSBT_FACE_UP = 1<<19, ///< Watch was turned face up/down (faceUp holds the actual state)
+  JSBT_ACCEL_INTERVAL_DEFAULT = 1<<20, ///< reschedule accelerometer poll handler to default speed
+  JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<21, ///< reschedule accelerometer poll handler to powersave speed
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -614,8 +616,10 @@ void peripheralPollHandler() {
     if (bangleFlags & JSBF_POWER_SAVE) {
       if (accdiff > POWER_SAVE_MIN_ACCEL) {
         powerSaveTimer = 0;
-        if (pollInterval == POWER_SAVE_ACCEL_POLL_INTERVAL)
-          jswrap_banglejs_setPollInterval_internal(DEFAULT_ACCEL_POLL_INTERVAL);
+        if (pollInterval == POWER_SAVE_ACCEL_POLL_INTERVAL) {
+          bangleTasks |= JSBT_ACCEL_INTERVAL_DEFAULT;
+          jshHadEvent();
+        }
       } else {
         if (powerSaveTimer < TIMER_MAX)
           powerSaveTimer += pollInterval;
@@ -623,7 +627,8 @@ void peripheralPollHandler() {
             pollInterval == DEFAULT_ACCEL_POLL_INTERVAL && // we are in high power mode
             !(bangleFlags & JSBF_ACCEL_LISTENER) // nothing was listening to accelerometer data
             ) {
-          jswrap_banglejs_setPollInterval_internal(POWER_SAVE_ACCEL_POLL_INTERVAL);
+          bangleTasks |= JSBT_ACCEL_INTERVAL_POWERSAVE;
+          jshHadEvent();
         }
       }
     }
@@ -1721,6 +1726,9 @@ bool jswrap_banglejs_idle() {
   if (bangleTasks & JSBT_LCD_OFF) jswrap_banglejs_setLCDPower(0);
   if (bangleTasks & JSBT_LCD_ON) jswrap_banglejs_setLCDPower(1);
   if (bangleTasks & JSBT_RESET) jsiStatus |= JSIS_TODO_FLASH_LOAD;
+  if (bangleTasks & JSBT_ACCEL_INTERVAL_DEFAULT) jswrap_banglejs_setPollInterval_internal(DEFAULT_ACCEL_POLL_INTERVAL);
+  if (bangleTasks & JSBT_ACCEL_INTERVAL_POWERSAVE) jswrap_banglejs_setPollInterval_internal(POWER_SAVE_ACCEL_POLL_INTERVAL);
+
   if (!bangle) {
     bangleTasks = JSBT_NONE;
     return false;
