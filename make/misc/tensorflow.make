@@ -10,6 +10,9 @@ $(TENSOR_ROOT)/tensorflow/lite/micro/kernels/conv.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/kernels/pooling.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/kernels/softmax.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/kernels/fully_connected.cc \
+$(TENSOR_ROOT)/tensorflow/lite/micro/kernels/quantize.cc \
+$(TENSOR_ROOT)/tensorflow/lite/micro/kernels/dequantize.cc \
+$(TENSOR_ROOT)/tensorflow/lite/micro/kernels/reshape.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/memory_planner/linear_memory_planner.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/memory_planner/greedy_memory_planner.cc \
 $(TENSOR_ROOT)/tensorflow/lite/core/api/error_reporter.cc \
@@ -23,9 +26,6 @@ $(TENSOR_ROOT)/tensorflow.cc
 # unused kernels
 #$(TENSOR_ROOT)/tensorflow/lite/micro/kernels/pack.cc \
 #$(TENSOR_ROOT)/tensorflow/lite/micro/kernels/logical.cc \
-#$(TENSOR_ROOT)/tensorflow/lite/micro/kernels/reshape.cc \
-#$(TENSOR_ROOT)/tensorflow/lite/micro/kernels/quantize.cc \
-#$(TENSOR_ROOT)/tensorflow/lite/micro/kernels/dequantize.cc \
 #$(TENSOR_ROOT)/tensorflow/lite/micro/kernels/logistic.cc \
 #$(TENSOR_ROOT)/tensorflow/lite/micro/kernels/prelu.cc \
 #$(TENSOR_ROOT)/tensorflow/lite/micro/kernels/ceil.cc \
@@ -66,7 +66,8 @@ INCLUDE += \
 -I$(TENSOR_ROOT)/tensorflow \
 -I$(TENSOR_ROOT)/third_party/gemmlowp \
 -I$(TENSOR_ROOT)/third_party/kissfft \
--I$(TENSOR_ROOT)/third_party/flatbuffers/include
+-I$(TENSOR_ROOT)/third_party/flatbuffers/include \
+-I$(TENSOR_ROOT)/third_party/ruy
 
 CCFLAGS += -DNDEBUG -g -DTF_LITE_STATIC_MEMORY --std=c++11 -g -fno-rtti -fpermissive -Wno-sign-compare -Wno-conversion -Wno-sign-conversion -Wno-missing-field-initializers -Wno-type-limits -Wno-unused-parameter -Wno-unused-variable
 DEFINES += -DUSE_TENSORFLOW=1
