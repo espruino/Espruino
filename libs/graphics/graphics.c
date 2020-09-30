@@ -288,7 +288,7 @@ uint32_t graphicsBlendColor(JsGraphics *gfx, double amt) {
     unsigned int bi = bb*(1-amt) + fb*amt;
     return (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
   }
-  return gfx->data.fgColor;
+  return (amt>=0.5) ? gfx->data.fgColor : gfx->data.bgColor;
 }
 
 // ----------------------------------------------------------------------------------------------

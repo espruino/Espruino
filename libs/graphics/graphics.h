@@ -68,7 +68,10 @@ typedef enum {
 #ifdef USE_FONT_6X8
  JSGRAPHICS_FONTSIZE_6X8 = 2 << 13, // a bitmap font
 #endif
- JSGRAPHICS_FONTSIZE_CUSTOM = 3 << 13,// a custom bitmap font made from fields in the graphics object (See below)
+ JSGRAPHICS_FONTSIZE_CUSTOM_1BPP = 4 << 13,// a custom bitmap font made from fields in the graphics object (See below)
+ JSGRAPHICS_FONTSIZE_CUSTOM_2BPP = 5 << 13,// a custom bitmap font made from fields in the graphics object (See below)
+ JSGRAPHICS_FONTSIZE_CUSTOM_4BPP = 6 << 13,// a custom bitmap font made from fields in the graphics object (See below)
+ JSGRAPHICS_FONTSIZE_CUSTOM_BIT = 4 << 13 // all custom fonts have this bit set
 } JsGraphicsFontSize;
 
 
