@@ -141,8 +141,8 @@ bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int 
 JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx);
 /// Get a setPixel function and set modified area (assuming no clipping) (inclusive of x2,y2) - if all is ok it can choose a faster draw function
 JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2);
-/// Merge one color into another based on current bit depth
-uint32_t graphicsBlendColor(JsGraphics *gfx, double amt);
+/// Merge one color into another based on current bit depth (amt is 0..256)
+uint32_t graphicsBlendColor(JsGraphics *gfx, int amt);
 
 // drawing functions - all coordinates are in USER coordinates, not DEVICE coordinates
 void         graphicsSetPixel(JsGraphics *gfx, int x, int y, unsigned int col);

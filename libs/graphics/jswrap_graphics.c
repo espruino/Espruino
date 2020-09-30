@@ -1439,7 +1439,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
                   (y + cy*scale),
                   (x + cx*scale + scale-1),
                   (y + cy*scale + scale-1),
-                  graphicsBlendColor(&gfx, col/(double)customBPPRange));
+                  graphicsBlendColor(&gfx, (256*col)/customBPPRange));
             bmpOffset += customBPP;
             citdata <<= customBPP;
             if (bmpOffset>=8) {
