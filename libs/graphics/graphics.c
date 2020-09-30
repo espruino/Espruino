@@ -270,8 +270,9 @@ JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int
 }
 
 /// Merge one color into another based on current bit depth (amt is 0..256)
-uint32_t graphicsBlendColor(JsGraphics *gfx, int amt) {
-  assert(amt>=0 && amt<=256);
+uint32_t graphicsBlendColor(JsGraphics *gfx, int iamt) {
+  unsigned int amt = (iamt>0) ? (unsigned)iamt : 0;
+  if (amt>256) amt=255;
   if (gfx->data.bpp==2 || gfx->data.bpp==4 || gfx->data.bpp==8) {
     return (gfx->data.bgColor*(256-amt) + gfx->data.fgColor*amt) >> 8;
   } else if (gfx->data.bpp==16) { // Blend from bg to fg
@@ -488,70 +489,61 @@ void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
 
 // In 16x accuracy
 void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2) {
+  // https://en.wikipedia.org/wiki/Xiaolin_Wu%27s_line_algorithm
   graphicsToDeviceCoordinates16x(gfx, &ix1, &iy1);
   graphicsToDeviceCoordinates16x(gfx, &ix2, &iy2);
-  double x0 = ix1/16.0;
-  double y0 = iy1/16.0;
-  double x1 = ix2/16.0;
-  double y1 = iy2/16.0;
-
-  // https://en.wikipedia.org/wiki/Xiaolin_Wu%27s_line_algorithm
-  // fractional part of x
-#define fpart(x) (x - floor(x))
-#define rfpart(x) (1 - fpart(x))
-
+  int x0 = ix1*16;
+  int y0 = iy1*16;
+  int x1 = ix2*16;
+  int y1 = iy2*16;
   bool steep = abs(y1 - y0) > abs(x1 - x0);
-
   if (steep) {
-    double t;
+    int t;
     t=x0;x0=y0;y0=t;
     t=x1;x1=y1;y1=t;
   }
   if (x0 > x1) {
-    double t;
+    int t;
     t=x0;x0=x1;x1=t;
     t=y0;y0=y1;y1=t;
   }
-
   int dx = x1 - x0;
   int dy = y1 - y0;
-  double gradient = dx ? (dy / (double)dx) : 1;
+  int gradient = dx ? ((dy<<8) / dx) : 256;
 
   // handle first endpoint
-  int xend = (int)(x0+0.5);
-  double yend = y0 + gradient * (xend - x0);
-  double xgap = rfpart(x0 + 0.5);
-  int xpxl1 = xend; // this will be used in the main loop
-  int ypxl1 = (int)(yend);
-  int c = fpart(yend)*256;
+  int xend = x0 + 128;
+  int yend = y0 + ((gradient * (xend - x0)) >> 8);
+  int xgap = 256 - ((x0 + 128) & 255);
+  int xpxl1 = xend >> 8; // this will be used in the main loop
+  int ypxl1 = yend >> 8;
+  int c = yend & 255;
   if (steep) {
-    graphicsSetPixelDevice(gfx, ypxl1,   xpxl1, graphicsBlendColor(gfx, (256-c)*xgap));
-    graphicsSetPixelDevice(gfx, ypxl1+1, xpxl1,  graphicsBlendColor(gfx, c*xgap));
+    graphicsSetPixelDevice(gfx, ypxl1,   xpxl1, graphicsBlendColor(gfx, ((256-c)*xgap)>>8));
+    graphicsSetPixelDevice(gfx, ypxl1+1, xpxl1,  graphicsBlendColor(gfx, (c*xgap)>>8));
   } else {
-    graphicsSetPixelDevice(gfx, xpxl1, ypxl1  , graphicsBlendColor(gfx, (256-c)*xgap));
-    graphicsSetPixelDevice(gfx, xpxl1, ypxl1+1,  graphicsBlendColor(gfx, c*xgap));
+    graphicsSetPixelDevice(gfx, xpxl1, ypxl1  , graphicsBlendColor(gfx, ((256-c)*xgap)>>8));
+    graphicsSetPixelDevice(gfx, xpxl1, ypxl1+1,  graphicsBlendColor(gfx, (c*xgap)>>8));
   }
-  double intery = yend + gradient; // first y-intersection for the main loop
+  int intery = yend + gradient; // first y-intersection for the main loop
   // handle second endpoint
-  xend = (int)(x1+0.5);
-  yend = y1 + gradient * (xend - x1);
-  xgap = fpart(x1 + 0.5);
-  int xpxl2 = xend; //this will be used in the main loop
-  int ypxl2 = (int)(yend);
-  double yendf = fpart(yend);
-  c = fpart(yend)*256;
+  xend = x1 + 128;
+  yend = y1 + ((gradient * (xend - x1)) >> 8);
+  xgap = (x1 + 128) & 255;
+  int xpxl2 = xend>>8; //this will be used in the main loop
+  int ypxl2 = yend>>8;
+  c = yend & 255;
   if (steep) {
-    graphicsSetPixelDevice(gfx, ypxl2  , xpxl2, graphicsBlendColor(gfx, (256-c)*xgap));
-    graphicsSetPixelDevice(gfx, ypxl2+1, xpxl2, graphicsBlendColor(gfx, c*xgap));
+    graphicsSetPixelDevice(gfx, ypxl2  , xpxl2, graphicsBlendColor(gfx, ((256-c)*xgap)>>8));
+    graphicsSetPixelDevice(gfx, ypxl2+1, xpxl2, graphicsBlendColor(gfx, (c*xgap)>>8));
   } else {
-    graphicsSetPixelDevice(gfx, xpxl2, ypxl2,  graphicsBlendColor(gfx, (256-c)*xgap));
-    graphicsSetPixelDevice(gfx, xpxl2, ypxl2+1, graphicsBlendColor(gfx, c*xgap));
+    graphicsSetPixelDevice(gfx, xpxl2, ypxl2,  graphicsBlendColor(gfx, ((256-c)*xgap)>>8));
+    graphicsSetPixelDevice(gfx, xpxl2, ypxl2+1, graphicsBlendColor(gfx, (c*xgap)>>8));
   }
-
   // main loop
   for (int x=xpxl1+1;x<xpxl2;x++) {
-    int y = (int)(intery);
-    c = (intery-y)*256;
+    int y = intery>>8;
+    c = intery & 255;
     if (steep) {
       graphicsSetPixelDevice(gfx, y  , x, graphicsBlendColor(gfx, 256-c));
       graphicsSetPixelDevice(gfx, y+1, x,  graphicsBlendColor(gfx, c));
