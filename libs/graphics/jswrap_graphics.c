@@ -2764,7 +2764,7 @@ Transformation can be:
   x: float, // x offset (default 0)
   y: float, // y offset (default 0)
   scale: float, // scale factor (default 1)
-  rotation: float, // angle in radians (default 0)
+  rotate: float, // angle in radians (default 0)
 }
 ```
 * A six-element array of the form `[a,b,c,d,e,f]`, which represents the 2D transformation matrix

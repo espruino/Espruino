@@ -36,11 +36,12 @@
 #include "nrf_delay.h"
 #include "nrf_soc.h"
 #include "nrf_saadc.h"
+#include "app_timer.h"
 #include "nrf5x_utils.h"
+
 #include "bluetooth.h" // for self-test
 #include "jsi2c.h" // accelerometer/etc
 #endif
-#include "app_timer.h"
 
 #include "jswrap_graphics.h"
 #include "lcd_st7789_8bit.h"
