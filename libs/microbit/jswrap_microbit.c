@@ -254,6 +254,7 @@ void jswrap_microbit_show(JsVar *image) {
     jsError("Expecting a number, got %t\n", image);
     return;
   }
+  jswrap_microbit_show_raw(newState);
 }
 
 
