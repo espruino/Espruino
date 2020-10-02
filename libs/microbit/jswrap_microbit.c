@@ -22,36 +22,13 @@
 
 #include "nrf_gpio.h" // just go direct
 
-/*
-
-g = Graphics.createArrayBuffer(5,5,1);
-g.drawString("E");
-show((new Uint32Array(g.buffer))[0])
-
-*/
-
-
-
-uint32_t microbitLEDState = 0;
-uint8_t microbitRow = 0;
-
-// Do we have the new version with the different magnetometer?
-bool microbitLSM303;
-
-// real NRF pins 4,5,6,7,8,9,10,11,12 (column pull down)
-// real NRF pins 13,14,15 (row pull up)
-static const int MB_LED_COL1 = 4;
-static const int MB_LED_COL2 = 5;
-static const int MB_LED_COL3 = 6;
-static const int MB_LED_COL4 = 7;
-static const int MB_LED_COL5 = 8;
-static const int MB_LED_COL6 = 9;
-static const int MB_LED_COL7 = 10;
-static const int MB_LED_COL8 = 11;
-static const int MB_LED_COL9 = 12;
-static const int MB_LED_ROW1 = 13;
-static const int MB_LED_ROW2 = 14;
-static const int MB_LED_ROW3 = 15;
+#ifdef MICROBIT2
+#include "jsi2c.h" // accelerometer/etc
+// we use software I2C
+JshI2CInfo i2cInfo;
+// All microbit 2's have the new mmagnetometer
+const bool microbitLSM303 = true;
+#else
 
 // 32 means not used
 static const uint8_t MB_LED_MAPPING[] = {
@@ -62,14 +39,42 @@ static const uint8_t MB_LED_MAPPING[] = {
 
 const int MMA8652_ADDR = 0x1D;
 const int MAG3110_ADDR = 0x0E;
+
+// Do we have the new version with the different magnetometer?
+bool microbitLSM303;
+#endif
+
 const int LSM303_ACC_ADDR = 0b0011001;
 const int LSM303_MAG_ADDR = 0b0011110;
 
+uint32_t microbitLEDState = 0;
+uint8_t microbitRow = 0;
+
 // called on a timer to scan rows out
 void jswrap_microbit_display_callback() {
+
+#ifdef MICROBIT2
+  microbitRow++;
+  if (microbitRow>5) microbitRow=0;
+  uint32_t s = (~microbitLEDState) >> microbitRow*5;
+  nrf_gpio_pin_clear(MB_LED_ROW1);
+  nrf_gpio_pin_clear(MB_LED_ROW2);
+  nrf_gpio_pin_clear(MB_LED_ROW3);
+  nrf_gpio_pin_clear(MB_LED_ROW4);
+  nrf_gpio_pin_clear(MB_LED_ROW5);
+  nrf_gpio_pin_write(MB_LED_COL1, s & 1);
+  nrf_gpio_pin_write(MB_LED_COL2, s & 2);
+  nrf_gpio_pin_write(MB_LED_COL3, s & 4);
+  nrf_gpio_pin_write(MB_LED_COL4, s & 8);
+  nrf_gpio_pin_write(MB_LED_COL5, s & 16);
+  nrf_gpio_pin_write(MB_LED_ROW1, microbitRow==0);
+  nrf_gpio_pin_write(MB_LED_ROW2, microbitRow==1);
+  nrf_gpio_pin_write(MB_LED_ROW3, microbitRow==2);
+  nrf_gpio_pin_write(MB_LED_ROW4, microbitRow==3);
+  nrf_gpio_pin_write(MB_LED_ROW5, microbitRow==4);
+#else
   microbitRow++;
   if (microbitRow>2) microbitRow=0;
-
   int n = microbitRow*9;
   uint32_t s = ~microbitLEDState;
   nrf_gpio_pin_clear(MB_LED_ROW1);
@@ -87,6 +92,7 @@ void jswrap_microbit_display_callback() {
   nrf_gpio_pin_write(MB_LED_ROW1, microbitRow==0);
   nrf_gpio_pin_write(MB_LED_ROW2, microbitRow==1);
   nrf_gpio_pin_write(MB_LED_ROW3, microbitRow==2);
+#endif
 }
 
 void jswrap_microbit_stopDisplay() {
@@ -99,14 +105,34 @@ void jswrap_microbit_stopDisplay() {
     nrf_gpio_cfg_default(MB_LED_COL3);
     nrf_gpio_cfg_default(MB_LED_COL4);
     nrf_gpio_cfg_default(MB_LED_COL5);
+#ifdef MICROBIT2
+    nrf_gpio_cfg_default(MB_LED_ROW4);
+    nrf_gpio_cfg_default(MB_LED_ROW5);
+#else
     nrf_gpio_cfg_default(MB_LED_COL6);
     nrf_gpio_cfg_default(MB_LED_COL7);
     nrf_gpio_cfg_default(MB_LED_COL8);
     nrf_gpio_cfg_default(MB_LED_COL9);
+#endif
     nrf_gpio_cfg_default(MB_LED_ROW1);
     nrf_gpio_cfg_default(MB_LED_ROW2);
     nrf_gpio_cfg_default(MB_LED_ROW3);
   }
+}
+
+void mb_i2c_write(unsigned int addr, int count, const unsigned char *data) {
+#ifdef MICROBIT2
+  jsi2cWrite(&i2cInfo, addr, count, data, true);
+#else
+  jshI2CWrite(EV_I2C1, addr, count, data, true);
+#endif
+}
+void mb_i2c_read(unsigned int addr, int count, unsigned char *data) {
+#ifdef MICROBIT2
+  jsi2cRead(&i2cInfo, addr, count, data, true);
+#else
+  jshI2CRead(EV_I2C1, addr, count, data, true);
+#endif
 }
 
 /*JSON{
@@ -115,42 +141,54 @@ void jswrap_microbit_stopDisplay() {
 }*/
 void jswrap_microbit_init() {
   // enable I2C (for accelerometers, etc)
-  JshI2CInfo inf;
-  jshI2CInitInfo(&inf);
-  inf.pinSCL = JSH_PORTD_OFFSET+19; // 'D19'
-  inf.pinSDA = JSH_PORTD_OFFSET+20; // 'D20'
-  jshI2CSetup(EV_I2C1, &inf);
+#ifndef MICROBIT2
+  JshI2CInfo i2cInfo;
+#endif
+  jshI2CInitInfo(&i2cInfo);
+#ifdef MICROBIT2
+  i2cInfo.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cInfo.clockStretch = false;
+#endif
+  i2cInfo.pinSCL = INTERNAL_I2C_SCL_PIN;
+  i2cInfo.pinSDA = INTERNAL_I2C_SDA_PIN;
+  jshI2CSetup(EV_I2C1, &i2cInfo);
 
   unsigned char d[2];
+#ifndef MICROBIT2
   d[0] = 0x07; // WHO_AM_I
-  jshI2CWrite(EV_I2C1, MAG3110_ADDR, 1, d, true);
-  jshI2CRead(EV_I2C1, MAG3110_ADDR, 1, d, true);
+  mb_i2c_write(MAG3110_ADDR, 1, d);
+  mb_i2c_read(MAG3110_ADDR, 1, d);
   jsvUnLock(jspGetException());
   if (d[0]==0xC4) {
     microbitLSM303 = false;
     // Enable MMA8652 Accelerometer
     d[0] = 0x2A; d[1] = 0x19; // CTRL_REG1, 100Hz, turn on
-    jshI2CWrite(EV_I2C1, MMA8652_ADDR, 2, d, true);
+    mb_i2c_write(MMA8652_ADDR, 2, d);
     // Enable MAG3110 magnetometer, 80Hz
     d[0] = 0x11; d[1] = 0x80; // CTRL_REG2, AUTO_MRST_EN
-    jshI2CWrite(EV_I2C1, MAG3110_ADDR, 2, d, true);
+    mb_i2c_write(MAG3110_ADDR, 2, d);
     d[0] = 0x10; d[1] = 0x01; // CTRL_REG1, active mode 80 Hz ODR with OSR = 1
-    jshI2CWrite(EV_I2C1, MAG3110_ADDR, 2, d, true);
+    mb_i2c_write(MAG3110_ADDR, 2, d);
+#else
+  if (false) {
+#endif
   } else {
+#ifndef MICROBIT2
     microbitLSM303 = true;
+#endif
     // LSM303_ACC_ADDR,0x0F => 51 // WHO_AM_I
     // Init accelerometer
     d[0] = 0x20; d[1] = 0b00110111; // CTRL_REG1_A, 25Hz
-    jshI2CWrite(EV_I2C1, LSM303_ACC_ADDR, 2, d, true);
+    mb_i2c_write(LSM303_ACC_ADDR, 2, d);
     d[0] = 0x22; d[1] = 0x10; // CTRL_REG3_A
-    jshI2CWrite(EV_I2C1, LSM303_ACC_ADDR, 2, d, true);
+    mb_i2c_write(LSM303_ACC_ADDR, 2, d);
     d[0] = 0x23; d[1] = 0b11011000; // CTRL_REG4_A - 4g range, MSB at low address, high res
-    jshI2CWrite(EV_I2C1, LSM303_ACC_ADDR, 2, d, true);
+    mb_i2c_write(LSM303_ACC_ADDR, 2, d);
     // Init magnetometer
     d[0] = 0x60; d[1] = 0x04; // CFG_REG_A_M, 20Hz
-    jshI2CWrite(EV_I2C1, LSM303_MAG_ADDR, 2, d, true);
+    mb_i2c_write(LSM303_MAG_ADDR, 2, d);
     d[0] = 0x62; d[1] = 0b00001001; // CFG_REG_C_M - enable data ready IRQ (not that we use this), swap block order to match MAG3110
-    jshI2CWrite(EV_I2C1, LSM303_MAG_ADDR, 2, d, true);
+    mb_i2c_write(LSM303_MAG_ADDR, 2, d);
   }
 }
 
@@ -213,10 +251,15 @@ void jswrap_microbit_show_raw(uint32_t newState) {
     nrf_gpio_cfg_output(MB_LED_COL3);
     nrf_gpio_cfg_output(MB_LED_COL4);
     nrf_gpio_cfg_output(MB_LED_COL5);
+#ifdef MICROBIT2
+    nrf_gpio_cfg_output(MB_LED_ROW4);
+    nrf_gpio_cfg_output(MB_LED_ROW5);
+#else
     nrf_gpio_cfg_output(MB_LED_COL6);
     nrf_gpio_cfg_output(MB_LED_COL7);
     nrf_gpio_cfg_output(MB_LED_COL8);
     nrf_gpio_cfg_output(MB_LED_COL9);
+#endif
     nrf_gpio_cfg_output(MB_LED_ROW1);
     nrf_gpio_cfg_output(MB_LED_ROW2);
     nrf_gpio_cfg_output(MB_LED_ROW3);
@@ -275,14 +318,16 @@ JsVar *jswrap_microbit_acceleration() {
   JsVarFloat range;
   if (microbitLSM303) {
     d[0] = 0x28 | 0x80;
-    jshI2CWrite(EV_I2C1, LSM303_ACC_ADDR, 1, d, true);
-    jshI2CRead(EV_I2C1, LSM303_ACC_ADDR, 6, &d[1], true);
+    mb_i2c_write(LSM303_ACC_ADDR, 1, d);
+    mb_i2c_read(LSM303_ACC_ADDR, 6, &d[1]);
     range = 8192;
   } else {
+#ifndef MICROBIT2
     d[0] = 1;
-    jshI2CWrite(EV_I2C1, MMA8652_ADDR, 1, d, true);
-    jshI2CRead(EV_I2C1, MMA8652_ADDR, 7, d, true);
+    mb_i2c_write(MMA8652_ADDR, 1, d);
+    mb_i2c_read(MMA8652_ADDR, 7, d);
     range = 16384;
+#endif
   }
   JsVar *xyz = jsvNewObject();
   if (xyz) {
@@ -315,12 +360,14 @@ JsVar *jswrap_microbit_compass() {
   unsigned char d[6];
   if (microbitLSM303) {
     d[0] = 0x68 | 0x80;
-    jshI2CWrite(EV_I2C1, LSM303_MAG_ADDR, 1, d, true);
-    jshI2CRead(EV_I2C1, LSM303_MAG_ADDR, 6, d, true);
+    mb_i2c_write(LSM303_MAG_ADDR, 1, d);
+    mb_i2c_read(LSM303_MAG_ADDR, 6, d);
   } else {
+#ifndef MICROBIT2
     d[0] = 1;
-    jshI2CWrite(EV_I2C1, MAG3110_ADDR, 1, d, true);
-    jshI2CRead(EV_I2C1, MAG3110_ADDR, 6, d, true);
+    mb_i2c_write(MAG3110_ADDR, 1, d);
+    mb_i2c_read(MAG3110_ADDR, 6, d);
+#endif
   }
   JsVar *xyz = jsvNewObject();
   if (xyz) {
@@ -337,6 +384,36 @@ JsVar *jswrap_microbit_compass() {
   return xyz;
 }
 
+
+/*JSON{
+  "type" : "variable",
+  "name" : "SPEAKER",
+  "generate_full" : "SPEAKER_PIN",
+  "ifdef" : "MICROBIT2",
+  "return" : ["pin",""]
+}
+The micro:bit's speaker
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "MIC",
+  "generate_full" : "MIC_PIN",
+  "ifdef" : "MICROBIT2",
+  "return" : ["pin",""]
+}
+The micro:bit's microphone
+
+`MIC_ENABLE` should be set to 1 before using this
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "MIC_ENABLE",
+  "generate_full" : "MIC_ENABLE_PIN",
+  "ifdef" : "MICROBIT2",
+  "return" : ["pin",""]
+}
+The micro:bit's microphone enable pin
+*/
 
 //------------------------ virtuial pins allow us to have a LED1
 void jshVirtualPinInitialise() {

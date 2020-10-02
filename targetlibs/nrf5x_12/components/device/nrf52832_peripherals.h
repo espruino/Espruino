@@ -50,7 +50,9 @@
 
 /* GPIO */
 #define GPIO_PRESENT
+#ifndef GPIO_COUNT
 #define GPIO_COUNT 1
+#endif
 
 #define P0_PIN_NUM 32
 
