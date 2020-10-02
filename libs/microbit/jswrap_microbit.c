@@ -19,6 +19,7 @@
 #include "jstimer.h"
 #include "jsparse.h"
 #include "jsvariterator.h"
+#include "jsinteractive.h"
 
 #include "nrf_gpio.h" // just go direct
 
@@ -180,14 +181,19 @@ void jswrap_microbit_init() {
     // Init accelerometer
     d[0] = 0x20; d[1] = 0b00110111; // CTRL_REG1_A, 25Hz
     mb_i2c_write(LSM303_ACC_ADDR, 2, d);
-    d[0] = 0x22; d[1] = 0x10; // CTRL_REG3_A
+    d[0] = 0x22; d[1] = 0x10; // CTRL_REG3_A - DRDY1 on INT1
     mb_i2c_write(LSM303_ACC_ADDR, 2, d);
     d[0] = 0x23; d[1] = 0b11011000; // CTRL_REG4_A - 4g range, MSB at low address, high res
     mb_i2c_write(LSM303_ACC_ADDR, 2, d);
+#ifdef MICROBIT2
+    d[0] = 0x30; d[1] = 0; // INT1_CFG_A - OR events
+    mb_i2c_write(LSM303_ACC_ADDR, 2, d);
+#endif
     // Init magnetometer
     d[0] = 0x60; d[1] = 0x04; // CFG_REG_A_M, 20Hz
     mb_i2c_write(LSM303_MAG_ADDR, 2, d);
-    d[0] = 0x62; d[1] = 0b00001001; // CFG_REG_C_M - enable data ready IRQ (not that we use this), swap block order to match MAG3110
+    //d[0] = 0x62; d[1] = 0b00001001; // CFG_REG_C_M - enable data ready IRQ (not that we use this), swap block order to match MAG3110
+    d[0] = 0x62; d[1] = 0b00001000; // CFG_REG_C_M - swap block order to match MAG3110 (no IRQ)
     mb_i2c_write(LSM303_MAG_ADDR, 2, d);
   }
 }
@@ -317,9 +323,9 @@ JsVar *jswrap_microbit_acceleration() {
   unsigned char d[7];
   JsVarFloat range;
   if (microbitLSM303) {
-    d[0] = 0x28 | 0x80;
+    d[0] = 0x27 | 0x80;
     mb_i2c_write(LSM303_ACC_ADDR, 1, d);
-    mb_i2c_read(LSM303_ACC_ADDR, 6, &d[1]);
+    mb_i2c_read(LSM303_ACC_ADDR, 7, &d[0]);
     range = 8192;
   } else {
 #ifndef MICROBIT2
@@ -343,6 +349,33 @@ JsVar *jswrap_microbit_acceleration() {
     jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromFloat(((JsVarFloat)z) / range));
   }
   return xyz;
+}
+
+/*JSON{
+  "type" : "function",
+  "name" : "accelWr",
+  "generate" : "jswrap_microbit_accelWr",
+  "params" : [
+     ["addr","int","Accelerometer address"],
+     ["data","int","Data to write"]
+  ],
+  "ifdef" : "MICROBIT2"
+}
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+
+Write the given value to the accelerometer
+*/
+void jswrap_microbit_accelWr(int a, int data) {
+  unsigned char d[2];
+  d[0] = a;
+  d[1] = data;
+  if (microbitLSM303) {
+    mb_i2c_write(LSM303_ACC_ADDR, 2, d);
+  } else {
+#ifndef MICROBIT2
+    mb_i2c_write(MMA8652_ADDR, 2, d);
+#endif
+  }
 }
 
 /*JSON{
@@ -384,6 +417,124 @@ JsVar *jswrap_microbit_compass() {
   return xyz;
 }
 
+/*JSON{
+  "type" : "function",
+  "name" : "accelGestureHandler",
+  "generate" : "jswrap_microbit_accelGestureHandler",
+  "ifdef" : "MICROBIT2"
+}
+*/
+
+#define ACCEL_HISTORY_LEN 50 ///< Number of samples of accelerometer history
+
+/// how big a difference before we consider a gesture started?
+int accelGestureStartThresh = 800*800;
+/// how small a difference before we consider a gesture ended?
+int accelGestureEndThresh = 2000*2000;
+/// how many samples do we keep after a gesture has ended
+int accelGestureInactiveCount = 4;
+/// how many samples must a gesture have before we notify about it?
+int accelGestureMinLength = 10;
+
+typedef struct {
+  short x,y,z;
+} Vector3;
+/// accelerometer data
+Vector3 acc;
+/// squared accelerometer magnitude
+int accMagSquared;
+/// accelerometer difference since last reading
+int accdiff;
+/// History of accelerometer readings
+int8_t accHistory[ACCEL_HISTORY_LEN*3];
+/// Index in accelerometer history of the last sample
+volatile uint8_t accHistoryIdx;
+/// How many samples have we been recording a gesture for? If 0, we're not recoding a gesture
+volatile uint8_t accGestureCount;
+/// How many samples have been recorded? Used when putting data into an array
+volatile uint8_t accGestureRecordedCount;
+/// How many samples has the accelerometer movement been less than accelGestureEndThresh for?
+volatile uint8_t accIdleCount;
+
+char clipi8(int x) {
+  if (x<-128) return -128;
+  if (x>127) return 127;
+  return (char)x;
+}
+
+void jswrap_microbit_accelGestureHandler() {
+  unsigned char d[7];
+  d[0] = 0x27 | 0x80;
+  mb_i2c_write(LSM303_ACC_ADDR, 1, d);
+  mb_i2c_read(LSM303_ACC_ADDR, 7, &d[0]);
+  // work out current reading in 16 bit
+  int newx = (d[1]<<8) | d[2];
+  if (newx>>15) newx-=65536;
+  int newy = (d[3]<<8) | d[4];
+  if (newy>>15) newy-=65536;
+  int newz = (d[5]<<8) | d[6];
+  if (newz>>15) newz-=65536;
+  int dx = newx-acc.x;
+  int dy = newy-acc.y;
+  int dz = newz-acc.z;
+  acc.x = newx;
+  acc.y = newy;
+  acc.z = newz;
+  accMagSquared = acc.x*acc.x + acc.y*acc.y + acc.z*acc.z;
+  accdiff = dx*dx + dy*dy + dz*dz;
+  // save history
+  accHistoryIdx = (accHistoryIdx+3) % sizeof(accHistory);
+  accHistory[accHistoryIdx  ] = clipi8(newx>>7);
+  accHistory[accHistoryIdx+1] = clipi8(newy>>7);
+  accHistory[accHistoryIdx+2] = clipi8(newz>>7);
+
+  bool hasGesture = false;
+
+  // checking for gestures
+  if (accGestureCount==0) { // no gesture yet
+    // if movement is eniugh, start one
+    if (accdiff > accelGestureStartThresh) {
+      accIdleCount = 0;
+      accGestureCount = 1;
+    }
+  } else { // we're recording a gesture
+    // keep incrementing gesture size
+    if (accGestureCount < 255)
+      accGestureCount++;
+    // if idle for long enough...
+    if (accdiff < accelGestureEndThresh) {
+      if (accIdleCount<255) accIdleCount++;
+      if (accIdleCount==accelGestureInactiveCount) {
+        // inactive for long enough for a gesture, but not too long
+        accGestureRecordedCount = accGestureCount;
+        if ((accGestureCount >= accelGestureMinLength) &&
+            (accGestureCount < ACCEL_HISTORY_LEN)) {
+          hasGesture = true;
+        }
+        accGestureCount = 0; // stop the gesture
+      }
+    } else if (accIdleCount < accelGestureInactiveCount)
+      accIdleCount = 0; // it was inactive but not long enough to trigger a gesture
+  }
+
+  if (!hasGesture) return;
+
+  JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_INT8, accGestureRecordedCount*3);
+  if (arr) {
+    int idx = accHistoryIdx - (accGestureRecordedCount*3);
+    while (idx<0) idx+=sizeof(accHistory);
+    JsvArrayBufferIterator it;
+    jsvArrayBufferIteratorNew(&it, arr, 0);
+    for (int i=0;i<accGestureRecordedCount*3;i++) {
+      jsvArrayBufferIteratorSetByteValue(&it, accHistory[idx++]);
+      jsvArrayBufferIteratorNext(&it);
+      if (idx>=(int)sizeof(accHistory)) idx-=sizeof(accHistory);
+    }
+    jsvArrayBufferIteratorFree(&it);
+    jsiQueueObjectCallbacks(execInfo.root, JS_EVENT_PREFIX"gesture", &arr, 1);
+    jsvUnLock(arr);
+  }
+}
 
 /*JSON{
   "type" : "variable",

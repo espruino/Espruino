@@ -637,6 +637,11 @@ void jshInit() {
 
 #ifdef MICROBIT
   nrf_gpio_pin_set(MB_LED_ROW1);
+  nrf_gpio_pin_set(MB_LED_COL1);
+  nrf_gpio_pin_set(MB_LED_COL2);
+  nrf_gpio_pin_set(MB_LED_COL3);
+  nrf_gpio_pin_set(MB_LED_COL4);
+  nrf_gpio_pin_set(MB_LED_COL5);
   /* We must wait ~1 second for the USB interface to initialise
    * or it won't raise the RX pin and we won't think anything
    * is connected. */
@@ -1107,6 +1112,27 @@ void nrf_analog_read_end(bool adcInUse) {
 }
 #endif
 
+#ifdef NRF52_SERIES
+static void jshPinAnalogSetConfig(nrf_saadc_channel_config_t *config, Pin pin) {
+  nrf_saadc_input_t ain = 1 + (pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
+  config->acq_time = NRF_SAADC_ACQTIME_3US;
+  config->gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
+  config->reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
+#ifdef MICROBIT2
+  if (pin == MIC_PIN) {
+    config->gain = NRF_SAADC_GAIN4; // the mic needs highest gain
+    config->reference = NRF_SAADC_REFERENCE_INTERNAL; // 0.6v reference.
+  }
+#endif
+  config->mode = NRF_SAADC_MODE_SINGLE_ENDED;
+  config->pin_p = ain;
+  config->pin_n = ain;
+
+  config->resistor_p = NRF_SAADC_RESISTOR_DISABLED;
+  config->resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+}
+#endif
+
 // Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin) {
 #if JSH_PORTV_COUNT>0
@@ -1123,16 +1149,9 @@ JsVarFloat jshPinAnalog(Pin pin) {
   assert(NRF_SAADC_INPUT_AIN1 == 2);
   assert(NRF_SAADC_INPUT_AIN2 == 3);
 
-  nrf_saadc_input_t ain = channel+1;
   nrf_saadc_channel_config_t config;
-  config.acq_time = NRF_SAADC_ACQTIME_3US;
-  config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
-  config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
-  config.pin_p = ain;
-  config.pin_n = ain;
-  config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
-  config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
-  config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+  jshPinAnalogSetConfig(&config, pin);
+
   bool adcInUse = nrf_analog_read_start();
 
   // make reading
@@ -1173,17 +1192,9 @@ int jshPinAnalogFast(Pin pin) {
   assert(NRF_SAADC_INPUT_AIN0 == 1);
   assert(NRF_SAADC_INPUT_AIN1 == 2);
   assert(NRF_SAADC_INPUT_AIN2 == 3);
-  nrf_saadc_input_t ain = 1 + (pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
 
   nrf_saadc_channel_config_t config;
-  config.acq_time = NRF_SAADC_ACQTIME_3US;
-  config.gain = NRF_SAADC_GAIN1_4; // 1/4 of input volts
-  config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
-  config.pin_p = ain;
-  config.pin_n = ain;
-  config.reference = NRF_SAADC_REFERENCE_VDD4; // VDD/4 as reference.
-  config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
-  config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
+  jshPinAnalogSetConfig(&config, pin);
   bool adcInUse = nrf_analog_read_start();
 
   // make reading

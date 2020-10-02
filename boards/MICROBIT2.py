@@ -15,6 +15,12 @@
 
 import pinutils;
 
+# TODO:
+# Move to SDK17 with proper nRF52833 support
+#   - expand RAM to 128k
+# Proper event handling for accelerometer/etc
+# Functions for sound
+
 info = {
  'name' : "BBC micro:bit 2",
  'link' :  [ "https://en.wikipedia.org/wiki/Micro_Bit" ],
@@ -53,7 +59,7 @@ chip = {
   'package' : "QFN48",
   'ram' : 64,
   'flash' : 512,
-  'speed' : 64,
+  'speed' : 64, # TODO: actually 128k
   'usart' : 1,
   'spi' : 1,
   'i2c' : 1,
@@ -108,7 +114,7 @@ def get_pins():
    { "name":"PH1", "sortingname":"H01", "port":"H", "num":"6", "functions":{"USART1_TX" : 0}, "csv":{} }, # UART_TX
    { "name":"PH2", "sortingname":"H02", "port":"H", "num":"36", "functions":{}, "csv":{} }, # face touch
    { "name":"PH3", "sortingname":"H03", "port":"H", "num":"0", "functions":{}, "csv":{} }, # speaker
-   { "name":"PH4", "sortingname":"H04", "port":"H", "num":"5", "functions":{ "ADC1_IN0":3 }, "csv":{} }, # mic_in
+   { "name":"PH4", "sortingname":"H04", "port":"H", "num":"5", "functions":{ "ADC1_IN3":0 }, "csv":{} }, # mic_in
    { "name":"PH5", "sortingname":"H05", "port":"H", "num":"20", "functions":{}, "csv":{} }, # run_mic
    { "name":"PH6", "sortingname":"H06", "port":"H", "num":"16", "functions":{}, "csv":{} }, # INT_SDA
    { "name":"PH7", "sortingname":"H07", "port":"H", "num":"8", "functions":{}, "csv":{} }, # INT_SCL
