@@ -1,7 +1,7 @@
 /*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
- * Copyright (C) 2020 Gordon Williams <gw@pur3.co.uk>, atc1441, MaBecker  
+ * Copyright (C) 2020 Gordon Williams <gw@pur3.co.uk>, atc1441, MaBecker, Jeffmer
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,7 +16,6 @@
 #include "jsvariterator.h"
 #include "jshardware.h"
 
-// #define BUFFER  128
 #define BUFFER SPISENDMANY_BUFFER_SIZE
 
 typedef struct {
@@ -28,5 +27,6 @@ typedef struct {
   int rowstart;             //!< Aditional starting address some pixels dont begin at 0
 } JshLCD_SPI_UNBUFInfo;
 
+bool jswrap_lcd_spi_unbuf_idle();
 JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options);
 void lcd_spi_unbuf_setCallbacks(JsGraphics *gfx);

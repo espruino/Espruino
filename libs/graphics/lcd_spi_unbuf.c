@@ -1,7 +1,7 @@
 /*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
- * Copyright (C) 2020 Gordon Williams <gw@pur3.co.uk>, atc1441, MaBecker          
+ * Copyright (C) 2020 Gordon Williams <gw@pur3.co.uk>, atc1441, MaBecker, Jeffmer          
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -20,16 +20,20 @@
 #include "lcd_spi_unbuf.h"
 #include "jsutils.h"
 #include "jsinteractive.h"
+#include "jswrapper.h"
 #include "jswrap_graphics.h"
 #include "jshardware.h"
 
-int _pin_mosi;
-int _pin_clk;
-int _pin_cs;
-int _pin_dc;
-int _colstart;
-int _rowstart;
-int _lastx = -1, _lasty = -1;
+static int _pin_mosi;
+static int _pin_clk;
+static int _pin_cs;
+static int _pin_dc;
+static int _colstart;
+static int _rowstart;
+static int _lastx=-1;
+static int _lasty=-1;
+static uint16_t _chunk_buffer[BUFFER];
+static int _chunk_index = 0;
 IOEventFlags _device;
 
 static void spi_cmd(const uint8_t cmd) 
@@ -39,10 +43,32 @@ static void spi_cmd(const uint8_t cmd)
   jshPinSetValue(_pin_dc, 1);
 }
 
-static void spi_data(const uint8_t *data, int len) 
+static inline void spi_data(const uint8_t *data, int len) 
 {
-  if (len==0) return;
   jshSPISendMany(_device, data, NULL, len, NULL);
+}
+
+static void flush_chunk_buffer(){
+  if(_chunk_index == 0) return;
+  spi_data((uint8_t *)&_chunk_buffer, _chunk_index*2);
+  _chunk_index = 0;
+}
+
+static inline bool willFlush(){
+  return _chunk_index == BUFFER - 1;
+}
+
+static inline _put_pixel( uint16_t c) {
+  _chunk_buffer[_chunk_index++] = c;
+  if (_chunk_index==BUFFER) flush_chunk_buffer();
+}
+
+ /// flush chunk buffer to screen
+void lcd_flip(JsVar *parent) {
+  if(_chunk_index == 0) return;
+  jshPinSetValue(_pin_cs, 0);
+  flush_chunk_buffer();
+  jshPinSetValue(_pin_cs, 1);
 }
 
 void jshLCD_SPI_UNBUFInitInfo(JshLCD_SPI_UNBUFInfo *inf) {
@@ -65,15 +91,17 @@ bool jsspiPopulateOptionsInfo( JshLCD_SPI_UNBUFInfo *inf, JsVar *options){
     {"rowstart", JSV_INTEGER , &inf->rowstart},
   };  
   
-  if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {	
-    if ( inf->pinDC == PIN_UNDEFINED ) {
-      return false;
-    }
-    return true;
-  }  
-  else { 
+  return jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))
+          && inf->pinDC != PIN_UNDEFINED;
+}
+
+/*JSON{
+  "type" : "idle",
+  "generate" : "jswrap_lcd_spi_unbuf_idle"
+}*/
+bool jswrap_lcd_spi_unbuf_idle() {
+    lcd_flip(NULL);
     return false;
-  }
 }
 
 /*JSON{
@@ -100,19 +128,19 @@ JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options) {
   if (!jsspiPopulateOptionsInfo(&inf, options)) {
     jsExceptionHere(JSET_ERROR,"pins not supplied correctly");
     jsvUnLock(parent);
-  	return NULL;
+    return NULL;
   }
   _pin_cs = inf.pinCS;
   _pin_dc = inf.pinDC;
   _colstart = inf.colstart;
   _rowstart = inf.rowstart;
   _device = jsiGetDeviceFromClass(device);
-	
+
   if (!DEVICE_IS_SPI(_device)) { 
-  	jsExceptionHere(JSET_ERROR,"Software SPI is not supported for now");
-  	jsvUnLock(parent);
+    jsExceptionHere(JSET_ERROR,"Software SPI is not supported for now");
+    jsvUnLock(parent);
     return NULL;
-  }  
+  }
 
   JsGraphics gfx;
   graphicsStructInit(&gfx,inf.width,inf.height,16);
@@ -126,12 +154,19 @@ JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options) {
   jshPinSetValue(_pin_cs, 1);
   
   lcd_spi_unbuf_setCallbacks(&gfx);
-  graphicsSetVar(&gfx);	
+  graphicsSetVar(&gfx); 
+
+  // Create 'flip' fn
+  JsVar *fn;
+  fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG);
+  jsvObjectSetChildAndUnLock(parent,"flip",fn);
+
   return parent;
 }
 
 void disp_spi_transfer_addrwin(int x1, int y1, int x2, int y2) {
   unsigned char wd[4];
+  flush_chunk_buffer();
   x1 += _colstart;
   y1 += _rowstart;
   x2 += _colstart;
@@ -151,42 +186,36 @@ void disp_spi_transfer_addrwin(int x1, int y1, int x2, int y2) {
   spi_cmd(0x2C);
 }
 
-void disp_spi_transfer_color_many(uint16_t color, uint32_t len)
-{
-  uint16_t buffer_color[BUFFER];
-  uint8_t idx = 0;
-  uint32_t count = 0; 
-  while (count < len) {
-    buffer_color[idx] = (color>>8) | (color<<8);    
-    idx++;  
-    count++;  
-    if (idx == BUFFER) {
-      spi_data((uint8_t *)&buffer_color, idx*2);
-      idx = 0;
-    }
-  }
-  if (idx > 0) 
-    spi_data((uint8_t *)&buffer_color, idx*2);
-}
-
-void lcd_spi_unbuf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) { 
+void lcd_spi_unbuf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
   uint16_t color =   (col>>8) | (col<<8); 
-  jshPinSetValue(_pin_cs, 0);
   if (x!=_lastx+1 || y!=_lasty) {
+    jshPinSetValue(_pin_cs, 0);
     disp_spi_transfer_addrwin(x, y, gfx->data.width, y+1);  
+    jshPinSetValue(_pin_cs, 1); //will never flush after 
+    _put_pixel(color);
     _lastx = x;
     _lasty = y;
-  } else _lastx++; 
-  spi_data((uint8_t *)&color, 2);
-  jshPinSetValue(_pin_cs, 1);
+  } else {
+    _lastx++; 
+    if (willFlush()){
+      jshPinSetValue(_pin_cs, 0);
+      _put_pixel(color);
+      jshPinSetValue(_pin_cs, 1);
+    } else {
+      _put_pixel(color);
+    } 
+  }
 }
 
 void lcd_spi_unbuf_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
-  int pixels = (1+x2-x1)*(1+y2-y1);	
+  int pixels = (1+x2-x1)*(1+y2-y1); 
+  uint16_t color =   (col>>8) | (col<<8); 
   jshPinSetValue(_pin_cs, 0);
   disp_spi_transfer_addrwin(x1, y1, x2, y2);
-  disp_spi_transfer_color_many(col, pixels);
+  for (int i=0; i<pixels; i++) _put_pixel(color);
   jshPinSetValue(_pin_cs, 1);
+  _lastx=-1;
+  _lasty=-1;
 }
 
 void lcd_spi_unbuf_setCallbacks(JsGraphics *gfx) {
