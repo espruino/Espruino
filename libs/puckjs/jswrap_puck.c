@@ -522,6 +522,10 @@ Called after `Puck.magOn()` every time magnetometer data
 is sampled. There is one argument which is an object
 of the form `{x,y,z}` containing magnetometer readings
 as integers (for more information see `Puck.mag()`).
+
+Check out [the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals)
+for more information.
+
  */
 
 /*JSON{
@@ -537,7 +541,8 @@ is sampled. There is one argument which is an object
 of the form `{acc:{x,y,z}, gyro:{x,y,z}}` containing the data.
 
 The data is as it comes off the accelerometer and is not
-scaled to 1g. For more information see `Puck.accel()`
+scaled to 1g. For more information see `Puck.accel()` or
+[the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals).
  */
 
 /*JSON{
@@ -755,6 +760,17 @@ Accepted values are:
 * 833 Hz (with Gyro) (not recommended)
 * 1660 Hz (with Gyro) (not recommended)
 
+Once `Puck.accelOn()` is called, the `Puck.accel` event will be called each time data is received. `Puck.accelOff()` can be called to turn the accelerometer off.
+
+For instance to light the red LED whenever Puck.js is face up:
+
+```
+Puck.on('accel', function(d) {
+ digitalWrite(LED1, a.acc.z > 0);
+});
+Puck.accelOn();
+```
+
 Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals)
 for more information.
 
@@ -785,7 +801,10 @@ void jswrap_puck_accelOn(JsVarFloat hz) {
   "ifdef" : "PUCKJS",
   "generate" : "jswrap_puck_accelOff"
 }
-Turn the accelerometer off
+Turn the accelerometer off after it has been turned on by `Puck.accelOn()`. 
+
+Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals)
+for more information.
 */
 void jswrap_puck_accelOff() {
   if (!isPuckV2) {
@@ -813,6 +832,8 @@ The values reported are the raw values from the chip. In normal configuration:
 
 * accelerometer: full-scale (32768) is 4g, so you need to divide by 8192 to get correctly scaled values
 * gyro: full-scale (32768) is 245 dps, so you need to divide by 134 to get correctly scaled values
+
+If taking more than one reading, we'd suggest you use `Puck.accelOn()` and the `Puck.accel` event.
 */
 JsVar *jswrap_puck_accel() {
   /* If not enabled, turn on and read. If enabled,
