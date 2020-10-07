@@ -16,7 +16,7 @@
 #include "jsvariterator.h"
 #include "jshardware.h"
 
-#define BUFFER SPISENDMANY_BUFFER_SIZE
+#define LCD_SPI_UNBUF_LEN SPISENDMANY_BUFFER_SIZE
 
 typedef struct {
   Pin pinCS;                //!< Pin to use for cs.

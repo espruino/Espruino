@@ -32,7 +32,7 @@ static int _colstart;
 static int _rowstart;
 static int _lastx=-1;
 static int _lasty=-1;
-static uint16_t _chunk_buffer[BUFFER];
+static uint16_t _chunk_buffer[LCD_SPI_UNBUF_LEN];
 static int _chunk_index = 0;
 IOEventFlags _device;
 
@@ -55,12 +55,12 @@ static void flush_chunk_buffer(){
 }
 
 static inline bool willFlush(){
-  return _chunk_index == BUFFER - 1;
+  return _chunk_index == LCD_SPI_UNBUF_LEN - 1;
 }
 
 static inline _put_pixel( uint16_t c) {
   _chunk_buffer[_chunk_index++] = c;
-  if (_chunk_index==BUFFER) flush_chunk_buffer();
+  if (_chunk_index==LCD_SPI_UNBUF_LEN) flush_chunk_buffer();
 }
 
  /// flush chunk buffer to screen
