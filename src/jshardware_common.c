@@ -11,9 +11,10 @@
  * Hardware interface Layer common functions
  * ----------------------------------------------------------------------------
  */
+#include "platform_config.h"
 #include "jshardware.h"
 #include "jsinteractive.h"
-#include "platform_config.h"
+#include "jstimer.h"
 
 void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->baudRate = DEFAULT_BAUD_RATE;
@@ -124,3 +125,28 @@ __attribute__((weak)) void jshBusyIdle() {
 __attribute__((weak)) bool jshIsPinStateDefault(Pin pin, JshPinState state) {
   return state == JSHPINSTATE_GPIO_IN || state == JSHPINSTATE_ADC_IN;
 }
+
+// Only define this if it's not used elsewhere. Currently everything except Linux (which has no util timer) uses this
+__attribute__((weak)) void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
+  // ---- USE TIMER FOR PULSE
+  if (!jshIsPinValid(pin)) {
+       jsExceptionHere(JSET_ERROR, "Invalid pin!");
+       return;
+  }
+  if (pulseTime<=0) {
+    // just wait for everything to complete
+    jstUtilTimerWaitEmpty();
+    return;
+  } else {
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jstGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.timeLeft = 0;
+    }
+    // Now set the end of the pulse to happen on a timer
+    jstPinOutputAtTime(jshGetSystemTime() + task.timeLeft + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+  }
+}
+
