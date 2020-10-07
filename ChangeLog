@@ -7,6 +7,7 @@
             Ensure Storage library is exposed on SAVE_ON_FLASH devices (fix micro:bit flash write)
             nRF52: Fix issue where analogRead would stop E.getBattery from working
             Fix setWatch debounce lastTime regression from 2v07 (fix #1902)
+            Util Timer no longer uses RTC - works based on estimated time from the hardware timer itself (fix #1749, ref #1444)
 
      2v07 : Graphics.asImage() now contains buffer when bpp != 8 (fix #1863)
             nRF52 SDK15: Fix NRF.setScan/findDevices/etc
