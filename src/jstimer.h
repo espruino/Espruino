@@ -89,7 +89,7 @@ typedef union UtilTimerTaskData {
 } UtilTimerTaskData;
 
 typedef struct UtilTimerTask {
-  int time; // time at which to set pins (JshSysTime, cropped to 32 bits)
+  int timeLeft; // how far in the future should we execute the timer (JshSysTime, cropped to 32 bits)
   unsigned int repeatInterval; // if nonzero, repeat the timer
   UtilTimerTaskData data; // data used when timer is hit
   UtilTimerEventType type; // the type of this task - do we set pin(s) or read/write data

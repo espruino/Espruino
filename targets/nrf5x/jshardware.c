@@ -1398,10 +1398,10 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
     if (!jstGetLastPinTimerTask(pin, &task)) {
       // no timer - just start the pulse now!
       jshPinOutput(pin, pulsePolarity);
-      task.time = jshGetSystemTime();
+      task.timeLeft = 0;
     }
     // Now set the end of the pulse to happen on a timer
-    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+    jstPinOutputAtTime(jshGetSystemTime() + task.timeLeft + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
   }
 }
 
@@ -2300,10 +2300,19 @@ void jshUtilTimerReschedule(JsSysTime period) {
     period = NRF_TIMER_MAX;
   }
   //jsiConsolePrintf("Sleep for %d %d -> %d\n", (uint32_t)(t>>32), (uint32_t)(t), (uint32_t)(period));
-  if (utilTimerActive) nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
-  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
-  nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
-  if (utilTimerActive) nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
+  if (utilTimerActive) {
+    /* If running, get the current timer value and attempt to use it to schedule the period
+     * based on what it is right now */
+    nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
+    nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CAPTURE3);
+    uint32_t currentValue = nrf_timer_cc_read(NRF_TIMER1, NRF_TIMER_CC_CHANNEL3);
+    if (period < currentValue+2) period = currentValue+2;
+    nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
+    nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
+  } else {
+    nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
+    nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
+  }
 }
 
 /// Start the timer and get it to interrupt after 'period'

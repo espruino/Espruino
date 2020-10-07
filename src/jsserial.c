@@ -51,10 +51,10 @@ void jsserialSoftwareFunc(
   JsSysTime time;
   UtilTimerTask task;
   if (jstGetLastPinTimerTask(inf->pinTX, &task)) {
-    time = task.time + bitTime; // leave one bit of time for a stop bit
+    time = task.timeLeft + bitTime; // leave one bit of time for a stop bit
   } else {
     // no timer - just start in a little while!
-    time = jshGetSystemTime()+jshGetTimeFromMilliseconds(1);
+    time = jshGetTimeFromMilliseconds(1);
   }
   //bool outState = 1;
   int outCount = 0;
