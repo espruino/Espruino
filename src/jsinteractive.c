@@ -1969,7 +1969,11 @@ void jsiIdle() {
                 executeNow = true;
                 eventTime = timeoutTime - debounce;
                 jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(pinIsHigh));
-                // TODO: remove timer?
+                // Remove the timeout
+                JsVar *idArr = jsvNewArray(&timeout, 1);
+                jswrap_interface_clearTimeout(idArr);
+                jsvUnLock(idArr);
+                jsvObjectRemoveChild(watchPtr, "timeout");
               }
             } else if (pinIsHigh!=oldWatchState) { // else create a new timeout
               timeout = jsvNewObject();
@@ -2055,7 +2059,6 @@ void jsiIdle() {
   // Go through all intervals and decrement time
   jsvObjectIteratorNew(&it, timerArrayPtr);
   while (jsvObjectIteratorHasValue(&it)) {
-    bool hasDeletedTimer = false;
     JsVar *timerPtr = jsvObjectIteratorGetValue(&it);
     JsSysTime timerTime = (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChild(timerPtr, "time", 0));
     JsSysTime timeUntilNext = timerTime - timePassed;
@@ -2085,23 +2088,27 @@ void jsiIdle() {
           bool timerState = jsvGetBoolAndUnLock(jsvObjectGetChild(timerPtr, "state", 0));
           jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(timerState));
           exec = false;
-          if (watchState!=timerState && jsiShouldExecuteWatch(watchPtr, timerState)) {
-            data = jsvNewObject();
-            // if we were from a watch then we were delayed by the debounce time...
-            if (data) {
-              exec = true;
-              JsVarInt delay = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
-              // Create the 'time' variable that will be passed to the user
-              JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+timerTime-delay)/1000);
-              // if it was a watch, set the last state up
-              jsvObjectSetChildAndUnLock(data, "state", jsvNewFromBool(timerState));
-              // set up the lastTime variable of data to what was in the watch
-              jsvObjectSetChildAndUnLock(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0));
-              // set up the watches lastTime to this one
-              jsvObjectSetChild(watchPtr, "lastTime", timePtr); // don't unlock
-              jsvObjectSetChildAndUnLock(data, "time", timePtr);
-              jsvObjectSetChildAndUnLock(data, "pin", jsvObjectGetChild(watchPtr, "pin", 0));
+          if (watchState!=timerState) {
+            // Create the 'time' variable that will be passed to the user and stored as last time
+            JsVarInt delay = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
+            JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+timerTime-delay)/1000);
+            // If it's the right edge...
+            if (jsiShouldExecuteWatch(watchPtr, timerState)) {
+              data = jsvNewObject();
+              // if we were from a watch then we were delayed by the debounce time...
+              if (data) {
+                exec = true;
+                // if it was a watch, set the last state up
+                jsvObjectSetChildAndUnLock(data, "state", jsvNewFromBool(timerState));
+                // set up the lastTime variable of data to what was in the watch
+                jsvObjectSetChildAndUnLock(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0));
+                // set up the watches lastTime to this one
+                jsvObjectSetChild(data, "time", timePtr); // don't unlock - use this later
+                jsvObjectSetChildAndUnLock(data, "pin", jsvObjectGetChild(watchPtr, "pin", 0));
+              }
             }
+            // Update lastTime regardless of which edge we're watching
+            jsvObjectSetChildAndUnLock(watchPtr, "lastTime", timePtr);
           }
         }
         bool removeTimer = false;
