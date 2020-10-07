@@ -20,6 +20,7 @@
 #include "jsparse.h"
 #include "jsvariterator.h"
 #include "jsinteractive.h"
+#include "jswrap_io.h"
 
 #include "nrf_gpio.h" // just go direct
 
@@ -29,8 +30,8 @@
 JshI2CInfo i2cInfo;
 // All microbit 2's have the new mmagnetometer
 const bool microbitLSM303 = true;
+int accel_watch = 0;
 #else
-
 // 32 means not used
 static const uint8_t MB_LED_MAPPING[] = {
     0,  2,  4, 19, 18, 17, 16, 15, 11,
@@ -143,6 +144,7 @@ void mb_i2c_read(unsigned int addr, int count, unsigned char *data) {
 void jswrap_microbit_init() {
   // enable I2C (for accelerometers, etc)
 #ifndef MICROBIT2
+  accel_watch = 0;
   JshI2CInfo i2cInfo;
 #endif
   jshI2CInitInfo(&i2cInfo);
@@ -196,6 +198,8 @@ void jswrap_microbit_init() {
     d[0] = 0x62; d[1] = 0b00001000; // CFG_REG_C_M - swap block order to match MAG3110 (no IRQ)
     mb_i2c_write(LSM303_MAG_ADDR, 2, d);
   }
+
+
 }
 
 /*JSON{
@@ -204,6 +208,7 @@ void jswrap_microbit_init() {
 }*/
 void jswrap_microbit_kill() {
   jswrap_microbit_stopDisplay();
+  jswrap_microbit_accelOff();
 }
 
 
@@ -249,7 +254,7 @@ show(g.buffer)
 void jswrap_microbit_show_raw(uint32_t newState) {
   if ((newState!=0) && (microbitLEDState==0)) {
     // we want to display something but we don't have an interval
-    JsSysTime period = jshGetTimeFromMilliseconds(5);
+    JsSysTime period = jshGetTimeFromMilliseconds(MB_LED_UPDATE_MS);
     jstExecuteFn(jswrap_microbit_display_callback, 0, jshGetSystemTime()+period, (uint32_t)period);
     // and also set pins to outputs
     nrf_gpio_cfg_output(MB_LED_COL1);
@@ -306,7 +311,15 @@ void jswrap_microbit_show(JsVar *image) {
   jswrap_microbit_show_raw(newState);
 }
 
-
+JsVar *getXYZ(int x, int y, int z, JsVarFloat range) {
+  JsVar *xyz = jsvNewObject();
+  if (xyz) {
+    jsvObjectSetChildAndUnLock(xyz, "x", jsvNewFromFloat(((JsVarFloat)x) / range));
+    jsvObjectSetChildAndUnLock(xyz, "y", jsvNewFromFloat(((JsVarFloat)y) / range));
+    jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromFloat(((JsVarFloat)z) / range));
+  }
+  return xyz;
+}
 
 /*JSON{
   "type" : "function",
@@ -335,47 +348,14 @@ JsVar *jswrap_microbit_acceleration() {
     range = 16384;
 #endif
   }
-  JsVar *xyz = jsvNewObject();
-  if (xyz) {
-    int x = (d[1]<<8) | d[2];
-    if (x>>15) x-=65536;
-    int y = (d[3]<<8) | d[4];
-    if (y>>15) y-=65536;
-    int z = (d[5]<<8) | d[6];
-    if (z>>15) z-=65536;
-  // something is very broken here - why doesn't this work?
-    jsvObjectSetChildAndUnLock(xyz, "x", jsvNewFromFloat(((JsVarFloat)x) / range));
-    jsvObjectSetChildAndUnLock(xyz, "y", jsvNewFromFloat(((JsVarFloat)y) / range));
-    jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromFloat(((JsVarFloat)z) / range));
-  }
-  return xyz;
-}
+  int x = (d[1]<<8) | d[2];
+  if (x>>15) x-=65536;
+  int y = (d[3]<<8) | d[4];
+  if (y>>15) y-=65536;
+  int z = (d[5]<<8) | d[6];
+  if (z>>15) z-=65536;
 
-/*JSON{
-  "type" : "function",
-  "name" : "accelWr",
-  "generate" : "jswrap_microbit_accelWr",
-  "params" : [
-     ["addr","int","Accelerometer address"],
-     ["data","int","Data to write"]
-  ],
-  "ifdef" : "MICROBIT2"
-}
-**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
-
-Write the given value to the accelerometer
-*/
-void jswrap_microbit_accelWr(int a, int data) {
-  unsigned char d[2];
-  d[0] = a;
-  d[1] = data;
-  if (microbitLSM303) {
-    mb_i2c_write(LSM303_ACC_ADDR, 2, d);
-  } else {
-#ifndef MICROBIT2
-    mb_i2c_write(MMA8652_ADDR, 2, d);
-#endif
-  }
+  return getXYZ(x,y,z,range);
 }
 
 /*JSON{
@@ -417,14 +397,6 @@ JsVar *jswrap_microbit_compass() {
   return xyz;
 }
 
-/*JSON{
-  "type" : "function",
-  "name" : "accelGestureHandler",
-  "generate" : "jswrap_microbit_accelGestureHandler",
-  "ifdef" : "MICROBIT2"
-}
-*/
-
 #define ACCEL_HISTORY_LEN 50 ///< Number of samples of accelerometer history
 
 /// how big a difference before we consider a gesture started?
@@ -462,7 +434,9 @@ char clipi8(int x) {
   return (char)x;
 }
 
-void jswrap_microbit_accelGestureHandler() {
+// called to handle IRQs from accelerometer
+void jswrap_microbit_accelHandler() {
+  // read data, clear IRQ flags
   unsigned char d[7];
   d[0] = 0x27 | 0x80;
   mb_i2c_write(LSM303_ACC_ADDR, 1, d);
@@ -487,10 +461,15 @@ void jswrap_microbit_accelGestureHandler() {
   accHistory[accHistoryIdx  ] = clipi8(newx>>7);
   accHistory[accHistoryIdx+1] = clipi8(newy>>7);
   accHistory[accHistoryIdx+2] = clipi8(newz>>7);
-
-  bool hasGesture = false;
+  // Push 'accel' event
+  JsVar *xyz = getXYZ(newx, newy, newz, 8192);
+  JsVar *microbit = jsvObjectGetChild(execInfo.root, "Microbit", 0);
+    if (microbit)
+    jsiQueueObjectCallbacks(microbit, JS_EVENT_PREFIX"accel", &xyz, 1);
+  jsvUnLock2(microbit, xyz);
 
   // checking for gestures
+  bool hasGesture = false;
   if (accGestureCount==0) { // no gesture yet
     // if movement is eniugh, start one
     if (accdiff > accelGestureStartThresh) {
@@ -531,33 +510,39 @@ void jswrap_microbit_accelGestureHandler() {
       if (idx>=(int)sizeof(accHistory)) idx-=sizeof(accHistory);
     }
     jsvArrayBufferIteratorFree(&it);
-    jsiQueueObjectCallbacks(execInfo.root, JS_EVENT_PREFIX"gesture", &arr, 1);
-    jsvUnLock(arr);
+    JsVar *microbit = jsvObjectGetChild(execInfo.root, "Microbit", 0);
+    if (microbit)
+      jsiQueueObjectCallbacks(microbit, JS_EVENT_PREFIX"gesture", &arr, 1);
+    jsvUnLock2(microbit, arr);
   }
 }
 
+
 /*JSON{
-  "type" : "variable",
+  "type" : "staticproperty",
+  "class" : "Microbit",
   "name" : "SPEAKER",
   "generate_full" : "SPEAKER_PIN",
   "ifdef" : "MICROBIT2",
   "return" : ["pin",""]
 }
-The micro:bit's speaker
+The micro:bit's speaker pin
 */
 /*JSON{
-  "type" : "variable",
+  "type" : "staticproperty",
+  "class" : "Microbit",
   "name" : "MIC",
   "generate_full" : "MIC_PIN",
   "ifdef" : "MICROBIT2",
   "return" : ["pin",""]
 }
-The micro:bit's microphone
+The micro:bit's microphone pin
 
 `MIC_ENABLE` should be set to 1 before using this
 */
 /*JSON{
-  "type" : "variable",
+  "type" : "staticproperty",
+  "class" : "Microbit",
   "name" : "MIC_ENABLE",
   "generate_full" : "MIC_ENABLE_PIN",
   "ifdef" : "MICROBIT2",
@@ -566,7 +551,138 @@ The micro:bit's microphone
 The micro:bit's microphone enable pin
 */
 
-//------------------------ virtuial pins allow us to have a LED1
+/*JSON{
+    "type": "class",
+    "class" : "Microbit",
+    "ifdef" : "MICROBIT"
+}
+Class containing [micro:bit's](https://www.espruino.com/MicroBit) utility functions.
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "Microbit",
+  "name" : "gesture",
+  "params" : [
+    ["gesture","JsVar","An Int8Array containing the accelerations (X,Y,Z) from the last gesture detected by the accelerometer"]
+  ],
+  "ifdef" : "MICROBIT2"
+}
+Called when the Micro:bit is moved in a deliberate fashion, and includes data on the detected gesture.
+ */
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Microbit",
+  "name" : "mag",
+  "ifdef" : "MICROBIT",
+  "generate" : "jswrap_microbit_compass",
+  "return" : ["JsVar", "An Object `{x,y,z}` of magnetometer readings as integers" ]
+}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Microbit",
+  "name" : "accel",
+  "ifdef" : "MICROBIT",
+  "generate" : "jswrap_microbit_acceleration",
+  "return" : ["JsVar", "An Object `{x,y,z}` of acceleration readings in G" ]
+}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Microbit",
+  "name" : "accelWr",
+  "generate" : "jswrap_microbit_accelWr",
+  "params" : [
+     ["addr","int","Accelerometer address"],
+     ["data","int","Data to write"]
+  ],
+  "ifdef" : "MICROBIT2"
+}
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+
+Write the given value to the accelerometer
+*/
+void jswrap_microbit_accelWr(int a, int data) {
+  unsigned char d[2];
+  d[0] = a;
+  d[1] = data;
+  if (microbitLSM303) {
+    mb_i2c_write(LSM303_ACC_ADDR, 2, d);
+  } else {
+#ifndef MICROBIT2
+    mb_i2c_write(MMA8652_ADDR, 2, d);
+#endif
+  }
+}
+
+void accel_handler() {
+
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Microbit",
+  "name" : "accelOn",
+  "generate" : "jswrap_microbit_accelOn",
+  "ifdef" : "MICROBIT2"
+}
+Turn on the accelerometer, and create `Microbit.accel` and `Microbit.gesture` events.
+
+**Note:** The accelerometer is currently always enabled - this code
+just responds to interrupts and reads
+*/
+void jswrap_microbit_accelOn() {
+  if (accel_watch) return;
+  accel_watch = jswrap_interface_setWatch_int(jswrap_microbit_accelHandler, INTERNAL_INT_PIN, true, -1); // falling edge
+  jshPinSetState(INTERNAL_INT_PIN, JSHPINSTATE_GPIO_IN_PULLUP);
+  // Call once to read any existing accelerometer data (which should make the IRQ line rise again)
+  jswrap_microbit_accelHandler();
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Microbit",
+  "name" : "accelOff",
+  "generate" : "jswrap_microbit_accelOff",
+  "ifdef" : "MICROBIT2"
+}
+Turn off events from  the accelerometer (started with `Microbit.accelOn`)
+*/
+void jswrap_microbit_accelOff() {
+  if (!accel_watch) return;
+  jswrap_interface_clearWatch_int(accel_watch);
+  accel_watch = 0;
+  jshPinSetState(INTERNAL_INT_PIN, JSHPINSTATE_GPIO_IN);
+}
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Microbit",
+    "name" : "play",
+    "generate_js" : "libs/js/microbit/microbit_play.js",
+    "params" : [
+      ["waveform","JsVar","An array of data to play (unsigned 8 bit)"],
+      ["samplesPerSecond","JsVar","The number of samples per second for playback default is 4000"],
+      ["callback","JsVar","A function to call when playback is finished"]
+    ],
+    "ifdef" : "MICROBIT2"
+}
+Play a waveform on the Micro:bit's speaker
+*/
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Microbit",
+    "name" : "record",
+    "generate_js" : "libs/js/microbit/microbit_record.js",
+    "params" : [
+      ["samplesPerSecond","JsVar","The number of samples per second for recording - 4000 is recommended"],
+      ["callback","JsVar","A function to call with the result of recording (unsigned 8 bit ArrayBuffer)"],
+      ["samples","JsVar","[optional] How many samples to record (6000 default)"]
+    ],
+    "ifdef" : "MICROBIT2"
+}
+Records sound from the micro:bit's onboard microphone and returns the result
+*/
+
+
+//------------------------ virtual pins allow us to have a LED1
 void jshVirtualPinInitialise() {
 }
 

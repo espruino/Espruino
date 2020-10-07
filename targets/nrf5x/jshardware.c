@@ -270,6 +270,11 @@ unsigned int ticksSinceStart = 0;
 
 JshPinFunction pinStates[JSH_PIN_COUNT];
 
+#ifdef NRF52_SERIES
+/// This is used to handle the case where an analog read happens in an IRQ interrupts one being done outside
+volatile bool nrf_analog_read_interrupted = false;
+#endif
+
 #if SPI_ENABLED
 static const nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
 bool spi0Initialised = false;
@@ -607,6 +612,9 @@ void jshResetPeripherals() {
   buf[0] = 1; // write status register
   buf[1] = 0;
   spiFlashWriteCS(buf,2);
+#endif
+#ifdef NRF52_SERIES
+  nrf_analog_read_interrupted = false;
 #endif
 }
 
@@ -1059,8 +1067,6 @@ JshPinState jshPinGetState(Pin pin) {
 }
 
 #ifdef NRF52_SERIES
-volatile bool nrf_analog_read_interrupted = false;
-
 nrf_saadc_value_t nrf_analog_read() {
 
   nrf_saadc_value_t result;
@@ -2364,12 +2370,21 @@ JsVarFloat jshReadVRef() {
   config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
   config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
 
-  // make reading
-  nrf_saadc_enable();
-  nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
-  nrf_saadc_channel_init(0, &config);
+  bool adcInUse = nrf_analog_read_start();
 
-  return 6.0 * (nrf_analog_read() * 0.6 / 16384.0);
+  // make reading
+  JsVarFloat f;
+  do {
+    nrf_analog_read_interrupted = false;
+    nrf_saadc_enable();
+    nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
+    nrf_saadc_channel_init(0, &config);
+
+    f = nrf_analog_read() * (6.0 * 0.6 / 16384.0);
+  } while (nrf_analog_read_interrupted);
+  nrf_analog_read_end(adcInUse);
+
+  return f;
 #else
   const nrf_adc_config_t nrf_adc_config =  {
        NRF_ADC_CONFIG_RES_10BIT,

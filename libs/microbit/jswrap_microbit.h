@@ -21,7 +21,9 @@
 #define MIC_ENABLE_PIN (JSH_PORTH_OFFSET+5)
 #define INTERNAL_I2C_SCL_PIN (JSH_PORTH_OFFSET+7)
 #define INTERNAL_I2C_SDA_PIN (JSH_PORTH_OFFSET+6)
+#define INTERNAL_INT_PIN (JSH_PORTH_OFFSET+8)
 
+#define MB_LED_UPDATE_MS (3) // how often do we update the micro:bit's display in ms?
 // real NRF pins for row (pull up) / column (pull down)
 #define MB_LED_COL1 (28)
 #define MB_LED_COL2 (11)
@@ -38,6 +40,7 @@
 #define INTERNAL_I2C_SCL_PIN (JSH_PORTD_OFFSET+19)
 #define INTERNAL_I2C_SDA_PIN (JSH_PORTD_OFFSET+20)
 
+#define MB_LED_UPDATE_MS (5) // how often do we update the micro:bit's display in ms?
 // real NRF pins 4,5,6,7,8,9,10,11,12 (column pull down)
 // real NRF pins 13,14,15 (row pull up)
 #define MB_LED_COL1 (4)
@@ -60,5 +63,7 @@ void jswrap_microbit_show(JsVar *image);
 
 JsVar *jswrap_microbit_acceleration();
 void jswrap_microbit_accelWr(int a, int d);
+void jswrap_microbit_accelOn();
+void jswrap_microbit_accelOff();
 JsVar *jswrap_microbit_compass();
-void jswrap_microbit_accelGestureHandler();
+
