@@ -45,7 +45,12 @@ ret_code_t i2s_ws2812b_drive_xfer(rgb_led_t *led_array, uint16_t num_leds, uint8
 #else
 	config.sck_pin      = 22;
 #endif
+#ifdef NEOPIXEL_LRCK_PIN
+  // On nRF52840 lrck needs defining too - http://forum.espruino.com/conversations/354468/
+	config.lrck_pin     = NEOPIXEL_LRCK_PIN;
+#else
 	config.lrck_pin     = NRF_DRV_I2S_PIN_NOT_USED;
+#endif
 	config.mck_pin      = NRF_DRV_I2S_PIN_NOT_USED;
 	config.sdout_pin    = drive_pin;
 	config.sdin_pin     = NRF_DRV_I2S_PIN_NOT_USED;
