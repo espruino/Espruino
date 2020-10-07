@@ -91,7 +91,6 @@ void jstUtilTimerInterruptHandler() {
    * which means that even if the numbers overflow, they will still be correct relative
    * to each other.
    */
-  jshPinOutput(31,1);
   if (utilTimerOn) {
     utilTimerInIRQ = true;
     // Update the time of each timer task with the actual timer delay
@@ -208,7 +207,6 @@ void jstUtilTimerInterruptHandler() {
     // Nothing left to do - disable the timer
     jshUtilTimerDisable();
   }
-  jshPinOutput(31,0);
 }
 
 /// Return true if the utility timer is running
