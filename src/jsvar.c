@@ -3702,15 +3702,16 @@ void jsvTrace(JsVar *var, int indent) {
 }
 
 
-/** Recursively mark the variable */
-static void jsvGarbageCollectMarkUsed(JsVar *var) {
+/** Recursively mark the variable. Return false if it fails due to stack. */
+static bool jsvGarbageCollectMarkUsed(JsVar *var) {
   var->flags &= (JsVarFlags)~JSV_GARBAGE_COLLECT;
+  JsVarRef child;
+  JsVar *childVar;
 
   if (jsvHasCharacterData(var)) {
     // non-recursively scan strings
-    JsVarRef child = jsvGetLastChild(var);
+    child = jsvGetLastChild(var);
     while (child) {
-      JsVar *childVar;
       childVar = jsvGetAddressOf(child);
       childVar->flags &= (JsVarFlags)~JSV_GARBAGE_COLLECT;
       child = jsvGetLastChild(childVar);
@@ -3719,25 +3720,28 @@ static void jsvGarbageCollectMarkUsed(JsVar *var) {
   // intentionally no else
   if (jsvHasSingleChild(var)) {
     if (jsvGetFirstChild(var)) {
-      JsVar *childVar = jsvGetAddressOf(jsvGetFirstChild(var));
+      childVar = jsvGetAddressOf(jsvGetFirstChild(var));
       if (childVar->flags & JSV_GARBAGE_COLLECT)
-        jsvGarbageCollectMarkUsed(childVar);
+        if (!jsvGarbageCollectMarkUsed(childVar)) return false;
     }
   } else if (jsvHasChildren(var)) {
-    JsVarRef child = jsvGetFirstChild(var);
+    if (jsuGetFreeStack() < 256) return false;
+
+    child = jsvGetFirstChild(var);
     while (child) {
-      JsVar *childVar;
       childVar = jsvGetAddressOf(child);
       if (childVar->flags & JSV_GARBAGE_COLLECT)
-        jsvGarbageCollectMarkUsed(childVar);
+        if (!jsvGarbageCollectMarkUsed(childVar)) return false;
       child = jsvGetNextSibling(childVar);
     }
   }
+
+  return true;
 }
 
 /** Run a garbage collection sweep - return nonzero if things have been freed */
 int jsvGarbageCollect() {
-  if (isMemoryBusy) return false;
+  if (isMemoryBusy) return 0;
   isMemoryBusy = MEMBUSY_GC;
   JsVarRef i;
   // Add GC flags to anything that is currently used
@@ -3754,8 +3758,14 @@ int jsvGarbageCollect() {
   for (i=1;i<=jsVarsSize;i++)  {
     JsVar *var = jsvGetAddressOf(i);
     if ((var->flags & JSV_GARBAGE_COLLECT) && // not already GC'd
-        jsvGetLocks(var)>0) // or it is locked
-      jsvGarbageCollectMarkUsed(var);
+        jsvGetLocks(var)>0) { // or it is locked
+      if (!jsvGarbageCollectMarkUsed(var)) {
+        // this could fail due to stack exhausted (eg big linked list)
+        // JSV_GARBAGE_COLLECT are left set, but not a big problem as next GC will clear them
+        isMemoryBusy = MEM_NOT_BUSY;
+        return 0;
+      }
+    }
     // if we have a flat string, skip that many blocks
     if (jsvIsFlatString(var))
       i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
