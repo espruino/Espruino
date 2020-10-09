@@ -8,7 +8,6 @@
             nRF52: Fix issue where analogRead would stop E.getBattery from working
             Fix setWatch debounce lastTime regression from 2v07 (fix #1902)
             Util Timer no longer uses RTC - works based on estimated time from the hardware timer itself (fix #1749, ref #1444)
-            Util Timer now uses time offsets (not variables based on current system time) - avoids drift
             nRF52: CPU now sleeps when while UART/BLE data is waiting to be sent (fix #1938)
             JSON.stringify now checks for potential stack overflow when stringifying (fix #1940)
             Check for Stack overflow when Garbage Collecting giant linked list (fix #1765)
