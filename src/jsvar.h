@@ -429,7 +429,7 @@ extern bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a vari
 bool jsvIsBasicName(const JsVar *v); ///< Simple NAME that links to a variable via firstChild
 /// Names with values have firstChild set to a value - AND NOT A REFERENCE
 extern bool jsvIsNameWithValue(const JsVar *v);
-extern bool jsvIsNameInt(const JsVar *v);
+extern bool jsvIsNameInt(const JsVar *v); ///< Is this a NAME pointing to an Integer value
 extern bool jsvIsNameIntInt(const JsVar *v);
 extern bool jsvIsNameIntBool(const JsVar *v);
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
