@@ -412,13 +412,17 @@ void jshSetOutputValue(JshPinFunction func, int value) {
  */
 void jshEnableWatchDog(JsVarFloat timeout) {
   UNUSED(timeout);
+#ifdef DEBUG
   jsError(">> jshEnableWatchDog Not implemented,using taskwatchdog from RTOS");
+#endif
 }
 
 
 // Kick the watchdog
 void jshKickWatchDog() {
+#ifdef DEBUG
   jsError(">> jshKickWatchDog Not implemented,using taskwatchdog from RTOS");
+#endif
 }
 
 
