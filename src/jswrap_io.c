@@ -217,9 +217,6 @@ eg. `digitalPulse(A0,1,5);` pulses A0 high for 5ms. `digitalPulse(A0,1,[5,2,4]);
 digitalPulse is for SHORT pulses that need to be very accurate. If you're doing anything over a few milliseconds, use setTimeout instead.
  */
 void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
-  // TODO: We should use jstPinOutputAtTime directly and delete jshPinPulse
-  // - it's inefficient and also causes issues as the RTC changes while we're
-  // trying to add items to the timer list
   if (jsvIsNumeric(times)) {
     JsVarFloat time = jsvGetFloat(times);
     if (time<0 || isnan(time)) {
