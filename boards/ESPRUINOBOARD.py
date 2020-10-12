@@ -27,8 +27,8 @@ info = {
  'binary_name' : 'espruino_%v_espruino_1r3.bin',
  'binaries' : [
   { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "No networking, includes all other features"},
-  { 'filename' : 'espruino_%v_espruino_1r3_at.bin', 'description' : "AT Command WiFi (No vector font)"},
-  { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking (No crypto lib, AT Command WiFi, vector font, debugger or tab complete)"}
+  { 'filename' : 'espruino_%v_espruino_1r3_at.bin', 'description' : "AT Command WiFi (No vector font, FFT)"},
+  { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking (No crypto lib, AT Command WiFi, vector font, FFT, debugger or tab complete)"}
  ],
  'build' : {
    'optimizeflags' : '-Os',

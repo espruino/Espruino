@@ -13,6 +13,7 @@
             Added String.padStart/padEnd
             Fix issue where JSON.stringify({ something: bool }) would output 'something' as a bool too
             Bangle.js/Pixl.js: Ensure terminal is always the same color regardless of g.setColor()
+            Original Espruino Board: remove E.FFT in network-enabled builds (freeing up flash memory)
 
      2v07 : Graphics.asImage() now contains buffer when bpp != 8 (fix #1863)
             nRF52 SDK15: Fix NRF.setScan/findDevices/etc
