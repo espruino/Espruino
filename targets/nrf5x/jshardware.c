@@ -2081,7 +2081,13 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
   if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
     addr &= 0xFFFFFF;
     //jsiConsolePrintf("SPI Read %d %d\n",addr,len);
-    if (spiFlashLastAddress==0 || spiFlashLastAddress!=addr || (nrf_gpio_pin_out_read((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin))) {
+    if (
+        spiFlashLastAddress==0 || spiFlashLastAddress!=addr
+#ifdef SPIFLASH_SHARED_SPI
+        /* with shared SPI someone might interrupt us and pull our CS pin high */
+        || (nrf_gpio_pin_out_read((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin))
+#endif
+       ) {
       nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
       unsigned char b[4];
       // Read
