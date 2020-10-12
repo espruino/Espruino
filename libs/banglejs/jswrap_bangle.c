@@ -347,6 +347,8 @@ volatile uint16_t btn1Timer; // in ms
 int lcdPowerTimeout; // in ms
 /// If a button was pressed to wake the LCD up, which one was it?
 char lcdWakeButton;
+/// If a button was pressed to wake the LCD up, when should we start accepting events for it?
+JsSysTime lcdWakeButtonTime;
 /// Is the LCD on?
 bool lcdPowerOn;
 /// LCD Brightness - 255=full
@@ -775,7 +777,10 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
       flipTimer = 0;
       if (!lcdPowerOn && state) {
         bangleTasks |= JSBT_LCD_ON;
+        // This allows us to ignore subsequent button
+        // rising or 'bounce' events
         lcdWakeButton = button;
+        lcdWakeButtonTime = jshGetSystemTime() + jshGetTimeFromMilliseconds(100);
         return; // don't push button event if the LCD is off
       }
     } else {
@@ -786,15 +791,24 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
         return;
     }
   }
-  /* This stops the button 'up' event being
-   propagated if the button down was used to wake
-   the LCD up */
-  if (button == lcdWakeButton && !state) {
-    lcdWakeButton = 0;
-    return;
+  JsSysTime t = jshGetSystemTime();
+  /* This stops the button 'up' or bounces from being
+   propagated if the button was used to wake the LCD up */
+  if (button == lcdWakeButton) {
+    if ((t < lcdWakeButtonTime) || !state) {
+      /* If it's a rising edge *or* it's within our debounce
+       * period, reset the debounce timer and ignore it */
+      lcdWakeButtonTime = t + jshGetTimeFromMilliseconds(100);
+      return;
+    } else {
+      /* if the next event is a 'down', > 100ms after the last event, we propogate it
+       and subsequent events */
+      lcdWakeButton = 0;
+      lcdWakeButtonTime = 0;
+    }
   }
   // Add to the event queue for normal processing for watches
-  jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
+  jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), t);
 }
 
 // returns true if handled and shouldn't create a normal watch event
