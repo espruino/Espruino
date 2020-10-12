@@ -304,8 +304,7 @@ JsVar *jsvFindOrCreateRoot() {
 /// Get number of memory records (JsVars) used
 unsigned int jsvGetMemoryUsage() {
   unsigned int usage = 0;
-  unsigned int i;
-  for (i=1;i<=jsVarsSize;i++) {
+  for (unsigned int i=1;i<=jsVarsSize;i++) {
     JsVar *v = jsvGetAddressOf((JsVarRef)i);
     if ((v->flags&JSV_VARTYPEMASK) != JSV_UNUSED) {
       usage++;
@@ -352,6 +351,20 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount) {
   NOT_USED(jsNewVarCount);
   assert(0);
 #endif
+}
+
+/// Scan memory to find any JsVar that references a specific memory range, and if so update what it points to to p[oint to the new address
+void jsvUpdateMemoryAddress(size_t oldAddr, size_t length, size_t newAddr) {
+  for (unsigned int i=1;i<=jsVarsSize;i++) {
+    JsVar *v = jsvGetAddressOf((JsVarRef)i);
+    if (jsvIsNativeString(v) || jsvIsFlashString(v)) {
+      size_t p = (size_t)v->varData.nativeStr.ptr;
+      if (p>=oldAddr && p<oldAddr+length)
+        v->varData.nativeStr.ptr = (char*)(p+newAddr-oldAddr);
+    } else if (jsvIsFlatString(v)) {
+      i += (unsigned int)jsvGetFlatStringBlocks(v);
+    }
+  }
 }
 
 bool jsvMoreFreeVariablesThan(unsigned int vars) {
