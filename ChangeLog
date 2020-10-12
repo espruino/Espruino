@@ -12,6 +12,7 @@
             Check for Stack overflow when Garbage Collecting giant linked list (fix #1765)
             Added String.padStart/padEnd
             Fix issue where JSON.stringify({ something: bool }) would output 'something' as a bool too
+            Bangle.js/Pixl.js: Ensure terminal is always the same color regardless of g.setColor()
 
      2v07 : Graphics.asImage() now contains buffer when bpp != 8 (fix #1863)
             nRF52 SDK15: Fix NRF.setScan/findDevices/etc
