@@ -93,7 +93,7 @@ board["_css"] = """
   height: 562px;
   top: 0px;
   left : 0px;
-  background-image: url(img/MICROBIT.jpg);
+  background-image: url(img/MICROBIT1.jpg);
 }
 #boardcontainer {
   height: 700px;
