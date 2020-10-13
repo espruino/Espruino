@@ -333,6 +333,8 @@ JsVar *getXYZ(int x, int y, int z, JsVarFloat range) {
 **Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
 
 Get the current acceleration of the micro:bit from the on-board accelerometer
+
+**This is deprecated.** Please use `Microbit.accel` instead.
 */
 JsVar *jswrap_microbit_acceleration() {
   unsigned char d[7];
@@ -370,6 +372,8 @@ JsVar *jswrap_microbit_acceleration() {
 **Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
 
 Get the current compass position for the micro:bit from the on-board magnetometer
+
+**This is deprecated.** Please use `Microbit.mag` instead.
 */
 JsVar *jswrap_microbit_compass() {
   unsigned char d[6];
