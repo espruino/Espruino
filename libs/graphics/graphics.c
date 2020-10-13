@@ -658,8 +658,14 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
   graphicsToDeviceCoordinates(gfx, &x2, &y2);
   xdir = x2-x1;
   ydir = y2-y1;
+  // range check - if too big no point scrolling
+  bool scroll = true;
+  if (xdir>gfx->data.width) { xdir=gfx->data.width; scroll=false; }
+  if (xdir<-gfx->data.width) { xdir=-gfx->data.width; scroll=false; }
+  if (ydir>gfx->data.height) { ydir=gfx->data.height; scroll=false; }
+  if (ydir<-gfx->data.height) { ydir=-gfx->data.height; scroll=false; }
   // do the scrolling
-  gfx->scroll(gfx, xdir, ydir);
+  if (scroll) gfx->scroll(gfx, xdir, ydir);
   // fill the new area
   if (xdir>0) gfx->fillRect(gfx,0,0,xdir-1,gfx->data.height-1, gfx->data.bgColor);
   else if (xdir<0) gfx->fillRect(gfx,gfx->data.width+xdir,0,gfx->data.width-1,gfx->data.height-1, gfx->data.bgColor);

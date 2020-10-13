@@ -111,10 +111,10 @@ typedef struct JsGraphics {
   JsGraphicsData data;
   void *backendData; ///< Data used by the graphics backend
 
-  void (*setPixel)(struct JsGraphics *gfx, int x, int y, unsigned int col);
-  void (*fillRect)(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
-  unsigned int (*getPixel)(struct JsGraphics *gfx, int x, int y);
-  void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); // scroll - leave unscrolled area undefined
+  void (*setPixel)(struct JsGraphics *gfx, int x, int y, unsigned int col); ///< x/y guaranteed to be in range
+  void (*fillRect)(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); ///< x/y guaranteed to be in range
+  unsigned int (*getPixel)(struct JsGraphics *gfx, int x, int y); ///< x/y guaranteed to be in range
+  void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); ///< scroll - leave unscrolled area undefined (xdir/ydir guaranteed to be in range)
 } PACKED_FLAGS JsGraphics;
 typedef void (*JsGraphicsSetPixelFn)(struct JsGraphics *gfx, int x, int y, unsigned int col);
 
