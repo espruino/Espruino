@@ -17,6 +17,7 @@
             Storage compact now updates pointers stored in RAM so they still point to the correct address in Flash (fix #1881)
             Bangle.js: Add debounce to the button used to wake Bangle.js up from sleep
             Fix regex match with '-' that isn't a range: "1-2_A3".split(/[0-]/) (fix #1736)
+            Crypto: modified mbedtls SHA1 to reduce size from 3.5k to under 1k
 
      2v07 : Graphics.asImage() now contains buffer when bpp != 8 (fix #1863)
             nRF52 SDK15: Fix NRF.setScan/findDevices/etc
