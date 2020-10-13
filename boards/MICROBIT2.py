@@ -83,8 +83,37 @@ devices = {
 
 # left-right, or top-bottom order
 board = {
+  'bottom' : [ 'D3', '','D0','','D4','D5','D6','D7','','D1','','D8','D9','D10','D11','D12','','D2','',
+               'D13','D14','D15','D16','3.3','','3.3','','3.3','D19','D20','GND','','GND','','GND' ],
+  '_hide_not_on_connectors' : True,
+  '_notes' : {
+    'D3'  : "LED Row 3",
+    'D4'  : "LED Row 1",
+    'D5'  : "BTN1",
+    'D6'  : "LED Row 4",
+    'D7'  : "LED Row 2",
+    'D10'  : "LED  Row 5",
+    'D11'  : "BTN2",
+  }
 };
 board["_css"] = """
+#board {
+  width: 659px;
+  height: 562px;
+  top: 0px;
+  left : 0px;
+  background-image: url(img/MICROBIT.jpg);
+}
+#boardcontainer {
+  height: 700px;
+}
+
+#bottom {
+  top: 490px;
+  left: 52px;
+}
+
+.bottompin { width: 10px; }
 """;
 
 def get_pins():
