@@ -16,7 +16,7 @@
 import pinutils;
 # placeholder
 info = {
- 'name' : "BBC micro:bit",
+ 'name' : "BBC micro:bit 1",
  'link' : [ "https://en.wikipedia.org/wiki/Micro_Bit" ],
  'espruino_page_link' : 'MicroBit',
  'default_console' : "EV_SERIAL1",
@@ -24,7 +24,7 @@ info = {
  'default_console_rx' : "H1", # pin 25
  'default_console_baudrate' : "9600",
  'variables' : 300,
- 'binary_name' : 'espruino_%v_microbit.hex',
+ 'binary_name' : 'espruino_%v_microbit1.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
@@ -35,6 +35,7 @@ info = {
      'SAVE_ON_FLASH=1',
      'DEFINES+=-DSAVE_ON_FLASH_EXTREME',
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
+     'DEFINES += -DMICROBIT', # enable microbit-specific stuff
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves a bunch of flash
      'DEFINES+=-DUSE_TAB_COMPLETE',
 #     'DEFINES+=-DUSE_DEBUGGER', # Removed  due to firmware size issues

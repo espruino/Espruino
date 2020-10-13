@@ -75,9 +75,9 @@ espruino_#v##_nucleof401re.bin
 espruino_#v##_nucleof411re.bin
    - ST NUCLEO-F411RE board
 
-espruino_#v##_microbit.hex
-   - Espruino for the BBC micro:bit - just copy this file onto the
-   flash drive that appears when you plug the micro:bit in.
+espruino_#v##_microbit1/2.hex
+   - Espruino for the BBC micro:bit 1 or 2 - just copy the correct file onto the
+     flash drive that appears when you plug the micro:bit in.
 
 espruino_#v##_Wio_LTE.zip
    - The firmware image for Seed Wio LTE Devices

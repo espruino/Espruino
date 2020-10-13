@@ -144,11 +144,11 @@ void mb_i2c_read(unsigned int addr, int count, unsigned char *data) {
 void jswrap_microbit_init() {
   // enable I2C (for accelerometers, etc)
 #ifndef MICROBIT2
-  accel_watch = 0;
   JshI2CInfo i2cInfo;
 #endif
   jshI2CInitInfo(&i2cInfo);
 #ifdef MICROBIT2
+  accel_watch = 0;
   i2cInfo.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cInfo.clockStretch = false;
 #endif
@@ -208,7 +208,9 @@ void jswrap_microbit_init() {
 }*/
 void jswrap_microbit_kill() {
   jswrap_microbit_stopDisplay();
+#ifdef MICROBIT2
   jswrap_microbit_accelOff();
+#endif
 }
 
 
@@ -613,10 +615,7 @@ void jswrap_microbit_accelWr(int a, int data) {
   }
 }
 
-void accel_handler() {
-
-}
-
+#ifdef MICROBIT2
 /*JSON{
   "type" : "staticmethod",
   "class" : "Microbit",
@@ -652,6 +651,7 @@ void jswrap_microbit_accelOff() {
   accel_watch = 0;
   jshPinSetState(INTERNAL_INT_PIN, JSHPINSTATE_GPIO_IN);
 }
+#endif
 /*JSON{
     "type" : "staticmethod",
     "class" : "Microbit",
