@@ -119,14 +119,13 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
   /* F18 (UBlox) GPS gives a bunch of data ending in GLL
    * SMA Q3 gives data ending GNZDA,GPTXT
    */
-#ifdef BANGLEJS_F18
-  if (nmea[3]=='G' && nmea[4]=='L' && nmea[5]=='L') {
+#ifdef SMAQ3
+  if (nmea[3]=='Z' && nmea[4]=='D' && nmea[5]=='A') {
     // Complete set of data received
     return true;
   }
-#endif
-#ifdef SMAQ3
-  if (nmea[3]=='Z' && nmea[4]=='D' && nmea[5]=='A') {
+#else //  BANGLEJS_F18 / F5
+  if (nmea[3]=='G' && nmea[4]=='L' && nmea[5]=='L') {
     // Complete set of data received
     return true;
   }

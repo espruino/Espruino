@@ -2362,7 +2362,7 @@ bool jswrap_banglejs_idle() {
 /*JSON{
   "type" : "EV_SERIAL1",
   "generate" : "jswrap_banglejs_gps_character",
-  "#if" : "defined(BANGLEJS_F18) || defined(SMAQ3)"
+  "#if" : "defined(BANGLEJS_F18) || defined(BANGLEF5)  || defined(SMAQ3)"
 }*/
 bool jswrap_banglejs_gps_character(char ch) {
   // if too many chars, roll over since it's probably because we skipped a newline
