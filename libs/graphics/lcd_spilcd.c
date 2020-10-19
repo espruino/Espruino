@@ -176,7 +176,6 @@ void lcdInit_SPILCD(JsGraphics *gfx) {
 
   lcdSetPalette_SPILCD(0);
 
-  jshPinOutput(LCD_BL,0); // backlight on
   jshPinOutput(LCD_SPI_CS,1);
   jshPinOutput(LCD_SPI_DC,1);
   jshPinOutput(LCD_SPI_SCK,1);

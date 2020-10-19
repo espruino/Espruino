@@ -37,6 +37,7 @@ void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data);
 JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt);
 void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data);
 void jswrap_banglejs_ioWr(JsVarInt mask, bool on);
+JsVar *jswrap_banglejs_getPressure();
 JsVar *jswrap_banglejs_project(JsVar *latlong);
 JsVar *jswrap_banglejs_beep(int time, int freq);
 JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt);

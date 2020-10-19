@@ -141,7 +141,6 @@ def get_pins():
   # Make buttons and LEDs negated
   pinutils.findpin(pins, "PD5", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PD7", True)["functions"]["NEGATED"]=0;
-  pinutils.findpin(pins, "PD35", True)["functions"]["NEGATED"]=0; # backlight - negate this because driver expects 0=on
 
   # everything is non-5v tolerant
   for pin in pins:
