@@ -118,7 +118,8 @@ devices = {
             'pin_sck' : 'D19',
             'pin_mosi' : 'D20',
             'pin_miso' : 'D17',
-            'size' : 2097152
+            'size' : 2097152,
+            'memmap_base' : 0x60000000 # map into the address space (in software)
           },
   'PRESSURE' : {
             'device' : 'HP203', 'addr' : 0x76,
