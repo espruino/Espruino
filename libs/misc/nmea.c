@@ -46,8 +46,6 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
   char buf[NMEA_MAX_SIZE];
   strcpy(buf, nmeaLine);
   char *nmea = buf, *nextComma;
-
-
   if (nmea[0]!='$' || nmea[1]!='G') return false; // not valid
   if (nmea[3]=='R' && nmea[4]=='M' && nmea[5]=='C') {
     // $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
@@ -118,10 +116,21 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
   if (nmea[3]=='G' && nmea[4]=='S' && nmea[5]=='V') {
     // loads of cool data about what satellites we have
   }
+  /* F18 (UBlox) GPS gives a bunch of data ending in GLL
+   * SMA Q3 gives data ending GNZDA,GPTXT
+   */
+#ifdef BANGLEJS_F18
   if (nmea[3]=='G' && nmea[4]=='L' && nmea[5]=='L') {
     // Complete set of data received
     return true;
   }
+#endif
+#ifdef SMAQ3
+  if (nmea[3]=='Z' && nmea[4]=='D' && nmea[5]=='A') {
+    // Complete set of data received
+    return true;
+  }
+#endif
   return false;
 }
 

@@ -518,6 +518,30 @@ typedef enum {
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
+void jswrap_banglejs_pwrGPS(bool on) {
+#ifdef BANGLEJS_F18
+  jswrap_banglejs_ioWr(IOEXP_GPS, !on);
+#endif
+#ifdef GPS_PIN_EN
+  jshPinOutput(GPS_PIN_EN, on);
+#endif
+}
+
+void jswrap_banglejs_pwrHRM(bool on) {
+#ifdef BANGLEJS_F18
+  jswrap_banglejs_ioWr(IOEXP_HRM, !on);
+#endif
+}
+
+void jswrap_banglejs_pwrBacklight(bool on) {
+#ifdef BANGLEJS_F18
+  jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, !on);
+#endif
+#ifdef LCD_BL
+  jshPinOutput(LCD_BL, isOn);
+#endif
+}
+
 /// Flip buffer contents with the screen.
 void lcd_flip(JsVar *parent) {
   if (lcdPowerTimeout && !lcdPowerOn) {
@@ -565,7 +589,7 @@ void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
 /* Scan peripherals for any data that's needed
  * Also, holding down both buttons will reboot */
 void peripheralPollHandler() {
-  //jswrap_banglejs_ioWr(IOEXP_HRM,0);  // debug using HRM LED
+  //jswrap_banglejs_pwrHRM(true);  // debug using HRM LED
   // Handle watchdog
   if (!(jshPinGetValue(BTN1_PININDEX)
 #ifdef BTN2_PININDEX
@@ -775,7 +799,7 @@ void peripheralPollHandler() {
   }
   i2cBusy = false;
 #endif
-  //jswrap_banglejs_ioWr(IOEXP_HRM,1); // debug using HRM LED
+  //jswrap_banglejs_pwrHRM(false); // debug using HRM LED
 }
 
 void hrmPollHandler() {
@@ -785,7 +809,6 @@ void hrmPollHandler() {
   extern void nrf_analog_read_end(bool adcInUse);
   extern bool nrf_analog_read_interrupted;
 
-  //jswrap_banglejs_ioWr(IOEXP_HRM,0); // on
   nrf_saadc_input_t ain = 1 + (pinInfo[HEARTRATE_PIN_ANALOG].analog & JSH_MASK_ANALOG_CH);
 
   nrf_saadc_channel_config_t config;
@@ -818,19 +841,18 @@ void hrmPollHandler() {
   hrmHistoryIdx = (hrmHistoryIdx+1) & (HRM_HISTORY_LEN-1);
   if (hrmHistoryIdx==0)
     bangleTasks |= JSBT_HRM_DATA;
-  //jswrap_banglejs_ioWr(IOEXP_HRM,1); // off
 #endif
 }
 
 #ifdef BANGLEJS_F18
 void backlightOnHandler() {
   if (i2cBusy) return;
-  jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight on
+  jswrap_banglejs_pwrBacklight(true); // backlight on
   app_timer_start(m_backlight_off_timer_id, APP_TIMER_TICKS(BACKLIGHT_PWM_INTERVAL, APP_TIMER_PRESCALER) * lcdBrightness >> 8, NULL);
 }
 void backlightOffHandler() {
   if (i2cBusy) return;
-  jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
+  jswrap_banglejs_pwrBacklight(false); // backlight off
 }
 #endif // BANGLEJS_F18
 #endif // !EMSCRIPTEN
@@ -998,16 +1020,13 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
       if (lcdBrightness < 255) { //  only do PWM if brightness isn't full
         app_timer_start(m_backlight_on_timer_id, APP_TIMER_TICKS(BACKLIGHT_PWM_INTERVAL, APP_TIMER_PRESCALER), NULL);
       } else // full brightness
-        jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 0); // backlight on
+        jswrap_banglejs_pwrBacklight(true); // backlight on
     } else { // lcdBrightness == 0
-      jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
+      jswrap_banglejs_pwrBacklight(false); // backlight off
     }
   } else { // sleep
-    jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
+    jswrap_banglejs_pwrBacklight(false); // backlight off
   }
-#endif
-#ifdef LCD_BL
-  jshPinOutput(LCD_BL, !isOn);
 #endif
 #endif
 }
@@ -1478,13 +1497,13 @@ void jswrap_banglejs_setHRMPower(bool isOn) {
 #ifdef HEARTRATE_PIN_ANALOG
     jshPinAnalog(HEARTRATE_PIN_ANALOG);
 #endif
-    jswrap_banglejs_ioWr(IOEXP_HRM, 0); // HRM on
+    jswrap_banglejs_pwrHRM(true); // HRM on
     memset(hrmHistory, 0, sizeof(hrmHistory));
     hrmHistoryIdx = 0;
     JsSysTime t = jshGetTimeFromMilliseconds(HRM_POLL_INTERVAL);
     jstExecuteFn(hrmPollHandler, NULL, jshGetSystemTime()+t, t);
   } else {
-    jswrap_banglejs_ioWr(IOEXP_HRM, 1); // HRM off
+    jswrap_banglejs_pwrHRM(false); // HRM off
   }
 #endif
 }
@@ -1527,11 +1546,11 @@ void jswrap_banglejs_setGPSPower(bool isOn) {
     inf.pinRX = GPS_PIN_RX;
     inf.pinTX = GPS_PIN_TX;
     jshUSARTSetup(GPS_UART, &inf);
-    jswrap_banglejs_ioWr(IOEXP_GPS, 1); // GPS on
+    jswrap_banglejs_pwrGPS(true);
     resetUbloxIn();
     memset(&gpsFix,0,sizeof(gpsFix));
   } else {
-    jswrap_banglejs_ioWr(IOEXP_GPS, 0); // GPS off
+    jswrap_banglejs_pwrGPS(false);
     // setting pins to pullup will cause jshardware.c to disable the UART, saving power
     jshPinSetState(GPS_PIN_RX, JSHPINSTATE_GPIO_IN_PULLUP);
     jshPinSetState(GPS_PIN_TX, JSHPINSTATE_GPIO_IN_PULLUP);
@@ -1715,12 +1734,12 @@ void jswrap_banglejs_init() {
   jshPinOutput(28,1);
   jshDelayMicroseconds(50000);
   jswrap_banglejs_ioWr(0,0);
-  jswrap_banglejs_ioWr(IOEXP_HRM,1); // HRM off
-  jswrap_banglejs_ioWr(IOEXP_GPS,0); // GPS off
+  jswrap_banglejs_pwrHRM(false); // HRM off
+  jswrap_banglejs_pwrGPS(false); // GPS off
   jswrap_banglejs_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
   jshDelayMicroseconds(100000);
   jswrap_banglejs_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
-  jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT,0); // backlight on
+  jswrap_banglejs_pwrBacklight(true); // backlight on
   jshDelayMicroseconds(10000);
 #endif
 #endif
@@ -2509,12 +2528,12 @@ void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data) {
       ["mask","int",""],
       ["isOn","int",""]
     ],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS_F18"
 }
 Changes a pin state on the IO expander
 */
-void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
 #ifdef BANGLEJS_F18
+void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
 #ifndef EMSCRIPTEN
   static unsigned char state;
   if (on) state |= mask;
@@ -2523,8 +2542,8 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
   jsi2cWrite(&i2cInternal, 0x20, 1, &state, true);
   i2cBusy = false;
 #endif
-#endif
 }
+#endif
 
 
 /*JSON{
@@ -2693,8 +2712,8 @@ void jswrap_banglejs_off() {
   jsvKill();
   jshKill();
 
-  jswrap_banglejs_ioWr(IOEXP_HRM,1); // HRM off
-  jswrap_banglejs_ioWr(IOEXP_GPS, 0); // GPS off
+  jswrap_banglejs_pwrHRM(false); // HRM off
+  jswrap_banglejs_pwrGPS(false); // GPS off
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
   jswrap_banglejs_setLCDPower(0);
   jswrap_banglejs_accelWr(0x18,0x0a); // accelerometer off
