@@ -116,7 +116,7 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
   buffer1[0] = 0;
   buffer1[1] = gfx->data.modMinX;
   buffer1[2] = 0;
-  buffer1[3] = gfx->data.modMaxX;
+  buffer1[3] = gfx->data.modMaxX-1;
   jshSPISendMany(LCD_SPI, buffer1, NULL, 4, NULL);
   jshPinSetValue(LCD_SPI_DC, 0); // command
   buffer1[0] = SPILCD_CMD_WINDOW_Y;
