@@ -833,6 +833,9 @@ void jshKill() {
     spiFlashLastAddress = 0;
   }
 #endif
+#ifdef SPIFLASH_SLEEP_CMD
+  spiFlashSleep(); // power down SPI flash to save a few uA
+#endif
 #ifdef I2C_SLAVE
   if (nrf_drv_twis_is_enabled(TWIS1_INSTANCE_INDEX)) {
     nrf_drv_twis_disable(&TWIS1);

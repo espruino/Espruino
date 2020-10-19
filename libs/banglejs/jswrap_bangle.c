@@ -46,10 +46,17 @@
 #include "jswrap_graphics.h"
 #ifdef LCD_CONTROLLER_LPM013M126
 #include "lcd_memlcd.h"
-#else // LCD_CONTROLLER_ST7789_8BIT
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
 #include "lcd_st7789_8bit.h"
 #endif
+#ifdef LCD_CONTROLLER_ST7789V
+#include "lcd_spilcd.h"
+#endif
+
+#ifdef GPS_PIN_RX
 #include "nmea.h"
+#endif
 #ifdef USE_TENSORFLOW
 #include "jswrap_tensorflow.h"
 #endif
@@ -283,6 +290,7 @@ or right hand side.
 #define ACCEL_HISTORY_LEN 50 ///< Number of samples of accelerometer history
 #define HRM_HISTORY_LEN 256
 
+#ifdef GPS_PIN_RX
 /// Handling data coming from UBlox GPS
 typedef enum {
   UBLOX_PROTOCOL_NOT_DETECTED = 0,
@@ -303,6 +311,7 @@ uint8_t ubloxMsgLength = 0;
 char ubloxMsg[NMEA_MAX_SIZE];
 /// GPS fix data converted from GPS
 NMEAFixInfo gpsFix;
+#endif
 
 
 typedef struct {
@@ -346,6 +355,8 @@ JshI2CInfo i2cInternal;
 // Nordic app timer to handle backlight PWM
 APP_TIMER_DEF(m_backlight_on_timer_id);
 APP_TIMER_DEF(m_backlight_off_timer_id);
+#endif
+#ifdef ID205
 #endif
 
 #ifndef EMSCRIPTEN
@@ -482,10 +493,12 @@ typedef enum {
   JSBT_LCD_OFF = 1<<1,
   JSBT_ACCEL_DATA = 1<<2, ///< need to push xyz data to JS
   JSBT_ACCEL_TAPPED = 1<<3, ///< tap event detected
+#ifdef GPS_PIN_RX
   JSBT_GPS_DATA = 1<<4, ///< we got a complete set of GPS data in 'gpsFix'
   JSBT_GPS_DATA_LINE = 1<<5, ///< we got a line of GPS data
   JSBT_GPS_DATA_PARTIAL = 1<<6, ///< we got some GPS data but it needs storing for later because it was too big to go in our buffer
   JSBT_GPS_DATA_OVERFLOW = 1<<7, ///< we got more GPS data than we could handle and had to drop some
+#endif
   JSBT_MAG_DATA = 1<<8, ///< need to push magnetometer data to JS
   JSBT_RESET = 1<<9, ///< reset the watch and reload code from flash
   JSBT_GESTURE_DATA = 1<<10, ///< we have data from a gesture
@@ -519,8 +532,12 @@ void lcd_flip(JsVar *parent) {
   if (!graphicsGetFromVar(&gfx, graphics)) return;
 #ifdef LCD_CONTROLLER_LPM013M126
   lcdMemLCD_flip(&gfx);
-#else
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
   lcdST7789_flip(&gfx);
+#endif
+#ifdef LCD_CONTROLLER_ST7789V
+  lcdFlip_SPILCD(&gfx);
 #endif
   graphicsSetVar(&gfx);
   jsvUnLock(graphics);
@@ -597,7 +614,7 @@ void peripheralPollHandler() {
     bangleTasks |= JSBT_CHARGE_EVENT;
     jshHadEvent();
   }
-
+#ifndef ID205
   if (i2cBusy) return;
   i2cBusy = true;
   unsigned char buf[7];
@@ -757,6 +774,7 @@ void peripheralPollHandler() {
     }
   }
   i2cBusy = false;
+#endif
   //jswrap_banglejs_ioWr(IOEXP_HRM,1); // debug using HRM LED
 }
 
@@ -904,6 +922,8 @@ void btn1Handler(bool state, IOEventFlags flags) {
 void btn2Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(2,state,flags);
 }
+#endif
+#ifdef BTN3_PININDEX
 void btn3Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(3,state,flags);
 }
@@ -986,6 +1006,9 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
     jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, 1); // backlight off
   }
 #endif
+#ifdef LCD_BL
+  jshPinOutput(LCD_BL, !isOn);
+#endif
 #endif
 }
 /*JSON{
@@ -1006,7 +1029,8 @@ When brightness using `Bange.setLCDBrightness`.
 void jswrap_banglejs_setLCDPower(bool isOn) {
 #ifdef LCD_CONTROLLER_LPM013M126
   jshPinSetState(LCD_DISP, isOn);
-#else
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
   if (isOn) { // wake
     lcdST7789_cmd(0x11, 0, NULL); // SLPOUT
     jshDelayMicroseconds(20);
@@ -1015,6 +1039,17 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
     lcdST7789_cmd(0x28, 0, NULL); // DISPOFF
     jshDelayMicroseconds(20);
     lcdST7789_cmd(0x10, 0, NULL); // SLPIN
+  }
+#endif
+#ifdef LCD_CONTROLLER_ST7789V
+  if (isOn) { // wake
+    lcdCmd_SPILCD(0x11, 0, NULL); // SLPOUT
+    jshDelayMicroseconds(20);
+    lcdCmd_SPILCD(0x29, 0, NULL); // DISPON
+  } else { // sleep
+    lcdCmd_SPILCD(0x28, 0, NULL); // DISPOFF
+    jshDelayMicroseconds(20);
+    lcdCmd_SPILCD(0x10, 0, NULL); // SLPIN
   }
 #endif
   jswrap_banglejs_setLCDPowerBacklight(isOn);
@@ -1089,7 +1124,8 @@ You can also call `Bangle.setLCDMode()` to return to normal, unbuffered `"direct
 */
 void jswrap_banglejs_setLCDMode(JsVar *mode) {
 #ifdef LCD_CONTROLLER_LPM013M126
-#else
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
   LCDST7789Mode lcdMode = LCDST7789_MODE_UNBUFFERED;
   if (jsvIsUndefined(mode) || jsvIsStringEqual(mode,"direct"))
     lcdMode = LCDST7789_MODE_UNBUFFERED;
@@ -1171,7 +1207,8 @@ See `Bangle.setLCDMode` for examples.
 JsVar *jswrap_banglejs_getLCDMode() {
   const char *name=0;
 #ifdef LCD_CONTROLLER_LPM013M126
-#else
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
   switch (lcdST7789_getMode()) {
     case LCDST7789_MODE_NULL:
       name = "null";
@@ -1210,7 +1247,8 @@ intact.
 */
 void jswrap_banglejs_setLCDOffset(int y) {
 #ifdef LCD_CONTROLLER_LPM013M126
-#else
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
   lcdST7789_setYOffset(y);
 #endif
 }
@@ -1402,10 +1440,13 @@ JsVarInt jswrap_banglejs_getBattery() {
 Writes a command directly to the ST7735 LCD controller
 */
 void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
-#ifdef LCD_CONTROLLER_LPM013M126
-#else
+#ifdef LCD_CONTROLLER_ST7789_8BIT
   JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
   lcdST7789_cmd(cmd, dLen, (const uint8_t *)dPtr);
+#endif
+#ifdef LCD_CONTROLLER_ST7789V
+  JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
+  lcdCmd_SPILCD(cmd, dLen, (const uint8_t *)dPtr);
 #endif
 }
 
@@ -1448,11 +1489,13 @@ void jswrap_banglejs_setHRMPower(bool isOn) {
 #endif
 }
 
+#ifdef GPS_PIN_RX
 void resetUbloxIn() {
   ubloxInLength = 0;
   ubloxMsgPayloadEnd = 0;
   inComingUbloxProtocol = UBLOX_PROTOCOL_NOT_DETECTED;
 }
+#endif
 
 /*JSON{
     "type" : "staticmethod",
@@ -1476,7 +1519,7 @@ Bangle.on('GPS',print);
 *When on, the GPS draws roughly 20mA*
 */
 void jswrap_banglejs_setGPSPower(bool isOn) {
-#ifndef EMSCRIPTEN
+#ifdef GPS_PIN_RX
   if (isOn) {
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
@@ -1612,6 +1655,11 @@ void jswrap_banglejs_init() {
 #ifdef BANGLEJS_F18
   jshPinOutput(18,0); // what's this?
 #endif
+#ifdef ID205
+  jshPinOutput(3,1); // general VDD power?
+  jshPinOutput(46,0); // What's this? Who knows! But it stops screen flicker and makes the touchscreen work nicely
+#endif
+
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
 
 #ifndef LCD_CONTROLLER_LPM013M126
@@ -1689,8 +1737,12 @@ void jswrap_banglejs_init() {
   graphicsStructInit(&gfx, LCD_WIDTH, LCD_HEIGHT, LCD_BPP);
 #ifdef LCD_CONTROLLER_LPM013M126
   gfx.data.type = JSGRAPHICSTYPE_MEMLCD;
-#else
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
   gfx.data.type = JSGRAPHICSTYPE_ST7789_8BIT;
+#endif
+#ifdef LCD_CONTROLLER_ST7789V
+  gfx.data.type = JSGRAPHICSTYPE_SPILCD;
 #endif
   gfx.data.flags = 0;
   gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
@@ -1699,8 +1751,12 @@ void jswrap_banglejs_init() {
   //gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8;
 #ifdef LCD_CONTROLLER_LPM013M126
   lcdMemLCD_init(&gfx);
-#else
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
   lcdST7789_init(&gfx);
+#endif
+#ifdef LCD_CONTROLLER_ST7789V
+  lcdInit_SPILCD(&gfx);
 #endif
   graphicsSetVar(&gfx);
   jsvObjectSetChild(execInfo.root, "g", graphics);
@@ -1993,6 +2049,7 @@ bool jswrap_banglejs_idle() {
       jsvUnLock(o);
     }
   }
+#ifdef GPS_PIN_RX
   if (bangleTasks & JSBT_GPS_DATA) {
     JsVar *o = nmea_to_jsVar(&gpsFix);
     if (o) {
@@ -2031,6 +2088,7 @@ bool jswrap_banglejs_idle() {
       jsvObjectRemoveChild(bangle,"_gpsdata");
     }
   }
+#endif
   if (bangleTasks & JSBT_MAG_DATA) {
     if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"mag")) {
       JsVar *o = jswrap_banglejs_getCompass();
@@ -2236,10 +2294,11 @@ bool jswrap_banglejs_idle() {
   return false;
 }
 
-
+#ifdef GPS_PIN_RX
 /*JSON{
   "type" : "EV_SERIAL1",
-  "generate" : "jswrap_banglejs_gps_character"
+  "generate" : "jswrap_banglejs_gps_character",
+  "#if" : "defined(BANGLEJS_F18) || defined(SMAQ3)"
 }*/
 bool jswrap_banglejs_gps_character(char ch) {
   // if too many chars, roll over since it's probably because we skipped a newline
@@ -2321,6 +2380,7 @@ bool jswrap_banglejs_gps_character(char ch) {
   }
   return true; // handled
 }
+#endif
 
 /*JSON{
     "type" : "staticproperty",
@@ -2368,7 +2428,7 @@ JsVar *jswrap_banglejs_dbg() {
 Writes a register on the KX023 Accelerometer
 */
 void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
-#ifndef EMSCRIPTEN
+#ifdef ACCEL_I2C
   unsigned char buf[2];
   buf[0] = (unsigned char)reg;
   buf[1] = (unsigned char)data;
@@ -2395,7 +2455,7 @@ Reads a register from the KX023 Accelerometer
 **Note:** On Espruino 2v06 and before this function only returns a number (`cnt` is ignored).
 */
 JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt) {
-#ifndef EMSCRIPTEN
+#ifdef ACCEL_I2C
   if (cnt<0) cnt=0;
   unsigned char buf[128];
   if (cnt>sizeof(buf)) cnt=sizeof(buf);
@@ -2430,7 +2490,7 @@ JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt) {
 Writes a register on the Magnetometer/Compass
 */
 void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data) {
-#ifndef EMSCRIPTEN
+#ifdef MAG_I2C
   unsigned char buf[2];
   buf[0] = (unsigned char)reg;
   buf[1] = (unsigned char)data;
@@ -2642,11 +2702,11 @@ void jswrap_banglejs_off() {
 
 #ifdef BTN2_PININDEX
   nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
+#endif
+#ifdef BTN3_PININDEX
   nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
 #endif
   nrf_gpio_cfg_sense_set(BTN1_PININDEX, NRF_GPIO_PIN_SENSE_LOW);
-  extern void spiFlashSleep();
-  spiFlashSleep(); // power down SPI flash to save a few uA
   sd_power_system_off();
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
