@@ -43,7 +43,7 @@
 #                         # UNSUPPORTEDMAKE=/home/mydir/unsupportedCommands
 # PROJECTNAME=myBigProject# Sets projectname
 # BLACKLIST=fileBlacklist # Removes javascript commands given in a file from compilation and therefore from project defined firmware
-#                         # is used in build_jswrapper.py
+#                         # is used in build_jswrapper.py - of the form [{class,name}...]
 #                         # BLACKLIST=/home/mydir/myBlackList
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py

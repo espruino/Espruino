@@ -160,7 +160,7 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
     }
   }
 haveCode:
-  if (info->rangeMatch && regexp[*length] == '-') { // Character set range start
+  if (info->rangeMatch && regexp[*length] == '-' && regexp[1+*length] != ']') { // Character set range start
     info->rangeFirstChar = cH;
     (*length)++;
     int matchLen;

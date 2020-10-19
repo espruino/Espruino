@@ -703,7 +703,7 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
 #endif
 
       // don't bother with normal inputs, as they come up in this state (ish) anyway
-      if (statem != JSHPINSTATE_GPIO_IN && statem != JSHPINSTATE_ADC_IN) {
+      if (!jshIsPinStateDefault(pin, statem)) {
         // use getPinMode to get the correct string (remove some duplication)
         JsVar *s = jswrap_io_getPinMode(pin);
         if (s) cbprintf(user_callback, user_data, "pinMode(%p, %q%s);\n",pin,s,jshGetPinStateIsManual(pin)?"":", true");
@@ -1886,7 +1886,7 @@ void jsiIdle() {
        console device. It slows us down and just causes pain. */
     } else if (DEVICE_IS_SERIAL(eventType)) {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
-      JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(event.flags)));
+      JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(eventType));
       if (jsvIsObject(usartClass)) {
         maxEvents -= jsiHandleIOEventForUSART(usartClass, &event);
       }
@@ -1904,6 +1904,23 @@ void jsiIdle() {
 #ifdef BLUETOOTH
     } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
       maxEvents -= jsble_exec_pending(&event);
+#endif
+#ifdef I2C_SLAVE
+    } else if (DEVICE_IS_I2C(eventType)) {
+      // ------------------------------------------------------------------------ I2C CALLBACK
+      JsVar *i2cClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(eventType));
+      if (jsvIsObject(i2cClass)) {
+        uint8_t addr = event.data.time&0xff;
+        int len = event.data.time>>8;
+        JsVar *obj = jsvNewObject();
+        if (obj) {
+          jsvObjectSetChildAndUnLock(obj, "addr", jsvNewFromInteger(addr&0x7F));
+          jsvObjectSetChildAndUnLock(obj, "length", jsvNewFromInteger(len));
+          jsiExecuteObjectCallbacks(i2cClass, (addr&0x80) ? JS_EVENT_PREFIX"read" : JS_EVENT_PREFIX"write", &obj, 1);
+          jsvUnLock(obj);
+        }
+      }
+      jsvUnLock(i2cClass);
 #endif
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
       // we have an event... find out what it was for...
@@ -1952,7 +1969,11 @@ void jsiIdle() {
                 executeNow = true;
                 eventTime = timeoutTime - debounce;
                 jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(pinIsHigh));
-                // TODO: remove timer?
+                // Remove the timeout
+                JsVar *idArr = jsvNewArray(&timeout, 1);
+                jswrap_interface_clearTimeout(idArr);
+                jsvUnLock(idArr);
+                jsvObjectRemoveChild(watchPtr, "timeout");
               }
             } else if (pinIsHigh!=oldWatchState) { // else create a new timeout
               timeout = jsvNewObject();
@@ -2038,7 +2059,6 @@ void jsiIdle() {
   // Go through all intervals and decrement time
   jsvObjectIteratorNew(&it, timerArrayPtr);
   while (jsvObjectIteratorHasValue(&it)) {
-    bool hasDeletedTimer = false;
     JsVar *timerPtr = jsvObjectIteratorGetValue(&it);
     JsSysTime timerTime = (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChild(timerPtr, "time", 0));
     JsSysTime timeUntilNext = timerTime - timePassed;
@@ -2068,23 +2088,27 @@ void jsiIdle() {
           bool timerState = jsvGetBoolAndUnLock(jsvObjectGetChild(timerPtr, "state", 0));
           jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(timerState));
           exec = false;
-          if (watchState!=timerState && jsiShouldExecuteWatch(watchPtr, timerState)) {
-            data = jsvNewObject();
-            // if we were from a watch then we were delayed by the debounce time...
-            if (data) {
-              exec = true;
-              JsVarInt delay = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
-              // Create the 'time' variable that will be passed to the user
-              JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+timerTime-delay)/1000);
-              // if it was a watch, set the last state up
-              jsvObjectSetChildAndUnLock(data, "state", jsvNewFromBool(timerState));
-              // set up the lastTime variable of data to what was in the watch
-              jsvObjectSetChildAndUnLock(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0));
-              // set up the watches lastTime to this one
-              jsvObjectSetChild(watchPtr, "lastTime", timePtr); // don't unlock
-              jsvObjectSetChildAndUnLock(data, "time", timePtr);
-              jsvObjectSetChildAndUnLock(data, "pin", jsvObjectGetChild(watchPtr, "pin", 0));
+          if (watchState!=timerState) {
+            // Create the 'time' variable that will be passed to the user and stored as last time
+            JsVarInt delay = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
+            JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+timerTime-delay)/1000);
+            // If it's the right edge...
+            if (jsiShouldExecuteWatch(watchPtr, timerState)) {
+              data = jsvNewObject();
+              // if we were from a watch then we were delayed by the debounce time...
+              if (data) {
+                exec = true;
+                // if it was a watch, set the last state up
+                jsvObjectSetChildAndUnLock(data, "state", jsvNewFromBool(timerState));
+                // set up the lastTime variable of data to what was in the watch
+                jsvObjectSetChildAndUnLock(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0));
+                // set up the watches lastTime to this one
+                jsvObjectSetChild(data, "time", timePtr); // don't unlock - use this later
+                jsvObjectSetChildAndUnLock(data, "pin", jsvObjectGetChild(watchPtr, "pin", 0));
+              }
             }
+            // Update lastTime regardless of which edge we're watching
+            jsvObjectSetChildAndUnLock(watchPtr, "lastTime", timePtr);
           }
         }
         bool removeTimer = false;
@@ -2254,9 +2278,8 @@ void jsiIdle() {
 #if defined(USB) && !defined(EMSCRIPTEN)
       !jshIsUSBSERIALConnected() && // if USB is on, no point sleeping (later, sleep might be more drastic)
 #endif
-      !jshHasEvents() && //no events have arrived in the mean time
-      !jshHasTransmitData()/* && //nothing left to send over serial?
-      minTimeUntilNext > SYSTICK_RANGE*5/4*/) { // we are sure we won't miss anything - leave a little leeway (SysTick will wake us up!)
+      !jshHasEvents() //no events have arrived in the mean time
+      ) {
     jshSleep(minTimeUntilNext);
   }
 }

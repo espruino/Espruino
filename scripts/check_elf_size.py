@@ -34,8 +34,18 @@ print("STORAGE: "+str(storageStart)+" -> "+str(storageEnd));
 
 text = subprocess.check_output('arm-none-eabi-objdump -h '+ELF+' | grep "\\.text"', shell=True).strip().split()
 codeSize = int(text[2], 16)
-codeStart = int(text[3], 16)
+codeStart = int(text[4], 16)
 codeEnd = codeSize + codeStart
+
+# nRF52 builds have this extra data dumped on the end - need to check this doesn't overlap too!
+fsdata = subprocess.check_output('arm-none-eabi-objdump -h '+ELF+' | grep "\\.fs_data" || true', shell=True).strip().split()
+if len(fsdata):
+  fsSize = int(fsdata[2], 16)
+  fsStart = int(fsdata[4], 16)
+  fsEnd = fsStart + fsSize
+  if (fsEnd > codeEnd): 
+    print("FS DATA: "+str(fsStart)+" -> "+str(fsEnd)+" ("+str(fsSize)+" bytes)");
+    codeEnd = fsEnd
 
 print("CODE: "+str(codeStart)+" -> "+str(codeEnd)+" ("+str(codeSize)+" bytes)");
 
@@ -44,5 +54,8 @@ if codeEnd<storageStart and codeStart<storageStart:
 elif codeEnd>storageEnd and codeStart>storageEnd:
   print("Code area Fits after Storage Area")
 else:
-  print("CODE AND STORAGE OVERLAP")
+  print("==========================")
+  print(" CODE AND STORAGE OVERLAP")
+  print("   by "+ str(codeEnd-storageStart) + " bytes")
+  print("==========================")
   exit(1)

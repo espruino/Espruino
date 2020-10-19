@@ -493,6 +493,10 @@ JshPinState jshPinGetState(Pin pin) {
   }
   return rc;
 }
+/// Check if state is default - return true if default
+bool jshIsPinStateDefault(Pin pin, JshPinState state) {
+  return state == JSHPINSTATE_GPIO_IN_PULLUP || state == JSHPINSTATE_ADC_IN;
+}
 
 //===== GPIO and PIN stuff =====
 

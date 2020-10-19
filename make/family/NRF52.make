@@ -67,10 +67,16 @@ INCLUDE          += -I$(SOFTDEVICE_PATH)/headers/nrf52
 
 DEFINES += -DBLE_STACK_SUPPORT_REQD
 DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DFLOAT_ABI_HARD 
+DEFINES += -DNRF52_SERIES
+# Nordic screwed over anyone who used -DNRF52 in new SDK versions
+# but then old SDKs won't work without it
+ifneq ($(or $(NRF5X_SDK_12),$(NRF5X_SDK_11)),)
+DEFINES += -DNRF52
+endif
 
 # NOTE: nrf.h needs tweaking as Nordic randomly changed NRF52 to NRF52_SERIES
 ifeq ($(CHIP),NRF52840)
-DEFINES += -DNRF52 -DNRF52840_XXAA
+DEFINES += -DNRF52840_XXAA
 ifdef USE_BOOTLOADER
 NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex
 ifdef BOOTLOADER
@@ -102,7 +108,7 @@ TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_power.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_clock.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_power.c
 else # NRF52832
-DEFINES += -DNRF52 -DNRF52832_XXAA -DNRF52_PAN_74 
+DEFINES += -DNRF52832_XXAA -DNRF52_PAN_74 
 
 ifdef USE_BOOTLOADER
 NRF_BOOTLOADER    = $(BOOTLOADER_PROJ_NAME).hex

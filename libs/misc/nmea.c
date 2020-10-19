@@ -108,6 +108,7 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
     gpsFix->satellites = nmea_decode_2(nmea);
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // dilution of precision
+    gpsFix->hdop = nmea_decode_float(nmea, nextComma);
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // altitude
     gpsFix->alt = nmea_decode_float(nmea, nextComma);
@@ -151,6 +152,7 @@ JsVar *nmea_to_jsVar(NMEAFixInfo *gpsFix) {
     }
     jsvObjectSetChildAndUnLock(o, "satellites", jsvNewFromInteger(gpsFix->satellites));
     jsvObjectSetChildAndUnLock(o, "fix", jsvNewFromInteger(gpsFix->quality));
+    jsvObjectSetChildAndUnLock(o, "hdop", jsvNewFromFloat(gpsFix->hdop));
   }
   return o;
 }

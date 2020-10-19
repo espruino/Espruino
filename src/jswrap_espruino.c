@@ -1127,7 +1127,7 @@ Show fragmentation.
  */
 void jswrap_e_dumpFragmentation() {
   int l = 0;
-  for (int i=0;i<jsvGetMemoryTotal();i++) {
+  for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
     JsVar *v = _jsvGetAddressOf(i+1);
     if ((v->flags&JSV_VARTYPEMASK)==JSV_UNUSED) {
       jsiConsolePrint(" ");
@@ -1163,7 +1163,7 @@ to visualise where memory is used.
 void jswrap_e_dumpVariables() {
   int l = 0;
   jsiConsolePrintf("ref,size,name,links...\n");
-  for (int i=0;i<jsvGetMemoryTotal();i++) {
+  for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
     JsVarRef ref = i+1;
     JsVar *v = _jsvGetAddressOf(ref);
     if ((v->flags&JSV_VARTYPEMASK)==JSV_UNUSED) continue;

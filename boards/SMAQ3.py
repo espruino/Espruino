@@ -51,6 +51,7 @@ info = {
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
      'DEFINES += -DBANGLEJS',
      'DEFINES += -D\'IS_PIN_A_BUTTON(PIN)=((PIN==17)||(PIN==40)||(PIN==41))\'',
+     'DEFINES += -DSPIFLASH_SLEEP_CMD', # SPI flash needs to be explicitly slept and woken up
 
  #    'DEFINES += -DBOARD_PCA10056',
   #   'DEFINES += -DNRF_USB=1 -DUSB',

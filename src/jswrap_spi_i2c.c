@@ -565,8 +565,18 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
   JshI2CInfo inf;
   if (jsi2cPopulateI2CInfo(&inf, options)) {
     if (DEVICE_IS_I2C(device)) {
+#ifdef I2C_SLAVE
+      if (inf.slaveAddr>=0) {
+        jsvObjectSetChildAndUnLock(parent, "buffer", jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, 64));
+      }
+#endif
       jshI2CSetup(device, &inf);
     } else if (device == EV_NONE) {
+#ifdef I2C_SLAVE
+      if (inf.slaveAddr>=0) {
+        jsExceptionHere(JSET_ERROR, "I2C Slave not implemented on software I2C");
+      }
+#endif
 #ifndef SAVE_ON_FLASH
       // software mode - at least configure pins properly
       if (inf.pinSCL != PIN_UNDEFINED) {

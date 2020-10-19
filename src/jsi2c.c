@@ -31,6 +31,9 @@ bool jsi2cPopulateI2CInfo(
   jsvConfigObject configs[] = {
       {"scl", JSV_PIN, &inf->pinSCL},
       {"sda", JSV_PIN, &inf->pinSDA},
+#ifdef I2C_SLAVE
+      {"addr", JSV_INTEGER, &inf->slaveAddr},
+#endif
       {"bitrate", JSV_INTEGER, &inf->bitrate}
   };
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {

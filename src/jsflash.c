@@ -329,6 +329,8 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
   if (jsfGetFileHeader(addr, &header, true)) do {
     if (header.name.firstChars != 0) { // if not replaced
       jsDebug(DBG_INFO,"compact> copying file at 0x%08x\n", addr);
+      // Rewrite file position in any JsVars that used this file
+      jsvUpdateMemoryAddress(addr, sizeof(JsfFileHeader) + jsfGetFileSize(&header), writeAddress);
       // Copy the file into the circular buffer, one bit at a time.
       // Write the header
       memcpy_circular(swapBuffer, &swapBufferHead, swapBufferSize, (char*)&header, sizeof(JsfFileHeader));

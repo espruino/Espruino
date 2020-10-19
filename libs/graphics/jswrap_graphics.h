@@ -73,9 +73,10 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *str, int x, int y, bool 
 void jswrap_graphics_drawCString(JsGraphics *gfx, int x, int y, char *str); /// Convenience function for using drawString from C code
 JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var);
 JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2);
+JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2, double y2);
 JsVar *jswrap_graphics_lineTo(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y);
-JsVar *jswrap_graphics_drawPoly(JsVar *parent, JsVar *poly, bool closed);
+JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool antiAlias);
 JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly);
 JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect);
 JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos, JsVar *options);

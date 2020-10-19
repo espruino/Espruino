@@ -373,7 +373,7 @@ static inline void nrf_drv_twis_process_error(
  * It makes it possible to use it either in interrupt or in polling mode.
  * @param instNr Driver instance number that has called this runtime.
  */
-static void nrf_drv_twis_state_machine(uint8_t instNr)
+void nrf_drv_twis_state_machine(uint8_t instNr)
 {
     if (!TWIS_NO_SYNC_MODE)
     {
@@ -732,6 +732,11 @@ void nrf_drv_twis_disable(nrf_drv_twis_t const * const p_instance)
 
     nrf_twis_disable(p_reg);
     m_var_inst[instNr].state    = NRF_DRV_STATE_INITIALIZED;
+}
+
+bool nrf_drv_twis_is_enabled(int p_instance_index) {
+  nrf_drv_twis_var_inst_t * const p_var_inst = &m_var_inst[p_instance_index];
+  return p_var_inst->state == NRF_DRV_STATE_POWERED_ON;
 }
 
 /* ARM recommends not using the LDREX and STREX instructions in C code.

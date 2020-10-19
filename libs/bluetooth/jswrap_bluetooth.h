@@ -44,7 +44,7 @@ void bleCompleteTaskFail(BleTask task, JsVar *data);
 void bleCompleteTaskFailAndUnLock(BleTask task, JsVar *data);
 void bleSwitchTask(BleTask task);
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
 // Set the currently active GATT server
 void bleSetActiveBluetoothGattServer(JsVar *var);
 // Get the currently active GATT server (the return value needs unlocking)
