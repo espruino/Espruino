@@ -77,8 +77,9 @@ typedef struct {
 #define HID_MODIFIER_KEY_POS                 0                                       /**< Position of the modifier byte in the Input Report. */
 #define HID_SCAN_CODE_POS                    2                                       /**< This macro indicates the start position of the key scan code in a HID Report. As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11, each report shall have one modifier byte followed by a reserved constant byte and then the key scan code. */
 
-#define DEFAULT_ADVERTISING_INTERVAL    MSEC_TO_UNITS(375, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
-
+#ifndef BLUETOOTH_ADVERTISING_INTERVAL
+#define BLUETOOTH_ADVERTISING_INTERVAL 375
+#endif
 
 typedef enum  {
   BLE_NONE = 0,

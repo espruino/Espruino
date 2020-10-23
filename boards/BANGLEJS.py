@@ -37,6 +37,7 @@ info = {
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'DEFINES += -DDFU_APP_DATA_RESERVED=0', # allow firmware updates right up to the amount of available flash
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
+     'DEFINES+=-DBLUETOOTH_ADVERTISING_INTERVAL=200', # since we don't care as much about ~20uA battery usage, raise this to make getting a connection faster
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS',

@@ -174,7 +174,7 @@ volatile uint16_t                       m_central_conn_handle = BLE_CONN_HANDLE_
 volatile bool nfcEnabled = false;
 #endif
 
-uint16_t bleAdvertisingInterval = DEFAULT_ADVERTISING_INTERVAL;
+uint16_t bleAdvertisingInterval = MSEC_TO_UNITS(BLUETOOTH_ADVERTISING_INTERVAL, UNIT_0_625_MS);           /**< The advertising interval (in units of 0.625 ms). */
 
 volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
