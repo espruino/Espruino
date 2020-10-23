@@ -22,7 +22,7 @@ info = {
  'default_console' : "EV_BLUETOOTH",
  'variables' : 2100, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_banglef5.hex',
+ 'binary_name' : 'espruino_%v_dtno1f5.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
@@ -141,7 +141,7 @@ board["_css"] = """
   height: 800px;
   top: 0px;
   left : 200px;
-  background-image: url(img/BANGLEF5.jpg);
+  background-image: url(img/DTNO1_F5.jpg);
 }
 #boardcontainer {
   height: 900px;

@@ -356,7 +356,7 @@ JshI2CInfo i2cInternal;
 APP_TIMER_DEF(m_backlight_on_timer_id);
 APP_TIMER_DEF(m_backlight_off_timer_id);
 #endif
-#ifdef BANGLEF5
+#ifdef DTNO1_F5
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo i2cInternal;
 #define ACCEL_I2C &i2cInternal
@@ -1733,7 +1733,7 @@ void jswrap_banglejs_init() {
   i2cTouch.pinSCL = TOUCH_PIN_SCL;
   jsi2cSetup(&i2cTouch);
 #endif
-#if defined(BANGLEJS_F18) || defined(BANGLEF5)
+#if defined(BANGLEJS_F18) || defined(DTNO1_F5)
   jshI2CInitInfo(&i2cInternal);
   i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cInternal.pinSDA = ACCEL_PIN_SDA;
@@ -1791,7 +1791,7 @@ void jswrap_banglejs_init() {
   gfx.data.type = JSGRAPHICSTYPE_SPILCD;
 #endif
   gfx.data.flags = 0;
-#ifdef BANGLEF5
+#ifdef DTNO1_F5
   gfx.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
 #endif
 
@@ -2362,7 +2362,7 @@ bool jswrap_banglejs_idle() {
 /*JSON{
   "type" : "EV_SERIAL1",
   "generate" : "jswrap_banglejs_gps_character",
-  "#if" : "defined(BANGLEJS_F18) || defined(BANGLEF5)  || defined(SMAQ3)"
+  "#if" : "defined(BANGLEJS_F18) || defined(DTNO1_F5)  || defined(SMAQ3)"
 }*/
 bool jswrap_banglejs_gps_character(char ch) {
   // if too many chars, roll over since it's probably because we skipped a newline
@@ -2597,7 +2597,7 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
     "name" : "getPressure",
     "generate" : "jswrap_banglejs_getPressure",
     "return" : ["JsVar","A promise that will be resolved with `{temperature, pressure, altitude}`"],
-    "ifdef" : "BANGLEF5"
+    "ifdef" : "DTNO1_F5"
 }
 Read temperature, pressure and altitude data. A promise is returned
 which will be resolved with `{temperature, pressure, altitude}`.
@@ -3129,7 +3129,7 @@ The second `options` argument can contain:
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showMenu", "patch":true,
     "generate_js" : "libs/js/banglejs/E_showMenu_F5.js",
-    "#if" : "defined(BANGLEJS) && defined(BANGLEF5)"
+    "#if" : "defined(BANGLEJS) && defined(DTNO1_F5)"
 }
 */
 

@@ -2188,7 +2188,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
     }
     //jsiConsolePrintf("SPI Write %d %d\n",addr, len);
     unsigned char b[5];
-#if defined(BANGLEF5)
+#if defined(DTNO1_F5)
     /* Hack - for some reason the F5 doesn't seem to like writing >1 byte
      * quickly. Also this way works around paging issues. */
     for (unsigned int i=0;i<len;i++) {
