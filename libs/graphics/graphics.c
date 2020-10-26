@@ -34,6 +34,9 @@
 #ifdef USE_LCD_ST7789_8BIT
 #include "lcd_st7789_8bit.h"
 #endif
+#ifdef USE_LCD_MEMLCD
+#include "lcd_memlcd.h"
+#endif
 #ifdef USE_LCD_SPI_UNBUF
 #include "lcd_spi_unbuf.h"
 #endif
@@ -167,6 +170,10 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
 #ifdef USE_LCD_ST7789_8BIT
     } else if (gfx->data.type == JSGRAPHICSTYPE_ST7789_8BIT) {
       lcdST7789_setCallbacks(gfx);
+#endif
+#ifdef USE_LCD_MEMLCD
+    } else if (gfx->data.type == JSGRAPHICSTYPE_MEMLCD) {
+      lcdMemLCD_setCallbacks(gfx);
 #endif
 #ifdef USE_LCD_SPI_UNBUF
     } else if (gfx->data.type == JSGRAPHICSTYPE_LCD_SPI_UNBUF) {

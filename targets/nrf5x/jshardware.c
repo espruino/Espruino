@@ -415,6 +415,38 @@ static unsigned char spiFlashStatus() {
   nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
   return buf;
 }
+
+#ifdef SPIFLASH_SLEEP_CMD
+/// Is SPI flash awake?
+bool spiFlashAwake = false;
+
+static void spiFlashWakeUp() {
+  /*unsigned char buf[4];
+  int tries = 10;
+  do {
+    buf[0] = 0xAB;
+    buf[1] = 0x00; // dummy
+    buf[2] = 0x00; // dummy
+    buf[3] = 0x00; // dummy
+    nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+    spiFlashWrite(buf,4);
+    spiFlashRead(buf,3);
+    nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  } while (buf[0] != 0x15 && buf[1] != 0x15 && buf[2] != 0x15 && tries--);*/
+  unsigned char buf[1];
+  buf[0] = 0xAB;
+  spiFlashWriteCS(buf,1);
+}
+void spiFlashSleep() {
+  if (spiFlashLastAddress) {
+    nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+    spiFlashLastAddress = 0;
+  }
+  unsigned char buf[1];
+  buf[0] = 0xB9;
+  spiFlashWriteCS(buf,1);
+}
+#endif
 #endif
 
 
@@ -601,9 +633,14 @@ void jshResetPeripherals() {
 #endif
   spiFlashLastAddress = 0;
   jshDelayMicroseconds(100);
+#ifdef SPIFLASH_SLEEP_CMD
+  spiFlashWakeUp();
+  spiFlashAwake = true;
+#endif
+
   // disable lock bits
-  unsigned char buf[2];
   // wait for write enable
+  unsigned char buf[2];
   int timeout = 1000;
   while (timeout-- && !(spiFlashStatus()&2)) {
     buf[0] = 6; // write enable
@@ -795,6 +832,9 @@ void jshKill() {
     nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
     spiFlashLastAddress = 0;
   }
+#endif
+#ifdef SPIFLASH_SLEEP_CMD
+  spiFlashSleep(); // power down SPI flash to save a few uA
 #endif
 #ifdef I2C_SLAVE
   if (nrf_drv_twis_is_enabled(TWIS1_INSTANCE_INDEX)) {
@@ -2050,6 +2090,9 @@ void jshFlashErasePage(uint32_t addr) {
 #ifdef SPIFLASH_BASE
   if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
     addr &= 0xFFFFFF;
+#ifdef SPIFLASH_SLEEP_CMD
+    if (!spiFlashAwake) spiFlashWakeUp();
+#endif
     // disable CS if jshFlashRead had left it set
     if (spiFlashLastAddress) {
       nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
@@ -2096,6 +2139,9 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
   if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
     addr &= 0xFFFFFF;
     //jsiConsolePrintf("SPI Read %d %d\n",addr,len);
+#ifdef SPIFLASH_SLEEP_CMD
+    if (!spiFlashAwake) spiFlashWakeUp();
+#endif
     if (
         spiFlashLastAddress!=addr
 #ifdef SPIFLASH_SHARED_SPI
@@ -2132,6 +2178,9 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 #ifdef SPIFLASH_BASE
   if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
     addr &= 0xFFFFFF;
+#ifdef SPIFLASH_SLEEP_CMD
+    if (!spiFlashAwake) spiFlashWakeUp();
+#endif
     // disable CS if jshFlashRead had left it set
     if (spiFlashLastAddress) {
       nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
@@ -2139,7 +2188,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
     }
     //jsiConsolePrintf("SPI Write %d %d\n",addr, len);
     unsigned char b[5];
-#if defined(BANGLEF5)
+#if defined(DTNO1_F5)
     /* Hack - for some reason the F5 doesn't seem to like writing >1 byte
      * quickly. Also this way works around paging issues. */
     for (unsigned int i=0;i<len;i++) {
@@ -2266,6 +2315,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
     nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
     spiFlashLastAddress = 0;
   }
+#ifdef SPIFLASH_SLEEP_CMD
+  if (spiFlashAwake) {
+    spiFlashSleep();
+    spiFlashAwake = false;
+  }
+#endif
 #endif
 
   if (timeUntilWake < JSSYSTIME_MAX) {

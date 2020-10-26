@@ -399,6 +399,11 @@ ifdef USE_LCD_ST7789_8BIT
   SOURCES += libs/graphics/lcd_st7789_8bit.c
 endif
 
+ifdef USE_LCD_MEMLCD
+  DEFINES += -DUSE_LCD_MEMLCD
+  SOURCES += libs/graphics/lcd_memlcd.c
+endif
+
 ifdef USE_LCD_SPI_UNBUF
   DEFINES += -DUSE_LCD_SPI_UNBUF
   WRAPPERSOURCES += libs/graphics/lcd_spi_unbuf.c

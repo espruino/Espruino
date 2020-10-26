@@ -52,6 +52,9 @@
             micro:bit: Re-added tab complete (enough space now)
             micro:bit: Added a fake pin for LED/LED1 that uses the LED matrix
             nRF52: Allow a cccd_handle of 0 for startNotifications
+            Bangle.js: Power down SPI flash when sleeping/off
+            nRF52: Use the best available hardware timer for PWM taking frequency into account
+            Fix delay in scheduling after initial setTimeout call (from 2v06 and later)
             Align Tensorflow arena to 16 bytes - new Tensorflow requires this (fix #1914)
             Fix ReferenceError when arguments[0] is used when an argument is undefined (fix #1691)
             JSON conversion for console now removes quotes on key lengths bigger than 15 (63)

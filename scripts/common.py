@@ -84,6 +84,7 @@ if "check_output" not in dir( subprocess ):
 #         "ifndef" : "SAVE_ON_FLASH", // if the given preprocessor macro is defined, don't implement this
 #         "ifdef" : "USE_LCD_FOO", // if the given preprocessor macro isn't defined, don't implement this
 #         "#if" : "A>2", // add a #if statement in the generated C file (ONLY if type==object)
+#         "patch" : true // if true, this isn't a complete JSON, but just updates another with the same class+name
 #}*/
 #
 # description can be an array of strings as well as a simple string (in which case each element is separated by a newline),
@@ -235,6 +236,13 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
               if not r:
                 print(dropped_prefix+" because of #if "+jsondata["#if"]+ " -> "+expr)
                 drop = True
+          if not drop and "patch" in jsondata:
+            targetjsondata = [x for x in jsondatas if x["type"]==jsondata["type"] and x["class"]==jsondata["class"] and x["name"]==jsondata["name"]][0]
+            for key in jsondata:
+               if not key in ["type","class","name","patch"]:
+                 print("Copying "+key+" --- "+jsondata[key]);
+                 targetjsondata[key] = jsondata[key]
+            drop = True 
           if not drop:
             jsondatas.append(jsondata)
         except ValueError as e:
@@ -247,7 +255,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
 
     if board:
       for device in pinutils.SIMPLE_DEVICES:
-        if device in board.devices:
+        if device in board.devices and not "novariable" in board.devices[device]:
           jsondatas.append({
             "type" : "variable",
             "name" : device,
@@ -265,7 +273,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           "filename" : "BOARD.py",
           "include" : "platform_config.h"
         })
-      if "BTN1" in board.devices:
+      if "BTN1" in board.devices and not "novariable" in board.devices["BTN1"]:
         jsondatas.append({
           "type" : "variable",
           "name" : "BTN",
