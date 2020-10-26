@@ -1167,7 +1167,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           jsble_queue_pending(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
-          jsble_restart_softdevice();
+          jsble_restart_softdevice(NULL);
 
         break;
 
@@ -2495,7 +2495,7 @@ void jsble_kill() {
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */
-void jsble_restart_softdevice() {
+void jsble_restart_softdevice(JsVar *jsFunction) {
   assert(!jsble_has_connection());
   bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
 
@@ -2508,6 +2508,8 @@ void jsble_restart_softdevice() {
   jshUtilTimerDisable(); // don't want the util timer firing during this!
   JsSysTime lastTime = jshGetSystemTime();
   jsble_kill();
+  if (jsvIsFunction(jsFunction))
+    jspExecuteFunction(jsFunction,NULL,0,NULL);
   jsble_init();
   // reinitialise everything
   jswrap_ble_reconfigure_softdevice();

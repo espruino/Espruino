@@ -163,8 +163,9 @@ void jsble_queue_pending(BLEPending blep, uint16_t data);
 int jsble_exec_pending(IOEvent *event);
 
 /** Stop and restart the softdevice so that we can update the services in it -
- * both user-defined as well as UART/HID */
-void jsble_restart_softdevice();
+ * both user-defined as well as UART/HID. If jsFunction is a function it is
+ * called when the softdevice is uninitialised. */
+void jsble_restart_softdevice(JsVar *jsFunction);
 
 uint32_t jsble_advertising_start();
 uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen);
