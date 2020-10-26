@@ -361,10 +361,14 @@ APP_TIMER_DEF(m_backlight_off_timer_id);
 JshI2CInfo i2cInternal;
 #define ACCEL_I2C &i2cInternal
 #define PRESSURE_I2C &i2cInternal
-/// Promise when pressure is requested
-JsVar *promisePressure;
 #endif
 #ifdef ID205
+#endif
+
+#ifdef PRESSURE_I2C
+/// Promise when pressure is requested
+JsVar *promisePressure;
+
 #endif
 
 #ifndef EMSCRIPTEN
@@ -2611,6 +2615,7 @@ Bangle.getPressure().then(d=>{
 });
 ```
 */
+#ifdef PRESSURE_I2C
 void jswrap_banglejs_getPressure_callback() {
   JsVar *o = jsvNewObject();
   if (o) {
@@ -2635,7 +2640,6 @@ void jswrap_banglejs_getPressure_callback() {
     if (altitude&0x800000) altitude-=0x1000000;
     jsvObjectSetChildAndUnLock(o,"altitude", jsvNewFromFloat(altitude/100.0));
     i2cBusy = false;
-
     jspromise_resolve(promisePressure, o);
   }
   jsvUnLock2(promisePressure,o);
@@ -2653,6 +2657,7 @@ JsVar *jswrap_banglejs_getPressure() {
   jsiSetTimeout(jswrap_banglejs_getPressure_callback, 100);
   return jsvLockAgain(promisePressure);
 }
+#endif
 
 /*JSON{
     "type" : "staticmethod",
