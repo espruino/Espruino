@@ -1,5 +1,6 @@
             Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
-
+            Fix Math.acos for negative values (fix #1950)
+ 
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
             Add support for > 1bpp custom bitmap fonts
