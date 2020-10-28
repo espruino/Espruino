@@ -532,7 +532,7 @@ JsBangleTasks bangleTasks;
 
 void jswrap_banglejs_pwrGPS(bool on) {
 #ifdef BANGLEJS_F18
-  jswrap_banglejs_ioWr(IOEXP_GPS, !on);
+  jswrap_banglejs_ioWr(IOEXP_GPS, on);
 #endif
 #ifdef GPS_PIN_EN
   jshPinOutput(GPS_PIN_EN, on);
