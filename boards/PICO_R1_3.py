@@ -25,8 +25,9 @@ info = {
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_pico_1r3.bin',
  'binaries' : [
-  { 'filename' : 'espruino_%v_pico_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking"},
-  { 'filename' : 'espruino_%v_pico_1r3_cc3000.bin', 'description' : "TI CC3000 WiFi Networking"},
+  { 'filename' : 'espruino_%v_pico_1r3.bin', 'description' : "AT Command WiFi + all features"},
+  { 'filename' : 'espruino_%v_pico_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet  (No debugger, AT command networking or vector font)"},
+  { 'filename' : 'espruino_%v_pico_1r3_cc3000.bin', 'description' : "TI CC3000 WiFi (No debugger, AT command networking or vector font)"},
  ],
  'build' : {
    'optimizeflags' : '-Os',

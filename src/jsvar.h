@@ -59,8 +59,13 @@ typedef enum {
     JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
     JSV_FLAT_STRING = JSV_STRING_MAX+1, ///< Flat strings store the length (in chars) as an int, and then the subsequent JsVars (in memory) store data
     JSV_NATIVE_STRING = JSV_FLAT_STRING+1, ///< Native strings store an address and length, and reference the underlying data directly
-  _JSV_STRING_END = JSV_NATIVE_STRING,
-    JSV_STRING_EXT_0 = JSV_NATIVE_STRING+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
+#ifdef SPIFLASH_BASE
+    JSV_FLASH_STRING = JSV_NATIVE_STRING+1, ///< Like a native String, but not writable and uses jshFlashRead
+    _JSV_STRING_END = JSV_FLASH_STRING,
+#else
+    _JSV_STRING_END = JSV_NATIVE_STRING,
+#endif
+    JSV_STRING_EXT_0 = _JSV_STRING_END+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
     JSV_STRING_EXT_MAX = JSV_STRING_EXT_0+JSVAR_DATA_STRING_MAX_LEN,
     _JSV_VAR_END     = JSV_STRING_EXT_MAX, ///< End of variable types
     // _JSV_VAR_END is:
@@ -261,6 +266,8 @@ bool jsvMoreFreeVariablesThan(unsigned int vars); ///< Return whether there are 
 void jsvShowAllocated(); ///< Show what is still allocated, for debugging memory problems
 /// Try and allocate more memory - only works if RESIZABLE_JSVARS is defined
 void jsvSetMemoryTotal(unsigned int jsNewVarCount);
+/// Scan memory to find any JsVar that references a specific memory range, and if so update what it points to to p[oint to the new address
+void jsvUpdateMemoryAddress(size_t oldAddr, size_t length, size_t newAddr);
 
 
 // Note that jsvNew* don't REF a variable for you, but the do LOCK it
@@ -283,6 +290,9 @@ JsVar *jsvNewEmptyArray(); ///< Create a new array
 JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array containing the given elements
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes); ///< Create an array containing the given elements
 JsVar *jsvNewNativeString(char *ptr, size_t len); ///< Create a Native String pointing to the given memory area
+#ifdef SPIFLASH_BASE
+JsVar *jsvNewFlashString(char *ptr, size_t len); ///< Create a Flash String pointing to the given memory area
+#endif
 JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
 
 /// Turns var into a Variable name that links to the given value... No locking so no need to unlock var
@@ -348,6 +358,7 @@ extern bool jsvIsBasicString(const JsVar *v); ///< Just a string (NOT a name)
 extern bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
 extern bool jsvIsFlatString(const JsVar *v);
 extern bool jsvIsNativeString(const JsVar *v);
+extern bool jsvIsFlashString(const JsVar *v);
 extern bool jsvIsNumeric(const JsVar *v);
 extern bool jsvIsFunction(const JsVar *v);
 extern bool jsvIsFunctionReturn(const JsVar *v); ///< Is this a function with an implicit 'return' at the start?
@@ -365,7 +376,7 @@ extern bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a vari
 bool jsvIsBasicName(const JsVar *v); ///< Simple NAME that links to a variable via firstChild
 /// Names with values have firstChild set to a value - AND NOT A REFERENCE
 extern bool jsvIsNameWithValue(const JsVar *v);
-extern bool jsvIsNameInt(const JsVar *v);
+extern bool jsvIsNameInt(const JsVar *v); ///< Is this a NAME pointing to an Integer value
 extern bool jsvIsNameIntInt(const JsVar *v);
 extern bool jsvIsNameIntBool(const JsVar *v);
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
@@ -428,7 +439,7 @@ JsVar *jsvGetValueOf(JsVar *v); ///< Return the JsVar, or if it's an object and 
 /** Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
 If the buffer length is exceeded, the returned value will == len */
 size_t jsvGetString(const JsVar *v, char *str, size_t len);
-size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len); ///< Get len bytes of string data from this string. Does not error if string len is not equal to len
+size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len); ///< Get len bytes of string data from this string. Does not error if string len is not equal to len, no terminating 0
 void jsvSetString(JsVar *v, const char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
 JsVar *jsvAsString(JsVar *var); ///< If var is a string, lock and return it, else create a new string
 JsVar *jsvAsStringAndUnLock(JsVar *var); ///< Same as jsvAsString, but unlocks 'var'
@@ -645,6 +656,7 @@ JsVar *jsvGetIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the in
 JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue); ///< Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
 JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, and returns the new length
 JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, unlocks it, and returns the new length
+void jsvArrayPush2Int(JsVar *arr, JsVarInt a, JsVarInt b); ///< Push 2 integers onto the end of an array
 void jsvArrayPushAll(JsVar *target, JsVar *source, bool checkDuplicates); ///< Append all values from the source array to the target array
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME. DOES NOT RENUMBER.
@@ -702,7 +714,7 @@ bool jsvIsInstanceOf(JsVar *var, const char *constructorName);
 /// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
 
-#ifndef SAVE_ON_FLASH
+#ifndef NO_DATAVIEW
 /// Create a new DataView of the given length (in elements), and fill it with the given data (if set)
 JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data);
 #endif

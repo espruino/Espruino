@@ -33,19 +33,23 @@ info = {
      'TENSORFLOW'     
    ],
    'makefile' : [
-     'DEFINES += -DUSE_TENSORFLOW',
+     'DEFINES += -DBANGLEJS_F18',
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
+     'DEFINES += -DDFU_APP_DATA_RESERVED=0', # allow firmware updates right up to the amount of available flash
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
+     'DEFINES+=-DBLUETOOTH_ADVERTISING_INTERVAL=200', # since we don't care as much about ~20uA battery usage, raise this to make getting a connection faster
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS',
+     'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
+     'DEFINES+=-DAPP_TIMER_OP_QUEUE_SIZE=5', # Bangle.js accelerometer poll handler needs something else in queue size
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
      'SOURCES += libs/misc/nmea.c',
-     'JSMODULESOURCES += libs/js/graphical_menu.min.js',
+     'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
      'NRF_BL_DFU_INSECURE=1',
      'LINKER_BOOTLOADER=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_dfu.ld',
      'LINKER_ESPRUINO=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_espruino.ld'
@@ -67,15 +71,14 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : 0x40000000, # put this in external flash
+    'address' : 0x60000000, # put this in external spiflash (see below)
     'page_size' : 4096,
-    'pages' : 256, # 1024kb - still loads left
+    'pages' : 1024, # Entire 4MB of external flash
     'flash_available' : 512 - ((31 + 8 + 2)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2. Each page is 4 kb.
   },
 };
 
 devices = {
-
   'BTN1' : { 'pin' : 'D24', 'pinstate' : 'IN_PULLDOWN' }, # top
   'BTN2' : { 'pin' : 'D22', 'pinstate' : 'IN_PULLDOWN' }, # middle
   'BTN3' : { 'pin' : 'D23', 'pinstate' : 'IN_PULLDOWN' }, # bottom
@@ -88,7 +91,7 @@ devices = {
             'controller' : 'st7789_8bit', # 8 bit parallel mode
             'pin_dc' : 'D8',
             'pin_cs' : 'D10',
-#            'pin_rst' : '', # IO expander P7
+#            'pin_rst' : '', # IO expander P6
             'pin_sck' : 'D9',
             'pin_d0' : 'D0',
             'pin_d1' : 'D1',
@@ -98,7 +101,7 @@ devices = {
             'pin_d5' : 'D5',
             'pin_d6' : 'D6',
             'pin_d7' : 'D7',
-#            'pin_bl' : '', # IO expander P6
+#            'pin_bl' : '', # IO expander P5
           },
   'GPS' : {
             'device' : 'M8130-KT',
@@ -111,7 +114,7 @@ devices = {
             'pin_voltage' : 'D30'
           },
   'HEARTRATE' : {
-           # 'pin_led' : '', on IO expander
+           # 'pin_led' : '', IO expander P7
             'pin_analog' : 'D29'
           },
   'ACCEL' : {
@@ -132,7 +135,8 @@ devices = {
             'pin_miso' : 'D20', # D1
             'pin_wp' : 'D31', # D2
             'pin_rst' : 'D17', # D3
-            'size' : 2097152
+            'size' : 4096*1024, # 4MB
+            'memmap_base' : 0x60000000 # map into the address space (in software)
           }
 };
 

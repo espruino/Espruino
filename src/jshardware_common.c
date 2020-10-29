@@ -44,11 +44,15 @@ void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->pinSDA = PIN_UNDEFINED;
   inf->bitrate = 100000;
   inf->started = false;
+  inf->clockStretch = true;
+#ifdef I2C_SLAVE
+  inf->slaveAddr = -1; // master default
+#endif
 }
 
 void jshFlashWriteAligned(void *buf, uint32_t addr, uint32_t len) {
 #ifdef SPIFLASH_BASE
-  if (addr >= SPIFLASH_BASE) {
+  if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
     // If using external flash it doesn't care about alignment, so don't bother
     jshFlashWrite(buf, addr, len);
     return;
@@ -94,15 +98,18 @@ __attribute__((weak)) bool jshSPISendMany(IOEventFlags device, unsigned char *tx
   while (txPtr<count && !jspIsInterrupted()) {
     int data = jshSPISend(device, tx[txPtr++]);
     if (data>=0) {
-      if (rx) rx[rxPtr] = (char)data;
-      rxPtr++;
+      if (rx) rx[rxPtr++] = (char)data;
     }
   }
   // clear the rx buffer
-  while (rxPtr<count && !jspIsInterrupted()) {
-    int data = jshSPISend(device, -1);
-    if (rx) rx[rxPtr] = (char)data;
-    rxPtr++;
+  if (rx) {
+    while (rxPtr<count && !jspIsInterrupted()) {
+      int data = jshSPISend(device, -1);
+      rx[rxPtr++] = (char)data;
+    }
+  } else {
+    // wait for it to finish so we can clear the buffer
+    jshSPIWait(device);
   }
   // call the callback
   if (callback) callback();
@@ -111,4 +118,9 @@ __attribute__((weak)) bool jshSPISendMany(IOEventFlags device, unsigned char *tx
 
 // Only define this if it's not used elsewhere
 __attribute__((weak)) void jshBusyIdle() {
+}
+
+// Only define this if it's not used elsewhere
+__attribute__((weak)) bool jshIsPinStateDefault(Pin pin, JshPinState state) {
+  return state == JSHPINSTATE_GPIO_IN || state == JSHPINSTATE_ADC_IN;
 }

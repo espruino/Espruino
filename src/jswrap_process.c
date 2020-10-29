@@ -17,8 +17,12 @@
 #include "jsparse.h"
 #include "jswrap_process.h"
 #include "jswrap_interactive.h"
+#include "jswrap_espruino.h" // jswrap_espruino_getConsole
 #include "jswrapper.h"
 #include "jsinteractive.h"
+#ifdef PUCKJS
+#include "jswrap_puck.h" // process.env
+#endif
 
 /*JSON{
   "type" : "class",
@@ -44,7 +48,6 @@ process.on('uncaughtException', function(e) {
   lastError=e;
   print(e,e.stack?"\n"+e.stack:"")
 });
-
 function checkError() {
   if (!lastError) return print("No Error");
   print(lastError,lastError.stack?"\n"+lastError.stack:"")
@@ -109,9 +112,16 @@ JsVar *jswrap_process_env() {
 #endif
   jsvObjectSetChildAndUnLock(obj, "BOARD", jsvNewFromString(PC_BOARD_ID));
   jsvObjectSetChildAndUnLock(obj, "FLASH", jsvNewFromInteger(FLASH_TOTAL));
+#ifdef SPIFLASH_LENGTH
+  jsvObjectSetChildAndUnLock(obj, "SPIFLASH", jsvNewFromInteger(SPIFLASH_LENGTH));
+#endif
+#ifdef PUCKJS
+  jsvObjectSetChildAndUnLock(obj, "HWVERSION", jsvNewFromInteger(isPuckV2?2:1));
+#endif
+  jsvObjectSetChildAndUnLock(obj, "STORAGE", jsvNewFromInteger(FLASH_SAVED_CODE_LENGTH));
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
-  jsvObjectSetChildAndUnLock(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice())));
+  jsvObjectSetChildAndUnLock(obj, "CONSOLE", jswrap_espruino_getConsole());
   jsvObjectSetChildAndUnLock(obj, "MODULES", jsvNewFromString(jswGetBuiltInLibraryNames()));
 #ifndef SAVE_ON_FLASH
   // Pointer to a list of predefined exports - eventually we'll get rid of the array above
@@ -136,13 +146,14 @@ Run a Garbage Collection pass, and return an object containing information on me
 * `history` : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'
 * `gc`      : Memory freed during the GC pass
 * `gctime`  : Time taken for GC pass (in milliseconds)
+* `blocksize` : Size of a block (variable) in bytes
 * `stackEndAddress` : (on ARM) the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion the bytes above this can be used.
 * `flash_start`      : (on ARM) the address of the start of flash memory (usually `0x8000000`)
 * `flash_binary_end` : (on ARM) the address in flash memory of the end of Espruino's firmware.
 * `flash_code_start` : (on ARM) the address in flash memory of pages that store any code that you save with `save()`.
 * `flash_length` : (on ARM) the amount of flash memory this firmware was built for (in bytes). **Note:** Some STM32 chips actually have more memory than is advertised.
 
-Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). See http://www.espruino.com/Performance for more information.
+Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). The actual size is available in `blocksize`. See http://www.espruino.com/Performance for more information.
 
 **Note:** To find free areas of flash memory, see `require('Flash').getFree()`
  */
@@ -166,6 +177,7 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "history", jsvNewFromInteger((JsVarInt)history));
     jsvObjectSetChildAndUnLock(obj, "gc", jsvNewFromInteger((JsVarInt)gc));
     jsvObjectSetChildAndUnLock(obj, "gctime", jsvNewFromFloat(jshGetMillisecondsFromTime(time2-time1)));
+    jsvObjectSetChildAndUnLock(obj, "blocksize", jsvNewFromInteger(sizeof(JsVar)));
 
 #ifdef ARM
     extern uint32_t LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings

@@ -12,6 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "graphics.h"
+#include "jsvariterator.h"
 
 void lcdST7789_init(JsGraphics *gfx);
 void lcdST7789_setCallbacks(JsGraphics *gfx);
@@ -46,3 +47,8 @@ void lcdST7789_flip(JsGraphics *gfx);
 void lcdST7789_blitStart(int x, int y, int w, int h);
 void lcdST7789_blitPixel(unsigned int col);
 void lcdST7789_blitEnd();
+
+/// blit a 1 bit image direct to the screen
+void lcdST7789_blit1Bit(int x, int y, int w, int h, int scale, JsvStringIterator *pixels, const uint16_t *palette);
+/// blit a 8 bit image direct to the screen
+void lcdST7789_blit8Bit(int x, int y, int w, int h, int scale, JsvStringIterator *pixels, const uint16_t *palette);

@@ -175,6 +175,9 @@ void jshPinSetState(Pin pin, JshPinState state);
  * (like JSHPINSTATE_PIN_IS_ON if pin was set to output) */
 JshPinState jshPinGetState(Pin pin);
 
+/// Check if state is default - return true if default
+bool jshIsPinStateDefault(Pin pin, JshPinState state);
+
 /** Returns an analog value between 0 and 1. 0 is expected to be 0v, and
  * 1 means jshReadVRef() volts. On most devices jshReadVRef() would return
  * around 3.3, so a reading of 1 represents 3.3v. */
@@ -322,7 +325,10 @@ typedef struct {
   Pin pinSCL;
   Pin pinSDA;
   bool started; ///< Has I2C 'start' condition been sent so far?
-  // timeout?
+  bool clockStretch; ///< In software I2C, should we wait for the device to respond, or do we just soldier on regardless?
+#ifdef I2C_SLAVE
+  int slaveAddr; ///< if >=0 this is a slave, otherwise master
+#endif
 } PACKED_FLAGS JshI2CInfo;
 
 /// Initialise a JshI2CInfo struct to default settings
@@ -406,7 +412,7 @@ int jshGetRTCPrescalerValue(bool calibrate);
 void jshResetRTCTimer();
 #endif
 
-#if defined(NRF51) || defined(NRF52)
+#if defined(NRF51_SERIES) || defined(NRF52_SERIES)
 /// Called when we have had an event that means we should execute JS
 extern void jshHadEvent();
 #else

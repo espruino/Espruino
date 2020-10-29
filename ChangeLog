@@ -1,4 +1,159 @@
-            Add Array.includes
+            Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
+            Fix Math.acos for negative values (fix #1950)
+            nRF5x: Add callback param to 'NRF.restart', allowing code to be called with softdevice disabled
+            Bangle.js: fix require("locale").time(new Date()) for default locale
+            Now use exponents when printing doubles >= 1E21 or < 1E-6 (fix #1489)
+            Fix Regexp handling of unescaped '.' in character group: /[.]/ (fix #1948)
+            Now error if using (unsupported) RegExp backreferences
+ 
+     2v08 : nRF52: Added option to build in I2C slave support
+            Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
+            Add support for > 1bpp custom bitmap fonts
+            Bangle.js: add drawLineAA and drawPolyAA for antialiased lines
+            Removed custom fonts for SAVE_ON_FLASH devices
+            Fixed BBC micro:bit show() regression from 2v07
+            Ensure Storage library is exposed on SAVE_ON_FLASH devices (fix micro:bit flash write)
+            nRF52: Fix issue where analogRead would stop E.getBattery from working
+            Fix setWatch debounce lastTime regression from 2v07 (fix #1902)
+            nRF52: CPU now sleeps when while UART/BLE data is waiting to be sent (fix #1938)
+            JSON.stringify now checks for potential stack overflow when stringifying (fix #1940)
+            Check for Stack overflow when Garbage Collecting giant linked list (fix #1765)
+            Added String.padStart/padEnd
+            Fix issue where JSON.stringify({ something: bool }) would output 'something' as a bool too
+            Bangle.js/Pixl.js: Ensure terminal is always the same color regardless of g.setColor()
+            Original Espruino Board: remove E.FFT in network-enabled builds (freeing up flash memory)
+            Storage compact now updates pointers stored in RAM so they still point to the correct address in Flash (fix #1881)
+            Bangle.js: Add debounce to the button used to wake Bangle.js up from sleep
+            Fix regex match with '-' that isn't a range: "1-2_A3".split(/[0-]/) (fix #1736)
+            Crypto: modified mbedtls SHA1 to reduce size from 3.5k to under 1k
+            Graphics: Fix for out of bounds ArrayBuffer scroll issue (fix #1946, #1947)
+
+     2v07 : Graphics.asImage() now contains buffer when bpp != 8 (fix #1863)
+            nRF52 SDK15: Fix NRF.setScan/findDevices/etc
+            nRF52: reduce input buffer space taken by advertising packets
+            Pretokenisation: reserved words can now be used as function names (fix #1868)
+            jslGetNextToken now avoids iterator clone for each token (fix #1857)
+            nRF52: fix instability when accessing ADC from IRQs and event loop at the same time (fix #1861)
+            Fix 0.0==null comparison (fix #1865)
+            WIZNet: add setHostname(), geHostname(), getStatus()
+            Fix XON not sent after reset() (fix #1872)
+            Remove USBSERIAL enum for non-USB devices
+            Shrink new vector font sizes to allow multi-line use (fix #1873)
+            Stop Object.setPrototypeOf overwriting Object.prototype sometimes (fix #1875)
+            Arrow functions now always overwrite `this` (fix #1878)
+            Implement Streaming Storage compaction to allow compact with less RAM (fix #1598,#1707,#1828)
+            jslTokenAsString now works for 'of'
+            Speed up Array.prototype.join (fix #1660)
+            Allow 'in' to be used with typed arrays (fix #1534)
+            Fix global regex issues when match may be 0 chars (fix #1888) (fix #1889)
+            Improve String.replace performance using iterator rather than repeated copy
+            Pixl.js: SDA/SCL constants should point to A4/A5, not D4/D5
+            Fix Graphics.fill/drawCircle lock leak
+            Fix issue when do..while loop condition has side effects
+            Bangle.js: Ensure SPI flash CS is disabled when sleeping/off
+            nRF5x: clear FPU interrupt before sleeping
+            micro:bit: Add support for LSM303 accelerometer/magnetometer
+            micro:bit: Add delays at first boot to wait for USB UART to init and connect vis USB
+            micro:bit: Re-added tab complete (enough space now)
+            micro:bit: Added a fake pin for LED/LED1 that uses the LED matrix
+            nRF52: Allow a cccd_handle of 0 for startNotifications
+            Bangle.js: Power down SPI flash when sleeping/off
+            nRF52: Use the best available hardware timer for PWM taking frequency into account
+            Fix delay in scheduling after initial setTimeout call (from 2v06 and later)
+            Align Tensorflow arena to 16 bytes - new Tensorflow requires this (fix #1914)
+            Fix ReferenceError when arguments[0] is used when an argument is undefined (fix #1691)
+            JSON conversion for console now removes quotes on key lengths bigger than 15 (63)
+            micro:bit: add Storage.write/etc even on space-constrained (SAVE_ON_FLASH) devices
+            Remove flash compaction code on SAVE_ON_FLASH devices to save some space
+            Fix occasional duplicate state changes when using setWatch with debounce (fix #1902)
+            JSON.stringify now outputs 'null' for non-finite numbers as the spec requires (fix #1919)
+            Update Tensorflow to latest version, fix return 0 issue on ARM release builds (fix #1918)
+            Bangle.js: Accelerometer poll handler now uses RTC app_timer, not TIMER1. 1mA->0.5mA standby current (ref #1920)
+            Bangle.js: SPI MISO is now input_pullup (shaves ~20uA)
+            Espruino WiFi: Fix startAP function when open and no password supplied
+            Bangle.js: Accelerometer now runs in low power mode (saving ~150uA)
+            Bangle.js: Peripheral polling now only fully wakes Bangle when an event requires JS processing (ref #1921)
+            Bangle.js: When not moved for 1 minute, slow down accelerometer poll interval from 80 to 800ms (fix #1921)
+            Ensure software SPI/I2C/Serial don't leak a variable when initialised
+            Fix delay in scheduling after initial setTimeout call (from 2v06 and later)
+            Espruino WiFi: Fix StorageFile on Espruino WiFi (use max storagefile size of 4k)
+            Espruino WiFi: Fix Storage compaction regression (introduced after 2v06 release)
+            Bangle.js: Fix backlight flicker regression if at part brightness (fix #1925)
+            Fix ArrayBuffer.sort with negative numbers (it's not just Array.sort!)
+            nRF52: Use the best available hardware timer for PWM taking frequency into account
+            Bangle.js: Report GPS HDOP (Horizontal Ditution of Precision => accuracy) values in 'GPS' event
+            Pixl.js: Remove SHA256 from build to free up a little extra code space
+            nRF52: Restarting softdevice no longer changes the system time by 5 mins sometimes (fix #1933)
+
+     2v06 : Allow `"ram"` keyword at the top of a function to allow it to be pretokenised and loaded to RAM
+            Don't store line numbers for pretokenised functions
+            Fix 1-byte overflow when using UDP (#1799)
+            Remove 1-byte padding in Graphics lib
+            Bangle.js: Make SPI flash memory map address configurable, and check end bounds (#1807)
+            Bangle.js: More SPI flash memory map address to 0x60000000 to avoid ARM/nRF52 registers
+            nRF52: Fix issue with fast Notifications causing Notification data to be duplicated
+              http://forum.espruino.com/conversations/345949
+            Bangle.js: allow custom splash screen with .splash file
+            Pixl.js: Fix E.showMessage
+            Puck.js v1: Fix regression that stopped Puck.IR(data) working - Puck.IR(data,D26,D25) required
+            Puck.js v2: Ensure FET is used for IR output, fix selfTest errors for IR and Blue LED
+            Bangle.js: Big speed improvements for 120x120 and 80x80 gfx modes
+            Enable Graphics arraybuffer optimisations on all but low-end devices
+            Add specific Graphics optimisations for 1 and 8 bit rendering
+            Bangle.js: drawImage - add fast path for non-transparent 1 or 8bpp image blit (fix #1794)
+            Graphics.drawImage docs improvements (fix #1812)
+            Fix issue where it was possible to get an address of a non-memory-mapped FlashString
+            Graphics.drawImage: Allow 8 bit palettes to be specified
+            Bangle.js: Remove dumping of hardware state - saves some flash memory
+            microbit: Remove dumping of hardware state - saves some flash memory
+            Bangle.js: fix 'short' time for built-in locale
+            Bangle.js: fix 'speed' units for built-in locale
+            Graphics.createArrayBuffer now honors `msb:true` if `bpp>8`
+            Graphics.asImage: handle >8bpp correctly (fix #1797)
+            Graphics.asImage: Allow 'string' output type, reference Graphics buffer if possible
+            STM32: Fix 2v05 regression in hardware SPI.write (RX timeout)
+            Graphics: fix lock leak in g.reset()/g.clear(1)
+            Graphics: added drawImages to allow layers of rotated/scaled images to be composited 
+            Remove E.interpolate/2D (not used much, just using flash)
+            Bangle.js: use double math FFT to save a few bytes of flash
+            Storage.writeJSON (fix memory leak)
+            dump() is now aware of pretokenised code (fix #1821)
+            Merge jsvStringIteratorGetChar + jsvStringIteratorNext into jsvStringIteratorGetCharAndNext (fix #1816)
+            Fix 2v05 regression that stopped process.uncaughtException from working (had been moved to E.uncaughtException)
+            nRF52: If passkey or oob is set in setSecurity, ensure that the UART connection requires encryption (fix #1705)
+            Now report [ERASED] rather than ?[255] if we hit char code 255 while evaluating
+            Bangle.js: read `setting.json` at init and modify Bangle.beep/buzz behaviour accordingly
+            Tensorflow: remove some as-yet unused operators to free space
+            nRF52: Speed up bootloader, remove pauses on Pixl.js
+            Pixl.js: fix self-test/terminal print - write to screen immediately after newline unless in IRQ
+            Fix issue with iteration over arrays with negative entries (these should be converted to Strings)
+            Linux: improve command-line, allow recursive test directory and more than one test (eg wildcard + shell expansion)
+            Added new vector fonts supporting most of ISO8859-1
+            Graphics.fillPoly now uses 4 bit fixed point internally
+            nRF52: Fix 2v05 hardware SPI regression (chip errata when sending 1 byte)
+            Graphics.fillPoly now uses a more normal fill algorithm that doesn't attempt to fill to the top right (fix #1796)
+            Fix setTimeout/Interval accuracy when new timeouts scheduled within timeout (fix #1829)
+            nRF52: Fix 'BLE task 2 is already in progress' if disconnect called during connection process
+            Puck.js: Put accelerometer into lower power mode by default
+            Puck.js: Switch to IRQs for magnetometer (lower power consumption)
+            Improve Graphics.drawImage speed and simplify code by allowing fast path for non-rotated graphics
+            Tensorflow: updated to v2.2, removed un-needed ops (reduces size by 24k)
+            Puck.js: Fix Puck.magTemp();
+            Puck.js v1: Fix magnetometer reading after puck.magOn (2v05 regression) - use old software I2C implementation
+            I2C: Improve software I2C (now quickly forces I2C high before pullup, to help improve clock speed)
+            Bangle.js: Fix GPS-raw events to provde also u-blox UBX Protocol messages (fix #1838)
+            Bangle.js: Save RAM in GPS handling, allow arbitrary length data returned (fix #1843)
+            Tensorflow updated to current 'master' version
+            Bangle.js: Improve SPI flash speed by with specific function for reading and keeping CS asserted (fix #1849)
+            Bangle.js: Ensure BTN3 exits debug mode (fix #1842)
+            Bangle.js: Now warn if GPS data overflows (fix #1847)
+            Fix double unlock in load(filename)
+            Bangle.js: Fix occasional execution errors when executing from Flash (fix #1854)
+            Add Graphics.transformVertices()
+            Re-add Graphics.quadraticBezier for Bangle.js, move to integer math to halve fn size
+            Emscripten: (fake) Flash memory support
+
+     2v05 : Add Array.includes
             Fix (Number.toFixed) rounding, eg (1234.505).toFixed(2)
             nRF52: If a central is connected to Espruino but isn't reading from UART, don't block waiting to send data
             ESP8266: reverse fix #1679
@@ -58,6 +213,94 @@
             Bangle.js: add Bangle.getLCDMode
             Bangle.js: skip firmware version checks to save some bytes in bootloader
             Graphics: new g.fillPoly to handle irregular polygons
+            Bangle.js: Bangle.setLCDMode now errors if it can't allocate a flat string (also garbage collects and defrags to try and ensure it can)
+            Graphics: drawEllipse/fillEllipse now work correctly for very small ellipses
+            Fix type compare of string and flatstring
+            Allow Storage.read to make partial file reads (fix #1744)
+            Fix SyntaxError when using pretokenise + getters (fix #1745)
+            Add Graphics.reset, and ensure it (and g.clear(1)) unreference custom fonts
+            Iterator cloners now take a reference to the iterator rather than returning it
+            Flash Strings: On Bangle.js allow JS code (and other Strings) to be accessed without loading them completely from Flash
+            Added E.CRC32 for easy testing of data validity
+            Add `E.on('kill'` event for executing code before load/reset/save/etc
+            JSON.stringify now escapes using the less efficient JSON subset of escape characters (fix #1737)
+            Allow optional `load("filename")` to load a JS file from Storage (was just `load()`)
+            Bangle.js: add Bangle.loadWidgets/drawWidgets
+            Bangle.js: Remove deprecated Bangle.menu
+            Ensure it's possible to get a solid background when using 4x6 font
+            Bangle.js: Add Bangle.showLauncher
+            Add append optimisation for string '+', and don't append to flat/native/etc strings (fix #1746)
+            ESP8266_4MB: add optional build flag FLASH_1MB for ESP8255  & ESP01s with 1MB flash
+            ESP8266: add optional build flag NO_FOTA to remove flash over the air functionality
+            Add Bangle.getCompass and Bangle.getAccel to get the latest compass/accelerometer readings without a callback
+            Fix `parseInt("0b",16)` as well as some other non-compliant behaviour (fix #1722)
+            Bangle.js: Disable touch buttons if screen off
+            Bangle.js: Don't send 'up' event for a button that was used to wake the screen
+            Bangle.js: GPS event.time set to undefined if GPS time is not initialised
+            Fix regression that removed exception reporting in console
+            Bangle.js: speed up bootloader progress bar
+            Bangle.js: fix problems turning off via bootloader sometimes
+            Bangle.js: improve power consumption when off, now ~0.08mA (fix #1727)
+            Bangle.js: add Bangle.setOptions({wakeOn*}) for when LCD should light
+            Bangle.js: Add 'twist' event and 'wakeOnTwist' (wakeOnTwist now default true, waveOnFaceUp default false)
+            Bangle.js/Pixl.js: Updated E.showMenu
+            Bangle.js: E.showMenu now has some colour, bigger, with next/prev indicators, and works with widgets 
+            Pixl.js: Add E.showPrompt/Alert/Message (fix #1747)
+            Add .toJSON handling for JSON.stringify, and add Date.toJSON (fix #1754)
+            Remove broken Graphics.drawImage centerx/y (fix #1742)
+            Add Storage.writeJSON to avoid any confusion of writing arrays/numbers/etc
+            Bangle.js: Keep widget area free when using showPrompt/Alert/etc (fix #1756)
+            Add more info about flash memory to process.env/process.memory
+            Add Graphics.quadraticBezier() 
+            Allow Graphics.setFont to be used with custom fonts (fix #1762)
+            Espruino WiFi: WiFi module now makes BOOT pin open circuit when sleeping - saves ~2mA
+            Add E.setConsole/getConsole to allow console to be moved (including to 'null')
+            Bangle.js: Ensure HRM is turned off in Bangle.off() (fix #1759)
+            Increase 'Storage' library's max filename size to 24 bytes (from 8)
+            Remove header.replacement in 'Storage' lib and just zero header.name
+              - increase filename to 28 bytes, but file search now more efficient
+            Bangle.js: Increase Storage area to full 4MB of flash
+            Bangle.js: NEEDS NEW APPS - Move away from using first char as file descriptor and use file extensions instead
+            Add StorageFile.getLength() to get the current length of a StorageFile
+            StorageFile also writes files with a 'JSFF_STORAGEFILE' flag (not currently used)
+            Storage.list() can now take a RegEx/string to filter returned results 
+            MDBT42Q: Remove AES encryption libs by default to free up more flash memory
+            Microbit: Add SAVE_ON_FLASH_EXTREME flag to ensure builds keep working
+            Bangle.js: Added built-in 'locale' module to handle common conversions - this can be overwritten by a Storage File to change language
+            Storage.readJSON now has optional 2nd arg that stops it from creating exceptions on bad JSON
+            Bangle.js: Tweak LCD gamma curves to provide better gradients on new watches (fix #1758)
+            Bangle.js: fix BLE UART transmit bug when compiling for SDK14 (thanks @fanoush!)
+            Add euro symbol to 6x8 and 4x6 fonts as char code 128 (ISO10646-1)
+            Bangle.js: Use 'locale' library to translate E.showMenu/Prompt/Alert/etc
+            Bangle.js: remove graphical_menu lib and inline specialised version into E.showMenu
+            Bangle.js: Modify handling of widgets to allow variable width widgets (requires new widget JS)
+            Changed 6x8 builtin font to a modified Dina_r400-6 supporting non-ASCII characters
+            Bangle.js: Modify E.showMessage/Prompt/Alert to clear the entire screen and redraw widgets (fix #1771)
+            Bangle.js: Modify Bangle.drawWidgets to only clear the areas where widgets actually are, not the whole top&bottom bar
+            Kick Watchdog when erasing flash (it can take so long on 4MB external flash that it reboots)
+            KICKSTARTER BUILD
+            Bangle.js: Add 'meridian' to locale library
+            ESP32: add environment variable COMPORT to be used with make flash 
+            Puck.js: v2 Support: Accelerometer/Gyro/temp
+            Puck.js: Self test now sets Puck.js BLE name if there's an error
+            Fix bitwise rshift by 0 to be unsigned (fix #1784)
+            Bangle.js: Don't load .boot0/1/2/3 if BTN1 is pressed
+            Puck.js: Allow D21(RST) to be used as normal IO pin
+            Fix recent E.getTemperature regression (fix #1788)
+            Fix pretokenise of RegExp literals (fix #1786)
+            Add ability to turn off software I2C clock stretching (not accessible from JS)
+            Puck.js: disable clock stretching for built-in sensors
+            Bangle.js: Now clear entire top/bottom row if there are widgets in it (fix #1790)
+            Add Storage check at startup and erase everything if storage looks corrupt (fix #1766)
+            Fix restriction on StorageFile filename length (8 to 28)
+            Fix array sort when compare fn returns floats <1 (fix #1798)
+            Fix Storage.write duplicate file issue in some rare cases (fix #1801)
+            Bangle.js: fix post-kickstarter issue adding widgets in bottom of screen (#1790)
+            Bangle.js: fix magnetometer self-calibration
+            Espruino Original: Removed Debugger, Tab complete, AT command networking from WIZnet networking build to free enough Flash
+            Espruino Pico: Added a normal build that doesn't contain CC3000 or WIZnet support
+            Espruino Pico: Removed Debugger and Vector font from WIZnet/CC3000 networking versions to free enough Flash
+            HYSTM32_28: Removed from build due to lack of interest and difficulty with increased firmware size
 
      2v04 : Allow \1..\9 escape codes in RegExp
             ESP8266: reading storage is not working for boot from user2 (fix #1507)

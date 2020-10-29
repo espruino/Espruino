@@ -30,7 +30,9 @@ var comparisons = [
   { l: [1, 2], r: '1,2', a: true, s: false },
   { l: [0], r: '0', a: true, s: false },
   { l: 0, r: null, a: false, s: false },
+  { l: 0.0, r: null, a: false, s: false }, // https://github.com/espruino/Espruino/issues/1865
   { l: 0, r: NaN, a: false, s: false },
+  { l: 0.0, r: NaN, a: false, s: false }, // https://github.com/espruino/Espruino/issues/1865
   { l: 'foo', r: NaN, a: false, s: false },
   { l: NaN, r: NaN, a: false, s: false }
 ];

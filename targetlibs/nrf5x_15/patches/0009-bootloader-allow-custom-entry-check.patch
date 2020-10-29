@@ -1,5 +1,5 @@
---- targetlibs/nrf5x_15/components/libraries/bootloader/nrf_bootloader.c
-+++ targetlibs/nrf5x_15/components/libraries/bootloader/nrf_bootloader.c
+--- a/targetlibs/nrf5x_15/components/libraries/bootloader/nrf_bootloader.c
++++ b/targetlibs/nrf5x_15/components/libraries/bootloader/nrf_bootloader.c
 @@ -261,7 +261,7 @@
  
  /**@brief Function for checking whether to enter DFU mode or not.

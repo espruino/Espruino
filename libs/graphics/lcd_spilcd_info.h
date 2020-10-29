@@ -65,3 +65,39 @@ const unsigned char SPILCD_CMD_WINDOW_X = 0x2A;
 const unsigned char SPILCD_CMD_WINDOW_Y = 0x2B;
 const unsigned char SPILCD_CMD_DATA = 0x2C;
 #endif
+#ifdef LCD_CONTROLLER_ST7789V
+static const char SPILCD_INIT_CODE[] = {
+// CMD,DELAY,DATA_LEN,D0,D1,D2...
+0x11, 100, 0, // SLPOUT Leave sleep mode
+0x36,0,1,/*data*/0, // memory access control
+0x3a,0,1,/*data*/3, // pixel format 12bpp
+//0x3a,0,1,/*data*/5, // pixel format 16bpp
+0x3a,0,0,/*data*/ //
+0x21,0,0,/*data*/ // display invert
+0xe7,0,1,/*data*/0, // disable SPI2
+0x37,0,2,/*data*/0,0, // disable SPI2
+0x2a,0,4,/*data*/0,0,0,0xef, // column address
+0x2b,0,4,/*data*/0,0,0,0xef, // row address
+0xb2,0,5,/*data*/0xc,0xc,0,0x33,0x33, // porch control
+
+0xb7,0,1,/*data*/0x35, // gate control
+
+0xbb,0,1,/*data*/0x2a, // VCOMS
+0xc0,0,1,/*data*/0x2c, // LCM Control
+0xc2,0,1,/*data*/1, // VDV VRH enable
+0xc3,0,1,/*data*/0xb, // VRH set
+0xc4,0,1,/*data*/0x20, // VDV set
+0xc6,0,1,/*data*/0xf, // FR Control 2
+0xd0,0,2,/*data*/0xa4,0xa1, // Power control 1
+0xe9,0,3,/*data*/0x11,0x11,3, // Equalise time
+0xe0,0,14,/*data*/0xf0,9,0x13,10,0xb,6,0x38,0x33,0x4f,4,0xd,0x19,0x2e,0x2f, // gamma
+0xe1,0x14,14,/*data*/0xf0,9,0x13,10,0xb,6,0x38,0x33,0x4f,4,0xd,0x19,0x2e,0x2f, // gamma
+0x29,0x14,0,/*data*/ // display on
+// End
+0, 0, 255/*DATA_LEN = 255 => END*/
+};
+
+const unsigned char SPILCD_CMD_WINDOW_X = 0x2A;
+const unsigned char SPILCD_CMD_WINDOW_Y = 0x2B;
+const unsigned char SPILCD_CMD_DATA = 0x2C;
+#endif

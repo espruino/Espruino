@@ -7,8 +7,9 @@ ESP32=1
 CFLAGS+=-Og -Wpointer-arith -Wno-error=unused-function -Wno-error=unused-but-set-variable \
 -Wno-error=unused-variable -Wall -ffunction-sections -fdata-sections -mlongcalls -nostdlib \
 -MMD -MP -std=gnu99 -fstrict-volatile-bitfields -fgnu89-inline -mfix-esp32-psram-cache-issue
-SOURCES += targets/esp32/jshardware.c
-SOURCES += targets/esp32/esp32_neopixel.c
+SOURCES += targets/esp32/jshardware.c \
+targets/esp32/jshardwareESP32.c \
+targets/esp32/esp32_neopixel.c
 INCLUDE += -I$(ROOT)/targets/esp32
 
 ifndef ESP_IDF_PATH
@@ -135,8 +136,7 @@ SOURCES+= targets/esp32/bluetooth.c \
 targets/esp32/BLE/esp32_bluetooth_utils.c \
 targets/esp32/BLE/esp32_gap_func.c \
 targets/esp32/BLE/esp32_gatts_func.c \
-targets/esp32/BLE/esp32_gattc_func.c \
-targets/esp32/jshardwareESP32.c
+targets/esp32/BLE/esp32_gattc_func.c
 INCLUDE+= -I$(ESP_IDF_PATH)/components/bt/bluedroid/include \
 -I$(ESP_IDF_PATH)/components/bt/bluedroid/api/include \
 -I$(ESP_IDF_PATH)/components/bt/bluedroid/bta/include \
@@ -148,3 +148,4 @@ LDFLAGS+= -L$(ESP_APP_TEMPLATE_PATH)/build/components/bt/bluedroid/api \
 -L$(ESP_APP_TEMPLATE_PATH)/build/components/bt/bluedroid/bta 
 endif
 
+FLASH_BAUD          ?= 921600 # The flash baud rate

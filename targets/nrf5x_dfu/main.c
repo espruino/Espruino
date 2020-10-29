@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include "platform_config.h"
+#include "jsutils.h"
 #include "hardware.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
@@ -107,6 +108,14 @@ bool dfu_enter_check(void) {
 #else
       lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                      >\r");
 #endif
+#ifdef BANGLEJS_F18
+      int count = 23;
+      while (get_btn1_state() && --count) {
+        // the screen update takes long enough that
+        // we don't need a delay
+        lcd_print("=");
+      }
+#else
       int count = 3000;
       while (get_btn1_state() && count) {
         nrf_delay_us(999);
@@ -114,24 +123,29 @@ bool dfu_enter_check(void) {
         if ((count&127)==0) lcd_print("=");
         count--;
       }
+#endif
       if (!count) {
         dfu_start = false;
-#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+#if defined(BUTTONPRESS_TO_REBOOT_BOOTLOADER) && defined(BTN2_PININDEX)
         if (jshPinGetValue(BTN2_PININDEX)) {
           lcd_kill();
           jshPinOutput(VIBRATE_PIN,1); // vibrate on
-          while (get_btn1_state()) {};
-          jshPinOutput(VIBRATE_PIN,0); // vibrate off
+          while (get_btn1_state() || get_btn2_state()) {};
+          jshPinSetValue(VIBRATE_PIN,0); // vibrate off
           set_led_state(0,0);
+          nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
+          nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
           nrf_gpio_cfg_sense_input(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
           nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
+          NRF_POWER->TASKS_LOWPWR = 1;
           NRF_POWER->SYSTEMOFF = 1;
           while (true) {};
           //NVIC_SystemReset(); // just in case!
         }
 #endif
       } else {
-        lcd_println("\r\nDFU STARTED");
+        lcd_clear();
+        lcd_println("DFU START");
       }
       set_led_state(true, true);
     }
@@ -139,7 +153,9 @@ bool dfu_enter_check(void) {
     if (!dfu_start) {
 #ifdef LCD
       lcd_println("\r\nBOOTING...");
-      nrf_delay_us(500000);
+#ifdef BANGLEJS
+      nrf_delay_us(100000);
+#endif
 #endif
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
       // turn on watchdog - bootloader should override this if it starts,
@@ -149,7 +165,7 @@ bool dfu_enter_check(void) {
       NRF_WDT->CRV = (int)(5*32768); // 5 seconds
       NRF_WDT->RREN |= WDT_RREN_RR0_Msk;  // Enable reload register 0
       NRF_WDT->TASKS_START = 1;
-      NRF_WDT->RR[0] = 0x6E524635;
+      NRF_WDT->RR[0] = 0x6E524635; // Kick...
 #endif
     }
 
@@ -188,10 +204,10 @@ extern void dfu_set_status(DFUStatus status) {
 /*  case DFUS_ADVERTISING_STOP:
     break;*/
   case DFUS_CONNECTED:
-    lcd_println("CONNECTED");
+    lcd_println("CONNECT");
     set_led_state(false,true); break;
   case DFUS_DISCONNECTED:
-    lcd_println("DISCONNECTED");
+    lcd_println("DISCONNECT");
     break;
   }
 }
@@ -230,24 +246,22 @@ int main(void)
 
 #ifdef LCD
     lcd_init();
-    bool wait = false;
+
     int r = NRF_POWER->RESETREAS;
     const char *reasons = "PIN\0WATCHDOG\0SW RESET\0LOCKUP\0OFF\0";
     while (*reasons) {
-      if (r&1) {
+      if (r&1)
         lcd_println(reasons);
-        wait=true;
-      }
       r>>=1;
       while (*reasons) reasons++;
       reasons++;
     }
     // Clear reset reason flags
     NRF_POWER->RESETREAS = 0xFFFFFFFF;
-    if (wait) {
-      lcd_println("");
-      nrf_delay_us(1000000); // 1 sec delay
-    }
+    lcd_println("DFU " JS_VERSION "\n");
+#ifdef BANGLEJS
+    nrf_delay_us(500000); // 500ms delay
+#endif
 #endif
 
 #if NRF_SD_BLE_API_VERSION < 5

@@ -26,9 +26,9 @@
 #include <math.h>
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "2v04"
+#define JS_VERSION "2v08"
 #else
-#define JS_VERSION "2v04." BUILDNUMBER
+#define JS_VERSION "2v08." BUILDNUMBER
 #endif
 /*
   In code:
@@ -37,12 +37,15 @@
   OPT - potential for speed optimisation
 */
 
-#ifndef alloca
-#define alloca(x) __builtin_alloca(x)
-#endif
-
 #ifdef SAVE_ON_FLASH
 #define SAVE_ON_FLASH_MATH 1
+#ifndef BLUETOOTH
+#define NO_DATAVIEW
+#endif
+#endif
+
+#ifndef alloca
+#define alloca(x) __builtin_alloca(x)
 #endif
 
 #if defined(ESP8266)
@@ -256,9 +259,6 @@ typedef int64_t JsSysTime;
 #define JS_VARS_BEFORE_IDLE_GC 32
 #endif
 
-
-#define JSPARSE_MAX_SCOPES  8
-
 #define STRINGIFY_HELPER(x) #x
 #define STRINGIFY(x) STRINGIFY_HELPER(x)
 #define NOT_USED(x) ( (void)(x) )
@@ -363,7 +363,7 @@ typedef int64_t JsSysTime;
 #define NIBBLEFIELD_CLEAR(BITFIELD) memset(BITFIELD, 0, sizeof(BITFIELD)) ///< Clear all elements
 */
 
-#if defined(NRF51)
+#if defined(NRF51_SERIES)
   // Cortex-M0 does not support unaligned reads
   #define UNALIGNED_UINT16(addr) ((((uint16_t)*((uint8_t*)(addr)+1)) << 8) | (*(uint8_t*)(addr)))
 #else
@@ -379,10 +379,11 @@ bool isAlpha(char ch);
 bool isIDString(const char *s);
 
 /** escape a character - if it is required. This may return a reference to a static array,
-so you can't store the value it returns in a variable and call it again. */
-const char *escapeCharacter(char ch);
+so you can't store the value it returns in a variable and call it again.
+If jsonStyle=true, only string escapes supported by JSON are used */
+const char *escapeCharacter(char ch, bool jsonStyle);
 /** Parse radix prefixes, or return 0 */
-int getRadix(const char **s, int forceRadix, bool *hasError);
+int getRadix(const char **s,  bool *hasError);
 /// Convert a character to the hexadecimal equivalent (or -1)
 int chtod(char ch);
 /// Convert 2 characters to the hexadecimal equivalent (or -1)
@@ -409,6 +410,22 @@ typedef enum {
 } JsExceptionType;
 
 void jsAssertFail(const char *file, int line, const char *expr);
+
+#define DBG_INFO 0
+#define DBG_VERBOSE 1
+
+/*
+#if defined(DEBUG) || __FILE__ == DEBUG_FILE
+   #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__) 
+ #else 
+   #define jsDebug(dbg_type, format, ...) do { } while(0) 
+ #endif
+ */
+#if (defined DEBUG ) ||  ( defined __FILE__ == DEBUG_FILE)
+  #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__) 
+#else 
+  #define jsDebug(dbg_type, format, ...) do { } while(0) 
+#endif
 
 #ifndef USE_FLASH_MEMORY
 // Normal functions thet place format string in ram
@@ -482,21 +499,24 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size);
 
 
 typedef void (*vcbprintf_callback)(const char *str, void *user_data);
-/** Espruino-special printf with a callback
- * Supported are:
- *   %d = int
- *   %0#d = int padded to length # with 0s
- *   %x = int as hex
- *   %L = JsVarInt
- *   %Lx = JsVarInt as hex
- *   %f = JsVarFloat
- *   %s = string (char *)
- *   %c = char
- *   %v = JsVar * (doesn't have to be a string - it'll be converted)
- *   %q = JsVar * (in quotes, and escaped)
- *   %j = Variable printed as JSON
- *   %t = Type of variable
- *   %p = Pin
+/**
+ * Espruino-special printf with a callback.
+ *
+ * The supported format specifiers are:
+ * * `%d` = int
+ * * `%0#d` or `%0#x` = int padded to length # with 0s
+ * * `%x` = int as hex
+ * * `%L` = JsVarInt
+ * * `%Lx`= JsVarInt as hex
+ * * `%f` = JsVarFloat
+ * * `%s` = string (char *)
+ * * `%c` = char
+ * * `%v` = JsVar * (doesn't have to be a string - it'll be converted)
+ * * `%q` = JsVar * (in quotes, and escaped)
+ * * `%Q` = JsVar * (in quotes, and escaped the JSON subset of escape chars)
+ * * `%j` = Variable printed as JSON
+ * * `%t` = Type of variable
+ * * `%p` = Pin
  *
  * Anything else will assert
  */
@@ -504,6 +524,9 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
 
 /// This one is directly usable..
 void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, ...);
+
+/// a snprintf replacement so mbedtls doesn't try and pull in the whole stdlib to cat two strings together
+int espruino_snprintf_va( char * s, size_t n, const char * fmt, va_list argp );
 
 /// a snprintf replacement so mbedtls doesn't try and pull in the whole stdlib to cat two strings together
 int espruino_snprintf( char * s, size_t n, const char * fmt, ... );
@@ -517,5 +540,9 @@ void srand(unsigned int seed);
 
 /** get the amount of free stack we have, in bytes */
 size_t jsuGetFreeStack();
+
+#ifdef ESP32
+  void *espruino_stackHighPtr;  //Used by jsuGetFreeStack
+#endif
 
 #endif /* JSUTILS_H_ */

@@ -11,16 +11,16 @@
  * Platform Specific part of Hardware interface Layer
  * ----------------------------------------------------------------------------
  */
- #include <stdlib.h>
- #include <string.h>
- #include <stdio.h>
- #include <unistd.h>
- #include <sys/time.h>
- #include <sys/select.h>
- #include <termios.h>
- #include <fcntl.h>
- #include <signal.h>
- #include <inttypes.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/time.h>
+#include <sys/select.h>
+#include <termios.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <inttypes.h>
 #include <emscripten.h>
 
 #include "platform_config.h"
@@ -261,6 +261,7 @@ JsVarFloat jshReadVRef()  { return NAN; };
 unsigned int jshGetRandomNumber() { return rand(); }
 
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
+  if (addr<FLASH_START) return false;
   *startAddr = (uint32_t)(floor(addr / FAKE_FLASH_BLOCKSIZE) * FAKE_FLASH_BLOCKSIZE);
   *pageSize = FAKE_FLASH_BLOCKSIZE;
   return true;
@@ -270,14 +271,37 @@ JsVar *jshFlashGetFree() {
   return jsFreeFlash;
 }
 void jshFlashErasePage(uint32_t addr) {
+#ifdef EMSCRIPTEN
+  uint32_t startAddr;
+  uint32_t pageSize;
+  if (jshFlashGetPage(addr, &startAddr, &pageSize)) {
+    for (uint32_t i=0;i<pageSize;i++)
+      EM_ASM_({ hwFlashWrite($0,0xFF); }, startAddr+i-FLASH_START);
+  }
+#endif
 }
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+  if (addr<FLASH_START) return;
+#ifdef EMSCRIPTEN
+  for (uint32_t i=0;i<len;i++)
+    ((uint8_t*)buf)[i] = EM_ASM_INT({ return hwFlashRead($0) }, addr+i-FLASH_START);
+#endif
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+  if (addr<FLASH_START) return;
+#ifdef EMSCRIPTEN
+  for (uint32_t i=0;i<len;i++)
+    EM_ASM_({ hwFlashWrite($0,$1); }, addr+i-FLASH_START, ((uint8_t*)buf)[i]);
+#endif
 }
 
 // Just pass data through, since we can access flash at the same address we wrote it
-size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
+size_t jshFlashGetMemMapAddress(size_t addr) {
+  // don't allow flash to be memory mapped
+  if (addr>=FLASH_START && addr<FLASH_START+FLASH_TOTAL)
+    return 0;
+  return addr;
+}
 
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;

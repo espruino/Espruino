@@ -13,10 +13,22 @@
  */
 #include "jspin.h"
 
+extern bool isPuckV2;
+
 void jswrap_puck_magOn();
 void jswrap_puck_magOff();
 JsVar *jswrap_puck_mag();
-JsVarInt jswrap_puck_magTemp();
+JsVarFloat jswrap_puck_magTemp();
+void jswrap_puck_magWr(JsVarInt reg, JsVarInt data);
+int jswrap_puck_magRd(JsVarInt reg);
+JsVarFloat jswrap_puck_getTemperature();
+
+void jswrap_puck_accelOn(JsVarFloat hz);
+void jswrap_puck_accelOff();
+JsVar *jswrap_puck_accel();
+void jswrap_puck_accelWr(JsVarInt reg, JsVarInt data);
+int jswrap_puck_accelRd(JsVarInt reg);
+
 void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode);
 int jswrap_puck_capSense(Pin tx, Pin rx);
 JsVarFloat jswrap_puck_light();

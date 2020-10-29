@@ -26,13 +26,14 @@ info = {
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_espruino_1r3.bin',
  'binaries' : [
-  { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking (no crypto lib, no vector font)"},
-  { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "AT Command Networking only"},
+  { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "No networking, includes all other features"},
+  { 'filename' : 'espruino_%v_espruino_1r3_at.bin', 'description' : "AT Command WiFi (No vector font, FFT)"},
+  { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking (No crypto lib, AT Command WiFi, vector font, FFT, debugger or tab complete)"}
  ],
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
-     'NET',
+     #'NET', # enabled by create_zip on demand
      'GRAPHICS',
      'NEOPIXEL',
      'CRYPTO','SHA1_JS',
@@ -41,7 +42,7 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DESPRUINO_1V3',
-     'DEFINES+=-DSAVE_ON_FLASH_MATH -DNO_VECTOR_FONT', 
+     'DEFINES+=-DSAVE_ON_FLASH_MATH', 
      'STLIB=STM32F10X_XL',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o'
    ]

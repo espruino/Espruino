@@ -54,6 +54,11 @@ JsVar *jswrap_arguments() {
     return 0;
   }
   JsVar *result = jsvGetFunctionArgumentLength(scope);
+  /* save 'arguments' as a variable into the scope. This stops us having
+  to recreate the array each time, but also stops #1691 - where using an
+  undefined argument after 'arguments' is freed leaves an unreferenced
+  NAME with an undefined value, which causes a ReferenceError. */
+  jsvObjectSetChild(scope,"arguments",result);
   jsvUnLock(scope);
   return result;
 }
@@ -137,7 +142,7 @@ JsVar *jswrap_eval(JsVar *v) {
 Convert a string representing a number into an integer
  */
 JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
-  int radix = 0/*don't force radix*/;
+  int radix = 0;
   if (jsvIsNumeric(radixVar))
     radix = (int)jsvGetInteger(radixVar);
 
@@ -146,12 +151,19 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
 
   // otherwise convert to string
   char buffer[JS_NUMBER_BUFFER_SIZE];
+  char *bufferStart = buffer;
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
   bool hasError = false;
-  if (!radix && buffer[0]=='0' && isNumeric(buffer[1]))
-    radix = 10; // DON'T assume a number is octal if it starts with 0
+  if (((!radix) || (radix==16)) &&
+      buffer[0]=='0' && (buffer[1]=='x' || buffer[1]=='X')) { // special-case for '0x' for parseInt
+    radix = 16;
+    bufferStart += 2;
+  }
+  if (!radix) {
+    radix = 10; // default to radix 10
+  }
   const char *endOfInteger;
-  long long i = stringToIntWithRadix(buffer, radix, &hasError, &endOfInteger);
+  long long i = stringToIntWithRadix(bufferStart, radix, &hasError, &endOfInteger);
   if (hasError) return jsvNewFromFloat(NAN);
   // If the integer went right to the end of our buffer then we
   // probably had to miss some stuff off the end of the string
@@ -228,11 +240,10 @@ bool jswrap_isNaN(JsVar *v) {
     JsvStringIterator it;
     jsvStringIteratorNew(&it,v,0);
     while (jsvStringIteratorHasChar(&it)) {
-      if (!isWhitespace(jsvStringIteratorGetChar(&it))) {
+      if (!isWhitespace(jsvStringIteratorGetCharAndNext(&it))) {
         allWhiteSpace = false;
         break;
       }
-      jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&it);
     if (allWhiteSpace) return false;
@@ -356,8 +367,7 @@ JsVar *jswrap_atob(JsVar *base64Data) {
     int i, valid=0;
     for (i=0;i<4;i++) {
       if (jsvStringIteratorHasChar(&itsrc)) {
-        int sextet = jswrap_atob_decode(jsvStringIteratorGetChar(&itsrc));
-        jsvStringIteratorNext(&itsrc);
+        int sextet = jswrap_atob_decode(jsvStringIteratorGetCharAndNext(&itsrc));
         if (sextet>=0) {
           triple |= (unsigned int)(sextet) << ((3-i)*6);
           valid=i;
@@ -398,7 +408,7 @@ JsVar *jswrap_encodeURIComponent(JsVar *arg) {
     JsvStringIterator dst;
     jsvStringIteratorNew(&dst, result, 0);
     while (jsvStringIteratorHasChar(&it)) {
-      char ch = jsvStringIteratorGetChar(&it);
+      char ch = jsvStringIteratorGetCharAndNext(&it);
       if (isAlpha(ch) || isNumeric(ch) ||
           ch=='-' || // _ in isAlpha
           ch=='.' ||
@@ -416,7 +426,6 @@ JsVar *jswrap_encodeURIComponent(JsVar *arg) {
         d = ((unsigned)ch)&15;
         jsvStringIteratorAppend(&dst, (char)((d>9)?('A'+d-10):('0'+d)));
       }
-      jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&dst);
     jsvStringIteratorFree(&it);
@@ -447,7 +456,7 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg) {
     JsvStringIterator dst;
     jsvStringIteratorNew(&dst, result, 0);
     while (jsvStringIteratorHasChar(&it)) {
-      char ch = jsvStringIteratorGetChar(&it);
+      char ch = jsvStringIteratorGetCharAndNext(&it);
       if (ch>>7) {
         jsExceptionHere(JSET_ERROR, "ASCII only\n");
         break;
@@ -455,10 +464,8 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg) {
       if (ch!='%') {
         jsvStringIteratorAppend(&dst, ch);
       } else {
-        jsvStringIteratorNext(&it);
-        int hi = jsvStringIteratorGetChar(&it);
-        jsvStringIteratorNext(&it);
-        int lo = jsvStringIteratorGetChar(&it);
+        int hi = jsvStringIteratorGetCharAndNext(&it);
+        int lo = jsvStringIteratorGetCharAndNext(&it);
         int v = (char)hexToByte(hi,lo);
         if (v<0) {
           jsExceptionHere(JSET_ERROR, "Invalid URI\n");
@@ -467,7 +474,6 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg) {
         ch = (char)v;
         jsvStringIteratorAppend(&dst, ch);
       }
-      jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&dst);
     jsvStringIteratorFree(&it);

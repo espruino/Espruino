@@ -48,7 +48,10 @@ typedef enum {
   EV_TERMINAL, // Built-in VT100 terminal
 #endif
   EV_SERIAL_DEVICE_STATE_START, // The point at which we start storing device state (jshSerialDevice*)
-  EV_USBSERIAL = EV_SERIAL_DEVICE_STATE_START, ///< USB CDC Serial Data
+  _EV_SERIAL_DEVICE_STATE_START_MINUS_ONE=EV_SERIAL_DEVICE_STATE_START-1, // means that the next enum should==EV_SERIAL_DEVICE_STATE_START
+#ifdef USB
+  EV_USBSERIAL, ///< USB CDC Serial Data
+#endif
 #ifdef BLUETOOTH
   EV_BLUETOOTH, ///< Bluetooth LE
 #endif

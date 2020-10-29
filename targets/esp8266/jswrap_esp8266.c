@@ -236,7 +236,11 @@ JsVar *jswrap_ESP8266_getState() {
   uint32_t map = system_get_flash_size_map();
   extern char *flash_maps[]; // in user_main.c
   extern uint16_t flash_kb[]; // in user_main.c
-  jsvObjectSetChildAndUnLock(esp8266State, "flashMap",   jsvNewFromString(flash_maps[map]));
+  extern char *flash_maps_alt[]; // in user_main.c
+
+  jsvObjectSetChildAndUnLock(esp8266State, "flashMap",   jsvNewFromString(
+    ( map == 2  && flash_kb[map] == 1024  && ESP_COMBINED_SIZE >= 1024 ) ? flash_maps_alt[map] : flash_maps[map] ));
+
   jsvObjectSetChildAndUnLock(esp8266State, "flashKB",    jsvNewFromInteger(flash_kb[map]));
 
   uint32_t fid = spi_flash_get_id();

@@ -40,6 +40,7 @@ info = {
      'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DBOARD_PCA10056',
      'DEFINES += -DNRF_USB=1 -DUSB',
+     'DEFINES += -DNEOPIXEL_SCK_PIN=22 -DNEOPIXEL_LRCK_PIN=23', # nRF52840 needs LRCK pin defined for neopixel
      'NRF_SDK15=1'
    ]
  }
@@ -49,7 +50,7 @@ info = {
 chip = {
   'part' : "NRF52840",
   'family' : "NRF52",
-  'package' : "QFN48",
+  'package' : "AQFN73",
   'ram' : 256,
   'flash' : 1024,
   'speed' : 64,

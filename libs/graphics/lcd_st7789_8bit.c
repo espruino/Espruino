@@ -16,6 +16,7 @@
 #include "jsutils.h"
 #include "lcd_st7789_8bit.h"
 #include "jswrap_graphics.h"
+#include "lcd_arraybuffer.h" // for lcd*_ArrayBuffer_flat8
 #ifndef EMSCRIPTEN
 #include "jshardware.h"
 #include "nrf_gpio.h"
@@ -42,8 +43,11 @@ static const uint8_t ST7789_INIT_CODE[] = {
     0xC4,0,1,0x20,
     0xC5,0,1,0xF,
     0xD0,0,2,0xA4,0xA1,
-    0xe0,0,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
-    0xe1,0,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
+    // https://github.com/espruino/Espruino/issues/1758
+    //0xe0,0,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
+    //0xe1,0,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
+    0xe0,0,14,0x70,0x15,0x20,0x15,0x10,0x09,0x48,0x33,0x53,0x0B,0x19,0x15,0x2a,0x2f,
+    0xe1,0,14,0x70,0x15,0x20,0x15,0x10,0x09,0x48,0x33,0x53,0x0B,0x19,0x15,0x2a,0x2f,
     0x29,0,0,
     0x21,0,0,
     // End
@@ -168,6 +172,7 @@ void lcdST7789_setMode(LCDST7789Mode mode) {
     uint8_t buf[4];
     lcdMode = mode;
     switch (lcdMode) {
+    case LCDST7789_MODE_NULL: break;
     case LCDST7789_MODE_UNBUFFERED:
     case LCDST7789_MODE_BUFFER_120x120:
     case LCDST7789_MODE_BUFFER_80x80:
@@ -200,14 +205,13 @@ LCDST7789Mode lcdST7789_getMode() {
 }
 
 void lcdST7789_flip(JsGraphics *gfx) {
-  unsigned char buf[2];
   switch (lcdMode) {
+    case LCDST7789_MODE_NULL: break;
     case LCDST7789_MODE_UNBUFFERED:
       // unbuffered - flip has no effect
     break;
     case LCDST7789_MODE_DOUBLEBUFFERED: {
       // buffered - flip using LCD itself
-      unsigned short offs;
       if (lcdScrollY==0) {
         lcdScrollY = 160;
       } else {
@@ -218,67 +222,34 @@ void lcdST7789_flip(JsGraphics *gfx) {
     case LCDST7789_MODE_BUFFER_120x120: {
       // offscreen buffer - BLIT
       JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
-      size_t len = 0;
-      unsigned char *dataPtr = (unsigned char*)jsvGetDataPointer(buffer, &len);
-      jsvUnLock(buffer);
-      if (dataPtr && len>=(120*120)) {
-        // reset scroll to 0
-        lcdScrollY = 0;
-        lcdST7789_scrollCmd();
-        // blit
-        lcdST7789_blitStart(0,0,239,239);
-        for (int y=0;y<240;y++) {
-          for (int x=0;x<120;x++) {
-            uint16_t c = PALETTE_8BIT[*(dataPtr++)];
-            lcdST7789_blitPixel(c);
-            lcdST7789_blitPixel(c);
-          }
-          // display the same row twice
-          if (!(y&1)) dataPtr -= 120;
-        }
-        lcdST7789_blitEnd();
+      JsVar *str = jsvGetArrayBufferBackingString(buffer);
+      if (str) {
+        JsvStringIterator it;
+        jsvStringIteratorNew(&it, str, 0);
+        lcdST7789_blit8Bit(0,0,120,120,2,&it,PALETTE_8BIT);
+        jsvStringIteratorFree(&it);
       }
+      jsvUnLock2(str,buffer);
     } break;
     case LCDST7789_MODE_BUFFER_80x80: {
       // offscreen buffer - BLIT
       JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
-      size_t len = 0;
-      unsigned char *dataPtr = (unsigned char*)jsvGetDataPointer(buffer, &len);
-      jsvUnLock(buffer);
-      if (dataPtr && len>=(80*80)) {
-        // reset scroll to 0
-        lcdScrollY = 0;
-        lcdST7789_scrollCmd();
-        // blit
-        lcdST7789_blitStart(0,0,239,239);
-        for (int y=0;y<80;y++) {
-          for (int n=0;n<3;n++) {
-            for (int x=0;x<80;x++) {
-              uint16_t c = PALETTE_8BIT[*(dataPtr++)];
-              lcdST7789_blitPixel(c);
-              lcdST7789_blitPixel(c);
-              lcdST7789_blitPixel(c);
-            }
-            if (n<2) dataPtr -= 80;
-          }
-        }
-        lcdST7789_blitEnd();
+      JsVar *str = jsvGetArrayBufferBackingString(buffer);
+      if (str) {
+        JsvStringIterator it;
+        jsvStringIteratorNew(&it, str, 0);
+        lcdST7789_blit8Bit(0,0,80,80,3,&it,PALETTE_8BIT);
+        jsvStringIteratorFree(&it);
       }
+      jsvUnLock2(str,buffer);
     } break;
   }
 }
 
-/// Starts a blit operation - call this, then blitPixel (a lot) then blitEnd. No bounds checking
-void lcdST7789_blitStart(int x, int y, int w, int h) {
+// Start blit with raw data (lcdScrollY already applied)
+void lcdST7789_blitStartRaw(int x1, int y1, int x2, int y2) {
   lcdNextY=-1;
   lcdNextX=-1;
-  int x1 = x;
-  int y1 = y+lcdScrollY;
-  if (y1>=LCD_BUFFER_HEIGHT) y1-=LCD_BUFFER_HEIGHT;
-  int x2 = x+w;
-  int y2 = y+h+lcdScrollY;
-  if (y2>=LCD_BUFFER_HEIGHT) y2-=LCD_BUFFER_HEIGHT;
-  y += lcdScrollY;
 #ifndef EMSCRIPTEN
   LCD_CS_CLR();
   LCD_DC_COMMAND(); // command
@@ -307,7 +278,17 @@ void lcdST7789_blitStart(int x, int y, int w, int h) {
   EMSCRIPTEN_GFX_BLIT_Y2 = y2;
 #endif
 }
-inline void lcdST7789_blitPixel(unsigned int col) {
+/// Starts a blit operation - call this, then blitPixel (a lot) then blitEnd. No bounds checking
+void lcdST7789_blitStart(int x, int y, int w, int h) {
+  int x1 = x;
+  int y1 = y+lcdScrollY;
+  if (y1>=LCD_BUFFER_HEIGHT) y1-=LCD_BUFFER_HEIGHT;
+  int x2 = x+w;
+  int y2 = y+h+lcdScrollY;
+  if (y2>=LCD_BUFFER_HEIGHT) y2-=LCD_BUFFER_HEIGHT;
+  lcdST7789_blitStartRaw(x1,y1,x2,y2);
+}
+ALWAYS_INLINE void lcdST7789_blitPixel(unsigned int col) {
 #ifndef EMSCRIPTEN
   /* FIXME: Handle case where scrolling means
    * we wrap around the memory area - see what
@@ -338,6 +319,99 @@ void lcdST7789_blitEnd() {
 #ifndef EMSCRIPTEN
   LCD_CS_SET();
 #endif
+}
+
+void lcdST7789_blit1Bit(int x, int y, int w, int h, int scale, JsvStringIterator *pixels, const uint16_t *palette) {
+  int y1 = y + lcdScrollY;
+  int y2 = y + h*scale + lcdScrollY;
+  if (y1>=LCD_BUFFER_HEIGHT) y1-=LCD_BUFFER_HEIGHT;
+  if (y2>=LCD_BUFFER_HEIGHT) y2-=LCD_BUFFER_HEIGHT;
+  lcdST7789_blitStartRaw(x,y1, x+(w*scale)-1,(y2>y1)?y2:239);
+  int bitData = jsvStringIteratorGetCharAndNext(pixels);
+  int bitCnt = 8;
+  for (int y=0;y<h;y++) {
+    JsvStringIterator lastPixels;
+    jsvStringIteratorClone(&lastPixels, pixels);
+    int lastBitData = bitData;
+    int lastBitCnt = bitCnt;
+    for (int n=1;n<=scale;n++) {
+      y1++;
+      if (y1>=LCD_BUFFER_HEIGHT) {
+        lcdST7789_blitEnd();
+        lcdST7789_blitStartRaw(x,0, x+(w*scale)-1,y2);
+      }
+      for (int x=0;x<w;x++) {
+        uint16_t c = palette[(bitData>>7)&1];
+        bitData <<= 1;
+        bitCnt--;
+        if (bitCnt==0) {
+          bitData = jsvStringIteratorGetCharAndNext(pixels);
+          bitCnt = 8;
+        }
+        for (int s=0;s<scale;s++)
+          lcdST7789_blitPixel(c);
+      }
+      // display the same row multiple times if needed
+      if (n<scale) {
+        jsvStringIteratorFree(pixels);
+        jsvStringIteratorClone(pixels, &lastPixels);
+        bitData = lastBitData;
+        bitCnt = lastBitCnt;
+      }
+    }
+    jsvStringIteratorFree(&lastPixels);
+  }
+  lcdST7789_blitEnd();
+}
+
+void lcdST7789_blit8Bit(int x, int y, int w, int h, int scale, JsvStringIterator *pixels, const uint16_t *palette) {
+  int y1 = y + lcdScrollY;
+  int y2 = y + h*scale + lcdScrollY;
+  if (y1>=LCD_BUFFER_HEIGHT) y1-=LCD_BUFFER_HEIGHT;
+  if (y2>=LCD_BUFFER_HEIGHT) y2-=LCD_BUFFER_HEIGHT;
+  lcdST7789_blitStartRaw(x,y1, x+(w*scale)-1,(y2>y1)?y2:239);
+  for (int y=0;y<h;y++) {
+    JsvStringIterator lastPixels;
+    jsvStringIteratorClone(&lastPixels, pixels);
+    for (int n=1;n<=scale;n++) {
+      y1++;
+      if (y1>=LCD_BUFFER_HEIGHT) {
+        lcdST7789_blitEnd();
+        lcdST7789_blitStartRaw(x,0, x+(w*scale)-1,y2);
+      }
+      if (scale==1) {
+        for (int x=0;x<w;x++) {
+          lcdST7789_blitPixel(palette[(uint8_t)jsvStringIteratorGetCharAndNext(pixels)]);
+        }
+      } else if (scale==2) {
+        for (int x=0;x<w;x++) {
+          uint16_t c = palette[(uint8_t)jsvStringIteratorGetCharAndNext(pixels)];
+          lcdST7789_blitPixel(c);
+          lcdST7789_blitPixel(c);
+        }
+      } else if (scale==3) {
+        for (int x=0;x<w;x++) {
+          uint16_t c = palette[(uint8_t)jsvStringIteratorGetCharAndNext(pixels)];
+          lcdST7789_blitPixel(c);
+          lcdST7789_blitPixel(c);
+          lcdST7789_blitPixel(c);
+        }
+      } else { // fallback for not 1/2/3 scale
+        for (int x=0;x<w;x++) {
+          uint16_t c = palette[(uint8_t)jsvStringIteratorGetCharAndNext(pixels)];
+          for (int s=0;s<scale;s++)
+            lcdST7789_blitPixel(c);
+        }
+      }
+      // display the same row multiple times if needed
+      if (n<scale) {
+        jsvStringIteratorFree(pixels);
+        jsvStringIteratorClone(pixels, &lastPixels);
+      }
+    }
+    jsvStringIteratorFree(&lastPixels);
+  }
+  lcdST7789_blitEnd();
 }
 
 
@@ -464,25 +538,6 @@ void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir) {
   lcdST7789_scrollCmd();
 }
 
-
-// ====================================================================================
-void lcdST7789buf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
-  if (!gfx->backendData) return;
-  ((uint8_t*)gfx->backendData)[x + y*gfx->data.width] = col;
-}
-
-unsigned int lcdST7789buf_getPixel(struct JsGraphics *gfx, int x, int y) {
-  if (!gfx->backendData) return 0;
-  return ((uint8_t*)gfx->backendData)[x + y*gfx->data.width];
-}
-
-void lcdST7789buf_scroll(JsGraphics *gfx, int xdir, int ydir) {
-  if (!gfx->backendData) return;
-  int pixels = -(xdir + ydir*gfx->data.width);
-  int l = gfx->data.width*gfx->data.height;
-  if (pixels>0) memcpy(&((uint8_t*)gfx->backendData)[0],&((uint8_t*)gfx->backendData)[pixels],l-pixels);
-  else if (pixels<0) memcpy(&((uint8_t*)gfx->backendData)[-pixels],&((uint8_t*)gfx->backendData)[0],l+pixels);
-}
 // ====================================================================================
 
 void lcdST7789_init(JsGraphics *gfx) {
@@ -519,10 +574,10 @@ void lcdST7789_setCallbacks(JsGraphics *gfx) {
     jsvUnLock(buf);
     if (dataPtr && len>=expectedLen) {
       gfx->backendData = dataPtr;
-      gfx->setPixel = lcdST7789buf_setPixel;
-      gfx->getPixel = lcdST7789buf_getPixel;
-      // gfx->fillRect = lcdST7789buf_fillRect; // maybe later...
-      gfx->scroll = lcdST7789buf_scroll;
+      gfx->setPixel = lcdSetPixel_ArrayBuffer_flat8;
+      gfx->getPixel = lcdGetPixel_ArrayBuffer_flat8;
+      gfx->fillRect = lcdFillRect_ArrayBuffer_flat8;
+      gfx->scroll = lcdScroll_ArrayBuffer_flat8;
     }
   } else {
     gfx->setPixel = lcdST7789_setPixel;

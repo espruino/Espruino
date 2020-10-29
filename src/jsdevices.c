@@ -83,6 +83,16 @@ volatile unsigned char ioHead=0, ioTail=0;
  * Called from jshInit */
 void jshInitDevices() {
   DEVICE_SANITY_CHECK();
+  // Setup USB/Bluetooth flow control separately so
+  // we don't reset it for every call to reset()
+#ifdef USB
+  assert(EV_USBSERIAL>=EV_SERIAL_DEVICE_STATE_START);
+  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_FLOW_CONTROL_XON_XOFF;
+#endif
+#ifdef BLUETOOTH
+  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)] = SDS_FLOW_CONTROL_XON_XOFF;
+#endif
+  // reset everything else...
   jshResetDevices();
 }
 
@@ -94,14 +104,15 @@ void jshResetDevices() {
   jshResetPinStateIsManual();
   // setup flow control
   for (i=0;i<JSHSERIALDEVICESTATUSES;i++) {
+#ifdef USB
+    if (i==TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)) break; // don't update USB status
+#endif
+#ifdef BLUETOOTH
+    if (i==TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)) break; // don't update Bluetooth status
+#endif
     jshSerialDeviceStates[i] = SDS_NONE;
     jshSerialDeviceCTSPins[i] = PIN_UNDEFINED;
   }
-  assert(EV_USBSERIAL>=EV_SERIAL_DEVICE_STATE_START);
-  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_FLOW_CONTROL_XON_XOFF;
-#ifdef BLUETOOTH
-  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)] = SDS_FLOW_CONTROL_XON_XOFF;
-#endif
   // reset callbacks for events
   for (i=EV_EXTI0;i<=EV_EXTI_MAX;i++)
     jshEventCallbacks[i-EV_EXTI0] = 0;
@@ -564,6 +575,7 @@ const char *jshGetDeviceString(
     IOEventFlags device //!< The device to be examined.
   ) {
   switch (device) {
+  case EV_NONE: return "null";
   case EV_LOOPBACKA: return "LoopbackA";
   case EV_LOOPBACKB: return "LoopbackB";
   case EV_LIMBO: return "Limbo";

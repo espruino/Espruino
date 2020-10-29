@@ -37,6 +37,7 @@ void SPIReset();
 void jshSPISetup( IOEventFlags device, JshSPIInfo *inf );
 
 int jshSPISend( IOEventFlags device, int data );
+bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)());
 void jshSPISend16( IOEventFlags device, int data );
 void jshSPISet16( IOEventFlags device, bool is16 );
 void jshSPIWait( IOEventFlags device );

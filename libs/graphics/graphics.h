@@ -20,6 +20,9 @@
 
 #ifdef SAVE_ON_FLASH
 #define NO_VECTOR_FONT
+#ifndef PIXLJS
+#define NO_MODIFIED_AREA
+#endif
 #endif
 
 typedef enum {
@@ -28,7 +31,9 @@ typedef enum {
   JSGRAPHICSTYPE_FSMC,        ///< FSMC (or fake FSMC) ILI9325 16bit-wide LCDs
   JSGRAPHICSTYPE_SDL,         ///< SDL graphics library for linux
   JSGRAPHICSTYPE_SPILCD,      ///< SPI LCD library
-  JSGRAPHICSTYPE_ST7789_8BIT  ///< ST7789 in 8 bit mode
+  JSGRAPHICSTYPE_ST7789_8BIT, ///< ST7789 in 8 bit mode
+  JSGRAPHICSTYPE_MEMLCD,      ///< Memory LCD
+  JSGRAPHICSTYPE_LCD_SPI_UNBUF ///< LCD SPI unbuffered 16 bit driver
 } JsGraphicsType;
 
 typedef enum {
@@ -49,6 +54,11 @@ typedef enum {
   JSGRAPHICSFLAGS_COLOR_GRB = JSGRAPHICSFLAGS_COLOR_BASE*4, //< All devices: color order is GRB
   JSGRAPHICSFLAGS_COLOR_RBG = JSGRAPHICSFLAGS_COLOR_BASE*5, //< All devices: color order is RBG
   JSGRAPHICSFLAGS_COLOR_MASK = JSGRAPHICSFLAGS_COLOR_BASE*7, //< All devices: color order is BRG
+
+  /// If any bits here are set, X and Y get modified before being used
+  JSGRAPHICSFLAGS_MAPPEDXY = JSGRAPHICSFLAGS_SWAP_XY|JSGRAPHICSFLAGS_INVERT_X|JSGRAPHICSFLAGS_INVERT_Y,
+  /// If any bits in this mark are set, pixel data is not laid out linearly
+  JSGRAPHICSFLAGS_NONLINEAR = JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG|JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE|JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX
 } JsGraphicsFlags;
 
 typedef enum {
@@ -59,7 +69,12 @@ typedef enum {
 #ifdef USE_FONT_6X8
  JSGRAPHICS_FONTSIZE_6X8 = 2 << 13, // a bitmap font
 #endif
- JSGRAPHICS_FONTSIZE_CUSTOM = 3 << 13,// a custom bitmap font made from fields in the graphics object (See below)
+#ifndef SAVE_ON_FLASH
+ JSGRAPHICS_FONTSIZE_CUSTOM_1BPP = 4 << 13,// a custom bitmap font made from fields in the graphics object (See below)
+ JSGRAPHICS_FONTSIZE_CUSTOM_2BPP = 5 << 13,// a custom bitmap font made from fields in the graphics object (See below)
+ JSGRAPHICS_FONTSIZE_CUSTOM_4BPP = 6 << 13,// a custom bitmap font made from fields in the graphics object (See below)
+ JSGRAPHICS_FONTSIZE_CUSTOM_BIT = 4 << 13 // all custom fonts have this bit set
+#endif
 } JsGraphicsFontSize;
 
 
@@ -86,7 +101,7 @@ typedef struct {
   unsigned char fontAlignY : 2;
   unsigned char fontRotate : 2;
 #endif
-#ifndef SAVE_ON_FLASH
+#ifndef NO_MODIFIED_AREA
   JsGraphicsClipRect clipRect;
   short modMinX, modMinY, modMaxX, modMaxY; ///< area that has been modified
 #endif
@@ -95,14 +110,14 @@ typedef struct {
 typedef struct JsGraphics {
   JsVar *graphicsVar; // this won't be locked again - we just know that it is already locked by something else
   JsGraphicsData data;
-  unsigned char _blank; ///< this is needed as jsvGetString for 'data' wants to add a trailing zero
   void *backendData; ///< Data used by the graphics backend
 
-  void (*setPixel)(struct JsGraphics *gfx, int x, int y, unsigned int col);
-  void (*fillRect)(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
-  unsigned int (*getPixel)(struct JsGraphics *gfx, int x, int y);
-  void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); // scroll - leave unscrolled area undefined
+  void (*setPixel)(struct JsGraphics *gfx, int x, int y, unsigned int col); ///< x/y guaranteed to be in range
+  void (*fillRect)(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); ///< x/y guaranteed to be in range
+  unsigned int (*getPixel)(struct JsGraphics *gfx, int x, int y); ///< x/y guaranteed to be in range
+  void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); ///< scroll - leave unscrolled area undefined (xdir/ydir guaranteed to be in range)
 } PACKED_FLAGS JsGraphics;
+typedef void (*JsGraphicsSetPixelFn)(struct JsGraphics *gfx, int x, int y, unsigned int col);
 
 // ---------------------------------- these are in graphics.c
 /// Reset graphics structure state (eg font size, color, etc)
@@ -114,10 +129,24 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
 /// Access the Graphics Instance JsVar and set the relevant info from JsGraphics structure
 void graphicsSetVar(JsGraphics *gfx);
 // ----------------------------------------------------------------------------------------------
+
+
+
 /// Get the memory requires for this graphics's pixels if everything was packed as densely as possible
 size_t graphicsGetMemoryRequired(const JsGraphics *gfx);
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y);
+unsigned short graphicsGetWidth(const JsGraphics *gfx);
+unsigned short graphicsGetHeight(const JsGraphics *gfx);
+// Set the area modified (inclusive of x2,y2) by a draw command and also clip to the screen/clipping bounds. Returns true if clipped
+bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int *y2);
+/// Get a setPixel function (assuming coordinates already clipped with graphicsSetModifiedAndClip) - if all is ok it can choose a faster draw function
+JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx);
+/// Get a setPixel function and set modified area (assuming no clipping) (inclusive of x2,y2) - if all is ok it can choose a faster draw function
+JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2);
+/// Merge one color into another based on current bit depth (amt is 0..256)
+uint32_t graphicsBlendColor(JsGraphics *gfx, int amt);
+
 // drawing functions - all coordinates are in USER coordinates, not DEVICE coordinates
 void         graphicsSetPixel(JsGraphics *gfx, int x, int y, unsigned int col);
 unsigned int graphicsGetPixel(JsGraphics *gfx, int x, int y);
@@ -128,7 +157,8 @@ void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsDrawEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
 void graphicsFillEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
 void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2);
-void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); // may overwrite vertices...
+void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2); ///< antialiased drawline. each pixel is 1/16th
+void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); ///< each pixel is 1/16th a pixel may overwrite vertices...
 #ifndef NO_VECTOR_FONT
 unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, char ch); ///< prints character, returns width
 unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int size, char ch); ///< returns the width of a character

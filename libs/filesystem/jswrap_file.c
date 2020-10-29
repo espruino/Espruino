@@ -649,7 +649,7 @@ int jswrap_E_flashFatFS(JsVar* options) {
   if (init) {
     if ( format ) {
       uint8_t res = f_mount(&jsfsFAT, "", 0);
-      jsDebug("Formatting Flash");
+      jsDebug(DBG_INFO,"Formatting Flash");
       res = f_mkfs("", 1, 0);  // Super Floppy format, using all space (not partition table)
       if (res != FR_OK) {
         jsExceptionHere(JSET_INTERNALERROR, "Flash Formatting error:",res);

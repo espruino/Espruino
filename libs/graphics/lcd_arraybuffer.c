@@ -12,6 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_arraybuffer.h"
+#include "jswrap_graphics.h"
 #include "lcd_arraybuffer.h"
 #include "jsvar.h"
 #include "jsvariterator.h"
@@ -56,10 +57,16 @@ unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, int x, int y) {
     unsigned int bitIdx = (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) ? 8-(idx+gfx->data.bpp) : idx;
     col = ((existing>>bitIdx)&mask);
   } else {
-    int i;
-    for (i=0;i<gfx->data.bpp;i+=8) {
-      col |= ((unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it)) << i;
-      jsvArrayBufferIteratorNext(&it);
+    if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) {
+      for (int i=gfx->data.bpp-8;i>=0;i-=8) {
+        col |= ((unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it)) << i;
+        jsvArrayBufferIteratorNext(&it);
+      }
+    } else {
+      for (int i=0;i<gfx->data.bpp;i+=8) {
+        col |= ((unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it)) << i;
+        jsvArrayBufferIteratorNext(&it);
+      }
     }
   }
   jsvArrayBufferIteratorFree(&it);
@@ -105,14 +112,20 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, int x, int y, int pixelCount, uns
       if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
         jsvArrayBufferIteratorNext(&it);
       } else {
-        idx += bppStride;
+        idx += (unsigned)bppStride;
         if (idx>=8) jsvArrayBufferIteratorNext(&it);
       }
     } else { // we're writing whole bytes
-      int i;
-      for (i=0;i<gfx->data.bpp;i+=8) {
-        jsvArrayBufferIteratorSetByteValue(&it, (char)(col >> i));
-        jsvArrayBufferIteratorNext(&it);
+      if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) {
+        for (int i=gfx->data.bpp-8;i>=0;i-=8) {
+          jsvArrayBufferIteratorSetByteValue(&it, (char)(col >> i));
+          jsvArrayBufferIteratorNext(&it);
+        }
+      } else {
+        for (int i=0;i<gfx->data.bpp;i+=8) {
+          jsvArrayBufferIteratorSetByteValue(&it, (char)(col >> i));
+          jsvArrayBufferIteratorNext(&it);
+        }
       }
     }
   }
@@ -129,7 +142,7 @@ void  lcdFillRect_ArrayBuffer(struct JsGraphics *gfx, int x1, int y1, int x2, in
     lcdSetPixels_ArrayBuffer(gfx, x1, y, 1+x2-x1, col);
 }
 
-#ifndef GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
+#ifdef GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
 // Faster implementation for where we have a flat memory area
 unsigned int lcdGetPixel_ArrayBuffer_flat(JsGraphics *gfx, int x, int y) {
   unsigned int col = 0;
@@ -143,10 +156,16 @@ unsigned int lcdGetPixel_ArrayBuffer_flat(JsGraphics *gfx, int x, int y) {
     unsigned int bitIdx = (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) ? 8-(idx+gfx->data.bpp) : idx;
     col = ((existing>>bitIdx)&mask);
   } else {
-    int i;
-    for (i=0;i<gfx->data.bpp;i+=8) {
-      col |= ((unsigned int)*ptr) << i;
-      ptr++;
+    if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) {
+      for (int i=gfx->data.bpp-8;i>=0;i-=8) {
+        col |= ((unsigned int)*ptr) << i;
+        ptr++;
+      }
+    } else {
+      for (int i=0;i<gfx->data.bpp;i+=8) {
+        col |= ((unsigned int)*ptr) << i;
+        ptr++;
+      }
     }
   }
   return col;
@@ -175,7 +194,7 @@ void lcdSetPixels_ArrayBuffer_flat(JsGraphics *gfx, int x, int y, int pixelCount
         // then we can go really quickly and can just fill
         int wholeBytes = (gfx->data.bpp*(pixelCount+1)) >> 3;
         if (wholeBytes) {
-          char c = (char)(col?0xFF:0);
+          unsigned char c = (unsigned char)(col?0xFF:0);
           pixelCount = pixelCount+1 - (wholeBytes*8/gfx->data.bpp);
           while (wholeBytes--) {
             *ptr = c;
@@ -188,18 +207,20 @@ void lcdSetPixels_ArrayBuffer_flat(JsGraphics *gfx, int x, int y, int pixelCount
       unsigned int existing = (unsigned int)*ptr;
       unsigned int bitIdx = (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) ? 8-(idx+gfx->data.bpp) : idx;
       assert(ptr>=(unsigned char*)gfx->backendData && ptr<((unsigned char*)gfx->backendData + graphicsGetMemoryRequired(gfx)));
-      *ptr = (char)((existing&~(mask<<bitIdx)) | ((col&mask)<<bitIdx));
+      *ptr = (unsigned char)((existing&~(mask<<bitIdx)) | ((col&mask)<<bitIdx));
       if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
         ptr++;
       } else {
-        idx += bppStride;
+        idx += (unsigned)bppStride;
         if (idx>=8) ptr++;
       }
     } else { // we're writing whole bytes
-      int i;
-      for (i=0;i<gfx->data.bpp;i+=8) {
-        *ptr = (char)(col >> i);
-        ptr++;
+      if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) {
+        for (int i=gfx->data.bpp-8;i>=0;i-=8)
+          *(ptr++) = (unsigned char)(col >> i);
+      } else {
+        for (int i=0;i<gfx->data.bpp;i+=8)
+          *(ptr++) = (unsigned char)(col >> i);
       }
     }
   }
@@ -216,28 +237,92 @@ void  lcdFillRect_ArrayBuffer_flat(struct JsGraphics *gfx, int x1, int y1, int x
   for (y=y1;y<=y2;y++)
     lcdSetPixels_ArrayBuffer_flat(gfx, x1, y, 1+x2-x1, col);
 }
+
+#ifdef GRAPHICS_FAST_PATHS
+void lcdSetPixel_ArrayBuffer_flat1(JsGraphics *gfx, int x, int y, unsigned int col) {
+  int p = x + y*gfx->data.width;
+  if (col) ((uint8_t*)gfx->backendData)[p>>3] |= (uint8_t)(0x80 >> (p&7));
+  else ((uint8_t*)gfx->backendData)[p>>3] &= (uint8_t)(0xFF7F >> (p&7));
+}
+
+void lcdFillRect_ArrayBuffer_flat1(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  for (int y=y1;y<=y2;y++) {
+    int p = x1 + y*gfx->data.width;
+    for (int x=x1;x<=x2;x++) {
+      if (col) ((uint8_t*)gfx->backendData)[p>>3] |= (uint8_t)(0x80 >> (p&7));
+      else ((uint8_t*)gfx->backendData)[p>>3] &= (uint8_t)(0xFF7F >> (p&7));
+      p++;
+    }
+  }
+}
+
+void lcdSetPixel_ArrayBuffer_flat8(JsGraphics *gfx, int x, int y, unsigned int col) {
+  ((uint8_t*)gfx->backendData)[x + y*gfx->data.width] = (uint8_t)col;
+}
+
+unsigned int lcdGetPixel_ArrayBuffer_flat8(struct JsGraphics *gfx, int x, int y) {
+  return ((uint8_t*)gfx->backendData)[x + y*gfx->data.width];
+}
+
+void lcdFillRect_ArrayBuffer_flat8(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  for (int y=y1;y<=y2;y++) {
+    uint8_t *p = &((uint8_t*)gfx->backendData)[x1 + y*gfx->data.width];
+    for (int x=x1;x<=x2;x++)
+      *(p++) = (uint8_t)col;
+  }
+}
+
+void lcdScroll_ArrayBuffer_flat8(JsGraphics *gfx, int xdir, int ydir) {
+  int pixels = -(xdir + ydir*gfx->data.width);
+  int l = gfx->data.width*gfx->data.height;
+  if (pixels>0) memcpy(&((uint8_t*)gfx->backendData)[0],&((uint8_t*)gfx->backendData)[pixels],(size_t)(l-pixels));
+  else if (pixels<0) memcpy(&((uint8_t*)gfx->backendData)[-pixels],&((uint8_t*)gfx->backendData)[0],(size_t)(l+pixels));
+}
+#endif
+
 #endif // GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
+
+
 
 void lcdInit_ArrayBuffer(JsGraphics *gfx) {
   // create buffer
-  JsVar *buf = jswrap_arraybuffer_constructor(graphicsGetMemoryRequired(gfx));
+  JsVar *buf = jswrap_arraybuffer_constructor((int)graphicsGetMemoryRequired(gfx));
   jsvUnLock2(jsvAddNamedChild(gfx->graphicsVar, buf, "buffer"), buf);
 }
 
 void lcdSetCallbacks_ArrayBuffer(JsGraphics *gfx) {
   JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
-#ifndef GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
+#ifdef GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
   size_t len = 0;
   char *dataPtr = jsvGetDataPointer(buf, &len);
 #endif
   jsvUnLock(buf);
-#ifndef GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
-  if (dataPtr && len>=graphicsGetMemoryRequired(gfx)) {
-    // nice fast mode
+#ifdef GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
+  if (dataPtr && len>=graphicsGetMemoryRequired(gfx) && !(gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG)) {
     gfx->backendData = dataPtr;
-    gfx->setPixel = lcdSetPixel_ArrayBuffer_flat;
-    gfx->getPixel = lcdGetPixel_ArrayBuffer_flat;
-    gfx->fillRect = lcdFillRect_ArrayBuffer_flat;
+#ifdef GRAPHICS_FAST_PATHS
+    if (gfx->data.bpp==1 &&
+        (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) &&
+        !(gfx->data.flags & JSGRAPHICSFLAGS_NONLINEAR)
+        ) { // super fast path for 1 bit
+      gfx->setPixel = lcdSetPixel_ArrayBuffer_flat1;
+      gfx->getPixel = lcdGetPixel_ArrayBuffer_flat;
+      gfx->fillRect = lcdFillRect_ArrayBuffer_flat1;
+    } else if (gfx->data.bpp==8 &&
+               !(gfx->data.flags & JSGRAPHICSFLAGS_NONLINEAR)
+        ) { // super fast path for 8 bits
+      gfx->setPixel = lcdSetPixel_ArrayBuffer_flat8;
+      gfx->getPixel = lcdGetPixel_ArrayBuffer_flat8;
+      gfx->fillRect = lcdFillRect_ArrayBuffer_flat8;
+      gfx->scroll = lcdScroll_ArrayBuffer_flat8;
+    } else
+#endif
+    {
+      // nice fast mode
+      gfx->setPixel = lcdSetPixel_ArrayBuffer_flat;
+      gfx->getPixel = lcdGetPixel_ArrayBuffer_flat;
+      gfx->fillRect = lcdFillRect_ArrayBuffer_flat;
+    }
 #else
   if (false) {
 #endif
@@ -250,3 +335,4 @@ void lcdSetCallbacks_ArrayBuffer(JsGraphics *gfx) {
     gfx->fillRect = lcdFillRect_ArrayBuffer;
   }
 }
+

@@ -24,10 +24,10 @@ double nmea_decode_latlon(char *nmea, char *comma) {
   char *dp = nmea;
   while (*dp && *dp!='.' && *dp!=',') dp++; // find decimal pt
   *comma = 0;
-  double minutes = stringToFloat(&dp[-2]);
+  double minutes = stringToFloatWithRadix(&dp[-2], 10, NULL);
   *comma = ',';
   dp[-2] = 0;
-  int x = stringToInt(nmea);
+  int x = stringToIntWithRadix(nmea, 10, NULL, NULL);
   return x+(minutes/60);
 }
 double nmea_decode_float(char *nmea, char *comma) {
@@ -46,8 +46,6 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
   char buf[NMEA_MAX_SIZE];
   strcpy(buf, nmeaLine);
   char *nmea = buf, *nextComma;
-
-
   if (nmea[0]!='$' || nmea[1]!='G') return false; // not valid
   if (nmea[3]=='R' && nmea[4]=='M' && nmea[5]=='C') {
     // $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
@@ -74,9 +72,15 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
     gpsFix->course = nmea_decode_float(nmea, nextComma);
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // date
-    gpsFix->day = nmea_decode_2(&nmea[0]);
-    gpsFix->month = nmea_decode_2(&nmea[2]);
-    gpsFix->year = nmea_decode_2(&nmea[4]);
+    if (nmea[0]==',') {
+      gpsFix->day = 0;
+      gpsFix->month = 0;
+      gpsFix->year = 0;
+    } else {
+      gpsFix->day = nmea_decode_2(&nmea[0]);
+      gpsFix->month = nmea_decode_2(&nmea[2]);
+      gpsFix->year = nmea_decode_2(&nmea[4]);
+    }
     // ....
   }
   if (nmea[3]=='G' && nmea[4]=='G' && nmea[5]=='A') {
@@ -102,6 +106,7 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
     gpsFix->satellites = nmea_decode_2(nmea);
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // dilution of precision
+    gpsFix->hdop = nmea_decode_float(nmea, nextComma);
     nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
     // altitude
     gpsFix->alt = nmea_decode_float(nmea, nextComma);
@@ -111,10 +116,20 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
   if (nmea[3]=='G' && nmea[4]=='S' && nmea[5]=='V') {
     // loads of cool data about what satellites we have
   }
+  /* F18 (UBlox) GPS gives a bunch of data ending in GLL
+   * SMA Q3 gives data ending GNZDA,GPTXT
+   */
+#ifdef SMAQ3
+  if (nmea[3]=='Z' && nmea[4]=='D' && nmea[5]=='A') {
+    // Complete set of data received
+    return true;
+  }
+#else //  BANGLEJS_F18 / F5
   if (nmea[3]=='G' && nmea[4]=='L' && nmea[5]=='L') {
     // Complete set of data received
     return true;
   }
+#endif
   return false;
 }
 
@@ -127,20 +142,25 @@ JsVar *nmea_to_jsVar(NMEAFixInfo *gpsFix) {
     jsvObjectSetChildAndUnLock(o, "alt", jsvNewFromFloat(gpsFix->alt));
     jsvObjectSetChildAndUnLock(o, "speed", jsvNewFromFloat(gpsFix->speed));
     jsvObjectSetChildAndUnLock(o, "course", jsvNewFromFloat(gpsFix->course));
-    CalendarDate date;
-    date.day = gpsFix->day;
-    date.month = gpsFix->month-1; // 1 based to 0 based
-    date.year = 2000+gpsFix->year;
-    TimeInDay td;
-    td.daysSinceEpoch = fromCalenderDate(&date);
-    td.hour = gpsFix->hour;
-    td.min = gpsFix->min;
-    td.sec = gpsFix->sec;
-    td.ms = gpsFix->ms;
-    td.zone = 0; // jsdGetTimeZone(); - no! GPS time is always in UTC :)
-    jsvObjectSetChildAndUnLock(o, "time", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
+    if (gpsFix->day) {
+      CalendarDate date;
+      date.day = gpsFix->day;
+      date.month = gpsFix->month-1; // 1 based to 0 based
+      date.year = 2000+gpsFix->year;
+      TimeInDay td;
+      td.daysSinceEpoch = fromCalenderDate(&date);
+      td.hour = gpsFix->hour;
+      td.min = gpsFix->min;
+      td.sec = gpsFix->sec;
+      td.ms = gpsFix->ms;
+      td.zone = 0; // jsdGetTimeZone(); - no! GPS time is always in UTC :)
+      jsvObjectSetChildAndUnLock(o, "time", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
+    } else {
+      jsvObjectSetChildAndUnLock(o, "time", 0);
+    }
     jsvObjectSetChildAndUnLock(o, "satellites", jsvNewFromInteger(gpsFix->satellites));
     jsvObjectSetChildAndUnLock(o, "fix", jsvNewFromInteger(gpsFix->quality));
+    jsvObjectSetChildAndUnLock(o, "hdop", jsvNewFromFloat(gpsFix->hdop));
   }
   return o;
 }

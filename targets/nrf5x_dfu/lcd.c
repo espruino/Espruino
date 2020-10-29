@@ -191,20 +191,25 @@ void i2c_wr(uint8_t data) {
   scl1();
   scl0();
 }
-void ioexpander_write(int mask, bool value) {
-  static uint8_t state = 0;
-  if (value) state|=mask;
-  else state&=~mask;
+// I2C write. Address is 8 bit (not 7 as on normal Espruino functions) (ignore value if <0)
+void i2c_wrreg(int addr, int reg, int value) {
   // start
   sda0();
   scl0();
   // write
-  i2c_wr(0x40);
-  i2c_wr(state);
+  i2c_wr(addr);
+  i2c_wr(reg);
+  if (value>=0) i2c_wr(value);
   // stop
   sda0();
   scl1();
   sda1();
+}
+void ioexpander_write(int mask, bool value) {
+  static uint8_t state = 0;
+  if (value) state|=mask;
+  else state&=~mask;
+  i2c_wrreg(0x20<<1,state,-1);
 }
 #endif
 
@@ -365,8 +370,6 @@ static const char ST7789_INIT_CODE[] = {
     0xC4,1,0x20,
     0xC5,1,0xF,
     0xD0,2,0xA4,0xA1,
-    0xe0,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
-    0xe1,14,0xd0,6,0xc,9,9,0x25,0x2e,0x33,0x45,0x36,0x12,0x12,0x2e,0x34,
     0x29,0,
     0x21,0,
     // End
@@ -430,8 +433,6 @@ void lcd_flip() {
   ymax=0;
 #endif
 }
-#define nrf_delay_ms(X) jshDelayMicroseconds(X*1000)
-#define digitalWrite(X,Y) jshPinOutput(X,Y)
 
 void lcd_send_cmd(uint8_t cmd) {
   jshPinSetValue(LCD_PIN_CS, 0);
@@ -447,7 +448,6 @@ void lcd_send_data(uint8_t cmd) {
 }
 
 void lcd_init() {
-  //jshPinOutput(13,1); // Vibrate
   nrf_gpio_cfg_input(I2C_SDA, NRF_GPIO_PIN_PULLUP);
   nrf_gpio_cfg_input(I2C_SCL, NRF_GPIO_PIN_PULLUP);
 
@@ -455,19 +455,18 @@ void lcd_init() {
   jshPinOutput(LCD_PIN_DC,1);
   jshPinOutput(LCD_PIN_SCK,1);
   for (int i=0;i<8;i++)
-    jshPinOutput(i,0);
+    nrf_gpio_pin_write_output(i, 0);
 
-  digitalWrite(18,0); // not needed?
-  digitalWrite(28,0); // IO expander reset
+  jshPinOutput(28,0); // IO expander reset
   nrf_delay_ms(10);
-  digitalWrite(28,1);
+  jshPinSetValue(28,1);
   nrf_delay_ms(0x32);
 
   ioexpander_write(0,1);
   ioexpander_write(0,0);
-  ioexpander_write(0x80,1);
+  ioexpander_write(0x80,1); // HRM off
   nrf_delay_ms(100);
-  ioexpander_write(0x40,1);
+  ioexpander_write(0x40,1); // LCD reset off
   // ioexpander_write(0x20,0); // backlight on (default)
   nrf_delay_ms(0x78);
 
@@ -477,14 +476,17 @@ void lcd_init() {
     lcd_cmd(cmd[CMDINDEX_CMD], cmd[CMDINDEX_DATALEN], &cmd[2]);
     cmd += 2 + cmd[CMDINDEX_DATALEN];
   }
-
-  jshPinOutput(13,0); // Vibrate
 }
 
 void lcd_kill() {
+  lcd_send_cmd(0x28); // DISPOFF
+  lcd_send_cmd(0x10); // SLPIN
   ioexpander_write(0x20,1); // backlight off
-  lcd_send_cmd(0x28);
-  lcd_send_cmd(0x10);
+  /* TODO: not convinced accelerometer is being turned off - power consumption
+  is higher if we just rebooted from Bangle.js. Maybe this I2C impl. is too
+  noncompliant for it. */
+  i2c_wrreg(ACCEL_ADDR<<1, 0x18,0x0a);  // accelerometer off
+  i2c_wrreg(MAG_ADDR<<1, 0x31,0); // compass off
 }
 #endif
 
@@ -621,6 +623,7 @@ void lcd_char(int x1, int y1, char ch) {
   // char replacements so we don't waste font space
   if (ch=='.') ch='\\';
   if (ch=='+') ch='@';
+  if (ch>='a') ch-='a'-'A';
   int idx = ch - '0';
   if (idx<0 || idx>=LCD_FONT_3X5_CHARS) return; // no char for this - just return
   int cidx = idx % 5; // character index
@@ -639,9 +642,9 @@ void lcd_print(char *ch) {
     lcd_char(lcdx,lcdy,*ch);
     if ('\n'==*ch) {
       lcdy += 6;
-      if (lcdy>=LCD_HEIGHT-4) {
-        memcpy(lcd_data,&lcd_data[LCD_ROWSTRIDE*8],LCD_ROWSTRIDE*(LCD_HEIGHT-8)); // shift up 8 pixels
-        memset(&lcd_data[LCD_ROWSTRIDE*(LCD_HEIGHT-8)],0,LCD_ROWSTRIDE*8); // fill bottom 8 rows
+      if (lcdy>=LCD_DATA_HEIGHT-4) {
+        memcpy(lcd_data,&lcd_data[LCD_ROWSTRIDE*8],LCD_ROWSTRIDE*(LCD_DATA_HEIGHT-8)); // shift up 8 pixels
+        memset(&lcd_data[LCD_ROWSTRIDE*(LCD_DATA_HEIGHT-8)],0,LCD_ROWSTRIDE*8); // fill bottom 8 rows
         lcdy-=8;
 #ifdef LCD_STORE_MODIFIED
         ymin=0;
@@ -659,11 +662,18 @@ void lcd_println(char *ch) {
   lcd_print(ch);
   lcd_print("\r\n");
 }
+void lcd_clear() {
+  memset(lcd_data,0,sizeof(lcd_data));
+  lcdx=0;
+  lcdy=LCD_START_Y;
+  lcd_flip();
+}
 
 #else
 // No LCD
 void lcd_init() {}
 void lcd_kill() {}
+void lcd_clear() {}; // clear screen
 void lcd_print(char *ch) {}
 void lcd_println(char *ch) {}
 #endif

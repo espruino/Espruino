@@ -275,6 +275,8 @@ for jsondata in jsondatas:
   if jsondata["type"]=="constructor":
     if not jsondata["name"] in constructors:
       constructors.append(jsondata["name"])
+    if not "return" in jsondata:
+      FATAL_ERROR("Constructors MUST return something: "+jsondata["name"]+":"+jsondata["filename"]+"\n");
 
 # Add constructors if we need them
 for className in classes:

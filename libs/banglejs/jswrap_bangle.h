@@ -29,12 +29,15 @@ JsVarInt jswrap_banglejs_getBattery();
 void jswrap_banglejs_setHRMPower(bool isOn);
 void jswrap_banglejs_setGPSPower(bool isOn);
 void jswrap_banglejs_setCompassPower(bool isOn);
+JsVar *jswrap_banglejs_getCompass();
+JsVar *jswrap_banglejs_getAccel();
 
 JsVar *jswrap_banglejs_dbg();
 void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data);
-int jswrap_banglejs_accelRd(JsVarInt reg);
+JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt);
 void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data);
 void jswrap_banglejs_ioWr(JsVarInt mask, bool on);
+JsVar *jswrap_banglejs_getPressure();
 JsVar *jswrap_banglejs_project(JsVar *latlong);
 JsVar *jswrap_banglejs_beep(int time, int freq);
 JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt);
@@ -45,3 +48,9 @@ void jswrap_banglejs_init();
 void jswrap_banglejs_kill();
 bool jswrap_banglejs_idle();
 bool jswrap_banglejs_gps_character(char ch);
+
+#ifdef SMAQ3
+// We use pins that are unused for 'fake' buttons to allow Bangle.js v1 apps to work
+#define FAKE_BTN1_PIN 40
+#define FAKE_BTN3_PIN 41
+#endif

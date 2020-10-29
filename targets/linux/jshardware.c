@@ -38,12 +38,6 @@
 #define FAKE_FLASH_BLOCKSIZE FLASH_PAGE_SIZE
 #define FAKE_FLASH_BLOCKS    (FLASH_TOTAL/FLASH_PAGE_SIZE)
 
-#ifdef DEBUG
-#define FAKE_FLASH_DBG(...) jsiConsolePrintf(__VA_ARGS__)
-#else
-#define FAKE_FLASH_DBG(...)
-#endif
-
 #ifndef FLASH_64BITS_ALIGNMENT
 #define FLASH_UNITARY_WRITE_SIZE 4
 #else
@@ -883,7 +877,7 @@ static FILE *jshFlashOpenFile(bool dontCreate) {
   return f;
 }
 void jshFlashErasePage(uint32_t addr) {
-  FAKE_FLASH_DBG("FlashErasePage 0x%08x\n", addr);
+  jsDebug(DBG_VERBOSE,"FlashErasePage 0x%08x\n", addr);
   FILE *f = jshFlashOpenFile(true);
   if (!f) return; // if no file and we're erasing, we don't have to do anything
   uint32_t startAddr, pageSize;
@@ -898,7 +892,7 @@ void jshFlashErasePage(uint32_t addr) {
   fclose(f);
 }
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
-  FAKE_FLASH_DBG("FlashRead 0x%08x %d\n", addr,len);
+  jsDebug(DBG_VERBOSE,"FlashRead 0x%08x %d\n", addr,len);
   //assert(!(addr&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
   //assert(!(len&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
   if (addr<FLASH_START || addr>=FLASH_START+FLASH_TOTAL) {
@@ -918,10 +912,12 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   fclose(f);
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
-  FAKE_FLASH_DBG("FlashWrite 0x%08x %d\n", addr,len);
+  jsDebug(DBG_VERBOSE,"FlashWrite 0x%08x %d\n", addr,len);
   uint32_t i;
+#ifndef SPIFLASH_BASE // for debug
   assert(!(addr&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
   assert(!(len&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
+#endif
 
   /*jsiConsolePrintf("%08x ", addr);
   for (i=0;i<len;i++)
@@ -954,8 +950,10 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   fclose(f);
 }
 
-// Just pass data through, since we can access flash at the same address we wrote it
-size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
+// No - we can't memory-map the flash memory under Linux (well, we could but for testing it's handy not to)
+size_t jshFlashGetMemMapAddress(size_t ptr) {
+  return 0;
+}
 
 unsigned int jshSetSystemClock(JsVar *options) {
   return 0;

@@ -1,3 +1,10 @@
+var tests=0,testsPass=0;
+function test(a,b) {
+  tests++;
+  if (a===b) testsPass++;
+  else console.log("Test "+tests+" failed");
+}
+
 var s = require("Storage");
 s.eraseAll();
 f = s.open("foobar","w");
@@ -6,15 +13,12 @@ f.write("o World\n");
 f.write("Hello\n");
 f.write("World 2\n");
 
+test(f.getLength(),26);
+
 f = s.open("foobar","a");
 f.write("Hello World 3\n");
 
-var tests=0,testsPass=0;
-function test(a,b) {
-  tests++;
-  if (a===b) testsPass++;
-  else console.log("Test "+tests+" failed");
-}
+test(f.getLength(),40);
 
 f = s.open("foobar","r");
 test(f.read(13),"Hello World\nH");

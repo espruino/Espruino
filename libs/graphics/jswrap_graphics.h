@@ -17,6 +17,15 @@
 #include "jsvar.h"
 #include "graphics.h"
 
+#ifndef SAVE_ON_FLASH
+#ifndef ESPRUINOBOARD
+#define GRAPHICS_DRAWIMAGE_ROTATED
+#endif
+#endif
+#if defined(LINUX) || defined(BANGLEJS)
+#define GRAPHICS_FAST_PATHS // execute more optimised code when no rotation/etc
+#endif
+
 #ifdef GRAPHICS_PALETTED_IMAGES
 // 16 color MAC OS palette
 extern const uint16_t PALETTE_4BIT[16];
@@ -38,6 +47,7 @@ JsVar *jswrap_graphics_createImage(JsVar *data);
 
 
 int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height);
+JsVar *jswrap_graphics_reset(JsVar *parent);
 JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState);
 JsVar *jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2);
 JsVar *jswrap_graphics_clearRect(JsVar *parent, int x1, int y1, int x2, int y2);
@@ -63,15 +73,19 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *str, int x, int y, bool 
 void jswrap_graphics_drawCString(JsGraphics *gfx, int x, int y, char *str); /// Convenience function for using drawString from C code
 JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var);
 JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2);
+JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2, double y2);
 JsVar *jswrap_graphics_lineTo(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y);
-JsVar *jswrap_graphics_drawPoly(JsVar *parent, JsVar *poly, bool closed);
+JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool antiAlias);
 JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly);
 JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect);
 JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos, JsVar *options);
-JsVar *jswrap_graphics_asImage(JsVar *parent);
+JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *options);
+JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType);
 JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset);
 JsVar *jswrap_graphics_scroll(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_asBMP(JsVar *parent);
 JsVar *jswrap_graphics_asURL(JsVar *parent);
 void jswrap_graphics_dump(JsVar *parent);
+JsVar *jswrap_graphics_quadraticBezier(JsVar *parent, JsVar * arr, JsVar *options);
+JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *transformation);

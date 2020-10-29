@@ -116,7 +116,7 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
   buffer1[0] = 0;
   buffer1[1] = gfx->data.modMinX;
   buffer1[2] = 0;
-  buffer1[3] = gfx->data.modMaxX;
+  buffer1[3] = gfx->data.modMaxX-1;
   jshSPISendMany(LCD_SPI, buffer1, NULL, 4, NULL);
   jshPinSetValue(LCD_SPI_DC, 0); // command
   buffer1[0] = SPILCD_CMD_WINDOW_Y;
@@ -176,7 +176,6 @@ void lcdInit_SPILCD(JsGraphics *gfx) {
 
   lcdSetPalette_SPILCD(0);
 
-  jshPinOutput(LCD_BL,0); // backlight on
   jshPinOutput(LCD_SPI_CS,1);
   jshPinOutput(LCD_SPI_DC,1);
   jshPinOutput(LCD_SPI_SCK,1);

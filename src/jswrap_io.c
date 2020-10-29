@@ -16,6 +16,7 @@
 #include "jswrap_io.h"
 #include "jsvar.h"
 #include "jswrap_arraybuffer.h" // for jswrap_io_peek
+#include "jswrapper.h" // for JSWAT_VOID
 
 #ifdef ESP32
 #include "freertos/FreeRTOS.h"
@@ -720,6 +721,7 @@ JsVar *jswrap_interface_setWatch(
       if (debounce>0) jsvObjectSetChildAndUnLock(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce)));
       if (edge) jsvObjectSetChildAndUnLock(watchPtr, "edge", jsvNewFromInteger(edge));
       jsvObjectSetChild(watchPtr, "callback", func); // no unlock intentionally
+      jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(jshPinInput(pin)));
     }
 
     // If nothing already watching the pin, set up a watch
@@ -811,4 +813,22 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
     }
     jsvUnLock(idVar);
   }
+}
+
+/// function for internal use
+int jswrap_interface_setWatch_int(void(*callback)(), Pin pin, bool repeat, int edge) {
+  JsVar *fn = jsvNewNativeFunction(callback, JSWAT_VOID);
+  JsVar *options = jsvNewObject();
+  jsvObjectSetChildAndUnLock(options, "repeat", jsvNewFromBool(repeat));
+  jsvObjectSetChildAndUnLock(options, "edge", jsvNewFromInteger(edge));
+  int id = jsvGetIntegerAndUnLock(jswrap_interface_setWatch(fn, pin, options));
+  jsvUnLock2(fn, options);
+  return id;
+}
+/// function for internal use
+void jswrap_interface_clearWatch_int(int watchNumber) {
+  JsVar *id = jsvNewFromInteger(watchNumber);
+  JsVar *idArray = jsvNewArray(&id, 1);
+  jswrap_interface_clearWatch(idArray);
+  jsvUnLock2(id, idArray);
 }

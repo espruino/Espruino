@@ -70,6 +70,9 @@ test(/\S+/.test(" "), false);
 
 test(/\S+/.test(" "), false);
 
+test(/^foo.*/.test("foo123"), true);
+test(/^fox.*/.test("foo123"), false);
+
 
 test("abcde".split(/d|b/).join(","), "a,c,e");
 test("abcde|f".split(/d|\||b/).join(","), "a,c,e,f");

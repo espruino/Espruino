@@ -31,7 +31,7 @@
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
 #
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet W5500 support
-#   W5100=1               # Compile for WIZnet W5100 (not W5500)
+# W5100=1                 # Compile for WIZnet W5100 (not W5500)
 # CC3000=1                # If compiling for a non-linux target that has internet support, use CC3000 support
 # USB_PRODUCT_ID=0x1234   # force a specific USB Product ID (default 0x5740)
 #
@@ -43,7 +43,7 @@
 #                         # UNSUPPORTEDMAKE=/home/mydir/unsupportedCommands
 # PROJECTNAME=myBigProject# Sets projectname
 # BLACKLIST=fileBlacklist # Removes javascript commands given in a file from compilation and therefore from project defined firmware
-#                         # is used in build_jswrapper.py
+#                         # is used in build_jswrapper.py - of the form [{class,name}...]
 #                         # BLACKLIST=/home/mydir/myBlackList
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py
@@ -67,7 +67,7 @@ LIBS?=
 DEFINES?=
 CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -g
 CFLAGS+=-Wno-packed-bitfield-compat # remove warnings from packed var usage
-CFLAGS+=-Wno-expansion-to-defined # remove warnings created by Nordic's libs
+
 CCFLAGS?= # specific flags when compiling cc files
 LDFLAGS?=-Winline -g
 OPTIMIZEFLAGS?=
@@ -302,10 +302,14 @@ else
 ifneq ($(FAMILY),ESP8266)
 # If we have enough flash, include the debugger
 # ESP8266 can't do it because it expects tasks to finish within set time
+ifneq ($(USE_DEBUGGER),0)
 DEFINES+=-DUSE_DEBUGGER
 endif
+endif
 # Use use tab complete
+ifneq ($(USE_TAB_COMPLETE),0)
 DEFINES+=-DUSE_TAB_COMPLETE
+endif
 
 # Heatshrink compression library and wrapper - better compression when saving code to flash
 DEFINES+=-DUSE_HEATSHRINK
@@ -370,6 +374,7 @@ WRAPPERSOURCES += libs/graphics/jswrap_graphics.c
 SOURCES += \
 libs/graphics/bitmap_font_4x6.c \
 libs/graphics/bitmap_font_6x8.c \
+libs/graphics/vector_font.c \
 libs/graphics/graphics.c \
 libs/graphics/lcd_arraybuffer.c \
 libs/graphics/lcd_js.c
@@ -396,6 +401,15 @@ ifdef USE_LCD_ST7789_8BIT
   SOURCES += libs/graphics/lcd_st7789_8bit.c
 endif
 
+ifdef USE_LCD_MEMLCD
+  DEFINES += -DUSE_LCD_MEMLCD
+  SOURCES += libs/graphics/lcd_memlcd.c
+endif
+
+ifdef USE_LCD_SPI_UNBUF
+  DEFINES += -DUSE_LCD_SPI_UNBUF
+  WRAPPERSOURCES += libs/graphics/lcd_spi_unbuf.c
+endif
 
 ifeq ($(USE_TERMINAL),1)
   DEFINES += -DUSE_TERMINAL
@@ -419,10 +433,12 @@ ifeq ($(USE_NET),1)
  libs/network/socketserver.c \
  libs/network/socketerrors.c
 
+ifneq ($(USE_NETWORK_JS),0)
+ DEFINES += -DUSE_NETWORK_JS
  WRAPPERSOURCES += libs/network/js/jswrap_jsnetwork.c
  INCLUDE += -I$(ROOT)/libs/network/js
- SOURCES += \
- libs/network/js/network_js.c
+ SOURCES += libs/network/js/network_js.c
+endif
 
  ifdef LINUX
  INCLUDE += -I$(ROOT)/libs/network/linux
@@ -520,8 +536,13 @@ ifeq ($(USE_NET),1)
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
  libs/network/esp8266/network_esp8266.c\
- libs/network/esp8266/pktbuf.c\
- libs/network/esp8266/ota.c
+ libs/network/esp8266/pktbuf.c
+
+ ifndef NO_FOTA
+   SOURCES += libs/network/esp8266/ota.c
+ else
+   DEFINES += -DNO_FOTA
+ endif
  endif
 
  ifdef USE_TELNET

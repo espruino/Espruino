@@ -36,7 +36,7 @@
 //#define LCD_STORE_MODIFIED // removed just to try and scrape a few extra bytes!
 #define I2C_SDA 15
 #define I2C_SCL 14
-#define LCD_START_Y 12
+#define LCD_START_Y 16
 #endif
 
 #ifndef LCD_START_Y
@@ -45,6 +45,7 @@
 
 void lcd_init();
 void lcd_kill();
+void lcd_clear();
 void lcd_print(char *ch);
 void lcd_println(char *ch);
 

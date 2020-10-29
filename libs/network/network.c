@@ -39,7 +39,9 @@
   #include "mbedtls/ctr_drbg.h"
   #include "jswrap_crypto.h"
 #endif
+#if defined(USE_NETWORK_JS)
 #include "network_js.h"
+#endif
 
 JsNetworkState networkState =
 #ifdef LINUX
@@ -228,7 +230,7 @@ bool networkGetFromVar(JsNetwork *net) {
 
   // Retrieve the data for the network var and save in the data property of the JsNetwork
   // structure.
-  jsvGetString(net->networkVar, (char *)&net->data, sizeof(JsNetworkData)+1/*trailing zero*/);
+  jsvGetStringChars(net->networkVar,0,(char *)&net->data, sizeof(JsNetworkData));
 
   // Now we know which kind of network we are working with, invoke the corresponding initialization
   // function to set the callbacks for this network tyoe.
@@ -248,7 +250,9 @@ bool networkGetFromVar(JsNetwork *net) {
 #if defined(LINUX)
   case JSNETWORKTYPE_SOCKET : netSetCallbacks_linux(net); break;
 #endif
+#if defined(USE_NETWORK_JS)
   case JSNETWORKTYPE_JS : netSetCallbacks_js(net); break;
+#endif
   default:
     jsExceptionHere(JSET_INTERNALERROR, "Unknown network device %d", net->data.type);
     networkFree(net);

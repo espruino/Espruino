@@ -27,7 +27,8 @@ endif #DFU_UPDATE_BUILD
 
 # Just try and get rid of the compile warnings.
 CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
-DEFINES += -D$(BOARD) -D$(CHIP) -DNRF5X -DNRF5X_SDK_$(NRF5X_SDK)
+CFLAGS+=-Wno-expansion-to-defined # remove warnings created by Nordic's libs
+DEFINES += -D$(CHIP) -DNRF5X -DNRF5X_SDK_$(NRF5X_SDK)
 
 ARM = 1
 ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
@@ -107,6 +108,7 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/common
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/peer_manager
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twis_slave
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/ppi
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_pwm
@@ -163,6 +165,7 @@ $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
+$(NRF5X_SDK_PATH)/components/drivers_nrf/twis_slave/nrf_drv_twis.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/spi_master/nrf_drv_spi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
@@ -282,8 +285,8 @@ else # NRF_BL_DFU_INSECURE
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/crypto/nrf_crypto.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/sha256/sha256.c
-endif
-else
+endif # NRF_BL_DFU_INSECURE
+else # NRF5X_SDK_12
   DEFINES += -DAPP_TIMER_V2
   DEFINES += -DAPP_TIMER_V2_RTC1_ENABLED
   DEFINES += -DNRF_DFU_SETTINGS_VERSION=1
@@ -406,8 +409,11 @@ else
   $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_info.c \
   $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_wdt.c 
 endif
+endif # BOOTLOADER
+ifndef BOOTLOADER_SETTINGS_FAMILY
+BOOTLOADER_SETTINGS_FAMILY = NRF52
 endif
-endif
+endif # USE_BOOTLOADER
 
 # ==============================================================
 include make/common/ARM.make
@@ -427,8 +433,8 @@ $(PROJ_NAME).hex: $(PROJ_NAME).app_hex
 	#python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(PROJ_NAME).app_hex -o $(PROJ_NAME).hex
   else
 	@echo Merging SoftDevice and Bootloader
-	@# build a DFU settings file we can merge in...
-	nrfutil settings generate --family NRF52 --application $(PROJ_NAME).app_hex --app-boot-validation VALIDATE_GENERATED_CRC --application-version 0xff --bootloader-version 0xff --bl-settings-version 2 dfu_settings.hex
+	@# build a DFU settings file we can merge in... family can be NRF52840 or NRF52
+	nrfutil settings generate --family $(BOOTLOADER_SETTINGS_FAMILY) --application $(PROJ_NAME).app_hex --app-boot-validation VALIDATE_GENERATED_CRC --application-version 0xff --bootloader-version 0xff --bl-settings-version 2 dfu_settings.hex
 	@echo FIXME - had to set --overlap=replace
 	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).app_hex dfu_settings.hex -o $(PROJ_NAME).hex
   endif

@@ -58,7 +58,7 @@ typedef struct {
 #define BLE_NUS_MAX_DATA_LEN 20 //GATT_MTU_SIZE_DEFAULT - 3
 #endif
 
-#if defined(NRF52) || defined(ESP32)
+#if defined(NRF52_SERIES) || defined(ESP32)
 // nRF52 gets the ability to connect to other
 #define CENTRAL_LINK_COUNT              1                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
@@ -67,7 +67,9 @@ typedef struct {
 #define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
 #endif
 
+#ifndef APP_TIMER_OP_QUEUE_SIZE
 #define APP_TIMER_OP_QUEUE_SIZE         2                                           /**< Size of timer operation queues. */
+#endif
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 
 // BLE HID stuff
@@ -75,8 +77,9 @@ typedef struct {
 #define HID_MODIFIER_KEY_POS                 0                                       /**< Position of the modifier byte in the Input Report. */
 #define HID_SCAN_CODE_POS                    2                                       /**< This macro indicates the start position of the key scan code in a HID Report. As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11, each report shall have one modifier byte followed by a reserved constant byte and then the key scan code. */
 
-#define DEFAULT_ADVERTISING_INTERVAL    MSEC_TO_UNITS(375, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
-
+#ifndef BLUETOOTH_ADVERTISING_INTERVAL
+#define BLUETOOTH_ADVERTISING_INTERVAL 375
+#endif
 
 typedef enum  {
   BLE_NONE = 0,
@@ -95,12 +98,12 @@ typedef enum  {
   BLE_IS_NOT_CONNECTABLE = 2048, //< Is the device connectable?
   BLE_IS_NOT_SCANNABLE = 4096, //< Is the device scannable? eg, scan response
   BLE_WHITELIST_ON_BOND = 8192,  //< Should we write to the whitelist whenever we bond to a device?
-
   BLE_DISABLE_DYNAMIC_INTERVAL = 16384, //< Disable automatically changing interval based on BLE peripheral activity
+  BLE_ENCRYPT_UART = 32768,  //< Has security with encryption been requested (if so UART must require it)
 
-  BLE_IS_ADVERTISING_MULTIPLE = 32768, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_ONE = 65536,
-  BLE_ADVERTISING_MULTIPLE_SHIFT = 16,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_IS_ADVERTISING_MULTIPLE = 65536, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_ONE = 131072,
+  BLE_ADVERTISING_MULTIPLE_SHIFT = 17,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 
   /// These are flags that should be reset when the softdevice starts up
@@ -160,8 +163,9 @@ void jsble_queue_pending(BLEPending blep, uint16_t data);
 int jsble_exec_pending(IOEvent *event);
 
 /** Stop and restart the softdevice so that we can update the services in it -
- * both user-defined as well as UART/HID */
-void jsble_restart_softdevice();
+ * both user-defined as well as UART/HID. If jsFunction is a function it is
+ * called when the softdevice is uninitialised. */
+void jsble_restart_softdevice(JsVar *jsFunction);
 
 uint32_t jsble_advertising_start();
 uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen);

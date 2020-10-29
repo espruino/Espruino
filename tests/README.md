@@ -9,6 +9,9 @@ The tests here are run automatically when you type:
 
 Each test sets the variable `result` to `true` for a pass, or `false` for a failure.
 
+**Note:** Tests which are known to fail are postfixed with `_FAIL`. This doesn't
+mean they are meant to fail, just that they test something we know is broken!
+
 ## Other tests
 
 You can find an overview of all of these by running `./espruino --help`.

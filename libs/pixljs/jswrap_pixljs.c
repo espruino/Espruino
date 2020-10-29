@@ -67,7 +67,7 @@ JsVarInt jswrap_pixljs_getBattery() {
 /*JSON{
   "type" : "variable",
   "name" : "SDA",
-  "generate_full" : "4",
+  "generate_full" : "JSH_PORTA_OFFSET + 4",
   "ifdef" : "PIXLJS",
   "return" : ["pin",""]
 }
@@ -76,7 +76,7 @@ The pin marked SDA on the Arduino pin footprint. This is connected directly to p
 /*JSON{
   "type" : "variable",
   "name" : "SCL",
-  "generate_full" : "5",
+  "generate_full" : "JSH_PORTA_OFFSET + 5",
   "ifdef" : "PIXLJS",
   "return" : ["pin",""]
 }
@@ -414,7 +414,7 @@ void jswrap_pixljs_init() {
    * With bootloader this means apply power while holding button for >3 secs */
   static bool firstStart = true;
 
-  JsVar *splashScreen = jsfReadFile(jsfNameFromString(".splash"));
+  JsVar *splashScreen = jsfReadFile(jsfNameFromString(".splash"),0,0);
   if (jsvIsString(splashScreen)) {
     if (jsvGetStringLength(splashScreen)) {
       graphicsSetVar(&gfx);
@@ -506,7 +506,7 @@ DEPRECATED: Use `E.showMenu`
     ],
     "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
 }
-Display a menu on Pixl.js's screen, and set up the buttons to navigate through it.
+Display a menu on the screen, and set up the buttons to navigate through it.
 
 Supply an object containing menu items. When an item is selected, the
 function it references will be executed. For example:
@@ -530,7 +530,7 @@ var mainmenu = {
     min:0,max:100,step:10,
     onchange : v => { number=v; }
   },
-  "Exit" : function() { E.showMenu(); },
+  "Exit" : function() { E.showMenu(); }, // remove the menu
 };
 // Submenu
 var submenu = {
@@ -540,9 +540,108 @@ var submenu = {
   "< Back" : function() { E.showMenu(mainmenu); },
 };
 // Actually display the menu
-Pixl.menu(mainmenu);
+E.showMenu(mainmenu);
 ```
+
+The menu will stay onscreen and active until explicitly removed,
+which you can do by calling `E.showMenu()` without arguments.
 
 See http://www.espruino.com/graphical_menu for more detailed information.
 */
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showMessage",
+    "generate_js" : "libs/js/pixljs/E_showMessage.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["title","JsVar","(optional) a title for the message"]
+    ],
+    "ifdef" : "PIXLJS"
+}
+
+A utility function for displaying a full screen message on the screen.
+
+Draws to the screen and returns immediately.
+
+```
+E.showMessage("These are\nLots of\nLines","My Title")
+```
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showPrompt",
+    "generate_js" : "libs/js/pixljs/E_showPrompt.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["options","JsVar","(optional) an object of options (see below)"]
+    ],
+    "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
+    "ifdef" : "PIXLJS"
+}
+
+Displays a full screen prompt on the screen, with the buttons
+requested (or `Yes` and `No` for defaults).
+
+When the button is pressed the promise is resolved with the
+requested values (for the `Yes` and `No` defaults, `true` and `false`
+are returned).
+
+```
+E.showPrompt("Do you like fish?").then(function(v) {
+  if (v) print("'Yes' chosen");
+  else print("'No' chosen");
+});
+// Or
+E.showPrompt("How many fish\ndo you like?",{
+  title:"Fish",
+  buttons : {"One":1,"Two":2,"Three":3}
+}).then(function(v) {
+  print("You like "+v+" fish");
+});
+```
+
+To remove the prompt, call `E.showPrompt()` with no arguments.
+
+The second `options` argument can contain:
+
+```
+{
+  title: "Hello",                      // optional Title
+  buttons : {"Ok":true,"Cancel":false} // list of button text & return value
+}
+```
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showAlert",
+    "generate_js" : "libs/js/pixljs/E_showAlert.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["options","JsVar","(optional) a title for the message"]
+    ],
+    "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
+    "ifdef" : "PIXLJS"
+}
+
+Displays a full screen prompt on the screen, with a single 'Ok' button.
+
+When the button is pressed the promise is resolved.
+
+```
+E.showAlert("Hello").then(function() {
+  print("Ok pressed");
+});
+// or
+E.showAlert("These are\nLots of\nLines","My Title").then(function() {
+  print("Ok pressed");
+});
+```
+
+To remove the window, call `E.showAlert()` with no arguments.
+*/

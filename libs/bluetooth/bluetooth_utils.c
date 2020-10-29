@@ -153,10 +153,8 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
     if (expectedLength==16 && jsvStringIteratorGetChar(&it)=='-')
       jsvStringIteratorNext(&it);
     // Read a byte
-    int hi = chtod(jsvStringIteratorGetChar(&it));
-    jsvStringIteratorNext(&it);
-    int lo = chtod(jsvStringIteratorGetChar(&it));
-    jsvStringIteratorNext(&it);
+    char hi = jsvStringIteratorGetCharAndNext(&it);
+    char lo = jsvStringIteratorGetCharAndNext(&it);
     int v = hexToByte(hi,lo);
     if (v<0) {
       jsvStringIteratorFree(&it);
@@ -185,9 +183,15 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
   }
   return err_code ? "BLE device error adding UUID" : 0;
 #else
-  uuid->uuid = ((data[13]<<8) | data[12]);
-  for(int i = 0; i < 16; i++){
-	uuid->uuid128[i] = data[i];
+  if (expectedLength == 2) {
+    uuid->type = BLE_UUID_TYPE_BLE;
+    uuid->uuid = ((data[1]<<8) | data[0]);
+  } else {
+    uuid->type = BLE_UUID_TYPE_128;
+    uuid->uuid = ((data[13]<<8) | data[12]);
+    for(int i = 0; i < 16; i++){
+      uuid->uuid128[i] = data[i];
+    }
   }
   return 0;
 #endif

@@ -337,7 +337,7 @@ var options = {
     protocol: 'http:',   // optional protocol - https: or http:
     headers: { key : value, key : value } // (optional) HTTP headers
   };
-require("http").request(options, function(res) {
+var req = require("http").request(options, function(res) {
   res.on('data', function(data) {
     console.log("HTTP> "+data);
   });
@@ -345,9 +345,13 @@ require("http").request(options, function(res) {
     console.log("Connection closed");
   });
 });
+// You can req.write(...) here if your request requires data to be sent.
+req.end(); // called to finish the HTTP request and get the response
 ```
 
 You can easily pre-populate `options` from a URL using `var options = url.parse("http://www.example.com/foo.html")`
+
+There's an example of using [`http.request` for HTTP POST here](/Internet#http-post)
 
 **Note:** if TLS/HTTPS is enabled, options can have `ca`, `key` and `cert` fields. See `tls.connect` for
 more information about these and how to use them.

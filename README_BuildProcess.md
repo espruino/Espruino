@@ -87,11 +87,15 @@ The board definition files are `.py` files that reside in the [`boards`](boards)
 * To create the HTML page on each individual board (referenced from [the top of the Reference](http://www.espruino.com/Reference)) using [`scripts/build_board_docs.py`](scripts/build_board_docs.py)
 * Converted to JSON (along with the pin declarations) and put [on espruino.com](http://www.espruino.com/json/PICO_R1_3.json) to help with autocomplete in the Web IDE (and auto-population of dropdowns in the Blockly editor). Converted by [`scripts/build_board_json.py`](scripts/build_board_json.py)
 
+To create a custom board based on one of the distributed board file copy e.g. `PICO_P1_3.py` to `PICO_P1_3_CUSTOM.py` and change the content of `PICO_P1_3_CUSTOM.py` as required for the planed project. The new board file name is than
+`PICO_P1_3_CUSTOM`. All created boards with the suffix `_CUSTOM.py` are ignored by git.
+
 These contain:
 
 ### info
 
 * Board name and link (for the HTML file)
+* `boardname` - override board name visible at runtime in process.env.BOARD, otherwise the filename of py file is used
 * Default console device, pins, and baus rate (the device Espruino goes to when USB is unplugged or not built in)
 * `variables` - The number of variables to use (this depends on the amount of RAM available). Less than 1023 vars use 12 bytes per var, more uses 16 bytes. You have to adjust this such that there is spare room for the stack and static variables (on Espruino boards this means leaving around 16kB free, but on smaller boards it can be reduced a lot)
 * `bootloader` - whether the binary image needs compiling with a special USB-VCP bootloader (Espruino boards only)
@@ -110,6 +114,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `SAVE_ON_FLASH_MATH` - Remove some less-used Maths functions that use a bunch of Flash memory
 * `SAVE_ON_FLASH_EXTREME` - Pull out as many features as possible to target devices with ~128kB Flash that also want things like Filesystem support
 * `BLUETOOTH_NAME_PREFIX="..."` - Make the Bluetooth LE device's name `BLUETOOTH_NAME_PREFIX` followed by the last 2 bytes of the MAC address.
+* `BLUETOOTH_ADVERTISING_INTERVAL=375` - set the default Bluetooth advertising interval (default 375)
 * `NFC_DEFAULT_URL="http://foo"` - If defined, set the advertised NFC URL to the one given, plus `?a=ble_address`. Only do it for a fresh boot - not when code has been saved.
 * `PIN_NAMES_DIRECT=1` - Package skips out some pins (maybe there's `D0`,`D1`,`D3` but no `D2`), so the code must search rather than just offsetting based on pin number.
 * `DUMP_IGNORE_VARIABLES="...\0"` - string containing zero-terminated list of global variable names to ignore when `dump()` is called. Must be explicityly zero-terminated so there are 2 trailing 0s
@@ -118,7 +123,11 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `JSMODULESOURCES+=libs/.../foo.min.js` - include the given JS file as a module that can be used via `require("foo")`
 * `JSVAR_MALLOC` - Allocate space for variables at jsvInit time, rather than statically
 * `NO_VECTOR_FONT=1` - don't compile in the vector font (this is usually only done for SAVE_ON_FLASH)
+* `NO_DUMP_HARDWARE_INITIALISATION=1` - don't create lines like `digitalWrite(D1,1)` for `dump()/save()` to recreate hardware state
 * `USE_FONT_6X8=1` - Also include in a 6x8 fixed width bitmap font
+* `USE_TAB_COMPLETE=0` - Don't include tab completion (default is yes unless SAVE_ON_FLASH is defined)
+* `USE_DEBUGGER=0` - Don't include the debugger (default is yes unless SAVE_ON_FLASH is defined)
+* `USE_NETWORK_JS=0` - Don't include JS networking lib used for handling AT commands (default is yes if networking is enabled)
 
 
 ### chip

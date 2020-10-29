@@ -11,12 +11,12 @@ Created with:
 cd ~/workspace
 git clone https://github.com/tensorflow/tensorflow --depth=1
 cd tensorflow
-make -f tensorflow/lite/experimental/micro/tools/make/Makefile
-make -f tensorflow/lite/experimental/micro/tools/make/Makefile TARGET=make TAGS="disco_f746ng" generate_projects
-cp -R tensorflow/lite/experimental/micro/tools/make/gen/make_x86_64/prj/hello_world/make/* ~/workspace/Espruino/libs/tensorflow
-#
-cd ..
-mv tensorflow/tensorflow/lite/experimental/micro/examples/hello_world/* .
+make -f tensorflow/lite/micro/tools/make/Makefile
+make -f tensorflow/lite/micro/tools/make/Makefile TARGET=make TAGS="disco_f746ng" generate_projects
+cp -R tensorflow/lite/micro/tools/make/gen/make_x86_64/prj/hello_world/make/* ~/workspace/Espruino/libs/tensorflow
+# apply patches
+cd ~/workspace/Espruino
+cat libs/tensorflow/patches/* | patch -p1
 ```
 
 ## Actually using it

@@ -19,6 +19,7 @@ wget https://www.espruino.com/modules/LPS22HB.min.js  -O LPS22HB.min.js
 wget https://www.espruino.com/modules/HTS221.min.js  -O HTS221.min.js
 wget https://www.espruino.com/modules/CCS811.min.js  -O CCS811.min.js
 wget https://www.espruino.com/modules/BH1745.min.js  -O BH1745.min.js 
+wget https://www.espruino.com/modules/SHT3C.min.js  -O SHT3C.min.js
 #wget https://www.espruino.com/modules/PCA9685.min.js  -O PCA9685.min.js 
 #wget https://www.espruino.com/modules/Smartibot.min.js  -O Smartibot.min.js 
 
@@ -30,11 +31,18 @@ node ../../../EspruinoDocs/bin/minify.js rak/RAK8212.js rak/RAK8212.min.js
 node ../../../EspruinoDocs/bin/minify.js nordic/Thingy.js nordic/Thingy.min.js
 
 node ../../../EspruinoDocs/bin/minify.js pixljs/E_showMenu.js pixljs/E_showMenu.min.js
+node ../../../EspruinoDocs/bin/minify.js pixljs/E_showMessage.js pixljs/E_showMessage.min.js
+node ../../../EspruinoDocs/bin/minify.js pixljs/E_showPrompt.js pixljs/E_showPrompt.min.js
+node ../../../EspruinoDocs/bin/minify.js pixljs/E_showAlert.js pixljs/E_showAlert.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMenu.js banglejs/E_showMenu.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMessage.js banglejs/E_showMessage.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showPrompt.js banglejs/E_showPrompt.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showAlert.js banglejs/E_showAlert.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/LED1.js banglejs/LED1.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/LED2.js banglejs/LED2.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_drawWidgets.js banglejs/Bangle_drawWidgets.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_loadWidgets.js banglejs/Bangle_loadWidgets.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_showLauncher.js banglejs/Bangle_showLauncher.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/locale.js banglejs/locale.min.js
 
 

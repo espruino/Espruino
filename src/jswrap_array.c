@@ -724,7 +724,9 @@ Returns true if the provided object is an array
 NO_INLINE static JsVarInt _jswrap_array_sort_compare(JsVar *a, JsVar *b, JsVar *compareFn) {
   if (compareFn) {
     JsVar *args[2] = {a,b};
-    return jsvGetIntegerAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
+    JsVarFloat f = jsvGetFloatAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
+    if (f==0) return 0;
+    return (f<0)?-1:1;
   } else {
     JsVar *sa = jsvAsString(a);
     JsVar *sb = jsvAsString(b);
@@ -737,7 +739,8 @@ NO_INLINE static JsVarInt _jswrap_array_sort_compare(JsVar *a, JsVar *b, JsVar *
 NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compareFn) {
   if (n < 2) return; // sort done!
 
-  JsvIterator pivot = jsvIteratorClone(head);
+  JsvIterator pivot;
+  jsvIteratorClone(&pivot, head);
   bool pivotLowest = true; // is the pivot the lowest value in here?
   JsVar *pivotValue = jsvIteratorGetValue(&pivot);
   /* We're just going to use the first entry (head) as the pivot...
@@ -745,7 +748,8 @@ NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compar
    * swap the values over (hence moving pivot forwards)  */
 
   int nlo = 0, nhigh = 0;
-  JsvIterator it = jsvIteratorClone(head); //
+  JsvIterator it;
+  jsvIteratorClone(&it, head); //
   jsvIteratorNext(&it);
 
 
@@ -932,8 +936,9 @@ JsVar *jswrap_array_fill(JsVar *parent, JsVar *value, JsVarInt start, JsVar *end
 void _jswrap_array_reverse_block(JsVar *parent, JsvIterator *it, int items) {
   assert(items > 1);
 
-  JsvIterator ita = jsvIteratorClone(it);
-  JsvIterator itb = jsvIteratorClone(it);
+  JsvIterator ita, itb;
+  jsvIteratorClone(&ita, it);
+  jsvIteratorClone(&itb, it);
 
   // move second pointer halfway through (round up)
   int i;

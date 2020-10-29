@@ -41,6 +41,13 @@ board = importlib.import_module(boardname)
 print("# Generated with scripts/get_makefile_decls.py "+boardname);
 print("BOARD="+boardname)
 
+#allow to override board name so we can build for same board from multiple board files 
+if "boardname" in board.info:
+  boardname = board.info["boardname"]
+  print("# board.info.boardname set to "+boardname)
+
+print("DEFINES+= -D"+boardname)
+
 binaryName=common.get_board_binary_name(board)
 if binaryName.find('.bin')>=0:
     binaryName = binaryName[:binaryName.find('.bin')]
