@@ -626,6 +626,35 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
       val = -val;
     }
 
+#ifndef USE_NO_FLOATS
+    // check for exponents
+    int exponent = 0;
+    if (radix == 10 && (val >= 1E21 || val < 1E-6)) {
+      // use repeated mul/div for ease, but to
+      // improve accuracy we multiply by 1e5 first
+      if (val>1) {
+        while (val>100000) {
+          val /= 100000;
+          exponent += 5;
+        }
+        while (val>10) {
+          val /= 10;
+          exponent ++;
+        }
+      } else {
+        while (val<1E-5) {
+          val *= 100000;
+          exponent -= 5;
+        }
+        while (val<1) {
+          val *= 10;
+          exponent --;
+        }
+      }
+    }
+ #endif
+
+
     // what if we're really close to an integer? Just use that...
     if (((JsVarInt)(val+stopAtError)) == (1+(JsVarInt)val))
       val = (JsVarFloat)(1+(JsVarInt)val);
@@ -656,6 +685,13 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
         *(str++)=itoch(v);
         fractionalDigits--;
       }
+    }
+    // write exponent if enough buffer length left (> 5)
+    if (exponent && len > 5) {
+      *str++ = 'e';
+      if (exponent>0) *str++ = '+';
+      itostr(exponent, str, 10);
+      return;
     }
 #endif
 

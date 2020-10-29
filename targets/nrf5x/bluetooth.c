@@ -174,7 +174,7 @@ volatile uint16_t                       m_central_conn_handle = BLE_CONN_HANDLE_
 volatile bool nfcEnabled = false;
 #endif
 
-uint16_t bleAdvertisingInterval = DEFAULT_ADVERTISING_INTERVAL;
+uint16_t bleAdvertisingInterval = MSEC_TO_UNITS(BLUETOOTH_ADVERTISING_INTERVAL, UNIT_0_625_MS);           /**< The advertising interval (in units of 0.625 ms). */
 
 volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
@@ -186,7 +186,7 @@ uint8_t nusTxBuf[BLE_NUS_MAX_DATA_LEN];
 /// Number of bytes ready to send inside nusTxBuf
 uint16_t nuxTxBufLength = 0;
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
 #define DYNAMIC_INTERVAL_ADJUSTMENT
 #endif
 /* Dynamic interval adjustment kicks Espruino into a low power mode after
@@ -1033,7 +1033,7 @@ void SWI1_IRQHandler(bool radio_evt) {
  }
 #endif
 
-#ifndef NRF52
+#ifndef NRF52_SERIES
   /* NRF52 has a systick. On nRF51 we just hook on
   to this, since it happens quite often */
   void SysTick_Handler(void);
@@ -1167,7 +1167,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           jsble_queue_pending(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
-          jsble_restart_softdevice();
+          jsble_restart_softdevice(NULL);
 
         break;
 
@@ -2256,7 +2256,7 @@ static void ble_stack_init() {
                                                     &ble_enable_params);
     APP_ERROR_CHECK(err_code);
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
     ble_enable_params.common_enable_params.vs_uuid_count = 10;
 #else
     ble_enable_params.common_enable_params.vs_uuid_count = 3;
@@ -2461,7 +2461,7 @@ void jsble_advertising_stop() {
    uint32_t err_code;
    ble_stack_init();
    err_code = radio_notification_init(
- #ifdef NRF52
+ #ifdef NRF52_SERIES
                            6, /* IRQ Priority -  Must be 6 on nRF52. 7 doesn't work */
  #else
                            3, /* IRQ Priority -  nRF51 has different IRQ structure */
@@ -2470,7 +2470,7 @@ void jsble_advertising_stop() {
                            NRF_RADIO_NOTIFICATION_DISTANCE_NONE);
    APP_ERROR_CHECK(err_code);
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
    // Set MAC address
    JsVar *v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS,0);
    if (v) {
@@ -2521,7 +2521,7 @@ void jsble_kill() {
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */
-void jsble_restart_softdevice() {
+void jsble_restart_softdevice(JsVar *jsFunction) {
   assert(!jsble_has_connection());
   bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
 
@@ -2534,6 +2534,8 @@ void jsble_restart_softdevice() {
   jshUtilTimerDisable(); // don't want the util timer firing during this!
   JsSysTime lastTime = jshGetSystemTime();
   jsble_kill();
+  if (jsvIsFunction(jsFunction))
+    jspExecuteFunction(jsFunction,NULL,0,NULL);
   jsble_init();
   // reinitialise everything
   jswrap_ble_reconfigure_softdevice();

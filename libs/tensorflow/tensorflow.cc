@@ -52,7 +52,7 @@ typedef struct {
 #ifdef TENSORFLOW_ALL_OPS
   alignas(16) tflite::ops::micro::AllOpsResolver resolver;
 #else
-#define TENSORFLOW_OP_COUNT 6
+#define TENSORFLOW_OP_COUNT 9
   alignas(16) tflite::MicroMutableOpResolver<TENSORFLOW_OP_COUNT> resolver;
 #endif
   // Build an interpreter to run the model with
@@ -94,6 +94,9 @@ bool tf_create(void *dataPtr, size_t arena_size, const char *model_data) {
   tf->resolver.AddMaxPool2D();
   tf->resolver.AddFullyConnected();
   tf->resolver.AddSoftmax();
+  tf->resolver.AddQuantize();
+  tf->resolver.AddDequantize();
+  tf->resolver.AddReshape();
 #endif
 
   // Build an interpreter to run the model with

@@ -121,8 +121,13 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
     bool matchAny = false;
     while (regexp[*length] && regexp[*length]!=']') {
       int matchLen;
-      matchAny |= matchcharacter(&regexp[*length], txtIt, &matchLen, info);
-      (*length) += matchLen;
+      if (regexp[*length]=='.') { // https://github.com/espruino/Espruino/issues/1948
+        matchAny |= ch=='.';
+        (*length)++;
+      } else {
+        matchAny |= matchcharacter(&regexp[*length], txtIt, &matchLen, info);
+        (*length) += matchLen;
+      }
     }
     if (regexp[*length]==']') {
       (*length)++;
@@ -152,7 +157,12 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
     if (cH=='v') { cH=0x0B; goto haveCode; }
     if (cH=='w') return isNumeric(ch) || isAlpha(ch) || ch=='_';
     if (cH=='W') return !(isNumeric(ch) || isAlpha(ch) || ch=='_');
-    if (cH>='0' && cH<='9') { cH-='0'; goto haveCode; }
+    if (cH=='0') { cH=0; goto haveCode; }
+    if (cH>='1' && cH<='9') {
+      jsExceptionHere(JSET_ERROR, "Backreferences not supported");
+      return false;
+      // we could implement this if needed by matching against info->groupStart/End
+    }
     if (cH=='x' && regexp[2] && regexp[3]) {
       *length = 4;
       cH = (char)hexToByte(regexp[2],regexp[3]);
@@ -160,7 +170,7 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
     }
   }
 haveCode:
-  if (info->rangeMatch && regexp[*length] == '-') { // Character set range start
+  if (info->rangeMatch && regexp[*length] == '-' && regexp[1+*length] != ']') { // Character set range start
     info->rangeFirstChar = cH;
     (*length)++;
     int matchLen;

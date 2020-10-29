@@ -84,6 +84,7 @@ if "check_output" not in dir( subprocess ):
 #         "ifndef" : "SAVE_ON_FLASH", // if the given preprocessor macro is defined, don't implement this
 #         "ifdef" : "USE_LCD_FOO", // if the given preprocessor macro isn't defined, don't implement this
 #         "#if" : "A>2", // add a #if statement in the generated C file (ONLY if type==object)
+#         "patch" : true // if true, this isn't a complete JSON, but just updates another with the same class+name
 #}*/
 #
 # description can be an array of strings as well as a simple string (in which case each element is separated by a newline),
@@ -235,6 +236,13 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
               if not r:
                 print(dropped_prefix+" because of #if "+jsondata["#if"]+ " -> "+expr)
                 drop = True
+          if not drop and "patch" in jsondata:
+            targetjsondata = [x for x in jsondatas if x["type"]==jsondata["type"] and x["class"]==jsondata["class"] and x["name"]==jsondata["name"]][0]
+            for key in jsondata:
+               if not key in ["type","class","name","patch"]:
+                 print("Copying "+key+" --- "+jsondata[key]);
+                 targetjsondata[key] = jsondata[key]
+            drop = True 
           if not drop:
             jsondatas.append(jsondata)
         except ValueError as e:
@@ -247,7 +255,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
 
     if board:
       for device in pinutils.SIMPLE_DEVICES:
-        if device in board.devices:
+        if device in board.devices and not "novariable" in board.devices[device]:
           jsondatas.append({
             "type" : "variable",
             "name" : device,
@@ -265,7 +273,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           "filename" : "BOARD.py",
           "include" : "platform_config.h"
         })
-      if "BTN1" in board.devices:
+      if "BTN1" in board.devices and not "novariable" in board.devices["BTN1"]:
         jsondatas.append({
           "type" : "variable",
           "name" : "BTN",
@@ -401,7 +409,7 @@ def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH_EXTREME": return "devices with extremely low flash memory (eg. HYSTM32_28)"
   if d=="STM32": return "STM32 devices (including Espruino Original, Pico and WiFi)"
   if d=="STM32F1": return "STM32F1 devices (including Original Espruino Board)"
-  if d=="NRF52": return "NRF52 devices (like Puck.js, Pixl.js, Bangle.js and MDBT42Q)"
+  if d=="NRF52_SERIES": return "NRF52 devices (like Puck.js, Pixl.js, Bangle.js and MDBT42Q)"
   if d=="PUCKJS": return "Puck.js devices"
   if d=="PIXLJS": return "Pixl.js boards"
   if d=="ESPRUINOWIFI": return "Espruino WiFi boards"
@@ -429,6 +437,7 @@ def get_ifdef_description(d):
   if d=="USE_TELNET": return "devices with Telnet enabled (Linux, ESP8266 and ESP32)"
   if d=="USE_WIZNET": return "builds with support for WIZnet Ethernet modules built in"
   if d=="USE_NFC": return "NFC (Puck.js, Pixl.js, MDBT42Q)"
+  if d=="GRAPHICS_ANTIALIAS": return "devices with Antialiasing support included (Bangle.js or Linux)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 

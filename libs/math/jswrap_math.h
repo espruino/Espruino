@@ -21,6 +21,7 @@
 
 JsVarInt jswrap_integer_valueOf(JsVar *v);
 JsVarFloat jswrap_math_abs(JsVarFloat x);
+JsVarFloat jswrap_math_asin(JsVarFloat x);
 double jswrap_math_mod(double x, double y);
 double jswrap_math_pow(double x, double y);
 JsVar *jswrap_math_round(double x);

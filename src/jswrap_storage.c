@@ -33,8 +33,7 @@ const int STORAGEFILE_CHUNKSIZE = (((FLASH_PAGE_SIZE<4096)?FLASH_PAGE_SIZE:4096)
 
 /*JSON{
   "type" : "library",
-  "class" : "Storage",
-  "ifndef" : "SAVE_ON_FLASH"
+  "class" : "Storage"
 }
 
 This module allows you to read and write part of the nonvolatile flash

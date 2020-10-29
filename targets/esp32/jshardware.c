@@ -309,6 +309,13 @@ JshPinState jshPinGetState(Pin pin) {
   return g_pinState[pin];
 }
 
+/** 
+ * Check if state is default - return true if default
+*/
+bool jshIsPinStateDefault(Pin pin, JshPinState state) {
+  return state == JSHPINSTATE_GPIO_IN_PULLUP || state == JSHPINSTATE_ADC_IN;
+}
+
 //===== GPIO and PIN stuff =====
 
 /**
@@ -405,13 +412,17 @@ void jshSetOutputValue(JshPinFunction func, int value) {
  */
 void jshEnableWatchDog(JsVarFloat timeout) {
   UNUSED(timeout);
+#ifdef DEBUG
   jsError(">> jshEnableWatchDog Not implemented,using taskwatchdog from RTOS");
+#endif
 }
 
 
 // Kick the watchdog
 void jshKickWatchDog() {
+#ifdef DEBUG
   jsError(">> jshKickWatchDog Not implemented,using taskwatchdog from RTOS");
+#endif
 }
 
 

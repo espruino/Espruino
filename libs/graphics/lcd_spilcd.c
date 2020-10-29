@@ -61,7 +61,9 @@ void lcdSendInitCmd_SPILCD() {
   }
 }
 void lcdSetPalette_SPILCD(const char *pal) {
+#ifdef LCD_PALETTED
   memcpy(lcdPalette, pal ? pal : SPILCD_PALETTE, sizeof(lcdPalette));
+#endif
 }
 
 // ======================================================================
@@ -77,6 +79,13 @@ unsigned int lcdGetPixel_SPILCD(JsGraphics *gfx, int x, int y) {
   int addr = x + (y*LCD_WIDTH);
   return lcdBuffer[addr];
 #endif
+#if LCD_BPP==12
+  int addr = (x>>1)*3 + (y*LCD_STRIDE) - 1;
+  uint32_t *p = (uint32_t*)(&lcdBuffer[addr]);
+  uint32_t c = __builtin_bswap32(*p);
+  if (x&1) return c & 0xFFF;
+  else return (c>>12) & 0xFFF;
+#endif
 }
 
 
@@ -90,6 +99,17 @@ void lcdSetPixel_SPILCD(JsGraphics *gfx, int x, int y, unsigned int col) {
   int addr = x + (y*LCD_WIDTH);
   lcdBuffer[addr] = col;
 #endif
+#if LCD_BPP==12
+  // For a 12 bit write we store inside 32 bits. This is frustrated by the LCD
+  // working on a different byte order, but at least ARM has instructions for
+  // endian swaps
+  int addr = (x>>1)*3 + (y*LCD_STRIDE) - 1;
+  uint32_t *p = (uint32_t*)(&lcdBuffer[addr]);
+  uint32_t c = __builtin_bswap32(*p);
+  if (x&1) c = (c & 0xFFFFF000) | (col & 0xFFF);
+  else c = (c & 0xFF000FFF) | ((col & 0xFFF)<<12);
+  *p = __builtin_bswap32(c);
+#endif
 }
 
 void lcdFlip_SPILCD_callback() {
@@ -99,14 +119,18 @@ void lcdFlip_SPILCD_callback() {
 void lcdFlip_SPILCD(JsGraphics *gfx) {
   if (gfx->data.modMinX > gfx->data.modMaxX) return; // nothing to do!
 
-  unsigned char buffer1[LCD_WIDTH*2]; // 16 bits per pixel
-  unsigned char buffer2[LCD_WIDTH*2]; // 16 bits per pixel
-
   // use nearest 2 pixels as we're sending 12 bits
   gfx->data.modMinX = (gfx->data.modMinX)&~1;
   gfx->data.modMaxX = (gfx->data.modMaxX+2)&~1;
+#if LCD_BPP==12
+  gfx->data.modMinX = 0;
+  gfx->data.modMaxX = LCD_WIDTH;
+#else
+  unsigned char buffer2[LCD_STRIDE];
   int xlen = gfx->data.modMaxX - gfx->data.modMinX;
   int xstart = gfx->data.modMinX;
+#endif
+  unsigned char buffer1[LCD_STRIDE];
 
   jshPinSetValue(LCD_SPI_CS, 0);
   jshPinSetValue(LCD_SPI_DC, 0); // command
@@ -116,7 +140,7 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
   buffer1[0] = 0;
   buffer1[1] = gfx->data.modMinX;
   buffer1[2] = 0;
-  buffer1[3] = gfx->data.modMaxX;
+  buffer1[3] = gfx->data.modMaxX-1;
   jshSPISendMany(LCD_SPI, buffer1, NULL, 4, NULL);
   jshPinSetValue(LCD_SPI_DC, 0); // command
   buffer1[0] = SPILCD_CMD_WINDOW_Y;
@@ -132,6 +156,15 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
   jshSPISendMany(LCD_SPI, buffer1, NULL, 1, NULL);
   jshPinSetValue(LCD_SPI_DC, 1); // data
 
+#if LCD_BPP==12
+  // if 12 bit, we can just push it out directly
+  jshSPISendMany(
+      LCD_SPI,
+      &lcdBuffer[LCD_STRIDE-gfx->data.modMinY],
+      0,
+      (gfx->data.modMaxY+1-gfx->data.modMinY)*LCD_STRIDE,
+      NULL);
+#else
   for (int y=gfx->data.modMinY;y<=gfx->data.modMaxY;y++) {
     unsigned char *buffer = (y&1)?buffer1:buffer2;
     // skip any lines that don't need updating
@@ -160,6 +193,7 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
     jshSPISendMany(LCD_SPI, buffer, 0, len, lcdFlip_SPILCD_callback);
   }
   jshSPIWait(LCD_SPI);
+#endif
   jshPinSetValue(LCD_SPI_CS,1);
   // Reset modified-ness
   gfx->data.modMaxX = -32768;
@@ -176,7 +210,6 @@ void lcdInit_SPILCD(JsGraphics *gfx) {
 
   lcdSetPalette_SPILCD(0);
 
-  jshPinOutput(LCD_BL,0); // backlight on
   jshPinOutput(LCD_SPI_CS,1);
   jshPinOutput(LCD_SPI_DC,1);
   jshPinOutput(LCD_SPI_SCK,1);

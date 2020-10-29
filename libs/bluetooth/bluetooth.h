@@ -58,7 +58,7 @@ typedef struct {
 #define BLE_NUS_MAX_DATA_LEN 20 //GATT_MTU_SIZE_DEFAULT - 3
 #endif
 
-#if defined(NRF52) || defined(ESP32)
+#if defined(NRF52_SERIES) || defined(ESP32)
 // nRF52 gets the ability to connect to other
 #define CENTRAL_LINK_COUNT              1                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
@@ -77,8 +77,9 @@ typedef struct {
 #define HID_MODIFIER_KEY_POS                 0                                       /**< Position of the modifier byte in the Input Report. */
 #define HID_SCAN_CODE_POS                    2                                       /**< This macro indicates the start position of the key scan code in a HID Report. As per the document titled 'Device Class Definition for Human Interface Devices (HID) V1.11, each report shall have one modifier byte followed by a reserved constant byte and then the key scan code. */
 
-#define DEFAULT_ADVERTISING_INTERVAL    MSEC_TO_UNITS(375, UNIT_0_625_MS)           /**< The advertising interval (in units of 0.625 ms). */
-
+#ifndef BLUETOOTH_ADVERTISING_INTERVAL
+#define BLUETOOTH_ADVERTISING_INTERVAL 375
+#endif
 
 typedef enum  {
   BLE_NONE = 0,
@@ -162,8 +163,9 @@ void jsble_queue_pending(BLEPending blep, uint16_t data);
 int jsble_exec_pending(IOEvent *event);
 
 /** Stop and restart the softdevice so that we can update the services in it -
- * both user-defined as well as UART/HID */
-void jsble_restart_softdevice();
+ * both user-defined as well as UART/HID. If jsFunction is a function it is
+ * called when the softdevice is uninitialised. */
+void jsble_restart_softdevice(JsVar *jsFunction);
 
 uint32_t jsble_advertising_start();
 uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen);

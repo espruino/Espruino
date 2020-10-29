@@ -36,6 +36,14 @@
 #include "vector_font.h"
 
 #ifdef GRAPHICS_PALETTED_IMAGES
+#ifdef ESPR_GRAPHICS_12BIT
+#define PALETTE_BPP 12
+// 16 color 12 bit Web-safe palette
+const uint16_t PALETTE_4BIT[16] = { 0x0,0x444,0x888,0xbbb,0x963,0x630,0x60,0xa0,0x9f,0xc,0x309,0xf09,0xd00,0xf60,0xff0,0xfff };
+// 256 color 12 bit Web-safe palette
+const uint16_t PALETTE_8BIT[256] = { 0x0,0x3,0x6,0x9,0xc,0xf,0x30,0x33,0x36,0x39,0x3c,0x3f,0x60,0x63,0x66,0x69,0x6c,0x6f,0x90,0x93,0x96,0x99,0x9c,0x9f,0xc0,0xc3,0xc6,0xc9,0xcc,0xcf,0xf0,0xf3,0xf6,0xf9,0xfc,0xff,0x300,0x303,0x306,0x309,0x30c,0x30f,0x330,0x333,0x336,0x339,0x33c,0x33f,0x360,0x363,0x366,0x369,0x36c,0x36f,0x390,0x393,0x396,0x399,0x39c,0x39f,0x3c0,0x3c3,0x3c6,0x3c9,0x3cc,0x3cf,0x3f0,0x3f3,0x3f6,0x3f9,0x3fc,0x3ff,0x600,0x603,0x606,0x609,0x60c,0x60f,0x630,0x633,0x636,0x639,0x63c,0x63f,0x660,0x663,0x666,0x669,0x66c,0x66f,0x690,0x693,0x696,0x699,0x69c,0x69f,0x6c0,0x6c3,0x6c6,0x6c9,0x6cc,0x6cf,0x6f0,0x6f3,0x6f6,0x6f9,0x6fc,0x6ff,0x900,0x903,0x906,0x909,0x90c,0x90f,0x930,0x933,0x936,0x939,0x93c,0x93f,0x960,0x963,0x966,0x969,0x96c,0x96f,0x990,0x993,0x996,0x999,0x99c,0x99f,0x9c0,0x9c3,0x9c6,0x9c9,0x9cc,0x9cf,0x9f0,0x9f3,0x9f6,0x9f9,0x9fc,0x9ff,0xc00,0xc03,0xc06,0xc09,0xc0c,0xc0f,0xc30,0xc33,0xc36,0xc39,0xc3c,0xc3f,0xc60,0xc63,0xc66,0xc69,0xc6c,0xc6f,0xc90,0xc93,0xc96,0xc99,0xc9c,0xc9f,0xcc0,0xcc3,0xcc6,0xcc9,0xccc,0xccf,0xcf0,0xcf3,0xcf6,0xcf9,0xcfc,0xcff,0xf00,0xf03,0xf06,0xf09,0xf0c,0xf0f,0xf30,0xf33,0xf36,0xf39,0xf3c,0xf3f,0xf60,0xf63,0xf66,0xf69,0xf6c,0xf6f,0xf90,0xf93,0xf96,0xf99,0xf9c,0xf9f,0xfc0,0xfc3,0xfc6,0xfc9,0xfcc,0xfcf,0xff0,0xff3,0xff6,0xff9,0xffc,0xfff,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xfff };
+#else // default to 16 bit
+#define PALETTE_BPP 16
 // 16 color MAC OS palette
 const uint16_t PALETTE_4BIT[16] = { 0x0,0x4228,0x8c51,0xbdd7,0x9b26,0x6180,0x320,0x540,0x4df,0x19,0x3013,0xf813,0xd800,0xfb20,0xffe0,0xffff };
 // 256 color 16 bit Web-safe palette
@@ -57,6 +65,7 @@ const uint16_t PALETTE_8BIT[256] = {
     0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
     0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xffff
  };
+#endif
 // map Mac to web-safe palette. Must be uint16_t because drawImage uses uint16_t* for palette
 const uint16_t PALETTE_4BIT_TO_8BIT[16] = { 0, 43, 129, 172, 121, 78, 12, 18, 23, 4, 39, 183, 144, 192, 210, 215 };
 #endif
@@ -814,6 +823,10 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
     }
     if (gfx.data.bpp==16) {
       color = (unsigned int)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
+#ifdef ESPR_GRAPHICS_12BIT
+    } else if (gfx.data.bpp==12) {
+      color = (unsigned int)((bi>>4) | (gi>>4)<<4 | (ri>>4)<<8);
+#endif
     } else if (gfx.data.bpp==32) {
       color = 0xFF000000 | (unsigned int)(bi | (gi<<8) | (ri<<16));
     } else if (gfx.data.bpp==24) {
@@ -1035,13 +1048,15 @@ JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) 
     if (size<1) size=1;
     if (size>1023) size=1023;
   }
-  if ((gfx.data.fontSize&JSGRAPHICS_FONTSIZE_FONT_MASK) == JSGRAPHICS_FONTSIZE_CUSTOM &&
-      (size&JSGRAPHICS_FONTSIZE_FONT_MASK) != JSGRAPHICS_FONTSIZE_CUSTOM) {
+#ifndef SAVE_ON_FLASH
+  if ((gfx.data.fontSize&JSGRAPHICS_FONTSIZE_CUSTOM_BIT) &&
+      !(size&JSGRAPHICS_FONTSIZE_CUSTOM_BIT)) {
     jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_BMP);
     jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH);
     jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT);
     jsvObjectRemoveChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR);
   }
+#endif
   gfx.data.fontSize = (unsigned short)size;
   graphicsSetVar(&gfx);
 #endif
@@ -1051,12 +1066,13 @@ JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) 
   "type" : "method",
   "class" : "Graphics",
   "name" : "setFontCustom",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_setFontCustom",
   "params" : [
     ["bitmap","JsVar","A column-first, MSB-first, 1bpp bitmap containing the font bitmap"],
     ["firstChar","int32","The first character in the font - usually 32 (space)"],
     ["width","JsVar","The width of each character in the font. Either an integer, or a string where each character represents the width"],
-    ["height","int32","The height as an integer (max 255). Bits 8-15 represent the scale factor (eg. `2<<8` is twice the size)"]
+    ["height","int32","The height as an integer (max 255). Bits 8-15 represent the scale factor (eg. `2<<8` is twice the size). Bits 16-23 represent the BPP (0,1=1 bpp, 2=2 bpp, 4=4 bpp)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
@@ -1064,6 +1080,7 @@ JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) 
 Make subsequent calls to `drawString` use a Custom Font of the given height. See the [Fonts page](http://www.espruino.com/Fonts) for more
 information about custom fonts and how to create them.
 */
+#ifndef SAVE_ON_FLASH
 JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
@@ -1079,17 +1096,28 @@ JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar
     jsExceptionHere(JSET_ERROR, "Font width must be a String or an integer");
     return 0;
   }
-  int scale = height>>8;
+  int scale = (height>>8)&255;
   if (scale<1) scale=1;
+  int bpp = height>>16;
+  if (bpp<1) bpp=1;
+  JsGraphicsFontSize fontType;
+  if (bpp==1) fontType = JSGRAPHICS_FONTSIZE_CUSTOM_1BPP;
+  else if (bpp==2) fontType = JSGRAPHICS_FONTSIZE_CUSTOM_2BPP;
+  else if (bpp==4) fontType = JSGRAPHICS_FONTSIZE_CUSTOM_4BPP;
+  else {
+    jsExceptionHere(JSET_ERROR, "Invalid BPP - 1,2,4 supported");
+    return 0;
+  }
   height = height&255;
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, bitmap);
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, width);
   jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height));
   jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar));
-  gfx.data.fontSize = (unsigned short)(scale + JSGRAPHICS_FONTSIZE_CUSTOM);
+  gfx.data.fontSize = (unsigned short)(scale + fontType);
   graphicsSetVar(&gfx);
   return jsvLockAgain(parent);
 }
+#endif
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
@@ -1162,16 +1190,18 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size) {
   if (jsvIsStringEqual(name, "6x8"))
     sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_6X8);
 #endif
-  // TODO: if function named 'setFontXYZ' exists, run it
+#ifndef SAVE_ON_FLASH
+  // if function named 'setFontXYZ' exists, run it
   if (sz==0xFFFF) {
     JsVar *setterName = jsvVarPrintf("setFont%v",name);
     JsVar *fontSetter = jspGetVarNamedField(parent,setterName,false);
     if (fontSetter) {
       jsvUnLock(jspExecuteFunction(fontSetter,parent,0,NULL));
-      sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_CUSTOM);
+      sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_CUSTOM_1BPP);
     }
     jsvUnLock2(fontSetter,setterName);
   }
+#endif
   if (sz==0xFFFF) {
     jsExceptionHere(JSET_ERROR, "Unknown font %j", name);
   }
@@ -1206,12 +1236,14 @@ JsVar *jswrap_graphics_getFont(JsVar *parent) {
   if (f == JSGRAPHICS_FONTSIZE_6X8)
     return jsvNewFromString("6x8");
 #endif
-  if (f == JSGRAPHICS_FONTSIZE_CUSTOM) {
+#ifndef SAVE_ON_FLASH
+  if (f & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
     // not implemented yet because it's painful trying to pass 5 arguments into setFontCustom
     /*JsVar *n = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_NAME, 0);
     if (n) return n;*/
     return jsvNewFromString("Custom");
   }
+#endif
   return jsvNewFromInteger(gfx.data.fontSize);
 #else
   return 0;
@@ -1282,8 +1314,10 @@ static int jswrap_graphics_getFontHeightInternal(JsGraphics *gfx) {
   } else if (f == JSGRAPHICS_FONTSIZE_6X8) {
     return 8*scale;
 #endif
-  } else if (f == JSGRAPHICS_FONTSIZE_CUSTOM) {
+#ifndef SAVE_ON_FLASH
+  } else if (f & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
     return scale*(int)jsvGetIntegerAndUnLock(jsvObjectGetChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0));
+#endif
   }
   return 0;
 }
@@ -1316,17 +1350,23 @@ Draw a string of text in the current font
 JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool solidBackground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
-  JsVar *customBitmap = 0, *customWidth = 0;
-  int customHeight = jswrap_graphics_getFontHeightInternal(&gfx);
-  int customFirstChar = 0;
   JsGraphicsFontSize font = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_FONT_MASK;
   unsigned short scale = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
+  int fontHeight = jswrap_graphics_getFontHeightInternal(&gfx);
 
-  if (font == JSGRAPHICS_FONTSIZE_CUSTOM) {
+#ifndef SAVE_ON_FLASH
+  JsVar *customBitmap = 0, *customWidth = 0;
+  int customBPP = 1;
+  int customFirstChar = 0;
+
+  if (font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
+    if (font==JSGRAPHICS_FONTSIZE_CUSTOM_2BPP) customBPP = 2;
+    if (font==JSGRAPHICS_FONTSIZE_CUSTOM_4BPP) customBPP = 4;
     customBitmap = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, 0);
     customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
   }
+#endif
 #ifndef SAVE_ON_FLASH
   // Handle text rotation
   JsGraphicsFlags oldFlags = gfx.data.flags;
@@ -1349,7 +1389,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   if (gfx.data.fontAlignX<2) // 0=center, 1=right, 2=undefined, 3=left
     x -= jswrap_graphics_stringWidth(parent, var) * (gfx.data.fontAlignX+1)/2;
   if (gfx.data.fontAlignY<2)  // 0=center, 1=bottom, 2=undefined, 3=top
-    y -= customHeight * (gfx.data.fontAlignY+1)/2;
+    y -= fontHeight * (gfx.data.fontAlignY+1)/2;
 
   int minX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y1 : gfx.data.clipRect.x1;
   int minY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x1 : gfx.data.clipRect.y1;
@@ -1369,7 +1409,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
       x = startx;
-      y += customHeight;
+      y += fontHeight;
       continue;
     }
     if (font == JSGRAPHICS_FONTSIZE_VECTOR) {
@@ -1389,7 +1429,9 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
         graphicsDrawChar6x8(&gfx, x, y, ch, scale, solidBackground);
       x+=6*scale;
 #endif
-    } else if (font == JSGRAPHICS_FONTSIZE_CUSTOM) {
+#ifndef SAVE_ON_FLASH
+    } else if (font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
+      int customBPPRange = (1<<customBPP)-1;
       // get char width and offset in string
       int width = 0, bmpOffset = 0;
       if (jsvIsString(customWidth)) {
@@ -1406,39 +1448,47 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
         width = (int)jsvGetInteger(customWidth);
         bmpOffset = width*(ch-customFirstChar);
       }
-      if (ch>=customFirstChar && (x>minX-width) && (x<maxX) && (y>minY-customHeight) && y<maxY) {
-        int ch = customHeight/scale;
-        bmpOffset *= ch;
+      if (ch>=customFirstChar && (x>minX-width) && (x<maxX) && (y>minY-fontHeight) && y<maxY) {
+        int ch = fontHeight/scale;
+        bmpOffset *= ch * customBPP;
         // now render character
         JsvStringIterator cit;
-        jsvStringIteratorNew(&cit, customBitmap, (size_t)bmpOffset>>3);
+        jsvStringIteratorNew(&cit, customBitmap, (size_t)(bmpOffset>>3));
         bmpOffset &= 7;
         int cx,cy;
+        int citdata = jsvStringIteratorGetChar(&cit);
+        citdata <<= customBPP*bmpOffset;
         for (cx=0;cx<width;cx++) {
           for (cy=0;cy<ch;cy++) {
-            bool set = (jsvStringIteratorGetChar(&cit)<<bmpOffset)&128;
-            if (solidBackground || set)
+            int col = ((citdata&255)>>(8-customBPP));
+            if (solidBackground || col)
               graphicsFillRect(&gfx,
                   (x + cx*scale),
                   (y + cy*scale),
                   (x + cx*scale + scale-1),
                   (y + cy*scale + scale-1),
-                  set ? gfx.data.fgColor : gfx.data.bgColor);
-            bmpOffset++;
-            if (bmpOffset==8) {
+                  graphicsBlendColor(&gfx, (256*col)/customBPPRange));
+            bmpOffset += customBPP;
+            citdata <<= customBPP;
+            if (bmpOffset>=8) {
               bmpOffset=0;
               jsvStringIteratorNext(&cit);
+              citdata = jsvStringIteratorGetChar(&cit);
             }
           }
         }
         jsvStringIteratorFree(&cit);
       }
       x += width*scale;
+#endif
     }
     if (jspIsInterrupted()) break;
   }
   jsvStringIteratorFree(&it);
-  jsvUnLock3(str, customBitmap, customWidth);
+  jsvUnLock(str);
+#ifndef SAVE_ON_FLASH
+  jsvUnLock2(customBitmap, customWidth);
+#endif
 #ifndef SAVE_ON_FLASH
   gfx.data.flags = oldFlags; // restore flags because of text rotation
   graphicsSetVar(&gfx); // gfx data changed because modified area
@@ -1467,14 +1517,16 @@ Return the size in pixels of a string of text in the current font
 JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
-  JsVar *customWidth = 0;
-  int customFirstChar = 0;
   JsGraphicsFontSize font = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_FONT_MASK;
   unsigned short scale = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
-  if (font == JSGRAPHICS_FONTSIZE_CUSTOM) {
+#ifndef SAVE_ON_FLASH
+  JsVar *customWidth = 0;
+  int customFirstChar = 0;
+  if (font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
     customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
     customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
   }
+#endif
 
   JsVar *str = jsvAsString(var);
   JsvStringIterator it;
@@ -1497,17 +1549,22 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
     } else if (font == JSGRAPHICS_FONTSIZE_6X8) {
       width += 6*scale;
 #endif
-    } else if (font == JSGRAPHICS_FONTSIZE_CUSTOM) {
+#ifndef SAVE_ON_FLASH
+    } else if (font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
       if (jsvIsString(customWidth)) {
         if (ch>=customFirstChar)
           width += scale*(unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-customFirstChar));
       } else
         width += scale*(int)jsvGetInteger(customWidth);
+#endif
     }
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
-  jsvUnLock2(str, customWidth);
+#ifndef SAVE_ON_FLASH
+  jsvUnLock(customWidth);
+#endif
+  jsvUnLock(str);
   return width>maxWidth ? width : maxWidth;
 }
 
@@ -1530,6 +1587,34 @@ Draw a line between x1,y1 and x2,y2 in the current foreground color
 JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   graphicsDrawLine(&gfx, x1,y1,x2,y2);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+  return jsvLockAgain(parent);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "drawLineAA",
+  "ifdef" : "GRAPHICS_ANTIALIAS",
+  "generate" : "jswrap_graphics_drawLineAA",
+  "params" : [
+    ["x1","float","The left"],
+    ["y1","float","The top"],
+    ["x2","float","The right"],
+    ["y2","float","The bottom"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Draw a line between x1,y1 and x2,y2 in the current foreground color
+*/
+JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2, double y2) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  graphicsDrawLineAA(&gfx,
+      (int)(x1*16+0.5),
+      (int)(y1*16+0.5),
+      (int)(x2*16+0.5),
+      (int)(y2*16+0.5));
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
@@ -1584,7 +1669,7 @@ JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
   "class" : "Graphics",
   "name" : "drawPoly",
   "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_graphics_drawPoly",
+  "generate_full" : "jswrap_graphics_drawPoly_X(parent, poly, closed, false)",
   "params" : [
     ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"],
     ["closed","bool","Draw another line between the last element of the array and the first"]
@@ -1594,35 +1679,65 @@ JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
 }
 Draw a polyline (lines between each of the points in `poly`) in the current foreground color
 */
-JsVar *jswrap_graphics_drawPoly(JsVar *parent, JsVar *poly, bool closed) {
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "drawPolyAA",
+  "ifdef" : "GRAPHICS_ANTIALIAS",
+  "generate_full" : "jswrap_graphics_drawPoly_X(parent, poly, closed, true)",
+  "params" : [
+    ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"],
+    ["closed","bool","Draw another line between the last element of the array and the first"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Draw an **antialiased** polyline (lines between each of the points in `poly`) in the current foreground color
+*/
+JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool antiAlias) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   if (!jsvIsIterable(poly)) return 0;
-  int x,y;
+  int scale;
+  void (*drawFn)(JsGraphics *gfx, int x1, int y1, int x2, int y2);
+#ifdef GRAPHICS_ANTIALIAS
+  if (antiAlias) {
+    scale = 16;
+    drawFn = graphicsDrawLineAA;
+  } else
+#endif
+  {
+    scale = 1;
+    drawFn = graphicsDrawLine;
+  }
+
+  int lx,ly;
   int startx, starty;
   int idx = 0;
   JsvIterator it;
   jsvIteratorNew(&it, poly, JSIF_EVERY_ARRAY_ELEMENT);
   while (jsvIteratorHasElement(&it)) {
-    int el = jsvIteratorGetIntegerValue(&it);
-    if (idx&1) {
-      y = el;
-      if (idx==1) { // save xy positions of first point
-        startx = x;
-        starty = y;
-      } else {
-        // only start drawing between the first 2 points
-        graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, x, y);
-      }
-      gfx.data.cursorX = (short)x;
-      gfx.data.cursorY = (short)y;
-    } else x = el;
-    idx++;
+    int x,y;
+    x = (int)((jsvIteratorGetFloatValue(&it)*scale)+0.5);
     jsvIteratorNext(&it);
+    y = (int)((jsvIteratorGetFloatValue(&it)*scale)+0.5);
+    jsvIteratorNext(&it);
+    if (idx==0) { // save xy positions of first point
+      startx = x;
+      starty = y;
+    } else {
+      // only start drawing between the first 2 points
+      drawFn(&gfx, lx, ly, x, y);
+    }
+    lx = x;
+    ly = y;
+    idx++;
   }
   jsvIteratorFree(&it);
+  gfx.data.cursorX = (short)(lx/scale);
+  gfx.data.cursorY = (short)(ly/scale);
   // if closed, draw between first and last points
   if (closed)
-    graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, startx, starty);
+    drawFn(&gfx, lx, ly, startx, starty);
 
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
@@ -1805,32 +1920,17 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
       info->palettePtr = info->_simplePalette;
       info->paletteMask = 1;
   #ifdef GRAPHICS_PALETTED_IMAGES
-    } else if (gfx->data.bpp==16 && info->bpp==2) { // Blend from bg to fg
-      unsigned int b = gfx->data.bgColor;
-      unsigned int br = (b>>8)&0xF8;
-      unsigned int bg = (b>>3)&0xFC;
-      unsigned int bb = (b<<3)&0xF8;
-      unsigned int f = gfx->data.fgColor;
-      unsigned int fr = (f>>8)&0xF8;
-      unsigned int fg = (f>>3)&0xFC;
-      unsigned int fb = (f<<3)&0xF8;
+    } else if (gfx->data.bpp>8 && info->bpp==2) { // Blend from bg to fg
       info->_simplePalette[0] = (uint16_t)gfx->data.bgColor;
-      unsigned int ri,gi,bi;
-      ri = (br*2 + fr)/3;
-      gi = (bg*2 + fg)/3;
-      bi = (bb*2 + fb)/3;
-      info->_simplePalette[1] = (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
-      ri = (br + fr*2)/3;
-      gi = (bg + fg*2)/3;
-      bi = (bb + fb*2)/3;
-      info->_simplePalette[2] = (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
+      info->_simplePalette[1] = graphicsBlendColor(gfx, 85);
+      info->_simplePalette[2] = graphicsBlendColor(gfx, 171);
       info->_simplePalette[3] = (uint16_t)gfx->data.fgColor;
       info->palettePtr = info->_simplePalette;
       info->paletteMask = 3;
-    } else if (gfx->data.bpp==16 && info->bpp==4) { // palette is 16 bits, so don't use it for other things
+    } else if (gfx->data.bpp==PALETTE_BPP && info->bpp==4) { // palette is 16 bits, so don't use it for other things
       info->palettePtr = PALETTE_4BIT;
       info->paletteMask = 15;
-    } else if (gfx->data.bpp==16 && info->bpp==8) { // palette is 16 bits, so don't use it for other things
+    } else if (gfx->data.bpp==PALETTE_BPP && info->bpp==8) { // palette is 16 bits, so don't use it for other things
       info->palettePtr = PALETTE_8BIT;
       info->paletteMask = 255;
     } else if (gfx->data.bpp==8 && info->bpp==4) {
@@ -2688,7 +2788,7 @@ Transformation can be:
   x: float, // x offset (default 0)
   y: float, // y offset (default 0)
   scale: float, // scale factor (default 1)
-  rotation: float, // angle in radians (default 0)
+  rotate: float, // angle in radians (default 0)
 }
 ```
 * A six-element array of the form `[a,b,c,d,e,f]`, which represents the 2D transformation matrix

@@ -99,7 +99,7 @@ bool jsvIsName(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_NA
 bool jsvIsBasicName(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_NAME_STRING_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_NAME_STRING_MAX; } ///< Simple NAME that links to a variable via firstChild
 /// Names with values have firstChild set to a value - AND NOT A REFERENCE
 bool jsvIsNameWithValue(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_NAME_WITH_VALUE_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_NAME_WITH_VALUE_END; }
-bool jsvIsNameInt(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT || ((v->flags&JSV_VARTYPEMASK)>=JSV_NAME_STRING_INT_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_NAME_STRING_INT_MAX)); }
+bool jsvIsNameInt(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT || ((v->flags&JSV_VARTYPEMASK)>=JSV_NAME_STRING_INT_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_NAME_STRING_INT_MAX)); } ///< Is this a NAME pointing to an Integer value
 bool jsvIsNameIntInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT; }
 bool jsvIsNameIntBool(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL; }
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
@@ -304,8 +304,7 @@ JsVar *jsvFindOrCreateRoot() {
 /// Get number of memory records (JsVars) used
 unsigned int jsvGetMemoryUsage() {
   unsigned int usage = 0;
-  unsigned int i;
-  for (i=1;i<=jsVarsSize;i++) {
+  for (unsigned int i=1;i<=jsVarsSize;i++) {
     JsVar *v = jsvGetAddressOf((JsVarRef)i);
     if ((v->flags&JSV_VARTYPEMASK) != JSV_UNUSED) {
       usage++;
@@ -352,6 +351,20 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount) {
   NOT_USED(jsNewVarCount);
   assert(0);
 #endif
+}
+
+/// Scan memory to find any JsVar that references a specific memory range, and if so update what it points to to p[oint to the new address
+void jsvUpdateMemoryAddress(size_t oldAddr, size_t length, size_t newAddr) {
+  for (unsigned int i=1;i<=jsVarsSize;i++) {
+    JsVar *v = jsvGetAddressOf((JsVarRef)i);
+    if (jsvIsNativeString(v) || jsvIsFlashString(v)) {
+      size_t p = (size_t)v->varData.nativeStr.ptr;
+      if (p>=oldAddr && p<oldAddr+length)
+        v->varData.nativeStr.ptr = (char*)(p+newAddr-oldAddr);
+    } else if (jsvIsFlatString(v)) {
+      i += (unsigned int)jsvGetFlatStringBlocks(v);
+    }
+  }
 }
 
 bool jsvMoreFreeVariablesThan(unsigned int vars) {
@@ -1232,7 +1245,7 @@ const char *jsvGetConstString(const JsVar *v) {
     return "undefined";
   } else if (jsvIsNull(v)) {
     return "null";
-  } else if (jsvIsBoolean(v)) {
+  } else if (jsvIsBoolean(v) && !jsvIsNameIntBool(v)) {
     return jsvGetBool(v) ? "true" : "false";
   }
   return 0;
@@ -3702,15 +3715,16 @@ void jsvTrace(JsVar *var, int indent) {
 }
 
 
-/** Recursively mark the variable */
-static void jsvGarbageCollectMarkUsed(JsVar *var) {
+/** Recursively mark the variable. Return false if it fails due to stack. */
+static bool jsvGarbageCollectMarkUsed(JsVar *var) {
   var->flags &= (JsVarFlags)~JSV_GARBAGE_COLLECT;
+  JsVarRef child;
+  JsVar *childVar;
 
   if (jsvHasCharacterData(var)) {
     // non-recursively scan strings
-    JsVarRef child = jsvGetLastChild(var);
+    child = jsvGetLastChild(var);
     while (child) {
-      JsVar *childVar;
       childVar = jsvGetAddressOf(child);
       childVar->flags &= (JsVarFlags)~JSV_GARBAGE_COLLECT;
       child = jsvGetLastChild(childVar);
@@ -3719,25 +3733,28 @@ static void jsvGarbageCollectMarkUsed(JsVar *var) {
   // intentionally no else
   if (jsvHasSingleChild(var)) {
     if (jsvGetFirstChild(var)) {
-      JsVar *childVar = jsvGetAddressOf(jsvGetFirstChild(var));
+      childVar = jsvGetAddressOf(jsvGetFirstChild(var));
       if (childVar->flags & JSV_GARBAGE_COLLECT)
-        jsvGarbageCollectMarkUsed(childVar);
+        if (!jsvGarbageCollectMarkUsed(childVar)) return false;
     }
   } else if (jsvHasChildren(var)) {
-    JsVarRef child = jsvGetFirstChild(var);
+    if (jsuGetFreeStack() < 256) return false;
+
+    child = jsvGetFirstChild(var);
     while (child) {
-      JsVar *childVar;
       childVar = jsvGetAddressOf(child);
       if (childVar->flags & JSV_GARBAGE_COLLECT)
-        jsvGarbageCollectMarkUsed(childVar);
+        if (!jsvGarbageCollectMarkUsed(childVar)) return false;
       child = jsvGetNextSibling(childVar);
     }
   }
+
+  return true;
 }
 
 /** Run a garbage collection sweep - return nonzero if things have been freed */
 int jsvGarbageCollect() {
-  if (isMemoryBusy) return false;
+  if (isMemoryBusy) return 0;
   isMemoryBusy = MEMBUSY_GC;
   JsVarRef i;
   // Add GC flags to anything that is currently used
@@ -3754,8 +3771,14 @@ int jsvGarbageCollect() {
   for (i=1;i<=jsVarsSize;i++)  {
     JsVar *var = jsvGetAddressOf(i);
     if ((var->flags & JSV_GARBAGE_COLLECT) && // not already GC'd
-        jsvGetLocks(var)>0) // or it is locked
-      jsvGarbageCollectMarkUsed(var);
+        jsvGetLocks(var)>0) { // or it is locked
+      if (!jsvGarbageCollectMarkUsed(var)) {
+        // this could fail due to stack exhausted (eg big linked list)
+        // JSV_GARBAGE_COLLECT are left set, but not a big problem as next GC will clear them
+        isMemoryBusy = MEM_NOT_BUSY;
+        return 0;
+      }
+    }
     // if we have a flat string, skip that many blocks
     if (jsvIsFlatString(var))
       i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));

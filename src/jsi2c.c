@@ -31,6 +31,9 @@ bool jsi2cPopulateI2CInfo(
   jsvConfigObject configs[] = {
       {"scl", JSV_PIN, &inf->pinSCL},
       {"sda", JSV_PIN, &inf->pinSDA},
+#ifdef I2C_SLAVE
+      {"addr", JSV_INTEGER, &inf->slaveAddr},
+#endif
       {"bitrate", JSV_INTEGER, &inf->bitrate}
   };
   if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
@@ -161,6 +164,13 @@ static void i2c_initstruct(i2cInfo *inf, JshI2CInfo *i) {
 }
 
 // ----------------------------------------------------------------------------
+
+void jsi2cSetup(JshI2CInfo *inf) {
+  jshPinSetValue(inf->pinSCL, 1);
+  jshPinSetState(inf->pinSCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+  jshPinSetValue(inf->pinSDA, 1);
+  jshPinSetState(inf->pinSDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
+}
 
 void jsi2cWrite(JshI2CInfo *inf, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
   if (inf->pinSCL==PIN_UNDEFINED || inf->pinSDA==PIN_UNDEFINED)

@@ -51,6 +51,8 @@ gcc-arm-none-eabi*
 /targetlibs/nrf5x_15/external_tools
 /targetlibs/nrf5x_15/integration
 /targetlibs/nrf5x_15/modules
+/targetlibs/nrf5x_15/config
+/targetlibs/nrf5x_15/license.txt
 /targetlibs/nrf5x_15_*
 /targetlibs/nrf5x_15x
 /targetlibs/nrf5x_mesh

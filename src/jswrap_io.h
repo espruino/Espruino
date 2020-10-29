@@ -27,3 +27,7 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data);
 
 JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject);
 void jswrap_interface_clearWatch(JsVar *idVarArr);
+/// function for internal use
+int jswrap_interface_setWatch_int(void(*callback)(), Pin pin, bool repeat, int edge);
+/// function for internal use
+void jswrap_interface_clearWatch_int(int watchNumber);
