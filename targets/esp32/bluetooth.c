@@ -22,6 +22,7 @@
 #include "jswrap_bluetooth.h"
 #include "bluetooth.h"
 #include "jsutils.h"
+#include "jsparse.h"
 
 #include "BLE/esp32_gap_func.h"
 #include "BLE/esp32_gatts_func.h"
