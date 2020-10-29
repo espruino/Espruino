@@ -77,12 +77,14 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_drv_gpiote.h"
 #include "nrf_drv_ppi.h"
 #include "nrf_drv_spi.h"
-#include "nrfx_spim.h"
-
 #include "nrf5x_utils.h"
+
 #if NRF_SD_BLE_API_VERSION<5
 #include "softdevice_handler.h"
+#else
+#include "nrfx_spim.h"
 #endif
+
 #ifdef MICROBIT
 #include "jswrap_microbit.h"
 #endif
@@ -307,8 +309,10 @@ void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event
     spi0Cnt -= c;
     if (spi0TxPtr) spi0TxPtr += c;
     if (spi0RxPtr) spi0RxPtr += c;
-    // can't use nrf_drv_spi_transfer here because it truncates length to 8 bits!
-    // uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+#if NRF_SD_BLE_API_VERSION<5
+    uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+#else
+    // don't use nrf_drv_spi_transfer here because it truncates length to 8 bits! (nRF52840 can do >255)
     nrfx_spim_xfer_desc_t const spim_xfer_desc = {
         .p_tx_buffer = tx,
         .tx_length   = c,
@@ -316,6 +320,7 @@ void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event
         .rx_length   = rx?c:0,
     };
     uint32_t err_code = nrfx_spim_xfer(&spi0.u.spim, &spim_xfer_desc, 0);
+#endif
 
     if (err_code == NRF_SUCCESS)
       return;
@@ -1860,8 +1865,10 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
   spi0RxPtr = rx ? rx+c : 0;
   spi0Cnt = count-c;
   if (callback) spi0Callback = callback;
-  // can't use nrf_drv_spi_transfer here because it truncates length to 8 bits!
-  // uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+#if NRF_SD_BLE_API_VERSION<5
+  uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+#else
+    // don't use nrf_drv_spi_transfer here because it truncates length to 8 bits! (nRF52840 can do >255)
   nrfx_spim_xfer_desc_t const spim_xfer_desc = {
       .p_tx_buffer = tx,
       .tx_length   = c,
@@ -1869,6 +1876,7 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
       .rx_length   = rx?c:0,
   };
   uint32_t err_code = nrfx_spim_xfer(&spi0.u.spim, &spim_xfer_desc, 0);
+#endif
   if (err_code != NRF_SUCCESS) {
     spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
