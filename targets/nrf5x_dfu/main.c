@@ -108,7 +108,7 @@ bool dfu_enter_check(void) {
 #else
       lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                      >\r");
 #endif
-#ifdef BANGLEJS
+#ifdef BANGLEJS_F18
       int count = 23;
       while (get_btn1_state() && --count) {
         // the screen update takes long enough that
@@ -126,7 +126,7 @@ bool dfu_enter_check(void) {
 #endif
       if (!count) {
         dfu_start = false;
-#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+#if defined(BUTTONPRESS_TO_REBOOT_BOOTLOADER) && defined(BTN2_PININDEX)
         if (jshPinGetValue(BTN2_PININDEX)) {
           lcd_kill();
           jshPinOutput(VIBRATE_PIN,1); // vibrate on
