@@ -4,6 +4,7 @@
             Bangle.js: fix require("locale").time(new Date()) for default locale
             Now use exponents when printing doubles >= 1E21 or < 1E-6 (fix #1489)
             Fix Regexp handling of unescaped '.' in character group: /[.]/ (fix #1948)
+            Now error if using (unsupported) RegExp backreferences
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
