@@ -22,7 +22,7 @@ info = {
  'default_console_tx' : "D1",
  'default_console_rx' : "D0",
  'default_console_baudrate' : "9600",
- 'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 3076, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_pixljs.hex',
  'build' : {

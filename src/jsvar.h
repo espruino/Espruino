@@ -159,7 +159,8 @@ typedef struct {
    */
   JsVarRef firstChild : JSVARREF_BITS;
 
-  JsVarRefCounter refs : JSVARREFCOUNT_BITS; ///< The number of references held to this - used for automatic garbage collection. NOT USED for STRINGEXT though (it is just extra characters)
+  /** The number of references held to this - used for automatic garbage collection. NOT USED for STRINGEXT though (it is just extra characters) */
+  JsVarRefCounter refs : JSVARREFCOUNT_BITS;
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the last child
@@ -210,18 +211,18 @@ typedef struct {
  The size of vars depends on how many variables we need to reference. The bits
  for references are packed into a JsVarDataRef structure.
 
- sizeof(JsVar) is between 10 and 16bytes.
+ sizeof(JsVar) is between 10 and 16bytes depending on JSVARREF_BITS. As an example, for a 16 byte JsVar:
 
 
  | Offset  | Size | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER |
  |---------|------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|
  | 0 - 3   | 4    | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        |
- | ?4 - 5  | ?    | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
- | ?6 - 7  | ?    | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
- | ?8 - 9  | ?    | first   | data   | data     |  child   | child    |  -   |  -      | first          | stringPtr   |
- | ?10-11  | ?    | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
- | ?12-13  | ?    | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |
- | ?14-15  | 2    | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       |
+ | 4 - 5  | ?    | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
+ | 6 - 7  | ?    | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
+ | 8 - 9  | ?    | first   | data   | data     |  child   | child    |  -   |  -      | first          | stringPtr   |
+ | 10-11  | ?    | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
+ | 12-13  | ?    | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |
+ | 14-15  | 2    | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       |
 
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
@@ -233,7 +234,7 @@ typedef struct {
  */
 
 static ALWAYS_INLINE JsVarRef jsvGetFirstChild(const JsVar *v) { return v->varData.ref.firstChild; }
-static ALWAYS_INLINE JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v) { 
+static ALWAYS_INLINE JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v) {
   if (v->varData.ref.firstChild > JSVARREF_MAX)
     return ((JsVarRefSigned)v->varData.ref.firstChild) + JSVARREF_MIN*2; 
   return (JsVarRefSigned)v->varData.ref.firstChild; 
