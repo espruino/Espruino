@@ -77,6 +77,7 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_drv_gpiote.h"
 #include "nrf_drv_ppi.h"
 #include "nrf_drv_spi.h"
+#include "nrfx_spim.h"
 
 #include "nrf5x_utils.h"
 #if NRF_SD_BLE_API_VERSION<5
@@ -276,7 +277,13 @@ volatile bool nrf_analog_read_interrupted = false;
 #endif
 
 #if SPI_ENABLED
-static const nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
+#ifdef NRF52832
+#define SPI_MAXAMT 255
+#else // NRF52840/NRF52833/etc  support more bytes
+#define SPI_MAXAMT 65535
+#endif
+
+static nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
 bool spi0Initialised = false;
 unsigned char *spi0RxPtr;
 unsigned char *spi0TxPtr;
@@ -294,13 +301,22 @@ void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event
    * have to use the IRQ to fire off the next send */
   if (spi0Cnt>0) {
     size_t c = spi0Cnt;
-    if (c>255) c=255;
+    if (c>SPI_MAXAMT) c=SPI_MAXAMT;
     unsigned char *tx = spi0TxPtr;
     unsigned char *rx = spi0RxPtr;
     spi0Cnt -= c;
     if (spi0TxPtr) spi0TxPtr += c;
     if (spi0RxPtr) spi0RxPtr += c;
-    uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+    // can't use nrf_drv_spi_transfer here because it truncates length to 8 bits!
+    // uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+    nrfx_spim_xfer_desc_t const spim_xfer_desc = {
+        .p_tx_buffer = tx,
+        .tx_length   = c,
+        .p_rx_buffer = rx,
+        .rx_length   = rx?c:0,
+    };
+    uint32_t err_code = nrfx_spim_xfer(&spi0.u.spim, &spim_xfer_desc, 0);
+
     if (err_code == NRF_SUCCESS)
       return;
     // if fails, we drop through as if we succeeded
@@ -1715,6 +1731,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     freq = SPI_FREQUENCY_FREQUENCY_M4;
   else
     freq = SPI_FREQUENCY_FREQUENCY_M8;
+  // NRF52840 supports >8MHz but ONLY on SPIM3
+
+
   /* Numbers for SPI_FREQUENCY_FREQUENCY_M16/SPI_FREQUENCY_FREQUENCY_M32
   are in the nRF52 datasheet but they don't appear to actually work (and
   aren't in the header files either). */
@@ -1835,14 +1854,21 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
   spi0Sending = true;
 
   size_t c = count;
-  if (c>255)
-    c=255;
+  if (c>SPI_MAXAMT) c=SPI_MAXAMT;
 
   spi0TxPtr = tx ? tx+c : 0;
   spi0RxPtr = rx ? rx+c : 0;
   spi0Cnt = count-c;
   if (callback) spi0Callback = callback;
-  uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+  // can't use nrf_drv_spi_transfer here because it truncates length to 8 bits!
+  // uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+  nrfx_spim_xfer_desc_t const spim_xfer_desc = {
+      .p_tx_buffer = tx,
+      .tx_length   = c,
+      .p_rx_buffer = rx,
+      .rx_length   = rx?c:0,
+  };
+  uint32_t err_code = nrfx_spim_xfer(&spi0.u.spim, &spim_xfer_desc, 0);
   if (err_code != NRF_SUCCESS) {
     spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);

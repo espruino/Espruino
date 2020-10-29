@@ -80,7 +80,7 @@ devices = {
 #  'LED1' : { 'pin' : 'D13' }, # Pin negated in software
   'VIBRATE' : { 'pin' : 'D8' }, # Pin negated in software
   'LCD' : {
-            'width' : 240, 'height' : 240, 'bpp' : 8, # 16 normal, 12 bit is possible
+            'width' : 240, 'height' : 240, 'bpp' : 12, # 16 normal, 12 bit is possible
             'controller' : 'st7789v',
             'pin_dc' : 'D28',
             'pin_cs' : 'D19',
