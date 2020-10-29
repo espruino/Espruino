@@ -2,6 +2,7 @@
             Fix Math.acos for negative values (fix #1950)
             nRF5x: Add callback param to 'NRF.restart', allowing code to be called with softdevice disabled
             Bangle.js: fix require("locale").time(new Date()) for default locale
+            Now use exponents when printing doubles >= 1E21 or < 1E-6
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
