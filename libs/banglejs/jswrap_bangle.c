@@ -1708,6 +1708,7 @@ void jswrap_banglejs_init() {
 #ifdef ID205
   jshPinOutput(3,1); // general VDD power?
   jshPinOutput(46,0); // What's this? Who knows! But it stops screen flicker and makes the touchscreen work nicely
+  jshPinOutput(LCD_BL,1); // Backlight
 #endif
 #ifndef EMSCRIPTEN
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
@@ -1971,13 +1972,15 @@ void jswrap_banglejs_init() {
 #else
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   jshSetPinShouldStayWatched(BTN2_PININDEX,true);
-  jshSetPinShouldStayWatched(BTN3_PININDEX,true);
   channel = jshPinWatch(BTN1_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn1Handler);
   channel = jshPinWatch(BTN2_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn2Handler);
+#ifdef BTN3_PININDEX
+  jshSetPinShouldStayWatched(BTN3_PININDEX,true);
   channel = jshPinWatch(BTN3_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn3Handler);
+#endif
 #ifdef BTN4_PININDEX
   jshSetPinShouldStayWatched(BTN4_PININDEX,true);
   jshSetPinShouldStayWatched(BTN5_PININDEX,true);
@@ -2045,10 +2048,12 @@ void jswrap_banglejs_kill() {
 #else
   jshPinWatch(BTN1_PININDEX, false);
   jshPinWatch(BTN2_PININDEX, false);
-  jshPinWatch(BTN3_PININDEX, false);
   jshSetPinShouldStayWatched(BTN1_PININDEX,false);
   jshSetPinShouldStayWatched(BTN2_PININDEX,false);
+#ifdef BTN3_PININDEX
+  jshPinWatch(BTN3_PININDEX, false);
   jshSetPinShouldStayWatched(BTN3_PININDEX,false);
+#endif
 #ifdef BTN4_PININDEX
   jshSetPinShouldStayWatched(BTN4_PININDEX,false);
   jshSetPinShouldStayWatched(BTN5_PININDEX,false);
@@ -3188,7 +3193,7 @@ a circle on the display
     "name" : "LED1",
     "generate_js" : "libs/js/banglejs/LED1.min.js",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "#if" : "defined(BANGLEJS_F18)",
+    "#if" : "defined(BANGLEJS) && !defined(SMAQ3)",
     "no_docs":1
 
 }

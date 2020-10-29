@@ -35,7 +35,6 @@ info = {
      'LCD_SPI'
    ],
    'makefile' : [
-     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DNRF_BL_DFU_ENTER_METHOD_BUTTON=1 -DNRF_BL_DFU_ENTER_METHOD_BUTTON_PIN=5',
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
