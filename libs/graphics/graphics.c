@@ -295,7 +295,22 @@ uint32_t graphicsBlendColor(JsGraphics *gfx, int iamt) {
     unsigned int gi = (bg*(256-amt) + fg*amt) >> 8;
     unsigned int bi = (bb*(256-amt) + fb*amt) >> 8;
     return (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
-  }
+#ifdef ESPR_GRAPHICS_12BIT
+  } else if (gfx->data.bpp==12) { // Blend from bg to fg
+    unsigned int b = gfx->data.bgColor;
+    unsigned int br = (b>>8)&0xF0;
+    unsigned int bg = (b>>4)&0xF0;
+    unsigned int bb = (b<<4)&0xF0;
+    unsigned int f = gfx->data.fgColor;
+    unsigned int fr = (f>>8)&0xF0;
+    unsigned int fg = (f>>4)&0xF0;
+    unsigned int fb = (f<<4)&0xF0;
+    unsigned int ri = (br*(256-amt) + fr*amt) >> 8;
+    unsigned int gi = (bg*(256-amt) + fg*amt) >> 8;
+    unsigned int bi = (bb*(256-amt) + fb*amt) >> 8;
+    return (uint16_t)((bi>>4) | (gi>>4)<<4 | (ri>>4)<<8);
+#endif
+  } // TODO: 24 bit
   return (amt>=128) ? gfx->data.fgColor : gfx->data.bgColor;
 }
 
