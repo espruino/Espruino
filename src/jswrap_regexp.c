@@ -121,8 +121,13 @@ bool matchcharacter(char *regexp, JsvStringIterator *txtIt, int *length, matchIn
     bool matchAny = false;
     while (regexp[*length] && regexp[*length]!=']') {
       int matchLen;
-      matchAny |= matchcharacter(&regexp[*length], txtIt, &matchLen, info);
-      (*length) += matchLen;
+      if (regexp[*length]=='.') { // https://github.com/espruino/Espruino/issues/1948
+        matchAny |= ch=='.';
+        (*length)++;
+      } else {
+        matchAny |= matchcharacter(&regexp[*length], txtIt, &matchLen, info);
+        (*length) += matchLen;
+      }
     }
     if (regexp[*length]==']') {
       (*length)++;
