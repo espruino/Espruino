@@ -3387,11 +3387,7 @@
 // <e> NRF_LOG_ENABLED - Logging module for nRF5 SDK
 //==========================================================
 #ifndef NRF_LOG_ENABLED
-#ifdef RELEASE
 #define NRF_LOG_ENABLED 0
-#else
-#define NRF_LOG_ENABLED 1
-#endif
 #endif
 // <e> NRF_LOG_USES_COLORS - If enabled then ANSI escape code for colors is prefixed to every string
 //==========================================================
