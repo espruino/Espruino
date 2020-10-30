@@ -765,7 +765,9 @@ $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 # Generation of temporary files and setting of wrappersources is already done this moment
 ifndef NO_COMPILE
 
-compile=$(CC) $(CFLAGS) $< -o $@
+#compile=$(CC) $(CFLAGS) $< -o $@
+# Use relative paths - when macros use __FILE__ this stops us including the whole build path
+compile=$(CC) $(CFLAGS) $(shell realpath --relative-to $(shell pwd) $<) -o $@
 
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
