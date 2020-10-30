@@ -45,6 +45,9 @@
 #include "nfc_ble_pair_msg.h"
 #include "nfc_launchapp_msg.h"
 #endif
+#if ESPR_BLUETOOTH_ANCS
+#include "bluetooth_ancs.h"
+#endif
 #endif
 
 #ifdef ESP32
@@ -965,6 +968,13 @@ JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting object, array or undefined, got %t", data);
     return 0;
   }
+
+#if ESPR_BLUETOOTH_ANCS
+  static ble_uuid_t m_adv_uuids[1]; /**< Universally unique service identifiers. */
+  ble_ancs_get_adv_uuid(m_adv_uuids);
+  advdata.uuids_solicited.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+  advdata.uuids_solicited.p_uuids  = m_adv_uuids;
+#endif
 
   uint16_t  len_advdata = BLE_GAP_ADV_MAX_SIZE;
   uint8_t   encoded_advdata[BLE_GAP_ADV_MAX_SIZE];

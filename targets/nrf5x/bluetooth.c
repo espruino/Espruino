@@ -53,6 +53,9 @@
 #if BLE_HIDS_ENABLED
 #include "ble_hids.h"
 #endif
+#if ESPR_BLUETOOTH_ANCS
+#include "bluetooth_ancs.h"
+#endif
 
 
 #if PEER_MANAGER_ENABLED
@@ -1536,7 +1539,9 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
 #if PEER_MANAGER_ENABLED
   ble_conn_state_on_ble_evt(p_ble_evt);
   pm_on_ble_evt(p_ble_evt);
-
+#endif
+#if ESPR_BLUETOOTH_ANCS
+  ble_ancs_on_ble_evt(p_ble_evt);
 #endif
   if (!((p_ble_evt->header.evt_id==BLE_GAP_EVT_CONNECTED) &&
         (p_ble_evt->evt.gap_evt.params.connected.role != BLE_GAP_ROLE_PERIPH)) &&
@@ -1649,6 +1654,10 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
                 //Note: This code will use the older bonded device in the white list and not add any newer bonded to it
                 //      You should check on what kind of white list policy your application should use.
             }
+#if ESPR_BLUETOOTH_ANCS
+            ble_ancs_bonding_succeeded(p_evt->conn_handle);
+#endif
+
         } break;
 
         case PM_EVT_CONN_SEC_FAILED:
@@ -2493,6 +2502,11 @@ void jsble_advertising_stop() {
    gap_params_init();
    services_init();
    conn_params_init();
+
+#if ESPR_BLUETOOTH_ANCS
+   ble_ancs_init();
+#endif
+
    // reset the status for things that aren't happening now we're rebooted
    bleStatus &= ~BLE_RESET_ON_SOFTDEVICE_START;
 

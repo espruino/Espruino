@@ -433,6 +433,20 @@ BOOTLOADER_SETTINGS_FAMILY = NRF52
 endif
 endif # USE_BOOTLOADER
 
+
+ifdef ESPR_BLUETOOTH_ANCS
+DEFINES += -DESPR_BLUETOOTH_ANCS=1 -DBLE_ANCS_C_ENABLED=1
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_db_discovery
+TARGETSOURCES += \
+  $(ROOT)/targets/nrf5x/bluetooth_ancs.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_app_attr_get.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_attr_parser.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_tx_buffer.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/nrf_ble_ancs_c.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_db_discovery/ble_db_discovery.c
+endif
+
 # ==============================================================
 include make/common/ARM.make
 
