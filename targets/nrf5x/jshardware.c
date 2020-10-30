@@ -1783,9 +1783,10 @@ int jshSPISend(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return -1;
   jshSPIWait(device);
-#if defined(SPI0_USE_EASY_DMA)  && (SPI0_USE_EASY_DMA==1)
+#if defined(SPI0_USE_EASY_DMA)  && (SPI0_USE_EASY_DMA==1) && NRF52832
   // Hack for https://infocenter.nordicsemi.com/topic/­errata_nRF52832_Rev2/ERR/nRF52832/Rev2/l­atest/anomaly_832_58.html?cp=4_2_1_0_1_8
   // Can't use DMA for single bytes as it's broken
+  // Doesn't appear on NRF52840 or NRF52833 production parts
 #if NRF_SD_BLE_API_VERSION>5
   NRF_SPI_Type *p_spi = (NRF_SPI_Type *)spi0.u.spi.p_reg;
   NRF_SPIM_Type *p_spim = (NRF_SPIM_Type *)spi0.u.spim.p_reg;
@@ -1830,13 +1831,7 @@ void jshSPISend16(IOEventFlags device, int data) {
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return;
   jshSPIWait(device);
   uint16_t tx = (uint16_t)data;
-  spi0Sending = true;
-  uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 2, 0, 0);
-  if (err_code != NRF_SUCCESS) {
-    spi0Sending = false;
-    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
-  }
-  jshSPIWait(device);
+  jshSPISendMany(device, &tx, NULL, 2, NULL);
 #endif
 }
 
@@ -1846,8 +1841,9 @@ void jshSPISend16(IOEventFlags device, int data) {
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return false;
-#if defined(SPI0_USE_EASY_DMA)
+#if defined(SPI0_USE_EASY_DMA) && NRF52832
   // Hack for https://infocenter.nordicsemi.com/topic/­errata_nRF52832_Rev2/ERR/nRF52832/Rev2/l­atest/anomaly_832_58.html?cp=4_2_1_0_1_8­
+  // Doesn't appear on NRF52840 or NRF52833 production parts
   if (count==1) {
     int r = jshSPISend(device, tx?*tx:-1);
     if (rx) *rx = r;
