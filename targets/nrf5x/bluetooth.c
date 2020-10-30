@@ -16,6 +16,9 @@
 #ifdef BLUETOOTH
 
 #include "jswrap_bluetooth.h"
+#ifdef USE_TERMINAL
+#include "jswrap_terminal.h"
+#endif
 #include "jsinteractive.h"
 #include "jsdevices.h"
 #include "jshardware.h"
@@ -797,11 +800,23 @@ void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t
 #ifdef LED3_PININDEX
   jshPinOutput(LED3_PININDEX, LED3_ONSTATE);
 #endif
-  jsiConsolePrintf("NRF ERROR 0x%x at %s:%d\n", error_code, p_file_name?(const char *)p_file_name:"?", line_num);
-  jsiConsolePrint("REBOOTING.\n");
+  jsiConsolePrintf("NRF ERROR 0x%x\n at %s:%d\nREBOOTING.\n", error_code, p_file_name?(const char *)p_file_name:"?", line_num);
+
+#ifdef USE_TERMINAL
+  // If we have a terminal, try and write to that!
+  jsiStatus  |= JSIS_ECHO_OFF;
+  jsiSetConsoleDevice(EV_TERMINAL, 1);
+  jsiConsolePrintf("NRF ERROR 0x%x\n at %s:%d\nREBOOTING.\n", error_code, p_file_name?(const char *)p_file_name:"?", line_num);
+  jswrap_terminal_idle();
+#endif
+
   /* don't flush - just delay. If this happened in an IRQ, waiting to flush
    * will result in the device locking up. */
+#ifdef USE_TERMINAL
+  nrf_delay_ms(10000);
+#else
   nrf_delay_ms(1000);
+#endif
   NVIC_SystemReset();
 }
 
