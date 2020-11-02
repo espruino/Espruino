@@ -7,6 +7,7 @@
             Now error if using (unsupported) RegExp backreferences
             nRF52: Ensure SPI 1 byte DMA errata workaround isn't applied to non-52832 parts
             nRF52: When outputting assertions, if we have an terminal device (eg LCD) use that
+            When load(filename) is used, set global variable __FILE__ to the filename
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)

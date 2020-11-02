@@ -2237,8 +2237,10 @@ void jsiIdle() {
         jsiSemiInit(false); // don't autoload code
         // load the code we specified
         JsVar *code = jsfReadFile(filename,0,0);
-        if (code)
+        if (code) {
+          jsvObjectSetChildAndUnLock(execInfo.root, "__FILE__", jsfVarFromName(filename));
           jsvUnLock2(jspEvaluateVar(code,0,0), code);
+        }
       } else {
         jsiSoftKill();
         jspSoftKill();
