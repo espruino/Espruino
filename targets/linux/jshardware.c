@@ -961,5 +961,7 @@ unsigned int jshSetSystemClock(JsVar *options) {
 
 /// Perform a proper hard-reboot of the device
 void jshReboot() {
-  jsExceptionHere(JSET_ERROR, "Not implemented");
+  jsiConsolePrintf("Not implemented\n");
+  exit(1);
+
 }
