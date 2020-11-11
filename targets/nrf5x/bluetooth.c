@@ -2250,17 +2250,20 @@ static void ble_stack_init() {
 
     uint32_t err_code;
 
-    // TODO: enable if we're on a device with 32kHz xtal
-    /*nrf_clock_lf_cfg_t clock_lf_cfg = {
+    nrf_clock_lf_cfg_t clock_lf_cfg = {
+#ifdef ESPR_LSE_ENABLE
+    // enable if we're on a device with 32kHz xtal
         .source        = NRF_CLOCK_LF_SRC_XTAL,
         .rc_ctiv       = 0,
         .rc_temp_ctiv  = 0,
-        .xtal_accuracy = NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM};*/
-    nrf_clock_lf_cfg_t clock_lf_cfg = {
-            .source        = NRF_CLOCK_LF_SRC_RC,
-            .rc_ctiv       = 16, // recommended for nRF52
-            .rc_temp_ctiv  = 2,  // recommended for nRF52
-            .xtal_accuracy = 0};
+#else
+        .xtal_accuracy = NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM,
+        .source        = NRF_CLOCK_LF_SRC_RC,
+        .rc_ctiv       = 16, // recommended for nRF52
+        .rc_temp_ctiv  = 2,  // recommended for nRF52
+        .xtal_accuracy = 0
+#endif
+    };
 
     // Initialize SoftDevice.
     SOFTDEVICE_HANDLER_INIT(&clock_lf_cfg, false);
@@ -2317,7 +2320,7 @@ static void ble_stack_init() {
     NRF_SDH_SOC_OBSERVER(m_soc_observer, APP_SOC_OBSERVER_PRIO, soc_evt_handler, NULL);
 #endif
 
-#if defined(PUCKJS) || defined(RUUVITAG)
+#if defined(PUCKJS) || defined(RUUVITAG) || defined(ESPR_DCDC_ENABLE)
     // can only be enabled if we're sure we have a DC-DC
     err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
     APP_ERROR_CHECK(err_code);
