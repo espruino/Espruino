@@ -1102,7 +1102,6 @@ static void jshResetPeripherals() {
 }
 
 void jshInit() {
-  jshInitDevices();
   int i;
   // reset some vars
   for (i=0;i<16;i++)
@@ -1177,7 +1176,7 @@ void jshInit() {
   GPIO_Init(GPIOG, &GPIO_InitStructure);
 #endif
 #endif // ESPRUINOBOARD
-
+  jshInitDevices();
 #ifdef LED1_PININDEX
   // turn led on (status)
   jshPinOutput(LED1_PININDEX, 1);
