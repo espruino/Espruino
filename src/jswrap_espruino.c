@@ -92,6 +92,33 @@ This event will only be emitted when error flag is set. If the error
 flag was already set nothing will be emitted. To clear error flags
 so that you do get a callback each time a flag is set, call `E.getErrorFlags()`.
 */
+/*JSON{
+  "type" : "event",
+  "class" : "E",
+  "name" : "touch",
+  "params" : [
+    ["x","int","X coordinate in display coordinates"],
+    ["y","int","Y coordinate in display coordinates"],
+    ["b","int","Touch count - 0 for released, 1 for pressed"],
+  ]
+}
+This event is called when a full touchscreen device on an Espruino
+is interacted with.
+
+**Note:** This event is not implemented on Bangle.js because
+it only has a two area touchscreen.
+
+To use the touchscreen to draw lines, you could do:
+
+```
+var last;
+E.on('touch',t=>{
+  if (last) g.lineTo(t.x, t.y);
+  else g.moveTo(t.x, t.y);
+  last = t.b;
+});
+```
+*/
 
 /*JSON{
   "type" : "staticmethod",

@@ -1000,10 +1000,12 @@ void touchHandler(bool state, IOEventFlags flags) {
   // 3: X (0..160)
   // 4: ?
   // 5: Y (0..160)
-  int x = buf[3], y = buf[5];
+  unsigned char x = buf[3], y = buf[5];
   bool touch = buf[1];
   int gesture = buf[0];
   static int lastGesture = 0;
+  static unsigned char lastx, lasty;
+  static bool lastTouch;
   if (gesture!=lastGesture) {
     switch (gesture) { // gesture
     case 0:break; // no gesture
@@ -1020,7 +1022,22 @@ void touchHandler(bool state, IOEventFlags flags) {
       else bangleTasks |= JSBT_TOUCH_RIGHT;
       break;
     }
+
+
   }
+
+  if (touch!=lastTouch || lastx!=x || lasty!=y) {
+    IOEvent evt;
+    evt.flags = EV_TOUCH;
+    evt.data.chars[0] = x * LCD_WIDTH / 160;
+    evt.data.chars[1] = y * LCD_HEIGHT / 160;
+    evt.data.chars[2] = touch ? 1 : 0;
+    jshPushEvent(&evt);
+  }
+  lastx = x;
+  lasty = y;
+  lastTouch = touch;
+
   bool btn1 = touch && x>150 && y<50;
   bool btn2 = touch && x>150 && y>50 && y<110;
   bool btn3 = touch && x>150 && y>110;
@@ -1874,6 +1891,7 @@ void jswrap_banglejs_init() {
 #ifdef SMAQ3
   lcdMemLCD_flip(&gfx);
 #endif
+  graphicsStructResetState(&gfx);
   graphicsSetVar(&gfx);
 
   jsvUnLock(graphics);
@@ -2076,271 +2094,266 @@ bool jswrap_banglejs_idle() {
     bangleFlags |= JSBF_ACCEL_LISTENER;
   else
     bangleFlags &= ~JSBF_ACCEL_LISTENER;
-  if (bangleTasks == JSBT_NONE) {
-    jsvUnLock(bangle);
-    return false;
-  }
-  if (bangleTasks & JSBT_LCD_OFF) jswrap_banglejs_setLCDPower(0);
-  if (bangleTasks & JSBT_LCD_ON) jswrap_banglejs_setLCDPower(1);
-  if (bangleTasks & JSBT_RESET) jsiStatus |= JSIS_TODO_FLASH_LOAD;
-  if (bangleTasks & JSBT_ACCEL_INTERVAL_DEFAULT) jswrap_banglejs_setPollInterval_internal(DEFAULT_ACCEL_POLL_INTERVAL);
-  if (bangleTasks & JSBT_ACCEL_INTERVAL_POWERSAVE) jswrap_banglejs_setPollInterval_internal(POWER_SAVE_ACCEL_POLL_INTERVAL);
-
   if (!bangle) {
     bangleTasks = JSBT_NONE;
-    return false;
   }
-  if (bangleTasks & JSBT_ACCEL_DATA) {
-    JsVar *o = jswrap_banglejs_getAccel();
-    if (o) {
-      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"accel", &o, 1);
-      jsvUnLock(o);
-    }
-  }
-  if (bangleTasks & JSBT_ACCEL_TAPPED) {
-    JsVar *o = jsvNewObject();
-    if (o) {
-      const char *string="";
-      if (tapInfo&1) string="front";
-      if (tapInfo&2) string="back";
-      if (tapInfo&4) string="bottom";
-      if (tapInfo&8) string="top";
-      if (tapInfo&16) string="right";
-      if (tapInfo&32) string="left";
-      int n = (tapInfo&0x80)?2:1;
-      jsvObjectSetChildAndUnLock(o, "dir", jsvNewFromString(string));
-      jsvObjectSetChildAndUnLock(o, "double", jsvNewFromBool(tapInfo&0x80));
-      jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger((tapInfo&16)?-n:(tapInfo&32)?n:0));
-      jsvObjectSetChildAndUnLock(o, "y", jsvNewFromInteger((tapInfo&4)?-n:(tapInfo&8)?n:0));
-      jsvObjectSetChildAndUnLock(o, "z", jsvNewFromInteger((tapInfo&1)?-n:(tapInfo&2)?n:0));
-      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"tap", &o, 1);
-      jsvUnLock(o);
-    }
-  }
-#ifdef GPS_PIN_RX
-  if (bangleTasks & JSBT_GPS_DATA) {
-    JsVar *o = nmea_to_jsVar(&gpsFix);
-    if (o) {
-      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS", &o, 1);
-      jsvUnLock(o);
-    }
-  }
-  if (bangleTasks & JSBT_GPS_DATA_PARTIAL) {
-    if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw")) {
-      JsVar *data = jsvObjectGetChild(bangle,"_gpsdata",0);
-      if (!data) {
-        data = jsvNewFromEmptyString();
-        jsvObjectSetChild(bangle,"_gpsdata",data);
-      }
-      jsvAppendStringBuf(data, ubloxMsg, ubloxMsgLength);
-      jsvUnLock(data);
-    }
-  }
-  if (bangleTasks & JSBT_GPS_DATA_LINE) {
-    if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw")) {
-      // if GPS data had overflowed, report it
-      if (bangleTasks & JSBT_GPS_DATA_OVERFLOW) {
-        jsErrorFlags |= JSERR_RX_FIFO_FULL;
-      }
-      // Get any data previously added with JSBT_GPS_DATA_PARTIAL
-      JsVar *line = jsvObjectGetChild(bangle,"_gpsdata",0);
-      if (line) {
-        jsvObjectRemoveChild(bangle,"_gpsdata");
-        jsvAppendStringBuf(line, ubloxMsg, ubloxMsgLength);
-      } else line = jsvNewStringOfLength(ubloxMsgLength, ubloxMsg);
-      // if we have any data, queue it
-      if (line)
-        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw", &line, 1);
-      jsvUnLock(line);
-    } else {
-      jsvObjectRemoveChild(bangle,"_gpsdata");
-    }
-  }
-#endif
-  if (bangleTasks & JSBT_MAG_DATA) {
-    if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"mag")) {
-      JsVar *o = jswrap_banglejs_getCompass();
+  if (bangleTasks != JSBT_NONE) {
+    if (bangleTasks & JSBT_LCD_OFF) jswrap_banglejs_setLCDPower(0);
+    if (bangleTasks & JSBT_LCD_ON) jswrap_banglejs_setLCDPower(1);
+    if (bangleTasks & JSBT_RESET) jsiStatus |= JSIS_TODO_FLASH_LOAD;
+    if (bangleTasks & JSBT_ACCEL_INTERVAL_DEFAULT) jswrap_banglejs_setPollInterval_internal(DEFAULT_ACCEL_POLL_INTERVAL);
+    if (bangleTasks & JSBT_ACCEL_INTERVAL_POWERSAVE) jswrap_banglejs_setPollInterval_internal(POWER_SAVE_ACCEL_POLL_INTERVAL);
+    if (bangleTasks & JSBT_ACCEL_DATA) {
+      JsVar *o = jswrap_banglejs_getAccel();
       if (o) {
-        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"mag", &o, 1);
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"accel", &o, 1);
         jsvUnLock(o);
       }
     }
-  }
-  if (bangleTasks & JSBT_HRM_DATA) {
-    JsVar *o = jsvNewObject();
-    if (o) {
-      const int BPM_MIN = 40;
-      const int BPM_MAX = 200;
-      //const int SAMPLES_PER_SEC = 1000 / HRM_POLL_INTERVAL;
-      const int CMIN = 60000 / (BPM_MAX*HRM_POLL_INTERVAL);
-      const int CMAX = 60000 / (BPM_MIN*HRM_POLL_INTERVAL);
-      assert(CMAX<HRM_HISTORY_LEN);
-      uint8_t corr[CMAX];
-      int minCorr = 0x7FFFFFFF, maxCorr = 0;
-      int minIdx = 0;
-      for (int c=CMIN;c<CMAX;c++) {
-        int s = 0;
-        // correlate
-        for (int i=CMAX;i<HRM_HISTORY_LEN;i++) {
-          int d = hrmHistory[i] - hrmHistory[i-c];
-          s += d*d;
-        }
-        // store min and max
-        if (s<minCorr) {
-          minCorr = s;
-          minIdx = c;
-        }
-        if (s>maxCorr) {
-          maxCorr = s;
-        }
-        // store in 8 bit array
-        s = s>>10;
-        if (s>255) s=255;
-        corr[c] = s;
-      }
-      for (int c=0;c<CMIN;c++)
-        corr[c] = corr[CMIN]; // just fill in the lower data
-      // confidence depends on how good a fit correlation is (lower minCorr = better)
-      int confidence = 120 - (minCorr/600);
-      // but if maxCorr is low we don't have enough signal, so that's bad too
-      if (maxCorr<10000) confidence -= (10000-maxCorr)/50;
-
-      if (confidence<0) confidence=0;
-      if (confidence>100) confidence=100;
-
-      jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromInteger(60000 / (minIdx*HRM_POLL_INTERVAL)));
-      jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(confidence));
-      JsVar *s = jsvNewNativeString((char*)hrmHistory, sizeof(hrmHistory));
-      JsVar *ab = jsvNewArrayBufferFromString(s,0);
-      jsvObjectSetChildAndUnLock(o,"raw",jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT8,ab,0,0));
-      jsvUnLock2(ab,s);
-      // for debugging
-      if (false) {
-        jsvObjectSetChildAndUnLock(o,"minDifference",jsvNewFromInteger(minCorr));
-        jsvObjectSetChildAndUnLock(o,"maxDifference",jsvNewFromInteger(maxCorr));
-        s = jsvNewArrayBufferWithData(sizeof(corr),corr);
-        jsvObjectSetChildAndUnLock(o,"correlation",jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8,s,0,0));
-        jsvUnLock(s);
-      }
-
-      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM", &o, 1);
-      jsvUnLock(o);
-    }
-  }
-  if (bangleTasks & JSBT_GESTURE_DATA) {
-    if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"gesture")) {
-      JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_INT8, accGestureRecordedCount*3);
-      if (arr) {
-        int idx = accHistoryIdx - (accGestureRecordedCount*3);
-        while (idx<0) idx+=sizeof(accHistory);
-        JsvArrayBufferIterator it;
-        jsvArrayBufferIteratorNew(&it, arr, 0);
-        for (int i=0;i<accGestureRecordedCount*3;i++) {
-          jsvArrayBufferIteratorSetByteValue(&it, accHistory[idx++]);
-          jsvArrayBufferIteratorNext(&it);
-          if (idx>=(int)sizeof(accHistory)) idx-=sizeof(accHistory);
-        }
-        jsvArrayBufferIteratorFree(&it);
-        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"gesture", &arr, 1);
-        jsvUnLock(arr);
+    if (bangleTasks & JSBT_ACCEL_TAPPED) {
+      JsVar *o = jsvNewObject();
+      if (o) {
+        const char *string="";
+        if (tapInfo&1) string="front";
+        if (tapInfo&2) string="back";
+        if (tapInfo&4) string="bottom";
+        if (tapInfo&8) string="top";
+        if (tapInfo&16) string="right";
+        if (tapInfo&32) string="left";
+        int n = (tapInfo&0x80)?2:1;
+        jsvObjectSetChildAndUnLock(o, "dir", jsvNewFromString(string));
+        jsvObjectSetChildAndUnLock(o, "double", jsvNewFromBool(tapInfo&0x80));
+        jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger((tapInfo&16)?-n:(tapInfo&32)?n:0));
+        jsvObjectSetChildAndUnLock(o, "y", jsvNewFromInteger((tapInfo&4)?-n:(tapInfo&8)?n:0));
+        jsvObjectSetChildAndUnLock(o, "z", jsvNewFromInteger((tapInfo&1)?-n:(tapInfo&2)?n:0));
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"tap", &o, 1);
+        jsvUnLock(o);
       }
     }
-#ifdef USE_TENSORFLOW
-    if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"aiGesture")) {
-      //JsVar *model = jsfReadFile(jsfNameFromString(".tfmodel"),0,0);
-      JsfFileHeader header;
-      uint32_t modelAddr = jsfFindFile(jsfNameFromString(".tfmodel"), &header);
-
-      if (!modelAddr) {
-        jsiConsolePrintf("TF error - no model\n");
+  #ifdef GPS_PIN_RX
+    if (bangleTasks & JSBT_GPS_DATA) {
+      JsVar *o = nmea_to_jsVar(&gpsFix);
+      if (o) {
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS", &o, 1);
+        jsvUnLock(o);
+      }
+    }
+    if (bangleTasks & JSBT_GPS_DATA_PARTIAL) {
+      if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw")) {
+        JsVar *data = jsvObjectGetChild(bangle,"_gpsdata",0);
+        if (!data) {
+          data = jsvNewFromEmptyString();
+          jsvObjectSetChild(bangle,"_gpsdata",data);
+        }
+        jsvAppendStringBuf(data, ubloxMsg, ubloxMsgLength);
+        jsvUnLock(data);
+      }
+    }
+    if (bangleTasks & JSBT_GPS_DATA_LINE) {
+      if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw")) {
+        // if GPS data had overflowed, report it
+        if (bangleTasks & JSBT_GPS_DATA_OVERFLOW) {
+          jsErrorFlags |= JSERR_RX_FIFO_FULL;
+        }
+        // Get any data previously added with JSBT_GPS_DATA_PARTIAL
+        JsVar *line = jsvObjectGetChild(bangle,"_gpsdata",0);
+        if (line) {
+          jsvObjectRemoveChild(bangle,"_gpsdata");
+          jsvAppendStringBuf(line, ubloxMsg, ubloxMsgLength);
+        } else line = jsvNewStringOfLength(ubloxMsgLength, ubloxMsg);
+        // if we have any data, queue it
+        if (line)
+          jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw", &line, 1);
+        jsvUnLock(line);
       } else {
-        // allocate the model on the stack rather than using ReadFile
-        // as that will save us a few JsVars
-        size_t modelSize = jsfGetFileSize(&header);
-        char *modelBuf = alloca(modelSize);
-        jshFlashRead(modelBuf, modelAddr, modelSize);
-        JsVar *model = jsvNewNativeString(modelBuf, modelSize);
+        jsvObjectRemoveChild(bangle,"_gpsdata");
+      }
+    }
+  #endif
+    if (bangleTasks & JSBT_MAG_DATA) {
+      if (bangle && jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"mag")) {
+        JsVar *o = jswrap_banglejs_getCompass();
+        if (o) {
+          jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"mag", &o, 1);
+          jsvUnLock(o);
+        }
+      }
+    }
+    if (bangleTasks & JSBT_HRM_DATA) {
+      JsVar *o = jsvNewObject();
+      if (o) {
+        const int BPM_MIN = 40;
+        const int BPM_MAX = 200;
+        //const int SAMPLES_PER_SEC = 1000 / HRM_POLL_INTERVAL;
+        const int CMIN = 60000 / (BPM_MAX*HRM_POLL_INTERVAL);
+        const int CMAX = 60000 / (BPM_MIN*HRM_POLL_INTERVAL);
+        assert(CMAX<HRM_HISTORY_LEN);
+        uint8_t corr[CMAX];
+        int minCorr = 0x7FFFFFFF, maxCorr = 0;
+        int minIdx = 0;
+        for (int c=CMIN;c<CMAX;c++) {
+          int s = 0;
+          // correlate
+          for (int i=CMAX;i<HRM_HISTORY_LEN;i++) {
+            int d = hrmHistory[i] - hrmHistory[i-c];
+            s += d*d;
+          }
+          // store min and max
+          if (s<minCorr) {
+            minCorr = s;
+            minIdx = c;
+          }
+          if (s>maxCorr) {
+            maxCorr = s;
+          }
+          // store in 8 bit array
+          s = s>>10;
+          if (s>255) s=255;
+          corr[c] = s;
+        }
+        for (int c=0;c<CMIN;c++)
+          corr[c] = corr[CMIN]; // just fill in the lower data
+        // confidence depends on how good a fit correlation is (lower minCorr = better)
+        int confidence = 120 - (minCorr/600);
+        // but if maxCorr is low we don't have enough signal, so that's bad too
+        if (maxCorr<10000) confidence -= (10000-maxCorr)/50;
 
-        // delete command history and run a GC pass to try and free up some space
-        while (jsiFreeMoreMemory());
-        jsvGarbageCollect();
-        JsVar *tf = jswrap_tensorflow_create(4000, model);
-        jsvUnLock(model);
-        if (!tf) {
-          //jsiConsolePrintf("TF error - no memory\n");
-          // we get an exception anyway
-        } else {
-          //jsiConsolePrintf("TF in\n");
-          JsVar *v = jswrap_tfmicrointerpreter_getInput(tf);
-          JsvArrayBufferIterator it;
-          jsvArrayBufferIteratorNew(&it, v, 0);
+        if (confidence<0) confidence=0;
+        if (confidence>100) confidence=100;
+
+        jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromInteger(60000 / (minIdx*HRM_POLL_INTERVAL)));
+        jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(confidence));
+        JsVar *s = jsvNewNativeString((char*)hrmHistory, sizeof(hrmHistory));
+        JsVar *ab = jsvNewArrayBufferFromString(s,0);
+        jsvObjectSetChildAndUnLock(o,"raw",jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT8,ab,0,0));
+        jsvUnLock2(ab,s);
+        // for debugging
+        if (false) {
+          jsvObjectSetChildAndUnLock(o,"minDifference",jsvNewFromInteger(minCorr));
+          jsvObjectSetChildAndUnLock(o,"maxDifference",jsvNewFromInteger(maxCorr));
+          s = jsvNewArrayBufferWithData(sizeof(corr),corr);
+          jsvObjectSetChildAndUnLock(o,"correlation",jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8,s,0,0));
+          jsvUnLock(s);
+        }
+
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM", &o, 1);
+        jsvUnLock(o);
+      }
+    }
+    if (bangleTasks & JSBT_GESTURE_DATA) {
+      if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"gesture")) {
+        JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_INT8, accGestureRecordedCount*3);
+        if (arr) {
           int idx = accHistoryIdx - (accGestureRecordedCount*3);
           while (idx<0) idx+=sizeof(accHistory);
+          JsvArrayBufferIterator it;
+          jsvArrayBufferIteratorNew(&it, arr, 0);
           for (int i=0;i<accGestureRecordedCount*3;i++) {
-            jsvArrayBufferIteratorSetIntegerValue(&it, accHistory[idx++]);
+            jsvArrayBufferIteratorSetByteValue(&it, accHistory[idx++]);
             jsvArrayBufferIteratorNext(&it);
             if (idx>=(int)sizeof(accHistory)) idx-=sizeof(accHistory);
           }
           jsvArrayBufferIteratorFree(&it);
-          jsvUnLock(v);
-          //jsiConsolePrintf("TF invoke\n");
-          jswrap_tfmicrointerpreter_invoke(tf);
-          //jsiConsolePrintf("TF out\n");
-          v = jswrap_tfmicrointerpreter_getOutput(tf);
-          JsVar *arr = jswrap_array_slice(v,0,0); // clone, so it's not referencing all of Tensorflow!
-          jsvUnLock2(v,tf);
-          //jsiConsolePrintf("TF queue\n");
-          JsVar *gesture = jspExecuteJSFunction("(function(a) {"
-            "var m=0,g;"
-            "for (var i in a) if (a[i]>m) { m=a[i];g=i; }"
-            "if (g!==undefined) {"
-              "var n=require('Storage').read('.tfnames');"
-              "if (n) g=n.split(',')[g];"
-            "}"
-          "return g;})",NULL,1,&arr);
-          JsVar *args[2] = {gesture,arr};
-          jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"aiGesture", args, 2);
-          jsvUnLock2(gesture,arr);
+          jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"gesture", &arr, 1);
+          jsvUnLock(arr);
         }
       }
-    }
-#endif
-  }
-  if (bangleTasks & JSBT_CHARGE_EVENT) {
-    JsVar *charging = jsvNewFromBool(wasCharging);
-    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"charging", &charging, 1);
-    jsvUnLock(charging);
-  }
-  if (bangleTasks & JSBT_STEP_EVENT) {
-    JsVar *steps = jsvNewFromInteger(stepCounter);
-    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"step", &steps, 1);
-    jsvUnLock(steps);
-  }
-  if (bangleTasks & JSBT_TWIST_EVENT) {
-    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"twist", NULL, 0);
-  }
-  if (bangleTasks & JSBT_FACE_UP) {
-    JsVar *v = jsvNewFromBool(faceUp);
-    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"faceUp", &v, 1);
-    jsvUnLock(v);
-    if (faceUp && lcdPowerTimeout && !lcdPowerOn && (bangleFlags&JSBF_WAKEON_FACEUP)) {
-      // LCD was turned off, turn it back on
-      jswrap_banglejs_setLCDPower(1);
-      flipTimer = 0;
-    }
-  }
-  if (bangleTasks & JSBT_SWIPE_MASK) {
-    JsVar *o = jsvNewFromInteger((bangleTasks & JSBT_SWIPE_LEFT)?-1:1);
-    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"swipe", &o, 1);
-    jsvUnLock(o);
-  }
-  if (bangleTasks & JSBT_TOUCH_MASK) {
-    JsVar *o = jsvNewFromInteger(((bangleTasks & JSBT_TOUCH_LEFT)?1:0) |
-                                 ((bangleTasks & JSBT_TOUCH_RIGHT)?2:0));
-    jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"touch", &o, 1);
-    jsvUnLock(o);
-  }
+  #ifdef USE_TENSORFLOW
+      if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"aiGesture")) {
+        //JsVar *model = jsfReadFile(jsfNameFromString(".tfmodel"),0,0);
+        JsfFileHeader header;
+        uint32_t modelAddr = jsfFindFile(jsfNameFromString(".tfmodel"), &header);
 
+        if (!modelAddr) {
+          jsiConsolePrintf("TF error - no model\n");
+        } else {
+          // allocate the model on the stack rather than using ReadFile
+          // as that will save us a few JsVars
+          size_t modelSize = jsfGetFileSize(&header);
+          char *modelBuf = alloca(modelSize);
+          jshFlashRead(modelBuf, modelAddr, modelSize);
+          JsVar *model = jsvNewNativeString(modelBuf, modelSize);
+
+          // delete command history and run a GC pass to try and free up some space
+          while (jsiFreeMoreMemory());
+          jsvGarbageCollect();
+          JsVar *tf = jswrap_tensorflow_create(4000, model);
+          jsvUnLock(model);
+          if (!tf) {
+            //jsiConsolePrintf("TF error - no memory\n");
+            // we get an exception anyway
+          } else {
+            //jsiConsolePrintf("TF in\n");
+            JsVar *v = jswrap_tfmicrointerpreter_getInput(tf);
+            JsvArrayBufferIterator it;
+            jsvArrayBufferIteratorNew(&it, v, 0);
+            int idx = accHistoryIdx - (accGestureRecordedCount*3);
+            while (idx<0) idx+=sizeof(accHistory);
+            for (int i=0;i<accGestureRecordedCount*3;i++) {
+              jsvArrayBufferIteratorSetIntegerValue(&it, accHistory[idx++]);
+              jsvArrayBufferIteratorNext(&it);
+              if (idx>=(int)sizeof(accHistory)) idx-=sizeof(accHistory);
+            }
+            jsvArrayBufferIteratorFree(&it);
+            jsvUnLock(v);
+            //jsiConsolePrintf("TF invoke\n");
+            jswrap_tfmicrointerpreter_invoke(tf);
+            //jsiConsolePrintf("TF out\n");
+            v = jswrap_tfmicrointerpreter_getOutput(tf);
+            JsVar *arr = jswrap_array_slice(v,0,0); // clone, so it's not referencing all of Tensorflow!
+            jsvUnLock2(v,tf);
+            //jsiConsolePrintf("TF queue\n");
+            JsVar *gesture = jspExecuteJSFunction("(function(a) {"
+              "var m=0,g;"
+              "for (var i in a) if (a[i]>m) { m=a[i];g=i; }"
+              "if (g!==undefined) {"
+                "var n=require('Storage').read('.tfnames');"
+                "if (n) g=n.split(',')[g];"
+              "}"
+            "return g;})",NULL,1,&arr);
+            JsVar *args[2] = {gesture,arr};
+            jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"aiGesture", args, 2);
+            jsvUnLock2(gesture,arr);
+          }
+        }
+      }
+  #endif
+    }
+    if (bangleTasks & JSBT_CHARGE_EVENT) {
+      JsVar *charging = jsvNewFromBool(wasCharging);
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"charging", &charging, 1);
+      jsvUnLock(charging);
+    }
+    if (bangleTasks & JSBT_STEP_EVENT) {
+      JsVar *steps = jsvNewFromInteger(stepCounter);
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"step", &steps, 1);
+      jsvUnLock(steps);
+    }
+    if (bangleTasks & JSBT_TWIST_EVENT) {
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"twist", NULL, 0);
+    }
+    if (bangleTasks & JSBT_FACE_UP) {
+      JsVar *v = jsvNewFromBool(faceUp);
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"faceUp", &v, 1);
+      jsvUnLock(v);
+      if (faceUp && lcdPowerTimeout && !lcdPowerOn && (bangleFlags&JSBF_WAKEON_FACEUP)) {
+        // LCD was turned off, turn it back on
+        jswrap_banglejs_setLCDPower(1);
+        flipTimer = 0;
+      }
+    }
+    if (bangleTasks & JSBT_SWIPE_MASK) {
+      JsVar *o = jsvNewFromInteger((bangleTasks & JSBT_SWIPE_LEFT)?-1:1);
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"swipe", &o, 1);
+      jsvUnLock(o);
+    }
+    if (bangleTasks & JSBT_TOUCH_MASK) {
+      JsVar *o = jsvNewFromInteger(((bangleTasks & JSBT_TOUCH_LEFT)?1:0) |
+                                   ((bangleTasks & JSBT_TOUCH_RIGHT)?2:0));
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"touch", &o, 1);
+      jsvUnLock(o);
+    }
+  }
   jsvUnLock(bangle);
   bangleTasks = JSBT_NONE;
 #if defined(LCD_CONTROLLER_LPM013M126) || defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735)
