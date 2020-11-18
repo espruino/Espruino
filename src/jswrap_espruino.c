@@ -99,7 +99,7 @@ so that you do get a callback each time a flag is set, call `E.getErrorFlags()`.
   "params" : [
     ["x","int","X coordinate in display coordinates"],
     ["y","int","Y coordinate in display coordinates"],
-    ["b","int","Touch count - 0 for released, 1 for pressed"],
+    ["b","int","Touch count - 0 for released, 1 for pressed"]
   ]
 }
 This event is called when a full touchscreen device on an Espruino
