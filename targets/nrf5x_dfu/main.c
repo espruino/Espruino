@@ -112,21 +112,21 @@ bool dfu_enter_check(void) {
     // This means that we go straight to Espruino, where the button is still
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
-#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
-      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\nBTN1 + BTN2 TO TURN OFF\r\n\r\n<                      >\r");
+#if defined(BUTTONPRESS_TO_REBOOT_BOOTLOADER) && defined(BTN2_PININDEX)
+      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\nBTN1 + BTN2 TURN OFF\r\n\r\n<                   >\r");
 #else
-      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                      >\r");
+      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                   >\r");
 #endif
 #ifdef BTN1_PININDEX
+      int count = 20;
 #ifdef BANGLEJS_F18
-      int count = 23;
       while (get_btn1_state() && --count) {
         // the screen update takes long enough that
         // we don't need a delay
         lcd_print("=");
       }
 #else
-      int count = 3000;
+      count *= 128;
       while (get_btn1_state() && count) {
         nrf_delay_us(999);
         set_led_state((count&3)==0, false);
@@ -283,7 +283,6 @@ int main(void)
     dfuIsColdBoot = NRF_POWER->RESETREAS==0;
 #ifdef LCD
     lcd_init();
-
     int r = NRF_POWER->RESETREAS;
     const char *reasons = "PIN\0WATCHDOG\0SW RESET\0LOCKUP\0OFF\0";
     while (*reasons) {

@@ -97,6 +97,7 @@ devices = {
             'pin_disp' : 'D7',
             'pin_sck' : 'D26',
             'pin_mosi' : 'D27',
+            'pin_bl' : 'D8',
           },
   'TOUCH' : {
             'device' : 'CTS816S', 'addr' : 0x15,
