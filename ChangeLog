@@ -13,6 +13,8 @@
             Add support for relaying full touchscreen events in devices that support it
             Fix flip-on-idle behaviour for non-Bangle.js smartwatch ports
             Add support for buttonless bootloader (first boot only, times out after 5 seconds)
+            Fix emulator crash if Graphics.drawPoly used with odd number of points
+            Graphics.fillPoly now errors if >64 points (prev was 63)
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)

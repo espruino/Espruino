@@ -1719,6 +1719,7 @@ JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool 
     int x,y;
     x = (int)((jsvIteratorGetFloatValue(&it)*scale)+0.5);
     jsvIteratorNext(&it);
+    if (!jsvIteratorHasElement(&it)) break;
     y = (int)((jsvIteratorGetFloatValue(&it)*scale)+0.5);
     jsvIteratorNext(&it);
     if (idx==0) { // save xy positions of first point
@@ -1784,10 +1785,9 @@ JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
     verts[idx++] = (short)(0.5 + jsvIteratorGetFloatValue(&it)*16);
     jsvIteratorNext(&it);
   }
+  if (jsvIteratorHasElement(&it))
+    jsExceptionHere(JSET_ERROR, "Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   jsvIteratorFree(&it);
-  if (idx==maxVerts) {
-    jsWarn("Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
-  }
   graphicsFillPoly(&gfx, idx/2, verts);
 
   graphicsSetVar(&gfx); // gfx data changed because modified area
