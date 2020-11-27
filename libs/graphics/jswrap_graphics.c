@@ -1881,7 +1881,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
       } else
         jsvUnLock(v);
       if (!info->palettePtr) {
-        jsExceptionHere(JSET_ERROR, "palette specified, but must be a flat Uint16Array of 2,4,16,256 elements");
+        jsExceptionHere(JSET_ERROR, "Palette specified, but must be a flat Uint16Array of 2,4,16,256 elements");
         return false;
       }
     }
@@ -1926,9 +1926,12 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
           info->paletteMask = (uint32_t)(paletteEntries-1);
           info->palettePtr = &dataPtr[info->bufferOffset];
         }
+      } else {
+        jsExceptionHere(JSET_ERROR, "Unable to get pointer to palette. Image in flash?");
+        return false;
       }
+      // modify image start
       info->bufferOffset += paletteEntries*2;
-      // otherwise just ignore palette info
     }
   } else {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
