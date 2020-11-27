@@ -995,7 +995,7 @@ These values are inclusive - eg `g.setClipRect(1,0,5,0)` will ensure that only
 pixel rows 1,2,3,4,5 are touched on column 0.
 
 **Note:** For maximum flexibility, the values here are not range checked. For normal
-use, unsure X and Y are between 0 and `getWidth`/`getHeight`.
+use, X and Y should be between 0 and `getWidth`/`getHeight`.
 */
 JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -1905,6 +1905,30 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
       info->bufferOffset = 4;
     } else {
       info->bufferOffset = 3;
+    }
+    if (info->bpp & 64) { // included palette data
+      info->bpp = info->bpp&63;
+      int paletteEntries = 1<<info->bpp;
+      info->paletteMask = paletteEntries-1;
+      if (info->bpp <= 2) {
+        // if it'll fit, put the palette data in _simplePalette
+        int n = info->bufferOffset;
+        for (int i=0;i<paletteEntries;i++)
+          info->_simplePalette[i] =
+            ((unsigned char)jsvGetCharInString(info->buffer,n++)) |
+            ((unsigned char)jsvGetCharInString(info->buffer,n++))<<8;
+        info->palettePtr = info->_simplePalette;
+      } else if (info->bpp<=8) { // otherwise if data is memory-mapped, use direct
+        int imgStart = info->bufferOffset + paletteEntries*2;
+        size_t dataLen = 0;
+        char *dataPtr = jsvGetDataPointer(info->buffer, &dataLen);
+        if (info->bpp<=8 && dataPtr && imgStart<dataLen) {
+          info->paletteMask = (uint32_t)(paletteEntries-1);
+          info->palettePtr = &dataPtr[info->bufferOffset];
+        }
+      }
+      info->bufferOffset += paletteEntries*2;
+      // otherwise just ignore palette info
     }
   } else {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
