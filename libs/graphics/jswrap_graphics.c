@@ -1926,7 +1926,8 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
           info->paletteMask = (uint32_t)(paletteEntries-1);
           info->palettePtr = &dataPtr[info->bufferOffset];
         }
-      } else {
+      }
+      if (!info->palettePtr) {
         jsExceptionHere(JSET_ERROR, "Unable to get pointer to palette. Image in flash?");
         return false;
       }
