@@ -17,6 +17,7 @@
             Graphics.fillPoly now errors if >64 points (prev was 63)
             Graphics: Support for palettes supplied in image strings
             nRF52840: Ensure internal voltage regulator is set to 3.3v (not 1.8v default) at boot
+            Fix Array.forEach when deleting the item you're currently iterating over (fix #1962)
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
