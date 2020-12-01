@@ -532,26 +532,25 @@ void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2) {
   int dx = x1 - x0;
   int dy = y1 - y0;
   int gradient = dx ? ((dy<<8) / dx) : 256;
-
   // handle first endpoint
-  int xend = x0 + 128;
+  int xend = x0 & ~255;
   int yend = y0 + ((gradient * (xend - x0)) >> 8);
-  int xgap = 256 - ((x0 + 128) & 255);
+  int xgap = 255 - (x0 & 255);
   int xpxl1 = xend >> 8; // this will be used in the main loop
   int ypxl1 = yend >> 8;
   int c = yend & 255;
   if (steep) {
     graphicsSetPixelDevice(gfx, ypxl1,   xpxl1, graphicsBlendColor(gfx, ((256-c)*xgap)>>8));
-    graphicsSetPixelDevice(gfx, ypxl1+1, xpxl1,  graphicsBlendColor(gfx, (c*xgap)>>8));
+    graphicsSetPixelDevice(gfx, ypxl1+1, xpxl1, graphicsBlendColor(gfx, (c*xgap)>>8));
   } else {
-    graphicsSetPixelDevice(gfx, xpxl1, ypxl1  , graphicsBlendColor(gfx, ((256-c)*xgap)>>8));
-    graphicsSetPixelDevice(gfx, xpxl1, ypxl1+1,  graphicsBlendColor(gfx, (c*xgap)>>8));
+    graphicsSetPixelDevice(gfx, xpxl1, ypxl1, graphicsBlendColor(gfx, ((256-c)*xgap)>>8));
+    graphicsSetPixelDevice(gfx, xpxl1, ypxl1+1, graphicsBlendColor(gfx, (c*xgap)>>8));
   }
   int intery = yend + gradient; // first y-intersection for the main loop
   // handle second endpoint
-  xend = x1 + 128;
+  xend = (x1+256) & ~255;
   yend = y1 + ((gradient * (xend - x1)) >> 8);
-  xgap = (x1 + 128) & 255;
+  xgap = (x1+256) & 255;
   int xpxl2 = xend>>8; //this will be used in the main loop
   int ypxl2 = yend>>8;
   c = yend & 255;

@@ -47,7 +47,6 @@
 #                         # BLACKLIST=/home/mydir/myBlackList
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py
-# NO_COMPILE=1            # skips compiling and linking part, used to echo WRAPPERSOURCES only
 # RTOS=1                  # adds RTOS functions, available only for ESP32 (yet)
 # DFU_UPDATE_BUILD=1      # Uncomment this to build Espruino for a device firmware update over the air (nRF52).
 # PAD_FOR_BOOTLOADER=1    # When building for Espruino STM32 boards, pad the binary out with 0xFF where the bootloader should be (allows the Web IDE to flash the binary)
@@ -761,11 +760,13 @@ $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
 	$(Q)python scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME)
 
-# skips compiling and linking, if NO_COMPILE is defined
-# Generation of temporary files and setting of wrappersources is already done this moment
-ifndef NO_COMPILE
-
+# If realpath exists, use relative paths
+ifneq ("$(shell realpath --version > /dev/null;echo "$$?")","0")
 compile=$(CC) $(CFLAGS) $< -o $@
+else
+# when macros use __FILE__ this stops us including the whole build path
+compile=$(CC) $(CFLAGS) $(shell realpath --relative-to $(shell pwd) $<) -o $@
+endif
 
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
@@ -811,11 +812,6 @@ else # ARM/etc, so generate bin, etc ---------------------------
 include make/targets/ARM.make
 endif	    # ---------------------------------------------------
 
-else # NO_COMPILE
-# log WRAPPERSOURCES to help Firmware creation tool
-$(info WRAPPERSOURCES=$(WRAPPERSOURCES));
-endif
-
 lst: $(PROJ_NAME).lst
 
 clean:
@@ -829,6 +825,9 @@ clean:
 	$(Q)rm -f $(PROJ_NAME).bin
 	$(Q)rm -f $(PROJ_NAME).srec
 	$(Q)rm -f $(PROJ_NAME).lst
+
+wrappersources:
+	$(info WRAPPERSOURCES=$(WRAPPERSOURCES))
 
 # start make like this "make varsonly" to get all variables created and used during make process without compiling
 # this helps to better understand linking, or to find oddities

@@ -55,9 +55,11 @@ static void set_led_state(bool btn, bool progress)
 #endif
 }
 
+#ifdef BTN1_PININDEX
 static bool get_btn1_state() {
   return jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE;
 }
+#endif
 #ifdef BTN2_PININDEX
 static bool get_btn2_state() {
   return jshPinGetValue(BTN2_PININDEX)==BTN2_ONSTATE;
@@ -70,7 +72,7 @@ static void hardware_init(void) {
   jshPinOutput(LED1_PININDEX, 0);
 #endif
   set_led_state(false, false);
-
+#ifdef BTN1_PININDEX
   bool polarity;
   uint32_t pin;
   if (pinInfo[BTN1_PININDEX].port&JSH_PIN_NEGATED)
@@ -80,6 +82,7 @@ static void hardware_init(void) {
   pin = pinInfo[BTN1_PININDEX].pin;
   nrf_gpio_cfg_input(pin,
           polarity ? NRF_GPIO_PIN_PULLDOWN : NRF_GPIO_PIN_PULLUP);
+#endif
 #ifdef BTN2_PININDEX
   if (pinInfo[BTN2_PININDEX].port&JSH_PIN_NEGATED)
     polarity = BTN2_ONSTATE!=1;

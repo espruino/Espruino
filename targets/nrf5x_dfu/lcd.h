@@ -38,7 +38,18 @@
 #define I2C_SCL 14
 #define LCD_START_Y 16
 #endif
+#ifdef LCD_CONTROLLER_LPM013M126
+#define LCD
+#define LCD_START_X 2
+#define LCD_START_Y 2
+#define LCD_DATA_WIDTH 88 // pixel doubled
+#define LCD_DATA_HEIGHT 88 // pixel doubled
+#define LCD_STORE_MODIFIED
+#endif
 
+#ifndef LCD_START_X
+#define LCD_START_X 0
+#endif
 #ifndef LCD_START_Y
 #define LCD_START_Y 0
 #endif

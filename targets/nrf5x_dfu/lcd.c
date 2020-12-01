@@ -85,7 +85,7 @@ const unsigned short LCD_FONT_3X5[] = { // from 33 up to 127
     PACK_5_TO_16( X_X , _X_ , XXX , _XX , _X_ ),
 };
 
-int lcdx = 0, lcdy = LCD_START_Y;
+int lcdx = LCD_START_X, lcdy = LCD_START_Y;
 #define LCD_ROWSTRIDE (LCD_DATA_WIDTH>>3)
 char lcd_data[LCD_ROWSTRIDE*LCD_DATA_HEIGHT];
 #ifdef LCD_STORE_MODIFIED
@@ -109,7 +109,7 @@ void lcd_wr(int data) {
   }
 }
 #endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735)
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_LPM013M126)
 
 void lcd_pixel(int x, int y) {
   // each byte is horizontal
@@ -125,7 +125,7 @@ void lcd_wr(int data) {
   int bit;
   for (bit=7;bit>=0;bit--) {
     jshPinSetValue(LCD_SPI_SCK, 0 );
-    jshPinSetValue(LCD_SPI_MOSI, (data>>bit)&1 );
+    jshPinSetValue(LCD_SPI_MOSI, ((data>>bit)&1) );
     jshPinSetValue(LCD_SPI_SCK, 1 );
   }
 }
@@ -619,6 +619,58 @@ void lcd_kill() {
 
 #endif
 
+#ifdef LCD_CONTROLLER_LPM013M126
+
+void lcd_flip() {
+  if (ymin>ymax) return;
+  jshPinSetValue(LCD_SPI_CS,1);
+  /* // undoubled
+  for (int y=ymin;y<=ymax;y++) {
+    lcd_wr(0b10010000);
+    lcd_wr(y + 1);
+    for (int x=0;x<LCD_DATA_WIDTH;x+=2) {
+      unsigned char d = lcd_data[(x>>3)+(y*LCD_ROWSTRIDE)] >> (x&7);
+      lcd_wr(((d&1)?0:0xF0) | ((d&2)?0:0x0F));
+    }
+  }*/
+  // pixel doubled
+  for (int y=ymin;y<=ymax;y++) {
+    for (int yy=0;yy<2;yy++) {
+      lcd_wr(0b10010000);
+      lcd_wr((y*2) + yy + 1);
+      for (int x=0;x<LCD_DATA_WIDTH;x++) {
+        unsigned char d = lcd_data[(x>>3)+(y*LCD_ROWSTRIDE)] >> (x&7);
+        lcd_wr((d&1)?0:0xFF); // doubled
+      }
+    }
+  }
+  lcd_wr(0);
+  lcd_wr(0);
+  jshPinSetValue(LCD_SPI_MOSI,0);
+  jshPinOutput(LCD_SPI_SCK,0);
+  jshPinSetValue(LCD_SPI_CS,0);
+  static bool lcdToggle;
+  jshPinSetValue(LCD_EXTCOMIN, lcdToggle = !lcdToggle);
+  ymin=LCD_HEIGHT;
+  ymax=0;
+}
+
+void lcd_init() {
+  jshPinOutput(LCD_SPI_CS,0);
+  jshPinOutput(LCD_SPI_SCK,0);
+  jshPinOutput(LCD_SPI_MOSI,1);
+  jshPinOutput(LCD_DISP,1);
+  jshPinOutput(LCD_EXTCOMIN,1);
+  jshPinOutput(LCD_BL,1); // backlight on
+}
+void lcd_kill() {
+  jshPinOutput(LCD_BL,0); // backlight off
+  jshPinOutput(LCD_DISP,0); // display off
+}
+
+#endif
+
+
 void lcd_char(int x1, int y1, char ch) {
   // char replacements so we don't waste font space
   if (ch=='.') ch='\\';
@@ -652,7 +704,7 @@ void lcd_print(char *ch) {
 #endif
       }
     } else if ('\r'==*ch) {
-      lcdx = 0;
+      lcdx = LCD_START_X;
     } else lcdx += 4;
     ch++;
   }
@@ -664,8 +716,12 @@ void lcd_println(char *ch) {
 }
 void lcd_clear() {
   memset(lcd_data,0,sizeof(lcd_data));
-  lcdx=0;
+  lcdx=LCD_START_X;
   lcdy=LCD_START_Y;
+#ifdef LCD_STORE_MODIFIED
+  ymin=0;
+  ymax=LCD_HEIGHT-1;
+#endif
   lcd_flip();
 }
 

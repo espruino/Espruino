@@ -40,8 +40,11 @@ unsigned int nrf_utils_get_baud_enum(int baud) {
 void nrf_utils_lfclk_config_and_start()
 {
   // Select the preferred clock source.
-  // NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos;
+#ifdef ESPR_LSE_ENABLE
+  NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos;
+#else
   NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos;
+#endif
 
   // Start the 32 kHz clock, and wait for the start up to complete
   NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;

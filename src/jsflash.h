@@ -43,7 +43,10 @@ typedef enum {
 JsfFileName jsfNameFromString(const char *name);
 /// utility function for creating JsfFileName
 JsfFileName jsfNameFromVar(JsVar *name);
+/// utility function for creating JsfFileName
 JsfFileName jsfNameFromVarAndUnLock(JsVar *name);
+// create a JsVar from a JsfFileName
+JsVar *jsfVarFromName(JsfFileName name);
 /// Return the size in bytes of a file based on the header
 uint32_t jsfGetFileSize(JsfFileHeader *header);
 /// Return the flags for this file based on the header

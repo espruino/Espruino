@@ -6,6 +6,16 @@
             Fix Regexp handling of unescaped '.' in character group: /[.]/ (fix #1948)
             Now error if using (unsupported) RegExp backreferences
             nRF52: Ensure SPI 1 byte DMA errata workaround isn't applied to non-52832 parts
+            nRF52: When outputting assertions, if we have an terminal device (eg LCD) use that
+            When load(filename) is used, set global variable __FILE__ to the filename
+            Util Timer no longer uses RTC - works based on estimated time from the hardware timer itself (fix #1749, ref #1444)
+            Pull in fixed SHT3C.min.js for RAK5010
+            Add support for relaying full touchscreen events in devices that support it
+            Fix flip-on-idle behaviour for non-Bangle.js smartwatch ports
+            Add support for buttonless bootloader (first boot only, times out after 5 seconds)
+            Fix emulator crash if Graphics.drawPoly used with odd number of points
+            Graphics.fillPoly now errors if >64 points (prev was 63)
+            Graphics: Support for palettes supplied in image strings
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)

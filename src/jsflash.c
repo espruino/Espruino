@@ -68,6 +68,13 @@ JsfFileName jsfNameFromVarAndUnLock(JsVar *name) {
   return n;
 }
 
+JsVar *jsfVarFromName(JsfFileName name) {
+  char nameBuf[sizeof(JsfFileName)+1];
+  nameBuf[sizeof(JsfFileName)] = 0;
+  memcpy(nameBuf, &name, sizeof(JsfFileName));
+  return jsvNewFromString(nameBuf);
+}
+
 /// Return the size in bytes of a file based on the header
 uint32_t jsfGetFileSize(JsfFileHeader *header) {
   return (uint32_t)(header->size & 0x00FFFFFF);
@@ -665,15 +672,12 @@ JsVar *jsfListFiles(JsVar *regex) {
   JsVar *files = jsvNewEmptyArray();
   if (!files) return 0;
 
-  char nameBuf[sizeof(JsfFileName)+1];
   uint32_t addr = JSF_START_ADDRESS;
   JsfFileHeader header;
   memset(&header,0,sizeof(JsfFileHeader));
   if (jsfGetFileHeader(addr, &header, true)) do {
     if (header.name.firstChars != 0) { // if not replaced
-      memcpy(nameBuf, &header.name, sizeof(JsfFileName));
-      nameBuf[sizeof(JsfFileName)]=0;
-      JsVar *v = jsvNewFromString(nameBuf);
+      JsVar *v = jsfVarFromName(header.name);
       bool match = true;
       if (regex) {
         JsVar *m = jswrap_string_match(v,regex);
