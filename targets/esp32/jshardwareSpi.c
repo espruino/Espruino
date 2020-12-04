@@ -97,13 +97,16 @@ void jshSPISetup(
     JshSPIInfo *inf      //!< Flags for the SPI device.
 ) {
   int channelPnt = getSPIChannelPnt(device);
+  int dma_chan = 0;
   Pin sck, miso, mosi;
   if(SPIChannels[channelPnt].HOST == HSPI_HOST){
+    dma_chan = 1;
     sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 14;
     miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 12;
     mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 13;
   }
   else {
+     dma_chan = 2;
     sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 5;
     miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 19;
     mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 23;
@@ -130,7 +133,7 @@ void jshSPISetup(
 	SPIChannelReset(channelPnt);
 	jsWarn("spi was already in use, removed old assignment");
   }
-  esp_err_t ret=spi_bus_initialize(SPIChannels[channelPnt].HOST, &buscfg, 1);
+  esp_err_t ret=spi_bus_initialize(SPIChannels[channelPnt].HOST, &buscfg, dma_chan);
   assert(ret==ESP_OK);
   ret = spi_bus_add_device(SPIChannels[channelPnt].HOST, &devcfg, &SPIChannels[channelPnt].spi);
   assert(ret==ESP_OK);
@@ -193,7 +196,8 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
     spi_trans.tx_buffer=tx;
     spi_trans.rx_buffer=rx;
 	spi_Sending = true;
-    ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, portMAX_DELAY);
+    ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, rx?0:portMAX_DELAY);
+    
 	if (ret != ESP_OK) {
 	  spi_Sending = false;
       jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", ret);
