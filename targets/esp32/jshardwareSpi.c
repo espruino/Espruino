@@ -196,8 +196,7 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
     spi_trans.tx_buffer=tx;
     spi_trans.rx_buffer=rx;
 	spi_Sending = true;
-    //ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, portMAX_DELAY);
-    ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, 0);
+    ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, rx?0:portMAX_DELAY);
     
 	if (ret != ESP_OK) {
 	  spi_Sending = false;
