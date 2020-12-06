@@ -163,7 +163,7 @@ int jshSPISend(
   } else {
     SPIChannels[channelPnt].g_lastSPIRead = (uint32_t)-1;
   }
-  retData = (int)SPIChannels[channelPnt].g_lastSPIRead;
+  int retData = (int)SPIChannels[channelPnt].g_lastSPIRead;
   return (int)retData;
 }
 
