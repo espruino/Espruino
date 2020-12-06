@@ -175,6 +175,7 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
     if (count==1) {
       int r = jshSPISend(device, tx?*tx:-1);
       if (rx) *rx = r;
+      if(callback)callback();
       return true;
     }
 	jshSPIWait(device);
