@@ -438,9 +438,18 @@ include make/common/ARM.make
 
 $(PROJ_NAME).app_hex: $(PROJ_NAME).elf
 	python scripts/check_elf_size.py $(BOARD) $(PROJ_NAME).elf
-	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
+	@echo $(call obj_to_bin,ihex,hex)
 	@$(call obj_to_bin,ihex,hex)
+ifdef INCLUDE_BLANK_STORAGE
+	@echo Including blank storage contents in hex file
+	# could use 'board.chip["saved_code"]["pages"] * board.chip["saved_code"]["page_size"]' but we only need first page
+  # if we include all pages bootloader can complain because it thinks we're overwriting everything
+	tr "\000" "\377" < /dev/zero | dd bs=1 count=$(shell python scripts/get_board_info.py $(BOARD) 'board.chip["saved_code"]["page_size"]') of=blank_storage.bin
+	objcopy -I binary -O ihex --change-address $(shell python scripts/get_board_info.py $(BOARD) 'board.chip["saved_code"]["address"]') blank_storage.bin blank_storage.hex
+	python scripts/hexmerge.py --overlap=replace  $(PROJ_NAME).hex blank_storage.hex -o $(PROJ_NAME).app_hex
+else
 	@mv $(PROJ_NAME).hex $(PROJ_NAME).app_hex
+endif
 
 $(PROJ_NAME).hex: $(PROJ_NAME).app_hex
  ifdef USE_BOOTLOADER

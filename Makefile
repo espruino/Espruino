@@ -19,6 +19,8 @@
 # make lst           # Make listing files
 # make boardjson     # JSON file for a board
 # make docs          # Reference HTML for a board
+# make varsonly      # Dump Makefile vars - good for debugging
+# make wrappersources # Show the WRAPPERSOURCES - list of C files that contain functions to load into Espruino environment
 #
 # Also:
 #
@@ -47,9 +49,16 @@
 #                         # BLACKLIST=/home/mydir/myBlackList
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py
-# RTOS=1                  # adds RTOS functions, available only for ESP32 (yet)
+#
+# -- STM32 Only
+# PAD_FOR_BOOTLOADER=1    # Pad the binary out with 0xFF where the bootloader should be (allows the Web IDE to flash the binary)
+#
+# -- NRF52 Only
+# INCLUDE_BLANK_STORAGE=1 # Include storage inside hex, so firmware updates remove any saved code
 # DFU_UPDATE_BUILD=1      # Uncomment this to build Espruino for a device firmware update over the air (nRF52).
-# PAD_FOR_BOOTLOADER=1    # When building for Espruino STM32 boards, pad the binary out with 0xFF where the bootloader should be (allows the Web IDE to flash the binary)
+#
+# -- ESP32 Only
+# RTOS=1                  # adds RTOS functions, available only for ESP32 
 
 include make/sanitycheck.make
 
