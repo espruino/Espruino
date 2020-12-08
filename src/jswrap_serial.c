@@ -30,14 +30,15 @@ Methods may be called on the USB, Serial1, Serial2, Serial3, Serial4, Serial5 an
   "type" : "constructor",
   "class" : "Serial",
   "name" : "Serial",
-  "generate" : "jswrap_serial_constructor"
+  "generate" : "jswrap_serial_constructor",
+  "return" : ["JsVar","A Serial object"]
 }
 Create a software Serial port. This has limited functionality (only low baud rates), but it can work on any pins.
 
 Use `Serial.setup` to configure this port.
  */
 JsVar *jswrap_serial_constructor() {
-  return jsvNewWithFlags(JSV_OBJECT);
+  return jspNewObject(0,"Serial");
 }
 /*JSON{
   "type" : "event",
@@ -177,8 +178,7 @@ A loopback serial device. Data sent to `LoopbackA` comes out of `LoopbackB` and 
   "instanceof" : "Serial",
   "#if" : "defined(USE_TELNET)"
 }
-A telnet serial device that maps to the built-in telnet console server (devices that have
-built-in wifi only).
+A telnet serial device that maps to the built-in telnet console server (devices that have built-in wifi only).
  */
 
 
@@ -196,6 +196,8 @@ Set this Serial port as the port for the JavaScript console (REPL).
 
 Unless `force` is set to true, changes in the connection state of the board
 (for instance plugging in USB) will cause the console to change.
+
+See `E.setConsole` for a more flexible version of this function.
  */
 void jswrap_serial_setConsole(JsVar *parent, bool force) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);

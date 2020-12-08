@@ -154,15 +154,13 @@ void jshInit() {
   if (JSHPINSTATE_I2C != 13 || JSHPINSTATE_GPIO_IN_PULLDOWN != 6 || JSHPINSTATE_MASK != 15) {
     jsError("JshPinState #defines have changed, please update pinStateToString()");
   }
-  /*
-  jsWarn( "JSHPINSTATE_I2C %d\n",JSHPINSTATE_I2C );
-  jsWarn( "JSHPINSTATE_GPIO_IN_PULLDOWN %d\n",JSHPINSTATE_GPIO_IN_PULLDOWN );
-  jsWarn( "JSHPINSTATE_MASK %d\n",JSHPINSTATE_MASK );
-  */
   gpio_isr_register(gpio_intr_handler,NULL,0,NULL);  //changed to automatic assign of interrupt
   // Initialize something for each of the possible pins.
   jshPinDefaultPullup();
 } // End of jshInit
+
+void jshKill() {
+}
 
 /**
  * Reset the Espruino environment.
@@ -311,6 +309,13 @@ JshPinState jshPinGetState(Pin pin) {
   return g_pinState[pin];
 }
 
+/** 
+ * Check if state is default - return true if default
+*/
+bool jshIsPinStateDefault(Pin pin, JshPinState state) {
+  return state == JSHPINSTATE_GPIO_IN_PULLUP || state == JSHPINSTATE_ADC_IN;
+}
+
 //===== GPIO and PIN stuff =====
 
 /**
@@ -407,13 +412,17 @@ void jshSetOutputValue(JshPinFunction func, int value) {
  */
 void jshEnableWatchDog(JsVarFloat timeout) {
   UNUSED(timeout);
+#ifdef DEBUG
   jsError(">> jshEnableWatchDog Not implemented,using taskwatchdog from RTOS");
+#endif
 }
 
 
 // Kick the watchdog
 void jshKickWatchDog() {
+#ifdef DEBUG
   jsError(">> jshKickWatchDog Not implemented,using taskwatchdog from RTOS");
+#endif
 }
 
 
@@ -732,9 +741,9 @@ JsVar *jshFlashGetFree() {
   if (!jsFreeFlash) return 0;
   // Space reserved here in the parition table -  using sub type 0x40
   // This should be read from the partition table
-  addFlashArea(jsFreeFlash, 0xE000,  0x2000);
-  addFlashArea(jsFreeFlash, 0x2B0000, 0x10000);
-
+  addFlashArea(jsFreeFlash, 0xE000, 0x2000);
+  addFlashArea(jsFreeFlash, 0x310000, 0x10000);
+  addFlashArea(jsFreeFlash, 0x360000, 0xA0000);
   return jsFreeFlash;
 }
 

@@ -89,7 +89,7 @@ typedef union UtilTimerTaskData {
 } UtilTimerTaskData;
 
 typedef struct UtilTimerTask {
-  JsSysTime time; // time at which to set pins
+  int time; // time at which to set pins (JshSysTime, cropped to 32 bits)
   unsigned int repeatInterval; // if nonzero, repeat the timer
   UtilTimerTaskData data; // data used when timer is hit
   UtilTimerEventType type; // the type of this task - do we set pin(s) or read/write data
@@ -145,6 +145,10 @@ void jstSystemTimeChanged(JsSysTime diff);
 /// Dump the current list of timers
 void jstDumpUtilityTimers();
 
+/* Restart the utility timer with the right period. This should not normally
+need to be called by anything outside jstimer.c */
+void  jstRestartUtilTimer();
+
 // Queue a task up to be executed when a timer fires... return false on failure
 bool utilTimerInsertTask(UtilTimerTask *task);
 
@@ -153,6 +157,7 @@ bool utilTimerRemoveTask(bool (checkCallback)(UtilTimerTask *task, void* data), 
 
 /// If 'checkCallback' returns true for a task, set 'task' to it and return true. Returns false if none found
 bool utilTimerGetLastTask(bool (checkCallback)(UtilTimerTask *task, void* data), void *checkCallbackData, UtilTimerTask *task);
+
 
 #endif /* JSTIMER_H_ */
 

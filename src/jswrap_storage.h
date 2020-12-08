@@ -16,12 +16,20 @@
 #define WIFI_CONFIG_STORAGE_NAME ".wificfg"
 
 void jswrap_storage_eraseAll();
-JsVar *jswrap_storage_read(JsVar *name);
-JsVar *jswrap_storage_readJSON(JsVar *name);
+JsVar *jswrap_storage_read(JsVar *name, int offset, int length);
+JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions);
 JsVar *jswrap_storage_readArrayBuffer(JsVar *name);
 bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt size);
+bool jswrap_storage_writeJSON(JsVar *name, JsVar *data);
 void jswrap_storage_erase(JsVar *name);
 void jswrap_storage_compact();
 JsVar *jswrap_storage_list();
 void jswrap_storage_debug();
 int jswrap_storage_getFree();
+
+JsVar *jswrap_storage_open(JsVar *name, JsVar *mode);
+JsVar *jswrap_storagefile_read(JsVar *f, int len);
+JsVar *jswrap_storagefile_readLine(JsVar *f);
+int jswrap_storagefile_getLength(JsVar *f);
+void jswrap_storagefile_write(JsVar *parent, JsVar *_data);
+void jswrap_storagefile_erase(JsVar *f);

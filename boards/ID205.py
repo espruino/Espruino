@@ -23,29 +23,32 @@ info = {
 # 'default_console_tx' : "D6",
 # 'default_console_rx' : "D8",
 # 'default_console_baudrate' : "9600",
- 'variables' : 12500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
- 'bootloader' : 1,
+ 'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+# 'bootloader' : 1,
  'binary_name' : 'espruino_%v_id205.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
      'BLUETOOTH',
      'TERMINAL',
-#     'NET',
      'GRAPHICS',
-#     'NFC',
-#     'NEOPIXEL'
+     'LCD_SPI'
    ],
    'makefile' : [
-#     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
-#     'DEFINES += -DBOARD_PCA10056',
-#     'DEFINES += -DNRF_USB=1 -DUSB',
-     'DEFINES+=-DUSE_FONT_6X8',
-     'NRF_SDK15=1',
-     'INCLUDE += -I$(ROOT)/libs/id205',
-     'WRAPPERSOURCES += libs/id205/jswrap_id205.c',
-     'JSMODULESOURCES += libs/js/graphical_menu.min.js',
-     'DEFINES += -DNRF_BL_DFU_ENTER_METHOD_BUTTON=1 -DNRF_BL_DFU_ENTER_METHOD_BUTTON_PIN=5'
+     'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
+     'DEFINES += -DNRF_BL_DFU_ENTER_METHOD_BUTTON=1 -DNRF_BL_DFU_ENTER_METHOD_BUTTON_PIN=5',
+     'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
+     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
+     'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DESPR_GRAPHICS_12BIT -DGRAPHICS_ANTIALIAS',
+     'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
+     'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
+     'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
+     'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
+     'DEFINES += -DBANGLEJS',
+
+     'NRF_SDK15=1'
    ]
  }
 };
@@ -58,9 +61,9 @@ chip = {
   'ram' : 256,
   'flash' : 1024,
   'speed' : 64,
-  'usart' : 1,
-  'spi' : 3,
-  'i2c' : 2,
+  'usart' : 2,
+  'spi' : 1,
+  'i2c' : 1,
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
@@ -77,7 +80,7 @@ devices = {
 #  'LED1' : { 'pin' : 'D13' }, # Pin negated in software
   'VIBRATE' : { 'pin' : 'D8' }, # Pin negated in software
   'LCD' : {
-            'width' : 240, 'height' : 240, 'bpp' : 8, # 16 normal, 12 bit is possible
+            'width' : 240, 'height' : 240, 'bpp' : 12, # 16 normal, 12 bit is possible
             'controller' : 'st7789v',
             'pin_dc' : 'D28',
             'pin_cs' : 'D19',
@@ -85,6 +88,10 @@ devices = {
             'pin_sck' : 'D30',
             'pin_mosi' : 'D18',
             'pin_bl' : 'D35', # backlight pwm
+          },
+  'BAT' : {
+            'pin_charging' : 'D45', # active low
+            'pin_voltage' : 'D4'
           },
 };
 
@@ -120,10 +127,8 @@ def get_pins():
   pins = pinutils.generate_pins(0,47) # 48 General Purpose I/O Pins.
   pinutils.findpin(pins, "PD0", True)["functions"]["XL1"]=0;
   pinutils.findpin(pins, "PD1", True)["functions"]["XL2"]=0;
-  pinutils.findpin(pins, "PD5", True)["functions"]["RTS"]=0;
-  pinutils.findpin(pins, "PD6", True)["functions"]["TXD"]=0;
-  pinutils.findpin(pins, "PD7", True)["functions"]["CTS"]=0;
-  pinutils.findpin(pins, "PD8", True)["functions"]["RXD"]=0;
+  pinutils.findpin(pins, "PD9", True)["functions"]["NFC1"]=0;
+  pinutils.findpin(pins, "PD10", True)["functions"]["NFC2"]=0;
   pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN0"]=0;
   pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN1"]=0;
   pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN2"]=0;

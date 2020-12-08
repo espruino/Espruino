@@ -175,6 +175,9 @@ void jshPinSetState(Pin pin, JshPinState state);
  * (like JSHPINSTATE_PIN_IS_ON if pin was set to output) */
 JshPinState jshPinGetState(Pin pin);
 
+/// Check if state is default - return true if default
+bool jshIsPinStateDefault(Pin pin, JshPinState state);
+
 /** Returns an analog value between 0 and 1. 0 is expected to be 0v, and
  * 1 means jshReadVRef() volts. On most devices jshReadVRef() would return
  * around 3.3, so a reading of 1 represents 3.3v. */
@@ -322,7 +325,10 @@ typedef struct {
   Pin pinSCL;
   Pin pinSDA;
   bool started; ///< Has I2C 'start' condition been sent so far?
-  // timeout?
+  bool clockStretch; ///< In software I2C, should we wait for the device to respond, or do we just soldier on regardless?
+#ifdef I2C_SLAVE
+  int slaveAddr; ///< if >=0 this is a slave, otherwise master
+#endif
 } PACKED_FLAGS JshI2CInfo;
 
 /// Initialise a JshI2CInfo struct to default settings
@@ -352,6 +358,8 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len);
 /** Write data to flash memory from the buffer, the buffer address and flash address are
   * guaranteed to be 4-byte aligned, and length is a multiple of 4.  */
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len);
+/** Like FlashWrite but can be unaligned (it uses a read first). This is in jshardware_common.c */
+void jshFlashWriteAligned(void *buf, uint32_t addr, uint32_t len);
 
 /** On most platforms, the address of something really is that address.
  * In ESP32/ESP8266 the flash memory is mapped up at a much higher address,
@@ -404,7 +412,7 @@ int jshGetRTCPrescalerValue(bool calibrate);
 void jshResetRTCTimer();
 #endif
 
-#if defined(NRF51) || defined(NRF52)
+#if defined(NRF51_SERIES) || defined(NRF52_SERIES)
 /// Called when we have had an event that means we should execute JS
 extern void jshHadEvent();
 #else
@@ -464,7 +472,7 @@ JshPinState jshVirtualPinGetState(Pin pin);
 #define WAIT_UNTIL(CONDITION, REASON) { \
     int timeout = WAIT_UNTIL_N_CYCLES;                                              \
     while (!(CONDITION) && !jspIsInterrupted() && (timeout--)>0);                  \
-    if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_INTERNALERROR, "Timeout on "REASON); }  \
+    if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_INTERNALERROR, "Timeout on " REASON); }  \
 }
 
 #endif /* JSHARDWARE_H_ */

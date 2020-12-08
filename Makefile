@@ -17,6 +17,10 @@
 # make flash         # Try and flash using the platform's normal flash tool
 # make serialflash   # flash over USB serial bootloader (STM32)
 # make lst           # Make listing files
+# make boardjson     # JSON file for a board
+# make docs          # Reference HTML for a board
+# make varsonly      # Dump Makefile vars - good for debugging
+# make wrappersources # Show the WRAPPERSOURCES - list of C files that contain functions to load into Espruino environment
 #
 # Also:
 #
@@ -29,7 +33,7 @@
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
 #
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet W5500 support
-#   W5100=1               # Compile for WIZnet W5100 (not W5500)
+# W5100=1                 # Compile for WIZnet W5100 (not W5500)
 # CC3000=1                # If compiling for a non-linux target that has internet support, use CC3000 support
 # USB_PRODUCT_ID=0x1234   # force a specific USB Product ID (default 0x5740)
 #
@@ -41,14 +45,20 @@
 #                         # UNSUPPORTEDMAKE=/home/mydir/unsupportedCommands
 # PROJECTNAME=myBigProject# Sets projectname
 # BLACKLIST=fileBlacklist # Removes javascript commands given in a file from compilation and therefore from project defined firmware
-#                         # is used in build_jswrapper.py
+#                         # is used in build_jswrapper.py - of the form [{class,name}...]
 #                         # BLACKLIST=/home/mydir/myBlackList
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py
-# NO_COMPILE=1            # skips compiling and linking part, used to echo WRAPPERSOURCES only
-# RTOS=1                  # adds RTOS functions, available only for ESP32 (yet)
+#
+# -- STM32 Only
+# PAD_FOR_BOOTLOADER=1    # Pad the binary out with 0xFF where the bootloader should be (allows the Web IDE to flash the binary)
+#
+# -- NRF52 Only
+# INCLUDE_BLANK_STORAGE=1 # Include storage inside hex, so firmware updates remove any saved code
 # DFU_UPDATE_BUILD=1      # Uncomment this to build Espruino for a device firmware update over the air (nRF52).
-# PAD_FOR_BOOTLOADER=1    # When building for Espruino STM32 boards, pad the binary out with 0xFF where the bootloader should be (allows the Web IDE to flash the binary)
+#
+# -- ESP32 Only
+# RTOS=1                  # adds RTOS functions, available only for ESP32 
 
 include make/sanitycheck.make
 
@@ -64,7 +74,6 @@ INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
 LIBS?=
 DEFINES?=
 CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -g
-CFLAGS+=-Wno-expansion-to-defined # remove warnings created by Nordic's libs
 CCFLAGS?= # specific flags when compiling cc files
 LDFLAGS?=-Winline -g
 OPTIMIZEFLAGS?=
@@ -300,13 +309,15 @@ else
 
 ifneq ($(FAMILY),ESP8266)
 # If we have enough flash, include the debugger
-# ESP8266,W600 can't do it because it expects tasks to finish within set time
-ifneq ($(FAMILY),W600)
+# ESP8266 can't do it because it expects tasks to finish within set time
+ifneq ($(USE_DEBUGGER),0)
 DEFINES+=-DUSE_DEBUGGER
 endif
 endif
 # Use use tab complete
+ifneq ($(USE_TAB_COMPLETE),0)
 DEFINES+=-DUSE_TAB_COMPLETE
+endif
 
 # Heatshrink compression library and wrapper - better compression when saving code to flash
 DEFINES+=-DUSE_HEATSHRINK
@@ -371,6 +382,7 @@ WRAPPERSOURCES += libs/graphics/jswrap_graphics.c
 SOURCES += \
 libs/graphics/bitmap_font_4x6.c \
 libs/graphics/bitmap_font_6x8.c \
+libs/graphics/vector_font.c \
 libs/graphics/graphics.c \
 libs/graphics/lcd_arraybuffer.c \
 libs/graphics/lcd_js.c
@@ -387,6 +399,25 @@ ifdef USE_LCD_FSMC
   SOURCES += libs/graphics/lcd_fsmc.c
 endif
 
+ifdef USE_LCD_SPI
+  DEFINES += -DUSE_LCD_SPI
+  SOURCES += libs/graphics/lcd_spilcd.c
+endif
+
+ifdef USE_LCD_ST7789_8BIT
+  DEFINES += -DUSE_LCD_ST7789_8BIT
+  SOURCES += libs/graphics/lcd_st7789_8bit.c
+endif
+
+ifdef USE_LCD_MEMLCD
+  DEFINES += -DUSE_LCD_MEMLCD
+  SOURCES += libs/graphics/lcd_memlcd.c
+endif
+
+ifdef USE_LCD_SPI_UNBUF
+  DEFINES += -DUSE_LCD_SPI_UNBUF
+  WRAPPERSOURCES += libs/graphics/lcd_spi_unbuf.c
+endif
 
 ifeq ($(USE_TERMINAL),1)
   DEFINES += -DUSE_TERMINAL
@@ -410,10 +441,12 @@ ifeq ($(USE_NET),1)
  libs/network/socketserver.c \
  libs/network/socketerrors.c
 
+ifneq ($(USE_NETWORK_JS),0)
+ DEFINES += -DUSE_NETWORK_JS
  WRAPPERSOURCES += libs/network/js/jswrap_jsnetwork.c
  INCLUDE += -I$(ROOT)/libs/network/js
- SOURCES += \
- libs/network/js/network_js.c
+ SOURCES += libs/network/js/network_js.c
+endif
 
  ifdef LINUX
  INCLUDE += -I$(ROOT)/libs/network/linux
@@ -511,8 +544,13 @@ ifeq ($(USE_NET),1)
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
  libs/network/esp8266/network_esp8266.c\
- libs/network/esp8266/pktbuf.c\
- libs/network/esp8266/ota.c
+ libs/network/esp8266/pktbuf.c
+
+ ifndef NO_FOTA
+   SOURCES += libs/network/esp8266/ota.c
+ else
+   DEFINES += -DNO_FOTA
+ endif
  endif
 
  ifdef USE_W600
@@ -580,10 +618,28 @@ ifeq ($(USE_NFC),1)
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/uri
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/generic/record
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_pair_msg
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ac_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/le_oob_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_oob_advdata
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ep_oob_rec
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/common
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/nfc/ndef/launchapp
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_msg.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/uri/nfc_uri_rec.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/generic/message/nfc_ndef_msg.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/generic/record/nfc_ndef_record.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_pair_msg/nfc_ble_pair_msg.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec/nfc_hs_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/le_oob_rec/nfc_le_oob_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ep_oob_rec/nfc_ep_oob_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ac_rec/nfc_ac_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/hs_rec/nfc_hs_rec.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/ble_oob_advdata/nfc_ble_oob_advdata.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/connection_handover/common/nfc_ble_pair_common.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/launchapp/nfc_launchapp_msg.c
+  TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/ndef/launchapp/nfc_launchapp_rec.c
   TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
 endif
 
@@ -695,6 +751,11 @@ else
 	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 endif
 
+docs:
+	@echo Generating Board docs
+	$(Q)python scripts/build_docs.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
+	@echo functions.html created
+
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
@@ -719,11 +780,13 @@ $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
 	$(Q)python scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME)
 
-# skips compiling and linking, if NO_COMPILE is defined
-# Generation of temporary files and setting of wrappersources is already done this moment
-ifndef NO_COMPILE
-
+# If realpath exists, use relative paths
+ifneq ("$(shell realpath --version > /dev/null;echo "$$?")","0")
 compile=$(CC) $(CFLAGS) $< -o $@
+else
+# when macros use __FILE__ this stops us including the whole build path
+compile=$(CC) $(CFLAGS) $(shell realpath --relative-to $(shell pwd) $<) -o $@
+endif
 
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
@@ -759,6 +822,8 @@ quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 
 ifdef LINUX # ---------------------------------------------------
 include make/targets/LINUX.make
+else ifdef EMSCRIPTEN
+include make/targets/EMSCRIPTEN.make
 else ifdef ESP32
 include make/targets/ESP32.make
 else ifdef ESP8266
@@ -768,11 +833,6 @@ include make/targets/W600.make
 else # ARM/etc, so generate bin, etc ---------------------------
 include make/targets/ARM.make
 endif	    # ---------------------------------------------------
-
-else # NO_COMPILE
-# log WRAPPERSOURCES to help Firmware creation tool
-$(info WRAPPERSOURCES=$(WRAPPERSOURCES));
-endif
 
 lst: $(PROJ_NAME).lst
 
@@ -787,6 +847,9 @@ clean:
 	$(Q)rm -f $(PROJ_NAME).bin
 	$(Q)rm -f $(PROJ_NAME).srec
 	$(Q)rm -f $(PROJ_NAME).lst
+
+wrappersources:
+	$(info WRAPPERSOURCES=$(WRAPPERSOURCES))
 
 # start make like this "make varsonly" to get all variables created and used during make process without compiling
 # this helps to better understand linking, or to find oddities

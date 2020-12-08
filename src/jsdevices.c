@@ -14,6 +14,7 @@
 #include "jsdevices.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jswrapper.h"
 #ifdef BLUETOOTH
 #include "bluetooth.h"
 #endif
@@ -60,11 +61,15 @@ typedef enum {
   SDS_FLOW_CONTROL_XON_XOFF = 8, // flow control enabled
   SDS_ERROR_HANDLING = 16
 } PACKED_FLAGS JshSerialDeviceState;
+#define JSHSERIALDEVICESTATUSES (1+EV_SERIAL_MAX-EV_SERIAL_DEVICE_STATE_START)
 
-JshSerialDeviceState jshSerialDeviceStates[1+EV_SERIAL_MAX-EV_SERIAL_DEVICE_STATE_START];
+/// Was flow control ever set? Allows us to save time if it wasn't
+bool jshSerialFlowControlWasSet;
+/// Info about the current device - eg. is flow control enabled?
+volatile JshSerialDeviceState jshSerialDeviceStates[JSHSERIALDEVICESTATUSES];
 /// Device clear to send hardware flow control pins (PIN_UNDEFINED if not used)
-Pin jshSerialDeviceCTSPins[1+EV_SERIAL_MAX-EV_SERIAL_DEVICE_STATE_START];
-#define TO_SERIAL_DEVICE_STATE(X) ((X)-EV_SERIAL_DEVICE_STATE_START)
+Pin jshSerialDeviceCTSPins[JSHSERIALDEVICESTATUSES];
+
 
 // ----------------------------------------------------------------------------
 //                                                              IO EVENT BUFFER
@@ -78,6 +83,16 @@ volatile unsigned char ioHead=0, ioTail=0;
  * Called from jshInit */
 void jshInitDevices() {
   DEVICE_SANITY_CHECK();
+  // Setup USB/Bluetooth flow control separately so
+  // we don't reset it for every call to reset()
+#ifdef USB
+  assert(EV_USBSERIAL>=EV_SERIAL_DEVICE_STATE_START);
+  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_FLOW_CONTROL_XON_XOFF;
+#endif
+#ifdef BLUETOOTH
+  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)] = SDS_FLOW_CONTROL_XON_XOFF;
+#endif
+  // reset everything else...
   jshResetDevices();
 }
 
@@ -88,12 +103,16 @@ void jshResetDevices() {
   // Reset list of pins that were set manually
   jshResetPinStateIsManual();
   // setup flow control
-  for (i=0;i<sizeof(jshSerialDeviceStates) / sizeof(JshSerialDeviceState);i++) {
+  for (i=0;i<JSHSERIALDEVICESTATUSES;i++) {
+#ifdef USB
+    if (i==TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)) break; // don't update USB status
+#endif
+#ifdef BLUETOOTH
+    if (i==TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)) break; // don't update Bluetooth status
+#endif
     jshSerialDeviceStates[i] = SDS_NONE;
     jshSerialDeviceCTSPins[i] = PIN_UNDEFINED;
   }
-  assert(EV_USBSERIAL>=EV_SERIAL_DEVICE_STATE_START);
-  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_FLOW_CONTROL_XON_XOFF;
   // reset callbacks for events
   for (i=EV_EXTI0;i<=EV_EXTI_MAX;i++)
     jshEventCallbacks[i-EV_EXTI0] = 0;
@@ -263,7 +282,7 @@ IOEventFlags jshGetDeviceToTransmit() {
 int jshGetCharToTransmit(
     IOEventFlags device // The device being looked at for a transmission.
   ) {
-  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+  if (DEVICE_HAS_DEVICE_STATE(device)) {
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
     if ((*deviceState)&SDS_XOFF_PENDING) {
       (*deviceState) = ((*deviceState)&(~SDS_XOFF_PENDING)) | SDS_XOFF_SENT;
@@ -390,20 +409,20 @@ static bool jshPushIOCharEventAppend(IOEventFlags channel, char charData) {
   return false;
 }
 
-/// Try and handle events in the IRQ itself
+/// Try and handle events in the IRQ itself. true if handled and shouldn't go in queue
 static bool jshPushIOCharEventHandler(IOEventFlags channel, char charData) {
   // Check for a CTRL+C
   if (charData==3 && channel==jsiGetConsoleDevice()) {
     jsiCtrlC(); // Ctrl-C - force interrupt of execution
     return true;
   }
-  return false;
+  return jswOnCharEvent(channel, charData);
 }
 
 
 // Set flow control (as we're going to use more data)
 static void jshPushIOCharEventFlowControl(IOEventFlags channel) {
-  if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
+  if (DEVICE_HAS_DEVICE_STATE(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
     jshSetFlowControlXON(channel, false);
 }
 
@@ -556,6 +575,7 @@ const char *jshGetDeviceString(
     IOEventFlags device //!< The device to be examined.
   ) {
   switch (device) {
+  case EV_NONE: return "null";
   case EV_LOOPBACKA: return "LoopbackA";
   case EV_LOOPBACKB: return "LoopbackB";
   case EV_LIMBO: return "Limbo";
@@ -663,7 +683,9 @@ IOEventFlags jshFromDeviceString(
 
 /// Set whether the host should transmit or not
 void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
-  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+  if (DEVICE_HAS_DEVICE_STATE(device)) {
+    if (!hostShouldTransmit)
+      jshSerialFlowControlWasSet = true;
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if ((*deviceState) & SDS_FLOW_CONTROL_XON_XOFF) {
@@ -689,6 +711,15 @@ void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
   }
 }
 
+/// To be called on idle when the input queue has enough space
+void jshSetFlowControlAllReady() {
+  if (!jshSerialFlowControlWasSet)
+    return; // nothing to do!
+  for (int i=0;i<JSHSERIALDEVICESTATUSES;i++)
+    jshSetFlowControlXON(EV_SERIAL_DEVICE_STATE_START+i, true);
+  jshSerialFlowControlWasSet = false;
+}
+
 /// Gets a device's object from a device, or return 0 if it doesn't exist
 JsVar *jshGetDeviceObject(IOEventFlags device) {
   const char *deviceStr = jshGetDeviceString(device);
@@ -698,7 +729,7 @@ JsVar *jshGetDeviceObject(IOEventFlags device) {
 
 /// Set whether to use flow control on the given device or not. CTS is low when ready, high when not.
 void jshSetFlowControlEnabled(IOEventFlags device, bool software, Pin pinCTS) {
-  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+  if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if (software)
@@ -737,7 +768,7 @@ Pin jshGetEventDataPin(IOEventFlags channel) {
 }
 
 void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling) {
-  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+  if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if (errorHandling)
@@ -748,7 +779,7 @@ void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling) {
 }
 
 bool jshGetErrorHandlingEnabled(IOEventFlags device) {
-  if (device>=EV_SERIAL_DEVICE_STATE_START && device<=EV_SERIAL_MAX) {
+  if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
     JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     return (SDS_ERROR_HANDLING & *deviceState)!=0;

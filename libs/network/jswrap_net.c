@@ -102,7 +102,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
   int charIdx = 0;
   int portNumber = 0;
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch == '/') {
       slashes++;
       if (pathStart<0) pathStart = charIdx;
@@ -125,8 +125,6 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
     if (ch == '?' && pathStart>=0) {
       searchStart = charIdx;
     }
-
-    jsvStringIteratorNext(&it);
     charIdx++;
   }
   jsvStringIteratorFree(&it);
@@ -165,7 +163,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
     bool hadEquals = false;
 
     while (jsvStringIteratorHasChar(&it)) {
-      char ch = jsvStringIteratorGetChar(&it);
+      char ch = jsvStringIteratorGetCharAndNext(&it);
       if (ch=='&') {
         if (jsvGetStringLength(key)>0 || jsvGetStringLength(val)>0) {
           key = jsvAsArrayIndexAndUnLock(key); // make sure "0" gets made into 0
@@ -181,16 +179,14 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
       } else {
         // decode percent escape chars
         if (ch=='%') {
-          jsvStringIteratorNext(&it);
-          ch = jsvStringIteratorGetChar(&it);
-          jsvStringIteratorNext(&it);
-          ch = (char)((chtod(ch)<<4) | chtod(jsvStringIteratorGetChar(&it)));
+          char hi = jsvStringIteratorGetCharAndNext(&it);
+          char lo = jsvStringIteratorGetCharAndNext(&it);
+          ch = (char)hexToByte(hi,lo);
         }
 
         if (hadEquals) jsvAppendCharacter(val, ch);
         else jsvAppendCharacter(key, ch);
       }
-      jsvStringIteratorNext(&it);
       charIdx++;
     }
     jsvStringIteratorFree(&it);

@@ -53,134 +53,21 @@ DEPRECATED - Please use `E.getBattery()` instead.
 Return an approximate battery percentage remaining based on
 a normal CR2032 battery (2.8 - 2.2v)
 */
-
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "Pixl",
-    "name" : "menu",
-    "generate" : "jswrap_pixljs_menu",
-    "params" : [
-      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
-    ],
-    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+JsVarInt jswrap_pixljs_getBattery() {
+  JsVarFloat v = jshReadVRef();
+  int pc = (v-2.2)*100/0.6;
+  if (pc>100) pc=100;
+  if (pc<0) pc=0;
+  return pc;
 }
-Display a menu on Pixl.js's screen, and set up the buttons to navigate through it.
 
-Supply an object containing menu items. When an item is selected, the
-function it references will be executed. For example:
 
-```
-var boolean = false;
-var number = 50;
-// First menu
-var mainmenu = {
-  "" : { "title" : "-- Main Menu --" },
-  "Backlight On" : function() { LED1.set(); },
-  "Backlight Off" : function() { LED1.reset(); },
-  "Submenu" : function() { Pixl.menu(submenu); },
-  "A Boolean" : {
-    value : boolean,
-    format : v => v?"On":"Off",
-    onchange : v => { boolean=v; }
-  },
-  "A Number" : {
-    value : number,
-    min:0,max:100,step:10,
-    onchange : v => { number=v; }
-  },
-  "Exit" : function() { Pixl.menu(); },
-};
-// Submenu
-var submenu = {
-  "" : { "title" : "-- SubMenu --" },
-  "One" : undefined, // do nothing
-  "Two" : undefined, // do nothing
-  "< Back" : function() { Pixl.menu(mainmenu); },
-};
-// Actually display the menu
-Pixl.menu(mainmenu);
-```
-
-See http://www.espruino.com/graphical_menu for more detailed information.
-*/
-JsVar *jswrap_pixljs_menu(JsVar *menu) {
-  /* Unminified JS code is:
-
-Pixl.show = function(menudata) {
-  if (Pixl.btnWatches) {
-    Pixl.btnWatches.forEach(clearWatch);
-    Pixl.btnWatches = undefined;
-  }
-  g.clear();g.flip(); // clear screen if no menu supplied
-  if (!menudata) return;
-  function im(b) {
-    return {
-      width:8,height:b.length,bpp:1,buffer:new Uint8Array(b).buffer
-    };
-  }
-  if (!menudata[""]) menudata[""]={};
-  g.setFontBitmap();g.setFontAlign(-1,-1,0);
-  var w = g.getWidth()-9;
-  var h = g.getHeight();
-  menudata[""].x=9;
-  menudata[""].x2=w-2;
-  menudata[""].preflip=function() {
-    g.drawImage(im([
-      0b00010000,
-      0b00111000,
-      0b01111100,
-      0b11111110,
-      0b00010000,
-      0b00010000,
-      0b00010000,
-      0b00010000,
-    ]),0,4);
-    g.drawImage(im([
-      0b00010000,
-      0b00010000,
-      0b00010000,
-      0b00010000,
-      0b11111110,
-      0b01111100,
-      0b00111000,
-      0b00010000,
-    ]),0,h-12);
-    g.drawImage(im([
-      0b00000000,
-      0b00001000,
-      0b00001100,
-      0b00001110,
-      0b11111111,
-      0b00001110,
-      0b00001100,
-      0b00001000,
-    ]),w+1,h-12);
-    //g.drawLine(7,0,7,h);
-    //g.drawLine(w,0,w,h);
-  };
-  var m = require("graphical_menu").list(g, menudata);
-  Pixl.btnWatches = [
-    setWatch(function() { m.move(-1); }, BTN1, {repeat:1}),
-    setWatch(function() { m.move(1); }, BTN4, {repeat:1}),
-    setWatch(function() { m.select(); }, BTN3, {repeat:1})
-  ];
-  return m;
-};
-*/
-
-  return jspExecuteJSFunction("(function(a){function c(a){return{width:8,height:a.length,bpp:1,buffer:(new Uint8Array(a)).buffer}}Pixl.btnWatches&&(Pixl.btnWatches.forEach(clearWatch),Pixl.btnWatches=void 0);"
-      "g.clear();g.flip();"
-      "if(a){a['']||(a['']={});g.setFontBitmap();g.setFontAlign(-1,-1,0);var d=g.getWidth()-9,e=g.getHeight();a[''].x=9;a[''].x2=d-2;a[''].preflip=function(){"
-      "g.drawImage(c([16,56,124,254,16,16,16,16]),0,4);g.drawImage(c([16,16,16,16,254,124,56,16]),0,e-12);g.drawImage(c([0,8,12,14,255,14,12,8]),d+1,e-12)};"
-      "var b=require('graphical_menu').list(g,a);Pixl.btnWatches=[setWatch(function(){b.move(-1)},BTN1,{repeat:1}),setWatch(function(){b.move(1)},BTN4,{repeat:1}),"
-      "setWatch(function(){b.select()},BTN3,{repeat:1})];return b}})",0,1,&menu);
-}
 
 
 /*JSON{
   "type" : "variable",
   "name" : "SDA",
-  "generate_full" : "4",
+  "generate_full" : "JSH_PORTA_OFFSET + 4",
   "ifdef" : "PIXLJS",
   "return" : ["pin",""]
 }
@@ -189,7 +76,7 @@ The pin marked SDA on the Arduino pin footprint. This is connected directly to p
 /*JSON{
   "type" : "variable",
   "name" : "SCL",
-  "generate_full" : "5",
+  "generate_full" : "JSH_PORTA_OFFSET + 5",
   "ifdef" : "PIXLJS",
   "return" : ["pin",""]
 }
@@ -468,13 +355,10 @@ void jswrap_pixljs_init() {
   JsVar *graphics = jspNewObject(0, "Graphics");
   if (!graphics) return; // low memory
   JsGraphics gfx;
-  graphicsStructInit(&gfx);
+  graphicsStructInit(&gfx,128,64,1);
   gfx.data.type = JSGRAPHICSTYPE_ARRAYBUFFER;
   gfx.data.flags = JSGRAPHICSFLAGS_ARRAYBUFFER_MSB;
   gfx.graphicsVar = graphics;
-  gfx.data.width = 128;
-  gfx.data.height = 64;
-  gfx.data.bpp = 1;
   lcdInit_ArrayBuffer(&gfx);
   graphicsSetVar(&gfx);
   jsvObjectSetChild(execInfo.root, "g", graphics);
@@ -530,26 +414,36 @@ void jswrap_pixljs_init() {
    * With bootloader this means apply power while holding button for >3 secs */
   static bool firstStart = true;
 
-  if (firstStart) {
-    // animate logo in
-    for (int i=128;i>24;i-=4) {
-      lcd_flip_gfx(&gfx);
-      graphicsClear(&gfx);
-      graphicsDrawImage1bpp(&gfx,i,15,81,34,PIXLJS_IMG);
+  JsVar *splashScreen = jsfReadFile(jsfNameFromString(".splash"),0,0);
+  if (jsvIsString(splashScreen)) {
+    if (jsvGetStringLength(splashScreen)) {
+      graphicsSetVar(&gfx);
+      jsvUnLock(jswrap_graphics_drawImage(graphics, splashScreen,0,0,0));
+      graphicsGetFromVar(&gfx, graphics);
     }
   } else {
-    // if a standard reset, just display logo
-    graphicsClear(&gfx);
-    graphicsDrawImage1bpp(&gfx,24,15,81,34,PIXLJS_IMG);
+    if (firstStart) {
+      // animate logo in
+      for (int i=128;i>24;i-=4) {
+        lcd_flip_gfx(&gfx);
+        graphicsClear(&gfx);
+        graphicsDrawImage1bpp(&gfx,i,15,81,34,PIXLJS_IMG);
+      }
+    } else {
+      // if a standard reset, just display logo
+      graphicsClear(&gfx);
+      graphicsDrawImage1bpp(&gfx,24,15,81,34,PIXLJS_IMG);
+    }
+    jswrap_graphics_drawCString(&gfx,28,39,JS_VERSION);
+    // Write MAC address in bottom right
+    JsVar *addr = jswrap_ble_getAddress();
+    char buf[20];
+    jsvGetString(addr, buf, sizeof(buf));
+    jsvUnLock(addr);
+    jswrap_graphics_drawCString(&gfx,127-strlen(buf)*4,59,buf);
   }
-  jswrap_graphics_drawCString(&gfx,28,39,JS_VERSION);
-  // Write MAC address in bottom right
-  JsVar *addr = jswrap_ble_getAddress();
-  char buf[20];
-  jsvGetString(addr, buf, sizeof(buf));
-  jsvUnLock(addr);
-  jswrap_graphics_drawCString(&gfx,127-strlen(buf)*4,59,buf);
   lcd_flip_gfx(&gfx);
+  jsvUnLock(splashScreen);
 
 
   if (firstStart && (jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE || jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE)) {
@@ -584,3 +478,170 @@ void jswrap_pixljs_kill() {
 bool jswrap_pixljs_idle() {
   return false;
 }
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Pixl",
+    "name" : "menu",
+    "generate" : "gen_jswrap_E_showMenu",
+    "params" : [
+      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
+    ],
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+}
+Display a menu on Pixl.js's screen, and set up the buttons to navigate through it.
+
+DEPRECATED: Use `E.showMenu`
+*/
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showMenu",
+    "generate_js" : "libs/js/pixljs/E_showMenu.min.js",
+    "params" : [
+      ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
+    ],
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+}
+Display a menu on the screen, and set up the buttons to navigate through it.
+
+Supply an object containing menu items. When an item is selected, the
+function it references will be executed. For example:
+
+```
+var boolean = false;
+var number = 50;
+// First menu
+var mainmenu = {
+  "" : { "title" : "-- Main Menu --" },
+  "Backlight On" : function() { LED1.set(); },
+  "Backlight Off" : function() { LED1.reset(); },
+  "Submenu" : function() { E.showMenu(submenu); },
+  "A Boolean" : {
+    value : boolean,
+    format : v => v?"On":"Off",
+    onchange : v => { boolean=v; }
+  },
+  "A Number" : {
+    value : number,
+    min:0,max:100,step:10,
+    onchange : v => { number=v; }
+  },
+  "Exit" : function() { E.showMenu(); }, // remove the menu
+};
+// Submenu
+var submenu = {
+  "" : { "title" : "-- SubMenu --" },
+  "One" : undefined, // do nothing
+  "Two" : undefined, // do nothing
+  "< Back" : function() { E.showMenu(mainmenu); },
+};
+// Actually display the menu
+E.showMenu(mainmenu);
+```
+
+The menu will stay onscreen and active until explicitly removed,
+which you can do by calling `E.showMenu()` without arguments.
+
+See http://www.espruino.com/graphical_menu for more detailed information.
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showMessage",
+    "generate_js" : "libs/js/pixljs/E_showMessage.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["title","JsVar","(optional) a title for the message"]
+    ],
+    "ifdef" : "PIXLJS"
+}
+
+A utility function for displaying a full screen message on the screen.
+
+Draws to the screen and returns immediately.
+
+```
+E.showMessage("These are\nLots of\nLines","My Title")
+```
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showPrompt",
+    "generate_js" : "libs/js/pixljs/E_showPrompt.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["options","JsVar","(optional) an object of options (see below)"]
+    ],
+    "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
+    "ifdef" : "PIXLJS"
+}
+
+Displays a full screen prompt on the screen, with the buttons
+requested (or `Yes` and `No` for defaults).
+
+When the button is pressed the promise is resolved with the
+requested values (for the `Yes` and `No` defaults, `true` and `false`
+are returned).
+
+```
+E.showPrompt("Do you like fish?").then(function(v) {
+  if (v) print("'Yes' chosen");
+  else print("'No' chosen");
+});
+// Or
+E.showPrompt("How many fish\ndo you like?",{
+  title:"Fish",
+  buttons : {"One":1,"Two":2,"Three":3}
+}).then(function(v) {
+  print("You like "+v+" fish");
+});
+```
+
+To remove the prompt, call `E.showPrompt()` with no arguments.
+
+The second `options` argument can contain:
+
+```
+{
+  title: "Hello",                      // optional Title
+  buttons : {"Ok":true,"Cancel":false} // list of button text & return value
+}
+```
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showAlert",
+    "generate_js" : "libs/js/pixljs/E_showAlert.min.js",
+    "params" : [
+      ["message","JsVar","A message to display. Can include newlines"],
+      ["options","JsVar","(optional) a title for the message"]
+    ],
+    "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
+    "ifdef" : "PIXLJS"
+}
+
+Displays a full screen prompt on the screen, with a single 'Ok' button.
+
+When the button is pressed the promise is resolved.
+
+```
+E.showAlert("Hello").then(function() {
+  print("Ok pressed");
+});
+// or
+E.showAlert("These are\nLots of\nLines","My Title").then(function() {
+  print("Ok pressed");
+});
+```
+
+To remove the window, call `E.showAlert()` with no arguments.
+*/

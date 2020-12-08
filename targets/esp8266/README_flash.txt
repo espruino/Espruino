@@ -43,3 +43,16 @@ esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash \
   0x0000 "boot_v1.6.bin" 0x1000 espruino_esp8266_user1.bin \
   0x3FC000  esp_init_data_default.bin 0x3FE000 blank.bin
 
+
+Special hints for a broken device after flashing
+------------------------------------------------
+
+newer ESP01 like ESP01s have 1MB flash size
+
+try different --flash_mode values like dio or dout 
+
+try to use a combined file to flash like  
+    espruino_..._combined_512.bin or 
+    espruino_..._combined_4096.bin  
+
+

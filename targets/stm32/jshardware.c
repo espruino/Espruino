@@ -1081,7 +1081,11 @@ static void jshResetPeripherals() {
     }
   }
   // Initialise UART if we have a default console device on it
+#ifdef USB
   if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
+#else
+  if (true) {
+#endif
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
 #ifdef DEFAULT_CONSOLE_TX_PIN
@@ -1098,7 +1102,6 @@ static void jshResetPeripherals() {
 }
 
 void jshInit() {
-  jshInitDevices();
   int i;
   // reset some vars
   for (i=0;i<16;i++)
@@ -1173,7 +1176,7 @@ void jshInit() {
   GPIO_Init(GPIOG, &GPIO_InitStructure);
 #endif
 #endif // ESPRUINOBOARD
-
+  jshInitDevices();
 #ifdef LED1_PININDEX
   // turn led on (status)
   jshPinOutput(LED1_PININDEX, 1);

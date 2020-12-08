@@ -1,10 +1,15 @@
 # Travis-CI file for Espruino
 
 language: c
+python:
+  - "3.6"
+# Ensure we clone the last 1000 commits, which allows us to get the commit counter correct!
+git:
+  depth: 1000
 
 before_script:
- - source ./scripts/provision.sh $BOARD
  - python --version
+ - source ./scripts/provision.sh $BOARD
 
 after_script:
   - "if [[ -n \"$UPLOADTOKEN\" ]]; then
@@ -37,17 +42,15 @@ env:
     - BOARD=PIXLJS DFU_UPDATE_BUILD=1
     - BOARD=HEXBADGE DFU_UPDATE_BUILD=1
     - BOARD=MDBT42Q DFU_UPDATE_BUILD=1
+    - BOARD=BANGLEJS DFU_UPDATE_BUILD=1
     - BOARD=ESP32
     - BOARD=ESP8266_BOARD
     - BOARD=ESP8266_4MB
-    - BOARD=MICROBIT
-    - BOARD=RUUVITAG DFU_UPDATE_BUILD=1
+    - BOARD=MICROBIT2
     - BOARD=WIO_LTE
     - BOARD=SMARTIBOT DFU_UPDATE_BUILD=1
     - BOARD=STM32L496GDISCOVERY
-    - BOARD=RAK8211
-    - BOARD=RAK8212
-    - BOARD=THINGY52 DFU_UPDATE_BUILD_WITH_HEX=1
+    - BOARD=RAK5010
 
 script: make
 

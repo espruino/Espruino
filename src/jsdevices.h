@@ -41,9 +41,6 @@ typedef enum {
   EV_LOOPBACKA = EV_SERIAL_START,
   EV_LOOPBACKB,
   EV_LIMBO,     ///< Where console output goes right after boot - one sec later we move it to USB/Serial
-#ifdef BLUETOOTH
-  EV_BLUETOOTH, ///< Bluetooth LE
-#endif
 #ifdef USE_TELNET
   EV_TELNET,
 #endif
@@ -51,7 +48,13 @@ typedef enum {
   EV_TERMINAL, // Built-in VT100 terminal
 #endif
   EV_SERIAL_DEVICE_STATE_START, // The point at which we start storing device state (jshSerialDevice*)
-  EV_USBSERIAL = EV_SERIAL_DEVICE_STATE_START, ///< USB CDC Serial Data
+  _EV_SERIAL_DEVICE_STATE_START_MINUS_ONE=EV_SERIAL_DEVICE_STATE_START-1, // means that the next enum should==EV_SERIAL_DEVICE_STATE_START
+#ifdef USB
+  EV_USBSERIAL, ///< USB CDC Serial Data
+#endif
+#ifdef BLUETOOTH
+  EV_BLUETOOTH, ///< Bluetooth LE
+#endif
 #if USART_COUNT>=1
   EV_SERIAL1, // Used for IO for UARTS
 #endif
@@ -78,6 +81,9 @@ typedef enum {
 #ifdef BLUETOOTH
   EV_BLUETOOTH_PENDING,      // Tasks that came from the Bluetooth Stack in an IRQ
   EV_BLUETOOTH_PENDING_DATA, // Data for pending tasks - this comes after the EV_BLUETOOTH_PENDING task itself
+#endif
+#ifdef TOUCH_DEVICE
+  EV_TOUCH,                  // Touchscreen touch events - bytes for X,Y,Press
 #endif
 #if SPI_COUNT>=1
   EV_SPI1, ///< SPI Devices
@@ -123,6 +129,11 @@ typedef enum {
 
 /// True is the device is a serial device (could be a USART, Bluetooth, USB, etc)
 #define DEVICE_IS_SERIAL(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))
+/// True if the device has device state stored for it (eg. flow control state)
+#define DEVICE_HAS_DEVICE_STATE(X) (((X)>=EV_SERIAL_DEVICE_STATE_START) && ((X)<=EV_SERIAL_MAX))
+/// If DEVICE_HAS_DEVICE_STATE, this is the index where device state is stored
+#define TO_SERIAL_DEVICE_STATE(X) ((X)-EV_SERIAL_DEVICE_STATE_START)
+
 #if USART_COUNT>=1
 /// Return true if the device is a USART (hardware serial)
 #define DEVICE_IS_USART(X) (((X)>=EV_SERIAL1) && ((X)<=EV_SERIAL_MAX))
@@ -218,6 +229,9 @@ int jshGetCharToTransmit(IOEventFlags device);
 
 /// Set whether the host should transmit or not
 void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit);
+
+/// To be called on idle when the input queue has enough space
+void jshSetFlowControlAllReady();
 
 /// Set whether to use flow control on the given device or not. Whether to use software, and if hardware, the pin to use for RTS
 void jshSetFlowControlEnabled(IOEventFlags device, bool software, unsigned char/*Pin*/ pinCTS);

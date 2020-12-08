@@ -19,18 +19,24 @@ USER2_BIN    = espruino_esp8266_user2.bin
 USER1_ELF    = espruino_esp8266_user1.elf
 USER2_ELF    = espruino_esp8266_user2.elf
 PARTIAL      = espruino_esp8266_partial.o
+
 ifdef FLASH_4MB
-ESP_COMBINED_SIZE = 4096
 ESP_FLASH_ADDONS  = $(ET_DEFAULTS) $(INIT_DATA) $(ET_BLANK) $(BLANK)
 LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.2048.ld
 LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.2048.ld
-LD_RENAME    = --rename-section .text=.irom.text --rename-section .literal=.irom.literal
 else
-ESP_COMBINED_SIZE = 512
 LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
-LD_RENAME    = --rename-section .text=.irom.text --rename-section .literal=.irom.literal
 endif
+
+ifdef FLASH_1MB
+ifdef NO_FOTA
+LD_SCRIPT1   = ./targets/esp8266/eagle.app.v6.new.2048.ld
+LD_SCRIPT2   = ./targets/esp8266/eagle.app.v6.new.2048.ld
+endif
+endif
+
+LD_RENAME    = --rename-section .text=.irom.text --rename-section .literal=.irom.literal
 ESP_COMBINED = $(PROJ_NAME)_combined_$(ESP_COMBINED_SIZE).bin
 APPGEN_TOOL  = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
 BOOTLOADER   = $(ESP8266_SDK_ROOT)/bin/boot_v1.6.bin
@@ -99,7 +105,9 @@ $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
 	$(Q)cp $(USER1_BIN) $(USER2_BIN) scripts/wiflash.sh $(BLANK) \
-	  $(INIT_DATA) $(BOOTLOADER) targets/esp8266/README_flash.txt \
+	  $(INIT_DATA) $(BOOTLOADER) \
+	  targets/esp8266/README_flash.txt \
+	  targets/esp8266/Makefile \
 	  build/$(basename $(ESP_ZIP))
 	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
 

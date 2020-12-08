@@ -37,7 +37,10 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DESP_PLATFORM -DESP32=1',
-     'DEFINES+=-DJSVAR_MALLOC' # Allocate space for variables at jsvInit time
+     'DEFINES+=-DESP_STACK_SIZE=25000',
+     'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
+     'DEFINES+=-DUSE_FONT_6X8',
+     'ESP32_FLASH_MAX=1572864'
    ]
  }
 };
@@ -48,17 +51,17 @@ chip = {
   'package' : "",
   'ram'     : 512,
   'flash'   : 0,
-  'speed'   : 160,
+  'speed'   : 240,
   'usart'   : 3,
   'spi'     : 2,
   'i2c'     : 2,
   'adc'     : 2,
   'dac'     : 0,
   'saved_code' : {
-    'address' : 0x2C0000,
+    'address' : 0x320000,
     'page_size' : 4096,
     'pages' : 64,
-    'flash_available' : 1344, # firmware can be up to this size - see paritions_espruino.csv
+    'flash_available' : 1344, # firmware can be up to this size - see partitions_espruino.csv
   },
 };
 devices = {

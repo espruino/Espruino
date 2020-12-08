@@ -138,6 +138,9 @@ void jshInit() {
   os_printf("< jshInit\n");
 } // End of jshInit
 
+void jshKill() {
+}
+
 /**
  * Handle a GPIO interrupt.
  * We have arrived in this callback function because the state of a GPIO pin has changed
@@ -489,6 +492,10 @@ JshPinState jshPinGetState(Pin pin) {
     } 
   }
   return rc;
+}
+/// Check if state is default - return true if default
+bool jshIsPinStateDefault(Pin pin, JshPinState state) {
+  return state == JSHPINSTATE_GPIO_IN_PULLUP || state == JSHPINSTATE_ADC_IN;
 }
 
 //===== GPIO and PIN stuff =====
@@ -1408,6 +1415,8 @@ JsVar *jshFlashGetFree() {
   if (!jsFreeFlash) return 0;
 
   uint32_t map = system_get_flash_size_map();
+  extern uint16_t espFlashKB; // in user_main,c
+
   if ( map == 6 ) {
     addFlashArea(jsFreeFlash, 0x200000, 0x100000);
     addFlashArea(jsFreeFlash, 0x300000, 0x40000);
@@ -1416,9 +1425,11 @@ JsVar *jshFlashGetFree() {
     addFlashArea(jsFreeFlash, 0x3C0000, 0x40000-0x5000);
     return jsFreeFlash;
   }
-
+  // there is no flash for running on 1MB flash without FOTA 
+  if ( map == 2  && espFlashKB == 1024  && ESP_COMBINED_SIZE >= 1024 )
+     return jsFreeFlash;
+   
   // need 1MB of flash to have more space...
-  extern uint16_t espFlashKB; // in user_main,c
   if (espFlashKB > 512) {
     addFlashArea(jsFreeFlash, 0x80000, 0x1000);
     if (espFlashKB > 1024) {

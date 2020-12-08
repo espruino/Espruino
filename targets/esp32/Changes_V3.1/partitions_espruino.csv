@@ -5,8 +5,8 @@
 nvs,data,nvs,0x9000,12K
 otadata,data,ota,0xC000,8K
 free,data,0x40,0xE000,8K
-factory,app,factory,0x10000,1344K
-ota_0,app,ota_0,0x160000,1344K
-flash,data,0x40,0x2B0000,64K
-js_code,data,0,0x2C0000,256K
-storage,data,0,0x300000,1024K
+factory,app,factory,0x10000,1536K
+ota_0,app,ota_0,0x190000,1536K
+flash,data,0x40,0x310000,64K
+js_code,data,0,0x320000,256K
+storage,data,0,0x360000,640K

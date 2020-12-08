@@ -25,7 +25,11 @@ ifeq ($(BOARD),RASPBERRYPI)
  endif
 endif
 
-CFLAGS += -std=gnu99
+ifdef MACOSX
+  CCFLAGS += -DTF_LITE_DISABLE_X86_NEON
+else
+  CFLAGS += -std=gnu99
+endif
 DEFINES += -DLINUX
 INCLUDE += -I$(ROOT)/targets/linux
 SOURCES +=                              \

@@ -18,3 +18,6 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs);
 
 JsVar *jswrap_ethernet_getIP(JsVar *wlanObj, JsVar *callback);
 bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options, JsVar *callback);
+bool jswrap_ethernet_setHostname(JsVar *wlanObj, JsVar *jsHostname, JsVar *callback);
+JsVar *jswrap_ethernet_getHostname(JsVar *wlanObj, JsVar *callback);
+JsVar *jswrap_ethernet_getStatus(JsVar *wlanObj, JsVar *callback);

@@ -35,11 +35,20 @@ typedef long long int64_t;
 #include <jswrap_neopixel.h>
 
 
+/*JSON{
+  "type": "class",
+  "class" : "ESP8266",
+  "ifdef" : "ESP8266"
+}
+Class containing utility functions for the [ESP8266](http://www.espruino.com/EspruinoESP8266)
+*/
+
 // ESP8266.reboot
 
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "reboot",
   "generate" : "jswrap_ESP8266_reboot"
 }
@@ -58,6 +67,7 @@ void jswrap_ESP8266_reboot() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "getResetInfo",
   "generate" : "jswrap_ESP8266_getResetInfo",
   "return"   : ["JsVar","An object with the reset cause information"],
@@ -92,6 +102,7 @@ JsVar *jswrap_ESP8266_getResetInfo() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "logDebug",
   "generate" : "jswrap_ESP8266_logDebug",
   "params"   : [
@@ -108,6 +119,7 @@ void jswrap_ESP8266_logDebug(bool enable) {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "setLog",
   "generate" : "jswrap_ESP8266_setLog",
   "params"   : [
@@ -124,6 +136,7 @@ void jswrap_ESP8266_setLog(int mode) {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "printLog",
   "generate" : "jswrap_ESP8266_printLog"
 }
@@ -142,6 +155,7 @@ void jswrap_ESP8266_printLog() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "readLog",
   "generate" : "esp8266_logGetLine",
   "returns"  : "String with one line from the log, up to 128 characters long"
@@ -154,6 +168,7 @@ Returns one line from the log or up to 128 characters.
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "dumpSocketInfo",
   "generate" : "jswrap_ESP8266_dumpSocketInfo"
 }
@@ -168,6 +183,7 @@ void jswrap_ESP8266_dumpSocketInfo(void) {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "setCPUFreq",
   "generate" : "jswrap_ESP8266_setCPUFreq",
   "params"   : [
@@ -192,6 +208,7 @@ void jswrap_ESP8266_setCPUFreq(
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "getState",
   "generate" : "jswrap_ESP8266_getState",
   "return"   : ["JsVar", "The state of the ESP8266"]
@@ -219,7 +236,11 @@ JsVar *jswrap_ESP8266_getState() {
   uint32_t map = system_get_flash_size_map();
   extern char *flash_maps[]; // in user_main.c
   extern uint16_t flash_kb[]; // in user_main.c
-  jsvObjectSetChildAndUnLock(esp8266State, "flashMap",   jsvNewFromString(flash_maps[map]));
+  extern char *flash_maps_alt[]; // in user_main.c
+
+  jsvObjectSetChildAndUnLock(esp8266State, "flashMap",   jsvNewFromString(
+    ( map == 2  && flash_kb[map] == 1024  && ESP_COMBINED_SIZE >= 1024 ) ? flash_maps_alt[map] : flash_maps[map] ));
+
   jsvObjectSetChildAndUnLock(esp8266State, "flashKB",    jsvNewFromInteger(flash_kb[map]));
 
   uint32_t fid = spi_flash_get_id();
@@ -236,6 +257,7 @@ JsVar *jswrap_ESP8266_getState() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "getFreeFlash",
   "generate" : "jswrap_ESP8266_getFreeFlash",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
@@ -271,6 +293,7 @@ uint32_t crc32(uint8_t *buf, uint32_t len) {
 /*JSON{
  "type"     : "staticmethod",
  "class"    : "ESP8266",
+  "ifdef"   : "ESP8266",
  "name"     : "crc32",
  "generate" : "jswrap_ESP8266_crc32",
  "return"   : ["JsVar", "32-bit CRC"],
@@ -300,6 +323,7 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
 /*JSON{
  "type"     : "staticmethod",
  "class"    : "ESP8266",
+  "ifdef"   : "ESP8266",
  "name"     : "neopixelWrite",
  "generate" : "jswrap_ESP8266_neopixelWrite",
  "params"   : [
@@ -318,6 +342,7 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "deepSleep",
   "generate" : "jswrap_ESP8266_deepSleep",
   "params"   : [

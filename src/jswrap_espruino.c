@@ -21,6 +21,9 @@
 #include "jswrapper.h"
 #include "jsinteractive.h"
 #include "jstimer.h"
+#ifdef PUCKJS
+#include "jswrap_puck.h" // jswrap_puck_getTemperature
+#endif
 
 /*JSON{
   "type" : "class",
@@ -49,6 +52,26 @@ E.on('init', function() {
 rather than replacing the last one. This allows you to write modular code -
 something that was not possible with `onInit`.
  */
+/*JSON{
+  "type" : "event",
+  "class" : "E",
+  "name" : "kill"
+}
+This event is called just before the device shuts down for commands such as
+`reset()`, `load()`, `save()`, `E.reboot()` or `Bangle.off()`
+
+For example to write `"Bye!"` just before shutting down use:
+
+```
+E.on('kill', function() {
+  console.log("Bye!");
+});
+```
+
+**NOTE:** This event is not called when the device is 'hard reset' - for
+example by removing power, hitting an actual reset button, or via
+a Watchdog timer reset.
+*/
 
 /*JSON{
   "type" : "event",
@@ -69,20 +92,56 @@ This event will only be emitted when error flag is set. If the error
 flag was already set nothing will be emitted. To clear error flags
 so that you do get a callback each time a flag is set, call `E.getErrorFlags()`.
 */
+/*JSON{
+  "type" : "event",
+  "class" : "E",
+  "name" : "touch",
+  "params" : [
+    ["x","int","X coordinate in display coordinates"],
+    ["y","int","Y coordinate in display coordinates"],
+    ["b","int","Touch count - 0 for released, 1 for pressed"]
+  ]
+}
+This event is called when a full touchscreen device on an Espruino
+is interacted with.
+
+**Note:** This event is not implemented on Bangle.js because
+it only has a two area touchscreen.
+
+To use the touchscreen to draw lines, you could do:
+
+```
+var last;
+E.on('touch',t=>{
+  if (last) g.lineTo(t.x, t.y);
+  else g.moveTo(t.x, t.y);
+  last = t.b;
+});
+```
+*/
 
 /*JSON{
   "type" : "staticmethod",
   "class" : "E",
   "name" : "getTemperature",
-  "generate_full" : "jshReadTemperature()",
+  "generate" : "jswrap_espruino_getTemperature",
   "return" : ["float","The temperature in degrees C"]
 }
-Use the STM32's internal thermistor to work out the temperature.
+Use the microcontroller's internal thermistor to work out the temperature.
+
+On Puck.js v2.0 this will use the on-board PCT2075TP temperature sensor, but on other devices it may not be desperately well calibrated.
 
 While this is implemented on Espruino boards, it may not be implemented on other devices. If so it'll return NaN.
 
  **Note:** This is not entirely accurate and varies by a few degrees from chip to chip. It measures the **die temperature**, so when connected to USB it could be reading 10 over degrees C above ambient temperature. When running from battery with `setDeepSleep(true)` it is much more accurate though.
 */
+JsVarFloat jswrap_espruino_getTemperature() {
+#ifdef PUCKJS
+  return jswrap_puck_getTemperature();
+#else
+  return jshReadTemperature();
+#endif
+}
 
 /*JSON{
   "type" : "staticmethod",
@@ -109,7 +168,7 @@ int nativeCallGetCType() {
   }
   if (lex->tk == LEX_ID) {
     int t = -1;
-    char *name = jslGetTokenValueAsString(lex);
+    char *name = jslGetTokenValueAsString();
     if (strcmp(name,"int")==0) t=JSWAT_INT32;
     if (strcmp(name,"double")==0) t=JSWAT_JSVARFLOAT;
     if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
@@ -325,7 +384,7 @@ JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
   return conv;
 }
 
-#ifdef SAVE_ON_FLASH_MATH
+#if defined(SAVE_ON_FLASH_MATH) || defined(BANGLEJS)
 #define FFTDATATYPE double
 #else
 #define FFTDATATYPE float
@@ -499,96 +558,6 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   _jswrap_espruino_FFT_setData(arrReal, vReal, hasImagResult?0:vImag, pow2);
   if (hasImagResult)
     _jswrap_espruino_FFT_setData(arrImag, vImag, 0, pow2);
-}
-
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "E",
-  "name" : "interpolate",
-  "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_espruino_interpolate",
-  "params" : [
-    ["array","JsVar","A Typed Array to interpolate between"],
-    ["index","float","Floating point index to access"]
-  ],
-  "return" : ["float","The result of interpolating between (int)index and (int)(index+1)"]
-}
-Interpolate between two adjacent values in the Typed Array
- */
-JsVarFloat jswrap_espruino_interpolate(JsVar *array, JsVarFloat findex) {
-  if (!jsvIsArrayBuffer(array)) return 0;
-  size_t idx = (size_t)findex;
-  JsVarFloat a = findex - (int)idx;
-  if (findex<0) {
-    idx = 0;
-    a = 0;
-  }
-  if (findex>=jsvGetArrayBufferLength(array)-1) {
-    idx = jsvGetArrayBufferLength(array)-1;
-    a = 0;
-  }
-  JsvArrayBufferIterator it;
-  jsvArrayBufferIteratorNew(&it, array, idx);
-  JsVarFloat fa = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorNext(&it);
-  JsVarFloat fb = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorFree(&it);
-  return fa*(1-a) + fb*a;
-}
-
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "E",
-  "name" : "interpolate2d",
-  "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_espruino_interpolate2d",
-  "params" : [
-    ["array","JsVar","A Typed Array to interpolate between"],
-    ["width","int32","Integer 'width' of 2d array"],
-    ["x","float","Floating point X index to access"],
-    ["y","float","Floating point Y index to access"]
-  ],
-  "return" : ["float","The result of interpolating in 2d between the 4 surrounding cells"]
-}
-Interpolate between four adjacent values in the Typed Array, in 2D.
- */
-JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, JsVarFloat y) {
-  if (!jsvIsArrayBuffer(array)) return 0;
-  int yidx = (int)y;
-  JsVarFloat ay = y-yidx;
-  if (y<0) {
-    yidx = 0;
-    ay = 0;
-  }
-
-  JsVarFloat findex = x + (JsVarFloat)(yidx*width);
-  size_t idx = (size_t)findex;
-  JsVarFloat ax = findex-(int)idx;
-  if (x<0) {
-    idx = (size_t)(yidx*width);
-    ax = 0;
-  }
-
-  JsvArrayBufferIterator it;
-  jsvArrayBufferIteratorNew(&it, array, idx);
-
-  JsVarFloat xa,xb;
-  int i;
-
-  xa = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorNext(&it);
-  xb = jsvArrayBufferIteratorGetFloatValue(&it);
-  JsVarFloat ya = xa*(1-ax) + xb*ax;
-
-  for (i=1;i<width;i++) jsvArrayBufferIteratorNext(&it);
-
-  xa = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorNext(&it);
-  xb = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorFree(&it);
-  JsVarFloat yb = xa*(1-ax) + xb*ax;
-
-  return ya*(1-ay) + yb*ay;
 }
 
 /*JSON{
@@ -781,8 +750,7 @@ a copy or other allocation. The same applies if there's a single argument which
 is itself a flat string.
  */
 void (_jswrap_espruino_toString_char)(int ch,  JsvStringIterator *it) {
-  jsvStringIteratorSetChar(it, (char)ch);
-  jsvStringIteratorNext(it);
+  jsvStringIteratorSetCharAndNext(it, (char)ch);
 }
 
 JsVar *jswrap_espruino_toString(JsVar *args) {
@@ -1027,6 +995,87 @@ int jswrap_espruino_setClock(JsVar *options) {
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
+  "name" : "setConsole",
+  "generate" : "jswrap_espruino_setConsole",
+  "params" : [
+    ["device","JsVar",""],
+    ["options","JsVar","(optional) object of options, see below"]
+  ]
+}
+Changes the device that the JS console (otherwise known as the REPL)
+is attached to. If the console is on a device, that
+device can be used for programming Espruino.
+
+Rather than calling `Serial.setConsole` you can call
+`E.setConsole("DeviceName")`.
+
+This is particularly useful if you just want to
+remove the console. `E.setConsole(null)` will
+make the console completely inaccessible.
+
+`device` may be `"Serial1"`,`"USB"`,`"Bluetooth"`,`"Telnet"`,`"Terminal"`,
+any other *hardware* `Serial` device, or `null` to disable the console completely.
+
+`options` is of the form:
+
+```
+{
+  force : bool // default false, force the console onto this device so it does not move
+               //   if false, changes in connection state (eg USB/Bluetooth) can move
+               //   the console automatically.
+}
+```
+*/
+void jswrap_espruino_setConsole(JsVar *deviceVar, JsVar *options) {
+  bool force = false;
+  jsvConfigObject configs[] = {
+    {"force", JSV_BOOLEAN, &force}
+  };
+  if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject)))
+    return;
+
+  IOEventFlags device = EV_NONE;
+  if (jsvIsObject(deviceVar)) {
+    device = jsiGetDeviceFromClass(deviceVar);
+  } else if (jsvIsString(deviceVar)) {
+    char name[JSLEX_MAX_TOKEN_LENGTH];
+    jsvGetString(deviceVar, name, JSLEX_MAX_TOKEN_LENGTH);
+    device = jshFromDeviceString(name);
+  }
+
+  if (device==EV_NONE && !jsvIsNull(deviceVar)) {
+    jsExceptionHere(JSET_ERROR, "Unknown device type %q", device);
+    return;
+  }
+
+  if (device!=EV_NONE && !DEVICE_IS_SERIAL(device)) {
+    jsExceptionHere(JSET_ERROR, "setConsole can't be used on 'soft' or non-Serial devices");
+    return;
+  }
+  jsiSetConsoleDevice(device, force);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "getConsole",
+  "generate" : "jswrap_espruino_getConsole",
+  "return" : ["JsVar","The current console device as a string, or just `null` if the console is null"]
+
+}
+Returns the current console device - see `E.setConsole` for more information.
+*/
+JsVar *jswrap_espruino_getConsole() {
+  IOEventFlags dev = jsiGetConsoleDevice();
+  if (dev == EV_NONE) return jsvNewNull();
+  return jsvNewFromString(jshGetDeviceString(dev));
+}
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
   "name" : "reverseByte",
   "generate" : "jswrap_espruino_reverseByte",
   "params" : [
@@ -1092,28 +1141,33 @@ void jswrap_espruino_dumpFreeList() {
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "RELEASE",
   "class" : "E",
   "name" : "dumpFragmentation",
   "generate" : "jswrap_e_dumpFragmentation"
 }
-Show fragmentation
+Show fragmentation.
+
+* ` ` is free space
+* `#` is a normal variable
+* `L` is a locked variable (address used, cannopt be moved)
+* `=` represents data in a Flat String (must be contiguous)
  */
-#ifndef RELEASE
 void jswrap_e_dumpFragmentation() {
   int l = 0;
-  for (int i=0;i<jsvGetMemoryTotal();i++) {
+  for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
     JsVar *v = _jsvGetAddressOf(i+1);
     if ((v->flags&JSV_VARTYPEMASK)==JSV_UNUSED) {
       jsiConsolePrint(" ");
       if (l++>80) { jsiConsolePrint("\n");l=0; }
     } else {
-      jsiConsolePrint("#");
+      if (jsvGetLocks(v)) jsiConsolePrint("L");
+      else jsiConsolePrint("#");
       if (l++>80) { jsiConsolePrint("\n");l=0; }
       if (jsvIsFlatString(v)) {
         int b = jsvGetFlatStringBlocks(v);
+        i += b; // skip forward
         while (b--) {
-          jsiConsolePrint("-");
+          jsiConsolePrint("=");
           if (l++>80) { jsiConsolePrint("\n");l=0; }
         }
       }
@@ -1121,7 +1175,67 @@ void jswrap_e_dumpFragmentation() {
   }
   jsiConsolePrint("\n");
 }
-#endif
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "dumpVariables",
+  "generate" : "jswrap_e_dumpVariables"
+}
+Dumps a comma-separated list of all allocated variables
+along with the variables they link to. Can be used
+to visualise where memory is used.
+ */
+void jswrap_e_dumpVariables() {
+  int l = 0;
+  jsiConsolePrintf("ref,size,name,links...\n");
+  for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
+    JsVarRef ref = i+1;
+    JsVar *v = _jsvGetAddressOf(ref);
+    if ((v->flags&JSV_VARTYPEMASK)==JSV_UNUSED) continue;
+    if (jsvIsStringExt(v)) continue;
+    int size = 1;
+    if (jsvIsFlatString(v)) {
+      int b = jsvGetFlatStringBlocks(v);
+      i += b; // skip forward
+      size += b;
+    } else if (jsvHasCharacterData(v)) {
+      JsVarRef childref = jsvGetLastChild(v);
+      while (childref) {
+        JsVar *child = jsvLock(childref);
+        size++;
+        childref = jsvGetLastChild(child);
+        jsvUnLock(child);
+      }
+    }
+    jsiConsolePrintf("%d,%d,",ref,size);
+    if (jsvIsName(v)) jsiConsolePrintf("%q,",v);
+    else jsiConsolePrintf(",",v);
+
+    if (jsvHasSingleChild(v) || jsvHasChildren(v)) {
+      JsVarRef childref = jsvGetFirstChild(v);
+      while (childref) {
+        JsVar *child = jsvLock(childref);
+        jsiConsolePrintf("%d,",childref);
+        if (jsvHasChildren(v)) childref = jsvGetNextSibling(child);
+        else childref = 0;
+        jsvUnLock(child);
+      }
+    }
+    jsiConsolePrint("\n");
+  }
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "defrag",
+  "generate" : "jsvDefragment"
+}
+BETA: defragment memory!
+ */
 
 /*JSON{
   "type" : "staticmethod",
@@ -1423,6 +1537,34 @@ signal.
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
+  "name" : "CRC32",
+  "generate" : "jswrap_espruino_CRC32",
+  "params" : [
+    ["data","JsVar","Iterable data to perform CRC32 on (each element treated as a byte)"]
+  ],
+  "return" : ["JsVar","The CRC of the supplied data"]
+}
+Perform a standard 32 bit CRC (Cyclic redundancy check) on the supplied data (one byte at a time)
+and return the result as an unsigned integer.
+ */
+JsVar *jswrap_espruino_CRC32(JsVar *data) {
+  JsvIterator it;
+  jsvIteratorNew(&it, data, JSIF_EVERY_ARRAY_ELEMENT);
+  uint32_t crc = 0xFFFFFFFF;
+  while (jsvIteratorHasElement(&it)) {
+    crc ^= (uint8_t)jsvIteratorGetIntegerValue(&it);
+    for (int t=0;t<8;t++)
+      crc = (crc>>1) ^ (0xEDB88320 & -(crc & 1));
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+  return jsvNewFromLongInteger(~crc);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
   "name" : "HSBtoRGB",
   "generate" : "jswrap_espruino_HSBtoRGB",
   "params" : [
@@ -1654,6 +1796,11 @@ reset of Espruino (resetting the interpreter and pin states, but not
 all the hardware)
 */
 void jswrap_espruino_reboot() {
+  // ensure `E.on('kill',...` gets called and everything is torn down correctly
+  jsiKill();
+  jsvKill();
+  jshKill();
+
   jshReboot();
 }
 
@@ -1725,7 +1872,7 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr) {
 
 /*JSON{
   "type" : "staticmethod",
-  "#if" : "defined(PUCKJS) || defined(PIXLJS)",
+  "#if" : "defined(PUCKJS) || defined(PIXLJS) || defined(BANGLEJS)",
   "class" : "E",
   "name" : "getBattery",
   "generate" : "jswrap_espruino_getBattery",
@@ -1740,12 +1887,9 @@ from it at the time `E.getBattery` is called) will affect the
 readings.
 */
 JsVarInt jswrap_espruino_getBattery() {
-#if defined(PUCKJS) || defined(PIXLJS)
-  JsVarFloat v = jshReadVRef();
-  int pc = (v-2.2)*100/0.6;
-  if (pc>100) pc=100;
-  if (pc<0) pc=0;
-  return pc;
+#if defined(CUSTOM_GETBATTERY)
+  JsVarInt CUSTOM_GETBATTERY();
+  return CUSTOM_GETBATTERY();
 #else
   return 0;
 #endif

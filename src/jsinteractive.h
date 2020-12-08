@@ -21,7 +21,8 @@
 #define JSI_TIMERS_NAME "timers"
 #define JSI_DEBUG_HISTORY_NAME "dbghist"
 #define JSI_HISTORY_NAME "history"
-#define JSI_INIT_CODE_NAME "init"
+#define JSI_INIT_CODE_NAME "init" ///< used to temporarily store initialisation JS code for state in save()
+#define JSI_LOAD_CODE_NAME "load" ///< used to temporarily store the name of a file to load from Storage when load(xyz) is used
 #define JSI_JSFLAGS_NAME "flags"
 #define JSI_ONINIT_NAME "onInit"
 
@@ -58,6 +59,10 @@ void jsiExecuteObjectCallbacks(JsVar *object, const char *callbackName, JsVar **
 bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr);
 /// Same as above, but with a JsVarArray (this calls jsiExecuteEventCallback, so use jsiExecuteEventCallback where possible)
 bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar *argsArray);
+// Execute the named Event callback on object, and return true if it exists
+bool jsiExecuteEventCallbackName(JsVar *obj, const char *cbName, unsigned int argCount, JsVar **argPtr);
+/// Utility version of jsiExecuteEventCallback for calling events on global variables
+bool jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsigned int argCount, JsVar **argPtr);
 
 /// Create a timeout in JS to execute the given native function (outside of an IRQ). Returns the index
 JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds);
@@ -130,6 +135,7 @@ void jsiSetSleep(JsiSleepType isSleep);
 #define USART_BAUDRATE_NAME "_baudrate"
 #define DEVICE_OPTIONS_NAME "_options"
 #define INIT_CALLBACK_NAME JS_EVENT_PREFIX"init" ///< Callback for `E.on('init'`
+#define KILL_CALLBACK_NAME JS_EVENT_PREFIX"kill" ///< Callback for `E.on('kill'`
 #define PASSWORD_VARIABLE_NAME "pwd"
 
 typedef enum {
@@ -151,7 +157,7 @@ typedef enum {
   JSIS_COMPLETELY_RESET   = 1<<11, ///< Has the board powered on, having not loaded anything from flash
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE,
-  JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED|JSIS_WATCHDOG_AUTO // stuff that DOESN'T get reset on softinit
+  JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED|JSIS_WATCHDOG_AUTO|JSIS_TODO_MASK // stuff that DOESN'T get reset on softinit
     // watchdog can't be reset without a reboot so if it's set to auto we must keep it as auto
 } PACKED_FLAGS JsiStatus;
 

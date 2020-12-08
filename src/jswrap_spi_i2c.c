@@ -56,14 +56,15 @@ The third SPI port
   "type" : "constructor",
   "class" : "SPI",
   "name" : "SPI",
-  "generate" : "jswrap_spi_constructor"
+  "generate" : "jswrap_spi_constructor",
+  "return" : ["JsVar","A SPI object"]
 }
 Create a software SPI port. This has limited functionality (no baud rate), but it can work on any pins.
 
 Use `SPI.setup` to configure this port.
  */
 JsVar *jswrap_spi_constructor() {
-  return jsvNewObject();
+  return jspNewObject(0,"SPI");
 }
 
 /*JSON{
@@ -493,14 +494,15 @@ All addresses are in 7 bit format. If you have an 8 bit address then you need to
   "type" : "constructor",
   "class" : "I2C",
   "name" : "I2C",
-  "generate" : "jswrap_i2c_constructor"
+  "generate" : "jswrap_i2c_constructor",
+  "return" : ["JsVar","An I2C object"]
 }
 Create a software I2C port. This has limited functionality (no baud rate), but it can work on any pins.
 
 Use `I2C.setup` to configure this port.
  */
 JsVar *jswrap_i2c_constructor() {
-  return jsvNewObject();
+  return jspNewObject(0,"I2C");
 }
 
 /*JSON{
@@ -563,8 +565,18 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
   JshI2CInfo inf;
   if (jsi2cPopulateI2CInfo(&inf, options)) {
     if (DEVICE_IS_I2C(device)) {
+#ifdef I2C_SLAVE
+      if (inf.slaveAddr>=0) {
+        jsvObjectSetChildAndUnLock(parent, "buffer", jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, 64));
+      }
+#endif
       jshI2CSetup(device, &inf);
     } else if (device == EV_NONE) {
+#ifdef I2C_SLAVE
+      if (inf.slaveAddr>=0) {
+        jsExceptionHere(JSET_ERROR, "I2C Slave not implemented on software I2C");
+      }
+#endif
 #ifndef SAVE_ON_FLASH
       // software mode - at least configure pins properly
       if (inf.pinSCL != PIN_UNDEFINED) {

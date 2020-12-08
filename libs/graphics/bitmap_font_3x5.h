@@ -14,4 +14,4 @@
 
 #include "graphics.h"
 
-void graphicsDrawChar3x5(JsGraphics *gfx, short x1, short y1, char ch);
+void graphicsDrawChar3x5(JsGraphics *gfx, short x1, short y1, char ch, bool solidBackground);

@@ -902,7 +902,7 @@ void jswrap_wifi_save(JsVar *what) {
 void jswrap_wifi_restore(void) {
   DBG("Wifi.restore\n");
   JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
-  JsVar *o = jswrap_storage_readJSON(name);
+  JsVar *o = jswrap_storage_readJSON(name, true);
   if (!o) { // no data 
     jsvUnLock2(name,o);
     return; 
@@ -1273,6 +1273,7 @@ void jswrap_ESP8266_wifi_soft_init() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
+  "ifdef"    : "ESP8266",
   "name"     : "ping",
   "generate" : "jswrap_wifi_ping",
   "params"   : [

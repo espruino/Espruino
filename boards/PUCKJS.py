@@ -40,8 +40,10 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
-     'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
+     # 'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # reset isn't being used, so let's just have an extra IO (needed for Puck.js V2)
+     'DEFINES+=-DESPR_DCDC_ENABLE', # Ensure DCDC converter is enabled
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\'',
+     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_puck_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://puck-js.com/go"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
@@ -75,14 +77,35 @@ devices = {
   'LED1' : { 'pin' : 'D5' },
   'LED2' : { 'pin' : 'D4' },
   'LED3' : { 'pin' : 'D3' },
-  'IR'   : { 'pin_anode' : 'D25', 'pin_cathode' : 'D26' },
+  'IR'   : { 'pin_anode' : 'D25',   # on v2 this just goes to a FET
+             'pin_cathode' : 'D26'  # on v2 this is the powered output named 'FET'
+           },
   'BTN1' : { 'pin' : 'D0', 'pinstate' : 'IN_PULLDOWN' },
   'CAPSENSE' : { 'pin_rx' : 'D11', 'pin_tx' : 'D12' },
   'NFC': { 'pin_a':'D9', 'pin_b':'D10' },
-  'MAG': { 'pin_pwr':'D18',
+  #'MAG': { 'device': 'MAG3110', 'addr' : 0x0E, # v1.0
+  #         'pin_pwr':'D18',
+  #         'pin_int':'D17',
+  #         'pin_sda':'D20',
+  #         'pin_scl':'D19' }
+  # V2.0
+  'MAG': { 'device': 'LIS3MDL', 'addr' : 30, # v2.0
+           'pin_pwr':'D18',
            'pin_int':'D17',
            'pin_sda':'D20',
-           'pin_scl':'D19' }
+           'pin_scl':'D19',
+           'pin_drdy':'D21',
+           },
+  'ACCEL': { 'device': 'LSM6DS3TR', 'addr' : 106, # v2.0
+#           'pin_pwr':'D16', # can't actually power this from an IO pin due to undocumented, massive power draw on startup
+           'pin_int':'D13',
+           'pin_sda':'D14',
+           'pin_scl':'D15' },
+  'TEMP': { 'device': 'PCT2075TP', 'addr' : 78, # v2.0
+           'pin_pwr':'D8',
+           'pin_sda':'D7',
+           'pin_scl':'D6' }
+
   # Pin D22 is used for clock when driving neopixels - as not specifying a pin seems to break things
 };
 
@@ -95,6 +118,7 @@ board = {
   '_notes' : {
     'D11' : "Capacitive sense. D12 is connected to this pin via a 1 MOhm resistor",
     'D28' : "If pulled up to 1 on startup, D28 and D29 become Serial1",
+    'D22' : "This is used as SCK when driving Neopixels with 'require('neopixel').write'"
   }
 };
 

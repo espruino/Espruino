@@ -13,29 +13,54 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/lite/experimental/micro/kernels/all_ops_resolver.h"
-#include "tensorflow/lite/experimental/micro/micro_error_reporter.h"
-#include "tensorflow/lite/experimental/micro/micro_interpreter.h"
+#include "tensorflow/lite/micro/micro_interpreter.h"
+#ifdef TENSORFLOW_ALL_OPS
+#include "tensorflow/lite/micro/kernels/all_ops_resolver.h"
+#else
+#include "tensorflow/lite/micro/kernels/micro_ops.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+#endif
+#include "tensorflow/lite/core/api/error_reporter.h"
+#include "tensorflow/lite/micro/compatibility.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
 extern "C" {
 #include "jsinteractive.h"
 #include "tensorflow.h"
 
-void DebugLog(const char* s) { jsiConsolePrint(s); }
+void DebugLog(const char* s) { jsiConsolePrint("TF:");jsiConsolePrint(s); }
+
+namespace tflite {
+
+class EspruinoErrorReporter : public ErrorReporter {
+ public:
+  ~EspruinoErrorReporter() {}
+  int Report(const char* format, va_list args) override {
+    char log_buffer[256];
+    espruino_snprintf_va(log_buffer, sizeof(log_buffer), format, args);
+    jsExceptionHere(JSET_ERROR, "%s", log_buffer);
+    return 0;
+  }
+  TF_LITE_REMOVE_VIRTUAL_DELETE
+};
+}  // namespace tflite
 
 typedef struct {
   // logging
-  tflite::MicroErrorReporter micro_error_reporter;
-  // This pulls in all the operation implementations we need
-  tflite::ops::micro::AllOpsResolver resolver;
+  alignas(16) tflite::EspruinoErrorReporter micro_error_reporter;
+  // This pulls in the operation implementations we need
+#ifdef TENSORFLOW_ALL_OPS
+  alignas(16) tflite::ops::micro::AllOpsResolver resolver;
+#else
+#define TENSORFLOW_OP_COUNT 9
+  alignas(16) tflite::MicroMutableOpResolver<TENSORFLOW_OP_COUNT> resolver;
+#endif
   // Build an interpreter to run the model with
-  tflite::MicroInterpreter interpreter;
+  alignas(16) tflite::MicroInterpreter interpreter;
   // Create an area of memory to use for input, output, and intermediate arrays.
   // Finding the minimum value for your model may require some trial and error.
-  uint8_t tensor_arena[0];
+  alignas(16) uint8_t tensor_arena[0]; // the arena must now be 16 byte aligned
 } TFData;
-char tfDataPtr[sizeof(TFData)];
 
 size_t tf_get_size(size_t arena_size, const char *model_data) {
   return sizeof(TFData) + arena_size;
@@ -43,7 +68,7 @@ size_t tf_get_size(size_t arena_size, const char *model_data) {
 
 bool tf_create(void *dataPtr, size_t arena_size, const char *model_data) {
   TFData *tf = (TFData*)dataPtr;
-  new (&tf->micro_error_reporter)tflite::MicroErrorReporter();
+  new (&tf->micro_error_reporter)tflite::EspruinoErrorReporter();
   // Set up logging
   tflite::ErrorReporter* error_reporter = &tf->micro_error_reporter;
 
@@ -58,7 +83,21 @@ bool tf_create(void *dataPtr, size_t arena_size, const char *model_data) {
     return false;
   }
 
+#ifdef TENSORFLOW_ALL_OPS
   new (&tf->resolver)tflite::ops::micro::AllOpsResolver();
+#else
+  // Pull in only the operation implementations we need.
+  new (&tf->resolver)tflite::MicroMutableOpResolver<TENSORFLOW_OP_COUNT>();
+  tf->resolver.AddDepthwiseConv2D();
+  tf->resolver.AddConv2D();
+  tf->resolver.AddAveragePool2D();
+  tf->resolver.AddMaxPool2D();
+  tf->resolver.AddFullyConnected();
+  tf->resolver.AddSoftmax();
+  tf->resolver.AddQuantize();
+  tf->resolver.AddDequantize();
+  tf->resolver.AddReshape();
+#endif
 
   // Build an interpreter to run the model with
   new (&tf->interpreter)tflite::MicroInterpreter(
@@ -67,20 +106,6 @@ bool tf_create(void *dataPtr, size_t arena_size, const char *model_data) {
 
   // Allocate memory from the tensor_arena for the model's tensors
   tf->interpreter.AllocateTensors();
-
-
-  /*
-   TfLiteTensor* input = tf->interpreter.input(0);
-   TfLiteTensor* output = tf->interpreter.output(0);
-
-  // Place our calculated x value in the model's input tensor
-  input->data.f[0] = x_val;
-
-
-
-  // Read the predicted y value from the model's output tensor
-  float y_val = output->data.f[0];*/
-
   return true;
 }
 
@@ -104,16 +129,20 @@ bool tf_invoke(void *dataPtr) {
   return true;
 }
 
-TfLiteTensor *tf_get_input(void *dataPtr, int n) {
+tf_tensorfinfo tf_get(void *dataPtr, bool isInput) {
   TFData *tf = (TFData*)dataPtr;
-  // Obtain pointers to the model's input and output tensors
-  return tf->interpreter.input(0);
-}
-
-TfLiteTensor *tf_get_output(void *dataPtr, int n) {
-  TFData *tf = (TFData*)dataPtr;
-  // Obtain pointers to the model's input and output tensors
-  return tf->interpreter.output(0);
+  tf_tensorfinfo inf;
+  inf.data = 0;
+  TfLiteTensor *tensor = isInput ? tf->interpreter.input(0) : tf->interpreter.output(0);
+  /* For some reason on recent tensorflows, the pointer that 'tensor' points to
+   * get trashed as soon as this function returns - so now we just copy out what
+   * we need and return it.   */
+  if (tensor) {
+    inf.type = tensor->type;
+    inf.data = &tensor->data.f[0];
+    inf.bytes = tensor->bytes;
+  }
+  return inf;
 }
 
 } // extern "C"

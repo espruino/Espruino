@@ -44,7 +44,7 @@ void bleCompleteTaskFail(BleTask task, JsVar *data);
 void bleCompleteTaskFailAndUnLock(BleTask task, JsVar *data);
 void bleSwitchTask(BleTask task);
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
 // Set the currently active GATT server
 void bleSetActiveBluetoothGattServer(JsVar *var);
 // Get the currently active GATT server (the return value needs unlocking)
@@ -65,7 +65,7 @@ void jswrap_ble_reconfigure_softdevice();
 void jswrap_ble_disconnect();
 void jswrap_ble_sleep();
 void jswrap_ble_wake();
-void jswrap_ble_restart();
+void jswrap_ble_restart(JsVar *callback);
 JsVar *jswrap_ble_getAddress();
 void jswrap_ble_setAddress(JsVar *address);
 
@@ -79,12 +79,15 @@ void jswrap_ble_setScanResponse(JsVar *data);
 void jswrap_ble_setServices(JsVar *data, JsVar *options);
 void jswrap_ble_updateServices(JsVar *data);
 void jswrap_ble_setScan(JsVar *callback, JsVar *options);
+JsVar *jswrap_ble_filterDevices(JsVar *devices, JsVar *filters);
 void jswrap_ble_findDevices(JsVar *callback, JsVar *options);
 void jswrap_ble_setRSSIHandler(JsVar *callback);
 void jswrap_ble_setTxPower(JsVarInt pwr);
 void jswrap_ble_setLowPowerConnection(bool lowPower);
 
 void jswrap_nfc_URL(JsVar *url);
+void jswrap_nfc_pair(JsVar *key);
+void jswrap_nfc_androidApp(JsVar *appName);
 void jswrap_nfc_raw(JsVar *payload);
 JsVar *jswrap_nfc_start(JsVar *payload);
 void jswrap_nfc_stop();

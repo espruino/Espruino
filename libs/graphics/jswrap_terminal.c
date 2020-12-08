@@ -18,6 +18,7 @@
 #include "graphics.h"
 #include "jsparse.h"
 #include "jsdevices.h"
+#include "jshardware.h"
 
 /*JSON{
   "type" : "object",
@@ -88,8 +89,14 @@ void terminalScroll() {
   terminalY--;
   JsGraphics gfx;
   if (terminalGetGFX(&gfx)) {
-    graphicsScroll(&gfx, 0, -TERMINAL_CHAR_H);
-    terminalSetGFX(&gfx); // save and flip
+    unsigned int cb = gfx.data.bgColor;
+    gfx.data.bgColor = 0;
+    graphicsScroll(&gfx, 0, -TERMINAL_CHAR_H); // always fill background in black
+    gfx.data.bgColor = cb;
+    terminalSetGFX(&gfx); // save
+    // if we're not in an IRQ, flip this now
+    if (!jshIsInInterrupt())
+      jswrap_terminal_idle();
   }
 }
 
@@ -112,15 +119,14 @@ void terminalSendChar(char chn) {
       JsGraphics gfx;
       if (terminalGetGFX(&gfx)) {
         short cx = (short)(TERMINAL_OFFSET_X + terminalX*TERMINAL_CHAR_W);
-        short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H);
-        // Clear background
-        unsigned int c = gfx.data.fgColor;
-        gfx.data.fgColor = gfx.data.bgColor;
-        graphicsFillRect(&gfx, cx, cy,
-          (short)(cx+TERMINAL_CHAR_W-1), (short)(cy+TERMINAL_CHAR_H-1));
-        gfx.data.fgColor = c;
+        short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H + gfx.data.height - LCD_HEIGHT);
         // draw char
-        TERMINAL_CHAR_CMD(&gfx, cx, cy, chn);
+        unsigned int cf = gfx.data.fgColor, cb = gfx.data.bgColor;
+        cf = -1; // always white on black
+        cb = 0;
+        TERMINAL_CHAR_CMD(&gfx, cx, cy, chn, 1, true/*solid background - so no need to clear*/);
+        gfx.data.fgColor = cf;
+        gfx.data.bgColor = cb;
         terminalSetGFX(&gfx);
       }
       if (terminalX<255) terminalX++;
@@ -150,15 +156,12 @@ void terminalSendChar(char chn) {
               JsGraphics gfx;
               if (terminalGetGFX(&gfx)) {
                 short cx = (short)(TERMINAL_OFFSET_X + terminalX*TERMINAL_CHAR_W);
-                short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H);
+                short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H + gfx.data.height - LCD_HEIGHT);
                 short w = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
                 short h = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
                 // Clear to right and down
-                unsigned int c = gfx.data.fgColor;
-                gfx.data.fgColor = gfx.data.bgColor;
-                graphicsFillRect(&gfx, cx, cy, w-1, cy+TERMINAL_CHAR_H-1); // current line
-                graphicsFillRect(&gfx, TERMINAL_OFFSET_X, cy+TERMINAL_CHAR_H, w-1, h-1); // everything under
-                gfx.data.fgColor = c;
+                graphicsFillRect(&gfx, cx, cy, w-1, cy+TERMINAL_CHAR_H-1, 0/*black*/); // current line
+                graphicsFillRect(&gfx, TERMINAL_OFFSET_X, cy+TERMINAL_CHAR_H, w-1, h-1, 0/*black*/); // everything under
                 terminalSetGFX(&gfx);
               }
             } break;

@@ -6,6 +6,9 @@
 #ifdef USE_APP_CONFIG
 #include "app_config.h"
 #endif
+
+
+#define NFC_NDEF_MSG_ENABLED 1
 // <h> nRF_BLE
 
 //==========================================================

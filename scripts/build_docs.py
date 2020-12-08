@@ -16,17 +16,24 @@
 # Needs:
 #    pip install markdown
 #    pip install markdown-urlize
+#
+# See common.py -> get_jsondata for command line options
 
 import subprocess;
 import re;
 import json;
 import sys;
 import os;
-sys.path.append(".");
 import common
 import urllib2
 import markdown
 import htmlentitydefs
+
+sys.path.append(".");
+scriptdir = os.path.dirname(os.path.realpath(__file__))
+basedir = scriptdir+"/../"
+sys.path.append(basedir+"scripts");
+sys.path.append(basedir+"boards");
 
 # Scans files for comments of the form /*JSON......*/ and then writes out an HTML file describing
 # all the functions
@@ -183,6 +190,21 @@ def insert_mdn_link(jsondata):
     if code==200:
       html("<p><a href=\""+url+"\">View MDN documentation</a></p>")
 
+
+# Remove duplicates
+existingSymbols = {}
+unduplicatedjsondatas = []
+for jsondata in jsondatas:
+  duplicate = False
+  if "name" in jsondata:
+    n = get_fullname(jsondata)
+    if n in existingSymbols:
+      print("WARNING: Duplicate symbol "+n);
+      duplicate = True
+    existingSymbols[n] = jsondata
+  if not duplicate: unduplicatedjsondatas.append(jsondata)
+jsondatas = unduplicatedjsondatas
+
 html("<html>")
 html(" <head>")
 html("  <title>Espruino Reference</title>")
@@ -309,7 +331,8 @@ for jsondata in detail:
       text = ""
       for j in instances:
         text = text + " * [`"+j["name"]+"`](#l__global_"+j["name"]+")";
-        if "description" in j: text = text + " " + j["description"]
+        if "description" in j:           
+          text = text + " " + j["description"].split("\n")[0]
         text = text + "\n"
       html_description(text, "")
 
@@ -322,7 +345,7 @@ for jsondata in detail:
     html("  </ul>")
 
   # Otherwise just output detail
-  link = get_link(jsondata)
+  link = get_link(jsondata)  
   html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a>")
   #html("<!-- "+json.dumps(jsondata, sort_keys=True, indent=2)+"-->");
   if "githublink" in jsondata:

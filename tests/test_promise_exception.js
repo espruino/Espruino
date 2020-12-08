@@ -10,6 +10,7 @@ var p = new Promise(function(res,rej) {
 });
 
 
+// This should be called when 'Bummer 2' is thrown
 process.on('uncaughtException', function(e) {
   console.log("expected ",e);
   if (e.toString().indexOf("Unhandled promise rejection")>=0)

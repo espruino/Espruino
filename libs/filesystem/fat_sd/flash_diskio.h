@@ -31,13 +31,3 @@
 #define FS_FLASH_BASE 0x300000;
 
 uint8_t flashFatFsInit( uint32_t addr, uint16_t sectors );
-
-/* 
-#ifndef RELEASE
-#define jsDebug(fmt,...) jsWarn(fmt,##__VA_ARGS__)
-#else
-#define jsDebug(fmt,...)
-#endif
-#endif
-*/
-#define jsDebug(fmt,...)

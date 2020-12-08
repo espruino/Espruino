@@ -86,7 +86,8 @@ if [ "$PROVISION_ESP32" = "1" ]; then
     if ! type xtensa-esp32-elf-gcc 2> /dev/null > /dev/null; then
         echo installing xtensa-esp32-elf-gcc
         if [ ! -d "xtensa-esp32-elf" ]; then
-           curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz | tar xfz - --no-same-owner
+           #curl -Ls https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz | tar xfz - --no-same-owner
+           curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp32/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz | tar xfz - --no-same-owner
         else
            echo "Folder found"
         fi
@@ -155,17 +156,30 @@ fi
 if [ "$PROVISION_NRF_SDK15" = "1" ]; then
     if [ ! -d "targetlibs/nrf5x_15/components" ]; then
         echo Installing NRF SDK 15.0 to targetlibs/nrf5x_15/components
-        curl https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v15.x.x/nRF5_SDK_15.0.0_a53641a.zip -o nRF5_SDK_15.0.0_a53641a.zip
-        unzip -o nRF5_SDK_15.0.0_a53641a.zip
+        # curl https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v15.x.x/nRF5_SDK_15.0.0_a53641a.zip -o nRF5_SDK_15.0.0_a53641a.zip
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5_SDK_15.0.0_a53641a_no_docs_unix.zip -o nRF5_SDK_15.0.0_a53641a.zip
+        # This is nRF5_SDK_15.0.0_a53641a.zip without the docs/examples folder, and with line endings converted to unix (for patch)
+        unzip -q -o nRF5_SDK_15.0.0_a53641a.zip
         mv nRF5_SDK_15.0.0_a53641a/* targetlibs/nrf5x_15
+        mv nRF5_SDK_15.0.0_a53641a/external/* targetlibs/nrf5x_15/external
         rm -rf nRF5_SDK_15.0.0_a53641a.zip nRF5_SDK_15.0.0_a53641a
-        dos2unix targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.h
-        dos2unix targetlibs/nrf5x_15/components/nfc/t2t_lib/hal_t2t/hal_nfc_t2t.c
-        dos2unix targetlibs/nrf5x_15/modules/nrfx/mdk/nrf.h
         echo ======================================================
         echo "FIXME - SDK15 NFC patches don't apply cleanly"
         echo ======================================================
         cat targetlibs/nrf5x_15/patches/* | patch -p1
+    fi
+fi
+if [ "$PROVISION_NRF_SDK17" = "1" ]; then
+    if [ ! -d "targetlibs/nrf5x_17/components" ]; then
+        echo Installing NRF SDK 17.0 to targetlibs/nrf5x_17/components
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5SDK1702d674dde.zip -o nRF5_SDK_17.zip
+        # This is nRF5_SDK_15.0.0_a53641a.zip without the docs/examples folder, and with line endings converted to unix (for patch)
+        unzip -q -o nRF5_SDK_17.zip
+        mv nRF5_SDK_17.0.2_d674dde/* targetlibs/nrf5x_17
+        mv nRF5_SDK_17.0.2_d674dde/external/* targetlibs/nrf5x_17/external
+        rm -rf nRF5_SDK_17.zip nRF5_SDK_17.0.2_d674dde
+        echo ======================================================
+        cat targetlibs/nrf5x_17/patches/* | patch -p1
     fi
 fi
 #--------------------------------------------------------------------------------

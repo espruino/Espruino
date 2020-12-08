@@ -30,7 +30,7 @@
 }
 This library provides TV out capability on the Espruino and Espruino Pico.
 
-See the [[Television]] page for more information.
+See the [Television](/Television) page for more information.
 */
 
 
@@ -84,7 +84,7 @@ var g = require('tv').setup({ type : "vga",
 });
 ```
 
-See the [[Television]] page for more information.
+See the [Television](/Television) page for more information.
 */
 
 JsVar *jswrap_tv_setup(JsVar *options) {

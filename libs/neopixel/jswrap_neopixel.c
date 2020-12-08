@@ -14,7 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 
-#ifdef NRF52
+#ifdef NRF52_SERIES
 #include "i2s_ws2812b_drive.h"
 #endif
 #ifdef ESP8266
@@ -174,10 +174,10 @@ bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
 }
 
 
-#elif defined(NRF52) // ----------------------------------------------------------------
+#elif defined(NRF52_SERIES) // ----------------------------------------------------------------
 
 bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
-#ifdef NRF52
+#ifdef NRF52_SERIES
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Pin is not valid.");
     return false;

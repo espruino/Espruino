@@ -261,13 +261,14 @@ static JsVar *_jswrap_array_iterate_with_callback(
       JsVar *index = jsvIteratorGetKey(&it);
       if (jsvIsInt(index)) {
         JsVarInt idxValue = jsvGetInteger(index);
-
-        JsVar *args[3], *cb_result;
-        args[0] = jsvIteratorGetValue(&it);
+        JsVar *value, *args[3], *cb_result;
+        value = jsvIteratorGetValue(&it);
+        args[0] = value;
         args[1] = jsvNewFromInteger(idxValue); // child is a variable name, create a new variable for the index
         args[2] = parent;
+        jsvIteratorNext(&it); // go to next
         cb_result = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
-        jsvUnLockMany(2,args);
+        jsvUnLock(args[1]);
         if (cb_result) {
           bool matched;
           if (isBoolCallback)
@@ -275,7 +276,7 @@ static JsVar *_jswrap_array_iterate_with_callback(
           if (returnType == RETURN_ARRAY) {
             if (isBoolCallback) { // filter
               if (matched) {
-                jsvArrayPushAndUnLock(result, jsvIteratorGetValue(&it));
+                jsvArrayPush(result, value);
               }
             } else { // map
               JsVar *name = jsvNewFromInteger(idxValue);
@@ -290,18 +291,20 @@ static JsVar *_jswrap_array_iterate_with_callback(
                 returnType == RETURN_ARRAY_INDEX) {
               if (matched) {
                 result = (returnType == RETURN_ARRAY_ELEMENT) ?
-                    jsvIteratorGetValue(&it) :
-                    jsvNewFromInteger(jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it)));
+                    jsvLockAgain(value) :
+                    jsvNewFromInteger(jsvGetInteger(index));
                 isDone = true;
               }
             } else if (!matched) // eg for .some
               isDone = true;
           }
-          jsvUnLock(cb_result);
+          jsvUnLock2(cb_result, value);
         }
+      } else {
+        // just skip forward anyway
+        jsvIteratorNext(&it);
       }
       jsvUnLock(index);
-      jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
   }
@@ -724,7 +727,9 @@ Returns true if the provided object is an array
 NO_INLINE static JsVarInt _jswrap_array_sort_compare(JsVar *a, JsVar *b, JsVar *compareFn) {
   if (compareFn) {
     JsVar *args[2] = {a,b};
-    return jsvGetIntegerAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
+    JsVarFloat f = jsvGetFloatAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
+    if (f==0) return 0;
+    return (f<0)?-1:1;
   } else {
     JsVar *sa = jsvAsString(a);
     JsVar *sb = jsvAsString(b);
@@ -737,7 +742,8 @@ NO_INLINE static JsVarInt _jswrap_array_sort_compare(JsVar *a, JsVar *b, JsVar *
 NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compareFn) {
   if (n < 2) return; // sort done!
 
-  JsvIterator pivot = jsvIteratorClone(head);
+  JsvIterator pivot;
+  jsvIteratorClone(&pivot, head);
   bool pivotLowest = true; // is the pivot the lowest value in here?
   JsVar *pivotValue = jsvIteratorGetValue(&pivot);
   /* We're just going to use the first entry (head) as the pivot...
@@ -745,7 +751,8 @@ NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compar
    * swap the values over (hence moving pivot forwards)  */
 
   int nlo = 0, nhigh = 0;
-  JsvIterator it = jsvIteratorClone(head); //
+  JsvIterator it;
+  jsvIteratorClone(&it, head); //
   jsvIteratorNext(&it);
 
 
@@ -932,8 +939,9 @@ JsVar *jswrap_array_fill(JsVar *parent, JsVar *value, JsVarInt start, JsVar *end
 void _jswrap_array_reverse_block(JsVar *parent, JsvIterator *it, int items) {
   assert(items > 1);
 
-  JsvIterator ita = jsvIteratorClone(it);
-  JsvIterator itb = jsvIteratorClone(it);
+  JsvIterator ita, itb;
+  jsvIteratorClone(&ita, it);
+  jsvIteratorClone(&itb, it);
 
   // move second pointer halfway through (round up)
   int i;

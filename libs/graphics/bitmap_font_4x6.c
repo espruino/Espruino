@@ -25,8 +25,8 @@
 #define PACK_5_TO_16(A,B,C,D,E) ((A) | (B<<3) | (C<<6) | (D<<9) | (E<<12))
  // 48
 
-#define LCD_FONT_4X6_CHARS 95
-const unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 127
+#define LCD_FONT_4X6_CHARS 100
+const unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 133
     PACK_5_TO_16( _X_ , X_X , X_X , _X_ , X_X ),
     PACK_5_TO_16( _X_ , X_X , XXX , XXX , __X ),
     PACK_5_TO_16( _X_ , ___ , X_X , XX_ , _X_ ),
@@ -158,23 +158,36 @@ const unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 127
     PACK_5_TO_16( XX_ , _X_ , _XX , ___ , XXX ),
     PACK_5_TO_16( _X_ , _X_ , _X_ , ___ , XXX ),
     PACK_5_TO_16( _XX , _X_ , XX_ , ___ , XXX ),
-    PACK_5_TO_16( ___ , ___ , ___ , ___ , XXX )
+    PACK_5_TO_16( ___ , ___ , ___ , ___ , XXX ),
+             // 128 euro
+    PACK_5_TO_16( _XX , ___ , ___ , ___ , ___ ),
+    PACK_5_TO_16( X__ , ___ , ___ , ___ , ___ ),
+    PACK_5_TO_16( XX_ , ___ , ___ , ___ , ___ ),
+    PACK_5_TO_16( XX_ , ___ , ___ , ___ , ___ ),
+    PACK_5_TO_16( X__ , ___ , ___ , ___ , ___ ),
+    PACK_5_TO_16( _XX , ___ , ___ , ___ , ___ )
 };
 
-void graphicsDrawChar4x6(JsGraphics *gfx, short x1, short y1, char ch) {
+NO_INLINE void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, unsigned short size, bool solidBackground) {
   int idx = ((unsigned char)ch) - 33;
-  if (idx<0 || idx>=LCD_FONT_4X6_CHARS) return; // no char for this - just return
+  if (idx<0 || idx>=LCD_FONT_4X6_CHARS) {
+    // no char for this
+    if (solidBackground)
+      graphicsFillRect(gfx, x1, y1, x1+2*size, y1+5*size, gfx->data.bgColor);
+    return;
+  }
   int cidx = idx % 5;
   idx = (idx/5)*6;
   int y;
+  int s = size-1;
   for (y=0;y<6;y++) {
-    unsigned int line = READ_FLASH_UINT16(&LCD_FONT_4X6[idx + y]) >> (cidx*3);
-    if (line&4) graphicsSetPixel(gfx, (short)(x1+0), (short)(y+y1), gfx->data.fgColor);
-    if (line&2) graphicsSetPixel(gfx, (short)(x1+1), (short)(y+y1), gfx->data.fgColor);
-    if (line&1) graphicsSetPixel(gfx, (short)(x1+2), (short)(y+y1), gfx->data.fgColor);
+    int line = READ_FLASH_UINT16(&LCD_FONT_4X6[idx + y]) >> (cidx*3);
+    int ly = y*size + y1;
+    if (solidBackground || line&4) graphicsFillRect(gfx, x1+0*size, ly, x1+s+0*size, ly+s, (line&4) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || line&2) graphicsFillRect(gfx, x1+1*size, ly, x1+s+1*size, ly+s, (line&2) ? gfx->data.fgColor : gfx->data.bgColor);
+    if (solidBackground || line&1) graphicsFillRect(gfx, x1+2*size, ly, x1+s+2*size, ly+s, (line&1) ? gfx->data.fgColor : gfx->data.bgColor);
   }
 }
-
 
 
 
