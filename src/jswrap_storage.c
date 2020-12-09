@@ -289,20 +289,43 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
   "name" : "list",
   "generate" : "jswrap_storage_list",
   "params" : [
-    ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being returned"]
+    ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being returned"],
+    ["filter","JsVar","(optional) If supplied, File Types are filtered based on this: `{sf:true}` or `{sf:false}` for whether to show StorageFile"]
   ],
   "return" : ["JsVar","An array of filenames"]
 }
 List all files in the flash storage area. An array of Strings is returned.
 
-This currently also lists files created by `StorageFile` (`require("Storage").open`)
+By default this lists files created by `StorageFile` (`require("Storage").open`)
 which have a file number (`"\1"`/`"\2"`/etc) appended to them.
+
+```
+// All files
+require("Storage").list()
+// Files ending in '.js'
+require("Storage").list(/.js$/)
+// All Storage Files
+require("Storage").list(undefined, {sf:true})
+// All normal files (eg created with Storage.write)
+require("Storage").list(undefined, {sf:false})
+```
 
 **Note:** This will output system files (eg. saved code) as well as
 files that you may have written.
  */
-JsVar *jswrap_storage_list(JsVar *regex) {
-  return jsfListFiles(regex);
+JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
+  JsfFileFlags containing = 0;
+  JsfFileFlags notContaining = 0;
+  if (jsvIsObject(filter)) {
+    JsVar *v = jsvObjectGetChild(filter, "sf", 0);
+    if (v) {
+      if (jsvGetBoolAndUnLock(v))
+        containing |= JSFF_STORAGEFILE;
+      else
+        notContaining |= JSFF_STORAGEFILE;
+    }
+  }
+  return jsfListFiles(regex, containing, notContaining);
 }
 
 /*JSON{
