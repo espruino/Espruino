@@ -480,7 +480,7 @@ JsVar *jswrap_storage_open(JsVar *name, JsVar *modeVar) {
     // read - do nothing, we're good.
   }
 
-  DBG("Open %j Chunk %d Offset %d addr 0x%08x len %d\n",name,chunk,offset,addr,len);
+  DBG("Open %j Chunk %d Offset %d addr 0x%08x len %d\n",name,chunk,offset,addr,fileLen);
   jsvObjectSetChildAndUnLock(f,"chunk",jsvNewFromInteger(chunk));
   jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(offset));
   jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger(addr));
