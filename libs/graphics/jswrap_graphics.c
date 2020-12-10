@@ -737,7 +737,7 @@ JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_toColor",
   "params" : [
-    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#012345'`"],
+    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#rrggbb' or `'#rgb'`"],
     ["g","JsVar","Green (between 0 and 1)"],
     ["b","JsVar","Blue (between 0 and 1)"]
   ],
@@ -766,11 +766,17 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
     char buf[9];
     memset(buf,0,sizeof(buf));
     jsvGetString(r,buf,sizeof(buf));
-    rf = hexToByte(buf[1],buf[2])/256.0;
-    gf = hexToByte(buf[3],buf[4])/256.0;
-    bf = hexToByte(buf[5],buf[6])/256.0;
+    if (buf[4]==0) {
+      rf = chtod(buf[1])/15.0;
+      gf = chtod(buf[2])/15.0;
+      bf = chtod(buf[3])/15.0;
+    } else {
+      rf = hexToByte(buf[1],buf[2])/255.0;
+      gf = hexToByte(buf[3],buf[4])/255.0;
+      bf = hexToByte(buf[5],buf[6])/255.0;
+    }
     if (rf<0 || gf<0 || bf<0 || buf[7]!=0) {
-      jsExceptionHere(JSET_ERROR, "If Color is a String, it must be of the form '#rrggbb'");
+      jsExceptionHere(JSET_ERROR, "If Color is a String, it must be of the form '#rrggbb' or '#rgb'");
       return 0;
     }
   } else {
