@@ -78,31 +78,6 @@ static uint32_t       m_whitelist_peer_cnt;                                 /**<
 static bool           m_is_wl_changed;                                      /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
 
 
-/**@brief String literals for the iOS notification categories. used then printing to UART. */
-static const char * lit_catid[BLE_ANCS_NB_OF_CATEGORY_ID] =
-{
-    "Other",
-    "Incoming Call",
-    "Missed Call",
-    "Voice Mail",
-    "Social",
-    "Schedule",
-    "Email",
-    "News",
-    "Health And Fitness",
-    "Business And Finance",
-    "Location",
-    "Entertainment"
-};
-
-
-/**@brief String literals for the iOS notification event types. Used then printing to UART. */
-static const char * lit_eventid[BLE_ANCS_NB_OF_EVT_ID] =
-{
-    "Added",
-    "Modified",
-    "Removed"
-};
 
 
 /**@brief String literals for the iOS notification attribute types. Used when printing to UART. */
@@ -135,7 +110,6 @@ static ble_ancs_c_attr_t      m_notif_attr_latest;                     /**< Loca
 static ble_ancs_c_attr_t      m_notif_attr_app_id_latest;              /**< Local copy of the newest app attribute. */
 
 static uint8_t m_attr_appid[ATTR_DATA_SIZE];                           /**< Buffer to store attribute data. */
-
 static uint8_t m_attr_title[ATTR_DATA_SIZE];                           /**< Buffer to store attribute data. */
 static uint8_t m_attr_subtitle[ATTR_DATA_SIZE];                        /**< Buffer to store attribute data. */
 static uint8_t m_attr_message[ATTR_DATA_SIZE];                         /**< Buffer to store attribute data. */
@@ -143,10 +117,37 @@ static uint8_t m_attr_message_size[ATTR_DATA_SIZE];                    /**< Buff
 static uint8_t m_attr_date[ATTR_DATA_SIZE];                            /**< Buffer to store attribute data. */
 static uint8_t m_attr_posaction[ATTR_DATA_SIZE];                       /**< Buffer to store attribute data. */
 static uint8_t m_attr_negaction[ATTR_DATA_SIZE];                       /**< Buffer to store attribute data. */
-
 static uint8_t m_attr_disp_name[ATTR_DATA_SIZE];                       /**< Buffer to store attribute data. */
 
 
+/** Handle the event (called outside of IRQ by Espruino) - will poke the relevant events in */
+void ble_ancs_handle_event(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
+  // Fire E.on('ANCS',...)
+  JsVar *o = jsvNewObject();
+  if (!o) return;
+  const char * lit_eventid[BLE_ANCS_NB_OF_EVT_ID] = { "add", "modify", "remove" };
+  jsvObjectSetChildAndUnLock(o, "event", jsvNewFromString(lit_eventid[p_notif->evt_id]));
+  jsvObjectSetChildAndUnLock(o, "uid", jsvNewFromInteger(p_notif->notif_uid));
+  jsvObjectSetChildAndUnLock(o, "category", jsvNewFromInteger(p_notif->category_id));
+  jsvObjectSetChildAndUnLock(o, "categoryCnt", jsvNewFromInteger(p_notif->category_count));
+  jsvObjectSetChildAndUnLock(o, "silent", jsvNewFromBool(p_notif->evt_flags.silent));
+  jsvObjectSetChildAndUnLock(o, "important", jsvNewFromBool(p_notif->evt_flags.important));
+  jsvObjectSetChildAndUnLock(o, "pre_existing", jsvNewFromBool(p_notif->evt_flags.pre_existing));
+  jsvObjectSetChildAndUnLock(o, "positive", jsvNewFromBool(p_notif->evt_flags.positive_action));
+  jsvObjectSetChildAndUnLock(o, "negative", jsvNewFromBool(p_notif->evt_flags.negative_action));
+
+  jsvObjectSetChildAndUnLock(o, "appid", jsvNewFromString(m_attr_appid));
+  jsvObjectSetChildAndUnLock(o, "title", jsvNewFromString(m_attr_title));
+  jsvObjectSetChildAndUnLock(o, "subtitle", jsvNewFromString(m_attr_subtitle));
+  jsvObjectSetChildAndUnLock(o, "message", jsvNewFromString(m_attr_message));
+  jsvObjectSetChildAndUnLock(o, "message_size", jsvNewFromString(m_attr_message_size));
+  jsvObjectSetChildAndUnLock(o, "date", jsvNewFromString(m_attr_date));
+  jsvObjectSetChildAndUnLock(o, "posaction", jsvNewFromString(m_attr_posaction));
+  jsvObjectSetChildAndUnLock(o, "negaction", jsvNewFromString(m_attr_negaction));
+  jsvObjectSetChildAndUnLock(o, "name", jsvNewFromString(m_attr_disp_name));
+  jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"ANCS", 1, &o);
+  jsvUnLock(o);
+}
 
 void ble_ancs_bonding_succeeded(uint16_t conn_handle) {
   uint32_t ret  = ble_db_discovery_start(&m_ble_db_discovery, conn_handle);
@@ -181,7 +182,7 @@ static void apple_notification_setup(void)
 static void notif_print(ble_ancs_c_evt_notif_t * p_notif)
 {
     NRF_LOG_INFO("\r\nNotification\r\n");
-    NRF_LOG_INFO("Event:       %s\r\n", (uint32_t)lit_eventid[p_notif->evt_id]);
+  /*  NRF_LOG_INFO("Event:       %s\r\n", (uint32_t)lit_eventid[p_notif->evt_id]);
     NRF_LOG_INFO("Category ID: %s\r\n", (uint32_t)lit_catid[p_notif->category_id]);
     NRF_LOG_INFO("Category Cnt:%u\r\n", (unsigned int) p_notif->category_count);
     NRF_LOG_INFO("UID:         %u\r\n", (unsigned int) p_notif->notif_uid);
@@ -206,7 +207,7 @@ static void notif_print(ble_ancs_c_evt_notif_t * p_notif)
     if(p_notif->evt_flags.negative_action == 1)
     {
         NRF_LOG_INFO(" Negative Action\r\n");
-    }
+    }*/
 }
 
 
@@ -295,11 +296,13 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt)
 
         case BLE_ANCS_C_EVT_NOTIF:
             m_notification_latest = p_evt->notif;
-            notif_print(&m_notification_latest);
+            jsble_queue_pending_buf(BLEP_ANCS_NOTIF, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
+            //notif_print(&m_notification_latest);
             break;
 
         case BLE_ANCS_C_EVT_NOTIF_ATTRIBUTE:
             m_notif_attr_latest = p_evt->attr;
+            jsble_queue_pending_buf(BLEP_ANCS_NOTIF, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
             notif_attr_print(&m_notif_attr_latest);
             if(p_evt->attr.attr_id == BLE_ANCS_NOTIF_ATTR_ID_APP_IDENTIFIER)
             {

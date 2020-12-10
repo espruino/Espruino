@@ -140,7 +140,10 @@ typedef enum {
   BLEP_NOTIFICATION,                //< A characteristic we were watching has changes
   BLEP_TASK_PASSKEY_DISPLAY,        //< We're pairing and have been provided with a passkey to display
   BLEP_TASK_AUTH_KEY_REQUEST,       //< We're pairing and the device wants a passkey from us
-  BLEP_TASK_AUTH_STATUS             //< Data on how authentication was going has been received
+  BLEP_TASK_AUTH_STATUS,            //< Data on how authentication was going has been received
+#ifdef ESPR_BLUETOOTH_ANCS
+  BLEP_ANCS_NOTIF,                  //< Apple Notification Centre notification received
+#endif
 } BLEPending;
 
 
