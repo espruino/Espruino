@@ -934,7 +934,12 @@ void _jswrap_puck_IR_on() {
   jshPinAnalogOutput(_jswrap_puck_IR_pin, 0.1, 38000, 0);
 }
 void _jswrap_puck_IR_off() {
-  jshPinOutput(_jswrap_puck_IR_pin, 1);
+  // normally we're doing single-pin IR with the cathode, so 1=off
+  bool polarity = 1;
+  // On Puck.js v2 we go through an (N)FET, which means 0=off.
+  if (isPuckV2 && (_jswrap_puck_IR_pin==IR_FET_PIN || _jswrap_puck_IR_pin==FET_PIN))
+    polarity = 0;
+  jshPinOutput(_jswrap_puck_IR_pin, polarity);
 }
 // Called when we're done with the IR transmission
 void _jswrap_puck_IR_done(JsSysTime t, void *data) {
