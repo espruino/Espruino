@@ -77,6 +77,11 @@
 #define NRFX_UARTE_ENABLED 0
 #define NRFX_UARTE0_ENABLED 0
 #define NRFX_UARTE1_ENABLED 0
+#ifdef NRF52840
+#define NRFX_SPIM3_ENABLED 1
+#endif
+
+#define NRF_SDH_CLOCK_LF_ACCURACY NRF_CLOCK_LF_ACCURACY_500_PPM
 
 // <h> Board Support
 
@@ -7662,7 +7667,6 @@
 
 #ifndef NRF_SDH_CLOCK_LF_ACCURACY
 #define NRF_SDH_CLOCK_LF_ACCURACY 7
-
 #endif
 
 // </h>

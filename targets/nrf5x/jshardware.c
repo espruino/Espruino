@@ -285,7 +285,11 @@ volatile bool nrf_analog_read_interrupted = false;
 #define SPI_MAXAMT 65535
 #endif
 
+#ifdef NRF52840
+static nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(3); // USE SPI3 on 52840 as it's far more complete
+#else
 static nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
+#endif
 bool spi0Initialised = false;
 unsigned char *spi0RxPtr;
 unsigned char *spi0TxPtr;
@@ -1734,10 +1738,15 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     freq = SPI_FREQUENCY_FREQUENCY_M2;
   else if (inf->baudRate<((4000000+8000000)/2))
     freq = SPI_FREQUENCY_FREQUENCY_M4;
+#ifdef NRF52840
+  // NRF52840 supports >8MHz but ONLY on SPIM3
+  else if (inf->baudRate>((16000000+32000000)/2) && spi0.inst_idx==3)
+    freq = SPIM_FREQUENCY_FREQUENCY_M32;
+  else if (inf->baudRate>((8000000+16000000)/2) && spi0.inst_idx==3)
+    freq = SPIM_FREQUENCY_FREQUENCY_M16;
+#endif
   else
     freq = SPI_FREQUENCY_FREQUENCY_M8;
-  // NRF52840 supports >8MHz but ONLY on SPIM3
-
 
   /* Numbers for SPI_FREQUENCY_FREQUENCY_M16/SPI_FREQUENCY_FREQUENCY_M32
   are in the nRF52 datasheet but they don't appear to actually work (and
@@ -1822,7 +1831,9 @@ int jshSPISend(IOEventFlags device, int data) {
   return rx;
 #endif
 #endif
-
+/*  unsigned char d = data;
+  jshSPISendMany(device, &d, &d, 1, NULL);
+  return d;*/
 }
 
 /** Send 16 bit data through the given SPI device. */

@@ -21,7 +21,11 @@
             Bangle.js: StorageFile now uses 10x bigger chunks which reduces stress on Storage.list()
             Storage.list now allows you to specifically request StorageFile, only ever reports first StorageFile chunk
             Graphics: Allow colors to be specified as '#rgb' strings
+            Graphics: Antialiased lines now read the background color so overlap nicely
+            Graphics: Add fillPolyAA and use antialiased vector fonts (on platforms where AA is enabled) 
             Puck.js: Fix regression where IR LED was left on after transmission (fix #1969)
+            Graphics: Fix overdraw when drawing ellipses/circles
+            NRF52840: Use SPI3 by default as it's more capable/faster than SPI0
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)

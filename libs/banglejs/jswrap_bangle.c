@@ -51,7 +51,7 @@
 #ifdef LCD_CONTROLLER_ST7789_8BIT
 #include "lcd_st7789_8bit.h"
 #endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735)
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
 #include "lcd_spilcd.h"
 #endif
 
@@ -363,13 +363,19 @@ JshI2CInfo i2cInternal;
 #define ACCEL_I2C &i2cInternal
 #define PRESSURE_I2C &i2cInternal
 #endif
+#ifdef DICKENS
+JshI2CInfo i2cInternal;
+#define ACCEL_I2C &i2cInternal
+#define PRESSURE_I2C &i2cInternal
+#define MAG_I2C &i2cInternal
+#endif
 #ifdef ID205
 #endif
+
 
 #ifdef PRESSURE_I2C
 /// Promise when pressure is requested
 JsVar *promisePressure;
-
 #endif
 
 #ifndef EMSCRIPTEN
@@ -557,6 +563,7 @@ void jswrap_banglejs_pwrBacklight(bool on) {
 
 /// Flip buffer contents with the screen.
 void lcd_flip(JsVar *parent, bool all) {
+#ifdef LCD_WIDTH
   JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
   if (!graphics) return;
   JsGraphics gfx;
@@ -583,11 +590,12 @@ void lcd_flip(JsVar *parent, bool all) {
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   lcdST7789_flip(&gfx);
 #endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735)
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
   lcdFlip_SPILCD(&gfx);
 #endif
   graphicsSetVar(&gfx);
   jsvUnLock(graphics);
+#endif
 }
 
 char clipi8(int x) {
@@ -664,13 +672,13 @@ void peripheralPollHandler() {
   if (i2cBusy) return;
   i2cBusy = true;
   unsigned char buf[7];
-#ifdef MAG_I2C
+#ifdef MAG_DEVICE_GMC303
   // check the magnetometer if we had it on
   if (compassPowerOn) {
     buf[0]=0x10;
     jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
     jsi2cRead(MAG_I2C, MAG_ADDR, 7, buf, true);
-    if (buf[0]&1) { // then we have data (hopefully? No datasheet)
+    if (buf[0]&1) { // then we have data
       mag.y = buf[1] | (buf[2]<<8);
       mag.x = buf[3] | (buf[4]<<8);
       mag.z = buf[5] | (buf[6]<<8);
@@ -686,6 +694,7 @@ void peripheralPollHandler() {
   }
 #endif
 #ifdef ACCEL_I2C
+#ifdef ACCEL_DEVICE_KX023
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
   // read interrupt source data
   buf[0]=0x12; // INS1
@@ -705,6 +714,14 @@ void peripheralPollHandler() {
     jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
     jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
   }
+#endif
+#ifdef ACCEL_DEVICE_KXTJ3_1057
+  // read interrupt source data
+  buf[0]=0x16; // INT_SOURCE1
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+  bool hasAccelData = (buf[0]&16)!=0; // DRDY
+#endif
   if (hasAccelData) {
     buf[0]=6;
     jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
@@ -926,7 +943,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
   jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), t);
 }
 
-#ifdef BTN4_PININDEX
+#ifdef BANGLEJS_F18
 // returns true if handled and shouldn't create a normal watch event
 bool btnTouchHandler() {
   if (bangleFlags&JSBF_WAKEON_TOUCH) {
@@ -975,7 +992,7 @@ void btn3Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(3,state,flags);
 }
 #endif
-#ifdef BTN4_PININDEX
+#ifdef BANGLEJS_F18
 void btn4Handler(bool state, IOEventFlags flags) {
   if (btnTouchHandler()) return;
   btnHandlerCommon(4,state,flags);
@@ -983,6 +1000,10 @@ void btn4Handler(bool state, IOEventFlags flags) {
 void btn5Handler(bool state, IOEventFlags flags) {
   if (btnTouchHandler()) return;
   btnHandlerCommon(5,state,flags);
+}
+#else
+void btn4Handler(bool state, IOEventFlags flags) {
+  btnHandlerCommon(4,state,flags);
 }
 #endif
 
@@ -1111,7 +1132,8 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
     lcdST7789_cmd(0x10, 0, NULL); // SLPIN
   }
 #endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735)
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
+  // TODO: LCD_CONTROLLER_GC9A01 - has an enable/power pin
   if (isOn) { // wake
     lcdCmd_SPILCD(0x11, 0, NULL); // SLPOUT
     jshDelayMicroseconds(20);
@@ -1483,9 +1505,15 @@ JsVarInt jswrap_banglejs_getBattery() {
 #ifdef SMAQ3
   const JsVarFloat vlo = 0.22;   // guess
   const JsVarFloat vhi = 0.32;  // guess
-#else
+#elif defined(BANGLEJS_F18)
   const JsVarFloat vlo = 0.51;
   const JsVarFloat vhi = 0.62;
+#elif defined(DICKENS)
+  const JsVarFloat vlo = 3.3 / (2.8*2);
+  const JsVarFloat vhi = 3.8 / (2.8*2);
+#else
+  const JsVarFloat vlo = 0;
+  const JsVarFloat vhi = 1;
 #endif
   int pc = (v-vlo)*100/(vhi-vlo);
   if (pc>100) pc=100;
@@ -1514,7 +1542,7 @@ void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   lcdST7789_cmd(cmd, dLen, (const uint8_t *)dPtr);
 #endif
-#ifdef LCD_CONTROLLER_ST7789V
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
   lcdCmd_SPILCD(cmd, dLen, (const uint8_t *)dPtr);
 #endif
 }
@@ -1631,7 +1659,9 @@ Bangle.on('mag',print);
 */
 void jswrap_banglejs_setCompassPower(bool isOn) {
   compassPowerOn = isOn;
-  jswrap_banglejs_compassWr(0x31,isOn ? 8 : 0);
+#ifdef MAG_DEVICE_GMC303
+  jswrap_banglejs_compassWr(0x31,isOn ? 4 : 0); // continuous measurement mode, 20Hz
+#endif
   mag.x = 0;
   mag.y = 0;
   mag.z = 0;
@@ -1755,8 +1785,7 @@ void jswrap_banglejs_init() {
   i2cTouch.pinSDA = TOUCH_PIN_SDA;
   i2cTouch.pinSCL = TOUCH_PIN_SCL;
   jsi2cSetup(&i2cTouch);
-#endif
-#if defined(BANGLEJS_F18) || defined(DTNO1_F5)
+#elif defined(ACCEL_PIN_SDA) // assume all the rest just use a global I2C
   jshI2CInitInfo(&i2cInternal);
   i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cInternal.pinSDA = ACCEL_PIN_SDA;
@@ -1799,6 +1828,7 @@ void jswrap_banglejs_init() {
   lcdBrightness = 255;
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
   lcdWakeButton = 0;
+#ifdef LCD_WIDTH
   // Create backing graphics for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
   if (!graphics) return; // low memory
@@ -1810,7 +1840,7 @@ void jswrap_banglejs_init() {
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   gfx.data.type = JSGRAPHICSTYPE_ST7789_8BIT;
 #endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735)
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
   gfx.data.type = JSGRAPHICSTYPE_SPILCD;
 #endif
   gfx.data.flags = 0;
@@ -1828,7 +1858,7 @@ void jswrap_banglejs_init() {
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   lcdST7789_init(&gfx);
 #endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735)
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
   lcdInit_SPILCD(&gfx);
 #endif
   graphicsSetVar(&gfx);
@@ -1891,12 +1921,16 @@ void jswrap_banglejs_init() {
 #ifdef SMAQ3
   lcdMemLCD_flip(&gfx);
 #endif
+#if defined(LCD_CONTROLLER_GC9A01)
+  lcdFlip_SPILCD(&gfx);
+#endif
   graphicsStructResetState(&gfx);
   graphicsSetVar(&gfx);
 
   jsvUnLock(graphics);
+#endif
 
-#ifdef ACCEL_DEVICE
+#ifdef ACCEL_DEVICE_KX023
   // KX023-1025 accelerometer init
   jswrap_banglejs_accelWr(0x18,0x0a); // CNTL1 Off (top bit)
   jswrap_banglejs_accelWr(0x19,0x80); // CNTL2 Software reset
@@ -1924,24 +1958,42 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_accelWr(0x18,0b10101100);  // CNTL1 On, low power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
   // high power vs low power uses an extra 150uA
 #endif
-#ifdef PRESSURE_DEVICE
+#ifdef ACCEL_DEVICE_KXTJ3_1057
+  // KXTJ3-1057 accelerometer init
+  jswrap_banglejs_accelWr(0x1B,0b00101000); // CNTL1 Off (top bit)
+  jswrap_banglejs_accelWr(0x1D,0x80); // CNTL2 Software reset
+  jshDelayMicroseconds(2000);
+  jswrap_banglejs_accelWr(0x21,0); // DATA_CTRL_REG - 12.5Hz out
+  jswrap_banglejs_accelWr(0x1B,0b00101000); // CNTL1 On (top bit), low power, DRDYE=1, 4g, Wakeup=0,
+  jswrap_banglejs_accelWr(0x1B,0b10101000); // CNTL1 On (top bit), low power, DRDYE=1, 4g, Wakeup=0,
+#endif
+#ifdef PRESSURE_DEVICE_HP203
   // pressure init
   char *buf[2];
   buf[0]=0x06; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, (uint8_t)*buf, true); // SOFT_RST
 #endif
+#ifdef PRESSURE_DEVICE_SPL06-007
+  // pressure init
+  char *buf[2];
+  buf[0]=0x0C; buf[1]=0x89;
+  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, (uint8_t)*buf, true); // SOFT_RST
+#endif
+
 
   // Accelerometer variables init
   stepCounter = 0;
   stepWasLow = false;
-#ifndef EMSCRIPTEN
+#ifdef MAG_DEVICE_GMC303
   // compass init
-  jswrap_banglejs_compassWr(0x32,1);
-  jswrap_banglejs_compassWr(0x31,0);
+  jswrap_banglejs_compassWr(0x32,1); // soft reset
+  jswrap_banglejs_compassWr(0x31,0); // power down mode
 #endif
   compassPowerOn = false;
   i2cBusy = false;
   // Other IO
+#ifdef BAT_PIN_CHARGING
   jshPinSetState(BAT_PIN_CHARGING, JSHPINSTATE_GPIO_IN_PULLUP);
+#endif
   // touch
   touchStatus = TS_NONE;
   touchLastState = 0;
@@ -2002,9 +2054,11 @@ void jswrap_banglejs_init() {
 #endif
 #ifdef BTN4_PININDEX
   jshSetPinShouldStayWatched(BTN4_PININDEX,true);
-  jshSetPinShouldStayWatched(BTN5_PININDEX,true);
   channel = jshPinWatch(BTN4_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn4Handler);
+#endif
+#ifdef BTN5_PININDEX
+  jshSetPinShouldStayWatched(BTN5_PININDEX,true);
   channel = jshPinWatch(BTN5_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn5Handler);
 #endif
@@ -2075,9 +2129,11 @@ void jswrap_banglejs_kill() {
 #endif
 #ifdef BTN4_PININDEX
   jshSetPinShouldStayWatched(BTN4_PININDEX,false);
-  jshSetPinShouldStayWatched(BTN5_PININDEX,false);
   jshPinWatch(BTN4_PININDEX, false);
+#endif
+#ifdef BTN5_PININDEX
   jshPinWatch(BTN5_PININDEX, false);
+  jshSetPinShouldStayWatched(BTN5_PININDEX,false);
 #endif
 #endif
 }
@@ -2356,7 +2412,7 @@ bool jswrap_banglejs_idle() {
   }
   jsvUnLock(bangle);
   bangleTasks = JSBT_NONE;
-#if defined(LCD_CONTROLLER_LPM013M126) || defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735)
+#if defined(LCD_CONTROLLER_LPM013M126) || defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
   // Automatically flip!
   JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
   JsGraphics gfx;
@@ -2549,7 +2605,7 @@ JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt) {
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
   jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
-  jsi2cRead(ACCEL_I2C, ACCEL_ADDR, cnt, buf, true);
+  jsi2cRead(ACCEL_I2C, ACCEL_ADDR, (cnt==0)?1:cnt, buf, true);
   i2cBusy = false;
   if (cnt) {
     JsVar *ab = jsvNewArrayBufferWithData(cnt, buf);
@@ -2620,7 +2676,7 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
     "name" : "getPressure",
     "generate" : "jswrap_banglejs_getPressure",
     "return" : ["JsVar","A promise that will be resolved with `{temperature, pressure, altitude}`"],
-    "ifdef" : "DTNO1_F5"
+    "#if" : "defined(DTNO1_F5) || defined(DICKENS)"
 }
 Read temperature, pressure and altitude data. A promise is returned
 which will be resolved with `{temperature, pressure, altitude}`.
@@ -2640,6 +2696,7 @@ void jswrap_banglejs_getPressure_callback() {
   if (o) {
     i2cBusy = true;
     unsigned char buf[6];
+#ifdef PRESSURE_DEVICE_HP203
     // ADC_CVT - 0b010 01 000  - pressure and temperature channel, OSR = 4096
     buf[0] = 0x48; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
     // wait 100ms
@@ -2658,6 +2715,17 @@ void jswrap_banglejs_getPressure_callback() {
     int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
     if (altitude&0x800000) altitude-=0x1000000;
     jsvObjectSetChildAndUnLock(o,"altitude", jsvNewFromFloat(altitude/100.0));
+#endif
+#ifdef PRESSURE_DEVICE_SPL06_007
+    buf[0] = 0; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // PSR
+    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
+    int pressure = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+    int temperature = (buf[3]<<16)|(buf[4]<<8)|buf[5];
+    if (temperature&0x800000) temperature-=0x1000000;
+    // FIXME - need to read calibration registers/etc
+    jsvObjectSetChildAndUnLock(o,"temperature", jsvNewFromInteger(temperature));
+    jsvObjectSetChildAndUnLock(o,"pressure", jsvNewFromInteger(pressure));
+#endif
     i2cBusy = false;
     jspromise_resolve(promisePressure, o);
   }
@@ -2672,8 +2740,13 @@ JsVar *jswrap_banglejs_getPressure() {
   }
   promisePressure = jspromise_create();
   if (!promisePressure) return 0;
-
-  jsiSetTimeout(jswrap_banglejs_getPressure_callback, 100);
+  unsigned char buf[6];
+#ifdef PRESSURE_DEVICE_SPL06_007
+  buf[0] = 0x08;
+  buf[1] = 1;
+  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 2, buf, true);
+#endif
+  jsiSetTimeout(jswrap_banglejs_getPressure_callback, 500);
   return jsvLockAgain(promisePressure);
 }
 #endif
@@ -2848,8 +2921,15 @@ void jswrap_banglejs_off() {
   jswrap_banglejs_pwrGPS(false); // GPS off
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
   jswrap_banglejs_setLCDPower(0);
+#ifdef ACCEL_DEVICE_KX023
   jswrap_banglejs_accelWr(0x18,0x0a); // accelerometer off
+#endif
+#ifdef ACCEL_DEVICE_KXTJ3_1057
+  jswrap_banglejs_accelWr(0x1B,0); // accelerometer off
+#endif
+#ifdef MAG_DEVICE_GMC303
   jswrap_banglejs_compassWr(0x31,0); // compass off
+#endif
 
 
 #ifdef BTN2_PININDEX

@@ -56,7 +56,7 @@ unsigned int graphicsFallbackGetPixel(JsGraphics *gfx, int x, int y) {
   NOT_USED(gfx);
   NOT_USED(x);
   NOT_USED(y);
-  return 0;
+  return gfx->data.bgColor;
 }
 
 void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
@@ -277,41 +277,46 @@ JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int
 }
 
 /// Merge one color into another based on current bit depth (amt is 0..256)
-uint32_t graphicsBlendColor(JsGraphics *gfx, int iamt) {
+uint32_t graphicsBlendColor(JsGraphics *gfx, unsigned int fg, unsigned int bg, int iamt) {
   unsigned int amt = (iamt>0) ? (unsigned)iamt : 0;
   if (amt>255) amt=255;
   if (gfx->data.bpp==2 || gfx->data.bpp==4 || gfx->data.bpp==8) {
-    return (gfx->data.bgColor*(256-amt) + gfx->data.fgColor*amt) >> 8;
+    return (bg*(256-amt) + fg*amt) >> 8;
   } else if (gfx->data.bpp==16) { // Blend from bg to fg
-    unsigned int b = gfx->data.bgColor;
-    unsigned int br = (b>>8)&0xF8;
-    unsigned int bg = (b>>3)&0xFC;
-    unsigned int bb = (b<<3)&0xF8;
-    unsigned int f = gfx->data.fgColor;
-    unsigned int fr = (f>>8)&0xF8;
-    unsigned int fg = (f>>3)&0xFC;
-    unsigned int fb = (f<<3)&0xF8;
+    unsigned int b = bg;
+    unsigned int br = (b>>11)&0x1F;
+    unsigned int bg = (b>>5)&0x3F;
+    unsigned int bb = b&0x1F;
+    unsigned int f = fg;
+    unsigned int fr = (f>>11)&0x1F;
+    unsigned int fg = (f>>5)&0x3F;
+    unsigned int fb = f&0x1F;
     unsigned int ri = (br*(256-amt) + fr*amt) >> 8;
     unsigned int gi = (bg*(256-amt) + fg*amt) >> 8;
     unsigned int bi = (bb*(256-amt) + fb*amt) >> 8;
-    return (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
+    return (uint16_t)(bi | gi<<5 | ri<<11);
 #ifdef ESPR_GRAPHICS_12BIT
   } else if (gfx->data.bpp==12) { // Blend from bg to fg
-    unsigned int b = gfx->data.bgColor;
-    unsigned int br = (b>>8)&0xF0;
-    unsigned int bg = (b>>4)&0xF0;
-    unsigned int bb = (b<<4)&0xF0;
-    unsigned int f = gfx->data.fgColor;
-    unsigned int fr = (f>>8)&0xF0;
-    unsigned int fg = (f>>4)&0xF0;
-    unsigned int fb = (f<<4)&0xF0;
+    unsigned int b = bg;
+    unsigned int br = (b>>8)&0x0F;
+    unsigned int bg = (b>>4)&0x0F;
+    unsigned int bb = b&0x0F;
+    unsigned int f = fg;
+    unsigned int fr = (f>>8)&0x0F;
+    unsigned int fg = (f>>4)&0x0F;
+    unsigned int fb = f&0x0F;
     unsigned int ri = (br*(256-amt) + fr*amt) >> 8;
     unsigned int gi = (bg*(256-amt) + fg*amt) >> 8;
     unsigned int bi = (bb*(256-amt) + fb*amt) >> 8;
-    return (uint16_t)((bi>>4) | (gi>>4)<<4 | (ri>>4)<<8);
+    return (uint16_t)(bi | gi<<4 | ri<<8);
 #endif
   } // TODO: 24 bit
-  return (amt>=128) ? gfx->data.fgColor : gfx->data.bgColor;
+  return (amt>=128) ? fg : bg;
+}
+
+/// Merge one color into another based on current bit depth (amt is 0..256)
+uint32_t graphicsBlendGfxColor(JsGraphics *gfx, int iamt) {
+  return graphicsBlendColor(gfx, gfx->data.fgColor, gfx->data.bgColor, iamt);
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -335,6 +340,13 @@ static void graphicsSetPixelDevice(JsGraphics *gfx, int x, int y, unsigned int c
 static unsigned int graphicsGetPixelDevice(JsGraphics *gfx, int x, int y) {
   if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return 0;
   return gfx->getPixel(gfx, x, y);
+}
+
+/// For Antialiasing - blends between FG and BG colors
+static void graphicsSetPixelDeviceBlended(JsGraphics *gfx, int x, int y, int amt) {
+  unsigned int bg = graphicsGetPixelDevice(gfx, x, y);
+  unsigned int col = graphicsBlendColor(gfx, gfx->data.fgColor, bg, amt);
+  graphicsSetPixelDevice(gfx, x, y, col);
 }
 
 static void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
@@ -457,18 +469,20 @@ void graphicsFillEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int p
   int err = b2-(2*b-1)*a2;
   int e2;
   bool changed = false;
-
   do {
     changed = false;
-    graphicsFillRectDevice(gfx,posX+dx,posY+dy,posX-dx,posY+dy,gfx->data.fgColor);
-    graphicsFillRectDevice(gfx,posX+dx,posY-dy,posX-dx,posY-dy,gfx->data.fgColor);
     e2 = 2*err;
     if (e2 <  (2*dx+1)*b2) { dx++; err += (2*dx+1)*b2; changed=true; }
-    if (e2 > -(2*dy-1)*a2) { dy--; err -= (2*dy-1)*a2; changed=true; }
+    if (e2 > -(2*dy-1)*a2) {
+      // draw only just before we change Y, to avoid a bunch of overdraw
+      graphicsFillRectDevice(gfx,posX+dx,posY+dy,posX-dx,posY+dy,gfx->data.fgColor);
+      graphicsFillRectDevice(gfx,posX+dx,posY-dy,posX-dx,posY-dy,gfx->data.fgColor);
+      dy--; err -= (2*dy-1)*a2; changed=true;
+    }
   } while (changed && dy >= 0);
 
   while (dx++ < a) { /* erroneous termination in flat ellipses(b=1) */
-       graphicsFillRectDevice(gfx,posX+dx,posY,posX-dx,posY,gfx->data.fgColor );
+     graphicsFillRectDevice(gfx,posX+dx,posY,posX-dx,posY,gfx->data.fgColor );
   }
 }
 
@@ -509,6 +523,7 @@ void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
   }
 }
 
+#ifdef GRAPHICS_ANTIALIAS
 // In 16x accuracy
 void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2) {
   // https://en.wikipedia.org/wiki/Xiaolin_Wu%27s_line_algorithm
@@ -540,12 +555,13 @@ void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2) {
   int ypxl1 = yend >> 8;
   int c = yend & 255;
   if (steep) {
-    graphicsSetPixelDevice(gfx, ypxl1,   xpxl1, graphicsBlendColor(gfx, ((256-c)*xgap)>>8));
-    graphicsSetPixelDevice(gfx, ypxl1+1, xpxl1, graphicsBlendColor(gfx, (c*xgap)>>8));
+    graphicsSetPixelDeviceBlended(gfx, ypxl1,   xpxl1, ((256-c)*xgap)>>8);
+    graphicsSetPixelDeviceBlended(gfx, ypxl1+1, xpxl1, (c*xgap)>>8);
   } else {
-    graphicsSetPixelDevice(gfx, xpxl1, ypxl1, graphicsBlendColor(gfx, ((256-c)*xgap)>>8));
-    graphicsSetPixelDevice(gfx, xpxl1, ypxl1+1, graphicsBlendColor(gfx, (c*xgap)>>8));
+    graphicsSetPixelDeviceBlended(gfx, xpxl1, ypxl1, ((256-c)*xgap)>>8);
+    graphicsSetPixelDeviceBlended(gfx, xpxl1, ypxl1+1, (c*xgap)>>8);
   }
+
   int intery = yend + gradient; // first y-intersection for the main loop
   // handle second endpoint
   xend = (x1+256) & ~255;
@@ -555,29 +571,30 @@ void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2) {
   int ypxl2 = yend>>8;
   c = yend & 255;
   if (steep) {
-    graphicsSetPixelDevice(gfx, ypxl2  , xpxl2, graphicsBlendColor(gfx, ((256-c)*xgap)>>8));
-    graphicsSetPixelDevice(gfx, ypxl2+1, xpxl2, graphicsBlendColor(gfx, (c*xgap)>>8));
+    graphicsSetPixelDeviceBlended(gfx, ypxl2  , xpxl2, ((256-c)*xgap)>>8);
+    graphicsSetPixelDeviceBlended(gfx, ypxl2+1, xpxl2, (c*xgap)>>8);
   } else {
-    graphicsSetPixelDevice(gfx, xpxl2, ypxl2,  graphicsBlendColor(gfx, ((256-c)*xgap)>>8));
-    graphicsSetPixelDevice(gfx, xpxl2, ypxl2+1, graphicsBlendColor(gfx, (c*xgap)>>8));
+    graphicsSetPixelDeviceBlended(gfx, xpxl2, ypxl2,  ((256-c)*xgap)>>8);
+    graphicsSetPixelDeviceBlended(gfx, xpxl2, ypxl2+1, (c*xgap)>>8);
   }
   // main loop
   for (int x=xpxl1+1;x<xpxl2;x++) {
     int y = intery>>8;
     c = intery & 255;
     if (steep) {
-      graphicsSetPixelDevice(gfx, y  , x, graphicsBlendColor(gfx, 256-c));
-      graphicsSetPixelDevice(gfx, y+1, x,  graphicsBlendColor(gfx, c));
+      graphicsSetPixelDeviceBlended(gfx, y  , x, 256-c);
+      graphicsSetPixelDeviceBlended(gfx, y+1, x,  c);
     } else {
-      graphicsSetPixelDevice(gfx, x, y,  graphicsBlendColor(gfx, 256-c));
-      graphicsSetPixelDevice(gfx, x, y+1, graphicsBlendColor(gfx, c));
+      graphicsSetPixelDeviceBlended(gfx, x, y,  256-c);
+      graphicsSetPixelDeviceBlended(gfx, x, y+1, c);
     }
     intery += gradient;
   }
 }
+#endif
 
 // Fill poly - each member of vertices is 1/16th pixel
-void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
+void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices, bool antiAlias) {
   typedef struct {
     short x,y;
   } VertXY;
@@ -610,6 +627,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
 
   // for each scanline
   for (y=miny<<4;y<=maxy<<4;y+=16) {
+    int yl = y>>4;
     short cross[MAX_CROSSES];
     bool slopes[MAX_CROSSES];
     int crosscnt = 0;
@@ -648,9 +666,30 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
       if (s==0) x=cross[i];
       if (slopes[i]) s++; else s--;
       if (!s || i==crosscnt-1) {
-        int x1 = (x+15)>>4;
-        int x2 = (cross[i]+15)>>4;
-        if (x2>x1) graphicsFillRectDevice(gfx,x1,y>>4,x2-1,y>>4,gfx->data.fgColor);
+#ifdef GRAPHICS_ANTIALIAS
+        if (!antiAlias) {
+#endif
+          int x1 = (x+15)>>4;
+          int x2 = (cross[i]+15)>>4;
+          if (x2>x1) graphicsFillRectDevice(gfx,x1,yl,x2-1,yl,gfx->data.fgColor);
+#ifdef GRAPHICS_ANTIALIAS
+        } else {
+          int x1 = x;
+          int x2 = cross[i];
+          if (x2>x1) {
+            int x1i = x1>>4;
+            int x2i = x2>>4;
+            if (x2i==x1i) {
+              graphicsSetPixelDeviceBlended(gfx, x1i, yl, 16*(1+x2-x1));
+            } else if (x2i>x1i) {
+              graphicsSetPixelDeviceBlended(gfx, x1i, yl, 16*(15-(x1&15)));
+              if (x2i>x1i+1)
+                graphicsFillRectDevice(gfx,x1i+1,yl,x2i-1,yl,gfx->data.fgColor);
+              graphicsSetPixelDeviceBlended(gfx, x2i, yl, 16*(x2&15));
+            }
+          }
+        }
+#endif
       }
       if (jspIsInterrupted()) break;
     }

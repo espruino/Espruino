@@ -1473,7 +1473,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
                   (y + cy*scale),
                   (x + cx*scale + scale-1),
                   (y + cy*scale + scale-1),
-                  graphicsBlendColor(&gfx, (256*col)/customBPPRange));
+                  graphicsBlendGfxColor(&gfx, (256*col)/customBPPRange));
             bmpOffset += customBPP;
             citdata <<= customBPP;
             if (bmpOffset>=8) {
@@ -1755,7 +1755,7 @@ JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool 
   "class" : "Graphics",
   "name" : "fillPoly",
   "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_graphics_fillPoly",
+  "generate_full" : "jswrap_graphics_fillPoly_X(parent, poly, false);",
   "params" : [
     ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"]
   ],
@@ -1779,7 +1779,36 @@ This fills from the top left hand side of the polygon (low X, low Y)
 will align perfectly without overdraw - but this will not fill the
 same pixels as `drawPoly` (drawing a line around the edge of the polygon).
 */
-JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "fillPolyAA",
+  "ifdef" : "GRAPHICS_ANTIALIAS",
+  "generate_full" : "jswrap_graphics_fillPoly_X(parent, poly, true);",
+  "params" : [
+    ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Draw a filled polygon in the current foreground color.
+
+```
+g.fillPolyAA([
+  16, 0,
+  31, 31,
+  26, 31,
+  16, 12,
+  6, 28,
+  0, 27 ]);
+```
+
+This fills from the top left hand side of the polygon (low X, low Y)
+*down to but not including* the bottom right. When placed together polygons
+will align perfectly without overdraw - but this will not fill the
+same pixels as `drawPoly` (drawing a line around the edge of the polygon).
+*/
+JsVar *jswrap_graphics_fillPoly_X(JsVar *parent, JsVar *poly, bool antiAlias) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   if (!jsvIsIterable(poly)) return 0;
   const int maxVerts = 128;
@@ -1794,7 +1823,7 @@ JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
   if (jsvIteratorHasElement(&it))
     jsExceptionHere(JSET_ERROR, "Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   jsvIteratorFree(&it);
-  graphicsFillPoly(&gfx, idx/2, verts);
+  graphicsFillPoly(&gfx, idx/2, verts, antiAlias);
 
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
@@ -1956,8 +1985,8 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
   #ifdef GRAPHICS_PALETTED_IMAGES
     } else if (gfx->data.bpp>8 && info->bpp==2) { // Blend from bg to fg
       info->_simplePalette[0] = (uint16_t)gfx->data.bgColor;
-      info->_simplePalette[1] = graphicsBlendColor(gfx, 85);
-      info->_simplePalette[2] = graphicsBlendColor(gfx, 171);
+      info->_simplePalette[1] = graphicsBlendGfxColor(gfx, 85);
+      info->_simplePalette[2] = graphicsBlendGfxColor(gfx, 171);
       info->_simplePalette[3] = (uint16_t)gfx->data.fgColor;
       info->palettePtr = info->_simplePalette;
       info->paletteMask = 3;
