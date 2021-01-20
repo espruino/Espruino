@@ -2695,8 +2695,8 @@ void jswrap_banglejs_getPressure_callback() {
   JsVar *o = jsvNewObject();
   if (o) {
     i2cBusy = true;
-    unsigned char buf[6];
 #ifdef PRESSURE_DEVICE_HP203
+    unsigned char buf[6];
     // ADC_CVT - 0b010 01 000  - pressure and temperature channel, OSR = 4096
     buf[0] = 0x48; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
     // wait 100ms
@@ -2717,14 +2717,70 @@ void jswrap_banglejs_getPressure_callback() {
     jsvObjectSetChildAndUnLock(o,"altitude", jsvNewFromFloat(altitude/100.0));
 #endif
 #ifdef PRESSURE_DEVICE_SPL06_007
-    buf[0] = 0; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // PSR
+    unsigned char buf[18];
+    // status values
+    buf[0] = 0x08; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+    int status = buf[0]; // if top 4 bits are set we've got all the data
+    // constants
+    buf[0] = 0x10; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 18, buf, true);
+    int c0 = (buf[0]<<4) | (buf[1]>>4);
+    if (c0 & 0x800) c0 -= 0x1000;
+    int c1 = ((buf[1]&0x0F)<<8) | buf[2];
+    if (c1 & 0x800) c1 -= 0x1000;
+    int c00 = (buf[3]<<12) | (buf[4]<<4) || (buf[5] >> 4);
+    if (c00 & 0x80000) c00 -= 0x100000; // 20 bit! Says it's 16 bit signed in docs
+    int c10 = ((buf[5]&0x0F)<<16) | (buf[6]<<8) || buf[7];
+    if (c10 & 0x80000) c10 -= 0x100000; // 20 bit! Says it's 16 bit signed in docs
+    int c01 = (buf[8]<<8) | buf[9];
+    if (c01 & 0x8000) c01 -= 0x10000;
+    int c11 = (buf[10]<<8) | buf[11];
+    if (c11 & 0x8000) c11 -= 0x10000;
+    int c20 = (buf[12]<<8) | buf[13];
+    if (c20 & 0x8000) c20 -= 0x10000;
+    int c21 = (buf[14]<<8) | buf[15];
+    if (c21 & 0x8000) c21 -= 0x10000;
+    int c30 = (buf[16]<<8) | buf[17];
+    if (c30 & 0x8000) c30 -= 0x10000;
+
+    // raw values
+    buf[0] = 0; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
     jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
-    int pressure = (buf[0]<<16)|(buf[1]<<8)|buf[2];
-    int temperature = (buf[3]<<16)|(buf[4]<<8)|buf[5];
-    if (temperature&0x800000) temperature-=0x1000000;
-    // FIXME - need to read calibration registers/etc
-    jsvObjectSetChildAndUnLock(o,"temperature", jsvNewFromInteger(temperature));
-    jsvObjectSetChildAndUnLock(o,"pressure", jsvNewFromInteger(pressure));
+    int praw = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+    if (praw & 0x800000) praw -= 0x1000000;
+    int traw = (buf[3]<<16)|(buf[4]<<8)|buf[5];
+    if (traw & 0x800000) traw -= 0x1000000;
+    // disable sensor
+    buf[0] = 0x08; buf[1] = 0x00; // MEAS_CFG idle
+    jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 2, buf, true);
+
+    double traw_scaled = traw / 7864320.0; // temperature oversample by 8x
+    double praw_scaled = praw / 7864320.0; // pressure oversample by 8x
+    double temperature = (c0/2) + (c1*traw_scaled);
+    double pressure = (c00 + praw_scaled * (c10 + praw_scaled * (c20 + praw_scaled * c30)) +
+                       traw_scaled * c01 +
+                       traw_scaled * praw_scaled * ( c11 + praw_scaled * c21));
+    pressure = pressure / 100; // convert Pa to hPa/millibar
+    // FIXME: pressure is currently wrong
+
+    jsvObjectSetChildAndUnLock(o,"temperature", jsvNewFromFloat(temperature));
+    jsvObjectSetChildAndUnLock(o,"pressure", jsvNewFromFloat(pressure));
+    double seaLevelPressure = 1013.25; // Standard atmospheric pressure
+    double altitude = 44330 * (1.0 - jswrap_math_pow(pressure / seaLevelPressure, 0.1903));
+    jsvObjectSetChildAndUnLock(o,"altitude", jsvNewFromFloat(altitude));
+    // debugging
+    jsvObjectSetChildAndUnLock(o,"status", jsvNewFromInteger(status));
+    jsvObjectSetChildAndUnLock(o,"traw", jsvNewFromInteger(traw));
+    jsvObjectSetChildAndUnLock(o,"praw", jsvNewFromInteger(praw));
+    jsvObjectSetChildAndUnLock(o,"c0", jsvNewFromInteger(c0));
+    jsvObjectSetChildAndUnLock(o,"c1", jsvNewFromInteger(c1));
+    jsvObjectSetChildAndUnLock(o,"c00", jsvNewFromInteger(c00));
+    jsvObjectSetChildAndUnLock(o,"c10", jsvNewFromInteger(c10));
+    jsvObjectSetChildAndUnLock(o,"c01", jsvNewFromInteger(c01));
+    jsvObjectSetChildAndUnLock(o,"c11", jsvNewFromInteger(c11));
+    jsvObjectSetChildAndUnLock(o,"c20", jsvNewFromInteger(c20));
+    jsvObjectSetChildAndUnLock(o,"c30", jsvNewFromInteger(c30));
 #endif
     i2cBusy = false;
     jspromise_resolve(promisePressure, o);
@@ -2742,9 +2798,13 @@ JsVar *jswrap_banglejs_getPressure() {
   if (!promisePressure) return 0;
   unsigned char buf[6];
 #ifdef PRESSURE_DEVICE_SPL06_007
-  buf[0] = 0x08;
-  buf[1] = 1;
+  buf[0] = 0x06; buf[1] = 0x03; // pressure oversample by 8x, 1 measurement per second
   jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 2, buf, true);
+  buf[0] = 0x07; buf[1] = 0X83; // temperature oversample by 8x, 1 measurement per second, external sensor
+  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 2, buf, true);
+  buf[0] = 0x08; buf[1] = 0x07; // MEAS_CFG continuous temperature and pressure measurement
+  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 2, buf, true);
+  // should now start taking readins immediately
 #endif
   jsiSetTimeout(jswrap_banglejs_getPressure_callback, 500);
   return jsvLockAgain(promisePressure);
