@@ -1,0 +1,16 @@
+--- a/targetlibs/nrf5x_15/integration/nrfx/legacy/nrf_drv_spi.h	2020-06-10 13:15:00.000000000 +0100
++++ b/targetlibs/nrf5x_15/integration/nrfx/legacy/nrf_drv_spi.h	2020-10-29 16:04:27.930517615 +0000
+@@ -139,6 +139,13 @@
+     #define NRF_DRV_SPI_INSTANCE_2 \
+         { 2, { .spi = NRFX_SPI_INSTANCE(2) }, false }
+ #endif
++#if NRFX_CHECK(NRFX_SPIM3_ENABLED)
++    #define NRF_DRV_SPI_INSTANCE_3 \
++        { 3, { .spim = NRFX_SPIM_INSTANCE(3) }, true }
++#elif NRFX_CHECK(NRFX_SPI3_ENABLED)
++    #define NRF_DRV_SPI_INSTANCE_3 \
++        { 3, { .spi = NRFX_SPI_INSTANCE(3) }, false }
++#endif
+ 
+ /**
+  * @brief This value can be provided instead of a pin number for signals MOSI,
