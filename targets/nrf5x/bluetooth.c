@@ -2503,6 +2503,21 @@ void jsble_advertising_stop() {
      }
    }
    jsvUnLock(v);
+/*
+   // This sets the MAC address to the default address, but "public", not "random"
+   uint32_t addr0 =  NRF_FICR->DEVICEADDR[0];
+   uint32_t addr1 =  NRF_FICR->DEVICEADDR[1];
+   ble_gap_addr_t addr;
+   addr.addr_type = BLE_GAP_ADDR_TYPE_PUBLIC;
+   addr.addr[5] = ((addr1>>8 )&0xFF)|0xC0;
+   addr.addr[4] = ((addr1    )&0xFF);
+   addr.addr[3] = ((addr0>>24)&0xFF);
+   addr.addr[2] = ((addr0>>16)&0xFF);
+   addr.addr[1] = ((addr0>> 8)&0xFF);
+   addr.addr[0] = ((addr0    )&0xFF);
+   err_code = sd_ble_gap_addr_set(&addr);
+   if (err_code) jsiConsolePrintf("sd_ble_gap_addr_set failed: 0x%x\n", err_code);
+ */
 #endif
 
 #if PEER_MANAGER_ENABLED
