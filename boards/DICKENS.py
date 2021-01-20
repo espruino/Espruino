@@ -60,7 +60,7 @@ info = {
  'link' :  [ "" ],
  'espruino_page_link' : '',
  'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
-# 'bootloader' : 1,
+ 'bootloader' : 1,
  'binary_name' : 'espruino_%v_dickens.hex',
  'build' : {
    'optimizeflags' : '-Os',
@@ -120,9 +120,9 @@ chip = {
 };
 
 devices = {
-  'BTN1' : { 'pin' : 'D29', 'pinstate' : 'IN_PULLDOWN' }, # TR STATUS  Pin negated in software
-  'BTN2' : { 'pin' : 'D46', 'pinstate' : 'IN_PULLDOWN' }, # BL ATMOS  Pin negated in software
-  'BTN3' : { 'pin' : 'D42', 'pinstate' : 'IN_PULLDOWN' }, # BR Pin negated in software
+  'BTN1' : { 'pin' : 'D29', 'pinstate' : 'IN_PULLDOWN' }, # TR STATUM Pin negated in software
+  'BTN2' : { 'pin' : 'D42', 'pinstate' : 'IN_PULLDOWN' }, # BR Pin negated in software
+  'BTN3' : { 'pin' : 'D46', 'pinstate' : 'IN_PULLDOWN' }, # BL ATMOS Pin negated in software
   'BTN4' : { 'pin' : 'D28', 'pinstate' : 'IN_PULLDOWN' }, # TL Pin negated in software
 
   'VIBRATE' : { 'pin' : 'D6' }, # Pin negated in software
