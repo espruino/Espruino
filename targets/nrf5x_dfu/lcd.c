@@ -121,14 +121,55 @@ void lcd_pixel(int x, int y) {
 #endif
 }
 
+#ifdef NRF52_SERIES
+// Enable fast SPI by writing direct to registers
+#if LCD_SPI_SCK<32
+#define LCD_SPI_SCK_SET() (*(volatile uint32_t*)0x50000508)=1<<LCD_SPI_SCK
+#define LCD_SPI_SCK_CLEAR() (*(volatile uint32_t*)0x5000050C)=1<<LCD_SPI_SCK
+#else
+#define LCD_SPI_SCK_SET() (*(volatile uint32_t*)0x50000808)=1<<(LCD_SPI_SCK-32)
+#define LCD_SPI_SCK_CLEAR() (*(volatile uint32_t*)0x5000080C)=1<<(LCD_SPI_SCK-32)
+#endif
+#if LCD_SPI_MOSI<32
+#define LCD_SPI_MOSI_SET() (*(volatile uint32_t*)0x50000508)=1<<LCD_SPI_MOSI
+#define LCD_SPI_MOSI_CLEAR() (*(volatile uint32_t*)0x5000050C)=1<<LCD_SPI_MOSI
+#else
+#define LCD_SPI_MOSI_SET() (*(volatile uint32_t*)0x50000808)=1<<(LCD_SPI_MOSI-32)
+#define LCD_SPI_MOSI_CLEAR() (*(volatile uint32_t*)0x5000080C)=1<<(LCD_SPI_MOSI-32)
+#endif
+
 void lcd_wr(int data) {
-  int bit;
-  for (bit=7;bit>=0;bit--) {
+  for (int bit=7;bit>=0;bit--) {
+    LCD_SPI_SCK_CLEAR();
+    if ((data>>bit)&1) LCD_SPI_MOSI_SET();
+    else LCD_SPI_MOSI_CLEAR();
+    LCD_SPI_SCK_SET();
+  }
+}
+void lcd_wr16(bool allFF) {
+  if (allFF) LCD_SPI_MOSI_SET();
+  else LCD_SPI_MOSI_CLEAR();
+  for (int bit=0;bit<16;bit++) {
+    LCD_SPI_SCK_CLEAR();
+    LCD_SPI_SCK_SET();
+  }
+}
+#else
+void lcd_wr(int data) {
+  for (int bit=7;bit>=0;bit--) {
     jshPinSetValue(LCD_SPI_SCK, 0 );
     jshPinSetValue(LCD_SPI_MOSI, ((data>>bit)&1) );
     jshPinSetValue(LCD_SPI_SCK, 1 );
   }
 }
+void lcd_wr16(bool allFF) {
+  jshPinSetValue(LCD_SPI_MOSI, allFF);
+  for (int bit=0;bit<16;bit++) {
+    jshPinSetValue(LCD_SPI_SCK, 0 );
+    jshPinSetValue(LCD_SPI_SCK, 1 );
+  }
+}
+#endif
 #endif
 #if defined(LCD_CONTROLLER_ST7789_8BIT)
 
@@ -418,7 +459,7 @@ void lcd_flip() {
     jshPinSetValue(LCD_PIN_DC, 1); // data
     for (int y=ymin;y<=ymax;y++) {
       for (int x=0;x<LCD_DATA_WIDTH;x++) { // send 2 pixels at once
-        int c = (lcd_data[(x>>3)+((y>>1)*LCD_ROWSTRIDE)]&1<<(x&7)) ? 0xFF:0;
+        bool c = (lcd_data[(x>>3)+((y>>1)*LCD_ROWSTRIDE)]&1<<(x&7)) ? 0xFF:0;
         lcd_wr(c);
         lcd_wr(c);
         lcd_wr(c);
@@ -645,8 +686,7 @@ void lcd_flip() {
 #ifdef LCD_CONTROLLER_GC9A01
       for (int x=0;x<LCD_WIDTH;x++) {
         bool a = lcd_data[(x>>3)+(y*LCD_ROWSTRIDE)]&1<<(x&7);
-        lcd_wr(a?0xFF:0);
-        lcd_wr(a?0xFF:0);
+        lcd_wr16(a);
       }
 #endif
     }
