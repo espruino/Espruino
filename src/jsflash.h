@@ -34,7 +34,7 @@ typedef struct {
 typedef enum {
   JSFF_NONE,
   JSFF_STORAGEFILE = 64,  // This file is a 'storage file' created by Storage.open
-  JSFF_COMPRESSED = 128   // This file contains compressed data
+  JSFF_COMPRESSED = 128   // This file contains compressed data (used only for .varimg currently)
 } JsfFileFlags; // these are stored in the top 8 bits of JsfFileHeader.size
 
 
@@ -43,7 +43,10 @@ typedef enum {
 JsfFileName jsfNameFromString(const char *name);
 /// utility function for creating JsfFileName
 JsfFileName jsfNameFromVar(JsVar *name);
+/// utility function for creating JsfFileName
 JsfFileName jsfNameFromVarAndUnLock(JsVar *name);
+// create a JsVar from a JsfFileName
+JsVar *jsfVarFromName(JsfFileName name);
 /// Return the size in bytes of a file based on the header
 uint32_t jsfGetFileSize(JsfFileHeader *header);
 /// Return the flags for this file based on the header
@@ -60,8 +63,11 @@ bool jsfEraseFile(JsfFileName name);
 bool jsfEraseAll();
 /// Try and compact saved data so it'll fit in Flash again
 bool jsfCompact();
-/// Return all files in flash as a JsVar array of names. If regex is supplied, it is used to filter the filenames using String.match(regexp)
-JsVar *jsfListFiles(JsVar *regex);
+/** Return all files in flash as a JsVar array of names. If regex is supplied, it is used to filter the filenames using String.match(regexp)
+ * If containing!=0, file flags must contain one of the 'containing' argument's bits.
+ * Flags can't contain any bits in the 'notContaining' argument
+ */
+JsVar *jsfListFiles(JsVar *regex, JsfFileFlags containing, JsfFileFlags notContaining);
 /// Output debug info for files stored in flash storage
 void jsfDebugFiles();
 /** Return false if the current storage is not valid

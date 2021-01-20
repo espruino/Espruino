@@ -32,6 +32,7 @@ typedef enum {
   JSGRAPHICSTYPE_SDL,         ///< SDL graphics library for linux
   JSGRAPHICSTYPE_SPILCD,      ///< SPI LCD library
   JSGRAPHICSTYPE_ST7789_8BIT, ///< ST7789 in 8 bit mode
+  JSGRAPHICSTYPE_MEMLCD,      ///< Memory LCD
   JSGRAPHICSTYPE_LCD_SPI_UNBUF ///< LCD SPI unbuffered 16 bit driver
 } JsGraphicsType;
 
@@ -111,10 +112,10 @@ typedef struct JsGraphics {
   JsGraphicsData data;
   void *backendData; ///< Data used by the graphics backend
 
-  void (*setPixel)(struct JsGraphics *gfx, int x, int y, unsigned int col);
-  void (*fillRect)(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
-  unsigned int (*getPixel)(struct JsGraphics *gfx, int x, int y);
-  void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); // scroll - leave unscrolled area undefined
+  void (*setPixel)(struct JsGraphics *gfx, int x, int y, unsigned int col); ///< x/y guaranteed to be in range
+  void (*fillRect)(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); ///< x/y guaranteed to be in range
+  unsigned int (*getPixel)(struct JsGraphics *gfx, int x, int y); ///< x/y guaranteed to be in range
+  void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); ///< scroll - leave unscrolled area undefined (xdir/ydir guaranteed to be in range)
 } PACKED_FLAGS JsGraphics;
 typedef void (*JsGraphicsSetPixelFn)(struct JsGraphics *gfx, int x, int y, unsigned int col);
 
@@ -144,7 +145,9 @@ JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx);
 /// Get a setPixel function and set modified area (assuming no clipping) (inclusive of x2,y2) - if all is ok it can choose a faster draw function
 JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 /// Merge one color into another based on current bit depth (amt is 0..256)
-uint32_t graphicsBlendColor(JsGraphics *gfx, int amt);
+uint32_t graphicsBlendColor(JsGraphics *gfx, unsigned int fg, unsigned int bg, int iamt);
+/// Merge one color into another based on current bit depth (amt is 0..256)
+uint32_t graphicsBlendGfxColor(JsGraphics *gfx, int iamt);
 
 // drawing functions - all coordinates are in USER coordinates, not DEVICE coordinates
 void         graphicsSetPixel(JsGraphics *gfx, int x, int y, unsigned int col);
@@ -157,7 +160,7 @@ void graphicsDrawEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
 void graphicsFillEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
 void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2); ///< antialiased drawline. each pixel is 1/16th
-void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); ///< each pixel is 1/16th a pixel may overwrite vertices...
+void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices, bool antiAlias); ///< each pixel is 1/16th a pixel may overwrite vertices...
 #ifndef NO_VECTOR_FONT
 unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, char ch); ///< prints character, returns width
 unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int size, char ch); ///< returns the width of a character

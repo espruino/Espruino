@@ -16,6 +16,9 @@
 #ifdef BLUETOOTH
 
 #include "jswrap_bluetooth.h"
+#ifdef USE_TERMINAL
+#include "jswrap_terminal.h"
+#endif
 #include "jsinteractive.h"
 #include "jsdevices.h"
 #include "jshardware.h"
@@ -174,7 +177,7 @@ volatile uint16_t                       m_central_conn_handle = BLE_CONN_HANDLE_
 volatile bool nfcEnabled = false;
 #endif
 
-uint16_t bleAdvertisingInterval = DEFAULT_ADVERTISING_INTERVAL;
+uint16_t bleAdvertisingInterval = MSEC_TO_UNITS(BLUETOOTH_ADVERTISING_INTERVAL, UNIT_0_625_MS);           /**< The advertising interval (in units of 0.625 ms). */
 
 volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
@@ -797,11 +800,23 @@ void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t
 #ifdef LED3_PININDEX
   jshPinOutput(LED3_PININDEX, LED3_ONSTATE);
 #endif
-  jsiConsolePrintf("NRF ERROR 0x%x at %s:%d\n", error_code, p_file_name?(const char *)p_file_name:"?", line_num);
-  jsiConsolePrint("REBOOTING.\n");
+  jsiConsolePrintf("NRF ERROR 0x%x\n at %s:%d\nREBOOTING.\n", error_code, p_file_name?(const char *)p_file_name:"?", line_num);
+
+#ifdef USE_TERMINAL
+  // If we have a terminal, try and write to that!
+  jsiStatus  |= JSIS_ECHO_OFF;
+  jsiSetConsoleDevice(EV_TERMINAL, 1);
+  jsiConsolePrintf("NRF ERROR 0x%x\n at %s:%d\nREBOOTING.\n", error_code, p_file_name?(const char *)p_file_name:"?", line_num);
+  jswrap_terminal_idle();
+#endif
+
   /* don't flush - just delay. If this happened in an IRQ, waiting to flush
    * will result in the device locking up. */
+#ifdef USE_TERMINAL
+  nrf_delay_ms(10000);
+#else
   nrf_delay_ms(1000);
+#endif
   NVIC_SystemReset();
 }
 
@@ -1167,7 +1182,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           jsble_queue_pending(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
-          jsble_restart_softdevice();
+          jsble_restart_softdevice(NULL);
 
         break;
 
@@ -2091,17 +2106,28 @@ static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     p_input_report->rep_ref.report_id   = HID_INPUT_REP_REF_ID;
     p_input_report->rep_ref.report_type = BLE_HIDS_REP_TYPE_INPUT;
 
+#if NRF_SD_BLE_API_VERSION>=7
+    p_input_report->sec.cccd_wr = SEC_JUST_WORKS;
+    p_input_report->sec.wr      = SEC_JUST_WORKS;
+    p_input_report->sec.rd      = SEC_JUST_WORKS;
+#else
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.cccd_write_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_input_report->security_mode.write_perm);
+#endif
 
     p_output_report                      = &output_report_array[HID_OUTPUT_REPORT_INDEX];
     p_output_report->max_len             = HID_OUTPUT_REPORT_MAX_LEN;
     p_output_report->rep_ref.report_id   = HID_OUTPUT_REP_REF_ID;
     p_output_report->rep_ref.report_type = BLE_HIDS_REP_TYPE_OUTPUT;
 
+#if NRF_SD_BLE_API_VERSION>=7
+    p_output_report->sec.wr      = SEC_JUST_WORKS;
+    p_output_report->sec.rd      = SEC_JUST_WORKS;
+#else
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_output_report->security_mode.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&p_output_report->security_mode.write_perm);
+#endif
 
     hid_info_flags = HID_INFO_FLAG_REMOTE_WAKE_MSK | HID_INFO_FLAG_NORMALLY_CONNECTABLE_MSK;
 
@@ -2125,6 +2151,20 @@ static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     hids_init_obj.included_services_count        = 0;
     hids_init_obj.p_included_services_array      = NULL;
 
+#if NRF_SD_BLE_API_VERSION>=7
+    hids_init_obj.rep_map.rd_sec         = SEC_JUST_WORKS;
+    hids_init_obj.hid_information.rd_sec = SEC_JUST_WORKS;
+
+    hids_init_obj.boot_kb_inp_rep_sec.cccd_wr = SEC_JUST_WORKS;
+    hids_init_obj.boot_kb_inp_rep_sec.rd      = SEC_JUST_WORKS;
+
+    hids_init_obj.boot_kb_outp_rep_sec.rd = SEC_JUST_WORKS;
+    hids_init_obj.boot_kb_outp_rep_sec.wr = SEC_JUST_WORKS;
+
+    hids_init_obj.protocol_mode_rd_sec = SEC_JUST_WORKS;
+    hids_init_obj.protocol_mode_wr_sec = SEC_JUST_WORKS;
+    hids_init_obj.ctrl_point_wr_sec    = SEC_JUST_WORKS;
+#else
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.rep_map.security_mode.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&hids_init_obj.rep_map.security_mode.write_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.hid_information.security_mode.read_perm);
@@ -2141,6 +2181,7 @@ static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.security_mode_protocol.write_perm);
     BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&hids_init_obj.security_mode_ctrl_point.read_perm);
     BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&hids_init_obj.security_mode_ctrl_point.write_perm);
+#endif
 
     err_code = ble_hids_init(&m_hids, &hids_init_obj);
     APP_ERROR_CHECK(err_code);
@@ -2209,17 +2250,20 @@ static void ble_stack_init() {
 
     uint32_t err_code;
 
-    // TODO: enable if we're on a device with 32kHz xtal
-    /*nrf_clock_lf_cfg_t clock_lf_cfg = {
+    nrf_clock_lf_cfg_t clock_lf_cfg = {
+#ifdef ESPR_LSE_ENABLE
+    // enable if we're on a device with 32kHz xtal
         .source        = NRF_CLOCK_LF_SRC_XTAL,
         .rc_ctiv       = 0,
         .rc_temp_ctiv  = 0,
-        .xtal_accuracy = NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM};*/
-    nrf_clock_lf_cfg_t clock_lf_cfg = {
-            .source        = NRF_CLOCK_LF_SRC_RC,
-            .rc_ctiv       = 16, // recommended for nRF52
-            .rc_temp_ctiv  = 2,  // recommended for nRF52
-            .xtal_accuracy = 0};
+#else
+        .xtal_accuracy = NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM,
+        .source        = NRF_CLOCK_LF_SRC_RC,
+        .rc_ctiv       = 16, // recommended for nRF52
+        .rc_temp_ctiv  = 2,  // recommended for nRF52
+        .xtal_accuracy = 0
+#endif
+    };
 
     // Initialize SoftDevice.
     SOFTDEVICE_HANDLER_INIT(&clock_lf_cfg, false);
@@ -2276,7 +2320,7 @@ static void ble_stack_init() {
     NRF_SDH_SOC_OBSERVER(m_soc_observer, APP_SOC_OBSERVER_PRIO, soc_evt_handler, NULL);
 #endif
 
-#if defined(PUCKJS) || defined(RUUVITAG)
+#if defined(PUCKJS) || defined(RUUVITAG) || defined(ESPR_DCDC_ENABLE)
     // can only be enabled if we're sure we have a DC-DC
     err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
     APP_ERROR_CHECK(err_code);
@@ -2495,7 +2539,7 @@ void jsble_kill() {
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */
-void jsble_restart_softdevice() {
+void jsble_restart_softdevice(JsVar *jsFunction) {
   assert(!jsble_has_connection());
   bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
 
@@ -2508,6 +2552,8 @@ void jsble_restart_softdevice() {
   jshUtilTimerDisable(); // don't want the util timer firing during this!
   JsSysTime lastTime = jshGetSystemTime();
   jsble_kill();
+  if (jsvIsFunction(jsFunction))
+    jspExecuteFunction(jsFunction,NULL,0,NULL);
   jsble_init();
   // reinitialise everything
   jswrap_ble_reconfigure_softdevice();

@@ -1905,6 +1905,17 @@ void jsiIdle() {
     } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
       maxEvents -= jsble_exec_pending(&event);
 #endif
+#ifdef TOUCH_DEVICE
+    } else if ((eventType == EV_TOUCH)) {
+      JsVar *obj = jsvNewObject();
+      if (obj) {
+        jsvObjectSetChildAndUnLock(obj, "x", jsvNewFromInteger((unsigned char)event.data.chars[0]));
+        jsvObjectSetChildAndUnLock(obj, "y", jsvNewFromInteger((unsigned char)event.data.chars[1]));
+        jsvObjectSetChildAndUnLock(obj, "b", jsvNewFromInteger((unsigned char)event.data.chars[2]));
+        jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"touch", 1, &obj);
+        jsvUnLock(obj);
+      }
+#endif
 #ifdef I2C_SLAVE
     } else if (DEVICE_IS_I2C(eventType)) {
       // ------------------------------------------------------------------------ I2C CALLBACK
@@ -2237,8 +2248,10 @@ void jsiIdle() {
         jsiSemiInit(false); // don't autoload code
         // load the code we specified
         JsVar *code = jsfReadFile(filename,0,0);
-        if (code)
+        if (code) {
+          jsvObjectSetChildAndUnLock(execInfo.root, "__FILE__", jsfVarFromName(filename));
           jsvUnLock2(jspEvaluateVar(code,0,0), code);
+        }
       } else {
         jsiSoftKill();
         jspSoftKill();

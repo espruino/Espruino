@@ -171,7 +171,7 @@ void jswrap_ble_init() {
 #endif
   }
   // Set advertising interval back to default
-  bleAdvertisingInterval = DEFAULT_ADVERTISING_INTERVAL;
+  bleAdvertisingInterval = MSEC_TO_UNITS(BLUETOOTH_ADVERTISING_INTERVAL, UNIT_0_625_MS);           /**< The advertising interval (in units of 0.625 ms). */
   // Now set up whatever advertising we were doing before
   jswrap_ble_reconfigure_softdevice();
 }
@@ -506,7 +506,10 @@ void jswrap_ble_wake() {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "restart",
-    "generate" : "jswrap_ble_restart"
+    "generate" : "jswrap_ble_restart",
+    "params" : [
+      ["callback","JsVar","An optional function to be called while the softdevice is uninitialised. Use with caution - accessing console/bluetooth will almost certainly result in a crash."]
+    ]
 }
 Restart the Bluetooth softdevice (if there is currently a BLE connection,
 it will queue a restart to be done when the connection closes).
@@ -516,14 +519,14 @@ BLE softdevice has some settings that cannot be reset. For example there
 are only a certain number of unique UUIDs. Once these are all used the
 only option is to restart the softdevice to clear them all out.
 */
-void jswrap_ble_restart() {
+void jswrap_ble_restart(JsVar *callback) {
   if (jsble_has_connection()) {
     jsiConsolePrintf("BLE Connected, queueing BLE restart for later\n");
     bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
     return;
   } else {
     // Not connected, so we can restart now
-    jsble_restart_softdevice();
+    jsble_restart_softdevice(jsvIsFunction(callback)?callback:NULL);
     return;
   }
 }
@@ -592,7 +595,7 @@ void jswrap_ble_setAddress(JsVar *address) {
     return;
   }
   jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS, address);
-  jswrap_ble_restart();
+  jswrap_ble_restart(NULL);
 #else
   jsExceptionHere(JSET_ERROR, "Not implemented");
 #endif
@@ -1222,7 +1225,7 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
 
   // work out whether to apply changes
   if (bleStatus & (BLE_SERVICES_WERE_SET|BLE_NEEDS_SOFTDEVICE_RESTART)) {
-    jswrap_ble_restart();
+    jswrap_ble_restart(NULL);
   } else {
     /* otherwise, we can set the services now, since we're only adding
      * and not changing anything we don't need a restart. */
@@ -2001,7 +2004,7 @@ void jswrap_ble_setLowPowerConnection(bool lowPower) {
     flags &= ~BLE_FLAGS_LOW_POWER;
   if (flags != oldflags) {
     jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_FLAGS, jsvNewFromInteger(flags));
-    jswrap_ble_restart();
+    jswrap_ble_restart(NULL);
   }
 }
 
@@ -2811,7 +2814,7 @@ void jswrap_ble_setSecurity(JsVar *options) {
     jsble_update_security();
     // If we need UART to be encrypted, we need to trigger a restart
     if (bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART)
-      jswrap_ble_restart();
+      jswrap_ble_restart(NULL);
   }
 }
 

@@ -65,7 +65,7 @@ void jswrap_ble_reconfigure_softdevice();
 void jswrap_ble_disconnect();
 void jswrap_ble_sleep();
 void jswrap_ble_wake();
-void jswrap_ble_restart();
+void jswrap_ble_restart(JsVar *callback);
 JsVar *jswrap_ble_getAddress();
 void jswrap_ble_setAddress(JsVar *address);
 

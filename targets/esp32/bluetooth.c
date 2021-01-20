@@ -22,6 +22,7 @@
 #include "jswrap_bluetooth.h"
 #include "bluetooth.h"
 #include "jsutils.h"
+#include "jsparse.h"
 
 #include "BLE/esp32_gap_func.h"
 #include "BLE/esp32_gatts_func.h"
@@ -82,11 +83,13 @@ int jsble_exec_pending(IOEvent *event){
 	return 0;
 }
 
-void jsble_restart_softdevice(){
+void jsble_restart_softdevice(JsVar *jsFunction){
 	bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
 	if (bleStatus & BLE_IS_SCANNING) {
 		bluetooth_gap_setScan(false);
 	}
+	if (jsvIsFunction(jsFunction))
+	  jspExecuteFunction(jsFunction,NULL,0,NULL);
 	jswrap_ble_reconfigure_softdevice();
 }
 

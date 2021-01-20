@@ -578,7 +578,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   return JSH_NOTHING;
 }
 
-// Override built-in jshPinPulse as we have no util timer
 void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
   if (jshIsPinValid(pin)) {
     jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
@@ -962,5 +961,7 @@ unsigned int jshSetSystemClock(JsVar *options) {
 
 /// Perform a proper hard-reboot of the device
 void jshReboot() {
-  jsExceptionHere(JSET_ERROR, "Not implemented");
+  jsiConsolePrintf("Not implemented\n");
+  exit(1);
+
 }

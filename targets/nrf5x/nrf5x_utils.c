@@ -40,8 +40,11 @@ unsigned int nrf_utils_get_baud_enum(int baud) {
 void nrf_utils_lfclk_config_and_start()
 {
   // Select the preferred clock source.
-  // NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos;
+#ifdef ESPR_LSE_ENABLE
+  NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos;
+#else
   NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos;
+#endif
 
   // Start the 32 kHz clock, and wait for the start up to complete
   NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;
@@ -173,3 +176,28 @@ unsigned int nrf_utils_cap_sense(int capSenseTxPin, int capSenseRxPin) {
   return sum;
 #endif
 }
+
+/// Ensure UICR flags are set correctly for the current device
+void nrf_configure_uicr_flags(void) {
+#if defined (NRF52840_XXAA)
+  // Ensure that GPIO output voltage is 3.3v (not 1.8v) if powered via regulator
+  // Configure UICR_REGOUT0 register only if it is set to default value.
+  if ((NRF_UICR->REGOUT0 & UICR_REGOUT0_VOUT_Msk) ==
+      (UICR_REGOUT0_VOUT_DEFAULT << UICR_REGOUT0_VOUT_Pos))
+  {
+      NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Wen;
+      while (NRF_NVMC->READY == NVMC_READY_READY_Busy){}
+
+      NRF_UICR->REGOUT0 = (NRF_UICR->REGOUT0 & ~((uint32_t)UICR_REGOUT0_VOUT_Msk)) |
+                          (UICR_REGOUT0_VOUT_3V3 << UICR_REGOUT0_VOUT_Pos);
+
+      NRF_NVMC->CONFIG = NVMC_CONFIG_WEN_Ren;
+      while (NRF_NVMC->READY == NVMC_READY_READY_Busy){}
+
+      // System reset is needed to update UICR registers.
+      NVIC_SystemReset();
+  }
+#endif
+}
+
+

@@ -68,6 +68,13 @@ JsfFileName jsfNameFromVarAndUnLock(JsVar *name) {
   return n;
 }
 
+JsVar *jsfVarFromName(JsfFileName name) {
+  char nameBuf[sizeof(JsfFileName)+1];
+  nameBuf[sizeof(JsfFileName)] = 0;
+  memcpy(nameBuf, &name, sizeof(JsfFileName));
+  return jsvNewFromString(nameBuf);
+}
+
 /// Return the size in bytes of a file based on the header
 uint32_t jsfGetFileSize(JsfFileHeader *header) {
   return (uint32_t)(header->size & 0x00FFFFFF);
@@ -329,6 +336,8 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
   if (jsfGetFileHeader(addr, &header, true)) do {
     if (header.name.firstChars != 0) { // if not replaced
       jsDebug(DBG_INFO,"compact> copying file at 0x%08x\n", addr);
+      // Rewrite file position in any JsVars that used this file
+      jsvUpdateMemoryAddress(addr, sizeof(JsfFileHeader) + jsfGetFileSize(&header), writeAddress);
       // Copy the file into the circular buffer, one bit at a time.
       // Write the header
       memcpy_circular(swapBuffer, &swapBufferHead, swapBufferSize, (char*)&header, sizeof(JsfFileHeader));
@@ -411,7 +420,7 @@ bool jsfCompact() {
 #else
   /* If low on flash assume we only have a tiny bit of flash. Chances
    * are there'll only be one file so just erasing flash will do it. */
-  bool allocated = jsvGetBoolAndUnLock(jsfListFiles(NULL));
+  bool allocated = jsvGetBoolAndUnLock(jsfListFiles(NULL,0,0));
   if (!allocated) {
     jsfEraseAll();
     return true;
@@ -658,20 +667,33 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
   return true;
 }
 
-/// Return all files in flash as a JsVar array of names. If regex is supplied, it is used to filter the filenames using String.match(regexp)
-JsVar *jsfListFiles(JsVar *regex) {
+/** Return all files in flash as a JsVar array of names. If regex is supplied, it is used to filter the filenames using String.match(regexp)
+ * If containing!=0, file flags must contain one of the 'containing' argument's bits.
+ * Flags can't contain any bits in the 'notContaining' argument
+ */
+JsVar *jsfListFiles(JsVar *regex, JsfFileFlags containing, JsfFileFlags notContaining) {
   JsVar *files = jsvNewEmptyArray();
   if (!files) return 0;
 
-  char nameBuf[sizeof(JsfFileName)+1];
   uint32_t addr = JSF_START_ADDRESS;
   JsfFileHeader header;
   memset(&header,0,sizeof(JsfFileHeader));
   if (jsfGetFileHeader(addr, &header, true)) do {
     if (header.name.firstChars != 0) { // if not replaced
-      memcpy(nameBuf, &header.name, sizeof(JsfFileName));
-      nameBuf[sizeof(JsfFileName)]=0;
-      JsVar *v = jsvNewFromString(nameBuf);
+      JsfFileFlags flags = jsfGetFileFlags(&header);
+      if (notContaining&flags) continue;
+      if (containing && !(containing&flags)) continue;
+      if (flags&JSFF_STORAGEFILE) {
+        // find last char
+        int i = 0;
+        while (i+1<sizeof(header.name) && header.name.c[i+1]) i++;
+        // if last ch isn't \1 (eg first StorageFile) ignore this
+        if (header.name.c[i]!=1) continue;
+        // if we're specifically asking for StorageFile, remove last char
+        if (containing&JSFF_STORAGEFILE)
+          header.name.c[i]=0;
+      }
+      JsVar *v = jsfVarFromName(header.name);
       bool match = true;
       if (regex) {
         JsVar *m = jswrap_string_match(v,regex);

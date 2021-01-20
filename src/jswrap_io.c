@@ -16,6 +16,7 @@
 #include "jswrap_io.h"
 #include "jsvar.h"
 #include "jswrap_arraybuffer.h" // for jswrap_io_peek
+#include "jswrapper.h" // for JSWAT_VOID
 
 #ifdef ESP32
 #include "freertos/FreeRTOS.h"
@@ -217,9 +218,6 @@ eg. `digitalPulse(A0,1,5);` pulses A0 high for 5ms. `digitalPulse(A0,1,[5,2,4]);
 digitalPulse is for SHORT pulses that need to be very accurate. If you're doing anything over a few milliseconds, use setTimeout instead.
  */
 void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
-  // TODO: We should use jstPinOutputAtTime directly and delete jshPinPulse
-  // - it's inefficient and also causes issues as the RTC changes while we're
-  // trying to add items to the timer list
   if (jsvIsNumeric(times)) {
     JsVarFloat time = jsvGetFloat(times);
     if (time<0 || isnan(time)) {
@@ -815,4 +813,22 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
     }
     jsvUnLock(idVar);
   }
+}
+
+/// function for internal use
+int jswrap_interface_setWatch_int(void(*callback)(), Pin pin, bool repeat, int edge) {
+  JsVar *fn = jsvNewNativeFunction(callback, JSWAT_VOID);
+  JsVar *options = jsvNewObject();
+  jsvObjectSetChildAndUnLock(options, "repeat", jsvNewFromBool(repeat));
+  jsvObjectSetChildAndUnLock(options, "edge", jsvNewFromInteger(edge));
+  int id = jsvGetIntegerAndUnLock(jswrap_interface_setWatch(fn, pin, options));
+  jsvUnLock2(fn, options);
+  return id;
+}
+/// function for internal use
+void jswrap_interface_clearWatch_int(int watchNumber) {
+  JsVar *id = jsvNewFromInteger(watchNumber);
+  JsVar *idArray = jsvNewArray(&id, 1);
+  jswrap_interface_clearWatch(idArray);
+  jsvUnLock2(id, idArray);
 }

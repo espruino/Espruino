@@ -412,13 +412,17 @@ void jshSetOutputValue(JshPinFunction func, int value) {
  */
 void jshEnableWatchDog(JsVarFloat timeout) {
   UNUSED(timeout);
+#ifdef DEBUG
   jsError(">> jshEnableWatchDog Not implemented,using taskwatchdog from RTOS");
+#endif
 }
 
 
 // Kick the watchdog
 void jshKickWatchDog() {
+#ifdef DEBUG
   jsError(">> jshKickWatchDog Not implemented,using taskwatchdog from RTOS");
+#endif
 }
 
 
@@ -430,6 +434,43 @@ bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // ca
   bool level = gpio_get_level(gpioNum);
   return level;
 }
+
+
+/**
+ * Set the value of the pin to be the value supplied and then wait for
+ * a given period and set the pin value again to be the opposite.
+ */
+void jshPinPulse(
+    Pin pin,              //!< The pin to be pulsed.
+    bool pulsePolarity,   //!< The value to be pulsed into the pin.
+    JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
+) {
+  // ESP32 specific version, replaced by Espruino Style version from nrf52
+  //int duration = (int)pulseTime * 1000; //from millisecs to microsecs
+  //sendPulse(pin, pulsePolarity, duration);
+
+  // ---- USE TIMER FOR PULSE
+  if (!jshIsPinValid(pin)) {
+       jsExceptionHere(JSET_ERROR, "Invalid pin!");
+       return;
+  }
+  if (pulseTime<=0) {
+    // just wait for everything to complete
+    jstUtilTimerWaitEmpty();
+    return;
+  } else {
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jstGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.time = jshGetSystemTime();
+    }
+    // Now set the end of the pulse to happen on a timer
+    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+  }
+}
+
 
 /**
  * Determine whether the pin can be watchable.

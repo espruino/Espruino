@@ -47,6 +47,9 @@ endif
 ifdef NRF5X_SDK_15
 LDFLAGS += -L$(NRF5X_SDK_PATH)/modules/nrfx/mdk
 endif
+ifdef NRF5X_SDK_17
+LDFLAGS += -L$(NRF5X_SDK_PATH)/modules/nrfx/mdk
+endif
 
 # These files are the Espruino HAL implementation.
 INCLUDE += -I$(ROOT)/targets/nrf5x
@@ -138,10 +141,27 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/integration/nrfx/legacy
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/delay
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_link_ctx_manager
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/atomic_flags
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/experimental_memobj/nrf_memobj.c
+endif
+ifdef NRF5X_SDK_17
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/mdk
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/hal
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/legacy
+INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx/drivers/include
+INCLUDE += -I$(NRF5X_SDK_PATH)/integration/nrfx
+INCLUDE += -I$(NRF5X_SDK_PATH)/integration/nrfx/legacy
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/delay
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_link_ctx_manager
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/atomic_flags
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log/src
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/mutex
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/memobj
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/memobj/nrf_memobj.c
 endif
 
-
-ifdef NRF5X_SDK_15
+ifneq ($(or $(NRF5X_SDK_15),$(NRF5X_SDK_17)),)
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_gpiote.c \
 $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_spi.c \
@@ -171,6 +191,10 @@ $(NRF5X_SDK_PATH)/components/drivers_nrf/ppi/nrf_drv_ppi.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c
 endif
 
+ifndef NRF5X_SDK_17
+TARGETSOURCES += \
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_mutex.c 
+endif
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
@@ -182,7 +206,6 @@ $(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_id.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_database.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/peer_data_storage.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_buffer.c \
-$(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_mutex.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/id_manager.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/security_manager.c \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/security_dispatcher.c \
@@ -218,13 +241,8 @@ $(NRF5X_SDK_PATH)/components/libraries/fstorage/nrf_fstorage_sd.c \
 $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c \
 $(NRF5X_SDK_PATH)/components/libraries/atomic_fifo/nrf_atfifo.c \
 $(NRF5X_SDK_PATH)/components/libraries/strerror/nrf_strerror.c \
-$(NRF5X_SDK_PATH)/components/libraries/experimental_memobj/nrf_memobj.c \
 $(NRF5X_SDK_PATH)/components/libraries/balloc/nrf_balloc.c
 endif
-
-
-
-# $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
 
 ifdef USE_BOOTLOADER
 ifdef BOOTLOADER
@@ -409,17 +427,29 @@ else # NRF5X_SDK_12
   $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_info.c \
   $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_wdt.c 
 endif
+endif # BOOTLOADER
+ifndef BOOTLOADER_SETTINGS_FAMILY
+BOOTLOADER_SETTINGS_FAMILY = NRF52
 endif
-endif
+endif # USE_BOOTLOADER
 
 # ==============================================================
 include make/common/ARM.make
 
 $(PROJ_NAME).app_hex: $(PROJ_NAME).elf
 	python scripts/check_elf_size.py $(BOARD) $(PROJ_NAME).elf
-	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
+	@echo $(call obj_to_bin,ihex,hex)
 	@$(call obj_to_bin,ihex,hex)
+ifdef INCLUDE_BLANK_STORAGE
+	@echo Including blank storage contents in hex file
+	# could use 'board.chip["saved_code"]["pages"] * board.chip["saved_code"]["page_size"]' but we only need first page
+  # if we include all pages bootloader can complain because it thinks we're overwriting everything
+	tr "\000" "\377" < /dev/zero | dd bs=1 count=$(shell python scripts/get_board_info.py $(BOARD) 'board.chip["saved_code"]["page_size"]') of=blank_storage.bin
+	objcopy -I binary -O ihex --change-address $(shell python scripts/get_board_info.py $(BOARD) 'board.chip["saved_code"]["address"]') blank_storage.bin blank_storage.hex
+	python scripts/hexmerge.py --overlap=replace  $(PROJ_NAME).hex blank_storage.hex -o $(PROJ_NAME).app_hex
+else
 	@mv $(PROJ_NAME).hex $(PROJ_NAME).app_hex
+endif
 
 $(PROJ_NAME).hex: $(PROJ_NAME).app_hex
  ifdef USE_BOOTLOADER
@@ -430,8 +460,8 @@ $(PROJ_NAME).hex: $(PROJ_NAME).app_hex
 	#python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(PROJ_NAME).app_hex -o $(PROJ_NAME).hex
   else
 	@echo Merging SoftDevice and Bootloader
-	@# build a DFU settings file we can merge in...
-	nrfutil settings generate --family NRF52 --application $(PROJ_NAME).app_hex --app-boot-validation VALIDATE_GENERATED_CRC --application-version 0xff --bootloader-version 0xff --bl-settings-version 2 dfu_settings.hex
+	@# build a DFU settings file we can merge in... family can be NRF52840 or NRF52
+	nrfutil settings generate --family $(BOOTLOADER_SETTINGS_FAMILY) --application $(PROJ_NAME).app_hex --app-boot-validation VALIDATE_GENERATED_CRC --application-version 0xff --bootloader-version 0xff --bl-settings-version 2 dfu_settings.hex
 	@echo FIXME - had to set --overlap=replace
 	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).app_hex dfu_settings.hex -o $(PROJ_NAME).hex
   endif

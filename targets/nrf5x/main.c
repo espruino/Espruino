@@ -15,8 +15,13 @@
 #include "platform_config.h"
 #include "jsinteractive.h"
 #include "jshardware.h"
+#include "nrf5x_utils.h"
 
 int main() {
+
+  // Ensure UICR flags are set correctly for the current device
+  // Will cause a reboot if flags needed to be reset
+  nrf_configure_uicr_flags();
 
   jshInit();
 

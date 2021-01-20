@@ -89,7 +89,10 @@ void terminalScroll() {
   terminalY--;
   JsGraphics gfx;
   if (terminalGetGFX(&gfx)) {
-    graphicsScroll(&gfx, 0, -TERMINAL_CHAR_H);
+    unsigned int cb = gfx.data.bgColor;
+    gfx.data.bgColor = 0;
+    graphicsScroll(&gfx, 0, -TERMINAL_CHAR_H); // always fill background in black
+    gfx.data.bgColor = cb;
     terminalSetGFX(&gfx); // save
     // if we're not in an IRQ, flip this now
     if (!jshIsInInterrupt())
@@ -118,7 +121,12 @@ void terminalSendChar(char chn) {
         short cx = (short)(TERMINAL_OFFSET_X + terminalX*TERMINAL_CHAR_W);
         short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H + gfx.data.height - LCD_HEIGHT);
         // draw char
+        unsigned int cf = gfx.data.fgColor, cb = gfx.data.bgColor;
+        cf = -1; // always white on black
+        cb = 0;
         TERMINAL_CHAR_CMD(&gfx, cx, cy, chn, 1, true/*solid background - so no need to clear*/);
+        gfx.data.fgColor = cf;
+        gfx.data.bgColor = cb;
         terminalSetGFX(&gfx);
       }
       if (terminalX<255) terminalX++;
@@ -152,8 +160,8 @@ void terminalSendChar(char chn) {
                 short w = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
                 short h = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
                 // Clear to right and down
-                graphicsFillRect(&gfx, cx, cy, w-1, cy+TERMINAL_CHAR_H-1, gfx.data.bgColor); // current line
-                graphicsFillRect(&gfx, TERMINAL_OFFSET_X, cy+TERMINAL_CHAR_H, w-1, h-1, gfx.data.bgColor); // everything under
+                graphicsFillRect(&gfx, cx, cy, w-1, cy+TERMINAL_CHAR_H-1, 0/*black*/); // current line
+                graphicsFillRect(&gfx, TERMINAL_OFFSET_X, cy+TERMINAL_CHAR_H, w-1, h-1, 0/*black*/); // everything under
                 terminalSetGFX(&gfx);
               }
             } break;

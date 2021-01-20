@@ -59,6 +59,10 @@
 #endif
 // Other LED is set in targetlibs/nrf5x/nrf5_sdk/components/libraries/bootloader_dfu/dfu_transport_ble.c (currently LED1)
 
+/// Set up when DFU is connected to
+static bool dfuIsConnected = false;
+/// Did we just power on, or did we reset because of a software reset?
+static bool dfuIsColdBoot = false;
 
 void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 /*  NRF_LOG_ERROR("received a fault! id: 0x%08x, pc: 0x&08x\r\n", id, pc);
@@ -90,7 +94,12 @@ bool nrf_dfu_enter_check(void) {
 // dfu_enter_check must be modified to add the __WEAK keyword
 bool dfu_enter_check(void) {
 #endif
-  bool dfu_start = get_btn1_state();
+  bool dfu_start;
+#ifdef BTN1_PININDEX
+  dfu_start = get_btn1_state();
+#else
+  dfu_start = dfuIsColdBoot; // if no button, enter bootloader if it's a cold boot, then exit after a few seconds
+#endif
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
     // if DFU looks invalid, go straight to bootloader
     if (s_dfu_settings.bank_0.bank_code == NRF_DFU_BANK_INVALID) {
@@ -103,20 +112,21 @@ bool dfu_enter_check(void) {
     // This means that we go straight to Espruino, where the button is still
     // pressed and can be used to stop execution of the sent code.
     if (dfu_start) {
-#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
-      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\nBTN1 + BTN2 TO TURN OFF\r\n\r\n<                      >\r");
+#if defined(BUTTONPRESS_TO_REBOOT_BOOTLOADER) && defined(BTN2_PININDEX)
+      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\nBTN1 + BTN2 TURN OFF\r\n\r\n<                   >\r");
 #else
-      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                      >\r");
+      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                   >\r");
 #endif
-#ifdef BANGLEJS
-      int count = 23;
+#ifdef BTN1_PININDEX
+      int count = 20;
+#ifdef BANGLEJS_F18
       while (get_btn1_state() && --count) {
         // the screen update takes long enough that
         // we don't need a delay
         lcd_print("=");
       }
 #else
-      int count = 3000;
+      count *= 128;
       while (get_btn1_state() && count) {
         nrf_delay_us(999);
         set_led_state((count&3)==0, false);
@@ -124,9 +134,13 @@ bool dfu_enter_check(void) {
         count--;
       }
 #endif
+#else
+      // no button, ensure we enter bootloader
+      int count=1; 
+#endif
       if (!count) {
         dfu_start = false;
-#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+#if defined(BUTTONPRESS_TO_REBOOT_BOOTLOADER) && defined(BTN2_PININDEX)
         if (jshPinGetValue(BTN2_PININDEX)) {
           lcd_kill();
           jshPinOutput(VIBRATE_PIN,1); // vibrate on
@@ -172,11 +186,13 @@ bool dfu_enter_check(void) {
     return dfu_start;
 }
 
-#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+#if defined(BUTTONPRESS_TO_REBOOT_BOOTLOADER) || !defined(BTN1_PININDEX)
+#define REBOOT_TIMER
 APP_TIMER_DEF(m_reboot_timer_id);
 int rebootCounter = 0;
 
 void reboot_check_handler() {
+#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
   if (get_btn1_state()) rebootCounter++;
   else rebootCounter=0;
   if (rebootCounter>10) {
@@ -184,6 +200,20 @@ void reboot_check_handler() {
   }
   // We enabled the watchdog, so we must kick it (as it stays set even after restart)
   NRF_WDT->RR[0] = 0x6E524635;
+#endif
+#ifndef BTN1_PININDEX
+  if (dfuIsConnected)
+    rebootCounter = 0;
+  else {
+    rebootCounter++;
+    if (rebootCounter>50) {
+      // After 5 seconds of not being connected force reboot.
+      // We'll then see that it wasn't a cold boot
+      // and will start up normally
+      NVIC_SystemReset();
+    }
+  }
+#endif
 }
 #endif
 
@@ -192,12 +222,14 @@ extern void dfu_set_status(DFUStatus status) {
   switch (status) {
   case DFUS_ADVERTISING_START:
     set_led_state(true,false);
-#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+#ifdef REBOOT_TIMER
     uint32_t err_code;
     err_code = app_timer_create(&m_reboot_timer_id,
                         APP_TIMER_MODE_REPEATED,
                         reboot_check_handler);
     err_code = app_timer_start(m_reboot_timer_id, APP_TIMER_TICKS(100, 0), NULL);
+#endif
+#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
     lcd_println("BTN1 = REBOOT");
 #endif
     break;
@@ -205,9 +237,12 @@ extern void dfu_set_status(DFUStatus status) {
     break;*/
   case DFUS_CONNECTED:
     lcd_println("CONNECT");
-    set_led_state(false,true); break;
+    set_led_state(false,true); 
+    dfuIsConnected = true;
+    break;
   case DFUS_DISCONNECTED:
     lcd_println("DISCONNECT");
+    dfuIsConnected = false;
     break;
   }
 }
@@ -225,9 +260,9 @@ static void dfu_observer(nrf_dfu_evt_type_t evt_type)
           set_led_state(false,true);
           break;
         case NRF_DFU_EVT_DFU_STARTED:
-            break;
+          break;
         default:
-            break;
+          break;
     }
 }
 #endif
@@ -244,9 +279,10 @@ int main(void)
 
     hardware_init();
 
+    // Did we just power on? If not (we watchdog/softreset) RESETREAS will be nonzero
+    dfuIsColdBoot = NRF_POWER->RESETREAS==0;
 #ifdef LCD
     lcd_init();
-
     int r = NRF_POWER->RESETREAS;
     const char *reasons = "PIN\0WATCHDOG\0SW RESET\0LOCKUP\0OFF\0";
     while (*reasons) {

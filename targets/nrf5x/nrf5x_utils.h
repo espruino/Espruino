@@ -27,6 +27,9 @@ void nrf_utils_lfclk_config_and_start(void);
 
 unsigned int nrf_utils_cap_sense(int capSenseTxPin, int capSenseRxPin);
 
+/// Ensure UICR flags are set correctly for the current device
+void nrf_configure_uicr_flags(void);
+
 #endif // NRF5X_UTILS_H__
 
 /** @} */

@@ -33,10 +33,12 @@ info = {
      'TENSORFLOW'     
    ],
    'makefile' : [
+     'DEFINES += -DBANGLEJS_F18',
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'DEFINES += -DDFU_APP_DATA_RESERVED=0', # allow firmware updates right up to the amount of available flash
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
+     'DEFINES+=-DBLUETOOTH_ADVERTISING_INTERVAL=200', # since we don't care as much about ~20uA battery usage, raise this to make getting a connection faster
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS',
@@ -77,7 +79,6 @@ chip = {
 };
 
 devices = {
-
   'BTN1' : { 'pin' : 'D24', 'pinstate' : 'IN_PULLDOWN' }, # top
   'BTN2' : { 'pin' : 'D22', 'pinstate' : 'IN_PULLDOWN' }, # middle
   'BTN3' : { 'pin' : 'D23', 'pinstate' : 'IN_PULLDOWN' }, # bottom
@@ -122,7 +123,7 @@ devices = {
             'pin_scl' : 'D14'
           },
   'MAG' : { # Magnetometer/compass
-            'device' : 'unknown', 
+            'device' : 'GMC303', 
             'addr' : 0x0C,
             'pin_sda' : 'D15',
             'pin_scl' : 'D14'

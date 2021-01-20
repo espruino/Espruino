@@ -1,4 +1,33 @@
-            nRF52: Added option to build in I2C slave support
+            Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
+            Fix Math.acos for negative values (fix #1950)
+            nRF5x: Add callback param to 'NRF.restart', allowing code to be called with softdevice disabled
+            Bangle.js: fix require("locale").time(new Date()) for default locale
+            Now use exponents when printing doubles >= 1E21 or < 1E-6 (fix #1489)
+            Fix Regexp handling of unescaped '.' in character group: /[.]/ (fix #1948)
+            Now error if using (unsupported) RegExp backreferences
+            nRF52: Ensure SPI 1 byte DMA errata workaround isn't applied to non-52832 parts
+            nRF52: When outputting assertions, if we have an terminal device (eg LCD) use that
+            When load(filename) is used, set global variable __FILE__ to the filename
+            Util Timer no longer uses RTC - works based on estimated time from the hardware timer itself (fix #1749, ref #1444)
+            Pull in fixed SHT3C.min.js for RAK5010
+            Add support for relaying full touchscreen events in devices that support it
+            Fix flip-on-idle behaviour for non-Bangle.js smartwatch ports
+            Add support for buttonless bootloader (first boot only, times out after 5 seconds)
+            Fix emulator crash if Graphics.drawPoly used with odd number of points
+            Graphics.fillPoly now errors if >64 points (prev was 63)
+            Graphics: Support for palettes supplied in image strings
+            nRF52840: Ensure internal voltage regulator is set to 3.3v (not 1.8v default) at boot
+            Fix Array.forEach when deleting the item you're currently iterating over (fix #1962)
+            Bangle.js: StorageFile now uses 10x bigger chunks which reduces stress on Storage.list()
+            Storage.list now allows you to specifically request StorageFile, only ever reports first StorageFile chunk
+            Graphics: Allow colors to be specified as '#rgb' strings
+            Graphics: Antialiased lines now read the background color so overlap nicely
+            Graphics: Add fillPolyAA and use antialiased vector fonts (on platforms where AA is enabled) 
+            Puck.js: Fix regression where IR LED was left on after transmission (fix #1969)
+            Graphics: Fix overdraw when drawing ellipses/circles
+            NRF52840: Use SPI3 by default as it's more capable/faster than SPI0
+ 
+     2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
             Add support for > 1bpp custom bitmap fonts
             Bangle.js: add drawLineAA and drawPolyAA for antialiased lines
@@ -7,13 +36,18 @@
             Ensure Storage library is exposed on SAVE_ON_FLASH devices (fix micro:bit flash write)
             nRF52: Fix issue where analogRead would stop E.getBattery from working
             Fix setWatch debounce lastTime regression from 2v07 (fix #1902)
-            Util Timer no longer uses RTC - works based on estimated time from the hardware timer itself (fix #1749, ref #1444)
-            Util Timer now uses time offsets (not variables based on current system time) - avoids drift
             nRF52: CPU now sleeps when while UART/BLE data is waiting to be sent (fix #1938)
             JSON.stringify now checks for potential stack overflow when stringifying (fix #1940)
             Check for Stack overflow when Garbage Collecting giant linked list (fix #1765)
             Added String.padStart/padEnd
             Fix issue where JSON.stringify({ something: bool }) would output 'something' as a bool too
+            Bangle.js/Pixl.js: Ensure terminal is always the same color regardless of g.setColor()
+            Original Espruino Board: remove E.FFT in network-enabled builds (freeing up flash memory)
+            Storage compact now updates pointers stored in RAM so they still point to the correct address in Flash (fix #1881)
+            Bangle.js: Add debounce to the button used to wake Bangle.js up from sleep
+            Fix regex match with '-' that isn't a range: "1-2_A3".split(/[0-]/) (fix #1736)
+            Crypto: modified mbedtls SHA1 to reduce size from 3.5k to under 1k
+            Graphics: Fix for out of bounds ArrayBuffer scroll issue (fix #1946, #1947)
 
      2v07 : Graphics.asImage() now contains buffer when bpp != 8 (fix #1863)
             nRF52 SDK15: Fix NRF.setScan/findDevices/etc
@@ -44,6 +78,9 @@
             micro:bit: Re-added tab complete (enough space now)
             micro:bit: Added a fake pin for LED/LED1 that uses the LED matrix
             nRF52: Allow a cccd_handle of 0 for startNotifications
+            Bangle.js: Power down SPI flash when sleeping/off
+            nRF52: Use the best available hardware timer for PWM taking frequency into account
+            Fix delay in scheduling after initial setTimeout call (from 2v06 and later)
             Align Tensorflow arena to 16 bytes - new Tensorflow requires this (fix #1914)
             Fix ReferenceError when arguments[0] is used when an argument is undefined (fix #1691)
             JSON conversion for console now removes quotes on key lengths bigger than 15 (63)

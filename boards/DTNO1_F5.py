@@ -22,7 +22,7 @@ info = {
  'default_console' : "EV_BLUETOOTH",
  'variables' : 2100, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_banglef5.hex',
+ 'binary_name' : 'espruino_%v_dtno1f5.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
@@ -39,12 +39,14 @@ info = {
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES',
+     'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
-     'WRAPPERSOURCES += libs/banglejs/jswrap_banglef5.c',
+     'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
      'SOURCES += libs/misc/nmea.c',
-     'JSMODULESOURCES += libs/js/graphical_menu.min.js',
+     'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
+     'DEFINES += -DBANGLEJS',
      'NRF_BL_DFU_INSECURE=1',
      'LINKER_BOOTLOADER=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_dfu.ld',
      'LINKER_ESPRUINO=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_espruino.ld'
@@ -66,9 +68,9 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : 0x40000000, # put this in external flash
+    'address' : 0x60000000, # put this in external flash
     'page_size' : 4096,
-    'pages' : 256, # 1024kb - still loads left
+    'pages' : 512, # Entire 2MB
     'flash_available' : 512 - ((31 + 8 + 2)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2. Each page is 4 kb.
   },
 };
@@ -76,13 +78,11 @@ chip = {
 devices = {
 
   'BTN1' : { 'pin' : 'D12', 'pinstate' : 'IN_PULLDOWN' }, # Top right -  Pin negated in software
-  'BTN2' : { 'pin' : 'D13', 'pinstate' : 'IN_PULLDOWN' }, # Bottom right -  Pin negated in software
-  'BTN3' : { 'pin' : 'D16' }, # Touch
-#  'BTN4' : { 'pin' : 'D16', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
+  'BTN2' : { 'pin' : 'D16' }, # Touch
+  'BTN3' : { 'pin' : 'D13', 'pinstate' : 'IN_PULLDOWN' }, # Bottom right -  Pin negated in software
+
   'LED1' : { 'pin' : 'D14' }, # Pin negated in software
-#  'LED2' : { 'pin' : 'D18' }, # Pin negated in software
-#  'LED3' : { 'pin' : 'D19' }, # Pin negated in software
-#  'LED4' : { 'pin' : 'D20' }, # Pin negated in software
+
   'VIBRATE' : { 'pin' : 'D11' }, # Pin negated in software
   'LCD' : {
             'width' : 128, 'height' : 96, 'bpp' : 4,
@@ -118,7 +118,8 @@ devices = {
             'pin_sck' : 'D19',
             'pin_mosi' : 'D20',
             'pin_miso' : 'D17',
-            'size' : 2097152
+            'size' : 2097152,
+            'memmap_base' : 0x60000000 # map into the address space (in software)
           },
   'PRESSURE' : {
             'device' : 'HP203', 'addr' : 0x76,
@@ -140,7 +141,7 @@ board["_css"] = """
   height: 800px;
   top: 0px;
   left : 200px;
-  background-image: url(img/BANGLEF5.jpg);
+  background-image: url(img/DTNO1_F5.jpg);
 }
 #boardcontainer {
   height: 900px;
@@ -176,6 +177,7 @@ def get_pins():
   pinutils.findpin(pins, "PD13", True)["functions"]["NEGATED"]=0; # btn2
   pinutils.findpin(pins, "PD11", True)["functions"]["NEGATED"]=0; # vibrate
   pinutils.findpin(pins, "PD14", True)["functions"]["NEGATED"]=0; # HRM LED
+  pinutils.findpin(pins, "PD21", True)["functions"]["NEGATED"]=0; # Backlight LED
 
 
   # everything is non-5v tolerant
