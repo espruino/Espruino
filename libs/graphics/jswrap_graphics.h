@@ -8,8 +8,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * This file is designed to be parsed during the build process
- *
  * Contains JavaScript Graphics Draw Functions
  * ----------------------------------------------------------------------------
  */
