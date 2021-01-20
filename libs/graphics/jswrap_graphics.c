@@ -1614,6 +1614,7 @@ JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
 }
 Draw a line between x1,y1 and x2,y2 in the current foreground color
 */
+#ifdef GRAPHICS_ANTIALIAS
 JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2, double y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   graphicsDrawLineAA(&gfx,
@@ -1624,6 +1625,7 @@ JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
+#endif
 
 /*JSON{
   "type" : "method",
