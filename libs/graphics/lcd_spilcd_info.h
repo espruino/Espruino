@@ -115,7 +115,7 @@ static const unsigned char SPILCD_INIT_CODE[] = {
     0x8c,0,1,  1,
     0x8d,0,1,  1,
     0xb6,0,1,  0x20,
-    0x36,0,1,  0x48, // Memory Access Control
+    0x36,0,1,  0x88, // Memory Access Control (0x48 flips upside-down)
     0x3a,0,1,  5, // could be 16/12 bit?
     0x90,0,4,  8,  8,  8,  8,
     0xbd,0,1,  6,
