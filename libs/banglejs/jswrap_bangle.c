@@ -943,7 +943,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
   jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), t);
 }
 
-#ifdef BANGLEJS_F18
+#if defined(BANGLEJS_F18) || defined(EMSCRIPTEN)
 // returns true if handled and shouldn't create a normal watch event
 bool btnTouchHandler() {
   if (bangleFlags&JSBF_WAKEON_TOUCH) {
@@ -992,7 +992,7 @@ void btn3Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(3,state,flags);
 }
 #endif
-#ifdef BANGLEJS_F18
+#if defined(BANGLEJS_F18) || defined(EMSCRIPTEN)
 void btn4Handler(bool state, IOEventFlags flags) {
   if (btnTouchHandler()) return;
   btnHandlerCommon(4,state,flags);
