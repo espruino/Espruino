@@ -2984,16 +2984,7 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
   return jsvLockAgain(promiseBuzz);
 }
 
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "Bangle",
-    "name" : "off",
-    "generate" : "jswrap_banglejs_off",
-    "ifdef" : "BANGLEJS"
-}
-Turn Bangle.js off. It can only be woken by pressing BTN1.
-*/
-void jswrap_banglejs_off() {
+static void jswrap_banglejs_periph_off() {
 #ifndef EMSCRIPTEN
   jsiKill();
   jsvKill();
@@ -3021,6 +3012,24 @@ void jswrap_banglejs_off() {
   nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
 #endif
   nrf_gpio_cfg_sense_set(BTN1_PININDEX, NRF_GPIO_PIN_SENSE_LOW);
+#else
+  jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
+#endif
+
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "off",
+    "generate" : "jswrap_banglejs_off",
+    "ifdef" : "BANGLEJS"
+}
+Turn Bangle.js off. It can only be woken by pressing BTN1.
+*/
+void jswrap_banglejs_off() {
+#ifndef EMSCRIPTEN
+  jswrap_banglejs_periph_off();
   sd_power_system_off();
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
@@ -3047,10 +3056,9 @@ void jswrap_banglejs_softOff() {
   IOEventFlags channel = jshPinWatch(BTN1_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, jshHadEvent);
   // keep sleeping until a button is pressed
-  jshKickWatchDog();
   while (!jshPinGetValue(BTN1_PININDEX)) {
     jshKickWatchDog();
-    jshSleep(jshGetTimeFromMilliseconds(4*1000));
+    jshSleep(jshGetTimeFromMilliseconds(2*1000));
   }
   // restart
   jshReboot();
