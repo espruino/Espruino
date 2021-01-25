@@ -3030,6 +3030,39 @@ void jswrap_banglejs_off() {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
+    "name" : "softOff",
+    "generate" : "jswrap_banglejs_softOff",
+    "ifdef" : "BANGLEJS"
+}
+Turn Bangle.js (mostly) off, but keep the CPU in sleep
+mode until BTN1 is pressed to preserve the RTC (current time).
+*/
+void jswrap_banglejs_softOff() {
+#ifndef EMSCRIPTEN
+  // Wait if BTN1 is pressed until it is released
+  while (jshPinGetValue(BTN1_PININDEX));
+  jswrap_ble_sleep();
+  jswrap_banglejs_periph_off();
+  jshDelayMicroseconds(100000); // wait 100ms for any button bounce to disappear
+  IOEventFlags channel = jshPinWatch(BTN1_PININDEX, true);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, jshHadEvent);
+  // keep sleeping until a button is pressed
+  jshKickWatchDog();
+  while (!jshPinGetValue(BTN1_PININDEX)) {
+    jshKickWatchDog();
+    jshSleep(jshGetTimeFromMilliseconds(4*1000));
+  }
+  // restart
+  jshReboot();
+
+#else
+  jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
     "name" : "getLogo",
     "generate" : "jswrap_banglejs_getLogo",
     "return" : ["JsVar", "An image to be used with `g.drawImage` - 222 x 104 x 2 bits" ],

@@ -693,11 +693,10 @@ void jshInit() {
   // Setup system time offsets if data in lastSystemTime
   // seems to be valid (RTC1 will be 0 at this point)
   if (lastSystemTime == ~lastSystemTimeInv) {
-    baseSystemTime += lastSystemTime;
+    baseSystemTime += (JsSysTime)(lastSystemTime << RTC_SHIFT);
     lastSystemTime = 0;
     lastSystemTimeInv = ~lastSystemTime;
   }
-
 
   memset(pinStates, 0, sizeof(pinStates));
 
