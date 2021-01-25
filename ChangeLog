@@ -27,6 +27,7 @@
             Graphics: Fix overdraw when drawing ellipses/circles
             NRF52840: Use SPI3 by default as it's more capable/faster than SPI0
             SMAQ3: Add support for unknown compass IC
+            nRF52: Allow devices to remember the time between reboots (even if RTC is reset)
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)

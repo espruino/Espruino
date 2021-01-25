@@ -6,7 +6,8 @@ GROUP(-lgcc -lc -lnosys)
 MEMORY
 {
   FLASH (rx) : ORIGIN = 0x1f000, LENGTH = 0x60000
-  RAM (rwx) :  ORIGIN = 0x20002c40, LENGTH = 0xd3c0
+  RAM (rwx) :  ORIGIN = 0x20002c40, LENGTH = 0xd3b0
+  NOINIT (rwx) :  ORIGIN = 0x2000fff0, LENGTH = 16
 }
 
 SECTIONS
@@ -23,6 +24,13 @@ SECTIONS
     KEEP(*(.pwr_mgmt_data))
     PROVIDE(__stop_pwr_mgmt_data = .);
   } > RAM
+  .noinit (NOLOAD) :
+  {
+    . = ALIGN(4);
+    __noinit_start__ = .;
+    *(.noinit*)
+    __noinit_end__ = .;
+  } > NOINIT
 } INSERT AFTER .data;
 
 INCLUDE "gcc_nrf5x_espruino_common.ld"
