@@ -80,6 +80,11 @@
 //==========================================================
 #ifndef NRF_BL_DFU_ENTER_METHOD_BUTTON
 #define NRF_BL_DFU_ENTER_METHOD_BUTTON 0
+#define NRF_BL_DFU_ENTER_METHOD_BUTTON_PIN -1
+#else
+#ifndef NRF_BL_DFU_ENTER_METHOD_BUTTON_PIN
+#error DFU button must be defined
+#endif
 #endif
 // <o> NRF_BL_DFU_ENTER_METHOD_BUTTON_PIN  - Button for entering DFU mode.
 
@@ -115,11 +120,6 @@
 // <29=> 29 (P0.29)
 // <30=> 30 (P0.30)
 // <31=> 31 (P0.31)
-
-#ifndef NRF_BL_DFU_ENTER_METHOD_BUTTON_PIN
-//#define NRF_BL_DFU_ENTER_METHOD_BUTTON_PIN -1
-#error DFU button must be defined
-#endif
 
 // </e>
 
