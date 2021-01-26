@@ -92,6 +92,13 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 void WDT_IRQHandler() {
 }
 
+/** RTC is only 24 bits, and resets when the device resets. To work around
+this we store the last known time (and offsets) in a bit of RAM that we don't
+reset when nRF52 reboots. */
+volatile JsSysTime baseSystemTime __attribute__((section(".noinit")));
+volatile uint32_t lastSystemTime __attribute__((section(".noinit"))) __attribute__ ((aligned (4)));
+volatile uint32_t lastSystemTimeInv __attribute__((section(".noinit"))) __attribute__ ((aligned (4)));
+
 #ifdef NRF_USB
 #include "app_usbd_core.h"
 #include "app_usbd.h"
@@ -683,6 +690,14 @@ void jshResetPeripherals() {
 void jshInit() {
   ret_code_t err_code;
 
+  // Setup system time offsets if data in lastSystemTime
+  // seems to be valid (RTC1 will be 0 at this point)
+  if (lastSystemTime == ~lastSystemTimeInv) {
+    baseSystemTime += (JsSysTime)(lastSystemTime << RTC_SHIFT);
+    lastSystemTime = 0;
+    lastSystemTimeInv = ~lastSystemTime;
+  }
+
   memset(pinStates, 0, sizeof(pinStates));
 
   jshInitDevices();
@@ -898,10 +913,6 @@ bool jshIsUSBSERIALConnected() {
 #endif
 }
 
-/// Hack because we *really* don't want to mess with RTC0 :)
-volatile JsSysTime baseSystemTime = 0;
-volatile uint32_t lastSystemTime = 0;
-
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime() {
   // Detect RTC overflows
@@ -909,6 +920,7 @@ JsSysTime jshGetSystemTime() {
   if ((lastSystemTime & 0x800000) && !(systemTime & 0x800000))
     baseSystemTime += (0x1000000 << RTC_SHIFT); // it's a 24 bit counter
   lastSystemTime = systemTime;
+  lastSystemTimeInv = ~lastSystemTime;
   // Use RTC0 (also used by BLE stack) - as app_timer starts/stops RTC1
   return baseSystemTime + (JsSysTime)(systemTime << RTC_SHIFT);
 }

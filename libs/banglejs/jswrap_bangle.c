@@ -319,23 +319,8 @@ typedef struct {
   short x,y,z;
 } Vector3;
 
-#define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 hz to match accelerometer
-#define POWER_SAVE_ACCEL_POLL_INTERVAL 800 // in msec
-#define POWER_SAVE_MIN_ACCEL 2684354 // min acceleration before we exit power save... sqr(8192*0.2)
-#define POWER_SAVE_TIMEOUT 60000 // 60 seconds of inactivity
-
-#ifdef SMAQ3
-// always on LCD
-#define DEFAULT_LCD_POWER_TIMEOUT 0 // in msec - default for lcdPowerTimeout
-#else
-#define DEFAULT_LCD_POWER_TIMEOUT 30000 // in msec - default for lcdPowerTimeout
-#define BACKLIGHT_PWM_INTERVAL 15 // in msec - 67Hz PWM
-#endif
-#define HRM_POLL_INTERVAL 20 // in msec
-#define ACCEL_POLL_INTERVAL_MAX 4000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
-#define BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
-#define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
-
+// =========================================================================
+//                                            DEVICE SPECIFIC CONFIG
 
 #ifdef SMAQ3
 IOEventFlags fakeBTN1Flags, fakeBTN2Flags, fakeBTN3Flags;
@@ -347,7 +332,11 @@ JshI2CInfo i2cTouch;
 #define ACCEL_I2C &i2cAccel
 #define MAG_I2C &i2cMag
 #define TOUCH_I2C &i2cTouch
+#define HOME_BTN 1
+// always on LCD
+#define DEFAULT_LCD_POWER_TIMEOUT 0 // in msec - default for lcdPowerTimeout
 #endif
+
 #ifdef BANGLEJS_F18
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo i2cInternal;
@@ -356,22 +345,58 @@ JshI2CInfo i2cInternal;
 // Nordic app timer to handle backlight PWM
 APP_TIMER_DEF(m_backlight_on_timer_id);
 APP_TIMER_DEF(m_backlight_off_timer_id);
+#define HOME_BTN 3
+#define BACKLIGHT_PWM_INTERVAL 15 // in msec - 67Hz PWM
 #endif
+
 #ifdef DTNO1_F5
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo i2cInternal;
 #define ACCEL_I2C &i2cInternal
 #define PRESSURE_I2C &i2cInternal
+#define HOME_BTN 3
 #endif
+
 #ifdef DICKENS
 JshI2CInfo i2cInternal;
 #define ACCEL_I2C &i2cInternal
 #define PRESSURE_I2C &i2cInternal
 #define MAG_I2C &i2cInternal
-#endif
-#ifdef ID205
+#define HOME_BTN 2
 #endif
 
+#ifdef ID205
+#define HOME_BTN 1
+#endif
+// =========================================================================
+
+#if HOME_BTN==1
+#define HOME_BTN_PININDEX    BTN1_PININDEX
+#endif
+#if HOME_BTN==2
+#define HOME_BTN_PININDEX    BTN2_PININDEX
+#endif
+#if HOME_BTN==3
+#define HOME_BTN_PININDEX    BTN3_PININDEX
+#endif
+#if HOME_BTN==4
+#define HOME_BTN_PININDEX    BTN4_PININDEX
+#endif
+#if HOME_BTN==5
+#define HOME_BTN_PININDEX    BTN5_PININDEX
+#endif
+
+#define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 hz to match accelerometer
+#define POWER_SAVE_ACCEL_POLL_INTERVAL 800 // in msec
+#define POWER_SAVE_MIN_ACCEL 2684354 // min acceleration before we exit power save... sqr(8192*0.2)
+#define POWER_SAVE_TIMEOUT 60000 // 60 seconds of inactivity
+#define HRM_POLL_INTERVAL 20 // in msec
+#define ACCEL_POLL_INTERVAL_MAX 4000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
+#define BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
+#define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
+#ifndef DEFAULT_LCD_POWER_TIMEOUT
+#define DEFAULT_LCD_POWER_TIMEOUT 30000 // in msec - default for lcdPowerTimeout
+#endif
 
 #ifdef PRESSURE_I2C
 /// Promise when pressure is requested
@@ -401,7 +426,7 @@ volatile bool wasCharging;
 /// time since LCD contents were last modified
 volatile uint16_t flipTimer; // in ms
 /// How long has BTN1 been held down for
-volatile uint16_t btn1Timer; // in ms
+volatile uint16_t homeBtnTimer; // in ms
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
 int lcdPowerTimeout; // in ms
 /// If a button was pressed to wake the LCD up, which one was it?
@@ -631,19 +656,14 @@ void peripheralPollHandler() {
   // power on display if a button is pressed
   if (flipTimer < TIMER_MAX)
     flipTimer += pollInterval;
-#ifdef BTN3_PININDEX
-  // If BTN3 is held down, trigger a soft reset so we go back to the clock
-  if (jshPinGetValue(BTN3_PININDEX)) {
-#else
-  // If BTN1 is held down, trigger a soft reset so we go back to the clock
-  if (jshPinGetValue(BTN1_PININDEX)) {
-#endif
-    if (btn1Timer < TIMER_MAX) {
-      btn1Timer += pollInterval;
-      if (btn1Timer >= BTN_LOAD_TIMEOUT) {
+  // If button is held down, trigger a soft reset so we go back to the clock
+  if (jshPinGetValue(HOME_BTN_PININDEX)) {
+    if (homeBtnTimer < TIMER_MAX) {
+      homeBtnTimer += pollInterval;
+      if (homeBtnTimer >= BTN_LOAD_TIMEOUT) {
         bangleTasks |= JSBT_RESET;
         jshHadEvent();
-        btn1Timer = TIMER_MAX;
+        homeBtnTimer = TIMER_MAX;
         // Allow BTN3 to break out of debugger
         if (jsiStatus & JSIS_IN_DEBUGGER) {
           jsiStatus |= JSIS_EXIT_DEBUGGER;
@@ -653,7 +673,7 @@ void peripheralPollHandler() {
       }
     }
   } else {
-    btn1Timer = 0;
+    homeBtnTimer = 0;
   }
 
   if (lcdPowerTimeout && lcdPowerOn && flipTimer>=lcdPowerTimeout) {
@@ -672,9 +692,10 @@ void peripheralPollHandler() {
   if (i2cBusy) return;
   i2cBusy = true;
   unsigned char buf[7];
-#ifdef MAG_DEVICE_GMC303
   // check the magnetometer if we had it on
   if (compassPowerOn) {
+    bool newReading = false;
+#ifdef MAG_DEVICE_GMC303
     buf[0]=0x10;
     jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
     jsi2cRead(MAG_I2C, MAG_ADDR, 7, buf, true);
@@ -682,6 +703,28 @@ void peripheralPollHandler() {
       mag.y = buf[1] | (buf[2]<<8);
       mag.x = buf[3] | (buf[4]<<8);
       mag.z = buf[5] | (buf[6]<<8);
+      newReading = true;
+    }
+#endif
+#ifdef MAG_DEVICE_UNKNOWN_0C
+    buf[0]=0x4E;
+    jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
+    jsi2cRead(MAG_I2C, MAG_ADDR, 7, buf, true);
+    if (!(buf[0]&16)) { // then we have data that wasn't read before
+      // &2 seems always set
+      // &16 seems set if we read twice
+      // &32 might be reading in progress
+      mag.y = buf[2] | (buf[1]<<8);
+      mag.x = buf[4] | (buf[3]<<8);
+      mag.z = buf[5] | (buf[5]<<8);
+      // Now read 0x3E which should kick off a new reading
+      buf[0]=0x3E;
+      jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
+      jsi2cRead(MAG_I2C, MAG_ADDR, 1, buf, true);
+      newReading = true;
+    }
+#endif
+    if (newReading) {
       if (mag.x<magmin.x) magmin.x=mag.x;
       if (mag.y<magmin.y) magmin.y=mag.y;
       if (mag.z<magmin.z) magmin.z=mag.z;
@@ -692,7 +735,6 @@ void peripheralPollHandler() {
       jshHadEvent();
     }
   }
-#endif
 #ifdef ACCEL_I2C
 #ifdef ACCEL_DEVICE_KX023
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
@@ -923,9 +965,12 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
         return;
     }
   }
-  JsSysTime t = jshGetSystemTime();
+  // Handle case where pressing 'home' button repeatedly at just the wrong times
+  // could cause us to go home!
+  if (button == HOME_BTN) homeBtnTimer = 0;
   /* This stops the button 'up' or bounces from being
    propagated if the button was used to wake the LCD up */
+  JsSysTime t = jshGetSystemTime();
   if (button == lcdWakeButton) {
     if ((t < lcdWakeButtonTime) || !state) {
       /* If it's a rising edge *or* it's within our debounce
@@ -2962,16 +3007,7 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
   return jsvLockAgain(promiseBuzz);
 }
 
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "Bangle",
-    "name" : "off",
-    "generate" : "jswrap_banglejs_off",
-    "ifdef" : "BANGLEJS"
-}
-Turn Bangle.js off. It can only be woken by pressing BTN1.
-*/
-void jswrap_banglejs_off() {
+static void jswrap_banglejs_periph_off() {
 #ifndef EMSCRIPTEN
   jsiKill();
   jsvKill();
@@ -2999,7 +3035,57 @@ void jswrap_banglejs_off() {
   nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
 #endif
   nrf_gpio_cfg_sense_set(BTN1_PININDEX, NRF_GPIO_PIN_SENSE_LOW);
+#else
+  jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
+#endif
+
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "off",
+    "generate" : "jswrap_banglejs_off",
+    "ifdef" : "BANGLEJS"
+}
+Turn Bangle.js off. It can only be woken by pressing BTN1.
+*/
+void jswrap_banglejs_off() {
+#ifndef EMSCRIPTEN
+  jswrap_banglejs_periph_off();
   sd_power_system_off();
+#else
+  jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "softOff",
+    "generate" : "jswrap_banglejs_softOff",
+    "ifdef" : "BANGLEJS"
+}
+Turn Bangle.js (mostly) off, but keep the CPU in sleep
+mode until BTN1 is pressed to preserve the RTC (current time).
+*/
+void jswrap_banglejs_softOff() {
+#ifndef EMSCRIPTEN
+  // Wait if BTN1 is pressed until it is released
+  while (jshPinGetValue(BTN1_PININDEX));
+  jswrap_ble_sleep();
+  jswrap_banglejs_periph_off();
+  jshDelayMicroseconds(100000); // wait 100ms for any button bounce to disappear
+  IOEventFlags channel = jshPinWatch(BTN1_PININDEX, true);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, jshHadEvent);
+  // keep sleeping until a button is pressed
+  while (!jshPinGetValue(BTN1_PININDEX)) {
+    jshKickWatchDog();
+    jshSleep(jshGetTimeFromMilliseconds(2*1000));
+  }
+  // restart
+  jshReboot();
+
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
 #endif

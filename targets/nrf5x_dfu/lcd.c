@@ -459,7 +459,7 @@ void lcd_flip() {
     jshPinSetValue(LCD_PIN_DC, 1); // data
     for (int y=ymin;y<=ymax;y++) {
       for (int x=0;x<LCD_DATA_WIDTH;x++) { // send 2 pixels at once
-        bool c = (lcd_data[(x>>3)+((y>>1)*LCD_ROWSTRIDE)]&1<<(x&7)) ? 0xFF:0;
+        int c = (lcd_data[(x>>3)+((y>>1)*LCD_ROWSTRIDE)]&1<<(x&7)) ? 0xFF:0;
         lcd_wr(c);
         lcd_wr(c);
         lcd_wr(c);
