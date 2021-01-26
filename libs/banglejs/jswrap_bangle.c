@@ -672,9 +672,10 @@ void peripheralPollHandler() {
   if (i2cBusy) return;
   i2cBusy = true;
   unsigned char buf[7];
-#ifdef MAG_DEVICE_GMC303
   // check the magnetometer if we had it on
   if (compassPowerOn) {
+    bool newReading = false;
+#ifdef MAG_DEVICE_GMC303
     buf[0]=0x10;
     jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
     jsi2cRead(MAG_I2C, MAG_ADDR, 7, buf, true);
@@ -682,6 +683,28 @@ void peripheralPollHandler() {
       mag.y = buf[1] | (buf[2]<<8);
       mag.x = buf[3] | (buf[4]<<8);
       mag.z = buf[5] | (buf[6]<<8);
+      newReading = true;
+    }
+#endif
+#ifdef MAG_DEVICE_UNKNOWN_0C
+    buf[0]=0x4E;
+    jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
+    jsi2cRead(MAG_I2C, MAG_ADDR, 7, buf, true);
+    if (!(buf[0]&16)) { // then we have data that wasn't read before
+      // &2 seems always set
+      // &16 seems set if we read twice
+      // &32 might be reading in progress
+      mag.y = buf[2] | (buf[1]<<8);
+      mag.x = buf[4] | (buf[3]<<8);
+      mag.z = buf[5] | (buf[5]<<8);
+      // Now read 0x3E which should kick off a new reading
+      buf[0]=0x3E;
+      jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
+      jsi2cRead(MAG_I2C, MAG_ADDR, 1, buf, true);
+      newReading = true;
+    }
+#endif
+    if (newReading) {
       if (mag.x<magmin.x) magmin.x=mag.x;
       if (mag.y<magmin.y) magmin.y=mag.y;
       if (mag.z<magmin.z) magmin.z=mag.z;
@@ -692,7 +715,6 @@ void peripheralPollHandler() {
       jshHadEvent();
     }
   }
-#endif
 #ifdef ACCEL_I2C
 #ifdef ACCEL_DEVICE_KX023
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)

@@ -130,7 +130,7 @@ devices = {
             'pin_scl' : 'D37'
           },
   'MAG' : { # Magnetometer/compass
-            'device' : 'unknown', 
+            'device' : 'UNKNOWN_0C', 
             'addr' : 0x0C,
             'pin_sda' : 'D44',
             'pin_scl' : 'D45'
