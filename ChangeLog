@@ -33,6 +33,7 @@
             Microbit 2: Increase RAM from 64k to 128k
             Bangle.js: Don't enter accelerometer power save mode if compass/barometer is in use
             Watches: Allow streaming pressure data from Barometer
+            Graphics: Add antialias/colour blending for 24 bit buffers
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
