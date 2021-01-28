@@ -135,7 +135,12 @@ devices = {
             'pin_sda' : 'D44',
             'pin_scl' : 'D45'
           },
-# PRESSURE
+  'PRESSURE' : {
+            'device' : 'BMP280', 
+            'addr' : 0x1E,
+            'pin_sda' : 'D47',
+            'pin_scl' : 'D2'            
+  },
   'SPIFLASH' : {
             'pin_cs' : 'D14',
             'pin_sck' : 'D16',

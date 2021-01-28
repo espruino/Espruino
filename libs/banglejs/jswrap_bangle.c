@@ -328,10 +328,12 @@ IOEventFlags fakeBTN1Flags, fakeBTN2Flags, fakeBTN3Flags;
 JshI2CInfo i2cAccel;
 JshI2CInfo i2cMag;
 JshI2CInfo i2cTouch;
-// TODO: pressure, hrm...
+JshI2CInfo i2cPressure;
+// TODO: HRM...
 #define ACCEL_I2C &i2cAccel
 #define MAG_I2C &i2cMag
 #define TOUCH_I2C &i2cTouch
+#define PRESSURE_I2C &i2cPressure
 #define HOME_BTN 1
 // always on LCD
 #define DEFAULT_LCD_POWER_TIMEOUT 0 // in msec - default for lcdPowerTimeout
@@ -1928,6 +1930,12 @@ void jswrap_banglejs_init() {
   i2cTouch.pinSDA = TOUCH_PIN_SDA;
   i2cTouch.pinSCL = TOUCH_PIN_SCL;
   jsi2cSetup(&i2cTouch);
+
+  jshI2CInitInfo(&i2cPressure);
+  i2cTouch.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cTouch.pinSDA = PRESSURE_PIN_SDA;
+  i2cTouch.pinSCL = PRESSURE_PIN_SCL;
+  jsi2cSetup(&i2cPressure);
 #elif defined(ACCEL_PIN_SDA) // assume all the rest just use a global I2C
   jshI2CInitInfo(&i2cInternal);
   i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
