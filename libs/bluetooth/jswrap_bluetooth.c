@@ -189,11 +189,11 @@ void jswrap_ble_reconfigure_softdevice() {
   // advertising
   v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
   o = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, 0);
-  if (v || o) jswrap_ble_setAdvertising(v, o);
+  jswrap_ble_setAdvertising(v, o);
   jsvUnLock2(v,o);
   // services
   v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, 0);
-  if (v) jsble_set_services(v);
+  jsble_set_services(v);
   jsvUnLock(v);
   // If we had scan response data set, update it
   JsVar *scanData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, 0);
@@ -201,6 +201,8 @@ void jswrap_ble_reconfigure_softdevice() {
   jsvUnLock(scanData);
   // Set up security related stuff
   jsble_update_security();
+  // If not advertising, start
+  jswrap_ble_wake();
 }
 
 /*JSON{
