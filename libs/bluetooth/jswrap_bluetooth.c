@@ -201,8 +201,9 @@ void jswrap_ble_reconfigure_softdevice() {
   jsvUnLock(scanData);
   // Set up security related stuff
   jsble_update_security();
-  // If not advertising, start
-  jswrap_ble_wake();
+  // If not awake, wake up
+  if (bleStatus & BLE_IS_SLEEPING)
+    jswrap_ble_wake();
 }
 
 /*JSON{
