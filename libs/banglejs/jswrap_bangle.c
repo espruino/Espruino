@@ -805,6 +805,10 @@ void peripheralPollHandler() {
     short newx = (buf[1]<<8)|buf[0];
     short newy = (buf[3]<<8)|buf[2];
     short newz = (buf[5]<<8)|buf[4];
+#ifdef SMAQ3
+    newx = -newx; //consistent directions with Bangle
+    newz = -newz; 
+#endif
     int dx = newx-acc.x;
     int dy = newy-acc.y;
     int dz = newz-acc.z;
