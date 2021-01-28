@@ -36,6 +36,7 @@
             Graphics: Add antialias/colour blending for 24 bit buffers
             NRF52840: Create new NRF_GPIO_PIN_X_FAST as Nordic's gpio functions will no longer inline!
             nRF5x: reset BLE advertising after `load()/reset()` (fix #1975)
+            Bangle.js: Add accelerometer recovery for rare cases when accelerometer boots with corrupted address (fix #1972)
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)

@@ -1941,6 +1941,7 @@ void jswrap_banglejs_init() {
   i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cInternal.pinSDA = ACCEL_PIN_SDA;
   i2cInternal.pinSCL = ACCEL_PIN_SCL;
+  i2cInternal.clockStretch = false;
   jsi2cSetup(&i2cInternal);
 #endif
 #ifdef SMAQ3
@@ -2081,10 +2082,13 @@ void jswrap_banglejs_init() {
   jsvUnLock(graphics);
 #endif
 
+  unsigned char buf[2];
 #ifdef ACCEL_DEVICE_KX023
   // KX023-1025 accelerometer init
   jswrap_banglejs_accelWr(0x18,0x0a); // CNTL1 Off (top bit)
   jswrap_banglejs_accelWr(0x19,0x80); // CNTL2 Software reset
+  buf[0] = 0x19; buf[1] = 0x80; // Second I2C address for software reset (issue #1972)
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR-2, 2, buf, true);
   jshDelayMicroseconds(2000);
   jswrap_banglejs_accelWr(0x1a,0b10011000); // CNTL3 12.5Hz tilt, 400Hz tap, 0.781Hz motion detection
   //jswrap_banglejs_accelWr(0x1b,0b00000001); // ODCNTL - 25Hz acceleration output data rate, filtering low-pass ODR/9
@@ -2122,12 +2126,11 @@ void jswrap_banglejs_init() {
 #ifdef PRESSURE_I2C
 #ifdef PRESSURE_DEVICE_HP203
   // pressure init
-  char *buf[2];
-  buf[0]=0x06; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, (uint8_t)*buf, true); // SOFT_RST
+  buf[0]=0x06;
+  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
 #endif
 #ifdef PRESSURE_DEVICE_SPL06_007
   // pressure init
-  unsigned char buf[2];
   buf[0]=SPL06_RESET; buf[1]=0x89;
   jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
 #endif
