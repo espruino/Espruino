@@ -29,12 +29,15 @@ JsVarInt jswrap_banglejs_getBattery();
 void jswrap_banglejs_setHRMPower(bool isOn);
 void jswrap_banglejs_setGPSPower(bool isOn);
 void jswrap_banglejs_setCompassPower(bool isOn);
+void jswrap_banglejs_setBarometerPower(bool isOn);
 JsVar *jswrap_banglejs_getCompass();
 JsVar *jswrap_banglejs_getAccel();
 
 JsVar *jswrap_banglejs_dbg();
 void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data);
 JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt);
+void jswrap_banglejs_barometerWr(JsVarInt reg, JsVarInt data);
+JsVar *jswrap_banglejs_barometerRd(JsVarInt reg, JsVarInt cnt);
 void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data);
 void jswrap_banglejs_ioWr(JsVarInt mask, bool on);
 JsVar *jswrap_banglejs_getPressure();
