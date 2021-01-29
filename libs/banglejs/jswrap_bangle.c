@@ -2805,7 +2805,7 @@ JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt) {
 #ifdef ACCEL_I2C
   if (cnt<0) cnt=0;
   unsigned char buf[128];
-  if (cnt>sizeof(buf)) cnt=sizeof(buf);
+  if (cnt>(int)sizeof(buf)) cnt=sizeof(buf);
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
   jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
@@ -2865,7 +2865,7 @@ JsVar *jswrap_banglejs_barometerRd(JsVarInt reg, JsVarInt cnt) {
 #ifdef PRESSURE_I2C
   if (cnt<0) cnt=0;
   unsigned char buf[48];
-  if (cnt>sizeof(buf)) cnt=sizeof(buf);
+  if (cnt>(int)sizeof(buf)) cnt=sizeof(buf);
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
   jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
@@ -3331,7 +3331,7 @@ void jswrap_banglejs_softOff() {
   jswrap_banglejs_periph_off();
   jshDelayMicroseconds(100000); // wait 100ms for any button bounce to disappear
   IOEventFlags channel = jshPinWatch(BTN1_PININDEX, true);
-  if (channel!=EV_NONE) jshSetEventCallback(channel, jshHadEvent);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, (JshEventCallbackCallback)jshHadEvent);
   // keep sleeping until a button is pressed
   jshKickWatchDog();
   while (!jshPinGetValue(BTN1_PININDEX)) {
