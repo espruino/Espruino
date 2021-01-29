@@ -415,6 +415,10 @@ JshI2CInfo i2cInternal;
 short barometer_c0, barometer_c1, barometer_c01, barometer_c11, barometer_c20, barometer_c21, barometer_c30;
 int barometer_c00, barometer_c10;
 #endif
+#ifdef PRESSURE_DEVICE_BMP280
+int16_t barometerDT[3]; // temp calibration
+int16_t barometerDP[9]; // pressure calibration
+#endif
 
 /// Promise when pressure is requested
 JsVar *promisePressure;
@@ -1809,9 +1813,25 @@ void jswrap_banglejs_setBarometerPower(bool isOn) {
     barometer_c21 = twosComplement(((unsigned short)buf[14] << 8) | (unsigned short)buf[15], 16);
     barometer_c30 = twosComplement(((unsigned short)buf[16] << 8) | (unsigned short)buf[17], 16);
 #endif
+#ifdef PRESSURE_DEVICE_BMP280
+    jswrap_banglejs_barometerWr(0xF4, 0x24); // ctrl_meas_reg - normal mode, no pressure/temp oversample
+    jswrap_banglejs_barometerWr(0xF5, 0xA0); // config_reg - 1s standby, no filter, I2C
+    // read calibration data
+    unsigned char buf[24];
+    buf[0] = 0x88; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 24, buf, true);
+    int i;
+    for (i=0;i<3;i++)
+      barometerDT[i] = twosComplement(((int)buf[(i*2)+1] << 8) | (int)buf[i*2], 16);
+    for (i=0;i<9;i++)
+      barometerDP[i] = twosComplement(((int)buf[(i*2)+7] << 8) | (int)buf[(i*2)+6], 16);
+#endif
   } else {
 #ifdef PRESSURE_DEVICE_SPL06_007
     jswrap_banglejs_barometerWr(SPL06_MEASCFG, 0); // Barometer off
+#endif
+#ifdef PRESSURE_DEVICE_BMP280
+    jswrap_banglejs_barometerWr(0xF4, 0); // Barometer off
 #endif
   }
 }
@@ -2133,6 +2153,10 @@ void jswrap_banglejs_init() {
   // pressure init
   buf[0]=SPL06_RESET; buf[1]=0x89;
   jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
+#endif
+#ifdef PRESSURE_DEVICE_BMP280
+  buf[0]=0xE0; buf[1]=0xB6;
+  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // reset
 #endif
   barometerPowerOn = false;
 #endif
@@ -2930,27 +2954,29 @@ Bangle.getPressure().then(d=>{
 });
 ```
 */
+
+
 #ifdef PRESSURE_I2C
 bool jswrap_banglejs_barometerPoll() {
 #ifdef PRESSURE_DEVICE_HP203
-    unsigned char buf[6];
-    // ADC_CVT - 0b010 01 000  - pressure and temperature channel, OSR = 4096
-    buf[0] = 0x48; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
-    // wait 100ms
-    jshDelayMicroseconds(100*1000); // we should really have a callback
-    // READ_PT
-    buf[0] = 0x10; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
-    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
-    int temperature = (buf[0]<<16)|(buf[1]<<8)|buf[2];
-    if (temperature&0x800000) temperature-=0x1000000;
-    int pressure = (buf[3]<<16)|(buf[4]<<8)|buf[5];
+  unsigned char buf[6];
+  // ADC_CVT - 0b010 01 000  - pressure and temperature channel, OSR = 4096
+  buf[0] = 0x48; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  // wait 100ms
+  jshDelayMicroseconds(100*1000); // we should really have a callback
+  // READ_PT
+  buf[0] = 0x10; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
+  int temperature = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+  if (temperature&0x800000) temperature-=0x1000000;
+  int pressure = (buf[3]<<16)|(buf[4]<<8)|buf[5];
   barometerTemperature = temperature/100.0;
   barometerPressure = pressure/100.0;
 
-    buf[0] = 0x31; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // READ_A
-    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 3, buf, true);
-    int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
-    if (altitude&0x800000) altitude-=0x1000000;
+  buf[0] = 0x31; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // READ_A
+  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 3, buf, true);
+  int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+  if (altitude&0x800000) altitude-=0x1000000;
   barometerAltitude = altitude/100.0;
   return true;
 #endif
@@ -2958,21 +2984,21 @@ bool jswrap_banglejs_barometerPoll() {
   static int oversample_scalefactor[] = {524288, 1572864, 3670016, 7864320, 253952, 516096, 1040384, 2088960};
   unsigned char buf[6];
 
-    // status values
+  // status values
   buf[0] = SPL06_MEASCFG; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
-    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
   int status = buf[0];
   if ((status & 0b00110000) != 0b00110000) {
     // data hasn't arrived yet
     return false;
   }
 
-    // raw values
+  // raw values
   buf[0] = SPL06_PRSB2; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
-    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
-    int praw = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
+  int praw = (buf[0]<<16)|(buf[1]<<8)|buf[2];
   praw = twosComplement(praw, 24);
-    int traw = (buf[3]<<16)|(buf[4]<<8)|buf[5];
+  int traw = (buf[3]<<16)|(buf[4]<<8)|buf[5];
   traw = twosComplement(traw, 24);
 
   double traw_scaled = (double)traw / oversample_scalefactor[SPL06_8SAMPLES]; // temperature oversample by 8x
@@ -2982,11 +3008,52 @@ bool jswrap_banglejs_barometerPoll() {
                      traw_scaled * barometer_c01 +
                      traw_scaled * praw_scaled * ( barometer_c11 + praw_scaled * barometer_c21));
   barometerPressure = pressurePa / 100; // convert Pa to hPa/millibar
-    double seaLevelPressure = 1013.25; // Standard atmospheric pressure
+  double seaLevelPressure = 1013.25; // Standard atmospheric pressure
   barometerAltitude = 44330 * (1.0 - jswrap_math_pow(barometerPressure / seaLevelPressure, 0.1903));
   // TODO: temperature corrected altitude?
   return true;
 #endif
+#ifdef PRESSURE_DEVICE_BMP280
+  unsigned char buf[8];
+  buf[0] = 0xF7; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // READ_A
+  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
+  int uncomp_pres = (buf[0] << 12) | (buf[1] << 4) | (buf[2] >> 4);
+  int uncomp_temp = (buf[3] << 12) | (buf[4] << 4) | (buf[5] >> 4);
+  double var1, var2;
+  // temperature
+  var1 = (((double) uncomp_temp) / 16384.0 - ((double) barometerDT[0]) / 1024.0) *
+         ((double) barometerDT[1]);
+  var2 =
+      ((((double) uncomp_temp) / 131072.0 - ((double) barometerDT[0]) / 8192.0) *
+       (((double) uncomp_temp) / 131072.0 - ((double) barometerDT[0]) / 8192.0)) *
+      ((double) barometerDT[2]);
+  int32_t t_fine = (int32_t) (var1 + var2);
+  barometerTemperature = ((var1 + var2) / 5120.0);
+  // pressure
+  var1 = ((double) t_fine / 2.0) - 64000.0;
+  var2 = var1 * var1 * ((double) barometerDP[5]) / 32768.0;
+  var2 = var2 + var1 * ((double) barometerDP[4]) * 2.0;
+  var2 = (var2 / 4.0) + (((double) barometerDP[3]) * 65536.0);
+  var1 = (((double)barometerDP[2]) * var1 * var1 / 524288.0 + ((double)barometerDP[1]) * var1) /
+        524288.0;
+  var1 = (1.0 + var1 / 32768.0) * ((double) barometerDP[0]);
+
+  barometerPressure = 1048576.0 - (double)uncomp_pres;
+  if (var1 < 0 || var1 > 0) {
+    barometerPressure = (barometerPressure - (var2 / 4096.0)) * 6250.0 / var1;
+    var1 = ((double)barometerDP[8]) * (barometerPressure) * (barometerPressure) / 2147483648.0;
+    var2 = (barometerPressure) * ((double)barometerDP[7]) / 32768.0;
+    barometerPressure = barometerPressure + (var1 + var2 + ((double)barometerDP[6])) / 16.0;
+  } else {
+    barometerPressure = 0;
+  }
+
+  double seaLevelPressure = 1013.25; // Standard atmospheric pressure
+  barometerAltitude = 44330 * (1.0 - jswrap_math_pow(barometerPressure / seaLevelPressure, 0.1903));
+  // TODO: temperature corrected altitude?
+  return true;
+#endif
+
   return false;
 }
 
@@ -3210,6 +3277,9 @@ static void jswrap_banglejs_periph_off() {
 #endif
 #ifdef PRESSURE_DEVICE_SPL06_007
   jswrap_banglejs_barometerWr(SPL06_MEASCFG, 0); // Barometer off
+#endif
+#ifdef PRESSURE_DEVICE_BMP280
+  jswrap_banglejs_barometerWr(0xF4, 0); // Barometer off
 #endif
 
 #ifdef BTN2_PININDEX
