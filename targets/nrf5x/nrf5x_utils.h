@@ -19,7 +19,7 @@
 #define NRF5X_UTILS_H__
 
 #include <stdint.h>
-#include "nrf_gpio.h"s
+#include "nrf_gpio.h"
 
 unsigned int nrf_utils_get_baud_enum(int baud);
 
