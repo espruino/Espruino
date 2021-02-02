@@ -1638,11 +1638,21 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
                      field_type == BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_COMPLETE) {
             JsVar *s = bleUUID128ToStr((uint8_t*)&dPtr[i+2]);
             jsvArrayPushAndUnLock(services, s);
-          } else if (field_type == BLE_GAP_AD_TYPE_SERVICE_DATA) { // 0x16 - service data 16 bit UUID
-            JsVar *childName = jsvAsArrayIndexAndUnLock(jsvVarPrintf("%04x", UNALIGNED_UINT16(&dPtr[i+2])));
+          } else if (field_type == BLE_GAP_AD_TYPE_SERVICE_DATA || // 0x16 - service data 16 bit UUID
+                     field_type == BLE_GAP_AD_TYPE_SERVICE_DATA_128BIT_UUID) {
+            bool is128bit = field_type == BLE_GAP_AD_TYPE_SERVICE_DATA_128BIT_UUID;
+            int dataOffset;
+            JsVar *childName;
+            if (is128bit) {
+              childName = bleUUID128ToStr((uint8_t*)&dPtr[i+2]);
+              dataOffset = 2+16;
+            } else {
+              childName = jsvAsArrayIndexAndUnLock(jsvVarPrintf("%04x", UNALIGNED_UINT16(&dPtr[i+2])));
+              dataOffset = 2+2;
+            }
             if (childName) {
               JsVar *child = jsvFindChildFromVar(serviceData, childName, true);
-              JsVar *value = jsvNewArrayBufferWithData(field_length-3, (unsigned char*)&dPtr[i+4]);
+              JsVar *value = jsvNewArrayBufferWithData(field_length+1-dataOffset, (unsigned char*)&dPtr[i+dataOffset]);
               if (child && value) jsvSetValueOfName(child, value);
               jsvUnLock2(child, value);
             }

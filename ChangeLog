@@ -39,6 +39,7 @@
             Bangle.js: Add accelerometer recovery for rare cases when accelerometer boots with corrupted address (fix #1972)
             Bangle.js: Add app ID option to setXYZPower to allow apps to share devices (power is on as long as one app wants the device) (fix #1971)
             Bangle.js: Add getXYZPower() functions
+            BLE: Allow 128-bit service data to be decoded (fix #1976)
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
