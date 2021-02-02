@@ -422,8 +422,6 @@ int16_t barometerDP[9]; // pressure calibration
 
 /// Promise when pressure is requested
 JsVar *promisePressure;
-/// Is the barometer "power" on (i.e. not in standby mode)?
-bool barometerPowerOn;
 double barometerPressure;
 double barometerTemperature;
 double barometerAltitude;
@@ -466,8 +464,6 @@ bool lcdPowerOn;
 /// LCD Brightness - 255=full
 uint8_t lcdBrightness;
 #ifdef MAG_I2C
-/// Is the compass on?
-bool compassPowerOn;
 // compass data
 Vector3 mag, magmin, magmax;
 #endif
@@ -552,6 +548,10 @@ typedef enum {
   JSBF_ENABLE_BUZZ  = 256,
   JSBF_ACCEL_LISTENER = 512, ///< we have a listener for accelerometer data
   JSBF_POWER_SAVE = 1024, ///< if no movement detected for a while, lower the accelerometer poll interval
+  JSBF_HRM_ON = 2048,
+  JSBF_GPS_ON = 4096,
+  JSBF_COMPASS_ON = 8192,
+  JSBF_BAROMETER_ON = 16384,
 
   JSBF_DEFAULT =
       JSBF_WAKEON_TWIST|
@@ -596,6 +596,8 @@ typedef enum {
 JsBangleTasks bangleTasks;
 
 void jswrap_banglejs_pwrGPS(bool on) {
+  if (on) bangleFlags |= JSBF_GPS_ON;
+  else bangleFlags &= ~JSBF_GPS_ON;
 #ifdef BANGLEJS_F18
   jswrap_banglejs_ioWr(IOEXP_GPS, on);
 #endif
@@ -605,6 +607,8 @@ void jswrap_banglejs_pwrGPS(bool on) {
 }
 
 void jswrap_banglejs_pwrHRM(bool on) {
+  if (on) bangleFlags |= JSBF_HRM_ON;
+  else bangleFlags &= ~JSBF_HRM_ON;
 #ifdef BANGLEJS_F18
   jswrap_banglejs_ioWr(IOEXP_HRM, !on);
 #endif
@@ -666,6 +670,43 @@ static int twosComplement(int val, unsigned char bits) {
   if (val & ((unsigned int)1 << (bits - 1)))
     val -= (unsigned int)1 << bits;
   return val;
+}
+
+/** This is called to set whether an app requests a device to be on or off.
+ * The value returned is whether the device should be on.
+ * Devices: GPS/Compass/HRM/Barom
+ */
+#define SETDEVICEPOWER_FORCE (execInfo.root)
+bool setDevicePower(const char *deviceName, JsVar *appID, bool powerOn) {
+  if (appID==SETDEVICEPOWER_FORCE) {
+    // force the device power to what we asked for
+    return powerOn;
+  }
+
+  JsVar *bangle = jsvObjectGetChild(execInfo.root, "Bangle", 0);
+  if (!bangle) return false;
+  JsVar *uses = jsvObjectGetChild(bangle, "_PWR", JSV_OBJECT);
+  if (!uses) {
+    jsvUnLock(uses);
+    return false;
+  }
+  bool isOn = false;
+  JsVar *device = jsvObjectGetChild(uses, deviceName, JSV_ARRAY);
+  if (device) {
+    if (appID) appID = jsvAsString(appID);
+    else appID = jsvNewFromString("?");
+
+    JsVar *idx = jsvGetIndexOf(device, appID, false);
+    if (powerOn) {
+      if (!idx) jsvArrayPush(device, appID);
+    } else {
+      if (idx) jsvRemoveChild(device, idx);
+    }
+    jsvUnLock2(appID, idx);
+    isOn = jsvGetArrayLength(device)>0;
+  }
+  jsvUnLock3(device, uses, bangle);
+  return isOn;
 }
 
 void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
@@ -732,7 +773,7 @@ void peripheralPollHandler() {
   i2cBusy = true;
   unsigned char buf[7];
   // check the magnetometer if we had it on
-  if (compassPowerOn) {
+  if (bangleFlags & JSBF_COMPASS_ON) {
     bool newReading = false;
 #ifdef MAG_DEVICE_GMC303
     buf[0]=0x10;
@@ -843,10 +884,10 @@ void peripheralPollHandler() {
             pollInterval == DEFAULT_ACCEL_POLL_INTERVAL && // we are in high power mode
             !(bangleFlags & JSBF_ACCEL_LISTENER) && // nothing was listening to accelerometer data
 #ifdef PRESSURE_I2C
-            !barometerPowerOn && // barometer isn't on (streaming uses peripheralPollHandler)
+            !(bangleFlags & JSBF_BAROMETER_ON) && // barometer isn't on (streaming uses peripheralPollHandler)
 #endif
 #ifdef MAG_I2C
-            !compassPowerOn && // compass isn't on (streaming uses peripheralPollHandler)
+            !(bangleFlags & JSBF_COMPASS_ON) && // compass isn't on (streaming uses peripheralPollHandler)
 #endif
             true) {
           bangleTasks |= JSBT_ACCEL_INTERVAL_POWERSAVE;
@@ -932,7 +973,7 @@ void peripheralPollHandler() {
   }
 #endif
 #ifdef PRESSURE_I2C
-  if (barometerPowerOn) {
+  if (bangleFlags & JSBF_BAROMETER_ON) {
     if (jswrap_banglejs_barometerPoll()) {
       bangleTasks |= JSBT_PRESSURE_DATA;
       jshHadEvent();
@@ -1656,8 +1697,10 @@ void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
     "name" : "setHRMPower",
     "generate" : "jswrap_banglejs_setHRMPower",
     "params" : [
-      ["isOn","bool","True if the heart rate monitor should be on, false if not"]
+      ["isOn","bool","True if the heart rate monitor should be on, false if not"],
+      ["appID","JsVar","A string with the app's name in, used to ensure one app can't turn off something another app is using"]
     ],
+    "return" : ["bool","Is HRM on?"],
     "ifdef" : "BANGLEJS"
 }
 Set the power to the Heart rate monitor
@@ -1665,13 +1708,14 @@ Set the power to the Heart rate monitor
 When on, data is output via the `HRM` event on `Bangle`:
 
 ```
-Bangle.setHRMPower(1);
+Bangle.setHRMPower(true, "myapp");
 Bangle.on('HRM',print);
 ```
 
 *When on, the Heart rate monitor draws roughly 5mA*
 */
-void jswrap_banglejs_setHRMPower(bool isOn) {
+bool jswrap_banglejs_setHRMPower(bool isOn, JsVar *appId) {
+  isOn = setDevicePower("HRM", appId, isOn);
 #ifndef EMSCRIPTEN
   jstStopExecuteFn(hrmPollHandler, 0);
   if (isOn) {
@@ -1687,6 +1731,22 @@ void jswrap_banglejs_setHRMPower(bool isOn) {
     jswrap_banglejs_pwrHRM(false); // HRM off
   }
 #endif
+  return isOn;
+}
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "getHRMPower",
+    "generate" : "jswrap_banglejs_getHRMPower",
+    "return" : ["bool","Is HRM on?"],
+    "ifdef" : "BANGLEJS"
+}
+Is the Heart rate monitor powered?
+
+Set power with `Bangle.setHRMPower(...);`
+*/
+bool jswrap_banglejs_getHRMPower() {
+  return bangleFlags & JSBF_HRM_ON;
 }
 
 #ifdef GPS_PIN_RX
@@ -1703,8 +1763,10 @@ void resetUbloxIn() {
     "name" : "setGPSPower",
     "generate" : "jswrap_banglejs_setGPSPower",
     "params" : [
-      ["isOn","bool","True if the GPS should be on, false if not"]
+      ["isOn","bool","True if the GPS should be on, false if not"],
+      ["appID","JsVar","A string with the app's name in, used to ensure one app can't turn off something another app is using"]
     ],
+    "return" : ["bool","Is the GPS on?"],
     "ifdef" : "BANGLEJS"
 }
 Set the power to the GPS.
@@ -1712,13 +1774,14 @@ Set the power to the GPS.
 When on, data is output via the `GPS` event on `Bangle`:
 
 ```
-Bangle.setGPSPower(1);
+Bangle.setGPSPower(true, "myapp");
 Bangle.on('GPS',print);
 ```
 
 *When on, the GPS draws roughly 20mA*
 */
-void jswrap_banglejs_setGPSPower(bool isOn) {
+bool jswrap_banglejs_setGPSPower(bool isOn, JsVar *appId) {
+  isOn = setDevicePower("GPS", appId, isOn);
 #ifdef GPS_PIN_RX
   if (isOn) {
     JshUSARTInfo inf;
@@ -1737,6 +1800,22 @@ void jswrap_banglejs_setGPSPower(bool isOn) {
     jshPinSetState(GPS_PIN_TX, JSHPINSTATE_GPIO_IN_PULLUP);
   }
 #endif
+  return isOn;
+}
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "getGPSPower",
+    "generate" : "jswrap_banglejs_getGPSPower",
+    "return" : ["bool","Is the GPS on?"],
+    "ifdef" : "BANGLEJS"
+}
+Is the GPS powered?
+
+Set power with `Bangle.setGPSPower(...);`
+*/
+bool jswrap_banglejs_getGPSPower() {
+  return bangleFlags & JSBF_GPS_ON;
 }
 
 /*JSON{
@@ -1745,8 +1824,10 @@ void jswrap_banglejs_setGPSPower(bool isOn) {
     "name" : "setCompassPower",
     "generate" : "jswrap_banglejs_setCompassPower",
     "params" : [
-      ["isOn","bool","True if the Compass should be on, false if not"]
+      ["isOn","bool","True if the Compass should be on, false if not"],
+      ["appID","JsVar","A string with the app's name in, used to ensure one app can't turn off something another app is using"]
     ],
+    "return" : ["bool","Is the Compass on?"],
     "ifdef" : "BANGLEJS"
 }
 Set the power to the Compass
@@ -1754,14 +1835,18 @@ Set the power to the Compass
 When on, data is output via the `mag` event on `Bangle`:
 
 ```
-Bangle.setCompassPower(1);
+Bangle.setCompassPower(true, "myapp");
 Bangle.on('mag',print);
 ```
 
 *When on, the compass draws roughly 2mA*
 */
-void jswrap_banglejs_setCompassPower(bool isOn) {
-  compassPowerOn = isOn;
+bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId) {
+  isOn = setDevicePower("Compass", appId, isOn);
+
+  if (isOn) bangleFlags |= JSBF_COMPASS_ON;
+  else bangleFlags &= ~JSBF_COMPASS_ON;
+
 #ifdef MAG_DEVICE_GMC303
   jswrap_banglejs_compassWr(0x31,isOn ? 4 : 0); // continuous measurement mode, 20Hz
 #endif
@@ -1774,6 +1859,24 @@ void jswrap_banglejs_setCompassPower(bool isOn) {
   magmax.x = -32768;
   magmax.y = -32768;
   magmax.z = -32768;
+
+  return isOn;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "getCompassPower",
+    "generate" : "jswrap_banglejs_getCompassPower",
+    "return" : ["bool","Is the Compass on?"],
+    "ifdef" : "BANGLEJS"
+}
+Is the compass powered?
+
+Set power with `Bangle.setCompassPower(...);`
+*/
+bool jswrap_banglejs_getCompassPower() {
+  return bangleFlags & JSBF_COMPASS_ON;
 }
 
 /*JSON{
@@ -1782,17 +1885,23 @@ void jswrap_banglejs_setCompassPower(bool isOn) {
     "name" : "setBarometerPower",
     "generate" : "jswrap_banglejs_setBarometerPower",
     "params" : [
-      ["isOn","bool","True if the barometer IC should be on, false if not"]
+      ["isOn","bool","True if the barometer IC should be on, false if not"],
+      ["appID","JsVar","A string with the app's name in, used to ensure one app can't turn off something another app is using"]
     ],
+    "return" : ["bool","Is the Barometer on?"],
     "#if" : "defined(DTNO1_F5) || defined(SMAQ3) || defined(DICKENS)"
 }
 Set the power to the barometer IC
 
+
+
 When on, the barometer draws roughly 50uA
 */
 #ifdef PRESSURE_I2C
-void jswrap_banglejs_setBarometerPower(bool isOn) {
-  barometerPowerOn = isOn;
+void jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
+  isOn = setDevicePower("Barom", appId, isOn);
+  if (isOn) bangleFlags |= JSBF_BAROMETER_ON;
+  else bangleFlags &= ~JSBF_BAROMETER_ON;
   if (isOn) {
 #ifdef PRESSURE_DEVICE_SPL06_007
     jswrap_banglejs_barometerWr(SPL06_CFGREG, 0); // No FIFO or IRQ (should be default but has been nonzero when read!
@@ -1834,9 +1943,25 @@ void jswrap_banglejs_setBarometerPower(bool isOn) {
     jswrap_banglejs_barometerWr(0xF4, 0); // Barometer off
 #endif
   }
+  return isOn;
 }
 #endif
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "getBarometerPower",
+    "generate" : "jswrap_banglejs_getBarometerPower",
+    "return" : ["bool","Is the Barometer on?"],
+    "#if" : "defined(DTNO1_F5) || defined(SMAQ3) || defined(DICKENS)"
+}
+Is the Barometer powered?
+
+Set power with `Bangle.setBarometerPower(...);`
+*/
+bool jswrap_banglejs_getBarometerPower() {
+  return bangleFlags & JSBF_BAROMETER_ON;
+}
 
 /*JSON{
     "type" : "staticmethod",
@@ -2158,7 +2283,7 @@ void jswrap_banglejs_init() {
   buf[0]=0xE0; buf[1]=0xB6;
   jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // reset
 #endif
-  barometerPowerOn = false;
+  bangleFlags &= ~JSBF_BAROMETER_ON;
 #endif
 
   // Accelerometer variables init
@@ -2170,7 +2295,7 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_compassWr(0x32,1); // soft reset
   jswrap_banglejs_compassWr(0x31,0); // power down mode
 #endif
-  compassPowerOn = false;
+  bangleFlags &= ~JSBF_COMPASS_ON;
 #endif
   i2cBusy = false;
   // Other IO
@@ -2296,13 +2421,13 @@ void jswrap_banglejs_kill() {
   promiseBuzz = 0;
 
 #ifdef MAG_I2C
-  if (compassPowerOn)
-    jswrap_banglejs_setCompassPower(0);
+  if (bangleFlags & JSBF_COMPASS_ON)
+    jswrap_banglejs_setCompassPower(0, SETDEVICEPOWER_FORCE);
 #endif
 
 #ifdef PRESSURE_I2C
-  if (barometerPowerOn)
-    jswrap_banglejs_setBarometerPower(0);
+  if (bangleFlags & JSBF_BAROMETER_ON)
+    jswrap_banglejs_setBarometerPower(0, SETDEVICEPOWER_FORCE);
   jsvUnLock(promisePressure);
   promisePressure = 0;
 #endif
@@ -2690,7 +2815,7 @@ bool jswrap_banglejs_gps_character(char ch) {
     if (ubloxInLength > 2 && ubloxInLength <= NMEA_MAX_SIZE && ubloxIn[ubloxInLength - 2] =='\r') {
       ubloxIn[ubloxInLength - 2] = 0; // just overwriting \r\n
       ubloxIn[ubloxInLength - 1] = 0;
-      if (nmea_decode(&gpsFix, ubloxIn))
+      if (nmea_decode(&gpsFix, (char *)ubloxIn))
         bangleTasks |= JSBT_GPS_DATA;
       if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
         // we were already waiting to post data, so lets not overwrite it
@@ -3073,10 +3198,12 @@ void jswrap_banglejs_getPressure_callback() {
   if (jswrap_banglejs_barometerPoll()) {
     o = jswrap_banglejs_getBarometerObject();
     // disable sensor now we have a result
-    jswrap_banglejs_setBarometerPower(0);
+    JsVar *id = jsvNewFromString("getPressure");
+    jswrap_banglejs_setBarometerPower(0, id);
+    jsvUnLock(id);
   }
-    i2cBusy = false;
-    jspromise_resolve(promisePressure, o);
+  i2cBusy = false;
+  jspromise_resolve(promisePressure, o);
   jsvUnLock2(promisePressure,o);
   promisePressure = 0;
 }
@@ -3099,7 +3226,9 @@ JsVar *jswrap_banglejs_getPressure() {
     return r;
   }
 
-  jswrap_banglejs_setBarometerPower(1);
+  JsVar *id = jsvNewFromString("getPressure");
+  jswrap_banglejs_setBarometerPower(1, id);
+  jsvUnLock(id);
   jsiSetTimeout(jswrap_banglejs_getPressure_callback, 500);
   return jsvLockAgain(promisePressure);
 }
