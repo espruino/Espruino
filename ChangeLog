@@ -40,6 +40,7 @@
             Bangle.js: Add app ID option to setXYZPower to allow apps to share devices (power is on as long as one app wants the device) (fix #1971)
             Bangle.js: Add getXYZPower() functions
             BLE: Allow 128-bit service data to be decoded (fix #1976)
+            Graphics: Fix 8 bit ArrayBuffer scroll not working correctly in some directions
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
