@@ -41,6 +41,7 @@
             Bangle.js: Add getXYZPower() functions
             BLE: Allow 128-bit service data to be decoded (fix #1976)
             Graphics: Fix 8 bit ArrayBuffer scroll not working correctly in some directions
+            Storage: Fix corruption issue with StorageFile write after a Storage compact (fix #1970)
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)

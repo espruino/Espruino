@@ -755,7 +755,19 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
   uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"addr",0));
   DBG("Write Chunk %d Offset %d addr 0x%08x\n",chunk,offset,addr);
   int remaining = fileLen - offset;
-  if (!addr) {
+  if (addr) {
+    JsfFileHeader header;
+    jshFlashRead(&header, addr-(uint32_t)sizeof(JsfFileHeader), sizeof(JsfFileHeader));
+    if (memcmp(&header.name, &fname, fnamei+1)!=0) {
+      addr = jsfFindFile(fname, &header);
+      if (!addr) {
+        jsExceptionHere(JSET_ERROR, "File deleted while writing!");
+        return;
+      } else {
+        jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger(addr));
+      }
+    }
+  } else {
     DBG("Write Create Chunk\n");
     if (jsfWriteFile(fname, data, JSFF_STORAGEFILE, 0, STORAGEFILE_CHUNKSIZE)) {
       JsfFileHeader header;
