@@ -148,7 +148,7 @@ devices = {
             'pin_miso' : 'D13', # D1
 #            'pin_wp' : 'D', # D2
 #            'pin_rst' : 'D', # D3
-            'size' : 4096*1024, # 4MB
+            'size' : 8192*1024, # 8MB
             'memmap_base' : 0x60000000 # map into the address space (in software)
           }
 };
