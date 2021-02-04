@@ -448,6 +448,27 @@ static unsigned char spiFlashStatus() {
   return buf;
 }
 
+#if defined(SMAQ3) && !defined(SPIFLASH_SLEEP_CMD)
+
+static void spiFlashReset(){
+  unsigned char buf[1];
+  buf[0] = 0x66;
+  spiFlashWriteCS(buf,1);
+  buf[0] = 0x99;
+  spiFlashWriteCS(buf,1);
+  nrf_delay_us(50); 
+}
+
+static void spiFlashWakeUp() {
+  unsigned char buf[1];
+  buf[0] = 0xAB;
+  spiFlashWriteCS(buf,1);
+  nrf_delay_us(50); // datasheet tRES2 period > 20us  CS remains high
+}
+
+#endif
+
+
 #ifdef SPIFLASH_SLEEP_CMD
 /// Is SPI flash awake?
 bool spiFlashAwake = false;
@@ -665,6 +686,12 @@ void jshResetPeripherals() {
 #endif
   spiFlashLastAddress = 0;
   jshDelayMicroseconds(100);
+#if defined(SMAQ3) && !defined(SPIFLASH_SLEEP_CMD)
+  spiFlashReset(); //SW reset
+  spiFlashWakeUp();
+  spiFlashWakeUp();
+  spiFlashWakeUp();
+#endif
 #ifdef SPIFLASH_SLEEP_CMD
   spiFlashWakeUp();
   spiFlashAwake = true;
