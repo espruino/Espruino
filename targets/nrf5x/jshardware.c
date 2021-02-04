@@ -691,6 +691,7 @@ void jshResetPeripherals() {
   spiFlashWakeUp();
   spiFlashWakeUp();
   spiFlashWakeUp();
+#endif
 #ifdef SPIFLASH_SLEEP_CMD
   spiFlashWakeUp();
   spiFlashAwake = true;
