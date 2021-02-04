@@ -38,7 +38,7 @@
             nRF5x: reset BLE advertising after `load()/reset()` (fix #1975)
             Bangle.js: Add accelerometer recovery for rare cases when accelerometer boots with corrupted address (fix #1972)
             Bangle.js: Add app ID option to setXYZPower to allow apps to share devices (power is on as long as one app wants the device) (fix #1971)
-            Bangle.js: Add getXYZPower() functions
+            Bangle.js: Add isXYZOn() functions
             BLE: Allow 128-bit service data to be decoded (fix #1976)
             Graphics: Fix 8 bit ArrayBuffer scroll not working correctly in some directions
             Storage: Fix corruption issue with StorageFile write after a Storage compact (fix #1970)

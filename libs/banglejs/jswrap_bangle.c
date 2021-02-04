@@ -1747,8 +1747,8 @@ bool jswrap_banglejs_setHRMPower(bool isOn, JsVar *appId) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
-    "name" : "getHRMPower",
-    "generate" : "jswrap_banglejs_getHRMPower",
+    "name" : "isHRMOn",
+    "generate" : "jswrap_banglejs_isHRMOn",
     "return" : ["bool","Is HRM on?"],
     "ifdef" : "BANGLEJS"
 }
@@ -1756,7 +1756,7 @@ Is the Heart rate monitor powered?
 
 Set power with `Bangle.setHRMPower(...);`
 */
-bool jswrap_banglejs_getHRMPower() {
+bool jswrap_banglejs_isHRMOn() {
   return bangleFlags & JSBF_HRM_ON;
 }
 
@@ -1816,8 +1816,8 @@ bool jswrap_banglejs_setGPSPower(bool isOn, JsVar *appId) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
-    "name" : "getGPSPower",
-    "generate" : "jswrap_banglejs_getGPSPower",
+    "name" : "isGPSOn",
+    "generate" : "jswrap_banglejs_isGPSOn",
     "return" : ["bool","Is the GPS on?"],
     "ifdef" : "BANGLEJS"
 }
@@ -1825,7 +1825,7 @@ Is the GPS powered?
 
 Set power with `Bangle.setGPSPower(...);`
 */
-bool jswrap_banglejs_getGPSPower() {
+bool jswrap_banglejs_isGPSOn() {
   return bangleFlags & JSBF_GPS_ON;
 }
 
@@ -1877,8 +1877,8 @@ bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
-    "name" : "getCompassPower",
-    "generate" : "jswrap_banglejs_getCompassPower",
+    "name" : "isCompassOn",
+    "generate" : "jswrap_banglejs_isCompassOn",
     "return" : ["bool","Is the Compass on?"],
     "ifdef" : "BANGLEJS"
 }
@@ -1886,7 +1886,7 @@ Is the compass powered?
 
 Set power with `Bangle.setCompassPower(...);`
 */
-bool jswrap_banglejs_getCompassPower() {
+bool jswrap_banglejs_isCompassOn() {
   return bangleFlags & JSBF_COMPASS_ON;
 }
 
@@ -1961,8 +1961,8 @@ bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
-    "name" : "getBarometerPower",
-    "generate" : "jswrap_banglejs_getBarometerPower",
+    "name" : "isBarometerOn",
+    "generate" : "jswrap_banglejs_isBarometerOn",
     "return" : ["bool","Is the Barometer on?"],
     "#if" : "defined(DTNO1_F5) || defined(SMAQ3) || defined(DICKENS)"
 }
@@ -1970,7 +1970,7 @@ Is the Barometer powered?
 
 Set power with `Bangle.setBarometerPower(...);`
 */
-bool jswrap_banglejs_getBarometerPower() {
+bool jswrap_banglejs_isBarometerOn() {
   return bangleFlags & JSBF_BAROMETER_ON;
 }
 
