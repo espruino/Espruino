@@ -294,7 +294,7 @@ uint32_t graphicsBlendColor(JsGraphics *gfx, unsigned int fg, unsigned int bg, i
     unsigned int ri = (br*(256-amt) + fr*amt) >> 8;
     unsigned int gi = (bg*(256-amt) + fg*amt) >> 8;
     unsigned int bi = (bb*(256-amt) + fb*amt) >> 8;
-    return (uint16_t)(bi | gi<<5 | ri<<11);
+    return (bi | gi<<5 | ri<<11);
 #ifdef ESPR_GRAPHICS_12BIT
   } else if (gfx->data.bpp==12) { // Blend from bg to fg
     unsigned int b = bg;
@@ -308,9 +308,22 @@ uint32_t graphicsBlendColor(JsGraphics *gfx, unsigned int fg, unsigned int bg, i
     unsigned int ri = (br*(256-amt) + fr*amt) >> 8;
     unsigned int gi = (bg*(256-amt) + fg*amt) >> 8;
     unsigned int bi = (bb*(256-amt) + fb*amt) >> 8;
-    return (uint16_t)(bi | gi<<4 | ri<<8);
+    return (bi | gi<<4 | ri<<8);
 #endif
-  } // TODO: 24 bit
+  } else if (gfx->data.bpp==24) { // Blend from bg to fg
+    unsigned int b = bg;
+    unsigned int br = (b>>16)&0xFF;
+    unsigned int bg = (b>>8)&0xFF;
+    unsigned int bb = b&0xFF;
+    unsigned int f = fg;
+    unsigned int fr = (f>>16)&0xFF;
+    unsigned int fg = (f>>8)&0xFF;
+    unsigned int fb = f&0xFF;
+    unsigned int ri = (br*(256-amt) + fr*amt) >> 8;
+    unsigned int gi = (bg*(256-amt) + fg*amt) >> 8;
+    unsigned int bi = (bb*(256-amt) + fb*amt) >> 8;
+    return (bi | gi<<8 | ri<<16);
+  }
   return (amt>=128) ? fg : bg;
 }
 

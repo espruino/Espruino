@@ -252,6 +252,8 @@ JsVar *jsble_get_error_string(uint32_t err_code) {
                                 : name="INVALID_CONN_HANDLE"; break;
    case BLE_ERROR_GAP_INVALID_BLE_ADDR
                                 : name="INVALID_BLE_ADDR"; break;
+   case NRF_ERROR_CONN_COUNT    : name="CONN_COUNT"; break;
+
 #if NRF_SD_BLE_API_VERSION<5
    case BLE_ERROR_NO_TX_PACKETS : name="NO_TX_PACKETS"; break;
 #endif

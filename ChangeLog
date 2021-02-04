@@ -27,10 +27,24 @@
             Graphics: Fix overdraw when drawing ellipses/circles
             NRF52840: Use SPI3 by default as it's more capable/faster than SPI0
             SMAQ3: Add support for unknown compass IC
+            Bangle.js: Make the 'home' button more configurable in code
             Bangle.js: Add Bangle.softOff to allow the RTC to keep running
             nRF52: Allow devices to remember the time between reboots (even if RTC is reset)
-            Bangle.js: Make the 'home' button more configurable in code
             Microbit 2: Increase RAM from 64k to 128k
+            Bangle.js: Don't enter accelerometer power save mode if compass/barometer is in use
+            Watches: Allow streaming pressure data from Barometer
+            Graphics: Add antialias/colour blending for 24 bit buffers
+            NRF52840: Create new NRF_GPIO_PIN_X_FAST as Nordic's gpio functions will no longer inline!
+            nRF5x: reset BLE advertising after `load()/reset()` (fix #1975)
+            Bangle.js: Add accelerometer recovery for rare cases when accelerometer boots with corrupted address (fix #1972)
+            Bangle.js: Add app ID option to setXYZPower to allow apps to share devices (power is on as long as one app wants the device) (fix #1971)
+            Bangle.js: Add isXYZOn() functions
+            BLE: Allow 128-bit service data to be decoded (fix #1976)
+            Graphics: Fix 8 bit ArrayBuffer scroll not working correctly in some directions
+            Storage: Fix corruption issue with StorageFile write after a Storage compact (fix #1970)
+            Fixed dimmable backlight on non-Bangle.js watches 
+            SMAQ3: Touchscreen is now powered off with Bangle.setLCDPower(0), auto-powers off after 30s
+            
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
