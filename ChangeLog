@@ -42,6 +42,9 @@
             BLE: Allow 128-bit service data to be decoded (fix #1976)
             Graphics: Fix 8 bit ArrayBuffer scroll not working correctly in some directions
             Storage: Fix corruption issue with StorageFile write after a Storage compact (fix #1970)
+            Fixed dimmable backlight on non-Bangle.js watches 
+            SMAQ3: Touchscreen is now powered off with Bangle.setLCDPower(0), auto-powers off after 30s
+            
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)

@@ -335,8 +335,6 @@ JshI2CInfo i2cPressure;
 #define TOUCH_I2C &i2cTouch
 #define PRESSURE_I2C &i2cPressure
 #define HOME_BTN 1
-// always on LCD
-#define DEFAULT_LCD_POWER_TIMEOUT 0 // in msec - default for lcdPowerTimeout
 #endif
 
 #ifdef BANGLEJS_F18
@@ -1237,10 +1235,10 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
     jswrap_banglejs_pwrBacklight(false); // backlight off
   }
 #else
-  jswrap_banglejs_pwrBacklight(isOn);
+  jswrap_banglejs_pwrBacklight(isOn && (lcdBrightness>0));
 #ifdef LCD_BL
   if (isOn && lcdBrightness > 0 && lcdBrightness < 255)
-    jshPinAnalogOutput(LCD_BL, lcdBrightness/256, 200, JSAOF_NONE);
+    jshPinAnalogOutput(LCD_BL, lcdBrightness/256.0, 200, JSAOF_NONE);
 #endif
 #endif
 
@@ -1286,6 +1284,19 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
     lcdCmd_SPILCD(0x28, 0, NULL); // DISPOFF
     jshDelayMicroseconds(20);
     lcdCmd_SPILCD(0x10, 0, NULL); // SLPIN
+  }
+#endif
+#if defined(LCD_CONTROLLER_LPM013M126)
+  if (!isOn) {
+    unsigned char buf[2];
+    buf[0]=0xE5;
+    buf[1]=0x03;
+    jsi2cWrite(TOUCH_I2C, TOUCH_ADDR, 2, buf, true);
+  } else {
+    jshPinOutput(TOUCH_PIN_RST, 0);
+    jshDelayMicroseconds(1000);
+    jshPinOutput(TOUCH_PIN_RST, 1);
+    jshDelayMicroseconds(1000);
   }
 #endif
   jswrap_banglejs_setLCDPowerBacklight(isOn);
@@ -1898,7 +1909,7 @@ Set the power to the barometer IC
 When on, the barometer draws roughly 50uA
 */
 #ifdef PRESSURE_I2C
-void jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
+bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
   isOn = setDevicePower("Barom", appId, isOn);
   if (isOn) bangleFlags |= JSBF_BAROMETER_ON;
   else bangleFlags &= ~JSBF_BAROMETER_ON;
@@ -2077,9 +2088,9 @@ void jswrap_banglejs_init() {
   jsi2cSetup(&i2cTouch);
 
   jshI2CInitInfo(&i2cPressure);
-  i2cTouch.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-  i2cTouch.pinSDA = PRESSURE_PIN_SDA;
-  i2cTouch.pinSCL = PRESSURE_PIN_SCL;
+  i2cPressure.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cPressure.pinSDA = PRESSURE_PIN_SDA;
+  i2cPressure.pinSCL = PRESSURE_PIN_SCL;
   jsi2cSetup(&i2cPressure);
 #elif defined(ACCEL_PIN_SDA) // assume all the rest just use a global I2C
   jshI2CInitInfo(&i2cInternal);
@@ -2151,6 +2162,7 @@ void jswrap_banglejs_init() {
   //gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8;
 #ifdef LCD_CONTROLLER_LPM013M126
   lcdMemLCD_init(&gfx);
+  jswrap_banglejs_pwrBacklight(true);
 #endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   lcdST7789_init(&gfx);
@@ -3217,7 +3229,7 @@ JsVar *jswrap_banglejs_getPressure() {
   if (!promisePressure) return 0;
 
   // If barometer is already on, just resolve promise with the current result
-  if (barometerPowerOn) {
+  if (bangleFlags & JSBF_BAROMETER_ON) {
     JsVar *o = jswrap_banglejs_getBarometerObject();
     jspromise_resolve(promisePressure, o);
     jsvUnLock(o);
