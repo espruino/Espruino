@@ -694,9 +694,11 @@ void jshInit() {
   // seems to be valid (RTC1 will be 0 at this point)
   if (lastSystemTime == ~lastSystemTimeInv) {
     baseSystemTime += (JsSysTime)(lastSystemTime << RTC_SHIFT);
-    lastSystemTime = 0;
-    lastSystemTimeInv = ~lastSystemTime;
+  } else {
+    baseSystemTime = 0;
   }
+  lastSystemTime = 0;
+  lastSystemTimeInv = ~lastSystemTime;
 
   memset(pinStates, 0, sizeof(pinStates));
 

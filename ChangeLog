@@ -44,6 +44,7 @@
             Storage: Fix corruption issue with StorageFile write after a Storage compact (fix #1970)
             Fixed dimmable backlight on non-Bangle.js watches 
             SMAQ3: Touchscreen is now powered off with Bangle.setLCDPower(0), auto-powers off after 30s
+            nRF52: Upon rebooting, reset time to 1970 if time looks corrupt
             
  
      2v08 : nRF52: Added option to build in I2C slave support
