@@ -292,7 +292,7 @@ volatile bool nrf_analog_read_interrupted = false;
 #define SPI_MAXAMT 65535
 #endif
 
-#ifdef NRF52840
+#ifdef ESPR_USE_SPI3
 static nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(3); // USE SPI3 on 52840 as it's far more complete
 #else
 static nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
@@ -1752,7 +1752,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     freq = SPI_FREQUENCY_FREQUENCY_M2;
   else if (inf->baudRate<((4000000+8000000)/2))
     freq = SPI_FREQUENCY_FREQUENCY_M4;
-#ifdef NRF52840
+#ifdef ESPR_USE_SPI3
   // NRF52840 supports >8MHz but ONLY on SPIM3
   else if (inf->baudRate>((16000000+32000000)/2) && spi0.inst_idx==3)
     freq = SPIM_FREQUENCY_FREQUENCY_M32;
