@@ -1826,15 +1826,15 @@ JsVar *jswrap_graphics_fillPoly_X(JsVar *parent, JsVar *poly, bool antiAlias) {
     jsExceptionHere(JSET_ERROR, "Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   jsvIteratorFree(&it);
 #ifdef GRAPHICS_ANTIALIAS
+  // For antialiased fillPoly the easiest solution is just to draw AA lines
+  // around the edge first, then fill solidly
   if (antiAlias) {
-    // ... if lines are wide (not high) then draw AA line first
     int lx = verts[idx-2];
     int ly = verts[idx-1];
     for (int i=0;i<idx;i+=2) {
-      // convert into device coordinates...
       int vx = verts[i];
       int vy = verts[i+1];
-      graphicsDrawLineAA(&gfx, vx,vy,lx,ly);
+      graphicsDrawLineAA(&gfx, vx,vy, lx,ly);
       lx = vx;
       ly = vy;
     }
