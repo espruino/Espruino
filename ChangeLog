@@ -47,6 +47,7 @@
             nRF52: Upon rebooting, reset time to 1970 if time looks corrupt
             nRF52840: Don't use SPI3 unless ESPR_USE_SPI3 is defined (errata 195 means it draws an extra 1mA unless disabled!)
             Bangle.js: apply g.drawImage fast path even if image goes to the edge of the screen
+            Graphics: Improve fillPolyAA for horizontalish lines, remove antialiased vector fonts (as won't work well on platforms without readback)
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)

@@ -1825,7 +1825,22 @@ JsVar *jswrap_graphics_fillPoly_X(JsVar *parent, JsVar *poly, bool antiAlias) {
   if (jsvIteratorHasElement(&it))
     jsExceptionHere(JSET_ERROR, "Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   jsvIteratorFree(&it);
-  graphicsFillPoly(&gfx, idx/2, verts, antiAlias);
+#ifdef GRAPHICS_ANTIALIAS
+  if (antiAlias) {
+    // ... if lines are wide (not high) then draw AA line first
+    int lx = verts[idx-2];
+    int ly = verts[idx-1];
+    for (int i=0;i<idx;i+=2) {
+      // convert into device coordinates...
+      int vx = verts[i];
+      int vy = verts[i+1];
+      graphicsDrawLineAA(&gfx, vx,vy,lx,ly);
+      lx = vx;
+      ly = vy;
+    }
+  }
+#endif
+  graphicsFillPoly(&gfx, idx/2, verts);
 
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);

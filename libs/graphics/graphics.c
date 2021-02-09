@@ -607,7 +607,7 @@ void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2) {
 #endif
 
 // Fill poly - each member of vertices is 1/16th pixel
-void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices, bool antiAlias) {
+void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
   typedef struct {
     short x,y;
   } VertXY;
@@ -679,30 +679,9 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices, bool antiAli
       if (s==0) x=cross[i];
       if (slopes[i]) s++; else s--;
       if (!s || i==crosscnt-1) {
-#ifdef GRAPHICS_ANTIALIAS
-        if (!antiAlias) {
-#endif
-          int x1 = (x+15)>>4;
-          int x2 = (cross[i]+15)>>4;
-          if (x2>x1) graphicsFillRectDevice(gfx,x1,yl,x2-1,yl,gfx->data.fgColor);
-#ifdef GRAPHICS_ANTIALIAS
-        } else {
-          int x1 = x;
-          int x2 = cross[i];
-          if (x2>x1) {
-            int x1i = x1>>4;
-            int x2i = x2>>4;
-            if (x2i==x1i) {
-              graphicsSetPixelDeviceBlended(gfx, x1i, yl, 16*(1+x2-x1));
-            } else if (x2i>x1i) {
-              graphicsSetPixelDeviceBlended(gfx, x1i, yl, 16*(15-(x1&15)));
-              if (x2i>x1i+1)
-                graphicsFillRectDevice(gfx,x1i+1,yl,x2i-1,yl,gfx->data.fgColor);
-              graphicsSetPixelDeviceBlended(gfx, x2i, yl, 16*(x2&15));
-            }
-          }
-        }
-#endif
+        int x1 = (x+15)>>4;
+        int x2 = (cross[i]+15)>>4;
+        if (x2>x1) graphicsFillRectDevice(gfx,x1,yl,x2-1,yl,gfx->data.fgColor);
       }
       if (jspIsInterrupted()) break;
     }

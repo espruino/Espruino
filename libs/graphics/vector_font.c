@@ -456,7 +456,7 @@ unsigned int vfDrawCharPtr(JsGraphics *gfx, int x1, int y1, int size, const uint
       poly[j*2  ] = (short)(x1 + vx*size*16/VF_SCALE);
       poly[j*2+1] = (short)(y1 + (vy+VF_OFFSET_Y)*size*16/VF_SCALE);
     }
-    graphicsFillPoly(gfx, polyLen, poly, true/*antialias if available*/);
+    graphicsFillPoly(gfx, polyLen, poly);
   }
   return (unsigned int)(((w+1+VF_CHAR_SPACING)*size*16/VF_SCALE+7)>>4);
 }
