@@ -82,7 +82,7 @@ chip = {
   'address' : 0x60000000, # put this in external spiflash (see below)
   'page_size' : 4096,
   'pages' : 2048, # Entire 8MB of external flash
-  'flash_available' : 1024 - ((31 + 8 + 2)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
+  'flash_available' : 1024 - ((38 + 8 + 2)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
   },
 };
 

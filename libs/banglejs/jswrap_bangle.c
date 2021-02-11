@@ -638,10 +638,12 @@ void lcd_flip(JsVar *parent, bool all) {
     gfx.data.modMaxX = LCD_WIDTH-1;
     gfx.data.modMaxY = LCD_HEIGHT-1;
   }
+#ifndef LCD_CONTROLLER_LPM013M126
   if (lcdPowerTimeout && !lcdPowerOn) {
     // LCD was turned off, turn it back on
     jswrap_banglejs_setLCDPower(1);
   }
+#endif
   flipTimer = 0;
 
 #ifdef LCD_CONTROLLER_LPM013M126
@@ -1261,7 +1263,6 @@ When brightness using `Bange.setLCDBrightness`.
 */
 void jswrap_banglejs_setLCDPower(bool isOn) {
 #ifdef LCD_CONTROLLER_LPM013M126
-  jshPinSetState(LCD_DISP, isOn);
 #endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   if (isOn) { // wake
@@ -2771,7 +2772,6 @@ bool jswrap_banglejs_idle() {
 #endif
 #ifdef LCD_CONTROLLER_LPM013M126
   // toggle EXTCOMIN to avoid burn-in
-  if (lcdPowerOn)
     lcdMemLCD_extcomin();
 #endif
 
