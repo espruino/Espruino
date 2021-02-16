@@ -3428,7 +3428,8 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       case '&': return jsvNewFromInteger(da&db);
       case '|': return jsvNewFromInteger(da|db);
       case '^': return jsvNewFromInteger(da^db);
-      case '%': return db ? jsvNewFromInteger(da%db) : jsvNewFromFloat(NAN);
+      case '%': if (db<0) db=-db; // fix SIGFPE
+                return db ? jsvNewFromInteger(da%db) : jsvNewFromFloat(NAN);
       case LEX_LSHIFT: return jsvNewFromInteger(da << db);
       case LEX_RSHIFT: return jsvNewFromInteger(da >> db);
       case LEX_RSHIFTUNSIGNED: return jsvNewFromLongInteger(((JsVarIntUnsigned)da) >> db);

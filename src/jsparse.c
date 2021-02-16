@@ -2267,7 +2267,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   if (isWhile) { // while loop
     JSP_ASSERT_MATCH(LEX_R_WHILE);
     jslCharPosFromLex(&whileCondStart);
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN('(',jslCharPosFree(&whileBodyStart);,0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN('(',jslCharPosFree(&whileCondStart);,0);
     cond = jspeAssignmentExpression();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
