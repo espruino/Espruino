@@ -414,8 +414,8 @@ short barometer_c0, barometer_c1, barometer_c01, barometer_c11, barometer_c20, b
 int barometer_c00, barometer_c10;
 #endif
 #ifdef PRESSURE_DEVICE_BMP280
-int16_t barometerDT[3]; // temp calibration
-int16_t barometerDP[9]; // pressure calibration
+int barometerDT[3]; // temp calibration
+int barometerDP[9]; // pressure calibration
 #endif
 
 /// Promise when pressure is requested
@@ -638,10 +638,12 @@ void lcd_flip(JsVar *parent, bool all) {
     gfx.data.modMaxX = LCD_WIDTH-1;
     gfx.data.modMaxY = LCD_HEIGHT-1;
   }
+#ifndef LCD_CONTROLLER_LPM013M126
   if (lcdPowerTimeout && !lcdPowerOn) {
     // LCD was turned off, turn it back on
     jswrap_banglejs_setLCDPower(1);
   }
+#endif
   flipTimer = 0;
 
 #ifdef LCD_CONTROLLER_LPM013M126
@@ -1261,7 +1263,6 @@ When brightness using `Bange.setLCDBrightness`.
 */
 void jswrap_banglejs_setLCDPower(bool isOn) {
 #ifdef LCD_CONTROLLER_LPM013M126
-  jshPinSetState(LCD_DISP, isOn);
 #endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   if (isOn) { // wake
@@ -1934,16 +1935,18 @@ bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
     barometer_c30 = twosComplement(((unsigned short)buf[16] << 8) | (unsigned short)buf[17], 16);
 #endif
 #ifdef PRESSURE_DEVICE_BMP280
-    jswrap_banglejs_barometerWr(0xF4, 0x24); // ctrl_meas_reg - normal mode, no pressure/temp oversample
+    jswrap_banglejs_barometerWr(0xF4, 0x27); // ctrl_meas_reg - normal mode, no pressure/temp oversample
     jswrap_banglejs_barometerWr(0xF5, 0xA0); // config_reg - 1s standby, no filter, I2C
     // read calibration data
     unsigned char buf[24];
     buf[0] = 0x88; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
     jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 24, buf, true);
     int i;
-    for (i=0;i<3;i++)
+    barometerDT[0] = ((int)buf[1] << 8) | (int)buf[0];  //first coeff is unsigned
+    for (i=1;i<3;i++)
       barometerDT[i] = twosComplement(((int)buf[(i*2)+1] << 8) | (int)buf[i*2], 16);
-    for (i=0;i<9;i++)
+    barometerDP[0] = ((int)buf[7] << 8) | (int)buf[6];  //first coeff is unsigned
+    for (i=1;i<9;i++)
       barometerDP[i] = twosComplement(((int)buf[(i*2)+7] << 8) | (int)buf[(i*2)+6], 16);
 #endif
   } else {
@@ -2771,7 +2774,6 @@ bool jswrap_banglejs_idle() {
 #endif
 #ifdef LCD_CONTROLLER_LPM013M126
   // toggle EXTCOMIN to avoid burn-in
-  if (lcdPowerOn)
     lcdMemLCD_extcomin();
 #endif
 
@@ -3181,6 +3183,7 @@ bool jswrap_banglejs_barometerPoll() {
     var1 = ((double)barometerDP[8]) * (barometerPressure) * (barometerPressure) / 2147483648.0;
     var2 = (barometerPressure) * ((double)barometerDP[7]) / 32768.0;
     barometerPressure = barometerPressure + (var1 + var2 + ((double)barometerDP[6])) / 16.0;
+    barometerPressure = barometerPressure/100.0;
   } else {
     barometerPressure = 0;
   }

@@ -765,7 +765,7 @@ Once `Puck.accelOn()` is called, the `Puck.accel` event will be called each time
 For instance to light the red LED whenever Puck.js is face up:
 
 ```
-Puck.on('accel', function(d) {
+Puck.on('accel', function(a) {
  digitalWrite(LED1, a.acc.z > 0);
 });
 Puck.accelOn();
