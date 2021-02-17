@@ -298,8 +298,9 @@ static JsVar *_jswrap_array_iterate_with_callback(
             } else if (!matched) // eg for .some
               isDone = true;
           }
-          jsvUnLock2(cb_result, value);
+          jsvUnLock(cb_result);
         }
+        jsvUnLock(value);
       } else {
         // just skip forward anyway
         jsvIteratorNext(&it);

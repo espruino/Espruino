@@ -50,6 +50,7 @@
             Graphics: Improve fillPolyAA for horizontalish lines, remove antialiased vector fonts (as won't work well on platforms without readback)
             Fix invalid free caused by error inside a while loop condition (fix #1983)
             Fix SIGFPE if using modulo with -1 (fix #1983)
+            Fix memory leak on Array.forEach/map/filter/etc caused by #1962 fix
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
