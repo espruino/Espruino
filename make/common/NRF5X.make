@@ -62,7 +62,8 @@ ifdef BOOTLOADER
   SOURCES = \
     targets/nrf5x_dfu/dfu_public_key.c \
     targets/nrf5x_dfu/lcd.c \
-    targets/nrf5x_dfu/main.c
+    targets/nrf5x_dfu/main.c \
+    targets/nrf5x_dfu/flash.c 
 ifdef NRF5X_SDK_12
   SOURCES += \
     targets/nrf5x_dfu/sdk12/dfu-cc.pb.c \
