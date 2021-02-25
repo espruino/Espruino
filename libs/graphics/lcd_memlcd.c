@@ -22,8 +22,11 @@
 
 #define LCD_STRIDE (2+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
 unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/];
+lcdMemLCDMode lcdMode = MEMLCD_MODE_NORMAL;
 
 #define LCD_SPI EV_SPI1
+
+
 
 // ======================================================================
 
@@ -57,11 +60,34 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 #endif
 }
 
+// -----------------------------------------------------------------------------
+
+void lcdMemLCD_setPixel240(JsGraphics *gfx, int x, int y, unsigned int col) {
+  x = (x*LCD_WIDTH) / 240;
+  y = (y*LCD_HEIGHT) / 240;
+  if (x<0 || y<0 || x>=LCD_WIDTH || y>=LCD_HEIGHT) return;
+  unsigned int b = col;
+  unsigned int br = (b>>11)&0x1F;
+  unsigned int bg = (b>>5)&0x3F;
+  unsigned int bb = b&0x1F;
+  // TODO: dither?
+  col = ((br>15)?4:0) | ((bg>31)?2:0) | ((bb>15)?1:0);
+  lcdMemLCD_setPixel(gfx,x,y,col);
+}
+
+// -----------------------------------------------------------------------------
+
 void lcdMemLCD_flip(JsGraphics *gfx) {
   if (gfx->data.modMinY > gfx->data.modMaxY) return; // nothing to do!
 
   int y1 = gfx->data.modMinY;
   int y2 = gfx->data.modMaxY;
+
+  if (lcdMode==MEMLCD_MODE_240x240) {
+    y1 = (y1*LCD_HEIGHT) / 240;
+    y2 = (y2*LCD_HEIGHT) / 240;
+  }
+
   int l = 1+y2-y1;
 
   jshPinSetValue(LCD_SPI_CS, 1);
@@ -75,7 +101,6 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
   gfx->data.modMinX = 32767;
   gfx->data.modMinY = 32767;
 }
-
 
 void lcdMemLCD_init(JsGraphics *gfx) {
   gfx->data.width = LCD_WIDTH;
@@ -106,6 +131,9 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   jshSPISetup(LCD_SPI, &inf);
 }
 
+void lcdMemLCD_setMode(lcdMemLCDMode mode) {
+  lcdMode = mode;
+}
 
 // toggle EXTCOMIN to avoid burn-in
 void lcdMemLCD_extcomin() {
@@ -115,7 +143,11 @@ void lcdMemLCD_extcomin() {
 }
 
 void lcdMemLCD_setCallbacks(JsGraphics *gfx) {
-  gfx->setPixel = lcdMemLCD_setPixel;
-  gfx->getPixel = lcdMemLCD_getPixel;
+  if (lcdMode==MEMLCD_MODE_NORMAL) {
+    gfx->setPixel = lcdMemLCD_setPixel;
+    gfx->getPixel = lcdMemLCD_getPixel;
+  } else if (lcdMode==MEMLCD_MODE_240x240) {
+    gfx->setPixel = lcdMemLCD_setPixel240;
+  }
 }
 
