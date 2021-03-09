@@ -55,12 +55,11 @@
 #include "lcd_spilcd.h"
 #endif
 
-
-#include "stepcount.h"
-
 #ifdef ACCEL_DEVICE_KX126 
 #include "kx126_registers.h"
 #endif
+
+#include "stepcount.h"
 
 #ifdef GPS_PIN_RX
 #include "nmea.h"
@@ -372,6 +371,7 @@ JshI2CInfo i2cInternal;
 #if HOME_BTN==5
 #define HOME_BTN_PININDEX    BTN5_PININDEX
 #endif
+// =========================================================================
 
 #define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 hz to match accelerometer
 #define POWER_SAVE_ACCEL_POLL_INTERVAL 800 // in msec
@@ -475,6 +475,11 @@ JsSysTime lcdWakeButtonTime;
 bool lcdPowerOn;
 /// LCD Brightness - 255=full
 uint8_t lcdBrightness;
+#ifdef ESPR_BACKLIGHT_FADE
+/// Actual LCD brightness (if we fade to a new brightness level)
+uint8_t realLcdBrightness;
+bool lcdFadeHandlerActive;
+#endif
 #ifdef MAG_I2C
 // compass data
 Vector3 mag, magmin, magmax;
@@ -561,7 +566,7 @@ typedef enum {
       JSBF_WAKEON_BTN1|JSBF_WAKEON_BTN2|JSBF_WAKEON_BTN3|
       JSBF_POWER_SAVE
 } JsBangleFlags;
-volatile JsBangleFlags bangleFlags;
+volatile JsBangleFlags bangleFlags = JSBF_NONE;
 
 
 typedef enum {
@@ -625,7 +630,11 @@ void jswrap_banglejs_pwrBacklight(bool on) {
   jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, !on);
 #endif
 #ifdef LCD_BL
+#if LCD_BL_INVERTED
+  jshPinOutput(LCD_BL, !on);
+#else
   jshPinOutput(LCD_BL, on);
+#endif
 #endif
 }
 
@@ -889,6 +898,9 @@ void peripheralPollHandler() {
     newx = -newx; //consistent directions with Bangle
     newz = -newz; 
 #endif
+#ifdef ACCEL_DEVICE_KX126
+    newx = -newx;
+#endif
     int dx = newx-acc.x;
     int dy = newy-acc.y;
     int dz = newz-acc.z;
@@ -1087,7 +1099,11 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
   if (lcdPowerTimeout) {
     if (((bangleFlags&JSBF_WAKEON_BTN1)&&(button==1)) ||
         ((bangleFlags&JSBF_WAKEON_BTN2)&&(button==2)) ||
-        ((bangleFlags&JSBF_WAKEON_BTN3)&&(button==3))){
+        ((bangleFlags&JSBF_WAKEON_BTN3)&&(button==3)) ||
+#ifdef DICKENS
+        ((bangleFlags&JSBF_WAKEON_BTN3)&&(button==4)) ||
+#endif
+        false){
       // if a 'hard' button, turn LCD on
       flipTimer = 0;
       if (!lcdPowerOn && state) {
@@ -1356,16 +1372,30 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
   } else { // sleep
     jswrap_banglejs_pwrBacklight(false); // backlight off
   }
+#elif defined(ESPR_BACKLIGHT_FADE)
+  if (!lcdFadeHandlerActive) {
+    JsSysTime t = jshGetTimeFromMilliseconds(10);
+    jstExecuteFn(backlightFadeHandler, NULL, jshGetSystemTime()+t, t);
+    lcdFadeHandlerActive = true;
+    backlightFadeHandler();
+  }
 #else
   jswrap_banglejs_pwrBacklight(isOn && (lcdBrightness>0));
 #ifdef LCD_BL
-  if (isOn && lcdBrightness > 0 && lcdBrightness < 255)
+  if (isOn && lcdBrightness > 0 && lcdBrightness < 255) {
+#if LCD_BL_INVERTED
+    jshPinAnalogOutput(LCD_BL, (255-lcdBrightness)/255.0, 200, JSAOF_NONE);
+#else
     jshPinAnalogOutput(LCD_BL, lcdBrightness/256.0, 200, JSAOF_NONE);
 #endif
+  }
+#endif // LCD_BL
 #endif
-
-#endif
+#endif // !EMSCRIPTEN
 }
+
+
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -1382,43 +1412,10 @@ This function can be used to turn Bangle.js's LCD off or on.
 When brightness using `Bange.setLCDBrightness`.
 */
 void jswrap_banglejs_setLCDPower(bool isOn) {
-#ifdef LCD_CONTROLLER_LPM013M126
-#endif
-#ifdef LCD_CONTROLLER_ST7789_8BIT
-  if (isOn) { // wake
-    lcdST7789_cmd(0x11, 0, NULL); // SLPOUT
-    jshDelayMicroseconds(20);
-    lcdST7789_cmd(0x29, 0, NULL); // DISPON
-  } else { // sleep
-    lcdST7789_cmd(0x28, 0, NULL); // DISPOFF
-    jshDelayMicroseconds(20);
-    lcdST7789_cmd(0x10, 0, NULL); // SLPIN
-  }
-#endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
-  // TODO: LCD_CONTROLLER_GC9A01 - has an enable/power pin
-  if (isOn) { // wake
-    lcdCmd_SPILCD(0x11, 0, NULL); // SLPOUT
-    jshDelayMicroseconds(20);
-    lcdCmd_SPILCD(0x29, 0, NULL); // DISPON
-  } else { // sleep
-    lcdCmd_SPILCD(0x28, 0, NULL); // DISPOFF
-    jshDelayMicroseconds(20);
-    lcdCmd_SPILCD(0x10, 0, NULL); // SLPIN
-  }
-#endif
-#if defined(LCD_CONTROLLER_LPM013M126)
-  if (!isOn) {
-    unsigned char buf[2];
-    buf[0]=0xE5;
-    buf[1]=0x03;
-    jsi2cWrite(TOUCH_I2C, TOUCH_ADDR, 2, buf, true);
-  } else {
-    jshPinOutput(TOUCH_PIN_RST, 0);
-    jshDelayMicroseconds(1000);
-    jshPinOutput(TOUCH_PIN_RST, 1);
-    jshDelayMicroseconds(1000);
-  }
+#ifdef ESPR_BACKLIGHT_FADE
+  if (isOn) jswrap_banglejs_setLCDPowerController(isOn);
+#else
+  jswrap_banglejs_setLCDPowerController(isOn);
 #endif
   jswrap_banglejs_setLCDPowerBacklight(isOn);
   if (lcdPowerOn != isOn) {
@@ -1813,8 +1810,13 @@ JsVarInt jswrap_banglejs_getBattery() {
   const JsVarFloat vlo = 0.51;
   const JsVarFloat vhi = 0.62;
 #elif defined(DICKENS)
-  const JsVarFloat vlo = 3.3 / (2.8*2);
-  const JsVarFloat vhi = 3.8 / (2.8*2);
+#ifdef LCD_TEARING  // DICKENS2 hardware (with LCD tearing signal) has VDD=3.3V
+  const JsVarFloat vlo = 3.55 / (3.3*2);  // Operates down to 3.05V, but battery starts dropping very rapidly from 3.55V, so treat this as the end-point.
+  const JsVarFloat vhi = 4.15 / (3.3*2);  // Fully charged is 4.20V, but drops quickly to 4.15V
+#else               // Original DICKENS hardware has VDD=2.8V
+  const JsVarFloat vlo = 3.55 / (2.8*2);
+  const JsVarFloat vhi = 4.15 / (2.8*2);
+#endif
 #else
   const JsVarFloat vlo = 0;
   const JsVarFloat vhi = 1;
@@ -2298,12 +2300,13 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
   }
 
-  bangleFlags = JSBF_DEFAULT; // includes bangleFlags
+  //jsiConsolePrintf("bangleFlags %d\n",bangleFlags);
+  if (firstRun)
+    bangleFlags = JSBF_DEFAULT; // includes bangleFlags
   flipTimer = 0; // reset the LCD timeout timer
   lcdPowerOn = true;
   lcdBrightness = 255;
 #ifdef ESPR_BACKLIGHT_FADE
-  if (firstRun) lcdBrightness=0;
   realLcdBrightness = firstRun ? 0 : lcdBrightness;
   lcdFadeHandlerActive = false;
   jswrap_banglejs_setLCDPowerBacklight(lcdPowerOn);
@@ -2363,6 +2366,12 @@ NO_INLINE void jswrap_banglejs_init() {
     showSplashScreen = false;
   }
 
+#ifdef DICKENS
+  // don't show splash screen unless the watch has been totally reset - stops flicker on boot
+  if (!(jsiStatus & JSIS_COMPLETELY_RESET))
+    showSplashScreen = false;
+  if (showSplashScreen)
+#endif
   graphicsClear(&gfx);
   if (showSplashScreen) {
     bool drawInfo = false;
@@ -2504,7 +2513,7 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
     bangleFlags &= ~JSBF_COMPASS_ON;
 #endif
-  }
+  } // firstRun
   i2cBusy = false;
   // Other IO
 #ifdef BAT_PIN_CHARGING
@@ -2628,6 +2637,12 @@ void jswrap_banglejs_kill() {
 #endif
 #ifdef HEARTRATE
   jstStopExecuteFn(hrmPollHandler, 0);
+#endif
+#ifdef ESPR_BACKLIGHT_FADE
+  if (lcdFadeHandlerActive) {
+    jstStopExecuteFn(backlightFadeHandler, NULL);
+    lcdFadeHandlerActive = false;
+  }
 #endif
   jsvUnLock(promiseBeep);
   promiseBeep = 0;
@@ -2954,6 +2969,13 @@ bool jswrap_banglejs_idle() {
 #ifdef LCD_CONTROLLER_LPM013M126
   // toggle EXTCOMIN to avoid burn-in
     lcdMemLCD_extcomin();
+#endif
+#ifdef ESPR_BACKLIGHT_FADE
+  if (lcdFadeHandlerActive && realLcdBrightness == (lcdPowerOn?lcdBrightness:0)) {
+    jstStopExecuteFn(backlightFadeHandler, NULL);
+    lcdFadeHandlerActive = false;
+    if (!lcdPowerOn) jswrap_banglejs_setLCDPowerController(0);
+  }
 #endif
 
   return false;
@@ -3584,11 +3606,11 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
 }
 
 static void jswrap_banglejs_periph_off() {
-#ifndef EMSCRIPTEN
-
 #ifdef HEARTRATE
   jswrap_banglejs_pwrHRM(false); // HRM off
 #endif
+#ifndef EMSCRIPTEN
+#ifndef DICKENS
   jswrap_banglejs_pwrGPS(false); // GPS off
 #endif
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
@@ -3618,14 +3640,15 @@ static void jswrap_banglejs_periph_off() {
 #ifdef BTN3_PININDEX
   nrf_gpio_cfg_sense_set(pinInfo[BTN3_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
 #endif
-
+#ifdef BTN4_PININDEX
+  nrf_gpio_cfg_sense_set(pinInfo[BTN4_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
+#endif
   /* The low power pin watch code (nrf_drv_gpiote_in_init) somehow causes
   the sensing to be disabled such that nrf_gpio_cfg_sense_set(pin, NRF_GPIO_PIN_SENSE_LOW)
   no longer works. To work around this we just call our standard pin watch function
   to re-enable everything. */
   jshPinWatch(BTN1_PININDEX, true);
 
-  nrf_gpio_cfg_sense_set(BTN1_PININDEX, NRF_GPIO_PIN_SENSE_LOW);
 
   jsiKill();
   jsvKill();
@@ -3676,10 +3699,18 @@ void jswrap_banglejs_softOff() {
   if (channel!=EV_NONE) jshSetEventCallback(channel, (JshEventCallbackCallback)jshHadEvent);
   // keep sleeping until a button is pressed
   jshKickWatchDog();
+  do {
+    // sleep until BTN1 pressed
   while (!jshPinGetValue(BTN1_PININDEX)) {
     jshKickWatchDog();
     jshSleep(jshGetTimeFromMilliseconds(4*1000));
   }
+    // wait for button to be pressed for at least 1 second
+    int timeout = 1000;
+    while (jshPinGetValue(BTN1_PININDEX) && timeout--)
+      nrf_delay_ms(1);
+    // if button not pressed, keep sleeping
+  } while (!jshPinGetValue(BTN1_PININDEX));
   // restart
   jshReboot();
 
