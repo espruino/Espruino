@@ -52,6 +52,7 @@
             Fix SIGFPE if using modulo with -1 (fix #1983)
             Fix memory leak on Array.forEach/map/filter/etc caused by #1962 fix
             Fix Espruino not sleeping when very low on free memory (fix #1986)
+            nRF52: Use 'low accuracy' GPIOTE for watches as we can shut down the high speed oscillator
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)

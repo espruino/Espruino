@@ -1562,7 +1562,8 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
 #endif
   uint32_t p = (uint32_t)pinInfo[pin].pin;
   if (shouldWatch) {
-    nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true); // FIXME: Maybe we want low accuracy? Potentially this draws more power in sleep modes?
+    // use low accuracy for GPIOTE as we can shut down the high speed oscillator then
+    nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(false /* hi/low accuracy */);
     cls_1_config.is_watcher = true; // stop this resetting the input state
     nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler);
     nrf_drv_gpiote_in_event_enable(p, true);
