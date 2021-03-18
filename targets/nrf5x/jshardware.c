@@ -278,7 +278,16 @@ volatile bool flashIsBusy = false;
 volatile bool hadEvent = false; // set if we've had an event we need to deal with
 unsigned int ticksSinceStart = 0;
 
+#if GPIO_COUNT>1
+#define NRF_GPIO_PIN_MAX (P0_PIN_NUM+P1_PIN_NUM)
+#else
+#define NRF_GPIO_PIN_MAX P0_PIN_NUM
+#endif
+
+/// Current state of each pin
 JshPinFunction pinStates[JSH_PIN_COUNT];
+/// for each EXTI, which nordic pin (0..31 /  0..47) is used (PIN_UNDEFINED if unused)
+uint8_t extiToPin[EXTI_COUNT];
 
 #ifdef NRF52_SERIES
 /// This is used to handle the case where an analog read happens in an IRQ interrupts one being done outside
@@ -728,6 +737,7 @@ void jshInit() {
   lastSystemTimeInv = ~lastSystemTime;
 
   memset(pinStates, 0, sizeof(pinStates));
+  memset(extiToPin, PIN_UNDEFINED, sizeof(extiToPin));
 
   jshInitDevices();
   jshResetPeripherals();
@@ -1528,11 +1538,8 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
 
 
 static IOEventFlags jshGetEventFlagsForWatchedPin(nrf_drv_gpiote_pin_t pin) {
-  uint32_t addr = nrf_drv_gpiote_in_event_addr_get(pin);
-  // sigh. all because the right stuff isn't exported. All we wanted was channel_port_get
-  int i;
-  for (i=0;i<GPIOTE_CH_NUM;i++)
-    if (addr == nrf_gpiote_event_addr_get((nrf_gpiote_events_t)((uint32_t)NRF_GPIOTE_EVENTS_IN_0+(sizeof(uint32_t)*i))))
+  for (int i=0;i<EXTI_COUNT;i++)
+    if (pin == extiToPin[i])
       return EV_EXTI0+i;
   return EV_NONE;
 }
@@ -1567,8 +1574,19 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
     cls_1_config.is_watcher = true; // stop this resetting the input state
     nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler);
     nrf_drv_gpiote_in_event_enable(p, true);
-    return jshGetEventFlagsForWatchedPin(p);
+    // allocate an 'EXTI'
+    for (int i=0;i<EXTI_COUNT;i++) {
+      if (extiToPin[i] == PIN_UNDEFINED) {
+        extiToPin[i] = p;
+        return EV_EXTI0+i;
+      }
+    }
+    jsWarn("No free EXTI for watch");
+    return EV_NONE;
   } else {
+    for (int i=0;i<EXTI_COUNT;i++)
+      if (extiToPin[i] == p)
+        extiToPin[i] = PIN_UNDEFINED;
     nrf_drv_gpiote_in_event_disable(p);
     return EV_NONE;
   }
