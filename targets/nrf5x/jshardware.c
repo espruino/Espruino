@@ -1569,25 +1569,31 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
 #endif
   uint32_t p = (uint32_t)pinInfo[pin].pin;
   if (shouldWatch) {
-    // use low accuracy for GPIOTE as we can shut down the high speed oscillator then
-    nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(false /* hi/low accuracy */);
-    cls_1_config.is_watcher = true; // stop this resetting the input state
-    nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler);
-    nrf_drv_gpiote_in_event_enable(p, true);
     // allocate an 'EXTI'
     for (int i=0;i<EXTI_COUNT;i++) {
+      if (extiToPin[i] == p) return EV_EXTI0+i; //already allocated
       if (extiToPin[i] == PIN_UNDEFINED) {
-        extiToPin[i] = p;
-        return EV_EXTI0+i;
+        // use low accuracy for GPIOTE as we can shut down the high speed oscillator then
+       nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(false /* hi/low accuracy */);
+       cls_1_config.is_watcher = true; // stop this resetting the input state
+       if (nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler)!=0) {
+         jsWarn("No free GPIOTE for watch");
+         return EV_NONE;
+       }
+       nrf_drv_gpiote_in_event_enable(p, true);
+       extiToPin[i] = p;
+       return EV_EXTI0+i;
       }
     }
     jsWarn("No free EXTI for watch");
     return EV_NONE;
   } else {
     for (int i=0;i<EXTI_COUNT;i++)
-      if (extiToPin[i] == p)
+      if (extiToPin[i] == p) {
         extiToPin[i] = PIN_UNDEFINED;
-    nrf_drv_gpiote_in_event_disable(p);
+        nrf_drv_gpiote_in_event_disable(p);
+        nrf_drv_gpiote_in_uninit(p);
+      }
     return EV_NONE;
   }
 } // start watching pin - return the EXTI associated with it
