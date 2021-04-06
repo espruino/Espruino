@@ -53,6 +53,7 @@
 
 
 // Based on SDK12
+#ifdef NRF5X_SDK_12
 #define APP_FIFO_ENABLED 1
 #define APP_TIMER_ENABLED 1
 #define APP_UART_ENABLED 1
@@ -106,8 +107,12 @@
 #define TWI1_USE_EASY_DMA 0
 
 #define UART_ENABLED 1
+#define UART_EASY_DMA_SUPPORT 0 // 1 in SDK15+
 #define UART0_ENABLED 1
-#define UART_EASY_DMA_SUPPORT 0
 #define UART0_CONFIG_USE_EASY_DMA 0
 
 #define I2S_ENABLED 1
+#endif
+
+
+// Other SDK configs are still in sdk_config.h
