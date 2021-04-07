@@ -3459,12 +3459,16 @@ static void jswrap_banglejs_periph_off() {
 #endif
 
 #ifdef BTN2_PININDEX
-  nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
+  nrf_gpio_cfg_sense_set(pinInfo[BTN2_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
 #endif
 #ifdef BTN3_PININDEX
-  nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
+  nrf_gpio_cfg_sense_set(pinInfo[BTN3_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
 #endif
-  nrf_gpio_cfg_sense_set(BTN1_PININDEX, NRF_GPIO_PIN_SENSE_LOW);
+  /* The low power pin watch code (nrf_drv_gpiote_in_init) somehow causes
+  the sensing to be disabled such that nrf_gpio_cfg_sense_set(pin, NRF_GPIO_PIN_SENSE_LOW)
+  no longer works. To work around this we just call our standard pin watch function
+  to re-enable everything. */
+  jshPinWatch(BTN1_PININDEX, true);
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
 #endif
@@ -3484,6 +3488,7 @@ void jswrap_banglejs_off() {
 #ifndef EMSCRIPTEN
   jswrap_banglejs_periph_off();
   sd_power_system_off();
+  while(1);
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
 #endif
