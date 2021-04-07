@@ -1068,10 +1068,13 @@ void jshPinSetState(Pin pin, JshPinState state) {
 #else
   NRF_GPIO_Type *reg = NRF_GPIO;
 #endif
+  // get original state of pin sensing
+  uint32_t sense = reg->PIN_CNF[ipin] & GPIO_PIN_CNF_SENSE_Msk;
+  // actually set pin config
   switch (state) {
     case JSHPINSTATE_UNDEFINED :
     case JSHPINSTATE_ADC_IN :
-      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = sense
                               | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
@@ -1079,7 +1082,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_AF_OUT :
     case JSHPINSTATE_GPIO_OUT :
-    case JSHPINSTATE_USART_OUT :
+    case JSHPINSTATE_USART_OUT : // disable sense for output modes
       reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0H1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
@@ -1087,7 +1090,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
                               | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_AF_OUT_OPENDRAIN :
-    case JSHPINSTATE_GPIO_OUT_OPENDRAIN :
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN : // disable sense for output modes
       reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0D1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
@@ -1095,7 +1098,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
                               | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_I2C :
-    case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP: // disable sense for output modes
       reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0D1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
@@ -1104,21 +1107,21 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_GPIO_IN :
     case JSHPINSTATE_USART_IN :
-      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = sense
                               | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
                               | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN_PULLUP :
-      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = sense
                                     | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                                     | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
                                     | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
                                     | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN_PULLDOWN :
-      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = sense
                                     | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                                     | (GPIO_PIN_CNF_PULL_Pulldown << GPIO_PIN_CNF_PULL_Pos)
                                     | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
