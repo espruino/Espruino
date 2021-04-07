@@ -28,7 +28,7 @@ endif #DFU_UPDATE_BUILD
 # Just try and get rid of the compile warnings.
 CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter -fomit-frame-pointer #this is for device manager in nordic sdk
 CFLAGS+=-Wno-expansion-to-defined # remove warnings created by Nordic's libs
-DEFINES += -D$(CHIP) -DNRF5X -DNRF5X_SDK_$(NRF5X_SDK) -DUSE_APP_CONFIG
+DEFINES += -D$(CHIP) -DNRF5X -DNRF5X_SDK_$(NRF5X_SDK)
 
 ARM = 1
 ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
@@ -68,7 +68,8 @@ ifdef NRF5X_SDK_12
     targets/nrf5x_dfu/sdk12/dfu-cc.pb.c \
     targets/nrf5x_dfu/sdk12/dfu_req_handling.c 
 endif
-else
+else # no BOOTLOADER
+  DEFINES += -DUSE_APP_CONFIG
   SOURCES +=                              \
     targets/nrf5x/main.c                    \
     targets/nrf5x/jshardware.c              \
