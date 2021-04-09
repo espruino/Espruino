@@ -107,7 +107,7 @@ void jswrap_storage_erase(JsVar *name) {
     ["offset","int","(optional) The offset in bytes to start from"],
     ["length","int","(optional) The length to read in bytes (if <=0, the entire file is read)"]
   ],
-  "return" : ["JsVar","A string of data"]
+  "return" : ["JsVar","A string of data, or `undefined` if the file is not found"]
 }
 Read a file from the flash storage area that has
 been written with `require("Storage").write(...)`.
