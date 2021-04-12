@@ -4,8 +4,8 @@ SEARCH_DIR(.)
 GROUP(-lgcc -lc -lnosys)
 
 MEM_SRAM_SIZE = DEFINED( LD_SRAM_SIZE ) ? LD_SRAM_SIZE : 0x40000 ;
-MEM_SRAM_SD_OFFSET = DEFINED( LD_APP_RAM_BASE ) ? LD_APP_RAM_BASE :0x3c8d0; /* FIXME - can do way less */ /* memory allocated for SoftDevice */
-MEM_NOINIT_SIZE = 24;
+MEM_SRAM_SD_OFFSET = DEFINED( LD_APP_RAM_BASE ) ? LD_APP_RAM_BASE :0x3720; /* FIXME - can do way less */ /* memory allocated for SoftDevice */
+MEM_NOINIT_SIZE = 16;
 
 MEMORY
 {
