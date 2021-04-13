@@ -70,7 +70,7 @@ NRF5X_SDK=12
 NRF5X_SDK_12=1
 NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x_12
 DEFINES += -DNRF_SD_BLE_API_VERSION=3
-SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_3.0.0_softdevice.hex
+SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_3.1.0_softdevice.hex
 endif
 endif
 endif
