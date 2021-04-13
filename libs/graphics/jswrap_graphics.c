@@ -1919,6 +1919,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
     v = jsvObjectGetChild(image, "transparent", 0);
     info->isTransparent = v!=0;
     info->transparentCol = (unsigned int)jsvGetIntegerAndUnLock(v);
+#ifndef SAVE_ON_FLASH_EXTREME
     v = jsvObjectGetChild(image, "palette", 0);
     if (v) {
       if (jsvIsArrayBuffer(v) && v->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16) {
@@ -1937,6 +1938,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
         return false;
       }
     }
+#endif
     JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
     info->buffer = jsvGetArrayBufferBackingString(buf);
     jsvUnLock(buf);
@@ -2358,7 +2360,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       }
       it = l.it; // make sure it gets freed properly
     }
-#endif
+#endif // GRAPHICS_DRAWIMAGE_ROTATED
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(img.buffer);

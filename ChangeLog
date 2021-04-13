@@ -55,6 +55,7 @@
             nRF52: Use 'low accuracy' GPIOTE for watches as we can shut down the high speed oscillator
             E.getSizeOf() and trace() now don't recurse into references back to the global scope (makes sizes and traces far more useful)
             nRF5x: Move from separate sdk_config.h to a single targets/nrf5x/app_config.h file
+            Original board: Remove Graphics.*Ellipse and StorageFile when networking enabled to allow builds
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
