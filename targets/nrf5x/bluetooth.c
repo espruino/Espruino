@@ -115,6 +115,9 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 #define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS) /**< Connection Supervision Timeout in 10 ms units, see @ref BLE_GAP_CP_LIMITS.*/
 #define SLAVE_LATENCY                   0 /**< Slave Latency in number of connection events, see @ref BLE_GAP_CP_LIMITS.*/
 
+#if NRF_BLE_MAX_MTU_SIZE != GATT_MTU_SIZE_DEFAULT
+#define EXTENSIBLE_MTU // The MTU can be extended past the default of 23
+#endif
 
 #define APP_BLE_CONN_CFG_TAG                1                                       /**< A tag identifying the SoftDevice BLE configuration. */
 #define APP_BLE_OBSERVER_PRIO               2                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
@@ -175,11 +178,20 @@ static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   
 #endif
 
 volatile uint16_t                       m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
+#ifdef EXTENSIBLE_MTU
 volatile uint16_t m_peripheral_effective_mtu;
+#else
+const uint16_t m_peripheral_effective_mtu = GATT_MTU_SIZE_DEFAULT;
+#endif
 #if CENTRAL_LINK_COUNT>0
 volatile uint16_t                       m_central_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle for central mode connection */
+#ifdef EXTENSIBLE_MTU
 volatile uint16_t m_central_effective_mtu;
+#else
+const uint16_t m_central_effective_mtu = GATT_MTU_SIZE_DEFAULT;
 #endif
+#endif
+
 #ifdef USE_NFC
 volatile bool nfcEnabled = false;
 #endif
@@ -1126,7 +1138,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_CONNECTED:
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
           m_peripheral_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+#ifdef EXTENSIBLE_MTU
           m_peripheral_effective_mtu = GATT_MTU_SIZE_DEFAULT;
+#endif
 #ifdef DYNAMIC_INTERVAL_ADJUSTMENT
           bleIdleCounter = 0;
 #endif
@@ -1144,7 +1158,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+#ifdef EXTENSIBLE_MTU
           m_central_effective_mtu = GATT_MTU_SIZE_DEFAULT;
+#endif
 #if NRF_SD_BLE_API_VERSION>=3
 #if (NRF_BLE_MAX_MTU_SIZE > GATT_MTU_SIZE_DEFAULT)
           err_code = sd_ble_gattc_exchange_mtu_request(p_ble_evt->evt.gap_evt.conn_handle, NRF_BLE_MAX_MTU_SIZE);
@@ -1320,7 +1336,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       } break; // BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST
 
 #if (NRF_SD_BLE_API_VERSION >= 3)
-
+#ifdef EXTENSIBLE_MTU
         case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
           uint16_t conn_handle   = p_ble_evt->evt.gattc_evt.conn_handle;
           uint16_t effective_mtu = p_ble_evt->evt.gattc_evt.params.exchange_mtu_rsp.server_rx_mtu;
@@ -1346,9 +1362,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
                  m_peripheral_effective_mtu = effective_mtu;
           }
         } break; // BLE_GATTC_EVT_EXCHANGE_MTU_RSP
-
-
+#endif
       case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST: {
+#ifdef EXTENSIBLE_MTU
         uint16_t conn_handle   = p_ble_evt->evt.gatts_evt.conn_handle;
         uint16_t effective_mtu = p_ble_evt->evt.gatts_evt.params.exchange_mtu_request.client_rx_mtu;
         effective_mtu = MIN(MAX(GATT_MTU_SIZE_DEFAULT,effective_mtu),NRF_BLE_MAX_MTU_SIZE);
@@ -1360,7 +1376,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         if (m_peripheral_conn_handle == conn_handle){
                  m_peripheral_effective_mtu = effective_mtu;
         }
-
+#endif
         err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                    NRF_BLE_MAX_MTU_SIZE);
         // This can return an error when connecting to EQ3 CC-RT-BLE (which requests an MTU of 0!!)
