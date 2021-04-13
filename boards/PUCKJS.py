@@ -42,6 +42,8 @@ info = {
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      # 'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # reset isn't being used, so let's just have an extra IO (needed for Puck.js V2)
      'DEFINES+=-DESPR_DCDC_ENABLE', # Ensure DCDC converter is enabled
+#     'DEFINES+=-DNRF_BLE_GATT_MAX_MTU_SIZE=59 -DNRF_BLE_MAX_MTU_SIZE=59',
+#     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2d18', #0x2c40+(59-23)*6
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_puck_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://puck-js.com/go"\'',
