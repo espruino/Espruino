@@ -52,7 +52,7 @@ info = {
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DNEOPIXEL_SCK_PIN=14',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'INCLUDE += -I$(ROOT)/libs/pixljs',
      'WRAPPERSOURCES += libs/pixljs/jswrap_pixljs.c',
      'JSMODULESOURCES += libs/js/graphical_menu.min.js'

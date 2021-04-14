@@ -47,7 +47,7 @@ info = {
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
      'DEFINES+=-DAPP_TIMER_OP_QUEUE_SIZE=5', # Bangle.js accelerometer poll handler needs something else in queue size
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
      'SOURCES += libs/misc/nmea.c',

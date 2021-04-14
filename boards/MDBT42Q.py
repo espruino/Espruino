@@ -47,7 +47,7 @@ info = {
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"MDBT42Q"\'',
      'DEFINES+=-DNEOPIXEL_SCK_PIN=23',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C'
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91'
    ]
  }
 };

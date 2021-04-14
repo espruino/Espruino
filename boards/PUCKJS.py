@@ -48,7 +48,7 @@ info = {
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_puck_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://puck-js.com/go"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'INCLUDE += -I$(ROOT)/libs/puckjs',
      'WRAPPERSOURCES += libs/puckjs/jswrap_puck.c'
    ]
