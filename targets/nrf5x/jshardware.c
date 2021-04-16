@@ -95,9 +95,9 @@ void WDT_IRQHandler() {
 /** RTC is only 24 bits, and resets when the device resets. To work around
 this we store the last known time (and offsets) in a bit of RAM that we don't
 reset when nRF52 reboots. */
-volatile JsSysTime baseSystemTime __attribute__((section(".noinit")));
-volatile uint32_t lastSystemTime __attribute__((section(".noinit"))) __attribute__ ((aligned (4)));
-volatile uint32_t lastSystemTimeInv __attribute__((section(".noinit"))) __attribute__ ((aligned (4)));
+volatile JsSysTime baseSystemTime __attribute__((section(".noinit"))) __attribute__((aligned(4)));
+volatile uint32_t lastSystemTime __attribute__((section(".noinit"))) __attribute__((aligned(4)));
+volatile uint32_t lastSystemTimeInv __attribute__((section(".noinit"))) __attribute__((aligned(4)));
 
 #ifdef NRF_USB
 #include "app_usbd_core.h"
