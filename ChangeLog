@@ -1,4 +1,4 @@
-            Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
+     2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
             nRF5x: Add callback param to 'NRF.restart', allowing code to be called with softdevice disabled
             Bangle.js: fix require("locale").time(new Date()) for default locale
