@@ -59,6 +59,7 @@
             Update S132 Softdevice from 3.0.0 to 3.1.0 (fix #1999)
             nRF5x: Allow Espruino builds with a configurable MTU - move Espruino boards to 53 byte (from 23) (#1998)
             Fix issue parsing `r=>print((e=>{})(r))` (fix #1992)
+            Add DHE RSA key exchange for TLS/HTTPS (fix #1994)
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
