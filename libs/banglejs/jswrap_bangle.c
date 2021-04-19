@@ -349,6 +349,10 @@ APP_TIMER_DEF(m_backlight_off_timer_id);
 #define BACKLIGHT_PWM_INTERVAL 15 // in msec - 67Hz PWM
 #endif
 
+#ifdef EMSCRIPTEN
+#define HOME_BTN 3
+#endif
+
 #ifdef DTNO1_F5
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo i2cInternal;
@@ -1789,7 +1793,8 @@ Is the Heart rate monitor powered?
 
 Set power with `Bangle.setHRMPower(...);`
 */
-bool jswrap_banglejs_isHRMOn() {
+// emscripten bug means we can't use 'bool' as return value here!
+int jswrap_banglejs_isHRMOn() {
   return bangleFlags & JSBF_HRM_ON;
 }
 
@@ -1858,7 +1863,8 @@ Is the GPS powered?
 
 Set power with `Bangle.setGPSPower(...);`
 */
-bool jswrap_banglejs_isGPSOn() {
+// emscripten bug means we can't use 'bool' as return value here!
+int jswrap_banglejs_isGPSOn() {
   return bangleFlags & JSBF_GPS_ON;
 }
 
@@ -1886,6 +1892,7 @@ Bangle.on('mag',print);
 *When on, the compass draws roughly 2mA*
 */
 bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId) {
+#ifdef MAG_I2C
   isOn = setDevicePower("Compass", appId, isOn);
 
   if (isOn) bangleFlags |= JSBF_COMPASS_ON;
@@ -1905,6 +1912,9 @@ bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId) {
   magmax.z = -32768;
 
   return isOn;
+#else
+  return 0;
+#endif
 }
 
 /*JSON{
@@ -1919,7 +1929,8 @@ Is the compass powered?
 
 Set power with `Bangle.setCompassPower(...);`
 */
-bool jswrap_banglejs_isCompassOn() {
+// emscripten bug means we can't use 'bool' as return value here!
+int jswrap_banglejs_isCompassOn() {
   return bangleFlags & JSBF_COMPASS_ON;
 }
 
@@ -2005,7 +2016,8 @@ Is the Barometer powered?
 
 Set power with `Bangle.setBarometerPower(...);`
 */
-bool jswrap_banglejs_isBarometerOn() {
+// emscripten bug means we can't use 'bool' as return value here!
+int jswrap_banglejs_isBarometerOn() {
   return bangleFlags & JSBF_BAROMETER_ON;
 }
 
@@ -2028,6 +2040,7 @@ Returns an `{x,y,z,dx,dy,dz,heading}` object
 To get this event you must turn the compass on
 with `Bangle.setCompassPower(1)`.*/
 JsVar *jswrap_banglejs_getCompass() {
+#ifdef MAG_I2C
   JsVar *o = jsvNewObject();
   if (o) {
     jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger(mag.x));
@@ -2050,6 +2063,9 @@ JsVar *jswrap_banglejs_getCompass() {
     jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(h));
   }
   return o;
+#else
+  return 0;
+#endif
 }
 
 /*JSON{
