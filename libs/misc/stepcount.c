@@ -159,7 +159,12 @@ static int AccelFilter_get(AccelFilter* f) {
 
 AccelFilter accelFilter;
 
-#define stepCounterThresholdMin  512
+// ===============================================================
+
+// These were calculated based on contributed data
+#define stepCounterThresholdMin  830
+#define stepCounterAvr 8
+
 int stepCounterThreshold;
 /// has filtered acceleration passed stepCounterThresholdLow?
 bool stepWasLow;
@@ -213,7 +218,7 @@ bool stepcount_new(int accMagSquared) {
 
   int a = accFiltered;
   if (a<0) a=-a;
-  stepCounterThreshold = (stepCounterThreshold*7 + a) >> 3;
+  stepCounterThreshold = (stepCounterThreshold*(32-stepCounterAvr) + a*stepCounterAvr) >> 5;
   if (stepCounterThreshold < stepCounterThresholdMin)
     stepCounterThreshold = stepCounterThresholdMin;
 
