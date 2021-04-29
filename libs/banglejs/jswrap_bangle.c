@@ -55,6 +55,7 @@
 #include "lcd_spilcd.h"
 #endif
 
+#include "stepcount.h"
 #ifdef GPS_PIN_RX
 #include "nmea.h"
 #endif
@@ -498,11 +499,6 @@ int accelGestureEndThresh = 2000*2000;
 int accelGestureInactiveCount = 4;
 /// how many samples must a gesture have before we notify about it?
 int accelGestureMinLength = 10;
-// Step data
-/// How low must acceleration magnitude squared get before we consider the next rise a step?
-int stepCounterThresholdLow = (8192-80)*(8192-80);
-/// How high must acceleration magnitude squared get before we consider it a step?
-int stepCounterThresholdHigh = (8192+80)*(8192+80);
 /// How much acceleration to register a twist of the watch strap?
 int twistThreshold = 800;
 /// Maximum acceleration in Y to trigger a twist (low Y means watch is facing the right way up)
@@ -512,8 +508,6 @@ int twistTimeout = 1000;
 
 /// Current steps since reset
 uint32_t stepCounter;
-/// has acceleration counter passed stepCounterThresholdLow?
-bool stepWasLow;
 /// What state was the touchscreen last in
 typedef enum {
   TS_NONE = 0,
@@ -917,14 +911,18 @@ void peripheralPollHandler() {
       bangleTasks |= JSBT_FACE_UP;
       jshHadEvent();
     }
-    // check for step counter
-    if (accMagSquared < stepCounterThresholdLow)
-      stepWasLow = true;
-    else if ((accMagSquared > stepCounterThresholdHigh) && stepWasLow) {
-      stepWasLow = false;
-      stepCounter++;
-      bangleTasks |= JSBT_STEP_EVENT;
-      jshHadEvent();
+    // Step counter
+    if (bangleTasks & JSBT_ACCEL_INTERVAL_DEFAULT) {
+      // we've come out of powersave, reset the algorithm
+      stepcount_init();
+    }
+    if (powerSaveTimer < POWER_SAVE_TIMEOUT) {
+      // only do step counting if power save is off (otherwise accel interval is too low - also wastes power)
+      if (stepcount_new(accMagSquared)) {
+        stepCounter++;
+        bangleTasks |= JSBT_STEP_EVENT;
+        jshHadEvent();
+      }
     }
     // check for twist action
     if (twistTimer < TIMER_MAX)
@@ -1594,7 +1592,7 @@ void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
     ],
     "ifdef" : "BANGLEJS"
 }
-Set internal options used for gestures, step counting, etc...
+Set internal options used for gestures, etc...
 
 * `wakeOnBTN1` should the LCD turn on when BTN1 is pressed? default = `true`
 * `wakeOnBTN2` should the LCD turn on when BTN2 is pressed? default = `true`
@@ -1605,15 +1603,10 @@ Set internal options used for gestures, step counting, etc...
 * `twistThreshold`  How much acceleration to register a twist of the watch strap? Can be negative for oppsite direction. default = `800`
 * `twistMaxY` Maximum acceleration in Y to trigger a twist (low Y means watch is facing the right way up). default = `-800`
 * `twistTimeout`  How little time (in ms) must a twist take from low->high acceleration? default = `1000`
-
 * `gestureStartThresh` how big a difference before we consider a gesture started? default = `sqr(800)`
 * `gestureEndThresh` how small a difference before we consider a gesture ended? default = `sqr(2000)`
 * `gestureInactiveCount` how many samples do we keep after a gesture has ended? default = `4`
 * `gestureMinLength` how many samples must a gesture have before we notify about it? default = `10`
-*
-* `stepCounterThresholdLow` How low must acceleration magnitude squared get before we consider the next rise a step? default = `sqr(8192-80)`
-* `stepCounterThresholdHigh` How high must acceleration magnitude squared get before we consider it a step? default = `sqr(8192+80)`
-
 * `powerSave` after a minute of not being moved, Bangle.js will change the accelerometer poll interval down to 800ms (10x accelerometer samples).
    On movement it'll be raised to the default 80ms. If `Bangle.setPollInterval` is used this is disabled, and for it to work the poll interval
    must be either 80ms or 800ms. default = `true`
@@ -1629,6 +1622,7 @@ void jswrap_banglejs_setOptions(JsVar *options) {
   bool wakeOnTouch = bangleFlags&JSBF_WAKEON_TOUCH;
   bool wakeOnTwist = bangleFlags&JSBF_WAKEON_TWIST;
   bool powerSave = bangleFlags&JSBF_POWER_SAVE;
+  int stepCounterThresholdLow, stepCounterThresholdHigh; // ignore these with new step counter
   jsvConfigObject configs[] = {
       {"gestureStartThresh", JSV_INTEGER, &accelGestureStartThresh},
       {"gestureEndThresh", JSV_INTEGER, &accelGestureEndThresh},
@@ -2350,8 +2344,8 @@ void jswrap_banglejs_init() {
 #endif
 
   // Accelerometer variables init
+  stepcount_init();
   stepCounter = 0;
-  stepWasLow = false;
 #ifdef MAG_I2C
 #ifdef MAG_DEVICE_GMC303
   // compass init
