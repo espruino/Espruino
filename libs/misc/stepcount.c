@@ -43,95 +43,88 @@ sampling frequency: 12.5 Hz
 
 fixed point precision: 10 bits
 
-* 0 Hz - 1.4 Hz
+* 0 Hz - 1.3 Hz
   gain = 0
   desired attenuation = -40 dB
   actual attenuation = n/a
 
-* 1.5 Hz - 2.5 Hz
+* 1.6 Hz - 2.4 Hz
   gain = 1
   desired ripple = 5 dB
   actual ripple = n/a
 
-* 2.6 Hz - 6.25 Hz
+* 2.7 Hz - 6.25 Hz
   gain = 0
   desired attenuation = -40 dB
   actual attenuation = n/a
 
 */
 
-#define ACCELFILTER_TAP_NUM 64
+#define ACCELFILTER_TAP_NUM 57
 
 typedef struct {
   int8_t history[ACCELFILTER_TAP_NUM];
   unsigned int last_index;
 } AccelFilter;
 
-static int8_t filter_taps[ACCELFILTER_TAP_NUM] = {
-    1,
-    1,
-    -1,
-    10,
-    9,
-    -1,
-    -16,
-    -19,
-    -2,
-    23,
-    29,
-    6,
-    -25,
-    -34,
-    -11,
-    20,
-    28,
-    10,
-    -9,
-    -9,
-    0,
-    -4,
-    -20,
-    -19,
-    13,
-    50,
-    45,
-    -13,
-    -72,
-    -67,
-    5,
-    78,
-    78,
-    5,
-    -67,
-    -72,
-    -13,
-    45,
-    50,
-    13,
-    -19,
-    -20,
-    -4,
-    0,
-    -9,
-    -9,
-    10,
-    28,
-    20,
-    -11,
-    -34,
-    -25,
-    6,
-    29,
-    23,
-    -2,
-    -19,
-    -16,
-    -1,
-    9,
-    10,
-    -1,
-    1,
-    1
+static const int filter_taps[ACCELFILTER_TAP_NUM] = {
+  1,
+  0,
+  -2,
+  -6,
+  -4,
+  4,
+  11,
+  8,
+  -5,
+  -16,
+  -12,
+  3,
+  14,
+  10,
+  -1,
+  -3,
+  2,
+  1,
+  -14,
+  -24,
+  -7,
+  32,
+  51,
+  19,
+  -44,
+  -74,
+  -34,
+  44,
+  83,
+  44,
+  -34,
+  -74,
+  -44,
+  19,
+  51,
+  32,
+  -7,
+  -24,
+  -14,
+  1,
+  2,
+  -3,
+  -1,
+  10,
+  14,
+  3,
+  -12,
+  -16,
+  -5,
+  8,
+  11,
+  4,
+  -4,
+  -6,
+  -2,
+  0,
+  1
 };
 
 static void AccelFilter_init(AccelFilter* f) {
