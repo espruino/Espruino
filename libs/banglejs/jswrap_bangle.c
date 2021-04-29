@@ -56,6 +56,7 @@
 #endif
 
 #include "stepcount.h"
+#include "heartrate.h"
 #ifdef GPS_PIN_RX
 #include "nmea.h"
 #endif
@@ -520,9 +521,6 @@ TouchState touchLastState; /// What happened in the last event?
 TouchState touchLastState2; /// What happened in the event before last?
 TouchState touchStatus; ///< What has happened *while the current touch is in progress*
 
-int8_t hrmHistory[HRM_HISTORY_LEN];
-volatile uint8_t hrmHistoryIdx;
-
 /// Promise when beep is finished
 JsVar *promiseBeep;
 /// Promise when buzz is finished
@@ -548,6 +546,7 @@ typedef enum {
   JSBF_GPS_ON = 4096,
   JSBF_COMPASS_ON = 8192,
   JSBF_BAROMETER_ON = 16384,
+  JSBF_HRM_INSTANT_LISTENER = 32768,
 
   JSBF_DEFAULT =
       JSBF_WAKEON_TWIST|
@@ -585,8 +584,9 @@ typedef enum {
   JSBT_FACE_UP = 1<<19, ///< Watch was turned face up/down (faceUp holds the actual state)
   JSBT_ACCEL_INTERVAL_DEFAULT = 1<<20, ///< reschedule accelerometer poll handler to default speed
   JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<21, ///< reschedule accelerometer poll handler to powersave speed
+  JSBT_HRM_INSTANT_DATA = 1<<22, ///< Instant heart rate data
 #ifdef PRESSURE_I2C
-  JSBT_PRESSURE_DATA = 1<<22
+  JSBT_PRESSURE_DATA = 1<<23
 #endif
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
@@ -1020,13 +1020,16 @@ void hrmPollHandler() {
 
   nrf_analog_read_end(adcInUse);
 
-  if (v<-128) v=-128;
-  if (v>127) v=127;
-  hrmHistory[hrmHistoryIdx] = v;
-  hrmHistoryIdx = (hrmHistoryIdx+1) & (HRM_HISTORY_LEN-1);
-  if (hrmHistoryIdx==0)
+  if (hrm_new(v)) {
     bangleTasks |= JSBT_HRM_DATA;
+    jshHadEvent();
+  }
+  if (bangleFlags & JSBF_HRM_INSTANT_LISTENER) {
+    bangleTasks |= JSBT_HRM_INSTANT_DATA;
+    jshHadEvent();
+  }
 #endif
+
 }
 
 #ifdef BANGLEJS_F18
@@ -1765,8 +1768,7 @@ bool jswrap_banglejs_setHRMPower(bool isOn, JsVar *appId) {
     jshPinAnalog(HEARTRATE_PIN_ANALOG);
 #endif
     jswrap_banglejs_pwrHRM(true); // HRM on
-    memset(hrmHistory, 0, sizeof(hrmHistory));
-    hrmHistoryIdx = 0;
+    hrm_init();
     JsSysTime t = jshGetTimeFromMilliseconds(HRM_POLL_INTERVAL);
     jstExecuteFn(hrmPollHandler, NULL, jshGetSystemTime()+t, t);
   } else {
@@ -2363,6 +2365,8 @@ void jswrap_banglejs_init() {
   touchStatus = TS_NONE;
   touchLastState = 0;
   touchLastState2 = 0;
+  // HRM
+  hrm_init();
 
 #ifndef EMSCRIPTEN
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
@@ -2527,6 +2531,11 @@ bool jswrap_banglejs_idle() {
     bangleFlags |= JSBF_ACCEL_LISTENER;
   else
     bangleFlags &= ~JSBF_ACCEL_LISTENER;
+  if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"HRMi"))
+    bangleFlags |= JSBF_HRM_INSTANT_LISTENER;
+  else
+    bangleFlags &= ~JSBF_HRM_INSTANT_LISTENER;
+
   if (!bangle) {
     bangleTasks = JSBT_NONE;
   }
@@ -2621,63 +2630,34 @@ bool jswrap_banglejs_idle() {
         }
       }
     }
+    if (bangleTasks & JSBT_HRM_INSTANT_DATA) {
+      JsVar *o = jsvNewObject();
+      if (o) {
+        jsvObjectSetChildAndUnLock(o,"raw",jsvNewFromInteger(hrmInfo.raw));
+        jsvObjectSetChildAndUnLock(o,"filt",jsvNewFromInteger(hrmInfo.filtered));
+        jsvObjectSetChildAndUnLock(o,"thresh",jsvNewFromInteger(hrmInfo.thresh >> HRM_THRESH_SHIFT));
+        jsvObjectSetChildAndUnLock(o,"t",jsvNewFromInteger(hrmInfo.timeSinceBeat));
+        jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(hrmInfo.bpm10 / 10.0));
+        jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRMi", &o, 1);
+        jsvUnLock(o);
+      }
+    }
     if (bangleTasks & JSBT_HRM_DATA) {
       JsVar *o = jsvNewObject();
       if (o) {
-        const int BPM_MIN = 40;
-        const int BPM_MAX = 200;
-        //const int SAMPLES_PER_SEC = 1000 / HRM_POLL_INTERVAL;
-        const int CMIN = 60000 / (BPM_MAX*HRM_POLL_INTERVAL);
-        const int CMAX = 60000 / (BPM_MIN*HRM_POLL_INTERVAL);
-        assert(CMAX<HRM_HISTORY_LEN);
-        uint8_t corr[CMAX];
-        int minCorr = 0x7FFFFFFF, maxCorr = 0;
-        int minIdx = 0;
-        for (int c=CMIN;c<CMAX;c++) {
-          int s = 0;
-          // correlate
-          for (int i=CMAX;i<HRM_HISTORY_LEN;i++) {
-            int d = hrmHistory[i] - hrmHistory[i-c];
-            s += d*d;
+        jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromInteger(hrmInfo.bpm10 / 10.0));
+        jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
+        JsVar *a = jsvNewEmptyArray();
+        if (a) {
+          int n = hrmInfo.timeIdx;
+          for (int i=0;i<HRM_HIST_LEN;i++) {
+            jsvArrayPushAndUnLock(a, jsvNewFromFloat(hrm_time_to_bpm10(hrmInfo.times[n]) / 10.0));
+            n++;
+            if (n==HRM_HIST_LEN) n=0;
           }
-          // store min and max
-          if (s<minCorr) {
-            minCorr = s;
-            minIdx = c;
-          }
-          if (s>maxCorr) {
-            maxCorr = s;
-          }
-          // store in 8 bit array
-          s = s>>10;
-          if (s>255) s=255;
-          corr[c] = s;
+          jsvObjectSetChildAndUnLock(o,"history",a);
         }
-        for (int c=0;c<CMIN;c++)
-          corr[c] = corr[CMIN]; // just fill in the lower data
-        // confidence depends on how good a fit correlation is (lower minCorr = better)
-        int confidence = 120 - (minCorr/600);
-        // but if maxCorr is low we don't have enough signal, so that's bad too
-        if (maxCorr<10000) confidence -= (10000-maxCorr)/50;
-
-        if (confidence<0) confidence=0;
-        if (confidence>100) confidence=100;
-
-        jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromInteger(60000 / (minIdx*HRM_POLL_INTERVAL)));
-        jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(confidence));
-        JsVar *s = jsvNewNativeString((char*)hrmHistory, sizeof(hrmHistory));
-        JsVar *ab = jsvNewArrayBufferFromString(s,0);
-        jsvObjectSetChildAndUnLock(o,"raw",jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT8,ab,0,0));
-        jsvUnLock2(ab,s);
-        // for debugging
-        if (false) {
-          jsvObjectSetChildAndUnLock(o,"minDifference",jsvNewFromInteger(minCorr));
-          jsvObjectSetChildAndUnLock(o,"maxDifference",jsvNewFromInteger(maxCorr));
-          s = jsvNewArrayBufferWithData(sizeof(corr),corr);
-          jsvObjectSetChildAndUnLock(o,"correlation",jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8,s,0,0));
-          jsvUnLock(s);
-        }
-
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM", &o, 1);
         jsvUnLock(o);
       }

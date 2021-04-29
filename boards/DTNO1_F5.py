@@ -46,6 +46,7 @@ info = {
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
      'SOURCES += libs/misc/nmea.c',
      'SOURCES += libs/misc/stepcount.c',
+     'SOURCES += libs/misc/heartrate.c',
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
      'DEFINES += -DBANGLEJS',
      'NRF_BL_DFU_INSECURE=1',
