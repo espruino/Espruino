@@ -162,8 +162,8 @@ AccelFilter accelFilter;
 // ===============================================================
 
 // These were calculated based on contributed data
-#define stepCounterThresholdMin  830
-#define stepCounterAvr 8
+#define stepCounterThresholdMin  800
+#define stepCounterAvr 5
 
 int stepCounterThreshold;
 /// has filtered acceleration passed stepCounterThresholdLow?
