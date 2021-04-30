@@ -1102,6 +1102,12 @@ bool btnTouchHandler() {
       return true; // eat the event
     }
   }
+  // if LCD is not on, ignore touch/swipe
+  if (!lcdPowerOn) {
+    touchLastState = touchLastState2 = touchStatus = TS_NONE;
+    return false;
+  }
+  // Detect touch/swipe
   TouchState state =
       (jshPinGetValue(BTN4_PININDEX)?TS_LEFT:0) |
       (jshPinGetValue(BTN5_PININDEX)?TS_RIGHT:0);
