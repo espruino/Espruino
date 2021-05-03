@@ -245,11 +245,12 @@ void lcdInit_SPILCD(JsGraphics *gfx) {
   jshPinOutput(LCD_SPI_DC,1);
   jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
-  jshPinOutput(LCD_SPI_RST,1);
-  jshDelayMicroseconds(10000);
+#ifndef DICKENS // Don't reset the LCD otherwise it'll gitch with Dickens hardware v2
+  jshPinOutput(LCD_SPI_RST,0);
+  jshDelayMicroseconds(1000);
   jshPinOutput(LCD_SPI_RST, 1);
-  jshDelayMicroseconds(10000);
-
+  jshDelayMicroseconds(2000);
+#endif
   JshSPIInfo inf;
   jshSPIInitInfo(&inf);
 #ifndef LCD_SPI_BITRATE

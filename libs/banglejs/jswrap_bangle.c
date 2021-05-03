@@ -55,7 +55,12 @@
 #include "lcd_spilcd.h"
 #endif
 
+
 #include "stepcount.h"
+
+#ifdef ACCEL_DEVICE_KX126 
+#include "kx126_registers.h"
+#endif
 
 #ifdef GPS_PIN_RX
 #include "nmea.h"
@@ -847,9 +852,34 @@ void peripheralPollHandler() {
   jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
   bool hasAccelData = (buf[0]&16)!=0; // DRDY
 #endif
+#ifdef ACCEL_DEVICE_KX126
+  // read interrupt source data (INS1 and INS2 registers)
+  buf[0]=KX126_INS1; 
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
+  jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 2, buf, true);
+  // 0 -> INS1 - step counter & tap events
+  // 1 -> INS2 - what kind of event
+  bool hasAccelData = (buf[1] & KX126_INS2_DRDY)!=0; // Is new data ready?
+  int tapType = (buf[1]>>2)&3; // TDTS0/1
+  if (tapType) {
+    // report tap
+    tapInfo = buf[0] | (tapType<<6);
+    bangleTasks |= JSBT_ACCEL_TAPPED;
+    jshHadEvent();
+  }
+  // clear the IRQ flags
+  buf[0]=KX126_INT_REL;
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
+  jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+#endif
   if (hasAccelData) {
+#ifdef ACCEL_DEVICE_KX126
+    buf[0]=KX126_XOUT_L;
+    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
+#else
     buf[0]=6;
     jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+#endif
     jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 6, buf, true);
     // work out current reading in 16 bit
     short newx = (buf[1]<<8)|buf[0];
@@ -978,6 +1008,7 @@ void peripheralPollHandler() {
         accIdleCount = 0; // it was inactive but not long enough to trigger a gesture
     }
   }
+
 #endif
 #ifdef PRESSURE_I2C
   if (bangleFlags & JSBF_BAROMETER_ON) {
@@ -1232,6 +1263,78 @@ void touchHandler(bool state, IOEventFlags flags) {
   lastBtn3 = btn3;
 
   lastGesture = gesture;
+}
+#endif
+
+static void jswrap_banglejs_setLCDPowerController(bool isOn) {
+#ifdef LCD_CONTROLLER_LPM013M126
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
+  if (isOn) { // wake
+    lcdST7789_cmd(0x11, 0, NULL); // SLPOUT
+    jshDelayMicroseconds(20);
+    lcdST7789_cmd(0x29, 0, NULL); // DISPON
+  } else { // sleep
+    lcdST7789_cmd(0x28, 0, NULL); // DISPOFF
+    jshDelayMicroseconds(20);
+    lcdST7789_cmd(0x10, 0, NULL); // SLPIN
+  }
+#endif
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
+  // TODO: LCD_CONTROLLER_GC9A01 - has an enable/power pin
+  if (isOn) { // wake
+    lcdCmd_SPILCD(0x11, 0, NULL); // SLPOUT
+    jshDelayMicroseconds(20);
+    lcdCmd_SPILCD(0x29, 0, NULL); // DISPON
+  } else { // sleep
+    lcdCmd_SPILCD(0x28, 0, NULL); // DISPOFF
+    jshDelayMicroseconds(20);
+    lcdCmd_SPILCD(0x10, 0, NULL); // SLPIN
+  }
+#endif
+#if defined(LCD_CONTROLLER_LPM013M126)
+  if (!isOn) {
+    unsigned char buf[2];
+    buf[0]=0xE5;
+    buf[1]=0x03;
+    jsi2cWrite(TOUCH_I2C, TOUCH_ADDR, 2, buf, true);
+  } else {
+    jshPinOutput(TOUCH_PIN_RST, 0);
+    jshDelayMicroseconds(1000);
+    jshPinOutput(TOUCH_PIN_RST, 1);
+    jshDelayMicroseconds(1000);
+  }
+#endif
+#ifdef LCD_EN
+  jshPinOutput(LCD_EN,0); // enable off
+#endif
+}
+
+#ifdef ESPR_BACKLIGHT_FADE
+static void backlightFadeHandler() {
+  int target = lcdPowerOn ? lcdBrightness : 0;
+  int brightness = realLcdBrightness;
+  int step = brightness>>3; // to make this more linear
+  if (step<4) step=4;
+  if (target > brightness) {
+    brightness += step;
+    if (brightness > target)
+      brightness = target;
+  } else if (target < brightness) {
+    brightness -= step;
+    if (brightness < target)
+      brightness = target;
+  }
+  realLcdBrightness = brightness;
+  if (brightness==0) jswrap_banglejs_pwrBacklight(0);
+  else if (realLcdBrightness==255) jswrap_banglejs_pwrBacklight(1);
+  else {
+#if LCD_BL_INVERTED
+    jshPinAnalogOutput(LCD_BL, (255-realLcdBrightness)/255.0, 200, JSAOF_NONE);
+#else
+    jshPinAnalogOutput(LCD_BL, realLcdBrightness/256.0, 200, JSAOF_NONE);
+#endif
+  }
 }
 #endif
 
@@ -2335,8 +2438,27 @@ void jswrap_banglejs_init() {
   jswrap_banglejs_accelWr(0x1D,0x80); // CNTL2 Software reset
   jshDelayMicroseconds(2000);
   jswrap_banglejs_accelWr(0x21,0); // DATA_CTRL_REG - 12.5Hz out
-  jswrap_banglejs_accelWr(0x1B,0b00101000); // CNTL1 On (top bit), low power, DRDYE=1, 4g, Wakeup=0,
+  jswrap_banglejs_accelWr(0x1B,0b00101000); // CNTL1 Off (top bit), low power, DRDYE=1, 4g, Wakeup=0,
   jswrap_banglejs_accelWr(0x1B,0b10101000); // CNTL1 On (top bit), low power, DRDYE=1, 4g, Wakeup=0,
+#endif
+#ifdef ACCEL_DEVICE_KX126
+  // KX126_1063 accelerometer init
+  jswrap_banglejs_accelWr(KX126_CNTL1,0x00); // CNTL1 standby mode (top bit)
+  jswrap_banglejs_accelWr(KX126_CNTL2,KX126_CNTL2_SRST); // CNTL2 Software reset (top bit)
+  jshDelayMicroseconds(2000);
+  jswrap_banglejs_accelWr(KX126_CNTL3,KX126_CNTL3_OTP_12P5|KX126_CNTL3_OTDT_400|KX126_CNTL3_OWUF_0P781); // CNTL3 12.5Hz tilt, 400Hz tap, 0.781Hz motion detection
+  jswrap_banglejs_accelWr(KX126_ODCNTL,KX126_ODCNTL_OSA_12P5); // ODCNTL - 12.5Hz output data rate (ODR), with low-pass filter set to ODR/9
+  jswrap_banglejs_accelWr(KX126_INC1,0); // INC1 - interrupt output pin INT1 disabled
+  jswrap_banglejs_accelWr(KX126_INC2,0); // INC2 - wake-up & back-to-sleep ignores all 3 axes
+  jswrap_banglejs_accelWr(KX126_INC3,0); // INC3 - tap detection ignores all 3 axes
+  jswrap_banglejs_accelWr(KX126_INC4,0); // INC4 - no routing of interrupt reporting to pin INT1
+  jswrap_banglejs_accelWr(KX126_INC5,0); // INC5 - interrupt output pin INT2 disabled
+  jswrap_banglejs_accelWr(KX126_INC6,0); // INC6 - no routing of interrupt reporting to pin INT2
+  jswrap_banglejs_accelWr(KX126_INC7,0); // INC7 - no step counter interrupts reported on INT1 or INT2
+  jswrap_banglejs_accelWr(KX126_BUF_CLEAR,0); // clear the buffer
+
+  jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G); // CNTL1 - standby mode, low power, enable "data ready" interrupt, 4g, disable tap, tilt & pedometer (for now)
+  jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G|KX126_CNTL1_PC1); // CNTL1 - same as above but change from standby to operating mode
 #endif
 
 #ifdef PRESSURE_I2C
@@ -2952,7 +3074,7 @@ JsVar *jswrap_banglejs_dbg() {
     ],
     "ifdef" : "BANGLEJS"
 }
-Writes a register on the KX023 Accelerometer
+Writes a register on the accelerometer
 */
 void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
 #ifdef ACCEL_I2C
@@ -2972,12 +3094,12 @@ void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
     "generate" : "jswrap_banglejs_accelRd",
     "params" : [
       ["reg","int",""],
-      ["cnt","int","If specified, `accelRd` returns and array of the given length (max 128). If not (or 0) it returns a number"]
+      ["cnt","int","If specified, `accelRd` returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
     "ifdef" : "BANGLEJS"
 }
-Reads a register from the KX023 Accelerometer
+Reads a register from the accelerometer
 
 **Note:** On Espruino 2v06 and before this function only returns a number (`cnt` is ignored).
 */
@@ -2988,7 +3110,11 @@ JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt) {
   if (cnt>(int)sizeof(buf)) cnt=sizeof(buf);
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
+#ifdef ACCEL_DEVICE_KX126
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
+#else
   jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+#endif
   jsi2cRead(ACCEL_I2C, ACCEL_ADDR, (cnt==0)?1:cnt, buf, true);
   i2cBusy = false;
   if (cnt) {
@@ -3443,14 +3569,12 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
 
 static void jswrap_banglejs_periph_off() {
 #ifndef EMSCRIPTEN
-  jsiKill();
-  jsvKill();
-  jshKill();
 
 #ifdef HEARTRATE
   jswrap_banglejs_pwrHRM(false); // HRM off
 #endif
   jswrap_banglejs_pwrGPS(false); // GPS off
+#endif
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
   jswrap_banglejs_setLCDPower(0);
 #ifdef ACCEL_DEVICE_KX023
@@ -3458,6 +3582,9 @@ static void jswrap_banglejs_periph_off() {
 #endif
 #ifdef ACCEL_DEVICE_KXTJ3_1057
   jswrap_banglejs_accelWr(0x1B,0); // accelerometer off
+#endif
+#ifdef ACCEL_DEVICE_KX126
+  jswrap_banglejs_accelWr(KX126_CNTL1,0); // CNTL1 Off (top bit)
 #endif
 #ifdef MAG_DEVICE_GMC303
   jswrap_banglejs_compassWr(0x31,0); // compass off
@@ -3475,11 +3602,18 @@ static void jswrap_banglejs_periph_off() {
 #ifdef BTN3_PININDEX
   nrf_gpio_cfg_sense_set(pinInfo[BTN3_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
 #endif
+
   /* The low power pin watch code (nrf_drv_gpiote_in_init) somehow causes
   the sensing to be disabled such that nrf_gpio_cfg_sense_set(pin, NRF_GPIO_PIN_SENSE_LOW)
   no longer works. To work around this we just call our standard pin watch function
   to re-enable everything. */
   jshPinWatch(BTN1_PININDEX, true);
+
+  nrf_gpio_cfg_sense_set(BTN1_PININDEX, NRF_GPIO_PIN_SENSE_LOW);
+
+  jsiKill();
+  jsvKill();
+  jshKill();
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
 #endif

@@ -20,5 +20,5 @@ bool jsi2cPopulateI2CInfo(
   );
 
 void jsi2cSetup(JshI2CInfo *inf);
-void jsi2cWrite(JshI2CInfo *inf, unsigned char address, int nBytes, const unsigned char *data, bool sendStop);
+bool jsi2cWrite(JshI2CInfo *inf, unsigned char address, int nBytes, const unsigned char *data, bool sendStop);
 void jsi2cRead(JshI2CInfo *inf, unsigned char address, int nBytes, unsigned char *data, bool sendStop);

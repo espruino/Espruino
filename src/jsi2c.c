@@ -172,18 +172,23 @@ void jsi2cSetup(JshI2CInfo *inf) {
   jshPinSetState(inf->pinSDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
 }
 
-void jsi2cWrite(JshI2CInfo *inf, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
+bool jsi2cWrite(JshI2CInfo *inf, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
   if (inf->pinSCL==PIN_UNDEFINED || inf->pinSDA==PIN_UNDEFINED)
-    return;
+    return false;
   i2cInfo d;
   i2c_initstruct(&d, inf);
   i2c_start(&d);
-  i2c_wr(&d, address<<1);
+  if (i2c_wr(&d, address<<1) == false) {
+    // NACK happened when writing to I2C address
+//  jsiConsolePrintf ("NACK when starting I2C write to address 0x%02x\n", address);
+    return false;
+  }
   int i;
   for (i=0;i<nBytes;i++)
     i2c_wr(&d, data[i]);
   if (sendStop) i2c_stop(&d);
   inf->started = d.started;
+  return true;
 }
 
 void jsi2cRead(JshI2CInfo *inf, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
@@ -192,7 +197,11 @@ void jsi2cRead(JshI2CInfo *inf, unsigned char address, int nBytes, unsigned char
   i2cInfo d;
   i2c_initstruct(&d, inf);
   i2c_start(&d);
-  i2c_wr(&d, 1|(address<<1));
+  if (i2c_wr(&d, 1|(address<<1)) == false) {
+    // NACK happened when writing to I2C address
+//  jsiConsolePrintf ("NACK when starting I2C read from address 0x%02x\n", address);
+    return;
+  }
   int i;
   for (i=0;i<nBytes;i++)
     data[i] = (unsigned char)i2c_rd(&d, i==nBytes-1);
