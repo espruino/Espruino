@@ -34,7 +34,8 @@ Integer
 int8_t
 int
 
-Actual Filter details:
+*/
+/*
 
 FIR filter designed with
  http://t-filter.appspot.com
@@ -43,12 +44,19 @@ sampling frequency: 12.5 Hz
 
 fixed point precision: 10 bits
 
-* 0 Hz - 1.3 Hz
+FIR filter designed with
+ http://t-filter.appspot.com
+
+sampling frequency: 12.5 Hz
+
+fixed point precision: 10 bits
+
+* 0 Hz - 1.1 Hz
   gain = 0
   desired attenuation = -40 dB
   actual attenuation = n/a
 
-* 1.6 Hz - 2.4 Hz
+* 1.3 Hz - 2.5 Hz
   gain = 1
   desired ripple = 5 dB
   actual ripple = n/a
@@ -67,64 +75,64 @@ typedef struct {
   unsigned int last_index;
 } AccelFilter;
 
-static const int filter_taps[ACCELFILTER_TAP_NUM] = {
-  1,
-  0,
-  -2,
-  -6,
-  -4,
-  4,
-  11,
-  8,
-  -5,
-  -16,
-  -12,
-  3,
-  14,
-  10,
-  -1,
-  -3,
-  2,
-  1,
-  -14,
-  -24,
-  -7,
-  32,
-  51,
-  19,
-  -44,
-  -74,
-  -34,
-  44,
-  83,
-  44,
-  -34,
-  -74,
-  -44,
-  19,
-  51,
-  32,
-  -7,
-  -24,
-  -14,
-  1,
-  2,
-  -3,
-  -1,
-  10,
-  14,
-  3,
-  -12,
-  -16,
-  -5,
-  8,
-  11,
-  4,
-  -4,
-  -6,
-  -2,
-  0,
-  1
+static int8_t filter_taps[ACCELFILTER_TAP_NUM] = {
+    -2,
+    4,
+    4,
+    1,
+    -1,
+    0,
+    2,
+    -3,
+    -12,
+    -13,
+    2,
+    24,
+    29,
+    6,
+    -25,
+    -33,
+    -13,
+    10,
+    11,
+    -1,
+    3,
+    29,
+    41,
+    4,
+    -62,
+    -89,
+    -34,
+    62,
+    110,
+    62,
+    -34,
+    -89,
+    -62,
+    4,
+    41,
+    29,
+    3,
+    -1,
+    11,
+    10,
+    -13,
+    -33,
+    -25,
+    6,
+    29,
+    24,
+    2,
+    -13,
+    -12,
+    -3,
+    2,
+    0,
+    -1,
+    1,
+    4,
+    4,
+    -2
 };
 
 static void AccelFilter_init(AccelFilter* f) {
@@ -155,8 +163,10 @@ AccelFilter accelFilter;
 // ===============================================================
 
 // These were calculated based on contributed data
-#define stepCounterThresholdMin  800
-#define stepCounterAvr 5
+#define stepCounterThresholdMin  1500
+#define stepCounterAvr 0
+
+// ===============================================================
 
 int stepCounterThreshold;
 /// has filtered acceleration passed stepCounterThresholdLow?
@@ -209,11 +219,13 @@ bool stepcount_new(int accMagSquared) {
     hadStep = true;
   }
 
-  int a = accFiltered;
-  if (a<0) a=-a;
-  stepCounterThreshold = (stepCounterThreshold*(32-stepCounterAvr) + a*stepCounterAvr) >> 5;
-  if (stepCounterThreshold < stepCounterThresholdMin)
-    stepCounterThreshold = stepCounterThresholdMin;
+  if (stepCounterAvr) {
+    int a = accFiltered;
+    if (a<0) a=-a;
+    stepCounterThreshold = (stepCounterThreshold*(32-stepCounterAvr) + a*stepCounterAvr) >> 5;
+    if (stepCounterThreshold < stepCounterThresholdMin)
+      stepCounterThreshold = stepCounterThresholdMin;
+  }
 
   return hadStep;
 }
