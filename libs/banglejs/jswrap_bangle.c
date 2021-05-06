@@ -56,7 +56,7 @@
 #endif
 
 #include "stepcount.h"
-#include "heartrate.h"
+
 #ifdef GPS_PIN_RX
 #include "nmea.h"
 #endif
@@ -284,38 +284,7 @@ Emitted when the touchscreen is pressed, either on the left
 or right hand side.
 */
 
-#define GPS_UART EV_SERIAL1
-#define IOEXP_GPS 0x01
-#define IOEXP_LCD_BACKLIGHT 0x20
-#define IOEXP_LCD_RESET 0x40
-#define IOEXP_HRM 0x80
-
 #define ACCEL_HISTORY_LEN 50 ///< Number of samples of accelerometer history
-#define HRM_HISTORY_LEN 256
-
-#ifdef GPS_PIN_RX
-/// Handling data coming from UBlox GPS
-typedef enum {
-  UBLOX_PROTOCOL_NOT_DETECTED = 0,
-  UBLOX_PROTOCOL_NMEA = 1,
-  UBLOX_PROTOCOL_UBX = 2
-} UBloxProtocol;
-/// What protocol is the current packet??
-UBloxProtocol inComingUbloxProtocol = UBLOX_PROTOCOL_NOT_DETECTED;
-/// how many characters of NMEA/UBX data do we have in ubloxIn
-uint16_t ubloxInLength = 0;
-/// Data received from IRQ
-uint8_t ubloxIn[NMEA_MAX_SIZE]; //  82 is the max for NMEA
-/// UBlox UBX message expected length
-uint16_t ubloxMsgPayloadEnd = 0;
-/// length of data to be handled in jswrap_banglejs_idle
-uint8_t ubloxMsgLength = 0;
-/// GPS data to be handled in jswrap_banglejs_idle
-char ubloxMsg[NMEA_MAX_SIZE];
-/// GPS fix data converted from GPS
-NMEAFixInfo gpsFix;
-#endif
-
 
 typedef struct {
   short x,y,z;
@@ -337,6 +306,7 @@ JshI2CInfo i2cPressure;
 #define TOUCH_I2C &i2cTouch
 #define PRESSURE_I2C &i2cPressure
 #define HOME_BTN 1
+#define GPS_UART EV_SERIAL1
 #endif
 
 #ifdef BANGLEJS_F18
@@ -349,6 +319,12 @@ APP_TIMER_DEF(m_backlight_on_timer_id);
 APP_TIMER_DEF(m_backlight_off_timer_id);
 #define HOME_BTN 3
 #define BACKLIGHT_PWM_INTERVAL 15 // in msec - 67Hz PWM
+#define HEARTRATE 1
+#define GPS_UART EV_SERIAL1
+#define IOEXP_GPS 0x01
+#define IOEXP_LCD_BACKLIGHT 0x20
+#define IOEXP_LCD_RESET 0x40
+#define IOEXP_HRM 0x80
 #endif
 
 #ifdef EMSCRIPTEN
@@ -431,6 +407,33 @@ double barometerTemperature;
 double barometerAltitude;
 bool jswrap_banglejs_barometerPoll();
 JsVar *jswrap_banglejs_getBarometerObject();
+#endif
+
+#ifdef HEARTRATE
+#include "heartrate.h"
+#endif
+
+#ifdef GPS_PIN_RX
+/// Handling data coming from UBlox GPS
+typedef enum {
+  UBLOX_PROTOCOL_NOT_DETECTED = 0,
+  UBLOX_PROTOCOL_NMEA = 1,
+  UBLOX_PROTOCOL_UBX = 2
+} UBloxProtocol;
+/// What protocol is the current packet??
+UBloxProtocol inComingUbloxProtocol = UBLOX_PROTOCOL_NOT_DETECTED;
+/// how many characters of NMEA/UBX data do we have in ubloxIn
+uint16_t ubloxInLength = 0;
+/// Data received from IRQ
+uint8_t ubloxIn[NMEA_MAX_SIZE]; //  82 is the max for NMEA
+/// UBlox UBX message expected length
+uint16_t ubloxMsgPayloadEnd = 0;
+/// length of data to be handled in jswrap_banglejs_idle
+uint8_t ubloxMsgLength = 0;
+/// GPS data to be handled in jswrap_banglejs_idle
+char ubloxMsg[NMEA_MAX_SIZE];
+/// GPS fix data converted from GPS
+NMEAFixInfo gpsFix;
 #endif
 
 #ifndef EMSCRIPTEN
@@ -603,8 +606,10 @@ void jswrap_banglejs_pwrGPS(bool on) {
 }
 
 void jswrap_banglejs_pwrHRM(bool on) {
+#ifdef HEARTRATE
   if (on) bangleFlags |= JSBF_HRM_ON;
   else bangleFlags &= ~JSBF_HRM_ON;
+#endif
 #ifdef BANGLEJS_F18
   jswrap_banglejs_ioWr(IOEXP_HRM, !on);
 #endif
@@ -987,6 +992,7 @@ void peripheralPollHandler() {
   //jswrap_banglejs_pwrHRM(false); // debug using HRM LED
 }
 
+#ifdef HEARTRATE
 void hrmPollHandler() {
 #ifdef HEARTRATE_PIN_ANALOG
   extern nrf_saadc_value_t nrf_analog_read();
@@ -1029,8 +1035,8 @@ void hrmPollHandler() {
     jshHadEvent();
   }
 #endif
-
 }
+#endif // HEARTRATE
 
 #ifdef BANGLEJS_F18
 void backlightOnHandler() {
@@ -1767,7 +1773,7 @@ Bangle.on('HRM',print);
 */
 bool jswrap_banglejs_setHRMPower(bool isOn, JsVar *appId) {
   isOn = setDevicePower("HRM", appId, isOn);
-#ifndef EMSCRIPTEN
+#ifdef HEARTRATE
   jstStopExecuteFn(hrmPollHandler, 0);
   if (isOn) {
 #ifdef HEARTRATE_PIN_ANALOG
@@ -2371,8 +2377,9 @@ void jswrap_banglejs_init() {
   touchStatus = TS_NONE;
   touchLastState = 0;
   touchLastState2 = 0;
-  // HRM
+#ifdef HEARTRATE
   hrm_init();
+#endif
 
 #ifndef EMSCRIPTEN
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
@@ -2474,12 +2481,14 @@ void jswrap_banglejs_init() {
   "generate" : "jswrap_banglejs_kill"
 }*/
 void jswrap_banglejs_kill() {
-#ifndef EMSCRIPTEN
 #ifdef BANGLEJS_F18
   app_timer_stop(m_backlight_on_timer_id);
   app_timer_stop(m_backlight_off_timer_id);
 #endif
+#ifndef EMSCRIPTEN
   app_timer_stop(m_peripheral_poll_timer_id);
+#endif
+#ifdef HEARTRATE
   jstStopExecuteFn(hrmPollHandler, 0);
 #endif
   jsvUnLock(promiseBeep);
@@ -2537,10 +2546,12 @@ bool jswrap_banglejs_idle() {
     bangleFlags |= JSBF_ACCEL_LISTENER;
   else
     bangleFlags &= ~JSBF_ACCEL_LISTENER;
+#ifdef HEARTRATE
   if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"HRMi"))
     bangleFlags |= JSBF_HRM_INSTANT_LISTENER;
   else
     bangleFlags &= ~JSBF_HRM_INSTANT_LISTENER;
+#endif
 
   if (!bangle) {
     bangleTasks = JSBT_NONE;
@@ -2636,6 +2647,7 @@ bool jswrap_banglejs_idle() {
         }
       }
     }
+#ifdef HEARTRATE
     if (bangleTasks & JSBT_HRM_INSTANT_DATA) {
       JsVar *o = jsvNewObject();
       if (o) {
@@ -2668,6 +2680,7 @@ bool jswrap_banglejs_idle() {
         jsvUnLock(o);
       }
     }
+#endif
     if (bangleTasks & JSBT_GESTURE_DATA) {
       if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"gesture")) {
         JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_INT8, accGestureRecordedCount*3);
@@ -3434,7 +3447,9 @@ static void jswrap_banglejs_periph_off() {
   jsvKill();
   jshKill();
 
+#ifdef HEARTRATE
   jswrap_banglejs_pwrHRM(false); // HRM off
+#endif
   jswrap_banglejs_pwrGPS(false); // GPS off
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
   jswrap_banglejs_setLCDPower(0);
