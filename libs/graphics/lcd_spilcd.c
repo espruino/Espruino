@@ -18,6 +18,9 @@
 #include "lcd_spilcd.h"
 #include "lcd_spilcd_info.h"
 #include "lcd_spilcd_palette.h"
+#if defined(NRF52_SERIES)
+#include "nrf_gpio.h"
+#endif
 
 // ======================================================================
 
@@ -37,9 +40,9 @@ unsigned short lcdPalette[256];
 
 // ======================================================================
 
-void lcdCmd_SPILCD(int cmd, int dataLen, const char *data) {
-  jshPinSetValue(LCD_SPI_CS, 0);
+void lcdCmd_SPILCD(int cmd, int dataLen, const unsigned char *data) {
   jshPinSetValue(LCD_SPI_DC, 0); // command
+  jshPinSetValue(LCD_SPI_CS, 0);
   jshSPISend(LCD_SPI, cmd);
   if (dataLen) {
     jshPinSetValue(LCD_SPI_DC, 1); // data
@@ -52,7 +55,7 @@ void lcdCmd_SPILCD(int cmd, int dataLen, const char *data) {
 }
 void lcdSendInitCmd_SPILCD() {
   // Send initialization commands to ST7735
-  const char *cmd = SPILCD_INIT_CODE;
+  const unsigned char *cmd = SPILCD_INIT_CODE;
   while(cmd[CMDINDEX_DATALEN]!=255) {
     lcdCmd_SPILCD(cmd[CMDINDEX_CMD], cmd[CMDINDEX_DATALEN], &cmd[3]);
     if (cmd[CMDINDEX_DELAY])
@@ -86,6 +89,11 @@ unsigned int lcdGetPixel_SPILCD(JsGraphics *gfx, int x, int y) {
   if (x&1) return c & 0xFFF;
   else return (c>>12) & 0xFFF;
 #endif
+#if LCD_BPP==16
+  int addr = (x<<1) + (y*LCD_STRIDE);
+  uint16_t *p = (uint16_t*)(&lcdBuffer[addr]);
+  return __builtin_bswap16(*p);
+#endif
 }
 
 
@@ -110,6 +118,11 @@ void lcdSetPixel_SPILCD(JsGraphics *gfx, int x, int y, unsigned int col) {
   else c = (c & 0xFF000FFF) | ((col & 0xFFF)<<12);
   *p = __builtin_bswap32(c);
 #endif
+#if LCD_BPP==16
+  int addr = (x<<1) + (y*LCD_STRIDE);
+  uint16_t *p = (uint16_t*)(&lcdBuffer[addr]);
+  *p = __builtin_bswap16(col);
+#endif
 }
 
 void lcdFlip_SPILCD_callback() {
@@ -122,11 +135,13 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
   // use nearest 2 pixels as we're sending 12 bits
   gfx->data.modMinX = (gfx->data.modMinX)&~1;
   gfx->data.modMaxX = (gfx->data.modMaxX+2)&~1;
-#if LCD_BPP==12
+#if LCD_BPP==12 || LCD_BPP==16
+  // Just send full rows as this allows us to issue a single SPI
+  // transfer.
+  // TODO: could swap to a transfer per row if we're filling less than half a row
   gfx->data.modMinX = 0;
-  gfx->data.modMaxX = LCD_WIDTH;
+  gfx->data.modMaxX = LCD_WIDTH-1;
 #else
-  unsigned char buffer2[LCD_STRIDE];
   int xlen = gfx->data.modMaxX - gfx->data.modMinX;
   int xstart = gfx->data.modMinX;
 #endif
@@ -140,7 +155,7 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
   buffer1[0] = 0;
   buffer1[1] = gfx->data.modMinX;
   buffer1[2] = 0;
-  buffer1[3] = gfx->data.modMaxX-1;
+  buffer1[3] = gfx->data.modMaxX;
   jshSPISendMany(LCD_SPI, buffer1, NULL, 4, NULL);
   jshPinSetValue(LCD_SPI_DC, 0); // command
   buffer1[0] = SPILCD_CMD_WINDOW_Y;
@@ -149,22 +164,32 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
   buffer1[0] = 0;
   buffer1[1] = gfx->data.modMinY;
   buffer1[2] = 0;
-  buffer1[3] = gfx->data.modMaxY+1;
+  buffer1[3] = gfx->data.modMaxY;
   jshSPISendMany(LCD_SPI, buffer1, NULL, 4, NULL);
   jshPinSetValue(LCD_SPI_DC, 0); // command
   buffer1[0] = SPILCD_CMD_DATA;
   jshSPISendMany(LCD_SPI, buffer1, NULL, 1, NULL);
   jshPinSetValue(LCD_SPI_DC, 1); // data
 
-#if LCD_BPP==12
-  // if 12 bit, we can just push it out directly
-  jshSPISendMany(
-      LCD_SPI,
-      &lcdBuffer[LCD_STRIDE-gfx->data.modMinY],
-      0,
-      (gfx->data.modMaxY+1-gfx->data.modMinY)*LCD_STRIDE,
-      NULL);
+#if LCD_BPP==12 || LCD_BPP==16
+  // FIXME: hack because SPI send on NRF52 fails for >65k transfers
+  // we should fix this in jshardware.c
+  unsigned char *p = &lcdBuffer[LCD_STRIDE*gfx->data.modMinY];
+  int c = (gfx->data.modMaxY+1-gfx->data.modMinY)*LCD_STRIDE;
+  while (c) {
+    int n = c;
+    if (n>65535) n=65535;
+    jshSPISendMany(
+        LCD_SPI,
+        p,
+        0,
+        n,
+        NULL);
+    p+=n;
+    c-=n;
+  }
 #else
+  unsigned char buffer2[LCD_STRIDE];
   for (int y=gfx->data.modMinY;y<=gfx->data.modMaxY;y++) {
     unsigned char *buffer = (y&1)?buffer1:buffer2;
     // skip any lines that don't need updating
@@ -210,6 +235,12 @@ void lcdInit_SPILCD(JsGraphics *gfx) {
 
   lcdSetPalette_SPILCD(0);
 
+#ifdef LCD_BL
+  jshPinOutput(LCD_BL, 1);
+#endif
+#ifdef LCD_EN
+  jshPinOutput(LCD_EN, 1);
+#endif
   jshPinOutput(LCD_SPI_CS,1);
   jshPinOutput(LCD_SPI_DC,1);
   jshPinOutput(LCD_SPI_SCK,1);
@@ -221,10 +252,32 @@ void lcdInit_SPILCD(JsGraphics *gfx) {
 
   JshSPIInfo inf;
   jshSPIInitInfo(&inf);
-  inf.baudRate = 8000000;
+#ifndef LCD_SPI_BITRATE
+#define LCD_SPI_BITRATE 8000000
+#endif
+  inf.baudRate = LCD_SPI_BITRATE;
   inf.pinMOSI = LCD_SPI_MOSI;
+#ifdef LCD_SPI_MISO
+  inf.pinMISO = LCD_SPI_MISO;
+#endif
   inf.pinSCK = LCD_SPI_SCK;
   jshSPISetup(LCD_SPI, &inf);
+#if defined(NRF52_SERIES) // configure 'high drive' for GPIOs
+  nrf_gpio_cfg(
+      LCD_SPI_MOSI,
+      GPIO_PIN_CNF_DIR_Output,
+      GPIO_PIN_CNF_INPUT_Disconnect,
+      GPIO_PIN_CNF_PULL_Disabled,
+      GPIO_PIN_CNF_DRIVE_H0H1,
+      GPIO_PIN_CNF_SENSE_Disabled);
+  nrf_gpio_cfg(
+      LCD_SPI_SCK,
+      GPIO_PIN_CNF_DIR_Output,
+      GPIO_PIN_CNF_INPUT_Disconnect,
+      GPIO_PIN_CNF_PULL_Disabled,
+      GPIO_PIN_CNF_DRIVE_H0H1,
+      GPIO_PIN_CNF_SENSE_Disabled);
+#endif
 
   lcdSendInitCmd_SPILCD();
 }

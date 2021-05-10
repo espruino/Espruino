@@ -1473,7 +1473,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
                   (y + cy*scale),
                   (x + cx*scale + scale-1),
                   (y + cy*scale + scale-1),
-                  graphicsBlendColor(&gfx, (256*col)/customBPPRange));
+                  graphicsBlendGfxColor(&gfx, (256*col)/customBPPRange));
             bmpOffset += customBPP;
             citdata <<= customBPP;
             if (bmpOffset>=8) {
@@ -1614,6 +1614,7 @@ JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
 }
 Draw a line between x1,y1 and x2,y2 in the current foreground color
 */
+#ifdef GRAPHICS_ANTIALIAS
 JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2, double y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   graphicsDrawLineAA(&gfx,
@@ -1624,6 +1625,7 @@ JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
+#endif
 
 /*JSON{
   "type" : "method",
@@ -1755,7 +1757,7 @@ JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool 
   "class" : "Graphics",
   "name" : "fillPoly",
   "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_graphics_fillPoly",
+  "generate_full" : "jswrap_graphics_fillPoly_X(parent, poly, false);",
   "params" : [
     ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"]
   ],
@@ -1779,7 +1781,36 @@ This fills from the top left hand side of the polygon (low X, low Y)
 will align perfectly without overdraw - but this will not fill the
 same pixels as `drawPoly` (drawing a line around the edge of the polygon).
 */
-JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "fillPolyAA",
+  "ifdef" : "GRAPHICS_ANTIALIAS",
+  "generate_full" : "jswrap_graphics_fillPoly_X(parent, poly, true);",
+  "params" : [
+    ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Draw a filled polygon in the current foreground color.
+
+```
+g.fillPolyAA([
+  16, 0,
+  31, 31,
+  26, 31,
+  16, 12,
+  6, 28,
+  0, 27 ]);
+```
+
+This fills from the top left hand side of the polygon (low X, low Y)
+*down to but not including* the bottom right. When placed together polygons
+will align perfectly without overdraw - but this will not fill the
+same pixels as `drawPoly` (drawing a line around the edge of the polygon).
+*/
+JsVar *jswrap_graphics_fillPoly_X(JsVar *parent, JsVar *poly, bool antiAlias) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   if (!jsvIsIterable(poly)) return 0;
   const int maxVerts = 128;
@@ -1794,6 +1825,21 @@ JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
   if (jsvIteratorHasElement(&it))
     jsExceptionHere(JSET_ERROR, "Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   jsvIteratorFree(&it);
+#ifdef GRAPHICS_ANTIALIAS
+  // For antialiased fillPoly the easiest solution is just to draw AA lines
+  // around the edge first, then fill solidly
+  if (antiAlias) {
+    int lx = verts[idx-2];
+    int ly = verts[idx-1];
+    for (int i=0;i<idx;i+=2) {
+      int vx = verts[i];
+      int vy = verts[i+1];
+      graphicsDrawLineAA(&gfx, vx,vy, lx,ly);
+      lx = vx;
+      ly = vy;
+    }
+  }
+#endif
   graphicsFillPoly(&gfx, idx/2, verts);
 
   graphicsSetVar(&gfx); // gfx data changed because modified area
@@ -1873,6 +1919,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
     v = jsvObjectGetChild(image, "transparent", 0);
     info->isTransparent = v!=0;
     info->transparentCol = (unsigned int)jsvGetIntegerAndUnLock(v);
+#ifndef SAVE_ON_FLASH_EXTREME
     v = jsvObjectGetChild(image, "palette", 0);
     if (v) {
       if (jsvIsArrayBuffer(v) && v->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16) {
@@ -1891,6 +1938,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
         return false;
       }
     }
+#endif
     JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
     info->buffer = jsvGetArrayBufferBackingString(buf);
     jsvUnLock(buf);
@@ -1956,8 +2004,8 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
   #ifdef GRAPHICS_PALETTED_IMAGES
     } else if (gfx->data.bpp>8 && info->bpp==2) { // Blend from bg to fg
       info->_simplePalette[0] = (uint16_t)gfx->data.bgColor;
-      info->_simplePalette[1] = graphicsBlendColor(gfx, 85);
-      info->_simplePalette[2] = graphicsBlendColor(gfx, 171);
+      info->_simplePalette[1] = graphicsBlendGfxColor(gfx, 85);
+      info->_simplePalette[2] = graphicsBlendGfxColor(gfx, 171);
       info->_simplePalette[3] = (uint16_t)gfx->data.fgColor;
       info->palettePtr = info->_simplePalette;
       info->paletteMask = 3;
@@ -2180,7 +2228,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #ifdef USE_LCD_ST7789_8BIT // can we blit directly to the display?
     if (isST7789 &&
         xPos>=gfx.data.clipRect.x1 && yPos>=gfx.data.clipRect.y1 && // check it's all on-screen
-        (xPos+img.width)<=gfx.data.clipRect.x2 && (yPos+img.height)<=gfx.data.clipRect.y2) {
+        (xPos+img.width)<=gfx.data.clipRect.x2+1 && (yPos+img.height)<=gfx.data.clipRect.y2+1) {
       if (img.bpp==1) lcdST7789_blit1Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
       else if (img.bpp==8) lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
     } else {
@@ -2234,7 +2282,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       if (isST7789 &&
           s>=1 &&
           xPos>=gfx.data.clipRect.x1 && yPos>=gfx.data.clipRect.y1 && // check it's all on-screen
-          (xPos+img.width*s)<=gfx.data.clipRect.x2 && (yPos+img.height*s)<=gfx.data.clipRect.y2) {
+          (xPos+img.width*s)<=gfx.data.clipRect.x2+1 && (yPos+img.height*s)<=gfx.data.clipRect.y2+1) {
         if (img.bpp==1) lcdST7789_blit1Bit(xPos, yPos, img.width, img.height, s, &it, img.palettePtr);
         else lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, s, &it, img.palettePtr);
       } else
@@ -2312,7 +2360,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       }
       it = l.it; // make sure it gets freed properly
     }
-#endif
+#endif // GRAPHICS_DRAWIMAGE_ROTATED
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(img.buffer);

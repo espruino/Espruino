@@ -8,8 +8,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * This file is designed to be parsed during the build process
- *
  * Contains JavaScript Graphics Draw Functions
  * ----------------------------------------------------------------------------
  */
@@ -77,7 +75,7 @@ JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2
 JsVar *jswrap_graphics_lineTo(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool antiAlias);
-JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly);
+JsVar *jswrap_graphics_fillPoly_X(JsVar *parent, JsVar *poly, bool antiAlias);
 JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect);
 JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos, JsVar *options);
 JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *options);

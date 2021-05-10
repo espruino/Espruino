@@ -229,24 +229,29 @@ def removeBlacklistForWrapper(blacklistfile,datas):
 					if jsondata["class"] == black["class"]:
 						if(jsondata["name"] == black["name"] or black["name"] == "*"):
 							toremove.append(idx)
+							print("Removing "+black["class"]+"."+black["name"]+" due to blacklist wildcard")
 # extension by jumjum
 		else:
 			if "name" in jsondata:
 				for black in blacklist:
 					if black["class"] == "__":
 						if jsondata["name"] == black["name"]:
-							toremove.append(idx)
+						  toremove.append(idx)
+						  print("Removing global."+black["name"]+" due to blacklist wildcard")
 		if "type" in jsondata:
 			if "class" in jsondata:
 				for black in blacklist:
 					if jsondata["class"] == black["class"]:
 						if black["name"] == "*":
-							toremove.append(idx)
+						  toremove.append(idx)
+						  print("Removing "+black["class"]+" due to blacklist wildcard")
 			if "instanceof" in jsondata:
 				for black in blacklist:
 					if jsondata["instanceof"] == black["class"]:
 						if black["name"] == "*":
-							toremove.append(idx)
+						  toremove.append(idx)
+						  print("Removing "+black["class"]+" due to blacklist wildcard")
+    
 #  end extension by jumjum
 	return delete_by_indices( datas, toremove)
 # ------------------------------------------------------------------------------------------------------

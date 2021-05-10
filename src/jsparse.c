@@ -1574,7 +1574,9 @@ NO_INLINE JsVar *jspeFactor() {
 #ifndef SAVE_ON_FLASH
     if (lex->tk==LEX_TEMPLATE_LITERAL)
       jsExceptionHere(JSET_SYNTAXERROR, "Tagged template literals not supported");
-    else if (lex->tk==LEX_ARROW_FUNCTION && jsvIsName(a)) {
+    else if (lex->tk==LEX_ARROW_FUNCTION &&
+             (jsvIsName(a) || (a==0 && !JSP_SHOULD_EXECUTE))) {
+      // 'a' needs to be a name, *or* we're not executing so 0 gets returned anyway
       JsVar *funcVar = jspeArrowFunction(0,a);
       jsvUnLock(a);
       a=funcVar;
@@ -2267,7 +2269,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   if (isWhile) { // while loop
     JSP_ASSERT_MATCH(LEX_R_WHILE);
     jslCharPosFromLex(&whileCondStart);
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN('(',jslCharPosFree(&whileBodyStart);,0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN('(',jslCharPosFree(&whileCondStart);,0);
     cond = jspeAssignmentExpression();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);

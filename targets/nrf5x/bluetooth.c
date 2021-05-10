@@ -100,11 +100,16 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 // -----------------------------------------------------------------------------------
 
 #if NRF_SD_BLE_API_VERSION < 5
+#ifndef NRF_BLE_MAX_MTU_SIZE
 #define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                        /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
+#endif
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(100, APP_TIMER_PRESCALER)   /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(10000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 #else
+#ifndef GATT_MTU_SIZE_DEFAULT
+#define GATT_MTU_SIZE_DEFAULT  BLE_GATT_ATT_MTU_DEFAULT
+#endif
 #define NRF_BLE_MAX_MTU_SIZE            NRF_SDH_BLE_GATT_MAX_MTU_SIZE               /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(100)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(10000) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
@@ -113,6 +118,9 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 #define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS) /**< Connection Supervision Timeout in 10 ms units, see @ref BLE_GAP_CP_LIMITS.*/
 #define SLAVE_LATENCY                   0 /**< Slave Latency in number of connection events, see @ref BLE_GAP_CP_LIMITS.*/
 
+#if NRF_BLE_MAX_MTU_SIZE != GATT_MTU_SIZE_DEFAULT
+#define EXTENSIBLE_MTU // The MTU can be extended past the default of 23
+#endif
 
 #define APP_BLE_CONN_CFG_TAG                1                                       /**< A tag identifying the SoftDevice BLE configuration. */
 #define APP_BLE_OBSERVER_PRIO               2                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
@@ -173,9 +181,20 @@ static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   
 #endif
 
 volatile uint16_t                       m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
+#ifdef EXTENSIBLE_MTU
+volatile uint16_t m_peripheral_effective_mtu;
+#else
+const uint16_t m_peripheral_effective_mtu = GATT_MTU_SIZE_DEFAULT;
+#endif
 #if CENTRAL_LINK_COUNT>0
 volatile uint16_t                       m_central_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle for central mode connection */
+#ifdef EXTENSIBLE_MTU
+volatile uint16_t m_central_effective_mtu;
+#else
+const uint16_t m_central_effective_mtu = GATT_MTU_SIZE_DEFAULT;
 #endif
+#endif
+
 #ifdef USE_NFC
 volatile bool nfcEnabled = false;
 #endif
@@ -255,6 +274,8 @@ JsVar *jsble_get_error_string(uint32_t err_code) {
                                 : name="INVALID_CONN_HANDLE"; break;
    case BLE_ERROR_GAP_INVALID_BLE_ADDR
                                 : name="INVALID_BLE_ADDR"; break;
+   case NRF_ERROR_CONN_COUNT    : name="CONN_COUNT"; break;
+
 #if NRF_SD_BLE_API_VERSION<5
    case BLE_ERROR_NO_TX_PACKETS : name="NO_TX_PACKETS"; break;
 #endif
@@ -971,6 +992,7 @@ void nus_transmit_string() {
    * do 5, but it seems some things have issues with
    * this (eg nRF cloud gateways) so only send 1 packet
    * for now. */
+  int max_data_len = MIN((m_peripheral_effective_mtu-3),BLE_NUS_MAX_DATA_LEN);
   for (int packet=0;packet<1;packet++) {
     // No data? try and get some from our queue
     if (!nuxTxBufLength) {
@@ -978,7 +1000,7 @@ void nus_transmit_string() {
       int ch = jshGetCharToTransmit(EV_BLUETOOTH);
       while (ch>=0) {
         nusTxBuf[nuxTxBufLength++] = ch;
-        if (nuxTxBufLength>=BLE_NUS_MAX_DATA_LEN) break;
+        if (nuxTxBufLength>=max_data_len) break;
         ch = jshGetCharToTransmit(EV_BLUETOOTH);
       }
     }
@@ -1124,6 +1146,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_CONNECTED:
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
           m_peripheral_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+#ifdef EXTENSIBLE_MTU
+          m_peripheral_effective_mtu = GATT_MTU_SIZE_DEFAULT;
+#endif
 #ifdef DYNAMIC_INTERVAL_ADJUSTMENT
           bleIdleCounter = 0;
 #endif
@@ -1141,6 +1166,15 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+#ifdef EXTENSIBLE_MTU
+          m_central_effective_mtu = GATT_MTU_SIZE_DEFAULT;
+#endif
+#if NRF_SD_BLE_API_VERSION>=3
+#if (NRF_BLE_MAX_MTU_SIZE > GATT_MTU_SIZE_DEFAULT)
+          err_code = sd_ble_gattc_exchange_mtu_request(p_ble_evt->evt.gap_evt.conn_handle, NRF_BLE_MAX_MTU_SIZE);
+          APP_ERROR_CHECK_NOT_URGENT(err_code);
+#endif
+#endif
           bleSetActiveBluetoothGattServer(bleTaskInfo);
           jsble_queue_pending(BLEP_TASK_CENTRAL_CONNECTED, 0);
         }
@@ -1310,7 +1344,47 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       } break; // BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST
 
 #if (NRF_SD_BLE_API_VERSION >= 3)
+#ifdef EXTENSIBLE_MTU
+        case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
+          uint16_t conn_handle   = p_ble_evt->evt.gattc_evt.conn_handle;
+          uint16_t effective_mtu = p_ble_evt->evt.gattc_evt.params.exchange_mtu_rsp.server_rx_mtu;
+          effective_mtu = MIN(MAX(GATT_MTU_SIZE_DEFAULT,effective_mtu),NRF_BLE_MAX_MTU_SIZE);
+#if CENTRAL_LINK_COUNT>0
+          if (m_central_conn_handle == conn_handle) {
+                m_central_effective_mtu = effective_mtu;
+#if (NRF_SD_BLE_API_VERSION > 3)
+                if (effective_mtu > GATT_MTU_SIZE_DEFAULT){
+                    ble_gap_data_length_params_t const dlp =
+                    {
+                        .max_rx_octets =  effective_mtu + 4,
+                        .max_tx_octets =  effective_mtu + 4,
+                    };
+                    err_code = sd_ble_gap_data_length_update(conn_handle, &dlp, NULL);
+                    APP_ERROR_CHECK_NOT_URGENT(err_code);
+
+                }
+#endif
+          } else
+#endif
+          if (m_peripheral_conn_handle == conn_handle){
+                 m_peripheral_effective_mtu = effective_mtu;
+          }
+        } break; // BLE_GATTC_EVT_EXCHANGE_MTU_RSP
+#endif
       case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST: {
+#ifdef EXTENSIBLE_MTU
+        uint16_t conn_handle   = p_ble_evt->evt.gatts_evt.conn_handle;
+        uint16_t effective_mtu = p_ble_evt->evt.gatts_evt.params.exchange_mtu_request.client_rx_mtu;
+        effective_mtu = MIN(MAX(GATT_MTU_SIZE_DEFAULT,effective_mtu),NRF_BLE_MAX_MTU_SIZE);
+#if CENTRAL_LINK_COUNT>0
+        if (m_central_conn_handle == conn_handle) {
+                 m_central_effective_mtu = effective_mtu;
+        } else
+#endif
+        if (m_peripheral_conn_handle == conn_handle){
+                 m_peripheral_effective_mtu = effective_mtu;
+        }
+#endif
         err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                    NRF_BLE_MAX_MTU_SIZE);
         // This can return an error when connecting to EQ3 CC-RT-BLE (which requests an MTU of 0!!)
@@ -2258,8 +2332,17 @@ static void services_init() {
 #endif
 }
 
+uint32_t app_ram_base;
+
 /// Function for the SoftDevice initialization.
 static void ble_stack_init() {
+#if defined ( __GNUC__ )
+    extern uint32_t __data_start__;
+    app_ram_base = (uint32_t) &__data_start__;
+#else
+#error "unsupported compiler"
+#endif
+
 #if NRF_SD_BLE_API_VERSION<5
 
     uint32_t err_code;
@@ -2270,8 +2353,8 @@ static void ble_stack_init() {
         .source        = NRF_CLOCK_LF_SRC_XTAL,
         .rc_ctiv       = 0,
         .rc_temp_ctiv  = 0,
-#else
         .xtal_accuracy = NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM,
+#else
         .source        = NRF_CLOCK_LF_SRC_RC,
         .rc_ctiv       = 16, // recommended for nRF52
         .rc_temp_ctiv  = 2,  // recommended for nRF52
@@ -2301,9 +2384,21 @@ static void ble_stack_init() {
 #if (NRF_SD_BLE_API_VERSION >= 3)
     ble_enable_params.gatt_enable_params.att_mtu = NRF_BLE_MAX_MTU_SIZE;
 #endif
-    err_code = softdevice_enable(&ble_enable_params);
+
+    err_code = sd_ble_enable(&ble_enable_params,&app_ram_base);
     APP_ERROR_CHECK(err_code);
 
+#if (NRF_BLE_MAX_MTU_SIZE > GATT_MTU_SIZE_DEFAULT)
+    {
+        ble_opt_t gap_opt;
+        gap_opt.gap_opt.ext_len.rxtx_max_pdu_payload_size = NRF_BLE_MAX_MTU_SIZE+4;
+        err_code = sd_ble_opt_set(BLE_GAP_OPT_EXT_LEN, &gap_opt);
+        APP_ERROR_CHECK(err_code);
+        gap_opt.common_opt.conn_evt_ext.enable = 1;
+        err_code = sd_ble_opt_set(BLE_COMMON_OPT_CONN_EVT_EXT, &gap_opt); // enable DLE
+        APP_ERROR_CHECK(err_code);
+    }
+#endif
     // Subscribe for BLE events.
     err_code = softdevice_ble_evt_handler_set(ble_evt_dispatch);
     APP_ERROR_CHECK(err_code);
@@ -2324,9 +2419,19 @@ static void ble_stack_init() {
     uint32_t ram_start = 0;
     err_code = nrf_sdh_ble_default_cfg_set(APP_BLE_CONN_CFG_TAG, &ram_start);
     APP_ERROR_CHECK(err_code);
+#if (NRF_BLE_MAX_MTU_SIZE > GATT_MTU_SIZE_DEFAULT)
+    {
+        ble_cfg_t cfg;
+        memset(&cfg, 0, sizeof(ble_cfg_t));
+        cfg.conn_cfg.conn_cfg_tag = APP_BLE_CONN_CFG_TAG;
+        cfg.conn_cfg.params.gatt_conn_cfg.att_mtu = NRF_BLE_MAX_MTU_SIZE;
+        err_code = sd_ble_cfg_set(BLE_CONN_CFG_GATT, &cfg, app_ram_base);
+        APP_ERROR_CHECK(err_code);
+    }
+#endif
 
     // Enable BLE stack.
-    err_code = nrf_sdh_ble_enable(&ram_start);
+    err_code = nrf_sdh_ble_enable(&app_ram_base);
     APP_ERROR_CHECK(err_code);
 
     // Register a handler for BLE events.
@@ -2517,6 +2622,21 @@ void jsble_advertising_stop() {
      }
    }
    jsvUnLock(v);
+/*
+   // This sets the MAC address to the default address, but "public", not "random"
+   uint32_t addr0 =  NRF_FICR->DEVICEADDR[0];
+   uint32_t addr1 =  NRF_FICR->DEVICEADDR[1];
+   ble_gap_addr_t addr;
+   addr.addr_type = BLE_GAP_ADDR_TYPE_PUBLIC;
+   addr.addr[5] = ((addr1>>8 )&0xFF)|0xC0;
+   addr.addr[4] = ((addr1    )&0xFF);
+   addr.addr[3] = ((addr0>>24)&0xFF);
+   addr.addr[2] = ((addr0>>16)&0xFF);
+   addr.addr[1] = ((addr0>> 8)&0xFF);
+   addr.addr[0] = ((addr0    )&0xFF);
+   err_code = sd_ble_gap_addr_set(&addr);
+   if (err_code) jsiConsolePrintf("sd_ble_gap_addr_set failed: 0x%x\n", err_code);
+ */
 #endif
 
 #if PEER_MANAGER_ENABLED

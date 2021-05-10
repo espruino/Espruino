@@ -3012,6 +3012,8 @@ static size_t _jsvCountJsVarsUsedRecursive(JsVar *v, bool resetRecursionFlag) {
 
 /** Count the amount of JsVars used. Mostly useful for debugging */
 size_t jsvCountJsVarsUsed(JsVar *v) {
+  // don't count 'root' when getting sizes
+  if (v != execInfo.root) execInfo.root->flags |= JSV_IS_RECURSING;
   // we do this so we don't count the same item twice, but don't use too much memory
   size_t c = _jsvCountJsVarsUsedRecursive(v, false);
   _jsvCountJsVarsUsedRecursive(v, true);
@@ -3428,7 +3430,8 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       case '&': return jsvNewFromInteger(da&db);
       case '|': return jsvNewFromInteger(da|db);
       case '^': return jsvNewFromInteger(da^db);
-      case '%': return db ? jsvNewFromInteger(da%db) : jsvNewFromFloat(NAN);
+      case '%': if (db<0) db=-db; // fix SIGFPE
+                return db ? jsvNewFromInteger(da%db) : jsvNewFromFloat(NAN);
       case LEX_LSHIFT: return jsvNewFromInteger(da << db);
       case LEX_RSHIFT: return jsvNewFromInteger(da >> db);
       case LEX_RSHIFTUNSIGNED: return jsvNewFromLongInteger(((JsVarIntUnsigned)da) >> db);
@@ -3615,6 +3618,10 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
 
   if (!var) {
     jsiConsolePrint("undefined");
+    return;
+  }
+  if (level>0 && var==execInfo.root) {
+    jsiConsolePrint("ROOT");
     return;
   }
 

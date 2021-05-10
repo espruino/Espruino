@@ -22,12 +22,14 @@
 #define LCD_DATA_WIDTH 120 // pixel doubled
 #define LCD_DATA_HEIGHT 120 // pixel doubled
 #define LCD_STORE_MODIFIED
+#define LCD_BL_ON 1
 #endif
 #ifdef LCD_CONTROLLER_ST7735 // F5
 #define LCD
 #define LCD_DATA_WIDTH 128
 #define LCD_DATA_HEIGHT 96
 #define LCD_STORE_MODIFIED
+#define LCD_BL_ON 0
 #endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT // Bangle.js
 #define LCD
@@ -45,6 +47,16 @@
 #define LCD_DATA_WIDTH 88 // pixel doubled
 #define LCD_DATA_HEIGHT 88 // pixel doubled
 #define LCD_STORE_MODIFIED
+#define LCD_BL_ON 1
+#endif
+#ifdef LCD_CONTROLLER_GC9A01
+#define LCD
+#define LCD_DATA_WIDTH 240
+#define LCD_DATA_HEIGHT 240
+#define LCD_STORE_MODIFIED
+#define LCD_START_X 60
+#define LCD_START_Y 60
+#define LCD_BL_ON 1
 #endif
 
 #ifndef LCD_START_X

@@ -832,7 +832,7 @@ void jsiSemiInit(bool autoLoad) {
           "|  __|_ -| . |  _| | | |   | . |\n"
           "|____|___|  _|_| |___|_|_|_|___|\n"
           "         |_| espruino.com\n"
-          " "JS_VERSION" (c) 2019 G.Williams\n"
+          " "JS_VERSION" (c) 2021 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
 #if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS) && !defined(BANGLEJS) && !defined(EMSCRIPTEN)
@@ -2269,6 +2269,9 @@ void jsiIdle() {
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }
 
+  // Kick the WatchDog if needed
+  if (jsiStatus & JSIS_WATCHDOG_AUTO)
+    jshKickWatchDog();
 
   /* if we've been around this loop, there is nothing to do, and
    * we have a spare 10ms then let's do some Garbage Collection
@@ -2278,13 +2281,12 @@ void jsiIdle() {
       !jsvMoreFreeVariablesThan(JS_VARS_BEFORE_IDLE_GC)) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     jsvGarbageCollect();
-    loopsIdling = 0;
     jsiSetBusy(BUSY_INTERACTIVE, false);
+    /* Return here so we run around the idle loop again
+     * and check whether any events came in during GC. If not
+     * then we'll sleep. */
+    return;
   }
-
-  // Kick the WatchDog if needed
-  if (jsiStatus & JSIS_WATCHDOG_AUTO)
-    jshKickWatchDog();
 
   // Go to sleep!
   if (loopsIdling>=1 && // once around the idle loop without having done any work already (just in case)

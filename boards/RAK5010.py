@@ -43,7 +43,7 @@ info = {
      'NRF_SDK15=1'
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"iTracker"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'JSMODULESOURCES += libs/js/AT.min.js',
      'JSMODULESOURCES += libs/js/GPS.min.js',
      'JSMODULESOURCES += libs/js/LIS3DH.min.js',

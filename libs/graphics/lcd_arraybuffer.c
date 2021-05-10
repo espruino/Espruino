@@ -275,8 +275,10 @@ void lcdFillRect_ArrayBuffer_flat8(JsGraphics *gfx, int x1, int y1, int x2, int 
 void lcdScroll_ArrayBuffer_flat8(JsGraphics *gfx, int xdir, int ydir) {
   int pixels = -(xdir + ydir*gfx->data.width);
   int l = gfx->data.width*gfx->data.height;
-  if (pixels>0) memcpy(&((uint8_t*)gfx->backendData)[0],&((uint8_t*)gfx->backendData)[pixels],(size_t)(l-pixels));
-  else if (pixels<0) memcpy(&((uint8_t*)gfx->backendData)[-pixels],&((uint8_t*)gfx->backendData)[0],(size_t)(l+pixels));
+  // Don't use memcpy here because memmove is smart enough to handle
+  // overlapping memory
+  if (pixels>0) memmove(&((uint8_t*)gfx->backendData)[0],&((uint8_t*)gfx->backendData)[pixels],(size_t)(l-pixels));
+  else if (pixels<0) memmove(&((uint8_t*)gfx->backendData)[-pixels],&((uint8_t*)gfx->backendData)[0],(size_t)(l+pixels));
 }
 #endif
 

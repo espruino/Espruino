@@ -30,7 +30,7 @@ info = {
  'default_console_tx' : "H1",
  'default_console_rx' : "H0",
  'default_console_baudrate' : "9600",
- 'variables' : 2050, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2050+4096, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'binary_name' : 'espruino_%v_microbit2.hex',
  'build' : {
    'optimizeflags' : '-Os',
@@ -47,7 +47,8 @@ info = {
      'DEFINES += -DMICROBIT', # enable microbit-specific stuff
      'INCLUDE += -I$(ROOT)/libs/microbit',
      'WRAPPERSOURCES += libs/microbit/jswrap_microbit.c',
-     'DEFINES+=-DNEOPIXEL_SCK_PIN=27' # an unused pin
+     'DEFINES+=-DNEOPIXEL_SCK_PIN=27', # an unused pin
+     'LDFLAGS += -Xlinker --defsym=LD_SRAM_SIZE=0x20000' #
    ]
  }
 };

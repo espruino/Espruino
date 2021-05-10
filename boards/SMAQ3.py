@@ -37,7 +37,10 @@ info = {
    ],
    'makefile' : [
 #     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
-     'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
+     'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow us to use NFC pins as GPIO
+     'DEFINES += -DESPR_LSE_ENABLE ', # Ensure low speed external osc enabled
+     'DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131', # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
+     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2ec0', # set RAM base to match MTU
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
@@ -47,10 +50,12 @@ info = {
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
      'SOURCES += libs/misc/nmea.c',
+     'SOURCES += libs/misc/stepcount.c',
+     'SOURCES += libs/misc/heartrate.c',
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
      'DEFINES += -DBANGLEJS',
      'DEFINES += -D\'IS_PIN_A_BUTTON(PIN)=((PIN==17)||(PIN==40)||(PIN==41))\'',
-     'DEFINES += -DSPIFLASH_SLEEP_CMD', # SPI flash needs to be explicitly slept and woken up
+#     'DEFINES += -DSPIFLASH_SLEEP_CMD', # SPI flash needs to be explicitly slept and woken up
 
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0xa9,0xae,0xb6',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
@@ -74,14 +79,14 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((246 - 10) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
-    'page_size' : 4096,
-    'pages' : 10,
-    'flash_available' : 1024 - ((38 + 8 + 2 + 10)*4) # Softdevice uses 0x26=38 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
-#    'address' : 0x60000000, # put this in external spiflash (see below)
-#    'page_size' : 4096,
-#    'pages' : 1024, # Entire 4MB of external flash
-#    'flash_available' : 1024 - ((31 + 8 + 2 + 10)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
+#   'address' : ((246 - 10) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
+#  'page_size' : 4096,
+#   'pages' : 10,
+#   'flash_available' : 1024 - ((38 + 8 + 2 + 10)*4) # Softdevice uses 0x26=38 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
+  'address' : 0x60000000, # put this in external spiflash (see below)
+  'page_size' : 4096,
+  'pages' : 2048, # Entire 8MB of external flash
+  'flash_available' : 1024 - ((38 + 8 + 2)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
   },
 };
 
@@ -130,12 +135,17 @@ devices = {
             'pin_scl' : 'D37'
           },
   'MAG' : { # Magnetometer/compass
-            'device' : 'unknown', 
+            'device' : 'UNKNOWN_0C', 
             'addr' : 0x0C,
             'pin_sda' : 'D44',
             'pin_scl' : 'D45'
           },
-# PRESSURE
+  'PRESSURE' : {
+            'device' : 'BMP280', 
+            'addr' : 0x76,
+            'pin_sda' : 'D47',
+            'pin_scl' : 'D2'            
+  },
   'SPIFLASH' : {
             'pin_cs' : 'D14',
             'pin_sck' : 'D16',
@@ -143,7 +153,7 @@ devices = {
             'pin_miso' : 'D13', # D1
 #            'pin_wp' : 'D', # D2
 #            'pin_rst' : 'D', # D3
-            'size' : 4096*1024, # 4MB
+            'size' : 4096*2048, # 8MB
             'memmap_base' : 0x60000000 # map into the address space (in software)
           }
 };

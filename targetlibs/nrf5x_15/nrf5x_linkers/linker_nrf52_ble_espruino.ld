@@ -6,7 +6,8 @@ GROUP(-lgcc -lc -lnosys)
 MEMORY
 {
   FLASH (rx) : ORIGIN = 0x26000, LENGTH = 0x5a000
-  RAM (rwx) :  ORIGIN = 0x20002920, LENGTH = 0xd6e0
+  RAM (rwx) :  ORIGIN = 0x20002920, LENGTH = 0xd6d0
+  NOINIT (rwx) :  ORIGIN = 0x2000fff0, LENGTH = 16
 }
 
 SECTIONS
@@ -37,7 +38,13 @@ SECTIONS
     KEEP(*(.fs_data))
     PROVIDE(__stop_fs_data = .);
   } > RAM
-
+  .noinit (NOLOAD) :
+  {
+    . = ALIGN(4);
+    __noinit_start__ = .;
+    *(.noinit*)
+    __noinit_end__ = .;
+  } > NOINIT
 } INSERT AFTER .data;
 
 SECTIONS

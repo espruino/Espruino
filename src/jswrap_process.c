@@ -126,6 +126,10 @@ JsVar *jswrap_process_env() {
 #ifndef SAVE_ON_FLASH
   // Pointer to a list of predefined exports - eventually we'll get rid of the array above
   jsvObjectSetChildAndUnLock(obj, "EXPTR", jsvNewFromInteger((JsVarInt)(size_t)exportPtrs));
+#ifdef DEBUG_APP_RAM_BASE 
+extern uint32_t app_ram_base;
+  jsvObjectSetChildAndUnLock(obj, "APP_RAM_BASE", jsvNewFromInteger((JsVarInt)app_ram_base));
+#endif
 #endif
   return obj;
 }
