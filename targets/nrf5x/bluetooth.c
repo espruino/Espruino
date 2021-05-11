@@ -661,6 +661,7 @@ uint8_t match_request : 1;               If 1 requires the application to report
       case BLEP_TASK_AUTH_KEY_REQUEST: {
         //jsiConsolePrintf("BLEP_TASK_AUTH_KEY_REQUEST\n");
         uint16_t conn_handle = data;
+#if CENTRAL_LINK_COUNT>0
         if (conn_handle == m_central_conn_handle) {
           JsVar *gattServer = bleGetActiveBluetoothGattServer();
           if (gattServer) {
@@ -673,7 +674,9 @@ uint8_t match_request : 1;               If 1 requires the application to report
             }
             jsvUnLock2(gattServer, bluetoothDevice);
           }
-        } else if (conn_handle == m_peripheral_conn_handle) {
+        } else
+#endif
+        if (conn_handle == m_peripheral_conn_handle) {
           bool ok = false;
           JsVar *options = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
           if (jsvIsObject(options)) {
@@ -3284,6 +3287,16 @@ void jsble_central_startBonding(bool forceRePair) {
 #endif
 }
 
+uint32_t jsble_central_send_passkey(char *passkey) {
+#ifdef LINK_SECURITY
+  if (!jsble_has_central_connection())
+      return BLE_ERROR_INVALID_CONN_HANDLE;
+  return sd_ble_gap_auth_key_reply(m_central_conn_handle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, (uint8_t*)passkey);
+#endif
+}
+
+#endif // CENTRAL_LINK_COUNT>0
+
 void jsble_central_setWhitelist(bool whitelist) {
 #if PEER_MANAGER_ENABLED
   if (whitelist) {
@@ -3296,17 +3309,6 @@ void jsble_central_setWhitelist(bool whitelist) {
   }
 #endif
 }
-
-uint32_t jsble_central_send_passkey(char *passkey) {
-#ifdef LINK_SECURITY
-  if (!jsble_has_central_connection())
-      return BLE_ERROR_INVALID_CONN_HANDLE;
-  return sd_ble_gap_auth_key_reply(m_central_conn_handle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, (uint8_t*)passkey);
-#endif
-}
-
-#endif // CENTRAL_LINK_COUNT>0
-
 
 
 #endif // BLUETOOTH

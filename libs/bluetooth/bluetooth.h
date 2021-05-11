@@ -15,6 +15,7 @@
 #ifndef BLUETOOTH_H
 #define BLUETOOTH_H
 
+#include "app_config.h"
 #include "jsdevices.h"
 
 #ifdef NRF5X
@@ -283,10 +284,12 @@ void jsble_central_startBonding(bool forceRePair);
 JsVar *jsble_central_getSecurityStatus();
 /// RSSI monitoring in central mode
 uint32_t jsble_set_central_rssi_scan(bool enabled);
-/// Set whether or not the whitelist is enabled
-void jsble_central_setWhitelist(bool whitelist);
 /// Send a passkey if one was requested (passkey = 6 bytes long)
 uint32_t jsble_central_send_passkey(char *passkey);
+#endif
+#if PEER_MANAGER_ENABLED
+/// Set whether or not the whitelist is enabled
+void jsble_central_setWhitelist(bool whitelist);
 #endif
 
 #endif // BLUETOOTH_H
