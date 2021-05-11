@@ -64,15 +64,15 @@ static ble_ancs_c_evt_notif_t m_notification_latest;                   /**< Loca
 static ble_ancs_c_attr_t      m_notif_attr_latest;                     /**< Local copy of the newest notification attribute. */
 static ble_ancs_c_attr_t      m_notif_attr_app_id_latest;              /**< Local copy of the newest app attribute. */
 
-static char m_attr_appid[BLE_ANCS_ATTR_DATA_MAX];                           /**< Buffer to store attribute data. */
-static char m_attr_title[BLE_ANCS_ATTR_DATA_MAX];                           /**< Buffer to store attribute data. */
-static char m_attr_subtitle[BLE_ANCS_ATTR_DATA_MAX];                        /**< Buffer to store attribute data. */
-static char m_attr_message[BLE_ANCS_ATTR_DATA_MAX];                         /**< Buffer to store attribute data. */
-static char m_attr_message_size[BLE_ANCS_ATTR_DATA_MAX];                    /**< Buffer to store attribute data. */
-static char m_attr_date[BLE_ANCS_ATTR_DATA_MAX];                            /**< Buffer to store attribute data. */
-static char m_attr_posaction[BLE_ANCS_ATTR_DATA_MAX];                       /**< Buffer to store attribute data. */
-static char m_attr_negaction[BLE_ANCS_ATTR_DATA_MAX];                       /**< Buffer to store attribute data. */
-static char m_attr_disp_name[BLE_ANCS_ATTR_DATA_MAX];                       /**< Buffer to store attribute data. */
+static char m_attr_appid[32];                           /**< Buffer to store attribute data. */
+static char m_attr_title[64];                           /**< Buffer to store attribute data. */
+static char m_attr_subtitle[64];                        /**< Buffer to store attribute data. */
+static char m_attr_message[512];                        /**< Buffer to store attribute data. */
+static char m_attr_message_size[16];                    /**< Buffer to store attribute data. */
+static char m_attr_date[20];                            /**< Buffer to store attribute data. */
+static char m_attr_posaction[16];                       /**< Buffer to store attribute data. */
+static char m_attr_negaction[16];                       /**< Buffer to store attribute data. */
+static char m_attr_disp_name[32];                       /**< Buffer to store attribute data. */
 
 
 /** Handle the event (called outside of IRQ by Espruino) - will poke the relevant events in */

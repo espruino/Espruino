@@ -525,7 +525,7 @@ ret_code_t nrf_ble_ancs_c_attr_add(ble_ancs_c_t                       * p_ancs,
 {
     VERIFY_PARAM_NOT_NULL(p_data);
 
-    if((len == 0) || (len > BLE_ANCS_ATTR_DATA_MAX))
+    if((len == 0))
     {
         return NRF_ERROR_INVALID_LENGTH;
     }
