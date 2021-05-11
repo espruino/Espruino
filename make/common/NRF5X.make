@@ -436,7 +436,7 @@ endif # USE_BOOTLOADER
 
 ifndef BOOTLOADER
 ifdef ESPR_BLUETOOTH_ANCS
-DEFINES += -DESPR_BLUETOOTH_ANCS=1 -DBLE_ANCS_C_ENABLED=1
+DEFINES += -DESPR_BLUETOOTH_ANCS=1
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_db_discovery
 TARGETSOURCES += \

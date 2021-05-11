@@ -29,9 +29,7 @@
 #include "peer_manager.h"
 #include "app_timer.h"
 #include "nrf_soc.h"
-#include "softdevice_handler.h"
 #include "fds.h"
-#include "fstorage.h"
 #include "nrf_delay.h"
 
 #ifndef DEBUG
@@ -50,7 +48,12 @@ Request app attributes can be performed with:
                                                       m_notif_attr_app_id_latest.attr_len);
 */
 
-#define SECURITY_REQUEST_DELAY         APP_TIMER_TICKS(1500, APP_TIMER_PRESCALER)  /**< Delay after connection until security request is sent, if necessary (ticks). */
+/** Delay after connection until security request is sent, if necessary (ticks). */
+#if NRF_SD_BLE_API_VERSION < 5
+#define SECURITY_REQUEST_DELAY         APP_TIMER_TICKS(1500, APP_TIMER_PRESCALER)
+#else
+#define SECURITY_REQUEST_DELAY         APP_TIMER_TICKS(1500)  
+#endif  
 
 static ble_ancs_c_t       m_ancs_c;                                    /**< Structure used to identify the Apple Notification Service Client. */
 static ble_db_discovery_t m_ble_db_discovery;                          /**< Structure used to identify the DB Discovery module. */
