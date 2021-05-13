@@ -383,8 +383,6 @@ if "LCD" in board.devices:
     codeOut("#define LCD_SPI_BITRATE "+str(board.devices["LCD"]["bitrate"]))
   if "pin_bl" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_bl", "LCD_BL")
-  if "backlight_inverted" in board.devices["LCD"]:
-    codeOut("#define LCD_BL_INVERTED "+str(board.devices["LCD"]["backlight_inverted"]))
   if "pin_en" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_en", "LCD_EN")
   if board.devices["LCD"]["controller"]=="fsmc":

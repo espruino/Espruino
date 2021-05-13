@@ -98,11 +98,10 @@ void turn_off() {
 #ifdef DICKENS
   NRF_P0->OUT=0x03300f04; // 00000011 00110000 00001111 00000100 - high pins: D2, D8, SDA, SCL, LCD_CS, FLASH_CS, FLASH_WP, FLASH_RST, FLASH_SCK
 //NRF_P0->OUT=0x03300e00; // 00000011 00110000 00001110 00000000 - high pins: SDA, SCL, LCD_CS, FLASH_CS, FLASH_WP, FLASH_RST, FLASH_SCK
-#if LCD_BL_INVERTED
-  NRF_P1->OUT=0x00000001; // High pins: LCD_BL 
-#else
-  NRF_P1->OUT=0x00000000; 
-#endif
+  if (pinInfo[LCD_BL].port&JSH_PIN_NEGATED) // if backlight negated
+    NRF_P1->OUT=0x00000001; // High pins: LCD_BL
+  else
+    NRF_P1->OUT=0x00000000;
   for (uint8_t pin=0; pin<48; pin++) {
     NRF_GPIO_PIN_CNF(pin,0x00000004); // Set all pins as input with pulldown
   }
@@ -110,15 +109,14 @@ void turn_off() {
   NRF_GPIO_PIN_CNF(ACCEL_PIN_SDA,0x0000060d);     //  D9 = SDA open-drain output
   NRF_GPIO_PIN_CNF(ACCEL_PIN_SCL,0x0000060d);     // D10 = SCL open-drain output
   NRF_GPIO_PIN_CNF(LCD_SPI_MISO,0x0000000c);      // D27 = LCD_MISO input with pullup
-#if LCD_BL_INVERTED
-  NRF_GPIO_PIN_CNF(LCD_BL,0x00000003);            // D32 = LCD backlight pin
-#endif
+  if (pinInfo[LCD_BL].port&JSH_PIN_NEGATED) // if backlight negated
+    NRF_GPIO_PIN_CNF(LCD_BL,0x00000003);            // D32 = LCD backlight pin
 //NRF_GPIO_PIN_CNF(BTN2_PININDEX,0x0003000c);     // D28 = BTN2 input (with pullup and low-level sense)
 //NRF_GPIO_PIN_CNF(BTN3_PININDEX,0x0003000c);     // D29 = BTN3 input (with pullup and low-level sense)
 //NRF_GPIO_PIN_CNF(31,0x00000003);                // D31 = Debug output pin (brought out to external header on)
 //NRF_GPIO_PIN_CNF(BTN4_PININDEX,0x0003000c);     // D42 = BTN4 input (with pullup and low-level sense)
   NRF_GPIO_PIN_CNF(BTN1_PININDEX,0x0003000c);     // D46 = BTN1 input (with pullup and low-level sense)
-#else  
+#else  // !DICKENS
   set_led_state(0,0);
   nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
   nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);

@@ -630,11 +630,7 @@ void jswrap_banglejs_pwrBacklight(bool on) {
   jswrap_banglejs_ioWr(IOEXP_LCD_BACKLIGHT, !on);
 #endif
 #ifdef LCD_BL
-#if LCD_BL_INVERTED
-  jshPinOutput(LCD_BL, !on);
-#else
   jshPinOutput(LCD_BL, on);
-#endif
 #endif
 }
 
@@ -1361,11 +1357,7 @@ static void backlightFadeHandler() {
   if (brightness==0) jswrap_banglejs_pwrBacklight(0);
   else if (realLcdBrightness==255) jswrap_banglejs_pwrBacklight(1);
   else {
-#if LCD_BL_INVERTED
-    jshPinAnalogOutput(LCD_BL, (255-realLcdBrightness)/255.0, 200, JSAOF_NONE);
-#else
     jshPinAnalogOutput(LCD_BL, realLcdBrightness/256.0, 200, JSAOF_NONE);
-#endif
   }
 }
 #endif
@@ -1399,11 +1391,7 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
   jswrap_banglejs_pwrBacklight(isOn && (lcdBrightness>0));
 #ifdef LCD_BL
   if (isOn && lcdBrightness > 0 && lcdBrightness < 255) {
-#if LCD_BL_INVERTED
-    jshPinAnalogOutput(LCD_BL, (255-lcdBrightness)/255.0, 200, JSAOF_NONE);
-#else
     jshPinAnalogOutput(LCD_BL, lcdBrightness/256.0, 200, JSAOF_NONE);
-#endif
   }
 #endif // LCD_BL
 #endif

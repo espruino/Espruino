@@ -56,11 +56,7 @@
 #define LCD_STORE_MODIFIED
 #define LCD_START_X 60
 #define LCD_START_Y 60
-#if LCD_BL_INVERTED
-#define LCD_BL_ON 0
-#else
 #define LCD_BL_ON 1
-#endif
 #endif
 
 #ifndef LCD_START_X
