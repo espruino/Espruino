@@ -1,6 +1,7 @@
             Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
             Bangle.js: Ignore touch and swipe events when the LCD is off
+            Graphics: Fix 1bpp custom fonts on 2/4/8 bpp graphics Canvas not being the right colour
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
