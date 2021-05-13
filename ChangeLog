@@ -2,6 +2,8 @@
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
             Bangle.js: Ignore touch and swipe events when the LCD is off
             Graphics: Fix 1bpp custom fonts on 2/4/8 bpp graphics Canvas not being the right colour
+            Bangle.js: Don't reset all peripherals when loading a new app, and only
+              turn peripherals off if unused 500ms after starting new app
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
