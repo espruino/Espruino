@@ -2272,6 +2272,7 @@ void jswrap_banglejs_postInit() {
   }
 #endif
 #ifdef GPS_PIN_RX
+  //jsiConsolePrintf("GPS %d %d\n",bangleFlags & JSBF_GPS_ON, getDeviceRequested("GPS"));
   if ((bangleFlags & JSBF_GPS_ON) && !getDeviceRequested("GPS")) {
     jswrap_banglejs_setGPSPower(false, SETDEVICEPOWER_FORCE);
   }
@@ -3679,11 +3680,11 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
 }
 
 static void jswrap_banglejs_periph_off() {
+#ifndef EMSCRIPTEN
 #ifdef HEARTRATE
   jswrap_banglejs_pwrHRM(false); // HRM off
 #endif
-#ifndef EMSCRIPTEN
-#ifndef DICKENS
+#ifdef GPS_PIN_RX
   jswrap_banglejs_pwrGPS(false); // GPS off
 #endif
   jshPinOutput(VIBRATE_PIN,0); // vibrate off

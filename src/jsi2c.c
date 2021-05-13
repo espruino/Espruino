@@ -49,6 +49,10 @@ bool jsi2cPopulateI2CInfo(
 
 #ifndef SAVE_ON_FLASH
 
+// Do we check to see if we got a NACK or not?
+// Some devices (like Bangle.js IO controller) don't ever ACK
+//#define I2C_NACK_CHECK
+
 // -------------------------------------------------------- I2C Implementation
 
 static void dly(i2cInfo *inf) {
@@ -141,7 +145,12 @@ static bool i2c_wr(i2cInfo *inf, int data) {
     i2c_wr_bit(inf, data&128);
     data <<= 1;
   }
+#if I2C_NACK_CHECK
   return !i2c_rd_bit(inf);
+#else
+  i2c_rd_bit(inf);
+  return true; // always ok
+#endif
 }
 
 static int i2c_rd(i2cInfo *inf, bool nack) {
@@ -178,11 +187,8 @@ bool jsi2cWrite(JshI2CInfo *inf, unsigned char address, int nBytes, const unsign
   i2cInfo d;
   i2c_initstruct(&d, inf);
   i2c_start(&d);
-  if (i2c_wr(&d, address<<1) == false) {
-    // NACK happened when writing to I2C address
-//  jsiConsolePrintf ("NACK when starting I2C write to address 0x%02x\n", address);
+  if (!i2c_wr(&d, address<<1)) // NACK happened when writing to I2C address
     return false;
-  }
   int i;
   for (i=0;i<nBytes;i++)
     i2c_wr(&d, data[i]);
@@ -191,22 +197,20 @@ bool jsi2cWrite(JshI2CInfo *inf, unsigned char address, int nBytes, const unsign
   return true;
 }
 
-void jsi2cRead(JshI2CInfo *inf, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
+bool jsi2cRead(JshI2CInfo *inf, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
   if (inf->pinSCL==PIN_UNDEFINED || inf->pinSDA==PIN_UNDEFINED)
-    return;
+    return false;
   i2cInfo d;
   i2c_initstruct(&d, inf);
   i2c_start(&d);
-  if (i2c_wr(&d, 1|(address<<1)) == false) {
-    // NACK happened when writing to I2C address
-//  jsiConsolePrintf ("NACK when starting I2C read from address 0x%02x\n", address);
-    return;
-  }
+  if (!i2c_wr(&d, 1|(address<<1))) // NACK happened when reading from I2C address
+    return false;
   int i;
   for (i=0;i<nBytes;i++)
     data[i] = (unsigned char)i2c_rd(&d, i==nBytes-1);
   if (sendStop) i2c_stop(&d);
   inf->started = d.started;
+  return true;
 }
 
 #endif // SAVE_ON_FLASH
