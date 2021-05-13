@@ -80,6 +80,13 @@ void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto) {
   }
 }
 
+void graphicsFallbackBlit(JsGraphics *gfx, int x1, int y1, int w, int h, int x2, int y2) {
+  for (int y=0;y<h;y++)
+    for (int x=0;x<w;x++)
+      gfx->setPixel(gfx, (int)(x+x2),(int)(y+y2),
+        gfx->getPixel(gfx, (int)(x+x1),(int)(y+y1)));
+}
+
 void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
   if (xdir==0 && ydir==0) return;
   int y;
@@ -146,6 +153,7 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
     gfx->setPixel = graphicsFallbackSetPixel;
     gfx->getPixel = graphicsFallbackGetPixel;
     gfx->fillRect = graphicsFallbackFillRect;
+    gfx->blit = graphicsFallbackBlit;
     gfx->scroll = graphicsFallbackScroll;
 #ifdef USE_LCD_SDL
     if (gfx->data.type == JSGRAPHICSTYPE_SDL) {
@@ -257,6 +265,16 @@ bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int 
   if (*y2>=gfx->data.height) { *y2 = gfx->data.height-1; modified = true; }
 #endif
   return modified;
+}
+
+// Set the area modified by a draw command
+void graphicsSetModified(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
+#ifndef NO_MODIFIED_AREA
+  if (x1 < gfx->data.modMinX) { gfx->data.modMinX=(short)x1; }
+  if (x2 > gfx->data.modMaxX) { gfx->data.modMaxX=(short)x2; }
+  if (y1 < gfx->data.modMinY) { gfx->data.modMinY=(short)y1; }
+  if (y2 > gfx->data.modMaxY) { gfx->data.modMaxY=(short)y2; }
+#endif
 }
 
 /// Get a setPixel function (assuming coordinates already clipped with graphicsSetModifiedAndClip) - if all is ok it can choose a faster draw function
@@ -604,6 +622,45 @@ void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2) {
     intery += gradient;
   }
 }
+
+void graphicsDrawCircleAA(JsGraphics *gfx, int x0, int y0, int r){
+  graphicsToDeviceCoordinates(gfx, &x0, &y0);
+  int x = -r;
+  int y = 0;
+  int err = 2-2*r;
+  int i, x2, e2;
+  r = 1-err;
+  do {
+     i = 255-255*abs(err-2*(x+y)-2)/r;  
+     graphicsSetPixelDeviceBlended(gfx, x0-x, y0+y, i);
+     graphicsSetPixelDeviceBlended(gfx, x0-y, y0-x, i);
+     graphicsSetPixelDeviceBlended(gfx, x0+x, y0-y, i);
+     graphicsSetPixelDeviceBlended(gfx, x0+y, y0+x, i);
+     e2 = err;
+     x2 = x;
+     if (err+y > 0) {               // X step
+        i = 255-255*(err-2*x-1)/r;  // Outward pixel
+        if (i > 0) {
+           graphicsSetPixelDeviceBlended(gfx, x0-x, y0+y+1, i);
+           graphicsSetPixelDeviceBlended(gfx, x0-y-1, y0-x, i);
+           graphicsSetPixelDeviceBlended(gfx, x0+x, y0-y-1, i);
+           graphicsSetPixelDeviceBlended(gfx, x0+y+1, y0+x, i);
+        }
+        err += ++x*2+1;
+     }
+     if (e2+x2 <= 0) {              // Y step
+        i = 255-255*(2*y+3-e2)/r;   // Inward pixel
+        if (i > 0) {
+           graphicsSetPixelDeviceBlended(gfx, x0-x2-1, y0+y, i);
+           graphicsSetPixelDeviceBlended(gfx, x0-y, y0-x2-1, i);
+           graphicsSetPixelDeviceBlended(gfx, x0+x2+1, y0-y, i);
+           graphicsSetPixelDeviceBlended(gfx, x0+y, y0+x2+1, i);
+        }
+        err += ++y*2+1;
+     }
+  } while (x < 0);
+}
+
 #endif
 
 // Fill poly - each member of vertices is 1/16th pixel

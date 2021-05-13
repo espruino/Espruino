@@ -864,8 +864,8 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset) {
 }
 
 bool jsfLoadBootCodeFromFlash(bool isReset) {
-  // Load code in .boot0/1/2/3 UNLESS BTN1 is HELD DOWN
-#ifdef BANGLEJS
+  // Load code in .boot0/1/2/3 UNLESS BTN1 is HELD DOWN FOR BANGLE.JS
+#if (defined(BANGLEJS) && !defined(DICKENS))
   if (jshPinGetValue(BTN1_PININDEX)!=BTN1_ONSTATE)
 #endif
   {

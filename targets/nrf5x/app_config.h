@@ -121,5 +121,10 @@
 #define I2S_ENABLED 1
 #endif
 
+// SDK15
+#ifdef NRF52840
+#define UART1_ENABLED 1
+#define UART1_CONFIG_USE_EASY_DMA 1
+#endif
 
 // Other SDK configs are still in sdk_config.h

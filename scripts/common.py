@@ -58,8 +58,8 @@ if "check_output" not in dir( subprocess ):
 #                      // class = built-in class that does not require instantiation
 #                      // library = built-in class that needs require('classname')
 #                      // idle = function to run on idle regardless
-#                      // init = function to run on initialisation
-#                      // kill = function to run on deinitialisation
+#                      // init = function to run on Initialisation (eg boot/load/reset/after save/etc)
+#                      // kill = function to run on Deinitialisation (eg before save/reset/etc)
 #                      // EV_xxx = Something to be called with a character in an IRQ when it is received (eg. EV_SERIAL1)
 #         "class" : "Double", "name" : "doubleToIntBits",
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)

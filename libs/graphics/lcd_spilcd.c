@@ -41,6 +41,10 @@ unsigned short lcdPalette[256];
 // ======================================================================
 
 void lcdCmd_SPILCD(int cmd, int dataLen, const unsigned char *data) {
+#ifdef ESPR_USE_SPI3
+  // anomaly 195 workaround - enable SPI before use
+  *(volatile uint32_t *)0x4002F500 = 7;
+#endif
   jshPinSetValue(LCD_SPI_DC, 0); // command
   jshPinSetValue(LCD_SPI_CS, 0);
   jshSPISend(LCD_SPI, cmd);
@@ -52,6 +56,11 @@ void lcdCmd_SPILCD(int cmd, int dataLen, const unsigned char *data) {
     }
   }
   jshPinSetValue(LCD_SPI_CS, 1);
+#ifdef ESPR_USE_SPI3
+  // anomaly 195 workaround - disable SPI when done
+  *(volatile uint32_t *)0x4002F500 = 0;
+  *(volatile uint32_t *)0x4002F004 = 1;
+#endif
 }
 void lcdSendInitCmd_SPILCD() {
   // Send initialization commands to ST7735
@@ -125,6 +134,43 @@ void lcdSetPixel_SPILCD(JsGraphics *gfx, int x, int y, unsigned int col) {
 #endif
 }
 
+#if LCD_BPP==16
+void lcdFillRect_SPILCD(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  // or update just part of it.
+  uint16_t c = __builtin_bswap16(col);
+  uint16_t *ptr = (uint16_t*)(lcdBuffer) + x1 + (y1*LCD_WIDTH);
+  if (y1==y2) {
+    // if doing one line, avoid stride calculations.
+    for (int x=x1;x<=x2;x++)
+      *(ptr++) = c;
+  } else {
+    // handle cases where we can just memset
+    if (x1==0 && x2==LCD_WIDTH-1 && (col&255)==((col>>8)&255)) {
+      memset(&lcdBuffer[y1*LCD_STRIDE], col&255, LCD_STRIDE*(y2+1-y1));
+    } else {
+      // otherwise update a rect
+      int stride = LCD_WIDTH - (x2+1-x1);
+      for (int y=y1;y<=y2;y++) {
+        for (int x=x1;x<=x2;x++)
+          *(ptr++) = c;
+        ptr += stride;
+      }
+    }
+  }
+}
+
+// Move one memory area to another (not bounds-checked!)
+void lcdBlit_SPILCD(struct JsGraphics *gfx, int x1, int y1, int w, int h, int x2, int y2) {
+  unsigned char *pfrom = &lcdBuffer[(x1*2) + (y1*LCD_STRIDE)];
+  unsigned char *pto = &lcdBuffer[(x2*2) + (y2*LCD_STRIDE)];
+  for (int y=0;y<h;y++) {
+    memmove(pto, pfrom, w*2);
+    pfrom += LCD_STRIDE;
+    pto += LCD_STRIDE;
+  }
+}
+#endif
+
 void lcdFlip_SPILCD_callback() {
   // just an empty stub for SPIsend - we'll just push data as fast as we can
 }
@@ -146,6 +192,11 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
   int xstart = gfx->data.modMinX;
 #endif
   unsigned char buffer1[LCD_STRIDE];
+
+#ifdef ESPR_USE_SPI3
+  // anomaly 195 workaround - enable SPI before use
+  *(volatile uint32_t *)0x4002F500 = 7;
+#endif
 
   jshPinSetValue(LCD_SPI_CS, 0);
   jshPinSetValue(LCD_SPI_DC, 0); // command
@@ -220,6 +271,12 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
   jshSPIWait(LCD_SPI);
 #endif
   jshPinSetValue(LCD_SPI_CS,1);
+#ifdef ESPR_USE_SPI3
+  // anomaly 195 workaround - disable SPI when done
+  *(volatile uint32_t *)0x4002F500 = 0;
+  *(volatile uint32_t *)0x4002F004 = 1;
+#endif
+
   // Reset modified-ness
   gfx->data.modMaxX = -32768;
   gfx->data.modMaxY = -32768;
@@ -236,7 +293,11 @@ void lcdInit_SPILCD(JsGraphics *gfx) {
   lcdSetPalette_SPILCD(0);
 
 #ifdef LCD_BL
+#if LCD_BL_INVERTED
+  jshPinOutput(LCD_BL, 0);
+#else
   jshPinOutput(LCD_BL, 1);
+#endif
 #endif
 #ifdef LCD_EN
   jshPinOutput(LCD_EN, 1);
@@ -285,6 +346,10 @@ void lcdInit_SPILCD(JsGraphics *gfx) {
 
 void lcdSetCallbacks_SPILCD(JsGraphics *gfx) {
   gfx->setPixel = lcdSetPixel_SPILCD;
+#if LCD_BPP==16
+  gfx->fillRect = lcdFillRect_SPILCD;
+  gfx->blit = lcdBlit_SPILCD;
+#endif
   gfx->getPixel = lcdGetPixel_SPILCD;
   //gfx->idle = lcdIdle_PCD8544;
 }

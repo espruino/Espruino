@@ -37,11 +37,13 @@ void nrf_configure_uicr_flags(void);
 #define NRF_GPIO_PIN_CLEAR_FAST(PIN) if((PIN)<P0_PIN_NUM) NRF_P0->OUTCLR=1<<(PIN); else NRF_P1->OUTCLR=1<<((PIN)-P0_PIN_NUM);
 #define NRF_GPIO_PIN_WRITE_FAST(PIN,V) if((PIN)<P0_PIN_NUM) { if (V) NRF_P0->OUTSET=1<<(PIN); else NRF_P0->OUTCLR=1<<(PIN); } else { if (V) NRF_P1->OUTSET=1<<(PIN); else NRF_P1->OUTCLR=1<<(PIN); }
 #define NRF_GPIO_PIN_READ_FAST(PIN) (((PIN)<P0_PIN_NUM) ? (NRF_P0->IN >> (PIN))&1 : (NRF_P0->IN >> (PIN)) &1 )
+#define NRF_GPIO_PIN_CNF(PIN,value) ((PIN<P0_PIN_NUM) ? NRF_P0 : NRF_P1)->PIN_CNF[PIN & 31]=value;
 #else
 #define NRF_GPIO_PIN_SET_FAST(PIN) NRF_P0->OUTSET=1<<(PIN);
 #define NRF_GPIO_PIN_CLEAR_FAST(PIN) NRF_P0->OUTCLR=1<<(PIN);
 #define NRF_GPIO_PIN_WRITE_FAST(PIN,V) if (V) NRF_P0->OUTSET=1<<(PIN); else NRF_P0->OUTCLR=1<<(PIN);
 #define NRF_GPIO_PIN_READ_FAST(PIN) ((NRF_P0->IN >> (PIN))&1)
+#define NRF_GPIO_PIN_CNF(PIN,value) NRF_P0->PIN_CNF[PIN]=value;
 #endif
 
 #endif // NRF5X_UTILS_H__

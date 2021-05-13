@@ -4,6 +4,10 @@
             Graphics: Fix 1bpp custom fonts on 2/4/8 bpp graphics Canvas not being the right colour
             Bangle.js: Don't reset all peripherals when loading a new app, and only
               turn peripherals off if unused 500ms after starting new app
+            Increase max arguments for Function.apply from 64 to 256
+            NRF52840: Create new NRF_GPIO_PIN_X_FAST as Nordic's gpio functions will no longer inline!
+            Graphics: Add .blit() to allow fast blits within a single Graphics instance
+            nRF52840: workaround for SDK15 bug that stops softdevice restart when WDT enabled
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)

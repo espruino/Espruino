@@ -40,6 +40,7 @@
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
 #include "nrf_sdh_soc.h"
+#include "nrf_drv_clock.h" // for nrf_drv_clock_lfclk_request workaround
 #endif
 
 #include "nrf_log.h"
@@ -280,8 +281,8 @@ JsVar *jsble_get_error_string(uint32_t err_code) {
    case BLE_ERROR_NO_TX_PACKETS : name="NO_TX_PACKETS"; break;
 #endif
   }
-  if (name) return jsvVarPrintf("BLE error 0x%x (%s)", err_code, name);
-  else return jsvVarPrintf("BLE error 0x%x", err_code);
+  if (name) return jsvVarPrintf("ERR 0x%x (%s)", err_code, name);
+  else return jsvVarPrintf("ERR 0x%x", err_code);
 }
 
 // -----------------------------------------------------------------------------------
@@ -323,7 +324,11 @@ void jsble_queue_pending(BLEPending blep, uint16_t data) {
 int jsble_exec_pending(IOEvent *event) {
   int eventsHandled = 1;
   // if we got event data, unpack it first into a buffer
+#if NRF_BLE_MAX_MTU_SIZE>64
+  unsigned char buffer[NRF_BLE_MAX_MTU_SIZE];
+#else
   unsigned char buffer[64];
+#endif
   assert(sizeof(buffer) >= sizeof(ble_gap_evt_adv_report_t));
   assert(sizeof(buffer) >= NRF_BLE_MAX_MTU_SIZE);
   size_t bufferLen = 0;
@@ -347,7 +352,7 @@ int jsble_exec_pending(IOEvent *event) {
    case BLEP_NONE: break;
    case BLEP_ERROR: {
      JsVar *v = jsble_get_error_string(data);
-     jsWarn("Softdevice error %v (bluetooth.c:%d)",v, *(uint32_t*)buffer);
+     jsWarn("SD %v (bluetooth.c:%d)",v, *(uint32_t*)buffer);
      jsvUnLock(v);
      break;
    }
@@ -1112,8 +1117,14 @@ static void ble_evt_handler(ble_evt_t * p_ble_evt) {
 #else
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #endif
+
+  /*if (p_ble_evt->header.evt_id != 87) // ignore write complete
+    jsiConsolePrintf("[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );*/
+#if ESPR_BLUETOOTH_ANCS
+  ble_ancs_on_ble_evt(p_ble_evt);
+#endif
     uint32_t err_code;
-    //jsiConsolePrintf("\n[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );
+
 
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
@@ -1637,9 +1648,6 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
   ble_conn_state_on_ble_evt(p_ble_evt);
   pm_on_ble_evt(p_ble_evt);
 #endif
-#if ESPR_BLUETOOTH_ANCS
-  ble_ancs_on_ble_evt(p_ble_evt);
-#endif
   if (!((p_ble_evt->header.evt_id==BLE_GAP_EVT_CONNECTED) &&
         (p_ble_evt->evt.gap_evt.params.connected.role != BLE_GAP_ROLE_PERIPH)) &&
       !((p_ble_evt->header.evt_id==BLE_GAP_EVT_DISCONNECTED) &&
@@ -1665,7 +1673,7 @@ static void soc_evt_handler(uint32_t sys_evt) {
   // dispatched to the Flash Data Storage (FDS) module.
   fs_sys_event_handler(sys_evt);
 #endif
-#else
+#else // NRF_SD_BLE_API_VERSION>=5
 static void soc_evt_handler(uint32_t sys_evt, void * p_context) {
 #endif
   void jsh_sys_evt_handler(uint32_t sys_evt);
@@ -2660,22 +2668,20 @@ void jsble_advertising_stop() {
 }
 
 /** Completely deinitialise the BLE stack */
-void jsble_kill() {
+bool jsble_kill() {
   jswrap_ble_sleep();
-
   // BLE NUS doesn't need deinitialising (no ble_nus_kill)
   bleStatus &= ~BLE_NUS_INITED;
   // BLE HID doesn't need deinitialising (no ble_hids_kill)
   bleStatus &= ~BLE_HID_INITED;
-
   uint32_t err_code;
-
 #if NRF_SD_BLE_API_VERSION < 5
   err_code = sd_softdevice_disable();
 #else
+  nrf_drv_clock_lfclk_request(NULL); // https://devzone.nordicsemi.com/f/nordic-q-a/56256/disabling-the-softdevice-hangs-when-using-lfrc-with-an-active-watchdog
   err_code = nrf_sdh_disable_request();
 #endif
-  APP_ERROR_CHECK(err_code);
+  return !jsble_check_error(err_code);
 }
 
 
@@ -2684,22 +2690,21 @@ void jsble_kill() {
 void jsble_restart_softdevice(JsVar *jsFunction) {
   assert(!jsble_has_connection());
   bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
-
   // if we were scanning, make sure we stop
   if (bleStatus & BLE_IS_SCANNING) {
     sd_ble_gap_scan_stop();
   }
   //jsiConsolePrintf("Restart softdevice\n");
-
   jshUtilTimerDisable(); // don't want the util timer firing during this!
   JsSysTime lastTime = jshGetSystemTime();
-  jsble_kill();
-  if (jsvIsFunction(jsFunction))
-    jspExecuteFunction(jsFunction,NULL,0,NULL);
-  jsble_init();
-  // reinitialise everything
-  jswrap_ble_reconfigure_softdevice();
-  jshSetSystemTime(lastTime); // Softdevice resets the RTC - so we must reset our offsets
+  if (jsble_kill()) {
+    if (jsvIsFunction(jsFunction))
+      jspExecuteFunction(jsFunction,NULL,0,NULL);
+    jsble_init();
+    // reinitialise everything
+    jswrap_ble_reconfigure_softdevice();
+    jshSetSystemTime(lastTime); // Softdevice resets the RTC - so we must reset our offsets
+  }
   jstRestartUtilTimer(); // restart the util timer
 }
 

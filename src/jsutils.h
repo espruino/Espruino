@@ -239,6 +239,8 @@ typedef int64_t JsSysTime;
 
 #define JS_NUMBER_BUFFER_SIZE 70 ///< Enough for 64 bit base 2 + minus + terminating 0
 
+#define JS_MAX_FUNCTION_ARGUMENTS 256 ///< How many arguments can be used with Function.apply
+
 /* If we have less free variables than this, do a garbage collect on Idle.
  * Note that the check for free variables takes an amount of time proportional
  * to the size of JS_VARS_BEFORE_IDLE_GC */

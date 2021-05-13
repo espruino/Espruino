@@ -1993,7 +1993,7 @@
 // <e> UART1_ENABLED - Enable UART1 instance
 //==========================================================
 #ifndef UART1_ENABLED
-#define UART1_ENABLED 1
+#define UART1_ENABLED 0
 #endif
 // <q> UART1_CONFIG_USE_EASY_DMA  - Default setting for using EasyDMA
 

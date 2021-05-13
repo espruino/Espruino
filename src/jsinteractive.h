@@ -158,7 +158,7 @@ typedef enum {
   JSIS_FIRST_BOOT         = 1<<12, ///< Is this the first time we started, or has load/reset/etc been called?
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE,
-  JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED|JSIS_WATCHDOG_AUTO|JSIS_TODO_MASK|JSIS_FIRST_BOOT // stuff that DOESN'T get reset on softinit
+  JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED|JSIS_WATCHDOG_AUTO|JSIS_TODO_MASK|JSIS_FIRST_BOOT|JSIS_COMPLETELY_RESET // stuff that DOESN'T get reset on softinit
     // watchdog can't be reset without a reboot so if it's set to auto we must keep it as auto
 } PACKED_FLAGS JsiStatus;
 

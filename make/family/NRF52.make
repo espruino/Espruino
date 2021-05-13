@@ -137,10 +137,6 @@ TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm/app_u
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/usbd/nrf_drv_usbd.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_serial_num.c
 endif
-TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_clock.c
-TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_power.c
-TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_clock.c
-TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_power.c
 else # NRF52832
 DEFINES += -DNRF52832_XXAA -DNRF52_PAN_74 
 
@@ -190,11 +186,19 @@ ifdef NRF5X_SDK_15
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_i2s.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_saadc.c 
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_rng.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_clock.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_power.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_clock.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_power.c
 endif
 ifdef NRF5X_SDK_17
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_i2s.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_saadc.c 
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_rng.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_clock.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_power.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_clock.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_power.c
 endif
 # Secure connection support
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/ecc

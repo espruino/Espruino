@@ -55,10 +55,15 @@ Request app attributes can be performed with:
 #define SECURITY_REQUEST_DELAY         APP_TIMER_TICKS(1500)  
 #endif  
 
-static ble_ancs_c_t       m_ancs_c;                                    /**< Structure used to identify the Apple Notification Service Client. */
-static ble_db_discovery_t m_ble_db_discovery;                          /**< Structure used to identify the DB Discovery module. */
 
 APP_TIMER_DEF(m_sec_req_timer_id);                                     /**< Security request timer. The timer lets us start pairing request if one does not arrive from the Central. */
+#if NRF_SD_BLE_API_VERSION < 5
+static ble_ancs_c_t       m_ancs_c;                                    /**< Structure used to identify the Apple Notification Service Client. */
+static ble_db_discovery_t m_ble_db_discovery;                          /**< Structure used to identify the DB Discovery module. */
+#else
+BLE_ANCS_C_DEF(m_ancs_c);                                              /**< Apple Notification Service Client instance. */
+BLE_DB_DISCOVERY_DEF(m_ble_db_discovery);                              /**< DB Discovery module instance. */
+#endif
 
 static ble_ancs_c_evt_notif_t m_notification_latest;                   /**< Local copy to keep track of the newest arriving notifications. */
 static ble_ancs_c_attr_t      m_notif_attr_latest;                     /**< Local copy of the newest notification attribute. */
@@ -241,8 +246,10 @@ static void apple_notification_error_handler(uint32_t nrf_error)
  */
 void ble_ancs_on_ble_evt(ble_evt_t * p_ble_evt)
 {
+#if NRF_SD_BLE_API_VERSION < 5
     ble_db_discovery_on_ble_evt(&m_ble_db_discovery, p_ble_evt);
     ble_ancs_c_on_ble_evt(&m_ancs_c, p_ble_evt);
+#endif
 
     ret_code_t ret = NRF_SUCCESS;
 
