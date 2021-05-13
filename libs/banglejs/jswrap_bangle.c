@@ -2211,91 +2211,103 @@ JsVar *jswrap_banglejs_getAccel() {
   "type" : "init",
   "generate" : "jswrap_banglejs_init"
 }*/
-void jswrap_banglejs_init() {
+NO_INLINE void jswrap_banglejs_init() {
   IOEventFlags channel;
+  bool firstRun = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrap_banglejs_init was called?
+  jsvObjectSetChildAndUnLock(execInfo.root, "firstRun", jsvNewFromBool(firstRun)); // debug
+  // Hardware init that we only do the very first time we start
+  if (firstRun) {
 #ifdef BANGLEJS_F18
-  jshPinOutput(18,0); // what's this?
+    jshPinOutput(18,0); // what's this?
 #endif
 #ifdef ID205
-  jshPinOutput(3,1); // general VDD power?
-  jshPinOutput(46,0); // What's this? Who knows! But it stops screen flicker and makes the touchscreen work nicely
-  jshPinOutput(LCD_BL,1); // Backlight
+    jshPinOutput(3,1); // general VDD power?
+    jshPinOutput(46,0); // What's this? Who knows! But it stops screen flicker and makes the touchscreen work nicely
+    jshPinOutput(LCD_BL,1); // Backlight
 #endif
 #ifndef EMSCRIPTEN
-  jshPinOutput(VIBRATE_PIN,0); // vibrate off
+    jshPinOutput(VIBRATE_PIN,0); // vibrate off
 
 #ifdef NRF52832
-  jswrap_ble_setTxPower(4);
+    jswrap_ble_setTxPower(4);
 #endif
 
-  // Set up I2C
-  i2cBusy = true;
+    // Set up I2C
+    i2cBusy = true;
 #ifdef SMAQ3
-  jshI2CInitInfo(&i2cAccel);
-  i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-  i2cAccel.pinSDA = ACCEL_PIN_SDA;
-  i2cAccel.pinSCL = ACCEL_PIN_SCL;
-  jsi2cSetup(&i2cAccel);
+    jshI2CInitInfo(&i2cAccel);
+    i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+    i2cAccel.pinSDA = ACCEL_PIN_SDA;
+    i2cAccel.pinSCL = ACCEL_PIN_SCL;
+    jsi2cSetup(&i2cAccel);
 
-  jshI2CInitInfo(&i2cMag);
-  i2cMag.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-  i2cMag.pinSDA = MAG_PIN_SDA;
-  i2cMag.pinSCL = MAG_PIN_SCL;
-  jsi2cSetup(&i2cMag);
+    jshI2CInitInfo(&i2cMag);
+    i2cMag.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+    i2cMag.pinSDA = MAG_PIN_SDA;
+    i2cMag.pinSCL = MAG_PIN_SCL;
+    jsi2cSetup(&i2cMag);
 
-  jshI2CInitInfo(&i2cTouch);
-  i2cTouch.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-  i2cTouch.pinSDA = TOUCH_PIN_SDA;
-  i2cTouch.pinSCL = TOUCH_PIN_SCL;
-  jsi2cSetup(&i2cTouch);
+    jshI2CInitInfo(&i2cTouch);
+    i2cTouch.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+    i2cTouch.pinSDA = TOUCH_PIN_SDA;
+    i2cTouch.pinSCL = TOUCH_PIN_SCL;
+    jsi2cSetup(&i2cTouch);
 
-  jshI2CInitInfo(&i2cPressure);
-  i2cPressure.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-  i2cPressure.pinSDA = PRESSURE_PIN_SDA;
-  i2cPressure.pinSCL = PRESSURE_PIN_SCL;
-  jsi2cSetup(&i2cPressure);
+    jshI2CInitInfo(&i2cPressure);
+    i2cPressure.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+    i2cPressure.pinSDA = PRESSURE_PIN_SDA;
+    i2cPressure.pinSCL = PRESSURE_PIN_SCL;
+    jsi2cSetup(&i2cPressure);
 #elif defined(ACCEL_PIN_SDA) // assume all the rest just use a global I2C
-  jshI2CInitInfo(&i2cInternal);
-  i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-  i2cInternal.pinSDA = ACCEL_PIN_SDA;
-  i2cInternal.pinSCL = ACCEL_PIN_SCL;
-  i2cInternal.clockStretch = false;
-  jsi2cSetup(&i2cInternal);
+    jshI2CInitInfo(&i2cInternal);
+    i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+    i2cInternal.pinSDA = ACCEL_PIN_SDA;
+    i2cInternal.pinSCL = ACCEL_PIN_SCL;
+    i2cInternal.clockStretch = false;
+    jsi2cSetup(&i2cInternal);
 #endif
 #ifdef SMAQ3
-  // Touch init
-  jshPinOutput(TOUCH_PIN_RST, 0);
-  jshDelayMicroseconds(1000);
-  jshPinOutput(TOUCH_PIN_RST, 1);
-  jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
-  channel = jshPinWatch(TOUCH_PIN_IRQ, true);
-  if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
+    // Touch init
+    jshPinOutput(TOUCH_PIN_RST, 0);
+    jshDelayMicroseconds(1000);
+    jshPinOutput(TOUCH_PIN_RST, 1);
+    jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
+    channel = jshPinWatch(TOUCH_PIN_IRQ, true);
+    if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
 #endif
 #ifdef BANGLEJS_F18
-  // LCD pin init
-  jshPinOutput(LCD_PIN_CS, 1);
-  jshPinOutput(LCD_PIN_DC, 1);
-  jshPinOutput(LCD_PIN_SCK, 1);
-  for (int i=0;i<8;i++) jshPinOutput(i, 0);
-  // IO expander reset
-  jshPinOutput(28,0);
-  jshDelayMicroseconds(10000);
-  jshPinOutput(28,1);
-  jshDelayMicroseconds(50000);
-  jswrap_banglejs_ioWr(0,0);
-  jswrap_banglejs_pwrHRM(false); // HRM off
-  jswrap_banglejs_pwrGPS(false); // GPS off
-  jswrap_banglejs_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
-  jshDelayMicroseconds(100000);
-  jswrap_banglejs_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
-  jswrap_banglejs_pwrBacklight(true); // backlight on
-  jshDelayMicroseconds(10000);
+    // LCD pin init
+    jshPinOutput(LCD_PIN_CS, 1);
+    jshPinOutput(LCD_PIN_DC, 1);
+    jshPinOutput(LCD_PIN_SCK, 1);
+    for (int i=0;i<8;i++) jshPinOutput(i, 0);
+    // IO expander reset
+    jshPinOutput(28,0);
+    jshDelayMicroseconds(10000);
+    jshPinOutput(28,1);
+    jshDelayMicroseconds(50000);
+    jswrap_banglejs_ioWr(0,0);
+    jswrap_banglejs_pwrHRM(false); // HRM off
+    jswrap_banglejs_pwrGPS(false); // GPS off
+    jswrap_banglejs_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
+    jshDelayMicroseconds(100000);
+    jswrap_banglejs_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
+    jswrap_banglejs_pwrBacklight(true); // backlight on
+    jshDelayMicroseconds(10000);
 #endif
 #endif
-  bangleFlags = JSBF_DEFAULT;
+  }
+
+  bangleFlags = JSBF_DEFAULT; // includes bangleFlags
   flipTimer = 0; // reset the LCD timeout timer
   lcdPowerOn = true;
   lcdBrightness = 255;
+#ifdef ESPR_BACKLIGHT_FADE
+  if (firstRun) lcdBrightness=0;
+  realLcdBrightness = firstRun ? 0 : lcdBrightness;
+  lcdFadeHandlerActive = false;
+  jswrap_banglejs_setLCDPowerBacklight(lcdPowerOn);
+#endif
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
   lcdWakeButton = 0;
 #ifdef LCD_WIDTH
@@ -2318,20 +2330,21 @@ void jswrap_banglejs_init() {
   gfx.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
 #endif
 
-  gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
+  gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1; // 2x size is default
   gfx.graphicsVar = graphics;
 
-  //gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8;
+  if (firstRun) {
 #ifdef LCD_CONTROLLER_LPM013M126
-  lcdMemLCD_init(&gfx);
-  jswrap_banglejs_pwrBacklight(true);
+    lcdMemLCD_init(&gfx);
+    jswrap_banglejs_pwrBacklight(true);
 #endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
-  lcdST7789_init(&gfx);
+    lcdST7789_init(&gfx);
 #endif
 #if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
-  lcdInit_SPILCD(&gfx);
+    lcdInit_SPILCD(&gfx);
 #endif
+  }
   graphicsSetVar(&gfx);
   jsvObjectSetChild(execInfo.root, "g", graphics);
   jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, graphics);
@@ -2390,10 +2403,10 @@ void jswrap_banglejs_init() {
     }
   }
 #ifdef SMAQ3
-  lcdMemLCD_flip(&gfx);
+    lcdMemLCD_flip(&gfx);
 #endif
 #if defined(LCD_CONTROLLER_GC9A01)
-  lcdFlip_SPILCD(&gfx);
+    lcdFlip_SPILCD(&gfx);
 #endif
   graphicsStructResetState(&gfx);
   graphicsSetVar(&gfx);
@@ -2401,95 +2414,97 @@ void jswrap_banglejs_init() {
   jsvUnLock(graphics);
 #endif
 
-  unsigned char buf[2];
+  if (firstRun) {
+    unsigned char buf[2];
 #ifdef ACCEL_DEVICE_KX023
-  // KX023-1025 accelerometer init
-  jswrap_banglejs_accelWr(0x18,0x0a); // CNTL1 Off (top bit)
-  jswrap_banglejs_accelWr(0x19,0x80); // CNTL2 Software reset
-  buf[0] = 0x19; buf[1] = 0x80; // Second I2C address for software reset (issue #1972)
-  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR-2, 2, buf, true);
-  jshDelayMicroseconds(2000);
-  jswrap_banglejs_accelWr(0x1a,0b10011000); // CNTL3 12.5Hz tilt, 400Hz tap, 0.781Hz motion detection
-  //jswrap_banglejs_accelWr(0x1b,0b00000001); // ODCNTL - 25Hz acceleration output data rate, filtering low-pass ODR/9
-  jswrap_banglejs_accelWr(0x1b,0b00000000); // ODCNTL - 12.5Hz acceleration output data rate, filtering low-pass ODR/9
+    // KX023-1025 accelerometer init
+    jswrap_banglejs_accelWr(0x18,0x0a); // CNTL1 Off (top bit)
+    jswrap_banglejs_accelWr(0x19,0x80); // CNTL2 Software reset
+    buf[0] = 0x19; buf[1] = 0x80; // Second I2C address for software reset (issue #1972)
+    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR-2, 2, buf, true);
+    jshDelayMicroseconds(2000);
+    jswrap_banglejs_accelWr(0x1a,0b10011000); // CNTL3 12.5Hz tilt, 400Hz tap, 0.781Hz motion detection
+    //jswrap_banglejs_accelWr(0x1b,0b00000001); // ODCNTL - 25Hz acceleration output data rate, filtering low-pass ODR/9
+    jswrap_banglejs_accelWr(0x1b,0b00000000); // ODCNTL - 12.5Hz acceleration output data rate, filtering low-pass ODR/9
 
-  jswrap_banglejs_accelWr(0x1c,0); // INC1 disabled
-  jswrap_banglejs_accelWr(0x1d,0); // INC2 disabled
-  jswrap_banglejs_accelWr(0x1e,0); // INC3 disabled
-  jswrap_banglejs_accelWr(0x1f,0); // INC4 disabled
-  jswrap_banglejs_accelWr(0x20,0); // INC5 disabled
-  jswrap_banglejs_accelWr(0x21,0); // INC6 disabled
-  jswrap_banglejs_accelWr(0x23,3); // WUFC wakeupi detect counter
-  jswrap_banglejs_accelWr(0x24,3); // TDTRC Tap detect enable
-  jswrap_banglejs_accelWr(0x25, 0x78); // TDTC Tap detect double tap (0x78 default)
-  jswrap_banglejs_accelWr(0x26, 0x65); // TTH Tap detect threshold high (0xCB default)
-  jswrap_banglejs_accelWr(0x27, 0x0D); // TTL Tap detect threshold low (0x1A default)
-  jswrap_banglejs_accelWr(0x30,1); // ATH low wakeup detect threshold
-  //jswrap_banglejs_accelWr(0x35,0 << 4); // LP_CNTL no averaging of samples
-  jswrap_banglejs_accelWr(0x35,2 << 4); // LP_CNTL 4x averaging of samples
-  jswrap_banglejs_accelWr(0x3e,0); // clear the buffer
-  jswrap_banglejs_accelWr(0x18,0b00101100);  // CNTL1 Off, low power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
-  jswrap_banglejs_accelWr(0x18,0b10101100);  // CNTL1 On, low power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
-  // high power vs low power uses an extra 150uA
+    jswrap_banglejs_accelWr(0x1c,0); // INC1 disabled
+    jswrap_banglejs_accelWr(0x1d,0); // INC2 disabled
+    jswrap_banglejs_accelWr(0x1e,0); // INC3 disabled
+    jswrap_banglejs_accelWr(0x1f,0); // INC4 disabled
+    jswrap_banglejs_accelWr(0x20,0); // INC5 disabled
+    jswrap_banglejs_accelWr(0x21,0); // INC6 disabled
+    jswrap_banglejs_accelWr(0x23,3); // WUFC wakeupi detect counter
+    jswrap_banglejs_accelWr(0x24,3); // TDTRC Tap detect enable
+    jswrap_banglejs_accelWr(0x25, 0x78); // TDTC Tap detect double tap (0x78 default)
+    jswrap_banglejs_accelWr(0x26, 0x65); // TTH Tap detect threshold high (0xCB default)
+    jswrap_banglejs_accelWr(0x27, 0x0D); // TTL Tap detect threshold low (0x1A default)
+    jswrap_banglejs_accelWr(0x30,1); // ATH low wakeup detect threshold
+    //jswrap_banglejs_accelWr(0x35,0 << 4); // LP_CNTL no averaging of samples
+    jswrap_banglejs_accelWr(0x35,2 << 4); // LP_CNTL 4x averaging of samples
+    jswrap_banglejs_accelWr(0x3e,0); // clear the buffer
+    jswrap_banglejs_accelWr(0x18,0b00101100);  // CNTL1 Off, low power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
+    jswrap_banglejs_accelWr(0x18,0b10101100);  // CNTL1 On, low power, DRDYE=1, 4g range, TDTE (tap enable)=1, Wakeup=0, Tilt=0
+    // high power vs low power uses an extra 150uA
 #endif
 #ifdef ACCEL_DEVICE_KXTJ3_1057
-  // KXTJ3-1057 accelerometer init
-  jswrap_banglejs_accelWr(0x1B,0b00101000); // CNTL1 Off (top bit)
-  jswrap_banglejs_accelWr(0x1D,0x80); // CNTL2 Software reset
-  jshDelayMicroseconds(2000);
-  jswrap_banglejs_accelWr(0x21,0); // DATA_CTRL_REG - 12.5Hz out
-  jswrap_banglejs_accelWr(0x1B,0b00101000); // CNTL1 Off (top bit), low power, DRDYE=1, 4g, Wakeup=0,
-  jswrap_banglejs_accelWr(0x1B,0b10101000); // CNTL1 On (top bit), low power, DRDYE=1, 4g, Wakeup=0,
+    // KXTJ3-1057 accelerometer init
+    jswrap_banglejs_accelWr(0x1B,0b00101000); // CNTL1 Off (top bit)
+    jswrap_banglejs_accelWr(0x1D,0x80); // CNTL2 Software reset
+    jshDelayMicroseconds(2000);
+    jswrap_banglejs_accelWr(0x21,0); // DATA_CTRL_REG - 12.5Hz out
+    jswrap_banglejs_accelWr(0x1B,0b00101000); // CNTL1 Off (top bit), low power, DRDYE=1, 4g, Wakeup=0,
+    jswrap_banglejs_accelWr(0x1B,0b10101000); // CNTL1 On (top bit), low power, DRDYE=1, 4g, Wakeup=0,
 #endif
 #ifdef ACCEL_DEVICE_KX126
-  // KX126_1063 accelerometer init
-  jswrap_banglejs_accelWr(KX126_CNTL1,0x00); // CNTL1 standby mode (top bit)
-  jswrap_banglejs_accelWr(KX126_CNTL2,KX126_CNTL2_SRST); // CNTL2 Software reset (top bit)
-  jshDelayMicroseconds(2000);
-  jswrap_banglejs_accelWr(KX126_CNTL3,KX126_CNTL3_OTP_12P5|KX126_CNTL3_OTDT_400|KX126_CNTL3_OWUF_0P781); // CNTL3 12.5Hz tilt, 400Hz tap, 0.781Hz motion detection
-  jswrap_banglejs_accelWr(KX126_ODCNTL,KX126_ODCNTL_OSA_12P5); // ODCNTL - 12.5Hz output data rate (ODR), with low-pass filter set to ODR/9
-  jswrap_banglejs_accelWr(KX126_INC1,0); // INC1 - interrupt output pin INT1 disabled
-  jswrap_banglejs_accelWr(KX126_INC2,0); // INC2 - wake-up & back-to-sleep ignores all 3 axes
-  jswrap_banglejs_accelWr(KX126_INC3,0); // INC3 - tap detection ignores all 3 axes
-  jswrap_banglejs_accelWr(KX126_INC4,0); // INC4 - no routing of interrupt reporting to pin INT1
-  jswrap_banglejs_accelWr(KX126_INC5,0); // INC5 - interrupt output pin INT2 disabled
-  jswrap_banglejs_accelWr(KX126_INC6,0); // INC6 - no routing of interrupt reporting to pin INT2
-  jswrap_banglejs_accelWr(KX126_INC7,0); // INC7 - no step counter interrupts reported on INT1 or INT2
-  jswrap_banglejs_accelWr(KX126_BUF_CLEAR,0); // clear the buffer
+    // KX126_1063 accelerometer init
+    jswrap_banglejs_accelWr(KX126_CNTL1,0x00); // CNTL1 standby mode (top bit)
+    jswrap_banglejs_accelWr(KX126_CNTL2,KX126_CNTL2_SRST); // CNTL2 Software reset (top bit)
+    jshDelayMicroseconds(2000);
+    jswrap_banglejs_accelWr(KX126_CNTL3,KX126_CNTL3_OTP_12P5|KX126_CNTL3_OTDT_400|KX126_CNTL3_OWUF_0P781); // CNTL3 12.5Hz tilt, 400Hz tap, 0.781Hz motion detection
+    jswrap_banglejs_accelWr(KX126_ODCNTL,KX126_ODCNTL_OSA_12P5); // ODCNTL - 12.5Hz output data rate (ODR), with low-pass filter set to ODR/9
+    jswrap_banglejs_accelWr(KX126_INC1,0); // INC1 - interrupt output pin INT1 disabled
+    jswrap_banglejs_accelWr(KX126_INC2,0); // INC2 - wake-up & back-to-sleep ignores all 3 axes
+    jswrap_banglejs_accelWr(KX126_INC3,0); // INC3 - tap detection ignores all 3 axes
+    jswrap_banglejs_accelWr(KX126_INC4,0); // INC4 - no routing of interrupt reporting to pin INT1
+    jswrap_banglejs_accelWr(KX126_INC5,0); // INC5 - interrupt output pin INT2 disabled
+    jswrap_banglejs_accelWr(KX126_INC6,0); // INC6 - no routing of interrupt reporting to pin INT2
+    jswrap_banglejs_accelWr(KX126_INC7,0); // INC7 - no step counter interrupts reported on INT1 or INT2
+    jswrap_banglejs_accelWr(KX126_BUF_CLEAR,0); // clear the buffer
 
-  jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G); // CNTL1 - standby mode, low power, enable "data ready" interrupt, 4g, disable tap, tilt & pedometer (for now)
-  jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G|KX126_CNTL1_PC1); // CNTL1 - same as above but change from standby to operating mode
+    jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G); // CNTL1 - standby mode, low power, enable "data ready" interrupt, 4g, disable tap, tilt & pedometer (for now)
+    jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G|KX126_CNTL1_PC1); // CNTL1 - same as above but change from standby to operating mode
 #endif
 
 #ifdef PRESSURE_I2C
 #ifdef PRESSURE_DEVICE_HP203
-  // pressure init
-  buf[0]=0x06;
-  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
+    // pressure init
+    buf[0]=0x06;
+    jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
 #endif
 #ifdef PRESSURE_DEVICE_SPL06_007
-  // pressure init
-  buf[0]=SPL06_RESET; buf[1]=0x89;
-  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
+    // pressure init
+    buf[0]=SPL06_RESET; buf[1]=0x89;
+    jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
 #endif
 #ifdef PRESSURE_DEVICE_BMP280
-  buf[0]=0xE0; buf[1]=0xB6;
-  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // reset
+    buf[0]=0xE0; buf[1]=0xB6;
+    jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // reset
 #endif
-  bangleFlags &= ~JSBF_BAROMETER_ON;
+    bangleFlags &= ~JSBF_BAROMETER_ON;
 #endif
 
-  // Accelerometer variables init
-  stepcount_init();
-  stepCounter = 0;
+    // Accelerometer variables init
+    stepcount_init();
+    stepCounter = 0;
 #ifdef MAG_I2C
 #ifdef MAG_DEVICE_GMC303
-  // compass init
-  jswrap_banglejs_compassWr(0x32,1); // soft reset
-  jswrap_banglejs_compassWr(0x31,0); // power down mode
+    // compass init
+    jswrap_banglejs_compassWr(0x32,1); // soft reset
+    jswrap_banglejs_compassWr(0x31,0); // power down mode
 #endif
-  bangleFlags &= ~JSBF_COMPASS_ON;
+    bangleFlags &= ~JSBF_COMPASS_ON;
 #endif
+  }
   i2cBusy = false;
   // Other IO
 #ifdef BAT_PIN_CHARGING
@@ -2500,7 +2515,8 @@ void jswrap_banglejs_init() {
   touchLastState = 0;
   touchLastState2 = 0;
 #ifdef HEARTRATE
-  hrm_init();
+  if (firstRun)
+    hrm_init();
 #endif
 
 #ifndef EMSCRIPTEN
