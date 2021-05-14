@@ -71,3 +71,4 @@ gcc-arm-none-eabi*
 /misc
 *.user
 *.jdebug
+*.code-workspace
