@@ -1121,7 +1121,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
   /*if (p_ble_evt->header.evt_id != 87) // ignore write complete
     jsiConsolePrintf("[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );*/
 #if ESPR_BLUETOOTH_ANCS
-  ble_ancs_on_ble_evt(p_ble_evt);
+  if (bleStatus & BLE_ANCS_INITED)
+    ble_ancs_on_ble_evt(p_ble_evt);
 #endif
     uint32_t err_code;
 
@@ -1760,7 +1761,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
                 //      You should check on what kind of white list policy your application should use.
             }
 #if ESPR_BLUETOOTH_ANCS
-            ble_ancs_bonding_succeeded(p_evt->conn_handle);
+            if (bleStatus & BLE_ANCS_INITED)
+              ble_ancs_bonding_succeeded(p_evt->conn_handle);
 #endif
 
         } break;
@@ -2341,6 +2343,13 @@ static void services_init() {
     }
     jsvUnLock(hidReport);
 #endif
+#if ESPR_BLUETOOTH_ANCS
+    bool useANCS = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ANCS, 0));
+    if (useANCS) {
+      ble_ancs_init();
+      bleStatus |= BLE_ANCS_INITED;
+    }
+#endif
 }
 
 uint32_t app_ram_base;
@@ -2657,10 +2666,6 @@ void jsble_advertising_stop() {
    services_init();
    conn_params_init();
 
-#if ESPR_BLUETOOTH_ANCS
-   ble_ancs_init();
-#endif
-
    // reset the status for things that aren't happening now we're rebooted
    bleStatus &= ~BLE_RESET_ON_SOFTDEVICE_START;
 
@@ -2674,6 +2679,10 @@ bool jsble_kill() {
   bleStatus &= ~BLE_NUS_INITED;
   // BLE HID doesn't need deinitialising (no ble_hids_kill)
   bleStatus &= ~BLE_HID_INITED;
+#if ESPR_BLUETOOTH_ANCS
+  // BLE ANCS doesn't need deinitialising
+  bleStatus &= ~BLE_ANCS_INITED;
+#endif
   uint32_t err_code;
 #if NRF_SD_BLE_API_VERSION < 5
   err_code = sd_softdevice_disable();

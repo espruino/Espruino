@@ -1195,6 +1195,9 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
   JsVar *use_hid = 0;
 #endif
   bool use_uart = true;
+#if ESPR_BLUETOOTH_ANCS
+  bool use_ancs = false;
+#endif
   JsVar *advertise = 0;
 
   jsvConfigObject configs[] = {
@@ -1202,6 +1205,9 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
       {"hid", JSV_ARRAY, &use_hid},
 #endif
       {"uart", JSV_BOOLEAN, &use_uart},
+#if ESPR_BLUETOOTH_ANCS
+      {"ancs", JSV_BOOLEAN, &use_ancs},
+#endif
       {"advertise",  JSV_ARRAY, &advertise},
   };
   if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
@@ -1231,6 +1237,17 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
     jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_NUS, jsvNewFromBool(false));
   }
+#if ESPR_BLUETOOTH_ANCS
+  if (use_ancs) {
+    if (!(bleStatus & BLE_ANCS_INITED))
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_ANCS, jsvNewFromBool(true));
+  } else {
+    if (bleStatus & BLE_ANCS_INITED)
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+    jsvObjectRemoveChild(execInfo.hiddenRoot, BLE_NAME_ANCS);
+  }
+#endif
 
   // Save the current service data and options
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, data);
