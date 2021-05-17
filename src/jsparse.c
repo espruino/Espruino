@@ -1217,7 +1217,6 @@ NO_INLINE JsVar *jspeFactorObject() {
         jslGetNextToken(); // skip over current token
       } else if (
           lex->tk==LEX_STR ||
-          lex->tk==LEX_TEMPLATE_LITERAL ||
           lex->tk==LEX_FLOAT ||
           lex->tk==LEX_INT ||
           lex->tk==LEX_R_TRUE ||
