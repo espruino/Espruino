@@ -41,7 +41,7 @@ void nrf_configure_uicr_flags(void);
 #else
 #define NRF_GPIO_PIN_SET_FAST(PIN) NRF_P0->OUTSET=1<<(PIN);
 #define NRF_GPIO_PIN_CLEAR_FAST(PIN) NRF_P0->OUTCLR=1<<(PIN);
-#define NRF_GPIO_PIN_WRITE_FAST(PIN,V) if (V) NRF_P0->OUTSET=1<<(PIN); else NRF_P0->OUTCLR=1<<(PIN);
+#define NRF_GPIO_PIN_WRITE_FAST(PIN,V) { if (V) NRF_P0->OUTSET=1<<(PIN); else NRF_P0->OUTCLR=1<<(PIN); }
 #define NRF_GPIO_PIN_READ_FAST(PIN) ((NRF_P0->IN >> (PIN))&1)
 #define NRF_GPIO_PIN_CNF(PIN,value) NRF_P0->PIN_CNF[PIN]=value;
 #endif
