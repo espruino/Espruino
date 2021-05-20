@@ -30,15 +30,19 @@
 #include "ble_gap.h"
 #include "jsflash.h" // for jsfRemoveCodeFromFlash
 #include "jsi2c.h" // accelerometer/etc
+#include "bluetooth.h"
+#include "app_timer.h"
 
 #define MAG3110_ADDR 0x0E
 #define LIS3MDL_ADDR MAG_ADDR
+#define MMC5603NJ_ADDR 0x30
 #define I2C_TIMEOUT 100000
 
 JshI2CInfo i2cMag;
 JshI2CInfo i2cAccel;
 JshI2CInfo i2cTemp;
-bool isPuckV2 = false;
+PuckVersion puckVersion;
+APP_TIMER_DEF(m_poll_timer_id);
 
 const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 #define IR_INPUT_PIN 25 // Puck v2
@@ -47,11 +51,33 @@ const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 
 bool mag_enabled = false; //< Has the magnetometer been turned on?
 int16_t mag_reading[3];  //< magnetometer xyz reading
+//int mag_zero[3]; //< magnetometer 'zero' reading, only for Puck 2.1 right now
+volatile bool mag_data_ready = false;
 
 bool accel_enabled = false; //< Has the accelerometer been turned on?
 int16_t accel_reading[3];
 int16_t gyro_reading[3];
 
+bool mag_wait();
+void mag_read();
+
+int getMagAddr() {
+  switch (puckVersion) {
+    case PUCKJS_1V0: return MAG3110_ADDR;
+    case PUCKJS_2V0: return LIS3MDL_ADDR;
+    case PUCKJS_2V1: return MMC5603NJ_ADDR;
+    default: return 0;
+  }
+}
+
+JsVar *jswrap_puck_getHardwareVersion() {
+  switch (puckVersion) {
+    case PUCKJS_1V0: return jsvNewFromInteger(1);
+    case PUCKJS_2V0: return jsvNewFromInteger(2);
+    case PUCKJS_2V1: return jsvNewFromFloat(2.1);
+    default: return NULL;
+  }
+}
 
 JsVar *to_xyz(int16_t d[3], double scale) {
   JsVar *obj = jsvNewObject();
@@ -176,10 +202,10 @@ void mag_pin_on() {
   jshPinSetState(MAG_PIN_PWR, JSHPINSTATE_GPIO_OUT);
   jshPinSetState(MAG_PIN_SCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   jshPinSetState(MAG_PIN_SDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
-  if (!isPuckV2) {
-    // IRQ line on Puck.js is often 0 - don't pull up
+  if (puckVersion == PUCKJS_1V0) {
+    // IRQ line on Puck.js 1v0 is often 0 - don't pull up
     jshPinSetState(MAG_PIN_INT, JSHPINSTATE_GPIO_IN);
-  } else {
+  } else if (puckVersion == PUCKJS_2V0) {
     // using DRDY for data
     jshPinSetState(MAG_PIN_DRDY, JSHPINSTATE_GPIO_IN);
   }
@@ -190,35 +216,7 @@ bool mag_on(int milliHz) {
   //jsiConsolePrintf("mag_on\n");
   mag_pin_on();
   unsigned char buf[2];
-  if (isPuckV2) { // LIS3MDL
-    jshDelayMicroseconds(10000); // takes ages to start up
-    bool lowPower = false;
-    int reg1 = 0x80; // temp sensor, low power
-    if (milliHz == 80000) reg1 = 7<<2; // 900uA
-    else if (milliHz == 40000) reg1 = 6<<2; // 550uA
-    else if (milliHz == 20000) reg1 = 5<<2; // 275uA
-    else if (milliHz == 10000) reg1 = 4<<2; // 137uA
-    else if (milliHz == 5000) reg1 = 3<<2; // 69uA
-    else if (milliHz == 2500) reg1 = 2<<2; // 34uA
-    else if (milliHz == 1250) reg1 = 1<<2; // 17uA
-    else if (milliHz <= 630) { /*if (milliHz == 630 || milliHz == 625)*/
-      // We just go for the lowest power mode
-      reg1 = 0<<2; // 8uA
-      lowPower = true;
-    }
-    else return false;
-
-    buf[0] = 0x21; buf[1]=0x00; // CTRL_REG2 - full scale +-4 gauss
-    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
-    buf[0] = 0x20; buf[1]=reg1; // CTRL_REG1
-    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
-    buf[0] = 0x23; buf[1]=0x02; // CTRL_REG4 - low power, LSb at higher address (to match MAG3110)
-    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
-    buf[0] = 0x22; buf[1]=lowPower ? 0x20 : 0x00; // CTRL_REG3 - normal or low power, continuous measurement
-    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
-    buf[0] = 0x24; buf[1]=0x40; // CTRL_REG5 - block data update
-    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
-  } else { // MAG3110
+  if (puckVersion == PUCKJS_1V0) { // MAG3110
     jshDelayMicroseconds(2500); // 1.7ms from power on to ok
     int reg1 = 0;
     if (milliHz == 80000) reg1 |= (0x00)<<3; // 900uA
@@ -248,15 +246,95 @@ bool mag_on(int milliHz) {
     reg1 |= 1; // Active bit
     i2c_wr(reg1);
     i2c_stop();
-  }
+  } else if (puckVersion == PUCKJS_2V0) { // LIS3MDL
+    jshDelayMicroseconds(10000); // takes ages to start up
+    bool lowPower = false;
+    int reg1 = 0x80; // temp sensor, low power
+    if (milliHz == 80000) reg1 = 7<<2; // 900uA
+    else if (milliHz == 40000) reg1 = 6<<2; // 550uA
+    else if (milliHz == 20000) reg1 = 5<<2; // 275uA
+    else if (milliHz == 10000) reg1 = 4<<2; // 137uA
+    else if (milliHz == 5000) reg1 = 3<<2; // 69uA
+    else if (milliHz == 2500) reg1 = 2<<2; // 34uA
+    else if (milliHz == 1250) reg1 = 1<<2; // 17uA
+    else if (milliHz <= 630) { /*if (milliHz == 630 || milliHz == 625)*/
+      // We just go for the lowest power mode
+      reg1 = 0<<2; // 8uA
+      lowPower = true;
+    }
+    else return false;
+
+    buf[0] = 0x21; buf[1]=0x00; // CTRL_REG2 - full scale +-4 gauss
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    buf[0] = 0x20; buf[1]=reg1; // CTRL_REG1
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    buf[0] = 0x23; buf[1]=0x02; // CTRL_REG4 - low power, LSb at higher address (to match MAG3110)
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    buf[0] = 0x22; buf[1]=lowPower ? 0x20 : 0x00; // CTRL_REG3 - normal or low power, continuous measurement
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    buf[0] = 0x24; buf[1]=0x40; // CTRL_REG5 - block data update
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+ } else if (puckVersion == PUCKJS_2V1) { // MMC5603NJ
+    jshDelayMicroseconds(20000); // wait for boot
+    int hz = (milliHz+500) / 1000;
+    if (hz<1) hz=1;
+    bool highPower = false; // for 1kHz
+    if (hz>255) {
+      hz=255; // max speed in default mode
+      highPower = true;
+    }
+
+/*    mag_zero[0]=0;
+    mag_zero[1]=0;
+    mag_zero[2]=0;
+    int mag_min[3];
+    int mag_max[3];
+    buf[0] = 0x1B; buf[1]=0b00001001; // IC0 - SET - plus single measurement
+    jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 2, buf, true);
+    mag_wait();
+    mag_read();
+    memcpy(mag_min, mag_reading, sizeof(mag_reading));
+    buf[0] = 0x1B; buf[1]=0b00010001; // IC0 - RESET - plus single measurement
+    jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 2, buf, true);
+    mag_wait();
+    mag_read();
+    memcpy(mag_max, mag_reading, sizeof(mag_reading));*/
+
+
+    buf[0] = 0x1A; buf[1]=hz; // ODR - hz
+    jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 2, buf, true);
+    buf[0] = 0x1C; buf[1]=3; // IC1 - 1.2ms (fastest sample time)
+    jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 2, buf, true);
+    buf[0] = 0x1B; buf[1]=0b10100000; // IC0 - auto SR, continuous mode enable
+    jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 2, buf, true);
+    buf[0] = 0x1D; buf[1]= 0b00011001| (highPower?0x80:0); // IC2 - periodic set every 25, continuous mode enable
+    jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 2, buf, true);
+
+/*    mag_zero[0] = (mag_min[0]+mag_max[0])/2;
+    mag_zero[1] = (mag_min[1]+mag_max[1])/2;
+    mag_zero[2] = (mag_min[2]+mag_max[2])/2;
+    jsiConsolePrintf("min %d,%d,%d\n", mag_min[0], mag_min[1], mag_min[2]);
+    jsiConsolePrintf("max %d,%d,%d\n", mag_max[0], mag_max[1], mag_max[2]);
+    jsiConsolePrintf("zer %d,%d,%d\n", mag_zero[0], mag_zero[1], mag_zero[2]);
+    mag_reading[0]=0;
+    mag_reading[1]=0;
+    mag_reading[2]=0;*/
+
+
+    app_timer_start(m_poll_timer_id, APP_TIMER_TICKS(1000000 / milliHz, APP_TIMER_PRESCALER), NULL);
+  } else jsWarn("Unknown Puck version!");
   return true;
 }
 
 // Wait for magnetometer IRQ line to be set
-void mag_wait() {
-  int timeout;
-  if (isPuckV2) {
-    unsigned char buf[1];
+bool mag_wait() {
+  int timeout = 0;
+  unsigned char buf[1];
+
+  if (puckVersion == PUCKJS_1V0) { // MAG3110
+    timeout = I2C_TIMEOUT*2;
+    while (!nrf_gpio_pin_read(MAG_PIN_INT) && --timeout);
+  } else if (puckVersion == PUCKJS_2V0) { // LIS3MDL
     timeout = 400;
     do {
       buf[0] = 0x27; // STATUS_REG
@@ -264,52 +342,62 @@ void mag_wait() {
       jsi2cRead(&i2cMag, LIS3MDL_ADDR, 1, buf, true);
       //jsiConsolePrintf("M %d\n", buf[0]);
     } while (!(buf[0]&0x08) && --timeout); // ZYXDA
-  } else {
-    timeout = I2C_TIMEOUT*2;
-    while (!nrf_gpio_pin_read(MAG_PIN_INT) && --timeout);
+  } else if (puckVersion == PUCKJS_2V1) { // MMC5603NJ
+    timeout = 400;
+    do {
+      buf[0] = 0x18; // Status
+      jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 1, buf, false);
+      jsi2cRead(&i2cMag, MMC5603NJ_ADDR, 1, buf, true);
+    } while ((!(buf[0]&0x40)) && --timeout); // check for Meas_m_done
   }
-  if (!timeout) jsExceptionHere(JSET_INTERNALERROR, "Timeout (Magnetometer)");
+
+  if (!timeout) {
+    jsExceptionHere(JSET_INTERNALERROR, "Timeout (Magnetometer)");
+    return false;
+  }
+  return true;
 }
+
+
 
 // Read a value
 void mag_read() {
-  unsigned char buf[6];
-  if (isPuckV2) {
-    buf[0] = 0x28;
-    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, false);
-    jsi2cRead(&i2cMag, LIS3MDL_ADDR, 6, buf, true);
-    mag_reading[0] = (buf[0]<<8) | buf[1];
-    mag_reading[1] = (buf[2]<<8) | buf[3];
-    mag_reading[2] = (buf[4]<<8) | buf[5];
-  } else { // Puck.js v1
-    buf[0] = 1;
-    jsi2cWrite(&i2cMag, MAG3110_ADDR, 1, buf, false);
-    jsi2cRead(&i2cMag, MAG3110_ADDR, 6, buf, true);
+  unsigned char buf[9];
+  if (puckVersion == PUCKJS_1V0) { // MAG3110
     i2c_start();
     i2c_wr(MAG3110_ADDR<<1);
     i2c_wr(1); // OUT_X_MSB
     i2c_start();
     i2c_wr(1|(MAG3110_ADDR<<1));
-    mag_reading[0] = i2c_rd(false)<<8;
-    mag_reading[0] |= i2c_rd(false);
-    mag_reading[1] = i2c_rd(false)<<8;
-    mag_reading[1] |= i2c_rd(false);
-    mag_reading[2] = i2c_rd(false)<<8;
-    mag_reading[2] |= i2c_rd(true);
+    mag_reading[0] = (int16_t)((i2c_rd(false)<<8) | i2c_rd(false));
+    mag_reading[1] = (int16_t)((i2c_rd(false)<<8) | i2c_rd(false));
+    mag_reading[2] = (int16_t)((i2c_rd(false)<<8) | i2c_rd(false));
     i2c_stop();
+  } else if (puckVersion == PUCKJS_2V0) { // LIS3MDL
+    buf[0] = 0x28;
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, false);
+    jsi2cRead(&i2cMag, LIS3MDL_ADDR, 6, buf, true);
+    mag_reading[0] = (int16_t)((buf[0]<<8) | buf[1]);
+    mag_reading[1] = (int16_t)((buf[2]<<8) | buf[3]);
+    mag_reading[2] = (int16_t)((buf[4]<<8) | buf[5]);
+  } else if (puckVersion == PUCKJS_2V1) { // MMC5603NJ
+    buf[0] = 0x00;
+    jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 1, buf, false);
+    /*jsi2cRead(&i2cMag, MMC5603NJ_ADDR, 9, buf, true);
+    mag_reading[0] = ((buf[0]<<12) | (buf[1]<<4) | (buf[6]>>4)) - (1<<19);
+    mag_reading[1] = ((buf[2]<<12) | (buf[3]<<4) | (buf[7]>>4)) - (1<<19);
+    mag_reading[2] = ((buf[4]<<12) | (buf[5]<<4) | (buf[8]>>4)) - (1<<19);*/
+    jsi2cRead(&i2cMag, MMC5603NJ_ADDR, 6, buf, true);
+    mag_reading[0] = ((buf[0]<<8) | buf[1]) - 32768;
+    mag_reading[1] = ((buf[2]<<8) | buf[3]) - 32768;
+    mag_reading[2] = ((buf[4]<<8) | buf[5]) - 32768;
   }
 }
 
 // Get temperature, shifted right 8 bits
 int mag_read_temp() {
   unsigned char buf[2];
-  if (isPuckV2) {
-    buf[0] = 0x2E; // TEMP_OUT_L
-    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, false);
-    jsi2cRead(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
-    int16_t t = buf[0] | (buf[1]<<8);
-    return (int)t;
-  } else { // Puck.js v1
+  if (puckVersion == PUCKJS_1V0) { // MAG3110
     i2c_start();
     i2c_wr(MAG3110_ADDR<<1);
     i2c_wr(15); // DIE_TEMP
@@ -318,11 +406,35 @@ int mag_read_temp() {
     int8_t temp = i2c_rd(true);
     i2c_stop();
     return temp<<8;
-  }
+  } else if (puckVersion == PUCKJS_2V0) { // LIS3MDL
+    buf[0] = 0x2E; // TEMP_OUT_L
+    jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, false);
+    jsi2cRead(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
+    int16_t t = buf[0] | (buf[1]<<8);
+    return (int)t;
+  } else if (puckVersion == PUCKJS_2V1) { // MMC5603NJ
+    buf[0] = 0x1B; buf[1] = 0x02; // Take temperature measurement
+    jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 2, buf, false);
+    // Wait for completion
+    int timeout = 100;
+    do {
+      buf[0] = 0x18; // Status
+      jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 1, buf, false);
+      jsi2cRead(&i2cMag, MMC5603NJ_ADDR, 1, buf, true);
+    } while (!(buf[1]&0x80) && --timeout); // check for Meas_t_done
+    // get measurement
+    buf[0] = 0x09;
+    jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 1, buf, false);
+    jsi2cRead(&i2cMag, MMC5603NJ_ADDR, 1, buf, true);
+    return (buf[0] - 75) << 8;
+  } else
+    return -1;
 }
 
 // Turn magnetometer off
 void mag_off() {
+  if (puckVersion == PUCKJS_2V1)
+    app_timer_stop(m_poll_timer_id);
   //jsiConsolePrintf("mag_off\n");
   nrf_gpio_cfg_default(MAG_PIN_SDA);
   nrf_gpio_cfg_default(MAG_PIN_SCL);
@@ -330,6 +442,20 @@ void mag_off() {
   nrf_gpio_cfg_default(MAG_PIN_DRDY);
   nrf_gpio_pin_clear(MAG_PIN_PWR);
   nrf_gpio_cfg_output(MAG_PIN_PWR);
+}
+
+void peripheralPollHandler() {
+  if (puckVersion == PUCKJS_2V1) {
+    unsigned char buf[1];
+    buf[0] = 0x18; // Status
+    jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 1, buf, false);
+    jsi2cRead(&i2cMag, MMC5603NJ_ADDR, 1, buf, true);
+    if (buf[0]&0x40) {// check for Meas_m_done
+      mag_read();
+      mag_data_ready = true;
+      jshHadEvent();
+    }
+  }
 }
 
 bool accel_on(int milliHz) {
@@ -475,10 +601,17 @@ JsVar *jswrap_puck_mag() {
   /* If not enabled, turn on and read. If enabled,
    * just pass out the last reading */
   if (!mag_enabled) {
-    mag_on(80000);
+    mag_on(80000); // TODO: ability to force a measurement right away?
     mag_wait();
     mag_read();
     mag_off();
+  } else if (puckVersion == PUCKJS_2V1) { // MMC5603NJ
+    unsigned char buf[1];
+    buf[0] = 0x18; // Status
+    jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 1, buf, false);
+    jsi2cRead(&i2cMag, MMC5603NJ_ADDR, 1, buf, true);
+    if (buf[0]&0x40) // check for Meas_m_done
+      mag_read();
   }
   return to_xyz(mag_reading, 1);
 }
@@ -603,13 +736,13 @@ void jswrap_puck_magOn(JsVarFloat hz) {
   if (!mag_on(milliHz)) {
     jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - must be 80, 40, 20, 10, 5, 2.5, 1.25, 0.63, 0.31, 0.16 or 0.08 Hz", hz);
   }
-  if (isPuckV2) {
-    jshPinWatch(MAG_PIN_DRDY, true);
-    jshPinSetState(MAG_PIN_DRDY, JSHPINSTATE_GPIO_IN);
-  } else {
+  if (puckVersion == PUCKJS_1V0) {
     jshPinWatch(MAG_PIN_INT, true);
     jshPinSetState(MAG_PIN_INT, JSHPINSTATE_GPIO_IN);
-  }
+  } else if (puckVersion == PUCKJS_2V0) {
+    jshPinWatch(MAG_PIN_DRDY, true);
+    jshPinSetState(MAG_PIN_DRDY, JSHPINSTATE_GPIO_IN);
+  } // 2v1 doesn't have an IRQ line
   mag_enabled = true;
 }
 
@@ -624,11 +757,11 @@ Turn the magnetometer off
 */
 void jswrap_puck_magOff() {
   if (mag_enabled) {
-    if (isPuckV2) {
-      jshPinWatch(MAG_PIN_DRDY, false);
-    } else {
+    if (puckVersion == PUCKJS_1V0) {
       jshPinWatch(MAG_PIN_INT, false);
-    }
+    } else if (puckVersion == PUCKJS_2V0) {
+      jshPinWatch(MAG_PIN_DRDY, false);
+    } // 2v1 doesn't have an IRQ line
     mag_off();
   }
   mag_enabled = false;
@@ -654,7 +787,7 @@ void jswrap_puck_magWr(JsVarInt reg, JsVarInt data) {
   unsigned char buf[2];
   buf[0] = (unsigned char)reg;
   buf[1] = (unsigned char)data;
-  jsi2cWrite(&i2cMag, isPuckV2 ? LIS3MDL_ADDR : MAG3110_ADDR, 2, buf, true);
+  jsi2cWrite(&i2cMag, getMagAddr(), 2, buf, true);
 }
 
 /*JSON{
@@ -676,7 +809,7 @@ for more information and links to modules that use this function.
 int jswrap_puck_magRd(JsVarInt reg) {
   unsigned char buf[1];
   buf[0] = (unsigned char)reg;
-  int addr = isPuckV2 ? LIS3MDL_ADDR : MAG3110_ADDR;
+  int addr = getMagAddr();
   jsi2cWrite(&i2cMag, addr, 1, buf, true);
   jsi2cRead(&i2cMag, addr, 1, buf, true);
   return buf[0];
@@ -717,7 +850,7 @@ void temp_off() {
 On Puck.js v2.0 this will use the on-board PCT2075TP temperature sensor, but on Puck.js the less accurate on-chip Temperature sensor is used.
 */
 JsVarFloat jswrap_puck_getTemperature() {
-  if (isPuckV2) {
+  if (PUCKJS_HAS_TEMP_SENSOR) {
     temp_on();
     unsigned char buf[2];
     // 'on' is the default
@@ -776,7 +909,7 @@ for more information.
 
 */
 void jswrap_puck_accelOn(JsVarFloat hz) {
-  if (!isPuckV2) {
+  if (!PUCKJS_HAS_ACCEL) {
     jsExceptionHere(JSET_ERROR, "Not available on Puck.js v1");
     return;
   }
@@ -807,7 +940,7 @@ Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.j
 for more information.
 */
 void jswrap_puck_accelOff() {
-  if (!isPuckV2) {
+  if (!PUCKJS_HAS_ACCEL) {
     jsExceptionHere(JSET_ERROR, "Not available on Puck.js v1");
     return;
   }
@@ -867,7 +1000,7 @@ Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.j
 for more information and links to modules that use this function.
 */
 void jswrap_puck_accelWr(JsVarInt reg, JsVarInt data) {
-  if (!isPuckV2) {
+  if (!PUCKJS_HAS_ACCEL) {
     jsExceptionHere(JSET_ERROR, "Not available on Puck.js v1");
     return;
   }
@@ -894,7 +1027,7 @@ Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.j
 for more information and links to modules that use this function.
 */
 int jswrap_puck_accelRd(JsVarInt reg) {
-  if (!isPuckV2) {
+  if (!PUCKJS_HAS_ACCEL) {
     jsExceptionHere(JSET_ERROR, "Not available on Puck.js v1");
     return -1;
   }
@@ -937,7 +1070,7 @@ void _jswrap_puck_IR_off() {
   // normally we're doing single-pin IR with the cathode, so 1=off
   bool polarity = 1;
   // On Puck.js v2 we go through an (N)FET, which means 0=off.
-  if (isPuckV2 && (_jswrap_puck_IR_pin==IR_FET_PIN || _jswrap_puck_IR_pin==FET_PIN))
+  if (PUCKJS_HAS_IR_FET && (_jswrap_puck_IR_pin==IR_FET_PIN || _jswrap_puck_IR_pin==FET_PIN))
     polarity = 0;
   jshPinOutput(_jswrap_puck_IR_pin, polarity);
 }
@@ -962,7 +1095,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
   }
 
   if (!(jshIsPinValid(cathode) || jshIsPinValid(anode))) {
-    if (isPuckV2) {
+    if (PUCKJS_HAS_IR_FET) {
       cathode = IR_FET_PIN;
     } else { // Puck v1
       anode = IR_ANODE_PIN;
@@ -1240,7 +1373,7 @@ bool jswrap_puck_selfTest() {
   }
 
 
-  if (isPuckV2) {
+  if (PUCKJS_HAS_IR_FET) {
     jshPinSetValue(IR_FET_PIN, 0);
     jshPinSetState(IR_FET_PIN, JSHPINSTATE_GPIO_OUT);
     jshPinSetState(IR_INPUT_PIN, JSHPINSTATE_GPIO_IN_PULLUP);
@@ -1285,7 +1418,7 @@ bool jswrap_puck_selfTest() {
     ok = false;
   }
 
-  if (isPuckV2) {
+  if (PUCKJS_HAS_ACCEL) {
     accel_on(1660000);
     unsigned char buf[1];
     buf[0] = 0x0F; // WHOAMI
@@ -1328,7 +1461,7 @@ bool jswrap_puck_selfTest() {
 
   ok &= selftest_check_pin(1,err);
   ok &= selftest_check_pin(2,err);
-  if (!isPuckV2) {
+  if (!PUCKJS_HAS_TEMP_SENSOR) {
     ok &= selftest_check_pin(6,err);
     ok &= selftest_check_pin(7,err);
     ok &= selftest_check_pin(8,err);
@@ -1380,34 +1513,49 @@ void jswrap_puck_init() {
   accel_off();
   temp_off();
   mag_pin_on();
-  // MAG3110 WHO_AM_I
+  jshDelayMicroseconds(2500); // 1.7ms from power on to ok
+  // MAG3110 WHO_AM_I - for some reason we have to use this slightly odd SW I2C implementation for this
   unsigned char buf[2];
-  buf[0] = 0x07;
-  jsi2cWrite(&i2cMag, MAG3110_ADDR, 1, buf, false);
-  jsi2cRead(&i2cMag, MAG3110_ADDR, 1, buf, true);
+  i2c_start();
+  i2c_wr(MAG3110_ADDR<<1);
+  i2c_wr(0x07); // WHO_AM_I
+  i2c_start();
+  i2c_wr(1|(MAG3110_ADDR<<1));
+  buf[0] = i2c_rd(true);
   // clock stretch is off, so no need to trap exceptions
-  isPuckV2 = false;
-  //jsiConsolePrintf("M3110 %d\n", buf[0]);
-  if (buf[0]!=0xC4) {
+  puckVersion = PUCKJS_UNKNOWN;
+  jsiConsolePrintf("MAG3110 %d\n", buf[0]);
+  if (buf[0]!=0xC4 && buf[0]!=0x00) { // sometimes MAG3110 reports ID 0!
     // Not found, check for LIS3MDL - Puck.js v2
     nrf_delay_ms(1); // LIS3MDL takes longer to boot
     buf[0] = 0x0F;
     jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 1, buf, false);
     jsi2cRead(&i2cMag, LIS3MDL_ADDR, 1, buf, true);
-    //jsiConsolePrintf("LIS3 %d\n", buf[0]);
+    jsiConsolePrintf("LIS3 %d\n", buf[0]);
     if (buf[0] == 0b00111101) {
-      // all good, MAG3110 - Puck.js v2
-      isPuckV2 = true;
+      // all good, MAG3110 - Puck.js v2.0
+      puckVersion = PUCKJS_2V0;
     } else {
-      // ERROR - magnetometer not found!
+      // Is it 2v1?
+      buf[0] = 0x39;
+      jsi2cWrite(&i2cMag, MMC5603NJ_ADDR, 1, buf, false);
+      jsi2cRead(&i2cMag, MMC5603NJ_ADDR, 1, buf, true);
+      jsiConsolePrintf("MMC5603NJ %d\n", buf[0]);
+      if (buf[0] == 16) {
+        puckVersion = PUCKJS_2V1;
+      } else {
+        // uh-oh, no magnetometer found
+        jsWarn("No Magnetometer found");
+      }
     }
   } else {
     // all good, MAG3110 - Puck.js v1
+    puckVersion = PUCKJS_1V0;
   }
   // Power off
   mag_off();
   // If Puck.js v2 ensure FETs are forced off
-  if (isPuckV2) {
+  if (PUCKJS_HAS_IR_FET) {
     jshPinSetValue(IR_FET_PIN, 0);
     jshPinSetState(IR_FET_PIN, JSHPINSTATE_GPIO_OUT);
     jshPinSetValue(FET_PIN, 0);
@@ -1435,6 +1583,12 @@ void jswrap_puck_init() {
       jsfRemoveCodeFromFlash();
     }
   }
+
+  // requires APP_TIMER_OP_QUEUE_SIZE=5 in BOARD.py
+  uint32_t err_code = app_timer_create(&m_poll_timer_id,
+                      APP_TIMER_MODE_REPEATED,
+                      peripheralPollHandler);
+  jsble_check_error(err_code);
 }
 
 /*JSON{
@@ -1457,7 +1611,12 @@ bool jswrap_puck_idle() {
   /* jshPinWatch should mean that we wake up whenever a new
    * magnetometer reading is ready */
   if (mag_enabled) {
-    if (isPuckV2) {
+    if (puckVersion == PUCKJS_1V0) { // Puck.js v1
+      if (nrf_gpio_pin_read(MAG_PIN_INT)) {
+        mag_read();
+        mag_data_ready = true;
+      }
+    } else if (puckVersion == PUCKJS_2V0) {
       if (nrf_gpio_pin_read(MAG_PIN_DRDY)) {
         /*jsiConsolePrintf("irq\n");
         mag_read();
@@ -1472,26 +1631,21 @@ bool jswrap_puck_idle() {
         jsi2cWrite(&i2cMag, LIS3MDL_ADDR, 2, buf, true);
         jsiConsolePrintf("irq %d\n",nrf_gpio_pin_read(MAG_PIN_INT));*/
         mag_read();
-        JsVar *xyz = to_xyz(mag_reading, 1);
-        JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
-        if (jsvHasChildren(puck))
-            jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"mag", &xyz, 1);
-        jsvUnLock2(puck, xyz);
-        busy = true; // don't sleep - handle this now
+        mag_data_ready = true;
       }
-    } else { // Puck.js v1
-      if (nrf_gpio_pin_read(MAG_PIN_INT)) {
-        mag_read();
-        JsVar *xyz = to_xyz(mag_reading, 1);
-        JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
-        if (jsvHasChildren(puck))
-            jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"mag", &xyz, 1);
-        jsvUnLock2(puck, xyz);
-        busy = true; // don't sleep - handle this now
-      }
+    } // Puck 2v1 uses periphPollHandler to set mag_data_ready
+    if (mag_data_ready) {
+      JsVar *xyz = to_xyz(mag_reading, 1);
+      mag_data_ready = false;
+      JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
+      if (jsvHasChildren(puck))
+          jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"mag", &xyz, 1);
+      jsvUnLock2(puck, xyz);
+      busy = true; // don't sleep - handle this now
     }
   }
-  if (accel_enabled && nrf_gpio_pin_read(ACCEL_PIN_INT)) { // accel_enabled only on isPuckV2
+  // accel_enabled is set to true only on devices with an accelerometer
+  if (accel_enabled && nrf_gpio_pin_read(ACCEL_PIN_INT)) {
     accel_read();
     JsVar *d = jswrap_puck_accel();
     JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
