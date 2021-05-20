@@ -37,7 +37,6 @@
 #include "nrf_delay.h"
 #include "nrf_soc.h"
 #include "nrf_saadc.h"
-#include "app_timer.h"
 #include "nrf5x_utils.h"
 
 #include "bluetooth.h" // for self-test
