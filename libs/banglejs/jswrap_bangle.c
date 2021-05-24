@@ -805,7 +805,7 @@ void peripheralPollHandler() {
     bool newReading = false;
 #ifdef MAG_DEVICE_GMC303
     buf[0]=0x10;
-    jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
+    jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, false);
     jsi2cRead(MAG_I2C, MAG_ADDR, 7, buf, true);
     if (buf[0]&1) { // then we have data
       mag.y = buf[1] | (buf[2]<<8);
@@ -816,7 +816,7 @@ void peripheralPollHandler() {
 #endif
 #ifdef MAG_DEVICE_UNKNOWN_0C
     buf[0]=0x4E;
-    jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
+    jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, false);
     jsi2cRead(MAG_I2C, MAG_ADDR, 7, buf, true);
     if (!(buf[0]&16)) { // then we have data that wasn't read before
       // &2 seems always set
@@ -827,7 +827,7 @@ void peripheralPollHandler() {
       mag.z = buf[5] | (buf[5]<<8);
       // Now read 0x3E which should kick off a new reading
       buf[0]=0x3E;
-      jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
+      jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, false);
       jsi2cRead(MAG_I2C, MAG_ADDR, 1, buf, true);
       newReading = true;
     }
@@ -848,7 +848,7 @@ void peripheralPollHandler() {
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
   // read interrupt source data
   buf[0]=0x12; // INS1
-  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
   jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 2, buf, true);
   // 0 -> 0x12 INS1 - tap event
   // 1 -> 0x13 INS2 - what kind of event
@@ -861,14 +861,14 @@ void peripheralPollHandler() {
     jshHadEvent();
     // clear the IRQ flags
     buf[0]=0x17;
-    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
     jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
   }
 #endif
 #ifdef ACCEL_DEVICE_KXTJ3_1057
   // read interrupt source data
   buf[0]=0x16; // INT_SOURCE1
-  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
   jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
   bool hasAccelData = (buf[0]&16)!=0; // DRDY
 #endif
@@ -898,7 +898,7 @@ void peripheralPollHandler() {
     jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
 #else
     buf[0]=6;
-    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
 #endif
     jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 6, buf, true);
     // work out current reading in 16 bit
@@ -1232,7 +1232,7 @@ void touchHandler(bool state, IOEventFlags flags) {
   // Ok, now get touch info
   unsigned char buf[6];
   buf[0]=1;
-  jsi2cWrite(TOUCH_I2C, TOUCH_ADDR, 1, buf, true);
+  jsi2cWrite(TOUCH_I2C, TOUCH_ADDR, 1, buf, false);
   jsi2cRead(TOUCH_I2C, TOUCH_ADDR, 6, buf, true);
   // 0: Gesture type
   // 1: touch pts (0 or 1)
@@ -2103,7 +2103,7 @@ bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
       jswrap_banglejs_barometerWr(SPL06_MEASCFG, 7); // continuous temperature and pressure measurement
       // read calibration data
       unsigned char buf[SPL06_COEF_NUM];
-      buf[0] = SPL06_COEF_START; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+      buf[0] = SPL06_COEF_START; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
       jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, SPL06_COEF_NUM, buf, true);
       barometer_c0 = twosComplement(((unsigned short)buf[0] << 4) | (((unsigned short)buf[1] >> 4) & 0x0F), 12);
       barometer_c1 = twosComplement((((unsigned short)buf[1] & 0x0F) << 8) | buf[2], 12);
@@ -2120,7 +2120,7 @@ bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
       jswrap_banglejs_barometerWr(0xF5, 0xA0); // config_reg - 1s standby, no filter, I2C
       // read calibration data
       unsigned char buf[24];
-      buf[0] = 0x88; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+      buf[0] = 0x88; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
       jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 24, buf, true);
       int i;
       barometerDT[0] = ((int)buf[1] << 8) | (int)buf[0];  //first coeff is unsigned
@@ -3221,11 +3221,7 @@ JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt) {
   if (cnt>(int)sizeof(buf)) cnt=sizeof(buf);
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
-#ifdef ACCEL_DEVICE_KX126
   jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
-#else
-  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
-#endif
   jsi2cRead(ACCEL_I2C, ACCEL_ADDR, (cnt==0)?1:cnt, buf, true);
   i2cBusy = false;
   if (cnt) {
@@ -3285,7 +3281,7 @@ JsVar *jswrap_banglejs_barometerRd(JsVarInt reg, JsVarInt cnt) {
   if (cnt>(int)sizeof(buf)) cnt=sizeof(buf);
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
-  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, (cnt==0)?1:cnt, buf, true);
   i2cBusy = false;
   if (cnt) {
@@ -3382,7 +3378,7 @@ bool jswrap_banglejs_barometerPoll() {
   // wait 100ms
   jshDelayMicroseconds(100*1000); // we should really have a callback
   // READ_PT
-  buf[0] = 0x10; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  buf[0] = 0x10; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
   int temperature = (buf[0]<<16)|(buf[1]<<8)|buf[2];
   if (temperature&0x800000) temperature-=0x1000000;
@@ -3390,7 +3386,7 @@ bool jswrap_banglejs_barometerPoll() {
   barometerTemperature = temperature/100.0;
   barometerPressure = pressure/100.0;
 
-  buf[0] = 0x31; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // READ_A
+  buf[0] = 0x31; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // READ_A
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 3, buf, true);
   int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
   if (altitude&0x800000) altitude-=0x1000000;
@@ -3402,7 +3398,7 @@ bool jswrap_banglejs_barometerPoll() {
   unsigned char buf[6];
 
   // status values
-  buf[0] = SPL06_MEASCFG; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  buf[0] = SPL06_MEASCFG; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
   int status = buf[0];
   if ((status & 0b00110000) != 0b00110000) {
@@ -3411,7 +3407,7 @@ bool jswrap_banglejs_barometerPoll() {
   }
 
   // raw values
-  buf[0] = SPL06_PRSB2; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  buf[0] = SPL06_PRSB2; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
   int praw = (buf[0]<<16)|(buf[1]<<8)|buf[2];
   praw = twosComplement(praw, 24);
@@ -3432,7 +3428,7 @@ bool jswrap_banglejs_barometerPoll() {
 #endif
 #ifdef PRESSURE_DEVICE_BMP280
   unsigned char buf[8];
-  buf[0] = 0xF7; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // READ_A
+  buf[0] = 0xF7; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // READ_A
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
   int uncomp_pres = (buf[0] << 12) | (buf[1] << 4) | (buf[2] >> 4);
   int uncomp_temp = (buf[3] << 12) | (buf[4] << 4) | (buf[5] >> 4);
