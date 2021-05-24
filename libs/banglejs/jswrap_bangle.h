@@ -34,6 +34,7 @@ bool jswrap_banglejs_setGPSPower(bool isOn, JsVar *appId);
 int jswrap_banglejs_isGPSOn();
 bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId);
 int jswrap_banglejs_isCompassOn();
+void jswrap_banglejs_resetCompass();
 bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId);
 int jswrap_banglejs_isBarometerOn();
 

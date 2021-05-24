@@ -2032,15 +2032,6 @@ bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId) {
 #ifdef MAG_DEVICE_GMC303
       jswrap_banglejs_compassWr(0x31,4); // continuous measurement mode, 20Hz
 #endif
-      mag.x = 0;
-      mag.y = 0;
-      mag.z = 0;
-      magmin.x = 32767;
-      magmin.y = 32767;
-      magmin.z = 32767;
-      magmax.x = -32768;
-      magmax.y = -32768;
-      magmax.z = -32768;
     }
   } else { // !isOn -> turn off
 #ifdef MAG_DEVICE_GMC303
@@ -2068,6 +2059,31 @@ Set power with `Bangle.setCompassPower(...);`
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isCompassOn() {
   return bangleFlags & JSBF_COMPASS_ON;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "resetCompass",
+    "generate" : "jswrap_banglejs_resetCompass",
+    "params" : [],
+    "ifdef" : "BANGLEJS"
+}
+Resets the compass minimum/maximum values. Can be used if the compass isn't
+providing a reliable heading any more.
+*/
+void jswrap_banglejs_resetCompass() {
+#ifdef MAG_I2C
+  mag.x = 0;
+  mag.y = 0;
+  mag.z = 0;
+  magmin.x = 32767;
+  magmin.y = 32767;
+  magmin.z = 32767;
+  magmax.x = -32768;
+  magmax.y = -32768;
+  magmax.z = -32768;
+#endif
 }
 
 /*JSON{
@@ -2581,6 +2597,8 @@ NO_INLINE void jswrap_banglejs_init() {
     jswrap_banglejs_compassWr(0x31,0); // power down mode
 #endif
     bangleFlags &= ~JSBF_COMPASS_ON;
+    // ensure compass readings are reset to power-on state
+    jswrap_banglejs_resetCompass();
 #endif
   } // firstRun
   i2cBusy = false;
