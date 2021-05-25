@@ -142,7 +142,11 @@ devices = {
             'pin_rst' : 'D17', # D3
             'size' : 4096*1024, # 4MB
             'memmap_base' : 0x60000000 # map into the address space (in software)
-          }
+          },
+  'MISC' : {
+    'pin_nenable' : 'D18', # needed to get power to Bangle.js peripherals
+    'pin_ioexp_reset' : 'D28',
+  }
 };
 
 # left-right, or top-bottom order

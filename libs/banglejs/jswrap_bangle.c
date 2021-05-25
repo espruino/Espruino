@@ -2457,10 +2457,9 @@ NO_INLINE void jswrap_banglejs_init() {
   // don't show splash screen unless the watch has been totally reset - stops flicker on boot
   if (!(jsiStatus & JSIS_COMPLETELY_RESET))
     showSplashScreen = false;
-  if (showSplashScreen)
 #endif
-  graphicsClear(&gfx);
   if (showSplashScreen) {
+    graphicsClear(&gfx);
     bool drawInfo = false;
     JsVar *img = jsfReadFile(jsfNameFromString(".splash"),0,0);
     int w,h;
@@ -2603,6 +2602,7 @@ NO_INLINE void jswrap_banglejs_init() {
     jswrap_banglejs_resetCompass();
 #endif
   } // firstRun
+
   i2cBusy = false;
   // Other IO
 #ifdef BAT_PIN_CHARGING
@@ -2648,7 +2648,6 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
 #endif
 
-
 #ifdef SMAQ3
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   fakeBTN2Flags = jshPinWatch(BTN1_PININDEX, true);
@@ -2681,6 +2680,7 @@ NO_INLINE void jswrap_banglejs_init() {
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn5Handler);
 #endif
 #endif
+
 
   buzzAmt = 0;
   beepFreq = 0;
