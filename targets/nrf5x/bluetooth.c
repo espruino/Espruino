@@ -145,11 +145,6 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 #define APP_FEATURE_NOT_SUPPORTED       BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2        /**< Reply when unsupported features are requested. */
 
 
-/* Check for errors when in an IRQ, when we're pretty sure an error won't
- * cause a hard reset. Error is then reported outside of the IRQ without
- * rebooting Espruino. */
-#define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) { uint32_t line = __LINE__; jsble_queue_pending_buf(BLEP_ERROR, ERR_CODE, (char*)&line, 4); }
-
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 

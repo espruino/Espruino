@@ -728,6 +728,8 @@ void lcd_init() {
 void lcd_kill() {
   jshPinOutput(LCD_BL,!LCD_BL_ON); // backlight off
   lcd_cmd(0x28, 0, NULL); // display off
+  jshDelayMicroseconds(20);
+  lcd_cmd(0x10, 0, NULL); // SLPIN
 #ifdef LCD_EN
   jshPinOutput(LCD_EN,0); // enable off
 #endif

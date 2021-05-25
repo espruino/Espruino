@@ -112,7 +112,7 @@ void ble_ancs_handle_event(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
 void ble_ancs_bonding_succeeded(uint16_t conn_handle) {
   NRF_LOG_INFO("ble_ancs_bonding_succeeded\r\n");
   uint32_t ret  = ble_db_discovery_start(&m_ble_db_discovery, conn_handle);
-  APP_ERROR_CHECK(ret);
+  APP_ERROR_CHECK_NOT_URGENT(ret);
 }
 
 
@@ -127,10 +127,10 @@ static void apple_notification_setup(void)
     nrf_delay_ms(100); // Delay because we cannot add a CCCD to close to starting encryption. iOS specific.
 
     ret = ble_ancs_c_notif_source_notif_enable(&m_ancs_c);
-    APP_ERROR_CHECK(ret);
+    APP_ERROR_CHECK_NOT_URGENT(ret);
 
     ret = ble_ancs_c_data_source_notif_enable(&m_ancs_c);
-    APP_ERROR_CHECK(ret);
+    APP_ERROR_CHECK_NOT_URGENT(ret);
 
     NRF_LOG_DEBUG("Notifications Enabled.\r\n");
 }
@@ -258,13 +258,13 @@ void ble_ancs_on_ble_evt(ble_evt_t * p_ble_evt)
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected.\r\n");
             ret               = app_timer_start(m_sec_req_timer_id, SECURITY_REQUEST_DELAY, NULL);
-            APP_ERROR_CHECK(ret);
+            APP_ERROR_CHECK_NOT_URGENT(ret);
             break; // BLE_GAP_EVT_CONNECTED
 
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected.\r\n");
             ret               = app_timer_stop(m_sec_req_timer_id);
-            APP_ERROR_CHECK(ret);
+            APP_ERROR_CHECK_NOT_URGENT(ret);
             if (p_ble_evt->evt.gap_evt.conn_handle == m_ancs_c.conn_handle) {
                 m_ancs_c.conn_handle = BLE_CONN_HANDLE_INVALID;
             }
@@ -273,7 +273,6 @@ void ble_ancs_on_ble_evt(ble_evt_t * p_ble_evt)
             // No implementation needed.
             break;
     }
-    APP_ERROR_CHECK(ret);
 }
 
 /**@brief Function for initializing the Apple Notification Center Service.
@@ -377,7 +376,7 @@ static void sec_req_timeout_handler(void * p_context)
     {
 
         ret = pm_conn_sec_status_get(m_peripheral_conn_handle, &status);
-        APP_ERROR_CHECK(ret);
+        APP_ERROR_CHECK_NOT_URGENT(ret);
 
         // If the link is still not secured by the peer, initiate security procedure.
         if (!status.encrypted)
@@ -386,7 +385,7 @@ static void sec_req_timeout_handler(void * p_context)
             ret = pm_conn_secure(m_peripheral_conn_handle, false);
             if (ret != NRF_ERROR_INVALID_STATE)
             {
-                APP_ERROR_CHECK(ret);
+                APP_ERROR_CHECK_NOT_URGENT(ret);
             }
         }
     }
@@ -420,6 +419,6 @@ void ble_ancs_action(uint32_t uid, bool positive) {
   ret = nrf_ancs_perform_notif_action(&m_ancs_c,
                                       uid,
                                       positive ? ACTION_ID_POSITIVE : ACTION_ID_NEGATIVE);
-  APP_ERROR_CHECK(ret);
+  APP_ERROR_CHECK_NOT_URGENT(ret);
 }
 

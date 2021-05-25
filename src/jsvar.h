@@ -803,7 +803,7 @@ void jsvFree(void *ptr);
 #define JSV_GET_AS_CHAR_ARRAY(TARGET_PTR, TARGET_LENGTH, DATA)                \
   size_t TARGET_LENGTH = 0;                                                   \
   char *TARGET_PTR = jsvGetDataPointer(DATA, &TARGET_LENGTH);                 \
-  if (!TARGET_PTR) {                                                          \
+  if (DATA && !TARGET_PTR) {                                                          \
    TARGET_LENGTH = (size_t)jsvIterateCallbackCount(DATA);                     \
     if (TARGET_LENGTH+256 > jsuGetFreeStack()) {                              \
       jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  \

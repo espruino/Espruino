@@ -26,6 +26,12 @@
 #include "ble.h"
 #endif
 #include "ble_advdata.h"
+
+/* Check for errors when in an IRQ, when we're pretty sure an error won't
+ * cause a hard reset. Error is then reported outside of the IRQ without
+ * rebooting Espruino. */
+#define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) { uint32_t line = __LINE__; jsble_queue_pending_buf(BLEP_ERROR, ERR_CODE, (char*)&line, 4); }
+
 #else
 typedef struct {
   uint16_t uuid;

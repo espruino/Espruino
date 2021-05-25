@@ -75,6 +75,8 @@ void jsfDebugFiles();
  * jsfGet[Next]FileHeader returns false but the header isn't all FF
  */
 bool jsfIsStorageValid();
+/** Return true if there is nothing at all in Storage (first header on first page is all 0xFF) */
+bool jsfIsStorageEmpty();
 // Get the amount of space free in this page (or all pages). addr=0 uses start page
 uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages);
 

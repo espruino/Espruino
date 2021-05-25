@@ -772,7 +772,7 @@ void peripheralPollHandler() {
         bangleTasks |= JSBT_RESET;
         jshHadEvent();
         homeBtnTimer = TIMER_MAX;
-        // Allow BTN3 to break out of debugger
+        // Allow home button to break out of debugger
         if (jsiStatus & JSIS_IN_DEBUGGER) {
           jsiStatus |= JSIS_EXIT_DEBUGGER;
           execInfo.execute |= EXEC_INTERRUPTED;
@@ -910,7 +910,7 @@ void peripheralPollHandler() {
     newz = -newz; 
 #endif
 #ifdef ACCEL_DEVICE_KX126
-    newx = -newx;
+    newy = -newy;
 #endif
     int dx = newx-acc.x;
     int dy = newy-acc.y;
@@ -1416,9 +1416,11 @@ When brightness using `Bange.setLCDBrightness`.
 */
 void jswrap_banglejs_setLCDPower(bool isOn) {
 #ifdef ESPR_BACKLIGHT_FADE
-  if (isOn) jswrap_banglejs_setLCDPowerController(isOn);
+  if (isOn) jswrap_banglejs_setLCDPowerController(1);
+  else jswrap_banglejs_setLCDPowerBacklight(0); // RB: don't turn on the backlight here if fading is enabled
 #else
   jswrap_banglejs_setLCDPowerController(isOn);
+  jswrap_banglejs_setLCDPowerBacklight(isOn);
 #endif
   jswrap_banglejs_setLCDPowerBacklight(isOn);
   if (lcdPowerOn != isOn) {
@@ -3701,7 +3703,9 @@ static void jswrap_banglejs_periph_off() {
   jswrap_banglejs_pwrGPS(false); // GPS off
 #endif
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
-  jswrap_banglejs_setLCDPower(0);
+  //jswrap_banglejs_setLCDPower calls JS events (and sometimes timers), so avoid it and manually turn controller + backlight off:
+  jswrap_banglejs_setLCDPowerController(0);
+  jswrap_banglejs_pwrBacklight(0);
 #ifdef ACCEL_DEVICE_KX023
   jswrap_banglejs_accelWr(0x18,0x0a); // accelerometer off
 #endif
