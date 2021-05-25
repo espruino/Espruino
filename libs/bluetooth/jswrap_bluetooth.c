@@ -2455,6 +2455,25 @@ void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback) {
 #endif
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "sendANCSAction",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : "jswrap_ble_sendANCSAction",
+    "params" : [
+      ["uid","int","The UID of the notification to respond to"],
+      ["positive","bool","`true` for positive action, `false` for negative"]
+    ]
+}
+Send an ANCS action for a specific Notification UID. Corresponds to posaction/negaction in the 'ANCS' event that was received
+*/
+void jswrap_ble_sendANCSAction(int uid, bool positive) {
+#if ESPR_BLUETOOTH_ANCS
+  if (bleStatus & BLE_ANCS_INITED)
+    ble_ancs_action(uid, positive);
+#endif
+}
 
 /*JSON{
     "type" : "staticmethod",

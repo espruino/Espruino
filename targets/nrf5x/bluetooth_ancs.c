@@ -209,7 +209,7 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt)
                 m_notif_attr_app_id_latest = p_evt->attr;
             }
             if (p_evt->attr.attr_id == BLE_ANCS_NB_OF_NOTIF_ATTR-1) // TODO: better way to check for last attribute?
-              jsble_queue_pending_buf(BLEP_ANCS_NOTIF, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
+              jsble_queue_pending_buf(BLEP_ANCS_NOTIF, 0, (char*)&m_notification_latest, sizeof(ble_ancs_c_evt_notif_t));
             break;
         case BLE_ANCS_C_EVT_DISCOVERY_FAILED:
             NRF_LOG_DEBUG("Apple Notification Center Service not discovered on the server.\r\n");
