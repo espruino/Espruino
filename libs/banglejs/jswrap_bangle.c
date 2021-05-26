@@ -2538,7 +2538,7 @@ NO_INLINE void jswrap_banglejs_init() {
     jsvUnLock2(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,NULL),img);
     if (drawInfo) {
       if (h > 56) y += h-28;
-      else y += h-18;
+      else y += h-15;
       char addrStr[20];
 #ifndef EMSCRIPTEN
       JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right

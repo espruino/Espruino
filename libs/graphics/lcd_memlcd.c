@@ -20,7 +20,8 @@
 
 // ======================================================================
 
-#define LCD_STRIDE (2+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
+#define LCD_ROWHEADER 2
+#define LCD_STRIDE (LCD_ROWHEADER+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
 unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/];
 lcdMemLCDMode lcdMode = MEMLCD_MODE_NORMAL;
 
@@ -32,13 +33,13 @@ lcdMemLCDMode lcdMode = MEMLCD_MODE_NORMAL;
 
 unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 #if LCD_BPP==3
-  int bitaddr = 2*8 + (x*3) + (y*LCD_STRIDE*8);
+  int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
   int bit = bitaddr&7;
   uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]); // get in MSB format
   return ((b<<bit) & 0xE000) >> 13;
 #endif
 #if LCD_BPP==4
-  int addr = 2 + (x>>1) + (y*LCD_STRIDE);
+  int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
   unsigned char b = lcdBuffer[addr];
   return (x&1) ? (b&15) : (b>>4);
 #endif
@@ -47,17 +48,38 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 
 void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 #if LCD_BPP==3
-  int bitaddr = 2*8 + (x*3) + (y*LCD_STRIDE*8);
+  int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
   int bit = bitaddr&7;
   uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]);
   b = (b & (~(0xE000>>bit))) | ((col&7)<<(13-bit));
   *(uint16_t*)&lcdBuffer[bitaddr>>3] = __builtin_bswap16(b);
 #endif
 #if LCD_BPP==4
-  int addr = 2 + (x>>1) + (y*LCD_STRIDE);
+  int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
   if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (col&0x0F);
   else lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (col << 4);
 #endif
+}
+
+void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir) {
+  if (xdir) return graphicsFallbackScroll(gfx, xdir, ydir);
+  int l = LCD_STRIDE - LCD_ROWHEADER;
+  if (ydir<0) {
+    for (int y=0;y<LCD_HEIGHT+ydir;y++) {
+      int y2 = y-ydir;
+      memcpy(&lcdBuffer[y*LCD_STRIDE + LCD_ROWHEADER],&lcdBuffer[y2*LCD_STRIDE + LCD_ROWHEADER],l);
+    }
+  } else if (ydir>0) {
+    for (int y=LCD_HEIGHT-ydir-1;y>=0;y--) {
+      int y2 = y+ydir;
+      memcpy(&lcdBuffer[y2*LCD_STRIDE + LCD_ROWHEADER],&lcdBuffer[y*LCD_STRIDE + LCD_ROWHEADER],l);
+    }
+  }
+  // set area modified
+  gfx->data.modMinX=0;
+  gfx->data.modMinY=0;
+  gfx->data.modMaxX=(short)(gfx->data.width-1);
+  gfx->data.modMaxY=(short)(gfx->data.height-1);
 }
 
 // -----------------------------------------------------------------------------
@@ -146,6 +168,7 @@ void lcdMemLCD_setCallbacks(JsGraphics *gfx) {
   if (lcdMode==MEMLCD_MODE_NORMAL) {
     gfx->setPixel = lcdMemLCD_setPixel;
     gfx->getPixel = lcdMemLCD_getPixel;
+    gfx->scroll = lcdMemLCD_scroll;
   } else if (lcdMode==MEMLCD_MODE_240x240) {
     gfx->setPixel = lcdMemLCD_setPixel240;
   }

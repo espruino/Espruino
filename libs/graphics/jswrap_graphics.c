@@ -3061,7 +3061,7 @@ JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *tra
 }
 
 /*JSON{
-  "type" : "staticproperty",
+  "type" : "property",
   "class" : "Graphics",
   "name" : "theme",
   "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
@@ -3085,7 +3085,8 @@ These values can then be passed to `g.setColor`/`g.setBgColor` for example `g.se
 
 On Bangle.js these values can be changed by writing updated values to `theme` in `settings.js` and reloading the app.
 */
-JsVar *jswrap_graphics_theme() {
+JsVar *jswrap_graphics_theme(JsVar *parent) {
+  NOT_USED(parent);
   JsVar *o = jsvNewObject();
   jsvObjectSetChildAndUnLock(o,"fg",jsvNewFromInteger(graphicsTheme.fg));
   jsvObjectSetChildAndUnLock(o,"bg",jsvNewFromInteger(graphicsTheme.bg));
