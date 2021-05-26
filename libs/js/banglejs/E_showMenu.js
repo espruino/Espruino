@@ -44,9 +44,9 @@
         var name = menuItems[idx];
         var item = items[name];
         var hl = (idx==options.selected && !l.selectEdit);
-        g.setColor(hl ? g.theme.bgH : c.theme.bg);
+        g.setColor(hl ? g.theme.bgH : g.theme.bg);
         g.fillRect(x,iy,x2,iy+options.fontHeight-1);
-        g.setColor(hl ? g.theme.fgH : c.theme.fg);
+        g.setColor(hl ? g.theme.fgH : g.theme.fg);
         g.setFontAlign(-1,-1);
         g.drawString(loc.translate(name),x,iy);
         if ("object" == typeof item) {
