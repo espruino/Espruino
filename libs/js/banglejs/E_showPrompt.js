@@ -1,7 +1,3 @@
-/* options = {
-  title: text
-  buttons : {"Yes":true,"No":false}
-} */
 (function(msg,options) {
   if (!options) options={};
   if (!options.buttons)
@@ -50,34 +46,29 @@
     g.setColor(g.theme.fg).flip();  // turn screen on
   }
   
-  if (Bangle.btnWatches) {
-    Bangle.btnWatches.forEach(clearWatch);
-    Bangle.btnWatches = undefined;
-  }
   g.clear(1); // clear screen
   Bangle.drawWidgets(); // redraw widgets
   if (!msg) {
+    Bangle.setUI(); // remove watches
     return Promise.resolve();
   }
   draw();
   return new Promise(resolve=>{
-    Bangle.btnWatches = [
-      setWatch(function() {
+    Bangle.setUI("leftright", dir=>{
+      if (dir<0) {
         if (options.selected>0) {
           options.selected--;
           draw();
         }
-      }, BTN1, {repeat:1}),
-      setWatch(function() {
+      } else if (dir>0) {
         if (options.selected<btns.length-1) {
           options.selected++;
           draw(); 
         }
-      }, BTN3, {repeat:1}),
-      setWatch(function() {
-        E.showPrompt();
+      } else {
+        E.showPrompt(); // remove
         resolve(options.buttons[btns[options.selected]]);
-      }, BTN2, {repeat:1})
-    ];
+      }
+    });
   });
 })

@@ -21,8 +21,8 @@
       dy += e.dy;
       if (!e.b) dy=0;
       while (Math.abs(dy)>32) {
-        if (dy>0) { dy-=32; cb(-1) }
-        else { dy+=32; cb(1) }
+        if (dy>0) { dy-=32; cb(1) }
+        else { dy+=32; cb(-1) }
         Bangle.buzz(20);
       }
     };
@@ -38,8 +38,8 @@
       dx += e.dx;
       if (!e.b) dx=0;
       while (Math.abs(dx)>32) {
-        if (dx>0) { dx-=32; cb(-1) }
-        else { dx+=32; cb(1) }
+        if (dx>0) { dx-=32; cb(1) }
+        else { dx+=32; cb(-1) }
         Bangle.buzz(20);
       }
     };
