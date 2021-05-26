@@ -1,41 +1,38 @@
 (function(items) {
-  if (Bangle.btnWatches) {
-    Bangle.btnWatches.forEach(clearWatch);
-    Bangle.btnWatches = undefined;
-  }
   g.clear(1);g.flip(); // clear screen if no menu supplied
   Bangle.drawWidgets();
-  if (!items) return;
+  if (!items) {
+    Bangle.setUI();
+    return;
+  }
   var w = g.getWidth()-9;
   var h = g.getHeight();
   var menuItems = Object.keys(items);
   var options = items[""];
   if (options) menuItems.splice(menuItems.indexOf(""),1);
   if (!(options instanceof Object)) options = {};
-  options.fontHeight=16;
+  options.fontHeight=8;
   options.x=0;
   options.x2=w-2;
   options.y=24;
-  options.y2=220;
+  options.y2=h-20;
   if (options.selected === undefined)
     options.selected = 0;
-  if (!options.fontHeight)
-    options.fontHeight = 6;
   var x = 0|options.x;
   var x2 = options.x2||(g.getWidth()-1);
   var y = 0|options.y;
   var y2 = options.y2||(g.getHeight()-1);
   if (options.title)
-    y += options.fontHeight+2;
+    y += 14;
   var loc = require("locale");
   var l = {
     draw : function() {
-      g.reset().setFont('6x8',2).setFontAlign(0,-1,0);
+      g.reset().setFontAlign(0,-1,0);
       if (options.title) {
-        g.drawString(options.title,(x+x2)/2,y-options.fontHeight-2);
+        g.setFont('4x6',2).drawString(options.title,(x+x2)/2,y-12-2);
         g.drawLine(x,y-2,x2,y-2);
       }
-
+      g.setFont('6x8');
       var rows = 0|Math.min((y2-y) / options.fontHeight,menuItems.length);
       var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
       var iy = y;
@@ -44,9 +41,9 @@
         var name = menuItems[idx];
         var item = items[name];
         var hl = (idx==options.selected && !l.selectEdit);
-        g.setColor(hl ? g.theme.bgH : c.theme.bg);
+        g.setColor(hl ? g.theme.bgH : g.theme.bg);
         g.fillRect(x,iy,x2,iy+options.fontHeight-1);
-        g.setColor(hl ? g.theme.fgH : c.theme.fg);
+        g.setColor(hl ? g.theme.fgH : g.theme.fg);
         g.setFontAlign(-1,-1);
         g.drawString(loc.translate(name),x,iy);
         if ("object" == typeof item) {
@@ -131,10 +128,9 @@
     }
   };
   l.draw();
-  Bangle.btnWatches = [
-    setWatch(function() { l.move(-1); }, BTN1, {repeat:1}),
-    setWatch(function() { l.move(1); }, BTN3, {repeat:1}),
-    setWatch(function() { l.select(); }, BTN2, {repeat:1})
-  ];
+  Bangle.setUI("updown",dir => {
+    if (dir) l.move(dir);
+    else l.select();
+  });
   return l;  
 })

@@ -1,11 +1,10 @@
 (function(items) {
-  if (Bangle.btnWatches) {
-    Bangle.btnWatches.forEach(clearWatch);
-    Bangle.btnWatches = undefined;
-  }
   g.clear(1);g.flip(); // clear screen if no menu supplied
   Bangle.drawWidgets();
-  if (!items) return;
+  if (!items) {
+    Bangle.setUI();
+    return;
+  }
   var w = g.getWidth()-9;
   var h = g.getHeight();
   var menuItems = Object.keys(items);
@@ -130,10 +129,9 @@
     }
   };
   l.draw();
-  Bangle.btnWatches = [
-    setWatch(function() { l.move(-1); }, BTN1, {repeat:1}),
-    setWatch(function() { l.move(1); }, BTN3, {repeat:1}),
-    setWatch(function() { l.select(); }, BTN2, {repeat:1})
-  ];
+  Bangle.setUI("updown",dir => {
+    if (dir) l.move(dir);
+    else l.select();
+  });
   return l;  
 })

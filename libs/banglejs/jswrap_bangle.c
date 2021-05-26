@@ -589,18 +589,20 @@ typedef enum {
   JSBT_STEP_EVENT = 1<<12, ///< we've detected a step via the pedometer
   JSBT_SWIPE_LEFT = 1<<13, ///< swiped left over touchscreen
   JSBT_SWIPE_RIGHT = 1<<14, ///< swiped right over touchscreen
-  JSBT_SWIPE_MASK = JSBT_SWIPE_LEFT | JSBT_SWIPE_RIGHT,
-  JSBT_TOUCH_LEFT = 1<<15, ///< touch lhs of touchscreen
-  JSBT_TOUCH_RIGHT = 1<<16, ///< touch rhs of touchscreen
+  JSBT_SWIPE_UP = 1<<15, ///< swiped left over touchscreen (Bangle 2 only)
+  JSBT_SWIPE_DOWN = 1<<16, ///< swiped right over touchscreen (Bangle 2 only)
+  JSBT_SWIPE_MASK = JSBT_SWIPE_LEFT | JSBT_SWIPE_RIGHT | JSBT_SWIPE_UP | JSBT_SWIPE_DOWN,
+  JSBT_TOUCH_LEFT = 1<<17, ///< touch lhs of touchscreen
+  JSBT_TOUCH_RIGHT = 1<<18, ///< touch rhs of touchscreen
   JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
-  JSBT_HRM_DATA = 1<<17, ///< Heart rate data is ready for analysis
-  JSBT_TWIST_EVENT = 1<<18, ///< Watch was twisted
-  JSBT_FACE_UP = 1<<19, ///< Watch was turned face up/down (faceUp holds the actual state)
-  JSBT_ACCEL_INTERVAL_DEFAULT = 1<<20, ///< reschedule accelerometer poll handler to default speed
-  JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<21, ///< reschedule accelerometer poll handler to powersave speed
-  JSBT_HRM_INSTANT_DATA = 1<<22, ///< Instant heart rate data
+  JSBT_HRM_DATA = 1<<19, ///< Heart rate data is ready for analysis
+  JSBT_TWIST_EVENT = 1<<20, ///< Watch was twisted
+  JSBT_FACE_UP = 1<<21, ///< Watch was turned face up/down (faceUp holds the actual state)
+  JSBT_ACCEL_INTERVAL_DEFAULT = 1<<22, ///< reschedule accelerometer poll handler to default speed
+  JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<23, ///< reschedule accelerometer poll handler to powersave speed
+  JSBT_HRM_INSTANT_DATA = 1<<24, ///< Instant heart rate data
 #ifdef PRESSURE_I2C
-  JSBT_PRESSURE_DATA = 1<<23
+  JSBT_PRESSURE_DATA = 1<<25
 #endif
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
@@ -1251,8 +1253,12 @@ void touchHandler(bool state, IOEventFlags flags) {
   if (gesture!=lastGesture) {
     switch (gesture) { // gesture
     case 0:break; // no gesture
-    case 1:break; // slide down
-    case 2:break; // slide up
+    case 1: // slide down
+        bangleTasks |= JSBT_SWIPE_DOWN;
+        break;
+    case 2: // slide up
+        bangleTasks |= JSBT_SWIPE_UP;
+        break;
     case 3: // slide left
         bangleTasks |= JSBT_SWIPE_LEFT;
         break;
@@ -2404,6 +2410,7 @@ NO_INLINE void jswrap_banglejs_init() {
 #if LCD_BPP==16
   graphicsTheme.fg = 0xFFFF;
   graphicsTheme.bg = 0;
+  graphicsTheme.fg2 = 0xFFFF;
   graphicsTheme.bg2 = 0x0007;
   graphicsTheme.fgH = 0xFFFF;
   graphicsTheme.bgH = 0x02F7;
@@ -3021,9 +3028,12 @@ bool jswrap_banglejs_idle() {
       }
     }
     if (bangleTasks & JSBT_SWIPE_MASK) {
-      JsVar *o = jsvNewFromInteger((bangleTasks & JSBT_SWIPE_LEFT)?-1:1);
-      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"swipe", &o, 1);
-      jsvUnLock(o);
+      JsVar *o[2] = {
+          jsvNewFromInteger((bangleTasks & JSBT_SWIPE_LEFT)?-1:((bangleTasks & JSBT_SWIPE_RIGHT)?1:0)),
+          jsvNewFromInteger((bangleTasks & JSBT_SWIPE_UP)?-1:((bangleTasks & JSBT_SWIPE_DOWN)?1:0)),
+      };
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"swipe", o, 2);
+      jsvUnLockMany(2,o);
     }
     if (bangleTasks & JSBT_TOUCH_MASK) {
       JsVar *o = jsvNewFromInteger(((bangleTasks & JSBT_TOUCH_LEFT)?1:0) |
@@ -4231,5 +4241,29 @@ This is a fake pin, used only for injecting 'fake' button press events from the 
   "generate_full" : "BTN1_PININDEX",
   "ifdef" : "SMAQ3",
   "return" : ["pin",""]
+}
+*/
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setUI",
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_F18.js",
+    "params" : [
+      ["type","JsVar","The typeof UI input: 'updown', 'leftright' or undefined to cancel"],
+      ["callback","JsVar","A function with one argument which is the direction"]
+    ],
+    "ifdef" : "BANGLEJS"
+}
+This puts Bangle.js into a UI input mode, buzzes when each input is made, and calls the callback provided
+
+While you could use setWatch/etc manually, the benefit here is that you don't end up with multiple `setWatch` instances, and
+the actual input method (touch, or buttons) is implemented dependent on the watch (Bangle.js 1 or 2)
+*/
+/*JSON{
+    "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_SMAQ3.js",
+    "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
 }
 */
