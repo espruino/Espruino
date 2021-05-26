@@ -177,7 +177,8 @@ void jswrap_interface_load(JsVar *storageName) {
 /*JSON{
   "type" : "function",
   "name" : "save",
-  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;"
+  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;",
+  "#if" : "!defined(BANGLEJS)"
 }
 Save the state of the interpreter into flash (including the results of calling
 `setWatch`, `setInterval`, `pinMode`, and any listeners). The state will then be loaded automatically
