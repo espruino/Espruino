@@ -1495,40 +1495,6 @@ Available options for `Bangle.setLCDMode` are:
 You can also call `Bangle.setLCDMode()` to return to normal, unbuffered `"direct"` mode.
 */
 void jswrap_banglejs_setLCDMode(JsVar *mode) {
-#ifdef LCD_CONTROLLER_LPM013M126
-  lcdMemLCDMode lcdMode = MEMLCD_MODE_NORMAL;
-  if (jsvIsUndefined(mode) || jsvIsStringEqual(mode,"direct"))
-    lcdMode =  MEMLCD_MODE_NORMAL;
-  else if (jsvIsStringEqual(mode,"null"))
-    lcdMode = MEMLCD_MODE_NULL;
-  else if (jsvIsStringEqual(mode,"240x240"))
-    lcdMode = MEMLCD_MODE_240x240;
-  else
-    jsExceptionHere(JSET_ERROR,"Unknown LCD Mode %j",mode);
-  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
-  if (!graphics) return;
-  jswrap_graphics_setFont(graphics, NULL, 1); // reset fonts - this will free any memory associated with a custom font
-  JsGraphics gfx;
-  if (!graphicsGetFromVar(&gfx, graphics)) return;
-  unsigned int bufferSize = 0;
-  switch (lcdMode) {
-    case MEMLCD_MODE_NULL:
-    case MEMLCD_MODE_NORMAL:
-      gfx.data.width = LCD_WIDTH;
-      gfx.data.height = LCD_HEIGHT;
-      gfx.data.bpp = LCD_BPP;
-      break;
-    case MEMLCD_MODE_240x240:
-      gfx.data.width = 240;
-      gfx.data.height = 240;
-      gfx.data.bpp = 16;
-      break;
-  }
-  graphicsStructResetState(&gfx); // reset colour, cliprect, etc
-  graphicsSetVar(&gfx);
-  jsvUnLock(graphics);
-  lcdMemLCD_setMode(lcdMode);
-#endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   LCDST7789Mode lcdMode = LCDST7789_MODE_UNBUFFERED;
   if (jsvIsUndefined(mode) || jsvIsStringEqual(mode,"direct"))
@@ -1594,6 +1560,8 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   graphicsSetVar(&gfx);
   jsvUnLock(graphics);
   lcdST7789_setMode( lcdMode );
+#else
+  jsExceptionHere(JSET_ERROR, "setLCDMode is unsupported on this device");
 #endif
 }
 /*JSON{
@@ -1610,8 +1578,6 @@ See `Bangle.setLCDMode` for examples.
 */
 JsVar *jswrap_banglejs_getLCDMode() {
   const char *name=0;
-#ifdef LCD_CONTROLLER_LPM013M126
-#endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   switch (lcdST7789_getMode()) {
     case LCDST7789_MODE_NULL:
