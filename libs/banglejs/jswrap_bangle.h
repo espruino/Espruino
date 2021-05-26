@@ -52,8 +52,12 @@ void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data);
 void jswrap_banglejs_ioWr(JsVarInt mask, bool on);
 
 JsVar *jswrap_banglejs_project(JsVar *latlong);
+void jswrap_banglejs_beep_callback(); // internal use only
 JsVar *jswrap_banglejs_beep(int time, int freq);
+void jswrap_banglejs_buzz_callback(); // internal use only
 JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt);
+
+
 void jswrap_banglejs_off();
 void jswrap_banglejs_softOff();
 JsVar *jswrap_banglejs_getLogo();

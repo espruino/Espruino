@@ -2743,10 +2743,13 @@ void jswrap_banglejs_kill() {
     lcdFadeHandlerActive = false;
   }
 #endif
+  // stop and unlock beep & buzz
   jsvUnLock(promiseBeep);
   promiseBeep = 0;
   jsvUnLock(promiseBuzz);
   promiseBuzz = 0;
+  if (beepFreq) jswrap_banglejs_beep_callback();
+  if (buzzAmt) jswrap_banglejs_buzz_callback();
 #ifdef PRESSURE_I2C
   jsvUnLock(promisePressure);
   promisePressure = 0;
@@ -3071,6 +3074,17 @@ bool jswrap_banglejs_idle() {
     if (!lcdPowerOn) jswrap_banglejs_setLCDPowerController(0);
   }
 #endif
+  // resolve any beep/buzz promises
+  if (promiseBuzz && !buzzAmt) {
+    jspromise_resolve(promiseBuzz, 0);
+    jsvUnLock(promiseBuzz);
+    promiseBuzz = 0;
+  }
+  if (promiseBeep && !beepFreq) {
+    jspromise_resolve(promiseBeep, 0);
+    jsvUnLock(promiseBeep);
+    promiseBeep = 0;
+  }
 
   return false;
 }
@@ -3618,10 +3632,7 @@ void jswrap_banglejs_beep_callback() {
     jshPinSetState(SPEAKER_PIN, JSHPINSTATE_GPIO_IN);
 #endif
   }
-
-  jspromise_resolve(promiseBeep, 0);
-  jsvUnLock(promiseBeep);
-  promiseBeep = 0;
+  jshHadEvent();
 }
 
 JsVar *jswrap_banglejs_beep(int time, int freq) {
@@ -3630,8 +3641,13 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
   if (time<=0) time=200;
   if (time>5000) time=5000;
   if (promiseBeep) {
-    jsExceptionHere(JSET_ERROR, "Beep in progress");
-    return 0;
+    JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_banglejs_beep, JSWAT_JSVAR|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_INT32<<(JSWAT_BITS*2)));
+    JsVar *v;
+    v=jsvNewFromInteger(time);jsvAddFunctionParameter(fn, 0, v);jsvUnLock(v); // bind param 1
+    v=jsvNewFromInteger(freq);jsvAddFunctionParameter(fn, 0, v);jsvUnLock(v); // bind param 2
+    JsVar *promise = jswrap_promise_then(promiseBeep, fn, NULL);
+    jsvUnLock(fn);
+    return promise;
   }
   promiseBeep = jspromise_create();
   if (!promiseBeep) return 0;
@@ -3646,7 +3662,7 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
 #endif
     }
   }
-  jsiSetTimeout(jswrap_banglejs_beep_callback, time);
+  jstExecuteFn(jswrap_banglejs_beep_callback, NULL, jshGetSystemTime()+jshGetTimeFromMilliseconds(time), 0);
   return jsvLockAgain(promiseBeep);
 }
 
@@ -3668,10 +3684,7 @@ Use the vibration motor to buzz for a certain time period
 void jswrap_banglejs_buzz_callback() {
   buzzAmt = 0;
   _jswrap_banglejs_setVibration();
-
-  jspromise_resolve(promiseBuzz, 0);
-  jsvUnLock(promiseBuzz);
-  promiseBuzz = 0;
+  jshHadEvent();
 }
 
 JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
@@ -3680,8 +3693,13 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
   if (time<=0) time=200;
   if (time>5000) time=5000;
   if (promiseBuzz) {
-    jsExceptionHere(JSET_ERROR, "Buzz in progress");
-    return 0;
+    JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_banglejs_buzz, JSWAT_JSVAR|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_JSVARFLOAT<<(JSWAT_BITS*2)));
+    JsVar *v;
+    v=jsvNewFromInteger(time);jsvAddFunctionParameter(fn, 0, v);jsvUnLock(v); // bind param 1
+    v=jsvNewFromFloat(amt);jsvAddFunctionParameter(fn, 0, v);jsvUnLock(v); // bind param 2
+    JsVar *promise = jswrap_promise_then(promiseBuzz, fn, NULL);
+    jsvUnLock(fn);
+    return promise;
   }
   promiseBuzz = jspromise_create();
   if (!promiseBuzz) return 0;
@@ -3691,7 +3709,7 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
     _jswrap_banglejs_setVibration();
   }
 
-  jsiSetTimeout(jswrap_banglejs_buzz_callback, time);
+  jstExecuteFn(jswrap_banglejs_buzz_callback, NULL, jshGetSystemTime()+jshGetTimeFromMilliseconds(time), 0);
   return jsvLockAgain(promiseBuzz);
 }
 
