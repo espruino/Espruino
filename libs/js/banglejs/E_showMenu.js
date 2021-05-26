@@ -27,16 +27,10 @@
   var y2 = options.y2||(g.getHeight()-1);
   if (options.title)
     y += options.fontHeight+2;
-  var cBg = 0x0007; // background col
-  var cFg = -1; // foreground col
-  var cHighlightBg = 0x02F7;
-  var cHighlightFg = -1;
   var loc = require("locale");
   var l = {
     draw : function() {
-      g.reset();
-      g.setColor(cFg);
-      g.setFont('6x8',2).setFontAlign(0,-1,0);
+      g.reset().setFont('6x8',2).setFontAlign(0,-1,0);
       if (options.title) {
         g.drawString(options.title,(x+x2)/2,y-options.fontHeight-2);
         g.drawLine(x,y-2,x2,y-2);
@@ -50,9 +44,9 @@
         var name = menuItems[idx];
         var item = items[name];
         var hl = (idx==options.selected && !l.selectEdit);
-        g.setColor(hl ? cHighlightBg : cBg);
+        g.setColor(hl ? g.theme.bgH : c.theme.bg);
         g.fillRect(x,iy,x2,iy+options.fontHeight-1);
-        g.setColor(hl ? cHighlightFg : cFg);
+        g.setColor(hl ? g.theme.fgH : c.theme.fg);
         g.setFontAlign(-1,-1);
         g.drawString(loc.translate(name),x,iy);
         if ("object" == typeof item) {
@@ -62,15 +56,13 @@
           v = loc.translate(""+v);
           if (l.selectEdit && idx==options.selected) {
             xo -= 24 + 1;
-            g.setColor(cHighlightBg);
-            g.fillRect(xo-(g.stringWidth(v)+4),iy,x2,iy+options.fontHeight-1);
-            g.setColor(cHighlightFg);
-            g.drawImage("\x0c\x05\x81\x00 \x07\x00\xF9\xF0\x0E\x00@",xo,iy+(options.fontHeight-10)/2,{scale:2});
+            g.setColor(g.theme.bgH).fillRect(xo-(g.stringWidth(v)+4),iy,x2,iy+options.fontHeight-1);
+            g.setColor(g.theme.fgH).drawImage("\x0c\x05\x81\x00 \x07\x00\xF9\xF0\x0E\x00@",xo,iy+(options.fontHeight-10)/2,{scale:2});
           }
           g.setFontAlign(1,-1);
           g.drawString(v,xo-2,iy);
         }
-        g.setColor(cFg);
+        g.setColor(g.theme.fg);
         iy += options.fontHeight;
         idx++;
       }
@@ -106,8 +98,7 @@
         0b00001100,
         0b00001000
       )*/,w,116);
-      g.setColor(more?-1:0);
-      g.fillPoly([104,220,136,220,120,228]);
+      g.setColor(more?g.theme.fg:g.theme.bg).fillPoly([104,220,136,220,120,228]);
       g.flip();
     },
     select : function(dir) {

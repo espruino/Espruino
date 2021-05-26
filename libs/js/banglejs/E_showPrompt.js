@@ -44,10 +44,10 @@
                   x-bw-4,y+8,
                   x-bw-4,y-8,
                   x-bw,y-12];
-      g.setColor(idx==options.selected ? 0x02F7 : 0).fillPoly(poly).setColor(-1).drawPoly(poly).drawString(btn,x,y+1);
+      g.setColor(idx==options.selected ? g.theme.bgH : g.theme.bg).fillPoly(poly).setColor(idx==options.selected ? g.theme.fgH : g.theme.fg).drawPoly(poly).drawString(btn,x,y+1);
       x += (buttonPadding+w)/2;
     });
-    g.setColor(-1).flip();  // turn screen on
+    g.setColor(g.theme.fg).flip();  // turn screen on
   }
   
   if (Bangle.btnWatches) {

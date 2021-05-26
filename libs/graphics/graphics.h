@@ -21,8 +21,17 @@
 #ifdef SAVE_ON_FLASH
 #define NO_VECTOR_FONT
 #ifndef PIXLJS
-#define NO_MODIFIED_AREA
+  #define NO_MODIFIED_AREA
 #endif
+#else // !SAVE_ON_FLASH
+#ifndef ESPRUINOBOARD
+  #define GRAPHICS_DRAWIMAGE_ROTATED // Allow rotating images
+  #define GRAPHICS_THEME // Keep a 'theme'
+#endif
+#endif
+
+#if defined(LINUX) || defined(BANGLEJS)
+#define GRAPHICS_FAST_PATHS // execute more optimised code when no rotation/etc
 #endif
 
 typedef enum {
@@ -120,6 +129,29 @@ typedef struct JsGraphics {
 } PACKED_FLAGS JsGraphics;
 typedef void (*JsGraphicsSetPixelFn)(struct JsGraphics *gfx, int x, int y, unsigned int col);
 
+#ifdef GRAPHICS_THEME
+#if LCD_BPP && LCD_BPP<=8
+typedef unsigned char JsGraphicsThemeColor;
+#elif LCD_BPP && LCD_BPP<=16
+typedef unsigned short JsGraphicsThemeColor;
+#else
+typedef unsigned int JsGraphicsThemeColor;
+#endif
+/// Standard color scheme colour structure
+typedef struct {
+  JsGraphicsThemeColor fg; ///< Foreground
+  JsGraphicsThemeColor bg; ///< Background
+  JsGraphicsThemeColor fg2; ///< Accented Foreground
+  JsGraphicsThemeColor bg2; ///< Accented Background
+  JsGraphicsThemeColor fgH; ///< Foreground when highlighted
+  JsGraphicsThemeColor bgH; ///< Background when highlighted
+} PACKED_FLAGS JsGraphicsTheme;
+
+/// Global color scheme colours
+extern JsGraphicsTheme graphicsTheme;
+#endif
+
+
 // ---------------------------------- these are in graphics.c
 /// Reset graphics structure state (eg font size, color, etc)
 void graphicsStructResetState(JsGraphics *gfx);
@@ -158,6 +190,7 @@ unsigned int graphicsGetPixel(JsGraphics *gfx, int x, int y);
 void         graphicsClear(JsGraphics *gfx);
 void         graphicsFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
 void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); // Simple fillrect - doesn't call device-specific FR
+void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir);
 void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsDrawEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
 void graphicsFillEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);

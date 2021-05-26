@@ -43,6 +43,11 @@
 
 // ----------------------------------------------------------------------------------------------
 
+#ifdef GRAPHICS_THEME
+/// Global color scheme colours
+JsGraphicsTheme graphicsTheme;
+#endif
+
 static void graphicsSetPixelDevice(JsGraphics *gfx, int x, int y, unsigned int col);
 
 void graphicsFallbackSetPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
@@ -109,8 +114,13 @@ void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
 // ----------------------------------------------------------------------------------------------
 
 void graphicsStructResetState(JsGraphics *gfx) {
+#ifdef GRAPHICS_THEME
+  gfx->data.fgColor = graphicsTheme.fg;
+  gfx->data.bgColor = graphicsTheme.bg;
+#else
   gfx->data.fgColor = 0xFFFFFFFF;
   gfx->data.bgColor = 0;
+#endif
   gfx->data.fontSize = 1+JSGRAPHICS_FONTSIZE_4X6;
 #ifndef SAVE_ON_FLASH
   gfx->data.fontAlignX = 3;

@@ -29,7 +29,9 @@
 #include "jswrap_array.h"
 #include "jswrap_arraybuffer.h"
 #include "jswrap_heatshrink.h"
+#include "jswrap_espruino.h"
 #include "jsflash.h"
+#include "graphics.h"
 #ifndef EMSCRIPTEN
 #include "jswrap_bluetooth.h"
 #include "app_timer.h"
@@ -2360,9 +2362,6 @@ NO_INLINE void jswrap_banglejs_init() {
     jshPinOutput(TOUCH_PIN_RST, 0);
     jshDelayMicroseconds(1000);
     jshPinOutput(TOUCH_PIN_RST, 1);
-    jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
-    channel = jshPinWatch(TOUCH_PIN_IRQ, true);
-    if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
 #endif
 #ifdef BANGLEJS_F18
     // LCD pin init
@@ -2386,6 +2385,11 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
 #endif
   }
+#ifdef SMAQ3
+  jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
+  channel = jshPinWatch(TOUCH_PIN_IRQ, true);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
+#endif
 
   //jsiConsolePrintf("bangleFlags %d\n",bangleFlags);
   if (firstRun)
@@ -2400,6 +2404,65 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
   lcdWakeButton = 0;
+
+  buzzAmt = 0;
+  beepFreq = 0;
+  // Read settings and change beep/buzz behaviour...
+  JsVar *settingsFN = jsvNewFromString("setting.json");
+  JsVar *settings = jswrap_storage_readJSON(settingsFN,true);
+  jsvUnLock(settingsFN);
+  JsVar *v;
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"beep",0) : 0;
+  if (v && jsvGetBool(v)==false) {
+    bangleFlags &= ~JSBF_ENABLE_BEEP;
+  } else {
+    bangleFlags |= JSBF_ENABLE_BEEP;
+#ifdef SPEAKER_PIN
+    if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
+      bangleFlags |= JSBF_BEEP_VIBRATE;
+    else
+      bangleFlags &= ~JSBF_BEEP_VIBRATE;
+#else
+    bangleFlags |= JSBF_BEEP_VIBRATE;
+#endif
+  }
+  jsvUnLock(v);
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"vibrate",0) : 0;
+  if (v && jsvGetBool(v)==false) {
+    bangleFlags &= ~JSBF_ENABLE_BUZZ;
+  } else {
+    bangleFlags |= JSBF_ENABLE_BUZZ;
+  }
+  jsvUnLock(v);
+
+#if LCD_BPP==16
+  graphicsTheme.fg = 0xFFFF;
+  graphicsTheme.bg = 0;
+  graphicsTheme.bg2 = 0x0007;
+  graphicsTheme.fgH = 0xFFFF;
+  graphicsTheme.bgH = 0x02F7;
+#else
+  graphicsTheme.fg = 0;
+  graphicsTheme.bg = 7;
+  graphicsTheme.fg2 = 1;
+  graphicsTheme.bg2 = 7;
+  graphicsTheme.fgH = 0;
+  graphicsTheme.bgH = 5;
+#endif
+  //
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"theme",0) : 0;
+  if (jsvIsObject(v)) {
+    graphicsTheme.fg = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fg",0));
+    graphicsTheme.bg = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bg",0));
+    graphicsTheme.fg2 = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fg2",0));
+    graphicsTheme.bg2 = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bg2",0));
+    graphicsTheme.fgH = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fgH",0));
+    graphicsTheme.bgH = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bgH",0));
+  }
+  jsvUnLock2(v,settings);
+
+
+
 #ifdef LCD_WIDTH
   // Create backing graphics for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
@@ -2463,27 +2526,19 @@ NO_INLINE void jswrap_banglejs_init() {
     bool drawInfo = false;
     JsVar *img = jsfReadFile(jsfNameFromString(".splash"),0,0);
     int w,h;
-    JsVar *imgopts = 0;
     if (!jsvIsString(img) || !jsvGetStringLength(img)) {
       jsvUnLock(img);
       drawInfo = true;
       img = jswrap_banglejs_getLogo();
-      w = 222;
-      h = 104;
-#if LCD_WIDTH < 222
-      w /=2;
-      imgopts = jsvNewObject();
-      jsvObjectSetChildAndUnLock(imgopts, "scale", jsvNewFromFloat(0.5));
-#endif
-    } else {
-      w = (int)(unsigned char)jsvGetCharInString(img, 0);
-      h = (int)(unsigned char)jsvGetCharInString(img, 1);
     }
+    w = (int)(unsigned char)jsvGetCharInString(img, 0);
+    h = (int)(unsigned char)jsvGetCharInString(img, 1);
     graphicsSetVar(&gfx);
     int y=(LCD_HEIGHT-h)/2;
-    jsvUnLock3(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,imgopts),img,imgopts);
+    jsvUnLock2(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,NULL),img);
     if (drawInfo) {
-      y += h-28;
+      if (h > 56) y += h-28;
+      else y += h-18;
       char addrStr[20];
 #ifndef EMSCRIPTEN
       JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
@@ -2680,36 +2735,6 @@ NO_INLINE void jswrap_banglejs_init() {
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn5Handler);
 #endif
 #endif
-
-
-  buzzAmt = 0;
-  beepFreq = 0;
-  // Read settings and change beep/buzz behaviour...
-  JsVar *settingsFN = jsvNewFromString("setting.json");
-  JsVar *settings = jswrap_storage_readJSON(settingsFN,true);
-  JsVar *v;
-  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"beep",0) : 0;
-  if (v && jsvGetBool(v)==false) {
-    bangleFlags &= ~JSBF_ENABLE_BEEP;
-  } else {
-    bangleFlags |= JSBF_ENABLE_BEEP;
-#ifdef SPEAKER_PIN
-    if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
-      bangleFlags |= JSBF_BEEP_VIBRATE;
-    else
-      bangleFlags &= ~JSBF_BEEP_VIBRATE;
-#else
-    bangleFlags |= JSBF_BEEP_VIBRATE;
-#endif
-  }
-  jsvUnLock(v);
-  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"vibrate",0) : 0;
-  if (v && jsvGetBool(v)==false) {
-    bangleFlags &= ~JSBF_ENABLE_BUZZ;
-  } else {
-    bangleFlags |= JSBF_ENABLE_BUZZ;
-  }
-  jsvUnLock3(v,settings,settingsFN);
 
   /* If this isn't our first run, schedule this function 500ms
    * after everything is loaded. It'll then check whether any
@@ -3815,11 +3840,15 @@ void jswrap_banglejs_softOff() {
     "class" : "Bangle",
     "name" : "getLogo",
     "generate" : "jswrap_banglejs_getLogo",
-    "return" : ["JsVar", "An image to be used with `g.drawImage` - 222 x 104 x 2 bits" ],
+    "return" : ["JsVar", "An image to be used with `g.drawImage` (as a String)" ],
     "ifdef" : "BANGLEJS"
 }
+
+* On platforms with an LCD of >=8bpp this is 222 x 104 x 2 bits
+* Otherwise it's 119 x 56 x 1 bits
 */
 JsVar *jswrap_banglejs_getLogo() {
+#if LCD_BPP>=8
   const unsigned char img_compressed[1419] = { // 222 x 104 x 2 bits
       239, 90, 32, 66, 218, 160, 95, 240, 0, 127, 211, 46, 19, 241, 184, 159, 1,
           181, 240, 177, 176, 159, 243, 118, 3, 97, 126, 131, 107, 225, 227,
@@ -3912,9 +3941,40 @@ JsVar *jswrap_banglejs_getLogo() {
           118, 208, 243, 119, 159, 131, 118, 216, 3, 119, 230, 235, 104, 3, 123,
           247, 227, 97, 62, 3, 107, 224, 102, 225, 70, 215, 192, 35, 227, 97,
           58, 0, 177, 0
- };
+  };
+#else
+  const unsigned char img_compressed[467] = { // 119 x 56 x 1 bits
+    187, 206, 32, 32, 210, 160, 63, 255, 128, 112, 184, 63, 255, 192, 14, 46,
+        30, 14, 54, 63, 255, 224, 3, 139, 159, 255, 240, 0, 226, 239, 255, 243,
+        57, 159, 255, 240, 52, 179, 56, 63, 195, 57, 191, 131, 57, 168, 83, 12,
+        224, 157, 140, 51, 130, 14, 48, 206, 10, 20, 184, 15, 226, 62, 14, 33,
+        28, 20, 63, 1, 7, 240, 95, 194, 2, 185, 131, 158, 64, 32, 126, 12, 5, 0,
+        28, 36, 8, 6, 17, 148, 24, 15, 132, 74, 24, 0, 40, 32, 128, 33, 56, 48,
+        30, 16, 56, 104, 66, 76, 32, 16, 52, 30, 32, 208, 48, 0, 81, 0, 16, 49,
+        192, 224, 56, 28, 64, 208, 48, 0, 82, 0, 16, 51, 2, 0, 48, 60, 128, 148,
+        32, 0, 101, 0, 146, 32, 194, 32, 114, 1, 40, 71, 97, 96, 32, 32, 102,
+        16, 122, 1, 156, 82, 8, 80, 49, 16, 80, 229, 40, 49, 254, 69, 254, 1,
+        126, 161, 64, 255, 16, 224, 152, 80, 208, 136, 52, 10, 135, 6, 7, 2,
+        194, 66, 35, 5, 128, 96, 208, 8, 241, 168, 24, 5, 134, 3, 12, 129, 194,
+        36, 17, 130, 192, 37, 80, 84, 192, 209, 32, 20, 40, 20, 64, 2, 14, 2,
+        33, 96, 54, 5, 56, 128, 98, 32, 24, 72, 36, 130, 9, 33, 5, 130, 162, 4,
+        170, 13, 194, 3, 16, 128, 194, 33, 24, 8, 69, 15, 255, 193, 51, 131, 8,
+        128, 248, 32, 82, 1, 64, 49, 21, 16, 56, 67, 56, 56, 8, 12, 162, 7, 192,
+        130, 80, 5, 64, 138, 65, 144, 145, 65, 96, 3, 2, 192, 65, 132, 192, 128,
+        65, 160, 80, 137, 160, 166, 193, 50, 131, 4, 240, 71, 72, 32, 224, 38,
+        24, 12, 52, 7, 9, 16, 134, 67, 7, 64, 216, 39, 74, 176, 112, 26, 24, 12,
+        26, 11, 8, 136, 76, 16, 160, 197, 40, 22, 127, 244, 3, 252, 118, 6, 15,
+        242, 136, 71, 248, 17, 136, 4, 158, 2, 107, 4, 0, 36, 16, 6, 18, 4, 26,
+        3, 16, 32, 0, 143, 48, 193, 192, 224, 24, 128, 186, 197, 78, 130, 14, 9,
+        158, 8, 68, 23, 88, 175, 48, 239, 0, 32, 126, 0, 225, 112, 32, 80, 193,
+        192, 193, 201, 35, 127, 0, 129, 223, 32, 19, 242, 72, 192, 1, 39, 240,
+        63, 192, 56, 207, 255, 128, 28, 93, 255, 254, 58, 24, 0, 47, 255, 254,
+        13, 46, 3, 255, 87, 130, 0, 42, 7, 255, 47, 136, 14, 36, 176, 100, 31,
+        254, 147, 20, 0, 52, 60, 206, 108, 124, 206, 106, 20, 28, 2, 20, 208,
+        105, 104, 80, 76, 230, 3, 129, 51, 130 };
+#endif
   JsVar *v = jsvNewNativeString((char*)&img_compressed[0], sizeof(img_compressed));
-  JsVar *img = jswrap_heatshrink_decompress(v);
+  JsVar *img = jswrap_espruino_toString(jswrap_heatshrink_decompress(v));
   jsvUnLock(v);
   return img;
 }
@@ -4086,12 +4146,6 @@ The second `options` argument can contain:
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showMenu", "patch":true,
     "generate_js" : "libs/js/banglejs/E_showMenu_SMAQ3.js",
-    "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
-}
-*/
-/*JSON{
-    "type" : "staticmethod", "class" : "E", "name" : "showPrompt", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showPrompt_SMAQ3.js",
     "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
 }
 */

@@ -9,6 +9,7 @@
             Graphics: Add .blit() to allow fast blits within a single Graphics instance
             nRF52840: workaround for SDK15 bug that stops softdevice restart when WDT enabled
             Disallow template strings in object decls like {`hello`:1} (fix #2006)
+            Bangle.js: Add support for global colour themes which affect g.clear/g.reset
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)

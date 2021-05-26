@@ -90,7 +90,11 @@ void terminalScroll() {
   JsGraphics gfx;
   if (terminalGetGFX(&gfx)) {
     unsigned int cb = gfx.data.bgColor;
+#ifdef GRAPHICS_THEME
+    gfx.data.bgColor = graphicsTheme.bg;
+#else
     gfx.data.bgColor = 0;
+#endif
     graphicsScroll(&gfx, 0, -TERMINAL_CHAR_H); // always fill background in black
     gfx.data.bgColor = cb;
     terminalSetGFX(&gfx); // save
@@ -122,8 +126,13 @@ void terminalSendChar(char chn) {
         short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H + gfx.data.height - LCD_HEIGHT);
         // draw char
         unsigned int cf = gfx.data.fgColor, cb = gfx.data.bgColor;
-        cf = -1; // always white on black
-        cb = 0;
+#ifdef GRAPHICS_THEME
+        gfx.data.fgColor = graphicsTheme.fg;
+        gfx.data.bgColor = graphicsTheme.bg;
+#else
+        gfx.data.fgColor = -1; // always white on black
+        gfx.data.bgColor = 0;
+#endif
         TERMINAL_CHAR_CMD(&gfx, cx, cy, chn, 1, true/*solid background - so no need to clear*/);
         gfx.data.fgColor = cf;
         gfx.data.bgColor = cb;

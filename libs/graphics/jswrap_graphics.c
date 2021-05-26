@@ -168,6 +168,15 @@ void jswrap_graphics_init() {
     jsvUnLock2(parentObj, parent);
   }
 #endif
+#ifndef GRAPHICS_THEME
+  /// Global color scheme colours
+  graphicsTheme.fg = (JsGraphicsThemeColor)-1;
+  graphicsTheme.bg = (JsGraphicsThemeColor)0;
+  graphicsTheme.fg2 = (JsGraphicsThemeColor)-1;
+  graphicsTheme.bg2 = (JsGraphicsThemeColor)0;
+  graphicsTheme.fgH = (JsGraphicsThemeColor)-1;
+  graphicsTheme.bgH = (JsGraphicsThemeColor)0;
+#endif
 }
 
 /*JSON{
@@ -3049,4 +3058,40 @@ JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *tra
   jsvIteratorFree(&it);
 
   return result;
+}
+
+/*JSON{
+  "type" : "staticproperty",
+  "class" : "Graphics",
+  "name" : "theme",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
+  "generate" : "jswrap_graphics_theme",
+  "return" : ["JsVar","An object containing the current 'theme' (see below)"]
+}
+Returns an object of the form:
+
+```
+{
+  fg : 0xFFFF,  // foreground colour
+  bg : 0,       // background colour
+  fg : 0xFFFF,  // accented foreground colour
+  bg : 0x0007,  // accented background colour
+  fg : 0xFFFF,  // highlighted foreground colour
+  bg : 0x02F7,  // highlighted background colour
+}
+```
+
+These values can then be passed to `g.setColor`/`g.setBgColor` for example `g.setColor(g.theme.fg2)`.
+
+On Bangle.js these values can be changed by writing updated values to `theme` in `settings.js` and reloading the app.
+*/
+JsVar *jswrap_graphics_theme() {
+  JsVar *o = jsvNewObject();
+  jsvObjectSetChildAndUnLock(o,"fg",jsvNewFromInteger(graphicsTheme.fg));
+  jsvObjectSetChildAndUnLock(o,"bg",jsvNewFromInteger(graphicsTheme.bg));
+  jsvObjectSetChildAndUnLock(o,"fg2",jsvNewFromInteger(graphicsTheme.fg2));
+  jsvObjectSetChildAndUnLock(o,"bg2",jsvNewFromInteger(graphicsTheme.bg2));
+  jsvObjectSetChildAndUnLock(o,"fgH",jsvNewFromInteger(graphicsTheme.fgH));
+  jsvObjectSetChildAndUnLock(o,"bgH",jsvNewFromInteger(graphicsTheme.bgH));
+  return o;
 }
