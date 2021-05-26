@@ -2372,8 +2372,8 @@ NO_INLINE void jswrap_banglejs_init() {
 #ifdef ESPR_BACKLIGHT_FADE
   realLcdBrightness = firstRun ? 0 : lcdBrightness;
   lcdFadeHandlerActive = false;
-  jswrap_banglejs_setLCDPowerBacklight(lcdPowerOn);
 #endif
+  jswrap_banglejs_setLCDPowerBacklight(lcdPowerOn);
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
   lcdWakeButton = 0;
 
