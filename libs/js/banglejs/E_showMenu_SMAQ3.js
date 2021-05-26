@@ -26,9 +26,9 @@
     y += 14;
   var loc = require("locale");
   var l = {
-    draw : function() {
+    draw : function(rowmin,rowmax) {
       g.reset().setFontAlign(0,-1,0);
-      if (options.title) {
+      if (rowmin!==undefined && options.title) {
         g.setFont('4x6',2).drawString(options.title,(x+x2)/2,y-12-2);
         g.drawLine(x,y-2,x2,y-2);
       }
@@ -36,6 +36,15 @@
       var rows = 0|Math.min((y2-y) / options.fontHeight,menuItems.length);
       var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
       var iy = y;
+      if (rowmin!==undefined) {
+        if (idx<rowmin) {
+          iy += options.fontHeight*(rowmin-idx);
+          idx=rowmin;
+        }
+        if (idx+rows>rowmax) {
+          rows = 1+rowmax-rowmin;
+        }
+      }
       var less = idx>0;
       while (rows--) {
         var name = menuItems[idx];
@@ -65,38 +74,7 @@
       }
       g.setFontAlign(-1,-1);
       var more = idx<menuItems.length;      
-      g.drawImage("\b\b\x01\x108|\xFE\x10\x10\x10\x10"/*E.toString(8,8,1,
-        0b00010000,
-        0b00111000,
-        0b01111100,
-        0b11111110,
-        0b00010000,
-        0b00010000,
-        0b00010000,
-        0b00010000
-      )*/,w,20);
-      g.drawImage("\b\b\x01\x10\x10\x10\x10\xFE|8\x10"/*E.toString(8,8,1,
-        0b00010000,
-        0b00010000,
-        0b00010000,
-        0b00010000,
-        0b11111110,
-        0b01111100,
-        0b00111000,
-        0b00010000
-      )*/,w,140);
-      g.drawImage("\b\b\x01\x00\b\f\x0E\xFF\x0E\f\b"/*E.toString(8,8,1,
-        0b00000000,
-        0b00001000,
-        0b00001100,
-        0b00001110,
-        0b11111111,
-        0b00001110,
-        0b00001100,
-        0b00001000
-      )*/,w,84);
-      g.setColor(more?7:0);
-      g.fillPoly([72,166,104,166,88,174]);
+      g.setColor(more?7:0).fillPoly([72,166,104,166,88,174]);
       g.flip();
     },
     select : function(dir) {
@@ -120,11 +98,13 @@
         if (item.min!==undefined && item.value<item.min) item.value = item.min;
         if (item.max!==undefined && item.value>item.max) item.value = item.max;
         if (item.onchange) item.onchange(item.value);
+        l.draw(options.selected,options.selected);
       } else {
+        var a=options.selected;
         options.selected = (dir+options.selected)%menuItems.length;
         if (options.selected<0) options.selected += menuItems.length;
+        l.draw(Math.min(a,options.selected), Math.max(a,options.selected));
       }
-      l.draw();
     }
   };
   l.draw();

@@ -28,7 +28,7 @@
     y += options.fontHeight+2;
   var loc = require("locale");
   var l = {
-    draw : function() {
+      draw : function(rowmin,rowmax) {
       g.reset().setFont('6x8',2).setFontAlign(0,-1,0);
       if (options.title) {
         g.drawString(options.title,(x+x2)/2,y-options.fontHeight-2);
@@ -38,6 +38,15 @@
       var rows = 0|Math.min((y2-y) / options.fontHeight,menuItems.length);
       var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
       var iy = y;
+      if (rowmin!==undefined) {
+        if (idx<rowmin) {
+          iy += options.fontHeight*(rowmin-idx);
+          idx=rowmin;
+        }
+        if (idx+rows>rowmax) {
+          rows = 1+rowmax-rowmin;
+        }
+      }      
       var less = idx>0;
       while (rows--) {
         var name = menuItems[idx];
@@ -121,11 +130,13 @@
         if (item.min!==undefined && item.value<item.min) item.value = item.min;
         if (item.max!==undefined && item.value>item.max) item.value = item.max;
         if (item.onchange) item.onchange(item.value);
+        l.draw(options.selected,options.selected);
       } else {
+        var a=options.selected;
         options.selected = (dir+options.selected)%menuItems.length;
         if (options.selected<0) options.selected += menuItems.length;
+        l.draw(Math.min(a,options.selected), Math.max(a,options.selected));
       }
-      l.draw();
     }
   };
   l.draw();
