@@ -1973,3 +1973,81 @@ int jswrap_espruino_getRTCPrescaler(bool calibrate) {
   return 0;
 #endif
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "decodeUTF8",
+  "generate" : "jswrap_espruino_decodeUTF8",
+  "params" : [
+    ["str","JsVar","A string of UTF8-encoded data"],
+    ["lookup","JsVar","An array containing a mapping of character code -> replacement string"],
+    ["replaceFn","JsVar","If not in lookup, `replaceFn(charCode)` is called and the result used if it's a function, *or* if it's a string, the string value is used"]
+  ],
+  "return" : ["JsVar","A string containing all UTF8 sequences flattened to 8 bits"]
+}
+Decode a UTF8 string.
+
+* Any decoded character less than 256 gets passed straight through
+* Otherwise if `lookup` is an array and an item with that char code exists in `lookup` then that is used
+* Otherwise if `lookup` is an object and an item with that char code (as lowercase hex) exists in `lookup` then that is used
+* Otherwise `replaceFn(charCode)` is called and the result used if `replaceFn` is a function
+* If `replaceFn` is a string, that is used
+* Or finally if nothing else matches, the character is ignored
+ */
+JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn) {
+  if (!(jsvIsString(str))) {
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to be a string, not %t", str);
+    return 0;
+  }
+  JsvStringIterator it, dit;
+  JsVar *dst = jsvNewFromEmptyString();
+  jsvStringIteratorNew(&it, str, 0);
+  jsvStringIteratorNew(&dit, dst, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    unsigned char c = (unsigned char)jsvStringIteratorGetCharAndNext(&it);
+    int cp=c; // Code point defaults to ASCII
+    int ra=0; // Read ahead
+    if (c>127) {
+      if ((c&0xE0)==0xC0) { // 2-byte code starts with 0b110xxxxx
+        cp=c&0x1F;ra=1;
+      } else if ((c&0xF0)==0xE0) { // 3-byte code starts with 0b1110xxxx
+        cp=c&0x0F;ra=2;
+      } else if ((c&0xF8)==0xF0) { // 4-byte code starts with 0b11110xxx
+        cp=c&0x07;ra=3;
+      }
+      while (ra--) {
+        cp=(cp<<6)|((unsigned char)jsvStringIteratorGetCharAndNext(&it) & 0x3F);
+      }
+    }
+    if (cp<=255){
+      jsvStringIteratorAppend(&dit, cp); // ASCII (including extended)
+    } else {
+      JsVar* replace = 0;
+      if (jsvIsArray(lookup))
+        replace = jsvGetArrayItem(lookup, cp);
+      else if (jsvIsObject(lookup)) {
+        char code[16];
+        itostr(cp, code, 16);
+        replace = jsvObjectGetChild(lookup, code, 0);
+      }
+
+      if (!replace && jsvIsFunction(replaceFn)) {
+        JsVar *v = jsvNewFromInteger(cp);
+        replace = jspExecuteFunction(replaceFn, NULL, 1, v);
+        jsvUnLock(v);
+      }
+      if (!replace && jsvIsString(replaceFn))
+        replace = jsvLockAgain(replaceFn);
+      if (replace) {
+        replace = jsvAsStringAndUnLock(replace);
+        jsvStringIteratorAppendString(&dit, replace, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+        jsvUnLock(replace);
+      }
+    }
+  }
+  jsvStringIteratorFree(&it);
+  jsvStringIteratorFree(&dit);
+  return dst;
+}
