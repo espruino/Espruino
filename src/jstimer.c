@@ -31,7 +31,7 @@ unsigned int utilTimerData;
 uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReload1L;
 /// When did the timer last run? This is used for timekeeping. Should be jshGetSystemTime() cropped to 32 bits
 volatile int utilTimerTime;
-/// When we rescheduled the timer, how far in the future were we meant to get called?
+/// When we rescheduled the timer, how far in the future were we meant to get called (in system time)?
 int utilTimerPeriod;
 
 
@@ -93,7 +93,8 @@ void jstUtilTimerInterruptHandler() {
   if (utilTimerOn) {
     utilTimerInIRQ = true;
     // Increment estimated timer time
-    // TODO: use SysTick to estimate time in this fn and update utilTimerTime accordingly
+    // TODO: Keep UtilTimer running and then use the value from it
+    // to estimate how long the handler takes and update utilTimerTime accordingly
     utilTimerTime += utilTimerPeriod;
     // execute any timers that are due
     while (utilTimerTasksTail!=utilTimerTasksHead && (utilTimerTasks[utilTimerTasksTail].time - utilTimerTime)<=0) {
@@ -236,6 +237,8 @@ bool utilTimerInsertTask(UtilTimerTask *task) {
 
 
   if (!utilTimerInIRQ) jshInterruptOff();
+
+  task->time = task->time + utilTimerTime - (int)jshGetSystemTime();
 
   // find out where to insert
   unsigned char insertPos = utilTimerTasksTail;
@@ -600,7 +603,7 @@ void jstDumpUtilityTimers() {
   int uTimerTime = utilTimerTime;
   jshInterruptOn();
 
-  jsiConsolePrintf("Current timer difference %d us", (int)(1000*jshGetMillisecondsFromTime(jshGetSystemTime()-uTimerTime)));
+  jsiConsolePrintf("Current timer difference %d us\n", (int)(1000*jshGetMillisecondsFromTime((int)jshGetSystemTime()-uTimerTime)));
   unsigned char t = uTimerTasksTail;
   bool hadTimers = false;
   while (t!=uTimerTasksHead) {
