@@ -93,20 +93,34 @@ void ble_ancs_handle_event(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
   jsvObjectSetChildAndUnLock(o, "silent", jsvNewFromBool(p_notif->evt_flags.silent));
   jsvObjectSetChildAndUnLock(o, "important", jsvNewFromBool(p_notif->evt_flags.important));
   jsvObjectSetChildAndUnLock(o, "pre_existing", jsvNewFromBool(p_notif->evt_flags.pre_existing));
-  jsvObjectSetChildAndUnLock(o, "positive", jsvNewFromBool(p_notif->evt_flags.positive_action));
-  jsvObjectSetChildAndUnLock(o, "negative", jsvNewFromBool(p_notif->evt_flags.negative_action));
-
-  jsvObjectSetChildAndUnLock(o, "appid", jsvNewFromString(m_attr_appid));
-  jsvObjectSetChildAndUnLock(o, "title", jsvNewFromString(m_attr_title));
-  jsvObjectSetChildAndUnLock(o, "subtitle", jsvNewFromString(m_attr_subtitle));
-  jsvObjectSetChildAndUnLock(o, "message", jsvNewFromString(m_attr_message));
-  jsvObjectSetChildAndUnLock(o, "message_size", jsvNewFromString(m_attr_message_size));
-  jsvObjectSetChildAndUnLock(o, "date", jsvNewFromString(m_attr_date));
-  jsvObjectSetChildAndUnLock(o, "posaction", jsvNewFromString(m_attr_posaction));
-  jsvObjectSetChildAndUnLock(o, "negaction", jsvNewFromString(m_attr_negaction));
-  jsvObjectSetChildAndUnLock(o, "name", jsvNewFromString(m_attr_disp_name));
+  if (p_notif->evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_ADDED ||
+      p_notif->evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_MODIFIED) {
+    jsvObjectSetChildAndUnLock(o, "positive", jsvNewFromBool(p_notif->evt_flags.positive_action));
+    jsvObjectSetChildAndUnLock(o, "negative", jsvNewFromBool(p_notif->evt_flags.negative_action));
+    jsvObjectSetChildAndUnLock(o, "appid", jsvNewFromString(m_attr_appid));
+    jsvObjectSetChildAndUnLock(o, "title", jsvNewFromString(m_attr_title));
+    jsvObjectSetChildAndUnLock(o, "subtitle", jsvNewFromString(m_attr_subtitle));
+    jsvObjectSetChildAndUnLock(o, "message", jsvNewFromString(m_attr_message));
+    jsvObjectSetChildAndUnLock(o, "message_size", jsvNewFromString(m_attr_message_size));
+    jsvObjectSetChildAndUnLock(o, "date", jsvNewFromString(m_attr_date));
+    jsvObjectSetChildAndUnLock(o, "posaction", jsvNewFromString(m_attr_posaction));
+    jsvObjectSetChildAndUnLock(o, "negaction", jsvNewFromString(m_attr_negaction));
+    jsvObjectSetChildAndUnLock(o, "name", jsvNewFromString(m_attr_disp_name));
+  }
   jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"ANCS", 1, &o);
   jsvUnLock(o);
+}
+
+void ble_ancs_clear_attr() {
+  memset(m_attr_appid        ,0, sizeof(m_attr_appid));
+  memset(m_attr_title        ,0, sizeof(m_attr_title));
+  memset(m_attr_subtitle     ,0, sizeof(m_attr_subtitle));
+  memset(m_attr_message      ,0, sizeof(m_attr_message));
+  memset(m_attr_message_size ,0, sizeof(m_attr_message_size));
+  memset(m_attr_date         ,0, sizeof(m_attr_date));
+  memset(m_attr_posaction    ,0, sizeof(m_attr_posaction));
+  memset(m_attr_negaction    ,0, sizeof(m_attr_negaction));
+  memset(m_attr_disp_name    ,0, sizeof(m_attr_disp_name));
 }
 
 void ble_ancs_bonding_succeeded(uint16_t conn_handle) {
@@ -189,11 +203,14 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt)
         case BLE_ANCS_C_EVT_NOTIF:
             m_notification_latest = p_evt->notif;
             NRF_LOG_DEBUG("EVT_NOTIF\r\n");
-            if (p_evt->notif.evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_ADDED) {
+            if (p_evt->notif.evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_ADDED ||
+                p_evt->notif.evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_MODIFIED) {
+              // clear old data
+              ble_ancs_clear_attr();
               // get more data, then send over after it...
               ret = nrf_ble_ancs_c_request_attrs(&m_ancs_c, &m_notification_latest);
-              APP_ERROR_CHECK(ret);
-            } else { // TODO: what if modification?
+              APP_ERROR_CHECK_NOT_URGENT(ret);
+            } else {
               // otherwise push now (probably a removal)
               jsble_queue_pending_buf(BLEP_ANCS_NOTIF, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
             }
@@ -283,6 +300,7 @@ static void services_init(void)
     ret_code_t        ret;
 
     memset(&ancs_init_obj, 0, sizeof(ancs_init_obj));
+    ble_ancs_clear_attr();
 
     ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
                                   BLE_ANCS_NOTIF_ATTR_ID_APP_IDENTIFIER,
