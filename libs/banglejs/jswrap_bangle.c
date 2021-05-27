@@ -4149,7 +4149,7 @@ The second `options` argument can contain:
 
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showMenu", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showMenu_SMAQ3.js",
+    "generate_js" : "libs/js/banglejs/E_showMenu_SMAQ3.min.js",
     "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
 }
 */

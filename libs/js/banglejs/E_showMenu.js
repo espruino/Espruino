@@ -28,16 +28,18 @@
     y += options.fontHeight+2;
   var loc = require("locale");
   var l = {
-      draw : function(rowmin,rowmax) {
+    lastIdx : 0,
+    draw : function(rowmin,rowmax) {
+      var rows = 0|Math.min((y2-y) / options.fontHeight,menuItems.length);
+      var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
+      if (idx!=l.lastIdx) rowmin=undefined; // redraw all if we scrolled
+      l.lastIdx = idx;      
+      var iy = y;
       g.reset().setFont('6x8',2).setFontAlign(0,-1,0);
-      if (options.title) {
+      if (rowmin===undefined && options.title) {
         g.drawString(options.title,(x+x2)/2,y-options.fontHeight-2);
         g.drawLine(x,y-2,x2,y-2);
       }
-
-      var rows = 0|Math.min((y2-y) / options.fontHeight,menuItems.length);
-      var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
-      var iy = y;
       if (rowmin!==undefined) {
         if (idx<rowmin) {
           iy += options.fontHeight*(rowmin-idx);
@@ -46,7 +48,7 @@
         if (idx+rows>rowmax) {
           rows = 1+rowmax-rowmin;
         }
-      }      
+      }
       var less = idx>0;
       while (rows--) {
         var name = menuItems[idx];
@@ -75,7 +77,7 @@
         idx++;
       }
       g.setFontAlign(-1,-1);
-      var more = idx<menuItems.length;      
+      var more = idx<menuItems.length;
       g.drawImage("\b\b\x01\x108|\xFE\x10\x10\x10\x10"/*E.toString(8,8,1,
         0b00010000,
         0b00111000,
@@ -144,5 +146,5 @@
     if (dir) l.move(dir);
     else l.select();
   });
-  return l;  
+  return l;
 })

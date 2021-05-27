@@ -26,16 +26,19 @@
     y += 14;
   var loc = require("locale");
   var l = {
+    lastIdx : 0,
     draw : function(rowmin,rowmax) {
+      var rows = 0|Math.min((y2-y) / options.fontHeight,menuItems.length);
+      var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
+      if (idx!=l.lastIdx) rowmin=undefined; // redraw all if we scrolled
+      l.lastIdx = idx;      
+      var iy = y;
       g.reset().setFontAlign(0,-1,0);
-      if (rowmin!==undefined && options.title) {
+      if (rowmin===undefined && options.title) {
         g.setFont('4x6',2).drawString(options.title,(x+x2)/2,y-12-2);
         g.drawLine(x,y-2,x2,y-2);
       }
       g.setFont('6x8');
-      var rows = 0|Math.min((y2-y) / options.fontHeight,menuItems.length);
-      var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
-      var iy = y;
       if (rowmin!==undefined) {
         if (idx<rowmin) {
           iy += options.fontHeight*(rowmin-idx);
