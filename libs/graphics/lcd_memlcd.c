@@ -62,25 +62,23 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 #endif
 }
 
-void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir) {
-  if (xdir) return graphicsFallbackScroll(gfx, xdir, ydir);
-  int l = LCD_STRIDE - LCD_ROWHEADER;
+void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
+  // if we have to shift X, go with the slow method
+  if (xdir) return graphicsFallbackScroll(gfx, xdir, ydir, x1,y1,x2,y2);
+  // otherwise use memcpy
+  int xl = ((x2+1-x1)*LCD_BPP+7)>>3;
+  int xo = LCD_ROWHEADER + ((x1*LCD_BPP+7)>>3);
   if (ydir<0) {
-    for (int y=0;y<LCD_HEIGHT+ydir;y++) {
-      int y2 = y-ydir;
-      memcpy(&lcdBuffer[y*LCD_STRIDE + LCD_ROWHEADER],&lcdBuffer[y2*LCD_STRIDE + LCD_ROWHEADER],l);
+    for (int y=y1;y<y2+ydir;y++) {
+      int yx = y-ydir;
+      memcpy(&lcdBuffer[y*LCD_STRIDE + xo],&lcdBuffer[yx*LCD_STRIDE + xo],xl);
     }
   } else if (ydir>0) {
-    for (int y=LCD_HEIGHT-ydir-1;y>=0;y--) {
-      int y2 = y+ydir;
-      memcpy(&lcdBuffer[y2*LCD_STRIDE + LCD_ROWHEADER],&lcdBuffer[y*LCD_STRIDE + LCD_ROWHEADER],l);
+    for (int y=y2-ydir-1;y>=y1;y--) {
+      int yx = y+ydir;
+      memcpy(&lcdBuffer[yx*LCD_STRIDE + xo],&lcdBuffer[y*LCD_STRIDE + xo],xl);
     }
   }
-  // set area modified
-  gfx->data.modMinX=0;
-  gfx->data.modMinY=0;
-  gfx->data.modMaxX=(short)(gfx->data.width-1);
-  gfx->data.modMaxY=(short)(gfx->data.height-1);
 }
 
 // -----------------------------------------------------------------------------
