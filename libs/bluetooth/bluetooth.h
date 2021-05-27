@@ -15,7 +15,9 @@
 #ifndef BLUETOOTH_H
 #define BLUETOOTH_H
 
+#ifdef NRF5X
 #include "app_config.h"
+#endif
 #include "jsdevices.h"
 
 #ifdef NRF5X

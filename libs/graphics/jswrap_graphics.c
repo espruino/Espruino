@@ -168,7 +168,7 @@ void jswrap_graphics_init() {
     jsvUnLock2(parentObj, parent);
   }
 #endif
-#ifndef GRAPHICS_THEME
+#ifdef GRAPHICS_THEME
   /// Global color scheme colours
   graphicsTheme.fg = (JsGraphicsThemeColor)-1;
   graphicsTheme.bg = (JsGraphicsThemeColor)0;
@@ -3087,6 +3087,7 @@ On Bangle.js these values can be changed by writing updated values to `theme` in
 */
 JsVar *jswrap_graphics_theme(JsVar *parent) {
   NOT_USED(parent);
+#ifdef GRAPHICS_THEME
   JsVar *o = jsvNewObject();
   jsvObjectSetChildAndUnLock(o,"fg",jsvNewFromInteger(graphicsTheme.fg));
   jsvObjectSetChildAndUnLock(o,"bg",jsvNewFromInteger(graphicsTheme.bg));
@@ -3095,4 +3096,7 @@ JsVar *jswrap_graphics_theme(JsVar *parent) {
   jsvObjectSetChildAndUnLock(o,"fgH",jsvNewFromInteger(graphicsTheme.fgH));
   jsvObjectSetChildAndUnLock(o,"bgH",jsvNewFromInteger(graphicsTheme.bgH));
   return o;
+#else
+  return 0;
+#endif
 }
