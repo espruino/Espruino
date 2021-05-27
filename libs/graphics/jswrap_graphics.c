@@ -149,9 +149,13 @@ bool jswrap_graphics_idle() {
 
 /*JSON{
   "type" : "init",
-  "generate" : "jswrap_graphics_init"
+  "generate" : "jswrap_graphics_init",
+  "sortorder" : -100
 }*/
 void jswrap_graphics_init() {
+  // sortorder is first because we don't want subsequent
+  // _init to a) not have GFX and b) not get their theme
+  // settings overwritten
 #ifdef USE_LCD_FSMC
   JsVar *parent = jspNewObject("LCD", "Graphics");
   if (parent) {
