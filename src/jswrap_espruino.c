@@ -831,7 +831,7 @@ void (_jswrap_espruino_toUint8Array_char)(int ch,  JsvArrayBufferIterator *it) {
 }
 
 JsVar *jswrap_espruino_toUint8Array(JsVar *args) {
-  JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, jsvIterateCallbackCount(args));
+  JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, (JsVarInt)jsvIterateCallbackCount(args));
   if (!arr) return 0;
 
   JsvArrayBufferIterator it;
@@ -1164,7 +1164,7 @@ void jswrap_e_dumpFragmentation() {
       else jsiConsolePrint("#");
       if (l++>80) { jsiConsolePrint("\n");l=0; }
       if (jsvIsFlatString(v)) {
-        int b = jsvGetFlatStringBlocks(v);
+        unsigned int b = (unsigned int)jsvGetFlatStringBlocks(v);
         i += b; // skip forward
         while (b--) {
           jsiConsolePrint("=");
@@ -1188,16 +1188,15 @@ along with the variables they link to. Can be used
 to visualise where memory is used.
  */
 void jswrap_e_dumpVariables() {
-  int l = 0;
   jsiConsolePrintf("ref,size,name,links...\n");
   for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
     JsVarRef ref = i+1;
     JsVar *v = _jsvGetAddressOf(ref);
     if ((v->flags&JSV_VARTYPEMASK)==JSV_UNUSED) continue;
     if (jsvIsStringExt(v)) continue;
-    int size = 1;
+    unsigned int size = 1;
     if (jsvIsFlatString(v)) {
-      int b = jsvGetFlatStringBlocks(v);
+      unsigned int b = (unsigned int)jsvGetFlatStringBlocks(v);
       i += b; // skip forward
       size += b;
     } else if (jsvHasCharacterData(v)) {
@@ -1945,6 +1944,8 @@ void jswrap_espruino_setRTCPrescaler(int prescale) {
   }
   jshSetupRTCPrescalerValue((unsigned)prescale);
   jshResetRTCTimer();
+#else
+  NOT_USED(prescale);
 #endif
 }
 
@@ -1970,6 +1971,7 @@ int jswrap_espruino_getRTCPrescaler(bool calibrate) {
 #ifdef STM32
   return jshGetRTCPrescalerValue(calibrate);
 #else
+  NOT_USED(calibrate);
   return 0;
 #endif
 }
@@ -2022,7 +2024,7 @@ JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn) {
       }
     }
     if (cp<=255){
-      jsvStringIteratorAppend(&dit, cp); // ASCII (including extended)
+      jsvStringIteratorAppend(&dit, (char)cp); // ASCII (including extended)
     } else {
       JsVar* replace = 0;
       if (jsvIsArray(lookup))
@@ -2032,10 +2034,9 @@ JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn) {
         itostr(cp, code, 16);
         replace = jsvObjectGetChild(lookup, code, 0);
       }
-
       if (!replace && jsvIsFunction(replaceFn)) {
         JsVar *v = jsvNewFromInteger(cp);
-        replace = jspExecuteFunction(replaceFn, NULL, 1, v);
+        replace = jspExecuteFunction(replaceFn, NULL, 1, &v);
         jsvUnLock(v);
       }
       if (!replace && jsvIsString(replaceFn))
