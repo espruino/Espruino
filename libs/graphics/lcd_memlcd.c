@@ -20,11 +20,13 @@
 
 // ======================================================================
 
+#define LCD_SPI EV_SPI1
 #define LCD_ROWHEADER 2
 #define LCD_STRIDE (LCD_ROWHEADER+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
-unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/];
 
-#define LCD_SPI EV_SPI1
+unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/];
+bool isBacklightOn;
+
 
 
 
@@ -132,10 +134,24 @@ void lcdMemLCD_init(JsGraphics *gfx) {
 }
 
 // toggle EXTCOMIN to avoid burn-in
-void lcdMemLCD_extcomin() {
-  static bool extcomin = false;
-  extcomin = !extcomin;
-  jshPinSetValue(LCD_EXTCOMIN, extcomin);
+void lcdMemLCD_extcominToggle() {
+  if (!isBacklightOn) {
+    jshPinSetValue(LCD_EXTCOMIN, 1);
+    jshPinSetValue(LCD_EXTCOMIN, 0);
+  }
+}
+
+// If backlight is on, we need to raise EXTCOMIN freq (use HW PWM)
+void lcdMemLCD_extcominBacklight(bool isOn) {
+  if (isBacklightOn != isOn) {
+    isBacklightOn = isOn;
+    if (isOn) {
+      jshPinAnalogOutput(LCD_EXTCOMIN, 0.05, 120, JSAOF_NONE);
+    } else {
+      jshPinOutput(LCD_EXTCOMIN, 0);
+    }
+  }
+
 }
 
 void lcdMemLCD_setCallbacks(JsGraphics *gfx) {

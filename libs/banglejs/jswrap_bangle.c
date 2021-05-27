@@ -635,6 +635,10 @@ void jswrap_banglejs_pwrBacklight(bool on) {
 #ifdef LCD_BL
   jshPinOutput(LCD_BL, on);
 #endif
+#ifdef LCD_CONTROLLER_LPM013M126
+  lcdMemLCD_extcominBacklight(on);
+#endif
+
 }
 
 /// Flip buffer contents with the screen.
@@ -787,6 +791,11 @@ void peripheralPollHandler() {
   } else {
     homeBtnTimer = 0;
   }
+
+#ifdef LCD_CONTROLLER_LPM013M126
+  // toggle EXTCOMIN to avoid burn-in on LCD
+  lcdMemLCD_extcominToggle();
+#endif
 
   if (lcdPowerTimeout && lcdPowerOn && flipTimer>=lcdPowerTimeout) {
     // 10 seconds of inactivity, turn off display
@@ -3063,10 +3072,6 @@ bool jswrap_banglejs_idle() {
   }
   jsvUnLock(graphics);
 #endif
-#ifdef LCD_CONTROLLER_LPM013M126
-  // toggle EXTCOMIN to avoid burn-in
-    lcdMemLCD_extcomin();
-#endif
 #ifdef ESPR_BACKLIGHT_FADE
   if (lcdFadeHandlerActive && realLcdBrightness == (lcdPowerOn?lcdBrightness:0)) {
     jstStopExecuteFn(backlightFadeHandler, NULL);
@@ -3725,6 +3730,10 @@ static void jswrap_banglejs_periph_off() {
   //jswrap_banglejs_setLCDPower calls JS events (and sometimes timers), so avoid it and manually turn controller + backlight off:
   jswrap_banglejs_setLCDPowerController(0);
   jswrap_banglejs_pwrBacklight(0);
+#ifdef LCD_CONTROLLER_LPM013M126
+  jshPinOutput(LCD_EXTCOMIN,0);
+  jshPinOutput(LCD_DISP,0);
+#endif
 #ifdef ACCEL_DEVICE_KX023
   jswrap_banglejs_accelWr(0x18,0x0a); // accelerometer off
 #endif
@@ -3743,6 +3752,7 @@ static void jswrap_banglejs_periph_off() {
 #ifdef PRESSURE_DEVICE_BMP280
   jswrap_banglejs_barometerWr(0xF4, 0); // Barometer off
 #endif
+
 
 #ifdef BTN2_PININDEX
   nrf_gpio_cfg_sense_set(pinInfo[BTN2_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
