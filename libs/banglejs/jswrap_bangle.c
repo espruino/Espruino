@@ -2395,18 +2395,19 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
 
   //jsiConsolePrintf("bangleFlags %d\n",bangleFlags);
-  if (firstRun)
+  if (firstRun) {
     bangleFlags = JSBF_DEFAULT; // includes bangleFlags
+    lcdPowerOn = true;
+    lcdBrightness = 255;
+  }
   flipTimer = 0; // reset the LCD timeout timer
-  lcdPowerOn = true;
-  lcdBrightness = 255;
+  lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
+  lcdWakeButton = 0;
 #ifdef ESPR_BACKLIGHT_FADE
   realLcdBrightness = firstRun ? 0 : lcdBrightness;
   lcdFadeHandlerActive = false;
-#endif
   jswrap_banglejs_setLCDPowerBacklight(lcdPowerOn);
-  lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
-  lcdWakeButton = 0;
+#endif
 
   buzzAmt = 0;
   beepFreq = 0;
