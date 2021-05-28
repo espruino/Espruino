@@ -237,8 +237,8 @@ bool utilTimerInsertTask(UtilTimerTask *task) {
 
 
   if (!utilTimerInIRQ) jshInterruptOff();
-
-  task->time = task->time + utilTimerTime - (int)jshGetSystemTime();
+  if (utilTimerOn)
+    task->time += utilTimerTime - (int)jshGetSystemTime();
 
   // find out where to insert
   unsigned char insertPos = utilTimerTasksTail;
