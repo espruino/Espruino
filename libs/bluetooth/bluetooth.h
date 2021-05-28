@@ -169,7 +169,7 @@ extern volatile uint16_t                         m_central_conn_handle; /**< Han
 
 /** Initialise the BLE stack */
 void jsble_init();
-/** Completely deinitialise the BLE stack */
+/** Completely deinitialise the BLE stack. Return true on success */
 bool jsble_kill();
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
