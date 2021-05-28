@@ -921,6 +921,8 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
         }
       }
 #endif
+    } else if (gfx.data.bpp==3) {
+      color = (unsigned int)((bi>>7) | (gi>>7)<<1 | (ri>>7)<<2);
     } else
       color = (unsigned int)(((ri+gi+bi)>=384) ? 0xFFFFFFFF : 0);
 #endif
