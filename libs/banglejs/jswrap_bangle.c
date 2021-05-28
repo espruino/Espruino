@@ -220,6 +220,25 @@ with `Bangle.setHRMPower(1)`.
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
+  "name" : "HRM-raw",
+  "params" : [["hrm","JsVar","A object containing instant readings from the heart rate sensor"]],
+  "ifdef" : "BANGLEJS"
+}
+Called when heart rate sensor data is available - see `Bangle.setHRMPower(1)`.
+
+`hrm` is of the form:
+
+```
+{ "raw": -1,       // raw value from sensor
+  "filt": -1,      // bandpass-filtered raw value from sensor
+  "bpm": 88.9,     // last BPM value measured
+  "confidence": 0  // confidence in the BPM value
+}
+```
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
   "name" : "lcdPower",
   "params" : [["on","bool","`true` if screen is on"]],
   "ifdef" : "BANGLEJS"
@@ -724,6 +743,9 @@ bool setDeviceRequested(const char *deviceName, JsVar *appID, bool powerOn) {
     }
     jsvUnLock2(appID, idx);
     isOn = jsvGetArrayLength(device)>0;
+    // free memory by remove the device from the list if not used
+    if (!isOn)
+      jsvObjectRemoveChild(uses, deviceName);
   }
   jsvUnLock3(device, uses, bangle);
   return isOn;
@@ -2814,7 +2836,7 @@ bool jswrap_banglejs_idle() {
   else
     bangleFlags &= ~JSBF_ACCEL_LISTENER;
 #ifdef HEARTRATE
-  if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"HRMi"))
+  if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"HRM-raw"))
     bangleFlags |= JSBF_HRM_INSTANT_LISTENER;
   else
     bangleFlags &= ~JSBF_HRM_INSTANT_LISTENER;
@@ -2924,7 +2946,7 @@ bool jswrap_banglejs_idle() {
         jsvObjectSetChildAndUnLock(o,"t",jsvNewFromInteger(hrmInfo.timeSinceBeat));
         jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(hrmInfo.bpm10 / 10.0));
         jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
-        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRMi", &o, 1);
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM-raw", &o, 1);
         jsvUnLock(o);
       }
     }
