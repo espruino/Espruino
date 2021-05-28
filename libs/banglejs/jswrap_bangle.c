@@ -3797,16 +3797,17 @@ static void jswrap_banglejs_periph_off() {
 #ifdef BTN4_PININDEX
   nrf_gpio_cfg_sense_set(pinInfo[BTN4_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
 #endif
+
+  jsiKill();
+  jsvKill();
+  jshKill();
+
   /* The low power pin watch code (nrf_drv_gpiote_in_init) somehow causes
   the sensing to be disabled such that nrf_gpio_cfg_sense_set(pin, NRF_GPIO_PIN_SENSE_LOW)
   no longer works. To work around this we just call our standard pin watch function
   to re-enable everything. */
   jshPinWatch(BTN1_PININDEX, true);
-
-
-  jsiKill();
-  jsvKill();
-  jshKill();
+  nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
 #endif
@@ -3824,7 +3825,11 @@ Turn Bangle.js off. It can only be woken by pressing BTN1.
 */
 void jswrap_banglejs_off() {
 #ifndef EMSCRIPTEN
+  // If BTN1 is pressed wait until it is released
+  while (jshPinGetValue(BTN1_PININDEX));
+  // turn peripherals off
   jswrap_banglejs_periph_off();
+  // system off
   sd_power_system_off();
   while(1);
 #else
@@ -3844,8 +3849,9 @@ mode until BTN1 is pressed to preserve the RTC (current time).
 */
 void jswrap_banglejs_softOff() {
 #ifndef EMSCRIPTEN
-  // Wait if BTN1 is pressed until it is released
+  // If BTN1 is pressed wait until it is released
   while (jshPinGetValue(BTN1_PININDEX));
+  // turn BLE and peripherals off
   jswrap_ble_sleep();
   jswrap_banglejs_periph_off();
   jshDelayMicroseconds(100000); // wait 100ms for any button bounce to disappear
@@ -3854,13 +3860,13 @@ void jswrap_banglejs_softOff() {
   // keep sleeping until a button is pressed
   jshKickWatchDog();
   do {
-    // sleep until BTN1 pressed
+  // sleep until BTN1 pressed
   while (!jshPinGetValue(BTN1_PININDEX)) {
     jshKickWatchDog();
     jshSleep(jshGetTimeFromMilliseconds(4*1000));
   }
-    // wait for button to be pressed for at least 1 second
-    int timeout = 1000;
+    // wait for button to be pressed for at least 200ms
+    int timeout = 200;
     while (jshPinGetValue(BTN1_PININDEX) && timeout--)
       nrf_delay_ms(1);
     // if button not pressed, keep sleeping
