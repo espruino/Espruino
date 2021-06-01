@@ -1301,8 +1301,6 @@ void touchHandler(bool state, IOEventFlags flags) {
       else bangleTasks |= JSBT_TOUCH_RIGHT;
       break;
     }
-
-
   }
 
   if (touch!=lastTouch || lastx!=x || lasty!=y) {
@@ -1312,6 +1310,8 @@ void touchHandler(bool state, IOEventFlags flags) {
     evt.data.chars[1] = y * LCD_HEIGHT / 160;
     evt.data.chars[2] = touch ? 1 : 0;
     jshPushEvent(&evt);
+    // ensure we don't sleep if touchscreen is being used
+    flipTimer = 0;
   }
   lastx = x;
   lasty = y;
