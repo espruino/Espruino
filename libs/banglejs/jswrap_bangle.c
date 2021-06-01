@@ -2308,7 +2308,6 @@ void jswrap_banglejs_postInit() {
 NO_INLINE void jswrap_banglejs_init() {
   IOEventFlags channel;
   bool firstRun = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrap_banglejs_init was called?
-  jsvObjectSetChildAndUnLock(execInfo.root, "firstRun", jsvNewFromBool(firstRun)); // debug
   // Hardware init that we only do the very first time we start
   if (firstRun) {
 #ifdef BANGLEJS_F18
@@ -2403,6 +2402,10 @@ NO_INLINE void jswrap_banglejs_init() {
   flipTimer = 0; // reset the LCD timeout timer
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
   lcdWakeButton = 0;
+  // If the home button is still pressed when we're restarting, set up
+  // lcdWakeButton so the event for button release is 'eaten'
+  if (jshPinGetValue(HOME_BTN_PININDEX))
+    lcdWakeButton = HOME_BTN;
 #ifdef ESPR_BACKLIGHT_FADE
   realLcdBrightness = firstRun ? 0 : lcdBrightness;
   lcdFadeHandlerActive = false;

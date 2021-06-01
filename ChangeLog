@@ -14,6 +14,7 @@
             Add E.decodeUTF8 to allow UTF8 to be decoded into standard 8 bit characters
             Util timer: account for 'drift' in timer when adding new tasks if running it continuously
             Graphics: Allow 'scroll' method to only scroll inside clipRect
+            Bangle.js: if we restart with home button held down, ignore the 'button up' event
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
