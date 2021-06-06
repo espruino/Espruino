@@ -15,6 +15,7 @@
 #ifndef BLUETOOTH_H
 #define BLUETOOTH_H
 
+#include "app_config.h"
 #include "jsdevices.h"
 
 #ifdef NRF5X
@@ -141,7 +142,10 @@ typedef enum {
   BLEP_NOTIFICATION,                //< A characteristic we were watching has changes
   BLEP_TASK_PASSKEY_DISPLAY,        //< We're pairing and have been provided with a passkey to display
   BLEP_TASK_AUTH_KEY_REQUEST,       //< We're pairing and the device wants a passkey from us
-  BLEP_TASK_AUTH_STATUS             //< Data on how authentication was going has been received
+  BLEP_TASK_AUTH_STATUS,            //< Data on how authentication was going has been received
+#ifdef ESPR_BLUETOOTH_ANCS
+  BLEP_ANCS_NOTIF,                  //< Apple Notification Centre notification received
+#endif
 } BLEPending;
 
 
@@ -155,7 +159,7 @@ extern volatile uint16_t                         m_central_conn_handle; /**< Han
 /** Initialise the BLE stack */
 void jsble_init();
 /** Completely deinitialise the BLE stack */
-void jsble_kill();
+bool jsble_kill();
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with simple data */
@@ -280,10 +284,12 @@ void jsble_central_startBonding(bool forceRePair);
 JsVar *jsble_central_getSecurityStatus();
 /// RSSI monitoring in central mode
 uint32_t jsble_set_central_rssi_scan(bool enabled);
-/// Set whether or not the whitelist is enabled
-void jsble_central_setWhitelist(bool whitelist);
 /// Send a passkey if one was requested (passkey = 6 bytes long)
 uint32_t jsble_central_send_passkey(char *passkey);
+#endif
+#if PEER_MANAGER_ENABLED
+/// Set whether or not the whitelist is enabled
+void jsble_central_setWhitelist(bool whitelist);
 #endif
 
 #endif // BLUETOOTH_H

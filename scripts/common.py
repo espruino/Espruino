@@ -58,8 +58,8 @@ if "check_output" not in dir( subprocess ):
 #                      // class = built-in class that does not require instantiation
 #                      // library = built-in class that needs require('classname')
 #                      // idle = function to run on idle regardless
-#                      // init = function to run on initialisation
-#                      // kill = function to run on deinitialisation
+#                      // init = function to run on Initialisation (eg boot/load/reset/after save/etc)
+#                      // kill = function to run on Deinitialisation (eg before save/reset/etc)
 #                      // EV_xxx = Something to be called with a character in an IRQ when it is received (eg. EV_SERIAL1)
 #         "class" : "Double", "name" : "doubleToIntBits",
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
@@ -416,10 +416,12 @@ def get_ifdef_description(d):
   if d=="ESPRUINOBOARD": return "'Original' Espruino boards"
   if d=="PICO": return "Espruino Pico boards"
   if d=="BANGLEJS": return "Bangle.js smartwatches"
+  if d=="SMAQ3": return "SMAQ3 smartwatches"
   if d=="ESP8266": return "ESP8266 boards running Espruino"
   if d=="ESP32": return "ESP32 boards"
   if d=="EFM32": return "EFM32 devices"
   if d=="MICROBIT": return "BBC micro:bit boards"
+  if d=="MICROBIT2": return "BBC micro:bit v2 boards"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
   if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico and Espruino WiFi only)"
   if d=="RELEASE": return "release builds"

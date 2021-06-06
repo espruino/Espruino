@@ -694,18 +694,20 @@ void lcd_flip() {
   }
   ymin=LCD_HEIGHT;
   ymax=0;
+  jshPinOutput(LCD_BL, LCD_BL_ON); // backlight on
 }
 
 void lcd_init() {
 #ifdef GPS_PIN_EN
   jshPinOutput(GPS_PIN_EN,1); // GPS off
 #endif
-  jshPinOutput(LCD_BL, LCD_BL_ON); // backlight on
+//  jshPinOutput(LCD_BL, LCD_BL_ON); // Don't turn the backlight on yet, otherwise it could show garbage - do it at the end of lcd_flip() instead
 #ifdef LCD_EN
   jshPinOutput(LCD_EN,1); // enable on
 #endif
   // LCD Init 1
   jshPinOutput(LCD_SPI_CS,1);
+
   jshPinOutput(LCD_SPI_DC,1);
   jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
@@ -823,6 +825,15 @@ void lcd_print(char *ch) {
     ch++;
   }
   lcd_flip();
+}
+void lcd_print_hex(unsigned int v) {
+ char buf[11] = "0x";
+ for (int i=0;i<8;i++) {
+   int n = (v>>((7-i)*4)) & 0x0F;
+   buf[2+i] = (n<10) ? ('0'+n) : ('A'+n-10);
+ }
+ buf[10] = 0;
+ lcd_print(buf);
 }
 void lcd_println(char *ch) {
   lcd_print(ch);

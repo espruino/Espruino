@@ -1,4 +1,16 @@
-            Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
+            Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
+            Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
+            Bangle.js: Ignore touch and swipe events when the LCD is off
+            Graphics: Fix 1bpp custom fonts on 2/4/8 bpp graphics Canvas not being the right colour
+            Bangle.js: Don't reset all peripherals when loading a new app, and only
+              turn peripherals off if unused 500ms after starting new app
+            Increase max arguments for Function.apply from 64 to 256
+            NRF52840: Create new NRF_GPIO_PIN_X_FAST as Nordic's gpio functions will no longer inline!
+            Graphics: Add .blit() to allow fast blits within a single Graphics instance
+            nRF52840: workaround for SDK15 bug that stops softdevice restart when WDT enabled
+            Disallow template strings in object decls like {`hello`:1} (fix #2006)
+
+     2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
             nRF5x: Add callback param to 'NRF.restart', allowing code to be called with softdevice disabled
             Bangle.js: fix require("locale").time(new Date()) for default locale
@@ -52,6 +64,14 @@
             Fix SIGFPE if using modulo with -1 (fix #1983)
             Fix memory leak on Array.forEach/map/filter/etc caused by #1962 fix
             Fix Espruino not sleeping when very low on free memory (fix #1986)
+            nRF52: Use 'low accuracy' GPIOTE for watches as we can shut down the high speed oscillator
+            E.getSizeOf() and trace() now don't recurse into references back to the global scope (makes sizes and traces far more useful)
+            nRF5x: Move from separate sdk_config.h to a single targets/nrf5x/app_config.h file
+            Original board: Remove Graphics.*Ellipse and StorageFile when networking enabled to allow builds
+            Update S132 Softdevice from 3.0.0 to 3.1.0 (fix #1999)
+            nRF5x: Allow Espruino builds with a configurable MTU - move Espruino boards to 53 byte (from 23) (#1998)
+            Fix issue parsing `r=>print((e=>{})(r))` (fix #1992)
+            Add DHE RSA key exchange for TLS/HTTPS (fix #1994)
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)

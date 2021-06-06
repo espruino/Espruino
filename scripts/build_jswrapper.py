@@ -229,24 +229,29 @@ def removeBlacklistForWrapper(blacklistfile,datas):
 					if jsondata["class"] == black["class"]:
 						if(jsondata["name"] == black["name"] or black["name"] == "*"):
 							toremove.append(idx)
+							print("Removing "+black["class"]+"."+black["name"]+" due to blacklist wildcard")
 # extension by jumjum
 		else:
 			if "name" in jsondata:
 				for black in blacklist:
 					if black["class"] == "__":
 						if jsondata["name"] == black["name"]:
-							toremove.append(idx)
+						  toremove.append(idx)
+						  print("Removing global."+black["name"]+" due to blacklist wildcard")
 		if "type" in jsondata:
 			if "class" in jsondata:
 				for black in blacklist:
 					if jsondata["class"] == black["class"]:
 						if black["name"] == "*":
-							toremove.append(idx)
+						  toremove.append(idx)
+						  print("Removing "+black["class"]+" due to blacklist wildcard")
 			if "instanceof" in jsondata:
 				for black in blacklist:
 					if jsondata["instanceof"] == black["class"]:
 						if black["name"] == "*":
-							toremove.append(idx)
+						  toremove.append(idx)
+						  print("Removing "+black["class"]+" due to blacklist wildcard")
+    
 #  end extension by jumjum
 	return delete_by_indices( datas, toremove)
 # ------------------------------------------------------------------------------------------------------
@@ -663,7 +668,7 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
-codeOut("/** Tasks to run on Initialisation */")
+codeOut("/** Tasks to run on Initialisation (eg boot/load/reset/after save/etc) */")
 codeOut('void jswInit() {')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="init":
@@ -673,14 +678,14 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
-codeOut("/** Tasks to run on Deinitialisation */")
+codeOut("/** Tasks to run on Deinitialisation (eg before save/reset/etc) */")
 codeOut('void jswKill() {')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="kill":
     codeOut("  "+jsondata["generate"]+"();")
 codeOut('}')
 
-codeOut("/** Tasks to run on Deinitialisation */")
+codeOut("/** Tasks to run when a character event is received */")
 codeOut('bool jswOnCharEvent(IOEventFlags channel, char charData) {')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"].startswith("EV_"):

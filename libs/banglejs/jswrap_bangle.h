@@ -29,14 +29,15 @@ int jswrap_banglejs_isCharging();
 JsVarInt jswrap_banglejs_getBattery();
 
 bool jswrap_banglejs_setHRMPower(bool isOn, JsVar *appId);
-bool jswrap_banglejs_isHRMOn();
+int jswrap_banglejs_isHRMOn();
 bool jswrap_banglejs_setGPSPower(bool isOn, JsVar *appId);
-bool jswrap_banglejs_isGPSOn();
+int jswrap_banglejs_isGPSOn();
 bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId);
-bool jswrap_banglejs_isCompassOn();
+int jswrap_banglejs_isCompassOn();
 bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId);
-bool jswrap_banglejs_isBarometerOn();
+int jswrap_banglejs_isBarometerOn();
 
+int jswrap_banglejs_getStepCount();
 JsVar *jswrap_banglejs_getCompass();
 JsVar *jswrap_banglejs_getAccel();
 JsVar *jswrap_banglejs_getPressure();

@@ -179,7 +179,7 @@ unsigned int nrf_utils_cap_sense(int capSenseTxPin, int capSenseRxPin) {
 
 /// Ensure UICR flags are set correctly for the current device
 void nrf_configure_uicr_flags(void) {
-#if defined (NRF52840_XXAA)
+#if defined (NRF52840_XXAA) && !defined(ESPR_REGOUT0_1_8V)
   // Ensure that GPIO output voltage is 3.3v (not 1.8v) if powered via regulator
   // Configure UICR_REGOUT0 register only if it is set to default value.
   if ((NRF_UICR->REGOUT0 & UICR_REGOUT0_VOUT_Msk) ==

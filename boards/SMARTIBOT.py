@@ -35,7 +35,7 @@ info = {
    ],
    'makefile' : [
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS=1', # Use NFC for GPIOs
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Smartibot"\'',

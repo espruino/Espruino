@@ -115,6 +115,7 @@ typedef struct JsGraphics {
   void (*setPixel)(struct JsGraphics *gfx, int x, int y, unsigned int col); ///< x/y guaranteed to be in range
   void (*fillRect)(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); ///< x/y guaranteed to be in range
   unsigned int (*getPixel)(struct JsGraphics *gfx, int x, int y); ///< x/y guaranteed to be in range
+  void (*blit)(struct JsGraphics *gfx, int x1, int y1, int w, int h, int x2, int y2); ///< blit a WxH area of x1y1 to x2y2 - all guaranteed to be in range
   void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); ///< scroll - leave unscrolled area undefined (xdir/ydir guaranteed to be in range)
 } PACKED_FLAGS JsGraphics;
 typedef void (*JsGraphicsSetPixelFn)(struct JsGraphics *gfx, int x, int y, unsigned int col);
@@ -140,6 +141,8 @@ unsigned short graphicsGetWidth(const JsGraphics *gfx);
 unsigned short graphicsGetHeight(const JsGraphics *gfx);
 // Set the area modified (inclusive of x2,y2) by a draw command and also clip to the screen/clipping bounds. Returns true if clipped
 bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int *y2);
+// Set the area modified by a draw command
+void graphicsSetModified(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 /// Get a setPixel function (assuming coordinates already clipped with graphicsSetModifiedAndClip) - if all is ok it can choose a faster draw function
 JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx);
 /// Get a setPixel function and set modified area (assuming no clipping) (inclusive of x2,y2) - if all is ok it can choose a faster draw function
@@ -160,6 +163,7 @@ void graphicsDrawEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
 void graphicsFillEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
 void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2); ///< antialiased drawline. each pixel is 1/16th
+void graphicsDrawCircleAA(JsGraphics *gfx, int x, int y, int r);
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); ///< each pixel is 1/16th a pixel may overwrite vertices...
 #ifndef NO_VECTOR_FONT
 unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, char ch); ///< prints character, returns width

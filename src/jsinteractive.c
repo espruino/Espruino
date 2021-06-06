@@ -774,6 +774,7 @@ void jsiSoftKill() {
   }
   // If we're here we're loading, saving or resetting - board is no longer at power-on state
   jsiStatus &= ~JSIS_COMPLETELY_RESET; // loading code, remove this flag
+  jsiStatus &= ~JSIS_FIRST_BOOT; // this is no longer the first boot!
 }
 
 void jsiSemiInit(bool autoLoad) {
@@ -832,7 +833,7 @@ void jsiSemiInit(bool autoLoad) {
           "|  __|_ -| . |  _| | | |   | . |\n"
           "|____|___|  _|_| |___|_|_|_|___|\n"
           "         |_| espruino.com\n"
-          " "JS_VERSION" (c) 2019 G.Williams\n"
+          " "JS_VERSION" (c) 2021 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
 #if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS) && !defined(BANGLEJS) && !defined(EMSCRIPTEN)
@@ -856,7 +857,7 @@ void jsiSemiInit(bool autoLoad) {
 
 // The 'proper' init function - this should be called only once at bootup
 void jsiInit(bool autoLoad) {
-  jsiStatus = JSIS_COMPLETELY_RESET;
+  jsiStatus = JSIS_COMPLETELY_RESET | JSIS_FIRST_BOOT;
 
 #if defined(LINUX) || !defined(USB)
   consoleDevice = jsiGetPreferredConsoleDevice();

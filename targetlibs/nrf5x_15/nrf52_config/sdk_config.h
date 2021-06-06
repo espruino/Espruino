@@ -48,41 +48,6 @@
 #endif
 
 
-// Board-specific changes
-#ifdef NRF_USB
-#define APP_USBD_CDC_ACM_ENABLED 1
-#define APP_USBD_ENABLED 1
-#define APP_USBD_VID 0x1915
-#define APP_USBD_PID 0x520F
-#define APP_USBD_DEVICE_VER_MAJOR 1
-#define APP_USBD_DEVICE_VER_MINOR 0
-#define APP_USBD_CONFIG_SELF_POWERED 1
-#define APP_USBD_CONFIG_MAX_POWER 500
-#define APP_USBD_CONFIG_POWER_EVENTS_PROCESS 1
-#define APP_USBD_CONFIG_EVENT_QUEUE_ENABLE 1
-#define APP_USBD_CONFIG_EVENT_QUEUE_SIZE 32
-#define APP_USBD_CONFIG_SOF_HANDLING_MODE 1
-#define APP_USBD_CONFIG_SOF_TIMESTAMP_PROVIDE 0
-#define APP_USBD_CONFIG_LOG_ENABLED 0
-
-#define USBD_ENABLED 1
-#define USBD_CONFIG_IRQ_PRIORITY 7
-#define USBD_CONFIG_DMASCHEDULER_MODE 0
-
-#define POWER_ENABLED 1 
-#define SYSTICK_ENABLED 1 // for USB errata
-#define RNG_CONFIG_POOL_SIZE 64
-#endif
-
-#define NRFX_UARTE_ENABLED 0
-#define NRFX_UARTE0_ENABLED 0
-#define NRFX_UARTE1_ENABLED 0
-#ifdef ESPR_USE_SPI3
-#define NRFX_SPIM3_ENABLED 1
-#endif
-
-#define NRF_SDH_CLOCK_LF_ACCURACY NRF_CLOCK_LF_ACCURACY_500_PPM
-
 // <h> Board Support
 
 //==========================================================
@@ -2028,7 +1993,7 @@
 // <e> UART1_ENABLED - Enable UART1 instance
 //==========================================================
 #ifndef UART1_ENABLED
-#define UART1_ENABLED 1
+#define UART1_ENABLED 0
 #endif
 // <q> UART1_CONFIG_USE_EASY_DMA  - Default setting for using EasyDMA
 
@@ -7666,7 +7631,7 @@
 // <11=> NRF_CLOCK_LF_ACCURACY_1_PPM 
 
 #ifndef NRF_SDH_CLOCK_LF_ACCURACY
-#define NRF_SDH_CLOCK_LF_ACCURACY 7
+#define NRF_SDH_CLOCK_LF_ACCURACY NRF_CLOCK_LF_ACCURACY_20_PPM
 #endif
 
 // </h>

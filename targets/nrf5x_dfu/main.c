@@ -289,6 +289,7 @@ int main(void)
       if (r&1)
         lcd_println(reasons);
       r>>=1;
+
       while (*reasons) reasons++;
       reasons++;
     }

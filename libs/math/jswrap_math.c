@@ -21,6 +21,20 @@ static bool isNegativeZero(double x) {
   return *((long long*)&x) == *((long long*)&NEGATIVE_ZERO);
 }
 
+#ifdef SAVE_ON_FLASH_EXTREME
+// Replace `dsub` with a negate + add
+// GCC requires '-ffreestanding' option for this to work
+/*
+00039540 g     F .text	000006ec .hidden __aeabi_dadd
+0003a938 g     F .text	00000730 .hidden __aeabi_dsub
+*/
+double __aeabi_dsub(double a, double b) {
+  // flip top bit of 64 bit number (the sign bit)
+  ((uint32_t*)&b)[1] ^= 0x80000000; // assume little endian
+  return a + b;
+}
+#endif
+
 double jswrap_math_sin(double x) {
 #ifdef SAVE_ON_FLASH_MATH
   /* To save on flash, do our own sin function that's slower/nastier

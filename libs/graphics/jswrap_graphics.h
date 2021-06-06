@@ -51,6 +51,7 @@ JsVar *jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2);
 JsVar *jswrap_graphics_clearRect(JsVar *parent, int x1, int y1, int x2, int y2);
 JsVar *jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2);
 JsVar *jswrap_graphics_drawCircle(JsVar *parent, int x, int y, int rad);
+JsVar *jswrap_graphics_drawCircleAA(JsVar *parent, int x, int y, int r);
 JsVar *jswrap_graphics_fillCircle(JsVar *parent, int x, int y, int rad);
 JsVar *jswrap_graphics_drawEllipse(JsVar *parent, int x, int y, int x2, int y2);
 JsVar *jswrap_graphics_fillEllipse(JsVar *parent, int x, int y, int x2, int y2);
@@ -82,6 +83,7 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
 JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType);
 JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset);
 JsVar *jswrap_graphics_scroll(JsVar *parent, int x, int y);
+JsVar *jswrap_graphics_blit(JsVar *parent, JsVar *options);
 JsVar *jswrap_graphics_asBMP(JsVar *parent);
 JsVar *jswrap_graphics_asURL(JsVar *parent);
 void jswrap_graphics_dump(JsVar *parent);

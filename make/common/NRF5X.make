@@ -68,7 +68,8 @@ ifdef NRF5X_SDK_12
     targets/nrf5x_dfu/sdk12/dfu-cc.pb.c \
     targets/nrf5x_dfu/sdk12/dfu_req_handling.c 
 endif
-else
+else # no BOOTLOADER
+  DEFINES += -DUSE_APP_CONFIG
   SOURCES +=                              \
     targets/nrf5x/main.c                    \
     targets/nrf5x/jshardware.c              \
@@ -433,6 +434,21 @@ BOOTLOADER_SETTINGS_FAMILY = NRF52
 endif
 endif # USE_BOOTLOADER
 
+ifndef BOOTLOADER
+ifdef ESPR_BLUETOOTH_ANCS
+DEFINES += -DESPR_BLUETOOTH_ANCS=1
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_db_discovery
+TARGETSOURCES += \
+  $(ROOT)/targets/nrf5x/bluetooth_ancs.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_app_attr_get.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_attr_parser.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_tx_buffer.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/nrf_ble_ancs_c.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_db_discovery/ble_db_discovery.c
+endif
+endif
+
 # ==============================================================
 include make/common/ARM.make
 
@@ -483,7 +499,7 @@ else
 	# nrfutil  pkg generate --help
 	@cp $(PROJ_NAME).app_hex $(PROJ_NAME)_app.hex
 ifdef BOOTLOADER
-	nrfutil pkg generate $(PROJ_NAME).zip --bootloader $(PROJ_NAME)_app.hex --bootloader-version 0xff --hw-version 52 --sd-req 0x8C --key-file $(DFU_PRIVATE_KEY)
+	nrfutil pkg generate $(PROJ_NAME).zip --bootloader $(PROJ_NAME)_app.hex --bootloader-version 0xff --hw-version 52 --sd-req 0x8C,0x91 --key-file $(DFU_PRIVATE_KEY)
 else
 	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)  
 endif

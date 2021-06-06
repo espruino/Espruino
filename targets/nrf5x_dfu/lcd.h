@@ -70,5 +70,7 @@ void lcd_init();
 void lcd_kill();
 void lcd_clear();
 void lcd_print(char *ch);
+void lcd_print_hex(unsigned int v); // just for debugging - print a number
 void lcd_println(char *ch);
+
 

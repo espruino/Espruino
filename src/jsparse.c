@@ -1217,7 +1217,6 @@ NO_INLINE JsVar *jspeFactorObject() {
         jslGetNextToken(); // skip over current token
       } else if (
           lex->tk==LEX_STR ||
-          lex->tk==LEX_TEMPLATE_LITERAL ||
           lex->tk==LEX_FLOAT ||
           lex->tk==LEX_INT ||
           lex->tk==LEX_R_TRUE ||
@@ -1574,7 +1573,9 @@ NO_INLINE JsVar *jspeFactor() {
 #ifndef SAVE_ON_FLASH
     if (lex->tk==LEX_TEMPLATE_LITERAL)
       jsExceptionHere(JSET_SYNTAXERROR, "Tagged template literals not supported");
-    else if (lex->tk==LEX_ARROW_FUNCTION && jsvIsName(a)) {
+    else if (lex->tk==LEX_ARROW_FUNCTION &&
+             (jsvIsName(a) || (a==0 && !JSP_SHOULD_EXECUTE))) {
+      // 'a' needs to be a name, *or* we're not executing so 0 gets returned anyway
       JsVar *funcVar = jspeArrowFunction(0,a);
       jsvUnLock(a);
       a=funcVar;

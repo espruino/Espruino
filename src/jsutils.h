@@ -26,9 +26,9 @@
 #include <math.h>
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "2v08"
+#define JS_VERSION "2v09"
 #else
-#define JS_VERSION "2v08." BUILDNUMBER
+#define JS_VERSION "2v09." BUILDNUMBER
 #endif
 /*
   In code:
@@ -238,6 +238,8 @@ typedef int64_t JsSysTime;
 #define JS_ERROR_TOKEN_BUF_SIZE 16 ///< see jslTokenAsString
 
 #define JS_NUMBER_BUFFER_SIZE 70 ///< Enough for 64 bit base 2 + minus + terminating 0
+
+#define JS_MAX_FUNCTION_ARGUMENTS 256 ///< How many arguments can be used with Function.apply
 
 /* If we have less free variables than this, do a garbage collect on Idle.
  * Note that the check for free variables takes an amount of time proportional

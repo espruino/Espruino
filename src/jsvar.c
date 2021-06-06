@@ -3012,6 +3012,8 @@ static size_t _jsvCountJsVarsUsedRecursive(JsVar *v, bool resetRecursionFlag) {
 
 /** Count the amount of JsVars used. Mostly useful for debugging */
 size_t jsvCountJsVarsUsed(JsVar *v) {
+  // don't count 'root' when getting sizes
+  if (v != execInfo.root) execInfo.root->flags |= JSV_IS_RECURSING;
   // we do this so we don't count the same item twice, but don't use too much memory
   size_t c = _jsvCountJsVarsUsedRecursive(v, false);
   _jsvCountJsVarsUsedRecursive(v, true);
@@ -3616,6 +3618,10 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
 
   if (!var) {
     jsiConsolePrint("undefined");
+    return;
+  }
+  if (level>0 && var==execInfo.root) {
+    jsiConsolePrint("ROOT");
     return;
   }
 

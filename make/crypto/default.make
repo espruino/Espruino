@@ -34,7 +34,9 @@ libs/crypto/mbedtls/library/ssl_cli.c \
 libs/crypto/mbedtls/library/ssl_tls.c \
 libs/crypto/mbedtls/library/ssl_srv.c \
 libs/crypto/mbedtls/library/x509.c \
-libs/crypto/mbedtls/library/x509_crt.c
+libs/crypto/mbedtls/library/x509_crt.c \
+libs/crypto/mbedtls/library/dhm.c \
+libs/crypto/mbedtls/library/gcm.c
 endif
 ifdef USE_AES
   DEFINES += -DUSE_AES

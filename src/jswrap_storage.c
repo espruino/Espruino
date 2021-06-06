@@ -107,7 +107,7 @@ void jswrap_storage_erase(JsVar *name) {
     ["offset","int","(optional) The offset in bytes to start from"],
     ["length","int","(optional) The length to read in bytes (if <=0, the entire file is read)"]
   ],
-  "return" : ["JsVar","A string of data"]
+  "return" : ["JsVar","A string of data, or `undefined` if the file is not found"]
 }
 Read a file from the flash storage area that has
 been written with `require("Storage").write(...)`.
@@ -199,8 +199,8 @@ JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
   "params" : [
     ["name","JsVar","The filename - max 28 characters (case sensitive)"],
     ["data","JsVar","The data to write"],
-    ["offset","int","The offset within the file to write"],
-    ["size","int","The size of the file (if a file is to be created that is bigger than the data)"]
+    ["offset","int","[optional] The offset within the file to write"],
+    ["size","int","[optional] The size of the file (if a file is to be created that is bigger than the data)"]
   ],
   "return" : ["bool","True on success, false on failure"]
 }
@@ -229,11 +229,14 @@ var f = require("Storage");
 f.write("a","Hello",0,14);
 f.write("a"," ",5);
 f.write("a","World!!!",6);
-print(f.read("a"));
+print(f.read("a")); // "Hello World!!!"
+f.write("a"," ",0); // Writing to location 0 again will cause the file to be re-written
+print(f.read("a")); // " "
 ```
 
 This can be useful if you've got more data to write than you
-have RAM available.
+have RAM available - for instance the Web IDE uses this method
+to write large files into onboard storage.
 
 **Note:** This function should be used with normal files, and not
 `StorageFile`s created with `require("Storage").open(filename, ...)`

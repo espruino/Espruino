@@ -640,6 +640,32 @@ JsVar *jswrap_graphics_drawCircle(JsVar *parent, int x, int y, int rad) {
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "drawCircleAA",
+  "ifdef" : "GRAPHICS_ANTIALIAS",
+  "generate" : "jswrap_graphics_drawCircleAA",
+  "params" : [
+    ["x","int32","Centre x-coordinate"],
+    ["y","int32","Centre y-coordinate"],
+    ["r","int32","Radius"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Draw a circle, centred at (x,y) with radius r in the current foreground color
+*/
+#ifdef GRAPHICS_ANTIALIAS
+JsVar *jswrap_graphics_drawCircleAA(JsVar *parent, int x, int y, int r) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  graphicsDrawCircleAA(&gfx, x,y,r);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+  return jsvLockAgain(parent);
+}
+#endif
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "fillEllipse",
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_fillEllipse",
@@ -1627,6 +1653,7 @@ JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2
 }
 #endif
 
+
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
@@ -1919,6 +1946,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
     v = jsvObjectGetChild(image, "transparent", 0);
     info->isTransparent = v!=0;
     info->transparentCol = (unsigned int)jsvGetIntegerAndUnLock(v);
+#ifndef SAVE_ON_FLASH_EXTREME
     v = jsvObjectGetChild(image, "palette", 0);
     if (v) {
       if (jsvIsArrayBuffer(v) && v->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16) {
@@ -1937,6 +1965,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
         return false;
       }
     }
+#endif
     JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
     info->buffer = jsvGetArrayBufferBackingString(buf);
     jsvUnLock(buf);
@@ -2358,7 +2387,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       }
       it = l.it; // make sure it gets freed properly
     }
-#endif
+#endif // GRAPHICS_DRAWIMAGE_ROTATED
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(img.buffer);
@@ -2668,6 +2697,93 @@ JsVar *jswrap_graphics_scroll(JsVar *parent, int xdir, int ydir) {
   graphicsSetVar(&gfx);
   return jsvLockAgain(parent);
 }
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "blit",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
+  "generate" : "jswrap_graphics_blit",
+  "params" : [
+    ["options","JsVar","options - see below"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Blit one area of the screen (x1,y1 w,h) to another (x2,y2 w,h)
+
+```
+g.blit({
+  x1:0, y1:0,
+  w:32, h:32,
+  x2:100, y2:100,
+  setModified : true // should we set the modified area?
+});
+```
+
+Note: This uses repeated pixel reads and writes, so will not work on platforms that
+don't support pixel reads.
+*/
+JsVar *jswrap_graphics_blit(JsVar *parent, JsVar *options) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  int sw = gfx.data.width;
+  int sh = gfx.data.height;
+  int x1=0,y1=0,w=0,h=0,x2=0,y2=0;
+  bool setModified = false;
+  jsvConfigObject configs[] = {
+      {"x1", JSV_INTEGER, &x1},
+      {"y1", JSV_INTEGER, &y1},
+      {"w", JSV_INTEGER, &w},
+      {"h", JSV_INTEGER, &h},
+      {"x2", JSV_INTEGER, &x2},
+      {"y2", JSV_INTEGER, &y2},
+      {"setModified", JSV_BOOLEAN, &setModified}};
+  if (!jsvIsObject(options) ||
+      !jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    jsExceptionHere(JSET_ERROR, "Invalid options");
+    return 0;
+  }
+  int ex;
+  // clip source positions
+  if (x1<0) {
+    x2 -= x1;
+    w += x1;
+    x1 = 0;
+  }
+  if (y1<0) {
+    y2 -= y1;
+    h += y1;
+    y1 = 0;
+  }
+  ex = (x1+w) - sw;
+  if (ex > 0) w -= ex;
+  ex = (y1+h) - sh;
+  if (ex > 0) h -= ex;
+  // clip destination positions
+  if (x2<0) {
+    x1 -= x2;
+    w += x2;
+    x2 = 0;
+  }
+  if (y2<0) {
+    y1 -= y2;
+    h += y2;
+    y2 = 0;
+  }
+  ex = (x2+w) - sw;
+  if (ex > 0) w -= ex;
+  ex = (y2+h) - sh;
+  if (ex > 0) h -= ex;
+  if (w>0 || h>0) {
+    gfx.blit(&gfx, x1,y1,w,h,x2,y2);
+    if (setModified) {
+      graphicsSetModified(&gfx, x2,y2,x2+w,y2+h);
+      graphicsSetVar(&gfx);
+    }
+  }
+  return jsvLockAgain(parent);
+}
+
 
 /*JSON{
   "type" : "method",

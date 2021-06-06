@@ -1,0 +1,19 @@
+--- ./targetlibs/nrf5x_15/components/libraries/bootloader/nrf_bootloader_app_start_final.c	2021-05-12 11:22:44.250089801 +0100
++++ ./targetlibs/nrf5x_15/components/libraries/bootloader/nrf_bootloader_app_start_final.c	2021-05-12 11:24:59.275915003 +0100
+@@ -222,6 +222,7 @@
+ #endif
+ void nrf_bootloader_app_start_final(uint32_t vector_table_addr)
+ {
++#ifndef NRF_BOOTLOADER_NO_WRITE_PROTECT
+     ret_code_t ret_val;
+ 
+     // Protect MBR & bootloader code and params pages.
+@@ -250,7 +251,7 @@
+     {
+         NRF_LOG_ERROR("Could not protect bootloader and settings pages, 0x%x.", ret_val);
+     }
+-
++#endif
+     // Run application
+     app_start(vector_table_addr);
+ }
