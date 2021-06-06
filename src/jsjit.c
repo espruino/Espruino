@@ -62,7 +62,13 @@ NO_INLINE void jsjFactor() {
   } else if (lex->tk==LEX_STR) {
     JsVar *a = jslGetTokenValueAsVar();
     JSP_ASSERT_MATCH(LEX_STR);
+    int offset = jsvGetStringLength(jsjStringPool);
+    int len = jsvGetStringLength(a);
+    jsvAppendStringVarComplete(jsjStringPool, a);
     jsvUnLock(a);
+    jsjcLiteral32(1, len);
+    jsjcLiteral32(2, offset);
+    jsjcCall(jsvNewStringOfLength); 
   }/* else if (lex->tk=='{') {
     if (!jspCheckStackPosition()) return 0;
     return jspeFactorObject();
