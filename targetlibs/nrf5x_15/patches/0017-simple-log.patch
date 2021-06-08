@@ -1,0 +1,11 @@
+--- targetlibs/nrf5x_15/components/libraries/experimental_log/src/nrf_log_internal.h	2020-06-10 13:15:01.000000000 +0100
++++ targetlibs/nrf5x_15/components/libraries/experimental_log/src/nrf_log_internal.h	2021-05-17 13:41:52.467062898 +0100
+@@ -108,7 +108,7 @@
+ #endif
+ 
+ #if NRF_LOG_ENABLED
+-#define NRF_LOG_MODULE_ID        NRF_LOG_ITEM_DATA_DYNAMIC(NRF_LOG_MODULE_NAME).module_id
++#define NRF_LOG_MODULE_ID        0//NRF_LOG_ITEM_DATA_DYNAMIC(NRF_LOG_MODULE_NAME).module_id
+ #define NRF_LOG_INST_ID(p_inst)  (p_inst)->module_id
+ #else
+ #define NRF_LOG_MODULE_ID       0

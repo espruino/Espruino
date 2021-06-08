@@ -43,6 +43,11 @@
 
 // ----------------------------------------------------------------------------------------------
 
+#ifdef GRAPHICS_THEME
+/// Global color scheme colours
+JsGraphicsTheme graphicsTheme;
+#endif
+
 static void graphicsSetPixelDevice(JsGraphics *gfx, int x, int y, unsigned int col);
 
 void graphicsFallbackSetPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
@@ -66,20 +71,6 @@ void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, u
       graphicsSetPixelDevice(gfx,x,y, col);
 }
 
-void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto) {
-  int x;
-  if (xdir<=0) {
-    int w = gfx->data.width+xdir;
-    for (x=0;x<w;x++)
-      gfx->setPixel(gfx, (int)x,(int)yto,
-          gfx->getPixel(gfx, (int)(x-xdir),(int)yfrom));
-  } else { // >0
-    for (x=gfx->data.width-xdir-1;x>=0;x--)
-      gfx->setPixel(gfx, (int)(x+xdir),(int)yto,
-          gfx->getPixel(gfx, (int)x,(int)yfrom));
-  }
-}
-
 void graphicsFallbackBlit(JsGraphics *gfx, int x1, int y1, int w, int h, int x2, int y2) {
   for (int y=0;y<h;y++)
     for (int x=0;x<w;x++)
@@ -87,30 +78,43 @@ void graphicsFallbackBlit(JsGraphics *gfx, int x1, int y1, int w, int h, int x2,
         gfx->getPixel(gfx, (int)(x+x1),(int)(y+y1)));
 }
 
-void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir) {
+void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto, int x1, int x2) {
+  int x;
+  if (xdir<=0) {
+    int w = x2+xdir;
+    for (x=x1;x<w;x++)
+      gfx->setPixel(gfx, (int)x,(int)yto,
+          gfx->getPixel(gfx, (int)(x-xdir),(int)yfrom));
+  } else { // >0
+    for (x=x2-xdir;x>=x1;x--)
+      gfx->setPixel(gfx, (int)(x+xdir),(int)yto,
+          gfx->getPixel(gfx, (int)x,(int)yfrom));
+  }
+}
+
+void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
   if (xdir==0 && ydir==0) return;
   int y;
   if (ydir<=0) {
-    int h = gfx->data.height+ydir;
-    for (y=0;y<h;y++)
-      graphicsFallbackScrollX(gfx, xdir, y-ydir, y);
+    int h = y2+ydir;
+    for (y=y1;y<=h;y++)
+      graphicsFallbackScrollX(gfx, xdir, y-ydir, y, x1, x2);
   } else { // >0
-    for (y=gfx->data.height-ydir-1;y>=0;y--)
-      graphicsFallbackScrollX(gfx, xdir, y, y+ydir);
+    for (y=y2-ydir;y>=y1;y--)
+      graphicsFallbackScrollX(gfx, xdir, y, y+ydir, x1, x2);
   }
-#ifndef NO_MODIFIED_AREA
-  gfx->data.modMinX=0;
-  gfx->data.modMinY=0;
-  gfx->data.modMaxX=(short)(gfx->data.width-1);
-  gfx->data.modMaxY=(short)(gfx->data.height-1);
-#endif
 }
 
 // ----------------------------------------------------------------------------------------------
 
 void graphicsStructResetState(JsGraphics *gfx) {
+#ifdef GRAPHICS_THEME
+  gfx->data.fgColor = graphicsTheme.fg;
+  gfx->data.bgColor = graphicsTheme.bg;
+#else
   gfx->data.fgColor = 0xFFFFFFFF;
   gfx->data.bgColor = 0;
+#endif
   gfx->data.fontSize = 1+JSGRAPHICS_FONTSIZE_4X6;
 #ifndef SAVE_ON_FLASH
   gfx->data.fontAlignX = 3;
@@ -774,12 +778,24 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
   if (ydir>gfx->data.height) { ydir=gfx->data.height; scroll=false; }
   if (ydir<-gfx->data.height) { ydir=-gfx->data.height; scroll=false; }
   // do the scrolling
-  if (scroll) gfx->scroll(gfx, xdir, ydir);
+#ifdef NO_MODIFIED_AREA
+  x1=0;
+  y1=0;
+  x2=gfx->data.width-1;
+  x2=gfx->data.height-1;
+#else
+  x1=gfx->data.clipRect.x1;
+  y1=gfx->data.clipRect.y1;
+  x2=gfx->data.clipRect.x2;
+  y2=gfx->data.clipRect.y2;
+#endif
+  if (scroll) gfx->scroll(gfx, xdir, ydir, x1,y1,x2,y2);
+  graphicsSetModified(gfx, x1,y1,x2,y2);
   // fill the new area
-  if (xdir>0) gfx->fillRect(gfx,0,0,xdir-1,gfx->data.height-1, gfx->data.bgColor);
-  else if (xdir<0) gfx->fillRect(gfx,gfx->data.width+xdir,0,gfx->data.width-1,gfx->data.height-1, gfx->data.bgColor);
-  if (ydir>0) gfx->fillRect(gfx,0,0,gfx->data.width-1,ydir-1, gfx->data.bgColor);
-  else if (ydir<0) gfx->fillRect(gfx,0,gfx->data.height+ydir,gfx->data.width-1,gfx->data.height-1, gfx->data.bgColor);
+  if (xdir>0) gfx->fillRect(gfx,x1,y1,x1+xdir-1,y2, gfx->data.bgColor);
+  else if (xdir<0) gfx->fillRect(gfx,x2+1+xdir,y1,x2,y2, gfx->data.bgColor);
+  if (ydir>0) gfx->fillRect(gfx,x1,y1,x2,y1+ydir-1, gfx->data.bgColor);
+  else if (ydir<0) gfx->fillRect(gfx,x1,y2+1+ydir,x2,y2, gfx->data.bgColor);
 }
 
 static void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str) {

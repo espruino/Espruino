@@ -865,6 +865,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
 
 /// Used by bluetooth.c internally when it needs to set up advertising at first
 JsVar *jswrap_ble_getCurrentAdvertisingData() {
+  // This is safe if JS not initialised, jsvObjectGetChild returns 0
   JsVar *adv = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
   if (!adv) adv = jswrap_ble_getAdvertisingData(NULL, NULL); // use the defaults
   else {
@@ -973,10 +974,12 @@ JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options) {
   }
 
 #if ESPR_BLUETOOTH_ANCS
-  static ble_uuid_t m_adv_uuids[1]; /**< Universally unique service identifiers. */
-  ble_ancs_get_adv_uuid(m_adv_uuids);
-  advdata.uuids_solicited.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-  advdata.uuids_solicited.p_uuids  = m_adv_uuids;
+  if (bleStatus & BLE_ANCS_INITED) {
+    static ble_uuid_t m_adv_uuids[1]; /**< Universally unique service identifiers. */
+    ble_ancs_get_adv_uuid(m_adv_uuids);
+    advdata.uuids_solicited.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+    advdata.uuids_solicited.p_uuids  = m_adv_uuids;
+  }
 #endif
 
   uint16_t  len_advdata = BLE_GAP_ADV_MAX_SIZE;
@@ -992,6 +995,7 @@ JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options) {
   err_code = 0xDEAD;
   jsiConsolePrintf("FIXME\n");
 #endif
+  if (err_code && !execInfo.hiddenRoot) return 0; // don't error if JS not initialised
   if (jsble_check_error(err_code)) return 0;
   return jsvNewArrayBufferWithData(len_advdata, encoded_advdata);
 }
@@ -1191,6 +1195,9 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
   JsVar *use_hid = 0;
 #endif
   bool use_uart = true;
+#if ESPR_BLUETOOTH_ANCS
+  bool use_ancs = false;
+#endif
   JsVar *advertise = 0;
 
   jsvConfigObject configs[] = {
@@ -1198,6 +1205,9 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
       {"hid", JSV_ARRAY, &use_hid},
 #endif
       {"uart", JSV_BOOLEAN, &use_uart},
+#if ESPR_BLUETOOTH_ANCS
+      {"ancs", JSV_BOOLEAN, &use_ancs},
+#endif
       {"advertise",  JSV_ARRAY, &advertise},
   };
   if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
@@ -1227,6 +1237,17 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
     jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_NUS, jsvNewFromBool(false));
   }
+#if ESPR_BLUETOOTH_ANCS
+  if (use_ancs) {
+    if (!(bleStatus & BLE_ANCS_INITED))
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_ANCS, jsvNewFromBool(true));
+  } else {
+    if (bleStatus & BLE_ANCS_INITED)
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+    jsvObjectRemoveChild(execInfo.hiddenRoot, BLE_NAME_ANCS);
+  }
+#endif
 
   // Save the current service data and options
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, data);
@@ -2455,6 +2476,25 @@ void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback) {
 #endif
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "sendANCSAction",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : "jswrap_ble_sendANCSAction",
+    "params" : [
+      ["uid","int","The UID of the notification to respond to"],
+      ["positive","bool","`true` for positive action, `false` for negative"]
+    ]
+}
+Send an ANCS action for a specific Notification UID. Corresponds to posaction/negaction in the 'ANCS' event that was received
+*/
+void jswrap_ble_sendANCSAction(int uid, bool positive) {
+#if ESPR_BLUETOOTH_ANCS
+  if (bleStatus & BLE_ANCS_INITED)
+    ble_ancs_action(uid, positive);
+#endif
+}
 
 /*JSON{
     "type" : "staticmethod",

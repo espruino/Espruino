@@ -93,26 +93,40 @@ void ble_ancs_handle_event(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
   jsvObjectSetChildAndUnLock(o, "silent", jsvNewFromBool(p_notif->evt_flags.silent));
   jsvObjectSetChildAndUnLock(o, "important", jsvNewFromBool(p_notif->evt_flags.important));
   jsvObjectSetChildAndUnLock(o, "pre_existing", jsvNewFromBool(p_notif->evt_flags.pre_existing));
-  jsvObjectSetChildAndUnLock(o, "positive", jsvNewFromBool(p_notif->evt_flags.positive_action));
-  jsvObjectSetChildAndUnLock(o, "negative", jsvNewFromBool(p_notif->evt_flags.negative_action));
-
-  jsvObjectSetChildAndUnLock(o, "appid", jsvNewFromString(m_attr_appid));
-  jsvObjectSetChildAndUnLock(o, "title", jsvNewFromString(m_attr_title));
-  jsvObjectSetChildAndUnLock(o, "subtitle", jsvNewFromString(m_attr_subtitle));
-  jsvObjectSetChildAndUnLock(o, "message", jsvNewFromString(m_attr_message));
-  jsvObjectSetChildAndUnLock(o, "message_size", jsvNewFromString(m_attr_message_size));
-  jsvObjectSetChildAndUnLock(o, "date", jsvNewFromString(m_attr_date));
-  jsvObjectSetChildAndUnLock(o, "posaction", jsvNewFromString(m_attr_posaction));
-  jsvObjectSetChildAndUnLock(o, "negaction", jsvNewFromString(m_attr_negaction));
-  jsvObjectSetChildAndUnLock(o, "name", jsvNewFromString(m_attr_disp_name));
+  if (p_notif->evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_ADDED ||
+      p_notif->evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_MODIFIED) {
+    jsvObjectSetChildAndUnLock(o, "positive", jsvNewFromBool(p_notif->evt_flags.positive_action));
+    jsvObjectSetChildAndUnLock(o, "negative", jsvNewFromBool(p_notif->evt_flags.negative_action));
+    jsvObjectSetChildAndUnLock(o, "appid", jsvNewFromString(m_attr_appid));
+    jsvObjectSetChildAndUnLock(o, "title", jsvNewFromString(m_attr_title));
+    jsvObjectSetChildAndUnLock(o, "subtitle", jsvNewFromString(m_attr_subtitle));
+    jsvObjectSetChildAndUnLock(o, "message", jsvNewFromString(m_attr_message));
+    jsvObjectSetChildAndUnLock(o, "message_size", jsvNewFromString(m_attr_message_size));
+    jsvObjectSetChildAndUnLock(o, "date", jsvNewFromString(m_attr_date));
+    jsvObjectSetChildAndUnLock(o, "posaction", jsvNewFromString(m_attr_posaction));
+    jsvObjectSetChildAndUnLock(o, "negaction", jsvNewFromString(m_attr_negaction));
+    jsvObjectSetChildAndUnLock(o, "name", jsvNewFromString(m_attr_disp_name));
+  }
   jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"ANCS", 1, &o);
   jsvUnLock(o);
+}
+
+void ble_ancs_clear_attr() {
+  memset(m_attr_appid        ,0, sizeof(m_attr_appid));
+  memset(m_attr_title        ,0, sizeof(m_attr_title));
+  memset(m_attr_subtitle     ,0, sizeof(m_attr_subtitle));
+  memset(m_attr_message      ,0, sizeof(m_attr_message));
+  memset(m_attr_message_size ,0, sizeof(m_attr_message_size));
+  memset(m_attr_date         ,0, sizeof(m_attr_date));
+  memset(m_attr_posaction    ,0, sizeof(m_attr_posaction));
+  memset(m_attr_negaction    ,0, sizeof(m_attr_negaction));
+  memset(m_attr_disp_name    ,0, sizeof(m_attr_disp_name));
 }
 
 void ble_ancs_bonding_succeeded(uint16_t conn_handle) {
   NRF_LOG_INFO("ble_ancs_bonding_succeeded\r\n");
   uint32_t ret  = ble_db_discovery_start(&m_ble_db_discovery, conn_handle);
-  APP_ERROR_CHECK(ret);
+  APP_ERROR_CHECK_NOT_URGENT(ret);
 }
 
 
@@ -127,10 +141,10 @@ static void apple_notification_setup(void)
     nrf_delay_ms(100); // Delay because we cannot add a CCCD to close to starting encryption. iOS specific.
 
     ret = ble_ancs_c_notif_source_notif_enable(&m_ancs_c);
-    APP_ERROR_CHECK(ret);
+    APP_ERROR_CHECK_NOT_URGENT(ret);
 
     ret = ble_ancs_c_data_source_notif_enable(&m_ancs_c);
-    APP_ERROR_CHECK(ret);
+    APP_ERROR_CHECK_NOT_URGENT(ret);
 
     NRF_LOG_DEBUG("Notifications Enabled.\r\n");
 }
@@ -189,11 +203,14 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt)
         case BLE_ANCS_C_EVT_NOTIF:
             m_notification_latest = p_evt->notif;
             NRF_LOG_DEBUG("EVT_NOTIF\r\n");
-            if (p_evt->notif.evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_ADDED) {
+            if (p_evt->notif.evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_ADDED ||
+                p_evt->notif.evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_MODIFIED) {
+              // clear old data
+              ble_ancs_clear_attr();
               // get more data, then send over after it...
               ret = nrf_ble_ancs_c_request_attrs(&m_ancs_c, &m_notification_latest);
-              APP_ERROR_CHECK(ret);
-            } else { // TODO: what if modification?
+              APP_ERROR_CHECK_NOT_URGENT(ret);
+            } else {
               // otherwise push now (probably a removal)
               jsble_queue_pending_buf(BLEP_ANCS_NOTIF, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
             }
@@ -209,7 +226,7 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt)
                 m_notif_attr_app_id_latest = p_evt->attr;
             }
             if (p_evt->attr.attr_id == BLE_ANCS_NB_OF_NOTIF_ATTR-1) // TODO: better way to check for last attribute?
-              jsble_queue_pending_buf(BLEP_ANCS_NOTIF, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
+              jsble_queue_pending_buf(BLEP_ANCS_NOTIF, 0, (char*)&m_notification_latest, sizeof(ble_ancs_c_evt_notif_t));
             break;
         case BLE_ANCS_C_EVT_DISCOVERY_FAILED:
             NRF_LOG_DEBUG("Apple Notification Center Service not discovered on the server.\r\n");
@@ -258,13 +275,13 @@ void ble_ancs_on_ble_evt(ble_evt_t * p_ble_evt)
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected.\r\n");
             ret               = app_timer_start(m_sec_req_timer_id, SECURITY_REQUEST_DELAY, NULL);
-            APP_ERROR_CHECK(ret);
+            APP_ERROR_CHECK_NOT_URGENT(ret);
             break; // BLE_GAP_EVT_CONNECTED
 
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected.\r\n");
             ret               = app_timer_stop(m_sec_req_timer_id);
-            APP_ERROR_CHECK(ret);
+            APP_ERROR_CHECK_NOT_URGENT(ret);
             if (p_ble_evt->evt.gap_evt.conn_handle == m_ancs_c.conn_handle) {
                 m_ancs_c.conn_handle = BLE_CONN_HANDLE_INVALID;
             }
@@ -273,7 +290,6 @@ void ble_ancs_on_ble_evt(ble_evt_t * p_ble_evt)
             // No implementation needed.
             break;
     }
-    APP_ERROR_CHECK(ret);
 }
 
 /**@brief Function for initializing the Apple Notification Center Service.
@@ -284,6 +300,7 @@ static void services_init(void)
     ret_code_t        ret;
 
     memset(&ancs_init_obj, 0, sizeof(ancs_init_obj));
+    ble_ancs_clear_attr();
 
     ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
                                   BLE_ANCS_NOTIF_ATTR_ID_APP_IDENTIFIER,
@@ -377,7 +394,7 @@ static void sec_req_timeout_handler(void * p_context)
     {
 
         ret = pm_conn_sec_status_get(m_peripheral_conn_handle, &status);
-        APP_ERROR_CHECK(ret);
+        APP_ERROR_CHECK_NOT_URGENT(ret);
 
         // If the link is still not secured by the peer, initiate security procedure.
         if (!status.encrypted)
@@ -386,7 +403,7 @@ static void sec_req_timeout_handler(void * p_context)
             ret = pm_conn_secure(m_peripheral_conn_handle, false);
             if (ret != NRF_ERROR_INVALID_STATE)
             {
-                APP_ERROR_CHECK(ret);
+                APP_ERROR_CHECK_NOT_URGENT(ret);
             }
         }
     }
@@ -420,6 +437,6 @@ void ble_ancs_action(uint32_t uid, bool positive) {
   ret = nrf_ancs_perform_notif_action(&m_ancs_c,
                                       uid,
                                       positive ? ACTION_ID_POSITIVE : ACTION_ID_NEGATIVE);
-  APP_ERROR_CHECK(ret);
+  APP_ERROR_CHECK_NOT_URGENT(ret);
 }
 

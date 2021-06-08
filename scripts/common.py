@@ -84,7 +84,8 @@ if "check_output" not in dir( subprocess ):
 #         "ifndef" : "SAVE_ON_FLASH", // if the given preprocessor macro is defined, don't implement this
 #         "ifdef" : "USE_LCD_FOO", // if the given preprocessor macro isn't defined, don't implement this
 #         "#if" : "A>2", // add a #if statement in the generated C file (ONLY if type==object)
-#         "patch" : true // if true, this isn't a complete JSON, but just updates another with the same class+name
+#         "patch" : true, // if true, this isn't a complete JSON, but just updates another with the same class+name
+#         "sortorder" : 0 // default to 0, but all items are sorted by this first, so especially with jswrap_X_init/etc we can ensure the ordering is correct
 #}*/
 #
 # description can be an array of strings as well as a simple string (in which case each element is separated by a newline),
@@ -282,6 +283,9 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           "filename" : "BOARD.py",
           "include" : "platform_config.h"
         })
+
+    jsondatas = sorted(jsondatas, key=lambda j: j["sortorder"] if "sortorder" in j else 0) 
+
     return jsondatas
 
 # Takes the data from get_jsondata and restructures it in prepartion for output as JS

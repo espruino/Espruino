@@ -20,7 +20,7 @@ info = {
  'link' :  [ "http://www.espruino.com/Bangle.js" ],
  'espruino_page_link' : 'Bangle.js',
  'default_console' : "EV_BLUETOOTH",
- 'variables' : 2100, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2150, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_banglejs.hex',
  'build' : {
@@ -142,7 +142,11 @@ devices = {
             'pin_rst' : 'D17', # D3
             'size' : 4096*1024, # 4MB
             'memmap_base' : 0x60000000 # map into the address space (in software)
-          }
+          },
+  'MISC' : {
+    'pin_nenable' : 'D18', # needed to get power to Bangle.js peripherals
+    'pin_ioexp_reset' : 'D28',
+  }
 };
 
 # left-right, or top-bottom order

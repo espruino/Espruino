@@ -49,8 +49,6 @@
 #define NRFX_SPIM3_ENABLED 1
 #endif
 
-#define NRF_SDH_CLOCK_LF_ACCURACY NRF_CLOCK_LF_ACCURACY_500_PPM
-
 #ifdef ESPR_BLUETOOTH_ANCS
 #define BLE_ANCS_C_ENABLED 1
 #define BLE_DB_DISCOVERY_ENABLED 1
@@ -125,6 +123,17 @@
 #ifdef NRF52840
 #define UART1_ENABLED 1
 #define UART1_CONFIG_USE_EASY_DMA 1
+#endif
+
+#if ESPR_LSE_ENABLE
+#define NRF_SDH_CLOCK_LF_SRC 1 // 32.768 kHz crystal clock
+// SoftDevice calibration timer interval.
+#define NRF_SDH_CLOCK_LF_RC_CTIV 0
+// SoftDevice calibration timer interval under constant temperature.
+#define NRF_SDH_CLOCK_LF_RC_TEMP_CTIV 0
+#define NRF_SDH_CLOCK_LF_ACCURACY NRF_CLOCK_LF_ACCURACY_20_PPM
+#else // On internal oscillator
+#define NRF_SDH_CLOCK_LF_ACCURACY NRF_CLOCK_LF_ACCURACY_500_PPM
 #endif
 
 // Other SDK configs are still in sdk_config.h

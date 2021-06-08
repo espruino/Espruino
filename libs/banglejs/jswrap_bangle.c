@@ -29,7 +29,9 @@
 #include "jswrap_array.h"
 #include "jswrap_arraybuffer.h"
 #include "jswrap_heatshrink.h"
+#include "jswrap_espruino.h"
 #include "jsflash.h"
+#include "graphics.h"
 #ifndef EMSCRIPTEN
 #include "jswrap_bluetooth.h"
 #include "app_timer.h"
@@ -214,6 +216,25 @@ Heat rate data, as an object. Contains:
 
 To get this event you must turn the heart rate monitor on
 with `Bangle.setHRMPower(1)`.
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
+  "name" : "HRM-raw",
+  "params" : [["hrm","JsVar","A object containing instant readings from the heart rate sensor"]],
+  "ifdef" : "BANGLEJS"
+}
+Called when heart rate sensor data is available - see `Bangle.setHRMPower(1)`.
+
+`hrm` is of the form:
+
+```
+{ "raw": -1,       // raw value from sensor
+  "filt": -1,      // bandpass-filtered raw value from sensor
+  "bpm": 88.9,     // last BPM value measured
+  "confidence": 0  // confidence in the BPM value
+}
+```
  */
 /*JSON{
   "type" : "event",
@@ -587,18 +608,20 @@ typedef enum {
   JSBT_STEP_EVENT = 1<<12, ///< we've detected a step via the pedometer
   JSBT_SWIPE_LEFT = 1<<13, ///< swiped left over touchscreen
   JSBT_SWIPE_RIGHT = 1<<14, ///< swiped right over touchscreen
-  JSBT_SWIPE_MASK = JSBT_SWIPE_LEFT | JSBT_SWIPE_RIGHT,
-  JSBT_TOUCH_LEFT = 1<<15, ///< touch lhs of touchscreen
-  JSBT_TOUCH_RIGHT = 1<<16, ///< touch rhs of touchscreen
+  JSBT_SWIPE_UP = 1<<15, ///< swiped left over touchscreen (Bangle 2 only)
+  JSBT_SWIPE_DOWN = 1<<16, ///< swiped right over touchscreen (Bangle 2 only)
+  JSBT_SWIPE_MASK = JSBT_SWIPE_LEFT | JSBT_SWIPE_RIGHT | JSBT_SWIPE_UP | JSBT_SWIPE_DOWN,
+  JSBT_TOUCH_LEFT = 1<<17, ///< touch lhs of touchscreen
+  JSBT_TOUCH_RIGHT = 1<<18, ///< touch rhs of touchscreen
   JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
-  JSBT_HRM_DATA = 1<<17, ///< Heart rate data is ready for analysis
-  JSBT_TWIST_EVENT = 1<<18, ///< Watch was twisted
-  JSBT_FACE_UP = 1<<19, ///< Watch was turned face up/down (faceUp holds the actual state)
-  JSBT_ACCEL_INTERVAL_DEFAULT = 1<<20, ///< reschedule accelerometer poll handler to default speed
-  JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<21, ///< reschedule accelerometer poll handler to powersave speed
-  JSBT_HRM_INSTANT_DATA = 1<<22, ///< Instant heart rate data
+  JSBT_HRM_DATA = 1<<19, ///< Heart rate data is ready for analysis
+  JSBT_TWIST_EVENT = 1<<20, ///< Watch was twisted
+  JSBT_FACE_UP = 1<<21, ///< Watch was turned face up/down (faceUp holds the actual state)
+  JSBT_ACCEL_INTERVAL_DEFAULT = 1<<22, ///< reschedule accelerometer poll handler to default speed
+  JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<23, ///< reschedule accelerometer poll handler to powersave speed
+  JSBT_HRM_INSTANT_DATA = 1<<24, ///< Instant heart rate data
 #ifdef PRESSURE_I2C
-  JSBT_PRESSURE_DATA = 1<<23
+  JSBT_PRESSURE_DATA = 1<<25
 #endif
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
@@ -631,6 +654,10 @@ void jswrap_banglejs_pwrBacklight(bool on) {
 #ifdef LCD_BL
   jshPinOutput(LCD_BL, on);
 #endif
+#ifdef LCD_CONTROLLER_LPM013M126
+  lcdMemLCD_extcominBacklight(on);
+#endif
+
 }
 
 /// Flip buffer contents with the screen.
@@ -716,6 +743,9 @@ bool setDeviceRequested(const char *deviceName, JsVar *appID, bool powerOn) {
     }
     jsvUnLock2(appID, idx);
     isOn = jsvGetArrayLength(device)>0;
+    // free memory by remove the device from the list if not used
+    if (!isOn)
+      jsvObjectRemoveChild(uses, deviceName);
   }
   jsvUnLock3(device, uses, bangle);
   return isOn;
@@ -772,7 +802,7 @@ void peripheralPollHandler() {
         bangleTasks |= JSBT_RESET;
         jshHadEvent();
         homeBtnTimer = TIMER_MAX;
-        // Allow BTN3 to break out of debugger
+        // Allow home button to break out of debugger
         if (jsiStatus & JSIS_IN_DEBUGGER) {
           jsiStatus |= JSIS_EXIT_DEBUGGER;
           execInfo.execute |= EXEC_INTERRUPTED;
@@ -783,6 +813,11 @@ void peripheralPollHandler() {
   } else {
     homeBtnTimer = 0;
   }
+
+#ifdef LCD_CONTROLLER_LPM013M126
+  // toggle EXTCOMIN to avoid burn-in on LCD
+  lcdMemLCD_extcominToggle();
+#endif
 
   if (lcdPowerTimeout && lcdPowerOn && flipTimer>=lcdPowerTimeout) {
     // 10 seconds of inactivity, turn off display
@@ -805,7 +840,7 @@ void peripheralPollHandler() {
     bool newReading = false;
 #ifdef MAG_DEVICE_GMC303
     buf[0]=0x10;
-    jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
+    jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, false);
     jsi2cRead(MAG_I2C, MAG_ADDR, 7, buf, true);
     if (buf[0]&1) { // then we have data
       mag.y = buf[1] | (buf[2]<<8);
@@ -816,7 +851,7 @@ void peripheralPollHandler() {
 #endif
 #ifdef MAG_DEVICE_UNKNOWN_0C
     buf[0]=0x4E;
-    jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
+    jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, false);
     jsi2cRead(MAG_I2C, MAG_ADDR, 7, buf, true);
     if (!(buf[0]&16)) { // then we have data that wasn't read before
       // &2 seems always set
@@ -827,7 +862,7 @@ void peripheralPollHandler() {
       mag.z = buf[5] | (buf[5]<<8);
       // Now read 0x3E which should kick off a new reading
       buf[0]=0x3E;
-      jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, true);
+      jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, false);
       jsi2cRead(MAG_I2C, MAG_ADDR, 1, buf, true);
       newReading = true;
     }
@@ -848,7 +883,7 @@ void peripheralPollHandler() {
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
   // read interrupt source data
   buf[0]=0x12; // INS1
-  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
   jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 2, buf, true);
   // 0 -> 0x12 INS1 - tap event
   // 1 -> 0x13 INS2 - what kind of event
@@ -861,14 +896,14 @@ void peripheralPollHandler() {
     jshHadEvent();
     // clear the IRQ flags
     buf[0]=0x17;
-    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
     jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
   }
 #endif
 #ifdef ACCEL_DEVICE_KXTJ3_1057
   // read interrupt source data
   buf[0]=0x16; // INT_SOURCE1
-  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
   jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
   bool hasAccelData = (buf[0]&16)!=0; // DRDY
 #endif
@@ -898,7 +933,7 @@ void peripheralPollHandler() {
     jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
 #else
     buf[0]=6;
-    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
+    jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
 #endif
     jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 6, buf, true);
     // work out current reading in 16 bit
@@ -910,7 +945,7 @@ void peripheralPollHandler() {
     newz = -newz; 
 #endif
 #ifdef ACCEL_DEVICE_KX126
-    newx = -newx;
+    newy = -newy;
 #endif
     int dx = newx-acc.x;
     int dy = newy-acc.y;
@@ -1232,7 +1267,7 @@ void touchHandler(bool state, IOEventFlags flags) {
   // Ok, now get touch info
   unsigned char buf[6];
   buf[0]=1;
-  jsi2cWrite(TOUCH_I2C, TOUCH_ADDR, 1, buf, true);
+  jsi2cWrite(TOUCH_I2C, TOUCH_ADDR, 1, buf, false);
   jsi2cRead(TOUCH_I2C, TOUCH_ADDR, 6, buf, true);
   // 0: Gesture type
   // 1: touch pts (0 or 1)
@@ -1249,8 +1284,12 @@ void touchHandler(bool state, IOEventFlags flags) {
   if (gesture!=lastGesture) {
     switch (gesture) { // gesture
     case 0:break; // no gesture
-    case 1:break; // slide down
-    case 2:break; // slide up
+    case 1: // slide down
+        bangleTasks |= JSBT_SWIPE_DOWN;
+        break;
+    case 2: // slide up
+        bangleTasks |= JSBT_SWIPE_UP;
+        break;
     case 3: // slide left
         bangleTasks |= JSBT_SWIPE_LEFT;
         break;
@@ -1262,8 +1301,6 @@ void touchHandler(bool state, IOEventFlags flags) {
       else bangleTasks |= JSBT_TOUCH_RIGHT;
       break;
     }
-
-
   }
 
   if (touch!=lastTouch || lastx!=x || lasty!=y) {
@@ -1273,6 +1310,8 @@ void touchHandler(bool state, IOEventFlags flags) {
     evt.data.chars[1] = y * LCD_HEIGHT / 160;
     evt.data.chars[2] = touch ? 1 : 0;
     jshPushEvent(&evt);
+    // ensure we don't sleep if touchscreen is being used
+    flipTimer = 0;
   }
   lastx = x;
   lasty = y;
@@ -1416,9 +1455,11 @@ When brightness using `Bange.setLCDBrightness`.
 */
 void jswrap_banglejs_setLCDPower(bool isOn) {
 #ifdef ESPR_BACKLIGHT_FADE
-  if (isOn) jswrap_banglejs_setLCDPowerController(isOn);
+  if (isOn) jswrap_banglejs_setLCDPowerController(1);
+  else jswrap_banglejs_setLCDPowerBacklight(0); // RB: don't turn on the backlight here if fading is enabled
 #else
   jswrap_banglejs_setLCDPowerController(isOn);
+  jswrap_banglejs_setLCDPowerBacklight(isOn);
 #endif
   jswrap_banglejs_setLCDPowerBacklight(isOn);
   if (lcdPowerOn != isOn) {
@@ -1491,40 +1532,6 @@ Available options for `Bangle.setLCDMode` are:
 You can also call `Bangle.setLCDMode()` to return to normal, unbuffered `"direct"` mode.
 */
 void jswrap_banglejs_setLCDMode(JsVar *mode) {
-#ifdef LCD_CONTROLLER_LPM013M126
-  lcdMemLCDMode lcdMode = MEMLCD_MODE_NORMAL;
-  if (jsvIsUndefined(mode) || jsvIsStringEqual(mode,"direct"))
-    lcdMode =  MEMLCD_MODE_NORMAL;
-  else if (jsvIsStringEqual(mode,"null"))
-    lcdMode = MEMLCD_MODE_NULL;
-  else if (jsvIsStringEqual(mode,"240x240"))
-    lcdMode = MEMLCD_MODE_240x240;
-  else
-    jsExceptionHere(JSET_ERROR,"Unknown LCD Mode %j",mode);
-  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
-  if (!graphics) return;
-  jswrap_graphics_setFont(graphics, NULL, 1); // reset fonts - this will free any memory associated with a custom font
-  JsGraphics gfx;
-  if (!graphicsGetFromVar(&gfx, graphics)) return;
-  unsigned int bufferSize = 0;
-  switch (lcdMode) {
-    case MEMLCD_MODE_NULL:
-    case MEMLCD_MODE_NORMAL:
-      gfx.data.width = LCD_WIDTH;
-      gfx.data.height = LCD_HEIGHT;
-      gfx.data.bpp = LCD_BPP;
-      break;
-    case MEMLCD_MODE_240x240:
-      gfx.data.width = 240;
-      gfx.data.height = 240;
-      gfx.data.bpp = 16;
-      break;
-  }
-  graphicsStructResetState(&gfx); // reset colour, cliprect, etc
-  graphicsSetVar(&gfx);
-  jsvUnLock(graphics);
-  lcdMemLCD_setMode(lcdMode);
-#endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   LCDST7789Mode lcdMode = LCDST7789_MODE_UNBUFFERED;
   if (jsvIsUndefined(mode) || jsvIsStringEqual(mode,"direct"))
@@ -1590,6 +1597,8 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   graphicsSetVar(&gfx);
   jsvUnLock(graphics);
   lcdST7789_setMode( lcdMode );
+#else
+  jsExceptionHere(JSET_ERROR, "setLCDMode is unsupported on this device");
 #endif
 }
 /*JSON{
@@ -1606,8 +1615,6 @@ See `Bangle.setLCDMode` for examples.
 */
 JsVar *jswrap_banglejs_getLCDMode() {
   const char *name=0;
-#ifdef LCD_CONTROLLER_LPM013M126
-#endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   switch (lcdST7789_getMode()) {
     case LCDST7789_MODE_NULL:
@@ -2032,15 +2039,6 @@ bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId) {
 #ifdef MAG_DEVICE_GMC303
       jswrap_banglejs_compassWr(0x31,4); // continuous measurement mode, 20Hz
 #endif
-      mag.x = 0;
-      mag.y = 0;
-      mag.z = 0;
-      magmin.x = 32767;
-      magmin.y = 32767;
-      magmin.z = 32767;
-      magmax.x = -32768;
-      magmax.y = -32768;
-      magmax.z = -32768;
     }
   } else { // !isOn -> turn off
 #ifdef MAG_DEVICE_GMC303
@@ -2068,6 +2066,31 @@ Set power with `Bangle.setCompassPower(...);`
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isCompassOn() {
   return bangleFlags & JSBF_COMPASS_ON;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "resetCompass",
+    "generate" : "jswrap_banglejs_resetCompass",
+    "params" : [],
+    "ifdef" : "BANGLEJS"
+}
+Resets the compass minimum/maximum values. Can be used if the compass isn't
+providing a reliable heading any more.
+*/
+void jswrap_banglejs_resetCompass() {
+#ifdef MAG_I2C
+  mag.x = 0;
+  mag.y = 0;
+  mag.z = 0;
+  magmin.x = 32767;
+  magmin.y = 32767;
+  magmin.z = 32767;
+  magmax.x = -32768;
+  magmax.y = -32768;
+  magmax.z = -32768;
+#endif
 }
 
 /*JSON{
@@ -2103,7 +2126,7 @@ bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
       jswrap_banglejs_barometerWr(SPL06_MEASCFG, 7); // continuous temperature and pressure measurement
       // read calibration data
       unsigned char buf[SPL06_COEF_NUM];
-      buf[0] = SPL06_COEF_START; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+      buf[0] = SPL06_COEF_START; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
       jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, SPL06_COEF_NUM, buf, true);
       barometer_c0 = twosComplement(((unsigned short)buf[0] << 4) | (((unsigned short)buf[1] >> 4) & 0x0F), 12);
       barometer_c1 = twosComplement((((unsigned short)buf[1] & 0x0F) << 8) | buf[2], 12);
@@ -2120,7 +2143,7 @@ bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
       jswrap_banglejs_barometerWr(0xF5, 0xA0); // config_reg - 1s standby, no filter, I2C
       // read calibration data
       unsigned char buf[24];
-      buf[0] = 0x88; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+      buf[0] = 0x88; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
       jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 24, buf, true);
       int i;
       barometerDT[0] = ((int)buf[1] << 8) | (int)buf[0];  //first coeff is unsigned
@@ -2285,7 +2308,6 @@ void jswrap_banglejs_postInit() {
 NO_INLINE void jswrap_banglejs_init() {
   IOEventFlags channel;
   bool firstRun = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrap_banglejs_init was called?
-  jsvObjectSetChildAndUnLock(execInfo.root, "firstRun", jsvNewFromBool(firstRun)); // debug
   // Hardware init that we only do the very first time we start
   if (firstRun) {
 #ifdef BANGLEJS_F18
@@ -2342,9 +2364,6 @@ NO_INLINE void jswrap_banglejs_init() {
     jshPinOutput(TOUCH_PIN_RST, 0);
     jshDelayMicroseconds(1000);
     jshPinOutput(TOUCH_PIN_RST, 1);
-    jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
-    channel = jshPinWatch(TOUCH_PIN_IRQ, true);
-    if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
 #endif
 #ifdef BANGLEJS_F18
     // LCD pin init
@@ -2368,20 +2387,90 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
 #endif
   }
+#ifdef SMAQ3
+  jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
+  channel = jshPinWatch(TOUCH_PIN_IRQ, true);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
+#endif
 
   //jsiConsolePrintf("bangleFlags %d\n",bangleFlags);
-  if (firstRun)
+  if (firstRun) {
     bangleFlags = JSBF_DEFAULT; // includes bangleFlags
+    lcdPowerOn = true;
+    lcdBrightness = 255;
+  }
   flipTimer = 0; // reset the LCD timeout timer
-  lcdPowerOn = true;
-  lcdBrightness = 255;
+  lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
+  lcdWakeButton = 0;
+  // If the home button is still pressed when we're restarting, set up
+  // lcdWakeButton so the event for button release is 'eaten'
+  if (jshPinGetValue(HOME_BTN_PININDEX))
+    lcdWakeButton = HOME_BTN;
 #ifdef ESPR_BACKLIGHT_FADE
   realLcdBrightness = firstRun ? 0 : lcdBrightness;
   lcdFadeHandlerActive = false;
   jswrap_banglejs_setLCDPowerBacklight(lcdPowerOn);
 #endif
-  lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
-  lcdWakeButton = 0;
+
+  buzzAmt = 0;
+  beepFreq = 0;
+  // Read settings and change beep/buzz behaviour...
+  JsVar *settingsFN = jsvNewFromString("setting.json");
+  JsVar *settings = jswrap_storage_readJSON(settingsFN,true);
+  jsvUnLock(settingsFN);
+  JsVar *v;
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"beep",0) : 0;
+  if (v && jsvGetBool(v)==false) {
+    bangleFlags &= ~JSBF_ENABLE_BEEP;
+  } else {
+    bangleFlags |= JSBF_ENABLE_BEEP;
+#ifdef SPEAKER_PIN
+    if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
+      bangleFlags |= JSBF_BEEP_VIBRATE;
+    else
+      bangleFlags &= ~JSBF_BEEP_VIBRATE;
+#else
+    bangleFlags |= JSBF_BEEP_VIBRATE;
+#endif
+  }
+  jsvUnLock(v);
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"vibrate",0) : 0;
+  if (v && jsvGetBool(v)==false) {
+    bangleFlags &= ~JSBF_ENABLE_BUZZ;
+  } else {
+    bangleFlags |= JSBF_ENABLE_BUZZ;
+  }
+  jsvUnLock(v);
+
+#if LCD_BPP==16
+  graphicsTheme.fg = 0xFFFF;
+  graphicsTheme.bg = 0;
+  graphicsTheme.fg2 = 0xFFFF;
+  graphicsTheme.bg2 = 0x0007;
+  graphicsTheme.fgH = 0xFFFF;
+  graphicsTheme.bgH = 0x02F7;
+#else
+  graphicsTheme.fg = 0;
+  graphicsTheme.bg = 7;
+  graphicsTheme.fg2 = 1;
+  graphicsTheme.bg2 = 7;
+  graphicsTheme.fgH = 0;
+  graphicsTheme.bgH = 5;
+#endif
+  //
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"theme",0) : 0;
+  if (jsvIsObject(v)) {
+    graphicsTheme.fg = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fg",0));
+    graphicsTheme.bg = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bg",0));
+    graphicsTheme.fg2 = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fg2",0));
+    graphicsTheme.bg2 = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bg2",0));
+    graphicsTheme.fgH = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fgH",0));
+    graphicsTheme.bgH = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bgH",0));
+  }
+  jsvUnLock2(v,settings);
+
+
+
 #ifdef LCD_WIDTH
   // Create backing graphics for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
@@ -2427,6 +2516,17 @@ NO_INLINE void jswrap_banglejs_init() {
   fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
   jsvObjectSetChildAndUnLock(graphics,"flip",fn);
 
+  if (!firstRun) {
+    // Not first run - reset the LCD mode if it was set
+#ifdef LCD_CONTROLLER_ST7789_8BIT
+    if (lcdST7789_getMode()!=LCDST7789_MODE_UNBUFFERED) {
+      lcdST7789_setMode( LCDST7789_MODE_UNBUFFERED );
+      // screen will now be garbled - clear it
+      graphicsClear(&gfx);
+    }
+#endif
+  }
+
   bool showSplashScreen = true;
   /* If we're doing a flash load, don't show
   the logo because it'll just get overwritten
@@ -2439,34 +2539,25 @@ NO_INLINE void jswrap_banglejs_init() {
   // don't show splash screen unless the watch has been totally reset - stops flicker on boot
   if (!(jsiStatus & JSIS_COMPLETELY_RESET))
     showSplashScreen = false;
-  if (showSplashScreen)
 #endif
-  graphicsClear(&gfx);
   if (showSplashScreen) {
+    graphicsClear(&gfx);
     bool drawInfo = false;
     JsVar *img = jsfReadFile(jsfNameFromString(".splash"),0,0);
     int w,h;
-    JsVar *imgopts = 0;
     if (!jsvIsString(img) || !jsvGetStringLength(img)) {
       jsvUnLock(img);
       drawInfo = true;
       img = jswrap_banglejs_getLogo();
-      w = 222;
-      h = 104;
-#if LCD_WIDTH < 222
-      w /=2;
-      imgopts = jsvNewObject();
-      jsvObjectSetChildAndUnLock(imgopts, "scale", jsvNewFromFloat(0.5));
-#endif
-    } else {
-      w = (int)(unsigned char)jsvGetCharInString(img, 0);
-      h = (int)(unsigned char)jsvGetCharInString(img, 1);
     }
+    w = (int)(unsigned char)jsvGetCharInString(img, 0);
+    h = (int)(unsigned char)jsvGetCharInString(img, 1);
     graphicsSetVar(&gfx);
     int y=(LCD_HEIGHT-h)/2;
-    jsvUnLock3(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,imgopts),img,imgopts);
+    jsvUnLock2(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,NULL),img);
     if (drawInfo) {
-      y += h-28;
+      if (h > 56) y += h-28;
+      else y += h-15;
       char addrStr[20];
 #ifndef EMSCRIPTEN
       JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
@@ -2581,8 +2672,11 @@ NO_INLINE void jswrap_banglejs_init() {
     jswrap_banglejs_compassWr(0x31,0); // power down mode
 #endif
     bangleFlags &= ~JSBF_COMPASS_ON;
+    // ensure compass readings are reset to power-on state
+    jswrap_banglejs_resetCompass();
 #endif
   } // firstRun
+
   i2cBusy = false;
   // Other IO
 #ifdef BAT_PIN_CHARGING
@@ -2628,7 +2722,6 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
 #endif
 
-
 #ifdef SMAQ3
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   fakeBTN2Flags = jshPinWatch(BTN1_PININDEX, true);
@@ -2661,35 +2754,6 @@ NO_INLINE void jswrap_banglejs_init() {
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn5Handler);
 #endif
 #endif
-
-  buzzAmt = 0;
-  beepFreq = 0;
-  // Read settings and change beep/buzz behaviour...
-  JsVar *settingsFN = jsvNewFromString("setting.json");
-  JsVar *settings = jswrap_storage_readJSON(settingsFN,true);
-  JsVar *v;
-  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"beep",0) : 0;
-  if (v && jsvGetBool(v)==false) {
-    bangleFlags &= ~JSBF_ENABLE_BEEP;
-  } else {
-    bangleFlags |= JSBF_ENABLE_BEEP;
-#ifdef SPEAKER_PIN
-    if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
-      bangleFlags |= JSBF_BEEP_VIBRATE;
-    else
-      bangleFlags &= ~JSBF_BEEP_VIBRATE;
-#else
-    bangleFlags |= JSBF_BEEP_VIBRATE;
-#endif
-  }
-  jsvUnLock(v);
-  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"vibrate",0) : 0;
-  if (v && jsvGetBool(v)==false) {
-    bangleFlags &= ~JSBF_ENABLE_BUZZ;
-  } else {
-    bangleFlags |= JSBF_ENABLE_BUZZ;
-  }
-  jsvUnLock3(v,settings,settingsFN);
 
   /* If this isn't our first run, schedule this function 500ms
    * after everything is loaded. It'll then check whether any
@@ -2725,10 +2789,13 @@ void jswrap_banglejs_kill() {
     lcdFadeHandlerActive = false;
   }
 #endif
+  // stop and unlock beep & buzz
   jsvUnLock(promiseBeep);
   promiseBeep = 0;
   jsvUnLock(promiseBuzz);
   promiseBuzz = 0;
+  if (beepFreq) jswrap_banglejs_beep_callback();
+  if (buzzAmt) jswrap_banglejs_buzz_callback();
 #ifdef PRESSURE_I2C
   jsvUnLock(promisePressure);
   promisePressure = 0;
@@ -2773,7 +2840,7 @@ bool jswrap_banglejs_idle() {
   else
     bangleFlags &= ~JSBF_ACCEL_LISTENER;
 #ifdef HEARTRATE
-  if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"HRMi"))
+  if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"HRM-raw"))
     bangleFlags |= JSBF_HRM_INSTANT_LISTENER;
   else
     bangleFlags &= ~JSBF_HRM_INSTANT_LISTENER;
@@ -2883,7 +2950,7 @@ bool jswrap_banglejs_idle() {
         jsvObjectSetChildAndUnLock(o,"t",jsvNewFromInteger(hrmInfo.timeSinceBeat));
         jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(hrmInfo.bpm10 / 10.0));
         jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
-        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRMi", &o, 1);
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM-raw", &o, 1);
         jsvUnLock(o);
       }
     }
@@ -3010,9 +3077,12 @@ bool jswrap_banglejs_idle() {
       }
     }
     if (bangleTasks & JSBT_SWIPE_MASK) {
-      JsVar *o = jsvNewFromInteger((bangleTasks & JSBT_SWIPE_LEFT)?-1:1);
-      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"swipe", &o, 1);
-      jsvUnLock(o);
+      JsVar *o[2] = {
+          jsvNewFromInteger((bangleTasks & JSBT_SWIPE_LEFT)?-1:((bangleTasks & JSBT_SWIPE_RIGHT)?1:0)),
+          jsvNewFromInteger((bangleTasks & JSBT_SWIPE_UP)?-1:((bangleTasks & JSBT_SWIPE_DOWN)?1:0)),
+      };
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"swipe", o, 2);
+      jsvUnLockMany(2,o);
     }
     if (bangleTasks & JSBT_TOUCH_MASK) {
       JsVar *o = jsvNewFromInteger(((bangleTasks & JSBT_TOUCH_LEFT)?1:0) |
@@ -3039,10 +3109,6 @@ bool jswrap_banglejs_idle() {
   }
   jsvUnLock(graphics);
 #endif
-#ifdef LCD_CONTROLLER_LPM013M126
-  // toggle EXTCOMIN to avoid burn-in
-    lcdMemLCD_extcomin();
-#endif
 #ifdef ESPR_BACKLIGHT_FADE
   if (lcdFadeHandlerActive && realLcdBrightness == (lcdPowerOn?lcdBrightness:0)) {
     jstStopExecuteFn(backlightFadeHandler, NULL);
@@ -3050,6 +3116,17 @@ bool jswrap_banglejs_idle() {
     if (!lcdPowerOn) jswrap_banglejs_setLCDPowerController(0);
   }
 #endif
+  // resolve any beep/buzz promises
+  if (promiseBuzz && !buzzAmt) {
+    jspromise_resolve(promiseBuzz, 0);
+    jsvUnLock(promiseBuzz);
+    promiseBuzz = 0;
+  }
+  if (promiseBeep && !beepFreq) {
+    jspromise_resolve(promiseBeep, 0);
+    jsvUnLock(promiseBeep);
+    promiseBeep = 0;
+  }
 
   return false;
 }
@@ -3221,11 +3298,7 @@ JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt) {
   if (cnt>(int)sizeof(buf)) cnt=sizeof(buf);
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
-#ifdef ACCEL_DEVICE_KX126
   jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
-#else
-  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, true);
-#endif
   jsi2cRead(ACCEL_I2C, ACCEL_ADDR, (cnt==0)?1:cnt, buf, true);
   i2cBusy = false;
   if (cnt) {
@@ -3285,7 +3358,7 @@ JsVar *jswrap_banglejs_barometerRd(JsVarInt reg, JsVarInt cnt) {
   if (cnt>(int)sizeof(buf)) cnt=sizeof(buf);
   buf[0] = (unsigned char)reg;
   i2cBusy = true;
-  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, (cnt==0)?1:cnt, buf, true);
   i2cBusy = false;
   if (cnt) {
@@ -3382,7 +3455,7 @@ bool jswrap_banglejs_barometerPoll() {
   // wait 100ms
   jshDelayMicroseconds(100*1000); // we should really have a callback
   // READ_PT
-  buf[0] = 0x10; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  buf[0] = 0x10; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
   int temperature = (buf[0]<<16)|(buf[1]<<8)|buf[2];
   if (temperature&0x800000) temperature-=0x1000000;
@@ -3390,7 +3463,7 @@ bool jswrap_banglejs_barometerPoll() {
   barometerTemperature = temperature/100.0;
   barometerPressure = pressure/100.0;
 
-  buf[0] = 0x31; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // READ_A
+  buf[0] = 0x31; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // READ_A
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 3, buf, true);
   int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
   if (altitude&0x800000) altitude-=0x1000000;
@@ -3402,7 +3475,7 @@ bool jswrap_banglejs_barometerPoll() {
   unsigned char buf[6];
 
   // status values
-  buf[0] = SPL06_MEASCFG; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  buf[0] = SPL06_MEASCFG; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
   int status = buf[0];
   if ((status & 0b00110000) != 0b00110000) {
@@ -3411,7 +3484,7 @@ bool jswrap_banglejs_barometerPoll() {
   }
 
   // raw values
-  buf[0] = SPL06_PRSB2; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  buf[0] = SPL06_PRSB2; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
   int praw = (buf[0]<<16)|(buf[1]<<8)|buf[2];
   praw = twosComplement(praw, 24);
@@ -3432,7 +3505,7 @@ bool jswrap_banglejs_barometerPoll() {
 #endif
 #ifdef PRESSURE_DEVICE_BMP280
   unsigned char buf[8];
-  buf[0] = 0xF7; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // READ_A
+  buf[0] = 0xF7; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // READ_A
   jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
   int uncomp_pres = (buf[0] << 12) | (buf[1] << 4) | (buf[2] >> 4);
   int uncomp_temp = (buf[3] << 12) | (buf[4] << 4) | (buf[5] >> 4);
@@ -3601,10 +3674,7 @@ void jswrap_banglejs_beep_callback() {
     jshPinSetState(SPEAKER_PIN, JSHPINSTATE_GPIO_IN);
 #endif
   }
-
-  jspromise_resolve(promiseBeep, 0);
-  jsvUnLock(promiseBeep);
-  promiseBeep = 0;
+  jshHadEvent();
 }
 
 JsVar *jswrap_banglejs_beep(int time, int freq) {
@@ -3613,8 +3683,13 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
   if (time<=0) time=200;
   if (time>5000) time=5000;
   if (promiseBeep) {
-    jsExceptionHere(JSET_ERROR, "Beep in progress");
-    return 0;
+    JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_banglejs_beep, JSWAT_JSVAR|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_INT32<<(JSWAT_BITS*2)));
+    JsVar *v;
+    v=jsvNewFromInteger(time);jsvAddFunctionParameter(fn, 0, v);jsvUnLock(v); // bind param 1
+    v=jsvNewFromInteger(freq);jsvAddFunctionParameter(fn, 0, v);jsvUnLock(v); // bind param 2
+    JsVar *promise = jswrap_promise_then(promiseBeep, fn, NULL);
+    jsvUnLock(fn);
+    return promise;
   }
   promiseBeep = jspromise_create();
   if (!promiseBeep) return 0;
@@ -3629,7 +3704,7 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
 #endif
     }
   }
-  jsiSetTimeout(jswrap_banglejs_beep_callback, time);
+  jstExecuteFn(jswrap_banglejs_beep_callback, NULL, jshGetSystemTime()+jshGetTimeFromMilliseconds(time), 0);
   return jsvLockAgain(promiseBeep);
 }
 
@@ -3651,10 +3726,7 @@ Use the vibration motor to buzz for a certain time period
 void jswrap_banglejs_buzz_callback() {
   buzzAmt = 0;
   _jswrap_banglejs_setVibration();
-
-  jspromise_resolve(promiseBuzz, 0);
-  jsvUnLock(promiseBuzz);
-  promiseBuzz = 0;
+  jshHadEvent();
 }
 
 JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
@@ -3663,8 +3735,13 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
   if (time<=0) time=200;
   if (time>5000) time=5000;
   if (promiseBuzz) {
-    jsExceptionHere(JSET_ERROR, "Buzz in progress");
-    return 0;
+    JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_banglejs_buzz, JSWAT_JSVAR|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_JSVARFLOAT<<(JSWAT_BITS*2)));
+    JsVar *v;
+    v=jsvNewFromInteger(time);jsvAddFunctionParameter(fn, 0, v);jsvUnLock(v); // bind param 1
+    v=jsvNewFromFloat(amt);jsvAddFunctionParameter(fn, 0, v);jsvUnLock(v); // bind param 2
+    JsVar *promise = jswrap_promise_then(promiseBuzz, fn, NULL);
+    jsvUnLock(fn);
+    return promise;
   }
   promiseBuzz = jspromise_create();
   if (!promiseBuzz) return 0;
@@ -3674,7 +3751,7 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
     _jswrap_banglejs_setVibration();
   }
 
-  jsiSetTimeout(jswrap_banglejs_buzz_callback, time);
+  jstExecuteFn(jswrap_banglejs_buzz_callback, NULL, jshGetSystemTime()+jshGetTimeFromMilliseconds(time), 0);
   return jsvLockAgain(promiseBuzz);
 }
 
@@ -3687,7 +3764,13 @@ static void jswrap_banglejs_periph_off() {
   jswrap_banglejs_pwrGPS(false); // GPS off
 #endif
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
-  jswrap_banglejs_setLCDPower(0);
+  //jswrap_banglejs_setLCDPower calls JS events (and sometimes timers), so avoid it and manually turn controller + backlight off:
+  jswrap_banglejs_setLCDPowerController(0);
+  jswrap_banglejs_pwrBacklight(0);
+#ifdef LCD_CONTROLLER_LPM013M126
+  jshPinOutput(LCD_EXTCOMIN,0);
+  jshPinOutput(LCD_DISP,0);
+#endif
 #ifdef ACCEL_DEVICE_KX023
   jswrap_banglejs_accelWr(0x18,0x0a); // accelerometer off
 #endif
@@ -3707,6 +3790,7 @@ static void jswrap_banglejs_periph_off() {
   jswrap_banglejs_barometerWr(0xF4, 0); // Barometer off
 #endif
 
+
 #ifdef BTN2_PININDEX
   nrf_gpio_cfg_sense_set(pinInfo[BTN2_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
 #endif
@@ -3716,16 +3800,17 @@ static void jswrap_banglejs_periph_off() {
 #ifdef BTN4_PININDEX
   nrf_gpio_cfg_sense_set(pinInfo[BTN4_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
 #endif
+
+  jsiKill();
+  jsvKill();
+  jshKill();
+
   /* The low power pin watch code (nrf_drv_gpiote_in_init) somehow causes
   the sensing to be disabled such that nrf_gpio_cfg_sense_set(pin, NRF_GPIO_PIN_SENSE_LOW)
   no longer works. To work around this we just call our standard pin watch function
   to re-enable everything. */
   jshPinWatch(BTN1_PININDEX, true);
-
-
-  jsiKill();
-  jsvKill();
-  jshKill();
+  nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
 #endif
@@ -3743,7 +3828,11 @@ Turn Bangle.js off. It can only be woken by pressing BTN1.
 */
 void jswrap_banglejs_off() {
 #ifndef EMSCRIPTEN
+  // If BTN1 is pressed wait until it is released
+  while (jshPinGetValue(BTN1_PININDEX));
+  // turn peripherals off
   jswrap_banglejs_periph_off();
+  // system off
   sd_power_system_off();
   while(1);
 #else
@@ -3763,8 +3852,9 @@ mode until BTN1 is pressed to preserve the RTC (current time).
 */
 void jswrap_banglejs_softOff() {
 #ifndef EMSCRIPTEN
-  // Wait if BTN1 is pressed until it is released
+  // If BTN1 is pressed wait until it is released
   while (jshPinGetValue(BTN1_PININDEX));
+  // turn BLE and peripherals off
   jswrap_ble_sleep();
   jswrap_banglejs_periph_off();
   jshDelayMicroseconds(100000); // wait 100ms for any button bounce to disappear
@@ -3773,13 +3863,13 @@ void jswrap_banglejs_softOff() {
   // keep sleeping until a button is pressed
   jshKickWatchDog();
   do {
-    // sleep until BTN1 pressed
+  // sleep until BTN1 pressed
   while (!jshPinGetValue(BTN1_PININDEX)) {
     jshKickWatchDog();
     jshSleep(jshGetTimeFromMilliseconds(4*1000));
   }
-    // wait for button to be pressed for at least 1 second
-    int timeout = 1000;
+    // wait for button to be pressed for at least 200ms
+    int timeout = 200;
     while (jshPinGetValue(BTN1_PININDEX) && timeout--)
       nrf_delay_ms(1);
     // if button not pressed, keep sleeping
@@ -3797,11 +3887,15 @@ void jswrap_banglejs_softOff() {
     "class" : "Bangle",
     "name" : "getLogo",
     "generate" : "jswrap_banglejs_getLogo",
-    "return" : ["JsVar", "An image to be used with `g.drawImage` - 222 x 104 x 2 bits" ],
+    "return" : ["JsVar", "An image to be used with `g.drawImage` (as a String)" ],
     "ifdef" : "BANGLEJS"
 }
+
+* On platforms with an LCD of >=8bpp this is 222 x 104 x 2 bits
+* Otherwise it's 119 x 56 x 1 bits
 */
 JsVar *jswrap_banglejs_getLogo() {
+#if LCD_BPP>=8
   const unsigned char img_compressed[1419] = { // 222 x 104 x 2 bits
       239, 90, 32, 66, 218, 160, 95, 240, 0, 127, 211, 46, 19, 241, 184, 159, 1,
           181, 240, 177, 176, 159, 243, 118, 3, 97, 126, 131, 107, 225, 227,
@@ -3894,9 +3988,40 @@ JsVar *jswrap_banglejs_getLogo() {
           118, 208, 243, 119, 159, 131, 118, 216, 3, 119, 230, 235, 104, 3, 123,
           247, 227, 97, 62, 3, 107, 224, 102, 225, 70, 215, 192, 35, 227, 97,
           58, 0, 177, 0
- };
+  };
+#else
+  const unsigned char img_compressed[467] = { // 119 x 56 x 1 bits
+    187, 206, 32, 32, 210, 160, 63, 255, 128, 112, 184, 63, 255, 192, 14, 46,
+        30, 14, 54, 63, 255, 224, 3, 139, 159, 255, 240, 0, 226, 239, 255, 243,
+        57, 159, 255, 240, 52, 179, 56, 63, 195, 57, 191, 131, 57, 168, 83, 12,
+        224, 157, 140, 51, 130, 14, 48, 206, 10, 20, 184, 15, 226, 62, 14, 33,
+        28, 20, 63, 1, 7, 240, 95, 194, 2, 185, 131, 158, 64, 32, 126, 12, 5, 0,
+        28, 36, 8, 6, 17, 148, 24, 15, 132, 74, 24, 0, 40, 32, 128, 33, 56, 48,
+        30, 16, 56, 104, 66, 76, 32, 16, 52, 30, 32, 208, 48, 0, 81, 0, 16, 49,
+        192, 224, 56, 28, 64, 208, 48, 0, 82, 0, 16, 51, 2, 0, 48, 60, 128, 148,
+        32, 0, 101, 0, 146, 32, 194, 32, 114, 1, 40, 71, 97, 96, 32, 32, 102,
+        16, 122, 1, 156, 82, 8, 80, 49, 16, 80, 229, 40, 49, 254, 69, 254, 1,
+        126, 161, 64, 255, 16, 224, 152, 80, 208, 136, 52, 10, 135, 6, 7, 2,
+        194, 66, 35, 5, 128, 96, 208, 8, 241, 168, 24, 5, 134, 3, 12, 129, 194,
+        36, 17, 130, 192, 37, 80, 84, 192, 209, 32, 20, 40, 20, 64, 2, 14, 2,
+        33, 96, 54, 5, 56, 128, 98, 32, 24, 72, 36, 130, 9, 33, 5, 130, 162, 4,
+        170, 13, 194, 3, 16, 128, 194, 33, 24, 8, 69, 15, 255, 193, 51, 131, 8,
+        128, 248, 32, 82, 1, 64, 49, 21, 16, 56, 67, 56, 56, 8, 12, 162, 7, 192,
+        130, 80, 5, 64, 138, 65, 144, 145, 65, 96, 3, 2, 192, 65, 132, 192, 128,
+        65, 160, 80, 137, 160, 166, 193, 50, 131, 4, 240, 71, 72, 32, 224, 38,
+        24, 12, 52, 7, 9, 16, 134, 67, 7, 64, 216, 39, 74, 176, 112, 26, 24, 12,
+        26, 11, 8, 136, 76, 16, 160, 197, 40, 22, 127, 244, 3, 252, 118, 6, 15,
+        242, 136, 71, 248, 17, 136, 4, 158, 2, 107, 4, 0, 36, 16, 6, 18, 4, 26,
+        3, 16, 32, 0, 143, 48, 193, 192, 224, 24, 128, 186, 197, 78, 130, 14, 9,
+        158, 8, 68, 23, 88, 175, 48, 239, 0, 32, 126, 0, 225, 112, 32, 80, 193,
+        192, 193, 201, 35, 127, 0, 129, 223, 32, 19, 242, 72, 192, 1, 39, 240,
+        63, 192, 56, 207, 255, 128, 28, 93, 255, 254, 58, 24, 0, 47, 255, 254,
+        13, 46, 3, 255, 87, 130, 0, 42, 7, 255, 47, 136, 14, 36, 176, 100, 31,
+        254, 147, 20, 0, 52, 60, 206, 108, 124, 206, 106, 20, 28, 2, 20, 208,
+        105, 104, 80, 76, 230, 3, 129, 51, 130 };
+#endif
   JsVar *v = jsvNewNativeString((char*)&img_compressed[0], sizeof(img_compressed));
-  JsVar *img = jswrap_heatshrink_decompress(v);
+  JsVar *img = jsvGetArrayBufferBackingString(jswrap_heatshrink_decompress(v));
   jsvUnLock(v);
   return img;
 }
@@ -4067,13 +4192,7 @@ The second `options` argument can contain:
 
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showMenu", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showMenu_SMAQ3.js",
-    "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
-}
-*/
-/*JSON{
-    "type" : "staticmethod", "class" : "E", "name" : "showPrompt", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showPrompt_SMAQ3.js",
+    "generate_js" : "libs/js/banglejs/E_showMenu_SMAQ3.min.js",
     "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
 }
 */
@@ -4193,5 +4312,29 @@ This is a fake pin, used only for injecting 'fake' button press events from the 
   "generate_full" : "BTN1_PININDEX",
   "ifdef" : "SMAQ3",
   "return" : ["pin",""]
+}
+*/
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setUI",
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_F18.js",
+    "params" : [
+      ["type","JsVar","The typeof UI input: 'updown', 'leftright' or undefined to cancel"],
+      ["callback","JsVar","A function with one argument which is the direction"]
+    ],
+    "ifdef" : "BANGLEJS"
+}
+This puts Bangle.js into a UI input mode, buzzes when each input is made, and calls the callback provided
+
+While you could use setWatch/etc manually, the benefit here is that you don't end up with multiple `setWatch` instances, and
+the actual input method (touch, or buttons) is implemented dependent on the watch (Bangle.js 1 or 2)
+*/
+/*JSON{
+    "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_SMAQ3.js",
+    "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
 }
 */

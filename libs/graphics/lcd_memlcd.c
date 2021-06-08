@@ -20,11 +20,13 @@
 
 // ======================================================================
 
-#define LCD_STRIDE (2+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
-unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/];
-lcdMemLCDMode lcdMode = MEMLCD_MODE_NORMAL;
-
 #define LCD_SPI EV_SPI1
+#define LCD_ROWHEADER 2
+#define LCD_STRIDE (LCD_ROWHEADER+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
+
+unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/];
+bool isBacklightOn;
+
 
 
 
@@ -32,13 +34,13 @@ lcdMemLCDMode lcdMode = MEMLCD_MODE_NORMAL;
 
 unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 #if LCD_BPP==3
-  int bitaddr = 2*8 + (x*3) + (y*LCD_STRIDE*8);
+  int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
   int bit = bitaddr&7;
   uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]); // get in MSB format
   return ((b<<bit) & 0xE000) >> 13;
 #endif
 #if LCD_BPP==4
-  int addr = 2 + (x>>1) + (y*LCD_STRIDE);
+  int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
   unsigned char b = lcdBuffer[addr];
   return (x&1) ? (b&15) : (b>>4);
 #endif
@@ -47,32 +49,36 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 
 void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 #if LCD_BPP==3
-  int bitaddr = 2*8 + (x*3) + (y*LCD_STRIDE*8);
+  int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
   int bit = bitaddr&7;
   uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]);
   b = (b & (~(0xE000>>bit))) | ((col&7)<<(13-bit));
   *(uint16_t*)&lcdBuffer[bitaddr>>3] = __builtin_bswap16(b);
 #endif
 #if LCD_BPP==4
-  int addr = 2 + (x>>1) + (y*LCD_STRIDE);
+  int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
   if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (col&0x0F);
   else lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (col << 4);
 #endif
 }
 
-// -----------------------------------------------------------------------------
-
-void lcdMemLCD_setPixel240(JsGraphics *gfx, int x, int y, unsigned int col) {
-  x = (x*LCD_WIDTH) / 240;
-  y = (y*LCD_HEIGHT) / 240;
-  if (x<0 || y<0 || x>=LCD_WIDTH || y>=LCD_HEIGHT) return;
-  unsigned int b = col;
-  unsigned int br = (b>>11)&0x1F;
-  unsigned int bg = (b>>5)&0x3F;
-  unsigned int bb = b&0x1F;
-  // TODO: dither?
-  col = ((br>15)?4:0) | ((bg>31)?2:0) | ((bb>15)?1:0);
-  lcdMemLCD_setPixel(gfx,x,y,col);
+void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
+  // if we have to shift X, go with the slow method
+  if (xdir) return graphicsFallbackScroll(gfx, xdir, ydir, x1,y1,x2,y2);
+  // otherwise use memcpy
+  int xl = ((x2+1-x1)*LCD_BPP+7)>>3;
+  int xo = LCD_ROWHEADER + ((x1*LCD_BPP+7)>>3);
+  if (ydir<0) {
+    for (int y=y1;y<y2+ydir;y++) {
+      int yx = y-ydir;
+      memcpy(&lcdBuffer[y*LCD_STRIDE + xo],&lcdBuffer[yx*LCD_STRIDE + xo],xl);
+    }
+  } else if (ydir>0) {
+    for (int y=y2-ydir-1;y>=y1;y--) {
+      int yx = y+ydir;
+      memcpy(&lcdBuffer[yx*LCD_STRIDE + xo],&lcdBuffer[y*LCD_STRIDE + xo],xl);
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -82,12 +88,6 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
 
   int y1 = gfx->data.modMinY;
   int y2 = gfx->data.modMaxY;
-
-  if (lcdMode==MEMLCD_MODE_240x240) {
-    y1 = (y1*LCD_HEIGHT) / 240;
-    y2 = (y2*LCD_HEIGHT) / 240;
-  }
-
   int l = 1+y2-y1;
 
   jshPinSetValue(LCD_SPI_CS, 1);
@@ -131,23 +131,30 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   jshSPISetup(LCD_SPI, &inf);
 }
 
-void lcdMemLCD_setMode(lcdMemLCDMode mode) {
-  lcdMode = mode;
+// toggle EXTCOMIN to avoid burn-in
+void lcdMemLCD_extcominToggle() {
+  if (!isBacklightOn) {
+    jshPinSetValue(LCD_EXTCOMIN, 1);
+    jshPinSetValue(LCD_EXTCOMIN, 0);
+  }
 }
 
-// toggle EXTCOMIN to avoid burn-in
-void lcdMemLCD_extcomin() {
-  static bool extcomin = false;
-  extcomin = !extcomin;
-  jshPinSetValue(LCD_EXTCOMIN, extcomin);
+// If backlight is on, we need to raise EXTCOMIN freq (use HW PWM)
+void lcdMemLCD_extcominBacklight(bool isOn) {
+  if (isBacklightOn != isOn) {
+    isBacklightOn = isOn;
+    if (isOn) {
+      jshPinAnalogOutput(LCD_EXTCOMIN, 0.05, 120, JSAOF_NONE);
+    } else {
+      jshPinOutput(LCD_EXTCOMIN, 0);
+    }
+  }
+
 }
 
 void lcdMemLCD_setCallbacks(JsGraphics *gfx) {
-  if (lcdMode==MEMLCD_MODE_NORMAL) {
-    gfx->setPixel = lcdMemLCD_setPixel;
-    gfx->getPixel = lcdMemLCD_getPixel;
-  } else if (lcdMode==MEMLCD_MODE_240x240) {
-    gfx->setPixel = lcdMemLCD_setPixel240;
-  }
+  gfx->setPixel = lcdMemLCD_setPixel;
+  gfx->getPixel = lcdMemLCD_getPixel;
+  gfx->scroll = lcdMemLCD_scroll;
 }
 
