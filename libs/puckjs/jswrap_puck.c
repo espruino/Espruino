@@ -280,16 +280,16 @@ bool mag_on(int milliHz, bool instant) {
     if (instant) milliHz = 80000;
     bool lowPower = false;
     int reg1 = 0x80; // temp sensor, low power
-    if (milliHz == 80000) reg1 = 7<<2; // 900uA
-    else if (milliHz == 40000) reg1 = 6<<2; // 550uA
-    else if (milliHz == 20000) reg1 = 5<<2; // 275uA
-    else if (milliHz == 10000) reg1 = 4<<2; // 137uA
-    else if (milliHz == 5000) reg1 = 3<<2; // 69uA
-    else if (milliHz == 2500) reg1 = 2<<2; // 34uA
-    else if (milliHz == 1250) reg1 = 1<<2; // 17uA
+    if (milliHz == 80000) reg1 |= 7<<2; // 900uA
+    else if (milliHz == 40000) reg1 |= 6<<2; // 550uA
+    else if (milliHz == 20000) reg1 |= 5<<2; // 275uA
+    else if (milliHz == 10000) reg1 |= 4<<2; // 137uA
+    else if (milliHz == 5000) reg1 |= 3<<2; // 69uA
+    else if (milliHz == 2500) reg1 |= 2<<2; // 34uA
+    else if (milliHz == 1250) reg1 |= 1<<2; // 17uA
     else if (milliHz <= 630) { /*if (milliHz == 630 || milliHz == 625)*/
       // We just go for the lowest power mode
-      reg1 = 0<<2; // 8uA
+      reg1 |= 0<<2; // 8uA
       lowPower = true;
     }
     else return false;
@@ -411,7 +411,7 @@ void mag_read() {
   }
 }
 
-// Get temperature, shifted right 8 bits
+// Get temperature, shifted left 8 bits
 int mag_read_temp() {
   unsigned char buf[2];
   if (puckVersion == PUCKJS_1V0) { // MAG3110
@@ -420,7 +420,8 @@ int mag_read_temp() {
   } else if (puckVersion == PUCKJS_2V0) { // LIS3MDL
     mag_rd(0x2E, buf, 2); // TEMP_OUT_L
     int16_t t = buf[0] | (buf[1]<<8);
-    return (int)t;
+    // 20 degree offset based on tests here
+    return (int)(t >> 3) + (20 << 8);
   } else if (puckVersion == PUCKJS_2V1) { // MMC5603NJ
     mag_wr(0x1B, 0x02); // Take temperature measurement
     // Wait for completion
@@ -634,14 +635,14 @@ The reading obtained is an integer (so no decimal places), but the sensitivity i
 offset isn't - so absolute readings may still need calibrating.
 */
 JsVarFloat jswrap_puck_magTemp() {
-  JsVarInt t;
+  int t;
   if (!mag_enabled) {
     mag_on(0, true /*instant*/); // takes a reading right away
     t = mag_read_temp();
     mag_off();
   } else
     t = mag_read_temp();
-  return t / 256.0;
+  return ((JsVarFloat)t) / 256.0;
 }
 
 /*JSON{
