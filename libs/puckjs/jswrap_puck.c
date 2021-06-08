@@ -34,7 +34,7 @@
 #include "app_timer.h"
 
 #define MAG3110_ADDR 0x0E
-#define LIS3MDL_ADDR MAG_ADDR
+#define LIS3MDL_ADDR 0x1E // MAG_ADDR
 #define MMC5603NJ_ADDR 0x30
 #define I2C_TIMEOUT 100000
 
@@ -251,12 +251,13 @@ void mag_pin_on() {
   }
 }
 
-// Turn magnetometer on and configure
-bool mag_on(int milliHz) {
+// Turn magnetometer on and configure. If instant=true we take a reading right away
+bool mag_on(int milliHz, bool instant) {
   //jsiConsolePrintf("mag_on\n");
   mag_pin_on();
   if (puckVersion == PUCKJS_1V0) { // MAG3110
     jshDelayMicroseconds(2500); // 1.7ms from power on to ok
+    if (instant) milliHz = 80000;
     int reg1 = 0;
     if (milliHz == 80000) reg1 |= (0x00)<<3; // 900uA
     else if (milliHz == 40000) reg1 |= (0x04)<<3; // 550uA
@@ -277,6 +278,7 @@ bool mag_on(int milliHz) {
     mag_wr(0x10, reg1);
   } else if (puckVersion == PUCKJS_2V0) { // LIS3MDL
     jshDelayMicroseconds(10000); // takes ages to start up
+    if (instant) milliHz = 80000;
     bool lowPower = false;
     int reg1 = 0x80; // temp sensor, low power
     if (milliHz == 80000) reg1 = 7<<2; // 900uA
@@ -303,7 +305,7 @@ bool mag_on(int milliHz) {
     int hz = (milliHz+500) / 1000;
     if (hz<1) hz=1;
     bool highPower = false; // for 1kHz
-    if (hz>255) {
+    if (instant || hz>255) {
       hz=255; // max speed in default mode
       highPower = true;
     }
@@ -338,9 +340,21 @@ bool mag_on(int milliHz) {
     mag_reading[1]=0;
     mag_reading[2]=0;*/
 
+    // read data anyway, to ensure data ready status bit it cleared
+    mag_read();
 
-    app_timer_start(m_poll_timer_id, APP_TIMER_TICKS(1000000 / milliHz, APP_TIMER_PRESCALER), NULL);
-  } else jsWarn("Unknown Puck version!");
+    if (!instant) // if we're instant, don't start a timer as we just want to read in the main thread
+      app_timer_start(m_poll_timer_id, APP_TIMER_TICKS(1000000 / milliHz, APP_TIMER_PRESCALER), NULL);
+  } else {
+    jsWarn("Unknown Puck version!");
+    return false;
+  }
+
+  if (instant) {
+    mag_wait();
+    mag_read();
+  }
+
   return true;
 }
 
@@ -387,11 +401,11 @@ void mag_read() {
     mag_reading[1] = (int16_t)((buf[2]<<8) | buf[3]);
     mag_reading[2] = (int16_t)((buf[4]<<8) | buf[5]);
   } else if (puckVersion == PUCKJS_2V1) { // MMC5603NJ
-    /*mag_rd(0, buf, 9);
+    /*mag_rd(0x00, buf, 9);
     mag_reading[0] = ((buf[0]<<12) | (buf[1]<<4) | (buf[6]>>4)) - (1<<19);
     mag_reading[1] = ((buf[2]<<12) | (buf[3]<<4) | (buf[7]>>4)) - (1<<19);
     mag_reading[2] = ((buf[4]<<12) | (buf[5]<<4) | (buf[8]>>4)) - (1<<19);*/
-    mag_rd(0, buf, 6);
+    mag_rd(0x00, buf, 6);
     mag_reading[0] = ((buf[0]<<8) | buf[1]) - 32768;
     mag_reading[1] = ((buf[2]<<8) | buf[3]) - 32768;
     mag_reading[2] = ((buf[4]<<8) | buf[5]) - 32768;
@@ -590,11 +604,11 @@ JsVar *jswrap_puck_mag() {
   /* If not enabled, turn on and read. If enabled,
    * just pass out the last reading */
   if (!mag_enabled) {
-    mag_on(80000); // TODO: ability to force a measurement right away?
-    mag_wait();
-    mag_read();
+    mag_on(0, true /*instant*/); // takes a reading right away
     mag_off();
   } else if (puckVersion == PUCKJS_2V1) { // MMC5603NJ
+    // magnetometer is on, but let's poll it quickly
+    // to see if we have any new data
     unsigned char buf[1];
     mag_rd(0x18, buf, 1); // Status
     if (buf[0]&0x40) // check for Meas_m_done
@@ -623,8 +637,7 @@ offset isn't - so absolute readings may still need calibrating.
 JsVarFloat jswrap_puck_magTemp() {
   JsVarInt t;
   if (!mag_enabled) {
-    mag_on(80000);
-    mag_wait();
+    mag_on(0, true /*instant*/); // takes a reading right away
     t = mag_read_temp();
     mag_off();
   } else
@@ -645,7 +658,6 @@ as integers (for more information see `Puck.mag()`).
 
 Check out [the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals)
 for more information.
-
  */
 
 /*JSON{
@@ -720,16 +732,19 @@ void jswrap_puck_magOn(JsVarFloat hz) {
   }
   int milliHz = (int)((hz*1000)+0.5);
   if (milliHz<=0) milliHz=630;
-  if (!mag_on(milliHz)) {
+  if (!mag_on(milliHz, false /*not instant*/)) {
     jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - must be 80, 40, 20, 10, 5, 2.5, 1.25, 0.63, 0.31, 0.16 or 0.08 Hz", hz);
   }
+  /* Setting a watch will push an event which will let Espruino
+   * go around the idle loop and call jswrap_puck_idle - which
+   * is where we actually collect the data. */
   if (puckVersion == PUCKJS_1V0) {
     jshPinWatch(MAG_PIN_INT, true);
     jshPinSetState(MAG_PIN_INT, JSHPINSTATE_GPIO_IN);
   } else if (puckVersion == PUCKJS_2V0) {
     jshPinWatch(MAG_PIN_DRDY, true);
     jshPinSetState(MAG_PIN_DRDY, JSHPINSTATE_GPIO_IN);
-  } // 2v1 doesn't have an IRQ line
+  } // 2v1 doesn't have an IRQ line - we poll with peripheralPollHandler
   mag_enabled = true;
 }
 
@@ -1388,9 +1403,7 @@ bool jswrap_puck_selfTest() {
   jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN);
   jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN);
 
-  mag_on(80000);
-  mag_wait();
-  mag_read();
+  mag_on(0, true /*instant*/); // takes a reading right away
   mag_off();
   mag_enabled = false;
   if (mag_reading[0]==-1 && mag_reading[1]==-1 && mag_reading[2]==-1) {
@@ -1499,13 +1512,13 @@ void jswrap_puck_init() {
   unsigned char buf[2];
   puckVersion = PUCKJS_1V0;
   mag_rd(0x07, buf, 1); // MAG3110 WHO_AM_I
-  jsiConsolePrintf("MAG3110 %d\n", buf[0]);
+  //jsiConsolePrintf("MAG3110 %d\n", buf[0]);
   if (buf[0]!=0xC4 && buf[0]!=0x00) { // sometimes MAG3110 reports ID 0!
     // Not found, check for LIS3MDL - Puck.js v2
     nrf_delay_ms(1); // LIS3MDL takes longer to boot
     puckVersion = PUCKJS_2V0;
     mag_rd(0x0F, buf, 1); // LIS3MDL WHO_AM_I
-    jsiConsolePrintf("LIS3 %d\n", buf[0]);
+    //jsiConsolePrintf("LIS3 %d\n", buf[0]);
     if (buf[0] == 0b00111101) {
       // all good, MAG3110 - Puck.js v2.0
       puckVersion = PUCKJS_2V0;
@@ -1513,7 +1526,7 @@ void jswrap_puck_init() {
       // Is it 2v1?
       puckVersion = PUCKJS_2V1;
       mag_rd(0x39, buf, 1); // MMC5603NJ WHO_AM_I
-      jsiConsolePrintf("MMC5603NJ %d\n", buf[0]);
+      //jsiConsolePrintf("MMC5603NJ %d\n", buf[0]);
       if (buf[0] == 16) {
         puckVersion = PUCKJS_2V1;
       } else {
