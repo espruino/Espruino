@@ -197,7 +197,7 @@ uint8_t i2c_rd(bool nack) {
 /// Write to I2C register on magnetometer
 void mag_wr(int addr, int data) {
   int iaddr = getMagAddr();
-  /*if (puckVersion == PUCKJS_1V0) { // MAG3110
+  if (puckVersion == PUCKJS_1V0) { // MAG3110
     i2c_start();
     i2c_wr(iaddr<<1);
     i2c_wr(addr);
@@ -205,7 +205,7 @@ void mag_wr(int addr, int data) {
     i2c_stop();
     wr(MAG_PIN_SDA, 1);
     wr(MAG_PIN_SCL, 1);
-  } else */{
+  } else {
     unsigned char buf[2];
     buf[0] = addr;
     buf[1] = data;
@@ -215,19 +215,19 @@ void mag_wr(int addr, int data) {
 /// Read from I2C register on magnetometer
 void mag_rd(int addr, unsigned char *data, int cnt) {
   int iaddr = getMagAddr();
-  /*if (puckVersion == PUCKJS_1V0) { // MAG3110
+  if (puckVersion == PUCKJS_1V0) { // MAG3110
     i2c_start();
     i2c_wr(iaddr<<1);
     i2c_wr(addr);
     i2c_start();
     i2c_wr(1|(iaddr<<1));
     for (int i=0;i<cnt;i++) {
-      data[i] = i2c_rd(cnt==1);
+      data[i] = i2c_rd(i==(cnt-1));
     }
     i2c_stop();
     wr(MAG_PIN_SDA, 1);
     wr(MAG_PIN_SCL, 1);
-  } else */{
+  } else {
     unsigned char buf[1];
     buf[0] = addr;
     jsi2cWrite(&i2cMag, iaddr, 1, buf, false);
@@ -273,9 +273,8 @@ bool mag_on(int milliHz, bool instant) {
     else return false;
 
     jshDelayMicroseconds(2000); // 1.7ms from power on to ok
-    mag_wr(0x11, 0x80/*AUTO_MRST_EN*/ + 0x20/*RAW*/);
-    reg1 |= 1; // Active bit
-    mag_wr(0x10, reg1);
+    mag_wr(0x11, 0x80/*AUTO_MRST_EN*/ + 0x20/*RAW*/); // CTRL_REG2
+    mag_wr(0x10, reg1 | 1); // CTRL_REG1, samplerate + active
   } else if (puckVersion == PUCKJS_2V0) { // LIS3MDL
     jshDelayMicroseconds(10000); // takes ages to start up
     if (instant) milliHz = 80000;
@@ -391,7 +390,7 @@ bool mag_wait() {
 void mag_read() {
   unsigned char buf[9];
   if (puckVersion == PUCKJS_1V0) { // MAG3110
-    mag_rd(1, buf, 6); // OUT_X_MSB
+    mag_rd(0x01, buf, 6); // OUT_X_MSB
     mag_reading[0] = (int16_t)((buf[0]<<8) | buf[1]);
     mag_reading[1] = (int16_t)((buf[2]<<8) | buf[3]);
     mag_reading[2] = (int16_t)((buf[4]<<8) | buf[5]);
