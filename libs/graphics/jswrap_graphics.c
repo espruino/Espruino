@@ -2452,7 +2452,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   "type" : "method",
   "class" : "Graphics",
   "name" : "drawImages",
-  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
+  "#if" : "defined(BANGLEJS)",
   "generate" : "jswrap_graphics_drawImages",
   "params" : [
     ["layers","JsVar","An array of objects {x,y,image,scale,rotate,center} (up to 3)"],
