@@ -18,6 +18,7 @@
             Remove Graphics.drawImages from non-Bangle.js builds to free up space
             Pico: Remove SHA512 from build to free up space
             Storage: fix issue where functions referencing flash weren't correctly relocated during compact (#2009)
+            Add support for rendering 3 bit images to 12/16 bit destinations
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
