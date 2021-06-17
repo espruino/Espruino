@@ -17,6 +17,9 @@
 #include <stdbool.h>
 #include "stepcount.h"
 
+// STEPCOUNT_CONFIGURABLE is for use with https://github.com/gfwilliams/step-count
+// to test/configure the step counter offline
+
 /*
 
 ==========================================================
@@ -162,9 +165,28 @@ AccelFilter accelFilter;
 
 // ===============================================================
 
+#define STEPCOUNTERTHRESHOLD_MIN 1000
+#define STEPCOUNTERTHRESHOLD_MAX 6000
+#define STEPCOUNTERTHRESHOLD_STEP 20
+
+#define STEPCOUNTERAVR_MIN 0
+#define STEPCOUNTERAVR_MAX 0
+#define STEPCOUNTERAVR_STEP 1
+
 // These were calculated based on contributed data
-#define stepCounterThresholdMin  1500
-#define stepCounterAvr 0
+#define STEPCOUNTERTHRESHOLD_DEFAULT  1500
+#define STEPCOUNTERAVR_DEFAULT         0
+
+#ifdef STEPCOUNT_CONFIGURABLE
+int stepCounterThresholdMin = STEPCOUNTERTHRESHOLD_DEFAULT;
+int stepCounterAvr = STEPCOUNTERAVR_DEFAULT;
+// These are handy values used for graphing
+int accScaled;
+int accFiltered;
+#else
+#define stepCounterThresholdMin  STEPCOUNTERTHRESHOLD_DEFAULT
+#define stepCounterAvr           STEPCOUNTERAVR_DEFAULT
+#endif
 
 // ===============================================================
 
@@ -205,9 +227,15 @@ bool stepcount_new(int accMagSquared) {
   //if (v>127 || v<-128) printf("Out of range %d\n", v);
   if (v>127) v = 127;
   if (v<-128) v = -128;
+#ifdef STEPCOUNT_CONFIGURABLE
+  accScaled = v;
+#else
+  int accFiltered;
+#endif
+
   // do filtering
   AccelFilter_put(&accelFilter, v);
-  int accFiltered = AccelFilter_get(&accelFilter);
+  accFiltered = AccelFilter_get(&accelFilter);
 
   // check for step counter
   bool hadStep = false;
