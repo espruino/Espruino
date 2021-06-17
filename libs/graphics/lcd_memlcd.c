@@ -52,7 +52,7 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
   int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
   int bit = bitaddr&7;
   uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]);
-  b = (b & (~(0xE000>>bit))) | ((col&7)<<(13-bit));
+  b = (b & (0xFF1FFF>>bit)) | ((col&7)<<(13-bit));
   *(uint16_t*)&lcdBuffer[bitaddr>>3] = __builtin_bswap16(b);
 #endif
 #if LCD_BPP==4
@@ -87,7 +87,7 @@ void lcdMemLCD_scrollX(struct JsGraphics *gfx, unsigned char *dst, unsigned char
 }
 
 void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
-  // if we can't shift entire line, go with the slow method as code is easier
+  // if we can't shift entire line in one go, go with the slow method as this case would be a nightmare in 3 bits
   if (x1!=0 || x2!=LCD_WIDTH-1)
     return graphicsFallbackScroll(gfx, xdir, ydir, x1,y1,x2,y2);
   // otherwise...
