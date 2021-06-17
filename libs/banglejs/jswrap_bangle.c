@@ -1712,12 +1712,16 @@ This function can be used to turn Bangle.js's LCD power saving on or off.
 
 With power saving off, the display will remain in the state you set it with `Bangle.setLCDPower`.
 
-With power saving on, the display will turn on if a button is pressed, the watch is turned face up, or the screen is updated. It'll turn off automatically after the given timeout.
+With power saving on, the display will turn on if a button is pressed, the watch is turned face up, or the screen is updated (see `Bangle.setOptions` for configuration). It'll turn off automatically after the given timeout.
+
+**Note:** This function also sets the Lock timeout (the time at which the touchscreen/buttons start being ignored). To set both separately, use `Bangle.setOptions`
 */
 void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
-  if (!isfinite(timeout)) lcdPowerTimeout=0;
-  else lcdPowerTimeout = timeout*1000;
-  if (lcdPowerTimeout<0) lcdPowerTimeout=0;
+  if (!isfinite(timeout))
+    timeout=0;
+  else if (timeout<0) timeout=0;
+  lcdPowerTimeout = timeout*1000;
+  lockTimeout = timeout*1000;
 }
 
 /*JSON{
