@@ -118,6 +118,9 @@ JsVar *jswrap_process_env() {
 #ifdef PUCKJS
   jsvObjectSetChildAndUnLock(obj, "HWVERSION", jswrap_puck_getHardwareVersion());
 #endif
+#ifdef ESPR_HWVERSION
+  jsvObjectSetChildAndUnLock(obj, "HWVERSION", jsvNewFromInteger(ESPR_HWVERSION));
+#endif
   jsvObjectSetChildAndUnLock(obj, "STORAGE", jsvNewFromInteger(FLASH_SAVED_CODE_LENGTH));
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());

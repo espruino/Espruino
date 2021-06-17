@@ -33,6 +33,7 @@ info = {
      'TENSORFLOW'     
    ],
    'makefile' : [
+     'DEFINES += -DESPR_HWVERSION=1',
      'DEFINES += -DBANGLEJS_F18',
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',

@@ -37,6 +37,7 @@ info = {
 #     'TENSORFLOW'  
    ],
    'makefile' : [
+     'DEFINES += -DESPR_HWVERSION=2',
 #     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow us to use NFC pins as GPIO
      'DEFINES += -DESPR_LSE_ENABLE ', # Ensure low speed external osc enabled
