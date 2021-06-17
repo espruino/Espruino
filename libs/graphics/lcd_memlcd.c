@@ -42,7 +42,7 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 #if LCD_BPP==4
   int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
   unsigned char b = lcdBuffer[addr];
-  return (x&1) ? (b&15) : (b>>4);
+  return (x&1) ? ((b>>1)&7) : (b>>5);
 #endif
 }
 
@@ -57,26 +57,52 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 #endif
 #if LCD_BPP==4
   int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
-  if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (col&0x0F);
-  else lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (col << 4);
+  if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | ((col&7)<<1);
+  else lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (col << 5);
 #endif
 }
 
+void lcdMemLCD_scrollX(struct JsGraphics *gfx, unsigned char *dst, unsigned char *src, int xdir) {
+  uint32_t *dw = (uint32_t*)&dst[LCD_ROWHEADER];
+  uint32_t *sw = (uint32_t*)&src[LCD_ROWHEADER];
+
+  if (xdir==0) {
+    memcpy(dst, src, LCD_STRIDE);
+  } else if (xdir<0) {
+    int shiftBits = -xdir * LCD_BPP;
+    int shiftWords = shiftBits>>5;
+    shiftBits &= 31;
+    int wordLen = ((LCD_WIDTH*LCD_BPP)>>5) - shiftWords;
+    for (int x=0;x<wordLen;x++)
+      dw[x] = __builtin_bswap32((__builtin_bswap32(sw[x-shiftWords])<<shiftBits) | __builtin_bswap32(sw[x+shiftWords+1])>>(32-shiftBits));
+
+  } else { // >0
+    int shiftBits = xdir * LCD_BPP;
+    int shiftWords = shiftBits>>5;
+    shiftBits &= 31;
+    int wordLen = ((LCD_WIDTH*LCD_BPP)>>5) - shiftWords;
+    for (int x=0;x<wordLen;x++)
+      dw[x] = __builtin_bswap32((__builtin_bswap32(sw[x+shiftWords])>>shiftBits) | __builtin_bswap32(sw[x-(shiftWords+1)])<<(32-shiftBits));
+  }
+}
+
 void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
-  // if we have to shift X, go with the slow method
-  if (xdir) return graphicsFallbackScroll(gfx, xdir, ydir, x1,y1,x2,y2);
-  // otherwise use memcpy
-  int xl = ((x2+1-x1)*LCD_BPP+7)>>3;
-  int xo = LCD_ROWHEADER + ((x1*LCD_BPP+7)>>3);
-  if (ydir<0) {
+  // if we can't shift entire line, go with the slow method as code is easier
+  if (x1!=0 || x2!=LCD_WIDTH-1)
+    return graphicsFallbackScroll(gfx, xdir, ydir, x1,y1,x2,y2);
+  // otherwise...
+  unsigned char lineBuffer[LCD_STRIDE+4]; // allow out of bounds write
+  if (ydir<=0) {
     for (int y=y1;y<y2+ydir;y++) {
       int yx = y-ydir;
-      memcpy(&lcdBuffer[y*LCD_STRIDE + xo],&lcdBuffer[yx*LCD_STRIDE + xo],xl);
+      lcdMemLCD_scrollX(gfx, lineBuffer, &lcdBuffer[yx*LCD_STRIDE], xdir);
+      memcpy(&lcdBuffer[y*LCD_STRIDE + LCD_ROWHEADER],&lineBuffer[LCD_ROWHEADER],LCD_STRIDE-LCD_ROWHEADER);
     }
   } else if (ydir>0) {
     for (int y=y2-ydir-1;y>=y1;y--) {
       int yx = y+ydir;
-      memcpy(&lcdBuffer[yx*LCD_STRIDE + xo],&lcdBuffer[y*LCD_STRIDE + xo],xl);
+      lcdMemLCD_scrollX(gfx, lineBuffer, &lcdBuffer[y*LCD_STRIDE], xdir);
+      memcpy(&lcdBuffer[yx*LCD_STRIDE + LCD_ROWHEADER],&lineBuffer[LCD_ROWHEADER],LCD_STRIDE-LCD_ROWHEADER);
     }
   }
 }
@@ -105,7 +131,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
 void lcdMemLCD_init(JsGraphics *gfx) {
   gfx->data.width = LCD_WIDTH;
   gfx->data.height = LCD_HEIGHT;
-  gfx->data.bpp = LCD_BPP;
+  gfx->data.bpp = 3; // always 3 regardless of if we use 3 or 4 for storage
   memset(lcdBuffer,0,sizeof(lcdBuffer));
   for (int y=0;y<LCD_HEIGHT;y++) {
 #if LCD_BPP==3
