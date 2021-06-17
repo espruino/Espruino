@@ -220,6 +220,25 @@ with `Bangle.setHRMPower(1)`.
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
+  "name" : "HRM-raw",
+  "params" : [["hrm","JsVar","A object containing instant readings from the heart rate sensor"]],
+  "ifdef" : "BANGLEJS"
+}
+Called when heart rate sensor data is available - see `Bangle.setHRMPower(1)`.
+
+`hrm` is of the form:
+
+```
+{ "raw": -1,       // raw value from sensor
+  "filt": -1,      // bandpass-filtered raw value from sensor
+  "bpm": 88.9,     // last BPM value measured
+  "confidence": 0  // confidence in the BPM value
+}
+```
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
   "name" : "lcdPower",
   "params" : [["on","bool","`true` if screen is on"]],
   "ifdef" : "BANGLEJS"
@@ -741,6 +760,9 @@ bool setDeviceRequested(const char *deviceName, JsVar *appID, bool powerOn) {
     }
     jsvUnLock2(appID, idx);
     isOn = jsvGetArrayLength(device)>0;
+    // free memory by remove the device from the list if not used
+    if (!isOn)
+      jsvObjectRemoveChild(uses, deviceName);
   }
   jsvUnLock3(device, uses, bangle);
   return isOn;
@@ -1145,8 +1167,8 @@ void backlightOffHandler() {
 #endif // !EMSCRIPTEN
 
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
-  // wake up
-  if (lcdPowerTimeout) {
+  // wake up IF LCD power or Lock has a timeout (so will turn off automatically)
+  if (lcdPowerTimeout || lockTimeout) {
     if (((bangleFlags&JSBF_WAKEON_BTN1)&&(button==1)) ||
         ((bangleFlags&JSBF_WAKEON_BTN2)&&(button==2)) ||
         ((bangleFlags&JSBF_WAKEON_BTN3)&&(button==3)) ||
@@ -1201,8 +1223,9 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
       lcdWakeButtonTime = 0;
     }
   }
-  // Add to the event queue for normal processing for watches
-  jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), t);
+  // if not locked, add to the event queue for normal processing for watches
+  if (!(bangleFlags&JSBF_LOCKED))
+    jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), t);
 }
 
 #if defined(BANGLEJS_F18) || defined(EMSCRIPTEN)
@@ -1334,7 +1357,7 @@ void touchHandler(bool state, IOEventFlags flags) {
     evt.data.chars[1] = y * LCD_HEIGHT / 160;
     evt.data.chars[2] = touch ? 1 : 0;
     jshPushEvent(&evt);
-    // don't sleep if using touchscreen
+    // ensure we don't sleep if touchscreen is being used
     flipTimer = 0;
   }
   lastx = x;
@@ -2405,7 +2428,6 @@ void jswrap_banglejs_postInit() {
 NO_INLINE void jswrap_banglejs_init() {
   IOEventFlags channel;
   bool firstRun = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrap_banglejs_init was called?
-  jsvObjectSetChildAndUnLock(execInfo.root, "firstRun", jsvNewFromBool(firstRun)); // debug
   // Hardware init that we only do the very first time we start
   if (firstRun) {
 #ifdef BANGLEJS_F18
@@ -2492,19 +2514,23 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
 
   //jsiConsolePrintf("bangleFlags %d\n",bangleFlags);
-  if (firstRun)
-    bangleFlags = JSBF_DEFAULT; // includes bangleFlags
+  if (firstRun) {
+    bangleFlags = JSBF_DEFAULT | JSBF_LCD_ON; // includes bangleFlags
+    lcdBrightness = 255;
+  }
   flipTimer = 0; // reset the LCD timeout timer
-  bangleFlags |= JSBF_LCD_ON; // force LCD on
-  lcdBrightness = 255;
+  lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
+  lockTimeout = DEFAULT_LOCK_TIMEOUT;
+  lcdWakeButton = 0;
+  // If the home button is still pressed when we're restarting, set up
+  // lcdWakeButton so the event for button release is 'eaten'
+  if (jshPinGetValue(HOME_BTN_PININDEX))
+    lcdWakeButton = HOME_BTN;
 #ifdef ESPR_BACKLIGHT_FADE
   realLcdBrightness = firstRun ? 0 : lcdBrightness;
   lcdFadeHandlerActive = false;
+  jswrap_banglejs_setLCDPowerBacklight(lcdPowerOn);
 #endif
-  jswrap_banglejs_setLCDPowerBacklight(bangleFlags & JSBF_LCD_ON); // ensure this matches bangleFlags state
-  lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
-  lcdWakeButton = 0;
-  lockTimeout = DEFAULT_LOCK_TIMEOUT;
 
   buzzAmt = 0;
   beepFreq = 0;
@@ -2609,6 +2635,17 @@ NO_INLINE void jswrap_banglejs_init() {
   JsVar *fn;
   fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
   jsvObjectSetChildAndUnLock(graphics,"flip",fn);
+
+  if (!firstRun) {
+    // Not first run - reset the LCD mode if it was set
+#ifdef LCD_CONTROLLER_ST7789_8BIT
+    if (lcdST7789_getMode()!=LCDST7789_MODE_UNBUFFERED) {
+      lcdST7789_setMode( LCDST7789_MODE_UNBUFFERED );
+      // screen will now be garbled - clear it
+      graphicsClear(&gfx);
+    }
+#endif
+  }
 
   bool showSplashScreen = true;
   /* If we're doing a flash load, don't show
@@ -2923,7 +2960,7 @@ bool jswrap_banglejs_idle() {
   else
     bangleFlags &= ~JSBF_ACCEL_LISTENER;
 #ifdef HEARTRATE
-  if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"HRMi"))
+  if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"HRM-raw"))
     bangleFlags |= JSBF_HRM_INSTANT_LISTENER;
   else
     bangleFlags &= ~JSBF_HRM_INSTANT_LISTENER;
@@ -3035,7 +3072,7 @@ bool jswrap_banglejs_idle() {
         jsvObjectSetChildAndUnLock(o,"t",jsvNewFromInteger(hrmInfo.timeSinceBeat));
         jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(hrmInfo.bpm10 / 10.0));
         jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
-        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRMi", &o, 1);
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM-raw", &o, 1);
         jsvUnLock(o);
       }
     }
@@ -3884,16 +3921,17 @@ static void jswrap_banglejs_periph_off() {
 #ifdef BTN4_PININDEX
   nrf_gpio_cfg_sense_set(pinInfo[BTN4_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
 #endif
+
+  jsiKill();
+  jsvKill();
+  jshKill();
+
   /* The low power pin watch code (nrf_drv_gpiote_in_init) somehow causes
   the sensing to be disabled such that nrf_gpio_cfg_sense_set(pin, NRF_GPIO_PIN_SENSE_LOW)
   no longer works. To work around this we just call our standard pin watch function
   to re-enable everything. */
   jshPinWatch(BTN1_PININDEX, true);
-
-
-  jsiKill();
-  jsvKill();
-  jshKill();
+  nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
 #endif
@@ -3911,7 +3949,11 @@ Turn Bangle.js off. It can only be woken by pressing BTN1.
 */
 void jswrap_banglejs_off() {
 #ifndef EMSCRIPTEN
+  // If BTN1 is pressed wait until it is released
+  while (jshPinGetValue(BTN1_PININDEX));
+  // turn peripherals off
   jswrap_banglejs_periph_off();
+  // system off
   sd_power_system_off();
   while(1);
 #else
@@ -3931,8 +3973,9 @@ mode until BTN1 is pressed to preserve the RTC (current time).
 */
 void jswrap_banglejs_softOff() {
 #ifndef EMSCRIPTEN
-  // Wait if BTN1 is pressed until it is released
+  // If BTN1 is pressed wait until it is released
   while (jshPinGetValue(BTN1_PININDEX));
+  // turn BLE and peripherals off
   jswrap_ble_sleep();
   jswrap_banglejs_periph_off();
   jshDelayMicroseconds(100000); // wait 100ms for any button bounce to disappear
@@ -3941,13 +3984,13 @@ void jswrap_banglejs_softOff() {
   // keep sleeping until a button is pressed
   jshKickWatchDog();
   do {
-    // sleep until BTN1 pressed
+  // sleep until BTN1 pressed
   while (!jshPinGetValue(BTN1_PININDEX)) {
     jshKickWatchDog();
     jshSleep(jshGetTimeFromMilliseconds(4*1000));
   }
-    // wait for button to be pressed for at least 1 second
-    int timeout = 1000;
+    // wait for button to be pressed for at least 200ms
+    int timeout = 200;
     while (jshPinGetValue(BTN1_PININDEX) && timeout--)
       nrf_delay_ms(1);
     // if button not pressed, keep sleeping
@@ -4099,7 +4142,7 @@ JsVar *jswrap_banglejs_getLogo() {
         105, 104, 80, 76, 230, 3, 129, 51, 130 };
 #endif
   JsVar *v = jsvNewNativeString((char*)&img_compressed[0], sizeof(img_compressed));
-  JsVar *img = jswrap_espruino_toString(jswrap_heatshrink_decompress(v));
+  JsVar *img = jsvGetArrayBufferBackingString(jswrap_heatshrink_decompress(v));
   jsvUnLock(v);
   return img;
 }

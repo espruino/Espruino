@@ -98,8 +98,12 @@
 #ifndef USE_SHA1_JS
 #define MBEDTLS_SHA1_C
 #endif
+#ifdef USE_SHA256
 #define MBEDTLS_SHA256_C
+#endif
+#ifdef USE_SHA512
 #define MBEDTLS_SHA512_C
+#endif
 
 #include "jsvar.h"
 

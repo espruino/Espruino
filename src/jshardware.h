@@ -254,6 +254,9 @@ void jshUSARTInitInfo(JshUSARTInfo *inf); // jshardware_common.c
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf);
 
+/** Tear down a UART - there's a weak version of this so it doesn't have to be implemented */
+void jshUSARTUnSetup(IOEventFlags device);
+
 /** Kick a device into action (if required). For instance we may have data ready
  * to sent to a USART, but we need to enable the IRQ such that it can automatically
  * fetch the characters to send.

@@ -3017,6 +3017,8 @@ size_t jsvCountJsVarsUsed(JsVar *v) {
   // we do this so we don't count the same item twice, but don't use too much memory
   size_t c = _jsvCountJsVarsUsedRecursive(v, false);
   _jsvCountJsVarsUsedRecursive(v, true);
+  // restore recurse flag
+  if (v != execInfo.root) execInfo.root->flags &= ~JSV_IS_RECURSING;
   return c;
 }
 
@@ -3616,6 +3618,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   int i;
   for (i=0;i<indent;i++) jsiConsolePrint(" ");
 
+
   if (!var) {
     jsiConsolePrint("undefined");
     return;
@@ -3628,7 +3631,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   jsvTraceLockInfo(var);
 
   int lowestLevel = _jsvTraceGetLowestLevel(baseVar, var);
-  if (lowestLevel < level) {
+  if (level>16 || (lowestLevel>=0 && lowestLevel < level)) {
     // If this data is available elsewhere in the tree (but nearer the root)
     // then don't print it. This makes the dump significantly more readable!
     // It also stops us getting in recursive loops ...

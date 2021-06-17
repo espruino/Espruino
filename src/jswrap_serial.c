@@ -344,31 +344,31 @@ uninitialise it.
 void jswrap_serial_unsetup(JsVar *parent) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
-  // Populate JshUSARTInfo from serial
+  // Populate JshUSARTInfo from serial - if it exists
   JsVar *options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
-  if (!options) {
-    jsExceptionHere(JSET_ERROR, "Can't unsetup - Serial not initialised");
-    return;
-  }
   JsVar *baud = jsvObjectGetChild(parent, USART_BAUDRATE_NAME, 0);
-  JshUSARTInfo inf;
-  jsserialPopulateUSARTInfo(&inf, baud, options);
+  if (options) {
+    JshUSARTInfo inf;
+    jsserialPopulateUSARTInfo(&inf, baud, options);
+    // Reset pin states. On hardware this should disable the UART anyway
+    if (inf.pinCK!=PIN_UNDEFINED) jshPinSetState(inf.pinCK, JSHPINSTATE_UNDEFINED);
+    if (inf.pinCTS!=PIN_UNDEFINED) jshPinSetState(inf.pinCTS, JSHPINSTATE_UNDEFINED);
+    if (inf.pinRX!=PIN_UNDEFINED) jshPinSetState(inf.pinRX, JSHPINSTATE_UNDEFINED);
+    if (inf.pinTX!=PIN_UNDEFINED) jshPinSetState(inf.pinTX, JSHPINSTATE_UNDEFINED);
+    if (!DEVICE_IS_SERIAL(device))
+      // It's software. Only thing we care about is RX as that uses watches
+      jsserialEventCallbackKill(parent, &inf);
+  }
   jsvUnLock2(options, baud);
   // Remove stored settings
   jsvObjectRemoveChild(parent, USART_BAUDRATE_NAME);
   jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
 
-  if (!DEVICE_IS_SERIAL(device)) {
-    // It's software. Only thing we care about is RX as that uses watches
-    jsserialEventCallbackKill(parent, &inf);
-  } else {
+  if (DEVICE_IS_SERIAL(device)) { // It's hardware
+    jshUSARTUnSetup(device);
     jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
   }
-  // Reset pin states. On hardware this should disable the UART anyway
-  if (inf.pinCK!=PIN_UNDEFINED) jshPinSetState(inf.pinCK, JSHPINSTATE_UNDEFINED);
-  if (inf.pinCTS!=PIN_UNDEFINED) jshPinSetState(inf.pinCTS, JSHPINSTATE_UNDEFINED);
-  if (inf.pinRX!=PIN_UNDEFINED) jshPinSetState(inf.pinRX, JSHPINSTATE_UNDEFINED);
-  if (inf.pinTX!=PIN_UNDEFINED) jshPinSetState(inf.pinTX, JSHPINSTATE_UNDEFINED);
+
 }
 #endif
 

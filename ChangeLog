@@ -14,6 +14,12 @@
             Add E.decodeUTF8 to allow UTF8 to be decoded into standard 8 bit characters
             Util timer: account for 'drift' in timer when adding new tasks if running it continuously
             Graphics: Allow 'scroll' method to only scroll inside clipRect
+            Bangle.js: if we restart with home button held down, ignore the 'button up' event
+            Remove Graphics.drawImages from non-Bangle.js builds to free up space
+            Pico: Remove SHA512 from build to free up space
+            Storage: fix issue where functions referencing flash weren't correctly relocated during compact (#2009)
+            Add support for rendering 3 bit images to 12/16 bit destinations
+            Ensure Serial1.unsetup can be called even if it doesn't appear to have been enabled
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
