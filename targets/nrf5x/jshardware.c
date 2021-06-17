@@ -412,8 +412,6 @@ typedef struct {
 } PACKED_FLAGS jshUARTState;
 static jshUARTState uart[USART_COUNT];
 
-void jshUSARTUnSetup(IOEventFlags device);
-
 #ifdef SPIFLASH_BASE
 /* 0 means CS is not enabled. If nonzero CS is enabled
 and we're in the middle of reading We'd never be at 0
