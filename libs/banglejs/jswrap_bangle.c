@@ -342,6 +342,8 @@ JshI2CInfo i2cPressure;
 #define GPS_UART EV_SERIAL1
 
 #define DEFAULT_LCD_POWER_TIMEOUT 0 // don't turn LCD off
+#define DEFAULT_BACKLIGHT_TIMEOUT 3000
+#define DEFAULT_LOCK_TIMEOUT 5000
 #endif
 
 #ifdef BANGLEJS_F18
@@ -414,6 +416,9 @@ JshI2CInfo i2cInternal;
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
 #ifndef DEFAULT_LCD_POWER_TIMEOUT
 #define DEFAULT_LCD_POWER_TIMEOUT 30000 // in msec - default for lcdPowerTimeout
+#endif
+#ifndef DEFAULT_BACKLIGHT_TIMEOUT
+#define DEFAULT_BACKLIGHT_TIMEOUT DEFAULT_LCD_POWER_TIMEOUT
 #endif
 #ifndef DEFAULT_LOCK_TIMEOUT
 #define DEFAULT_LOCK_TIMEOUT 30000 // in msec - default for lockTimeout
@@ -501,6 +506,8 @@ volatile uint16_t flipTimer; // in ms
 volatile uint16_t homeBtnTimer; // in ms
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
 int lcdPowerTimeout; // in ms
+/// Is LCD backlight automatic? If true this is the number of ms for the timeout, if false it's 0
+int backlightTimeout; // in ms
 /// Is locking automatic? If true this is the number of ms for the timeout, if false it's 0
 int lockTimeout; // in ms
 /// If a button was pressed to wake the LCD up, which one was it?
@@ -594,8 +601,9 @@ typedef enum {
   JSBF_COMPASS_ON    = 1<<13,
   JSBF_BAROMETER_ON  = 1<<14,
   JSBF_LCD_ON        = 1<<15,
-  JSBF_LOCKED        = 1<<16,
-  JSBF_HRM_INSTANT_LISTENER = 1<<17,
+  JSBF_LCD_BL_ON     = 1<<16,
+  JSBF_LOCKED        = 1<<17,
+  JSBF_HRM_INSTANT_LISTENER = 1<<18,
 
   JSBF_DEFAULT =
       JSBF_WAKEON_TWIST|
@@ -607,42 +615,45 @@ volatile JsBangleFlags bangleFlags = JSBF_NONE;
 typedef enum {
   JSBT_NONE,
   JSBT_RESET = 1<<0, ///< reset the watch and reload code from flash
-  JSBT_LCD_ON = 1<<1,
+  JSBT_LCD_ON = 1<<1, ///< LCD controller (can turn this on without the backlight)
   JSBT_LCD_OFF = 1<<2,
-  JSBT_LOCK = 1<<3, ///< watch is locked
-  JSBT_UNLOCK = 1<<4, ///< watch is unlocked
-  JSBT_ACCEL_DATA = 1<<5, ///< need to push xyz data to JS
-  JSBT_ACCEL_TAPPED = 1<<6, ///< tap event detected
+  JSBT_LCD_BL_ON = 1<<3, ///< LCD backlight
+  JSBT_LCD_BL_OFF = 1<<4,
+  JSBT_LOCK = 1<<5, ///< watch is locked
+  JSBT_UNLOCK = 1<<6, ///< watch is unlocked
+  JSBT_ACCEL_DATA = 1<<7, ///< need to push xyz data to JS
+  JSBT_ACCEL_TAPPED = 1<<8, ///< tap event detected
 #ifdef GPS_PIN_RX
-  JSBT_GPS_DATA = 1<<7, ///< we got a complete set of GPS data in 'gpsFix'
-  JSBT_GPS_DATA_LINE = 1<<8, ///< we got a line of GPS data
-  JSBT_GPS_DATA_PARTIAL = 1<<9, ///< we got some GPS data but it needs storing for later because it was too big to go in our buffer
-  JSBT_GPS_DATA_OVERFLOW = 1<<10, ///< we got more GPS data than we could handle and had to drop some
+  JSBT_GPS_DATA = 1<<9, ///< we got a complete set of GPS data in 'gpsFix'
+  JSBT_GPS_DATA_LINE = 1<<10, ///< we got a line of GPS data
+  JSBT_GPS_DATA_PARTIAL = 1<<11, ///< we got some GPS data but it needs storing for later because it was too big to go in our buffer
+  JSBT_GPS_DATA_OVERFLOW = 1<<12, ///< we got more GPS data than we could handle and had to drop some
 #endif
 #ifdef PRESSURE_I2C
-  JSBT_PRESSURE_DATA = 1<<11,
+  JSBT_PRESSURE_DATA = 1<<13,
 #endif
-  JSBT_MAG_DATA = 1<<12, ///< need to push magnetometer data to JS
-  JSBT_GESTURE_DATA = 1<<13, ///< we have data from a gesture
-  JSBT_HRM_DATA = 1<<14, ///< Heart rate data is ready for analysis
-  JSBT_CHARGE_EVENT = 1<<15, ///< we need to fire a charging event
-  JSBT_STEP_EVENT = 1<<16, ///< we've detected a step via the pedometer
-  JSBT_SWIPE_LEFT = 1<<17, ///< swiped left over touchscreen
-  JSBT_SWIPE_RIGHT = 1<<18, ///< swiped right over touchscreen
-  JSBT_SWIPE_UP = 1<<19, ///< swiped left over touchscreen (Bangle 2 only)
-  JSBT_SWIPE_DOWN = 1<<20, ///< swiped right over touchscreen (Bangle 2 only)
+  JSBT_MAG_DATA = 1<<14, ///< need to push magnetometer data to JS
+  JSBT_GESTURE_DATA = 1<<15, ///< we have data from a gesture
+  JSBT_HRM_DATA = 1<<16, ///< Heart rate data is ready for analysis
+  JSBT_CHARGE_EVENT = 1<<17, ///< we need to fire a charging event
+  JSBT_STEP_EVENT = 1<<18, ///< we've detected a step via the pedometer
+  JSBT_SWIPE_LEFT = 1<<19, ///< swiped left over touchscreen
+  JSBT_SWIPE_RIGHT = 1<<20, ///< swiped right over touchscreen
+  JSBT_SWIPE_UP = 1<<21, ///< swiped left over touchscreen (Bangle 2 only)
+  JSBT_SWIPE_DOWN = 1<<22, ///< swiped right over touchscreen (Bangle 2 only)
   JSBT_SWIPE_MASK = JSBT_SWIPE_LEFT | JSBT_SWIPE_RIGHT | JSBT_SWIPE_UP | JSBT_SWIPE_DOWN,
-  JSBT_TOUCH_LEFT = 1<<21, ///< touch lhs of touchscreen
-  JSBT_TOUCH_RIGHT = 1<<22, ///< touch rhs of touchscreen
+  JSBT_TOUCH_LEFT = 1<<23, ///< touch lhs of touchscreen
+  JSBT_TOUCH_RIGHT = 1<<24, ///< touch rhs of touchscreen
   JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
-  JSBT_TWIST_EVENT = 1<<23, ///< Watch was twisted
-  JSBT_FACE_UP = 1<<24, ///< Watch was turned face up/down (faceUp holds the actual state)
-  JSBT_ACCEL_INTERVAL_DEFAULT = 1<<25, ///< reschedule accelerometer poll handler to default speed
-  JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<26, ///< reschedule accelerometer poll handler to powersave speed
-  JSBT_HRM_INSTANT_DATA = 1<<27, ///< Instant heart rate data
-
+  JSBT_TWIST_EVENT = 1<<25, ///< Watch was twisted
+  JSBT_FACE_UP = 1<<26, ///< Watch was turned face up/down (faceUp holds the actual state)
+  JSBT_ACCEL_INTERVAL_DEFAULT = 1<<27, ///< reschedule accelerometer poll handler to default speed
+  JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<28, ///< reschedule accelerometer poll handler to powersave speed
+  JSBT_HRM_INSTANT_DATA = 1<<29, ///< Instant heart rate data
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
+
+static void jswrap_banglejs_setLCDPowerBacklight(bool isOn);
 
 void jswrap_banglejs_pwrGPS(bool on) {
   if (on) bangleFlags |= JSBF_GPS_ON;
@@ -698,6 +709,10 @@ void lcd_flip(JsVar *parent, bool all) {
   if (lcdPowerTimeout && !(bangleFlags&JSBF_LCD_ON)) {
     // LCD was turned off, turn it back on
     jswrap_banglejs_setLCDPower(1);
+  }
+  if (backlightTimeout && !(bangleFlags&JSBF_LCD_BL_ON)) {
+    // LCD was turned off, turn it back on
+    jswrap_banglejs_setLCDPowerBacklight(1);
   }
 
   flipTimer = 0;
@@ -840,6 +855,11 @@ void peripheralPollHandler() {
   if (lcdPowerTimeout && (bangleFlags&JSBF_LCD_ON) && flipTimer>=lcdPowerTimeout) {
     // 10 seconds of inactivity, turn off display
     bangleTasks |= JSBT_LCD_OFF;
+    jshHadEvent();
+  }
+  if (backlightTimeout && (bangleFlags&JSBF_LCD_BL_ON) && flipTimer>=backlightTimeout) {
+    // 10 seconds of inactivity, turn off display
+    bangleTasks |= JSBT_LCD_BL_OFF;
     jshHadEvent();
   }
   if (lockTimeout && !(bangleFlags&JSBF_LOCKED) && flipTimer>=lockTimeout) {
@@ -1168,7 +1188,7 @@ void backlightOffHandler() {
 
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
   // wake up IF LCD power or Lock has a timeout (so will turn off automatically)
-  if (lcdPowerTimeout || lockTimeout) {
+  if (lcdPowerTimeout || backlightTimeout || lockTimeout) {
     if (((bangleFlags&JSBF_WAKEON_BTN1)&&(button==1)) ||
         ((bangleFlags&JSBF_WAKEON_BTN2)&&(button==2)) ||
         ((bangleFlags&JSBF_WAKEON_BTN3)&&(button==3)) ||
@@ -1180,11 +1200,15 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
       flipTimer = 0;
       if (state) {
         bool ignoreBtnUp = false;
-        if (!(bangleFlags&JSBF_LCD_ON) && state) {
+        if (lcdPowerTimeout && !(bangleFlags&JSBF_LCD_ON) && state) {
           bangleTasks |= JSBT_LCD_ON;
           ignoreBtnUp = true;
         }
-        if ((bangleFlags&JSBF_LOCKED) && state) {
+        if (backlightTimeout && !(bangleFlags&JSBF_LCD_BL_ON) && state) {
+          bangleTasks |= JSBT_LCD_BL_ON;
+          ignoreBtnUp = true;
+        }
+        if (lockTimeout && (bangleFlags&JSBF_LOCKED) && state) {
           bangleTasks |= JSBT_UNLOCK;
           ignoreBtnUp = true;
         }
@@ -1438,6 +1462,8 @@ static void backlightFadeHandler() {
 
 /// Turn just the backlight on or off (or adjust brightness)
 static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
+  if (isOn) bangleFlags |= JSBF_LCD_BL_ON;
+  else bangleFlags &= ~JSBF_LCD_BL_ON;
 #ifndef EMSCRIPTEN
 #ifdef BANGLEJS_F18
   app_timer_stop(m_backlight_on_timer_id);
@@ -1493,11 +1519,11 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
 #ifdef ESPR_BACKLIGHT_FADE
   if (isOn) jswrap_banglejs_setLCDPowerController(1);
   else jswrap_banglejs_setLCDPowerBacklight(0); // RB: don't turn on the backlight here if fading is enabled
+  jswrap_banglejs_setLCDPowerBacklight(isOn);
 #else
   jswrap_banglejs_setLCDPowerController(isOn);
   jswrap_banglejs_setLCDPowerBacklight(isOn);
 #endif
-  jswrap_banglejs_setLCDPowerBacklight(isOn);
   if ((bangleFlags&JSBF_LCD_ON) != isOn) {
     JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
     if (bangle) {
@@ -1714,13 +1740,16 @@ With power saving off, the display will remain in the state you set it with `Ban
 
 With power saving on, the display will turn on if a button is pressed, the watch is turned face up, or the screen is updated (see `Bangle.setOptions` for configuration). It'll turn off automatically after the given timeout.
 
-**Note:** This function also sets the Lock timeout (the time at which the touchscreen/buttons start being ignored). To set both separately, use `Bangle.setOptions`
+**Note:** This function also sets the Backlight and Lock timeout (the time at which the touchscreen/buttons start being ignored). To set both separately, use `Bangle.setOptions`
 */
 void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
   if (!isfinite(timeout))
     timeout=0;
   else if (timeout<0) timeout=0;
+#ifndef SMAQ3 // for backwards compatibility, don't set LCD timeout as we don't want to turn the LCD off
   lcdPowerTimeout = timeout*1000;
+#endif
+  backlightTimeout = timeout*1000;
   lockTimeout = timeout*1000;
 }
 
@@ -1779,6 +1808,7 @@ Set internal options used for gestures, etc...
    must be either 80ms or 800ms. default = `true`
 * `lockTimeout` how many milliseconds before the screen locks
 * `lcdPowerTimeout` how many milliseconds before the screen turns off
+* `backlightTimeout` how many milliseconds before the screen's backlight turns off
 
 Where accelerations are used they are in internal units, where `8192 = 1g`
 
@@ -1810,7 +1840,8 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
       {"wakeOnTwist", JSV_BOOLEAN, &wakeOnTwist},
       {"powerSave", JSV_BOOLEAN, &powerSave},
       {"lockTimeout", JSV_INTEGER, &lockTimeout},
-      {"lcdPowerTimeout", JSV_INTEGER, &lcdPowerTimeout}
+      {"lcdPowerTimeout", JSV_INTEGER, &lcdPowerTimeout},
+      {"backlightTimeout", JSV_INTEGER, &backlightTimeout}
   };
   if (createObject) {
     return jsvCreateConfigObject(configs, sizeof(configs) / sizeof(jsvConfigObject));
@@ -1825,6 +1856,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
     bangleFlags = (bangleFlags&~JSBF_POWER_SAVE) | (powerSave?JSBF_POWER_SAVE:0);
     if (lockTimeout<0) lockTimeout=0;
     if (lcdPowerTimeout<0) lcdPowerTimeout=0;
+    if (backlightTimeout<0) backlightTimeout=0;
   }
   return 0;
 }
@@ -2519,11 +2551,12 @@ NO_INLINE void jswrap_banglejs_init() {
 
   //jsiConsolePrintf("bangleFlags %d\n",bangleFlags);
   if (firstRun) {
-    bangleFlags = JSBF_DEFAULT | JSBF_LCD_ON; // includes bangleFlags
+    bangleFlags = JSBF_DEFAULT | JSBF_LCD_ON | JSBF_LCD_BL_ON; // includes bangleFlags
     lcdBrightness = 255;
   }
   flipTimer = 0; // reset the LCD timeout timer
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
+  backlightTimeout = DEFAULT_BACKLIGHT_TIMEOUT;
   lockTimeout = DEFAULT_LOCK_TIMEOUT;
   lcdWakeButton = 0;
   // If the home button is still pressed when we're restarting, set up
@@ -2533,7 +2566,7 @@ NO_INLINE void jswrap_banglejs_init() {
 #ifdef ESPR_BACKLIGHT_FADE
   realLcdBrightness = firstRun ? 0 : lcdBrightness;
   lcdFadeHandlerActive = false;
-  jswrap_banglejs_setLCDPowerBacklight(lcdPowerOn);
+  jswrap_banglejs_setLCDPowerBacklight(bangleFlags & JSBF_LCD_BL_ON);
 #endif
 
   buzzAmt = 0;
@@ -2976,6 +3009,8 @@ bool jswrap_banglejs_idle() {
   if (bangleTasks != JSBT_NONE) {
     if (bangleTasks & JSBT_LCD_OFF) jswrap_banglejs_setLCDPower(0);
     if (bangleTasks & JSBT_LCD_ON) jswrap_banglejs_setLCDPower(1);
+    if (bangleTasks & JSBT_LCD_BL_OFF) jswrap_banglejs_setLCDPowerBacklight(0);
+    if (bangleTasks & JSBT_LCD_BL_ON) jswrap_banglejs_setLCDPowerBacklight(1);
     if (bangleTasks & JSBT_LOCK) jswrap_banglejs_setLocked(1);
     if (bangleTasks & JSBT_UNLOCK) jswrap_banglejs_setLocked(0);
     if (bangleTasks & JSBT_RESET) jsiStatus |= JSIS_TODO_FLASH_LOAD;
@@ -3200,6 +3235,8 @@ bool jswrap_banglejs_idle() {
         // LCD was turned off, turn it back on
         if (lcdPowerTimeout && !(bangleFlags&JSBF_LCD_ON))
           jswrap_banglejs_setLCDPower(1);
+        if (backlightTimeout && !(bangleFlags&JSBF_LCD_BL_ON))
+          jswrap_banglejs_setLCDPowerBacklight(1);
         if (lockTimeout && (bangleFlags&JSBF_LOCKED))
           jswrap_banglejs_setLocked(false);
         flipTimer = 0;
