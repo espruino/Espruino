@@ -165,30 +165,61 @@ AccelFilter accelFilter;
 
 // ===============================================================
 
-#define STEPCOUNTERTHRESHOLD_MIN 1000
-#define STEPCOUNTERTHRESHOLD_MAX 6000
+// These were calculated based on contributed data
+// using https://github.com/gfwilliams/step-count
+#define STEPCOUNTERTHRESHOLD_DEFAULT  1000
+#define STEPCOUNTERAVR_DEFAULT         0
+#define STEPCOUNTERHISTORY_DEFAULT      5
+#define STEPCOUNTERHISTORY_TIME_DEFAULT 75
+
+// These are the ranges of values we test over
+// when calculating the best data offline
+#define STEPCOUNTERTHRESHOLD_MIN 500
+#define STEPCOUNTERTHRESHOLD_MAX 1500
 #define STEPCOUNTERTHRESHOLD_STEP 20
 
 #define STEPCOUNTERAVR_MIN 0
 #define STEPCOUNTERAVR_MAX 0
 #define STEPCOUNTERAVR_STEP 1
 
-// These were calculated based on contributed data
-#define STEPCOUNTERTHRESHOLD_DEFAULT  1500
-#define STEPCOUNTERAVR_DEFAULT         0
+#define STEPCOUNTERHISTORY_MIN 1
+#define STEPCOUNTERHISTORY_MAX 5
+#define STEPCOUNTERHISTORY_STEP 1
 
+#define STEPCOUNTERHISTORY_TIME_MIN 20
+#define STEPCOUNTERHISTORY_TIME_MAX 100
+#define STEPCOUNTERHISTORY_TIME_STEP 5
+
+// This is a bit of a hack to allow us to configure
+// variables which would otherwise have been compiler defines
 #ifdef STEPCOUNT_CONFIGURABLE
-int stepCounterThresholdMin = STEPCOUNTERTHRESHOLD_DEFAULT;
-int stepCounterAvr = STEPCOUNTERAVR_DEFAULT;
+int STEPCOUNTERTHRESHOLD = STEPCOUNTERTHRESHOLD_DEFAULT;
+int STEPCOUNTERAVR = STEPCOUNTERAVR_DEFAULT;
+int STEPCOUNTERHISTORY = STEPCOUNTERHISTORY_DEFAULT;
+int STEPCOUNTERHISTORY_TIME = STEPCOUNTERHISTORY_TIME_DEFAULT;
 // These are handy values used for graphing
 int accScaled;
 int accFiltered;
 #else
-#define stepCounterThresholdMin  STEPCOUNTERTHRESHOLD_DEFAULT
-#define stepCounterAvr           STEPCOUNTERAVR_DEFAULT
+#define STEPCOUNTERTHRESHOLD     STEPCOUNTERTHRESHOLD_DEFAULT
+#define STEPCOUNTERAVR           STEPCOUNTERAVR_DEFAULT
+#define STEPCOUNTERHISTORY       STEPCOUNTERHISTORY_DEFAULT
+#undef STEPCOUNTERHISTORY_MAX
+#define STEPCOUNTERHISTORY_MAX   STEPCOUNTERHISTORY_DEFAULT
+#define STEPCOUNTERHISTORY_TIME   STEPCOUNTERHISTORY_TIME_DEFAULT
 #endif
 
 // ===============================================================
+
+/** stepHistory allows us to check for repeated step counts.
+Rather than registering each instantaneous step, we now only
+measure steps if there were at least 3 steps (including the
+current one) in 3 seconds
+
+For each step it contains the number of iterations ago it occurred. 255 is the maximum
+*/
+
+uint8_t stepHistory[STEPCOUNTERHISTORY_MAX];
 
 int stepCounterThreshold;
 /// has filtered acceleration passed stepCounterThresholdLow?
@@ -213,7 +244,9 @@ unsigned short int int_sqrt32(unsigned int x) {
 // Init step count
 void stepcount_init() {
   stepWasLow = false;
-  stepCounterThreshold = stepCounterThresholdMin;
+  stepCounterThreshold = STEPCOUNTERTHRESHOLD;
+  for (int i=0;i<STEPCOUNTERHISTORY;i++)
+    stepHistory[i]=255;
   AccelFilter_init(&accelFilter);
 }
 
@@ -237,22 +270,33 @@ bool stepcount_new(int accMagSquared) {
   AccelFilter_put(&accelFilter, v);
   accFiltered = AccelFilter_get(&accelFilter);
 
+  // increment step count history counters
+  for (int i=0;i<STEPCOUNTERHISTORY;i++)
+    if (stepHistory[i]<255)
+      stepHistory[i]++;
+
   // check for step counter
   bool hadStep = false;
   if (accFiltered < -stepCounterThreshold)
     stepWasLow = true;
   else if ((accFiltered > stepCounterThreshold) && stepWasLow) {
     stepWasLow = false;
-
-    hadStep = true;
+    // We now have something resembling a step!
+    // Don't register it unless we've already had X steps within Y time period
+    if (stepHistory[0] < STEPCOUNTERHISTORY_TIME)
+      hadStep = true;
+    // Add it to our history anyway so we can keep track of how many steps we have
+    for (int i=0;i<STEPCOUNTERHISTORY-1;i++)
+      stepHistory[i] = stepHistory[i+1];
+    stepHistory[STEPCOUNTERHISTORY-1] = 0;
   }
 
-  if (stepCounterAvr) {
+  if (STEPCOUNTERAVR) {
     int a = accFiltered;
     if (a<0) a=-a;
-    stepCounterThreshold = (stepCounterThreshold*(32-stepCounterAvr) + a*stepCounterAvr) >> 5;
-    if (stepCounterThreshold < stepCounterThresholdMin)
-      stepCounterThreshold = stepCounterThresholdMin;
+    stepCounterThreshold = (stepCounterThreshold*(32-STEPCOUNTERAVR) + a*STEPCOUNTERAVR) >> 5;
+    if (stepCounterThreshold < STEPCOUNTERTHRESHOLD)
+      stepCounterThreshold = STEPCOUNTERTHRESHOLD;
   }
 
   return hadStep;
