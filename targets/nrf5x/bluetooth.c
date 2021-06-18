@@ -1113,7 +1113,9 @@ static void ble_evt_handler(ble_evt_t * p_ble_evt) {
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #endif
 
-  /*if (p_ble_evt->header.evt_id != 87) // ignore write complete
+  /*if (p_ble_evt->header.evt_id != 87 && // ignore write complete (SDK14+?)
+      p_ble_evt->header.evt_id != BLE_GATTS_EVT_WRITE && // Write operation performed (eg after we transmit on UART)
+      p_ble_evt->header.evt_id != BLE_EVT_TX_COMPLETE)
     jsiConsolePrintf("[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );*/
 #if ESPR_BLUETOOTH_ANCS
   if (bleStatus & BLE_ANCS_INITED)
