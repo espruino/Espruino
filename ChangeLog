@@ -20,6 +20,7 @@
             Storage: fix issue where functions referencing flash weren't correctly relocated during compact (#2009)
             Add support for rendering 3 bit images to 12/16 bit destinations
             Ensure Serial1.unsetup can be called even if it doesn't appear to have been enabled
+            Puck.js: ensure self test only happens after hardware reset (fix #2001)
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)

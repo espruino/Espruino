@@ -1551,9 +1551,9 @@ void jswrap_puck_init() {
 
   /* If the button is pressed during reset, perform a self test.
    * With bootloader this means apply power while holding button for >3 secs */
-  static bool firstStart = true;
+  bool firstStart = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrap_puck_init was called?;
   if (firstStart && jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE) {
-    firstStart = false; // don't do it during a software reset - only first hardware reset
+    // don't do it during a software reset - only first hardware reset
     bool result = jswrap_puck_selfTest();
     // green if good, red if bad
     Pin indicator = result ? LED2_PININDEX : LED1_PININDEX;
