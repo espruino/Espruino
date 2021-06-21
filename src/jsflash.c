@@ -878,9 +878,10 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset) {
 }
 
 bool jsfLoadBootCodeFromFlash(bool isReset) {
-  // Load code in .boot0/1/2/3 UNLESS BTN1 is HELD DOWN FOR BANGLE.JS
+  // Load code in .boot0/1/2/3 UNLESS BTN1 is HELD DOWN FOR BANGLE.JS ON FIRST BOOT
 #if (defined(BANGLEJS) && !defined(DICKENS))
-  if (jshPinGetValue(BTN1_PININDEX)!=BTN1_ONSTATE)
+  if (!(jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE &&
+       (jsiStatus & JSIS_FIRST_BOOT)))
 #endif
   {
     char filename[7] = ".bootX";
