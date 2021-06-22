@@ -3132,6 +3132,10 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
   }
 }
 
+void jsble_central_getPrimaryServices_retry(ble_uuid_t uuid) {
+  jsble_central_getPrimaryServices(bleUUIDFilter);
+}
+
 void jsble_central_getPrimaryServices(ble_uuid_t uuid) {
   if (!jsble_has_central_connection())
     return bleCompleteTaskFailAndUnLock(BLETASK_PRIMARYSERVICE, jsvNewFromString("Not connected"));
@@ -3140,10 +3144,16 @@ void jsble_central_getPrimaryServices(ble_uuid_t uuid) {
 
   uint32_t              err_code;
   err_code = sd_ble_gattc_primary_services_discover(m_central_conn_handle, 1 /* start handle */, NULL);
-  JsVar *errStr = jsble_get_error_string(err_code);
-  if (errStr) {
-    bleCompleteTaskFail(BLETASK_PRIMARYSERVICE, errStr);
-    jsvUnLock(errStr);
+  if (err_code == NRF_ERROR_BUSY) {
+    // we're busy, so reschedule this for 500ms later
+    // https://devzone.nordicsemi.com/f/nordic-q-a/76504/when-can-sd_ble_gattc_primary_services_discover-be-called-nrf_error_busy
+    jsvUnLock(jsiSetTimeout(jsble_central_getPrimaryServices_retry, 500));
+  } else {
+    JsVar *errStr = jsble_get_error_string(err_code);
+    if (errStr) {
+      bleCompleteTaskFail(BLETASK_PRIMARYSERVICE, errStr);
+      jsvUnLock(errStr);
+    }
   }
 }
 
