@@ -24,6 +24,7 @@
             Bangle.js: Fix issue where long-press BTN3 while holding BTN1 would reload the app but wouldn't load configuration (eg not setting timezone)
             Graphics: add .getBPP, and allow color blending (rather than copy) when drawing 2 bit images on any BPP Graphics instance
             nRF52: If getPrimaryServices fails with NRF_BUSY, keep retrying after a delay (fix #2008)
+            Bangle.js 2: Fix getPressure memory leak
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
