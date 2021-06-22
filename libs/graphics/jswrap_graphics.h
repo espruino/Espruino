@@ -36,6 +36,7 @@ JsVar *jswrap_graphics_createImage(JsVar *data);
 
 
 int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height);
+int jswrap_graphics_getBPP(JsVar *parent);
 JsVar *jswrap_graphics_reset(JsVar *parent);
 JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState);
 JsVar *jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2);

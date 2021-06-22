@@ -303,6 +303,7 @@ uint32_t graphicsBlendColor(JsGraphics *gfx, unsigned int fg, unsigned int bg, i
   unsigned int amt = (iamt>0) ? (unsigned)iamt : 0;
   if (amt>256) amt=256;
   if (gfx->data.bpp==2 || gfx->data.bpp==4 || gfx->data.bpp==8) {
+    // TODO: if our graphics instance is paletted this isn't correct!
     return (bg*(256-amt) + fg*amt) >> 8;
   } else if (gfx->data.bpp==16) { // Blend from bg to fg
     unsigned int b = bg;
@@ -346,6 +347,7 @@ uint32_t graphicsBlendColor(JsGraphics *gfx, unsigned int fg, unsigned int bg, i
     unsigned int bi = (bb*(256-amt) + fb*amt) >> 8;
     return (bi | gi<<8 | ri<<16);
   }
+  // Memory LCD is 3 bit, so best bet is just to choose one or the other
   return (amt>=128) ? fg : bg;
 }
 

@@ -487,22 +487,35 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
   "class" : "Graphics",
   "name" : "getWidth",
   "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, false)",
-  "return" : ["int","The width of the LCD"]
+  "return" : ["int","The width of this Graphics instance"]
 }
-The width of the LCD
+The width of this Graphics instance
 */
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
   "name" : "getHeight",
   "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, true)",
-  "return" : ["int","The height of the LCD"]
+  "return" : ["int","The height of this Graphics instance"]
 }
-The height of the LCD
+The height of this Graphics instance
 */
 int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   return height ? graphicsGetHeight(&gfx) : graphicsGetWidth(&gfx);
+}
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getBPP",
+  "generate" : "jswrap_graphics_getBPP",
+  "return" : ["int","The bits per pixel of this Graphics instance"]
+}
+The number of bits per pixel of this Graphics instance
+*/
+int jswrap_graphics_getBPP(JsVar *parent) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  return gfx.data.bpp;
 }
 
 /*JSON{
@@ -2063,7 +2076,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
       info->palettePtr = info->_simplePalette;
       info->paletteMask = 1;
   #ifdef GRAPHICS_PALETTED_IMAGES
-    } else if (gfx->data.bpp>8 && info->bpp==2) { // Blend from bg to fg
+    } else if (info->bpp==2) { // Blend from bg to fg
       info->_simplePalette[0] = (uint16_t)gfx->data.bgColor;
       info->_simplePalette[1] = graphicsBlendGfxColor(gfx, 85);
       info->_simplePalette[2] = graphicsBlendGfxColor(gfx, 171);

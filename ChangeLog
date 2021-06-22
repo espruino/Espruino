@@ -22,6 +22,7 @@
             Ensure Serial1.unsetup can be called even if it doesn't appear to have been enabled
             Puck.js: ensure self test only happens after hardware reset (fix #2001)
             Bangle.js: Fix issue where long-press BTN3 while holding BTN1 would reload the app but wouldn't load configuration (eg not setting timezone)
+            Graphics: add .getBPP, and allow color blending (rather than copy) when drawing 2 bit images on any BPP Graphics instance
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
