@@ -25,6 +25,7 @@
             Graphics: add .getBPP, and allow color blending (rather than copy) when drawing 2 bit images on any BPP Graphics instance
             nRF52: If getPrimaryServices fails with NRF_BUSY, keep retrying after a delay (fix #2008)
             Bangle.js 2: Fix getPressure memory leak
+            Graphics: Theme now only applies for LCD, not for JS/ArrayBuffer graphics
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)

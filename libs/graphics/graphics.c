@@ -109,12 +109,17 @@ void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1,
 
 void graphicsStructResetState(JsGraphics *gfx) {
 #ifdef GRAPHICS_THEME
-  gfx->data.fgColor = graphicsTheme.fg;
-  gfx->data.bgColor = graphicsTheme.bg;
-#else
-  gfx->data.fgColor = 0xFFFFFFFF;
-  gfx->data.bgColor = 0;
+  // Only set theme for OS-provided graphics (not arraybuffer/etc)
+  if (gfx->data.type!=JSGRAPHICSTYPE_ARRAYBUFFER &&
+      gfx->data.type!=JSGRAPHICSTYPE_JS) {
+    gfx->data.fgColor = graphicsTheme.fg;
+    gfx->data.bgColor = graphicsTheme.bg;
+  } else
 #endif
+  {
+    gfx->data.fgColor = 0xFFFFFFFF;
+    gfx->data.bgColor = 0;
+  }
   gfx->data.fontSize = 1+JSGRAPHICS_FONTSIZE_4X6;
 #ifndef SAVE_ON_FLASH
   gfx->data.fontAlignX = 3;
