@@ -424,6 +424,11 @@ JshI2CInfo i2cInternal;
 #define DEFAULT_LOCK_TIMEOUT 30000 // in msec - default for lockTimeout
 #endif
 
+#ifdef TOUCH_I2C
+unsigned char lastTouchX, lastTouchY;
+bool lastTouchPts;
+#endif
+
 #ifdef PRESSURE_I2C
 #ifdef PRESSURE_DEVICE_SPL06_007
 #define SPL06_PRSB2 0x00       ///< Pressure/temp data start
@@ -1328,7 +1333,7 @@ void btn4Handler(bool state, IOEventFlags flags) {
 }
 #endif
 
-#ifdef SMAQ3
+#ifdef TOUCH_I2C
 void touchHandler(bool state, IOEventFlags flags) {
   if (state) return; // only interested in when low
   // Ok, now get touch info
@@ -1347,11 +1352,9 @@ void touchHandler(bool state, IOEventFlags flags) {
   // 4: ?
   // 5: Y (0..160)
   unsigned char x = buf[3], y = buf[5];
-  bool touch = buf[1];
+  bool touchPts = buf[1];
   int gesture = buf[0];
   static int lastGesture = 0;
-  static unsigned char lastx, lasty;
-  static bool lastTouch;
   if (gesture!=lastGesture) {
     switch (gesture) { // gesture
     case 0:break; // no gesture
@@ -1374,23 +1377,23 @@ void touchHandler(bool state, IOEventFlags flags) {
     }
   }
 
-  if (touch!=lastTouch || lastx!=x || lasty!=y) {
+  if (touchPts!=lastTouchPts || lastTouchX!=x || lastTouchY!=y) {
     IOEvent evt;
     evt.flags = EV_TOUCH;
     evt.data.chars[0] = x * LCD_WIDTH / 160;
     evt.data.chars[1] = y * LCD_HEIGHT / 160;
-    evt.data.chars[2] = touch ? 1 : 0;
+    evt.data.chars[2] = touchPts ? 1 : 0;
     jshPushEvent(&evt);
     // ensure we don't sleep if touchscreen is being used
     flipTimer = 0;
   }
-  lastx = x;
-  lasty = y;
-  lastTouch = touch;
+  lastTouchX = x;
+  lastTouchY = y;
+  lastTouchPts = touchPts;
 
-  bool btn1 = touch && x>150 && y<50;
-  bool btn2 = touch && x>150 && y>50 && y<110;
-  bool btn3 = touch && x>150 && y>110;
+  bool btn1 = touchPts && x>150 && y<50;
+  bool btn2 = touchPts && x>150 && y>50 && y<110;
+  bool btn3 = touchPts && x>150 && y>110;
   static bool lastBtn1=0,lastBtn2=0,lastBtn3;
   if (btn1!=lastBtn1) jshPushIOEvent(fakeBTN1Flags | (btn1?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
   if (btn2!=lastBtn2) jshPushIOEvent(fakeBTN2Flags | (btn2?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
@@ -3251,11 +3254,24 @@ bool jswrap_banglejs_idle() {
       jsvUnLockMany(2,o);
     }
     if (bangleTasks & JSBT_TOUCH_MASK) {
+#ifdef TOUCH_I2C
+      JsVar *o[2] = {
+          jsvNewFromInteger(((bangleTasks & JSBT_TOUCH_LEFT)?1:0) |
+                            ((bangleTasks & JSBT_TOUCH_RIGHT)?2:0)),
+          jsvNewObject()
+      };
+      jsvObjectSetChildAndUnLock(o[1], "x", jsvNewFromInteger(lastTouchX));
+      jsvObjectSetChildAndUnLock(o[1], "y", jsvNewFromInteger(lastTouchY));
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"touch", o, 2);
+      jsvUnLockMany(2,o);
+#else
       JsVar *o = jsvNewFromInteger(((bangleTasks & JSBT_TOUCH_LEFT)?1:0) |
                                    ((bangleTasks & JSBT_TOUCH_RIGHT)?2:0));
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"touch", &o, 1);
       jsvUnLock(o);
+#endif
     }
+
   }
   jsvUnLock(bangle);
   bangleTasks = JSBT_NONE;
