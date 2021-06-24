@@ -24,7 +24,7 @@
 #define LCD_ROWHEADER 2
 #define LCD_STRIDE (LCD_ROWHEADER+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
 
-unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/];
+unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/ +4/*allow extra for fast scroll*/];
 bool isBacklightOn;
 
 
