@@ -2604,6 +2604,7 @@ NO_INLINE void jswrap_banglejs_init() {
   graphicsTheme.bg2 = 0x0007;
   graphicsTheme.fgH = 0xFFFF;
   graphicsTheme.bgH = 0x02F7;
+  graphicsTheme.dark = true;
 #else
   graphicsTheme.fg = 0;
   graphicsTheme.bg = 7;
@@ -2611,6 +2612,7 @@ NO_INLINE void jswrap_banglejs_init() {
   graphicsTheme.bg2 = 7;
   graphicsTheme.fgH = 0;
   graphicsTheme.bgH = 5;
+  graphicsTheme.dark = false;
 #endif
   //
   v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"theme",0) : 0;
@@ -2621,6 +2623,7 @@ NO_INLINE void jswrap_banglejs_init() {
     graphicsTheme.bg2 = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bg2",0));
     graphicsTheme.fgH = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fgH",0));
     graphicsTheme.bgH = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bgH",0));
+    graphicsTheme.dark = jsvGetBoolAndUnLock(jsvObjectGetChild(v,"dark",0));
   }
   jsvUnLock2(v,settings);
 

@@ -188,6 +188,7 @@ void jswrap_graphics_init() {
   graphicsTheme.bg2 = (JsGraphicsThemeColor)0;
   graphicsTheme.fgH = (JsGraphicsThemeColor)-1;
   graphicsTheme.bgH = (JsGraphicsThemeColor)0;
+  graphicsTheme.dark = true;
 #endif
 }
 
@@ -3142,6 +3143,7 @@ Returns an object of the form:
   bg : 0x0007,  // accented background colour
   fg : 0xFFFF,  // highlighted foreground colour
   bg : 0x02F7,  // highlighted background colour
+  dark : true,  // Is background dark (eg. foreground should be a light colour)
 }
 ```
 
@@ -3159,6 +3161,7 @@ JsVar *jswrap_graphics_theme(JsVar *parent) {
   jsvObjectSetChildAndUnLock(o,"bg2",jsvNewFromInteger(graphicsTheme.bg2));
   jsvObjectSetChildAndUnLock(o,"fgH",jsvNewFromInteger(graphicsTheme.fgH));
   jsvObjectSetChildAndUnLock(o,"bgH",jsvNewFromInteger(graphicsTheme.bgH));
+  jsvObjectSetChildAndUnLock(o,"dark",jsvNewFromBool(graphicsTheme.dark));
   return o;
 #else
   return 0;
