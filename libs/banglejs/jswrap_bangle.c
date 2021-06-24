@@ -434,9 +434,9 @@ JshI2CInfo i2cInternal;
 #endif
 
 #ifdef TOUCH_I2C
-unsigned char touchX, touchY;
-unsigned char lastTouchX, lastTouchY;
-bool touchPts, lastTouchPts;
+unsigned char touchX, touchY; ///< current touch event coordinates
+unsigned char lastTouchX, lastTouchY; ///< last touch event coordinates - updated when JSBT_DRAG is fired
+bool touchPts, lastTouchPts; ///< whether a fnger is currently touching or not
 #endif
 
 #ifdef PRESSURE_I2C
@@ -1358,9 +1358,6 @@ void touchHandler(bool state, IOEventFlags flags) {
   // ignore if locked
   if (bangleFlags & JSBF_LOCKED) return;
 
-  lastTouchX = touchX;
-  lastTouchY = touchY;
-  lastTouchPts = touchPts;
   // 0: Gesture type
   // 1: touch pts (0 or 1)
   // 2: Event?
@@ -3269,6 +3266,9 @@ bool jswrap_banglejs_idle() {
     jsvObjectSetChildAndUnLock(o, "dy", jsvNewFromInteger(lastTouchPts ? touchY-lastTouchY : 0));
     jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"drag", &o, 1);
     jsvUnLock(o);
+    lastTouchX = touchX;
+    lastTouchY = touchY;
+    lastTouchPts = touchPts;
   }
 #endif
   jsvUnLock(bangle);
