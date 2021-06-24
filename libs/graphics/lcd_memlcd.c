@@ -62,6 +62,21 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 #endif
 }
 
+#if LCD_BPP==3
+void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  for (int y=y1;y<=y2;y++) {
+    int bitaddr = LCD_ROWHEADER*8 + (x1*3) + (y*LCD_STRIDE*8);
+    for (int x=x1;x<=x2;x++) {
+      int bit = bitaddr&7;
+      uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]);
+      b = (b & (0xFF1FFF>>bit)) | ((col&7)<<(13-bit));
+      *(uint16_t*)&lcdBuffer[bitaddr>>3] = __builtin_bswap16(b);
+      bitaddr += 3;
+    }
+  }
+}
+#endif
+
 void lcdMemLCD_scrollX(struct JsGraphics *gfx, unsigned char *dst, unsigned char *src, int xdir) {
   uint32_t *dw = (uint32_t*)&dst[LCD_ROWHEADER];
   uint32_t *sw = (uint32_t*)&src[LCD_ROWHEADER];
@@ -72,17 +87,16 @@ void lcdMemLCD_scrollX(struct JsGraphics *gfx, unsigned char *dst, unsigned char
     int shiftBits = -xdir * LCD_BPP;
     int shiftWords = shiftBits>>5;
     shiftBits &= 31;
-    int wordLen = ((LCD_WIDTH*LCD_BPP)>>5) - shiftWords;
-    for (int x=0;x<wordLen;x++)
-      dw[x] = __builtin_bswap32((__builtin_bswap32(sw[x-shiftWords])<<shiftBits) | __builtin_bswap32(sw[x+shiftWords+1])>>(32-shiftBits));
-
+    int wordLen = (LCD_WIDTH*LCD_BPP - shiftBits)>>5;
+    for (int x=0;x<=wordLen;x++)
+      dw[x] = __builtin_bswap32((__builtin_bswap32(sw[x+shiftWords])<<shiftBits) | __builtin_bswap32(sw[x+shiftWords+1])>>(32-shiftBits));
   } else { // >0
     int shiftBits = xdir * LCD_BPP;
     int shiftWords = shiftBits>>5;
     shiftBits &= 31;
-    int wordLen = ((LCD_WIDTH*LCD_BPP)>>5) - shiftWords;
-    for (int x=0;x<wordLen;x++)
-      dw[x] = __builtin_bswap32((__builtin_bswap32(sw[x+shiftWords])>>shiftBits) | __builtin_bswap32(sw[x-(shiftWords+1)])<<(32-shiftBits));
+    int wordLen = (LCD_WIDTH*LCD_BPP + 15 - shiftBits)>>5;
+    for (int x=0;x<=wordLen;x++)
+      dw[x] = __builtin_bswap32((__builtin_bswap32(sw[x-shiftWords])>>shiftBits) | __builtin_bswap32(sw[x-(shiftWords+1)])<<(32-shiftBits));
   }
 }
 
@@ -180,6 +194,9 @@ void lcdMemLCD_extcominBacklight(bool isOn) {
 
 void lcdMemLCD_setCallbacks(JsGraphics *gfx) {
   gfx->setPixel = lcdMemLCD_setPixel;
+#if LCD_BPP==3
+  gfx->fillRect = lcdMemLCD_fillRect;
+#endif
   gfx->getPixel = lcdMemLCD_getPixel;
   gfx->scroll = lcdMemLCD_scroll;
 }
