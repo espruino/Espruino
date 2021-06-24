@@ -455,7 +455,7 @@ static unsigned char spiFlashStatus() {
   return buf;
 }
 
-#if defined(SMAQ3) && !defined(SPIFLASH_SLEEP_CMD)
+#if defined(BANGLEJS_Q3) && !defined(SPIFLASH_SLEEP_CMD)
 
 static void spiFlashReset(){
   unsigned char buf[1];
@@ -700,7 +700,7 @@ void jshResetPeripherals() {
 #endif
   spiFlashLastAddress = 0;
   jshDelayMicroseconds(100);
-#if defined(SMAQ3) && !defined(SPIFLASH_SLEEP_CMD)
+#if defined(BANGLEJS_Q3) && !defined(SPIFLASH_SLEEP_CMD)
   spiFlashReset(); //SW reset
   spiFlashWakeUp();
   spiFlashWakeUp();

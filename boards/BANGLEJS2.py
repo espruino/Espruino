@@ -16,8 +16,8 @@
 import pinutils;
 
 info = {
- 'name' : "SMA Q3",
- 'link' :  [ "" ],
+ 'name' : "Bangle.js 2", # Using SMA Q3
+ 'link' :  [ "https://www.espruino.com/Bangle.js" ],
  'espruino_page_link' : 'SMAQ3',
  'default_console' : "EV_TERMINAL",
  #'default_console' : "EV_SERIAL1",
@@ -26,7 +26,7 @@ info = {
 # 'default_console_baudrate' : "9600",
  'variables' : 10000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_smaq3.hex',
+ 'binary_name' : 'espruino_%v_banglejs2.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
@@ -37,7 +37,7 @@ info = {
 #     'TENSORFLOW'  
    ],
    'makefile' : [
-     'DEFINES += -DESPR_HWVERSION=2',
+     'DEFINES += -DESPR_HWVERSION=2 -DBANGLEJS_Q3',
 #     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow us to use NFC pins as GPIO
      'DEFINES += -DESPR_LSE_ENABLE ', # Ensure low speed external osc enabled

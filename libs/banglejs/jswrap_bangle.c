@@ -337,7 +337,7 @@ typedef struct {
 // =========================================================================
 //                                            DEVICE SPECIFIC CONFIG
 
-#ifdef SMAQ3
+#ifdef BANGLEJS_Q3
 JshI2CInfo i2cAccel;
 JshI2CInfo i2cMag;
 JshI2CInfo i2cTouch;
@@ -1002,7 +1002,7 @@ void peripheralPollHandler() {
     short newx = (buf[1]<<8)|buf[0];
     short newy = (buf[3]<<8)|buf[2];
     short newz = (buf[5]<<8)|buf[4];
-#ifdef SMAQ3
+#ifdef BANGLEJS_Q3
     newx = -newx; //consistent directions with Bangle
     newz = -newz; 
 #endif
@@ -1284,7 +1284,7 @@ bool btnTouchHandler() {
       bangleTasks |= JSBT_UNLOCK;
       eventUsed = true;
     }
-    if (eventUsed) return; // eat the event
+    if (eventUsed) return true; // eat the event
   }
   // if locked, ignore touch/swipe
   if (bangleFlags&JSBF_LOCKED) {
@@ -1744,7 +1744,7 @@ void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
   if (!isfinite(timeout))
     timeout=0;
   else if (timeout<0) timeout=0;
-#ifndef SMAQ3 // for backwards compatibility, don't set LCD timeout as we don't want to turn the LCD off
+#ifndef BANGLEJS_Q3 // for backwards compatibility, don't set LCD timeout as we don't want to turn the LCD off
   lcdPowerTimeout = timeout*1000;
 #endif
   backlightTimeout = timeout*1000;
@@ -1967,7 +1967,7 @@ int jswrap_banglejs_isCharging() {
 JsVarInt jswrap_banglejs_getBattery() {
 #ifdef BAT_PIN_VOLTAGE
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
-#ifdef SMAQ3
+#ifdef BANGLEJS_Q3
   const JsVarFloat vlo = 0.22;   // guess
   const JsVarFloat vhi = 0.32;  // guess
 #elif defined(BANGLEJS_F18)
@@ -2257,7 +2257,7 @@ void jswrap_banglejs_resetCompass() {
       ["appID","JsVar","A string with the app's name in, used to ensure one app can't turn off something another app is using"]
     ],
     "return" : ["bool","Is the Barometer on?"],
-    "#if" : "defined(DTNO1_F5) || defined(SMAQ3) || defined(DICKENS)"
+    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)"
 }
 Set the power to the barometer IC
 
@@ -2326,7 +2326,7 @@ bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
     "name" : "isBarometerOn",
     "generate" : "jswrap_banglejs_isBarometerOn",
     "return" : ["bool","Is the Barometer on?"],
-    "#if" : "defined(DTNO1_F5) || defined(SMAQ3) || defined(DICKENS)"
+    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)"
 }
 Is the Barometer powered?
 
@@ -2481,7 +2481,7 @@ NO_INLINE void jswrap_banglejs_init() {
 
     // Set up I2C
     i2cBusy = true;
-#ifdef SMAQ3
+#ifdef BANGLEJS_Q3
     jshI2CInitInfo(&i2cAccel);
     i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
     i2cAccel.pinSDA = ACCEL_PIN_SDA;
@@ -2513,7 +2513,7 @@ NO_INLINE void jswrap_banglejs_init() {
     i2cInternal.clockStretch = false;
     jsi2cSetup(&i2cInternal);
 #endif
-#ifdef SMAQ3
+#ifdef BANGLEJS_Q3
     // Touch init
     jshPinOutput(TOUCH_PIN_RST, 0);
     jshDelayMicroseconds(1000);
@@ -2541,7 +2541,7 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
 #endif
   }
-#ifdef SMAQ3
+#ifdef BANGLEJS_Q3
   jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
   channel = jshPinWatch(TOUCH_PIN_IRQ, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
@@ -2609,9 +2609,9 @@ NO_INLINE void jswrap_banglejs_init() {
   graphicsTheme.fg = 0;
   graphicsTheme.bg = 7;
   graphicsTheme.fg2 = 1;
-  graphicsTheme.bg2 = 7;
+  graphicsTheme.bg2 = 3;
   graphicsTheme.fgH = 0;
-  graphicsTheme.bgH = 5;
+  graphicsTheme.bgH = 1;
   graphicsTheme.dark = false;
 #endif
   //
@@ -2729,7 +2729,7 @@ NO_INLINE void jswrap_banglejs_init() {
       jswrap_graphics_drawCString(&gfx,8,y+20,"Copyright 2021 G.Williams");
     }
   }
-#ifdef SMAQ3
+#ifdef BANGLEJS_Q3
     lcdMemLCD_flip(&gfx);
 #endif
 #if defined(LCD_CONTROLLER_GC9A01)
@@ -2880,7 +2880,7 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
 #endif
 
-#ifdef SMAQ3
+#ifdef BANGLEJS_Q3
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   channel = jshPinWatch(BTN1_PININDEX, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn1Handler);
@@ -3318,7 +3318,7 @@ bool jswrap_banglejs_idle() {
 /*JSON{
   "type" : "EV_SERIAL1",
   "generate" : "jswrap_banglejs_gps_character",
-  "#if" : "defined(BANGLEJS_F18) || defined(DTNO1_F5)  || defined(SMAQ3)"
+  "#if" : "defined(BANGLEJS_F18) || defined(DTNO1_F5)  || defined(BANGLEJS_Q3)"
 }*/
 bool jswrap_banglejs_gps_character(char ch) {
   // if too many chars, roll over since it's probably because we skipped a newline
@@ -3505,7 +3505,7 @@ JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt) {
       ["reg","int",""],
       ["data","int",""]
     ],
-    "#if" : "defined(DTNO1_F5) || defined(SMAQ3) || defined(DICKENS)"
+    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)"
 }
 Writes a register on the barometer IC
 */
@@ -3530,7 +3530,7 @@ void jswrap_banglejs_barometerWr(JsVarInt reg, JsVarInt data) {
       ["cnt","int","If specified, `barometerRd` returns and array of the given length (max 48). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
-    "#if" : "defined(DTNO1_F5) || defined(SMAQ3) || defined(DICKENS)"
+    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)"
 }
 Reads a register from the barometer IC
 */
@@ -3613,7 +3613,7 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
     "name" : "getPressure",
     "generate" : "jswrap_banglejs_getPressure",
     "return" : ["JsVar","A promise that will be resolved with `{temperature, pressure, altitude}`"],
-    "#if" : "defined(DTNO1_F5) || defined(SMAQ3) || defined(DICKENS)"
+    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)"
 }
 Read temperature, pressure and altitude data. A promise is returned
 which will be resolved with `{temperature, pressure, altitude}`.
@@ -4233,8 +4233,8 @@ with `g.clear()`.
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "drawWidgets", "patch":true,
-    "generate_js" : "libs/js/banglejs/Bangle_drawWidgets_SMAQ3.js",
-    "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
+    "generate_js" : "libs/js/banglejs/Bangle_drawWidgets_Q3.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
 
@@ -4371,8 +4371,8 @@ The second `options` argument can contain:
 
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showMenu", "patch":true,
-    "generate_js" : "libs/js/banglejs/E_showMenu_SMAQ3.min.js",
-    "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
+    "generate_js" : "libs/js/banglejs/E_showMenu_Q3.min.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
 /*JSON{
@@ -4417,7 +4417,7 @@ To remove the window, call `E.showAlert()` with no arguments.
     "name" : "LED",
     "generate" : "gen_jswrap_LED1",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "#if" : "defined(BANGLEJS) && !defined(SMAQ3)",
+    "#if" : "defined(BANGLEJS) && !defined(BANGLEJS_Q3)",
     "no_docs":1
 }
 
@@ -4432,7 +4432,7 @@ a circle on the display
     "name" : "LED1",
     "generate_js" : "libs/js/banglejs/LED1.min.js",
     "return" : ["JsVar","A `Pin` object for a fake LED which appears on "],
-    "#if" : "defined(BANGLEJS) && !defined(SMAQ3)",
+    "#if" : "defined(BANGLEJS) && !defined(BANGLEJS_Q3)",
     "no_docs":1
 
 }
@@ -4477,7 +4477,7 @@ the actual input method (touch, or buttons) is implemented dependent on the watc
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
-    "generate_js" : "libs/js/banglejs/Bangle_setUI_SMAQ3.js",
-    "#if" : "defined(BANGLEJS) && defined(SMAQ3)"
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_Q3.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
