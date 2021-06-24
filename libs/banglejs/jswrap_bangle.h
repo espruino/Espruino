@@ -70,8 +70,3 @@ void jswrap_banglejs_kill();
 bool jswrap_banglejs_idle();
 bool jswrap_banglejs_gps_character(char ch);
 
-#ifdef SMAQ3
-// We use pins that are unused for 'fake' buttons to allow Bangle.js v1 apps to work
-#define FAKE_BTN1_PIN 40
-#define FAKE_BTN3_PIN 41
-#endif

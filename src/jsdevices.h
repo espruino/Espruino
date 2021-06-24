@@ -82,9 +82,6 @@ typedef enum {
   EV_BLUETOOTH_PENDING,      // Tasks that came from the Bluetooth Stack in an IRQ
   EV_BLUETOOTH_PENDING_DATA, // Data for pending tasks - this comes after the EV_BLUETOOTH_PENDING task itself
 #endif
-#ifdef TOUCH_DEVICE
-  EV_TOUCH,                  // Touchscreen touch events - bytes for X,Y,Press
-#endif
 #if SPI_COUNT>=1
   EV_SPI1, ///< SPI Devices
 #endif

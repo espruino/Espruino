@@ -1906,31 +1906,6 @@ void jsiIdle() {
     } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
       maxEvents -= jsble_exec_pending(&event);
 #endif
-#ifdef TOUCH_DEVICE
-    } else if ((eventType == EV_TOUCH)) {
-      JsVar *obj = jsvNewObject();
-      if (obj) {
-        unsigned char x = (unsigned char)event.data.chars[0];
-        unsigned char y = (unsigned char)event.data.chars[1];
-        unsigned char b = (unsigned char)event.data.chars[2];
-        // last x/y/buttons
-        static unsigned char lx, ly, lb;
-        if (!lb) {
-          lx = x;
-          ly = y;
-        }
-        jsvObjectSetChildAndUnLock(obj, "x", jsvNewFromInteger(x));
-        jsvObjectSetChildAndUnLock(obj, "y", jsvNewFromInteger(y));
-        jsvObjectSetChildAndUnLock(obj, "b", jsvNewFromInteger(b));
-        jsvObjectSetChildAndUnLock(obj, "dx", jsvNewFromInteger(x-lx));
-        jsvObjectSetChildAndUnLock(obj, "dy", jsvNewFromInteger(y-ly));
-        lx=x;
-        ly=y;
-        lb=b;
-        jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"touch", 1, &obj);
-        jsvUnLock(obj);
-      }
-#endif
 #ifdef I2C_SLAVE
     } else if (DEVICE_IS_I2C(eventType)) {
       // ------------------------------------------------------------------------ I2C CALLBACK
