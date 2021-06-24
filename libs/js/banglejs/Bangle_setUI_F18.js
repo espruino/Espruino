@@ -28,6 +28,18 @@
     Bangle.on("swipe", Bangle.swipeHandler);
     Bangle.touchHandler = d => {cb();};
     Bangle.on("touch", Bangle.touchHandler);
+  } else if (mode=="clock") {
+    Bangle.CLOCK=1;
+    Bangle.btnWatches = [
+      setWatch(Bangle.showLauncher, BTN2, {repeat:1,edge:"falling"})
+    ];
+  } else if (mode=="clockupdown") {
+    Bangle.CLOCK=1;
+    Bangle.btnWatches = [
+      setWatch(function() { cb(-1); }, BTN1, {repeat:1}),
+      setWatch(function() { cb(1); }, BTN3, {repeat:1}),
+      setWatch(Bangle.showLauncher, BTN2, {repeat:1,edge:"falling"})
+    ];    
   } else
     throw new Error("Unknown UI mode");
 })

@@ -4,7 +4,7 @@
     delete Bangle.btnWatches;
   }
   if (Bangle.dragHandler) {
-    E.removeListener("touch", Bangle.dragHandler);
+    Bangle.removeListener("drag", Bangle.dragHandler);
     delete Bangle.swipeHandler;
   }
   if (Bangle.touchHandler) {
@@ -12,7 +12,7 @@
     delete Bangle.touchHandler;
   }
   function b() {
-    try{Bangle.buzz(20);}catch(e){}
+    try{Bangle.buzz(30);}catch(e){}
   }
   if (!mode) return;
   else if (mode=="updown") {
@@ -26,7 +26,7 @@
         Bangle.buzz(20);
       }
     };
-    E.on('touch',Bangle.dragHandler);
+    Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
     Bangle.on("touch", Bangle.touchHandler);
     Bangle.btnWatches = [
@@ -43,11 +43,26 @@
         Bangle.buzz(20);
       }
     };
-    E.on('touch',Bangle.dragHandler);
+    Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
     Bangle.on("touch", Bangle.touchHandler);
     Bangle.btnWatches = [
       setWatch(function() { b();cb(); }, BTN1, {repeat:1}),
+    ];
+  } else if (mode=="clock") {
+    Bangle.CLOCK=1;
+    Bangle.btnWatches = [
+      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
+    ];
+  } else if (mode=="clockupdown") {
+    Bangle.CLOCK=1;
+    Bangle.touchHandler = (d,e) => {
+      if (e.x < 120) return;
+      b();cb(e.y > 88);
+    };
+    Bangle.on("touch", Bangle.touchHandler);
+    Bangle.btnWatches = [
+      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
     ];
   } else
     throw new Error("Unknown UI mode");

@@ -27,6 +27,7 @@
             Bangle.js 2: Fix getPressure memory leak
             Graphics: Theme now only applies for LCD, not for JS/ArrayBuffer graphics
             Graphics: Add dark boolean to themes to allow apps to update depending on bg color
+            Bangle.js: setUI now has 'clock' modes
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
