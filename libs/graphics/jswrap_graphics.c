@@ -1983,7 +1983,22 @@ typedef struct {
 /// Parse an image into GfxDrawImageInfo. See drawImage for image format docs. Returns true on success
 static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawImageInfo *info) {
   memset(info, 0, sizeof(GfxDrawImageInfo));
-  if (jsvIsObject(image)) {
+#ifndef SAVE_ON_FLASH
+  if (jsvIsObject(image) && jsvIsInstanceOf(image,"Graphics")) {
+    JsGraphics ig;
+    if (!graphicsGetFromVar(&ig, image)) return false;
+    if (ig.data.type!=JSGRAPHICSTYPE_ARRAYBUFFER) return false; // if not arraybuffer Graphics, bail out
+    info->width = ig.data.width;
+    info->height = ig.data.height;
+    info->bpp = ig.data.bpp;
+    JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
+    info->buffer = jsvGetArrayBufferBackingString(buf);
+    jsvUnLock(buf);
+    info->bufferOffset = 0;
+#else
+  if (false) {
+#endif
+  } else if (jsvIsObject(image)) {
     info->width = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
     info->height = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
     info->bpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
@@ -2152,10 +2167,13 @@ bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) 
     int imagex = qx>>8;
     int imagey = qy>>8;
    // TODO: getter callback for speed?
+#ifndef SAVE_ON_FLASH
    if (l->img.bpp==8) { // fast path for 8 bits
      jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+imagex+(imagey*l->img.stride)));
      colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
-   } else {
+   } else
+#endif
+   {
      int pixelOffset = (imagex+(imagey*l->img.width));
      int bitOffset = pixelOffset*l->img.bpp;
      jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+(bitOffset>>3)));
@@ -2262,6 +2280,7 @@ Image can be:
 
 * An object with the following fields `{ width : int, height : int, bpp : optional int, buffer : ArrayBuffer/String, transparent: optional int, palette : optional Uint16Array(2/4/16) }`. bpp = bits per pixel (default is 1), transparent (if defined) is the colour that will be treated as transparent, and palette is a color palette that each pixel will be looked up in first
 * A String where the the first few bytes are: `width,height,bpp,[transparent,]image_bytes...`. If a transparent colour is specified the top bit of `bpp` should be set.
+* An ArrayBuffer Graphics object (if `bpp<8`, `msb:true` must be set) - this is disabled on devices without much flash memory available
 
 Draw an image at the specified position.
 

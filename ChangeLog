@@ -30,6 +30,7 @@
             Bangle.js: setUI now has 'clock' modes
             Rename SMAQ3 board to BANGLEJS2
             nRF52840: Remove ifdef around PHY_UPDATE_REQUEST - fixes BLE5 connections
+            Graphics: Allow g.drawImage to use ArrayBuffer Graphics as an argument 
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
