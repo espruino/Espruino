@@ -2611,7 +2611,7 @@ NO_INLINE void jswrap_banglejs_init() {
   graphicsTheme.fg2 = 1;
   graphicsTheme.bg2 = 3;
   graphicsTheme.fgH = 0;
-  graphicsTheme.bgH = 1;
+  graphicsTheme.bgH = 3;
   graphicsTheme.dark = false;
 #endif
   //
@@ -4379,6 +4379,12 @@ The second `options` argument can contain:
     "type" : "staticmethod", "class" : "E", "name" : "showMenu", "patch":true,
     "generate_js" : "libs/js/banglejs/E_showMenu_F5.js",
     "#if" : "defined(BANGLEJS) && defined(DTNO1_F5)"
+}
+*/
+/*JSON{
+    "type" : "staticmethod", "class" : "E", "name" : "showPrompt", "patch":true,
+    "generate_js" : "libs/js/banglejs/E_showPrompt_Q3.min.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
 

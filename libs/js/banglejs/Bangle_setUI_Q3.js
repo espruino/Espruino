@@ -64,6 +64,9 @@
     Bangle.btnWatches = [
       setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
     ];
+  } else if (mode=="touch") {
+    Bangle.touchHandler = (_,e) => {b();cb(e);};
+    Bangle.on("touch", Bangle.touchHandler);
   } else
     throw new Error("Unknown UI mode");
 })
