@@ -56,6 +56,7 @@ info = {
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_6x15.c',
      'SOURCES += libs/misc/nmea.c',
      'SOURCES += libs/misc/stepcount.c',
      'SOURCES += libs/misc/heartrate.c',

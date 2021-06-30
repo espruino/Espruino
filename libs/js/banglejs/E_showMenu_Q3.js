@@ -1,21 +1,21 @@
 (function(items) {
-  g.clear(1);g.flip(); // clear screen if no menu supplied
+  g.clear(1).flip(); // clear screen if no menu supplied
   Bangle.drawWidgets();
   if (!items) {
     Bangle.setUI();
     return;
   }
-  var w = g.getWidth()-9;
+  var w = g.getWidth();
   var h = g.getHeight();
   var menuItems = Object.keys(items);
   var options = items[""];
   if (options) menuItems.splice(menuItems.indexOf(""),1);
   if (!(options instanceof Object)) options = {};
-  options.fontHeight=8;
+  options.fontHeight=15;
   options.x=0;
-  options.x2=w-2;
+  options.x2=w-1;
   options.y=24;
-  options.y2=h-20;
+  options.y2=h-12;
   if (options.selected === undefined)
     options.selected = 0;
   var x = 0|options.x;
@@ -23,7 +23,7 @@
   var y = 0|options.y;
   var y2 = options.y2||(g.getHeight()-1);
   if (options.title)
-    y += 14;
+    y += 17;
   var loc = require("locale");
   var l = {
     lastIdx : 0,
@@ -35,10 +35,10 @@
       var iy = y;
       g.reset().setFontAlign(0,-1,0);
       if (rowmin===undefined && options.title) {
-        g.setFont('4x6',2).drawString(options.title,(x+x2)/2,y-12-2);
+        g.setFont('6x8',2).drawString(options.title,(x+x2)/2,y-16-2);
         g.drawLine(x,y-2,x2,y-2);
       }
-      g.setFont('6x8');
+      g.setFont('6x15');
       if (rowmin!==undefined) {
         if (idx<rowmin) {
           iy += options.fontHeight*(rowmin-idx);
@@ -57,7 +57,7 @@
         g.fillRect(x,iy,x2,iy+options.fontHeight-1);
         g.setColor(hl ? g.theme.fgH : g.theme.fg);
         g.setFontAlign(-1,-1);
-        g.drawString(loc.translate(name),x,iy);
+        g.drawString(loc.translate(name),x,iy+1);
         if ("object" == typeof item) {
           var xo = x2;
           var v = item.value;
@@ -69,7 +69,7 @@
             g.setColor(g.theme.fgH).drawImage("\x0c\x05\x81\x00 \x07\x00\xF9\xF0\x0E\x00@",xo,iy+(options.fontHeight-10)/2,{scale:2});
           }
           g.setFontAlign(1,-1);
-          g.drawString(v,xo-2,iy);
+          g.drawString(v,xo-2,iy+1);
         }
         g.setColor(g.theme.fg);
         iy += options.fontHeight;
@@ -77,7 +77,7 @@
       }
       g.setFontAlign(-1,-1);
       var more = idx<menuItems.length;      
-      g.setColor(more?7:0).fillPoly([72,166,104,166,88,174]);
+      g.setColor(more?g.theme.fg:g.theme.bg).fillPoly([72,166,104,166,88,174]);
       g.flip();
     },
     select : function(dir) {
