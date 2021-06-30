@@ -40,6 +40,7 @@
 #include "nrf_soc.h"
 #include "nrf_saadc.h"
 #include "nrf5x_utils.h"
+#include "bitmap_font_6x8.h"
 
 #include "bluetooth.h" // for self-test
 #include "jsi2c.h" // accelerometer/etc
@@ -2691,6 +2692,28 @@ NO_INLINE void jswrap_banglejs_init() {
   in a fraction of a second anyway */
   if (jsiStatus & JSIS_TODO_FLASH_LOAD) {
     showSplashScreen = false;
+    if (!firstRun) {
+      // Display a loading screen
+      int x = LCD_WIDTH/2;
+      int y = LCD_HEIGHT/2;
+      graphicsFillRect(&gfx, x-49, y-19, x+49, y+19, graphicsTheme.bg);
+      gfx.data.fgColor = graphicsTheme.fg;
+      graphicsDrawRect(&gfx, x-50, y-20, x+50, y+20);
+      y -= 4;
+      x -= 4*6;
+      const char *s = "Loading...";
+      while (*s) {
+        graphicsDrawChar6x8(&gfx, x, y, *s, 1, false);
+        x+=6;
+        s++;
+      }
+  #ifdef BANGLEJS_Q3
+      lcdMemLCD_flip(&gfx);
+  #endif
+  #if defined(LCD_CONTROLLER_GC9A01)
+      lcdFlip_SPILCD(&gfx);
+  #endif
+    }
   }
 
 #ifdef DICKENS
