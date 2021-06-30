@@ -107,7 +107,7 @@ void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1
   // otherwise...
   unsigned char lineBuffer[LCD_STRIDE+4]; // allow out of bounds write
   if (ydir<=0) {
-    for (int y=y1;y<y2+ydir;y++) {
+    for (int y=y1;y<=y2+ydir;y++) {
       int yx = y-ydir;
       lcdMemLCD_scrollX(gfx, lineBuffer, &lcdBuffer[yx*LCD_STRIDE], xdir);
       memcpy(&lcdBuffer[y*LCD_STRIDE + LCD_ROWHEADER],&lineBuffer[LCD_ROWHEADER],LCD_STRIDE-LCD_ROWHEADER);
