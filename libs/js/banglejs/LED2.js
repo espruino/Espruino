@@ -4,7 +4,7 @@
     read: function() { return this._v; },
     set: function() { this.write(1); },
     reset: function() { this.write(0); },
-    write: function(v) { g.setColor(0,(this._v=!!v)?1:0,0).fillCircle(130,5,5).flip(); },
+    write: function(v) { g.setColor((this._v=!!v)?"#0f0":g.theme.bg).fillCircle((g.getWidth()+20)/2,5,5).flip();},
     toggle: function() { this.write(!this._v); }
   };
 })
