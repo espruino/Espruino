@@ -516,8 +516,8 @@ volatile bool wasFaceUp, faceUp;
 bool faceUpSent;
 /// Was the watch charging? we use this when firing events
 volatile bool wasCharging;
-/// time since LCD contents were last modified
-volatile uint16_t flipTimer; // in ms
+/// time since a button/touchscreen/etc was last pressed
+volatile uint16_t inactivityTimer; // in ms
 /// How long has BTN1 been held down for
 volatile uint16_t homeBtnTimer; // in ms
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
@@ -725,16 +725,6 @@ void lcd_flip(JsVar *parent, bool all) {
     gfx.data.modMaxX = LCD_WIDTH-1;
     gfx.data.modMaxY = LCD_HEIGHT-1;
   }
-  if (lcdPowerTimeout && !(bangleFlags&JSBF_LCD_ON)) {
-    // LCD was turned off, turn it back on
-    jswrap_banglejs_setLCDPower(1);
-  }
-  if (backlightTimeout && !(bangleFlags&JSBF_LCD_BL_ON)) {
-    // LCD was turned off, turn it back on
-    jswrap_banglejs_setLCDPowerBacklight(1);
-  }
-
-  flipTimer = 0;
 
 #ifdef LCD_CONTROLLER_LPM013M126
   lcdMemLCD_flip(&gfx);
@@ -843,8 +833,8 @@ void peripheralPollHandler() {
        ))
     jshKickWatchDog();
   // power on display if a button is pressed
-  if (flipTimer < TIMER_MAX)
-    flipTimer += pollInterval;
+  if (inactivityTimer < TIMER_MAX)
+    inactivityTimer += pollInterval;
   // If button is held down, trigger a soft reset so we go back to the clock
   if (jshPinGetValue(HOME_BTN_PININDEX)) {
     if (homeBtnTimer < TIMER_MAX) {
@@ -871,17 +861,17 @@ void peripheralPollHandler() {
     lcdMemLCD_extcominToggle();
 #endif
 
-  if (lcdPowerTimeout && (bangleFlags&JSBF_LCD_ON) && flipTimer>=lcdPowerTimeout) {
+  if (lcdPowerTimeout && (bangleFlags&JSBF_LCD_ON) && inactivityTimer>=lcdPowerTimeout) {
     // 10 seconds of inactivity, turn off display
     bangleTasks |= JSBT_LCD_OFF;
     jshHadEvent();
   }
-  if (backlightTimeout && (bangleFlags&JSBF_LCD_BL_ON) && flipTimer>=backlightTimeout) {
+  if (backlightTimeout && (bangleFlags&JSBF_LCD_BL_ON) && inactivityTimer>=backlightTimeout) {
     // 10 seconds of inactivity, turn off display
     bangleTasks |= JSBT_LCD_BL_OFF;
     jshHadEvent();
   }
-  if (lockTimeout && !(bangleFlags&JSBF_LOCKED) && flipTimer>=lockTimeout) {
+  if (lockTimeout && !(bangleFlags&JSBF_LOCKED) && inactivityTimer>=lockTimeout) {
     // 10 seconds of inactivity, lock display
     bangleTasks |= JSBT_LOCK;
     jshHadEvent();
@@ -1095,7 +1085,7 @@ void peripheralPollHandler() {
       bangleTasks |= JSBT_TWIST_EVENT;
       jshHadEvent();
       if (bangleFlags&JSBF_WAKEON_TWIST) {
-        flipTimer = 0;
+        inactivityTimer = 0;
         if (!(bangleFlags&JSBF_LCD_ON))
           bangleTasks |= JSBT_LCD_ON;
         if (bangleFlags&JSBF_LOCKED)
@@ -1216,7 +1206,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
 #endif
         false){
       // if a 'hard' button, turn LCD on
-      flipTimer = 0;
+      inactivityTimer = 0;
       if (state) {
         bool ignoreBtnUp = false;
         if (lcdPowerTimeout && !(bangleFlags&JSBF_LCD_ON) && state) {
@@ -1242,7 +1232,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
     } else {
       // on touchscreen, keep LCD on if it was in previously
       if (bangleFlags&JSBF_LCD_ON)
-        flipTimer = 0;
+        inactivityTimer = 0;
       else // else don't push the event
         return;
     }
@@ -1275,7 +1265,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
 // returns true if handled and shouldn't create a normal watch event
 bool btnTouchHandler() {
   if (bangleFlags&JSBF_WAKEON_TOUCH) {
-    flipTimer = 0; // ensure LCD doesn't sleep if we're touching it
+    inactivityTimer = 0; // ensure LCD doesn't sleep if we're touching it
     bool eventUsed = false;
     if (!(bangleFlags&JSBF_LCD_ON)) {
       bangleTasks |= JSBT_LCD_ON;
@@ -1395,7 +1385,7 @@ void touchHandler(bool state, IOEventFlags flags) {
   if (touchPts!=lastTouchPts || lastTouchX!=touchX || lastTouchY!=touchY) {
     bangleTasks |= JSBT_DRAG;
     // ensure we don't sleep if touchscreen is being used
-    flipTimer = 0;
+    inactivityTimer = 0;
   }
 
   lastGesture = gesture;
@@ -1532,10 +1522,12 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
     }
     jsvUnLock(bangle);
   }
-  flipTimer = 0;
+  inactivityTimer = 0;
   if (isOn) bangleFlags |= JSBF_LCD_ON;
   else bangleFlags &= ~JSBF_LCD_ON;
 }
+
+
 
 
 /*JSON{
@@ -1929,6 +1921,8 @@ void jswrap_banglejs_setLocked(bool isLocked) {
   }
   if (isLocked) bangleFlags |= JSBF_LOCKED;
   else bangleFlags &= ~JSBF_LOCKED;
+  // Reset inactivity timer so we will lock ourselves after a delay
+  inactivityTimer = 0;
 }
 
 /*JSON{
@@ -2553,7 +2547,7 @@ NO_INLINE void jswrap_banglejs_init() {
     bangleFlags = JSBF_DEFAULT | JSBF_LCD_ON | JSBF_LCD_BL_ON; // includes bangleFlags
     lcdBrightness = 255;
   }
-  flipTimer = 0; // reset the LCD timeout timer
+  inactivityTimer = 0; // reset the LCD timeout timer
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
   backlightTimeout = DEFAULT_BACKLIGHT_TIMEOUT;
   lockTimeout = DEFAULT_LOCK_TIMEOUT;
@@ -3252,7 +3246,7 @@ bool jswrap_banglejs_idle() {
           jswrap_banglejs_setLCDPowerBacklight(1);
         if (lockTimeout && (bangleFlags&JSBF_LOCKED))
           jswrap_banglejs_setLocked(false);
-        flipTimer = 0;
+        inactivityTimer = 0;
       }
     }
     if (bangleTasks & JSBT_SWIPE_MASK) {
