@@ -265,7 +265,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
             "filename" : "BOARD.py",
             "include" : "platform_config.h"
           })
-      if "LED1" in board.devices:
+      if "LED1" in board.devices and not "novariable" in board.devices["LED1"]:
         jsondatas.append({
           "type" : "variable",
           "name" : "LED",

@@ -99,7 +99,7 @@ chip = {
 
 devices = {
   'BTN1' : { 'pin' : 'D17', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
-  'LED1' : { 'pin' : 'D8' }, # Backlight
+  'LED1' : { 'pin' : 'D8', 'novariable':True }, # Backlight flash for low level debug - but in code we just use 'fake' LEDs
   'LCD' : {
             'width' : 176, 'height' : 176, 
             'bpp' : 3,
