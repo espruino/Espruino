@@ -1351,10 +1351,10 @@ void touchHandler(bool state, IOEventFlags flags) {
 
   // 0: Gesture type
   // 1: touch pts (0 or 1)
-  // 2: Event?
-  // 3: X (0..160)
-  // 4: ?
-  // 5: Y (0..160)
+  // 2: Status / X hi (0x00 first, 0x80 pressed, 0x40 released)
+  // 3: X lo (0..160)
+  // 4: Y hi
+  // 5: Y lo (0..160)
   touchX = buf[3] * LCD_WIDTH / 160;
   touchY = buf[5] * LCD_HEIGHT / 160;
   touchPts = buf[1];
@@ -1380,6 +1380,8 @@ void touchHandler(bool state, IOEventFlags flags) {
       else bangleTasks |= JSBT_TOUCH_RIGHT;
       break;
     }
+    // 0x0B double touch
+    // 0x0C long touch
   }
 
   if (touchPts!=lastTouchPts || lastTouchX!=touchX || lastTouchY!=touchY) {
