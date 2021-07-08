@@ -9,7 +9,7 @@
   if (global.WIDGETS) {
     for (var wd of WIDGETS) {
 	  var p = pos[wd.area];
-	  if (!p) return;
+	  if (!p) continue;
 	  wd.x = p.x - p.r*wd.width;
 	  wd.y = p.y;
 	  p.x += wd.width*(1-2*p.r);
