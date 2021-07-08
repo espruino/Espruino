@@ -60,6 +60,8 @@ info = {
      'SOURCES += libs/misc/nmea.c',
      'SOURCES += libs/misc/stepcount.c',
      'SOURCES += libs/misc/heartrate.c',
+     'SOURCES += libs/banglejs/banglejs2_storage_default.c',
+     'DEFINES += -DESPR_STORAGE_INTITIAL_CONTENTS=1', # 
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
      'DEFINES += -DBANGLEJS',
      'DEFINES += -D\'IS_PIN_A_BUTTON(PIN)=((PIN==17)||(PIN==40)||(PIN==41))\'',

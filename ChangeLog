@@ -34,6 +34,7 @@
             Bangle.js: Display small 'Loading...' screen to show something is happening when loading apps
             Promise: Fix issue with .then().then(...) on an already-resolved promise (fix #2019)
             Bangle.js: g.flip no longer keeps the screen awake, flipTimer renamed to inactivityTimer
+            Bangle.js 2: 'factory default' set of JS now included inside firmware
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)

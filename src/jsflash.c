@@ -915,3 +915,18 @@ void jsfRemoveCodeFromFlash() {
   jsiConsolePrint("\nDone!\n");
 }
 
+// Erase storage to 'factory' values.
+void jsfResetStorage() {
+  jsiConsolePrintf("Erasing Storage Area...\n");
+  jsfEraseAll();
+  jsiConsolePrintf("Erase complete.\n");
+#if ESPR_STORAGE_INTITIAL_CONTENTS
+  // if we store initial contents, write them here after erasing storage
+  jsiConsolePrintf("Writing initial storage contents...\n");
+  extern const char jsfStorageInitialContents[];
+  extern const int jsfStorageInitialContentLength;
+  jshFlashWrite(jsfStorageInitialContents, FLASH_SAVED_CODE_START, jsfStorageInitialContentLength);
+  jsiConsolePrintf("Write complete.\n");
+#endif
+}
+

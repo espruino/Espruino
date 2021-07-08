@@ -4503,3 +4503,23 @@ the actual input method (touch, or buttons) is implemented dependent on the watc
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "factoryReset",
+    "generate" : "jswrap_banglejs_factoryReset",
+    "ifdef" : "BANGLEJS_Q3"
+}
+
+Erase all storage and reload it with the default
+contents.
+
+This is only available on Bangle.js 2.0. On Bangle.js 1.0
+you need to use `Install Default Apps` under the About page
+of http://banglejs.com/apps
+*/
+void jswrap_banglejs_factoryReset() {
+  jsfResetStorage();
+  jsiStatus |= JSIS_TODO_FLASH_LOAD;
+}

@@ -474,9 +474,7 @@ void jsiSoftInit(bool hasBeenReset) {
 #if !defined(EMSCRIPTEN) && !defined(SAVE_ON_FLASH)
   if (!jsfIsStorageValid()) {
     jsiConsolePrintf("Storage is corrupt.\n");
-    jsiConsolePrintf("Erasing Storage Area...\n");
-    jsfEraseAll();
-    jsiConsolePrintf("Erase complete.\n");
+    jsfResetStorage();
   }
 #endif
 

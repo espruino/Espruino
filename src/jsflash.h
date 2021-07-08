@@ -99,4 +99,7 @@ bool jsfFlashContainsCode();
 /** Completely clear any saved code from flash. */
 void jsfRemoveCodeFromFlash();
 
+// Erase storage to 'factory' values.
+void jsfResetStorage();
+
 #endif //JSFLASH_H_
