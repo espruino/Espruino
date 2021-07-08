@@ -20,7 +20,7 @@
 #define HRM_THRESH_SHIFT 4
 
 typedef struct {
-  int8_t raw;
+  int16_t raw;
   int8_t filtered;
   int8_t thresh;
   bool wasLow;
@@ -40,3 +40,6 @@ void hrm_init();
 
 /// Add new heart rate value, return true if there was a heart beat
 bool hrm_new(int hrmValue);
+
+void hrm_sensor_on();
+void hrm_sensor_off();

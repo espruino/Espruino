@@ -445,6 +445,9 @@ if "SPEAKER" in board.devices:
 
 if "HEARTRATE" in board.devices:
   codeOutDevicePins("HEARTRATE", "HEARTRATE")
+  if "addr" in board.devices["HEARTRATE"]:
+    codeOut("#define HEARTRATE_ADDR "+str(board.devices["HEARTRATE"]["addr"]))
+  codeOut("#define HEARTRATE_DEVICE_"+board.devices["HEARTRATE"]["device"].upper())
 
 if "BAT" in board.devices:
   codeOutDevicePins("BAT", "BAT")

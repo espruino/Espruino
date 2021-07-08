@@ -343,17 +343,19 @@ JshI2CInfo i2cAccel;
 JshI2CInfo i2cMag;
 JshI2CInfo i2cTouch;
 JshI2CInfo i2cPressure;
-// TODO: HRM...
+JshI2CInfo i2cHRM;
 #define ACCEL_I2C &i2cAccel
 #define MAG_I2C &i2cMag
 #define TOUCH_I2C &i2cTouch
 #define PRESSURE_I2C &i2cPressure
+#define HRM_I2C &i2cHRM
 #define HOME_BTN 1
 #define GPS_UART EV_SERIAL1
 
 #define DEFAULT_LCD_POWER_TIMEOUT 0 // don't turn LCD off
 #define DEFAULT_BACKLIGHT_TIMEOUT 3000
 #define DEFAULT_LOCK_TIMEOUT 5000
+#define HEARTRATE 1
 #endif
 
 #ifdef BANGLEJS_F18
@@ -692,6 +694,9 @@ void jswrap_banglejs_pwrHRM(bool on) {
 #endif
 #ifdef BANGLEJS_F18
   jswrap_banglejs_ioWr(IOEXP_HRM, !on);
+#endif
+#ifdef HEARTRATE_PIN_EN
+  jshPinOutput(HEARTRATE_PIN_EN, on);
 #endif
 }
 
@@ -1137,40 +1142,8 @@ void peripheralPollHandler() {
 }
 
 #ifdef HEARTRATE
-void hrmPollHandler() {
-#ifdef HEARTRATE_PIN_ANALOG
-  extern nrf_saadc_value_t nrf_analog_read();
-  extern bool nrf_analog_read_start();
-  extern void nrf_analog_read_end(bool adcInUse);
-  extern bool nrf_analog_read_interrupted;
-
-  nrf_saadc_input_t ain = 1 + (pinInfo[HEARTRATE_PIN_ANALOG].analog & JSH_MASK_ANALOG_CH);
-
-  nrf_saadc_channel_config_t config;
-  config.acq_time = NRF_SAADC_ACQTIME_10US;
-  config.gain = NRF_SAADC_GAIN1;
-  config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
-  config.pin_p = ain;
-  config.pin_n = ain;
-  config.reference = NRF_SAADC_REFERENCE_INTERNAL;
-  config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
-  config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
-  bool adcInUse = nrf_analog_read_start();
-
-  // make reading
-  int v;
-  do {
-    nrf_analog_read_interrupted = false;
-    nrf_saadc_enable();
-    nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_8BIT);
-    nrf_saadc_channel_init(0, &config);
-
-    v = nrf_analog_read();
-  } while (nrf_analog_read_interrupted);
-
-  nrf_analog_read_end(adcInUse);
-
-  if (hrm_new(v)) {
+static void hrmHandler(int ppgValue) {
+  if (hrm_new(ppgValue)) {
     bangleTasks |= JSBT_HRM_DATA;
     jshHadEvent();
   }
@@ -1178,7 +1151,6 @@ void hrmPollHandler() {
     bangleTasks |= JSBT_HRM_INSTANT_DATA;
     jshHadEvent();
   }
-#endif
 }
 #endif // HEARTRATE
 
@@ -1965,8 +1937,8 @@ JsVarInt jswrap_banglejs_getBattery() {
 #ifdef BAT_PIN_VOLTAGE
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
 #ifdef BANGLEJS_Q3
-  const JsVarFloat vlo = 0.22;   // guess
-  const JsVarFloat vhi = 0.32;  // guess
+  const JsVarFloat vlo = 0.246;
+  const JsVarFloat vhi = 0.32;
 #elif defined(BANGLEJS_F18)
   const JsVarFloat vlo = 0.51;
   const JsVarFloat vhi = 0.62;
@@ -2041,20 +2013,16 @@ bool jswrap_banglejs_setHRMPower(bool isOn, JsVar *appId) {
 #ifdef HEARTRATE
   bool wasOn = bangleFlags & JSBF_HRM_ON;
   isOn = setDeviceRequested("HRM", appId, isOn);
-  jstStopExecuteFn(hrmPollHandler, 0);
-  if (isOn) {
-    if (!wasOn) { // only reset if we weren't on before
-#ifdef HEARTRATE_PIN_ANALOG
-      jshPinAnalog(HEARTRATE_PIN_ANALOG);
-#endif
-      jswrap_banglejs_pwrHRM(true); // HRM on, set JSBF_HRM_ON
+
+  if (isOn != wasOn) {
+    if (isOn) {
       hrm_init();
+      jswrap_banglejs_pwrHRM(true); // HRM on, set JSBF_HRM_ON
+      hrm_sensor_on(hrmHandler);
+    } else {
+      hrm_sensor_off();
+      jswrap_banglejs_pwrHRM(false); // HRM off
     }
-    // we just stopped hrmPollHandler
-    JsSysTime t = jshGetTimeFromMilliseconds(HRM_POLL_INTERVAL);
-    jstExecuteFn(hrmPollHandler, NULL, jshGetSystemTime()+t, t);
-  } else { // !isOn
-    jswrap_banglejs_pwrHRM(false); // HRM off, clear JSBF_HRM_ON
   }
   return isOn;
 #else
@@ -2502,6 +2470,12 @@ NO_INLINE void jswrap_banglejs_init() {
     i2cPressure.pinSDA = PRESSURE_PIN_SDA;
     i2cPressure.pinSCL = PRESSURE_PIN_SCL;
     jsi2cSetup(&i2cPressure);
+
+    jshI2CInitInfo(&i2cHRM);
+    i2cHRM.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+    i2cHRM.pinSDA = HEARTRATE_PIN_SDA;
+    i2cHRM.pinSCL = HEARTRATE_PIN_SCL;
+    jsi2cSetup(&i2cHRM);
 #elif defined(ACCEL_PIN_SDA) // assume all the rest just use a global I2C
     jshI2CInitInfo(&i2cInternal);
     i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
@@ -2951,9 +2925,6 @@ void jswrap_banglejs_kill() {
 #endif
 #ifndef EMSCRIPTEN
   app_timer_stop(m_peripheral_poll_timer_id);
-#endif
-#ifdef HEARTRATE
-  jstStopExecuteFn(hrmPollHandler, 0);
 #endif
 #ifdef ESPR_BACKLIGHT_FADE
   if (lcdFadeHandlerActive) {
