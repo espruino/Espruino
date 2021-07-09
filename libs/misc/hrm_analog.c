@@ -18,6 +18,10 @@
 #include "jsinteractive.h"
 #include "jstimer.h"
 
+#include "nrf_saadc.h"
+
+#define HRM_POLL_INTERVAL 20 // in msec - 50hz
+
 HrmCallback hrmCallback;
 
 void hrm_timer() {
@@ -59,11 +63,11 @@ void hrm_sensor_on(HrmCallback callback) {
   hrmCallback = callback;
   jshPinAnalog(HEARTRATE_PIN_ANALOG);
   JsSysTime t = jshGetTimeFromMilliseconds(HRM_POLL_INTERVAL);
-  jstExecuteFn(hrmPollHandler, NULL, jshGetSystemTime()+t, t);
+  jstExecuteFn(hrm_timer, NULL, jshGetSystemTime()+t, t);
 }
 
 void hrm_sensor_off() {
-  jstStopExecuteFn(hrmPollHandler, 0);
+  jstStopExecuteFn(hrm_timer, 0);
 }
 
 JsVar *hrm_sensor_getJsVar() {

@@ -121,6 +121,7 @@ devices = {
             'pin_voltage' : 'D30'
           },
   'HEARTRATE' : {
+            'device' : 'analog',
            # 'pin_led' : '', IO expander P7
             'pin_analog' : 'D29'
           },
