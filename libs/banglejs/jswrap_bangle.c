@@ -472,6 +472,7 @@ JsVar *jswrap_banglejs_getBarometerObject();
 #endif
 
 #ifdef HEARTRATE
+#include "hrm.h"
 #include "heartrate.h"
 #endif
 
@@ -3083,7 +3084,7 @@ bool jswrap_banglejs_idle() {
     }
 #ifdef HEARTRATE
     if (bangleTasks & JSBT_HRM_INSTANT_DATA) {
-      JsVar *o = jsvNewObject();
+      JsVar *o = hrm_sensor_getJsVar();
       if (o) {
         jsvObjectSetChildAndUnLock(o,"raw",jsvNewFromInteger(hrmInfo.raw));
         jsvObjectSetChildAndUnLock(o,"filt",jsvNewFromInteger(hrmInfo.filtered));
