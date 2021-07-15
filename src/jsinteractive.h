@@ -46,6 +46,7 @@ bool jsiHasTimers(); // are there timers still left to run?
 bool jsiIsWatchingPin(Pin pin); // are there any watches for the given pin?
 
 void jsiCtrlC(); // Ctrl-C - force interrupt of execution
+void jsiCtrlD();
 
 /// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
 void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount);
