@@ -1809,6 +1809,10 @@ void jsiCtrlC() {
   execInfo.execute |= EXEC_CTRL_C;
 }
 
+void jsiCtrlD() {
+  execInfo.execute |= EXEC_CTRL_D;
+}
+
 /** Grab as many characters as possible from the event queue for the given event
    and return a JsVar containing them. 'eventsHandled' is set to the number of
    extra events (not characters) is returned */
@@ -2310,6 +2314,15 @@ bool jsiLoop() {
       jsiTimeSinceCtrlC = 0;
     }
     jsiClearInputLine(true);
+  }
+
+  if (execInfo.execute & EXEC_CTRL_D) {
+    execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_CTRL_D;
+#ifndef EMBEDDED
+    if (jsvIsEmptyString(inputLine)) {
+      exit(0); // exit if ctrl-d on empty input line
+    }
+#endif
   }
 
   // return console (if it was gone!)
