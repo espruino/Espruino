@@ -248,9 +248,9 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
   }
   // sanity check ppgOffset to ensure we stay in range
   int value = (vcInfo.ppgValue & VC31_PPG_MASK) + vcInfo.ppgOffset;
-  if (value > 511) { vcInfo.ppgOffset -= value-511; value=511; }
+  if (value > 1023) { vcInfo.ppgOffset -= value-1023; value=1023; }
   else if (value < 0) { vcInfo.ppgOffset += -value; value = 0; }
-  hrmCallback(value>>2); // stay in 0..127 range
+  hrmCallback(value>>3); // stay in 0..127 range
 }
 
 static void vc31_watch_on() {
