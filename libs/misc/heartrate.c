@@ -340,8 +340,8 @@ bool hrm_had_beat() {
 
 /// Add new heart rate value
 bool hrm_new(int hrmValue) {
-  if (hrmValue<-32768) hrmValue=-32768;
-  if (hrmValue>32767) hrmValue=32767;
+  if (hrmValue<-128) hrmValue=-128;
+  if (hrmValue>127) hrmValue=127;
   hrmInfo.raw = hrmValue;
   HRMFilter_put(&hrmFilter, hrmValue);
   int h = HRMFilter_get(&hrmFilter);

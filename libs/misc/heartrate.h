@@ -20,7 +20,7 @@
 #define HRM_THRESH_SHIFT 4
 
 typedef struct {
-  int16_t raw;
+  int8_t raw;
   int8_t filtered;
   int8_t thresh;
   bool wasLow;

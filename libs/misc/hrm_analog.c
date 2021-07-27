@@ -59,15 +59,24 @@ void hrm_timer() {
   hrmCallback(v);
 }
 
-void hrm_sensor_on(HrmCallback callback) {
-  hrmCallback = callback;
-  jshPinAnalog(HEARTRATE_PIN_ANALOG);
+static void hrm_sensor_timer_start() {
   JsSysTime t = jshGetTimeFromMilliseconds(HRM_POLL_INTERVAL);
   jstExecuteFn(hrm_timer, NULL, jshGetSystemTime()+t, t);
 }
 
-void hrm_sensor_off() {
+static void hrm_sensor_timer_stop() {
   jstStopExecuteFn(hrm_timer, 0);
+}
+
+void hrm_sensor_on(HrmCallback callback) {
+  hrmCallback = callback;
+  jshPinAnalog(HEARTRATE_PIN_ANALOG);
+  hrm_sensor_timer_start();
+}
+
+void hrm_sensor_off() {
+  hrm_sensor_timer_stop();
+  hrmCallback = NULL;
 }
 
 JsVar *hrm_sensor_getJsVar() {
@@ -76,4 +85,16 @@ JsVar *hrm_sensor_getJsVar() {
     // add custom info here
   }
   return o;
+}
+
+/// Called when JS engine torn down (disable timer/watch/etc)
+void hrm_sensor_kill() {
+  if (hrmCallback!=NULL) // if is running
+    hrm_sensor_timer_stop();
+}
+
+/// Called when JS engine initialised
+void hrm_sensor_init() {
+  if (hrmCallback!=NULL) // if is running
+    hrm_sensor_timer_start();
 }

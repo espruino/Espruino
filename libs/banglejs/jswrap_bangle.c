@@ -2840,6 +2840,7 @@ NO_INLINE void jswrap_banglejs_init() {
 #ifdef HEARTRATE
   if (firstRun)
     hrm_init();
+  hrm_sensor_init();
 #endif
 
 #ifndef EMSCRIPTEN
@@ -2925,6 +2926,9 @@ void jswrap_banglejs_kill() {
 #endif
 #ifndef EMSCRIPTEN
   app_timer_stop(m_peripheral_poll_timer_id);
+#endif
+#ifdef HEARTRATE
+  hrm_sensor_kill();
 #endif
 #ifdef ESPR_BACKLIGHT_FADE
   if (lcdFadeHandlerActive) {

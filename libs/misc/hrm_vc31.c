@@ -120,6 +120,7 @@ typedef struct {
   uint16_t envValue;
   VC31AdjustInfo_t adjustInfo;
   uint8_t raw[11];
+  int ppgOffset; ///< when we adjust the PPG settings, we tweak ppgOffset to ensure there's no big 'jump'
 } PACKED_FLAGS VC31Info;
 
 VC31Info vcInfo;
@@ -225,6 +226,10 @@ static void vc31_adjust() {
 
 void vc31_irqhandler(bool state, IOEventFlags flags) {
   if (!state || !hrmCallback) return;
+
+  // Have we adjusted settings since this value?
+  uint16_t lastPPG = vcInfo.ppgValue;
+
   uint8_t *buf = vcInfo.raw;
   vc31_rx(VC31_STATUS, buf, 11);
   vcInfo.status = buf[0];
@@ -237,9 +242,26 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
     vc31_adjust();
   // wear status?
 
-  // TODO: if vcInfo.ppgValue&VC31_PPG_ADJUSTED then the next value could be adjusted
-  // to ensure that it 'lines up' with the old value
-  hrmCallback(vcInfo.ppgValue & VC31_PPG_MASK); // mask out adjusted flag
+  if (lastPPG & VC31_PPG_ADJUSTED) {
+    // did we adjust settings last time? if so, tweak ppgOffset to ensure that this value is the same as last
+    vcInfo.ppgOffset += (lastPPG & VC31_PPG_MASK) - (vcInfo.ppgValue & VC31_PPG_MASK);
+  }
+  // sanity check ppgOffset to ensure we stay in range
+  int value = (vcInfo.ppgValue & VC31_PPG_MASK) + vcInfo.ppgOffset;
+  if (value > 511) { vcInfo.ppgOffset -= value-511; value=511; }
+  else if (value < 0) { vcInfo.ppgOffset += -value; value = 0; }
+  hrmCallback(value>>2); // stay in 0..127 range
+}
+
+static void vc31_watch_on() {
+  jshSetPinShouldStayWatched(HEARTRATE_PIN_INT,true);
+  IOEventFlags channel = jshPinWatch(HEARTRATE_PIN_INT, true);
+  if (channel!=EV_NONE) jshSetEventCallback(channel, vc31_irqhandler);
+}
+
+static void vc31_watch_off() {
+  jshPinWatch(HEARTRATE_PIN_INT, false);
+  jshSetPinShouldStayWatched(HEARTRATE_PIN_INT,false);
 }
 
 void hrm_sensor_on(HrmCallback callback) {
@@ -250,28 +272,26 @@ void hrm_sensor_on(HrmCallback callback) {
   vc31_w(VC31_TIA_WAIT, 0x3c);
   vc31_w(VC31_PS_DIV, 0x09);
   vc31_w(VC31_IR_WAIT, 0xa0);
-  vc31_w16(VC31_PPG_DIV, VC31_PPG_DIV_50_HZ);
+  vc31_w16(VC31_PPG_DIV, VC31_PPG_DIV_100_HZ);
   vc31_w(VC31_GREEN_IR_GAP, 0x20);
   vc31_w(VC31_AMP_WAIT, 0x14);
   uint8_t ctrl = VC31_CTRL_OPA_GAIN_25 | VC31_CTRL_ENABLE_PPG | VC31_CTRL_ENABLE_PRE |
                  VC31_CTRL_WORK_MODE | VC31_CTRL_INT_DIR_RISING;
   vc31_w(VC31_CTRL, ctrl);
 
+  memset(&vcInfo, 0, sizeof(vcInfo));
+  vcInfo.ppgOffset = 0;
   vcInfo.adjustInfo.step  = 307200;
   vcInfo.adjustInfo.directionLastBefore = AdjustDirection_Null;
   vcInfo.adjustInfo.directionLast = AdjustDirection_Null;
 
-  jshSetPinShouldStayWatched(HEARTRATE_PIN_INT,true);
-  IOEventFlags channel = jshPinWatch(HEARTRATE_PIN_INT, true);
-  if (channel!=EV_NONE) jshSetEventCallback(channel, vc31_irqhandler);
+  vc31_watch_on();
 
   //vc31_w16(VC31_GREEN_ADJ, 0xe8c3);
 }
 
 void hrm_sensor_off() {
-  jshPinWatch(HEARTRATE_PIN_INT, false);
-  jshSetPinShouldStayWatched(HEARTRATE_PIN_INT,false);
-
+  vc31_watch_off();
   vc31_w16(VC31_GREEN_ADJ, 0);
   uint8_t ctrl = VC31_CTRL_OPA_GAIN_25 | VC31_CTRL_ENABLE_PRE | VC31_CTRL_INT_DIR_RISING;
   vc31_w(VC31_CTRL, ctrl);
@@ -283,11 +303,24 @@ JsVar *hrm_sensor_getJsVar() {
   if (o) {
     jsvObjectSetChildAndUnLock(o,"vcStatus",jsvNewFromInteger(vcInfo.status));
     jsvObjectSetChildAndUnLock(o,"vcPPG",jsvNewFromInteger(vcInfo.ppgValue));
+    jsvObjectSetChildAndUnLock(o,"vcPPGoffs",jsvNewFromInteger(vcInfo.ppgOffset));
     jsvObjectSetChildAndUnLock(o,"vcCurrent",jsvNewFromInteger(vcInfo.currentValue));
     jsvObjectSetChildAndUnLock(o,"vcPre",jsvNewFromInteger(vcInfo.preValue));
     jsvObjectSetChildAndUnLock(o,"vcPS",jsvNewFromInteger(vcInfo.psValue));
-    jsvObjectSetChildAndUnLock(o,"vsEnv",jsvNewFromInteger(vcInfo.envValue));
-    jsvObjectSetChildAndUnLock(o,"vsRaw",jsvNewArrayBufferWithData(sizeof(vcInfo.raw), vcInfo.raw));
+    jsvObjectSetChildAndUnLock(o,"vcEnv",jsvNewFromInteger(vcInfo.envValue));
+    jsvObjectSetChildAndUnLock(o,"vcRaw",jsvNewArrayBufferWithData(sizeof(vcInfo.raw), vcInfo.raw));
   }
   return o;
+}
+
+/// Called when JS engine torn down (disable timer/watch/etc)
+void hrm_sensor_kill() {
+  if (hrmCallback!=NULL) // if is running
+    vc31_watch_off();
+}
+
+/// Called when JS engine initialised
+void hrm_sensor_init() {
+  if (hrmCallback!=NULL) // if is running
+    vc31_watch_on();
 }

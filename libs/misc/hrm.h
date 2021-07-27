@@ -16,6 +16,15 @@
 
 typedef void(*HrmCallback)(int ppgValue);
 
+/// Turn heart rate sensor on - callback called on each data point
 void hrm_sensor_on(HrmCallback callback);
+/// Turn heart rate sensor off
 void hrm_sensor_off();
+/// Get extra HRM data as a JS Object
 JsVar *hrm_sensor_getJsVar();
+
+
+/// Called when JS engine torn down (disable timer/watch/etc)
+void hrm_sensor_kill();
+/// Called when JS engine initialised
+void hrm_sensor_init();
