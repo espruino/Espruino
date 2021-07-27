@@ -36,6 +36,7 @@
             Bangle.js: g.flip no longer keeps the screen awake, flipTimer renamed to inactivityTimer
             Bangle.js 2: 'factory default' set of JS now included inside firmware
             Bangle.js: Build in ANCS support (disabled by default)
+            Bangle.js 2: Working VC31 heart rate monitoring
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
