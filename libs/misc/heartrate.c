@@ -349,6 +349,9 @@ bool hrm_new(int hrmValue) {
   if (h>127) h=127;
   hrmInfo.filtered = h;
 
+  // TODO: we should store actual time here, not # samples, as it
+  // will be substantially more accurate esp of VC31 where its
+  // internal oscillator doesn't seem accurate at all
   if (hrmInfo.timeSinceBeat<255)
     hrmInfo.timeSinceBeat++;
   // check for step counter

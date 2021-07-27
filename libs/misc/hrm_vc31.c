@@ -272,7 +272,7 @@ void hrm_sensor_on(HrmCallback callback) {
   vc31_w(VC31_TIA_WAIT, 0x3c);
   vc31_w(VC31_PS_DIV, 0x09);
   vc31_w(VC31_IR_WAIT, 0xa0);
-  vc31_w16(VC31_PPG_DIV, VC31_PPG_DIV_100_HZ);
+  vc31_w16(VC31_PPG_DIV, VC31_PPG_DIV_100_HZ); // seems to take 2 samples, so this is actually 50Hz samples
   vc31_w(VC31_GREEN_IR_GAP, 0x20);
   vc31_w(VC31_AMP_WAIT, 0x14);
   uint8_t ctrl = VC31_CTRL_OPA_GAIN_25 | VC31_CTRL_ENABLE_PPG | VC31_CTRL_ENABLE_PRE |
