@@ -12,6 +12,9 @@
  * ----------------------------------------------------------------------------
  */
 
+
+#include "jsutils.h"
+
 #define HRM_SAMPLERATE 50 // Hz
 #define HRM_HIST_LEN 16
 #define HRM_MEDIAN_LEN 8
@@ -23,9 +26,9 @@ typedef struct {
   int8_t raw;
   int8_t filtered;
   int8_t thresh;
-  bool wasLow;
-  uint8_t timeSinceBeat;
-  uint8_t times[HRM_HIST_LEN];
+  bool wasLow, isBeat;
+  JsSysTime lastBeatTime; // timestamp of last heartbeat
+  uint8_t times[HRM_HIST_LEN]; // times of previous beats, in 1/100th secs
   uint8_t timeIdx; // index in times
   uint16_t bpm10; // 10x BPM
   uint8_t confidence; // 0..100%

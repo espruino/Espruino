@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "heartrate.h"
+#include "jshardware.h"
 
 /*
 
@@ -275,29 +276,30 @@ HrmInfo hrmInfo;
 
 /// Initialise heart rate monitoring
 void hrm_init() {
-  hrmInfo.raw = 0;
-  hrmInfo.filtered = 0;
+  memset(&hrmInfo, 0, sizeof(hrmInfo));
   hrmInfo.thresh = HRM_THRESH_MIN;
   hrmInfo.wasLow = false;
-  hrmInfo.timeSinceBeat = 0;
-  hrmInfo.timeIdx = 0;
-  hrmInfo.bpm10 = 0;
-  hrmInfo.confidence = 0;
-  memset(hrmInfo.times, 0, sizeof(hrmInfo.times));
+  hrmInfo.lastBeatTime = jshGetSystemTime();
   HRMFilter_init(&hrmFilter);
 }
 
 uint16_t hrm_time_to_bpm10(uint8_t time) {
-  return 10 * 60 * HRM_SAMPLERATE / time; // 10x BPM
+  return (10 * 60 * 100) / time; // 10x BPM
 }
 
 bool hrm_had_beat() {
-  // store HRM times in list
-  hrmInfo.times[hrmInfo.timeIdx] = hrmInfo.timeSinceBeat;
+  // Get time since last beat
+  JsSysTime time = jshGetSystemTime();
+  JsVarFloat beatTime = jshGetMillisecondsFromTime(time - hrmInfo.lastBeatTime) / 10; // in 1/100th sec
+  hrmInfo.lastBeatTime = time;
+  if (beatTime<0) beatTime=0;
+  if (beatTime>255) beatTime=255;
+
+  // store HRM times in list (in 1/100th sec)
+  hrmInfo.times[hrmInfo.timeIdx] = (uint8_t)beatTime;
   hrmInfo.timeIdx++;
   if (hrmInfo.timeIdx >= HRM_HIST_LEN)
     hrmInfo.timeIdx = 0;
-  hrmInfo.timeSinceBeat = 0;
   // copy times over
   uint8_t times[HRM_HIST_LEN];
   memcpy(times, hrmInfo.times, sizeof(hrmInfo.times));
@@ -349,18 +351,15 @@ bool hrm_new(int hrmValue) {
   if (h>127) h=127;
   hrmInfo.filtered = h;
 
-  // TODO: we should store actual time here, not # samples, as it
-  // will be substantially more accurate esp of VC31 where its
-  // internal oscillator doesn't seem accurate at all
-  if (hrmInfo.timeSinceBeat<255)
-    hrmInfo.timeSinceBeat++;
   // check for step counter
   bool hadBeat = false;
+  hrmInfo.isBeat = false;
   int thresh = hrmInfo.thresh >> HRM_THRESH_SHIFT;
   if (hrmInfo.filtered < -thresh)
     hrmInfo.wasLow = true;
   else if ((hrmInfo.filtered > thresh) && hrmInfo.wasLow) {
     hrmInfo.wasLow = false;
+    hrmInfo.isBeat = true;
     hadBeat = hrm_had_beat();
   }
 
@@ -368,5 +367,6 @@ bool hrm_new(int hrmValue) {
     hrmInfo.thresh--;
   if (h<<HRM_THRESH_SHIFT < -hrmInfo.thresh)
     hrmInfo.thresh = -h<<HRM_THRESH_SHIFT;
+
   return hadBeat;
 }
