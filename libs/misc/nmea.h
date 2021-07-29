@@ -23,6 +23,7 @@ typedef struct {
   uint8_t quality; // from GGA packet, 0 = no fix
   uint8_t satellites; // how many satellites
   double hdop; // GGA HDOP - Relative accuracy of horizontal position
+  bool lastWasGSV; // Was the last entry received $GPGSV?
 } NMEAFixInfo;
 
 #define NMEA_MAX_SIZE 82  //  82 is the max for NMEA

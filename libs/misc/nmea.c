@@ -46,90 +46,120 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
   char buf[NMEA_MAX_SIZE];
   strcpy(buf, nmeaLine);
   char *nmea = buf, *nextComma;
-  if (nmea[0]!='$' || nmea[1]!='G') return false; // not valid
-  if (nmea[3]=='R' && nmea[4]=='M' && nmea[5]=='C') {
-    // $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
-    nmea = nmea_next_comma(nmea)+1;
-    nextComma = nmea_next_comma(nmea);
-    // time
-    gpsFix->hour = nmea_decode_2(&nmea[0]);
-    gpsFix->min = nmea_decode_2(&nmea[2]);
-    gpsFix->sec = nmea_decode_2(&nmea[4]);
-    gpsFix->ms = nmea_decode_2(&nmea[7]);
-    // status
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);//?
-    // lat + NS
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // lon + EW
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // speed
-    gpsFix->speed = nmea_decode_float(nmea, nextComma)*1.852; // knots to km/h
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // course
-    gpsFix->course = nmea_decode_float(nmea, nextComma);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // date
-    if (nmea[0]==',') {
-      gpsFix->day = 0;
-      gpsFix->month = 0;
-      gpsFix->year = 0;
-    } else {
-      gpsFix->day = nmea_decode_2(&nmea[0]);
-      gpsFix->month = nmea_decode_2(&nmea[2]);
-      gpsFix->year = nmea_decode_2(&nmea[4]);
+  bool lastWasGSV = gpsFix->lastWasGSV;
+  bool thisIsGSV = false;
+  gpsFix->lastWasGSV = false;
+  if (nmea[0]=='$' && nmea[1]=='G') {
+    if (nmea[3]=='R' && nmea[4]=='M' && nmea[5]=='C') {
+      // $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
+      nmea = nmea_next_comma(nmea)+1;
+      nextComma = nmea_next_comma(nmea);
+      // time
+      gpsFix->hour = nmea_decode_2(&nmea[0]);
+      gpsFix->min = nmea_decode_2(&nmea[2]);
+      gpsFix->sec = nmea_decode_2(&nmea[4]);
+      gpsFix->ms = nmea_decode_2(&nmea[7]);
+      // status
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);//?
+      // lat + NS
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      // lon + EW
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      // speed
+      gpsFix->speed = nmea_decode_float(nmea, nextComma)*1.852; // knots to km/h
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      // course
+      gpsFix->course = nmea_decode_float(nmea, nextComma);
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      // date
+      if (nmea[0]==',') {
+        gpsFix->day = 0;
+        gpsFix->month = 0;
+        gpsFix->year = 0;
+      } else {
+        gpsFix->day = nmea_decode_2(&nmea[0]);
+        gpsFix->month = nmea_decode_2(&nmea[2]);
+        gpsFix->year = nmea_decode_2(&nmea[4]);
+      }
+      // ....
     }
-    // ....
+    if (nmea[3]=='G' && nmea[4]=='G' && nmea[5]=='A') {
+      // $GNGGA,161945.00,5139.11397,N,00116.07202,W,1,06,1.29,71.1,M,47.0,M,,*64
+      nmea = nmea_next_comma(nmea)+1;
+      nextComma = nmea_next_comma(nmea);
+      // time
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      // LAT
+      gpsFix->lat = nmea_decode_latlon(nmea, nextComma);
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      if (*nmea=='S') gpsFix->lat=-gpsFix->lat;
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      // LON
+      gpsFix->lon = nmea_decode_latlon(nmea, nextComma);
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      if (*nmea=='W') gpsFix->lon=-gpsFix->lon;
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      // quality
+      gpsFix->quality = nmea_decode_1(nmea);
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      // num satellites
+      gpsFix->satellites = nmea_decode_2(nmea);
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      // dilution of precision
+      gpsFix->hdop = nmea_decode_float(nmea, nextComma);
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      // altitude
+      gpsFix->alt = nmea_decode_float(nmea, nextComma);
+      nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
+      // ....
+    }
+    if (nmea[3]=='G' && nmea[4]=='S' && nmea[5]=='V') {
+      // loads of cool data about what satellites we have and signal strength...
+      thisIsGSV = true;
+      gpsFix->lastWasGSV = true;
+    }
   }
-  if (nmea[3]=='G' && nmea[4]=='G' && nmea[5]=='A') {
-    // $GNGGA,161945.00,5139.11397,N,00116.07202,W,1,06,1.29,71.1,M,47.0,M,,*64
-    nmea = nmea_next_comma(nmea)+1;
-    nextComma = nmea_next_comma(nmea);
-    // time
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // LAT
-    gpsFix->lat = nmea_decode_latlon(nmea, nextComma);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    if (*nmea=='S') gpsFix->lat=-gpsFix->lat;
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // LON
-    gpsFix->lon = nmea_decode_latlon(nmea, nextComma);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    if (*nmea=='W') gpsFix->lon=-gpsFix->lon;
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // quality
-    gpsFix->quality = nmea_decode_1(nmea);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // num satellites
-    gpsFix->satellites = nmea_decode_2(nmea);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // dilution of precision
-    gpsFix->hdop = nmea_decode_float(nmea, nextComma);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // altitude
-    gpsFix->alt = nmea_decode_float(nmea, nextComma);
-    nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
-    // ....
-  }
-  if (nmea[3]=='G' && nmea[4]=='S' && nmea[5]=='V') {
-    // loads of cool data about what satellites we have
-  }
-  /* F18 (UBlox) GPS gives a bunch of data ending in GLL
-   * SMA Q3 gives data ending GNZDA,GPTXT
-   */
-#ifdef BANGLEJS_Q3
-  if (nmea[3]=='Z' && nmea[4]=='D' && nmea[5]=='A') {
+  /* When to create GPS data event?
+  F18 (UBlox) GPS gives a bunch of data ending in GLL
+    No fix:
+      $GNRMC,...
+      $GNVTG....
+      $GNGGA,...
+      $GNGSA,A,1....
+      $GPGSV,1,1....
+      $GNGLL....
+    With fix:
+      $GNRMC,....
+      $GNVTG,....
+      $GNGGA,....
+      $GNGSA,A,2,08,...
+      $GPGSV,2,1,08,...
+      $GPGSV,2,2,08,...
+      $GNGLL,...
+
+  SMA Q3 gives data ending , or on some devices BDGSV:
+    No fix:
+      $GNGGA,....
+      $GPGSV,1,1,00,0*65
+      $BDGSV,1,1,00,0*74
+    With fix:
+      $GNGGA,....
+      $GPGSV,3,1,...
+      $GPGSV,3,2,...
+      $GPGSV,3,3,..
+      $BDGSV,1,1,00,0*74
+
+  The thing they have in common is they have GSV, then some stuff after that
+  we dont' care about. So when that happens, trigger success
+  */
+  if (lastWasGSV && !thisIsGSV) {
     // Complete set of data received
     return true;
   }
-#else //  BANGLEJS_F18 / F5
-  if (nmea[3]=='G' && nmea[4]=='L' && nmea[5]=='L') {
-    // Complete set of data received
-    return true;
-  }
-#endif
+
   return false;
 }
 
