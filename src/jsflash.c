@@ -92,7 +92,7 @@ static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header, bool readFull
   if (!addr) return false;
   jshFlashRead(header, addr, readFullName ? sizeof(JsfFileHeader) : 8/* size + name.firstChars */);
   return (header->size != JSF_WORD_UNSET) &&
-    (addr+(uint32_t)sizeof(JsfFileHeader)+jsfGetFileSize(header) < JSF_END_ADDRESS);
+    (addr+(uint32_t)sizeof(JsfFileHeader)+jsfGetFileSize(header) <= JSF_END_ADDRESS);
 }
 
 /// Is an area of flash completely erased?
@@ -557,17 +557,39 @@ void jsfDebugFiles() {
 /** Return false if the current storage is not valid
  * or is corrupt somehow. Basically that means if
  * jsfGet[Next]FileHeader returns false but the header isn't all FF
+ *
+ * If fullTest is true, all of storage is scanned.
+ * For instance the first page may be blank but other pages
+ * may contain info (which is invalid)...
  */
-bool jsfIsStorageValid() {
+bool jsfIsStorageValid(bool fullTest) {
   uint32_t addr = JSF_START_ADDRESS;
+  uint32_t oldAddr = addr;
   JsfFileHeader header;
   unsigned char *headerPtr = (unsigned char *)&header;
 
+  // TODO: what if storage is FULL?
   bool valid = jsfGetFileHeader(addr, &header, true);
-  if (valid) while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL)) {};
+  if (valid) {
+    while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL)) {
+      oldAddr = addr;
+    }
+    if (!addr) { // may have returned 0 just because storage is full
+      // Work out roughly where the start is
+      uint32_t newAddr = jsfAlignAddress(oldAddr + jsfGetFileSize(&header) + (uint32_t)sizeof(JsfFileHeader));
+      if (newAddr<oldAddr) return false; // definitely corrupt!
+      if (newAddr <= JSF_END_ADDRESS &&
+          newAddr+sizeof(JsfFileHeader)>JSF_END_ADDRESS) return true; // not enough space - this is fine
+    }
+  }
   bool allFF = true;
   for (size_t i=0;i<sizeof(JsfFileHeader);i++)
     if (headerPtr[i]!=0xFF) allFF=false;
+
+  if (allFF && addr && fullTest) {
+    return jsfIsErased(addr, JSF_END_ADDRESS-addr);
+  }
+
   return allFF;
 }
 
