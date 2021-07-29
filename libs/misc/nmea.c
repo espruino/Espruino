@@ -153,7 +153,7 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
       $BDGSV,1,1,00,0*74
 
   The thing they have in common is they have GSV, then some stuff after that
-  we dont' care about. So when that happens, trigger success
+  we don't care about. So when that happens, trigger success
   */
   if (lastWasGSV && !thisIsGSV) {
     // Complete set of data received

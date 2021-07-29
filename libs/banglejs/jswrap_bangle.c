@@ -191,10 +191,16 @@ GPS data, as an object. Contains:
   "time": Date,       // Current Time (or undefined if not known)
   "satellites": 7,    // Number of satellites
   "fix": 1            // NMEA Fix state - 0 is no fix
+  "hdop": number,     // Horizontal Dilution of Precision
 }
 ```
 
 If a value such as `lat` is not known because there is no fix, it'll be `NaN`.
+
+`hdop` is a value from the GPS receiver that gives a rough idea of accuracy
+of lat/lon based on the geometry of the satellites in range. Multiply by 5 to
+get a value in meters. This is just a ballpark estimation and should
+not be considered remotely accurate.
 
 To get this event you must turn the GPS on
 with `Bangle.setGPSPower(1)`.
