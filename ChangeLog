@@ -40,6 +40,7 @@
             Bangle.js: Push GPS events immediately after GPGSV (more portable/resilient to config changes)
             At first boot, fully check Storage for validity (if not full, ensure remaining pages are 0xFF)
             Storage: Ensure jsfIsStorageValid returns true when storage is valid, but full
+            Bangle.js: Add Bangle.getGPSFix to get last GPS fix without waiting for a listener
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)

@@ -2130,6 +2130,23 @@ int jswrap_banglejs_isGPSOn() {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
+    "name" : "getGPSFix",
+    "generate" : "jswrap_banglejs_getGPSFix",
+    "return" : ["JsVar","A GPS fix object with `{lat,lon,...}`"],
+    "ifdef" : "BANGLEJS"
+}
+Get the last available GPS fix info (or `undefined` if GPS is off).
+
+The fix info received is the same as you'd get from the `Bangle.GPS` event.
+*/
+JsVar *jswrap_banglejs_getGPSFix() {
+  if (!jswrap_banglejs_isGPSOn()) return NULL;
+  return nmea_to_jsVar(&gpsFix);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
     "name" : "setCompassPower",
     "generate" : "jswrap_banglejs_setCompassPower",
     "params" : [
