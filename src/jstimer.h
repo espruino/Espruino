@@ -89,7 +89,7 @@ typedef union UtilTimerTaskData {
 } UtilTimerTaskData;
 
 typedef struct UtilTimerTask {
-  JsSysTime time; // time at which to set pins
+  int time; // time at which to set pins (JshSysTime, cropped to 32 bits)
   unsigned int repeatInterval; // if nonzero, repeat the timer
   UtilTimerTaskData data; // data used when timer is hit
   UtilTimerEventType type; // the type of this task - do we set pin(s) or read/write data
@@ -115,7 +115,7 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
 // Do software PWM on the given pin, using the timer IRQs
 bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin);
 
-/// Execute the given function repeatedly after the given time period. If periof=0, don't repeat
+/// Execute the given function repeatedly after the given time period. If period=0, don't repeat
 bool jstExecuteFn(UtilTimerTaskExecFn fn, void *userdata, JsSysTime startTime, uint32_t period);
 
 /// Stop executing the given function

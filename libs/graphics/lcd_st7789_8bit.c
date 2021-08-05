@@ -524,11 +524,11 @@ void lcdST7789_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigne
 }
 #endif
 
-void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir) {
-  if (lcdMode != LCDST7789_MODE_UNBUFFERED) {
-    // No way this is going to work double buffered!
-    return;
-  }
+void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
+  // No way this is going to work double buffered!
+  if (lcdMode != LCDST7789_MODE_UNBUFFERED) return;
+  // we can't scroll a window either
+  if (x1!=0 || y1!=0 || x2!=LCD_HEIGHT-1 || y2!=LCD_HEIGHT-1) return;
   /* We can't read data back, so we can't do left/right scrolling!
   However we can change our index in the memory buffer window
   which allows us to use the LCD itself for scrolling */

@@ -65,7 +65,7 @@ extern "C" {
 #define SD_MAJOR_VERSION  (3)
 
 /** @brief The minor version for the SoftDevice binary distributed with this header file. */
-#define SD_MINOR_VERSION  (0)
+#define SD_MINOR_VERSION  (1)
 
 /** @brief The bugfix version for the SoftDevice binary distributed with this header file. */
 #define SD_BUGFIX_VERSION (0)

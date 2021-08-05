@@ -472,11 +472,10 @@ void jsiSoftInit(bool hasBeenReset) {
 
   // Search for invalid storage and remove it
 #if !defined(EMSCRIPTEN) && !defined(SAVE_ON_FLASH)
-  if (!jsfIsStorageValid()) {
+  bool fullTest = jsiStatus & JSIS_FIRST_BOOT;
+  if (!jsfIsStorageValid(fullTest)) {
     jsiConsolePrintf("Storage is corrupt.\n");
-    jsiConsolePrintf("Erasing Storage Area...\n");
-    jsfEraseAll();
-    jsiConsolePrintf("Erase complete.\n");
+    jsfResetStorage();
   }
 #endif
 
@@ -774,6 +773,7 @@ void jsiSoftKill() {
   }
   // If we're here we're loading, saving or resetting - board is no longer at power-on state
   jsiStatus &= ~JSIS_COMPLETELY_RESET; // loading code, remove this flag
+  jsiStatus &= ~JSIS_FIRST_BOOT; // this is no longer the first boot!
 }
 
 void jsiSemiInit(bool autoLoad) {
@@ -832,7 +832,7 @@ void jsiSemiInit(bool autoLoad) {
           "|  __|_ -| . |  _| | | |   | . |\n"
           "|____|___|  _|_| |___|_|_|_|___|\n"
           "         |_| espruino.com\n"
-          " "JS_VERSION" (c) 2019 G.Williams\n"
+          " "JS_VERSION" (c) 2021 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
 #if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS) && !defined(BANGLEJS) && !defined(EMSCRIPTEN)
@@ -856,7 +856,7 @@ void jsiSemiInit(bool autoLoad) {
 
 // The 'proper' init function - this should be called only once at bootup
 void jsiInit(bool autoLoad) {
-  jsiStatus = JSIS_COMPLETELY_RESET;
+  jsiStatus = JSIS_COMPLETELY_RESET | JSIS_FIRST_BOOT;
 
 #if defined(LINUX) || !defined(USB)
   consoleDevice = jsiGetPreferredConsoleDevice();
@@ -2237,8 +2237,10 @@ void jsiIdle() {
         jsiSemiInit(false); // don't autoload code
         // load the code we specified
         JsVar *code = jsfReadFile(filename,0,0);
-        if (code)
+        if (code) {
+          jsvObjectSetChildAndUnLock(execInfo.root, "__FILE__", jsfVarFromName(filename));
           jsvUnLock2(jspEvaluateVar(code,0,0), code);
+        }
       } else {
         jsiSoftKill();
         jspSoftKill();
@@ -2256,6 +2258,9 @@ void jsiIdle() {
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }
 
+  // Kick the WatchDog if needed
+  if (jsiStatus & JSIS_WATCHDOG_AUTO)
+    jshKickWatchDog();
 
   /* if we've been around this loop, there is nothing to do, and
    * we have a spare 10ms then let's do some Garbage Collection
@@ -2265,13 +2270,12 @@ void jsiIdle() {
       !jsvMoreFreeVariablesThan(JS_VARS_BEFORE_IDLE_GC)) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     jsvGarbageCollect();
-    loopsIdling = 0;
     jsiSetBusy(BUSY_INTERACTIVE, false);
+    /* Return here so we run around the idle loop again
+     * and check whether any events came in during GC. If not
+     * then we'll sleep. */
+    return;
   }
-
-  // Kick the WatchDog if needed
-  if (jsiStatus & JSIS_WATCHDOG_AUTO)
-    jshKickWatchDog();
 
   // Go to sleep!
   if (loopsIdling>=1 && // once around the idle loop without having done any work already (just in case)

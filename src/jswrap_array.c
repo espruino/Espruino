@@ -261,13 +261,14 @@ static JsVar *_jswrap_array_iterate_with_callback(
       JsVar *index = jsvIteratorGetKey(&it);
       if (jsvIsInt(index)) {
         JsVarInt idxValue = jsvGetInteger(index);
-
-        JsVar *args[3], *cb_result;
-        args[0] = jsvIteratorGetValue(&it);
+        JsVar *value, *args[3], *cb_result;
+        value = jsvIteratorGetValue(&it);
+        args[0] = value;
         args[1] = jsvNewFromInteger(idxValue); // child is a variable name, create a new variable for the index
         args[2] = parent;
+        jsvIteratorNext(&it); // go to next
         cb_result = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
-        jsvUnLockMany(2,args);
+        jsvUnLock(args[1]);
         if (cb_result) {
           bool matched;
           if (isBoolCallback)
@@ -275,7 +276,7 @@ static JsVar *_jswrap_array_iterate_with_callback(
           if (returnType == RETURN_ARRAY) {
             if (isBoolCallback) { // filter
               if (matched) {
-                jsvArrayPushAndUnLock(result, jsvIteratorGetValue(&it));
+                jsvArrayPush(result, value);
               }
             } else { // map
               JsVar *name = jsvNewFromInteger(idxValue);
@@ -290,8 +291,8 @@ static JsVar *_jswrap_array_iterate_with_callback(
                 returnType == RETURN_ARRAY_INDEX) {
               if (matched) {
                 result = (returnType == RETURN_ARRAY_ELEMENT) ?
-                    jsvIteratorGetValue(&it) :
-                    jsvNewFromInteger(jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it)));
+                    jsvLockAgain(value) :
+                    jsvNewFromInteger(jsvGetInteger(index));
                 isDone = true;
               }
             } else if (!matched) // eg for .some
@@ -299,9 +300,12 @@ static JsVar *_jswrap_array_iterate_with_callback(
           }
           jsvUnLock(cb_result);
         }
+        jsvUnLock(value);
+      } else {
+        // just skip forward anyway
+        jsvIteratorNext(&it);
       }
       jsvUnLock(index);
-      jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
   }

@@ -124,3 +124,8 @@ __attribute__((weak)) void jshBusyIdle() {
 __attribute__((weak)) bool jshIsPinStateDefault(Pin pin, JshPinState state) {
   return state == JSHPINSTATE_GPIO_IN || state == JSHPINSTATE_ADC_IN;
 }
+
+__attribute__((weak)) void jshUSARTUnSetup(IOEventFlags device) {
+  NOT_USED(device);
+  // placeholder - not all platforms implement this
+}

@@ -639,7 +639,9 @@ SVCALL(SD_BLE_USER_MEM_REPLY, uint32_t, sd_ble_user_mem_reply(uint16_t conn_hand
  * @endmscs
  *
  * @param[in] opt_id Option ID, see @ref BLE_COMMON_OPTS and @ref BLE_GAP_OPTS.
- * @param[in] p_opt Pointer to a ble_opt_t structure containing the option value.
+ * @param[in] p_opt Pointer to a ble_opt_t structure containing the option value. This pointer shall point to
+ *                  a valid memory address. If a specific opt_id does not have a corresponding member within
+ *                  @ref ble_opt_t, values inside the ble_opt_t structure are ignored.
  *
  * @retval ::NRF_SUCCESS  Option set successfully.
  * @retval ::NRF_ERROR_INVALID_ADDR Invalid pointer supplied.

@@ -43,7 +43,7 @@ info = {
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"RuuviTag"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/ruuvi_open_private.pem',
-     'DFU_SETTINGS=--debug-mode --hw-version 52 --sd-req 0x8C'
+     'DFU_SETTINGS=--debug-mode --hw-version 52 --sd-req 0x8C,0x91'
    ]
  }
 };

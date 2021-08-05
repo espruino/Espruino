@@ -272,11 +272,20 @@ void lcdFillRect_ArrayBuffer_flat8(JsGraphics *gfx, int x1, int y1, int x2, int 
   }
 }
 
-void lcdScroll_ArrayBuffer_flat8(JsGraphics *gfx, int xdir, int ydir) {
-  int pixels = -(xdir + ydir*gfx->data.width);
-  int l = gfx->data.width*gfx->data.height;
-  if (pixels>0) memcpy(&((uint8_t*)gfx->backendData)[0],&((uint8_t*)gfx->backendData)[pixels],(size_t)(l-pixels));
-  else if (pixels<0) memcpy(&((uint8_t*)gfx->backendData)[-pixels],&((uint8_t*)gfx->backendData)[0],(size_t)(l+pixels));
+void lcdScroll_ArrayBuffer_flat8(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
+  int clipWidth = x2 - x1;
+  int clipHeight = y2 - y1;
+  int pixels = -(xdir + ydir*clipWidth);
+  int startPixel = gfx->data.width * (y1 - ydir) + x1;
+  int row;
+  for (row=0; row<(clipHeight+ydir); row++) {
+    if (pixels<0) {
+      memcpy(&((uint8_t*)gfx->backendData)[startPixel-pixels],&((uint8_t*)gfx->backendData)[startPixel],(size_t)(clipWidth+xdir));
+    } else {
+      memcpy(&((uint8_t*)gfx->backendData)[startPixel],&((uint8_t*)gfx->backendData)[startPixel+pixels],(size_t)(clipWidth-xdir));
+    }
+    startPixel += gfx->data.width;
+  }
 }
 #endif
 

@@ -77,17 +77,27 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_drv_gpiote.h"
 #include "nrf_drv_ppi.h"
 #include "nrf_drv_spi.h"
-
 #include "nrf5x_utils.h"
+
 #if NRF_SD_BLE_API_VERSION<5
 #include "softdevice_handler.h"
+#else
+#include "nrfx_spim.h"
 #endif
+
 #ifdef MICROBIT
 #include "jswrap_microbit.h"
 #endif
 
 void WDT_IRQHandler() {
 }
+
+/** RTC is only 24 bits, and resets when the device resets. To work around
+this we store the last known time (and offsets) in a bit of RAM that we don't
+reset when nRF52 reboots. */
+volatile JsSysTime baseSystemTime __attribute__((section(".noinit"))) __attribute__((aligned(4)));
+volatile uint32_t lastSystemTime __attribute__((section(".noinit"))) __attribute__((aligned(4)));
+volatile uint32_t lastSystemTimeInv __attribute__((section(".noinit"))) __attribute__((aligned(4)));
 
 #ifdef NRF_USB
 #include "app_usbd_core.h"
@@ -268,7 +278,16 @@ volatile bool flashIsBusy = false;
 volatile bool hadEvent = false; // set if we've had an event we need to deal with
 unsigned int ticksSinceStart = 0;
 
+#if GPIO_COUNT>1
+#define NRF_GPIO_PIN_MAX (P0_PIN_NUM+P1_PIN_NUM)
+#else
+#define NRF_GPIO_PIN_MAX P0_PIN_NUM
+#endif
+
+/// Current state of each pin
 JshPinFunction pinStates[JSH_PIN_COUNT];
+/// for each EXTI, which nordic pin (0..31 /  0..47) is used (PIN_UNDEFINED if unused)
+uint8_t extiToPin[EXTI_COUNT];
 
 #ifdef NRF52_SERIES
 /// This is used to handle the case where an analog read happens in an IRQ interrupts one being done outside
@@ -276,7 +295,17 @@ volatile bool nrf_analog_read_interrupted = false;
 #endif
 
 #if SPI_ENABLED
-static const nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
+#ifdef NRF52832
+#define SPI_MAXAMT 255
+#else // NRF52840/NRF52833/etc  support more bytes
+#define SPI_MAXAMT 65535
+#endif
+
+#ifdef ESPR_USE_SPI3
+static nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(3); // USE SPI3 on 52840 as it's far more complete
+#else
+static nrf_drv_spi_t spi0 = NRF_DRV_SPI_INSTANCE(0);
+#endif
 bool spi0Initialised = false;
 unsigned char *spi0RxPtr;
 unsigned char *spi0TxPtr;
@@ -294,13 +323,25 @@ void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event
    * have to use the IRQ to fire off the next send */
   if (spi0Cnt>0) {
     size_t c = spi0Cnt;
-    if (c>255) c=255;
+    if (c>SPI_MAXAMT) c=SPI_MAXAMT;
     unsigned char *tx = spi0TxPtr;
     unsigned char *rx = spi0RxPtr;
     spi0Cnt -= c;
     if (spi0TxPtr) spi0TxPtr += c;
     if (spi0RxPtr) spi0RxPtr += c;
+#if NRF_SD_BLE_API_VERSION<5
     uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+#else
+    // don't use nrf_drv_spi_transfer here because it truncates length to 8 bits! (nRF52840 can do >255)
+    nrfx_spim_xfer_desc_t const spim_xfer_desc = {
+        .p_tx_buffer = tx,
+        .tx_length   = c,
+        .p_rx_buffer = rx,
+        .rx_length   = rx?c:0,
+    };
+    uint32_t err_code = nrfx_spim_xfer(&spi0.u.spim, &spim_xfer_desc, 0);
+#endif
+
     if (err_code == NRF_SUCCESS)
       return;
     // if fails, we drop through as if we succeeded
@@ -371,8 +412,6 @@ typedef struct {
 } PACKED_FLAGS jshUARTState;
 static jshUARTState uart[USART_COUNT];
 
-void jshUSARTUnSetup(IOEventFlags device);
-
 #ifdef SPIFLASH_BASE
 /* 0 means CS is not enabled. If nonzero CS is enabled
 and we're in the middle of reading We'd never be at 0
@@ -380,13 +419,13 @@ anyway because we're always expecting to have read something.  */
 uint32_t spiFlashLastAddress = 0;
 /// Read data while sending 0
 static void spiFlashRead(unsigned char *rx, unsigned int len) {
-  nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin);
+  NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin);
   for (unsigned int i=0;i<len;i++) {
     int result = 0;
     for (int bit=0;bit<8;bit++) {
-      nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
-      result = (result<<1) | nrf_gpio_pin_read((uint32_t)pinInfo[SPIFLASH_PIN_MISO].pin);
-      nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+      NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+      result = (result<<1) | NRF_GPIO_PIN_READ_FAST((uint32_t)pinInfo[SPIFLASH_PIN_MISO].pin);
+      NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
     }
     rx[i] = result;
   }
@@ -396,25 +435,46 @@ static void spiFlashWrite(unsigned char *tx, unsigned int len) {
   for (unsigned int i=0;i<len;i++) {
     int data = tx[i];
     for (int bit=7;bit>=0;bit--) {
-      nrf_gpio_pin_write((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, (data>>bit)&1 );
-      nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
-      nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+      NRF_GPIO_PIN_WRITE_FAST((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, (data>>bit)&1 );
+      NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+      NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
     }
   }
 }
 static void spiFlashWriteCS(unsigned char *tx, unsigned int len) {
-  nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
   spiFlashWrite(tx,len);
   nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
 }
 static unsigned char spiFlashStatus() {
   unsigned char buf = 5;
-  nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
   spiFlashWrite(&buf, 1);
   spiFlashRead(&buf, 1);
-  nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
   return buf;
 }
+
+#if defined(BANGLEJS_Q3) && !defined(SPIFLASH_SLEEP_CMD)
+
+static void spiFlashReset(){
+  unsigned char buf[1];
+  buf[0] = 0x66;
+  spiFlashWriteCS(buf,1);
+  buf[0] = 0x99;
+  spiFlashWriteCS(buf,1);
+  nrf_delay_us(50); 
+}
+
+static void spiFlashWakeUp() {
+  unsigned char buf[1];
+  buf[0] = 0xAB;
+  spiFlashWriteCS(buf,1);
+  nrf_delay_us(50); // datasheet tRES2 period > 20us  CS remains high
+}
+
+#endif
+
 
 #ifdef SPIFLASH_SLEEP_CMD
 /// Is SPI flash awake?
@@ -436,15 +496,21 @@ static void spiFlashWakeUp() {
   unsigned char buf[1];
   buf[0] = 0xAB;
   spiFlashWriteCS(buf,1);
+  nrf_delay_us(30); // Wait at least 20us for Flash IC to wake up from deep power-down
+  spiFlashWriteCS(buf,1); // Might need two attempts
+  nrf_delay_us(30); 
+  spiFlashAwake = true;
 }
 void spiFlashSleep() {
   if (spiFlashLastAddress) {
-    nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+    NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
     spiFlashLastAddress = 0;
   }
   unsigned char buf[1];
   buf[0] = 0xB9;
   spiFlashWriteCS(buf,1);
+//  nrf_delay_us(2); // Wait at least 1us for Flash IC to enter deep power-down
+  spiFlashAwake = false;
 }
 #endif
 #endif
@@ -477,7 +543,8 @@ void TIMER1_IRQHandler(void) {
 }
 
 void jsh_sys_evt_handler(uint32_t sys_evt) {
-  if (sys_evt == NRF_EVT_FLASH_OPERATION_SUCCESS){
+  if (sys_evt == NRF_EVT_FLASH_OPERATION_SUCCESS ||
+      sys_evt == NRF_EVT_FLASH_OPERATION_ERROR){
     flashIsBusy = false;
   }
 }
@@ -633,9 +700,14 @@ void jshResetPeripherals() {
 #endif
   spiFlashLastAddress = 0;
   jshDelayMicroseconds(100);
+#if defined(BANGLEJS_Q3) && !defined(SPIFLASH_SLEEP_CMD)
+  spiFlashReset(); //SW reset
+  spiFlashWakeUp();
+  spiFlashWakeUp();
+  spiFlashWakeUp();
+#endif
 #ifdef SPIFLASH_SLEEP_CMD
   spiFlashWakeUp();
-  spiFlashAwake = true;
 #endif
 
   // disable lock bits
@@ -658,7 +730,18 @@ void jshResetPeripherals() {
 void jshInit() {
   ret_code_t err_code;
 
+  // Setup system time offsets if data in lastSystemTime
+  // seems to be valid (RTC1 will be 0 at this point)
+  if (lastSystemTime == ~lastSystemTimeInv) {
+    baseSystemTime += (JsSysTime)(lastSystemTime << RTC_SHIFT);
+  } else {
+    baseSystemTime = 0;
+  }
+  lastSystemTime = 0;
+  lastSystemTimeInv = ~lastSystemTime;
+
   memset(pinStates, 0, sizeof(pinStates));
+  memset(extiToPin, PIN_UNDEFINED, sizeof(extiToPin));
 
   jshInitDevices();
   jshResetPeripherals();
@@ -667,7 +750,7 @@ void jshInit() {
   jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
 #endif
 
-  nrf_utils_lfclk_config_and_start();
+  nrf_utils_lfclk_config_and_start();   // RB note: For NRF_SD_BLE_API_VERSION>=5, this gets re-set by jsble_init()
 
 #ifdef DEFAULT_CONSOLE_RX_PIN
   // Only init UART if something is connected and RX is pulled up on boot...
@@ -782,7 +865,7 @@ void jshInit() {
                       APP_TIMER_MODE_SINGLE_SHOT,
                       wakeup_handler);
   if (err_code) jsiConsolePrintf("app_timer_create error %d\n", err_code);
-#else
+#else // !BLUETOOTH
   // because the code in bluetooth.c will call jsh_sys_evt_handler for us
   // if we were using bluetooth
   softdevice_sys_evt_handler_set(jsh_sys_evt_handler);
@@ -873,10 +956,6 @@ bool jshIsUSBSERIALConnected() {
 #endif
 }
 
-/// Hack because we *really* don't want to mess with RTC0 :)
-volatile JsSysTime baseSystemTime = 0;
-volatile uint32_t lastSystemTime = 0;
-
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime() {
   // Detect RTC overflows
@@ -884,6 +963,7 @@ JsSysTime jshGetSystemTime() {
   if ((lastSystemTime & 0x800000) && !(systemTime & 0x800000))
     baseSystemTime += (0x1000000 << RTC_SHIFT); // it's a 24 bit counter
   lastSystemTime = systemTime;
+  lastSystemTimeInv = ~lastSystemTime;
   // Use RTC0 (also used by BLE stack) - as app_timer starts/stops RTC1
   return baseSystemTime + (JsSysTime)(systemTime << RTC_SHIFT);
 }
@@ -992,9 +1072,12 @@ void jshPinSetState(Pin pin, JshPinState state) {
 #else
   NRF_GPIO_Type *reg = NRF_GPIO;
 #endif
+  // get original state of pin sensing
+  uint32_t sense = reg->PIN_CNF[ipin] & GPIO_PIN_CNF_SENSE_Msk;
+  // actually set pin config
   switch (state) {
     case JSHPINSTATE_UNDEFINED :
-    case JSHPINSTATE_ADC_IN :
+    case JSHPINSTATE_ADC_IN : // disable sense for undefined/ADC
       reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
@@ -1003,7 +1086,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_AF_OUT :
     case JSHPINSTATE_GPIO_OUT :
-    case JSHPINSTATE_USART_OUT :
+    case JSHPINSTATE_USART_OUT : // disable sense for output modes
       reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0H1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
@@ -1011,7 +1094,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
                               | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_AF_OUT_OPENDRAIN :
-    case JSHPINSTATE_GPIO_OUT_OPENDRAIN :
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN : // disable sense for output modes
       reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0D1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
@@ -1019,7 +1102,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
                               | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_I2C :
-    case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP: // disable sense for output modes
       reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
                               | (GPIO_PIN_CNF_DRIVE_H0D1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
@@ -1028,21 +1111,21 @@ void jshPinSetState(Pin pin, JshPinState state) {
       break;
     case JSHPINSTATE_GPIO_IN :
     case JSHPINSTATE_USART_IN :
-      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = sense
                               | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                               | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
                               | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
                               | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN_PULLUP :
-      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = sense
                                     | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                                     | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
                                     | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
                                     | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
       break;
     case JSHPINSTATE_GPIO_IN_PULLDOWN :
-      reg->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+      reg->PIN_CNF[ipin] = sense
                                     | (GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                                     | (GPIO_PIN_CNF_PULL_Pulldown << GPIO_PIN_CNF_PULL_Pos)
                                     | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
@@ -1462,11 +1545,8 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
 
 
 static IOEventFlags jshGetEventFlagsForWatchedPin(nrf_drv_gpiote_pin_t pin) {
-  uint32_t addr = nrf_drv_gpiote_in_event_addr_get(pin);
-  // sigh. all because the right stuff isn't exported. All we wanted was channel_port_get
-  int i;
-  for (i=0;i<GPIOTE_CH_NUM;i++)
-    if (addr == nrf_gpiote_event_addr_get((nrf_gpiote_events_t)((uint32_t)NRF_GPIOTE_EVENTS_IN_0+(sizeof(uint32_t)*i))))
+  for (int i=0;i<EXTI_COUNT;i++)
+    if (pin == extiToPin[i])
       return EV_EXTI0+i;
   return EV_NONE;
 }
@@ -1496,13 +1576,31 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
 #endif
   uint32_t p = (uint32_t)pinInfo[pin].pin;
   if (shouldWatch) {
-    nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true); // FIXME: Maybe we want low accuracy? Potentially this draws more power in sleep modes?
-    cls_1_config.is_watcher = true; // stop this resetting the input state
-    nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler);
-    nrf_drv_gpiote_in_event_enable(p, true);
-    return jshGetEventFlagsForWatchedPin(p);
+    // allocate an 'EXTI'
+    for (int i=0;i<EXTI_COUNT;i++) {
+      if (extiToPin[i] == p) return EV_EXTI0+i; //already allocated
+      if (extiToPin[i] == PIN_UNDEFINED) {
+        // use low accuracy for GPIOTE as we can shut down the high speed oscillator then
+       nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(false /* hi/low accuracy */);
+       cls_1_config.is_watcher = true; // stop this resetting the input state
+       if (nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler)!=0) {
+         jsWarn("No free GPIOTE for watch");
+         return EV_NONE;
+       }
+       nrf_drv_gpiote_in_event_enable(p, true);
+       extiToPin[i] = p;
+       return EV_EXTI0+i;
+      }
+    }
+    jsWarn("No free EXTI for watch");
+    return EV_NONE;
   } else {
-    nrf_drv_gpiote_in_event_disable(p);
+    for (int i=0;i<EXTI_COUNT;i++)
+      if (extiToPin[i] == p) {
+        extiToPin[i] = PIN_UNDEFINED;
+        nrf_drv_gpiote_in_event_disable(p);
+        nrf_drv_gpiote_in_uninit(p);
+      }
     return EV_NONE;
   }
 } // start watching pin - return the EXTI associated with it
@@ -1713,8 +1811,16 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     freq = SPI_FREQUENCY_FREQUENCY_M2;
   else if (inf->baudRate<((4000000+8000000)/2))
     freq = SPI_FREQUENCY_FREQUENCY_M4;
+#ifdef ESPR_USE_SPI3
+  // NRF52840 supports >8MHz but ONLY on SPIM3
+  else if (inf->baudRate>((16000000+32000000)/2) && spi0.inst_idx==3)
+    freq = SPIM_FREQUENCY_FREQUENCY_M32;
+  else if (inf->baudRate>((8000000+16000000)/2) && spi0.inst_idx==3)
+    freq = SPIM_FREQUENCY_FREQUENCY_M16;
+#endif
   else
     freq = SPI_FREQUENCY_FREQUENCY_M8;
+
   /* Numbers for SPI_FREQUENCY_FREQUENCY_M16/SPI_FREQUENCY_FREQUENCY_M32
   are in the nRF52 datasheet but they don't appear to actually work (and
   aren't in the header files either). */
@@ -1759,9 +1865,10 @@ int jshSPISend(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return -1;
   jshSPIWait(device);
-#if defined(SPI0_USE_EASY_DMA)  && (SPI0_USE_EASY_DMA==1)
+#if defined(SPI0_USE_EASY_DMA)  && (SPI0_USE_EASY_DMA==1) && NRF52832
   // Hack for https://infocenter.nordicsemi.com/topic/­errata_nRF52832_Rev2/ERR/nRF52832/Rev2/l­atest/anomaly_832_58.html?cp=4_2_1_0_1_8
   // Can't use DMA for single bytes as it's broken
+  // Doesn't appear on NRF52840 or NRF52833 production parts
 #if NRF_SD_BLE_API_VERSION>5
   NRF_SPI_Type *p_spi = (NRF_SPI_Type *)spi0.u.spi.p_reg;
   NRF_SPIM_Type *p_spim = (NRF_SPIM_Type *)spi0.u.spim.p_reg;
@@ -1784,7 +1891,7 @@ int jshSPISend(IOEventFlags device, int data) {
   nrf_spi_disable(p_spi);
   nrf_spim_enable(p_spim); // enable SPIM mode (DMA)
   return rx;
-#else
+#else // For newer nRF parts we can just use the API directly
   uint8_t tx = (uint8_t)data;
   uint8_t rx = 0;
   spi0Sending = true;
@@ -1797,7 +1904,9 @@ int jshSPISend(IOEventFlags device, int data) {
   return rx;
 #endif
 #endif
-
+/*  unsigned char d = data;
+  jshSPISendMany(device, &d, &d, 1, NULL);
+  return d;*/
 }
 
 /** Send 16 bit data through the given SPI device. */
@@ -1806,13 +1915,7 @@ void jshSPISend16(IOEventFlags device, int data) {
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return;
   jshSPIWait(device);
   uint16_t tx = (uint16_t)data;
-  spi0Sending = true;
-  uint32_t err_code = nrf_drv_spi_transfer(&spi0, (uint8_t*)&tx, 2, 0, 0);
-  if (err_code != NRF_SUCCESS) {
-    spi0Sending = false;
-    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
-  }
-  jshSPIWait(device);
+  jshSPISendMany(device, &tx, NULL, 2, NULL);
 #endif
 }
 
@@ -1822,8 +1925,9 @@ void jshSPISend16(IOEventFlags device, int data) {
 bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, size_t count, void (*callback)()) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return false;
-#if defined(SPI0_USE_EASY_DMA)
+#if defined(SPI0_USE_EASY_DMA) && NRF52832
   // Hack for https://infocenter.nordicsemi.com/topic/­errata_nRF52832_Rev2/ERR/nRF52832/Rev2/l­atest/anomaly_832_58.html?cp=4_2_1_0_1_8­
+  // Doesn't appear on NRF52840 or NRF52833 production parts
   if (count==1) {
     int r = jshSPISend(device, tx?*tx:-1);
     if (rx) *rx = r;
@@ -1835,20 +1939,33 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
   spi0Sending = true;
 
   size_t c = count;
-  if (c>255)
-    c=255;
+  if (c>SPI_MAXAMT) c=SPI_MAXAMT;
 
   spi0TxPtr = tx ? tx+c : 0;
   spi0RxPtr = rx ? rx+c : 0;
   spi0Cnt = count-c;
   if (callback) spi0Callback = callback;
+
+#if NRF_SD_BLE_API_VERSION<5
   uint32_t err_code = nrf_drv_spi_transfer(&spi0, tx, c, rx, rx?c:0);
+#else
+    // don't use nrf_drv_spi_transfer here because it truncates length to 8 bits! (nRF52840 can do >255)
+  nrfx_spim_xfer_desc_t const spim_xfer_desc = {
+      .p_tx_buffer = tx,
+      .tx_length   = c,
+      .p_rx_buffer = rx,
+      .rx_length   = rx?c:0,
+  };
+  uint32_t err_code = nrfx_spim_xfer(&spi0.u.spim, &spim_xfer_desc, 0);
+#endif
   if (err_code != NRF_SUCCESS) {
     spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
     return false;
   }
-  if (!callback) jshSPIWait(device);
+  if (!callback) {
+    jshSPIWait(device);
+  }
   return true;
 #else
   return false;
@@ -2318,7 +2435,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #ifdef SPIFLASH_SLEEP_CMD
   if (spiFlashAwake) {
     spiFlashSleep();
-    spiFlashAwake = false;
   }
 #endif
 #endif

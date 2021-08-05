@@ -23,7 +23,7 @@ bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt si
 bool jswrap_storage_writeJSON(JsVar *name, JsVar *data);
 void jswrap_storage_erase(JsVar *name);
 void jswrap_storage_compact();
-JsVar *jswrap_storage_list();
+JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter);
 void jswrap_storage_debug();
 int jswrap_storage_getFree();
 

@@ -2979,9 +2979,13 @@ static size_t _jsvCountJsVarsUsedRecursive(JsVar *v, bool resetRecursionFlag) {
 
 /** Count the amount of JsVars used. Mostly useful for debugging */
 size_t jsvCountJsVarsUsed(JsVar *v) {
+  // don't count 'root' when getting sizes
+  if ((execInfo.root) && (v != execInfo.root)) execInfo.root->flags |= JSV_IS_RECURSING;
   // we do this so we don't count the same item twice, but don't use too much memory
   size_t c = _jsvCountJsVarsUsedRecursive(v, false);
   _jsvCountJsVarsUsedRecursive(v, true);
+  // restore recurse flag
+  if ((execInfo.root) && (v != execInfo.root)) execInfo.root->flags &= ~JSV_IS_RECURSING;
   return c;
 }
 
@@ -3395,7 +3399,8 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       case '&': return jsvNewFromInteger(da&db);
       case '|': return jsvNewFromInteger(da|db);
       case '^': return jsvNewFromInteger(da^db);
-      case '%': return db ? jsvNewFromInteger(da%db) : jsvNewFromFloat(NAN);
+      case '%': if (db<0) db=-db; // fix SIGFPE
+                return db ? jsvNewFromInteger(da%db) : jsvNewFromFloat(NAN);
       case LEX_LSHIFT: return jsvNewFromInteger(da << db);
       case LEX_RSHIFT: return jsvNewFromInteger(da >> db);
       case LEX_RSHIFTUNSIGNED: return jsvNewFromLongInteger(((JsVarIntUnsigned)da) >> db);
@@ -3580,15 +3585,20 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   int i;
   for (i=0;i<indent;i++) jsiConsolePrint(" ");
 
+
   if (!var) {
     jsiConsolePrint("undefined");
+    return;
+  }
+  if (level>0 && var==execInfo.root) {
+    jsiConsolePrint("ROOT");
     return;
   }
 
   jsvTraceLockInfo(var);
 
   int lowestLevel = _jsvTraceGetLowestLevel(baseVar, var);
-  if (lowestLevel < level) {
+  if (level>16 || (lowestLevel>=0 && lowestLevel < level)) {
     // If this data is available elsewhere in the tree (but nearer the root)
     // then don't print it. This makes the dump significantly more readable!
     // It also stops us getting in recursive loops ...
@@ -4030,8 +4040,7 @@ bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs) 
   while (ok && jsvObjectIteratorHasValue(&it)) {
     JsVar *key = jsvObjectIteratorGetKey(&it);
     bool found = false;
-    int i;
-    for (i=0;i<nConfigs;i++) {
+    for (int i=0;i<nConfigs;i++) {
       if (jsvIsStringEqual(key, configs[i].name)) {
         found = true;
         if (configs[i].ptr) {
@@ -4063,6 +4072,35 @@ bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs) 
   }
   jsvObjectIteratorFree(&it);
   return ok;
+}
+
+/** Using data in the format passed to jsvReadConfigObject, reconstruct a new object  */
+JsVar *jsvCreateConfigObject(jsvConfigObject *configs, int nConfigs) {
+  JsVar *o = jsvNewObject();
+  if (!o) return 0;
+  for (int i=0;i<nConfigs;i++) {
+     if (configs[i].ptr) {
+      JsVar *v = 0;
+      switch (configs[i].type) {
+      case 0: break;
+      case JSV_OBJECT:
+      case JSV_STRING_0:
+      case JSV_ARRAY:
+      case JSV_FUNCTION:
+        v = jsvLockAgain(*((JsVar**)configs[i].ptr)); break;
+      case JSV_PIN:
+        v = jsvNewFromPin(*((Pin*)configs[i].ptr)); break;
+      case JSV_BOOLEAN:
+        v = jsvNewFromBool(*((bool*)configs[i].ptr)); break;
+      case JSV_INTEGER:
+        v = jsvNewFromInteger(*((JsVarInt*)configs[i].ptr)); break;
+      case JSV_FLOAT:
+        v = jsvNewFromFloat(*((JsVarFloat*)configs[i].ptr)); break;
+      }
+      jsvObjectSetChildAndUnLock(o, configs[i].name, v);
+    }
+  }
+  return o;
 }
 
 /// Is the variable an instance of the given class. Eg. `jsvIsInstanceOf(e, "Error")` - does a simple, non-recursive check that doesn't take account of builtins like String

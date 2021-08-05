@@ -31,7 +31,7 @@ info = {
      'BLUETOOTH',
      'NET',
      'GRAPHICS',
-     'CRYPTO','SHA256','SHA512',
+     'CRYPTO','SHA256',#'SHA512',
      'AES',
      'NFC',
      'NEOPIXEL',
@@ -41,11 +41,16 @@ info = {
    'makefile' : [
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      # 'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # reset isn't being used, so let's just have an extra IO (needed for Puck.js V2)
+     'DEFINES+=-DESPR_DCDC_ENABLE', # Ensure DCDC converter is enabled
+     'DEFINES += -DNEOPIXEL_SCK_PIN=22', # SCK pin needs defining as something unused for neopixel (HW errata means they can't be disabled)
+     'DEFINES+=-DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
+     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2c40', # set RAM base to match MTU
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_puck_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://puck-js.com/go"\'',
+     'DEFINES+=-DAPP_TIMER_OP_QUEUE_SIZE=3', # Puck.js magnetometer poll
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'INCLUDE += -I$(ROOT)/libs/puckjs',
      'WRAPPERSOURCES += libs/puckjs/jswrap_puck.c'
    ]

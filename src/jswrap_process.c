@@ -116,7 +116,10 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "SPIFLASH", jsvNewFromInteger(SPIFLASH_LENGTH));
 #endif
 #ifdef PUCKJS
-  jsvObjectSetChildAndUnLock(obj, "HWVERSION", jsvNewFromInteger(isPuckV2?2:1));
+  jsvObjectSetChildAndUnLock(obj, "HWVERSION", jswrap_puck_getHardwareVersion());
+#endif
+#ifdef ESPR_HWVERSION
+  jsvObjectSetChildAndUnLock(obj, "HWVERSION", jsvNewFromInteger(ESPR_HWVERSION));
 #endif
   jsvObjectSetChildAndUnLock(obj, "STORAGE", jsvNewFromInteger(FLASH_SAVED_CODE_LENGTH));
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
@@ -126,6 +129,10 @@ JsVar *jswrap_process_env() {
 #ifndef SAVE_ON_FLASH
   // Pointer to a list of predefined exports - eventually we'll get rid of the array above
   jsvObjectSetChildAndUnLock(obj, "EXPTR", jsvNewFromInteger((JsVarInt)(size_t)exportPtrs));
+#ifdef DEBUG_APP_RAM_BASE 
+extern uint32_t app_ram_base;
+  jsvObjectSetChildAndUnLock(obj, "APP_RAM_BASE", jsvNewFromInteger((JsVarInt)app_ram_base));
+#endif
 #endif
   return obj;
 }

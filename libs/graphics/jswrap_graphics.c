@@ -36,6 +36,18 @@
 #include "vector_font.h"
 
 #ifdef GRAPHICS_PALETTED_IMAGES
+#if defined(ESPR_GRAPHICS_12BIT)
+#define PALETTE_BPP 12
+// 8 color RGB - [0,0,0,0,0,0,0,0].map((x,i)=>((i&1)?0xF00:0)|((i&2)?0xF0:0)|((i&4)?0xF:0))
+const uint16_t PALETTE_3BIT[16] = { 0, 3840, 240, 4080, 15, 3855, 255, 4095 };
+// 16 color 12 bit MAC OS palette
+const uint16_t PALETTE_4BIT[16] = { 0x0,0x444,0x888,0xbbb,0x963,0x630,0x60,0xa0,0x9f,0xc,0x309,0xf09,0xd00,0xf60,0xff0,0xfff };
+// 256 color 12 bit Web-safe palette
+const uint16_t PALETTE_8BIT[256] = { 0x0,0x3,0x6,0x9,0xc,0xf,0x30,0x33,0x36,0x39,0x3c,0x3f,0x60,0x63,0x66,0x69,0x6c,0x6f,0x90,0x93,0x96,0x99,0x9c,0x9f,0xc0,0xc3,0xc6,0xc9,0xcc,0xcf,0xf0,0xf3,0xf6,0xf9,0xfc,0xff,0x300,0x303,0x306,0x309,0x30c,0x30f,0x330,0x333,0x336,0x339,0x33c,0x33f,0x360,0x363,0x366,0x369,0x36c,0x36f,0x390,0x393,0x396,0x399,0x39c,0x39f,0x3c0,0x3c3,0x3c6,0x3c9,0x3cc,0x3cf,0x3f0,0x3f3,0x3f6,0x3f9,0x3fc,0x3ff,0x600,0x603,0x606,0x609,0x60c,0x60f,0x630,0x633,0x636,0x639,0x63c,0x63f,0x660,0x663,0x666,0x669,0x66c,0x66f,0x690,0x693,0x696,0x699,0x69c,0x69f,0x6c0,0x6c3,0x6c6,0x6c9,0x6cc,0x6cf,0x6f0,0x6f3,0x6f6,0x6f9,0x6fc,0x6ff,0x900,0x903,0x906,0x909,0x90c,0x90f,0x930,0x933,0x936,0x939,0x93c,0x93f,0x960,0x963,0x966,0x969,0x96c,0x96f,0x990,0x993,0x996,0x999,0x99c,0x99f,0x9c0,0x9c3,0x9c6,0x9c9,0x9cc,0x9cf,0x9f0,0x9f3,0x9f6,0x9f9,0x9fc,0x9ff,0xc00,0xc03,0xc06,0xc09,0xc0c,0xc0f,0xc30,0xc33,0xc36,0xc39,0xc3c,0xc3f,0xc60,0xc63,0xc66,0xc69,0xc6c,0xc6f,0xc90,0xc93,0xc96,0xc99,0xc9c,0xc9f,0xcc0,0xcc3,0xcc6,0xcc9,0xccc,0xccf,0xcf0,0xcf3,0xcf6,0xcf9,0xcfc,0xcff,0xf00,0xf03,0xf06,0xf09,0xf0c,0xf0f,0xf30,0xf33,0xf36,0xf39,0xf3c,0xf3f,0xf60,0xf63,0xf66,0xf69,0xf6c,0xf6f,0xf90,0xf93,0xf96,0xf99,0xf9c,0xf9f,0xfc0,0xfc3,0xfc6,0xfc9,0xfcc,0xfcf,0xff0,0xff3,0xff6,0xff9,0xffc,0xfff,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xfff };
+#else // default to 16 bit
+#define PALETTE_BPP 16
+// 8 color RGB - [0,0,0,0,0,0,0,0].map((x,i)=>((i&1)?0xF800:0)|((i&2)?0x7E0:0)|((i&4)?0x1F:0))
+const uint16_t PALETTE_3BIT[16] = { 0, 63488, 2016, 65504, 31, 63519, 2047, 65535 };
 // 16 color MAC OS palette
 const uint16_t PALETTE_4BIT[16] = { 0x0,0x4228,0x8c51,0xbdd7,0x9b26,0x6180,0x320,0x540,0x4df,0x19,0x3013,0xf813,0xd800,0xfb20,0xffe0,0xffff };
 // 256 color 16 bit Web-safe palette
@@ -57,8 +69,17 @@ const uint16_t PALETTE_8BIT[256] = {
     0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
     0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xffff
  };
+// convert 16 bit to 8 bit with
+// (c=>[(c&0xF800)>>8,(c&0x7E0)>>3,(c&0x1F)<<3])(0x0661)
+// 16 bit to hex with
+// (c=>"#"+[(c&0xF800)>>8,(c&0x7E0)>>3,(c&0x1F)<<3].map(c=>((c+8)>>4).toString(16)).join(""))(0x0661)
+#endif
 // map Mac to web-safe palette. Must be uint16_t because drawImage uses uint16_t* for palette
 const uint16_t PALETTE_4BIT_TO_8BIT[16] = { 0, 43, 129, 172, 121, 78, 12, 18, 23, 4, 39, 183, 144, 192, 210, 215 };
+#endif
+
+#ifdef ESPR_GRAPHICS_3BIT
+#define CONVERT_COL_16_TO_3(x) ((((x)&0x8000)?4:0)|(((x)&0x0400)?2:0)|(((x)&0x0010)?1:0))
 #endif
 
 
@@ -140,9 +161,13 @@ bool jswrap_graphics_idle() {
 
 /*JSON{
   "type" : "init",
-  "generate" : "jswrap_graphics_init"
+  "generate" : "jswrap_graphics_init",
+  "sortorder" : -100
 }*/
 void jswrap_graphics_init() {
+  // sortorder is first because we don't want subsequent
+  // _init to a) not have GFX and b) not get their theme
+  // settings overwritten
 #ifdef USE_LCD_FSMC
   JsVar *parent = jspNewObject("LCD", "Graphics");
   if (parent) {
@@ -158,6 +183,16 @@ void jswrap_graphics_init() {
     graphicsSetVar(&gfx);
     jsvUnLock2(parentObj, parent);
   }
+#endif
+#ifdef GRAPHICS_THEME
+  /// Global color scheme colours
+  graphicsTheme.fg = (JsGraphicsThemeColor)-1;
+  graphicsTheme.bg = (JsGraphicsThemeColor)0;
+  graphicsTheme.fg2 = (JsGraphicsThemeColor)-1;
+  graphicsTheme.bg2 = (JsGraphicsThemeColor)0;
+  graphicsTheme.fgH = (JsGraphicsThemeColor)-1;
+  graphicsTheme.bgH = (JsGraphicsThemeColor)0;
+  graphicsTheme.dark = true;
 #endif
 }
 
@@ -457,22 +492,35 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
   "class" : "Graphics",
   "name" : "getWidth",
   "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, false)",
-  "return" : ["int","The width of the LCD"]
+  "return" : ["int","The width of this Graphics instance"]
 }
-The width of the LCD
+The width of this Graphics instance
 */
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
   "name" : "getHeight",
   "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, true)",
-  "return" : ["int","The height of the LCD"]
+  "return" : ["int","The height of this Graphics instance"]
 }
-The height of the LCD
+The height of this Graphics instance
 */
 int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   return height ? graphicsGetHeight(&gfx) : graphicsGetWidth(&gfx);
+}
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getBPP",
+  "generate" : "jswrap_graphics_getBPP",
+  "return" : ["int","The bits per pixel of this Graphics instance"]
+}
+The number of bits per pixel of this Graphics instance
+*/
+int jswrap_graphics_getBPP(JsVar *parent) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  return gfx.data.bpp;
 }
 
 /*JSON{
@@ -631,6 +679,32 @@ JsVar *jswrap_graphics_drawCircle(JsVar *parent, int x, int y, int rad) {
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "drawCircleAA",
+  "ifdef" : "GRAPHICS_ANTIALIAS",
+  "generate" : "jswrap_graphics_drawCircleAA",
+  "params" : [
+    ["x","int32","Centre x-coordinate"],
+    ["y","int32","Centre y-coordinate"],
+    ["r","int32","Radius"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Draw a circle, centred at (x,y) with radius r in the current foreground color
+*/
+#ifdef GRAPHICS_ANTIALIAS
+JsVar *jswrap_graphics_drawCircleAA(JsVar *parent, int x, int y, int r) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  graphicsDrawCircleAA(&gfx, x,y,r);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+  return jsvLockAgain(parent);
+}
+#endif
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "fillEllipse",
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_fillEllipse",
@@ -728,7 +802,7 @@ JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_toColor",
   "params" : [
-    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#012345'`"],
+    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#rrggbb' or `'#rgb'`"],
     ["g","JsVar","Green (between 0 and 1)"],
     ["b","JsVar","Blue (between 0 and 1)"]
   ],
@@ -757,11 +831,17 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
     char buf[9];
     memset(buf,0,sizeof(buf));
     jsvGetString(r,buf,sizeof(buf));
-    rf = hexToByte(buf[1],buf[2])/256.0;
-    gf = hexToByte(buf[3],buf[4])/256.0;
-    bf = hexToByte(buf[5],buf[6])/256.0;
+    if (buf[4]==0) {
+      rf = chtod(buf[1])/15.0;
+      gf = chtod(buf[2])/15.0;
+      bf = chtod(buf[3])/15.0;
+    } else {
+      rf = hexToByte(buf[1],buf[2])/255.0;
+      gf = hexToByte(buf[3],buf[4])/255.0;
+      bf = hexToByte(buf[5],buf[6])/255.0;
+    }
     if (rf<0 || gf<0 || bf<0 || buf[7]!=0) {
-      jsExceptionHere(JSET_ERROR, "If Color is a String, it must be of the form '#rrggbb'");
+      jsExceptionHere(JSET_ERROR, "If Color is a String, it must be of the form '#rrggbb' or '#rgb'");
       return 0;
     }
   } else {
@@ -814,6 +894,10 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
     }
     if (gfx.data.bpp==16) {
       color = (unsigned int)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
+#ifdef ESPR_GRAPHICS_12BIT
+    } else if (gfx.data.bpp==12) {
+      color = (unsigned int)((bi>>4) | (gi>>4)<<4 | (ri>>4)<<8);
+#endif
     } else if (gfx.data.bpp==32) {
       color = 0xFF000000 | (unsigned int)(bi | (gi<<8) | (ri<<16));
     } else if (gfx.data.bpp==24) {
@@ -862,6 +946,10 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
           color=(unsigned int)i;
         }
       }
+#endif
+#ifdef ESPR_GRAPHICS_3BIT
+    } else if (gfx.data.bpp==3) {
+      color = (unsigned int)((bi>>7) | (gi>>7)<<1 | (ri>>7)<<2);
 #endif
     } else
       color = (unsigned int)(((ri+gi+bi)>=384) ? 0xFFFFFFFF : 0);
@@ -982,7 +1070,7 @@ These values are inclusive - eg `g.setClipRect(1,0,5,0)` will ensure that only
 pixel rows 1,2,3,4,5 are touched on column 0.
 
 **Note:** For maximum flexibility, the values here are not range checked. For normal
-use, unsure X and Y are between 0 and `getWidth`/`getHeight`.
+use, X and Y should be between 0 and `getWidth`/`getHeight`.
 */
 JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -1454,7 +1542,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
                   (y + cy*scale),
                   (x + cx*scale + scale-1),
                   (y + cy*scale + scale-1),
-                  graphicsBlendColor(&gfx, (256*col)/customBPPRange));
+                  graphicsBlendGfxColor(&gfx, (256*col)/customBPPRange));
             bmpOffset += customBPP;
             citdata <<= customBPP;
             if (bmpOffset>=8) {
@@ -1595,6 +1683,7 @@ JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
 }
 Draw a line between x1,y1 and x2,y2 in the current foreground color
 */
+#ifdef GRAPHICS_ANTIALIAS
 JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2, double y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   graphicsDrawLineAA(&gfx,
@@ -1605,6 +1694,8 @@ JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
+#endif
+
 
 /*JSON{
   "type" : "method",
@@ -1706,6 +1797,7 @@ JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool 
     int x,y;
     x = (int)((jsvIteratorGetFloatValue(&it)*scale)+0.5);
     jsvIteratorNext(&it);
+    if (!jsvIteratorHasElement(&it)) break;
     y = (int)((jsvIteratorGetFloatValue(&it)*scale)+0.5);
     jsvIteratorNext(&it);
     if (idx==0) { // save xy positions of first point
@@ -1735,7 +1827,7 @@ JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool 
   "class" : "Graphics",
   "name" : "fillPoly",
   "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_graphics_fillPoly",
+  "generate_full" : "jswrap_graphics_fillPoly_X(parent, poly, false);",
   "params" : [
     ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"]
   ],
@@ -1759,7 +1851,36 @@ This fills from the top left hand side of the polygon (low X, low Y)
 will align perfectly without overdraw - but this will not fill the
 same pixels as `drawPoly` (drawing a line around the edge of the polygon).
 */
-JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "fillPolyAA",
+  "ifdef" : "GRAPHICS_ANTIALIAS",
+  "generate_full" : "jswrap_graphics_fillPoly_X(parent, poly, true);",
+  "params" : [
+    ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Draw a filled polygon in the current foreground color.
+
+```
+g.fillPolyAA([
+  16, 0,
+  31, 31,
+  26, 31,
+  16, 12,
+  6, 28,
+  0, 27 ]);
+```
+
+This fills from the top left hand side of the polygon (low X, low Y)
+*down to but not including* the bottom right. When placed together polygons
+will align perfectly without overdraw - but this will not fill the
+same pixels as `drawPoly` (drawing a line around the edge of the polygon).
+*/
+JsVar *jswrap_graphics_fillPoly_X(JsVar *parent, JsVar *poly, bool antiAlias) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   if (!jsvIsIterable(poly)) return 0;
   const int maxVerts = 128;
@@ -1771,10 +1892,24 @@ JsVar *jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
     verts[idx++] = (short)(0.5 + jsvIteratorGetFloatValue(&it)*16);
     jsvIteratorNext(&it);
   }
+  if (jsvIteratorHasElement(&it))
+    jsExceptionHere(JSET_ERROR, "Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   jsvIteratorFree(&it);
-  if (idx==maxVerts) {
-    jsWarn("Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
+#ifdef GRAPHICS_ANTIALIAS
+  // For antialiased fillPoly the easiest solution is just to draw AA lines
+  // around the edge first, then fill solidly
+  if (antiAlias) {
+    int lx = verts[idx-2];
+    int ly = verts[idx-1];
+    for (int i=0;i<idx;i+=2) {
+      int vx = verts[i];
+      int vy = verts[i+1];
+      graphicsDrawLineAA(&gfx, vx,vy, lx,ly);
+      lx = vx;
+      ly = vy;
+    }
   }
+#endif
   graphicsFillPoly(&gfx, idx/2, verts);
 
   graphicsSetVar(&gfx); // gfx data changed because modified area
@@ -1835,6 +1970,9 @@ typedef struct {
   int bufferOffset; // start offset in imageBuffer
   const uint16_t *palettePtr;
   uint32_t paletteMask;
+#ifdef ESPR_GRAPHICS_3BIT
+  bool is16Bit; // are we expecting 16 bit colour?
+#endif
   unsigned int bitMask;
   unsigned int pixelsPerByteMask;
   int stride; // bytes per line
@@ -1845,7 +1983,22 @@ typedef struct {
 /// Parse an image into GfxDrawImageInfo. See drawImage for image format docs. Returns true on success
 static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawImageInfo *info) {
   memset(info, 0, sizeof(GfxDrawImageInfo));
-  if (jsvIsObject(image)) {
+#ifndef SAVE_ON_FLASH
+  if (jsvIsObject(image) && jsvIsInstanceOf(image,"Graphics")) {
+    JsGraphics ig;
+    if (!graphicsGetFromVar(&ig, image)) return false;
+    if (ig.data.type!=JSGRAPHICSTYPE_ARRAYBUFFER) return false; // if not arraybuffer Graphics, bail out
+    info->width = ig.data.width;
+    info->height = ig.data.height;
+    info->bpp = ig.data.bpp;
+    JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
+    info->buffer = jsvGetArrayBufferBackingString(buf);
+    jsvUnLock(buf);
+    info->bufferOffset = 0;
+#else
+  if (false) {
+#endif
+  } else if (jsvIsObject(image)) {
     info->width = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
     info->height = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
     info->bpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
@@ -1854,24 +2007,29 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
     v = jsvObjectGetChild(image, "transparent", 0);
     info->isTransparent = v!=0;
     info->transparentCol = (unsigned int)jsvGetIntegerAndUnLock(v);
+#ifndef SAVE_ON_FLASH_EXTREME
     v = jsvObjectGetChild(image, "palette", 0);
     if (v) {
       if (jsvIsArrayBuffer(v) && v->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16) {
         size_t l = 0;
         info->palettePtr = (uint16_t *)jsvGetDataPointer(v, &l);
         jsvUnLock(v);
-        if (l==2 || l==4 || l==16 || l==256)
+        if (l==2 || l==4 || l==8 || l==16 || l==256) {
           info->paletteMask = (uint32_t)(l-1);
-        else {
+#ifdef ESPR_GRAPHICS_3BIT
+          info->is16Bit = true; // we assume 16 bit if a palette is supplied
+#endif
+        } else {
           info->palettePtr = 0;
         }
       } else
         jsvUnLock(v);
       if (!info->palettePtr) {
-        jsExceptionHere(JSET_ERROR, "palette specified, but must be a flat Uint16Array of 2,4,16,256 elements");
+        jsExceptionHere(JSET_ERROR, "Palette specified, but must be a flat Uint16Array of 2,4,8,16,256 elements");
         return false;
       }
     }
+#endif
     JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
     info->buffer = jsvGetArrayBufferBackingString(buf);
     jsvUnLock(buf);
@@ -1893,6 +2051,37 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
     } else {
       info->bufferOffset = 3;
     }
+    if (info->bpp & 64) { // included palette data
+      info->bpp = info->bpp&63;
+      int paletteEntries = 1<<info->bpp;
+      info->paletteMask = paletteEntries-1;
+#ifdef ESPR_GRAPHICS_3BIT
+      info->is16Bit = true; // we assume 16 bit if a palette is supplied
+#endif
+      if (info->bpp <= 2) {
+        // if it'll fit, put the palette data in _simplePalette
+        int n = info->bufferOffset;
+        for (int i=0;i<paletteEntries;i++)
+          info->_simplePalette[i] =
+            ((unsigned char)jsvGetCharInString(info->buffer,n++)) |
+            ((unsigned char)jsvGetCharInString(info->buffer,n++))<<8;
+        info->palettePtr = info->_simplePalette;
+      } else if (info->bpp<=8) { // otherwise if data is memory-mapped, use direct
+        int imgStart = info->bufferOffset + paletteEntries*2;
+        size_t dataLen = 0;
+        char *dataPtr = jsvGetDataPointer(info->buffer, &dataLen);
+        if (info->bpp<=8 && dataPtr && imgStart<dataLen) {
+          info->paletteMask = (uint32_t)(paletteEntries-1);
+          info->palettePtr = &dataPtr[info->bufferOffset];
+        }
+      }
+      if (!info->palettePtr) {
+        jsExceptionHere(JSET_ERROR, "Unable to get pointer to palette. Image in flash?");
+        return false;
+      }
+      // modify image start
+      info->bufferOffset += paletteEntries*2;
+    }
   } else {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
     return 0;
@@ -1907,37 +2096,35 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
       info->palettePtr = info->_simplePalette;
       info->paletteMask = 1;
   #ifdef GRAPHICS_PALETTED_IMAGES
-    } else if (gfx->data.bpp==16 && info->bpp==2) { // Blend from bg to fg
-      unsigned int b = gfx->data.bgColor;
-      unsigned int br = (b>>8)&0xF8;
-      unsigned int bg = (b>>3)&0xFC;
-      unsigned int bb = (b<<3)&0xF8;
-      unsigned int f = gfx->data.fgColor;
-      unsigned int fr = (f>>8)&0xF8;
-      unsigned int fg = (f>>3)&0xFC;
-      unsigned int fb = (f<<3)&0xF8;
+    } else if (info->bpp==2) { // Blend from bg to fg
       info->_simplePalette[0] = (uint16_t)gfx->data.bgColor;
-      unsigned int ri,gi,bi;
-      ri = (br*2 + fr)/3;
-      gi = (bg*2 + fg)/3;
-      bi = (bb*2 + fb)/3;
-      info->_simplePalette[1] = (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
-      ri = (br + fr*2)/3;
-      gi = (bg + fg*2)/3;
-      bi = (bb + fb*2)/3;
-      info->_simplePalette[2] = (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
+      info->_simplePalette[1] = graphicsBlendGfxColor(gfx, 85);
+      info->_simplePalette[2] = graphicsBlendGfxColor(gfx, 171);
       info->_simplePalette[3] = (uint16_t)gfx->data.fgColor;
       info->palettePtr = info->_simplePalette;
       info->paletteMask = 3;
-    } else if (gfx->data.bpp==16 && info->bpp==4) { // palette is 16 bits, so don't use it for other things
+    } else if (gfx->data.bpp==PALETTE_BPP && info->bpp==3) { // palette is 16 bits, so don't use it for other things
+      info->palettePtr = PALETTE_3BIT;
+      info->paletteMask = 7;
+    } else if (gfx->data.bpp==PALETTE_BPP && info->bpp==4) { // palette is 16 bits, so don't use it for other things
       info->palettePtr = PALETTE_4BIT;
       info->paletteMask = 15;
-    } else if (gfx->data.bpp==16 && info->bpp==8) { // palette is 16 bits, so don't use it for other things
+    } else if (gfx->data.bpp==PALETTE_BPP && info->bpp==8) { // palette is 16 bits, so don't use it for other things
       info->palettePtr = PALETTE_8BIT;
       info->paletteMask = 255;
     } else if (gfx->data.bpp==8 && info->bpp==4) {
       info->palettePtr = PALETTE_4BIT_TO_8BIT;
       info->paletteMask = 15;
+#ifdef ESPR_GRAPHICS_3BIT
+    } else if (gfx->data.bpp==3 && PALETTE_BPP==16 && info->bpp==4) {
+      info->palettePtr = PALETTE_4BIT;
+      info->paletteMask = 15;
+      info->is16Bit = true;
+    } else if (gfx->data.bpp==3 && PALETTE_BPP==16 && info->bpp==8) {
+      info->palettePtr = PALETTE_8BIT;
+      info->paletteMask = 255;
+      info->is16Bit = true;
+#endif
   #endif
     }
   }
@@ -1980,10 +2167,13 @@ bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) 
     int imagex = qx>>8;
     int imagey = qy>>8;
    // TODO: getter callback for speed?
+#ifndef SAVE_ON_FLASH
    if (l->img.bpp==8) { // fast path for 8 bits
      jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+imagex+(imagey*l->img.stride)));
      colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
-   } else {
+   } else
+#endif
+   {
      int pixelOffset = (imagex+(imagey*l->img.width));
      int bitOffset = pixelOffset*l->img.bpp;
      jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+(bitOffset>>3)));
@@ -2090,6 +2280,7 @@ Image can be:
 
 * An object with the following fields `{ width : int, height : int, bpp : optional int, buffer : ArrayBuffer/String, transparent: optional int, palette : optional Uint16Array(2/4/16) }`. bpp = bits per pixel (default is 1), transparent (if defined) is the colour that will be treated as transparent, and palette is a color palette that each pixel will be looked up in first
 * A String where the the first few bytes are: `width,height,bpp,[transparent,]image_bytes...`. If a transparent colour is specified the top bit of `bpp` should be set.
+* An ArrayBuffer Graphics object (if `bpp<8`, `msb:true` must be set) - this is disabled on devices without much flash memory available
 
 Draw an image at the specified position.
 
@@ -2148,7 +2339,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #ifdef USE_LCD_ST7789_8BIT // can we blit directly to the display?
     if (isST7789 &&
         xPos>=gfx.data.clipRect.x1 && yPos>=gfx.data.clipRect.y1 && // check it's all on-screen
-        (xPos+img.width)<=gfx.data.clipRect.x2 && (yPos+img.height)<=gfx.data.clipRect.y2) {
+        (xPos+img.width)<=gfx.data.clipRect.x2+1 && (yPos+img.height)<=gfx.data.clipRect.y2+1) {
       if (img.bpp==1) lcdST7789_blit1Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
       else if (img.bpp==8) lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
     } else {
@@ -2169,6 +2360,9 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
           // Try and write pixel!
           if (img.transparentCol!=col) {
             if (img.palettePtr) col = img.palettePtr[col&img.paletteMask];
+#ifdef ESPR_GRAPHICS_3BIT
+            if (img.is16Bit) col = CONVERT_COL_16_TO_3(col);
+#endif
             setPixel(&gfx, x, y, col);
           }
         }
@@ -2202,7 +2396,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       if (isST7789 &&
           s>=1 &&
           xPos>=gfx.data.clipRect.x1 && yPos>=gfx.data.clipRect.y1 && // check it's all on-screen
-          (xPos+img.width*s)<=gfx.data.clipRect.x2 && (yPos+img.height*s)<=gfx.data.clipRect.y2) {
+          (xPos+img.width*s)<=gfx.data.clipRect.x2+1 && (yPos+img.height*s)<=gfx.data.clipRect.y2+1) {
         if (img.bpp==1) lcdST7789_blit1Bit(xPos, yPos, img.width, img.height, s, &it, img.palettePtr);
         else lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, s, &it, img.palettePtr);
       } else
@@ -2235,6 +2429,9 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
               // Try and write pixel!
               if (img.transparentCol!=col && yp>=gfx.data.clipRect.y1 && yp<=gfx.data.clipRect.y2) {
                 if (img.palettePtr) col = img.palettePtr[col&img.paletteMask];
+#ifdef ESPR_GRAPHICS_3BIT
+                if (img.is16Bit) col = CONVERT_COL_16_TO_3(col);
+#endif
                 for (int ix=0;ix<s;ix++) {
                   if (xp>=gfx.data.clipRect.x1 && xp<=gfx.data.clipRect.x2)
                     gfx.setPixel(&gfx, xp, yp, col);
@@ -2272,15 +2469,19 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       for (y = y1; y <= y2; y++) {
         _jswrap_drawImageLayerStartX(&l);
         for (x = x1; x <= x2 ; x++) {
-          if (_jswrap_drawImageLayerGetPixel(&l, &colData))
+          if (_jswrap_drawImageLayerGetPixel(&l, &colData)) {
+#ifdef ESPR_GRAPHICS_3BIT
+            if (l.img.is16Bit) colData = CONVERT_COL_16_TO_3(colData);
+#endif
             setPixel(&gfx, x, y, colData);
+          }
           _jswrap_drawImageLayerNextX(&l);
         }
         _jswrap_drawImageLayerNextY(&l);
       }
       it = l.it; // make sure it gets freed properly
     }
-#endif
+#endif // GRAPHICS_DRAWIMAGE_ROTATED
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(img.buffer);
@@ -2295,7 +2496,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   "type" : "method",
   "class" : "Graphics",
   "name" : "drawImages",
-  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
+  "#if" : "defined(BANGLEJS)",
   "generate" : "jswrap_graphics_drawImages",
   "params" : [
     ["layers","JsVar","An array of objects {x,y,image,scale,rotate,center} (up to 3)"],
@@ -2397,6 +2598,9 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
         unsigned int colData = 0;
         for (i=layerCount-1;i>=0;i--) {
           if (_jswrap_drawImageLayerGetPixel(&layers[i], &colData)) {
+#ifdef ESPR_GRAPHICS_3BIT
+            if (layers[i].img.is16Bit) colData = CONVERT_COL_16_TO_3(colData);
+#endif
             solid = true;
             break;
           }
@@ -2590,6 +2794,93 @@ JsVar *jswrap_graphics_scroll(JsVar *parent, int xdir, int ydir) {
   graphicsSetVar(&gfx);
   return jsvLockAgain(parent);
 }
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "blit",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
+  "generate" : "jswrap_graphics_blit",
+  "params" : [
+    ["options","JsVar","options - see below"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Blit one area of the screen (x1,y1 w,h) to another (x2,y2 w,h)
+
+```
+g.blit({
+  x1:0, y1:0,
+  w:32, h:32,
+  x2:100, y2:100,
+  setModified : true // should we set the modified area?
+});
+```
+
+Note: This uses repeated pixel reads and writes, so will not work on platforms that
+don't support pixel reads.
+*/
+JsVar *jswrap_graphics_blit(JsVar *parent, JsVar *options) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  int sw = gfx.data.width;
+  int sh = gfx.data.height;
+  int x1=0,y1=0,w=0,h=0,x2=0,y2=0;
+  bool setModified = false;
+  jsvConfigObject configs[] = {
+      {"x1", JSV_INTEGER, &x1},
+      {"y1", JSV_INTEGER, &y1},
+      {"w", JSV_INTEGER, &w},
+      {"h", JSV_INTEGER, &h},
+      {"x2", JSV_INTEGER, &x2},
+      {"y2", JSV_INTEGER, &y2},
+      {"setModified", JSV_BOOLEAN, &setModified}};
+  if (!jsvIsObject(options) ||
+      !jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    jsExceptionHere(JSET_ERROR, "Invalid options");
+    return 0;
+  }
+  int ex;
+  // clip source positions
+  if (x1<0) {
+    x2 -= x1;
+    w += x1;
+    x1 = 0;
+  }
+  if (y1<0) {
+    y2 -= y1;
+    h += y1;
+    y1 = 0;
+  }
+  ex = (x1+w) - sw;
+  if (ex > 0) w -= ex;
+  ex = (y1+h) - sh;
+  if (ex > 0) h -= ex;
+  // clip destination positions
+  if (x2<0) {
+    x1 -= x2;
+    w += x2;
+    x2 = 0;
+  }
+  if (y2<0) {
+    y1 -= y2;
+    h += y2;
+    y2 = 0;
+  }
+  ex = (x2+w) - sw;
+  if (ex > 0) w -= ex;
+  ex = (y2+h) - sh;
+  if (ex > 0) h -= ex;
+  if (w>0 || h>0) {
+    gfx.blit(&gfx, x1,y1,w,h,x2,y2);
+    if (setModified) {
+      graphicsSetModified(&gfx, x2,y2,x2+w,y2+h);
+      graphicsSetVar(&gfx);
+    }
+  }
+  return jsvLockAgain(parent);
+}
+
 
 /*JSON{
   "type" : "method",
@@ -2855,4 +3146,47 @@ JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *tra
   jsvIteratorFree(&it);
 
   return result;
+}
+
+/*JSON{
+  "type" : "property",
+  "class" : "Graphics",
+  "name" : "theme",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
+  "generate" : "jswrap_graphics_theme",
+  "return" : ["JsVar","An object containing the current 'theme' (see below)"]
+}
+Returns an object of the form:
+
+```
+{
+  fg : 0xFFFF,  // foreground colour
+  bg : 0,       // background colour
+  fg : 0xFFFF,  // accented foreground colour
+  bg : 0x0007,  // accented background colour
+  fg : 0xFFFF,  // highlighted foreground colour
+  bg : 0x02F7,  // highlighted background colour
+  dark : true,  // Is background dark (eg. foreground should be a light colour)
+}
+```
+
+These values can then be passed to `g.setColor`/`g.setBgColor` for example `g.setColor(g.theme.fg2)`.
+
+On Bangle.js these values can be changed by writing updated values to `theme` in `settings.js` and reloading the app.
+*/
+JsVar *jswrap_graphics_theme(JsVar *parent) {
+  NOT_USED(parent);
+#ifdef GRAPHICS_THEME
+  JsVar *o = jsvNewObject();
+  jsvObjectSetChildAndUnLock(o,"fg",jsvNewFromInteger(graphicsTheme.fg));
+  jsvObjectSetChildAndUnLock(o,"bg",jsvNewFromInteger(graphicsTheme.bg));
+  jsvObjectSetChildAndUnLock(o,"fg2",jsvNewFromInteger(graphicsTheme.fg2));
+  jsvObjectSetChildAndUnLock(o,"bg2",jsvNewFromInteger(graphicsTheme.bg2));
+  jsvObjectSetChildAndUnLock(o,"fgH",jsvNewFromInteger(graphicsTheme.fgH));
+  jsvObjectSetChildAndUnLock(o,"bgH",jsvNewFromInteger(graphicsTheme.bgH));
+  jsvObjectSetChildAndUnLock(o,"dark",jsvNewFromBool(graphicsTheme.dark));
+  return o;
+#else
+  return 0;
+#endif
 }

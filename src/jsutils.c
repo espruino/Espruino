@@ -629,10 +629,10 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
 #ifndef USE_NO_FLOATS
     // check for exponents
     int exponent = 0;
-    if (radix == 10 && (val >= 1E21 || val < 1E-6)) {
+    if (radix == 10 && val>0.0) {
       // use repeated mul/div for ease, but to
       // improve accuracy we multiply by 1e5 first
-      if (val>1) {
+      if (val >= 1E21) {
         while (val>100000) {
           val /= 100000;
           exponent += 5;
@@ -641,7 +641,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
           val /= 10;
           exponent ++;
         }
-      } else {
+      } else if (val < 1E-6) {
         while (val<1E-5) {
           val *= 100000;
           exponent -= 5;

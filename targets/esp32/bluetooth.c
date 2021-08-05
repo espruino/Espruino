@@ -58,9 +58,10 @@ void jsble_init(){
 		jsWarn("Bluetooth is disabled per ESP32.enableBLE(false)\n");
 	}
 }
-/** Completely deinitialise the BLE stack */
-void jsble_kill(){
+/** Completely deinitialise the BLE stack. Return true on success */
+bool jsble_kill(){
 	jsWarn("kill not implemented yet\n");
+  return true;
 }
 
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len){

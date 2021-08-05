@@ -8,6 +8,23 @@ SOFTDEVICE_PATH = $(NRF5X_SDK_PATH)/components/softdevice/s132
 DEFINES += -DS132
 endif
 
+ifdef NRF_SDK17
+# Use SDK17
+NRF5X_SDK=17
+NRF5X_SDK_17=1
+NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x_17
+DEFINES += -DNRF_SD_BLE_API_VERSION=7
+DEFINES += -D__HEAP_SIZE=0
+ifeq ($(CHIP),NRF52840)
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52840.c
+SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52_7.2.0_softdevice.hex
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52840.S
+else  # NRF52832
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52.c
+SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_7.2.0_softdevice.hex
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.S
+endif
+else # not SDK17
 ifdef NRF_SDK15
 # Use SDK15
 NRF5X_SDK=15
@@ -53,7 +70,8 @@ NRF5X_SDK=12
 NRF5X_SDK_12=1
 NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x_12
 DEFINES += -DNRF_SD_BLE_API_VERSION=3
-SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_3.0.0_softdevice.hex
+SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_3.1.0_softdevice.hex
+endif
 endif
 endif
 endif
@@ -91,6 +109,21 @@ else # not USE_BOOTLOADER
 LINKER_FILE = $(NRF5X_SDK_PATH)/nrf5x_linkers/linker_nrf52840_ble_espruino.ld
 INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config
 endif # USE_BOOTLOADER
+ifdef NRF5X_SDK_17
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd 
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc 
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm 
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/hid/generic 
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/msc 
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/hid 
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd.c 
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm/app_usbd_cdc_acm.c 
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_core.c 
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_serial_num.c 
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_string_desc.c 
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_usbd.c 
+endif
+ifdef NRF5X_SDK_15
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm
@@ -103,10 +136,7 @@ TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_string_des
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm/app_usbd_cdc_acm.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/usbd/nrf_drv_usbd.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_serial_num.c
-TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_clock.c
-TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_power.c
-TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_clock.c
-TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_power.c
+endif
 else # NRF52832
 DEFINES += -DNRF52832_XXAA -DNRF52_PAN_74 
 
@@ -156,6 +186,19 @@ ifdef NRF5X_SDK_15
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_i2s.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_saadc.c 
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_rng.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_clock.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_power.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_clock.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_power.c
+endif
+ifdef NRF5X_SDK_17
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_i2s.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_saadc.c 
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_rng.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_clock.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/integration/nrfx/legacy/nrf_drv_power.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_clock.c
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/drivers/src/nrfx_power.c
 endif
 # Secure connection support
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/ecc
@@ -163,6 +206,6 @@ TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/ecc/ecc.c
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/rng
 INCLUDE += -I$(NRF5X_SDK_PATH)/external/micro-ecc
 TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
-endif # BOOTLOADER
+endif # !BOOTLOADER
 
 include make/common/NRF5X.make

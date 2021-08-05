@@ -35,14 +35,13 @@ info = {
      'LCD_SPI'
    ],
    'makefile' : [
-     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
      'DEFINES += -DNRF_BL_DFU_ENTER_METHOD_BUTTON=1 -DNRF_BL_DFU_ENTER_METHOD_BUTTON_PIN=5',
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DESPR_GRAPHICS_12BIT -DGRAPHICS_ANTIALIAS',
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
@@ -81,7 +80,7 @@ devices = {
 #  'LED1' : { 'pin' : 'D13' }, # Pin negated in software
   'VIBRATE' : { 'pin' : 'D8' }, # Pin negated in software
   'LCD' : {
-            'width' : 240, 'height' : 240, 'bpp' : 8, # 16 normal, 12 bit is possible
+            'width' : 240, 'height' : 240, 'bpp' : 12, # 16 normal, 12 bit is possible
             'controller' : 'st7789v',
             'pin_dc' : 'D28',
             'pin_cs' : 'D19',

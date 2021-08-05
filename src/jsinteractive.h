@@ -154,10 +154,11 @@ typedef enum {
   JSIS_CONSOLE_FORCED     = 1<<8, ///< see jsiSetConsoleDevice
   JSIS_WATCHDOG_AUTO      = 1<<9, ///< Automatically kick the watchdog timer on idle
   JSIS_PASSWORD_PROTECTED = 1<<10, ///< Password protected
-  JSIS_COMPLETELY_RESET   = 1<<11, ///< Has the board powered on, having not loaded anything from flash
+  JSIS_COMPLETELY_RESET   = 1<<11, ///< Has the board powered on *having not loaded anything from flash*
+  JSIS_FIRST_BOOT         = 1<<12, ///< Is this the first time we started, or has load/reset/etc been called?
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE,
-  JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED|JSIS_WATCHDOG_AUTO|JSIS_TODO_MASK // stuff that DOESN'T get reset on softinit
+  JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED|JSIS_WATCHDOG_AUTO|JSIS_TODO_MASK|JSIS_FIRST_BOOT|JSIS_COMPLETELY_RESET // stuff that DOESN'T get reset on softinit
     // watchdog can't be reset without a reboot so if it's set to auto we must keep it as auto
 } PACKED_FLAGS JsiStatus;
 

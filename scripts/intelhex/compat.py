@@ -1,5 +1,5 @@
 # Copyright (c) 2011, Bernhard Leiner
-# Copyright (c) 2013, 2015 Alexander Belchenko
+# Copyright (c) 2013-2018 Alexander Belchenko
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms,
@@ -36,13 +36,13 @@
 
 @author     Bernhard Leiner (bleiner AT gmail com)
 @author     Alexander Belchenko (alexander belchenko AT gmail com)
-@version    2.0
 '''
 
 __docformat__ = "javadoc"
 
 
-import sys
+import sys, array
+
 
 if sys.version_info[0] >= 3:
     # Python 3
@@ -56,6 +56,9 @@ if sys.version_info[0] >= 3:
         if isinstance(s, str):
             return s
         return s.decode('latin1')
+
+    # for python >= 3.2 use 'tobytes', otherwise 'tostring'
+    array_tobytes = array.array.tobytes if sys.version_info[1] >= 2 else array.array.tostring
 
     IntTypes = (int,)
     StrType = str
@@ -74,12 +77,20 @@ if sys.version_info[0] >= 3:
 
     from io import StringIO, BytesIO
 
+    def get_binary_stdout():
+        return sys.stdout.buffer
+
+    def get_binary_stdin():
+        return sys.stdin.buffer
+
 else:
     # Python 2
     Python = 2
 
     asbytes = str
     asstr = str
+
+    array_tobytes = array.array.tostring
 
     IntTypes = (int, long)
     StrType = basestring
@@ -129,3 +140,21 @@ else:
 
     from cStringIO import StringIO
     BytesIO = StringIO
+
+    import os
+    def _force_stream_binary(stream):
+        """Force binary mode for stream on Windows."""
+        if os.name == 'nt':
+            f_fileno = getattr(stream, 'fileno', None)
+            if f_fileno:
+                fileno = f_fileno()
+                if fileno >= 0:
+                    import msvcrt
+                    msvcrt.setmode(fileno, os.O_BINARY)
+        return stream
+
+    def get_binary_stdout():
+        return _force_stream_binary(sys.stdout)
+
+    def get_binary_stdin():
+        return _force_stream_binary(sys.stdin)

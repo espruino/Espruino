@@ -1,10 +1,109 @@
-            Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
+            Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
+            Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
+            Bangle.js: Ignore touch and swipe events when the LCD is off
+            Graphics: Fix 1bpp custom fonts on 2/4/8 bpp graphics Canvas not being the right colour
+            Bangle.js: Don't reset all peripherals when loading a new app, and only
+              turn peripherals off if unused 500ms after starting new app
+            Increase max arguments for Function.apply from 64 to 256
+            NRF52840: Create new NRF_GPIO_PIN_X_FAST as Nordic's gpio functions will no longer inline!
+            Graphics: Add .blit() to allow fast blits within a single Graphics instance
+            nRF52840: workaround for SDK15 bug that stops softdevice restart when WDT enabled
+            Disallow template strings in object decls like {`hello`:1} (fix #2006)
+            Bangle.js: Add support for global colour themes which affect g.clear/g.reset (fix #499)
+            Bangle.js: Switch beep/buzz to IRQs (keeps time correct even when JS is busy)
+            Add E.decodeUTF8 to allow UTF8 to be decoded into standard 8 bit characters
+            Util timer: account for 'drift' in timer when adding new tasks if running it continuously
+            Graphics: Allow 'scroll' method to only scroll inside clipRect
+            Bangle.js: if we restart with home button held down, ignore the 'button up' event
+            Remove Graphics.drawImages from non-Bangle.js builds to free up space
+            Pico: Remove SHA512 from build to free up space
+            Storage: fix issue where functions referencing flash weren't correctly relocated during compact (#2009)
+            Add support for rendering 3 bit images to 12/16 bit destinations
+            Ensure Serial1.unsetup can be called even if it doesn't appear to have been enabled
+            Puck.js: ensure self test only happens after hardware reset (fix #2001)
+            Bangle.js: Fix issue where long-press BTN3 while holding BTN1 would reload the app but wouldn't load configuration (eg not setting timezone)
+            Graphics: add .getBPP, and allow color blending (rather than copy) when drawing 2 bit images on any BPP Graphics instance
+            nRF52: If getPrimaryServices fails with NRF_BUSY, keep retrying after a delay (fix #2008)
+            Bangle.js 2: Fix getPressure memory leak
+            Graphics: Theme now only applies for LCD, not for JS/ArrayBuffer graphics
+            Graphics: Add dark boolean to themes to allow apps to update depending on bg color
+            Bangle.js: setUI now has 'clock' modes
+            Rename SMAQ3 board to BANGLEJS2
+            nRF52840: Remove ifdef around PHY_UPDATE_REQUEST - fixes BLE5 connections
+            Graphics: Allow g.drawImage to use ArrayBuffer Graphics as an argument 
+            Bangle.js: Display small 'Loading...' screen to show something is happening when loading apps
+            Promise: Fix issue with .then().then(...) on an already-resolved promise (fix #2019)
+            Bangle.js: g.flip no longer keeps the screen awake, flipTimer renamed to inactivityTimer
+            Bangle.js 2: 'factory default' set of JS now included inside firmware
+            Bangle.js: Build in ANCS support (disabled by default)
+            Bangle.js 2: Working VC31 heart rate monitoring
+            Bangle.js: Push GPS events immediately after GPGSV (more portable/resilient to config changes)
+            At first boot, fully check Storage for validity (if not full, ensure remaining pages are 0xFF)
+            Storage: Ensure jsfIsStorageValid returns true when storage is valid, but full
+            Bangle.js: Add Bangle.getGPSFix to get last GPS fix without waiting for a listener
+
+     2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
             nRF5x: Add callback param to 'NRF.restart', allowing code to be called with softdevice disabled
             Bangle.js: fix require("locale").time(new Date()) for default locale
             Now use exponents when printing doubles >= 1E21 or < 1E-6 (fix #1489)
             Fix Regexp handling of unescaped '.' in character group: /[.]/ (fix #1948)
             Now error if using (unsupported) RegExp backreferences
+            nRF52: Ensure SPI 1 byte DMA errata workaround isn't applied to non-52832 parts
+            nRF52: When outputting assertions, if we have an terminal device (eg LCD) use that
+            When load(filename) is used, set global variable __FILE__ to the filename
+            Util Timer no longer uses RTC - works based on estimated time from the hardware timer itself (fix #1749, ref #1444)
+            Pull in fixed SHT3C.min.js for RAK5010
+            Add support for relaying full touchscreen events in devices that support it
+            Fix flip-on-idle behaviour for non-Bangle.js smartwatch ports
+            Add support for buttonless bootloader (first boot only, times out after 5 seconds)
+            Fix emulator crash if Graphics.drawPoly used with odd number of points
+            Graphics.fillPoly now errors if >64 points (prev was 63)
+            Graphics: Support for palettes supplied in image strings
+            nRF52840: Ensure internal voltage regulator is set to 3.3v (not 1.8v default) at boot
+            Fix Array.forEach when deleting the item you're currently iterating over (fix #1962)
+            Bangle.js: StorageFile now uses 10x bigger chunks which reduces stress on Storage.list()
+            Storage.list now allows you to specifically request StorageFile, only ever reports first StorageFile chunk
+            Graphics: Allow colors to be specified as '#rgb' strings
+            Graphics: Antialiased lines now read the background color so overlap nicely
+            Graphics: Add fillPolyAA and use antialiased vector fonts (on platforms where AA is enabled) 
+            Puck.js: Fix regression where IR LED was left on after transmission (fix #1969)
+            Graphics: Fix overdraw when drawing ellipses/circles
+            NRF52840: Use SPI3 by default as it's more capable/faster than SPI0
+            SMAQ3: Add support for unknown compass IC
+            Bangle.js: Make the 'home' button more configurable in code
+            Bangle.js: Add Bangle.softOff to allow the RTC to keep running
+            nRF52: Allow devices to remember the time between reboots (even if RTC is reset)
+            Microbit 2: Increase RAM from 64k to 128k
+            Bangle.js: Don't enter accelerometer power save mode if compass/barometer is in use
+            Watches: Allow streaming pressure data from Barometer
+            Graphics: Add antialias/colour blending for 24 bit buffers
+            NRF52840: Create new NRF_GPIO_PIN_X_FAST as Nordic's gpio functions will no longer inline!
+            nRF5x: reset BLE advertising after `load()/reset()` (fix #1975)
+            Bangle.js: Add accelerometer recovery for rare cases when accelerometer boots with corrupted address (fix #1972)
+            Bangle.js: Add app ID option to setXYZPower to allow apps to share devices (power is on as long as one app wants the device) (fix #1971)
+            Bangle.js: Add isXYZOn() functions
+            BLE: Allow 128-bit service data to be decoded (fix #1976)
+            Graphics: Fix 8 bit ArrayBuffer scroll not working correctly in some directions
+            Storage: Fix corruption issue with StorageFile write after a Storage compact (fix #1970)
+            Fixed dimmable backlight on non-Bangle.js watches 
+            SMAQ3: Touchscreen is now powered off with Bangle.setLCDPower(0), auto-powers off after 30s
+            nRF52: Upon rebooting, reset time to 1970 if time looks corrupt
+            nRF52840: Don't use SPI3 unless ESPR_USE_SPI3 is defined (errata 195 means it draws an extra 1mA unless disabled!)
+            Bangle.js: apply g.drawImage fast path even if image goes to the edge of the screen
+            Graphics: Improve fillPolyAA for horizontalish lines, remove antialiased vector fonts (as won't work well on platforms without readback)
+            Fix invalid free caused by error inside a while loop condition (fix #1983)
+            Fix SIGFPE if using modulo with -1 (fix #1983)
+            Fix memory leak on Array.forEach/map/filter/etc caused by #1962 fix
+            Fix Espruino not sleeping when very low on free memory (fix #1986)
+            nRF52: Use 'low accuracy' GPIOTE for watches as we can shut down the high speed oscillator
+            E.getSizeOf() and trace() now don't recurse into references back to the global scope (makes sizes and traces far more useful)
+            nRF5x: Move from separate sdk_config.h to a single targets/nrf5x/app_config.h file
+            Original board: Remove Graphics.*Ellipse and StorageFile when networking enabled to allow builds
+            Update S132 Softdevice from 3.0.0 to 3.1.0 (fix #1999)
+            nRF5x: Allow Espruino builds with a configurable MTU - move Espruino boards to 53 byte (from 23) (#1998)
+            Fix issue parsing `r=>print((e=>{})(r))` (fix #1992)
+            Add DHE RSA key exchange for TLS/HTTPS (fix #1994)
  
      2v08 : nRF52: Added option to build in I2C slave support
             Fix Tensorflow aiGesture regression from 2v07 (re-add opcodes) (fix #1936)
