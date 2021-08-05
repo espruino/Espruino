@@ -156,7 +156,7 @@ extern JsGraphicsTheme graphicsTheme;
 // ---------------------------------- these are in graphics.c
 /// Reset graphics structure state (eg font size, color, etc)
 void graphicsStructResetState(JsGraphics *gfx);
-/// Completely reset graphics structure including flags
+/// Completely reset graphics structure including flags. gfx->type should be set beforehand
 void graphicsStructInit(JsGraphics *gfx, int width, int height, int bpp);
 /// Access the Graphics Instance JsVar and get the relevant info in a JsGraphics structure. True on success
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
