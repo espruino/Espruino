@@ -128,8 +128,9 @@ const char *jswGetBuiltInJSLibrary(const char *name);
 /** Return a comma-separated list of built-in libraries */
 const char *jswGetBuiltInLibraryNames();
 
-#ifdef EMSCRIPTEN
-// on Emscripten we cant easily hack around function calls with floats/etc so we must just do this brute-force by handling every call pattern we use
+#ifdef USE_CALLFUNCTION_HACK
+// on Emscripten and i386 we cant easily hack around function calls with floats/etc, plus we have enough
+// resources, so just brute-force by handling every call pattern we use in a switch
 JsVar *jswCallFunctionHack(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount);
 #endif
 

@@ -712,8 +712,9 @@ for lib in jsmodules:
 codeOut('  return "'+','.join(librarynames)+'";')
 codeOut('}')
 
-codeOut('#ifdef EMSCRIPTEN')
-codeOut('// on Emscripten we cant easily hack around function calls with floats/etc so we must just do this brute-force by handling every call pattern we use')
+codeOut('#ifdef USE_CALLFUNCTION_HACK')
+codeOut('// on Emscripten and i386 we cant easily hack around function calls with floats/etc, plus we have enough')
+codeOut('// resources, so just brute-force by handling every call pattern we use in a switch')
 codeOut('JsVar *jswCallFunctionHack(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {')
 codeOut('  switch(argumentSpecifier) {')
 #for argSpec in argSpecs:

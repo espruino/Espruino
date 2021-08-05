@@ -33,6 +33,7 @@ info = {
    ],
    'makefile' : [
      'EMSCRIPTEN=1',
+     'DEFINES+=-DUSE_CALLFUNCTION_HACK', # required to handle calls properly
      'DEFINES += -DUSE_TENSORFLOW',
      'DEFINES += -DBANGLEJS',
      'DEFINES += -DSPIFLASH_BASE=0x8000000 -DSPIFLASH_LENGTH=4194304',
