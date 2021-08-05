@@ -174,8 +174,8 @@ void jswrap_graphics_init() {
     JsVar *parentObj = jsvSkipName(parent);
     jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, parentObj);
     JsGraphics gfx;
-    graphicsStructInit(&gfx,320,240,16);
     gfx.data.type = JSGRAPHICSTYPE_FSMC;
+    graphicsStructInit(&gfx,320,240,16);
     gfx.graphicsVar = parentObj;
     lcdInit_FSMC(&gfx);
     lcdSetCallbacks_FSMC(&gfx);
@@ -254,8 +254,8 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   if (!parent) return 0; // low memory
 
   JsGraphics gfx;
-  graphicsStructInit(&gfx,width,height,bpp);
   gfx.data.type = JSGRAPHICSTYPE_ARRAYBUFFER;
+  graphicsStructInit(&gfx,width,height,bpp);
   gfx.data.flags = JSGRAPHICSFLAGS_NONE;
   gfx.graphicsVar = parent;
 
@@ -351,8 +351,8 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   if (!parent) return 0; // low memory
 
   JsGraphics gfx;
-  graphicsStructInit(&gfx,width,height,bpp);
   gfx.data.type = JSGRAPHICSTYPE_JS;
+  graphicsStructInit(&gfx,width,height,bpp);
   gfx.graphicsVar = parent;
   lcdInit_JS(&gfx, callbackSetPixel, callbackFillRect);
   graphicsSetVar(&gfx);
@@ -386,8 +386,8 @@ JsVar *jswrap_graphics_createSDL(int width, int height, int bpp) {
   JsVar *parent = jspNewObject(0, "Graphics");
   if (!parent) return 0; // low memory
   JsGraphics gfx;
-  graphicsStructInit(&gfx,width,height,bpp);
   gfx.data.type = JSGRAPHICSTYPE_SDL;
+  graphicsStructInit(&gfx,width,height,bpp);
   gfx.graphicsVar = parent;
   lcdInit_SDL(&gfx);
   graphicsSetVar(&gfx);
