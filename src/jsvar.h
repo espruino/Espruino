@@ -423,7 +423,7 @@ bool jsvHasChildren(const JsVar *v);
 bool jsvHasSingleChild(const JsVar *v);
 
 /// Does this variable have a 'ref' argument? Stringexts use it for extra character data
-bool jsvHasRef(const JsVar *v) { return !jsvIsStringExt(v); }
+static ALWAYS_INLINE bool jsvHasRef(const JsVar *v) { return !jsvIsStringExt(v); }
 
 /** Return the is the number of characters this one JsVar can contain, NOT string length (eg, a chain of JsVars)
  * This will return an invalid length when applied to Flat Strings */
