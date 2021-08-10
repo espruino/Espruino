@@ -242,10 +242,16 @@ See comments after JsVar in jsvar.c for more info.
 #define JSVAR_DATA_STRING_NAME_LEN  4
 #endif
 
-/// Max length for a JSV_STRING
-#define JSVAR_DATA_STRING_LEN  (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + 7)>>3))  // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3
-/// Max length for a JSV_STRINGEXT
-#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_BITS + 7)>>3)) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
+
+/// Max length for a JSV_STRING, JsVar.varData.ref.refs (see comments under JsVar decl in jsvar.h)
+#define JSVAR_DATA_STRING_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS)>>3))
+/// Max length for a JSV_STRINGEXT, JsVar.varData.ref.lastChild (see comments under JsVar decl in jsvar.h)
+#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS + JSVARREFCOUNT_BITS)>>3))
+
+/*
+In the above, ideally we'd just ask the compiler for the the address offset of the relevant
+field, but because they are bitfields we can't get pointers to them!
+*/
 
 /** This is the amount of characters at which it'd be more efficient to use
  * a flat string than to use a normal string... */
