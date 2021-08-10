@@ -64,6 +64,24 @@ volatile MemBusyType isMemoryBusy; ///< Are we doing garbage collection or simil
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 
+JsVarRef jsvGetFirstChild(const JsVar *v) { return v->varData.ref.firstChild; }
+JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v) {
+  if (v->varData.ref.firstChild > JSVARREF_MAX)
+    return ((JsVarRefSigned)v->varData.ref.firstChild) + JSVARREF_MIN*2;
+  return (JsVarRefSigned)v->varData.ref.firstChild;
+}
+JsVarRef jsvGetLastChild(const JsVar *v) { return v->varData.ref.lastChild; }
+JsVarRef jsvGetNextSibling(const JsVar *v) { return v->varData.ref.nextSibling; }
+JsVarRef jsvGetPrevSibling(const JsVar *v) { return v->varData.ref.prevSibling; }
+void jsvSetFirstChild(JsVar *v, JsVarRef r) { v->varData.ref.firstChild = r; }
+void jsvSetLastChild(JsVar *v, JsVarRef r) { v->varData.ref.lastChild = r; }
+void jsvSetNextSibling(JsVar *v, JsVarRef r) { v->varData.ref.nextSibling = r; }
+void jsvSetPrevSibling(JsVar *v, JsVarRef r) { v->varData.ref.prevSibling = r; }
+
+JsVarRefCounter jsvGetRefs(JsVar *v) { return v->varData.ref.refs; }
+void jsvSetRefs(JsVar *v, JsVarRefCounter refs) { v->varData.ref.refs = refs; }
+unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK_SHIFT) & JSV_LOCK_MAX); }
+
 bool jsvIsRoot(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ROOT; }
 bool jsvIsPin(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_PIN; }
 bool jsvIsSimpleInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; } // is just a very basic integer value
@@ -122,7 +140,6 @@ bool jsvIsIterable(const JsVar *v) {
   return jsvIsArray(v) || jsvIsObject(v) || jsvIsFunction(v) ||
          jsvIsString(v) || jsvIsArrayBuffer(v);
 }
-
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
@@ -519,7 +536,7 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
 #endif
 }
 
-static NO_INLINE void jsvFreePtrInternal(JsVar *var) {
+static void jsvFreePtrInternal(JsVar *var) {
   assert(jsvGetLocks(var)==0);
   var->flags = JSV_UNUSED;
   // add this to our free list
@@ -643,7 +660,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
 }
 
 /// Get a reference from a var - SAFE for null vars
-ALWAYS_INLINE JsVarRef jsvGetRef(JsVar *var) {
+JsVarRef jsvGetRef(JsVar *var) {
   if (!var) return 0;
 #ifdef RESIZABLE_JSVARS
   unsigned int i, c = jsVarsSize>>JSVAR_BLOCK_SHIFT;
@@ -660,7 +677,7 @@ ALWAYS_INLINE JsVarRef jsvGetRef(JsVar *var) {
 }
 
 /// Lock this reference and return a pointer - UNSAFE for null refs
-ALWAYS_INLINE JsVar *jsvLock(JsVarRef ref) {
+JsVar *jsvLock(JsVarRef ref) {
   JsVar *var = jsvGetAddressOf(ref);
   //var->locks++;
   assert(jsvGetLocks(var) < JSV_LOCK_MAX);
@@ -681,7 +698,7 @@ JsVar *jsvLockSafe(JsVarRef ref) {
 }
 
 /// Lock this pointer and return a pointer - UNSAFE for null pointer
-ALWAYS_INLINE JsVar *jsvLockAgain(JsVar *var) {
+JsVar *jsvLockAgain(JsVar *var) {
   assert(var);
   assert(jsvGetLocks(var) < JSV_LOCK_MAX);
   var->flags += JSV_LOCK_ONE;
@@ -689,7 +706,7 @@ ALWAYS_INLINE JsVar *jsvLockAgain(JsVar *var) {
 }
 
 /// Lock this pointer and return a pointer - UNSAFE for null pointer
-ALWAYS_INLINE JsVar *jsvLockAgainSafe(JsVar *var) {
+JsVar *jsvLockAgainSafe(JsVar *var) {
   return var ? jsvLockAgain(var) : 0;
 }
 
@@ -709,7 +726,7 @@ static NO_INLINE void jsvUnLockFreeIfNeeded(JsVar *var) {
 
 
 /// Unlock this variable - this is SAFE for null variables
-ALWAYS_INLINE void jsvUnLock(JsVar *var) {
+void jsvUnLock(JsVar *var) {
   if (!var) return;
   assert(jsvGetLocks(var)>0);
   var->flags -= JSV_LOCK_ONE;
@@ -2239,7 +2256,7 @@ bool jsvIsStringEqualOrStartsWithOffset(JsVar *var, const char *str, bool isStar
   jsvStringIteratorNew(&it, var, startIdx);
   if (ignoreCase) {
       while (jsvStringIteratorHasChar(&it) && *str &&
-             jsvStringCharToLower(jsvStringIteratorGetChar(&it)) == jsvStringCharToLower(*str)) {
+          charToLowerCase(jsvStringIteratorGetChar(&it)) == charToLowerCase(*str)) {
         str++;
         jsvStringIteratorNext(&it);
       }

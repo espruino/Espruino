@@ -591,7 +591,7 @@ JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
 
   while (jsvStringIteratorHasChar(&itsrc)) {
     char ch = jsvStringIteratorGetCharAndNext(&itsrc);
-    ch = upper ? jsvStringCharToUpper(ch) : jsvStringCharToLower(ch);
+    ch = upper ? charToUpperCase(ch) : charToLowerCase(ch);
     jsvStringIteratorAppend(&itdst, ch);
   }
 

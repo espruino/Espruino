@@ -410,9 +410,10 @@ bool isWhitespace(char ch);
 bool isNumeric(char ch);
 bool isHexadecimal(char ch);
 bool isAlpha(char ch);
-
-
 bool isIDString(const char *s);
+
+char charToUpperCase(char ch);
+char charToLowerCase(char ch);
 
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again.

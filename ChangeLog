@@ -43,6 +43,8 @@
             Bangle.js: Add Bangle.getGPSFix to get last GPS fix without waiting for a listener
             Merge experimental_compact_vars branch to reduce var sixe from 16 to 13 bytes in most cases.
             Add JSVAR_FORCE_16_BYTE to allow experimental_compact_vars changes to be removed
+            Add JSVAR_FORCE_INLINE, and don't force lock/unlock/getters to be inlined.
+              Compiler has improved enough we save 10% code space and get marginally faster
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)

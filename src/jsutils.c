@@ -58,6 +58,14 @@ bool isIDString(const char *s) {
   return true;
 }
 
+char charToUpperCase(char ch) {
+  return (char)((ch >= 97 && ch <= 122) ? ch - 32 : ch);
+} // a-z
+
+char charToLowerCase(char ch) {
+  return (char)((ch >= 65 && ch <= 90)  ? ch + 32 : ch);
+} // A-Z
+
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again.
 If jsonStyle=true, only string escapes supported by JSON are used */

@@ -123,6 +123,8 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `JSMODULESOURCES+=libs/.../foo.min.js` - include the given JS file as a module that can be used via `require("foo")`
 * `JSVAR_MALLOC` - Allocate space for variables at jsvInit time, rather than statically
 * `JSVAR_FORCE_16_BYTE` - Force 16 byte JsVars (rather than packing bits to get JsVar size down to the minimum possible)
+* `JSVAR_FORCE_NO_INLINE` - Opposite of `JSVAR_FORCE_INLINE`. Force getter/setter functions not to be inlined. Saves ~2% code size. Ideally just leave it up to the compiler
+* `JSVAR_FORCE_INLINE` - Opposite of `JSVAR_FORCE_NO_INLINE`. Force getter/setter functions to be inlined. 2% faster but ~10% extra code size.
 * `NO_VECTOR_FONT=1` - don't compile in the vector font (this is usually only done for SAVE_ON_FLASH)
 * `NO_DUMP_HARDWARE_INITIALISATION=1` - don't create lines like `digitalWrite(D1,1)` for `dump()/save()` to recreate hardware state
 * `USE_FONT_6X8=1` - Also include in a 6x8 fixed width bitmap font
