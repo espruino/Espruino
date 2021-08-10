@@ -131,7 +131,9 @@ typedef uint32_t JsfWord;
 #endif
 #endif
 
-
+#define STRINGIFY_HELPER(x) #x
+#define STRINGIFY(x) STRINGIFY_HELPER(x)
+#define NOT_USED(x) ( (void)(x) )
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
@@ -142,59 +144,78 @@ typedef uint32_t JsfWord;
 //typedef unsigned char bool;
 #endif
 
-
 #define DBL_MIN 2.2250738585072014e-308
 #define DBL_MAX 1.7976931348623157e+308
 
-/* Number of Js Variables allowed and Js Reference format.
+/* Number of JS Variables allowed and JS Variable reference format.
 
-   JsVarRef = uint8_t -> 15 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 15
-   JsVarRef = uint16_t -> 20 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 20
-   JsVarRef = uint32_t -> 26 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 26
+There are (on 32 bit platforms):
+* 4 bytes of data at the start
+* 4 JsVarRef + 1 JsVarRefCounter
+* 2 bytes of flags at the end
+
+See comments after JsVar in jsvar.c for more info.
+
+   JsVarRef = uint8_t -> 12 bytes/JsVar       so JSVAR_CACHE_SIZE = (RAM - 3000) / 12
+   JsVarRef = uint16_t -> 13->16 bytes/JsVar  so JSVAR_CACHE_SIZE = (RAM - 3000) / 16
+   JsVarRef = uint32_t -> 20 bytes/JsVar      so JSVAR_CACHE_SIZE = (RAM - 3000) / 20
 
    NOTE: JSVAR_CACHE_SIZE must be at least 2 less than the number we can fit in JsVarRef
          See jshardware.c FLASH constants - all this must be able to fit in flash
 
-
 */
 
 #ifdef RESIZABLE_JSVARS
- //  probably linux - allow us to allocate more blocks of variables
+ // Probably Linux - 32 bits allow us to allocate more blocks of variables,
+ // but is a lot less efficient with memory
   typedef uint32_t JsVarRef;
   typedef int32_t JsVarRefSigned;
   #define JSVARREF_BITS 32
   #define JSVARREFCOUNT_BITS 8
 #else
-   /** JsVerRaf stores References for variables - We treat 0 as null
+   /** JsVarRaf stores References for variables - We treat 0 as null
    *  NOTE: we store JSVAR_DATA_STRING_* as actual values so we can do #if on them below
    *
    */
-  #if JSVAR_CACHE_SIZE <= 254
-    #define JSVARREF_BITS 8
-    #define JSVARREFCOUNT_BITS 8 // No point going lower
-    typedef uint8_t JsVarRef;
-    typedef int8_t JsVarRefSigned;
-  #elif JSVAR_CACHE_SIZE <= 1023
-    #define JSVARREF_BITS 10
-    #define JSVARREFCOUNT_BITS 8 // 48 - 10*4
+  #if JSVAR_FORCE_16_BYTE // Forces full 16 bits used -> 16 bit JsVar
+    // This creates less (and faster) code for the Espruino interpreter,
+    // but isn't as efficient with memory.
+    #define JSVARREF_BITS 16
+    #define JSVARREFCOUNT_BITS 8
     typedef uint16_t JsVarRef;
     typedef int16_t JsVarRefSigned;
-  #elif JSVAR_CACHE_SIZE <= 2047
+    // Otherwise use just enough bits for everything we need. We set
+    // JSVARREF_BITS to enough for JSVAR_CACHE_SIZE, and then look at
+    // how much space is left over, and adjust JSVARREFCOUNT_BITS
+    // to fit in what is remaining
+  #elif JSVAR_CACHE_SIZE <= 254 // 12 bytes
+    #define JSVARREF_BITS 8
+    #define JSVARREFCOUNT_PACK_BITS 8 // ensure we have enough space to store a 'double'. This is effectively just wasted space
+    #define JSVARREFCOUNT_BITS 6
+    typedef uint8_t JsVarRef;
+    typedef int8_t JsVarRefSigned;
+  #elif JSVAR_CACHE_SIZE <= 1023 // 12 bytes
+    #define JSVARREF_BITS 10
+    #define JSVARREFCOUNT_PACK_BITS 2 // ensure we have enough space to store a 'double'
+    #define JSVARREFCOUNT_BITS 6 // 48 - (10*4 + 2)
+    typedef uint16_t JsVarRef;
+    typedef int16_t JsVarRefSigned;
+  #elif JSVAR_CACHE_SIZE <= 2047 // 12 bytes
     #define JSVARREF_BITS 11
     #define JSVARREFCOUNT_BITS 4 // 48 - 11*4
     typedef uint16_t JsVarRef;
     typedef int16_t JsVarRefSigned;
-  #elif JSVAR_CACHE_SIZE <= 4095
+  #elif JSVAR_CACHE_SIZE <= 4095 // 13 bytes
     #define JSVARREF_BITS 12
     #define JSVARREFCOUNT_BITS 8 // 56 - 12*4
     typedef uint16_t JsVarRef;
     typedef int16_t JsVarRefSigned;
-  #elif JSVAR_CACHE_SIZE <= 8191
+  #elif JSVAR_CACHE_SIZE <= 8191 // 13 bytes
     #define JSVARREF_BITS 13
     #define JSVARREFCOUNT_BITS 4 // 56 - 13*4
     typedef uint16_t JsVarRef;
     typedef int16_t JsVarRefSigned;
-  #elif JSVAR_CACHE_SIZE <= 65535
+  #elif JSVAR_CACHE_SIZE <= 65535 // 16 bytes
     #define JSVARREF_BITS 16
     #define JSVARREFCOUNT_BITS 8
     typedef uint16_t JsVarRef;
@@ -204,12 +225,9 @@ typedef uint32_t JsfWord;
   #endif
 #endif
 
-#if JSVARREFCOUNT_BITS <= 8
-    typedef uint8_t JsVarRefCounter;
-#else
-#error "Assumed JSVARREFCOUNT_BITS was 8 or less"
+#ifndef JSVARREFCOUNT_PACK_BITS
+#define JSVARREFCOUNT_PACK_BITS 0
 #endif
-
 
 #define JSVARREF_MIN (-(1<<(JSVARREF_BITS-1)))
 #define JSVARREF_MAX ((1<<(JSVARREF_BITS-1))-1)
@@ -225,13 +243,27 @@ typedef uint32_t JsfWord;
 #endif
 
 /// Max length for a JSV_STRING
-#define JSVAR_DATA_STRING_LEN  (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3)>>3))  // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3
+#define JSVAR_DATA_STRING_LEN  (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + 7)>>3))  // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3
 /// Max length for a JSV_STRINGEXT
-#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_BITS)>>3)) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
+#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_BITS + 7)>>3)) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
 
 /** This is the amount of characters at which it'd be more efficient to use
  * a flat string than to use a normal string... */
 #define JSV_FLAT_STRING_BREAK_EVEN (JSVAR_DATA_STRING_LEN + JSVAR_DATA_STRING_MAX_LEN)
+
+// Sanity checks
+#if JSVARREFCOUNT_BITS <= 8
+    typedef uint8_t JsVarRefCounter;
+#else
+#error "Assumed JSVARREFCOUNT_BITS was 8 or less"
+#endif
+
+#if (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS)>>3)) < 8
+#pragma message "required length (bits) : 64"
+#pragma message "initial data block length (bits) : " STRINGIFY(JSVAR_DATA_STRING_NAME_LEN*8)
+#pragma message "3x refs plus packing (bits) : " STRINGIFY(JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS)
+#error JsVarDataRef is not big enough to store a double value
+#endif
 
 typedef int32_t JsVarInt;
 typedef uint32_t JsVarIntUnsigned;
@@ -260,10 +292,6 @@ typedef int64_t JsSysTime;
 #else
 #define JS_VARS_BEFORE_IDLE_GC 32
 #endif
-
-#define STRINGIFY_HELPER(x) #x
-#define STRINGIFY(x) STRINGIFY_HELPER(x)
-#define NOT_USED(x) ( (void)(x) )
 
 // javascript specific names
 #define JSPARSE_RETURN_VAR "return" // variable name used for returning function results

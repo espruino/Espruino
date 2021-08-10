@@ -113,6 +113,7 @@ typedef enum {
 
 #define JSV_ARRAYBUFFER_MAX_LENGTH 65535
 
+/// Data for ArrayBuffers. Max size here is 6 bytes in most cases (4 byte data + 2x JsVarRef)
 typedef struct {
   unsigned short byteOffset;
   unsigned short length;
@@ -158,7 +159,9 @@ typedef struct {
    * For CHILD_OF - a link to the variable pointed to
    */
   JsVarRef firstChild : JSVARREF_BITS;
-
+#if JSVARREFCOUNT_PACK_BITS
+  JsVarRef __packing : JSVARREFCOUNT_PACK_BITS;
+#endif
   /** The number of references held to this - used for automatic garbage collection. NOT USED for STRINGEXT though (it is just extra characters) */
   JsVarRefCounter refs : JSVARREFCOUNT_BITS;
 
@@ -172,12 +175,13 @@ typedef struct {
 } PACKED_FLAGS JsVarDataRef;
 
 
-/// Union that contains all the different types of data
+/** Union that contains all the different types of data. This should all
+ be JSVAR_DATA_STRING_MAX_LEN long.
+ */
 typedef union {
     char str[JSVAR_DATA_STRING_MAX_LEN]; ///< The contents of this variable if it is a string
     /* NOTE: For str above, we INTENTIONALLY OVERFLOW str (and hence data) in the case of STRING_EXTS
      * to overwrite 3 references in order to grab another 6 bytes worth of string data */
-    // TODO do some magic with union/structs in order to make sure we don't intentionally write off the end of arrays
     JsVarInt integer; ///< The contents of this variable if it is an int
     JsVarFloat floating; ///< The contents of this variable if it is a double
     JsVarDataArrayBufferView arraybuffer; ///< information for array buffer views.
@@ -185,6 +189,8 @@ typedef union {
     JsVarDataNativeStr nativeStr; ///< A native string
     JsVarDataRef ref; ///< References
 } PACKED_FLAGS JsVarData;
+
+
 
 typedef struct {
   /** The actual variable data, as well as references (see below). Put first so word aligned */
@@ -219,7 +225,7 @@ typedef struct {
  | 0 - 3   | 4    | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        |
  | 4 - 5  | ?    | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
  | 6 - 7  | ?    | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
- | 8 - 9  | ?    | first   | data   | data     |  child   | child    |  -   |  -      | first          | stringPtr   |
+ | 8 - 9  | ?    | first   | data   | data     |  child   | child    |  -   | data?   | first          | stringPtr   |
  | 10-11  | ?    | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
  | 12-13  | ?    | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |
  | 14-15  | 2    | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       |
