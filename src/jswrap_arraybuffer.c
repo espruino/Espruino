@@ -493,13 +493,33 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an array, not %t", arr);
     return;
   }
+  // Copy with the case where we copy from one arraybuffer to another but they use the
+  // same data. If we copy forward (eg `a.set(a.subarray(),1)`) then we
+  // end up duplicating the same data, so we must copy in reverse.
+  if (jsvIsArrayBuffer(parent) && jsvIsArrayBuffer(arr)) {
+    JsVar *sa = jsvGetArrayBufferBackingString(parent);
+    JsVar *sb = jsvGetArrayBufferBackingString(arr);
+    bool setBackwards = sa == sb && arr->varData.arraybuffer.byteOffset <=
+        parent->varData.arraybuffer.byteOffset + offset*(int)JSV_ARRAYBUFFER_GET_SIZE(parent->varData.arraybuffer.type);
+    jsvUnLock2(sa,sb);
+    if (setBackwards) {
+      int len = (int)jsvGetArrayBufferLength(arr);
+      for (int i=len-1;i>=0;i--) {
+        JsVar *v  = jsvArrayBufferGet(arr, (size_t)i);
+        jsvArrayBufferSet(parent, (size_t)(offset+i), v);
+        jsvUnLock(v);
+      }
+      return;
+    }
+  }
+
+  // Do normal, fast copy
   JsvIterator itsrc;
   jsvIteratorNew(&itsrc, arr, JSIF_EVERY_ARRAY_ELEMENT);
   JsvArrayBufferIterator itdst;
   jsvArrayBufferIteratorNew(&itdst, parent, (size_t)offset);
 
   bool useInts = !JSV_ARRAYBUFFER_IS_FLOAT(itdst.type) || jsvIsString(arr);
-
   while (jsvIteratorHasElement(&itsrc) && jsvArrayBufferIteratorHasElement(&itdst)) {
     if (useInts) {
       jsvArrayBufferIteratorSetIntegerValue(&itdst, jsvIteratorGetIntegerValue(&itsrc));
@@ -582,6 +602,52 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
   jsvArrayBufferIteratorFree(&itdst);
 
   return array;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "ArrayBufferView",
+  "name" : "subarray",
+    "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_arraybufferview_subarray",
+  "params" : [
+    ["begin","int","Element to begin at, inclusive. If negative, this is from the end of the array. The entire array is included if this isn't specified"],
+    ["end","JsVar","Element to end at, exclusive. If negative, it is relative to the end of the array. If not specified the whole array is included"]
+  ],
+  "return" : ["JsVar","An `ArrayBufferView` of the same type as this one, referencing the same data"],
+  "return_object" : "ArrayBufferView"
+}
+Returns a smaller part of this array which references the same data (it doesn't copy it).
+ */
+JsVar *jswrap_arraybufferview_subarray(JsVar *parent, JsVarInt begin, JsVar *endVar) {
+  if (!jsvIsArrayBuffer(parent)) {
+    jsExceptionHere(JSET_ERROR, "ArrayBufferView.subarray can only be called on an ArrayBufferView");
+    return 0;
+  }
+  JsVarInt end = jsvGetInteger(endVar);
+  if (!jsvIsNumeric(endVar)) {
+    end = (JsVarInt)jsvGetArrayBufferLength(parent);
+  }
+  if (begin < 0)
+    begin += (JsVarInt)jsvGetArrayBufferLength(parent);
+  if (end < 0)
+    end += (JsVarInt)jsvGetArrayBufferLength(parent);
+  if (end < 0) end = 0; // far too low
+  if (begin > end) { // wrong order, return 0 length
+    begin = 0;
+    end  = 0;
+  }
+  JsVarDataArrayBufferViewType arrayBufferType = parent->varData.arraybuffer.type;
+
+  if (begin == end)
+    return jsvNewTypedArray(arrayBufferType, 0);
+  JsVar *arrayBuffer = jsvLock(jsvGetFirstChild(parent));
+  JsVar *result = jswrap_typedarray_constructor(
+      arrayBufferType, arrayBuffer,
+      parent->varData.arraybuffer.byteOffset + begin * (JsVarInt)JSV_ARRAYBUFFER_GET_SIZE(arrayBufferType),
+      end-begin);
+  jsvUnLock(arrayBuffer);
+  return result;
 }
 
 
