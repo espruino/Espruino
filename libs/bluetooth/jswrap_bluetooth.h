@@ -30,11 +30,14 @@ typedef enum {
   BLETASK_CENTRAL_END = BLETASK_CHARACTERISTIC_NOTIFY // ============= End of central tasks
 } BleTask;
 
+#define BLETASK_STRINGS "NONE\0REQ_DEV\0CONNECT\0DISCONNECT\0SERVICE\0CHAR\0CHAR_WR\0CHAR_RD\0CHAR_NOTIFY\0BOND\0"
+
 // Is this task related to BLE central mode?
 #define BLETASK_IS_CENTRAL(x) ((x)>=BLETASK_CENTRAL_START && ((x)<=BLETASK_CENTRAL_END))
 
 extern JsVar *bleTaskInfo; // info related to the current task
 
+const char *bleGetTaskString(BleTask task);
 bool bleInTask(BleTask task);
 BleTask bleGetCurrentTask();
 bool bleNewTask(BleTask task, JsVar *taskInfo);

@@ -200,8 +200,10 @@ bool jsble_has_peripheral_connection();
  * a peripheral - used with Dynamic Interval Adjustment  */
 void jsble_peripheral_activity();
 
+#define jsble_check_error(X) jsble_check_error_line(X, __LINE__)
+
 /// Checks for error and reports an exception if there was one. Return true on error
-bool jsble_check_error(uint32_t err_code);
+bool jsble_check_error_line(uint32_t err_code, int lineNumber);
 
 /** Set the connection interval of the peripheral connection. Returns an error code */
 uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max);

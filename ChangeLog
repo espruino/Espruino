@@ -48,6 +48,8 @@
             Add ArrayBufferView.subarray for easily making subarrays (eg a.set(a.subarray(-1)))
             Solve case where an ArrayBuffer set using the same array could duplicate entries (`a.set(a.subarray(),1)`)
             nRF52: Fix 2v09 regression where clearWatch reset pin state, removing pullups
+            nRF52: BLE stack errors now reports a line number
+            nRF52: 'BLE task in progress' messages now give a readable name, not task number
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)

@@ -811,10 +811,10 @@ void jsble_peripheral_activity() {
 }
 
 /// Checks for error and reports an exception if there was one. Return true on error
-bool jsble_check_error(uint32_t err_code) {
+bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
   JsVar *v = jsble_get_error_string(err_code);
   if (!v) return 0;
-  jsExceptionHere(JSET_ERROR, "%v", v);
+  jsExceptionHere(JSET_ERROR, "%v (:%d)", v, lineNumber);
   jsvUnLock(v);
   return true;
 }

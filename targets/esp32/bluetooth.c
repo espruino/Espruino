@@ -132,9 +132,10 @@ bool jsble_has_peripheral_connection(){
 }
 
 /// Checks for error and reports an exception if there was one. Return true on error
-bool jsble_check_error(uint32_t err_code){
-	jsWarn("check error not implemented yet:%x\n",err_code);
+bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
+	jsWarn("check error not implemented yet:%x\n", err_code);
 	UNUSED(err_code);
+	UNUSED(lineNumber);
 	return false;
 }
 /// Scanning for advertisign packets
