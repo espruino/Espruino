@@ -15,6 +15,12 @@
 
 JsLex *lex;
 
+#ifdef JSVAR_FORCE_NO_INLINE
+#define JSLEX_INLINE NO_INLINE
+#else
+#define JSLEX_INLINE ALWAYS_INLINE
+#endif
+
 JsLex *jslSetLex(JsLex *l) {
   JsLex *old = lex;
   lex = l;
@@ -41,7 +47,7 @@ void jslCharPosNew(JslCharPos *dstpos, JsVar *src, size_t tokenStart) {
 }
 
 /// Return the next character (do not move to the next character)
-static ALWAYS_INLINE char jslNextCh() {
+static JSLEX_INLINE char jslNextCh() {
   return (char)(lex->it.ptr ? READ_FLASH_UINT8(&lex->it.ptr[lex->it.charIdx]) : 0);
 }
 
@@ -77,7 +83,7 @@ static void NO_INLINE jslGetNextCh() {
   }
 }
 
-static ALWAYS_INLINE void jslTokenAppendChar(char ch) {
+static JSLEX_INLINE void jslTokenAppendChar(char ch) {
   /* Add character to buffer but check it isn't too big.
    * Also Leave ONE character at the end for null termination */
   if (lex->tokenl < JSLEX_MAX_TOKEN_LENGTH-1) {
@@ -220,7 +226,7 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
 };
 
 // handle a single char
-static ALWAYS_INLINE void jslSingleChar() {
+static JSLEX_INLINE void jslSingleChar() {
   lex->tk = (unsigned char)lex->currCh;
   jslGetNextCh();
 }
@@ -656,7 +662,7 @@ void jslGetNextToken() {
   }
 }
 
-static ALWAYS_INLINE void jslPreload() {
+static JSLEX_INLINE void jslPreload() {
   // set up..
   jslGetNextCh();
   jslGetNextToken();

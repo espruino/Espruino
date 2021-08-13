@@ -20,7 +20,7 @@
 it's not huge - maybe 2% speed at the expense of 10% code size. On most platforms it's
 worth having the small speed impact to allow more memory. */
 #ifdef JSVAR_FORCE_NO_INLINE
-#define JSV_INLINEABLE NO_ONLINE
+#define JSV_INLINEABLE NO_INLINE
 #elif defined(JSVAR_FORCE_INLINE)
 #define JSV_INLINEABLE ALWAYS_INLINE
 #else

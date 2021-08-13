@@ -105,13 +105,21 @@
 #define RNG_ENABLED 1
 #define SAADC_ENABLED 1
 
+#if SPI_COUNT>0
 #define SPI_ENABLED 1
 #define SPI0_ENABLED 1
 #define SPI0_USE_EASY_DMA 1
+#else
+#define SPI_ENABLED 0
+#endif
 
+#if I2C_COUNT>0
 #define TWI_ENABLED 1
 #define TWI1_ENABLED 1
 #define TWI1_USE_EASY_DMA 0
+#else
+#define TWI_ENABLED 0
+#endif
 
 #define UART_ENABLED 1
 #define UART_EASY_DMA_SUPPORT 0 // 1 in SDK15+

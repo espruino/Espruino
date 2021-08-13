@@ -66,6 +66,7 @@ BleTask bleTask = BLETASK_NONE;
 
 /// Get the string value of the given task
 const char *bleGetTaskString(BleTask task) {
+#ifndef SAVE_ON_FLASH_EXTREME
   const char *str = BLETASK_STRINGS; // 0 separated, with two 0s at the end
   while (task) {
     if (!str) return "?";
@@ -74,6 +75,9 @@ const char *bleGetTaskString(BleTask task) {
   }
   if (!str) return "?";
   return str;
+#else
+  return "?";
+#endif
 }
 
 bool bleInTask(BleTask task) {

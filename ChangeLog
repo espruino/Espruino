@@ -50,6 +50,7 @@
             nRF52: Fix 2v09 regression where clearWatch reset pin state, removing pullups
             nRF52: BLE stack errors now reports a line number
             nRF52: 'BLE task in progress' messages now give a readable name, not task number
+            MICROBIT1: Remove hardware SPI to save space. Software SPI still works
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)
