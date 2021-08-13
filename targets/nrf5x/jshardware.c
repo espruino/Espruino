@@ -1599,7 +1599,12 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
       if (extiToPin[i] == p) {
         extiToPin[i] = PIN_UNDEFINED;
         nrf_drv_gpiote_in_event_disable(p);
+        uint32_t pin_number = p;
+        NRF_GPIO_Type * reg = nrf_gpio_pin_port_decode(&pin_number);
+        uint32_t cnf = reg->PIN_CNF[pin_number]; // get old pin config
         nrf_drv_gpiote_in_uninit(p);
+        // nrf_drv_gpiote_in_uninit calls nrf_gpio_cfg_default so we must re-enable
+        reg->PIN_CNF[pin_number] = cnf; // restore pin config
       }
     return EV_NONE;
   }
