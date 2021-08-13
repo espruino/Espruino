@@ -23,7 +23,7 @@ info = {
  'default_console_tx' : "H0", # pin 24
  'default_console_rx' : "H1", # pin 25
  'default_console_baudrate' : "9600",
- 'variables' : 300,
+ 'variables' : 350,
  'binary_name' : 'espruino_%v_microbit1.hex',
  'build' : {
    'optimizeflags' : '-Os',
@@ -34,6 +34,7 @@ info = {
    'makefile' : [
      'SAVE_ON_FLASH=1',
      'DEFINES+=-DSAVE_ON_FLASH_EXTREME',
+     'DEFINES+=-DJSVAR_FORCE_NO_INLINE=1',
      'CFLAGS += -ffreestanding', # needed for SAVE_ON_FLASH_EXTREME (jswrap_math, __aeabi_dsub)
      'BLACKLIST=boards/MICROBIT1.blocklist', # force some stuff to be removed to save space
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
@@ -55,7 +56,7 @@ chip = {
   'flash' : 256,
   'speed' : 16,
   'usart' : 1,
-  'spi' : 1,
+  'spi' : 0,
   'i2c' : 1,
   'adc' : 0,
   'dac' : 0,
