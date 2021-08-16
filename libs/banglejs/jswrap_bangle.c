@@ -954,9 +954,26 @@ void peripheralPollHandler() {
   bool hasAccelData = (buf[1]&16)!=0; // DRDY
   int tapType = (buf[1]>>2)&3; // TDTS0/1
   if (tapType) {
-    // report tap
     tapInfo = buf[0] | (tapType<<6);
-    bangleTasks |= JSBT_ACCEL_TAPPED;
+  }
+  if (tapType) {
+    bool handled = false;
+    // wake on tap, for front (for Bangle.js 2)
+#ifdef BANGLEJS_Q3
+    if ((bangleFlags&JSBF_WAKEON_TOUCH) && (tapInfo&2)) {
+      if (!(bangleFlags&JSBF_LCD_ON)) {
+        bangleTasks |= JSBT_LCD_ON;
+        handled = true;
+      }
+      if (bangleFlags&JSBF_LOCKED) {
+        bangleTasks |= JSBT_UNLOCK;
+        handled = true;
+      }
+    }
+#endif
+    // report tap
+    if (handled)
+      bangleTasks |= JSBT_ACCEL_TAPPED;
     jshHadEvent();
     // clear the IRQ flags
     buf[0]=0x17;
@@ -2779,8 +2796,8 @@ NO_INLINE void jswrap_banglejs_init() {
     jswrap_banglejs_accelWr(0x23,3); // WUFC wakeupi detect counter
     jswrap_banglejs_accelWr(0x24,3); // TDTRC Tap detect enable
     jswrap_banglejs_accelWr(0x25, 0x78); // TDTC Tap detect double tap (0x78 default)
-    jswrap_banglejs_accelWr(0x26, 0x65); // TTH Tap detect threshold high (0xCB default)
-    jswrap_banglejs_accelWr(0x27, 0x0D); // TTL Tap detect threshold low (0x1A default)
+    jswrap_banglejs_accelWr(0x26, 0xCB); // TTH Tap detect threshold high (0xCB default)
+    jswrap_banglejs_accelWr(0x27, 0x1A); // TTL Tap detect threshold low (0x1A default)
     jswrap_banglejs_accelWr(0x30,1); // ATH low wakeup detect threshold
     //jswrap_banglejs_accelWr(0x35,0 << 4); // LP_CNTL no averaging of samples
     jswrap_banglejs_accelWr(0x35,2 << 4); // LP_CNTL 4x averaging of samples
@@ -3034,10 +3051,18 @@ bool jswrap_banglejs_idle() {
       JsVar *o = jsvNewObject();
       if (o) {
         const char *string="";
+#ifdef BANGLEJS_Q3
+        if (tapInfo&2) string="front";
+        if (tapInfo&1) string="back";
+        if (tapInfo&8) string="bottom";
+        if (tapInfo&4) string="top";
+#else
         if (tapInfo&1) string="front";
         if (tapInfo&2) string="back";
         if (tapInfo&4) string="bottom";
         if (tapInfo&8) string="top";
+#endif
+
         if (tapInfo&16) string="right";
         if (tapInfo&32) string="left";
         int n = (tapInfo&0x80)?2:1;
