@@ -18,15 +18,15 @@ import pinutils;
 info = {
  'name' : "Puck.js Minimal",
   # This is a build for Puck.js that has networking, graphics and crypto removed
-  # It frees up roughly 50kB extra Flash memory which can be used for Storage,
-  # bringing the total to 90kB.
+  # It frees up roughly 60kB extra Flash memory which can be used for Storage,
+  # bringing the total to 98kB.
  'boardname' : "PUCKJS",
  'link' :  [ "http://www.espruino.com/PuckJS" ],
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D28",
  'default_console_rx' : "D29",
  'default_console_baudrate' : "9600",
- 'variables' : 2250, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2756, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_puckjs_minimal.hex',
  'build' : {
@@ -40,9 +40,13 @@ info = {
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      # 'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # reset isn't being used, so let's just have an extra IO (needed for Puck.js V2)
      'DEFINES+=-DESPR_DCDC_ENABLE', # Ensure DCDC converter is enabled
+     'DEFINES += -DNEOPIXEL_SCK_PIN=22', # SCK pin needs defining as something unused for neopixel (HW errata means they can't be disabled)
+     'DEFINES+=-DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
+     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2c40', # set RAM base to match MTU
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_puck_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://puck-js.com/go"\'',
+     'DEFINES+=-DAPP_TIMER_OP_QUEUE_SIZE=3', # Puck.js magnetometer poll
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'INCLUDE += -I$(ROOT)/libs/puckjs',
@@ -64,10 +68,10 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((118 - 22) * 4096), # Bootloader takes pages 120-127, FS takes 118-119
+    'address' : ((118 - 24) * 4096), # Bootloader takes pages 120-127, FS takes 118-119
     'page_size' : 4096,
-    'pages' : 22, # 90kB
-    'flash_available' : 512 - ((31 + 8 + 2 + 22)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 22. Each page is 4 kb.
+    'pages' : 24, # 98kB
+    'flash_available' : 512 - ((31 + 8 + 2 + 24)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 24. Each page is 4 kb.
   },
 };
 
