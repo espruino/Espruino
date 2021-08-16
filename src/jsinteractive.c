@@ -473,6 +473,10 @@ void jsiSoftInit(bool hasBeenReset) {
   // Search for invalid storage and remove it
 #if !defined(EMSCRIPTEN) && !defined(SAVE_ON_FLASH)
   bool fullTest = jsiStatus & JSIS_FIRST_BOOT;
+#ifdef BANGLEJS
+  if (fullTest)
+    jsiConsolePrintf("Checking storage...\n");
+#endif
   if (!jsfIsStorageValid(fullTest)) {
     jsiConsolePrintf("Storage is corrupt.\n");
     jsfResetStorage();

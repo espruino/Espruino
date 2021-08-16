@@ -1,6 +1,7 @@
             Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect
             Bangle.js 2: When wake on touch is enabled, use a single tap on the front of the device for wakeup
+            Bangle.js: Display 'checking storage' message on first boot to alert users to slight delay
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
