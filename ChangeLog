@@ -1,3 +1,5 @@
+            Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
+
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
             Bangle.js: Ignore touch and swipe events when the LCD is off

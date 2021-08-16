@@ -2772,7 +2772,7 @@ NO_INLINE void jswrap_banglejs_init() {
 
     jswrap_banglejs_accelWr(0x1c,0); // INC1 disabled
     jswrap_banglejs_accelWr(0x1d,0); // INC2 disabled
-    jswrap_banglejs_accelWr(0x1e,0); // INC3 disabled
+    jswrap_banglejs_accelWr(0x1e,0x3F); // INC3 enable tap detect in all 6 directions
     jswrap_banglejs_accelWr(0x1f,0); // INC4 disabled
     jswrap_banglejs_accelWr(0x20,0); // INC5 disabled
     jswrap_banglejs_accelWr(0x21,0); // INC6 disabled
