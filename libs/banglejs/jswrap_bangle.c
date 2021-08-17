@@ -261,7 +261,7 @@ Has the screen been turned on or off? Can be used to stop tasks that are no long
 }
 Has the screen been locked? Also see `Bangle.isLocked()`
 */
-/* This doesn't work, so remove for now - FIXMEJSON{
+/*JSON{
   "type" : "event",
   "class" : "Bangle",
   "name" : "tap",
