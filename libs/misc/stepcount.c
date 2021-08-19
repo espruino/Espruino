@@ -33,7 +33,7 @@ Source Code Tab:
 
 Accel
 Integer
-10
+9
 int8_t
 int
 
@@ -41,102 +41,57 @@ int
 /*
 
 FIR filter designed with
- http://t-filter.appspot.com
+ http://t-filter.engineerjs.com/
 
 sampling frequency: 12.5 Hz
 
-fixed point precision: 10 bits
+fixed point precision: 9 bits
 
-FIR filter designed with
- http://t-filter.appspot.com
-
-sampling frequency: 12.5 Hz
-
-fixed point precision: 10 bits
-
-* 0 Hz - 1.1 Hz
-  gain = 0
-  desired attenuation = -40 dB
-  actual attenuation = n/a
-
-* 1.3 Hz - 2.5 Hz
+* 0 Hz - 2.7 Hz
   gain = 1
   desired ripple = 5 dB
   actual ripple = n/a
 
-* 2.7 Hz - 6.25 Hz
+* 3.3 Hz - 6.25 Hz
   gain = 0
   desired attenuation = -40 dB
   actual attenuation = n/a
 
 */
 
-#define ACCELFILTER_TAP_NUM 57
+#define ACCELFILTER_TAP_NUM 23
 
 typedef struct {
   int8_t history[ACCELFILTER_TAP_NUM];
   unsigned int last_index;
 } AccelFilter;
 
-static int8_t filter_taps[ACCELFILTER_TAP_NUM] = {
-    -2,
-    4,
-    4,
-    1,
-    -1,
-    0,
-    2,
-    -3,
-    -12,
-    -13,
-    2,
-    24,
-    29,
-    6,
-    -25,
-    -33,
-    -13,
-    10,
-    11,
-    -1,
-    3,
-    29,
-    41,
-    4,
-    -62,
-    -89,
-    -34,
-    62,
-    110,
-    62,
-    -34,
-    -89,
-    -62,
-    4,
-    41,
-    29,
-    3,
-    -1,
-    11,
-    10,
-    -13,
-    -33,
-    -25,
-    6,
-    29,
-    24,
-    2,
-    -13,
-    -12,
-    -3,
-    2,
-    0,
-    -1,
-    1,
-    4,
-    4,
-    -2
+const static int8_t filter_taps[ACCELFILTER_TAP_NUM] = {
+  5,
+  6,
+  -4,
+  -17,
+  -15,
+  4,
+  11,
+  -10,
+  -27,
+  8,
+  80,
+  118,
+  80,
+  8,
+  -27,
+  -10,
+  11,
+  4,
+  -15,
+  -17,
+  -4,
+  6,
+  5
 };
+
 
 static void AccelFilter_init(AccelFilter* f) {
   int i;
@@ -158,7 +113,7 @@ static int AccelFilter_get(AccelFilter* f) {
     index = index != 0 ? index-1 : ACCELFILTER_TAP_NUM-1;
     acc += (int)f->history[index] * (int)filter_taps[i];
   };
-  return acc >> 2; // MODIFIED - was 10. Now returns 8 bits of fractional data
+  return acc >> 1; // MODIFIED - was 9. Now returns 8 bits of fractional data
 }
 
 AccelFilter accelFilter;
@@ -167,42 +122,38 @@ AccelFilter accelFilter;
 
 // These were calculated based on contributed data
 // using https://github.com/gfwilliams/step-count
-#define STEPCOUNTERTHRESHOLD_DEFAULT  1000
-#define STEPCOUNTERAVR_DEFAULT         0
-#define STEPCOUNTERHISTORY_DEFAULT      5
-#define STEPCOUNTERHISTORY_TIME_DEFAULT 75
+#define STEPCOUNTERTHRESHOLDLO_DEFAULT  1500
+#define STEPCOUNTERTHRESHOLDHI_DEFAULT  2000
+#define STEPCOUNTERHISTORY_DEFAULT      3
+#define STEPCOUNTERHISTORY_TIME_DEFAULT 90
 
 // These are the ranges of values we test over
 // when calculating the best data offline
-#define STEPCOUNTERTHRESHOLD_MIN 500
-#define STEPCOUNTERTHRESHOLD_MAX 1500
-#define STEPCOUNTERTHRESHOLD_STEP 20
-
-#define STEPCOUNTERAVR_MIN 0
-#define STEPCOUNTERAVR_MAX 0
-#define STEPCOUNTERAVR_STEP 1
+#define STEPCOUNTERTHRESHOLD_MIN 0
+#define STEPCOUNTERTHRESHOLD_MAX 6000
+#define STEPCOUNTERTHRESHOLD_STEP 500
 
 #define STEPCOUNTERHISTORY_MIN 1
-#define STEPCOUNTERHISTORY_MAX 5
+#define STEPCOUNTERHISTORY_MAX 8
 #define STEPCOUNTERHISTORY_STEP 1
 
 #define STEPCOUNTERHISTORY_TIME_MIN 20
 #define STEPCOUNTERHISTORY_TIME_MAX 100
-#define STEPCOUNTERHISTORY_TIME_STEP 5
+#define STEPCOUNTERHISTORY_TIME_STEP 10
 
 // This is a bit of a hack to allow us to configure
 // variables which would otherwise have been compiler defines
 #ifdef STEPCOUNT_CONFIGURABLE
-int STEPCOUNTERTHRESHOLD = STEPCOUNTERTHRESHOLD_DEFAULT;
-int STEPCOUNTERAVR = STEPCOUNTERAVR_DEFAULT;
+int stepCounterThresholdLo = STEPCOUNTERTHRESHOLDLO_DEFAULT;
+int stepCounterThresholdHi = STEPCOUNTERTHRESHOLDHI_DEFAULT;
 int STEPCOUNTERHISTORY = STEPCOUNTERHISTORY_DEFAULT;
 int STEPCOUNTERHISTORY_TIME = STEPCOUNTERHISTORY_TIME_DEFAULT;
 // These are handy values used for graphing
 int accScaled;
 int accFiltered;
 #else
-#define STEPCOUNTERTHRESHOLD     STEPCOUNTERTHRESHOLD_DEFAULT
-#define STEPCOUNTERAVR           STEPCOUNTERAVR_DEFAULT
+#define stepCounterThresholdLo STEPCOUNTERTHRESHOLDLO_DEFAULT
+#define stepCounterThresholdHi STEPCOUNTERTHRESHOLDHI_DEFAULT
 #define STEPCOUNTERHISTORY       STEPCOUNTERHISTORY_DEFAULT
 #undef STEPCOUNTERHISTORY_MAX
 #define STEPCOUNTERHISTORY_MAX   STEPCOUNTERHISTORY_DEFAULT
@@ -221,7 +172,6 @@ For each step it contains the number of iterations ago it occurred. 255 is the m
 
 uint8_t stepHistory[STEPCOUNTERHISTORY_MAX];
 
-int stepCounterThreshold;
 /// has filtered acceleration passed stepCounterThresholdLow?
 bool stepWasLow;
 
@@ -244,7 +194,6 @@ unsigned short int int_sqrt32(unsigned int x) {
 // Init step count
 void stepcount_init() {
   stepWasLow = false;
-  stepCounterThreshold = STEPCOUNTERTHRESHOLD;
   for (int i=0;i<STEPCOUNTERHISTORY;i++)
     stepHistory[i]=255;
   AccelFilter_init(&accelFilter);
@@ -277,9 +226,9 @@ bool stepcount_new(int accMagSquared) {
 
   // check for step counter
   bool hadStep = false;
-  if (accFiltered < -stepCounterThreshold)
+  if (accFiltered < stepCounterThresholdLo)
     stepWasLow = true;
-  else if ((accFiltered > stepCounterThreshold) && stepWasLow) {
+  else if ((accFiltered > stepCounterThresholdHi) && stepWasLow) {
     stepWasLow = false;
     // We now have something resembling a step!
     // Don't register it unless we've already had X steps within Y time period
@@ -289,14 +238,6 @@ bool stepcount_new(int accMagSquared) {
     for (int i=0;i<STEPCOUNTERHISTORY-1;i++)
       stepHistory[i] = stepHistory[i+1];
     stepHistory[STEPCOUNTERHISTORY-1] = 0;
-  }
-
-  if (STEPCOUNTERAVR) {
-    int a = accFiltered;
-    if (a<0) a=-a;
-    stepCounterThreshold = (stepCounterThreshold*(32-STEPCOUNTERAVR) + a*STEPCOUNTERAVR) >> 5;
-    if (stepCounterThreshold < STEPCOUNTERTHRESHOLD)
-      stepCounterThreshold = STEPCOUNTERTHRESHOLD;
   }
 
   return hadStep;
