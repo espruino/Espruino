@@ -47,19 +47,19 @@ sampling frequency: 12.5 Hz
 
 fixed point precision: 9 bits
 
-* 0 Hz - 2.7 Hz
+* 0 Hz - 2.5 Hz
   gain = 1
-  desired ripple = 5 dB
+  desired ripple = 10 dB
   actual ripple = n/a
 
-* 3.3 Hz - 6.25 Hz
+* 3.5 Hz - 6.25 Hz
   gain = 0
   desired attenuation = -40 dB
   actual attenuation = n/a
 
 */
 
-#define ACCELFILTER_TAP_NUM 23
+#define ACCELFILTER_TAP_NUM 11
 
 typedef struct {
   int8_t history[ACCELFILTER_TAP_NUM];
@@ -67,29 +67,17 @@ typedef struct {
 } AccelFilter;
 
 const static int8_t filter_taps[ACCELFILTER_TAP_NUM] = {
-  5,
-  6,
-  -4,
-  -17,
-  -15,
-  4,
-  11,
-  -10,
-  -27,
-  8,
-  80,
-  118,
-  80,
-  8,
-  -27,
-  -10,
-  11,
-  4,
-  -15,
-  -17,
-  -4,
-  6,
-  5
+    -11,
+    -29,
+    -29,
+    16,
+    85,
+    119,
+    85,
+    16,
+    -29,
+    -29,
+    -11
 };
 
 
