@@ -17,6 +17,10 @@
 #include <stdbool.h>
 #include "stepcount.h"
 
+// a1bc34f9a9f5c54b9d68c3c26e973dba195e2105   HughB-walk-1834.csv  1446
+// oxford filter                                                   1584
+// peak detection                                                  1752
+
 // STEPCOUNT_CONFIGURABLE is for use with https://github.com/gfwilliams/step-count
 // to test/configure the step counter offline
 
@@ -29,37 +33,9 @@ AccelFilter_get modified to return 8 bits of fractional
 data.
 ==========================================================
 
-Source Code Tab:
-
-Accel
-Integer
-9
-int8_t
-int
-
-*/
-/*
-
-FIR filter designed with
- http://t-filter.engineerjs.com/
-
-sampling frequency: 12.5 Hz
-
-fixed point precision: 9 bits
-
-* 0 Hz - 2.5 Hz
-  gain = 1
-  desired ripple = 10 dB
-  actual ripple = n/a
-
-* 3.5 Hz - 6.25 Hz
-  gain = 0
-  desired attenuation = -40 dB
-  actual attenuation = n/a
-
 */
 
-#define ACCELFILTER_TAP_NUM 11
+#define ACCELFILTER_TAP_NUM 7
 
 typedef struct {
   int8_t history[ACCELFILTER_TAP_NUM];
@@ -67,17 +43,7 @@ typedef struct {
 } AccelFilter;
 
 const static int8_t filter_taps[ACCELFILTER_TAP_NUM] = {
-    -11,
-    -29,
-    -29,
-    16,
-    85,
-    119,
-    85,
-    16,
-    -29,
-    -29,
-    -11
+    -11, -15, 44, 68, 44, -15, -11
 };
 
 
@@ -101,7 +67,7 @@ static int AccelFilter_get(AccelFilter* f) {
     index = index != 0 ? index-1 : ACCELFILTER_TAP_NUM-1;
     acc += (int)f->history[index] * (int)filter_taps[i];
   };
-  return acc >> 1; // MODIFIED - was 9. Now returns 8 bits of fractional data
+  return acc >> 2;
 }
 
 AccelFilter accelFilter;
@@ -110,16 +76,15 @@ AccelFilter accelFilter;
 
 // These were calculated based on contributed data
 // using https://github.com/gfwilliams/step-count
-#define STEPCOUNTERTHRESHOLDLO_DEFAULT  1500
-#define STEPCOUNTERTHRESHOLDHI_DEFAULT  2000
+#define STEPCOUNTERTHRESHOLD_DEFAULT  300
 #define STEPCOUNTERHISTORY_DEFAULT      3
 #define STEPCOUNTERHISTORY_TIME_DEFAULT 90
 
 // These are the ranges of values we test over
 // when calculating the best data offline
 #define STEPCOUNTERTHRESHOLD_MIN 0
-#define STEPCOUNTERTHRESHOLD_MAX 6000
-#define STEPCOUNTERTHRESHOLD_STEP 500
+#define STEPCOUNTERTHRESHOLD_MAX 1000
+#define STEPCOUNTERTHRESHOLD_STEP 100
 
 #define STEPCOUNTERHISTORY_MIN 1
 #define STEPCOUNTERHISTORY_MAX 8
@@ -132,16 +97,13 @@ AccelFilter accelFilter;
 // This is a bit of a hack to allow us to configure
 // variables which would otherwise have been compiler defines
 #ifdef STEPCOUNT_CONFIGURABLE
-int stepCounterThresholdLo = STEPCOUNTERTHRESHOLDLO_DEFAULT;
-int stepCounterThresholdHi = STEPCOUNTERTHRESHOLDHI_DEFAULT;
+int stepCounterThreshold = STEPCOUNTERTHRESHOLD_DEFAULT;
 int STEPCOUNTERHISTORY = STEPCOUNTERHISTORY_DEFAULT;
 int STEPCOUNTERHISTORY_TIME = STEPCOUNTERHISTORY_TIME_DEFAULT;
 // These are handy values used for graphing
 int accScaled;
-int accFiltered;
 #else
-#define stepCounterThresholdLo STEPCOUNTERTHRESHOLDLO_DEFAULT
-#define stepCounterThresholdHi STEPCOUNTERTHRESHOLDHI_DEFAULT
+#define stepCounterThreshold STEPCOUNTERTHRESHOLD_DEFAULT
 #define STEPCOUNTERHISTORY       STEPCOUNTERHISTORY_DEFAULT
 #undef STEPCOUNTERHISTORY_MAX
 #define STEPCOUNTERHISTORY_MAX   STEPCOUNTERHISTORY_DEFAULT
@@ -159,6 +121,9 @@ For each step it contains the number of iterations ago it occurred. 255 is the m
 */
 
 uint8_t stepHistory[STEPCOUNTERHISTORY_MAX];
+
+int16_t accFiltered; // last accel reading, after running through filter
+int16_t accFilteredHist[2]; // last 2 accel readings, 1=newest
 
 /// has filtered acceleration passed stepCounterThresholdLow?
 bool stepWasLow;
@@ -185,6 +150,9 @@ void stepcount_init() {
   for (int i=0;i<STEPCOUNTERHISTORY;i++)
     stepHistory[i]=255;
   AccelFilter_init(&accelFilter);
+  accFiltered = 0;
+  accFilteredHist[0] = 0;
+  accFilteredHist[1] = 0;
 }
 
 // do calculations
@@ -199,25 +167,27 @@ bool stepcount_new(int accMagSquared) {
   if (v<-128) v = -128;
 #ifdef STEPCOUNT_CONFIGURABLE
   accScaled = v;
-#else
-  int accFiltered;
 #endif
 
   // do filtering
   AccelFilter_put(&accelFilter, v);
-  accFiltered = AccelFilter_get(&accelFilter);
+  accFilteredHist[0] = accFilteredHist[1];
+  accFilteredHist[1] = accFiltered;
+  int a = AccelFilter_get(&accelFilter);
+  if (a>32767) a=32767;
+  if (a<-32768) a=32768;
+  accFiltered = a;
 
   // increment step count history counters
   for (int i=0;i<STEPCOUNTERHISTORY;i++)
     if (stepHistory[i]<255)
       stepHistory[i]++;
 
-  // check for step counter
   bool hadStep = false;
-  if (accFiltered < stepCounterThresholdLo)
-    stepWasLow = true;
-  else if ((accFiltered > stepCounterThresholdHi) && stepWasLow) {
-    stepWasLow = false;
+  // check for a peak in the last sample - in which case report a step
+  if (accFilteredHist[1] > accFilteredHist[0] &&
+      accFilteredHist[1] > accFiltered &&
+      accFiltered > stepCounterThreshold) {
     // We now have something resembling a step!
     // Don't register it unless we've already had X steps within Y time period
     if (stepHistory[0] < STEPCOUNTERHISTORY_TIME)
