@@ -37,7 +37,7 @@ info = {
 #     'TENSORFLOW'  
    ],
    'makefile' : [
-     'DEFINES += -DESPR_HWVERSION=2 -DBANGLEJS_Q3',
+     'DEFINES += -DESPR_HWVERSION=2 -DBANGLEJS -DBANGLEJS_Q3',
 #     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow us to use NFC pins as GPIO
      'DEFINES += -DESPR_LSE_ENABLE ', # Ensure low speed external osc enabled
@@ -64,8 +64,6 @@ info = {
      'SOURCES += libs/banglejs/banglejs2_storage_default.c',
      'DEFINES += -DESPR_STORAGE_INTITIAL_CONTENTS=1', # 
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
-     'DEFINES += -DBANGLEJS',
-     'DEFINES += -D\'IS_PIN_A_BUTTON(PIN)=((PIN==17)||(PIN==40)||(PIN==41))\'',
 
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0xa9,0xae,0xb6',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',

@@ -32,7 +32,8 @@
 #include "jswrap_espruino.h"
 #include "jsflash.h"
 #include "graphics.h"
-#ifndef EMSCRIPTEN
+#include "bitmap_font_6x8.h"
+#ifndef EMULATED
 #include "jswrap_bluetooth.h"
 #include "app_timer.h"
 #include "nrf_gpio.h"
@@ -40,7 +41,6 @@
 #include "nrf_soc.h"
 #include "nrf_saadc.h"
 #include "nrf5x_utils.h"
-#include "bitmap_font_6x8.h"
 
 #include "bluetooth.h" // for self-test
 #include "jsi2c.h" // accelerometer/etc
@@ -345,6 +345,7 @@ typedef struct {
 //                                            DEVICE SPECIFIC CONFIG
 
 #ifdef BANGLEJS_Q3
+#ifndef EMULATED
 JshI2CInfo i2cAccel;
 JshI2CInfo i2cMag;
 JshI2CInfo i2cTouch;
@@ -355,16 +356,19 @@ JshI2CInfo i2cHRM;
 #define TOUCH_I2C &i2cTouch
 #define PRESSURE_I2C &i2cPressure
 #define HRM_I2C &i2cHRM
-#define HOME_BTN 1
 #define GPS_UART EV_SERIAL1
+#define HEARTRATE 1
+#endif // EMULATED
 
+#define HOME_BTN 1
 #define DEFAULT_LCD_POWER_TIMEOUT 0 // don't turn LCD off
 #define DEFAULT_BACKLIGHT_TIMEOUT 3000
 #define DEFAULT_LOCK_TIMEOUT 5000
-#define HEARTRATE 1
+
 #endif
 
 #ifdef BANGLEJS_F18
+#ifndef EMULATED
 /// Internal I2C used for Accelerometer/Pressure
 JshI2CInfo i2cInternal;
 #define ACCEL_I2C &i2cInternal
@@ -372,17 +376,17 @@ JshI2CInfo i2cInternal;
 // Nordic app timer to handle backlight PWM
 APP_TIMER_DEF(m_backlight_on_timer_id);
 APP_TIMER_DEF(m_backlight_off_timer_id);
-#define HOME_BTN 3
 #define BACKLIGHT_PWM_INTERVAL 15 // in msec - 67Hz PWM
 #define HEARTRATE 1
 #define GPS_UART EV_SERIAL1
+#endif // EMULATED
+
 #define IOEXP_GPS 0x01
 #define IOEXP_LCD_BACKLIGHT 0x20
 #define IOEXP_LCD_RESET 0x40
 #define IOEXP_HRM 0x80
-#endif
 
-#ifdef EMSCRIPTEN
+
 #define HOME_BTN 3
 #endif
 
@@ -504,7 +508,7 @@ char ubloxMsg[NMEA_MAX_SIZE];
 NMEAFixInfo gpsFix;
 #endif
 
-#ifndef EMSCRIPTEN
+#ifndef EMULATED
 /// Nordic app timer to handle call of peripheralPollHandler
 APP_TIMER_DEF(m_peripheral_poll_timer_id);
 #endif
@@ -821,7 +825,7 @@ bool getDeviceRequested(const char *deviceName) {
 
 void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
   pollInterval = (uint16_t)msec;
-#ifndef EMSCRIPTEN
+#ifndef EMULATED
   app_timer_stop(m_peripheral_poll_timer_id);
   #if NRF_SD_BLE_API_VERSION<5
   app_timer_start(m_peripheral_poll_timer_id, APP_TIMER_TICKS(pollInterval, APP_TIMER_PRESCALER), NULL);
@@ -831,7 +835,7 @@ void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
 #endif
 }
 
-#ifndef EMSCRIPTEN
+#ifndef EMULATED
 /* Scan peripherals for any data that's needed
  * Also, holding down both buttons will reboot */
 void peripheralPollHandler() {
@@ -1188,7 +1192,7 @@ void backlightOffHandler() {
   jswrap_banglejs_pwrBacklight(false); // backlight off
 }
 #endif // BANGLEJS_F18
-#endif // !EMSCRIPTEN
+#endif // !EMULATED
 
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
   // wake up IF LCD power or Lock has a timeout (so will turn off automatically)
@@ -1256,7 +1260,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
     jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), t);
 }
 
-#if defined(BANGLEJS_F18) || defined(EMSCRIPTEN)
+#if defined(BANGLEJS_F18)
 // returns true if handled and shouldn't create a normal watch event
 bool btnTouchHandler() {
   if (bangleFlags&JSBF_WAKEON_TOUCH) {
@@ -1450,7 +1454,7 @@ static void backlightFadeHandler() {
 static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
   if (isOn) bangleFlags |= JSBF_LCD_BL_ON;
   else bangleFlags &= ~JSBF_LCD_BL_ON;
-#ifndef EMSCRIPTEN
+#ifndef EMULATED
 #ifdef BANGLEJS_F18
   app_timer_stop(m_backlight_on_timer_id);
   app_timer_stop(m_backlight_off_timer_id);
@@ -1481,7 +1485,7 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
   }
 #endif // LCD_BL
 #endif
-#endif // !EMSCRIPTEN
+#endif // !EMULATED
 }
 
 
@@ -2157,8 +2161,12 @@ Get the last available GPS fix info (or `undefined` if GPS is off).
 The fix info received is the same as you'd get from the `Bangle.GPS` event.
 */
 JsVar *jswrap_banglejs_getGPSFix() {
+#ifdef GPS_PIN_RX
   if (!jswrap_banglejs_isGPSOn()) return NULL;
   return nmea_to_jsVar(&gpsFix);
+#else
+  return 0;
+#endif
 }
 
 /*JSON{
@@ -2270,8 +2278,8 @@ Set the power to the barometer IC
 
 When on, the barometer draws roughly 50uA
 */
-#ifdef PRESSURE_I2C
 bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
+#ifdef PRESSURE_I2C
   bool wasOn = bangleFlags & JSBF_BAROMETER_ON;
   isOn = setDeviceRequested("Barom", appId, isOn);
   if (isOn) bangleFlags |= JSBF_BAROMETER_ON;
@@ -2322,8 +2330,11 @@ bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
 #endif
   }
   return isOn;
-}
+#else
+  return false;
 #endif
+}
+
 
 /*JSON{
     "type" : "staticmethod",
@@ -2477,7 +2488,7 @@ NO_INLINE void jswrap_banglejs_init() {
     jshPinOutput(46,0); // What's this? Who knows! But it stops screen flicker and makes the touchscreen work nicely
     jshPinOutput(LCD_BL,1); // Backlight
 #endif
-#ifndef EMSCRIPTEN
+#ifndef EMULATED
     jshPinOutput(VIBRATE_PIN,0); // vibrate off
 
 #ifdef NRF52832
@@ -2553,9 +2564,11 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
   }
 #ifdef BANGLEJS_Q3
+#ifndef EMULATED
   jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
   channel = jshPinWatch(TOUCH_PIN_IRQ, true);
   if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
+#endif
 #endif
 
   //jsiConsolePrintf("bangleFlags %d\n",bangleFlags);
@@ -2750,10 +2763,10 @@ NO_INLINE void jswrap_banglejs_init() {
       if (h > 56) y += h-28;
       else y += h-15;
       char addrStr[20];
-#ifndef EMSCRIPTEN
+#ifndef EMULATED
       JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
 #else
-      JsVar *addr = jsvNewFromString("");
+      JsVar *addr = jsvNewFromString("Emulated");
 #endif
       jsvGetString(addr, addrStr, sizeof(addrStr));
       jsvUnLock(addr);
@@ -2883,7 +2896,7 @@ NO_INLINE void jswrap_banglejs_init() {
   hrm_sensor_init();
 #endif
 
-#ifndef EMSCRIPTEN
+#ifndef EMULATED
   // Add watchdog timer to ensure watch always stays usable (hopefully!)
   // This gets killed when _kill / _init happens
   //  - the bootloader probably already set this up so the
@@ -2912,7 +2925,7 @@ NO_INLINE void jswrap_banglejs_init() {
                       backlightOffHandler);
   jsble_check_error(err_code);
 #endif
-#endif
+#endif // EMULATED
 
 #ifdef BANGLEJS_Q3
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
@@ -2960,11 +2973,11 @@ NO_INLINE void jswrap_banglejs_init() {
   "generate" : "jswrap_banglejs_kill"
 }*/
 void jswrap_banglejs_kill() {
+#ifndef EMULATED
 #ifdef BANGLEJS_F18
   app_timer_stop(m_backlight_on_timer_id);
   app_timer_stop(m_backlight_off_timer_id);
 #endif
-#ifndef EMSCRIPTEN
   app_timer_stop(m_peripheral_poll_timer_id);
 #endif
 #ifdef HEARTRATE
@@ -3356,13 +3369,13 @@ bool jswrap_banglejs_idle() {
   return false;
 }
 
-#ifdef GPS_PIN_RX
 /*JSON{
   "type" : "EV_SERIAL1",
   "generate" : "jswrap_banglejs_gps_character",
   "#if" : "defined(BANGLEJS_F18) || defined(DTNO1_F5)  || defined(BANGLEJS_Q3)"
 }*/
 bool jswrap_banglejs_gps_character(char ch) {
+#ifdef GPS_PIN_RX
   // if too many chars, roll over since it's probably because we skipped a newline
   // or messed the message length
   if (ubloxInLength >= sizeof(ubloxIn)) {
@@ -3440,9 +3453,9 @@ bool jswrap_banglejs_gps_character(char ch) {
       resetUbloxIn();
     }
   }
+#endif
   return true; // handled
 }
-#endif
 
 /*JSON{
     "type" : "staticproperty",
@@ -3637,7 +3650,7 @@ Changes a pin state on the IO expander
 */
 #ifdef BANGLEJS_F18
 void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
-#ifndef EMSCRIPTEN
+#ifndef EMULATED
   static unsigned char state;
   if (on) state |= mask;
   else state &= ~mask;
@@ -3671,7 +3684,6 @@ Bangle.getPressure().then(d=>{
 */
 
 
-#ifdef PRESSURE_I2C
 bool jswrap_banglejs_barometerPoll() {
 #ifdef PRESSURE_DEVICE_HP203
   unsigned char buf[6];
@@ -3773,6 +3785,7 @@ bool jswrap_banglejs_barometerPoll() {
   return false;
 }
 
+#ifdef PRESSURE_I2C
 JsVar *jswrap_banglejs_getBarometerObject() {
   JsVar *o = jsvNewObject();
   if (o) {
@@ -3798,8 +3811,10 @@ void jswrap_banglejs_getPressure_callback() {
   jsvUnLock2(promisePressure,o);
   promisePressure = 0;
 }
+#endif
 
 JsVar *jswrap_banglejs_getPressure() {
+#ifdef PRESSURE_I2C
   if (promisePressure) {
     jsExceptionHere(JSET_ERROR, "Conversion in progress");
     return 0;
@@ -3822,8 +3837,10 @@ JsVar *jswrap_banglejs_getPressure() {
   jsvUnLock(id);
   jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, 500));
   return jsvLockAgain(promisePressure);
-}
+#else
+  return 0;
 #endif
+}
 
 /*JSON{
     "type" : "staticmethod",
@@ -3981,7 +3998,7 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
 }
 
 static void jswrap_banglejs_periph_off() {
-#ifndef EMSCRIPTEN
+#ifndef EMULATED
 #ifdef HEARTRATE
   jswrap_banglejs_pwrHRM(false); // HRM off
 #endif
@@ -4048,7 +4065,7 @@ static void jswrap_banglejs_periph_off() {
 Turn Bangle.js off. It can only be woken by pressing BTN1.
 */
 void jswrap_banglejs_off() {
-#ifndef EMSCRIPTEN
+#ifndef EMULATED
   // If BTN1 is pressed wait until it is released
   while (jshPinGetValue(BTN1_PININDEX));
   // turn peripherals off
@@ -4072,7 +4089,7 @@ Turn Bangle.js (mostly) off, but keep the CPU in sleep
 mode until BTN1 is pressed to preserve the RTC (current time).
 */
 void jswrap_banglejs_softOff() {
-#ifndef EMSCRIPTEN
+#ifndef EMULATED
   // If BTN1 is pressed wait until it is released
   while (jshPinGetValue(BTN1_PININDEX));
   // turn BLE and peripherals off
