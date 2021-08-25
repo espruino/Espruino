@@ -2894,15 +2894,16 @@ Create a Windows BMP file from this Graphics instance, and return it as a String
 */
 JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  if (gfx.data.bpp!=1 && gfx.data.bpp!=24) {
-    jsExceptionHere(JSET_ERROR, "asBMP/asURL only works on 1bpp/24bpp Graphics");
-    return 0;
-  }
   int width = graphicsGetWidth(&gfx);
   int height = graphicsGetHeight(&gfx);
-  int rowstride = (((width*gfx.data.bpp)+31) >> 5) << 2; // padded to 32 bits
-  bool hasPalette = gfx.data.bpp==1;
-  int headerLen = 14+ 12+ (hasPalette?6:0);
+  int bpp = gfx.data.bpp;
+  if (bpp>1 && bpp<4) bpp=4;
+  else if (bpp<8) bpp=8;
+  bool hasPalette = bpp<=8;
+  int rowstride = (((width*bpp)+31) >> 5) << 2; // padded to 32 bits
+  // palette length (byte size is 3x this) 
+  int paletteEntries = hasPalette?(1<<bpp):0;
+  int headerLen = 14 + 12 + paletteEntries*3;
   int l = headerLen + height*rowstride;
   JsVar *imgData = jsvNewFlatStringOfLength((unsigned)l);
   if (!imgData) return 0; // not enough memory
@@ -2918,30 +2919,69 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   imgPtr[19]=(unsigned char)(width>>8);
   imgPtr[20]=(unsigned char)height;
   imgPtr[21]=(unsigned char)(height>>8);
-  imgPtr[22]=1;
-  imgPtr[24]=(unsigned char)gfx.data.bpp; // bpp
+  imgPtr[22]=1; // color planes, should be 1
+  imgPtr[24]=(unsigned char)bpp; // bpp
   if (hasPalette) {
-    imgPtr[26]=255;
-    imgPtr[27]=255;
-    imgPtr[28]=255;
+    // palette starts at 26
+    if (bpp==1) {
+      // first is white(?)
+      imgPtr[26]=255;
+      imgPtr[27]=255;
+      imgPtr[28]=255;
+    } else {
+      if (gfx.data.bpp==3) {
+        for (int i=0;i<paletteEntries;i++) {
+          imgPtr[26 + (i*3)] = (i&1) ? 255 : 0;
+          imgPtr[27 + (i*3)] = (i&2) ? 255 : 0;
+          imgPtr[28 + (i*3)] = (i&4) ? 255 : 0;
+        }
+#if defined(GRAPHICS_PALETTED_IMAGES)
+      } else if (gfx.data.bpp==4) {
+        for (int i=0;i<16;i++) {
+          int p = PALETTE_4BIT[i];
+          imgPtr[26 + (i*3)] = (p>>8)&0xF8;
+          imgPtr[27 + (i*3)] = (p>>3)&0xFC;
+          imgPtr[28 + (i*3)] = (p<<3)&0xF8;
+        }
+      } else if (gfx.data.bpp==8) {
+        for (int i=0;i<255;i++) {
+          int p = PALETTE_8BIT[i];
+          imgPtr[26 + (i*3)] = (p>>8)&0xF8;
+          imgPtr[27 + (i*3)] = (p>>3)&0xFC;
+          imgPtr[28 + (i*3)] = (p<<3)&0xF8;
+        }
+#endif
+      } else { // otherwise default to greyscale
+        for (int i=0;i<(1<<gfx.data.bpp);i++) {
+          int c = 255 * i / (1<<gfx.data.bpp);
+          imgPtr[26 + (i*3)] = c;
+          imgPtr[27 + (i*3)] = c;
+          imgPtr[28 + (i*3)] = c;
+        }
+      }
+    }
   }
+  int pixelMask = (1<<bpp)-1;
+  int pixelsPerByte = 8 / bpp;
   for (int y=0;y<height;y++) {
     int yi = height-(y+1);
-    if (gfx.data.bpp==1) {
+    if (bpp<8) { // >1 pixels per byte
+      int idx = headerLen + (yi * rowstride);
       for (int x=0;x<width;) {
         unsigned int b = 0;
-        for (int i=0;i<8;i++) {
-          b = (b<<1)|(graphicsGetPixel(&gfx, x++, y)&1);
+        for (int i=0;i<pixelsPerByte;i++) {
+          b = (b<<bpp)|(graphicsGetPixel(&gfx, x++, y)&pixelMask);
         }
-        imgPtr[headerLen + (yi*rowstride) + (x>>3) - 1] = (unsigned char)b;
+        imgPtr[idx++] = (unsigned char)b;
       }
-    } else {
+    } else { // <= 1 pixel per byte
       for (int x=0;x<width;x++) {
         unsigned int c = graphicsGetPixel(&gfx, x, y);
-        int i = headerLen + (yi*rowstride) + (x*(gfx.data.bpp>>3));
-        imgPtr[i++] = (unsigned char)(c);
-        imgPtr[i++] = (unsigned char)(c>>8);
-        imgPtr[i++] = (unsigned char)(c>>16);
+        int i = headerLen + (yi*rowstride) + (x*(bpp>>3));
+        for (int j=0;j<bpp;j+=8) {
+          imgPtr[i++] = (unsigned char)(c);
+          c >>= 8;
+        }
       }
     }
   }
