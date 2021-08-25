@@ -30,6 +30,7 @@
 #endif
 
 #include "jswrap_functions.h" // for asURL
+#include "jswrap_object.h" // for getFonts
 
 #include "bitmap_font_4x6.h"
 #include "bitmap_font_6x8.h"
@@ -1241,25 +1242,38 @@ JsVar *jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-Set the font by name, eg "4x6", or "Vector12".
+Set the font by name, eg "4x6", or "Vector:12".
 
-For bitmap fonts you can also specify a size multiplier, for example `g.setFont("4x6",2)` will double the size of the standard 4x6 bitmap font to 8x12.
+For bitmap fonts you can also specify a size multiplier, for example `g.setFont("4x6",2)` or `g.setFont("4x6:2")` will double the size of the standard 4x6 bitmap font to 8x12.
 */
-JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size) {
+JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
 #ifndef SAVE_ON_FLASH
-  if (!jsvIsString(name)) return 0;
-  unsigned short sz = 0xFFFF;
+  if (!jsvIsString(fontId)) return 0;
   bool isVector = false;
+  int fontSizeCharIdx = -1;
 #ifndef NO_VECTOR_FONT
-  if (jsvIsStringEqualOrStartsWith(name, "Vector", true)) {
-    sz = (unsigned short)jsvGetIntegerAndUnLock(jsvNewFromStringVar(name, 6, JSVAPPENDSTRINGVAR_MAXLENGTH));
-    if (size>0) sz = (unsigned short)size;
+  if (jsvIsStringEqualOrStartsWith(fontId, "Vector", true)) {
+    fontSizeCharIdx = 6;
     isVector = true;
   }
 #endif
+  // Is font is 'FontName:2' pull the font size out of it
+  int colonIdx = jsvGetStringIndexOf(fontId,':');
+  if (colonIdx>=0)
+    fontSizeCharIdx = colonIdx+1;
+  JsVar *name;
+  if (fontSizeCharIdx>=0) {
+    size = jsvGetIntegerAndUnLock(jsvNewFromStringVar(fontId, fontSizeCharIdx, JSVAPPENDSTRINGVAR_MAXLENGTH));
+    name = jsvNewFromStringVar(fontId, 0, (fontSizeCharIdx>0)?fontSizeCharIdx-1:0);
+  } else {
+    name = jsvLockAgain(fontId);
+  }
   if (size<1) size=1;
   if (size>JSGRAPHICS_FONTSIZE_SCALE_MASK) size=JSGRAPHICS_FONTSIZE_SCALE_MASK;
-  if (jsvIsUndefined(name) || jsvIsStringEqual(name, "4x6"))
+  unsigned short sz = 0xFFFF; // the actual data mask
+  if (isVector) {
+    sz = size;
+  } else if (jsvIsUndefined(name) || jsvGetStringLength(name)==0 || jsvIsStringEqual(name, "4x6"))
     sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_4X6);
 #ifdef USE_FONT_6X8
   if (jsvIsStringEqual(name, "6x8"))
@@ -1280,6 +1294,7 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size) {
   if (sz==0xFFFF) {
     jsExceptionHere(JSET_ERROR, "Unknown font %j", name);
   }
+  jsvUnLock(name);
   return jswrap_graphics_setFontSizeX(parent, sz, isVector);
 #else
   return 0;
@@ -1295,28 +1310,39 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size) {
   "return" : ["JsVar","Get the name of the current font"],
   "return_object" : "String"
 }
-Get the font by name - can be saved and used with `Graphics.setFont`
+Get the font by name - can be saved and used with `Graphics.setFont`.
+
+Normally this might return something like `"4x6"`, but if a scale
+factor is specified, a colon and then the size is reported, like "4x6:2"
+
+**Note:** For custom fonts, `Custom` is currently
+reported instead of the font name.
 */
 JsVar *jswrap_graphics_getFont(JsVar *parent) {
 #ifndef SAVE_ON_FLASH
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   JsGraphicsFontSize f = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_FONT_MASK;
+  const char *name = 0;
 #ifndef NO_VECTOR_FONT
   if (f == JSGRAPHICS_FONTSIZE_VECTOR)
-    return jsvVarPrintf("Vector%d",gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK);
+    name = "Vector";
 #endif
   if (f == JSGRAPHICS_FONTSIZE_4X6)
-    return jsvNewFromString("4x6");
+    name = "4x6";
 #ifdef USE_FONT_6X8
   if (f == JSGRAPHICS_FONTSIZE_6X8)
-    return jsvNewFromString("6x8");
+    name = "6x8";
 #endif
 #ifndef SAVE_ON_FLASH
   if (f & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
-    // not implemented yet because it's painful trying to pass 5 arguments into setFontCustom
     /*JsVar *n = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_NAME, 0);
     if (n) return n;*/
-    return jsvNewFromString("Custom");
+    name = "Custom";
+  }
+  if (name) {
+    int scale = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
+    if (scale>1) return jsvVarPrintf("%s:%d",name, scale);
+    else return jsvNewFromString(name);
   }
 #endif
   return jsvNewFromInteger(gfx.data.fontSize);
@@ -1338,6 +1364,20 @@ Return an array of all fonts currently in the Graphics library.
 **Note:** Vector fonts are specified as `Vector#` where `#` is the font height. As there
 are effectively infinite fonts, just `Vector` is included in the list.
 */
+
+void jswrap_graphics_getFonts_callback(void *cbdata, JsVar *key) {
+  JsVar *result = (JsVar*)cbdata;
+  if (jsvGetStringLength(key)>7 &&
+      jsvIsStringEqualOrStartsWith(key, "setFont", true)) {
+    if (jsvIsStringEqual(key,"setFontBitmap") ||
+        jsvIsStringEqual(key,"setFontAlign") ||
+        jsvIsStringEqual(key,"setFontCustom")) return; // throw away non-font functions
+    JsVar *n = jsvNewFromStringVar(key, 7, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    jsvArrayPush(result, n);
+    jsvUnLock(n);
+  }
+}
+
 JsVar *jswrap_graphics_getFonts(JsVar *parent) {
 #ifndef SAVE_ON_FLASH
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -1347,21 +1387,9 @@ JsVar *jswrap_graphics_getFonts(JsVar *parent) {
 #ifdef USE_FONT_6X8
   jsvArrayPushAndUnLock(arr, jsvNewFromString("6x8"));
 #endif
-#ifndef NO_VECTOR_FONT
-  jsvArrayPushAndUnLock(arr, jsvNewFromString("Vector"));
-#endif
-  JsVar *c = jspGetPrototype(parent);
-  JsvObjectIterator it;
-  jsvObjectIteratorNew(&it, c);
-  while (jsvObjectIteratorHasValue(&it)) {
-    JsVar *k = jsvObjectIteratorGetKey(&it);
-    if (jsvIsStringEqualOrStartsWith(k,"setFont",true))
-      jsvArrayPushAndUnLock(arr, jsvNewFromStringVar(k,7,JSVAPPENDSTRINGVAR_MAXLENGTH));
-    jsvUnLock(k);
-    jsvObjectIteratorNext(&it);
-  }
-  jsvObjectIteratorFree(&it);
-  jsvUnLock(c);
+  // vector font is added by below..
+  // scan for any functions 'setFont*' and add those names
+  jswrap_object_keys_or_property_names_cb(parent, true, true, jswrap_graphics_getFonts_callback, arr);
   return arr;
 #else
   return 0;

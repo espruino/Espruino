@@ -4,6 +4,8 @@
             Bangle.js: Display 'checking storage' message on first boot to alert users to slight delay
             Bangle.js: Tweaked step count algorithm (low pass filter, 4 steps in 90s)
             Graphics: asBMP/asURL/dump now support more bit depths
+            Graphics: Allow .setFont/.getFont to use font size in a colon after the font name
+            Graphics: .getFonts now lists 'setFont' functions however they were added (to `g`, built in, or to the prototype)
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
