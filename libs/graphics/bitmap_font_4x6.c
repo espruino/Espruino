@@ -187,6 +187,7 @@ NO_INLINE void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, uns
     if (solidBackground || line&2) graphicsFillRect(gfx, x1+1*size, ly, x1+s+1*size, ly+s, (line&2) ? gfx->data.fgColor : gfx->data.bgColor);
     if (solidBackground || line&1) graphicsFillRect(gfx, x1+2*size, ly, x1+s+2*size, ly+s, (line&1) ? gfx->data.fgColor : gfx->data.bgColor);
   }
+  if (solidBackground) graphicsFillRect(gfx, x1+3*size, y1, x1+s+3*size, y1+size*5+s, gfx->data.bgColor); // fill gap between chars
 }
 
 
