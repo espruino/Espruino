@@ -1096,8 +1096,9 @@ void peripheralPollHandler() {
     }
     if (powerSaveTimer < POWER_SAVE_TIMEOUT) {
       // only do step counting if power save is off (otherwise accel interval is too low - also wastes power)
-      if (stepcount_new(accMagSquared)) {
-        stepCounter++;
+      int newSteps = stepcount_new(accMagSquared);
+      if (newSteps>0) {
+        stepCounter += newSteps;
         bangleTasks |= JSBT_STEP_EVENT;
         jshHadEvent();
       }
