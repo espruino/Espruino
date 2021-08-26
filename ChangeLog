@@ -6,6 +6,7 @@
             Graphics: asBMP/asURL/dump now support more bit depths
             Graphics: Allow .setFont/.getFont to use font size in a colon after the font name
             Graphics: .getFonts now lists 'setFont' functions however they were added (to `g`, built in, or to the prototype)
+            Graphics: When rendering fonts with a solid background, ensure the gap between is filled too
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
