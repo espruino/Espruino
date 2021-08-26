@@ -1253,7 +1253,8 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
   int fontSizeCharIdx = -1;
 #ifndef NO_VECTOR_FONT
   if (jsvIsStringEqualOrStartsWith(fontId, "Vector", true)) {
-    fontSizeCharIdx = 6;
+    if (jsvGetStringLength(fontId)>6)
+      fontSizeCharIdx = 6;
     isVector = true;
   }
 #endif
