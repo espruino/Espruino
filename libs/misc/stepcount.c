@@ -140,8 +140,8 @@ typedef enum {
 // In periods of 12.5Hz
 #define T_MIN_STEP 4 // ~333ms
 #define T_MAX_STEP 16 // ~1300ms
-#define X_STEPS 5 // steps in a row needed
-#define RAW_THRESHOLD 10
+#define X_STEPS 8 // steps in a row needed
+#define RAW_THRESHOLD 17
 #define N_ACTIVE_SAMPLES 3
 
 StepState stepState;
@@ -282,14 +282,12 @@ int stepcount_new(int accMagSquared) {
     stepLength++;
 
   int stepsCounted = 0;
-  // check for a peak in the last sample - in which case report a step
-  if (accFilteredHist[1] > accFilteredHist[0] &&
-      accFilteredHist[1] > accFiltered &&
-      accFiltered > stepCounterThreshold) {
+  // check for a peak in the last sample - in which case call the state machine
+  if (gate_open == true && accFilteredHist[1] > accFilteredHist[0] && accFilteredHist[1] > accFiltered) {
     // We now have something resembling a step!
     stepsCounted = stepcount_had_step();
     stepLength = 0;
   }
-
+  
   return stepsCounted;
 }
