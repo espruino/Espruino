@@ -77,12 +77,12 @@ AccelFilter accelFilter;
 
 // These were calculated based on contributed data
 // using https://github.com/gfwilliams/step-count
-#define STEPCOUNTERTHRESHOLD_DEFAULT  300
+#define STEPCOUNTERTHRESHOLD_DEFAULT  600
 
 // These are the ranges of values we test over
 // when calculating the best data offline
 #define STEPCOUNTERTHRESHOLD_MIN 0
-#define STEPCOUNTERTHRESHOLD_MAX 1000
+#define STEPCOUNTERTHRESHOLD_MAX 2000
 #define STEPCOUNTERTHRESHOLD_STEP 100
 
 // This is a bit of a hack to allow us to configure
@@ -141,10 +141,14 @@ typedef enum {
 #define T_MIN_STEP 4 // ~333ms
 #define T_MAX_STEP 16 // ~1300ms
 #define X_STEPS 5 // steps in a row needed
+#define RAW_THRESHOLD 10
+#define N_ACTIVE_SAMPLES 3
 
 StepState stepState;
 unsigned char holdSteps; // how many steps are we holding back?
 unsigned char stepLength; // how many poll intervals since the last step?
+int active_sample_count = 0;
+bool gate_open = false;        // start closed
 // ===============================================================
 
 // quick integer square root
@@ -260,6 +264,18 @@ int stepcount_new(int accMagSquared) {
   if (a>32767) a=32767;
   if (a<-32768) a=32768;
   accFiltered = a;
+
+  if (v > RAW_THRESHOLD || v < -1*RAW_THRESHOLD) {
+    if (active_sample_count < N_ACTIVE_SAMPLES)
+      active_sample_count++;
+    if (active_sample_count == N_ACTIVE_SAMPLES)
+      gate_open = true;
+  } else {
+    if (active_sample_count > 0)
+      active_sample_count--;
+    if (active_sample_count == 0)
+      gate_open = false;
+  }
 
   // increment step count history counters
   if (stepLength<255)
