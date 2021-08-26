@@ -23,6 +23,9 @@
 #ifdef PUCKJS
 #include "jswrap_puck.h" // process.env
 #endif
+#ifdef USE_NFC
+#include "hal_t2t/hal_nfc_t2t.h"
+#endif
 
 /*JSON{
   "type" : "class",
@@ -93,6 +96,20 @@ const void *exportPtrs[] = {
 };
 #endif
 
+#ifdef USE_NFC
+const void *nfcPtrs[] = {
+    hal_nfc_setup,
+    hal_nfc_parameter_set,
+    hal_nfc_parameter_get,
+    hal_nfc_start,
+    hal_nfc_send,
+    hal_nfc_send_rsp,
+    hal_nfc_stop,
+    hal_nfc_done,
+    0
+};
+#endif
+
 /*JSON{
   "type" : "staticproperty",
   "class" : "process",
@@ -133,6 +150,9 @@ JsVar *jswrap_process_env() {
 extern uint32_t app_ram_base;
   jsvObjectSetChildAndUnLock(obj, "APP_RAM_BASE", jsvNewFromInteger((JsVarInt)app_ram_base));
 #endif
+#endif
+#ifdef USE_NFC
+  jsvObjectSetChildAndUnLock(obj, "NFCPTR", jsvNewFromInteger((JsVarInt)(size_t)nfcPtrs));
 #endif
   return obj;
 }
