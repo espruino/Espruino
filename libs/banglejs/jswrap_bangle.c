@@ -4528,15 +4528,47 @@ a circle on the display
     "name" : "setUI",
     "generate_js" : "libs/js/banglejs/Bangle_setUI_F18.js",
     "params" : [
-      ["type","JsVar","The typeof UI input: 'updown', 'leftright' or undefined to cancel"],
+      ["type","JsVar","The type of UI input: 'updown', 'leftright', 'clock', 'clockupdown' or undefined to cancel"],
       ["callback","JsVar","A function with one argument which is the direction"]
     ],
     "ifdef" : "BANGLEJS"
 }
-This puts Bangle.js into a UI input mode, buzzes when each input is made, and calls the callback provided
+This puts Bangle.js into the specified UI input mode, and calls the callback provided when there is user input.
+
+Currently supported interface types are:
+
+* 'updown' - UI input with upwards motion `cb(-1)`, downwards motion `cb(1)`, and select `cb()`
+  * Bangle.js 1 uses BTN1/3 for up/down and BTN2 for select
+  * Bangle.js 2 uses touchscreen swipe up/down and tap
+* 'leftright' - UI input with left motion `cb(-1)`, right motion `cb(1)`, and select `cb()`
+  * Bangle.js 1 uses BTN1/3 for left/right and BTN2 for select
+  * Bangle.js 2 uses touchscreen swipe left/right and tap/BTN1 for select
+* 'clock' - called for clocks. Sets `Bangle.CLOCK=1` and allows a button to start the launcher
+  * Bangle.js 1 BTN2 starts the launcher
+  * Bangle.js 2 BTN1 starts the launcher
+* 'clockupdown' -
+  * Bangle.js 1 BTN2 starts the launcher, BTN1/BTN3 call `cb(-1)` and `cb(1)`
+  * Bangle.js 2 BTN1 starts the launcher, touchscreen tap in top/bottom right hand side calls `cb(-1)` and `cb(1)`
+* `undefined` removes all user interaction code
 
 While you could use setWatch/etc manually, the benefit here is that you don't end up with multiple `setWatch` instances, and
 the actual input method (touch, or buttons) is implemented dependent on the watch (Bangle.js 1 or 2)
+
+**Note:** You can override this function in boot code to change the interaction mode with the watch. For instance
+you could make all clocks start the launcher with a swipe by using:
+
+```
+(function() {
+  var sui = Bangle.setUI;
+  Bangle.setUI = function(mode, cb) {
+    if (mode!="clock") return sui(mode,cb);
+    sui(); // clear
+    Bangle.CLOCK=1;
+    Bangle.swipeHandler = Bangle.showLauncher;
+    Bangle.on("swipe", Bangle.swipeHandler);
+  };
+})();
+```
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
