@@ -818,14 +818,14 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
       JsVarRef beforeStartBlock = 0;
       JsVarRef curr = jsVarFirstEmpty;
       JsVarRef startBlock = curr;
-      unsigned int blockCount = 1;
+      unsigned int blockCount = 0;
       while (curr && !touchedFreeList) {
         JsVar *currVar = jsvGetAddressOf(curr);
         JsVarRef next = jsvGetNextSibling(currVar);
   #ifdef RESIZABLE_JSVARS
-        if (next && jsvGetAddressOf(next)==currVar+1) {
+        if (blockCount && next && (jsvGetAddressOf(next)==currVar+1)) {
   #else
-        if (next == curr+1) {
+        if (blockCount && (next == curr+1)) {
   #endif
           blockCount++;
           if (blockCount>=requiredBlocks) {
@@ -850,9 +850,13 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
           }
         } else {
           // this block is not immediately after the last - restart run
-          blockCount = 1;
           beforeStartBlock = curr;
           startBlock = next;
+          // Check to see if the next block is aligned on a 4 byte boundary or not
+          if (((size_t)(jsvGetAddressOf(startBlock+1)))&3)
+            blockCount = 0; // this block is not aligned
+          else
+            blockCount = 1; // all ok - start block here
         }
         // move to next!
         curr = next;
