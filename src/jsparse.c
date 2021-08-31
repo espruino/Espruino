@@ -2174,10 +2174,13 @@ NO_INLINE JsVar *jspeStatementIf() {
 
   JSP_SAVE_EXECUTE();
   if (!cond) jspSetNoExecute();
+  JsExecFlags hasError = 0;
   JsVar *a = jspeBlockOrStatement();
+  hasError |= execInfo.execute&EXEC_ERROR_MASK;
   if (!cond) {
     jsvUnLock(a);
     JSP_RESTORE_EXECUTE();
+    execInfo.execute |= hasError;
   } else {
     result = a;
   }
@@ -2186,9 +2189,11 @@ NO_INLINE JsVar *jspeStatementIf() {
     JSP_SAVE_EXECUTE();
     if (cond) jspSetNoExecute();
     JsVar *a = jspeBlockOrStatement();
+    hasError |= execInfo.execute&EXEC_ERROR_MASK;
     if (cond) {
       jsvUnLock(a);
       JSP_RESTORE_EXECUTE();
+      execInfo.execute |= hasError;
     } else {
       result = a;
     }
