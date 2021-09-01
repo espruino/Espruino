@@ -3237,9 +3237,11 @@ Returns an object of the form:
 }
 ```
 
-These values can then be passed to `g.setColor`/`g.setBgColor` for example `g.setColor(g.theme.fg2)`.
+These values can then be passed to `g.setColor`/`g.setBgColor` for example `g.setColor(g.theme.fg2)`. When the Graphics
+instance is reset, the background color is automatically set to `g.theme.bg` and foreground is set to `g.theme.fg`.
 
-On Bangle.js these values can be changed by writing updated values to `theme` in `settings.js` and reloading the app.
+On Bangle.js these values can be changed by writing updated values to `theme` in `settings.js` and reloading the app - or they can
+be changed temporarily by calling `Graphics.setTheme`
 */
 JsVar *jswrap_graphics_theme(JsVar *parent) {
   NOT_USED(parent);
@@ -3257,3 +3259,68 @@ JsVar *jswrap_graphics_theme(JsVar *parent) {
   return 0;
 #endif
 }
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setTheme",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
+  "generate" : "jswrap_graphics_setTheme",
+  "params" : [
+    ["theme","JsVar","An object of the form returned by `Graphics.theme`"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Set the global colour scheme. On Bangle.js, this is reloaded from `settings.json` for each new app loaded.
+
+See `Graphics.theme` for the fields that can be provided. For instance you can change
+the background to red using:
+
+```
+g.setTheme({bg:"#f00"});
+```
+
+*/
+JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme) {
+  NOT_USED(parent);
+#ifdef GRAPHICS_THEME
+  if (jsvIsObject(theme)) {
+    JsVar *v;
+    v = jsvObjectGetChild(theme, "fg", 0);
+    if (v) {
+      graphicsTheme.fg = jswrap_graphics_toColor(parent, v,0,0);
+      jsvUnLock(v);
+    }
+    v = jsvObjectGetChild(theme, "bg", 0);
+    if (v) {
+      graphicsTheme.bg = jswrap_graphics_toColor(parent, v,0,0);
+      jsvUnLock(v);
+    }
+    v = jsvObjectGetChild(theme, "fg2", 0);
+    if (v) {
+      graphicsTheme.fg2 = jswrap_graphics_toColor(parent, v,0,0);
+      jsvUnLock(v);
+    }
+    v = jsvObjectGetChild(theme, "bg2", 0);
+    if (v) {
+      graphicsTheme.bg2 = jswrap_graphics_toColor(parent, v,0,0);
+      jsvUnLock(v);
+    }
+    v = jsvObjectGetChild(theme, "fgH", 0);
+    if (v) {
+      graphicsTheme.fgH = jswrap_graphics_toColor(parent, v,0,0);
+      jsvUnLock(v);
+    }
+    v = jsvObjectGetChild(theme, "bgH", 0);
+    if (v) {
+      graphicsTheme.bgH = jswrap_graphics_toColor(parent, v,0,0);
+      jsvUnLock(v);
+    }
+    v = jsvObjectGetChild(theme, "dark", 0);
+    if (v) graphicsTheme.dark = jsvGetBoolAndUnLock(v);
+  }
+#endif
+  return jsvLockAgain(parent);
+}
+

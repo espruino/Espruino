@@ -8,6 +8,7 @@
             Graphics: .getFonts now lists 'setFont' functions however they were added (to `g`, built in, or to the prototype)
             Graphics: When rendering fonts with a solid background, ensure the gap between is filled too
             Flat Strings are now always aligned on a 4 byte boundary (fix #2040)
+            Graphics: add setTheme on supported devices
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
