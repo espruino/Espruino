@@ -8,12 +8,12 @@
   };
   if (global.WIDGETS) {
     for (var wd of WIDGETS) {
-	  var p = pos[wd.area];
-	  if (!p) continue;
-	  wd.x = p.x - p.r*wd.width;
-	  wd.y = p.y;
-	  p.x += wd.width*(1-2*p.r);
-	  p.c++;
+  	  var p = pos[wd.area];
+  	  if (!p) continue;
+  	  wd.x = p.x - p.r*wd.width;
+  	  wd.y = p.y;
+  	  p.x += wd.width*(1-2*p.r);
+  	  p.c++;
     }
     g.reset();
     if (pos.tl.c || pos.tr.c) g.clearRect(0,0,w-1,23);
