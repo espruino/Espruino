@@ -112,12 +112,10 @@ and you want it shown on the screen.
 If a display does not have an offscreen buffer,
 it may not have a `g.flip()` method.
 
-On Bangle.js, there are different graphics modes
+On Bangle.js 1, there are different graphics modes
 chosen with `Bangle.setLCDMode()`. The default mode
 is unbuffered and in this mode `g.flip()` does not
-affect the screen contents, however it will cause the
-screen to light up if it was previously off due
-to inactivity.
+affect the screen contents.
 
 On some devices, this command will attempt to
 only update the areas of the screen that have
