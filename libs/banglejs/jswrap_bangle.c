@@ -449,6 +449,7 @@ JshI2CInfo i2cInternal;
 unsigned char touchX, touchY; ///< current touch event coordinates
 unsigned char lastTouchX, lastTouchY; ///< last touch event coordinates - updated when JSBT_DRAG is fired
 bool touchPts, lastTouchPts; ///< whether a fnger is currently touching or not
+unsigned char touchType; ///< variable to differentiate press, long press, double press
 #endif
 
 #ifdef PRESSURE_I2C
@@ -1378,10 +1379,19 @@ void touchHandler(bool state, IOEventFlags flags) {
     case 5: // single click
       if (touchX<80) bangleTasks |= JSBT_TOUCH_LEFT;
       else bangleTasks |= JSBT_TOUCH_RIGHT;
+      touchType = 0;
+      break;
+    case 0x0B:     // double touch
+      if (touchX<80) bangleTasks |= JSBT_TOUCH_LEFT;
+      else bangleTasks |= JSBT_TOUCH_RIGHT;
+      touchType = 1;
+      break;
+    case 0x0C:     // long touch
+      if (touchX<80) bangleTasks |= JSBT_TOUCH_LEFT;
+      else bangleTasks |= JSBT_TOUCH_RIGHT;        
+      touchType = 2;
       break;
     }
-    // 0x0B double touch
-    // 0x0C long touch
   }
 
   if (touchPts!=lastTouchPts || lastTouchX!=touchX || lastTouchY!=touchY) {
@@ -3305,6 +3315,7 @@ bool jswrap_banglejs_idle() {
       };
       jsvObjectSetChildAndUnLock(o[1], "x", jsvNewFromInteger(lastTouchX));
       jsvObjectSetChildAndUnLock(o[1], "y", jsvNewFromInteger(lastTouchY));
+      jsvObjectSetChildAndUnLock(o[1], "type", jsvNewFromInteger(touchType));
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"touch", o, 2);
       jsvUnLockMany(2,o);
 #else
