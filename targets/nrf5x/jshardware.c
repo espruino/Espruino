@@ -393,7 +393,6 @@ bool twi1Initialised = false;
 }
 
 #else // NRF5X_SDK_11
-static const nrf_drv_uart_t UART0 = NRF_DRV_UART_INSTANCE(0);
 static const nrf_drv_uart_t UART[] = {
     NRF_DRV_UART_INSTANCE(0),
 #if USART_COUNT>1
@@ -1920,7 +1919,7 @@ void jshSPISend16(IOEventFlags device, int data) {
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return;
   jshSPIWait(device);
   uint16_t tx = (uint16_t)data;
-  jshSPISendMany(device, &tx, NULL, 2, NULL);
+  jshSPISendMany(device, (unsigned char*)&tx, NULL, 2, NULL);
 #endif
 }
 
