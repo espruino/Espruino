@@ -115,7 +115,7 @@ exports.isCharging = function(isCharging) {
 
 // Return GPS instance. callback is called whenever data is available!
 exports.setGPSOn = function(isOn, callback) {
-// FIXME: GPS_EN pin?
+  PINS.GPS_EN.write(isOn);
   if (!isOn) this.setCellOn(false,callback);
   else this.setCellOn(isOn, function(usart) {
     var at = require("AT").connect(usart);
