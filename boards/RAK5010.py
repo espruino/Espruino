@@ -25,7 +25,7 @@ info = {
  'espruino_page_link' : 'RAK5010',
  'variables' : 12500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
 # 'bootloader' : 1,
-# 'default_console' : "EV_SERIAL1",
+ 'default_console' : "EV_BLUETOOTH",
 # 'default_console_tx' : "D34", # IO3
 # 'default_console_rx' : "D33", # IO4
 # 'default_console_baudrate' : "9600",
