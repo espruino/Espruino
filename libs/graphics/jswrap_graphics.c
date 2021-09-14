@@ -3283,7 +3283,6 @@ g.setTheme({bg:"#f00"});
 
 */
 JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme) {
-  NOT_USED(parent);
 #ifdef GRAPHICS_THEME
   if (jsvIsObject(theme)) {
     JsVar *v;
