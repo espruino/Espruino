@@ -34,7 +34,9 @@ info = {
    'optimizeflags' : '-Os',
    'libraries' : [
      'BLUETOOTH',
-     'NET'
+     'NET',
+     'CRYPTO','SHA256','SHA512',
+     'TLS',
    ],
    'makefile' : [
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
