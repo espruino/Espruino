@@ -1720,8 +1720,6 @@ used for displaying notifications while keeping the main display contents
 intact.
 */
 void jswrap_banglejs_setLCDOffset(int y) {
-#ifdef LCD_CONTROLLER_LPM013M126
-#endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   lcdST7789_setYOffset(y);
 #endif
@@ -2698,6 +2696,9 @@ NO_INLINE void jswrap_banglejs_init() {
 #if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
     lcdInit_SPILCD(&gfx);
 #endif
+  } else {
+    // Just reset any graphics settings that may need updating
+    jswrap_banglejs_setLCDOffset(0);
   }
   graphicsSetVar(&gfx);
   jsvObjectSetChild(execInfo.root, "g", graphics);
