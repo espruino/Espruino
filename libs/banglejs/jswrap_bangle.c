@@ -2498,8 +2498,6 @@ NO_INLINE void jswrap_banglejs_init() {
     jshPinOutput(LCD_BL,1); // Backlight
 #endif
 #ifndef EMULATED
-    jshPinOutput(VIBRATE_PIN,0); // vibrate off
-
 #ifdef NRF52832
     jswrap_ble_setTxPower(4);
 #endif
@@ -2572,6 +2570,12 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
 #endif
   }
+
+#ifndef EMULATED
+  // turn vibrate off every time Bangle is reset
+  jshPinOutput(VIBRATE_PIN,0);
+#endif
+
 #ifdef BANGLEJS_Q3
 #ifndef EMULATED
   jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
