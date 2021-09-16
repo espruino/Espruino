@@ -12,6 +12,7 @@
             RAK5010: switch to 1.8v internal voltage (was 3.3v) to make GSM comms reliable, upgrade BG96 module
             RAK5010: Compile in TLS/HTTPS support
             Bangle.js: Fix issue where if non-fullscreen notification was visible and Bangle.js reset, screen was off-center
+            Fix for issue with pretokenised code not creating correct text string for reserved words, eg {undefined:1}
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
