@@ -2161,7 +2161,7 @@ JsVar *jsvGetValueOfName(JsVar *a) {
 
 /* Check for and trigger a ReferenceError on a variable if it's a name that doesn't exist */
 void jsvCheckReferenceError(JsVar *a) {
-  if (jsvIsName(a) && jsvGetRefs(a)==0 && !jsvIsNewChild(a) && !jsvGetFirstChild(a))
+  if (jsvIsBasicName(a) && jsvGetRefs(a)==0 && !jsvIsNewChild(a) && !jsvGetFirstChild(a))
     jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
 }
 
