@@ -188,7 +188,7 @@ NO_INLINE void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, uns
         graphicsFillRect(
             gfx,
             x1+x*sizex, ly,
-            x1+x*(sizex+1) - 1, ly+sizey-1,
+            x1+(x+1)*sizex-1, ly+sizey-1,
             pixel ? gfx->data.fgColor : gfx->data.bgColor);
       line <<= 1;
     }

@@ -16,7 +16,7 @@
 #include "graphics.h"
 
 // returns the width of a character
-unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int size, char ch);
+unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int sizex, char ch);
 // prints character, returns width
-unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, char ch);
+unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int sizex, int sizey, char ch);
 #endif

@@ -440,7 +440,7 @@ static const uint8_t *vfGetCharPtr(char sch, int *charLen) {
 }
 
 // prints character, returns width
-unsigned int vfDrawCharPtr(JsGraphics *gfx, int x1, int y1, int size, const uint8_t *charPtr, int charLen) {
+unsigned int vfDrawCharPtr(JsGraphics *gfx, int x1, int y1, int sizex, int sizey, const uint8_t *charPtr, int charLen) {
   x1 = (x1<<4) - 8;
   y1 = (y1<<4) - 8;
   int w = 0;
@@ -453,20 +453,20 @@ unsigned int vfDrawCharPtr(JsGraphics *gfx, int x1, int y1, int size, const uint
       int vx = vertex % VF_CHAR_WIDTH;
       int vy = vertex / VF_CHAR_WIDTH;
       if (vx>w) w=vx;
-      poly[j*2  ] = (short)(x1 + vx*size*16/VF_SCALE);
-      poly[j*2+1] = (short)(y1 + (vy+VF_OFFSET_Y)*size*16/VF_SCALE);
+      poly[j*2  ] = (short)(x1 + vx*sizex*16/VF_SCALE);
+      poly[j*2+1] = (short)(y1 + (vy+VF_OFFSET_Y)*sizey*16/VF_SCALE);
     }
     graphicsFillPoly(gfx, polyLen, poly);
   }
-  return (unsigned int)(((w+1+VF_CHAR_SPACING)*size*16/VF_SCALE+7)>>4);
+  return (unsigned int)(((w+1+VF_CHAR_SPACING)*sizex*16/VF_SCALE+7)>>4);
 }
 
 // returns the width of a character
-unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int size, char ch) {
+unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int sizex, char ch) {
   NOT_USED(gfx);
   int charLen;
   const uint8_t *charPtr = vfGetCharPtr(ch, &charLen);
-  if (!charPtr) return (unsigned int)(size/2);
+  if (!charPtr) return (unsigned int)(sizex/2); // space
   int w = 0;
   for (int i = 0; i < charLen; ++i) {
     int polyLen;
@@ -477,15 +477,15 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int size, char ch
       if (vx>w) w=vx;
     }
   }
-  return ((unsigned int)(w+1+VF_CHAR_SPACING)*size*16/VF_SCALE+7)>>4;
+  return ((unsigned int)(w+1+VF_CHAR_SPACING)*sizex*16/VF_SCALE+7)>>4;
 }
 
 // prints character, returns width
-unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, char ch) {
+unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int sizex, int sizey, char ch) {
   int charLen;
   const uint8_t *charPtr = vfGetCharPtr(ch, &charLen);
-  if (!charPtr) return (unsigned int)(size/2);
-  return vfDrawCharPtr(gfx, x1, y1, size, charPtr, charLen);
+  if (!charPtr) return (unsigned int)(sizex/2); // space
+  return vfDrawCharPtr(gfx, x1, y1, sizex, sizey, charPtr, charLen);
 }
 
 #endif

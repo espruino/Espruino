@@ -71,7 +71,13 @@ typedef enum {
 } JsGraphicsFlags;
 
 typedef enum {
- JSGRAPHICS_FONTSIZE_SCALE_MASK = 8191, ///< the size of the font
+ /** The size of the font
+     For bitmap fonts we can also pack X and Y scale in here. X is 0..63, Y is (0..63)<<6 */
+ JSGRAPHICS_FONTSIZE_SCALE_MASK = 8191,
+ JSGRAPHICS_FONTSIZE_SCALE_X_Y = 4096, ///< set if X and Y are packed into scale
+ JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT = 6,
+ JSGRAPHICS_FONTSIZE_SCALE_X_MASK = 63,
+ JSGRAPHICS_FONTSIZE_SCALE_Y_MASK = 63 << JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT,
  JSGRAPHICS_FONTSIZE_FONT_MASK = 7 << 13, ///< the type of the font
  JSGRAPHICS_FONTSIZE_VECTOR = 0,
  JSGRAPHICS_FONTSIZE_4X6 = 1 << 13, // a bitmap font
@@ -199,10 +205,6 @@ void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2); ///< antialiased drawline. each pixel is 1/16th
 void graphicsDrawCircleAA(JsGraphics *gfx, int x, int y, int r);
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); ///< each pixel is 1/16th a pixel may overwrite vertices...
-#ifndef NO_VECTOR_FONT
-unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, char ch); ///< prints character, returns width
-unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int size, char ch); ///< returns the width of a character
-#endif
 /// Draw a simple 1bpp image in foreground colour
 void graphicsDrawImage1bpp(JsGraphics *gfx, int x1, int y1, int width, int height, const unsigned char *pixelData);
 /// Scroll the graphics device (in user coords). X>0 = to right, Y >0 = down

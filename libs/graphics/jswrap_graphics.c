@@ -1120,7 +1120,7 @@ JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) 
 #else
   if (isVectorFont) {
     if (size<1) size=1;
-    if (size>1023) size=1023;
+    if (size>JSGRAPHICS_FONTSIZE_SCALE_MASK) size=JSGRAPHICS_FONTSIZE_SCALE_MASK;
   }
 #ifndef SAVE_ON_FLASH
   if ((gfx.data.fontSize&JSGRAPHICS_FONTSIZE_CUSTOM_BIT) &&
@@ -1240,9 +1240,22 @@ JsVar *jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-Set the font by name, eg "4x6", or "Vector:12".
+Set the font by name. Various forms are available:
 
-For bitmap fonts you can also specify a size multiplier, for example `g.setFont("4x6",2)` or `g.setFont("4x6:2")` will double the size of the standard 4x6 bitmap font to 8x12.
+* `g.setFont("4x6")` - standard 4x6 bitmap font
+* `g.setFont("Vector:12")` - vector font 12px high
+* `g.setFont("4x6:2")` - 4x6 bitmap font, doubled in size
+* `g.setFont("6x8:2x3")` - 6x8 bitmap font, doubled in width, tripled in height
+
+You can also use these forms, but they are not recommended:
+
+* `g.setFont("Vector12")` - vector font 12px high
+* `g.setFont("4x6",2)` - 4x6 bitmap font, doubled in size
+
+`g.getFont()` will return the current font as a String.
+
+For a list of available font names, you can use `g.getFonts()`. 
+
 */
 JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
 #ifndef SAVE_ON_FLASH
@@ -1261,8 +1274,21 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
   if (colonIdx>=0)
     fontSizeCharIdx = colonIdx+1;
   JsVar *name;
-  if (fontSizeCharIdx>=0) {
-    size = jsvGetIntegerAndUnLock(jsvNewFromStringVar(fontId, fontSizeCharIdx, JSVAPPENDSTRINGVAR_MAXLENGTH));
+  if (fontSizeCharIdx>=0) { // "FontName:FontSize"
+    JsVar *sizeVar = jsvNewFromStringVar(fontId, fontSizeCharIdx, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    int xIndex = jsvGetStringIndexOf(sizeVar,'x');
+    if (xIndex>=0) { // "FontName:1x3"
+      int sizex = jsvGetIntegerAndUnLock(jsvNewFromStringVar(sizeVar, 0, xIndex));
+      int sizey = jsvGetIntegerAndUnLock(jsvNewFromStringVar(sizeVar, xIndex+1, JSVAPPENDSTRINGVAR_MAXLENGTH));
+      if (sizex<0) sizex=0;
+      if (sizey<0) sizey=0;
+      if (sizex>63) sizex=63;
+      if (sizey>63) sizey=63;
+      size = sizex | (sizey<<JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT) | JSGRAPHICS_FONTSIZE_SCALE_X_Y;
+    } else { // // "FontName:12"
+      size = jsvGetInteger(sizeVar);
+    }
+    jsvUnLock(sizeVar);
     name = jsvNewFromStringVar(fontId, 0, (fontSizeCharIdx>0)?fontSizeCharIdx-1:0);
   } else {
     name = jsvLockAgain(fontId);
@@ -1322,9 +1348,12 @@ JsVar *jswrap_graphics_getFont(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   JsGraphicsFontSize f = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_FONT_MASK;
   const char *name = 0;
+  bool allowXYScaling = true;
 #ifndef NO_VECTOR_FONT
-  if (f == JSGRAPHICS_FONTSIZE_VECTOR)
+  if (f == JSGRAPHICS_FONTSIZE_VECTOR) {
     name = "Vector";
+    allowXYScaling = false;
+  }
 #endif
   if (f == JSGRAPHICS_FONTSIZE_4X6)
     name = "4x6";
@@ -1340,7 +1369,9 @@ JsVar *jswrap_graphics_getFont(JsVar *parent) {
   }
   if (name) {
     int scale = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
-    if (scale>1) return jsvVarPrintf("%s:%d",name, scale);
+    if (scale & JSGRAPHICS_FONTSIZE_SCALE_X_Y) 
+      return jsvVarPrintf("%s:%dx%d",name, scale&JSGRAPHICS_FONTSIZE_SCALE_X_MASK, (scale & JSGRAPHICS_FONTSIZE_SCALE_Y_MASK)>>JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT);
+    else if (scale>1) return jsvVarPrintf("%s:%d",name, scale);
     else return jsvNewFromString(name);
   }
 #endif
@@ -1408,17 +1439,22 @@ Return the height in pixels of the current font
 static int jswrap_graphics_getFontHeightInternal(JsGraphics *gfx) {
   JsGraphicsFontSize f = gfx->data.fontSize & JSGRAPHICS_FONTSIZE_FONT_MASK;
   unsigned short scale = gfx->data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
+  unsigned short scalex = scale, scaley = scale;
+  if (scale & JSGRAPHICS_FONTSIZE_SCALE_X_Y) {
+    scalex = scale & JSGRAPHICS_FONTSIZE_SCALE_X_MASK;
+    scaley = (scale & JSGRAPHICS_FONTSIZE_SCALE_Y_MASK) >> JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT;
+  }
   if (f == JSGRAPHICS_FONTSIZE_VECTOR) {
-    return scale;
+    return scaley;
   } else if (f == JSGRAPHICS_FONTSIZE_4X6) {
-    return 6*scale;
+    return 6*scaley;
 #ifdef USE_FONT_6X8
   } else if (f == JSGRAPHICS_FONTSIZE_6X8) {
-    return 8*scale;
+    return 8*scaley;
 #endif
 #ifndef SAVE_ON_FLASH
   } else if (f & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
-    return scale*(int)jsvGetIntegerAndUnLock(jsvObjectGetChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0));
+    return scaley*(int)jsvGetIntegerAndUnLock(jsvObjectGetChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0));
 #endif
   }
   return 0;
@@ -1453,8 +1489,12 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
   JsGraphicsFontSize font = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_FONT_MASK;
-  unsigned short scalex = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
-  unsigned short scaley = scalex;
+  unsigned short scale = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
+  unsigned short scalex = scale, scaley = scale;
+  if (scale & JSGRAPHICS_FONTSIZE_SCALE_X_Y) {
+    scalex = scale & JSGRAPHICS_FONTSIZE_SCALE_X_MASK;
+    scaley = (scale & JSGRAPHICS_FONTSIZE_SCALE_Y_MASK) >> JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT;
+  }
   int fontHeight = jswrap_graphics_getFontHeightInternal(&gfx);
 
 #ifndef SAVE_ON_FLASH
@@ -1517,9 +1557,9 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     }
     if (font == JSGRAPHICS_FONTSIZE_VECTOR) {
 #ifndef NO_VECTOR_FONT
-      int w = (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
-      if (x>minX-w && x<maxX  && y>minY-gfx.data.fontSize && y<maxY)
-        graphicsFillVectorChar(&gfx, x, y, gfx.data.fontSize, ch);
+      int w = (int)graphicsVectorCharWidth(&gfx, scalex, ch);
+      if (x>minX-w && x<maxX  && y>minY-scaley && y<maxY)
+        graphicsFillVectorChar(&gfx, x, y, scalex, scaley, ch);
       x+=w;
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_4X6) {
@@ -1622,6 +1662,11 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
 
   JsGraphicsFontSize font = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_FONT_MASK;
   unsigned short scale = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
+  unsigned short scalex = scale, scaley = scale;
+  if (scale & JSGRAPHICS_FONTSIZE_SCALE_X_Y) {
+    scalex = scale & JSGRAPHICS_FONTSIZE_SCALE_X_MASK;
+    scaley = (scale & JSGRAPHICS_FONTSIZE_SCALE_Y_MASK) >> JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT;
+  }
 #ifndef SAVE_ON_FLASH
   JsVar *customWidth = 0;
   int customFirstChar = 0;
@@ -1644,21 +1689,21 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
     }
     if (font == JSGRAPHICS_FONTSIZE_VECTOR) {
 #ifndef NO_VECTOR_FONT
-      width += (int)graphicsVectorCharWidth(&gfx, scale, ch);
+      width += (int)graphicsVectorCharWidth(&gfx, scalex, ch);
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_4X6) {
-      width += 4*scale;
+      width += 4*scalex;
 #ifdef USE_FONT_6X8
     } else if (font == JSGRAPHICS_FONTSIZE_6X8) {
-      width += 6*scale;
+      width += 6*scalex;
 #endif
 #ifndef SAVE_ON_FLASH
     } else if (font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
       if (jsvIsString(customWidth)) {
         if (ch>=customFirstChar)
-          width += scale*(unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-customFirstChar));
+          width += scalex*(unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-customFirstChar));
       } else
-        width += scale*(int)jsvGetInteger(customWidth);
+        width += scalex*(int)jsvGetInteger(customWidth);
 #endif
     }
     jsvStringIteratorNext(&it);

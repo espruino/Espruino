@@ -15,6 +15,7 @@
             Fix for issue with pretokenised code not creating correct text string for reserved words, eg {undefined:1}
             Bangle.js: Turn vibrate off every time a new app loads
             Fix issue where ({a:0}).a in the console would create a ReferenceError (works in code)
+            Graphics: Allow setFont("FontName:1x2") for scaling in 2 directions (fix #2044)
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
