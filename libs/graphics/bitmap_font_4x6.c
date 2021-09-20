@@ -168,7 +168,7 @@ const unsigned short LCD_FONT_4X6[] IN_FLASH_MEMORY = { // from 33 up to 133
     PACK_5_TO_16( _XX , ___ , ___ , ___ , ___ )
 };
 
-NO_INLINE void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, unsigned short size, bool solidBackground) {
+NO_INLINE void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, unsigned short sizex, unsigned short sizey, bool solidBackground) {
   int idx = ((unsigned char)ch) - 33;
   if (idx<0 || idx>=LCD_FONT_4X6_CHARS) {
     // no char for this
@@ -179,15 +179,23 @@ NO_INLINE void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, uns
   int cidx = idx % 5;
   idx = (idx/5)*6;
   int y;
-  int s = size-1;
+  int sx = sizex-1;
+  int sy = sizey-1;
   for (y=0;y<6;y++) {
     int line = READ_FLASH_UINT16(&LCD_FONT_4X6[idx + y]) >> (cidx*3);
-    int ly = y*size + y1;
-    if (solidBackground || line&4) graphicsFillRect(gfx, x1+0*size, ly, x1+s+0*size, ly+s, (line&4) ? gfx->data.fgColor : gfx->data.bgColor);
-    if (solidBackground || line&2) graphicsFillRect(gfx, x1+1*size, ly, x1+s+1*size, ly+s, (line&2) ? gfx->data.fgColor : gfx->data.bgColor);
-    if (solidBackground || line&1) graphicsFillRect(gfx, x1+2*size, ly, x1+s+2*size, ly+s, (line&1) ? gfx->data.fgColor : gfx->data.bgColor);
+    int ly = y*sizey + y1;
+    for (int x=0;x<3;x++) {
+      bool pixel = line&4;
+      if (solidBackground || pixel)
+        graphicsFillRect(
+            gfx,
+            x1+x*sizex, ly,
+            x1+s+x*sizex, ly+sy,
+            pixel ? gfx->data.fgColor : gfx->data.bgColor);
+      line <<= 1;
+    }
   }
-  if (solidBackground) graphicsFillRect(gfx, x1+3*size, y1, x1+s+3*size, y1+size*5+s, gfx->data.bgColor); // fill gap between chars
+  if (solidBackground) graphicsFillRect(gfx, x1+3*sizex, y1, x1+sx+3*sizex, y1+sizey*5+sy, gfx->data.bgColor); // fill gap between chars
 }
 
 

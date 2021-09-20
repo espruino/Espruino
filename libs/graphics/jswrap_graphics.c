@@ -1453,7 +1453,8 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
   JsGraphicsFontSize font = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_FONT_MASK;
-  unsigned short scale = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
+  unsigned short scalex = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
+  unsigned short scaley = scalex;
   int fontHeight = jswrap_graphics_getFontHeightInternal(&gfx);
 
 #ifndef SAVE_ON_FLASH
@@ -1523,13 +1524,13 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
 #endif
     } else if (font == JSGRAPHICS_FONTSIZE_4X6) {
       if (x>minX-4 && x<maxX && y>minY-6 && y<maxY)
-        graphicsDrawChar4x6(&gfx, x, y, ch, scale, solidBackground);
-      x+=4*scale;
+        graphicsDrawChar4x6(&gfx, x, y, ch, scalex, scaley, solidBackground);
+      x+=4*scalex;
 #ifdef USE_FONT_6X8
     } else if (font == JSGRAPHICS_FONTSIZE_6X8) {
       if (x>minX-6 && x<maxX && y>minY-8 && y<maxY)
-        graphicsDrawChar6x8(&gfx, x, y, ch, scale, solidBackground);
-      x+=6*scale;
+        graphicsDrawChar6x8(&gfx, x, y, ch, scalex, scaley, solidBackground);
+      x+=6*scalex;
 #endif
 #ifndef SAVE_ON_FLASH
     } else if (font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
@@ -1551,7 +1552,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
         bmpOffset = width*(ch-customFirstChar);
       }
       if (ch>=customFirstChar && (x>minX-width) && (x<maxX) && (y>minY-fontHeight) && y<maxY) {
-        int ch = fontHeight/scale;
+        int ch = fontHeight/scaley;
         bmpOffset *= ch * customBPP;
         // now render character
         JsvStringIterator cit;
@@ -1565,10 +1566,10 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
             int col = ((citdata&255)>>(8-customBPP));
             if (solidBackground || col)
               graphicsFillRect(&gfx,
-                  (x + cx*scale),
-                  (y + cy*scale),
-                  (x + cx*scale + scale-1),
-                  (y + cy*scale + scale-1),
+                  (x + cx*scalex),
+                  (y + cy*scaley),
+                  (x + cx*scalex + scalex-1),
+                  (y + cy*scaley + scaley-1),
                   graphicsBlendGfxColor(&gfx, (256*col)/customBPPRange));
             bmpOffset += customBPP;
             citdata <<= customBPP;
@@ -1581,7 +1582,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
         }
         jsvStringIteratorFree(&cit);
       }
-      x += width*scale;
+      x += width*scalex;
 #endif
     }
     if (jspIsInterrupted()) break;

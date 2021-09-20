@@ -402,29 +402,35 @@ const uint32_t LCD_FONT_6X8[] IN_FLASH_MEMORY = { // from 33 up...
 };
 
 
-NO_INLINE void graphicsDrawChar6x8(JsGraphics *gfx, int x1, int y1, char ch, unsigned short size, bool solidBackground) {
+NO_INLINE void graphicsDrawChar6x8(JsGraphics *gfx, int x1, int y1, char ch, unsigned short sizex, unsigned short sizey, bool solidBackground) {
   int idx = ((unsigned char)ch) - 33;
   if (idx<0 || idx>=LCD_FONT_6X8_CHARS) {
     // no char for this
     if (solidBackground)
-      graphicsFillRect(gfx, x1, y1, x1+5*size, y1+7*size, gfx->data.bgColor);
+      graphicsFillRect(gfx, x1, y1, x1+5*sizex, y1+7*sizey, gfx->data.bgColor);
     return;
   }
 
   int cidx = idx % 6;
   idx = (idx/6)*8;
   int y;
-  int s = size-1;
+  int sx = sizex-1;
+  int sx = sizey-1;
   for (y=0;y<8;y++) {
     unsigned int line = LCD_FONT_6X8[idx + y] >> (cidx*5);
-    int ly = y*size + y1;
-    if (solidBackground || (line&16)) graphicsFillRect(gfx, x1+0*size, ly, x1+s+0*size, ly+s, (line&16) ? gfx->data.fgColor : gfx->data.bgColor);
-    if (solidBackground || (line&8)) graphicsFillRect(gfx, x1+1*size, ly, x1+s+1*size, ly+s, (line&8) ? gfx->data.fgColor : gfx->data.bgColor);
-    if (solidBackground || (line&4)) graphicsFillRect(gfx, x1+2*size, ly, x1+s+2*size, ly+s, (line&4) ? gfx->data.fgColor : gfx->data.bgColor);
-    if (solidBackground || (line&2)) graphicsFillRect(gfx, x1+3*size, ly, x1+s+3*size, ly+s, (line&2) ? gfx->data.fgColor : gfx->data.bgColor);
-    if (solidBackground || (line&1)) graphicsFillRect(gfx, x1+4*size, ly, x1+s+4*size, ly+s, (line&1) ? gfx->data.fgColor : gfx->data.bgColor);
+    int ly = y*sizey + y1;
+    for (int x=0;x<5;x++) {
+      bool pixel = line&16;
+      if (solidBackground || pixel)
+        graphicsFillRect(
+            gfx,
+            x1+x*sizex, ly,
+            x1+s+x*sizex, ly+sy,
+            pixel ? gfx->data.fgColor : gfx->data.bgColor);
+      line <<= 1;
+    }
   }
-  if (solidBackground) graphicsFillRect(gfx, x1+5*size, y1, x1+s+5*size, y1+size*7+s, gfx->data.bgColor); // fill gap between chars
+  if (solidBackground) graphicsFillRect(gfx, x1+5*sizex, y1, x1+s+5*sizex, y1+sizey*7+sy, gfx->data.bgColor); // fill gap between chars
 }
 
 #endif // USE_FONT_6X8
