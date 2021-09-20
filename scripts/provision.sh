@@ -142,7 +142,7 @@ if [ "$PROVISION_NRF52" = "1" ]; then
     fi
     if ! type nrfutil 2> /dev/null > /dev/null; then
       echo Installing nrfutil
-      sudo pip install --ignore-installed nrfutil protobuf-3.17.3
+      sudo pip install --ignore-installed nrfutil protobuf==3.17.3
       # --ignore-installed is used because pip 10 fails because PyYAML was already installed by the system
       # protobuf-3.17.3 is required because it seems protobuf-3.18 which auto-installs as of ~15 sept 2021 is incompatible with Python 2.7
       # -q can be used to silence the above
