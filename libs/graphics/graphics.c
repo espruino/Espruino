@@ -808,7 +808,7 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
 static void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str) {
   // no need to modify coordinates as setPixel does that
   while (*str) {
-    graphicsDrawChar4x6(gfx,x1,y1,*(str++),1,false);
+    graphicsDrawChar4x6(gfx,x1,y1,*(str++),1,1,false);
     x1 = (int)(x1 + 4);
   }
 }

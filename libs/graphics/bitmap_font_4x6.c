@@ -173,14 +173,12 @@ NO_INLINE void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, uns
   if (idx<0 || idx>=LCD_FONT_4X6_CHARS) {
     // no char for this
     if (solidBackground)
-      graphicsFillRect(gfx, x1, y1, x1+2*size, y1+5*size, gfx->data.bgColor);
+      graphicsFillRect(gfx, x1, y1, x1+2*sizex, y1+5*sizey, gfx->data.bgColor);
     return;
   }
   int cidx = idx % 5;
   idx = (idx/5)*6;
   int y;
-  int sx = sizex-1;
-  int sy = sizey-1;
   for (y=0;y<6;y++) {
     int line = READ_FLASH_UINT16(&LCD_FONT_4X6[idx + y]) >> (cidx*3);
     int ly = y*sizey + y1;
@@ -190,12 +188,17 @@ NO_INLINE void graphicsDrawChar4x6(JsGraphics *gfx, int x1, int y1, char ch, uns
         graphicsFillRect(
             gfx,
             x1+x*sizex, ly,
-            x1+s+x*sizex, ly+sy,
+            x1+x*(sizex+1) - 1, ly+sizey-1,
             pixel ? gfx->data.fgColor : gfx->data.bgColor);
       line <<= 1;
     }
   }
-  if (solidBackground) graphicsFillRect(gfx, x1+3*sizex, y1, x1+sx+3*sizex, y1+sizey*5+sy, gfx->data.bgColor); // fill gap between chars
+  if (solidBackground)
+    graphicsFillRect(
+        gfx,
+        x1+3*sizex, y1,
+        x1+4*sizex-1, y1+sizey*6-1,
+        gfx->data.bgColor); // fill gap between chars
 }
 
 

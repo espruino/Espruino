@@ -415,7 +415,7 @@ NO_INLINE void graphicsDrawChar6x8(JsGraphics *gfx, int x1, int y1, char ch, uns
   idx = (idx/6)*8;
   int y;
   int sx = sizex-1;
-  int sx = sizey-1;
+  int sy = sizey-1;
   for (y=0;y<8;y++) {
     unsigned int line = LCD_FONT_6X8[idx + y] >> (cidx*5);
     int ly = y*sizey + y1;
@@ -425,12 +425,12 @@ NO_INLINE void graphicsDrawChar6x8(JsGraphics *gfx, int x1, int y1, char ch, uns
         graphicsFillRect(
             gfx,
             x1+x*sizex, ly,
-            x1+s+x*sizex, ly+sy,
+            x1+sx+x*sizex, ly+sy,
             pixel ? gfx->data.fgColor : gfx->data.bgColor);
       line <<= 1;
     }
   }
-  if (solidBackground) graphicsFillRect(gfx, x1+5*sizex, y1, x1+s+5*sizex, y1+sizey*7+sy, gfx->data.bgColor); // fill gap between chars
+  if (solidBackground) graphicsFillRect(gfx, x1+5*sizex, y1, x1+sx+5*sizex, y1+sizey*7+sy, gfx->data.bgColor); // fill gap between chars
 }
 
 #endif // USE_FONT_6X8
