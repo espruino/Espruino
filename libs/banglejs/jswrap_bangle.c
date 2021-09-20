@@ -2742,7 +2742,7 @@ NO_INLINE void jswrap_banglejs_init() {
       x -= 4*6;
       const char *s = "Loading...";
       while (*s) {
-        graphicsDrawChar6x8(&gfx, x, y, *s, 1, false);
+        graphicsDrawChar6x8(&gfx, x, y, *s, 1, 1, false);
         x+=6;
         s++;
       }

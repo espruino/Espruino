@@ -133,7 +133,7 @@ void terminalSendChar(char chn) {
         gfx.data.fgColor = -1; // always white on black
         gfx.data.bgColor = 0;
 #endif
-        TERMINAL_CHAR_CMD(&gfx, cx, cy, chn, 1, true/*solid background - so no need to clear*/);
+        TERMINAL_CHAR_CMD(&gfx, cx, cy, chn, 1, 1, true/*solid background - so no need to clear*/);
         gfx.data.fgColor = cf;
         gfx.data.bgColor = cb;
         terminalSetGFX(&gfx);
