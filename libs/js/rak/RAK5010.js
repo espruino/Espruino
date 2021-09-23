@@ -113,7 +113,7 @@ exports.isCharging = function(isCharging) {
   return !PINS.CHG_DET.read();
 };//tested ok
 
-// Return GPS instance. callback is called whenever data is available!
+/// Return undefined. callback(error, gpsInstance) is called when GPS is initialised
 exports.setGPSOn = function(isOn, callback) {
   PINS.GPS_EN.write(isOn);
   if (!isOn) this.setCellOn(false,callback);
