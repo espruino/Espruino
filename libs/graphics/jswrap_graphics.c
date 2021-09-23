@@ -2971,7 +2971,7 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   int height = graphicsGetHeight(&gfx);
   int bpp = gfx.data.bpp;
   if (bpp>1 && bpp<4) bpp=4;
-  else if (bpp<8) bpp=8;
+  else if (bpp>4 && bpp<8) bpp=8;
   bool hasPalette = bpp<=8;
   int rowstride = (((width*bpp)+31) >> 5) << 2; // padded to 32 bits
   // palette length (byte size is 3x this) 
