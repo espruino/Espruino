@@ -344,6 +344,7 @@ else:
   # TX buffer - for print/write/etc
   bufferSizeTX = 32 
   if board.chip["ram"]>=20: bufferSizeTX = 128
+  if board.chip["ram"]>=128: bufferSizeTX = 256
   bufferSizeTimer = 4 if board.chip["ram"]<20 else 16
 
 if 'util_timer_tasks' in board.info:
