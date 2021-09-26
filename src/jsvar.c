@@ -46,7 +46,7 @@ unsigned int jsVarsSize = 0;
 unsigned int jsVarsSize = 0;
 JsVar *jsVars = NULL;
 #else
-JsVar jsVars[JSVAR_CACHE_SIZE];
+JsVar jsVars[JSVAR_CACHE_SIZE] __attribute__((aligned(4)));
 unsigned int jsVarsSize = JSVAR_CACHE_SIZE;
 #endif
 #endif
