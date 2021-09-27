@@ -591,7 +591,9 @@ const char *jshGetDeviceString(
 #ifdef USE_TERMINAL
   case EV_TERMINAL: return "Terminal";
 #endif
+#if USART_COUNT>=1
   case EV_SERIAL1: return "Serial1";
+#endif
 #if USART_COUNT>=2
   case EV_SERIAL2: return "Serial2";
 #endif

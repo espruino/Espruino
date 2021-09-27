@@ -1847,7 +1847,7 @@ static JsVar *jsiExtractIOEventData(IOEvent *event, int *eventsHandled) {
 /** Take an event for a UART and handle the characters we're getting, potentially
  * grabbing more characters as well if it's easy. If more character events are
  * grabbed, the number of extra events (not characters) is returned */
-int jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
+int jsiHandleIOEventForSerial(JsVar *usartClass, IOEvent *event) {
   int eventsHandled = 0;
   JsVar *stringData = jsiExtractIOEventData(event,  &eventsHandled);
   if (stringData) {
@@ -1892,9 +1892,10 @@ void jsiIdle() {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(eventType));
       if (jsvIsObject(usartClass)) {
-        maxEvents -= jsiHandleIOEventForUSART(usartClass, &event);
+        maxEvents -= jsiHandleIOEventForSerial(usartClass, &event);
       }
       jsvUnLock(usartClass);
+#if USART_COUNT>0
     } else if (DEVICE_IS_USART_STATUS(eventType)) {
       // ------------------------------------------------------------------------ SERIAL STATUS CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(event.flags))));
@@ -1905,6 +1906,7 @@ void jsiIdle() {
           jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
       }
       jsvUnLock(usartClass);
+#endif
 #ifdef BLUETOOTH
     } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
       maxEvents -= jsble_exec_pending(&event);

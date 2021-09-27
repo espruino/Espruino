@@ -121,10 +121,14 @@
 #define TWI_ENABLED 0
 #endif // I2C_COUNT
 
+#if USART_COUNT>0
 #define UART_ENABLED 1
 #define UART_EASY_DMA_SUPPORT 0 // 1 in SDK15+
 #define UART0_ENABLED 1
 #define UART0_CONFIG_USE_EASY_DMA 0
+#else
+#define UART_ENABLED 0
+#endif
 
 #define I2S_ENABLED 1
 #endif // NRF5X_SDK_12
