@@ -71,7 +71,7 @@ Returns the version of Espruino as a String
 #ifndef SAVE_ON_FLASH
 /* NOTE: The order of these is very important, as 
 the online compiler has its own copy of this table */
-const void *exportPtrs[] = {
+const void * const exportPtrs[] = {
     jsvLockAgainSafe,
     jsvUnLock,
     jsvSkipName,
