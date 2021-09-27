@@ -69,7 +69,9 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_adc.h"
 #endif
 
+#if USART_COUNT>0
 #include "nrf_drv_uart.h"
+#endif
 #include "nrf_drv_twi.h"
 #ifdef I2C_SLAVE
 #include "nrf_drv_twis.h"
@@ -393,6 +395,8 @@ bool twi1Initialised = false;
 }
 
 #else // NRF5X_SDK_11
+#if USART_COUNT>0
+
 static const nrf_drv_uart_t UART[] = {
     NRF_DRV_UART_INSTANCE(0),
 #if USART_COUNT>1
@@ -401,8 +405,10 @@ static const nrf_drv_uart_t UART[] = {
     NRF_DRV_UART_INSTANCE(1)
 #endif
 };
+#endif
 #endif // NRF5X_SDK_11
 
+#if USART_COUNT>0
 typedef struct {
   uint8_t rxBuffer[2]; // 2 char buffer
   bool isSending;
@@ -410,6 +416,7 @@ typedef struct {
   uint8_t txBuffer[1];
 } PACKED_FLAGS jshUARTState;
 static jshUARTState uart[USART_COUNT];
+#endif
 
 #ifdef SPIFLASH_BASE
 /* 0 means CS is not enabled. If nonzero CS is enabled
@@ -595,6 +602,7 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
       break;
     }
 #endif
+#if USART_COUNT>0
   case JSH_USART1: if (fInfo==JSH_USART_RX) {
                      NRF_UART0->PSELRXD = pin;
                      if (pin==0xFFFFFFFF) nrf_drv_uart_rx_disable(&UART[0]);
@@ -603,6 +611,7 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
                    if (NRF_UART0->PSELRXD==0xFFFFFFFF && NRF_UART0->PSELTXD==0xFFFFFFFF)
                      jshUSARTUnSetup(EV_SERIAL1);
                    break;
+#endif
 #if USART_COUNT>1
   case JSH_USART2: if (fInfo==JSH_USART_RX) {
                      NRF_UARTE1->PSELRXD = pin;
@@ -780,6 +789,7 @@ void jshInit() {
   }
 #endif
 
+#if USART_COUNT>0
 #ifdef MICROBIT2
   if (true) {
 #else
@@ -809,7 +819,7 @@ void jshInit() {
     jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_UNDEFINED);
   }
 #endif
-
+#endif
   // Enable and sort out the timer
   nrf_timer_mode_set(NRF_TIMER1, NRF_TIMER_MODE_TIMER);
 #ifdef NRF52_SERIES
@@ -1651,9 +1661,12 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   if (device==EV_SPI1) return spi0Initialised;
 #endif
   if (device==EV_I2C1) return twi1Initialised;
+#if USART_COUNT>0
   if (DEVICE_IS_USART(device)) return uart[device-EV_SERIAL1].isInitialised;
+#endif
   return false;
 }
+#if USART_COUNT>0
 
 void uart_startrx(int num) {
   uint32_t err_code;
@@ -1774,9 +1787,11 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   }
   uart[num].isInitialised = true;
 }
+#endif
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
+#if USART_COUNT>0
   if (DEVICE_IS_USART(device)) {
     unsigned int num = device-EV_SERIAL1;
     if (uart[num].isInitialised) {
@@ -1787,6 +1802,7 @@ void jshUSARTKick(IOEventFlags device) {
       while (jshGetCharToTransmit(device)>=0);
     }
   }
+#endif
 #ifdef USB
   if (device == EV_USBSERIAL && m_usb_open && !m_usb_transmitting) {
     unsigned int l = 0;
