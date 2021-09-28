@@ -706,6 +706,13 @@ void jswrap_banglejs_pwrHRM(bool on) {
 #ifdef BANGLEJS_F18
   jswrap_banglejs_ioWr(IOEXP_HRM, !on);
 #endif
+#ifdef BANGLEJS_Q3
+  // On Q3 the HRM power is gated, so if we leave
+  // I2C set up it parasitically powers the HRM through
+  // the pullups!
+  if (on) jsi2cSetup(&i2cHRM);
+  else jsi2cUnsetup(&i2cHRM);
+#endif
 #ifdef HEARTRATE_PIN_EN
   jshPinOutput(HEARTRATE_PIN_EN, on);
 #endif
@@ -840,7 +847,6 @@ void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
 /* Scan peripherals for any data that's needed
  * Also, holding down both buttons will reboot */
 void peripheralPollHandler() {
-  //jswrap_banglejs_pwrHRM(true);  // debug using HRM LED
   // Handle watchdog
   if (!(jshPinGetValue(BTN1_PININDEX)
 #ifdef BTN2_PININDEX
@@ -1167,7 +1173,6 @@ void peripheralPollHandler() {
 #endif
 
   i2cBusy = false;
-  //jswrap_banglejs_pwrHRM(false); // debug using HRM LED
 }
 
 #ifdef HEARTRATE
@@ -2533,7 +2538,8 @@ NO_INLINE void jswrap_banglejs_init() {
     i2cHRM.bitrate = 0x7FFFFFFF; // make it as fast as we can go
     i2cHRM.pinSDA = HEARTRATE_PIN_SDA;
     i2cHRM.pinSCL = HEARTRATE_PIN_SCL;
-    jsi2cSetup(&i2cHRM);
+    //jsi2cSetup(&i2cHRM); // we configure when needed in jswrap_banglejs_pwrHRM
+
 #elif defined(ACCEL_PIN_SDA) // assume all the rest just use a global I2C
     jshI2CInitInfo(&i2cInternal);
     i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
