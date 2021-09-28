@@ -79,10 +79,6 @@ const uint16_t PALETTE_8BIT[256] = {
 const uint16_t PALETTE_4BIT_TO_8BIT[16] = { 0, 43, 129, 172, 121, 78, 12, 18, 23, 4, 39, 183, 144, 192, 210, 215 };
 #endif
 
-#ifdef ESPR_GRAPHICS_3BIT
-#define CONVERT_COL_16_TO_3(x) ((((x)&0x8000)?4:0)|(((x)&0x0400)?2:0)|(((x)&0x0010)?1:0))
-#endif
-
 
 /*JSON{
   "type" : "class",
@@ -945,10 +941,6 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
           color=(unsigned int)i;
         }
       }
-#endif
-#ifdef ESPR_GRAPHICS_3BIT
-    } else if (gfx.data.bpp==3) {
-      color = (unsigned int)((bi>>7) | (gi>>7)<<1 | (ri>>7)<<2);
 #endif
     } else
       color = (unsigned int)(((ri+gi+bi)>=384) ? 0xFFFFFFFF : 0);
@@ -2043,9 +2035,6 @@ typedef struct {
   int bufferOffset; // start offset in imageBuffer
   const uint16_t *palettePtr;
   uint32_t paletteMask;
-#ifdef ESPR_GRAPHICS_3BIT
-  bool is16Bit; // are we expecting 16 bit colour?
-#endif
   unsigned int bitMask;
   unsigned int pixelsPerByteMask;
   int stride; // bytes per line
@@ -2089,9 +2078,6 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
         jsvUnLock(v);
         if (l==2 || l==4 || l==8 || l==16 || l==256) {
           info->paletteMask = (uint32_t)(l-1);
-#ifdef ESPR_GRAPHICS_3BIT
-          info->is16Bit = true; // we assume 16 bit if a palette is supplied
-#endif
         } else {
           info->palettePtr = 0;
         }
@@ -2128,9 +2114,6 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
       info->bpp = info->bpp&63;
       int paletteEntries = 1<<info->bpp;
       info->paletteMask = paletteEntries-1;
-#ifdef ESPR_GRAPHICS_3BIT
-      info->is16Bit = true; // we assume 16 bit if a palette is supplied
-#endif
       if (info->bpp <= 2) {
         // if it'll fit, put the palette data in _simplePalette
         int n = info->bufferOffset;
@@ -2188,16 +2171,6 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawIm
     } else if (gfx->data.bpp==8 && info->bpp==4) {
       info->palettePtr = PALETTE_4BIT_TO_8BIT;
       info->paletteMask = 15;
-#ifdef ESPR_GRAPHICS_3BIT
-    } else if (gfx->data.bpp==3 && PALETTE_BPP==16 && info->bpp==4) {
-      info->palettePtr = PALETTE_4BIT;
-      info->paletteMask = 15;
-      info->is16Bit = true;
-    } else if (gfx->data.bpp==3 && PALETTE_BPP==16 && info->bpp==8) {
-      info->palettePtr = PALETTE_8BIT;
-      info->paletteMask = 255;
-      info->is16Bit = true;
-#endif
   #endif
     }
   }
@@ -2433,9 +2406,6 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
           // Try and write pixel!
           if (img.transparentCol!=col) {
             if (img.palettePtr) col = img.palettePtr[col&img.paletteMask];
-#ifdef ESPR_GRAPHICS_3BIT
-            if (img.is16Bit) col = CONVERT_COL_16_TO_3(col);
-#endif
             setPixel(&gfx, x, y, col);
           }
         }
@@ -2502,9 +2472,6 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
               // Try and write pixel!
               if (img.transparentCol!=col && yp>=gfx.data.clipRect.y1 && yp<=gfx.data.clipRect.y2) {
                 if (img.palettePtr) col = img.palettePtr[col&img.paletteMask];
-#ifdef ESPR_GRAPHICS_3BIT
-                if (img.is16Bit) col = CONVERT_COL_16_TO_3(col);
-#endif
                 for (int ix=0;ix<s;ix++) {
                   if (xp>=gfx.data.clipRect.x1 && xp<=gfx.data.clipRect.x2)
                     gfx.setPixel(&gfx, xp, yp, col);
@@ -2543,9 +2510,6 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         _jswrap_drawImageLayerStartX(&l);
         for (x = x1; x <= x2 ; x++) {
           if (_jswrap_drawImageLayerGetPixel(&l, &colData)) {
-#ifdef ESPR_GRAPHICS_3BIT
-            if (l.img.is16Bit) colData = CONVERT_COL_16_TO_3(colData);
-#endif
             setPixel(&gfx, x, y, colData);
           }
           _jswrap_drawImageLayerNextX(&l);
@@ -2671,9 +2635,6 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
         unsigned int colData = 0;
         for (i=layerCount-1;i>=0;i--) {
           if (_jswrap_drawImageLayerGetPixel(&layers[i], &colData)) {
-#ifdef ESPR_GRAPHICS_3BIT
-            if (layers[i].img.is16Bit) colData = CONVERT_COL_16_TO_3(colData);
-#endif
             solid = true;
             break;
           }
@@ -2742,6 +2703,11 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   int w = jswrap_graphics_getWidthOrHeight(parent,false);
   int h = jswrap_graphics_getWidthOrHeight(parent,true);
   int bpp = gfx.data.bpp;
+#ifdef LCD_CONTROLLER_LPM013M126
+  // memory LCD reports bit depth as 16 so it can do dithering
+  // but when we get an image we only want it the real bit depth (3!)
+  if (gfx.data.type==JSGRAPHICSTYPE_MEMLCD) bpp=3;
+#endif
   int len = (w*h*bpp+7)>>3;
 
   JsVar *img = 0;
@@ -2779,7 +2745,12 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
     jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)bpp);
   }
   while (jsvStringIteratorHasChar(&it)) {
-    pixelBits = (pixelBits<<bpp) | graphicsGetPixel(&gfx, x, y);
+    unsigned int pixel = graphicsGetPixel(&gfx, x, y);
+#ifdef LCD_CONTROLLER_LPM013M126
+    if (gfx.data.type==JSGRAPHICSTYPE_MEMLCD)
+      pixel = GRAPHICS_COL_16_TO_3(pixel);
+#endif
+    pixelBits = (pixelBits<<bpp) | pixel;
     pixelBitCnt += (unsigned)bpp;
     x++;
     if (x>=w) {
@@ -2969,7 +2940,13 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   int width = graphicsGetWidth(&gfx);
   int height = graphicsGetHeight(&gfx);
-  int bpp = gfx.data.bpp;
+  int realBPP = gfx.data.bpp;
+#ifdef LCD_CONTROLLER_LPM013M126
+  // memory LCD reports bit depth as 16 so it can do dithering
+  // but when we get a bitmap we only want it the real bit depth (3!)
+  if (gfx.data.type==JSGRAPHICSTYPE_MEMLCD) realBPP=3;
+#endif
+  int bpp = realBPP;
   if (bpp>1 && bpp<4) bpp=4;
   else if (bpp>4 && bpp<8) bpp=8;
   bool hasPalette = bpp<=8;
@@ -3002,21 +2979,21 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
       imgPtr[27]=255;
       imgPtr[28]=255;
     } else {
-      if (gfx.data.bpp==3) {
+      if (realBPP==3) {
         for (int i=0;i<paletteEntries;i++) {
           imgPtr[26 + (i*3)] = (i&1) ? 255 : 0;
           imgPtr[27 + (i*3)] = (i&2) ? 255 : 0;
           imgPtr[28 + (i*3)] = (i&4) ? 255 : 0;
         }
 #if defined(GRAPHICS_PALETTED_IMAGES)
-      } else if (gfx.data.bpp==4) {
+      } else if (realBPP==4) {
         for (int i=0;i<16;i++) {
           int p = PALETTE_4BIT[i];
           imgPtr[26 + (i*3)] = (p<<3)&0xF8;
           imgPtr[27 + (i*3)] = (p>>3)&0xFC;
           imgPtr[28 + (i*3)] = (p>>8)&0xF8;
         }
-      } else if (gfx.data.bpp==8) {
+      } else if (realBPP==8) {
         for (int i=0;i<255;i++) {
           int p = PALETTE_8BIT[i];
           imgPtr[26 + (i*3)] = (p<<3)&0xF8;
@@ -3025,8 +3002,8 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
         }
 #endif
       } else { // otherwise default to greyscale
-        for (int i=0;i<(1<<gfx.data.bpp);i++) {
-          int c = 255 * i / (1<<gfx.data.bpp);
+        for (int i=0;i<(1<<realBPP);i++) {
+          int c = 255 * i / (1<<realBPP);
           imgPtr[26 + (i*3)] = c;
           imgPtr[27 + (i*3)] = c;
           imgPtr[28 + (i*3)] = c;
@@ -3043,7 +3020,12 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
       for (int x=0;x<width;) {
         unsigned int b = 0;
         for (int i=0;i<pixelsPerByte;i++) {
-          b = (b<<bpp)|(graphicsGetPixel(&gfx, x++, y)&pixelMask);
+          unsigned int pixel = graphicsGetPixel(&gfx, x++, y);
+#ifdef LCD_CONTROLLER_LPM013M126
+        if (gfx.data.type==JSGRAPHICSTYPE_MEMLCD)
+          pixel = GRAPHICS_COL_16_TO_3(pixel);
+#endif
+          b = (b<<bpp)|(pixel&pixelMask);
         }
         imgPtr[idx++] = (unsigned char)b;
       }

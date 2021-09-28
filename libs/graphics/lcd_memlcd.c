@@ -27,8 +27,20 @@
 unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/ +4/*allow extra for fast scroll*/];
 bool isBacklightOn;
 
+// bayer dithering pattern
+#define BAYER_RGBSHIFT(b) (b<<13) | (b<<8) | (b<<2)
+const unsigned short BAYER2[2][2] = {
+    { BAYER_RGBSHIFT(1), BAYER_RGBSHIFT(5) },
+    { BAYER_RGBSHIFT(7), BAYER_RGBSHIFT(3) }
+};
 
-
+static unsigned int lcdMemLCD_convert16to3(unsigned int c, int x, int y) {
+  c = (c&0b1110011100011100) + BAYER2[y&1][x&1];
+  return
+      ((c&0x10000)?4:0) |
+      ((c&0x00800)?2:0) |
+      ((c&0x00020)?1:0);
+}
 
 // ======================================================================
 
@@ -37,27 +49,30 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
   int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
   int bit = bitaddr&7;
   uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]); // get in MSB format
-  return ((b<<bit) & 0xE000) >> 13;
+  unsigned int c = ((b<<bit) & 0xE000) >> 13;
 #endif
 #if LCD_BPP==4
   int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
   unsigned char b = lcdBuffer[addr];
-  return (x&1) ? ((b>>1)&7) : (b>>5);
+  unsigned int c = (x&1) ? ((b>>1)&7) : (b>>5);
 #endif
+  return GRAPHICS_COL_3_TO_16(c);
 }
 
 
 void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
+
+  col = lcdMemLCD_convert16to3(col,x,y);
 #if LCD_BPP==3
   int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
   int bit = bitaddr&7;
   uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]);
-  b = (b & (0xFF1FFF>>bit)) | ((col&7)<<(13-bit));
+  b = (b & (0xFF1FFF>>bit)) | (col<<(13-bit));
   *(uint16_t*)&lcdBuffer[bitaddr>>3] = __builtin_bswap16(b);
 #endif
 #if LCD_BPP==4
   int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
-  if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | ((col&7)<<1);
+  if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (col<<1);
   else lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (col << 5);
 #endif
 }
@@ -68,8 +83,9 @@ void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, 
     int bitaddr = LCD_ROWHEADER*8 + (x1*3) + (y*LCD_STRIDE*8);
     for (int x=x1;x<=x2;x++) {
       int bit = bitaddr&7;
+      unsigned int c = lcdMemLCD_convert16to3(col,x,y);
       uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]);
-      b = (b & (0xFF1FFF>>bit)) | ((col&7)<<(13-bit));
+      b = (b & (0xFF1FFF>>bit)) | (c<<(13-bit));
       *(uint16_t*)&lcdBuffer[bitaddr>>3] = __builtin_bswap16(b);
       bitaddr += 3;
     }
@@ -145,7 +161,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
 void lcdMemLCD_init(JsGraphics *gfx) {
   gfx->data.width = LCD_WIDTH;
   gfx->data.height = LCD_HEIGHT;
-  gfx->data.bpp = 3; // always 3 regardless of if we use 3 or 4 for storage
+  gfx->data.bpp = 16; // take color as 16 bit even though we only use 3
   memset(lcdBuffer,0,sizeof(lcdBuffer));
   for (int y=0;y<LCD_HEIGHT;y++) {
 #if LCD_BPP==3

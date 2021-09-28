@@ -2648,13 +2648,13 @@ NO_INLINE void jswrap_banglejs_init() {
   graphicsTheme.fgH = 0xFFFF;
   graphicsTheme.bgH = 0x02F7;
   graphicsTheme.dark = true;
-#else
-  graphicsTheme.fg = 0;
-  graphicsTheme.bg = 7;
-  graphicsTheme.fg2 = 1;
-  graphicsTheme.bg2 = 3;
-  graphicsTheme.fgH = 0;
-  graphicsTheme.bgH = 3;
+#else // still 16 bit, we just want it inverted
+  graphicsTheme.fg = GRAPHICS_COL_3_TO_16(0);
+  graphicsTheme.bg = GRAPHICS_COL_3_TO_16(7);
+  graphicsTheme.fg2 = GRAPHICS_COL_3_TO_16(1);
+  graphicsTheme.bg2 = GRAPHICS_COL_3_TO_16(3);
+  graphicsTheme.fgH = GRAPHICS_COL_3_TO_16(0);
+  graphicsTheme.bgH = GRAPHICS_COL_3_TO_16(3);
   graphicsTheme.dark = false;
 #endif
   //
@@ -2680,6 +2680,7 @@ NO_INLINE void jswrap_banglejs_init() {
   graphicsStructInit(&gfx, LCD_WIDTH, LCD_HEIGHT, LCD_BPP);
 #ifdef LCD_CONTROLLER_LPM013M126
   gfx.data.type = JSGRAPHICSTYPE_MEMLCD;
+  gfx.data.bpp = 16; // hack - so we can dither we pretend we're 16 bit
 #endif
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   gfx.data.type = JSGRAPHICSTYPE_ST7789_8BIT;

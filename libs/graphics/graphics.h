@@ -136,9 +136,7 @@ typedef struct JsGraphics {
 typedef void (*JsGraphicsSetPixelFn)(struct JsGraphics *gfx, int x, int y, unsigned int col);
 
 #ifdef GRAPHICS_THEME
-#if LCD_BPP && LCD_BPP<=8
-typedef unsigned char JsGraphicsThemeColor;
-#elif LCD_BPP && LCD_BPP<=16
+#if LCD_BPP && LCD_BPP<=16
 typedef unsigned short JsGraphicsThemeColor;
 #else
 typedef unsigned int JsGraphicsThemeColor;
@@ -213,5 +211,8 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir);
 void graphicsSplash(JsGraphics *gfx); ///< splash screen
 
 void graphicsIdle(); ///< called when idling
+
+#define GRAPHICS_COL_16_TO_3(x) ((((x)&0x8000)?4:0)|(((x)&0x0400)?2:0)|(((x)&0x0010)?1:0))
+#define GRAPHICS_COL_3_TO_16(x) ((((x)&4)?0xF800:0)|(((x)&2)?0x07E0:0)|(((x)&1)?0x001F:0))
 
 #endif // GRAPHICS_H

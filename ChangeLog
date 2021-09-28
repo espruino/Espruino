@@ -19,6 +19,8 @@
             Graphics: Fix .asBMP for 4 bit images
             Graphics: switch RGB order for palette in asBMP for 4/8 bit images
             Bangle.js 2: Idle power consumption down from 1.3mA to 0.9mA (pullups on HRM disabled when off)
+            Bangle.js 2: Increase reported bit depth from 3->16 and perform bayer dithering when rendering
+              Makes icons/old apps way more usable (plus provides an easy way to get >3bpp)
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
