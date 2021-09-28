@@ -36,6 +36,8 @@ info = {
      'DEFINES+=-DSAVE_ON_FLASH_EXTREME',
      'DEFINES+=-DJSVAR_FORCE_NO_INLINE=1',
      'CFLAGS += -ffreestanding', # needed for SAVE_ON_FLASH_EXTREME (jswrap_math, __aeabi_dsub)
+     'CFLAGS += -D__STARTUP_CLEAR_BSS -DLD_NOSTARTFILES',
+     'LDFLAGS += -nostartfiles',
      'BLACKLIST=boards/MICROBIT1.blocklist', # force some stuff to be removed to save space
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DMICROBIT', # enable microbit-specific stuff
@@ -48,6 +50,9 @@ info = {
    ]
  }
 };
+
+saved_code_pages = 4;
+
 chip = {
   'part' : "NRF51822",
   'family' : "NRF51",
@@ -63,10 +68,10 @@ chip = {
    # If using DFU bootloader, it sits at 0x3C000 - 0x40000 (0x40000 is end of flash)
    # Might want to change 256 -> 240 in the code below
   'saved_code' : {
-    'address' : ((256 - 2) * 1024),
+    'address' : ((256 - saved_code_pages) * 1024),
     'page_size' : 1024,
-    'pages' : 2,
-    'flash_available' : (256 - 108 - 2) # total flash pages - softdevice - saved code
+    'pages' : saved_code_pages,
+    'flash_available' : (256 - 108 - saved_code_pages) # total flash pages - softdevice - saved code
   }
 };
 
