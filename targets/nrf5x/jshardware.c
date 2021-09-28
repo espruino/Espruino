@@ -72,13 +72,17 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #if USART_COUNT>0
 #include "nrf_drv_uart.h"
 #endif
+#if TWI_ENABLED
 #include "nrf_drv_twi.h"
+#endif
 #ifdef I2C_SLAVE
 #include "nrf_drv_twis.h"
 #endif
 #include "nrf_drv_gpiote.h"
 #include "nrf_drv_ppi.h"
+#if SPI_ENABLED
 #include "nrf_drv_spi.h"
+#endif
 #include "nrf5x_utils.h"
 
 #if NRF_SD_BLE_API_VERSION<5
@@ -355,14 +359,15 @@ void spi0EvtHandler(nrf_drv_spi_evt_t const * p_event
   }
 }
 #endif
-
+#if TWI_ENABLED
 static const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
+bool twi1Initialised = false;
+#endif
 #ifdef I2C_SLAVE
 static const nrf_drv_twis_t TWIS1 = NRF_DRV_TWIS_INSTANCE(1);
 static uint8_t twisRxBuf[32]; // receive buffer for I2C slave data
 static uint8_t twisAddr;
 #endif
-bool twi1Initialised = false;
 
 
 #ifdef NRF5X_SDK_11
@@ -522,12 +527,12 @@ void spiFlashSleep() {
 #endif
 
 
-
+#if TWI_ENABLED
 const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
   return 0;
 }
-
+#endif
 #ifdef I2C_SLAVE
 const nrf_drv_twis_t *jshGetTWIS(IOEventFlags device) {
   if (device == EV_I2C1) return &TWIS1;
@@ -628,9 +633,11 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
                  else NRF_SPI0->PSELSCK = pin;
                  break;
 #endif
+#if TWI_ENABLED
   case JSH_I2C1: if (fInfo==JSH_I2C_SDA) NRF_TWI1->PSELSDA = pin;
                  else NRF_TWI1->PSELSCL = pin;
                  break;
+#endif
   default: assert(0);
   }
 }
@@ -1660,7 +1667,9 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 #if SPI_ENABLED
   if (device==EV_SPI1) return spi0Initialised;
 #endif
+#if TWI_ENABLED
   if (device==EV_I2C1) return twi1Initialised;
+#endif
 #if USART_COUNT>0
   if (DEVICE_IS_USART(device)) return uart[device-EV_SERIAL1].isInitialised;
 #endif
@@ -2078,6 +2087,7 @@ static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
 }
 #endif
 
+#if TWI_ENABLED || defined(I2C_SLAVE)
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   if (!jshIsPinValid(inf->pinSCL) || !jshIsPinValid(inf->pinSDA)) {
@@ -2109,8 +2119,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
       nrf_drv_twis_enable(twis);
   } else
 #endif
-
-
+#if TWI_ENABLED
   {
     const nrf_drv_twi_t *twi = jshGetTWI(device);
     if (!twi) return;
@@ -2128,7 +2137,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     else
       nrf_drv_twi_enable(twi);
   }
-  
+#endif  
   // nrf_drv_spi_init will set pins, but this ensures we know so can reset state later
   if (jshIsPinValid(inf->pinSCL)) {
     jshPinSetFunction(inf->pinSCL, JSH_I2C1|JSH_I2C_SCL);
@@ -2137,7 +2146,9 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     jshPinSetFunction(inf->pinSDA, JSH_I2C1|JSH_I2C_SDA);
   }
 }
+#endif
 
+#if TWI_ENABLED
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
   const  nrf_drv_twi_t *twi = jshGetTWI(device);
@@ -2154,6 +2165,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);
 }
+#endif // TWI_ENABLED
 
 
 bool jshFlashWriteProtect(uint32_t addr) {
