@@ -17,6 +17,7 @@
             Fix issue where ({a:0}).a in the console would create a ReferenceError (works in code)
             Graphics: Allow setFont("FontName:1x2") for scaling in 2 directions (fix #2044)
             Graphics: Fix .asBMP for 4 bit images
+            Graphics: switch RGB order for palette in asBMP for 4/8 bit images
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

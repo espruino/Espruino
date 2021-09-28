@@ -3012,16 +3012,16 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
       } else if (gfx.data.bpp==4) {
         for (int i=0;i<16;i++) {
           int p = PALETTE_4BIT[i];
-          imgPtr[26 + (i*3)] = (p>>8)&0xF8;
+          imgPtr[26 + (i*3)] = (p<<3)&0xF8;
           imgPtr[27 + (i*3)] = (p>>3)&0xFC;
-          imgPtr[28 + (i*3)] = (p<<3)&0xF8;
+          imgPtr[28 + (i*3)] = (p>>8)&0xF8;
         }
       } else if (gfx.data.bpp==8) {
         for (int i=0;i<255;i++) {
           int p = PALETTE_8BIT[i];
-          imgPtr[26 + (i*3)] = (p>>8)&0xF8;
+          imgPtr[26 + (i*3)] = (p<<3)&0xF8;
           imgPtr[27 + (i*3)] = (p>>3)&0xFC;
-          imgPtr[28 + (i*3)] = (p<<3)&0xF8;
+          imgPtr[28 + (i*3)] = (p>>8)&0xF8;
         }
 #endif
       } else { // otherwise default to greyscale
