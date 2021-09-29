@@ -1743,6 +1743,17 @@ void jshUSARTUnSetup(IOEventFlags device) {
 
   jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
   nrf_drv_uart_uninit(&UART[num]);
+#ifdef NRF52840
+  /* Fix for +900uA power draw. We *do* call nrf_drv_uart_rx_disable and
+   also tried with nrf_drv_uart_rx_abort but it doesn't fix it. Easier just
+   to do whatever this is (hardware reset?)
+   https://devzone.nordicsemi.com/f/nordic-q-a/26030/how-to-reach-nrf52840-uarte-current-supply-specification/102605#102605
+   */
+  volatile uint32_t *internalReg = (volatile uint32_t *)((size_t)UART[num].uarte.p_reg + 0xFFC);
+  *internalReg = 0;
+  *internalReg;
+  *internalReg = 1;
+#endif
 }
 
 
