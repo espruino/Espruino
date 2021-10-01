@@ -23,6 +23,7 @@
               Makes icons/old apps way more usable (plus provides an easy way to get >3bpp)
             Bangle.js: Fix color palette when rendering 3bpp -> 16bpp
             nRF52840: Fix 900uA UART power draw when shut down
+            nRF52: Send XON/XOFF when buffer is less full - reduce likelihood of FIFO_FULL with big MTUs
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

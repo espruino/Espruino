@@ -180,6 +180,7 @@ linker_etext_var = "_etext"; # End of text (function) section
 # External interrupt count
 exti_count = 16 
 
+
 if board.chip["family"]=="LINUX":
   board.chip["class"]="LINUX"
 elif board.chip["family"]=="EMSCRIPTEN":
@@ -249,7 +250,6 @@ if board.chip["class"]=="MBED":
   """);
 
 codeOut("""
-
 // SYSTICK is the counter that counts up and that we use as the real-time clock
 // The smaller this is, the longer we spend in interrupts, but also the more we can sleep!
 #define SYSTICK_RANGE 0x1000000 // the Maximum (it is a 24 bit counter) - on Olimexino this is about 0.6 sec
@@ -257,13 +257,8 @@ codeOut("""
 
 #define DEFAULT_BUSY_PIN_INDICATOR (Pin)-1 // no indicator
 #define DEFAULT_SLEEP_PIN_INDICATOR (Pin)-1 // no indicator
-
-// When to send the message that the IO buffer is getting full
-#define IOBUFFER_XOFF ((TXBUFFERMASK)*6/8)
-// When to send the message that we can start receiving again
-#define IOBUFFER_XON ((TXBUFFERMASK)*3/8)
-
 """);
+
 
 util_timer = pinutils.get_device_util_timer(board)
 if util_timer!=False:
@@ -326,6 +321,10 @@ if "default_console_baudrate" in board.info:
 
 
 codeOut("");
+
+xoff_thresh = 6 # how full (out of 8) is buffer when we sent the XOFF flow control char to say 'stop'
+xon_thresh = 3 # how full (out of 8) is buffer when we sent the XON flow control char to say 'go'
+
 if LINUX:
   bufferSizeIO = 256
   bufferSizeTX = 256
@@ -340,7 +339,12 @@ else:
   if board.chip["ram"]>=20: bufferSizeIO = 128
   if board.chip["ram"]>=96: bufferSizeIO = 256
   # NRF52 needs this as Bluetooth traffic is funnelled through the buffer
-  if board.chip["family"]=="NRF52": bufferSizeIO = 256
+  if board.chip["family"]=="NRF52": 
+    bufferSizeIO = 256
+    # we often use increased MTUs and even with a big buffer these mean we need to leave
+    # a lot of space when we send XOFF (due to delay in response from sender)
+    xoff_thresh = 4 
+    xon_thresh = 2
   # TX buffer - for print/write/etc
   bufferSizeTX = 32 
   if board.chip["ram"]>=20: bufferSizeTX = 128
@@ -353,6 +357,13 @@ if 'util_timer_tasks' in board.info:
 codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255) amount of items in event buffer - events take 5 bytes each")
 codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255) amount of items in the transmit buffer - 2 bytes each")
 codeOut("#define UTILTIMERTASK_TASKS ("+str(bufferSizeTimer)+") // Must be power of 2 - and max 256")
+
+codeOut("");
+
+codeOut("// When to send the message that the IO buffer is getting full")
+codeOut("#define IOBUFFER_XOFF ((TXBUFFERMASK)*"+str(xoff_thresh)+"/8)")
+codeOut("// When to send the message that we can start receiving again")
+codeOut("#define IOBUFFER_XON ((TXBUFFERMASK)*"+str(xon_thresh)+"/8)")
 
 codeOut("");
 
