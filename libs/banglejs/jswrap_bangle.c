@@ -634,7 +634,7 @@ typedef enum {
   JSBF_LOCKED        = 1<<17,
   JSBF_HRM_INSTANT_LISTENER = 1<<18,
 
-  JSBF_DEFAULT =
+  JSBF_DEFAULT = ///< default at power-on
       JSBF_WAKEON_TWIST|
       JSBF_WAKEON_BTN1|JSBF_WAKEON_BTN2|JSBF_WAKEON_BTN3
 } JsBangleFlags;
@@ -2594,7 +2594,8 @@ NO_INLINE void jswrap_banglejs_init() {
   if (firstRun) {
     bangleFlags = JSBF_DEFAULT | JSBF_LCD_ON | JSBF_LCD_BL_ON; // includes bangleFlags
     lcdBrightness = 255;
-  }
+  } 
+  bangleFlags |= JSBF_POWER_SAVE; // ensure we turn power-save on by default every restart
   inactivityTimer = 0; // reset the LCD timeout timer
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
   backlightTimeout = DEFAULT_BACKLIGHT_TIMEOUT;
