@@ -17,8 +17,8 @@ import pinutils;
 
 info = {
  'name' : "Bangle.js 2", # Using SMA Q3
- 'link' :  [ "https://www.espruino.com/Bangle.js" ],
- 'espruino_page_link' : 'SMAQ3',
+ 'link' :  [ "https://www.espruino.com/Bangle.js2" ],
+ 'espruino_page_link' : 'Bangle.js2',
  'default_console' : "EV_TERMINAL",
  #'default_console' : "EV_SERIAL1",
 # 'default_console_tx' : "D6",
@@ -63,7 +63,7 @@ info = {
      'SOURCES += libs/misc/heartrate.c',
      'SOURCES += libs/misc/hrm_vc31.c',
      'SOURCES += libs/banglejs/banglejs2_storage_default.c',
-     'DEFINES += -DESPR_STORAGE_INTITIAL_CONTENTS=1', # 
+     'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1', # 
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
 
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0xa9,0xae,0xb6',
@@ -177,8 +177,6 @@ def get_pins():
   pins = pinutils.generate_pins(0,47) # 48 General Purpose I/O Pins.
   pinutils.findpin(pins, "PD0", True)["functions"]["XL1"]=0;
   pinutils.findpin(pins, "PD1", True)["functions"]["XL2"]=0;
-  pinutils.findpin(pins, "PD9", True)["functions"]["NFC1"]=0;
-  pinutils.findpin(pins, "PD10", True)["functions"]["NFC2"]=0;
   pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN0"]=0;
   pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN1"]=0;
   pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN2"]=0;

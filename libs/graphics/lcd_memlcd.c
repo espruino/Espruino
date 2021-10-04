@@ -27,6 +27,20 @@
 unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/ +4/*allow extra for fast scroll*/];
 bool isBacklightOn;
 
+#ifdef EMULATED
+bool EMSCRIPTEN_GFX_CHANGED;
+
+bool jsGfxChanged() {
+  bool b = EMSCRIPTEN_GFX_CHANGED;
+  EMSCRIPTEN_GFX_CHANGED = false;
+  return b;
+}
+char *jsGfxGetPtr(int line) {
+  if (line<0 || line>=LCD_HEIGHT) return 0;
+  return &lcdBuffer[LCD_ROWHEADER + (line*LCD_STRIDE)];
+}
+#endif
+
 // bayer dithering pattern
 #define BAYER_RGBSHIFT(b) (b<<13) | (b<<8) | (b<<2)
 const unsigned short BAYER2[2][2] = {
@@ -61,7 +75,9 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 
 
 void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
-
+#ifdef EMULATED
+  EMSCRIPTEN_GFX_CHANGED = true;
+#endif
   col = lcdMemLCD_convert16to3(col,x,y);
 #if LCD_BPP==3
   int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
@@ -79,6 +95,9 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 
 #if LCD_BPP==3
 void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+#ifdef EMULATED
+  EMSCRIPTEN_GFX_CHANGED = true;
+#endif
   for (int y=y1;y<=y2;y++) {
     int bitaddr = LCD_ROWHEADER*8 + (x1*3) + (y*LCD_STRIDE*8);
     for (int x=x1;x<=x2;x++) {
@@ -117,6 +136,9 @@ void lcdMemLCD_scrollX(struct JsGraphics *gfx, unsigned char *dst, unsigned char
 }
 
 void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
+#ifdef EMULATED
+  EMSCRIPTEN_GFX_CHANGED = true;
+#endif
   // if we can't shift entire line in one go, go with the slow method as this case would be a nightmare in 3 bits
   if (x1!=0 || x2!=LCD_WIDTH-1)
     return graphicsFallbackScroll(gfx, xdir, ydir, x1,y1,x2,y2);

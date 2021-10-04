@@ -72,3 +72,7 @@ void jswrap_banglejs_kill();
 bool jswrap_banglejs_idle();
 bool jswrap_banglejs_gps_character(char ch);
 
+
+#ifdef EMULATED
+extern void touchHandlerInternal(int tx, int ty, int pts, int gesture);
+#endif

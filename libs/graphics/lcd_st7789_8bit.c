@@ -74,6 +74,25 @@ int EMSCRIPTEN_GFX_BLIT_X1;
 int EMSCRIPTEN_GFX_BLIT_X2;
 int EMSCRIPTEN_GFX_BLIT_Y1;
 int EMSCRIPTEN_GFX_BLIT_Y2;
+
+bool jsGfxChanged() {
+  bool b = EMSCRIPTEN_GFX_CHANGED;
+  EMSCRIPTEN_GFX_CHANGED = false;
+  return b;
+}
+
+char *jsGfxGetPtr(int line) {
+  if (EMSCRIPTEN_GFX_WIDESCREEN) {
+    if (line<40 || line>=200)
+      return 0;
+  }
+  line += EMSCRIPTEN_GFX_YSTART;
+  if (EMSCRIPTEN_GFX_WIDESCREEN)
+    line -= 40;
+  if (line<0) line+=320;
+  if (line>=320) line-=320;
+  return &EMSCRIPTEN_GFX_BUFFER[line*240*2];
+}
 #endif
 
 #ifndef EMSCRIPTEN

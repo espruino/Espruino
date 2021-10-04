@@ -445,7 +445,7 @@ JshI2CInfo i2cInternal;
 #define DEFAULT_LOCK_TIMEOUT 30000 // in msec - default for lockTimeout
 #endif
 
-#ifdef TOUCH_I2C
+#ifdef TOUCH_DEVICE
 unsigned char touchX, touchY; ///< current touch event coordinates
 unsigned char lastTouchX, lastTouchY; ///< last touch event coordinates - updated when JSBT_DRAG is fired
 bool touchPts, lastTouchPts; ///< whether a fnger is currently touching or not
@@ -674,7 +674,7 @@ typedef enum {
   JSBT_TOUCH_LEFT = 1<<23, ///< touch lhs of touchscreen
   JSBT_TOUCH_RIGHT = 1<<24, ///< touch rhs of touchscreen
   JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
-#ifdef TOUCH_I2C
+#ifdef TOUCH_DEVICE
   JSBT_DRAG = 1<<25,
 #endif
   JSBT_TWIST_EVENT = 1<<26, ///< Watch was twisted
@@ -707,11 +707,13 @@ void jswrap_banglejs_pwrHRM(bool on) {
   jswrap_banglejs_ioWr(IOEXP_HRM, !on);
 #endif
 #ifdef BANGLEJS_Q3
+#ifndef EMULATED
   // On Q3 the HRM power is gated, so if we leave
   // I2C set up it parasitically powers the HRM through
   // the pullups!
   if (on) jsi2cSetup(&i2cHRM);
   else jsi2cUnsetup(&i2cHRM);
+#endif
 #endif
 #ifdef HEARTRATE_PIN_EN
   jshPinOutput(HEARTRATE_PIN_EN, on);
@@ -1328,7 +1330,7 @@ void btn3Handler(bool state, IOEventFlags flags) {
   btnHandlerCommon(3,state,flags);
 }
 #endif
-#if defined(BANGLEJS_F18) || defined(EMSCRIPTEN)
+#if defined(BANGLEJS_F18)
 void btn4Handler(bool state, IOEventFlags flags) {
   if (btnTouchHandler()) return;
   btnHandlerCommon(4,state,flags);
@@ -1343,28 +1345,14 @@ void btn4Handler(bool state, IOEventFlags flags) {
 }
 #endif
 
-#ifdef TOUCH_I2C
-void touchHandler(bool state, IOEventFlags flags) {
-  if (state) return; // only interested in when low
-  // Ok, now get touch info
-  unsigned char buf[6];
-  buf[0]=1;
-  jsi2cWrite(TOUCH_I2C, TOUCH_ADDR, 1, buf, false);
-  jsi2cRead(TOUCH_I2C, TOUCH_ADDR, 6, buf, true);
-
+#ifdef TOUCH_DEVICE // so it's available even in emulator
+void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
   // ignore if locked
   if (bangleFlags & JSBF_LOCKED) return;
 
-  // 0: Gesture type
-  // 1: touch pts (0 or 1)
-  // 2: Status / X hi (0x00 first, 0x80 pressed, 0x40 released)
-  // 3: X lo (0..160)
-  // 4: Y hi
-  // 5: Y lo (0..160)
-  touchX = buf[3] * LCD_WIDTH / 160;
-  touchY = buf[5] * LCD_HEIGHT / 160;
-  touchPts = buf[1];
-  int gesture = buf[0];
+  touchX = tx;
+  touchY = ty;
+  touchPts = pts;
   static int lastGesture = 0;
   if (gesture!=lastGesture) {
     switch (gesture) { // gesture
@@ -1408,6 +1396,29 @@ void touchHandler(bool state, IOEventFlags flags) {
   lastGesture = gesture;
 }
 #endif
+#ifdef TOUCH_I2C
+void touchHandler(bool state, IOEventFlags flags) {
+  if (state) return; // only interested in when low
+  // Ok, now get touch info
+  unsigned char buf[6];
+  buf[0]=1;
+  jsi2cWrite(TOUCH_I2C, TOUCH_ADDR, 1, buf, false);
+  jsi2cRead(TOUCH_I2C, TOUCH_ADDR, 6, buf, true);
+
+  // 0: Gesture type
+  // 1: touch pts (0 or 1)
+  // 2: Status / X hi (0x00 first, 0x80 pressed, 0x40 released)
+  // 3: X lo (0..160)
+  // 4: Y hi
+  // 5: Y lo (0..160)
+  touchHandlerInternal(
+    buf[3] * LCD_WIDTH / 160, // touchX
+    buf[5] * LCD_HEIGHT / 160, // touchY
+    buf[1], // touchPts
+    buf[0]); // gesture
+}
+#endif
+
 
 static void jswrap_banglejs_setLCDPowerController(bool isOn) {
 #ifdef LCD_CONTROLLER_LPM013M126
@@ -3320,7 +3331,7 @@ bool jswrap_banglejs_idle() {
       jsvUnLockMany(2,o);
     }
     if (bangleTasks & JSBT_TOUCH_MASK) {
-#ifdef TOUCH_I2C
+#ifdef TOUCH_DEVICE
       JsVar *o[2] = {
           jsvNewFromInteger(((bangleTasks & JSBT_TOUCH_LEFT)?1:0) |
                             ((bangleTasks & JSBT_TOUCH_RIGHT)?2:0)),
@@ -3339,7 +3350,7 @@ bool jswrap_banglejs_idle() {
 #endif
     }
   }
-#ifdef TOUCH_I2C
+#ifdef TOUCH_DEVICE
   if (bangleTasks & JSBT_DRAG) {
     JsVar *o = jsvNewObject();
     jsvObjectSetChildAndUnLock(o, "x", jsvNewFromInteger(touchX));
