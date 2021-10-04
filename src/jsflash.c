@@ -562,13 +562,12 @@ void jsfDebugFiles() {
  * For instance the first page may be blank but other pages
  * may contain info (which is invalid)...
  */
-bool jsfIsStorageValid(bool fullTest) {
+bool jsfIsStorageValid(JsfStorageTestType testType) {
   uint32_t addr = JSF_START_ADDRESS;
   uint32_t oldAddr = addr;
   JsfFileHeader header;
   unsigned char *headerPtr = (unsigned char *)&header;
 
-  // TODO: what if storage is FULL?
   bool valid = jsfGetFileHeader(addr, &header, true);
   if (valid) {
     while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL)) {
@@ -586,10 +585,10 @@ bool jsfIsStorageValid(bool fullTest) {
   for (size_t i=0;i<sizeof(JsfFileHeader);i++)
     if (headerPtr[i]!=0xFF) allFF=false;
 
-  if (allFF && addr && fullTest) {
+  if (allFF && ((addr && testType==JSFSTT_ALL) || // FULL: always search the remaining area
+                (addr==JSF_START_ADDRESS && testType==JSFSTT_NORMAL))) { // NORMAL: if no files, only search everything if storage is empty
     return jsfIsErased(addr, JSF_END_ADDRESS-addr);
   }
-
   return allFF;
 }
 

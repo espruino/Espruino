@@ -70,6 +70,12 @@ bool jsfCompact();
 JsVar *jsfListFiles(JsVar *regex, JsfFileFlags containing, JsfFileFlags notContaining);
 /// Output debug info for files stored in flash storage
 void jsfDebugFiles();
+
+typedef enum {
+  JSFSTT_QUICK,  ///< Just files
+  JSFSTT_NORMAL, ///< Just files, or all space if storage empty
+  JSFSTT_ALL     ///< all space, including empty space
+} JsfStorageTestType;
 /** Return false if the current storage is not valid
  * or is corrupt somehow. Basically that means if
  * jsfGet[Next]FileHeader returns false but the header isn't all FF
@@ -78,7 +84,7 @@ void jsfDebugFiles();
  * For instance the first page may be blank but other pages
  * may contain info (which is invalid)...
  */
-bool jsfIsStorageValid(bool fullTest);
+bool jsfIsStorageValid(JsfStorageTestType testType);
 /** Return true if there is nothing at all in Storage (first header on first page is all 0xFF) */
 bool jsfIsStorageEmpty();
 // Get the amount of space free in this page (or all pages). addr=0 uses start page
