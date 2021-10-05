@@ -187,7 +187,7 @@ static void vc31_adjust() {
     vcInfo.adjustInfo.directionLastBefore = vcInfo.adjustInfo.directionLast;
     vcInfo.adjustInfo.directionLast = AdjustDirection_Up;
   } else if (vcInfo.ppgValue < VC31_PPG_LIMIT_L) {
-    //if (vcInfo.currentValue > VC31_CURRENT_LIMIT_L)
+    if (vcInfo.currentValue > VC31_CURRENT_LIMIT_L)
     {
       if (vcInfo.adjustInfo.directionLast == AdjustDirection_Up) {
         vcInfo.adjustInfo.step *= VC31_ADJUST_FACTOR_DECREASE;
@@ -278,6 +278,7 @@ void hrm_sensor_on(HrmCallback callback) {
   uint8_t ctrl = VC31_CTRL_OPA_GAIN_25 | VC31_CTRL_ENABLE_PPG | VC31_CTRL_ENABLE_PRE |
                  VC31_CTRL_WORK_MODE | VC31_CTRL_INT_DIR_RISING;
   vc31_w(VC31_CTRL, ctrl);
+  vc31_w16(VC31_GREEN_ADJ, 0xe8c3);
 
   memset(&vcInfo, 0, sizeof(vcInfo));
   vcInfo.ppgOffset = 0;
@@ -286,8 +287,6 @@ void hrm_sensor_on(HrmCallback callback) {
   vcInfo.adjustInfo.directionLast = AdjustDirection_Null;
 
   vc31_watch_on();
-
-  //vc31_w16(VC31_GREEN_ADJ, 0xe8c3);
 }
 
 void hrm_sensor_off() {
