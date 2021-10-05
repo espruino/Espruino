@@ -4617,7 +4617,7 @@ you could make all clocks start the launcher with a swipe by using:
     "class" : "Bangle",
     "name" : "factoryReset",
     "generate" : "jswrap_banglejs_factoryReset",
-    "ifdef" : "BANGLEJS_Q3"
+    "#if" : "defined(BANGLEJS_Q3) || defined(EMULATED)"
 }
 
 Erase all storage and reload it with the default
