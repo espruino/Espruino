@@ -16,7 +16,7 @@ About
 
 Espruino is a JavaScript interpreter for microcontrollers. It is designed for devices with as little as 128kB Flash and 8kB RAM.
 
-Please support Espruino by [ordering one of our official boards](http://www.espruino.com/Order) or [donating](http://www.espruino.com/Download)
+Please support Espruino by [ordering one of our official boards](http://www.espruino.com/Order) or [donating](http://www.espruino.com/Donate)
 
 
 Documentation
