@@ -4295,8 +4295,9 @@ JsVar *jswrap_banglejs_getLogo() {
         105, 104, 80, 76, 230, 3, 129, 51, 130 };
 #endif
   JsVar *v = jsvNewNativeString((char*)&img_compressed[0], sizeof(img_compressed));
-  JsVar *img = jsvGetArrayBufferBackingString(jswrap_heatshrink_decompress(v));
-  jsvUnLock(v);
+  JsVar *ab = jswrap_heatshrink_decompress(v);
+  JsVar *img = jsvGetArrayBufferBackingString(ab);
+  jsvUnLock2(v,ab);
   return img;
 }
 
