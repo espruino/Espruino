@@ -457,6 +457,17 @@ static void spiFlashWriteCS(unsigned char *tx, unsigned int len) {
   spiFlashWrite(tx,len);
   nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
 }
+/* Get SPI flash status bits:
+
+ 128  64  32  16   8    4    2    1
+SRWD   -   -  BP2 BP1  BP0  WEL  WIP
+
+WIP - write in progress
+WEL - write enable
+BP0/1/2 - block protect
+SRWD - status reg write protect
+
+*/
 static unsigned char spiFlashStatus() {
   unsigned char buf = 5;
   NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
@@ -725,17 +736,25 @@ void jshResetPeripherals() {
   spiFlashWakeUp();
 #endif
 
-  // disable lock bits
-  // wait for write enable
+  // disable block protect 0/1/2
   unsigned char buf[2];
-  int timeout = 1000;
-  while (timeout-- && !(spiFlashStatus()&2)) {
-    buf[0] = 6; // write enable
-    spiFlashWriteCS(buf,1);
-  }
-  buf[0] = 1; // write status register
-  buf[1] = 0;
-  spiFlashWriteCS(buf,2);
+  int tries = 3;
+  // disable lock bits on SPI flash
+  do {
+    // wait for write enable
+    int timeout = 1000;
+    while (timeout-- && !(spiFlashStatus()&2)) {
+      buf[0] = 6; // write enable
+      spiFlashWriteCS(buf,1);
+      jshDelayMicroseconds(10);
+    }
+    jshDelayMicroseconds(10);
+    buf[0] = 1; // write status register, disable BP0/1/2
+    buf[1] = 0;
+    spiFlashWriteCS(buf,2);
+    jshDelayMicroseconds(10);
+    // keep trying in case it didn't work first time
+  } while (tries-- && (spiFlashStatus()&28)/*check BP0/1/2*/);
 #endif
 #ifdef NRF52_SERIES
   nrf_analog_read_interrupted = false;

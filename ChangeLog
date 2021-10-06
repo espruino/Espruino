@@ -34,6 +34,7 @@
             Graphics: fix rotated/scaled rendering of 3 bit bitmaps (fix #2049)
             Bangle.js: fix Bangle.getLogo memory leak
             Bangle.js2: Graphics.getBPP now returns 3
+            Bangle.js: attempt to unlock SPI flash multiple times (some devices don't unlock on the first attempt)
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
