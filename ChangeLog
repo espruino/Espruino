@@ -26,6 +26,7 @@
             nRF52: Send XON/XOFF when buffer is less full - reduce likelihood of FIFO_FULL with big MTUs
             Bangle.js: Fix powerSave regression (should default to 'on', but didn't since 2v10)
             Storage test on boot only tests storage fully if the first record is empty
+            Graphics: drawString now accepts images in-line (fix #2063)
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

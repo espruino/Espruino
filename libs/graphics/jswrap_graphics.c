@@ -80,6 +80,322 @@ const uint16_t PALETTE_4BIT_TO_8BIT[16] = { 0, 43, 129, 172, 121, 78, 12, 18, 23
 #endif
 
 
+// ==========================================================================================
+
+/// Info about an image to be used for rendering
+typedef struct {
+  int width, height, bpp;
+  bool isTransparent;
+  unsigned int transparentCol;
+  JsVar *buffer; // must be unlocked!
+  uint32_t bufferOffset; // start offset in imageBuffer
+  const uint16_t *palettePtr;
+  uint32_t paletteMask;
+  unsigned int bitMask;
+  unsigned int pixelsPerByteMask;
+  int stride; ///< bytes per line
+  unsigned short headerLength; ///< size of header (inc palette)
+  unsigned short bitmapLength; ///< size of data (excl header)
+
+  uint16_t _simplePalette[4]; // used when a palette is created for rendering
+} GfxDrawImageInfo;
+
+/** Parse an image into GfxDrawImageInfo. See drawImage for image format docs. Returns true on success.
+ * if 'image' is a string or ArrayBuffer, imageOffset is the offset within that (usually 0)
+ */
+static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int imageOffset, GfxDrawImageInfo *info) {
+  memset(info, 0, sizeof(GfxDrawImageInfo));
+#ifndef SAVE_ON_FLASH
+  if (jsvIsObject(image) && jsvIsInstanceOf(image,"Graphics")) {
+    JsGraphics ig;
+    if (!graphicsGetFromVar(&ig, image)) return false;
+    if (ig.data.type!=JSGRAPHICSTYPE_ARRAYBUFFER) return false; // if not arraybuffer Graphics, bail out
+    info->width = ig.data.width;
+    info->height = ig.data.height;
+    info->bpp = ig.data.bpp;
+    JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
+    info->buffer = jsvGetArrayBufferBackingString(buf);
+    jsvUnLock(buf);
+    info->bufferOffset = 0;
+#else
+  if (false) {
+#endif
+  } else if (jsvIsObject(image)) {
+    info->width = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
+    info->height = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
+    info->bpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
+    if (info->bpp<=0) info->bpp=1;
+    JsVar *v;
+    v = jsvObjectGetChild(image, "transparent", 0);
+    info->isTransparent = v!=0;
+    info->transparentCol = (unsigned int)jsvGetIntegerAndUnLock(v);
+#ifndef SAVE_ON_FLASH_EXTREME
+    v = jsvObjectGetChild(image, "palette", 0);
+    if (v) {
+      if (jsvIsArrayBuffer(v) && v->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16) {
+        size_t l = 0;
+        info->palettePtr = (uint16_t *)jsvGetDataPointer(v, &l);
+        jsvUnLock(v);
+        if (l==2 || l==4 || l==8 || l==16 || l==256) {
+          info->paletteMask = (uint32_t)(l-1);
+        } else {
+          info->palettePtr = 0;
+        }
+      } else
+        jsvUnLock(v);
+      if (!info->palettePtr) {
+        jsExceptionHere(JSET_ERROR, "Palette specified, but must be a flat Uint16Array of 2,4,8,16,256 elements");
+        return false;
+      }
+    }
+#endif
+    JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
+    info->buffer = jsvGetArrayBufferBackingString(buf);
+    jsvUnLock(buf);
+    info->bufferOffset = imageOffset;
+  } else if (jsvIsString(image) || jsvIsArrayBuffer(image)) {
+    if (jsvIsArrayBuffer(image)) {
+      info->buffer = jsvGetArrayBufferBackingString(image);
+    } else {
+      info->buffer = jsvLockAgain(image);
+    }
+    info->width = (unsigned char)jsvGetCharInString(info->buffer,imageOffset);
+    info->height = (unsigned char)jsvGetCharInString(info->buffer,imageOffset+1);
+    info->bpp = (unsigned char)jsvGetCharInString(info->buffer,imageOffset+2);
+    info->bufferOffset = imageOffset;
+    if (info->bpp & 128) {
+      info->bpp = info->bpp&127;
+      info->isTransparent = true;
+      info->transparentCol = (unsigned char)jsvGetCharInString(info->buffer,imageOffset+3);
+      info->headerLength = 4;
+    } else {
+      info->headerLength = 3;
+    }
+    if (info->bpp & 64) { // included palette data
+      info->bpp = info->bpp&63;
+      int paletteEntries = 1<<info->bpp;
+      info->paletteMask = (uint32_t)paletteEntries-1;
+      if (info->bpp <= 2) {
+        // if it'll fit, put the palette data in _simplePalette
+        uint32_t n = info->bufferOffset;
+        for (int i=0;i<paletteEntries;i++)
+          info->_simplePalette[i] =
+            ((unsigned char)jsvGetCharInString(info->buffer,n++)) |
+            ((unsigned char)jsvGetCharInString(info->buffer,n++))<<8;
+        info->palettePtr = info->_simplePalette;
+      } else if (info->bpp<=8) { // otherwise if data is memory-mapped, use direct
+        int imgStart = info->bufferOffset + paletteEntries*2;
+        size_t dataLen = 0;
+        char *dataPtr = jsvGetDataPointer(info->buffer, &dataLen);
+        if (info->bpp<=8 && dataPtr && imgStart<dataLen) {
+          info->paletteMask = (uint32_t)(paletteEntries-1);
+          info->palettePtr = (uint16_t*)&dataPtr[info->bufferOffset+info->headerLength];
+        }
+      }
+      if (!info->palettePtr) {
+        jsExceptionHere(JSET_ERROR, "Unable to get pointer to palette. Image in flash?");
+        return false;
+      }
+      // modify image start
+      info->headerLength += (unsigned short)(paletteEntries*2);
+    }
+    // update image start in memory
+    info->bufferOffset += info->headerLength;
+  } else {
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
+    return 0;
+  }
+  if (!info->isTransparent)
+    info->transparentCol = 0xFFFFFFFF;
+
+  if (info->palettePtr==0) {
+    if (info->bpp==1) {
+      info->_simplePalette[0] = (uint16_t)gfx->data.bgColor;
+      info->_simplePalette[1] = (uint16_t)gfx->data.fgColor;
+      info->palettePtr = info->_simplePalette;
+      info->paletteMask = 1;
+  #ifdef GRAPHICS_PALETTED_IMAGES
+    } else if (info->bpp==2) { // Blend from bg to fg
+      info->_simplePalette[0] = (uint16_t)gfx->data.bgColor;
+      info->_simplePalette[1] = (uint16_t)graphicsBlendGfxColor(gfx, 85);
+      info->_simplePalette[2] = (uint16_t)graphicsBlendGfxColor(gfx, 171);
+      info->_simplePalette[3] = (uint16_t)gfx->data.fgColor;
+      info->palettePtr = info->_simplePalette;
+      info->paletteMask = 3;
+    } else if (gfx->data.bpp==PALETTE_BPP && info->bpp==3) { // palette is 16 bits, so don't use it for other things
+      info->palettePtr = PALETTE_3BIT;
+      info->paletteMask = 7;
+    } else if (gfx->data.bpp==PALETTE_BPP && info->bpp==4) { // palette is 16 bits, so don't use it for other things
+      info->palettePtr = PALETTE_4BIT;
+      info->paletteMask = 15;
+    } else if (gfx->data.bpp==PALETTE_BPP && info->bpp==8) { // palette is 16 bits, so don't use it for other things
+      info->palettePtr = PALETTE_8BIT;
+      info->paletteMask = 255;
+    } else if (gfx->data.bpp==8 && info->bpp==4) {
+      info->palettePtr = PALETTE_4BIT_TO_8BIT;
+      info->paletteMask = 15;
+  #endif
+    }
+  }
+
+  if ((!jsvIsString(info->buffer)) ||
+      info->width<=0 ||
+      info->height<=0 ||
+      info->bpp>32) {
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to a valid Image");
+    jsvUnLock(info->buffer);
+    return false;
+  }
+  info->bitMask = (unsigned int)((1L<<info->bpp)-1L);
+  info->pixelsPerByteMask = (unsigned int)((info->bpp<8)?(8/info->bpp)-1:0);
+  info->stride = (info->width*info->bpp + 7)>>3;
+  info->bitmapLength = (info->width*info->height*info->bpp + 7)>>3;
+  return true;
+}
+
+/// This is for rotating and scaling layers
+typedef struct {
+  int x1,y1,x2,y2; //x2/y2 is exclusive
+  double rotate; // radians
+  double scale; // 1 = 1:1, 2 = big
+  bool center; // center on x1/y1 (which are then offset)
+  bool repeat; // tile the image
+  GfxDrawImageInfo img;
+  // for rendering
+  JsvStringIterator it;
+  int mx,my; //< max - width and height << 8
+  int sx,sy; //< iterator X increment
+  int px,py; //< y iterator position
+  int qx,qy; //< x iterator position
+} GfxDrawImageLayer;
+
+bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) {
+  int qx = l->qx+127;
+  int qy = l->qy+127;
+  if (qx>=0 && qy>=0 && qx<l->mx && qy<l->my) {
+    unsigned int colData = 0;
+    int imagex = qx>>8;
+    int imagey = qy>>8;
+   // TODO: getter callback for speed?
+#ifndef SAVE_ON_FLASH
+   if (l->img.bpp==8) { // fast path for 8 bits
+     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+imagex+(imagey*l->img.stride)));
+     colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
+   } else
+#endif
+   {
+     int pixelOffset = (imagex+(imagey*l->img.width));
+     int bitOffset = pixelOffset*l->img.bpp;
+     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+(bitOffset>>3)));
+     colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
+     for (int b=8;b<l->img.bpp;b+=8) {
+       jsvStringIteratorNext(&l->it);
+       colData = (colData<<8) | (unsigned char)jsvStringIteratorGetChar(&l->it);
+     }
+     colData = (colData>>((l->img.pixelsPerByteMask-((unsigned)pixelOffset&l->img.pixelsPerByteMask))*(unsigned)l->img.bpp)) & l->img.bitMask;
+   }
+   if (l->img.transparentCol!=colData) {
+     if (l->img.palettePtr) colData = l->img.palettePtr[colData&l->img.paletteMask];
+     *result = colData;
+     return true;
+   }
+  }
+  return false;
+}
+NO_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
+  // image max
+  l->mx = l->img.width<<8;
+  l->my = l->img.height<<8;
+  // step values for blitting rotated image
+  double vcos = cos(l->rotate);
+  double vsin = sin(l->rotate);
+  l->sx = (int)((vcos/l->scale)*256 + 0.5);
+  l->sy = (int)((vsin/l->scale)*256 + 0.5);
+  // work out actual image width and height
+  int iw = (int)(0.5 + l->scale*(l->img.width*fabs(vcos) + l->img.height*fabs(vsin)));
+  int ih = (int)(0.5 + l->scale*(l->img.width*fabs(vsin) + l->img.height*fabs(vcos)));
+  // if rotating, offset our start position from center
+  if (l->center) {
+    l->x1 -= iw/2;
+    l->y1 -= ih/2;
+  }
+  l->x2 = l->x1 + iw;
+  l->y2 = l->y1 + ih;
+  // work out start position in the image
+  int centerx = l->img.width*128;
+  int centery = l->img.height*128;
+  l->px = centerx - (1 + (l->sx*iw) + (l->sy*ih)) / 2;
+  l->py = centery - (1 + (l->sx*ih) - (l->sy*iw)) / 2;
+  // handle repetition
+  if (l->repeat) {
+    // for the range we're in, it's quicker/easier than modulo
+    while (l->px < 0) l->px += l->mx;
+    while (l->px >= l->mx) l->px -= l->mx;
+    while (l->py < 0) l->py += l->my;
+    while (l->py >= l->my) l->py -= l->my;
+  }
+}
+NO_INLINE void _jswrap_drawImageLayerSetStart(GfxDrawImageLayer *l, int x, int y) {
+  int dx = x - l->x1;
+  int dy = y - l->y1;
+  l->px += l->sx*dx + l->sy*dy;
+  l->py += l->sx*dy - l->sy*dx;
+}
+NO_INLINE void _jswrap_drawImageLayerStartX(GfxDrawImageLayer *l) {
+  l->qx = l->px;
+  l->qy = l->py;
+}
+ALWAYS_INLINE void _jswrap_drawImageLayerNextX(GfxDrawImageLayer *l) {
+  l->qx += l->sx;
+  l->qy -= l->sy;
+}
+// Handle repeats
+ALWAYS_INLINE void _jswrap_drawImageLayerNextXRepeat(GfxDrawImageLayer *l) {
+  if (l->repeat) {
+    // for the range we're in, it's quicker/easier than modulo
+    if (l->qx < 0) l->qx += l->mx;
+    if (l->qx >= l->mx) l->qx -= l->mx;
+    if (l->qy < 0) l->qy += l->my;
+    if (l->qy >= l->my) l->qy -= l->my;
+  }
+}
+NO_INLINE void _jswrap_drawImageLayerNextY(GfxDrawImageLayer *l) {
+  l->px += l->sy;
+  l->py += l->sx;
+  if (l->repeat) {
+    // for the range we're in, it's quicker/easier than modulo
+    if (l->px < 0) l->px += l->mx;
+    if (l->px >= l->mx) l->px -= l->mx;
+    if (l->py < 0) l->py += l->my;
+    if (l->py >= l->my) l->py -= l->my;
+  }
+}
+
+NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxDrawImageInfo *img, JsvStringIterator *it) {
+  int bits=0, colData=0;
+  JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelUnclippedFn(gfx, xPos, yPos, xPos+img->width-1, yPos+img->height-1);
+  for (int y=yPos;y<yPos+img->height;y++) {
+    for (int x=xPos;x<xPos+img->width;x++) {
+      // Get the data we need...
+      while (bits < img->bpp) {
+        colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetCharAndNext(it));
+        bits += 8;
+      }
+      // extract just the bits we want
+      unsigned int col = (colData>>(bits-img->bpp))&img->bitMask;
+      bits -= img->bpp;
+      // Try and write pixel!
+      if (img->transparentCol!=col) {
+        if (img->palettePtr) col = img->palettePtr[col&img->paletteMask];
+        setPixel(gfx, x, y, col);
+      }
+    }
+  }
+}
+
+// ==========================================================================================
+
+
 /*JSON{
   "type" : "class",
   "class" : "Graphics"
@@ -435,9 +751,12 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
-      if (x==0 && y==0) startCharacter = 1; // ignore first character
-      x=0;
-      y++;
+      if (x==0 && y==0) {
+        startCharacter = 1; // ignore first character
+      } else {
+        x=0;
+        y++;
+      }
     } else {
       if (y>=height) height=y+1;
       x++;
@@ -1475,7 +1794,25 @@ int jswrap_graphics_getFontHeight(JsVar *parent) {
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-Draw a string of text in the current font
+Draw a string of text in the current font.
+
+```
+g.drawString("Hello World", 10, 10);
+```
+
+Images may also be embedded inside strings (eg to render Emoji or characters not in the current font).
+To do this, just add `0` then the image string ([about Images](http://www.espruino.com/Graphics#images-bitmaps))
+For example:
+
+```
+g.drawString("Hi \0\7\5\1\x82 D\x17\xC0");
+// draws:
+// # #  #      #     #
+// # #            #
+// ### ##         #
+// # #  #      #     #
+// # # ###      #####
+```
 */
 JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool solidBackground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -1547,6 +1884,20 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
       y += fontHeight;
       continue;
     }
+#ifndef SAVE_ON_FLASH
+    if (ch==0) { // If images are described in-line in the string, render them
+      GfxDrawImageInfo img;
+      size_t idx = jsvStringIteratorGetIndex(&it);
+      if (_jswrap_graphics_parseImage(&gfx, str, idx, &img)) {
+        jsvStringIteratorGoto(&it, str, idx+img.headerLength);
+        _jswrap_drawImageSimple(&gfx, x, y, &img, &it);
+        jsvUnLock(img.buffer);
+        // string iterator now points to the next char after image
+        x += img.width;
+      }
+      continue;
+    }
+#endif
     if (font == JSGRAPHICS_FONTSIZE_VECTOR) {
 #ifndef NO_VECTOR_FONT
       int w = (int)graphicsVectorCharWidth(&gfx, scalex, ch);
@@ -1674,11 +2025,24 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   int width = 0;
   int maxWidth = 0;
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
+    char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
       if (width>maxWidth) maxWidth=width;
       width = 0;
     }
+#ifndef SAVE_ON_FLASH
+    if (ch==0) { // If images are described in-line in the string, render them
+      GfxDrawImageInfo img;
+      size_t idx = jsvStringIteratorGetIndex(&it);
+      if (_jswrap_graphics_parseImage(&gfx, str, idx, &img)) {
+        jsvStringIteratorGoto(&it, str, idx+img.headerLength+img.bitmapLength);
+        jsvUnLock(img.buffer);
+        // string iterator now points to the next char after image
+        width += img.width;
+      }
+      continue;
+    }
+#endif
     if (font == JSGRAPHICS_FONTSIZE_VECTOR) {
 #ifndef NO_VECTOR_FONT
       width += (int)graphicsVectorCharWidth(&gfx, scalex, ch);
@@ -1698,7 +2062,6 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
         width += scalex*(int)jsvGetInteger(customWidth);
 #endif
     }
-    jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
 #ifndef SAVE_ON_FLASH
@@ -2026,286 +2389,6 @@ JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
   return jsvLockAgain(parent);
 }
 
-/// Info about an image to be used for rendering
-typedef struct {
-  int width, height, bpp;
-  bool isTransparent;
-  unsigned int transparentCol;
-  JsVar *buffer; // must be unlocked!
-  int bufferOffset; // start offset in imageBuffer
-  const uint16_t *palettePtr;
-  uint32_t paletteMask;
-  unsigned int bitMask;
-  unsigned int pixelsPerByteMask;
-  int stride; // bytes per line
-
-  uint16_t _simplePalette[4]; // used when a palette is created for rendering
-} GfxDrawImageInfo;
-
-/// Parse an image into GfxDrawImageInfo. See drawImage for image format docs. Returns true on success
-static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, GfxDrawImageInfo *info) {
-  memset(info, 0, sizeof(GfxDrawImageInfo));
-#ifndef SAVE_ON_FLASH
-  if (jsvIsObject(image) && jsvIsInstanceOf(image,"Graphics")) {
-    JsGraphics ig;
-    if (!graphicsGetFromVar(&ig, image)) return false;
-    if (ig.data.type!=JSGRAPHICSTYPE_ARRAYBUFFER) return false; // if not arraybuffer Graphics, bail out
-    info->width = ig.data.width;
-    info->height = ig.data.height;
-    info->bpp = ig.data.bpp;
-    JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
-    info->buffer = jsvGetArrayBufferBackingString(buf);
-    jsvUnLock(buf);
-    info->bufferOffset = 0;
-#else
-  if (false) {
-#endif
-  } else if (jsvIsObject(image)) {
-    info->width = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
-    info->height = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
-    info->bpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
-    if (info->bpp<=0) info->bpp=1;
-    JsVar *v;
-    v = jsvObjectGetChild(image, "transparent", 0);
-    info->isTransparent = v!=0;
-    info->transparentCol = (unsigned int)jsvGetIntegerAndUnLock(v);
-#ifndef SAVE_ON_FLASH_EXTREME
-    v = jsvObjectGetChild(image, "palette", 0);
-    if (v) {
-      if (jsvIsArrayBuffer(v) && v->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16) {
-        size_t l = 0;
-        info->palettePtr = (uint16_t *)jsvGetDataPointer(v, &l);
-        jsvUnLock(v);
-        if (l==2 || l==4 || l==8 || l==16 || l==256) {
-          info->paletteMask = (uint32_t)(l-1);
-        } else {
-          info->palettePtr = 0;
-        }
-      } else
-        jsvUnLock(v);
-      if (!info->palettePtr) {
-        jsExceptionHere(JSET_ERROR, "Palette specified, but must be a flat Uint16Array of 2,4,8,16,256 elements");
-        return false;
-      }
-    }
-#endif
-    JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
-    info->buffer = jsvGetArrayBufferBackingString(buf);
-    jsvUnLock(buf);
-    info->bufferOffset = 0;
-  } else if (jsvIsString(image) || jsvIsArrayBuffer(image)) {
-    if (jsvIsArrayBuffer(image)) {
-      info->buffer = jsvGetArrayBufferBackingString(image);
-    } else {
-      info->buffer = jsvLockAgain(image);
-    }
-    info->width = (unsigned char)jsvGetCharInString(info->buffer,0);
-    info->height = (unsigned char)jsvGetCharInString(info->buffer,1);
-    info->bpp = (unsigned char)jsvGetCharInString(info->buffer,2);
-    if (info->bpp & 128) {
-      info->bpp = info->bpp&127;
-      info->isTransparent = true;
-      info->transparentCol = (unsigned char)jsvGetCharInString(info->buffer,3);
-      info->bufferOffset = 4;
-    } else {
-      info->bufferOffset = 3;
-    }
-    if (info->bpp & 64) { // included palette data
-      info->bpp = info->bpp&63;
-      int paletteEntries = 1<<info->bpp;
-      info->paletteMask = paletteEntries-1;
-      if (info->bpp <= 2) {
-        // if it'll fit, put the palette data in _simplePalette
-        int n = info->bufferOffset;
-        for (int i=0;i<paletteEntries;i++)
-          info->_simplePalette[i] =
-            ((unsigned char)jsvGetCharInString(info->buffer,n++)) |
-            ((unsigned char)jsvGetCharInString(info->buffer,n++))<<8;
-        info->palettePtr = info->_simplePalette;
-      } else if (info->bpp<=8) { // otherwise if data is memory-mapped, use direct
-        int imgStart = info->bufferOffset + paletteEntries*2;
-        size_t dataLen = 0;
-        char *dataPtr = jsvGetDataPointer(info->buffer, &dataLen);
-        if (info->bpp<=8 && dataPtr && imgStart<dataLen) {
-          info->paletteMask = (uint32_t)(paletteEntries-1);
-          info->palettePtr = &dataPtr[info->bufferOffset];
-        }
-      }
-      if (!info->palettePtr) {
-        jsExceptionHere(JSET_ERROR, "Unable to get pointer to palette. Image in flash?");
-        return false;
-      }
-      // modify image start
-      info->bufferOffset += paletteEntries*2;
-    }
-  } else {
-    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
-    return 0;
-  }
-  if (!info->isTransparent)
-    info->transparentCol = 0xFFFFFFFF;
-
-  if (info->palettePtr==0) {
-    if (info->bpp==1) {
-      info->_simplePalette[0] = (uint16_t)gfx->data.bgColor;
-      info->_simplePalette[1] = (uint16_t)gfx->data.fgColor;
-      info->palettePtr = info->_simplePalette;
-      info->paletteMask = 1;
-  #ifdef GRAPHICS_PALETTED_IMAGES
-    } else if (info->bpp==2) { // Blend from bg to fg
-      info->_simplePalette[0] = (uint16_t)gfx->data.bgColor;
-      info->_simplePalette[1] = graphicsBlendGfxColor(gfx, 85);
-      info->_simplePalette[2] = graphicsBlendGfxColor(gfx, 171);
-      info->_simplePalette[3] = (uint16_t)gfx->data.fgColor;
-      info->palettePtr = info->_simplePalette;
-      info->paletteMask = 3;
-    } else if (gfx->data.bpp==PALETTE_BPP && info->bpp==3) { // palette is 16 bits, so don't use it for other things
-      info->palettePtr = PALETTE_3BIT;
-      info->paletteMask = 7;
-    } else if (gfx->data.bpp==PALETTE_BPP && info->bpp==4) { // palette is 16 bits, so don't use it for other things
-      info->palettePtr = PALETTE_4BIT;
-      info->paletteMask = 15;
-    } else if (gfx->data.bpp==PALETTE_BPP && info->bpp==8) { // palette is 16 bits, so don't use it for other things
-      info->palettePtr = PALETTE_8BIT;
-      info->paletteMask = 255;
-    } else if (gfx->data.bpp==8 && info->bpp==4) {
-      info->palettePtr = PALETTE_4BIT_TO_8BIT;
-      info->paletteMask = 15;
-  #endif
-    }
-  }
-
-  if ((!jsvIsString(info->buffer)) ||
-      info->width<=0 ||
-      info->height<=0 ||
-      info->bpp>32) {
-    jsExceptionHere(JSET_ERROR, "Expecting first argument to a valid Image");
-    jsvUnLock(info->buffer);
-    return false;
-  }
-  info->bitMask = (unsigned int)((1L<<info->bpp)-1L);
-  info->pixelsPerByteMask = (unsigned int)((info->bpp<8)?(8/info->bpp)-1:0);
-  info->stride = (info->width*info->bpp + 7)>>3;
-  return true;
-}
-
-/// This is for rotating and scaling layers
-typedef struct {
-  int x1,y1,x2,y2; //x2/y2 is exclusive
-  double rotate; // radians
-  double scale; // 1 = 1:1, 2 = big
-  bool center; // center on x1/y1 (which are then offset)
-  bool repeat; // tile the image
-  GfxDrawImageInfo img;
-  // for rendering
-  JsvStringIterator it;
-  int mx,my; //< max - width and height << 8
-  int sx,sy; //< iterator X increment
-  int px,py; //< y iterator position
-  int qx,qy; //< x iterator position
-} GfxDrawImageLayer;
-
-bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) {
-  int qx = l->qx+127;
-  int qy = l->qy+127;
-  if (qx>=0 && qy>=0 && qx<l->mx && qy<l->my) {
-    unsigned int colData = 0;
-    int imagex = qx>>8;
-    int imagey = qy>>8;
-   // TODO: getter callback for speed?
-#ifndef SAVE_ON_FLASH
-   if (l->img.bpp==8) { // fast path for 8 bits
-     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+imagex+(imagey*l->img.stride)));
-     colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
-   } else
-#endif
-   {
-     int pixelOffset = (imagex+(imagey*l->img.width));
-     int bitOffset = pixelOffset*l->img.bpp;
-     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+(bitOffset>>3)));
-     colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
-     for (int b=8;b<l->img.bpp;b+=8) {
-       jsvStringIteratorNext(&l->it);
-       colData = (colData<<8) | (unsigned char)jsvStringIteratorGetChar(&l->it);
-     }
-     colData = (colData>>((l->img.pixelsPerByteMask-((unsigned)pixelOffset&l->img.pixelsPerByteMask))*(unsigned)l->img.bpp)) & l->img.bitMask;
-   }
-   if (l->img.transparentCol!=colData) {
-     if (l->img.palettePtr) colData = l->img.palettePtr[colData&l->img.paletteMask];
-     *result = colData;
-     return true;
-   }
-  }
-  return false;
-}
-NO_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
-  // image max
-  l->mx = l->img.width<<8;
-  l->my = l->img.height<<8;
-  // step values for blitting rotated image
-  double vcos = cos(l->rotate);
-  double vsin = sin(l->rotate);
-  l->sx = (int)((vcos/l->scale)*256 + 0.5);
-  l->sy = (int)((vsin/l->scale)*256 + 0.5);
-  // work out actual image width and height
-  int iw = (int)(0.5 + l->scale*(l->img.width*fabs(vcos) + l->img.height*fabs(vsin)));
-  int ih = (int)(0.5 + l->scale*(l->img.width*fabs(vsin) + l->img.height*fabs(vcos)));
-  // if rotating, offset our start position from center
-  if (l->center) {
-    l->x1 -= iw/2;
-    l->y1 -= ih/2;
-  }
-  l->x2 = l->x1 + iw;
-  l->y2 = l->y1 + ih;
-  // work out start position in the image
-  int centerx = l->img.width*128;
-  int centery = l->img.height*128;
-  l->px = centerx - (1 + (l->sx*iw) + (l->sy*ih)) / 2;
-  l->py = centery - (1 + (l->sx*ih) - (l->sy*iw)) / 2;
-  // handle repetition
-  if (l->repeat) {
-    // for the range we're in, it's quicker/easier than modulo
-    while (l->px < 0) l->px += l->mx;
-    while (l->px >= l->mx) l->px -= l->mx;
-    while (l->py < 0) l->py += l->my;
-    while (l->py >= l->my) l->py -= l->my;
-  }
-}
-NO_INLINE void _jswrap_drawImageLayerSetStart(GfxDrawImageLayer *l, int x, int y) {
-  int dx = x - l->x1;
-  int dy = y - l->y1;
-  l->px += l->sx*dx + l->sy*dy;
-  l->py += l->sx*dy - l->sy*dx;
-}
-NO_INLINE void _jswrap_drawImageLayerStartX(GfxDrawImageLayer *l) {
-  l->qx = l->px;
-  l->qy = l->py;
-}
-ALWAYS_INLINE void _jswrap_drawImageLayerNextX(GfxDrawImageLayer *l) {
-  l->qx += l->sx;
-  l->qy -= l->sy;
-}
-// Handle repeats
-ALWAYS_INLINE void _jswrap_drawImageLayerNextXRepeat(GfxDrawImageLayer *l) {
-  if (l->repeat) {
-    // for the range we're in, it's quicker/easier than modulo
-    if (l->qx < 0) l->qx += l->mx;
-    if (l->qx >= l->mx) l->qx -= l->mx;
-    if (l->qy < 0) l->qy += l->my;
-    if (l->qy >= l->my) l->qy -= l->my;
-  }
-}
-NO_INLINE void _jswrap_drawImageLayerNextY(GfxDrawImageLayer *l) {
-  l->px += l->sy;
-  l->py += l->sx;
-  if (l->repeat) {
-    // for the range we're in, it's quicker/easier than modulo
-    if (l->px < 0) l->px += l->mx;
-    if (l->px >= l->mx) l->px -= l->mx;
-    if (l->py < 0) l->py += l->my;
-    if (l->py >= l->my) l->py -= l->my;
-  }
-}
 
 
 /*JSON{
@@ -2362,7 +2445,7 @@ g.drawImage(img, g.getWidth()/2, g.getHeight()/2,
 JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos, JsVar *options) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   GfxDrawImageInfo img;
-  if (!_jswrap_graphics_parseImage(&gfx, image, &img))
+  if (!_jswrap_graphics_parseImage(&gfx, image, 0, &img))
     return 0;
 
   int x=0, y=0;
@@ -2392,24 +2475,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #else
     {
 #endif
-      JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelUnclippedFn(&gfx, xPos, yPos, xPos+img.width-1, yPos+img.height-1);
-      for (y=yPos;y<yPos+img.height;y++) {
-        for (x=xPos;x<xPos+img.width;x++) {
-          // Get the data we need...
-          while (bits < img.bpp) {
-            colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetCharAndNext(&it));
-            bits += 8;
-          }
-          // extract just the bits we want
-          unsigned int col = (colData>>(bits-img.bpp))&img.bitMask;
-          bits -= img.bpp;
-          // Try and write pixel!
-          if (img.transparentCol!=col) {
-            if (img.palettePtr) col = img.palettePtr[col&img.paletteMask];
-            setPixel(&gfx, x, y, col);
-          }
-        }
-      }
+      _jswrap_drawImageSimple(&gfx, xPos, yPos, &img, &it);
     }
   } else if (jsvIsObject(options)) {
 #ifndef GRAPHICS_DRAWIMAGE_ROTATED
@@ -2582,7 +2648,7 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
     JsVar *layer = jsvGetArrayItem(layersVar, i);
     if (jsvIsObject(layer)) {
       JsVar *image = jsvObjectGetChild(layer,"image",0);
-      if (_jswrap_graphics_parseImage(&gfx, image, &layers[i].img)) {
+      if (_jswrap_graphics_parseImage(&gfx, image, 0, &layers[i].img)) {
         layers[i].x1 = jsvGetIntegerAndUnLock(jsvObjectGetChild(layer,"x",0));
         layers[i].y1 = jsvGetIntegerAndUnLock(jsvObjectGetChild(layer,"y",0));
         // rotate, scale
@@ -3275,13 +3341,13 @@ JsVar *jswrap_graphics_theme(JsVar *parent) {
   NOT_USED(parent);
 #ifdef GRAPHICS_THEME
   JsVar *o = jsvNewObject();
-  jsvObjectSetChildAndUnLock(o,"fg",jsvNewFromInteger(graphicsTheme.fg));
-  jsvObjectSetChildAndUnLock(o,"bg",jsvNewFromInteger(graphicsTheme.bg));
-  jsvObjectSetChildAndUnLock(o,"fg2",jsvNewFromInteger(graphicsTheme.fg2));
-  jsvObjectSetChildAndUnLock(o,"bg2",jsvNewFromInteger(graphicsTheme.bg2));
-  jsvObjectSetChildAndUnLock(o,"fgH",jsvNewFromInteger(graphicsTheme.fgH));
-  jsvObjectSetChildAndUnLock(o,"bgH",jsvNewFromInteger(graphicsTheme.bgH));
-  jsvObjectSetChildAndUnLock(o,"dark",jsvNewFromBool(graphicsTheme.dark));
+  jsvObjectSetChildAndUnLock(o,"fg",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.fg));
+  jsvObjectSetChildAndUnLock(o,"bg",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.bg));
+  jsvObjectSetChildAndUnLock(o,"fg2",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.fg2));
+  jsvObjectSetChildAndUnLock(o,"bg2",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.bg2));
+  jsvObjectSetChildAndUnLock(o,"fgH",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.fgH));
+  jsvObjectSetChildAndUnLock(o,"bgH",jsvNewFromInteger((JsVarInt)(uint32_t)graphicsTheme.bgH));
+  jsvObjectSetChildAndUnLock(o,"dark",jsvNewFromBool((JsVarInt)(uint32_t)graphicsTheme.dark));
   return o;
 #else
   return 0;
