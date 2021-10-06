@@ -1779,6 +1779,129 @@ int jswrap_graphics_getFontHeight(JsVar *parent) {
 #endif
 }
 
+/** Work out the width and height of a bit of text. If 'lineStartIndex' is -1 the whole string is used
+ * otherwise *just* the line of text starting at that char index is used
+ */
+void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIndex, int *stringWidth, int *stringHeight) {
+  JsGraphicsFontSize font = gfx->data.fontSize & JSGRAPHICS_FONTSIZE_FONT_MASK;
+  unsigned short scale = gfx->data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
+  unsigned short scalex = scale, scaley = scale;
+  if (scale & JSGRAPHICS_FONTSIZE_SCALE_X_Y) {
+    scalex = scale & JSGRAPHICS_FONTSIZE_SCALE_X_MASK;
+    scaley = (scale & JSGRAPHICS_FONTSIZE_SCALE_Y_MASK) >> JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT;
+  }
+
+  int fontHeight = jswrap_graphics_getFontHeightInternal(gfx);
+#ifndef SAVE_ON_FLASH
+  JsVar *customWidth = 0;
+  int customFirstChar = 0;
+  if (font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
+    customWidth = jsvObjectGetChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
+    customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
+  }
+#endif
+
+  JsVar *str = jsvAsString(var);
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, str, (lineStartIndex<0)?0:lineStartIndex);
+  int width = 0;
+  int height = fontHeight;
+  int maxWidth = 0;
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetCharAndNext(&it);
+    if (ch=='\n') {
+      if (width>maxWidth) maxWidth=width;
+      width = 0;
+      height += fontHeight;
+      if (lineStartIndex>=0) break; // only do one line
+    }
+#ifndef SAVE_ON_FLASH
+    if (ch==0) { // If images are described in-line in the string, render them
+      GfxDrawImageInfo img;
+      size_t idx = jsvStringIteratorGetIndex(&it);
+      if (_jswrap_graphics_parseImage(gfx, str, idx, &img)) {
+        jsvStringIteratorGoto(&it, str, idx+img.headerLength+img.bitmapLength);
+        jsvUnLock(img.buffer);
+        // string iterator now points to the next char after image
+        width += img.width;
+      }
+      continue;
+    }
+#endif
+    if (font == JSGRAPHICS_FONTSIZE_VECTOR) {
+#ifndef NO_VECTOR_FONT
+      width += (int)graphicsVectorCharWidth(gfx, scalex, ch);
+#endif
+    } else if (font == JSGRAPHICS_FONTSIZE_4X6) {
+      width += 4*scalex;
+#ifdef USE_FONT_6X8
+    } else if (font == JSGRAPHICS_FONTSIZE_6X8) {
+      width += 6*scalex;
+#endif
+#ifndef SAVE_ON_FLASH
+    } else if (font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
+      if (jsvIsString(customWidth)) {
+        if (ch>=customFirstChar)
+          width += scalex*(unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-customFirstChar));
+      } else
+        width += scalex*(int)jsvGetInteger(customWidth);
+#endif
+    }
+  }
+  jsvStringIteratorFree(&it);
+#ifndef SAVE_ON_FLASH
+  jsvUnLock(customWidth);
+#endif
+  jsvUnLock(str);
+  if (stringWidth) *stringWidth = width>maxWidth ? width : maxWidth;
+  if (stringHeight) *stringHeight = height;
+}
+JsVarInt _jswrap_graphics_stringWidth(JsGraphics *gfx, JsVar *var, int lineStartIndex) {
+  int w,h;
+  _jswrap_graphics_stringMetrics(gfx, var, lineStartIndex, &w, &h);
+  return w;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "stringWidth",
+  "generate" : "jswrap_graphics_stringWidth",
+  "params" : [
+    ["str","JsVar","The string"]
+  ],
+  "return" : ["int","The length of the string in pixels"]
+}
+Return the size in pixels of a string of text in the current font
+*/
+JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  return _jswrap_graphics_stringWidth(&gfx, var, -1);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "stringMetrics",
+  "generate" : "jswrap_graphics_stringMetrics",
+  "params" : [
+    ["str","JsVar","The string"]
+  ],
+  "return" : ["JsVar","An object containing `{width,height}` of the string"]
+}
+Return the width and height in pixels of a string of text in the current font
+*/
+JsVar* jswrap_graphics_stringMetrics(JsVar *parent, JsVar *var) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  int w,h;
+  JsVar *o = jsvNewObject();
+  if (o) {
+    _jswrap_graphics_stringMetrics(&gfx, var, -1, &w, &h);
+    jsvObjectSetChild(o, "width", jsvNewFromInteger(w));
+    jsvObjectSetChild(o, "height", jsvNewFromInteger(h));
+  }
+  return o;
+}
 
 /*JSON{
   "type" : "method",
@@ -1857,12 +1980,17 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     y = x;
     x = t;
   }
+  JsVar *str = jsvAsString(var);
   // Handle font alignment
+  int startx = x;
   if (gfx.data.fontAlignX<2) // 0=center, 1=right, 2=undefined, 3=left
-    x -= jswrap_graphics_stringWidth(parent, var) * (gfx.data.fontAlignX+1)/2;
-  if (gfx.data.fontAlignY<2)  // 0=center, 1=bottom, 2=undefined, 3=top
-    y -= fontHeight * (gfx.data.fontAlignY+1)/2;
-
+    x = startx - (_jswrap_graphics_stringWidth(&gfx, str, 0) * (gfx.data.fontAlignX+1)/2);
+  if (gfx.data.fontAlignY<2) { // 0=center, 1=bottom, 2=undefined, 3=top
+    int stringWidth=0, stringHeight=0; // width/height of entire string
+    _jswrap_graphics_stringMetrics(&gfx, str, -1, &stringWidth, &stringHeight);
+    y -= stringHeight * (gfx.data.fontAlignY+1)/2;
+  }
+  // figure out clip rectangles
   int minX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y1 : gfx.data.clipRect.x1;
   int minY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x1 : gfx.data.clipRect.y1;
   int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y2 : gfx.data.clipRect.x2;
@@ -1873,14 +2001,15 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   int maxX = graphicsGetWidth(&gfx) - 1;
   int maxY = graphicsGetHeight(&gfx) - 1;
 #endif
-  int startx = x;
-  JsVar *str = jsvAsString(var);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
       x = startx;
+      // alignment for non-left aligned multi-line strings
+      if (gfx.data.fontAlignX<2) // 0=center, 1=right, 2=undefined, 3=left
+        x = startx - (_jswrap_graphics_stringWidth(&gfx, str, jsvStringIteratorGetIndex(&it)) * (gfx.data.fontAlignX+1)/2);
       y += fontHeight;
       continue;
     }
@@ -1988,88 +2117,7 @@ void jswrap_graphics_drawCString(JsGraphics *gfx, int x, int y, char *str) {
   jsvUnLock2(jswrap_graphics_drawString(gfx->graphicsVar, s, x, y, false),s);
 }
 
-/*JSON{
-  "type" : "method",
-  "class" : "Graphics",
-  "name" : "stringWidth",
-  "generate" : "jswrap_graphics_stringWidth",
-  "params" : [
-    ["str","JsVar","The string"]
-  ],
-  "return" : ["int","The length of the string in pixels"]
-}
-Return the size in pixels of a string of text in the current font
-*/
-JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
-  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
-  JsGraphicsFontSize font = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_FONT_MASK;
-  unsigned short scale = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
-  unsigned short scalex = scale, scaley = scale;
-  if (scale & JSGRAPHICS_FONTSIZE_SCALE_X_Y) {
-    scalex = scale & JSGRAPHICS_FONTSIZE_SCALE_X_MASK;
-    scaley = (scale & JSGRAPHICS_FONTSIZE_SCALE_Y_MASK) >> JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT;
-  }
-#ifndef SAVE_ON_FLASH
-  JsVar *customWidth = 0;
-  int customFirstChar = 0;
-  if (font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
-    customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
-    customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
-  }
-#endif
-
-  JsVar *str = jsvAsString(var);
-  JsvStringIterator it;
-  jsvStringIteratorNew(&it, str, 0);
-  int width = 0;
-  int maxWidth = 0;
-  while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetCharAndNext(&it);
-    if (ch=='\n') {
-      if (width>maxWidth) maxWidth=width;
-      width = 0;
-    }
-#ifndef SAVE_ON_FLASH
-    if (ch==0) { // If images are described in-line in the string, render them
-      GfxDrawImageInfo img;
-      size_t idx = jsvStringIteratorGetIndex(&it);
-      if (_jswrap_graphics_parseImage(&gfx, str, idx, &img)) {
-        jsvStringIteratorGoto(&it, str, idx+img.headerLength+img.bitmapLength);
-        jsvUnLock(img.buffer);
-        // string iterator now points to the next char after image
-        width += img.width;
-      }
-      continue;
-    }
-#endif
-    if (font == JSGRAPHICS_FONTSIZE_VECTOR) {
-#ifndef NO_VECTOR_FONT
-      width += (int)graphicsVectorCharWidth(&gfx, scalex, ch);
-#endif
-    } else if (font == JSGRAPHICS_FONTSIZE_4X6) {
-      width += 4*scalex;
-#ifdef USE_FONT_6X8
-    } else if (font == JSGRAPHICS_FONTSIZE_6X8) {
-      width += 6*scalex;
-#endif
-#ifndef SAVE_ON_FLASH
-    } else if (font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
-      if (jsvIsString(customWidth)) {
-        if (ch>=customFirstChar)
-          width += scalex*(unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-customFirstChar));
-      } else
-        width += scalex*(int)jsvGetInteger(customWidth);
-#endif
-    }
-  }
-  jsvStringIteratorFree(&it);
-#ifndef SAVE_ON_FLASH
-  jsvUnLock(customWidth);
-#endif
-  jsvUnLock(str);
-  return width>maxWidth ? width : maxWidth;
-}
 
 /*JSON{
   "type" : "method",
