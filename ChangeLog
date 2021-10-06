@@ -33,6 +33,7 @@
             Graphics: drawImage(...,{frame:x}) can be used to draw animations
             Graphics: fix rotated/scaled rendering of 3 bit bitmaps (fix #2049)
             Bangle.js: fix Bangle.getLogo memory leak
+            Bangle.js2: Graphics.getBPP now returns 3
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

@@ -836,9 +836,18 @@ int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
   "return" : ["int","The bits per pixel of this Graphics instance"]
 }
 The number of bits per pixel of this Graphics instance
+
+**Note:** Bangle.js 2 behaves a little differently here. The display
+is 3 bit, so `getBPP` returns 3 and `asBMP`/`asImage`/etc return 3 bit images.
+However in order to allow dithering, the colors returned by `Graphics.getColor` and `Graphics.theme`
+are actually 16 bits.
 */
 int jswrap_graphics_getBPP(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+#ifdef LCD_CONTROLLER_LPM013M126
+  if (gfx.data.type==JSGRAPHICSTYPE_MEMLCD)
+    return 3;
+#endif
   return gfx.data.bpp;
 }
 
