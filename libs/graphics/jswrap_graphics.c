@@ -88,7 +88,7 @@ typedef struct {
   bool isTransparent;
   unsigned int transparentCol;
   JsVar *buffer; // must be unlocked!
-  uint32_t bufferOffset; // start offset in imageBuffer
+  uint32_t bitmapOffset; // start offset in imageBuffer
   const uint16_t *palettePtr;
   uint32_t paletteMask;
   unsigned int bitMask;
@@ -116,7 +116,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
     JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
     info->buffer = jsvGetArrayBufferBackingString(buf);
     jsvUnLock(buf);
-    info->bufferOffset = 0;
+    info->bitmapOffset = 0;
 #else
   if (false) {
 #endif
@@ -152,7 +152,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
     JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
     info->buffer = jsvGetArrayBufferBackingString(buf);
     jsvUnLock(buf);
-    info->bufferOffset = imageOffset;
+    info->bitmapOffset = imageOffset;
   } else if (jsvIsString(image) || jsvIsArrayBuffer(image)) {
     if (jsvIsArrayBuffer(image)) {
       info->buffer = jsvGetArrayBufferBackingString(image);
@@ -162,7 +162,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
     info->width = (unsigned char)jsvGetCharInString(info->buffer,imageOffset);
     info->height = (unsigned char)jsvGetCharInString(info->buffer,imageOffset+1);
     info->bpp = (unsigned char)jsvGetCharInString(info->buffer,imageOffset+2);
-    info->bufferOffset = imageOffset;
+    info->bitmapOffset = imageOffset;
     if (info->bpp & 128) {
       info->bpp = info->bpp&127;
       info->isTransparent = true;
@@ -171,25 +171,26 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
     } else {
       info->headerLength = 3;
     }
+    info->bitmapOffset += info->headerLength;
     if (info->bpp & 64) { // included palette data
       info->bpp = info->bpp&63;
       int paletteEntries = 1<<info->bpp;
       info->paletteMask = (uint32_t)paletteEntries-1;
       if (info->bpp <= 2) {
         // if it'll fit, put the palette data in _simplePalette
-        uint32_t n = info->bufferOffset;
+        uint32_t n = info->bitmapOffset;
         for (int i=0;i<paletteEntries;i++)
           info->_simplePalette[i] =
             ((unsigned char)jsvGetCharInString(info->buffer,n++)) |
             ((unsigned char)jsvGetCharInString(info->buffer,n++))<<8;
         info->palettePtr = info->_simplePalette;
       } else if (info->bpp<=8) { // otherwise if data is memory-mapped, use direct
-        int imgStart = info->bufferOffset + paletteEntries*2;
+        int imgStart = info->bitmapOffset + paletteEntries*2;
         size_t dataLen = 0;
         char *dataPtr = jsvGetDataPointer(info->buffer, &dataLen);
         if (info->bpp<=8 && dataPtr && imgStart<dataLen) {
           info->paletteMask = (uint32_t)(paletteEntries-1);
-          info->palettePtr = (uint16_t*)&dataPtr[info->bufferOffset+info->headerLength];
+          info->palettePtr = (uint16_t*)&dataPtr[info->bitmapOffset+info->headerLength];
         }
       }
       if (!info->palettePtr) {
@@ -198,9 +199,8 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
       }
       // modify image start
       info->headerLength += (unsigned short)(paletteEntries*2);
+      info->bitmapOffset += (unsigned short)(paletteEntries*2);
     }
-    // update image start in memory
-    info->bufferOffset += info->headerLength;
   } else {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
     return 0;
@@ -279,14 +279,14 @@ bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) 
    // TODO: getter callback for speed?
 #ifndef SAVE_ON_FLASH
    if (l->img.bpp==8) { // fast path for 8 bits
-     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+imagex+(imagey*l->img.stride)));
+     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bitmapOffset+imagex+(imagey*l->img.stride)));
      colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
    } else
 #endif
    {
      int pixelOffset = (imagex+(imagey*l->img.width));
      int bitOffset = pixelOffset*l->img.bpp;
-     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bufferOffset+(bitOffset>>3)));
+     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bitmapOffset+(bitOffset>>3)));
      colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
      for (int b=8;b<l->img.bpp;b+=8) {
        jsvStringIteratorNext(&l->it);
@@ -1897,8 +1897,8 @@ JsVar* jswrap_graphics_stringMetrics(JsVar *parent, JsVar *var) {
   JsVar *o = jsvNewObject();
   if (o) {
     _jswrap_graphics_stringMetrics(&gfx, var, -1, &w, &h);
-    jsvObjectSetChild(o, "width", jsvNewFromInteger(w));
-    jsvObjectSetChild(o, "height", jsvNewFromInteger(h));
+    jsvObjectSetChildAndUnLock(o, "width", jsvNewFromInteger(w));
+    jsvObjectSetChildAndUnLock(o, "height", jsvNewFromInteger(h));
   }
   return o;
 }
@@ -2437,7 +2437,40 @@ JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
   return jsvLockAgain(parent);
 }
 
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "imageMetrics",
+  "generate" : "jswrap_graphics_imageMetrics",
+  "params" : [
+    ["str","JsVar","The string"]
+  ],
+  "return" : ["JsVar","An object containing `{width,height,bpp,transparent}` for the image"]
+}
+Return the width and height in pixels of an image (either Graphics, Image Object, Image String or ArrayBuffer). Returns
+`undefined` if image couldn't be decoded.
 
+`frames` is also included is the image contains more information than you'd expect for a single bitmap. In
+this case the bitmap might be an animation with multiple frames
+*/
+JsVar *jswrap_graphics_imageMetrics(JsVar *parent, JsVar *var) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  GfxDrawImageInfo img;
+  if (!_jswrap_graphics_parseImage(&gfx, var, 0, &img))
+    return 0;
+  int bufferLen = jsvGetLength(img.buffer) - img.bitmapOffset;
+  jsvUnLock(img.buffer);
+  JsVar *o = jsvNewObject();
+  if (o) {
+    jsvObjectSetChildAndUnLock(o, "width", jsvNewFromInteger(img.width));
+    jsvObjectSetChildAndUnLock(o, "height", jsvNewFromInteger(img.height));
+    jsvObjectSetChildAndUnLock(o, "bpp", jsvNewFromInteger(img.bpp));
+    jsvObjectSetChildAndUnLock(o, "transparent", jsvNewFromBool(img.isTransparent));
+    int frames = bufferLen / img.bitmapLength;
+    if (frames>1) jsvObjectSetChildAndUnLock(o, "frames", jsvNewFromInteger(frames));
+  }
+  return o;
+}
 
 /*JSON{
   "type" : "method",
@@ -2475,6 +2508,8 @@ center images at `x,y`. `options` must be an object of the form:
 {
   rotate : float, // the amount to rotate the image in radians (default 0)
   scale : float, // the amount to scale the image up (default 1)
+  frame : int    // if specified and the image has frames of data
+                 //  after the initial frame, draw one of those frames from the image
 }
 ```
 
@@ -2496,11 +2531,27 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   if (!_jswrap_graphics_parseImage(&gfx, image, 0, &img))
     return 0;
 
+
+  double scale = 1, rotate = 0;
+  bool centerImage = false;
+  if (jsvIsObject(options)) {
+    // support for multi-frame rendering
+    int frame = jsvGetIntegerAndUnLock(jsvObjectGetChild(options,"frame",0));
+    if (frame>0)
+      img.bitmapOffset += img.bitmapLength * frame;
+    // rotate, scale
+    scale = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"scale",0));
+    if (!isfinite(scale) || scale<=0) scale=1;
+    rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"rotate",0));
+    centerImage = isfinite(rotate);
+    if (!centerImage) rotate = 0;
+  }
+
   int x=0, y=0;
   int bits=0;
   unsigned int colData = 0;
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, img.buffer, (size_t)img.bufferOffset);
+  jsvStringIteratorNew(&it, img.buffer, (size_t)img.bitmapOffset);
 
 #ifdef USE_LCD_ST7789_8BIT // can we blit directly to the display?
   bool isST7789 =
@@ -2511,7 +2562,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         !img.isTransparent; // not transparent
 #endif
 
-  if (jsvIsUndefined(options)) {
+  if (scale==1 && rotate==0 && !centerImage) {
     // Standard 1:1 blitting
 #ifdef USE_LCD_ST7789_8BIT // can we blit directly to the display?
     if (isST7789 &&
@@ -2525,18 +2576,12 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #endif
       _jswrap_drawImageSimple(&gfx, xPos, yPos, &img, &it);
     }
-  } else if (jsvIsObject(options)) {
+  } else {
 #ifndef GRAPHICS_DRAWIMAGE_ROTATED
-    jsExceptionHere(JSET_ERROR,"Image rotation not implemented on this device");
+    jsExceptionHere(JSET_ERROR,"Image scale/rotate not implemented on this device");
 #else
     // fancy rotation/scaling
 
-    // rotate, scale
-    double scale = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"scale",0));
-    if (!isfinite(scale) || scale<=0) scale=1;
-    double rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"rotate",0));
-    bool centerImage = isfinite(rotate);
-    if (!centerImage) rotate = 0;
 #ifdef GRAPHICS_FAST_PATHS
     bool fastPath =
         (!centerImage) &&  // not rotating
@@ -2736,7 +2781,7 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
   // If all good, start rendering!
   if (ok) {
     for (i=0;i<layerCount;i++) {
-      jsvStringIteratorNew(&layers[i].it, layers[i].img.buffer, (size_t)layers[i].img.bufferOffset);
+      jsvStringIteratorNew(&layers[i].it, layers[i].img.buffer, (size_t)layers[i].img.bitmapOffset);
       _jswrap_drawImageLayerSetStart(&layers[i], x, y);
     }
     // scan across image
