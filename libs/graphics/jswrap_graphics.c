@@ -287,12 +287,17 @@ bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) 
      int pixelOffset = (imagex+(imagey*l->img.width));
      int bitOffset = pixelOffset*l->img.bpp;
      jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bitmapOffset+(bitOffset>>3)));
+     bitOffset &= 7; // so now it's bits within a byte
+     // get first byte
      colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
-     for (int b=8;b<l->img.bpp;b+=8) {
+     // it may not fit within a byte, so if so grab more data
+     int b;
+     for (b=8-(bitOffset+l->img.bpp);b<0;b+=8) {
        jsvStringIteratorNext(&l->it);
        colData = (colData<<8) | (unsigned char)jsvStringIteratorGetChar(&l->it);
      }
-     colData = (colData>>((l->img.pixelsPerByteMask-((unsigned)pixelOffset&l->img.pixelsPerByteMask))*(unsigned)l->img.bpp)) & l->img.bitMask;
+     // finally shift down to the right size
+     colData = (colData>>b) & l->img.bitMask;
    }
    if (l->img.transparentCol!=colData) {
      if (l->img.palettePtr) colData = l->img.palettePtr[colData&l->img.paletteMask];

@@ -31,6 +31,7 @@
             Graphics: drawString now correctly middle-aligns multi-line strings
             Graphics: add imageMetrics to allow image width/height to be read
             Graphics: drawImage(...,{frame:x}) can be used to draw animations
+            Graphics: fix rotated/scaled rendering of 3 bit bitmaps (fix #2049)
 
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
