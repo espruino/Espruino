@@ -2231,6 +2231,10 @@ bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId) {
 #ifdef MAG_DEVICE_GMC303
       jswrap_banglejs_compassWr(0x31,4); // continuous measurement mode, 20Hz
 #endif
+#ifdef MAG_DEVICE_UNKNOWN_0C
+      // Read 0x3E to enable compass readings
+      jsvUnLock(jswrap_banglejs_compassRd(0x3E,0));
+#endif
     }
   } else { // !isOn -> turn off
 #ifdef MAG_DEVICE_GMC303
@@ -3525,6 +3529,32 @@ JsVar *jswrap_banglejs_dbg() {
   return o;
 }
 
+void _jswrap_banglejs_i2cWr(JshI2CInfo *i2c, int i2cAddr, JsVarInt reg, JsVarInt data) {
+  unsigned char buf[2];
+  buf[0] = (unsigned char)reg;
+  buf[1] = (unsigned char)data;
+  i2cBusy = true;
+  jsi2cWrite(i2c, i2cAddr, 2, buf, true);
+  i2cBusy = false;
+}
+
+JsVar *_jswrap_banglejs_i2cRd(JshI2CInfo *i2c, int i2cAddr, JsVarInt reg, JsVarInt cnt) {
+  if (cnt<0) cnt=0;
+  unsigned char buf[128];
+  if (cnt>(int)sizeof(buf)) cnt=sizeof(buf);
+  buf[0] = (unsigned char)reg;
+  i2cBusy = true;
+  jsi2cWrite(i2c, i2cAddr, 1, buf, false);
+  jsi2cRead(i2c, i2cAddr, (cnt==0)?1:cnt, buf, true);
+  i2cBusy = false;
+  if (cnt) {
+    JsVar *ab = jsvNewArrayBufferWithData(cnt, buf);
+    JsVar *d = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, ab,0,0);
+    jsvUnLock(ab);
+    return d;
+  } else return jsvNewFromInteger(buf[0]);
+}
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -3540,12 +3570,7 @@ Writes a register on the accelerometer
 */
 void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
 #ifdef ACCEL_I2C
-  unsigned char buf[2];
-  buf[0] = (unsigned char)reg;
-  buf[1] = (unsigned char)data;
-  i2cBusy = true;
-  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 2, buf, true);
-  i2cBusy = false;
+  _jswrap_banglejs_i2cWr(ACCEL_I2C, ACCEL_ADDR, reg, data);
 #endif
 }
 
@@ -3556,7 +3581,7 @@ void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
     "generate" : "jswrap_banglejs_accelRd",
     "params" : [
       ["reg","int",""],
-      ["cnt","int","If specified, `accelRd` returns an array of the given length (max 128). If not (or 0) it returns a number"]
+      ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
     "ifdef" : "BANGLEJS"
@@ -3565,22 +3590,11 @@ Reads a register from the accelerometer
 
 **Note:** On Espruino 2v06 and before this function only returns a number (`cnt` is ignored).
 */
+
+
 JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt) {
 #ifdef ACCEL_I2C
-  if (cnt<0) cnt=0;
-  unsigned char buf[128];
-  if (cnt>(int)sizeof(buf)) cnt=sizeof(buf);
-  buf[0] = (unsigned char)reg;
-  i2cBusy = true;
-  jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
-  jsi2cRead(ACCEL_I2C, ACCEL_ADDR, (cnt==0)?1:cnt, buf, true);
-  i2cBusy = false;
-  if (cnt) {
-    JsVar *ab = jsvNewArrayBufferWithData(cnt, buf);
-    JsVar *d = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, ab,0,0);
-    jsvUnLock(ab);
-    return d;
-  } else return jsvNewFromInteger(buf[0]);
+  return _jswrap_banglejs_i2cRd(ACCEL_I2C, ACCEL_ADDR, reg, cnt);
 #else
   return 0;
 #endif
@@ -3602,12 +3616,7 @@ Writes a register on the barometer IC
 */
 void jswrap_banglejs_barometerWr(JsVarInt reg, JsVarInt data) {
 #ifdef PRESSURE_I2C
-  unsigned char buf[2];
-  buf[0] = (unsigned char)reg;
-  buf[1] = (unsigned char)data;
-  i2cBusy = true;
-  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 2, buf, true);
-  i2cBusy = false;
+  _jswrap_banglejs_i2cWr(PRESSURE_I2C, PRESSURE_ADDR, reg, data);
 #endif
 }
 
@@ -3618,7 +3627,7 @@ void jswrap_banglejs_barometerWr(JsVarInt reg, JsVarInt data) {
     "generate" : "jswrap_banglejs_barometerRd",
     "params" : [
       ["reg","int",""],
-      ["cnt","int","If specified, `barometerRd` returns and array of the given length (max 48). If not (or 0) it returns a number"]
+      ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
     "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)"
@@ -3627,20 +3636,7 @@ Reads a register from the barometer IC
 */
 JsVar *jswrap_banglejs_barometerRd(JsVarInt reg, JsVarInt cnt) {
 #ifdef PRESSURE_I2C
-  if (cnt<0) cnt=0;
-  unsigned char buf[48];
-  if (cnt>(int)sizeof(buf)) cnt=sizeof(buf);
-  buf[0] = (unsigned char)reg;
-  i2cBusy = true;
-  jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
-  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, (cnt==0)?1:cnt, buf, true);
-  i2cBusy = false;
-  if (cnt) {
-    JsVar *ab = jsvNewArrayBufferWithData(cnt, buf);
-    JsVar *d = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, ab,0,0);
-    jsvUnLock(ab);
-    return d;
-  } else return jsvNewFromInteger(buf[0]);
+  return _jswrap_banglejs_i2cRd(PRESSURE_I2C, PRESSURE_ADDR, reg, cnt);
 #else
   return 0;
 #endif
@@ -3662,14 +3658,32 @@ Writes a register on the Magnetometer/Compass
 */
 void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data) {
 #ifdef MAG_I2C
-  unsigned char buf[2];
-  buf[0] = (unsigned char)reg;
-  buf[1] = (unsigned char)data;
-  i2cBusy = true;
-  jsi2cWrite(MAG_I2C, MAG_ADDR, 2, buf, true);
-  i2cBusy = false;
+  _jswrap_banglejs_i2cWr(MAG_I2C, MAG_ADDR, reg, data);
 #endif
 }
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "compassRd",
+    "generate" : "jswrap_banglejs_compassRd",
+    "params" : [
+      ["reg","int",""],
+      ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
+    ],
+    "return" : ["JsVar",""],
+    "ifdef" : "BANGLEJS"
+}
+Read a register on the Magnetometer/Compass
+*/
+JsVar *jswrap_banglejs_compassRd(JsVarInt reg, JsVarInt cnt) {
+#ifdef MAG_I2C
+  return _jswrap_banglejs_i2cRd(MAG_I2C, MAG_ADDR, reg, cnt);
+#else
+  return 0;
+#endif
+}
+
 
 /*JSON{
     "type" : "staticmethod",

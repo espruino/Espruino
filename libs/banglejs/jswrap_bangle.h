@@ -53,6 +53,7 @@ JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt);
 void jswrap_banglejs_barometerWr(JsVarInt reg, JsVarInt data);
 JsVar *jswrap_banglejs_barometerRd(JsVarInt reg, JsVarInt cnt);
 void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data);
+JsVar *jswrap_banglejs_compassRd(JsVarInt reg, JsVarInt cnt);
 void jswrap_banglejs_ioWr(JsVarInt mask, bool on);
 
 JsVar *jswrap_banglejs_project(JsVar *latlong);
