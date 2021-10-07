@@ -60,6 +60,7 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size);
 JsVar *jswrap_graphics_getFont(JsVar *parent);
 JsVar *jswrap_graphics_getFonts(JsVar *parent);
 int jswrap_graphics_getFontHeight(JsVar *parent);
+JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth);
 JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *str, int x, int y, bool solidBackground);
 void jswrap_graphics_drawCString(JsGraphics *gfx, int x, int y, char *str); /// Convenience function for using drawString from C code
 JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var);

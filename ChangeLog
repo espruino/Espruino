@@ -36,7 +36,9 @@
             Bangle.js2: Graphics.getBPP now returns 3
             Bangle.js: attempt to unlock SPI flash multiple times (some devices don't unlock on the first attempt)
             Bangle.js: Fix Bangle.tap event regression (now works again)
-
+            Graphics: add wrapString to wrap messages to the correct length
+            Bangle.js: update showMessage and showPrompt with correct wrapping
+            
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
             Bangle.js: Ignore touch and swipe events when the LCD is off
