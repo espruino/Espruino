@@ -985,7 +985,7 @@ void peripheralPollHandler() {
     }
 #endif
     // report tap
-    if (handled)
+    if (!handled)
       bangleTasks |= JSBT_ACCEL_TAPPED;
     jshHadEvent();
     // clear the IRQ flags
