@@ -735,7 +735,13 @@ uint8_t match_request : 1;               If 1 requires the application to report
 #endif
 #ifdef ESPR_BLUETOOTH_ANCS
       case BLEP_ANCS_NOTIF:
-        ble_ancs_handle_event(blep, (ble_ancs_c_evt_notif_t*)buffer);
+        ble_ancs_handle_notif(blep, (ble_ancs_c_evt_notif_t*)buffer);
+        break;
+      case BLEP_ANCS_NOTIF_ATTR:
+        ble_ancs_handle_notif_attr(blep, (ble_ancs_c_evt_notif_t*)buffer);
+        break;
+      case BLEP_ANCS_APP_ATTR:
+        ble_ancs_handle_app_attr(blep, (ble_ancs_c_evt_notif_t*)buffer);
         break;
 #endif
    default:
