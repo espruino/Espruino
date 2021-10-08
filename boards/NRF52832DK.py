@@ -39,6 +39,7 @@ info = {
    'makefile' : [
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DBOARD_PCA10040 -DPCA10040',
+     'ESPR_BLUETOOTH_ANCS=1', # Enable ANCS (Apple notifications) support
      #'DEFINES += -DI2C_SLAVE -DTWIS_ENABLED=1 -DTWIS1_ENABLED=1' # enable I2C slave support
        # I2C slave can then be used with I2C1.setup({sda,scl,addr:42})
    ]

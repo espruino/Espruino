@@ -367,9 +367,10 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt) {
 static void on_ams_c_evt(ble_ams_c_evt_t * p_evt) {
   ret_code_t ret = NRF_SUCCESS;
 
+  NRF_LOG_DEBUG("AMS%d\r\n", p_evt->evt_type);
   switch (p_evt->evt_type) {
   case BLE_AMS_C_EVT_DISCOVERY_COMPLETE:
-    NRF_LOG_INFO("Apple Media Service discovered on the server.");
+    NRF_LOG_INFO("Apple Media Service discovered on the server.\r\n");
     ret = nrf_ble_ams_c_handles_assign(&m_ams_c, p_evt->conn_handle,
         &p_evt->service);
     APP_ERROR_CHECK_NOT_URGENT(ret);
@@ -377,7 +378,7 @@ static void on_ams_c_evt(ble_ams_c_evt_t * p_evt) {
     break;
 
   case BLE_AMS_C_EVT_REMOTE_COMMAND_NOTIFICATION:
-    //NRF_LOG_INFO("BLE_AMS_C_EVT_REMOTE_COMMAND_NOTIFICATION: ListSize: %d.", p_evt->remote_command_data.remote_command_len);
+    NRF_LOG_INFO("BLE_AMS_C_EVT_REMOTE_COMMAND_NOTIFICATION: ListSize: %d.\r\n", p_evt->remote_command_data.remote_command_len);
     break;
 
   case BLE_AMS_C_EVT_ENTITY_UPDATE_NOTIFICATION:
