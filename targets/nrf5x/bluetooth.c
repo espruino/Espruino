@@ -347,7 +347,7 @@ int jsble_exec_pending(IOEvent *event) {
    case BLEP_NONE: break;
    case BLEP_ERROR: {
      JsVar *v = jsble_get_error_string(data);
-     jsWarn("SD %v (bluetooth.c:%d)",v, *(uint32_t*)buffer);
+     jsWarn("SD %v (:%d)",v, *(uint32_t*)buffer);
      jsvUnLock(v);
      break;
    }

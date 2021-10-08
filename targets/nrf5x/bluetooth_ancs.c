@@ -15,6 +15,7 @@
 #include "jsinteractive.h"
 #include "bluetooth.h"
 #include "bluetooth_ancs.h"
+#include "jswrap_bluetooth.h"
 
 #include "app_timer.h"
 #include "nrf_ble_ancs_c.h"
@@ -32,6 +33,25 @@
 #include "fds.h"
 #include "nrf_delay.h"
 
+/*
+
+Serial1.setConsole(1)
+NRF.on('connect',_=>print("Connected"));
+NRF.on('disconnect',_=>print("Disconnected"));
+NRF.setServices({},{ancs:true})
+NRF.setAdvertising({})
+
+E.on('ANCS',a=>{
+  print("ANCS", E.toJS(a));
+});
+
+NRF.ancsGetNotificationInfo( 1 ).then(a=>print("Notify",E.toJS(a)));
+
+
+NRF.ancsGetAppInfo("com.google.hangouts").then(a=>print("App",E.toJS(a)));
+
+ */
+#define DEBUG
 #ifndef DEBUG
 #define NRF_LOG_INFO(...)
 #define NRF_LOG_DEBUG(...)
@@ -39,14 +59,6 @@
 #define NRF_LOG_INFO jsiConsolePrintf
 #define NRF_LOG_DEBUG jsiConsolePrintf
 #endif
-
-/*
-Request app attributes can be performed with:
-
-                ret = nrf_ble_ancs_c_app_attr_request(&m_ancs_c,
-                                                      m_notif_attr_app_id_latest.p_attr_data,
-                                                      m_notif_attr_app_id_latest.attr_len);
-*/
 
 /** Delay after connection until security request is sent, if necessary (ticks). */
 #if NRF_SD_BLE_API_VERSION < 5
@@ -65,11 +77,13 @@ BLE_ANCS_C_DEF(m_ancs_c);                                              /**< Appl
 BLE_DB_DISCOVERY_DEF(m_ble_db_discovery);                              /**< DB Discovery module instance. */
 #endif
 
+static bool m_ancs_active = false;
 static ble_ancs_c_evt_notif_t m_notification_request;                   /**< Local copy to keep track of the newest arriving notifications. */
 static ble_ancs_c_attr_t      m_notif_attr_latest;                     /**< Local copy of the newest notification attribute. */
 static ble_ancs_c_attr_t      m_notif_attr_app_id_latest;              /**< Local copy of the newest app attribute. */
-
-static char m_attr_appname[32];                           /**< Buffer to store attribute data. */
+// ANCS APP
+static char m_attr_appname[32];                         /**< Buffer to store attribute data. */
+// ANCS NOTIFICATION
 static char m_attr_appid[32];                           /**< Buffer to store attribute data. */
 static char m_attr_title[64];                           /**< Buffer to store attribute data. */
 static char m_attr_subtitle[64];                        /**< Buffer to store attribute data. */
@@ -93,7 +107,7 @@ void ble_ancs_handle_notif(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
   jsvObjectSetChildAndUnLock(o, "categoryCnt", jsvNewFromInteger(p_notif->category_count));
   jsvObjectSetChildAndUnLock(o, "silent", jsvNewFromBool(p_notif->evt_flags.silent));
   jsvObjectSetChildAndUnLock(o, "important", jsvNewFromBool(p_notif->evt_flags.important));
-  jsvObjectSetChildAndUnLock(o, "pre_existing", jsvNewFromBool(p_notif->evt_flags.pre_existing));
+  jsvObjectSetChildAndUnLock(o, "preExisting", jsvNewFromBool(p_notif->evt_flags.pre_existing));
   if (p_notif->evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_ADDED ||
       p_notif->evt_id == BLE_ANCS_EVENT_ID_NOTIFICATION_MODIFIED) {
     jsvObjectSetChildAndUnLock(o, "positive", jsvNewFromBool(p_notif->evt_flags.positive_action));
@@ -105,31 +119,30 @@ void ble_ancs_handle_notif(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
 
 /** Handle notification attributes received event (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ancs_handle_notif_attr(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
-    // Fire E.on('ANCS',...)
-    JsVar *o = jsvNewObject();
-    if (!o) return;
-    jsvObjectSetChildAndUnLock(o, "uid", jsvNewFromInteger(p_notif->notif_uid));
-    jsvObjectSetChildAndUnLock(o, "appid", jsvNewFromString(m_attr_appid));
-    jsvObjectSetChildAndUnLock(o, "title", jsvNewFromString(m_attr_title));
-    jsvObjectSetChildAndUnLock(o, "subtitle", jsvNewFromString(m_attr_subtitle));
-    jsvObjectSetChildAndUnLock(o, "message", jsvNewFromString(m_attr_message));
-    jsvObjectSetChildAndUnLock(o, "message_size", jsvNewFromString(m_attr_message_size));
-    jsvObjectSetChildAndUnLock(o, "date", jsvNewFromString(m_attr_date));
-    jsvObjectSetChildAndUnLock(o, "posaction", jsvNewFromString(m_attr_posaction));
-    jsvObjectSetChildAndUnLock(o, "negaction", jsvNewFromString(m_attr_negaction));
-    jsvObjectSetChildAndUnLock(o, "name", jsvNewFromString(m_attr_disp_name));
-    jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"ANCSMSG", 1, &o);
-    jsvUnLock(o);
+  // Complete the ANCS notification attribute promise
+  JsVar *o = jsvNewObject();
+  if (!o) return;
+  jsvObjectSetChildAndUnLock(o, "uid", jsvNewFromInteger(p_notif->notif_uid));
+  jsvObjectSetChildAndUnLock(o, "appId", jsvNewFromString(m_attr_appid));
+  jsvObjectSetChildAndUnLock(o, "title", jsvNewFromString(m_attr_title));
+  jsvObjectSetChildAndUnLock(o, "subtitle", jsvNewFromString(m_attr_subtitle));
+  jsvObjectSetChildAndUnLock(o, "message", jsvNewFromString(m_attr_message));
+  jsvObjectSetChildAndUnLock(o, "messagSize", jsvNewFromString(m_attr_message_size));
+  jsvObjectSetChildAndUnLock(o, "date", jsvNewFromString(m_attr_date));
+  jsvObjectSetChildAndUnLock(o, "posAction", jsvNewFromString(m_attr_posaction));
+  jsvObjectSetChildAndUnLock(o, "negAction", jsvNewFromString(m_attr_negaction));
+  jsvObjectSetChildAndUnLock(o, "name", jsvNewFromString(m_attr_disp_name));
+  bleCompleteTaskSuccessAndUnLock(BLETASK_ANCS_NOTIF_ATTR, o);
 }
 
 /** Handle app attributes received event (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ancs_handle_app_attr(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
-    // Fire E.on('ANCS',...)
-    JsVar *o = jsvNewObject();
-    if (!o) return;
-    jsvObjectSetChildAndUnLock(o, "appname", jsvNewFromString(m_attr_appname));
-    jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"ANCSAPP", 1, &o);
-    jsvUnLock(o);
+  // Complete the ANCS app attribute promise
+  JsVar *o = jsvNewObject();
+  if (!o) return;
+  jsvObjectSetChild(o, "appId", bleTaskInfo);
+  jsvObjectSetChildAndUnLock(o, "appName", jsvNewFromString(m_attr_appname));
+  bleCompleteTaskSuccessAndUnLock(BLETASK_ANCS_APP_ATTR, o);
 }
 
 void ble_ancs_clear_app_attr() {
@@ -171,7 +184,9 @@ static void apple_notification_setup(void)
     ret = ble_ancs_c_data_source_notif_enable(&m_ancs_c);
     APP_ERROR_CHECK_NOT_URGENT(ret);
 
+    m_ancs_active = true;
     NRF_LOG_DEBUG("Notifications Enabled.\r\n");
+
 }
 
 
@@ -181,27 +196,28 @@ static void apple_notification_setup(void)
  */
 static void err_code_print(uint16_t err_code_np)
 {
-    switch (err_code_np)
-    {
-        case BLE_ANCS_NP_UNKNOWN_COMMAND:
-            NRF_LOG_INFO("Error: Command ID was not recognized by the Notification Provider. \r\n");
-            break;
-
-        case BLE_ANCS_NP_INVALID_COMMAND:
-            NRF_LOG_INFO("Error: Command failed to be parsed on the Notification Provider. \r\n");
-            break;
-
-        case BLE_ANCS_NP_INVALID_PARAMETER:
-            NRF_LOG_INFO("Error: Parameter does not refer to an existing object on the Notification Provider. \r\n");
-            break;
-
-        case BLE_ANCS_NP_ACTION_FAILED:
-            NRF_LOG_INFO("Error: Perform Notification Action Failed on the Notification Provider. \r\n");
-            break;
-
-        default:
-            break;
-    }
+  const char *errmsg = 0;
+  switch (err_code_np)
+  {
+      case BLE_ANCS_NP_UNKNOWN_COMMAND:
+        errmsg="Error: Command ID was not recognized by the Notification Provider.";
+        break;
+      case BLE_ANCS_NP_INVALID_COMMAND:
+        errmsg="Error: Command failed to be parsed on the Notification Provider.";
+        break;
+      case BLE_ANCS_NP_INVALID_PARAMETER:
+        errmsg="Error: Parameter does not refer to an existing object on the Notification Provider.";
+        break;
+      case BLE_ANCS_NP_ACTION_FAILED:
+        errmsg="Error: Perform Notification Action Failed on the Notification Provider.";
+        break;
+      default:
+        break;
+  }
+  if (errmsg)
+    NRF_LOG_INFO("Error: %s\n", errmsg);
+  if (BLETASK_IS_ANCS(bleGetCurrentTask()))
+    bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), errmsg?jsvNewFromString(errmsg):0);
 }
 
 /**@brief Function for handling the Apple Notification Service client.
@@ -211,55 +227,53 @@ static void err_code_print(uint16_t err_code_np)
  *
  * @param[in] p_evt  Event received from the Apple Notification Service client.
  */
-static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt)
-{
-    ret_code_t ret = NRF_SUCCESS;
+static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt) {
+  ret_code_t ret = NRF_SUCCESS;
 
-    //NRF_LOG_DEBUG("ANCS%d\r\n", p_evt->evt_type);
-    switch (p_evt->evt_type)
-    {
-        case BLE_ANCS_C_EVT_DISCOVERY_COMPLETE:
-            NRF_LOG_DEBUG("Apple Notification Center Service discovered on the server.\r\n");
-            ret = nrf_ble_ancs_c_handles_assign(&m_ancs_c, p_evt->conn_handle, &p_evt->service);
-            APP_ERROR_CHECK(ret);
-            apple_notification_setup();
-            break;
+  NRF_LOG_DEBUG("ANCS%d\r\n", p_evt->evt_type);
+  switch (p_evt->evt_type) {
+    case BLE_ANCS_C_EVT_DISCOVERY_COMPLETE:
+      NRF_LOG_DEBUG("Apple Notification Center Service discovered on the server.\r\n");
+      ret = nrf_ble_ancs_c_handles_assign(&m_ancs_c, p_evt->conn_handle, &p_evt->service);
+      APP_ERROR_CHECK(ret);
+      apple_notification_setup();
+      break;
 
-        case BLE_ANCS_C_EVT_NOTIF:
-            NRF_LOG_DEBUG("EVT_NOTIF\r\n");
-            // Push - creates an 'ANCS' event
-            jsble_queue_pending_buf(BLEP_ANCS_NOTIF, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
-            break;
+    case BLE_ANCS_C_EVT_NOTIF:
+      NRF_LOG_DEBUG("EVT_NOTIF\r\n");
+      // Push - creates an 'ANCS' event
+      jsble_queue_pending_buf(BLEP_ANCS_NOTIF, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
+      break;
 
-        case BLE_ANCS_C_EVT_NOTIF_ATTRIBUTE:
-            NRF_LOG_DEBUG("ATTR -> %d %d\r\n", p_evt->attr.attr_id, p_evt->notif_uid);
-            m_notif_attr_latest = p_evt->attr;
-            //jsble_queue_pending_buf(BLEP_ANCS_NOTIF_ATTR, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
-            //notif_attr_print(&m_notif_attr_latest);
-            if(p_evt->attr.attr_id == BLE_ANCS_NOTIF_ATTR_ID_APP_IDENTIFIER)
-            {
-                m_notif_attr_app_id_latest = p_evt->attr;
-            }
-            // if done, push - creates an 'ANCSMSG' event
-            if (p_evt->attr.attr_id == BLE_ANCS_NB_OF_NOTIF_ATTR-1) // TODO: better way to check for last attribute?
-              jsble_queue_pending_buf(BLEP_ANCS_NOTIF_ATTR, 0, (char*)&m_notification_request, sizeof(ble_ancs_c_evt_notif_t));
-            break;
-        case BLE_ANCS_C_EVT_DISCOVERY_FAILED:
-            NRF_LOG_DEBUG("Apple Notification Center Service not discovered on the server.\r\n");
-            break;
+    case BLE_ANCS_C_EVT_NOTIF_ATTRIBUTE:
+      NRF_LOG_DEBUG("ATTR -> %d %d\r\n", p_evt->attr.attr_id, p_evt->notif_uid);
+      m_notif_attr_latest = p_evt->attr;
+      //jsble_queue_pending_buf(BLEP_ANCS_NOTIF_ATTR, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
+      //notif_attr_print(&m_notif_attr_latest);
+      if(p_evt->attr.attr_id == BLE_ANCS_NOTIF_ATTR_ID_APP_IDENTIFIER)
+      {
+          m_notif_attr_app_id_latest = p_evt->attr;
+      }
+      // if done, push - creates an 'ANCSMSG' event
+      if (p_evt->attr.attr_id == BLE_ANCS_NB_OF_NOTIF_ATTR-1) // TODO: better way to check for last attribute?
+        jsble_queue_pending_buf(BLEP_ANCS_NOTIF_ATTR, 0, (char*)&m_notification_request, sizeof(ble_ancs_c_evt_notif_t));
+      break;
+    case BLE_ANCS_C_EVT_DISCOVERY_FAILED:
+      NRF_LOG_DEBUG("Apple Notification Center Service not discovered on the server.\r\n");
+      break;
 
-        case BLE_ANCS_C_EVT_APP_ATTRIBUTE:
-          NRF_LOG_DEBUG("ANCS app attr\r\n");
-          // if done, push - creates an 'ANCSAPP' event
-          jsble_queue_pending_buf(BLEP_ANCS_APP_ATTR, 0, (char*)&m_notification_request, sizeof(ble_ancs_c_evt_notif_t));
-            break;
-        case BLE_ANCS_C_EVT_NP_ERROR:
-            err_code_print(p_evt->err_code_np);
-            break;
-        default:
-            // No implementation needed.
-            break;
-    }
+    case BLE_ANCS_C_EVT_APP_ATTRIBUTE:
+      NRF_LOG_DEBUG("ANCS app attr\r\n");
+      // if done, push - creates an 'ANCSAPP' event
+      jsble_queue_pending_buf(BLEP_ANCS_APP_ATTR, 0, (char*)&m_notification_request, sizeof(ble_ancs_c_evt_notif_t));
+      break;
+    case BLE_ANCS_C_EVT_NP_ERROR:
+      err_code_print(p_evt->err_code_np);
+      break;
+    default:
+      // No implementation needed.
+      break;
+  }
 }
 
 /**@brief Function for handling the Apple Notification Service client errors.
@@ -302,6 +316,9 @@ void ble_ancs_on_ble_evt(ble_evt_t * p_ble_evt)
             if (p_ble_evt->evt.gap_evt.conn_handle == m_ancs_c.conn_handle) {
                 m_ancs_c.conn_handle = BLE_CONN_HANDLE_INVALID;
             }
+            m_ancs_active = false;
+            if (BLETASK_IS_ANCS(bleGetCurrentTask()))
+                bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Disconnected"));
             break; // BLE_GAP_EVT_DISCONNECTED
         default:
             // No implementation needed.
@@ -450,39 +467,46 @@ void ble_ancs_init() {
   services_init();
 }
 
+bool ble_ancs_is_active() {
+  return m_ancs_active;
+}
+
 void ble_ancs_get_adv_uuid(ble_uuid_t *p_adv_uuids) {
   p_adv_uuids[0].uuid = 0xF431/*ANCS_UUID_SERVICE*/;
   p_adv_uuids[0].type = m_ancs_c.service.service.uuid.type;
 }
 
 /// Perform the given action for the current notification (positive/negative)
-void ble_ancs_action(uint32_t uid, bool positive) {
+bool ble_ancs_action(uint32_t uid, bool positive) {
   ret_code_t ret;
   ret = nrf_ancs_perform_notif_action(&m_ancs_c,
                                       uid,
                                       positive ? ACTION_ID_POSITIVE : ACTION_ID_NEGATIVE);
-  APP_ERROR_CHECK_NOT_URGENT(ret);
+  jsble_check_error(ret);
+  return ret==0;
 }
 
 // Request the attributes for notification identified by uid
-void ble_ancs_request_notif(uint32_t uid) {
-    ret_code_t ret;
-    // only the notif_uid field is used.
-    m_notification_request.notif_uid = uid;
-    m_notification_request.evt_id = BLE_ANCS_EVENT_ID_NOTIFICATION_ADDED;
-    // clear old data
-    ble_ancs_clear_attr();
-    // request attributes
-    ret = nrf_ble_ancs_c_request_attrs(&m_ancs_c, &m_notification_request);
-    APP_ERROR_CHECK_NOT_URGENT(ret);
+bool ble_ancs_request_notif(uint32_t uid) {
+  ret_code_t ret;
+  // only the notif_uid field is used.
+  m_notification_request.notif_uid = uid;
+  m_notification_request.evt_id = BLE_ANCS_EVENT_ID_NOTIFICATION_ADDED;
+  // clear old data
+  ble_ancs_clear_attr();
+  // request attributes
+  ret = nrf_ble_ancs_c_request_attrs(&m_ancs_c, &m_notification_request);
+  jsble_check_error(ret);
+  return ret==0;
 }
 
 // Request the attributes for app
-void ble_ancs_request_app(char *app_id, int len) {
-    ret_code_t ret;
-    // clear old data
-    ble_ancs_clear_app_attr();
-    // request attributes
-    ret = nrf_ble_ancs_c_app_attr_request(&m_ancs_c, app_id, len);
-    APP_ERROR_CHECK_NOT_URGENT(ret);
+bool ble_ancs_request_app(char *app_id, int len) {
+  ret_code_t ret;
+  // clear old data
+  ble_ancs_clear_app_attr();
+  // request attributes
+  ret = nrf_ble_ancs_c_app_attr_request(&m_ancs_c, (uint8_t*)app_id, len);
+  jsble_check_error(ret);
+  return ret==0;
 }

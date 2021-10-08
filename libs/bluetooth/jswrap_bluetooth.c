@@ -68,12 +68,12 @@ BleTask bleTask = BLETASK_NONE;
 const char *bleGetTaskString(BleTask task) {
 #ifndef SAVE_ON_FLASH_EXTREME
   const char *str = BLETASK_STRINGS; // 0 separated, with two 0s at the end
-  while (task) {
+  while (task && *str) {
     if (!str) return "?";
     str += strlen(str)+1;
     task--;
   }
-  if (!str) return "?";
+  if (!*str) return "?";
   return str;
 #else
   return "?";
@@ -2494,9 +2494,9 @@ void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
-    "name" : "sendANCSAction",
+    "name" : "ancsAction",
     "ifdef" : "NRF52_SERIES",
-    "generate" : "jswrap_ble_sendANCSAction",
+    "generate" : "jswrap_ble_ancsAction",
     "params" : [
       ["uid","int","The UID of the notification to respond to"],
       ["positive","bool","`true` for positive action, `false` for negative"]
@@ -2504,11 +2504,82 @@ void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback) {
 }
 Send an ANCS action for a specific Notification UID. Corresponds to posaction/negaction in the 'ANCS' event that was received
 */
-void jswrap_ble_sendANCSAction(int uid, bool positive) {
+void jswrap_ble_ancsAction(int uid, bool isPositive) {
 #if ESPR_BLUETOOTH_ANCS
-  if (bleStatus & BLE_ANCS_INITED)
-    ble_ancs_action(uid, positive);
+  if (!ble_ancs_is_active()) {
+    jsExceptionHere(JSET_ERROR, "ANCS not active");
+    return;
+  }
+  if (bleStatus & BLE_ANCS_INITED) {
+    ble_ancs_action(uid, isPositive);
+  }
 #endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "ancsGetNotificationInfo",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : "jswrap_ble_ancsGetNotificationInfo",
+    "params" : [
+      ["uid","int","The UID of the notification to get information for"]
+    ],
+    "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when the connection is complete" ],
+    "return_object" : "Promise"
+}
+Get ANCS info for a notification
+*/
+JsVar *jswrap_ble_ancsGetNotificationInfo(JsVarInt uid) {
+  JsVar *promise = 0;
+#if ESPR_BLUETOOTH_ANCS
+  if (!ble_ancs_is_active()) {
+    jsExceptionHere(JSET_ERROR, "ANCS not active");
+    return 0;
+  }
+  if (bleStatus & BLE_ANCS_INITED) {
+    if (ble_ancs_request_notif(uid)) { // if fails, it'll create an exception
+      if (bleNewTask(BLETASK_ANCS_NOTIF_ATTR, 0)) {
+        promise = jsvLockAgainSafe(blePromise);
+      }
+    }
+  }
+#endif
+  return promise;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "ancsGetAppInfo",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : "jswrap_ble_ancsGetAppInfo",
+    "params" : [
+      ["id","JsVar","The app ID to get information for"]
+    ],
+    "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when the connection is complete" ],
+    "return_object" : "Promise"
+}
+Get ANCS info for an app (add id is available via `ancsGetNotificationInfo`)
+*/
+JsVar *jswrap_ble_ancsGetAppInfo(JsVar *appId) {
+  JsVar *promise = 0;
+#if ESPR_BLUETOOTH_ANCS
+  if (!ble_ancs_is_active()) {
+    jsExceptionHere(JSET_ERROR, "ANCS not active");
+    return 0;
+  }
+  if (bleStatus & BLE_ANCS_INITED) {
+    char appIdStr[32];
+    jsvGetString(appId, appIdStr, sizeof(appIdStr));
+    if (ble_ancs_request_app(appIdStr, strlen(appIdStr))) { // if fails, it'll create an exception
+      if (bleNewTask(BLETASK_ANCS_APP_ATTR, appId)) {
+        promise = jsvLockAgainSafe(blePromise);
+      }
+    }
+  }
+#endif
+  return promise;
 }
 
 /*JSON{
