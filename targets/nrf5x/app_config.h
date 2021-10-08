@@ -53,7 +53,12 @@
 
 #ifdef ESPR_BLUETOOTH_ANCS
 #define BLE_ANCS_C_ENABLED 1
+#define BLE_AMS_C_ENABLED 1
 #define BLE_DB_DISCOVERY_ENABLED 1
+
+#ifndef BLE_AMS_C_BLE_OBSERVER_PRIO // not part of normal SDK so not in sdk_config.h
+#define BLE_AMS_C_BLE_OBSERVER_PRIO BLE_ANCS_C_BLE_OBSERVER_PRIO
+#endif BLE_AMS_C_BLE_OBSERVER_PRIO
 #endif // ESPR_BLUETOOTH_ANCS
 
 // Based on SDK12

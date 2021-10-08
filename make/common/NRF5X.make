@@ -440,8 +440,12 @@ ifdef ESPR_BLUETOOTH_ANCS
 DEFINES += -DESPR_BLUETOOTH_ANCS=1
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_db_discovery
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common
+INCLUDE += -I$(ROOT)/targets/nrf5x/ble_ams_c
 TARGETSOURCES += \
   $(ROOT)/targets/nrf5x/bluetooth_ancs.c \
+  $(ROOT)/targets/nrf5x/ble_ams_c/ams_tx_buffer.c \
+  $(ROOT)/targets/nrf5x/ble_ams_c/nrf_ble_ams_c.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_app_attr_get.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_attr_parser.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_tx_buffer.c \
