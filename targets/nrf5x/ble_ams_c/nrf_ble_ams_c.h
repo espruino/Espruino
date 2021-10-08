@@ -70,7 +70,7 @@
 #include "ble_srv_common.h"
 #include "sdk_errors.h"
 #include "ble_db_discovery.h"
-#include "nrf_sdh_ble.h"
+//#include "nrf_sdh_ble.h"
 
 #ifdef __cplusplus
 extern "C" {

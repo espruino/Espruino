@@ -48,9 +48,14 @@
 #include "ble_srv_common.h"
 #include "ble_db_discovery.h"
 #include "app_error.h"
+#ifdef DEBUG
 #define NRF_LOG_MODULE_NAME ble_ams_c
 #include "nrf_log.h"
 NRF_LOG_MODULE_REGISTER();
+#else
+#define NRF_LOG_INFO(...)
+#define NRF_LOG_DEBUG(...)
+#endif
 
 #define BLE_CCCD_NOTIFY_BIT_MASK         0x0001 /**< Enable notification bit. */
 

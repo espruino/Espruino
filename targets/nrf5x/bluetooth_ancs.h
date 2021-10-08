@@ -20,10 +20,13 @@ bool ble_ancs_action(uint32_t uid, bool positive);
 bool ble_ancs_request_notif(uint32_t uid);
 // Request the attributes for app
 bool ble_ancs_request_app(char *app_id, int len);
+// Register for all EntityTrack Attributes
+bool ble_ams_request_track_attr();
 
 // These functions are called from bluetooth.c
 void ble_ancs_init();
 bool ble_ancs_is_active();
+bool ble_ams_is_active();
 void ble_ancs_get_adv_uuid(ble_uuid_t *p_adv_uuids);
 void ble_ancs_bonding_succeeded(uint16_t conn_handle);
 void ble_ancs_on_ble_evt(ble_evt_t * p_ble_evt);

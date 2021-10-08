@@ -114,6 +114,7 @@ void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback);
 void jswrap_ble_ancsAction(int uid, bool isPositive);
 JsVar *jswrap_ble_ancsGetNotificationInfo(JsVarInt uid);
 JsVar *jswrap_ble_ancsGetAppInfo(JsVar *appId);
+void jswrap_ble_amsRegister();
 
 JsVar *jswrap_ble_requestDevice(JsVar *options);
 JsVar *jswrap_ble_connect(JsVar *mac, JsVar *options);

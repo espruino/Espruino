@@ -2585,6 +2585,27 @@ JsVar *jswrap_ble_ancsGetAppInfo(JsVar *appId) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
+    "name" : "amsRegister",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : "jswrap_ble_amsRegister"
+}
+Send an ANCS action for a specific Notification UID. Corresponds to posaction/negaction in the 'ANCS' event that was received
+*/
+void jswrap_ble_amsRegister() {
+#if ESPR_BLUETOOTH_ANCS
+  if (!ble_ams_is_active()) {
+    jsExceptionHere(JSET_ERROR, "AMS not active");
+    return;
+  }
+  if (bleStatus & BLE_ANCS_INITED) {
+    ble_ams_request_track_attr();
+  }
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
     "name" : "requestDevice",
     "#if" : "defined(NRF52_SERIES) || defined(ESP32)",
     "generate" : "jswrap_ble_requestDevice",

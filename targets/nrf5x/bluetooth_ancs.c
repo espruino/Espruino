@@ -35,7 +35,7 @@
 #include "nrf_delay.h"
 
 //=========================
-//#define DEBUG
+#define DEBUG
 //=========================
 
 /*
@@ -54,15 +54,6 @@ E.on('ANCS',a=>{
 //NRF.ancsGetAppInfo("com.google.hangouts").then(a=>print("App",E.toJS(a)));
 
 
-
-Register for all EntityTrack Attributes (TrackArtist, TrackAlbum, TrackTitle, TrackDuration");
-uint8_t attribute_number = 4;
-uint8_t attribute_list[] = {BLE_AMS_TRACK_ATTRIBUTE_ID_ARTIST,
-                    BLE_AMS_TRACK_ATTRIBUTE_ID_ALBUM,
-                    BLE_AMS_TRACK_ATTRIBUTE_ID_TITLE,
-                    BLE_AMS_TRACK_ATTRIBUTE_ID_DURATION};
-ble_ams_c_entity_update_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, attribute_number, attribute_list);
-break;
 
 NRF_LOG_INFO("KEY 2 is pressed. Send EntityAttribute request for Attribute TrackArtist of EntityTrack");
 ble_ams_c_entity_attribute_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, BLE_AMS_TRACK_ATTRIBUTE_ID_ARTIST);
@@ -97,6 +88,7 @@ ble_ams_c_entity_attribute_read(&m_ams_c, 0);
 /** Delay after connection until security request is sent, if necessary (ticks). */
 #if NRF_SD_BLE_API_VERSION < 5
 #define SECURITY_REQUEST_DELAY         APP_TIMER_TICKS(1500, APP_TIMER_PRESCALER)
+#define NRF_SDH_BLE_GATT_MAX_MTU_SIZE (GATT_MTU_SIZE_DEFAULT - 3)
 #else
 #define SECURITY_REQUEST_DELAY         APP_TIMER_TICKS(1500)  
 #endif  
@@ -114,6 +106,7 @@ BLE_DB_DISCOVERY_DEF(m_ble_db_discovery);                              /**< DB D
 #endif
 
 static bool m_ancs_active = false;
+static bool m_ams_active = false;
 static ble_ancs_c_evt_notif_t m_notification_request;                   /**< Local copy to keep track of the newest arriving notifications. */
 static ble_ancs_c_attr_t      m_notif_attr_latest;                     /**< Local copy of the newest notification attribute. */
 static ble_ancs_c_attr_t      m_notif_attr_app_id_latest;              /**< Local copy of the newest app attribute. */
@@ -247,7 +240,8 @@ static void apple_media_setup(void) {
   ret = ble_ams_c_entity_update_notif_enable(&m_ams_c);
   APP_ERROR_CHECK_NOT_URGENT(ret);
 
-  NRF_LOG_INFO("Apple Media-Notifications Enabled.");
+  m_ams_active = true;
+  NRF_LOG_INFO("Apple Media-Notifications Enabled.\n");
 }
 
 
@@ -555,6 +549,7 @@ void ble_ancs_on_ble_evt(ble_evt_t * p_ble_evt)
                 m_ams_c.conn_handle = BLE_CONN_HANDLE_INVALID;
             }
             m_ancs_active = false;
+            m_ams_active = false;
             if (BLETASK_IS_ANCS(bleGetCurrentTask()))
                 bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Disconnected"));
             break; // BLE_GAP_EVT_DISCONNECTED
@@ -720,6 +715,11 @@ bool ble_ancs_is_active() {
   return m_ancs_active;
 }
 
+bool ble_ams_is_active() {
+  return m_ams_active;
+}
+
+
 void ble_ancs_get_adv_uuid(ble_uuid_t *p_adv_uuids) {
   p_adv_uuids[0].uuid = 0xF431/*ANCS_UUID_SERVICE*/;
   p_adv_uuids[0].type = m_ancs_c.service.service.uuid.type;
@@ -756,6 +756,20 @@ bool ble_ancs_request_app(char *app_id, int len) {
   ble_ancs_clear_app_attr();
   // request attributes
   ret = nrf_ble_ancs_c_app_attr_request(&m_ancs_c, (uint8_t*)app_id, len);
+  jsble_check_error(ret);
+  return ret==0;
+}
+
+// Register for all EntityTrack Attributes
+bool ble_ams_request_track_attr() {
+  ret_code_t ret;
+  // Register for all EntityTrack Attributes (TrackArtist, TrackAlbum, TrackTitle, TrackDuration);
+  uint8_t attribute_number = 4;
+  uint8_t attribute_list[] = {BLE_AMS_TRACK_ATTRIBUTE_ID_ARTIST,
+                      BLE_AMS_TRACK_ATTRIBUTE_ID_ALBUM,
+                      BLE_AMS_TRACK_ATTRIBUTE_ID_TITLE,
+                      BLE_AMS_TRACK_ATTRIBUTE_ID_DURATION};
+  ret = ble_ams_c_entity_update_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, attribute_number, attribute_list);
   jsble_check_error(ret);
   return ret==0;
 }
