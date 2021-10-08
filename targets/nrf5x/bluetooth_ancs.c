@@ -34,11 +34,13 @@
 #include "fds.h"
 #include "nrf_delay.h"
 
+//=========================
+//#define DEBUG
+//=========================
+
 /*
 
 Serial1.setConsole(1)
-NRF.on('connect',_=>print("Connected"));
-NRF.on('disconnect',_=>print("Disconnected"));
 NRF.setServices({},{ancs:true})
 NRF.setAdvertising({})
 
@@ -46,10 +48,10 @@ E.on('ANCS',a=>{
   print("ANCS", E.toJS(a));
 });
 
-NRF.ancsGetNotificationInfo( 1 ).then(a=>print("Notify",E.toJS(a)));
-
-
-NRF.ancsGetAppInfo("com.google.hangouts").then(a=>print("App",E.toJS(a)));
+// get message contents
+//NRF.ancsGetNotificationInfo( 1 ).then(a=>print("Notify",E.toJS(a))); // 1==id
+// Get app name.
+//NRF.ancsGetAppInfo("com.google.hangouts").then(a=>print("App",E.toJS(a)));
 
 
 
@@ -83,7 +85,7 @@ ble_ams_c_entity_attribute_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, BLE_AMS_TRAC
 NRF_LOG_INFO("KEY 3 is pressed. Read Entity Attribute value");
 ble_ams_c_entity_attribute_read(&m_ams_c, 0);
  */
-#define DEBUG
+
 #ifndef DEBUG
 #define NRF_LOG_INFO(...)
 #define NRF_LOG_DEBUG(...)
