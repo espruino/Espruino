@@ -46,6 +46,7 @@ int jswrap_banglejs_getStepCount();
 JsVar *jswrap_banglejs_getCompass();
 JsVar *jswrap_banglejs_getAccel();
 JsVar *jswrap_banglejs_getPressure();
+JsVar *jswrap_banglejs_getHealthStatus();
 
 JsVar *jswrap_banglejs_dbg();
 void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data);

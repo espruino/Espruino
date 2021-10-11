@@ -39,6 +39,7 @@
             Graphics: add wrapString to wrap messages to the correct length
             Bangle.js: update showMessage and showPrompt with correct wrapping
             Bangle.js2: Add Bangle.compassRd, fix setCompassPower
+            Bangle.js: Add Bangle.on('health',..) event and Bangle.getHealthStatus
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

@@ -118,6 +118,16 @@ Called whenever a step is detected by Bangle.js's pedometer.
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
+  "name" : "health",
+  "params" : [["info","JsVar","An object containing the last 10 minutes health data"]],
+  "ifdef" : "BANGLEJS"
+}
+See `Bangle.getHealthStatus()` for more information. This is used for health tracking to
+allow Bangle.js to record historical exercise data.
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
   "name" : "faceUp",
   "params" : [["up","bool","`true` if face-up"]],
   "ifdef" : "BANGLEJS"
@@ -430,7 +440,7 @@ JshI2CInfo i2cInternal;
 
 #define DEFAULT_ACCEL_POLL_INTERVAL 80 // in msec - 12.5 hz to match accelerometer
 #define POWER_SAVE_ACCEL_POLL_INTERVAL 800 // in msec
-#define POWER_SAVE_MIN_ACCEL 2684354 // min acceleration before we exit power save... sqr(8192*0.2)
+#define POWER_SAVE_MIN_ACCEL 1638 // min acceleration before we exit power save... (8192*0.2)
 #define POWER_SAVE_TIMEOUT 60000 // 60 seconds of inactivity
 #define ACCEL_POLL_INTERVAL_MAX 4000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
 #define BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
@@ -558,8 +568,9 @@ Vector3 mag, magmin, magmax;
 Vector3 acc;
 /// squared accelerometer magnitude
 int accMagSquared;
-/// accelerometer difference since last reading
-int accdiff;
+/// magnitude of difference in accelerometer vectors since last reading
+unsigned int accDiff;
+
 /// History of accelerometer readings
 int8_t accHistory[ACCEL_HISTORY_LEN*3];
 /// Index in accelerometer history of the last sample
@@ -576,9 +587,9 @@ unsigned char tapInfo;
 volatile uint16_t twistTimer; // in ms
 // Gesture settings
 /// how big a difference before we consider a gesture started?
-int accelGestureStartThresh = 800*800;
+unsigned short accelGestureStartThresh = 800;
 /// how small a difference before we consider a gesture ended?
-int accelGestureEndThresh = 2000*2000;
+unsigned short accelGestureEndThresh = 2000;
 /// how many samples do we keep after a gesture has ended
 int accelGestureInactiveCount = 4;
 /// how many samples must a gesture have before we notify about it?
@@ -603,6 +614,22 @@ typedef enum {
 TouchState touchLastState; /// What happened in the last event?
 TouchState touchLastState2; /// What happened in the event before last?
 TouchState touchStatus; ///< What has happened *while the current touch is in progress*
+
+/// How often should we fire 'health' events?
+#define HEALTH_INTERVAL 600000 // 10 minutes (600 seconds)
+/// Struct with currently tracked health info
+typedef struct {
+  uint8_t index; ///< time_in_ms / HEALTH_INTERVAL - we fire a new Health event when this changes
+  uint32_t movement; ///< total accelerometer difference. Used for activity tracking.
+  uint16_t movementSamples; ///< Number of samples added to movement
+  uint16_t stepCount; ///< steps during current period
+  uint16_t bpm10;  ///< beats per minute (x10)
+  uint8_t bpmConfidence; ///< confidence of current BPM figure
+} HealthState;
+/// Currently tracked health info during this period
+HealthState healthCurrent;
+/// Health info during the last period, used when firing a health event
+HealthState healthLast;
 
 /// Promise when beep is finished
 JsVar *promiseBeep;
@@ -682,6 +709,7 @@ typedef enum {
   JSBT_ACCEL_INTERVAL_DEFAULT = 1<<28, ///< reschedule accelerometer poll handler to default speed
   JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<29, ///< reschedule accelerometer poll handler to powersave speed
   JSBT_HRM_INSTANT_DATA = 1<<30, ///< Instant heart rate data
+  JSBT_HEALTH = 1<<31, ///< New 'health' event
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -777,6 +805,27 @@ static int twosComplement(int val, unsigned char bits) {
   return val;
 }
 
+// quick integer square root
+// https://stackoverflow.com/questions/31117497/fastest-integer-square-root-in-the-least-amount-of-instructions
+static unsigned short int int_sqrt32(unsigned int x) {
+  unsigned short int res=0;
+  unsigned short int add= 0x8000;
+  int i;
+  for(i=0;i<16;i++) {
+    unsigned short int temp=res | add;
+    unsigned int g2=temp*temp;
+    if (x>=g2)
+      res=temp;
+    add>>=1;
+  }
+  return res;
+}
+
+/// Clear the given health state back to defaults
+static void healthStateClear(HealthState *health) {
+  memset(health, 0, sizeof(HealthState));
+}
+
 /** This is called to set whether an app requests a device to be on or off.
  * The value returned is whether the device should be on.
  * Devices: GPS/Compass/HRM/Barom
@@ -849,6 +898,7 @@ void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
 /* Scan peripherals for any data that's needed
  * Also, holding down both buttons will reboot */
 void peripheralPollHandler() {
+  JsSysTime time = jshGetSystemTime();
   // Handle watchdog
   if (!(jshPinGetValue(BTN1_PININDEX)
 #ifdef BTN2_PININDEX
@@ -1048,7 +1098,7 @@ void peripheralPollHandler() {
     acc.y = newy;
     acc.z = newz;
     accMagSquared = acc.x*acc.x + acc.y*acc.y + acc.z*acc.z;
-    accdiff = dx*dx + dy*dy + dz*dz;
+    accDiff = int_sqrt32(dx*dx + dy*dy + dz*dz);
     // save history
     accHistoryIdx = (accHistoryIdx+3) % sizeof(accHistory);
     accHistory[accHistoryIdx  ] = clipi8(newx>>7);
@@ -1056,7 +1106,7 @@ void peripheralPollHandler() {
     accHistory[accHistoryIdx+2] = clipi8(newz>>7);
     // Power saving
     if (bangleFlags & JSBF_POWER_SAVE) {
-      if (accdiff > POWER_SAVE_MIN_ACCEL) {
+      if (accDiff > POWER_SAVE_MIN_ACCEL) {
         powerSaveTimer = 0;
         if (pollInterval == POWER_SAVE_ACCEL_POLL_INTERVAL) {
           bangleTasks |= JSBT_ACCEL_INTERVAL_DEFAULT;
@@ -1108,6 +1158,7 @@ void peripheralPollHandler() {
       int newSteps = stepcount_new(accMagSquared);
       if (newSteps>0) {
         stepCounter += newSteps;
+        healthCurrent.stepCount += newSteps;
         bangleTasks |= JSBT_STEP_EVENT;
         jshHadEvent();
       }
@@ -1138,7 +1189,7 @@ void peripheralPollHandler() {
     // checking for gestures
     if (accGestureCount==0) { // no gesture yet
       // if movement is eniugh, start one
-      if (accdiff > accelGestureStartThresh) {
+      if (accDiff > accelGestureStartThresh) {
         accIdleCount = 0;
         accGestureCount = 1;
       }
@@ -1147,7 +1198,7 @@ void peripheralPollHandler() {
       if (accGestureCount < 255)
         accGestureCount++;
       // if idle for long enough...
-      if (accdiff < accelGestureEndThresh) {
+      if (accDiff < accelGestureEndThresh) {
         if (accIdleCount<255) accIdleCount++;
         if (accIdleCount==accelGestureInactiveCount) {
           // inactive for long enough for a gesture, but not too long
@@ -1174,6 +1225,21 @@ void peripheralPollHandler() {
   }
 #endif
 
+  // Health tracking
+  // Did we enter a new 10 minute interval?
+  uint8_t healthIndex = (uint8_t)(jshGetMillisecondsFromTime(time)/HEALTH_INTERVAL);
+  if (healthIndex != healthCurrent.index) {
+    // we did - fire 'Bangle.health' event
+    healthLast = healthCurrent;
+    healthStateClear(&healthCurrent);
+    healthCurrent.index = healthIndex;
+    bangleTasks |= JSBT_HEALTH;
+  }
+  // Update latest health info
+  healthCurrent.movement += accDiff;
+  healthCurrent.movementSamples++;
+
+  // we're done, ensure we clear I2C flag
   i2cBusy = false;
 }
 
@@ -1181,6 +1247,11 @@ void peripheralPollHandler() {
 static void hrmHandler(int ppgValue) {
   if (hrm_new(ppgValue)) {
     bangleTasks |= JSBT_HRM_DATA;
+    // keep track of best HRM sample during this period
+    if (hrmInfo.confidence >= healthCurrent.bpmConfidence) {
+      healthCurrent.bpmConfidence = hrmInfo.confidence;
+      healthCurrent.bpm10 = hrmInfo.bpm10;
+    }
     jshHadEvent();
   }
   if (bangleFlags & JSBF_HRM_INSTANT_LISTENER) {
@@ -1839,9 +1910,11 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
   bool wakeOnTwist = bangleFlags&JSBF_WAKEON_TWIST;
   bool powerSave = bangleFlags&JSBF_POWER_SAVE;
   int stepCounterThresholdLow, stepCounterThresholdHigh; // ignore these with new step counter
+  int _accelGestureStartThresh = accelGestureStartThresh*accelGestureStartThresh;
+  int _accelGestureEndThresh = accelGestureEndThresh*accelGestureEndThresh;
   jsvConfigObject configs[] = {
-      {"gestureStartThresh", JSV_INTEGER, &accelGestureStartThresh},
-      {"gestureEndThresh", JSV_INTEGER, &accelGestureEndThresh},
+      {"gestureStartThresh", JSV_INTEGER, &_accelGestureStartThresh},
+      {"gestureEndThresh", JSV_INTEGER, &_accelGestureEndThresh},
       {"gestureInactiveCount", JSV_INTEGER, &accelGestureInactiveCount},
       {"gestureMinLength", JSV_INTEGER, &accelGestureMinLength},
       {"stepCounterThresholdLow", JSV_INTEGER, &stepCounterThresholdLow},
@@ -1874,6 +1947,8 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
     if (lockTimeout<0) lockTimeout=0;
     if (lcdPowerTimeout<0) lcdPowerTimeout=0;
     if (backlightTimeout<0) backlightTimeout=0;
+    accelGestureStartThresh = int_sqrt32(_accelGestureStartThresh);
+    accelGestureEndThresh = int_sqrt32(_accelGestureEndThresh);
   }
   return 0;
 }
@@ -2457,7 +2532,8 @@ Get the most recent accelerometer reading. Data is in the same format as the `Ba
 * `x` is X axis (left-right) in `g`
 * `y` is Y axis (up-down) in `g`
 * `z` is Z axis (in-out) in `g`
-* `diff` is difference between this and the last reading in `g`
+* `diff` is difference between this and the last reading in `g` (calculated by comparing vectors, not magnitudes)
+* `td` is the elapsed
 * `mag` is the magnitude of the acceleration in `g`
 */
 JsVar *jswrap_banglejs_getAccel() {
@@ -2467,9 +2543,39 @@ JsVar *jswrap_banglejs_getAccel() {
     jsvObjectSetChildAndUnLock(o, "y", jsvNewFromFloat(acc.y/8192.0));
     jsvObjectSetChildAndUnLock(o, "z", jsvNewFromFloat(acc.z/8192.0));
     jsvObjectSetChildAndUnLock(o, "mag", jsvNewFromFloat(sqrt(accMagSquared)/8192.0));
-    jsvObjectSetChildAndUnLock(o, "diff", jsvNewFromFloat(sqrt(accdiff)/8192.0));
+    jsvObjectSetChildAndUnLock(o, "diff", jsvNewFromFloat(accDiff/8192.0));
   }
   return o;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "getHealthStatus",
+    "generate" : "jswrap_banglejs_getHealthStatus",
+    "return" : ["JsVar","Returns an object containing various health info - see below"],
+    "ifdef" : "BANGLEJS"
+}
+
+* `movement` is the 32 bit sum of all `acc.diff` readings since power on (and rolls over). It is the difference in accelerometer values as `g*8192`
+* `steps` is the number of steps during this period
+* `bpm` the best BPM reading from HRM sensor during this period
+* `bpmConfidence` best BPM confidence (0-100%) during this period
+
+*/
+static JsVar *_jswrap_banglejs_getHealthStatusObject(HealthState *health) {
+  JsVar *o = jsvNewObject();
+  if (o) {
+    //jsvObjectSetChildAndUnLock(o,"index", jsvNewFromInteger(health->index)); // DEBUG only
+    jsvObjectSetChildAndUnLock(o,"movement", jsvNewFromInteger(health->movement / health->movementSamples));
+    jsvObjectSetChildAndUnLock(o,"steps",jsvNewFromInteger(health->stepCount));
+    jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(health->bpm10 / 10.0));
+    jsvObjectSetChildAndUnLock(o,"bpmConfidence",jsvNewFromInteger(health->bpmConfidence));
+  }
+  return o;
+}
+JsVar *jswrap_banglejs_getHealthStatus() {
+  return _jswrap_banglejs_getHealthStatusObject(&healthCurrent);
 }
 
 /* After init is called (a second time, NOT first time), we execute any JS that is due to be executed,
@@ -2609,6 +2715,9 @@ NO_INLINE void jswrap_banglejs_init() {
   if (firstRun) {
     bangleFlags = JSBF_DEFAULT | JSBF_LCD_ON | JSBF_LCD_BL_ON; // includes bangleFlags
     lcdBrightness = 255;
+    accDiff = 0;
+    healthStateClear(&healthCurrent);
+    healthStateClear(&healthLast);
   } 
   bangleFlags |= JSBF_POWER_SAVE; // ensure we turn power-save on by default every restart
   inactivityTimer = 0; // reset the LCD timeout timer
@@ -3219,6 +3328,32 @@ bool jswrap_banglejs_idle() {
       }
     }
 #endif
+    if (bangleTasks & JSBT_HEALTH) {
+      JsVar *o = _jswrap_banglejs_getHealthStatusObject(&healthLast);
+      if (o) {
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"health", &o, 1);
+        jsvUnLock(o);
+      }
+    }
+    if (bangleTasks & JSBT_HRM_DATA) {
+      JsVar *o = jsvNewObject();
+      if (o) {
+        jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromInteger(hrmInfo.bpm10 / 10.0));
+        jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
+        JsVar *a = jsvNewEmptyArray();
+        if (a) {
+          int n = hrmInfo.timeIdx;
+          for (int i=0;i<HRM_HIST_LEN;i++) {
+            jsvArrayPushAndUnLock(a, jsvNewFromFloat(hrm_time_to_bpm10(hrmInfo.times[n]) / 10.0));
+            n++;
+            if (n==HRM_HIST_LEN) n=0;
+          }
+          jsvObjectSetChildAndUnLock(o,"history",a);
+        }
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM", &o, 1);
+        jsvUnLock(o);
+      }
+    }
     if (bangleTasks & JSBT_GESTURE_DATA) {
       if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"gesture")) {
         JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_INT8, accGestureRecordedCount*3);
