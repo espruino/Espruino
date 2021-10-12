@@ -514,7 +514,7 @@ to denote the chunk number (eg `"foobar\1"`, `"foobar\2"`, etc).
 
 This means that while `StorageFile` files exist in the same
 area as those from `Storage`, they should be
-read using `StorageFile.open` (and not `Storage.read`).
+read using `Storage.open` (and not `Storage.read`).
 
 ```
 f = s.open("foobar","w");

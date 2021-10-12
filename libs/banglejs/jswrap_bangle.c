@@ -1600,6 +1600,20 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
 }
 This function can be used to turn Bangle.js's LCD off or on.
 
+This function resets the Bangle's 'activity timer' (like
+pressing a button or the screen would) so after a time period
+of inactivity set by `Bangle.setLCDTimeout` the screen will
+turn off.
+
+If you want to keep the screen on permanently (until apps
+are changed) you can do:
+
+```
+Bangle.setLCDTimeout(0); // turn off the timeout
+Bangle.setLCDPower(1); // keep screen on
+```
+
+
 **When on full, the LCD draws roughly 40mA.** You can adjust
 When brightness using `Bange.setLCDBrightness`.
 */
