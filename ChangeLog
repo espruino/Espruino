@@ -41,6 +41,7 @@
             Bangle.js2: Add Bangle.compassRd, fix setCompassPower
             Bangle.js: Add Bangle.on('health',..) event and Bangle.getHealthStatus
             Graphics: drawImage now honours arraybuffer offsets
+            Graphics: drawImage now supports up to 4bpp palettes rendered direct from flash
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

@@ -97,8 +97,12 @@ typedef struct {
   unsigned short headerLength; ///< size of header (inc palette)
   unsigned short bitmapLength; ///< size of data (excl header)
 
-  uint16_t _simplePalette[4]; // used when a palette is created for rendering
+  uint16_t _simplePalette[16]; // used when a palette is created for rendering
 } GfxDrawImageInfo;
+
+static bool _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info) {
+  jsvUnLock(info->buffer);
+}
 
 /** Parse an image into GfxDrawImageInfo. See drawImage for image format docs. Returns true on success.
  * if 'image' is a string or ArrayBuffer, imageOffset is the offset within that (usually 0)
@@ -175,7 +179,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
       info->bpp = info->bpp&63;
       int paletteEntries = 1<<info->bpp;
       info->paletteMask = (uint32_t)paletteEntries-1;
-      if (info->bpp <= 2) {
+      if (paletteEntries*2 <= sizeof(info->_simplePalette)) {
         // if it'll fit, put the palette data in _simplePalette
         uint32_t n = info->bitmapOffset;
         for (int i=0;i<paletteEntries;i++) {
@@ -194,8 +198,10 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
           info->palettePtr = (uint16_t*)&dataPtr[info->bitmapOffset+info->headerLength];
         }
       }
+      // could allocate a flat string and copy data in here
       if (!info->palettePtr) {
         jsExceptionHere(JSET_ERROR, "Unable to get pointer to palette. Image in flash?");
+        _jswrap_graphics_freeImageInfo(info);
         return false;
       }
       // modify image start
@@ -244,7 +250,7 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
       info->height<=0 ||
       info->bpp>32) {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to a valid Image");
-    jsvUnLock(info->buffer);
+    _jswrap_graphics_freeImageInfo(info);
     return false;
   }
   info->bitMask = (unsigned int)((1L<<info->bpp)-1L);
@@ -253,6 +259,8 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
   info->bitmapLength = (info->width*info->height*info->bpp + 7)>>3;
   return true;
 }
+
+
 
 /// This is for rotating and scaling layers
 typedef struct {
@@ -1867,7 +1875,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
       size_t idx = jsvStringIteratorGetIndex(&it);
       if (_jswrap_graphics_parseImage(gfx, str, idx, &img)) {
         jsvStringIteratorGoto(&it, str, idx+img.headerLength+img.bitmapLength);
-        jsvUnLock(img.buffer);
+        _jswrap_graphics_freeImageInfo(&img);
         // string iterator now points to the next char after image
         width += img.width;
       }
@@ -2001,7 +2009,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
       size_t idx = jsvStringIteratorGetIndex(&it);
       if (_jswrap_graphics_parseImage(&gfx, str, idx, &img)) {
         jsvStringIteratorGoto(&it, str, idx+img.headerLength+img.bitmapLength);
-        jsvUnLock(img.buffer);
+        _jswrap_graphics_freeImageInfo(&img);
         // string iterator now points to the next char after image
         wordWidth += img.width;
       }
@@ -2129,7 +2137,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
       if (_jswrap_graphics_parseImage(&gfx, str, idx, &img)) {
         jsvStringIteratorGoto(&it, str, idx+img.headerLength);
         _jswrap_drawImageSimple(&gfx, x, y, &img, &it);
-        jsvUnLock(img.buffer);
+        _jswrap_graphics_freeImageInfo(&img);
         // string iterator now points to the next char after image
         x += img.width;
       }
@@ -2568,7 +2576,7 @@ JsVar *jswrap_graphics_imageMetrics(JsVar *parent, JsVar *var) {
   if (!_jswrap_graphics_parseImage(&gfx, var, 0, &img))
     return 0;
   int bufferLen = jsvGetLength(img.buffer) - img.bitmapOffset;
-  jsvUnLock(img.buffer);
+  _jswrap_graphics_freeImageInfo(&img);
   JsVar *o = jsvNewObject();
   if (o) {
     jsvObjectSetChildAndUnLock(o, "width", jsvNewFromInteger(img.width));
@@ -2789,7 +2797,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #endif // GRAPHICS_DRAWIMAGE_ROTATED
   }
   jsvStringIteratorFree(&it);
-  jsvUnLock(img.buffer);
+  _jswrap_graphics_freeImageInfo(&img);
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
