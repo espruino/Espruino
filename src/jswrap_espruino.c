@@ -764,7 +764,7 @@ JsVar *jswrap_espruino_toString(JsVar *args) {
     if (jsvIsArrayBuffer(arg) &&
         JSV_ARRAYBUFFER_GET_SIZE(arg->varData.arraybuffer.type)==1 &&
         arg->varData.arraybuffer.byteOffset==0) {
-      JsVar *backing = jsvGetArrayBufferBackingString(arg);
+      JsVar *backing = jsvGetArrayBufferBackingString(arg, NULL);
       if (jsvIsFlatString(backing) &&
           jsvGetCharactersInVar(backing) == arg->varData.arraybuffer.length) {
         jsvUnLock(arg);

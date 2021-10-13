@@ -497,8 +497,8 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
   // same data. If we copy forward (eg `a.set(a.subarray(),1)`) then we
   // end up duplicating the same data, so we must copy in reverse.
   if (jsvIsArrayBuffer(parent) && jsvIsArrayBuffer(arr)) {
-    JsVar *sa = jsvGetArrayBufferBackingString(parent);
-    JsVar *sb = jsvGetArrayBufferBackingString(arr);
+    JsVar *sa = jsvGetArrayBufferBackingString(parent, NULL);
+    JsVar *sb = jsvGetArrayBufferBackingString(arr, NULL);
     bool setBackwards = sa == sb && arr->varData.arraybuffer.byteOffset <=
         parent->varData.arraybuffer.byteOffset + offset*(int)JSV_ARRAYBUFFER_GET_SIZE(parent->varData.arraybuffer.type);
     jsvUnLock2(sa,sb);

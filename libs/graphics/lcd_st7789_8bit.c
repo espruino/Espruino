@@ -241,7 +241,7 @@ void lcdST7789_flip(JsGraphics *gfx) {
     case LCDST7789_MODE_BUFFER_120x120: {
       // offscreen buffer - BLIT
       JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
-      JsVar *str = jsvGetArrayBufferBackingString(buffer);
+      JsVar *str = jsvGetArrayBufferBackingString(buffer, NULL);
       if (str) {
         JsvStringIterator it;
         jsvStringIteratorNew(&it, str, 0);
@@ -253,7 +253,7 @@ void lcdST7789_flip(JsGraphics *gfx) {
     case LCDST7789_MODE_BUFFER_80x80: {
       // offscreen buffer - BLIT
       JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
-      JsVar *str = jsvGetArrayBufferBackingString(buffer);
+      JsVar *str = jsvGetArrayBufferBackingString(buffer, NULL);
       if (str) {
         JsvStringIterator it;
         jsvStringIteratorNew(&it, str, 0);

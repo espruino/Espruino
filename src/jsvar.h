@@ -535,8 +535,8 @@ void jsvReplaceWithOrAddToRoot(JsVar *dst, JsVar *src);
 
 /** Get the item at the given location in the array buffer and return the result */
 size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer);
-/** Get the String the contains the data for this arrayBuffer. Is ok with being passed a String in the first place. */
-JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer);
+/** Get the String the contains the data for this arrayBuffer. Is ok with being passed a String in the first place. Offset is the offset in the backing string of this arraybuffer. */
+JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer, uint32_t *offset);
 /** Get the item at the given location in the array buffer and return the result */
 JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, size_t index);
 /** Set the item at the given location in the array buffer */

@@ -1518,7 +1518,7 @@ char *jsvGetDataPointer(JsVar *v, size_t *len) {
     /* Arraybuffers generally use some kind of string to store their data.
      * Find it, then call ourselves again to figure out if we can get a
      * raw pointer to it.  */
-    JsVar *d = jsvGetArrayBufferBackingString(v);
+    JsVar *d = jsvGetArrayBufferBackingString(v, NULL);
     char *r = jsvGetDataPointer(d, len);
     jsvUnLock(d);
     if (r) {
@@ -2075,10 +2075,12 @@ size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer) {
   return arrayBuffer->varData.arraybuffer.length;
 }
 
-/** Get the String the contains the data for this arrayBuffer. Is ok with being passed a String in the first place. */
-JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer) {
+/** Get the String the contains the data for this arrayBuffer. Is ok with being passed a String in the first place. Offset is the offset in the backing string of this arraybuffer. */
+JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer, uint32_t *offset) {
   jsvLockAgain(arrayBuffer);
+  if (*offset) *offset = 0;
   while (jsvIsArrayBuffer(arrayBuffer)) {
+    if (*offset) *offset += arrayBuffer->varData.arraybuffer.byteOffset;
     JsVar *s = jsvLock(jsvGetFirstChild(arrayBuffer));
     jsvUnLock(arrayBuffer);
     arrayBuffer = s;
@@ -4157,7 +4159,7 @@ JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data) {
     return 0;
   }
   if (data) {
-    JsVar *arrayBufferData = jsvGetArrayBufferBackingString(buf);
+    JsVar *arrayBufferData = jsvGetArrayBufferBackingString(buf, NULL);
     if (arrayBufferData)
       jsvSetString(arrayBufferData, (char *)data, (size_t)length);
     jsvUnLock(arrayBufferData);

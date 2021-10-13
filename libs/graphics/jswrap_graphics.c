@@ -114,9 +114,8 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
     info->height = ig.data.height;
     info->bpp = ig.data.bpp;
     JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
-    info->buffer = jsvGetArrayBufferBackingString(buf);
+    info->buffer = jsvGetArrayBufferBackingString(buf, &info->bitmapOffset);
     jsvUnLock(buf);
-    info->bitmapOffset = 0;
 #else
   if (false) {
 #endif
@@ -150,19 +149,19 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
     }
 #endif
     JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
-    info->buffer = jsvGetArrayBufferBackingString(buf);
+    info->buffer = jsvGetArrayBufferBackingString(buf, &info->bitmapOffset);
     jsvUnLock(buf);
-    info->bitmapOffset = imageOffset;
+    info->bitmapOffset += imageOffset;
   } else if (jsvIsString(image) || jsvIsArrayBuffer(image)) {
     if (jsvIsArrayBuffer(image)) {
-      info->buffer = jsvGetArrayBufferBackingString(image);
+      info->buffer = jsvGetArrayBufferBackingString(image, &info->bitmapOffset);
     } else {
       info->buffer = jsvLockAgain(image);
     }
     info->width = (unsigned char)jsvGetCharInString(info->buffer,imageOffset);
     info->height = (unsigned char)jsvGetCharInString(info->buffer,imageOffset+1);
     info->bpp = (unsigned char)jsvGetCharInString(info->buffer,imageOffset+2);
-    info->bitmapOffset = imageOffset;
+    info->bitmapOffset += imageOffset;
     if (info->bpp & 128) {
       info->bpp = info->bpp&127;
       info->isTransparent = true;
