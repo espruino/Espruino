@@ -2078,9 +2078,9 @@ size_t jsvGetArrayBufferLength(const JsVar *arrayBuffer) {
 /** Get the String the contains the data for this arrayBuffer. Is ok with being passed a String in the first place. Offset is the offset in the backing string of this arraybuffer. */
 JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer, uint32_t *offset) {
   jsvLockAgain(arrayBuffer);
-  if (*offset) *offset = 0;
+  if (offset) *offset = 0;
   while (jsvIsArrayBuffer(arrayBuffer)) {
-    if (*offset) *offset += arrayBuffer->varData.arraybuffer.byteOffset;
+    if (offset) *offset += arrayBuffer->varData.arraybuffer.byteOffset;
     JsVar *s = jsvLock(jsvGetFirstChild(arrayBuffer));
     jsvUnLock(arrayBuffer);
     arrayBuffer = s;
