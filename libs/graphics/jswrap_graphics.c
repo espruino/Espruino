@@ -2136,7 +2136,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
       size_t idx = jsvStringIteratorGetIndex(&it);
       if (_jswrap_graphics_parseImage(&gfx, str, idx, &img)) {
         jsvStringIteratorGoto(&it, str, idx+img.headerLength);
-        _jswrap_drawImageSimple(&gfx, x, y, &img, &it);
+        _jswrap_drawImageSimple(&gfx, x, y+(fontHeight-img.height)/2, &img, &it);
         _jswrap_graphics_freeImageInfo(&img);
         // string iterator now points to the next char after image
         x += img.width;
