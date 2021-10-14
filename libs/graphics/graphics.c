@@ -82,7 +82,7 @@ void graphicsFallbackScrollX(JsGraphics *gfx, int xdir, int yfrom, int yto, int 
   int x;
   if (xdir<=0) {
     int w = x2+xdir;
-    for (x=x1;x<w;x++)
+    for (x=x1;x<=w;x++)
       gfx->setPixel(gfx, (int)x,(int)yto,
           gfx->getPixel(gfx, (int)(x-xdir),(int)yfrom));
   } else { // >0
