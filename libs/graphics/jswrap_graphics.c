@@ -2147,8 +2147,11 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     if (info.font == JSGRAPHICS_FONTSIZE_VECTOR) {
 #ifndef NO_VECTOR_FONT
       int w = (int)graphicsVectorCharWidth(&gfx, info.scalex, ch);
-      if (x>minX-w && x<maxX  && y>minY-info.scaley && y<maxY)
+      if (x>minX-w && x<maxX  && y>minY-info.scaley && y<maxY) {
+        if (solidBackground)
+          graphicsFillRect(&gfx,x,y,x+w-1,y+fontHeight-1, gfx.data.bgColor);
         graphicsFillVectorChar(&gfx, x, y, info.scalex, info.scaley, ch);
+      }
       x+=w;
 #endif
     } else if (info.font == JSGRAPHICS_FONTSIZE_4X6) {
