@@ -35,8 +35,7 @@
       var iy = y;
       g.reset().setFontAlign(0,-1,0).setFont('12x20');
       if (rowmin===undefined && options.title)
-        g.clearRect(x,y-22,x2,y-1).
-          drawString(options.title,(x+x2)/2,y-21).drawLine(x,y-2,x2,y-2).
+        g.drawString(options.title,(x+x2)/2,y-21).drawLine(x,y-2,x2,y-2).
           setColor(g.theme.fg).setBgColor(g.theme.bg);
       iy += 12;
       g.setColor((idx>0)?g.theme.fg:g.theme.bg).fillPoly([72,iy,104,iy,88,iy-12]);      
