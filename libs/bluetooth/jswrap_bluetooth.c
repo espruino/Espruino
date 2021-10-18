@@ -2683,7 +2683,7 @@ Send an AMS command to an Apple Media Service device to control music playback
 Command is one of play, pause, playpause, next, prev, volup, voldown, repeat, shuffle, skipforward, skipback, like, dislike, bookmark
 */
 void jswrap_ble_amsCommand(JsVar *id) {
-//#if ESPR_BLUETOOTH_ANCS
+#if ESPR_BLUETOOTH_ANCS
   if (!(bleStatus & BLE_ANCS_INITED) || !ble_ams_is_active()) {
     jsExceptionHere(JSET_ERROR, "AMS not active");
     return;
@@ -2708,6 +2708,7 @@ void jswrap_ble_amsCommand(JsVar *id) {
     return;
   }
   ble_ams_command(cmd);
+#endif
 }
 
 /*JSON{
