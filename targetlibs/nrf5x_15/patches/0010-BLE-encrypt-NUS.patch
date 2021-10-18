@@ -1,6 +1,19 @@
---- a/targetlibs/nrf5x_15/components/ble/ble_services/ble_nus/ble_nus.c	2018-03-22 15:25:08.000000000 +0000
-+++ b/targetlibs/nrf5x_15/components/ble/ble_services/ble_nus/ble_nus.c	2020-05-13 10:28:38.926572968 +0100
-@@ -252,8 +257,13 @@
+--- a/targetlibs/nrf5x_15/components/ble/ble_services/ble_nus/ble_nus.c	2021-10-18 20:54:51.484970647 +0100
++++ b/targetlibs/nrf5x_15/components/ble/ble_services/ble_nus/ble_nus.c	2021-10-18 20:55:28.765614856 +0100
+@@ -234,7 +234,11 @@
+     memset(&cccd_md, 0, sizeof(cccd_md));
+ 
+     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
+-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
++    if (p_nus_init->encrypt) {
++      BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&cccd_md.write_perm);
++    } else {
++      BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
++    }
+ 
+     cccd_md.vloc = BLE_GATTS_VLOC_STACK;
+ 
+@@ -252,8 +256,13 @@
  
      memset(&attr_md, 0, sizeof(attr_md));
  
@@ -16,7 +29,7 @@
  
      attr_md.vloc    = BLE_GATTS_VLOC_STACK;
      attr_md.rd_auth = 0;
-@@ -305,8 +315,13 @@
+@@ -305,8 +314,13 @@
  
      memset(&attr_md, 0, sizeof(attr_md));
  
@@ -32,13 +45,3 @@
  
      attr_md.vloc    = BLE_GATTS_VLOC_STACK;
      attr_md.rd_auth = 0;
---- a/targetlibs/nrf5x_15/components/ble/ble_services/ble_nus/ble_nus.h	2018-03-22 15:25:08.000000000 +0000
-+++ b/targetlibs/nrf5x_15/components/ble/ble_services/ble_nus/ble_nus.h	2020-05-13 10:26:53.632988548 +0100
-@@ -173,6 +173,7 @@
- typedef struct
- {
-     ble_nus_data_handler_t data_handler; /**< Event handler to be called for handling received data. */
-+    bool encrypt; //< GW added - require encryption
- } ble_nus_init_t;
-
-
