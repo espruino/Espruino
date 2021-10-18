@@ -47,40 +47,24 @@ E.on('ANCS',a=>{
   print("ANCS", E.toJS(a));
 });
 E.on('AMS',a=>{
-  print("AMS", E.toJS(a));
-  //NRF.amsGetMusicInfo("album").then(print)
+  //print("AMS", E.toJS(a));
+  // eg. {id:"title",value:"Track Name too lon",truncated:true}
+  //
+  if (a.truncated)
+    NRF.amsGetMusicInfo(a.id).then(n => print(a.id, n))
+  else
+    print(a.id, a.value);
 });
 
 // get message contents
-//NRF.ancsGetNotificationInfo( 1 ).then(a=>print("Notify",E.toJS(a))); // 1==id
+NRF.ancsGetNotificationInfo( 1 ).then(a=>print("Notify",E.toJS(a))); // 1==id
 // Get app name.
-//NRF.ancsGetAppInfo("com.google.hangouts").then(a=>print("App",E.toJS(a)));
+NRF.ancsGetAppInfo("com.google.hangouts").then(a=>print("App",E.toJS(a)));
 
 // music control
-//NRF.amsCommand("pause")
+NRF.amsCommand("pause")
 
-
-NRF_LOG_INFO("KEY 2 is pressed. Send EntityAttribute request for Attribute TrackArtist of EntityTrack");
-ble_ams_c_entity_attribute_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, BLE_AMS_TRACK_ATTRIBUTE_ID_ARTIST);
-break;
-
-case 1:
-NRF_LOG_INFO("KEY 2 is pressed. Send EntityAttribute request for Attribute TrackAlbum of EntityTrack");
-ble_ams_c_entity_attribute_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, BLE_AMS_TRACK_ATTRIBUTE_ID_ALBUM);
-break;
-
-case 2:
-NRF_LOG_INFO("KEY 2 is pressed. Send EntityAttribute request for Attribute TrackTitle of EntityTrack");
-ble_ams_c_entity_attribute_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, BLE_AMS_TRACK_ATTRIBUTE_ID_TITLE);
-break;
-
-case 3:
-NRF_LOG_INFO("KEY 2 is pressed. Send EntityAttribute request for Attribute TrackDuration of EntityTrack");
-ble_ams_c_entity_attribute_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, BLE_AMS_TRACK_ATTRIBUTE_ID_DURATION);
-
-NRF_LOG_INFO("KEY 3 is pressed. Read Entity Attribute value");
-ble_ams_c_entity_attribute_read(&m_ams_c, 0);
- */
+*/
 
 #ifndef DEBUG
 #define NRF_LOG_INFO(...)
@@ -173,12 +157,12 @@ void ble_ancs_handle_notif_attr(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif
 }
 
 /** Handle AMS track info update (called outside of IRQ by Espruino) - will poke the relevant events in */
-void ble_ancs_handle_app_attr(BLEPending blep) {
+void ble_ancs_handle_app_attr(BLEPending blep, char *buffer, size_t bufferLen) {
   // Complete the ANCS app attribute promise
   JsVar *o = jsvNewObject();
   if (!o) return;
   jsvObjectSetChild(o, "appId", bleTaskInfo);
-  jsvObjectSetChildAndUnLock(o, "appName", jsvNewFromString(m_attr_appname));
+  jsvObjectSetChildAndUnLock(o, "appName", jsvNewStringOfLength(bufferLen, buffer));
   bleCompleteTaskSuccessAndUnLock(BLETASK_ANCS_APP_ATTR, o);
 }
 
@@ -390,9 +374,9 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt) {
       break;
 
     case BLE_ANCS_C_EVT_APP_ATTRIBUTE:
-      NRF_LOG_DEBUG("ANCS app attr %d %d\n", p_evt->app_id[0], p_evt->app_id[1]);
+      NRF_LOG_DEBUG("ANCS app attr\n");
       // if done, push - creates an 'ANCSAPP' event
-      jsble_queue_pending(BLEP_ANCS_APP_ATTR, 0);
+      jsble_queue_pending_buf(BLEP_ANCS_APP_ATTR, 0, p_evt->attr.p_attr_data, p_evt->attr.attr_len);
       break;
     case BLE_ANCS_C_EVT_NP_ERROR:
       err_code_print_ancs(p_evt->err_code_np);
