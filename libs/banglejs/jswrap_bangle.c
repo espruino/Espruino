@@ -2583,8 +2583,10 @@ static JsVar *_jswrap_banglejs_getHealthStatusObject(HealthState *health) {
     //jsvObjectSetChildAndUnLock(o,"index", jsvNewFromInteger(health->index)); // DEBUG only
     jsvObjectSetChildAndUnLock(o,"movement", jsvNewFromInteger(health->movement / health->movementSamples));
     jsvObjectSetChildAndUnLock(o,"steps",jsvNewFromInteger(health->stepCount));
+#ifdef HEARTRATE
     jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(health->bpm10 / 10.0));
     jsvObjectSetChildAndUnLock(o,"bpmConfidence",jsvNewFromInteger(health->bpmConfidence));
+#endif
   }
   return o;
 }
@@ -3346,25 +3348,6 @@ bool jswrap_banglejs_idle() {
       JsVar *o = _jswrap_banglejs_getHealthStatusObject(&healthLast);
       if (o) {
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"health", &o, 1);
-        jsvUnLock(o);
-      }
-    }
-    if (bangleTasks & JSBT_HRM_DATA) {
-      JsVar *o = jsvNewObject();
-      if (o) {
-        jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromInteger(hrmInfo.bpm10 / 10.0));
-        jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
-        JsVar *a = jsvNewEmptyArray();
-        if (a) {
-          int n = hrmInfo.timeIdx;
-          for (int i=0;i<HRM_HIST_LEN;i++) {
-            jsvArrayPushAndUnLock(a, jsvNewFromFloat(hrm_time_to_bpm10(hrmInfo.times[n]) / 10.0));
-            n++;
-            if (n==HRM_HIST_LEN) n=0;
-          }
-          jsvObjectSetChildAndUnLock(o,"history",a);
-        }
-        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM", &o, 1);
         jsvUnLock(o);
       }
     }
