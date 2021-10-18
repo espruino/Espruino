@@ -528,6 +528,44 @@ void graphicsFillEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int p
   }
 }
 
+void graphicsFillAnnulus(JsGraphics *gfx, int x0, int y0, int r1, int r2, unsigned short quadrants){
+  graphicsToDeviceCoordinates(gfx, &x0, &y0);
+  int x = 0;
+  int y1 = r1;
+  int y2 = r2;
+  int d1 = 3-2*r1;
+  int d2 = 3-2*r2;
+  do {
+    if (quadrants & 0x01) {   // Will currently overdraw into other quadrants if r1 <= (r2/2)
+      graphicsFillRectDevice(gfx, x0+x, y0-y1, x0+x, y0-y2, gfx->data.fgColor);
+      graphicsFillRectDevice(gfx, x0+y1, y0-x, x0+y2, y0-x, gfx->data.fgColor);
+    }
+    if (quadrants & 0x02) {
+      graphicsFillRectDevice(gfx, x0+x, y0+y1, x0+x, y0+y2, gfx->data.fgColor);
+      graphicsFillRectDevice(gfx, x0+y1, y0+x, x0+y2, y0+x, gfx->data.fgColor);
+    }
+    if (quadrants & 0x04) {
+      graphicsFillRectDevice(gfx, x0-x, y0+y1, x0-x, y0+y2, gfx->data.fgColor);
+      graphicsFillRectDevice(gfx, x0-y1, y0+x, x0-y2, y0+x, gfx->data.fgColor);
+    }
+    if (quadrants & 0x08) {
+      graphicsFillRectDevice(gfx, x0-x, y0-y1, x0-x, y0-y2, gfx->data.fgColor);
+      graphicsFillRectDevice(gfx, x0-y1, y0-x, x0-y2, y0-x, gfx->data.fgColor);
+    }
+    x++;
+    if (d1 > 0) {
+      y1--;
+      d1 += 4*(x-y1)+10;
+    }
+    else d1 += 4*x+6;
+    if (d2 > 0) {
+      y2--;
+      d2 += 4*(x-y2)+10;
+    }
+    else d2 += 4*x+6;
+  } while (y2 >= x);
+}
+
 void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
   graphicsToDeviceCoordinates(gfx, &x1, &y1);
   graphicsToDeviceCoordinates(gfx, &x2, &y2);

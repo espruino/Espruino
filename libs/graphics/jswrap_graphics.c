@@ -3204,7 +3204,6 @@ JsVar *jswrap_graphics_blit(JsVar *parent, JsVar *options) {
   return jsvLockAgain(parent);
 }
 
-
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
