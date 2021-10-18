@@ -2491,6 +2491,58 @@ void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback) {
 #endif
 }
 
+
+/*JSON{
+  "type" : "event",
+  "class" : "E",
+  "name" : "ANCS",
+  "params" : [["info","JsVar","An object (see below)"]],
+  "ifdef" : "BANGLEJS"
+}
+Called when a notification arrives on an Apple iOS device Bangle.js is connected to
+
+
+```
+{
+event:"add",
+uid:42,
+category:4,
+categoryCnt:42,
+silent:true,
+important:false,
+preExisting:true,
+positive:false,
+negative:true
+}
+```
+
+You can then get more information with something like:
+
+```
+NRF.ancsGetNotificationInfo( event.uid ).then(a=>print("Notify",E.toJS(a)));
+```
+*/
+
+/*JSON{
+  "type" : "event",
+  "class" : "E",
+  "name" : "AMS",
+  "params" : [["info","JsVar","An object (see below)"]],
+  "ifdef" : "BANGLEJS"
+}
+Called when a media event arrives on an Apple iOS device Bangle.js is connected to
+
+
+```
+{
+id : "artist"/"album"/"title"/"duration",
+value : "Some text",
+truncated : bool // the 'value' was too big to be sent completely
+}
+```
+
+*/
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
@@ -2506,13 +2558,11 @@ Send an ANCS action for a specific Notification UID. Corresponds to posaction/ne
 */
 void jswrap_ble_ancsAction(int uid, bool isPositive) {
 #if ESPR_BLUETOOTH_ANCS
-  if (!ble_ancs_is_active()) {
+  if (!(bleStatus & BLE_ANCS_INITED) || !ble_ancs_is_active()) {
     jsExceptionHere(JSET_ERROR, "ANCS not active");
     return;
   }
-  if (bleStatus & BLE_ANCS_INITED) {
-    ble_ancs_action(uid, isPositive);
-  }
+  ble_ancs_action(uid, isPositive);
 #endif
 }
 
@@ -2533,15 +2583,13 @@ Get ANCS info for a notification
 JsVar *jswrap_ble_ancsGetNotificationInfo(JsVarInt uid) {
   JsVar *promise = 0;
 #if ESPR_BLUETOOTH_ANCS
-  if (!ble_ancs_is_active()) {
+  if (!(bleStatus & BLE_ANCS_INITED) || !ble_ancs_is_active()) {
     jsExceptionHere(JSET_ERROR, "ANCS not active");
     return 0;
   }
-  if (bleStatus & BLE_ANCS_INITED) {
-    if (ble_ancs_request_notif(uid)) { // if fails, it'll create an exception
-      if (bleNewTask(BLETASK_ANCS_NOTIF_ATTR, 0)) {
-        promise = jsvLockAgainSafe(blePromise);
-      }
+  if (ble_ancs_request_notif(uid)) { // if fails, it'll create an exception
+    if (bleNewTask(BLETASK_ANCS_NOTIF_ATTR, 0)) {
+      promise = jsvLockAgainSafe(blePromise);
     }
   }
 #endif
@@ -2565,17 +2613,55 @@ Get ANCS info for an app (add id is available via `ancsGetNotificationInfo`)
 JsVar *jswrap_ble_ancsGetAppInfo(JsVar *appId) {
   JsVar *promise = 0;
 #if ESPR_BLUETOOTH_ANCS
-  if (!ble_ancs_is_active()) {
+  if (!(bleStatus & BLE_ANCS_INITED) || !ble_ancs_is_active()) {
     jsExceptionHere(JSET_ERROR, "ANCS not active");
     return 0;
   }
-  if (bleStatus & BLE_ANCS_INITED) {
-    char appIdStr[32];
-    jsvGetString(appId, appIdStr, sizeof(appIdStr));
-    if (ble_ancs_request_app(appIdStr, strlen(appIdStr))) { // if fails, it'll create an exception
-      if (bleNewTask(BLETASK_ANCS_APP_ATTR, appId)) {
-        promise = jsvLockAgainSafe(blePromise);
-      }
+  char appIdStr[32];
+  jsvGetString(appId, appIdStr, sizeof(appIdStr));
+  if (ble_ancs_request_app(appIdStr, strlen(appIdStr))) { // if fails, it'll create an exception
+    if (bleNewTask(BLETASK_ANCS_APP_ATTR, appId)) {
+      promise = jsvLockAgainSafe(blePromise);
+    }
+  }
+#endif
+  return promise;
+}
+
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "amsGetMusicInfo",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : "jswrap_ble_amsGetMusicInfo",
+    "params" : [
+      ["id","JsVar","Either 'artist', 'album', 'title' or 'duration'"]
+    ],
+    "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when the connection is complete" ],
+    "return_object" : "Promise"
+}
+Get ANCS info for an app (add id is available via `ancsGetNotificationInfo`)
+*/
+JsVar *jswrap_ble_amsGetMusicInfo(JsVar *id) {
+  JsVar *promise = 0;
+#if ESPR_BLUETOOTH_ANCS
+  if (!(bleStatus & BLE_ANCS_INITED) || !ble_ancs_is_active()) {
+    jsExceptionHere(JSET_ERROR, "ANCS not active");
+    return 0;
+  }
+  ble_ams_c_track_attribute_id_val_t cmd;
+  if (jsvIsStringEqual(id,"artist")) cmd=BLE_AMS_TRACK_ATTRIBUTE_ID_ARTIST;
+  else if (jsvIsStringEqual(id,"album")) cmd=BLE_AMS_TRACK_ATTRIBUTE_ID_ALBUM;
+  else if (jsvIsStringEqual(id,"title")) cmd=BLE_AMS_TRACK_ATTRIBUTE_ID_TITLE;
+  else if (jsvIsStringEqual(id,"duration")) cmd=BLE_AMS_TRACK_ATTRIBUTE_ID_DURATION;
+  else {
+    jsExceptionHere(JSET_ERROR, "Unknown id %q", id);
+    return promise;
+  }
+  if (ble_ams_request_info(cmd)) { // if fails, it'll create an exception
+    if (bleNewTask(BLETASK_AMS_ATTR, 0)) {
+      promise = jsvLockAgainSafe(blePromise);
     }
   }
 #endif
@@ -2585,22 +2671,43 @@ JsVar *jswrap_ble_ancsGetAppInfo(JsVar *appId) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
-    "name" : "amsRegister",
+    "name" : "amsCommand",
     "ifdef" : "NRF52_SERIES",
-    "generate" : "jswrap_ble_amsRegister"
+    "generate" : "jswrap_ble_amsCommand",
+    "params" : [
+      ["id","JsVar","Either 'artist', 'album', 'title' or 'duration'"]
+    ]
 }
-Send an ANCS action for a specific Notification UID. Corresponds to posaction/negaction in the 'ANCS' event that was received
+Send an AMS command to an Apple Media Service device to control music playback
+
+Command is one of play, pause, playpause, next, prev, volup, voldown, repeat, shuffle, skipforward, skipback, like, dislike, bookmark
 */
-void jswrap_ble_amsRegister() {
-#if ESPR_BLUETOOTH_ANCS
-  if (!ble_ams_is_active()) {
+void jswrap_ble_amsCommand(JsVar *id) {
+//#if ESPR_BLUETOOTH_ANCS
+  if (!(bleStatus & BLE_ANCS_INITED) || !ble_ams_is_active()) {
     jsExceptionHere(JSET_ERROR, "AMS not active");
     return;
   }
-  if (bleStatus & BLE_ANCS_INITED) {
-    ble_ams_request_track_attr();
+  ble_ams_c_remote_control_id_val_t cmd;
+  if (jsvIsStringEqual(id,"play")) cmd=BLE_AMS_REMOTE_COMMAND_ID_PLAY;
+  else if (jsvIsStringEqual(id,"pause")) cmd=BLE_AMS_REMOTE_COMMAND_ID_PAUSE;
+  else if (jsvIsStringEqual(id,"playpause")) cmd=BLE_AMS_REMOTE_COMMAND_ID_TOGGLE_PLAY_PAUSE;
+  else if (jsvIsStringEqual(id,"next")) cmd=BLE_AMS_REMOTE_COMMAND_ID_NEXT_TRACK;
+  else if (jsvIsStringEqual(id,"prev")) cmd=BLE_AMS_REMOTE_COMMAND_ID_PREVIOUS_TRACK;
+  else if (jsvIsStringEqual(id,"volup")) cmd=BLE_AMS_REMOTE_COMMAND_ID_VOLUME_UP;
+  else if (jsvIsStringEqual(id,"voldown")) cmd=BLE_AMS_REMOTE_COMMAND_ID_VOLUME_DOWN;
+  else if (jsvIsStringEqual(id,"repeat")) cmd=BLE_AMS_REMOTE_COMMAND_ID_ADVANCE_REPEAT_MODE;
+  else if (jsvIsStringEqual(id,"shuffle")) cmd=BLE_AMS_REMOTE_COMMAND_ID_ADVANCE_SHUFFLE_MODE;
+  else if (jsvIsStringEqual(id,"skipforward")) cmd=BLE_AMS_REMOTE_COMMAND_ID_SKIP_FORWARD;
+  else if (jsvIsStringEqual(id,"skipback")) cmd=BLE_AMS_REMOTE_COMMAND_ID_SKIP_BACKWARD;
+  else if (jsvIsStringEqual(id,"like")) cmd=BLE_AMS_REMOTE_COMMAND_ID_LIKE_TRACK;
+  else if (jsvIsStringEqual(id,"dislike")) cmd=BLE_AMS_REMOTE_COMMAND_ID_DISLIKE_TRACK;
+  else if (jsvIsStringEqual(id,"bookmark")) cmd=BLE_AMS_REMOTE_COMMAND_ID_BOOKMARK_TRACK;
+  else {
+    jsExceptionHere(JSET_ERROR, "Unknown command %q", cmd);
+    return;
   }
-#endif
+  ble_ams_command(cmd);
 }
 
 /*JSON{

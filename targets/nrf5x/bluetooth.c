@@ -741,7 +741,13 @@ uint8_t match_request : 1;               If 1 requires the application to report
         ble_ancs_handle_notif_attr(blep, (ble_ancs_c_evt_notif_t*)buffer);
         break;
       case BLEP_ANCS_APP_ATTR:
-        ble_ancs_handle_app_attr(blep, (ble_ancs_c_evt_notif_t*)buffer);
+        ble_ancs_handle_app_attr(blep);
+        break;
+      case BLEP_AMS_UPDATE:
+        ble_ams_handle_update(blep, data, (char *)buffer, bufferLen);
+        break;
+      case BLEP_AMS_ATTRIBUTE:
+        ble_ams_handle_attribute(blep, (char *)buffer, bufferLen);
         break;
 #endif
    default:

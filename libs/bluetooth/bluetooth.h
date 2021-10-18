@@ -158,6 +158,8 @@ typedef enum {
   BLEP_ANCS_NOTIF,                  //< Apple Notification Centre notification received
   BLEP_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes received
   BLEP_ANCS_APP_ATTR,               //< Apple Notification Centre app attributes received
+  BLEP_AMS_UPDATE,                   //< Apple Media Service Track info updated
+  BLEP_AMS_ATTRIBUTE                //< Apple Media Service Track info read response
 #endif
 } BLEPending;
 

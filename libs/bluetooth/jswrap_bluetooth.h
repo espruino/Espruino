@@ -31,11 +31,12 @@ typedef enum {
 #ifdef ESPR_BLUETOOTH_ANCS
   BLETASK_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes
   BLETASK_ANCS_APP_ATTR,               //< Apple Notification Centre app attributes
+  BLETASK_AMS_ATTR,                    //< Apple Media Service track info request
 #endif
 } BleTask;
 
 #ifdef ESPR_BLUETOOTH_ANCS
-#define BLETASK_STRINGS "NONE\0REQ_DEV\0CONNECT\0DISCONNECT\0SERVICE\0CHAR\0CHAR_WR\0CHAR_RD\0CHAR_NOTIFY\0BOND\0ANCS_NOTIF_ATTR\0ANCS_APP_ATTR\0"
+#define BLETASK_STRINGS "NONE\0REQ_DEV\0CONNECT\0DISCONNECT\0SERVICE\0CHAR\0CHAR_WR\0CHAR_RD\0CHAR_NOTIFY\0BOND\0ANCS_NOTIF_ATTR\0ANCS_APP_ATTR\0AMS_ATTR\0"
 #else
 #define BLETASK_STRINGS "NONE\0REQ_DEV\0CONNECT\0DISCONNECT\0SERVICE\0CHAR\0CHAR_WR\0CHAR_RD\0CHAR_NOTIFY\0BOND\0"
 #endif
@@ -44,6 +45,7 @@ typedef enum {
 #define BLETASK_IS_CENTRAL(x) ((x)>=BLETASK_CENTRAL_START && ((x)<=BLETASK_CENTRAL_END))
 #ifdef ESPR_BLUETOOTH_ANCS
 #define BLETASK_IS_ANCS(x) ((x)==BLETASK_ANCS_NOTIF_ATTR || ((x)==BLETASK_ANCS_APP_ATTR))
+#define BLETASK_IS_AMS(x) ((x)==BLETASK_AMS_ATTR)
 #endif
 
 extern JsVar *bleTaskInfo; // info related to the current task
@@ -114,7 +116,8 @@ void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback);
 void jswrap_ble_ancsAction(int uid, bool isPositive);
 JsVar *jswrap_ble_ancsGetNotificationInfo(JsVarInt uid);
 JsVar *jswrap_ble_ancsGetAppInfo(JsVar *appId);
-void jswrap_ble_amsRegister();
+JsVar *jswrap_ble_amsGetMusicInfo(JsVar *id);
+void jswrap_ble_amsCommand(JsVar *id);
 
 JsVar *jswrap_ble_requestDevice(JsVar *options);
 JsVar *jswrap_ble_connect(JsVar *mac, JsVar *options);

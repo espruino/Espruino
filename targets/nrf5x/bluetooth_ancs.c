@@ -35,9 +35,8 @@
 #include "nrf_delay.h"
 
 //=========================
-#define DEBUG
+//#define DEBUG
 //=========================
-
 /*
 
 Serial1.setConsole(1)
@@ -47,12 +46,18 @@ NRF.setAdvertising({})
 E.on('ANCS',a=>{
   print("ANCS", E.toJS(a));
 });
+E.on('AMS',a=>{
+  print("AMS", E.toJS(a));
+  //NRF.amsGetMusicInfo("album").then(print)
+});
 
 // get message contents
 //NRF.ancsGetNotificationInfo( 1 ).then(a=>print("Notify",E.toJS(a))); // 1==id
 // Get app name.
 //NRF.ancsGetAppInfo("com.google.hangouts").then(a=>print("App",E.toJS(a)));
 
+// music control
+//NRF.amsCommand("pause")
 
 
 NRF_LOG_INFO("KEY 2 is pressed. Send EntityAttribute request for Attribute TrackArtist of EntityTrack");
@@ -125,10 +130,6 @@ static char m_attr_posaction[16];                       /**< Buffer to store att
 static char m_attr_negaction[16];                       /**< Buffer to store attribute data. */
 static char m_attr_disp_name[32];                       /**< Buffer to store attribute data. */
 //AMS state
-static uint8_t m_entity_update_artist[BLE_AMS_EU_MAX_DATA_LENGTH];
-static uint8_t m_entity_update_album[BLE_AMS_EU_MAX_DATA_LENGTH];
-static uint8_t m_entity_update_track[BLE_AMS_EU_MAX_DATA_LENGTH];
-static uint8_t m_entity_update_duration[BLE_AMS_EU_MAX_DATA_LENGTH];
 static uint8_t m_entity_attribute[BLE_AMS_EA_MAX_DATA_LENGTH];
 
 /** Handle notification event (called outside of IRQ by Espruino) - will poke the relevant events in */
@@ -171,8 +172,8 @@ void ble_ancs_handle_notif_attr(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif
   bleCompleteTaskSuccessAndUnLock(BLETASK_ANCS_NOTIF_ATTR, o);
 }
 
-/** Handle app attributes received event (called outside of IRQ by Espruino) - will poke the relevant events in */
-void ble_ancs_handle_app_attr(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
+/** Handle AMS track info update (called outside of IRQ by Espruino) - will poke the relevant events in */
+void ble_ancs_handle_app_attr(BLEPending blep) {
   // Complete the ANCS app attribute promise
   JsVar *o = jsvNewObject();
   if (!o) return;
@@ -180,6 +181,36 @@ void ble_ancs_handle_app_attr(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) 
   jsvObjectSetChildAndUnLock(o, "appName", jsvNewFromString(m_attr_appname));
   bleCompleteTaskSuccessAndUnLock(BLETASK_ANCS_APP_ATTR, o);
 }
+
+
+void ble_ams_handle_update(BLEPending blep, uint16_t data, char *buffer, size_t bufferLen) {
+  bool isTruncated = data & 128;
+  ble_ams_c_track_attribute_id_val_t attrId = data & 127;
+  const char *idStr = "?";
+  switch (attrId) {
+    case BLE_AMS_TRACK_ATTRIBUTE_ID_ARTIST:
+      idStr = "artist"; break;
+    case BLE_AMS_TRACK_ATTRIBUTE_ID_ALBUM:
+      idStr = "album"; break;
+    case BLE_AMS_TRACK_ATTRIBUTE_ID_TITLE:
+      idStr = "title"; break;
+    case BLE_AMS_TRACK_ATTRIBUTE_ID_DURATION:
+      idStr = "duration"; break;
+  };
+  JsVar *o = jsvNewObject();
+  if (!o) return;
+  jsvObjectSetChildAndUnLock(o, "id", jsvNewFromString(idStr));
+  jsvObjectSetChildAndUnLock(o, "value", jsvNewStringOfLength(bufferLen, buffer));
+  jsvObjectSetChildAndUnLock(o, "truncated", jsvNewFromBool(isTruncated));
+  jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"AMS", 1, &o);
+  jsvUnLock(o);
+}
+
+void ble_ams_handle_attribute(BLEPending blep, char *buffer, size_t bufferLen) {
+  // Complete the AMS promise
+  bleCompleteTaskSuccessAndUnLock(BLETASK_AMS_ATTR, jsvNewStringOfLength(bufferLen, buffer));
+}
+
 
 void ble_ancs_clear_app_attr() {
   memset(m_attr_appname      ,0, sizeof(m_attr_appname));
@@ -198,7 +229,7 @@ void ble_ancs_clear_attr() {
 }
 
 void ble_ancs_bonding_succeeded(uint16_t conn_handle) {
-  NRF_LOG_INFO("ble_ancs_bonding_succeeded\r\n");
+  NRF_LOG_INFO("ble_ancs_bonding_succeeded\n");
   uint32_t ret  = ble_db_discovery_start(&m_ble_db_discovery, conn_handle);
   APP_ERROR_CHECK_NOT_URGENT(ret);
 }
@@ -221,7 +252,7 @@ static void apple_notification_setup(void)
     APP_ERROR_CHECK_NOT_URGENT(ret);
 
     m_ancs_active = true;
-    NRF_LOG_DEBUG("Notifications Enabled.\r\n");
+    NRF_LOG_DEBUG("Notifications Enabled.\n");
 
 }
 
@@ -242,6 +273,15 @@ static void apple_media_setup(void) {
 
   m_ams_active = true;
   NRF_LOG_INFO("Apple Media-Notifications Enabled.\n");
+
+  // Register for all EntityTrack Attributes (TrackArtist, TrackAlbum, TrackTitle, TrackDuration);
+  uint8_t attribute_number = 4;
+  uint8_t attribute_list[] = {BLE_AMS_TRACK_ATTRIBUTE_ID_ARTIST,
+                              BLE_AMS_TRACK_ATTRIBUTE_ID_ALBUM,
+                              BLE_AMS_TRACK_ATTRIBUTE_ID_TITLE,
+                              BLE_AMS_TRACK_ATTRIBUTE_ID_DURATION};
+  ret = ble_ams_c_entity_update_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, attribute_number, attribute_list);
+  jsble_check_error(ret);
 }
 
 
@@ -283,22 +323,28 @@ static void err_code_print_ancs(uint16_t err_code_np)
  */
 static void err_code_print_ams(uint16_t err_code_ms)
 {
+  const char *errmsg = 0;
   switch (err_code_ms) {
   case BLE_AMS_MS_INVALID_STATE:
-    NRF_LOG_INFO("Error: Media Source is currently in an invalid state");
+    errmsg="Error: Media Source is currently in an invalid state";
     break;
 
   case BLE_AMS_MS_INVALID_COMMAND:
-    NRF_LOG_INFO("Error: Command ID was not recognized by the Media Source. ");
+    errmsg="Error: Command ID was not recognized by the Media Source";
     break;
 
   case BLE_AMS_MS_ABSENT_ATTRIBUTE:
-    NRF_LOG_INFO("Error: Attribute is absent on the Media Source. ");
+    errmsg="Error: Attribute is absent on the Media Source";
     break;
 
   default:
     break;
   }
+  if (errmsg)
+    NRF_LOG_INFO("Error: %s\n", errmsg);
+
+  if (BLETASK_IS_AMS(bleGetCurrentTask()))
+      bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), errmsg?jsvNewFromString(errmsg):0);
 }
 
 /**@brief Function for handling the Apple Notification Service client.
@@ -311,23 +357,23 @@ static void err_code_print_ams(uint16_t err_code_ms)
 static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt) {
   ret_code_t ret = NRF_SUCCESS;
 
-  NRF_LOG_DEBUG("ANCS%d\r\n", p_evt->evt_type);
+  NRF_LOG_DEBUG("ANCS%d\n", p_evt->evt_type);
   switch (p_evt->evt_type) {
     case BLE_ANCS_C_EVT_DISCOVERY_COMPLETE:
-      NRF_LOG_DEBUG("Apple Notification Center Service discovered on the server.\r\n");
+      NRF_LOG_DEBUG("Apple Notification Center Service discovered on the server.\n");
       ret = nrf_ble_ancs_c_handles_assign(&m_ancs_c, p_evt->conn_handle, &p_evt->service);
       APP_ERROR_CHECK(ret);
       apple_notification_setup();
       break;
 
     case BLE_ANCS_C_EVT_NOTIF:
-      NRF_LOG_DEBUG("EVT_NOTIF\r\n");
+      NRF_LOG_DEBUG("EVT_NOTIF\n");
       // Push - creates an 'ANCS' event
       jsble_queue_pending_buf(BLEP_ANCS_NOTIF, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
       break;
 
     case BLE_ANCS_C_EVT_NOTIF_ATTRIBUTE:
-      NRF_LOG_DEBUG("ATTR -> %d %d\r\n", p_evt->attr.attr_id, p_evt->notif_uid);
+      NRF_LOG_DEBUG("ATTR -> %d %d\n", p_evt->attr.attr_id, p_evt->notif_uid);
       m_notif_attr_latest = p_evt->attr;
       //jsble_queue_pending_buf(BLEP_ANCS_NOTIF_ATTR, 0, (char*)&p_evt->notif, sizeof(ble_ancs_c_evt_notif_t));
       //notif_attr_print(&m_notif_attr_latest);
@@ -340,13 +386,13 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt) {
         jsble_queue_pending_buf(BLEP_ANCS_NOTIF_ATTR, 0, (char*)&m_notification_request, sizeof(ble_ancs_c_evt_notif_t));
       break;
     case BLE_ANCS_C_EVT_DISCOVERY_FAILED:
-      NRF_LOG_DEBUG("Apple Notification Center Service not discovered on the server.\r\n");
+      NRF_LOG_DEBUG("Apple Notification Center Service not discovered on the server.\n");
       break;
 
     case BLE_ANCS_C_EVT_APP_ATTRIBUTE:
-      NRF_LOG_DEBUG("ANCS app attr\r\n");
+      NRF_LOG_DEBUG("ANCS app attr %d %d\n", p_evt->app_id[0], p_evt->app_id[1]);
       // if done, push - creates an 'ANCSAPP' event
-      jsble_queue_pending_buf(BLEP_ANCS_APP_ATTR, 0, (char*)&m_notification_request, sizeof(ble_ancs_c_evt_notif_t));
+      jsble_queue_pending(BLEP_ANCS_APP_ATTR, 0);
       break;
     case BLE_ANCS_C_EVT_NP_ERROR:
       err_code_print_ancs(p_evt->err_code_np);
@@ -367,10 +413,10 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt) {
 static void on_ams_c_evt(ble_ams_c_evt_t * p_evt) {
   ret_code_t ret = NRF_SUCCESS;
 
-  NRF_LOG_DEBUG("AMS%d\r\n", p_evt->evt_type);
+  NRF_LOG_DEBUG("AMS%d\n", p_evt->evt_type);
   switch (p_evt->evt_type) {
   case BLE_AMS_C_EVT_DISCOVERY_COMPLETE:
-    NRF_LOG_INFO("Apple Media Service discovered on the server.\r\n");
+    NRF_LOG_INFO("Apple Media Service discovered on the server.\n");
     ret = nrf_ble_ams_c_handles_assign(&m_ams_c, p_evt->conn_handle,
         &p_evt->service);
     APP_ERROR_CHECK_NOT_URGENT(ret);
@@ -378,112 +424,39 @@ static void on_ams_c_evt(ble_ams_c_evt_t * p_evt) {
     break;
 
   case BLE_AMS_C_EVT_REMOTE_COMMAND_NOTIFICATION:
-    NRF_LOG_INFO("BLE_AMS_C_EVT_REMOTE_COMMAND_NOTIFICATION: ListSize: %d.\r\n", p_evt->remote_command_data.remote_command_len);
+    NRF_LOG_INFO("BLE_AMS_C_EVT_REMOTE_COMMAND_NOTIFICATION: ListSize: %d.\n", p_evt->remote_command_data.remote_command_len);
     break;
 
   case BLE_AMS_C_EVT_ENTITY_UPDATE_NOTIFICATION:
-    switch (p_evt->entity_update_data.attribute_id) {
-    case BLE_AMS_TRACK_ATTRIBUTE_ID_ARTIST:
-      NRF_LOG_INFO("Artist\r\n");
-      if (p_evt->entity_update_data.entity_update_flag == 1) {
-        NRF_LOG_INFO("Truncated. Needs to read out manually\r\n");
-      }
-      memcpy(m_entity_update_artist,
-          p_evt->entity_update_data.p_entity_update_data,
-          p_evt->entity_update_data.entity_update_data_len);
-      for (uint8_t i = 0; i < p_evt->entity_update_data.entity_update_data_len;
-          i++) {
-        NRF_LOG_INFO("%c", m_entity_update_artist[i]);
-      }
-      NRF_LOG_INFO("\r\n");
-      break;
-
-    case BLE_AMS_TRACK_ATTRIBUTE_ID_ALBUM:
-      NRF_LOG_INFO("Album\r\n");
-      if (p_evt->entity_update_data.entity_update_flag == 1) {
-        NRF_LOG_INFO("Truncated. Needs to read out manually\r\n");
-      }
-      memcpy(m_entity_update_album,
-          p_evt->entity_update_data.p_entity_update_data,
-          p_evt->entity_update_data.entity_update_data_len);
-      for (uint8_t i = 0; i < p_evt->entity_update_data.entity_update_data_len;
-          i++) {
-        NRF_LOG_INFO("%c", m_entity_update_album[i]);
-      }
-      NRF_LOG_INFO("\r\n");
-      break;
-
-    case BLE_AMS_TRACK_ATTRIBUTE_ID_TITLE:
-      NRF_LOG_INFO("Title\r\n");
-      if (p_evt->entity_update_data.entity_update_flag == 1) {
-        NRF_LOG_INFO("Truncated. Needs to read out manually\r\n");
-      }
-      memcpy(m_entity_update_track,
-          p_evt->entity_update_data.p_entity_update_data,
-          p_evt->entity_update_data.entity_update_data_len);
-      for (uint8_t i = 0; i < p_evt->entity_update_data.entity_update_data_len;
-          i++) {
-        NRF_LOG_INFO("%c", m_entity_update_track[i]);
-      }
-      NRF_LOG_INFO("\r\n");
-      break;
-
-    case BLE_AMS_TRACK_ATTRIBUTE_ID_DURATION: {
-      NRF_LOG_INFO("Duration\r\n");
-      if (p_evt->entity_update_data.entity_update_flag == 1) {
-        NRF_LOG_INFO("Truncated. Needs to read out manually\r\n");
-      }
-      memcpy(m_entity_update_duration,
-          p_evt->entity_update_data.p_entity_update_data,
-          p_evt->entity_update_data.entity_update_data_len);
-      for (uint8_t i = 0; i < p_evt->entity_update_data.entity_update_data_len;
-          i++) {
-        NRF_LOG_INFO("%c", m_entity_update_duration[i]);
-      }
-      uint8_t durUnits, durDecimals;
-      double duration_units = ((m_entity_update_duration[0] - 0x30) * 100)
-          + ((m_entity_update_duration[1] - 0x30) * 10)
-          + (m_entity_update_duration[2] - 0x30);
-      double duration_decimals = ((m_entity_update_duration[4] - 0x30) * 100)
-          + ((m_entity_update_duration[5] - 0x30) * 10)
-          + ((m_entity_update_duration[6] - 0x30));
-      double duration = duration_units + (duration_decimals / 1000);
-      durUnits = duration / 60;
-      durDecimals = (durUnits - (duration / 60)) * 60;
-      NRF_LOG_INFO("duration: %d:%d\r\n", durUnits, durDecimals);
-      break;
-    }
-
-    default:
-      break;
-    }
+    NRF_LOG_INFO("BLE_AMS_C_EVT_ENTITY_UPDATE_NOTIFICATION: attr %d\n", p_evt->entity_update_data.attribute_id);
+    jsble_queue_pending_buf(BLEP_AMS_UPDATE,
+        p_evt->entity_update_data.attribute_id | (p_evt->entity_update_data.entity_update_flag?128:0),
+        p_evt->entity_update_data.p_entity_update_data, p_evt->entity_update_data.entity_update_data_len);
     break;
 
   case BLE_AMS_C_EVT_ENTITY_ATTRIBUTE_READ_RESP: {
-    memcpy(m_entity_attribute,
-        p_evt->entity_attribute_data.p_entity_attribute_data,
-        p_evt->entity_attribute_data.attribute_len);
-    for (uint8_t i = 0; i < p_evt->entity_attribute_data.attribute_len; i++) {
-      NRF_LOG_INFO("%c", m_entity_attribute[i]);
-    }
-    NRF_LOG_INFO("\r\n");
+    NRF_LOG_INFO("BLE_AMS_C_EVT_ENTITY_ATTRIBUTE_READ_RESP\n");
+    jsble_queue_pending_buf(BLEP_AMS_ATTRIBUTE,
+            0,
+            p_evt->entity_attribute_data.p_entity_attribute_data, p_evt->entity_attribute_data.attribute_len);
+    /* TODO: deal with very long track names:
     if (p_evt->entity_attribute_data.attribute_len
         < (NRF_SDH_BLE_GATT_MAX_MTU_SIZE - 3)) {
-      NRF_LOG_INFO("Read Complete!\r\n");
+      NRF_LOG_INFO("Read Complete!\n");
     } else {
       NRF_LOG_INFO(
-          "Read not complete. Call sd_ble_gattc_read() with offset: %d\r\n",
+          "Read not complete. Call sd_ble_gattc_read() with offset: %d\n",
           (p_evt->entity_attribute_data.attribute_offset
               + p_evt->entity_attribute_data.attribute_len));
       ble_ams_c_entity_attribute_read(&m_ams_c,
           (p_evt->entity_attribute_data.attribute_offset
               + p_evt->entity_attribute_data.attribute_len));
-    }
+    }*/
     break;
   }
 
   case BLE_AMS_C_EVT_DISCOVERY_FAILED:
-    NRF_LOG_INFO("Apple Media Service not discovered on the server.\r\n");
+    NRF_LOG_INFO("Apple Media Service not discovered on the server.\n");
     break;
 
   case BLE_AMS_C_EVT_ENTITY_UPDATE_ATTRIBUTE_ERROR:
@@ -521,12 +494,12 @@ static void apple_media_error_handler(uint32_t nrf_error)
  *
  * @param[in] p_ble_evt  Bluetooth stack event.
  */
-void ble_ancs_on_ble_evt(ble_evt_t * p_ble_evt)
+void ble_ancs_on_ble_evt(const ble_evt_t * p_ble_evt)
 {
 #if NRF_SD_BLE_API_VERSION < 5
     ble_db_discovery_on_ble_evt(&m_ble_db_discovery, p_ble_evt);
     ble_ancs_c_on_ble_evt(&m_ancs_c, p_ble_evt);
-    ble_ams_c_on_ble_evt(&m_ancs_c, p_ble_evt);
+    ble_ams_c_on_ble_evt(p_ble_evt, &m_ancs_c);
 #endif
 
     ret_code_t ret = NRF_SUCCESS;
@@ -534,13 +507,13 @@ void ble_ancs_on_ble_evt(ble_evt_t * p_ble_evt)
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
-            NRF_LOG_INFO("Connected.\r\n");
+            NRF_LOG_INFO("Connected.\n");
             ret               = app_timer_start(m_sec_req_timer_id, SECURITY_REQUEST_DELAY, NULL);
             APP_ERROR_CHECK_NOT_URGENT(ret);
             break; // BLE_GAP_EVT_CONNECTED
 
         case BLE_GAP_EVT_DISCONNECTED:
-            NRF_LOG_INFO("Disconnected.\r\n");
+            NRF_LOG_INFO("Disconnected.\n");
             ret               = app_timer_stop(m_sec_req_timer_id);
             APP_ERROR_CHECK_NOT_URGENT(ret);
             if (p_ble_evt->evt.gap_evt.conn_handle == m_ancs_c.conn_handle) {
@@ -559,6 +532,7 @@ void ble_ancs_on_ble_evt(ble_evt_t * p_ble_evt)
             break;
     }
 }
+
 
 /**@brief Function for initializing the Apple Notification Center Service.
  */
@@ -659,7 +633,7 @@ static void services_init(void)
  */
 static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
 {
-  NRF_LOG_INFO("db_disc_handler %d\r\n", p_evt->evt_type);
+  NRF_LOG_INFO("db_disc_handler %d\n", p_evt->evt_type);
   ble_ancs_c_on_db_disc_evt(&m_ancs_c, p_evt);
   ble_ams_c_on_db_disc_evt(&m_ams_c, p_evt);
 }
@@ -685,7 +659,7 @@ static void sec_req_timeout_handler(void * p_context)
         // If the link is still not secured by the peer, initiate security procedure.
         if (!status.encrypted)
         {
-            NRF_LOG_INFO("Requesting encryption\r\n");
+            NRF_LOG_INFO("Requesting encryption\n");
             ret = pm_conn_secure(m_peripheral_conn_handle, false);
             if (ret != NRF_ERROR_INVALID_STATE)
             {
@@ -761,16 +735,20 @@ bool ble_ancs_request_app(char *app_id, int len) {
   return ret==0;
 }
 
-// Register for all EntityTrack Attributes
-bool ble_ams_request_track_attr() {
-  ret_code_t ret;
-  // Register for all EntityTrack Attributes (TrackArtist, TrackAlbum, TrackTitle, TrackDuration);
-  uint8_t attribute_number = 4;
-  uint8_t attribute_list[] = {BLE_AMS_TRACK_ATTRIBUTE_ID_ARTIST,
-                      BLE_AMS_TRACK_ATTRIBUTE_ID_ALBUM,
-                      BLE_AMS_TRACK_ATTRIBUTE_ID_TITLE,
-                      BLE_AMS_TRACK_ATTRIBUTE_ID_DURATION};
-  ret = ble_ams_c_entity_update_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, attribute_number, attribute_list);
+// Request an AMS attribute
+bool ble_ams_request_info(ble_ams_c_track_attribute_id_val_t cmd) {
+  ret_code_t ret = ble_ams_c_entity_attribute_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, cmd);
+  jsble_check_error(ret);
+  if (ret==0) {
+    ret = ble_ams_c_entity_attribute_read(&m_ams_c, 0);
+    jsble_check_error(ret);
+  }
+  return ret==0;
+}
+
+// Send a command like play/pause/etc
+bool ble_ams_command(ble_ams_c_remote_control_id_val_t cmd) {
+  ret_code_t ret = ble_ams_c_remote_command_write(&m_ams_c, cmd);
   jsble_check_error(ret);
   return ret==0;
 }
