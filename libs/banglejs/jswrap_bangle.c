@@ -414,6 +414,8 @@ JshI2CInfo i2cInternal;
 #define PRESSURE_I2C &i2cInternal
 #define MAG_I2C &i2cInternal
 #define HOME_BTN 2
+#define BTN_LOAD_TIMEOUT 4000
+#define DEFAULT_LCD_POWER_TIMEOUT 20000
 #endif
 
 #ifdef ID205
@@ -443,7 +445,9 @@ JshI2CInfo i2cInternal;
 #define POWER_SAVE_MIN_ACCEL 1638 // min acceleration before we exit power save... (8192*0.2)
 #define POWER_SAVE_TIMEOUT 60000 // 60 seconds of inactivity
 #define ACCEL_POLL_INTERVAL_MAX 4000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
+#ifndef BTN_LOAD_TIMEOUT
 #define BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
+#endif
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
 #ifndef DEFAULT_LCD_POWER_TIMEOUT
 #define DEFAULT_LCD_POWER_TIMEOUT 30000 // in msec - default for lcdPowerTimeout
@@ -2485,6 +2489,21 @@ int jswrap_banglejs_getStepCount() {
   return stepCounter;
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setStepCount",
+    "generate" : "jswrap_banglejs_setStepCount",
+    "params" : [
+      ["count","int","The value with which to reload the step counter"]
+    ],
+    "ifdef" : "BANGLEJS"
+}
+Sets the current value of the step counter
+*/
+void jswrap_banglejs_setStepCount(JsVarInt count) {
+  stepCounter = count;
+}
 
 /*JSON{
     "type" : "staticmethod",
@@ -2879,6 +2898,7 @@ NO_INLINE void jswrap_banglejs_init() {
   in a fraction of a second anyway */
   if (jsiStatus & JSIS_TODO_FLASH_LOAD) {
     showSplashScreen = false;
+#ifndef ESPR_NO_LOADING_SCREEN
     if (!firstRun) {
       // Display a loading screen
       int x = LCD_WIDTH/2;
@@ -2901,6 +2921,7 @@ NO_INLINE void jswrap_banglejs_init() {
       lcdFlip_SPILCD(&gfx);
   #endif
     }
+#endif
   }
 
 #ifdef DICKENS
