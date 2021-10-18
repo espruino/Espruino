@@ -1989,7 +1989,6 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         }
         jsvAppendStringVar(currentLine, str, wordStartIdx, currentPos-(wordStartIdx+1));
         lineWidth += wordWidth;
-        wordWidth = 0;
       } else {
         // new line
         lineWidth = wordWidth;
@@ -1998,6 +1997,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         jsvUnLock(currentLine);
         currentLine = jsvNewFromStringVar(str, wordStartIdx, currentPos-(wordStartIdx+1));
       }
+      wordWidth = 0;
       wordStartIdx = currentPos;
       wasNewLine = ch=='\n';
       if (endOfText) break;

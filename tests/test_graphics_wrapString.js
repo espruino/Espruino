@@ -44,7 +44,7 @@ SHOULD_BE(lines, ["ALongWord"]);
 // normal wrap
 g.clear().setFont("4x6");
 lines = g.wrapString("Hello there lots of text here", 64);
-SHOULD_BE(lines, ["Hello there lots","of text here"]);*/
+SHOULD_BE(lines, ["Hello there lots","of text here"]);
 //g.drawString(lines.join("\n"));g.print();
 
 // with a newline
@@ -68,6 +68,11 @@ g.clear().setFont("4x6");
 lines = g.wrapString("Hello \0\7\5\1\x82 D\x17\xC0 a test", 32);
 SHOULD_BE(lines, ["Hello \0\7\5\1\x82 D\x17\xC0","a test"]);
 //g.drawString(lines.join("\n"));g.print();
+
+// vector font
+g.clear().setFont("Vector18");
+lines = g.wrapString("This is wrapping text that fills remaining space", 116);
+SHOULD_BE(lines, ["This is","wrapping","text that","fills","remaining","space"]);
 
 
 result = ok;
