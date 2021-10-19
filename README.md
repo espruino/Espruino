@@ -7,7 +7,7 @@ Espruino JavaScript for Microcontrollers
 |_____|___|  _|_| |___|_|_|_|___|
           |_|      
 </pre>
-http://www.espruino.com &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [![Join the chat at https://gitter.im/espruino/Espruino](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/espruino/Espruino?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+https://www.espruino.com &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [![Join the chat at https://gitter.im/espruino/Espruino](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/espruino/Espruino?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 [![Build Status](https://travis-ci.com/espruino/Espruino.svg?branch=master)](https://travis-ci.com/espruino/Espruino)
 
@@ -16,45 +16,45 @@ About
 
 Espruino is a JavaScript interpreter for microcontrollers. It is designed for devices with as little as 128kB Flash and 8kB RAM.
 
-Please support Espruino by [ordering one of our official boards](http://www.espruino.com/Order) or [donating](http://www.espruino.com/Donate)
+Please support Espruino by [ordering one of our official boards](https://www.espruino.com/Order) or [donating](https://www.espruino.com/Donate)
 
 
 Documentation
 ------------
 
-If you have an Espruino board, please read [the Quick Start Guide](http://www.espruino.com/Quick+Start) first.
+If you have an Espruino board, please read [the Quick Start Guide](https://www.espruino.com/Quick+Start) first.
 
-Browse the [Espruino Website](http://www.espruino.com) (try using search in the top right), and read the [FAQ](http://www.espruino.com/FAQ).
+Browse the [Espruino Website](https://www.espruino.com) (try using search in the top right), and read the [FAQ](https://www.espruino.com/FAQ).
 
-There's also a [Reference](http://www.espruino.com/Reference) for JavaScript commands as well as [Tutorials](http://www.espruino.com/Tutorials). However the documentation on the Espruino website will match the version [available for download](http://www.espruino.com/Download) but **not** the latest version on GitHub.
+There's also a [Reference](https://www.espruino.com/Reference) for JavaScript commands as well as [Tutorials](https://www.espruino.com/Tutorials). However the documentation on the Espruino website will match the version [available for download](https://www.espruino.com/Download) but **not** the latest version on GitHub.
 
-Builds for the [Espruino Board](http://www.espruino.com/EspruinoBoard) and [Pico Board](http://www.espruino.com/Pico) (built automatically for each Git commit) are [available from here](http://www.espruino.com/binaries/git)
+Builds for the [Espruino Board](https://www.espruino.com/EspruinoBoard) and [Pico Board](https://www.espruino.com/Pico) (built automatically for each Git commit) are [available from here](https://www.espruino.com/binaries/git)
 
 Other documentation of use is:
 
 * [The Forum](http://forum.espruino.com/)
-* [FAQ](http://www.espruino.com/FAQ)
-* [Troubleshooting](http://www.espruino.com/Troubleshooting)
-* [Performance Notes](http://www.espruino.com/Performance)
-* [Implementation Notes](http://www.espruino.com/Internals)
+* [FAQ](https://www.espruino.com/FAQ)
+* [Troubleshooting](https://www.espruino.com/Troubleshooting)
+* [Performance Notes](https://www.espruino.com/Performance)
+* [Implementation Notes](https://www.espruino.com/Internals)
 * [Build Process Notes](README_BuildProcess.md)
 * [Building Espruino](README_Building.md)
 * [Making your own libraries](libs/README.md)
-* [Hardware Debugging Notes](http://www.espruino.com/AdvancedDebug)
+* [Hardware Debugging Notes](https://www.espruino.com/AdvancedDebug)
 
 
 Support / Bugs
 --------------
 
-First, please try and check that your problem hasn't [already been found](https://github.com/espruino/Espruino/issues) or [covered on our forum](http://www.espruino.com/Forum).
+First, please try and check that your problem hasn't [already been found](https://github.com/espruino/Espruino/issues) or [covered on our forum](https://www.espruino.com/Forum).
 
-[Submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them: a **small** test case (not your whole program), and an actual and expected result. If you can't come up with these, please [post on the forum](http://www.espruino.com/Forum) first as it may just be something in your code that we can help out with.
+[Submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them: a **small** test case (not your whole program), and an actual and expected result. If you can't come up with these, please [post on the forum](https://www.espruino.com/Forum) first as it may just be something in your code that we can help out with.
 
-Work on Espruino is supported by [sales of our boards](http://www.espruino.com/Order).
+Work on Espruino is supported by [sales of our boards](https://www.espruino.com/Order).
 
 **If your board isn't made by us but came pre-installed with Espruino then you should contact the manufacturers.**
 
-We try and support users of the boards we sell, but if you bought a non-official board your issue may not get addressed. In this case, please consider [donating](http://www.espruino.com/Donate) to help cover the time it takes to fix problems (even so, we can't guarantee to fix every problem).
+We try and support users of the boards we sell, but if you bought a non-official board your issue may not get addressed. In this case, please consider [donating](https://www.espruino.com/Donate) to help cover the time it takes to fix problems (even so, we can't guarantee to fix every problem).
 
 
 License
@@ -78,13 +78,13 @@ There are a bunch of tests in the `tests` directory. See [`tests/README.md`](tes
 Current State
 -------------
 
-The [officially supported boards](http://www.espruino.com/Order) are the best supported. They come pre-installed with Espruino and you are able to easily download and flash the latest versions of Espruino to them.
+The [officially supported boards](https://www.espruino.com/Order) are the best supported. They come pre-installed with Espruino and you are able to easily download and flash the latest versions of Espruino to them.
 
 While Espruino can run on other boards, we make no money from them and so cannot afford to test, fix or support the firmware on them. We're dependent on the community.
 
-You can download binaries from http://www.espruino.com/Download
+You can download binaries from https://www.espruino.com/Download
 
-If you are a board manufacturer interested in getting your board officially supported, please [check out this page](http://www.espruino.com/Business).
+If you are a board manufacturer interested in getting your board officially supported, please [check out this page](https://www.espruino.com/Business).
 
 For a list of supported boards, please see the [boards folder](https://github.com/espruino/Espruino/tree/master/boards).
 
@@ -110,7 +110,7 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) for some hints about code style/et
 
 You can auto-build documentation for all source files - see [doxygen/README.md](doxygen/README.md)
 
-Any more questions? [ask on the forum.](http://www.espruino.com/Forum)
+Any more questions? [ask on the forum.](https://www.espruino.com/Forum)
 
 ### Porting to new devices
 
@@ -138,7 +138,7 @@ See [libs/README.md](libs/README.md) for a short tutorial on how to add your own
 Using Espruino in your Projects
 ---------------------------
 
-If you're using Espruino for your own personal projects - go ahead, we hope you have fun - and please let us know what you do with it on http://www.espruino.com/Forum!
+If you're using Espruino for your own personal projects - go ahead, we hope you have fun - and please let us know what you do with it on https://www.espruino.com/Forum!
 
 If you're planning on selling the Espruino software on your own board, please:
 
