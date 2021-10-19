@@ -54,7 +54,7 @@ Work on Espruino is supported by [sales of our boards](http://www.espruino.com/O
 
 **If your board isn't made by us but came pre-installed with Espruino then you should contact the manufacturers.**
 
-We try and support users of the boards we sell, but if you bought a non-official board your issue may not get addressed. In this case, please consider [donating](http://www.espruino.com/Download) to help cover the time it takes to fix problems (even so, we can't guarantee to fix every problem).
+We try and support users of the boards we sell, but if you bought a non-official board your issue may not get addressed. In this case, please consider [donating](http://www.espruino.com/Donate) to help cover the time it takes to fix problems (even so, we can't guarantee to fix every problem).
 
 
 License
