@@ -779,12 +779,12 @@ void lcd_flip() {
   }*/
   // pixel doubled
   for (int y=ymin;y<=ymax;y++) {
-    for (int yy=0;yy<2;yy++) {
+    for (int yy=0;yy<2;yy++) { // doubled rows
       lcd_wr(0b10010000);
       lcd_wr((y*2) + yy + 1);
       for (int x=0;x<LCD_DATA_WIDTH;x++) {
         unsigned char d = lcd_data[(x>>3)+(y*LCD_ROWSTRIDE)] >> (x&7);
-        lcd_wr((d&1)?0:0xFF); // doubled
+        lcd_wr((d&1)?0:0xFF); // doubled columnns
       }
     }
   }
@@ -844,7 +844,7 @@ void lcd_print(char *ch) {
         lcdy-=8;
 #ifdef LCD_STORE_MODIFIED
         ymin=0;
-        ymax=LCD_HEIGHT-1;
+        ymax=LCD_DATA_HEIGHT-1;
 #endif
       }
     } else if ('\r'==*ch) {

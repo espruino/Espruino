@@ -480,6 +480,10 @@ void jsiSoftInit(bool hasBeenReset) {
   if (!jsfIsStorageValid(JSFSTT_NORMAL)) {
     jsiConsolePrintf("Storage is corrupt.\n");
     jsfResetStorage();
+  } else {
+#ifdef BANGLEJS
+    jsiConsolePrintf("Storage Ok.\n");
+#endif
   }
 #endif
 

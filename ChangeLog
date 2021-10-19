@@ -45,6 +45,7 @@
             Bangle.js2: Larger font for E.showMenu
             Graphics: drawString(..., true) for vector fonts now clears the background
             nRF52: swap getSerial bytes around so device ID string matches nrfjprog
+            Bangle.js2: bootloader can now flash firmware from a file in Storage
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

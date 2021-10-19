@@ -21,6 +21,7 @@
 #include "lcd.h"
 #include "crc32.h"
 
+/// Header inside file in flash storage
 typedef struct {
   uint32_t address;
   uint32_t size;
@@ -28,8 +29,13 @@ typedef struct {
   uint32_t version;
 } FlashHeader;
 
-#define FLASH_HEADER_ADDRESS 0x00300000
-
+/// Structure for File Storage. It's important this is 8 byte aligned for platforms that only support 64 bit writes
+typedef struct {
+  uint32_t size; ///< Total size (and flags in the top 8 bits)
+  char name[28]; ///< 0-padded filename
+} JsfFileHeader;
+#define JSF_START_ADDRESS 0 /* actual flash starts at 0 - espruino's is memory mapped */
+#define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
 
 /// Read data while sending 0
 __attribute__( ( long_call, section(".data") ) ) static void spiFlashRead(unsigned char *rx, unsigned int len) {
@@ -146,10 +152,10 @@ __attribute__( ( long_call, section(".data") ) ) void intFlashWrite(uint32_t add
   }
 }
 
-bool flashEqual(FlashHeader header) {
+bool flashEqual(FlashHeader header, uint32_t addr) {
   unsigned char buf[256];
   unsigned int size = header.size;
-  int inaddr = FLASH_HEADER_ADDRESS + sizeof(FlashHeader);
+  int inaddr = addr + sizeof(FlashHeader);
   int outaddr = header.address;
   while (size>0) {
     unsigned int l = size;
@@ -223,7 +229,7 @@ __attribute__( ( long_call, section(".data") ) ) void xlcd_rect(int x1,int y1, i
 #endif
 }
 
-__attribute__( ( long_call, section(".data") ) ) void flashDoUpdate(FlashHeader header) {
+__attribute__( ( long_call, section(".data") ) ) void flashDoUpdate(FlashHeader header, uint32_t headerAddr) {
   unsigned char buf[256];
   int size, addr;
 
@@ -244,7 +250,7 @@ __attribute__( ( long_call, section(".data") ) ) void flashDoUpdate(FlashHeader 
   }
   // Write
   size = header.size;
-  int inaddr = FLASH_HEADER_ADDRESS + sizeof(FlashHeader);
+  int inaddr = headerAddr + sizeof(FlashHeader);
   int outaddr = header.address;
   while (size>0) {
     unsigned int l = size;
@@ -273,10 +279,57 @@ __attribute__( ( long_call, section(".data") ) ) void flashDoUpdate(FlashHeader 
   while (true) NVIC_SystemReset(); // reset!
 }
 
-void flashCheckAndRun() {
-  spiFlashInit();
+/// Return the size in bytes of a file based on the header
+static uint32_t jsfGetFileSize(JsfFileHeader *header) {
+  return (uint32_t)(header->size & 0x00FFFFFF);
+}
+
+/// Aligns a block, pushing it along in memory until it reaches the required alignment
+static uint32_t jsfAlignAddress(uint32_t addr) {
+  return (addr + (JSF_ALIGNMENT-1)) & (uint32_t)~(JSF_ALIGNMENT-1);
+}
+
+/** Load a file header from flash, return true if it is valid.
+ * If readFullName==false, only the first 4 bytes of the name are loaded */
+static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
+  spiFlashReadAddr(header, addr, sizeof(JsfFileHeader));
+  return (header->size != 0xFFFFFFFF) &&
+    (addr+(uint32_t)sizeof(JsfFileHeader)+jsfGetFileSize(header) <= JSF_END_ADDRESS);
+}
+
+// Get the address of the page after the current one, or 0. THE NEXT PAGE MAY HAVE A PREVIOUS PAGE'S DATA SPANNING OVER IT
+static uint32_t jsfGetAddressOfNextPage(uint32_t addr) {
+  addr = (uint32_t)(addr & ~(SPIFLASH_PAGESIZE-1)) + SPIFLASH_PAGESIZE;
+  if (addr>=JSF_END_ADDRESS) return 0; // no pages in range
+  return addr;
+}
+
+static bool jsfGetNextFileHeader(uint32_t *addr, JsfFileHeader *header) {
+  uint32_t oldAddr = *addr;
+  *addr = 0;
+  // Work out roughly where the start is
+  uint32_t newAddr = oldAddr + jsfGetFileSize(header) + (uint32_t)sizeof(JsfFileHeader);
+  // pad out to flash write boundaries
+  newAddr = jsfAlignAddress(newAddr);
+  // sanity check for bad data
+  if (newAddr<oldAddr) return 0; // corrupt!
+  if (newAddr+sizeof(JsfFileHeader)>JSF_END_ADDRESS) return 0; // not enough space
+  *addr = newAddr;
+  bool valid = jsfGetFileHeader(newAddr, header);
+  if (!valid) {
+    // there wasn't another header in this page - check the next page
+    newAddr = jsfGetAddressOfNextPage(newAddr);
+    *addr = newAddr;
+    if (!newAddr) return false; // no valid address
+    valid = jsfGetFileHeader(newAddr, header);
+    // we can't have a blank page and then a header, so stop our search
+  }
+  return valid;
+}
+
+void flashCheckFile(uint32_t fileAddr) {
   FlashHeader header;
-  spiFlashReadAddr((unsigned char *)&header, FLASH_HEADER_ADDRESS, sizeof(FlashHeader));
+  spiFlashReadAddr((unsigned char *)&header, fileAddr, sizeof(FlashHeader));
   if (header.address==0xFFFFFFFF || header.size==0) {
     // Not set - silently exit
     return;
@@ -291,7 +344,7 @@ void flashCheckAndRun() {
   lcd_println("CRC TEST...");
   unsigned char buf[256];
   int size = header.size;
-  int inaddr = FLASH_HEADER_ADDRESS + sizeof(FlashHeader);
+  int inaddr = fileAddr + sizeof(FlashHeader);
   uint32_t crc = 0;
   while (size>0) {
     unsigned int l = size;
@@ -305,55 +358,75 @@ void flashCheckAndRun() {
   if (crc != header.CRC) {
     // CRC is wrong - exits
     lcd_println("CRC MISMATCH");
+    lcd_println("NOT FLASHING");
     lcd_print_hex(crc); lcd_println("");lcd_println("");
     for (volatile int i=0;i<5000000;i++) NRF_WDT->RR[0] = 0x6E524635; // delay
+    // don't flash if the CRC doesn't match
+    return;
   } else {
     // All ok - check we haven't already flashed this!
     lcd_println("TESTING...");
-    isEqual = flashEqual(header);
+    isEqual = flashEqual(header, fileAddr);
   }
   lcd_println("REMOVE HEADER.");
-  // Now erase the first page of flash so we don't get into a boot loop
-  unsigned char b[20];
+  // Now erase the 'name' from the file header
+  // which basically erases the file, so we don't
+  // get into a boot loop
+  unsigned char b[32];
   b[0] = 0x06; // WREN
   spiFlashWriteCS(b,1);
+  uint32_t headerNameAddr = fileAddr-28; // name=28 chars
   for (volatile int i=0;i<1000;i++);
   b[0] = 0x02; // Write
-  b[1] = FLASH_HEADER_ADDRESS>>16;
-  b[2] = FLASH_HEADER_ADDRESS>>8;
-  b[3] = FLASH_HEADER_ADDRESS;
-  memset(&b[4], 0, 16);
-  spiFlashWriteCS(b,4+16); // write command plus 16 bytes of zeros
+  b[1] = headerNameAddr>>16;
+  b[2] = headerNameAddr>>8;
+  b[3] = headerNameAddr;
+  memset(&b[4], 0, 28);
+  spiFlashWriteCS(b,4+28); // write command plus 28 bytes of zeros
   // Check if flash busy
   while (spiFlashStatus()&1); // while 'Write in Progress'...
-  FlashHeader header2;
-  spiFlashReadAddr((unsigned char *)&header2, FLASH_HEADER_ADDRESS, sizeof(FlashHeader));
-  // read a second time just in case
-  spiFlashReadAddr((unsigned char *)&header2, FLASH_HEADER_ADDRESS, sizeof(FlashHeader));
-  if (header2.address != 0) {
-    lcd_println("ERASE FAIL. EXIT.");
-    for (volatile int i=0;i<5000000;i++) NRF_WDT->RR[0] = 0x6E524635; // delay
-    return;
-  }
+  // assume it's erased...
 
   if (!isEqual) {
-    lcd_println("BINARY DIFF. FLASHING...");
+    lcd_println("FIRMWARE DIFFERENT.");
+    lcd_println("FLASHING...");
 
     xlcd_rect(60,180,180,180,true);
     xlcd_rect(60,190,180,190,true);
     xlcd_rect(60,200,180,200,true);
 
-    flashDoUpdate(header);
+    flashDoUpdate(header, fileAddr);
 
-    /*isEqual = flashEqual(header);
+#if 0
+    isEqual = flashEqual(header, addr);
     if (isEqual) lcd_println("EQUAL");
     else lcd_println("NOT EQUAL");
 
     for (volatile int i=0;i<5000000;i++) NRF_WDT->RR[0] = 0x6E524635; // delay
-    while (true) NVIC_SystemReset(); */
+    while (true) NVIC_SystemReset();
+#endif
   } else {
     lcd_println("BINARY MATCHES.");
   }
+}
+
+
+void flashCheckAndRun() {
+  lcd_println("CHECK STORAGE");
+  spiFlashInit();
+
+  uint32_t addr = JSF_START_ADDRESS;
+  JsfFileHeader header;
+  if (jsfGetFileHeader(addr, &header)) do {
+    char *n = &header.name[0];
+    //if (n[0]) lcd_println(n);
+    if (n[0]=='.' && n[1]=='f' && n[2]=='i' && n[3]=='r' && n[4]=='m' && n[5]=='w' && n[6]=='a' && n[7]=='r' && n[8]=='e' && n[9]==0) {
+      lcd_println("FOUND FIRMWARE");
+      flashCheckFile(addr + sizeof(JsfFileHeader)/*, jsfGetFileSize(&header)*/);
+      return;
+    }
+  } while (jsfGetNextFileHeader(&addr, &header));
+  lcd_println("NO NEW FW");
 }
 
 // Put the SPI Flash into deep power-down mode

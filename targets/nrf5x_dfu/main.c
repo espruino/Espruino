@@ -253,35 +253,60 @@ void reboot_check_handler() {
     }
   }
 #endif
+#if NRF_SD_BLE_API_VERSION>=5
+  // not quite sure why this doesn't repeat in SDK15 when we
+  // asked it to - maybe DFU kills all timers?
+  app_timer_start(m_reboot_timer_id,
+        APP_TIMER_TICKS(100),
+        NULL);
+#endif
 }
 #endif
+
+void dfu_evt_init() {
+  set_led_state(true,false);
+#ifdef REBOOT_TIMER
+  uint32_t err_code;
+  err_code = app_timer_create(&m_reboot_timer_id,
+                      APP_TIMER_MODE_REPEATED,
+                      reboot_check_handler);
+  err_code = app_timer_start(m_reboot_timer_id,
+#if NRF_SD_BLE_API_VERSION<5
+      APP_TIMER_TICKS(100, 0),
+#else
+      APP_TIMER_TICKS(100),
+#endif
+      NULL);
+#endif
+#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+  lcd_println("BTN1 = REBOOT");
+#endif
+}
+
+void dfu_evt_connected() {
+  lcd_println("CONNECT");
+  set_led_state(false,true);
+  dfuIsConnected = true;
+}
+
+void dfu_evt_disconnected() {
+  lcd_println("DISCONNECT");
+  dfuIsConnected = false;
+}
 
 #if NRF_SD_BLE_API_VERSION < 5
 extern void dfu_set_status(DFUStatus status) {
   switch (status) {
   case DFUS_ADVERTISING_START:
-    set_led_state(true,false);
-#ifdef REBOOT_TIMER
-    uint32_t err_code;
-    err_code = app_timer_create(&m_reboot_timer_id,
-                        APP_TIMER_MODE_REPEATED,
-                        reboot_check_handler);
-    err_code = app_timer_start(m_reboot_timer_id, APP_TIMER_TICKS(100, 0), NULL);
-#endif
-#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
-    lcd_println("BTN1 = REBOOT");
-#endif
+    dfu_evt_init();
     break;
 /*  case DFUS_ADVERTISING_STOP:
     break;*/
   case DFUS_CONNECTED:
-    lcd_println("CONNECT");
-    set_led_state(false,true); 
-    dfuIsConnected = true;
+    dfu_evt_connected();
     break;
   case DFUS_DISCONNECTED:
-    lcd_println("DISCONNECT");
-    dfuIsConnected = false;
+    dfu_evt_disconnected();
     break;
   }
 }
@@ -290,15 +315,22 @@ static void dfu_observer(nrf_dfu_evt_type_t evt_type)
 {
     switch (evt_type)
     {
+        case NRF_DFU_EVT_DFU_INITIALIZED:
+          dfu_evt_init();
+          break;
         case NRF_DFU_EVT_DFU_FAILED:
         case NRF_DFU_EVT_DFU_ABORTED:
-        case NRF_DFU_EVT_DFU_INITIALIZED:
+          lcd_println("ERROR");
           set_led_state(true,false);
           break;
         case NRF_DFU_EVT_TRANSPORT_ACTIVATED:
-          set_led_state(false,true);
+          dfu_evt_connected();
+          break;
+        case NRF_DFU_EVT_TRANSPORT_DEACTIVATED:
+          dfu_evt_disconnected();
           break;
         case NRF_DFU_EVT_DFU_STARTED:
+          lcd_println("STARTED");
           break;
         default:
           break;
