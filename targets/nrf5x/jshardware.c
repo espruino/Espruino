@@ -978,7 +978,11 @@ void jshBusyIdle() {
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
-    memcpy(data, (void*)NRF_FICR->DEVICEID, sizeof(NRF_FICR->DEVICEID));
+    unsigned char *deviceId = (unsigned char *)NRF_FICR->DEVICEID;
+    for (int i=0;i<4;i++) {
+      data[i] = deviceId[3-i];
+      data[i+4] = deviceId[7-i];
+    }
     return sizeof(NRF_FICR->DEVICEID);
 }
 

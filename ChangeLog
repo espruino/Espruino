@@ -44,6 +44,7 @@
             Graphics: drawImage now supports up to 4bpp palettes rendered direct from flash
             Bangle.js2: Larger font for E.showMenu
             Graphics: drawString(..., true) for vector fonts now clears the background
+            nRF52: swap getSerial bytes around so device ID string matches nrfjprog
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
