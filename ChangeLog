@@ -47,6 +47,7 @@
             nRF52: swap getSerial bytes around so device ID string matches nrfjprog
             Bangle.js2: bootloader can now flash firmware from a file in Storage
             Bangle.js2: Add second Storage area in internal flash for fast access, memory-mapped files
+            Fix unhandled reject of a previously resolved promise (fix #1433)
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

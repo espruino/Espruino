@@ -123,9 +123,12 @@ void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool r
   if (fn) {
     _jswrap_promise_resolve_or_reject(promise, data, fn);
     jsvUnLock(fn);
-  } else {
-    if (!resolve)
+  } else if (!resolve) {
+    JsVar *previouslyResolved = jsvFindChildFromString(promise, JS_PROMISE_RESOLVED_NAME, false);
+    if (!previouslyResolved) {
       jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
+      jsvUnLock(previouslyResolved);
+    }
   }
 }
 
