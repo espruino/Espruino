@@ -482,7 +482,8 @@ void jsiSoftInit(bool hasBeenReset) {
     jsfResetStorage();
   } else {
 #ifdef BANGLEJS
-    jsiConsolePrintf("Storage Ok.\n");
+    if (fullTest)
+      jsiConsolePrintf("Storage Ok.\n");
 #endif
   }
 #endif

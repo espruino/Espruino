@@ -104,11 +104,15 @@ else: # NOT LINUX
   # F4 has different page sizes in different places
   total_flash = board.chip["flash"]*1024
 
+flash_saved_code2_pages = 0
 if "saved_code" in board.chip:
   flash_saved_code_start = board.chip["saved_code"]["address"]
   flash_page_size = board.chip["saved_code"]["page_size"]
   flash_saved_code_pages = board.chip["saved_code"]["pages"]
   flash_available_for_code = board.chip["saved_code"]["flash_available"]*1024
+
+  flash_saved_code2_start = board.chip["saved_code"]["address2"]
+  flash_saved_code2_pages = board.chip["saved_code"]["pages2"]
 else:
   flash_saved_code_start = "(FLASH_START + FLASH_TOTAL - FLASH_SAVED_CODE_LENGTH)"
   flash_available_for_code = total_flash - (flash_saved_code_pages*flash_page_size)
@@ -300,6 +304,10 @@ else:
 
 codeOut("#define FLASH_SAVED_CODE_START            "+str(flash_saved_code_start))
 codeOut("#define FLASH_SAVED_CODE_LENGTH           "+str(int(flash_page_size*flash_saved_code_pages)))
+if flash_saved_code2_pages:
+  codeOut("// Extra flash pages in external flash")
+  codeOut("#define FLASH_SAVED_CODE2_START            "+str(flash_saved_code2_start))
+  codeOut("#define FLASH_SAVED_CODE2_LENGTH           "+str(int(flash_page_size*flash_saved_code2_pages)))
 codeOut("");
 
 codeOut("#define CLOCK_SPEED_MHZ                      "+str(board.chip["speed"]))
