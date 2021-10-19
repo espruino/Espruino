@@ -21,3 +21,4 @@ void lcdSetPixel_ArrayBuffer_flat8(JsGraphics *gfx, int x, int y, unsigned int c
 unsigned int lcdGetPixel_ArrayBuffer_flat8(struct JsGraphics *gfx, int x, int y);
 void lcdFillRect_ArrayBuffer_flat8(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
 void lcdScroll_ArrayBuffer_flat8(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2);
+

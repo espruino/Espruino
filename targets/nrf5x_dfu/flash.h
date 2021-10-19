@@ -14,4 +14,5 @@
 
 #ifdef ESPR_BOOTLOADER_SPIFLASH
 void flashCheckAndRun();
+void flashPowerDown();
 #endif

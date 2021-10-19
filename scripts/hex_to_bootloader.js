@@ -7,6 +7,7 @@
 var PAGESIZE = 4096;
 var FLASH_OFFSET = 0x60300000;
 var VERSION = 0xDEADBEEF; // VERSION! Use this to test firmware in JS land
+var DEBUG = false;
 
 if (process.argv.length!=3) {
   console.error("USAGE: hex_to_bootloader.js inputfile.hex");
@@ -16,16 +17,17 @@ if (process.argv.length!=3) {
 var inputFile = process.argv[2];
 
 var hex = require("fs").readFileSync(inputFile).toString().split("\n");
-var addrHi = 0;
 function parseLines(dataCallback) {
+var addrHi = 0;
   hex.forEach(function(hexline) {
-    var cmd = hexline.substr(1,2);
-    if (cmd=="02") {
-      var subcmd = hexline.substr(7,2);
-      if (subcmd=="02") addrHi = parseInt(hexline.substr(9,4),16) << 4; // Extended Segment Address
-      if (subcmd=="04") addrHi = parseInt(hexline.substr(9,4),16) << 16; // Extended Linear Address
-    } else if (cmd=="10") {
-      var addr = addrHi + parseInt(hexline.substr(3,4),16);
+    if (DEBUG) console.log(hexline);
+    var bytes = hexline.substr(1,2);
+    var addrLo = parseInt(hexline.substr(3,4),16);
+    var cmd = hexline.substr(7,2);
+    if (cmd=="02") addrHi = parseInt(hexline.substr(9,4),16) << 4; // Extended Segment Address
+    else if (cmd=="04") addrHi = parseInt(hexline.substr(9,4),16) << 16; // Extended Linear Address
+    else if (cmd=="00") {
+      var addr = addrHi + addrLo;
       var data = [];
       for (var i=0;i<16;i++) data.push(parseInt(hexline.substr(9+(i*2),2),16));
       dataCallback(addr,data);
@@ -89,14 +91,21 @@ console.log(`// Data from 0x${startAddress.toString(16)} to 0x${endAddress.toStr
 // Work out data
 var headerLen = 16;
 var binary = new Uint8Array(headerLen + endAddress-startAddress);
-binary.fill(0xFF);
+binary.fill(0); // actually seems to assume a block is filled with 0 if not complete
 var bin32 = new Uint32Array(binary.buffer);
 parseLines(function(addr, data) {
   var binAddr = headerLen + addr - startAddress;
   binary.set(data, binAddr);
-  //console.log("i",binAddr, data);
+  if (DEBUG) console.log("i",addr.toString(16).padStart(8,0), data.map(x=>x.toString(16).padStart(2,0)).join(" "));
   //console.log("o",new Uint8Array(binary.buffer, binAddr, data.length));
 });
+
+if (DEBUG) {
+for (var i=0;i<binary.length;i+=16)
+  console.log((i+startAddress-headerLen).toString(16).padStart(8,0), Array.from(new Uint8Array(binary.buffer, i, 16)).map(x=>x.toString(16).padStart(2,0)).join(" "));
+process.exit(0);
+}
+
 /* typedef struct {
   uint32_t address;
   uint32_t size;

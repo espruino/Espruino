@@ -76,3 +76,14 @@ define execflags
   end
 end
 
+define hook-stop
+    set $primask=1
+end
+
+define hook-run
+    set $primask=0
+end 
+
+define hook-continue
+    set $primask=0
+end
