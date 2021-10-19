@@ -45,3 +45,14 @@
  
      attr_md.vloc    = BLE_GATTS_VLOC_STACK;
      attr_md.rd_auth = 0;
+--- a/targetlibs/nrf5x_15/components/ble/ble_services/ble_nus/ble_nus.h	2018-03-22 15:25:08.000000000 +0000
++++ b/targetlibs/nrf5x_15/components/ble/ble_services/ble_nus/ble_nus.h	2020-05-13 10:26:53.632988548 +0100
+@@ -173,6 +173,7 @@
+ typedef struct
+ {
+     ble_nus_data_handler_t data_handler; /**< Event handler to be called for handling received data. */
++    bool encrypt; //< GW added - require encryption
+ } ble_nus_init_t;
+
+
+
