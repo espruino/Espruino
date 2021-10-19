@@ -175,7 +175,8 @@ bool flashEqual(FlashHeader header) {
   return true;
 }
 
-// Inline LCD calls for general SPI LCDs
+#if defined(LCD_CONTROLLER_GC9A01)
+// LCD output for generic SPI LCDs
 __attribute__( ( long_call, section(".data") ) ) void xlcd_wr(int data) {
   for (int bit=7;bit>=0;bit--) {
     NRF_GPIO_PIN_WRITE_FAST(LCD_SPI_SCK, 0 );
@@ -183,8 +184,10 @@ __attribute__( ( long_call, section(".data") ) ) void xlcd_wr(int data) {
     NRF_GPIO_PIN_WRITE_FAST(LCD_SPI_SCK, 1 );
   }
 }
+#endif
 
 __attribute__( ( long_call, section(".data") ) ) void xlcd_rect(int x1,int y1, int x2, int y2, bool white) {
+#if defined(LCD_CONTROLLER_GC9A01)
   NRF_GPIO_PIN_WRITE_FAST(LCD_SPI_DC, 0); // command
   NRF_GPIO_PIN_WRITE_FAST(LCD_SPI_CS, 0);
   xlcd_wr(0x2A);
@@ -217,6 +220,7 @@ __attribute__( ( long_call, section(".data") ) ) void xlcd_rect(int x1,int y1, i
   for (int x=0;x<l*2;x++)
     xlcd_wr(white ? 0xFF : 0);
   NRF_GPIO_PIN_WRITE_FAST(LCD_SPI_CS,1);
+#endif
 }
 
 __attribute__( ( long_call, section(".data") ) ) void flashDoUpdate(FlashHeader header) {

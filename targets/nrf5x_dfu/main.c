@@ -96,7 +96,11 @@ void turn_off() {
   flashPowerDown();  // Put the SPI Flash into deep power-down
 #endif  
   jshPinOutput(VIBRATE_PIN,1); // vibrate on
+#if defined(BTN2_PININDEX)
   while (get_btn1_state() || get_btn2_state()) {}; // wait for BTN1 and BTN2 to be released
+#else
+  while (get_btn1_state()) {}; // wait for BTN1 and BTN2 to be released
+#endif
   jshPinSetValue(VIBRATE_PIN,0); // vibrate off
 #ifdef DICKENS
   NRF_P0->OUT=0x03300f04; // 00000011 00110000 00001111 00000100 - high pins: D2, D8, SDA, SCL, LCD_CS, FLASH_CS, FLASH_WP, FLASH_RST, FLASH_SCK
@@ -121,8 +125,10 @@ void turn_off() {
   NRF_GPIO_PIN_CNF(BTN1_PININDEX,0x0003000c);     // D46 = BTN1 input (with pullup and low-level sense)
 #else  // !DICKENS
   set_led_state(0,0);
+#if defined(BTN2_PININDEX)
   nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
   nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
+#endif
   nrf_gpio_cfg_sense_input(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
   nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
 #endif
