@@ -111,8 +111,9 @@ if "saved_code" in board.chip:
   flash_saved_code_pages = board.chip["saved_code"]["pages"]
   flash_available_for_code = board.chip["saved_code"]["flash_available"]*1024
 
-  flash_saved_code2_start = board.chip["saved_code"]["address2"]
-  flash_saved_code2_pages = board.chip["saved_code"]["pages2"]
+  if "address2" in board.chip["saved_code"]:
+    flash_saved_code2_start = board.chip["saved_code"]["address2"]
+    flash_saved_code2_pages = board.chip["saved_code"]["pages2"]
 else:
   flash_saved_code_start = "(FLASH_START + FLASH_TOTAL - FLASH_SAVED_CODE_LENGTH)"
   flash_available_for_code = total_flash - (flash_saved_code_pages*flash_page_size)
