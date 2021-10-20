@@ -48,6 +48,8 @@
             Bangle.js2: bootloader can now flash firmware from a file in Storage
             Bangle.js2: Add second Storage area in internal flash for fast access, memory-mapped files
             Fix unhandled reject of a previously resolved promise (fix #1433)
+            Bangle.js: E.showMessage/showPrompt can now display images via optional img argument
+                       E.showMessage/showPrompt handle padding correctly if no widgets are displayed
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

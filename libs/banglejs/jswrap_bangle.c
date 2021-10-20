@@ -4583,7 +4583,7 @@ See http://www.espruino.com/graphical_menu for more detailed information.
     "generate_js" : "libs/js/banglejs/E_showMessage.min.js",
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
-      ["title","JsVar","(optional) a title for the message"]
+      ["options","JsVar","(optional) a title for the message, or an object of options `{title:string, img:image_string}`"]
     ],
     "ifdef" : "BANGLEJS"
 }
@@ -4595,6 +4595,18 @@ Draws to the screen and returns immediately.
 ```
 E.showMessage("These are\nLots of\nLines","My Title")
 ```
+
+or to display an image as well as text:
+
+```
+E.showMessage("Lots of text will wrap automatically",{
+  title:"Warning",
+  img:atob("FBQBAfgAf+Af/4P//D+fx/n+f5/v+f//n//5//+f//n////3//5/n+P//D//wf/4B/4AH4A=")
+})
+```
+
+
+
 */
 /*JSON{
     "type" : "staticmethod",
@@ -4628,6 +4640,13 @@ E.showPrompt("How many fish\ndo you like?",{
 }).then(function(v) {
   print("You like "+v+" fish");
 });
+// Or
+E.showPrompt("Continue?", {
+  title:"Alert",
+  img:atob("FBQBAfgAf+Af/4P//D+fx/n+f5/v+f//n//5//+f//n////3//5/n+P//D//wf/4B/4AH4A=")}).then(function(v) {
+  if (v) print("'Yes' chosen");
+  else print("'No' chosen");
+});
 ```
 
 To remove the prompt, call `E.showPrompt()` with no arguments.
@@ -4636,8 +4655,9 @@ The second `options` argument can contain:
 
 ```
 {
-  title: "Hello",                      // optional Title
-  buttons : {"Ok":true,"Cancel":false} // list of button text & return value
+  title: "Hello",                       // optional Title
+  buttons : {"Ok":true,"Cancel":false}, // optional list of button text & return value
+  img: "image_string"                   // optional image string to draw
 }
 ```
 */
