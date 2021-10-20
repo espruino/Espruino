@@ -135,6 +135,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_LSE_ENABLE` - On NRF52 use an external 32kHz Low Speed External crystal on D0/D1
 * `ESPR_NO_LOADING_SCREEN` - Bangle.js, don't show a 'loading' screen when loading a new app
 * `ESPR_BOOTLOADER_SPIFLASH` - Allow bootloader to flash direct from a file in SPI flash storage
+* `ESPR_BANGLE_UNISTROKE` - Build in 'unistroke' touch gesture recognition
 
 ### chip
 

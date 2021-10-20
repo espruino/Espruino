@@ -41,7 +41,7 @@ info = {
 #     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow us to use NFC pins as GPIO
      #'DEFINES += -DESPR_REGOUT0_1_8V=1', # this increases power draw, so probably not correct!
-     'DEFINES += -DESPR_LSE_ENABLE ', # Ensure low speed external osc enabled
+     'DEFINES += -DESPR_LSE_ENABLE', # Ensure low speed external osc enabled
      'DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131', # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2ec0', # set RAM base to match MTU
      'DEFINES += -DESPR_DCDC_ENABLE=1', # Use DC/DC converter
@@ -61,6 +61,8 @@ info = {
      'SOURCES += libs/misc/stepcount.c',
      'SOURCES += libs/misc/heartrate.c',
      'SOURCES += libs/misc/hrm_vc31.c',
+     'SOURCES += libs/misc/unistroke.c',
+     'DEFINES += -DESPR_BANGLE_UNISTROKE=1',
      'SOURCES += libs/banglejs/banglejs2_storage_default.c',
      'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1', # 
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',

@@ -69,6 +69,9 @@
 #ifdef USE_TENSORFLOW
 #include "jswrap_tensorflow.h"
 #endif
+#if ESPR_BANGLE_UNISTROKE
+#include "unistroke.h"
+#endif
 
 /*JSON{
   "type": "class",
@@ -1466,6 +1469,9 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
     bangleTasks |= JSBT_DRAG;
     // ensure we don't sleep if touchscreen is being used
     inactivityTimer = 0;
+#if ESPR_BANGLE_UNISTROKE
+    unistroke_touch(touchX, touchY, touchPts);
+#endif
   }
 
   lastGesture = gesture;
@@ -3063,6 +3069,10 @@ NO_INLINE void jswrap_banglejs_init() {
     bangleFlags &= ~JSBF_COMPASS_ON;
     // ensure compass readings are reset to power-on state
     jswrap_banglejs_resetCompass();
+#endif
+    // Touchscreen gesture detection
+#if ESPR_BANGLE_UNISTROKE
+    unistroke_init();
 #endif
   } // firstRun
 
@@ -4749,7 +4759,7 @@ Currently supported interface types are:
 * 'clock' - called for clocks. Sets `Bangle.CLOCK=1` and allows a button to start the launcher
   * Bangle.js 1 BTN2 starts the launcher
   * Bangle.js 2 BTN1 starts the launcher
-* 'clockupdown' -
+* 'clockupdown' - called for clocks. Sets `Bangle.CLOCK=1`, allows a button to start the launcher, but also provides up/down functionality
   * Bangle.js 1 BTN2 starts the launcher, BTN1/BTN3 call `cb(-1)` and `cb(1)`
   * Bangle.js 2 BTN1 starts the launcher, touchscreen tap in top/bottom right hand side calls `cb(-1)` and `cb(1)`
 * `undefined` removes all user interaction code
