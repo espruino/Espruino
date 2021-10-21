@@ -54,7 +54,7 @@
       g.setColor(g.theme.bg2).fillPoly(poly).setColor(g.theme.fg2).drawPoly(poly).drawString(btn,x,y+1);
       x += (buttonPadding+w)/2;
     });
-    g.setColor(g.theme.fg).flip();  // turn screen on
+    Bangle.setLCDPower(1); // ensure screen is on
   }
   g.clear(1); // clear screen
   Bangle.drawWidgets(); // redraw widgets

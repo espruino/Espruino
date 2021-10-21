@@ -51,6 +51,7 @@
             Bangle.js: E.showMessage/showPrompt can now display images via optional img argument
                        E.showMessage/showPrompt handle padding correctly if no widgets are displayed
             Bangle.js2: Fix setUI clockupdown handling of 'up' 
+            Bangle.js: Ensure builtin E.show* (and fake LEDs) wake the LCD up
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

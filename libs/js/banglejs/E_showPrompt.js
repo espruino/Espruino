@@ -53,7 +53,7 @@
       g.setColor(idx==options.selected ? g.theme.bgH : g.theme.bg).fillPoly(poly).setColor(idx==options.selected ? g.theme.fgH : g.theme.fg).drawPoly(poly).drawString(btn,x,y+1);
       x += (buttonPadding+w)/2;
     });
-    g.setColor(g.theme.fg).flip();  // turn screen on
+    Bangle.setLCDPower(1); // ensure screen is on
   }
   g.clear(1); // clear screen
   Bangle.drawWidgets(); // redraw widgets

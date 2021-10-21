@@ -1,5 +1,6 @@
 (function(items) {
-  g.clear(1);g.flip(); // clear screen if no menu supplied
+  g.clear(1); // clear screen if no menu supplied
+  Bangle.setLCDPower(1); // ensure screen is on
   Bangle.drawWidgets();
   if (!items) {
     Bangle.setUI();
