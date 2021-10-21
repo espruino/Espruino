@@ -58,7 +58,7 @@
     Bangle.CLOCK=1;
     Bangle.touchHandler = (d,e) => {
       if (e.x < 120) return;
-      b();cb(e.y > 88);
+      b();cb((e.y > 88) ? 1 : -1);
     };
     Bangle.on("touch", Bangle.touchHandler);
     Bangle.btnWatches = [
