@@ -470,21 +470,22 @@ void jsiSoftInit(bool hasBeenReset) {
   // Run wrapper initialisation stuff
   jswInit();
 
-  // Search for invalid storage and remove it
+  // Search for invalid storage and erase
+  // do this only on first boot.
 #if !defined(EMSCRIPTEN) && !defined(SAVE_ON_FLASH)
   bool fullTest = jsiStatus & JSIS_FIRST_BOOT;
+  if (fullTest) {
 #ifdef BANGLEJS
-  if (fullTest)
     jsiConsolePrintf("Checking storage...\n");
 #endif
-  if (!jsfIsStorageValid(JSFSTT_NORMAL)) {
-    jsiConsolePrintf("Storage is corrupt.\n");
-    jsfResetStorage();
-  } else {
+    if (!jsfIsStorageValid(JSFSTT_NORMAL)) {
+      jsiConsolePrintf("Storage is corrupt.\n");
+      jsfResetStorage();
+    } else {
 #ifdef BANGLEJS
-    if (fullTest)
       jsiConsolePrintf("Storage Ok.\n");
 #endif
+    }
   }
 #endif
 
