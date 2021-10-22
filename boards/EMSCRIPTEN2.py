@@ -27,7 +27,7 @@ info = {
      'GRAPHICS',
      'LCD_MEMLCD',
 #     'FILESYSTEM',
-#     'CRYPTO','SHA256','SHA512',
+     'CRYPTO','SHA256','SHA512',
 #     'TLS',
 #     'TELNET',
    ],

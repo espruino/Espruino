@@ -33,6 +33,7 @@ info = {
      'BLUETOOTH',
      'TERMINAL',
      'GRAPHICS',
+     'CRYPTO','SHA256','SHA512',
      'LCD_MEMLCD',
      'TENSORFLOW'  
    ],
