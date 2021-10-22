@@ -53,6 +53,7 @@
             Bangle.js2: Fix setUI clockupdown handling of 'up' 
             Bangle.js: Ensure builtin E.show* (and fake LEDs) wake the LCD up
             Storage check now *only* happens on first boot
+            Ensure __FILE__ is set by the time bootcode runs
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
