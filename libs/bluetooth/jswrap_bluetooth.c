@@ -434,6 +434,17 @@ NRF.connect("aa:bb:cc:dd:ee:ff").then(function(gatt) {
   });
 });
 ```
+
+Or:
+
+```
+var gatt;
+NRF.requestDevice(...).then(function(device) {
+  device.on('gattserverdisconnected', function(reason) {
+    console.log("Disconnected ",reason);
+  });
+});
+```
  */
 /*JSON{
   "type" : "event",
@@ -3778,7 +3789,7 @@ NRF.connect(device_address).then(function(d) {
   return s.getCharacteristic("characteristic_uuid");
 }).then(function(c) {
   c.on('characteristicvaluechanged', function(event) {
-    console.log("-> "+event.target.value);
+    console.log("-> ",event.target.value); // this is a DataView
   });
   return c.startNotifications();
 }).then(function(d) {
