@@ -40,6 +40,8 @@ node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMessage.js banglejs/E_sh
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showPrompt.js banglejs/E_showPrompt.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showPrompt_Q3.js banglejs/E_showPrompt_Q3.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showAlert.js banglejs/E_showAlert.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showScroller.js banglejs/E_showScroller.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showScroller_Q3.js banglejs/E_showScroller_Q3.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/LED1.js banglejs/LED1.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/LED2.js banglejs/LED2.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_drawWidgets.js banglejs/Bangle_drawWidgets.min.js

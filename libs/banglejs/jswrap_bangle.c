@@ -4544,8 +4544,8 @@ var number = 50;
 // First menu
 var mainmenu = {
   "" : { "title" : "-- Main Menu --" },
-  "Backlight On" : function() { LED1.set(); },
-  "Backlight Off" : function() { LED1.reset(); },
+  "LED On" : function() { LED1.set(); },
+  "LED Off" : function() { LED1.reset(); },
   "Submenu" : function() { E.showMenu(submenu); },
   "A Boolean" : {
     value : boolean,
@@ -4663,6 +4663,49 @@ The second `options` argument can contain:
 */
 
 /*JSON{
+    "type" : "staticmethod",
+    "class" : "E",
+    "name" : "showScroller",
+    "generate_js" : "libs/js/banglejs/E_showScroller.min.js",
+    "params" : [
+      ["options","JsVar","An object containing `{ h, c, draw, select }` (see below) "]
+    ],
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
+    "ifdef" : "BANGLEJS"
+}
+Display a scrollable menu on the screen, and set up the buttons/touchscreen to navigate through it
+and select items.
+
+Supply an object containing:
+
+```
+{
+  h : 24, // height of each menu item in pixels
+  c : 10, // number of menu items
+  // a function to draw a menu item
+  draw : function(idx, rect) { ... }
+  // a function to call when the item is selected
+  select : function(idx) { ... }
+}
+```
+
+For example to display a list of numbers:
+
+```
+E.showScroller({
+  h : 16, c : 50,
+  draw : (idx, r) => {
+    g.setBgColor((idx&1)?"#fff":"#ccc").clearRect(r.x,r.y,r.x+r.w-1,r.y+r.h-1);
+    g.setFont("6x8:2").drawString(idx,r.x+10,r.y);
+  },
+  select : (idx) => console.log("You selected ", idx)
+});
+```
+
+To remove the scroller, just call `E.showScroller()`
+*/
+
+/*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showMenu", "patch":true,
     "generate_js" : "libs/js/banglejs/E_showMenu_Q3.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
@@ -4677,6 +4720,12 @@ The second `options` argument can contain:
 /*JSON{
     "type" : "staticmethod", "class" : "E", "name" : "showPrompt", "patch":true,
     "generate_js" : "libs/js/banglejs/E_showPrompt_Q3.min.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
+}
+*/
+/*JSON{
+    "type" : "staticmethod", "class" : "E", "name" : "showScroller", "patch":true,
+    "generate_js" : "libs/js/banglejs/E_showScroller_Q3.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
