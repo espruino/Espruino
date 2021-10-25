@@ -2137,7 +2137,11 @@ static uint32_t flash_end_addr(void)
     return (uint32_t)FS_PAGE_END_ADDR;
 #endif
 }
-
+static void peer_manager_erase_pages(){
+    int i;
+    for (i=1;i<=FDS_PHY_PAGES;i++)
+      jshFlashErasePage((flash_end_addr()) - i*FDS_PHY_PAGE_SIZE);
+}
 static void peer_manager_init(bool erase_bonds) {
 
   /* Only initialise the peer manager once. This stops
@@ -2152,15 +2156,19 @@ static void peer_manager_init(bool erase_bonds) {
   buttonPressed = jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
 #endif
   if (buttonPressed) {
-    int i;
-    for (i=1;i<=FDS_PHY_PAGES;i++)
-      jshFlashErasePage((flash_end_addr()) - i*FDS_PHY_PAGE_SIZE);
+    peer_manager_erase_pages();
   }
 
 
   ret_code_t           err_code;
 
   err_code = pm_init();
+  /* If pm init failed, erase pm/fds storage to prevent reboot loop
+   * This can happen if fds storage is full */
+  if (err_code != NRF_SUCCESS){
+    peer_manager_erase_pages();
+    err_code = pm_init();
+  }
   APP_ERROR_CHECK(err_code);
 
   if (erase_bonds)
