@@ -1774,9 +1774,11 @@ static void _jswrap_graphics_getFontInfo(JsGraphics *gfx, JsGraphicsFontInfo *in
     info->scalex = info->scale & JSGRAPHICS_FONTSIZE_SCALE_X_MASK;
     info->scaley = (info->scale & JSGRAPHICS_FONTSIZE_SCALE_Y_MASK) >> JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT;
   }
+#ifndef SAVE_ON_FLASH
   if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
     info->customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
   } else
+#endif
     info->customFirstChar = 0;
 }
 
@@ -2117,6 +2119,8 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   int minY = 0;
   int maxX = graphicsGetWidth(&gfx) - 1;
   int maxY = graphicsGetHeight(&gfx) - 1;
+  int startx = x;
+  JsVar *str = jsvAsString(var);
 #endif
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
@@ -2124,9 +2128,11 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
       x = startx;
+#ifndef SAVE_ON_FLASH
       // alignment for non-left aligned multi-line strings
       if (gfx.data.fontAlignX<2) // 0=center, 1=right, 2=undefined, 3=left
         x = startx - (_jswrap_graphics_stringWidth(&gfx, str, jsvStringIteratorGetIndex(&it)) * (gfx.data.fontAlignX+1)/2);
+#endif
       y += fontHeight;
       continue;
     }
