@@ -59,6 +59,8 @@
             Bangle.js: Add E.showScroller for scrollable lists
             Fix issue where invalid JSON stopped execution after Storage.readJSON
             Bangle.js: Add Storage.hash for boot0 cache change checking
+            Bangle.js: A single widget load failure will now not remove all widgets
+            Bangle.js: widgets are now sorted by .sortorder
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
