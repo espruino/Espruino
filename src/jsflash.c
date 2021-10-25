@@ -16,6 +16,7 @@
 #include "jsvariterator.h"
 #include "jsinteractive.h"
 #include "jswrap_string.h" //jswrap_string_match
+#include "jswrap_espruino.h" //jswrap_espruino_CRC
 
 #define SAVED_CODE_BOOTCODE_RESET ".bootrst" // bootcode that runs even after reset
 #define SAVED_CODE_BOOTCODE ".bootcde" // bootcode that doesn't run after reset
@@ -808,7 +809,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
  * If containing!=0, file flags must contain one of the 'containing' argument's bits.
  * Flags can't contain any bits in the 'notContaining' argument
  */
-static void jsfBankListFiles(JsVar *files, uint32_t addr, JsVar *regex, JsfFileFlags containing, JsfFileFlags notContaining) {
+static void jsfBankListFiles(JsVar *files, uint32_t addr, JsVar *regex, JsfFileFlags containing, JsfFileFlags notContaining, uint32_t *hash) {
   JsfFileHeader header;
   memset(&header,0,sizeof(JsfFileHeader));
   if (jsfGetFileHeader(addr, &header, true)) do {
@@ -833,7 +834,13 @@ static void jsfBankListFiles(JsVar *files, uint32_t addr, JsVar *regex, JsfFileF
         match = !(jsvIsUndefined(m) || jsvIsNull(m));
         jsvUnLock(m);
       }
-      if (match) jsvArrayPushAndUnLock(files, v);
+#ifndef SAVE_ON_FLASH
+      if (hash && match) {
+        *hash = (*hash<<1) | (*hash>>31); // roll hash
+        *hash = *hash ^ addr ^ jsvGetIntegerAndUnLock(jswrap_espruino_CRC32(v)); // apply filename
+      }
+#endif
+      if (match && files) jsvArrayPushAndUnLock(files, v);
       else jsvUnLock(v);
     }
   } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL));
@@ -847,13 +854,26 @@ static void jsfBankListFiles(JsVar *files, uint32_t addr, JsVar *regex, JsfFileF
 JsVar *jsfListFiles(JsVar *regex, JsfFileFlags containing, JsfFileFlags notContaining) {
   JsVar *files = jsvNewEmptyArray();
   if (!files) return 0;
-  jsfBankListFiles(files, JSF_START_ADDRESS, regex, containing, notContaining);
+  jsfBankListFiles(files, JSF_START_ADDRESS, regex, containing, notContaining, NULL);
 #ifdef JSF_BANK2_START_ADDRESS
-  jsfBankListFiles(files, JSF_BANK2_START_ADDRESS, regex, containing, notContaining);
+  jsfBankListFiles(files, JSF_BANK2_START_ADDRESS, regex, containing, notContaining, NULL);
 #endif
   return files;
 }
 
+
+/** Hash all files matching regex
+ * If containing!=0, file flags must contain one of the 'containing' argument's bits.
+ * Flags can't contain any bits in the 'notContaining' argument
+ */
+uint32_t jsfHashFiles(JsVar *regex, JsfFileFlags containing, JsfFileFlags notContaining) {
+  uint32_t hash = 0xABCDDCBA;
+  jsfBankListFiles(NULL, JSF_START_ADDRESS, regex, containing, notContaining, &hash);
+#ifdef JSF_BANK2_START_ADDRESS
+  jsfBankListFiles(NULL, JSF_BANK2_START_ADDRESS, regex, containing, notContaining, &hash);
+#endif
+  return hash;
+}
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------

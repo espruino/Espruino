@@ -72,6 +72,11 @@ bool jsfCompact();
  * Flags can't contain any bits in the 'notContaining' argument
  */
 JsVar *jsfListFiles(JsVar *regex, JsfFileFlags containing, JsfFileFlags notContaining);
+/** Hash all files matching regex
+ * If containing!=0, file flags must contain one of the 'containing' argument's bits.
+ * Flags can't contain any bits in the 'notContaining' argument
+ */
+uint32_t jsfHashFiles(JsVar *regex, JsfFileFlags containing, JsfFileFlags notContaining);
 /// Output debug info for files stored in flash storage
 void jsfDebugFiles();
 

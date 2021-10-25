@@ -58,6 +58,7 @@
             Bangle.js: Don't store line numbers in functions - no need when execing from flash
             Bangle.js: Add E.showScroller for scrollable lists
             Fix issue where invalid JSON stopped execution after Storage.readJSON
+            Bangle.js: Add Storage.hash for boot0 cache change checking
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
