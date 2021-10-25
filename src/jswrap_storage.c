@@ -156,7 +156,10 @@ JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions) {
   if (!v) return 0;
   JsVar *r = jswrap_json_parse(v);
   jsvUnLock(v);
-  if (noExceptions) jsvUnLock(jspGetException());
+  if (noExceptions) {
+    jsvUnLock(jspGetException());
+    execInfo.execute &= ~EXEC_EXCEPTION;
+  }
   return r;
 }
 
