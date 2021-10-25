@@ -136,6 +136,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_NO_LOADING_SCREEN` - Bangle.js, don't show a 'loading' screen when loading a new app
 * `ESPR_BOOTLOADER_SPIFLASH` - Allow bootloader to flash direct from a file in SPI flash storage
 * `ESPR_BANGLE_UNISTROKE` - Build in 'unistroke' touch gesture recognition
+* `ESPR_NO_LINE_NUMBERS` - disable storing and reporting of Line Numbers. Usually these take 1 var per function, but if we're executing a function from flash we can just work it out from the file when needed 
 
 ### chip
 

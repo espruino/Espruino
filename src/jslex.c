@@ -12,6 +12,9 @@
  * ----------------------------------------------------------------------------
  */
 #include "jslex.h"
+#ifndef SAVE_ON_FLASH
+#include "jsflash.h"
+#endif
 
 JsLex *lex;
 
@@ -676,7 +679,9 @@ void jslInit(JsVar *var) {
   lex->tokenLastStart = 0;
   lex->tokenl = 0;
   lex->tokenValue = 0;
+#ifndef ESPR_NO_LINE_NUMBERS
   lex->lineNumberOffset = 0;
+#endif
   // set up iterator
   jsvStringIteratorNew(&lex->it, lex->sourceVar, 0);
   jsvUnLock(lex->it.var); // see jslGetNextCh
@@ -1086,9 +1091,26 @@ void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void
 
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos) {
   size_t line,col;
+#ifndef SAVE_ON_FLASH
+  if (jsvIsNativeString(lex->sourceVar) || jsvIsFlashString(lex->sourceVar)) {
+    uint32_t stringAddr = (uint32_t)lex->sourceVar->varData.nativeStr.ptr;
+    JsfFileHeader header;
+    uint32_t fileAddr = jsfFindFileFromAddr(stringAddr, &header);
+    if (fileAddr) {
+      JsVar *fileStr = jsvAddressToVar(fileAddr, jsfGetFileSize(&header));
+      jsvGetLineAndCol(fileStr, tokenPos + stringAddr - fileAddr, &line, &col);
+      JsVar *name = jsfVarFromName(header.name);
+      cbprintf(user_callback, user_data,"line %d col %d in %v\n", line, col, name);
+      jsvUnLock2(fileStr,name);
+      return;
+    }
+  }
+#endif
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
+#ifndef ESPR_NO_LINE_NUMBERS
   if (lex->lineNumberOffset)
     line += (size_t)lex->lineNumberOffset - 1;
+#endif
   cbprintf(user_callback, user_data, "line %d col %d\n", line, col);
 }
 

@@ -54,6 +54,8 @@
             Bangle.js: Ensure builtin E.show* (and fake LEDs) wake the LCD up
             Storage check now *only* happens on first boot
             Ensure __FILE__ is set by the time bootcode runs
+            If executing from storage, work out line numbers and print filename for Errors
+            Bangle.js: Don't store line numbers in functions - no need when execing from flash
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

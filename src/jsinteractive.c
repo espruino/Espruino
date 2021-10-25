@@ -2487,9 +2487,12 @@ void jsiDebuggerLoop() {
     char lineStr[9];
     // Get a string fo the form '1234    ' for the line number
     // ... but only if the line number was set, otherwise use spaces
+#ifndef ESPR_NO_LINE_NUMBERS
     if (lex->lineNumberOffset) {
       itostr((JsVarInt)jslGetLineNumber() + (JsVarInt)lex->lineNumberOffset - 1, lineStr, 10);
-    } else {
+    } else
+#endif
+    {
       lineStr[0]=0;
     }
     size_t lineLen = strlen(lineStr);

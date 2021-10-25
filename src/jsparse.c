@@ -346,12 +346,14 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
       JSP_ASSERT_MATCH(LEX_R_RETURN);
     }
   }
+#ifndef ESPR_NO_LINE_NUMBERS
   // Get the line number (if needed)
   JsVarInt lineNumber = 0;
   if (funcVar && lex->lineNumberOffset && !(forcePretokenise||jsfGetFlag(JSF_PRETOKENISE))) {
     // jslGetLineNumber is slow, so we only do it if we have debug info
     lineNumber = (JsVarInt)jslGetLineNumber() + (JsVarInt)lex->lineNumberOffset - 1;
   }
+#endif
   // Get the code - parse it and figure out where it stops
   JslCharPos funcBegin;
   jslSkipWhiteSpace();
@@ -402,6 +404,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
     if (funcScopeVar) {
       jsvUnLock2(jsvAddNamedChild(funcVar, funcScopeVar, JSPARSE_FUNCTION_SCOPE_NAME), funcScopeVar);
     }
+#ifndef ESPR_NO_LINE_NUMBERS
     // If we've got a line number, add a var for it
     if (lineNumber) {
       JsVar *funcLineNumber = jsvNewFromInteger(lineNumber);
@@ -409,6 +412,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
         jsvUnLock2(jsvAddNamedChild(funcVar, funcLineNumber, JSPARSE_FUNCTION_LINENUMBER_NAME), funcLineNumber);
       }
     }
+#endif
   }
 
   jslCharPosFree(&funcBegin);
@@ -629,7 +633,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       JsVar *functionScope = 0;
       JsVar *functionCode = 0;
       JsVar *functionInternalName = 0;
+#ifndef ESPR_NO_LINE_NUMBERS
       uint16_t functionLineNumber = 0;
+#endif
 
       /** NOTE: We expect that the function object will have:
        *
@@ -695,7 +701,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_THIS_NAME)) {
             jsvUnLock(thisVar);
             thisVar = jsvSkipName(param);
-          } else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_LINENUMBER_NAME)) functionLineNumber = (uint16_t)jsvGetIntegerAndUnLock(jsvSkipName(param));
+          }
+#ifndef ESPR_NO_LINE_NUMBERS
+          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_LINENUMBER_NAME)) functionLineNumber = (uint16_t)jsvGetIntegerAndUnLock(jsvSkipName(param));
+#endif
           else if (jsvIsFunctionParameter(param)) {
             JsVar *defaultVal = jsvSkipName(param);
             jsvAddFunctionParameter(functionRoot, jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH), defaultVal);
@@ -759,7 +768,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             JsLex newLex;
             JsLex *oldLex = jslSetLex(&newLex);
             jslInit(functionCode);
+#ifndef ESPR_NO_LINE_NUMBERS
             newLex.lineNumberOffset = functionLineNumber;
+#endif
             JSP_SAVE_EXECUTE();
             // force execute without any previous state
 #ifdef USE_DEBUGGER
@@ -2955,7 +2966,9 @@ JsVar *jspEvaluateExpressionVar(JsVar *str) {
   assert(jsvIsString(str));
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(str);
+#ifndef ESPR_NO_LINE_NUMBERS
   lex.lineNumberOffset = oldLex->lineNumberOffset;
+#endif
 
   // actually do the parsing
   JsVar *v = jspeExpression();
@@ -2973,7 +2986,9 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   assert(jsvIsString(str));
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(str);
+#ifndef ESPR_NO_LINE_NUMBERS
   lex.lineNumberOffset = lineNumberOffset;
+#endif
 
 
   JsExecInfo oldExecInfo = execInfo;
