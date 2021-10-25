@@ -3692,6 +3692,7 @@ JsVar *jswrap_banglejs_dbg() {
   return o;
 }
 
+#ifndef EMULATED
 void _jswrap_banglejs_i2cWr(JshI2CInfo *i2c, int i2cAddr, JsVarInt reg, JsVarInt data) {
   unsigned char buf[2];
   buf[0] = (unsigned char)reg;
@@ -3717,6 +3718,7 @@ JsVar *_jswrap_banglejs_i2cRd(JshI2CInfo *i2c, int i2cAddr, JsVarInt reg, JsVarI
     return d;
   } else return jsvNewFromInteger(buf[0]);
 }
+#endif
 
 /*JSON{
     "type" : "staticmethod",
