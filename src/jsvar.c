@@ -2041,7 +2041,7 @@ void jsvReplaceWith(JsVar *dst, JsVar *src) {
       // if we can't find a char in a string we still return a NewChild,
       // but we can't add character back in
       if (!jsvHasChildren(parent)) {
-        jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", dst, parent);
+        jsExceptionHere(JSET_ERROR, "Field or method \"%v\" does not already exist, and can't create it on %t", dst, parent);
       } else {
         // Remove the 'new child' flagging
         jsvUnRef(parent);
