@@ -63,6 +63,7 @@
             Bangle.js: widgets are now sorted by .sortorder
             While and for loop conditions now use Expression, not AssignmentExpression (eg. while(0,0) is fine) (fix #2068)
             Bangle.js2: Fix 'stuck' bottom row of pixels if scrolling downwards with g.scroll(0,1)
+            Bangle.js: Fix issue where minified E.showMenu was creating a global var called 'c'
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

@@ -115,8 +115,8 @@
 		      }
 		    },
 		    move : function(dir) {
-		      if (l.selectEdit) {
-		        var item = l.selectEdit;
+		      var item = l.selectEdit;
+		      if (item) {
 		        item.value -= (dir||1)*(item.step||1);
 		        if (item.min!==undefined && item.value<item.min) item.value = item.min;
 		        if (item.max!==undefined && item.value>item.max) item.value = item.max;

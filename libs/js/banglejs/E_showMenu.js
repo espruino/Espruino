@@ -127,18 +127,19 @@
       }
     },
     move : function(dir) {
-      if (l.selectEdit) {
-        var item = l.selectEdit;
+      var item = l.selectEdit;
+      if (item) {
+        item = l.selectEdit;
         item.value -= (dir||1)*(item.step||1);
         if (item.min!==undefined && item.value<item.min) item.value = item.min;
         if (item.max!==undefined && item.value>item.max) item.value = item.max;
         if (item.onchange) item.onchange(item.value);
         l.draw(options.selected,options.selected);
       } else {
-        var a=options.selected;
+        var lastSelected=options.selected;
         options.selected = (dir+options.selected)%menuItems.length;
         if (options.selected<0) options.selected += menuItems.length;
-        l.draw(Math.min(a,options.selected), Math.max(a,options.selected));
+        l.draw(Math.min(lastSelected,options.selected), Math.max(lastSelected,options.selected));
       }
     }
   };
