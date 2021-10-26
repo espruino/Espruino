@@ -151,7 +151,7 @@ void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1
       memcpy(&lcdBuffer[y*LCD_STRIDE + LCD_ROWHEADER],&lineBuffer[LCD_ROWHEADER],LCD_STRIDE-LCD_ROWHEADER);
     }
   } else if (ydir>0) {
-    for (int y=y2-ydir-1;y>=y1;y--) {
+    for (int y=y2-ydir;y>=y1;y--) {
       int yx = y+ydir;
       lcdMemLCD_scrollX(gfx, lineBuffer, &lcdBuffer[y*LCD_STRIDE], xdir);
       memcpy(&lcdBuffer[yx*LCD_STRIDE + LCD_ROWHEADER],&lineBuffer[LCD_ROWHEADER],LCD_STRIDE-LCD_ROWHEADER);
