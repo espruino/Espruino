@@ -2085,7 +2085,7 @@ int jswrap_banglejs_isCharging() {
 
 /// get battery percentage
 JsVarInt jswrap_banglejs_getBattery() {
-#ifdef BAT_PIN_VOLTAGE
+#if defined(BAT_PIN_VOLTAGE) && !defined(EMULATED)
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
 #ifdef BANGLEJS_Q3
   const JsVarFloat vlo = 0.246;
@@ -2109,7 +2109,7 @@ JsVarInt jswrap_banglejs_getBattery() {
   if (pc>100) pc=100;
   if (pc<0) pc=0;
   return pc;
-#else
+#else //!BAT_PIN_VOLTAGE || EMULATED
   return 50;
 #endif
 }
