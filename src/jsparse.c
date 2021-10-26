@@ -2285,7 +2285,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
     JSP_ASSERT_MATCH(LEX_R_WHILE);
     jslCharPosFromLex(&whileCondStart);
     JSP_MATCH_WITH_CLEANUP_AND_RETURN('(',jslCharPosFree(&whileCondStart);,0);
-    cond = jspeAssignmentExpression();
+    cond = jspeExpression();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
     jslCharPosFromLex(&whileBodyStart);
@@ -2313,7 +2313,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_WHILE,jslCharPosFree(&whileBodyStart);,0);
     jslCharPosFromLex(&whileCondStart);
     JSP_MATCH_WITH_CLEANUP_AND_RETURN('(',jslCharPosFree(&whileBodyStart);jslCharPosFree(&whileCondStart);,0);
-    cond = jspeAssignmentExpression();
+    cond = jspeExpression();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jslCharPosFree(&whileBodyStart);jslCharPosFree(&whileCondStart);,0);
@@ -2330,7 +2330,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   ) {
     if (isWhile || loopCount) { // don't check the start condition a second time if we're in a do..while loop
       jslSeekToP(&whileCondStart);
-      cond = jspeAssignmentExpression();
+      cond = jspeExpression();
       loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
       jsvUnLock(cond);
     }
@@ -2506,7 +2506,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(';',jslCharPosFree(&forCondStart);,0);
 
     if (lex->tk != ';') {
-      JsVar *cond = jspeAssignmentExpression(); // condition
+      JsVar *cond = jspeExpression(); // condition
       loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
       jsvUnLock(cond);
     }
@@ -2555,7 +2555,7 @@ NO_INLINE JsVar *jspeStatementFor() {
       if (lex->tk == ';') {
         loopCond = true;
       } else {
-        JsVar *cond = jspeAssignmentExpression();
+        JsVar *cond = jspeExpression();
         loopCond = jsvGetBoolAndUnLock(jsvSkipName(cond));
         jsvUnLock(cond);
       }
