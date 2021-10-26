@@ -20,5 +20,6 @@
     g.setColor(g.theme.fgH).setBgColor(g.theme.bgH).
       clearRect(0,Y,W-1,Y+4+titleLines.length*FH).
       drawString(titleLines.join("\n"),W/2,Y+2);
-  Bangle.setLCDPower(1); // ensure screen is on
+  g.flip(); // force immediate show of message
+  Bangle.setLCDPower(1); // ensure screen is on  
 })
