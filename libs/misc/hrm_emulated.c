@@ -19,9 +19,8 @@
 #include "jstimer.h"
 
 
-#define HRM_POLL_INTERVAL 20 // in msec - 50hz
-
 HrmCallback hrmCallback;
+uint16_t hrmPollInterval = HRM_POLL_INTERVAL_DEFAULT; // in msec, so 20 = 50hz
 
 void hrm_timer() {
   int v = (int)(100 * sin(jshGetMillisecondsFromTime(jshGetSystemTime())/1000));
@@ -30,7 +29,7 @@ void hrm_timer() {
 }
 
 static void hrm_sensor_timer_start() {
-  JsSysTime t = jshGetTimeFromMilliseconds(HRM_POLL_INTERVAL);
+  JsSysTime t = jshGetTimeFromMilliseconds(hrmPollInterval);
   jstExecuteFn(hrm_timer, NULL, jshGetSystemTime()+t, t);
 }
 

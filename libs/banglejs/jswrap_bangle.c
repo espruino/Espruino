@@ -1921,6 +1921,7 @@ Set internal options used for gestures, etc...
 * `lockTimeout` how many milliseconds before the screen locks
 * `lcdPowerTimeout` how many milliseconds before the screen turns off
 * `backlightTimeout` how many milliseconds before the screen's backlight turns off
+* `hrmPollInterval` set the requested poll interval for the heart rate monitor. On Bangle.js 2 (only 10,20,40,80,160,200 ms are supported, and polling rate may not be exact)
 
 Where accelerations are used they are in internal units, where `8192 = 1g`
 
@@ -1936,7 +1937,13 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
   int stepCounterThresholdLow, stepCounterThresholdHigh; // ignore these with new step counter
   int _accelGestureStartThresh = accelGestureStartThresh*accelGestureStartThresh;
   int _accelGestureEndThresh = accelGestureEndThresh*accelGestureEndThresh;
+#ifdef HEARTRATE
+  int _hrmPollInterval = hrmPollInterval;
+#endif
   jsvConfigObject configs[] = {
+#ifdef HEARTRATE
+      {"hrmPollInterval", JSV_INTEGER, &_hrmPollInterval},
+#endif
       {"gestureStartThresh", JSV_INTEGER, &_accelGestureStartThresh},
       {"gestureEndThresh", JSV_INTEGER, &_accelGestureEndThresh},
       {"gestureInactiveCount", JSV_INTEGER, &accelGestureInactiveCount},
@@ -1973,6 +1980,9 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
     if (backlightTimeout<0) backlightTimeout=0;
     accelGestureStartThresh = int_sqrt32(_accelGestureStartThresh);
     accelGestureEndThresh = int_sqrt32(_accelGestureEndThresh);
+#ifdef HEARTRATE
+    hrmPollInterval = (uint16_t)_hrmPollInterval;
+#endif
   }
   return 0;
 }
@@ -2180,6 +2190,7 @@ bool jswrap_banglejs_setHRMPower(bool isOn, JsVar *appId) {
   return false;
 #endif
 }
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",

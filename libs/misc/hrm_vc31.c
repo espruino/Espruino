@@ -22,6 +22,7 @@
 
 extern JshI2CInfo i2cHRM;
 HrmCallback hrmCallback;
+uint16_t hrmPollInterval = HRM_POLL_INTERVAL_DEFAULT; // in msec, so 20 = 50hz
 
 //Read only.
 #define VC31_DEV_ID        0x00
@@ -272,7 +273,18 @@ void hrm_sensor_on(HrmCallback callback) {
   vc31_w(VC31_TIA_WAIT, 0x3c);
   vc31_w(VC31_PS_DIV, 0x09);
   vc31_w(VC31_IR_WAIT, 0xa0);
-  vc31_w16(VC31_PPG_DIV, VC31_PPG_DIV_100_HZ); // seems to take 2 samples, so this is actually 50Hz samples
+
+  // seems to take 2 samples, so to get 50Hz (20ms) we need VC31_PPG_DIV_100_HZ
+  uint16_t div;
+  if (hrmPollInterval<2) div = VC31_PPG_DIV_1000_HZ; // 500Hz
+  else if (hrmPollInterval<=10) div = 160; // 100Hz
+  else if (hrmPollInterval<=20) div = VC31_PPG_DIV_100_HZ; // 50Hz
+  else if (hrmPollInterval<=40) div = VC31_PPG_DIV_50_HZ; // 25Hz
+  else if (hrmPollInterval<=80) div = VC31_PPG_DIV_25_HZ; // 12.5Hz
+  else if (hrmPollInterval<=160) div = VC31_PPG_DIV_12_5_HZ; // 6.25Hz
+  else div = VC31_PPG_DIV_10_HZ; // 5Hz
+
+  vc31_w16(VC31_PPG_DIV, div);
   vc31_w(VC31_GREEN_IR_GAP, 0x20);
   vc31_w(VC31_AMP_WAIT, 0x14);
   uint8_t ctrl = VC31_CTRL_OPA_GAIN_25 | VC31_CTRL_ENABLE_PPG | VC31_CTRL_ENABLE_PRE |

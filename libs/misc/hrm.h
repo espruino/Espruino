@@ -14,6 +14,11 @@
 
 #include "jsvar.h"
 
+
+#define HRM_POLL_INTERVAL_DEFAULT 20 // in msec - 50hz
+
+extern uint16_t hrmPollInterval; // in msec, so 20 = 50hz
+
 typedef void(*HrmCallback)(int ppgValue);
 
 /// Turn heart rate sensor on - callback called on each data point
