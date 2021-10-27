@@ -153,6 +153,7 @@ void graphicsStructInit(JsGraphics *gfx, int width, int height, int bpp) {
 }
 
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
+  if (!parent) return false;
   gfx->graphicsVar = parent;
   JsVar *data = jsvObjectGetChild(parent, JS_HIDDEN_CHAR_STR"gfx", 0);
   assert(data);

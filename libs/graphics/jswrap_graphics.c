@@ -901,7 +901,25 @@ JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState) {
   return jsvLockAgain(parent);
 }
 
-
+void _jswrap_graphics_getRect(JsVar *opt, int *x1, int *y1, int *x2, int *y2) {
+  if (jsvIsObject(opt)) {
+    int w = -1,h = -1;
+    jsvConfigObject configs[] = {
+        {"x", JSV_INTEGER, x1},
+        {"y", JSV_INTEGER, y1},
+        {"x1", JSV_INTEGER, x1},
+        {"y1", JSV_INTEGER, y1},
+        {"x2", JSV_INTEGER, x2},
+        {"y2", JSV_INTEGER, y2},
+        {"w", JSV_INTEGER, &w},
+        {"h", JSV_INTEGER, &h},
+    };
+    jsvReadConfigObject(opt, configs, sizeof(configs) / sizeof(jsvConfigObject));
+    if (w>=0) *x2 = *x1 + w;
+    if (h>=0) *y2 = *y1 + w;
+  } else
+    *x1 = jsvGetInteger(opt);
+}
 
 /*JSON{
   "type" : "method",
@@ -909,7 +927,7 @@ JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState) {
   "name" : "fillRect",
   "generate" : "jswrap_graphics_fillRect",
   "params" : [
-    ["x1","int32","The left X coordinate"],
+    ["x1","JsVar","The left X coordinate OR an object containing `{x,y,x2,y2}` or `{x,y,w,h}`"],
     ["y1","int32","The top Y coordinate"],
     ["x2","int32","The right X coordinate"],
     ["y2","int32","The bottom Y coordinate"]
@@ -919,7 +937,9 @@ JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState) {
 }
 Fill a rectangular area in the Foreground Color
 */
-JsVar *jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
+JsVar *jswrap_graphics_fillRect(JsVar *parent, JsVar *opt, int y1, int x2, int y2) {
+  int x1;
+  _jswrap_graphics_getRect(opt, &x1, &y1, &x2, &y2);
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   graphicsFillRect(&gfx, x1,y1,x2,y2,gfx.data.fgColor);
   graphicsSetVar(&gfx); // gfx data changed because modified area
@@ -933,7 +953,7 @@ JsVar *jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_clearRect",
   "params" : [
-    ["x1","int32","The left X coordinate"],
+    ["x1","JsVar","The left X coordinate OR an object containing `{x,y,x2,y2}` or `{x,y,w,h}`"],
     ["y1","int32","The top Y coordinate"],
     ["x2","int32","The right X coordinate"],
     ["y2","int32","The bottom Y coordinate"]
@@ -943,7 +963,9 @@ JsVar *jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 }
 Fill a rectangular area in the Background Color
 */
-JsVar *jswrap_graphics_clearRect(JsVar *parent, int x1, int y1, int x2, int y2) {
+JsVar *jswrap_graphics_clearRect(JsVar *parent, JsVar *opt, int y1, int x2, int y2) {
+  int x1;
+  _jswrap_graphics_getRect(opt, &x1, &y1, &x2, &y2);
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   graphicsFillRect(&gfx, x1,y1,x2,y2,gfx.data.bgColor);
   graphicsSetVar(&gfx); // gfx data changed because modified area
@@ -956,7 +978,7 @@ JsVar *jswrap_graphics_clearRect(JsVar *parent, int x1, int y1, int x2, int y2) 
   "name" : "drawRect",
   "generate" : "jswrap_graphics_drawRect",
   "params" : [
-    ["x1","int32","The left X coordinate"],
+    ["x1","JsVar","The left X coordinate OR an object containing `{x,y,x2,y2}` or `{x,y,w,h}`"],
     ["y1","int32","The top Y coordinate"],
     ["x2","int32","The right X coordinate"],
     ["y2","int32","The bottom Y coordinate"]
@@ -966,7 +988,9 @@ JsVar *jswrap_graphics_clearRect(JsVar *parent, int x1, int y1, int x2, int y2) 
 }
 Draw an unfilled rectangle 1px wide in the Foreground Color
 */
-JsVar *jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
+JsVar *jswrap_graphics_drawRect(JsVar *parent, JsVar *opt, int y1, int x2, int y2) {
+  int x1;
+  _jswrap_graphics_getRect(opt, &x1, &y1, &x2, &y2);
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   graphicsDrawRect(&gfx, x1,y1,x2,y2);
   graphicsSetVar(&gfx); // gfx data changed because modified area
