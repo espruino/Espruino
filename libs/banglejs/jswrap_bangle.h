@@ -71,6 +71,8 @@ void jswrap_banglejs_softOff();
 JsVar *jswrap_banglejs_getLogo();
 void jswrap_banglejs_factoryReset();
 
+JsVar *jswrap_banglejs_appRect();
+
 void jswrap_banglejs_init();
 void jswrap_banglejs_kill();
 bool jswrap_banglejs_idle();

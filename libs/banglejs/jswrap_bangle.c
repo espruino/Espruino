@@ -3538,7 +3538,7 @@ bool jswrap_banglejs_idle() {
   // Automatically flip!
   JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
   JsGraphics gfx;
-  if (graphics && graphicsGetFromVar(&gfx, graphics)) {
+  if (graphicsGetFromVar(&gfx, graphics)) {
     if (gfx.data.modMaxX >= gfx.data.modMinX) {
 #ifdef LCD_CONTROLLER_LPM013M126
       lcdMemLCD_flip(&gfx);
@@ -4528,7 +4528,7 @@ to select an application to launch.
     "type" : "staticmethod",
     "class" : "E",
     "name" : "showMenu",
-    "generate_js" : "libs/js/banglejs/E_showMenu.min.js",
+    "generate_js" : "libs/js/banglejs/E_showMenu_F18.min.js",
     "params" : [
       ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
     ],
@@ -4879,4 +4879,38 @@ of http://banglejs.com/apps
 void jswrap_banglejs_factoryReset() {
   jsfResetStorage();
   jsiStatus |= JSIS_TODO_FLASH_LOAD;
+}
+
+/*JSON{
+    "type" : "staticproperty",
+    "class" : "Bangle",
+    "name" : "appRect",
+    "generate" : "jswrap_banglejs_appRect",
+    "return" : ["JsVar","An object of the form `{x,y,w,h,x2,y2}`"],
+    "ifdef" : "BANGLEJS"
+}
+Returns the rectangle on the screen that is currently
+reserved for the app.
+*/
+JsVar *jswrap_banglejs_appRect() {
+  JsVar *o = jsvNewObject();
+  if (!o) return 0;
+  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
+  JsGraphics gfx;
+  if (!graphicsGetFromVar(&gfx, graphics)) {
+    gfx.data.width = LCD_WIDTH;
+    gfx.data.height = LCD_HEIGHT;
+  }
+  jsvUnLock(graphics);
+
+  JsVar *widgetsVar = jsvObjectGetChild(execInfo.root,"WIDGETS",0);
+  int y = widgetsVar ? 24 : 0;
+  jsvUnLock(widgetsVar);
+  jsvObjectSetChildAndUnLock(o,"x",jsvNewFromInteger(0));
+  jsvObjectSetChildAndUnLock(o,"y",jsvNewFromInteger(y));
+  jsvObjectSetChildAndUnLock(o,"w",jsvNewFromInteger(gfx.data.width));
+  jsvObjectSetChildAndUnLock(o,"h",jsvNewFromInteger(gfx.data.height-y));
+  jsvObjectSetChildAndUnLock(o,"x2",jsvNewFromInteger(gfx.data.width-1));
+  jsvObjectSetChildAndUnLock(o,"y2",jsvNewFromInteger(gfx.data.height-1));
+  return o;
 }

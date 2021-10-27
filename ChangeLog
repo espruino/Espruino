@@ -66,6 +66,7 @@
             Bangle.js: Fix issue where minified E.showMenu was creating a global var called 'c'
             Fix string formatting for "Field or method X does not already exist" error
             Graphics: drawRect,fillRect,clearRect are now able to take an object as the first argument
+            Bangle.js: Add Bangle.appRect to allow apps to see how much space is available for them
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

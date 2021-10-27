@@ -8,7 +8,7 @@
     options.selected = 0;
   function draw() {
     g.reset().setFont("6x8",2).setFontAlign(0,-1);
-    var Y = global.WIDGETS ? 24 : 0;
+    var Y = Bangle.appRect.y;
     var W = g.getWidth(), H = g.getHeight()-Y, FH=g.getFontHeight();
     var titleLines = g.wrapString(options.title, W-2);
     var msgLines = g.wrapString(msg||"", W-2);
@@ -55,8 +55,7 @@
     });
     Bangle.setLCDPower(1); // ensure screen is on
   }
-  g.clear(1); // clear screen
-  Bangle.drawWidgets(); // redraw widgets
+  g.clearRect(Bangle.appRect); // clear screen
   if (!msg) {
     Bangle.setUI(); // remove watches
     return Promise.resolve();

@@ -12,8 +12,9 @@ var menuScroll = 0;
 var menuShowing = false;
 var w = g.getWidth();
 var h = g.getHeight();
+var Y = Bangle.appRect.y;
 var m = w/2;
-var n = Math.floor((h-48)/options.h);
+var n = Math.floor((h-(Y+24))/options.h);
 
 function drawMenu() {
   g.reset();
@@ -24,7 +25,7 @@ function drawMenu() {
   for (var i=0;i<n;i++) {
     var idx = i+menuScroll;
     if (idx<0 || idx>=options.c) break;
-    var y = 24+i*options.h;
+    var y = Y+i*options.h;
     options.draw(idx, {x:0,y:y,w:w,h:options.h});
     // border for selected
     if (i+menuScroll==selected) {
@@ -37,7 +38,7 @@ function drawMenu() {
   g.setColor((options.c>n+menuScroll) ? g.theme.fg : g.theme.bg);
   g.fillPoly([m,h-7,m-14,h-21,m+14,h-21]);
 }
-g.clearRect(0,24,w-1,h-1);
+g.clearRect(0,Y,w-1,h-1);
 drawMenu();
 Bangle.setUI("updown",dir=>{
   if (dir) {

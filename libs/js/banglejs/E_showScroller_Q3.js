@@ -12,7 +12,7 @@ var rScroll = 0; // rendered menu scroll (we only shift by 2 because of dither)
 var menuShowing = false;
 var w = g.getWidth();
 var h = g.getHeight();
-var Y = global.WIDGETS ? 24 : 0;
+var Y = Bangle.appRect.y;
 var n = Math.ceil((h-Y)/options.h);
 var menuScrollMax = options.h*options.c - (h-Y);
 

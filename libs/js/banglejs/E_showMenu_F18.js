@@ -1,30 +1,24 @@
 (function(items) {
-  g.clear(1); // clear screen if no menu supplied
+  g.clearRect(Bangle.appRect); // clear if no menu supplied
   Bangle.setLCDPower(1); // ensure screen is on
-  Bangle.drawWidgets();
   if (!items) {
     Bangle.setUI();
     return;
   }
-  var w = g.getWidth()-9;
-  var h = g.getHeight();
   var menuItems = Object.keys(items);
   var options = items[""];
   if (options) menuItems.splice(menuItems.indexOf(""),1);
   if (!(options instanceof Object)) options = {};
-  options.fontHeight=16;
-  options.x=0;
-  options.x2=w-2;
-  options.y=24;
-  options.y2=220;
+  options.fontHeight = options.fontHeight||16;
   if (options.selected === undefined)
     options.selected = 0;
   if (!options.fontHeight)
     options.fontHeight = 6;
-  var x = 0|options.x;
-  var x2 = options.x2||(g.getWidth()-1);
-  var y = 0|options.y;
-  var y2 = options.y2||(g.getHeight()-1);
+  var ar = Bangle.appRect;
+  var x = ar.x;
+  var x2 = ar.x2-11; // padding at side for up/down
+  var y = ar.y;
+  var y2 = ar.y2 - 20; // padding at end for arrow
   if (options.title)
     y += options.fontHeight+2;
   var loc = require("locale");
@@ -88,7 +82,7 @@
         0b00010000,
         0b00010000,
         0b00010000
-      )*/,w,40);
+      )*/,x2+2,40);
       g.drawImage("\b\b\x01\x10\x10\x10\x10\xFE|8\x10"/*E.toString(8,8,1,
         0b00010000,
         0b00010000,
@@ -98,7 +92,7 @@
         0b01111100,
         0b00111000,
         0b00010000
-      )*/,w,194);
+      )*/,x2+2,194);
       g.drawImage("\b\b\x01\x00\b\f\x0E\xFF\x0E\f\b"/*E.toString(8,8,1,
         0b00000000,
         0b00001000,
@@ -108,7 +102,7 @@
         0b00001110,
         0b00001100,
         0b00001000
-      )*/,w,116);
+      )*/,x2+2,116);
       g.setColor(more?g.theme.fg:g.theme.bg).fillPoly([104,220,136,220,120,228]);
       g.flip();
     },
