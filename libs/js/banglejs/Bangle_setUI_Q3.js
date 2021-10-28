@@ -5,7 +5,7 @@
   }
   if (Bangle.dragHandler) {
     Bangle.removeListener("drag", Bangle.dragHandler);
-    delete Bangle.swipeHandler;
+    delete Bangle.dragHandler;
   }
   if (Bangle.touchHandler) {
     Bangle.removeListener("touch", Bangle.touchHandler);
