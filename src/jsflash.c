@@ -478,8 +478,8 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
       bankStartAddress = JSF_START_ADDRESS;
       memmove(name.c, name.c+2, sizeof(name)-2); // shift back
     }
-#endif
   }
+#endif
 
   uint32_t requiredSize = jsfAlignAddress(size)+(uint32_t)sizeof(JsfFileHeader);
   bool compacted = false;
