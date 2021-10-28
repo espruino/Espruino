@@ -471,12 +471,13 @@ bool jsfCompact() {
 static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flags, JsfFileHeader *returnedHeader) {
   jsDebug(DBG_INFO,"CreateFile (%d bytes)\n", size);
   uint32_t bankStartAddress = JSF_DEFAULT_START_ADDRESS;
+#ifdef JSF_BANK2_START_ADDRESS
   if (name.c[1]==':') { // if a 'drive' is specified like "C:foobar.js"
     char drive = name.c[0];
-    memmove(name.c, name.c+2, sizeof(name)-2); // shift back
-#ifdef JSF_BANK2_START_ADDRESS
-    if (drive=='C')
+    if (drive=='C'){
       bankStartAddress = JSF_START_ADDRESS;
+      memmove(name.c, name.c+2, sizeof(name)-2); // shift back
+    }
 #endif
   }
 
