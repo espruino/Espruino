@@ -3565,10 +3565,10 @@ Returns an object of the form:
 {
   fg : 0xFFFF,  // foreground colour
   bg : 0,       // background colour
-  fg : 0xFFFF,  // accented foreground colour
-  bg : 0x0007,  // accented background colour
-  fg : 0xFFFF,  // highlighted foreground colour
-  bg : 0x02F7,  // highlighted background colour
+  fg2 : 0xFFFF,  // accented foreground colour
+  bg2 : 0x0007,  // accented background colour
+  fgH : 0xFFFF,  // highlighted foreground colour
+  bgH : 0x02F7,  // highlighted background colour
   dark : true,  // Is background dark (eg. foreground should be a light colour)
 }
 ```

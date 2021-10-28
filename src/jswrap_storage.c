@@ -433,7 +433,7 @@ int jswrap_storage_getFree() {
   "name" : "open",
   "generate" : "jswrap_storage_open",
   "params" : [
-    ["name","JsVar","The filename - max **7** characters (case sensitive)"],
+    ["name","JsVar","The filename - max **27** characters (case sensitive)"],
     ["mode","JsVar","The open mode - must be either `'r'` for read,`'w'` for write , or `'a'` for append"]
   ],
   "return" : ["JsVar","An object containing {read,write,erase}"],
