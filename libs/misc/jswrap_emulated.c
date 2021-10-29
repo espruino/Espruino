@@ -46,6 +46,26 @@
 */
 /*JSON{
     "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setServices",
+    "generate_full" : "",
+    "params" : [
+      ["data","JsVar","The service (and characteristics) to advertise"],
+      ["options","JsVar","Optional object containing options"]
+    ]
+}*/
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setAdvertising",
+    "generate_full" : "",
+    "params" : [
+      ["data","JsVar","The data to advertise as an object - see below for more info"],
+      ["options","JsVar","An optional object of options"]
+    ]
+}*/
+/*JSON{
+    "type" : "staticmethod",
     "class" : "Bluetooth",
     "name" : "setConsole",
     "generate_full" : ""
