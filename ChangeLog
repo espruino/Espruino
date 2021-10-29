@@ -69,6 +69,7 @@
             Bangle.js: Add Bangle.appRect to allow apps to see how much space is available for them
             Bangle.js: Add `Bangle.setOptions({hrmPollInterval:...});`
             Bangle.js2: Bangle.dragHandler is now cleared by setUI (fix #2078)
+            Bangle.js2: Adjust full battery voltage
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

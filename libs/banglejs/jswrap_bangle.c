@@ -2099,7 +2099,7 @@ JsVarInt jswrap_banglejs_getBattery() {
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
 #ifdef BANGLEJS_Q3
   const JsVarFloat vlo = 0.246;
-  const JsVarFloat vhi = 0.32;
+  const JsVarFloat vhi = 0.317;
 #elif defined(BANGLEJS_F18)
   const JsVarFloat vlo = 0.51;
   const JsVarFloat vhi = 0.62;
