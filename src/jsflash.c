@@ -347,6 +347,8 @@ static void jsfCompactWriteBuffer(uint32_t *writeAddress, uint32_t readAddress, 
     if (nextFlashPage==0) nextFlashPage=endAddr;
     *swapBufferTail = (*swapBufferTail+s) % swapBufferSize;
     *swapBufferUsed -= s;
+    // ensure we don't reboot here if it takes a long time
+    jshKickWatchDog();
   }
 }
 

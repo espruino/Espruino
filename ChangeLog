@@ -70,6 +70,7 @@
             Bangle.js: Add `Bangle.setOptions({hrmPollInterval:...});`
             Bangle.js2: Bangle.dragHandler is now cleared by setUI (fix #2078)
             Bangle.js2: Adjust full battery voltage
+            Avoid Watchdog reboot during compact if compacting a lot of data (fix #2075)
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
