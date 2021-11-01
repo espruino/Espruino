@@ -148,10 +148,8 @@ static bool jsfIsEqual(uint32_t addr, const unsigned char *data, uint32_t len) {
   return true;
 }
 
-/// Erase the entire contents of the memory store. Return true on success
-static bool jsfEraseFrom(uint32_t startAddr) {
-  uint32_t endAddr = jsfGetBankEndAddress(startAddr);
-
+/// Erase an area of the memory store. Return true on success
+static bool jsfEraseArea(uint32_t startAddr, uint32_t endAddr) {
   uint32_t addr, len;
   if (!jshFlashGetPage(startAddr, &addr, &len))
     return false;
@@ -170,9 +168,9 @@ static bool jsfEraseFrom(uint32_t startAddr) {
 bool jsfEraseAll() {
   jsDebug(DBG_INFO,"EraseAll\n");
 #ifdef JSF_BANK2_START_ADDRESS
-  if (!jsfEraseFrom(JSF_BANK2_START_ADDRESS)) return false;
+  if (!jsfEraseArea(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS)) return false;
 #endif
-  return jsfEraseFrom(JSF_START_ADDRESS);
+  return jsfEraseArea(JSF_START_ADDRESS, JSF_END_ADDRESS);
 }
 
 /// When a file is found in memory, erase it (by setting first bytes of name to 0). addr=ptr to data, NOT header
@@ -353,7 +351,6 @@ static void jsfCompactWriteBuffer(uint32_t *writeAddress, uint32_t readAddress, 
 }
 
 /* Try and compact saved data so it'll fit in Flash again.
- * TO RUN THIS, 'ALLOCATED' MUST BE CORRECT, AND THERE MUST BE ENOUGH STACK FREE
  */
 static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t swapBufferSize) {
   uint32_t writeAddress = startAddress;
@@ -409,7 +406,10 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
   jsDebug(DBG_INFO,"compact> almost there - erase remaining pages\n");
   if (writeAddress!=startAddress)
     writeAddress = jsfGetAddressOfNextPage(writeAddress-1);
-  if (writeAddress) jsfEraseFrom(writeAddress);
+  if (writeAddress) {
+    // addr is the address of the last area in flash
+    jsfEraseArea(writeAddress, addr);
+  }
   jsDebug(DBG_INFO,"Compaction Complete\n");
   return true;
 }
