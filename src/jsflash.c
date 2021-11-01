@@ -407,8 +407,9 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
   jsfCompactWriteBuffer(&writeAddress, jsfGetBankEndAddress(writeAddress), swapBuffer, swapBufferSize, &swapBufferUsed, &swapBufferTail);
   // Finished - erase remaining
   jsDebug(DBG_INFO,"compact> almost there - erase remaining pages\n");
-  writeAddress = jsfGetAddressOfNextPage(writeAddress-1);
-  jsfEraseFrom(writeAddress);
+  if (writeAddress!=startAddress)
+    writeAddress = jsfGetAddressOfNextPage(writeAddress-1);
+  if (writeAddress) jsfEraseFrom(writeAddress);
   jsDebug(DBG_INFO,"Compaction Complete\n");
   return true;
 }
