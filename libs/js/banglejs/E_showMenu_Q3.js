@@ -92,8 +92,10 @@
       var item = l.selectEdit
       if (item) {
         item.value -= (dir||1)*(item.step||1);
-        if (item.min!==undefined && item.value<item.min) item.value = item.min;
-        if (item.max!==undefined && item.value>item.max) item.value = item.max;
+        if (item.min!==undefined && item.value<item.min)
+          item.value = (item.wrap && item.max!==undefined) ? item.max : item.min;
+        if (item.max!==undefined && item.value>item.max)
+          item.value = (item.wrap && item.min!==undefined) ? item.min : item.max;
         if (item.onchange) item.onchange(item.value);
         l.draw(options.selected,options.selected);
       } else {
