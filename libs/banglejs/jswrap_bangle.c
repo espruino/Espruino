@@ -2818,20 +2818,20 @@ NO_INLINE void jswrap_banglejs_init() {
   jsvUnLock(v);
 
 #if LCD_BPP==16
-  graphicsTheme.fg = 0xFFFF;
-  graphicsTheme.bg = 0;
-  graphicsTheme.fg2 = 0xFFFF;
-  graphicsTheme.bg2 = 0x0007;
-  graphicsTheme.fgH = 0xFFFF;
-  graphicsTheme.bgH = 0x02F7;
+  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.fg2 = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(0,0,63);
+  graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,95,190);
   graphicsTheme.dark = true;
 #else // still 16 bit, we just want it inverted
-  graphicsTheme.fg = GRAPHICS_COL_3_TO_16(0);
-  graphicsTheme.bg = GRAPHICS_COL_3_TO_16(7);
-  graphicsTheme.fg2 = GRAPHICS_COL_3_TO_16(1);
-  graphicsTheme.bg2 = GRAPHICS_COL_3_TO_16(3);
-  graphicsTheme.fgH = GRAPHICS_COL_3_TO_16(0);
-  graphicsTheme.bgH = GRAPHICS_COL_3_TO_16(3);
+  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.fg2 = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(191,255,255);
+  graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,255,255);
   graphicsTheme.dark = false;
 #endif
   //
