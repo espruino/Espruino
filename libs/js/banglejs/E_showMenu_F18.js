@@ -44,7 +44,6 @@
           rows = 1+rowmax-rowmin;
         }
       }
-      var less = idx>0;
       while (rows--) {
         var name = menuItems[idx];
         var item = items[name];
@@ -106,7 +105,7 @@
       g.setColor(more?g.theme.fg:g.theme.bg).fillPoly([104,220,136,220,120,228]);
       g.flip();
     },
-    select : function(dir) {
+    select : function() {
       var item = items[menuItems[options.selected]];
       if ("function" == typeof item) item(l);
       else if ("object" == typeof item) {
@@ -125,16 +124,13 @@
       if (item) {
         item = l.selectEdit;
         item.value -= (dir||1)*(item.step||1);
-        if (item.min!==undefined && item.value<item.min)
-          item.value = (item.wrap && item.max!==undefined) ? item.max : item.min;
-        if (item.max!==undefined && item.value>item.max)
-          item.value = (item.wrap && item.min!==undefined) ? item.min : item.max;
+        if (item.min!==undefined && item.value<item.min) item.value = item.wrap ? item.max : item.min;
+        if (item.max!==undefined && item.value>item.max) item.value = item.wrap ? item.min : item.max;
         if (item.onchange) item.onchange(item.value);
         l.draw(options.selected,options.selected);
       } else {
         var lastSelected=options.selected;
-        options.selected = (dir+options.selected)%menuItems.length;
-        if (options.selected<0) options.selected += menuItems.length;
+        options.selected = (dir+options.selected+menuItems.length)%menuItems.length;
         l.draw(Math.min(lastSelected,options.selected), Math.max(lastSelected,options.selected));
       }
     }
