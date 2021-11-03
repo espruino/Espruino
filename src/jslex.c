@@ -919,6 +919,17 @@ bool jslMatch(int expected_tk) {
   return true;
 }
 
+static bool jslNeedsSpaceBetweenTokens(int lastTk, int newTk) {
+  // spaces between numbers/IDs
+  if ((lastTk==LEX_ID || lastTk==LEX_FLOAT || lastTk==LEX_INT) &&
+      (newTk==LEX_ID ||  newTk==LEX_FLOAT  || newTk==LEX_INT)) return true;
+  // spaces between - - and  + + : https://github.com/espruino/Espruino/issues/2086
+  if ((lastTk=='-' && newTk=='-') ||
+      (lastTk=='+' && newTk=='+'))
+    return true;
+  return false;
+}
+
 JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   // New method - tokenise functions
   // save old lex
@@ -931,8 +942,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   jslSeekToP(charFrom);
   int lastTk = LEX_EOF;
   while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
-    if ((lex->tk==LEX_ID || lex->tk==LEX_FLOAT || lex->tk==LEX_INT) &&
-        ( lastTk==LEX_ID ||  lastTk==LEX_FLOAT ||  lastTk==LEX_INT)) {
+    if (jslNeedsSpaceBetweenTokens(lastTk, lex->tk)) {
       length++; // we need to insert a space
     }
     if (lex->tk==LEX_ID ||
@@ -961,8 +971,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
     jsvStringIteratorClone(&it, &charFrom->it);
     lastTk = LEX_EOF;
     while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
-      if ((lex->tk==LEX_ID || lex->tk==LEX_FLOAT || lex->tk==LEX_INT) &&
-          ( lastTk==LEX_ID ||  lastTk==LEX_FLOAT ||  lastTk==LEX_INT)) {
+      if (jslNeedsSpaceBetweenTokens(lastTk, lex->tk)) {
         jsvStringIteratorSetCharAndNext(&dstit, ' ');
       }
       if (lex->tk==LEX_ID ||
