@@ -64,6 +64,7 @@ info = {
      'SOURCES += libs/misc/heartrate.c',
      'SOURCES += libs/misc/hrm_vc31.c',
      'SOURCES += libs/misc/unistroke.c',
+     'WRAPPERSOURCES += libs/misc/jswrap_unistroke.c',
      'DEFINES += -DESPR_BANGLE_UNISTROKE=1',
      'SOURCES += libs/banglejs/banglejs2_storage_default.c',
      'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1', # 

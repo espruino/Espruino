@@ -76,6 +76,7 @@
             Fix break scoping error in nested for loops (fix #2084)
             Fix memory leak when rejecting pre-resolved promise (test_promise11.js)
             Fix parser errors in arrow functions (fix #2067)
+            Bangle.js2: Add Unistroke object, and 'Bangle.stroke' event
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

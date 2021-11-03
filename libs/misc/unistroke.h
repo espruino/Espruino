@@ -15,5 +15,14 @@
 /// initialise stroke detection
 void unistroke_init();
 
-/// Called when a touch event occurs
-void unistroke_touch(int x, int y, int pts);
+/// Called when a touch event occurs, returns 'true' if an event should be created (by calling unistroke_getEventVar)
+bool unistroke_touch(int x, int y, int dx, int dy, int pts);
+
+/// Called when a touch event occurs, and returns the data that should be passed in the event
+JsVar *unistroke_getEventVar();
+
+/// Convert an array containing XY values to a unistroke var
+JsVar *unistroke_convert(JsVar *xy);
+
+/// Given an object containing values created with unistroke_convert, compare against an array containing XY values
+JsVar *unistroke_recognise_xy(JsVar *strokes, JsVar *xy);

@@ -144,8 +144,12 @@ typedef uint32_t JsfWord;
 //typedef unsigned char bool;
 #endif
 
+#ifndef DBL_MIN
 #define DBL_MIN 2.2250738585072014e-308
+#endif
+#ifndef DBL_MAX
 #define DBL_MAX 1.7976931348623157e+308
+#endif
 
 /* Number of JS Variables allowed and JS Variable reference format.
 
@@ -574,6 +578,15 @@ int espruino_snprintf( char * s, size_t n, const char * fmt, ... );
 int rand();
 /// a rand() replacement that doesn't need malloc (!!!)
 void srand(unsigned int seed);
+
+/// Clip X between -128 and 127
+char clipi8(int x);
+
+/// Convert the given value to a signed integer assuming it has the given number of bits
+int twosComplement(int val, unsigned char bits);
+
+/// quick integer square root
+unsigned short int int_sqrt32(unsigned int x);
 
 /** get the amount of free stack we have, in bytes */
 size_t jsuGetFreeStack();

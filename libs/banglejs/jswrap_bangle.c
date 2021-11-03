@@ -347,6 +347,37 @@ Emitted when the touchscreen is pressed
 }
 Emitted when the touchscreen is dragged or released
 */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
+  "name" : "stroke",
+  "params" : [["event","JsVar","Object of form `{xy:Uint8Array([x1,y1,x2,y2...])}` containing touch coordinates"]],
+  "ifdef" : "BANGLEJS2"
+}
+Emitted when the touchscreen is dragged for a large enough distance to count as a gesture.
+
+If Bangle.strokes is defined and populated with data from `Unistroke.new`, the `event` argument will also
+contain a `stroke` field containing the most closely matching stroke name.
+
+For example:
+
+```
+Bangle.strokes = {
+  up : Unistroke.new(new Uint8Array([57, 151, ... 158, 137])),
+  alpha : Unistroke.new(new Uint8Array([161, 55, ... 159, 161])),
+};
+Bangle.on('stroke',o=>{
+  print(o.stroke);
+  g.clear(1).drawPoly(o.xy);
+});
+// Might print something like
+{
+  "xy": new Uint8Array([149, 50, ... 107, 136]),
+  "stroke": "alpha"
+}
+```
+*/
+
 
 #define ACCEL_HISTORY_LEN 50 ///< Number of samples of accelerometer history
 
@@ -467,6 +498,14 @@ unsigned char touchX, touchY; ///< current touch event coordinates
 unsigned char lastTouchX, lastTouchY; ///< last touch event coordinates - updated when JSBT_DRAG is fired
 bool touchPts, lastTouchPts; ///< whether a fnger is currently touching or not
 unsigned char touchType; ///< variable to differentiate press, long press, double press
+typedef enum {
+  TG_SWIPE_NONE,
+  TG_SWIPE_LEFT,
+  TG_SWIPE_RIGHT,
+  TG_SWIPE_UP,
+  TG_SWIPE_DOWN,
+} TouchGestureType;
+TouchGestureType touchGesture; /// is JSBT_SWIPE is set, what happened?
 #endif
 
 #ifdef PRESSURE_I2C
@@ -700,23 +739,22 @@ typedef enum {
   JSBT_HRM_DATA = 1<<16, ///< Heart rate data is ready for analysis
   JSBT_CHARGE_EVENT = 1<<17, ///< we need to fire a charging event
   JSBT_STEP_EVENT = 1<<18, ///< we've detected a step via the pedometer
-  JSBT_SWIPE_LEFT = 1<<19, ///< swiped left over touchscreen
-  JSBT_SWIPE_RIGHT = 1<<20, ///< swiped right over touchscreen
-  JSBT_SWIPE_UP = 1<<21, ///< swiped left over touchscreen (Bangle 2 only)
-  JSBT_SWIPE_DOWN = 1<<22, ///< swiped right over touchscreen (Bangle 2 only)
-  JSBT_SWIPE_MASK = JSBT_SWIPE_LEFT | JSBT_SWIPE_RIGHT | JSBT_SWIPE_UP | JSBT_SWIPE_DOWN,
-  JSBT_TOUCH_LEFT = 1<<23, ///< touch lhs of touchscreen
-  JSBT_TOUCH_RIGHT = 1<<24, ///< touch rhs of touchscreen
+  JSBT_SWIPE = 1<<19, ///< swiped over touchscreen, info in touchGesture
+  JSBT_TOUCH_LEFT = 1<<20, ///< touch lhs of touchscreen
+  JSBT_TOUCH_RIGHT = 1<<21, ///< touch rhs of touchscreen
   JSBT_TOUCH_MASK = JSBT_TOUCH_LEFT | JSBT_TOUCH_RIGHT,
 #ifdef TOUCH_DEVICE
-  JSBT_DRAG = 1<<25,
+  JSBT_DRAG = 1<<22,
 #endif
-  JSBT_TWIST_EVENT = 1<<26, ///< Watch was twisted
-  JSBT_FACE_UP = 1<<27, ///< Watch was turned face up/down (faceUp holds the actual state)
-  JSBT_ACCEL_INTERVAL_DEFAULT = 1<<28, ///< reschedule accelerometer poll handler to default speed
-  JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<29, ///< reschedule accelerometer poll handler to powersave speed
-  JSBT_HRM_INSTANT_DATA = 1<<30, ///< Instant heart rate data
-  JSBT_HEALTH = 1<<31, ///< New 'health' event
+#if ESPR_BANGLE_UNISTROKE
+  JSBT_STROKE = 1<<23, // a gesture has been made on the touchscreen
+#endif
+  JSBT_TWIST_EVENT = 1<<24, ///< Watch was twisted
+  JSBT_FACE_UP = 1<<25, ///< Watch was turned face up/down (faceUp holds the actual state)
+  JSBT_ACCEL_INTERVAL_DEFAULT = 1<<26, ///< reschedule accelerometer poll handler to default speed
+  JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<27, ///< reschedule accelerometer poll handler to powersave speed
+  JSBT_HRM_INSTANT_DATA = 1<<28, ///< Instant heart rate data
+  JSBT_HEALTH = 1<<29, ///< New 'health' event
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -798,34 +836,6 @@ void lcd_flip(JsVar *parent, bool all) {
   graphicsSetVar(&gfx);
   jsvUnLock(graphics);
 #endif
-}
-
-static char clipi8(int x) {
-  if (x<-128) return -128;
-  if (x>127) return 127;
-  return (char)x;
-}
-
-static int twosComplement(int val, unsigned char bits) {
-  if (val & ((unsigned int)1 << (bits - 1)))
-    val -= (unsigned int)1 << bits;
-  return val;
-}
-
-// quick integer square root
-// https://stackoverflow.com/questions/31117497/fastest-integer-square-root-in-the-least-amount-of-instructions
-static unsigned short int int_sqrt32(unsigned int x) {
-  unsigned short int res=0;
-  unsigned short int add= 0x8000;
-  int i;
-  for(i=0;i<16;i++) {
-    unsigned short int temp=res | add;
-    unsigned int g2=temp*temp;
-    if (x>=g2)
-      res=temp;
-    add>>=1;
-  }
-  return res;
 }
 
 /// Clear the given health state back to defaults
@@ -1376,12 +1386,14 @@ bool btnTouchHandler() {
   if ((touchLastState2==TS_RIGHT && touchLastState==TS_BOTH && state==TS_LEFT) ||
       (touchLastState==TS_RIGHT && state==1)) {
     touchStatus |= TS_SWIPED;
-    bangleTasks |= JSBT_SWIPE_LEFT;
+    touchGesture = TG_SWIPE_LEFT;
+    bangleTasks |= JSBT_SWIPE;
   }
   if ((touchLastState2==TS_LEFT && touchLastState==TS_BOTH && state==TS_RIGHT) ||
       (touchLastState==TS_LEFT && state==TS_RIGHT)) {
     touchStatus |= TS_SWIPED;
-    bangleTasks |= JSBT_SWIPE_RIGHT;
+    touchGesture = TG_SWIPE_RIGHT;
+    bangleTasks |= JSBT_SWIPE;
   }
   if (!state) {
     if (touchLastState && !(touchStatus&TS_SWIPED)) {
@@ -1428,6 +1440,9 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
   // ignore if locked
   if (bangleFlags & JSBF_LOCKED) return;
 
+  int dx = tx-touchX;
+  int dy = ty-touchY;
+
   touchX = tx;
   touchY = ty;
   touchPts = pts;
@@ -1436,17 +1451,21 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
     switch (gesture) { // gesture
     case 0:break; // no gesture
     case 1: // slide down
-        bangleTasks |= JSBT_SWIPE_DOWN;
-        break;
+      touchGesture = TG_SWIPE_DOWN;
+      bangleTasks |= JSBT_SWIPE;
+      break;
     case 2: // slide up
-        bangleTasks |= JSBT_SWIPE_UP;
-        break;
+      touchGesture = TG_SWIPE_UP;
+      bangleTasks |= JSBT_SWIPE;
+      break;
     case 3: // slide left
-        bangleTasks |= JSBT_SWIPE_LEFT;
-        break;
+      touchGesture = TG_SWIPE_LEFT;
+      bangleTasks |= JSBT_SWIPE;
+      break;
     case 4: // slide right
-        bangleTasks |= JSBT_SWIPE_RIGHT;
-        break;
+      touchGesture = TG_SWIPE_RIGHT;
+      bangleTasks |= JSBT_SWIPE;
+      break;
     case 5: // single click
       if (touchX<80) bangleTasks |= JSBT_TOUCH_LEFT;
       else bangleTasks |= JSBT_TOUCH_RIGHT;
@@ -1470,8 +1489,11 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
     // ensure we don't sleep if touchscreen is being used
     inactivityTimer = 0;
 #if ESPR_BANGLE_UNISTROKE
-    unistroke_touch(touchX, touchY, touchPts);
+    if (unistroke_touch(touchX, touchY, dx, dy, touchPts)) {
+      bangleTasks |= JSBT_STROKE;
+    }
 #endif
+    jshHadEvent();
   }
 
   lastGesture = gesture;
@@ -3500,11 +3522,12 @@ bool jswrap_banglejs_idle() {
         inactivityTimer = 0;
       }
     }
-    if (bangleTasks & JSBT_SWIPE_MASK) {
+    if (bangleTasks & JSBT_SWIPE) {
       JsVar *o[2] = {
-          jsvNewFromInteger((bangleTasks & JSBT_SWIPE_LEFT)?-1:((bangleTasks & JSBT_SWIPE_RIGHT)?1:0)),
-          jsvNewFromInteger((bangleTasks & JSBT_SWIPE_UP)?-1:((bangleTasks & JSBT_SWIPE_DOWN)?1:0)),
+          jsvNewFromInteger((touchGesture==TG_SWIPE_LEFT)?-1:((touchGesture==TG_SWIPE_RIGHT)?1:0)),
+          jsvNewFromInteger((touchGesture==TG_SWIPE_UP)?-1:((touchGesture==TG_SWIPE_DOWN)?1:0)),
       };
+      touchGesture = TG_SWIPE_NONE;
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"swipe", o, 2);
       jsvUnLockMany(2,o);
     }
@@ -3541,6 +3564,15 @@ bool jswrap_banglejs_idle() {
     lastTouchX = touchX;
     lastTouchY = touchY;
     lastTouchPts = touchPts;
+  }
+#endif
+#if ESPR_BANGLE_UNISTROKE
+  if (bangleTasks & JSBT_STROKE) {
+    JsVar *o = unistroke_getEventVar();
+    if (o) {
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"stroke", &o, 1);
+      jsvUnLock(o);
+    }
   }
 #endif
   jsvUnLock(bangle);
