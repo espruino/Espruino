@@ -473,7 +473,8 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
   uint32_t bankStartAddress = JSF_DEFAULT_START_ADDRESS;
   if (name.c[1]==':') { // if a 'drive' is specified like "C:foobar.js"
     char drive = name.c[0];
-    memmove(name.c, name.c+2, sizeof(name)-2); // shift back
+    memmove(name.c, name.c+2, sizeof(name)-2); // shift back and clear the rest
+    name.c[sizeof(name)-2]=0;name.c[sizeof(name)-1]=0; 
 #ifdef JSF_BANK2_START_ADDRESS
     if (drive=='C')
       bankStartAddress = JSF_START_ADDRESS;
@@ -563,13 +564,19 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
 
 /// Find a 'file' in the memory store. Return the address of data start (and header if returnedHeader!=0). Returns 0 if not found
 uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
+  if (name.c[1] == ':') { // if a 'drive' is specified like "C:foobar.js"
+    char drive = name.c[0];
+    memmove(name.c, name.c+2, sizeof(name)-2); // shift back and clear the rest
+    name.c[sizeof(name)-2]=0;name.c[sizeof(name)-1]=0; 
 #ifdef JSF_BANK2_START_ADDRESS
-  if ( name.c[1]==':' && name.c[0]=='C') {
-    // if there is drive letter search only in that bank
-    JsfFileName basename = jsfNameFromString(&name.c[2]); // make copy, can't modify if not found
-    return jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, basename, returnedHeader);
-  }
+    if (drive == 'C')
+      // if more banks defined search C only in internal bank
+      return jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, returnedHeader);
+    return jsfBankFindFile(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS, name, returnedHeader);
+#else
+    return jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, returnedHeader);
 #endif
+  }
   uint32_t a = jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, returnedHeader);
   if (a) return a;
 #ifdef JSF_BANK2_START_ADDRESS
