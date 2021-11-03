@@ -1470,11 +1470,14 @@ NO_INLINE JsVar *jspeExpressionOrArrowFunction() {
     }
     jsvUnLock(a);
     a = jspeAssignmentExpression();
-    if (!(jsvIsName(a) && jsvIsString(a))) allNames = false;
+    /* if we're not executing, `a` will always be undefined so
+      don't do the check for allNames - just assume all is good. We'll
+      properly check when we execute. */
+    if (JSP_SHOULD_EXECUTE && !(jsvIsName(a) && jsvIsString(a))) allNames = false;
     if (lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',', jsvUnLock2(a,funcVar), 0);
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock2(a,funcVar), 0);
-  // if arrow is found, create a function
+  // if all names inside brackets and an arrow is found, create a function
   if (allNames && lex->tk==LEX_ARROW_FUNCTION) {
     funcVar = jspeArrowFunction(funcVar, a);
     jsvUnLock(a);

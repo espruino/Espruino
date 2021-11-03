@@ -75,6 +75,7 @@
             Fix issue where pretokenised '1 - - 1' would turn to '1--1' (fix #2086)
             Fix break scoping error in nested for loops (fix #2084)
             Fix memory leak when rejecting pre-resolved promise (test_promise11.js)
+            Fix parser errors in arrow functions (fix #2067)
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
