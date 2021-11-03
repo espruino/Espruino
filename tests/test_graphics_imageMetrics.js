@@ -33,7 +33,7 @@ var m = g.imageMetrics(Graphics.createImage(`
      #
      ##
 `));
-SHOULD_BE(JSON.stringify(m), '{"width":20,"height":22,"bpp":1,"transparent":false,"frames":1}');
+SHOULD_BE(JSON.stringify(m), '{"width":20,"height":22,"bpp":1,"transparent":false}');
 
 
 m =  g.imageMetrics(new Uint8Array([

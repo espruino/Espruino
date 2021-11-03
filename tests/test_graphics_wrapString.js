@@ -60,7 +60,7 @@ SHOULD_BE(lines, ["Hello there","","lots of text","here"]);
 // bigger font
 g.clear().setFont("4x6:2");
 lines = g.wrapString("Hello there lots of text here", 64);
-SHOULD_BE(lines, ["Hello","there","lots","of","text","here"]);
+SHOULD_BE(lines, ["Hello","there","lots of","text","here"]);
 
 // wrap string correctly when an image is inline
 var g = Graphics.createArrayBuffer(32,16,8);
