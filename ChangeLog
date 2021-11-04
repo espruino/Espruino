@@ -77,6 +77,7 @@
             Fix memory leak when rejecting pre-resolved promise (test_promise11.js)
             Fix parser errors in arrow functions (fix #2067)
             Bangle.js2: Add Unistroke object, and 'Bangle.stroke' event
+            Fix pretokenised '1 / /.../' and ensure jslSeek resets the previous token (ref #2086)
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

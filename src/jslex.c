@@ -706,6 +706,7 @@ void jslSeekTo(size_t seekToChar) {
   jsvUnLock(lex->it.var); // see jslGetNextCh
   lex->tokenStart = 0;
   lex->tokenLastStart = 0;
+  lex->tk = LEX_EOF;
   jslPreload();
 }
 
@@ -717,6 +718,7 @@ void jslSeekToP(JslCharPos *seekToChar) {
   lex->currCh = seekToChar->currCh;
   lex->tokenStart = 0;
   lex->tokenLastStart = 0;
+  lex->tk = LEX_EOF;
   jslGetNextToken();
 }
 
@@ -919,13 +921,16 @@ bool jslMatch(int expected_tk) {
   return true;
 }
 
-static bool jslNeedsSpaceBetweenTokens(int lastTk, int newTk) {
+// When minifying/pretokenising, do we need to insert a space between these tokens?
+static bool jslPreserveSpaceBetweenTokens(int lastTk, int newTk) {
   // spaces between numbers/IDs
   if ((lastTk==LEX_ID || lastTk==LEX_FLOAT || lastTk==LEX_INT) &&
       (newTk==LEX_ID ||  newTk==LEX_FLOAT  || newTk==LEX_INT)) return true;
   // spaces between - - and  + + : https://github.com/espruino/Espruino/issues/2086
   if ((lastTk=='-' && newTk=='-') ||
-      (lastTk=='+' && newTk=='+'))
+      (lastTk=='+' && newTk=='+') ||
+      (lastTk=='/' && newTk==LEX_REGEX) ||
+      (lastTk==LEX_REGEX && (newTk=='/' || newTk==LEX_ID)))
     return true;
   return false;
 }
@@ -942,7 +947,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   jslSeekToP(charFrom);
   int lastTk = LEX_EOF;
   while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
-    if (jslNeedsSpaceBetweenTokens(lastTk, lex->tk)) {
+    if (jslPreserveSpaceBetweenTokens(lastTk, lex->tk)) {
       length++; // we need to insert a space
     }
     if (lex->tk==LEX_ID ||
@@ -971,7 +976,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
     jsvStringIteratorClone(&it, &charFrom->it);
     lastTk = LEX_EOF;
     while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
-      if (jslNeedsSpaceBetweenTokens(lastTk, lex->tk)) {
+      if (jslPreserveSpaceBetweenTokens(lastTk, lex->tk)) {
         jsvStringIteratorSetCharAndNext(&dstit, ' ');
       }
       if (lex->tk==LEX_ID ||
