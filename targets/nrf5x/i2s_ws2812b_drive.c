@@ -35,6 +35,7 @@ static void i2s_ws2812b_drive_handler(uint32_t const * p_data_received,
 
 ret_code_t i2s_ws2812b_drive_xfer(rgb_led_t *led_array, uint16_t num_leds, uint8_t drive_pin)
 {
+#ifdef USE_NEOPIXEL
 	ret_code_t err_code;
 
   // save pin state before
@@ -180,7 +181,7 @@ ret_code_t i2s_ws2812b_drive_xfer(rgb_led_t *led_array, uint16_t num_leds, uint8
 #ifdef NEOPIXEL_LRCK_PIN
   lrckReg->PIN_CNF[lrckPinNumber] = lrckConf;
 #endif
-
+#endif
  
 	
 	return NRF_SUCCESS;

@@ -498,14 +498,6 @@ unsigned char touchX, touchY; ///< current touch event coordinates
 unsigned char lastTouchX, lastTouchY; ///< last touch event coordinates - updated when JSBT_DRAG is fired
 bool touchPts, lastTouchPts; ///< whether a fnger is currently touching or not
 unsigned char touchType; ///< variable to differentiate press, long press, double press
-typedef enum {
-  TG_SWIPE_NONE,
-  TG_SWIPE_LEFT,
-  TG_SWIPE_RIGHT,
-  TG_SWIPE_UP,
-  TG_SWIPE_DOWN,
-} TouchGestureType;
-TouchGestureType touchGesture; /// is JSBT_SWIPE is set, what happened?
 #endif
 
 #ifdef PRESSURE_I2C
@@ -659,7 +651,15 @@ typedef enum {
 } TouchState;
 TouchState touchLastState; /// What happened in the last event?
 TouchState touchLastState2; /// What happened in the event before last?
-TouchState touchStatus; ///< What has happened *while the current touch is in progress*
+TouchState touchStatus; ///< What has happened *while the current touch is in progress
+typedef enum {
+  TG_SWIPE_NONE,
+  TG_SWIPE_LEFT,
+  TG_SWIPE_RIGHT,
+  TG_SWIPE_UP,
+  TG_SWIPE_DOWN,
+} TouchGestureType;
+TouchGestureType touchGesture; /// is JSBT_SWIPE is set, what happened?
 
 /// How often should we fire 'health' events?
 #define HEALTH_INTERVAL 600000 // 10 minutes (600 seconds)
