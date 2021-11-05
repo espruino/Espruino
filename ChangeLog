@@ -78,6 +78,7 @@
             Fix parser errors in arrow functions (fix #2067)
             Bangle.js2: Add Unistroke object, and 'Bangle.stroke' event
             Fix pretokenised '1 / /.../' and ensure jslSeek resets the previous token (ref #2086)
+            nRF52: Move neopixel LRCK pin which can't be disabled due to hardware errata, and restore state after (fix #2071)
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

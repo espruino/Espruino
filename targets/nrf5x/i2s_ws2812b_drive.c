@@ -9,6 +9,7 @@
 #include "i2s_ws2812b_drive.h"
 #include "app_util_platform.h"
 #include "nrf_delay.h"
+#include "nrf_gpio.h"
 
 volatile uint8_t i2s_ws2812b_drive_flag_buffer_cnt = 0;
 
@@ -35,6 +36,26 @@ static void i2s_ws2812b_drive_handler(uint32_t const * p_data_received,
 ret_code_t i2s_ws2812b_drive_xfer(rgb_led_t *led_array, uint16_t num_leds, uint8_t drive_pin)
 {
 	ret_code_t err_code;
+
+  // save pin state before
+#ifdef NEOPIXEL_SCK_PIN
+  uint32_t sckPinNumber = NEOPIXEL_SCK_PIN;
+#if NRF_SD_BLE_API_VERSION>5
+  NRF_GPIO_Type *sckReg = nrf_gpio_pin_port_decode(&sckPinNumber);
+#else
+  NRF_GPIO_Type *sckReg = NRF_GPIO;
+#endif
+  uint32_t sckConf = sckReg->PIN_CNF[sckPinNumber];
+#endif
+#ifdef NEOPIXEL_LRCK_PIN
+  uint32_t lrckPinNumber = NEOPIXEL_LRCK_PIN;
+#if NRF_SD_BLE_API_VERSION>5
+  NRF_GPIO_Type *lrckReg = nrf_gpio_pin_port_decode(&lrckPinNumber);
+#else
+  NRF_GPIO_Type *lrckReg = NRF_GPIO;
+#endif
+  uint32_t lrckConf = lrckReg->PIN_CNF[lrckPinNumber];
+#endif
 	
 	// define configs
 	nrf_drv_i2s_config_t config;
@@ -43,7 +64,7 @@ ret_code_t i2s_ws2812b_drive_xfer(rgb_led_t *led_array, uint16_t num_leds, uint8
 #ifdef NEOPIXEL_SCK_PIN
 	config.sck_pin      = NEOPIXEL_SCK_PIN;
 #else
-	config.sck_pin      = 22;
+	#error "Must define an SCK pin if using neopixels"
 #endif
 #ifdef NEOPIXEL_LRCK_PIN
   // On nRF52840 lrck needs defining too - http://forum.espruino.com/conversations/354468/
@@ -147,6 +168,20 @@ ret_code_t i2s_ws2812b_drive_xfer(rgb_led_t *led_array, uint16_t num_leds, uint8
 
 	// un-initialize i2s
 	nrf_drv_i2s_uninit();
+
+  // I2S not only uses pins when it's not supposed to, it doesn't
+  // even de-allocate them after so we must do it manually
+  // https://github.com/espruino/Espruino/issues/2071
+  NRF_I2S->PSEL.SCK = NRF_DRV_I2S_PIN_NOT_USED;
+  NRF_I2S->PSEL.LRCK = NRF_DRV_I2S_PIN_NOT_USED;
+#ifdef NEOPIXEL_SCK_PIN
+  sckReg->PIN_CNF[sckPinNumber] = sckConf;
+#endif
+#ifdef NEOPIXEL_LRCK_PIN
+  lrckReg->PIN_CNF[lrckPinNumber] = lrckConf;
+#endif
+
+ 
 	
 	return NRF_SUCCESS;
 }

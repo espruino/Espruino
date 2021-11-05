@@ -45,7 +45,7 @@ info = {
      'DEFINES+=-DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2c40', # set RAM base to match MTU
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"MDBT42Q"\'',
-     'DEFINES+=-DNEOPIXEL_SCK_PIN=23',
+     'DEFINES+=-DNEOPIXEL_SCK_PIN=23 -DNEOPIXEL_LRCK_PIN=13', # see https://github.com/espruino/Espruino/issues/2071
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91'
    ]
@@ -88,7 +88,8 @@ board_module = {
   'bottom' : [ 'GND','D0','D1','D2','D3','D4','D5','D6','D7','D8','D9','D10','GND' ],
   '_notes' : {
     'D21' : "Also NRST if configured",
-    'D23' : "This is used as SCK when driving Neopixels with 'require('neopixel').write'. This pin is not accessible.",
+    'D13' : "This is used as LRCK when driving Neopixels, and will output a signal when 'require('neopixel').write' is called",
+    'D23' : "This is used as SCK when driving Neopixels, and will output a signal when 'require('neopixel').write' is called",
   }
 };
 

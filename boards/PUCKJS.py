@@ -42,7 +42,7 @@ info = {
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      # 'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # reset isn't being used, so let's just have an extra IO (needed for Puck.js V2)
      'DEFINES+=-DESPR_DCDC_ENABLE', # Ensure DCDC converter is enabled
-     'DEFINES += -DNEOPIXEL_SCK_PIN=22', # SCK pin needs defining as something unused for neopixel (HW errata means they can't be disabled)
+     'DEFINES += -DNEOPIXEL_SCK_PIN=22 -DNEOPIXEL_LRCK_PIN=16', # SCK pin needs defining as something unused for neopixel (HW errata means they can't be disabled) see https://github.com/espruino/Espruino/issues/2071
      'DEFINES+=-DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2c40', # set RAM base to match MTU
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\'',
@@ -122,7 +122,8 @@ board = {
   '_notes' : {
     'D11' : "Capacitive sense. D12 is connected to this pin via a 1 MOhm resistor",
     'D28' : "If pulled up to 1 on startup, D28 and D29 become Serial1",
-    'D22' : "This is used as SCK when driving Neopixels with 'require('neopixel').write'"
+    'D22' : "This is used as SCK when driving Neopixels, and will output a signal when 'require('neopixel').write' is called",
+    'D16' : "This is used as LRCK when driving Neopixels, and will output a signal when 'require('neopixel').write' is called"
   }
 };
 
