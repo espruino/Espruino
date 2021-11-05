@@ -95,13 +95,17 @@ void turn_off() {
 #ifdef SPIFLASH_SLEEP_CMD  
   flashPowerDown();  // Put the SPI Flash into deep power-down
 #endif  
+#ifdef VIBRATE_PIN
   jshPinOutput(VIBRATE_PIN,1); // vibrate on
+#endif
 #if defined(BTN2_PININDEX)
   while (get_btn1_state() || get_btn2_state()) {}; // wait for BTN1 and BTN2 to be released
 #else
   while (get_btn1_state()) {}; // wait for BTN1 and BTN2 to be released
 #endif
+#ifdef VIBRATE_PIN
   jshPinSetValue(VIBRATE_PIN,0); // vibrate off
+#endif
 #ifdef DICKENS
   NRF_P0->OUT=0x03300f04; // 00000011 00110000 00001111 00000100 - high pins: D2, D8, SDA, SCL, LCD_CS, FLASH_CS, FLASH_WP, FLASH_RST, FLASH_SCK
 //NRF_P0->OUT=0x03300e00; // 00000011 00110000 00001110 00000000 - high pins: SDA, SCL, LCD_CS, FLASH_CS, FLASH_WP, FLASH_RST, FLASH_SCK
