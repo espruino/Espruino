@@ -484,8 +484,7 @@ char jsfStripDriveFromName(JsfFileName *name){
 void jsfGetDriveBankAddress(char drive, uint32_t *bankStartAddr, uint32_t *bankEndAddr){
 #ifdef JSF_BANK2_START_ADDRESS
   if (drive){
-    if (drive&(~0x20) == 'C'){ // make drive case insensitive
-      
+    if ((drive&(~0x20)) == 'C'){ // make drive case insensitive
       *bankStartAddr=JSF_START_ADDRESS;
       *bankEndAddr=JSF_END_ADDRESS;
     } else {
