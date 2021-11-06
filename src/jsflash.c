@@ -800,10 +800,11 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
 #ifdef JSF_BANK2_START_ADDRESS
   if (!addr && name.c[1]==':'){
     // if not found where it should be, try also another bank to not end with two files
-    JsfFileName shortname=name;
+    JsfFileName shortname = name;
     jsfStripDriveFromName(&shortname);
-    addr = jsfFindFile(shortname, &header);
-    if (addr) name=shortname;  
+    JsfFileHeader header2;
+    uint32_t addr2 = jsfFindFile(shortname, &header2);
+    if (addr2) jsfEraseFileInternal(addr2, &header2);  // erase if in wrong bank
   }
 #endif  
   if ((!addr && offset==0) || // No file
