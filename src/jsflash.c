@@ -29,8 +29,10 @@
 #define JSF_BANK2_START_ADDRESS FLASH_SAVED_CODE2_START
 #define JSF_BANK2_END_ADDRESS (FLASH_SAVED_CODE2_START+FLASH_SAVED_CODE2_LENGTH)
 #define JSF_DEFAULT_START_ADDRESS JSF_BANK2_START_ADDRESS
+#define JSF_DEFAULT_END_ADDRESS JSF_BANK2_END_ADDRESS
 #else
 #define JSF_DEFAULT_START_ADDRESS JSF_START_ADDRESS
+#define JSF_DEFAULT_END_ADDRESS JSF_END_ADDRESS
 #endif
 
 #ifdef USE_HEATSHRINK
@@ -470,20 +472,37 @@ bool jsfCompact() {
 #endif
   return compacted;
 }
-
+char jsfStripDriveFromName(JsfFileName *name){
+  if (name->c[1]==':') { // if a 'drive' is specified like "C:foobar.js"
+    char drive = name->c[0];
+    memmove(name->c, name->c+2, sizeof(JsfFileName)-2); // shift back and clear the rest
+    name->c[sizeof(JsfFileName)-2]=0;name->c[sizeof(JsfFileName)-1]=0;
+    return drive;
+  }
+  return 0;
+}
+void jsfGetDriveBankAddress(char drive, uint32_t *bankStartAddr, uint32_t *bankEndAddr){
+#ifdef JSF_BANK2_START_ADDRESS
+  if (drive){
+    if ((drive&(~0x20)) == 'C'){ // make drive case insensitive
+      *bankStartAddr=JSF_START_ADDRESS;
+      *bankEndAddr=JSF_END_ADDRESS;
+    } else {
+      *bankStartAddr=JSF_BANK2_START_ADDRESS;
+      *bankEndAddr=JSF_BANK2_END_ADDRESS;
+    }
+    return;
+  }
+#endif
+  *bankStartAddr=JSF_DEFAULT_START_ADDRESS;
+  *bankEndAddr=JSF_DEFAULT_END_ADDRESS;
+}
 /// Create a new 'file' in the memory store - DOES NOT remove existing files with same name. Return the address of data start, or 0 on error
 static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flags, JsfFileHeader *returnedHeader) {
   jsDebug(DBG_INFO,"CreateFile (%d bytes)\n", size);
-  uint32_t bankStartAddress = JSF_DEFAULT_START_ADDRESS;
-  if (name.c[1]==':') { // if a 'drive' is specified like "C:foobar.js"
-    char drive = name.c[0];
-    memmove(name.c, name.c+2, sizeof(name)-2); // shift back and clear the rest
-    name.c[sizeof(name)-2]=0;name.c[sizeof(name)-1]=0; 
-#ifdef JSF_BANK2_START_ADDRESS
-    if (drive=='C')
-      bankStartAddress = JSF_START_ADDRESS;
-#endif
-  }
+  char drive = jsfStripDriveFromName(&name);
+  uint32_t bankStartAddress,bankEndAddress;
+  jsfGetDriveBankAddress(drive,&bankStartAddress,&bankEndAddress);
 
   uint32_t requiredSize = jsfAlignAddress(size)+(uint32_t)sizeof(JsfFileHeader);
   bool compacted = false;
@@ -568,25 +587,21 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
 
 /// Find a 'file' in the memory store. Return the address of data start (and header if returnedHeader!=0). Returns 0 if not found
 uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
-  if (name.c[1] == ':') { // if a 'drive' is specified like "C:foobar.js"
-    char drive = name.c[0];
-    memmove(name.c, name.c+2, sizeof(name)-2); // shift back and clear the rest
-    name.c[sizeof(name)-2]=0;name.c[sizeof(name)-1]=0; 
+  char drive = jsfStripDriveFromName(&name);
 #ifdef JSF_BANK2_START_ADDRESS
-    if (drive == 'C')
-      // if more banks defined search C only in internal bank
-      return jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, returnedHeader);
-    return jsfBankFindFile(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS, name, returnedHeader);
-#else
-    return jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, returnedHeader);
-#endif
+  if (drive){
+    // if more banks defined search only in one determined from drive letter
+    uint32_t startAddress,endAddress;
+    jsfGetDriveBankAddress(drive,&startAddress,&endAddress);
+    return jsfBankFindFile(startAddress, endAddress, name, returnedHeader);
   }
+  // if no drive letter specified, search in both
   uint32_t a = jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, returnedHeader);
   if (a) return a;
-#ifdef JSF_BANK2_START_ADDRESS
-  a = jsfBankFindFile(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS, name, returnedHeader);
+  return jsfBankFindFile(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS, name, returnedHeader);
+#else
+  return jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, returnedHeader);
 #endif
-  return a;
 }
 
 static uint32_t jsfBankFindFileFromAddr(uint32_t bankAddress, uint32_t bankEndAddress, uint32_t containsAddr, JsfFileHeader *returnedHeader) {
@@ -782,6 +797,16 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
   // Lookup file
   JsfFileHeader header;
   uint32_t addr = jsfFindFile(name, &header);
+#ifdef JSF_BANK2_START_ADDRESS
+  if (!addr && name.c[1]==':'){
+    // if not found where it should be, try also another bank to not end with two files
+    JsfFileName shortname = name;
+    jsfStripDriveFromName(&shortname);
+    JsfFileHeader header2;
+    uint32_t addr2 = jsfFindFile(shortname, &header2);
+    if (addr2) jsfEraseFileInternal(addr2, &header2);  // erase if in wrong bank
+  }
+#endif  
   if ((!addr && offset==0) || // No file
       // we have a file, but it's wrong - remove it
       (addr && offset==0 && (
