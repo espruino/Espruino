@@ -29,7 +29,7 @@ function drawMenu() {
     options.draw(idx, {x:0,y:y,w:w,h:options.h});
     // border for selected
     if (i+menuScroll==selected) {
-      g.setColor(g.theme.fgG).drawRect(0,y,w-1,y+options.h-1).drawRect(1,y+1,w-2,y+options.h-2);
+      g.setColor(g.theme.fg).drawRect(0,y,w-1,y+options.h-1).drawRect(1,y+1,w-2,y+options.h-2);
     }
   }
   // arrows
@@ -38,7 +38,7 @@ function drawMenu() {
   g.setColor((options.c>n+menuScroll) ? g.theme.fg : g.theme.bg);
   g.fillPoly([m,h-7,m-14,h-21,m+14,h-21]);
 }
-g.clearRect(0,Y,w-1,h-1);
+g.reset().clearRect(0,Y,w-1,h-1);
 drawMenu();
 Bangle.setUI("updown",dir=>{
   if (dir) {
