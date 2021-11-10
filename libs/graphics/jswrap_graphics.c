@@ -1511,6 +1511,11 @@ JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) 
 }
 Make subsequent calls to `drawString` use a Custom Font of the given height. See the [Fonts page](http://www.espruino.com/Fonts) for more
 information about custom fonts and how to create them.
+
+For examples of use, see the [font modules](https://www.espruino.com/Fonts#font-modules).
+
+**Note:** while you can specify the character code of the first character with `firstChar`,
+the newline character 13 will always be treated as a newline and not rendered.
 */
 #ifndef SAVE_ON_FLASH
 JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height) {
