@@ -81,6 +81,7 @@
             nRF52: Move neopixel LRCK pin which can't be disabled due to hardware errata, and restore state after (fix #2071)
             Bangle.js2: Disable unboard flash bank for now (issues with erase on reboot)
             Bangle.js1: Fix E.showScroller implementation
+            Bangle.js2: Ensure tap and twist turn LCD backlight on as well as unlocking
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

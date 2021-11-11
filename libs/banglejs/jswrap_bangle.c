@@ -1045,6 +1045,10 @@ void peripheralPollHandler() {
         bangleTasks |= JSBT_LCD_ON;
         handled = true;
       }
+      if (!(bangleFlags&JSBF_LCD_BL_ON)) {
+        bangleTasks |= JSBT_LCD_BL_ON;
+        handled = true;
+      }
       if (bangleFlags&JSBF_LOCKED) {
         bangleTasks |= JSBT_UNLOCK;
         handled = true;
@@ -1198,6 +1202,8 @@ void peripheralPollHandler() {
         inactivityTimer = 0;
         if (!(bangleFlags&JSBF_LCD_ON))
           bangleTasks |= JSBT_LCD_ON;
+        if (!(bangleFlags&JSBF_LCD_BL_ON))
+          bangleTasks |= JSBT_LCD_BL_ON;
         if (bangleFlags&JSBF_LOCKED)
           bangleTasks |= JSBT_UNLOCK;
       }
