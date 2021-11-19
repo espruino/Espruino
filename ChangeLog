@@ -83,6 +83,7 @@
             Bangle.js1: Fix E.showScroller implementation
             Bangle.js2: Ensure tap and twist turn LCD backlight on as well as unlocking
             Bangle.js1: Bangle.setUI now deletes touchHandler (fix #2095)
+            Bangle.js2: Tweak battery high mark again
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

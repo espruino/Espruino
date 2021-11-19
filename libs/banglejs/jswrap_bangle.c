@@ -2127,7 +2127,7 @@ JsVarInt jswrap_banglejs_getBattery() {
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
 #ifdef BANGLEJS_Q3
   const JsVarFloat vlo = 0.246;
-  const JsVarFloat vhi = 0.317;
+  const JsVarFloat vhi = 0.3144; // on some watches this is 100%, on others it's s a bit higher
 #elif defined(BANGLEJS_F18)
   const JsVarFloat vlo = 0.51;
   const JsVarFloat vhi = 0.62;
