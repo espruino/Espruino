@@ -27,7 +27,7 @@ function drawMenu() {
   g.reset().clearRect(0,Y,w-1,h-1);
   g.setClipRect(0,Y,w-1,h-1);
   var a = YtoIdx(Y);
-  var b = YtoIdx(h-1);
+  var b = Math.min(YtoIdx(h-1),options.c-1);
   for (var i=a;i<=b;i++)
     options.draw(i, {x:0,y:idxToY(i),w:w,h:options.h});
   g.setClipRect(0,0,w-1,h-1);
@@ -37,10 +37,10 @@ g.flip(); // force an update now to make this snappier
 
 Bangle.dragHandler = e=>{
   var dy = e.dy;
+  if (menuScroll - dy > menuScrollMax)
+    dy = menuScroll - menuScrollMax;  
   if (menuScroll - dy < 0)
     dy = menuScroll;
-  if (menuScroll - dy > menuScrollMax)
-    dy = menuScroll - menuScrollMax;
   menuScroll -= dy;
   var oldScroll = rScroll;
   rScroll = menuScroll &~1;
@@ -72,7 +72,7 @@ Bangle.dragHandler = e=>{
 };
 Bangle.on('drag',Bangle.dragHandler);
 Bangle.touchHandler = (_,e)=>{
-  if (e.y<20) return;
+  if (e.y<Y-4) return;
   var i = YtoIdx(e.y);
   if (i>=0 && i<options.c)
     options.select(i);
