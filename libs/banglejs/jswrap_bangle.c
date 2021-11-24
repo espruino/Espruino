@@ -4271,6 +4271,7 @@ static void jswrap_banglejs_periph_off() {
 #endif
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
   //jswrap_banglejs_setLCDPower calls JS events (and sometimes timers), so avoid it and manually turn controller + backlight off:
+  jswrap_banglejs_setLocked(1); // disable touchscreen if we have one
   jswrap_banglejs_setLCDPowerController(0);
   jswrap_banglejs_pwrBacklight(0);
 #ifdef ACCEL_DEVICE_KX023
