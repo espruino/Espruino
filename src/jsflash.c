@@ -51,8 +51,6 @@
   #define DECOMPRESS rle_decode
 #endif
 
-//#define ESPR_USE_STORAGE_CACHE 32
-
 #define JSF_CACHE_NOT_FOUND 0xFFFFFFFF
 
 #if ESPR_USE_STORAGE_CACHE
