@@ -15,9 +15,8 @@
 
 #include "jsutils.h"
 
-#define HRM_SAMPLERATE 50 // Hz
-#define HRM_HIST_LEN 16
-#define HRM_MEDIAN_LEN 8
+#define HRM_HIST_LEN 16 // how many BPM values do we keep a history of
+#define HRM_MEDIAN_LEN 8 // how many BPM values do we average in our median filter to get a BPM reading
 
 #define HRM_THRESH_MIN 3
 #define HRM_THRESH_SHIFT 4
