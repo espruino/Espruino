@@ -67,7 +67,8 @@ info = {
      'WRAPPERSOURCES += libs/misc/jswrap_unistroke.c',
      'DEFINES += -DESPR_BANGLE_UNISTROKE=1',
      'SOURCES += libs/banglejs/banglejs2_storage_default.c',
-     'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1', # 
+     'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1', # use banglejs2_storage_default
+     'DEFINES += -DESPR_USE_STORAGE_CACHE=32', # Add a 32 entry cache to speed up finding files
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
 
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0xa9,0xae,0xb6',

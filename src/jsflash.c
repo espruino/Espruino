@@ -18,9 +18,15 @@
 #include "jswrap_string.h" //jswrap_string_match
 #include "jswrap_espruino.h" //jswrap_espruino_CRC
 
+#ifdef BANGLEJS
+#define ESPR_NO_VARIMAGE // don't allow saving an image of current state to flash - no use on Bangle.js
+#endif
+
 #define SAVED_CODE_BOOTCODE_RESET ".bootrst" // bootcode that runs even after reset
 #define SAVED_CODE_BOOTCODE ".bootcde" // bootcode that doesn't run after reset
+#ifndef ESPR_NO_VARIMAGE
 #define SAVED_CODE_VARIMAGE ".varimg" // Image of all JsVars written to flash
+#endif
 
 #define JSF_START_ADDRESS FLASH_SAVED_CODE_START
 #define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
@@ -43,6 +49,82 @@
   #include "compress_rle.h"
   #define COMPRESS rle_encode
   #define DECOMPRESS rle_decode
+#endif
+
+//#define ESPR_USE_STORAGE_CACHE 32
+
+#define JSF_CACHE_NOT_FOUND 0xFFFFFFFF
+
+#if ESPR_USE_STORAGE_CACHE
+/* Filename lookups can take over 1ms per file even on a reasonably empty SPI Flash memory,
+so we can have a cache of the most used file *addresses* in RAM. The data is still in
+flash but not having to do the search really helps us.
+
+To use this, add '-DESPR_USE_STORAGE_CACHE=32' or some other number to the BOARD.py file
+
+TODO: we could potentially have some scoring system such that the most used files
+like settings.js are never ever taken out of the cache. Right now reading
+ESPR_USE_STORAGE_CACHE different files will flush out the cache.
+*/
+typedef struct {
+  uint32_t addr; ///< Address as returned by jsfFindFile
+  JsfFileHeader header; ///< The file header
+} JsfCacheEntry;
+
+JsfCacheEntry jsfCache[ESPR_USE_STORAGE_CACHE];
+uint8_t jsfCacheEntries = 0;
+
+static void jsfCacheClear() {
+  jsfCacheEntries = 0;
+}
+static void jsfCacheClearFile(JsfFileName name) {
+  for (int i=0;i<jsfCacheEntries;i++) {
+    if (memcmp(jsfCache[i].header.name.c, name.c, sizeof(name.c))!=0)
+      continue;
+    // if found, shift subsequent files forward over this one
+    for (;i<jsfCacheEntries-1;i++)
+      jsfCache[i] = jsfCache[i+1];
+    // reduce amount of entries
+    jsfCacheEntries--;
+    return;
+  }
+}
+
+// Find an item in the cache - returns JSF_CACHE_NOT_FOUND on failure as it's handy to know about files that don't exist too
+static uint32_t jsfCacheFind(JsfFileName name, JsfFileHeader *returnedHeader) {
+  for (int i=0;i<jsfCacheEntries;i++)
+    if (memcmp(jsfCache[i].header.name.c, name.c, sizeof(name.c))==0) {
+      JsfCacheEntry curr = jsfCache[i];
+      if (i) { // if not at front, put to front
+        // shift others forward
+        for (int j=i-1;j>=0;j--)
+          jsfCache[j+1] = jsfCache[j];
+        // put at front
+        jsfCache[0].header = curr.header;
+        jsfCache[0].addr = curr.addr;
+      }
+      if (returnedHeader)
+        *returnedHeader = curr.header;
+      return curr.addr;
+    }
+
+  return JSF_CACHE_NOT_FOUND;
+}
+static void jsfCachePut(JsfFileHeader *header, uint32_t addr) {
+  // TODO: ListFiles could lazily fill the list with all
+  // files it finds at the end...
+  if (jsfCacheEntries<ESPR_USE_STORAGE_CACHE)
+    jsfCacheEntries++;
+  for (int i=jsfCacheEntries-2;i>=0;i--)
+    jsfCache[i+1] = jsfCache[i];
+  jsfCache[0].header = *header;
+  jsfCache[0].addr = addr;
+}
+#else // no cache, just stub with code that does nothing
+static void jsfCacheClear() {}
+static void jsfCacheClearFile(JsfFileName name) {}
+static uint32_t jsfCacheFind(JsfFileName name, JsfFileHeader *header) { return JSF_CACHE_NOT_FOUND; }
+static void jsfCachePut(JsfFileHeader *header, uint32_t addr) { }
 #endif
 
 // ------------------------------------------------------------------------------------------------
@@ -169,6 +251,7 @@ static bool jsfEraseArea(uint32_t startAddr, uint32_t endAddr) {
 /// Erase the entire contents of the memory store
 bool jsfEraseAll() {
   jsDebug(DBG_INFO,"EraseAll\n");
+  jsfCacheClear();
 #ifdef JSF_BANK2_START_ADDRESS
   if (!jsfEraseArea(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS)) return false;
 #endif
@@ -189,6 +272,7 @@ bool jsfEraseFile(JsfFileName name) {
   JsfFileHeader header;
   uint32_t addr = jsfFindFile(name, &header);
   if (!addr) return false;
+  jsfCacheClearFile(name);
   jsfEraseFileInternal(addr, &header);
   return true;
 }
@@ -466,6 +550,7 @@ bool jsfBankCompact(uint32_t startAddress) {
 
 // Try and compact saved data so it'll fit in Flash again
 bool jsfCompact() {
+  jsfCacheClear();
   bool compacted = jsfBankCompact(JSF_START_ADDRESS);
 #ifdef JSF_BANK2_START_ADDRESS
   compacted |= jsfBankCompact(JSF_BANK2_START_ADDRESS);
@@ -500,6 +585,7 @@ void jsfGetDriveBankAddress(char drive, uint32_t *bankStartAddr, uint32_t *bankE
 /// Create a new 'file' in the memory store - DOES NOT remove existing files with same name. Return the address of data start, or 0 on error
 static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flags, JsfFileHeader *returnedHeader) {
   jsDebug(DBG_INFO,"CreateFile (%d bytes)\n", size);
+  jsfCacheClearFile(name);
   char drive = jsfStripDriveFromName(&name);
   uint32_t bankStartAddress,bankEndAddress;
   jsfGetDriveBankAddress(drive,&bankStartAddress,&bankEndAddress);
@@ -560,7 +646,9 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
   jshFlashWrite(&header,addr,(uint32_t)sizeof(JsfFileHeader));
   jsDebug(DBG_INFO,"CreateFile written header\n");
   if (returnedHeader) *returnedHeader = header;
-  return addr+(uint32_t)sizeof(JsfFileHeader);
+  addr += (uint32_t)sizeof(JsfFileHeader); // address of actual file data
+  jsfCachePut(&header, addr);
+  return addr;
 }
 
 static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, JsfFileName name, JsfFileHeader *returnedHeader) {
@@ -588,20 +676,27 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
 /// Find a 'file' in the memory store. Return the address of data start (and header if returnedHeader!=0). Returns 0 if not found
 uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
   char drive = jsfStripDriveFromName(&name);
+  uint32_t a = jsfCacheFind(name, returnedHeader);
+  if (a!=JSF_CACHE_NOT_FOUND) return a;
+  JsfFileHeader header;
+
 #ifdef JSF_BANK2_START_ADDRESS
-  if (drive){
+  if (drive) {
     // if more banks defined search only in one determined from drive letter
     uint32_t startAddress,endAddress;
     jsfGetDriveBankAddress(drive,&startAddress,&endAddress);
-    return jsfBankFindFile(startAddress, endAddress, name, returnedHeader);
+    return jsfBankFindFile(startAddress, endAddress, name, &header);
   }
   // if no drive letter specified, search in both
-  uint32_t a = jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, returnedHeader);
-  if (a) return a;
-  return jsfBankFindFile(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS, name, returnedHeader);
+  a = jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, &header);
+  if (!a) a = jsfBankFindFile(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS, name, &header);
 #else
-  return jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, returnedHeader);
+  a = jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, &header);
 #endif
+  if (!a) header.name = name;
+  jsfCachePut(&header, a); // we put the file in even if it's not found, as that's handy too
+  if (returnedHeader) *returnedHeader = header;
+  return a;
 }
 
 static uint32_t jsfBankFindFileFromAddr(uint32_t bankAddress, uint32_t bankEndAddress, uint32_t containsAddr, JsfFileHeader *returnedHeader) {
@@ -980,6 +1075,9 @@ int jsfLoadFromFlash_readcb(uint32_t *cbdata) {
 
 /// Save the RAM image to flash (this is the actual interpreter state)
 void jsfSaveToFlash() {
+#ifdef ESPR_NO_VARIMAGE
+  jsiConsolePrint("Not implemented in this build\n");
+#else
   unsigned int varSize = jsvGetMemoryTotal() * (unsigned int)sizeof(JsVar);
   unsigned char* varPtr = (unsigned char *)_jsvGetAddressOf(1);
 
@@ -1028,11 +1126,13 @@ void jsfSaveToFlash() {
   COMPRESS(varPtr, varSize, jsfSaveToFlash_writecb, (uint32_t*)&cbData);
   jsfSaveToFlash_finish(&cbData);
   jsiConsolePrintf("\nCompressed %d bytes to %d\n", varSize, compressedSize);
+#endif
 }
 
 
 /// Load the RAM image from flash (this is the actual interpreter state)
 void jsfLoadStateFromFlash() {
+#ifndef ESPR_NO_VARIMAGE
   JsfFileHeader header;
   uint32_t savedCode = jsfFindFile(jsfNameFromString(SAVED_CODE_VARIMAGE),&header);
   if (!savedCode) {
@@ -1057,6 +1157,7 @@ void jsfLoadStateFromFlash() {
   }
   jsiConsolePrintf("Loading %d bytes from flash...\n", jsfGetFileSize(&header));
   DECOMPRESS(jsfLoadFromFlash_readcb, (uint32_t*)&cbData, varPtr);
+#endif
 }
 
 void jsfSaveBootCodeToFlash(JsVar *code, bool runAfterReset) {
@@ -1097,7 +1198,9 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
 
 bool jsfFlashContainsCode() {
   return
+#ifndef ESPR_NO_VARIMAGE
       jsfFindFile(jsfNameFromString(SAVED_CODE_VARIMAGE),0) ||
+#endif
       jsfFindFile(jsfNameFromString(SAVED_CODE_BOOTCODE),0) ||
       jsfFindFile(jsfNameFromString(SAVED_CODE_BOOTCODE_RESET),0);
 }
@@ -1105,7 +1208,9 @@ bool jsfFlashContainsCode() {
 /** Completely clear any saved code from flash. */
 void jsfRemoveCodeFromFlash() {
   jsiConsolePrint("Erasing saved code.");
+#ifndef ESPR_NO_VARIMAGE
   jsfEraseFile(jsfNameFromString(SAVED_CODE_VARIMAGE));
+#endif
   jsfEraseFile(jsfNameFromString(SAVED_CODE_BOOTCODE));
   jsfEraseFile(jsfNameFromString(SAVED_CODE_BOOTCODE_RESET));
   jsiConsolePrint("\nDone!\n");
