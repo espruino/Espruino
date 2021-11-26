@@ -86,6 +86,7 @@
             Bangle.js2: Tweak battery high mark again
             Bangle.js2: Fix E.showScroller when there are less than 3 menu items
             Bangle.js2: Bangle.off and .softOff now turn off touchscreen if it was on 
+            Bangle.js2: Ensure antialiased line routines are built in
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
