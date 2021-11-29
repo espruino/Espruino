@@ -89,6 +89,7 @@
             Bangle.js2: Ensure antialiased line routines are built in
             Bangle.js2: Add HRM wear detection (LED no longer turns on if HRM not on skin)
             Bangle.js2: Add a 32 entry cache to speed up finding common files - improves app load times
+            Bangle.js: Ensure locale honours 12 hour setting (https://github.com/espruino/BangleApps/issues/892)
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
