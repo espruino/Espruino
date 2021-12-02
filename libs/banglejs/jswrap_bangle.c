@@ -4558,7 +4558,7 @@ with `g.clear()`.
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "drawWidgets", "patch":true,
-    "generate_js" : "libs/js/banglejs/Bangle_drawWidgets_Q3.js",
+    "generate_js" : "libs/js/banglejs/Bangle_drawWidgets_Q3.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
@@ -4954,13 +4954,31 @@ JsVar *jswrap_banglejs_appRect() {
   jsvUnLock(graphics);
 
   JsVar *widgetsVar = jsvObjectGetChild(execInfo.root,"WIDGETS",0);
-  int y = widgetsVar ? 24 : 0;
+  int top = 0, btm = 0; // size of various widget areas
+  // check all widgets and see if any are in the top or bottom areas,
+  // set top/btm accordingly
+  if (jsvIsObject(widgetsVar)) {
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, widgetsVar);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *widget = jsvObjectIteratorGetValue(&it);
+      JsVar *area = jsvObjectGetChild(widget, "area", 0);
+      if (jsvIsString(area)) {
+        char a = jsvGetCharInString(area, 0);
+        if (a=='t') top=24;
+        if (a=='b') btm=24;
+      }
+      jsvUnLock2(area,widget);
+      jsvObjectIteratorNext(&it);
+    }
+    jsvObjectIteratorFree(&it);
+  }
   jsvUnLock(widgetsVar);
   jsvObjectSetChildAndUnLock(o,"x",jsvNewFromInteger(0));
-  jsvObjectSetChildAndUnLock(o,"y",jsvNewFromInteger(y));
+  jsvObjectSetChildAndUnLock(o,"y",jsvNewFromInteger(top));
   jsvObjectSetChildAndUnLock(o,"w",jsvNewFromInteger(gfx.data.width));
-  jsvObjectSetChildAndUnLock(o,"h",jsvNewFromInteger(gfx.data.height-y));
+  jsvObjectSetChildAndUnLock(o,"h",jsvNewFromInteger(gfx.data.height-(top+btm)));
   jsvObjectSetChildAndUnLock(o,"x2",jsvNewFromInteger(gfx.data.width-1));
-  jsvObjectSetChildAndUnLock(o,"y2",jsvNewFromInteger(gfx.data.height-1));
+  jsvObjectSetChildAndUnLock(o,"y2",jsvNewFromInteger(gfx.data.height-(1+btm)));
   return o;
 }

@@ -92,6 +92,8 @@
             Bangle.js: Ensure locale honours 12 hour setting (https://github.com/espruino/BangleApps/issues/892)
             Bangle.js2: Ensure EXTCOMIN time for LCD is nearer 2us (from datasheet) (ref #2097)
             Bangle.js2: New default JS firmware
+            Bangle.js2: Minify Bangle.drawWidgets
+            Bangle.js: Bangle.appRect now copes with widgets at the bottom
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
