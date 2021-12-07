@@ -95,6 +95,7 @@
             Bangle.js2: Minify Bangle.drawWidgets
             Bangle.js: Bangle.appRect now copes with widgets at the bottom
             Bangle.js2: Fix >128 ASCII codes for 12x20 font (fix #2105)
+            Bangle.js: Add SPI flash read-after-write to verify write succeeded (fix #2109)
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
