@@ -3898,6 +3898,46 @@ JsVar *jswrap_banglejs_compassRd(JsVarInt reg, JsVarInt cnt) {
 #endif
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "hrmWr",
+    "generate" : "jswrap_banglejs_hrmWr",
+    "params" : [
+      ["reg","int",""],
+      ["data","int",""]
+    ],
+    "ifdef" : "BANGLEJS_Q3"
+}
+Writes a register on the Heart rate monitor
+*/
+void jswrap_banglejs_hrmWr(JsVarInt reg, JsVarInt data) {
+#ifdef HRM_I2C
+  _jswrap_banglejs_i2cWr(HRM_I2C, HEARTRATE_ADDR, reg, data);
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "hrmRd",
+    "generate" : "jswrap_banglejs_hrmRd",
+    "params" : [
+      ["reg","int",""],
+      ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
+    ],
+    "return" : ["JsVar",""],
+    "ifdef" : "BANGLEJS"
+}
+Read a register on the Heart rate monitor
+*/
+JsVar *jswrap_banglejs_hrmRd(JsVarInt reg, JsVarInt cnt) {
+#ifdef HRM_I2C
+  return _jswrap_banglejs_i2cRd(HRM_I2C, HEARTRATE_ADDR, reg, cnt);
+#else
+  return 0;
+#endif
+}
 
 /*JSON{
     "type" : "staticmethod",
@@ -3924,7 +3964,6 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
 #endif
 }
 #endif
-
 
 /*JSON{
     "type" : "staticmethod",
