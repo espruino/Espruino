@@ -3,7 +3,7 @@
     Bangle.btnWatches.forEach(clearWatch);
     Bangle.btnWatches = undefined;
   }
-  g.clear(1);g.flip(); // clear screen if no menu supplied
+  g.clear(1).flip(); // clear screen if no menu supplied
   Bangle.drawWidgets();
   if (!items) return;
   var w = g.getWidth()-9;
@@ -34,9 +34,9 @@
   var loc = require("locale");
   var l = {
     draw : function() {
-      g.reset();
-      g.setColor(cFg);
+      g.reset().setColor(cFg);
       g.setFont('6x8').setFontAlign(0,-1,0);
+      if (options.predraw) options.predraw(g);
       if (options.title) {
         g.drawString(options.title,(x+x2)/2,y-options.fontHeight-2);
         g.drawLine(x,y-2,x2,y-2);

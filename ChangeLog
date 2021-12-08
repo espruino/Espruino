@@ -96,6 +96,8 @@
             Bangle.js: Bangle.appRect now copes with widgets at the bottom
             Bangle.js2: Fix >128 ASCII codes for 12x20 font (fix #2105)
             Bangle.js: Add SPI flash read-after-write to verify write succeeded (fix #2109)
+            Bangle.js: Fix E.showMenu clear if background color is set (https://github.com/espruino/BangleApps/issues/1024)
+            Bangle.js: Re-add E.showMenu predraw callback (fix #2108)
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

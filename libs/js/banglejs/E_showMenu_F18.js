@@ -1,5 +1,5 @@
 (function(items) {
-  g.clearRect(Bangle.appRect); // clear if no menu supplied
+  g.reset().clearRect(Bangle.appRect); // clear if no menu supplied
   Bangle.setLCDPower(1); // ensure screen is on
   if (!items) {
     Bangle.setUI();
@@ -31,6 +31,7 @@
       l.lastIdx = idx;      
       var iy = y;
       g.reset().setFont('6x8',2).setFontAlign(0,-1,0);
+      if (options.predraw) options.predraw(g);
       if (rowmin===undefined && options.title) {
         g.drawString(options.title,(x+x2)/2,y-options.fontHeight-2);
         g.drawLine(x,y-2,x2,y-2);
