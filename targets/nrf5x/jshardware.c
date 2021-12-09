@@ -2434,10 +2434,11 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
         b[3] = addr;
         nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
         spiFlashWrite(b,4);
-        spiFlashRead(b,4);
+        spiFlashRead(b,l<4?l:4);
         nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
         //
-        if (b[0]!=bufPtr[0] || b[1]!=bufPtr[1] || b[2]!=bufPtr[2] || b[3]!=bufPtr[3]) {
+        if (b[0]!=bufPtr[0] || (l>1 && b[1]!=bufPtr[1]) ||
+           (l>2 && b[2]!=bufPtr[2]) || (l>3 && b[3]!=bufPtr[3])) {
           retries--; // byte is still erased - try again
           jshDelayMicroseconds(50); // wait a bit before we have another go
         } else retries=-1; // all ok, exit now
