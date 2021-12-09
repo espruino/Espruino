@@ -2437,11 +2437,14 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
         spiFlashRead(b,4);
         nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
         //
-        if (b[0]!=bufPtr[0] || b[1]!=bufPtr[1] || b[2]!=bufPtr[2] || b[3]!=bufPtr[3]) retries--; // byte is still erased - try again
-        else retries=-1; // all ok, exit now
+        if (b[0]!=bufPtr[0] || b[1]!=bufPtr[1] || b[2]!=bufPtr[2] || b[3]!=bufPtr[3]) {
+          retries--; // byte is still erased - try again
+          jshDelayMicroseconds(50); // wait a bit before we have another go
+        } else retries=-1; // all ok, exit now
       };
       if (!retries) {
-        jsiConsolePrintf("jshFlashWrite SPI addr 0x%08x failed", addr);
+        jsiConsolePrintf("FW addr 0x%08x fail\n", addr);
+        jsiConsolePrintf("Status %d\n", spiFlashStatus());
       }
 
       // go to next chunk
