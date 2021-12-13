@@ -2206,13 +2206,18 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 bool jshFlashWriteProtect(uint32_t addr) {
   // allow protection to be overwritten
   if (jsfGetFlag(JSF_UNSAFE_FLASH)) return false;
-#if defined(PUCKJS) || defined(PIXLJS) || defined(MDBT42Q) || defined(BANGLEJS)
-  /* It's vital we don't let anyone screw with the softdevice or bootloader.
-   * Recovering from changes would require soldering onto SWDIO and SWCLK pads!
-   */
+/* It's vital we don't let anyone screw with the softdevice or bootloader.
+ * Recovering from changes would require soldering onto SWDIO and SWCLK pads!
+ */
+#if defined(PUCKJS) || defined(PIXLJS) || defined(MDBT42Q) || defined(BANGLEJS_F18)
   if (addr<0x1f000) return true; // softdevice
   if (addr>=0x78000 && addr<0x80000) return true; // bootloader
 #endif
+#if defined(BANGLEJS_Q3)
+  if (addr<0x26000) return true; // softdevice
+  if (addr>=0xF7000 && addr<0x100000) return true; // bootloader
+#endif
+  // TODO: make these use constants from the nRF52 SDK?
   return false;
 }
 
