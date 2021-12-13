@@ -101,6 +101,7 @@
             Bangle.js2: Add hrmRd/hrmWr that allow you to poke the HRM directly
             Bangle.js: Fix for previous SPI flash write verify when <4 bytes written
             Bangle.js2: Add write protection for bootloader and softdevice to avoid accidental bricking
+            Bangle.js2: Bootloader now attempts multiple times to initialise ext flash, and waits longer (fix fw update app issues)
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
