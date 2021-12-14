@@ -34,8 +34,15 @@ typedef struct {
   uint32_t size; ///< Total size (and flags in the top 8 bits)
   char name[28]; ///< 0-padded filename
 } JsfFileHeader;
-#define JSF_START_ADDRESS 0 /* actual flash starts at 0 - espruino's is memory mapped */
+
+#define JSF_START_ADDRESS 0 /* actual flash starts at 0 - espruino's one is memory mapped */
+// Set up the end address of external flash
+#ifdef FLASH_SAVED_CODE2_START
+// if there's a second bank of flash to use, it means Bank 1 was INTERNAL flash, Bank 2 is external
+#define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE2_LENGTH)
+#else
 #define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
+#endif
 
 /// Read data while sending 0
 __attribute__( ( long_call, section(".data") ) ) static void spiFlashRead(unsigned char *rx, unsigned int len) {
