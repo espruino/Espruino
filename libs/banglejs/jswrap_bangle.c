@@ -676,6 +676,8 @@ typedef struct {
 HealthState healthCurrent;
 /// Health info during the last period, used when firing a health event
 HealthState healthLast;
+/// Health data so far this day
+HealthState healthDaily;
 
 /// Promise when beep is finished
 JsVar *promiseBeep;
@@ -1180,6 +1182,7 @@ void peripheralPollHandler() {
       if (newSteps>0) {
         stepCounter += newSteps;
         healthCurrent.stepCount += newSteps;
+        healthDaily.stepCount += newSteps;
         bangleTasks |= JSBT_STEP_EVENT;
         jshHadEvent();
       }
@@ -1250,17 +1253,27 @@ void peripheralPollHandler() {
 
   // Health tracking
   // Did we enter a new 10 minute interval?
-  uint8_t healthIndex = (uint8_t)(jshGetMillisecondsFromTime(time)/HEALTH_INTERVAL);
+  JsVarFloat msecs = jshGetMillisecondsFromTime(time);
+  uint8_t healthIndex = (uint8_t)(msecs/HEALTH_INTERVAL);
   if (healthIndex != healthCurrent.index) {
     // we did - fire 'Bangle.health' event
     healthLast = healthCurrent;
     healthStateClear(&healthCurrent);
     healthCurrent.index = healthIndex;
     bangleTasks |= JSBT_HEALTH;
+    // What if we've changed day?
+    TimeInDay td = getTimeFromMilliSeconds(msecs, false/*forceGMT*/);
+    uint8_t dayIndex = (uint8_t)td.daysSinceEpoch;
+    if (dayIndex != healthDaily.index) {
+      healthStateClear(&healthCurrent);
+      healthDaily.index = dayIndex;
+    }
   }
   // Update latest health info
   healthCurrent.movement += accDiff;
   healthCurrent.movementSamples++;
+  healthDaily.movement += accDiff;
+  healthDaily.movementSamples++;
 
   // we're done, ensure we clear I2C flag
   i2cBusy = false;
@@ -1274,6 +1287,10 @@ static void hrmHandler(int ppgValue) {
     if (hrmInfo.confidence >= healthCurrent.bpmConfidence) {
       healthCurrent.bpmConfidence = hrmInfo.confidence;
       healthCurrent.bpm10 = hrmInfo.bpm10;
+    }
+    if (hrmInfo.confidence >= healthDaily.bpmConfidence) {
+      healthDaily.bpmConfidence = hrmInfo.confidence;
+      healthDaily.bpm10 = hrmInfo.bpm10;
     }
     jshHadEvent();
   }
@@ -2631,9 +2648,21 @@ JsVar *jswrap_banglejs_getAccel() {
     "class" : "Bangle",
     "name" : "getHealthStatus",
     "generate" : "jswrap_banglejs_getHealthStatus",
-    "return" : ["JsVar","Returns an object containing various health info - see below"],
+    "return" : ["JsVar","Returns an object containing various health info"],
+    "params" : [
+      ["range","JsVar","What time period to return data for, see below:"]
+    ],
     "ifdef" : "BANGLEJS"
 }
+
+`range` is one of:
+
+* `undefined` or `'current'` - health data so far in the last 10 minutes is returned,
+* `'last'` - health data during the last 10 minutes
+* `'day'` - the health data so far for the day
+
+
+`getHealthStatus` returns an object containing:
 
 * `movement` is the 32 bit sum of all `acc.diff` readings since power on (and rolls over). It is the difference in accelerometer values as `g*8192`
 * `steps` is the number of steps during this period
@@ -2654,8 +2683,15 @@ static JsVar *_jswrap_banglejs_getHealthStatusObject(HealthState *health) {
   }
   return o;
 }
-JsVar *jswrap_banglejs_getHealthStatus() {
-  return _jswrap_banglejs_getHealthStatusObject(&healthCurrent);
+JsVar *jswrap_banglejs_getHealthStatus(JsVar *range) {
+  if (jsvIsUndefined(range) || jsvIsStringEqual(range,"10min"))
+    return _jswrap_banglejs_getHealthStatusObject(&healthCurrent);
+  if (jsvIsStringEqual(range,"last"))
+      return _jswrap_banglejs_getHealthStatusObject(&healthLast);
+  if (jsvIsStringEqual(range,"day"))
+    return _jswrap_banglejs_getHealthStatusObject(&healthDaily);
+  jsExceptionHere(JSET_ERROR, "Unknown range name %q", range);
+  return 0;
 }
 
 /* After init is called (a second time, NOT first time), we execute any JS that is due to be executed,
@@ -2798,6 +2834,7 @@ NO_INLINE void jswrap_banglejs_init() {
     accDiff = 0;
     healthStateClear(&healthCurrent);
     healthStateClear(&healthLast);
+    healthStateClear(&healthDaily);
   } 
   bangleFlags |= JSBF_POWER_SAVE; // ensure we turn power-save on by default every restart
   inactivityTimer = 0; // reset the LCD timeout timer
