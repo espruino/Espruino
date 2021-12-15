@@ -39,6 +39,7 @@ info = {
      'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS=1', # Use NFC for GPIOs
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Smartibot"\'',
+     'DEFINES += -DNEOPIXEL_SCK_PIN=16 -DNEOPIXEL_LRCK_PIN=15', # SCK pin needs defining as something unused for neopixel (HW errata means they can't be disabled) see https://github.com/espruino/Espruino/issues/2071
 #     'JSMODULESOURCES+=libs/js/PCA9685.min.js',
 #     'JSMODULESOURCES+=libs/js/Smartibot.min.js'
    ]
