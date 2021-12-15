@@ -1,4 +1,4 @@
-            Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
+     2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect
             Bangle.js 2: When wake on touch is enabled, use a single tap on the front of the device for wakeup
             Bangle.js: Display 'checking storage' message on first boot to alert users to slight delay
@@ -104,6 +104,7 @@
             Bangle.js2: Bootloader now attempts multiple times to initialise ext flash, and waits longer (fix fw update app issues)
             Bangle.js: Add Bangle.getHealthStatus("day") to allow automatic step counts for the current day
             Remove for(of/in) for extremely constrained devices (Micro:bit 1 only)
+            Bangle.js: bootloader now doesn't start immediately after power off (can help with 100% flat battery)
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
