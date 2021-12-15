@@ -103,6 +103,7 @@
             Bangle.js2: Add write protection for bootloader and softdevice to avoid accidental bricking
             Bangle.js2: Bootloader now attempts multiple times to initialise ext flash, and waits longer (fix fw update app issues)
             Bangle.js: Add Bangle.getHealthStatus("day") to allow automatic step counts for the current day
+            Remove for(of/in) for extremely constrained devices (Micro:bit 1 only)
             
      2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)

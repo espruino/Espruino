@@ -2396,6 +2396,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     return 0;
   }
   execInfo.execute &= (JsExecFlags)~EXEC_FOR_INIT;
+#ifndef SAVE_ON_FLASH_EXTREME
   if (lex->tk == LEX_R_IN || lex->tk == LEX_R_OF) {
     bool isForOf = lex->tk == LEX_R_OF;
     // for (i in array)  or   for (i of array)
@@ -2492,6 +2493,9 @@ NO_INLINE JsVar *jspeStatementFor() {
     jslCharPosFree(&forBodyEnd);
 
     jsvUnLock2(forStatement, array);
+#else // SAVE_ON_FLASH_EXTREME
+  if (false) {
+#endif // SAVE_ON_FLASH_EXTREME
   } else { // ----------------------------------------------- NORMAL FOR LOOP
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
     int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
