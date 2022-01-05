@@ -352,7 +352,7 @@ else:
     bufferSizeIO = 256
     # we often use increased MTUs and even with a big buffer these mean we need to leave
     # a lot of space when we send XOFF (due to delay in response from sender)
-    xoff_thresh = 4 
+    xoff_thresh = 3 
     xon_thresh = 2
   # TX buffer - for print/write/etc
   bufferSizeTX = 32 
