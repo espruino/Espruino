@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "stepcount.h"
+#include "jsutils.h"
 
 // a1bc34f9a9f5c54b9d68c3c26e973dba195e2105   HughB-walk-1834.csv  1446
 // oxford filter                                                   1584
@@ -150,22 +151,6 @@ unsigned char stepLength; // how many poll intervals since the last step?
 int active_sample_count = 0;
 bool gate_open = false;        // start closed
 // ===============================================================
-
-// quick integer square root
-// https://stackoverflow.com/questions/31117497/fastest-integer-square-root-in-the-least-amount-of-instructions
-unsigned short int int_sqrt32(unsigned int x) {
-  unsigned short int res=0;
-  unsigned short int add= 0x8000;
-  int i;
-  for(i=0;i<16;i++) {
-    unsigned short int temp=res | add;
-    unsigned int g2=temp*temp;
-    if (x>=g2)
-      res=temp;
-    add>>=1;
-  }
-  return res;
-}
 
 // Init step count
 void stepcount_init() {
