@@ -1265,7 +1265,7 @@ void peripheralPollHandler() {
     TimeInDay td = getTimeFromMilliSeconds(msecs, false/*forceGMT*/);
     uint8_t dayIndex = (uint8_t)td.daysSinceEpoch;
     if (dayIndex != healthDaily.index) {
-      healthStateClear(&healthCurrent);
+      healthStateClear(&healthDaily);
       healthDaily.index = dayIndex;
     }
   }
