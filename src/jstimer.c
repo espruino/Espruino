@@ -460,7 +460,7 @@ bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
   return utilTimerInsertTask(&taskoff);
 }
 
-/// Execute the given function repeatedly after the given time period
+/// Execute the given function repeatedly after the given time period. If period=0, don't repeat. True on success or false on failure to schedule
 bool jstExecuteFn(UtilTimerTaskExecFn fn, void *userdata, JsSysTime startTime, uint32_t period) {
   UtilTimerTask task;
   task.time = (int)startTime;

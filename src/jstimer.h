@@ -115,7 +115,7 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
 // Do software PWM on the given pin, using the timer IRQs
 bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin);
 
-/// Execute the given function repeatedly after the given time period. If period=0, don't repeat
+/// Execute the given function repeatedly after the given time period. If period=0, don't repeat. True on success or false on failure to schedule
 bool jstExecuteFn(UtilTimerTaskExecFn fn, void *userdata, JsSysTime startTime, uint32_t period);
 
 /// Stop executing the given function
