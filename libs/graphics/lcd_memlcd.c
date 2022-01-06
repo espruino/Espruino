@@ -196,7 +196,7 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   }
 
   jshPinOutput(LCD_SPI_CS,0);
-  jshPinOutput(LCD_SPI_SCK,0);
+  jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
   jshPinOutput(LCD_DISP,1);
   jshPinOutput(LCD_EXTCOMIN,1);
