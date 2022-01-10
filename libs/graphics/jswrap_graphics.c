@@ -2387,6 +2387,8 @@ JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
   "return_object" : "Graphics"
 }
 Draw a polyline (lines between each of the points in `poly`) in the current foreground color
+
+**Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
 /*JSON{
   "type" : "method",
@@ -2402,6 +2404,8 @@ Draw a polyline (lines between each of the points in `poly`) in the current fore
   "return_object" : "Graphics"
 }
 Draw an **antialiased** polyline (lines between each of the points in `poly`) in the current foreground color
+
+**Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
 JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool antiAlias) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -2481,6 +2485,8 @@ This fills from the top left hand side of the polygon (low X, low Y)
 *down to but not including* the bottom right. When placed together polygons
 will align perfectly without overdraw - but this will not fill the
 same pixels as `drawPoly` (drawing a line around the edge of the polygon).
+
+**Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
 /*JSON{
   "type" : "method",
@@ -2510,6 +2516,8 @@ This fills from the top left hand side of the polygon (low X, low Y)
 *down to but not including* the bottom right. When placed together polygons
 will align perfectly without overdraw - but this will not fill the
 same pixels as `drawPoly` (drawing a line around the edge of the polygon).
+
+**Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
 JsVar *jswrap_graphics_fillPoly_X(JsVar *parent, JsVar *poly, bool antiAlias) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;

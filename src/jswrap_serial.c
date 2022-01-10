@@ -24,7 +24,7 @@
 }
 This class allows use of the built-in USARTs
 
-Methods may be called on the USB, Serial1, Serial2, Serial3, Serial4, Serial5 and Serial6 objects. While different processors provide different numbers of USARTs, you can always rely on at least Serial1 and Serial2
+Methods may be called on the `USB`, `Serial1`, `Serial2`, `Serial3`, `Serial4`, `Serial5` and `Serial6` objects. While different processors provide different numbers of USARTs, on official Espruino boards you can always rely on at least `Serial1` being available
  */
 /*JSON{
   "type" : "constructor",
