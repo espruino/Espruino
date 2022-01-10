@@ -4328,13 +4328,14 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
   promiseBuzz = jspromise_create();
   if (!promiseBuzz) return 0;
 
+  buzzAmt = (unsigned char)(amt*255);
   if (jstExecuteFn(jswrap_banglejs_buzz_callback, NULL, jshGetSystemTime()+jshGetTimeFromMilliseconds(time), 0)) {
     // task schedule succeeded - start buzz
     if (bangleFlags & JSBF_ENABLE_BUZZ) {
-      buzzAmt = (unsigned char)(amt*255);
       _jswrap_banglejs_setVibration();
     }
-  }
+  } else
+    buzzAmt = 0;
 
   return jsvLockAgain(promiseBuzz);
 }

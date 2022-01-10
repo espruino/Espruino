@@ -3,6 +3,7 @@
             Bangle.js: Ensure Bangle.getHealthStatus("day") resets at midnight (fix https://github.com/espruino/BangleApps/issues/1216)
             Bangle.js: Attempt to fix Bangle.buzz that occasionally doesn't stop
             Bangle.js2: Lower bootloader LCD SPI bitrate (was out of spec, not all LCDs worked with it)
+            Bangle.js: Attempt to fix occasional issue where vibration gets stuck on (fix https://github.com/espruino/BangleApps/issues/1249)
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect

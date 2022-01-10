@@ -576,6 +576,7 @@ bool jstStopBufferTimerTask(JsVar *var) {
 
 void jstReset() {
   jshUtilTimerDisable();
+  utilTimerOn = false;
   utilTimerTasksTail = utilTimerTasksHead = 0;
   utilTimerTime = (int)jshGetSystemTime();
   utilTimerPeriod = 0;
@@ -603,6 +604,7 @@ void jstDumpUtilityTimers() {
   int uTimerTime = utilTimerTime;
   jshInterruptOn();
 
+  jsiConsolePrintf("Util Timer %s\n", utilTimerOn?"on":"off");
   jsiConsolePrintf("Current timer difference %d us\n", (int)(1000*jshGetMillisecondsFromTime((int)jshGetSystemTime()-uTimerTime)));
   unsigned char t = uTimerTasksTail;
   bool hadTimers = false;
