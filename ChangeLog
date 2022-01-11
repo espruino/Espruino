@@ -5,6 +5,7 @@
             Bangle.js2: Lower bootloader LCD SPI bitrate (was out of spec, not all LCDs worked with it)
             Bangle.js: Attempt to fix occasional issue where vibration gets stuck on (fix https://github.com/espruino/BangleApps/issues/1249)
             Bangle.js: Ensure Bangle.setLCDPower only fires lcdPower event if state has changed (fix https://github.com/espruino/BangleApps/issues/1138)
+            Bangle.js2: Holding BTN at boot skips bootloader storage check, bootloader now times out if too many files
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect

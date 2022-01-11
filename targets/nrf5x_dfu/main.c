@@ -417,7 +417,7 @@ int main(void)
     NRF_POWER->RESETREAS = 0xFFFFFFFF;
     lcd_println("DFU " JS_VERSION "\n");
 #ifdef ESPR_BOOTLOADER_SPIFLASH
-    flashCheckAndRun();
+    if (!get_btn1_state()) flashCheckAndRun();
 #endif
 #ifdef BANGLEJS
     nrf_delay_us(500000); // 500ms delay

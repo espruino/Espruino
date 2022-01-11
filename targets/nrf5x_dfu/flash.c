@@ -448,9 +448,15 @@ void flashCheckAndRun() {
   uint32_t addr = JSF_START_ADDRESS;
   JsfFileHeader header;
   //lcd_print_hex(addr); lcd_println(" ADDR");
+  int tries = 50000;
   if (jsfGetFileHeader(addr, &header)) do {
+    if (tries-- < 0) {
+      lcd_println("TOO MANY FILES");
+      return;
+    }
     char *n = &header.name[0];
-    //if (n[0]) lcd_println(n); else lcd_println("-DELETED-");
+    /*lcd_print_hex(addr);
+    if (n[0]) lcd_println(n); else lcd_println("-DELETED-");*/
     if (n[0]=='.' && n[1]=='f' && n[2]=='i' && n[3]=='r' && n[4]=='m' && n[5]=='w' && n[6]=='a' && n[7]=='r' && n[8]=='e' && n[9]==0) {
       lcd_println("FOUND FIRMWARE");
       flashCheckFile(addr + sizeof(JsfFileHeader)/*, jsfGetFileSize(&header)*/);
