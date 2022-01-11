@@ -97,7 +97,8 @@ void jsiDebuggerLine(JsVar *line);
 IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
   // Devices have their Object data set up to something special
   // See jspNewObject
-  if (class->varData.str[0]=='D' &&
+  if (class &&
+      class->varData.str[0]=='D' &&
       class->varData.str[1]=='E' &&
       class->varData.str[2]=='V')
     return (IOEventFlags)class->varData.str[3];

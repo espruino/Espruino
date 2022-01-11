@@ -127,6 +127,7 @@ void jswrap_spi_setup(
   // The options are also hung off the class instance variable in a property symbolically called
   // DEVICE_OPTIONS_NAME ("_options").
   //
+  if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   JshSPIInfo inf;
 
@@ -217,7 +218,7 @@ JsVar *jswrap_spi_send(
   ) {
   // Debug
   // jsiConsolePrintf("jswrap_spi_send called: parent=%j, srcdata=%j, nss_pin=%p\n", parent, srcdata, nss_pin);
-  NOT_USED(parent);
+  if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
   jswrap_spi_send_data data;
@@ -306,7 +307,7 @@ void jswrap_spi_write(
     JsVar *parent, //!<
     JsVar *args    //!<
   ) {
-  NOT_USED(parent);
+  if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
   spi_sender spiSend;
@@ -361,7 +362,7 @@ Send data down SPI, using 4 bits for each 'real' bit (MSB first). This can be us
 Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds.
  */
 void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
-  NOT_USED(parent);
+  if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_SPI(device)) {
     jsExceptionHere(JSET_ERROR, "SPI.send4bit only works on hardware SPI");
@@ -431,7 +432,7 @@ Send data down SPI, using 8 bits for each 'real' bit (MSB first). This can be us
 Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds.
  */
 void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
-  NOT_USED(parent);
+  if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_SPI(device)) {
     jsExceptionHere(JSET_ERROR, "SPI.send8bit only works on hardware SPI");
@@ -561,6 +562,7 @@ Set up this I2C port
 If not specified in options, the default pins are used (usually the lowest numbered pins on the lowest port that supports this peripheral)
  */
 void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
+  if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   JshI2CInfo inf;
   if (jsi2cPopulateI2CInfo(&inf, options)) {
@@ -623,6 +625,7 @@ Transmit to the slave device with the given address. This is like Arduino's begi
  */
 
 void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
+  if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
   bool sendStop = true;
@@ -663,6 +666,7 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
 Request bytes from the given slave device, and return them as a Uint8Array (packed array of bytes). This is like using Arduino Wire's requestFrom, available and read functions.  Sends a STOP
  */
 JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
+  if (!jsvIsObject(parent)) return 0;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
   bool sendStop = true;

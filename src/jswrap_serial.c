@@ -280,6 +280,7 @@ s.setup(9600,{rx:a_pin, tx:a_pin});
 However software serial doesn't use `ck`, `cts`, `parity`, `flow` or `errors` parts of the initialisation object.
 */
 void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
+  if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   JshUSARTInfo inf;
 
@@ -342,6 +343,7 @@ uninitialise it.
 */
 #ifndef SAVE_ON_FLASH
 void jswrap_serial_unsetup(JsVar *parent) {
+  if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
   // Populate JshUSARTInfo from serial - if it exists
