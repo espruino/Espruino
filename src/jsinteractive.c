@@ -470,25 +470,6 @@ void jsiSoftInit(bool hasBeenReset) {
   // Run wrapper initialisation stuff
   jswInit();
 
-  // Search for invalid storage and erase
-  // do this only on first boot.
-#if !defined(EMSCRIPTEN) && !defined(SAVE_ON_FLASH)
-  bool fullTest = jsiStatus & JSIS_FIRST_BOOT;
-  if (fullTest) {
-#ifdef BANGLEJS
-    jsiConsolePrintf("Checking storage...\n");
-#endif
-    if (!jsfIsStorageValid(JSFSTT_NORMAL)) {
-      jsiConsolePrintf("Storage is corrupt.\n");
-      jsfResetStorage();
-    } else {
-#ifdef BANGLEJS
-      jsiConsolePrintf("Storage Ok.\n");
-#endif
-    }
-  }
-#endif
-
   // Run 'boot code' - textual JS in flash
   jsfLoadBootCodeFromFlash(hasBeenReset);
 
@@ -803,6 +784,25 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
   // Set __FILE__ if we have a filename available
   if (loadedFilename)
     jsvObjectSetChildAndUnLock(execInfo.root, "__FILE__", jsfVarFromName(*loadedFilename));
+
+  // Search for invalid storage and erase do this only on first boot.
+  // We need to do it before we check storage for any files!
+#if !defined(EMSCRIPTEN) && !defined(SAVE_ON_FLASH)
+  bool fullTest = jsiStatus & JSIS_FIRST_BOOT;
+  if (fullTest) {
+#ifdef BANGLEJS
+    jsiConsolePrintf("Checking storage...\n");
+#endif
+    if (!jsfIsStorageValid(JSFSTT_NORMAL)) {
+      jsiConsolePrintf("Storage is corrupt.\n");
+      jsfResetStorage();
+    } else {
+#ifdef BANGLEJS
+      jsiConsolePrintf("Storage Ok.\n");
+#endif
+    }
+  }
+#endif
 
   /* If flash contains any code, then we should
      Try and load from it... */

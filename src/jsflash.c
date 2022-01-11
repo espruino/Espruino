@@ -192,8 +192,8 @@ static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header, bool readFull
   if (!addr) return false;
   jshFlashRead(header, addr, readFullName ? sizeof(JsfFileHeader) : 8/* size + name.firstChars */);
   uint32_t endAddress = addr + (uint32_t)sizeof(JsfFileHeader) + jsfGetFileSize(header);
-  return (header->size != JSF_WORD_UNSET) &&
-     (endAddress <= jsfGetBankEndAddress(addr));
+  return (header->size != JSF_WORD_UNSET) && (header->size != 0) &&
+         (endAddress <= jsfGetBankEndAddress(addr));
 }
 
 /// Is an area of flash completely erased?
@@ -885,8 +885,15 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
   uint32_t size = (uint32_t)_size;
   // Data length
   JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
-  if (!dPtr) return false;
+  if (!dPtr) {
+    jsExceptionHere(JSET_ERROR, "Can't get pointer to data to write");
+    return false;
+  }
   if (size==0) size=(uint32_t)dLen;
+  if (!size) {
+    jsExceptionHere(JSET_ERROR, "Can't create zero length file");
+    return false;
+  }
   // Lookup file
   JsfFileHeader header;
   uint32_t addr = jsfFindFile(name, &header);
