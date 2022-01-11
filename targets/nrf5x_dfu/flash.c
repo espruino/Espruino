@@ -395,6 +395,7 @@ void flashCheckFile(uint32_t fileAddr) {
     return;
   } else {
     // All ok - check we haven't already flashed this!
+    lcd_println("CRC OK");
     lcd_println("TESTING...");
     isEqual = flashEqual(header, fileAddr);
   }
