@@ -3394,9 +3394,12 @@ JsVar *jswrap_graphics_asURL(JsVar *parent) {
   "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_dump"
 }
-Output this image as a bitmap URL. The Espruino Web IDE can detect the data on the console and render the image inline automatically.
+Output this image as a bitmap URL of the form `data:image/bmp;base64,...`. The Espruino Web IDE will detect this on the console and will render the image inline automatically.
 
-This is identical to `console.log(g.asURL())` - it is just a convenient function for easy debugging.
+This is identical to `console.log(g.asURL())` - it is just a convenient function for easy debugging and producing screenshots of what is currently in the Graphics instance.
+
+**Note:** This may not work on some bit depths of Graphics instances. It will also not work for the main Graphics instance
+of Bangle.js 1 as the graphics on Bangle.js 1 are stored in write-only memory.
 */
 void jswrap_graphics_dump(JsVar *parent) {
   JsVar *url = jswrap_graphics_asURL(parent);
