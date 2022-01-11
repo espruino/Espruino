@@ -1681,7 +1681,7 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
   jswrap_banglejs_setLCDPowerController(isOn);
   jswrap_banglejs_setLCDPowerBacklight(isOn);
 #endif
-  if ((bangleFlags&JSBF_LCD_ON) != isOn) {
+  if (((bangleFlags&JSBF_LCD_ON)!=0) != isOn) {
     JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
     if (bangle) {
       JsVar *v = jsvNewFromBool(isOn);
