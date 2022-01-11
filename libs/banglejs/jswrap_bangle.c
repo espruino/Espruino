@@ -2042,7 +2042,7 @@ void jswrap_banglejs_setOptions(JsVar *options) {
     "return" : ["JsVar","The current state of all options"],
     "ifdef" : "BANGLEJS"
 }
-Return the current state of options as set by `Bangle.getOptions`
+Return the current state of options as set by `Bangle.setOptions`
 */
 JsVar *jswrap_banglejs_getOptions() {
   return _jswrap_banglejs_setOptions(NULL, true);
