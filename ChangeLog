@@ -8,6 +8,8 @@
             Bangle.js2: Holding BTN at boot skips bootloader storage check, bootloader now times out if too many files
             Bangle.js: Move position of filesystem checks to before first code is run
             Storage.write is now explicit about not allowing zero length files, also creates exception if it fails because it can't get a data pointer
+            Bangle.js2: Only handle UBX protocol from GPS on Bangle.js 1 as it interferes with CASIC on Bangle.js 2 (fix #2124)
+            Bangle.js: GPS-raw no longer sets the FIFO_FULL message if data is lost - just passes a bool as the second argument
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect
