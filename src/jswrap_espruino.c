@@ -1778,7 +1778,7 @@ See [the documentation on Inline C](http://www.espruino.com/InlineC) for more in
 */
 void jswrap_espruino_compiledC(JsVar *code) {
   NOT_USED(code);
-  jsExceptionHere(JSET_ERROR, "'E.InlineC' calls should have been replaced by the Espruino tools before upload");
+  jsExceptionHere(JSET_ERROR, "'E.compiledC' calls should have been replaced by the Espruino tools before upload");
 }
 
 /*JSON{
