@@ -1316,7 +1316,7 @@ NO_INLINE JsVar *jspeFactorArray() {
 NO_INLINE void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName) {
   if (!prototypeName) return;
   JsVar *prototypeVar = jsvSkipName(prototypeName);
-  if (!jsvIsObject(prototypeVar)) {
+  if (!(jsvIsObject(prototypeVar) || jsvIsFunction(prototypeVar))) {
     if (!jsvIsUndefined(prototypeVar))
       jsExceptionHere(JSET_TYPEERROR, "Prototype should be an object, got %t", prototypeVar);
     jsvUnLock(prototypeVar);
