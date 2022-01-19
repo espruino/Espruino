@@ -14,6 +14,7 @@
             new Date(str) no longer interprets ISO 8601 UTC timestamps as local time (fix #2116)
             Graphics: Fix clipRect checks for >1x bitmap fonts
             Allow __proto__ to be set to a function as well as object
+            Bangle.js: Support for v2.1 barometer hardware (SPL06 vs BMP280)
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect

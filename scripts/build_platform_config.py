@@ -468,7 +468,7 @@ if "HEARTRATE" in board.devices:
   codeOutDevicePins("HEARTRATE", "HEARTRATE")
   if "addr" in board.devices["HEARTRATE"]:
     codeOut("#define HEARTRATE_ADDR "+str(board.devices["HEARTRATE"]["addr"]))
-  codeOut("#define HEARTRATE_DEVICE_"+board.devices["HEARTRATE"]["device"].upper())
+  codeOut("#define HEARTRATE_DEVICE_"+board.devices["HEARTRATE"]["device"].upper()+" 1")
 
 if "BAT" in board.devices:
   codeOutDevicePins("BAT", "BAT")
@@ -479,13 +479,13 @@ if "GPS" in board.devices:
 
 if "ACCEL" in board.devices:
   codeOut("#define ACCEL_DEVICE \""+board.devices["ACCEL"]["device"].upper()+"\"")
-  codeOut("#define ACCEL_DEVICE_"+board.devices["ACCEL"]["device"].upper())
+  codeOut("#define ACCEL_DEVICE_"+board.devices["ACCEL"]["device"].upper()+" 1")
   codeOut("#define ACCEL_ADDR "+str(board.devices["ACCEL"]["addr"]))
   codeOutDevicePins("ACCEL", "ACCEL")
 
 if "MAG" in board.devices:
   codeOut("#define MAG_DEVICE \""+board.devices["MAG"]["device"].upper()+"\"")
-  codeOut("#define MAG_DEVICE_"+board.devices["MAG"]["device"].upper())
+  codeOut("#define MAG_DEVICE_"+board.devices["MAG"]["device"].upper()+" 1")
   if "addr" in board.devices["MAG"]:
     codeOut("#define MAG_ADDR "+str(board.devices["MAG"]["addr"]))
   codeOutDevicePins("MAG", "MAG")
@@ -497,7 +497,7 @@ if "TEMP" in board.devices:
 
 if "PRESSURE" in board.devices:
   codeOut("#define PRESSURE_DEVICE \""+board.devices["PRESSURE"]["device"].upper()+"\"")
-  codeOut("#define PRESSURE_DEVICE_"+board.devices["PRESSURE"]["device"].upper())
+  codeOut("#define PRESSURE_DEVICE_"+board.devices["PRESSURE"]["device"].upper()+" 1")
   codeOut("#define PRESSURE_ADDR "+str(board.devices["PRESSURE"]["addr"]))
   codeOutDevicePins("PRESSURE", "PRESSURE")
 

@@ -159,8 +159,8 @@ devices = {
             'pin_scl' : 'D45'
           },
   'PRESSURE' : {
-            'device' : 'BMP280', 
-            'addr' : 0x76,
+            'device' : 'BMP280', # v2.1 uses Goertek SPL06-001 - we handle both
+            'addr' : 0x76, # both versions use the same address
             'pin_sda' : 'D47',
             'pin_scl' : 'D2'            
   },
