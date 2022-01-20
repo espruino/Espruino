@@ -1021,6 +1021,15 @@ JsVar *jsvNewArray(JsVar **elements, int elementCount) {
   return arr;
 }
 
+JsVar *jsvNewArrayFromBytes(uint8_t *elements, int elementCount) {
+  JsVar *arr = jsvNewEmptyArray();
+  if (!arr) return 0;
+  int i;
+  for (i=0;i<elementCount;i++)
+    jsvArrayPushAndUnLock(arr, jsvNewFromInteger(elements[i]));
+  return arr;
+}
+
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes) {
   JsVar *func = jsvNewWithFlags(JSV_FUNCTION | JSV_NATIVE);
   if (!func) return 0;
