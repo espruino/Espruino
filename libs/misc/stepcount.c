@@ -142,7 +142,7 @@ typedef enum {
 #define T_MIN_STEP 4 // ~333ms
 #define T_MAX_STEP 16 // ~1300ms
 #define X_STEPS 6 // steps in a row needed
-#define RAW_THRESHOLD 14
+#define RAW_THRESHOLD 18
 #define N_ACTIVE_SAMPLES 3
 
 StepState stepState;

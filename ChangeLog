@@ -15,6 +15,7 @@
             Graphics: Fix clipRect checks for >1x bitmap fonts
             Allow __proto__ to be set to a function as well as object
             Bangle.js: Support for v2.1 barometer hardware (SPL06 vs BMP280)
+            Bangle.js: Increase step counting noise threshold 14->18 to work around pedometer fake steps (http://forum.espruino.com/conversations/371740)
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect
