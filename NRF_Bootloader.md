@@ -7,19 +7,19 @@ Building complete hex file for Nordic DK upload
 Build the Bootloader:
 
 ```
-make clean;PUCKJS=1 RELEASE=1 BOOTLOADER=1 make
+make clean;BOARD=PUCKJS RELEASE=1 BOOTLOADER=1 make
 ```
 
 Now build everything:
 
 ```
-make clean;PUCKJS=1 RELEASE=1 make
+make clean;BOARD=PUCKJS RELEASE=1 make
 ```
 
 Connect SWD connections and use:
 
 ```
-PUCKJS=1 RELEASE=1 make flash
+BOARD=PUCKJS RELEASE=1 make flash
 ```
 
 (Or just copy the zip file to the NRF52DK's flash drive)
