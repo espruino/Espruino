@@ -61,9 +61,9 @@ uint16_t hrmPollInterval = HRM_POLL_INTERVAL_DEFAULT; // in msec, so 20 = 50hz
 #define VC31B_REG12        0x11 // INT?
 // 0x80 appears to enable interrupts?
 // 0x10 = WearStatusDetection (ENV sensor IRQ?)
-
+#define VC31B_REG13        0x12 // ???
 #define VC31B_REG14        0x13 // FIFO 0x40=some flag, + assert FIFO IRQ every X samples
-#define VC31B_REG15        0x14 // 16 bit time calibration (0x331 default)
+#define VC31B_REG15        0x14 // 16 bit time calibration (x>>8,x) (0x31F default)
 #define VC31B_REG16        0x16 // ENV samplerate. samplesPerSec-6. After how many samples is the 0x10 IRQ asserted for ENV data
 #define VC31B_REG17        0x17 // SLOT0 LED Current - 0xEF = maxLedCur
 #define VC31B_REG18        0x18 // SLOT1 LED Current - 0xEF = maxLedCur
@@ -73,11 +73,11 @@ uint16_t hrmPollInterval = HRM_POLL_INTERVAL_DEFAULT; // in msec, so 20 = 50hz
 
 // Interrupts
 // 0x10 = WearStatusDetection (ENV sensor IRQ?)
-/* Bit fields for VCREG1 */
+/* Bit fields for VC31B_REG1 */
 #define VC31B_STATUS_CONFLICT                       0x10
 #define VC31B_STATUS_INSAMPLE                       0x08
 #define VC31B_STATUS_OVERLOAD_MASK                  0x07 // 3x bits for each of the 3 channels
-/* Bit fields for VCREG1 */
+/* Bit fields for VC31B_REG2 */
 #define VC31B_INT_PS                          0x10
 #define VC31B_INT_OV                          0x08 // OvloadAdjust
 #define VC31B_INT_FIFO                        0x04
@@ -143,9 +143,6 @@ uint16_t hrmPollInterval = HRM_POLL_INTERVAL_DEFAULT; // in msec, so 20 = 50hz
 #define VC31A_UNWEAR_CNT               3
 #define VC31A_ISWEAR_CNT               1
 
-#define VC31A_PPG_ADJUSTED             0x1000
-#define VC31A_PPG_MASK                 0x0FFF
-
 typedef enum
 {
     AdjustDirection_Null    = 0,
@@ -176,6 +173,9 @@ typedef struct {
   bool isWearing;
   int8_t isWearCnt, unWearCnt; // counters for switching worn/unworn state
   uint16_t ppgValue; // current PPG value
+  uint16_t ppgLastValue; // last PPG value
+  int16_t ppgOffset; // PPG 'offset' value. When PPG adjusts we change the offset so it matches the last value, then slowly adjust 'ppgOffset' back down to 0
+  uint8_t wasAdjusted; // true if LED/etc adjusted since the last reading
   // the meaning of these is device-dependent but it's nice to have them in one place
   uint8_t irqStatus;
   uint8_t raw[12];
@@ -258,6 +258,23 @@ static void vc31_w16(uint8_t reg, uint16_t data) {
 }
 
 
+// we have a PPG value - save to vcInfo.ppgValue and send it to HRM monitor
+void vc31_new_ppg(uint16_t value) {
+  vcInfo.ppgLastValue = vcInfo.ppgValue;
+  vcInfo.ppgValue = value;
+
+  if (vcInfo.wasAdjusted) {
+    // stop any sudden jerky changes to the HRM value
+    vcInfo.ppgOffset = vcInfo.ppgLastValue + vcInfo.ppgOffset - vcInfo.ppgValue;
+  }
+  const int offsetAdjustment = 32;
+  if (vcInfo.ppgOffset > offsetAdjustment) vcInfo.ppgOffset -= offsetAdjustment;
+  else if (vcInfo.ppgOffset < -offsetAdjustment) vcInfo.ppgOffset += offsetAdjustment;
+  else vcInfo.ppgOffset = 0;
+
+  hrmCallback(vcInfo.ppgValue + vcInfo.ppgOffset);
+}
+
 
 static void vc31_adjust() {
   uint16_t adjustParam = 0;
@@ -292,7 +309,7 @@ static void vc31_adjust() {
       adjustParam = (uint16_t)(
           adjustStep) | VC31A_GREEN_ADJ_ENABLE | VC31A_GREEN_ADJ_UP;
       vc31_w16(VC31A_GREEN_ADJ, adjustParam);
-      vcInfo.ppgValue |= VC31A_PPG_ADJUSTED;
+      vcInfo.wasAdjusted = 2; // ignore 2 samples worth
     }
     vcaInfo.adjustInfo.direction = vcaInfo.adjustInfo.directionLast;
     vcaInfo.adjustInfo.directionLast = AdjustDirection_Up;
@@ -324,7 +341,7 @@ static void vc31_adjust() {
       adjustParam = (uint16_t)(
           adjustStep) | VC31A_GREEN_ADJ_ENABLE | VC31A_GREEN_ADJ_DOWN;
       vc31_w16(VC31A_GREEN_ADJ, adjustParam);
-      vcInfo.ppgValue |= VC31A_PPG_ADJUSTED;
+      vcInfo.wasAdjusted = 2;  // ignore 2 samples worth
     }
     vcaInfo.adjustInfo.direction = vcaInfo.adjustInfo.directionLast;
     vcaInfo.adjustInfo.directionLast = AdjustDirection_Down;
@@ -414,12 +431,12 @@ static void vc31b_readfifo(uint8_t startAddr, uint16_t endAddr, uint8_t IndexFla
   int dataLength = endAddr - startAddr;
   vc31_rx(startAddr, sampleData, dataLength);
   for(i = 0; i<dataLength; i+=2) {
-    vcInfo.ppgValue = ((sampleData[i] << 8) | sampleData[i+1]);
+    uint16_t ppgValue = ((sampleData[i] << 8) | sampleData[i+1]);
     // jsiConsolePrintf("ppg %d\n",ppgValue);
     // FIXME - we need a timestamp - hrmCallback creates one itself when it is called
     // but if we use the FIFO properly we'll need to stamp it ourselves because
     // we'll call it a bunch of times at once
-    hrmCallback(vcInfo.ppgValue);
+    vc31_new_ppg(ppgValue); // send PPG value
   }
 }
 
@@ -456,7 +473,7 @@ static void vc31b_adjust(uint8_t slotNum,uint8_t ledcur,uint8_t pdres) {
         newPdRes = (oldPdRes < 1) ? 0 : (oldPdRes - 1);
       }
       newLedCurrent = oldLedCurrent;
-      //vcHr02AddAdjustFlag(slotNum);
+      vcInfo.wasAdjusted = 2;
     }
   }
   else
@@ -494,10 +511,10 @@ static void vc31b_adjust(uint8_t slotNum,uint8_t ledcur,uint8_t pdres) {
     {
       newLedCurrent = (oldLedCurrent < vcbInfo.adjustInfo[slotNum].step) ? ledcur:oldLedCurrent - vcbInfo.adjustInfo[slotNum].step;
     }
-    //vcHr02AddAdjustFlag(slotNum);
+    vcInfo.wasAdjusted = 2;
     newPdRes = oldPdRes;
     vcbInfo.adjustInfo[slotNum].directionLast = vcbInfo.adjustInfo[slotNum].direction;
-    }
+  }
 
   vcbInfo.ledCurrent[slotNum] = newLedCurrent;
   vcbInfo.pdRes[slotNum] = newPdRes;
@@ -529,7 +546,7 @@ static void vc31b_slot_adjust(int slotNum) {
       if(vcbInfo.ledCurrent[slotNum] != 0) {
         vcbInfo.ledCurrent[slotNum] = vcbInfo.ledCurrent[slotNum] - 1;
         vcbInfo.ledMaxCurrent[slotNum] = vcbInfo.ledCurrent[slotNum];
-        //FIXME call addAdjustFlag(slotNum);
+        vcInfo.wasAdjusted = 1;
         vcbInfo.regConfig[slotNum+7] = (vcbInfo.ledCurrent[slotNum] | vcbInfo.ppgGain[slotNum]);
         vc31_w((VC31B_REG17 + slotNum), vcbInfo.regConfig[slotNum+7]);
       }
@@ -563,20 +580,22 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
     uint8_t *buf = vcInfo.raw;
     vc31_rx(VC31A_STATUS, buf, 11);
     vcInfo.irqStatus = buf[0];
-    vcInfo.ppgValue = (buf[2] << 8) | buf[1];
+    uint16_t ppgValue = (buf[2] << 8) | buf[1];
     vcaInfo.currentValue = ((buf[4] << 8) | buf[3]) + 10;
     vcaInfo.preValue = (buf[6] << 8) | buf[5];
     vcaInfo.psValue = (buf[8] << 8) | buf[7];
     vcaInfo.envValue = (buf[10] << 8) | buf[9];
 
-    if (vcInfo.irqStatus & VC31A_STATUS_D_PPG_OK)
+    if (vcInfo.irqStatus & VC31A_STATUS_D_PPG_OK) {
+      vc31_new_ppg(ppgValue); // send PPG value
+
+      if (vcInfo.wasAdjusted>0) vcInfo.wasAdjusted--;
       vc31_adjust();
+    }
     if (vcInfo.irqStatus & VC31A_STATUS_D_PS_OK)
       vc31a_wearstatus();
 
-    // sanity check ppgOffset to ensure we stay in range
-    int ppgValue = (vcInfo.ppgValue & VC31A_PPG_MASK);
-    hrmCallback(ppgValue);
+
   }
   if (vcType == VC31B_DEVICE) {
     uint8_t *buf = &vcInfo.raw[0];
@@ -598,41 +617,6 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
     vcbInfo.sampleData.currentValue[1] = buf[1] & 0x7F;
     vcbInfo.sampleData.pdResValue[2] = (buf[5] >> 4) & 0x07;
     vcbInfo.sampleData.currentValue[2] = buf[2] & 0x7F;
-    // FIXME VC31B has something about psBiasReadInPdFlag here - is it a reset for a lockup?
-    /*
-    if(vcbInfo.status & VC31B_CONFLICT)
-      return VCHR02RET_ISCONFLICT;
-    if(vcbInfo.status & VC31B_INSAMPLE)
-      return VCHR02RET_ISINSAMPLE;
-
-    for (vcHr02SlotCnt = 0; vcHr02SlotCnt < totalSlot; vcHr02SlotCnt++)
-    {
-      slotCount = (totalSlot == 2) ? vcHr02SlotCnt: (enSlot[0] ? 0:1);
-      vcHr02AdjustPDResMax(pvcHr02,slotCount);
-      ledCurrent[slotCount]= vcbInfo.regConfig[7+slotCount] & 0x7f;
-      ppgGain[slotCount] = vcbInfo.regConfig[7+slotCount] & 0x80;
-      pdRes[slotCount] = (vcbInfo.regConfig[10+slotCount] & 0x70) >> 4;
-      pdResSet[slotCount] = vcbInfo.regConfig[10+slotCount] & 0x8F;
-
-      // done this - wear detect
-      //if(vcbInfo.intReason & VC31B_INT_ENV)
-      //  ret |= vcHr02EnvAdjust(pvcHr02,slotCount);
-
-      if(vcbInfo.intReason & VC31B_INT_OV)
-      {
-        ret |= vcHr02OvloadAdjust(pvcHr02,slotCount);
-      }
-      if(vcbInfo.intReason & VC31B_INT_PPG)
-      {
-          ret |= vcHr02PpgAdjust(pvcHr02,slotCount);
-      }
-      else
-      {
-        vcbInfo.adjustInfo[slotCount].directionLast = AdjustDirection_Null;
-        vcbInfo.adjustInfo[slotCount].direction = AdjustDirection_Null;
-      }
-    }*/
-
 
     // if we had environment sensing, check for wear status and update LEDs accordingly
     if (vcInfo.irqStatus & VC31B_INT_PS) {
@@ -658,6 +642,7 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
         vc31b_readfifo(vcbInfo.fifoReadIndex,vcbInfo.fifoReadIndex+vcbInfo.totalSlots*2,0);
       }
       // now we need to adjust the PPG
+      if (vcInfo.wasAdjusted>0) vcInfo.wasAdjusted--;
       for (int slotNum=0;slotNum<3;slotNum++) {
         vc31b_slot_adjust(slotNum);
       }
@@ -677,10 +662,10 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
       fifoWriteIndex += slotNum*2;
       uint8_t buf[2];
       vc31_rx(fifoWriteIndex, buf, 2);
-      vcInfo.ppgValue = (buf[0]<<8) | buf[1];
+      uint16_t ppgValue = (buf[0]<<8) | buf[1];
       // ONLY do this here because we're not using the FIFO
       jsiConsolePrintf("ppg %d\n", vcInfo.ppgValue);
-      hrmCallback(vcInfo.ppgValue);
+      vc31_new_ppg(ppgValue); // send PPG value
       // now we need to adjust the PPG
       for (int slotNum=0;slotNum<3;slotNum++) {
         vc31b_slot_adjust(slotNum);
@@ -727,13 +712,15 @@ void hrm_sensor_on(HrmCallback callback) {
 
   memset(&vcInfo, 0, sizeof(vcInfo));
   vcInfo.isWearing = true;
-  vcInfo.unWearCnt                = VC31A_UNWEAR_CNT;
-  vcInfo.isWearCnt                = VC31A_ISWEAR_CNT;
-  vcaInfo.adjustInfo.step  = 307200;
-  vcaInfo.adjustInfo.direction = AdjustDirection_Null;
-  vcaInfo.adjustInfo.directionLast = AdjustDirection_Null;
+  vcInfo.unWearCnt = VC31A_UNWEAR_CNT;
+  vcInfo.isWearCnt = VC31A_ISWEAR_CNT;
+  vcInfo.ppgOffset = 0;
 
   if (vcType == VC31_DEVICE) {
+    vcaInfo.adjustInfo.step  = 307200;
+    vcaInfo.adjustInfo.direction = AdjustDirection_Null;
+    vcaInfo.adjustInfo.directionLast = AdjustDirection_Null;
+
     vc31_w(VC31A_GREEN_WAIT, 0xb4);
     vc31_w(VC31A_TIA_WAIT, 0x54);
     vc31_w(VC31A_PS_DIV, 0x09);
@@ -758,15 +745,17 @@ void hrm_sensor_on(HrmCallback callback) {
   //  vc31_w16(VC31A_GREEN_ADJ, 0xe8c3);
   }
   if (vcType == VC31B_DEVICE) {
-    vcbInfo.vcHr02SampleRate = 25; // Hz
+    vcbInfo.vcHr02SampleRate = 25; // 1000 / hrmPollInterval; // Hz
+    // FIXME SAMPLE RATE. Right now this only changes the period for ENV readings
     uint8_t _regConfig[17] = {
-        0x01, // VC31B_REG11 - just enable SLOT0
-        0x3F,0x8A, // 12/13/14
-        0x40, // VC31B_REG14 0x40 + FIFO Interrupt length?
-        0x03,0x1F, // VCREG15 (2 bytes) 16 bit RTC prescaler
-        0x00, // VC31B_REG16 sample rate - 6
-        0x00,0x80, // VC31B_REG17/18 solt0/1 LED current
-        0x00, // VC31B_REG19 - LED current
+        0x01,      // VC31B_REG11 - just enable SLOT0
+        VC31B_INT_OV|VC31B_INT_FIFO|VC31B_INT_ENV,      // VC31B_REG12 IRQs - was 0x3F
+        0x8A,      // VC31B_REG13 ??
+        0x40,      // VC31B_REG14 0x40 + FIFO Interrupt length in bottom 6 bits
+        0x03,0x1F, // VC31B_REG15 (2 bytes) 16 bit counter prescaler
+        0x00,      // VC31B_REG16 SLOT2 ENV sample rate - 6
+        0x00,0x80, // VC31B_REG17/18 SLOT0/1 LED current
+        0x00,      // VC31B_REG19 - LED current
         0x57,0x37, // VC31B_REG20/21 ENV sensitivity?
         0x07,0x16,
         0x56,0x16,0x00
@@ -821,6 +810,10 @@ void hrm_sensor_off() {
 JsVar *hrm_sensor_getJsVar() {
   JsVar *o = jsvNewObject();
   if (o) {
+    jsvObjectSetChildAndUnLock(o,"vcPPG",jsvNewFromInteger(vcInfo.ppgValue));
+    jsvObjectSetChildAndUnLock(o,"vcPPGoffs",jsvNewFromInteger(vcInfo.ppgOffset));
+    jsvObjectSetChildAndUnLock(o,"isWearing",jsvNewFromBool(vcInfo.isWearing));
+    jsvObjectSetChildAndUnLock(o,"adjusted",jsvNewFromBool(vcInfo.wasAdjusted));
     if (vcType == VC31_DEVICE) {
       jsvObjectSetChildAndUnLock(o,"vcCurrent",jsvNewFromInteger(vcaInfo.currentValue));
       jsvObjectSetChildAndUnLock(o,"vcPre",jsvNewFromInteger(vcaInfo.preValue));
@@ -833,7 +826,6 @@ JsVar *hrm_sensor_getJsVar() {
       jsvObjectSetChildAndUnLock(o,"vcEnv",jsvNewArrayFromBytes(vcbInfo.sampleData.envValue, 3));
     }
     jsvObjectSetChildAndUnLock(o,"vcIRQ",jsvNewFromInteger(vcInfo.irqStatus));
-    jsvObjectSetChildAndUnLock(o,"isWearing",jsvNewFromBool(vcInfo.isWearing));
     //jsvObjectSetChildAndUnLock(o,"isWearCnt",jsvNewFromInteger(vcInfo.isWearCnt));
     //jsvObjectSetChildAndUnLock(o,"unWearCnt",jsvNewFromInteger(vcInfo.unWearCnt));
     jsvObjectSetChildAndUnLock(o,"vcRaw",jsvNewArrayBufferWithData(sizeof(vcInfo.raw), vcInfo.raw));
