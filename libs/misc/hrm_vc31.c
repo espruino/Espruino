@@ -70,6 +70,7 @@ uint16_t hrmPollInterval = HRM_POLL_INTERVAL_DEFAULT; // in msec, so 20 = 50hz
 #define VC31B_REG19        0x19 // LED current, 0x30=10mA,0x50=40mA,0x5A=60mA,0xE0=80mA
 #define VC31B_REG20        0x1A // SLOT0 ENV sensitivity - 0x77 = PDResMax
 #define VC31B_REG21        0x1B // SLOT1 ENV sensitivity - 0x77 = PDResMax
+#define VC31B_REG22        0x1C // ? set to 0x67 for HRM mode
 
 // Interrupts
 // 0x10 = WearStatusDetection (ENV sensor IRQ?)
@@ -272,7 +273,11 @@ void vc31_new_ppg(uint16_t value) {
   else if (vcInfo.ppgOffset < -offsetAdjustment) vcInfo.ppgOffset += offsetAdjustment;
   else vcInfo.ppgOffset = 0;
 
-  hrmCallback(vcInfo.ppgValue + vcInfo.ppgOffset);
+  int v = vcInfo.ppgValue + vcInfo.ppgOffset;
+  if (vcType == VC31B_DEVICE)
+    v <<= 1; // on VC31B the PPG doesn't vary as much with pulse so try and bulk it up here a bit
+
+  hrmCallback(v);
 }
 
 
@@ -754,12 +759,23 @@ void hrm_sensor_on(HrmCallback callback) {
         0x40,      // VC31B_REG14 0x40 + FIFO Interrupt length in bottom 6 bits
         0x03,0x1F, // VC31B_REG15 (2 bytes) 16 bit counter prescaler
         0x00,      // VC31B_REG16 SLOT2 ENV sample rate - 6
-        0x00,0x80, // VC31B_REG17/18 SLOT0/1 LED current
+        0x00,      // VC31B_REG17 SLOT0 LED current
+        0x80,      // VC31B_REG18 SLOT1 LED current
         0x00,      // VC31B_REG19 - LED current
-        0x57,0x37, // VC31B_REG20/21 ENV sensitivity?
-        0x07,0x16,
+        0x57,0x37, // VC31B_REG20/21 SLOT 0/1 ENV sensitivity?
+        0x07,0x16, // 22,23
         0x56,0x16,0x00
     };
+    /* for SPO2
+
+      regConfig[0] = 0x47; // enable SLOT1
+      regConfig[1] = 0x2F; // different IRQs..
+      regConfig[6] = 0; // SLOT2 samplerate = every sample
+      regConfig[7] = 0x80; // SLOT1? LED current same as normal slot
+      regConfig[13] = 0x96; // was 0x16
+      regConfig[16] = 0x04; // was 4 - OverSample?
+
+     */
     memcpy(vcbInfo.regConfig, _regConfig, sizeof(_regConfig));
     //vcbInfo.regConfig[3]&0x3F==0 for FIFO disable, so FIFO is off now
 
@@ -767,7 +783,7 @@ void hrm_sensor_on(HrmCallback callback) {
     vcbInfo.regConfig[6] = vcbInfo.vcHr02SampleRate - 6; // VC31B_REG16 how often should ENV fire
 
     vcbInfo.regConfig[9] = 0xE0; //CUR = 80mA//write Hs equal to 1
-    vcbInfo.regConfig[12] = 0x67;
+    vcbInfo.regConfig[12] = 0x67; // VC31B_REG22
     vcbInfo.regConfig[0] = 0x45; // VC31B_REG11 heart rate calculation - SLOT2(env) and SLOT0(hr)
     // write all registers in one go
     vc31_wx(VC31B_REG11, vcbInfo.regConfig, 17);

@@ -277,9 +277,7 @@ HrmInfo hrmInfo;
 /// Initialise heart rate monitoring
 void hrm_init() {
   memset(&hrmInfo, 0, sizeof(hrmInfo));
-  hrmInfo.filtered = 0;
-  hrmInfo.filtered1 = 0;
-  hrmInfo.filtered2 = 0;
+  hrmInfo.wasLow = false;
   hrmInfo.lastBeatTime = jshGetSystemTime();
   HRMFilter_init(&hrmFilter);
 }
@@ -357,16 +355,22 @@ bool hrm_new(int hrmValue) {
   if (h<=-32768) h=-32768;
   if (h>32767) h=32767;
   hrmInfo.filtered2 = hrmInfo.filtered1;
-  hrmInfo.filtered1 = hrmInfo.filtered;
+  hrmInfo.filtered1 = hrmInfo.filtered;  
   hrmInfo.filtered = h;
 
   // check for step counter
   bool hadBeat = false;
   hrmInfo.isBeat = false;
-  if ((hrmInfo.filtered1 >= hrmInfo.filtered) && (hrmInfo.filtered1 >= hrmInfo.filtered2)) {
+
+  if (h < hrmInfo.avg)
+    hrmInfo.wasLow = true;
+  else if (hrmInfo.wasLow && (hrmInfo.filtered1 >= hrmInfo.filtered) && (hrmInfo.filtered1 >= hrmInfo.filtered2)) {
+    hrmInfo.wasLow = false; // peak detected, and had previously gone below average
     hrmInfo.isBeat = true;
     hadBeat = hrm_had_beat();
   }
+
+  hrmInfo.avg = ((hrmInfo.avg*31) + h) >> 5;
 
   return hadBeat;
 }
