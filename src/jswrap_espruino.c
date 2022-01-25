@@ -2030,9 +2030,9 @@ JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn) {
       if (jsvIsArray(lookup))
         replace = jsvGetArrayItem(lookup, cp);
       else if (jsvIsObject(lookup)) {
-        char code[16];
-        itostr(cp, code, 16);
-        replace = jsvObjectGetChild(lookup, code, 0);
+        JsVar *index = jsvNewFromInteger(cp);
+        replace = jsvSkipNameAndUnLock(jsvFindChildFromVar(lookup, index, false));
+        jsvUnLock(index);
       }
       if (!replace && jsvIsFunction(replaceFn)) {
         JsVar *v = jsvNewFromInteger(cp);

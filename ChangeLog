@@ -18,6 +18,7 @@
             Bangle.js: Increase step counting noise threshold 14->17 to work around pedometer fake steps (http://forum.espruino.com/conversations/371740)
             Bangle.js: Support for v2.1 HRM hardware (VC31 vs VC31B)
             Bangle.js: Better HRM detection (higher res filtering, better peak detection, lower median filter size, better confidence)
+            Fix E.decodeUTF8 when decoding UTF8 codes that contain all decimal digits
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect
