@@ -1140,7 +1140,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       p_ble_evt->header.evt_id != BLE_EVT_TX_COMPLETE)
     jsiConsolePrintf("[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );*/
 #if ESPR_BLUETOOTH_ANCS
-  if (bleStatus & BLE_ANCS_INITED)
+  if (bleStatus & BLE_ANCS_OR_AMS_INITED)
     ble_ancs_on_ble_evt(p_ble_evt);
 #endif
     uint32_t err_code;
@@ -1779,7 +1779,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
                 //      You should check on what kind of white list policy your application should use.
             }
 #if ESPR_BLUETOOTH_ANCS
-            if (bleStatus & BLE_ANCS_INITED)
+            if (bleStatus & BLE_ANCS_OR_AMS_INITED)
               ble_ancs_bonding_succeeded(p_evt->conn_handle);
 #endif
 
@@ -2374,9 +2374,11 @@ static void services_init() {
 #endif
 #if ESPR_BLUETOOTH_ANCS
     bool useANCS = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ANCS, 0));
-    if (useANCS) {
+    bool useAMS = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_AMS, 0));
+    if (useANCS || useAMS) {
       ble_ancs_init();
-      bleStatus |= BLE_ANCS_INITED;
+      if (useANCS) bleStatus |= BLE_ANCS_INITED;
+      if (useAMS) bleStatus |= BLE_AMS_INITED;
     }
 #endif
 }
@@ -2709,8 +2711,8 @@ bool jsble_kill() {
   // BLE HID doesn't need deinitialising (no ble_hids_kill)
   bleStatus &= ~BLE_HID_INITED;
 #if ESPR_BLUETOOTH_ANCS
-  // BLE ANCS doesn't need deinitialising
-  bleStatus &= ~BLE_ANCS_INITED;
+  // BLE ANCS/AMS doesn't need deinitialising
+  bleStatus &= ~BLE_ANCS_OR_AMS_INITED;
 #endif
   uint32_t err_code;
 #if NRF_SD_BLE_API_VERSION < 5

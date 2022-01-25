@@ -104,19 +104,21 @@ typedef enum  {
   BLE_IS_SENDING_HID = 128,   //< Are we waiting to send data for USB HID?
   BLE_IS_RSSI_SCANNING = 256, //< Are we scanning for RSSI values
   BLE_IS_SLEEPING = 512,      //< NRF.sleep has been called
-  BLE_PM_INITIALISED = 1024,  //< Set when the Peer Manager has been initialised (only needs doing once, even after SD restart)
-  BLE_IS_NOT_CONNECTABLE = 2048, //< Is the device connectable?
-  BLE_IS_NOT_SCANNABLE = 4096, //< Is the device scannable? eg, scan response
-  BLE_WHITELIST_ON_BOND = 8192,  //< Should we write to the whitelist whenever we bond to a device?
-  BLE_DISABLE_DYNAMIC_INTERVAL = 16384, //< Disable automatically changing interval based on BLE peripheral activity
-  BLE_ENCRYPT_UART = 32768,  //< Has security with encryption been requested (if so UART must require it)
+  BLE_PM_INITIALISED = 1<<10,  //< Set when the Peer Manager has been initialised (only needs doing once, even after SD restart)
+  BLE_IS_NOT_CONNECTABLE = 1<<11, //< Is the device connectable?
+  BLE_IS_NOT_SCANNABLE = 1<<12, //< Is the device scannable? eg, scan response
+  BLE_WHITELIST_ON_BOND = 1<<13,  //< Should we write to the whitelist whenever we bond to a device?
+  BLE_DISABLE_DYNAMIC_INTERVAL = 1<<14, //< Disable automatically changing interval based on BLE peripheral activity
+  BLE_ENCRYPT_UART = 1<<15,  //< Has security with encryption been requested (if so UART must require it)
 #ifdef ESPR_BLUETOOTH_ANCS
-  BLE_ANCS_INITED = 65536,   //< Apple Notification Centre enabled
+  BLE_ANCS_INITED = 1<<16,   //< Apple Notification Centre enabled
+  BLE_AMS_INITED = 1<<17,   //< Apple Media Service enabled
+  BLE_ANCS_OR_AMS_INITED = BLE_ANCS_INITED|BLE_AMS_INITED, //< Apple Notifications or Media Service enabled
 #endif
 
-  BLE_IS_ADVERTISING_MULTIPLE = 131072, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_ONE = 262144,
-  BLE_ADVERTISING_MULTIPLE_SHIFT = 18,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_IS_ADVERTISING_MULTIPLE = 1<<18, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_SHIFT = 19,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_ADVERTISING_MULTIPLE_ONE = 1 << BLE_ADVERTISING_MULTIPLE_SHIFT,
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 
   /// These are flags that should be reset when the softdevice starts up

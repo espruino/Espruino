@@ -46,23 +46,43 @@ NRF.setAdvertising({})
 E.on('ANCS',a=>{
   print("ANCS", E.toJS(a));
 });
-E.on('AMS',a=>{
-  //print("AMS", E.toJS(a));
-  // eg. {id:"title",value:"Track Name too lon",truncated:true}
-  //
-  if (a.truncated)
-    NRF.amsGetMusicInfo(a.id).then(n => print(a.id, n))
-  else
-    print(a.id, a.value);
-});
-
 // get message contents
 NRF.ancsGetNotificationInfo( 1 ).then(a=>print("Notify",E.toJS(a))); // 1==id
 // Get app name.
 NRF.ancsGetAppInfo("com.google.hangouts").then(a=>print("App",E.toJS(a)));
 
+
+NRF.setServices({},{ams:true})
+E.on('AMS',a=>{
+  //print("AMS", E.toJS(a));
+  // eg. {id:"title",value:"Track Name too lon",truncated:true}
+  //
+  if (a.truncated)
+    NRF.amsGetTrackInfo(a.id).then(n => print(a.id, n))
+  else
+    print(a.id, a.value);
+});
+
+
 // music control
 NRF.amsCommand("pause")
+
+// Track information
+NRF.amsGetTrackInfo("title").then(a=>print("Title:",a))
+NRF.amsGetTrackInfo("artist").then(a=>print("Artist:",a))
+NRF.amsGetTrackInfo("duration").then(a=>print("Duration:",a,"seconds"))
+
+// Music player (and current playback status)
+NRF.amsGetPlayerInfo("name").then(a=>print("Music app name:",a))
+NRF.amsGetPlayerInfo("volume").then(a=>print("Volume:",a))
+NRF.amsGetPlayerInfo("playbackinfo").then(a=>{
+  p = a.split(',');
+  playbackState = ['Paused','Playing','Rewinding','FastForwarding'][p[0]];
+  playbackRate = parseFloat(p[1]);
+  elapsedTime = parseFloat(p[2]);
+  print(playbackState,"@ rate:",playbackRate,"- elapsed time:",elapsedTime,"seconds");
+});
+
 
 */
 
@@ -104,7 +124,7 @@ static ble_ancs_c_attr_t      m_notif_attr_app_id_latest;              /**< Loca
 // ANCS APP
 static char m_attr_appname[32];                         /**< Buffer to store attribute data. */
 // ANCS NOTIFICATION
-static char m_attr_appid[32];                           /**< Buffer to store attribute data. */
+static char m_attr_appid[48];                           /**< Buffer to store attribute data. */
 static char m_attr_title[64];                           /**< Buffer to store attribute data. */
 static char m_attr_subtitle[64];                        /**< Buffer to store attribute data. */
 static char m_attr_message[512];                        /**< Buffer to store attribute data. */
@@ -112,7 +132,7 @@ static char m_attr_message_size[16];                    /**< Buffer to store att
 static char m_attr_date[20];                            /**< Buffer to store attribute data. */
 static char m_attr_posaction[16];                       /**< Buffer to store attribute data. */
 static char m_attr_negaction[16];                       /**< Buffer to store attribute data. */
-static char m_attr_disp_name[32];                       /**< Buffer to store attribute data. */
+// static char m_attr_disp_name[32];                       /**< Buffer to store attribute data. */
 //AMS state
 static uint8_t m_entity_attribute[BLE_AMS_EA_MAX_DATA_LENGTH];
 
@@ -152,11 +172,11 @@ void ble_ancs_handle_notif_attr(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif
   jsvObjectSetChildAndUnLock(o, "date", jsvNewFromString(m_attr_date));
   jsvObjectSetChildAndUnLock(o, "posAction", jsvNewFromString(m_attr_posaction));
   jsvObjectSetChildAndUnLock(o, "negAction", jsvNewFromString(m_attr_negaction));
-  jsvObjectSetChildAndUnLock(o, "name", jsvNewFromString(m_attr_disp_name));
+  // jsvObjectSetChildAndUnLock(o, "name", jsvNewFromString(m_attr_disp_name));
   bleCompleteTaskSuccessAndUnLock(BLETASK_ANCS_NOTIF_ATTR, o);
 }
 
-/** Handle AMS track info update (called outside of IRQ by Espruino) - will poke the relevant events in */
+/** Handle ANCS app attribue request */
 void ble_ancs_handle_app_attr(BLEPending blep, char *buffer, size_t bufferLen) {
   // Complete the ANCS app attribute promise
   JsVar *o = jsvNewObject();
@@ -166,8 +186,9 @@ void ble_ancs_handle_app_attr(BLEPending blep, char *buffer, size_t bufferLen) {
   bleCompleteTaskSuccessAndUnLock(BLETASK_ANCS_APP_ATTR, o);
 }
 
-
-void ble_ams_handle_update(BLEPending blep, uint16_t data, char *buffer, size_t bufferLen) {
+/** Handle AMS track info update */
+void ble_ams_handle_track_update(BLEPending blep, uint16_t data, char *buffer, size_t bufferLen) {
+  NRF_LOG_DEBUG("AMS track update - data 0x%d, buffer:%s\n", data, buffer);
   bool isTruncated = data & 128;
   ble_ams_c_track_attribute_id_val_t attrId = data & 127;
   const char *idStr = "?";
@@ -190,6 +211,30 @@ void ble_ams_handle_update(BLEPending blep, uint16_t data, char *buffer, size_t 
   jsvUnLock(o);
 }
 
+/** Handle AMS player info update */
+void ble_ams_handle_player_update(BLEPending blep, uint16_t data, char *buffer, size_t bufferLen) {
+  NRF_LOG_DEBUG("AMS player update - data 0x%d, buffer:%s\n", data, buffer);
+  bool isTruncated = data & 128;
+  ble_ams_c_player_attribute_id_val_t attrId = data & 127;
+  const char *idStr = "?";
+  switch (attrId) {
+    case BLE_AMS_PLAYER_ATTRIBUTE_ID_NAME:
+      idStr = "name"; break;
+    case BLE_AMS_PLAYER_ATTRIBUTE_ID_PLAYBACK_INFO:
+      idStr = "playbackinfo"; break;
+    case BLE_AMS_PLAYER_ATTRIBUTE_ID_VOLUME:
+      idStr = "volume"; break;
+  };
+  JsVar *o = jsvNewObject();
+  if (!o) return;
+  jsvObjectSetChildAndUnLock(o, "id", jsvNewFromString(idStr));
+  jsvObjectSetChildAndUnLock(o, "value", jsvNewStringOfLength(bufferLen, buffer));
+  jsvObjectSetChildAndUnLock(o, "truncated", jsvNewFromBool(isTruncated));
+  jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"AMS", 1, &o);
+  jsvUnLock(o);
+}
+
+/** Handle AMS attribute */
 void ble_ams_handle_attribute(BLEPending blep, char *buffer, size_t bufferLen) {
   // Complete the AMS promise
   bleCompleteTaskSuccessAndUnLock(BLETASK_AMS_ATTR, jsvNewStringOfLength(bufferLen, buffer));
@@ -209,7 +254,7 @@ void ble_ancs_clear_attr() {
   memset(m_attr_date         ,0, sizeof(m_attr_date));
   memset(m_attr_posaction    ,0, sizeof(m_attr_posaction));
   memset(m_attr_negaction    ,0, sizeof(m_attr_negaction));
-  memset(m_attr_disp_name    ,0, sizeof(m_attr_disp_name));
+  // memset(m_attr_disp_name    ,0, sizeof(m_attr_disp_name));
 }
 
 void ble_ancs_bonding_succeeded(uint16_t conn_handle) {
@@ -258,13 +303,20 @@ static void apple_media_setup(void) {
   m_ams_active = true;
   NRF_LOG_INFO("Apple Media-Notifications Enabled.\n");
 
+  // Register for all EntityPlayer Attributes (Name, PlaybackInfo, Volume);
+  uint8_t attribute_number = 3;
+  uint8_t player_attribute_list[] = {BLE_AMS_PLAYER_ATTRIBUTE_ID_NAME,
+                              BLE_AMS_PLAYER_ATTRIBUTE_ID_PLAYBACK_INFO,
+                              BLE_AMS_PLAYER_ATTRIBUTE_ID_VOLUME};
+  ret = ble_ams_c_entity_update_write(&m_ams_c, BLE_AMS_ENTITY_ID_PLAYER, attribute_number, player_attribute_list);
+
   // Register for all EntityTrack Attributes (TrackArtist, TrackAlbum, TrackTitle, TrackDuration);
-  uint8_t attribute_number = 4;
-  uint8_t attribute_list[] = {BLE_AMS_TRACK_ATTRIBUTE_ID_ARTIST,
+  attribute_number = 4;
+  uint8_t track_attribute_list[] = {BLE_AMS_TRACK_ATTRIBUTE_ID_ARTIST,
                               BLE_AMS_TRACK_ATTRIBUTE_ID_ALBUM,
                               BLE_AMS_TRACK_ATTRIBUTE_ID_TITLE,
                               BLE_AMS_TRACK_ATTRIBUTE_ID_DURATION};
-  ret = ble_ams_c_entity_update_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, attribute_number, attribute_list);
+  ret = ble_ams_c_entity_update_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, attribute_number, track_attribute_list);
   jsble_check_error(ret);
 }
 
@@ -387,12 +439,12 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt) {
   }
 }
 
-/**@brief Function for handling the Apple Notification Service client.
+/**@brief Function for handling the Apple Media Service client.
  *
- * @details This function is called for all events in the Apple Notification client that
+ * @details This function is called for all events in the Apple Media Service client that
  *          are passed to the application.
  *
- * @param[in] p_evt  Event received from the Apple Notification Service client.
+ * @param[in] p_evt  Event received from the Apple Media Service client.
  */
 static void on_ams_c_evt(ble_ams_c_evt_t * p_evt) {
   ret_code_t ret = NRF_SUCCESS;
@@ -412,10 +464,16 @@ static void on_ams_c_evt(ble_ams_c_evt_t * p_evt) {
     break;
 
   case BLE_AMS_C_EVT_ENTITY_UPDATE_NOTIFICATION:
-    NRF_LOG_INFO("BLE_AMS_C_EVT_ENTITY_UPDATE_NOTIFICATION: attr %d\n", p_evt->entity_update_data.attribute_id);
-    jsble_queue_pending_buf(BLEP_AMS_UPDATE,
-        p_evt->entity_update_data.attribute_id | (p_evt->entity_update_data.entity_update_flag?128:0),
-        p_evt->entity_update_data.p_entity_update_data, p_evt->entity_update_data.entity_update_data_len);
+    NRF_LOG_INFO("BLE_AMS_C_EVT_ENTITY_UPDATE_NOTIFICATION: entity %d, attr %d\n", p_evt->entity_update_data.entity_id, p_evt->entity_update_data.attribute_id);
+    if (p_evt->entity_update_data.entity_id == BLE_AMS_ENTITY_ID_PLAYER) {
+      jsble_queue_pending_buf(BLEP_AMS_PLAYER_UPDATE,
+          p_evt->entity_update_data.attribute_id | (p_evt->entity_update_data.entity_update_flag?128:0),
+          p_evt->entity_update_data.p_entity_update_data, p_evt->entity_update_data.entity_update_data_len);
+    } else {
+      jsble_queue_pending_buf(BLEP_AMS_TRACK_UPDATE,
+          p_evt->entity_update_data.attribute_id | (p_evt->entity_update_data.entity_update_flag?128:0),
+          p_evt->entity_update_data.p_entity_update_data, p_evt->entity_update_data.entity_update_data_len);
+    }
     break;
 
   case BLE_AMS_C_EVT_ENTITY_ATTRIBUTE_READ_RESP: {
@@ -500,10 +558,10 @@ void ble_ancs_on_ble_evt(const ble_evt_t * p_ble_evt)
             NRF_LOG_INFO("Disconnected.\n");
             ret               = app_timer_stop(m_sec_req_timer_id);
             APP_ERROR_CHECK_NOT_URGENT(ret);
-            if (p_ble_evt->evt.gap_evt.conn_handle == m_ancs_c.conn_handle) {
+            if ((bleStatus & BLE_ANCS_INITED) && p_ble_evt->evt.gap_evt.conn_handle == m_ancs_c.conn_handle) {
                 m_ancs_c.conn_handle = BLE_CONN_HANDLE_INVALID;
             }
-            if (p_ble_evt->evt.gap_evt.conn_handle == m_ams_c.conn_handle) {
+            if ((bleStatus & BLE_AMS_INITED) && p_ble_evt->evt.gap_evt.conn_handle == m_ams_c.conn_handle) {
                 m_ams_c.conn_handle = BLE_CONN_HANDLE_INVALID;
             }
             m_ancs_active = false;
@@ -520,90 +578,94 @@ void ble_ancs_on_ble_evt(const ble_evt_t * p_ble_evt)
 
 /**@brief Function for initializing the Apple Notification Center Service.
  */
-static void services_init(void)
-{
-    ble_ancs_c_init_t ancs_init_obj;
-    ble_ams_c_init_t ams_c_init;
+static void services_init(void) {
     ret_code_t        ret;
 
-    memset(&ancs_init_obj, 0, sizeof(ancs_init_obj));
     ble_ancs_clear_attr();
     ble_ancs_clear_app_attr();
 
-    ret = nrf_ble_ancs_c_app_attr_add(&m_ancs_c,
-                                  BLE_ANCS_APP_ATTR_ID_DISPLAY_NAME,
-                                  (uint8_t*)m_attr_appname,
-                                  sizeof(m_attr_appname));
-    APP_ERROR_CHECK(ret);
+    if (bleStatus & BLE_ANCS_INITED) {
+      ble_ancs_c_init_t ancs_init_obj;
+      memset(&ancs_init_obj, 0, sizeof(ancs_init_obj));
 
-    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                  BLE_ANCS_NOTIF_ATTR_ID_APP_IDENTIFIER,
-                                  (uint8_t*)m_attr_appid,
-                                  sizeof(m_attr_appid));
-    APP_ERROR_CHECK(ret);
+      ret = nrf_ble_ancs_c_app_attr_add(&m_ancs_c,
+                                    BLE_ANCS_APP_ATTR_ID_DISPLAY_NAME,
+                                    (uint8_t*)m_attr_appname,
+                                    sizeof(m_attr_appname));
+      APP_ERROR_CHECK(ret);
 
-    ret = nrf_ble_ancs_c_app_attr_add(&m_ancs_c,
-                                      BLE_ANCS_APP_ATTR_ID_DISPLAY_NAME,
-                                      (uint8_t*)m_attr_disp_name,
-                                      sizeof(m_attr_disp_name));
-    APP_ERROR_CHECK(ret);
+      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                    BLE_ANCS_NOTIF_ATTR_ID_APP_IDENTIFIER,
+                                    (uint8_t*)m_attr_appid,
+                                    sizeof(m_attr_appid));
+      APP_ERROR_CHECK(ret);
 
-    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                  BLE_ANCS_NOTIF_ATTR_ID_TITLE,
-                                  (uint8_t*)m_attr_title,
-                                  sizeof(m_attr_title));
-    APP_ERROR_CHECK(ret);
+      // ret = nrf_ble_ancs_c_app_attr_add(&m_ancs_c,
+      //                                   BLE_ANCS_APP_ATTR_ID_DISPLAY_NAME,
+      //                                   (uint8_t*)m_attr_disp_name,
+      //                                   sizeof(m_attr_disp_name));
+      // APP_ERROR_CHECK(ret);
 
-    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                  BLE_ANCS_NOTIF_ATTR_ID_MESSAGE,
-                                  (uint8_t*)m_attr_message,
-                                  sizeof(m_attr_message));
-    APP_ERROR_CHECK(ret);
+      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                    BLE_ANCS_NOTIF_ATTR_ID_TITLE,
+                                    (uint8_t*)m_attr_title,
+                                    sizeof(m_attr_title));
+      APP_ERROR_CHECK(ret);
 
-    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                  BLE_ANCS_NOTIF_ATTR_ID_SUBTITLE,
-                                  (uint8_t*)m_attr_subtitle,
-                                  sizeof(m_attr_subtitle));
-    APP_ERROR_CHECK(ret);
+      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                    BLE_ANCS_NOTIF_ATTR_ID_MESSAGE,
+                                    (uint8_t*)m_attr_message,
+                                    sizeof(m_attr_message));
+      APP_ERROR_CHECK(ret);
 
-    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                  BLE_ANCS_NOTIF_ATTR_ID_MESSAGE_SIZE,
-                                  (uint8_t*)m_attr_message_size,
-                                  sizeof(m_attr_message_size));
-    APP_ERROR_CHECK(ret);
+      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                    BLE_ANCS_NOTIF_ATTR_ID_SUBTITLE,
+                                    (uint8_t*)m_attr_subtitle,
+                                    sizeof(m_attr_subtitle));
+      APP_ERROR_CHECK(ret);
 
-    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                  BLE_ANCS_NOTIF_ATTR_ID_DATE,
-                                  (uint8_t*)m_attr_date,
-                                  sizeof(m_attr_date));
-    APP_ERROR_CHECK(ret);
+      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                    BLE_ANCS_NOTIF_ATTR_ID_MESSAGE_SIZE,
+                                    (uint8_t*)m_attr_message_size,
+                                    sizeof(m_attr_message_size));
+      APP_ERROR_CHECK(ret);
 
-    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                  BLE_ANCS_NOTIF_ATTR_ID_POSITIVE_ACTION_LABEL,
-                                  (uint8_t*)m_attr_posaction,
-                                  sizeof(m_attr_posaction));
-    APP_ERROR_CHECK(ret);
+      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                    BLE_ANCS_NOTIF_ATTR_ID_DATE,
+                                    (uint8_t*)m_attr_date,
+                                    sizeof(m_attr_date));
+      APP_ERROR_CHECK(ret);
 
-    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                  BLE_ANCS_NOTIF_ATTR_ID_NEGATIVE_ACTION_LABEL,
-                                  (uint8_t*)m_attr_negaction,
-                                  sizeof(m_attr_negaction));
-    APP_ERROR_CHECK(ret);
+      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                    BLE_ANCS_NOTIF_ATTR_ID_POSITIVE_ACTION_LABEL,
+                                    (uint8_t*)m_attr_posaction,
+                                    sizeof(m_attr_posaction));
+      APP_ERROR_CHECK(ret);
 
-    ancs_init_obj.evt_handler   = on_ancs_c_evt;
-    ancs_init_obj.error_handler = apple_notification_error_handler;
+      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                    BLE_ANCS_NOTIF_ATTR_ID_NEGATIVE_ACTION_LABEL,
+                                    (uint8_t*)m_attr_negaction,
+                                    sizeof(m_attr_negaction));
+      APP_ERROR_CHECK(ret);
 
-    ret = ble_ancs_c_init(&m_ancs_c, &ancs_init_obj);
-    APP_ERROR_CHECK(ret);
+      ancs_init_obj.evt_handler   = on_ancs_c_evt;
+      ancs_init_obj.error_handler = apple_notification_error_handler;
 
-    // Init the Apple Media Service client module.
-    memset(&ams_c_init, 0, sizeof(ams_c_init));
+      ret = ble_ancs_c_init(&m_ancs_c, &ancs_init_obj);
+      APP_ERROR_CHECK(ret);
+    }
 
-    ams_c_init.evt_handler   = on_ams_c_evt;
-    ams_c_init.error_handler = apple_media_error_handler;
+    if (bleStatus & BLE_AMS_INITED) {
+      ble_ams_c_init_t ams_c_init;
+      // Init the Apple Media Service client module.
+      memset(&ams_c_init, 0, sizeof(ams_c_init));
 
-    ret = ble_ams_c_init(&m_ams_c, &ams_c_init);
-    APP_ERROR_CHECK(ret);
+      ams_c_init.evt_handler   = on_ams_c_evt;
+      ams_c_init.error_handler = apple_media_error_handler;
+
+      ret = ble_ams_c_init(&m_ams_c, &ams_c_init);
+      APP_ERROR_CHECK(ret);
+    }
 }
 
 
@@ -618,8 +680,10 @@ static void services_init(void)
 static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
 {
   NRF_LOG_INFO("db_disc_handler %d\n", p_evt->evt_type);
-  ble_ancs_c_on_db_disc_evt(&m_ancs_c, p_evt);
-  ble_ams_c_on_db_disc_evt(&m_ams_c, p_evt);
+  if (bleStatus & BLE_ANCS_INITED)
+    ble_ancs_c_on_db_disc_evt(&m_ancs_c, p_evt);
+  if (bleStatus & BLE_AMS_INITED)
+    ble_ams_c_on_db_disc_evt(&m_ams_c, p_evt);
 }
 
 /**@brief Function for handling the security request timer time-out.
@@ -681,7 +745,7 @@ bool ble_ams_is_active() {
 
 void ble_ancs_get_adv_uuid(ble_uuid_t *p_adv_uuids) {
   p_adv_uuids[0].uuid = 0xF431/*ANCS_UUID_SERVICE*/;
-  p_adv_uuids[0].type = m_ancs_c.service.service.uuid.type;
+  p_adv_uuids[0].type = (bleStatus & BLE_ANCS_INITED) ? m_ancs_c.service.service.uuid.type : m_ams_c.service.service.uuid.type;
 }
 
 /// Perform the given action for the current notification (positive/negative)
@@ -719,8 +783,19 @@ bool ble_ancs_request_app(char *app_id, int len) {
   return ret==0;
 }
 
-// Request an AMS attribute
-bool ble_ams_request_info(ble_ams_c_track_attribute_id_val_t cmd) {
+// Request an AMS player attribute
+bool ble_ams_request_player_info(ble_ams_c_player_attribute_id_val_t cmd) {
+  ret_code_t ret = ble_ams_c_entity_attribute_write(&m_ams_c, BLE_AMS_ENTITY_ID_PLAYER, cmd);
+  jsble_check_error(ret);
+  if (ret==0) {
+    ret = ble_ams_c_entity_attribute_read(&m_ams_c, 0);
+    jsble_check_error(ret);
+  }
+  return ret==0;
+}
+
+// Request an AMS track attribute
+bool ble_ams_request_track_info(ble_ams_c_track_attribute_id_val_t cmd) {
   ret_code_t ret = ble_ams_c_entity_attribute_write(&m_ams_c, BLE_AMS_ENTITY_ID_TRACK, cmd);
   jsble_check_error(ret);
   if (ret==0) {

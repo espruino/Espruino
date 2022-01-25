@@ -34,6 +34,7 @@
 #define BLE_NAME_MAC_ADDRESS            "BLE_MAC"
 #if ESPR_BLUETOOTH_ANCS
 #define BLE_NAME_ANCS                   "BLE_ANCS"
+#define BLE_NAME_AMS                    "BLE_AMS"
 #endif
 
 typedef enum {
