@@ -2376,9 +2376,9 @@ static void services_init() {
     bool useANCS = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ANCS, 0));
     bool useAMS = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_AMS, 0));
     if (useANCS || useAMS) {
-      ble_ancs_init();
       if (useANCS) bleStatus |= BLE_ANCS_INITED;
       if (useAMS) bleStatus |= BLE_AMS_INITED;
+      ble_ancs_init();
     }
 #endif
 }
