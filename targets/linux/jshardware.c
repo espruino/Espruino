@@ -264,6 +264,7 @@ void jshInputThread() {
     while (kbhit() && (jshGetEventsUsed()<IOBUFFERMASK/2)) {
       int ch = getch();
       if (ch<0) break;
+      if (ch==4) exit(0); // exit on Ctrl-D
       jshPushIOCharEvent(EV_USBSERIAL, (char)ch);
     }
     // Read from any open devices - if we have space
