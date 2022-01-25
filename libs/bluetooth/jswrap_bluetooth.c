@@ -3049,6 +3049,9 @@ NRF.setSecurity({
   passkey : // default "", or a 6 digit passkey to use
   oob : [0..15] // if specified, Out Of Band pairing is enabled and
                 // the 16 byte pairing code supplied here is used
+  encryptUart : bool // default false (unless oob or passkey specified)
+                     // This sets the BLE UART service such that it
+                     // is encrypted and can only be used from a bonded connection
 });
 ```
 
@@ -3066,6 +3069,7 @@ NRF.setSecurity({passkey:"123456", mitm:1, display:1});
 However, while most devices will request a passkey for pairing at
 this point it is still possible for a device to connect without
 requiring one (eg. using the 'NRF Connect' app).
+
 
 To force a passkey you need to protect each characteristic
 you define with `NRF.setSecurity`. For instance the following

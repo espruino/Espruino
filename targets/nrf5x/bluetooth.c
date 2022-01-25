@@ -2073,6 +2073,9 @@ void jsble_update_security() {
   JsVar *options = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
   if (jsvIsObject(options)) {
     JsVar *v;
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "encryptUart", 0)))
+      encryptUart = true;
+    // Check for passkey
     uint8_t passkey[BLE_GAP_PASSKEY_LEN+1];
     memset(passkey, 0, sizeof(passkey));
     v = jsvObjectGetChild(options, "passkey", 0);

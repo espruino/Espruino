@@ -20,6 +20,7 @@
             Bangle.js: Better HRM detection (higher res filtering, better peak detection, lower median filter size, better confidence)
             Fix E.decodeUTF8 when decoding UTF8 codes that contain all decimal digits
             Fix for potential buffer overrun if JSON.stringify used with strangely crafted whitespace arg (fix #2114)
+            Add `NRF.setSecurity({encryptUart:true})` to force encrypted comms on BLE UART
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect
