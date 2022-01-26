@@ -3171,8 +3171,13 @@ JsVar *jswrap_ble_getSecurityStatus(JsVar *parent) {
     "return" : ["JsVar", "A promise" ]
 }
 */
-JsVar *jswrap_ble_startBonding(bool forceRepair) {
-  return jsble_startBonding(forceRepair);
+JsVar *jswrap_ble_startBonding(bool forceRePair) {
+  if (bleNewTask(BLETASK_BONDING, NULL)) {
+     JsVar *promise = jsvLockAgainSafe(blePromise);
+     jsble_startBonding(forceRePair);
+     return promise;
+   }
+   return 0;
 }
 
 /*JSON{

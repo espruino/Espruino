@@ -231,7 +231,7 @@ void jsble_set_services(JsVar *data);
 uint32_t jsble_disconnect(uint16_t conn_handle);
 
 /// Start bonding on the peripheral connection, returns a promise
-JsVar *jsble_startBonding(bool forceRePair);
+void jsble_startBonding(bool forceRePair);
 
 /// For BLE HID, send an input report to the receiver. Must be <= HID_KEYS_MAX_LEN
 void jsble_send_hid_input_report(uint8_t *data, int length);

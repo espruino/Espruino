@@ -2986,7 +2986,7 @@ uint32_t jsble_disconnect(uint16_t conn_handle) {
   return sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 }
 
-JsVar *jsble_startBonding(bool forceRePair) {
+void jsble_startBonding(bool forceRePair) {
 #if PEER_MANAGER_ENABLED
   if (!jsble_has_peripheral_connection())
       return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Not connected"));
