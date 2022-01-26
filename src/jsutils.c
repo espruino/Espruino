@@ -766,9 +766,11 @@ void vcbprintf(
       case '9':
       {
         const char *pad = " ";
+        if (!*fmt) break;
         if (fmtChar=='0') {
           pad = "0";
           fmtChar = *fmt++;
+          if (!*fmt) break;
         }
         int digits = fmtChar - '0';
          // of the form '%02d'
