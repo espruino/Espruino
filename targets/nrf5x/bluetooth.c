@@ -2986,6 +2986,22 @@ uint32_t jsble_disconnect(uint16_t conn_handle) {
   return sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 }
 
+JsVar *jsble_startBonding(bool forceRePair) {
+#if PEER_MANAGER_ENABLED
+  if (!jsble_has_peripheral_connection())
+      return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Not connected"));
+
+  uint32_t err_code = pm_conn_secure(m_peripheral_conn_handle, forceRePair);
+  JsVar *errStr = jsble_get_error_string(err_code);
+  if (errStr) {
+    bleCompleteTaskFail(BLETASK_BONDING, errStr);
+    jsvUnLock(errStr);
+  }
+#else
+  return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Peer Manager not compiled in"));
+#endif
+}
+
 #if BLE_HIDS_ENABLED
 void jsble_send_hid_input_report(uint8_t *data, int length) {
   if (!(bleStatus & BLE_HID_INITED)) {

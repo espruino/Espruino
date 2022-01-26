@@ -3160,6 +3160,22 @@ JsVar *jswrap_ble_getSecurityStatus(JsVar *parent) {
 }
 
 /*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "startBonding",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : "jswrap_ble_startBonding",
+    "params" : [
+      ["forceRepair","bool","True if we should force repairing even if there is already valid pairing info"]
+    ],
+    "return" : ["JsVar", "A promise" ]
+}
+*/
+JsVar *jswrap_ble_startBonding(bool forceRepair) {
+  return jsble_startBonding(forceRepair);
+}
+
+/*JSON{
   "type" : "class",
   "class" : "BluetoothDevice",
   "ifdef" : "NRF52_SERIES"
