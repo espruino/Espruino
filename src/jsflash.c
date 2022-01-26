@@ -419,10 +419,15 @@ static void jsfCompactWriteBuffer(uint32_t *writeAddress, uint32_t readAddress, 
       return;
     }
     jsDebug(DBG_INFO,"compact> write %d from buf[%d] => 0x%08x\n", s, *swapBufferTail, *writeAddress);
-    if (!jsfIsErased(*writeAddress, s)) {
+    // if on a new page, erase it
+    uint32_t pAddr, pLen;
+    if (jshFlashGetPage(*writeAddress, &pAddr, &pLen) &&  (pAddr == *writeAddress)) {
+      jsDebug(DBG_INFO,"compact> erase page 0x%08x\n", *writeAddress);
       jshFlashErasePage(*writeAddress);
     }
-    assert(jsfIsErased(*writeAddress, s));
+    assert(jsfIsErased(*writeAddress, s)); 
+    //if (!jsfIsErased(*writeAddress, s)) jsiConsolePrintf("ERROR: AREA NOT ERASED 0x%08x => 0x%08x\n", *writeAddress, *writeAddress + s);
+    jsDebug(DBG_INFO,"compact> write 0x%08x => 0x%08x\n", *writeAddress, *writeAddress + s);
     jshFlashWrite(&swapBuffer[*swapBufferTail], *writeAddress, s);
     *writeAddress += s;
     nextFlashPage = jsfGetAddressOfNextPage(*writeAddress);
@@ -491,6 +496,7 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
   if (writeAddress!=startAddress)
     writeAddress = jsfGetAddressOfNextPage(writeAddress-1);
   if (writeAddress) {
+    jsDebug(DBG_INFO,"compact> erase 0x%08x => 0x%08x\n", writeAddress, addr);
     // addr is the address of the last area in flash
     jsfEraseArea(writeAddress, addr);
   }
