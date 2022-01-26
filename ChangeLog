@@ -23,6 +23,8 @@
             Add `NRF.setSecurity({encryptUart:true})` to force encrypted comms on BLE UART
             Bangle.js2: Increase wait after power-on for BMP280 to fix getPressure on some devices (fix #2120)
             Storage: Fix compaction error if a page starts with 0xff and the first write fits within that (fix #2009)
+            Add NRF.startBonding to force bonding on peripheral connection
+            nRF5x: Disable name change over BLE via 0x2A00
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect

@@ -1717,6 +1717,7 @@ static void fds_evt_handler(fds_evt_t const * const p_evt)
 static void pm_evt_handler(pm_evt_t const * p_evt) {
     ret_code_t err_code;
 
+    //jsiConsolePrintf("PM [%d]\n", p_evt->evt_id );
     switch (p_evt->evt_id)
     {
         case PM_EVT_BONDED_PEER_CONNECTED:
@@ -1966,7 +1967,7 @@ static void gap_params_init() {
     // not null terminated
 #endif
 
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&sec_mode); // don't allow device name change via BLE
     err_code = sd_ble_gap_device_name_set(&sec_mode,
                                           (const uint8_t *)deviceName,
                                           len);
