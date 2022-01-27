@@ -743,8 +743,11 @@ uint8_t match_request : 1;               If 1 requires the application to report
       case BLEP_ANCS_APP_ATTR:
         ble_ancs_handle_app_attr(blep, (char *)buffer, bufferLen);
         break;
-      case BLEP_AMS_UPDATE:
-        ble_ams_handle_update(blep, data, (char *)buffer, bufferLen);
+      case BLEP_AMS_TRACK_UPDATE:
+        ble_ams_handle_track_update(blep, data, (char *)buffer, bufferLen);
+        break;
+      case BLEP_AMS_PLAYER_UPDATE:
+        ble_ams_handle_player_update(blep, data, (char *)buffer, bufferLen);
         break;
       case BLEP_AMS_ATTRIBUTE:
         ble_ams_handle_attribute(blep, (char *)buffer, bufferLen);
