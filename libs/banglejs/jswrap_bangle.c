@@ -4263,9 +4263,12 @@ JsVar *jswrap_banglejs_getPressure() {
   JsVar *id = jsvNewFromString("getPressure");
   jswrap_banglejs_setBarometerPower(1, id);
   jsvUnLock(id);
-  jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, 
-    PRESSURE_DEVICE_BMP280_EN ? 750 : 500
-  ));
+  int powerOnTimeout = 500;
+#ifdef PRESSURE_DEVICE_BMP280_EN
+  if (PRESSURE_DEVICE_BMP280_EN)
+    powerOnTimeout = 750;
+#endif
+  jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, powerOnTimeout));
   return jsvLockAgain(promisePressure);
 #else
   return 0;
