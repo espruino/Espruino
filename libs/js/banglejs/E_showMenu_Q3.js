@@ -27,6 +27,7 @@
       var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
       if (idx!=l.lastIdx) rowmin=undefined; // redraw all if we scrolled
       l.lastIdx = idx;      
+      var more = (idx+rows)<menuItems.length;
       var iy = y;
       g.reset().setFontAlign(0,-1,0).setFont('12x20');
       if (options.predraw) options.predraw(g);
@@ -71,7 +72,7 @@
         idx++;
       }
       g.setFontAlign(-1,-1);      
-      g.setColor((idx<menuItems.length)?g.theme.fg:g.theme.bg).fillPoly([72,166,104,166,88,174]);
+      g.setColor(more?g.theme.fg:g.theme.bg).fillPoly([72,166,104,166,88,174]);
       g.flip();
     },
     select : function() {
