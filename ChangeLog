@@ -25,10 +25,11 @@
             Storage: Fix compaction error if a page starts with 0xff and the first write fits within that (fix #2009)
             Add NRF.startBonding to force bonding on peripheral connection
             nRF5x: Disable name change over BLE via 0x2A00
+            Bangle.js2 : Fix inconsitent scroll indicator in menus (fix #2104)
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect
-            Bangle.js 2: When wake on touch is enabled, use a single tap on the front of the device for wakeup
+            Bangle.js2: When wake on touch is enabled, use a single tap on the front of the device for wakeup
             Bangle.js: Display 'checking storage' message on first boot to alert users to slight delay
             Bangle.js: Tweaked step count algorithm (low pass filter, 4 steps in 90s)
             Graphics: asBMP/asURL/dump now support more bit depths
@@ -46,8 +47,8 @@
             Graphics: Allow setFont("FontName:1x2") for scaling in 2 directions (fix #2044)
             Graphics: Fix .asBMP for 4 bit images
             Graphics: switch RGB order for palette in asBMP for 4/8 bit images
-            Bangle.js 2: Idle power consumption down from 1.3mA to 0.9mA (pullups on HRM disabled when off)
-            Bangle.js 2: Increase reported bit depth from 3->16 and perform bayer dithering when rendering
+            Bangle.js2: Idle power consumption down from 1.3mA to 0.9mA (pullups on HRM disabled when off)
+            Bangle.js2: Increase reported bit depth from 3->16 and perform bayer dithering when rendering
               Makes icons/old apps way more usable (plus provides an easy way to get >3bpp)
             Bangle.js: Fix color palette when rendering 3bpp -> 16bpp
             nRF52840: Fix 900uA UART power draw when shut down
