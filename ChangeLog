@@ -25,7 +25,7 @@
             Storage: Fix compaction error if a page starts with 0xff and the first write fits within that (fix #2009)
             Add NRF.startBonding to force bonding on peripheral connection
             nRF5x: Disable name change over BLE via 0x2A00
-            Bangle.js2 : Fix inconsitent scroll indicator in menus (fix #2104)
+            Bangle.js1/2 : Fix inconsitent scroll indicator in menus (fix #2104)
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect
