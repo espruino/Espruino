@@ -29,6 +29,7 @@
       var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
       if (idx!=l.lastIdx) rowmin=undefined; // redraw all if we scrolled
       l.lastIdx = idx;      
+      var more = (idx+rows)<menuItems.length;
       var iy = y;
       g.reset().setFont('6x8',2).setFontAlign(0,-1,0);
       if (options.predraw) options.predraw(g);
@@ -72,7 +73,6 @@
         idx++;
       }
       g.setFontAlign(-1,-1);
-      var more = idx<menuItems.length;
       g.drawImage("\b\b\x01\x108|\xFE\x10\x10\x10\x10"/*E.toString(8,8,1,
         0b00010000,
         0b00111000,
