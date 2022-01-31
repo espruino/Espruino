@@ -28,6 +28,7 @@
             Bangle.js1/2 : Fix inconsitent scroll indicator in menus (fix #2104)
             Bangle.js2: E.showScroller to respect widgets on bottom row (using appRect)
             Bangle.js: Step counter - Remove hard-coded gravity value and subtract DC offset with a filter
+            Ensure jsfIsStorageValid kicks watchdog so we can't get stuck in a reboot loop if all of Storage is empty
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect

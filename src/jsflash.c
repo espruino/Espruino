@@ -202,6 +202,7 @@ static bool jsfIsErased(uint32_t addr, uint32_t len) {
    * everything (even slightly past the length) */
   unsigned char buf[128];
   assert((sizeof(buf)&(JSF_ALIGNMENT-1))==0);
+  int watchdogCtr = 0;
   while (len) {
     uint32_t l = len;
     if (l>sizeof(buf)) l=sizeof(buf);
@@ -210,6 +211,14 @@ static bool jsfIsErased(uint32_t addr, uint32_t len) {
       if (buf[i]!=0xFF) return false;
     addr += l;
     len -= l;
+    if (watchdogCtr++ > 5000) {
+      // stop watchdog reboots when checking large areas
+      // we don't kick all the time so that in *normal* work
+      // we don't end up calling jshKickWatchDog, so it's harder
+      // to get in a state where things lock up.
+      jshKickWatchDog();
+      watchdogCtr = 0;
+    }
   }
   return true;
 }
@@ -789,6 +798,7 @@ static bool jsfIsBankStorageValid(uint32_t startAddr, JsfStorageTestType testTyp
   if (valid) {
     while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL)) {
       oldAddr = addr;
+      jshKickWatchDog(); // stop watchdog reboots
     }
     if (!addr) { // may have returned 0 just because storage is full
       // Work out roughly where the start is
