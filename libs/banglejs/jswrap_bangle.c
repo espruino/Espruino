@@ -4248,7 +4248,7 @@ JsVar *jswrap_banglejs_getPressure() {
   int powerOnTimeout = 500;
 #ifdef PRESSURE_DEVICE_BMP280_EN
   if (PRESSURE_DEVICE_BMP280_EN)
-    powerOnTimeout = 750;
+    powerOnTimeout = 1000; // some devices seem to need this long to boot reliably
 #endif
   jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, powerOnTimeout));
   return jsvLockAgain(promisePressure);
