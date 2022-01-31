@@ -74,6 +74,19 @@ static int AccelFilter_get(AccelFilter* f) {
 
 AccelFilter accelFilter;
 
+/* =============================================================
+*  DC Filter
+*/
+#define NSAMPLE 12 //Exponential Moving Average DC removal filter alpha = 1/NSAMPLE
+
+int DCFilter_sample_avg_total = 8192*NSAMPLE;
+
+int DCFilter(int sample) {
+    DCFilter_sample_avg_total += (sample - DCFilter_sample_avg_total/NSAMPLE);
+    return sample - DCFilter_sample_avg_total/NSAMPLE;
+}
+
+
 // ===============================================================
 
 // These were calculated based on contributed data
@@ -142,7 +155,7 @@ typedef enum {
 #define T_MIN_STEP 4 // ~333ms
 #define T_MAX_STEP 16 // ~1300ms
 #define X_STEPS 6 // steps in a row needed
-#define RAW_THRESHOLD 17
+#define RAW_THRESHOLD 15
 #define N_ACTIVE_SAMPLES 3
 
 StepState stepState;
@@ -155,6 +168,7 @@ bool gate_open = false;        // start closed
 // Init step count
 void stepcount_init() {
   AccelFilter_init(&accelFilter);
+  DCFilter_sample_avg_total = 8192*NSAMPLE;
   accFiltered = 0;
   accFilteredHist[0] = 0;
   accFilteredHist[1] = 0;
@@ -232,7 +246,8 @@ int stepcount_new(int accMagSquared) {
   // square root accelerometer data
   int accMag = int_sqrt32(accMagSquared);
   // scale to fit and clip
-  int v = (accMag-8192)>>5;
+  //int v = (accMag-8192)>>5;
+  int v = DCFilter(accMag)>>5;
   //printf("v %d\n",v);
   //if (v>127 || v<-128) printf("Out of range %d\n", v);
   if (v>127) v = 127;
