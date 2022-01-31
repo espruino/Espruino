@@ -75,6 +75,7 @@ void jswrap_banglejs_factoryReset();
 
 JsVar *jswrap_banglejs_appRect();
 
+void jswrap_banglejs_hwinit();
 void jswrap_banglejs_init();
 void jswrap_banglejs_kill();
 bool jswrap_banglejs_idle();

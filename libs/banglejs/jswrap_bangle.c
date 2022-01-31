@@ -30,6 +30,7 @@
 #include "jswrap_arraybuffer.h"
 #include "jswrap_heatshrink.h"
 #include "jswrap_espruino.h"
+#include "jswrap_terminal.h"
 #include "jsflash.h"
 #include "graphics.h"
 #include "bitmap_font_6x8.h"
@@ -846,38 +847,32 @@ void jswrap_banglejs_pwrBacklight(bool on) {
 #ifdef LCD_CONTROLLER_LPM013M126
   lcdMemLCD_extcominBacklight(on);
 #endif
+}
 
+
+
+void graphicsInternalFlip() {
+#ifdef LCD_CONTROLLER_LPM013M126
+  lcdMemLCD_flip(&graphicsInternal);
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
+  lcdST7789_flip(&graphicsInternal);
+#endif
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
+  lcdFlip_SPILCD(&graphicsInternal);
+#endif
 }
 
 /// Flip buffer contents with the screen.
 void lcd_flip(JsVar *parent, bool all) {
 #ifdef LCD_WIDTH
-  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
-  if (!graphics) return;
-  JsGraphics gfx;
-  if (!graphicsGetFromVar(&gfx, graphics)) {
-    jsvUnLock(graphics);
-    return;
-  }
-
   if (all) {
-    gfx.data.modMinX = 0;
-    gfx.data.modMinY = 0;
-    gfx.data.modMaxX = LCD_WIDTH-1;
-    gfx.data.modMaxY = LCD_HEIGHT-1;
+    graphicsInternal.data.modMinX = 0;
+    graphicsInternal.data.modMinY = 0;
+    graphicsInternal.data.modMaxX = LCD_WIDTH-1;
+    graphicsInternal.data.modMaxY = LCD_HEIGHT-1;
   }
-
-#ifdef LCD_CONTROLLER_LPM013M126
-  lcdMemLCD_flip(&gfx);
-#endif
-#ifdef LCD_CONTROLLER_ST7789_8BIT
-  lcdST7789_flip(&gfx);
-#endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
-  lcdFlip_SPILCD(&gfx);
-#endif
-  graphicsSetVar(&gfx);
-  jsvUnLock(graphics);
+  graphicsInternalFlip();
 #endif
 }
 
@@ -1814,33 +1809,31 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
   if (!graphics) return;
   jswrap_graphics_setFont(graphics, NULL, 1); // reset fonts - this will free any memory associated with a custom font
-  JsGraphics gfx;
-  if (!graphicsGetFromVar(&gfx, graphics)) return;
   // remove the buffer if it was defined
-  jsvObjectSetOrRemoveChild(gfx.graphicsVar, "buffer", 0);
+  jsvObjectSetOrRemoveChild(graphics, "buffer", 0);
   unsigned int bufferSize = 0;
   switch (lcdMode) {
     case LCDST7789_MODE_NULL:
     case LCDST7789_MODE_UNBUFFERED:
-      gfx.data.width = LCD_WIDTH;
-      gfx.data.height = LCD_HEIGHT;
-      gfx.data.bpp = 16;
+      graphicsInternal.data.width = LCD_WIDTH;
+      graphicsInternal.data.height = LCD_HEIGHT;
+      graphicsInternal.data.bpp = 16;
       break;
     case LCDST7789_MODE_DOUBLEBUFFERED:
-      gfx.data.width = LCD_WIDTH;
-      gfx.data.height = 160;
-      gfx.data.bpp = 16;
+      graphicsInternal.data.width = LCD_WIDTH;
+      graphicsInternal.data.height = 160;
+      graphicsInternal.data.bpp = 16;
       break;
     case LCDST7789_MODE_BUFFER_120x120:
-      gfx.data.width = 120;
-      gfx.data.height = 120;
-      gfx.data.bpp = 8;
+      graphicsInternal.data.width = 120;
+      graphicsInternal.data.height = 120;
+      graphicsInternal.data.bpp = 8;
       bufferSize = 120*120;
       break;
     case LCDST7789_MODE_BUFFER_80x80:
-      gfx.data.width = 80;
-      gfx.data.height = 80;
-      gfx.data.bpp = 8;
+      graphicsInternal.data.width = 80;
+      graphicsInternal.data.height = 80;
+      graphicsInternal.data.bpp = 8;
       bufferSize = 80*80;
       break;
   }
@@ -1849,7 +1842,7 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
     jsvDefragment();
     JsVar *arrData = jsvNewFlatStringOfLength(bufferSize);
     if (arrData) {
-      jsvObjectSetChildAndUnLock(gfx.graphicsVar, "buffer", jsvNewArrayBufferFromString(arrData, (unsigned int)bufferSize));
+      jsvObjectSetChildAndUnLock(graphics, "buffer", jsvNewArrayBufferFromString(arrData, (unsigned int)bufferSize));
     } else {
       jsExceptionHere(JSET_ERROR, "Not enough memory to allocate offscreen buffer");
       jswrap_banglejs_setLCDMode(0); // go back to default mode
@@ -1857,10 +1850,10 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
     }
     jsvUnLock(arrData);
   }
-  graphicsStructResetState(&gfx); // reset colour, cliprect, etc
-  graphicsSetVar(&gfx);
+  graphicsStructResetState(&graphicsInternal); // reset colour, cliprect, etc
   jsvUnLock(graphics);
   lcdST7789_setMode( lcdMode );
+  graphicsSetCallbacks(&graphicsInternal); // set the callbacks up after the mode change
 #else
   jsExceptionHere(JSET_ERROR, "setLCDMode is unsupported on this device");
 #endif
@@ -2771,6 +2764,160 @@ void jswrap_banglejs_postInit() {
 #endif
 }
 
+NO_INLINE void jswrap_banglejs_setTheme() {
+#if LCD_BPP==16
+  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.fg2 = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(0,0,63);
+  graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,95,190);
+  graphicsTheme.dark = true;
+#else // still 16 bit, we just want it inverted
+  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.fg2 = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(191,255,255);
+  graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,255,255);
+  graphicsTheme.dark = false;
+#endif
+}
+
+/*JSON{
+  "type" : "hwinit",
+  "generate" : "jswrap_banglejs_hwinit"
+}*/
+NO_INLINE void jswrap_banglejs_hwinit() {
+  // Hardware init that we only do the very first time we start
+#ifdef BANGLEJS_F18
+  jshPinOutput(18,0); // what's this?
+#endif
+#ifdef ID205
+  jshPinOutput(3,1); // general VDD power?
+  jshPinOutput(46,0); // What's this? Who knows! But it stops screen flicker and makes the touchscreen work nicely
+  jshPinOutput(LCD_BL,1); // Backlight
+#endif
+#ifndef EMULATED
+#ifdef NRF52832
+  jswrap_ble_setTxPower(4);
+#endif
+
+  // Set up I2C
+  i2cBusy = true;
+#ifdef BANGLEJS_Q3
+  jshI2CInitInfo(&i2cAccel);
+  i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cAccel.pinSDA = ACCEL_PIN_SDA;
+  i2cAccel.pinSCL = ACCEL_PIN_SCL;
+  jsi2cSetup(&i2cAccel);
+
+  jshI2CInitInfo(&i2cMag);
+  i2cMag.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cMag.pinSDA = MAG_PIN_SDA;
+  i2cMag.pinSCL = MAG_PIN_SCL;
+  jsi2cSetup(&i2cMag);
+
+  jshI2CInitInfo(&i2cTouch);
+  i2cTouch.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cTouch.pinSDA = TOUCH_PIN_SDA;
+  i2cTouch.pinSCL = TOUCH_PIN_SCL;
+  jsi2cSetup(&i2cTouch);
+
+  jshI2CInitInfo(&i2cPressure);
+  i2cPressure.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cPressure.pinSDA = PRESSURE_PIN_SDA;
+  i2cPressure.pinSCL = PRESSURE_PIN_SCL;
+  jsi2cSetup(&i2cPressure);
+
+  jshI2CInitInfo(&i2cHRM);
+  i2cHRM.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cHRM.pinSDA = HEARTRATE_PIN_SDA;
+  i2cHRM.pinSCL = HEARTRATE_PIN_SCL;
+  //jsi2cSetup(&i2cHRM); // we configure when needed in jswrap_banglejs_pwrHRM so we don't parasitically power
+
+#elif defined(ACCEL_PIN_SDA) // assume all the rest just use a global I2C
+  jshI2CInitInfo(&i2cInternal);
+  i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cInternal.pinSDA = ACCEL_PIN_SDA;
+  i2cInternal.pinSCL = ACCEL_PIN_SCL;
+  i2cInternal.clockStretch = false;
+  jsi2cSetup(&i2cInternal);
+#endif
+#ifdef BANGLEJS_Q3
+  // Touch init
+  jshPinOutput(TOUCH_PIN_RST, 0);
+  jshDelayMicroseconds(1000);
+  jshPinOutput(TOUCH_PIN_RST, 1);
+
+  // Check pressure sensor
+  unsigned char buf[2];
+  // Check BMP280 ID
+  buf[0] = 0xD0; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // ID
+  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  pressureBMP280Enabled = buf[0]==0x58;
+//    jsiConsolePrintf("BMP280 %d %d\n", buf[0], pressureBMP280Enabled);
+  // Check SPL07_001 ID
+  buf[0] = 0x0D; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // ID
+  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  pressureSPL06Enabled = buf[0]==0x10;
+//    jsiConsolePrintf("SPL06 %d %d\n", buf[0], pressureSPL06Enabled);
+#endif
+#ifdef BANGLEJS_F18
+  jshDelayMicroseconds(10000);
+  // LCD pin init
+  jshPinOutput(LCD_PIN_CS, 1);
+  jshPinOutput(LCD_PIN_DC, 1);
+  jshPinOutput(LCD_PIN_SCK, 1);
+  for (int i=0;i<8;i++) jshPinOutput(i, 0);
+  // IO expander reset
+  jshPinOutput(28,0);
+  jshDelayMicroseconds(10000);
+  jshPinOutput(28,1);
+  jshDelayMicroseconds(50000);
+  jswrap_banglejs_ioWr(0,0);
+  jswrap_banglejs_pwrHRM(false); // HRM off
+  jswrap_banglejs_pwrGPS(false); // GPS off
+  jswrap_banglejs_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
+  jshDelayMicroseconds(100000);
+  jswrap_banglejs_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
+  jswrap_banglejs_pwrBacklight(true); // backlight on
+  jshDelayMicroseconds(10000);
+#endif
+#endif
+  // we need ESPR_GRAPHICS_INTERNAL=1
+  graphicsStructInit(&graphicsInternal, LCD_WIDTH, LCD_HEIGHT, LCD_BPP);
+#ifdef LCD_CONTROLLER_LPM013M126
+  graphicsInternal.data.type = JSGRAPHICSTYPE_MEMLCD;
+  graphicsInternal.data.bpp = 16; // hack - so we can dither we pretend we're 16 bit
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
+  graphicsInternal.data.type = JSGRAPHICSTYPE_ST7789_8BIT;
+#endif
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
+  graphicsInternal.data.type = JSGRAPHICSTYPE_SPILCD;
+#endif
+  graphicsInternal.data.flags = 0;
+#ifdef DTNO1_F5
+  graphicsInternal.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
+#endif
+  graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1; // 2x size is default
+#ifdef LCD_CONTROLLER_LPM013M126
+  lcdMemLCD_init(&graphicsInternal);
+  jswrap_banglejs_pwrBacklight(true);
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
+  lcdST7789_init(&graphicsInternal);
+#endif
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
+  lcdInit_SPILCD(&graphicsInternal);
+#endif
+  graphicsSetCallbacks(&graphicsInternal);
+  // set default graphics themes - before we even start to load settings.json
+  jswrap_banglejs_setTheme();
+  graphicsFillRect(&graphicsInternal, 0,0,LCD_WIDTH-1,LCD_HEIGHT-1,graphicsTheme.bg);
+}
+
 /*JSON{
   "type" : "init",
   "generate" : "jswrap_banglejs_init"
@@ -2778,110 +2925,13 @@ void jswrap_banglejs_postInit() {
 NO_INLINE void jswrap_banglejs_init() {
   IOEventFlags channel;
   bool firstRun = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrap_banglejs_init was called?
-  // Hardware init that we only do the very first time we start
-  if (firstRun) {
-#ifdef BANGLEJS_F18
-    jshPinOutput(18,0); // what's this?
-#endif
-#ifdef ID205
-    jshPinOutput(3,1); // general VDD power?
-    jshPinOutput(46,0); // What's this? Who knows! But it stops screen flicker and makes the touchscreen work nicely
-    jshPinOutput(LCD_BL,1); // Backlight
-#endif
-#ifndef EMULATED
-#ifdef NRF52832
-    jswrap_ble_setTxPower(4);
-#endif
-
-    // Set up I2C
-    i2cBusy = true;
-#ifdef BANGLEJS_Q3
-    jshI2CInitInfo(&i2cAccel);
-    i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cAccel.pinSDA = ACCEL_PIN_SDA;
-    i2cAccel.pinSCL = ACCEL_PIN_SCL;
-    jsi2cSetup(&i2cAccel);
-
-    jshI2CInitInfo(&i2cMag);
-    i2cMag.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cMag.pinSDA = MAG_PIN_SDA;
-    i2cMag.pinSCL = MAG_PIN_SCL;
-    jsi2cSetup(&i2cMag);
-
-    jshI2CInitInfo(&i2cTouch);
-    i2cTouch.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cTouch.pinSDA = TOUCH_PIN_SDA;
-    i2cTouch.pinSCL = TOUCH_PIN_SCL;
-    jsi2cSetup(&i2cTouch);
-
-    jshI2CInitInfo(&i2cPressure);
-    i2cPressure.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cPressure.pinSDA = PRESSURE_PIN_SDA;
-    i2cPressure.pinSCL = PRESSURE_PIN_SCL;
-    jsi2cSetup(&i2cPressure);
-
-    jshI2CInitInfo(&i2cHRM);
-    i2cHRM.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cHRM.pinSDA = HEARTRATE_PIN_SDA;
-    i2cHRM.pinSCL = HEARTRATE_PIN_SCL;
-    //jsi2cSetup(&i2cHRM); // we configure when needed in jswrap_banglejs_pwrHRM so we don't parasitically power
-
-#elif defined(ACCEL_PIN_SDA) // assume all the rest just use a global I2C
-    jshI2CInitInfo(&i2cInternal);
-    i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cInternal.pinSDA = ACCEL_PIN_SDA;
-    i2cInternal.pinSCL = ACCEL_PIN_SCL;
-    i2cInternal.clockStretch = false;
-    jsi2cSetup(&i2cInternal);
-#endif
-#ifdef BANGLEJS_Q3
-    // Touch init
-    jshPinOutput(TOUCH_PIN_RST, 0);
-    jshDelayMicroseconds(1000);
-    jshPinOutput(TOUCH_PIN_RST, 1);
-
-    // Check pressure sensor
-    unsigned char buf[2];
-    // Check BMP280 ID
-    buf[0] = 0xD0; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // ID
-    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
-    pressureBMP280Enabled = buf[0]==0x58;
-//    jsiConsolePrintf("BMP280 %d %d\n", buf[0], pressureBMP280Enabled);
-    // Check SPL07_001 ID
-    buf[0] = 0x0D; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // ID
-    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
-    pressureSPL06Enabled = buf[0]==0x10;
-//    jsiConsolePrintf("SPL06 %d %d\n", buf[0], pressureSPL06Enabled);
-#endif
-#ifdef BANGLEJS_F18
-    // LCD pin init
-    jshPinOutput(LCD_PIN_CS, 1);
-    jshPinOutput(LCD_PIN_DC, 1);
-    jshPinOutput(LCD_PIN_SCK, 1);
-    for (int i=0;i<8;i++) jshPinOutput(i, 0);
-    // IO expander reset
-    jshPinOutput(28,0);
-    jshDelayMicroseconds(10000);
-    jshPinOutput(28,1);
-    jshDelayMicroseconds(50000);
-    jswrap_banglejs_ioWr(0,0);
-    jswrap_banglejs_pwrHRM(false); // HRM off
-    jswrap_banglejs_pwrGPS(false); // GPS off
-    jswrap_banglejs_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
-    jshDelayMicroseconds(100000);
-    jswrap_banglejs_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
-    jswrap_banglejs_pwrBacklight(true); // backlight on
-    jshDelayMicroseconds(10000);
-#endif
-#endif
-  }
 
 #ifndef EMULATED
   // turn vibrate off every time Bangle is reset
   jshPinOutput(VIBRATE_PIN,0);
 #endif
 
-#ifdef BANGLEJS_Q3
+  #ifdef BANGLEJS_Q3
 #ifndef EMULATED
   jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
   channel = jshPinWatch(TOUCH_PIN_IRQ, true);
@@ -2944,24 +2994,8 @@ NO_INLINE void jswrap_banglejs_init() {
   }
   jsvUnLock(v);
 
-#if LCD_BPP==16
-  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(255,255,255);
-  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(0,0,0);
-  graphicsTheme.fg2 = GRAPHICS_COL_RGB_TO_16(255,255,255);
-  graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(0,0,63);
-  graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(255,255,255);
-  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,95,190);
-  graphicsTheme.dark = true;
-#else // still 16 bit, we just want it inverted
-  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(0,0,0);
-  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(255,255,255);
-  graphicsTheme.fg2 = GRAPHICS_COL_RGB_TO_16(0,0,0);
-  graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(191,255,255);
-  graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(0,0,0);
-  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,255,255);
-  graphicsTheme.dark = false;
-#endif
-  //
+  // Load themes from the settings.json file
+  jswrap_banglejs_setTheme();
   v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"theme",0) : 0;
   if (jsvIsObject(v)) {
     graphicsTheme.fg = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fg",0));
@@ -2974,55 +3008,23 @@ NO_INLINE void jswrap_banglejs_init() {
   }
   jsvUnLock2(v,settings);
 
-
-
 #ifdef LCD_WIDTH
-  // Create backing graphics for LCD
+  // Just reset any graphics settings that may need updating
+  jswrap_banglejs_setLCDOffset(0);
+  // Reset global graphics instance
+  graphicsStructResetState(&graphicsInternal);
+
+  // Create backing graphics object for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
+  // if there's nothing in the Graphics object, we assume it's for the built-in graphics
   if (!graphics) return; // low memory
-  JsGraphics gfx;
-  graphicsStructInit(&gfx, LCD_WIDTH, LCD_HEIGHT, LCD_BPP);
-#ifdef LCD_CONTROLLER_LPM013M126
-  gfx.data.type = JSGRAPHICSTYPE_MEMLCD;
-  gfx.data.bpp = 16; // hack - so we can dither we pretend we're 16 bit
-#endif
-#ifdef LCD_CONTROLLER_ST7789_8BIT
-  gfx.data.type = JSGRAPHICSTYPE_ST7789_8BIT;
-#endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
-  gfx.data.type = JSGRAPHICSTYPE_SPILCD;
-#endif
-  gfx.data.flags = 0;
-#ifdef DTNO1_F5
-  gfx.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
-#endif
-
-  gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1; // 2x size is default
-  gfx.graphicsVar = graphics;
-
-  if (firstRun) {
-#ifdef LCD_CONTROLLER_LPM013M126
-    lcdMemLCD_init(&gfx);
-    jswrap_banglejs_pwrBacklight(true);
-#endif
-#ifdef LCD_CONTROLLER_ST7789_8BIT
-    lcdST7789_init(&gfx);
-#endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
-    lcdInit_SPILCD(&gfx);
-#endif
-  } else {
-    // Just reset any graphics settings that may need updating
-    jswrap_banglejs_setLCDOffset(0);
-  }
-  graphicsSetVar(&gfx);
+  // add it as a global var
   jsvObjectSetChild(execInfo.root, "g", graphics);
   jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, graphics);
-  graphicsGetFromVar(&gfx, graphics);
+  graphicsInternal.graphicsVar = graphics;
 
   // Create 'flip' fn
-  JsVar *fn;
-  fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
+  JsVar *fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
   jsvObjectSetChildAndUnLock(graphics,"flip",fn);
 
   if (!firstRun) {
@@ -3031,7 +3033,7 @@ NO_INLINE void jswrap_banglejs_init() {
     if (lcdST7789_getMode()!=LCDST7789_MODE_UNBUFFERED) {
       lcdST7789_setMode( LCDST7789_MODE_UNBUFFERED );
       // screen will now be garbled - clear it
-      graphicsClear(&gfx);
+      graphicsClear(&graphicsInternal);
     }
 #endif
   }
@@ -3047,23 +3049,18 @@ NO_INLINE void jswrap_banglejs_init() {
       // Display a loading screen
       int x = LCD_WIDTH/2;
       int y = LCD_HEIGHT/2;
-      graphicsFillRect(&gfx, x-49, y-19, x+49, y+19, graphicsTheme.bg);
-      gfx.data.fgColor = graphicsTheme.fg;
-      graphicsDrawRect(&gfx, x-50, y-20, x+50, y+20);
+      graphicsFillRect(&graphicsInternal, x-49, y-19, x+49, y+19, graphicsTheme.bg);
+      graphicsInternal.data.fgColor = graphicsTheme.fg;
+      graphicsDrawRect(&graphicsInternal, x-50, y-20, x+50, y+20);
       y -= 4;
       x -= 4*6;
       const char *s = "Loading...";
       while (*s) {
-        graphicsDrawChar6x8(&gfx, x, y, *s, 1, 1, false);
+        graphicsDrawChar6x8(&graphicsInternal, x, y, *s, 1, 1, false);
         x+=6;
         s++;
       }
-  #ifdef BANGLEJS_Q3
-      lcdMemLCD_flip(&gfx);
-  #endif
-  #if defined(LCD_CONTROLLER_GC9A01)
-      lcdFlip_SPILCD(&gfx);
-  #endif
+      graphicsInternalFlip();
     }
 #endif
   }
@@ -3074,7 +3071,7 @@ NO_INLINE void jswrap_banglejs_init() {
     showSplashScreen = false;
 #endif
   if (showSplashScreen) {
-    graphicsClear(&gfx);
+    graphicsClear(&graphicsInternal);
     bool drawInfo = false;
     JsVar *img = jsfReadFile(jsfNameFromString(".splash"),0,0);
     int w,h;
@@ -3085,7 +3082,6 @@ NO_INLINE void jswrap_banglejs_init() {
     }
     w = (int)(unsigned char)jsvGetCharInString(img, 0);
     h = (int)(unsigned char)jsvGetCharInString(img, 1);
-    graphicsSetVar(&gfx);
     int y=(LCD_HEIGHT-h)/2;
     jsvUnLock2(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,NULL),img);
     if (drawInfo) {
@@ -3099,21 +3095,14 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
       jsvGetString(addr, addrStr, sizeof(addrStr));
       jsvUnLock(addr);
-      jswrap_graphics_drawCString(&gfx,8,y,JS_VERSION);
-      jswrap_graphics_drawCString(&gfx,8,y+10,addrStr);
-      jswrap_graphics_drawCString(&gfx,8,y+20,"Copyright 2021 G.Williams");
+      jswrap_graphics_drawCString(&graphicsInternal,8,y,JS_VERSION);
+      jswrap_graphics_drawCString(&graphicsInternal,8,y+10,addrStr);
+      jswrap_graphics_drawCString(&graphicsInternal,8,y+20,"Copyright 2021 G.Williams");
     }
   }
-#ifdef BANGLEJS_Q3
-    lcdMemLCD_flip(&gfx);
-#endif
-#if defined(LCD_CONTROLLER_GC9A01)
-    lcdFlip_SPILCD(&gfx);
-#endif
-  graphicsStructResetState(&gfx);
-  graphicsSetVar(&gfx);
-
-  jsvUnLock(graphics);
+  graphicsInternalFlip();
+  graphicsStructResetState(&graphicsInternal);
+  // no need to unlock graphics as we stored it in 'graphicsVar'
 #endif
 
   if (firstRun) {
@@ -3358,6 +3347,9 @@ void jswrap_banglejs_kill() {
   jshPinWatch(BTN5_PININDEX, false);
   jshSetPinShouldStayWatched(BTN5_PININDEX,false);
 #endif
+  // Graphics var is getting removed, so set this to null.
+  jsvUnLock(graphicsInternal.graphicsVar);
+  graphicsInternal.graphicsVar = NULL;
 }
 
 /*JSON{
@@ -3692,19 +3684,9 @@ bool jswrap_banglejs_idle() {
   bangleTasks = JSBT_NONE;
 #if defined(LCD_CONTROLLER_LPM013M126) || defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
   // Automatically flip!
-  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
-  JsGraphics gfx;
-  if (graphicsGetFromVar(&gfx, graphics)) {
-    if (gfx.data.modMaxX >= gfx.data.modMinX) {
-#ifdef LCD_CONTROLLER_LPM013M126
-      lcdMemLCD_flip(&gfx);
-#else
-      lcdFlip_SPILCD(&gfx);
-#endif
-      graphicsSetVar(&gfx);
-    }
+  if (graphicsInternal.data.modMaxX >= graphicsInternal.data.modMinX) {
+    graphicsInternalFlip();
   }
-  jsvUnLock(graphics);
 #endif
 #ifdef ESPR_BACKLIGHT_FADE
   if (lcdFadeHandlerActive && realLcdBrightness == ((bangleFlags&JSBF_LCD_ON)?lcdBrightness:0)) {
@@ -5102,6 +5084,7 @@ This is only available on Bangle.js 2.0. On Bangle.js 1.0
 you need to use `Install Default Apps` under the `More...` tab
 of http://banglejs.com/apps
 */
+extern void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name);
 void jswrap_banglejs_factoryReset() {
   jsfResetStorage();
   jsiStatus |= JSIS_TODO_FLASH_LOAD;
@@ -5121,14 +5104,6 @@ reserved for the app.
 JsVar *jswrap_banglejs_appRect() {
   JsVar *o = jsvNewObject();
   if (!o) return 0;
-  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
-  JsGraphics gfx;
-  if (!graphicsGetFromVar(&gfx, graphics)) {
-    gfx.data.width = LCD_WIDTH;
-    gfx.data.height = LCD_HEIGHT;
-  }
-  jsvUnLock(graphics);
-
   JsVar *widgetsVar = jsvObjectGetChild(execInfo.root,"WIDGETS",0);
   int top = 0, btm = 0; // size of various widget areas
   // check all widgets and see if any are in the top or bottom areas,
@@ -5152,9 +5127,13 @@ JsVar *jswrap_banglejs_appRect() {
   jsvUnLock(widgetsVar);
   jsvObjectSetChildAndUnLock(o,"x",jsvNewFromInteger(0));
   jsvObjectSetChildAndUnLock(o,"y",jsvNewFromInteger(top));
-  jsvObjectSetChildAndUnLock(o,"w",jsvNewFromInteger(gfx.data.width));
-  jsvObjectSetChildAndUnLock(o,"h",jsvNewFromInteger(gfx.data.height-(top+btm)));
-  jsvObjectSetChildAndUnLock(o,"x2",jsvNewFromInteger(gfx.data.width-1));
-  jsvObjectSetChildAndUnLock(o,"y2",jsvNewFromInteger(gfx.data.height-(1+btm)));
+  jsvObjectSetChildAndUnLock(o,"w",jsvNewFromInteger(graphicsInternal.data.width));
+  jsvObjectSetChildAndUnLock(o,"h",jsvNewFromInteger(graphicsInternal.data.height-(top+btm)));
+  jsvObjectSetChildAndUnLock(o,"x2",jsvNewFromInteger(graphicsInternal.data.width-1));
+  jsvObjectSetChildAndUnLock(o,"y2",jsvNewFromInteger(graphicsInternal.data.height-(1+btm)));
+
+
+
   return o;
 }
+

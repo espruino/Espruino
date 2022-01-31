@@ -69,19 +69,30 @@ static void terminalControlCharsReset() {
 
 // Try and find something to use for Graphics - MUST call terminalSetGFX after if this returns true
 bool terminalGetGFX(JsGraphics *gfx) {
+#ifdef ESPR_GRAPHICS_INTERNAL
+  // FIXME: not ideal, we should really be using the pointer directly
+  if (!graphicsInternal.setPixel) return false; // not set up yet
+  *gfx = graphicsInternal;
+  return true;
+#else
   JsVar *v = jswrap_graphics_getInstance();
   if (!v) return false;
   if (graphicsGetFromVar(gfx, v))
     return true;
   jsvUnLock(v);
   return false;
+#endif
 }
 
 /// Setup the graphics var state and flip the screen
 void terminalSetGFX(JsGraphics *gfx) {
+#ifdef ESPR_GRAPHICS_INTERNAL
+  graphicsInternal = *gfx;
+#else
   graphicsSetVar(gfx);
-  terminalNeedsFlip = true; // force a flip to the screen next idle
   jsvUnLock(gfx->graphicsVar);
+#endif
+  terminalNeedsFlip = true; // force a flip to the screen next idle
 }
 
 /// Scroll up to leave one more line free at the bottom
@@ -204,6 +215,9 @@ void jswrap_terminal_init() {
 }*/
 bool jswrap_terminal_idle() {
   if (terminalNeedsFlip) {
+#ifdef ESPR_GRAPHICS_INTERNAL
+    graphicsInternalFlip();
+#else
     JsGraphics gfx;
     if (terminalGetGFX(&gfx)) {
       JsVar *flip = jsvObjectGetChild(gfx.graphicsVar, "flip", 0);
@@ -211,6 +225,7 @@ bool jswrap_terminal_idle() {
       jsvUnLock(gfx.graphicsVar);
       terminalNeedsFlip = false;
     }
+#endif
   }
   return false;
 }

@@ -218,7 +218,7 @@ JsVar *jswrap_spi_send(
   ) {
   // Debug
   // jsiConsolePrintf("jswrap_spi_send called: parent=%j, srcdata=%j, nss_pin=%p\n", parent, srcdata, nss_pin);
-  if (!jsvIsObject(parent)) return;
+  if (!jsvIsObject(parent)) return 0;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
   jswrap_spi_send_data data;

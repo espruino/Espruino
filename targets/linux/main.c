@@ -173,6 +173,7 @@ bool run_test(const char *filename) {
   }
 
   jshInit();
+  jswHWInit();
   jsvInit(0);
   jsiInit(false /* do not autoload!!! */);
 

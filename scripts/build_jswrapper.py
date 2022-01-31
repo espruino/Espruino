@@ -668,6 +668,16 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
+codeOut("/** Tasks to run on Hardware Initialisation (called once at boot time, after jshInit, before jsvInit/etc) */")
+codeOut('void jswHWInit() {')
+for jsondata in jsondatas:
+  if "type" in jsondata and jsondata["type"]=="hwinit":
+    codeOut("  "+jsondata["generate"]+"();")
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
 codeOut("/** Tasks to run on Initialisation (eg boot/load/reset/after save/etc) */")
 codeOut('void jswInit() {')
 for jsondata in jsondatas:
