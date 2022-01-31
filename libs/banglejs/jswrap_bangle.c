@@ -5099,7 +5099,7 @@ Erase all storage and reload it with the default
 contents.
 
 This is only available on Bangle.js 2.0. On Bangle.js 1.0
-you need to use `Install Default Apps` under the About page
+you need to use `Install Default Apps` under the `More...` tab
 of http://banglejs.com/apps
 */
 void jswrap_banglejs_factoryReset() {
