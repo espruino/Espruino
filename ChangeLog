@@ -30,6 +30,7 @@
             Bangle.js: Step counter - Remove hard-coded gravity value and subtract DC offset with a filter
             Ensure jsfIsStorageValid kicks watchdog so we can't get stuck in a reboot loop if all of Storage is empty
             Bangle.js: Add 'graphicsInternal' to make Graphics independent of JS vars. Terminal is now useful earlier, and can display softdevice errors
+            Bangle.js2: If errors do happen during Bangle.getPressure, reject the promise (fix #2137)
 
      2v11 : Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
             Bangle.js: revert to (better) Kionix default thresholds for tap detect
