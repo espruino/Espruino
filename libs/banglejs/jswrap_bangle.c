@@ -4076,7 +4076,11 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
 Read temperature, pressure and altitude data. A promise is returned
 which will be resolved with `{temperature, pressure, altitude}`.
 
-Conversions take roughly 100ms.  Altitude assumes a sea-level pressure of 1013.25 hPa
+If the Barometer has been turned on with `Bangle.setBarometerPower` then this will
+return almost immediately with the reading. If the Barometer is off, conversions take
+between 500-750ms.
+
+Altitude assumes a sea-level pressure of 1013.25 hPa
 
 ```
 Bangle.getPressure().then(d=>{
