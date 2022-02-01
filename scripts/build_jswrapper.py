@@ -634,8 +634,14 @@ for jsondata in jsondatas:
 
 codeOut('/** Given a variable, return the basic object name of it */')
 codeOut('const char *jswGetBasicObjectName(JsVar *var) {')
+codeOut('  if (jsvIsArrayBuffer(var)) {')
 for className in objectChecks.keys():
-  codeOut("  if ("+objectChecks[className]+") return \""+className+"\";")
+  if objectChecks[className].startswith("jsvIsArrayBuffer(var) && "):
+    codeOut("    if ("+objectChecks[className][25:]+") return \""+className+"\";")
+codeOut('  }')
+for className in objectChecks.keys():
+  if not objectChecks[className].startswith("jsvIsArrayBuffer(var) && "):
+    codeOut("  if ("+objectChecks[className]+") return \""+className+"\";")
 codeOut('  return 0;')
 codeOut('}')
 
