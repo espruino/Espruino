@@ -570,7 +570,7 @@ NO_INLINE void jsiDumpObjectState(vcbprintf_callback user_callback, void *user_d
         }
       } else {
         // It's a normal function
-        if (!jsvIsNative(data)) {
+        if (!jsvIsNativeFunction(data)) {
           cbprintf(user_callback, user_data, "%v.%v = ", parentName, child);
           jsiDumpJSON(user_callback, user_data, data, 0);
           user_callback(";\n", user_data);
@@ -2374,7 +2374,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
     } else if (child->varData.str[0]==JS_HIDDEN_CHAR ||
         jshFromDeviceString(childName)!=EV_NONE) {
       // skip - don't care about this stuff
-    } else if (!jsvIsNative(data)) { // just a variable/function!
+    } else if (!jsvIsNativeFunction(data)) { // just a variable/function!
       if (jsvIsFunction(data)) {
         // function-specific output
         cbprintf(user_callback, user_data, "function %v", child);

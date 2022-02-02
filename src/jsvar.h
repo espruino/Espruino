@@ -43,6 +43,7 @@ typedef enum {
     JSV_GET_SET,         ///< Getter/setter (an object with get/set fields)
 #endif
     JSV_FUNCTION,
+    JSV_NATIVE_FUNCTION,
     JSV_FUNCTION_RETURN, ///< A simple function that starts with `return` (which is implicit)
     JSV_INTEGER,         ///< integer number (note JSV_NUMERICMASK)
   _JSV_NUMERIC_START = JSV_INTEGER, ///< --------- Start of numeric variable types
@@ -86,7 +87,7 @@ typedef enum {
 
     JSV_VARTYPEMASK = NEXT_POWER_2(_JSV_VAR_END)-1, // probably this is 63
 
-    JSV_NATIVE      = JSV_VARTYPEMASK+1, ///< to specify this is a native function, root, function parameter, OR that it should not be freed
+    JSV_NATIVE      = JSV_VARTYPEMASK+1, ///< to specify if this is a function parameter
     JSV_GARBAGE_COLLECT = JSV_NATIVE<<1, ///< When garbage collecting, this flag is true IF we should GC!
     JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
     JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
@@ -381,7 +382,6 @@ bool jsvIsObject(const JsVar *v);
 bool jsvIsArray(const JsVar *v);
 bool jsvIsArrayBuffer(const JsVar *v);
 bool jsvIsArrayBufferName(const JsVar *v);
-bool jsvIsNative(const JsVar *v);
 bool jsvIsNativeFunction(const JsVar *v);
 bool jsvIsUndefined(const JsVar *v);
 bool jsvIsNull(const JsVar *v);
