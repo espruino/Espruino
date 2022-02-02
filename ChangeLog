@@ -1,4 +1,7 @@
-            nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
+            Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
+            Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
+
+     2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)
             Bangle.js: Ensure Bangle.getHealthStatus("day") resets at midnight (fix https://github.com/espruino/BangleApps/issues/1216)
             Bangle.js: Attempt to fix Bangle.buzz that occasionally doesn't stop

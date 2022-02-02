@@ -202,6 +202,11 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
 
 JsVar *jspeiGetScopesAsVar() {
   if (!execInfo.scopesVar) return 0; // no scopes!
+  // If just one element, return it (no array)
+  if (jsvGetArrayLength(execInfo.scopesVar)==1) {
+    JsVar *v = jsvGetLastArrayItem(execInfo.scopesVar); // this is faster than getting by index
+    return v;
+  }
   // Copy this - because if we just returned it, the underlying array would get altered
   return jsvCopy(execInfo.scopesVar, true);
 }
@@ -209,8 +214,15 @@ JsVar *jspeiGetScopesAsVar() {
 void jspeiLoadScopesFromVar(JsVar *arr) {
   jsvUnLock(execInfo.scopesVar);
   execInfo.scopesVar = 0;
-  if (arr) execInfo.scopesVar = jsvCopy(arr, true);
-  // TODO: copy on write? would make function calls faster
+  if (arr) {
+    if (jsvIsArray(arr)) {
+      // TODO: copy on write? would make function calls faster
+      execInfo.scopesVar = jsvCopy(arr, true);
+    } else {
+      // just a single item,but we must package it in an array
+      execInfo.scopesVar = jsvNewArray(&arr, 1);
+    }
+  }
 }
 // -----------------------------------------------
 /// Check that we have enough stack to recurse. Return true if all ok, error if not.
@@ -2990,7 +3002,7 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   if (scope) {
     // if we're adding a scope, make sure it's the *only* scope
     execInfo.scopesVar = 0;
-    jspeiAddScope(scope);
+    if (scope!=execInfo.root) jspeiAddScope(scope); // it's searched by default anyway
   }
 
   // actually do the parsing
