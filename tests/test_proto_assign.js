@@ -20,3 +20,5 @@ var IndexedCollection = /*@__PURE__*/ (function (Collection) {
   IndexedCollection.prototype.constructor = IndexedCollection;
   return IndexedCollection;
 })(Collection);
+// it would have failed previously
+result=1;
