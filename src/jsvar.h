@@ -672,7 +672,7 @@ void jsvArrayPushAll(JsVar *target, JsVar *source, bool checkDuplicates); ///< A
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME. DOES NOT RENUMBER.
 void jsvArrayAddUnique(JsVar *arr, JsVar *v); ///< Adds a new variable element to the end of an array (IF it was not already there). Return true if successful
-JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler); ///< Join all elements of an array together into a string
+JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler, bool ignoreNull); ///< Join all elements of an array together into a string
 void jsvArrayInsertBefore(JsVar *arr, JsVar *beforeIndex, JsVar *element); ///< Insert a new element before beforeIndex, DOES NOT UPDATE INDICES
 static ALWAYS_INLINE bool jsvArrayIsEmpty(JsVar *arr) { assert(jsvIsArray(arr)); return !jsvGetFirstChild(arr); } ///< Return true is array is empty
 

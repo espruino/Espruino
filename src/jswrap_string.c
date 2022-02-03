@@ -642,6 +642,28 @@ JsVar *jswrap_string_trim(JsVar *parent) {
 /*JSON{
   "type" : "method",
   "class" : "String",
+  "name" : "concat",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_string_concat",
+  "params" : [
+    ["args","JsVarArray","Strings to append"]
+  ],
+  "return" : ["JsVar","The result of appending all arguments to this string"]
+}
+Append all arguments to this `String` and return the result. Does not modify the original `String`.
+*/
+JsVar *jswrap_string_concat(JsVar *parent, JsVar *args) {
+  if (!jsvIsString(parent)) return 0;
+  JsVar *str = jsvNewFromStringVar(parent, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+  JsVar *extra = jsvArrayJoin(args, NULL/*filler*/, false/*ignoreNull*/);
+  jsvAppendStringVarComplete(str, extra);
+  jsvUnLock(extra);
+  return str;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
   "name" : "startsWith",
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_string_startsWith",

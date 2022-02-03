@@ -1397,7 +1397,7 @@ JsVar *jsvAsString(JsVar *v) {
       str = jsvNewFromString(buf);
     } else if (jsvIsArray(v) || jsvIsArrayBuffer(v)) {
       JsVar *filler = jsvNewFromString(",");
-      str = jsvArrayJoin(v, filler);
+      str = jsvArrayJoin(v, filler, true/*ignoreNull*/);
       jsvUnLock(filler);
     } else if (jsvIsFunction(v)) {
       str = jsvNewFromEmptyString();
@@ -3278,7 +3278,7 @@ void jsvArrayAddUnique(JsVar *arr, JsVar *v) {
 }
 
 /// Join all elements of an array together into a string
-JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
+JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler, bool ignoreNull) {
   JsVar *str = jsvNewFromEmptyString();
   if (!str) return 0; // out of memory
   assert(!filler || jsvIsString(filler));
@@ -3297,7 +3297,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
       first = false;
       // add the value
       JsVar *value = jsvIteratorGetValue(&it);
-      if (value && !jsvIsNull(value)) {
+      if (value && (!ignoreNull || !jsvIsNull(value))) {
         JsVar *valueStr = jsvAsString(value);
         if (valueStr) { // could be out of memory
           jsvStringIteratorAppendString(&itdst, valueStr, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);

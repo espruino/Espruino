@@ -5,6 +5,7 @@
             NRF.getSecurityStatus now returns 'connected_addr' for the address of the currently-connected device
             NRF.setAdvertising converts arrays of arrays to arrays of ArrayBuffers. Also don't update advertising when connected.
             Memory usage improvement: Arrow functions only store value of 'this' if 'this' is used by code inside them (fix #2139)
+            Add String.prototype.concat (fix #2140)
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)
