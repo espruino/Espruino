@@ -177,6 +177,9 @@ static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   
 #endif
 
 volatile uint16_t                       m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
+#ifndef SAVE_ON_FLASH
+ble_gap_addr_t m_peripheral_addr;
+#endif
 #ifdef EXTENSIBLE_MTU
 volatile uint16_t m_peripheral_effective_mtu;
 #else
@@ -1199,6 +1202,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
           jsble_queue_pending_buf(BLEP_CONNECTED, 0, (char*)&p_ble_evt->evt.gap_evt.params.connected.peer_addr, sizeof(ble_gap_addr_t));
+#ifndef SAVE_ON_FLASH
+          m_peripheral_addr = p_ble_evt->evt.gap_evt.params.connected.peer_addr;
+#endif
         }
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
@@ -3128,6 +3134,10 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
     jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
     jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
     jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
+#ifndef SAVE_ON_FLASH
+    if (status.connected && conn_handle==m_peripheral_conn_handle)
+      jsvObjectSetChildAndUnLock(result, "connected_addr", bleAddrToStr(m_peripheral_addr));
+#endif
     return result;
   }
   return 0;

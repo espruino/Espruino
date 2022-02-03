@@ -3242,6 +3242,7 @@ state of the current peripheral connection:
   encrypted       // Communication on this link is encrypted.
   mitm_protected  // The encrypted communication is also protected against man-in-the-middle attacks.
   bonded          // The peer is bonded with us
+  connected_addr  // If connected=true, the MAC address of the currently connected device
 }
 ```
 
