@@ -452,8 +452,8 @@ void jslGetNextToken() {
       goto jslGetNextToken_start;
       break;
     case JSLJT_SINGLE_CHAR:
-      if (lex->tk == LEX_R_THIS) lex->hadThisKeyword=true;
       jslSingleChar();
+      if (lex->tk == LEX_R_THIS) lex->hadThisKeyword=true;
       break;
     case JSLJT_ID: {
       while (isAlpha(lex->currCh) || isNumeric(lex->currCh) || lex->currCh=='$') {
