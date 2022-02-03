@@ -857,6 +857,17 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
         isNested = true;
       } else if (jsvIsArray(v) || jsvIsArrayBuffer(v)) {
         isNested = true;
+        if (jsvIsArray(v)) {
+          /* don't store sparse arrays for advertising data. It's inefficient but also
+          in SWI1_IRQHandler they need decoding which is slow *and* will cause jsvNew... to be
+          called, which may interfere with what happens in the main thread (eg. GC).
+          Instead convert them to ArrayBuffers */
+          uint8_t advdata[BLE_GAP_ADV_MAX_SIZE];
+          unsigned int advdatalen = jsvIterateCallbackToBytes(v, advdata, BLE_GAP_ADV_MAX_SIZE);
+          JsVar *newv = jsvNewArrayBufferWithData(advdatalen, advdata);
+          jsvObjectIteratorSetValue(&it, newv);
+          jsvUnLock(newv);
+        }
       }
       elements++;
       jsvUnLock(v);

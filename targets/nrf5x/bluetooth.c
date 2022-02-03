@@ -1068,7 +1068,7 @@ void SWI1_IRQHandler(bool radio_evt) {
   if (bleStatus & BLE_NUS_INITED)
     nus_transmit_string();
   // If we're doing multiple advertising, iterate through advertising options
-  if (bleStatus & BLE_IS_ADVERTISING_MULTIPLE) {
+  if ((bleStatus & BLE_IS_ADVERTISING)  && (bleStatus & BLE_IS_ADVERTISING_MULTIPLE)) {
     int idx = (bleStatus&BLE_ADVERTISING_MULTIPLE_MASK)>>BLE_ADVERTISING_MULTIPLE_SHIFT;
     JsVar *advData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
     bool ok = true;
