@@ -452,7 +452,7 @@ void jslGetNextToken() {
       else if (jslIsToken("super", 1)) lex->tk = LEX_R_SUPER;
       else if (jslIsToken("switch", 1)) lex->tk = LEX_R_SWITCH;
       break;
-      case 't': if (jslIsToken("this", 1)) lex->tk = LEX_R_THIS;
+      case 't': if (jslIsToken("this", 1)) { lex->tk = LEX_R_THIS; lex->hadThisKeyword=true; }
       else if (jslIsToken("throw", 1)) lex->tk = LEX_R_THROW;
       else if (jslIsToken("true", 1)) lex->tk = LEX_R_TRUE;
       else if (jslIsToken("try", 1)) lex->tk = LEX_R_TRY;

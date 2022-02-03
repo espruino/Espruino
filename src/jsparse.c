@@ -330,7 +330,7 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
   return true;
 }
 
-// Parse function, assuming we're on '{'. funcVar can be 0
+// Parse function, assuming we're on '{'. funcVar can be 0. returns 'true' is the function included the 'this' keyword
 NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnly) {
   bool forcePretokenise = false;
 
@@ -371,6 +371,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
   jslSkipWhiteSpace();
   jslCharPosNew(&funcBegin, lex->sourceVar, lex->tokenStart);
   int lastTokenEnd = -1;
+  lex->hadThisKeyword = lex->tk == LEX_R_THIS;
   if (!expressionOnly) {
     int brackets = 0;
     while (lex->tk && (brackets || lex->tk != '}')) {
@@ -387,6 +388,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
     execInfo.execute = oldExec;
     lastTokenEnd = (int)lex->tokenStart;
   }
+  bool hadThisKeyword = lex->hadThisKeyword;
   // Then create var and set (if there was any code!)
   if (funcVar && lastTokenEnd>0) {
     // code var
@@ -429,7 +431,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
 
   jslCharPosFree(&funcBegin);
   if (!expressionOnly) JSP_MATCH('}');
-  return 0;
+  return hadThisKeyword;
 }
 
 // Parse function (after 'function' has occurred
@@ -1465,8 +1467,19 @@ NO_INLINE JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a) {
   funcVar = jspeAddNamedFunctionParameter(funcVar, a);
 
   bool expressionOnly = lex->tk!='{';
-  jspeFunctionDefinitionInternal(funcVar, expressionOnly);
-  jsvObjectSetChild(funcVar, JSPARSE_FUNCTION_THIS_NAME, execInfo.thisVar);
+  bool fnIncludesThis = jspeFunctionDefinitionInternal(funcVar, expressionOnly);
+  /* Arrow functions store the value of 'this' when they were defined. In order
+  to differentiate between normal functions we usually have to store 'this' even
+  if 'this' was just the global object.
+  Very few arrow functions actually use 'this' though - usually they are just used
+  as a shorthand, and so we end up wasting a whole extra var for every single
+  arrow function.
+  So... while parsing the function's body we check of the 'this' keyword is used.
+  If it isn't, we just don't include it.
+   */
+  if (fnIncludesThis)
+    jsvObjectSetChild(funcVar, JSPARSE_FUNCTION_THIS_NAME, execInfo.thisVar);
+
   return funcVar;
 }
 
