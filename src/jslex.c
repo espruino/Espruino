@@ -404,6 +404,7 @@ void jslGetNextToken() {
       ((unsigned char)lex->currCh) > jslJumpTableEnd) {
     // if unhandled by the jump table, just pass it through as a single character
     jslSingleChar();
+    if (lex->tk == LEX_R_THIS) lex->hadThisKeyword=true;
   } else {
     switch(jslJumpTable[((unsigned char)lex->currCh) - jslJumpTableStart]) {
     case JSLJT_ID: {
