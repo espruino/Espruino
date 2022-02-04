@@ -2901,7 +2901,7 @@ NO_INLINE void jswrap_banglejs_hwinit() {
 #ifdef DTNO1_F5
   graphicsInternal.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
 #endif
-  graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1; // 2x size is default
+  graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1; // 4x6 size is default
 #ifdef LCD_CONTROLLER_LPM013M126
   lcdMemLCD_init(&graphicsInternal);
   jswrap_banglejs_pwrBacklight(true);
@@ -3071,6 +3071,7 @@ NO_INLINE void jswrap_banglejs_init() {
     showSplashScreen = false;
 #endif
   if (showSplashScreen) {
+    graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1; // 4x6 size is default
     graphicsClear(&graphicsInternal);
     bool drawInfo = false;
     JsVar *img = jsfReadFile(jsfNameFromString(".splash"),0,0);
