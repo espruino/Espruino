@@ -7,6 +7,7 @@
             Memory usage improvement: Arrow functions only store value of 'this' if 'this' is used by code inside them (fix #2139)
             Add String.prototype.concat (fix #2140)
             Much-improved whitespace lexing code using single jumptable - 3% speed increase
+            Allow `process.memory(false)` to get memory info but skip GC
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)
