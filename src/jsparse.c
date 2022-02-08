@@ -952,7 +952,12 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
     } else if (strcmp(name, JSPARSE_INHERITS_VAR)==0) {
       const char *objName = jswGetBasicObjectName(object);
       if (objName) {
-        child = jspNewPrototype(objName);
+        JsVar *p = jsvSkipNameAndUnLock(jspNewPrototype(objName));
+        // jspNewPrototype returns a 'prototype' name that's already a child of eg. an array
+        // Create a new 'name' called __proto__ that links to it
+        JsVar *i = jsvNewFromString(JSPARSE_INHERITS_VAR);
+        if (p) child = jsvCreateNewChild(object, i, p);
+        jsvUnLock(i);
       }
     }
   }
@@ -1372,8 +1377,13 @@ NO_INLINE JsVar *jspeFactorDelete() {
       if (!parent && jsvIsChild(execInfo.root, a))
         parent = jsvLockAgain(execInfo.root);
 
-      if (jsvHasChildren(parent)) {
+#ifdef DEBUG
+      if (jsvHasChildren(parent)) assert(jsvIsChild(parent, a));
+#endif
+      if (jsvHasChildren(parent) && jsvIsChild(parent, a)) {
         // else remove properly.
+        /* we use jsvIsChild here just in case. delete probably isn't called
+        that often so it pays to be safe */
         if (jsvIsArray(parent)) {
           // For arrays, we must make sure we don't change the length
           JsVarInt l = jsvGetArrayLength(parent);
@@ -2848,7 +2858,7 @@ JsVar *jspNewBuiltin(const char *instanceOf) {
   return objFunc;
 }
 
-/// Create a new Class of the given instance and return its prototype
+/// Create a new Class of the given instance and return its prototype (as a name 'prototype')
 NO_INLINE JsVar *jspNewPrototype(const char *instanceOf) {
   JsVar *objFuncName = jsvFindChildFromString(execInfo.root, instanceOf, true);
   if (!objFuncName) // out of memory

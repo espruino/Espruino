@@ -9,6 +9,7 @@
             Much-improved whitespace lexing code using single jumptable - 3% speed increase
             Allow `process.memory(false)` to get memory info but skip GC
             Graphics: fix height calculation bug in fillRect/clearRect when given an object with w/h as an argument
+            Fix potential corruption issue caused by `delete [].__proto__` (fix #2142)
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)

@@ -2555,6 +2555,7 @@ void jsvAddName(JsVar *parent, JsVar *namedChild) {
     }
 
     if (insertAfter) {
+      assert(jsvIsName(insertAfter));
       if (jsvGetNextSibling(insertAfter)) {
         // great, we're in the middle...
         JsVar *insertBefore = jsvLock(jsvGetNextSibling(insertAfter));
@@ -2761,6 +2762,9 @@ JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound) 
 void jsvRemoveChild(JsVar *parent, JsVar *child) {
   assert(jsvHasChildren(parent));
   assert(jsvIsName(child));
+#ifdef DEBUG
+  assert(jsvIsChild(parent, child));
+#endif
   JsVarRef childref = jsvGetRef(child);
   bool wasChild = false;
   // unlink from parent
