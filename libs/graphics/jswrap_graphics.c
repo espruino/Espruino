@@ -916,7 +916,7 @@ void _jswrap_graphics_getRect(JsVar *opt, int *x1, int *y1, int *x2, int *y2) {
     };
     jsvReadConfigObject(opt, configs, sizeof(configs) / sizeof(jsvConfigObject));
     if (w>=0) *x2 = *x1 + w;
-    if (h>=0) *y2 = *y1 + w;
+    if (h>=0) *y2 = *y1 + h;
   } else
     *x1 = jsvGetInteger(opt);
 }
