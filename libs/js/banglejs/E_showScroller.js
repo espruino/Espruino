@@ -8,7 +8,7 @@
   
 if (!options) return Bangle.setUI();
 var selected = 0;
-var menuScroll = 0;
+var menuScroll = 0|option.scroll;
 var menuShowing = false;
 var w = g.getWidth();
 var h = g.getHeight();
@@ -50,4 +50,11 @@ Bangle.setUI("updown",dir=>{
     options.select(selected);
   }
 });
+return {
+  draw : drawMenu,
+  drawItem : i => {
+    var y = Y+(i+menuScroll)*options.h;
+    options.draw(i, {x:0,y:y,w:w,h:options.h});
+  }
+};
 })

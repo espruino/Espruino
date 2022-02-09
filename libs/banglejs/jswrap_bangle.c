@@ -5033,7 +5033,7 @@ a circle on the display
     "type" : "staticmethod",
     "class" : "Bangle",
     "name" : "setUI",
-    "generate_js" : "libs/js/banglejs/Bangle_setUI_F18.js",
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_F18.min.js",
     "params" : [
       ["type","JsVar","The type of UI input: 'updown', 'leftright', 'clock', 'clockupdown' or undefined to cancel"],
       ["callback","JsVar","A function with one argument which is the direction"]
@@ -5079,7 +5079,7 @@ you could make all clocks start the launcher with a swipe by using:
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
-    "generate_js" : "libs/js/banglejs/Bangle_setUI_Q3.js",
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_Q3.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */

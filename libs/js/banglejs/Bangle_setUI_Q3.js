@@ -11,6 +11,10 @@
     Bangle.removeListener("touch", Bangle.touchHandler);
     delete Bangle.touchHandler;
   }
+  if (Bangle.uiRemove) {
+    Bangle.uiRemove();
+    delete Bangle.uiRemove;
+  }  
   function b() {
     try{Bangle.buzz(30);}catch(e){}
   }

@@ -11,6 +11,10 @@
     Bangle.removeListener("touch", Bangle.touchHandler);
     delete Bangle.touchHandler;
   }
+  if (Bangle.uiRemove) {
+    Bangle.uiRemove();
+    delete Bangle.uiRemove;
+  }  
   if (!mode) return;
   else if (mode=="updown") {
     Bangle.btnWatches = [
