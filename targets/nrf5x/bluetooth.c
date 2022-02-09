@@ -123,7 +123,6 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 #define EXTENSIBLE_MTU // The MTU can be extended past the default of 23
 #endif
 
-#define APP_BLE_CONN_CFG_TAG                1                                       /**< A tag identifying the SoftDevice BLE configuration. */
 #define APP_BLE_OBSERVER_PRIO               2                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
 #define APP_SOC_OBSERVER_PRIO               1                                       /**< Applications' SoC observer priority. You shoulnd't need to modify this value. */
 
@@ -173,7 +172,7 @@ static bool                             m_in_boot_mode = false;
 #endif
 
 #if NRF_SD_BLE_API_VERSION > 5
-static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
+uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
 #endif
 
 volatile uint16_t                       m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
@@ -2633,9 +2632,11 @@ uint32_t jsble_advertising_start() {
 uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen) {
 #if NRF_SD_BLE_API_VERSION>5
   ble_gap_adv_data_t d;
-  memset(&d,0,sizeof(d));
   d.adv_data.p_data = (uint8_t *)dPtr;
   d.adv_data.len = dLen;
+  d.scan_rsp_data.p_data = NULL;
+  d.scan_rsp_data.len = 0;
+
   // TODO: scan_rsp_data? Does not setting this remove it?
   return sd_ble_gap_adv_set_configure(&m_adv_handle, &d, NULL);
 #else

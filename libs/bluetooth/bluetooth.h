@@ -82,6 +82,8 @@ typedef struct {
 #endif
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 
+#define APP_BLE_CONN_CFG_TAG                1                                       /**< A tag identifying the SoftDevice BLE configuration. */
+
 // BLE HID stuff
 #define HID_KEYS_MAX_LEN                     16                                      /**< Maximum length of the Input Report characteristic. */
 #define HID_MODIFIER_KEY_POS                 0                                       /**< Position of the modifier byte in the Input Report. */

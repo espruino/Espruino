@@ -907,7 +907,8 @@ JsVar *jswrap_ble_getCurrentAdvertisingData() {
   if (!adv) adv = jswrap_ble_getAdvertisingData(NULL, NULL); // use the defaults
   else {
     if (bleStatus&BLE_IS_ADVERTISING_MULTIPLE) {
-      JsVar *v = jsvGetArrayItem(adv, 0);
+      int idx = (bleStatus&BLE_ADVERTISING_MULTIPLE_MASK)>>BLE_ADVERTISING_MULTIPLE_SHIFT;
+      JsVar *v = jsvGetArrayItem(adv, idx);
       jsvUnLock(adv);
       adv = v;
     }
@@ -1062,26 +1063,44 @@ and `NRF.setServices` or one will overwrite the other.
 void jswrap_ble_setScanResponse(JsVar *data) {
   uint32_t err_code = 0;
 
-  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, data);
 
-  if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
-    JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
-    if (!dPtr) {
+  if (jsvIsUndefined(data)) {
+    jsvObjectRemoveChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA);
+  } else if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
+    JSV_GET_AS_CHAR_ARRAY(respPtr, respLen, data);
+    if (!respPtr) {
       jsExceptionHere(JSET_TYPEERROR, "Unable to convert data argument to an array");
       return;
     }
+    // only set data if we managed to decode it ok
+    jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, data);
+
 #ifdef NRF5X
 #if NRF_SD_BLE_API_VERSION<5
     err_code = sd_ble_gap_adv_data_set(NULL, 0, (uint8_t *)dPtr, dLen);
 #else
-    jsWarn("setScanResponse not working on SDK15\n");
+    extern uint8_t m_adv_handle;
+    // Get existing advertising data as on SDK15 we have to be able to re-supply this
+    // when changing the scan response
+    JsVar *advData = jswrap_ble_getCurrentAdvertisingData();
+    JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advData);
+
+    ble_gap_adv_data_t d;
+    d.adv_data.p_data = (uint8_t *)advPtr;
+    d.adv_data.len = advLen;
+    d.scan_rsp_data.p_data = (uint8_t *)respPtr;
+    d.scan_rsp_data.len = respLen;
+    if (bleStatus & BLE_IS_ADVERTISING) sd_ble_gap_adv_stop(m_adv_handle);
+    err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, NULL);
+    if (bleStatus & BLE_IS_ADVERTISING) sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
 #endif
 #else
     err_code = 0xDEAD;
     jsiConsolePrintf("FIXME\n");
 #endif
     jsble_check_error(err_code);
-  } else if (!jsvIsUndefined(data)) {
+    jsvUnLock(advData);
+  } else {
     jsExceptionHere(JSET_TYPEERROR, "Expecting array-like object or undefined, got %t", data);
   }
 }
