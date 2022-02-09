@@ -957,7 +957,7 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
         // Create a new 'name' called __proto__ that links to it
         JsVar *i = jsvNewFromString(JSPARSE_INHERITS_VAR);
         if (p) child = jsvCreateNewChild(object, i, p);
-        jsvUnLock(i);
+        jsvUnLock2(p, i);
       }
     }
   }

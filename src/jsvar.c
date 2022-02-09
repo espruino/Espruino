@@ -2763,7 +2763,7 @@ void jsvRemoveChild(JsVar *parent, JsVar *child) {
   assert(jsvHasChildren(parent));
   assert(jsvIsName(child));
 #ifdef DEBUG
-  assert(jsvIsChild(parent, child));
+  assert(!(jsvGetPrevSibling(child) || jsvGetNextSibling(child)) || jsvIsChild(parent, child));
 #endif
   JsVarRef childref = jsvGetRef(child);
   bool wasChild = false;
@@ -2819,7 +2819,7 @@ void jsvRemoveAllChildren(JsVar *parent) {
 
 /// Check if the given name is a child of the parent
 bool jsvIsChild(JsVar *parent, JsVar *child) {
-  assert(jsvIsArray(parent) || jsvIsObject(parent));
+  assert(jsvIsArray(parent) || jsvIsObject(parent) || jsvIsFunction(parent));
   assert(jsvIsName(child));
   JsVarRef childref = jsvGetRef(child);
   JsVarRef indexref;
