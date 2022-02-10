@@ -13,6 +13,8 @@
             Bangle.setUI is now minified, also calls Bangle.uiRemove if it was set (to clean up custom UI additions)
             E.showScroller tweaks to allow redraw requests, get/set initial scroll amount, negative scroll (for titles)
             NRF.setScanResponse now works on SDK15
+            Fix g.wrapString if string ends with a bitmap
+            g.wrapString now splits long words if they are too long for a line
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)

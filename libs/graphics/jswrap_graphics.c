@@ -2001,6 +2001,8 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   int wordWidth = 0;
   int lineWidth = 0;
   int wordStartIdx = 0;
+  int wordIdxAtMaxWidth = 0; // index just before the word width>maxWidth
+  int wordWidthAtMaxWidth = 0; // index just before the word width>maxWidth
   bool endOfText = false;
   bool wasNewLine = false;
 
@@ -2020,15 +2022,22 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         }
         jsvAppendStringVar(currentLine, str, wordStartIdx, currentPos-(wordStartIdx+1));
         lineWidth += wordWidth;
-      } else {
-        // new line
+      } else { // doesn't fit one one line - move to new line
         lineWidth = wordWidth;
         if (jsvGetStringLength(currentLine) || wasNewLine)
           jsvArrayPush(lines, currentLine);
         jsvUnLock(currentLine);
+        if (wordIdxAtMaxWidth) {
+          // word is too long to fit on a line
+          currentLine = jsvNewFromStringVar(str, wordStartIdx, wordIdxAtMaxWidth-(wordStartIdx+1));
+          jsvArrayPushAndUnLock(lines, currentLine);
+          wordStartIdx = wordIdxAtMaxWidth-1;
+          lineWidth -= wordWidthAtMaxWidth;
+        }
         currentLine = jsvNewFromStringVar(str, wordStartIdx, currentPos-(wordStartIdx+1));
       }
       wordWidth = 0;
+      wordIdxAtMaxWidth = 0;
       wordStartIdx = currentPos;
       wasNewLine = ch=='\n';
       if (endOfText) break;
@@ -2043,11 +2052,17 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         _jswrap_graphics_freeImageInfo(&img);
         // string iterator now points to the next char after image
         wordWidth += img.width;
+        if (!jsvStringIteratorHasChar(&it)) endOfText=true;
       }
       continue;
     }
 #endif
-    wordWidth += _jswrap_graphics_getCharWidth(&gfx, &info, ch);
+    int w = _jswrap_graphics_getCharWidth(&gfx, &info, ch);
+    if (wordWidth <= maxWidth && wordWidth+w>maxWidth) {
+      wordIdxAtMaxWidth = jsvStringIteratorGetIndex(&it);
+      wordWidthAtMaxWidth = wordWidth;
+    }
+    wordWidth += w;
     if (!jsvStringIteratorHasChar(&it)) endOfText=true;
   }
   jsvStringIteratorFree(&it);
