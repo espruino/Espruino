@@ -425,7 +425,7 @@ static void graphicsSetPixelDeviceBlended(JsGraphics *gfx, int x, int y, int amt
   graphicsSetPixelDevice(gfx, x, y, col);
 }
 
-static void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   if (x1>x2) {
     int t = x1;
     x1 = x2;

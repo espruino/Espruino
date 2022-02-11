@@ -206,6 +206,7 @@ unsigned int graphicsGetPixel(JsGraphics *gfx, int x, int y);
 void         graphicsClear(JsGraphics *gfx);
 void         graphicsFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
 void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); // Simple fillrect - doesn't call device-specific FR
+void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); // fillrect using device coordinates
 void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2);
 void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsDrawEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
