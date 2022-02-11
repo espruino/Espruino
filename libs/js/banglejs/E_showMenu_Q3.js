@@ -80,7 +80,7 @@
   };
   
   var scr = {
-    h : H, c : keys.length+1/*title*/,
+    h : H, c : keys.length/*title*/,
     scrollMin : -24, scroll : -24, // title is 24px, rendered at -1
     draw : (idx, r) => {
       if (idx<0) // TITLE
@@ -95,15 +95,15 @@
         if (item.format) v=item.format(v);
         if (g.stringMetrics(v).width > r.w/2) // bodge for broken wrapString with image
           v = g.wrapString(v,r.w/2).join("\n");
-        print(keys[idx],E.toJS(v));
         g.setFontAlign(1,0).drawString(v,r.x+r.w-8,r.y+H/2);
         pad += g.stringWidth(v);
       } else if ("function" == typeof item) {
         g.drawImage(/* 9x18 */atob("CRKBAGA4Hg8DwPB4HgcDg8PB4eHg8HAwAA=="), r.x+r.w-21, r.y+H/2-9);
         pad += 16;
       }
-        
-      g.setFontAlign(-1,0).drawString(g.wrapString(keys[idx],r.w-pad).join("\n"), r.x+12, r.y+H/2);
+      var l = g.wrapString(keys[idx],r.w-pad);
+      if (l.length>1) g.setFont("6x15");
+      g.setFontAlign(-1,0).drawString(l.join("\n"), r.x+12, r.y+H/2);
     },
     select : function(idx) {
       if (idx<0) return back&&back(); // title
