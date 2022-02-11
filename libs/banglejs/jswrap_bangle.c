@@ -3536,7 +3536,6 @@ bool jswrap_banglejs_idle() {
     if (bangleTasks & JSBT_MIDNIGHT) {
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"midnight", NULL, 0);
     }
-    JSBT_MIDNIGHT
     if (bangleTasks & JSBT_GESTURE_DATA) {
       if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"gesture")) {
         JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_INT8, accGestureRecordedCount*3);
