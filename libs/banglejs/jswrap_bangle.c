@@ -392,7 +392,16 @@ Bangle.on('stroke',o=>{
 }
 ```
 */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
+  "name" : "midnight",
+  "ifdef" : "BANGLEJS"
+}
+Emitted at midnight (at the point the `day` health info is reset to 0).
 
+Can be used for housekeeping tasks that don't want to be run during the day.
+*/
 
 #define ACCEL_HISTORY_LEN 50 ///< Number of samples of accelerometer history
 
@@ -799,6 +808,7 @@ typedef enum {
   JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<27, ///< reschedule accelerometer poll handler to powersave speed
   JSBT_HRM_INSTANT_DATA = 1<<28, ///< Instant heart rate data
   JSBT_HEALTH = 1<<29, ///< New 'health' event
+  JSBT_MIDNIGHT = 1<<30, ///< Fired at midnight each day - for housekeeping tasks
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -1287,7 +1297,7 @@ void peripheralPollHandler() {
   }
 #endif
 
-  // Health tracking
+  // Health tracking + midnight event
   // Did we enter a new 10 minute interval?
   JsVarFloat msecs = jshGetMillisecondsFromTime(time);
   uint8_t healthIndex = (uint8_t)(msecs/HEALTH_INTERVAL);
@@ -1297,10 +1307,12 @@ void peripheralPollHandler() {
     healthStateClear(&healthCurrent);
     healthCurrent.index = healthIndex;
     bangleTasks |= JSBT_HEALTH;
+    jshHadEvent();
     // What if we've changed day?
     TimeInDay td = getTimeFromMilliSeconds(msecs, false/*forceGMT*/);
     uint8_t dayIndex = (uint8_t)td.daysSinceEpoch;
     if (dayIndex != healthDaily.index) {
+      bangleTasks |= JSBT_MIDNIGHT;
       healthStateClear(&healthDaily);
       healthDaily.index = dayIndex;
     }
@@ -3521,6 +3533,10 @@ bool jswrap_banglejs_idle() {
         jsvUnLock(o);
       }
     }
+    if (bangleTasks & JSBT_MIDNIGHT) {
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"midnight", NULL, 0);
+    }
+    JSBT_MIDNIGHT
     if (bangleTasks & JSBT_GESTURE_DATA) {
       if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"gesture")) {
         JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_INT8, accGestureRecordedCount*3);
