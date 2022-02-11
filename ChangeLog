@@ -18,6 +18,7 @@
             Add Storage.getStats to get more fine-grained info about Storage
             Add Bangle.midnight event that can be used for housekeeping tasks
             Graphics: You can now do `g.fillRect({x,y,x2,y2,r})` for rounded rectangles
+            Bangle.js2: include new touchscreen E.showMenu system
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)

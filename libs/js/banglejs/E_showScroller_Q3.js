@@ -11,7 +11,6 @@
   returns {
     draw  = draw all
     drawItem(idx) = draw specific item
-    scroll = current scroll offset
   }
   */
 Bangle.setUI(); // remove existing handlers
