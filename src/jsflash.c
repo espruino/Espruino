@@ -363,41 +363,30 @@ static uint32_t jsfGetAddressOfNextStartPage(uint32_t addr) {
   return next;
 }
 
-// Get the amount of space free in this page (or all pages). addr=0 uses start page
-uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages) {
+/// Get info about the current filesystem
+JsfStorageStats jsfGetStorageStats(uint32_t addr, bool allPages) {
   if (!addr) addr=JSF_DEFAULT_START_ADDRESS;
-  uint32_t pageEndAddr = jsfGetBankEndAddress(addr);
-  if (!allPages) {
-    uint32_t pageAddr,pageLen;
-    if (!jshFlashGetPage(addr, &pageAddr, &pageLen))
-      return 0;
-    assert(addr==pageAddr);
-    pageEndAddr = pageAddr+pageLen;
-  }
+  uint32_t startAddr = addr;
+  JsfStorageStats stats;
+  memset(&stats, 0, sizeof(JsfStorageStats));
   JsfFileHeader header;
   memset(&header,0,sizeof(JsfFileHeader));
   uint32_t lastAddr = addr;
   if (jsfGetFileHeader(addr, &header, false)) do {
-    lastAddr = jsfAlignAddress(addr + (uint32_t)sizeof(JsfFileHeader) + jsfGetFileSize(&header));
-  } while (jsfGetNextFileHeader(&addr, &header, (allPages ? GNFH_GET_ALL : GNFH_GET_EMPTY)|GNFH_READ_ONLY_FILENAME_START));
-  return pageEndAddr-lastAddr;
-}
-
-// Get the amount of space needed to mirror this page elsewhere (including padding for alignment)
-static uint32_t jsfGetAllocatedSpace(uint32_t addr, bool allPages, uint32_t *uncompactedSpace) {
-  uint32_t allocated = 0;
-  if (uncompactedSpace) *uncompactedSpace=0;
-  JsfFileHeader header;
-  memset(&header,0,sizeof(JsfFileHeader));
-  if (jsfGetFileHeader(addr, &header, false)) do {
     uint32_t fileSize = jsfAlignAddress(jsfGetFileSize(&header)) + (uint32_t)sizeof(JsfFileHeader);
+    lastAddr = addr + fileSize;
     if (header.name.firstChars != 0) { // if not replaced
-      allocated += fileSize;
+      stats.fileBytes += fileSize;
+      stats.fileCount++;
     } else { // replaced
-      if (uncompactedSpace) *uncompactedSpace += fileSize;
+      stats.trashBytes += fileSize;
+      stats.trashCount++;
     }
   } while (jsfGetNextFileHeader(&addr, &header, (allPages ? GNFH_GET_ALL : GNFH_GET_EMPTY)|GNFH_READ_ONLY_FILENAME_START));
-  return allocated;
+  uint32_t pageEndAddr = allPages ? jsfGetBankEndAddress(startAddr) : jsfGetAddressOfNextPage(startAddr);
+  stats.total = pageEndAddr - startAddr;
+  stats.free = pageEndAddr - lastAddr;
+  return stats;
 }
 
 #ifndef SAVE_ON_FLASH
@@ -523,13 +512,12 @@ bool jsfBankCompact(uint32_t startAddress) {
   uint32_t maxRequired = pageSize + (uint32_t)sizeof(JsfFileHeader);
   // TODO: We could skip forward pages if we think they are already fully compacted?
 
-  uint32_t uncompacted = 0;
-  uint32_t allocated = jsfGetAllocatedSpace(startAddress, true, &uncompacted);
-  if (!uncompacted) {
+  JsfStorageStats stats = jsfGetStorageStats(startAddress, true);
+  if (!stats.trashBytes) {
     jsDebug(DBG_INFO,"Already fully compacted\n");
     return true;
   }
-  uint32_t swapBufferSize = allocated;
+  uint32_t swapBufferSize = stats.fileBytes;
   if (swapBufferSize > maxRequired) swapBufferSize=maxRequired;
   // See if we have enough memory...
   if (swapBufferSize+256 < jsuGetFreeStack()) {
@@ -747,7 +735,8 @@ uint32_t jsfFindFileFromAddr(uint32_t containsAddr, JsfFileHeader *returnedHeade
 static void jsfBankDebugFiles(uint32_t addr) {
   uint32_t pageAddr = 0, pageLen = 0, pageEndAddr = 0;
 
-  jsiConsolePrintf("DEBUG FILES (0x%08x) %d live\n", addr, jsfGetAllocatedSpace(addr,true,0));
+  JsfStorageStats stats = jsfGetStorageStats(addr,true);
+  jsiConsolePrintf("DEBUG FILES (0x%08x)\n  %db (%d files) live\n  %db (%d files) trash\n", addr, stats.fileBytes, stats.fileCount, stats.trashBytes, stats.trashCount);
 
   JsfFileHeader header;
   memset(&header,0,sizeof(JsfFileHeader));
@@ -759,15 +748,15 @@ static void jsfBankDebugFiles(uint32_t addr) {
       }
       pageEndAddr = pageAddr+pageLen;
       uint32_t nextStartPage = jsfGetAddressOfNextStartPage(addr);
-      uint32_t alloced = jsfGetAllocatedSpace(pageAddr,false,0);
+      JsfStorageStats stats = jsfGetStorageStats(pageAddr,false);
       if (nextStartPage==pageEndAddr) {
         jsiConsolePrintf("PAGE 0x%08x (%d bytes) - %d live %d free\n",
-            pageAddr,pageLen,alloced,pageLen - alloced);
+            pageAddr,pageLen,stats.fileBytes,pageLen - stats.fileBytes);
       } else {
         pageLen = nextStartPage-pageAddr;
         jsiConsolePrintf("PAGES 0x%08x -> 0x%08x (%d bytes) - %d live %d free\n",
             pageAddr,nextStartPage,pageLen,
-            alloced,pageLen-alloced);
+            stats.fileBytes,pageLen-stats.fileBytes);
       }
     }
 
@@ -1114,7 +1103,7 @@ void jsfSaveToFlash() {
   // How much data do we have?
   uint32_t savedCodeAddr = jsfCreateFile(name, compressedSize, JSFF_COMPRESSED, NULL);
   if (!savedCodeAddr) {
-    jsiConsolePrintf("ERROR: Too big to save to flash (%d vs %d bytes)\n", compressedSize, jsfGetFreeSpace(0,true));
+    jsiConsolePrintf("ERROR: Too big to save to flash (%d vs %d bytes)\n", compressedSize, jsfGetStorageStats(0,true).free);
     jsvSoftInit();
     jspSoftInit();
     jsiConsolePrint("Deleting command history and trying again...\n");
@@ -1125,7 +1114,7 @@ void jsfSaveToFlash() {
     savedCodeAddr = jsfCreateFile(name, compressedSize, JSFF_COMPRESSED, NULL);
   }
   if (!savedCodeAddr) {
-    if (jsfGetAllocatedSpace(JSF_DEFAULT_START_ADDRESS, true, 0))
+    if (jsfGetStorageStats(JSF_DEFAULT_START_ADDRESS, true).fileBytes)
       jsiConsolePrint("Not enough free space to save. Try require('Storage').eraseAll()\n");
     else
       jsiConsolePrint("Code is too big to save to Flash.\n");
