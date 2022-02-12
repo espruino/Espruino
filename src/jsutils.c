@@ -59,12 +59,12 @@ bool isIDString(const char *s) {
 }
 
 char charToUpperCase(char ch) {
-  return (char)((ch >= 97 && ch <= 122) ? ch - 32 : ch);
-} // a-z
+  return (char)(((ch>=97 && ch<=122) || (ch>=224 && ch<=246) || (ch>=248 && ch<=254)) ? ch - 32 : ch);
+} // a-z, à-ö, ø-þ
 
 char charToLowerCase(char ch) {
-  return (char)((ch >= 65 && ch <= 90)  ? ch + 32 : ch);
-} // A-Z
+  return (char)(((ch>=65 && ch<=90) || (ch>=192 && ch<=214) || (ch>=216 && ch<=222))  ? ch + 32 : ch);
+} // A-Z, À-Ö, Ø-Þ
 
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again.
