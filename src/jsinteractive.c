@@ -88,7 +88,7 @@ JsErrorFlags lastJsErrorFlags = 0; ///< Compare with jsErrorFlags in order to re
 #ifdef USE_DEBUGGER
 void jsiDebuggerLine(JsVar *line);
 #endif
-
+void jsiCheckErrors();
 // ----------------------------------------------------------------------------
 
 /**
@@ -714,6 +714,7 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
 void jsiSoftKill() {
   // Execute `kill` events on `E`
   jsiExecuteEventCallbackOn("E", KILL_CALLBACK_NAME, 0, 0);
+  jsiCheckErrors();
   // Clear input line...
   inputCursorPos = 0;
   jsiInputLineCursorMoved();
