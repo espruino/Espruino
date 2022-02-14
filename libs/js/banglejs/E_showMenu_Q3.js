@@ -20,18 +20,19 @@
   function showSubMenu(item, title) {
     if ("number"!=typeof item.value) 
       return console.log("Unhandled item type");
+    var step = item.step||1;
     if (item.min!==undefined && item.max!==undefined &&
-        (item.max-item.min)<20) {
+        ((item.max-item.min)/step)<20) {
       // show scrolling menu of options
       E.showScroller({
-        h : H, c : item.max+1-item.min,
+        h : H, c : (item.max+step-item.min)/step,
         scrollMin : -24, scroll : -24, // title is 24px, rendered at -1
         draw : (idx, r) => {
           if (idx<0) // TITLE
             return g.setFont("12x20").setFontAlign(-1,0).drawString(
           menuIcon+" "+title, r.x+12, r.y+H-12);
           g.setColor(g.theme.bg2).fillRect({x:r.x+4,y:r.y+2,w:r.w-8, h:r.h-4, r:5});
-          var v = idx + item.min;
+          var v = idx*step + item.min;
           if (item.format) v=item.format(v);
       g.setColor(g.theme.fg).setFont("12x20").setFontAlign(-1,0).drawString(v, r.x+12, r.y+H/2);
               g.drawImage(/* 20x20 */atob(idx==item.value?"FBSBAAH4AH/gHgeDgBww8MY/xmf+bH/jz/88//PP/zz/88f+Nn/mY/xjDww4AcHgeAf+AB+A":"FBSBAAH4AH/gHgeDgBwwAMYABmAAbAADwAA8AAPAADwAA8AANgAGYABjAAw4AcHgeAf+AB+A"), r.x+r.w-32, r.y+H/2-10);
@@ -39,7 +40,7 @@
         select : function(idx) {
           if (idx<0) return; // TITLE
           Bangle.buzz(20);
-          item.value = item.min + idx;
+          item.value = item.min + idx*step;
           if (item.onchange) item.onchange(item.value);
           scr.scroll = s.scroll; // set scroll to prev position
           show(); // redraw original menu
@@ -127,7 +128,7 @@
         if (e.y<24 && e.x<48) back();
       };
       Bangle.on("touch", touchHandler);
-      WIDGETS = Object.assign({back:{ area:"tl", width:24, draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y)}},WIDGETS);
+      WIDGETS = Object.assign({back:{ area:"tl", width:24, draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y)}},global.WIDGETS);
       Bangle.drawWidgets();
       Bangle.btnWatches = [
         setWatch(function() {
