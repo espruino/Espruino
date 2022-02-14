@@ -1077,7 +1077,7 @@ void jswrap_ble_setScanResponse(JsVar *data) {
 
 #ifdef NRF5X
 #if NRF_SD_BLE_API_VERSION<5
-    err_code = sd_ble_gap_adv_data_set(NULL, 0, (uint8_t *)dPtr, dLen);
+    err_code = sd_ble_gap_adv_data_set(NULL, 0, (uint8_t *)respPtr, respLen);
 #else
     extern uint8_t m_adv_handle;
     // Get existing advertising data as on SDK15 we have to be able to re-supply this
@@ -1093,13 +1093,13 @@ void jswrap_ble_setScanResponse(JsVar *data) {
     if (bleStatus & BLE_IS_ADVERTISING) sd_ble_gap_adv_stop(m_adv_handle);
     err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, NULL);
     if (bleStatus & BLE_IS_ADVERTISING) sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
+    jsvUnLock(advData);
 #endif
 #else
     err_code = 0xDEAD;
     jsiConsolePrintf("FIXME\n");
 #endif
     jsble_check_error(err_code);
-    jsvUnLock(advData);
   } else {
     jsExceptionHere(JSET_TYPEERROR, "Expecting array-like object or undefined, got %t", data);
   }
