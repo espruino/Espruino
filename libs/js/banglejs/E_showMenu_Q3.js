@@ -64,10 +64,10 @@
       Bangle.setUI("updown", dir => {
         if (dir) {
           v -= (dir||1)*(item.step||1);
-          if (item.min!==undefined && item.value<item.min) item.value = item.wrap ? item.max : item.min;
-          if (item.max!==undefined && item.value>item.max) item.value = item.wrap ? item.min : item.max;
+          if (item.min!==undefined && v<item.min) v = item.wrap ? item.max : item.min;
+          if (item.max!==undefined && v>item.max) v = item.wrap ? item.min : item.max;
           draw();
-        } else {
+        } else { // actually selected
           item.value = v;
           if (item.onchange) item.onchange(item.value);
           scr.scroll = s.scroll; // set scroll to prev position
