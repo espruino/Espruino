@@ -40,7 +40,7 @@
 /*
 
 Serial1.setConsole(1)
-NRF.setServices({},{ancs:true})
+NRF.setServices({},{ancs:true,ams:true})
 NRF.setAdvertising({})
 
 E.on('ANCS',a=>{
@@ -54,7 +54,9 @@ NRF.ancsGetAppInfo("com.google.hangouts").then(a=>print("App",E.toJS(a)));
 
 NRF.setServices({},{ams:true})
 E.on('AMS',a=>{
-  //print("AMS", E.toJS(a));
+  print("AMS", E.toJS(a));
+});
+E.on('AMS',a=>{
   // eg. {id:"title",value:"Track Name too lon",truncated:true}
   //
   if (a.truncated)
@@ -65,6 +67,7 @@ E.on('AMS',a=>{
 
 
 // music control
+NRF.amsCommand("play")
 NRF.amsCommand("pause")
 
 // Track information
