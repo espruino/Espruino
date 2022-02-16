@@ -37,8 +37,9 @@
 # CC3000=1                # If compiling for a non-linux target that has internet support, use CC3000 support
 # USB_PRODUCT_ID=0x1234   # force a specific USB Product ID (default 0x5740)
 #
-# GENDIR=MyGenDir		  # sets directory for files generated during make
-#					      # GENDIR=/home/mydir/mygendir
+# GENDIR=MyGenDir		      # sets directory for intermediate files generated during make
+# OBJDIR=MyObjDir		      # sets directory for object files generated during make
+# BINDIR=MyBinDir    		  # sets directory for binaries generated during make
 # SETDEFINES=FileDefines  # settings which are called after definitions for board are done
 #                         # SETDEFINES=/home/mydir/myDefines
 # UNSUPPORTEDMAKE=FileUnsu# Adds additional files from unsupported sources(means not supported by Gordon) to actual make
@@ -64,6 +65,12 @@ include make/sanitycheck.make
 
 ifndef GENDIR
 GENDIR=gen
+endif
+ifndef OBJDIR
+OBJDIR=obj
+endif
+ifndef BINDIR
+BINDIR=bin
 endif
 
 ifndef SINGLETHREAD
@@ -172,9 +179,9 @@ endif
 #                                                      Get info out of BOARDNAME.py
 # ---------------------------------------------------------------------------------
 # TODO: could check board here and make clean if it's different?
-$(shell rm -f CURRENT_BOARD.make)
-$(shell python scripts/get_makefile_decls.py $(BOARD) > CURRENT_BOARD.make)
-include CURRENT_BOARD.make
+$(shell rm -f $(GENDIR)/CURRENT_BOARD.make)
+$(shell python scripts/get_makefile_decls.py $(BOARD) > $(GENDIR)/CURRENT_BOARD.make)
+include $(GENDIR)/CURRENT_BOARD.make
 
 #set or reset defines like USE_GRAPHIC from an external file to customize firmware
 ifdef SETDEFINES
@@ -668,7 +675,13 @@ PININFOFILE=$(GENDIR)/jspininfo
 SOURCES += $(PININFOFILE).c
 
 SOURCES += $(WRAPPERSOURCES) $(TARGETSOURCES)
-SOURCEOBJS = $(SOURCES:.c=.o) $(CPPSOURCES:.cpp=.o) $(CCSOURCES:.cc=.o)
+SOURCEOBJS = $(patsubst %.c,$(OBJDIR)/%.o,$(SOURCES))
+ifdef CPPSOURCES
+SOURCEOBJS += $(patsubst %.cpp,$(OBJDIR)/%.cpp.o,$(CPPSOURCES))
+endif
+ifdef CCSOURCES
+SOURCEOBJS += $(patsubst %.cc,$(OBJDIR)/%.cc.o,$(CCSOURCES))
+endif
 OBJS = $(PRECOMPILED_OBJS) $(SOURCEOBJS)
 
 
@@ -795,25 +808,30 @@ quiet_link= LD $@
 quiet_obj_dump= GEN $(PROJ_NAME).lst
 quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 
-%.o: %.c $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
+$(OBJDIR)/%.o: %.c $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
 	@echo $($(quiet_)compile)
+	@mkdir -p $(shell dirname $@) # create directory if it doesn't exist
 	@$(call compile)
 
-.cc.o: %.cc $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
+$(OBJDIR)/%.cc.o: %.cc $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
 	@echo $($(quiet_)compile)
+	@mkdir -p $(shell dirname $@) # create directory if it doesn't exist
 	@$(CC) $(CCFLAGS) $(CFLAGS) $< -o $@
 
-.cpp.o: $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
+$(OBJDIR)/%.cpp.o: $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
 	@echo $($(quiet_)compile)
+	@mkdir -p $(shell dirname $@) # create directory if it doesn't exist
 	@$(call compile)
 
 # case sensitive - Nordic's files are capitals
-.s.o:
+$(OBJDIR)/%.s.o:
 	@echo $($(quiet_)compile)
+	@mkdir -p $(shell dirname $@) # create directory if it doesn't exist
 	@$(call compile)
 
-.S.o:
+$(OBJDIR)/%.S.o:
 	@echo $($(quiet_)compile)
+	@mkdir -p $(shell dirname $@) # create directory if it doesn't exist
 	@$(call compile)
 
 ifdef LINUX # ---------------------------------------------------
@@ -832,8 +850,7 @@ lst: $(PROJ_NAME).lst
 
 clean:
 	@echo Cleaning targets
-	$(Q)find . -name \*.o | grep -v "./arm-bcm2708\|./gcc-arm-none-eabi" | xargs rm -f
-	$(Q)find . -name \*.d | grep -v "./arm-bcm2708\|./gcc-arm-none-eabi" | xargs rm -f
+	$(Q)rm -rf $(OBJDIR)/*
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
 	$(Q)rm -f $(ROOT)/scripts/*.pyc $(ROOT)/boards/*.pyc
 	$(Q)rm -f $(PROJ_NAME).elf

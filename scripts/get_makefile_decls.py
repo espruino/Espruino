@@ -53,7 +53,7 @@ if binaryName.find('.bin')>=0:
     binaryName = binaryName[:binaryName.find('.bin')]
 if binaryName.find('.hex')>=0:
     binaryName = binaryName[:binaryName.find('.hex')]
-print("PROJ_NAME="+binaryName)
+print("PROJ_NAME=$(BINDIR)/"+binaryName)
 
 if board.chip["family"]!="LINUX":
     print("EMBEDDED=1")
@@ -76,5 +76,5 @@ if 'USB' in board.devices:
 
 if 'bootloader' in board.info and board.info['bootloader']==1:
     print("USE_BOOTLOADER:=1")
-    print("BOOTLOADER_PROJ_NAME:=bootloader_$(PROJ_NAME)")
+    print("BOOTLOADER_PROJ_NAME:=$(BINDIR)/bootloader_"+binaryName)
     print("DEFINES+=-DUSE_BOOTLOADER")

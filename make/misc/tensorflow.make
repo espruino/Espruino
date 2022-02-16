@@ -1,4 +1,4 @@
-TENSOR_ROOT := $(ROOT)/libs/tensorflow
+TENSOR_ROOT := libs/tensorflow
 CCSOURCES += \
 $(TENSOR_ROOT)/tensorflow/lite/micro/simple_memory_allocator.cc \
 $(TENSOR_ROOT)/tensorflow/lite/micro/memory_helpers.cc \
