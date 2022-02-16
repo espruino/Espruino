@@ -747,9 +747,15 @@ bool ble_ams_is_active() {
 
 
 void ble_ancs_get_adv_uuid(ble_uuid_t *p_adv_uuids) {
-  bool useANCS = bleStatus & BLE_ANCS_INITED;
-  p_adv_uuids[0].uuid = useANCS ? 0xF431/*ANCS_UUID_SERVICE*/ : 0x502B/*AMS_UUID_SERVICE*/;
-  p_adv_uuids[0].type = useANCS ? m_ancs_c.service.service.uuid.type : m_ams_c.service.service.uuid.type;
+  // bool useANCS = bleStatus & BLE_ANCS_INITED;
+  // p_adv_uuids[0].uuid = useANCS ? 0xF431/*ANCS_UUID_SERVICE*/ : 0x502B/*AMS_UUID_SERVICE*/;
+  // p_adv_uuids[0].type = useANCS ? m_ancs_c.service.service.uuid.type : m_ams_c.service.service.uuid.type;
+  
+  // Current Time Service has 16-bit UUID 0x1805, and soliciting for this (rather than the 128-bit ANCS UUID)
+  // is enough to cause the device to show up in a scan on iOS's Bluetooth settings page
+  p_adv_uuids[0].uuid = 0x1805; 
+  p_adv_uuids[0].type = BLE_UUID_TYPE_BLE;
+
 }
 
 /// Perform the given action for the current notification (positive/negative)
