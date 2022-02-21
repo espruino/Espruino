@@ -4910,7 +4910,7 @@ The second `options` argument can contain:
     "params" : [
       ["options","JsVar","An object containing `{ h, c, draw, select }` (see below) "]
     ],
-    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
+    "return" : ["JsVar", "A menu object with `draw()` and `drawItem(itemNo)` functions" ],
     "ifdef" : "BANGLEJS"
 }
 Display a scrollable menu on the screen, and set up the buttons/touchscreen to navigate through it
@@ -4935,7 +4935,7 @@ For example to display a list of numbers:
 E.showScroller({
   h : 40, c : 8,
   draw : (idx, r) => {
-    g.setBgColor((idx&1)?"#fff":"#ccc").clearRect(r.x,r.y,r.x+r.w-1,r.y+r.h-1);
+    g.setBgColor((idx&1)?"#666":"#999").clearRect(r.x,r.y,r.x+r.w-1,r.y+r.h-1);
     g.setFont("6x8:2").drawString("Item Number\n"+idx,r.x+10,r.y+4);
   },
   select : (idx) => console.log("You selected ", idx)
