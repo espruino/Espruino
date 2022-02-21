@@ -67,7 +67,7 @@ GENDIR=gen
 endif
 
 ifndef SINGLETHREAD
-MAKEFLAGS=-j5 # multicore
+MAKEFLAGS=-j$(shell nproc) # make multicore based on the number of cores available
 endif
 
 INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
