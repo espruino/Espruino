@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #
@@ -216,7 +216,7 @@ def codeOutBuiltins(indent, builtin):
 #================== to remove JS-definitions given by blacklist==============
 def delete_by_indices(lst, indices):
     indices_as_set = set(indices)
-    return [ lst[i] for i in xrange(len(lst)) if i not in indices_as_set ]
+    return [ lst[i] for i in range(len(lst)) if i not in indices_as_set ]
 
 def removeBlacklistForWrapper(blacklistfile,datas):
 	json_File = open(blacklistfile,'r')
