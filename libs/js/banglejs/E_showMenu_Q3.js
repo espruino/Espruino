@@ -35,7 +35,7 @@
           var v = idx*step + item.min;
           if (item.format) v=item.format(v);
       g.setColor(g.theme.fg).setFont("12x20").setFontAlign(-1,0).drawString(v, r.x+12, r.y+H/2);
-              g.drawImage(/* 20x20 */atob(idx==item.value?"FBSBAAH4AH/gHgeDgBww8MY/xmf+bH/jz/88//PP/zz/88f+Nn/mY/xjDww4AcHgeAf+AB+A":"FBSBAAH4AH/gHgeDgBwwAMYABmAAbAADwAA8AAPAADwAA8AANgAGYABjAAw4AcHgeAf+AB+A"), r.x+r.w-32, r.y+H/2-10);
+              g.drawImage(/* 20x20 */atob(v==item.value?"FBSBAAH4AH/gHgeDgBww8MY/xmf+bH/jz/88//PP/zz/88f+Nn/mY/xjDww4AcHgeAf+AB+A":"FBSBAAH4AH/gHgeDgBwwAMYABmAAbAADwAA8AAPAADwAA8AANgAGYABjAAw4AcHgeAf+AB+A"), r.x+r.w-32, r.y+H/2-10);
         },
         select : function(idx) {
           if (idx<0) return; // TITLE
