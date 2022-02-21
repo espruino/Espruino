@@ -64,7 +64,7 @@ if [ "$PROVISION_ESP32" = "1" ]; then
       echo python/pip installed
     else
       echo Installing python/pip pyserial
-      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python-pip
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python3-pip
     fi
     if pip list 2>/dev/null | grep pyserial >/dev/null; then 
       echo pyserial installed; 
