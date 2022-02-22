@@ -30,8 +30,7 @@ function YtoIdx(y) {
   return Math.floor((y + rScroll - R.y)/options.h);
 }
   
-var s = { 
-  mode : "custom",
+var s = {  
   scroll : E.clip(0|options.scroll,menuScrollMin,menuScrollMax),
   draw : () => {
   g.reset().clearRect(R.x,R.y,R.x2,R.y2);
@@ -50,8 +49,8 @@ var s = {
 var rScroll = s.scroll&~1; // rendered menu scroll (we only shift by 2 because of dither)
 s.draw(); // draw the full scroller
 g.flip(); // force an update now to make this snappier
-
 Bangle.setUI({
+  mode : "custom",
   back : options.back,
   drag : e=>{
     var dy = e.dy;
