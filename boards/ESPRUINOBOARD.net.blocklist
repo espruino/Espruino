@@ -1,0 +1,12 @@
+[
+{"class":"E","name":"FFT"},
+{"class":"Graphics","name":"drawEllipse"},
+{"class":"Graphics","name":"fillEllipse"},
+{"class":"Graphics","name":"asImage"},
+{"class":"Storage","name":"open"},
+{"class":"StorageFile","name":"read"},
+{"class":"StorageFile","name":"readLine"},
+{"class":"StorageFile","name":"erase"},
+{"class":"StorageFile","name":"getLength"},
+{"class":"StorageFile","name":"write"}
+]

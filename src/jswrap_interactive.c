@@ -279,6 +279,7 @@ void jswrap_interface_print(JsVar *v) {
 /*JSON{
   "type" : "function",
   "name" : "edit",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_interface_edit",
   "params" : [
     ["funcName","JsVar","The name of the function to edit (either a string or just the unquoted name)"]
