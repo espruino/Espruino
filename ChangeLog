@@ -22,6 +22,7 @@
             String.toUpperCase() and .toLowerCase() now work for accented ISO8859-1 characters (fix #1866)
             Report errors created during execution of `E.on('kill',...)`
             Bangle.js: ANCS/AMS now advertises 16 bit time service (doesn't crop the name, and good enough for iOS pairing)
+            Number.toFixed(...) now doesn't exponentiate when the number is very small (fix #2157)
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)

@@ -635,9 +635,9 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
     }
 
 #ifndef USE_NO_FLOATS
-    // check for exponents
+    // check for exponents - if fractionalDigits we're using 'toFixed' so don't want exponentiation
     int exponent = 0;
-    if (radix == 10 && val>0.0) {
+    if (radix == 10 && val>0.0 && fractionalDigits<0) {
       // use repeated mul/div for ease, but to
       // improve accuracy we multiply by 1e5 first
       if (val >= 1E21) {
