@@ -61,18 +61,17 @@ STM32VLDISCOVERY
 STM32F4DISCOVERY
 STM32L496GDISCOVERY
 MICROBIT2
+RAK5010
+SMARTIBOT
 ESP8266_BOARD
 ESP8266_4MB
 ESP32
-WIO_LTE
-RAK5010
-SMARTIBOT
 MICROBIT1
 EOF
 
-THREADS=1
+THREADS=16
 echo $BOARDS | xargs -I{} -d " " -P $THREADS scripts/create_zip_board.sh {} 
-exit 1
+
 cd $DIR
 
 sed 's/$/\r/' dist_readme.txt | sed "s/#v##/$VERSION/" > $ZIPDIR/readme.txt
