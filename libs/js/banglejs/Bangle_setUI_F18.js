@@ -1,4 +1,9 @@
 (function(mode, cb) {
+  var options = {};
+  if ("object"==typeof mode) {
+    options = mode;
+    mode = options.mode;
+  }  
   if (Bangle.btnWatches) {
     Bangle.btnWatches.forEach(clearWatch);
     delete Bangle.btnWatches;

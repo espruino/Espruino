@@ -4926,6 +4926,8 @@ Supply an object containing:
   draw : function(idx, rect) { ... }
   // a function to call when the item is selected
   select : function(idx) { ... }
+  // optional function to be called when 'back' is tapped - Bangle.js 2 only
+  back : function() { ...}
 }
 ```
 
@@ -5050,7 +5052,7 @@ a circle on the display
     "name" : "setUI",
     "generate_js" : "libs/js/banglejs/Bangle_setUI_F18.min.js",
     "params" : [
-      ["type","JsVar","The type of UI input: 'updown', 'leftright', 'clock', 'clockupdown' or undefined to cancel"],
+      ["type","JsVar","The type of UI input: 'updown', 'leftright', 'clock', 'clockupdown' or undefined to cancel. Can also be an object (see below)"],
       ["callback","JsVar","A function with one argument which is the direction"]
     ],
     "ifdef" : "BANGLEJS"
@@ -5090,6 +5092,18 @@ you could make all clocks start the launcher with a swipe by using:
     Bangle.on("swipe", Bangle.swipeHandler);
   };
 })();
+
+The first argument can also be an object, in which case more options can be specified:
+
+```
+Bangle.setUI({
+  mode : "custom",
+  back : function() {}, // add a 'back' icon and call this function when it is pressed (Bangle.js 2 only)
+  touch : function() {}, // handler for 'touch' events (Bangle.js 2 only)
+  drag : function() {}, // handler for 'drag' events (Bangle.js 2 only)
+}, function(dir) => {
+ // ...
+});
 ```
 */
 /*JSON{

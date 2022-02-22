@@ -79,9 +79,10 @@
     draw : ()=>s.draw()
   };
   
-  var scr = {
+  var scr = {      
     h : H, c : keys.length/*title*/,
     scrollMin : -24, scroll : -24, // title is 24px, rendered at -1
+    back : back,
     draw : (idx, r) => {
       if (idx<0) // TITLE
         return g.setFont("12x20").setFontAlign(-1,0).drawString(
@@ -122,24 +123,6 @@
   };
   function show() {
     s = E.showScroller(scr);
-    if (back) {
-      var touchHandler = (_,e) => {
-        if (e.y<24 && e.x<48) back();
-      };
-      Bangle.on("touch", touchHandler);
-      WIDGETS = Object.assign({back:{ area:"tl", width:24, draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y)}},global.WIDGETS);
-      Bangle.drawWidgets();
-      Bangle.btnWatches = [
-        setWatch(function() {
-          back();
-        }, BTN1, {edge:"falling"}),
-      ];
-      Bangle.uiRemove = function() {
-        Bangle.removeListener("touch", touchHandler);
-        delete WIDGETS.back;
-        Bangle.drawWidgets();
-      };
-    }
   }
   show();
   return l;
