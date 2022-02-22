@@ -1,17 +1,8 @@
 *~
-*.tgz
-*.d
-*.o
-*.elf
-/*.hex
-/*.app_hex
-*.lst
-*.srec
-*.bin
 *.pyc
-/*.bin.unpadded
-/*.zip
 /gen/*
+/bin/*
+/obj/*
 /.vagrant/*
 /boards/*.html
 /boards/*.json
@@ -64,6 +55,7 @@ gcc-arm-none-eabi*
 /targetlibs/nrf5x_17/config
 /targetlibs/nrf5x_17/documentation
 /targetlibs/raspberrypi
+/js
 /.vscode
 /CURRENT_BOARD.make
 /topreadonly
