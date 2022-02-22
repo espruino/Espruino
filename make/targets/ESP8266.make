@@ -51,12 +51,12 @@ combined: $(ESP_COMBINED)
 $(PARTIAL): $(OBJS) $(LINKER_FILE)
 	@echo LD $@
 ifdef USE_CRYPTO
-	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text libs/crypto/mbedtls/library/sha1.o
+	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text $(OBJDIR)/libs/crypto/mbedtls/library/sha1.o
 ifdef USE_SHA256
-	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text libs/crypto/mbedtls/library/sha256.o
+	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text $(OBJDIR)/libs/crypto/mbedtls/library/sha256.o
 endif
 ifdef USE_SHA512
-	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text libs/crypto/mbedtls/library/sha512.o
+	$(Q)$(OBJCOPY) --rename-section .rodata=.irom0.text $(OBJDIR)/libs/crypto/mbedtls/library/sha512.o
 endif
 endif
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
