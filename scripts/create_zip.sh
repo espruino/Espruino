@@ -72,6 +72,16 @@ EOF
 
 THREADS=16
 echo $BOARDS | xargs -I{} -d " " -P $THREADS scripts/create_zip_board.sh {} 
+rm -rf obj_*
+echo ===========================================================
+if [ -n "$(ls $ZIPDIR/*.error 2>/dev/null)" ]
+then
+  echo "BUILDS FAILED:"
+  ls -1 $ZIPDIR/*.error
+else
+  echo "No errors!"
+fi
+echo ===========================================================
 
 cd $DIR
 
