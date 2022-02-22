@@ -31,10 +31,18 @@ if [ "$#" -ne 1 ]; then
 fi
 
 BOARDNAME=$1
+
+if [ -z "$BOARDNAME" ]; then
+  echo "EMPTY BOARDNAME SUPPLIED"
+  exit 
+fi
+
 VERSION=`sed -ne "s/^.*JS_VERSION.*\"\(.*\)\"/\1/p" src/jsutils.h | head -1`
 echo "VERSION $VERSION"
 DIR=`pwd`
 ZIPDIR=$DIR/zipcontents
+
+LOGFILE=$ZIPDIR/${BOARDNAME}.error
 
 # We assume all setup has been done by create_zip
 OBJDIR=obj_$BOARDNAME
@@ -115,14 +123,14 @@ echo "EXTRADEFS $EXTRADEFS"
 echo
 rm -f $BINARY_NAME
 if [ "$BOARDNAME" == "ESPRUINOBOARD" ]; then
-  bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 255; }
+  bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh > $LOGFILE 2>&1" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 255; }
 elif [ "$BOARDNAME" == "PICO_R1_3" ]; then
-  bash -c "$EXTRADEFS scripts/create_pico_image_1v3.sh" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 255; }
+  bash -c "$EXTRADEFS scripts/create_pico_image_1v3.sh > $LOGFILE 2>&1" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 255; }
 elif [ "$BOARDNAME" == "ESPRUINOWIFI" ]; then
-  bash -c "$EXTRADEFS scripts/create_espruinowifi_image.sh" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 255; }
+  bash -c "$EXTRADEFS scripts/create_espruinowifi_image.sh > $LOGFILE 2>&1" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 255; }
 else
-  bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make clean"
-  bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 255; }
+  bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make clean > $LOGFILE 2>&1"
+  bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make > $LOGFILE 2>&1" || { echo "Build of '$EXTRADEFS BOARD=$BOARDNAME make' failed" ; exit 255; }
 fi
 # rename binary if needed
 if [ -n "$EXTRANAME" ]; then
@@ -153,4 +161,5 @@ if [ -n "$ESP_BINARY2_NAME" ]; then
   cp bin/${ESP_BINARY2_NAME} $ZIPDIR || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 255; }
 fi
 
+rm $LOGFILE
 

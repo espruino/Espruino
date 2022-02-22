@@ -15,11 +15,11 @@ $(PROJ_NAME).bin: $(OBJS)
 $(ESP_ZIP): $(PROJ_NAME).bin
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
-	$(Q)cp $(PROJ_NAME).bin espruino_esp32.bin
+	$(Q)cp $(PROJ_NAME).bin $(BINDIR)/espruino_esp32.bin
 	@echo "** $(PROJ_NAME).bin uses $$( stat $(STAT_FLAGS) $(PROJ_NAME).bin) bytes of" $(ESP32_FLASH_MAX) "available"
 	@if [ $$( stat $(STAT_FLAGS) $(PROJ_NAME).bin) -gt $$(( $(ESP32_FLASH_MAX) )) ]; then echo "$(PROJ_NAME).bin is too big!"; false; fi
 	$(Q)cp $(ESP_APP_TEMPLATE_PATH)/build/bootloader/bootloader.bin \
-	  espruino_esp32.bin \
+	  $(BINDIR)/espruino_esp32.bin \
 	  $(ESP_APP_TEMPLATE_PATH)/build/partitions_espruino.bin \
 	  targets/esp32/README_flash.txt \
 	  build/$(basename $(ESP_ZIP))

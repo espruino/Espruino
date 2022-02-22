@@ -14,11 +14,11 @@
 # user setting area that sits between the two 256KB partitions, so we can merrily use it for
 # code.
 ESP_ZIP     = $(PROJ_NAME).tgz
-USER1_BIN    = espruino_esp8266_user1.bin
-USER2_BIN    = espruino_esp8266_user2.bin
-USER1_ELF    = espruino_esp8266_user1.elf
-USER2_ELF    = espruino_esp8266_user2.elf
-PARTIAL      = espruino_esp8266_partial.o
+USER1_BIN    = $(OBJDIR)/espruino_esp8266_user1.bin
+USER2_BIN    = $(OBJDIR)/espruino_esp8266_user2.bin
+USER1_ELF    = $(OBJDIR)/espruino_esp8266_user1.elf
+USER2_ELF    = $(OBJDIR)/espruino_esp8266_user2.elf
+PARTIAL      = $(OBJDIR)/espruino_esp8266_partial.o
 
 ifdef FLASH_4MB
 ESP_FLASH_ADDONS  = $(ET_DEFAULTS) $(INIT_DATA) $(ET_BLANK) $(BLANK)
