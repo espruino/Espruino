@@ -10,7 +10,13 @@
   var h = g.getHeight();
   var menuItems = Object.keys(items);
   var options = items[""];
-  if (options) menuItems.splice(menuItems.indexOf(""),1);
+  if (options) {
+    menuItems.splice(menuItems.indexOf(""),1);
+    if (options.back) { // handle 'options.back'
+      items["< Back"] = options.back;
+      menuItems.unshift("< Back");
+    }
+  }
   if (!(options instanceof Object)) options = {};
   options.fontHeight=8;
   options.x=0;

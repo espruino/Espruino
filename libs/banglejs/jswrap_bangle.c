@@ -4783,7 +4783,7 @@ var boolean = false;
 var number = 50;
 // First menu
 var mainmenu = {
-  "" : { "title" : "-- Main Menu --" },
+  "" : { title : "-- Main Menu --" },
   "LED On" : function() { LED1.set(); },
   "LED Off" : function() { LED1.reset(); },
   "Submenu" : function() { E.showMenu(submenu); },
@@ -4801,10 +4801,10 @@ var mainmenu = {
 };
 // Submenu
 var submenu = {
-  "" : { "title" : "-- SubMenu --" },
+  "" : { title : "-- SubMenu --",
+         back : function() { E.showMenu(mainmenu); } },
   "One" : undefined, // do nothing
-  "Two" : undefined, // do nothing
-  "< Back" : function() { E.showMenu(mainmenu); },
+  "Two" : undefined // do nothing
 };
 // Actually display the menu
 E.showMenu(mainmenu);

@@ -7,7 +7,7 @@
   var menuIcon = "\0\f\f\x81\0\xFF\xFF\xFF\0\0\0\0\x0F\xFF\xFF\xF0\0\0\0\0\xFF\xFF\xFF";
   var options = menu[""]||{};
   if (!options.title) options.title="Menu";
-  var back = menu["< Back"];  
+  var back = options.back||menu["< Back"];  
   var keys = Object.keys(menu).filter(k=>k!="" && k!="< Back");
   keys.forEach(k => {
     var item = menu[k];

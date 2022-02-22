@@ -534,10 +534,10 @@ var mainmenu = {
 };
 // Submenu
 var submenu = {
-  "" : { "title" : "-- SubMenu --" },
+  "" : { title : "-- SubMenu --",
+         back : function() { E.showMenu(mainmenu); } },
   "One" : undefined, // do nothing
-  "Two" : undefined, // do nothing
-  "< Back" : function() { E.showMenu(mainmenu); },
+  "Two" : undefined // do nothing
 };
 // Actually display the menu
 E.showMenu(mainmenu);

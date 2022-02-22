@@ -5,9 +5,16 @@
     Bangle.setUI();
     return;
   }
+  var options = items[""];  
   var menuItems = Object.keys(items);
-  var options = items[""];
-  if (options) menuItems.splice(menuItems.indexOf(""),1);
+  if (options) {
+    menuItems.splice(menuItems.indexOf(""),1);
+    if (options.back) { // handle 'options.back'
+      items["< Back"] = options.back;
+      menuItems.unshift("< Back");
+    }
+  }
+  
   if (!(options instanceof Object)) options = {};
   options.fontHeight = options.fontHeight||16;
   if (options.selected === undefined)
@@ -21,7 +28,6 @@
   var y2 = ar.y2 - 20; // padding at end for arrow
   if (options.title)
     y += options.fontHeight+2;
-  var loc = require("locale");
   var l = {
     lastIdx : 0,
     draw : function(rowmin,rowmax) {
@@ -54,12 +60,11 @@
         g.fillRect(x,iy,x2,iy+options.fontHeight-1);
         g.setColor(hl ? g.theme.fgH : g.theme.fg);
         g.setFontAlign(-1,-1);
-        g.drawString(loc.translate(name),x,iy);
+        g.drawString(name,x,iy);
         if ("object" == typeof item) {
           var xo = x2;
           var v = item.value;
           if (item.format) v=item.format(v);
-          v = loc.translate(""+v);
           if (l.selectEdit && idx==options.selected) {
             xo -= 24 + 1;
             g.setColor(g.theme.bgH).fillRect(xo-(g.stringWidth(v)+4),iy,x2,iy+options.fontHeight-1);
