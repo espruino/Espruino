@@ -4272,16 +4272,17 @@ JsVar *jswrap_banglejs_getPressure() {
   if (hadError) {
     JsVar *exception = jspGetException();
     jspromise_reject(promisePressure, exception);
-    jsvUnLock(exception);
-  }
-  int powerOnTimeout = 500;
+    jsvUnLock2(promisePressure,exception);
+    promisePressure = 0;
+  } else {
+    int powerOnTimeout = 500;
 #ifdef PRESSURE_DEVICE_BMP280_EN
-  if (PRESSURE_DEVICE_BMP280_EN)
-    powerOnTimeout = 750; // some devices seem to need this long to boot reliably
+    if (PRESSURE_DEVICE_BMP280_EN)
+      powerOnTimeout = 750; // some devices seem to need this long to boot reliably
 #endif
-  if (!hadError)
     jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, powerOnTimeout));
-  return jsvLockAgain(promisePressure);
+    return jsvLockAgain(promisePressure);
+  }
 #else
   return 0;
 #endif
