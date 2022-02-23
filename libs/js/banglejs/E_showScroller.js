@@ -1,51 +1,72 @@
 (function(options) {
   /* options = {
     h = height
-    count = # of items
-    draw = function(idx, rect)
+    c = # of items
+    draw = function(idx, rect, selected)
     select = function(idx)
   }*/
   
 if (!options) return Bangle.setUI();
 var selected = 0;
-var w = g.getWidth();
-var h = g.getHeight();
+if (options.scroll) selected=options.scroll;
+var w = Bangle.appRect.w;
+var h = Bangle.appRect.h;
+var X = Bangle.appRect.x;
 var Y = Bangle.appRect.y;
-if (Y<24) Y=24; // stop arrow over items if no widgets
-var m = w/2;
-var n = Math.floor((h-(Y+24))/options.h);
 
 var s = {
-  scroll : 0|options.scroll,
-  draw : function() {
+  scroll : () => selected,
+  draw : function(idx) {
     g.reset();
-    if (selected>=n+s.scroll) s.scroll = 1+selected-n;
-    if (selected<s.scroll) s.scroll = selected;
+    // prefer drawing the list so that the selected item is in the middle of the screen
+    var ty=((h-options.h)/2)-selected*options.h;
+    var y=ty;
+    var by=y+options.c*options.h;
+    if (by<=h) y += (h-by);
+    if (y>0) y = 0;
     // draw
-    g.setColor(g.theme.fg);
-    for (var i=0;i<n;i++) {
-      var idx = i+s.scroll;
-      if (idx<0 || idx>=options.c) break;
-      var y = Y+i*options.h;
-      options.draw(idx, {x:0,y:y,w:w,h:options.h});
-      // border for selected
-      if (i+s.scroll==selected) {
-        g.setColor(g.theme.fg).drawRect(0,y,w-1,y+options.h-1).drawRect(1,y+1,w-2,y+options.h-2);
+    for (var i=0;i<options.c;i++) {
+      if ((idx===undefined)||(idx===i)) {
+        if ((y>-options.h+1)&&(y<h)) {
+          var y1 = Math.max(Y,Y+y);
+          var y2 = Math.min(Y+h-1,Y+y+options.h-1);
+          g.setColor((i==selected)?g.theme.fgH:g.theme.fg)
+           .setBgColor((i==selected)?g.theme.bgH:g.theme.bg)
+           .setClipRect(X,y1,X+w-1,y2);
+          if (!options.draw(i,{x:X,y:Y+y,w:w,h:options.h},i==selected)) {
+            // border for selected
+            if (i==selected) {
+              g.setColor(g.theme.fgH)
+               .drawRect(X,Y+y,w-1,Y+y+options.h-1)
+               .drawRect(1,Y+y+1,w-2,Y+y+options.h-2);
+            }
+          }
+        }
       }
+      y+=options.h;
     }
     // arrows
-    g.setColor(s.scroll ? g.theme.fg : g.theme.bg);
-    g.fillPoly([m,6,m-14,20,m+14,20]);
-    g.setColor((options.c>n+s.scroll) ? g.theme.fg : g.theme.bg);
-    g.fillPoly([m,h-7,m-14,h-21,m+14,h-21]);
+    g.setClipRect(X,Y,X+w-1,Y+h-1);
+    var m=w/2;
+    var pt=[X+m,Y,X+m-14,Y+14,X+m+14,Y+14];
+    var pb=[X+m,Y+h,X+m-14,Y+h-14,X+m+14,Y+h-14];
+    if (ty<0) {
+      g.setColor(g.theme.fg)
+       .fillPoly(pt)
+       .setColor(g.theme.bg)
+       .drawPoly(pt,true);
+    }
+    if (by>h) {
+      g.setColor(g.theme.fg)
+       .fillPoly(pb)
+       .setColor(g.theme.bg)
+       .drawPoly(pb,true);
+    }
   },
-  drawItem : i => {
-    var y = Y+(i+s.scroll)*options.h;
-    options.draw(i, {x:0,y:y,w:w,h:options.h});
-  }
+  drawItem : idx => draw(idx)
 };
 
-g.reset().clearRect(0,Y,w-1,h-1);
+g.reset().clearRect(X,Y,X+w-1,Y+h-1);
 s.draw();
 Bangle.setUI("updown",dir=>{
   if (dir) {
@@ -58,4 +79,4 @@ Bangle.setUI("updown",dir=>{
   }
 });
 return s;
-})
+});
