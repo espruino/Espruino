@@ -35,8 +35,8 @@ var s = {
             // border for selected
             if (i==s.scroll) {
               g.setColor(g.theme.fgH)
-               .drawRect(X,Y+y,w-1,Y+y+options.h-1)
-               .drawRect(X+1,Y+y+1,w-2,Y+y+options.h-2);
+               .drawRect(X,Y+y,X+w-1,Y+y+options.h-1)
+               .drawRect(X+1,Y+y+1,X+w-2,Y+y+options.h-2);
             }
           }
         }
