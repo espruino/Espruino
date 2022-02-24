@@ -40,8 +40,8 @@
       var w = g.stringWidth(btn);
       x += (buttonPadding+w)/2;
       var bw = 6+w/2;
-      btnPos.push({x1:x-bw, x2:x+bw,
-                   y1:y-24, y2:y+24});
+      btnPos.push({x1:x-bw-buttonPadding/2, x2:x+bw+buttonPadding/2,
+                   y1:y-30, y2:y+30});
       var poly = [x-bw,y-16,
                   x+bw,y-16,
                   x+bw+4,y-12,
@@ -65,8 +65,8 @@
   return new Promise(resolve=>{
     Bangle.setUI("touch", e=>{
       btnPos.forEach((b,i)=>{
-        if (e.x >= b.x1 && e.x <= b.x2 &&
-            e.y >= b.y1 && e.y <= b.y2) {
+        if (e.x > b.x1 && e.x < b.x2 &&
+            e.y > b.y1 && e.y < b.y2) {
           E.showPrompt(); // remove
           resolve(options.buttons[btns[i]]);
         }

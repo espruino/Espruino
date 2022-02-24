@@ -26,6 +26,7 @@
             Add E.showMenu({"":{back:function}, ...}) for easy specification of 'back' menu item
             Bangle.js2: Add 'back' option to E.showScroller and Bangle.setUI 
             Bangle.js2: Ensure that if Bangle.getPressure errors, the next call doesn't say 'Conversion in progress'
+            Bangle.js2: Update E.showPrompt with a bigger touchable area around buttons
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)
