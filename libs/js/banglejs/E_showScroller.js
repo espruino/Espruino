@@ -7,19 +7,17 @@
   }*/
   
 if (!options) return Bangle.setUI();
-var selected = 0;
-if (options.scroll) selected=options.scroll;
 var w = Bangle.appRect.w;
 var h = Bangle.appRect.h;
 var X = Bangle.appRect.x;
 var Y = Bangle.appRect.y;
 
 var s = {
-  scroll : () => selected,
+  scroll : 0|options.scroll,
   draw : function(idx) {
     g.reset();
     // prefer drawing the list so that the selected item is in the middle of the screen
-    var ty=((h-options.h)/2)-selected*options.h;
+    var ty=((h-options.h)/2)-s.scroll*options.h;
     var y=ty;
     var by=y+options.c*options.h;
     if (by<=h) y += (h-by);
@@ -30,12 +28,12 @@ var s = {
         if ((y>-options.h+1)&&(y<h)) {
           var y1 = Math.max(Y,Y+y);
           var y2 = Math.min(Y+h-1,Y+y+options.h-1);
-          g.setColor((i==selected)?g.theme.fgH:g.theme.fg)
-           .setBgColor((i==selected)?g.theme.bgH:g.theme.bg)
+          g.setColor((i==s.scroll)?g.theme.fgH:g.theme.fg)
+           .setBgColor((i==s.scroll)?g.theme.bgH:g.theme.bg)
            .setClipRect(X,y1,X+w-1,y2);
-          if (!options.draw(i,{x:X,y:Y+y,w:w,h:options.h},i==selected)) {
+          if (!options.draw(i,{x:X,y:Y+y,w:w,h:options.h},i==s.scroll)) {
             // border for selected
-            if (i==selected) {
+            if (i==s.scroll) {
               g.setColor(g.theme.fgH)
                .drawRect(X,Y+y,w-1,Y+y+options.h-1)
                .drawRect(1,Y+y+1,w-2,Y+y+options.h-2);
@@ -70,13 +68,13 @@ g.reset().clearRect(X,Y,X+w-1,Y+h-1);
 s.draw();
 Bangle.setUI("updown",dir=>{
   if (dir) {
-    selected += dir;
-    if (selected<0) selected = options.c-1;
-    if (selected>=options.c) selected = 0;
+    s.scroll += dir;
+    if (s.scroll<0) s.scroll = options.c-1;
+    if (s.scroll>=options.c) s.scroll = 0;
     s.draw();
   } else {
-    options.select(selected);
+    options.select(s.scroll);
   }
 });
 return s;
-});
+})
