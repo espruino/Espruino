@@ -3023,6 +3023,11 @@ NO_INLINE void jswrap_banglejs_init() {
 #ifdef LCD_WIDTH
   // Just reset any graphics settings that may need updating
   jswrap_banglejs_setLCDOffset(0);
+#ifdef LCD_CONTROLLER_ST7789_8BIT
+  graphicsInternal.data.width = LCD_WIDTH;
+  graphicsInternal.data.height = LCD_HEIGHT;
+  graphicsInternal.data.bpp = 16;
+#endif
   // Reset global graphics instance
   graphicsStructResetState(&graphicsInternal);
 

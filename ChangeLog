@@ -28,6 +28,7 @@
             Bangle.js2: Ensure that if Bangle.getPressure errors, the next call doesn't say 'Conversion in progress'
             Bangle.js2: Update E.showPrompt with a bigger touchable area around buttons
             Bangle.js2: 'touch' event coordinates are now clipped to screen coordinates (drag stay unclipped to allow touchscreen use for scrolling)
+            Bangle.js1: Fix regression that caused setLCDMode not to work in 2v12 (fix #2155)
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)
