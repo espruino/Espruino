@@ -28,7 +28,7 @@ var s = {
         if ((y>-options.h+1)&&(y<h)) {
           g.setColor((i==s.scroll)?g.theme.fgH:g.theme.fg)
            .setBgColor((i==s.scroll)?g.theme.bgH:g.theme.bg)
-           .setClipRect(X,Y+Math.max(0,y),X+w-1,Y+Math.min(h-1,y+options.h-1));
+           .setClipRect(X,Y+Math.max(0,y),X+w-1,Y+Math.min(h,y+options.h)-1);
           if (!options.draw(i,{x:X,y:Y+y,w:w,h:options.h},i==s.scroll)) {
             // border for selected
             if (i==s.scroll) {
