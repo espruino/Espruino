@@ -26,11 +26,9 @@ var s = {
     for (var i=0;i<options.c;i++) {
       if ((idx===undefined)||(idx===i)) {
         if ((y>-options.h+1)&&(y<h)) {
-          var y1 = Math.max(Y,Y+y);
-          var y2 = Math.min(Y+h-1,Y+y+options.h-1);
           g.setColor((i==s.scroll)?g.theme.fgH:g.theme.fg)
            .setBgColor((i==s.scroll)?g.theme.bgH:g.theme.bg)
-           .setClipRect(X,y1,X+w-1,y2);
+           .setClipRect(X,Y+Math.max(0,y),X+w-1,Y+Math.min(h-1,y+options.h-1));
           if (!options.draw(i,{x:X,y:Y+y,w:w,h:options.h},i==s.scroll)) {
             // border for selected
             if (i==s.scroll) {
@@ -45,20 +43,20 @@ var s = {
     }
     // arrows
     g.setClipRect(X,Y,X+w-1,Y+h-1);
-    var m=w/2;
-    var pt=[X+m,Y,X+m-14,Y+14,X+m+14,Y+14];
-    var pb=[X+m,Y+h,X+m-14,Y+h-14,X+m+14,Y+h-14];
+    var p,m=w/2;
     if (ty<0) {
+      p=[X+m,Y,X+m-14,Y+14,X+m+14,Y+14];
       g.setColor(g.theme.fg)
-       .fillPoly(pt)
+       .fillPoly(p)
        .setColor(g.theme.bg)
-       .drawPoly(pt,true);
+       .drawPoly(p,true);
     }
     if (by>h) {
+      p=[X+m,Y+h,X+m-14,Y+h-14,X+m+14,Y+h-14];
       g.setColor(g.theme.fg)
-       .fillPoly(pb)
+       .fillPoly(p)
        .setColor(g.theme.bg)
-       .drawPoly(pb,true);
+       .drawPoly(p,true);
     }
   },
   drawItem : idx => draw(idx)
