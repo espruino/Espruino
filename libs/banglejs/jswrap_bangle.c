@@ -3659,8 +3659,14 @@ bool jswrap_banglejs_idle() {
                             ((bangleTasks & JSBT_TOUCH_RIGHT)?2:0)),
           jsvNewObject()
       };
-      jsvObjectSetChildAndUnLock(o[1], "x", jsvNewFromInteger(lastTouchX));
-      jsvObjectSetChildAndUnLock(o[1], "y", jsvNewFromInteger(lastTouchY));
+      int x = lastTouchX;
+      int y = lastTouchY;
+      if (x<0) x=0;
+      if (y<0) y=0;
+      if (x>=LCD_WIDTH) x=LCD_WIDTH-1;
+      if (y>=LCD_HEIGHT) y=LCD_HEIGHT-1;
+      jsvObjectSetChildAndUnLock(o[1], "x", jsvNewFromInteger(x));
+      jsvObjectSetChildAndUnLock(o[1], "y", jsvNewFromInteger(y));
       jsvObjectSetChildAndUnLock(o[1], "type", jsvNewFromInteger(touchType));
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"touch", o, 2);
       jsvUnLockMany(2,o);
