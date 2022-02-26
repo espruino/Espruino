@@ -17,7 +17,7 @@ var s = {
   draw : function(idx) {
     g.reset();
     // prefer drawing the list so that the selected item is in the middle of the screen
-    var y=((h-options.h)/2)-s.scroll*options.h;
+    var y=Math.floor((h-options.h)/2)-s.scroll*options.h;
     var ty=y+options.c*options.h;
     if (ty<=h) y += (h-ty);
     if (y>0) y = 0;
