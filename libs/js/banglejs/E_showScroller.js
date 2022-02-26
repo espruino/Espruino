@@ -17,11 +17,11 @@ var s = {
   draw : function(idx) {
     g.reset();
     // prefer drawing the list so that the selected item is in the middle of the screen
-    var ty=((h-options.h)/2)-s.scroll*options.h;
-    var y=ty;
-    var by=y+options.c*options.h;
-    if (by<=h) y += (h-by);
+    var y=((h-options.h)/2)-s.scroll*options.h;
+    var ty=y+options.c*options.h;
+    if (ty<=h) y += (h-ty);
     if (y>0) y = 0;
+    ty=y;
     // draw
     for (var i=0;i<options.c;i++) {
       if ((idx===undefined)||(idx===i)) {
@@ -51,7 +51,7 @@ var s = {
        .setColor(g.theme.bg)
        .drawPoly(p,true);
     }
-    if (by>h) {
+    if (ty+options.h*options.c>h) {
       p=[X+m,Y+h,X+m-14,Y+h-14,X+m+14,Y+h-14];
       g.setColor(g.theme.fg)
        .fillPoly(p)
