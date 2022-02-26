@@ -51,7 +51,7 @@ var s = {
        .setColor(g.theme.bg)
        .drawPoly(p,true);
     }
-    if (ty+options.h*options.c>h) {
+    if (y>h) {
       p=[X+m,Y+h,X+m-14,Y+h-14,X+m+14,Y+h-14];
       g.setColor(g.theme.fg)
        .fillPoly(p)
