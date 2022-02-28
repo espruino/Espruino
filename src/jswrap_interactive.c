@@ -377,7 +377,8 @@ Return the current system time in Seconds (as a floating point number)
     ["time","float",""]
   ]
 }
-Set the current system time in seconds (to the nearest second).
+Set the current system time in seconds (`time` can be a floating
+point value).
 
 This is used with `getTime`, the time reported from `setWatch`, as
 well as when using `new Date()`.
