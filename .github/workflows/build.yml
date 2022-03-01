@@ -12,8 +12,12 @@ jobs:
     runs-on: ubuntu-20.04
     
     strategy:
+      # devices to build for
       matrix:
         board: [MDBT42Q, PUCKJS, BANGLEJS, BANGLEJS2]
+      # try and build for all devices even if one fails
+      fail-fast: false 
+
 
     steps:
     - uses: actions/checkout@v2
