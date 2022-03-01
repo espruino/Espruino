@@ -25,10 +25,12 @@ jobs:
       env:
         TRAVIS: 1
         RELEASE: 1
-        BOARD: ${{ matrix.board }}    
+        BOARD: ${{ matrix.board }} 
+        UPLOADTOKEN: ${{ secrets.UPLOADTOKEN }}  
       run: |
         source ./scripts/provision.sh  ${{ matrix.board }}
         make
+        if [[ -n \"$UPLOADTOKEN\" ]]; then ls *.bin *.hex *.tgz *.zip | xargs -I {} curl -v -F \"binary=@{}\" \"http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT&branch=$TRAVIS_BRANCH&token=$UPLOADTOKEN\"; fi
  
 # Disable doc building for now 
 #  docs:
@@ -36,3 +38,5 @@ jobs:
 #    steps:
 #    - name: makedocs
 #      run: make docs
+
+

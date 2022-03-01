@@ -168,7 +168,7 @@ if [ "$PROVISION_NRF_SDK15" = "1" ]; then
         echo ======================================================
         echo "FIXME - SDK15 NFC patches don't apply cleanly"
         echo ======================================================
-        cat targetlibs/nrf5x_15/patches/* | patch -p1
+        cat targetlibs/nrf5x_15/patches/* | patch -p1 || true
     fi
 fi
 if [ "$PROVISION_NRF_SDK17" = "1" ]; then
