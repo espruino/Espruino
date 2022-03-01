@@ -1,0 +1,35 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  TRAVIS: 1
+  RELEASE: 1
+
+jobs:
+  build:
+
+    runs-on: ubuntu-20.04
+    
+    strategy:
+      matrix:
+        board: [MDBT42Q, PUCKJS, BANGLEJS, BANGLEJS2]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: provision
+      run: source ./scripts/provision.sh  ${{ matrix.board }}
+    - name: make
+      env:
+        BOARD: ${{ matrix.board }}
+      run: make
+      
+  docs:
+    runs-on: ubuntu-20.04      
+    steps:
+    - name: makedocs
+      run: make docs
