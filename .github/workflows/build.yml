@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [ master ]
 
-env:
-  TRAVIS: 1
-  RELEASE: 1
-
 jobs:
   build:
 
@@ -21,15 +17,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: provision
-      run: source ./scripts/provision.sh  ${{ matrix.board }}
-    - name: make
+    - name: make ${{ matrix.board }}
       env:
-        BOARD: ${{ matrix.board }}
-      run: make
-      
-  docs:
-    runs-on: ubuntu-20.04      
-    steps:
-    - name: makedocs
-      run: make docs
+        TRAVIS: 1
+        RELEASE: 1
+        BOARD: ${{ matrix.board }}    
+      run: |
+        source ./scripts/provision.sh  ${{ matrix.board }}
+        make
+ 
+# Disable doc building for now 
+#  docs:
+#    runs-on: ubuntu-20.04      
+#    steps:
+#    - name: makedocs
+#      run: make docs
