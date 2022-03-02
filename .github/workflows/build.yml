@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: Firmware build
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
     strategy:
       # devices to build for
       matrix:
-        board: [LINUX, ESP32, ESP8266_BOARD, ESP8266_4MB, MICROBIT, MICROBIT2]
+        board: [LINUX, ESP32, ESP8266_BOARD, ESP8266_4MB, MICROBIT1, MICROBIT2]
       # try and build for all devices even if one fails
       fail-fast: false 
     steps:
