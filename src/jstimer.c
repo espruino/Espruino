@@ -89,24 +89,15 @@ void jstUtilTimerInterruptHandler() {
     utilTimerInIRQ = true;
     // TODO: Keep UtilTimer running and then use the value from it
     // to estimate how long utilTimerPeriod really was
-
-    // Check timers, decrement time and execute any timers that are due
-    while (utilTimerTasksTail!=utilTimerTasksHead) {
+    // Subtract utilTimerPeriod from all timers' time
+    int t = utilTimerTasksTail;
+    while (t!=utilTimerTasksHead) {
+      utilTimerTasks[t].time -= utilTimerPeriod;
+      t = (t+1) & (UTILTIMERTASK_TASKS-1);
+    }
+    // Check timers and execute any timers that are due
+    while (utilTimerTasksTail!=utilTimerTasksHead && utilTimerTasks[utilTimerTasksTail].time <= 0) {
       UtilTimerTask *task = &utilTimerTasks[utilTimerTasksTail];
-      if (task->time > utilTimerPeriod) {
-        /* we're now at the point in the list where tasks don't
-         * need to be executed. Just run through decrementing the times
-         * on them, then exit. */
-        int t = utilTimerTasksTail;
-        do {
-          task->time -= utilTimerPeriod;
-          t = (t+1) & (UTILTIMERTASK_TASKS-1);
-          task = &utilTimerTasks[t];
-        } while (t!=utilTimerTasksHead);
-        break;
-      }
-      // Otherwise it's time to actually perform the task
-      task->time -= utilTimerPeriod;
       void (*executeFn)(JsSysTime time, void* userdata) = 0;
       void *executeData = 0;
       switch (task->type) {
@@ -239,15 +230,12 @@ void  jstRestartUtilTimer() {
 bool utilTimerInsertTask(UtilTimerTask *task) {
   // check if queue is full or not
   if (utilTimerIsFull()) return false;
-
-
   if (!utilTimerInIRQ) jshInterruptOff();
 
   // find out where to insert
   unsigned char insertPos = utilTimerTasksTail;
   while (insertPos != utilTimerTasksHead && utilTimerTasks[insertPos].time < task->time)
     insertPos = (insertPos+1) & (UTILTIMERTASK_TASKS-1);
-
   bool haveChangedTimer = insertPos==utilTimerTasksTail;
   //jsiConsolePrintf("Insert at %d, Tail is %d\n",insertPos,utilTimerTasksTail);
   // shift items forward
@@ -261,14 +249,12 @@ bool utilTimerInsertTask(UtilTimerTask *task) {
   utilTimerTasks[insertPos] = *task;
   // increase task list size
   utilTimerTasksHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
-
   //jsiConsolePrint("Head is %d\n", utilTimerTasksHead);
   // now set up timer if not already set up...
   if (!utilTimerOn || haveChangedTimer) {
     utilTimerOn = true;
     jstRestartUtilTimer();
   }
-
   if (!utilTimerInIRQ) jshInterruptOn();
   return true;
 }
@@ -442,8 +428,8 @@ bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
   UtilTimerTask taskon, taskoff;
   taskon.data.set.value = 1;
   taskoff.data.set.value = 0;
-  taskon.time = (int)0;
-  taskoff.time = (int)(pulseLength);
+  taskon.time = (int)period;
+  taskoff.time = (int)pulseLength;
   taskon.repeatInterval = (unsigned int)period;
   taskoff.repeatInterval = (unsigned int)period;
   taskon.type = UET_SET;
@@ -456,6 +442,9 @@ bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
     taskoff.data.set.pins[i] = PIN_UNDEFINED;
   }
 
+  // first task is to turn on
+  jshPinSetValue(pin, 1);
+  // now start the 2 PWM tasks
   WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
   if (!utilTimerInsertTask(&taskon)) return false;
   WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
