@@ -12,11 +12,7 @@ then
   echo "NO GITHUB_SHA - not uploading"
   exit
 fi
-if [ -z "$BRANCH" ]
-then
-  echo "NO GITHUB_HEAD_REF - not uploading"
-  exit
-fi
+# we don't care if BRANCH is set or not
 if [ -z "$UPLOADTOKEN" ]
 then
   echo "NO UPLOADTOKEN - not uploading"
