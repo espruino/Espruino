@@ -30,7 +30,7 @@ jobs:
       run: |
         source ./scripts/provision.sh  ${{ matrix.board }}
         make
-        if [[ -n \"$UPLOADTOKEN\" ]]; then ls *.bin *.hex *.tgz *.zip | xargs -I {} curl -v -F \"binary=@{}\" \"http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT&branch=$TRAVIS_BRANCH&token=$UPLOADTOKEN\"; fi
+        ./scripts/ci_upload.sh
  
 # Disable doc building for now 
 #  docs:
