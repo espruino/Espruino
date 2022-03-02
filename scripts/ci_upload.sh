@@ -1,11 +1,12 @@
 #/bin/bash
 # Attempts to upload built binaries to espruino.com
 
+cd `dirname $0`/..
 
 # GITHUB_SHA / TRAVIS_COMMIT
 COMMIT=$GITHUB_SHA
-# GITHUB_HEAD_REF / TRAVIS_BRANCH
-BRANCH=$GITHUB_HEAD_REF
+# GITHUB_REF_NAME / TRAVIS_BRANCH
+BRANCH=$GITHUB_REF_NAME
 
 if [ -z "$COMMIT" ]
 then
@@ -20,5 +21,5 @@ then
 fi
 
 if [[ -n \"$UPLOADTOKEN\" ]]; then 
-  ls *.bin *.hex *.tgz *.zip  2> /dev/null | xargs -I {} curl -v -F \"binary=@{}\" \"http://www.espruino.com/travis_upload.php?commit=$COMMIT&branch=$BRANCH&token=$UPLOADTOKEN\"; 
+  ls -d  *.bin *.hex *.tgz *.zip  2> /dev/null | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$COMMIT&branch=$BRANCH&token=$UPLOADTOKEN"; 
 fi
