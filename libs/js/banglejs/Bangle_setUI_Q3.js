@@ -87,6 +87,15 @@
       Bangle.dragHandler = options.drag;
       Bangle.on("drag", Bangle.dragHandler);
     }
+    if (options.swipe) {
+      Bangle.swipeHandler = options.swipe;
+      Bangle.on("swipe", Bangle.swipeHandler);
+    }     
+    if (options.btn) {
+      Bangle.btnWatches = [
+        setWatch(function() { options.btn(1); }, BTN1, {repeat:1,edge:"falling"})
+      ];
+    }
   } else
     throw new Error("Unknown UI mode");
   if (options.back) {
@@ -98,7 +107,8 @@
       options.back();
     }, BTN1, {edge:"falling"});
     WIDGETS = Object.assign({back:{ 
-      area:"tl", width:24,       draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
+      area:"tl", width:24, 
+      draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
       remove:()=>{
         clearWatch(btnWatch);
         Bangle.removeListener("touch", touchHandler);

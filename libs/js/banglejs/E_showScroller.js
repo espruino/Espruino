@@ -64,7 +64,7 @@ var s = {
 
 g.reset().clearRect(X,Y,X+w-1,Y+h-1);
 s.draw();
-Bangle.setUI("updown",dir=>{
+Bangle.setUI({mode:"updown", back:options.back},dir=>{
   if (dir) {
     s.scroll += dir;
     if (s.scroll<0) s.scroll = options.c-1;

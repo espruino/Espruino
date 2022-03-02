@@ -4938,7 +4938,7 @@ Supply an object containing:
   draw : function(idx, rect) { ... }
   // a function to call when the item is selected
   select : function(idx) { ... }
-  // optional function to be called when 'back' is tapped - Bangle.js 2 only
+  // optional function to be called when 'back' is tapped
   back : function() { ...}
 }
 ```
@@ -5085,6 +5085,7 @@ Currently supported interface types are:
 * 'clockupdown' - called for clocks. Sets `Bangle.CLOCK=1`, allows a button to start the launcher, but also provides up/down functionality
   * Bangle.js 1 BTN2 starts the launcher, BTN1/BTN3 call `cb(-1)` and `cb(1)`
   * Bangle.js 2 BTN1 starts the launcher, touchscreen tap in top/bottom right hand side calls `cb(-1)` and `cb(1)`
+* `{mode:"custom", ...}` allows you to specify custom handlers for different interations. See below.
 * `undefined` removes all user interaction code
 
 While you could use setWatch/etc manually, the benefit here is that you don't end up with multiple `setWatch` instances, and
@@ -5110,11 +5111,11 @@ The first argument can also be an object, in which case more options can be spec
 ```
 Bangle.setUI({
   mode : "custom",
-  back : function() {}, // add a 'back' icon and call this function when it is pressed (Bangle.js 2 only)
-  touch : function() {}, // handler for 'touch' events (Bangle.js 2 only)
-  drag : function() {}, // handler for 'drag' events (Bangle.js 2 only)
-}, function(dir) => {
- // ...
+  back : function() {}, // optional - add a 'back' icon in top-left widget area and call this function when it is pressed
+  touch : function(n,e) {}, // optional - handler for 'touch' events
+  swipe : function(dir) {}, // optional - handler for 'swipe' events
+  drag : function(e) {}, // optional - handler for 'drag' events (Bangle.js 2 only)
+  btn : function(n) {}, // optional - handler for 'button' events (n==1 on Bangle.js 2, n==1/2/3 depending on button for Bangle.js 1)
 });
 ```
 */
