@@ -1914,6 +1914,7 @@ int jshSPISend(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return -1;
   jshSPIWait(device);
+  if (jspIsInterrupted()) return -1;
 #if defined(SPI0_USE_EASY_DMA)  && (SPI0_USE_EASY_DMA==1) && NRF52832
   // Hack for https://infocenter.nordicsemi.com/topic/­errata_nRF52832_Rev2/ERR/nRF52832/Rev2/l­atest/anomaly_832_58.html?cp=4_2_1_0_1_8
   // Can't use DMA for single bytes as it's broken
@@ -1985,6 +1986,7 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
   }
 #endif
   jshSPIWait(device);
+  if (jspIsInterrupted()) return false;
   spi0Sending = true;
 
   size_t c = count;
@@ -2014,6 +2016,7 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
   }
   if (!callback) {
     jshSPIWait(device);
+    if (jspIsInterrupted()) return false;
   }
   return true;
 #else
