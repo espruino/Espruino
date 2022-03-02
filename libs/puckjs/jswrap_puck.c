@@ -1108,7 +1108,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
     // Otherwise we're just doing stuff on a single pin
     _jswrap_puck_IR_pin = cathode;
   }
-  JsSysTime time = jshGetSystemTime();
+  JsSysTime time = 0;
   bool hasPulses = false;
 
   JsvIterator it;

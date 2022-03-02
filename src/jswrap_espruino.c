@@ -1100,7 +1100,7 @@ int jswrap_espruino_reverseByte(int v) {
   "type" : "staticmethod",
   "class" : "E",
   "name" : "dumpTimers",
-  "ifndef" : "RELEASE",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_espruino_dumpTimers"
 }
 Output the current list of Utility Timer Tasks - for debugging only

@@ -29,8 +29,6 @@ unsigned int utilTimerBit;
 bool utilTimerInIRQ = false;
 unsigned int utilTimerData;
 uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReload1L;
-/// When did the timer last run? This is used for timekeeping. Should be jshGetSystemTime() cropped to 32 bits
-volatile int utilTimerTime;
 /// When we rescheduled the timer, how far in the future were we meant to get called (in system time)?
 int utilTimerPeriod;
 
@@ -85,24 +83,32 @@ static inline unsigned char *jstUtilTimerInterruptHandlerByte(UtilTimerTask *tas
 #endif
 
 void jstUtilTimerInterruptHandler() {
-  /* Note: we're using 32 bit times here, even though the real time counter is 64 bit.
-   * It means when we do compares, we do them by first subtracting 'utilTimerTime'
-   * which means that even if the numbers overflow, they will still be correct relative
-   * to each other.
-   */
+  /* Note: we're using 32 bit times here, even though the real time counter is 64 bit. We
+   * just make sure nothing is scheduled that far in the future */
   if (utilTimerOn) {
     utilTimerInIRQ = true;
-    // Increment estimated timer time
     // TODO: Keep UtilTimer running and then use the value from it
-    // to estimate how long the handler takes and update utilTimerTime accordingly
-    utilTimerTime += utilTimerPeriod;
-    // execute any timers that are due
-    while (utilTimerTasksTail!=utilTimerTasksHead && (utilTimerTasks[utilTimerTasksTail].time - utilTimerTime)<=0) {
+    // to estimate how long utilTimerPeriod really was
+
+    // Check timers, decrement time and execute any timers that are due
+    while (utilTimerTasksTail!=utilTimerTasksHead) {
       UtilTimerTask *task = &utilTimerTasks[utilTimerTasksTail];
+      if (task->time > utilTimerPeriod) {
+        /* we're now at the point in the list where tasks don't
+         * need to be executed. Just run through decrementing the times
+         * on them, then exit. */
+        int t = utilTimerTasksTail;
+        do {
+          task->time -= utilTimerPeriod;
+          t = (t+1) & (UTILTIMERTASK_TASKS-1);
+          task = &utilTimerTasks[t];
+        } while (t!=utilTimerTasksHead);
+        break;
+      }
+      // Otherwise it's time to actually perform the task
+      task->time -= utilTimerPeriod;
       void (*executeFn)(JsSysTime time, void* userdata) = 0;
       void *executeData = 0;
-
-      // actually perform the task
       switch (task->type) {
       case UET_SET: {
         int j;
@@ -173,7 +179,7 @@ void jstUtilTimerInterruptHandler() {
         unsigned char ta = utilTimerTasksTail;
         unsigned char tb = (ta+1) & (UTILTIMERTASK_TASKS-1);
         while (tb != utilTimerTasksHead) {
-          if ((utilTimerTasks[ta].time-utilTimerTime) > (utilTimerTasks[tb].time-utilTimerTime)) {
+          if (utilTimerTasks[ta].time > utilTimerTasks[tb].time) {
             UtilTimerTask task = utilTimerTasks[ta];
             utilTimerTasks[ta] = utilTimerTasks[tb];
             utilTimerTasks[tb] = task;
@@ -192,7 +198,7 @@ void jstUtilTimerInterruptHandler() {
 
     // re-schedule the timer if there is something left to do
     if (utilTimerTasksTail != utilTimerTasksHead) {
-      utilTimerPeriod = utilTimerTasks[utilTimerTasksTail].time - utilTimerTime;
+      utilTimerPeriod = utilTimerTasks[utilTimerTasksTail].time;
       if (utilTimerPeriod<0) utilTimerPeriod=0;
       jshUtilTimerReschedule(utilTimerPeriod);
     } else {
@@ -224,8 +230,7 @@ static bool utilTimerIsFull() {
 /* Restart the utility timer with the right period. This should not normally
 need to be called by anything outside jstimer.c */
 void  jstRestartUtilTimer() {
-  utilTimerTime = (int)jshGetSystemTime();
-  utilTimerPeriod = utilTimerTasks[utilTimerTasksTail].time - utilTimerTime;
+  utilTimerPeriod = utilTimerTasks[utilTimerTasksTail].time;
   if (utilTimerPeriod<0) utilTimerPeriod=0;
   jshUtilTimerStart(utilTimerPeriod);
 }
@@ -237,8 +242,6 @@ bool utilTimerInsertTask(UtilTimerTask *task) {
 
 
   if (!utilTimerInIRQ) jshInterruptOff();
-  if (utilTimerOn)
-    task->time += utilTimerTime - (int)jshGetSystemTime();
 
   // find out where to insert
   unsigned char insertPos = utilTimerTasksTail;
@@ -436,12 +439,11 @@ bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
   if (ptaskon || ptaskoff) {
     while (utilTimerRemoveTask(jstPinTaskChecker, (void*)&pin));
   }
-  JsSysTime time = jshGetSystemTime();
   UtilTimerTask taskon, taskoff;
   taskon.data.set.value = 1;
   taskoff.data.set.value = 0;
-  taskon.time = (int)time;
-  taskoff.time = (int)(time + pulseLength);
+  taskon.time = (int)0;
+  taskoff.time = (int)(pulseLength);
   taskon.repeatInterval = (unsigned int)period;
   taskoff.repeatInterval = (unsigned int)period;
   taskon.type = UET_SET;
@@ -500,7 +502,7 @@ bool jstSetWakeUp(JsSysTime period) {
   }
   jshInterruptOn();
 
-  if (hasTimer && (task.time-utilTimerTime) >= (nextTime-utilTimerTime)) {
+  if (hasTimer && task.time >= nextTime) {
     // we already had a timer, and it's going to wake us up sooner.
     // don't create a WAKEUP timer task
     return true;
@@ -578,19 +580,13 @@ void jstReset() {
   jshUtilTimerDisable();
   utilTimerOn = false;
   utilTimerTasksTail = utilTimerTasksHead = 0;
-  utilTimerTime = (int)jshGetSystemTime();
   utilTimerPeriod = 0;
 }
 
 /** when system time is changed, also change the time in the timers.
 This should be done with interrupts off */
 void jstSystemTimeChanged(JsSysTime diff) {
-  unsigned char t = utilTimerTasksTail;
-  while (t!=utilTimerTasksHead) {
-    utilTimerTasks[t].time += diff;
-    t = (t+1) & (UTILTIMERTASK_TASKS-1);
-  }
-  utilTimerTime += diff;
+  // we don't actually care since timers should hopefully just run based on delays
 }
 
 void jstDumpUtilityTimers() {
@@ -601,18 +597,16 @@ void jstDumpUtilityTimers() {
     uTimerTasks[i] = utilTimerTasks[i];
   unsigned char uTimerTasksHead = utilTimerTasksHead;
   unsigned char uTimerTasksTail = utilTimerTasksTail;
-  int uTimerTime = utilTimerTime;
   jshInterruptOn();
 
   jsiConsolePrintf("Util Timer %s\n", utilTimerOn?"on":"off");
-  jsiConsolePrintf("Current timer difference %d us\n", (int)(1000*jshGetMillisecondsFromTime((int)jshGetSystemTime()-uTimerTime)));
   unsigned char t = uTimerTasksTail;
   bool hadTimers = false;
   while (t!=uTimerTasksHead) {
     hadTimers = true;
 
     UtilTimerTask task = uTimerTasks[t];
-    jsiConsolePrintf("%08d us", (int)(1000*jshGetMillisecondsFromTime(task.time-uTimerTime)));
+    jsiConsolePrintf("%08d us", (int)(1000*jshGetMillisecondsFromTime(task.time)));
     jsiConsolePrintf(", repeat %08d us", (int)(1000*jshGetMillisecondsFromTime(task.repeatInterval)));
     jsiConsolePrintf(" : ");
 

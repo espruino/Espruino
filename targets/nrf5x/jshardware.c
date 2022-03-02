@@ -1585,7 +1585,7 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
     if (!jstGetLastPinTimerTask(pin, &task)) {
       // no timer - just start the pulse now!
       jshPinOutput(pin, pulsePolarity);
-      task.time = jshGetSystemTime();
+      task.time = 0;
     }
     // Now set the end of the pulse to happen on a timer
     jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);

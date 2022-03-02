@@ -65,6 +65,7 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
 //    jsiConsolePrintf("0x%Lx 0x%Lx 0x%Lx\n",data->lastTime2, data->lastTime, pulseTime);
     pulseTime = data->lastTime + data->avrTrigger; // just make it up and hope!
   }
+  pulseTime -= currentTime;
   // it's been too long since the last tooth (we were stationary?)
   // clip and make sure we do a quick average
   if (timeDiff > data->maxTooth) {
