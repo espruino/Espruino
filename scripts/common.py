@@ -84,7 +84,8 @@ if "check_output" not in dir( subprocess ):
 #         "ifndef" : "SAVE_ON_FLASH", // if the given preprocessor macro is defined, don't implement this
 #         "ifdef" : "USE_LCD_FOO", // if the given preprocessor macro isn't defined, don't implement this
 #         "#if" : "A>2", // add a #if statement in the generated C file (ONLY if type==object)
-#         "patch" : true // if true, this isn't a complete JSON, but just updates another with the same class+name
+#         "patch" : true, // if true, this isn't a complete JSON, but just updates another with the same class+name
+#         "sortorder" : 0 // default to 0, but all items are sorted by this first, so especially with jswrap_X_init/etc we can ensure the ordering is correct
 #}*/
 #
 # description can be an array of strings as well as a simple string (in which case each element is separated by a newline),
@@ -264,7 +265,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
             "filename" : "BOARD.py",
             "include" : "platform_config.h"
           })
-      if "LED1" in board.devices:
+      if "LED1" in board.devices and not "novariable" in board.devices["LED1"]:
         jsondatas.append({
           "type" : "variable",
           "name" : "LED",
@@ -282,6 +283,9 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           "filename" : "BOARD.py",
           "include" : "platform_config.h"
         })
+
+    jsondatas = sorted(jsondatas, key=lambda j: j["sortorder"] if "sortorder" in j else 0) 
+
     return jsondatas
 
 # Takes the data from get_jsondata and restructures it in prepartion for output as JS
@@ -416,6 +420,8 @@ def get_ifdef_description(d):
   if d=="ESPRUINOBOARD": return "'Original' Espruino boards"
   if d=="PICO": return "Espruino Pico boards"
   if d=="BANGLEJS": return "Bangle.js smartwatches"
+  if d=="BANGLEJS_F18": return "Bangle.js 1 smartwatches"
+  if d=="BANGLEJS_Q3": return "Bangle.js 1 smartwatches"
   if d=="SMAQ3": return "SMAQ3 smartwatches"
   if d=="ESP8266": return "ESP8266 boards running Espruino"
   if d=="ESP32": return "ESP32 boards"

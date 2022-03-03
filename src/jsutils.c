@@ -58,6 +58,14 @@ bool isIDString(const char *s) {
   return true;
 }
 
+char charToUpperCase(char ch) {
+  return (char)((ch >= 97 && ch <= 122) ? ch - 32 : ch);
+} // a-z
+
+char charToLowerCase(char ch) {
+  return (char)((ch >= 65 && ch <= 90)  ? ch + 32 : ch);
+} // A-Z
+
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again.
 If jsonStyle=true, only string escapes supported by JSON are used */
@@ -937,4 +945,34 @@ int rand() {
 void srand(unsigned int seed) {
   rand_m_w = (seed&0xFFFF) | (seed<<16);
   rand_m_z = (seed&0xFFFF0000) | (seed>>16);
+}
+
+/// Clip X between -128 and 127
+char clipi8(int x) {
+  if (x<-128) return -128;
+  if (x>127) return 127;
+  return (char)x;
+}
+
+/// Convert the given value to a signed integer assuming it has the given number of bits
+int twosComplement(int val, unsigned char bits) {
+  if (val & ((unsigned int)1 << (bits - 1)))
+    val -= (unsigned int)1 << bits;
+  return val;
+}
+
+// quick integer square root
+// https://stackoverflow.com/questions/31117497/fastest-integer-square-root-in-the-least-amount-of-instructions
+unsigned short int int_sqrt32(unsigned int x) {
+  unsigned short int res=0;
+  unsigned short int add= 0x8000;
+  int i;
+  for(i=0;i<16;i++) {
+    unsigned short int temp=res | add;
+    unsigned int g2=temp*temp;
+    if (x>=g2)
+      res=temp;
+    add>>=1;
+  }
+  return res;
 }

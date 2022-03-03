@@ -434,7 +434,7 @@ void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer,
   it->type = arrayBuffer->varData.arraybuffer.type;
   it->byteLength = arrayBuffer->varData.arraybuffer.length * JSV_ARRAYBUFFER_GET_SIZE(it->type);
   it->byteOffset = arrayBuffer->varData.arraybuffer.byteOffset;
-  JsVar *arrayBufferData = jsvGetArrayBufferBackingString(arrayBuffer);
+  JsVar *arrayBufferData = jsvGetArrayBufferBackingString(arrayBuffer, NULL);
 
   it->byteLength += it->byteOffset; // because we'll check if we have more bytes using this
   it->byteOffset = it->byteOffset + index*JSV_ARRAYBUFFER_GET_SIZE(it->type);

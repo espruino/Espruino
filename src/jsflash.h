@@ -53,6 +53,10 @@ uint32_t jsfGetFileSize(JsfFileHeader *header);
 JsfFileFlags jsfGetFileFlags(JsfFileHeader *header);
 /// Find a 'file' in the memory store. Return the address of data start (and header if returnedHeader!=0). Returns 0 if not found
 uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader);
+/// Find a 'file' in the memory store that contains this address. Return the address of data start (and header if returnedHeader!=0). Returns 0 if not found
+uint32_t jsfFindFileFromAddr(uint32_t containsAddr, JsfFileHeader *returnedHeader);
+/// Given an address in memory (or flash) return the correct JsVar to access it
+JsVar* jsvAddressToVar(size_t addr, uint32_t length);
 /// Return the contents of a file as a memory mapped var
 JsVar *jsfReadFile(JsfFileName name, int offset, int length);
 /// Write a file. For simple stuff just leave offset and size as 0
@@ -68,13 +72,30 @@ bool jsfCompact();
  * Flags can't contain any bits in the 'notContaining' argument
  */
 JsVar *jsfListFiles(JsVar *regex, JsfFileFlags containing, JsfFileFlags notContaining);
+/** Hash all files matching regex
+ * If containing!=0, file flags must contain one of the 'containing' argument's bits.
+ * Flags can't contain any bits in the 'notContaining' argument
+ */
+uint32_t jsfHashFiles(JsVar *regex, JsfFileFlags containing, JsfFileFlags notContaining);
 /// Output debug info for files stored in flash storage
 void jsfDebugFiles();
+
+typedef enum {
+  JSFSTT_QUICK,  ///< Just files
+  JSFSTT_NORMAL, ///< Just files, or all space if storage empty
+  JSFSTT_ALL     ///< all space, including empty space
+} JsfStorageTestType;
 /** Return false if the current storage is not valid
  * or is corrupt somehow. Basically that means if
  * jsfGet[Next]FileHeader returns false but the header isn't all FF
+ *
+ * If fullTest is true, all of storage is scanned.
+ * For instance the first page may be blank but other pages
+ * may contain info (which is invalid)...
  */
-bool jsfIsStorageValid();
+bool jsfIsStorageValid(JsfStorageTestType testType);
+/** Return true if there is nothing at all in Storage (first header on first page is all 0xFF) */
+bool jsfIsStorageEmpty();
 // Get the amount of space free in this page (or all pages). addr=0 uses start page
 uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages);
 
@@ -96,5 +117,8 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset);
 bool jsfFlashContainsCode();
 /** Completely clear any saved code from flash. */
 void jsfRemoveCodeFromFlash();
+
+// Erase storage to 'factory' values.
+void jsfResetStorage();
 
 #endif //JSFLASH_H_

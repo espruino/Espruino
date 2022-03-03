@@ -71,7 +71,7 @@ Returns the version of Espruino as a String
 #ifndef SAVE_ON_FLASH
 /* NOTE: The order of these is very important, as 
 the online compiler has its own copy of this table */
-const void *exportPtrs[] = {
+const void * const exportPtrs[] = {
     jsvLockAgainSafe,
     jsvUnLock,
     jsvSkipName,
@@ -117,6 +117,9 @@ JsVar *jswrap_process_env() {
 #endif
 #ifdef PUCKJS
   jsvObjectSetChildAndUnLock(obj, "HWVERSION", jswrap_puck_getHardwareVersion());
+#endif
+#ifdef ESPR_HWVERSION
+  jsvObjectSetChildAndUnLock(obj, "HWVERSION", jsvNewFromInteger(ESPR_HWVERSION));
 #endif
   jsvObjectSetChildAndUnLock(obj, "STORAGE", jsvNewFromInteger(FLASH_SAVED_CODE_LENGTH));
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));

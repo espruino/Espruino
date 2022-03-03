@@ -24,6 +24,7 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data);
 void jswrap_storage_erase(JsVar *name);
 void jswrap_storage_compact();
 JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter);
+JsVarInt jswrap_storage_hash(JsVar *regex);
 void jswrap_storage_debug();
 int jswrap_storage_getFree();
 

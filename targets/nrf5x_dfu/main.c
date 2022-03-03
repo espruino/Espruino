@@ -38,6 +38,9 @@
 #include "app_timer.h"
 #include "nrf_bootloader_info.h"
 #include "lcd.h"
+#ifdef ESPR_BOOTLOADER_SPIFLASH
+#include "flash.h"
+#endif
 #if NRF_SD_BLE_API_VERSION < 5
 #include "dfu_status.h"
 #endif
@@ -85,6 +88,57 @@ void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t
   /*lcd_println("NRF ERROR");
   nrf_delay_ms(10000);
   NVIC_SystemReset();*/
+}
+
+void turn_off() {
+  lcd_kill();
+#ifdef SPIFLASH_SLEEP_CMD  
+  flashPowerDown();  // Put the SPI Flash into deep power-down
+#endif  
+#ifdef VIBRATE_PIN
+  jshPinOutput(VIBRATE_PIN,1); // vibrate on
+#endif
+#if defined(BTN2_PININDEX)
+  while (get_btn1_state() || get_btn2_state()) {}; // wait for BTN1 and BTN2 to be released
+#else
+  while (get_btn1_state()) {}; // wait for BTN1 and BTN2 to be released
+#endif
+#ifdef VIBRATE_PIN
+  jshPinSetValue(VIBRATE_PIN,0); // vibrate off
+#endif
+#ifdef DICKENS
+  NRF_P0->OUT=0x03300f04; // 00000011 00110000 00001111 00000100 - high pins: D2, D8, SDA, SCL, LCD_CS, FLASH_CS, FLASH_WP, FLASH_RST, FLASH_SCK
+//NRF_P0->OUT=0x03300e00; // 00000011 00110000 00001110 00000000 - high pins: SDA, SCL, LCD_CS, FLASH_CS, FLASH_WP, FLASH_RST, FLASH_SCK
+  if (pinInfo[LCD_BL].port&JSH_PIN_NEGATED) // if backlight negated
+    NRF_P1->OUT=0x00000001; // High pins: LCD_BL
+  else
+    NRF_P1->OUT=0x00000000;
+  for (uint8_t pin=0; pin<48; pin++) {
+    NRF_GPIO_PIN_CNF(pin,0x00000004); // Set all pins as input with pulldown
+  }
+  NRF_GPIO_PIN_CNF(BAT_PIN_VOLTAGE,0x00000002);   //  D4 = battery voltage measurement (no pull, input buffer disconnected)
+  NRF_GPIO_PIN_CNF(ACCEL_PIN_SDA,0x0000060d);     //  D9 = SDA open-drain output
+  NRF_GPIO_PIN_CNF(ACCEL_PIN_SCL,0x0000060d);     // D10 = SCL open-drain output
+  NRF_GPIO_PIN_CNF(LCD_SPI_MISO,0x0000000c);      // D27 = LCD_MISO input with pullup
+  if (pinInfo[LCD_BL].port&JSH_PIN_NEGATED) // if backlight negated
+    NRF_GPIO_PIN_CNF(LCD_BL,0x00000003);            // D32 = LCD backlight pin
+//NRF_GPIO_PIN_CNF(BTN2_PININDEX,0x0003000c);     // D28 = BTN2 input (with pullup and low-level sense)
+//NRF_GPIO_PIN_CNF(BTN3_PININDEX,0x0003000c);     // D29 = BTN3 input (with pullup and low-level sense)
+//NRF_GPIO_PIN_CNF(31,0x00000003);                // D31 = Debug output pin (brought out to external header on)
+//NRF_GPIO_PIN_CNF(BTN4_PININDEX,0x0003000c);     // D42 = BTN4 input (with pullup and low-level sense)
+  NRF_GPIO_PIN_CNF(BTN1_PININDEX,0x0003000c);     // D46 = BTN1 input (with pullup and low-level sense)
+#else  // !DICKENS
+  set_led_state(0,0);
+#if defined(BTN2_PININDEX)
+  nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
+  nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
+#endif
+  nrf_gpio_cfg_sense_input(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
+  nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
+#endif
+  NRF_POWER->TASKS_LOWPWR = 1;
+  NRF_POWER->SYSTEMOFF = 1;
+  while (true) {};
 }
 
 // Override Weak version
@@ -142,18 +196,7 @@ bool dfu_enter_check(void) {
         dfu_start = false;
 #if defined(BUTTONPRESS_TO_REBOOT_BOOTLOADER) && defined(BTN2_PININDEX)
         if (jshPinGetValue(BTN2_PININDEX)) {
-          lcd_kill();
-          jshPinOutput(VIBRATE_PIN,1); // vibrate on
-          while (get_btn1_state() || get_btn2_state()) {};
-          jshPinSetValue(VIBRATE_PIN,0); // vibrate off
-          set_led_state(0,0);
-          nrf_gpio_cfg_sense_set(BTN2_PININDEX, NRF_GPIO_PIN_NOSENSE);
-          nrf_gpio_cfg_sense_set(BTN3_PININDEX, NRF_GPIO_PIN_NOSENSE);
-          nrf_gpio_cfg_sense_input(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_PULLUP, NRF_GPIO_PIN_SENSE_LOW);
-          nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
-          NRF_POWER->TASKS_LOWPWR = 1;
-          NRF_POWER->SYSTEMOFF = 1;
-          while (true) {};
+          turn_off();
           //NVIC_SystemReset(); // just in case!
         }
 #endif
@@ -214,35 +257,60 @@ void reboot_check_handler() {
     }
   }
 #endif
+#if NRF_SD_BLE_API_VERSION>=5
+  // not quite sure why this doesn't repeat in SDK15 when we
+  // asked it to - maybe DFU kills all timers?
+  app_timer_start(m_reboot_timer_id,
+        APP_TIMER_TICKS(100),
+        NULL);
+#endif
 }
 #endif
+
+void dfu_evt_init() {
+  set_led_state(true,false);
+#ifdef REBOOT_TIMER
+  uint32_t err_code;
+  err_code = app_timer_create(&m_reboot_timer_id,
+                      APP_TIMER_MODE_REPEATED,
+                      reboot_check_handler);
+  err_code = app_timer_start(m_reboot_timer_id,
+#if NRF_SD_BLE_API_VERSION<5
+      APP_TIMER_TICKS(100, 0),
+#else
+      APP_TIMER_TICKS(100),
+#endif
+      NULL);
+#endif
+#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+  lcd_println("BTN1 = REBOOT");
+#endif
+}
+
+void dfu_evt_connected() {
+  lcd_println("CONNECT");
+  set_led_state(false,true);
+  dfuIsConnected = true;
+}
+
+void dfu_evt_disconnected() {
+  lcd_println("DISCONNECT");
+  dfuIsConnected = false;
+}
 
 #if NRF_SD_BLE_API_VERSION < 5
 extern void dfu_set_status(DFUStatus status) {
   switch (status) {
   case DFUS_ADVERTISING_START:
-    set_led_state(true,false);
-#ifdef REBOOT_TIMER
-    uint32_t err_code;
-    err_code = app_timer_create(&m_reboot_timer_id,
-                        APP_TIMER_MODE_REPEATED,
-                        reboot_check_handler);
-    err_code = app_timer_start(m_reboot_timer_id, APP_TIMER_TICKS(100, 0), NULL);
-#endif
-#ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
-    lcd_println("BTN1 = REBOOT");
-#endif
+    dfu_evt_init();
     break;
 /*  case DFUS_ADVERTISING_STOP:
     break;*/
   case DFUS_CONNECTED:
-    lcd_println("CONNECT");
-    set_led_state(false,true); 
-    dfuIsConnected = true;
+    dfu_evt_connected();
     break;
   case DFUS_DISCONNECTED:
-    lcd_println("DISCONNECT");
-    dfuIsConnected = false;
+    dfu_evt_disconnected();
     break;
   }
 }
@@ -251,15 +319,22 @@ static void dfu_observer(nrf_dfu_evt_type_t evt_type)
 {
     switch (evt_type)
     {
+        case NRF_DFU_EVT_DFU_INITIALIZED:
+          dfu_evt_init();
+          break;
         case NRF_DFU_EVT_DFU_FAILED:
         case NRF_DFU_EVT_DFU_ABORTED:
-        case NRF_DFU_EVT_DFU_INITIALIZED:
+          lcd_println("ERROR");
           set_led_state(true,false);
           break;
         case NRF_DFU_EVT_TRANSPORT_ACTIVATED:
-          set_led_state(false,true);
+          dfu_evt_connected();
+          break;
+        case NRF_DFU_EVT_TRANSPORT_DEACTIVATED:
+          dfu_evt_disconnected();
           break;
         case NRF_DFU_EVT_DFU_STARTED:
+          lcd_println("STARTED");
           break;
         default:
           break;
@@ -278,12 +353,54 @@ int main(void)
     NRF_LOG_INFO("Inside main\r\n");
 
     hardware_init();
-
+    
     // Did we just power on? If not (we watchdog/softreset) RESETREAS will be nonzero
-    dfuIsColdBoot = NRF_POWER->RESETREAS==0;
+    
+    /* NRF_POWER->RESETREAS reset reason flags:
+     * 0x0001 : RESETPIN  Reset pin
+     * 0x0002 : DOG       Watchdog
+     * 0x0004 : SREQ      Software reset
+     * 0x0008 : LOCKUP    CPU lock-up
+     * 0x0100 : OFF       Woke up from system OFF via GPIO DETECT
+     * 0x0200 : LPCOMP    Woke up from system OFF via LPCOMP ANADETECT
+     * 0x0400 : DIF       Woke up from system OFF into debug inteface mode
+     * 0x0800 : NFC       Woke up from system OFF by NFC field detector
+     * 0x1000 : VBUS      Woke up from system OFF by VBUS rising into valid range
+     */
+    int r = NRF_POWER->RESETREAS;
+    dfuIsColdBoot = (r&0xF)==0;
+#ifdef DICKENS // Specific Dickens bootloader tweaks...
+    // Turn on only if BTN1 held for >1 second
+    // Enter bootloader only if BTN2 held as well
+    if ((r&0b1011)==0) {
+      // if not watchdog, lockup, or reset pin...
+      if (r==0) { // Bangle.softOff causes 'SW RESET' after 1 sec, so r==4
+        nrf_delay_ms(1000);
+      }
+      // if (!get_btn1_state()) {
+      if (!get_btn1_state() && r==0) { // Don't turn off after a SW reset, to avoid user input needed during reflashing
+        turn_off();
+      } else {
+        if (!get_btn2_state()) {
+          // Clear reset reason flags
+          NRF_POWER->RESETREAS = 0xFFFFFFFF;
+#ifdef ESPR_BOOTLOADER_SPIFLASH
+          lcd_init();
+          lcd_println("DFU " JS_VERSION "\n");
+          // Check if we should reflash new firmware
+          flashCheckAndRun();
+#endif
+          // Run the main application.
+          nrf_bootloader_app_start();
+        } else {
+        }
+      }
+    }
+#endif
+
 #ifdef LCD
     lcd_init();
-    int r = NRF_POWER->RESETREAS;
+
     const char *reasons = "PIN\0WATCHDOG\0SW RESET\0LOCKUP\0OFF\0";
     while (*reasons) {
       if (r&1)
@@ -296,6 +413,9 @@ int main(void)
     // Clear reset reason flags
     NRF_POWER->RESETREAS = 0xFFFFFFFF;
     lcd_println("DFU " JS_VERSION "\n");
+#ifdef ESPR_BOOTLOADER_SPIFLASH
+    flashCheckAndRun();
+#endif
 #ifdef BANGLEJS
     nrf_delay_us(500000); // 500ms delay
 #endif

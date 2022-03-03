@@ -181,6 +181,11 @@ void jsi2cSetup(JshI2CInfo *inf) {
   jshPinSetState(inf->pinSDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
 }
 
+void jsi2cUnsetup(JshI2CInfo *inf) {
+  jshPinSetState(inf->pinSCL, JSHPINSTATE_UNDEFINED);
+  jshPinSetState(inf->pinSDA, JSHPINSTATE_UNDEFINED);
+}
+
 bool jsi2cWrite(JshI2CInfo *inf, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
   if (inf->pinSCL==PIN_UNDEFINED || inf->pinSDA==PIN_UNDEFINED)
     return false;

@@ -21,7 +21,7 @@ info = {
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "B6",
  'default_console_rx' : "B7",
- 'variables' : 7148,
+ 'variables' : 8190,
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_wifi.bin',
  'binaries' : [

@@ -62,7 +62,8 @@ ifdef BOOTLOADER
   SOURCES = \
     targets/nrf5x_dfu/dfu_public_key.c \
     targets/nrf5x_dfu/lcd.c \
-    targets/nrf5x_dfu/main.c
+    targets/nrf5x_dfu/main.c \
+    targets/nrf5x_dfu/flash.c 
 ifdef NRF5X_SDK_12
   SOURCES += \
     targets/nrf5x_dfu/sdk12/dfu-cc.pb.c \
@@ -222,7 +223,6 @@ $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
 
 ifdef NRF5X_SDK_11
 TARGETSOURCES += \
-$(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_saadc.c
 endif
 
@@ -230,6 +230,7 @@ ifneq ($(or $(NRF5X_SDK_12),$(NRF5X_SDK_11)),)
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c \
+$(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c 
 else
 TARGETSOURCES += \
@@ -281,6 +282,7 @@ ifdef NRF5X_SDK_12
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/rng/nrf_drv_rng.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler_appsh.c
@@ -439,8 +441,12 @@ ifdef ESPR_BLUETOOTH_ANCS
 DEFINES += -DESPR_BLUETOOTH_ANCS=1
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_db_discovery
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common
+INCLUDE += -I$(ROOT)/targets/nrf5x/ble_ams_c
 TARGETSOURCES += \
   $(ROOT)/targets/nrf5x/bluetooth_ancs.c \
+  $(ROOT)/targets/nrf5x/ble_ams_c/ams_tx_buffer.c \
+  $(ROOT)/targets/nrf5x/ble_ams_c/nrf_ble_ams_c.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_app_attr_get.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_attr_parser.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_tx_buffer.c \
@@ -511,11 +517,12 @@ ifeq ($(BOARD),MICROBIT)
 	if [ -d "/media/$(USER)/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/$(USER)/MICROBIT;sync; fi
 	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/MICROBIT;sync; fi
 else
-        # nrfjprog --family NRF52 --clockspeed 50000 --recover;  will recover a chip if write-protect was set on it
-	if type nrfjprog 2>/dev/null; then nrfjprog --family $(FAMILY) --clockspeed 50000 --program $(PROJ_NAME).hex --chiperase --reset; \
-	elif [ -d "/media/$(USER)/JLINK" ]; then cp $(PROJ_NAME).hex /media/$(USER)/JLINK;sync; \
-	elif [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).hex /media/JLINK;sync; fi
+	nrfjprog --family NRF52 --clockspeed 50000 --recover
+	nrfjprog --family $(FAMILY) --clockspeed 50000 --program $(PROJ_NAME).hex --chiperase --reset
 endif
+
+partflash: all
+	nrfjprog --family $(FAMILY) --clockspeed 50000 --program $(PROJ_NAME).hex --sectorerase --reset;
 
 ifdef DFU_UPDATE_BUILD_WITH_HEX
 proj: $(PROJ_NAME).hex $(PROJ_NAME).zip

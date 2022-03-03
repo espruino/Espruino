@@ -15,10 +15,10 @@
 
 import pinutils;
 info = {
- 'name' : "Compile for JS",
+ 'name' : "Bangle.js emulator",
  'default_console' : "EV_USBSERIAL",
  'variables' :  2500, # 0 = resizable variables, rather than fixed
- 'binary_name' : 'emulator_espruino.js',
+ 'binary_name' : 'emulator_banglejs1.js',
  'build' : {
    'libraries' : [
 #     'NET',
@@ -33,18 +33,23 @@ info = {
    ],
    'makefile' : [
      'EMSCRIPTEN=1',
-     'DEFINES += -DUSE_TENSORFLOW',
-     'DEFINES += -DBANGLEJS',
+     'DEFINES += -DESPR_HWVERSION=1',
+     'DEFINES += -DUSE_CALLFUNCTION_HACK', # required to handle calls properly
+     'DEFINES += -DBANGLEJS -DBANGLEJS_F18 -DEMULATED -DEMSCRIPTEN',
      'DEFINES += -DSPIFLASH_BASE=0x8000000 -DSPIFLASH_LENGTH=4194304',
 #     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DUSE_LCD_EMSCRTIPTEN',
+     'DEFINES += -DESPR_NO_LINE_NUMBERS=1', # we execute mainly from flash, so line numbers can be worked out
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS',
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
+     'WRAPPERSOURCES += libs/misc/jswrap_emulated.c',
      'SOURCES += libs/misc/nmea.c',
      'SOURCES += libs/misc/stepcount.c',
      'SOURCES += libs/misc/heartrate.c',
-     'JSMODULESOURCES += libs/js/banglejs/locale.min.js'
+     'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
+     'SOURCES += libs/banglejs/banglejs1_storage_default.c',
+     'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1',
    ]
  }
 };

@@ -24,7 +24,7 @@ info = {
  'default_console_tx' : "D6",
  'default_console_rx' : "D8",
  'default_console_baudrate' : "9600",
- 'variables' : 2250, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2756, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
 # 'bootloader' : 1,
  'binary_name' : 'espruino_%v_nrf52832.hex',
  'build' : {
@@ -39,6 +39,7 @@ info = {
    'makefile' : [
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DBOARD_PCA10040 -DPCA10040',
+     'ESPR_BLUETOOTH_ANCS=1', # Enable ANCS (Apple notifications) support
      #'DEFINES += -DI2C_SLAVE -DTWIS_ENABLED=1 -DTWIS1_ENABLED=1' # enable I2C slave support
        # I2C slave can then be used with I2C1.setup({sda,scl,addr:42})
    ]

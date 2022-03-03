@@ -18,6 +18,6 @@ void stepcount_init();
 /* Registers a new data point for step counting. Data is expected
  * as 12.5Hz, 8192=1g, and accMagSquared = x*x + y*y + z*z
  *
- * Returns true if a step was counted
+ * Returns the number of steps counted for this accel interval
  */
-bool stepcount_new(int accMagSquared);
+int stepcount_new(int accMagSquared);

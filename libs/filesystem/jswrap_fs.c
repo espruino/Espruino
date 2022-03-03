@@ -206,6 +206,7 @@ NOTE: Espruino does not yet support Async file IO, so this function behaves like
 Append the data to the given file, created a new file if it doesn't exist
 */
 bool jswrap_fs_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
+  if (!data) return false;
   JsVar *fMode = jsvNewFromString(append ? "a" : "w");
   JsVar *f = jswrap_E_openFile(path, fMode);
   jsvUnLock(fMode);

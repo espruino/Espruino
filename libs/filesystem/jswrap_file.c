@@ -402,6 +402,7 @@ all files you are writing before power is lost or you will
 cause damage to your SD card's filesystem.
 */
 size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
+  if (!buffer) return 0;
   FRESULT res = 0;
   size_t bytesWritten = 0;
   if (jsfsInit()) {

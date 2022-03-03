@@ -41,7 +41,7 @@ static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber, bool 
       *is16Bit = true;
   }
   // plough through to get array buffer data
-  JsVar *backingString = jsvGetArrayBufferBackingString(buffer);
+  JsVar *backingString = jsvGetArrayBufferBackingString(buffer, NULL);
   jsvUnLock(buffer);
   return backingString;
 }

@@ -1,4 +1,86 @@
-            Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
+            Bangle.js: Enable the Bangle.on('tap') event from the accelerometer by default
+            Bangle.js: revert to (better) Kionix default thresholds for tap detect
+            Bangle.js 2: When wake on touch is enabled, use a single tap on the front of the device for wakeup
+            Bangle.js: Display 'checking storage' message on first boot to alert users to slight delay
+            Bangle.js: Tweaked step count algorithm (low pass filter, 4 steps in 90s)
+            Graphics: asBMP/asURL/dump now support more bit depths
+            Graphics: Allow .setFont/.getFont to use font size in a colon after the font name
+            Graphics: .getFonts now lists 'setFont' functions however they were added (to `g`, built in, or to the prototype)
+            Graphics: When rendering fonts with a solid background, ensure the gap between is filled too
+            Flat Strings are now always aligned on a 4 byte boundary (fix #2040)
+            Graphics: add setTheme on supported devices
+            RAK5010: switch to 1.8v internal voltage (was 3.3v) to make GSM comms reliable, upgrade BG96 module
+            RAK5010: Compile in TLS/HTTPS support
+            Bangle.js: Fix issue where if non-fullscreen notification was visible and Bangle.js reset, screen was off-center
+            Fix for issue with pretokenised code not creating correct text string for reserved words, eg {undefined:1}
+            Bangle.js: Turn vibrate off every time a new app loads
+            Fix issue where ({a:0}).a in the console would create a ReferenceError (works in code)
+            Graphics: Allow setFont("FontName:1x2") for scaling in 2 directions (fix #2044)
+            Graphics: Fix .asBMP for 4 bit images
+            Graphics: switch RGB order for palette in asBMP for 4/8 bit images
+            Bangle.js 2: Idle power consumption down from 1.3mA to 0.9mA (pullups on HRM disabled when off)
+            Bangle.js 2: Increase reported bit depth from 3->16 and perform bayer dithering when rendering
+              Makes icons/old apps way more usable (plus provides an easy way to get >3bpp)
+            Bangle.js: Fix color palette when rendering 3bpp -> 16bpp
+            nRF52840: Fix 900uA UART power draw when shut down
+            nRF52: Send XON/XOFF when buffer is less full - reduce likelihood of FIFO_FULL with big MTUs
+            Bangle.js: Fix powerSave regression (should default to 'on', but didn't since 2v10)
+            Storage test on boot only tests storage fully if the first record is empty
+            Graphics: drawString now accepts images in-line (fix #2063)
+            Graphics: added stringMetrics to get height as well as width
+            Graphics: drawString now correctly middle-aligns multi-line strings
+            Graphics: add imageMetrics to allow image width/height to be read
+            Graphics: drawImage(...,{frame:x}) can be used to draw animations
+            Graphics: fix rotated/scaled rendering of 3 bit bitmaps (fix #2049)
+            Bangle.js: fix Bangle.getLogo memory leak
+            Bangle.js2: Graphics.getBPP now returns 3
+            Bangle.js: attempt to unlock SPI flash multiple times (some devices don't unlock on the first attempt)
+            Bangle.js: Fix Bangle.tap event regression (now works again)
+            Graphics: add wrapString to wrap messages to the correct length
+            Bangle.js: update showMessage and showPrompt with correct wrapping
+            Bangle.js2: Add Bangle.compassRd, fix setCompassPower
+            Bangle.js: Add Bangle.on('health',..) event and Bangle.getHealthStatus
+            Graphics: drawImage now honours arraybuffer offsets
+            Graphics: drawImage now supports up to 4bpp palettes rendered direct from flash
+            Bangle.js2: Larger font for E.showMenu
+            Graphics: drawString(..., true) for vector fonts now clears the background
+            nRF52: swap getSerial bytes around so device ID string matches nrfjprog
+            Bangle.js2: bootloader can now flash firmware from a file in Storage
+            Bangle.js2: Add second Storage area in internal flash for fast access, memory-mapped files
+            Fix unhandled reject of a previously resolved promise (fix #1433)
+            Bangle.js: E.showMessage/showPrompt can now display images via optional img argument
+                       E.showMessage/showPrompt handle padding correctly if no widgets are displayed
+            Bangle.js2: Fix setUI clockupdown handling of 'up' 
+            Bangle.js: Ensure builtin E.show* (and fake LEDs) wake the LCD up
+            Storage check now *only* happens on first boot
+            Ensure __FILE__ is set by the time bootcode runs
+            If executing from storage, work out line numbers and print filename for Errors
+            Bangle.js: Don't store line numbers in functions - no need when execing from flash
+            Bangle.js: Add E.showScroller for scrollable lists
+            Fix issue where invalid JSON stopped execution after Storage.readJSON
+            Bangle.js: Add Storage.hash for boot0 cache change checking
+            Bangle.js: A single widget load failure will now not remove all widgets
+            Bangle.js: widgets are now sorted by .sortorder
+            While and for loop conditions now use Expression, not AssignmentExpression (eg. while(0,0) is fine) (fix #2068)
+            Bangle.js2: Fix 'stuck' bottom row of pixels if scrolling downwards with g.scroll(0,1)
+            Bangle.js: Fix issue where minified E.showMenu was creating a global var called 'c'
+            Fix string formatting for "Field or method X does not already exist" error
+            Graphics: drawRect,fillRect,clearRect are now able to take an object as the first argument
+            Bangle.js: Add Bangle.appRect to allow apps to see how much space is available for them
+            Bangle.js: Add `Bangle.setOptions({hrmPollInterval:...});`
+            Bangle.js2: Bangle.dragHandler is now cleared by setUI (fix #2078)
+            Bangle.js2: Adjust full battery voltage
+            Avoid Watchdog reboot during compact if compacting a lot of data (fix #2075)
+            Storage: Fix issue where compacting empty storage could cause out of bounds erase (fix #2081)
+            Fix issue where pretokenised '1 - - 1' would turn to '1--1' (fix #2086)
+            Fix break scoping error in nested for loops (fix #2084)
+            Fix memory leak when rejecting pre-resolved promise (test_promise11.js)
+            Fix parser errors in arrow functions (fix #2067)
+            Bangle.js2: Add Unistroke object, and 'Bangle.stroke' event
+            Fix pretokenised '1 / /.../' and ensure jslSeek resets the previous token (ref #2086)
+            nRF52: Move neopixel LRCK pin which can't be disabled due to hardware errata, and restore state after (fix #2071)
+            
+     2v10 : Bangle.js: Improved HRM calculations - swapped autocorrelation for bandpass filter
             Bangle.js: Significantly improved step counting algorithm using bandpass filter (fix #1846)
             Bangle.js: Ignore touch and swipe events when the LCD is off
             Graphics: Fix 1bpp custom fonts on 2/4/8 bpp graphics Canvas not being the right colour
@@ -9,6 +91,48 @@
             Graphics: Add .blit() to allow fast blits within a single Graphics instance
             nRF52840: workaround for SDK15 bug that stops softdevice restart when WDT enabled
             Disallow template strings in object decls like {`hello`:1} (fix #2006)
+            Bangle.js: Add support for global colour themes which affect g.clear/g.reset (fix #499)
+            Bangle.js: Switch beep/buzz to IRQs (keeps time correct even when JS is busy)
+            Add E.decodeUTF8 to allow UTF8 to be decoded into standard 8 bit characters
+            Util timer: account for 'drift' in timer when adding new tasks if running it continuously
+            Graphics: Allow 'scroll' method to only scroll inside clipRect
+            Bangle.js: if we restart with home button held down, ignore the 'button up' event
+            Remove Graphics.drawImages from non-Bangle.js builds to free up space
+            Pico: Remove SHA512 from build to free up space
+            Storage: fix issue where functions referencing flash weren't correctly relocated during compact (#2009)
+            Add support for rendering 3 bit images to 12/16 bit destinations
+            Ensure Serial1.unsetup can be called even if it doesn't appear to have been enabled
+            Puck.js: ensure self test only happens after hardware reset (fix #2001)
+            Bangle.js: Fix issue where long-press BTN3 while holding BTN1 would reload the app but wouldn't load configuration (eg not setting timezone)
+            Graphics: add .getBPP, and allow color blending (rather than copy) when drawing 2 bit images on any BPP Graphics instance
+            nRF52: If getPrimaryServices fails with NRF_BUSY, keep retrying after a delay (fix #2008)
+            Bangle.js 2: Fix getPressure memory leak
+            Graphics: Theme now only applies for LCD, not for JS/ArrayBuffer graphics
+            Graphics: Add dark boolean to themes to allow apps to update depending on bg color
+            Bangle.js: setUI now has 'clock' modes
+            Rename SMAQ3 board to BANGLEJS2
+            nRF52840: Remove ifdef around PHY_UPDATE_REQUEST - fixes BLE5 connections
+            Graphics: Allow g.drawImage to use ArrayBuffer Graphics as an argument 
+            Bangle.js: Display small 'Loading...' screen to show something is happening when loading apps
+            Promise: Fix issue with .then().then(...) on an already-resolved promise (fix #2019)
+            Bangle.js: g.flip no longer keeps the screen awake, flipTimer renamed to inactivityTimer
+            Bangle.js 2: 'factory default' set of JS now included inside firmware
+            Bangle.js: Build in ANCS support (disabled by default)
+            Bangle.js 2: Working VC31 heart rate monitoring
+            Bangle.js: Push GPS events immediately after GPGSV (more portable/resilient to config changes)
+            At first boot, fully check Storage for validity (if not full, ensure remaining pages are 0xFF)
+            Storage: Ensure jsfIsStorageValid returns true when storage is valid, but full
+            Bangle.js: Add Bangle.getGPSFix to get last GPS fix without waiting for a listener
+            Merge experimental_compact_vars branch to reduce var sixe from 16 to 13 bytes in most cases.
+            Add JSVAR_FORCE_16_BYTE to allow experimental_compact_vars changes to be removed
+            Add JSVAR_FORCE_INLINE, and don't force lock/unlock/getters to be inlined.
+              Compiler has improved enough we save 10% code space and get marginally faster
+            Add ArrayBufferView.subarray for easily making subarrays (eg a.set(a.subarray(-1)))
+            Solve case where an ArrayBuffer set using the same array could duplicate entries (`a.set(a.subarray(),1)`)
+            nRF52: Fix 2v09 regression where clearWatch reset pin state, removing pullups
+            nRF52: BLE stack errors now reports a line number
+            nRF52: 'BLE task in progress' messages now give a readable name, not task number
+            MICROBIT1: Remove hardware SPI to save space. Software SPI still works
 
      2v09 : Bangle.js: increase default advertising interval from 375 to 200ms to ease connections
             Fix Math.acos for negative values (fix #1950)

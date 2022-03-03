@@ -25,13 +25,6 @@ typedef enum {
   LCDST7789_MODE_BUFFER_80x80, // 80x80 8 bit buffer
 } LCDST7789Mode;
 
-#ifdef EMSCRIPTEN
-extern int EMSCRIPTEN_GFX_YSTART;
-extern char EMSCRIPTEN_GFX_BUFFER[240*320*2];
-extern bool EMSCRIPTEN_GFX_CHANGED;
-extern bool EMSCRIPTEN_GFX_WIDESCREEN; // are we 160px high?
-#endif
-
 /// Send a command direct to the screen
 void lcdST7789_cmd(int cmd, int dataLen, const uint8_t *data);
 /** Allow the LCD to be shifted vertically while still drawing in the normal position.

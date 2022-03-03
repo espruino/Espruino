@@ -13,16 +13,13 @@
  */
 #include "graphics.h"
 
-typedef enum {
-  MEMLCD_MODE_NULL, // ignore draw calls
-  MEMLCD_MODE_NORMAL, // normal, 240x240
-  MEMLCD_MODE_240x240, // compatibility, 240x240 16 bit
-} lcdMemLCDMode;
-
 void lcdMemLCD_init(JsGraphics *gfx);
-void lcdMemLCD_setMode(lcdMemLCDMode mode);
 void lcdMemLCD_setCallbacks(JsGraphics *gfx);
 
 void lcdMemLCD_flip(JsGraphics *gfx); // run this to flip the offscreen buffer to the screen
 void lcdMemLCD_cmd(int cmd, int dataLen, const char *data); // to send specific commands to the display
-void lcdMemLCD_extcomin(); // toggle EXTCOMIN to avoid burn-in
+
+/// toggle EXTCOMIN to avoid burn-in
+void lcdMemLCD_extcominToggle();
+/// If backlight is on, we need to raise EXTCOMIN freq (use HW PWM)
+void lcdMemLCD_extcominBacklight(bool isOn);

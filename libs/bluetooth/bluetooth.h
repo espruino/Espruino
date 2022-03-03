@@ -15,7 +15,9 @@
 #ifndef BLUETOOTH_H
 #define BLUETOOTH_H
 
+#ifdef NRF5X
 #include "app_config.h"
+#endif
 #include "jsdevices.h"
 
 #ifdef NRF5X
@@ -26,6 +28,12 @@
 #include "ble.h"
 #endif
 #include "ble_advdata.h"
+
+/* Check for errors when in an IRQ, when we're pretty sure an error won't
+ * cause a hard reset. Error is then reported outside of the IRQ without
+ * rebooting Espruino. */
+#define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) { uint32_t line = __LINE__; jsble_queue_pending_buf(BLEP_ERROR, ERR_CODE, (char*)&line, 4); }
+
 #else
 typedef struct {
   uint16_t uuid;
@@ -102,10 +110,13 @@ typedef enum  {
   BLE_WHITELIST_ON_BOND = 8192,  //< Should we write to the whitelist whenever we bond to a device?
   BLE_DISABLE_DYNAMIC_INTERVAL = 16384, //< Disable automatically changing interval based on BLE peripheral activity
   BLE_ENCRYPT_UART = 32768,  //< Has security with encryption been requested (if so UART must require it)
+#ifdef ESPR_BLUETOOTH_ANCS
+  BLE_ANCS_INITED = 65536,   //< Apple Notification Centre enabled
+#endif
 
-  BLE_IS_ADVERTISING_MULTIPLE = 65536, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_ONE = 131072,
-  BLE_ADVERTISING_MULTIPLE_SHIFT = 17,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_IS_ADVERTISING_MULTIPLE = 131072, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_ONE = 262144,
+  BLE_ADVERTISING_MULTIPLE_SHIFT = 18,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 
   /// These are flags that should be reset when the softdevice starts up
@@ -145,6 +156,10 @@ typedef enum {
   BLEP_TASK_AUTH_STATUS,            //< Data on how authentication was going has been received
 #ifdef ESPR_BLUETOOTH_ANCS
   BLEP_ANCS_NOTIF,                  //< Apple Notification Centre notification received
+  BLEP_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes received
+  BLEP_ANCS_APP_ATTR,               //< Apple Notification Centre app attributes received
+  BLEP_AMS_UPDATE,                   //< Apple Media Service Track info updated
+  BLEP_AMS_ATTRIBUTE                //< Apple Media Service Track info read response
 #endif
 } BLEPending;
 
@@ -158,7 +173,7 @@ extern volatile uint16_t                         m_central_conn_handle; /**< Han
 
 /** Initialise the BLE stack */
 void jsble_init();
-/** Completely deinitialise the BLE stack */
+/** Completely deinitialise the BLE stack. Return true on success */
 bool jsble_kill();
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
@@ -189,8 +204,14 @@ bool jsble_has_peripheral_connection();
  * a peripheral - used with Dynamic Interval Adjustment  */
 void jsble_peripheral_activity();
 
+#ifndef SAVE_ON_FLASH_EXTREME
+#define jsble_check_error(X) jsble_check_error_line(X, __LINE__)
+/// Checks for error and reports an exception if there was one. Return true on error
+bool jsble_check_error_line(uint32_t err_code, int lineNumber);
+#else
 /// Checks for error and reports an exception if there was one. Return true on error
 bool jsble_check_error(uint32_t err_code);
+#endif
 
 /** Set the connection interval of the peripheral connection. Returns an error code */
 uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max);

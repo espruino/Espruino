@@ -177,7 +177,8 @@ void jswrap_interface_load(JsVar *storageName) {
 /*JSON{
   "type" : "function",
   "name" : "save",
-  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;"
+  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;",
+  "#if" : "!defined(BANGLEJS)"
 }
 Save the state of the interpreter into flash (including the results of calling
 `setWatch`, `setInterval`, `pinMode`, and any listeners). The state will then be loaded automatically
@@ -498,7 +499,7 @@ setTimeout(function (a,b) {
 ```
 
 If you want to stop the function from being called, pass the number that
-was returned by `setTimeout` into the `clearInterval` function.
+was returned by `setTimeout` into the `clearTimeout` function.
 
  **Note:** If `setDeepSleep(true)` has been called and the interval is greater than 5 seconds, Espruino may execute the interval up to 1 second late. This is because Espruino can only wake from deep sleep every second - and waking early would cause Espruino to waste power while it waited for the correct time.
  */

@@ -156,7 +156,10 @@ JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions) {
   if (!v) return 0;
   JsVar *r = jswrap_json_parse(v);
   jsvUnLock(v);
-  if (noExceptions) jsvUnLock(jspGetException());
+  if (noExceptions) {
+    jsvUnLock(jspGetException());
+    execInfo.execute &= ~EXEC_EXCEPTION;
+  }
   return r;
 }
 
@@ -306,7 +309,7 @@ which have a file number (`"\1"`/`"\2"`/etc) appended to them.
 // All files
 require("Storage").list()
 // Files ending in '.js'
-require("Storage").list(/.js$/)
+require("Storage").list(/\.js$/)
 // All Storage Files
 require("Storage").list(undefined, {sf:true})
 // All normal files (eg created with Storage.write)
@@ -329,6 +332,39 @@ JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
     }
   }
   return jsfListFiles(regex, containing, notContaining);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Storage",
+  "name" : "hash",
+  "generate" : "jswrap_storage_hash",
+  "params" : [
+    ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being hashed"]
+  ],
+  "return" : ["int","A hash of the files matching"]
+}
+List all files in the flash storage area matching the specfied regex (ignores StorageFiles),
+and then hash their filenames *and* file locations.
+
+Identical files may have different hashes (eg. if Storage is compacted and the file moves) but
+the changes of different files having the same hash are extremely small.
+
+```
+// Hash files
+require("Storage").hash()
+// Files ending in '.boot.js'
+require("Storage").hash(/\.boot\.js$/)
+```
+
+**Note:** This function is used by Bangle.js as a way to cache files.
+For instance the bootloader will add all `.boot.js` files together into
+a single `.boot0` file, but it needs to know quickly whether anything has
+changed.
+ */
+JsVarInt jswrap_storage_hash(JsVar *regex) {
+  return jsfHashFiles(regex, 0, JSFF_STORAGEFILE);
 }
 
 /*JSON{
@@ -397,7 +433,7 @@ int jswrap_storage_getFree() {
   "name" : "open",
   "generate" : "jswrap_storage_open",
   "params" : [
-    ["name","JsVar","The filename - max **7** characters (case sensitive)"],
+    ["name","JsVar","The filename - max **27** characters (case sensitive)"],
     ["mode","JsVar","The open mode - must be either `'r'` for read,`'w'` for write , or `'a'` for append"]
   ],
   "return" : ["JsVar","An object containing {read,write,erase}"],
@@ -514,7 +550,7 @@ to denote the chunk number (eg `"foobar\1"`, `"foobar\2"`, etc).
 
 This means that while `StorageFile` files exist in the same
 area as those from `Storage`, they should be
-read using `StorageFile.open` (and not `Storage.read`).
+read using `Storage.open` (and not `Storage.read`).
 
 ```
 f = s.open("foobar","w");

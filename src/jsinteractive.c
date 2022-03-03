@@ -470,13 +470,22 @@ void jsiSoftInit(bool hasBeenReset) {
   // Run wrapper initialisation stuff
   jswInit();
 
-  // Search for invalid storage and remove it
+  // Search for invalid storage and erase
+  // do this only on first boot.
 #if !defined(EMSCRIPTEN) && !defined(SAVE_ON_FLASH)
-  if (!jsfIsStorageValid()) {
-    jsiConsolePrintf("Storage is corrupt.\n");
-    jsiConsolePrintf("Erasing Storage Area...\n");
-    jsfEraseAll();
-    jsiConsolePrintf("Erase complete.\n");
+  bool fullTest = jsiStatus & JSIS_FIRST_BOOT;
+  if (fullTest) {
+#ifdef BANGLEJS
+    jsiConsolePrintf("Checking storage...\n");
+#endif
+    if (!jsfIsStorageValid(JSFSTT_NORMAL)) {
+      jsiConsolePrintf("Storage is corrupt.\n");
+      jsfResetStorage();
+    } else {
+#ifdef BANGLEJS
+      jsiConsolePrintf("Storage Ok.\n");
+#endif
+    }
   }
 #endif
 
@@ -1844,7 +1853,7 @@ static JsVar *jsiExtractIOEventData(IOEvent *event, int *eventsHandled) {
 /** Take an event for a UART and handle the characters we're getting, potentially
  * grabbing more characters as well if it's easy. If more character events are
  * grabbed, the number of extra events (not characters) is returned */
-int jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
+int jsiHandleIOEventForSerial(JsVar *usartClass, IOEvent *event) {
   int eventsHandled = 0;
   JsVar *stringData = jsiExtractIOEventData(event,  &eventsHandled);
   if (stringData) {
@@ -1889,9 +1898,10 @@ void jsiIdle() {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(eventType));
       if (jsvIsObject(usartClass)) {
-        maxEvents -= jsiHandleIOEventForUSART(usartClass, &event);
+        maxEvents -= jsiHandleIOEventForSerial(usartClass, &event);
       }
       jsvUnLock(usartClass);
+#if USART_COUNT>0
     } else if (DEVICE_IS_USART_STATUS(eventType)) {
       // ------------------------------------------------------------------------ SERIAL STATUS CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(event.flags))));
@@ -1902,20 +1912,10 @@ void jsiIdle() {
           jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
       }
       jsvUnLock(usartClass);
+#endif
 #ifdef BLUETOOTH
     } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
       maxEvents -= jsble_exec_pending(&event);
-#endif
-#ifdef TOUCH_DEVICE
-    } else if ((eventType == EV_TOUCH)) {
-      JsVar *obj = jsvNewObject();
-      if (obj) {
-        jsvObjectSetChildAndUnLock(obj, "x", jsvNewFromInteger((unsigned char)event.data.chars[0]));
-        jsvObjectSetChildAndUnLock(obj, "y", jsvNewFromInteger((unsigned char)event.data.chars[1]));
-        jsvObjectSetChildAndUnLock(obj, "b", jsvNewFromInteger((unsigned char)event.data.chars[2]));
-        jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"touch", 1, &obj);
-        jsvUnLock(obj);
-      }
 #endif
 #ifdef I2C_SLAVE
     } else if (DEVICE_IS_I2C(eventType)) {
@@ -2246,13 +2246,12 @@ void jsiIdle() {
         jsvKill();
         jshReset();
         jsvInit(0);
+        jsvObjectSetChildAndUnLock(execInfo.root, "__FILE__", jsfVarFromName(filename));
         jsiSemiInit(false); // don't autoload code
         // load the code we specified
         JsVar *code = jsfReadFile(filename,0,0);
-        if (code) {
-          jsvObjectSetChildAndUnLock(execInfo.root, "__FILE__", jsfVarFromName(filename));
+        if (code)
           jsvUnLock2(jspEvaluateVar(code,0,0), code);
-        }
       } else {
         jsiSoftKill();
         jspSoftKill();
@@ -2488,9 +2487,12 @@ void jsiDebuggerLoop() {
     char lineStr[9];
     // Get a string fo the form '1234    ' for the line number
     // ... but only if the line number was set, otherwise use spaces
+#ifndef ESPR_NO_LINE_NUMBERS
     if (lex->lineNumberOffset) {
       itostr((JsVarInt)jslGetLineNumber() + (JsVarInt)lex->lineNumberOffset - 1, lineStr, 10);
-    } else {
+    } else
+#endif
+    {
       lineStr[0]=0;
     }
     size_t lineLen = strlen(lineStr);

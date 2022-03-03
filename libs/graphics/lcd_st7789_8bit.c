@@ -74,6 +74,25 @@ int EMSCRIPTEN_GFX_BLIT_X1;
 int EMSCRIPTEN_GFX_BLIT_X2;
 int EMSCRIPTEN_GFX_BLIT_Y1;
 int EMSCRIPTEN_GFX_BLIT_Y2;
+
+bool jsGfxChanged() {
+  bool b = EMSCRIPTEN_GFX_CHANGED;
+  EMSCRIPTEN_GFX_CHANGED = false;
+  return b;
+}
+
+char *jsGfxGetPtr(int line) {
+  if (EMSCRIPTEN_GFX_WIDESCREEN) {
+    if (line<40 || line>=200)
+      return 0;
+  }
+  line += EMSCRIPTEN_GFX_YSTART;
+  if (EMSCRIPTEN_GFX_WIDESCREEN)
+    line -= 40;
+  if (line<0) line+=320;
+  if (line>=320) line-=320;
+  return &EMSCRIPTEN_GFX_BUFFER[line*240*2];
+}
 #endif
 
 #ifndef EMSCRIPTEN
@@ -222,7 +241,7 @@ void lcdST7789_flip(JsGraphics *gfx) {
     case LCDST7789_MODE_BUFFER_120x120: {
       // offscreen buffer - BLIT
       JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
-      JsVar *str = jsvGetArrayBufferBackingString(buffer);
+      JsVar *str = jsvGetArrayBufferBackingString(buffer, NULL);
       if (str) {
         JsvStringIterator it;
         jsvStringIteratorNew(&it, str, 0);
@@ -234,7 +253,7 @@ void lcdST7789_flip(JsGraphics *gfx) {
     case LCDST7789_MODE_BUFFER_80x80: {
       // offscreen buffer - BLIT
       JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
-      JsVar *str = jsvGetArrayBufferBackingString(buffer);
+      JsVar *str = jsvGetArrayBufferBackingString(buffer, NULL);
       if (str) {
         JsvStringIterator it;
         jsvStringIteratorNew(&it, str, 0);
@@ -524,11 +543,11 @@ void lcdST7789_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigne
 }
 #endif
 
-void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir) {
-  if (lcdMode != LCDST7789_MODE_UNBUFFERED) {
-    // No way this is going to work double buffered!
-    return;
-  }
+void lcdST7789_scroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
+  // No way this is going to work double buffered!
+  if (lcdMode != LCDST7789_MODE_UNBUFFERED) return;
+  // we can't scroll a window either
+  if (x1!=0 || y1!=0 || x2!=LCD_HEIGHT-1 || y2!=LCD_HEIGHT-1) return;
   /* We can't read data back, so we can't do left/right scrolling!
   However we can change our index in the memory buffer window
   which allows us to use the LCD itself for scrolling */
