@@ -378,6 +378,7 @@ int main(int argc, char **argv) {
         jsvInit(0);
         jsiInit(true);
         addNativeFunction("quit", nativeQuit);
+        addNativeFunction("interrupt", nativeInterrupt);
         jsvUnLock(jspEvaluate(argv[i + 1], false));
         int errCode = handleErrors();
         isRunning = !errCode;
