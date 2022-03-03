@@ -58,6 +58,7 @@ TriggerStruct mainTrigger = { (Pin)-1/*pin*/};
 
 void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
   JsSysTime currentTime = jshGetSystemTime();
+  uint32_t timerOffset = jstGetUtilTimerOffset();
   int timeDiff = (int)(pulseTime - data->lastTime);
   if (timeDiff < 0) {
     data->errors |= TRIGERR_WRONG_TIME;
@@ -166,10 +167,10 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
               //jsiConsolePrint("Trigger already passed\n");
             }
 
-            if (!jstPinOutputAtTime(trigTime, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 0xFF))
+            if (!jstPinOutputAtTime(trigTime, &timerOffset, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 0xFF))
               data->errors |= TRIGERR_TIMER_FULL;
             if (trig->pulseLength>0) {
-              if (!jstPinOutputAtTime(trigTime+trig->pulseLength, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 0))
+              if (!jstPinOutputAtTime(trigTime+trig->pulseLength, &timerOffset, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 0))
                 data->errors |= TRIGERR_TIMER_FULL;
             }
             // trigger fired, so update it

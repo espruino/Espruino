@@ -1109,6 +1109,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
     _jswrap_puck_IR_pin = cathode;
   }
   JsSysTime time = 0;
+  uint32_t timerOffset = jstGetUtilTimerOffset();
   bool hasPulses = false;
 
   JsvIterator it;
@@ -1116,11 +1117,11 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
   while (jsvIteratorHasElement(&it)) {
     JsVarFloat pulseTime = jsvIteratorGetFloatValue(&it);
     if (twoPin) {
-      if (hasPulses) jstPinOutputAtTime(time, &anode, 1, pulsePolarity);
+      if (hasPulses) jstPinOutputAtTime(time, &timerOffset, &anode, 1, pulsePolarity);
       else jshPinSetState(anode, JSHPINSTATE_GPIO_OUT);
     } else {
-      if (pulsePolarity) jstExecuteFn(_jswrap_puck_IR_on, NULL, time, 0);
-      else jstExecuteFn(_jswrap_puck_IR_off, NULL, time, 0);
+      if (pulsePolarity) jstExecuteFn(_jswrap_puck_IR_on, NULL, time, 0, &timerOffset);
+      else jstExecuteFn(_jswrap_puck_IR_off, NULL, time, 0, &timerOffset);
     }
     hasPulses = true;
     time += jshGetTimeFromMilliseconds(pulseTime);
@@ -1132,9 +1133,9 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
   if (hasPulses) {
     if (twoPin) {
       uint32_t d = cathode | anode<<8;
-      jstExecuteFn(_jswrap_puck_IR_done, (void*)d, time, 0);
+      jstExecuteFn(_jswrap_puck_IR_done, (void*)d, time, 0, &timerOffset);
     } else {
-      jstExecuteFn(_jswrap_puck_IR_off, NULL, time, 0);
+      jstExecuteFn(_jswrap_puck_IR_off, NULL, time, 0, &timerOffset);
     }
   }
 }

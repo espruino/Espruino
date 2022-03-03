@@ -17,6 +17,7 @@
 #include "jsvar.h"
 #include "jswrap_arraybuffer.h" // for jswrap_io_peek
 #include "jswrapper.h" // for JSWAT_VOID
+#include "jstimer.h" // for digitalPulse
 
 #ifdef ESP32
 #include "freertos/FreeRTOS.h"
@@ -218,21 +219,38 @@ eg. `digitalPulse(A0,1,5);` pulses A0 high for 5ms. `digitalPulse(A0,1,[5,2,4]);
 digitalPulse is for SHORT pulses that need to be very accurate. If you're doing anything over a few milliseconds, use setTimeout instead.
  */
 void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
+  if (!jshIsPinValid(pin)) {
+    jsExceptionHere(JSET_ERROR, "Invalid pin!");
+    return;
+  }
+  // check for currently running timer tasks
+  UtilTimerTask task;
+  uint32_t timerOffset = jstGetUtilTimerOffset();
+  bool hasTimer = jstGetLastPinTimerTask(pin, &task);
+  if (!hasTimer) task.time = 0;
+  // now start either one or a series of pulses
   if (jsvIsNumeric(times)) {
-    JsVarFloat time = jsvGetFloat(times);
-    if (time<0 || isnan(time)) {
+    JsVarFloat pulseTime = jsvGetFloat(times);
+    if (pulseTime<0 || isnan(pulseTime)) {
       jsExceptionHere(JSET_ERROR, "Pulse Time given for digitalPulse is less than 0, or not a number");
-    } else {
-      jshPinPulse(pin, value, time);
-    }
+    } else if (pulseTime>0) {
+      if (!hasTimer) jshPinOutput(pin, value);
+      task.time += jshGetTimeFromMilliseconds(pulseTime);
+      jstPinOutputAtTime(task.time, &timerOffset, &pin, 1, !value);
+    } else jstUtilTimerWaitEmpty(); // time==0
   } else if (jsvIsIterable(times)) {
     // iterable, so output a square wave
+    if (!hasTimer) jshPinOutput(pin, value);
     JsvIterator it;
     jsvIteratorNew(&it, times, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {
-      JsVarFloat time = jsvIteratorGetFloatValue(&it);
-      if (time>=0 && !isnan(time))
-        jshPinPulse(pin, value, time);
+      JsVarFloat pulseTime = jsvIteratorGetFloatValue(&it);
+      if (!isnan(pulseTime)) {
+        if (pulseTime>0) {
+          task.time += jshGetTimeFromMilliseconds(pulseTime);
+          jstPinOutputAtTime(task.time, &timerOffset, &pin, 1, !value);
+	}
+      }
       value = !value;
       jsvIteratorNext(&it);
     }

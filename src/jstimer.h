@@ -103,20 +103,27 @@ void jstUtilTimerWaitEmpty();
 /// Return true if the utility timer is running
 bool jstUtilTimerIsRunning();
 
+/// Get the current timer offset - supply this when adding >1 timer task to ensure they are all executed at the same time relative to each other
+uint32_t jstGetUtilTimerOffset();
+
 /// Return true if a timer task for the given pin exists (and set 'task' to it)
 bool jstGetLastPinTimerTask(Pin pin, UtilTimerTask *task);
 
 /// Return true if a timer task for the given variable exists (and set 'task' to it)
 bool jstGetLastBufferTimerTask(JsVar *var, UtilTimerTask *task);
 
-/// returns false if timer queue was full... Changes the state of one or more pins at a certain time (using a timer)
-bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
+/** returns false if timer queue was full... Changes the state of one or more pins at a certain time in the future (using a timer)
+ * See utilTimerInsertTask for notes on timerOffset
+ */
+bool jstPinOutputAtTime(JsSysTime time, uint32_t *timerOffset, Pin *pins, int pinCount, uint8_t value);
 
 // Do software PWM on the given pin, using the timer IRQs
 bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin);
 
-/// Execute the given function repeatedly after the given time period. If period=0, don't repeat. True on success or false on failure to schedule
-bool jstExecuteFn(UtilTimerTaskExecFn fn, void *userdata, JsSysTime startTime, uint32_t period);
+/** Execute the given function repeatedly after the given time period. If period=0, don't repeat. True on success or false on failure to schedule
+ * See utilTimerInsertTask for notes on timerOffset
+ */
+bool jstExecuteFn(UtilTimerTaskExecFn fn, void *userdata, JsSysTime startTime, uint32_t period, uint32_t *timerOffset);
 
 /// Stop executing the given function
 bool jstStopExecuteFn(UtilTimerTaskExecFn fn, void *userdata);
@@ -149,8 +156,12 @@ void jstDumpUtilityTimers();
 need to be called by anything outside jstimer.c */
 void  jstRestartUtilTimer();
 
-// Queue a task up to be executed when a timer fires... return false on failure
-bool utilTimerInsertTask(UtilTimerTask *task);
+/** Queue a task up to be executed when a timer fires... return false on failure.
+ * task.time is the delay at which to execute the task. If timerOffset!==NULL then
+ * task.time is relative to the time at which timerOffset=jstGetUtilTimerOffset().
+ * This allows pulse trains/etc to be scheduled in sync.
+ */
+bool utilTimerInsertTask(UtilTimerTask *task, uint32_t *timerOffset);
 
 /// Remove the task that that 'checkCallback' returns true for. Returns false if none found
 bool utilTimerRemoveTask(bool (checkCallback)(UtilTimerTask *task, void* data), void *checkCallbackData);

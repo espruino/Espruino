@@ -1674,7 +1674,7 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
 #elif defined(ESPR_BACKLIGHT_FADE)
   if (!lcdFadeHandlerActive) {
     JsSysTime t = jshGetTimeFromMilliseconds(10);
-    jstExecuteFn(backlightFadeHandler, NULL, t, t);
+    jstExecuteFn(backlightFadeHandler, NULL, t, t, NULL);
     lcdFadeHandlerActive = true;
     backlightFadeHandler();
   }
@@ -4403,7 +4403,7 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
 #endif
     }
   }
-  jstExecuteFn(jswrap_banglejs_beep_callback, NULL, jshGetTimeFromMilliseconds(time), 0);
+  jstExecuteFn(jswrap_banglejs_beep_callback, NULL, jshGetTimeFromMilliseconds(time), 0, NULL);
   return jsvLockAgain(promiseBeep);
 }
 
@@ -4446,7 +4446,7 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
   if (!promiseBuzz) return 0;
 
   buzzAmt = (unsigned char)(amt*255);
-  if (jstExecuteFn(jswrap_banglejs_buzz_callback, NULL, jshGetTimeFromMilliseconds(time), 0)) {
+  if (jstExecuteFn(jswrap_banglejs_buzz_callback, NULL, jshGetTimeFromMilliseconds(time), 0, NULL)) {
     // task schedule succeeded - start buzz
     if (bangleFlags & JSBF_ENABLE_BUZZ) {
       _jswrap_banglejs_setVibration();

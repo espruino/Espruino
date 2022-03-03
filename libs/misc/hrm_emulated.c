@@ -30,7 +30,7 @@ void hrm_timer() {
 
 static void hrm_sensor_timer_start() {
   JsSysTime t = jshGetTimeFromMilliseconds(hrmPollInterval);
-  jstExecuteFn(hrm_timer, NULL, t, t);
+  jstExecuteFn(hrm_timer, NULL, t, t, NULL);
 }
 
 static void hrm_sensor_timer_stop() {

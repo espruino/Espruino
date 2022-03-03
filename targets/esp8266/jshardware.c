@@ -674,37 +674,6 @@ bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // ca
 
 
 /**
- * Set the value of the pin to be the value supplied and then wait for
- * a given period and set the pin value again to be the opposite.
- */
-void jshPinPulse(
-    Pin pin,              //!< The pin to be pulsed.
-    bool pulsePolarity,   //!< The value to be pulsed into the pin.
-    JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
-) {
-
-  if (!jshIsPinValid(pin)) {
-    jsExceptionHere(JSET_ERROR, "Invalid pin!");
-    return;
-  }
-  if (pulseTime <= 0) {
-    // just wait for everything to complete [??? what does this mean ???]
-    jstUtilTimerWaitEmpty();
-    return;
-  } else {
-    // find out if we already had a timer scheduled
-    UtilTimerTask task;
-    if (!jstGetLastPinTimerTask(pin, &task)) {
-      // no timer - just start the pulse now!
-      jshPinOutput(pin, pulsePolarity);
-      task.time = jshGetSystemTime();
-    }
-    // Now set the end of the pulse to happen on a timer
-    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
-  }
-}
-
-/**
  * Determine whether the pin can be watchable.
  * \return Returns true if the pin is wathchable.
  */

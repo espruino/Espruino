@@ -47,6 +47,7 @@ void jsserialSoftwareFunc(
   bitCnt += 1;
 
   // Get ready to send
+  uint32_t timerOffset = jstGetUtilTimerOffset();
   JsSysTime bitTime = jshGetTimeFromMilliseconds(1000.0 / inf->baudRate);
   JsSysTime time;
   UtilTimerTask task;
@@ -70,19 +71,19 @@ void jsserialSoftwareFunc(
     } else {
       // state changed!
       time += bitTime*outCount;
-      jstPinOutputAtTime(time, &inf->pinTX, 1, bit);
+      jstPinOutputAtTime(time, &timerOffset, &inf->pinTX, 1, bit);
       outState = bit;
       outCount = 1;
     }*/
     // hacky - but seems like we may have some timing problems otherwise
-    jstPinOutputAtTime(time, &inf->pinTX, 1, bit);
+    jstPinOutputAtTime(time, &timerOffset, &inf->pinTX, 1, bit);
     //jsiConsolePrintf("-> %d\n",bit);
     time += bitTime;
   }
   // And finish off by raising...
   time += bitTime*outCount;
   //jsiConsolePrintf("-> 1 (final)\n");
-  jstPinOutputAtTime(time, &inf->pinTX, 1, 1);
+  jstPinOutputAtTime(time, &timerOffset, &inf->pinTX, 1, 1);
   // we do this even if we are high, because we want to ensure that the next char is properly spaced
   // Ideally we'd be able to store the last bit time when sending so we could just go straight on from it
 }
