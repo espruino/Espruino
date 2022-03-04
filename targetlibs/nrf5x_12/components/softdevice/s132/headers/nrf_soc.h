@@ -78,7 +78,7 @@ extern "C" {
 #define RADIO_NOTIFICATION_IRQn           (SWI1_IRQn)        /**< The radio notification IRQ number. */
 #define RADIO_NOTIFICATION_IRQHandler     (SWI1_IRQHandler)  /**< The radio notification IRQ handler. */
 #endif
-#if (defined(NRF52) || defined(NRF52840_XXAA))
+#ifdef NRF52
 #define SD_EVT_IRQn                       (SWI2_EGU2_IRQn)        /**< SoftDevice Event IRQ number. Used for both protocol events and SoC events. */
 #define SD_EVT_IRQHandler                 (SWI2_EGU2_IRQHandler)  /**< SoftDevice Event IRQ handler. Used for both protocol events and SoC events. */
 #define RADIO_NOTIFICATION_IRQn           (SWI1_EGU1_IRQn)        /**< The radio notification IRQ number. */
@@ -229,7 +229,11 @@ enum NRF_RADIO_HFCLK_CFG
 {
   NRF_RADIO_HFCLK_CFG_XTAL_GUARANTEED, /**< The SoftDevice will guarantee that the high frequency clock source is the
                                            external crystal for the whole duration of the timeslot. This should be the
-                                           preferred option for events that use the radio or require high timing accuracy. */
+                                           preferred option for events that use the radio or require high timing accuracy.
+                                           @note The SoftDevice will automatically turn on and off the external crystal,
+                                           at the beginning and end of the timeslot, respectively. The crystal may also
+                                           intentionally be left running after the timeslot, in cases where it is needed
+                                           by the SoftDevice shortly after the end of the timeslot. */
   NRF_RADIO_HFCLK_CFG_NO_GUARANTEE    /**< This configuration allows for earlier and tighter scheduling of timeslots.
                                            The RC oscillator may be the clock source in part or for the whole duration of the timeslot.
                                            The RC oscillator's accuracy must therefore be taken into consideration.

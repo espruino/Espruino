@@ -69,19 +69,30 @@ static void terminalControlCharsReset() {
 
 // Try and find something to use for Graphics - MUST call terminalSetGFX after if this returns true
 bool terminalGetGFX(JsGraphics *gfx) {
+#ifdef ESPR_GRAPHICS_INTERNAL
+  // FIXME: not ideal, we should really be using the pointer directly
+  if (!graphicsInternal.setPixel) return false; // not set up yet
+  *gfx = graphicsInternal;
+  return true;
+#else
   JsVar *v = jswrap_graphics_getInstance();
   if (!v) return false;
   if (graphicsGetFromVar(gfx, v))
     return true;
   jsvUnLock(v);
   return false;
+#endif
 }
 
 /// Setup the graphics var state and flip the screen
 void terminalSetGFX(JsGraphics *gfx) {
+#ifdef ESPR_GRAPHICS_INTERNAL
+  graphicsInternal = *gfx;
+#else
   graphicsSetVar(gfx);
-  terminalNeedsFlip = true; // force a flip to the screen next idle
   jsvUnLock(gfx->graphicsVar);
+#endif
+  terminalNeedsFlip = true; // force a flip to the screen next idle
 }
 
 /// Scroll up to leave one more line free at the bottom
@@ -90,7 +101,11 @@ void terminalScroll() {
   JsGraphics gfx;
   if (terminalGetGFX(&gfx)) {
     unsigned int cb = gfx.data.bgColor;
+#ifdef GRAPHICS_THEME
+    gfx.data.bgColor = graphicsTheme.bg;
+#else
     gfx.data.bgColor = 0;
+#endif
     graphicsScroll(&gfx, 0, -TERMINAL_CHAR_H); // always fill background in black
     gfx.data.bgColor = cb;
     terminalSetGFX(&gfx); // save
@@ -122,9 +137,14 @@ void terminalSendChar(char chn) {
         short cy = (short)(TERMINAL_OFFSET_Y + terminalY*TERMINAL_CHAR_H + gfx.data.height - LCD_HEIGHT);
         // draw char
         unsigned int cf = gfx.data.fgColor, cb = gfx.data.bgColor;
-        cf = -1; // always white on black
-        cb = 0;
-        TERMINAL_CHAR_CMD(&gfx, cx, cy, chn, 1, true/*solid background - so no need to clear*/);
+#ifdef GRAPHICS_THEME
+        gfx.data.fgColor = graphicsTheme.fg;
+        gfx.data.bgColor = graphicsTheme.bg;
+#else
+        gfx.data.fgColor = -1; // always white on black
+        gfx.data.bgColor = 0;
+#endif
+        TERMINAL_CHAR_CMD(&gfx, cx, cy, chn, 1, 1, true/*solid background - so no need to clear*/);
         gfx.data.fgColor = cf;
         gfx.data.bgColor = cb;
         terminalSetGFX(&gfx);
@@ -195,6 +215,9 @@ void jswrap_terminal_init() {
 }*/
 bool jswrap_terminal_idle() {
   if (terminalNeedsFlip) {
+#ifdef ESPR_GRAPHICS_INTERNAL
+    graphicsInternalFlip();
+#else
     JsGraphics gfx;
     if (terminalGetGFX(&gfx)) {
       JsVar *flip = jsvObjectGetChild(gfx.graphicsVar, "flip", 0);
@@ -202,6 +225,7 @@ bool jswrap_terminal_idle() {
       jsvUnLock(gfx.graphicsVar);
       terminalNeedsFlip = false;
     }
+#endif
   }
   return false;
 }

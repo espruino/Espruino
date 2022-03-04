@@ -442,14 +442,14 @@ bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
 }
 Add a new property to the Object. 'Desc' is an object with the following fields:
 
-* `configurable` (bool = false) - can this property be changed/deleted
-* `enumerable` (bool = false) - can this property be enumerated
+* `configurable` (bool = false) - can this property be changed/deleted (not implemented)
+* `enumerable` (bool = false) - can this property be enumerated (not implemented)
 * `value` (anything) - the value of this property
-* `writable` (bool = false) - can the value be changed with the assignment operator?
+* `writable` (bool = false) - can the value be changed with the assignment operator? (not implemented)
 * `get` (function) - the getter function, or undefined if no getter (only supported on some platforms)
 * `set` (function) - the setter function, or undefined if no setter (only supported on some platforms)
 
-**Note:** `configurable`, `enumerable`, `writable`, `get`, and `set` are not implemented and will be ignored.
+**Note:** `configurable`, `enumerable` and `writable` are not implemented and will be ignored.
 
  */
 JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc) {
@@ -925,16 +925,16 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   // If old was native or vice versa...
   if (jsvIsNativeFunction(oldFunc) != jsvIsNativeFunction(newFunc)) {
     if (jsvIsNativeFunction(newFunc))
-      oldFunc->flags |= JSV_NATIVE;
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_NATIVE_FUNCTION;
     else
-      oldFunc->flags &= ~JSV_NATIVE;
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_FUNCTION;
   }
   // If old fn started with 'return' or vice versa...
   if (jsvIsFunctionReturn(oldFunc) != jsvIsFunctionReturn(newFunc)) {
     if (jsvIsFunctionReturn(newFunc))
-      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) |JSV_FUNCTION_RETURN;
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
     else
-      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) |JSV_FUNCTION;
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_FUNCTION;
   }
 
   // Grab scope and prototype - the things we want to keep
@@ -1003,8 +1003,8 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
 
   if (jsvIsIterable(argsArray)) {
     argC = (unsigned int)jsvGetLength(argsArray);
-    if (argC>64) {
-      jsExceptionHere(JSET_ERROR, "Array passed to Function.apply is too big! Maximum 64 arguments, got %d", argC);
+    if (argC>JS_MAX_FUNCTION_ARGUMENTS) {
+      jsExceptionHere(JSET_ERROR, "Array passed to Function.apply is too big! Maximum "STRINGIFY(JS_MAX_FUNCTION_ARGUMENTS)" arguments, got %d", argC);
       return 0;
     }
     args = (JsVar**)alloca((size_t)argC * sizeof(JsVar*));

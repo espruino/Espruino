@@ -71,7 +71,7 @@ Returns the version of Espruino as a String
 #ifndef SAVE_ON_FLASH
 /* NOTE: The order of these is very important, as 
 the online compiler has its own copy of this table */
-const void *exportPtrs[] = {
+const void * const exportPtrs[] = {
     jsvLockAgainSafe,
     jsvUnLock,
     jsvSkipName,
@@ -116,7 +116,10 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "SPIFLASH", jsvNewFromInteger(SPIFLASH_LENGTH));
 #endif
 #ifdef PUCKJS
-  jsvObjectSetChildAndUnLock(obj, "HWVERSION", jsvNewFromInteger(isPuckV2?2:1));
+  jsvObjectSetChildAndUnLock(obj, "HWVERSION", jswrap_puck_getHardwareVersion());
+#endif
+#ifdef ESPR_HWVERSION
+  jsvObjectSetChildAndUnLock(obj, "HWVERSION", jsvNewFromInteger(ESPR_HWVERSION));
 #endif
   jsvObjectSetChildAndUnLock(obj, "STORAGE", jsvNewFromInteger(FLASH_SAVED_CODE_LENGTH));
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
@@ -126,6 +129,10 @@ JsVar *jswrap_process_env() {
 #ifndef SAVE_ON_FLASH
   // Pointer to a list of predefined exports - eventually we'll get rid of the array above
   jsvObjectSetChildAndUnLock(obj, "EXPTR", jsvNewFromInteger((JsVarInt)(size_t)exportPtrs));
+#ifdef DEBUG_APP_RAM_BASE 
+extern uint32_t app_ram_base;
+  jsvObjectSetChildAndUnLock(obj, "APP_RAM_BASE", jsvNewFromInteger((JsVarInt)app_ram_base));
+#endif
 #endif
   return obj;
 }
@@ -136,6 +143,9 @@ JsVar *jswrap_process_env() {
   "class" : "process",
   "name" : "memory",
   "generate" : "jswrap_process_memory",
+  "params" : [
+    ["gc","JsVar","An optional boolean. If `undefined` or `true` Garbage collection is performed, if `false` it is not"]
+  ],
   "return" : ["JsVar","Information about memory usage"]
 }
 Run a Garbage Collection pass, and return an object containing information on memory usage.
@@ -157,10 +167,14 @@ Memory units are specified in 'blocks', which are around 16 bytes each (dependin
 
 **Note:** To find free areas of flash memory, see `require('Flash').getFree()`
  */
-JsVar *jswrap_process_memory() {
-  JsSysTime time1 = jshGetSystemTime();
-  int gc = jsvGarbageCollect();
-  JsSysTime time2 = jshGetSystemTime();
+JsVar *jswrap_process_memory(JsVar *gc) {
+  JsSysTime time1, time2;
+  int varsGCd = -1;
+  if (jsvIsUndefined(gc) || jsvGetBool(gc)==true) {
+    time1 = jshGetSystemTime();
+    varsGCd = jsvGarbageCollect();
+    time2 = jshGetSystemTime();
+  }
   JsVar *obj = jsvNewObject();
   if (obj) {
     unsigned int history = 0;
@@ -175,8 +189,10 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "usage", jsvNewFromInteger((JsVarInt)usage));
     jsvObjectSetChildAndUnLock(obj, "total", jsvNewFromInteger((JsVarInt)total));
     jsvObjectSetChildAndUnLock(obj, "history", jsvNewFromInteger((JsVarInt)history));
-    jsvObjectSetChildAndUnLock(obj, "gc", jsvNewFromInteger((JsVarInt)gc));
-    jsvObjectSetChildAndUnLock(obj, "gctime", jsvNewFromFloat(jshGetMillisecondsFromTime(time2-time1)));
+    if (varsGCd>=0) {
+      jsvObjectSetChildAndUnLock(obj, "gc", jsvNewFromInteger((JsVarInt)varsGCd));
+      jsvObjectSetChildAndUnLock(obj, "gctime", jsvNewFromFloat(jshGetMillisecondsFromTime(time2-time1)));
+    }
     jsvObjectSetChildAndUnLock(obj, "blocksize", jsvNewFromInteger(sizeof(JsVar)));
 
 #ifdef ARM

@@ -134,8 +134,8 @@ Sets the output state of the pin to the parameter given at the specified time.
  */
 void jswrap_pin_writeAtTime(JsVar *parent, bool value, JsVarFloat time) {
   Pin pin = jshGetPinFromVar(parent);
-  JsSysTime sTime = jshGetTimeFromMilliseconds(time*1000);
-  jstPinOutputAtTime(sTime, &pin, 1, value);
+  JsSysTime sTime = jshGetTimeFromMilliseconds(time*1000) - jshGetSystemTime();
+  jstPinOutputAtTime(sTime, NULL, &pin, 1, value);
 }
 
 

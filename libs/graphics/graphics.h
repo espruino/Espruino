@@ -21,8 +21,17 @@
 #ifdef SAVE_ON_FLASH
 #define NO_VECTOR_FONT
 #ifndef PIXLJS
-#define NO_MODIFIED_AREA
+  #define NO_MODIFIED_AREA
 #endif
+#else // !SAVE_ON_FLASH
+#ifndef ESPRUINOBOARD
+  #define GRAPHICS_DRAWIMAGE_ROTATED // Allow rotating images
+  #define GRAPHICS_THEME // Keep a 'theme'
+#endif
+#endif
+
+#if defined(LINUX) || defined(BANGLEJS)
+#define GRAPHICS_FAST_PATHS // execute more optimised code when no rotation/etc
 #endif
 
 typedef enum {
@@ -62,7 +71,13 @@ typedef enum {
 } JsGraphicsFlags;
 
 typedef enum {
- JSGRAPHICS_FONTSIZE_SCALE_MASK = 8191, ///< the size of the font
+ /** The size of the font
+     For bitmap fonts we can also pack X and Y scale in here. X is 0..63, Y is (0..63)<<6 */
+ JSGRAPHICS_FONTSIZE_SCALE_MASK = 8191,
+ JSGRAPHICS_FONTSIZE_SCALE_X_Y = 4096, ///< set if X and Y are packed into scale
+ JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT = 6,
+ JSGRAPHICS_FONTSIZE_SCALE_X_MASK = 63,
+ JSGRAPHICS_FONTSIZE_SCALE_Y_MASK = 63 << JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT,
  JSGRAPHICS_FONTSIZE_FONT_MASK = 7 << 13, ///< the type of the font
  JSGRAPHICS_FONTSIZE_VECTOR = 0,
  JSGRAPHICS_FONTSIZE_4X6 = 1 << 13, // a bitmap font
@@ -115,19 +130,53 @@ typedef struct JsGraphics {
   void (*setPixel)(struct JsGraphics *gfx, int x, int y, unsigned int col); ///< x/y guaranteed to be in range
   void (*fillRect)(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); ///< x/y guaranteed to be in range
   unsigned int (*getPixel)(struct JsGraphics *gfx, int x, int y); ///< x/y guaranteed to be in range
-  void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir); ///< scroll - leave unscrolled area undefined (xdir/ydir guaranteed to be in range)
+  void (*blit)(struct JsGraphics *gfx, int x1, int y1, int w, int h, int x2, int y2); ///< blit a WxH area of x1y1 to x2y2 - all guaranteed to be in range
+  void (*scroll)(struct JsGraphics *gfx, int xdir, int ydir,  int x1, int y1, int x2, int y2); ///< scroll - leave unscrolled area undefined (all values guaranteed to be in range)
 } PACKED_FLAGS JsGraphics;
 typedef void (*JsGraphicsSetPixelFn)(struct JsGraphics *gfx, int x, int y, unsigned int col);
+
+#ifdef GRAPHICS_THEME
+#if LCD_BPP && LCD_BPP<=16
+typedef unsigned short JsGraphicsThemeColor;
+#else
+typedef unsigned int JsGraphicsThemeColor;
+#endif
+/// Standard color scheme colour structure
+typedef struct {
+  JsGraphicsThemeColor fg; ///< Foreground
+  JsGraphicsThemeColor bg; ///< Background
+  JsGraphicsThemeColor fg2; ///< Accented Foreground
+  JsGraphicsThemeColor bg2; ///< Accented Background
+  JsGraphicsThemeColor fgH; ///< Foreground when highlighted
+  JsGraphicsThemeColor bgH; ///< Background when highlighted
+  bool dark; ///< Is background dark (eg. foreground should be a light colour)
+} PACKED_FLAGS JsGraphicsTheme;
+
+/// Global color scheme colours
+extern JsGraphicsTheme graphicsTheme;
+#endif
+
+#ifdef ESPR_GRAPHICS_INTERNAL
+/// Internal instance of Graphics structure (eg for built-in LCD) so we don't have to store all state in a var
+extern JsGraphics graphicsInternal;
+/// This is defined by whatever sets up graphicsInternal - it handles outputting to the screen (if that's needed)
+void graphicsInternalFlip();
+#endif
+
 
 // ---------------------------------- these are in graphics.c
 /// Reset graphics structure state (eg font size, color, etc)
 void graphicsStructResetState(JsGraphics *gfx);
-/// Completely reset graphics structure including flags
+/// Completely reset graphics structure including flags. gfx->type should be set beforehand
 void graphicsStructInit(JsGraphics *gfx, int width, int height, int bpp);
 /// Access the Graphics Instance JsVar and get the relevant info in a JsGraphics structure. True on success
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
 /// Access the Graphics Instance JsVar and set the relevant info from JsGraphics structure
 void graphicsSetVar(JsGraphics *gfx);
+// Like graphicsSetVar but to be called when the Graphics is first created (and the field needs to be created)
+void graphicsSetVarInitial(JsGraphics *gfx);
+/// Set up the callbacks for this graphics instance (usually done by graphicsGetFromVar)
+bool graphicsSetCallbacks(JsGraphics *gfx);
 // ----------------------------------------------------------------------------------------------
 
 
@@ -140,6 +189,8 @@ unsigned short graphicsGetWidth(const JsGraphics *gfx);
 unsigned short graphicsGetHeight(const JsGraphics *gfx);
 // Set the area modified (inclusive of x2,y2) by a draw command and also clip to the screen/clipping bounds. Returns true if clipped
 bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int *y2);
+// Set the area modified by a draw command
+void graphicsSetModified(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 /// Get a setPixel function (assuming coordinates already clipped with graphicsSetModifiedAndClip) - if all is ok it can choose a faster draw function
 JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx);
 /// Get a setPixel function and set modified area (assuming no clipping) (inclusive of x2,y2) - if all is ok it can choose a faster draw function
@@ -155,16 +206,16 @@ unsigned int graphicsGetPixel(JsGraphics *gfx, int x, int y);
 void         graphicsClear(JsGraphics *gfx);
 void         graphicsFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
 void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); // Simple fillrect - doesn't call device-specific FR
+void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); // fillrect using device coordinates
+void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2);
 void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsDrawEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
 void graphicsFillEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);
+void graphicsFillAnnulus(JsGraphics *gfx, int x, int y, int r1, int r2, unsigned short quadrants);
 void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2); ///< antialiased drawline. each pixel is 1/16th
+void graphicsDrawCircleAA(JsGraphics *gfx, int x, int y, int r);
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); ///< each pixel is 1/16th a pixel may overwrite vertices...
-#ifndef NO_VECTOR_FONT
-unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, char ch); ///< prints character, returns width
-unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int size, char ch); ///< returns the width of a character
-#endif
 /// Draw a simple 1bpp image in foreground colour
 void graphicsDrawImage1bpp(JsGraphics *gfx, int x1, int y1, int width, int height, const unsigned char *pixelData);
 /// Scroll the graphics device (in user coords). X>0 = to right, Y >0 = down
@@ -173,5 +224,9 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir);
 void graphicsSplash(JsGraphics *gfx); ///< splash screen
 
 void graphicsIdle(); ///< called when idling
+
+#define GRAPHICS_COL_16_TO_3(x) ((((x)&0x8000)?4:0)|(((x)&0x0400)?2:0)|(((x)&0x0010)?1:0))
+#define GRAPHICS_COL_3_TO_16(x) ((((x)&4)?0xF800:0)|(((x)&2)?0x07E0:0)|(((x)&1)?0x001F:0))
+#define GRAPHICS_COL_RGB_TO_16(R,G,B) ((((R)&0xF8)<<8)|(((G)&0xFC)<<3)|(((B)&0xF8)>>3))
 
 #endif // GRAPHICS_H

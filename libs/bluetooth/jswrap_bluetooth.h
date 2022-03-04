@@ -27,14 +27,30 @@ typedef enum {
   BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, ///< Discover descriptors and start notifications
   BLETASK_CHARACTERISTIC_NOTIFY, ///< Setting whether notifications are on or off
   BLETASK_BONDING, ///< Try and bond in central mode
-  BLETASK_CENTRAL_END = BLETASK_CHARACTERISTIC_NOTIFY // ============= End of central tasks
+  BLETASK_CENTRAL_END = BLETASK_CHARACTERISTIC_NOTIFY, // ============= End of central tasks
+#ifdef ESPR_BLUETOOTH_ANCS
+  BLETASK_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes
+  BLETASK_ANCS_APP_ATTR,               //< Apple Notification Centre app attributes
+  BLETASK_AMS_ATTR,                    //< Apple Media Service track info request
+#endif
 } BleTask;
+
+#ifdef ESPR_BLUETOOTH_ANCS
+#define BLETASK_STRINGS "NONE\0REQ_DEV\0CONNECT\0DISCONNECT\0SERVICE\0CHAR\0CHAR_WR\0CHAR_RD\0CHAR_NOTIFY\0BOND\0ANCS_NOTIF_ATTR\0ANCS_APP_ATTR\0AMS_ATTR\0"
+#else
+#define BLETASK_STRINGS "NONE\0REQ_DEV\0CONNECT\0DISCONNECT\0SERVICE\0CHAR\0CHAR_WR\0CHAR_RD\0CHAR_NOTIFY\0BOND\0"
+#endif
 
 // Is this task related to BLE central mode?
 #define BLETASK_IS_CENTRAL(x) ((x)>=BLETASK_CENTRAL_START && ((x)<=BLETASK_CENTRAL_END))
+#ifdef ESPR_BLUETOOTH_ANCS
+#define BLETASK_IS_ANCS(x) ((x)==BLETASK_ANCS_NOTIF_ATTR || ((x)==BLETASK_ANCS_APP_ATTR))
+#define BLETASK_IS_AMS(x) ((x)==BLETASK_AMS_ATTR)
+#endif
 
 extern JsVar *bleTaskInfo; // info related to the current task
 
+const char *bleGetTaskString(BleTask task);
 bool bleInTask(BleTask task);
 BleTask bleGetCurrentTask();
 bool bleNewTask(BleTask task, JsVar *taskInfo);
@@ -92,7 +108,19 @@ void jswrap_nfc_raw(JsVar *payload);
 JsVar *jswrap_nfc_start(JsVar *payload);
 void jswrap_nfc_stop();
 void jswrap_nfc_send(JsVar *payload);
+
+// BLE_HIDS_ENABLED
 void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback);
+
+// if ESPR_BLUETOOTH_ANCS
+bool jswrap_ble_ancsIsActive();
+void jswrap_ble_ancsAction(int uid, bool isPositive);
+JsVar *jswrap_ble_ancsGetNotificationInfo(JsVarInt uid);
+JsVar *jswrap_ble_ancsGetAppInfo(JsVar *appId);
+bool jswrap_ble_amsIsActive();
+JsVar *jswrap_ble_amsGetPlayerInfo(JsVar *id);
+JsVar *jswrap_ble_amsGetTrackInfo(JsVar *id);
+void jswrap_ble_amsCommand(JsVar *id);
 
 JsVar *jswrap_ble_requestDevice(JsVar *options);
 JsVar *jswrap_ble_connect(JsVar *mac, JsVar *options);
@@ -100,6 +128,7 @@ void jswrap_ble_setWhitelist(bool whitelist);
 void jswrap_ble_setConnectionInterval(JsVar *interval);
 void jswrap_ble_setSecurity(JsVar *options);
 JsVar *jswrap_ble_getSecurityStatus(JsVar *parent);
+JsVar *jswrap_ble_startBonding(bool forceRePair);
 
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent);
 void jswrap_ble_BluetoothDevice_sendPasskey(JsVar *parent, JsVar *passkeyVar);

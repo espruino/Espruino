@@ -3,6 +3,8 @@ exports = { name : "en_GB", currencySym:"£",
   date : (d,short) => short?("0"+d.getDate()).substr(-2)+"/"+("0"+(d.getMonth()+1)).substr(-2)+"/"+d.getFullYear():d.toString().substr(4,11), // Date to "Feb 28 2020" or "28/02/2020"(short)
   time : (d,short) => { // Date to  "4:15.28 pm" or "15:42"(short)
 	  var h = d.getHours(), m = d.getMinutes()
+    if ((require('Storage').readJSON('setting.json',1)||{})["12hour"])
+      h = (h%12==0) ? 12 : h%12; // 12 hour
     if (short)
       return (" "+h).substr(-2)+":"+("0"+m).substr(-2);
     else {

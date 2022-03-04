@@ -138,23 +138,36 @@ void lcd_pixel(int x, int y) {
 #define LCD_SPI_MOSI_CLEAR() (*(volatile uint32_t*)0x5000080C)=1<<(LCD_SPI_MOSI-32)
 #endif
 
+// Not all LPM013M126 can be clocked at max speed so we must delay...
+#if defined(LCD_CONTROLLER_LPM013M126)
+#define SPI_WAIT() asm("nop");asm("nop");asm("nop");asm("nop");
+#else
+#define SPI_WAIT()
+#endif
+
 void lcd_wr(int data) {
   for (int bit=7;bit>=0;bit--) {
     LCD_SPI_SCK_CLEAR();
+    SPI_WAIT();
     if ((data>>bit)&1) LCD_SPI_MOSI_SET();
     else LCD_SPI_MOSI_CLEAR();
+    SPI_WAIT();
     LCD_SPI_SCK_SET();
+    SPI_WAIT();
   }
 }
 void lcd_wr16(bool allFF) {
   if (allFF) LCD_SPI_MOSI_SET();
   else LCD_SPI_MOSI_CLEAR();
+  SPI_WAIT();
   for (int bit=0;bit<16;bit++) {
     LCD_SPI_SCK_CLEAR();
+    SPI_WAIT();
     LCD_SPI_SCK_SET();
+    SPI_WAIT();
   }
 }
-#else
+#else // not NRF52_SERIES
 void lcd_wr(int data) {
   for (int bit=7;bit>=0;bit--) {
     jshPinSetValue(LCD_SPI_SCK, 0 );
@@ -577,49 +590,75 @@ static const char SPILCD_INIT_CODE[] = {
    0x13, 10, 0,
 #endif
 #ifdef LCD_CONTROLLER_GC9A01
+// CMD,DELAY,DATA_LEN,D0,D1,D2...
    0xfe,0,0,
    0xef,0,0,
    0xeb,0,1,  0x14,
-   0x84,0,1,  0x40,
+    0x84,0,1,  0x60, // 0x40->0x60 0xb5 en  20200924  james
+    0x85,0,1,  0xFF,
+    0x86,0,1,  0xFF,
+    0x87,0,1,  0xFF,
+    0x8e,0,1,  0xFF,
+    0x8f,0,1,  0xFF,
    0x88,0,1,  10,
-   0x89,0,1,  0x21,
+    0x89,0,1,  0x23, // 0x21->0x23 spi 2data reg en
    0x8a,0,1,  0,
    0x8b,0,1,  0x80,
    0x8c,0,1,  1,
-   0x8d,0,1,  1,
-   0xb6,0,1,  0x20,
-   0x36,0,1,  0x88, // Memory Access Control (0x48 flips upside-down)
+    0x8d,0,1,  3,   // 1->3  99 en
+    0xb5,0,4,  0x08, 0x09, 0x14, 0x08,
+    0xb6,0,2,  0, 0, // Positive sweep 0x20->0  GS SS 0x20
+#ifdef LCD_ROTATION
+ #if (LCD_ROTATION == 0)
+    0x36,0,1,  0x88, // Memory Access Control (no rotation)
+ #elif (LCD_ROTATION == 90)
+    0x36,0,1,  0x78, // Memory Access Control (rotated 90 degrees)
+ #elif (LCD_ROTATION == 180)
+    0x36,0,1,  0x48, // Memory Access Control (rotated 180 degrees)
+ #elif (LCD_ROTATION == 270)
+    0x36,0,1,  0xB8, // Memory Access Control (rotated 270 degrees)
+ #else
+    #error "Unexpected value defined for LCD_ROTATION - should be 0, 90, 180 or 270"
+ #endif   
+#else
+    0x36,0,1,  0x88, // Memory Access Control (no rotation)
+#endif
    0x3a,0,1,  5, // could be 16/12 bit?
    0x90,0,4,  8,  8,  8,  8,
    0xbd,0,1,  6,
    0xbc,0,1,  0,
    0xff,0,3,  0x60,  1,  4,
-   0xc3,0,1,  0x13,
-   0xc4,0,1,  0x13,
-   0xc9,0,1,  0x22,
+    0xc3,0,1,  0x1d, // Power control 2: 0x13->0x1d
+    0xc4,0,1,  0x1d, // Power control 3: 0x13->0x1d
+    0xc9,0,1,  0x25, // Power control 4: 0x22->0x25
    0xbe,0,1,  0x11,
    0xe1,0,2,  0x10,  0xe,
    0xdf,0,3,  0x21,  0xc,  2,
-   0xf0,0,6,  0x45,  9,  8,  8,  0x26,  0x2a,
-   0xf1,0,6,  0x43,  0x70,  0x72,  0x36,  0x37,  0x6f,
-   0xf2,0,6,  0x45,  9,  8,  8,  0x26,  0x2a,
-   0xf3,0,6,  0x43,  0x70,  0x72,  0x36,  0x37,  0x6f,
+    0xf0,0,6,  0x45,  9,  8,  8,  0x26,  0x2a,          // Gamma 1
+    0xf1,0,6,  0x43,  0x70,  0x72,  0x36,  0x37,  0x6f, // Gamma 2
+    0xf2,0,6,  0x45,  9,  8,  8,  0x26,  0x2a,          // Gamma 3
+    0xf3,0,6,  0x43,  0x70,  0x72,  0x36,  0x37,  0x6f, // Gamma 4
    0xed,0,2,  0x1b,  0xb,
-   0xae,0,1,  0x74,
+    0xae,0,1,  0x77,  // 0x74->0x77
    0xcd,0,1,  99,
-   0x70,0,9,  7,  9,  4,  0xe,  0xf,  9,  7,  8,  3,
+    0x70,0,9,  7,  7,  4,  0xe,  0xf,  9,  7,  8,  3,  // 7,9,4... -> 7,7,4...
    0xe8,0,1,  0x34,
-   0x62,0,12,  0x18,  0xd,  0x71,  0xed,  0x70,  0x70,  0x18,  0xf,  0x71,  0xef,  0x70,  0x70,
-   99,0,12,  0x18,  0x11,  0x71,  0xf1,  0x70,  0x70,  0x18,  0x13,  0x71,  0xf3,  0x70,  0x70,
+    0x60,0,4,  0x38, 0x0b, 0x6d, 0x6d,
+    0x39,0,3,  0xf0, 0x6d, 0x6d,
+    0x61,0,4,  0x38, 0xf4, 0x6d, 0x6d,
+    0x38,0,3,  0xf7, 0x6d, 0x6d,
+    0x62,0,12,  0x38,  0xd,  0x71,  0xed,  0x70,  0x70,  0x38,  0xf,  0x71,  0xef,  0x70,  0x70,
+    0x63,0,12,  0x38,  0x11, 0x71,  0xf1,  0x70,  0x70,  0x38,  0x13,  0x71,  0xf3,  0x70,  0x70,
    100,0,7,  0x28,  0x29,  0xf1,  1,  0xf1,  0,  7,
    0x66,0,10,  0x3c,  0,  0xcd,  0x67,  0x45,  0x45,  0x10,  0,  0,  0,
    0x67,0,10,  0,  0x3c,  0,  0,  0,  1,  0x54,  0x10,  0x32,  0x98,
    0x74,0,7,  0x10,  0x85,  0x80,  0,  0,  0x4e,  0,
    0x98,0,2,  0x3e,  7,
-   0x35,0,0,
-   0x21,10,0,
-   0x11,20,0,
-   0x29,10,0,
+    0x99,0,2,  0x3e,  7, // bvee 2x
+    0x35,0,1,  0,
+    0x21,5,0,
+    0x11,5,0,
+    0x29,5,0,
    0x2c,0,0,
 #endif
    // End
@@ -694,18 +733,20 @@ void lcd_flip() {
   }
   ymin=LCD_HEIGHT;
   ymax=0;
+  jshPinOutput(LCD_BL, LCD_BL_ON); // backlight on
 }
 
 void lcd_init() {
 #ifdef GPS_PIN_EN
   jshPinOutput(GPS_PIN_EN,1); // GPS off
 #endif
-  jshPinOutput(LCD_BL, LCD_BL_ON); // backlight on
+//  jshPinOutput(LCD_BL, LCD_BL_ON); // Don't turn the backlight on yet, otherwise it could show garbage - do it at the end of lcd_flip() instead
 #ifdef LCD_EN
   jshPinOutput(LCD_EN,1); // enable on
 #endif
   // LCD Init 1
   jshPinOutput(LCD_SPI_CS,1);
+
   jshPinOutput(LCD_SPI_DC,1);
   jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
@@ -726,6 +767,8 @@ void lcd_init() {
 void lcd_kill() {
   jshPinOutput(LCD_BL,!LCD_BL_ON); // backlight off
   lcd_cmd(0x28, 0, NULL); // display off
+  jshDelayMicroseconds(20);
+  lcd_cmd(0x10, 0, NULL); // SLPIN
 #ifdef LCD_EN
   jshPinOutput(LCD_EN,0); // enable off
 #endif
@@ -749,12 +792,12 @@ void lcd_flip() {
   }*/
   // pixel doubled
   for (int y=ymin;y<=ymax;y++) {
-    for (int yy=0;yy<2;yy++) {
+    for (int yy=0;yy<2;yy++) { // doubled rows
       lcd_wr(0b10010000);
       lcd_wr((y*2) + yy + 1);
       for (int x=0;x<LCD_DATA_WIDTH;x++) {
         unsigned char d = lcd_data[(x>>3)+(y*LCD_ROWSTRIDE)] >> (x&7);
-        lcd_wr((d&1)?0:0xFF); // doubled
+        lcd_wr((d&1)?0:0xFF); // doubled columnns
       }
     }
   }
@@ -771,18 +814,22 @@ void lcd_flip() {
 
 void lcd_init() {
   jshPinOutput(LCD_SPI_CS,0);
-  jshPinOutput(LCD_SPI_SCK,0);
+  jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
   jshPinOutput(LCD_DISP,1);
   jshPinOutput(LCD_EXTCOMIN,1);
   jshPinOutput(LCD_BL, LCD_BL_ON); // backlight on
+  jshDelayMicroseconds(10000);
+  // force LCD to clear itself
+  lcd_clear();
+  lcd_clear();
 }
 void lcd_kill() {
   jshPinOutput(LCD_BL, !LCD_BL_ON); // backlight off
   jshPinOutput(LCD_DISP,0); // display off
 }
 
-#endif
+#endif // LCD_CONTROLLER_LPM013M126
 
 
 void lcd_char(int x1, int y1, char ch) {
@@ -814,7 +861,7 @@ void lcd_print(char *ch) {
         lcdy-=8;
 #ifdef LCD_STORE_MODIFIED
         ymin=0;
-        ymax=LCD_HEIGHT-1;
+        ymax=LCD_DATA_HEIGHT-1;
 #endif
       }
     } else if ('\r'==*ch) {
@@ -823,6 +870,15 @@ void lcd_print(char *ch) {
     ch++;
   }
   lcd_flip();
+}
+void lcd_print_hex(unsigned int v) {
+ char buf[11] = "0x";
+ for (int i=0;i<8;i++) {
+   int n = (v>>((7-i)*4)) & 0x0F;
+   buf[2+i] = (n<10) ? ('0'+n) : ('A'+n-10);
+ }
+ buf[10] = 0;
+ lcd_print(buf);
 }
 void lcd_println(char *ch) {
   lcd_print(ch);

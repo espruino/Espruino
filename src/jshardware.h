@@ -198,8 +198,6 @@ typedef enum {
 /// Output an analog value on a pin - either via DAC, hardware PWM, or software PWM
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags); // if freq<=0, the default is used
 
-/// Pulse a pin for a certain time, but via IRQs, not JS: `digitalWrite(pin,value);setTimeout("digitalWrite(pin,!value)", time*1000);`
-void jshPinPulse(Pin pin, bool value, JsVarFloat time);
 /// Can the given pin be watched? it may not be possible because of conflicts
 bool jshCanWatch(Pin pin);
 /// start watching pin - return the EXTI (IRQ number flag) associated with it
@@ -253,6 +251,9 @@ void jshUSARTInitInfo(JshUSARTInfo *inf); // jshardware_common.c
 
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf);
+
+/** Tear down a UART - there's a weak version of this so it doesn't have to be implemented */
+void jshUSARTUnSetup(IOEventFlags device);
 
 /** Kick a device into action (if required). For instance we may have data ready
  * to sent to a USART, but we need to enable the IRQ such that it can automatically

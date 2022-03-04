@@ -264,6 +264,7 @@ void jshInputThread() {
     while (kbhit() && (jshGetEventsUsed()<IOBUFFERMASK/2)) {
       int ch = getch();
       if (ch<0) break;
+      if (ch==4) exit(0); // exit on Ctrl-D
       jshPushIOCharEvent(EV_USBSERIAL, (char)ch);
     }
     // Read from any open devices - if we have space
@@ -578,15 +579,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   return JSH_NOTHING;
 }
 
-void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
-  if (jshIsPinValid(pin)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-    jshDelayMicroseconds(time*1000000);
-    jshPinSetValue(pin, !value);
-  } else jsError("Invalid pin!");
-}
-
 bool jshCanWatch(Pin pin) {
   if (jshIsPinValid(pin)) {
      IOEventFlags exti = getNewEVEXTI();
@@ -877,7 +869,7 @@ static FILE *jshFlashOpenFile(bool dontCreate) {
   return f;
 }
 void jshFlashErasePage(uint32_t addr) {
-  jsDebug(DBG_VERBOSE,"FlashErasePage 0x%08x\n", addr);
+  //jsDebug(DBG_VERBOSE,"FlashErasePage 0x%08x\n", addr);
   FILE *f = jshFlashOpenFile(true);
   if (!f) return; // if no file and we're erasing, we don't have to do anything
   uint32_t startAddr, pageSize;
@@ -892,7 +884,7 @@ void jshFlashErasePage(uint32_t addr) {
   fclose(f);
 }
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
-  jsDebug(DBG_VERBOSE,"FlashRead 0x%08x %d\n", addr,len);
+  //jsDebug(DBG_VERBOSE,"FlashRead 0x%08x %d\n", addr,len);
   //assert(!(addr&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
   //assert(!(len&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware
   if (addr<FLASH_START || addr>=FLASH_START+FLASH_TOTAL) {
@@ -912,7 +904,7 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
   fclose(f);
 }
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
-  jsDebug(DBG_VERBOSE,"FlashWrite 0x%08x %d\n", addr,len);
+  //jsDebug(DBG_VERBOSE,"FlashWrite 0x%08x %d\n", addr,len);
   uint32_t i;
 #ifndef SPIFLASH_BASE // for debug
   assert(!(addr&(FLASH_UNITARY_WRITE_SIZE-1))); // sanity checks here to mirror real hardware

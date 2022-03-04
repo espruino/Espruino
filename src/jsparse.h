@@ -37,7 +37,7 @@ bool jspCheckStackPosition();
 /// Create a new built-in object that jswrapper can use to check for built-in functions
 JsVar *jspNewBuiltin(const char *name);
 
-/// Create a new Class of the given instance and return its prototype
+/// Create a new Class of the given instance and return its prototype (as a name 'prototype')
 NO_INLINE JsVar *jspNewPrototype(const char *instanceOf);
 
 /** Create a new object of the given instance and add it to root with name 'name'.

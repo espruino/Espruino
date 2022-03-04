@@ -34,15 +34,21 @@ node ../../../EspruinoDocs/bin/minify.js pixljs/E_showMenu.js pixljs/E_showMenu.
 node ../../../EspruinoDocs/bin/minify.js pixljs/E_showMessage.js pixljs/E_showMessage.min.js
 node ../../../EspruinoDocs/bin/minify.js pixljs/E_showPrompt.js pixljs/E_showPrompt.min.js
 node ../../../EspruinoDocs/bin/minify.js pixljs/E_showAlert.js pixljs/E_showAlert.min.js
-node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMenu.js banglejs/E_showMenu.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMenu_F18.js banglejs/E_showMenu_F18.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMenu_Q3.js banglejs/E_showMenu_Q3.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showMessage.js banglejs/E_showMessage.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showPrompt.js banglejs/E_showPrompt.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showPrompt_Q3.js banglejs/E_showPrompt_Q3.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/E_showAlert.js banglejs/E_showAlert.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showScroller.js banglejs/E_showScroller.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/E_showScroller_Q3.js banglejs/E_showScroller_Q3.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/LED1.js banglejs/LED1.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/LED2.js banglejs/LED2.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_drawWidgets.js banglejs/Bangle_drawWidgets.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_loadWidgets.js banglejs/Bangle_loadWidgets.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_showLauncher.js banglejs/Bangle_showLauncher.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_setUI_F18.js banglejs/Bangle_setUI_F18.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_setUI_Q3.js banglejs/Bangle_setUI_Q3.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/locale.js banglejs/locale.min.js
 
 

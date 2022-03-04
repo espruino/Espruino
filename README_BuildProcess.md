@@ -122,6 +122,9 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `FLASH_64BITS_ALIGNMENT=1` -  For testing 64 bit flash writes on linux
 * `JSMODULESOURCES+=libs/.../foo.min.js` - include the given JS file as a module that can be used via `require("foo")`
 * `JSVAR_MALLOC` - Allocate space for variables at jsvInit time, rather than statically
+* `JSVAR_FORCE_16_BYTE` - Force 16 byte JsVars (rather than packing bits to get JsVar size down to the minimum possible)
+* `JSVAR_FORCE_NO_INLINE` - Opposite of `JSVAR_FORCE_INLINE`. Force getter/setter functions not to be inlined. Saves ~2% code size. Ideally just leave it up to the compiler
+* `JSVAR_FORCE_INLINE` - Opposite of `JSVAR_FORCE_NO_INLINE`. Force getter/setter functions to be inlined. 2% faster but ~10% extra code size.
 * `NO_VECTOR_FONT=1` - don't compile in the vector font (this is usually only done for SAVE_ON_FLASH)
 * `NO_DUMP_HARDWARE_INITIALISATION=1` - don't create lines like `digitalWrite(D1,1)` for `dump()/save()` to recreate hardware state
 * `USE_FONT_6X8=1` - Also include in a 6x8 fixed width bitmap font
@@ -130,7 +133,10 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `USE_NETWORK_JS=0` - Don't include JS networking lib used for handling AT commands (default is yes if networking is enabled)
 * `ESPR_DCDC_ENABLE` - On NRF52 use the built-in DCDC converter (requires external hardware)
 * `ESPR_LSE_ENABLE` - On NRF52 use an external 32kHz Low Speed External crystal on D0/D1
-
+* `ESPR_NO_LOADING_SCREEN` - Bangle.js, don't show a 'loading' screen when loading a new app
+* `ESPR_BOOTLOADER_SPIFLASH` - Allow bootloader to flash direct from a file in SPI flash storage
+* `ESPR_BANGLE_UNISTROKE` - Build in 'unistroke' touch gesture recognition
+* `ESPR_NO_LINE_NUMBERS` - disable storing and reporting of Line Numbers. Usually these take 1 var per function, but if we're executing a function from flash we can just work it out from the file when needed 
 
 ### chip
 

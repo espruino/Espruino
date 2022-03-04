@@ -42,7 +42,8 @@
 
 /* mbed TLS feature support */
 #define MBEDTLS_PKCS1_V15
-#define MBEDTLS_KEY_EXCHANGE_RSA_ENABLED
+#define MBEDTLS_KEY_EXCHANGE_RSA_ENABLED // this isn't used much now, could be removed
+#define MBEDTLS_KEY_EXCHANGE_DHE_RSA_ENABLED
 #define MBEDTLS_SSL_PROTO_TLS1_2
 
 /* mbed TLS modules */
@@ -55,6 +56,8 @@
 #define MBEDTLS_PK_C
 #define MBEDTLS_PK_PARSE_C
 #define MBEDTLS_RSA_C
+#define MBEDTLS_DHM_C
+#define MBEDTLS_GCM_C
 
 #define MBEDTLS_SSL_CLI_C
 #define MBEDTLS_SSL_SRV_C
@@ -95,8 +98,12 @@
 #ifndef USE_SHA1_JS
 #define MBEDTLS_SHA1_C
 #endif
+#ifdef USE_SHA256
 #define MBEDTLS_SHA256_C
+#endif
+#ifdef USE_SHA512
 #define MBEDTLS_SHA512_C
+#endif
 
 #include "jsvar.h"
 

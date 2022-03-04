@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #
@@ -216,7 +216,7 @@ def codeOutBuiltins(indent, builtin):
 #================== to remove JS-definitions given by blacklist==============
 def delete_by_indices(lst, indices):
     indices_as_set = set(indices)
-    return [ lst[i] for i in xrange(len(lst)) if i not in indices_as_set ]
+    return [ lst[i] for i in range(len(lst)) if i not in indices_as_set ]
 
 def removeBlacklistForWrapper(blacklistfile,datas):
 	json_File = open(blacklistfile,'r')
@@ -229,24 +229,29 @@ def removeBlacklistForWrapper(blacklistfile,datas):
 					if jsondata["class"] == black["class"]:
 						if(jsondata["name"] == black["name"] or black["name"] == "*"):
 							toremove.append(idx)
+							print("Removing "+black["class"]+"."+black["name"]+" due to blacklist wildcard")
 # extension by jumjum
 		else:
 			if "name" in jsondata:
 				for black in blacklist:
 					if black["class"] == "__":
 						if jsondata["name"] == black["name"]:
-							toremove.append(idx)
+						  toremove.append(idx)
+						  print("Removing global."+black["name"]+" due to blacklist wildcard")
 		if "type" in jsondata:
 			if "class" in jsondata:
 				for black in blacklist:
 					if jsondata["class"] == black["class"]:
 						if black["name"] == "*":
-							toremove.append(idx)
+						  toremove.append(idx)
+						  print("Removing "+black["class"]+" due to blacklist wildcard")
 			if "instanceof" in jsondata:
 				for black in blacklist:
 					if jsondata["instanceof"] == black["class"]:
 						if black["name"] == "*":
-							toremove.append(idx)
+						  toremove.append(idx)
+						  print("Removing "+black["class"]+" due to blacklist wildcard")
+    
 #  end extension by jumjum
 	return delete_by_indices( datas, toremove)
 # ------------------------------------------------------------------------------------------------------
@@ -629,8 +634,14 @@ for jsondata in jsondatas:
 
 codeOut('/** Given a variable, return the basic object name of it */')
 codeOut('const char *jswGetBasicObjectName(JsVar *var) {')
+codeOut('  if (jsvIsArrayBuffer(var)) {')
 for className in objectChecks.keys():
-  codeOut("  if ("+objectChecks[className]+") return \""+className+"\";")
+  if objectChecks[className].startswith("jsvIsArrayBuffer(var) && "):
+    codeOut("    if ("+objectChecks[className][25:]+") return \""+className+"\";")
+codeOut('  }')
+for className in objectChecks.keys():
+  if not objectChecks[className].startswith("jsvIsArrayBuffer(var) && "):
+    codeOut("  if ("+objectChecks[className]+") return \""+className+"\";")
 codeOut('  return 0;')
 codeOut('}')
 
@@ -663,7 +674,17 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
-codeOut("/** Tasks to run on Initialisation */")
+codeOut("/** Tasks to run on Hardware Initialisation (called once at boot time, after jshInit, before jsvInit/etc) */")
+codeOut('void jswHWInit() {')
+for jsondata in jsondatas:
+  if "type" in jsondata and jsondata["type"]=="hwinit":
+    codeOut("  "+jsondata["generate"]+"();")
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+codeOut("/** Tasks to run on Initialisation (eg boot/load/reset/after save/etc) */")
 codeOut('void jswInit() {')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="init":
@@ -673,14 +694,14 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
-codeOut("/** Tasks to run on Deinitialisation */")
+codeOut("/** Tasks to run on Deinitialisation (eg before save/reset/etc) */")
 codeOut('void jswKill() {')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="kill":
     codeOut("  "+jsondata["generate"]+"();")
 codeOut('}')
 
-codeOut("/** Tasks to run on Deinitialisation */")
+codeOut("/** Tasks to run when a character event is received */")
 codeOut('bool jswOnCharEvent(IOEventFlags channel, char charData) {')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"].startswith("EV_"):
@@ -707,8 +728,9 @@ for lib in jsmodules:
 codeOut('  return "'+','.join(librarynames)+'";')
 codeOut('}')
 
-codeOut('#ifdef EMSCRIPTEN')
-codeOut('// on Emscripten we cant easily hack around function calls with floats/etc so we must just do this brute-force by handling every call pattern we use')
+codeOut('#ifdef USE_CALLFUNCTION_HACK')
+codeOut('// on Emscripten and i386 we cant easily hack around function calls with floats/etc, plus we have enough')
+codeOut('// resources, so just brute-force by handling every call pattern we use in a switch')
 codeOut('JsVar *jswCallFunctionHack(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {')
 codeOut('  switch(argumentSpecifier) {')
 #for argSpec in argSpecs:

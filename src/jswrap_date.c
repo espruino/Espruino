@@ -667,9 +667,12 @@ static bool _parse_time(TimeInDay *time, int initialChars) {
           time->sec = (int)f;
           time->ms = (int)(f*1000) % 1000;
           jslGetNextToken();
-          if (lex->tk == LEX_ID && strcmp(jslGetTokenValueAsString(),"GMT")==0) {
-            time->zone = 0;
-            jslGetNextToken();
+          if (lex->tk == LEX_ID) {
+            const char *tkstr = jslGetTokenValueAsString();
+            if (strcmp(tkstr,"GMT")==0 || strcmp(tkstr,"Z")==0) {
+              time->zone = 0;
+              jslGetNextToken();
+            }
           }
           if (lex->tk == '+' || lex->tk == '-') {
             int sign = lex->tk == '+' ? 1 : -1;
@@ -780,7 +783,8 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
             date.day = _parse_int();
             jslGetNextToken();
             if (lex.tk == LEX_ID && jslGetTokenValueAsString()[0]=='T') {
-              time.zone = jsdGetTimeZone();
+              time.zone = jsdGetTimeZone(); // if nothing given assume local time
+              // _parse_time will check for Z and adjust time accordingly
               _parse_time(&time, 1);
             }
           }

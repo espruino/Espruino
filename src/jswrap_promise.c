@@ -46,6 +46,15 @@ bool _jswrap_promise_is_promise(JsVar *promise) {
 
 
 void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
+  // remove any existing handlers since we already have them in `fn`
+  // If while we're iterating below a function re-adds to the chain then
+  // we can execute that later
+  // https://github.com/espruino/Espruino/issues/894#issuecomment-402553934
+  jsvObjectRemoveChild(promise, JS_PROMISE_THEN_NAME); // remove 'resolve' and 'reject' handlers
+  jsvObjectRemoveChild(promise, JS_PROMISE_CATCH_NAME); // remove 'resolve' and 'reject' handlers
+  JsVar *chainedPromise = jsvObjectGetChild(promise, "chain", 0);
+  jsvObjectRemoveChild(promise, "chain"); // unlink chain
+  // execute handlers from `fn`
   JsVar *result = 0;
   if (jsvIsArray(fn)) {
     JsvObjectIterator it;
@@ -65,10 +74,6 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   } else if (fn) {
     result = jspExecuteFunction(fn, promise, 1, &data);
   }
-  jsvObjectRemoveChild(promise, JS_PROMISE_THEN_NAME); // remove 'resolve' and 'reject' handlers
-  jsvObjectRemoveChild(promise, JS_PROMISE_CATCH_NAME); // remove 'resolve' and 'reject' handlers
-  JsVar *chainedPromise = jsvObjectGetChild(promise, "chain", 0);
-  jsvObjectRemoveChild(promise, "chain"); // unlink chain
 
   JsVar *exception = jspGetException();
   if (exception) {
@@ -97,14 +102,6 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
 }
 void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool resolve) {
   const char *eventName = resolve ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
-  // if we've already had _jswrap_promise_resolve_or_reject_chain called on this
-  // promise, do nothing.
-  JsVar *t = jsvObjectGetChild(promise, "done", 0);
-  if (t) {
-    jsvUnLock(t);
-    return;
-  }
-  jsvObjectSetChildAndUnLock(promise, "done", jsvNewFromBool(true));
   // if we didn't have a catch, traverse the chain looking for one
   JsVar *fn = jsvObjectGetChild(promise, eventName, 0);
   if (!fn) {
@@ -126,9 +123,11 @@ void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool r
   if (fn) {
     _jswrap_promise_resolve_or_reject(promise, data, fn);
     jsvUnLock(fn);
-  } else {
-    if (!resolve)
+  } else if (!resolve) {
+    JsVar *previouslyResolved = jsvFindChildFromString(promise, JS_PROMISE_RESOLVED_NAME, false);
+    if (!previouslyResolved)
       jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
+    jsvUnLock(previouslyResolved);
   }
 }
 
@@ -353,19 +352,20 @@ void _jswrap_promise_add(JsVar *parent, JsVar *callback, bool resolve) {
     return;
   }
 
+  bool resolveImmediately = false;
+  JsVar *resolveImmediatelyValue = 0;
+
   if (resolve) {
     // Check to see if promise has already been resolved
     /* Note: we use jsvFindChildFromString not ObjectGetChild so we get the name.
      * If we didn't then we wouldn't know if it was resolved, but with undefined */
     JsVar *resolved = jsvFindChildFromString(parent, JS_PROMISE_RESOLVED_NAME, 0);
     if (resolved) {
-      resolved = jsvSkipNameAndUnLock(resolved);
-      // If so, queue a resolve event
-      jsiQueueEvents(0, callback, &resolved, 1);
-      jsvUnLock(resolved);
-      return;
+      resolveImmediately = true;
+      resolveImmediatelyValue = jsvSkipNameAndUnLock(resolved);
     }
   }
+
 
   const char *name = resolve ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
   JsVar *c = jsvObjectGetChild(parent, name, 0);
@@ -381,6 +381,11 @@ void _jswrap_promise_add(JsVar *parent, JsVar *callback, bool resolve) {
       jsvUnLock(arr);
     }
     jsvUnLock(c);
+  }
+
+  if (resolveImmediately) { // If so, queue a resolve event
+    _jswrap_promise_queueresolve(parent, resolveImmediatelyValue);
+    jsvUnLock(resolveImmediatelyValue);
   }
 }
 

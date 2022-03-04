@@ -24,7 +24,7 @@
 }
 This class allows use of the built-in USARTs
 
-Methods may be called on the USB, Serial1, Serial2, Serial3, Serial4, Serial5 and Serial6 objects. While different processors provide different numbers of USARTs, you can always rely on at least Serial1 and Serial2
+Methods may be called on the `USB`, `Serial1`, `Serial2`, `Serial3`, `Serial4`, `Serial5` and `Serial6` objects. While different processors provide different numbers of USARTs, on official Espruino boards you can always rely on at least `Serial1` being available
  */
 /*JSON{
   "type" : "constructor",
@@ -280,6 +280,7 @@ s.setup(9600,{rx:a_pin, tx:a_pin});
 However software serial doesn't use `ck`, `cts`, `parity`, `flow` or `errors` parts of the initialisation object.
 */
 void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
+  if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   JshUSARTInfo inf;
 
@@ -342,33 +343,34 @@ uninitialise it.
 */
 #ifndef SAVE_ON_FLASH
 void jswrap_serial_unsetup(JsVar *parent) {
+  if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
-  // Populate JshUSARTInfo from serial
+  // Populate JshUSARTInfo from serial - if it exists
   JsVar *options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
-  if (!options) {
-    jsExceptionHere(JSET_ERROR, "Can't unsetup - Serial not initialised");
-    return;
-  }
   JsVar *baud = jsvObjectGetChild(parent, USART_BAUDRATE_NAME, 0);
-  JshUSARTInfo inf;
-  jsserialPopulateUSARTInfo(&inf, baud, options);
+  if (options) {
+    JshUSARTInfo inf;
+    jsserialPopulateUSARTInfo(&inf, baud, options);
+    // Reset pin states. On hardware this should disable the UART anyway
+    if (inf.pinCK!=PIN_UNDEFINED) jshPinSetState(inf.pinCK, JSHPINSTATE_UNDEFINED);
+    if (inf.pinCTS!=PIN_UNDEFINED) jshPinSetState(inf.pinCTS, JSHPINSTATE_UNDEFINED);
+    if (inf.pinRX!=PIN_UNDEFINED) jshPinSetState(inf.pinRX, JSHPINSTATE_UNDEFINED);
+    if (inf.pinTX!=PIN_UNDEFINED) jshPinSetState(inf.pinTX, JSHPINSTATE_UNDEFINED);
+    if (!DEVICE_IS_SERIAL(device))
+      // It's software. Only thing we care about is RX as that uses watches
+      jsserialEventCallbackKill(parent, &inf);
+  }
   jsvUnLock2(options, baud);
   // Remove stored settings
   jsvObjectRemoveChild(parent, USART_BAUDRATE_NAME);
   jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
 
-  if (!DEVICE_IS_SERIAL(device)) {
-    // It's software. Only thing we care about is RX as that uses watches
-    jsserialEventCallbackKill(parent, &inf);
-  } else {
+  if (DEVICE_IS_SERIAL(device)) { // It's hardware
+    jshUSARTUnSetup(device);
     jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
   }
-  // Reset pin states. On hardware this should disable the UART anyway
-  if (inf.pinCK!=PIN_UNDEFINED) jshPinSetState(inf.pinCK, JSHPINSTATE_UNDEFINED);
-  if (inf.pinCTS!=PIN_UNDEFINED) jshPinSetState(inf.pinCTS, JSHPINSTATE_UNDEFINED);
-  if (inf.pinRX!=PIN_UNDEFINED) jshPinSetState(inf.pinRX, JSHPINSTATE_UNDEFINED);
-  if (inf.pinTX!=PIN_UNDEFINED) jshPinSetState(inf.pinTX, JSHPINSTATE_UNDEFINED);
+
 }
 #endif
 

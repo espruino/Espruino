@@ -124,14 +124,27 @@ enum BLE_GAP_EVTS
  */
 enum BLE_GAP_OPTS
 {
-  BLE_GAP_OPT_CH_MAP  = BLE_GAP_OPT_BASE,       /**< Channel Map. @ref ble_gap_opt_ch_map_t  */
-  BLE_GAP_OPT_LOCAL_CONN_LATENCY,               /**< Local connection latency. @ref ble_gap_opt_local_conn_latency_t */
-  BLE_GAP_OPT_PASSKEY,                          /**< Set passkey. @ref ble_gap_opt_passkey_t */
-  BLE_GAP_OPT_SCAN_REQ_REPORT,                  /**< Scan request report. @ref ble_gap_opt_scan_req_report_t */
-  BLE_GAP_OPT_COMPAT_MODE,                      /**< Compatibility mode. @ref ble_gap_opt_compat_mode_t */
-  BLE_GAP_OPT_AUTH_PAYLOAD_TIMEOUT,             /**< Set Authenticated payload timeout. @ref ble_gap_opt_auth_payload_timeout_t */
-  BLE_GAP_OPT_EXT_LEN,                          /**< Extended length packets. @ref ble_gap_opt_ext_len_t */
+  BLE_GAP_OPT_CH_MAP  = BLE_GAP_OPT_BASE,             /**< Channel Map. @ref ble_gap_opt_ch_map_t  */
+  BLE_GAP_OPT_LOCAL_CONN_LATENCY,                     /**< Local connection latency. @ref ble_gap_opt_local_conn_latency_t */
+  BLE_GAP_OPT_PASSKEY,                                /**< Set passkey. @ref ble_gap_opt_passkey_t */
+  BLE_GAP_OPT_SCAN_REQ_REPORT,                        /**< Scan request report. @ref ble_gap_opt_scan_req_report_t */
+  BLE_GAP_OPT_COMPAT_MODE,                            /**< Compatibility mode. @ref ble_gap_opt_compat_mode_t */
+  BLE_GAP_OPT_AUTH_PAYLOAD_TIMEOUT,                   /**< Set Authenticated payload timeout. @ref ble_gap_opt_auth_payload_timeout_t */
+  BLE_GAP_OPT_EXT_LEN,                                /**< Extended length packets. @ref ble_gap_opt_ext_len_t */
+  BLE_GAP_OPT_COMPAT_MODE_2,                          /**< Compatibility mode 2. @ref ble_gap_opt_compat_mode_2_t */
+  BLE_GAP_OPT_DISABLE_SLAVE_LATENCY,                  /**< Disable slave latency. @ref ble_gap_opt_disable_slave_latency_t */
+  BLE_GAP_OPT_DLE_DISABLE,                            /**< Disable DLE feature completely. This result in not setting the DLE feature bit during feature exchange, not initiating DLE, and 
+                                                           responding with UNKNOWN_RSP for any received DLE requests.
+                                                           This option can be set only when no BLE roles are running. */
+  BLE_GAP_OPT_DISABLE_DLE_INIT,                       /**< Disable the initation of DLE procedure.
+                                                           This option shall be used only when @ref BLE_GAP_OPT_DLE_RESPOND_WITH_CONFIGURED_ATT_SIZE is also used. The behaviour is undefined otherwise.
+                                                           This option can be set only when no BLE roles are running. */
+  BLE_GAP_OPT_DLE_RESPOND_WITH_CONFIGURED_ATT_SIZE,   /**< Always respond with configured ATT_MTU size during DLE procedure. Default behavior is to respond with the effective ATT_MTU size or the value set in 
+                                                           @ref BLE_GAP_OPT_EXT_LEN, whichever is less.
+                                                           This option shall be used only when @ref BLE_GAP_OPT_DISABLE_DLE_INIT is also used. The behaviour is undefined otherwise.
+                                                           This option can be set only when no BLE roles are running. */
 };
+
 
 /** @} */
 
@@ -963,6 +976,22 @@ typedef struct
   uint16_t * p_actual_latency;                  /**< Pointer to storage for the actual local connection latency (can be set to NULL to skip return value). */
 } ble_gap_opt_local_conn_latency_t;
 
+/**@brief Disable slave latency
+ *
+ * Used with @ref sd_ble_opt_set to temporarily disable slave latency of a peripheral connection (see @ref ble_gap_conn_params_t::slave_latency). And to re-enable it again.
+ * When disabled, the peripheral will ignore the slave_latency set by the central.
+ *
+ * @note  Should only be called on peripheral links.
+ *
+ * @retval ::NRF_SUCCESS Set successfully.
+ * @retval ::NRF_ERROR_NOT_SUPPORTED Get is not supported.
+ * @retval ::BLE_ERROR_INVALID_CONN_HANDLE Invalid connection handle parameter.
+ */
+typedef struct
+{
+  uint16_t   conn_handle;    /**< Connection Handle */
+  uint8_t    disable : 1;    /**< Set to 1 to disable slave latancy. Set to 0 enable it again.*/
+} ble_gap_opt_disable_slave_latency_t;
 
 /**@brief Passkey Option.
  *
@@ -1000,10 +1029,10 @@ typedef struct
 } ble_gap_opt_scan_req_report_t;
 
 
-/**@brief Compatibility mode option.
+/**@brief Compatibility mode 1 option.
  *
  *        This can be used with @ref sd_ble_opt_set to enable and disable
- *        compatibility modes. Compatibility modes are disabled by default.
+ *        compatibility mode 1. Compatibility mode 1 is disabled by default.
  *
  *  @note  Compatibility mode 1 enables interoperability with devices that do not support
  *         a value of 0 for the WinOffset parameter in the Link Layer CONNECT_REQ packet.
@@ -1015,6 +1044,23 @@ typedef struct
 {
    uint8_t mode_1_enable : 1;                           /**< Enable compatibility mode 1.*/
 } ble_gap_opt_compat_mode_t;
+
+/**@brief Compatibility mode 2 option.
+ *
+ *        This can be used with @ref sd_ble_opt_set to enable and disable
+ *        compatibility mode 2. Compatibility mode 2 is disabled by default.
+ *
+ *  @note  Compatibility mode 2 enables interoperability with devices that initiate Feature exchange
+ *         and version exchange procedure in parallel.
+ *
+ *  @retval ::NRF_SUCCESS Set successfully.
+ *  @retval ::NRF_ERROR_INVALID_STATE When any BLE role is running.
+ */
+typedef struct
+{
+   uint8_t mode_2_enable : 1;                           /**< Enable compatibility mode 2.*/
+} ble_gap_opt_compat_mode_2_t;
+
 
 /**@brief Data length extension option.
  *
@@ -1034,7 +1080,6 @@ typedef struct
 {
   uint8_t  rxtx_max_pdu_payload_size;      /**< Max PDU payload size (in octets). */
 } ble_gap_opt_ext_len_t;
-
 
 
 /**@brief Authenticated payload timeout option.
@@ -1069,9 +1114,11 @@ typedef union
   ble_gap_opt_local_conn_latency_t      local_conn_latency;        /**< Parameters for the Local connection latency option */
   ble_gap_opt_passkey_t                 passkey;                   /**< Parameters for the Passkey option.*/
   ble_gap_opt_scan_req_report_t         scan_req_report;           /**< Parameters for the scan request report option.*/
-  ble_gap_opt_compat_mode_t             compat_mode;               /**< Parameters for the compatibility mode option.*/
+  ble_gap_opt_compat_mode_t             compat_mode;               /**< Parameters for the compatibility mode 1 option.*/
+  ble_gap_opt_compat_mode_2_t           compat_mode_2;             /**< Parameters for the compatibility mode 2 option.*/
   ble_gap_opt_ext_len_t                 ext_len;                   /**< Parameters for the extended length option. */
   ble_gap_opt_auth_payload_timeout_t    auth_payload_timeout;      /**< Parameters for the authenticated payload timeout option.*/
+  ble_gap_opt_disable_slave_latency_t   disable_slave_latency;     /**< Parameters for the Disable slave latency option */
 } ble_gap_opt_t;
 /**@} */
 

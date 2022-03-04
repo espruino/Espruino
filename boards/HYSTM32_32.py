@@ -29,6 +29,7 @@ info = {
       'NEOPIXEL'
     ],
     'makefile' : [
+      'DEFINES+=-DSAVE_ON_FLASH_MATH', 
       'STLIB=STM32F10X_HD',
       'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o',
       'DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes'

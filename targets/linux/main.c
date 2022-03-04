@@ -173,6 +173,7 @@ bool run_test(const char *filename) {
   }
 
   jshInit();
+  jswHWInit();
   jsvInit(0);
   jsiInit(false /* do not autoload!!! */);
 
@@ -377,6 +378,7 @@ int main(int argc, char **argv) {
         jsvInit(0);
         jsiInit(true);
         addNativeFunction("quit", nativeQuit);
+        addNativeFunction("interrupt", nativeInterrupt);
         jsvUnLock(jspEvaluate(argv[i + 1], false));
         int errCode = handleErrors();
         isRunning = !errCode;

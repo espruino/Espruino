@@ -62,12 +62,14 @@ JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space) {
     if (jsvIsUndefined(space) || jsvIsNull(space)) {
       // nothing
     } else if (jsvIsNumeric(space)) {
-      unsigned int s = (unsigned int)jsvGetInteger(space);
+      int s = (int)jsvGetInteger(space);
+      if (s<0) s=0;
       if (s>10) s=10;
       whitespace[s] = 0;
       while (s) whitespace[--s]=' ';
     } else {
-      jsvGetString(space, whitespace, sizeof(whitespace));
+      size_t l = jsvGetString(space, whitespace, sizeof(whitespace)-1);
+      whitespace[l]=0; // add trailing 0
     }
     if (strlen(whitespace)) flags |= JSON_ALL_NEWLINES|JSON_PRETTY;
     jsfGetJSONWhitespace(v, result, flags, whitespace);
@@ -210,7 +212,7 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
   jsvObjectIteratorFree(&it);
   cbprintf(user_callback, user_data, ") ");
 
-  if (jsvIsNative(var)) {
+  if (jsvIsNativeFunction(var)) {
     cbprintf(user_callback, user_data, "{ [native code] }");
   } else {
     if (codeVar) {
@@ -236,11 +238,11 @@ bool jsonNeedsNewLine(JsVar *v) {
 }
 
 void jsonNewLine(JSONFlags flags, const char *whitespace, vcbprintf_callback user_callback, void *user_data) {
-  cbprintf(user_callback, user_data, "\n");
+  user_callback("\n", user_data);
   // apply the indent
   unsigned int indent = flags / JSON_INDENT;
   while (indent--)
-    cbprintf(user_callback, user_data, whitespace);
+    user_callback(whitespace, user_data);
 }
 
 static bool jsfGetJSONForObjectItWithCallback(JsvObjectIterator *it, JSONFlags flags, const char *whitespace, JSONFlags nflags, vcbprintf_callback user_callback, void *user_data, bool first) {

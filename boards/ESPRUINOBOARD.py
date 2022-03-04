@@ -21,7 +21,7 @@ info = {
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "A9",
  'default_console_rx' : "A10",
- 'variables' : 2240,
+ 'variables' : 2756,
  'bootloader' : 1,
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_espruino_1r3.bin',

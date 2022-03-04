@@ -58,9 +58,10 @@ void jsble_init(){
 		jsWarn("Bluetooth is disabled per ESP32.enableBLE(false)\n");
 	}
 }
-/** Completely deinitialise the BLE stack */
-void jsble_kill(){
+/** Completely deinitialise the BLE stack. Return true on success */
+bool jsble_kill(){
 	jsWarn("kill not implemented yet\n");
+  return true;
 }
 
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len){
@@ -131,9 +132,10 @@ bool jsble_has_peripheral_connection(){
 }
 
 /// Checks for error and reports an exception if there was one. Return true on error
-bool jsble_check_error(uint32_t err_code){
-	jsWarn("check error not implemented yet:%x\n",err_code);
+bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
+	jsWarn("check error not implemented yet:%x\n", err_code);
 	UNUSED(err_code);
+	UNUSED(lineNumber);
 	return false;
 }
 /// Scanning for advertisign packets

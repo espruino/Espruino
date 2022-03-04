@@ -177,7 +177,8 @@ void jswrap_interface_load(JsVar *storageName) {
 /*JSON{
   "type" : "function",
   "name" : "save",
-  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;"
+  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;",
+  "#if" : "!defined(BANGLEJS)"
 }
 Save the state of the interpreter into flash (including the results of calling
 `setWatch`, `setInterval`, `pinMode`, and any listeners). The state will then be loaded automatically
@@ -278,6 +279,7 @@ void jswrap_interface_print(JsVar *v) {
 /*JSON{
   "type" : "function",
   "name" : "edit",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_interface_edit",
   "params" : [
     ["funcName","JsVar","The name of the function to edit (either a string or just the unquoted name)"]
@@ -375,7 +377,8 @@ Return the current system time in Seconds (as a floating point number)
     ["time","float",""]
   ]
 }
-Set the current system time in seconds (to the nearest second).
+Set the current system time in seconds (`time` can be a floating
+point value).
 
 This is used with `getTime`, the time reported from `setWatch`, as
 well as when using `new Date()`.
@@ -498,7 +501,7 @@ setTimeout(function (a,b) {
 ```
 
 If you want to stop the function from being called, pass the number that
-was returned by `setTimeout` into the `clearInterval` function.
+was returned by `setTimeout` into the `clearTimeout` function.
 
  **Note:** If `setDeepSleep(true)` has been called and the interval is greater than 5 seconds, Espruino may execute the interval up to 1 second late. This is because Espruino can only wake from deep sleep every second - and waking early would cause Espruino to waste power while it waited for the correct time.
  */

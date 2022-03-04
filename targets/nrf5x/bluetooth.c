@@ -40,6 +40,7 @@
 #include "nrf_sdh.h"
 #include "nrf_sdh_ble.h"
 #include "nrf_sdh_soc.h"
+#include "nrf_drv_clock.h" // for nrf_drv_clock_lfclk_request workaround
 #endif
 
 #include "nrf_log.h"
@@ -55,6 +56,9 @@
 #endif
 #if BLE_HIDS_ENABLED
 #include "ble_hids.h"
+#endif
+#if ESPR_BLUETOOTH_ANCS
+#include "bluetooth_ancs.h"
 #endif
 
 
@@ -97,11 +101,16 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 // -----------------------------------------------------------------------------------
 
 #if NRF_SD_BLE_API_VERSION < 5
+#ifndef NRF_BLE_MAX_MTU_SIZE
 #define NRF_BLE_MAX_MTU_SIZE            GATT_MTU_SIZE_DEFAULT                        /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
+#endif
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(100, APP_TIMER_PRESCALER)   /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(10000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
 #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
 #else
+#ifndef GATT_MTU_SIZE_DEFAULT
+#define GATT_MTU_SIZE_DEFAULT  BLE_GATT_ATT_MTU_DEFAULT
+#endif
 #define NRF_BLE_MAX_MTU_SIZE            NRF_SDH_BLE_GATT_MAX_MTU_SIZE               /**< MTU size used in the softdevice enabling and to reply to a BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST event. */
 #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(100)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
 #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(10000) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
@@ -110,8 +119,10 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 #define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS) /**< Connection Supervision Timeout in 10 ms units, see @ref BLE_GAP_CP_LIMITS.*/
 #define SLAVE_LATENCY                   0 /**< Slave Latency in number of connection events, see @ref BLE_GAP_CP_LIMITS.*/
 
+#if NRF_BLE_MAX_MTU_SIZE != GATT_MTU_SIZE_DEFAULT
+#define EXTENSIBLE_MTU // The MTU can be extended past the default of 23
+#endif
 
-#define APP_BLE_CONN_CFG_TAG                1                                       /**< A tag identifying the SoftDevice BLE configuration. */
 #define APP_BLE_OBSERVER_PRIO               2                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
 #define APP_SOC_OBSERVER_PRIO               1                                       /**< Applications' SoC observer priority. You shoulnd't need to modify this value. */
 
@@ -132,11 +143,6 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 
 #define APP_FEATURE_NOT_SUPPORTED       BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2        /**< Reply when unsupported features are requested. */
 
-
-/* Check for errors when in an IRQ, when we're pretty sure an error won't
- * cause a hard reset. Error is then reported outside of the IRQ without
- * rebooting Espruino. */
-#define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) { uint32_t line = __LINE__; jsble_queue_pending_buf(BLEP_ERROR, ERR_CODE, (char*)&line, 4); }
 
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
@@ -166,13 +172,27 @@ static bool                             m_in_boot_mode = false;
 #endif
 
 #if NRF_SD_BLE_API_VERSION > 5
-static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
+uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
 #endif
 
 volatile uint16_t                       m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
+#ifndef SAVE_ON_FLASH
+ble_gap_addr_t m_peripheral_addr;
+#endif
+#ifdef EXTENSIBLE_MTU
+volatile uint16_t m_peripheral_effective_mtu;
+#else
+const uint16_t m_peripheral_effective_mtu = GATT_MTU_SIZE_DEFAULT;
+#endif
 #if CENTRAL_LINK_COUNT>0
 volatile uint16_t                       m_central_conn_handle = BLE_CONN_HANDLE_INVALID; /**< Handle for central mode connection */
+#ifdef EXTENSIBLE_MTU
+volatile uint16_t m_central_effective_mtu;
+#else
+const uint16_t m_central_effective_mtu = GATT_MTU_SIZE_DEFAULT;
 #endif
+#endif
+
 #ifdef USE_NFC
 volatile bool nfcEnabled = false;
 #endif
@@ -258,8 +278,8 @@ JsVar *jsble_get_error_string(uint32_t err_code) {
    case BLE_ERROR_NO_TX_PACKETS : name="NO_TX_PACKETS"; break;
 #endif
   }
-  if (name) return jsvVarPrintf("BLE error 0x%x (%s)", err_code, name);
-  else return jsvVarPrintf("BLE error 0x%x", err_code);
+  if (name) return jsvVarPrintf("ERR 0x%x (%s)", err_code, name);
+  else return jsvVarPrintf("ERR 0x%x", err_code);
 }
 
 // -----------------------------------------------------------------------------------
@@ -301,7 +321,11 @@ void jsble_queue_pending(BLEPending blep, uint16_t data) {
 int jsble_exec_pending(IOEvent *event) {
   int eventsHandled = 1;
   // if we got event data, unpack it first into a buffer
+#if NRF_BLE_MAX_MTU_SIZE>64
+  unsigned char buffer[NRF_BLE_MAX_MTU_SIZE];
+#else
   unsigned char buffer[64];
+#endif
   assert(sizeof(buffer) >= sizeof(ble_gap_evt_adv_report_t));
   assert(sizeof(buffer) >= NRF_BLE_MAX_MTU_SIZE);
   size_t bufferLen = 0;
@@ -325,7 +349,7 @@ int jsble_exec_pending(IOEvent *event) {
    case BLEP_NONE: break;
    case BLEP_ERROR: {
      JsVar *v = jsble_get_error_string(data);
-     jsWarn("Softdevice error %v (bluetooth.c:%d)",v, *(uint32_t*)buffer);
+     jsWarn("SD %v (:%d)",v, *(uint32_t*)buffer);
      jsvUnLock(v);
      break;
    }
@@ -639,6 +663,7 @@ uint8_t match_request : 1;               If 1 requires the application to report
       case BLEP_TASK_AUTH_KEY_REQUEST: {
         //jsiConsolePrintf("BLEP_TASK_AUTH_KEY_REQUEST\n");
         uint16_t conn_handle = data;
+#if CENTRAL_LINK_COUNT>0
         if (conn_handle == m_central_conn_handle) {
           JsVar *gattServer = bleGetActiveBluetoothGattServer();
           if (gattServer) {
@@ -651,7 +676,9 @@ uint8_t match_request : 1;               If 1 requires the application to report
             }
             jsvUnLock2(gattServer, bluetoothDevice);
           }
-        } else if (conn_handle == m_peripheral_conn_handle) {
+        } else
+#endif
+        if (conn_handle == m_peripheral_conn_handle) {
           bool ok = false;
           JsVar *options = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
           if (jsvIsObject(options)) {
@@ -707,6 +734,26 @@ uint8_t match_request : 1;               If 1 requires the application to report
         }
         break;
       }
+#endif
+#ifdef ESPR_BLUETOOTH_ANCS
+      case BLEP_ANCS_NOTIF:
+        ble_ancs_handle_notif(blep, (ble_ancs_c_evt_notif_t*)buffer);
+        break;
+      case BLEP_ANCS_NOTIF_ATTR:
+        ble_ancs_handle_notif_attr(blep, (ble_ancs_c_evt_notif_t*)buffer);
+        break;
+      case BLEP_ANCS_APP_ATTR:
+        ble_ancs_handle_app_attr(blep, (char *)buffer, bufferLen);
+        break;
+      case BLEP_AMS_TRACK_UPDATE:
+        ble_ams_handle_track_update(blep, data, (char *)buffer, bufferLen);
+        break;
+      case BLEP_AMS_PLAYER_UPDATE:
+        ble_ams_handle_player_update(blep, data, (char *)buffer, bufferLen);
+        break;
+      case BLEP_AMS_ATTRIBUTE:
+        ble_ams_handle_attribute(blep, (char *)buffer, bufferLen);
+        break;
 #endif
    default:
      jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
@@ -781,6 +828,15 @@ void jsble_peripheral_activity() {
 }
 
 /// Checks for error and reports an exception if there was one. Return true on error
+#ifndef SAVE_ON_FLASH_EXTREME
+bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
+  JsVar *v = jsble_get_error_string(err_code);
+  if (!v) return 0;
+  jsExceptionHere(JSET_ERROR, "%v (:%d)", v, lineNumber);
+  jsvUnLock(v);
+  return true;
+}
+#else
 bool jsble_check_error(uint32_t err_code) {
   JsVar *v = jsble_get_error_string(err_code);
   if (!v) return 0;
@@ -788,6 +844,7 @@ bool jsble_check_error(uint32_t err_code) {
   jsvUnLock(v);
   return true;
 }
+#endif
 
 // -----------------------------------------------------------------------------------
 // --------------------------------------------------------------------------- ERRORS
@@ -965,6 +1022,7 @@ void nus_transmit_string() {
    * do 5, but it seems some things have issues with
    * this (eg nRF cloud gateways) so only send 1 packet
    * for now. */
+  int max_data_len = MIN((m_peripheral_effective_mtu-3),BLE_NUS_MAX_DATA_LEN);
   for (int packet=0;packet<1;packet++) {
     // No data? try and get some from our queue
     if (!nuxTxBufLength) {
@@ -972,7 +1030,7 @@ void nus_transmit_string() {
       int ch = jshGetCharToTransmit(EV_BLUETOOTH);
       while (ch>=0) {
         nusTxBuf[nuxTxBufLength++] = ch;
-        if (nuxTxBufLength>=BLE_NUS_MAX_DATA_LEN) break;
+        if (nuxTxBufLength>=max_data_len) break;
         ch = jshGetCharToTransmit(EV_BLUETOOTH);
       }
     }
@@ -1009,7 +1067,7 @@ void SWI1_IRQHandler(bool radio_evt) {
   if (bleStatus & BLE_NUS_INITED)
     nus_transmit_string();
   // If we're doing multiple advertising, iterate through advertising options
-  if (bleStatus & BLE_IS_ADVERTISING_MULTIPLE) {
+  if ((bleStatus & BLE_IS_ADVERTISING)  && (bleStatus & BLE_IS_ADVERTISING_MULTIPLE)) {
     int idx = (bleStatus&BLE_ADVERTISING_MULTIPLE_MASK)>>BLE_ADVERTISING_MULTIPLE_SHIFT;
     JsVar *advData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
     bool ok = true;
@@ -1081,8 +1139,17 @@ static void ble_evt_handler(ble_evt_t * p_ble_evt) {
 #else
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #endif
+
+  /*if (p_ble_evt->header.evt_id != 87 && // ignore write complete (SDK14+?)
+      p_ble_evt->header.evt_id != BLE_GATTS_EVT_WRITE && // Write operation performed (eg after we transmit on UART)
+      p_ble_evt->header.evt_id != BLE_EVT_TX_COMPLETE)
+    jsiConsolePrintf("[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );*/
+#if ESPR_BLUETOOTH_ANCS
+  if (bleStatus & BLE_ANCS_OR_AMS_INITED)
+    ble_ancs_on_ble_evt(p_ble_evt);
+#endif
     uint32_t err_code;
-    //jsiConsolePrintf("\n[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );
+
 
     switch (p_ble_evt->header.evt_id) {
       case BLE_GAP_EVT_TIMEOUT:
@@ -1118,6 +1185,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_CONNECTED:
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
           m_peripheral_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+#ifdef EXTENSIBLE_MTU
+          m_peripheral_effective_mtu = GATT_MTU_SIZE_DEFAULT;
+#endif
 #ifdef DYNAMIC_INTERVAL_ADJUSTMENT
           bleIdleCounter = 0;
 #endif
@@ -1131,10 +1201,22 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
           jsble_queue_pending_buf(BLEP_CONNECTED, 0, (char*)&p_ble_evt->evt.gap_evt.params.connected.peer_addr, sizeof(ble_gap_addr_t));
+#ifndef SAVE_ON_FLASH
+          m_peripheral_addr = p_ble_evt->evt.gap_evt.params.connected.peer_addr;
+#endif
         }
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
           m_central_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+#ifdef EXTENSIBLE_MTU
+          m_central_effective_mtu = GATT_MTU_SIZE_DEFAULT;
+#endif
+#if NRF_SD_BLE_API_VERSION>=3
+#if (NRF_BLE_MAX_MTU_SIZE > GATT_MTU_SIZE_DEFAULT)
+          err_code = sd_ble_gattc_exchange_mtu_request(p_ble_evt->evt.gap_evt.conn_handle, NRF_BLE_MAX_MTU_SIZE);
+          APP_ERROR_CHECK_NOT_URGENT(err_code);
+#endif
+#endif
           bleSetActiveBluetoothGattServer(bleTaskInfo);
           jsble_queue_pending(BLEP_TASK_CENTRAL_CONNECTED, 0);
         }
@@ -1304,7 +1386,47 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       } break; // BLE_GATTS_EVT_RW_AUTHORIZE_REQUEST
 
 #if (NRF_SD_BLE_API_VERSION >= 3)
+#ifdef EXTENSIBLE_MTU
+        case BLE_GATTC_EVT_EXCHANGE_MTU_RSP: {
+          uint16_t conn_handle   = p_ble_evt->evt.gattc_evt.conn_handle;
+          uint16_t effective_mtu = p_ble_evt->evt.gattc_evt.params.exchange_mtu_rsp.server_rx_mtu;
+          effective_mtu = MIN(MAX(GATT_MTU_SIZE_DEFAULT,effective_mtu),NRF_BLE_MAX_MTU_SIZE);
+#if CENTRAL_LINK_COUNT>0
+          if (m_central_conn_handle == conn_handle) {
+                m_central_effective_mtu = effective_mtu;
+#if (NRF_SD_BLE_API_VERSION > 3)
+                if (effective_mtu > GATT_MTU_SIZE_DEFAULT){
+                    ble_gap_data_length_params_t const dlp =
+                    {
+                        .max_rx_octets =  effective_mtu + 4,
+                        .max_tx_octets =  effective_mtu + 4,
+                    };
+                    err_code = sd_ble_gap_data_length_update(conn_handle, &dlp, NULL);
+                    APP_ERROR_CHECK_NOT_URGENT(err_code);
+
+                }
+#endif
+          } else
+#endif
+          if (m_peripheral_conn_handle == conn_handle){
+                 m_peripheral_effective_mtu = effective_mtu;
+          }
+        } break; // BLE_GATTC_EVT_EXCHANGE_MTU_RSP
+#endif
       case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST: {
+#ifdef EXTENSIBLE_MTU
+        uint16_t conn_handle   = p_ble_evt->evt.gatts_evt.conn_handle;
+        uint16_t effective_mtu = p_ble_evt->evt.gatts_evt.params.exchange_mtu_request.client_rx_mtu;
+        effective_mtu = MIN(MAX(GATT_MTU_SIZE_DEFAULT,effective_mtu),NRF_BLE_MAX_MTU_SIZE);
+#if CENTRAL_LINK_COUNT>0
+        if (m_central_conn_handle == conn_handle) {
+                 m_central_effective_mtu = effective_mtu;
+        } else
+#endif
+        if (m_peripheral_conn_handle == conn_handle){
+                 m_peripheral_effective_mtu = effective_mtu;
+        }
+#endif
         err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                    NRF_BLE_MAX_MTU_SIZE);
         // This can return an error when connecting to EQ3 CC-RT-BLE (which requests an MTU of 0!!)
@@ -1327,7 +1449,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           }
 #endif
 #if (NRF_SD_BLE_API_VERSION >= 5)
-#ifndef S140
           case BLE_GAP_EVT_PHY_UPDATE_REQUEST: {
             /* The PHYs requested by the peer can be read from the event parameters:
             p_ble_evt->evt.gap_evt.params.phy_update_request.peer_preferred_phys.
@@ -1337,7 +1458,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             sd_ble_gap_phy_update(p_ble_evt->evt.gap_evt.conn_handle, &phys);
             break;
           }
-#endif
           case BLE_GAP_EVT_PHY_UPDATE: {
             if (p_ble_evt->evt.gap_evt.params.phy_update.status == BLE_HCI_STATUS_CODE_SUCCESS) {
               /* PHY Update Procedure completed, see
@@ -1553,7 +1673,6 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt) {
 #if PEER_MANAGER_ENABLED
   ble_conn_state_on_ble_evt(p_ble_evt);
   pm_on_ble_evt(p_ble_evt);
-
 #endif
   if (!((p_ble_evt->header.evt_id==BLE_GAP_EVT_CONNECTED) &&
         (p_ble_evt->evt.gap_evt.params.connected.role != BLE_GAP_ROLE_PERIPH)) &&
@@ -1580,7 +1699,7 @@ static void soc_evt_handler(uint32_t sys_evt) {
   // dispatched to the Flash Data Storage (FDS) module.
   fs_sys_event_handler(sys_evt);
 #endif
-#else
+#else // NRF_SD_BLE_API_VERSION>=5
 static void soc_evt_handler(uint32_t sys_evt, void * p_context) {
 #endif
   void jsh_sys_evt_handler(uint32_t sys_evt);
@@ -1606,6 +1725,7 @@ static void fds_evt_handler(fds_evt_t const * const p_evt)
 static void pm_evt_handler(pm_evt_t const * p_evt) {
     ret_code_t err_code;
 
+    //jsiConsolePrintf("PM [%d]\n", p_evt->evt_id );
     switch (p_evt->evt_id)
     {
         case PM_EVT_BONDED_PEER_CONNECTED:
@@ -1666,6 +1786,11 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
                 //Note: This code will use the older bonded device in the white list and not add any newer bonded to it
                 //      You should check on what kind of white list policy your application should use.
             }
+#if ESPR_BLUETOOTH_ANCS
+            if (bleStatus & BLE_ANCS_OR_AMS_INITED)
+              ble_ancs_bonding_succeeded(p_evt->conn_handle);
+#endif
+
         } break;
 
         case PM_EVT_CONN_SEC_FAILED:
@@ -1850,7 +1975,7 @@ static void gap_params_init() {
     // not null terminated
 #endif
 
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&sec_mode); // don't allow device name change via BLE
     err_code = sd_ble_gap_device_name_set(&sec_mode,
                                           (const uint8_t *)deviceName,
                                           len);
@@ -1957,6 +2082,9 @@ void jsble_update_security() {
   JsVar *options = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
   if (jsvIsObject(options)) {
     JsVar *v;
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "encryptUart", 0)))
+      encryptUart = true;
+    // Check for passkey
     uint8_t passkey[BLE_GAP_PASSKEY_LEN+1];
     memset(passkey, 0, sizeof(passkey));
     v = jsvObjectGetChild(options, "passkey", 0);
@@ -2021,7 +2149,11 @@ static uint32_t flash_end_addr(void)
     return (uint32_t)FS_PAGE_END_ADDR;
 #endif
 }
-
+static void peer_manager_erase_pages(){
+    int i;
+    for (i=1;i<=FDS_PHY_PAGES;i++)
+      jshFlashErasePage((flash_end_addr()) - i*FDS_PHY_PAGE_SIZE);
+}
 static void peer_manager_init(bool erase_bonds) {
 
   /* Only initialise the peer manager once. This stops
@@ -2036,15 +2168,19 @@ static void peer_manager_init(bool erase_bonds) {
   buttonPressed = jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
 #endif
   if (buttonPressed) {
-    int i;
-    for (i=1;i<=FDS_PHY_PAGES;i++)
-      jshFlashErasePage((flash_end_addr()) - i*FDS_PHY_PAGE_SIZE);
+    peer_manager_erase_pages();
   }
 
 
   ret_code_t           err_code;
 
   err_code = pm_init();
+  /* If pm init failed, erase pm/fds storage to prevent reboot loop
+   * This can happen if fds storage is full */
+  if (err_code != NRF_SUCCESS){
+    peer_manager_erase_pages();
+    err_code = pm_init();
+  }
   APP_ERROR_CHECK(err_code);
 
   if (erase_bonds)
@@ -2244,10 +2380,28 @@ static void services_init() {
     }
     jsvUnLock(hidReport);
 #endif
+#if ESPR_BLUETOOTH_ANCS
+    bool useANCS = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ANCS, 0));
+    bool useAMS = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_AMS, 0));
+    if (useANCS || useAMS) {
+      if (useANCS) bleStatus |= BLE_ANCS_INITED;
+      if (useAMS) bleStatus |= BLE_AMS_INITED;
+      ble_ancs_init();
+    }
+#endif
 }
+
+uint32_t app_ram_base;
 
 /// Function for the SoftDevice initialization.
 static void ble_stack_init() {
+#if defined ( __GNUC__ )
+    extern uint32_t __data_start__;
+    app_ram_base = (uint32_t) &__data_start__;
+#else
+#error "unsupported compiler"
+#endif
+
 #if NRF_SD_BLE_API_VERSION<5
 
     uint32_t err_code;
@@ -2289,9 +2443,21 @@ static void ble_stack_init() {
 #if (NRF_SD_BLE_API_VERSION >= 3)
     ble_enable_params.gatt_enable_params.att_mtu = NRF_BLE_MAX_MTU_SIZE;
 #endif
-    err_code = softdevice_enable(&ble_enable_params);
+
+    err_code = sd_ble_enable(&ble_enable_params,&app_ram_base);
     APP_ERROR_CHECK(err_code);
 
+#if (NRF_BLE_MAX_MTU_SIZE > GATT_MTU_SIZE_DEFAULT)
+    {
+        ble_opt_t gap_opt;
+        gap_opt.gap_opt.ext_len.rxtx_max_pdu_payload_size = NRF_BLE_MAX_MTU_SIZE+4;
+        err_code = sd_ble_opt_set(BLE_GAP_OPT_EXT_LEN, &gap_opt);
+        APP_ERROR_CHECK(err_code);
+        gap_opt.common_opt.conn_evt_ext.enable = 1;
+        err_code = sd_ble_opt_set(BLE_COMMON_OPT_CONN_EVT_EXT, &gap_opt); // enable DLE
+        APP_ERROR_CHECK(err_code);
+    }
+#endif
     // Subscribe for BLE events.
     err_code = softdevice_ble_evt_handler_set(ble_evt_dispatch);
     APP_ERROR_CHECK(err_code);
@@ -2312,9 +2478,19 @@ static void ble_stack_init() {
     uint32_t ram_start = 0;
     err_code = nrf_sdh_ble_default_cfg_set(APP_BLE_CONN_CFG_TAG, &ram_start);
     APP_ERROR_CHECK(err_code);
+#if (NRF_BLE_MAX_MTU_SIZE > GATT_MTU_SIZE_DEFAULT)
+    {
+        ble_cfg_t cfg;
+        memset(&cfg, 0, sizeof(ble_cfg_t));
+        cfg.conn_cfg.conn_cfg_tag = APP_BLE_CONN_CFG_TAG;
+        cfg.conn_cfg.params.gatt_conn_cfg.att_mtu = NRF_BLE_MAX_MTU_SIZE;
+        err_code = sd_ble_cfg_set(BLE_CONN_CFG_GATT, &cfg, app_ram_base);
+        APP_ERROR_CHECK(err_code);
+    }
+#endif
 
     // Enable BLE stack.
-    err_code = nrf_sdh_ble_enable(&ram_start);
+    err_code = nrf_sdh_ble_enable(&app_ram_base);
     APP_ERROR_CHECK(err_code);
 
     // Register a handler for BLE events.
@@ -2456,9 +2632,11 @@ uint32_t jsble_advertising_start() {
 uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen) {
 #if NRF_SD_BLE_API_VERSION>5
   ble_gap_adv_data_t d;
-  memset(&d,0,sizeof(d));
   d.adv_data.p_data = (uint8_t *)dPtr;
   d.adv_data.len = dLen;
+  d.scan_rsp_data.p_data = NULL;
+  d.scan_rsp_data.len = 0;
+
   // TODO: scan_rsp_data? Does not setting this remove it?
   return sd_ble_gap_adv_set_configure(&m_adv_handle, &d, NULL);
 #else
@@ -2528,6 +2706,7 @@ void jsble_advertising_stop() {
    gap_params_init();
    services_init();
    conn_params_init();
+
    // reset the status for things that aren't happening now we're rebooted
    bleStatus &= ~BLE_RESET_ON_SOFTDEVICE_START;
 
@@ -2535,22 +2714,24 @@ void jsble_advertising_stop() {
 }
 
 /** Completely deinitialise the BLE stack */
-void jsble_kill() {
+bool jsble_kill() {
   jswrap_ble_sleep();
-
   // BLE NUS doesn't need deinitialising (no ble_nus_kill)
   bleStatus &= ~BLE_NUS_INITED;
   // BLE HID doesn't need deinitialising (no ble_hids_kill)
   bleStatus &= ~BLE_HID_INITED;
-
+#if ESPR_BLUETOOTH_ANCS
+  // BLE ANCS/AMS doesn't need deinitialising
+  bleStatus &= ~BLE_ANCS_OR_AMS_INITED;
+#endif
   uint32_t err_code;
-
 #if NRF_SD_BLE_API_VERSION < 5
   err_code = sd_softdevice_disable();
 #else
+  nrf_drv_clock_lfclk_request(NULL); // https://devzone.nordicsemi.com/f/nordic-q-a/56256/disabling-the-softdevice-hangs-when-using-lfrc-with-an-active-watchdog
   err_code = nrf_sdh_disable_request();
 #endif
-  APP_ERROR_CHECK(err_code);
+  return !jsble_check_error(err_code);
 }
 
 
@@ -2559,22 +2740,21 @@ void jsble_kill() {
 void jsble_restart_softdevice(JsVar *jsFunction) {
   assert(!jsble_has_connection());
   bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
-
   // if we were scanning, make sure we stop
   if (bleStatus & BLE_IS_SCANNING) {
     sd_ble_gap_scan_stop();
   }
   //jsiConsolePrintf("Restart softdevice\n");
-
   jshUtilTimerDisable(); // don't want the util timer firing during this!
   JsSysTime lastTime = jshGetSystemTime();
-  jsble_kill();
-  if (jsvIsFunction(jsFunction))
-    jspExecuteFunction(jsFunction,NULL,0,NULL);
-  jsble_init();
-  // reinitialise everything
-  jswrap_ble_reconfigure_softdevice();
-  jshSetSystemTime(lastTime); // Softdevice resets the RTC - so we must reset our offsets
+  if (jsble_kill()) {
+    if (jsvIsFunction(jsFunction))
+      jspExecuteFunction(jsFunction,NULL,0,NULL);
+    jsble_init();
+    // reinitialise everything
+    jswrap_ble_reconfigure_softdevice();
+    jshSetSystemTime(lastTime); // Softdevice resets the RTC - so we must reset our offsets
+  }
   jstRestartUtilTimer(); // restart the util timer
 }
 
@@ -2738,11 +2918,11 @@ void jsble_set_services(JsVar *data) {
           char_md.char_user_desc_max_size = len;
         }
         jsvUnLock(charDescriptionVar);
-
         memset(&attr_md, 0, sizeof(attr_md));
         // init access with default values
         BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
         BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+#ifndef SAVE_ON_FLASH
         // set up access with user configs
         JsVar *securityVar = jsvObjectGetChild(charVar, "security", 0);
         if (securityVar != NULL) {
@@ -2758,6 +2938,7 @@ void jsble_set_services(JsVar *data) {
           }
         }
         jsvUnLock(securityVar);
+#endif
 
         attr_md.vloc       = BLE_GATTS_VLOC_STACK;
         attr_md.rd_auth    = 0;
@@ -2816,6 +2997,22 @@ void jsble_set_services(JsVar *data) {
 /// Disconnect from the given connection
 uint32_t jsble_disconnect(uint16_t conn_handle) {
   return sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+}
+
+void jsble_startBonding(bool forceRePair) {
+#if PEER_MANAGER_ENABLED
+  if (!jsble_has_peripheral_connection())
+      return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Not connected"));
+
+  uint32_t err_code = pm_conn_secure(m_peripheral_conn_handle, forceRePair);
+  JsVar *errStr = jsble_get_error_string(err_code);
+  if (errStr) {
+    bleCompleteTaskFail(BLETASK_BONDING, errStr);
+    jsvUnLock(errStr);
+  }
+#else
+  return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Peer Manager not compiled in"));
+#endif
 }
 
 #if BLE_HIDS_ENABLED
@@ -2939,6 +3136,10 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
     jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
     jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
     jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
+#ifndef SAVE_ON_FLASH
+    if (status.connected && conn_handle==m_peripheral_conn_handle)
+      jsvObjectSetChildAndUnLock(result, "connected_addr", bleAddrToStr(m_peripheral_addr));
+#endif
     return result;
   }
   return 0;
@@ -2996,6 +3197,10 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
   }
 }
 
+void jsble_central_getPrimaryServices_retry(ble_uuid_t uuid) {
+  jsble_central_getPrimaryServices(bleUUIDFilter);
+}
+
 void jsble_central_getPrimaryServices(ble_uuid_t uuid) {
   if (!jsble_has_central_connection())
     return bleCompleteTaskFailAndUnLock(BLETASK_PRIMARYSERVICE, jsvNewFromString("Not connected"));
@@ -3004,10 +3209,16 @@ void jsble_central_getPrimaryServices(ble_uuid_t uuid) {
 
   uint32_t              err_code;
   err_code = sd_ble_gattc_primary_services_discover(m_central_conn_handle, 1 /* start handle */, NULL);
-  JsVar *errStr = jsble_get_error_string(err_code);
-  if (errStr) {
-    bleCompleteTaskFail(BLETASK_PRIMARYSERVICE, errStr);
-    jsvUnLock(errStr);
+  if (err_code == NRF_ERROR_BUSY) {
+    // we're busy, so reschedule this for 500ms later
+    // https://devzone.nordicsemi.com/f/nordic-q-a/76504/when-can-sd_ble_gattc_primary_services_discover-be-called-nrf_error_busy
+    jsvUnLock(jsiSetTimeout(jsble_central_getPrimaryServices_retry, 500));
+  } else {
+    JsVar *errStr = jsble_get_error_string(err_code);
+    if (errStr) {
+      bleCompleteTaskFail(BLETASK_PRIMARYSERVICE, errStr);
+      jsvUnLock(errStr);
+    }
   }
 }
 
@@ -3162,6 +3373,16 @@ void jsble_central_startBonding(bool forceRePair) {
 #endif
 }
 
+uint32_t jsble_central_send_passkey(char *passkey) {
+#ifdef LINK_SECURITY
+  if (!jsble_has_central_connection())
+      return BLE_ERROR_INVALID_CONN_HANDLE;
+  return sd_ble_gap_auth_key_reply(m_central_conn_handle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, (uint8_t*)passkey);
+#endif
+}
+
+#endif // CENTRAL_LINK_COUNT>0
+
 void jsble_central_setWhitelist(bool whitelist) {
 #if PEER_MANAGER_ENABLED
   if (whitelist) {
@@ -3174,17 +3395,6 @@ void jsble_central_setWhitelist(bool whitelist) {
   }
 #endif
 }
-
-uint32_t jsble_central_send_passkey(char *passkey) {
-#ifdef LINK_SECURITY
-  if (!jsble_has_central_connection())
-      return BLE_ERROR_INVALID_CONN_HANDLE;
-  return sd_ble_gap_auth_key_reply(m_central_conn_handle, BLE_GAP_AUTH_KEY_TYPE_PASSKEY, (uint8_t*)passkey);
-#endif
-}
-
-#endif // CENTRAL_LINK_COUNT>0
-
 
 
 #endif // BLUETOOTH

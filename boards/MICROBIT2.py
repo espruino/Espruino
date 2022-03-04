@@ -30,7 +30,7 @@ info = {
  'default_console_tx' : "H1",
  'default_console_rx' : "H0",
  'default_console_baudrate' : "9600",
- 'variables' : 2050+4096, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 6000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'binary_name' : 'espruino_%v_microbit2.hex',
  'build' : {
    'optimizeflags' : '-Os',

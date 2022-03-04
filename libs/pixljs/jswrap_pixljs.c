@@ -360,7 +360,7 @@ void jswrap_pixljs_init() {
   gfx.data.flags = JSGRAPHICSFLAGS_ARRAYBUFFER_MSB;
   gfx.graphicsVar = graphics;
   lcdInit_ArrayBuffer(&gfx);
-  graphicsSetVar(&gfx);
+  graphicsSetVarInitial(&gfx);
   jsvObjectSetChild(execInfo.root, "g", graphics);
   jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, graphics);
   graphicsGetFromVar(&gfx, graphics);
@@ -534,10 +534,10 @@ var mainmenu = {
 };
 // Submenu
 var submenu = {
-  "" : { "title" : "-- SubMenu --" },
+  "" : { title : "-- SubMenu --",
+         back : function() { E.showMenu(mainmenu); } },
   "One" : undefined, // do nothing
-  "Two" : undefined, // do nothing
-  "< Back" : function() { E.showMenu(mainmenu); },
+  "Two" : undefined // do nothing
 };
 // Actually display the menu
 E.showMenu(mainmenu);

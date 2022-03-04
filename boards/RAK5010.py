@@ -25,7 +25,7 @@ info = {
  'espruino_page_link' : 'RAK5010',
  'variables' : 12500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
 # 'bootloader' : 1,
-# 'default_console' : "EV_SERIAL1",
+ 'default_console' : "EV_BLUETOOTH",
 # 'default_console_tx' : "D34", # IO3
 # 'default_console_rx' : "D33", # IO4
 # 'default_console_baudrate' : "9600",
@@ -34,16 +34,19 @@ info = {
    'optimizeflags' : '-Os',
    'libraries' : [
      'BLUETOOTH',
-     'NET'
+     'NET',
+     'CRYPTO','SHA256','SHA512',
+     'TLS',
    ],
    'makefile' : [
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES+=-DCONFIG_NFCT_PINS_AS_GPIOS', # Don't use NFC - the pins are used for GPS
      'DEFINES += -DNRF_USB=1 -DUSB', # USB only works if connected at startup
+     'DEFINES+=-DESPR_REGOUT0_1_8V=1', # Force RAK5010 nRF52 voltage regulator to 1.8v, which stops glitches in modem serial comms
      'NRF_SDK15=1'
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"iTracker"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'JSMODULESOURCES += libs/js/AT.min.js',
      'JSMODULESOURCES += libs/js/GPS.min.js',
      'JSMODULESOURCES += libs/js/LIS3DH.min.js',

@@ -15,6 +15,9 @@
 #ifndef BLUETOOTH_H
 #define BLUETOOTH_H
 
+#ifdef NRF5X
+#include "app_config.h"
+#endif
 #include "jsdevices.h"
 
 #ifdef NRF5X
@@ -25,6 +28,12 @@
 #include "ble.h"
 #endif
 #include "ble_advdata.h"
+
+/* Check for errors when in an IRQ, when we're pretty sure an error won't
+ * cause a hard reset. Error is then reported outside of the IRQ without
+ * rebooting Espruino. */
+#define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) { uint32_t line = __LINE__; jsble_queue_pending_buf(BLEP_ERROR, ERR_CODE, (char*)&line, 4); }
+
 #else
 typedef struct {
   uint16_t uuid;
@@ -73,6 +82,8 @@ typedef struct {
 #endif
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 
+#define APP_BLE_CONN_CFG_TAG                1                                       /**< A tag identifying the SoftDevice BLE configuration. */
+
 // BLE HID stuff
 #define HID_KEYS_MAX_LEN                     16                                      /**< Maximum length of the Input Report characteristic. */
 #define HID_MODIFIER_KEY_POS                 0                                       /**< Position of the modifier byte in the Input Report. */
@@ -95,16 +106,21 @@ typedef enum  {
   BLE_IS_SENDING_HID = 128,   //< Are we waiting to send data for USB HID?
   BLE_IS_RSSI_SCANNING = 256, //< Are we scanning for RSSI values
   BLE_IS_SLEEPING = 512,      //< NRF.sleep has been called
-  BLE_PM_INITIALISED = 1024,  //< Set when the Peer Manager has been initialised (only needs doing once, even after SD restart)
-  BLE_IS_NOT_CONNECTABLE = 2048, //< Is the device connectable?
-  BLE_IS_NOT_SCANNABLE = 4096, //< Is the device scannable? eg, scan response
-  BLE_WHITELIST_ON_BOND = 8192,  //< Should we write to the whitelist whenever we bond to a device?
-  BLE_DISABLE_DYNAMIC_INTERVAL = 16384, //< Disable automatically changing interval based on BLE peripheral activity
-  BLE_ENCRYPT_UART = 32768,  //< Has security with encryption been requested (if so UART must require it)
+  BLE_PM_INITIALISED = 1<<10,  //< Set when the Peer Manager has been initialised (only needs doing once, even after SD restart)
+  BLE_IS_NOT_CONNECTABLE = 1<<11, //< Is the device connectable?
+  BLE_IS_NOT_SCANNABLE = 1<<12, //< Is the device scannable? eg, scan response
+  BLE_WHITELIST_ON_BOND = 1<<13,  //< Should we write to the whitelist whenever we bond to a device?
+  BLE_DISABLE_DYNAMIC_INTERVAL = 1<<14, //< Disable automatically changing interval based on BLE peripheral activity
+  BLE_ENCRYPT_UART = 1<<15,  //< Has security with encryption been requested (if so UART must require it)
+#ifdef ESPR_BLUETOOTH_ANCS
+  BLE_ANCS_INITED = 1<<16,   //< Apple Notification Centre enabled
+  BLE_AMS_INITED = 1<<17,   //< Apple Media Service enabled
+  BLE_ANCS_OR_AMS_INITED = BLE_ANCS_INITED|BLE_AMS_INITED, //< Apple Notifications or Media Service enabled
+#endif
 
-  BLE_IS_ADVERTISING_MULTIPLE = 65536, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_ONE = 131072,
-  BLE_ADVERTISING_MULTIPLE_SHIFT = 17,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_IS_ADVERTISING_MULTIPLE = 1<<18, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_SHIFT = 19,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_ADVERTISING_MULTIPLE_ONE = 1 << BLE_ADVERTISING_MULTIPLE_SHIFT,
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 
   /// These are flags that should be reset when the softdevice starts up
@@ -141,7 +157,15 @@ typedef enum {
   BLEP_NOTIFICATION,                //< A characteristic we were watching has changes
   BLEP_TASK_PASSKEY_DISPLAY,        //< We're pairing and have been provided with a passkey to display
   BLEP_TASK_AUTH_KEY_REQUEST,       //< We're pairing and the device wants a passkey from us
-  BLEP_TASK_AUTH_STATUS             //< Data on how authentication was going has been received
+  BLEP_TASK_AUTH_STATUS,            //< Data on how authentication was going has been received
+#ifdef ESPR_BLUETOOTH_ANCS
+  BLEP_ANCS_NOTIF,                  //< Apple Notification Centre notification received
+  BLEP_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes received
+  BLEP_ANCS_APP_ATTR,               //< Apple Notification Centre app attributes received
+  BLEP_AMS_TRACK_UPDATE,            //< Apple Media Service Track info updated
+  BLEP_AMS_PLAYER_UPDATE,           //< Apple Media Service Player info updated
+  BLEP_AMS_ATTRIBUTE                //< Apple Media Service Track or Player info read response
+#endif
 } BLEPending;
 
 
@@ -154,8 +178,8 @@ extern volatile uint16_t                         m_central_conn_handle; /**< Han
 
 /** Initialise the BLE stack */
 void jsble_init();
-/** Completely deinitialise the BLE stack */
-void jsble_kill();
+/** Completely deinitialise the BLE stack. Return true on success */
+bool jsble_kill();
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with simple data */
@@ -185,8 +209,14 @@ bool jsble_has_peripheral_connection();
  * a peripheral - used with Dynamic Interval Adjustment  */
 void jsble_peripheral_activity();
 
+#ifndef SAVE_ON_FLASH_EXTREME
+#define jsble_check_error(X) jsble_check_error_line(X, __LINE__)
+/// Checks for error and reports an exception if there was one. Return true on error
+bool jsble_check_error_line(uint32_t err_code, int lineNumber);
+#else
 /// Checks for error and reports an exception if there was one. Return true on error
 bool jsble_check_error(uint32_t err_code);
+#endif
 
 /** Set the connection interval of the peripheral connection. Returns an error code */
 uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max);
@@ -204,6 +234,9 @@ void jsble_set_services(JsVar *data);
 
 /// Disconnect from the given connection
 uint32_t jsble_disconnect(uint16_t conn_handle);
+
+/// Start bonding on the peripheral connection, returns a promise
+void jsble_startBonding(bool forceRePair);
 
 /// For BLE HID, send an input report to the receiver. Must be <= HID_KEYS_MAX_LEN
 void jsble_send_hid_input_report(uint8_t *data, int length);
@@ -280,10 +313,12 @@ void jsble_central_startBonding(bool forceRePair);
 JsVar *jsble_central_getSecurityStatus();
 /// RSSI monitoring in central mode
 uint32_t jsble_set_central_rssi_scan(bool enabled);
-/// Set whether or not the whitelist is enabled
-void jsble_central_setWhitelist(bool whitelist);
 /// Send a passkey if one was requested (passkey = 6 bytes long)
 uint32_t jsble_central_send_passkey(char *passkey);
+#endif
+#if PEER_MANAGER_ENABLED
+/// Set whether or not the whitelist is enabled
+void jsble_central_setWhitelist(bool whitelist);
 #endif
 
 #endif // BLUETOOTH_H

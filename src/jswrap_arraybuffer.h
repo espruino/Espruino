@@ -17,4 +17,5 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength);
 JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *arr, JsVarInt byteOffset, JsVarInt length);
 void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset);
 JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar);
+JsVar *jswrap_arraybufferview_subarray(JsVar *parent, JsVarInt begin, JsVar *endVar);
 JsVar *jswrap_arraybufferview_sort(JsVar *array, JsVar *compareFn);

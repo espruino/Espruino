@@ -156,10 +156,11 @@ JsVar *jswrap_flash_read(int length, int addr) {
   if (length<=0) return 0;
   JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, length);
   if (!arr) return 0;
-  JsVar *str = jsvGetArrayBufferBackingString(arr);
+  uint32_t offset;
+  JsVar *str = jsvGetArrayBufferBackingString(arr, &offset);
   if (str) {
     JsvStringIterator it;
-    jsvStringIteratorNew(&it, str, 0);
+    jsvStringIteratorNew(&it, str, offset);
     while (length>0 && jsvStringIteratorHasChar(&it)) {
       unsigned char *data;
       unsigned int l = 0;

@@ -27,6 +27,7 @@ typedef long long int64_t;
 #include <jsinteractive.h>
 #include <jswrap_esp8266_network.h>
 #include <jswrap_esp8266.h>
+#include "jswrapper.h"
 #include <log.h>
 #include "ESP8266_board.h"
 
@@ -257,6 +258,7 @@ static void initDone() {
   //uart_rx_discard();
 
   jshInit(); // Initialize the hardware
+  jswHWInit();
   jsvInit(0); // Initialize the variables
   jsiInit(true); // Initialize the interactive subsystem
   // note: the wifi gets hooked-up via wifi_soft_init called from jsiInit

@@ -49,8 +49,12 @@ espruino_#v##_pixljs.zip
      See http://www.espruino.com/Pixl.js#firmware-updates for more information
 
 espruino_#v##_banglejs.zip
-   - The firmware image for Espruino Bangle.js Devices
+   - The firmware image for Espruino Bangle.js 1 Devices
      See http://www.espruino.com/Bangle.js#firmware-updates for more information
+
+espruino_#v##_banglejs2.zip
+   - The firmware image for Espruino Bangle.js 2 Devices
+     See http://www.espruino.com/Bangle.js2#firmware-updates for more information
 
 espruino_#v##_mdbt42q.zip
    - The firmware image for Espruino MDBT42Q modules

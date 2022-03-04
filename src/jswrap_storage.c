@@ -107,7 +107,7 @@ void jswrap_storage_erase(JsVar *name) {
     ["offset","int","(optional) The offset in bytes to start from"],
     ["length","int","(optional) The length to read in bytes (if <=0, the entire file is read)"]
   ],
-  "return" : ["JsVar","A string of data"]
+  "return" : ["JsVar","A string of data, or `undefined` if the file is not found"]
 }
 Read a file from the flash storage area that has
 been written with `require("Storage").write(...)`.
@@ -156,7 +156,10 @@ JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions) {
   if (!v) return 0;
   JsVar *r = jswrap_json_parse(v);
   jsvUnLock(v);
-  if (noExceptions) jsvUnLock(jspGetException());
+  if (noExceptions) {
+    jsvUnLock(jspGetException());
+    execInfo.execute &= ~EXEC_EXCEPTION;
+  }
   return r;
 }
 
@@ -199,8 +202,8 @@ JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
   "params" : [
     ["name","JsVar","The filename - max 28 characters (case sensitive)"],
     ["data","JsVar","The data to write"],
-    ["offset","int","The offset within the file to write"],
-    ["size","int","The size of the file (if a file is to be created that is bigger than the data)"]
+    ["offset","int","[optional] The offset within the file to write"],
+    ["size","int","[optional] The size of the file (if a file is to be created that is bigger than the data)"]
   ],
   "return" : ["bool","True on success, false on failure"]
 }
@@ -229,11 +232,14 @@ var f = require("Storage");
 f.write("a","Hello",0,14);
 f.write("a"," ",5);
 f.write("a","World!!!",6);
-print(f.read("a"));
+print(f.read("a")); // "Hello World!!!"
+f.write("a"," ",0); // Writing to location 0 again will cause the file to be re-written
+print(f.read("a")); // " "
 ```
 
 This can be useful if you've got more data to write than you
-have RAM available.
+have RAM available - for instance the Web IDE uses this method
+to write large files into onboard storage.
 
 **Note:** This function should be used with normal files, and not
 `StorageFile`s created with `require("Storage").open(filename, ...)`
@@ -303,7 +309,7 @@ which have a file number (`"\1"`/`"\2"`/etc) appended to them.
 // All files
 require("Storage").list()
 // Files ending in '.js'
-require("Storage").list(/.js$/)
+require("Storage").list(/\.js$/)
 // All Storage Files
 require("Storage").list(undefined, {sf:true})
 // All normal files (eg created with Storage.write)
@@ -326,6 +332,39 @@ JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
     }
   }
   return jsfListFiles(regex, containing, notContaining);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Storage",
+  "name" : "hash",
+  "generate" : "jswrap_storage_hash",
+  "params" : [
+    ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being hashed"]
+  ],
+  "return" : ["int","A hash of the files matching"]
+}
+List all files in the flash storage area matching the specfied regex (ignores StorageFiles),
+and then hash their filenames *and* file locations.
+
+Identical files may have different hashes (eg. if Storage is compacted and the file moves) but
+the changes of different files having the same hash are extremely small.
+
+```
+// Hash files
+require("Storage").hash()
+// Files ending in '.boot.js'
+require("Storage").hash(/\.boot\.js$/)
+```
+
+**Note:** This function is used by Bangle.js as a way to cache files.
+For instance the bootloader will add all `.boot.js` files together into
+a single `.boot0` file, but it needs to know quickly whether anything has
+changed.
+ */
+JsVarInt jswrap_storage_hash(JsVar *regex) {
+  return jsfHashFiles(regex, 0, JSFF_STORAGEFILE);
 }
 
 /*JSON{
@@ -384,7 +423,41 @@ bytes available, but this represents the maximum
 size of file that can be written.
  */
 int jswrap_storage_getFree() {
-  return (int)jsfGetFreeSpace(0,true);
+  return (int)jsfGetStorageStats(0,true).free;
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Storage",
+  "name" : "getStats",
+  "generate" : "jswrap_storage_getStats",
+  "return" : ["JsVar","An object containing info about the current Storage system"]
+}
+Returns:
+
+```
+{
+  totalBytes // Amount of bytes in filesystem
+  freeBytes // How many bytes are left at the end of storage?
+  fileBytes // How many bytes of allocated files do we have?
+  fileCount // How many allocated files do we have?
+  trashBytes // How many bytes of trash files do we have?
+  trashCount // How many trash files do we have?
+}
+```
+ */
+JsVar *jswrap_storage_getStats() {
+  JsVar *o = jsvNewObject();
+  if (!o) return NULL;
+  JsfStorageStats stats = jsfGetStorageStats(0, true);
+  jsvObjectSetChildAndUnLock(o, "totalBytes", jsvNewFromInteger(stats.total));
+  jsvObjectSetChildAndUnLock(o, "freeBytes", jsvNewFromInteger(stats.free));
+  jsvObjectSetChildAndUnLock(o, "fileBytes", jsvNewFromInteger(stats.fileBytes));
+  jsvObjectSetChildAndUnLock(o, "fileCount", jsvNewFromInteger(stats.fileCount));
+  jsvObjectSetChildAndUnLock(o, "trashBytes", jsvNewFromInteger(stats.trashBytes));
+  jsvObjectSetChildAndUnLock(o, "trashCount", jsvNewFromInteger(stats.trashCount));
+  return o;
 }
 
 /*JSON{
@@ -394,7 +467,7 @@ int jswrap_storage_getFree() {
   "name" : "open",
   "generate" : "jswrap_storage_open",
   "params" : [
-    ["name","JsVar","The filename - max **7** characters (case sensitive)"],
+    ["name","JsVar","The filename - max **27** characters (case sensitive)"],
     ["mode","JsVar","The open mode - must be either `'r'` for read,`'w'` for write , or `'a'` for append"]
   ],
   "return" : ["JsVar","An object containing {read,write,erase}"],
@@ -511,7 +584,7 @@ to denote the chunk number (eg `"foobar\1"`, `"foobar\2"`, etc).
 
 This means that while `StorageFile` files exist in the same
 area as those from `Storage`, they should be
-read using `StorageFile.open` (and not `Storage.read`).
+read using `Storage.open` (and not `Storage.read`).
 
 ```
 f = s.open("foobar","w");

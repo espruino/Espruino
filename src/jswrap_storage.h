@@ -24,8 +24,10 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data);
 void jswrap_storage_erase(JsVar *name);
 void jswrap_storage_compact();
 JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter);
+JsVarInt jswrap_storage_hash(JsVar *regex);
 void jswrap_storage_debug();
 int jswrap_storage_getFree();
+JsVar *jswrap_storage_getStats();
 
 JsVar *jswrap_storage_open(JsVar *name, JsVar *mode);
 JsVar *jswrap_storagefile_read(JsVar *f, int len);

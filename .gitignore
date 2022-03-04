@@ -69,3 +69,6 @@ gcc-arm-none-eabi*
 /topreadonly
 /topstrings
 /misc
+*.user
+*.jdebug
+*.code-workspace

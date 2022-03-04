@@ -179,13 +179,13 @@ haveCode:
     return match;
   }
   if (info->ignoreCase) {
-    ch = jsvStringCharToLower(ch);
-    cH = jsvStringCharToLower(cH);
+    ch = charToLowerCase(ch);
+    cH = charToLowerCase(cH);
   }
   if (info->rangeFirstChar != NO_RANGE) { // Character set range
     char cL = (char)info->rangeFirstChar;
     if (info->ignoreCase) {
-      cL = jsvStringCharToLower(cL);
+      cL = charToLowerCase(cL);
     }
     info->rangeFirstChar = NO_RANGE;
     return (ch >= cL && ch <= cH && cL < cH);

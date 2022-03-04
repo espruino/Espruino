@@ -280,6 +280,7 @@ void RTC_WKUP_IRQHandler(void)
 }
 #endif
 
+#if USART_COUNT>0
 NO_INLINE static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
   if (USART_GetFlagStatus(USART, USART_FLAG_FE) != RESET) {
     // If we have a framing error, push status info onto the event queue
@@ -318,14 +319,18 @@ NO_INLINE static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device
       USART_ITConfig(USART, USART_IT_TXE, DISABLE);
   }
 }
+#endif
 
+#if defined(USART1) && USART_COUNT>=1
 void USART1_IRQHandler(void) {
   USART_IRQHandler(USART1, EV_SERIAL1);
 }
-
+#endif
+#if defined(USART2) && USART_COUNT>=2
 void USART2_IRQHandler(void) {
   USART_IRQHandler(USART2, EV_SERIAL2);
 }
+#endif
 
 #if defined(USART3) && USART_COUNT>=3
 void USART3_IRQHandler(void) {

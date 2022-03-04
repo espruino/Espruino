@@ -12,8 +12,17 @@
  * ----------------------------------------------------------------------------
  */
 #include "jslex.h"
+#ifndef SAVE_ON_FLASH
+#include "jsflash.h"
+#endif
 
 JsLex *lex;
+
+#ifdef JSVAR_FORCE_NO_INLINE
+#define JSLEX_INLINE NO_INLINE
+#else
+#define JSLEX_INLINE ALWAYS_INLINE
+#endif
 
 JsLex *jslSetLex(JsLex *l) {
   JsLex *old = lex;
@@ -41,7 +50,7 @@ void jslCharPosNew(JslCharPos *dstpos, JsVar *src, size_t tokenStart) {
 }
 
 /// Return the next character (do not move to the next character)
-static ALWAYS_INLINE char jslNextCh() {
+static JSLEX_INLINE char jslNextCh() {
   return (char)(lex->it.ptr ? READ_FLASH_UINT8(&lex->it.ptr[lex->it.charIdx]) : 0);
 }
 
@@ -77,7 +86,7 @@ static void NO_INLINE jslGetNextCh() {
   }
 }
 
-static ALWAYS_INLINE void jslTokenAppendChar(char ch) {
+static JSLEX_INLINE void jslTokenAppendChar(char ch) {
   /* Add character to buffer but check it isn't too big.
    * Also Leave ONE character at the end for null termination */
   if (lex->tokenl < JSLEX_MAX_TOKEN_LENGTH-1) {
@@ -96,10 +105,12 @@ static bool jslIsToken(const char *token, int startOffset) {
 }
 
 typedef enum {
+  JSLJT_SINGLE_CHAR, // just pass the char right through
+  JSLJT_MAYBE_WHITESPACE, // we need to jump to handle whitespace
+
   JSLJT_ID,
   JSLJT_NUMBER,
   JSLJT_STRING,
-  JSLJT_SINGLECHAR,
 
   JSLJT_EXCLAMATION,
   JSLJT_PLUS,
@@ -115,25 +126,60 @@ typedef enum {
   JSLJT_GREATERTHAN,
 } PACKED_FLAGS jslJumpTableEnum;
 
-#define jslJumpTableStart 33 // '!' - the first handled character
 #define jslJumpTableEnd 124 // '|' - the last handled character
-const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
+#define jslJumpTableForwardSlash (jslJumpTableEnd+1) // used for fast whitespace handling
+const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+2] = {
+    // 0
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_MAYBE_WHITESPACE, // 9 - \t
+    JSLJT_MAYBE_WHITESPACE, // 10,\n newline
+    JSLJT_MAYBE_WHITESPACE, // 11, 0x0B - vertical tab
+    JSLJT_MAYBE_WHITESPACE, // 12, 0x0C - form feed
+    JSLJT_MAYBE_WHITESPACE, // 13,\r carriage return
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    // 16
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_SINGLE_CHAR,
+    JSLJT_MAYBE_WHITESPACE, // 32, space
     // 33
     JSLJT_EXCLAMATION, // !
     JSLJT_STRING, // "
-    JSLJT_SINGLECHAR, // #
+    JSLJT_SINGLE_CHAR, // #
     JSLJT_ID, // $
     JSLJT_PERCENT, // %
     JSLJT_AND, // &
     JSLJT_STRING, // '
-    JSLJT_SINGLECHAR, // (
-    JSLJT_SINGLECHAR, // )
+    JSLJT_SINGLE_CHAR, // (
+    JSLJT_SINGLE_CHAR, // )
     JSLJT_STAR, // *
     JSLJT_PLUS, // +
-    JSLJT_SINGLECHAR, // ,
+    JSLJT_SINGLE_CHAR, // ,
     JSLJT_MINUS, // -
     JSLJT_NUMBER, // . - special :/
-    JSLJT_FORWARDSLASH, // /
+    JSLJT_MAYBE_WHITESPACE, // / - actually JSLJT_FORWARDSLASH but we handle this as a special case for fast whitespace handling
     // 48
     JSLJT_NUMBER, // 0
     JSLJT_NUMBER, // 1
@@ -145,14 +191,14 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
     JSLJT_NUMBER, // 7
     JSLJT_NUMBER, // 8
     JSLJT_NUMBER, // 9
-    JSLJT_SINGLECHAR, // :
-    JSLJT_SINGLECHAR, // ;
+    JSLJT_SINGLE_CHAR, // :
+    JSLJT_SINGLE_CHAR, // ;
     JSLJT_LESSTHAN, // <
     JSLJT_EQUAL, // =
     JSLJT_GREATERTHAN, // >
-    JSLJT_SINGLECHAR, // ?
+    JSLJT_SINGLE_CHAR, // ?
     // 64
-    JSLJT_SINGLECHAR, // @
+    JSLJT_SINGLE_CHAR, // @
     JSLJT_ID, // A
     JSLJT_ID, // B
     JSLJT_ID, // C
@@ -179,9 +225,9 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
     JSLJT_ID, // X
     JSLJT_ID, // Y
     JSLJT_ID, // Z
-    JSLJT_SINGLECHAR, // [
-    JSLJT_SINGLECHAR, // \ char
-    JSLJT_SINGLECHAR, // ]
+    JSLJT_SINGLE_CHAR, // [
+    JSLJT_SINGLE_CHAR, // \ char
+    JSLJT_SINGLE_CHAR, // ]
     JSLJT_TOPHAT, // ^
     JSLJT_ID, // _
     // 96
@@ -212,15 +258,16 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
     JSLJT_ID, // X lowercase
     JSLJT_ID, // Y lowercase
     JSLJT_ID, // Z lowercase
-    JSLJT_SINGLECHAR, // {
+    JSLJT_SINGLE_CHAR, // {
     JSLJT_OR, // |
     // everything past here is handled as a single char
-    //  JSLJT_SINGLECHAR, // }
-    //  JSLJT_SINGLECHAR, // ~
+    //  JSLJT_SINGLE_CHAR, // }
+    // Special entry for whitespace handling
+    JSLJT_FORWARDSLASH, // jslJumpTableForwardSlash
 };
 
 // handle a single char
-static ALWAYS_INLINE void jslSingleChar() {
+static JSLEX_INLINE void jslSingleChar() {
   lex->tk = (unsigned char)lex->currCh;
   jslGetNextCh();
 }
@@ -379,7 +426,6 @@ void jslSkipWhiteSpace() {
 }
 
 void jslGetNextToken() {
-  jslSkipWhiteSpace();
   int lastToken = lex->tk;
   lex->tk = LEX_EOF;
   lex->tokenl = 0; // clear token string
@@ -389,14 +435,26 @@ void jslGetNextToken() {
   }
   // record beginning of this token
   lex->tokenLastStart = lex->tokenStart;
+  unsigned char jumpCh = (unsigned char)lex->currCh;
+  if (jumpCh > jslJumpTableEnd) jumpCh = 0; // which also happens to be JSLJT_SINGLE_CHAR - what we want.
+  jslGetNextToken_start:
   lex->tokenStart = jsvStringIteratorGetIndex(&lex->it) - 1;
   // tokens
-  if (((unsigned char)lex->currCh) < jslJumpTableStart ||
-      ((unsigned char)lex->currCh) > jslJumpTableEnd) {
-    // if unhandled by the jump table, just pass it through as a single character
-    jslSingleChar();
-  } else {
-    switch(jslJumpTable[((unsigned char)lex->currCh) - jslJumpTableStart]) {
+  switch(jslJumpTable[jumpCh]) {
+    case JSLJT_MAYBE_WHITESPACE:
+      // handle whitespace
+      jslSkipWhiteSpace();
+      // If the current char is '/'
+      jumpCh = (unsigned char)lex->currCh;
+      if (jumpCh > jslJumpTableEnd) jumpCh = 0; // which also happens to be JSLJT_SINGLE_CHAR - what we want.
+      if (jumpCh=='/') jumpCh = jslJumpTableForwardSlash; // force us to jump to handle the comments
+      // go back, so we can re-check the next character against our jumptable
+      goto jslGetNextToken_start;
+      break;
+    case JSLJT_SINGLE_CHAR:
+      jslSingleChar();
+      if (lex->tk == LEX_R_THIS) lex->hadThisKeyword=true;
+      break;
     case JSLJT_ID: {
       while (isAlpha(lex->currCh) || isNumeric(lex->currCh) || lex->currCh=='$') {
         jslTokenAppendChar(lex->currCh);
@@ -443,7 +501,7 @@ void jslGetNextToken() {
       else if (jslIsToken("super", 1)) lex->tk = LEX_R_SUPER;
       else if (jslIsToken("switch", 1)) lex->tk = LEX_R_SWITCH;
       break;
-      case 't': if (jslIsToken("this", 1)) lex->tk = LEX_R_THIS;
+      case 't': if (jslIsToken("this", 1)) { lex->tk = LEX_R_THIS; lex->hadThisKeyword=true; }
       else if (jslIsToken("throw", 1)) lex->tk = LEX_R_THROW;
       else if (jslIsToken("true", 1)) lex->tk = LEX_R_TRUE;
       else if (jslIsToken("try", 1)) lex->tk = LEX_R_TRY;
@@ -648,15 +706,12 @@ void jslGetNextToken() {
           }
         }
       } break;
-
-      case JSLJT_SINGLECHAR: jslSingleChar(); break;
       default: assert(0);break;
-    }
     }
   }
 }
 
-static ALWAYS_INLINE void jslPreload() {
+static JSLEX_INLINE void jslPreload() {
   // set up..
   jslGetNextCh();
   jslGetNextToken();
@@ -670,7 +725,9 @@ void jslInit(JsVar *var) {
   lex->tokenLastStart = 0;
   lex->tokenl = 0;
   lex->tokenValue = 0;
+#ifndef ESPR_NO_LINE_NUMBERS
   lex->lineNumberOffset = 0;
+#endif
   // set up iterator
   jsvStringIteratorNew(&lex->it, lex->sourceVar, 0);
   jsvUnLock(lex->it.var); // see jslGetNextCh
@@ -695,6 +752,7 @@ void jslSeekTo(size_t seekToChar) {
   jsvUnLock(lex->it.var); // see jslGetNextCh
   lex->tokenStart = 0;
   lex->tokenLastStart = 0;
+  lex->tk = LEX_EOF;
   jslPreload();
 }
 
@@ -706,6 +764,7 @@ void jslSeekToP(JslCharPos *seekToChar) {
   lex->currCh = seekToChar->currCh;
   lex->tokenStart = 0;
   lex->tokenLastStart = 0;
+  lex->tk = LEX_EOF;
   jslGetNextToken();
 }
 
@@ -725,6 +784,83 @@ void jslFunctionCharAsString(unsigned char ch, char *str, size_t len) {
     str[0] = (char)ch;
     str[1] = 0;
   }
+}
+
+const char* jslReservedWordAsString(int token) {
+  static const char tokenNames[] =
+      /* LEX_EQUAL      :   */ "==\0"
+      /* LEX_TYPEEQUAL  :   */ "===\0"
+      /* LEX_NEQUAL     :   */ "!=\0"
+      /* LEX_NTYPEEQUAL :   */ "!==\0"
+      /* LEX_LEQUAL    :    */ "<=\0"
+      /* LEX_LSHIFT     :   */ "<<\0"
+      /* LEX_LSHIFTEQUAL :  */ "<<=\0"
+      /* LEX_GEQUAL      :  */ ">=\0"
+      /* LEX_RSHIFT      :  */ ">>\0"
+      /* LEX_RSHIFTUNSIGNED */ ">>>\0"
+      /* LEX_RSHIFTEQUAL :  */ ">>=\0"
+      /* LEX_RSHIFTUNSIGNEDEQUAL */ ">>>=\0"
+      /* LEX_PLUSEQUAL   :  */ "+=\0"
+      /* LEX_MINUSEQUAL  :  */ "-=\0"
+      /* LEX_PLUSPLUS :     */ "++\0"
+      /* LEX_MINUSMINUS     */ "--\0"
+      /* LEX_MULEQUAL :     */ "*=\0"
+      /* LEX_DIVEQUAL :     */ "/=\0"
+      /* LEX_MODEQUAL :     */ "%=\0"
+      /* LEX_ANDEQUAL :     */ "&=\0"
+      /* LEX_ANDAND :       */ "&&\0"
+      /* LEX_OREQUAL :      */ "|=\0"
+      /* LEX_OROR :         */ "||\0"
+      /* LEX_XOREQUAL :     */ "^=\0"
+      /* LEX_ARROW_FUNCTION */ "=>\0"
+
+      // reserved words
+      /*LEX_R_IF :       */ "if\0"
+      /*LEX_R_ELSE :     */ "else\0"
+      /*LEX_R_DO :       */ "do\0"
+      /*LEX_R_WHILE :    */ "while\0"
+      /*LEX_R_FOR :      */ "for\0"
+      /*LEX_R_BREAK :    */ "break\0"
+      /*LEX_R_CONTINUE   */ "continue\0"
+      /*LEX_R_FUNCTION   */ "function\0"
+      /*LEX_R_RETURN     */ "return\0"
+      /*LEX_R_VAR :      */ "var\0"
+      /*LEX_R_LET :      */ "let\0"
+      /*LEX_R_CONST :    */ "const\0"
+      /*LEX_R_THIS :     */ "this\0"
+      /*LEX_R_THROW :    */ "throw\0"
+      /*LEX_R_TRY :      */ "try\0"
+      /*LEX_R_CATCH :    */ "catch\0"
+      /*LEX_R_FINALLY :  */ "finally\0"
+      /*LEX_R_TRUE :     */ "true\0"
+      /*LEX_R_FALSE :    */ "false\0"
+      /*LEX_R_NULL :     */ "null\0"
+      /*LEX_R_UNDEFINED  */ "undefined\0"
+      /*LEX_R_NEW :      */ "new\0"
+      /*LEX_R_IN :       */ "in\0"
+      /*LEX_R_INSTANCEOF */ "instanceof\0"
+      /*LEX_R_SWITCH     */ "switch\0"
+      /*LEX_R_CASE       */ "case\0"
+      /*LEX_R_DEFAULT    */ "default\0"
+      /*LEX_R_DELETE     */ "delete\0"
+      /*LEX_R_TYPEOF :   */ "typeof\0"
+      /*LEX_R_VOID :     */ "void\0"
+      /*LEX_R_DEBUGGER : */ "debugger\0"
+      /*LEX_R_CLASS :    */ "class\0"
+      /*LEX_R_EXTENDS :  */ "extends\0"
+      /*LEX_R_SUPER :  */   "super\0"
+      /*LEX_R_STATIC :   */ "static\0"
+      /*LEX_R_OF    :   */  "of\0"
+      ;
+  unsigned int p = 0;
+  int n = token-_LEX_OPERATOR_START;
+  while (n>0 && p<sizeof(tokenNames)) {
+    while (tokenNames[p] && p<sizeof(tokenNames)) p++;
+    p++; // skip the zero
+    n--; // next token
+  }
+  assert(n==0);
+  return &tokenNames[p];
 }
 
 void jslTokenAsString(int token, char *str, size_t len) {
@@ -755,80 +891,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
   case 255 : strcpy(str, "[ERASED]"); return;
   }
   if (token>=_LEX_OPERATOR_START && token<=_LEX_R_LIST_END) {
-    const char tokenNames[] =
-        /* LEX_EQUAL      :   */ "==\0"
-        /* LEX_TYPEEQUAL  :   */ "===\0"
-        /* LEX_NEQUAL     :   */ "!=\0"
-        /* LEX_NTYPEEQUAL :   */ "!==\0"
-        /* LEX_LEQUAL    :    */ "<=\0"
-        /* LEX_LSHIFT     :   */ "<<\0"
-        /* LEX_LSHIFTEQUAL :  */ "<<=\0"
-        /* LEX_GEQUAL      :  */ ">=\0"
-        /* LEX_RSHIFT      :  */ ">>\0"
-        /* LEX_RSHIFTUNSIGNED */ ">>>\0"
-        /* LEX_RSHIFTEQUAL :  */ ">>=\0"
-        /* LEX_RSHIFTUNSIGNEDEQUAL */ ">>>=\0"
-        /* LEX_PLUSEQUAL   :  */ "+=\0"
-        /* LEX_MINUSEQUAL  :  */ "-=\0"
-        /* LEX_PLUSPLUS :     */ "++\0"
-        /* LEX_MINUSMINUS     */ "--\0"
-        /* LEX_MULEQUAL :     */ "*=\0"
-        /* LEX_DIVEQUAL :     */ "/=\0"
-        /* LEX_MODEQUAL :     */ "%=\0"
-        /* LEX_ANDEQUAL :     */ "&=\0"
-        /* LEX_ANDAND :       */ "&&\0"
-        /* LEX_OREQUAL :      */ "|=\0"
-        /* LEX_OROR :         */ "||\0"
-        /* LEX_XOREQUAL :     */ "^=\0"
-        /* LEX_ARROW_FUNCTION */ "=>\0"
-
-        // reserved words
-        /*LEX_R_IF :       */ "if\0"
-        /*LEX_R_ELSE :     */ "else\0"
-        /*LEX_R_DO :       */ "do\0"
-        /*LEX_R_WHILE :    */ "while\0"
-        /*LEX_R_FOR :      */ "for\0"
-        /*LEX_R_BREAK :    */ "break\0"
-        /*LEX_R_CONTINUE   */ "continue\0"
-        /*LEX_R_FUNCTION   */ "function\0"
-        /*LEX_R_RETURN     */ "return\0"
-        /*LEX_R_VAR :      */ "var\0"
-        /*LEX_R_LET :      */ "let\0"
-        /*LEX_R_CONST :    */ "const\0"
-        /*LEX_R_THIS :     */ "this\0"
-        /*LEX_R_THROW :    */ "throw\0"
-        /*LEX_R_TRY :      */ "try\0"
-        /*LEX_R_CATCH :    */ "catch\0"
-        /*LEX_R_FINALLY :  */ "finally\0"
-        /*LEX_R_TRUE :     */ "true\0"
-        /*LEX_R_FALSE :    */ "false\0"
-        /*LEX_R_NULL :     */ "null\0"
-        /*LEX_R_UNDEFINED  */ "undefined\0"
-        /*LEX_R_NEW :      */ "new\0"
-        /*LEX_R_IN :       */ "in\0"
-        /*LEX_R_INSTANCEOF */ "instanceof\0"
-        /*LEX_R_SWITCH     */ "switch\0"
-        /*LEX_R_CASE       */ "case\0"
-        /*LEX_R_DEFAULT    */ "default\0"
-        /*LEX_R_DELETE     */ "delete\0"
-        /*LEX_R_TYPEOF :   */ "typeof\0"
-        /*LEX_R_VOID :     */ "void\0"
-        /*LEX_R_DEBUGGER : */ "debugger\0"
-        /*LEX_R_CLASS :    */ "class\0"
-        /*LEX_R_EXTENDS :  */ "extends\0"
-        /*LEX_R_SUPER :  */   "super\0"
-        /*LEX_R_STATIC :   */ "static\0"
-        /*LEX_R_OF    :   */  "of\0"
-        ;
-    unsigned int p = 0;
-    int n = token-_LEX_OPERATOR_START;
-    while (n>0 && p<sizeof(tokenNames)) {
-      while (tokenNames[p] && p<sizeof(tokenNames)) p++;
-      p++; // skip the zero
-      n--; // next token
-    }
-    assert(n==0);
-    strcpy(str, &tokenNames[p]);
+    strcpy(str, jslReservedWordAsString(token));
     return;
   }
 
@@ -851,6 +914,7 @@ char *jslGetTokenValueAsString() {
     // pretokenised - so we'll work out the name from our token name list
     // this isn't fast, but won't be called very often
     jslTokenAsString(lex->tk, lex->token, sizeof(lex->token));
+    strcpy(lex->token, jslReservedWordAsString(lex->tk));
     lex->tokenl = (unsigned char)strlen(lex->token);
   }
   return lex->token;
@@ -863,6 +927,9 @@ int jslGetTokenLength() {
 JsVar *jslGetTokenValueAsVar() {
   if (lex->tokenValue) {
     return jsvLockAgain(lex->tokenValue);
+  } else if (lex->tk >= _LEX_R_LIST_START && lex->tk <= _LEX_R_LIST_END) {
+    // in pretokenised code, we must make this up
+    return jsvNewFromString(jslReservedWordAsString(lex->tk));
   } else {
     assert(lex->tokenl < JSLEX_MAX_TOKEN_LENGTH);
     lex->token[lex->tokenl]  = 0; // add final null
@@ -900,6 +967,20 @@ bool jslMatch(int expected_tk) {
   return true;
 }
 
+// When minifying/pretokenising, do we need to insert a space between these tokens?
+static bool jslPreserveSpaceBetweenTokens(int lastTk, int newTk) {
+  // spaces between numbers/IDs
+  if ((lastTk==LEX_ID || lastTk==LEX_FLOAT || lastTk==LEX_INT) &&
+      (newTk==LEX_ID ||  newTk==LEX_FLOAT  || newTk==LEX_INT)) return true;
+  // spaces between - - and  + + : https://github.com/espruino/Espruino/issues/2086
+  if ((lastTk=='-' && newTk=='-') ||
+      (lastTk=='+' && newTk=='+') ||
+      (lastTk=='/' && newTk==LEX_REGEX) ||
+      (lastTk==LEX_REGEX && (newTk=='/' || newTk==LEX_ID)))
+    return true;
+  return false;
+}
+
 JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   // New method - tokenise functions
   // save old lex
@@ -912,8 +993,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   jslSeekToP(charFrom);
   int lastTk = LEX_EOF;
   while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
-    if ((lex->tk==LEX_ID || lex->tk==LEX_FLOAT || lex->tk==LEX_INT) &&
-        ( lastTk==LEX_ID ||  lastTk==LEX_FLOAT ||  lastTk==LEX_INT)) {
+    if (jslPreserveSpaceBetweenTokens(lastTk, lex->tk)) {
       length++; // we need to insert a space
     }
     if (lex->tk==LEX_ID ||
@@ -942,8 +1022,7 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
     jsvStringIteratorClone(&it, &charFrom->it);
     lastTk = LEX_EOF;
     while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
-      if ((lex->tk==LEX_ID || lex->tk==LEX_FLOAT || lex->tk==LEX_INT) &&
-          ( lastTk==LEX_ID ||  lastTk==LEX_FLOAT ||  lastTk==LEX_INT)) {
+      if (jslPreserveSpaceBetweenTokens(lastTk, lex->tk)) {
         jsvStringIteratorSetCharAndNext(&dstit, ' ');
       }
       if (lex->tk==LEX_ID ||
@@ -1072,9 +1151,26 @@ void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void
 
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos) {
   size_t line,col;
+#ifndef SAVE_ON_FLASH
+  if (jsvIsNativeString(lex->sourceVar) || jsvIsFlashString(lex->sourceVar)) {
+    uint32_t stringAddr = (uint32_t)(size_t)lex->sourceVar->varData.nativeStr.ptr;
+    JsfFileHeader header;
+    uint32_t fileAddr = jsfFindFileFromAddr(stringAddr, &header);
+    if (fileAddr) {
+      JsVar *fileStr = jsvAddressToVar(fileAddr, jsfGetFileSize(&header));
+      jsvGetLineAndCol(fileStr, tokenPos + stringAddr - fileAddr, &line, &col);
+      JsVar *name = jsfVarFromName(header.name);
+      cbprintf(user_callback, user_data,"line %d col %d in %v\n", line, col, name);
+      jsvUnLock2(fileStr,name);
+      return;
+    }
+  }
+#endif
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
+#ifndef ESPR_NO_LINE_NUMBERS
   if (lex->lineNumberOffset)
     line += (size_t)lex->lineNumberOffset - 1;
+#endif
   cbprintf(user_callback, user_data, "line %d col %d\n", line, col);
 }
 

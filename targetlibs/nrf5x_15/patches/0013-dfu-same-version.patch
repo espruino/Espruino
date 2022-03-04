@@ -1,0 +1,11 @@
+--- a/targetlibs/nrf5x_15/components/libraries/bootloader/dfu/nrf_dfu_ver_validation.c	2021-03-24 13:39:00.535078660 +0000
++++ b/targetlibs/nrf5x_15/components/libraries/bootloader/dfu/nrf_dfu_ver_validation.c	2021-03-24 13:38:55.731015612 +0000
+@@ -185,7 +185,7 @@
+     }
+     else
+     {
+-        return  (p_init->fw_version > s_dfu_settings.bootloader_version);
++        return  (p_init->fw_version >= s_dfu_settings.bootloader_version);
+     }
+ }
+ 

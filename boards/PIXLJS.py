@@ -22,7 +22,7 @@ info = {
  'default_console_tx' : "D1",
  'default_console_rx' : "D0",
  'default_console_baudrate' : "9600",
- 'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 3076, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_pixljs.hex',
  'build' : {
@@ -44,13 +44,15 @@ info = {
      'WIZNET=1','W5100=1', # Add WIZnet support - W5100 is the most common Arduino shield
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
 #     'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
+     'DEFINES+=-DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
+     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2c40', # set RAM base to match MTU
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Pixl.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_pixljs_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://www.espruino.com/ide"\'',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
-     'DEFINES+=-DNEOPIXEL_SCK_PIN=14',
+     'DEFINES+=-DNEOPIXEL_SCK_PIN=14 -DNEOPIXEL_LRCK_PIN=15', # see https://github.com/espruino/Espruino/issues/2071
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C',
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'INCLUDE += -I$(ROOT)/libs/pixljs',
      'WRAPPERSOURCES += libs/pixljs/jswrap_pixljs.c',
      'JSMODULESOURCES += libs/js/graphical_menu.min.js'
@@ -109,6 +111,7 @@ board = {
     'A4' : "Also used for the pin marked SDA",
     'A5' : "Also used for the pin marked SCL",
     'H8' : "This is used as SCK when driving Neopixels with 'require('neopixel').write'. It will not affect the LCD as CS won't be asserted.",
+    'H9' : "This is used as LRCK when driving Neopixels with 'require('neopixel').write'. It will not affect the LCD as CS won't be asserted.",
     '5V' : "Pixl.js has no 5v rail so this is not connected by default. A solder jumper can be used to connect it to Vin or 3.3v"
   }
 };

@@ -64,7 +64,7 @@ if [ "$PROVISION_ESP32" = "1" ]; then
       echo python/pip installed
     else
       echo Installing python/pip pyserial
-      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python-pip
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python3-pip
     fi
     if pip list 2>/dev/null | grep pyserial >/dev/null; then 
       echo pyserial installed; 
@@ -142,8 +142,9 @@ if [ "$PROVISION_NRF52" = "1" ]; then
     fi
     if ! type nrfutil 2> /dev/null > /dev/null; then
       echo Installing nrfutil
-      sudo pip install --ignore-installed nrfutil
+      sudo pip install --ignore-installed nrfutil protobuf==3.17.3
       # --ignore-installed is used because pip 10 fails because PyYAML was already installed by the system
+      # protobuf-3.17.3 is required because it seems protobuf-3.18 which auto-installs as of ~15 sept 2021 is incompatible with Python 2.7
       # -q can be used to silence the above
     fi
     ARM=1
@@ -160,13 +161,14 @@ if [ "$PROVISION_NRF_SDK15" = "1" ]; then
         curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5_SDK_15.0.0_a53641a_no_docs_unix.zip -o nRF5_SDK_15.0.0_a53641a.zip
         # This is nRF5_SDK_15.0.0_a53641a.zip without the docs/examples folder, and with line endings converted to unix (for patch)
         unzip -q -o nRF5_SDK_15.0.0_a53641a.zip
-        mv nRF5_SDK_15.0.0_a53641a/* targetlibs/nrf5x_15
-        mv nRF5_SDK_15.0.0_a53641a/external/* targetlibs/nrf5x_15/external
+        cp -r nRF5_SDK_15.0.0_a53641a/external/* targetlibs/nrf5x_15/external 
+        rm -rf nRF5_SDK_15.0.0_a53641a/external       
+        cp -r nRF5_SDK_15.0.0_a53641a/* targetlibs/nrf5x_15
         rm -rf nRF5_SDK_15.0.0_a53641a.zip nRF5_SDK_15.0.0_a53641a
         echo ======================================================
         echo "FIXME - SDK15 NFC patches don't apply cleanly"
         echo ======================================================
-        cat targetlibs/nrf5x_15/patches/* | patch -p1
+        cat targetlibs/nrf5x_15/patches/* | patch -p1 || true
     fi
 fi
 if [ "$PROVISION_NRF_SDK17" = "1" ]; then
@@ -175,8 +177,9 @@ if [ "$PROVISION_NRF_SDK17" = "1" ]; then
         curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5SDK1702d674dde.zip -o nRF5_SDK_17.zip
         # This is nRF5_SDK_15.0.0_a53641a.zip without the docs/examples folder, and with line endings converted to unix (for patch)
         unzip -q -o nRF5_SDK_17.zip
-        mv nRF5_SDK_17.0.2_d674dde/* targetlibs/nrf5x_17
-        mv nRF5_SDK_17.0.2_d674dde/external/* targetlibs/nrf5x_17/external
+        cp -r nRF5_SDK_17.0.2_d674dde/external/* targetlibs/nrf5x_17/external
+        rm -rf nRF5_SDK_17.0.2_d674dde/external
+        cp -r nRF5_SDK_17.0.2_d674dde/* targetlibs/nrf5x_17
         rm -rf nRF5_SDK_17.zip nRF5_SDK_17.0.2_d674dde
         echo ======================================================
         cat targetlibs/nrf5x_17/patches/* | patch -p1

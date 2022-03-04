@@ -144,9 +144,9 @@ static const unsigned char SPILCD_INIT_CODE[] = {
     0x74,0,7,  0x10,  0x85,  0x80,  0,  0,  0x4e,  0,
     0x98,0,2,  0x3e,  7,
     0x35,0,0,
-    0x21,10,0,
-    0x11,20,0,
-    0x29,10,0,
+    0x21,5,0,
+    0x11,5,0,
+    0x29,5,0,
     0x2c,0,0,
     // End
     0, 0, 255/*DATA_LEN = 255 => END*/

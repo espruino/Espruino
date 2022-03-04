@@ -88,7 +88,7 @@ JsErrorFlags lastJsErrorFlags = 0; ///< Compare with jsErrorFlags in order to re
 #ifdef USE_DEBUGGER
 void jsiDebuggerLine(JsVar *line);
 #endif
-
+void jsiCheckErrors();
 // ----------------------------------------------------------------------------
 
 /**
@@ -97,7 +97,8 @@ void jsiDebuggerLine(JsVar *line);
 IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
   // Devices have their Object data set up to something special
   // See jspNewObject
-  if (class->varData.str[0]=='D' &&
+  if (class &&
+      class->varData.str[0]=='D' &&
       class->varData.str[1]=='E' &&
       class->varData.str[2]=='V')
     return (IOEventFlags)class->varData.str[3];
@@ -470,16 +471,6 @@ void jsiSoftInit(bool hasBeenReset) {
   // Run wrapper initialisation stuff
   jswInit();
 
-  // Search for invalid storage and remove it
-#if !defined(EMSCRIPTEN) && !defined(SAVE_ON_FLASH)
-  if (!jsfIsStorageValid()) {
-    jsiConsolePrintf("Storage is corrupt.\n");
-    jsiConsolePrintf("Erasing Storage Area...\n");
-    jsfEraseAll();
-    jsiConsolePrintf("Erase complete.\n");
-  }
-#endif
-
   // Run 'boot code' - textual JS in flash
   jsfLoadBootCodeFromFlash(hasBeenReset);
 
@@ -579,7 +570,7 @@ NO_INLINE void jsiDumpObjectState(vcbprintf_callback user_callback, void *user_d
         }
       } else {
         // It's a normal function
-        if (!jsvIsNative(data)) {
+        if (!jsvIsNativeFunction(data)) {
           cbprintf(user_callback, user_data, "%v.%v = ", parentName, child);
           jsiDumpJSON(user_callback, user_data, data, 0);
           user_callback(";\n", user_data);
@@ -723,6 +714,7 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
 void jsiSoftKill() {
   // Execute `kill` events on `E`
   jsiExecuteEventCallbackOn("E", KILL_CALLBACK_NAME, 0, 0);
+  jsiCheckErrors();
   // Clear input line...
   inputCursorPos = 0;
   jsiInputLineCursorMoved();
@@ -774,17 +766,44 @@ void jsiSoftKill() {
   }
   // If we're here we're loading, saving or resetting - board is no longer at power-on state
   jsiStatus &= ~JSIS_COMPLETELY_RESET; // loading code, remove this flag
+  jsiStatus &= ~JSIS_FIRST_BOOT; // this is no longer the first boot!
 }
 
-void jsiSemiInit(bool autoLoad) {
+/** Called as part of initialisation - loads boot code.
+ *
+ * loadedFilename is set if we're loading a file, and we can use that for setting the __FILE__ variable
+ */
+void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
+  // Set up execInfo.root/etc
   jspInit();
-
   // Set state
   interruptedDuringEvent = false;
   // Set defaults
   jsiStatus &= JSIS_SOFTINIT_MASK;
 #ifndef SAVE_ON_FLASH
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
+#endif
+  // Set __FILE__ if we have a filename available
+  if (loadedFilename)
+    jsvObjectSetChildAndUnLock(execInfo.root, "__FILE__", jsfVarFromName(*loadedFilename));
+
+  // Search for invalid storage and erase do this only on first boot.
+  // We need to do it before we check storage for any files!
+#if !defined(EMSCRIPTEN) && !defined(SAVE_ON_FLASH)
+  bool fullTest = jsiStatus & JSIS_FIRST_BOOT;
+  if (fullTest) {
+#ifdef BANGLEJS
+    jsiConsolePrintf("Checking storage...\n");
+#endif
+    if (!jsfIsStorageValid(JSFSTT_NORMAL)) {
+      jsiConsolePrintf("Storage is corrupt.\n");
+      jsfResetStorage();
+    } else {
+#ifdef BANGLEJS
+      jsiConsolePrintf("Storage Ok.\n");
+#endif
+    }
+  }
 #endif
 
   /* If flash contains any code, then we should
@@ -832,7 +851,7 @@ void jsiSemiInit(bool autoLoad) {
           "|  __|_ -| . |  _| | | |   | . |\n"
           "|____|___|  _|_| |___|_|_|_|___|\n"
           "         |_| espruino.com\n"
-          " "JS_VERSION" (c) 2019 G.Williams\n"
+          " "JS_VERSION" (c) 2021 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
 #if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS) && !defined(BANGLEJS) && !defined(EMSCRIPTEN)
@@ -856,7 +875,7 @@ void jsiSemiInit(bool autoLoad) {
 
 // The 'proper' init function - this should be called only once at bootup
 void jsiInit(bool autoLoad) {
-  jsiStatus = JSIS_COMPLETELY_RESET;
+  jsiStatus = JSIS_COMPLETELY_RESET | JSIS_FIRST_BOOT;
 
 #if defined(LINUX) || !defined(USB)
   consoleDevice = jsiGetPreferredConsoleDevice();
@@ -868,7 +887,7 @@ void jsiInit(bool autoLoad) {
   jsnSanityTest();
 #endif
 
-  jsiSemiInit(autoLoad);
+  jsiSemiInit(autoLoad, NULL/* no filename */);
   // just in case, update the busy indicator
   jsiSetBusy(BUSY_INTERACTIVE, false);
 }
@@ -1843,7 +1862,7 @@ static JsVar *jsiExtractIOEventData(IOEvent *event, int *eventsHandled) {
 /** Take an event for a UART and handle the characters we're getting, potentially
  * grabbing more characters as well if it's easy. If more character events are
  * grabbed, the number of extra events (not characters) is returned */
-int jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
+int jsiHandleIOEventForSerial(JsVar *usartClass, IOEvent *event) {
   int eventsHandled = 0;
   JsVar *stringData = jsiExtractIOEventData(event,  &eventsHandled);
   if (stringData) {
@@ -1888,9 +1907,10 @@ void jsiIdle() {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(eventType));
       if (jsvIsObject(usartClass)) {
-        maxEvents -= jsiHandleIOEventForUSART(usartClass, &event);
+        maxEvents -= jsiHandleIOEventForSerial(usartClass, &event);
       }
       jsvUnLock(usartClass);
+#if USART_COUNT>0
     } else if (DEVICE_IS_USART_STATUS(eventType)) {
       // ------------------------------------------------------------------------ SERIAL STATUS CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(event.flags))));
@@ -1901,20 +1921,10 @@ void jsiIdle() {
           jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
       }
       jsvUnLock(usartClass);
+#endif
 #ifdef BLUETOOTH
     } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
       maxEvents -= jsble_exec_pending(&event);
-#endif
-#ifdef TOUCH_DEVICE
-    } else if ((eventType == EV_TOUCH)) {
-      JsVar *obj = jsvNewObject();
-      if (obj) {
-        jsvObjectSetChildAndUnLock(obj, "x", jsvNewFromInteger((unsigned char)event.data.chars[0]));
-        jsvObjectSetChildAndUnLock(obj, "y", jsvNewFromInteger((unsigned char)event.data.chars[1]));
-        jsvObjectSetChildAndUnLock(obj, "b", jsvNewFromInteger((unsigned char)event.data.chars[2]));
-        jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"touch", 1, &obj);
-        jsvUnLock(obj);
-      }
 #endif
 #ifdef I2C_SLAVE
     } else if (DEVICE_IS_I2C(eventType)) {
@@ -2219,7 +2229,7 @@ void jsiIdle() {
       jsvKill();
       jshReset();
       jsvInit(0);
-      jsiSemiInit(false); // don't autoload
+      jsiSemiInit(false, NULL/* no filename */); // don't autoload
       jsiStatus &= (JsiStatus)~JSIS_TODO_RESET;
     }
     if ((s&JSIS_TODO_FLASH_SAVE) == JSIS_TODO_FLASH_SAVE) {
@@ -2245,13 +2255,11 @@ void jsiIdle() {
         jsvKill();
         jshReset();
         jsvInit(0);
-        jsiSemiInit(false); // don't autoload code
+        jsiSemiInit(false, &filename); // don't autoload code
         // load the code we specified
         JsVar *code = jsfReadFile(filename,0,0);
-        if (code) {
-          jsvObjectSetChildAndUnLock(execInfo.root, "__FILE__", jsfVarFromName(filename));
+        if (code)
           jsvUnLock2(jspEvaluateVar(code,0,0), code);
-        }
       } else {
         jsiSoftKill();
         jspSoftKill();
@@ -2367,7 +2375,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
     } else if (child->varData.str[0]==JS_HIDDEN_CHAR ||
         jshFromDeviceString(childName)!=EV_NONE) {
       // skip - don't care about this stuff
-    } else if (!jsvIsNative(data)) { // just a variable/function!
+    } else if (!jsvIsNativeFunction(data)) { // just a variable/function!
       if (jsvIsFunction(data)) {
         // function-specific output
         cbprintf(user_callback, user_data, "function %v", child);
@@ -2487,9 +2495,12 @@ void jsiDebuggerLoop() {
     char lineStr[9];
     // Get a string fo the form '1234    ' for the line number
     // ... but only if the line number was set, otherwise use spaces
+#ifndef ESPR_NO_LINE_NUMBERS
     if (lex->lineNumberOffset) {
       itostr((JsVarInt)jslGetLineNumber() + (JsVarInt)lex->lineNumberOffset - 1, lineStr, 10);
-    } else {
+    } else
+#endif
+    {
       lineStr[0]=0;
     }
     size_t lineLen = strlen(lineStr);

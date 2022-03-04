@@ -13,7 +13,21 @@
  */
 #include "jspin.h"
 
-extern bool isPuckV2;
+
+typedef enum {
+  PUCKJS_UNKNOWN, // Maybe some I2C failure?
+  PUCKJS_1V0, // MAG3110 magnetometer
+  PUCKJS_2V0, // LIS3MDLTR magnetometer, LSM6DS3TR-C accel/gyro, PCT2075TP temperature
+  PUCKJS_2V1, // MMC5603NJ magnetometer, LSM6DS3TR-C accel/gyro, PCT2075TP temperature
+} PuckVersion;
+
+PuckVersion puckVersion;
+
+#define PUCKJS_HAS_ACCEL (puckVersion==PUCKJS_2V0 || puckVersion==PUCKJS_2V1)
+#define PUCKJS_HAS_IR_FET (puckVersion==PUCKJS_2V0 || puckVersion==PUCKJS_2V1)
+#define PUCKJS_HAS_TEMP_SENSOR (puckVersion==PUCKJS_2V0 || puckVersion==PUCKJS_2V1)
+
+JsVar *jswrap_puck_getHardwareVersion();
 
 void jswrap_puck_magOn();
 void jswrap_puck_magOff();
