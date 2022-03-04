@@ -19,6 +19,8 @@ jobs:
       fail-fast: false 
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1000
     - name: make ${{ matrix.board }}
       env:
         TRAVIS: 1
@@ -41,6 +43,8 @@ jobs:
       fail-fast: false 
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1000    
     - name: make ${{ matrix.board }}
       env:
         TRAVIS: 1
@@ -64,6 +68,8 @@ jobs:
       fail-fast: false 
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1000
     - name: make ${{ matrix.board }}
       env:
         TRAVIS: 1
