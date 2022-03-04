@@ -20,7 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 1000
+        fetch-depth: 0
     - name: make ${{ matrix.board }}
       env:
         TRAVIS: 1
@@ -44,7 +44,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 1000    
+        fetch-depth: 0    
     - name: make ${{ matrix.board }}
       env:
         TRAVIS: 1
@@ -69,7 +69,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
-        fetch-depth: 1000
+        fetch-depth: 0
     - name: make ${{ matrix.board }}
       env:
         TRAVIS: 1
