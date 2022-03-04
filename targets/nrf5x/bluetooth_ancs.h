@@ -22,8 +22,10 @@ bool ble_ancs_request_notif(uint32_t uid);
 // Request the attributes for app
 bool ble_ancs_request_app(char *app_id, int len);
 
-// Request an AMS attribute
-bool ble_ams_request_info(ble_ams_c_track_attribute_id_val_t cmd);
+// Request an AMS attribute for the current media player
+bool ble_ams_request_player_info(ble_ams_c_player_attribute_id_val_t cmd);
+// Request an AMS attribute for the currently-playing track
+bool ble_ams_request_track_info(ble_ams_c_track_attribute_id_val_t cmd);
 // Send a command like play/pause/etc
 bool ble_ams_command(ble_ams_c_remote_control_id_val_t cmd);
 
@@ -43,6 +45,8 @@ void ble_ancs_handle_notif_attr(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif
 /** Handle app attributes received event (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ancs_handle_app_attr(BLEPending blep, char *buffer, size_t bufferLen);
 /** Handle AMS track info update (called outside of IRQ by Espruino) - will poke the relevant events in */
-void ble_ams_handle_update(BLEPending blep, uint16_t data, char *buffer, size_t bufferLen);
-/** Handle AMS track info response (called outside of IRQ by Espruino) - will poke the relevant events in */
+void ble_ams_handle_track_update(BLEPending blep, uint16_t data, char *buffer, size_t bufferLen);
+/** Handle AMS player info update (called outside of IRQ by Espruino) - will poke the relevant events in */
+void ble_ams_handle_player_update(BLEPending blep, uint16_t data, char *buffer, size_t bufferLen);
+/** Handle AMS track or player info response (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ams_handle_attribute(BLEPending blep, char *buffer, size_t bufferLen);

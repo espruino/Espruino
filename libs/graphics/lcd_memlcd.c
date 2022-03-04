@@ -196,7 +196,7 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   }
 
   jshPinOutput(LCD_SPI_CS,0);
-  jshPinOutput(LCD_SPI_SCK,0);
+  jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
   jshPinOutput(LCD_DISP,1);
   jshPinOutput(LCD_EXTCOMIN,1);
@@ -213,6 +213,7 @@ void lcdMemLCD_init(JsGraphics *gfx) {
 void lcdMemLCD_extcominToggle() {
   if (!isBacklightOn) {
     jshPinSetValue(LCD_EXTCOMIN, 1);
+    jshDelayMicroseconds(2); // datasheet saus 2uS min rise time
     jshPinSetValue(LCD_EXTCOMIN, 0);
   }
 }
@@ -222,12 +223,11 @@ void lcdMemLCD_extcominBacklight(bool isOn) {
   if (isBacklightOn != isOn) {
     isBacklightOn = isOn;
     if (isOn) {
-      jshPinAnalogOutput(LCD_EXTCOMIN, 0.05, 120, JSAOF_NONE);
+      jshPinAnalogOutput(LCD_EXTCOMIN, 0.0003, 120, JSAOF_NONE); // ~3us
     } else {
       jshPinOutput(LCD_EXTCOMIN, 0);
     }
   }
-
 }
 
 void lcdMemLCD_setCallbacks(JsGraphics *gfx) {

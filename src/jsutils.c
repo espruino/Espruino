@@ -59,12 +59,12 @@ bool isIDString(const char *s) {
 }
 
 char charToUpperCase(char ch) {
-  return (char)((ch >= 97 && ch <= 122) ? ch - 32 : ch);
-} // a-z
+  return (char)(((ch>=97 && ch<=122) || (ch>=224 && ch<=246) || (ch>=248 && ch<=254)) ? ch - 32 : ch);
+} // a-z, à-ö, ø-þ
 
 char charToLowerCase(char ch) {
-  return (char)((ch >= 65 && ch <= 90)  ? ch + 32 : ch);
-} // A-Z
+  return (char)(((ch>=65 && ch<=90) || (ch>=192 && ch<=214) || (ch>=216 && ch<=222))  ? ch + 32 : ch);
+} // A-Z, À-Ö, Ø-Þ
 
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again.
@@ -635,9 +635,9 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
     }
 
 #ifndef USE_NO_FLOATS
-    // check for exponents
+    // check for exponents - if fractionalDigits we're using 'toFixed' so don't want exponentiation
     int exponent = 0;
-    if (radix == 10 && val>0.0) {
+    if (radix == 10 && val>0.0 && fractionalDigits<0) {
       // use repeated mul/div for ease, but to
       // improve accuracy we multiply by 1e5 first
       if (val >= 1E21) {
@@ -766,9 +766,11 @@ void vcbprintf(
       case '9':
       {
         const char *pad = " ";
+        if (!*fmt) break;
         if (fmtChar=='0') {
           pad = "0";
           fmtChar = *fmt++;
+          if (!*fmt) break;
         }
         int digits = fmtChar - '0';
          // of the form '%02d'

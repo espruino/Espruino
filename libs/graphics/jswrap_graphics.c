@@ -100,7 +100,7 @@ typedef struct {
   uint16_t _simplePalette[16]; // used when a palette is created for rendering
 } GfxDrawImageInfo;
 
-static bool _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info) {
+static void _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info) {
   jsvUnLock(info->buffer);
 }
 
@@ -505,7 +505,7 @@ void jswrap_graphics_init() {
     lcdInit_FSMC(&gfx);
     lcdSetCallbacks_FSMC(&gfx);
     graphicsSplash(&gfx);
-    graphicsSetVar(&gfx);
+    graphicsSetVarInitial(&gfx);
     jsvUnLock2(parentObj, parent);
   }
 #endif
@@ -623,7 +623,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   }
 
   lcdInit_ArrayBuffer(&gfx);
-  graphicsSetVar(&gfx);
+  graphicsSetVarInitial(&gfx);
   return parent;
 }
 
@@ -680,7 +680,7 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   graphicsStructInit(&gfx,width,height,bpp);
   gfx.graphicsVar = parent;
   lcdInit_JS(&gfx, callbackSetPixel, callbackFillRect);
-  graphicsSetVar(&gfx);
+  graphicsSetVarInitial(&gfx);
   jsvUnLock2(callbackSetPixel, callbackFillRect);
   return parent;
 }
@@ -715,7 +715,7 @@ JsVar *jswrap_graphics_createSDL(int width, int height, int bpp) {
   graphicsStructInit(&gfx,width,height,bpp);
   gfx.graphicsVar = parent;
   lcdInit_SDL(&gfx);
-  graphicsSetVar(&gfx);
+  graphicsSetVarInitial(&gfx);
   return parent;
 }
 #endif
@@ -901,7 +901,8 @@ JsVar *jswrap_graphics_clear(JsVar *parent, bool resetState) {
   return jsvLockAgain(parent);
 }
 
-void _jswrap_graphics_getRect(JsVar *opt, int *x1, int *y1, int *x2, int *y2) {
+void _jswrap_graphics_getRect(JsVar *opt, int *x1, int *y1, int *x2, int *y2, int *r) {
+  *r = 0;
   if (jsvIsObject(opt)) {
     int w = -1,h = -1;
     jsvConfigObject configs[] = {
@@ -913,12 +914,60 @@ void _jswrap_graphics_getRect(JsVar *opt, int *x1, int *y1, int *x2, int *y2) {
         {"y2", JSV_INTEGER, y2},
         {"w", JSV_INTEGER, &w},
         {"h", JSV_INTEGER, &h},
+        {"r", JSV_INTEGER, r}
     };
     jsvReadConfigObject(opt, configs, sizeof(configs) / sizeof(jsvConfigObject));
     if (w>=0) *x2 = *x1 + w;
-    if (h>=0) *y2 = *y1 + w;
+    if (h>=0) *y2 = *y1 + h;
   } else
     *x1 = jsvGetInteger(opt);
+}
+
+JsVar *_jswrap_graphics_fillRect_col(JsVar *parent, JsVar *opt, int y1, int x2, int y2, bool isFgCol) {
+  int x1, r;
+  _jswrap_graphics_getRect(opt, &x1, &y1, &x2, &y2, &r);
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  uint32_t col = isFgCol ? gfx.data.fgColor : gfx.data.bgColor;
+#ifndef SAVE_ON_FLASH
+  if (r>0) {
+    // rounded rects
+    graphicsToDeviceCoordinates(&gfx, &x1, &y1);
+    graphicsToDeviceCoordinates(&gfx, &x2, &y2);
+    int x,y;
+    if (x1 > x2) { x = x1; x1 = x2; x2 = x; }
+    if (y1 > y2) { y = y1; y1 = y2; y2 = y; }
+    // clip if radius too big
+    x = (x2-x1)/2;
+    y = (y2-y1)/2;
+    if (x<r) r=x;
+    if (y<r) r=y;
+    // rect in middle
+    int cx1 = x1+r, cx2 = x2-r;
+    int cy1 = y1+r, cy2 = y2-r;
+    graphicsFillRectDevice(&gfx, x1, cy1, x2, cy2, col);
+    // draw rounded top and bottom
+    int dx = 0;
+    int dy = r;
+    int r2 = r*r;
+    int err = r2-(2*r-1)*r2;
+    int e2;
+    bool changed = false;
+    do {
+      changed = false;
+      e2 = 2*err;
+      if (e2 <  (2*dx+1)*r2) { dx++; err += (2*dx+1)*r2; changed=true; }
+      if (e2 > -(2*dy-1)*r2) {
+        // draw only just before we change Y, to avoid a bunch of overdraw
+        graphicsFillRectDevice(&gfx, cx1-dx,cy2+dy, cx2+dx,cy2+dy, col);
+        graphicsFillRectDevice(&gfx, cx1-dx,cy1-dy, cx2+dx,cy1-dy, col);
+        dy--; err -= (2*dy-1)*r2; changed=true;
+      }
+    } while (changed && dy >= 0);
+  } else
+#endif
+  graphicsFillRect(&gfx, x1,y1,x2,y2,col);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+  return jsvLockAgain(parent);
 }
 
 /*JSON{
@@ -936,15 +985,15 @@ void _jswrap_graphics_getRect(JsVar *opt, int *x1, int *y1, int *x2, int *y2) {
   "return_object" : "Graphics"
 }
 Fill a rectangular area in the Foreground Color
+
+On devices with enough memory, you can specify `{x,y,x2,y2,r}` as the first
+argument, which allows you to draw a rounded rectangle.
 */
 JsVar *jswrap_graphics_fillRect(JsVar *parent, JsVar *opt, int y1, int x2, int y2) {
-  int x1;
-  _jswrap_graphics_getRect(opt, &x1, &y1, &x2, &y2);
-  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  graphicsFillRect(&gfx, x1,y1,x2,y2,gfx.data.fgColor);
-  graphicsSetVar(&gfx); // gfx data changed because modified area
-  return jsvLockAgain(parent);
+  return _jswrap_graphics_fillRect_col(parent,opt,y1,x2,y2,true);
 }
+
+
 
 /*JSON{
   "type" : "method",
@@ -962,14 +1011,12 @@ JsVar *jswrap_graphics_fillRect(JsVar *parent, JsVar *opt, int y1, int x2, int y
   "return_object" : "Graphics"
 }
 Fill a rectangular area in the Background Color
+
+On devices with enough memory, you can specify `{x,y,x2,y2,r}` as the first
+argument, which allows you to draw a rounded rectangle.
 */
 JsVar *jswrap_graphics_clearRect(JsVar *parent, JsVar *opt, int y1, int x2, int y2) {
-  int x1;
-  _jswrap_graphics_getRect(opt, &x1, &y1, &x2, &y2);
-  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  graphicsFillRect(&gfx, x1,y1,x2,y2,gfx.data.bgColor);
-  graphicsSetVar(&gfx); // gfx data changed because modified area
-  return jsvLockAgain(parent);
+  return _jswrap_graphics_fillRect_col(parent,opt,y1,x2,y2,false);
 }
 
 /*JSON{
@@ -989,8 +1036,8 @@ JsVar *jswrap_graphics_clearRect(JsVar *parent, JsVar *opt, int y1, int x2, int 
 Draw an unfilled rectangle 1px wide in the Foreground Color
 */
 JsVar *jswrap_graphics_drawRect(JsVar *parent, JsVar *opt, int y1, int x2, int y2) {
-  int x1;
-  _jswrap_graphics_getRect(opt, &x1, &y1, &x2, &y2);
+  int x1, r;
+  _jswrap_graphics_getRect(opt, &x1, &y1, &x2, &y2, &r);
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   graphicsDrawRect(&gfx, x1,y1,x2,y2);
   graphicsSetVar(&gfx); // gfx data changed because modified area
@@ -1511,6 +1558,11 @@ JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) 
 }
 Make subsequent calls to `drawString` use a Custom Font of the given height. See the [Fonts page](http://www.espruino.com/Fonts) for more
 information about custom fonts and how to create them.
+
+For examples of use, see the [font modules](https://www.espruino.com/Fonts#font-modules).
+
+**Note:** while you can specify the character code of the first character with `firstChar`,
+the newline character 13 will always be treated as a newline and not rendered.
 */
 #ifndef SAVE_ON_FLASH
 JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height) {
@@ -1996,6 +2048,8 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   int wordWidth = 0;
   int lineWidth = 0;
   int wordStartIdx = 0;
+  int wordIdxAtMaxWidth = 0; // index just before the word width>maxWidth
+  int wordWidthAtMaxWidth = 0; // index just before the word width>maxWidth
   bool endOfText = false;
   bool wasNewLine = false;
 
@@ -2015,15 +2069,22 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         }
         jsvAppendStringVar(currentLine, str, wordStartIdx, currentPos-(wordStartIdx+1));
         lineWidth += wordWidth;
-      } else {
-        // new line
+      } else { // doesn't fit one one line - move to new line
         lineWidth = wordWidth;
         if (jsvGetStringLength(currentLine) || wasNewLine)
           jsvArrayPush(lines, currentLine);
         jsvUnLock(currentLine);
+        if (wordIdxAtMaxWidth) {
+          // word is too long to fit on a line
+          currentLine = jsvNewFromStringVar(str, wordStartIdx, wordIdxAtMaxWidth-(wordStartIdx+1));
+          jsvArrayPushAndUnLock(lines, currentLine);
+          wordStartIdx = wordIdxAtMaxWidth-1;
+          lineWidth -= wordWidthAtMaxWidth;
+        }
         currentLine = jsvNewFromStringVar(str, wordStartIdx, currentPos-(wordStartIdx+1));
       }
       wordWidth = 0;
+      wordIdxAtMaxWidth = 0;
       wordStartIdx = currentPos;
       wasNewLine = ch=='\n';
       if (endOfText) break;
@@ -2038,11 +2099,17 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         _jswrap_graphics_freeImageInfo(&img);
         // string iterator now points to the next char after image
         wordWidth += img.width;
+        if (!jsvStringIteratorHasChar(&it)) endOfText=true;
       }
       continue;
     }
 #endif
-    wordWidth += _jswrap_graphics_getCharWidth(&gfx, &info, ch);
+    int w = _jswrap_graphics_getCharWidth(&gfx, &info, ch);
+    if (wordWidth <= maxWidth && wordWidth+w>maxWidth) {
+      wordIdxAtMaxWidth = jsvStringIteratorGetIndex(&it);
+      wordWidthAtMaxWidth = wordWidth;
+    }
+    wordWidth += w;
     if (!jsvStringIteratorHasChar(&it)) endOfText=true;
   }
   jsvStringIteratorFree(&it);
@@ -2177,7 +2244,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     if (info.font == JSGRAPHICS_FONTSIZE_VECTOR) {
 #ifndef NO_VECTOR_FONT
       int w = (int)graphicsVectorCharWidth(&gfx, info.scalex, ch);
-      if (x>minX-w && x<maxX  && y>minY-info.scaley && y<maxY) {
+      if (x>minX-w && x<maxX  && y>minY-fontHeight && y<maxY) {
         if (solidBackground)
           graphicsFillRect(&gfx,x,y,x+w-1,y+fontHeight-1, gfx.data.bgColor);
         graphicsFillVectorChar(&gfx, x, y, info.scalex, info.scaley, ch);
@@ -2185,12 +2252,12 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
       x+=w;
 #endif
     } else if (info.font == JSGRAPHICS_FONTSIZE_4X6) {
-      if (x>minX-4 && x<maxX && y>minY-6 && y<maxY)
+      if (x>minX-4*info.scalex && x<maxX && y>minY-fontHeight && y<maxY)
         graphicsDrawChar4x6(&gfx, x, y, ch, info.scalex, info.scaley, solidBackground);
       x+=4*info.scalex;
 #ifdef USE_FONT_6X8
     } else if (info.font == JSGRAPHICS_FONTSIZE_6X8) {
-      if (x>minX-6 && x<maxX && y>minY-8 && y<maxY)
+      if (x>minX-6*info.scalex && x<maxX && y>minY-fontHeight && y<maxY)
         graphicsDrawChar6x8(&gfx, x, y, ch, info.scalex, info.scaley, solidBackground);
       x+=6*info.scalex;
 #endif
@@ -2213,7 +2280,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
         width = (int)jsvGetInteger(customWidth);
         bmpOffset = width*(ch-info.customFirstChar);
       }
-      if (ch>=info.customFirstChar && (x>minX-width) && (x<maxX) && (y>minY-fontHeight) && y<maxY) {
+      if (ch>=info.customFirstChar && (x>minX-width*info.scalex) && (x<maxX) && (y>minY-fontHeight) && y<maxY) {
         int ch = fontHeight/info.scaley;
         bmpOffset *= ch * customBPP;
         // now render character
@@ -2382,6 +2449,8 @@ JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
   "return_object" : "Graphics"
 }
 Draw a polyline (lines between each of the points in `poly`) in the current foreground color
+
+**Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
 /*JSON{
   "type" : "method",
@@ -2397,6 +2466,8 @@ Draw a polyline (lines between each of the points in `poly`) in the current fore
   "return_object" : "Graphics"
 }
 Draw an **antialiased** polyline (lines between each of the points in `poly`) in the current foreground color
+
+**Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
 JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool antiAlias) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -2476,6 +2547,8 @@ This fills from the top left hand side of the polygon (low X, low Y)
 *down to but not including* the bottom right. When placed together polygons
 will align perfectly without overdraw - but this will not fill the
 same pixels as `drawPoly` (drawing a line around the edge of the polygon).
+
+**Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
 /*JSON{
   "type" : "method",
@@ -2505,6 +2578,8 @@ This fills from the top left hand side of the polygon (low X, low Y)
 *down to but not including* the bottom right. When placed together polygons
 will align perfectly without overdraw - but this will not fill the
 same pixels as `drawPoly` (drawing a line around the edge of the polygon).
+
+**Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
 JsVar *jswrap_graphics_fillPoly_X(JsVar *parent, JsVar *poly, bool antiAlias) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -3381,9 +3456,12 @@ JsVar *jswrap_graphics_asURL(JsVar *parent) {
   "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_dump"
 }
-Output this image as a bitmap URL. The Espruino Web IDE can detect the data on the console and render the image inline automatically.
+Output this image as a bitmap URL of the form `data:image/bmp;base64,...`. The Espruino Web IDE will detect this on the console and will render the image inline automatically.
 
-This is identical to `console.log(g.asURL())` - it is just a convenient function for easy debugging.
+This is identical to `console.log(g.asURL())` - it is just a convenient function for easy debugging and producing screenshots of what is currently in the Graphics instance.
+
+**Note:** This may not work on some bit depths of Graphics instances. It will also not work for the main Graphics instance
+of Bangle.js 1 as the graphics on Bangle.js 1 are stored in write-only memory.
 */
 void jswrap_graphics_dump(JsVar *parent) {
   JsVar *url = jswrap_graphics_asURL(parent);

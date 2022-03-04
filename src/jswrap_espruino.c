@@ -1100,7 +1100,7 @@ int jswrap_espruino_reverseByte(int v) {
   "type" : "staticmethod",
   "class" : "E",
   "name" : "dumpTimers",
-  "ifndef" : "RELEASE",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_espruino_dumpTimers"
 }
 Output the current list of Utility Timer Tasks - for debugging only
@@ -1188,7 +1188,7 @@ along with the variables they link to. Can be used
 to visualise where memory is used.
  */
 void jswrap_e_dumpVariables() {
-  jsiConsolePrintf("ref,size,name,links...\n");
+  jsiConsolePrintf("ref,size,flags,name,links...\n");
   for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
     JsVarRef ref = i+1;
     JsVar *v = _jsvGetAddressOf(ref);
@@ -1208,7 +1208,7 @@ void jswrap_e_dumpVariables() {
         jsvUnLock(child);
       }
     }
-    jsiConsolePrintf("%d,%d,",ref,size);
+    jsiConsolePrintf("%d,%d,%d,",ref,size,v->flags&JSV_VARTYPEMASK);
     if (jsvIsName(v)) jsiConsolePrintf("%q,",v);
     else jsiConsolePrintf(",",v);
 
@@ -1778,7 +1778,7 @@ See [the documentation on Inline C](http://www.espruino.com/InlineC) for more in
 */
 void jswrap_espruino_compiledC(JsVar *code) {
   NOT_USED(code);
-  jsExceptionHere(JSET_ERROR, "'E.InlineC' calls should have been replaced by the Espruino tools before upload");
+  jsExceptionHere(JSET_ERROR, "'E.compiledC' calls should have been replaced by the Espruino tools before upload");
 }
 
 /*JSON{
@@ -2030,9 +2030,9 @@ JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn) {
       if (jsvIsArray(lookup))
         replace = jsvGetArrayItem(lookup, cp);
       else if (jsvIsObject(lookup)) {
-        char code[16];
-        itostr(cp, code, 16);
-        replace = jsvObjectGetChild(lookup, code, 0);
+        JsVar *index = jsvNewFromInteger(cp);
+        replace = jsvSkipNameAndUnLock(jsvFindChildFromVar(lookup, index, false));
+        jsvUnLock(index);
       }
       if (!replace && jsvIsFunction(replaceFn)) {
         JsVar *v = jsvNewFromInteger(cp);

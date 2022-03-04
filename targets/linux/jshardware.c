@@ -264,6 +264,7 @@ void jshInputThread() {
     while (kbhit() && (jshGetEventsUsed()<IOBUFFERMASK/2)) {
       int ch = getch();
       if (ch<0) break;
+      if (ch==4) exit(0); // exit on Ctrl-D
       jshPushIOCharEvent(EV_USBSERIAL, (char)ch);
     }
     // Read from any open devices - if we have space
@@ -576,15 +577,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   pwmWrite(pin, (int)(value*1024));
 #endif
   return JSH_NOTHING;
-}
-
-void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
-  if (jshIsPinValid(pin)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-    jshDelayMicroseconds(time*1000000);
-    jshPinSetValue(pin, !value);
-  } else jsError("Invalid pin!");
 }
 
 bool jshCanWatch(Pin pin) {

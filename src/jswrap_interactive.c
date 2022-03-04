@@ -279,6 +279,7 @@ void jswrap_interface_print(JsVar *v) {
 /*JSON{
   "type" : "function",
   "name" : "edit",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_interface_edit",
   "params" : [
     ["funcName","JsVar","The name of the function to edit (either a string or just the unquoted name)"]
@@ -376,7 +377,8 @@ Return the current system time in Seconds (as a floating point number)
     ["time","float",""]
   ]
 }
-Set the current system time in seconds (to the nearest second).
+Set the current system time in seconds (`time` can be a floating
+point value).
 
 This is used with `getTime`, the time reported from `setWatch`, as
 well as when using `new Date()`.

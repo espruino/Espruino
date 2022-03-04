@@ -16,10 +16,13 @@ Graphics.prototype.print = _=>{
 
 var ok = true;
 function SHOULD_BE(b,a) {
-  a = E.toJS(a);
-  b = E.toJS(b);
-  if (a!=b) {
-    console.log("GOT :"+b+"\nSHOULD BE:"+a+"\n================");
+  var ta = E.toJS(a);
+  var tb = E.toJS(b);
+  if (ta!=tb) {
+    console.log("GOT :"+tb+"\nSHOULD BE:"+ta);
+    console.log("================");
+    b.forEach(l=>console.log(E.toJS(l), g.stringWidth(l)));
+    console.log("================");
     ok = false;
   }
 }
@@ -36,10 +39,10 @@ g.clear().setFont("4x6");
 lines = g.wrapString("X", 10);
 SHOULD_BE(lines, ["X"]);
 
-// too big
+// word too big for a line - should be split
 g.clear().setFont("4x6");
-lines = g.wrapString("ALongWord", 10);
-SHOULD_BE(lines, ["ALongWord"]);
+lines = g.wrapString("A very LongWord is not here", 30);
+SHOULD_BE(lines, ["A very","LongWor","d is","not","here"]);
 
 // normal wrap
 g.clear().setFont("4x6");
@@ -74,5 +77,9 @@ g.clear().setFont("Vector18");
 lines = g.wrapString("This is wrapping text that fills remaining space", 116);
 SHOULD_BE(lines, ["This is","wrapping","text that","fills","remaining","space"]);
 
+// *Just* a bitmap (was a previous failure)
+g.clear().setFont("4x6");
+lines = g.wrapString("\0\x12\x12\x81\0\x7F\xFF\xBF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\x7F\xFF\x1F\xFF\x8F\xFF\xC7\xF9\xE3\xFE1\xFF\xC0\xFF\xF8\x7F\xFF?\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xDF\xFF\xE0",1000)
+SHOULD_BE(lines, ["\0\x12\x12\x81\0\x7F\xFF\xBF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFE\x7F\xFF\x1F\xFF\x8F\xFF\xC7\xF9\xE3\xFE1\xFF\xC0\xFF\xF8\x7F\xFF?\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xDF\xFF\xE0"]);
 
 result = ok;

@@ -48,6 +48,11 @@
 JsGraphicsTheme graphicsTheme;
 #endif
 
+#ifdef ESPR_GRAPHICS_INTERNAL
+/// Internal instance of Graphics structure (eg for built-in LCD) so we don't have to store all state in a var
+JsGraphics graphicsInternal;
+#endif
+
 static void graphicsSetPixelDevice(JsGraphics *gfx, int x, int y, unsigned int col);
 
 void graphicsFallbackSetPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
@@ -108,6 +113,7 @@ void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1,
 // ----------------------------------------------------------------------------------------------
 
 void graphicsStructResetState(JsGraphics *gfx) {
+
 #ifdef GRAPHICS_THEME
   // Only set theme for OS-provided graphics (not arraybuffer/etc)
   if (gfx->data.type!=JSGRAPHICSTYPE_ARRAYBUFFER &&
@@ -149,65 +155,77 @@ void graphicsStructInit(JsGraphics *gfx, int width, int height, int bpp) {
   gfx->data.modMinX = 32767;
   gfx->data.modMinY = 32767;
 #endif
+}
 
+/// Set up the callbacks for this graphics instance (usually done by graphicsGetFromVar)
+bool graphicsSetCallbacks(JsGraphics *gfx) {
+  gfx->setPixel = graphicsFallbackSetPixel;
+  gfx->getPixel = graphicsFallbackGetPixel;
+  gfx->fillRect = graphicsFallbackFillRect;
+  gfx->blit = graphicsFallbackBlit;
+  gfx->scroll = graphicsFallbackScroll;
+#ifdef USE_LCD_SDL
+  if (gfx->data.type == JSGRAPHICSTYPE_SDL) {
+    lcdSetCallbacks_SDL(gfx);
+  } else
+#endif
+#ifdef USE_LCD_FSMC
+  if (gfx->data.type == JSGRAPHICSTYPE_FSMC) {
+    lcdSetCallbacks_FSMC(gfx);
+  } else
+#endif
+  if (gfx->data.type == JSGRAPHICSTYPE_ARRAYBUFFER) {
+    lcdSetCallbacks_ArrayBuffer(gfx);
+#ifndef SAVE_ON_FLASH
+  } else if (gfx->data.type == JSGRAPHICSTYPE_JS) {
+    lcdSetCallbacks_JS(gfx);
+#endif
+#ifdef USE_LCD_SPI
+  } else if (gfx->data.type == JSGRAPHICSTYPE_SPILCD) {
+    lcdSetCallbacks_SPILCD(gfx);
+#endif
+#ifdef USE_LCD_ST7789_8BIT
+  } else if (gfx->data.type == JSGRAPHICSTYPE_ST7789_8BIT) {
+    lcdST7789_setCallbacks(gfx);
+#endif
+#ifdef USE_LCD_MEMLCD
+  } else if (gfx->data.type == JSGRAPHICSTYPE_MEMLCD) {
+    lcdMemLCD_setCallbacks(gfx);
+#endif
+#ifdef USE_LCD_SPI_UNBUF
+  } else if (gfx->data.type == JSGRAPHICSTYPE_LCD_SPI_UNBUF) {
+    lcd_spi_unbuf_setCallbacks(gfx);
+#endif
+  } else {
+    jsExceptionHere(JSET_INTERNALERROR, "Unknown graphics type\n");
+    assert(0);
+    return false;
+  }
+
+  return true;
 }
 
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
-  if (!parent) return false;
   gfx->graphicsVar = parent;
+  // jsvObjectGetChild can handle parent==NULL
   JsVar *data = jsvObjectGetChild(parent, JS_HIDDEN_CHAR_STR"gfx", 0);
+#if ESPR_GRAPHICS_INTERNAL
+  if (!data) {
+    *gfx = graphicsInternal;
+    return true;
+  }
+#endif
   assert(data);
   if (data) {
     jsvGetStringChars(data,0,(char*)&gfx->data, sizeof(JsGraphicsData));
     jsvUnLock(data);
-    gfx->setPixel = graphicsFallbackSetPixel;
-    gfx->getPixel = graphicsFallbackGetPixel;
-    gfx->fillRect = graphicsFallbackFillRect;
-    gfx->blit = graphicsFallbackBlit;
-    gfx->scroll = graphicsFallbackScroll;
-#ifdef USE_LCD_SDL
-    if (gfx->data.type == JSGRAPHICSTYPE_SDL) {
-      lcdSetCallbacks_SDL(gfx);
-    } else
-#endif
-#ifdef USE_LCD_FSMC
-    if (gfx->data.type == JSGRAPHICSTYPE_FSMC) {
-      lcdSetCallbacks_FSMC(gfx);
-    } else
-#endif
-    if (gfx->data.type == JSGRAPHICSTYPE_ARRAYBUFFER) {
-      lcdSetCallbacks_ArrayBuffer(gfx);
-#ifndef SAVE_ON_FLASH
-    } else if (gfx->data.type == JSGRAPHICSTYPE_JS) {
-      lcdSetCallbacks_JS(gfx);
-#endif
-#ifdef USE_LCD_SPI
-    } else if (gfx->data.type == JSGRAPHICSTYPE_SPILCD) {
-      lcdSetCallbacks_SPILCD(gfx);
-#endif
-#ifdef USE_LCD_ST7789_8BIT
-    } else if (gfx->data.type == JSGRAPHICSTYPE_ST7789_8BIT) {
-      lcdST7789_setCallbacks(gfx);
-#endif
-#ifdef USE_LCD_MEMLCD
-    } else if (gfx->data.type == JSGRAPHICSTYPE_MEMLCD) {
-      lcdMemLCD_setCallbacks(gfx);
-#endif
-#ifdef USE_LCD_SPI_UNBUF
-    } else if (gfx->data.type == JSGRAPHICSTYPE_LCD_SPI_UNBUF) {
-      lcd_spi_unbuf_setCallbacks(gfx);
-#endif
-    } else {
-      jsExceptionHere(JSET_INTERNALERROR, "Unknown graphics type\n");
-      assert(0);
-    }
-
-    return true;
+    return graphicsSetCallbacks(gfx);
   } else
     return false;
 }
 
-void graphicsSetVar(JsGraphics *gfx) {
+// Set the data variable for graphics - called initially when a graphics instance is first make
+void graphicsSetVarInitial(JsGraphics *gfx) {
   JsVar *dataname = jsvFindChildFromString(gfx->graphicsVar, JS_HIDDEN_CHAR_STR"gfx", true);
   JsVar *data = jsvSkipName(dataname);
   if (!data) {
@@ -218,6 +236,21 @@ void graphicsSetVar(JsGraphics *gfx) {
   assert(data);
   jsvSetString(data, (char*)&gfx->data, sizeof(JsGraphicsData));
   jsvUnLock(data);
+}
+
+// Set the data variable for graphics - graphics data must exist
+void graphicsSetVar(JsGraphics *gfx) {
+  JsVar *data = jsvSkipNameAndUnLock(jsvFindChildFromString(gfx->graphicsVar, JS_HIDDEN_CHAR_STR"gfx", false));
+#if ESPR_GRAPHICS_INTERNAL
+  if (!data) {
+    graphicsInternal = *gfx;
+    return;
+  }
+#endif
+  if (data) {
+    jsvSetString(data, (char*)&gfx->data, sizeof(JsGraphicsData));
+    jsvUnLock(data);
+  }
 }
 
 /// Get the memory requires for this graphics's pixels if everything was packed as densely as possible
@@ -392,7 +425,7 @@ static void graphicsSetPixelDeviceBlended(JsGraphics *gfx, int x, int y, int amt
   graphicsSetPixelDevice(gfx, x, y, col);
 }
 
-static void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   if (x1>x2) {
     int t = x1;
     x1 = x2;

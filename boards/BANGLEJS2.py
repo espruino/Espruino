@@ -52,7 +52,8 @@ info = {
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES',
+     'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS',
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
      'DEFINES += -DESPR_NO_LINE_NUMBERS=1', # we execute mainly from flash, so line numbers can be worked out
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
@@ -67,7 +68,8 @@ info = {
      'WRAPPERSOURCES += libs/misc/jswrap_unistroke.c',
      'DEFINES += -DESPR_BANGLE_UNISTROKE=1',
      'SOURCES += libs/banglejs/banglejs2_storage_default.c',
-     'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1', # 
+     'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1', # use banglejs2_storage_default
+     'DEFINES += -DESPR_USE_STORAGE_CACHE=32', # Add a 32 entry cache to speed up finding files
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
 
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0xa9,0xae,0xb6',
@@ -95,13 +97,15 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((246 - 20) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
+#    'address' : ((246 - 20) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
     'page_size' : 4096,
-    'pages' : 20,
+#    'pages' : 20,
     'flash_available' : 1024 - ((38 + 8 + 2 + 20)*4), # Softdevice uses 0x26=38 pages of flash, bootloader 8, FS 2, code 20. Each page is 4 kb.
+#    'address2' : 0x60000000, # put this in external spiflash (see below)
+#    'pages2' : 2048, # Entire 8MB of external flash
 
-    'address2' : 0x60000000, # put this in external spiflash (see below)
-    'pages2' : 2048, # Entire 8MB of external flash
+    'address' : 0x60000000, # put this in external spiflash (see below)
+    'pages' : 2048, # Entire 8MB of external flash
   },
 };
 
@@ -156,8 +160,8 @@ devices = {
             'pin_scl' : 'D45'
           },
   'PRESSURE' : {
-            'device' : 'BMP280', 
-            'addr' : 0x76,
+            'device' : 'BMP280', # v2.1 uses Goertek SPL06-001 - we handle both
+            'addr' : 0x76, # both versions use the same address
             'pin_sda' : 'D47',
             'pin_scl' : 'D2'            
   },

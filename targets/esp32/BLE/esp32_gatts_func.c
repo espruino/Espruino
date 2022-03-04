@@ -86,7 +86,7 @@ void startNotifTimer(){
 	inNotif = true;
 	JsSysTime period = jshGetTimeFromMilliseconds(10);
 	JsSysTime time = jshGetSystemTime();
-	jstExecuteFn(notifTimerCB, NULL, time + period, period);
+	jstExecuteFn(notifTimerCB, NULL, time + period, period, NULL);
 }
 void gatts_sendNotification(int c){
 	notifBuffer[notifBufferPnt] = (uint8_t)c;

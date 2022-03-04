@@ -101,15 +101,14 @@ bool jsvIsFlashString(const JsVar *v) {
 #endif
 }
 bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_NUMERIC_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_NUMERIC_END; }
-bool jsvIsFunction(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION || (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION_RETURN); }
+bool jsvIsFunction(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION || (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION_RETURN || (v->flags&JSV_VARTYPEMASK)==JSV_NATIVE_FUNCTION); }
 bool jsvIsFunctionReturn(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION_RETURN); } ///< Is this a function with an implicit 'return' at the start?
 bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flags&JSV_NATIVE) && jsvIsString(v); }
 bool jsvIsObject(const JsVar *v) { return v && (((v->flags&JSV_VARTYPEMASK)==JSV_OBJECT) || ((v->flags&JSV_VARTYPEMASK)==JSV_ROOT)); }
 bool jsvIsArray(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
 bool jsvIsArrayBuffer(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAYBUFFER; }
 bool jsvIsArrayBufferName(const JsVar *v) { return v && (v->flags&(JSV_VARTYPEMASK))==JSV_ARRAYBUFFERNAME; }
-bool jsvIsNative(const JsVar *v) { return v && (v->flags&JSV_NATIVE)!=0; }
-bool jsvIsNativeFunction(const JsVar *v) { return v && (v->flags&(JSV_NATIVE|JSV_VARTYPEMASK))==(JSV_NATIVE|JSV_FUNCTION); }
+bool jsvIsNativeFunction(const JsVar *v) { return v && (v->flags&(JSV_VARTYPEMASK))==JSV_NATIVE_FUNCTION; }
 bool jsvIsUndefined(const JsVar *v) { return v==0; }
 bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
 bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
@@ -1021,8 +1020,17 @@ JsVar *jsvNewArray(JsVar **elements, int elementCount) {
   return arr;
 }
 
+JsVar *jsvNewArrayFromBytes(uint8_t *elements, int elementCount) {
+  JsVar *arr = jsvNewEmptyArray();
+  if (!arr) return 0;
+  int i;
+  for (i=0;i<elementCount;i++)
+    jsvArrayPushAndUnLock(arr, jsvNewFromInteger(elements[i]));
+  return arr;
+}
+
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes) {
-  JsVar *func = jsvNewWithFlags(JSV_FUNCTION | JSV_NATIVE);
+  JsVar *func = jsvNewWithFlags(JSV_NATIVE_FUNCTION);
   if (!func) return 0;
   func->varData.native.ptr = ptr;
   func->varData.native.argTypes = argTypes;
@@ -1389,7 +1397,7 @@ JsVar *jsvAsString(JsVar *v) {
       str = jsvNewFromString(buf);
     } else if (jsvIsArray(v) || jsvIsArrayBuffer(v)) {
       JsVar *filler = jsvNewFromString(",");
-      str = jsvArrayJoin(v, filler);
+      str = jsvArrayJoin(v, filler, true/*ignoreNull*/);
       jsvUnLock(filler);
     } else if (jsvIsFunction(v)) {
       str = jsvNewFromEmptyString();
@@ -2547,6 +2555,7 @@ void jsvAddName(JsVar *parent, JsVar *namedChild) {
     }
 
     if (insertAfter) {
+      assert(jsvIsName(insertAfter));
       if (jsvGetNextSibling(insertAfter)) {
         // great, we're in the middle...
         JsVar *insertBefore = jsvLock(jsvGetNextSibling(insertAfter));
@@ -2753,6 +2762,9 @@ JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound) 
 void jsvRemoveChild(JsVar *parent, JsVar *child) {
   assert(jsvHasChildren(parent));
   assert(jsvIsName(child));
+#ifdef DEBUG
+  assert(!(jsvGetPrevSibling(child) || jsvGetNextSibling(child)) || jsvIsChild(parent, child));
+#endif
   JsVarRef childref = jsvGetRef(child);
   bool wasChild = false;
   // unlink from parent
@@ -2807,7 +2819,7 @@ void jsvRemoveAllChildren(JsVar *parent) {
 
 /// Check if the given name is a child of the parent
 bool jsvIsChild(JsVar *parent, JsVar *child) {
-  assert(jsvIsArray(parent) || jsvIsObject(parent));
+  assert(jsvIsArray(parent) || jsvIsObject(parent) || jsvIsFunction(parent));
   assert(jsvIsName(child));
   JsVarRef childref = jsvGetRef(child);
   JsVarRef indexref;
@@ -3270,7 +3282,7 @@ void jsvArrayAddUnique(JsVar *arr, JsVar *v) {
 }
 
 /// Join all elements of an array together into a string
-JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
+JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler, bool ignoreNull) {
   JsVar *str = jsvNewFromEmptyString();
   if (!str) return 0; // out of memory
   assert(!filler || jsvIsString(filler));
@@ -3289,7 +3301,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
       first = false;
       // add the value
       JsVar *value = jsvIteratorGetValue(&it);
-      if (value && !jsvIsNull(value)) {
+      if (value && (!ignoreNull || !jsvIsNull(value))) {
         JsVar *valueStr = jsvAsString(value);
         if (valueStr) { // could be out of memory
           jsvStringIteratorAppendString(&itdst, valueStr, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);

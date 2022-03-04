@@ -8,6 +8,7 @@
 #include "jshardware.h"
 #include "jswrapper.h"
 #include "jswrap_bangle.h"
+#include "jswrapper.h"
 #ifdef LCD_CONTROLLER_LPM013M126
 #include "lcd_memlcd.h"
 #endif
@@ -24,6 +25,7 @@ void jsInit() {
   STACK_BASE = (void*)&i; // used for jsuGetFreeStack on Linux
 
   jshInit();
+  jswHWInit();
   jsvInit(0);
   jsiInit(true);
 }

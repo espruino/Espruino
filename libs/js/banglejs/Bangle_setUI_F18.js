@@ -1,4 +1,11 @@
 (function(mode, cb) {
+  var options = {};
+  if ("object"==typeof mode) {
+    options = mode;
+    mode = options.mode;
+  }  
+  if (global.WIDGETS && WIDGETS.back)
+    WIDGETS.back.remove();  
   if (Bangle.btnWatches) {
     Bangle.btnWatches.forEach(clearWatch);
     delete Bangle.btnWatches;
@@ -7,22 +14,26 @@
     Bangle.removeListener("swipe", Bangle.swipeHandler);
     delete Bangle.swipeHandler;
   }
-  if (Bangle.touchandler) {
+  if (Bangle.touchHandler) {
     Bangle.removeListener("touch", Bangle.touchHandler);
     delete Bangle.touchHandler;
   }
+  if (Bangle.uiRemove) {
+    Bangle.uiRemove();
+    delete Bangle.uiRemove;
+  }  
   if (!mode) return;
   else if (mode=="updown") {
     Bangle.btnWatches = [
-      setWatch(function() { cb(-1); }, BTN1, {repeat:1}),
-      setWatch(function() { cb(1); }, BTN3, {repeat:1}),
-      setWatch(function() { cb(); }, BTN2, {repeat:1})
+      setWatch(function() { cb(-1); }, BTN1, {repeat:1,edge:"falling"}),
+      setWatch(function() { cb(1); }, BTN3, {repeat:1,edge:"falling"}),
+      setWatch(function() { cb(); }, BTN2, {repeat:1,edge:"falling"})
     ];
   } else if (mode=="leftright") {
     Bangle.btnWatches = [
-      setWatch(function() { cb(-1); }, BTN1, {repeat:1}),
-      setWatch(function() { cb(1); }, BTN3, {repeat:1}),
-      setWatch(function() { cb(); }, BTN2, {repeat:1})
+      setWatch(function() { cb(-1); }, BTN1, {repeat:1,edge:"falling"}),
+      setWatch(function() { cb(1); }, BTN3, {repeat:1,edge:"falling"}),
+      setWatch(function() { cb(); }, BTN2, {repeat:1,edge:"falling"})
     ];
     Bangle.swipeHandler = d => {cb(d);};
     Bangle.on("swipe", Bangle.swipeHandler);
@@ -36,10 +47,43 @@
   } else if (mode=="clockupdown") {
     Bangle.CLOCK=1;
     Bangle.btnWatches = [
-      setWatch(function() { cb(-1); }, BTN1, {repeat:1}),
-      setWatch(function() { cb(1); }, BTN3, {repeat:1}),
+      setWatch(function() { cb(-1); }, BTN1, {repeat:1,edge:"falling"}),
+      setWatch(function() { cb(1); }, BTN3, {repeat:1,edge:"falling"}),
       setWatch(Bangle.showLauncher, BTN2, {repeat:1,edge:"falling"})
-    ];    
+    ];  
+  } else if (mode=="custom") {
+    if (options.touch) {
+      Bangle.touchHandler = options.touch;
+      Bangle.on("touch", Bangle.touchHandler);
+    }
+    if (options.swipe) {
+      Bangle.swipeHandler = options.swipe;
+      Bangle.on("swipe", Bangle.swipeHandler);
+    }    
+    if (options.btn) {
+      Bangle.btnWatches = [
+        setWatch(function() { options.btn(1); }, BTN1, {repeat:1,edge:"falling"}),
+        setWatch(function() { options.btn(2); }, BTN2, {repeat:1,edge:"falling"}),
+        setWatch(function() { options.btn(3); }, BTN3, {repeat:1,edge:"falling"})
+      ];
+    }
   } else
     throw new Error("Unknown UI mode");
+  if (options.back) {
+    var touchHandler = (z) => {
+      if (z==1) options.back();
+    };
+    Bangle.on("touch", touchHandler);    
+    WIDGETS = Object.assign({back:{ 
+      area:"tl", width:24,
+      draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
+      remove:()=>{
+        Bangle.removeListener("touch", touchHandler);
+        g.reset().clearRect({x:WIDGETS.back.x, y:WIDGETS.back.y, w:24,h:24});
+        delete WIDGETS.back;
+        Bangle.drawWidgets();
+      }
+    }},global.WIDGETS);
+    Bangle.drawWidgets();
+  }  
 })

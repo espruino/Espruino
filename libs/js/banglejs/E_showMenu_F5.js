@@ -3,14 +3,20 @@
     Bangle.btnWatches.forEach(clearWatch);
     Bangle.btnWatches = undefined;
   }
-  g.clear(1);g.flip(); // clear screen if no menu supplied
+  g.clear(1).flip(); // clear screen if no menu supplied
   Bangle.drawWidgets();
   if (!items) return;
   var w = g.getWidth()-9;
   var h = g.getHeight();
   var menuItems = Object.keys(items);
   var options = items[""];
-  if (options) menuItems.splice(menuItems.indexOf(""),1);
+  if (options) {
+    menuItems.splice(menuItems.indexOf(""),1);
+    if (options.back) { // handle 'options.back'
+      items["< Back"] = options.back;
+      menuItems.unshift("< Back");
+    }
+  }
   if (!(options instanceof Object)) options = {};
   options.fontHeight=8;
   options.x=0;
@@ -34,9 +40,9 @@
   var loc = require("locale");
   var l = {
     draw : function() {
-      g.reset();
-      g.setColor(cFg);
+      g.reset().setColor(cFg);
       g.setFont('6x8').setFontAlign(0,-1,0);
+      if (options.predraw) options.predraw(g);
       if (options.title) {
         g.drawString(options.title,(x+x2)/2,y-options.fontHeight-2);
         g.drawLine(x,y-2,x2,y-2);

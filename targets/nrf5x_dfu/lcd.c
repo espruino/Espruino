@@ -138,23 +138,36 @@ void lcd_pixel(int x, int y) {
 #define LCD_SPI_MOSI_CLEAR() (*(volatile uint32_t*)0x5000080C)=1<<(LCD_SPI_MOSI-32)
 #endif
 
+// Not all LPM013M126 can be clocked at max speed so we must delay...
+#if defined(LCD_CONTROLLER_LPM013M126)
+#define SPI_WAIT() asm("nop");asm("nop");asm("nop");asm("nop");
+#else
+#define SPI_WAIT()
+#endif
+
 void lcd_wr(int data) {
   for (int bit=7;bit>=0;bit--) {
     LCD_SPI_SCK_CLEAR();
+    SPI_WAIT();
     if ((data>>bit)&1) LCD_SPI_MOSI_SET();
     else LCD_SPI_MOSI_CLEAR();
+    SPI_WAIT();
     LCD_SPI_SCK_SET();
+    SPI_WAIT();
   }
 }
 void lcd_wr16(bool allFF) {
   if (allFF) LCD_SPI_MOSI_SET();
   else LCD_SPI_MOSI_CLEAR();
+  SPI_WAIT();
   for (int bit=0;bit<16;bit++) {
     LCD_SPI_SCK_CLEAR();
+    SPI_WAIT();
     LCD_SPI_SCK_SET();
+    SPI_WAIT();
   }
 }
-#else
+#else // not NRF52_SERIES
 void lcd_wr(int data) {
   for (int bit=7;bit>=0;bit--) {
     jshPinSetValue(LCD_SPI_SCK, 0 );
@@ -801,18 +814,22 @@ void lcd_flip() {
 
 void lcd_init() {
   jshPinOutput(LCD_SPI_CS,0);
-  jshPinOutput(LCD_SPI_SCK,0);
+  jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
   jshPinOutput(LCD_DISP,1);
   jshPinOutput(LCD_EXTCOMIN,1);
   jshPinOutput(LCD_BL, LCD_BL_ON); // backlight on
+  jshDelayMicroseconds(10000);
+  // force LCD to clear itself
+  lcd_clear();
+  lcd_clear();
 }
 void lcd_kill() {
   jshPinOutput(LCD_BL, !LCD_BL_ON); // backlight off
   jshPinOutput(LCD_DISP,0); // display off
 }
 
-#endif
+#endif // LCD_CONTROLLER_LPM013M126
 
 
 void lcd_char(int x1, int y1, char ch) {

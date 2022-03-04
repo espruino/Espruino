@@ -257,7 +257,7 @@ void jswrap_microbit_show_raw(uint32_t newState) {
   if ((newState!=0) && (microbitLEDState==0)) {
     // we want to display something but we don't have an interval
     JsSysTime period = jshGetTimeFromMilliseconds(MB_LED_UPDATE_MS);
-    jstExecuteFn(jswrap_microbit_display_callback, 0, jshGetSystemTime()+period, (uint32_t)period);
+    jstExecuteFn(jswrap_microbit_display_callback, 0, period, (uint32_t)period, NULL);
     // and also set pins to outputs
     nrf_gpio_cfg_output(MB_LED_COL1);
     nrf_gpio_cfg_output(MB_LED_COL2);

@@ -108,6 +108,9 @@ const char *jswGetBasicObjectPrototypeName(const char *name);
 /** Tasks to run on Idle. Returns true if either one of the tasks returned true (eg. they're doing something and want to avoid sleeping) */
 bool jswIdle();
 
+/** Tasks to run on Hardware Initialisation (called once at boot time, after jshInit, before jsvInit/etc) */
+void jswHWInit();
+
 /** Tasks to run on Initialisation */
 void jswInit();
 

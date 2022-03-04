@@ -147,9 +147,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   return JSH_NOTHING;
 }
 
-void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
-}
-
 bool jshCanWatch(Pin pin) {
   return true;
 }

@@ -34,8 +34,15 @@ typedef struct {
   uint32_t size; ///< Total size (and flags in the top 8 bits)
   char name[28]; ///< 0-padded filename
 } JsfFileHeader;
-#define JSF_START_ADDRESS 0 /* actual flash starts at 0 - espruino's is memory mapped */
+
+#define JSF_START_ADDRESS 0 /* actual flash starts at 0 - espruino's one is memory mapped */
+// Set up the end address of external flash
+#ifdef FLASH_SAVED_CODE2_START
+// if there's a second bank of flash to use, it means Bank 1 was INTERNAL flash, Bank 2 is external
+#define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE2_LENGTH)
+#else
 #define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
+#endif
 
 /// Read data while sending 0
 __attribute__( ( long_call, section(".data") ) ) static void spiFlashRead(unsigned char *rx, unsigned int len) {
@@ -77,6 +84,16 @@ __attribute__( ( long_call, section(".data") ) ) static unsigned char spiFlashSt
   return buf;
 }
 
+static void flashReset(){
+  unsigned char buf[1];
+  buf[0] = 0x66;
+  spiFlashWriteCS(buf,1);
+  buf[0] = 0x99;
+  spiFlashWriteCS(buf,1);
+  nrf_delay_us(50);
+}
+
+
 // Wake up the SPI Flash from deep power-down mode
 static void flashWakeUp() {
   unsigned char buf = 0xAB;  // SPI Flash release from deep power-down
@@ -99,21 +116,34 @@ void spiFlashInit() {
 #endif
   nrf_delay_us(100);
 #ifdef SPIFLASH_SLEEP_CMD
-  // Release from deep power-down - might need a couple of attempts...?
+  // Release from deep power-down - might need a couple of attempts...
+  flashReset();
+  flashWakeUp();
+  flashWakeUp();
   flashWakeUp();
   flashWakeUp();
 #endif  
-  // disable lock bits
-  // wait for write enable
+  // disable block protect 0/1/2
   unsigned char buf[2];
-  int timeout = 1000;
-  while (timeout-- && !(spiFlashStatus()&2)) {
-    buf[0] = 6; // write enable
-    spiFlashWriteCS(buf,1);
-  }
-  buf[0] = 1; // write status register
-  buf[1] = 0;
-  spiFlashWriteCS(buf,2);
+  int tries = 3;
+  // disable lock bits on SPI flash
+  do {
+    // wait for write enable
+    int timeout = 1000;
+    while (timeout-- && !(spiFlashStatus()&2)) {
+      buf[0] = 6; // write enable
+      spiFlashWriteCS(buf,1);
+      jshDelayMicroseconds(10);
+    }
+    jshDelayMicroseconds(10);
+    buf[0] = 1; // write status register, disable BP0/1/2
+    buf[1] = 0;
+    spiFlashWriteCS(buf,2);
+    jshDelayMicroseconds(10);
+    // keep trying in case it didn't work first time
+  } while (tries-- && (spiFlashStatus()&28)/*check BP0/1/2*/);
+  // give flash time to boot? Some devices need this it seems.
+  jshDelayMicroseconds(100000);
 }
 
 __attribute__( ( long_call, section(".data") ) ) void spiFlashReadAddr(unsigned char *buf, uint32_t addr, uint32_t len) {
@@ -292,7 +322,7 @@ static uint32_t jsfAlignAddress(uint32_t addr) {
 /** Load a file header from flash, return true if it is valid.
  * If readFullName==false, only the first 4 bytes of the name are loaded */
 static bool jsfGetFileHeader(uint32_t addr, JsfFileHeader *header) {
-  spiFlashReadAddr(header, addr, sizeof(JsfFileHeader));
+  spiFlashReadAddr((unsigned char*)header, addr, sizeof(JsfFileHeader));
   return (header->size != 0xFFFFFFFF) &&
     (addr+(uint32_t)sizeof(JsfFileHeader)+jsfGetFileSize(header) <= JSF_END_ADDRESS);
 }
@@ -365,6 +395,7 @@ void flashCheckFile(uint32_t fileAddr) {
     return;
   } else {
     // All ok - check we haven't already flashed this!
+    lcd_println("CRC OK");
     lcd_println("TESTING...");
     isEqual = flashEqual(header, fileAddr);
   }
@@ -417,9 +448,16 @@ void flashCheckAndRun() {
 
   uint32_t addr = JSF_START_ADDRESS;
   JsfFileHeader header;
+  //lcd_print_hex(addr); lcd_println(" ADDR");
+  int tries = 50000;
   if (jsfGetFileHeader(addr, &header)) do {
+    if (tries-- < 0) {
+      lcd_println("TOO MANY FILES");
+      return;
+    }
     char *n = &header.name[0];
-    //if (n[0]) lcd_println(n);
+    /*lcd_print_hex(addr);
+    if (n[0]) lcd_println(n); else lcd_println("-DELETED-");*/
     if (n[0]=='.' && n[1]=='f' && n[2]=='i' && n[3]=='r' && n[4]=='m' && n[5]=='w' && n[6]=='a' && n[7]=='r' && n[8]=='e' && n[9]==0) {
       lcd_println("FOUND FIRMWARE");
       flashCheckFile(addr + sizeof(JsfFileHeader)/*, jsfGetFileSize(&header)*/);

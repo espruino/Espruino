@@ -202,12 +202,12 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
     return;
   }
 
-  JsSysTime startTime = jshGetSystemTime();
+  JsSysTime startTime = 0;
   bool repeat = false;
   if (jsvIsObject(options)) {
     JsVarFloat t = jsvGetFloatAndUnLock(jsvObjectGetChild(options, "time", 0));
     if (isfinite(t) && t>0)
-      startTime = jshGetTimeFromMilliseconds(t*1000);
+      startTime = jshGetTimeFromMilliseconds(t*1000) - jshGetSystemTime();
     repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "repeat", 0));
   } else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);

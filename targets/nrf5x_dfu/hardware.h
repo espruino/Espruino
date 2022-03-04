@@ -53,7 +53,7 @@
 static void __attribute__((noinline)) nrf_gpio_pin_write_output(uint32_t pin, bool value)
 {
   nrf_gpio_pin_write(pin, value);
-  nrf_gpio_cfg_output(pin);
+  nrf_gpio_cfg_output(pin); //  TODO: could use high drive for these pins (default is std)
 }
 
 static void set_led_state(bool btn, bool progress)

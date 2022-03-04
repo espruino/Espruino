@@ -95,6 +95,10 @@ do
     ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
     EXTRADEFS=DFU_UPDATE_BUILD=1
   fi
+  if [ "$BOARDNAME" == "BANGLEJS2" ]; then
+    ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
+    EXTRADEFS=DFU_UPDATE_BUILD=1
+  fi
   if [ "$BOARDNAME" == "SMARTIBOT" ]; then
     ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
     EXTRADEFS=DFU_UPDATE_BUILD=1

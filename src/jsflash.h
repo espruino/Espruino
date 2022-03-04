@@ -96,8 +96,17 @@ typedef enum {
 bool jsfIsStorageValid(JsfStorageTestType testType);
 /** Return true if there is nothing at all in Storage (first header on first page is all 0xFF) */
 bool jsfIsStorageEmpty();
-// Get the amount of space free in this page (or all pages). addr=0 uses start page
-uint32_t jsfGetFreeSpace(uint32_t addr, bool allPages);
+
+/// Stats returned by jsfGetStorageStats
+typedef struct {
+  uint32_t fileBytes; /// used bytes - amount of space needed to mirror this page elsewhere (including padding for alignment)
+  uint32_t fileCount;
+  uint32_t trashBytes;
+  uint32_t trashCount;
+  uint32_t total, free;
+} JsfStorageStats;
+/// Get info about the current filesystem
+JsfStorageStats jsfGetStorageStats(uint32_t addr, bool allPages);
 
 // ------------------------------------------------------------------------ For loading/saving code to flash
 /// Save contents of JsVars into Flash.

@@ -925,16 +925,16 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   // If old was native or vice versa...
   if (jsvIsNativeFunction(oldFunc) != jsvIsNativeFunction(newFunc)) {
     if (jsvIsNativeFunction(newFunc))
-      oldFunc->flags |= JSV_NATIVE;
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_NATIVE_FUNCTION;
     else
-      oldFunc->flags &= ~JSV_NATIVE;
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_FUNCTION;
   }
   // If old fn started with 'return' or vice versa...
   if (jsvIsFunctionReturn(oldFunc) != jsvIsFunctionReturn(newFunc)) {
     if (jsvIsFunctionReturn(newFunc))
-      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) |JSV_FUNCTION_RETURN;
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
     else
-      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) |JSV_FUNCTION;
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_FUNCTION;
   }
 
   // Grab scope and prototype - the things we want to keep

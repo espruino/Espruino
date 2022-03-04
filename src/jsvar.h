@@ -43,6 +43,7 @@ typedef enum {
     JSV_GET_SET,         ///< Getter/setter (an object with get/set fields)
 #endif
     JSV_FUNCTION,
+    JSV_NATIVE_FUNCTION,
     JSV_FUNCTION_RETURN, ///< A simple function that starts with `return` (which is implicit)
     JSV_INTEGER,         ///< integer number (note JSV_NUMERICMASK)
   _JSV_NUMERIC_START = JSV_INTEGER, ///< --------- Start of numeric variable types
@@ -86,7 +87,7 @@ typedef enum {
 
     JSV_VARTYPEMASK = NEXT_POWER_2(_JSV_VAR_END)-1, // probably this is 63
 
-    JSV_NATIVE      = JSV_VARTYPEMASK+1, ///< to specify this is a native function, root, function parameter, OR that it should not be freed
+    JSV_NATIVE      = JSV_VARTYPEMASK+1, ///< to specify if this is a function parameter
     JSV_GARBAGE_COLLECT = JSV_NATIVE<<1, ///< When garbage collecting, this flag is true IF we should GC!
     JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
     JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
@@ -301,6 +302,7 @@ JsVar *jsvNewFromPin(int pin);
 JsVar *jsvNewObject(); ///< Create a new object
 JsVar *jsvNewEmptyArray(); ///< Create a new array
 JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array containing the given elements
+JsVar *jsvNewArrayFromBytes(uint8_t *elements, int elementCount); ///< Create an array containing the given bytes
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes); ///< Create an array containing the given elements
 JsVar *jsvNewNativeString(char *ptr, size_t len); ///< Create a Native String pointing to the given memory area
 #ifdef SPIFLASH_BASE
@@ -380,7 +382,6 @@ bool jsvIsObject(const JsVar *v);
 bool jsvIsArray(const JsVar *v);
 bool jsvIsArrayBuffer(const JsVar *v);
 bool jsvIsArrayBufferName(const JsVar *v);
-bool jsvIsNative(const JsVar *v);
 bool jsvIsNativeFunction(const JsVar *v);
 bool jsvIsUndefined(const JsVar *v);
 bool jsvIsNull(const JsVar *v);
@@ -478,8 +479,8 @@ bool jsvIsStringEqualOrStartsWithOffset(JsVar *var, const char *str, bool isStar
   `jsvIsStringEqualOrStartsWith(A, B, true)` is `A.startsWith(B)`
 */
 bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith);
-bool jsvIsStringEqual(JsVar *var, const char *str); ///< see jsvIsStringEqualOrStartsWith
-bool jsvIsStringIEqualAndUnLock(JsVar *var, const char *str); ///< see jsvIsStringEqualOrStartsWithOffset
+bool jsvIsStringEqual(JsVar *var, const char *str); ///< is string equal. see jsvIsStringEqualOrStartsWith
+bool jsvIsStringIEqualAndUnLock(JsVar *var, const char *str); ///< is string equal (ignoring case). see jsvIsStringEqualOrStartsWithOffset
 int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 /// Return a new string containing just the characters that are shared between two strings.
 JsVar *jsvGetCommonCharacters(JsVar *va, JsVar *vb);
@@ -671,7 +672,7 @@ void jsvArrayPushAll(JsVar *target, JsVar *source, bool checkDuplicates); ///< A
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME. DOES NOT RENUMBER.
 void jsvArrayAddUnique(JsVar *arr, JsVar *v); ///< Adds a new variable element to the end of an array (IF it was not already there). Return true if successful
-JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler); ///< Join all elements of an array together into a string
+JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler, bool ignoreNull); ///< Join all elements of an array together into a string
 void jsvArrayInsertBefore(JsVar *arr, JsVar *beforeIndex, JsVar *element); ///< Insert a new element before beforeIndex, DOES NOT UPDATE INDICES
 static ALWAYS_INLINE bool jsvArrayIsEmpty(JsVar *arr) { assert(jsvIsArray(arr)); return !jsvGetFirstChild(arr); } ///< Return true is array is empty
 

@@ -156,6 +156,13 @@ typedef struct {
 extern JsGraphicsTheme graphicsTheme;
 #endif
 
+#ifdef ESPR_GRAPHICS_INTERNAL
+/// Internal instance of Graphics structure (eg for built-in LCD) so we don't have to store all state in a var
+extern JsGraphics graphicsInternal;
+/// This is defined by whatever sets up graphicsInternal - it handles outputting to the screen (if that's needed)
+void graphicsInternalFlip();
+#endif
+
 
 // ---------------------------------- these are in graphics.c
 /// Reset graphics structure state (eg font size, color, etc)
@@ -166,6 +173,10 @@ void graphicsStructInit(JsGraphics *gfx, int width, int height, int bpp);
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
 /// Access the Graphics Instance JsVar and set the relevant info from JsGraphics structure
 void graphicsSetVar(JsGraphics *gfx);
+// Like graphicsSetVar but to be called when the Graphics is first created (and the field needs to be created)
+void graphicsSetVarInitial(JsGraphics *gfx);
+/// Set up the callbacks for this graphics instance (usually done by graphicsGetFromVar)
+bool graphicsSetCallbacks(JsGraphics *gfx);
 // ----------------------------------------------------------------------------------------------
 
 
@@ -195,6 +206,7 @@ unsigned int graphicsGetPixel(JsGraphics *gfx, int x, int y);
 void         graphicsClear(JsGraphics *gfx);
 void         graphicsFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col);
 void graphicsFallbackFillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); // Simple fillrect - doesn't call device-specific FR
+void graphicsFillRectDevice(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col); // fillrect using device coordinates
 void graphicsFallbackScroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2);
 void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 void graphicsDrawEllipse(JsGraphics *gfx, int x, int y, int x2, int y2);

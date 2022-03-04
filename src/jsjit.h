@@ -11,6 +11,7 @@
  * Recursive descent JIT
  * ----------------------------------------------------------------------------
  */
+#ifdef ESPR_JIT
 #ifndef JSJIT_H_
 #define JSJIT_H_
 
@@ -19,3 +20,4 @@
 JsVar *jsjEvaluate(const char *str);
 
 #endif /* JSJIT_H_ */
+#endif /* ESPR_JIT */

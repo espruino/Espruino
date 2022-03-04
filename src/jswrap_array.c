@@ -171,7 +171,7 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
   else
     filler = jsvAsString(filler);
   if (!filler) return 0; // out of memory
-  JsVar *str = jsvArrayJoin(parent, filler);
+  JsVar *str = jsvArrayJoin(parent, filler, true/*ignoreNull*/);
   jsvUnLock(filler);
   return str;
 }

@@ -143,6 +143,9 @@ extern uint32_t app_ram_base;
   "class" : "process",
   "name" : "memory",
   "generate" : "jswrap_process_memory",
+  "params" : [
+    ["gc","JsVar","An optional boolean. If `undefined` or `true` Garbage collection is performed, if `false` it is not"]
+  ],
   "return" : ["JsVar","Information about memory usage"]
 }
 Run a Garbage Collection pass, and return an object containing information on memory usage.
@@ -164,10 +167,14 @@ Memory units are specified in 'blocks', which are around 16 bytes each (dependin
 
 **Note:** To find free areas of flash memory, see `require('Flash').getFree()`
  */
-JsVar *jswrap_process_memory() {
-  JsSysTime time1 = jshGetSystemTime();
-  int gc = jsvGarbageCollect();
-  JsSysTime time2 = jshGetSystemTime();
+JsVar *jswrap_process_memory(JsVar *gc) {
+  JsSysTime time1, time2;
+  int varsGCd = -1;
+  if (jsvIsUndefined(gc) || jsvGetBool(gc)==true) {
+    time1 = jshGetSystemTime();
+    varsGCd = jsvGarbageCollect();
+    time2 = jshGetSystemTime();
+  }
   JsVar *obj = jsvNewObject();
   if (obj) {
     unsigned int history = 0;
@@ -182,8 +189,10 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "usage", jsvNewFromInteger((JsVarInt)usage));
     jsvObjectSetChildAndUnLock(obj, "total", jsvNewFromInteger((JsVarInt)total));
     jsvObjectSetChildAndUnLock(obj, "history", jsvNewFromInteger((JsVarInt)history));
-    jsvObjectSetChildAndUnLock(obj, "gc", jsvNewFromInteger((JsVarInt)gc));
-    jsvObjectSetChildAndUnLock(obj, "gctime", jsvNewFromFloat(jshGetMillisecondsFromTime(time2-time1)));
+    if (varsGCd>=0) {
+      jsvObjectSetChildAndUnLock(obj, "gc", jsvNewFromInteger((JsVarInt)varsGCd));
+      jsvObjectSetChildAndUnLock(obj, "gctime", jsvNewFromFloat(jshGetMillisecondsFromTime(time2-time1)));
+    }
     jsvObjectSetChildAndUnLock(obj, "blocksize", jsvNewFromInteger(sizeof(JsVar)));
 
 #ifdef ARM

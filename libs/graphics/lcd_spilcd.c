@@ -15,6 +15,7 @@
 #include "platform_config.h"
 #include "jsutils.h"
 #include "jshardware.h"
+#include "jsparse.h"
 #include "lcd_spilcd.h"
 #include "lcd_spilcd_info.h"
 #include "lcd_spilcd_palette.h"
@@ -236,6 +237,7 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
         0,
         n,
         NULL);
+    if (jspIsInterrupted()) break;
     p+=n;
     c-=n;
   }
@@ -267,6 +269,7 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
     }
     size_t len = ((unsigned char*)bufPtr)-buffer;
     jshSPISendMany(LCD_SPI, buffer, 0, len, lcdFlip_SPILCD_callback);
+    if (jspIsInterrupted()) break;
   }
   jshSPIWait(LCD_SPI);
 #endif

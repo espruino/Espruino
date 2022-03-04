@@ -63,7 +63,7 @@ fixed point precision: 11 bits
 #define HRMFILTER_TAP_NUM 175
 
 typedef struct {
-  int8_t history[HRMFILTER_TAP_NUM];
+  HrmValueType history[HRMFILTER_TAP_NUM];
   unsigned int last_index;
 } HRMFilter;
 
@@ -265,7 +265,7 @@ int HRMFilter_get(HRMFilter* f) {
     index = index != 0 ? index-1 : HRMFILTER_TAP_NUM-1;
     acc += (long long)f->history[index] * filter_taps[i];
   };
-  return acc >> 11;
+  return acc >> 4;
 }
 
 HRMFilter hrmFilter;
@@ -277,7 +277,6 @@ HrmInfo hrmInfo;
 /// Initialise heart rate monitoring
 void hrm_init() {
   memset(&hrmInfo, 0, sizeof(hrmInfo));
-  hrmInfo.thresh = HRM_THRESH_MIN;
   hrmInfo.wasLow = false;
   hrmInfo.lastBeatTime = jshGetSystemTime();
   HRMFilter_init(&hrmFilter);
@@ -292,7 +291,7 @@ bool hrm_had_beat() {
   JsSysTime time = jshGetSystemTime();
   JsVarFloat beatTime = jshGetMillisecondsFromTime(time - hrmInfo.lastBeatTime) / 10; // in 1/100th sec
   hrmInfo.lastBeatTime = time;
-  if (beatTime<0) beatTime=0;
+  if (beatTime<20) return false; // 1/5th sec is too short
   if (beatTime>255) beatTime=255;
 
   // store HRM times in list (in 1/100th sec)
@@ -329,11 +328,17 @@ bool hrm_had_beat() {
   }
   if (n) {
     hrmInfo.bpm10 = sumBPM/n;
-    int spread = times[max]-times[min];
-    if (spread > 4) spread -= 4;
-    else spread = 0;
-    if (spread>10) spread=10;
-    hrmInfo.confidence = 100 - spread*10;
+    if (n >= HRM_MEDIAN_LEN) { // not enough values to be confident
+      // spread = difference between min+max BPM*10
+      int spread = hrm_time_to_bpm10(times[min]) - hrm_time_to_bpm10(times[max]);
+      if (spread > 100) spread -= 100; // 10bpm difference = 100% accuracy
+      else spread = 0;
+      if (spread > 400) spread=400; // 40bpm difference = low accuracy
+      hrmInfo.confidence = 100 - spread/4;
+      if (hrmInfo.bpm10 < 300)
+        hrmInfo.confidence = 0; // not confident about BPM less than 30!
+    } else
+      hrmInfo.confidence = 0;
   } else {
     hrmInfo.confidence = 0;
   }
@@ -342,31 +347,30 @@ bool hrm_had_beat() {
 
 /// Add new heart rate value
 bool hrm_new(int hrmValue) {
-  if (hrmValue<-128) hrmValue=-128;
-  if (hrmValue>127) hrmValue=127;
+  if (hrmValue<HRMVALUE_MIN) hrmValue=HRMVALUE_MIN;
+  if (hrmValue>HRMVALUE_MAX) hrmValue=HRMVALUE_MAX;
   hrmInfo.raw = hrmValue;
   HRMFilter_put(&hrmFilter, hrmValue);
   int h = HRMFilter_get(&hrmFilter);
-  if (h<=-128) h=-128;
-  if (h>127) h=127;
+  if (h<=-32768) h=-32768;
+  if (h>32767) h=32767;
+  hrmInfo.filtered2 = hrmInfo.filtered1;
+  hrmInfo.filtered1 = hrmInfo.filtered;  
   hrmInfo.filtered = h;
 
   // check for step counter
   bool hadBeat = false;
   hrmInfo.isBeat = false;
-  int thresh = hrmInfo.thresh >> HRM_THRESH_SHIFT;
-  if (hrmInfo.filtered < -thresh)
+
+  if (h < hrmInfo.avg)
     hrmInfo.wasLow = true;
-  else if ((hrmInfo.filtered > thresh) && hrmInfo.wasLow) {
-    hrmInfo.wasLow = false;
+  else if (hrmInfo.wasLow && (hrmInfo.filtered1 >= hrmInfo.filtered) && (hrmInfo.filtered1 >= hrmInfo.filtered2)) {
+    hrmInfo.wasLow = false; // peak detected, and had previously gone below average
     hrmInfo.isBeat = true;
     hadBeat = hrm_had_beat();
   }
 
-  if (hrmInfo.thresh > HRM_THRESH_MIN<<HRM_THRESH_SHIFT)
-    hrmInfo.thresh--;
-  if (h<<HRM_THRESH_SHIFT < -hrmInfo.thresh)
-    hrmInfo.thresh = -h<<HRM_THRESH_SHIFT;
+  hrmInfo.avg = ((hrmInfo.avg*31) + h) >> 5;
 
   return hadBeat;
 }

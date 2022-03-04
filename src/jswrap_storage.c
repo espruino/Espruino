@@ -423,7 +423,41 @@ bytes available, but this represents the maximum
 size of file that can be written.
  */
 int jswrap_storage_getFree() {
-  return (int)jsfGetFreeSpace(0,true);
+  return (int)jsfGetStorageStats(0,true).free;
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Storage",
+  "name" : "getStats",
+  "generate" : "jswrap_storage_getStats",
+  "return" : ["JsVar","An object containing info about the current Storage system"]
+}
+Returns:
+
+```
+{
+  totalBytes // Amount of bytes in filesystem
+  freeBytes // How many bytes are left at the end of storage?
+  fileBytes // How many bytes of allocated files do we have?
+  fileCount // How many allocated files do we have?
+  trashBytes // How many bytes of trash files do we have?
+  trashCount // How many trash files do we have?
+}
+```
+ */
+JsVar *jswrap_storage_getStats() {
+  JsVar *o = jsvNewObject();
+  if (!o) return NULL;
+  JsfStorageStats stats = jsfGetStorageStats(0, true);
+  jsvObjectSetChildAndUnLock(o, "totalBytes", jsvNewFromInteger(stats.total));
+  jsvObjectSetChildAndUnLock(o, "freeBytes", jsvNewFromInteger(stats.free));
+  jsvObjectSetChildAndUnLock(o, "fileBytes", jsvNewFromInteger(stats.fileBytes));
+  jsvObjectSetChildAndUnLock(o, "fileCount", jsvNewFromInteger(stats.fileCount));
+  jsvObjectSetChildAndUnLock(o, "trashBytes", jsvNewFromInteger(stats.trashBytes));
+  jsvObjectSetChildAndUnLock(o, "trashCount", jsvNewFromInteger(stats.trashCount));
+  return o;
 }
 
 /*JSON{

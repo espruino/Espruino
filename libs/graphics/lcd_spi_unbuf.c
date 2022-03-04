@@ -154,7 +154,7 @@ JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options) {
   jshPinSetValue(_pin_cs, 1);
   
   lcd_spi_unbuf_setCallbacks(&gfx);
-  graphicsSetVar(&gfx); 
+  graphicsSetVarInitial(&gfx); 
 
   // Create 'flip' fn
   JsVar *fn;

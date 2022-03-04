@@ -278,7 +278,7 @@ void jswrap_badge_init() {
   gfx.data.flags = JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE | JSGRAPHICSFLAGS_INVERT_X;
   gfx.graphicsVar = graphics;
   lcdInit_ArrayBuffer(&gfx);
-  graphicsSetVar(&gfx);
+  graphicsSetVarInitial(&gfx);
   jsvObjectSetChild(execInfo.root,"g",graphics);
   // Set initial image
   const unsigned int LCD_IMIT_IMG_OFFSET = 344;

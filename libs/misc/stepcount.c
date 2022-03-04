@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "stepcount.h"
+#include "jsutils.h"
 
 // a1bc34f9a9f5c54b9d68c3c26e973dba195e2105   HughB-walk-1834.csv  1446
 // oxford filter                                                   1584
@@ -72,6 +73,19 @@ static int AccelFilter_get(AccelFilter* f) {
 }
 
 AccelFilter accelFilter;
+
+/* =============================================================
+*  DC Filter
+*/
+#define NSAMPLE 12 //Exponential Moving Average DC removal filter alpha = 1/NSAMPLE
+
+int DCFilter_sample_avg_total = 8192*NSAMPLE;
+
+int DCFilter(int sample) {
+    DCFilter_sample_avg_total += (sample - DCFilter_sample_avg_total/NSAMPLE);
+    return sample - DCFilter_sample_avg_total/NSAMPLE;
+}
+
 
 // ===============================================================
 
@@ -141,7 +155,7 @@ typedef enum {
 #define T_MIN_STEP 4 // ~333ms
 #define T_MAX_STEP 16 // ~1300ms
 #define X_STEPS 6 // steps in a row needed
-#define RAW_THRESHOLD 14
+#define RAW_THRESHOLD 15
 #define N_ACTIVE_SAMPLES 3
 
 StepState stepState;
@@ -151,25 +165,10 @@ int active_sample_count = 0;
 bool gate_open = false;        // start closed
 // ===============================================================
 
-// quick integer square root
-// https://stackoverflow.com/questions/31117497/fastest-integer-square-root-in-the-least-amount-of-instructions
-unsigned short int int_sqrt32(unsigned int x) {
-  unsigned short int res=0;
-  unsigned short int add= 0x8000;
-  int i;
-  for(i=0;i<16;i++) {
-    unsigned short int temp=res | add;
-    unsigned int g2=temp*temp;
-    if (x>=g2)
-      res=temp;
-    add>>=1;
-  }
-  return res;
-}
-
 // Init step count
 void stepcount_init() {
   AccelFilter_init(&accelFilter);
+  DCFilter_sample_avg_total = 8192*NSAMPLE;
   accFiltered = 0;
   accFilteredHist[0] = 0;
   accFilteredHist[1] = 0;
@@ -247,7 +246,8 @@ int stepcount_new(int accMagSquared) {
   // square root accelerometer data
   int accMag = int_sqrt32(accMagSquared);
   // scale to fit and clip
-  int v = (accMag-8192)>>5;
+  //int v = (accMag-8192)>>5;
+  int v = DCFilter(accMag)>>5;
   //printf("v %d\n",v);
   //if (v>127 || v<-128) printf("Out of range %d\n", v);
   if (v>127) v = 127;

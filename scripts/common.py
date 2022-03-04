@@ -58,6 +58,7 @@ if "check_output" not in dir( subprocess ):
 #                      // class = built-in class that does not require instantiation
 #                      // library = built-in class that needs require('classname')
 #                      // idle = function to run on idle regardless
+#                      // hwinit = function to run on Hardware Initialisation (called once at boot time, after jshInit, before jsvInit/etc)
 #                      // init = function to run on Initialisation (eg boot/load/reset/after save/etc)
 #                      // kill = function to run on Deinitialisation (eg before save/reset/etc)
 #                      // EV_xxx = Something to be called with a character in an IRQ when it is received (eg. EV_SERIAL1)
@@ -421,7 +422,7 @@ def get_ifdef_description(d):
   if d=="PICO": return "Espruino Pico boards"
   if d=="BANGLEJS": return "Bangle.js smartwatches"
   if d=="BANGLEJS_F18": return "Bangle.js 1 smartwatches"
-  if d=="BANGLEJS_Q3": return "Bangle.js 1 smartwatches"
+  if d=="BANGLEJS_Q3": return "Bangle.js 2 smartwatches"
   if d=="SMAQ3": return "SMAQ3 smartwatches"
   if d=="ESP8266": return "ESP8266 boards running Espruino"
   if d=="ESP32": return "ESP32 boards"

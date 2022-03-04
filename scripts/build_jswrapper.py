@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #
@@ -216,7 +216,7 @@ def codeOutBuiltins(indent, builtin):
 #================== to remove JS-definitions given by blacklist==============
 def delete_by_indices(lst, indices):
     indices_as_set = set(indices)
-    return [ lst[i] for i in xrange(len(lst)) if i not in indices_as_set ]
+    return [ lst[i] for i in range(len(lst)) if i not in indices_as_set ]
 
 def removeBlacklistForWrapper(blacklistfile,datas):
 	json_File = open(blacklistfile,'r')
@@ -634,8 +634,14 @@ for jsondata in jsondatas:
 
 codeOut('/** Given a variable, return the basic object name of it */')
 codeOut('const char *jswGetBasicObjectName(JsVar *var) {')
+codeOut('  if (jsvIsArrayBuffer(var)) {')
 for className in objectChecks.keys():
-  codeOut("  if ("+objectChecks[className]+") return \""+className+"\";")
+  if objectChecks[className].startswith("jsvIsArrayBuffer(var) && "):
+    codeOut("    if ("+objectChecks[className][25:]+") return \""+className+"\";")
+codeOut('  }')
+for className in objectChecks.keys():
+  if not objectChecks[className].startswith("jsvIsArrayBuffer(var) && "):
+    codeOut("  if ("+objectChecks[className]+") return \""+className+"\";")
 codeOut('  return 0;')
 codeOut('}')
 
@@ -663,6 +669,16 @@ for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="idle":
     codeOut("  if ("+jsondata["generate"]+"()) wasBusy = true;")
 codeOut('  return wasBusy;')
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+codeOut("/** Tasks to run on Hardware Initialisation (called once at boot time, after jshInit, before jsvInit/etc) */")
+codeOut('void jswHWInit() {')
+for jsondata in jsondatas:
+  if "type" in jsondata and jsondata["type"]=="hwinit":
+    codeOut("  "+jsondata["generate"]+"();")
 codeOut('}')
 
 codeOut('')

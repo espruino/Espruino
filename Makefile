@@ -67,7 +67,7 @@ GENDIR=gen
 endif
 
 ifndef SINGLETHREAD
-MAKEFLAGS=-j5 # multicore
+MAKEFLAGS=-j$(shell nproc) # make multicore based on the number of cores available
 endif
 
 INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
@@ -642,6 +642,11 @@ endif
 
 ifeq ($(USE_TENSORFLOW),1) 
 include make/misc/tensorflow.make
+endif
+
+ifeq ($(USE_JIT),1)
+  DEFINES += -DESPR_JIT
+  SOURCES += src/jsjit.c src/jsjitc.c
 endif
 
 

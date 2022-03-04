@@ -1,13 +1,20 @@
 (function(items) {
-  g.clearRect(Bangle.appRect); // clear if no menu supplied
+  g.reset().clearRect(Bangle.appRect); // clear if no menu supplied
   Bangle.setLCDPower(1); // ensure screen is on
   if (!items) {
     Bangle.setUI();
     return;
   }
+  var options = items[""];  
   var menuItems = Object.keys(items);
-  var options = items[""];
-  if (options) menuItems.splice(menuItems.indexOf(""),1);
+  if (options) {
+    menuItems.splice(menuItems.indexOf(""),1);
+    if (options.back) { // handle 'options.back'
+      items["< Back"] = options.back;
+      menuItems.unshift("< Back");
+    }
+  }
+  
   if (!(options instanceof Object)) options = {};
   options.fontHeight = options.fontHeight||16;
   if (options.selected === undefined)
@@ -21,7 +28,6 @@
   var y2 = ar.y2 - 20; // padding at end for arrow
   if (options.title)
     y += options.fontHeight+2;
-  var loc = require("locale");
   var l = {
     lastIdx : 0,
     draw : function(rowmin,rowmax) {
@@ -29,8 +35,10 @@
       var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
       if (idx!=l.lastIdx) rowmin=undefined; // redraw all if we scrolled
       l.lastIdx = idx;      
+      var more = (idx+rows)<menuItems.length;
       var iy = y;
       g.reset().setFont('6x8',2).setFontAlign(0,-1,0);
+      if (options.predraw) options.predraw(g);
       if (rowmin===undefined && options.title) {
         g.drawString(options.title,(x+x2)/2,y-options.fontHeight-2);
         g.drawLine(x,y-2,x2,y-2);
@@ -52,12 +60,11 @@
         g.fillRect(x,iy,x2,iy+options.fontHeight-1);
         g.setColor(hl ? g.theme.fgH : g.theme.fg);
         g.setFontAlign(-1,-1);
-        g.drawString(loc.translate(name),x,iy);
+        g.drawString(name,x,iy);
         if ("object" == typeof item) {
           var xo = x2;
           var v = item.value;
           if (item.format) v=item.format(v);
-          v = loc.translate(""+v);
           if (l.selectEdit && idx==options.selected) {
             xo -= 24 + 1;
             g.setColor(g.theme.bgH).fillRect(xo-(g.stringWidth(v)+4),iy,x2,iy+options.fontHeight-1);
@@ -71,7 +78,6 @@
         idx++;
       }
       g.setFontAlign(-1,-1);
-      var more = idx<menuItems.length;
       g.drawImage("\b\b\x01\x108|\xFE\x10\x10\x10\x10"/*E.toString(8,8,1,
         0b00010000,
         0b00111000,

@@ -30,6 +30,7 @@
 #include "jswrap_arraybuffer.h"
 #include "jswrap_heatshrink.h"
 #include "jswrap_espruino.h"
+#include "jswrap_terminal.h"
 #include "jsflash.h"
 #include "graphics.h"
 #include "bitmap_font_6x8.h"
@@ -178,7 +179,10 @@ You can also retrieve the most recent reading with `Bangle.getCompass()`.
   "type" : "event",
   "class" : "Bangle",
   "name" : "GPS-raw",
-  "params" : [["nmea","JsVar",""]],
+  "params" : [
+     ["nmea","JsVar","A string containing the raw NMEA data from the GPS"],
+     ["dataLoss","bool","This is set to true if some lines of GPS data have previously been lost (eg because system was too busy to queue up a GPS-raw event)"]
+  ],
   "ifdef" : "BANGLEJS"
 }
 Raw NMEA GPS / u-blox data messages received as a string
@@ -256,6 +260,17 @@ Called when heart rate sensor data is available - see `Bangle.setHRMPower(1)`.
 }
 ```
  */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
+  "name" : "pressure",
+  "params" : [["e","JsVar","An object containing `{temperature,pressure,altitude}`"]],
+  "ifdef" : "BANGLEJS"
+}
+When `Bangle.setBarometerPower(true)` is called, this event is fired containing barometer readings.
+
+Same format as `Bangle.getPressure()`
+*/
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
@@ -377,7 +392,16 @@ Bangle.on('stroke',o=>{
 }
 ```
 */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
+  "name" : "midnight",
+  "ifdef" : "BANGLEJS"
+}
+Emitted at midnight (at the point the `day` health info is reset to 0).
 
+Can be used for housekeeping tasks that don't want to be run during the day.
+*/
 
 #define ACCEL_HISTORY_LEN 50 ///< Number of samples of accelerometer history
 
@@ -402,6 +426,12 @@ JshI2CInfo i2cHRM;
 #define HRM_I2C &i2cHRM
 #define GPS_UART EV_SERIAL1
 #define HEARTRATE 1
+
+bool pressureBMP280Enabled = false;
+bool pressureSPL06Enabled = false;
+#define PRESSURE_DEVICE_SPL06_007 1 // BMP280 already defined
+#define PRESSURE_DEVICE_BMP280_EN pressureBMP280Enabled
+#define PRESSURE_DEVICE_SPL06_007_EN pressureSPL06Enabled // hardware v2.1 is SPL06_001 - we need this as well
 #endif // EMULATED
 
 #define HOME_BTN 1
@@ -423,7 +453,8 @@ APP_TIMER_DEF(m_backlight_off_timer_id);
 #define BACKLIGHT_PWM_INTERVAL 15 // in msec - 67Hz PWM
 #define HEARTRATE 1
 #define GPS_UART EV_SERIAL1
-#endif // EMULATED
+#define GPS_UBLOX 1 // handle decoding of 'UBX' packets from the GPS
+#endif // !EMULATED
 
 #define IOEXP_GPS 0x01
 #define IOEXP_LCD_BACKLIGHT 0x20
@@ -500,8 +531,11 @@ bool touchPts, lastTouchPts; ///< whether a fnger is currently touching or not
 unsigned char touchType; ///< variable to differentiate press, long press, double press
 #endif
 
-#ifdef PRESSURE_I2C
+#ifdef PRESSURE_DEVICE
 #ifdef PRESSURE_DEVICE_SPL06_007
+#ifndef PRESSURE_DEVICE_SPL06_007_EN
+#define PRESSURE_DEVICE_SPL06_007_EN 1
+#endif
 #define SPL06_PRSB2 0x00       ///< Pressure/temp data start
 #define SPL06_PRSCFG 0x06      ///< Pressure config
 #define SPL06_TMPCFG 0x07      ///< Temperature config
@@ -516,8 +550,16 @@ short barometer_c0, barometer_c1, barometer_c01, barometer_c11, barometer_c20, b
 int barometer_c00, barometer_c10;
 #endif
 #ifdef PRESSURE_DEVICE_BMP280
+#ifndef PRESSURE_DEVICE_BMP280_007_EN
+#define PRESSURE_DEVICE_BMP280_007_EN 1
+#endif
 int barometerDT[3]; // temp calibration
 int barometerDP[9]; // pressure calibration
+#endif
+#ifdef PRESSURE_DEVICE_HP203
+#ifndef PRESSURE_DEVICE_HP203_EN
+#define PRESSURE_DEVICE_HP203_EN 1
+#endif
 #endif
 
 /// Promise when pressure is requested
@@ -527,7 +569,7 @@ double barometerTemperature;
 double barometerAltitude;
 bool jswrap_banglejs_barometerPoll();
 JsVar *jswrap_banglejs_getBarometerObject();
-#endif
+#endif // PRESSURE_DEVICE
 
 #ifdef HEARTRATE
 #include "hrm.h"
@@ -535,6 +577,9 @@ JsVar *jswrap_banglejs_getBarometerObject();
 #endif
 
 #ifdef GPS_PIN_RX
+
+
+#ifdef GPS_UBLOX
 /// Handling data coming from UBlox GPS
 typedef enum {
   UBLOX_PROTOCOL_NOT_DETECTED = 0,
@@ -543,16 +588,22 @@ typedef enum {
 } UBloxProtocol;
 /// What protocol is the current packet??
 UBloxProtocol inComingUbloxProtocol = UBLOX_PROTOCOL_NOT_DETECTED;
-/// how many characters of NMEA/UBX data do we have in ubloxIn
-uint16_t ubloxInLength = 0;
-/// Data received from IRQ
-uint8_t ubloxIn[NMEA_MAX_SIZE]; //  82 is the max for NMEA
+
 /// UBlox UBX message expected length
-uint16_t ubloxMsgPayloadEnd = 0;
+uint16_t ubxMsgPayloadEnd = 0;
+#endif // GPS_UBLOX
+
+// ------------------------- Current data as it comes from GPS
+/// how many characters of NMEA/UBX data do we have in gpsLine
+uint16_t gpsLineLength = 0;
+/// Data received from GPS UART via IRQ, 82 is the max for NMEA
+uint8_t gpsLine[NMEA_MAX_SIZE];
+// ------------------------- Last line of data from GPS
 /// length of data to be handled in jswrap_banglejs_idle
-uint8_t ubloxMsgLength = 0;
-/// GPS data to be handled in jswrap_banglejs_idle
-char ubloxMsg[NMEA_MAX_SIZE];
+uint8_t gpsLastLineLength = 0;
+/// GPS data line to be handled in jswrap_banglejs_idle
+char gpsLastLine[NMEA_MAX_SIZE];
+
 /// GPS fix data converted from GPS
 NMEAFixInfo gpsFix;
 #endif
@@ -676,6 +727,8 @@ typedef struct {
 HealthState healthCurrent;
 /// Health info during the last period, used when firing a health event
 HealthState healthLast;
+/// Health data so far this day
+HealthState healthDaily;
 
 /// Promise when beep is finished
 JsVar *promiseBeep;
@@ -731,7 +784,7 @@ typedef enum {
   JSBT_GPS_DATA_PARTIAL = 1<<11, ///< we got some GPS data but it needs storing for later because it was too big to go in our buffer
   JSBT_GPS_DATA_OVERFLOW = 1<<12, ///< we got more GPS data than we could handle and had to drop some
 #endif
-#ifdef PRESSURE_I2C
+#ifdef PRESSURE_DEVICE
   JSBT_PRESSURE_DATA = 1<<13,
 #endif
   JSBT_MAG_DATA = 1<<14, ///< need to push magnetometer data to JS
@@ -755,6 +808,7 @@ typedef enum {
   JSBT_ACCEL_INTERVAL_POWERSAVE = 1<<27, ///< reschedule accelerometer poll handler to powersave speed
   JSBT_HRM_INSTANT_DATA = 1<<28, ///< Instant heart rate data
   JSBT_HEALTH = 1<<29, ///< New 'health' event
+  JSBT_MIDNIGHT = 1<<30, ///< Fired at midnight each day - for housekeeping tasks
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
@@ -803,38 +857,32 @@ void jswrap_banglejs_pwrBacklight(bool on) {
 #ifdef LCD_CONTROLLER_LPM013M126
   lcdMemLCD_extcominBacklight(on);
 #endif
+}
 
+
+
+void graphicsInternalFlip() {
+#ifdef LCD_CONTROLLER_LPM013M126
+  lcdMemLCD_flip(&graphicsInternal);
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
+  lcdST7789_flip(&graphicsInternal);
+#endif
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
+  lcdFlip_SPILCD(&graphicsInternal);
+#endif
 }
 
 /// Flip buffer contents with the screen.
 void lcd_flip(JsVar *parent, bool all) {
 #ifdef LCD_WIDTH
-  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
-  if (!graphics) return;
-  JsGraphics gfx;
-  if (!graphicsGetFromVar(&gfx, graphics)) {
-    jsvUnLock(graphics);
-    return;
-  }
-
   if (all) {
-    gfx.data.modMinX = 0;
-    gfx.data.modMinY = 0;
-    gfx.data.modMaxX = LCD_WIDTH-1;
-    gfx.data.modMaxY = LCD_HEIGHT-1;
+    graphicsInternal.data.modMinX = 0;
+    graphicsInternal.data.modMinY = 0;
+    graphicsInternal.data.modMaxX = LCD_WIDTH-1;
+    graphicsInternal.data.modMaxY = LCD_HEIGHT-1;
   }
-
-#ifdef LCD_CONTROLLER_LPM013M126
-  lcdMemLCD_flip(&gfx);
-#endif
-#ifdef LCD_CONTROLLER_ST7789_8BIT
-  lcdST7789_flip(&gfx);
-#endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
-  lcdFlip_SPILCD(&gfx);
-#endif
-  graphicsSetVar(&gfx);
-  jsvUnLock(graphics);
+  graphicsInternalFlip();
 #endif
 }
 
@@ -1045,6 +1093,10 @@ void peripheralPollHandler() {
         bangleTasks |= JSBT_LCD_ON;
         handled = true;
       }
+      if (!(bangleFlags&JSBF_LCD_BL_ON)) {
+        bangleTasks |= JSBT_LCD_BL_ON;
+        handled = true;
+      }
       if (bangleFlags&JSBF_LOCKED) {
         bangleTasks |= JSBT_UNLOCK;
         handled = true;
@@ -1135,7 +1187,7 @@ void peripheralPollHandler() {
         if (powerSaveTimer >= POWER_SAVE_TIMEOUT && // stationary for POWER_SAVE_TIMEOUT
             pollInterval == DEFAULT_ACCEL_POLL_INTERVAL && // we are in high power mode
             !(bangleFlags & JSBF_ACCEL_LISTENER) && // nothing was listening to accelerometer data
-#ifdef PRESSURE_I2C
+#ifdef PRESSURE_DEVICE
             !(bangleFlags & JSBF_BAROMETER_ON) && // barometer isn't on (streaming uses peripheralPollHandler)
 #endif
 #ifdef MAG_I2C
@@ -1176,6 +1228,7 @@ void peripheralPollHandler() {
       if (newSteps>0) {
         stepCounter += newSteps;
         healthCurrent.stepCount += newSteps;
+        healthDaily.stepCount += newSteps;
         bangleTasks |= JSBT_STEP_EVENT;
         jshHadEvent();
       }
@@ -1198,6 +1251,8 @@ void peripheralPollHandler() {
         inactivityTimer = 0;
         if (!(bangleFlags&JSBF_LCD_ON))
           bangleTasks |= JSBT_LCD_ON;
+        if (!(bangleFlags&JSBF_LCD_BL_ON))
+          bangleTasks |= JSBT_LCD_BL_ON;
         if (bangleFlags&JSBF_LOCKED)
           bangleTasks |= JSBT_UNLOCK;
       }
@@ -1233,7 +1288,7 @@ void peripheralPollHandler() {
   }
 
 #endif
-#ifdef PRESSURE_I2C
+#ifdef PRESSURE_DEVICE
   if (bangleFlags & JSBF_BAROMETER_ON) {
     if (jswrap_banglejs_barometerPoll()) {
       bangleTasks |= JSBT_PRESSURE_DATA;
@@ -1242,19 +1297,31 @@ void peripheralPollHandler() {
   }
 #endif
 
-  // Health tracking
+  // Health tracking + midnight event
   // Did we enter a new 10 minute interval?
-  uint8_t healthIndex = (uint8_t)(jshGetMillisecondsFromTime(time)/HEALTH_INTERVAL);
+  JsVarFloat msecs = jshGetMillisecondsFromTime(time);
+  uint8_t healthIndex = (uint8_t)(msecs/HEALTH_INTERVAL);
   if (healthIndex != healthCurrent.index) {
     // we did - fire 'Bangle.health' event
     healthLast = healthCurrent;
     healthStateClear(&healthCurrent);
     healthCurrent.index = healthIndex;
     bangleTasks |= JSBT_HEALTH;
+    jshHadEvent();
+    // What if we've changed day?
+    TimeInDay td = getTimeFromMilliSeconds(msecs, false/*forceGMT*/);
+    uint8_t dayIndex = (uint8_t)td.daysSinceEpoch;
+    if (dayIndex != healthDaily.index) {
+      bangleTasks |= JSBT_MIDNIGHT;
+      healthStateClear(&healthDaily);
+      healthDaily.index = dayIndex;
+    }
   }
   // Update latest health info
   healthCurrent.movement += accDiff;
   healthCurrent.movementSamples++;
+  healthDaily.movement += accDiff;
+  healthDaily.movementSamples++;
 
   // we're done, ensure we clear I2C flag
   i2cBusy = false;
@@ -1268,6 +1335,10 @@ static void hrmHandler(int ppgValue) {
     if (hrmInfo.confidence >= healthCurrent.bpmConfidence) {
       healthCurrent.bpmConfidence = hrmInfo.confidence;
       healthCurrent.bpm10 = hrmInfo.bpm10;
+    }
+    if (hrmInfo.confidence >= healthDaily.bpmConfidence) {
+      healthDaily.bpmConfidence = hrmInfo.confidence;
+      healthDaily.bpm10 = hrmInfo.bpm10;
     }
     jshHadEvent();
   }
@@ -1603,7 +1674,7 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
 #elif defined(ESPR_BACKLIGHT_FADE)
   if (!lcdFadeHandlerActive) {
     JsSysTime t = jshGetTimeFromMilliseconds(10);
-    jstExecuteFn(backlightFadeHandler, NULL, jshGetSystemTime()+t, t);
+    jstExecuteFn(backlightFadeHandler, NULL, t, t, NULL);
     lcdFadeHandlerActive = true;
     backlightFadeHandler();
   }
@@ -1658,7 +1729,7 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
   jswrap_banglejs_setLCDPowerController(isOn);
   jswrap_banglejs_setLCDPowerBacklight(isOn);
 #endif
-  if ((bangleFlags&JSBF_LCD_ON) != isOn) {
+  if (((bangleFlags&JSBF_LCD_ON)!=0) != isOn) {
     JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
     if (bangle) {
       JsVar *v = jsvNewFromBool(isOn);
@@ -1750,33 +1821,31 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
   if (!graphics) return;
   jswrap_graphics_setFont(graphics, NULL, 1); // reset fonts - this will free any memory associated with a custom font
-  JsGraphics gfx;
-  if (!graphicsGetFromVar(&gfx, graphics)) return;
   // remove the buffer if it was defined
-  jsvObjectSetOrRemoveChild(gfx.graphicsVar, "buffer", 0);
+  jsvObjectSetOrRemoveChild(graphics, "buffer", 0);
   unsigned int bufferSize = 0;
   switch (lcdMode) {
     case LCDST7789_MODE_NULL:
     case LCDST7789_MODE_UNBUFFERED:
-      gfx.data.width = LCD_WIDTH;
-      gfx.data.height = LCD_HEIGHT;
-      gfx.data.bpp = 16;
+      graphicsInternal.data.width = LCD_WIDTH;
+      graphicsInternal.data.height = LCD_HEIGHT;
+      graphicsInternal.data.bpp = 16;
       break;
     case LCDST7789_MODE_DOUBLEBUFFERED:
-      gfx.data.width = LCD_WIDTH;
-      gfx.data.height = 160;
-      gfx.data.bpp = 16;
+      graphicsInternal.data.width = LCD_WIDTH;
+      graphicsInternal.data.height = 160;
+      graphicsInternal.data.bpp = 16;
       break;
     case LCDST7789_MODE_BUFFER_120x120:
-      gfx.data.width = 120;
-      gfx.data.height = 120;
-      gfx.data.bpp = 8;
+      graphicsInternal.data.width = 120;
+      graphicsInternal.data.height = 120;
+      graphicsInternal.data.bpp = 8;
       bufferSize = 120*120;
       break;
     case LCDST7789_MODE_BUFFER_80x80:
-      gfx.data.width = 80;
-      gfx.data.height = 80;
-      gfx.data.bpp = 8;
+      graphicsInternal.data.width = 80;
+      graphicsInternal.data.height = 80;
+      graphicsInternal.data.bpp = 8;
       bufferSize = 80*80;
       break;
   }
@@ -1785,7 +1854,7 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
     jsvDefragment();
     JsVar *arrData = jsvNewFlatStringOfLength(bufferSize);
     if (arrData) {
-      jsvObjectSetChildAndUnLock(gfx.graphicsVar, "buffer", jsvNewArrayBufferFromString(arrData, (unsigned int)bufferSize));
+      jsvObjectSetChildAndUnLock(graphics, "buffer", jsvNewArrayBufferFromString(arrData, (unsigned int)bufferSize));
     } else {
       jsExceptionHere(JSET_ERROR, "Not enough memory to allocate offscreen buffer");
       jswrap_banglejs_setLCDMode(0); // go back to default mode
@@ -1793,10 +1862,10 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
     }
     jsvUnLock(arrData);
   }
-  graphicsStructResetState(&gfx); // reset colour, cliprect, etc
-  graphicsSetVar(&gfx);
+  graphicsStructResetState(&graphicsInternal); // reset colour, cliprect, etc
   jsvUnLock(graphics);
   lcdST7789_setMode( lcdMode );
+  graphicsSetCallbacks(&graphicsInternal); // set the callbacks up after the mode change
 #else
   jsExceptionHere(JSET_ERROR, "setLCDMode is unsupported on this device");
 #endif
@@ -2019,7 +2088,7 @@ void jswrap_banglejs_setOptions(JsVar *options) {
     "return" : ["JsVar","The current state of all options"],
     "ifdef" : "BANGLEJS"
 }
-Return the current state of options as set by `Bangle.getOptions`
+Return the current state of options as set by `Bangle.setOptions`
 */
 JsVar *jswrap_banglejs_getOptions() {
   return _jswrap_banglejs_setOptions(NULL, true);
@@ -2121,7 +2190,7 @@ JsVarInt jswrap_banglejs_getBattery() {
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
 #ifdef BANGLEJS_Q3
   const JsVarFloat vlo = 0.246;
-  const JsVarFloat vhi = 0.317;
+  const JsVarFloat vhi = 0.3144; // on some watches this is 100%, on others it's s a bit higher
 #elif defined(BANGLEJS_F18)
   const JsVarFloat vlo = 0.51;
   const JsVarFloat vhi = 0.62;
@@ -2231,10 +2300,13 @@ int jswrap_banglejs_isHRMOn() {
 }
 
 #ifdef GPS_PIN_RX
-void resetUbloxIn() {
-  ubloxInLength = 0;
-  ubloxMsgPayloadEnd = 0;
+/// Clear all data stored for the GPS input line
+void gpsClearLine() {
+  gpsLineLength = 0;
+#ifdef GPS_UBLOX
+  ubxMsgPayloadEnd = 0;
   inComingUbloxProtocol = UBLOX_PROTOCOL_NOT_DETECTED;
+#endif
 }
 #endif
 
@@ -2274,7 +2346,7 @@ bool jswrap_banglejs_setGPSPower(bool isOn, JsVar *appId) {
       inf.pinTX = GPS_PIN_TX;
       jshUSARTSetup(GPS_UART, &inf);
       jswrap_banglejs_pwrGPS(true); // turn on, set JSBF_GPS_ON
-      resetUbloxIn();
+      gpsClearLine();
       memset(&gpsFix,0,sizeof(gpsFix));
     }
   } else { // !isOn
@@ -2433,67 +2505,72 @@ void jswrap_banglejs_resetCompass() {
     "return" : ["bool","Is the Barometer on?"],
     "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)"
 }
-Set the power to the barometer IC
-
-
+Set the power to the barometer IC. Once enbled, `Bangle.pressure` events
+are fired each time a new barometer reading is available.
 
 When on, the barometer draws roughly 50uA
 */
 bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
-#ifdef PRESSURE_I2C
+#ifdef PRESSURE_DEVICE
   bool wasOn = bangleFlags & JSBF_BAROMETER_ON;
   isOn = setDeviceRequested("Barom", appId, isOn);
   if (isOn) bangleFlags |= JSBF_BAROMETER_ON;
   else bangleFlags &= ~JSBF_BAROMETER_ON;
   if (isOn) {
     if (!wasOn) {
-#ifdef PRESSURE_DEVICE_SPL06_007
-      jswrap_banglejs_barometerWr(SPL06_CFGREG, 0); // No FIFO or IRQ (should be default but has been nonzero when read!
-      jswrap_banglejs_barometerWr(SPL06_PRSCFG, 0x33); // pressure oversample by 8x, 8 measurement per second
-      jswrap_banglejs_barometerWr(SPL06_TMPCFG, 0xB3); // temperature oversample by 8x, 8 measurements per second, external sensor
-      jswrap_banglejs_barometerWr(SPL06_MEASCFG, 7); // continuous temperature and pressure measurement
-      // read calibration data
-      unsigned char buf[SPL06_COEF_NUM];
-      buf[0] = SPL06_COEF_START; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
-      jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, SPL06_COEF_NUM, buf, true);
-      barometer_c0 = twosComplement(((unsigned short)buf[0] << 4) | (((unsigned short)buf[1] >> 4) & 0x0F), 12);
-      barometer_c1 = twosComplement((((unsigned short)buf[1] & 0x0F) << 8) | buf[2], 12);
-      barometer_c00 = twosComplement(((unsigned int)buf[3] << 12) | ((unsigned int)buf[4] << 4) | (((unsigned int)buf[5] >> 4) & 0x0F), 20);
-      barometer_c10 = twosComplement((((unsigned int)buf[5] & 0x0F) << 16) | ((unsigned int)buf[6] << 8) | (unsigned int)buf[7], 20);
-      barometer_c01 = twosComplement(((unsigned short)buf[8] << 8) | (unsigned short)buf[9], 16);
-      barometer_c11 = twosComplement(((unsigned short)buf[10] << 8) | (unsigned short)buf[11], 16);
-      barometer_c20 = twosComplement(((unsigned short)buf[12] << 8) | (unsigned short)buf[13], 16);
-      barometer_c21 = twosComplement(((unsigned short)buf[14] << 8) | (unsigned short)buf[15], 16);
-      barometer_c30 = twosComplement(((unsigned short)buf[16] << 8) | (unsigned short)buf[17], 16);
-#endif
-#ifdef PRESSURE_DEVICE_BMP280
-      jswrap_banglejs_barometerWr(0xF4, 0x27); // ctrl_meas_reg - normal mode, no pressure/temp oversample
-      jswrap_banglejs_barometerWr(0xF5, 0xA0); // config_reg - 1s standby, no filter, I2C
-      // read calibration data
-      unsigned char buf[24];
-      buf[0] = 0x88; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
-      jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 24, buf, true);
-      int i;
-      barometerDT[0] = ((int)buf[1] << 8) | (int)buf[0];  //first coeff is unsigned
-      for (i=1;i<3;i++)
-        barometerDT[i] = twosComplement(((int)buf[(i*2)+1] << 8) | (int)buf[i*2], 16);
-      barometerDP[0] = ((int)buf[7] << 8) | (int)buf[6];  //first coeff is unsigned
-      for (i=1;i<9;i++)
-        barometerDP[i] = twosComplement(((int)buf[(i*2)+7] << 8) | (int)buf[(i*2)+6], 16);
-#endif
+#ifdef PRESSURE_DEVICE_SPL06_007_EN
+      if (PRESSURE_DEVICE_SPL06_007_EN) {
+        jswrap_banglejs_barometerWr(SPL06_CFGREG, 0); // No FIFO or IRQ (should be default but has been nonzero when read!
+        jswrap_banglejs_barometerWr(SPL06_PRSCFG, 0x33); // pressure oversample by 8x, 8 measurement per second
+        jswrap_banglejs_barometerWr(SPL06_TMPCFG, 0xB3); // temperature oversample by 8x, 8 measurements per second, external sensor
+        jswrap_banglejs_barometerWr(SPL06_MEASCFG, 7); // continuous temperature and pressure measurement
+        // read calibration data
+        unsigned char buf[SPL06_COEF_NUM];
+        buf[0] = SPL06_COEF_START; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
+        jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, SPL06_COEF_NUM, buf, true);
+        barometer_c0 = twosComplement(((unsigned short)buf[0] << 4) | (((unsigned short)buf[1] >> 4) & 0x0F), 12);
+        barometer_c1 = twosComplement((((unsigned short)buf[1] & 0x0F) << 8) | buf[2], 12);
+        barometer_c00 = twosComplement(((unsigned int)buf[3] << 12) | ((unsigned int)buf[4] << 4) | (((unsigned int)buf[5] >> 4) & 0x0F), 20);
+        barometer_c10 = twosComplement((((unsigned int)buf[5] & 0x0F) << 16) | ((unsigned int)buf[6] << 8) | (unsigned int)buf[7], 20);
+        barometer_c01 = twosComplement(((unsigned short)buf[8] << 8) | (unsigned short)buf[9], 16);
+        barometer_c11 = twosComplement(((unsigned short)buf[10] << 8) | (unsigned short)buf[11], 16);
+        barometer_c20 = twosComplement(((unsigned short)buf[12] << 8) | (unsigned short)buf[13], 16);
+        barometer_c21 = twosComplement(((unsigned short)buf[14] << 8) | (unsigned short)buf[15], 16);
+        barometer_c30 = twosComplement(((unsigned short)buf[16] << 8) | (unsigned short)buf[17], 16);
+      }
+#endif // PRESSURE_DEVICE_SPL06_007_EN
+#ifdef PRESSURE_DEVICE_BMP280_EN
+      if (PRESSURE_DEVICE_BMP280_EN) {
+        jswrap_banglejs_barometerWr(0xF4, 0x27); // ctrl_meas_reg - normal mode, no pressure/temp oversample
+        jswrap_banglejs_barometerWr(0xF5, 0xA0); // config_reg - 1s standby, no filter, I2C
+        // read calibration data
+        unsigned char buf[24];
+        buf[0] = 0x88; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
+        jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 24, buf, true);
+        int i;
+        barometerDT[0] = ((int)buf[1] << 8) | (int)buf[0];  //first coeff is unsigned
+        for (i=1;i<3;i++)
+          barometerDT[i] = twosComplement(((int)buf[(i*2)+1] << 8) | (int)buf[i*2], 16);
+        barometerDP[0] = ((int)buf[7] << 8) | (int)buf[6];  //first coeff is unsigned
+        for (i=1;i<9;i++)
+          barometerDP[i] = twosComplement(((int)buf[(i*2)+7] << 8) | (int)buf[(i*2)+6], 16);
+      }
+#endif // PRESSURE_DEVICE_BMP280_EN
     } // wasOn
   } else { // !isOn -> turn off
-#ifdef PRESSURE_DEVICE_SPL06_007
-    jswrap_banglejs_barometerWr(SPL06_MEASCFG, 0); // Barometer off
+#ifdef PRESSURE_DEVICE_SPL06_007_EN
+    if (PRESSURE_DEVICE_SPL06_007_EN)
+      jswrap_banglejs_barometerWr(SPL06_MEASCFG, 0); // Barometer off
 #endif
-#ifdef PRESSURE_DEVICE_BMP280
-    jswrap_banglejs_barometerWr(0xF4, 0); // Barometer off
+#ifdef PRESSURE_DEVICE_BMP280_EN
+    if (PRESSURE_DEVICE_BMP280_EN)
+      jswrap_banglejs_barometerWr(0xF4, 0); // Barometer off
 #endif
   }
   return isOn;
-#else
+#else // PRESSURE_DEVICE
   return false;
-#endif
+#endif // PRESSURE_DEVICE
 }
 
 
@@ -2625,9 +2702,21 @@ JsVar *jswrap_banglejs_getAccel() {
     "class" : "Bangle",
     "name" : "getHealthStatus",
     "generate" : "jswrap_banglejs_getHealthStatus",
-    "return" : ["JsVar","Returns an object containing various health info - see below"],
+    "return" : ["JsVar","Returns an object containing various health info"],
+    "params" : [
+      ["range","JsVar","What time period to return data for, see below:"]
+    ],
     "ifdef" : "BANGLEJS"
 }
+
+`range` is one of:
+
+* `undefined` or `'current'` - health data so far in the last 10 minutes is returned,
+* `'last'` - health data during the last 10 minutes
+* `'day'` - the health data so far for the day
+
+
+`getHealthStatus` returns an object containing:
 
 * `movement` is the 32 bit sum of all `acc.diff` readings since power on (and rolls over). It is the difference in accelerometer values as `g*8192`
 * `steps` is the number of steps during this period
@@ -2648,8 +2737,15 @@ static JsVar *_jswrap_banglejs_getHealthStatusObject(HealthState *health) {
   }
   return o;
 }
-JsVar *jswrap_banglejs_getHealthStatus() {
-  return _jswrap_banglejs_getHealthStatusObject(&healthCurrent);
+JsVar *jswrap_banglejs_getHealthStatus(JsVar *range) {
+  if (jsvIsUndefined(range) || jsvIsStringEqual(range,"10min"))
+    return _jswrap_banglejs_getHealthStatusObject(&healthCurrent);
+  if (jsvIsStringEqual(range,"last"))
+      return _jswrap_banglejs_getHealthStatusObject(&healthLast);
+  if (jsvIsStringEqual(range,"day"))
+    return _jswrap_banglejs_getHealthStatusObject(&healthDaily);
+  jsExceptionHere(JSET_ERROR, "Unknown range name %q", range);
+  return 0;
 }
 
 /* After init is called (a second time, NOT first time), we execute any JS that is due to be executed,
@@ -2660,7 +2756,7 @@ void jswrap_banglejs_postInit() {
     jswrap_banglejs_setHRMPower(false, SETDEVICEPOWER_FORCE);
   }
 #endif
-#ifdef PRESSURE_I2C
+#ifdef PRESSURE_DEVICE
   //jsiConsolePrintf("Barometer %d %d\n",bangleFlags & JSBF_BAROMETER_ON, getDeviceRequested("Barom"));
   if ((bangleFlags & JSBF_BAROMETER_ON) && !getDeviceRequested("Barom")) {
     jswrap_banglejs_setBarometerPower(false, SETDEVICEPOWER_FORCE);
@@ -2680,6 +2776,160 @@ void jswrap_banglejs_postInit() {
 #endif
 }
 
+NO_INLINE void jswrap_banglejs_setTheme() {
+#if LCD_BPP==16
+  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.fg2 = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(0,0,63);
+  graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,95,190);
+  graphicsTheme.dark = true;
+#else // still 16 bit, we just want it inverted
+  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(255,255,255);
+  graphicsTheme.fg2 = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(191,255,255);
+  graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(0,0,0);
+  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,255,255);
+  graphicsTheme.dark = false;
+#endif
+}
+
+/*JSON{
+  "type" : "hwinit",
+  "generate" : "jswrap_banglejs_hwinit"
+}*/
+NO_INLINE void jswrap_banglejs_hwinit() {
+  // Hardware init that we only do the very first time we start
+#ifdef BANGLEJS_F18
+  jshPinOutput(18,0); // what's this?
+#endif
+#ifdef ID205
+  jshPinOutput(3,1); // general VDD power?
+  jshPinOutput(46,0); // What's this? Who knows! But it stops screen flicker and makes the touchscreen work nicely
+  jshPinOutput(LCD_BL,1); // Backlight
+#endif
+#ifndef EMULATED
+#ifdef NRF52832
+  jswrap_ble_setTxPower(4);
+#endif
+
+  // Set up I2C
+  i2cBusy = true;
+#ifdef BANGLEJS_Q3
+  jshI2CInitInfo(&i2cAccel);
+  i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cAccel.pinSDA = ACCEL_PIN_SDA;
+  i2cAccel.pinSCL = ACCEL_PIN_SCL;
+  jsi2cSetup(&i2cAccel);
+
+  jshI2CInitInfo(&i2cMag);
+  i2cMag.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cMag.pinSDA = MAG_PIN_SDA;
+  i2cMag.pinSCL = MAG_PIN_SCL;
+  jsi2cSetup(&i2cMag);
+
+  jshI2CInitInfo(&i2cTouch);
+  i2cTouch.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cTouch.pinSDA = TOUCH_PIN_SDA;
+  i2cTouch.pinSCL = TOUCH_PIN_SCL;
+  jsi2cSetup(&i2cTouch);
+
+  jshI2CInitInfo(&i2cPressure);
+  i2cPressure.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cPressure.pinSDA = PRESSURE_PIN_SDA;
+  i2cPressure.pinSCL = PRESSURE_PIN_SCL;
+  jsi2cSetup(&i2cPressure);
+
+  jshI2CInitInfo(&i2cHRM);
+  i2cHRM.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cHRM.pinSDA = HEARTRATE_PIN_SDA;
+  i2cHRM.pinSCL = HEARTRATE_PIN_SCL;
+  //jsi2cSetup(&i2cHRM); // we configure when needed in jswrap_banglejs_pwrHRM so we don't parasitically power
+
+#elif defined(ACCEL_PIN_SDA) // assume all the rest just use a global I2C
+  jshI2CInitInfo(&i2cInternal);
+  i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cInternal.pinSDA = ACCEL_PIN_SDA;
+  i2cInternal.pinSCL = ACCEL_PIN_SCL;
+  i2cInternal.clockStretch = false;
+  jsi2cSetup(&i2cInternal);
+#endif
+#ifdef BANGLEJS_Q3
+  // Touch init
+  jshPinOutput(TOUCH_PIN_RST, 0);
+  jshDelayMicroseconds(1000);
+  jshPinOutput(TOUCH_PIN_RST, 1);
+
+  // Check pressure sensor
+  unsigned char buf[2];
+  // Check BMP280 ID
+  buf[0] = 0xD0; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // ID
+  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  pressureBMP280Enabled = buf[0]==0x58;
+//    jsiConsolePrintf("BMP280 %d %d\n", buf[0], pressureBMP280Enabled);
+  // Check SPL07_001 ID
+  buf[0] = 0x0D; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // ID
+  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+  pressureSPL06Enabled = buf[0]==0x10;
+//    jsiConsolePrintf("SPL06 %d %d\n", buf[0], pressureSPL06Enabled);
+#endif
+#ifdef BANGLEJS_F18
+  jshDelayMicroseconds(10000);
+  // LCD pin init
+  jshPinOutput(LCD_PIN_CS, 1);
+  jshPinOutput(LCD_PIN_DC, 1);
+  jshPinOutput(LCD_PIN_SCK, 1);
+  for (int i=0;i<8;i++) jshPinOutput(i, 0);
+  // IO expander reset
+  jshPinOutput(28,0);
+  jshDelayMicroseconds(10000);
+  jshPinOutput(28,1);
+  jshDelayMicroseconds(50000);
+  jswrap_banglejs_ioWr(0,0);
+  jswrap_banglejs_pwrHRM(false); // HRM off
+  jswrap_banglejs_pwrGPS(false); // GPS off
+  jswrap_banglejs_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
+  jshDelayMicroseconds(100000);
+  jswrap_banglejs_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
+  jswrap_banglejs_pwrBacklight(true); // backlight on
+  jshDelayMicroseconds(10000);
+#endif
+#endif
+  // we need ESPR_GRAPHICS_INTERNAL=1
+  graphicsStructInit(&graphicsInternal, LCD_WIDTH, LCD_HEIGHT, LCD_BPP);
+#ifdef LCD_CONTROLLER_LPM013M126
+  graphicsInternal.data.type = JSGRAPHICSTYPE_MEMLCD;
+  graphicsInternal.data.bpp = 16; // hack - so we can dither we pretend we're 16 bit
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
+  graphicsInternal.data.type = JSGRAPHICSTYPE_ST7789_8BIT;
+#endif
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
+  graphicsInternal.data.type = JSGRAPHICSTYPE_SPILCD;
+#endif
+  graphicsInternal.data.flags = 0;
+#ifdef DTNO1_F5
+  graphicsInternal.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
+#endif
+  graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1; // 4x6 size is default
+#ifdef LCD_CONTROLLER_LPM013M126
+  lcdMemLCD_init(&graphicsInternal);
+  jswrap_banglejs_pwrBacklight(true);
+#endif
+#ifdef LCD_CONTROLLER_ST7789_8BIT
+  lcdST7789_init(&graphicsInternal);
+#endif
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
+  lcdInit_SPILCD(&graphicsInternal);
+#endif
+  graphicsSetCallbacks(&graphicsInternal);
+  // set default graphics themes - before we even start to load settings.json
+  jswrap_banglejs_setTheme();
+  graphicsFillRect(&graphicsInternal, 0,0,LCD_WIDTH-1,LCD_HEIGHT-1,graphicsTheme.bg);
+}
+
 /*JSON{
   "type" : "init",
   "generate" : "jswrap_banglejs_init"
@@ -2687,97 +2937,13 @@ void jswrap_banglejs_postInit() {
 NO_INLINE void jswrap_banglejs_init() {
   IOEventFlags channel;
   bool firstRun = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrap_banglejs_init was called?
-  // Hardware init that we only do the very first time we start
-  if (firstRun) {
-#ifdef BANGLEJS_F18
-    jshPinOutput(18,0); // what's this?
-#endif
-#ifdef ID205
-    jshPinOutput(3,1); // general VDD power?
-    jshPinOutput(46,0); // What's this? Who knows! But it stops screen flicker and makes the touchscreen work nicely
-    jshPinOutput(LCD_BL,1); // Backlight
-#endif
-#ifndef EMULATED
-#ifdef NRF52832
-    jswrap_ble_setTxPower(4);
-#endif
-
-    // Set up I2C
-    i2cBusy = true;
-#ifdef BANGLEJS_Q3
-    jshI2CInitInfo(&i2cAccel);
-    i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cAccel.pinSDA = ACCEL_PIN_SDA;
-    i2cAccel.pinSCL = ACCEL_PIN_SCL;
-    jsi2cSetup(&i2cAccel);
-
-    jshI2CInitInfo(&i2cMag);
-    i2cMag.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cMag.pinSDA = MAG_PIN_SDA;
-    i2cMag.pinSCL = MAG_PIN_SCL;
-    jsi2cSetup(&i2cMag);
-
-    jshI2CInitInfo(&i2cTouch);
-    i2cTouch.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cTouch.pinSDA = TOUCH_PIN_SDA;
-    i2cTouch.pinSCL = TOUCH_PIN_SCL;
-    jsi2cSetup(&i2cTouch);
-
-    jshI2CInitInfo(&i2cPressure);
-    i2cPressure.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cPressure.pinSDA = PRESSURE_PIN_SDA;
-    i2cPressure.pinSCL = PRESSURE_PIN_SCL;
-    jsi2cSetup(&i2cPressure);
-
-    jshI2CInitInfo(&i2cHRM);
-    i2cHRM.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cHRM.pinSDA = HEARTRATE_PIN_SDA;
-    i2cHRM.pinSCL = HEARTRATE_PIN_SCL;
-    //jsi2cSetup(&i2cHRM); // we configure when needed in jswrap_banglejs_pwrHRM
-
-#elif defined(ACCEL_PIN_SDA) // assume all the rest just use a global I2C
-    jshI2CInitInfo(&i2cInternal);
-    i2cInternal.bitrate = 0x7FFFFFFF; // make it as fast as we can go
-    i2cInternal.pinSDA = ACCEL_PIN_SDA;
-    i2cInternal.pinSCL = ACCEL_PIN_SCL;
-    i2cInternal.clockStretch = false;
-    jsi2cSetup(&i2cInternal);
-#endif
-#ifdef BANGLEJS_Q3
-    // Touch init
-    jshPinOutput(TOUCH_PIN_RST, 0);
-    jshDelayMicroseconds(1000);
-    jshPinOutput(TOUCH_PIN_RST, 1);
-#endif
-#ifdef BANGLEJS_F18
-    // LCD pin init
-    jshPinOutput(LCD_PIN_CS, 1);
-    jshPinOutput(LCD_PIN_DC, 1);
-    jshPinOutput(LCD_PIN_SCK, 1);
-    for (int i=0;i<8;i++) jshPinOutput(i, 0);
-    // IO expander reset
-    jshPinOutput(28,0);
-    jshDelayMicroseconds(10000);
-    jshPinOutput(28,1);
-    jshDelayMicroseconds(50000);
-    jswrap_banglejs_ioWr(0,0);
-    jswrap_banglejs_pwrHRM(false); // HRM off
-    jswrap_banglejs_pwrGPS(false); // GPS off
-    jswrap_banglejs_ioWr(IOEXP_LCD_RESET,0); // LCD reset on
-    jshDelayMicroseconds(100000);
-    jswrap_banglejs_ioWr(IOEXP_LCD_RESET,1); // LCD reset off
-    jswrap_banglejs_pwrBacklight(true); // backlight on
-    jshDelayMicroseconds(10000);
-#endif
-#endif
-  }
 
 #ifndef EMULATED
   // turn vibrate off every time Bangle is reset
   jshPinOutput(VIBRATE_PIN,0);
 #endif
 
-#ifdef BANGLEJS_Q3
+  #ifdef BANGLEJS_Q3
 #ifndef EMULATED
   jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
   channel = jshPinWatch(TOUCH_PIN_IRQ, true);
@@ -2792,6 +2958,7 @@ NO_INLINE void jswrap_banglejs_init() {
     accDiff = 0;
     healthStateClear(&healthCurrent);
     healthStateClear(&healthLast);
+    healthStateClear(&healthDaily);
   } 
   bangleFlags |= JSBF_POWER_SAVE; // ensure we turn power-save on by default every restart
   inactivityTimer = 0; // reset the LCD timeout timer
@@ -2839,24 +3006,8 @@ NO_INLINE void jswrap_banglejs_init() {
   }
   jsvUnLock(v);
 
-#if LCD_BPP==16
-  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(255,255,255);
-  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(0,0,0);
-  graphicsTheme.fg2 = GRAPHICS_COL_RGB_TO_16(255,255,255);
-  graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(0,0,63);
-  graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(255,255,255);
-  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,95,190);
-  graphicsTheme.dark = true;
-#else // still 16 bit, we just want it inverted
-  graphicsTheme.fg = GRAPHICS_COL_RGB_TO_16(0,0,0);
-  graphicsTheme.bg = GRAPHICS_COL_RGB_TO_16(255,255,255);
-  graphicsTheme.fg2 = GRAPHICS_COL_RGB_TO_16(0,0,0);
-  graphicsTheme.bg2 = GRAPHICS_COL_RGB_TO_16(191,255,255);
-  graphicsTheme.fgH = GRAPHICS_COL_RGB_TO_16(0,0,0);
-  graphicsTheme.bgH = GRAPHICS_COL_RGB_TO_16(0,255,255);
-  graphicsTheme.dark = false;
-#endif
-  //
+  // Load themes from the settings.json file
+  jswrap_banglejs_setTheme();
   v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"theme",0) : 0;
   if (jsvIsObject(v)) {
     graphicsTheme.fg = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fg",0));
@@ -2869,55 +3020,28 @@ NO_INLINE void jswrap_banglejs_init() {
   }
   jsvUnLock2(v,settings);
 
-
-
 #ifdef LCD_WIDTH
-  // Create backing graphics for LCD
+  // Just reset any graphics settings that may need updating
+  jswrap_banglejs_setLCDOffset(0);
+#ifdef LCD_CONTROLLER_ST7789_8BIT
+  graphicsInternal.data.width = LCD_WIDTH;
+  graphicsInternal.data.height = LCD_HEIGHT;
+  graphicsInternal.data.bpp = 16;
+#endif
+  // Reset global graphics instance
+  graphicsStructResetState(&graphicsInternal);
+
+  // Create backing graphics object for LCD
   JsVar *graphics = jspNewObject(0, "Graphics");
+  // if there's nothing in the Graphics object, we assume it's for the built-in graphics
   if (!graphics) return; // low memory
-  JsGraphics gfx;
-  graphicsStructInit(&gfx, LCD_WIDTH, LCD_HEIGHT, LCD_BPP);
-#ifdef LCD_CONTROLLER_LPM013M126
-  gfx.data.type = JSGRAPHICSTYPE_MEMLCD;
-  gfx.data.bpp = 16; // hack - so we can dither we pretend we're 16 bit
-#endif
-#ifdef LCD_CONTROLLER_ST7789_8BIT
-  gfx.data.type = JSGRAPHICSTYPE_ST7789_8BIT;
-#endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
-  gfx.data.type = JSGRAPHICSTYPE_SPILCD;
-#endif
-  gfx.data.flags = 0;
-#ifdef DTNO1_F5
-  gfx.data.flags = JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
-#endif
-
-  gfx.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1; // 2x size is default
-  gfx.graphicsVar = graphics;
-
-  if (firstRun) {
-#ifdef LCD_CONTROLLER_LPM013M126
-    lcdMemLCD_init(&gfx);
-    jswrap_banglejs_pwrBacklight(true);
-#endif
-#ifdef LCD_CONTROLLER_ST7789_8BIT
-    lcdST7789_init(&gfx);
-#endif
-#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
-    lcdInit_SPILCD(&gfx);
-#endif
-  } else {
-    // Just reset any graphics settings that may need updating
-    jswrap_banglejs_setLCDOffset(0);
-  }
-  graphicsSetVar(&gfx);
+  // add it as a global var
   jsvObjectSetChild(execInfo.root, "g", graphics);
   jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, graphics);
-  graphicsGetFromVar(&gfx, graphics);
+  graphicsInternal.graphicsVar = graphics;
 
   // Create 'flip' fn
-  JsVar *fn;
-  fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
+  JsVar *fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
   jsvObjectSetChildAndUnLock(graphics,"flip",fn);
 
   if (!firstRun) {
@@ -2926,7 +3050,7 @@ NO_INLINE void jswrap_banglejs_init() {
     if (lcdST7789_getMode()!=LCDST7789_MODE_UNBUFFERED) {
       lcdST7789_setMode( LCDST7789_MODE_UNBUFFERED );
       // screen will now be garbled - clear it
-      graphicsClear(&gfx);
+      graphicsClear(&graphicsInternal);
     }
 #endif
   }
@@ -2942,23 +3066,18 @@ NO_INLINE void jswrap_banglejs_init() {
       // Display a loading screen
       int x = LCD_WIDTH/2;
       int y = LCD_HEIGHT/2;
-      graphicsFillRect(&gfx, x-49, y-19, x+49, y+19, graphicsTheme.bg);
-      gfx.data.fgColor = graphicsTheme.fg;
-      graphicsDrawRect(&gfx, x-50, y-20, x+50, y+20);
+      graphicsFillRect(&graphicsInternal, x-49, y-19, x+49, y+19, graphicsTheme.bg);
+      graphicsInternal.data.fgColor = graphicsTheme.fg;
+      graphicsDrawRect(&graphicsInternal, x-50, y-20, x+50, y+20);
       y -= 4;
       x -= 4*6;
       const char *s = "Loading...";
       while (*s) {
-        graphicsDrawChar6x8(&gfx, x, y, *s, 1, 1, false);
+        graphicsDrawChar6x8(&graphicsInternal, x, y, *s, 1, 1, false);
         x+=6;
         s++;
       }
-  #ifdef BANGLEJS_Q3
-      lcdMemLCD_flip(&gfx);
-  #endif
-  #if defined(LCD_CONTROLLER_GC9A01)
-      lcdFlip_SPILCD(&gfx);
-  #endif
+      graphicsInternalFlip();
     }
 #endif
   }
@@ -2969,7 +3088,8 @@ NO_INLINE void jswrap_banglejs_init() {
     showSplashScreen = false;
 #endif
   if (showSplashScreen) {
-    graphicsClear(&gfx);
+    graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1; // 4x6 size is default
+    graphicsClear(&graphicsInternal);
     bool drawInfo = false;
     JsVar *img = jsfReadFile(jsfNameFromString(".splash"),0,0);
     int w,h;
@@ -2980,7 +3100,6 @@ NO_INLINE void jswrap_banglejs_init() {
     }
     w = (int)(unsigned char)jsvGetCharInString(img, 0);
     h = (int)(unsigned char)jsvGetCharInString(img, 1);
-    graphicsSetVar(&gfx);
     int y=(LCD_HEIGHT-h)/2;
     jsvUnLock2(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,NULL),img);
     if (drawInfo) {
@@ -2994,21 +3113,14 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
       jsvGetString(addr, addrStr, sizeof(addrStr));
       jsvUnLock(addr);
-      jswrap_graphics_drawCString(&gfx,8,y,JS_VERSION);
-      jswrap_graphics_drawCString(&gfx,8,y+10,addrStr);
-      jswrap_graphics_drawCString(&gfx,8,y+20,"Copyright 2021 G.Williams");
+      jswrap_graphics_drawCString(&graphicsInternal,8,y,JS_VERSION);
+      jswrap_graphics_drawCString(&graphicsInternal,8,y+10,addrStr);
+      jswrap_graphics_drawCString(&graphicsInternal,8,y+20,"Copyright 2021 G.Williams");
     }
   }
-#ifdef BANGLEJS_Q3
-    lcdMemLCD_flip(&gfx);
-#endif
-#if defined(LCD_CONTROLLER_GC9A01)
-    lcdFlip_SPILCD(&gfx);
-#endif
-  graphicsStructResetState(&gfx);
-  graphicsSetVar(&gfx);
-
-  jsvUnLock(graphics);
+  graphicsInternalFlip();
+  graphicsStructResetState(&graphicsInternal);
+  // no need to unlock graphics as we stored it in 'graphicsVar'
 #endif
 
   if (firstRun) {
@@ -3072,23 +3184,29 @@ NO_INLINE void jswrap_banglejs_init() {
     jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G|KX126_CNTL1_PC1); // CNTL1 - same as above but change from standby to operating mode
 #endif
 
-#ifdef PRESSURE_I2C
-#ifdef PRESSURE_DEVICE_HP203
-    // pressure init
-    buf[0]=0x06;
-    jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
+#ifdef PRESSURE_DEVICE
+#ifdef PRESSURE_DEVICE_HP203_EN
+    if (PRESSURE_DEVICE_HP203_EN) {
+      // pressure init
+      buf[0]=0x06;
+      jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
+    }
 #endif
-#ifdef PRESSURE_DEVICE_SPL06_007
-    // pressure init
-    buf[0]=SPL06_RESET; buf[1]=0x89;
-    jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
+#ifdef PRESSURE_DEVICE_SPL06_007_EN
+    if (PRESSURE_DEVICE_SPL06_007_EN) {
+      // pressure init
+      buf[0]=SPL06_RESET; buf[1]=0x89;
+      jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // SOFT_RST
+    }
 #endif
-#ifdef PRESSURE_DEVICE_BMP280
-    buf[0]=0xE0; buf[1]=0xB6;
-    jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // reset
+#ifdef PRESSURE_DEVICE_BMP280_EN
+    if (PRESSURE_DEVICE_BMP280_EN) {
+      buf[0]=0xE0; buf[1]=0xB6;
+      jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true); // reset
+    }
 #endif
     bangleFlags &= ~JSBF_BAROMETER_ON;
-#endif
+#endif // PRESSURE_DEVICE
 
     // Accelerometer variables init
     stepcount_init();
@@ -3224,7 +3342,7 @@ void jswrap_banglejs_kill() {
   promiseBuzz = 0;
   if (beepFreq) jswrap_banglejs_beep_callback();
   if (buzzAmt) jswrap_banglejs_buzz_callback();
-#ifdef PRESSURE_I2C
+#ifdef PRESSURE_DEVICE
   jsvUnLock(promisePressure);
   promisePressure = 0;
 #endif
@@ -3247,6 +3365,9 @@ void jswrap_banglejs_kill() {
   jshPinWatch(BTN5_PININDEX, false);
   jshSetPinShouldStayWatched(BTN5_PININDEX,false);
 #endif
+  // Graphics var is getting removed, so set this to null.
+  jsvUnLock(graphicsInternal.graphicsVar);
+  graphicsInternal.graphicsVar = NULL;
 }
 
 /*JSON{
@@ -3316,7 +3437,7 @@ bool jswrap_banglejs_idle() {
         jsvUnLock(o);
       }
     }
-  #ifdef PRESSURE_I2C
+  #ifdef PRESSURE_DEVICE
   if (bangleTasks & JSBT_PRESSURE_DATA) {
     JsVar *o = jswrap_banglejs_getBarometerObject();
     if (o) {
@@ -3340,25 +3461,27 @@ bool jswrap_banglejs_idle() {
           data = jsvNewFromEmptyString();
           jsvObjectSetChild(bangle,"_gpsdata",data);
         }
-        jsvAppendStringBuf(data, ubloxMsg, ubloxMsgLength);
+        jsvAppendStringBuf(data, gpsLastLine, gpsLastLineLength);
         jsvUnLock(data);
       }
     }
     if (bangleTasks & JSBT_GPS_DATA_LINE) {
       if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw")) {
-        // if GPS data had overflowed, report it
-        if (bangleTasks & JSBT_GPS_DATA_OVERFLOW) {
-          jsErrorFlags |= JSERR_RX_FIFO_FULL;
-        }
+
         // Get any data previously added with JSBT_GPS_DATA_PARTIAL
         JsVar *line = jsvObjectGetChild(bangle,"_gpsdata",0);
         if (line) {
           jsvObjectRemoveChild(bangle,"_gpsdata");
-          jsvAppendStringBuf(line, ubloxMsg, ubloxMsgLength);
-        } else line = jsvNewStringOfLength(ubloxMsgLength, ubloxMsg);
+          jsvAppendStringBuf(line, gpsLastLine, gpsLastLineLength);
+        } else line = jsvNewStringOfLength(gpsLastLineLength, gpsLastLine);
         // if we have any data, queue it
-        if (line)
-          jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw", &line, 1);
+        if (line) {
+          // if GPS data has overflowed, second arg is true
+          JsVar *dataLoss = jsvNewFromBool(bangleTasks & JSBT_GPS_DATA_OVERFLOW);
+          JsVar *args[2] = { line, dataLoss };
+          jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw", args, 2);
+          jsvUnLock(dataLoss);
+        }
         jsvUnLock(line);
       } else {
         jsvObjectRemoveChild(bangle,"_gpsdata");
@@ -3380,7 +3503,7 @@ bool jswrap_banglejs_idle() {
       if (o) {
         jsvObjectSetChildAndUnLock(o,"raw",jsvNewFromInteger(hrmInfo.raw));
         jsvObjectSetChildAndUnLock(o,"filt",jsvNewFromInteger(hrmInfo.filtered));
-        jsvObjectSetChildAndUnLock(o,"thresh",jsvNewFromInteger(hrmInfo.thresh >> HRM_THRESH_SHIFT));
+        jsvObjectSetChildAndUnLock(o,"avg",jsvNewFromInteger(hrmInfo.avg));
         jsvObjectSetChildAndUnLock(o,"isBeat",jsvNewFromBool(hrmInfo.isBeat));
         jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(hrmInfo.bpm10 / 10.0));
         jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
@@ -3414,6 +3537,9 @@ bool jswrap_banglejs_idle() {
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"health", &o, 1);
         jsvUnLock(o);
       }
+    }
+    if (bangleTasks & JSBT_MIDNIGHT) {
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"midnight", NULL, 0);
     }
     if (bangleTasks & JSBT_GESTURE_DATA) {
       if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"gesture")) {
@@ -3538,8 +3664,14 @@ bool jswrap_banglejs_idle() {
                             ((bangleTasks & JSBT_TOUCH_RIGHT)?2:0)),
           jsvNewObject()
       };
-      jsvObjectSetChildAndUnLock(o[1], "x", jsvNewFromInteger(lastTouchX));
-      jsvObjectSetChildAndUnLock(o[1], "y", jsvNewFromInteger(lastTouchY));
+      int x = lastTouchX;
+      int y = lastTouchY;
+      if (x<0) x=0;
+      if (y<0) y=0;
+      if (x>=LCD_WIDTH) x=LCD_WIDTH-1;
+      if (y>=LCD_HEIGHT) y=LCD_HEIGHT-1;
+      jsvObjectSetChildAndUnLock(o[1], "x", jsvNewFromInteger(x));
+      jsvObjectSetChildAndUnLock(o[1], "y", jsvNewFromInteger(y));
       jsvObjectSetChildAndUnLock(o[1], "type", jsvNewFromInteger(touchType));
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"touch", o, 2);
       jsvUnLockMany(2,o);
@@ -3579,19 +3711,9 @@ bool jswrap_banglejs_idle() {
   bangleTasks = JSBT_NONE;
 #if defined(LCD_CONTROLLER_LPM013M126) || defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
   // Automatically flip!
-  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
-  JsGraphics gfx;
-  if (graphicsGetFromVar(&gfx, graphics)) {
-    if (gfx.data.modMaxX >= gfx.data.modMinX) {
-#ifdef LCD_CONTROLLER_LPM013M126
-      lcdMemLCD_flip(&gfx);
-#else
-      lcdFlip_SPILCD(&gfx);
-#endif
-      graphicsSetVar(&gfx);
-    }
+  if (graphicsInternal.data.modMaxX >= graphicsInternal.data.modMinX) {
+    graphicsInternalFlip();
   }
-  jsvUnLock(graphics);
 #endif
 #ifdef ESPR_BACKLIGHT_FADE
   if (lcdFadeHandlerActive && realLcdBrightness == ((bangleFlags&JSBF_LCD_ON)?lcdBrightness:0)) {
@@ -3624,33 +3746,41 @@ bool jswrap_banglejs_gps_character(char ch) {
 #ifdef GPS_PIN_RX
   // if too many chars, roll over since it's probably because we skipped a newline
   // or messed the message length
-  if (ubloxInLength >= sizeof(ubloxIn)) {
+  if (gpsLineLength >= sizeof(gpsLine)) {
+#ifdef GPS_UBLOX
     if (inComingUbloxProtocol == UBLOX_PROTOCOL_UBX &&
-        ubloxMsgPayloadEnd > ubloxInLength) {
+        ubxMsgPayloadEnd > gpsLineLength) {
       if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
         // we were already waiting to post data, so lets not overwrite it
         bangleTasks |= JSBT_GPS_DATA_OVERFLOW;
       } else {
-        memcpy(ubloxMsg, ubloxIn, ubloxInLength);
-        ubloxMsgLength = ubloxInLength;
+        memcpy(gpsLastLine, gpsLine, gpsLineLength);
+        gpsLastLineLength = gpsLineLength;
         bangleTasks |= JSBT_GPS_DATA_PARTIAL;
       }
-      ubloxMsgPayloadEnd -= ubloxInLength;
-      ubloxInLength = 0;
+      ubxMsgPayloadEnd -= gpsLineLength;
+      gpsLineLength = 0;
     } else
-      resetUbloxIn();
+#endif // GPS_UBLOX
+      gpsClearLine();
   }
+#ifdef GPS_UBLOX
   if (inComingUbloxProtocol == UBLOX_PROTOCOL_NOT_DETECTED) {
-    ubloxInLength = 0;
+    gpsLineLength = 0;
     if (ch == '$') {
       inComingUbloxProtocol = UBLOX_PROTOCOL_NMEA;
     } else if (ch == 0xB5) {
       inComingUbloxProtocol = UBLOX_PROTOCOL_UBX;
-      ubloxMsgPayloadEnd = 0;
+      ubxMsgPayloadEnd = 0;
     }
   }
-  ubloxIn[ubloxInLength++] = ch;
-  if (inComingUbloxProtocol == UBLOX_PROTOCOL_NMEA && ch == '\n') {
+#endif // GPS_UBLOX
+  gpsLine[gpsLineLength++] = ch;
+  if (
+#ifdef GPS_UBLOX
+      inComingUbloxProtocol == UBLOX_PROTOCOL_NMEA &&
+#endif // GPS_UBLOX
+      ch == '\n') {
     // Now we have a line of GPS data...
     /*$GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
       $GNVTG,,T,,M,1.530,N,2.834,K,A*37
@@ -3661,45 +3791,48 @@ bool jswrap_banglejs_gps_character(char ch) {
       $GPGSV,3,3,12,23,40,066,23,26,08,033,18,29,07,342,20,30,14,180,*7F
       $GNGLL,5139.11397,N,00116.07202,W,161945.00,A,A*69 */
     // Let's just chuck it over into JS-land for now
-    if (ubloxInLength > 2 && ubloxInLength <= NMEA_MAX_SIZE && ubloxIn[ubloxInLength - 2] =='\r') {
-      ubloxIn[ubloxInLength - 2] = 0; // just overwriting \r\n
-      ubloxIn[ubloxInLength - 1] = 0;
-      if (nmea_decode(&gpsFix, (char *)ubloxIn))
+    if (gpsLineLength > 2 && gpsLineLength <= NMEA_MAX_SIZE && gpsLine[gpsLineLength - 2] =='\r') {
+      gpsLine[gpsLineLength - 2] = 0; // just overwriting \r\n
+      gpsLine[gpsLineLength - 1] = 0;
+      if (nmea_decode(&gpsFix, (char *)gpsLine))
         bangleTasks |= JSBT_GPS_DATA;
       if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
         // we were already waiting to post data, so lets not overwrite it
         bangleTasks |= JSBT_GPS_DATA_OVERFLOW;
       } else {
-        memcpy(ubloxMsg, ubloxIn, ubloxInLength);
-        ubloxMsgLength = ubloxInLength - 2;
+        memcpy(gpsLastLine, gpsLine, gpsLineLength);
+        gpsLastLineLength = gpsLineLength - 2;
         bangleTasks |= JSBT_GPS_DATA_LINE;
       }
     }
-    resetUbloxIn();
-  } else if (inComingUbloxProtocol == UBLOX_PROTOCOL_UBX) {
-    if (!ubloxMsgPayloadEnd) {
-      if (ubloxInLength == 2 && ch != 0x62) { // Invalid u-blox protocol message, missing header second byte
-        resetUbloxIn();
-      } else if (ubloxInLength == 6) {
+    gpsClearLine();
+  }
+#ifdef GPS_UBLOX
+  else if (inComingUbloxProtocol == UBLOX_PROTOCOL_UBX) {
+    if (!ubxMsgPayloadEnd) {
+      if (gpsLineLength == 2 && ch != 0x62) { // Invalid u-blox protocol message, missing header second byte
+        gpsClearLine();
+      } else if (gpsLineLength == 6) {
         // Header: 0xB5 0x62, Class: 1 byte, ID: 1 byte, Length: 2 bytes, data..., CRC: 2 bytes
-        ubloxMsgPayloadEnd = 6 + ((ubloxIn[5] << 8) | ubloxIn[4]) + 2;
-        if (ubloxMsgPayloadEnd < ubloxInLength) { // Length is some odd way horribly wrong
-          resetUbloxIn();
+        ubxMsgPayloadEnd = 6 + ((gpsLine[5] << 8) | gpsLine[4]) + 2;
+        if (ubxMsgPayloadEnd < gpsLineLength) { // Length is some odd way horribly wrong
+          gpsClearLine();
         }
       }
-    } else if (ubloxInLength >= ubloxMsgPayloadEnd) {
+    } else if (gpsLineLength >= ubxMsgPayloadEnd) {
       if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
         // we were already waiting to post data, so lets not overwrite it
         bangleTasks |= JSBT_GPS_DATA_OVERFLOW;
       } else {
-        memcpy(ubloxMsg, ubloxIn, ubloxInLength);
-        ubloxMsgLength = ubloxInLength;
+        memcpy(gpsLastLine, gpsLine, gpsLineLength);
+        gpsLastLineLength = gpsLineLength;
         bangleTasks |= JSBT_GPS_DATA_LINE;
       }
-      resetUbloxIn();
+      gpsClearLine();
     }
   }
-#endif
+#endif // GPS_UBLOX
+#endif // GPS_PIN_RX
   return true; // handled
 }
 
@@ -3892,6 +4025,46 @@ JsVar *jswrap_banglejs_compassRd(JsVarInt reg, JsVarInt cnt) {
 #endif
 }
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "hrmWr",
+    "generate" : "jswrap_banglejs_hrmWr",
+    "params" : [
+      ["reg","int",""],
+      ["data","int",""]
+    ],
+    "ifdef" : "BANGLEJS_Q3"
+}
+Writes a register on the Heart rate monitor
+*/
+void jswrap_banglejs_hrmWr(JsVarInt reg, JsVarInt data) {
+#ifdef HRM_I2C
+  _jswrap_banglejs_i2cWr(HRM_I2C, HEARTRATE_ADDR, reg, data);
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "hrmRd",
+    "generate" : "jswrap_banglejs_hrmRd",
+    "params" : [
+      ["reg","int",""],
+      ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
+    ],
+    "return" : ["JsVar",""],
+    "ifdef" : "BANGLEJS"
+}
+Read a register on the Heart rate monitor
+*/
+JsVar *jswrap_banglejs_hrmRd(JsVarInt reg, JsVarInt cnt) {
+#ifdef HRM_I2C
+  return _jswrap_banglejs_i2cRd(HRM_I2C, HEARTRATE_ADDR, reg, cnt);
+#else
+  return 0;
+#endif
+}
 
 /*JSON{
     "type" : "staticmethod",
@@ -3919,7 +4092,6 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
 }
 #endif
 
-
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -3931,7 +4103,11 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
 Read temperature, pressure and altitude data. A promise is returned
 which will be resolved with `{temperature, pressure, altitude}`.
 
-Conversions take roughly 100ms.  Altitude assumes a sea-level pressure of 1013.25 hPa
+If the Barometer has been turned on with `Bangle.setBarometerPower` then this will
+return almost immediately with the reading. If the Barometer is off, conversions take
+between 500-750ms.
+
+Altitude assumes a sea-level pressure of 1013.25 hPa
 
 ```
 Bangle.getPressure().then(d=>{
@@ -3941,115 +4117,121 @@ Bangle.getPressure().then(d=>{
 ```
 */
 
-
+#ifdef PRESSURE_DEVICE
 bool jswrap_banglejs_barometerPoll() {
-#ifdef PRESSURE_DEVICE_HP203
-  unsigned char buf[6];
-  // ADC_CVT - 0b010 01 000  - pressure and temperature channel, OSR = 4096
-  buf[0] = 0x48; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
-  // wait 100ms
-  jshDelayMicroseconds(100*1000); // we should really have a callback
-  // READ_PT
-  buf[0] = 0x10; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
-  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
-  int temperature = (buf[0]<<16)|(buf[1]<<8)|buf[2];
-  if (temperature&0x800000) temperature-=0x1000000;
-  int pressure = (buf[3]<<16)|(buf[4]<<8)|buf[5];
-  barometerTemperature = temperature/100.0;
-  barometerPressure = pressure/100.0;
+#ifdef PRESSURE_DEVICE_HP203_EN
+  if (PRESSURE_DEVICE_HP203_EN) {
+    unsigned char buf[6];
+    // ADC_CVT - 0b010 01 000  - pressure and temperature channel, OSR = 4096
+    buf[0] = 0x48; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+    // wait 100ms
+    jshDelayMicroseconds(100*1000); // we should really have a callback
+    // READ_PT
+    buf[0] = 0x10; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
+    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
+    int temperature = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+    if (temperature&0x800000) temperature-=0x1000000;
+    int pressure = (buf[3]<<16)|(buf[4]<<8)|buf[5];
+    barometerTemperature = temperature/100.0;
+    barometerPressure = pressure/100.0;
 
-  buf[0] = 0x31; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // READ_A
-  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 3, buf, true);
-  int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
-  if (altitude&0x800000) altitude-=0x1000000;
-  barometerAltitude = altitude/100.0;
-  return true;
-#endif
-#ifdef PRESSURE_DEVICE_SPL06_007
-  static int oversample_scalefactor[] = {524288, 1572864, 3670016, 7864320, 253952, 516096, 1040384, 2088960};
-  unsigned char buf[6];
-
-  // status values
-  buf[0] = SPL06_MEASCFG; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
-  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
-  int status = buf[0];
-  if ((status & 0b00110000) != 0b00110000) {
-    // data hasn't arrived yet
-    return false;
+    buf[0] = 0x31; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // READ_A
+    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 3, buf, true);
+    int altitude = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+    if (altitude&0x800000) altitude-=0x1000000;
+    barometerAltitude = altitude/100.0;
+    return true;
   }
-
-  // raw values
-  buf[0] = SPL06_PRSB2; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
-  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
-  int praw = (buf[0]<<16)|(buf[1]<<8)|buf[2];
-  praw = twosComplement(praw, 24);
-  int traw = (buf[3]<<16)|(buf[4]<<8)|buf[5];
-  traw = twosComplement(traw, 24);
-
-  double traw_scaled = (double)traw / oversample_scalefactor[SPL06_8SAMPLES]; // temperature oversample by 8x
-  double praw_scaled = (double)praw / oversample_scalefactor[SPL06_8SAMPLES]; // pressure oversample by 8x
-  barometerTemperature = (barometer_c0/2) + (barometer_c1*traw_scaled);
-  double pressurePa = (barometer_c00 + praw_scaled * (barometer_c10 + praw_scaled * (barometer_c20 + praw_scaled * barometer_c30)) +
-                     traw_scaled * barometer_c01 +
-                     traw_scaled * praw_scaled * ( barometer_c11 + praw_scaled * barometer_c21));
-  barometerPressure = pressurePa / 100; // convert Pa to hPa/millibar
-  double seaLevelPressure = 1013.25; // Standard atmospheric pressure
-  barometerAltitude = 44330 * (1.0 - jswrap_math_pow(barometerPressure / seaLevelPressure, 0.1903));
-  // TODO: temperature corrected altitude?
-  return true;
 #endif
-#ifdef PRESSURE_DEVICE_BMP280
-  unsigned char buf[8];
-  buf[0] = 0xF7; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // READ_A
-  jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
-  int uncomp_pres = (buf[0] << 12) | (buf[1] << 4) | (buf[2] >> 4);
-  int uncomp_temp = (buf[3] << 12) | (buf[4] << 4) | (buf[5] >> 4);
-  double var1, var2;
-  // temperature
-  var1 = (((double) uncomp_temp) / 16384.0 - ((double) barometerDT[0]) / 1024.0) *
-         ((double) barometerDT[1]);
-  var2 =
-      ((((double) uncomp_temp) / 131072.0 - ((double) barometerDT[0]) / 8192.0) *
-       (((double) uncomp_temp) / 131072.0 - ((double) barometerDT[0]) / 8192.0)) *
-      ((double) barometerDT[2]);
-  int32_t t_fine = (int32_t) (var1 + var2);
-  barometerTemperature = ((var1 + var2) / 5120.0);
-  // pressure
-  var1 = ((double) t_fine / 2.0) - 64000.0;
-  var2 = var1 * var1 * ((double) barometerDP[5]) / 32768.0;
-  var2 = var2 + var1 * ((double) barometerDP[4]) * 2.0;
-  var2 = (var2 / 4.0) + (((double) barometerDP[3]) * 65536.0);
-  var1 = (((double)barometerDP[2]) * var1 * var1 / 524288.0 + ((double)barometerDP[1]) * var1) /
-        524288.0;
-  var1 = (1.0 + var1 / 32768.0) * ((double) barometerDP[0]);
+#ifdef PRESSURE_DEVICE_SPL06_007_EN
+  if (PRESSURE_DEVICE_SPL06_007_EN) {
+    static int oversample_scalefactor[] = {524288, 1572864, 3670016, 7864320, 253952, 516096, 1040384, 2088960};
+    unsigned char buf[6];
 
-  barometerPressure = 1048576.0 - (double)uncomp_pres;
-  if (var1 < 0 || var1 > 0) {
-    barometerPressure = (barometerPressure - (var2 / 4096.0)) * 6250.0 / var1;
-    var1 = ((double)barometerDP[8]) * (barometerPressure) * (barometerPressure) / 2147483648.0;
-    var2 = (barometerPressure) * ((double)barometerDP[7]) / 32768.0;
-    barometerPressure = barometerPressure + (var1 + var2 + ((double)barometerDP[6])) / 16.0;
-    barometerPressure = barometerPressure/100.0;
-  } else {
-    barometerPressure = 0;
+    // status values
+    buf[0] = SPL06_MEASCFG; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
+    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+    int status = buf[0];
+    if ((status & 0b00110000) != 0b00110000) {
+      // data hasn't arrived yet
+      return false;
+    }
+
+    // raw values
+    buf[0] = SPL06_PRSB2; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
+    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
+    int praw = (buf[0]<<16)|(buf[1]<<8)|buf[2];
+    praw = twosComplement(praw, 24);
+    int traw = (buf[3]<<16)|(buf[4]<<8)|buf[5];
+    traw = twosComplement(traw, 24);
+
+    double traw_scaled = (double)traw / oversample_scalefactor[SPL06_8SAMPLES]; // temperature oversample by 8x
+    double praw_scaled = (double)praw / oversample_scalefactor[SPL06_8SAMPLES]; // pressure oversample by 8x
+    barometerTemperature = (barometer_c0/2) + (barometer_c1*traw_scaled);
+    double pressurePa = (barometer_c00 + praw_scaled * (barometer_c10 + praw_scaled * (barometer_c20 + praw_scaled * barometer_c30)) +
+                       traw_scaled * barometer_c01 +
+                       traw_scaled * praw_scaled * ( barometer_c11 + praw_scaled * barometer_c21));
+    barometerPressure = pressurePa / 100; // convert Pa to hPa/millibar
+    double seaLevelPressure = 1013.25; // Standard atmospheric pressure
+    barometerAltitude = 44330 * (1.0 - jswrap_math_pow(barometerPressure / seaLevelPressure, 0.1903));
+    // TODO: temperature corrected altitude?
+    return true;
   }
+#endif // PRESSURE_DEVICE_SPL06_007_EN
+#ifdef PRESSURE_DEVICE_BMP280_EN
+  if (PRESSURE_DEVICE_BMP280_EN) {
+    unsigned char buf[8];
+    buf[0] = 0xF7; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false); // READ_A
+    jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 6, buf, true);
+    int uncomp_pres = (buf[0] << 12) | (buf[1] << 4) | (buf[2] >> 4);
+    int uncomp_temp = (buf[3] << 12) | (buf[4] << 4) | (buf[5] >> 4);
+    double var1, var2;
+    // temperature
+    var1 = (((double) uncomp_temp) / 16384.0 - ((double) barometerDT[0]) / 1024.0) *
+           ((double) barometerDT[1]);
+    var2 =
+        ((((double) uncomp_temp) / 131072.0 - ((double) barometerDT[0]) / 8192.0) *
+         (((double) uncomp_temp) / 131072.0 - ((double) barometerDT[0]) / 8192.0)) *
+        ((double) barometerDT[2]);
+    int32_t t_fine = (int32_t) (var1 + var2);
+    barometerTemperature = ((var1 + var2) / 5120.0);
+    // pressure
+    var1 = ((double) t_fine / 2.0) - 64000.0;
+    var2 = var1 * var1 * ((double) barometerDP[5]) / 32768.0;
+    var2 = var2 + var1 * ((double) barometerDP[4]) * 2.0;
+    var2 = (var2 / 4.0) + (((double) barometerDP[3]) * 65536.0);
+    var1 = (((double)barometerDP[2]) * var1 * var1 / 524288.0 + ((double)barometerDP[1]) * var1) /
+          524288.0;
+    var1 = (1.0 + var1 / 32768.0) * ((double) barometerDP[0]);
 
-  double seaLevelPressure = 1013.25; // Standard atmospheric pressure
-  barometerAltitude = 44330 * (1.0 - jswrap_math_pow(barometerPressure / seaLevelPressure, 0.1903));
-  // TODO: temperature corrected altitude?
-  return true;
-#endif
+    barometerPressure = 1048576.0 - (double)uncomp_pres;
+    if (var1 < 0 || var1 > 0) {
+      barometerPressure = (barometerPressure - (var2 / 4096.0)) * 6250.0 / var1;
+      var1 = ((double)barometerDP[8]) * (barometerPressure) * (barometerPressure) / 2147483648.0;
+      var2 = (barometerPressure) * ((double)barometerDP[7]) / 32768.0;
+      barometerPressure = barometerPressure + (var1 + var2 + ((double)barometerDP[6])) / 16.0;
+      barometerPressure = barometerPressure/100.0;
+    } else {
+      barometerPressure = 0;
+    }
 
+    double seaLevelPressure = 1013.25; // Standard atmospheric pressure
+    barometerAltitude = 44330 * (1.0 - jswrap_math_pow(barometerPressure / seaLevelPressure, 0.1903));
+    // TODO: temperature corrected altitude?
+    return true;
+  }
+#endif //PRESSURE_DEVICE_BMP280_EN
   return false;
 }
 
-#ifdef PRESSURE_I2C
 JsVar *jswrap_banglejs_getBarometerObject() {
   JsVar *o = jsvNewObject();
   if (o) {
     jsvObjectSetChildAndUnLock(o,"temperature", jsvNewFromFloat(barometerTemperature));
     jsvObjectSetChildAndUnLock(o,"pressure", jsvNewFromFloat(barometerPressure));
     jsvObjectSetChildAndUnLock(o,"altitude", jsvNewFromFloat(barometerAltitude));
+//    jsvObjectSetChildAndUnLock(o,"SPL06", jsvNewFromBool(pressureSPL06Enabled));
+//    jsvObjectSetChildAndUnLock(o,"BMP280", jsvNewFromBool(pressureBMP280Enabled));
   }
   return o;
 }
@@ -4069,10 +4251,11 @@ void jswrap_banglejs_getPressure_callback() {
   jsvUnLock2(promisePressure,o);
   promisePressure = 0;
 }
-#endif
+#endif // PRESSURE_DEVICE
+
 
 JsVar *jswrap_banglejs_getPressure() {
-#ifdef PRESSURE_I2C
+#ifdef PRESSURE_DEVICE
   if (promisePressure) {
     jsExceptionHere(JSET_ERROR, "Conversion in progress");
     return 0;
@@ -4093,8 +4276,24 @@ JsVar *jswrap_banglejs_getPressure() {
   JsVar *id = jsvNewFromString("getPressure");
   jswrap_banglejs_setBarometerPower(1, id);
   jsvUnLock(id);
-  jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, 500));
-  return jsvLockAgain(promisePressure);
+  /* Occasionally on some devices (https://github.com/espruino/Espruino/issues/2137)
+  you can get an I2C error. This stops the error from being fired when getPressure
+  is called and instead rejects the promise. */
+  bool hadError = jspHasError();
+  if (hadError) {
+    JsVar *exception = jspGetException();
+    jspromise_reject(promisePressure, exception);
+    jsvUnLock2(promisePressure,exception);
+    promisePressure = 0;
+  } else {
+    int powerOnTimeout = 500;
+#ifdef PRESSURE_DEVICE_BMP280_EN
+    if (PRESSURE_DEVICE_BMP280_EN)
+      powerOnTimeout = 750; // some devices seem to need this long to boot reliably
+#endif
+    jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, powerOnTimeout));
+    return jsvLockAgain(promisePressure);
+  }
 #else
   return 0;
 #endif
@@ -4204,7 +4403,7 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
 #endif
     }
   }
-  jstExecuteFn(jswrap_banglejs_beep_callback, NULL, jshGetSystemTime()+jshGetTimeFromMilliseconds(time), 0);
+  jstExecuteFn(jswrap_banglejs_beep_callback, NULL, jshGetTimeFromMilliseconds(time), 0, NULL);
   return jsvLockAgain(promiseBeep);
 }
 
@@ -4246,12 +4445,15 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
   promiseBuzz = jspromise_create();
   if (!promiseBuzz) return 0;
 
-  if (bangleFlags & JSBF_ENABLE_BUZZ) {
-    buzzAmt = (unsigned char)(amt*255);
-    _jswrap_banglejs_setVibration();
-  }
+  buzzAmt = (unsigned char)(amt*255);
+  if (jstExecuteFn(jswrap_banglejs_buzz_callback, NULL, jshGetTimeFromMilliseconds(time), 0, NULL)) {
+    // task schedule succeeded - start buzz
+    if (bangleFlags & JSBF_ENABLE_BUZZ) {
+      _jswrap_banglejs_setVibration();
+    }
+  } else
+    buzzAmt = 0;
 
-  jstExecuteFn(jswrap_banglejs_buzz_callback, NULL, jshGetSystemTime()+jshGetTimeFromMilliseconds(time), 0);
   return jsvLockAgain(promiseBuzz);
 }
 
@@ -4265,6 +4467,7 @@ static void jswrap_banglejs_periph_off() {
 #endif
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
   //jswrap_banglejs_setLCDPower calls JS events (and sometimes timers), so avoid it and manually turn controller + backlight off:
+  jswrap_banglejs_setLocked(1); // disable touchscreen if we have one
   jswrap_banglejs_setLCDPowerController(0);
   jswrap_banglejs_pwrBacklight(0);
 #ifdef ACCEL_DEVICE_KX023
@@ -4279,12 +4482,16 @@ static void jswrap_banglejs_periph_off() {
 #ifdef MAG_DEVICE_GMC303
   jswrap_banglejs_compassWr(0x31,0); // compass off
 #endif
-#ifdef PRESSURE_DEVICE_SPL06_007
-  jswrap_banglejs_barometerWr(SPL06_MEASCFG, 0); // Barometer off
+#ifdef PRESSURE_DEVICE
+#ifdef PRESSURE_DEVICE_SPL06_007_EN
+  if (PRESSURE_DEVICE_SPL06_007_EN)
+    jswrap_banglejs_barometerWr(SPL06_MEASCFG, 0); // Barometer off
 #endif
-#ifdef PRESSURE_DEVICE_BMP280
-  jswrap_banglejs_barometerWr(0xF4, 0); // Barometer off
+#ifdef PRESSURE_DEVICE_BMP280_EN
+  if (PRESSURE_DEVICE_BMP280_EN)
+    jswrap_banglejs_barometerWr(0xF4, 0); // Barometer off
 #endif
+#endif // PRESSURE_DEVICE
 
 
 #ifdef BTN2_PININDEX
@@ -4551,7 +4758,7 @@ with `g.clear()`.
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "drawWidgets", "patch":true,
-    "generate_js" : "libs/js/banglejs/Bangle_drawWidgets_Q3.js",
+    "generate_js" : "libs/js/banglejs/Bangle_drawWidgets_Q3.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
@@ -4588,7 +4795,7 @@ var boolean = false;
 var number = 50;
 // First menu
 var mainmenu = {
-  "" : { "title" : "-- Main Menu --" },
+  "" : { title : "-- Main Menu --" },
   "LED On" : function() { LED1.set(); },
   "LED Off" : function() { LED1.reset(); },
   "Submenu" : function() { E.showMenu(submenu); },
@@ -4606,10 +4813,10 @@ var mainmenu = {
 };
 // Submenu
 var submenu = {
-  "" : { "title" : "-- SubMenu --" },
+  "" : { title : "-- SubMenu --",
+         back : function() { E.showMenu(mainmenu); } },
   "One" : undefined, // do nothing
-  "Two" : undefined, // do nothing
-  "< Back" : function() { E.showMenu(mainmenu); },
+  "Two" : undefined // do nothing
 };
 // Actually display the menu
 E.showMenu(mainmenu);
@@ -4715,7 +4922,7 @@ The second `options` argument can contain:
     "params" : [
       ["options","JsVar","An object containing `{ h, c, draw, select }` (see below) "]
     ],
-    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
+    "return" : ["JsVar", "A menu object with `draw()` and `drawItem(itemNo)` functions" ],
     "ifdef" : "BANGLEJS"
 }
 Display a scrollable menu on the screen, and set up the buttons/touchscreen to navigate through it
@@ -4731,6 +4938,8 @@ Supply an object containing:
   draw : function(idx, rect) { ... }
   // a function to call when the item is selected
   select : function(idx) { ... }
+  // optional function to be called when 'back' is tapped
+  back : function() { ...}
 }
 ```
 
@@ -4738,10 +4947,10 @@ For example to display a list of numbers:
 
 ```
 E.showScroller({
-  h : 16, c : 50,
+  h : 40, c : 8,
   draw : (idx, r) => {
-    g.setBgColor((idx&1)?"#fff":"#ccc").clearRect(r.x,r.y,r.x+r.w-1,r.y+r.h-1);
-    g.setFont("6x8:2").drawString(idx,r.x+10,r.y);
+    g.setBgColor((idx&1)?"#666":"#999").clearRect(r.x,r.y,r.x+r.w-1,r.y+r.h-1);
+    g.setFont("6x8:2").drawString("Item Number\n"+idx,r.x+10,r.y+4);
   },
   select : (idx) => console.log("You selected ", idx)
 });
@@ -4853,9 +5062,9 @@ a circle on the display
     "type" : "staticmethod",
     "class" : "Bangle",
     "name" : "setUI",
-    "generate_js" : "libs/js/banglejs/Bangle_setUI_F18.js",
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_F18.min.js",
     "params" : [
-      ["type","JsVar","The type of UI input: 'updown', 'leftright', 'clock', 'clockupdown' or undefined to cancel"],
+      ["type","JsVar","The type of UI input: 'updown', 'leftright', 'clock', 'clockupdown' or undefined to cancel. Can also be an object (see below)"],
       ["callback","JsVar","A function with one argument which is the direction"]
     ],
     "ifdef" : "BANGLEJS"
@@ -4876,6 +5085,7 @@ Currently supported interface types are:
 * 'clockupdown' - called for clocks. Sets `Bangle.CLOCK=1`, allows a button to start the launcher, but also provides up/down functionality
   * Bangle.js 1 BTN2 starts the launcher, BTN1/BTN3 call `cb(-1)` and `cb(1)`
   * Bangle.js 2 BTN1 starts the launcher, touchscreen tap in top/bottom right hand side calls `cb(-1)` and `cb(1)`
+* `{mode:"custom", ...}` allows you to specify custom handlers for different interations. See below.
 * `undefined` removes all user interaction code
 
 While you could use setWatch/etc manually, the benefit here is that you don't end up with multiple `setWatch` instances, and
@@ -4895,11 +5105,23 @@ you could make all clocks start the launcher with a swipe by using:
     Bangle.on("swipe", Bangle.swipeHandler);
   };
 })();
+
+The first argument can also be an object, in which case more options can be specified:
+
+```
+Bangle.setUI({
+  mode : "custom",
+  back : function() {}, // optional - add a 'back' icon in top-left widget area and call this function when it is pressed
+  touch : function(n,e) {}, // optional - handler for 'touch' events
+  swipe : function(dir) {}, // optional - handler for 'swipe' events
+  drag : function(e) {}, // optional - handler for 'drag' events (Bangle.js 2 only)
+  btn : function(n) {}, // optional - handler for 'button' events (n==1 on Bangle.js 2, n==1/2/3 depending on button for Bangle.js 1)
+});
 ```
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
-    "generate_js" : "libs/js/banglejs/Bangle_setUI_Q3.js",
+    "generate_js" : "libs/js/banglejs/Bangle_setUI_Q3.min.js",
     "#if" : "defined(BANGLEJS) && defined(BANGLEJS_Q3)"
 }
 */
@@ -4916,9 +5138,10 @@ Erase all storage and reload it with the default
 contents.
 
 This is only available on Bangle.js 2.0. On Bangle.js 1.0
-you need to use `Install Default Apps` under the About page
+you need to use `Install Default Apps` under the `More...` tab
 of http://banglejs.com/apps
 */
+extern void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name);
 void jswrap_banglejs_factoryReset() {
   jsfResetStorage();
   jsiStatus |= JSIS_TODO_FLASH_LOAD;
@@ -4938,22 +5161,36 @@ reserved for the app.
 JsVar *jswrap_banglejs_appRect() {
   JsVar *o = jsvNewObject();
   if (!o) return 0;
-  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
-  JsGraphics gfx;
-  if (!graphicsGetFromVar(&gfx, graphics)) {
-    gfx.data.width = LCD_WIDTH;
-    gfx.data.height = LCD_HEIGHT;
-  }
-  jsvUnLock(graphics);
-
   JsVar *widgetsVar = jsvObjectGetChild(execInfo.root,"WIDGETS",0);
-  int y = widgetsVar ? 24 : 0;
+  int top = 0, btm = 0; // size of various widget areas
+  // check all widgets and see if any are in the top or bottom areas,
+  // set top/btm accordingly
+  if (jsvIsObject(widgetsVar)) {
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, widgetsVar);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *widget = jsvObjectIteratorGetValue(&it);
+      JsVar *area = jsvObjectGetChild(widget, "area", 0);
+      if (jsvIsString(area)) {
+        char a = jsvGetCharInString(area, 0);
+        if (a=='t') top=24;
+        if (a=='b') btm=24;
+      }
+      jsvUnLock2(area,widget);
+      jsvObjectIteratorNext(&it);
+    }
+    jsvObjectIteratorFree(&it);
+  }
   jsvUnLock(widgetsVar);
   jsvObjectSetChildAndUnLock(o,"x",jsvNewFromInteger(0));
-  jsvObjectSetChildAndUnLock(o,"y",jsvNewFromInteger(y));
-  jsvObjectSetChildAndUnLock(o,"w",jsvNewFromInteger(gfx.data.width));
-  jsvObjectSetChildAndUnLock(o,"h",jsvNewFromInteger(gfx.data.height-y));
-  jsvObjectSetChildAndUnLock(o,"x2",jsvNewFromInteger(gfx.data.width-1));
-  jsvObjectSetChildAndUnLock(o,"y2",jsvNewFromInteger(gfx.data.height-1));
+  jsvObjectSetChildAndUnLock(o,"y",jsvNewFromInteger(top));
+  jsvObjectSetChildAndUnLock(o,"w",jsvNewFromInteger(graphicsInternal.data.width));
+  jsvObjectSetChildAndUnLock(o,"h",jsvNewFromInteger(graphicsInternal.data.height-(top+btm)));
+  jsvObjectSetChildAndUnLock(o,"x2",jsvNewFromInteger(graphicsInternal.data.width-1));
+  jsvObjectSetChildAndUnLock(o,"y2",jsvNewFromInteger(graphicsInternal.data.height-(1+btm)));
+
+
+
   return o;
 }
+

@@ -123,7 +123,6 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 #define EXTENSIBLE_MTU // The MTU can be extended past the default of 23
 #endif
 
-#define APP_BLE_CONN_CFG_TAG                1                                       /**< A tag identifying the SoftDevice BLE configuration. */
 #define APP_BLE_OBSERVER_PRIO               2                                       /**< Application's BLE observer priority. You shouldn't need to modify this value. */
 #define APP_SOC_OBSERVER_PRIO               1                                       /**< Applications' SoC observer priority. You shoulnd't need to modify this value. */
 
@@ -173,10 +172,13 @@ static bool                             m_in_boot_mode = false;
 #endif
 
 #if NRF_SD_BLE_API_VERSION > 5
-static uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
+uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
 #endif
 
 volatile uint16_t                       m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
+#ifndef SAVE_ON_FLASH
+ble_gap_addr_t m_peripheral_addr;
+#endif
 #ifdef EXTENSIBLE_MTU
 volatile uint16_t m_peripheral_effective_mtu;
 #else
@@ -743,8 +745,11 @@ uint8_t match_request : 1;               If 1 requires the application to report
       case BLEP_ANCS_APP_ATTR:
         ble_ancs_handle_app_attr(blep, (char *)buffer, bufferLen);
         break;
-      case BLEP_AMS_UPDATE:
-        ble_ams_handle_update(blep, data, (char *)buffer, bufferLen);
+      case BLEP_AMS_TRACK_UPDATE:
+        ble_ams_handle_track_update(blep, data, (char *)buffer, bufferLen);
+        break;
+      case BLEP_AMS_PLAYER_UPDATE:
+        ble_ams_handle_player_update(blep, data, (char *)buffer, bufferLen);
         break;
       case BLEP_AMS_ATTRIBUTE:
         ble_ams_handle_attribute(blep, (char *)buffer, bufferLen);
@@ -1062,7 +1067,7 @@ void SWI1_IRQHandler(bool radio_evt) {
   if (bleStatus & BLE_NUS_INITED)
     nus_transmit_string();
   // If we're doing multiple advertising, iterate through advertising options
-  if (bleStatus & BLE_IS_ADVERTISING_MULTIPLE) {
+  if ((bleStatus & BLE_IS_ADVERTISING)  && (bleStatus & BLE_IS_ADVERTISING_MULTIPLE)) {
     int idx = (bleStatus&BLE_ADVERTISING_MULTIPLE_MASK)>>BLE_ADVERTISING_MULTIPLE_SHIFT;
     JsVar *advData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
     bool ok = true;
@@ -1140,7 +1145,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       p_ble_evt->header.evt_id != BLE_EVT_TX_COMPLETE)
     jsiConsolePrintf("[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );*/
 #if ESPR_BLUETOOTH_ANCS
-  if (bleStatus & BLE_ANCS_INITED)
+  if (bleStatus & BLE_ANCS_OR_AMS_INITED)
     ble_ancs_on_ble_evt(p_ble_evt);
 #endif
     uint32_t err_code;
@@ -1196,6 +1201,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
           jsble_queue_pending_buf(BLEP_CONNECTED, 0, (char*)&p_ble_evt->evt.gap_evt.params.connected.peer_addr, sizeof(ble_gap_addr_t));
+#ifndef SAVE_ON_FLASH
+          m_peripheral_addr = p_ble_evt->evt.gap_evt.params.connected.peer_addr;
+#endif
         }
 #if CENTRAL_LINK_COUNT>0
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_CENTRAL) {
@@ -1717,6 +1725,7 @@ static void fds_evt_handler(fds_evt_t const * const p_evt)
 static void pm_evt_handler(pm_evt_t const * p_evt) {
     ret_code_t err_code;
 
+    //jsiConsolePrintf("PM [%d]\n", p_evt->evt_id );
     switch (p_evt->evt_id)
     {
         case PM_EVT_BONDED_PEER_CONNECTED:
@@ -1778,7 +1787,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
                 //      You should check on what kind of white list policy your application should use.
             }
 #if ESPR_BLUETOOTH_ANCS
-            if (bleStatus & BLE_ANCS_INITED)
+            if (bleStatus & BLE_ANCS_OR_AMS_INITED)
               ble_ancs_bonding_succeeded(p_evt->conn_handle);
 #endif
 
@@ -1966,7 +1975,7 @@ static void gap_params_init() {
     // not null terminated
 #endif
 
-    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
+    BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&sec_mode); // don't allow device name change via BLE
     err_code = sd_ble_gap_device_name_set(&sec_mode,
                                           (const uint8_t *)deviceName,
                                           len);
@@ -2073,6 +2082,9 @@ void jsble_update_security() {
   JsVar *options = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
   if (jsvIsObject(options)) {
     JsVar *v;
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "encryptUart", 0)))
+      encryptUart = true;
+    // Check for passkey
     uint8_t passkey[BLE_GAP_PASSKEY_LEN+1];
     memset(passkey, 0, sizeof(passkey));
     v = jsvObjectGetChild(options, "passkey", 0);
@@ -2370,9 +2382,11 @@ static void services_init() {
 #endif
 #if ESPR_BLUETOOTH_ANCS
     bool useANCS = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ANCS, 0));
-    if (useANCS) {
+    bool useAMS = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_AMS, 0));
+    if (useANCS || useAMS) {
+      if (useANCS) bleStatus |= BLE_ANCS_INITED;
+      if (useAMS) bleStatus |= BLE_AMS_INITED;
       ble_ancs_init();
-      bleStatus |= BLE_ANCS_INITED;
     }
 #endif
 }
@@ -2618,9 +2632,11 @@ uint32_t jsble_advertising_start() {
 uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen) {
 #if NRF_SD_BLE_API_VERSION>5
   ble_gap_adv_data_t d;
-  memset(&d,0,sizeof(d));
   d.adv_data.p_data = (uint8_t *)dPtr;
   d.adv_data.len = dLen;
+  d.scan_rsp_data.p_data = NULL;
+  d.scan_rsp_data.len = 0;
+
   // TODO: scan_rsp_data? Does not setting this remove it?
   return sd_ble_gap_adv_set_configure(&m_adv_handle, &d, NULL);
 #else
@@ -2705,8 +2721,8 @@ bool jsble_kill() {
   // BLE HID doesn't need deinitialising (no ble_hids_kill)
   bleStatus &= ~BLE_HID_INITED;
 #if ESPR_BLUETOOTH_ANCS
-  // BLE ANCS doesn't need deinitialising
-  bleStatus &= ~BLE_ANCS_INITED;
+  // BLE ANCS/AMS doesn't need deinitialising
+  bleStatus &= ~BLE_ANCS_OR_AMS_INITED;
 #endif
   uint32_t err_code;
 #if NRF_SD_BLE_API_VERSION < 5
@@ -2902,11 +2918,11 @@ void jsble_set_services(JsVar *data) {
           char_md.char_user_desc_max_size = len;
         }
         jsvUnLock(charDescriptionVar);
-
         memset(&attr_md, 0, sizeof(attr_md));
         // init access with default values
         BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
         BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+#ifndef SAVE_ON_FLASH
         // set up access with user configs
         JsVar *securityVar = jsvObjectGetChild(charVar, "security", 0);
         if (securityVar != NULL) {
@@ -2922,6 +2938,7 @@ void jsble_set_services(JsVar *data) {
           }
         }
         jsvUnLock(securityVar);
+#endif
 
         attr_md.vloc       = BLE_GATTS_VLOC_STACK;
         attr_md.rd_auth    = 0;
@@ -2980,6 +2997,22 @@ void jsble_set_services(JsVar *data) {
 /// Disconnect from the given connection
 uint32_t jsble_disconnect(uint16_t conn_handle) {
   return sd_ble_gap_disconnect(conn_handle, BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+}
+
+void jsble_startBonding(bool forceRePair) {
+#if PEER_MANAGER_ENABLED
+  if (!jsble_has_peripheral_connection())
+      return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Not connected"));
+
+  uint32_t err_code = pm_conn_secure(m_peripheral_conn_handle, forceRePair);
+  JsVar *errStr = jsble_get_error_string(err_code);
+  if (errStr) {
+    bleCompleteTaskFail(BLETASK_BONDING, errStr);
+    jsvUnLock(errStr);
+  }
+#else
+  return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Peer Manager not compiled in"));
+#endif
 }
 
 #if BLE_HIDS_ENABLED
@@ -3103,6 +3136,10 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
     jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
     jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
     jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
+#ifndef SAVE_ON_FLASH
+    if (status.connected && conn_handle==m_peripheral_conn_handle)
+      jsvObjectSetChildAndUnLock(result, "connected_addr", bleAddrToStr(m_peripheral_addr));
+#endif
     return result;
   }
   return 0;
