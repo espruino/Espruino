@@ -20,6 +20,7 @@
 
 #ifdef USE_AES
 #include "mbedtls/include/mbedtls/aes.h"
+#include "mbedtls/include/mbedtls/gcm.h"
 #endif
 #ifndef USE_SHA1_JS
 #include "mbedtls/include/mbedtls/sha1.h"
@@ -112,6 +113,7 @@ typedef enum {
   CM_CTR,
   CM_OFB,
   CM_ECB,
+  CM_GCM,
 } CryptoMode;
 
 CryptoMode jswrap_crypto_getMode(JsVar *mode) {
@@ -120,6 +122,7 @@ CryptoMode jswrap_crypto_getMode(JsVar *mode) {
   if (jsvIsStringEqual(mode, "CTR")) return CM_CTR;
   if (jsvIsStringEqual(mode, "OFB")) return CM_OFB;
   if (jsvIsStringEqual(mode, "ECB")) return CM_ECB;
+  if (jsvIsStringEqual(mode, "GCM")) return CM_GCM;
   jsExceptionHere(JSET_ERROR, "Unknown Crypto mode %q", mode);
   return CM_NONE;
 }
@@ -357,23 +360,42 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   }
 
 
-
-  mbedtls_aes_context aes;
-  mbedtls_aes_init( &aes );
-
   JSV_GET_AS_CHAR_ARRAY(messagePtr, messageLen, message);
   if (!messagePtr) return 0;
 
   JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, key);
   if (!keyPtr) return 0;
 
-  if (encrypt)
-    err = mbedtls_aes_setkey_enc( &aes, (unsigned char*)keyPtr, (unsigned int)keyLen*8 );
-  else
-    err = mbedtls_aes_setkey_dec( &aes, (unsigned char*)keyPtr, (unsigned int)keyLen*8 );
-  if (err) {
-    jswrap_crypto_error(err);
-    return 0;
+
+  mbedtls_gcm_context aes_gcm;
+  mbedtls_aes_context aes;
+  
+    
+  if(mode == CM_GCM){
+    mbedtls_gcm_init( &aes_gcm );
+    
+    err = mbedtls_gcm_setkey( &aes_gcm, MBEDTLS_CIPHER_ID_AES , (unsigned char*)keyPtr, (unsigned int)keyLen*8);
+    if (err) {
+      jswrap_crypto_error(err);
+      return 0;
+    }
+    
+    err = mbedtls_gcm_starts(&aes_gcm, encrypt ? MBEDTLS_GCM_ENCRYPT : MBEDTLS_GCM_DECRYPT, iv, sizeof(iv) ,NULL, 0);
+    if (err) {
+      jswrap_crypto_error(err);
+      return 0;
+    }
+  }else{
+    mbedtls_aes_init( &aes );
+    
+    if (encrypt)
+      err = mbedtls_aes_setkey_enc( &aes, (unsigned char*)keyPtr, (unsigned int)keyLen*8 );
+    else
+      err = mbedtls_aes_setkey_dec( &aes, (unsigned char*)keyPtr, (unsigned int)keyLen*8 );
+    if (err) {
+      jswrap_crypto_error(err);
+      return 0;
+    }
   }
 
   char *outPtr = 0;
@@ -428,12 +450,20 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
     }
     break;
   }
+  
+  case CM_GCM: {
+    mbedtls_gcm_update(&aes_gcm,(unsigned int)messageLen,(unsigned char*)messagePtr, (unsigned char*)outPtr);
+    break;
+  }
   default:
     err = MBEDTLS_ERR_MD_FEATURE_UNAVAILABLE;
     break;
   }
 
-  mbedtls_aes_free( &aes );
+  if(mode != CM_GCM)
+    mbedtls_aes_free( &aes );
+  else
+    mbedtls_gcm_free( &aes_gcm );
   if (!err) {
     return outVar;
   } else {
@@ -451,7 +481,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   "params" : [
     ["passphrase","JsVar","Message to encrypt"],
     ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
-    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
+    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB|GCM' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer",
@@ -470,7 +500,7 @@ JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
   "params" : [
     ["passphrase","JsVar","Message to decrypt"],
     ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
-    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
+    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB|GCM' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer",
