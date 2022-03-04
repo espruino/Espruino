@@ -644,6 +644,11 @@ ifeq ($(USE_TENSORFLOW),1)
 include make/misc/tensorflow.make
 endif
 
+ifeq ($(USE_JIT),1)
+  DEFINES += -DESPR_JIT
+  SOURCES += src/jsjit.c src/jsjitc.c
+endif
+
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 
