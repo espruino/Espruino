@@ -1182,7 +1182,7 @@ void jsiCheckErrors() {
   if (exception) {
     if (jsiExecuteEventCallbackOn("process", JS_EVENT_PREFIX"uncaughtException", 1, &exception)) {
       jsvUnLock(exception);
-      exception = 0;
+      exception = jspGetException();
     }
   }
   if (exception) {
