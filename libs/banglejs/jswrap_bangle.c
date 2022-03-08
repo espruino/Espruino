@@ -577,8 +577,6 @@ JsVar *jswrap_banglejs_getBarometerObject();
 #endif
 
 #ifdef GPS_PIN_RX
-
-
 #ifdef GPS_UBLOX
 /// Handling data coming from UBlox GPS
 typedef enum {
@@ -606,7 +604,11 @@ char gpsLastLine[NMEA_MAX_SIZE];
 
 /// GPS fix data converted from GPS
 NMEAFixInfo gpsFix;
-#endif
+#endif // GPS_PIN_RX
+
+#ifdef ESPR_BATTERY_FULL_VOLTAGE
+float batteryFullVoltage = ESPR_BATTERY_FULL_VOLTAGE;
+#endif // ESPR_BATTERY_FULL_VOLTAGE
 
 #ifndef EMULATED
 /// Nordic app timer to handle call of peripheralPollHandler
@@ -2188,6 +2190,15 @@ int jswrap_banglejs_isCharging() {
 JsVarInt jswrap_banglejs_getBattery() {
 #if defined(BAT_PIN_VOLTAGE) && !defined(EMULATED)
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
+
+#ifdef ESPR_BATTERY_FULL_VOLTAGE
+  // a configurable 'battery full voltage' is available
+  int pc;
+  v = 4.2 * v / batteryFullVoltage; // now 'v' should be in actual volts
+  if (v>=3.95) pc = 80 + (v-3.95)*20/(4.2-3.95); // 80%+
+  else if (v>=3.7) pc = 10 + (v-3.7)*70/(3.95-3.7); // 10%+ is linear
+  else pc = (v-3.3)*10/(3.7-3.3); // 0%+
+#else // otherwise normal linear battery scaling...
 #ifdef BANGLEJS_Q3
   const JsVarFloat vlo = 0.246;
   const JsVarFloat vhi = 0.3144; // on some watches this is 100%, on others it's s a bit higher
@@ -2207,6 +2218,7 @@ JsVarInt jswrap_banglejs_getBattery() {
   const JsVarFloat vhi = 1;
 #endif
   int pc = (v-vlo)*100/(vhi-vlo);
+#endif  // !ESPR_BATTERY_FULL_VOLTAGE
   if (pc>100) pc=100;
   if (pc<0) pc=0;
   return pc;
@@ -3005,6 +3017,13 @@ NO_INLINE void jswrap_banglejs_init() {
     bangleFlags |= JSBF_ENABLE_BUZZ;
   }
   jsvUnLock(v);
+
+  // If enabled, load battery 'full' voltage
+#ifdef ESPR_BATTERY_FULL_VOLTAGE
+  batteryFullVoltage = ESPR_BATTERY_FULL_VOLTAGE;
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"batFullVoltage",0) : 0;
+  if (jsvIsNumeric(v)) batteryFullVoltage = jsvGetFloatAndUnLock(v);
+#endif // ESPR_BATTERY_FULL_VOLTAGE
 
   // Load themes from the settings.json file
   jswrap_banglejs_setTheme();
