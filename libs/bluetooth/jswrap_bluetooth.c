@@ -2059,25 +2059,13 @@ void jswrap_ble_setRSSIHandler(JsVar *callback) {
     "name" : "setTxPower",
     "generate" : "jswrap_ble_setTxPower",
     "params" : [
-      ["power","int","Transmit power. Accepted values are -40(nRF52 only), -30(nRF51 only), -20, -16, -12, -8, -4, 0, and 4 dBm. Others will give an error code."]
+      ["power","int","Transmit power. Accepted values are -40(nRF52 only), -30(nRF51 only), -20, -16, -12, -8, -4, 0, and 4 dBm. On nRF52840 (eg Bangle.js 2) 5/6/7/8 dBm are available too. Others will give an error code."]
     ]
 }
-Set the BLE radio transmit power. The default TX power is 0 dBm.
+Set the BLE radio transmit power. The default TX power is 0 dBm, and
 */
 void jswrap_ble_setTxPower(JsVarInt pwr) {
-  uint32_t              err_code;
-#ifdef NRF5X
-#if NRF_SD_BLE_API_VERSION > 5
-  // TODO: what about BLE_GAP_TX_POWER_ROLE_ADV and BLE_GAP_TX_POWER_ROLE_CONN
-  err_code = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_SCAN_INIT, 0/*ignored*/, pwr);
-#else
-  err_code = sd_ble_gap_tx_power_set(pwr);
-#endif
-#else
-  err_code = 0xDEAD;
-  jsiConsolePrintf("FIXME\n");
-#endif
-  jsble_check_error(err_code);
+  jsble_set_tx_power(pwr);
 }
 
 
