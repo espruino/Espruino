@@ -450,7 +450,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   
   case CM_GCM: {
     
-    char msgtag[TAGSIZE];
+    const unsigned char msgtag[TAGSIZE];
     unsigned char add[0] = {} ;//need to add additionalData
     unsigned char input[encrypt ? (unsigned int) messageLen + TAGSIZE : (unsigned int) messageLen - TAGSIZE];
     unsigned char output[!encrypt ? (unsigned int) messageLen + TAGSIZE : (unsigned int) messageLen - TAGSIZE];
