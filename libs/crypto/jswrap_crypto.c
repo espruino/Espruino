@@ -450,9 +450,10 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   
   case CM_GCM: {
     
-    const unsigned char msgtag[TAGSIZE];
-    unsigned char add[0];//need to add additionalData
+    char msgtag[TAGSIZE];
+    unsigned char add[0] = {} ;//need to add additionalData
     unsigned char input[encrypt ? (unsigned int) messageLen + TAGSIZE : (unsigned int) messageLen - TAGSIZE];
+    unsigned char output[!encrypt ? (unsigned int) messageLen + TAGSIZE : (unsigned int) messageLen - TAGSIZE];
     memcpy(input,  messagePtr, sizeof(input));
     if(!encrypt){
       memcpy(msgtag, &messagePtr[sizeof(input)], TAGSIZE);
@@ -465,20 +466,23 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
         (unsigned char*)msgtag,
         TAGSIZE,
         (unsigned char*)input, 
-        (unsigned char*)outPtr );
+        (unsigned char*)output );
+        memcpy(&outPtr[0], output, sizeof(output) - TAGSIZE);
     }else{
       err = mbedtls_gcm_crypt_and_tag(&aes_gcm,
         MBEDTLS_GCM_ENCRYPT,
-        sizeof(input),
+        (unsigned int) messageLen,
         iv, 
         sizeof(iv),
         add, 
         sizeof(add),
         (unsigned char*)input, 
-        (unsigned char*)outPtr,
-        TAGSIZE, 
-        msgtag );
-      memcpy(&outPtr[messageLen], msgtag, TAGSIZE);
+        (unsigned char*)output,
+        (const size_t)TAGSIZE, 
+        (unsigned char*)msgtag );
+      memcpy(&outPtr[0], output, sizeof(input));
+      memcpy(&outPtr[16], msgtag, TAGSIZE);
+      
     }
     
     break;
