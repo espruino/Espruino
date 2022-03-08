@@ -343,6 +343,9 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
 
   CryptoMode mode = CM_CBC;
 
+  size_t additionalDataLen = 0;
+  char *additionalDataPtr = 0;
+
   if (jsvIsObject(options)) {
     JsVar *ivVar = jsvObjectGetChild(options, "iv", 0);
     if (ivVar) {
@@ -353,6 +356,23 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
     if (!jsvIsUndefined(modeVar))
       mode = jswrap_crypto_getMode(modeVar);
     jsvUnLock(modeVar);
+    if (mode == CM_NONE) return 0;
+    JsVar *addDataVar = jsvObjectGetChild(options, "additionalData", 0);
+  
+                                                  
+  additionalDataPtr = jsvGetDataPointer(addDataVar, &additionalDataLen);                 
+  if (addDataVar && !additionalDataPtr) {                                                          
+   additionalDataLen = (size_t)jsvIterateCallbackCount(addDataVar);                     
+    if (additionalDataLen+256 > jsuGetFreeStack()) {                              
+      jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  
+    } else {                                                                  
+      additionalDataPtr = (char *)alloca(additionalDataLen);                             
+      jsvIterateCallbackToBytes(addDataVar, (unsigned char *)additionalDataPtr,            
+                                      (unsigned int)additionalDataLen);           
+    }                                                                         
+  }
+  
+    jsvUnLock(addDataVar);
     if (mode == CM_NONE) return 0;
   } else if (!jsvIsUndefined(options)) {
     jsError("'options' must be undefined, or an Object");
@@ -450,8 +470,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   
   case CM_GCM: {
     
-    const unsigned char msgtag[TAGSIZE];
-    unsigned char add[0] = {} ;//need to add additionalData
+    unsigned char msgtag[TAGSIZE];
     unsigned char input[encrypt ? (unsigned int) messageLen + TAGSIZE : (unsigned int) messageLen - TAGSIZE];
     unsigned char output[!encrypt ? (unsigned int) messageLen + TAGSIZE : (unsigned int) messageLen - TAGSIZE];
     memcpy(input,  messagePtr, sizeof(input));
@@ -461,8 +480,8 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
         sizeof(input),
         iv, 
         sizeof(iv),
-        add, 
-        sizeof(add),
+        (const unsigned char *)additionalDataPtr, 
+        additionalDataLen,
         (unsigned char*)msgtag,
         TAGSIZE,
         (unsigned char*)input, 
@@ -474,8 +493,8 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
         (unsigned int) messageLen,
         iv, 
         sizeof(iv),
-        add, 
-        sizeof(add),
+        (const unsigned char *)additionalDataPtr, 
+        additionalDataLen,
         (unsigned char*)input, 
         (unsigned char*)output,
         (const size_t)TAGSIZE, 
@@ -504,6 +523,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
     return 0;
   }
 }
+
 
 /*JSON{
   "type" : "staticmethod",
