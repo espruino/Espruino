@@ -338,47 +338,75 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
 static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar *options, bool encrypt) {
   int err;
 
-  unsigned char iv[16]; // initialisation vector
-  memset(iv, 0, 16);
+  size_t iv_size = 0;
+  unsigned char *iv_bytes;
 
   CryptoMode mode = CM_CBC;
-
+  unsigned int tagLength = 0;
+  
   size_t additionalDataLen = 0;
-  char *additionalDataPtr = 0;
+  
+  char *additionalDataPtr = NULL;
 
   if (jsvIsObject(options)) {
+    
     JsVar *ivVar = jsvObjectGetChild(options, "iv", 0);
-    if (ivVar) {
-      jsvIterateCallbackToBytes(ivVar, iv, sizeof(iv));
+    if (ivVar && !jsvIsUndefined(ivVar)) {
+      iv_size = (size_t)jsvGetLength(ivVar);
+      jsvIterateCallbackToBytes(ivVar, &iv_bytes, (unsigned int)iv_size);
       jsvUnLock(ivVar);
     }
+    
     JsVar *modeVar = jsvObjectGetChild(options, "mode", 0);
-    if (!jsvIsUndefined(modeVar))
+    if (modeVar && !jsvIsUndefined(modeVar))
       mode = jswrap_crypto_getMode(modeVar);
     jsvUnLock(modeVar);
     if (mode == CM_NONE) return 0;
+    
     JsVar *addDataVar = jsvObjectGetChild(options, "additionalData", 0);
-  
-                                                  
-  additionalDataPtr = jsvGetDataPointer(addDataVar, &additionalDataLen);                 
-  if (addDataVar && !additionalDataPtr) {                                                          
-   additionalDataLen = (size_t)jsvIterateCallbackCount(addDataVar);                     
-    if (additionalDataLen+256 > jsuGetFreeStack()) {                              
-      jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  
-    } else {                                                                  
-      additionalDataPtr = (char *)alloca(additionalDataLen);                             
-      jsvIterateCallbackToBytes(addDataVar, (unsigned char *)additionalDataPtr,            
-                                      (unsigned int)additionalDataLen);           
-    }                                                                         
-  }
-  
-    jsvUnLock(addDataVar);
-    if (mode == CM_NONE) return 0;
+    if(addDataVar && !jsvIsUndefined(addDataVar)){
+      additionalDataPtr = jsvGetDataPointer(addDataVar, &additionalDataLen);                 
+      if (addDataVar && !additionalDataPtr) {                                                          
+       additionalDataLen = (size_t)jsvIterateCallbackCount(addDataVar);                     
+        if (additionalDataLen+256 > jsuGetFreeStack()) {                              
+          jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  
+        } else {                                                                  
+          additionalDataPtr = (char *)alloca(additionalDataLen);                             
+          jsvIterateCallbackToBytes(addDataVar, (unsigned char *)additionalDataPtr,            
+                                          (unsigned int)additionalDataLen);           
+        }                                                                         
+      }
+      jsvUnLock(addDataVar);
+    }
+    
+    JsVar *tagLengthVar = jsvObjectGetChild(options, "tagLength", 0);
+    if (tagLengthVar && !jsvIsUndefined(tagLengthVar)){
+      tagLength = ((unsigned int)jsvGetInteger(tagLengthVar) / 8);
+      jsvUnLock(tagLengthVar);
+    }
+    
+    
   } else if (!jsvIsUndefined(options)) {
     jsError("'options' must be undefined, or an Object");
     return 0;
   }
-
+  
+  bool zero_iv = false;
+  
+  if(tagLength == 0 || tagLength > 16)//128bit or below
+    tagLength = 16;
+  
+  if(iv_size == 0 || iv_size > 16){//128bit or below
+    if(iv_size == 0) zero_iv = true;
+      iv_size = 16;
+  }
+    
+  unsigned char iv[iv_size];
+  memset(iv, 0, iv_size); 
+    
+  if(!zero_iv){
+    memcpy(iv, &iv_bytes, iv_size); 
+  }
 
   JSV_GET_AS_CHAR_ARRAY(messagePtr, messageLen, message);
   if (!messagePtr) return 0;
@@ -394,7 +422,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   JsVar *outVar;
   if(mode == CM_GCM){
     
-    #define TAGSIZE 16
+    // #define tagLength 16
     mbedtls_gcm_init( &aes_gcm );
     
     err = mbedtls_gcm_setkey( &aes_gcm, MBEDTLS_CIPHER_ID_AES , (unsigned char*)keyPtr, (unsigned int)keyLen*8);
@@ -403,7 +431,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
       return 0;
     }
     
-    outVar = jsvNewArrayBufferWithPtr(encrypt ? (unsigned int) messageLen + TAGSIZE : (unsigned int) messageLen - TAGSIZE, &outPtr);
+    outVar = jsvNewArrayBufferWithPtr(encrypt ? (unsigned int) messageLen + tagLength : (unsigned int) messageLen - tagLength, &outPtr);
   
   }else{
     mbedtls_aes_init( &aes );
@@ -470,37 +498,37 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   
   case CM_GCM: {
     
-    unsigned char msgtag[TAGSIZE];
-    unsigned char input[encrypt ? (unsigned int) messageLen + TAGSIZE : (unsigned int) messageLen - TAGSIZE];
-    unsigned char output[!encrypt ? (unsigned int) messageLen + TAGSIZE : (unsigned int) messageLen - TAGSIZE];
+    unsigned char msgtag[tagLength];
+    unsigned char input[encrypt ? (unsigned int) messageLen + tagLength : (unsigned int) messageLen - tagLength];
+    unsigned char output[!encrypt ? (unsigned int) messageLen + tagLength : (unsigned int) messageLen - tagLength];
     memcpy(input,  messagePtr, sizeof(input));
     if(!encrypt){
-      memcpy(msgtag, &messagePtr[sizeof(input)], TAGSIZE);
+      memcpy(msgtag, &messagePtr[sizeof(input)], tagLength);
       err = mbedtls_gcm_auth_decrypt(&aes_gcm,
         sizeof(input),
         iv, 
-        sizeof(iv),
+        iv_size,
         (const unsigned char *)additionalDataPtr, 
         additionalDataLen,
         (unsigned char*)msgtag,
-        TAGSIZE,
+        tagLength,
         (unsigned char*)input, 
         (unsigned char*)output );
-        memcpy(&outPtr[0], output, sizeof(output) - TAGSIZE);
+        memcpy(&outPtr[0], output, sizeof(output) - tagLength);
     }else{
       err = mbedtls_gcm_crypt_and_tag(&aes_gcm,
         MBEDTLS_GCM_ENCRYPT,
         (unsigned int) messageLen,
         iv, 
-        sizeof(iv),
+        iv_size,
         (const unsigned char *)additionalDataPtr, 
         additionalDataLen,
         (unsigned char*)input, 
         (unsigned char*)output,
-        (const size_t)TAGSIZE, 
+        (const size_t)tagLength, 
         (unsigned char*)msgtag );
       memcpy(&outPtr[0], output, sizeof(input));
-      memcpy(&outPtr[16], msgtag, TAGSIZE);
+      memcpy(&outPtr[16], msgtag, tagLength);
       
     }
     
