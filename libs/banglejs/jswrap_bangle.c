@@ -978,7 +978,12 @@ void peripheralPollHandler() {
     inactivityTimer += pollInterval;
   // If button is held down, trigger a soft reset so we go back to the clock
   if (jshPinGetValue(HOME_BTN_PININDEX)) {
-    if (homeBtnTimer < TIMER_MAX) {
+    if (bangleTasks & JSBT_RESET) {
+      // We already wanted to reset but we didn't get back to idle loop in
+      // 1/10th sec - let's force a break out of JS execution
+      jsiConsolePrintf("Button held down - interrupt JS execution...\n");
+      execInfo.execute |= EXEC_INTERRUPTED;
+    } else if (homeBtnTimer < TIMER_MAX) {
       homeBtnTimer += pollInterval;
       if (homeBtnTimer >= BTN_LOAD_TIMEOUT) {
         bangleTasks |= JSBT_RESET;
@@ -989,7 +994,6 @@ void peripheralPollHandler() {
           jsiStatus |= JSIS_EXIT_DEBUGGER;
           execInfo.execute |= EXEC_INTERRUPTED;
         }
-        // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
       }
     }
   } else {
