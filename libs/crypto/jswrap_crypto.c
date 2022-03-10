@@ -528,7 +528,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
         (const size_t)tagLength, 
         (unsigned char*)msgtag );
       memcpy(&outPtr[0], output, sizeof(input));
-      memcpy(&outPtr[16], msgtag, tagLength);
+      memcpy(&outPtr[sizeof(input)-tagLength], msgtag, tagLength);
       
     }
     
