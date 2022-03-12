@@ -10,6 +10,10 @@
     Bangle.btnWatches.forEach(clearWatch);
     delete Bangle.btnWatches;
   }
+  if (Bangle.swipeHandler) {
+    Bangle.removeListener("swipe", Bangle.swipeHandler);
+    delete Bangle.swipeHandler;
+  }
   if (Bangle.dragHandler) {
     Bangle.removeListener("drag", Bangle.dragHandler);
     delete Bangle.dragHandler;
