@@ -38,7 +38,7 @@
       }
     };
     Bangle.on('drag',Bangle.dragHandler);
-    Bangle.touchHandler = d => {b();cb();};
+    Bangle.touchHandler = (_,e) => {if (e.y >= Bangle.appRect.y){b();cb();}};
     Bangle.on("touch", Bangle.touchHandler);
     Bangle.btnWatches = [
       setWatch(function() { b();cb(); }, BTN1, {repeat:1}),
@@ -55,7 +55,7 @@
       }
     };
     Bangle.on('drag',Bangle.dragHandler);
-    Bangle.touchHandler = d => {b();cb();};
+    Bangle.touchHandler = (_,e) => {if (e.y >= Bangle.appRect.y){b();cb();}};
     Bangle.on("touch", Bangle.touchHandler);
     Bangle.btnWatches = [
       setWatch(function() { b();cb(); }, BTN1, {repeat:1}),
@@ -68,7 +68,7 @@
   } else if (mode=="clockupdown") {
     Bangle.CLOCK=1;
     Bangle.touchHandler = (d,e) => {
-      if (e.x < 120) return;
+      if (e.x < 120 || e.y < Bangle.appRect.y) return;
       b();cb((e.y > 88) ? 1 : -1);
     };
     Bangle.on("touch", Bangle.touchHandler);
@@ -76,7 +76,7 @@
       setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
     ];
   } else if (mode=="touch") {
-    Bangle.touchHandler = (_,e) => {b();cb(e);};
+    Bangle.touchHandler = (_,e) => {if (e.y >= Bangle.appRect.y){b();cb(e);}};
     Bangle.on("touch", Bangle.touchHandler);
   } else if (mode=="custom") {
     if (options.touch) {
