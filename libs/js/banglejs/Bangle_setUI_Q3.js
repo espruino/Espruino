@@ -43,7 +43,6 @@
     };
     Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
-    Bangle.on("touch", Bangle.touchHandler);
     Bangle.btnWatches = [
       setWatch(function() { b();cb(); }, BTN1, {repeat:1}),
     ];
@@ -60,7 +59,6 @@
     };
     Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
-    Bangle.on("touch", Bangle.touchHandler);
     Bangle.btnWatches = [
       setWatch(function() { b();cb(); }, BTN1, {repeat:1}),
     ];
@@ -75,18 +73,14 @@
       if (e.x < 120) return;
       b();cb((e.y > 88) ? 1 : -1);
     };
-    Bangle.on("touch", Bangle.touchHandler);
     Bangle.btnWatches = [
       setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
     ];
   } else if (mode=="touch") {
     Bangle.touchHandler = (_,e) => {b();cb(e);};
-    Bangle.on("touch", Bangle.touchHandler);
   } else if (mode=="custom") {
-    if (options.touch) {
+    if (options.touch)
       Bangle.touchHandler = options.touch;
-      Bangle.on("touch", Bangle.touchHandler);
-    }
     if (options.drag) {
       Bangle.dragHandler = options.drag;
       Bangle.on("drag", Bangle.dragHandler);
@@ -104,9 +98,20 @@
     throw new Error("Unknown UI mode");
   if (options.back) {
     var touchHandler = (_,e) => {
-      if (e.y<24 && e.x<48) options.back();
+      if (e.y<36 && e.x<48) {
+        e.handled = true;
+        options.back();
+      }
     };
-    Bangle.on("touch", touchHandler);    
+    Bangle.on("touch", touchHandler);
+    // If a touch handler was needed for setUI, add it - but ignore touches if they've already gone to the 'back' handler
+    if (Bangle.touchHandler) { 
+      var uiTouchHandler = Bangle.touchHandler; 
+      Bangle.touchHandler = (_,e) => {
+        if (!e.handled) uiTouchHandler(_,e);
+      };
+      Bangle.on("touch", Bangle.touchHandler);
+    }
     var btnWatch = setWatch(function() {
       options.back();
     }, BTN1, {edge:"falling"});
@@ -122,5 +127,8 @@
       }
     }},global.WIDGETS);
     Bangle.drawWidgets();
+  } else { // If a touch handler was needed for setUI, add it
+    if (Bangle.touchHandler)
+      Bangle.on("touch", Bangle.touchHandler);
   }
 })

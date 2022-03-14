@@ -39,6 +39,7 @@
             If a process.on("uncaughtException" handler creates an exception, make sure we report it as Uncaught
             Bangle.js: If home button held and JS is still executing, force a break (like Ctrl-C)
             Graphics: Fix text bounding box calculation when just the top line of a character would be visible
+            Bangle.js2: setUI now doesn't forward touch events if tapping over the back button
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)
