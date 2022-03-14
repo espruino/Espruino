@@ -2244,7 +2244,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     if (info.font == JSGRAPHICS_FONTSIZE_VECTOR) {
 #ifndef NO_VECTOR_FONT
       int w = (int)graphicsVectorCharWidth(&gfx, info.scalex, ch);
-      if (x>minX-w && x<maxX  && y>minY-fontHeight && y<maxY) {
+      if (x>minX-w && x<maxX  && y>minY-fontHeight && y<=maxY) {
         if (solidBackground)
           graphicsFillRect(&gfx,x,y,x+w-1,y+fontHeight-1, gfx.data.bgColor);
         graphicsFillVectorChar(&gfx, x, y, info.scalex, info.scaley, ch);
@@ -2252,12 +2252,12 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
       x+=w;
 #endif
     } else if (info.font == JSGRAPHICS_FONTSIZE_4X6) {
-      if (x>minX-4*info.scalex && x<maxX && y>minY-fontHeight && y<maxY)
+      if (x>minX-4*info.scalex && x<maxX && y>minY-fontHeight && y<=maxY)
         graphicsDrawChar4x6(&gfx, x, y, ch, info.scalex, info.scaley, solidBackground);
       x+=4*info.scalex;
 #ifdef USE_FONT_6X8
     } else if (info.font == JSGRAPHICS_FONTSIZE_6X8) {
-      if (x>minX-6*info.scalex && x<maxX && y>minY-fontHeight && y<maxY)
+      if (x>minX-6*info.scalex && x<maxX && y>minY-fontHeight && y<=maxY)
         graphicsDrawChar6x8(&gfx, x, y, ch, info.scalex, info.scaley, solidBackground);
       x+=6*info.scalex;
 #endif
@@ -2280,7 +2280,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
         width = (int)jsvGetInteger(customWidth);
         bmpOffset = width*(ch-info.customFirstChar);
       }
-      if (ch>=info.customFirstChar && (x>minX-width*info.scalex) && (x<maxX) && (y>minY-fontHeight) && y<maxY) {
+      if (ch>=info.customFirstChar && (x>minX-width*info.scalex) && (x<maxX) && (y>minY-fontHeight) && y<=maxY) {
         int ch = fontHeight/info.scaley;
         bmpOffset *= ch * customBPP;
         // now render character
