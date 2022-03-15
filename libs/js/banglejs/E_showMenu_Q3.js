@@ -18,8 +18,8 @@
   });
   // Submenu for editing menu options...
   function showSubMenu(item, title) {
-    if ("number"!=typeof item.value) 
-      return console.log("Unhandled item type");
+    /*if ("number"!=typeof item.value) 
+      return console.log("Unhandled item type");*/
     var step = item.step||1;
     if (item.min!==undefined && item.max!==undefined &&
         ((item.max-item.min)/step)<20) {
@@ -113,11 +113,14 @@
       if ("function" == typeof item) item(l);
       else if ("object" == typeof item) {
         // if a bool, just toggle it
-        if ("boolean" == typeof item.value) {
-          item.value=!item.value;
+        if ("number" == typeof item.value) {
+          showSubMenu(item, keys[idx]);
+        } else {
+          if ("boolean"==typeof item.value)
+            item.value=!item.value;
           if (item.onchange) item.onchange(item.value);
           s.drawItem(idx);
-        } else showSubMenu(item, keys[idx]);
+        }
       }
     }
   };
