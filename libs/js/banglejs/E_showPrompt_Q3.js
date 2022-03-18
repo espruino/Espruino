@@ -20,11 +20,11 @@
     if (titleLines)
       g.setColor(g.theme.fgH).setBgColor(g.theme.bgH).
         clearRect(0,Y,W-1,Y+4+titleLines.length*FH).
-        drawString(titleLines.join("\n"),W/2,Y+2);    
+        drawString(titleLines.join("\n"),W/2,Y+2);
     g.setColor(g.theme.fg).setBgColor(g.theme.bg).
       drawString(msgLines.join("\n"),W/2,y);
     y += msgLines.length*FH+32;
-    
+
     var buttonWidths = 0;
     var buttonPadding = 24;
     g.setFontAlign(0,0);
@@ -40,8 +40,6 @@
       var w = g.stringWidth(btn);
       x += (buttonPadding+w)/2;
       var bw = 6+w/2;
-      btnPos.push({x1:x-bw-buttonPadding/2, x2:x+bw+buttonPadding/2,
-                   y1:y-30, y2:y+30});
       var poly = [x-bw,y-16,
                   x+bw,y-16,
                   x+bw+4,y-12,
@@ -51,6 +49,9 @@
                   x-bw-4,y+12,
                   x-bw-4,y-12,
                   x-bw,y-16];
+      btnPos.push({x1:x-bw-buttonPadding/2, x2:x+bw+buttonPadding/2,
+                   y1:y-30, y2:y+30,
+                   poly: poly});
       g.setColor(g.theme.bg2).fillPoly(poly).setColor(g.theme.fg2).drawPoly(poly).drawString(btn,x,y+1);
       x += (buttonPadding+w)/2;
     });
@@ -67,6 +68,7 @@
       btnPos.forEach((b,i)=>{
         if (e.x > b.x1 && e.x < b.x2 &&
             e.y > b.y1 && e.y < b.y2) {
+          g.setColor(g.theme.bgH).fillPoly(b.poly).setColor(g.theme.fgH).drawPoly(b.poly).drawString(btns[i],(b.x1+b.x2)/2,((b.y1+b.y2)/2)+1).flip();
           E.showPrompt(); // remove
           resolve(options.buttons[btns[i]]);
         }
