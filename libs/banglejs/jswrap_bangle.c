@@ -347,7 +347,7 @@ Emitted when a swipe on the touchscreen is detected (a movement from left->right
   "name" : "touch",
   "params" : [
     ["button","int","`1` for left, `2` for right"],
-    ["xy","JsVar","Object of form `{x,y}` containing touch coordinates (if the device supports full touch)"]
+    ["xy","JsVar","Object of form `{x,y}` containing touch coordinates (if the device supports full touch). Clipped to 0..175 (LCD pixel coordinates) on firmware 2v13 and later."]
   ],
   "ifdef" : "BANGLEJS"
 }
@@ -361,6 +361,12 @@ Emitted when the touchscreen is pressed
   "ifdef" : "BANGLEJS"
 }
 Emitted when the touchscreen is dragged or released
+
+The touchscreen extends past the edge of the screen and while
+`x` and `y` coordinates are arranged such that they align with
+the LCD's pixels, if your finger goes towards the edge of the
+screen, `x` and `y` could end up larger than 175 (the screen's maximum pixel coordinates)
+or smaller than 0. Coordinates from the `touch` event are clipped.
 */
 /*JSON{
   "type" : "event",
