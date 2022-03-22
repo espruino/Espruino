@@ -245,6 +245,7 @@ static bool jsfEraseArea(uint32_t startAddr, uint32_t endAddr) {
   if (!jshFlashGetPage(startAddr, &addr, &len))
     return false;
   while (addr<endAddr && !jspIsInterrupted()) {
+    jsDebug(DBG_INFO,"EraseArea page 0x%08x\n", addr);
     if (!jsfIsErased(addr,len))
       jshFlashErasePage(addr);
     if (!jshFlashGetPage(addr+len, &addr, &len))
@@ -494,6 +495,8 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
   if (writeAddress!=startAddress)
     writeAddress = jsfGetAddressOfNextPage(writeAddress-1);
   if (writeAddress) {
+    // addr can be zero if last file was right at the end of storage. If so, set to end of storage area
+    if (!addr) addr=jsfGetBankEndAddress(writeAddress);
     jsDebug(DBG_INFO,"compact> erase 0x%08x => 0x%08x\n", writeAddress, addr);
     // addr is the address of the last area in flash
     jsfEraseArea(writeAddress, addr);
