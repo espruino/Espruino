@@ -852,7 +852,7 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
           beforeStartBlock = curr;
           startBlock = next;
           // Check to see if the next block is aligned on a 4 byte boundary or not
-          if (((size_t)(jsvGetAddressOf(startBlock+1)))&3)
+          if (startBlock==JSVAR_CACHE_SIZE || ((size_t)(jsvGetAddressOf(startBlock+1)))&3)
             blockCount = 0; // this block is not aligned
           else
             blockCount = 1; // all ok - start block here
