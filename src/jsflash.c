@@ -562,12 +562,22 @@ bool jsfCompact() {
   return compacted;
 }
 char jsfStripDriveFromName(JsfFileName *name){
+#ifndef SAVE_ON_FLASH
   if (name->c[1]==':') { // if a 'drive' is specified like "C:foobar.js"
     char drive = name->c[0];
     memmove(name->c, name->c+2, sizeof(JsfFileName)-2); // shift back and clear the rest
     name->c[sizeof(JsfFileName)-2]=0;name->c[sizeof(JsfFileName)-1]=0;
     return drive;
   }
+#ifdef JSF_BANK2_START_ADDRESS
+  int l = 0;
+  while (name->c[l] && l<sizeof(JsfFileName)) l++;
+  if (strcmp(name,".boot0")==0 ||
+      (name->c[l-3]=='.' && name->c[l-2]=='j' && name->c[l-1]=='s')) {
+    return 'C';
+  }
+#endif
+#endif
   return 0;
 }
 void jsfGetDriveBankAddress(char drive, uint32_t *bankStartAddr, uint32_t *bankEndAddr){
@@ -589,8 +599,8 @@ void jsfGetDriveBankAddress(char drive, uint32_t *bankStartAddr, uint32_t *bankE
 /// Create a new 'file' in the memory store - DOES NOT remove existing files with same name. Return the address of data start, or 0 on error
 static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flags, JsfFileHeader *returnedHeader) {
   jsDebug(DBG_INFO,"CreateFile (%d bytes)\n", size);
-  jsfCacheClearFile(name);
   char drive = jsfStripDriveFromName(&name);
+  jsfCacheClearFile(name);
   uint32_t bankStartAddress,bankEndAddress;
   jsfGetDriveBankAddress(drive,&bankStartAddress,&bankEndAddress);
 
@@ -624,6 +634,7 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
         }
         addr = bankStartAddress; // addr->startAddr = restart
       } else {
+        // FIXME: if we have 2 banks and there is no room in this one, what about the other bank?
         jsDebug(DBG_INFO,"CreateFile - Not enough space\n");
         return 0;
       }
@@ -689,11 +700,12 @@ uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
     // if more banks defined search only in one determined from drive letter
     uint32_t startAddress,endAddress;
     jsfGetDriveBankAddress(drive,&startAddress,&endAddress);
-    return jsfBankFindFile(startAddress, endAddress, name, &header);
+    a = jsfBankFindFile(startAddress, endAddress, name, &header);
+  } else {
+    // if no drive letter specified, search in both
+    a = jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, &header);
+    if (!a) a = jsfBankFindFile(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS, name, &header);
   }
-  // if no drive letter specified, search in both
-  a = jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, &header);
-  if (!a) a = jsfBankFindFile(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS, name, &header);
 #else
   a = jsfBankFindFile(JSF_START_ADDRESS, JSF_END_ADDRESS, name, &header);
 #endif
