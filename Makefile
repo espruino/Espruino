@@ -215,9 +215,6 @@ ifdef DEBUG
  else
   OPTIMIZEFLAGS=-g
  endif
- ifeq ($(FAMILY),EFM32GG)
-  DEFINES += -DDEBUG_EFM=1 -DDEBUG=1
- endif
 DEFINES+=-DDEBUG
 endif
 
@@ -685,9 +682,6 @@ ifdef NRF5X
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
 else ifdef STM32
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
-else ifdef EFM32
- LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
- LDFLAGS += -Wl,--start-group -lgcc -lc -lnosys -Wl,--end-group
 else
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
 endif
