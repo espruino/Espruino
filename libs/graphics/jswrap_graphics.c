@@ -1478,6 +1478,18 @@ use, X and Y should be between 0 and `getWidth`/`getHeight`.
 */
 JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+#ifndef USE_LCD_ST7789_8BIT
+  if (x1<0) x1=0;
+  if (y1<0) y1=0;
+  if (x2<0) x2=0;
+  if (y2<0) y2=0;
+  if (x1>=LCD_WIDTH) x1=LCD_WIDTH-1;
+  if (y1>=LCD_HEIGHT) y1=LCD_HEIGHT-1;
+  if (x2>=LCD_WIDTH) x2=LCD_WIDTH-1;
+  if (y2>=LCD_HEIGHT) y2=LCD_HEIGHT-1;
+  if (x1>x2) { int t=x1;x1=x2;x2=t; };
+  if (y1>y2) { int t=y1;y1=y2;y2=t; };
+#endif
 #ifndef SAVE_ON_FLASH
   gfx.data.clipRect.x1 = (unsigned short)x1;
   gfx.data.clipRect.y1 = (unsigned short)y1;
