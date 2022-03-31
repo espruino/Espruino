@@ -1210,18 +1210,21 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
       }
     }
   } else if (jsvIsString(a) && jsvIsString(b)) {
+    // OPT: could we do a fast check here with data?
     JsvStringIterator ita, itb;
     jsvStringIteratorNew(&ita, a, 0);
     jsvStringIteratorNew(&itb, b, 0);
     while (true) {
-      char a = jsvStringIteratorGetCharAndNext(&ita);
-      char b = jsvStringIteratorGetCharAndNext(&itb);
+      int a = jsvStringIteratorGetCharOrMinusOne(&ita);
+      jsvStringIteratorNext(&ita);
+      int b = jsvStringIteratorGetCharOrMinusOne(&itb);
+      jsvStringIteratorNext(&itb);
       if (a != b) {
         jsvStringIteratorFree(&ita);
         jsvStringIteratorFree(&itb);
         return false;
       }
-      if (!a) { // equal, but end of string
+      if (a < 0) { // equal, but end of string
         jsvStringIteratorFree(&ita);
         jsvStringIteratorFree(&itb);
         return true;
