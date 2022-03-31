@@ -1480,7 +1480,7 @@ JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 #ifndef SAVE_ON_FLASH
 #ifdef USE_LCD_ST7789_8BIT
-  if (gfx.type!=JSGRAPHICSTYPE_ST7789_8BIT) {
+  if (gfx.data.type!=JSGRAPHICSTYPE_ST7789_8BIT) {
 #endif
     if (x1<0) x1=0;
     if (y1<0) y1=0;
