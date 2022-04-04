@@ -48,6 +48,7 @@
             Bangle.js: default 'locale' now supports second 'dp' argument for decimal places in distance/speed/temp
             Graphics: Restrict setClipRect coordinates (Except on ST7789_8BIT (Bangle.js 1) where we need it for notifications. This stops potential out of bounds writes is setClipRect is wrong.
             Fix issues accessing object/array fields when the field itself has a null character in it (fix #2176)
+            Graphics: drawString/stringWidth/wrapString can now accept '\b' to go back one character and allow character composition - eg 'C\b/'
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)

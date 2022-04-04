@@ -1955,6 +1955,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
   int width = 0;
   int height = fontHeight;
   int maxWidth = 0;
+  int lastWidth = width;
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
@@ -1963,6 +1964,11 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
       height += fontHeight;
       if (lineStartIndex>=0) break; // only do one line
     }
+    if (ch=='\b') { // backspace
+      width = lastWidth;
+      continue;
+    }
+    lastWidth = width;
 #ifndef SAVE_ON_FLASH
     if (ch==0) { // If images are described in-line in the string, render them
       GfxDrawImageInfo img;
@@ -2062,6 +2068,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
 
   int spaceWidth = _jswrap_graphics_getCharWidth(&gfx, &info, ' ');
   int wordWidth = 0;
+  int lastWordWidth = 0;
   int lineWidth = 0;
   int wordStartIdx = 0;
   int wordIdxAtMaxWidth = 0; // index just before the word width>maxWidth
@@ -2106,6 +2113,11 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
       if (endOfText) break;
       continue;
     }
+    if (ch=='\b') { // backspace
+      wordWidth = lastWordWidth;
+      continue;
+    }
+    lastWordWidth = wordWidth;
 #ifndef SAVE_ON_FLASH
     if (ch==0) { // If images are described in-line in the string, render them
       GfxDrawImageInfo img;
@@ -2169,6 +2181,12 @@ g.drawString("Hi \0\7\5\1\x82 D\x17\xC0");
 // # #  #      #     #
 // # # ###      #####
 ```
+
+Certain extra characters are also allowed:
+
+* `"\n"` - (char code 13) newline
+* `"\b"` - (char code 8) backspace - go back one character (can be used for 'composing' multiple characters - for example "C\b/"=="Ȼ")
+* `"\0"` - an image follows (see below)
 */
 JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool solidBackground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -2231,6 +2249,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
 #endif
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
+  int lastx = x;
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
@@ -2243,6 +2262,11 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
       y += fontHeight;
       continue;
     }
+    if (ch=='\b') { // backspace (go back to start of last character)
+      x = lastx;
+      continue;
+    }
+    lastx = x;
 #ifndef SAVE_ON_FLASH
     if (ch==0) { // If images are described in-line in the string, render them
       GfxDrawImageInfo img;
