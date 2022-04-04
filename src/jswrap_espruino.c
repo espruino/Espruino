@@ -1997,6 +1997,17 @@ Decode a UTF8 string.
 * Otherwise `replaceFn(charCode)` is called and the result used if `replaceFn` is a function
 * If `replaceFn` is a string, that is used
 * Or finally if nothing else matches, the character is ignored
+
+For instance:
+
+```
+let unicodeRemap = {
+  0x20ac:"\u0080", // Euro symbol
+  0x2026:"\u0085", // Ellipsis
+};
+E.decodeUTF8("UTF-8 Euro: \u00e2\u0082\u00ac", unicodeRemap, '[?]') == "UTF-8 Euro: \u0080"
+```
+
  */
 JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn) {
   if (!(jsvIsString(str))) {
