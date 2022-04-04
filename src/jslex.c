@@ -932,7 +932,8 @@ JsVar *jslGetTokenValueAsVar() {
     return jsvNewFromString(jslReservedWordAsString(lex->tk));
   } else {
     assert(lex->tokenl < JSLEX_MAX_TOKEN_LENGTH);
-    return jsvNewStringOfLength(lex->tokenl, lex->token);
+    lex->token[lex->tokenl]  = 0; // add final null
+    return jsvNewFromString(lex->token);
   }
 }
 
