@@ -50,6 +50,7 @@
             Fix issues accessing object/array fields when the field itself has a null character in it (fix #2176)
             nRF5x: Fix merging of packers for `NRF.findDevice` - previously name fields in subsequent packets may have been left as 'undefined'
             nRF5x: NRF.findDevice now aggregates multiple packets even if only one packet matches the filter (fix #2178)
+            nRF5x: Allow NRF.setAdvertising to set advertised service UUIDs (vs service data) easily with `NRF.setAdvertising({'180D':undefined})`
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)

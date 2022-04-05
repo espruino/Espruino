@@ -655,7 +655,7 @@ JsVarFloat jswrap_ble_getBattery() {
     "name" : "setAdvertising",
     "generate" : "jswrap_ble_setAdvertising",
     "params" : [
-      ["data","JsVar","The data to advertise as an object - see below for more info"],
+      ["data","JsVar","The service data to advertise as an object - see below for more info"],
       ["options","JsVar","An optional object of options"]
     ]
 }
@@ -668,7 +668,7 @@ For example to return battery level at 95%, do:
 
 ```
 NRF.setAdvertising({
-  0x180F : [95]
+  0x180F : [95] // Service data 0x180F = 95
 });
 ```
 
@@ -681,6 +681,18 @@ setInterval(function() {
   });
 }, 30000);
 ```
+
+If you specify a value for the object key, Service Data is advertised. However
+if you specify `undefined`, the Service UUID is advertised:
+
+```
+NRF.setAdvertising({
+  0x180D : undefined // Advertise service UUID 0x180D (HRM)
+});
+```
+
+Service UUIDs can also be supplied in the second argument of
+`NRF.setServices`, but those go in the scan response packet.
 
 You can also supply the raw advertising data in an array. For example
 to advertise as an Eddystone beacon:
@@ -984,27 +996,46 @@ JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options) {
     return jsvLockAgain(data);
   } else if (jsvIsObject(data)) {
 #ifdef NRF5X
-    ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(jsvGetChildren(data)*sizeof(ble_advdata_service_data_t));
+    // we may not use all of service_data/adv_uuids - but allocate the max we can
+    int maxServices = jsvGetChildren(data);
+    ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(maxServices*sizeof(ble_advdata_service_data_t));
+    int service_data_cnt = 0;
+    ble_uuid_t *adv_uuid = (ble_uuid_t*)alloca(maxServices*sizeof(ble_uuid_t));
+    int adv_uuid_cnt = 0;
+    if (maxServices && (!service_data || !adv_uuid))
+      return; // allocation error
 #endif
-    int n = 0;
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, data);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *v = jsvObjectIteratorGetValue(&it);
       JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, v);
-      jsvUnLock(v);
+      const char *errorStr;
+      ble_uuid_t ble_uuid;
+      if ((errorStr=bleVarToUUIDAndUnLock(&ble_uuid, jsvObjectIteratorGetKey(&it)))) {
+        jsExceptionHere(JSET_ERROR, "Invalid Service UUID: %s", errorStr);
+        break;
+      }
 #ifdef NRF5X
-      service_data[n].service_uuid = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
-      service_data[n].data.size    = dLen;
-      service_data[n].data.p_data  = (uint8_t*)dPtr;
+      if (jsvIsUndefined(v)) {
+        adv_uuid[adv_uuid_cnt]  = ble_uuid;
+        adv_uuid_cnt++;
+      } else {
+        service_data[service_data_cnt].service_uuid = ble_uuid.uuid;
+        service_data[service_data_cnt].data.size    = dLen;
+        service_data[service_data_cnt].data.p_data  = (uint8_t*)dPtr;
+        service_data_cnt++;
+      }
 #endif
+      jsvUnLock(v);
       jsvObjectIteratorNext(&it);
-      n++;
     }
     jsvObjectIteratorFree(&it);
 #ifdef NRF5X
-    advdata.service_data_count   = n;
+    advdata.service_data_count   = service_data_cnt;
     advdata.p_service_data_array = service_data;
+    advdata.uuids_complete.uuid_cnt = adv_uuid_cnt;
+    advdata.uuids_complete.p_uuids  = adv_uuid;
 #endif
   } else if (!jsvIsUndefined(data)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting object, array or undefined, got %t", data);
