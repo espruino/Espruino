@@ -1677,7 +1677,7 @@ BluetoothDevice {
  }
 ```
 
-You can also supply a set of filters (as decribed in `NRF.requestDevice`) as a second argument, which will
+You can also supply a set of filters (as described in `NRF.requestDevice`) as a second argument, which will
 allow you to filter the devices you get a callback for. This helps
 to cut down on the time spent processing JavaScript code in areas with
 a lot of Bluetooth advertisements. For example to find only devices
@@ -1692,6 +1692,11 @@ NRF.setScan(function(d) {
 You can also specify `active:true` in the second argument to perform
 active scanning (this requests scan response packets) from any
 devices it finds.
+
+**Note:** Using a filter in `setScan` filters each advertising packet individually. As
+a result, if you filter based on a service UUID and a device advertises with multiple packets
+(or a scan response when `active:true`) only the packets matching the filter are returned. To
+aggregate multiple packets you can use `NRF.findDevices`.
 
 **Note:** BLE advertising packets can arrive quickly - faster than you'll
 be able to print them to the console. It's best only to print a few, or
@@ -1709,7 +1714,8 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
   if (!adv) return;
   // Create a proper BluetoothDevice object
   JsVar *device = jspNewObject(0, "BluetoothDevice");
-  jsvObjectSetChildAndUnLock(device, "id", jsvObjectGetChild(adv, "id", 0));
+  JsVar *deviceAddr =  jsvObjectGetChild(adv, "id", 0);
+  jsvObjectSetChild(device, "id", deviceAddr);
   jsvObjectSetChildAndUnLock(device, "rssi", jsvObjectGetChild(adv, "rssi", 0));
   JsVar *services = jsvNewEmptyArray();
   JsVar *serviceData = jsvNewObject();
@@ -1774,9 +1780,36 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
     jsvObjectSetChild(device, "serviceData", serviceData);
   jsvUnLock3(data, services, serviceData);
 
-  if (!filters || jswrap_ble_filter_device(filters, device))
+  bool deviceMatchedFilters = !filters || jswrap_ble_filter_device(filters, device);
+
+  /* If BLEADV exists then we're using 'NRF.findDevices'
+  https://github.com/espruino/Espruino/issues/2178 means that if we have
+  a device that advertises its name in a scan response (or other advertising packet)
+  BUT we are filtering by a service in the main advertisement, we want to pass this
+  advertisement through *if any packet from this device previously matched the filters*
+  even if this one doesn't. */
+  if (!deviceMatchedFilters) {
+    JsVar *arr = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADV", JSV_ARRAY);
+    if (arr) {
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, arr);
+      while (!deviceMatchedFilters && jsvObjectIteratorHasValue(&it)) {
+        JsVar *obj = jsvObjectIteratorGetValue(&it);
+        JsVar *addr = jsvObjectGetChild(obj, "id", 0);
+        if (jsvCompareString(addr, deviceAddr, 0, 0, true) == 0)
+          deviceMatchedFilters = true; // we have already matched - so match this one
+        jsvUnLock2(addr, obj);
+        jsvObjectIteratorNext(&it);
+      }
+      jsvObjectIteratorFree(&it);
+    }
+    jsvUnLock(arr);
+  }
+  jsvUnLock(deviceAddr);
+
+  if (deviceMatchedFilters)
     jspExecuteFunction(callback, 0, 1, &device);
-  jsvUnLock(device);
+  jsvUnLock2(deviceAddr, device);
 }
 
 void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
@@ -1949,13 +1982,14 @@ void jswrap_ble_findDevices_found_cb(JsVar *device) {
     jsvObjectIteratorNew(&oit, device);
     while (jsvObjectIteratorHasValue(&oit)) {
       JsVar *key = jsvObjectIteratorGetKey(&oit);
-      JsVar *value = jsvSkipName(key);
+      JsVar *value = jsvObjectIteratorGetValue(&oit);
       JsVar *existingKey = jsvFindChildFromVar(found, key, true);
       bool isServices = jsvIsStringEqual(key,"services");
       bool isServiceData = jsvIsStringEqual(key,"serviceData");
+      JsVar *existingValue = 0;
       if (isServices || isServiceData) {
         // for services or servicedata we append to the array/object
-        JsVar *existingValue = jsvSkipName(existingKey);
+        existingValue = jsvSkipName(existingKey);
         if (existingValue) {
           if (isServices) {
             jsvArrayPushAll(existingValue, value, true);
@@ -1963,9 +1997,10 @@ void jswrap_ble_findDevices_found_cb(JsVar *device) {
             jsvObjectAppendAll(existingValue, value);
           }
           jsvUnLock(existingValue);
-        } else // nothing already - just copy
-          jsvSetValueOfName(existingKey, value);
+        }
       }
+      if (!existingValue) // nothing already - just copy
+        jsvSetValueOfName(existingKey, value);
       jsvUnLock3(existingKey, key, value);
       jsvObjectIteratorNext(&oit);
     }
@@ -2929,6 +2964,12 @@ NRF.requestDevice({ filters: [{ namePrefix: 'Puck.js' }]}).then(
 
 Note that you have to keep track of the `gatt` variable so that you can
 disconnect the Bluetooth connection when you're done.
+
+**Note:** Using a filter in `NRF.requestDevice` filters each advertising packet individually. As
+soon as a matching advertisement is received,  `NRF.requestDevice` resolves the promise and stops
+scanning. This means that if you filter based on a service UUID and a device advertises with multiple packets
+(or a scan response when `active:true`) only the packet matching the filter is returned - you may not
+get the device's name is that was in a separate packet. To aggregate multiple packets you can use `NRF.findDevices`.
 */
 #if CENTRAL_LINK_COUNT>0
 /// Called when we timeout waiting for a device
@@ -3450,6 +3491,11 @@ NRF.requestDevice({ filters: [{ namePrefix: 'Pixl.js' }] }).then(function(device
 
 will force the connection to use the fastest connection interval possible (as long as the device
 at the other end supports it).
+
+**Note:** The Web Bluetooth spec states that if a device hasn't advertised its name, when connected
+to a device the central (in this case Espruino) should automatically retrieve the name from the
+corresponding characteristic (`0x2a00` on service `0x1800`). Espruino does not automatically do this.
+
 */
 #if CENTRAL_LINK_COUNT>0
 static void _jswrap_ble_central_connect(JsVar *addr, JsVar *options) {
