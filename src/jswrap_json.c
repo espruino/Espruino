@@ -296,7 +296,7 @@ void jsfGetJSONWithCallback(JsVar *var, JsVar *varName, JSONFlags flags, const c
   if (!whitespace) whitespace="  ";
 
   if (jsvIsUndefined(var)) {
-    cbprintf(user_callback, user_data, "undefined");
+    cbprintf(user_callback, user_data, (flags&JSON_NO_UNDEFINED)?"null":"undefined");
     return;
   }
   // Use IS_RECURSING flag to stop recursion
