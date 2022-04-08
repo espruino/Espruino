@@ -2031,7 +2031,10 @@ void jsiIdle() {
                 if (jshIsPinValid(dataPin))
                   jsvObjectSetChildAndUnLock(data, "data", jsvNewFromBool((event.flags&EV_EXTI_DATA_PIN_HIGH)!=0));
               }
-              if (!jsiExecuteEventCallback(0, watchCallback, 1, &data) && watchRecurring) {
+              if (jsvIsArray(watchCallback)) {
+                // add this event to supplied array instead of using callback
+                jsvArrayAddToEnd(watchCallback, data, 1);
+              } else if (!jsiExecuteEventCallback(0, watchCallback, 1, &data) && watchRecurring) {
                 jsError("Ctrl-C while processing watch - removing it.");
                 jsErrorFlags |= JSERR_CALLBACK;
                 watchRecurring = false;

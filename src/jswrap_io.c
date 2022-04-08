@@ -729,8 +729,8 @@ JsVar *jswrap_interface_setWatch(
     repeat = jsvGetBool(repeatOrObject);
 
   JsVarInt itemIndex = -1;
-  if (!jsvIsFunction(func) && !jsvIsString(func)) {
-    jsExceptionHere(JSET_ERROR, "Function or String not supplied!");
+  if (!jsvIsFunction(func) && !jsvIsString(func) && !jsvIsArray(func)) {
+    jsExceptionHere(JSET_ERROR, "Function, String, or Array not supplied!");
   } else {
     JsVar *watchPtr = jsvNewObject();
     if (watchPtr) {
