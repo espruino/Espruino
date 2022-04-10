@@ -5135,6 +5135,7 @@ you could make all clocks start the launcher with a swipe by using:
     Bangle.on("swipe", Bangle.swipeHandler);
   };
 })();
+```
 
 The first argument can also be an object, in which case more options can be specified:
 
