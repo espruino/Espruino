@@ -336,11 +336,13 @@ to decode `gesture` from a number into a string.
   "type" : "event",
   "class" : "Bangle",
   "name" : "swipe",
-  "params" : [["directionLR","int","`-1` for left, `1` for right, `0` for up/down],
-              ["directionUD","int","`-1` for up, `1` for down", `0` for left/right (Bangle.js 2 only)]],
+  "params" : [["directionLR","int","`-1` for left, `1` for right, `0` for up/down"],
+              ["directionUD","int","`-1` for up, `1` for down, `0` for left/right (Bangle.js 2 only)"]],
   "ifdef" : "BANGLEJS"
 }
-Emitted when a swipe on the touchscreen is detected (a movement from left->right, right->left, down->up or up->down ) 
+Emitted when a swipe on the touchscreen is detected (a movement from left->right, right->left, down->up or up->down) 
+
+Bangle.js 1 is only capable of detecting left/right swipes as it only contains a 2 zone touchscreen.
 */
 /*JSON{
   "type" : "event",
