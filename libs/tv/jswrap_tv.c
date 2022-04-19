@@ -25,8 +25,8 @@
 
 /*JSON{
   "type" : "library",
-  "name" : "tv",
-  "if" : "defined(STM32)"
+  "class" : "tv",
+  "ifdef" : "STM32"
 }
 This library provides TV out capability on the Espruino and Espruino Pico.
 
@@ -37,10 +37,9 @@ See the [[Television]] page for more information.
 
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "tv",
   "name" : "setup",
-  "memberOf" : "tv",
-  "thisParam" : false,
   "generate" : "jswrap_tv_setup",
   "params" : [
     ["options","JsVar","Various options for the TV output"],

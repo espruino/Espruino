@@ -40,21 +40,20 @@ extern const unsigned char jswSymbolIndex_WLAN;
 
 /*JSON{
   "type" : "library",
-  "name" : "CC3000"
+  "class" : "CC3000"
 }
 
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "CC3000",
   "name" : "connect",
-  "memberOf" : "CC3000",
-  "thisParam" : false,
   "generate" : "jswrap_cc3000_connect",
   "params" : [
-    ["spi","JsVar","Device to use for SPI (or undefined to use the default). SPI should be 1,000,000 baud, and set to 'mode 1'"],
-    ["cs","pin","The pin to use for Chip Select"],
-    ["en","pin","The pin to use for Enable"],
-    ["irq","pin","The pin to use for Interrupts"]
+    ["spi", "JsVar", "Device to use for SPI (or undefined to use the default). SPI should be 1,000,000 baud, and set to 'mode 1'"],
+    ["cs", "pin", "The pin to use for Chip Select"],
+    ["en", "pin", "The pin to use for Enable"],
+    ["irq", "pin", "The pin to use for Interrupts"]
   ],
   "return" : ["JsVar","A WLAN Object"],
   "return_object" : "WLAN"
@@ -106,17 +105,16 @@ JsVar *jswrap_cc3000_connect(JsVar *spi, Pin cs, Pin en, Pin irq) {
 }
 
 /*JSON{
-  "type" : "object",
-  "name" : "WLAN"
+  "type" : "class",
+  "class" : "WLAN"
 }
 An instantiation of a WiFi network adaptor
 */
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "WLAN",
   "name" : "connect",
-  "memberOf" : "WLAN.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_wlan_connect",
   "params" : [
     ["ap","JsVar","Access point name"],
@@ -166,10 +164,9 @@ bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callbac
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "WLAN",
   "name" : "disconnect",
-  "memberOf" : "WLAN.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_wlan_disconnect"
 }
 Completely uninitialise and power down the CC3000. After this you'll have to use ```require("CC3000").connect()``` again.
@@ -187,10 +184,9 @@ void jswrap_wlan_disconnect(JsVar *wlanObj) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "WLAN",
   "name" : "reconnect",
-  "memberOf" : "WLAN.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_wlan_reconnect"
 }
 Completely uninitialise and power down the CC3000, then reconnect to the old access point.
@@ -212,10 +208,9 @@ void jswrap_wlan_reconnect(JsVar *wlanObj) {
 
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "WLAN",
   "name" : "getIP",
-  "memberOf" : "WLAN.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_wlan_getIP",
   "return" : ["JsVar",""]
 }
@@ -261,10 +256,9 @@ static void _wlan_getIP_set_address(JsVar *options, char *name, unsigned char *p
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "WLAN",
   "name" : "setIP",
-  "memberOf" : "WLAN.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_wlan_setIP",
   "params" : [
     ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."]

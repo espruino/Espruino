@@ -33,7 +33,7 @@ JsHashLib hashFunctions[4] = {
 
 /*JSON{
   "type" : "library",
-  "name" : "hashlib"
+  "class" : "hashlib"
 }
 **Note:** This library is currently only included in builds for the original Espruino boards.
 For other boards you will have to make build your own firmware.
@@ -45,19 +45,18 @@ For other boards you will have to make build your own firmware.
 // ---------------------------------------------------------------------------------
 
 /*JSON{
-  "type" : "object",
-  "name" : "HASH",
-  "memberOf" : "hashlib"
+  "type" : "class",
+  "library" : "hashlib",
+  "class" : "HASH"
 }
 **Note:** This class is currently only included in builds for the original Espruino boards.
 For other boards you will have to make build your own firmware.
 */
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "hashlib",
   "name" : "sha224",
-  "memberOf" : "hashlib",
-  "thisParam" : false,
   "generate" : "jswrap_hashlib_sha224",
   "params" : [
     ["message","JsVar","message to hash"]
@@ -65,7 +64,6 @@ For other boards you will have to make build your own firmware.
   "return" : ["JsVar","Returns a new HASH SHA224 Object"],
   "return_object" : "HASH"
 }
-
 */
 JsVar *jswrap_hashlib_sha224(JsVar *message) {
   JsVar *hashobj = jswrap_hashlib_sha2(HASH_SHA224);
@@ -77,10 +75,9 @@ JsVar *jswrap_hashlib_sha224(JsVar *message) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "hashlib",
   "name" : "sha256",
-  "memberOf" : "hashlib",
-  "thisParam" : false,
   "generate" : "jswrap_hashlib_sha256",
   "params" : [
     ["message","JsVar","message to hash"]
@@ -88,7 +85,6 @@ JsVar *jswrap_hashlib_sha224(JsVar *message) {
   "return" : ["JsVar","Returns a new HASH SHA256 Object"],
   "return_object" : "HASH"
 }
-
 */
 JsVar *jswrap_hashlib_sha256(JsVar *message) {
   JsVar *hashobj = jswrap_hashlib_sha2(HASH_SHA256);
@@ -128,16 +124,14 @@ JsVar *jswrap_hashlib_sha2(JsHashType hash_type) {
 
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "HASH",
   "name" : "update",
-  "memberOf" : "HASH.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_hashlib_hash_update",
   "params" : [
     ["message","JsVar","part of message"]
   ]
 }
-
 */
 void jswrap_hashlib_hash_update(JsVar *parent, JsVar *message) {
   int type;
@@ -165,17 +159,15 @@ void jswrap_hashlib_hash_update(JsVar *parent, JsVar *message) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "HASH",
   "name" : "digest",
-  "memberOf" : "HASH.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_hashlib_hash_digest",
   "params" : [
     ["message","JsVar","part of message"]
   ],
   "return" : ["JsVar","Hash digest"]
 }
-
 */
 JsVar *jswrap_hashlib_hash_digest(JsVar *parent) {
   int type;
@@ -202,17 +194,15 @@ JsVar *jswrap_hashlib_hash_digest(JsVar *parent) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "HASH",
   "name" : "hexdigest",
-  "memberOf" : "HASH.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_hashlib_hash_hexdigest",
   "params" : [
     ["message","JsVar","part of message"]
   ],
   "return" : ["JsVar","Hash hexdigest"]
 }
-
 */
 JsVar *jswrap_hashlib_hash_hexdigest(JsVar *parent) {
   int type;

@@ -64,19 +64,18 @@ uint8_t wizchip_read() {
 
 /*JSON{
   "type" : "library",
-  "name" : "WIZnet"
+  "class" : "WIZnet"
 }
 Library for communication with the WIZnet Ethernet module
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "WIZnet",
   "name" : "connect",
-  "memberOf" : "WIZnet",
-  "thisParam" : false,
   "generate" : "jswrap_wiznet_connect",
   "params" : [
-    ["spi","JsVar","Device to use for SPI (or undefined to use the default)"],
-    ["cs","pin","The pin to use for Chip Select"]
+    ["spi", "JsVar", "Device to use for SPI (or undefined to use the default)"],
+    ["cs", "pin", "The pin to use for Chip Select"]
   ],
   "return" : ["JsVar","An Ethernet Object"],
   "return_object" : "Ethernet"
@@ -151,17 +150,16 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
 }
 
 /*JSON{
-  "type" : "object",
-  "name" : "Ethernet"
+  "type" : "class",
+  "class" : "Ethernet"
 }
 An instantiation of an Ethernet network adaptor
 */
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Ethernet",
   "name" : "getIP",
-  "memberOf" : "Ethernet.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_ethernet_getIP",
   "return" : ["JsVar",""]
 }
@@ -206,10 +204,9 @@ static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *pt
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Ethernet",
   "name" : "setIP",
-  "memberOf" : "Ethernet.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_ethernet_setIP",
   "params" : [
     ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns, mac  }`, or do not supply an object in order to force DHCP."]

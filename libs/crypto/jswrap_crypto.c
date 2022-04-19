@@ -31,8 +31,8 @@
 
 /*JSON{
   "type" : "library",
-  "name" : "crypto",
-  "if" : "defined(USE_TLS)"
+  "class" : "crypto",
+  "ifdef" : "USE_TLS"
 }
 Cryptographic functions
 
@@ -41,24 +41,23 @@ Cryptographic functions
 
 
 /*JSON{
-  "type" : "object",
-  "name" : "AES",
-  "memberOf" : "crypto",
-  "if" : "defined(USE_TLS)"
+  "type" : "class",
+  "library" : "crypto",
+  "class" : "AES",
+  "ifdef" : "USE_TLS"
 }
 Class containing AES encryption/decryption
 
 **Note:** This library is currently only included in builds for the Espruino Pico. For other boards you will have to make build your own firmware, and you may need to remove other features in order to make room.
 */
 /*JSON{
-  "type" : "variable",
+  "type" : "staticproperty",
+  "class" : "crypto",
   "name" : "AES",
-  "memberOf" : "crypto",
-  "thisParam" : false,
   "generate_full" : "jswCreateFromSymbolTable(jswSymbolIndex_AES)",
   "return" : ["JsVar"],
   "return_object" : "AES",
-  "if" : "defined(USE_TLS)"
+  "ifdef" : "USE_TLS"
 }
 Class containing AES encryption/decryption
 */
@@ -145,87 +144,86 @@ JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "crypto",
   "name" : "SHA1",
-  "memberOf" : "crypto",
-  "thisParam" : false,
   "generate_full" : "jswrap_crypto_SHAx(message, 1)",
   "params" : [
     ["message","JsVar","The message to apply the hash to"]
   ],
   "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "if" : "defined(USE_TLS)"
+  "ifdef" : "USE_TLS"
 }
+
 Performs a SHA1 hash and returns the result as a 20 byte ArrayBuffer
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "crypto",
   "name" : "SHA224",
-  "memberOf" : "crypto",
-  "thisParam" : false,
   "generate_full" : "jswrap_crypto_SHAx(message, 224)",
   "params" : [
     ["message","JsVar","The message to apply the hash to"]
   ],
   "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "if" : "defined(USE_TLS)"
+  "ifdef" : "USE_TLS"
 }
+
 Performs a SHA224 hash and returns the result as a 28 byte ArrayBuffer
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "crypto",
   "name" : "SHA256",
-  "memberOf" : "crypto",
-  "thisParam" : false,
   "generate_full" : "jswrap_crypto_SHAx(message, 256)",
   "params" : [
     ["message","JsVar","The message to apply the hash to"]
   ],
   "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "if" : "defined(USE_TLS)"
+  "ifdef" : "USE_TLS"
 }
+
 Performs a SHA256 hash and returns the result as a 32 byte ArrayBuffer
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "crypto",
   "name" : "SHA384",
-  "memberOf" : "crypto",
-  "thisParam" : false,
   "generate_full" : "jswrap_crypto_SHAx(message, 384)",
   "params" : [
     ["message","JsVar","The message to apply the hash to"]
   ],
   "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "if" : "defined(USE_TLS)"
+  "ifdef" : "USE_TLS"
 }
+
 Performs a SHA384 hash and returns the result as a 48 byte ArrayBuffer
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "crypto",
   "name" : "SHA512",
-  "memberOf" : "crypto",
-  "thisParam" : false,
   "generate_full" : "jswrap_crypto_SHAx(message, 512)",
   "params" : [
     ["message","JsVar","The message to apply the hash to"]
   ],
   "return" : ["JsVar","Returns a 32 byte ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "if" : "defined(USE_TLS)"
+  "ifdef" : "USE_TLS"
 }
+
 Performs a SHA512 hash and returns the result as a 64 byte ArrayBuffer
 */
 
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "crypto",
   "name" : "PBKDF2",
-  "memberOf" : "crypto",
-  "thisParam" : false,
   "generate" : "jswrap_crypto_PBKDF2",
   "params" : [
     ["passphrase","JsVar","Passphrase"],
@@ -234,8 +232,9 @@ Performs a SHA512 hash and returns the result as a 64 byte ArrayBuffer
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "if" : "defined(USE_TLS)"
+  "ifdef" : "USE_TLS"
 }
+
 Password-Based Key Derivation Function 2 algorithm, using SHA512
 */
 JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
@@ -408,10 +407,9 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "AES",
   "name" : "encrypt",
-  "memberOf" : "AES",
-  "thisParam" : false,
   "generate" : "jswrap_crypto_AES_encrypt",
   "params" : [
     ["passphrase","JsVar","Message to encrypt"],
@@ -420,19 +418,17 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "if" : "defined(USE_TLS)"
+  "ifdef" : "USE_TLS"
 }
-
 */
 JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
   return jswrap_crypto_AEScrypt(message, key, options, true);
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "AES",
   "name" : "decrypt",
-  "memberOf" : "AES",
-  "thisParam" : false,
   "generate" : "jswrap_crypto_AES_decrypt",
   "params" : [
     ["passphrase","JsVar","Message to decrypt"],
@@ -441,9 +437,8 @@ JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer",
-  "if" : "defined(USE_TLS)"
+  "ifdef" : "USE_TLS"
 }
-
 */
 JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key, JsVar *options) {
   return jswrap_crypto_AEScrypt(message, key, options, false);

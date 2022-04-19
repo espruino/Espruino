@@ -37,9 +37,10 @@
 
 /*JSON{
   "type" : "library",
-  "name" : "Flash",
-  "if" : "!defined(SAVE_ON_FLASH)"
+  "class" : "Flash",
+  "ifndef" : "SAVE_ON_FLASH"
 }
+
 This module allows access to read and write the STM32's flash memory.
 
 It should be used with extreme caution, as it is easy to overwrite parts of Flash
@@ -50,22 +51,21 @@ board's reference pages.
 
 To see which areas of memory you can and can't overwrite, look at the values
 reported by `process.memory()`.
-*/
+ */
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Flash",
   "name" : "getPage",
-  "memberOf" : "Flash",
-  "thisParam" : false,
   "generate" : "jswrap_flash_getPage",
   "params" : [
     ["addr","int","An address in memory"]
   ],
-  "return" : ["JsVar","An object of the form `{ addr : #, length : #}`, where `addr` is the start address of the page, and `length` is the length of it (in bytes). Returns undefined if no page at address"],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  "return" : ["JsVar","An object of the form `{ addr : #, length : #}`, where `addr` is the start address of the page, and `length` is the length of it (in bytes). Returns undefined if no page at address"]
 }
 Returns the start and length of the flash page containing the given address.
-*/
+ */
 JsVar *jswrap_flash_getPage(int addr) {
   uint32_t pageStart, pageLength;
   if (!jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength))
@@ -78,13 +78,12 @@ JsVar *jswrap_flash_getPage(int addr) {
 }
 
 /*JSON{
-  "type" : "function",
-  "name" : "getFree",
-  "memberOf" : "Flash",
-  "thisParam" : false,
+  "type"     : "staticmethod",
+    "ifndef" : "SAVE_ON_FLASH",
+  "class"    : "Flash",
+  "name"     : "getFree",
   "generate" : "jswrap_flash_getFree",
-  "return" : ["JsVar","Array of objects with `addr` and `length` properties"],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  "return"   : ["JsVar", "Array of objects with `addr` and `length` properties"]
 }
 This method returns an array of objects of the form `{addr : #, length : #}`, representing
 contiguous areas of flash memory in the chip that are not used for anything.
@@ -100,18 +99,17 @@ JsVar *jswrap_flash_getFree() {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Flash",
   "name" : "erasePage",
-  "memberOf" : "Flash",
-  "thisParam" : false,
   "generate" : "jswrap_flash_erasePage",
   "params" : [
     ["addr","JsVar","An address in the page that is to be erased"]
-  ],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  ]
 }
 Erase a page of flash memory
-*/
+ */
 void jswrap_flash_erasePage(JsVar *addr) {
   if (!jsvIsInt(addr)) {
     jsExceptionHere(JSET_ERROR, "Address should be an integer, got %t", addr);
@@ -121,16 +119,15 @@ void jswrap_flash_erasePage(JsVar *addr) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Flash",
   "name" : "write",
-  "memberOf" : "Flash",
-  "thisParam" : false,
   "generate" : "jswrap_flash_write",
   "params" : [
     ["data","JsVar","The data to write. This must be a multiple of 4 bytes."],
     ["addr","int","The address to start writing from, this must be on a word boundary (a multiple of 4)"]
-  ],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  ]
 }
 Write data into memory at the given address - IN MULTIPLES OF 4 BYTES.
 
@@ -138,7 +135,7 @@ In flash memory you may only turn bits that are 1 into bits that are 0. If
 you're writing data into an area that you have already written (so `read`
 doesn't return all `0xFF`) you'll need to call `erasePage` to clear the
 entire page.
-*/
+ */
 void jswrap_flash_write(JsVar *data, int addr) {
   if (jsvIsUndefined(data)) {
     jsExceptionHere(JSET_ERROR, "Data is not defined");
@@ -156,20 +153,19 @@ void jswrap_flash_write(JsVar *data, int addr) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Flash",
   "name" : "read",
-  "memberOf" : "Flash",
-  "thisParam" : false,
   "generate" : "jswrap_flash_read",
   "params" : [
     ["length","int","The amount of data to read (in bytes)"],
     ["addr","int","The address to start writing from"]
   ],
-  "return" : ["JsVar","A Uint8Array of data"],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  "return" : ["JsVar","A Uint8Array of data"]
 }
 Read flash memory from the given address
-*/
+ */
 JsVar *jswrap_flash_read(int length, int addr) {
   if (length<=0) return 0;
   JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, length);

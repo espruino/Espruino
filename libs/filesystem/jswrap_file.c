@@ -104,16 +104,15 @@ bool jsfsInit() {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "E",
   "name" : "connectSDCard",
-  "memberOf" : "E",
-  "thisParam" : false,
   "generate" : "jswrap_E_connectSDCard",
+  "ifndef" : "SAVE_ON_FLASH",
   "params" : [
     ["spi","JsVar","The SPI object to use for communication"],
     ["csPin","pin","The pin to use for Chip Select"]
-  ],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  ]
 }
 Setup the filesystem so that subsequent calls to `E.openFile` and `require('fs').*` will use an SD card on the supplied SPI device and pin.
 
@@ -146,8 +145,8 @@ void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
 /* TODO: maybe this should be in the 'E' library. However we don't currently
  * have a way of doing that in build_jswrapper.py  */
 /*JSON{
-  "type" : "object",
-  "name" : "File"
+  "type" : "class",
+  "class" : "File"
 }
 This is the File object - it allows you to stream data to and from files (As opposed to the `require('fs').readFile(..)` style functions that read an entire file).
 
@@ -190,9 +189,7 @@ static void fileSetVar(JsFile *file) {
 /*JSON{
   "type" : "kill",
   "generate" : "jswrap_file_kill"
-}
-
-*/
+}*/
 void jswrap_file_kill() {
   JsVar *arr = fsGetArray(false);
   if (arr) {
@@ -221,10 +218,9 @@ void jswrap_file_kill() {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "E",
   "name" : "unmountSD",
-  "memberOf" : "E",
-  "thisParam" : false,
   "generate" : "jswrap_E_unmountSD"
 }
 Unmount the SD card, so it can be removed. If you remove the SD card without calling this you may cause corruption, and you will be unable to access another SD card until you reset Espruino or call `E.unmountSD()`.
@@ -244,10 +240,9 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "E",
   "name" : "openFile",
-  "memberOf" : "E",
-  "thisParam" : false,
   "generate" : "jswrap_E_openFile",
   "params" : [
     ["path","JsVar","the path to the file to open."],
@@ -340,10 +335,9 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "File",
   "name" : "close",
-  "memberOf" : "File.prototype",
-  "thisParam" : true,
   "generate_full" : "jswrap_file_close(parent)"
 }
 Close an open file.
@@ -376,10 +370,9 @@ void jswrap_file_close(JsVar* parent) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "File",
   "name" : "write",
-  "memberOf" : "File.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_file_write",
   "params" : [
     ["buffer","JsVar","A string containing the bytes to write"]
@@ -438,10 +431,9 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "File",
   "name" : "read",
-  "memberOf" : "File.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_file_read",
   "params" : [
     ["length","int32","is an integer specifying the number of bytes to read."]
@@ -499,10 +491,9 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "File",
   "name" : "skip",
-  "memberOf" : "File.prototype",
-  "thisParam" : true,
   "generate_full" : "jswrap_file_skip_or_seek(parent,nBytes,true)",
   "params" : [
     ["nBytes","int32","is a positive integer specifying the number of bytes to skip forwards."]
@@ -511,10 +502,9 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
 Skip the specified number of bytes forward in the file
 */
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "File",
   "name" : "seek",
-  "memberOf" : "File.prototype",
-  "thisParam" : true,
   "generate_full" : "jswrap_file_skip_or_seek(parent,nBytes,false)",
   "params" : [
     ["nBytes","int32","is an integer specifying the number of bytes to skip forwards."]
@@ -545,16 +535,15 @@ void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "File",
   "name" : "pipe",
-  "memberOf" : "File.prototype",
-  "thisParam" : true,
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_pipe",
   "params" : [
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
     ["options","JsVar",["An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
-  ],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  ]
 }
 Pipe this file to a stream (an object with a 'write' method)
 */

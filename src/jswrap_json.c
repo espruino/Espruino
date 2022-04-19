@@ -27,18 +27,17 @@ const char *JSON_LIMIT_TEXT = " ... ";
 
 
 /*JSON{
-  "type" : "object",
-  "name" : "JSON",
+  "type" : "class",
+  "class" : "JSON",
   "memberOf" : "global"
 }
 An Object that handles conversion to and from the JSON data interchange format
-*/
+ */
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "JSON",
   "name" : "stringify",
-  "memberOf" : "JSON",
-  "thisParam" : false,
   "generate" : "jswrap_json_stringify",
   "params" : [
     ["data","JsVar","The data to be converted to a JSON string"]
@@ -46,7 +45,7 @@ An Object that handles conversion to and from the JSON data interchange format
   "return" : ["JsVar","A JSON string"]
 }
 Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval
-*/
+ */
 JsVar *jswrap_json_stringify(JsVar *v) {
   JsVar *result = jsvNewFromEmptyString();
   if (result) // could be out of memory
@@ -130,10 +129,9 @@ JsVar *jswrap_json_parse_internal() {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "JSON",
   "name" : "parse",
-  "memberOf" : "JSON",
-  "thisParam" : false,
   "generate" : "jswrap_json_parse",
   "params" : [
     ["string","JsVar","A JSON string"]
@@ -143,7 +141,7 @@ JsVar *jswrap_json_parse_internal() {
 Parse the given JSON string into a JavaScript object
 
 NOTE: This implementation uses eval() internally, and as such it is unsafe as it can allow arbitrary JS commands to be executed.
-*/
+ */
 JsVar *jswrap_json_parse(JsVar *v) {
   JsLex lex;
   JsVar *str = jsvAsString(v, false);

@@ -64,8 +64,8 @@ static TelnetServer tnSrv;        // the telnet server, only one right now
 static uint8_t      tnSrvMode;    // current mode for the telnet server
 
 /*JSON{
-  "type" : "library",
-  "name" : "Telnet"
+  "type"  : "library",
+  "class" : "Telnet"
 }
 This library implements a telnet console for the Espruino interpreter. It requires a network
 connection, e.g. Wifi, and **currently only functions on the ESP8266 and on Linux **. It uses
@@ -75,16 +75,14 @@ port 23 on the ESP8266 and port 2323 on Linux.
 */
 
 /*JSON{
-  "type" : "function",
-  "name" : "setOptions",
-  "memberOf" : "Telnet",
-  "thisParam" : false,
+  "type"     : "staticmethod",
+  "class"    : "Telnet",
+  "name"     : "setOptions",
   "generate" : "jswrap_telnet_setOptions",
-  "params" : [
-    ["options","JsVar","Options controlling the telnet console server"]
+  "params": [
+    [ "options", "JsVar", "Options controlling the telnet console server" ]
   ]
 }
-
 */
 void jswrap_telnet_setOptions(JsVar *jsOptions) {
   // Make sure jsOptions is an object
@@ -110,10 +108,9 @@ void jswrap_telnet_setOptions(JsVar *jsOptions) {
 }
 
 /*JSON{
-  "type" : "init",
+  "type"     : "init",
   "generate" : "jswrap_telnet_init"
 }
-
 */
 void jswrap_telnet_init(void) {
 #ifdef LINUX
@@ -124,20 +121,18 @@ void jswrap_telnet_init(void) {
 }
 
 /*JSON{
-  "type" : "kill",
+  "type"     : "kill",
   "generate" : "jswrap_telnet_kill"
 }
-
 */
 void jswrap_telnet_kill(void) {
   tnSrvMode = MODE_OFF;
 }
 
 /*JSON{
-  "type" : "idle",
+  "type"     : "idle",
   "generate" : "jswrap_telnet_idle"
 }
-
 */
 bool jswrap_telnet_idle(void) {
   // get a handle to the network, no network -> can't do anything at all

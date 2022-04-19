@@ -28,8 +28,8 @@
 #include "bitmap_font_4x6.h"
 
 /*JSON{
-  "type" : "object",
-  "name" : "Graphics",
+  "type" : "class",
+  "class" : "Graphics",
   "memberOf" : "global"
 }
 This class provides Graphics operations that can be applied to a surface.
@@ -42,9 +42,7 @@ Use Graphics.createXXX to create a graphics object that renders in the way you w
 /*JSON{
   "type" : "idle",
   "generate" : "jswrap_graphics_idle"
-}
-
-*/
+}*/
 bool jswrap_graphics_idle() {
   graphicsIdle();
   return false;
@@ -53,9 +51,7 @@ bool jswrap_graphics_idle() {
 /*JSON{
   "type" : "init",
   "generate" : "jswrap_graphics_init"
-}
-
-*/
+}*/
 void jswrap_graphics_init() {
 #ifdef USE_LCD_FSMC
   JsVar *parent = jspNewObject("LCD", "Graphics");
@@ -83,16 +79,21 @@ static bool isValidBPP(int bpp) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "Graphics",
   "name" : "createArrayBuffer",
-  "memberOf" : "Graphics",
-  "thisParam" : false,
   "generate" : "jswrap_graphics_createArrayBuffer",
   "params" : [
     ["width","int32","Pixels wide"],
     ["height","int32","Pixels high"],
     ["bpp","int32","Number of bits per pixel"],
-    ["options","JsVar",["An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default), msb : true/false(default), color_order: 'rgb'(default),'bgr',etc }```","zigzag = whether to alternate the direction of scanlines for rows","vertical_byte = whether to align bits in a byte vertically or not","msb = when bits<8, store pixels msb first","color_order = re-orders the colour values that are supplied via setColor"]]
+    ["options","JsVar",[
+      "An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default), msb : true/false(default), color_order: 'rgb'(default),'bgr',etc }```",
+      "zigzag = whether to alternate the direction of scanlines for rows",
+      "vertical_byte = whether to align bits in a byte vertically or not",
+      "msb = when bits<8, store pixels msb first",
+      "color_order = re-orders the colour values that are supplied via setColor"
+    ]]
   ],
   "return" : ["JsVar","The new Graphics object"],
   "return_object" : "Graphics"
@@ -157,10 +158,9 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "Graphics",
   "name" : "createCallback",
-  "memberOf" : "Graphics",
-  "thisParam" : false,
   "generate" : "jswrap_graphics_createCallback",
   "params" : [
     ["width","int32","Pixels wide"],
@@ -219,18 +219,17 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
 
 #ifdef USE_LCD_SDL
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "Graphics",
   "name" : "createSDL",
-  "memberOf" : "Graphics",
-  "thisParam" : false,
+  "ifdef" : "USE_LCD_SDL",
   "generate" : "jswrap_graphics_createSDL",
   "params" : [
     ["width","int32","Pixels wide"],
     ["height","int32","Pixels high"]
   ],
   "return" : ["JsVar","The new Graphics object"],
-  "return_object" : "Graphics",
-  "if" : "defined(USE_LCD_SDL)"
+  "return_object" : "Graphics"
 }
 Create a Graphics object that renders to SDL window (Linux-based devices only)
 */
@@ -256,20 +255,18 @@ JsVar *jswrap_graphics_createSDL(int width, int height) {
 #endif
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "getWidth",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, false)",
   "return" : ["int","The width of the LCD"]
 }
 The width of the LCD
 */
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "getHeight",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, true)",
   "return" : ["int","The height of the LCD"]
 }
@@ -283,10 +280,9 @@ int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "clear",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_clear"
 }
 Clear the LCD with the Background Color
@@ -298,10 +294,9 @@ void jswrap_graphics_clear(JsVar *parent) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "fillRect",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_fillRect",
   "params" : [
     ["x1","int32","The left"],
@@ -319,10 +314,9 @@ void jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "drawRect",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_drawRect",
   "params" : [
     ["x1","int32","The left"],
@@ -340,10 +334,9 @@ void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "getPixel",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_getPixel",
   "params" : [
     ["x","int32","The left"],
@@ -359,10 +352,9 @@ int jswrap_graphics_getPixel(JsVar *parent, int x, int y) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "setPixel",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_setPixel",
   "params" : [
     ["x","int32","The left"],
@@ -384,10 +376,9 @@ void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "setColor",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true)",
   "params" : [
     ["r","JsVar","Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order"],
@@ -398,10 +389,9 @@ void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
 Set the color to use for subsequent drawing operations
 */
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "setBgColor",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false)",
   "params" : [
     ["r","JsVar","Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order"],
@@ -481,20 +471,18 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "getColor",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate_full" : "jswrap_graphics_getColorX(parent, true)",
   "return" : ["int","The integer value of the colour"]
 }
 Get the color to use for subsequent drawing operations
 */
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "getBgColor",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate_full" : "jswrap_graphics_getColorX(parent, false)",
   "return" : ["int","The integer value of the colour"]
 }
@@ -506,24 +494,22 @@ JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "setFontBitmap",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_4X6, false)"
 }
 Set Graphics to draw with a Bitmapped Font
 */
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "setFontVector",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jswrap_graphics_setFontSizeX(parent, size, true)",
   "params" : [
     ["size","int32","The size as an integer"]
-  ],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  ]
 }
 Set Graphics to draw with a Vector Font of the given size
 */
@@ -544,10 +530,9 @@ void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
   graphicsSetVar(&gfx);
 }
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "setFontCustom",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_setFontCustom",
   "params" : [
     ["bitmap","JsVar","A column-first, MSB-first, 1bpp bitmap containing the font bitmap"],
@@ -587,10 +572,9 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
 
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "drawString",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_drawString",
   "params" : [
     ["str","JsVar","The string"],
@@ -674,10 +658,9 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "stringWidth",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_stringWidth",
   "params" : [
     ["str","JsVar","The string"]
@@ -723,10 +706,9 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "drawLine",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_drawLine",
   "params" : [
     ["x1","int32","The left"],
@@ -744,10 +726,9 @@ void jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "lineTo",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_lineTo",
   "params" : [
     ["x","int32","X value"],
@@ -765,10 +746,9 @@ void jswrap_graphics_lineTo(JsVar *parent, int x, int y) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "moveTo",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_moveTo",
   "params" : [
     ["x","int32","X value"],
@@ -785,10 +765,9 @@ void jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "fillPoly",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_fillPoly",
   "params" : [
     ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"]
@@ -817,10 +796,9 @@ void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "setRotation",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_setRotation",
   "params" : [
     ["rotation","int32","The clockwise rotation. 0 for no rotation, 1 for 90 degrees, 2 for 180, 3 for 270"],
@@ -860,10 +838,9 @@ void jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "drawImage",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_drawImage",
   "params" : [
     ["image","JsVar","An object with the following fields `{ width : int, height : int, bpp : int, buffer : ArrayBuffer, transparent: optional int }`. bpp = bits per pixel, transparent (if defined) is the colour that will be treated as transparent"],
@@ -933,10 +910,9 @@ void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) 
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "getModified",
-  "memberOf" : "Graphics.prototype",
-  "thisParam" : true,
   "generate" : "jswrap_graphics_getModified",
   "params" : [
     ["reset","bool","Whether to reset the modified area or not"]

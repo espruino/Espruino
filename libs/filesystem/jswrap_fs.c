@@ -33,7 +33,7 @@
 
 /*JSON{
   "type" : "library",
-  "name" : "fs"
+  "class" : "fs"
 }
 This library handles interfacing with a FAT32 filesystem on an SD card. The API is designed to be similar to node.js's - However Espruino does not currently support asynchronous file IO, so the functions behave like node.js's xxxxSync functions. Versions of the functions with 'Sync' after them are also provided for compatibility.
 
@@ -67,10 +67,9 @@ extern bool jsfsInit();
 extern void jsfsReportError(const char *msg, FRESULT res);
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "fs",
   "name" : "readdir",
-  "memberOf" : "fs",
-  "thisParam" : false,
   "generate" : "jswrap_fs_readdir",
   "params" : [
     ["path","JsVar","The path of the directory to list. If it is not supplied, '' is assumed, which will list the root directory"]
@@ -82,16 +81,15 @@ List all files in the supplied directory, returning them as an array of strings.
 NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "fs",
   "name" : "readdirSync",
-  "memberOf" : "fs",
-  "thisParam" : false,
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_fs_readdir",
   "params" : [
     ["path","JsVar","The path of the directory to list. If it is not supplied, '' is assumed, which will list the root directory"]
   ],
-  "return" : ["JsVar","An array of filename strings (or undefined if the directory couldn't be listed)"],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  "return" : ["JsVar","An array of filename strings (or undefined if the directory couldn't be listed)"]
 }
 List all files in the supplied directory, returning them as an array of strings.
 */
@@ -148,10 +146,9 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "fs",
   "name" : "writeFile",
-  "memberOf" : "fs",
-  "thisParam" : false,
   "generate_full" : " jswrap_fs_writeOrAppendFile(path, data, false)",
   "params" : [
     ["path","JsVar","The path of the file to write"],
@@ -164,25 +161,23 @@ Write the data to the given file
 NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "fs",
   "name" : "writeFileSync",
-  "memberOf" : "fs",
-  "thisParam" : false,
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : " jswrap_fs_writeOrAppendFile(path, data, false)",
   "params" : [
     ["path","JsVar","The path of the file to write"],
     ["data","JsVar","The data to write to the file"]
   ],
-  "return" : ["bool","True on success, false on failure"],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  "return" : ["bool","True on success, false on failure"]
 }
 Write the data to the given file
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "fs",
   "name" : "appendFile",
-  "memberOf" : "fs",
-  "thisParam" : false,
   "generate_full" : " jswrap_fs_writeOrAppendFile(path, data, true)",
   "params" : [
     ["path","JsVar","The path of the file to write"],
@@ -195,17 +190,16 @@ Append the data to the given file, created a new file if it doesn't exist
 NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "fs",
   "name" : "appendFileSync",
-  "memberOf" : "fs",
-  "thisParam" : false,
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jswrap_fs_writeOrAppendFile(path, data, true)",
   "params" : [
     ["path","JsVar","The path of the file to write"],
     ["data","JsVar","The data to write to the file"]
   ],
-  "return" : ["bool","True on success, false on failure"],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  "return" : ["bool","True on success, false on failure"]
 }
 Append the data to the given file, created a new file if it doesn't exist
 */
@@ -221,10 +215,9 @@ bool jswrap_fs_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "fs",
   "name" : "readFile",
-  "memberOf" : "fs",
-  "thisParam" : false,
   "generate" : "jswrap_fs_readFile",
   "params" : [
     ["path","JsVar","The path of the file to read"]
@@ -236,16 +229,15 @@ Read all data from a file and return as a string
 NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "fs",
   "name" : "readFileSync",
-  "memberOf" : "fs",
-  "thisParam" : false,
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_fs_readFile",
   "params" : [
     ["path","JsVar","The path of the file to read"]
   ],
-  "return" : ["JsVar","A string containing the contents of the file (or undefined if the file doesn't exist)"],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  "return" : ["JsVar","A string containing the contents of the file (or undefined if the file doesn't exist)"]
 }
 Read all data from a file and return as a string.
 
@@ -263,32 +255,30 @@ JsVar *jswrap_fs_readFile(JsVar *path) {
 }
 
   /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "fs",
   "name" : "unlink",
-  "memberOf" : "fs",
-  "thisParam" : false,
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_fs_unlink",
   "params" : [
     ["path","JsVar","The path of the file to delete"]
   ],
-  "return" : ["bool","True on success, or false on failure"],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  "return" : ["bool","True on success, or false on failure"]
 }
 Delete the given file
 
 NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
 */
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "fs",
   "name" : "unlinkSync",
-  "memberOf" : "fs",
-  "thisParam" : false,
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_fs_unlink",
   "params" : [
     ["path","JsVar","The path of the file to delete"]
   ],
-  "return" : ["bool","True on success, or false on failure"],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  "return" : ["bool","True on success, or false on failure"]
 }
 Delete the given file
 */
@@ -314,16 +304,15 @@ bool jswrap_fs_unlink(JsVar *path) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "fs",
   "name" : "statSync",
-  "memberOf" : "fs",
-  "thisParam" : false,
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_fs_stat",
   "params" : [
     ["path","JsVar","The path of the file to get information on"]
   ],
-  "return" : ["JsVar","An object describing the file, or undefined on failure"],
-  "if" : "!defined(SAVE_ON_FLASH)"
+  "return" : ["JsVar","An object describing the file, or undefined on failure"]
 }
 Return information on the given file. This returns an object with the following
 fields:

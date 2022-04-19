@@ -19,8 +19,8 @@
 #include "jswrap_trigger.h"
 
 /*JSON{
-  "type" : "object",
-  "name" : "Trig",
+  "type" : "class",
+  "class" : "Trig",
   "memberOf" : "global"
 }
 This class exists in order to interface Espruino with fast-moving trigger wheels. Trigger wheels are physical discs with evenly spaced teeth cut into them, and often with one or two teeth next to each other missing. A sensor sends a signal whenever a tooth passed by, and this allows a device to measure not only RPM, but absolute position.
@@ -29,10 +29,9 @@ This class is currently in testing - it is NOT AVAILABLE on normal boards.
 */
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "Trig",
   "name" : "getPosAtTime",
-  "memberOf" : "Trig",
-  "thisParam" : false,
   "generate" : "jswrap_trig_getPosAtTime",
   "params" : [
     ["time","float","The time at which to find the position"]
@@ -49,10 +48,9 @@ JsVarFloat jswrap_trig_getPosAtTime(JsVarFloat time) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "Trig",
   "name" : "setup",
-  "memberOf" : "Trig",
-  "thisParam" : false,
   "generate" : "jswrap_trig_setup",
   "params" : [
     ["pin","pin","The pin to use for triggering"],
@@ -111,10 +109,9 @@ void jswrap_trig_setup(Pin pin, JsVar *options) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "Trig",
   "name" : "setTrigger",
-  "memberOf" : "Trig",
-  "thisParam" : false,
   "generate" : "jswrap_trig_setTrigger",
   "params" : [
     ["num","int","The trigger number (0..7)"],
@@ -160,10 +157,9 @@ void jswrap_trig_setTrigger(JsVarInt num, JsVarFloat position, JsVar *pins, JsVa
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "Trig",
   "name" : "killTrigger",
-  "memberOf" : "Trig",
-  "thisParam" : false,
   "generate" : "jswrap_trig_killTrigger",
   "params" : [
     ["num","int","The trigger number (0..7)"]
@@ -184,10 +180,9 @@ void jswrap_trig_killTrigger(JsVarInt num) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "Trig",
   "name" : "getTrigger",
-  "memberOf" : "Trig",
-  "thisParam" : false,
   "generate" : "jswrap_trig_getTrigger",
   "params" : [
     ["num","int","The trigger number (0..7)"]
@@ -230,10 +225,9 @@ JsVar *jswrap_trig_getTrigger(JsVarInt num) {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "Trig",
   "name" : "getRPM",
-  "memberOf" : "Trig",
-  "thisParam" : false,
   "generate" : "jswrap_trig_getRPM",
   "return" : ["float","The current RPM of the trigger wheel"]
 }
@@ -247,10 +241,9 @@ JsVarFloat jswrap_trig_getRPM() {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "Trig",
   "name" : "getErrors",
-  "memberOf" : "Trig",
-  "thisParam" : false,
   "generate" : "jswrap_trig_getErrors",
   "return" : ["int","The error flags"]
 }
@@ -264,10 +257,9 @@ JsVarInt jswrap_trig_getErrors() {
 }
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "Trig",
   "name" : "getErrorArray",
-  "memberOf" : "Trig",
-  "thisParam" : false,
   "generate" : "jswrap_trig_getErrorArray",
   "return" : ["JsVar","An array of error strings"]
 }

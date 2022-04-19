@@ -1,8 +1,6 @@
 #!/usr/bin/node
-/*  This was designed to be RUN ONCE over Espruino in order to refactor JSON
- *  comments into a more sensible form (no mention of static/etc)
- *
- *  IT HAS ALREADY BEEN RUN AND SHOULD NOT BE RUN OVER THE FILES AGAIN
+/* This was designed to be run once over Espruino 
+ *  ... hence it has probably already been run.
  * 
  *  It scans over all old-style JSON elements, reads them in,
  *  formats them, and then spits them out with the description after.

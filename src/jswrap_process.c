@@ -20,23 +20,22 @@
 #include "jsinteractive.h"
 
 /*JSON{
-  "type" : "object",
-  "name" : "process",
+  "type" : "class",
+  "class" : "process",
   "memberOf" : "global"
 }
 This class contains information about Espruino itself
-*/
+ */
 
 /*JSON{
-  "type" : "variable",
+  "type" : "staticproperty",
+  "class" : "process",
   "name" : "version",
-  "memberOf" : "process",
-  "thisParam" : false,
   "generate_full" : "jsvNewFromString(JS_VERSION)",
   "return" : ["JsVar","The version of Espruino"]
 }
 Returns the version of Espruino as a String
-*/
+ */
 
 #ifndef SAVE_ON_FLASH
 // TODO: the jspeiFindInScopes export won't be needed soon
@@ -58,15 +57,14 @@ const char *exportNames =
 #endif
 
 /*JSON{
-  "type" : "variable",
+  "type" : "staticproperty",
+  "class" : "process",
   "name" : "env",
-  "memberOf" : "process",
-  "thisParam" : false,
   "generate" : "jswrap_process_env",
   "return" : ["JsVar","An object"]
 }
 Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION
-*/
+ */
 JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewObject();
   jsvObjectSetChildAndUnLock(obj, "VERSION", jsvNewFromString(JS_VERSION));
@@ -102,10 +100,9 @@ JsVar *jswrap_process_env() {
 
 
 /*JSON{
-  "type" : "function",
+  "type" : "staticmethod",
+  "class" : "process",
   "name" : "memory",
-  "memberOf" : "process",
-  "thisParam" : false,
   "generate" : "jswrap_process_memory",
   "return" : ["JsVar","Information about memory usage"]
 }
@@ -124,7 +121,7 @@ Run a Garbage Collection pass, and return an object containing information on me
 Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). See http://www.espruino.com/Performance for more information.
 
 **Note:** To find free areas of flash memory, see `require('Flash').getFree()`
-*/
+ */
 JsVar *jswrap_process_memory() {
   jsvGarbageCollect();
   JsVar *obj = jsvNewObject();
