@@ -336,10 +336,11 @@ to decode `gesture` from a number into a string.
   "type" : "event",
   "class" : "Bangle",
   "name" : "swipe",
-  "params" : [["direction","int","`-1` for left, `1` for right"]],
+  "params" : [["directionLR","int","`-1` for left, `1` for right, `0` for up/down],
+              ["directionUD","int","`-1` for up, `1` for down", `0` for left/right (Bangle.js 2 only)]],
   "ifdef" : "BANGLEJS"
 }
-Emitted when a swipe on the touchscreen is detected (a movement from left->right, or right->left)
+Emitted when a swipe on the touchscreen is detected (a movement from left->right, right->left, down->up or up->down ) 
 */
 /*JSON{
   "type" : "event",
@@ -5134,6 +5135,7 @@ you could make all clocks start the launcher with a swipe by using:
     Bangle.on("swipe", Bangle.swipeHandler);
   };
 })();
+```
 
 The first argument can also be an object, in which case more options can be specified:
 
