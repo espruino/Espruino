@@ -103,7 +103,10 @@
         pad += 16;
       }
       var l = g.wrapString(keys[idx],r.w-pad);
-      if (l.length>1) g.setFont("6x15");
+      if (l.length>1) {
+        g.setFont("6x15");
+        l = g.wrapString(keys[idx],r.w-pad);
+      }
       g.setFontAlign(-1,0).drawString(l.join("\n"), r.x+12, r.y+H/2);
     },
     select : function(idx) {
