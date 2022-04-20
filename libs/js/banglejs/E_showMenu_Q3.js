@@ -124,6 +124,7 @@
       }
     }
   };
+  var s;
   function show() {
     s = E.showScroller(scr);
   }
