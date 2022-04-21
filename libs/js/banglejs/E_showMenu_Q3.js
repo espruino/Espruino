@@ -85,7 +85,7 @@
     back : back,
     draw : (idx, r) => {
       if (idx<0) // TITLE
-        return g.setFont("12x20").setFontAlign(-1,0).drawString(
+        return g.setColor(g.theme.fg).setFont("12x20").setFontAlign(-1,0).drawString(
           menuIcon+" "+options.title, r.x+12, r.y+H-12);
       g.setColor(g.theme.bg2).fillRect({x:r.x+4, y:r.y+2, w:r.w-8, h:r.h-4, r:5});
       g.setColor(g.theme.fg2).setFont("12x20");
