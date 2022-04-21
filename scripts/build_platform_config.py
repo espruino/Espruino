@@ -362,8 +362,11 @@ else:
 
 if 'util_timer_tasks' in board.info:
   bufferSizeTimer = board.info['util_timer_tasks']
+  
+if 'io_buffer_size' in board.info:
+  bufferSizeIO = board.info['io_buffer_size']
 
-codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255) amount of items in event buffer - events take 5 bytes each")
+codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 65535) amount of items in event buffer - events take 5 bytes each")
 codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255) amount of items in the transmit buffer - 2 bytes each")
 codeOut("#define UTILTIMERTASK_TASKS ("+str(bufferSizeTimer)+") // Must be power of 2 - and max 256")
 

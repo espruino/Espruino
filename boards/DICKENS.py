@@ -59,8 +59,10 @@ info = {
  'name' : "DICKENS",
  'link' :  [ "" ],
  'espruino_page_link' : '',
- 'variables' : 2500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
-# 'bootloader' : 1,
+ 'default_console' : "EV_BLUETOOTH",
+ 'variables' : 5000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'io_buffer_size' : 512, 
+ 'bootloader' : 1,
  'binary_name' : 'espruino_%v_dickens.hex',
  'build' : {
    'optimizeflags' : '-Os',
