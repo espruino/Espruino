@@ -25,6 +25,7 @@ info = {
 # 'default_console_rx' : "D8",
 # 'default_console_baudrate' : "9600",
  'variables' : 12000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'io_buffer_size' : 512, # How big is the input buffer (in 4 byte words). Default on nRF52 is 256
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_banglejs2.hex',
  'build' : {

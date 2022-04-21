@@ -1,4 +1,5 @@
             Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
+            Bangle.js2: Double input buffer size from 1kb to 2kb
 
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
