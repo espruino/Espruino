@@ -15,7 +15,11 @@
 #include "jsvar.h"
 
 
+#ifdef BANGLEJS_Q3
+#define HRM_POLL_INTERVAL_DEFAULT 50 // in msec - 25hz
+#else
 #define HRM_POLL_INTERVAL_DEFAULT 20 // in msec - 50hz
+#endif
 
 extern uint16_t hrmPollInterval; // in msec, so 20 = 50hz
 

@@ -750,9 +750,9 @@ void hrm_sensor_on(HrmCallback callback) {
   //  vc31_w16(VC31A_GREEN_ADJ, 0xe8c3);
   }
   if (vcType == VC31B_DEVICE) {
-    vcbInfo.vcHr02SampleRate = 25; // 1000 / hrmPollInterval; // Hz
+    vcbInfo.vcHr02SampleRate = 1000 / hrmPollInterval; // Hz
     // FIXME SAMPLE RATE. Right now this only changes the period for ENV readings
-    uint8_t _regConfig[17] = {
+    const uint8_t _regConfig[17] = {
         0x01,      // VC31B_REG11 - just enable SLOT0
         VC31B_INT_OV|VC31B_INT_FIFO|VC31B_INT_ENV|VC31B_INT_PS,      // VC31B_REG12 IRQs - was 0x3F
         0x8A,      // VC31B_REG13 ??
@@ -766,6 +766,7 @@ void hrm_sensor_on(HrmCallback callback) {
         0x07,0x16, // 22,23
         0x56,0x16,0x00
     };
+
     /* for SPO2
 
       regConfig[0] = 0x47; // enable SLOT1
@@ -785,6 +786,10 @@ void hrm_sensor_on(HrmCallback callback) {
     vcbInfo.regConfig[9] = 0xE0; //CUR = 80mA//write Hs equal to 1
     vcbInfo.regConfig[12] = 0x67; // VC31B_REG22
     vcbInfo.regConfig[0] = 0x45; // VC31B_REG11 heart rate calculation - SLOT2(env) and SLOT0(hr)
+    // Set up HRM speed - from testing, 200=100hz/10ms, 400=50hz/20ms, 800=25hz/40ms
+    uint16_t divisor = 20 * hrmPollInterval;
+    vcbInfo.regConfig[4] = divisor>>8;
+    vcbInfo.regConfig[5] = divisor&255;
     // write all registers in one go
     vc31_wx(VC31B_REG11, vcbInfo.regConfig, 17);
     vcbInfo.regConfig[0] |= 0x80; // actually enable now?

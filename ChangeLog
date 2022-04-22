@@ -2,6 +2,8 @@
             Bangle.js2: Double input buffer size from 1kb to 2kb
             Bangle.js2: Fix E.showMenu title changing color after scroll down+up *if* a non-standard theme was used
             Bangle.js2: Fix wear detection on latest Bangle.js 2 (VC31B variant) (fix #2141)
+            Bangle.js2: Allow variable HRM poll rates on Bangle.js 2 VC31B variant
+            Bangle.js2: VC31 HRM variant now polls at 25hz (not 50)
 
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
