@@ -79,7 +79,7 @@ uint16_t hrmPollInterval = HRM_POLL_INTERVAL_DEFAULT; // in msec, so 20 = 50hz
 #define VC31B_STATUS_INSAMPLE                       0x08
 #define VC31B_STATUS_OVERLOAD_MASK                  0x07 // 3x bits for each of the 3 channels
 /* Bit fields for VC31B_REG2 */
-#define VC31B_INT_PS                          0x10
+#define VC31B_INT_PS                          0x10 // used for wear detection
 #define VC31B_INT_OV                          0x08 // OvloadAdjust
 #define VC31B_INT_FIFO                        0x04
 #define VC31B_INT_ENV                         0x02 // EnvAdjust
@@ -754,7 +754,7 @@ void hrm_sensor_on(HrmCallback callback) {
     // FIXME SAMPLE RATE. Right now this only changes the period for ENV readings
     uint8_t _regConfig[17] = {
         0x01,      // VC31B_REG11 - just enable SLOT0
-        VC31B_INT_OV|VC31B_INT_FIFO|VC31B_INT_ENV,      // VC31B_REG12 IRQs - was 0x3F
+        VC31B_INT_OV|VC31B_INT_FIFO|VC31B_INT_ENV|VC31B_INT_PS,      // VC31B_REG12 IRQs - was 0x3F
         0x8A,      // VC31B_REG13 ??
         0x40,      // VC31B_REG14 0x40 + FIFO Interrupt length in bottom 6 bits
         0x03,0x1F, // VC31B_REG15 (2 bytes) 16 bit counter prescaler
