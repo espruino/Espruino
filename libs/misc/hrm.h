@@ -16,7 +16,7 @@
 
 
 #ifdef BANGLEJS_Q3
-#define HRM_POLL_INTERVAL_DEFAULT 50 // in msec - 25hz
+#define HRM_POLL_INTERVAL_DEFAULT 40 // in msec - 25hz
 #else
 #define HRM_POLL_INTERVAL_DEFAULT 20 // in msec - 50hz
 #endif
