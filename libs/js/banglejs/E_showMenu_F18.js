@@ -14,7 +14,13 @@
       menuItems.unshift("< Back");
     }
   }
-  
+  // auto-fill boolean values with no format
+  menuItems.forEach(k => {
+    var item = items[k];
+    if ("object" != typeof item) return;
+    if ("boolean" == typeof item.value && !item.format)
+      item.format = v=>atob(v?"AAwMggC///7//////////8///w///D/y8P/4A//8D/////////+///4=":"AAwMgQD/+AGAGAGAGAGAGAGAGAGAH/8=");
+  });  
   if (!(options instanceof Object)) options = {};
   options.fontHeight = options.fontHeight||16;
   if (options.selected === undefined)
