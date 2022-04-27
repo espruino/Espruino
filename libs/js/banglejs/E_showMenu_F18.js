@@ -5,7 +5,7 @@
     Bangle.setUI();
     return;
   }
-  var options = items[""];  
+  var options = items[""];
   var menuItems = Object.keys(items);
   if (options) {
     menuItems.splice(menuItems.indexOf(""),1);
@@ -20,7 +20,7 @@
     if ("object" != typeof item) return;
     if ("boolean" == typeof item.value && !item.format)
       item.format = v=>atob(v?"AAwMggC///7//////////8///w///D/y8P/4A//8D/////////+///4=":"AAwMgQD/+AGAGAGAGAGAGAGAGAGAH/8=");
-  });  
+  });
   if (!(options instanceof Object)) options = {};
   options.fontHeight = options.fontHeight||16;
   if (options.selected === undefined)
@@ -40,7 +40,7 @@
       var rows = 0|Math.min((y2-y) / options.fontHeight,menuItems.length);
       var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
       if (idx!=l.lastIdx) rowmin=undefined; // redraw all if we scrolled
-      l.lastIdx = idx;      
+      l.lastIdx = idx;
       var more = (idx+rows)<menuItems.length;
       var iy = y;
       g.reset().setFont('6x8',2).setFontAlign(0,-1,0);
@@ -125,16 +125,13 @@
       var item = items[menuItems[options.selected]];
       if (l.main) { // selected a submenu item
         var value = item;
-        options.selected = l.main.selected;
-        options.title = l.main.title;
-        items = l.main.items;
-        menuItems = l.main.menuItems;
-        delete l.main;
-        item = items[menuItems[options.selected]];
+        item = l.main.items[l.main.menuItems[l.main.selected]];
         item.value = value;
-        if (item.onchange) item.onchange(item.value);
-        g.reset().clearRect(Bangle.appRect);
-        l.draw();
+        l.back();
+        if (item.onchange) {
+          item.onchange(item.value);
+          l.draw(options.selected, options.selected);
+        }
       }
       else if ("function" == typeof item) item(l);
       else if ("object" == typeof item) {
@@ -186,10 +183,21 @@
         options.selected = (dir+options.selected+menuItems.length)%menuItems.length;
         l.draw(Math.min(lastSelected,options.selected), Math.max(lastSelected,options.selected));
       }
+    },
+    back : function() {
+      if (l.main) { // exit submenu
+        options.selected = l.main.selected;
+        options.title = l.main.title;
+        items = l.main.items;
+        menuItems = l.main.menuItems;
+        delete l.main;
+        g.reset().clearRect(Bangle.appRect);
+        l.draw();
+      } else if (items["< Back"]) items["< Back"]();
     }
   };
   l.draw();
-  Bangle.setUI("updown",dir => {
+  Bangle.setUI({mode: "updown", back: items["< Back"]?l.back:undefined}, dir => {
     if (dir) l.move(dir);
     else l.select();
   });
