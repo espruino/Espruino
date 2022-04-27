@@ -79,6 +79,10 @@
           g.setFontAlign(1,-1);
           g.drawString(v,xo-2,iy);
         }
+        else if (l.main) { // inside submenu
+          g.setFontAlign(1,-1);
+          g.drawString(atob(l.main.value==item?"AAoKgQAeH+f7//////3+f4eA":"AAoKgQAeH+YbA8DwPA2Gf4eA"),x2,iy);
+        }
         g.setColor(g.theme.fg);
         iy += options.fontHeight;
         idx++;
@@ -119,12 +123,49 @@
     },
     select : function() {
       var item = items[menuItems[options.selected]];
-      if ("function" == typeof item) item(l);
+      if (l.main) { // selected a submenu item
+        var value = item;
+        options.selected = l.main.selected;
+        options.title = l.main.title;
+        items = l.main.items;
+        menuItems = l.main.menuItems;
+        delete l.main;
+        item = items[menuItems[options.selected]];
+        item.value = value;
+        if (item.onchange) item.onchange(item.value);
+        g.reset().clearRect(Bangle.appRect);
+        l.draw();
+      }
+      else if ("function" == typeof item) item(l);
       else if ("object" == typeof item) {
         // if a number, go into 'edit mode'
-        if ("number" == typeof item.value)
-          l.selectEdit = l.selectEdit?undefined:item;
-        else { // else just toggle bools
+        if ("number" == typeof item.value) {
+          var step = item.step || 1;
+          if (item.min !== undefined && item.max !== undefined &&
+              ((item.max - item.min) / step) < 20) {
+            // replace main menu with submenu
+            l.main = {
+              items: items,
+              menuItems: menuItems,
+              selected: options.selected,
+              title: options.title,
+              value: item.value,
+            };
+            options.title = menuItems[options.selected];
+            options.selected = 0;
+            items = [];
+            for (var v = item.min; v <= item.max; v += step) {
+              items[item.format ? item.format(v) : v] = v;
+              if (v == item.value) options.selected = Object.keys(items).length - 1;
+            }
+            menuItems = Object.keys(items);
+            g.reset().clearRect(Bangle.appRect);
+            l.draw();
+          } else {
+            // too many options for menu: use in-line edit mode
+            l.selectEdit = l.selectEdit?undefined:item;
+          }
+        } else { // else just toggle bools
           if ("boolean" == typeof item.value) item.value=!item.value;
           if (item.onchange) item.onchange(item.value);
         }
