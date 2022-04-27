@@ -1,4 +1,5 @@
-            Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
+            Bangle.js2: Prevent using E.showScroller inside E.showMenu on wraping items.
+	    Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Double input buffer size from 1kb to 2kb
             Bangle.js2: Fix E.showMenu title changing color after scroll down+up *if* a non-standard theme was used
             Bangle.js2: Fix wear detection on latest Bangle.js 2 (VC31B variant) (fix #2141)
