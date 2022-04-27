@@ -5,7 +5,7 @@
     Bangle.setUI();
     return;
   }
-  var options = items[""];  
+  var options = items[""];
   var menuItems = Object.keys(items);
   if (options) {
     menuItems.splice(menuItems.indexOf(""),1);
@@ -20,7 +20,7 @@
     if ("object" != typeof item) return;
     if ("boolean" == typeof item.value && !item.format)
       item.format = v=>atob(v?"AAwMggC///7//////////8///w///D/y8P/4A//8D/////////+///4=":"AAwMgQD/+AGAGAGAGAGAGAGAGAGAH/8=");
-  });  
+  });
   if (!(options instanceof Object)) options = {};
   options.fontHeight = options.fontHeight||16;
   if (options.selected === undefined)
@@ -40,7 +40,7 @@
       var rows = 0|Math.min((y2-y) / options.fontHeight,menuItems.length);
       var idx = E.clip(options.selected-(rows>>1),0,menuItems.length-rows);
       if (idx!=l.lastIdx) rowmin=undefined; // redraw all if we scrolled
-      l.lastIdx = idx;      
+      l.lastIdx = idx;
       var more = (idx+rows)<menuItems.length;
       var iy = y;
       g.reset().setFont('6x8',2).setFontAlign(0,-1,0);
@@ -148,7 +148,7 @@
     }
   };
   l.draw();
-  Bangle.setUI("updown",dir => {
+  Bangle.setUI({mode:"updown", back:items["< Back"]}, dir => {
     if (dir) l.move(dir);
     else l.select();
   });
