@@ -21,7 +21,7 @@
     /*if ("number"!=typeof item.value) 
       return console.log("Unhandled item type");*/
     var step = item.step||1;
-    if (!item.noScroller && item.min!==undefined && item.max!==undefined &&
+    if (!item.noList && item.min!==undefined && item.max!==undefined &&
         ((item.max-item.min)/step)<20) {
       // show scrolling menu of options
       E.showScroller({
