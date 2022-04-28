@@ -3,9 +3,12 @@
   if ("object"==typeof mode) {
     options = mode;
     mode = options.mode;
-  }  
-  if (global.WIDGETS && WIDGETS.back)
-    WIDGETS.back.remove();  
+  }
+  var redraw = true;
+  if (global.WIDGETS && WIDGETS.back) {
+    redraw = false;
+    WIDGETS.back.remove(mode && options.back);
+  }
   if (Bangle.btnWatches) {
     Bangle.btnWatches.forEach(clearWatch);
     delete Bangle.btnWatches;
@@ -73,17 +76,17 @@
     var touchHandler = (z) => {
       if (z==1) options.back();
     };
-    Bangle.on("touch", touchHandler);    
+    Bangle.on("touch", touchHandler);
     WIDGETS = Object.assign({back:{ 
       area:"tl", width:24,
       draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
-      remove:()=>{
+      remove:(noclear)=>{
         Bangle.removeListener("touch", touchHandler);
-        g.reset().clearRect({x:WIDGETS.back.x, y:WIDGETS.back.y, w:24,h:24});
+        if (!noclear) g.reset().clearRect({x:WIDGETS.back.x, y:WIDGETS.back.y, w:24,h:24});
         delete WIDGETS.back;
-        Bangle.drawWidgets();
+        if (!noclear) Bangle.drawWidgets();
       }
     }},global.WIDGETS);
-    Bangle.drawWidgets();
+    if (redraw) Bangle.drawWidgets();
   }  
 })
