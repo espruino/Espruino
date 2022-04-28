@@ -137,10 +137,10 @@
       else if ("object" == typeof item) {
         // if a number, go into 'edit mode'
         if ("number" == typeof item.value) {
-          var step = item.step || 1;
-          if (item.min !== undefined && item.max !== undefined &&
-              ((item.max - item.min) / step) < 20) {
-            // replace main menu with submenu
+          if (item.format && (item.step || 1) === 1 &&
+              item.min === 0 && item.max < 20) {
+            // assume value is index in a list of options:
+            // replace main menu with submenu where we can pick one
             l.main = {
               items: items,
               menuItems: menuItems,
@@ -150,16 +150,16 @@
             };
             options.title = menuItems[options.selected];
             options.selected = 0;
-            items = [];
-            for (var v = item.min; v <= item.max; v += step) {
-              items[item.format ? item.format(v) : v] = v;
+            items = {};
+            for (var v = item.min; v <= item.max; v ++) {
+              items[item.format(v)] = v;
               if (v == item.value) options.selected = Object.keys(items).length - 1;
             }
             menuItems = Object.keys(items);
             g.reset().clearRect(Bangle.appRect);
             l.draw();
           } else {
-            // too many options for menu: use in-line edit mode
+            // a "real" number, or too many options: use in-line edit mode
             l.selectEdit = l.selectEdit?undefined:item;
           }
         } else { // else just toggle bools
