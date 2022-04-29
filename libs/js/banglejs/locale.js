@@ -22,8 +22,8 @@ exports = { name : "en_GB", currencySym:"£",
       return (" "+h).substr(-2)+":"+("0"+m).substr(-2)+"."+("0"+d.getSeconds()).substr(-2)+" "+r;
     }
   },
-  dow : (d,short) => short?d.toString().substr(0,3):"Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday".split(",")[d.getDay()], // Date to "Monday" or "Mon"(short)
-  month : (d,short) => short?d.toString().substr(4,3):"January,February,March,April,May,June,July,August,September,October,November,December".split(",")[d.getMonth()], // Date to "February" or "Feb"(short)
+  dow : (d,short) => "Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday".split(",")[d.getDay()].substr(0, short ? 3 : 10), // Date to "Monday" or "Mon"(short)
+  month : (d,short) => "January,February,March,April,May,June,July,August,September,October,November,December".split(",")[d.getMonth()].substr(0, short ? 3 : 10), // Date to "February" or "Feb"(short)
   number : n => n.toString(), // more fancy?
   currency : n => "£"+n.toFixed(2), // number to "£1.00"
   distance : (m,dp) => (m<1000)?round(m,dp)+"m":round(m/1609.34,dp)+"mi", // meters to "123m" or "1.2mi" depending on size
