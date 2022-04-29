@@ -26,6 +26,7 @@
       // show scrolling menu of options
       E.showScroller({
         h : H, c : (item.max+step-item.min)/step,
+        back: show, // redraw original menu
         scrollMin : -24, scroll : -24, // title is 24px, rendered at -1
         draw : (idx, r) => {
           if (idx<0) // TITLE
