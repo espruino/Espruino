@@ -5,7 +5,8 @@
             Bangle.js2: Allow variable HRM poll rates on Bangle.js 2 VC31B variant
             Bangle.js2: VC31 HRM variant now polls at 25hz (not 50)
             Bangle.js1: E.showMenu now displays boolean values with no `format` as a checkbox
-            Bangle.js1: E.showMenu now displays a submenu for multiple choice menu items
+            Bangle.js1: E.showMenu now displays a submenu for multiple choice menu items (#2184)
+            Bangle.js: built-in locale now doesn't depend on argument being an instance of Date (#2187)
 
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
