@@ -1,3 +1,5 @@
+            Bangle.js2: Add "Back"-Button on submenus inside E_showMenu 
+            Bangle.js2: Add ".noList" property to prevent E.showScroller inside E.showMenu
             Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu
             Bangle.js2: Double input buffer size from 1kb to 2kb
