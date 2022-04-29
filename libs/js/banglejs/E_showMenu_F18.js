@@ -79,6 +79,10 @@
           g.setFontAlign(1,-1);
           g.drawString(v,xo-2,iy);
         }
+        else if (l.main) { // inside submenu
+          g.setFontAlign(1,-1);
+          g.drawString(atob(l.main.value==item?"AAoKgQAeH+f7//////3+f4eA":"AAoKgQAeH+YbA8DwPA2Gf4eA"),x2,iy);
+        }
         g.setColor(g.theme.fg);
         iy += options.fontHeight;
         idx++;
@@ -119,12 +123,46 @@
     },
     select : function() {
       var item = items[menuItems[options.selected]];
-      if ("function" == typeof item) item(l);
+      if (l.main) { // selected a submenu item
+        var value = item;
+        item = l.main.items[l.main.menuItems[l.main.selected]];
+        item.value = value;
+        l.back();
+        if (item.onchange) {
+          item.onchange(item.value);
+          l.draw(options.selected, options.selected);
+        }
+      }
+      else if ("function" == typeof item) item(l);
       else if ("object" == typeof item) {
         // if a number, go into 'edit mode'
-        if ("number" == typeof item.value)
-          l.selectEdit = l.selectEdit?undefined:item;
-        else { // else just toggle bools
+        if ("number" == typeof item.value) {
+          if (item.format && (item.step || 1) === 1 &&
+              item.min === 0 && item.max < 20) {
+            // assume value is index in a list of options:
+            // replace main menu with submenu where we can pick one
+            l.main = {
+              items: items,
+              menuItems: menuItems,
+              selected: options.selected,
+              title: options.title,
+              value: item.value,
+            };
+            options.title = menuItems[options.selected];
+            options.selected = 0;
+            items = {};
+            for (var v = item.min; v <= item.max; v ++) {
+              items[item.format(v)] = v;
+              if (v == item.value) options.selected = Object.keys(items).length - 1;
+            }
+            menuItems = Object.keys(items);
+            g.reset().clearRect(Bangle.appRect);
+            l.draw();
+          } else {
+            // a "real" number, or too many options: use in-line edit mode
+            l.selectEdit = l.selectEdit?undefined:item;
+          }
+        } else { // else just toggle bools
           if ("boolean" == typeof item.value) item.value=!item.value;
           if (item.onchange) item.onchange(item.value);
         }
@@ -145,10 +183,21 @@
         options.selected = (dir+options.selected+menuItems.length)%menuItems.length;
         l.draw(Math.min(lastSelected,options.selected), Math.max(lastSelected,options.selected));
       }
+    },
+    back : function() {
+      if (l.main) { // exit submenu
+        options.selected = l.main.selected;
+        options.title = l.main.title;
+        items = l.main.items;
+        menuItems = l.main.menuItems;
+        delete l.main;
+        g.reset().clearRect(Bangle.appRect);
+        l.draw();
+      } else if (items["< Back"]) items["< Back"]();
     }
   };
   l.draw();
-  Bangle.setUI({mode:"updown", back:items["< Back"]}, dir => {
+  Bangle.setUI({mode: "updown", back: items["< Back"]?l.back:undefined}, dir => {
     if (dir) l.move(dir);
     else l.select();
   });
