@@ -137,7 +137,7 @@
       else if ("object" == typeof item) {
         // if a number, go into 'edit mode'
         if ("number" == typeof item.value) {
-          if (item.format && (item.step || 1) === 1 &&
+          if (!item.noList && item.format && (item.step || 1) === 1 &&
               item.min === 0 && item.max < 20) {
             // assume value is index in a list of options:
             // replace main menu with submenu where we can pick one
