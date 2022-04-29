@@ -61,7 +61,10 @@
         g.fillPoly([mx,my-45, mx+15,my-30, mx-15,my-30]).fillPoly([mx,my+45, mx+15,my+30, mx-15,my+30]);
       }
       draw();
-      Bangle.setUI("updown", dir => {
+      Bangle.setUI({
+          mode: "updown",
+          back: show
+        }, dir => {
         if (dir) {
           v -= (dir||1)*(item.step||1);
           if (item.min!==undefined && v<item.min) v = item.wrap ? item.max : item.min;
