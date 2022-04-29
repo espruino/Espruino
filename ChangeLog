@@ -1,5 +1,3 @@
-            Bangle.js2: Add "Back"-Button on submenus inside E_showMenu 
-            Bangle.js2: Add ".noList" property to prevent E.showScroller inside E.showMenu
             Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu
             Bangle.js2: Double input buffer size from 1kb to 2kb
@@ -10,7 +8,8 @@
             Bangle.js1: E.showMenu now displays boolean values with no `format` as a checkbox
             Bangle.js1: E.showMenu now displays a submenu for multiple choice menu items (#2184)
             Bangle.js: built-in locale now doesn't depend on argument being an instance of Date (#2187)
-            Bangle.js: App ".noList" property to prevent E.showScroller inside E.showMenu            
+            Bangle.js: Add ".noList" property to prevent E.showScroller inside E.showMenu
+            Bangle.js2: Add "Back"-Button on submenus inside E_showMenu
 
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
