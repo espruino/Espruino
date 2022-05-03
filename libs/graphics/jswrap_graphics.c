@@ -1473,11 +1473,17 @@ sit between.
 These values are inclusive - eg `g.setClipRect(1,0,5,0)` will ensure that only
 pixel rows 1,2,3,4,5 are touched on column 0.
 
-**Note:** For maximum flexibility, the values here are not range checked. For normal
-use, X and Y should be between 0 and `getWidth`/`getHeight`.
+**Note:** For maximum flexibility on Bangle.js 1, the values here are not range checked. For normal
+use, X and Y should be between 0 and `getWidth()-1`/`getHeight()-1`.
+
+**Note:** The x/y values here are rotated, so that if `Graphics.setRotation` is used
+they correspond to the coordinates given to the draw functions, *not to the
+physical device pixels*.
 */
 JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  graphicsToDeviceCoordinates(&gfx, &x1, &y1);
+  graphicsToDeviceCoordinates(&gfx, &x2, &y2);
 #ifndef SAVE_ON_FLASH
 #ifdef USE_LCD_ST7789_8BIT
   if (gfx.data.type!=JSGRAPHICSTYPE_ST7789_8BIT) {

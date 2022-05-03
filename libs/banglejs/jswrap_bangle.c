@@ -1525,6 +1525,8 @@ void btn4Handler(bool state, IOEventFlags flags) {
 void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
   // ignore if locked
   if (bangleFlags & JSBF_LOCKED) return;
+  // deal with the case where we rotated the Bangle.js screen
+  deviceToGraphicsCoordinates(&graphicsInternal, &tx, &ty);
 
   int dx = tx-touchX;
   int dy = ty-touchY;
