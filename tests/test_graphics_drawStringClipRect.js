@@ -39,4 +39,22 @@ SHOULD_BE(`
 ........`);
 
 
+// Same clip rect at top, but rotate 180 degrees
+g.clear(1);
+g.setRotation(2);
+g.setClipRect(0,0, g.getWidth()-1, 1);
+g.drawString("T", 0, 0);
+// font visibility should mean that the top line of T is drawn
+
+SHOULD_BE(`
+........
+........
+........
+........
+........
+........
+......#.
+.....###`);
+
+
 result = ok;

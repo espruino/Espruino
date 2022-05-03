@@ -2227,6 +2227,16 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   int minY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x1 : gfx.data.clipRect.y1;
   int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y2 : gfx.data.clipRect.x2;
   int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x2 : gfx.data.clipRect.y2;
+  if (gfx.data.flags & JSGRAPHICSFLAGS_INVERT_X) {
+    int t = gfx.data.width - (minX+1);
+    minX = gfx.data.width - (maxX+1);
+    maxX = t;
+  }
+  if (gfx.data.flags & JSGRAPHICSFLAGS_INVERT_Y) {
+    int t = gfx.data.height - (minY+1);
+    minY = gfx.data.height - (maxY+1);
+    maxY = t;
+  }
 #else
   int minX = 0;
   int minY = 0;
