@@ -698,8 +698,9 @@ bool jshCanWatch(
  * \return The event flag for this pin.
  */
 IOEventFlags jshPinWatch(
-    Pin pin,         //!< The pin to be watched.
-    bool shouldWatch //!< True for watching and false for unwatching.
+    Pin pin,          //!< The pin to be watched.
+    bool shouldWatch, //!< True for watching and false for unwatching.
+    JshPinWatchFlags flags
   ) {
   //os_printf("> jshPinWatch: pin=%d, shouldWatch=%d\n", pin, shouldWatch);
   if (jshIsPinValid(pin)) {

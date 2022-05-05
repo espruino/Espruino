@@ -644,6 +644,11 @@ If the `options` parameter is an object, it can contain the following informatio
    // Advanced: If specified, the given pin will be read whenever the watch is called
    // and the state will be included as a 'data' field in the callback
    data : pin
+   // Advanced: On Nordic devices, a watch may be 'high' or 'low' accuracy. By default low
+   // accuracy is used (which is better for power consumption), but this means that
+   // high speed pulses (less than 25us) may not be reliably received. Setting hispeed=true
+   // allows for detecting high speed pulses at the expense of higher idle power consumption
+   hispeed : true
 }
 ```
 
@@ -691,7 +696,7 @@ JsVar *jswrap_interface_setWatch(
   bool repeat = false;
   JsVarFloat debounce = 0;
   int edge = 0;
-  bool isIRQ = false;
+  bool isIRQ = false, isHighSpeed = false;
   Pin dataPin = PIN_UNDEFINED;
   if (IS_PIN_A_BUTTON(pin)) {
     edge = 1;
@@ -724,6 +729,7 @@ JsVar *jswrap_interface_setWatch(
       return 0;
     }
     isIRQ = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "irq", 0));
+    isHighSpeed = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "hispeed", 0));
     dataPin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(repeatOrObject, "data", 0));
   } else
     repeat = jsvGetBool(repeatOrObject);
@@ -740,12 +746,14 @@ JsVar *jswrap_interface_setWatch(
       if (edge) jsvObjectSetChildAndUnLock(watchPtr, "edge", jsvNewFromInteger(edge));
       jsvObjectSetChild(watchPtr, "callback", func); // no unlock intentionally
       jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(jshPinInput(pin)));
+      if (isHighSpeed)
+        jsvObjectSetChildAndUnLock(watchPtr, "hispeed", jsvNewFromBool(true));
     }
 
     // If nothing already watching the pin, set up a watch
     IOEventFlags exti = EV_NONE;
     if (!jsiIsWatchingPin(pin))
-      exti = jshPinWatch(pin, true);
+      exti = jshPinWatch(pin, true, isHighSpeed ? JSPW_HIGH_SPEED : JSPW_NONE);
     // disable event callbacks by default
     if (exti) {
       jshSetEventCallback(exti, 0);
@@ -797,7 +805,7 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
       JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
       Pin pin = jshGetPinFromVar(watchPin);
       if (!jshGetPinShouldStayWatched(pin))
-        jshPinWatch(pin, false);
+        jshPinWatch(pin, false, JSPW_NONE);
       jsvUnLock2(watchPin, watchPtr);
       jsvObjectIteratorNext(&it);
     }
@@ -825,7 +833,7 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
 
       // Now check if this pin is still being watched
       if (!jsiIsWatchingPin(pin))
-        jshPinWatch(pin, false); // 'unwatch' pin
+        jshPinWatch(pin, false, JSPW_NONE); // 'unwatch' pin
     } else {
       jsExceptionHere(JSET_ERROR, "Unknown Watch %v", idVar);
     }

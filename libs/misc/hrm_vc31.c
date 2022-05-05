@@ -690,12 +690,12 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
 
 static void vc31_watch_on() {
   jshSetPinShouldStayWatched(HEARTRATE_PIN_INT,true);
-  IOEventFlags channel = jshPinWatch(HEARTRATE_PIN_INT, true);
+  IOEventFlags channel = jshPinWatch(HEARTRATE_PIN_INT, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, vc31_irqhandler);
 }
 
 static void vc31_watch_off() {
-  jshPinWatch(HEARTRATE_PIN_INT, false);
+  jshPinWatch(HEARTRATE_PIN_INT, false, JSPW_NONE);
   jshSetPinShouldStayWatched(HEARTRATE_PIN_INT,false);
 }
 

@@ -1980,7 +1980,7 @@ bool jshCanWatch(Pin pin) {
     return false;
 }
 
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   if (jshIsPinValid(pin)) {
     // TODO: check for DUPs, also disable interrupt
     /*int idx = pinToPinSource(IOPIN_DATA[pin].pin);

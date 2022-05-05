@@ -2973,7 +2973,7 @@ NO_INLINE void jswrap_banglejs_init() {
   #ifdef BANGLEJS_Q3
 #ifndef EMULATED
   jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
-  channel = jshPinWatch(TOUCH_PIN_IRQ, true);
+  channel = jshPinWatch(TOUCH_PIN_IRQ, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
 #endif
 #endif
@@ -3309,28 +3309,28 @@ NO_INLINE void jswrap_banglejs_init() {
 
 #ifdef BANGLEJS_Q3
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
-  channel = jshPinWatch(BTN1_PININDEX, true);
+  channel = jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn1Handler);
 #else
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   jshSetPinShouldStayWatched(BTN2_PININDEX,true);
-  channel = jshPinWatch(BTN1_PININDEX, true);
+  channel = jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn1Handler);
-  channel = jshPinWatch(BTN2_PININDEX, true);
+  channel = jshPinWatch(BTN2_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn2Handler);
 #ifdef BTN3_PININDEX
   jshSetPinShouldStayWatched(BTN3_PININDEX,true);
-  channel = jshPinWatch(BTN3_PININDEX, true);
+  channel = jshPinWatch(BTN3_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn3Handler);
 #endif
 #ifdef BTN4_PININDEX
   jshSetPinShouldStayWatched(BTN4_PININDEX,true);
-  channel = jshPinWatch(BTN4_PININDEX, true);
+  channel = jshPinWatch(BTN4_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn4Handler);
 #endif
 #ifdef BTN5_PININDEX
   jshSetPinShouldStayWatched(BTN5_PININDEX,true);
-  channel = jshPinWatch(BTN5_PININDEX, true);
+  channel = jshPinWatch(BTN5_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn5Handler);
 #endif
 #endif
@@ -3381,22 +3381,22 @@ void jswrap_banglejs_kill() {
   promisePressure = 0;
 #endif
 
-  jshPinWatch(BTN1_PININDEX, false);
+  jshPinWatch(BTN1_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN1_PININDEX,false);
 #ifdef BTN2_PININDEX
-  jshPinWatch(BTN2_PININDEX, false);
+  jshPinWatch(BTN2_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN2_PININDEX,false);
 #endif
 #ifdef BTN3_PININDEX
-  jshPinWatch(BTN3_PININDEX, false);
+  jshPinWatch(BTN3_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN3_PININDEX,false);
 #endif
 #ifdef BTN4_PININDEX
   jshSetPinShouldStayWatched(BTN4_PININDEX,false);
-  jshPinWatch(BTN4_PININDEX, false);
+  jshPinWatch(BTN4_PININDEX, false, JSPW_NONE);
 #endif
 #ifdef BTN5_PININDEX
-  jshPinWatch(BTN5_PININDEX, false);
+  jshPinWatch(BTN5_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN5_PININDEX,false);
 #endif
   // Graphics var is getting removed, so set this to null.

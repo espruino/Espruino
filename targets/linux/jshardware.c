@@ -588,7 +588,7 @@ bool jshCanWatch(Pin pin) {
     return false;
 }
 
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   if (jshIsPinValid(pin)) {
     IOEventFlags exti = getNewEVEXTI();
     if (shouldWatch) {

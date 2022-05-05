@@ -1490,7 +1490,7 @@ bool jshCanWatch(Pin pin){
 }
 
 /// start watching pin - return the EXTI (IRQ number flag) associated with it
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch){
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   if (jshIsPinValid(pin)) {
     // TODO: check for DUPs, also disable interrupt
     /*int idx = pinToPinSource(IOPIN_DATA[pin].pin);

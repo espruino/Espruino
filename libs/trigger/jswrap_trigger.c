@@ -102,9 +102,9 @@ void jswrap_trig_setup(Pin pin, JsVar *options) {
   trig->wrongTriggerTeeth = 0;
   // finally set up the watch!
   if (jshIsPinValid(trig->sensorPin))
-    jshPinWatch(trig->sensorPin, false);
+    jshPinWatch(trig->sensorPin, false, JSPW_NONE);
   trig->sensorPin = pin;
-  jshPinWatch(trig->sensorPin, true);
+  jshPinWatch(trig->sensorPin, true, JSPW_HIGH_SPEED);
 }
 
 /*JSON{
