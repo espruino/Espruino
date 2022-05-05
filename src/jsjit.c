@@ -323,13 +323,16 @@ void jsjBinaryExpression() {
 
 void jsjBlockOrStatement() {
   jsjBinaryExpression(); // FIXME
+  // FIXME REALLY
+  jsjPopAsVar(0); // a -> r0
 }
 
-JsVar *jsjParse() {
+void jsjParse() {
+  jsjcPushAll(); // FIXME REALLY
   while (JSJ_PARSING && lex->tk != LEX_EOF) {
     jsjBlockOrStatement();
   }
-  return 0;
+  jsjcPopAllAndReturn(); // FIXME REALLY
 }
 
 JsVar *jsjEvaluateVar(JsVar *str) {
@@ -337,7 +340,9 @@ JsVar *jsjEvaluateVar(JsVar *str) {
   assert(jsvIsString(str));
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(str);
-  JsVar *v = jsjParse();
+  jsjcStart();
+  jsjParse();
+  JsVar *v = jsjcStop();
   jslKill();
   jslSetLex(oldLex);
   return v;

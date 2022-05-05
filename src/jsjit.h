@@ -17,6 +17,7 @@
 
 #include "jsparse.h"
 
+JsVar *jsjEvaluateVar(JsVar *str);
 JsVar *jsjEvaluate(const char *str);
 
 #endif /* JSJIT_H_ */

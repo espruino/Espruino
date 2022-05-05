@@ -343,10 +343,16 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
     if (lex->tk==LEX_STR) {
       if (!strcmp(jslGetTokenValueAsString(), "compiled"))
         jsWarn("Function marked with \"compiled\" uploaded in source form");
-      if (lex->tk==LEX_STR && !strcmp(jslGetTokenValueAsString(), "ram")) {
+      if (!strcmp(jslGetTokenValueAsString(), "ram")) {
         JSP_ASSERT_MATCH(LEX_STR);
         forcePretokenise = true;
       }
+#ifdef ESPR_JIT
+      if (!strcmp(jslGetTokenValueAsString(), "jit")) {
+        JSP_ASSERT_MATCH(LEX_STR);
+        jsWarn("FIXME - JIT compile this function");
+      }
+#endif
     }
   #endif
 

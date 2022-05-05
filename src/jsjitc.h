@@ -23,6 +23,13 @@ typedef enum {
   JSJVT_JSVAR
 } JsjValueType;
 
+// Called before start of JIT output
+void jsjcStart();
+// Called when JIT output stops
+JsVar *jsjcStop();
+
+// Add 16 bit literal
+void jsjcLiteral16(int reg, bool hi16, uint16_t data);
 // Add 32 bit literal
 void jsjcLiteral32(int reg, uint32_t data);
 // Add 64 bit literal in reg,reg+1
@@ -38,8 +45,11 @@ void jsjcCall(void *c);
 void jsjcMov(int regFrom, int regTo);
 // Push a register onto the stack
 void jsjcPush(int reg, JsjValueType type);
-// Pop off teh stack to a register
+// Pop off the stack to a register
 JsjValueType jsjcPop(int reg);
+
+void jsjcPushAll();
+void jsjcPopAllAndReturn();
 
 #endif /* JSJIT_H_ */
 #endif /* ESPR_JIT */
