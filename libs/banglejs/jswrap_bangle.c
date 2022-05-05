@@ -4546,7 +4546,7 @@ static void jswrap_banglejs_periph_off() {
   the sensing to be disabled such that nrf_gpio_cfg_sense_set(pin, NRF_GPIO_PIN_SENSE_LOW)
   no longer works. To work around this we just call our standard pin watch function
   to re-enable everything. */
-  jshPinWatch(BTN1_PININDEX, true);
+  jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
   nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
@@ -4595,7 +4595,7 @@ void jswrap_banglejs_softOff() {
   jswrap_ble_sleep();
   jswrap_banglejs_periph_off();
   jshDelayMicroseconds(100000); // wait 100ms for any button bounce to disappear
-  IOEventFlags channel = jshPinWatch(BTN1_PININDEX, true);
+  IOEventFlags channel = jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, (JshEventCallbackCallback)jshHadEvent);
   // keep sleeping until a button is pressed
   jshKickWatchDog();
