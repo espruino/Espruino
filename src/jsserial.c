@@ -221,7 +221,7 @@ bool jsserialEventCallbackInit(JsVar *parent, JshUSARTInfo *inf) {
   data->bitCnt = 0;
   data->frameSize = inf->bytesize + inf->stopbits + (inf->parity?1:0);
 
-  IOEventFlags exti = jshPinWatch(inf->pinRX, true);
+  IOEventFlags exti = jshPinWatch(inf->pinRX, true, JSPW_HIGH_SPEED);
   if (exti) {
     jsvObjectSetChildAndUnLock(parent, "exti", jsvNewFromInteger(exti));
     JsVar *list = jsserialGetSerialList(true);
@@ -242,7 +242,7 @@ void jsserialEventCallbackKill(JsVar *parent, JshUSARTInfo *inf) {
   JsVar *v = jsvObjectGetChild(parent, "exti", 0);
   if (v) {
     IOEventFlags exti = (IOEventFlags)jsvGetIntegerAndUnLock(v);
-    jshPinWatch(exti, false);
+    jshPinWatch(exti, false, JSPW_NONE);
     JsVar *list = jsserialGetSerialList(false);
     if (list) {
       JsVar *parentName = jsvGetArrayIndex(list, (JsVarInt)exti);

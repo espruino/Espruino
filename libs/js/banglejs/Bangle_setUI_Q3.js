@@ -4,11 +4,18 @@
     options = mode;
     mode = options.mode;
   }
-  if (global.WIDGETS && WIDGETS.back)
-    WIDGETS.back.remove();
+  var redraw = true;
+  if (global.WIDGETS && WIDGETS.back) {
+    redraw = false;
+    WIDGETS.back.remove(mode && options.back);
+  }
   if (Bangle.btnWatches) {
     Bangle.btnWatches.forEach(clearWatch);
     delete Bangle.btnWatches;
+  }
+  if (Bangle.swipeHandler) {
+    Bangle.removeListener("swipe", Bangle.swipeHandler);
+    delete Bangle.swipeHandler;
   }
   if (Bangle.dragHandler) {
     Bangle.removeListener("drag", Bangle.dragHandler);
@@ -39,7 +46,6 @@
     };
     Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
-    Bangle.on("touch", Bangle.touchHandler);
     Bangle.btnWatches = [
       setWatch(function() { b();cb(); }, BTN1, {repeat:1}),
     ];
@@ -56,7 +62,6 @@
     };
     Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
-    Bangle.on("touch", Bangle.touchHandler);
     Bangle.btnWatches = [
       setWatch(function() { b();cb(); }, BTN1, {repeat:1}),
     ];
@@ -71,18 +76,14 @@
       if (e.x < 120) return;
       b();cb((e.y > 88) ? 1 : -1);
     };
-    Bangle.on("touch", Bangle.touchHandler);
     Bangle.btnWatches = [
       setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
     ];
   } else if (mode=="touch") {
     Bangle.touchHandler = (_,e) => {b();cb(e);};
-    Bangle.on("touch", Bangle.touchHandler);
   } else if (mode=="custom") {
-    if (options.touch) {
+    if (options.touch)
       Bangle.touchHandler = options.touch;
-      Bangle.on("touch", Bangle.touchHandler);
-    }
     if (options.drag) {
       Bangle.dragHandler = options.drag;
       Bangle.on("drag", Bangle.dragHandler);
@@ -100,23 +101,37 @@
     throw new Error("Unknown UI mode");
   if (options.back) {
     var touchHandler = (_,e) => {
-      if (e.y<24 && e.x<48) options.back();
+      if (e.y<36 && e.x<48) {
+        e.handled = true;
+        options.back();
+      }
     };
-    Bangle.on("touch", touchHandler);    
+    Bangle.on("touch", touchHandler);
+    // If a touch handler was needed for setUI, add it - but ignore touches if they've already gone to the 'back' handler
+    if (Bangle.touchHandler) { 
+      var uiTouchHandler = Bangle.touchHandler; 
+      Bangle.touchHandler = (_,e) => {
+        if (!e.handled) uiTouchHandler(_,e);
+      };
+      Bangle.on("touch", Bangle.touchHandler);
+    }
     var btnWatch = setWatch(function() {
       options.back();
     }, BTN1, {edge:"falling"});
     WIDGETS = Object.assign({back:{ 
       area:"tl", width:24, 
       draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
-      remove:()=>{
+      remove:(noclear)=>{
         clearWatch(btnWatch);
         Bangle.removeListener("touch", touchHandler);
-        g.reset().clearRect({x:WIDGETS.back.x, y:WIDGETS.back.y, w:24,h:24});
+        if (!noclear) g.reset().clearRect({x:WIDGETS.back.x, y:WIDGETS.back.y, w:24,h:24});
         delete WIDGETS.back;
-        Bangle.drawWidgets();
+        if (!noclear) Bangle.drawWidgets();
       }
     }},global.WIDGETS);
-    Bangle.drawWidgets();
+    if (redraw) Bangle.drawWidgets();
+  } else { // If a touch handler was needed for setUI, add it
+    if (Bangle.touchHandler)
+      Bangle.on("touch", Bangle.touchHandler);
   }
 })

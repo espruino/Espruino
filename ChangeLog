@@ -1,4 +1,22 @@
-            Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
+            Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
+            Bangle.js2: Recheck string wrapping after font change inside E.showMenu
+            Bangle.js2: Double input buffer size from 1kb to 2kb
+            Bangle.js2: Fix E.showMenu title changing color after scroll down+up *if* a non-standard theme was used
+            Bangle.js2: Fix wear detection on latest Bangle.js 2 (VC31B variant) (fix #2141)
+            Bangle.js2: Allow variable HRM poll rates on Bangle.js 2 VC31B variant
+            Bangle.js2: VC31 HRM variant now polls at 25hz (not 50)
+            Bangle.js1: E.showMenu now displays boolean values with no `format` as a checkbox
+            Bangle.js1: E.showMenu now displays a submenu for multiple choice menu items (#2184)
+            Bangle.js: built-in locale now doesn't depend on argument being an instance of Date (#2187)
+            Bangle.js: Add ".noList" property to prevent E.showScroller inside E.showMenu            
+            Bangle.js2: Add "Back"-Button on submenus inside E_showMenu 
+            Graphics: g.setClipRect now uses rotated coordinates
+            Graphics: g.draw/fillCircle now works with rotated coordinates
+            Bangle.js2: Touch/drag coordinates now obey g.setRotation
+            Graphics: Fix drawString with combination of g.setClipRect and g.setRotation
+            nRF5x: Allow 'high speed' watches via 'hispeed' argument to setWatch. Higher power consumption but detects fast (<25us) pulses.
+            
+     2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
             E.dumpVariables now dumps variable flags
             Tidying up Native Function handling (now JSV_NATIVE_FUNCTION not JSV_NATIVE|JSV_FUNCTION)
@@ -34,6 +52,25 @@
             Bangle.js1: setUI button handlers now work on falling edge
             Bangle.js: Add setUI custom 'swipe' handler
             Util Timer now runs independently of system time. More accurate on nRF52 (fix #2125)
+            Bangle.js2: Battery discharge curve is now scaled better, and setting.json:batFullVoltage can be used to account for differences in sense voltage between devices
+            Bangle.js2: Ensure NRF.setTxPower works for all connections and advertising
+            If a process.on("uncaughtException" handler creates an exception, make sure we report it as Uncaught
+            Bangle.js: If home button held and JS is still executing, force a break (like Ctrl-C)
+            Graphics: Fix text bounding box calculation when just the top line of a character would be visible
+            Bangle.js2: setUI now doesn't forward touch events if tapping over the back button
+            Bangle.js2: New E.showMenu now allows menu items of type 'string' - fixes 'Passkey' settings menu
+            Bangle.js2: Add visual feedback when showPrompt button is pressed
+            Storage: Fix erase-after-compact bug if Storage completely full (fix #2174)
+            Fix out of bounds jsvGetAddressOf in jsvNewFlatStringOfLength (wasn't a cause of instability)
+            Storage: Now put all .js files into internal storage (if 2 storage areas). Fix corruption issue when reading using file with explicit drive letter 
+            Bangle.js: default 'locale' now supports second 'dp' argument for decimal places in distance/speed/temp
+            Graphics: Restrict setClipRect coordinates (Except on ST7789_8BIT (Bangle.js 1) where we need it for notifications. This stops potential out of bounds writes is setClipRect is wrong.
+            Fix issues accessing object/array fields when the field itself has a null character in it (fix #2176)
+            nRF5x: Fix merging of packers for `NRF.findDevice` - previously name fields in subsequent packets may have been left as 'undefined'
+            nRF5x: NRF.findDevice now aggregates multiple packets even if only one packet matches the filter (fix #2178)
+            nRF5x: Allow NRF.setAdvertising to set advertised service UUIDs (vs service data) easily with `NRF.setAdvertising({'180D':undefined})`
+            Ensure JSON.stringify([undefined])=="[null]" as per the spec
+            Bangle.js2: Unistroke recognition accuracy improvements
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)

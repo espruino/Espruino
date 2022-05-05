@@ -134,6 +134,9 @@ Unistroke newUnistroke(Point *points, int pointCount) {
   Unistroke t;
   Resample(t.points, NUMPOINTS, points, pointCount);
   float radians = IndicativeAngle(t.points, NUMPOINTS);
+  // GW: 'snap' rotation to nearest 90 degrees
+  while (radians < -PI/4) radians += PI/2;
+  while (radians > PI/4) radians -= PI/2;
   RotateBy(t.points, t.points, NUMPOINTS, -radians);
   ScaleTo(t.points, t.points, NUMPOINTS, SQUARESIZE);
   Point Origin = {0,0};
@@ -200,6 +203,11 @@ void RotateBy(Point *dst, Point *points, int pointsLen, float radians) // rotate
 void ScaleTo(Point *dst, Point *points, int pointsLen, float size) // non-uniform scale; assumes 2D gestures (i.e., no lines)
 {
   Rectangle B = BoundingBox(points, pointsLen);
+  // GW: stop us rescaling so the aspect ratio it toally wrong
+  // eg. a line
+  if (B.width<B.height/2) B.width = B.height/2;
+  if (B.height<B.width/2) B.height = B.width/2;
+  // not rescale
   for (int i = 0; i < pointsLen; i++) {
     dst[i].X = points[i].X * (size / B.width);
     dst[i].Y = points[i].Y * (size / B.height);

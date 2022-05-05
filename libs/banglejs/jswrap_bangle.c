@@ -336,10 +336,13 @@ to decode `gesture` from a number into a string.
   "type" : "event",
   "class" : "Bangle",
   "name" : "swipe",
-  "params" : [["direction","int","`-1` for left, `1` for right"]],
+  "params" : [["directionLR","int","`-1` for left, `1` for right, `0` for up/down"],
+              ["directionUD","int","`-1` for up, `1` for down, `0` for left/right (Bangle.js 2 only)"]],
   "ifdef" : "BANGLEJS"
 }
-Emitted when a swipe on the touchscreen is detected (a movement from left->right, or right->left)
+Emitted when a swipe on the touchscreen is detected (a movement from left->right, right->left, down->up or up->down) 
+
+Bangle.js 1 is only capable of detecting left/right swipes as it only contains a 2 zone touchscreen.
 */
 /*JSON{
   "type" : "event",
@@ -347,7 +350,7 @@ Emitted when a swipe on the touchscreen is detected (a movement from left->right
   "name" : "touch",
   "params" : [
     ["button","int","`1` for left, `2` for right"],
-    ["xy","JsVar","Object of form `{x,y}` containing touch coordinates (if the device supports full touch)"]
+    ["xy","JsVar","Object of form `{x,y}` containing touch coordinates (if the device supports full touch). Clipped to 0..175 (LCD pixel coordinates) on firmware 2v13 and later."]
   ],
   "ifdef" : "BANGLEJS"
 }
@@ -361,6 +364,12 @@ Emitted when the touchscreen is pressed
   "ifdef" : "BANGLEJS"
 }
 Emitted when the touchscreen is dragged or released
+
+The touchscreen extends past the edge of the screen and while
+`x` and `y` coordinates are arranged such that they align with
+the LCD's pixels, if your finger goes towards the edge of the
+screen, `x` and `y` could end up larger than 175 (the screen's maximum pixel coordinates)
+or smaller than 0. Coordinates from the `touch` event are clipped.
 */
 /*JSON{
   "type" : "event",
@@ -577,8 +586,6 @@ JsVar *jswrap_banglejs_getBarometerObject();
 #endif
 
 #ifdef GPS_PIN_RX
-
-
 #ifdef GPS_UBLOX
 /// Handling data coming from UBlox GPS
 typedef enum {
@@ -606,7 +613,11 @@ char gpsLastLine[NMEA_MAX_SIZE];
 
 /// GPS fix data converted from GPS
 NMEAFixInfo gpsFix;
-#endif
+#endif // GPS_PIN_RX
+
+#ifdef ESPR_BATTERY_FULL_VOLTAGE
+float batteryFullVoltage = ESPR_BATTERY_FULL_VOLTAGE;
+#endif // ESPR_BATTERY_FULL_VOLTAGE
 
 #ifndef EMULATED
 /// Nordic app timer to handle call of peripheralPollHandler
@@ -976,7 +987,12 @@ void peripheralPollHandler() {
     inactivityTimer += pollInterval;
   // If button is held down, trigger a soft reset so we go back to the clock
   if (jshPinGetValue(HOME_BTN_PININDEX)) {
-    if (homeBtnTimer < TIMER_MAX) {
+    if (bangleTasks & JSBT_RESET) {
+      // We already wanted to reset but we didn't get back to idle loop in
+      // 1/10th sec - let's force a break out of JS execution
+      jsiConsolePrintf("Button held down - interrupt JS execution...\n");
+      execInfo.execute |= EXEC_INTERRUPTED;
+    } else if (homeBtnTimer < TIMER_MAX) {
       homeBtnTimer += pollInterval;
       if (homeBtnTimer >= BTN_LOAD_TIMEOUT) {
         bangleTasks |= JSBT_RESET;
@@ -987,7 +1003,6 @@ void peripheralPollHandler() {
           jsiStatus |= JSIS_EXIT_DEBUGGER;
           execInfo.execute |= EXEC_INTERRUPTED;
         }
-        // execInfo.execute |= EXEC_CTRL_C|EXEC_CTRL_C_WAIT; // set CTRLC
       }
     }
   } else {
@@ -1510,6 +1525,8 @@ void btn4Handler(bool state, IOEventFlags flags) {
 void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
   // ignore if locked
   if (bangleFlags & JSBF_LOCKED) return;
+  // deal with the case where we rotated the Bangle.js screen
+  deviceToGraphicsCoordinates(&graphicsInternal, &tx, &ty);
 
   int dx = tx-touchX;
   int dy = ty-touchY;
@@ -2012,7 +2029,7 @@ Set internal options used for gestures, etc...
 * `lockTimeout` how many milliseconds before the screen locks
 * `lcdPowerTimeout` how many milliseconds before the screen turns off
 * `backlightTimeout` how many milliseconds before the screen's backlight turns off
-* `hrmPollInterval` set the requested poll interval for the heart rate monitor. On Bangle.js 2 (only 10,20,40,80,160,200 ms are supported, and polling rate may not be exact)
+* `hrmPollInterval` set the requested poll interval (in milliseconds) for the heart rate monitor. On Bangle.js 2 only 10,20,40,80,160,200 ms are supported, and polling rate may not be exact. The algorithm's filtering is tuned for 20-40ms poll intervals, so higher/lower intervals may effect the reliability of the BPM reading.
 
 Where accelerations are used they are in internal units, where `8192 = 1g`
 
@@ -2188,6 +2205,15 @@ int jswrap_banglejs_isCharging() {
 JsVarInt jswrap_banglejs_getBattery() {
 #if defined(BAT_PIN_VOLTAGE) && !defined(EMULATED)
   JsVarFloat v = jshPinAnalog(BAT_PIN_VOLTAGE);
+
+#ifdef ESPR_BATTERY_FULL_VOLTAGE
+  // a configurable 'battery full voltage' is available
+  int pc;
+  v = 4.2 * v / batteryFullVoltage; // now 'v' should be in actual volts
+  if (v>=3.95) pc = 80 + (v-3.95)*20/(4.2-3.95); // 80%+
+  else if (v>=3.7) pc = 10 + (v-3.7)*70/(3.95-3.7); // 10%+ is linear
+  else pc = (v-3.3)*10/(3.7-3.3); // 0%+
+#else // otherwise normal linear battery scaling...
 #ifdef BANGLEJS_Q3
   const JsVarFloat vlo = 0.246;
   const JsVarFloat vhi = 0.3144; // on some watches this is 100%, on others it's s a bit higher
@@ -2207,6 +2233,7 @@ JsVarInt jswrap_banglejs_getBattery() {
   const JsVarFloat vhi = 1;
 #endif
   int pc = (v-vlo)*100/(vhi-vlo);
+#endif  // !ESPR_BATTERY_FULL_VOLTAGE
   if (pc>100) pc=100;
   if (pc<0) pc=0;
   return pc;
@@ -2946,7 +2973,7 @@ NO_INLINE void jswrap_banglejs_init() {
   #ifdef BANGLEJS_Q3
 #ifndef EMULATED
   jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
-  channel = jshPinWatch(TOUCH_PIN_IRQ, true);
+  channel = jshPinWatch(TOUCH_PIN_IRQ, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, touchHandler);
 #endif
 #endif
@@ -3005,6 +3032,13 @@ NO_INLINE void jswrap_banglejs_init() {
     bangleFlags |= JSBF_ENABLE_BUZZ;
   }
   jsvUnLock(v);
+
+  // If enabled, load battery 'full' voltage
+#ifdef ESPR_BATTERY_FULL_VOLTAGE
+  batteryFullVoltage = ESPR_BATTERY_FULL_VOLTAGE;
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"batFullVoltage",0) : 0;
+  if (jsvIsNumeric(v)) batteryFullVoltage = jsvGetFloatAndUnLock(v);
+#endif // ESPR_BATTERY_FULL_VOLTAGE
 
   // Load themes from the settings.json file
   jswrap_banglejs_setTheme();
@@ -3275,28 +3309,28 @@ NO_INLINE void jswrap_banglejs_init() {
 
 #ifdef BANGLEJS_Q3
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
-  channel = jshPinWatch(BTN1_PININDEX, true);
+  channel = jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn1Handler);
 #else
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   jshSetPinShouldStayWatched(BTN2_PININDEX,true);
-  channel = jshPinWatch(BTN1_PININDEX, true);
+  channel = jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn1Handler);
-  channel = jshPinWatch(BTN2_PININDEX, true);
+  channel = jshPinWatch(BTN2_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn2Handler);
 #ifdef BTN3_PININDEX
   jshSetPinShouldStayWatched(BTN3_PININDEX,true);
-  channel = jshPinWatch(BTN3_PININDEX, true);
+  channel = jshPinWatch(BTN3_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn3Handler);
 #endif
 #ifdef BTN4_PININDEX
   jshSetPinShouldStayWatched(BTN4_PININDEX,true);
-  channel = jshPinWatch(BTN4_PININDEX, true);
+  channel = jshPinWatch(BTN4_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn4Handler);
 #endif
 #ifdef BTN5_PININDEX
   jshSetPinShouldStayWatched(BTN5_PININDEX,true);
-  channel = jshPinWatch(BTN5_PININDEX, true);
+  channel = jshPinWatch(BTN5_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn5Handler);
 #endif
 #endif
@@ -3347,22 +3381,22 @@ void jswrap_banglejs_kill() {
   promisePressure = 0;
 #endif
 
-  jshPinWatch(BTN1_PININDEX, false);
+  jshPinWatch(BTN1_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN1_PININDEX,false);
 #ifdef BTN2_PININDEX
-  jshPinWatch(BTN2_PININDEX, false);
+  jshPinWatch(BTN2_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN2_PININDEX,false);
 #endif
 #ifdef BTN3_PININDEX
-  jshPinWatch(BTN3_PININDEX, false);
+  jshPinWatch(BTN3_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN3_PININDEX,false);
 #endif
 #ifdef BTN4_PININDEX
   jshSetPinShouldStayWatched(BTN4_PININDEX,false);
-  jshPinWatch(BTN4_PININDEX, false);
+  jshPinWatch(BTN4_PININDEX, false, JSPW_NONE);
 #endif
 #ifdef BTN5_PININDEX
-  jshPinWatch(BTN5_PININDEX, false);
+  jshPinWatch(BTN5_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN5_PININDEX,false);
 #endif
   // Graphics var is getting removed, so set this to null.
@@ -4512,7 +4546,7 @@ static void jswrap_banglejs_periph_off() {
   the sensing to be disabled such that nrf_gpio_cfg_sense_set(pin, NRF_GPIO_PIN_SENSE_LOW)
   no longer works. To work around this we just call our standard pin watch function
   to re-enable everything. */
-  jshPinWatch(BTN1_PININDEX, true);
+  jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
   nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
@@ -4561,7 +4595,7 @@ void jswrap_banglejs_softOff() {
   jswrap_ble_sleep();
   jswrap_banglejs_periph_off();
   jshDelayMicroseconds(100000); // wait 100ms for any button bounce to disappear
-  IOEventFlags channel = jshPinWatch(BTN1_PININDEX, true);
+  IOEventFlags channel = jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, (JshEventCallbackCallback)jshHadEvent);
   // keep sleeping until a button is pressed
   jshKickWatchDog();
@@ -5105,6 +5139,7 @@ you could make all clocks start the launcher with a swipe by using:
     Bangle.on("swipe", Bangle.swipeHandler);
   };
 })();
+```
 
 The first argument can also be an object, in which case more options can be specified:
 

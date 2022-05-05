@@ -176,6 +176,7 @@ extern volatile uint16_t                         m_peripheral_conn_handle;    /*
 extern volatile uint16_t                         m_central_conn_handle; /**< Handle for central mode connection */
 #endif
 
+
 /** Initialise the BLE stack */
 void jsble_init();
 /** Completely deinitialise the BLE stack. Return true on success */
@@ -246,6 +247,10 @@ void jsble_update_security();
 
 /// Return an object showing the security status of the given connection
 JsVar *jsble_get_security_status(uint16_t conn_handle);
+
+/// Set the transmit power of the current (and future) connections
+void jsble_set_tx_power(int8_t pwr);
+
 
 // ------------------------------------------------- lower-level utility fns
 

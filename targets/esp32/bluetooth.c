@@ -233,6 +233,11 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
   return 0;
 }
 
+/// Set the transmit power of the current (and future) connections
+void jsble_set_tx_power(int8_t pwr) {
+  jsWarn("jsble_set_tx_power not implemented yet\n");
+}
+
 uint32_t jsble_central_send_passkey(char *passkey) {
   jsWarn("central set Whitelist not implemented yet\n");
   return 0;

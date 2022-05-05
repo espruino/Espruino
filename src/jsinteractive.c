@@ -489,7 +489,8 @@ void jsiSoftInit(bool hasBeenReset) {
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *watch = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChild(watch, "pin", 0);
-      jshPinWatch(jshGetPinFromVar(watchPin), true);
+      bool highAcc = jsvGetBoolAndUnLock(jsvObjectGetChild(watch, "hispeed", 0));
+      jshPinWatch(jshGetPinFromVar(watchPin), true, highAcc?JSPW_HIGH_SPEED:JSPW_NONE);
       jsvUnLock2(watchPin, watch);
       jsvObjectIteratorNext(&it);
     }
@@ -741,7 +742,7 @@ void jsiSoftKill() {
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
-      jshPinWatch(jshGetPinFromVar(watchPin), false);
+      jshPinWatch(jshGetPinFromVar(watchPin), false, JSPW_NONE);
       jsvUnLock2(watchPin, watchPtr);
       jsvObjectIteratorNext(&it);
     }
@@ -1182,7 +1183,7 @@ void jsiCheckErrors() {
   if (exception) {
     if (jsiExecuteEventCallbackOn("process", JS_EVENT_PREFIX"uncaughtException", 1, &exception)) {
       jsvUnLock(exception);
-      exception = 0;
+      exception = jspGetException();
     }
   }
   if (exception) {
@@ -2042,7 +2043,7 @@ void jsiIdle() {
                 jsvObjectIteratorRemoveAndGotoNext(&it, watchArrayPtr);
                 hasDeletedWatch = true;
                 if (!jsiIsWatchingPin(pin))
-                  jshPinWatch(pin, false);
+                  jshPinWatch(pin, false, JSPW_NONE);
               }
               jsvUnLock(watchCallback);
             }
@@ -2168,7 +2169,7 @@ void jsiIdle() {
               jsvUnLock(watchArrayPtr);
               Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(watchPtr, "pin", 0));
               if (!jsiIsWatchingPin(pin))
-                jshPinWatch(pin, false);
+                jshPinWatch(pin, false, JSPW_NONE);
             }
           }
           jsvUnLock(watchPtr);

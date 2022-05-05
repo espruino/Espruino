@@ -1592,7 +1592,7 @@ bool jshCanWatch(Pin pin) {
   return true;
 }
 
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   if (!jshIsPinValid(pin)) return EV_NONE;
 #if JSH_PORTV_COUNT>0
   // handle virtual ports (eg. pins on an IO Expander)
@@ -1606,7 +1606,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
       if (extiToPin[i] == p) return EV_EXTI0+i; //already allocated
       if (extiToPin[i] == PIN_UNDEFINED) {
         // use low accuracy for GPIOTE as we can shut down the high speed oscillator then
-       nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(false /* hi/low accuracy */);
+       nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE((flags&JSPW_HIGH_SPEED)!=0 /* hi/low accuracy */);
        cls_1_config.is_watcher = true; // stop this resetting the input state
        if (nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler)!=0) {
          jsWarn("No free GPIOTE for watch");

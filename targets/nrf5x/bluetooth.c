@@ -173,6 +173,7 @@ static bool                             m_in_boot_mode = false;
 
 #if NRF_SD_BLE_API_VERSION > 5
 uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
+int8_t m_tx_power = 0;
 #endif
 
 volatile uint16_t                       m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
@@ -1183,6 +1184,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #endif
 
       case BLE_GAP_EVT_CONNECTED:
+        // set connection transmit power
+#if NRF_SD_BLE_API_VERSION > 5
+        sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_CONN, p_ble_evt->evt.gap_evt.conn_handle, m_tx_power);
+#endif
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
           m_peripheral_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
 #ifdef EXTENSIBLE_MTU
@@ -2608,8 +2613,10 @@ uint32_t jsble_advertising_start() {
   d.scan_rsp_data.len = m_enc_scan_response_data_len;
 
   err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, &adv_params);
-  if (!err_code)
+  if (!err_code) {
+    sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, m_tx_power);
     err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
+  }
 #elif NRF_SD_BLE_API_VERSION<5
   err_code = sd_ble_gap_adv_data_set(
       (uint8_t *)advPtr, advLen,
@@ -3149,6 +3156,25 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
 #endif
 }
 
+
+/// Set the transmit power of the current (and future) connections
+void jsble_set_tx_power(int8_t pwr) {
+  uint32_t              err_code;
+#if NRF_SD_BLE_API_VERSION > 5
+  if (m_peripheral_conn_handle != BLE_CONN_HANDLE_INVALID)
+    err_code = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_CONN, m_peripheral_conn_handle, pwr);
+  if (m_central_conn_handle != BLE_CONN_HANDLE_INVALID)
+    err_code = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_CONN, m_central_conn_handle, pwr);
+  if (m_adv_handle != BLE_GAP_ADV_SET_HANDLE_NOT_SET)
+    err_code = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, pwr);
+  err_code = sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_SCAN_INIT, 0/*ignored*/, pwr);
+  if (!err_code)
+    m_tx_power = pwr;
+#else
+  err_code = sd_ble_gap_tx_power_set(pwr);
+#endif
+  jsble_check_error(err_code);
+}
 
 #if CENTRAL_LINK_COUNT>0
 void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {

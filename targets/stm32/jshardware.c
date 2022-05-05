@@ -1980,7 +1980,7 @@ bool jshCanWatch(Pin pin) {
     return false;
 }
 
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   if (jshIsPinValid(pin)) {
     // TODO: check for DUPs, also disable interrupt
     /*int idx = pinToPinSource(IOPIN_DATA[pin].pin);
@@ -2573,13 +2573,13 @@ bool jshSleep(JsSysTime timeUntilWake) {
     Pin usbPin = JSH_PORTA_OFFSET+11;
     jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN_PULLUP);
     Pin oldWatch = watchedPins[pinInfo[usbPin].pin];
-    jshPinWatch(usbPin, true);
+    jshPinWatch(usbPin, true, JSPW_NONE);
 #endif
 #ifdef USB_VSENSE_PIN
     // USB_VSENSE_PIN is connected to USB 5v (and pulled down by a 100k resistor)
     // ... so wake up if it goes high
     Pin oldWatch = watchedPins[pinInfo[USB_VSENSE_PIN].pin];
-    jshPinWatch(USB_VSENSE_PIN, true);
+    jshPinWatch(USB_VSENSE_PIN, true, JSPW_NONE);
 #endif
 #endif // USB
 
@@ -2636,8 +2636,8 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #ifdef STM32F1
     wokenByUSB = jshPinGetValue(usbPin)==0;
     // remove watches on pins
-    jshPinWatch(usbPin, false);
-    if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true);
+    jshPinWatch(usbPin, false, JSPW_NONE);
+    if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true, JSPW_NONE);
     jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN);
 #endif
 #ifdef USB_VSENSE_PIN
@@ -2645,8 +2645,8 @@ bool jshSleep(JsSysTime timeUntilWake) {
     // setting that we've woken lets the board stay awake
     // until a USB connection can be established
     if (jshPinGetValue(USB_VSENSE_PIN)) wokenByUSB=true;
-    jshPinWatch(USB_VSENSE_PIN, false);
-    if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true);
+    jshPinWatch(USB_VSENSE_PIN, false, JSPW_NONE);
+    if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true, JSPW_NONE);
 #endif
 #endif
     // recover oscillator

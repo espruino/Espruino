@@ -271,6 +271,17 @@ void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y) {
   if (gfx->data.flags & JSGRAPHICSFLAGS_INVERT_Y) *y = (int)(gfx->data.height - (*y+1));
 }
 
+// If graphics is flipped or rotated then the coordinates need modifying. This is to go back - eg for touchscreens
+void deviceToGraphicsCoordinates(const JsGraphics *gfx, int *x, int *y) {
+  if (gfx->data.flags & JSGRAPHICSFLAGS_INVERT_X) *x = (int)(gfx->data.width - (*x+1));
+  if (gfx->data.flags & JSGRAPHICSFLAGS_INVERT_Y) *y = (int)(gfx->data.height - (*y+1));
+  if (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) {
+    int t = *x;
+    *x = *y;
+    *y = t;
+  }
+}
+
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates16x(const JsGraphics *gfx, int *x, int *y) {
   if (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) {
@@ -500,6 +511,12 @@ void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
 void graphicsDrawEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int posY2){
   graphicsToDeviceCoordinates(gfx, &posX1, &posY1);
   graphicsToDeviceCoordinates(gfx, &posX2, &posY2);
+  if (posX1>posX2) {
+    int t=posX1;posX1=posX2;posX2=t;
+  }
+  if (posY1>posY2) {
+    int t=posY1;posY1=posY2;posY2=t;
+  }
 
   int posX =  (posX1+posX2)/2;
   int posY =  (posY1+posY2)/2;
@@ -533,6 +550,12 @@ void graphicsDrawEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int p
 void graphicsFillEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int posY2){
   graphicsToDeviceCoordinates(gfx, &posX1, &posY1);
   graphicsToDeviceCoordinates(gfx, &posX2, &posY2);
+  if (posX1>posX2) {
+    int t=posX1;posX1=posX2;posX2=t;
+  }
+  if (posY1>posY2) {
+    int t=posY1;posY1=posY2;posY2=t;
+  }
 
   int posX =  (posX1+posX2)/2;
   int posY =  (posY1+posY2)/2;

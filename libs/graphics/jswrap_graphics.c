@@ -1473,12 +1473,34 @@ sit between.
 These values are inclusive - eg `g.setClipRect(1,0,5,0)` will ensure that only
 pixel rows 1,2,3,4,5 are touched on column 0.
 
-**Note:** For maximum flexibility, the values here are not range checked. For normal
-use, X and Y should be between 0 and `getWidth`/`getHeight`.
+**Note:** For maximum flexibility on Bangle.js 1, the values here are not range checked. For normal
+use, X and Y should be between 0 and `getWidth()-1`/`getHeight()-1`.
+
+**Note:** The x/y values here are rotated, so that if `Graphics.setRotation` is used
+they correspond to the coordinates given to the draw functions, *not to the
+physical device pixels*.
 */
 JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  graphicsToDeviceCoordinates(&gfx, &x1, &y1);
+  graphicsToDeviceCoordinates(&gfx, &x2, &y2);
 #ifndef SAVE_ON_FLASH
+#ifdef USE_LCD_ST7789_8BIT
+  if (gfx.data.type!=JSGRAPHICSTYPE_ST7789_8BIT) {
+#endif
+    if (x1<0) x1=0;
+    if (y1<0) y1=0;
+    if (x2<0) x2=0;
+    if (y2<0) y2=0;
+    if (x1>=gfx.data.width) x1=gfx.data.width-1;
+    if (y1>=gfx.data.height) y1=gfx.data.height-1;
+    if (x2>=gfx.data.width) x2=gfx.data.width-1;
+    if (y2>=gfx.data.height) y2=gfx.data.height-1;
+    if (x1>x2) { int t=x1;x1=x2;x2=t; };
+    if (y1>y2) { int t=y1;y1=y2;y2=t; };
+#ifdef USE_LCD_ST7789_8BIT
+  }
+#endif
   gfx.data.clipRect.x1 = (unsigned short)x1;
   gfx.data.clipRect.y1 = (unsigned short)y1;
   gfx.data.clipRect.x2 = (unsigned short)x2;
@@ -2205,6 +2227,16 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   int minY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x1 : gfx.data.clipRect.y1;
   int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y2 : gfx.data.clipRect.x2;
   int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x2 : gfx.data.clipRect.y2;
+  if (gfx.data.flags & JSGRAPHICSFLAGS_INVERT_X) {
+    int t = gfx.data.width - (minX+1);
+    minX = gfx.data.width - (maxX+1);
+    maxX = t;
+  }
+  if (gfx.data.flags & JSGRAPHICSFLAGS_INVERT_Y) {
+    int t = gfx.data.height - (minY+1);
+    minY = gfx.data.height - (maxY+1);
+    maxY = t;
+  }
 #else
   int minX = 0;
   int minY = 0;
@@ -2244,7 +2276,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     if (info.font == JSGRAPHICS_FONTSIZE_VECTOR) {
 #ifndef NO_VECTOR_FONT
       int w = (int)graphicsVectorCharWidth(&gfx, info.scalex, ch);
-      if (x>minX-w && x<maxX  && y>minY-fontHeight && y<maxY) {
+      if (x>minX-w && x<maxX  && y>minY-fontHeight && y<=maxY) {
         if (solidBackground)
           graphicsFillRect(&gfx,x,y,x+w-1,y+fontHeight-1, gfx.data.bgColor);
         graphicsFillVectorChar(&gfx, x, y, info.scalex, info.scaley, ch);
@@ -2252,12 +2284,12 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
       x+=w;
 #endif
     } else if (info.font == JSGRAPHICS_FONTSIZE_4X6) {
-      if (x>minX-4*info.scalex && x<maxX && y>minY-fontHeight && y<maxY)
+      if (x>minX-4*info.scalex && x<maxX && y>minY-fontHeight && y<=maxY)
         graphicsDrawChar4x6(&gfx, x, y, ch, info.scalex, info.scaley, solidBackground);
       x+=4*info.scalex;
 #ifdef USE_FONT_6X8
     } else if (info.font == JSGRAPHICS_FONTSIZE_6X8) {
-      if (x>minX-6*info.scalex && x<maxX && y>minY-fontHeight && y<maxY)
+      if (x>minX-6*info.scalex && x<maxX && y>minY-fontHeight && y<=maxY)
         graphicsDrawChar6x8(&gfx, x, y, ch, info.scalex, info.scaley, solidBackground);
       x+=6*info.scalex;
 #endif
@@ -2280,7 +2312,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
         width = (int)jsvGetInteger(customWidth);
         bmpOffset = width*(ch-info.customFirstChar);
       }
-      if (ch>=info.customFirstChar && (x>minX-width*info.scalex) && (x<maxX) && (y>minY-fontHeight) && y<maxY) {
+      if (ch>=info.customFirstChar && (x>minX-width*info.scalex) && (x<maxX) && (y>minY-fontHeight) && y<=maxY) {
         int ch = fontHeight/info.scaley;
         bmpOffset *= ch * customBPP;
         // now render character

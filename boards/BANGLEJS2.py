@@ -25,6 +25,7 @@ info = {
 # 'default_console_rx' : "D8",
 # 'default_console_baudrate' : "9600",
  'variables' : 12000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'io_buffer_size' : 512, # How big is the input buffer (in 4 byte words). Default on nRF52 is 256
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_banglejs2.hex',
  'build' : {
@@ -53,6 +54,7 @@ info = {
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
+     'DEFINES+=-DESPR_BATTERY_FULL_VOLTAGE=0.3144',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS',
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
      'DEFINES += -DESPR_NO_LINE_NUMBERS=1', # we execute mainly from flash, so line numbers can be worked out

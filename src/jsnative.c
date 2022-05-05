@@ -24,7 +24,7 @@
   #error USE_CALLFUNCTION_HACK is required to make i386 builds work correctly
 #endif
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__arm64__)
     #define USE_SEPARATE_DOUBLES
 #endif
 
@@ -154,7 +154,7 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
       doubleData[doubleCount++] = f;
 #else
       uint64_t i = *(uint64_t*)&f;
-#if USE_64BIT
+#ifdef USE_64BIT
       argData[argCount++] = (size_t)i;
 #else // 32 bit...
  #ifdef USE_ARG_REORDERING

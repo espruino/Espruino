@@ -158,7 +158,7 @@ IOEventFlags jshGetEventFlagsForPin(Pin pin) {
   return EV_NONE;
 }
 
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   if (shouldWatch)
     for (int i=0;i<16;i++)
       if (eventFlagsToPin[i]==PIN_UNDEFINED) {

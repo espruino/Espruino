@@ -47,7 +47,7 @@ unsigned int jsVarsSize = 0;
 JsVar *jsVars = NULL;
 #else
 JsVar jsVars[JSVAR_CACHE_SIZE] __attribute__((aligned(4)));
-unsigned int jsVarsSize = JSVAR_CACHE_SIZE;
+const unsigned int jsVarsSize = JSVAR_CACHE_SIZE;
 #endif
 #endif
 
@@ -169,10 +169,16 @@ JsVar *_jsvGetAddressOf(JsVarRef ref) {
 void jsvSetMaxVarsUsed(unsigned int size) {
 #ifdef RESIZABLE_JSVARS
   assert(size < JSVAR_BLOCK_SIZE); // remember - this is only for DEBUGGING - as such it doesn't use multiple blocks
-#else
-  assert(size < JSVAR_CACHE_SIZE);
-#endif
   jsVarsSize = size;
+#else
+#ifdef JSVAR_MALLOC
+  assert(size < JSVAR_CACHE_SIZE);
+  jsVarsSize = size;
+#else
+  assert(0);
+#endif
+#endif
+
 }
 
 // maps the empty variables in...
@@ -852,7 +858,7 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
           beforeStartBlock = curr;
           startBlock = next;
           // Check to see if the next block is aligned on a 4 byte boundary or not
-          if (((size_t)(jsvGetAddressOf(startBlock+1)))&3)
+          if (startBlock==jsVarsSize || ((size_t)(jsvGetAddressOf(startBlock+1)))&3)
             blockCount = 0; // this block is not aligned
           else
             blockCount = 1; // all ok - start block here
@@ -1204,18 +1210,21 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
       }
     }
   } else if (jsvIsString(a) && jsvIsString(b)) {
+    // OPT: could we do a fast check here with data?
     JsvStringIterator ita, itb;
     jsvStringIteratorNew(&ita, a, 0);
     jsvStringIteratorNew(&itb, b, 0);
     while (true) {
-      char a = jsvStringIteratorGetCharAndNext(&ita);
-      char b = jsvStringIteratorGetCharAndNext(&itb);
+      int a = jsvStringIteratorGetCharOrMinusOne(&ita);
+      jsvStringIteratorNext(&ita);
+      int b = jsvStringIteratorGetCharOrMinusOne(&itb);
+      jsvStringIteratorNext(&itb);
       if (a != b) {
         jsvStringIteratorFree(&ita);
         jsvStringIteratorFree(&itb);
         return false;
       }
-      if (!a) { // equal, but end of string
+      if (a < 0) { // equal, but end of string
         jsvStringIteratorFree(&ita);
         jsvStringIteratorFree(&itb);
         return true;

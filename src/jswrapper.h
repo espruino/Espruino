@@ -66,6 +66,11 @@ typedef enum {
 // reads. Telling the compiler to pack the structs defeats that, so we have to take it out.
 #define PACKED_JSW_SYM
 #endif
+#if defined(__arm64__)
+#undef PACKED_JSW_SYM
+#define PACKED_JSW_SYM __attribute__((aligned(2)))
+#endif
+
 
 /// Structure for each symbol in the list of built-in symbols
 typedef struct {

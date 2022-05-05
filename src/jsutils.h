@@ -26,9 +26,9 @@
 #include <math.h>
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "2v12"
+#define JS_VERSION "2v13"
 #else
-#define JS_VERSION "2v12." BUILDNUMBER
+#define JS_VERSION "2v13." BUILDNUMBER
 #endif
 /*
   In code:

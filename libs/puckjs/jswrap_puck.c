@@ -739,10 +739,10 @@ void jswrap_puck_magOn(JsVarFloat hz) {
    * go around the idle loop and call jswrap_puck_idle - which
    * is where we actually collect the data. */
   if (puckVersion == PUCKJS_1V0) {
-    jshPinWatch(MAG_PIN_INT, true);
+    jshPinWatch(MAG_PIN_INT, true, JSPW_NONE);
     jshPinSetState(MAG_PIN_INT, JSHPINSTATE_GPIO_IN);
   } else if (puckVersion == PUCKJS_2V0) {
-    jshPinWatch(MAG_PIN_DRDY, true);
+    jshPinWatch(MAG_PIN_DRDY, true, JSPW_NONE);
     jshPinSetState(MAG_PIN_DRDY, JSHPINSTATE_GPIO_IN);
   } // 2v1 doesn't have an IRQ line - we poll with peripheralPollHandler
   mag_enabled = true;
@@ -760,9 +760,9 @@ Turn the magnetometer off
 void jswrap_puck_magOff() {
   if (mag_enabled) {
     if (puckVersion == PUCKJS_1V0) {
-      jshPinWatch(MAG_PIN_INT, false);
+      jshPinWatch(MAG_PIN_INT, false, JSPW_NONE);
     } else if (puckVersion == PUCKJS_2V0) {
-      jshPinWatch(MAG_PIN_DRDY, false);
+      jshPinWatch(MAG_PIN_DRDY, false, JSPW_NONE);
     } // 2v1 doesn't have an IRQ line
     mag_off();
   }
@@ -919,7 +919,7 @@ void jswrap_puck_accelOn(JsVarFloat hz) {
   if (!accel_on(milliHz)) {
     jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - must be 1660, 833, 416, 208, 104, 52, 26, 12.5, 1.6 Hz", hz);
   }
-  jshPinWatch(ACCEL_PIN_INT, true);
+  jshPinWatch(ACCEL_PIN_INT, true, JSPW_NONE);
   accel_enabled = true;
 }
 
@@ -941,7 +941,7 @@ void jswrap_puck_accelOff() {
     return;
   }
   if (accel_enabled) {
-    jshPinWatch(ACCEL_PIN_INT, false);
+    jshPinWatch(ACCEL_PIN_INT, false, JSPW_NONE);
     accel_off();
   }
   accel_enabled = false;

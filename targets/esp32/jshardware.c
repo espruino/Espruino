@@ -452,8 +452,9 @@ bool jshCanWatch(
  * \return The event flag for this pin.
  */
 IOEventFlags jshPinWatch(
-    Pin pin,         //!< The pin to be watched.
-    bool shouldWatch //!< True for watching and false for unwatching.
+    Pin pin,          //!< The pin to be watched.
+    bool shouldWatch, //!< True for watching and false for unwatching.
+    JshPinWatchFlags flags
   ) {
       gpio_num_t gpioNum = pinToESP32Pin(pin);
       if(shouldWatch){
