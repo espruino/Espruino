@@ -20,5 +20,8 @@
 JsVar *jsjEvaluateVar(JsVar *str);
 JsVar *jsjEvaluate(const char *str);
 
+// parse a function and return a native string of the code. Assumes '{' has already been parsed
+JsVar *jsjParseFunction();
+
 #endif /* JSJIT_H_ */
 #endif /* ESPR_JIT */

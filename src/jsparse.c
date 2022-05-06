@@ -22,6 +22,9 @@
 #ifndef SAVE_ON_FLASH
 #include "jswrap_regexp.h" // for jswrap_regexp_constructor
 #endif
+#ifdef ESPR_JIT
+#include "jsjit.h"
+#endif
 
 /* Info about execution when Parsing - this saves passing it on the stack
  * for each call */
@@ -350,7 +353,13 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
 #ifdef ESPR_JIT
       if (!strcmp(jslGetTokenValueAsString(), "jit")) {
         JSP_ASSERT_MATCH(LEX_STR);
-        jsWarn("FIXME - JIT compile this function");
+        JsVar *funcCodeVar = jsjParseFunction();
+        funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_NATIVE_FUNCTION; // convert to native fn
+        funcVar->varData.native.ptr = (void *)(size_t)1; // offset 1 = 'thumb'
+        funcVar->varData.native.argTypes = JSWAT_JSVAR; // FIXME - need to add parameters if any specified...
+        jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME), funcCodeVar);
+        JSP_MATCH('}');
+        return true; // assume 'this' included for now (optimisation: figure out if 'this' was used)
       }
 #endif
     }

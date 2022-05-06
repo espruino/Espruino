@@ -28,10 +28,15 @@ var jit = E.nativeCall(1, "JsVar()", E.JIT("test"))
 var test = "Hello ";
 var jit = E.nativeCall(1, "JsVar()", E.JIT("test+'World!'"))
 jit()=="Hello World!"
+
+function jit() {'jit';return 1+2;}
+jit()==3
 ```
 
 
-
+```
+./espruino -e "trace(function jit() {'jit';return 1+2;})"
+```
 
 
 Run JIT on ARM and disassemble:

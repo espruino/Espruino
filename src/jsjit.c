@@ -23,6 +23,7 @@
 
 // ----------------------------------------------------------------------------
 void jsjUnaryExpression();
+void jsjStatement();
 // ----------------------------------------------------------------------------
 
 void jsjPopAsVar(int reg) {
@@ -37,6 +38,12 @@ void jsjPopAsVar(int reg) {
   assert(0);
 }
 
+void jsjPopAndUnLock() {
+  jsjPopAsVar(0); // a -> r0
+  // optimisation: if item on stack is NOT a variable, no need to covert+unlock!
+  jsjcCall(jsvUnLock); // we're throwing this away now - unlock
+}
+
 void jsjFactor() {
   if (lex->tk==LEX_ID) {
     JsVar *a = jslGetTokenValueAsVar();
@@ -44,7 +51,7 @@ void jsjFactor() {
     jsvUnLock(a);
     JSP_ASSERT_MATCH(LEX_ID);
     jsjcCall(jspGetNamedVariable);
-    jsjcPush(0, JSJVT_JSVAR); // We're pushing a NAME here - is that ok?
+    jsjcPush(0, JSJVT_JSVAR); // We're pushing a NAME here
   } else if (lex->tk==LEX_INT) {
     int64_t v = stringToInt(jslGetTokenValueAsString());
     JSP_ASSERT_MATCH(LEX_INT);
@@ -316,19 +323,121 @@ void jsjBinaryExpression() {
   __jsjBinaryExpression(0);
 }
 
-void jsjBlockOrStatement() {
-  jsjBinaryExpression(); // FIXME
-  // FIXME REALLY
-  // Skip name??
-  jsjPopAsVar(0); // a -> r0
+// ',' is allowed to add multiple expressions, this is not allowed in jspeAssignmentExpression
+void jsjExpression() {
+  while (JSJ_PARSING) {
+    jsjBinaryExpression(); // FIXME should be jsjAssignmentExpression();
+    if (lex->tk!=',') return;
+    // if we get a comma, we just unlock this data and parse the next bit...
+    jsjPopAndUnLock();
+    JSP_ASSERT_MATCH(',');
+  }
 }
 
-void jsjParse() {
-  jsjcPushAll(); // FIXME REALLY
-  while (JSJ_PARSING && lex->tk != LEX_EOF) {
-    jsjBlockOrStatement();
+void jsjBlockNoBrackets() {
+  while (lex->tk && lex->tk!='}' && JSJ_PARSING) {
+    jsjStatement();
   }
-  jsjcPopAllAndReturn(); // FIXME REALLY
+  return;
+}
+
+void jsjBlock() {
+  JSP_MATCH('{');
+  jsjBlockNoBrackets();
+  JSP_MATCH('}');
+}
+
+void jsjStatement() {
+  if (lex->tk==LEX_ID ||
+      lex->tk==LEX_INT ||
+      lex->tk==LEX_FLOAT ||
+      lex->tk==LEX_STR ||
+      lex->tk==LEX_TEMPLATE_LITERAL ||
+      lex->tk==LEX_REGEX ||
+      lex->tk==LEX_R_NEW ||
+      lex->tk==LEX_R_NULL ||
+      lex->tk==LEX_R_UNDEFINED ||
+      lex->tk==LEX_R_TRUE ||
+      lex->tk==LEX_R_FALSE ||
+      lex->tk==LEX_R_THIS ||
+      lex->tk==LEX_R_DELETE ||
+      lex->tk==LEX_R_TYPEOF ||
+      lex->tk==LEX_R_VOID ||
+      lex->tk==LEX_R_SUPER ||
+      lex->tk==LEX_PLUSPLUS ||
+      lex->tk==LEX_MINUSMINUS ||
+      lex->tk=='!' ||
+      lex->tk=='-' ||
+      lex->tk=='+' ||
+      lex->tk=='~' ||
+      lex->tk=='[' ||
+      lex->tk=='(') {
+    /* Execute a simple statement that only contains basic arithmetic... */
+    jsjExpression();
+    jsjPopAndUnLock();
+  } else if (lex->tk=='{') {
+    /* A block of code */
+    jsjBlock();
+  } else if (lex->tk==';') {
+    JSP_ASSERT_MATCH(';');/* Empty statement - to allow things like ;;; */
+/*} else if (lex->tk==LEX_R_VAR ||
+            lex->tk==LEX_R_LET ||
+            lex->tk==LEX_R_CONST) {
+    return jspeStatementVar();
+  } else if (lex->tk==LEX_R_IF) {
+    return jspeStatementIf();
+  } else if (lex->tk==LEX_R_DO) {
+    return jspeStatementDoOrWhile(false);
+  } else if (lex->tk==LEX_R_WHILE) {
+    return jspeStatementDoOrWhile(true);
+  } else if (lex->tk==LEX_R_FOR) {
+    return jspeStatementFor();
+  } else if (lex->tk==LEX_R_TRY) {
+    return jspeStatementTry();*/
+  } else if (lex->tk==LEX_R_RETURN) {
+    JSP_ASSERT_MATCH(LEX_R_RETURN);
+    if (lex->tk != ';' && lex->tk != '}') {
+      jsjExpression();
+      jsjPopAsVar(0); // a -> r0
+      jsjcCall(jsvSkipNameAndUnLock); // we only want the value, so skip the name if there was one
+    } else {
+      jsjcLiteral32(0, 0);
+    }
+    jsjcPopAllAndReturn();
+/*} else if (lex->tk==LEX_R_THROW) {
+  } else if (lex->tk==LEX_R_FUNCTION) {
+  } else if (lex->tk==LEX_R_CONTINUE) {
+    JSP_ASSERT_MATCH(LEX_R_CONTINUE);
+  } else if (lex->tk==LEX_R_BREAK) {
+    JSP_ASSERT_MATCH(LEX_R_BREAK);
+    if (JSP_SHOULD_EXECUTE) {
+  } else if (lex->tk==LEX_R_SWITCH) {
+    return jspeStatementSwitch();*/
+  } else JSP_MATCH(LEX_EOF);
+}
+
+void jsjBlockOrStatement() {
+  if (lex->tk=='{') {
+    jsjBlock();
+  } else {
+    jsjStatement();
+    if (lex->tk==';') JSP_ASSERT_MATCH(';');
+    // FIXME pop?
+  }
+}
+
+JsVar *jsjParseFunction() {
+  jsjcStart();
+  // FIXME: I guess we need to create a function execution scope and unpack parameters?
+  // Maybe we could use jspeFunctionCall to do all this for us (not creating a native function but a 'normal' one
+  // with native function code...
+  jsjcPushAll(); // Function start
+  jsjBlockNoBrackets();
+  // optimisation: if the last statement was a return, no need for this
+  // Return 'undefined' from function if no other return statement
+  jsjcLiteral32(0, 0);
+  jsjcPopAllAndReturn();
+  return jsjcStop();
 }
 
 JsVar *jsjEvaluateVar(JsVar *str) {
@@ -337,7 +446,11 @@ JsVar *jsjEvaluateVar(JsVar *str) {
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(str);
   jsjcStart();
-  jsjParse();
+  jsjcPushAll();
+  jsjExpression();
+  jsjPopAsVar(0); // a -> r0
+  jsjcCall(jsvSkipNameAndUnLock); // we only want the value, so skip the name if there was one
+  jsjcPopAllAndReturn();
   JsVar *v = jsjcStop();
   jslKill();
   jslSetLex(oldLex);
