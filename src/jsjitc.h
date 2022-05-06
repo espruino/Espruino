@@ -23,6 +23,32 @@ typedef enum {
   JSJVT_JSVAR
 } JsjValueType;
 
+typedef enum {
+  JSJAC_EQ, // 0
+  JSJAC_NE,
+  JSJAC_CS,
+  JSJAC_CC,
+  JSJAC_MI,
+  JSJAC_PL,
+  JSJAC_VS,
+  JSJAC_VC,
+  JSJAC_HI,
+  JSJAC_LI,
+  JSJAC_GE,
+  JSJAC_LT,
+  JSJAC_GT,
+  JSJAC_LE,
+} JsjAsmCondition;
+
+typedef enum {
+  JSJAR_r0,
+  JSJAR_r1,
+  JSJAR_r2,
+  // ...
+  JSJAR_LR = 14,
+  JSJAR_PC = 15,
+} JsjAsmReg;
+
 // Called before start of JIT output
 void jsjcStart();
 // Called when JIT output stops
@@ -41,8 +67,12 @@ void _jsjcCall(void *c, const char *name);
 #else
 void jsjcCall(void *c);
 #endif
+// Store a string of data and put the address in a register. Returns the length
+int jsjcLiteralString(int reg, JsVar *str, bool nullTerminate);
+// Jump a number of bytes forward or back
+void jsjcBranchRelative(int bytes);
 // Move one register to another
-void jsjcMov(int regFrom, int regTo);
+void jsjcMov(int regTo, int regFrom);
 // Push a register onto the stack
 void jsjcPush(int reg, JsjValueType type);
 // Pop off the stack to a register

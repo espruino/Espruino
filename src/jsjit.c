@@ -21,7 +21,6 @@
 #define JSP_MATCH(TOKEN) if (!jslMatch((TOKEN))) return; // Match where the user could have given us the wrong token
 #define JSJ_PARSING true
 
-JsVar *jsjStringPool;
 // ----------------------------------------------------------------------------
 void jsjUnaryExpression();
 // ----------------------------------------------------------------------------
@@ -30,9 +29,9 @@ void jsjPopAsVar(int reg) {
   JsjValueType varType = jsjcPop(reg);
   if (varType==JSJVT_JSVAR) return;
   if (varType==JSJVT_INT) {
-    if (reg) jsjcMov(reg, 0);
-    jsjcCall(jsvNewFromInteger); // FIXME: what about clobbering r1-r3?
     if (reg) jsjcMov(0, reg);
+    jsjcCall(jsvNewFromInteger); // FIXME: what about clobbering r1-r3?
+    if (reg) jsjcMov(reg, 0);
     return;
   }
   assert(0);
@@ -40,13 +39,12 @@ void jsjPopAsVar(int reg) {
 
 void jsjFactor() {
   if (lex->tk==LEX_ID) {
-    const char *v = jslGetTokenValueAsString();
-    uint32_t offset = (uint32_t)jsvGetStringLength(jsjStringPool);
-    jsvAppendStringBuf(jsjStringPool, v, strlen(v)+1); // include trailing 0
+    JsVar *a = jslGetTokenValueAsVar();
+    jsjcLiteralString(0, a, true); // null terminated
+    jsvUnLock(a);
     JSP_ASSERT_MATCH(LEX_ID);
-    jsjcLiteral32(1, offset); // TODO: store token values
     jsjcCall(jspGetNamedVariable);
-    jsjcPush(0, JSJVT_JSVAR);
+    jsjcPush(0, JSJVT_JSVAR); // We're pushing a NAME here - is that ok?
   } else if (lex->tk==LEX_INT) {
     int64_t v = stringToInt(jslGetTokenValueAsString());
     JSP_ASSERT_MATCH(LEX_INT);
@@ -86,13 +84,10 @@ void jsjFactor() {
   } else if (lex->tk==LEX_STR) {
     JsVar *a = jslGetTokenValueAsVar();
     JSP_ASSERT_MATCH(LEX_STR);
-    int offset = (int)jsvGetStringLength(jsjStringPool);
-    int len = (int)jsvGetStringLength(a);
-    jsvAppendStringVarComplete(jsjStringPool, a);
+    int len = jsjcLiteralString(1, a, false);
     jsvUnLock(a);
     jsjcLiteral32(0, len);
-    jsjcLiteral32(1, offset);
-    jsjcCall(jsvNewStringOfLength); 
+    jsjcCall(jsvNewStringOfLength);
     jsjcPush(0, JSJVT_JSVAR);
   }/* else if (lex->tk=='{') {
     if (!jspCheckStackPosition()) return 0;
@@ -164,19 +159,19 @@ void jsjPostfixExpression() {
     jsjPostfixExpression();
     jsjcLiteral32(0, 1);
     jsjcCall(jsvNewFromInteger);
-    jsjcMov(0, 1);
-    jsjcMov(0, 4); // preserve 'one' for call
+    jsjcMov(1, 0);
+    jsjcMov(4, 0); // preserve 'one' for call
     jsjcPop(1);
-    jsjcMov(0, 5); // preserve 'a' for call
+    jsjcMov(5, 0); // preserve 'a' for call
     jsjcLiteral32(3, op==LEX_PLUSPLUS ? '+' : '-');
     jsjcCall(jsvMathsOpSkipNames);
-    jsjcMov(4, 0); // one -> r0
+    jsjcMov(0, 4); // one -> r0
     jsjcCall(jsvUnLock); // jsvUnLock(one)
-    jsjcMov(0, 1); // res -> r1
-    jsjcMov(0, 4); // res -> r0
-    jsjcMov(5, 0); // a -> r0
-    jsjcCall(jsvReplaceWith);
+    jsjcMov(1, 0); // res -> r1
     jsjcMov(4, 0); // res -> r0
+    jsjcMov(0, 5); // a -> r0
+    jsjcCall(jsvReplaceWith);
+    jsjcMov(0, 4); // res -> r0
     jsjcCall(jsvUnLock); // jsvUnLock(res)
     */
   } else
@@ -301,14 +296,14 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
         jsvUnLock2(av, bv);
       } else */{  // --------------------------------------------- NORMAL
         jsjPopAsVar(1); // b -> r1
-        jsjcMov(0, 5); // b -> r5 (for unlock later)
+        jsjcMov(5, 0); // b -> r5 (for unlock later)
         jsjPopAsVar(0); // a -> r0
-        jsjcMov(0, 4); // a -> r4 (for unlock later)
+        jsjcMov(4, 0); // a -> r4 (for unlock later)
         jsjcLiteral32(2, op);
         jsjcCall(jsvMathsOpSkipNames);
         jsjcPush(0, JSJVT_JSVAR); // push result
-        jsjcMov(5, 1); // b -> r1
-        jsjcMov(4, 0); // a -> r0
+        jsjcMov(1, 5); // b -> r1
+        jsjcMov(0, 4); // a -> r0
         jsjcCall(jsvUnLock2);
       }
     }
@@ -324,6 +319,7 @@ void jsjBinaryExpression() {
 void jsjBlockOrStatement() {
   jsjBinaryExpression(); // FIXME
   // FIXME REALLY
+  // Skip name??
   jsjPopAsVar(0); // a -> r0
 }
 
