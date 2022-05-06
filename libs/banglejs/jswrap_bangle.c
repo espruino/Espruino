@@ -4829,7 +4829,7 @@ var boolean = false;
 var number = 50;
 // First menu
 var mainmenu = {
-  "" : { title : "-- Main Menu --" },
+  "" : { title : "-- Main Menu --" }, // options
   "LED On" : function() { LED1.set(); },
   "LED Off" : function() { LED1.reset(); },
   "Submenu" : function() { E.showMenu(submenu); },
@@ -4860,6 +4860,16 @@ The menu will stay onscreen and active until explicitly removed,
 which you can do by calling `E.showMenu()` without arguments.
 
 See http://www.espruino.com/graphical_menu for more detailed information.
+
+On Bangle.js there are a few additions over the standard `graphical_menu`:
+
+* The options object can contain:
+  * `back : function() { }` - add a 'back' button, with the function called when it is pressed
+  * (Bangle.js 2) `scroll : int` - an integer specifying how much the initial menu should be scrolled by
+* The object returned by `E.showMenu` contains:
+  * (Bangle.js 2) `scroller` - the object returned by `E.showScroller` - `scroller.scroll` returns the amount the menu is currently scrolled by
+* In the object specified for editable numbers:
+  * (Bangle.js 2) the `format` function is called with `format(value)` in the main menu, `format(value,1)` when in a scrollable list, or `format(value,2)` when in a popup window.
 */
 
 /*JSON{
