@@ -23,6 +23,8 @@
 
 // ----------------------------------------------------------------------------
 void jsjUnaryExpression();
+void jsjAssignmentExpression();
+void jsjExpression();
 void jsjStatement();
 // ----------------------------------------------------------------------------
 
@@ -72,7 +74,8 @@ void jsjFactor() {
   } else if (lex->tk=='(') {
     JSP_ASSERT_MATCH('(');
     // Just parse a normal expression (which can include commas)
-    //JsVar *a = jsjExpression(); // FIXME
+    jsjExpression();
+    // FIXME: Arrow functions??
     JSP_MATCH(')');
   } else if (lex->tk==LEX_R_TRUE || lex->tk==LEX_R_FALSE) {
     jsjcLiteral32(0, lex->tk==LEX_R_TRUE);
@@ -126,7 +129,44 @@ void jsjFactor() {
 
 void jsjFactorFunctionCall() {
   jsjFactor();
-  // jsjFactorMember(); // FIXME
+  // jsjFactorMember(); // FIXME we need to call this and also somehow remember 'parent'
+  // FIXME: what about 'new'?
+
+  while (lex->tk=='(' /*|| (isConstructor && JSP_SHOULD_EXECUTE))*/ && JSJ_PARSING) {
+    jsjcPop(4); // r4 = funcName
+    /* WE NEED TO PARSE ARGUMENTS!
+     To do this we want to save the stack pointer, then push each new argument onto the stack,
+     then hopefully we can pass that stack pointer as 'argPtr' to jspeFunctionCall
+     */
+    int argCount = 0;
+    JSP_MATCH('(');
+    while (JSJ_PARSING && lex->tk!=')' && lex->tk!=LEX_EOF) {
+      argCount++;
+      jsjAssignmentExpression();
+      jsjcCall(jsvSkipNameAndUnLock); // optimisation: we should know if we have a var or a name here, so can skip jsvSkipNameAndUnLock sometimes
+      if (lex->tk!=')') JSP_MATCH(',');
+    }
+    JSP_MATCH(')');
+    // r4=funcName, args on the stack
+    jsjcMov(0, 4); jsjcCall(jsvSkipName); // r0 = func
+    jsjcMov(5, 0); // r5 = func
+    // for constructors we'd have to do something special here
+    jsjcMov(1, 4); // r1 = funcName
+    jsjcMov(3, JSJAR_SP); // r3 = argPtr
+    jsjcLiteral32(2, argCount);
+    jsjcPush(3, JSJVT_INT); // argPtr
+    jsjcPush(2, JSJVT_INT); // argCount
+    jsjcLiteral32(2, 0); // parent = 0 FIXME (see above)
+    jsjcLiteral32(3, 0); // isParsing = false
+    jsjcCall(jspeFunctionCall); // a = jspeFunctionCall(func, funcName, thisArg/parent, isParsing, argCount, argPtr);
+    while (argCount--) jsjcPop(0); // pop items off stack - FIXME: faster ways of doing this - can just add argCount to SP!
+    jsjcMov(1, 4); // funcName
+    jsjcMov(0, 5); // func
+    jsjcCall(jsvUnLock2); // unlock
+    // FIXME - also unlock/clear 'parent'
+    // parent=0;
+    // a = jspeFactorMember(a, &parent);
+  }
 }
 
 void __jsjPostfixExpression() {
@@ -323,10 +363,15 @@ void jsjBinaryExpression() {
   __jsjBinaryExpression(0);
 }
 
+void jsjAssignmentExpression() {
+  // FIXME return __jspeAssignmentExpression(jspeConditionalExpression());
+  jsjBinaryExpression();
+}
+
 // ',' is allowed to add multiple expressions, this is not allowed in jspeAssignmentExpression
 void jsjExpression() {
   while (JSJ_PARSING) {
-    jsjBinaryExpression(); // FIXME should be jsjAssignmentExpression();
+    jsjAssignmentExpression();
     if (lex->tk!=',') return;
     // if we get a comma, we just unlock this data and parse the next bit...
     jsjPopAndUnLock();

@@ -31,11 +31,22 @@ jit()=="Hello World!"
 
 function jit() {'jit';return 1+2;}
 jit()==3
+
+// BROKEN
+
+function t() { print("Hello"); }
+function jit() {'jit';t();}
+
+function jit() {'jit';print(42);}
 ```
 
 
 ```
 ./espruino -e "trace(function jit() {'jit';return 1+2;})"
+
+./espruino -e "E.JIT('\'Hello\'')"
+
+./espruino -e "E.JIT('print(42)')"
 ```
 
 
@@ -46,3 +57,8 @@ btoa(E.JIT("1"))
 echo ASBL8Kz7AbQBvHBH | base64 -d  > jit.bin
 arm-none-eabi-objdump -D -Mforce-thumb -b binary -m cortex-m4 jit.bin
 ```
+
+
+http://www.cs.cornell.edu/courses/cs414/2001FA/armcallconvention.pdf
+https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Alphabetical-list-of-Thumb-instructions/B
+https://community.arm.com/arm-community-blogs/b/architectures-and-processors-blog/posts/condition-codes-1-condition-flags-and-codes

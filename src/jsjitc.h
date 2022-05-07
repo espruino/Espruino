@@ -45,6 +45,7 @@ typedef enum {
   JSJAR_r1,
   JSJAR_r2,
   // ...
+  JSJAR_SP = 13,
   JSJAR_LR = 14,
   JSJAR_PC = 15,
 } JsjAsmReg;
