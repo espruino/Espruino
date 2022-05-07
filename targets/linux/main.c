@@ -178,7 +178,7 @@ bool run_test(const char *filename) {
 
   jshInit();
   jswHWInit();
-  jsvInit(0);
+  jsvInit(JSVAR_CACHE_SIZE);
   jsiInit(false /* do not autoload!!! */);
 
   addNativeFunction("quit", nativeQuit);
@@ -284,7 +284,7 @@ bool run_all_tests() {
 bool run_jit_tests() {
   jshInit();
   jswHWInit();
-  jsvInit(0);
+  jsvInit(JSVAR_CACHE_SIZE);
   jsiInit(false /* do not autoload!!! */);
 
   addNativeFunction("quit", nativeQuit);
@@ -414,7 +414,7 @@ int main(int argc, char **argv) {
         if (i + 1 >= argc)
           fatal(1, "Expecting an extra argument");
         jshInit();
-        jsvInit(0);
+        jsvInit(JSVAR_CACHE_SIZE);
         jsiInit(true);
         addNativeFunction("quit", nativeQuit);
         addNativeFunction("interrupt", nativeInterrupt);
@@ -500,7 +500,7 @@ int main(int argc, char **argv) {
         cmd++;
     }
     jshInit();
-    jsvInit(0);
+    jsvInit(JSVAR_CACHE_SIZE);
     jsiInit(false /* do not autoload!!! */);
     addNativeFunction("quit", nativeQuit);
     jsvUnLock(jspEvaluate(cmd, false));
@@ -543,7 +543,7 @@ int main(int argc, char **argv) {
 #endif //!__MINGW32__
 
   jshInit();
-  jsvInit(0);
+  jsvInit(JSVAR_CACHE_SIZE);
   jsiInit(true);
 
   addNativeFunction("quit", nativeQuit);

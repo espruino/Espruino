@@ -21,6 +21,9 @@
 #include "jswrap_object.h" // for jswrap_object_toString
 #include "jswrap_arraybuffer.h" // for jsvNewTypedArray
 #include "jswrap_dataview.h" // for jsvNewDataViewWithData
+#ifdef ESPR_JIT
+#include <sys/mman.h>
+#endif
 
 #ifdef DEBUG
   /** When freeing, clear the references (nextChild/etc) in the JsVar.
@@ -255,10 +258,22 @@ void jsvInit(unsigned int size) {
   assert(size==0);
   jsVarsSize = JSVAR_BLOCK_SIZE;
   jsVarBlocks = malloc(sizeof(JsVar*)); // just 1
+#ifdef ESPR_JIT
+  if (!jsVars)
+    jsVarBlocks[0] = (JsVar *)mmap(NULL, sizeof(JsVar) * JSVAR_BLOCK_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+#else
   jsVarBlocks[0] = malloc(sizeof(JsVar) * JSVAR_BLOCK_SIZE);
+#endif
 #elif defined(JSVAR_MALLOC)
   if (size) jsVarsSize = size;
+#ifdef ESPR_JIT
+  if (!jsVars)
+    jsVars = (JsVar *)mmap(NULL, sizeof(JsVar) * jsVarsSize, PROT_EXEC | PROT_READ | PROT_WRITE,
+        MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+#else
   if(!jsVars) jsVars = (JsVar *)malloc(sizeof(JsVar) * jsVarsSize);
+#endif
 #else
   assert(size==0);
 #endif

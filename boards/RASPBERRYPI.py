@@ -17,22 +17,23 @@ import pinutils;
 info = {
  'name' : "Raspberry Pi",
  'default_console' : "EV_USBSERIAL",
- 'variables' :  0, # 0 = resizable variables, rather than fixed
+ 'variables' :  5000, # 0 = resizable variables, rather than fixed
  'binary_name' : 'espruino_%v_raspberrypi',
  'build' : {
    'optimizeflags' : '-O3',
    'libraries' : [
-     'NET',
-     'GRAPHICS',
-     'FILESYSTEM',
-     'CRYPTO','SHA256','SHA512',
-     'TLS',
-     'TELNET',
-     'TENSORFLOW',
+#     'NET',
+#     'GRAPHICS',
+#     'FILESYSTEM',
+#     'CRYPTO','SHA256','SHA512',
+#     'TLS',
+#     'TELNET',
+#     'TENSORFLOW',
+      'JIT'
    ],
    'makefile' : [
      'LINUX=1',
-     'DEFINES += -DRASPBERRYPI',
+     'DEFINES += -DRASPBERRYPI -DJSVAR_MALLOC=1',
    ]
  }
 };
