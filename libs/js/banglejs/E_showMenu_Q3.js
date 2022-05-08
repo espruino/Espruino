@@ -126,7 +126,7 @@
           if ("boolean"==typeof item.value)
             item.value=!item.value;
           if (item.onchange) item.onchange(item.value);
-          s.drawItem(idx);
+          l.scroller.drawItem(idx);
         }
       }
     }
