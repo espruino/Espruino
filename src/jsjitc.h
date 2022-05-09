@@ -15,6 +15,8 @@
 #ifndef JSJITC_H_
 #define JSJITC_H_
 
+#define DEBUG_JIT_CALLS
+
 #include "jsutils.h"
 #include "jsjit.h"
 
@@ -62,7 +64,7 @@ void jsjcLiteral32(int reg, uint32_t data);
 // Add 64 bit literal in reg,reg+1
 void jsjcLiteral64(int reg, uint64_t data);
 // Call a function
-#ifdef DEBUG
+#ifdef DEBUG_JIT_CALLS
 void _jsjcCall(void *c, const char *name);
 #define jsjcCall(c) _jsjcCall(c, STRINGIFY(c))
 #else

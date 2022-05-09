@@ -5,6 +5,7 @@ JIT compiler testing
 * Test with `./espruino --test-jit`
 * CLI test `./espruino -e "E.JIT('\'Hello\'')"`
 * Dump binary with `arm-none-eabi-objdump -D -Mforce-thumb -b binary -m cortex-m4 jit.bin`
+* Dump binary on pi with `objdump -D -Mforce-thumb -b binary -m arm jit.bin`
 
 * Build for ARM: `USE_JIT=1 BOARD=NRF52832DK_MIN RELEASE=1 make flash`
 
@@ -32,12 +33,12 @@ jit()=="Hello World!"
 function jit() {'jit';return 1+2;}
 jit()==3
 
-// BROKEN
-
 function t() { print("Hello"); }
 function jit() {'jit';t();}
 
 function jit() {'jit';print(42);}
+
+function jit() {'jit';print(42);return 123;}
 ```
 
 
@@ -47,18 +48,27 @@ function jit() {'jit';print(42);}
 ./espruino -e "E.JIT('\'Hello\'')"
 
 ./espruino -e "E.JIT('print(42)')"
+
 ```
+
+When running on Linux, `function jit() {'jit';print(42);}` seems to actually call the function ok, and prints 42. Stack is trashed after (and possibly even before!).
+Tests seem to show it's caller's job to clear the stack (expected really - could be the issue!)
 
 
 Run JIT on ARM and disassemble:
 
 ```
 btoa(E.JIT("1"))
+print(btoa(jit["\xffcod"]))
 echo ASBL8Kz7AbQBvHBH | base64 -d  > jit.bin
 arm-none-eabi-objdump -D -Mforce-thumb -b binary -m cortex-m4 jit.bin
 ```
 
+```
+arm-none-eabi-objdump -D -Mforce-thumb -b binary -m cortex-m4 a.out
+```
 
 http://www.cs.cornell.edu/courses/cs414/2001FA/armcallconvention.pdf
 https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Alphabetical-list-of-Thumb-instructions/B
 https://community.arm.com/arm-community-blogs/b/architectures-and-processors-blog/posts/condition-codes-1-condition-flags-and-codes
+

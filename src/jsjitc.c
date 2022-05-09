@@ -118,7 +118,7 @@ int jsjcLiteralString(int reg, JsVar *str, bool nullTerminate) {
 }
 
 void jsjcBranchRelative(int bytes) {
-  DEBUG_JIT("B %d\n", (uint32_t)bytes);
+  DEBUG_JIT("B %d\n", (uint32_t)(bytes));
   bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
   assert(bytes>=-4096 && bytes<4096); // only multiples of 2 bytes
@@ -129,7 +129,7 @@ void jsjcBranchRelative(int bytes) {
   jsjcEmit16((uint16_t)(0b1101000000000000 | (cond<<8) | imm8));*/ // conditional branch
 }
 
-#ifdef DEBUG
+#ifdef DEBUG_JIT_CALLS
 void _jsjcCall(void *c, const char *name) {
   DEBUG_JIT("CALL 0x%08x %s\n", (uint32_t)(size_t)c, name);
 #else
