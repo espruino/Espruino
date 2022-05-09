@@ -39,6 +39,10 @@ function jit() {'jit';t();}
 function jit() {'jit';print(42);}
 
 function jit() {'jit';print(42);return 123;}
+
+function t() { return "Hello"; }
+function jit() {'jit'; return t()+" world";}
+jit()=="Hello world"
 ```
 
 
