@@ -164,9 +164,32 @@ JsjValueType jsjcPop(int reg) {
 }
 
 void jsjcAddSP(int amt) {
-  assert((amt&3)==0);
+  assert((amt&3)==0 && amt>0 && amt<512);
   DEBUG_JIT("ADD SP,SP,#%d\n", amt);
   jsjcEmit16((uint16_t)(0b1011000000000000 | (amt>>2)));
+}
+
+void jsjcSubSP(int amt) {
+  assert((amt&3)==0 && amt>0 && amt<512);
+  DEBUG_JIT("SUB SP,SP,#%d\n", amt);
+  jsjcEmit16((uint16_t)(0b1011000010000000 | (amt>>2)));
+}
+
+
+void jsjcLoadImm(int reg, int regAddr, int offset) {
+  assert((offset&3)==0 && offset>=0 && offset<128);
+  assert(reg<8);
+  assert(regAddr<8);
+  DEBUG_JIT("LDR r%d,r%d,#%d\n", reg, regAddr, offset);
+  jsjcEmit16((uint16_t)(0b0110100000000000 | ((offset>>2)<<6) | (regAddr<<3) | reg));
+}
+
+void jsjcStoreImm(int reg, int regAddr, int offset) {
+  assert((offset&3)==0 && offset>=0 && offset<128);
+  assert(reg<8);
+  assert(regAddr<8);
+  DEBUG_JIT("STR r%d,r%d,#%d\n", reg, regAddr, offset);
+  jsjcEmit16((uint16_t)(0b0110000000000000 | ((offset>>2)<<6) | (regAddr<<3) | reg));
 }
 
 void jsjcPushAll() {

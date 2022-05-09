@@ -82,6 +82,12 @@ void jsjcPush(int reg, JsjValueType type);
 JsjValueType jsjcPop(int reg);
 // Add a value to the stack pointer (only multiple of 4)
 void jsjcAddSP(int amt);
+// Subtract a value from the stack pointer (only multiple of 4)
+void jsjcSubSP(int amt);
+// reg = mem[regAddr + offset]
+void jsjcLoadImm(int reg, int regAddr, int offset);
+// mem[regAddr + offset] = reg
+void jsjcStoreImm(int reg, int regAddr, int offset);
 
 void jsjcPushAll();
 void jsjcPopAllAndReturn();

@@ -148,12 +148,26 @@ void jsjFactorFunctionCall() {
     }
     JSP_MATCH(')');
     // r4=funcName, args on the stack
+    jsjcMov(3, JSJAR_SP); // r3 = argPtr
+    jsjcPush(3, JSJVT_INT); // argPtr
+    // Args are in the wrong order - we have to swap them around if we have >1!
+    if (argCount>1) {
+      for (int i=0;i<argCount/2;i++) {
+        int a1 = i*4;
+        int a2 = (argCount-(i+1))*4;
+        jsjcLoadImm(0, 3, a1);
+        jsjcLoadImm(1, 3, a2);
+        jsjcStoreImm(0, 3, a2);
+        jsjcStoreImm(1, 3, a1);
+      }
+    }
+    // First arg
     jsjcMov(0, 4); jsjcCall(jsvSkipName); // r0 = func
     jsjcMov(5, 0); // r5 = func
     // for constructors we'd have to do something special here
+    // Second arg
     jsjcMov(1, 4); // r1 = funcName
-    jsjcMov(3, JSJAR_SP); // r3 = argPtr
-    jsjcPush(3, JSJVT_INT); // argPtr
+    //
     jsjcLiteral32(2, argCount);    
     jsjcPush(2, JSJVT_INT); // argCount
     jsjcLiteral32(2, 0); // parent = 0 FIXME (see above)

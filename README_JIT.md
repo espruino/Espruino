@@ -43,6 +43,8 @@ function jit() {'jit';print(42);return 123;}
 function t() { return "Hello"; }
 function jit() {'jit'; return t()+" world";}
 jit()=="Hello world"
+
+function jit() {'jit';digitalWrite(LED1,1);}
 ```
 
 
