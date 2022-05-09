@@ -163,6 +163,12 @@ JsjValueType jsjcPop(int reg) {
   return JSJVT_JSVAR; // FIXME
 }
 
+void jsjcAddSP(int amt) {
+  assert((amt&3)==0);
+  DEBUG_JIT("ADD SP,SP,#%d\n", amt);
+  jsjcEmit16((uint16_t)(0b1011000000000000 | (amt>>2)));
+}
+
 void jsjcPushAll() {
   DEBUG_JIT("PUSH {r4,r5,r6,r7,lr}\n");
   jsjcEmit16(0xb5f0);

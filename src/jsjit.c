@@ -153,13 +153,14 @@ void jsjFactorFunctionCall() {
     // for constructors we'd have to do something special here
     jsjcMov(1, 4); // r1 = funcName
     jsjcMov(3, JSJAR_SP); // r3 = argPtr
-    jsjcLiteral32(2, argCount);
     jsjcPush(3, JSJVT_INT); // argPtr
+    jsjcLiteral32(2, argCount);    
     jsjcPush(2, JSJVT_INT); // argCount
     jsjcLiteral32(2, 0); // parent = 0 FIXME (see above)
     jsjcLiteral32(3, 0); // isParsing = false
     jsjcCall(jspeFunctionCall); // a = jspeFunctionCall(func, funcName, thisArg/parent, isParsing, argCount, argPtr);
-    while (argCount--) jsjcPop(0); // pop items off stack - FIXME: faster ways of doing this - can just add argCount to SP!
+    jsjcAddSP(4*(2+argCount)); // pop off argCount,argPtr + all the arguments
+    jsjcPush(0, JSJVT_JSVAR); // push return value from jspeFunctionCall
     jsjcMov(1, 4); // funcName
     jsjcMov(0, 5); // func
     jsjcCall(jsvUnLock2); // unlock

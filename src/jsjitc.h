@@ -78,6 +78,8 @@ void jsjcMov(int regTo, int regFrom);
 void jsjcPush(int reg, JsjValueType type);
 // Pop off the stack to a register
 JsjValueType jsjcPop(int reg);
+// Add a value to the stack pointer (only multiple of 4)
+void jsjcAddSP(int amt);
 
 void jsjcPushAll();
 void jsjcPopAllAndReturn();
