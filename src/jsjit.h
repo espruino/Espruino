@@ -15,6 +15,10 @@
 #ifndef JSJIT_H_
 #define JSJIT_H_
 
+#ifndef RELEASE
+#define DEBUG_JIT_CALLS
+#endif
+
 #include "jsparse.h"
 
 JsVar *jsjEvaluateVar(JsVar *str);

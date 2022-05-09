@@ -15,8 +15,6 @@
 #ifndef JSJITC_H_
 #define JSJITC_H_
 
-#define DEBUG_JIT_CALLS
-
 #include "jsutils.h"
 #include "jsjit.h"
 

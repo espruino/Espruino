@@ -134,9 +134,14 @@ void jsjFactorFunctionCall() {
 
   while (lex->tk=='(' /*|| (isConstructor && JSP_SHOULD_EXECUTE))*/ && JSJ_PARSING) {
     jsjcPop(4); // r4 = funcName
-    /* WE NEED TO PARSE ARGUMENTS!
-     To do this we want to save the stack pointer, then push each new argument onto the stack,
-     then hopefully we can pass that stack pointer as 'argPtr' to jspeFunctionCall
+    /* PARSE OUR ARGUMENTS
+     * Push each new argument onto the stack (it grows down)
+     * Args are in the wrong order, so we emit code to swap around the args in the array
+     * At the end, SP = what we need as 'argPtr' for jspeFunctionCall
+
+     optimisation: If we knew how many args we had ahead of time, we could subtract that
+     from the stack pointer, save it, and then instead of pushing onto the stack we could
+     just write direct to the correct address.
      */
     int argCount = 0;
     JSP_MATCH('(');

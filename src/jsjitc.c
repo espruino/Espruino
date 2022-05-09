@@ -13,6 +13,14 @@
 
  https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Alphabetical-list-of-Thumb-instructions?lang=en
  https://web.eecs.umich.edu/~prabal/teaching/eecs373-f11/readings/ARMv7-M_ARM.pdf
+
+ optimisations to do:
+
+ * Allow us to check what the last instruction was, and to replace it. Can then do peephole optimisations:
+   * 'push+pop' is just a 'mov' (or maybe even nothing)
+   *
+ * Use a String iterator for writing to jitCode - it'll be a lot faster
+
  */
 //#ifdef ESPR_JIT
 
@@ -28,6 +36,8 @@
 #include <stdio.h>
 FILE *f;
 #endif
+
+// The ARM Thumb-2 code we're in the process of creating
 JsVar *jitCode = 0;
 
 void jsjcStart() {
@@ -48,7 +58,7 @@ JsVar *jsjcStop() {
 }
 
 void jsjcEmit16(uint16_t v) {
-  DEBUG_JIT("> %04x\n", v);
+  //DEBUG_JIT("> %04x\n", v);
 #ifdef JIT_OUTPUT_FILE
   fputc(v&255, f);
   fputc(v>>8, f);
@@ -105,6 +115,7 @@ int jsjcLiteralString(int reg, JsVar *str, bool nullTerminate) {
   // jump over the data
   jsjcBranchRelative(realLen);
   // write the data
+  DEBUG_JIT("... %d bytes data (%q) ...\n", (uint32_t)(realLen), str);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
   for (int i=0;i<realLen;i+=2) {
@@ -131,10 +142,8 @@ void jsjcBranchRelative(int bytes) {
 
 #ifdef DEBUG_JIT_CALLS
 void _jsjcCall(void *c, const char *name) {
-  DEBUG_JIT("CALL 0x%08x %s\n", (uint32_t)(size_t)c, name);
 #else
 void jsjcCall(void *c) {
-  DEBUG_JIT("CALL 0x%08x\n", (uint32_t)(size_t)c);
 #endif
  /* if (((uint32_t)c) < 0x7FFFFF) { // BL + immediate(PC relative!)
     uint32_t v = ((uint32_t)c)>>1;
@@ -142,6 +151,11 @@ void jsjcCall(void *c) {
     jsjcEmit16((uint16_t)(0b1111100000000000 | (v&0x7FF)));
   } else */{
     jsjcLiteral32(7, (uint32_t)(size_t)c); // save address to r7
+#ifdef DEBUG_JIT_CALLS
+    DEBUG_JIT("BL r7 (%s)\n", name);
+#else
+    DEBUG_JIT("BL r7\n");
+#endif
     jsjcEmit16((uint16_t)(0b0100011110000000 | (7<<3))); // BL reg 7 - BROKEN?
   }
 
