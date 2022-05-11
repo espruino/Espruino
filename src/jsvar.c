@@ -259,9 +259,8 @@ void jsvInit(unsigned int size) {
   jsVarsSize = JSVAR_BLOCK_SIZE;
   jsVarBlocks = malloc(sizeof(JsVar*)); // just 1
 #if defined(ESPR_JIT) && defined(LINUX)
-  if (!jsVars)
-    jsVarBlocks[0] = (JsVar *)mmap(NULL, sizeof(JsVar) * JSVAR_BLOCK_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
-        MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+  jsVarBlocks[0] = (JsVar *)mmap(NULL, sizeof(JsVar) * JSVAR_BLOCK_SIZE, PROT_EXEC | PROT_READ | PROT_WRITE,
+      MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 #else
   jsVarBlocks[0] = malloc(sizeof(JsVar) * JSVAR_BLOCK_SIZE);
 #endif
@@ -285,8 +284,13 @@ void jsvInit(unsigned int size) {
 void jsvKill() {
 #ifdef RESIZABLE_JSVARS
   unsigned int i;
-  for (i=0;i<jsVarsSize>>JSVAR_BLOCK_SHIFT;i++)
+  for (i=0;i<jsVarsSize>>JSVAR_BLOCK_SHIFT;i++) {
+#if defined(ESPR_JIT) && defined(LINUX)
+    munmap(jsVarBlocks[i], sizeof(JsVar) * JSVAR_BLOCK_SIZE);
+#else
     free(jsVarBlocks[i]);
+#endif
+  }
   free(jsVarBlocks);
   jsVarBlocks = 0;
   jsVarsSize = 0;

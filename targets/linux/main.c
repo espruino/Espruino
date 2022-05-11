@@ -19,6 +19,9 @@
 #ifdef ESPR_JIT
 #include "jsjit.h"
 #endif
+#ifndef JSVAR_CACHE_SIZE
+#define JSVAR_CACHE_SIZE 0
+#endif
 
 #define TEST_DIR "tests/"
 #define CMD_NAME "espruino"
