@@ -22,15 +22,17 @@
  * Use a String iterator for writing to jitCode - it'll be a lot faster
 
  */
-//#ifdef ESPR_JIT
+#ifdef ESPR_JIT
 
-#define DEBUG_JIT jsiConsolePrintf
+#define DEBUG_JIT jsjcDebugPrintf
+
 #if defined(LINUX) && defined(DEBUG)
 #define JIT_OUTPUT_FILE "jit.bin"
 #endif
 
 #include "jsjitc.h"
 #include "jsinteractive.h"
+#include "jsflags.h"
 
 #ifdef JIT_OUTPUT_FILE
 #include <stdio.h>
@@ -39,6 +41,15 @@ FILE *f;
 
 // The ARM Thumb-2 code we're in the process of creating
 JsVar *jitCode = 0;
+
+void jsjcDebugPrintf(const char *fmt, ...) {
+  if (jsFlags & JSF_JIT_DEBUG) {
+    va_list argp;
+    va_start(argp, fmt);
+    vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
+    va_end(argp);
+  }
+}
 
 void jsjcStart() {
 #ifdef JIT_OUTPUT_FILE
@@ -55,6 +66,10 @@ JsVar *jsjcStop() {
   jsvUnLock(jitCode);
   jitCode = 0;
   return v;
+}
+
+int jsjcGetByteCount() {
+  return jsvGetStringLength(jitCode);
 }
 
 void jsjcEmit16(uint16_t v) {
@@ -86,7 +101,7 @@ void jsjcLiteral16(int reg, bool hi16, uint16_t data) {
 }
 
 void jsjcLiteral32(int reg, uint32_t data) {
-  DEBUG_JIT("L32 r%d,0x%08x\n", reg,data); // wrong?
+  DEBUG_JIT("MOV r%d,#0x%08x\n", reg,data);
   // bit shifted 8 bits? https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Immediate-constants/Encoding?lang=en
   // https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Alphabetical-list-of-Thumb-instructions/MOVT
   if (data<256) {
@@ -129,7 +144,7 @@ int jsjcLiteralString(int reg, JsVar *str, bool nullTerminate) {
 }
 
 void jsjcBranchRelative(int bytes) {
-  DEBUG_JIT("B %d\n", (uint32_t)(bytes));
+  DEBUG_JIT("B %s%d\n", (bytes>0)?"+":"", (uint32_t)(bytes));
   bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
   assert(bytes>=-4096 && bytes<4096); // only multiples of 2 bytes
@@ -221,4 +236,4 @@ void jsjcPopAllAndReturn() {
   jsjcEmit16(0b0100011100000000 | (reg<<3));
 }*/
 
-//#endif /* ESPR_JIT */
+#endif /* ESPR_JIT */

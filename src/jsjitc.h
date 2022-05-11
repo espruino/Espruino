@@ -90,5 +90,5 @@ void jsjcStoreImm(int reg, int regAddr, int offset);
 void jsjcPushAll();
 void jsjcPopAllAndReturn();
 
-#endif /* JSJIT_H_ */
+#endif /* JSJITC_H_ */
 #endif /* ESPR_JIT */

@@ -9,7 +9,11 @@ JIT compiler testing
 
 * Build for ARM: `USE_JIT=1 BOARD=NRF52832DK_MIN RELEASE=1 make flash`
 
+
 ```
+// Enable debug output
+E.setFlags({jitDebug:1});
+
 var jit = E.nativeCall(1, "JsVar()", E.JIT("1"))
 jit()==1
 
