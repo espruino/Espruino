@@ -48,6 +48,12 @@ void jsjPopAndUnLock() {
   jsjcCall(jsvUnLock); // we're throwing this away now - unlock
 }
 
+void jsjPopNoName(int reg) {
+  jsjPopAsVar(0); // a -> r0
+  jsjcCall(jsvSkipNameAndUnLock); // optimisation: we should know if we have a var or a name here, so can skip jsvSkipNameAndUnLock sometimes
+  if (reg != 0) jsjcMov(reg, 0);
+}
+
 void jsjFactor() {
   if (lex->tk==LEX_ID) {
     JsVar *a = jslGetTokenValueAsVar();
@@ -150,7 +156,8 @@ void jsjFactorFunctionCall() {
     while (JSJ_PARSING && lex->tk!=')' && lex->tk!=LEX_EOF) {
       argCount++;
       jsjAssignmentExpression();
-      jsjcCall(jsvSkipNameAndUnLock); // optimisation: we should know if we have a var or a name here, so can skip jsvSkipNameAndUnLock sometimes
+      jsjPopNoName(0);
+      jsjcPush(0, JSJVT_JSVAR); // push argument to stack
       if (lex->tk!=')') JSP_MATCH(',');
     }
     JSP_MATCH(')');
@@ -385,9 +392,67 @@ void jsjBinaryExpression() {
   __jsjBinaryExpression(0);
 }
 
-void jsjAssignmentExpression() {
-  // FIXME return __jsjAssignmentExpression(jsjConditionalExpression());
+JsVar *jsjConditionalExpression() {
+  // FIXME return __jsjConditionalExpression(jsjBinaryExpression());
   jsjBinaryExpression();
+}
+
+NO_INLINE void jsjAssignmentExpression() {
+  // parse LHS
+  jsjConditionalExpression();
+  if (!JSJ_PARSING) return;
+  if (lex->tk=='='/* || lex->tk==LEX_PLUSEQUAL || lex->tk==LEX_MINUSEQUAL ||
+      lex->tk==LEX_MULEQUAL || lex->tk==LEX_DIVEQUAL || lex->tk==LEX_MODEQUAL ||
+      lex->tk==LEX_ANDEQUAL || lex->tk==LEX_OREQUAL ||
+      lex->tk==LEX_XOREQUAL || lex->tk==LEX_RSHIFTEQUAL ||
+      lex->tk==LEX_LSHIFTEQUAL || lex->tk==LEX_RSHIFTUNSIGNEDEQUAL*/) {
+    JsVar *rhs;
+
+    int op = lex->tk;
+    JSP_ASSERT_MATCH(op);
+    jsjAssignmentExpression();
+    jsjPopNoName(1); // ensure we get rid of any references on the RHS
+    jsjcPop(0); // pop LHS
+    jsjcPush(0, JSJVT_JSVAR); // push LHS back on as this is our result value
+
+
+    if (op=='=') {
+      jsjcCall(jsvReplaceWithOrAddToRoot);
+    } else {
+#if 0
+      if (op==LEX_PLUSEQUAL) op='+';
+      else if (op==LEX_MINUSEQUAL) op='-';
+      else if (op==LEX_MULEQUAL) op='*';
+      else if (op==LEX_DIVEQUAL) op='/';
+      else if (op==LEX_MODEQUAL) op='%';
+      else if (op==LEX_ANDEQUAL) op='&';
+      else if (op==LEX_OREQUAL) op='|';
+      else if (op==LEX_XOREQUAL) op='^';
+      else if (op==LEX_RSHIFTEQUAL) op=LEX_RSHIFT;
+      else if (op==LEX_LSHIFTEQUAL) op=LEX_LSHIFT;
+      else if (op==LEX_RSHIFTUNSIGNEDEQUAL) op=LEX_RSHIFTUNSIGNED;
+      if (op=='+' && jsvIsName(lhs)) {
+        JsVar *currentValue = jsvSkipName(lhs);
+        if (jsvIsBasicString(currentValue) && jsvGetRefs(currentValue)==1 && rhs!=currentValue) {
+          /* A special case for string += where this is the only use of the string
+           * and we're not appending to ourselves. In this case we can do a
+           * simple append (rather than clone + append)*/
+          JsVar *str = jsvAsString(rhs);
+          jsvAppendStringVarComplete(currentValue, str);
+          jsvUnLock(str);
+          op = 0;
+        }
+        jsvUnLock(currentValue);
+      }
+      if (op) {
+        /* Fallback which does a proper add */
+        JsVar *res = jsvMathsOpSkipNames(lhs,rhs,op);
+        jsvReplaceWith(lhs, res);
+        jsvUnLock(res);
+      }
+#endif
+    }
+  }
 }
 
 // ',' is allowed to add multiple expressions, this is not allowed in jsjAssignmentExpression
@@ -487,8 +552,7 @@ void jsjStatement() {
     JSP_ASSERT_MATCH(LEX_R_RETURN);
     if (lex->tk != ';' && lex->tk != '}') {
       jsjExpression();
-      jsjPopAsVar(0); // a -> r0
-      jsjcCall(jsvSkipNameAndUnLock); // we only want the value, so skip the name if there was one
+      jsjPopNoName(0); // a -> r0, we only want the value, so skip the name if there was one
     } else {
       jsjcLiteral32(0, 0);
     }
@@ -551,8 +615,7 @@ JsVar *jsjEvaluateVar(JsVar *str) {
   jsjcStart();
   jsjcPushAll();
   jsjExpression();
-  jsjPopAsVar(0); // a -> r0
-  jsjcCall(jsvSkipNameAndUnLock); // we only want the value, so skip the name if there was one
+  jsjPopNoName(0); // a -> r0, we only want the value, so skip the name if there was one
   jsjcPopAllAndReturn();
   JsVar *v = jsjcStop();
   jslKill();
