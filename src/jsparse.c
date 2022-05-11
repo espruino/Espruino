@@ -335,6 +335,7 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
 
 // Parse function, assuming we're on '{'. funcVar can be 0. returns 'true' is the function included the 'this' keyword
 NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnly) {
+  JslCharPos funcBegin;
   bool forcePretokenise = false;
 
   if (expressionOnly) {
@@ -353,13 +354,23 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
 #ifdef ESPR_JIT
       if (!strcmp(jslGetTokenValueAsString(), "jit")) {
         JSP_ASSERT_MATCH(LEX_STR);
+        // save start position so if we fail we go back to a normal function parse
+        JslCharPos funcCodeStart;
+        jslCharPosFromLex(&funcCodeStart);
         JsVar *funcCodeVar = jsjParseFunction();
-        funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_NATIVE_FUNCTION; // convert to native fn
-        funcVar->varData.native.ptr = (void *)(size_t)1; // offset 1 = 'thumb'
-        funcVar->varData.native.argTypes = JSWAT_JSVAR; // FIXME - need to add parameters if any specified...
-        jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME), funcCodeVar);
-        JSP_MATCH('}');
-        return true; // assume 'this' included for now (optimisation: figure out if 'this' was used)
+        if (funcCodeVar) { // compilation could have failed!
+          funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_NATIVE_FUNCTION; // convert to native fn
+          funcVar->varData.native.ptr = (void *)(size_t)1; // offset 1 = 'thumb'
+          funcVar->varData.native.argTypes = JSWAT_JSVAR; // FIXME - need to add parameters if any specified...
+          jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME), funcCodeVar);
+          JSP_MATCH('}');
+          jslCharPosFree(&funcCodeStart);
+          return true;
+        } else {
+          // Set lex to start back... now we parse function as normal JS like before
+          jslSeekToP(&funcCodeStart);
+          jslCharPosFree(&funcCodeStart);
+        }
       }
 #endif
     }
@@ -382,7 +393,6 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
   }
 #endif
   // Get the code - parse it and figure out where it stops
-  JslCharPos funcBegin;
   jslSkipWhiteSpace();
   jslCharPosNew(&funcBegin, lex->sourceVar, lex->tokenStart);
   int lastTokenEnd = -1;

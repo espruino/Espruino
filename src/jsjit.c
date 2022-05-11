@@ -12,20 +12,22 @@
  * ----------------------------------------------------------------------------
  */
 
-//#ifdef ESPR_JIT
+#ifdef ESPR_JIT
 
 #include "jsjit.h"
 #include "jsjitc.h"
+#include "jsinteractive.h"
 
 #define JSP_ASSERT_MATCH(TOKEN) { assert(lex->tk==(TOKEN));jslGetNextToken(); } // Match where if we have the wrong token, it's an internal error
 #define JSP_MATCH(TOKEN) if (!jslMatch((TOKEN))) return; // Match where the user could have given us the wrong token
-#define JSJ_PARSING true
+#define JSJ_PARSING (!(execInfo.execute&EXEC_EXCEPTION))
 
 // ----------------------------------------------------------------------------
 void jsjUnaryExpression();
 void jsjAssignmentExpression();
 void jsjExpression();
 void jsjStatement();
+void jsjBlockOrStatement();
 // ----------------------------------------------------------------------------
 
 void jsjPopAsVar(int reg) {
@@ -185,7 +187,7 @@ void jsjFactorFunctionCall() {
     jsjcCall(jsvUnLock2); // unlock
     // FIXME - also unlock/clear 'parent'
     // parent=0;
-    // a = jspeFactorMember(a, &parent);
+    // a = jsjFactorMember(a, &parent);
   }
 }
 
@@ -213,7 +215,7 @@ void jsjPostfixExpression() {
     int op = lex->tk;
     JSP_ASSERT_MATCH(op);
     /*
-    a = jspePostfixExpression();
+    a = jsjPostfixExpression();
     if (JSP_SHOULD_EXECUTE) {
       JsVar *one = jsvNewFromInteger(1);
       JsVar *res = jsvMathsOpSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
@@ -384,11 +386,11 @@ void jsjBinaryExpression() {
 }
 
 void jsjAssignmentExpression() {
-  // FIXME return __jspeAssignmentExpression(jspeConditionalExpression());
+  // FIXME return __jsjAssignmentExpression(jsjConditionalExpression());
   jsjBinaryExpression();
 }
 
-// ',' is allowed to add multiple expressions, this is not allowed in jspeAssignmentExpression
+// ',' is allowed to add multiple expressions, this is not allowed in jsjAssignmentExpression
 void jsjExpression() {
   while (JSJ_PARSING) {
     jsjAssignmentExpression();
@@ -410,6 +412,28 @@ void jsjBlock() {
   JSP_MATCH('{');
   jsjBlockNoBrackets();
   JSP_MATCH('}');
+}
+
+void jsjStatementFor() {
+  JSP_ASSERT_MATCH(LEX_R_FOR);
+  JSP_MATCH('(');
+  bool wasInLoop = (execInfo.execute&EXEC_IN_LOOP)!=0;
+  execInfo.execute |= EXEC_FOR_INIT;
+  // initialisation
+  JsVar *forStatement = 0;
+  // we could have 'for (;;)' - so don't munch up our semicolon if that's all we have
+  if (lex->tk != ';')
+    jsjStatement();
+  JSP_MATCH(';');
+  if (lex->tk != ';') {
+    jsjExpression(); // condition
+  }
+  JSP_MATCH(';');
+  if (lex->tk != ')')  { // we could have 'for (;;)'
+    jsjExpression(); // iterator
+  }
+  JSP_MATCH(')');
+  jsjBlockOrStatement();
 }
 
 void jsjStatement() {
@@ -448,17 +472,17 @@ void jsjStatement() {
 /*} else if (lex->tk==LEX_R_VAR ||
             lex->tk==LEX_R_LET ||
             lex->tk==LEX_R_CONST) {
-    return jspeStatementVar();
+    return jsjStatementVar();
   } else if (lex->tk==LEX_R_IF) {
-    return jspeStatementIf();
+    return jsjStatementIf();
   } else if (lex->tk==LEX_R_DO) {
-    return jspeStatementDoOrWhile(false);
+    return jsjStatementDoOrWhile(false);
   } else if (lex->tk==LEX_R_WHILE) {
-    return jspeStatementDoOrWhile(true);
+    return jsjStatementDoOrWhile(true);*/
   } else if (lex->tk==LEX_R_FOR) {
-    return jspeStatementFor();
-  } else if (lex->tk==LEX_R_TRY) {
-    return jspeStatementTry();*/
+    return jsjStatementFor();
+  /*} else if (lex->tk==LEX_R_TRY) {
+    return jsjStatementTry();*/
   } else if (lex->tk==LEX_R_RETURN) {
     JSP_ASSERT_MATCH(LEX_R_RETURN);
     if (lex->tk != ';' && lex->tk != '}') {
@@ -477,7 +501,7 @@ void jsjStatement() {
     JSP_ASSERT_MATCH(LEX_R_BREAK);
     if (JSP_SHOULD_EXECUTE) {
   } else if (lex->tk==LEX_R_SWITCH) {
-    return jspeStatementSwitch();*/
+    return jsjStatementSwitch();*/
   } else JSP_MATCH(LEX_EOF);
 }
 
@@ -502,7 +526,21 @@ JsVar *jsjParseFunction() {
   // Return 'undefined' from function if no other return statement
   jsjcLiteral32(0, 0);
   jsjcPopAllAndReturn();
-  return jsjcStop();
+  JsVar *v = jsjcStop();
+  JsVar *exception = jspGetException();
+  if (!exception) return v;
+  // We had an error - don't return half-complete code
+  jsiConsolePrintf("JIT %v\n", exception);
+  if (jsvIsObject(exception)) {
+    JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
+    if (stackTrace) {
+      jsiConsolePrintStringVar(stackTrace);
+      jsvUnLock(stackTrace);
+    }
+  }
+  jsvUnLock(exception);
+  jsvUnLock(v);
+  return 0;
 }
 
 JsVar *jsjEvaluateVar(JsVar *str) {
@@ -534,4 +572,4 @@ JsVar *jsjEvaluate(const char *str) {
   return v;
 }
 
-//#endif /*#ifdef ESPR_JIT*/
+#endif /*#ifdef ESPR_JIT*/
