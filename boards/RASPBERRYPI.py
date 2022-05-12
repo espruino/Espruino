@@ -22,18 +22,18 @@ info = {
  'build' : {
    'optimizeflags' : '-O3',
    'libraries' : [
-#     'NET',
-#     'GRAPHICS',
-#     'FILESYSTEM',
-#     'CRYPTO','SHA256','SHA512',
-#     'TLS',
-#     'TELNET',
-#     'TENSORFLOW',
-      'JIT'
+     'NET',
+     'GRAPHICS',
+     'FILESYSTEM',
+     'CRYPTO','SHA256','SHA512',
+     'TLS',
+     'TELNET',
+     'TENSORFLOW',
    ],
    'makefile' : [
      'LINUX=1',
-     'DEFINES += -DRASPBERRYPI -DJSVAR_MALLOC=1',
+     'DEFINES += -DRASPBERRYPI',
+     'DEFINES += -DJSVAR_MALLOC=1', # This is needed for JIT testing because otherwise we can't exec from the heap
    ]
  }
 };

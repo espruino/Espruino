@@ -24,9 +24,6 @@
 #ifdef PUCKJS
 #include "jswrap_puck.h" // jswrap_puck_getTemperature
 #endif
-#ifdef ESPR_JIT
-#include "jsjit.h"
-#endif
 
 /*JSON{
   "type" : "class",
@@ -2067,20 +2064,3 @@ JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn) {
   return dst;
 }
 
-
-/*JSON{
-  "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
-  "class" : "E",
-  "name" : "JIT",
-  "generate" : "jswrap_espruino_JIT",
-  "params" : [
-    ["str","JsVar","A string of JS to JIT compile"]
-  ],
-  "return" : ["JsVar","A flat string of binary ARM Thumb 2 code"]
-}
-TEMPORARY function for testing only
- */
-JsVar *jswrap_espruino_JIT(JsVar *js) {
-  return jsjEvaluateVar(js);
-}
