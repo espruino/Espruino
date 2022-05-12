@@ -213,28 +213,41 @@ void jsjFactorFunctionCall() {
 
 void __jsjPostfixExpression() {
   while (lex->tk==LEX_PLUSPLUS || lex->tk==LEX_MINUSMINUS) {
-    int op = lex->tk;
+    int op = lex->tk; // POSFIX expression =>  i++, i--
     JSP_ASSERT_MATCH(op);
-
-      /*JsVar *one = jsvNewFromInteger(1);
-      JsVar *oldValue = jsvAsNumberAndUnLock(jsvSkipName(a)); // keep the old value (but convert to number)
-      JsVar *res = jsvMathsOpSkipNames(oldValue, one, op==LEX_PLUSPLUS ? '+' : '-');
-      jsvUnLock(one);
-
-      // in-place add/subtract
-      jsvReplaceWith(a, res);
-      jsvUnLock(res);
-      // but then use the old value
-      jsvUnLock(a);
-      a = oldValue;*/
+    // Get the old value
+    jsjPopAsVar(0); // value -> r0
+    jsjcMov(4, 0); // r0 -> r4 (save for later)
+    jsjcCall(jsvSkipName);
+    jsjcCall(jsvAsNumberAndUnLock); // convert old value to number
+    jsjcPush(0, JSJVT_JSVAR); // push result (value BEFORE we inc/dec)
+    // Create number 1
+    jsjcLiteral32(0, (uint32_t)1);
+    jsjcCall(jsvNewFromInteger);
+    jsjcMov(5, 0); // r0(one) -> r5 ready for UnLock
+    jsjcMov(1, 0); // r0(one) -> r1 ready for MathsOp
+    jsjcMov(0, 4); // r4(value) -> r0 ready for MathsOp
+    jsjcLiteral32(2, op==LEX_PLUSPLUS ? '+' : '-');
+    jsjcCall(jsvMathsOpSkipNames);
+    // r0 = result
+    jsjcMov(1, 0); // 2nd arg = result
+    jsjcMov(6, 0); // r6 = result - for unlock later
+    jsjcMov(0, 4); // 1st arg = value
+    jsjcCall(jsvReplaceWith);
+    // now unlock
+    jsjcMov(0, 6); // result
+    jsjcMov(1, 5); // one
+    jsjcMov(2, 4); // value
+    jsjcCall(jsvUnLock3);
   }
 }
 
 void jsjPostfixExpression() {
   if (lex->tk==LEX_PLUSPLUS || lex->tk==LEX_MINUSMINUS) {
+    /*// PREFIX expression =>  ++i, --i
     int op = lex->tk;
     JSP_ASSERT_MATCH(op);
-    /*
+
     a = jsjPostfixExpression();
     if (JSP_SHOULD_EXECUTE) {
       JsVar *one = jsvNewFromInteger(1);
@@ -270,9 +283,9 @@ void jsjPostfixExpression() {
 
 void jsjUnaryExpression() {
   if (lex->tk=='!' || lex->tk=='~' || lex->tk=='-' || lex->tk=='+') {
-    short tk = lex->tk;
+/*    short tk = lex->tk;
     JSP_ASSERT_MATCH(tk);
-/*    if (tk=='!') { // logical not
+    if (tk=='!') { // logical not
       return jsvNewFromBool(!jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsjUnaryExpression())));
     } else if (tk=='~') { // bitwise not
       return jsvNewFromInteger(~jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsjUnaryExpression())));
@@ -405,7 +418,7 @@ void jsjBinaryExpression() {
   __jsjBinaryExpression(0);
 }
 
-JsVar *jsjConditionalExpression() {
+void jsjConditionalExpression() {
   // FIXME return __jsjConditionalExpression(jsjBinaryExpression());
   jsjBinaryExpression();
 }
@@ -419,21 +432,20 @@ NO_INLINE void jsjAssignmentExpression() {
       lex->tk==LEX_ANDEQUAL || lex->tk==LEX_OREQUAL ||
       lex->tk==LEX_XOREQUAL || lex->tk==LEX_RSHIFTEQUAL ||
       lex->tk==LEX_LSHIFTEQUAL || lex->tk==LEX_RSHIFTUNSIGNEDEQUAL*/) {
-    JsVar *rhs;
 
     int op = lex->tk;
     JSP_ASSERT_MATCH(op);
     jsjAssignmentExpression();
     jsjPopNoName(1); // ensure we get rid of any references on the RHS
-    jsjcMov(4, 1); // save RHS in r4 so we can unlock it
     jsjcPop(0); // pop LHS
     jsjcPush(0, JSJVT_JSVAR); // push LHS back on as this is our result value
+    //jsjcPush(1, JSJVT_JSVAR); // push RHS back on, so we can pop it off and unlock after jsvReplaceWithOrAddToRoot
 
 
     if (op=='=') {
       jsjcCall(jsvReplaceWithOrAddToRoot);
-      jsjcMov(0, 4); // unlock RHS
-      jsjcCall(jsvUnLock);
+      // FIXME - the unlock causes a crash, but it looks like we are leaking locks... Maybe AssignmentExpression doesn't always lock?
+      //jsjPopAndUnLock(); // Unlock RHS, that we pushed earlier
     } else {
 #if 0
       if (op==LEX_PLUSEQUAL) op='+';
@@ -496,8 +508,6 @@ void jsjBlock() {
 }
 
 void jsjStatementIf() {
-  bool cond;
-  JsVar *var, *result = 0;
   JSP_ASSERT_MATCH(LEX_R_IF);
   DEBUG_JIT("; IF condition\n");
   JSP_MATCH('(');
@@ -538,10 +548,6 @@ void jsjStatementIf() {
 void jsjStatementFor() {
   JSP_ASSERT_MATCH(LEX_R_FOR);
   JSP_MATCH('(');
-  bool wasInLoop = (execInfo.execute&EXEC_IN_LOOP)!=0;
-  execInfo.execute |= EXEC_FOR_INIT;
-  // initialisation
-  JsVar *forStatement = 0;
   // we could have 'for (;;)' - so don't munch up our semicolon if that's all we have
   // Parse initialiser - we always run this so march right in and create code
   DEBUG_JIT("; FOR initialiser\n");
@@ -580,7 +586,7 @@ void jsjStatementFor() {
   jsvUnLock(iteratorBlock);
   // after the iterator, jump back to condition
   DEBUG_JIT("; FOR jump back to condition\n");
-  jsjcBranchRelative(codePosCondition - (jsjcGetByteCount()+2));
+  jsjcBranchRelative(codePosCondition - jsjcGetByteCount());
   DEBUG_JIT("; FOR end\n");
 }
 

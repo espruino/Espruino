@@ -1831,6 +1831,7 @@ NO_INLINE JsVar *jspePostfixExpression() {
   JsVar *a;
   // TODO: should be in jspeUnaryExpression
   if (lex->tk==LEX_PLUSPLUS || lex->tk==LEX_MINUSMINUS) {
+    // PREFIX expression
     int op = lex->tk;
     JSP_ASSERT_MATCH(op);
     a = jspePostfixExpression();
