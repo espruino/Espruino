@@ -16,6 +16,13 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 
+#ifdef ESPR_JIT
+#include "jsjit.h"
+#endif
+#ifndef JSVAR_CACHE_SIZE
+#define JSVAR_CACHE_SIZE 0
+#endif
+
 #define TEST_DIR "tests/"
 #define CMD_NAME "espruino"
 
@@ -174,7 +181,7 @@ bool run_test(const char *filename) {
 
   jshInit();
   jswHWInit();
-  jsvInit(0);
+  jsvInit(JSVAR_CACHE_SIZE);
   jsiInit(false /* do not autoload!!! */);
 
   addNativeFunction("quit", nativeQuit);
@@ -276,6 +283,41 @@ bool run_all_tests() {
   return rc;
 }
 
+#ifdef ESPR_JIT
+bool run_jit_tests() {
+  jshInit();
+  jswHWInit();
+  jsvInit(JSVAR_CACHE_SIZE);
+  jsiInit(false /* do not autoload!!! */);
+
+  addNativeFunction("quit", nativeQuit);
+  addNativeFunction("interrupt", nativeInterrupt);
+
+  JsVar *v = jsjEvaluate("1+2");
+  jsiConsolePrintf("RESULT : %j\n", v);
+  jsvUnLock(v);
+  bool pass = true;
+
+  warning("BEFORE: %d Memory Records Used", jsvGetMemoryUsage());
+  // jsvTrace(execInfo.root, 0);
+  jsiKill();
+  warning("AFTER: %d Memory Records Used", jsvGetMemoryUsage());
+  jsvGarbageCollect();
+  unsigned int unfreed = jsvGetMemoryUsage();
+  warning("AFTER GC: %d Memory Records Used (should be 0!)", unfreed);
+  jsvShowAllocated();
+  jsvKill();
+  jshKill();
+
+  if (unfreed) {
+    warning("FAIL because of unfreed memory.");
+    pass = false;
+  }
+
+  return pass;
+}
+#endif
+
 bool run_memory_test(const char *fn, int vars) {
   unsigned int i;
   unsigned int min = 20;
@@ -375,7 +417,7 @@ int main(int argc, char **argv) {
         if (i + 1 >= argc)
           fatal(1, "Expecting an extra argument");
         jshInit();
-        jsvInit(0);
+        jsvInit(JSVAR_CACHE_SIZE);
         jsiInit(true);
         addNativeFunction("quit", nativeQuit);
         addNativeFunction("interrupt", nativeInterrupt);
@@ -429,6 +471,11 @@ int main(int argc, char **argv) {
           die("Expecting an extra 2 arguments\n");
         bool ok = run_memory_test(argv[i + 1], atoi(argv[i + 2]));
         exit(ok ? 0 : 1);
+#ifdef ESPR_JIT
+      } else if (!strcmp(a, "--test-jit")) {
+        bool ok = run_jit_tests();
+        exit(ok ? 0 : 1);
+#endif
       } else {
         warning("Unknown Argument %s", a);
         show_help();
@@ -456,7 +503,7 @@ int main(int argc, char **argv) {
         cmd++;
     }
     jshInit();
-    jsvInit(0);
+    jsvInit(JSVAR_CACHE_SIZE);
     jsiInit(false /* do not autoload!!! */);
     addNativeFunction("quit", nativeQuit);
     jsvUnLock(jspEvaluate(cmd, false));
@@ -499,7 +546,7 @@ int main(int argc, char **argv) {
 #endif //!__MINGW32__
 
   jshInit();
-  jsvInit(0);
+  jsvInit(JSVAR_CACHE_SIZE);
   jsiInit(true);
 
   addNativeFunction("quit", nativeQuit);

@@ -950,7 +950,8 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
     jsvObjectIteratorNext(&it);
     if (!jsvIsStringEqual(el, JSPARSE_FUNCTION_SCOPE_NAME) &&
         !jsvIsStringEqual(el, JSPARSE_PROTOTYPE_VAR)) {
-      JsVar *copy = jsvCopy(el, true);
+      // don't copy function code - just use it as-is
+      JsVar *copy = jsvIsStringEqual(el, JSPARSE_FUNCTION_CODE_NAME) ? jsvLockAgain(el) : jsvCopy(el, true);
       if (copy) {
         jsvAddName(oldFunc, copy);
         jsvUnLock(copy);

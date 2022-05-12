@@ -2063,3 +2063,4 @@ JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn) {
   jsvStringIteratorFree(&dit);
   return dst;
 }
+
