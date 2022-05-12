@@ -24,8 +24,6 @@
  */
 #ifdef ESPR_JIT
 
-#define DEBUG_JIT jsjcDebugPrintf
-
 #if defined(LINUX) && defined(DEBUG)
 #define JIT_OUTPUT_FILE "jit.bin"
 #endif
@@ -41,6 +39,7 @@ FILE *f;
 
 // The ARM Thumb-2 code we're in the process of creating
 JsVar *jitCode = 0;
+int blockCount = 0;
 
 void jsjcDebugPrintf(const char *fmt, ...) {
   if (jsFlags & JSF_JIT_DEBUG) {
@@ -56,9 +55,11 @@ void jsjcStart() {
   f = fopen(JIT_OUTPUT_FILE, "wb");
 #endif
   jitCode = jsvNewFromEmptyString();
+  blockCount = 0;
 }
 
 JsVar *jsjcStop() {
+  assert(blockCount==0);
 #ifdef JIT_OUTPUT_FILE
   fclose(f);
 #endif
@@ -68,12 +69,23 @@ JsVar *jsjcStop() {
   return v;
 }
 
-int jsjcGetByteCount() {
-  return jsvGetStringLength(jitCode);
+// Called before start of a block of code. Returns the old code jsVar that should be passed into jsjcStopBlock
+JsVar *jsjcStartBlock() {
+  JsVar *v = jitCode;
+  jitCode = jsvNewFromEmptyString();
+  blockCount++;
+  return v;
+}
+// Called when JIT output stops, pass it the return value from jsjcStartBlock. Returns the code parsed in the block
+JsVar *jsjcStopBlock(JsVar *oldBlock) {
+  JsVar *v = jitCode;
+  jitCode = oldBlock;
+  blockCount--;
+  return v;
 }
 
 void jsjcEmit16(uint16_t v) {
-  //DEBUG_JIT("> %04x\n", v);
+  DEBUG_JIT("> %04x\n", v);
 #ifdef JIT_OUTPUT_FILE
   fputc(v&255, f);
   fputc(v>>8, f);
@@ -81,9 +93,27 @@ void jsjcEmit16(uint16_t v) {
   jsvAppendStringBuf(jitCode, (char *)&v, 2);
 }
 
+// Emit a whole block of code
+void jsjcEmitBlock(JsVar *block) {
+  DEBUG_JIT("... code block ...\n");
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, block, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    unsigned int v = (unsigned)jsvStringIteratorGetCharAndNext(&it);
+    v = v | (((unsigned)jsvStringIteratorGetCharAndNext(&it)) << 8);
+    jsjcEmit16((uint16_t)v);
+  }
+  jsvStringIteratorFree(&it);
+}
+
+int jsjcGetByteCount() {
+  return jsvGetStringLength(jitCode);
+}
+
 void jsjcLiteral8(int reg, uint8_t data) {
   assert(reg<8);
   // https://web.eecs.umich.edu/~prabal/teaching/eecs373-f11/readings/ARMv7-M_ARM.pdf page 347
+  // https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Alphabetical-list-of-Thumb-instructions/MOV--immediate-
   int n = 0b0010000000000000 | (reg<<8) | data;
   jsjcEmit16((uint16_t)n);
 }
@@ -91,6 +121,7 @@ void jsjcLiteral8(int reg, uint8_t data) {
 void jsjcLiteral16(int reg, bool hi16, uint16_t data) {
   assert(reg<16);
   // https://web.eecs.umich.edu/~prabal/teaching/eecs373-f11/readings/ARMv7-M_ARM.pdf page 347
+  // https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Alphabetical-list-of-Thumb-instructions/MOV--immediate-
   int imm4,i,imm3,imm8;
   imm4 = (data>>12)&15;
   i = (data>>11)&1;
@@ -143,16 +174,32 @@ int jsjcLiteralString(int reg, JsVar *str, bool nullTerminate) {
   return len;
 }
 
+// Compare a register with a literal. jsjcBranchConditionalRelative can then be called
+void jsjcCompareImm(int reg, int literal) {
+  DEBUG_JIT("CMP r%d,#%d\n", reg, literal);
+  assert(reg<16);
+  assert(literal>=0 && literal<256); // only multiples of 2 bytes
+  int imm8 = literal & 255;
+  jsjcEmit16((uint16_t)(0b0010100000000000 | (reg<<8) | imm8)); // unconditional branch
+}
+
 void jsjcBranchRelative(int bytes) {
-  DEBUG_JIT("B %s%d\n", (bytes>0)?"+":"", (uint32_t)(bytes));
+  DEBUG_JIT("B %s%d (addr 0x%04x)\n", (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
   bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
   assert(bytes>=-4096 && bytes<4096); // only multiples of 2 bytes
   int imm11 = (bytes>>1) & 2047;
   jsjcEmit16((uint16_t)(0b1110000000000000 | imm11)); // unconditional branch
-  /*JsjAsmCondition cond = ...;
-  int imm8 = (pos>>1) & 255;
-  jsjcEmit16((uint16_t)(0b1101000000000000 | (cond<<8) | imm8));*/ // conditional branch
+}
+
+// Jump a number of bytes forward or back, based on condition flags
+void jsjcBranchConditionalRelative(JsjAsmCondition cond, int bytes) {
+  DEBUG_JIT("B[%d] %s%d (addr 0x%04x)\n", cond, (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
+  bytes -= 2; // because PC is ahead by 2
+  assert(!(bytes&1)); // only multiples of 2 bytes
+  assert(bytes>=-512 && bytes<512); // only multiples of 2 bytes
+  int imm8 = (bytes>>1) & 255;
+  jsjcEmit16((uint16_t)(0b1101000000000000 | (cond<<8) | imm8)); // conditional branch
 }
 
 #ifdef DEBUG_JIT_CALLS

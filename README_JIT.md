@@ -52,6 +52,18 @@ function jit() {'jit';digitalWrite(LED1,1);}
 
 function jit() {'jit';i=42;}
 jit();print(i);
+
+function jit() {'jit';return 1<2;}
+jit();print(i);
+
+E.setFlags({jitDebug:1})
+function jit() {"jit";if (i<3) print("T"); else print("X");}
+i=2;jit()
+
+E.setFlags({jitDebug:1})
+function jit() {"jit";for (i=0;i<5;i=i+1) print(i);}
+
+
 ```
 
 
@@ -62,8 +74,11 @@ jit();print(i);
 
 ./espruino -e "E.JIT('print(42)')"
 
-./espruino -e 'E.setFlags({jitDebug:1});function a() {"jit";i=5}'
-./espruino -e 'E.setFlags({jitDebug:1});function a() {"jit";for (i=0;i<5;i++) print(i);}'
+./espruino -e 'E.setFlags({jitDebug:1});function jit() {"jit";i=5}'
+
+./espruino -e 'E.setFlags({jitDebug:1});function jit() {"jit";if (i<3) print("T"); else print("X");}}'
+
+./espruino -e 'E.setFlags({jitDebug:1});function jit() {"jit";for (i=0;i<5;i=i+1) print(i);}'
 ```
 
 When running on Linux, `function jit() {'jit';print(42);}` seems to actually call the function ok, and prints 42. Stack is trashed after (and possibly even before!).

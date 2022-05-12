@@ -42,6 +42,13 @@ void jsjPopAsVar(int reg) {
   assert(0);
 }
 
+void jsjPopAsBool(int reg) {
+  // FIXME handle int/bool differently?
+  jsjPopAsVar(0);
+  jsjcCall(jsvGetBoolAndUnLock); // optimisation: we should know if we have a var or a name here, so can skip jsvSkipNameAndUnLock sometimes
+  if (reg != 0) jsjcMov(reg, 0);
+}
+
 void jsjPopAndUnLock() {
   jsjPopAsVar(0); // a -> r0
   // optimisation: if item on stack is NOT a variable, no need to covert+unlock!
@@ -141,7 +148,9 @@ void jsjFactorFunctionCall() {
   // FIXME: what about 'new'?
 
   while (lex->tk=='(' /*|| (isConstructor && JSP_SHOULD_EXECUTE))*/ && JSJ_PARSING) {
+    DEBUG_JIT("; FUNCTION CALL r4 = funcName\n");
     jsjcPop(4); // r4 = funcName
+    DEBUG_JIT("; FUNCTION CALL arguments\n");
     /* PARSE OUR ARGUMENTS
      * Push each new argument onto the stack (it grows down)
      * Args are in the wrong order, so we emit code to swap around the args in the array
@@ -166,6 +175,7 @@ void jsjFactorFunctionCall() {
     jsjcPush(3, JSJVT_INT); // argPtr
     // Args are in the wrong order - we have to swap them around if we have >1!
     if (argCount>1) {
+      DEBUG_JIT("; FUNCTION CALL reverse arguments\n");
       for (int i=0;i<argCount/2;i++) {
         int a1 = i*4;
         int a2 = (argCount-(i+1))*4;
@@ -175,6 +185,7 @@ void jsjFactorFunctionCall() {
         jsjcStoreImm(1, 3, a1);
       }
     }
+    DEBUG_JIT("; FUNCTION CALL jspeFunctionCall\n");
     // First arg
     jsjcMov(0, 4); jsjcCall(jsvSkipName); // r0 = func
     jsjcMov(5, 0); // r5 = func
@@ -187,11 +198,13 @@ void jsjFactorFunctionCall() {
     jsjcLiteral32(2, 0); // parent = 0 FIXME (see above)
     jsjcLiteral32(3, 0); // isParsing = false
     jsjcCall(jspeFunctionCall); // a = jspeFunctionCall(func, funcName, thisArg/parent, isParsing, argCount, argPtr);
+    DEBUG_JIT("; FUNCTION CALL cleanup\n");
     jsjcAddSP(4*(2+argCount)); // pop off argCount,argPtr + all the arguments
     jsjcPush(0, JSJVT_JSVAR); // push return value from jspeFunctionCall
     jsjcMov(1, 4); // funcName
     jsjcMov(0, 5); // func
     jsjcCall(jsvUnLock2); // unlock
+    DEBUG_JIT("; FUNCTION CALL end\n");
     // FIXME - also unlock/clear 'parent'
     // parent=0;
     // a = jsjFactorMember(a, &parent);
@@ -479,6 +492,46 @@ void jsjBlock() {
   JSP_MATCH('}');
 }
 
+void jsjStatementIf() {
+  bool cond;
+  JsVar *var, *result = 0;
+  JSP_ASSERT_MATCH(LEX_R_IF);
+  DEBUG_JIT("; IF condition\n");
+  JSP_MATCH('(');
+  jsjExpression();
+  jsjPopAsBool(0);
+  jsjcCompareImm(0, 0);
+  JSP_MATCH(')');
+
+  DEBUG_JIT("; capture IF true block\n");
+  JsVar *oldBlock = jsjcStartBlock();
+  jsjBlockOrStatement();
+  JsVar *trueBlock = jsjcStopBlock(oldBlock);
+  JsVar *falseBlock = 0;
+
+  if (lex->tk==LEX_R_ELSE) {
+    JSP_ASSERT_MATCH(LEX_R_ELSE);
+    DEBUG_JIT("; capture IF false block\n");
+    oldBlock = jsjcStartBlock();
+    jsjBlockOrStatement();
+    falseBlock = jsjcStopBlock(oldBlock);
+  }
+  DEBUG_JIT("; IF jump after condition\n");
+  // if false, jump after true block (if an 'else' we need to jump over the jsjcBranchRelative
+  jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(trueBlock) + (falseBlock?2:0));
+  DEBUG_JIT("; IF true block\n");
+  jsjcEmitBlock(trueBlock);
+  jsvUnLock(trueBlock);
+  if (falseBlock) {
+    jsjcBranchRelative(jsvGetStringLength(falseBlock)); // jump over false block
+    DEBUG_JIT("; IF false block\n");
+    jsjcEmitBlock(falseBlock);
+    jsvUnLock(falseBlock);
+  }
+  DEBUG_JIT("; IF end\n");
+
+}
+
 void jsjStatementFor() {
   JSP_ASSERT_MATCH(LEX_R_FOR);
   JSP_MATCH('(');
@@ -487,18 +540,45 @@ void jsjStatementFor() {
   // initialisation
   JsVar *forStatement = 0;
   // we could have 'for (;;)' - so don't munch up our semicolon if that's all we have
+  // Parse initialiser - we always run this so march right in and create code
+  DEBUG_JIT("; FOR initialiser\n");
   if (lex->tk != ';')
     jsjStatement();
   JSP_MATCH(';');
+  // Condition - we run this first time, so we go straight through here, but save the position so we can jump back here
+  // after the main loop
+  int codePosCondition = jsjcGetByteCount();
+  DEBUG_JIT("; FOR condition\n");
   if (lex->tk != ';') {
     jsjExpression(); // condition
+    jsjPopAsBool(0);
+    jsjcCompareImm(0, 0);
+    // We add a jump to the end after we've parsed everything and know the size
   }
   JSP_MATCH(';');
+  JsVar *oldBlock = jsjcStartBlock();
   if (lex->tk != ')')  { // we could have 'for (;;)'
     jsjExpression(); // iterator
+    jsjPopAndUnLock();
   }
-  JSP_MATCH(')');
+  JsVar *iteratorBlock = jsjcStopBlock(oldBlock);
+  JSP_MATCH(')'); // FIXME: clean up on exit
+  // Now parse the actual code to execute
+  oldBlock = jsjcStartBlock();
   jsjBlockOrStatement();
+  JsVar *mainBlock = jsjcStopBlock(oldBlock);
+  // Now figure out the jump length and jump (if condition is false)
+  jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(iteratorBlock) + jsvGetStringLength(mainBlock) + 2);
+  DEBUG_JIT("; FOR Main block\n");
+  jsjcEmitBlock(mainBlock);
+  jsvUnLock(mainBlock);
+  DEBUG_JIT("; FOR Iterator block\n");
+  jsjcEmitBlock(iteratorBlock);
+  jsvUnLock(iteratorBlock);
+  // after the iterator, jump back to condition
+  DEBUG_JIT("; FOR jump back to condition\n");
+  jsjcBranchConditionalRelative(JSJAC_EQ, codePosCondition - jsjcGetByteCount());
+  DEBUG_JIT("; FOR end\n");
 }
 
 void jsjStatement() {
@@ -537,10 +617,10 @@ void jsjStatement() {
 /*} else if (lex->tk==LEX_R_VAR ||
             lex->tk==LEX_R_LET ||
             lex->tk==LEX_R_CONST) {
-    return jsjStatementVar();
+    return jsjStatementVar();*/
   } else if (lex->tk==LEX_R_IF) {
     return jsjStatementIf();
-  } else if (lex->tk==LEX_R_DO) {
+  /*} else if (lex->tk==LEX_R_DO) {
     return jsjStatementDoOrWhile(false);
   } else if (lex->tk==LEX_R_WHILE) {
     return jsjStatementDoOrWhile(true);*/
