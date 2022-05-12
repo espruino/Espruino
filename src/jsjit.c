@@ -425,12 +425,15 @@ NO_INLINE void jsjAssignmentExpression() {
     JSP_ASSERT_MATCH(op);
     jsjAssignmentExpression();
     jsjPopNoName(1); // ensure we get rid of any references on the RHS
+    jsjcMov(4, 1); // save RHS in r4 so we can unlock it
     jsjcPop(0); // pop LHS
     jsjcPush(0, JSJVT_JSVAR); // push LHS back on as this is our result value
 
 
     if (op=='=') {
       jsjcCall(jsvReplaceWithOrAddToRoot);
+      jsjcMov(0, 4); // unlock RHS
+      jsjcCall(jsvUnLock);
     } else {
 #if 0
       if (op==LEX_PLUSEQUAL) op='+';
@@ -577,7 +580,7 @@ void jsjStatementFor() {
   jsvUnLock(iteratorBlock);
   // after the iterator, jump back to condition
   DEBUG_JIT("; FOR jump back to condition\n");
-  jsjcBranchConditionalRelative(JSJAC_EQ, codePosCondition - jsjcGetByteCount());
+  jsjcBranchRelative(codePosCondition - (jsjcGetByteCount()+2));
   DEBUG_JIT("; FOR end\n");
 }
 

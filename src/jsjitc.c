@@ -43,6 +43,8 @@ int blockCount = 0;
 
 void jsjcDebugPrintf(const char *fmt, ...) {
   if (jsFlags & JSF_JIT_DEBUG) {
+    if (!blockCount) jsiConsolePrintf("%6x: ", jsjcGetByteCount());
+    else jsiConsolePrintf("       : ");
     va_list argp;
     va_start(argp, fmt);
     vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
@@ -87,8 +89,10 @@ JsVar *jsjcStopBlock(JsVar *oldBlock) {
 void jsjcEmit16(uint16_t v) {
   DEBUG_JIT("> %04x\n", v);
 #ifdef JIT_OUTPUT_FILE
-  fputc(v&255, f);
-  fputc(v>>8, f);
+  if (!blockCount) {
+    fputc(v&255, f);
+    fputc(v>>8, f);
+  }
 #endif
   jsvAppendStringBuf(jitCode, (char *)&v, 2);
 }
@@ -184,18 +188,18 @@ void jsjcCompareImm(int reg, int literal) {
 }
 
 void jsjcBranchRelative(int bytes) {
+  bytes -= 2; // because PC is ahead by 2  
   DEBUG_JIT("B %s%d (addr 0x%04x)\n", (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
-  bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
   assert(bytes>=-4096 && bytes<4096); // only multiples of 2 bytes
-  int imm11 = (bytes>>1) & 2047;
+  int imm11 = ((unsigned int)(bytes)>>1) & 2047;
   jsjcEmit16((uint16_t)(0b1110000000000000 | imm11)); // unconditional branch
 }
 
 // Jump a number of bytes forward or back, based on condition flags
 void jsjcBranchConditionalRelative(JsjAsmCondition cond, int bytes) {
+  bytes -= 2; // because PC is ahead by 2  
   DEBUG_JIT("B[%d] %s%d (addr 0x%04x)\n", cond, (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
-  bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
   assert(bytes>=-512 && bytes<512); // only multiples of 2 bytes
   int imm8 = (bytes>>1) & 255;
@@ -214,9 +218,9 @@ void jsjcCall(void *c) {
   } else */{
     jsjcLiteral32(7, (uint32_t)(size_t)c); // save address to r7
 #ifdef DEBUG_JIT_CALLS
-    DEBUG_JIT("BL r7 (%s)\n", name);
+    DEBUG_JIT("BLX r7 (%s)\n", name);
 #else
-    DEBUG_JIT("BL r7\n");
+    DEBUG_JIT("BLX r7\n");
 #endif
     jsjcEmit16((uint16_t)(0b0100011110000000 | (7<<3))); // BL reg 7 - BROKEN?
   }
