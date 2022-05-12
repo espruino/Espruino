@@ -39,6 +39,11 @@ g.clear().setFont("4x6");
 lines = g.wrapString("X", 10);
 SHOULD_BE(lines, ["X"]);
 
+// wrap a long word to multiple lines
+g.clear().setFont("4x6");
+lines = g.wrapString("ABCDEFGHIJ", 10);
+SHOULD_BE(lines, ["AB","CD","EF","GH","IJ"]);
+
 // word too big for a line - should be split
 g.clear().setFont("4x6");
 lines = g.wrapString("A very LongWord is not here", 30);
