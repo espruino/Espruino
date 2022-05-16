@@ -279,6 +279,8 @@ if variables==0:
   codeOut('#define RESIZABLE_JSVARS // Allocate variables in blocks using malloc - slow, and linux-only')
 else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
+  if LINUX:
+    codeOut("#define JSVAR_MALLOC 1")
 
 if LINUX:  
   codeOut("#define FLASH_START                     "+hex(0x10000000))
