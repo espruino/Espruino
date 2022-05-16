@@ -42,7 +42,7 @@
           Bangle.buzz(20);
           item.value = item.min + idx*step;
           if (item.onchange) item.onchange(item.value);
-          scr.scroll = s.scroll; // set scroll to prev position
+          scr.scroll = l.scroller.scroll; // set scroll to prev position
           show(); // redraw original menu
         }
       });
@@ -73,7 +73,7 @@
         } else { // actually selected
           item.value = v;
           if (item.onchange) item.onchange(item.value);
-          scr.scroll = s.scroll; // set scroll to prev position
+          scr.scroll = l.scroller.scroll; // set scroll to prev position
           show(); // redraw original menu
         }
       });
