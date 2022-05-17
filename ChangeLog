@@ -16,6 +16,7 @@
             Graphics: Fix drawString with combination of g.setClipRect and g.setRotation
             nRF5x: Allow 'high speed' watches via 'hispeed' argument to setWatch. Higher power consumption but detects fast (<25us) pulses.
             Bangle.js2: E.showMenu now returns 'scroller', `format` is called with a second argument, font in popup is scaled to fit (fix #2190)
+            Fix recent class method regression (24247e4ec9) (fix #2197)
             
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
