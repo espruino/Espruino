@@ -97,6 +97,10 @@
       Bangle.btnWatches = [
         setWatch(function() { options.btn(1); }, BTN1, {repeat:1,edge:"falling"})
       ];
+    } else if (mode=="clockcustom") {
+      Bangle.btnWatches = [
+        setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
+      ];
     }
   } else
     throw new Error("Unknown UI mode");
