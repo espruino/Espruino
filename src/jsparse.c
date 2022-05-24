@@ -1295,7 +1295,13 @@ NO_INLINE JsVar *jspeFactorObject() {
         }
       } else
 #endif
-      {
+      if (lex->tk == '(') {
+        JsVar *contentsName = jsvFindChildFromVar(contents, varName, true);
+        if (contentsName) {
+          JsVar *method = jspeFunctionDefinition(false);
+          jsvUnLock2(jsvSetValueOfName(contentsName, method), method);
+        }
+      } else {
         JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(varName), contents);
         if (JSP_SHOULD_EXECUTE) {
           varName = jsvAsArrayIndexAndUnLock(varName);
