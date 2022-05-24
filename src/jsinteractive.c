@@ -1386,7 +1386,7 @@ void jsiTabComplete() {
   // Now try and autocomplete
   data.possible = 0;
   data.matches = 0;
-  jswrap_object_keys_or_property_names_cb(object, true, true, jsiTabComplete_findCommon, &data);
+  jswrap_object_keys_or_property_names_cb(object, JSWOKPF_INCLUDE_NON_ENUMERABLE|JSWOKPF_INCLUDE_PROTOTYPE, jsiTabComplete_findCommon, &data);
   // If we've got >1 match and are at the end of a line, print hints
   if (data.matches>1) {
     // Remove the current line and add a newline
@@ -1395,7 +1395,7 @@ void jsiTabComplete() {
     jsiConsolePrint("\n\n");
     data.lineLength = 0;
     // Output hints
-    jswrap_object_keys_or_property_names_cb(object, true, true, jsiTabComplete_printCommon, &data);
+    jswrap_object_keys_or_property_names_cb(object, JSWOKPF_INCLUDE_NON_ENUMERABLE|JSWOKPF_INCLUDE_PROTOTYPE, jsiTabComplete_printCommon, &data);
     if (data.lineLength) jsiConsolePrint("\n");
     jsiConsolePrint("\n");
     // Return the input line

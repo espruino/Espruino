@@ -150,7 +150,7 @@ JsVar *jswrap_object_clone(JsVar *parent) {
   "type" : "staticmethod",
   "class" : "Object",
   "name" : "keys",
-  "generate_full" : "jswrap_object_keys_or_property_names(object, false, false)",
+  "generate_full" : "jswrap_object_keys_or_property_names(object, JSWOKPF_NONE)",
   "params" : [
     ["object","JsVar","The object to return keys for"]
   ],
@@ -162,7 +162,7 @@ Return all enumerable keys of the given object
   "type" : "staticmethod",
   "class" : "Object",
   "name" : "getOwnPropertyNames",
-  "generate_full" : "jswrap_object_keys_or_property_names(object, true, false)",
+  "generate_full" : "jswrap_object_keys_or_property_names(object, JSWOKPF_INCLUDE_NON_ENUMERABLE)",
   "params" : [
     ["object","JsVar","The Object to return a list of property names for"]
   ],
@@ -170,7 +170,6 @@ Return all enumerable keys of the given object
 }
 Returns an array of all properties (enumerable or not) found directly on a given object.
 */
-
 
 static void _jswrap_object_keys_or_property_names_iterator(
     const JswSymList *symbols,
@@ -200,8 +199,7 @@ static void _jswrap_object_keys_or_property_names_iterator(
 /** This is for Object.keys and Object. However it uses a callback so doesn't allocate anything */
 void jswrap_object_keys_or_property_names_cb(
     JsVar *obj,
-    bool includeNonEnumerable,  ///< include 'hidden' items
-    bool includePrototype, ///< include items for the prototype too (for autocomplete)
+    JswObjectKeysOrPropertiesFlags flags,
     void (*callback)(void *data, JsVar *name),
     void *data
 ) {
@@ -233,7 +231,7 @@ void jswrap_object_keys_or_property_names_cb(
   /* Search our built-in symbol table
      Assume that ALL builtins are non-enumerable. This isn't great but
      seems to work quite well right now! */
-  if (includeNonEnumerable) {
+  if (flags & JSWOKPF_INCLUDE_NON_ENUMERABLE) {
     const JswSymList *objSymbols = jswGetSymbolListForObjectProto(0);
 
     JsVar *protoOwner = jspGetPrototypeOwner(obj);
@@ -248,14 +246,14 @@ void jswrap_object_keys_or_property_names_cb(
       _jswrap_object_keys_or_property_names_iterator(symbols, callback, data);
     }
 
-    if (includePrototype) {
+    if (flags & JSWOKPF_INCLUDE_PROTOTYPE) {
       JsVar *proto = 0;
       if (jsvIsObject(obj) || jsvIsFunction(obj)) {
         proto = jsvObjectGetChild(obj, JSPARSE_INHERITS_VAR, 0);
       }
 
       if (jsvIsObject(proto)) {
-        jswrap_object_keys_or_property_names_cb(proto, includeNonEnumerable, includePrototype, callback, data);
+        jswrap_object_keys_or_property_names_cb(proto, flags, callback, data);
       } else {
         // include Object/String/etc
         const JswSymList *symbols = jswGetSymbolListForObjectProto(obj);
@@ -289,13 +287,12 @@ void jswrap_object_keys_or_property_names_cb(
 
 JsVar *jswrap_object_keys_or_property_names(
     JsVar *obj,
-    bool includeNonEnumerable,  ///< include 'hidden' items
-    bool includePrototype ///< include items for the prototype too (for autocomplete)
+    JswObjectKeysOrPropertiesFlags flags
     ) {
   JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0;
 
-  jswrap_object_keys_or_property_names_cb(obj, includeNonEnumerable, includePrototype, (void (*)(void *, JsVar *))jsvArrayAddUnique, arr);
+  jswrap_object_keys_or_property_names_cb(obj, flags, (void (*)(void *, JsVar *))jsvArrayAddUnique, arr);
 
   return arr;
 }

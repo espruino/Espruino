@@ -1849,7 +1849,7 @@ JsVar *jswrap_graphics_getFonts(JsVar *parent) {
 #endif
   // vector font is added by below..
   // scan for any functions 'setFont*' and add those names
-  jswrap_object_keys_or_property_names_cb(parent, true, true, jswrap_graphics_getFonts_callback, arr);
+  jswrap_object_keys_or_property_names_cb(parent, JSWOKPF_INCLUDE_NON_ENUMERABLE|JSWOKPF_INCLUDE_PROTOTYPE, jswrap_graphics_getFonts_callback, arr);
   return arr;
 #else
   return 0;
