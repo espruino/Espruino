@@ -5161,6 +5161,7 @@ Bangle.setUI({
   swipe : function(dir) {}, // optional - handler for 'swipe' events
   drag : function(e) {}, // optional - handler for 'drag' events (Bangle.js 2 only)
   btn : function(n) {}, // optional - handler for 'button' events (n==1 on Bangle.js 2, n==1/2/3 depending on button for Bangle.js 1)
+  clock : 0 // optional - if set the behavior of 'clock' mode is added (does not override btn if defined)
 });
 ```
 */
