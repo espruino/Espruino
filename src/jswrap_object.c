@@ -300,6 +300,58 @@ JsVar *jswrap_object_keys_or_property_names(
 /*JSON{
   "type" : "staticmethod",
   "class" : "Object",
+  "name" : "values",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate_full" : "jswrap_object_values_or_entries(object, false);",
+  "params" : [
+    ["object","JsVar","The object to return values for"]
+  ],
+  "return" : ["JsVar","An array of values - one for each key on the given object"]
+}
+Return all enumerable values of the given object
+ */
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Object",
+  "name" : "entries",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate_full" : "jswrap_object_values_or_entries(object, true);",
+  "params" : [
+    ["object","JsVar","The object to return values for"]
+  ],
+  "return" : ["JsVar","An array of `[key,value]` pairs - one for each key on the given object"]
+}
+Return all enumerable keys and values of the given object
+ */
+void _jswrap_object_values_cb(void *data, JsVar *name) {
+  JsVar **cbData = (JsVar**)data;
+  jsvArrayPushAndUnLock(cbData[0], jspGetVarNamedField(cbData[1], name, false));
+}
+void _jswrap_object_entries_cb(void *data, JsVar *name) {
+  JsVar **cbData = (JsVar**)data;
+  JsVar *tuple = jsvNewEmptyArray();
+  if (!tuple) return;
+  jsvArrayPush(tuple, name);
+  jsvArrayPushAndUnLock(tuple, jspGetVarNamedField(cbData[1], name, false));
+  jsvArrayPushAndUnLock(cbData[0], tuple);
+}
+JsVar *jswrap_object_values_or_entries(JsVar *object, bool returnEntries) {
+  JsVar *cbData[2];
+  cbData[0] = jsvNewEmptyArray();
+  cbData[1] = object;
+  if (!cbData[0]) return 0;
+  jswrap_object_keys_or_property_names_cb(
+      object, JSWOKPF_NONE,
+      returnEntries ? _jswrap_object_entries_cb : _jswrap_object_values_cb,
+      (void*)cbData
+  );
+  return cbData[0];
+}
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Object",
   "name" : "create",
   "generate" : "jswrap_object_create",
   "params" : [

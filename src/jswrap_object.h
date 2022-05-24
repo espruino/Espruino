@@ -36,6 +36,7 @@ void jswrap_object_keys_or_property_names_cb(
 JsVar *jswrap_object_keys_or_property_names(
     JsVar *obj,
     JswObjectKeysOrPropertiesFlags flags);
+JsVar *jswrap_object_values_or_entries(JsVar *object, bool returnEntries);
 JsVar *jswrap_object_create(JsVar *proto, JsVar *propertiesObject);
 JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name);
 bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name);
