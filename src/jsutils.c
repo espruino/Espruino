@@ -185,10 +185,12 @@ long long stringToIntWithRadix(const char *s,
   if (!radix) return 0;
 
   while (*s) {
-    int digit = chtod(*s);
-    if (digit<0 || digit>=radix)
-      break;
-    v = v*radix + digit;
+    if (*s != '_') {
+      int digit = chtod(*s);
+      if (digit<0 || digit>=radix)
+        break;
+      v = v*radix + digit;
+    }
     s++;
   }
 
@@ -524,10 +526,12 @@ JsVarFloat stringToFloatWithRadix(
 
   // handle integer part
   while (*s) {
-    int digit = chtod(*s);
-    if (digit<0 || digit>=radix)
-      break;
-    v = (v*radix) + digit;
+    if (*s != '_') {
+      int digit = chtod(*s);
+      if (digit<0 || digit>=radix)
+        break;
+      v = (v*radix) + digit;
+    }
     s++;
   }
 
@@ -537,10 +541,12 @@ JsVarFloat stringToFloatWithRadix(
       s++; // skip .
 
       while (*s) {
-        if (*s >= '0' && *s <= '9')
-          v += mul*(*s - '0');
-        else break;
-        mul /= 10;
+        if (*s != '_') {
+          if (*s >= '0' && *s <= '9')
+            v += mul*(*s - '0');
+          else break;
+          mul /= 10;
+        }
         s++;
       }
     }
@@ -555,9 +561,11 @@ JsVarFloat stringToFloatWithRadix(
       }
       int e = 0;
       while (*s) {
-        if (*s >= '0' && *s <= '9')
-          e = (e*10) + (*s - '0');
-        else break;
+        if (*s != '_') {
+          if (*s >= '0' && *s <= '9')
+            e = (e*10) + (*s - '0');
+          else break;
+        }
         s++;
       }
       if (isENegated) e=-e;
@@ -684,7 +692,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
         int v = (int)(val+((fractionalDigits==1) ? 0.5 : 0.00000001) );
         val = (val-v)*radix;
 	if (v==radix) v=radix-1;
-        if (!hasPt) {	
+        if (!hasPt) {
 	  hasPt = true;
           if (--len <= 0) { *str=0; return; } // bounds check
           *(str++)='.';
@@ -922,12 +930,12 @@ size_t jsuGetFreeStack() {
   //Early entries are in higher memory locations.
   //Later entries are in lower memory locations.
 
-  
+
   uint32_t stackPos   = (uint32_t)&ptr;
   uint32_t stackStart = (uint32_t)espruino_stackHighPtr - ESP_STACK_SIZE;
 
   if (stackPos < stackStart) return 0; // should never happen, but just in case of overflow!
-  
+
   return stackPos - stackStart;
 #else
   // stack depth seems pretty platform-specific :( Default to a value that disables it
