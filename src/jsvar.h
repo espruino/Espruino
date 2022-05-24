@@ -83,18 +83,20 @@ typedef enum {
     // _JSV_VAR_END is:
     //     39 on systems with 8 bit JsVarRefs
     //     43 on systems with 16 bit JsVarRefs
-    //     51 on systems with 32 bit JsVarRefs (more if on a 64 bit platform though)
+    //     51 on systems with 32 bit JsVarRefs
+    //     81 on a 64 bit platform
 
     JSV_VARTYPEMASK = NEXT_POWER_2(_JSV_VAR_END)-1, // probably this is 63
 
-    JSV_NATIVE      = JSV_VARTYPEMASK+1, ///< to specify if this is a function parameter
+    JSV_CONSTANT    = JSV_VARTYPEMASK+1, ///< to specify if this variable is a constant or not. Only used for NAMEs
+    JSV_NATIVE      = JSV_CONSTANT<<1, ///< to specify if this is a function parameter
     JSV_GARBAGE_COLLECT = JSV_NATIVE<<1, ///< When garbage collecting, this flag is true IF we should GC!
     JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
     JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
     JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
     JSV_LOCK_SHIFT  = GET_BIT_NUMBER(JSV_LOCK_ONE), ///< The amount of bits we must shift to get the number of locks - forced to be a constant
 
-    JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NATIVE, // if we're copying a variable, this is all the stuff we want to copy
+    JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NATIVE | JSV_CONSTANT, // if we're copying a variable, this is all the stuff we want to copy
 } PACKED_FLAGS JsVarFlags; // aiming to get this in 2 bytes!
 
 
@@ -373,6 +375,7 @@ bool jsvIsBasicString(const JsVar *v); ///< Just a string (NOT a name)
 bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
 bool jsvIsFlatString(const JsVar *v);
 bool jsvIsNativeString(const JsVar *v);
+bool jsvIsConstant(const JsVar *v);
 bool jsvIsFlashString(const JsVar *v);
 bool jsvIsNumeric(const JsVar *v);
 bool jsvIsFunction(const JsVar *v);

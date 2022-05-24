@@ -2216,6 +2216,7 @@ NO_INLINE JsVar *jspeStatementVar() {
   assert(lex->tk==LEX_R_VAR || lex->tk==LEX_R_LET || lex->tk==LEX_R_CONST);
   // LET and CONST are block scoped *except* when we're not in a block!
   bool isBlockScoped = (lex->tk==LEX_R_LET || lex->tk==LEX_R_CONST) && execInfo.blockCount;
+  bool isConstant = lex->tk==LEX_R_CONST;
 
 
   jslGetNextToken();
@@ -2248,6 +2249,8 @@ NO_INLINE JsVar *jspeStatementVar() {
         jsvReplaceWith(a, var);
       jsvUnLock(var);
     }
+    if (isConstant)
+      a->flags |= JSV_CONSTANT;
     jsvUnLock(lastDefined);
     lastDefined = a;
     hasComma = lex->tk == ',';

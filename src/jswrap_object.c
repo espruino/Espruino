@@ -412,7 +412,7 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
   JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(parent);
 
 
-  jsvObjectSetChildAndUnLock(obj, "writable", jsvNewFromBool(true));
+  jsvObjectSetChildAndUnLock(obj, "writable", jsvNewFromBool(!jsvIsConstant(varName)));
   jsvObjectSetChildAndUnLock(obj, "enumerable", jsvNewFromBool(!checkerFunction || !checkerFunction(varName)));
   jsvObjectSetChildAndUnLock(obj, "configurable", jsvNewFromBool(!isBuiltIn));
 #ifndef SAVE_ON_FLASH
@@ -494,7 +494,7 @@ Add a new property to the Object. 'Desc' is an object with the following fields:
 * `configurable` (bool = false) - can this property be changed/deleted (not implemented)
 * `enumerable` (bool = false) - can this property be enumerated (not implemented)
 * `value` (anything) - the value of this property
-* `writable` (bool = false) - can the value be changed with the assignment operator? (not implemented)
+* `writable` (bool = false) - can the value be changed with the assignment operator?
 * `get` (function) - the getter function, or undefined if no getter (only supported on some platforms)
 * `set` (function) - the setter function, or undefined if no setter (only supported on some platforms)
 
@@ -532,6 +532,10 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
   if (!value) value = jsvObjectGetChild(desc, "value", 0);
 
   jsvObjectSetChildVar(parent, name, value);
+  JsVar *writable = jsvObjectGetChild(desc, "writable", 0);
+  if (!jsvIsUndefined(writable) && !jsvGetBoolAndUnLock(writable))
+    name->flags |= JSV_CONSTANT;
+
   jsvUnLock2(name, value);
 
   return jsvLockAgain(parent);

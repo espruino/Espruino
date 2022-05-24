@@ -96,6 +96,7 @@ bool jsvIsBasicString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=
 bool jsvIsStringExt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_STRING_EXT_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_STRING_EXT_MAX; } ///< The extra bits dumped onto the end of a string to store more data
 bool jsvIsFlatString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLAT_STRING; }
 bool jsvIsNativeString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NATIVE_STRING; }
+bool jsvIsConstant(const JsVar *v) { return v && (v->flags&JSV_CONSTANT)==JSV_CONSTANT; }
 bool jsvIsFlashString(const JsVar *v) {
 #ifdef SPIFLASH_BASE
   return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLASH_STRING;
@@ -2055,6 +2056,10 @@ void jsvReplaceWith(JsVar *dst, JsVar *src) {
     jsExceptionHere(JSET_ERROR, "Unable to assign value to non-reference %t", dst);
     return;
   }
+  if (jsvIsConstant(dst)) {
+    jsExceptionHere(JSET_TYPEERROR, "Assignment to a constant");
+    return;
+  }
 #ifndef SAVE_ON_FLASH
   JsVar *v = jsvGetValueOfName(dst);
   if (jsvIsGetterOrSetter(v)) {
@@ -3709,6 +3714,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   } else {
     jsiConsolePrintf("Unknown %d", var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
   }
+  if (jsvIsConstant(var)) jsiConsolePrintf(" CONST ");
 
   // print a value if it was stored in here as well...
   if (jsvIsNameInt(var)) {
