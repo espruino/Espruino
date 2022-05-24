@@ -19,6 +19,7 @@
             Fix recent class method regression (24247e4ec9) (fix #2197)
             Bangle.js2: 6x15 font tweaks for better ISO8859-1 support
             Bangle.js: Add clock property to "custom" mode in setUI
+            Allow method declarations in objects - ES6 'Enhanced Object Literals' (#2202 / #1302)
             
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
