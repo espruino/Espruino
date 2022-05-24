@@ -81,8 +81,8 @@
     ];
   } else if (mode=="touch") {
     Bangle.touchHandler = (_,e) => {b();cb(e);};
-  } else if (mode=="custom" || mode=="clockcustom") {
-    if (mode=="clockcustom") Bangle.CLOCK=1;
+  } else if (mode=="custom") {
+    if (options.clock) Bangle.CLOCK=1;
     if (options.touch)
       Bangle.touchHandler = options.touch;
     if (options.drag) {
@@ -92,12 +92,12 @@
     if (options.swipe) {
       Bangle.swipeHandler = options.swipe;
       Bangle.on("swipe", Bangle.swipeHandler);
-    }     
+    }
     if (options.btn) {
       Bangle.btnWatches = [
         setWatch(function() { options.btn(1); }, BTN1, {repeat:1,edge:"falling"})
       ];
-    } else if (mode=="clockcustom") {
+    } else if (options.clock) {
       Bangle.btnWatches = [
         setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
       ];

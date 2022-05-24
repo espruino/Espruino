@@ -54,8 +54,8 @@
       setWatch(function() { cb(1); }, BTN3, {repeat:1,edge:"falling"}),
       setWatch(Bangle.showLauncher, BTN2, {repeat:1,edge:"falling"})
     ];
-  } else if (mode=="custom" || mode=="clockcustom") {
-    if (mode=="clockcustom") Bangle.CLOCK=1;
+  } else if (mode=="custom") {
+    if (options.clock) Bangle.CLOCK=1;
     if (options.touch) {
       Bangle.touchHandler = options.touch;
       Bangle.on("touch", Bangle.touchHandler);
@@ -70,7 +70,7 @@
         setWatch(function() { options.btn(2); }, BTN2, {repeat:1,edge:"falling"}),
         setWatch(function() { options.btn(3); }, BTN3, {repeat:1,edge:"falling"})
       ];
-    } else if (mode=="clockcustom") {
+    } else if (options.clock) {
       Bangle.btnWatches = [
         setWatch(Bangle.showLauncher, BTN2, {repeat:1,edge:"falling"})
       ];
