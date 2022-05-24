@@ -19,6 +19,7 @@
 #include "jsinteractive.h"
 
 #define JSP_ASSERT_MATCH(TOKEN) { assert(lex->tk==(TOKEN));jslGetNextToken(); } // Match where if we have the wrong token, it's an internal error
+#define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) if (!jslMatch((TOKEN))) return RETURN_VAL;
 #define JSP_MATCH(TOKEN) if (!jslMatch((TOKEN))) return; // Match where the user could have given us the wrong token
 #define JSJ_PARSING (!(execInfo.execute&EXEC_EXCEPTION))
 
@@ -142,12 +143,77 @@ void jsjFactor() {
   } else JSP_MATCH(LEX_EOF);
 }
 
+/// Look up 'parent.a[index]'. Utility function called from JIT code
+uint64_t _jsjxObjectLookup(JsVar *index, JsVar *parent, JsVar *a) {
+  JsVar *resultParent = jsvSkipNameWithParent(a,true,parent);
+  jsvUnLock2(a, parent);
+  JsVar *resultA = 0;
+  if (resultParent)
+    resultA = jspGetVarNamedField(resultParent, index, true);
+  if (!resultA) {
+    if (jsvHasChildren(resultParent)) {
+      // if no child found, create a pointer to where it could be
+      // as we don't want to allocate it until it's written
+      resultA = jsvCreateNewChild(resultParent, index, 0);
+    } else {
+      jsExceptionHere(JSET_ERROR, "Field or method %q does not already exist, and can't create it on %t", index, resultParent);
+    }
+  }
+  jsvUnLock(index);
+  return ((uint64_t)(size_t)resultA) | (((uint64_t)(size_t)resultParent)<<32);
+}
+
+// Parse ./[] - return true if the parent of the current item is currently on the stack
+bool jsjFactorMember() {
+  bool parentOnStack = false;
+  while ((lex->tk=='.' || lex->tk=='[') && JSJ_PARSING) {
+    if (lex->tk == '.') { // ------------------------------------- Record Access
+      JSP_ASSERT_MATCH('.');
+      if (jslIsIDOrReservedWord()) {
+        JsVar *a = jslGetTokenValueAsVar();
+        jsjcLiteralString(0, a, true); // null terminated
+        jsvUnLock(a);
+        // r0 = string pointer
+        jslGetNextToken(); // skip over current token (we checked above that it was an ID or reserved word)
+        jsjcCall(jsvNewFromString);
+        // r0 = index (as JsVar)
+      } else {
+        // incorrect token - force a match fail by asking for an ID
+        JSP_MATCH_WITH_RETURN(LEX_ID, false); // if we fail we're stopping compilation anyway
+      }
+    } else if (lex->tk == '[') { // ------------------------------------- Array Access
+      JSP_ASSERT_MATCH('[');
+      jsjAssignmentExpression();
+      jsjcPop(0);
+      jsjcCall(jsvAsArrayIndexAndUnLock);
+      JSP_MATCH_WITH_RETURN(']', false); // if we fail we're stopping compilation anyway
+      // r0 = index
+    } else {
+      assert(0);
+    }
+    // r0 currently = index
+    if (parentOnStack) jsjcPop(1); // r1 = parent
+    else jsjcLiteral32(1, 0);
+    jsjcPop(2); // r2 = the variable itself
+    jsjcCall(_jsjxObjectLookup); // (a,parent) = _jsjxObjectLookup(index, parent, a)
+    jsjcPush(0, JSJVT_JSVAR); // a
+    jsjcPush(1, JSJVT_JSVAR); // parent
+    parentOnStack = true;
+  }
+  return parentOnStack;
+}
+
 void jsjFactorFunctionCall() {
   jsjFactor();
-  // jsjFactorMember(); // FIXME we need to call this and also somehow remember 'parent'
+  bool parentOnStack = jsjFactorMember(); // FIXME we need to call this and also somehow remember 'parent'
   // FIXME: what about 'new'?
 
   while (lex->tk=='(' /*|| (isConstructor && JSP_SHOULD_EXECUTE))*/ && JSJ_PARSING) {
+    if (parentOnStack) {
+      DEBUG_JIT("; FUNCTION CALL r6 = 'this'\n");
+      jsjcPop(6); // r6 = this/parent
+      parentOnStack = false;
+    }
     DEBUG_JIT("; FUNCTION CALL r4 = funcName\n");
     jsjcPop(4); // r4 = funcName
     DEBUG_JIT("; FUNCTION CALL arguments\n");
@@ -193,9 +259,9 @@ void jsjFactorFunctionCall() {
     // Second arg
     jsjcMov(1, 4); // r1 = funcName
     //
-    jsjcLiteral32(2, argCount);    
+    jsjcLiteral32(2, argCount);
     jsjcPush(2, JSJVT_INT); // argCount
-    jsjcLiteral32(2, 0); // parent = 0 FIXME (see above)
+    jsjcMov(2, 6); // parent (from r6)
     jsjcLiteral32(3, 0); // isParsing = false
     jsjcCall(jspeFunctionCall); // a = jspeFunctionCall(func, funcName, thisArg/parent, isParsing, argCount, argPtr);
     DEBUG_JIT("; FUNCTION CALL cleanup\n");
@@ -208,6 +274,9 @@ void jsjFactorFunctionCall() {
     // FIXME - also unlock/clear 'parent'
     // parent=0;
     // a = jsjFactorMember(a, &parent);
+  }
+  if (parentOnStack) {
+    jsjcPop(4); // just remove parent from the stack. We don't care where it goes!
   }
 }
 
@@ -675,7 +744,7 @@ JsVar *jsjParseFunction() {
   // with native function code...
   jsjcPushAll(); // Function start
   jsjBlockNoBrackets();
-  // optimisation: if the last statement was a return, no need for this
+  // optimisation: if the last statement was a return, no need for this. Could check if last instruction was 'POP {r4,r5,r6,r7,pc}'
   // Return 'undefined' from function if no other return statement
   jsjcLiteral32(0, 0);
   jsjcPopAllAndReturn();

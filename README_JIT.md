@@ -135,6 +135,15 @@ function nojit() {for (i=0;i<1000;i=i+1);}
 function jit() {"jit";for (i=0;i<1000;i=i+1);}
 t=getTime();jit();getTime()-t // 0.14 sec
 t=getTime();nojit();getTime()-t // 0.28 sec
+
+
+a = {b:42,c:function(){print("hello",this)}};
+function jit() {"jit";return a.b;}
+jit()==42
+function jit() {"jit";return a["b"];}
+jit()==42
+function jit() {"jit";a.c();}
+jit(); // prints 'hello {b:42,...}'
 ```
 
 Run JIT on ARM and then disassemble:
