@@ -39,7 +39,7 @@ typedef enum {
     JSV_ARRAY,           ///< A JavaScript Array Buffer - Implemented just like a String at the moment
     JSV_ARRAYBUFFER,     ///< An arraybuffer (see varData.arraybuffer)
     JSV_OBJECT,
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
     JSV_GET_SET,         ///< Getter/setter (an object with get/set fields)
 #endif
     JSV_FUNCTION,
@@ -516,7 +516,7 @@ JsVarFloat jsvGetFloatAndUnLock(JsVar *v);
 bool jsvGetBoolAndUnLock(JsVar *v);
 long long jsvGetLongIntegerAndUnLock(JsVar *v);
 
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
 // Executes the given getter, or if there are problems returns undefined
 JsVar *jsvExecuteGetter(JsVar *parent, JsVar *getset);
 // Executes the given setter
@@ -731,10 +731,8 @@ bool jsvIsInstanceOf(JsVar *var, const char *constructorName);
 /// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
 
-#ifndef NO_DATAVIEW
 /// Create a new DataView of the given length (in elements), and fill it with the given data (if set)
 JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data);
-#endif
 
 /** Create a new arraybuffer of the given type and length, also return a pointer
  * to the contiguous memory area containing it. Returns 0 if it was unable to

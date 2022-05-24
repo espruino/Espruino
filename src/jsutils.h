@@ -39,9 +39,10 @@
 
 #ifdef SAVE_ON_FLASH
 #define SAVE_ON_FLASH_MATH 1
-#ifndef BLUETOOTH
-#define NO_DATAVIEW
-#endif
+#define ESPR_NO_OBJECT_METHODS 1
+#define ESPR_NO_GET_SET 1
+#define ESPR_NO_LINE_NUMBERS 1
+#define ESPR_NO_LET_SCOPING 1
 #endif
 
 #ifndef alloca

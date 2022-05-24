@@ -111,7 +111,6 @@ These contain:
 This is a partial list of definitions that can be added in a `BOARD.py` file's `info.build.makefile` array, eg: `'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\''`
 
 * `SAVE_ON_FLASH` - Remove some features (like any ES6 support) to target devices with ~128kB Flash
-* `SAVE_ON_FLASH_MATH` - Remove some less-used Maths functions that use a bunch of Flash memory
 * `SAVE_ON_FLASH_EXTREME` - Pull out as many features as possible to target devices with ~128kB Flash that also want things like Filesystem support
 * `BLUETOOTH_NAME_PREFIX="..."` - Make the Bluetooth LE device's name `BLUETOOTH_NAME_PREFIX` followed by the last 2 bytes of the MAC address.
 * `BLUETOOTH_ADVERTISING_INTERVAL=375` - set the default Bluetooth advertising interval (default 375)
@@ -136,7 +135,15 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_NO_LOADING_SCREEN` - Bangle.js, don't show a 'loading' screen when loading a new app
 * `ESPR_BOOTLOADER_SPIFLASH` - Allow bootloader to flash direct from a file in SPI flash storage
 * `ESPR_BANGLE_UNISTROKE` - Build in 'unistroke' touch gesture recognition
+
+These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
+
+* `SAVE_ON_FLASH_MATH` - Remove some less-used Maths functions that use a bunch of Flash memory
+* `ESPR_NO_GET_SET` - No Getter/setter functionality
+* `ESPR_NO_OBJECT_METHODS` - No methods in objects like `{method() { ... }}`
 * `ESPR_NO_LINE_NUMBERS` - disable storing and reporting of Line Numbers. Usually these take 1 var per function, but if we're executing a function from flash we can just work it out from the file when needed 
+* `ESPR_NO_LET_SCOPING` - don't create scopes for `let` (treat it like `var`, which was the 2v13 and earlier behaviour)
+
 
 ### chip
 

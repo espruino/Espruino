@@ -415,7 +415,7 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
   jsvObjectSetChildAndUnLock(obj, "writable", jsvNewFromBool(!jsvIsConstant(varName)));
   jsvObjectSetChildAndUnLock(obj, "enumerable", jsvNewFromBool(!checkerFunction || !checkerFunction(varName)));
   jsvObjectSetChildAndUnLock(obj, "configurable", jsvNewFromBool(!isBuiltIn));
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
   JsVar *getset = jsvGetValueOfName(varName);
   if (jsvIsGetterOrSetter(getset)) {
     jsvObjectSetChildAndUnLock(obj, "get", jsvObjectGetChild(getset,"get",0));
@@ -423,7 +423,7 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
   } else {
 #endif
     jsvObjectSetChildAndUnLock(obj, "value", jsvSkipName(varName));
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
   }
   jsvUnLock(getset);
 #endif

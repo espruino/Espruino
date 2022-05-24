@@ -127,7 +127,7 @@ bool jsvIsNameIntBool(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==
 bool jsvIsNewChild(const JsVar *v) { return jsvIsName(v) && jsvGetNextSibling(v) && jsvGetNextSibling(v)==jsvGetPrevSibling(v); }
 /// Returns true if v is a getter/setter
 bool jsvIsGetterOrSetter(const JsVar *v) {
-#ifdef SAVE_ON_FLASH
+#ifdef ESPR_NO_GET_SET
   return false;
 #else
   return v && (v->flags&JSV_VARTYPEMASK)==JSV_GET_SET;
@@ -1989,7 +1989,7 @@ JsVarFloat jsvGetFloatAndUnLock(JsVar *v) { return _jsvGetFloatAndUnLock(v); }
 bool jsvGetBoolAndUnLock(JsVar *v) { return _jsvGetBoolAndUnLock(v); }
 
 
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
 // Executes the given getter, or if there are problems returns undefined
 JsVar *jsvExecuteGetter(JsVar *parent, JsVar *getset) {
   assert(jsvIsGetterOrSetter(getset));
@@ -2060,7 +2060,7 @@ void jsvReplaceWith(JsVar *dst, JsVar *src) {
     jsExceptionHere(JSET_TYPEERROR, "Assignment to a constant");
     return;
   }
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
   JsVar *v = jsvGetValueOfName(dst);
   if (jsvIsGetterOrSetter(v)) {
     JsVar *parent = jsvIsNewChild(dst)?jsvLock(jsvGetNextSibling(dst)):0;
@@ -4195,7 +4195,6 @@ JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length) {
   return array;
 }
 
-#ifndef NO_DATAVIEW
 JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data) {
   JsVar *buf = jswrap_arraybuffer_constructor(length);
   if (!buf) return 0;
@@ -4213,7 +4212,6 @@ JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data) {
   jsvUnLock(buf);
   return view;
 }
-#endif
 
 JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr) {
   assert(ptr);

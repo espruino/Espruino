@@ -760,11 +760,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         }
         // add the function's execute space to the symbol table so we can recurse
         if (jspeiAddScope(functionRoot)) {
+#ifndef ESPR_NO_LET_SCOPING
           JsVar *oldBaseScope = execInfo.baseScope;
           execInfo.baseScope = functionRoot;
           /* Adding scope may have failed - we may have descended too deep - so be sure
            * not to pull somebody else's scope off
            */
+#endif
 
           JsVar *oldThisVar = execInfo.thisVar;
           if (thisVar)
@@ -870,9 +872,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           /* Return to old 'this' var. No need to unlock as we never locked before */
           if (execInfo.thisVar) jsvUnRef(execInfo.thisVar);
           execInfo.thisVar = oldThisVar;
-
+#ifndef ESPR_NO_LET_SCOPING
           jspeiRemoveScope();
           execInfo.baseScope = oldBaseScope;
+#endif
         }
 
         // Unlock scopes and restore old ones
@@ -1264,16 +1267,12 @@ NO_INLINE JsVar *jspeFactorObject() {
       } else if (
           lex->tk==LEX_STR ||
           lex->tk==LEX_FLOAT ||
-          lex->tk==LEX_INT ||
-          lex->tk==LEX_R_TRUE ||
-          lex->tk==LEX_R_FALSE ||
-          lex->tk==LEX_R_NULL ||
-          lex->tk==LEX_R_UNDEFINED) {
+          lex->tk==LEX_INT) {
         varName = jspeFactor();
       } else {
         JSP_MATCH_WITH_RETURN(LEX_ID, contents);
       }
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
       if (lex->tk==LEX_ID && jsvIsString(varName)) {
         bool isGetter = jsvIsStringEqual(varName, "get");
         bool isSetter = jsvIsStringEqual(varName, "set");
@@ -1287,13 +1286,16 @@ NO_INLINE JsVar *jspeFactorObject() {
         }
       } else
 #endif
+#ifndef ESPR_NO_OBJECT_METHODS
       if (lex->tk == '(') {
         JsVar *contentsName = jsvFindChildFromVar(contents, varName, true);
         if (contentsName) {
           JsVar *method = jspeFunctionDefinition(false);
           jsvUnLock2(jsvSetValueOfName(contentsName, method), method);
         }
-      } else {
+      } else
+#endif
+      {
         JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(varName), contents);
         if (JSP_SHOULD_EXECUTE) {
           varName = jsvAsArrayIndexAndUnLock(varName);
@@ -1597,7 +1599,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
 
     JsVar *funcName = jslGetTokenValueAsVar();
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(funcName,classFunction,classInternalName,classPrototype),0);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
     bool isGetter = false, isSetter = false;
     if (lex->tk==LEX_ID) {
       isGetter = jsvIsStringEqual(funcName, "get");
@@ -1614,7 +1616,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
       JsVar *obj = isStatic ? classFunction : classPrototype;
       if (jsvIsStringEqual(funcName, "constructor")) {
         jswrap_function_replaceWith(classFunction, method);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
       } else if (isGetter || isSetter) {
         jsvAddGetterOrSetter(obj, funcName, isGetter, method);
 #endif
@@ -2138,9 +2140,11 @@ NO_INLINE void jspeSkipBlock() {
 
 /** Parse a block `{ ... }` but assume brackets are already parsed */
 NO_INLINE void jspeBlockNoBrackets() {
+#ifndef ESPR_NO_LET_SCOPING
   execInfo.blockCount++;
   JsVar *oldBlockScope = execInfo.blockScope;
   execInfo.blockScope = 0;
+#endif
   if (JSP_SHOULD_EXECUTE) {
     while (lex->tk && lex->tk!='}') {
       JsVar *a = jspeStatement();
@@ -2167,6 +2171,7 @@ NO_INLINE void jspeBlockNoBrackets() {
   } else {
     jspeSkipBlock();
   }
+#ifndef ESPR_NO_LET_SCOPING
   // If we had a block scope defined, for LET/CONST, remove it
   if (execInfo.blockScope) {
     jspeiRemoveScope();
@@ -2175,6 +2180,7 @@ NO_INLINE void jspeBlockNoBrackets() {
   }
   execInfo.blockScope = oldBlockScope;
   execInfo.blockCount--;
+#endif
 }
 
 /** Parse a block `{ ... }` */
@@ -2214,8 +2220,10 @@ NO_INLINE JsVar *jspeStatementVar() {
    * hand side. Maybe just have a flag called can_create_var that we
    * set and then we parse as if we're doing a normal equals.*/
   assert(lex->tk==LEX_R_VAR || lex->tk==LEX_R_LET || lex->tk==LEX_R_CONST);
+#ifndef ESPR_NO_LET_SCOPING
   // LET and CONST are block scoped *except* when we're not in a block!
   bool isBlockScoped = (lex->tk==LEX_R_LET || lex->tk==LEX_R_CONST) && execInfo.blockCount;
+#endif
   bool isConstant = lex->tk==LEX_R_CONST;
 
 
@@ -2225,6 +2233,7 @@ NO_INLINE JsVar *jspeStatementVar() {
     JsVar *a = 0;
     if (JSP_SHOULD_EXECUTE) {
       char *name = jslGetTokenValueAsString();
+#ifndef ESPR_NO_LET_SCOPING
       if (isBlockScoped) {
         if (!execInfo.blockScope) {
           execInfo.blockScope = jsvNewObject();
@@ -2234,6 +2243,11 @@ NO_INLINE JsVar *jspeStatementVar() {
       } else {
         a = jsvFindChildFromString(execInfo.baseScope, name, true);
       }
+#else
+      JsVar *scope = jspeiGetTopScope();
+      a = jsvFindChildFromString(scope, name, true);
+      jsvUnLock(scope);
+#endif
       if (!a) { // out of memory
         jspSetError(false);
         return lastDefined;
@@ -2785,7 +2799,13 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
   if (actuallyCreateFunction) {
     // find a function with the same name (or make one)
     // OPT: can Find* use just a JsVar that is a 'name'?
+#ifndef ESPR_NO_LET_SCOPING
     JsVar *existingName = jsvFindChildFromVar(execInfo.baseScope, funcName, true);
+#else
+    JsVar *scope = jspeiGetTopScope();
+    JsVar *existingName = jsvFindChildFromVar(scope, funcName, true);
+    jsvUnLock(scope);
+#endif
     JsVar *existingFunc = jsvSkipName(existingName);
     if (jsvIsFunction(existingFunc)) {
       // 'proper' replace, that keeps the original function var and swaps the children
@@ -3012,16 +3032,20 @@ void jspSoftInit() {
   // Root now has a lock and a ref
   execInfo.hiddenRoot = jsvObjectGetChild(execInfo.root, JS_HIDDEN_CHAR_STR, JSV_OBJECT);
   execInfo.execute = EXEC_YES;
-  execInfo.baseScope = execInfo.root;
   execInfo.scopesVar = 0;
+#ifndef ESPR_NO_LET_SCOPING
+  execInfo.baseScope = execInfo.root;
   execInfo.blockScope = 0;
   execInfo.blockCount = 0;
+#endif
 }
 
 void jspSoftKill() {
+#ifndef ESPR_NO_LET_SCOPING
   assert(execInfo.baseScope==execInfo.root);
   assert(execInfo.blockScope==0);
   assert(execInfo.blockCount==0);
+#endif
   jsvUnLock(execInfo.scopesVar);
   execInfo.scopesVar = 0;
   jsvUnLock(execInfo.hiddenRoot);
@@ -3082,7 +3106,9 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
     execInfo.scopesVar = 0;
     if (scope!=execInfo.root) {
       jspeiAddScope(scope); // it's searched by default anyway
+#ifndef ESPR_NO_LET_SCOPING
       execInfo.baseScope = scope; // this gets replaces after with execInfo = oldExecInfo
+#endif
     }
   }
 
