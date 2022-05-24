@@ -134,12 +134,17 @@ typedef struct {
   JsVar  *root;       //!< root of symbol table
   JsVar  *hiddenRoot; //!< root of the symbol table that's hidden
 
-  /// JsVar array of scopes
+  /// JsVar array of all execution scopes (`root` is not included)
   JsVar *scopesVar;
+  /// This is the base scope of execution - `root`, or the execution scope of the function. Scopes added for let/const are not included
+  JsVar *baseScope;
+  /// IF nonzero, this the scope of the current block (which gets added when 'let/const' is used in a block)
+  JsVar *blockScope;
   /// Value of 'this' reserved word
   JsVar *thisVar;
 
-  volatile JsExecFlags execute;
+  volatile JsExecFlags execute; //!< Should we be executing, do we have errors, etc
+  uint8_t blockCount; //!< how many blocks '{}' deep are we?
 } JsExecInfo;
 
 /* Info about execution when Parsing - this saves passing it on the stack

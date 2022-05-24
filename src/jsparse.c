@@ -131,18 +131,6 @@ JsVar *jspeiGetTopScope() {
   }
   return jsvLockAgain(execInfo.root);
 }
-JsVar *jspeiFindOnTop(const char *name, bool createIfNotFound) {
-  JsVar *scope = jspeiGetTopScope();
-  JsVar *result = jsvFindChildFromString(scope, name, createIfNotFound);
-  jsvUnLock(scope);
-  return result;
-}
-JsVar *jspeiFindNameOnTop(JsVar *childName, bool createIfNotFound) {
-  JsVar *scope = jspeiGetTopScope();
-  JsVar *result = jsvFindChildFromVar(scope, childName, createIfNotFound);
-  jsvUnLock(scope);
-  return result;
-}
 
 JsVar *jspFindPrototypeFor(const char *className) {
   JsVar *obj = jsvObjectGetChild(execInfo.root, className, 0);
@@ -772,6 +760,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         }
         // add the function's execute space to the symbol table so we can recurse
         if (jspeiAddScope(functionRoot)) {
+          JsVar *oldBaseScope = execInfo.baseScope;
+          execInfo.baseScope = functionRoot;
           /* Adding scope may have failed - we may have descended too deep - so be sure
            * not to pull somebody else's scope off
            */
@@ -843,6 +833,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             JsExecFlags hasError = execInfo.execute&EXEC_ERROR_MASK;
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
 
+
 #ifdef USE_DEBUGGER
             bool calledDebugger = false;
             if (execInfo.execute & EXEC_DEBUGGER_MASK) {
@@ -881,6 +872,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           execInfo.thisVar = oldThisVar;
 
           jspeiRemoveScope();
+          execInfo.baseScope = oldBaseScope;
         }
 
         // Unlock scopes and restore old ones
@@ -2146,6 +2138,9 @@ NO_INLINE void jspeSkipBlock() {
 
 /** Parse a block `{ ... }` but assume brackets are already parsed */
 NO_INLINE void jspeBlockNoBrackets() {
+  execInfo.blockCount++;
+  JsVar *oldBlockScope = execInfo.blockScope;
+  execInfo.blockScope = 0;
   if (JSP_SHOULD_EXECUTE) {
     while (lex->tk && lex->tk!='}') {
       JsVar *a = jspeStatement();
@@ -2163,16 +2158,23 @@ NO_INLINE void jspeBlockNoBrackets() {
         }
       }
       if (JSP_SHOULDNT_PARSE)
-        return;
+        break;
       if (!JSP_SHOULD_EXECUTE) {
         jspeSkipBlock();
-        return;
+        break;
       }
     }
   } else {
     jspeSkipBlock();
   }
-  return;
+  // If we had a block scope defined, for LET/CONST, remove it
+  if (execInfo.blockScope) {
+    jspeiRemoveScope();
+    jsvUnLock(execInfo.blockScope);
+    execInfo.blockScope = 0;
+  }
+  execInfo.blockScope = oldBlockScope;
+  execInfo.blockCount--;
 }
 
 /** Parse a block `{ ... }` */
@@ -2212,13 +2214,25 @@ NO_INLINE JsVar *jspeStatementVar() {
    * hand side. Maybe just have a flag called can_create_var that we
    * set and then we parse as if we're doing a normal equals.*/
   assert(lex->tk==LEX_R_VAR || lex->tk==LEX_R_LET || lex->tk==LEX_R_CONST);
+  // LET and CONST are block scoped *except* when we're not in a block!
+  bool isBlockScoped = (lex->tk==LEX_R_LET || lex->tk==LEX_R_CONST) && execInfo.blockCount;
+
+
   jslGetNextToken();
-  ///TODO: Correctly implement CONST and LET - we just treat them like 'var' at the moment
   bool hasComma = true; // for first time in loop
   while (hasComma && lex->tk == LEX_ID && !jspIsInterrupted()) {
     JsVar *a = 0;
     if (JSP_SHOULD_EXECUTE) {
-      a = jspeiFindOnTop(jslGetTokenValueAsString(), true);
+      char *name = jslGetTokenValueAsString();
+      if (isBlockScoped) {
+        if (!execInfo.blockScope) {
+          execInfo.blockScope = jsvNewObject();
+          jspeiAddScope(execInfo.blockScope);
+        }
+        a = jsvFindChildFromString(execInfo.blockScope, name, true);
+      } else {
+        a = jsvFindChildFromString(execInfo.baseScope, name, true);
+      }
       if (!a) { // out of memory
         jspSetError(false);
         return lastDefined;
@@ -2768,7 +2782,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
   if (actuallyCreateFunction) {
     // find a function with the same name (or make one)
     // OPT: can Find* use just a JsVar that is a 'name'?
-    JsVar *existingName = jspeiFindNameOnTop(funcName, true);
+    JsVar *existingName = jsvFindChildFromVar(execInfo.baseScope, funcName, true);
     JsVar *existingFunc = jsvSkipName(existingName);
     if (jsvIsFunction(existingFunc)) {
       // 'proper' replace, that keeps the original function var and swaps the children
@@ -2995,9 +3009,16 @@ void jspSoftInit() {
   // Root now has a lock and a ref
   execInfo.hiddenRoot = jsvObjectGetChild(execInfo.root, JS_HIDDEN_CHAR_STR, JSV_OBJECT);
   execInfo.execute = EXEC_YES;
+  execInfo.baseScope = execInfo.root;
+  execInfo.scopesVar = 0;
+  execInfo.blockScope = 0;
+  execInfo.blockCount = 0;
 }
 
 void jspSoftKill() {
+  assert(execInfo.baseScope==execInfo.root);
+  assert(execInfo.blockScope==0);
+  assert(execInfo.blockCount==0);
   jsvUnLock(execInfo.scopesVar);
   execInfo.scopesVar = 0;
   jsvUnLock(execInfo.hiddenRoot);
@@ -3056,7 +3077,10 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   if (scope) {
     // if we're adding a scope, make sure it's the *only* scope
     execInfo.scopesVar = 0;
-    if (scope!=execInfo.root) jspeiAddScope(scope); // it's searched by default anyway
+    if (scope!=execInfo.root) {
+      jspeiAddScope(scope); // it's searched by default anyway
+      execInfo.baseScope = scope; // this gets replaces after with execInfo = oldExecInfo
+    }
   }
 
   // actually do the parsing
