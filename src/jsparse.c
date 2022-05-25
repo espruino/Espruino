@@ -1264,7 +1264,9 @@ NO_INLINE JsVar *jspeFactorObject() {
 #endif
       // we only allow strings or IDs on the left hand side of an initialisation
       if (jslIsIDOrReservedWord()) {
+#ifndef ESPR_NO_PROPERTY_SHORTHAND
         isIdentifier = lex->tk == LEX_ID;
+#endif
         if (JSP_SHOULD_EXECUTE)
           varName = jslGetTokenValueAsVar();
         jslGetNextToken(); // skip over current token
