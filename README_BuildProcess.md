@@ -141,7 +141,8 @@ These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
 * `SAVE_ON_FLASH_MATH` - Remove some less-used Maths functions that use a bunch of Flash memory
 * `ESPR_NO_GET_SET` - No Getter/setter functionality
 * `ESPR_NO_OBJECT_METHODS` - No methods in objects like `{method() { ... }}`
-* `ESPR_NO_LINE_NUMBERS` - disable storing and reporting of Line Numbers. Usually these take 1 var per function, but if we're executing a function from flash we can just work it out from the file when needed 
+* `ESPR_NO_PROPERTY_SHORTHAND` - No property shorthand in objects like `{a}`
+* `ESPR_NO_LINE_NUMBERS` - disable storing and reporting of Line Numbers. Usually these take 1 var per function, but if we're executing a function from flash we can just work it out from the file when needed
 * `ESPR_NO_LET_SCOPING` - don't create scopes for `let` (treat it like `var`, which was the 2v13 and earlier behaviour)
 
 
