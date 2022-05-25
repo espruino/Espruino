@@ -25,6 +25,7 @@
             Honour non-writable const vars (fix #971)
             Remove Line Numbers from 'save on flash' builds
             Added Object shorthand, eg. x={a}
+            Added numeric separator support eg. 12_34
             
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
