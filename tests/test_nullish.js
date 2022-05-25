@@ -19,3 +19,10 @@ result &= (d ?? 1) === 0;
 
 var e = false;
 result &= (e ?? 1) === false;
+
+// Check token is handled correctly by the internal pretokeniser
+E.setFlags({pretokenise:1})
+function a(a) { return  a??5 }
+print (a.toString());
+result &= a.toString() == "function (a) {return a ?? 5}";
+

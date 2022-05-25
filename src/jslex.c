@@ -636,6 +636,7 @@ void jslGetNextToken() {
       case JSLJT_FORWARDSLASH:
       // yay! JS is so awesome.
       if (lastToken==LEX_EOF ||
+          (lastToken>=_LEX_TOKENS_START && lastToken<=_LEX_TOKENS_END) || // any keyword or operator
           lastToken=='!' ||
           lastToken=='%' ||
           lastToken=='&' ||
@@ -647,18 +648,13 @@ void jslGetNextToken() {
           lastToken=='=' ||
           lastToken=='>' ||
           lastToken=='?' ||
-          (lastToken>=_LEX_OPERATOR_START && lastToken<=_LEX_OPERATOR_END) ||
-          (lastToken>=_LEX_R_LIST_START && lastToken<=_LEX_R_LIST_END) || // keywords
-          lastToken==LEX_R_CASE ||
-          lastToken==LEX_R_NEW ||
           lastToken=='[' ||
           lastToken=='{' ||
           lastToken=='}' ||
           lastToken=='(' ||
           lastToken==',' ||
           lastToken==';' ||
-          lastToken==':' ||
-          lastToken==LEX_ARROW_FUNCTION) {
+          lastToken==':') {
         // EOF operator keyword case new [ { } ( , ; : =>
         // phew. We're a regex
         jslLexRegex();
@@ -800,6 +796,7 @@ void jslFunctionCharAsString(unsigned char ch, char *str, size_t len) {
 
 const char* jslReservedWordAsString(int token) {
   static const char tokenNames[] =
+      // Operators 1
       /* LEX_EQUAL      :   */ "==\0"
       /* LEX_TYPEEQUAL  :   */ "===\0"
       /* LEX_NEQUAL     :   */ "!=\0"
@@ -823,7 +820,6 @@ const char* jslReservedWordAsString(int token) {
       /* LEX_ANDAND :       */ "&&\0"
       /* LEX_OREQUAL :      */ "|=\0"
       /* LEX_OROR :         */ "||\0"
-      /* LEX_NULLISH :      */ "??\0"
       /* LEX_XOREQUAL :     */ "^=\0"
       /* LEX_ARROW_FUNCTION */ "=>\0"
 
@@ -861,12 +857,16 @@ const char* jslReservedWordAsString(int token) {
       /*LEX_R_DEBUGGER : */ "debugger\0"
       /*LEX_R_CLASS :    */ "class\0"
       /*LEX_R_EXTENDS :  */ "extends\0"
-      /*LEX_R_SUPER :  */   "super\0"
+      /*LEX_R_SUPER :    */ "super\0"
       /*LEX_R_STATIC :   */ "static\0"
-      /*LEX_R_OF    :   */  "of\0"
+      /*LEX_R_OF    :    */ "of\0"
+      /* padding to be replaced with new reserved words */ "\0\0\0\0\0\0\0\0\0"
+
+      // operators 2
+      /* LEX_NULLISH :   */ "??\0"
       ;
   unsigned int p = 0;
-  int n = token-_LEX_OPERATOR_START;
+  int n = token-_LEX_TOKENS_START;
   while (n>0 && p<sizeof(tokenNames)) {
     while (tokenNames[p] && p<sizeof(tokenNames)) p++;
     p++; // skip the zero
@@ -903,7 +903,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
   case LEX_UNFINISHED_COMMENT : strcpy(str, "UNFINISHED COMMENT"); return;
   case 255 : strcpy(str, "[ERASED]"); return;
   }
-  if (token>=_LEX_OPERATOR_START && token<=_LEX_R_LIST_END) {
+  if (token>=_LEX_TOKENS_START && token<=_LEX_TOKENS_END) {
     strcpy(str, jslReservedWordAsString(token));
     return;
   }

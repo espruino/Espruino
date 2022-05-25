@@ -32,8 +32,24 @@ typedef enum LEX_TYPES {
     LEX_UNFINISHED_REGEX, // always after LEX_REGEX
     LEX_UNFINISHED_COMMENT,
 
-_LEX_OPERATOR_START,
-    LEX_EQUAL = _LEX_OPERATOR_START,
+    // ------------------------------------------------
+    // DO NOT MODIFY THE ORDERING OF THIS LIST.
+    //
+    // The Web IDE/Bangle.js App Loader can pretokenise code
+    // which means they rely on each ID/token mapping to the
+    // correct number.
+    //
+    // Also jslReservedWordAsString needs updating to reflect
+    // any new symbols/ordering
+    //
+    // To ease adding new operators/reserved words we've
+    // now added the OPERATOR2 list below, as well as some
+    // padding before it.
+    // ------------------------------------------------
+
+_LEX_TOKENS_START,
+_LEX_OPERATOR1_START = _LEX_TOKENS_START,
+    LEX_EQUAL = _LEX_OPERATOR1_START,
     LEX_TYPEEQUAL,
     LEX_NEQUAL,
     LEX_NTYPEEQUAL,
@@ -56,10 +72,9 @@ _LEX_OPERATOR_START,
     LEX_ANDAND,
     LEX_OREQUAL,
     LEX_OROR,
-    LEX_NULLISH,
     LEX_XOREQUAL,
     // Note: single character operators are represented by themselves
-_LEX_OPERATOR_END = LEX_XOREQUAL,
+_LEX_OPERATOR1_END = LEX_XOREQUAL,
     LEX_ARROW_FUNCTION,
 
     // reserved words
@@ -100,7 +115,13 @@ _LEX_R_LIST_START,
     LEX_R_SUPER,
     LEX_R_STATIC,
     LEX_R_OF,
-_LEX_R_LIST_END = LEX_R_OF /* always the last entry */
+_LEX_R_LIST_END = LEX_R_OF, /* always the last entry for symbols */
+
+_LEX_OPERATOR2_START = _LEX_R_LIST_END+10, // padding for adding new symbols in the future!
+    LEX_NULLISH = _LEX_OPERATOR2_START,
+_LEX_OPERATOR2_END = LEX_NULLISH,
+
+_LEX_TOKENS_END = _LEX_OPERATOR2_END, /* always the last entry for symbols */
 } LEX_TYPES;
 
 
