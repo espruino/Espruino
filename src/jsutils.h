@@ -40,6 +40,7 @@
 #ifdef SAVE_ON_FLASH
 #define SAVE_ON_FLASH_MATH 1
 #define ESPR_NO_OBJECT_METHODS 1
+#define ESPR_NO_PROPERTY_SHORTHAND 1
 #define ESPR_NO_GET_SET 1
 #define ESPR_NO_LINE_NUMBERS 1
 #define ESPR_NO_LET_SCOPING 1
@@ -409,7 +410,7 @@ typedef int64_t JsSysTime;
   #define UNALIGNED_UINT16(addr) ((((uint16_t)*((uint8_t*)(addr)+1)) << 8) | (*(uint8_t*)(addr)))
 #else
   #define UNALIGNED_UINT16(addr) (*(uint16_t*)addr)
-#endif 
+#endif
 
 bool isWhitespace(char ch);
 bool isNumeric(char ch);
@@ -458,15 +459,15 @@ void jsAssertFail(const char *file, int line, const char *expr);
 
 /*
 #if defined(DEBUG) || __FILE__ == DEBUG_FILE
-   #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__) 
- #else 
-   #define jsDebug(dbg_type, format, ...) do { } while(0) 
+   #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__)
+ #else
+   #define jsDebug(dbg_type, format, ...) do { } while(0)
  #endif
  */
 #if (defined DEBUG ) ||  ( defined __FILE__ == DEBUG_FILE)
-  #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__) 
-#else 
-  #define jsDebug(dbg_type, format, ...) do { } while(0) 
+  #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__)
+#else
+  #define jsDebug(dbg_type, format, ...) do { } while(0)
 #endif
 
 #ifndef USE_FLASH_MEMORY

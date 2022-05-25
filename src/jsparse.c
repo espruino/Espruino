@@ -1259,8 +1259,12 @@ NO_INLINE JsVar *jspeFactorObject() {
     JSP_MATCH_WITH_RETURN('{', contents);
     while (!JSP_SHOULDNT_PARSE && lex->tk != '}') {
       JsVar *varName = 0;
+#ifndef ESPR_NO_PROPERTY_SHORTHAND
+      bool isIdentifier = 0;
+#endif
       // we only allow strings or IDs on the left hand side of an initialisation
       if (jslIsIDOrReservedWord()) {
+        isIdentifier = lex->tk == LEX_ID;
         if (JSP_SHOULD_EXECUTE)
           varName = jslGetTokenValueAsVar();
         jslGetNextToken(); // skip over current token
@@ -1292,6 +1296,20 @@ NO_INLINE JsVar *jspeFactorObject() {
         if (contentsName) {
           JsVar *method = jspeFunctionDefinition(false);
           jsvUnLock2(jsvSetValueOfName(contentsName, method), method);
+        }
+      } else
+#endif
+#ifndef ESPR_NO_PROPERTY_SHORTHAND
+      if (isIdentifier && (lex->tk == ',' || lex->tk == '}') && jsvIsString(varName)) {
+        if (JSP_SHOULD_EXECUTE) {
+          varName = jsvAsArrayIndexAndUnLock(varName);
+          JsVar *contentsName = jsvFindChildFromVar(contents, varName, true);
+          if (contentsName) {
+            char buf[JSLEX_MAX_TOKEN_LENGTH];
+            jsvGetString(varName, buf, JSLEX_MAX_TOKEN_LENGTH);
+            JsVar *value = jsvSkipNameAndUnLock(jspGetNamedVariable(buf)); // value can be 0 (could be undefined!)
+            jsvUnLock2(jsvSetValueOfName(contentsName, value), value);
+          }
         }
       } else
 #endif
