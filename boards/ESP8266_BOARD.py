@@ -28,6 +28,9 @@ info = {
      #'GRAPHICS',
      'CRYPTO',
      'NEOPIXEL',
+   ],
+   'makefile' : [
+     'DEFINES+=-DSAVE_ON_FLASH_MATH', 
    ]
  }
 };
