@@ -1897,6 +1897,7 @@ NO_INLINE JsVar *jspeUnaryExpression() {
 // Get the precedence of a BinaryExpression - or return 0 if not one
 unsigned int jspeGetBinaryExpressionPrecedence(int op) {
   switch (op) {
+  case LEX_NULLISH:
   case LEX_OROR: return 1; break;
   case LEX_ANDAND: return 2; break;
   case '|' : return 3; break;
@@ -1954,6 +1955,20 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
         jsvUnLock(a);
         a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       }
+    } else if (op==LEX_NULLISH){
+      JsVar* value = jsvSkipName(a);
+      if (jsvIsNull(value) || jsvIsUndefined(value)) {
+        // use second argument (B)
+        if(!jsvIsUndefined(value)) jsvUnLock(value);
+        jsvUnLock(a);
+        a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
+      } else {
+        jsvUnLock(value);
+        // use first argument (A)
+        JSP_SAVE_EXECUTE();
+        jspSetNoExecute();
+        jsvUnLock(__jspeBinaryExpression(jspeUnaryExpression(),precedence));
+        JSP_RESTORE_EXECUTE();}
     } else { // else it's a more 'normal' logical expression - just use Maths
       JsVar *b = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       if (JSP_SHOULD_EXECUTE) {
