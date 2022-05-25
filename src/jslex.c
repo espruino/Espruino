@@ -112,6 +112,7 @@ typedef enum {
   JSLJT_NUMBER,
   JSLJT_STRING,
 
+  JSJLT_QUESTION,
   JSLJT_EXCLAMATION,
   JSLJT_PLUS,
   JSLJT_MINUS,
@@ -196,7 +197,7 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+2] = {
     JSLJT_LESSTHAN, // <
     JSLJT_EQUAL, // =
     JSLJT_GREATERTHAN, // >
-    JSLJT_SINGLE_CHAR, // ?
+    JSJLT_QUESTION, // ?
     // 64
     JSLJT_SINGLE_CHAR, // @
     JSLJT_ID, // A
@@ -580,45 +581,50 @@ void jslGetNextToken() {
         }
       } break;
       case JSLJT_PLUS: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // +=
         lex->tk = LEX_PLUSEQUAL;
         jslGetNextCh();
-      } else if (lex->currCh=='+') {
+      } else if (lex->currCh=='+') { // ++
         lex->tk = LEX_PLUSPLUS;
         jslGetNextCh();
       } break;
       case JSLJT_MINUS: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // -=
         lex->tk = LEX_MINUSEQUAL;
         jslGetNextCh();
-      } else if (lex->currCh=='-') {
+      } else if (lex->currCh=='-') { // --
         lex->tk = LEX_MINUSMINUS;
         jslGetNextCh();
       } break;
       case JSLJT_AND: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // &=
         lex->tk = LEX_ANDEQUAL;
         jslGetNextCh();
-      } else if (lex->currCh=='&') {
+      } else if (lex->currCh=='&') { // &&
         lex->tk = LEX_ANDAND;
         jslGetNextCh();
       } break;
       case JSLJT_OR: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // |=
         lex->tk = LEX_OREQUAL;
         jslGetNextCh();
-      } else if (lex->currCh=='|') {
+      } else if (lex->currCh=='|') { // ||
         lex->tk = LEX_OROR;
         jslGetNextCh();
       } break;
       case JSLJT_TOPHAT: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // ^=
         lex->tk = LEX_XOREQUAL;
         jslGetNextCh();
       } break;
       case JSLJT_STAR: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // *=
         lex->tk = LEX_MULEQUAL;
+        jslGetNextCh();
+      } break;
+      case JSJLT_QUESTION: jslSingleChar();
+      if(lex->currCh=='?'){ // ??
+        lex->tk = LEX_NULLISH;
         jslGetNextCh();
       } break;
       case JSLJT_FORWARDSLASH:
@@ -811,6 +817,7 @@ const char* jslReservedWordAsString(int token) {
       /* LEX_ANDAND :       */ "&&\0"
       /* LEX_OREQUAL :      */ "|=\0"
       /* LEX_OROR :         */ "||\0"
+      /* LEX_NULLISH :      */ "??\0"
       /* LEX_XOREQUAL :     */ "^=\0"
       /* LEX_ARROW_FUNCTION */ "=>\0"
 

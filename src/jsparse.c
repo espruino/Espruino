@@ -1877,6 +1877,7 @@ NO_INLINE JsVar *jspeUnaryExpression() {
 // Get the precedence of a BinaryExpression - or return 0 if not one
 unsigned int jspeGetBinaryExpressionPrecedence(int op) {
   switch (op) {
+  case LEX_NULLISH:
   case LEX_OROR: return 1; break;
   case LEX_ANDAND: return 2; break;
   case '|' : return 3; break;

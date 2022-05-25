@@ -56,6 +56,7 @@ _LEX_OPERATOR_START,
     LEX_ANDAND,
     LEX_OREQUAL,
     LEX_OROR,
+    LEX_NULLISH,
     LEX_XOREQUAL,
     // Note: single character operators are represented by themselves
 _LEX_OPERATOR_END = LEX_XOREQUAL,
