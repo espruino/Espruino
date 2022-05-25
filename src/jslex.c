@@ -542,8 +542,8 @@ void jslGetNextToken() {
             }
           }
           lex->tk = LEX_INT;
-          while (isNumeric(lex->currCh) || (!canBeFloating && isHexadecimal(lex->currCh))) {
-            jslTokenAppendChar(lex->currCh);
+          while (isNumeric(lex->currCh) || (!canBeFloating && isHexadecimal(lex->currCh)) || lex->currCh=='_') {
+            if (lex->currCh != '_') jslTokenAppendChar(lex->currCh);
             jslGetNextCh();
           }
           if (canBeFloating && lex->currCh=='.') {
@@ -554,18 +554,24 @@ void jslGetNextToken() {
         }
         // parse fractional part
         if (lex->tk == LEX_FLOAT) {
-          while (isNumeric(lex->currCh)) {
-            jslTokenAppendChar(lex->currCh);
+          while (isNumeric(lex->currCh) || lex->currCh=='_') {
+            if (lex->currCh != '_') jslTokenAppendChar(lex->currCh);
             jslGetNextCh();
           }
         }
         // do fancy e-style floating point
         if (canBeFloating && (lex->currCh=='e'||lex->currCh=='E')) {
           lex->tk = LEX_FLOAT;
-          jslTokenAppendChar(lex->currCh); jslGetNextCh();
-          if (lex->currCh=='-' || lex->currCh=='+') { jslTokenAppendChar(lex->currCh); jslGetNextCh(); }
-          while (isNumeric(lex->currCh)) {
-            jslTokenAppendChar(lex->currCh); jslGetNextCh();
+          jslTokenAppendChar(lex->currCh);
+          jslGetNextCh();
+          if (lex->currCh=='-' || lex->currCh=='+')
+          {
+            jslTokenAppendChar(lex->currCh);
+            jslGetNextCh();
+          }
+          while (isNumeric(lex->currCh) || lex->currCh=='_') {
+            if (lex->currCh != '_') jslTokenAppendChar(lex->currCh);
+            jslGetNextCh();
           }
         }
       } break;
