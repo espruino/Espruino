@@ -2173,13 +2173,35 @@ NO_INLINE void jspeSkipBlock() {
   }
 }
 
-/** Parse a block `{ ... }` but assume brackets are already parsed */
-NO_INLINE void jspeBlockNoBrackets() {
+/// Called when a block starts, ensures that 'let/const' have the correct scoping
+NO_INLINE JsVar * jspeBlockStart() {
 #ifndef ESPR_NO_LET_SCOPING
   execInfo.blockCount++;
   JsVar *oldBlockScope = execInfo.blockScope;
   execInfo.blockScope = 0;
+  return oldBlockScope;
+#else
+  return 0;
 #endif
+}
+
+/// Called when a block ends, ensures that 'let/const' have the correct scoping. Pass in the return value of jspeBlockStart
+NO_INLINE void jspeBlockEnd(JsVar *oldBlockScope) {
+#ifndef ESPR_NO_LET_SCOPING
+  // If we had a block scope defined, for LET/CONST, remove it
+  if (execInfo.blockScope) {
+    jspeiRemoveScope();
+    jsvUnLock(execInfo.blockScope);
+    execInfo.blockScope = 0;
+  }
+  execInfo.blockScope = oldBlockScope;
+  execInfo.blockCount--;
+#endif
+}
+
+/** Parse a block `{ ... }` but assume brackets are already parsed */
+NO_INLINE void jspeBlockNoBrackets() {
+  JsVar *oldBlockScope = jspeBlockStart();
   if (JSP_SHOULD_EXECUTE) {
     while (lex->tk && lex->tk!='}') {
       JsVar *a = jspeStatement();
@@ -2206,16 +2228,7 @@ NO_INLINE void jspeBlockNoBrackets() {
   } else {
     jspeSkipBlock();
   }
-#ifndef ESPR_NO_LET_SCOPING
-  // If we had a block scope defined, for LET/CONST, remove it
-  if (execInfo.blockScope) {
-    jspeiRemoveScope();
-    jsvUnLock(execInfo.blockScope);
-    execInfo.blockScope = 0;
-  }
-  execInfo.blockScope = oldBlockScope;
-  execInfo.blockCount--;
-#endif
+  jspeBlockEnd(oldBlockScope);
 }
 
 /** Parse a block `{ ... }` */
@@ -2519,6 +2532,7 @@ NO_INLINE JsVar *jspeStatementFor() {
   JSP_MATCH('(');
   bool wasInLoop = (execInfo.execute&EXEC_IN_LOOP)!=0;
   execInfo.execute |= EXEC_FOR_INIT;
+  JsVar *oldBlockScope = jspeBlockStart();
   // initialisation
   JsVar *forStatement = 0;
   // we could have 'for (;;)' - so don't munch up our semicolon if that's all we have
@@ -2526,6 +2540,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     forStatement = jspeStatement();
   if (jspIsInterrupted()) {
     jsvUnLock(forStatement);
+    jspeBlockEnd(oldBlockScope);
     return 0;
   }
   execInfo.execute &= (JsExecFlags)~EXEC_FOR_INIT;
@@ -2537,6 +2552,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     if (JSP_SHOULD_EXECUTE && !jsvIsName(forStatement)) {
       jsvUnLock(forStatement);
       jsExceptionHere(JSET_ERROR, "for(a %s b) - 'a' must be a variable name, not %t", isForOf?"of":"in", forStatement);
+      jspeBlockEnd(oldBlockScope);
       return 0;
     }
 
@@ -2545,7 +2561,7 @@ NO_INLINE JsVar *jspeStatementFor() {
 
     JslCharPos forBodyStart;
     jslCharPosFromLex(&forBodyStart);
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock2(forStatement, array);jslCharPosFree(&forBodyStart), 0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock2(forStatement, array);jslCharPosFree(&forBodyStart);jspeBlockEnd(oldBlockScope);, 0);
 
     // Simply scan over the loop the first time without executing to figure out where it ends
     // OPT: we could skip the first parse and actually execute the first time
@@ -2639,7 +2655,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     jsvUnLock(forStatement);
     JslCharPos forCondStart;
     jslCharPosFromLex(&forCondStart);
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(';',jslCharPosFree(&forCondStart);,0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(';',jslCharPosFree(&forCondStart);jspeBlockEnd(oldBlockScope);jspeBlockEnd(oldBlockScope);,0);
 
     if (lex->tk != ';') {
       JsVar *cond = jspeExpression(); // condition
@@ -2648,7 +2664,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     }
     JslCharPos forIterStart;
     jslCharPosFromLex(&forIterStart);
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(';',jslCharPosFree(&forCondStart);jslCharPosFree(&forIterStart);,0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(';',jslCharPosFree(&forCondStart);jslCharPosFree(&forIterStart);jspeBlockEnd(oldBlockScope);,0);
     if (lex->tk != ')')  { // we could have 'for (;;)'
       JSP_SAVE_EXECUTE();
       jspSetNoExecute();
@@ -2658,7 +2674,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     JslCharPos forBodyStart;
     jslSkipWhiteSpace();
     jslCharPosFromLex(&forBodyStart); // actual for body
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jslCharPosFree(&forCondStart);jslCharPosFree(&forIterStart);jslCharPosFree(&forBodyStart);,0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jslCharPosFree(&forCondStart);jslCharPosFree(&forIterStart);jslCharPosFree(&forBodyStart);jspeBlockEnd(oldBlockScope);,0);
 
     JSP_SAVE_EXECUTE();
     if (!loopCond) jspSetNoExecute();
@@ -2716,6 +2732,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     }
 #endif
   }
+  jspeBlockEnd(oldBlockScope);
   return 0;
 }
 

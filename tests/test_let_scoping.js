@@ -37,10 +37,16 @@ function test2() {
   console.log(x); results.push(x==1);
   console.log(y); results.push(y==3);
   console.log(typeof z);results.push("undefined" == typeof z);
-
 }
 
 test2();
+
+
+function test3() {
+  for(let g=0;g<1;g++);
+  results.push("undefined" == typeof g);
+}
+test3();
 
 console.log("Results:",results);
 
