@@ -2535,6 +2535,7 @@ NO_INLINE JsVar *jspeStatementFor() {
   JsVar *oldBlockScope = jspeBlockStart();
   // initialisation
   JsVar *forStatement = 0;
+  bool startsWithConst = lex->tk==LEX_R_CONST;
   // we could have 'for (;;)' - so don't munch up our semicolon if that's all we have
   if (lex->tk != ';')
     forStatement = jspeStatement();
@@ -2606,8 +2607,11 @@ NO_INLINE JsVar *jspeStatementFor() {
               assert(jsvGetRefs(iteratorValue)==0);
             }
             if (isForOf || iteratorValue) { // could be out of memory
+              // Now write the value to our iterator
               assert(!jsvIsName(iteratorValue));
+              if (startsWithConst) forStatement->flags &= ~JSV_CONSTANT; // for (const i in [1,2,3]) has to work
               jsvReplaceWithOrAddToRoot(forStatement, iteratorValue);
+              if (startsWithConst) forStatement->flags |= JSV_CONSTANT;
               if (iteratorValue!=loopIndexVar) jsvUnLock(iteratorValue);
 
               jslSeekToP(&forBodyStart);
