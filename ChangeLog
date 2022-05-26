@@ -28,6 +28,7 @@
             Added numeric separator support eg. 12_34
             Add Nullish coalescing operator
             Enable releases and cutting edge builds for Puck.js minimal releases (with 98kB of free Storage)
+            nRF5x: Fix memory leak (of address) when using NRF.setScan/requestDevice/findDevice
             
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)

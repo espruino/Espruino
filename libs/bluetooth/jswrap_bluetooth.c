@@ -1836,7 +1836,6 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
     }
     jsvUnLock(arr);
   }
-  jsvUnLock(deviceAddr);
 
   if (deviceMatchedFilters)
     jspExecuteFunction(callback, 0, 1, &device);
