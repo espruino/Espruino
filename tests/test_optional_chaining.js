@@ -2,4 +2,10 @@
 
 var a;
 
-console.log(a?.b.c() ?? 'nothing');
+result = a?.b ?? true;
+result &= a?.b.c ?? true;
+result &= a?.b() ?? true;
+
+a = null;
+
+result &= a?.b ?? true;

@@ -1060,8 +1060,9 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult, bool *isOption
   JsVar *parent = 0;
 
   while (lex->tk==LEX_OPTIONAL_CHAINING || lex->tk=='.' || lex->tk=='[') {
-    *isOptional |= lex->tk == LEX_OPTIONAL_CHAINING;
-    if (lex->tk == '.' || *isOptional) { // ------------------------------------- Record Access
+    bool optionalTk = lex->tk == LEX_OPTIONAL_CHAINING;
+    *isOptional |= optionalTk;
+    if (lex->tk == '.' || optionalTk) { // ------------------------------------- Record Access
       jslGetNextToken();
       if (jslIsIDOrReservedWord()) {
         if (JSP_SHOULD_EXECUTE) {
@@ -1093,6 +1094,15 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult, bool *isOption
         }
         // skip over current token (we checked above that it was an ID or reserved word)
         jslGetNextToken();
+      } else if(lex->tk == '(' && optionalTk) {
+        // the syntax a?.() is now legal
+
+        JsVar *aVar = jsvSkipNameWithParent(a,true,parent);
+
+        jsvUnLock(a);
+        a = aVar;
+
+        break;
       } else {
         // incorrect token - force a match fail by asking for an ID
         JSP_MATCH_WITH_RETURN(LEX_ID, a);
