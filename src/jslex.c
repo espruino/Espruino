@@ -629,8 +629,11 @@ void jslGetNextToken() {
         jslGetNextCh();
       } break;
       case JSJLT_QUESTION: jslSingleChar();
-      if(lex->currCh=='?'){ // ??
+      if (lex->currCh=='?') { // ??
         lex->tk = LEX_NULLISH;
+        jslGetNextCh();
+      } else if(lex->currCh=='.') { //?.
+        lex->tk = LEX_OPTIONAL_CHAINING;
         jslGetNextCh();
       } break;
       case JSLJT_FORWARDSLASH:
@@ -864,6 +867,7 @@ const char* jslReservedWordAsString(int token) {
 
       // operators 2
       /* LEX_NULLISH :   */ "??\0"
+      /* LEX_OPTIONAL_CHAINING*/ "?.\0"
       ;
   unsigned int p = 0;
   int n = token-_LEX_TOKENS_START;

@@ -1059,9 +1059,10 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
   /* The parent if we're executing a method call */
   JsVar *parent = 0;
 
-  while (lex->tk=='.' || lex->tk=='[') {
-    if (lex->tk == '.') { // ------------------------------------- Record Access
-      JSP_ASSERT_MATCH('.');
+  while (lex->tk==LEX_OPTIONAL_CHAINING || lex->tk=='.' || lex->tk=='[') {
+    bool isOptional = lex->tk == LEX_OPTIONAL_CHAINING;
+    if (lex->tk == '.' || isOptional) { // ------------------------------------- Record Access
+      jslGetNextToken();
       if (jslIsIDOrReservedWord()) {
         if (JSP_SHOULD_EXECUTE) {
           // Note: name will go away when we parse something else!
@@ -1078,6 +1079,8 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               JsVar *nameVar = jslGetTokenValueAsVar();
               child = jsvCreateNewChild(aVar, nameVar, 0);
               jsvUnLock(nameVar);
+            } else if (isOptional) {
+              child = aVar;
             } else {
               // could have been a string...
               jsExceptionHere(JSET_ERROR, "Cannot read property '%s' of %s", name, jsvIsUndefined(aVar) ? "undefined" : "null");
@@ -1198,6 +1201,9 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
 #endif
 
   while ((lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) && !jspIsInterrupted()) {
+    if (jsvIsUndefined(a)) {
+      break;
+    }
     JsVar *funcName = a;
     JsVar *func = jsvSkipName(funcName);
 
