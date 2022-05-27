@@ -1,5 +1,5 @@
 // Testing optional chaining
 
-var a = {};
+var a;
 
-result = a?.b();
+console.log(a?.b.c() ?? 'nothing');
