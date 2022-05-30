@@ -1082,7 +1082,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
           if (aVar)
             child = jspGetNamedField(aVar, name, true);
           if (!child) {
-            if (!jsvIsUndefined(aVar)) {
+            if (!jsvIsNullish(aVar)) {
               // if no child found, create a pointer to where it could be
               // as we don't want to allocate it until it's written
               JsVar *nameVar = jslGetTokenValueAsVar();
@@ -1090,7 +1090,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               jsvUnLock(nameVar);
             } else {
               // could have been a string...
-              jsExceptionHere(JSET_ERROR, "Cannot read property '%s' of undefined", name);
+              jsExceptionHere(JSET_ERROR, "Cannot read property '%s' of %s", name, jsvIsUndefined(aVar) ? "undefined" : "null");
             }
           }
           jsvUnLock(parent);
@@ -1957,9 +1957,9 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
       }
     } else if (op==LEX_NULLISH){
       JsVar* value = jsvSkipName(a);
-      if (jsvIsNull(value) || jsvIsUndefined(value)) {
+      if (jsvIsNullish(value)) {
         // use second argument (B)
-        if(!jsvIsUndefined(value)) jsvUnLock(value);
+        if (!jsvIsUndefined(value)) jsvUnLock(value);
         jsvUnLock(a);
         a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       } else {
