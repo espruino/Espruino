@@ -388,6 +388,7 @@ bool jsvIsArrayBufferName(const JsVar *v);
 bool jsvIsNativeFunction(const JsVar *v);
 bool jsvIsUndefined(const JsVar *v);
 bool jsvIsNull(const JsVar *v);
+bool jsvIsNullish(const JsVar *v);
 bool jsvIsBasic(const JsVar *v); ///< Is this *not* an array/object/etc
 bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
 bool jsvIsBasicName(const JsVar *v); ///< Simple NAME that links to a variable via firstChild
