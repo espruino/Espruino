@@ -1081,7 +1081,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult, bool *isOption
               child = jsvCreateNewChild(aVar, nameVar, 0);
               jsvUnLock(nameVar);
             } else if (*isOptional) {
-              child = aVar;
+              child = 0; // undefined
             } else {
               // could have been a string...
               jsExceptionHere(JSET_ERROR, "Cannot read property '%s' of %s", name, jsvIsUndefined(aVar) ? "undefined" : "null");
@@ -1094,15 +1094,18 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult, bool *isOption
         }
         // skip over current token (we checked above that it was an ID or reserved word)
         jslGetNextToken();
-      } else if(lex->tk == '(' && optionalTk) {
-        // the syntax a?.() is now legal
+      } else if ((lex->tk == '(' || lex->tk == '[') && optionalTk) {
+        // handle a?.() and a?.[0]
 
-        JsVar *aVar = jsvSkipNameWithParent(a,true,parent);
+        JsVar *aVar = jsvSkipNameWithParent(a, true, parent);
 
         jsvUnLock(a);
-        a = aVar;
-
-        break;
+        if (jsvIsNullish(aVar)) {
+          a = 0; // undefined
+        } else {
+          a = aVar;
+        }
+        continue;
       } else {
         // incorrect token - force a match fail by asking for an ID
         JSP_MATCH_WITH_RETURN(LEX_ID, a);
@@ -1111,6 +1114,13 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult, bool *isOption
       JsVar *index;
       JSP_ASSERT_MATCH('[');
       if (!jspCheckStackPosition()) return parent;
+
+      JSP_SAVE_EXECUTE();
+      if (jsvIsUndefined(a) && *isOptional) {
+        // there was a previous a?.b where a was undefined
+        jspSetNoExecute();
+      }
+
       index = jsvSkipNameAndUnLock(jspeAssignmentExpression());
       JSP_MATCH_WITH_CLEANUP_AND_RETURN(']', jsvUnLock2(parent, index);, a);
       if (JSP_SHOULD_EXECUTE) {
@@ -1136,6 +1146,8 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult, bool *isOption
         jsvUnLock(aVar);
       }
       jsvUnLock(index);
+
+      JSP_RESTORE_EXECUTE();
     } else {
       assert(0);
     }
