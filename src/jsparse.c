@@ -1942,28 +1942,29 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
     // we don't bother to execute the other op. Even if not
     // we need to tell mathsOp it's an & or |
     if (op==LEX_ANDAND || op==LEX_OROR) {
-      bool aValue = jsvGetBoolAndUnLock(jsvSkipName(a));
+      JsVar *av = jsvSkipNameAndUnLock(a);
+      bool aValue = jsvGetBool(av);
       if ((!aValue && op==LEX_ANDAND) ||
           (aValue && op==LEX_OROR)) {
         // use first argument (A)
+        a = av;
         JSP_SAVE_EXECUTE();
         jspSetNoExecute();
         jsvUnLock(__jspeBinaryExpression(jspeUnaryExpression(),precedence));
         JSP_RESTORE_EXECUTE();
       } else {
         // use second argument (B)
-        jsvUnLock(a);
+        jsvUnLock(av);
         a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       }
     } else if (op==LEX_NULLISH){
-      JsVar* value = jsvSkipName(a);
+      JsVar* value = jsvSkipNameAndUnLock(a);
       if (jsvIsNull(value) || jsvIsUndefined(value)) {
         // use second argument (B)
         if(!jsvIsUndefined(value)) jsvUnLock(value);
-        jsvUnLock(a);
         a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       } else {
-        jsvUnLock(value);
+        a = value;
         // use first argument (A)
         JSP_SAVE_EXECUTE();
         jspSetNoExecute();
@@ -2063,7 +2064,7 @@ NO_INLINE JsVar *__jspeConditionalExpression(JsVar *lhs) {
       bool first = jsvGetBoolAndUnLock(jsvSkipName(lhs));
       jsvUnLock(lhs);
       if (first) {
-        lhs = jspeAssignmentExpression();
+        lhs = jsvSkipNameAndUnLock(jspeAssignmentExpression());
         JSP_MATCH(':');
         JSP_SAVE_EXECUTE();
         jspSetNoExecute();
@@ -2075,7 +2076,7 @@ NO_INLINE JsVar *__jspeConditionalExpression(JsVar *lhs) {
         jsvUnLock(jspeAssignmentExpression());
         JSP_RESTORE_EXECUTE();
         JSP_MATCH(':');
-        lhs = jspeAssignmentExpression();
+        lhs = jsvSkipNameAndUnLock(jspeAssignmentExpression());
       }
     }
   }

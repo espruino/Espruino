@@ -20,6 +20,9 @@ result &= (d ?? 1) === 0;
 var e = false;
 result &= (e ?? 1) === false;
 
+var e = null;
+result &= (e ?? c);
+
 // Check token is handled correctly by the internal pretokeniser
 E.setFlags({pretokenise:1})
 function a(a) { return  a??5 }
