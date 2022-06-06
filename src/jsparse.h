@@ -198,13 +198,6 @@ JsVar *jspGetNamedVariable(const char *tokenName);
 JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName);
 JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName);
 
-/** Call the function named on the given object. For example you might call:
- *
- *  JsVar *str = jspCallNamedFunction(var, "toString", 0, 0);
- */
-JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **argPtr);
-
-
 // These are exported for the Web IDE's compiler. See exportPtrs in jswrap_process.c
 JsVar *jspeiFindInScopes(const char *name);
 

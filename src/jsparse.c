@@ -783,10 +783,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             bool hadDebuggerNextLineOnly = false;
 
             if (execInfo.execute&EXEC_DEBUGGER_STEP_INTO) {
-	      if (functionName)
-		jsiConsolePrintf("Stepping into %v\n", functionName);
-	      else
-		jsiConsolePrintf("Stepping into function\n", functionName);
+              if (functionName)
+                jsiConsolePrintf("Stepping into %v\n", functionName);
+              else
+                jsiConsolePrintf("Stepping into function\n", functionName);
             } else {
               hadDebuggerNextLineOnly = execInfo.execute&EXEC_DEBUGGER_NEXT_LINE;
               if (hadDebuggerNextLineOnly)
@@ -1053,16 +1053,6 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
 
   if (returnName) return child;
   else return jsvSkipNameAndUnLock(child);
-}
-
-/// Call the named function on the object - whether it's built in, or predefined. Returns the return value of the function.
-JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **argPtr) {
-  JsVar *child = jspGetNamedField(object, name, false);
-  JsVar *r = 0;
-  if (jsvIsFunction(child))
-    r = jspeFunctionCall(child, 0, object, false, argCount, argPtr);
-  jsvUnLock(child);
-  return r;
 }
 
 NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
@@ -1942,17 +1932,19 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
     // we don't bother to execute the other op. Even if not
     // we need to tell mathsOp it's an & or |
     if (op==LEX_ANDAND || op==LEX_OROR) {
-      bool aValue = jsvGetBoolAndUnLock(jsvSkipName(a));
+      JsVar *av = jsvSkipNameAndUnLock(a);
+      bool aValue = jsvGetBool(av);
       if ((!aValue && op==LEX_ANDAND) ||
           (aValue && op==LEX_OROR)) {
         // use first argument (A)
+        a = av;
         JSP_SAVE_EXECUTE();
         jspSetNoExecute();
         jsvUnLock(__jspeBinaryExpression(jspeUnaryExpression(),precedence));
         JSP_RESTORE_EXECUTE();
       } else {
         // use second argument (B)
-        jsvUnLock(a);
+        jsvUnLock(av);
         a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       }
     } else if (op==LEX_NULLISH){
@@ -1963,7 +1955,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
         jsvUnLock(a);
         a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       } else {
-        jsvUnLock(value);
+        a = value;
         // use first argument (A)
         JSP_SAVE_EXECUTE();
         jspSetNoExecute();
@@ -2063,7 +2055,7 @@ NO_INLINE JsVar *__jspeConditionalExpression(JsVar *lhs) {
       bool first = jsvGetBoolAndUnLock(jsvSkipName(lhs));
       jsvUnLock(lhs);
       if (first) {
-        lhs = jspeAssignmentExpression();
+        lhs = jsvSkipNameAndUnLock(jspeAssignmentExpression());
         JSP_MATCH(':');
         JSP_SAVE_EXECUTE();
         jspSetNoExecute();
@@ -2075,7 +2067,7 @@ NO_INLINE JsVar *__jspeConditionalExpression(JsVar *lhs) {
         jsvUnLock(jspeAssignmentExpression());
         JSP_RESTORE_EXECUTE();
         JSP_MATCH(':');
-        lhs = jspeAssignmentExpression();
+        lhs = jsvSkipNameAndUnLock(jspeAssignmentExpression());
       }
     }
   }
