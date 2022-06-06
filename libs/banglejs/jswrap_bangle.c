@@ -576,6 +576,7 @@ JsVar *promisePressure;
 double barometerPressure;
 double barometerTemperature;
 double barometerAltitude;
+double barometerSeaLevelPressure = 1013.25; // Standard atmospheric pressure (millibars)
 bool jswrap_banglejs_barometerPoll();
 JsVar *jswrap_banglejs_getBarometerObject();
 #endif // PRESSURE_DEVICE
@@ -2011,8 +2012,8 @@ void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
 Set internal options used for gestures, etc...
 
 * `wakeOnBTN1` should the LCD turn on when BTN1 is pressed? default = `true`
-* `wakeOnBTN2` should the LCD turn on when BTN2 is pressed? default = `true`
-* `wakeOnBTN3` should the LCD turn on when BTN3 is pressed? default = `true`
+* `wakeOnBTN2` (Bangle.js 1) should the LCD turn on when BTN2 is pressed? default = `true`
+* `wakeOnBTN3` (Bangle.js 1) should the LCD turn on when BTN3 is pressed? default = `true`
 * `wakeOnFaceUp` should the LCD turn on when the watch is turned face up? default = `false`
 * `wakeOnTouch` should the LCD turn on when the touchscreen is pressed? default = `false`
 * `wakeOnTwist` should the LCD turn on when the watch is twisted? default = `true`
@@ -2030,6 +2031,7 @@ Set internal options used for gestures, etc...
 * `lcdPowerTimeout` how many milliseconds before the screen turns off
 * `backlightTimeout` how many milliseconds before the screen's backlight turns off
 * `hrmPollInterval` set the requested poll interval (in milliseconds) for the heart rate monitor. On Bangle.js 2 only 10,20,40,80,160,200 ms are supported, and polling rate may not be exact. The algorithm's filtering is tuned for 20-40ms poll intervals, so higher/lower intervals may effect the reliability of the BPM reading.
+* `seaLevelPressure` (Bangle.js 2) Normally 1013.25 millibars - this is used for calculating altitude with the pressure sensor
 
 Where accelerations are used they are in internal units, where `8192 = 1g`
 
@@ -2051,6 +2053,9 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
   jsvConfigObject configs[] = {
 #ifdef HEARTRATE
       {"hrmPollInterval", JSV_INTEGER, &_hrmPollInterval},
+#endif
+#ifdef PRESSURE_DEVICE
+      {"seaLevelPressure", JSV_FLOAT, &barometerSeaLevelPressure},
 #endif
       {"gestureStartThresh", JSV_INTEGER, &_accelGestureStartThresh},
       {"gestureEndThresh", JSV_INTEGER, &_accelGestureEndThresh},
@@ -4206,8 +4211,7 @@ bool jswrap_banglejs_barometerPoll() {
                        traw_scaled * barometer_c01 +
                        traw_scaled * praw_scaled * ( barometer_c11 + praw_scaled * barometer_c21));
     barometerPressure = pressurePa / 100; // convert Pa to hPa/millibar
-    double seaLevelPressure = 1013.25; // Standard atmospheric pressure
-    barometerAltitude = 44330 * (1.0 - jswrap_math_pow(barometerPressure / seaLevelPressure, 0.1903));
+    barometerAltitude = 44330 * (1.0 - jswrap_math_pow(barometerPressure / barometerSeaLevelPressure, 0.1903));
     // TODO: temperature corrected altitude?
     return true;
   }
@@ -4249,8 +4253,7 @@ bool jswrap_banglejs_barometerPoll() {
       barometerPressure = 0;
     }
 
-    double seaLevelPressure = 1013.25; // Standard atmospheric pressure
-    barometerAltitude = 44330 * (1.0 - jswrap_math_pow(barometerPressure / seaLevelPressure, 0.1903));
+    barometerAltitude = 44330 * (1.0 - jswrap_math_pow(barometerPressure / barometerSeaLevelPressure, 0.1903));
     // TODO: temperature corrected altitude?
     return true;
   }
