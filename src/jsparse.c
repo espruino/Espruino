@@ -783,10 +783,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             bool hadDebuggerNextLineOnly = false;
 
             if (execInfo.execute&EXEC_DEBUGGER_STEP_INTO) {
-	      if (functionName)
-		jsiConsolePrintf("Stepping into %v\n", functionName);
-	      else
-		jsiConsolePrintf("Stepping into function\n", functionName);
+              if (functionName)
+                jsiConsolePrintf("Stepping into %v\n", functionName);
+              else
+                jsiConsolePrintf("Stepping into function\n", functionName);
             } else {
               hadDebuggerNextLineOnly = execInfo.execute&EXEC_DEBUGGER_NEXT_LINE;
               if (hadDebuggerNextLineOnly)
@@ -1053,16 +1053,6 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
 
   if (returnName) return child;
   else return jsvSkipNameAndUnLock(child);
-}
-
-/// Call the named function on the object - whether it's built in, or predefined. Returns the return value of the function.
-JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **argPtr) {
-  JsVar *child = jspGetNamedField(object, name, false);
-  JsVar *r = 0;
-  if (jsvIsFunction(child))
-    r = jspeFunctionCall(child, 0, object, false, argCount, argPtr);
-  jsvUnLock(child);
-  return r;
 }
 
 NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
