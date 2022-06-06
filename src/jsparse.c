@@ -3241,12 +3241,19 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   JsVar *exportsName = jsvAddNamedChild(scope, scopeExports, "exports");
   jsvUnLock2(scopeExports, jsvAddNamedChild(scope, scope, "module"));
 
-  JsExecFlags oldExecute = execInfo.execute;
-  JsVar *oldThisVar = execInfo.thisVar;
+  JsExecInfo oldExecInfo = execInfo;
+#ifndef ESPR_NO_LET_SCOPING
+  execInfo.baseScope = scopeExports;
+  execInfo.blockScope = 0;
+  execInfo.blockCount = 0;
+#endif
   execInfo.thisVar = scopeExports; // set 'this' variable to exports
   jsvUnLock(jspEvaluateVar(moduleContents, scope, 0));
-  execInfo.thisVar = oldThisVar;
-  execInfo.execute = oldExecute; // make sure we fully restore state after parsing a module
+#ifndef ESPR_NO_LET_SCOPING
+  assert(execInfo.blockCount==0);
+  assert(execInfo.blockScope==0);
+#endif
+  execInfo = oldExecInfo; // make sure we fully restore state after parsing a module
 
   jsvUnLock2(moduleContents, scope);
   return jsvSkipNameAndUnLock(exportsName);
