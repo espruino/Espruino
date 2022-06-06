@@ -115,6 +115,7 @@ bool jsvIsArrayBufferName(const JsVar *v) { return v && (v->flags&(JSV_VARTYPEMA
 bool jsvIsNativeFunction(const JsVar *v) { return v && (v->flags&(JSV_VARTYPEMASK))==JSV_NATIVE_FUNCTION; }
 bool jsvIsUndefined(const JsVar *v) { return v==0; }
 bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
+bool jsvIsNullish(const JsVar *v) { return jsvIsUndefined(v) || jsvIsNull(v); }
 bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
 bool jsvIsName(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_NAME_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_NAME_END; } ///< NAMEs are what's used to name a variable (it is not the data itself)
 bool jsvIsBasicName(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_NAME_STRING_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_NAME_STRING_MAX; } ///< Simple NAME that links to a variable via firstChild
@@ -3511,7 +3512,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
 
     if (jsvIsNativeFunction(a) || jsvIsNativeFunction(b)) {
       // even if one is not native, the contents will be different
-      equal = a && b && 
+      equal = a && b &&
           a->varData.native.ptr == b->varData.native.ptr &&
           a->varData.native.argTypes == b->varData.native.argTypes &&
           jsvGetFirstChild(a) == jsvGetFirstChild(b);
