@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "heartrate.h"
+#include "hrm.h"
 #include "jshardware.h"
 
 /*
