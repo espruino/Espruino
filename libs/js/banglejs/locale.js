@@ -3,7 +3,7 @@ function round(n, dp) {
   var p = Math.min(dp,dp - Math.floor(Math.log(n)/Math.log(10)));
   return n.toFixed(p);
 }
-exports = { name : "en_GB", currencySym:"£",
+exports = { name : "system", currencySym:"£",
   translate : str=>str, // as-is
   date : (d,short) => short?("0"+d.getDate()).substr(-2)+"/"+("0"+(d.getMonth()+1)).substr(-2)+"/"+d.getFullYear():d.toString().substr(4,11), // Date to "Feb 28 2020" or "28/02/2020"(short)
   time : (d,short) => { // Date to  "4:15.28 pm" or "15:42"(short)
