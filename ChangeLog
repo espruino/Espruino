@@ -34,6 +34,7 @@
             Bangle.js: speed up HRM average adjustment (specifically when sample rate is 25Hz, eg. for Bangle.js 2)
             Bangle.js: Change default distance units to m,km (from m,miles) (fix #2209, fix #2210)
             Bangle.js: Rename default locale to 'system' (from 'en_GB')
+            Ctrl-C will now *not* break out of short-running intervals/watches, only long-running ones
             
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
