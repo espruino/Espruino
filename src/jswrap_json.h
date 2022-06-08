@@ -28,10 +28,11 @@ typedef enum {
   JSON_NO_UNDEFINED      = 64, //< don't output undefined keys in objects, and use null for undefined in arrays
   JSON_ARRAYBUFFER_AS_ARRAY = 128, //< dump arraybuffers as arrays
   JSON_SHOW_OBJECT_NAMES    = 256, //< Show 'Promise {}'/etc for objects if the type is global
-  JSON_DROP_QUOTES       = 512, //< When outputting objects, drop quotes for alphanumeric field names
-  JSON_JSON_COMPATIBILE    = 1024, /**<
+  JSON_DROP_QUOTES          = 512, //< When outputting objects, drop quotes for alphanumeric field names
+  JSON_JSON_COMPATIBILE     = 1024, /**<
     Only use unicode for escape characters - needed for JSON compatibility
     Don't output NaN for NaN numbers, only 'null'
+    Convert pins to Strings
   */
   JSON_ALLOW_TOJSON      = 2048, //< If there's a .toJSON function in an object, use it and parse that
   // ...

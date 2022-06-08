@@ -41,6 +41,7 @@
             Fix stack overflow if deallocating a massive linked list (fix #2136)
             String substr/substring/slice now work on native/flash strings by changing pointers rather than doing an actual copy (fix #2066)
             Fix over-iteration if breaking out of the very first iteration of FOR loop (fix #2012)
+            JSON.stringify(pin) now returns valid JSON (Pin name as a string). E.toJS still leaves it as an ID (fix #271)
             
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)

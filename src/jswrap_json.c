@@ -464,7 +464,7 @@ void jsfGetJSONWithCallback(JsVar *var, JsVar *varName, JSONFlags flags, const c
       cbprintf(user_callback, user_data, "function ");
       jsfGetJSONForFunctionWithCallback(var, nflags, user_callback, user_data);
     }
-  } else if (jsvIsString(var) && !jsvIsName(var)) {
+  } else if ((jsvIsString(var) && !jsvIsName(var)) || ((flags&JSON_JSON_COMPATIBILE)&&jsvIsPin(var))) {
     if ((flags&JSON_LIMIT) && jsvGetStringLength(var)>JSON_LIMIT_STRING_AMOUNT) {
       // if the string is too big, split it and put dots in the middle
       JsVar *var1 = jsvNewFromStringVar(var, 0, JSON_LIMITED_STRING_AMOUNT);
