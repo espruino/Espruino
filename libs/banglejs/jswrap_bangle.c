@@ -4873,6 +4873,20 @@ On Bangle.js there are a few additions over the standard `graphical_menu`:
   * (Bangle.js 2) `scroller` - the object returned by `E.showScroller` - `scroller.scroll` returns the amount the menu is currently scrolled by
 * In the object specified for editable numbers:
   * (Bangle.js 2) the `format` function is called with `format(value)` in the main menu, `format(value,1)` when in a scrollable list, or `format(value,2)` when in a popup window.
+
+You can also specify menu items as an array (rather than an Object). This can be useful
+if you have menu items with the same title, or you want to `push` menu items onto an
+array:
+
+```
+var menu = [
+  { title:"Something", onchange:function() { print("selected"); } },
+  { title:"On or Off", value:false, onchange: v => print(v) },
+  { title:"A Value", value:3, min:0, max:10, onchange: v => print(v) },
+];
+menu[""] = { title:"Hello" };
+E.showMenu(menu);
+```
 */
 
 /*JSON{

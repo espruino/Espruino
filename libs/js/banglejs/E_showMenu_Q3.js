@@ -8,7 +8,7 @@
   var options = menu[""]||{};
   if (!options.title) options.title="Menu";
   var back = options.back||menu["< Back"];  
-  var keys = Object.keys(menu).filter(k=>k!="" && k!="< Back");
+  var keys = Object.keys(menu).filter(k=>k!=="" && k!="< Back");
   keys.forEach(k => {
     var item = menu[k];
     if ("object" != typeof item) return;
@@ -85,7 +85,7 @@
   };  
   var scr = {
     h : H, c : keys.length/*title*/,
-    scrollMin : -24, scroll : options.scroll===undefined?-24:options.scroll, // title is 24px, rendered at -1
+    scrollMin : -24, scroll : options.scroll??-24, // title is 24px, rendered at -1
     back : back,
     draw : (idx, r) => {
       if (idx<0) // TITLE
@@ -106,11 +106,10 @@
         g.drawImage(/* 9x18 */atob("CRKBAGA4Hg8DwPB4HgcDg8PB4eHg8HAwAA=="), r.x+r.w-21, r.y+H/2-9);
         pad += 16;
       }
-      var l = g.wrapString(keys[idx],r.w-pad);
-      if (l.length>1) {
-        g.setFont("6x15");
-        l = g.wrapString(keys[idx],r.w-pad);
-      }
+      var title = item.title??keys[idx];
+      var l = g.wrapString(title,r.w-pad);
+      if (l.length>1)
+        l = g.setFont("6x15").wrapString(title,r.w-pad);
       g.setFontAlign(-1,0).drawString(l.join("\n"), r.x+12, r.y+H/2);
     },
     select : function(idx) {

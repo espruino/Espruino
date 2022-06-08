@@ -54,6 +54,7 @@
       while (rows--) {
         var name = menuItems[idx];
         var item = items[name];
+        if (item.title) name = item.title;
         var hl = (idx==options.selected && !l.selectEdit);
         g.setColor(hl ? cHighlightBg : cBg);
         g.fillRect(x,iy,x2,iy+options.fontHeight-1);

@@ -46,8 +46,7 @@
       g.reset().setFont('6x8',2).setFontAlign(0,-1,0);
       if (options.predraw) options.predraw(g);
       if (rowmin===undefined && options.title) {
-        g.drawString(options.title,(x+x2)/2,y-options.fontHeight-2);
-        g.drawLine(x,y-2,x2,y-2);
+        g.drawString(options.title,(x+x2)/2,y-options.fontHeight-2).drawLine(x,y-2,x2,y-2);
       }
       if (rowmin!==undefined) {
         if (idx<rowmin) {
@@ -61,27 +60,23 @@
       while (rows--) {
         var name = menuItems[idx];
         var item = items[name];
+        if (item.title) name = item.title;
         var hl = (idx==options.selected && !l.selectEdit);
-        g.setColor(hl ? g.theme.bgH : g.theme.bg);
-        g.fillRect(x,iy,x2,iy+options.fontHeight-1);
-        g.setColor(hl ? g.theme.fgH : g.theme.fg);
-        g.setFontAlign(-1,-1);
-        g.drawString(name,x,iy);
+        g.setColor(hl ? g.theme.bgH : g.theme.bg).fillRect(x,iy,x2,iy+options.fontHeight-1)
+         .setColor(hl ? g.theme.fgH : g.theme.fg).setFontAlign(-1,-1).drawString(name,x,iy);
         if ("object" == typeof item) {
           var xo = x2;
           var v = item.value;
           if (item.format) v=item.format(v);
           if (l.selectEdit && idx==options.selected) {
             xo -= 24 + 1;
-            g.setColor(g.theme.bgH).fillRect(xo-(g.stringWidth(v)+4),iy,x2,iy+options.fontHeight-1);
-            g.setColor(g.theme.fgH).drawImage("\x0c\x05\x81\x00 \x07\x00\xF9\xF0\x0E\x00@",xo,iy+(options.fontHeight-10)/2,{scale:2});
+            g.setColor(g.theme.bgH).fillRect(xo-(g.stringWidth(v)+4),iy,x2,iy+options.fontHeight-1)
+             .setColor(g.theme.fgH).drawImage("\x0c\x05\x81\x00 \x07\x00\xF9\xF0\x0E\x00@",xo,iy+(options.fontHeight-10)/2,{scale:2});
           }
           g.setFontAlign(1,-1);
-          g.drawString(v,xo-2,iy);
-        }
-        else if (l.main) { // inside submenu
-          g.setFontAlign(1,-1);
-          g.drawString(atob(l.main.value==item?"AAoKgQAeH+f7//////3+f4eA":"AAoKgQAeH+YbA8DwPA2Gf4eA"),x2,iy);
+          if (v!==undefined) g.drawString(v,xo-2,iy);
+        } else if (l.main) { // inside submenu
+          g.setFontAlign(1,-1).drawString(atob(l.main.value==item?"AAoKgQAeH+f7//////3+f4eA":"AAoKgQAeH+YbA8DwPA2Gf4eA"),x2,iy);
         }
         g.setColor(g.theme.fg);
         iy += options.fontHeight;
@@ -97,8 +92,7 @@
         0b00010000,
         0b00010000,
         0b00010000
-      )*/,x2+2,40);
-      g.drawImage("\b\b\x01\x10\x10\x10\x10\xFE|8\x10"/*E.toString(8,8,1,
+      )*/,x2+2,40).drawImage("\b\b\x01\x10\x10\x10\x10\xFE|8\x10"/*E.toString(8,8,1,
         0b00010000,
         0b00010000,
         0b00010000,
@@ -107,8 +101,7 @@
         0b01111100,
         0b00111000,
         0b00010000
-      )*/,x2+2,194);
-      g.drawImage("\b\b\x01\x00\b\f\x0E\xFF\x0E\f\b"/*E.toString(8,8,1,
+      )*/,x2+2,194).drawImage("\b\b\x01\x00\b\f\x0E\xFF\x0E\f\b"/*E.toString(8,8,1,
         0b00000000,
         0b00001000,
         0b00001100,
@@ -132,8 +125,7 @@
           item.onchange(item.value);
           l.draw(options.selected, options.selected);
         }
-      }
-      else if ("function" == typeof item) item(l);
+      } else if ("function" == typeof item) item(l);
       else if ("object" == typeof item) {
         // if a number, go into 'edit mode'
         if ("number" == typeof item.value) {
