@@ -1368,6 +1368,38 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "blendColor",
+  "ifdef" : "GRAPHICS_ANTIALIAS",
+  "generate" : "jswrap_graphics_blendColor",
+  "params" : [
+    ["col_a","JsVar","Color to blend from (either a single integer color value, or a string)"],
+    ["col_b","JsVar","Color to blend to (either a single integer color value, or a string)"],
+    ["amt","JsVar","The amount to blend. 0=col_a, 1=col_b, 0.5=halfway between (and so on)"]
+  ],
+  "return" : ["int","The color index represented by the blended colors"]
+}
+Blend between two colors, and return the result.
+
+```
+// dark yellow - halfway between red and green
+var col = g.blendColor("#f00","#0f0", 0.5);
+// Get a color 25% brighter than the theme's background colour
+var col = g.blendColor(g.theme.fg,g.theme.bg, 0.75);
+// then...
+g.setColor(col).fillRect(10,10,100,100);
+```
+*/
+
+unsigned int jswrap_graphics_blendColor(JsVar *parent, JsVar *ca, JsVar *cb, JsVar* amt) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  unsigned int a = jswrap_graphics_toColor(parent, ca, NULL, NULL);
+  unsigned int b = jswrap_graphics_toColor(parent, cb, NULL, NULL);
+  return graphicsBlendColor(&gfx, b, a, jsvGetFloat(amt)*256);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "setColor",
   "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true)",
   "params" : [
