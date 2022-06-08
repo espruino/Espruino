@@ -389,7 +389,6 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
   newSubStr = jsvAsString(newSubStr);
   subStr = jsvAsString(subStr);
 
-
   int idx = jswrap_string_indexOf(parent, subStr, 0, false);
   if (idx>=0) {
     JsVar *newStr = jsvNewFromStringVar(str, 0, (size_t)idx);
@@ -403,20 +402,18 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
   return str;
 }
 
-
 /*JSON{
   "type" : "method",
   "class" : "String",
   "name" : "substring",
   "generate" : "jswrap_string_substring",
   "params" : [
-    ["start","int","The start character index"],
-    ["end","JsVar","The end character index"]
+    ["start","int","The start character index (inclusive)"],
+    ["end","JsVar","The end character index (exclusive)"]
   ],
   "return" : ["JsVar","The part of this string between start and end"]
 }*/
 JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
-  JsVar *res;
   JsVarInt pEnd = jsvIsUndefined(vEnd) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vEnd);
   if (pStart<0) pStart=0;
   if (pEnd<0) pEnd=0;
@@ -425,10 +422,7 @@ JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
     pStart = pEnd;
     pEnd = l;
   }
-  res = jsvNewFromEmptyString();
-  if (!res) return 0; // out of memory
-  jsvAppendStringVar(res, parent, (size_t)pStart, (size_t)(pEnd-pStart));
-  return res;
+  return jsvNewFromStringVar(parent, (size_t)pStart, (size_t)(pEnd-pStart));
 }
 
 /*JSON{
@@ -443,15 +437,11 @@ JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   "return" : ["JsVar","Part of this string from start for len characters"]
 }*/
 JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
-  JsVar *res;
   JsVarInt pLen = jsvIsUndefined(vLen) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vLen);
   if (pLen<0) pLen = 0;
   if (pStart<0) pStart += (JsVarInt)jsvGetStringLength(parent);
   if (pStart<0) pStart = 0;
-  res = jsvNewFromEmptyString();
-  if (!res) return 0; // out of memory
-  jsvAppendStringVar(res, parent, (size_t)pStart, (size_t)pLen);
-  return res;
+  return jsvNewFromStringVar(parent, (size_t)pStart, (size_t)pLen);
 }
 
 /*JSON{
@@ -466,17 +456,13 @@ JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
   "return" : ["JsVar","Part of this string from start for len characters"]
 }*/
 JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
-  JsVar *res;
   JsVarInt pEnd = jsvIsUndefined(vEnd) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vEnd);
   if (pStart<0) pStart += (JsVarInt)jsvGetStringLength(parent);
   if (pEnd<0) pEnd += (JsVarInt)jsvGetStringLength(parent);
   if (pStart<0) pStart = 0;
   if (pEnd<0) pEnd = 0;
-  res = jsvNewFromEmptyString();
-  if (!res) return 0; // out of memory
-  if (pEnd>pStart)
-    jsvAppendStringVar(res, parent, (size_t)pStart, (size_t)(pEnd-pStart));
-  return res;
+  if (pEnd<=pStart) return jsvNewFromEmptyString();
+  return jsvNewFromStringVar(parent, (size_t)pStart, (size_t)(pEnd-pStart));
 }
 
 

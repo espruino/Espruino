@@ -362,7 +362,7 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount) {
 #endif
 }
 
-/// Scan memory to find any JsVar that references a specific memory range, and if so update what it points to to p[oint to the new address
+/// Scan memory to find any JsVar that references a specific memory range, and if so update what it points to to point to the new address
 void jsvUpdateMemoryAddress(size_t oldAddr, size_t length, size_t newAddr) {
   for (unsigned int i=1;i<=jsVarsSize;i++) {
     JsVar *v = jsvGetAddressOf((JsVarRef)i);
@@ -1752,6 +1752,16 @@ void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxL
 
 /** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH) */
 JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength) {
+  if (jsvIsNativeString(str) || jsvIsFlashString(str)) {
+    // if it's a flash string, just change the pointer (but we must check length)
+    size_t l = jsvGetStringLength(str);
+    if (stridx>l) stridx=l;
+    if (stridx+maxLength>l) maxLength=l-stridx;
+    JsVar *res = jsvNewWithFlags(str->flags&JSV_VARTYPEMASK);
+    res->varData.nativeStr.ptr = str->varData.nativeStr.ptr + stridx;
+    res->varData.nativeStr.len = maxLength;
+    return res;
+  }
   JsVar *var = jsvNewFromEmptyString();
   if (var) jsvAppendStringVar(var, str, stridx, maxLength);
   return var;

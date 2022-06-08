@@ -199,7 +199,7 @@ typedef union {
     JsVarFloat floating; ///< The contents of this variable if it is a double
     JsVarDataArrayBufferView arraybuffer; ///< information for array buffer views.
     JsVarDataNative native; ///< A native function
-    JsVarDataNativeStr nativeStr; ///< A native string
+    JsVarDataNativeStr nativeStr; ///< A native string (or flash string)
     JsVarDataRef ref; ///< References
 } PACKED_FLAGS JsVarData;
 
