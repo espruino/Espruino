@@ -587,12 +587,17 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
 #endif // CLEAR_MEMORY_ON_FREE
   } else if (jsvHasSingleChild(var)) {
     if (jsvGetFirstChild(var)) {
-      JsVar *child = jsvLock(jsvGetFirstChild(var));
-      jsvUnRef(child);
+      if (jsuGetFreeStack() > 256) {
+        // we have to check stack here in case someone allocates some huge linked list.
+        // if we just unreference the rest hopefully it'll be cleaned on the next GC pass
+        // https://github.com/espruino/Espruino/issues/2136
+        JsVar *child = jsvLock(jsvGetFirstChild(var));
+        jsvUnRef(child);
+        jsvUnLock(child); // unlock should trigger a free
+      }
 #ifdef CLEAR_MEMORY_ON_FREE
       jsvSetFirstChild(var, 0); // unlink the child
 #endif // CLEAR_MEMORY_ON_FREE
-      jsvUnLock(child); // unlock should trigger a free
     }
   }
   /* No else, because a String Name may have a single child, but
