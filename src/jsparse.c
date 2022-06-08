@@ -1948,11 +1948,10 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
         a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       }
     } else if (op==LEX_NULLISH){
-      JsVar* value = jsvSkipName(a);
+      JsVar* value = jsvSkipNameAndUnLock(a);
       if (jsvIsNullish(value)) {
         // use second argument (B)
         if (!jsvIsUndefined(value)) jsvUnLock(value);
-        jsvUnLock(a);
         a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       } else {
         a = value;
