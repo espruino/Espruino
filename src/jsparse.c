@@ -2411,7 +2411,7 @@ NO_INLINE JsVar *jspeStatementSwitch() {
   return 0;
 }
 
-// Check whether we received a break/continue while parsing previously. Return true if we had a 'break;
+// Check whether we received a break/continue while parsing previously. Return true if we had a 'break'
 static NO_INLINE bool jspeCheckBreakContinue() {
   if (execInfo.execute & EXEC_CONTINUE)
     execInfo.execute = (execInfo.execute & ~EXEC_RUN_MASK) | EXEC_YES;
@@ -2681,6 +2681,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
     if (loopCond || !JSP_SHOULD_EXECUTE) {
       hasHadBreak |= jspeCheckBreakContinue();
+      if (hasHadBreak) loopCond = false; // was there break in the very first parse of the body? If so don't iterate!
     }
     if (!loopCond) JSP_RESTORE_EXECUTE();
     if (loopCond) {

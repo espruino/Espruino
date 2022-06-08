@@ -40,6 +40,7 @@
             Graphics: Add g.blendColor to expose the ability to figure out what color is between two others (fix #2150)
             Fix stack overflow if deallocating a massive linked list (fix #2136)
             String substr/substring/slice now work on native/flash strings by changing pointers rather than doing an actual copy (fix #2066)
+            Fix over-iteration if breaking out of the very first iteration of FOR loop (fix #2012)
             
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
