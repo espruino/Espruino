@@ -1203,8 +1203,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           bleStatus &= ~BLE_IS_SENDING_HID;
 #endif
           bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
-          if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED))
+          if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED)) {
+            jsiClearInputLine(false); // clear the input line on connect
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
+          }
           jsble_queue_pending_buf(BLEP_CONNECTED, 0, (char*)&p_ble_evt->evt.gap_evt.params.connected.peer_addr, sizeof(ble_gap_addr_t));
 #ifndef SAVE_ON_FLASH
           m_peripheral_addr = p_ble_evt->evt.gap_evt.params.connected.peer_addr;
@@ -1262,6 +1264,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         {
           bleStatus &= ~BLE_IS_RSSI_SCANNING; // scanning will have stopped now we're disconnected
           m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;
+          // if we were on bluetooth and we disconnected, clear the input line so we're fresh next time (#2219)
+          if (jsiGetConsoleDevice()==EV_BLUETOOTH) jsiClearInputLine(false);
+
           if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
           // by calling nus_transmit_string here, without a connection, we clear the Bluetooth output buffer
           nus_transmit_string();

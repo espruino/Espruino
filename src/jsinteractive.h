@@ -109,6 +109,10 @@ void jsiConsolePrintStringVar(JsVar *v);
 void jsiConsoleRemoveInputLine();
 /// Change what is in the inputline into something else (and update the console)
 void jsiReplaceInputLine(JsVar *newLine);
+/** Clear the input line of data. If updateConsole is set, it
+ * sends VT100 characters to physically remove the line from
+ * the user's terminal. */
+void jsiClearInputLine(bool updateConsole);
 
 /// Flags for jsiSetBusy - THESE SHOULD BE 2^N
 typedef enum {

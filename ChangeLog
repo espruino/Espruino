@@ -36,6 +36,7 @@
             Bangle.js: Rename default locale to 'system' (from 'en_GB')
             Ctrl-C will now *not* break out of short-running intervals/watches, only long-running ones
             Bangle.js: Allow E.showMenu to be given an array and title option (fix #2175)
+            nRF5x: We now clear the console's input line when connecting or disconnecting Bluetooth (fix #2219)
             
      2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
