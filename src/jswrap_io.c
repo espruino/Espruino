@@ -788,7 +788,7 @@ JsVar *jswrap_interface_setWatch(
   "name" : "clearWatch",
   "generate" : "jswrap_interface_clearWatch",
   "params" : [
-    ["id","JsVarArray","The id returned by a previous call to setWatch"]
+    ["id","JsVarArray","The id returned by a previous call to setWatch. **Only one argument is allowed.**"]
   ]
 }
 Clear the Watch that was created with setWatch. If no parameter is supplied, all watches will be removed.

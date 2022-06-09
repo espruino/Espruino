@@ -545,7 +545,7 @@ JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout, JsVar *args)
   "name" : "clearInterval",
   "generate" : "jswrap_interface_clearInterval",
   "params" : [
-    ["id","JsVarArray","The id returned by a previous call to setInterval"]
+    ["id","JsVarArray","The id returned by a previous call to setInterval. **Only one argument is allowed.**"]
   ]
 }
 Clear the Interval that was created with `setInterval`, for example:
@@ -563,7 +563,7 @@ To avoid accidentally deleting all Intervals, if a parameter is supplied but is 
   "name" : "clearTimeout",
   "generate" : "jswrap_interface_clearTimeout",
   "params" : [
-    ["id","JsVarArray","The id returned by a previous call to setTimeout"]
+    ["id","JsVarArray","The id returned by a previous call to setTimeout. **Only one argument is allowed.**"]
   ]
 }
 Clear the Timeout that was created with `setTimeout`, for example:
