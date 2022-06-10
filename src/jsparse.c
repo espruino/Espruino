@@ -1094,6 +1094,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult, bool *isOption
         }
         // skip over current token (we checked above that it was an ID or reserved word)
         jslGetNextToken();
+#ifndef ESPR_NO_OPTIONAL_CHAINING
       } else if ((lex->tk == '(' || lex->tk == '[') && optionalTk) {
         // handle a?.() and a?.[0]
 
@@ -1106,6 +1107,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult, bool *isOption
           a = aVar;
         }
         continue;
+#endif
       } else {
         // incorrect token - force a match fail by asking for an ID
         JSP_MATCH_WITH_RETURN(LEX_ID, a);
@@ -1115,11 +1117,13 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult, bool *isOption
       JSP_ASSERT_MATCH('[');
       if (!jspCheckStackPosition()) return parent;
 
+#ifndef ESPR_NO_OPTIONAL_CHAINING
       JSP_SAVE_EXECUTE();
       if (jsvIsUndefined(a) && *isOptional) {
         // there was a previous a?.b where a was undefined
         jspSetNoExecute();
       }
+#endif
 
       index = jsvSkipNameAndUnLock(jspeAssignmentExpression());
       JSP_MATCH_WITH_CLEANUP_AND_RETURN(']', jsvUnLock2(parent, index);, a);
@@ -1147,7 +1151,9 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult, bool *isOption
       }
       jsvUnLock(index);
 
+#ifndef ESPR_NO_OPTIONAL_CHAINING
       JSP_RESTORE_EXECUTE();
+#endif
     } else {
       assert(0);
     }
@@ -1223,6 +1229,7 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
   }
 #endif
   while ((lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) && !jspIsInterrupted()) {
+#ifndef ESPR_NO_OPTIONAL_CHAINING
     if (jsvIsUndefined(a) && optional) {
       JSP_SAVE_EXECUTE();
       jspSetNoExecute();
@@ -1238,6 +1245,7 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
     } else if (jsvIsUndefined(a)) {
       break;
     } else {
+#endif
       JsVar *funcName = a;
       JsVar *func = jsvSkipName(funcName);
 
@@ -1252,7 +1260,9 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
         a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
 
       jsvUnLock3(funcName, func, parent);
+#ifndef ESPR_NO_OPTIONAL_CHAINING
     }
+#endif
     parent=0;
     optional=false;
     a = jspeFactorMember(a, &parent, &optional);
