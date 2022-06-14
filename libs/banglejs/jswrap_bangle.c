@@ -2026,8 +2026,9 @@ Set internal options used for gestures, etc...
 * `gestureMinLength` how many samples must a gesture have before we notify about it? default = `10`
 * `powerSave` after a minute of not being moved, Bangle.js will change the accelerometer poll interval down to 800ms (10x accelerometer samples).
    On movement it'll be raised to the default 80ms. If `Bangle.setPollInterval` is used this is disabled, and for it to work the poll interval
-   must be either 80ms or 800ms. default = `true`. Setting `powerSave:false` will disable this, automatic power saving, but will **not** change
-   the poll interval from what it currently is, so if you desire a specific interval (eg the default 80ms) you must set it manually with `Bangle.setPollInterval(80)`
+   must be either 80ms or 800ms. default = `true`. Setting `powerSave:false` will disable this automatic power saving, but will **not** change
+   the poll interval from its current value. If you desire a specific interval (eg the default 80ms) you must set it manually with `Bangle.setPollInterval(80)`
+   after setting `powerSave:false`.
 * `lockTimeout` how many milliseconds before the screen locks
 * `lcdPowerTimeout` how many milliseconds before the screen turns off
 * `backlightTimeout` how many milliseconds before the screen's backlight turns off
