@@ -48,6 +48,16 @@ function test3() {
 }
 test3();
 
+
+// https://github.com/espruino/Espruino/issues/2224
+function pushCommand(command) {
+  let hash = print(arguments); // fails
+  var hash2 = print(arguments); // works
+  print(arguments); // works
+  results.push(true);
+}
+pushCommand("Hello")
+
 console.log("Results:",results);
 
 result = results.every(r=>r);

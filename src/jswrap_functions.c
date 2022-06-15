@@ -47,8 +47,13 @@ Normal JavaScript interpreters would return `0` in the above case.
 extern JsExecInfo execInfo;
 JsVar *jswrap_arguments() {
   JsVar *scope = 0;
-  if (execInfo.scopesVar)
+#ifdef ESPR_NO_LET_SCOPING
+  if (execInfo.scopesVar) // if no let scoping, the top of the scopes list is the function
     scope = jsvGetLastArrayItem(execInfo.scopesVar);
+#else
+  if (execInfo.baseScope) // if let scoping, the top of the scopes list may just be a scope. Use baseScope instead
+    scope = jsvLockAgain(execInfo.baseScope);
+#endif
   if (!jsvIsFunction(scope)) {
     jsExceptionHere(JSET_ERROR, "Can only use 'arguments' variable inside a function");
     return 0;
