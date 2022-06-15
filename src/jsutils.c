@@ -69,7 +69,7 @@ char charToLowerCase(char ch) {
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again.
 If jsonStyle=true, only string escapes supported by JSON are used */
-const char *escapeCharacter(char ch, bool jsonStyle) {
+const char *escapeCharacter(char ch, char nextCh, bool jsonStyle) {
   if (ch=='\b') return "\\b"; // 8
   if (ch=='\t') return "\\t"; // 9
   if (ch=='\n') return "\\n"; // A
@@ -80,7 +80,7 @@ const char *escapeCharacter(char ch, bool jsonStyle) {
   if (ch=='"') return "\\\"";
   static char buf[7];
   unsigned char uch = (unsigned char)ch;
-  if (uch<8 && !jsonStyle) {
+  if (uch<8 && !jsonStyle && (nextCh<'0' || nextCh>'7')) {
     // encode less than 8 as \#
     buf[0]='\\';
     buf[1] = (char)('0'+uch);
@@ -811,8 +811,9 @@ void vcbprintf(
           // OPT: this could be faster than it is (sending whole blocks at once)
           while (jsvStringIteratorHasChar(&it)) {
             buf[0] = jsvStringIteratorGetCharAndNext(&it);
+            char nextCh = jsvStringIteratorGetChar(&it);
             if (quoted) {
-              user_callback(escapeCharacter(buf[0], isJSONStyle), user_data);
+              user_callback(escapeCharacter(buf[0], nextCh, isJSONStyle), user_data);
             } else {
               user_callback(buf,user_data);
             }

@@ -423,8 +423,9 @@ char charToLowerCase(char ch);
 
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again.
-If jsonStyle=true, only string escapes supported by JSON are used */
-const char *escapeCharacter(char ch, bool jsonStyle);
+If jsonStyle=true, only string escapes supported by JSON are used. 'nextCh' is needed
+to ensure that certain escape combinations are avoided. For instance "\0" + "0" is NOT "\00" */
+const char *escapeCharacter(char ch, char nextCh, bool jsonStyle);
 /** Parse radix prefixes, or return 0 */
 int getRadix(const char **s,  bool *hasError);
 /// Convert a character to the hexadecimal equivalent (or -1)
