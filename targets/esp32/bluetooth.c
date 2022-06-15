@@ -34,8 +34,8 @@
  
 volatile BLEStatus bleStatus;
 uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
-volatile uint16_t  m_peripheral_conn_handle;    /**< Handle of the current connection. */
-volatile uint16_t m_central_conn_handle; /**< Handle of central mode connection */
+volatile uint16_t m_peripheral_conn_handle;    /**< Handle of the current connection. */
+volatile uint16_t m_central_conn_handles[1]; /**< Handle of central mode connection */
 
 /** Initialise the BLE stack */
 void jsble_init(){
@@ -110,7 +110,7 @@ void jsble_advertising_stop(){
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection(){
 #if CENTRAL_LINK_COUNT>0
-  return (m_central_conn_handle != BLE_GATT_HANDLE_INVALID) ||
+  return (m_central_conn_handles[0] != BLE_GATT_HANDLE_INVALID) ||
          (m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID);
 #else
   return m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID;
@@ -120,7 +120,7 @@ bool jsble_has_connection(){
 /** Is BLE connected to a central device at all? */
 bool jsble_has_central_connection(){
 #if CENTRAL_LINK_COUNT>0
-  return (m_central_conn_handle != BLE_GATT_HANDLE_INVALID);
+  return (m_central_conn_handles[0] != BLE_GATT_HANDLE_INVALID);
 #else
   return false;
 #endif
@@ -180,47 +180,47 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options){
 	gattc_connect(peer_addr.addr);
 }
 /// Get primary services. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
-void jsble_central_getPrimaryServices(ble_uuid_t uuid){
+void jsble_central_getPrimaryServices(uint16_t central_conn_handle, ble_uuid_t uuid){
 	gattc_searchService(uuid);
 }
 /// Get characteristics. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
-void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid){
+void jsble_central_getCharacteristics(uint16_t central_conn_handle, JsVar *service, ble_uuid_t uuid){
 	gattc_getCharacteristic(uuid);
 	UNUSED(service);
 }
 // Write data to the given characteristic. When done call bleCompleteTask
-void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen){
+void jsble_central_characteristicWrite(uint16_t central_conn_handle, JsVar *characteristic, char *dataPtr, size_t dataLen){
 	uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
 	gattc_writeValue(handle,dataPtr,dataLen);
 }
 // Read data from the given characteristic. When done call bleCompleteTask
-void jsble_central_characteristicRead(JsVar *characteristic){
+void jsble_central_characteristicRead(uint16_t central_conn_handle, JsVar *characteristic){
 	uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
 	gattc_readValue(handle);
 }
 // Discover descriptors of characteristic
-void jsble_central_characteristicDescDiscover(JsVar *characteristic){
+void jsble_central_characteristicDescDiscover(uint16_t central_conn_handle, JsVar *characteristic){
 	jsWarn("Central characteristicDescDiscover not implemented yet\n");
 	UNUSED(characteristic);
 }
 // Set whether to notify on the given characteristic. When done call bleCompleteTask
-void jsble_central_characteristicNotify(JsVar *characteristic, bool enable){
+void jsble_central_characteristicNotify(uint16_t central_conn_handle, JsVar *characteristic, bool enable){
 	jsWarn("central characteristic notify not implemented yet\n");
 	UNUSED(characteristic);
 	UNUSED(enable);
 }
 /// Start bonding on the current central connection
-void jsble_central_startBonding(bool forceRePair){
+void jsble_central_startBonding(uint16_t central_conn_handle, bool forceRePair){
 	jsWarn("central start bonding not implemented yet\n");
 	UNUSED(forceRePair);
 }
 /// RSSI monitoring in central mode
-uint32_t jsble_set_central_rssi_scan(bool enabled){
+uint32_t jsble_set_central_rssi_scan(uint16_t central_conn_handle, bool enabled){
 	jsWarn("central set rssi scan not implemented yet\n");
 	return 0;
 }
 // Set whether or not the whitelist is enabled
-void jsble_central_setWhitelist(bool whitelist){
+void jsble_central_setWhitelist(uint16_t central_conn_handle, bool whitelist){
 	jsWarn("central set Whitelist not implemented yet\n");
 	return 0;
 }
@@ -238,7 +238,7 @@ void jsble_set_tx_power(int8_t pwr) {
   jsWarn("jsble_set_tx_power not implemented yet\n");
 }
 
-uint32_t jsble_central_send_passkey(char *passkey) {
+uint32_t jsble_central_send_passkey(uint16_t central_conn_handle, char *passkey) {
   jsWarn("central set Whitelist not implemented yet\n");
   return 0;
 }

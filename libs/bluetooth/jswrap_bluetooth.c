@@ -62,6 +62,7 @@
 
 JsVar *blePromise = 0;
 JsVar *bleTaskInfo = 0;
+JsVar *bleTaskInfo2 = 0;
 BleTask bleTask = BLETASK_NONE;
 
 /// Get the string value of the given task
@@ -101,10 +102,11 @@ bool bleNewTask(BleTask task, JsVar *taskInfo) {
     jsiConsolePrintf("Existing bleTaskInfo!\n");
     jsvTrace(bleTaskInfo,2);
   }*/
-  assert(!blePromise && !bleTaskInfo);
+  assert(!blePromise && !bleTaskInfo && !bleTaskInfo2);
   blePromise = jspromise_create();
   bleTask = task;
   bleTaskInfo = jsvLockAgainSafe(taskInfo);
+  bleTaskInfo2 = NULL;
   return true;
 }
 
@@ -123,6 +125,8 @@ void bleCompleteTask(BleTask task, bool ok, JsVar *data) {
   }
   jsvUnLock(bleTaskInfo);
   bleTaskInfo = 0;
+  jsvUnLock(bleTaskInfo2);
+  bleTaskInfo2 = 0;
   jshHadEvent();
 }
 
@@ -147,14 +151,46 @@ void bleSwitchTask(BleTask task) {
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
 #ifdef NRF52_SERIES
-void bleSetActiveBluetoothGattServer(JsVar *var) {
-  jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_GATT_SERVER, var);
+void bleSetActiveBluetoothGattServer(int idx, JsVar *var) {
+  assert(idx >=0 && idx < CENTRAL_LINK_COUNT);
+  if (idx<0) return;
+  char name[BLE_NAME_GATT_SERVER_LEN] = BLE_NAME_GATT_SERVER;
+  name[BLE_NAME_GATT_SERVER_LEN-2] = '0'+idx;
+  jsvObjectSetChild(execInfo.hiddenRoot, name, var);
 }
 
-JsVar *bleGetActiveBluetoothGattServer() {
-  return jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_GATT_SERVER, 0);
+JsVar *bleGetActiveBluetoothGattServer(int idx) {
+  assert(idx < CENTRAL_LINK_COUNT);
+  if (idx<0) return 0;
+  char name[BLE_NAME_GATT_SERVER_LEN] = BLE_NAME_GATT_SERVER;
+  name[BLE_NAME_GATT_SERVER_LEN-2] = '0'+idx;
+  return jsvObjectGetChild(execInfo.hiddenRoot, name, 0);
 }
 #endif
+
+uint16_t jswrap_ble_BluetoothRemoteGATTServer_getHandle(JsVar *parent) {
+  JsVar *handle = jsvObjectGetChild(parent, "handle", 0);
+  if (!jsvIsInt(handle)) return BLE_CONN_HANDLE_INVALID;
+  return jsvGetIntegerAndUnLock(handle);
+}
+uint16_t jswrap_ble_BluetoothDevice_getHandle(JsVar *parent) {
+  JsVar *gatt = jswrap_BluetoothDevice_gatt(parent);
+  uint16_t handle = BLE_CONN_HANDLE_INVALID;
+  if (gatt) handle = jswrap_ble_BluetoothRemoteGATTServer_getHandle(gatt);
+  return handle;
+}
+uint16_t jswrap_ble_BluetoothRemoteGATTService_getHandle(JsVar *parent) {
+  JsVar *device = jsvObjectGetChild(parent, "device", 0);
+  uint16_t handle = BLE_CONN_HANDLE_INVALID;
+  if (device) handle = jswrap_ble_BluetoothDevice_getHandle(device);
+  return handle;
+}
+uint16_t jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(JsVar *parent) {
+  JsVar *service = jsvObjectGetChild(parent, "service", 0);
+  uint16_t handle = BLE_CONN_HANDLE_INVALID;
+  if (service) handle = jswrap_ble_BluetoothRemoteGATTService_getHandle(service);
+  return handle;
+}
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
 
@@ -247,15 +283,17 @@ void jswrap_ble_kill() {
   blePromise = 0;
   if (bleTaskInfo) jsvUnLock(bleTaskInfo);
   bleTaskInfo = 0;
+  if (bleTaskInfo2) jsvUnLock(bleTaskInfo2);
+  bleTaskInfo2 = 0;
   // if we were scanning, make sure we stop
   jsble_set_scanning(false, false);
   jsble_set_rssi_scan(false);
 
 #if CENTRAL_LINK_COUNT>0
   // if we were connected to something, disconnect
-  if (jsble_has_central_connection()) {
-    jsble_disconnect(m_central_conn_handle);
-  }
+  for (int i=0;i<CENTRAL_LINK_COUNT;i++)
+    if (m_central_conn_handles[i] != BLE_CONN_HANDLE_INVALID)
+      jsble_disconnect(m_central_conn_handles[i]);
 #endif
 }
 
@@ -1003,7 +1041,7 @@ JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options) {
     ble_uuid_t *adv_uuid = (ble_uuid_t*)alloca(maxServices*sizeof(ble_uuid_t));
     int adv_uuid_cnt = 0;
     if (maxServices && (!service_data || !adv_uuid))
-      return; // allocation error
+      return 0; // allocation error
 #endif
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, data);
@@ -3475,7 +3513,7 @@ void jswrap_ble_BluetoothDevice_sendPasskey(JsVar *parent, JsVar *passkeyVar) {
   char passkey[BLE_GAP_PASSKEY_LEN+1];
   memset(passkey, 0, sizeof(passkey));
   jsvGetStringChars(passkeyVar,0,passkey, sizeof(passkey));
-  uint32_t err_code = jsble_central_send_passkey(passkey);
+  uint32_t err_code = jsble_central_send_passkey(jswrap_ble_BluetoothDevice_getHandle(parent), passkey);
   jsble_check_error(err_code);
 #endif
 }
@@ -3587,10 +3625,18 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattserver
 */
 /*JSON{
     "type" : "property",
-    "class" : "BluetoothDevice",
+    "class" : "BluetoothRemoteGATTServer",
     "name" : "connected",
     "generate" : false,
     "return" : ["bool", "Whether the device is connected or not" ]
+}
+*//*Documentation only*/
+/*JSON{
+    "type" : "property",
+    "class" : "BluetoothRemoteGATTServer",
+    "name" : "handle",
+    "generate" : false,
+    "return" : ["int", "The handle to this device (if it is currently connected) - the handle is an internal value used by the Bluetooth Stack" ]
 }
 *//*Documentation only*/
 /*JSON{
@@ -3615,12 +3661,13 @@ JsVar *jswrap_BluetoothRemoteGATTServer_disconnect(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
   uint32_t              err_code;
 
-  if (m_central_conn_handle != BLE_CONN_HANDLE_INVALID) {
+  uint16_t central_conn_handle = jswrap_ble_BluetoothRemoteGATTServer_getHandle(parent);
+  if (central_conn_handle != BLE_CONN_HANDLE_INVALID) {
     // we have a connection, disconnect
     JsVar *promise = 0;
     if (bleNewTask(BLETASK_DISCONNECT, parent/*BluetoothRemoteGATTServer*/))
       promise = jsvLockAgainSafe(blePromise);
-    err_code = jsble_disconnect(m_central_conn_handle);
+    err_code = jsble_disconnect(central_conn_handle);
     jsble_check_error(err_code);
     return promise;
   } else {
@@ -3684,7 +3731,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool for
 #if CENTRAL_LINK_COUNT>0
   if (bleNewTask(BLETASK_BONDING, parent/*BluetoothRemoteGATTServer*/)) {
     JsVar *promise = jsvLockAgainSafe(blePromise);
-    jsble_central_startBonding(forceRePair);
+    jsble_central_startBonding(jswrap_ble_BluetoothRemoteGATTServer_getHandle(parent), forceRePair);
     return promise;
   }
   return 0;
@@ -3724,7 +3771,7 @@ specifically for Puck.js.
 */
 JsVar *jswrap_ble_BluetoothRemoteGATTServer_getSecurityStatus(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
-  return jsble_get_security_status(m_central_conn_handle);
+  return jsble_get_security_status(jswrap_ble_BluetoothRemoteGATTServer_getHandle(parent));
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
   return 0;
@@ -3748,8 +3795,12 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *
   const char *err;
   ble_uuid_t uuid;
 
-  if (!bleNewTask(BLETASK_PRIMARYSERVICE, 0))
+  JsVar *device = jsvObjectGetChild(parent, "device", 0);
+  bool ok = bleNewTask(BLETASK_PRIMARYSERVICE, device/*BluetoothDevice*/);
+  jsvUnLock(device);
+  if (!ok) {
     return 0;
+  }
 
   err = bleVarToUUID(&uuid, service);
   if (err) {
@@ -3758,7 +3809,7 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *
   }
 
   JsVar *promise = jsvLockAgainSafe(blePromise);
-  jsble_central_getPrimaryServices(uuid);
+  jsble_central_getPrimaryServices(jswrap_ble_BluetoothRemoteGATTServer_getHandle(parent), uuid);
   return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
@@ -3780,10 +3831,14 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
   ble_uuid_t uuid;
   uuid.type = BLE_UUID_TYPE_UNKNOWN;
 
-  if (!bleNewTask(BLETASK_PRIMARYSERVICE, 0))
+  JsVar *device = jsvObjectGetChild(parent, "device", 0);
+  bool ok = bleNewTask(BLETASK_PRIMARYSERVICE, device/*BluetoothDevice*/);
+  jsvUnLock(device);
+  if (!ok)
     return 0;
+
   JsVar *promise = jsvLockAgainSafe(blePromise);
-  jsble_central_getPrimaryServices(uuid);
+  jsble_central_getPrimaryServices(jswrap_ble_BluetoothRemoteGATTServer_getHandle(parent), uuid);
   return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
@@ -3822,7 +3877,7 @@ void jswrap_BluetoothRemoteGATTServer_setRSSIHandler(JsVar *parent, JsVar *callb
   if (!jsvIsFunction(callback)) callback=0;
   jsvObjectSetChild(parent, BLE_RSSI_EVENT, callback);
   // either start or stop scanning
-  uint32_t err_code = jsble_set_central_rssi_scan(callback != 0);
+  uint32_t err_code = jsble_set_central_rssi_scan(jswrap_ble_BluetoothRemoteGATTServer_getHandle(parent), callback != 0);
   jsble_check_error(err_code);
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
@@ -3840,6 +3895,15 @@ Web Bluetooth-style GATT service - get this using `BluetoothRemoteGATTServer.get
 https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattservice
 */
 /*JSON{
+    "type" : "property",
+    "class" : "BluetoothRemoteGATTService",
+    "name" : "device",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : false,
+    "return" : ["JsVar", "The `BluetoothDevice` this Service came from" ]
+}
+*//*Documentation only*/
+/*JSON{
   "type" : "method",
   "class" : "BluetoothRemoteGATTService",
   "name" : "getCharacteristic",
@@ -3856,7 +3920,7 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar 
   const char *err;
   ble_uuid_t uuid;
 
-  if (!bleNewTask(BLETASK_CHARACTERISTIC, 0))
+  if (!bleNewTask(BLETASK_CHARACTERISTIC, parent/*BluetoothRemoteGATTService*/))
     return 0;
 
   err = bleVarToUUID(&uuid, characteristic);
@@ -3866,7 +3930,7 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar 
   }
 
   JsVar *promise = jsvLockAgainSafe(blePromise);
-  jsble_central_getCharacteristics(parent, uuid);
+  jsble_central_getCharacteristics(jswrap_ble_BluetoothRemoteGATTService_getHandle(parent), parent, uuid);
   return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
@@ -3888,11 +3952,11 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristics(JsVar *parent) {
   ble_uuid_t uuid;
   uuid.type = BLE_UUID_TYPE_UNKNOWN;
 
-  if (!bleNewTask(BLETASK_CHARACTERISTIC, 0))
+  if (!bleNewTask(BLETASK_CHARACTERISTIC, parent/*BluetoothRemoteGATTService*/))
     return 0;
 
   JsVar *promise = jsvLockAgainSafe(blePromise);
-  jsble_central_getCharacteristics(parent, uuid);
+  jsble_central_getCharacteristics(jswrap_ble_BluetoothRemoteGATTService_getHandle(parent), parent, uuid);
   return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
@@ -3909,6 +3973,15 @@ Web Bluetooth-style GATT characteristic - get this using `BluetoothRemoteGATTSer
 
 https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattcharacteristic
 */
+/*JSON{
+    "type" : "property",
+    "class" : "BluetoothRemoteGATTCharacteristic",
+    "name" : "service",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : false,
+    "return" : ["JsVar", "The `BluetoothRemoteGATTService` this Service came from" ]
+}
+*//*Documentation only*/
 /*JSON{
     "type" : "method",
     "class" : "BluetoothRemoteGATTCharacteristic",
@@ -3950,7 +4023,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
     return 0;
 
   JsVar *promise = jsvLockAgainSafe(blePromise);
-  jsble_central_characteristicWrite(characteristic, dataPtr, dataLen);
+  jsble_central_characteristicWrite(jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(characteristic), characteristic, dataPtr, dataLen);
   return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
@@ -3989,11 +4062,11 @@ NRF.connect(device_address).then(function(d) {
 */
 JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteristic) {
 #if CENTRAL_LINK_COUNT>0
-  if (!bleNewTask(BLETASK_CHARACTERISTIC_READ, characteristic))
+  if (!bleNewTask(BLETASK_CHARACTERISTIC_READ, characteristic/*BluetoothRemoteGATTCharacteristic*/))
     return 0;
 
   JsVar *promise = jsvLockAgainSafe(blePromise);
-  jsble_central_characteristicRead(characteristic);
+  jsble_central_characteristicRead(jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(characteristic), characteristic);
   return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");
@@ -4055,6 +4128,7 @@ NRF.connect("pu:ck:js:ad:dr:es random").then(function(g) {
 */
 JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *characteristic) {
 #if CENTRAL_LINK_COUNT>0
+  uint16_t central_conn_handle = jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(characteristic);
   
   // Set our characteristic's handle up in the list of handles to notify for
   // TODO: What happens when we close the connection and re-open another?
@@ -4070,16 +4144,16 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
   // Check for existing cccd_handle 
   JsVar *cccdVar = jsvObjectGetChild(characteristic,"handle_cccd", 0);
   if ( !cccdVar ) { // if it doesn't exist, try and find it
-    if (!bleNewTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, characteristic))
+    if (!bleNewTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, characteristic/*BluetoothRemoteGATTCharacteristic*/))
       return 0;
     promise = jsvLockAgainSafe(blePromise);
-    jsble_central_characteristicDescDiscover(characteristic);
+    jsble_central_characteristicDescDiscover(central_conn_handle, characteristic);
   } else {
     jsvUnLock(cccdVar);
-    if (!bleNewTask(BLETASK_CHARACTERISTIC_NOTIFY, 0))
+    if (!bleNewTask(BLETASK_CHARACTERISTIC_NOTIFY, characteristic/*BluetoothRemoteGATTCharacteristic*/))
       return 0;
     promise = jsvLockAgainSafe(blePromise);    
-    jsble_central_characteristicNotify(characteristic, true);
+    jsble_central_characteristicNotify(central_conn_handle, characteristic, true);
   }
   return promise;
 #else
@@ -4101,6 +4175,8 @@ Stop notifications (that were requested with `BluetoothRemoteGATTCharacteristic.
 */
 JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *characteristic) {
 #if CENTRAL_LINK_COUNT>0
+  uint16_t central_conn_handle = jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(characteristic);
+
   // Remove our characteristic handle from the list of handles to notify for
   uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
   JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", JSV_ARRAY);
@@ -4109,7 +4185,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *cha
     jsvUnLock(handles);
   }
   JsVar *promise = jsvLockAgainSafe(blePromise);
-  jsble_central_characteristicNotify(characteristic, false);
+  jsble_central_characteristicNotify(central_conn_handle, characteristic, false);
   return promise;
 #else
   jsExceptionHere(JSET_ERROR, "Unimplemented");

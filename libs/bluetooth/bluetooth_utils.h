@@ -29,7 +29,8 @@
 #define BLE_NAME_HID_DATA               "BLE_HID_D"
 #define BLE_NAME_NUS                    "BLE_UART"
 #define BLE_NAME_FLAGS                  "BLE_FLAGS"
-#define BLE_NAME_GATT_SERVER            "BLE_GATTS"
+#define BLE_NAME_GATT_SERVER            "BLE_GATTSx" // x is replaced with the index in m_central_conn_handles
+#define BLE_NAME_GATT_SERVER_LEN        11 // include null terminator
 #define BLE_NAME_SECURITY               "BLE_SEC"
 #define BLE_NAME_MAC_ADDRESS            "BLE_MAC"
 #if ESPR_BLUETOOTH_ANCS

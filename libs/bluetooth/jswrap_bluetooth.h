@@ -16,22 +16,22 @@
 // ------------------------------------------------------------------------------
 typedef enum {
   BLETASK_NONE,
-  BLETASK_REQUEST_DEVICE, ///< Waiting for requestDevice to finish
+  BLETASK_REQUEST_DEVICE, ///< Waiting for requestDevice to finish (bleTaskInfo=index of a setTimeout to stop scanning)
   BLETASK_CENTRAL_START, // =========================================== Start of central tasks
-  BLETASK_CONNECT = BLETASK_CENTRAL_START, ///< Connect in central mode
-  BLETASK_DISCONNECT, ///< Disconnect from Central
-  BLETASK_PRIMARYSERVICE, ///< Find primary service
-  BLETASK_CHARACTERISTIC,  ///< Find characteristics
-  BLETASK_CHARACTERISTIC_WRITE, ///< Write to a characteristic
-  BLETASK_CHARACTERISTIC_READ, ///< Read from a characteristic
-  BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, ///< Discover descriptors and start notifications
-  BLETASK_CHARACTERISTIC_NOTIFY, ///< Setting whether notifications are on or off
-  BLETASK_BONDING, ///< Try and bond in central mode
+  BLETASK_CONNECT = BLETASK_CENTRAL_START, ///< Connect in central mode (bleTaskInfo=BluetoothRemoteGATTServer)
+  BLETASK_DISCONNECT, ///< Disconnect from Central (bleTaskInfo=BluetoothRemoteGATTServer)
+  BLETASK_PRIMARYSERVICE, ///< Find primary service (bleTaskInfo=BluetoothDevice, bleTaskInfo2=populated with list of BluetoothRemoteGATTService)
+  BLETASK_CHARACTERISTIC,  ///< Find characteristics (bleTaskInfo=BluetoothRemoteGATTService, bleTaskInfo2=populated with list of BluetoothRemoteGATTCharacteristic)
+  BLETASK_CHARACTERISTIC_WRITE, ///< Write to a characteristic (bleTaskInfo=0)
+  BLETASK_CHARACTERISTIC_READ, ///< Read from a characteristic (bleTaskInfo=BluetoothRemoteGATTCharacteristic)
+  BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, ///< Discover descriptors and start notifications (bleTaskInfo=BluetoothRemoteGATTCharacteristic)
+  BLETASK_CHARACTERISTIC_NOTIFY, ///< Setting whether notifications are on or off (bleTaskInfo=BluetoothRemoteGATTCharacteristic)
+  BLETASK_BONDING, ///< Try and bond in central mode (bleTaskInfo=BluetoothRemoteGATTServer for central, or 0 for peripheral)
   BLETASK_CENTRAL_END = BLETASK_CHARACTERISTIC_NOTIFY, // ============= End of central tasks
 #ifdef ESPR_BLUETOOTH_ANCS
-  BLETASK_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes
-  BLETASK_ANCS_APP_ATTR,               //< Apple Notification Centre app attributes
-  BLETASK_AMS_ATTR,                    //< Apple Media Service track info request
+  BLETASK_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes (bleTaskInfo=0)
+  BLETASK_ANCS_APP_ATTR,               //< Apple Notification Centre app attributes (bleTaskInfo=appId string)
+  BLETASK_AMS_ATTR,                    //< Apple Media Service track info request (bleTaskInfo=0)
 #endif
 } BleTask;
 
@@ -49,6 +49,7 @@ typedef enum {
 #endif
 
 extern JsVar *bleTaskInfo; // info related to the current task
+extern JsVar *bleTaskInfo2; // info related to the current task
 
 const char *bleGetTaskString(BleTask task);
 bool bleInTask(BleTask task);
@@ -61,10 +62,15 @@ void bleCompleteTaskFailAndUnLock(BleTask task, JsVar *data);
 void bleSwitchTask(BleTask task);
 
 #ifdef NRF52_SERIES
-// Set the currently active GATT server
-void bleSetActiveBluetoothGattServer(JsVar *var);
-// Get the currently active GATT server (the return value needs unlocking)
-JsVar *bleGetActiveBluetoothGattServer();
+// Set the currently active GATT server based on the index in m_central_conn_handles
+void bleSetActiveBluetoothGattServer(int idx, JsVar *var);
+// Get the currently active GATT server based on the index in m_central_conn_handles (the return value needs unlocking)
+JsVar *bleGetActiveBluetoothGattServer(int idx);
+
+uint16_t jswrap_ble_BluetoothRemoteGATTServer_getHandle(JsVar *parent);
+uint16_t jswrap_ble_BluetoothDevice_getHandle(JsVar *parent);
+uint16_t jswrap_ble_BluetoothRemoteGATTService_getHandle(JsVar *parent);
+uint16_t jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(JsVar *parent);
 #endif
 
 // ------------------------------------------------------------------------------

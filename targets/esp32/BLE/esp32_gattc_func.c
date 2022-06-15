@@ -53,13 +53,13 @@ void gattc_evt_reg(esp_gatt_if_t gattc_if,esp_ble_gattc_cb_param_t *param){
 void gattc_evt_connect(esp_gatt_if_t gattc_if,esp_ble_gattc_cb_param_t *param){
 	esp_ble_gattc_cb_param_t *p_data = (esp_ble_gattc_cb_param_t *)param;
 	gattc_apps[GATTC_PROFILE].conn_id = p_data->connect.conn_id;
-	m_central_conn_handle = 0x01;
+	m_central_conn_handles[0] = 0x01;
 	memcpy(gattc_apps[GATTC_PROFILE].remote_bda, p_data->connect.remote_bda, sizeof(esp_bd_addr_t));
     esp_err_t mtu_ret = esp_ble_gattc_send_mtu_req (gattc_if, p_data->connect.conn_id);
     if (mtu_ret){jsWarn("config MTU error, error code = %x", mtu_ret);}
 }
 void gattc_evt_disconnect(esp_gatt_if_t gattc_if,esp_ble_gattc_cb_param_t *param){
-	m_central_conn_handle = BLE_GATT_HANDLE_INVALID;
+	m_central_conn_handles[0] = BLE_GATT_HANDLE_INVALID;
 }
 void gattc_evt_cfg_mtu(esp_gatt_if_t gattc_if,esp_ble_gattc_cb_param_t *param){
 	if (!bleTaskInfo) bleTaskInfo = jsvNewEmptyArray();
@@ -111,7 +111,7 @@ void gattc_reset(){
 		ret = esp_ble_gattc_app_unregister(gattc_apps[GATTC_PROFILE].gattc_if);
 		if(ret) jsWarn("could not unregister GATTC(%d)\n",ret);
 	}
-	m_central_conn_handle = BLE_GATT_HANDLE_INVALID;
+	m_central_conn_handles[0] = BLE_GATT_HANDLE_INVALID;
 }
 
 void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
