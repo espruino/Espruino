@@ -760,12 +760,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         }
         // add the function's execute space to the symbol table so we can recurse
         if (jspeiAddScope(functionRoot)) {
+          /* Adding scope may have failed - we may have descended too deep - so be sure
+           * not to pull somebody else's scope off */
 #ifndef ESPR_NO_LET_SCOPING
           JsVar *oldBaseScope = execInfo.baseScope;
+          uint8_t oldBlockCount = execInfo.blockCount;
           execInfo.baseScope = functionRoot;
-          /* Adding scope may have failed - we may have descended too deep - so be sure
-           * not to pull somebody else's scope off
-           */
+          execInfo.blockCount = 0;
 #endif
 
           JsVar *oldThisVar = execInfo.thisVar;
@@ -823,13 +824,19 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
               // setup a return variable
               JsVar *returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
               // parse the whole block
+#ifndef ESPR_NO_LET_SCOPING
+              execInfo.blockCount--; // jspeBlockNoBrackets immediately increments the block count
+#endif
               jspeBlockNoBrackets();
+#ifndef ESPR_NO_LET_SCOPING
+              execInfo.blockCount++; // jspeBlockNoBrackets decrements the block count after
+#endif
               /* get the real return var before we remove it from our function.
                * We can unlock below because returnVarName is still part of
                * functionRoot, so won't get freed. */
               returnVar = jsvSkipNameAndUnLock(returnVarName);
               if (returnVarName) // could have failed with out of memory
-                jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
+                jsvRemoveChild(functionRoot, returnVarName); // remove return value (helps stops circular references, saves RAM)
             }
             // Store a stack trace if we had an error
             JsExecFlags hasError = execInfo.execute&EXEC_ERROR_MASK;
@@ -875,6 +882,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 #ifndef ESPR_NO_LET_SCOPING
           jspeiRemoveScope();
           execInfo.baseScope = oldBaseScope;
+          execInfo.blockCount = oldBlockCount;
 #endif
         }
 

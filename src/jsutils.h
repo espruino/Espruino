@@ -306,7 +306,7 @@ typedef int64_t JsSysTime;
 #endif
 
 // javascript specific names
-#define JSPARSE_RETURN_VAR "return" // variable name used for returning function results
+#define JSPARSE_RETURN_VAR JS_HIDDEN_CHAR_STR"rtn" // variable name used for returning function results
 #define JSPARSE_PROTOTYPE_VAR "prototype"
 #define JSPARSE_CONSTRUCTOR_VAR "constructor"
 #define JSPARSE_INHERITS_VAR "__proto__"

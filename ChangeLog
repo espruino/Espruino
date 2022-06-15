@@ -1,5 +1,8 @@
             Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
             Fix issue accessing `arguments` after/inside 'let/const' keyword (fix #2224)
+            let/const now don't add a scope if executed in a function outside a block (fix #2225)
+            When executing a function, ensure the scope doesn't include a `return` var
+            Rename internal return var to fit it inside one JsVar on embedded systems
 
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu
