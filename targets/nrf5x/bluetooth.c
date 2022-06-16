@@ -1255,7 +1255,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #endif
         break;
 
-      case BLE_GAP_EVT_DISCONNECTED:
+      case BLE_GAP_EVT_DISCONNECTED: {
 
 #ifdef DYNAMIC_INTERVAL_ADJUSTMENT
         // set to high interval ready for next connection
@@ -1274,8 +1274,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         ble_update_whitelist();
 #endif
 
-        int centralIdx = jsble_get_central_connection_idx(p_ble_evt->evt.gap_evt.conn_handle);
 #if CENTRAL_LINK_COUNT>0
+        int centralIdx = jsble_get_central_connection_idx(p_ble_evt->evt.gap_evt.conn_handle);
         if (centralIdx>=0) {
           jsble_queue_pending(BLEP_CENTRAL_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason | (centralIdx<<8));
           m_central_conn_handles[centralIdx] = BLE_CONN_HANDLE_INVALID;
@@ -1285,6 +1285,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             jsble_queue_pending(BLEP_TASK_FAIL_DISCONNECTED, 0);
           }
         }
+#else
+        int centralIdx = -1;
 #endif
         if (centralIdx<0) {
           bleStatus &= ~BLE_IS_RSSI_SCANNING; // scanning will have stopped now we're disconnected
@@ -1303,7 +1305,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
           jsble_restart_softdevice(NULL);
 
-        break;
+      } break;
 
       case BLE_GAP_EVT_RSSI_CHANGED:  {
         int centralIdx = jsble_get_central_connection_idx(p_ble_evt->evt.gap_evt.conn_handle);
