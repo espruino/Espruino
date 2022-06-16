@@ -10,8 +10,11 @@ Works:
 * Assignments
 * Maths operators, postfix operators
 * Function calls
+* Member access (with `.` or `[]`)
 * `for (;;)` loops
 * `if ()`
+* `i++` / `++i`
+* `~i`/`!i`/`+i`/`-i`
 * On the whole functions that can't be JITed will produce a message on the console and will be treated as normal functions.
 
 Doesn't work:
@@ -19,18 +22,23 @@ Doesn't work:
 * Everything else
 * Function arguments
 * `var/const/let`
-* Member access (with `.` or `[]`)
 
 Performance:
 
-* Right now, variable accesses search for the variable each time - so this is pretty slow. Maybe they could all be referenced at the start just once?
+* Right now, variable accesses search for the variable each time - so this is pretty slow. 
+  * Maybe they could all be referenced at the start just once and stored on the stack? This could be an easy shortcut to get fast local vars too.
+  * If we did this we'd need to do a first pass, but the first pass *could* be used as quick way to see if the code was JITable
+  * We can't allocate them as we go because we have flow control though.
+  * We also have to worry about unlocking them all on exit if we reference them at the start
+  * We could also extend it to allow caching of constant field access, for instance 'console.log'
 * Built-in functions could be called directly, which would be a TON faster
 * Peephole optimisation could still be added (eg. removing `push r0, pop r0`) but this is the least of our worries
 * Stuff is in place to allow ints to be stored on the stack and converted when needed. This could maybe allow us to keep some vars as ints.
+* When a function is called we load up the address as a 32 bit literal each time. We could maybe have a constant pool?
+* When we emit code, we just use StringAppend which can be very slow. We should use an iterator (it's an easy win for compile performance)
 
 Big stuff to do:
 
-* There seems to be a 'lock leak' - maybe on assignments
 * When calling a JIT function, using existing FunctionCall code to set up args and an execution scope (so args can be passed in)
 
 
