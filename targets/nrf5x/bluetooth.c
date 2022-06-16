@@ -1428,7 +1428,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           uint16_t effective_mtu = p_ble_evt->evt.gattc_evt.params.exchange_mtu_rsp.server_rx_mtu;
           effective_mtu = MIN(MAX(GATT_MTU_SIZE_DEFAULT,effective_mtu),NRF_BLE_MAX_MTU_SIZE);
 #if CENTRAL_LINK_COUNT>0
-          int centralIdx = jsble_get_central_connection_idx(data);
+          int centralIdx = jsble_get_central_connection_idx(conn_handle);
           if (centralIdx >= 0) {
             m_central_effective_mtu = effective_mtu;
 #if (NRF_SD_BLE_API_VERSION > 3)
@@ -2436,13 +2436,20 @@ uint32_t app_ram_base;
 static void ble_stack_init() {
 #if defined ( __GNUC__ )
     extern uint32_t __data_start__;
-    app_ram_base = (uint32_t) &__data_start__;
+    uint32_t orig_app_ram_base = (uint32_t) &__data_start__;
+    app_ram_base = orig_app_ram_base;
 #else
 #error "unsupported compiler"
 #endif
 
-#if NRF_SD_BLE_API_VERSION<5
+#if CENTRAL_LINK_COUNT>0
+    for (int i=0;i<CENTRAL_LINK_COUNT;i++)
+      m_central_conn_handles[i] = BLE_CONN_HANDLE_INVALID;
+#endif
+    m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;
 
+
+#if NRF_SD_BLE_API_VERSION<5
     uint32_t err_code;
 
     nrf_clock_lf_cfg_t clock_lf_cfg = {
@@ -2459,12 +2466,6 @@ static void ble_stack_init() {
         .xtal_accuracy = 0
 #endif
     };
-
-#if CENTRAL_LINK_COUNT>0
-    for (int i=0;i<CENTRAL_LINK_COUNT;i++)
-      m_central_conn_handles[i] = BLE_CONN_HANDLE_INVALID;
-#endif
-    m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;
 
     // Initialize SoftDevice.
     SOFTDEVICE_HANDLER_INIT(&clock_lf_cfg, false);
@@ -2491,6 +2492,8 @@ static void ble_stack_init() {
 
     err_code = sd_ble_enable(&ble_enable_params,&app_ram_base);
     APP_ERROR_CHECK(err_code);
+    // if the RAM base is correct, set it to 0 so we don't include it in process.env
+    if (app_ram_base == orig_app_ram_base) app_ram_base=0;
 
 #if (NRF_BLE_MAX_MTU_SIZE > GATT_MTU_SIZE_DEFAULT)
     {

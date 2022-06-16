@@ -100,10 +100,24 @@ const void * const exportPtrs[] = {
   "generate" : "jswrap_process_env",
   "return" : ["JsVar","An object"]
 }
-Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION, FLASH, RAM, MODULES.
+Returns an Object containing various pre-defined variables.
+
+* `VERSION` - is the Espruino version
+* `GIT_COMMIT` - is Git commit hash this firmware was built from
+* `BOARD` - the board's ID (eg. `PUCKJS`)
+* `RAM` - total amount of on-chip RAM in bytes
+* `FLASH` - total amount of on-chip flash memory in bytes
+* `SPIFLASH` - (on Bangle.js) total amount of off-chip flash memory in bytes
+* `HWVERSION` - For Puck.js this is the board revision (1, 2, 2.1), or for Bangle.js it's 1 or 2
+* `STORAGE` - memory in bytes dedicated to the `Storage` module
+* `SERIAL` - the serial number of this chip
+* `CONSOLE` - the name of the current console device being used (`Serial1`, `USB`, `Bluetooth`, etc)
+* `MODULES` - a list of built-in modules separated by commas
+* `EXPTR` - The address of the `exportPtrs` structure in flash (this includes links to built-in functions that compiled JS code needs)
+* `APP_RAM_BASE` - On nRF5x boards, this is the RAM required by the Softdevice *if it doesn't exactly match what was allocated*. You can use this to update `LD_APP_RAM_BASE` in the `BOARD.py` file
 
 For example, to get a list of built-in modules, you can use `process.env.MODULES.split(',')`
- */
+*/
 JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewObject();
   jsvObjectSetChildAndUnLock(obj, "VERSION", jsvNewFromString(JS_VERSION));
@@ -111,6 +125,7 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "GIT_COMMIT", jsvNewFromString(STRINGIFY(GIT_COMMIT)));
 #endif
   jsvObjectSetChildAndUnLock(obj, "BOARD", jsvNewFromString(PC_BOARD_ID));
+  jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
   jsvObjectSetChildAndUnLock(obj, "FLASH", jsvNewFromInteger(FLASH_TOTAL));
 #ifdef SPIFLASH_LENGTH
   jsvObjectSetChildAndUnLock(obj, "SPIFLASH", jsvNewFromInteger(SPIFLASH_LENGTH));
@@ -122,16 +137,16 @@ JsVar *jswrap_process_env() {
   jsvObjectSetChildAndUnLock(obj, "HWVERSION", jsvNewFromInteger(ESPR_HWVERSION));
 #endif
   jsvObjectSetChildAndUnLock(obj, "STORAGE", jsvNewFromInteger(FLASH_SAVED_CODE_LENGTH));
-  jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));
   jsvObjectSetChildAndUnLock(obj, "SERIAL", jswrap_interface_getSerial());
   jsvObjectSetChildAndUnLock(obj, "CONSOLE", jswrap_espruino_getConsole());
   jsvObjectSetChildAndUnLock(obj, "MODULES", jsvNewFromString(jswGetBuiltInLibraryNames()));
 #ifndef SAVE_ON_FLASH
   // Pointer to a list of predefined exports - eventually we'll get rid of the array above
   jsvObjectSetChildAndUnLock(obj, "EXPTR", jsvNewFromInteger((JsVarInt)(size_t)exportPtrs));
-#ifdef DEBUG_APP_RAM_BASE 
-extern uint32_t app_ram_base;
-  jsvObjectSetChildAndUnLock(obj, "APP_RAM_BASE", jsvNewFromInteger((JsVarInt)app_ram_base));
+#ifdef NRF5X
+  extern uint32_t app_ram_base;
+  if (app_ram_base)
+    jsvObjectSetChildAndUnLock(obj, "APP_RAM_BASE", jsvNewFromInteger((JsVarInt)app_ram_base));
 #endif
 #endif
   return obj;
