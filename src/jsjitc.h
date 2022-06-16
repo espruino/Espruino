@@ -92,6 +92,10 @@ void jsjcBranchRelative(int bytes);
 void jsjcBranchConditionalRelative(JsjAsmCondition cond, int bytes);
 // Move one register to another
 void jsjcMov(int regTo, int regFrom);
+// Move negated register
+void jsjcMVN(int regTo, int regFrom);
+// regTo = regTo & regFrom
+void jsjcAND(int regTo, int regFrom);
 // Push a register onto the stack
 void jsjcPush(int reg, JsjValueType type);
 // Pop off the stack to a register

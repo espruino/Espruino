@@ -1833,7 +1833,6 @@ NO_INLINE JsVar *__jspePostfixExpression(JsVar *a) {
       JsVar *oldValue = jsvAsNumberAndUnLock(jsvSkipName(a)); // keep the old value (but convert to number)
       JsVar *res = jsvMathsOpSkipNames(oldValue, one, op==LEX_PLUSPLUS ? '+' : '-');
       jsvUnLock(one);
-
       // in-place add/subtract
       jsvReplaceWith(a, res);
       jsvUnLock(res);
@@ -1873,17 +1872,15 @@ NO_INLINE JsVar *jspeUnaryExpression() {
     if (!JSP_SHOULD_EXECUTE) {
       return jspeUnaryExpression();
     }
+    JsVar *v = jsvSkipNameAndUnLock(jspeUnaryExpression());
     if (tk=='!') { // logical not
-      return jsvNewFromBool(!jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jspeUnaryExpression())));
+      return jsvNewFromBool(!jsvGetBoolAndUnLock(v));
     } else if (tk=='~') { // bitwise not
-      return jsvNewFromInteger(~jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jspeUnaryExpression())));
+      return jsvNewFromInteger(~jsvGetIntegerAndUnLock(v));
     } else if (tk=='-') { // unary minus
-      return jsvNegateAndUnLock(jspeUnaryExpression()); // names already skipped
+      return jsvNegateAndUnLock(v);
     }  else if (tk=='+') { // unary plus (convert to number)
-      JsVar *v = jsvSkipNameAndUnLock(jspeUnaryExpression());
-      JsVar *r = jsvAsNumber(v); // names already skipped
-      jsvUnLock(v);
-      return r;
+      return jsvAsNumberAndUnLock(v);
     }
     assert(0);
     return 0;

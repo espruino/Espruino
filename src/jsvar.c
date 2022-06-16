@@ -442,6 +442,7 @@ size_t jsvGetCharactersInVar(const JsVar *v) {
       )
     return (size_t)v->varData.nativeStr.len;
 
+  if (f < JSV_NAME_STRING_INT_0) jsiConsolePrintf("F %d\n", f);
   assert(f >= JSV_NAME_STRING_INT_0);
   assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
          (JSV_NAME_STRING_0 < JSV_STRING_0) &&
@@ -2000,6 +2001,7 @@ JsVar *jsvAsNumber(JsVar *var) {
   return jsvNewFromFloat(jsvGetFloat(var));
 }
 
+JsVar *jsvAsNumberAndUnLock(JsVar *v) { JsVar *n = jsvAsNumber(v); jsvUnLock(v); return n; }
 JsVarInt jsvGetIntegerAndUnLock(JsVar *v) { return _jsvGetIntegerAndUnLock(v); }
 JsVarFloat jsvGetFloatAndUnLock(JsVar *v) { return _jsvGetFloatAndUnLock(v); }
 bool jsvGetBoolAndUnLock(JsVar *v) { return _jsvGetBoolAndUnLock(v); }

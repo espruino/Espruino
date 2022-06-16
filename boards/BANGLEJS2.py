@@ -36,7 +36,8 @@ info = {
      'GRAPHICS',
      'CRYPTO','SHA256','SHA512',
      'LCD_MEMLCD',
-     'TENSORFLOW'  
+     'TENSORFLOW',
+     'JIT' # JIT compiler enabled
    ],
    'makefile' : [
      'DEFINES += -DESPR_HWVERSION=2 -DBANGLEJS -DBANGLEJS_Q3',

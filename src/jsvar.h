@@ -507,8 +507,8 @@ JsVarFloat jsvGetFloat(const JsVar *v); ///< Get the floating point representati
 bool jsvGetBool(const JsVar *v);
 long long jsvGetLongInteger(const JsVar *v);
 JsVar *jsvAsNumber(JsVar *var); ///< Convert the given variable to a number
+JsVar *jsvAsNumberAndUnLock(JsVar *v); ///< Convert the given variable to a number, unlock v after
 
-static ALWAYS_INLINE JsVar *jsvAsNumberAndUnLock(JsVar *v) { JsVar *n = jsvAsNumber(v); jsvUnLock(v); return n; }
 static ALWAYS_INLINE JsVarInt _jsvGetIntegerAndUnLock(JsVar *v) { JsVarInt i = jsvGetInteger(v); jsvUnLock(v); return i; }
 static ALWAYS_INLINE JsVarFloat _jsvGetFloatAndUnLock(JsVar *v) { JsVarFloat f = jsvGetFloat(v); jsvUnLock(v); return f; }
 static ALWAYS_INLINE bool _jsvGetBoolAndUnLock(JsVar *v) { bool b = jsvGetBool(v); jsvUnLock(v); return b; }

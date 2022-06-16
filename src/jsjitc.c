@@ -229,16 +229,37 @@ void jsjcCall(void *c) {
 
 void jsjcMov(int regTo, int regFrom) {
   DEBUG_JIT("MOV r%d <- r%d\n", regTo, regFrom);
+  assert(regTo>=0 && regTo<16);
+  assert(regFrom>=0 && regFrom<16);
   jsjcEmit16((uint16_t)(0b0100011000000000 | ((regTo&8)?128:0) | (regFrom<<3) | (regTo&7)));
+                        //        TFFFFTTT
+}
+
+// Move negated register
+void jsjcMVN(int regTo, int regFrom) {
+  DEBUG_JIT("MVNS r%d <- r%d\n", regTo, regFrom);
+  assert(regTo>=0 && regTo<8);
+  assert(regFrom>=0 && regFrom<8);
+  jsjcEmit16((uint16_t)(0b0100001111000000 | (regFrom<<3) | (regTo&7)));
+}
+
+// regTo = regTo & regFrom
+void jsjcAND(int regTo, int regFrom) {
+  DEBUG_JIT("ANDS r%d <- r%d\n", regTo, regFrom);
+  assert(regTo>=0 && regTo<8);
+  assert(regFrom>=0 && regFrom<8);
+  jsjcEmit16((uint16_t)(0b0100000000000000 | (regFrom<<3) | (regTo&7)));
 }
 
 void jsjcPush(int reg, JsjValueType type) {
   DEBUG_JIT("PUSH {r%d}\n", reg);
+  assert(reg>=0 && reg<8);
   jsjcEmit16((uint16_t)(0b1011010000000000 | (1<<reg)));
 }
 
 JsjValueType jsjcPop(int reg) {
   DEBUG_JIT("POP {r%d}\n", reg);
+  assert(reg>=0 && reg<8);
   jsjcEmit16((uint16_t)(0b1011110000000000 | (1<<reg)));
   return JSJVT_JSVAR; // FIXME
 }

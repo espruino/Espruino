@@ -1210,7 +1210,19 @@ void jswrap_e_dumpVariables() {
     }
     jsiConsolePrintf("%d,%d,%d,",ref,size,v->flags&JSV_VARTYPEMASK);
     if (jsvIsName(v)) jsiConsolePrintf("%q,",v);
-    else jsiConsolePrintf(",",v);
+    else if (jsvIsNumeric(v)) jsiConsolePrintf("Number %j,",v);
+    else if (jsvIsString(v)) {
+      JsVar *s;
+      if (jsvGetStringLength(v)>20) {
+        s = jsvNewFromStringVar(v, 0, 17);
+        jsvAppendString(s,"...");
+      } else
+        s = jsvLockAgain(v);
+      jsiConsolePrintf("String %j,",s);
+      jsvUnLock(s);
+    } else if (jsvIsObject(v)) jsiConsolePrintf("Object,");
+    else if (jsvIsArray(v)) jsiConsolePrintf("Array,");
+    else jsiConsolePrintf(",");
 
     if (jsvHasSingleChild(v) || jsvHasChildren(v)) {
       JsVarRef childref = jsvGetFirstChild(v);

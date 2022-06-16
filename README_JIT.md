@@ -109,6 +109,17 @@ function jit() {'jit';print(42);}
 function jit() {'jit';print(42);return 123;}
 jit()==123
 
+function jit() {'jit';return !123;}
+jit()==false
+function jit() {'jit';return !0;}
+jit()==true
+function jit() {'jit';return ~0;}
+jit()==-1
+function jit() {'jit';return -(1);}
+jit()==-1
+function jit() {'jit';return +"0123";} 
+jit()==83 // octal!
+
 function t() { return "Hello"; }
 function jit() {'jit'; return t()+" world";}
 jit()=="Hello world"
@@ -117,11 +128,17 @@ function jit() {'jit';digitalWrite(LED1,1);}
 jit(); // LED on
 
 
+function jit() {'jit';return i++;}
+i=0;jit()==0 && i==1
+
+function jit() {'jit';return ++i;}
+i=0;jit()==1 && i==1
+
 function jit() {'jit';i=42;}
 jit();i==42
 
 function jit() {'jit';return 1<2;}
-jit();i==true
+jit()==true
 
 function jit() {"jit";if (i<3) print("T"); else print("X");print("--")}
 i=2;jit(); // prints T,--
@@ -130,6 +147,13 @@ i=5;jit(); // prints X,--
 
 function jit() {"jit";for (i=0;i<5;i=i+1) print(i);}
 jit(); // prints 0,1,2,3,4
+
+function jit() {"jit";for (i=0;i<5;i++) print(i);} // BROKEN?  Uncaught ReferenceError: "" is not defined
+jit(); // prints 0,1,2,3,4
+
+function jit() {"jit";for (i=0;i<5;++i) print(i);}
+jit(); // prints 0,1,2,3,4
+
 
 function nojit() {for (i=0;i<1000;i=i+1);}
 function jit() {"jit";for (i=0;i<1000;i=i+1);}
