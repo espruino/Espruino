@@ -54,7 +54,32 @@ typedef enum {
   JSJAR_PC = 15,
 } JsjAsmReg;
 
+typedef enum {
+  JSJP_UNKNOWN,
+  JSJP_SCAN, /// scan for variables used
+  JSJP_EMIT  /// emit code
+} JsjPhase;
 
+
+typedef struct {
+  /// Which compilation phase are we in?
+  JsjPhase phase;
+  /// The ARM Thumb-2 code we're in the process of creating
+  JsVar *code;
+  /// The ARM Thumb-2 variable init code block (this goes right at the start of our function)
+  JsVar *initCode;
+  /// How many blocks deep are we? blockCount=0 means we're writing to the 'code' var
+  int blockCount;
+  /// An Object mapping var name -> index on the stack
+  JsVar *vars;
+  /// How many words (not bytes) are on the stack reserved for variables?
+  int varCount;
+  /// How much stuff has been pushed on the stack so far? (including variables)
+  int stackDepth;
+} JsjInfo;
+
+// JIT state
+extern JsjInfo jit;
 
 // Called before start of JIT output
 void jsjcStart();
@@ -62,6 +87,8 @@ void jsjcStart();
 JsVar *jsjcStop();
 // Called before start of a block of code. Returns the old code jsVar that should be passed into jsjcStopBlock
 JsVar *jsjcStartBlock();
+// Called to start writing to 'init code' (which is inserted before everything else). Returns the old code jsVar that should be passed into jsjcStopBlock
+JsVar *jsjcStartInitCodeBlock();
 // Called when JIT output stops, pass it the return value from jsjcStartBlock. Returns the code parsed in the block
 JsVar *jsjcStopBlock(JsVar *oldBlock);
 // Emit a whole block of code

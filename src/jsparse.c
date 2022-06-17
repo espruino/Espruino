@@ -2699,7 +2699,6 @@ NO_INLINE JsVar *jspeStatementFor() {
 #endif
     ) {
       jslSeekToP(&forCondStart);
-      ;
       if (lex->tk == ';') {
         loopCond = true;
       } else {

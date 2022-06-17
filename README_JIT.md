@@ -190,6 +190,21 @@ echo ASBL8Kz7AbQBvHBH | base64 -d  > jit.bin
 arm-none-eabi-objdump -D -Mforce-thumb -b binary -m cortex-m4 jit.bin
 ```
 
+Seeing what GCC does:
+
+```
+// test.c
+void main() {
+  int data[400];
+  volatile int x = data[1];
+}
+```
+
+```
+arm-none-eabi-gcc -Os -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16 -nostartfiles test.c
+arm-none-eabi-objdump -D -Mforce-thumb -m cortex-m4 a.out
+```
+
 ## Useful links
 
 
