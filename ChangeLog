@@ -6,6 +6,7 @@
             nRF52: Added support for 2 concurrent Bluetooth Central connections to Puck.js, Pixl.js, MDBT42Q (fix #1360)
             Bangle.js2: JIT now built in (only enabled for functions prefixed '"jit"')
             E.dumpVariables now outputs more info for variable values
+            Puck.js Lite support
 
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu

@@ -49,6 +49,12 @@ const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 #define IR_FET_PIN 27 // Puck v2
 #define FET_PIN 26 // Puck v2
 
+// For Puck.js lite we don't define LED3, for the bootloader's sake - but we define it here so we can self-test it's not connected
+#ifndef LED3_PININDEX
+#define LED3_PININDEX 3
+#define LED3_ONSTATE 1
+#endif
+
 bool mag_enabled = false; //< Has the magnetometer been turned on?
 int16_t mag_reading[3];  //< magnetometer xyz reading
 //int mag_zero[3]; //< magnetometer 'zero' reading, only for Puck 2.1 right now
@@ -75,8 +81,23 @@ JsVar *jswrap_puck_getHardwareVersion() {
     case PUCKJS_1V0: return jsvNewFromInteger(1);
     case PUCKJS_2V0: return jsvNewFromInteger(2);
     case PUCKJS_2V1: return jsvNewFromFloat(2.1);
+    case PUCKJS_LITE_1V0: return jsvNewFromString("Lite 1");
     default: return NULL;
   }
+}
+
+const char *jswrap_puck_getHardwareVersionString() {
+  switch (puckVersion) {
+    case PUCKJS_1V0: return "1";
+    case PUCKJS_2V0: return "2";
+    case PUCKJS_2V1: return "2.1";
+    case PUCKJS_LITE_1V0: return "Lite 1";
+    default: return "(Unknown Version)";
+  }
+}
+
+void jswrap_puck_notAvailableException(const char *hardware) {
+  jsExceptionHere(JSET_ERROR, "%s not available on Puck.js %s", hardware, jswrap_puck_getHardwareVersionString());
 }
 
 JsVar *to_xyz(int16_t d[3], double scale) {
@@ -345,7 +366,7 @@ bool mag_on(int milliHz, bool instant) {
     if (!instant) // if we're instant, don't start a timer as we just want to read in the main thread
       app_timer_start(m_poll_timer_id, APP_TIMER_TICKS(1000000 / milliHz, APP_TIMER_PRESCALER), NULL);
   } else {
-    jsWarn("Unknown Puck version!");
+    // not supported
     return false;
   }
 
@@ -601,6 +622,11 @@ varies from around 25-60 uT, so the reading will vary by 250 to 600 depending
 on location.
 */
 JsVar *jswrap_puck_mag() {
+  if (!PUCKJS_HAS_MAG) {
+    jswrap_puck_notAvailableException("Magnetometer");
+    return 0;
+  }
+
   /* If not enabled, turn on and read. If enabled,
    * just pass out the last reading */
   if (!mag_enabled) {
@@ -635,6 +661,10 @@ The reading obtained is an integer (so no decimal places), but the sensitivity i
 offset isn't - so absolute readings may still need calibrating.
 */
 JsVarFloat jswrap_puck_magTemp() {
+  if (!PUCKJS_HAS_MAG) {
+    jswrap_puck_notAvailableException("Magnetometer");
+    return NAN;
+  }
   int t;
   if (!mag_enabled) {
     mag_on(0, true /*instant*/); // takes a reading right away
@@ -725,6 +755,10 @@ for more information.
 
 */
 void jswrap_puck_magOn(JsVarFloat hz) {
+  if (!PUCKJS_HAS_MAG) {
+    jswrap_puck_notAvailableException("Magnetometer");
+    return;
+  }
   if (mag_enabled) {
     jswrap_puck_magOff();
     // wait 1ms for power-off
@@ -758,6 +792,10 @@ void jswrap_puck_magOn(JsVarFloat hz) {
 Turn the magnetometer off
 */
 void jswrap_puck_magOff() {
+  if (!PUCKJS_HAS_MAG) {
+    jswrap_puck_notAvailableException("Magnetometer");
+    return;
+  }
   if (mag_enabled) {
     if (puckVersion == PUCKJS_1V0) {
       jshPinWatch(MAG_PIN_INT, false, JSPW_NONE);
@@ -786,6 +824,10 @@ Check out [the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js
 for more information and links to modules that use this function.
 */
 void jswrap_puck_magWr(JsVarInt reg, JsVarInt data) {
+  if (!PUCKJS_HAS_MAG) {
+    jswrap_puck_notAvailableException("Magnetometer");
+    return;
+  }
   mag_wr(reg, data);
 }
 
@@ -806,6 +848,10 @@ Check out [the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js
 for more information and links to modules that use this function.
 */
 int jswrap_puck_magRd(JsVarInt reg) {
+  if (!PUCKJS_HAS_MAG) {
+    jswrap_puck_notAvailableException("Magnetometer");
+    return -1;
+  }
   unsigned char buf[1];
   mag_rd(reg, buf, 1);
   return buf[0];
@@ -906,7 +952,7 @@ for more information.
 */
 void jswrap_puck_accelOn(JsVarFloat hz) {
   if (!PUCKJS_HAS_ACCEL) {
-    jsExceptionHere(JSET_ERROR, "Not available on Puck.js v1");
+    jswrap_puck_notAvailableException("Accelerometer");
     return;
   }
   if (accel_enabled) {
@@ -937,7 +983,7 @@ for more information.
 */
 void jswrap_puck_accelOff() {
   if (!PUCKJS_HAS_ACCEL) {
-    jsExceptionHere(JSET_ERROR, "Not available on Puck.js v1");
+    jswrap_puck_notAvailableException("Accelerometer");
     return;
   }
   if (accel_enabled) {
@@ -965,6 +1011,10 @@ The values reported are the raw values from the chip. In normal configuration:
 If taking more than one reading, we'd suggest you use `Puck.accelOn()` and the `Puck.accel` event.
 */
 JsVar *jswrap_puck_accel() {
+  if (!PUCKJS_HAS_ACCEL) {
+    jswrap_puck_notAvailableException("Accelerometer");
+    return 0;
+  }
   /* If not enabled, turn on and read. If enabled,
    * just pass out the last reading */
   if (!accel_enabled) {
@@ -997,7 +1047,7 @@ for more information and links to modules that use this function.
 */
 void jswrap_puck_accelWr(JsVarInt reg, JsVarInt data) {
   if (!PUCKJS_HAS_ACCEL) {
-    jsExceptionHere(JSET_ERROR, "Not available on Puck.js v1");
+    jswrap_puck_notAvailableException("Accelerometer");
     return;
   }
   unsigned char buf[2];
@@ -1024,7 +1074,7 @@ for more information and links to modules that use this function.
 */
 int jswrap_puck_accelRd(JsVarInt reg) {
   if (!PUCKJS_HAS_ACCEL) {
-    jsExceptionHere(JSET_ERROR, "Not available on Puck.js v1");
+    jswrap_puck_notAvailableException("Accelerometer");
     return -1;
   }
   unsigned char buf[1];
@@ -1081,6 +1131,10 @@ void _jswrap_puck_IR_done(JsSysTime t, void *data) {
   jshPinSetState(cathode, JSHPINSTATE_GPIO_IN);
 }
 void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
+  if (!PUCKJS_HAS_IR) {
+    jswrap_puck_notAvailableException("IR");
+    return;
+  }
   if (!jsvIsIterable(data)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting an array, got %t", data);
     return;
@@ -1168,6 +1222,10 @@ When not supplying pins, Puck.js uses an internal resistor between D12(tx)
 and D11(rx).
 */
 int jswrap_puck_capSense(Pin tx, Pin rx) {
+  if (!PUCKJS_HAS_CAPSENSE) {
+    jswrap_puck_notAvailableException("Capacitive sense");
+    return 0;
+  }
   if (jshIsPinValid(tx) && jshIsPinValid(rx)) {
     return (int)nrf_utils_cap_sense(tx, rx);
   }
@@ -1311,7 +1369,7 @@ bool jswrap_puck_selfTest() {
   // light up all LEDs white
   jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
   jshPinOutput(LED2_PININDEX, LED2_ONSTATE);
-  jshPinOutput(LED3_PININDEX, LED3_ONSTATE);
+  if (PUCKJS_HAS_LED3) jshPinOutput(LED3_PININDEX, LED3_ONSTATE);
   jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
 
   timeout = 2000;
@@ -1325,7 +1383,7 @@ bool jswrap_puck_selfTest() {
   nrf_delay_ms(100);
   jshPinInput(LED1_PININDEX);
   jshPinInput(LED2_PININDEX);
-  jshPinInput(LED3_PININDEX);
+  if (PUCKJS_HAS_LED3) jshPinInput(LED3_PININDEX);
   nrf_delay_ms(500);
 
 
@@ -1349,68 +1407,74 @@ bool jswrap_puck_selfTest() {
     ok = false;
   }
 
-  jshPinSetState(LED3_PININDEX, JSHPINSTATE_GPIO_IN_PULLUP);
-  nrf_delay_ms(1);
-  v = jshPinAnalog(LED3_PININDEX);
-  jshPinSetState(LED3_PININDEX, JSHPINSTATE_GPIO_IN);
-  if (v<0.55 || v>0.90) {
-    if (!err[0]) strcpy(err,"LD3");
-    jsiConsolePrintf("LED3 pullup voltage out of range (%f) - disconnected?\n", v);
-    ok = false;
-  }
-
-  jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
-  jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(IR_CATHODE_PIN, 1);
-  nrf_delay_ms(1);
-  if (jshPinGetValue(IR_ANODE_PIN)) {
-    if (!err[0]) strcpy(err,"IRs");
-    jsiConsolePrintf("IR LED wrong way around/shorted?\n");
-    ok = false;
-  }
-
-
-  if (PUCKJS_HAS_IR_FET) {
-    jshPinSetValue(IR_FET_PIN, 0);
-    jshPinSetState(IR_FET_PIN, JSHPINSTATE_GPIO_OUT);
-    jshPinSetState(IR_INPUT_PIN, JSHPINSTATE_GPIO_IN_PULLUP);
+  if (PUCKJS_HAS_LED3) {
+    jshPinSetState(LED3_PININDEX, JSHPINSTATE_GPIO_IN_PULLUP);
     nrf_delay_ms(1);
-    if (!jshPinGetValue(IR_INPUT_PIN)) {
+    v = jshPinAnalog(LED3_PININDEX);
+    jshPinSetState(LED3_PININDEX, JSHPINSTATE_GPIO_IN);
+    if (v<0.55 || v>0.90) {
+      if (!err[0]) strcpy(err,"LD3");
+      jsiConsolePrintf("LED3 pullup voltage out of range (%f) - disconnected?\n", v);
+      ok = false;
+    }
+  }
+
+  if (PUCKJS_HAS_IR) {
+    jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+    jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_OUT);
+    jshPinSetValue(IR_CATHODE_PIN, 1);
+    nrf_delay_ms(1);
+    if (jshPinGetValue(IR_ANODE_PIN)) {
       if (!err[0]) strcpy(err,"IRs");
-      jsiConsolePrintf("IR LED short?\n");
+      jsiConsolePrintf("IR LED wrong way around/shorted?\n");
       ok = false;
     }
-    jshPinSetValue(IR_FET_PIN, 1);
-    nrf_delay_ms(1);
-    if (jshPinGetValue(IR_INPUT_PIN)) {
-      if (!err[0]) strcpy(err,"IRF");
-      jsiConsolePrintf("IR FET disconnected?\n");
-      ok = false;
+
+
+    if (PUCKJS_HAS_IR_FET) {
+      jshPinSetValue(IR_FET_PIN, 0);
+      jshPinSetState(IR_FET_PIN, JSHPINSTATE_GPIO_OUT);
+      jshPinSetState(IR_INPUT_PIN, JSHPINSTATE_GPIO_IN_PULLUP);
+      nrf_delay_ms(1);
+      if (!jshPinGetValue(IR_INPUT_PIN)) {
+        if (!err[0]) strcpy(err,"IRs");
+        jsiConsolePrintf("IR LED short?\n");
+        ok = false;
+      }
+      jshPinSetValue(IR_FET_PIN, 1);
+      nrf_delay_ms(1);
+      if (jshPinGetValue(IR_INPUT_PIN)) {
+        if (!err[0]) strcpy(err,"IRF");
+        jsiConsolePrintf("IR FET disconnected?\n");
+        ok = false;
+      }
+      jshPinSetState(IR_INPUT_PIN, JSHPINSTATE_GPIO_IN);
+      jshPinSetValue(IR_FET_PIN, 0);
+    } else {
+      jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+      jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_OUT);
+      jshPinSetValue(IR_ANODE_PIN, 1);
+      nrf_delay_ms(1);
+      if (!jshPinGetValue(IR_CATHODE_PIN)) {
+        if (!err[0]) strcpy(err,"IRd");
+        jsiConsolePrintf("IR LED disconnected?\n");
+        ok = false;
+      }
     }
-    jshPinSetState(IR_INPUT_PIN, JSHPINSTATE_GPIO_IN);
-    jshPinSetValue(IR_FET_PIN, 0);
-  } else {
-    jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
-    jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(IR_ANODE_PIN, 1);
-    nrf_delay_ms(1);
-    if (!jshPinGetValue(IR_CATHODE_PIN)) {
-      if (!err[0]) strcpy(err,"IRd");
-      jsiConsolePrintf("IR LED disconnected?\n");
-      ok = false;
-    }
+
+    jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN);
+    jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN);
   }
 
-  jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN);
-  jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_IN);
-
-  mag_on(0, true /*instant*/); // takes a reading right away
-  mag_off();
-  mag_enabled = false;
-  if (mag_reading[0]==-1 && mag_reading[1]==-1 && mag_reading[2]==-1) {
-    if (!err[0]) strcpy(err,"MAG");
-    jsiConsolePrintf("Magnetometer not working?\n");
-    ok = false;
+  if (PUCKJS_HAS_MAG) {
+    mag_on(0, true /*instant*/); // takes a reading right away
+    mag_off();
+    mag_enabled = false;
+    if (mag_reading[0]==-1 && mag_reading[1]==-1 && mag_reading[2]==-1) {
+      if (!err[0]) strcpy(err,"MAG");
+      jsiConsolePrintf("Magnetometer not working?\n");
+      ok = false;
+    }
   }
 
   if (PUCKJS_HAS_ACCEL) {
@@ -1435,31 +1499,62 @@ bool jswrap_puck_selfTest() {
 
   }
 
-  jshPinSetState(CAPSENSE_TX_PIN, JSHPINSTATE_GPIO_OUT);
-  jshPinSetState(CAPSENSE_RX_PIN, JSHPINSTATE_GPIO_IN);
-  jshPinSetValue(CAPSENSE_TX_PIN, 1);
-  nrf_delay_ms(1);
-  if (!jshPinGetValue(CAPSENSE_RX_PIN)) {
-    if (!err[0]) strcpy(err,"CPu");
-    jsiConsolePrintf("Capsense resistor disconnected? (pullup)\n");
-    ok = false;
+  if (PUCKJS_HAS_CAPSENSE) {
+    jshPinSetState(CAPSENSE_TX_PIN, JSHPINSTATE_GPIO_OUT);
+    jshPinSetState(CAPSENSE_RX_PIN, JSHPINSTATE_GPIO_IN);
+    jshPinSetValue(CAPSENSE_TX_PIN, 1);
+    nrf_delay_ms(1);
+    if (!jshPinGetValue(CAPSENSE_RX_PIN)) {
+      if (!err[0]) strcpy(err,"CPu");
+      jsiConsolePrintf("Capsense resistor disconnected? (pullup)\n");
+      ok = false;
+    }
+    jshPinSetValue(CAPSENSE_TX_PIN, 0);
+    nrf_delay_ms(1);
+    if (jshPinGetValue(CAPSENSE_RX_PIN)) {
+      if (!err[0]) strcpy(err,"CPd");
+      jsiConsolePrintf("Capsense resistor disconnected? (pulldown)\n");
+      ok = false;
+    }
+    jshPinSetState(CAPSENSE_TX_PIN, JSHPINSTATE_GPIO_IN);
   }
-  jshPinSetValue(CAPSENSE_TX_PIN, 0);
-  nrf_delay_ms(1);
-  if (jshPinGetValue(CAPSENSE_RX_PIN)) {
-    if (!err[0]) strcpy(err,"CPd");
-    jsiConsolePrintf("Capsense resistor disconnected? (pulldown)\n");
-    ok = false;
-  }
-  jshPinSetState(CAPSENSE_TX_PIN, JSHPINSTATE_GPIO_IN);
 
 
+  /* If we don't have hardware here we still check the pins. The idea
+   * is maybe we have a Puck 2.1 where the Magnetometer is broken, so
+   * we think we have a Puck.js Lite. But then hopefully we check all
+   * the pins and we find something else (like LED3) is attached to
+   * a pin and forcing it low, and so we fail the test (as we should).
+   */
   ok &= selftest_check_pin(1,err);
   ok &= selftest_check_pin(2,err);
+  if (!PUCKJS_HAS_LED3) {
+    ok &= selftest_check_pin(LED3_PININDEX,err);
+  }
+  if (!PUCKJS_HAS_IR) {
+    ok &= selftest_check_pin(IR_ANODE_PIN,err);
+    ok &= selftest_check_pin(IR_CATHODE_PIN,err);
+  }
+  if (!PUCKJS_HAS_CAPSENSE) {
+    ok &= selftest_check_pin(CAPSENSE_RX_PIN,err);
+    ok &= selftest_check_pin(CAPSENSE_TX_PIN,err);
+  }
+  if (!PUCKJS_HAS_MAG) {
+    ok &= selftest_check_pin(MAG_PIN_SDA,err);
+    ok &= selftest_check_pin(MAG_PIN_PWR,err);
+    ok &= selftest_check_pin(MAG_PIN_SCL,err);
+    ok &= selftest_check_pin(MAG_PIN_DRDY,err);
+    ok &= selftest_check_pin(MAG_PIN_INT,err);
+  }
+  if (!PUCKJS_HAS_ACCEL) {
+    ok &= selftest_check_pin(ACCEL_PIN_INT,err);
+    ok &= selftest_check_pin(ACCEL_PIN_SDA,err);
+    ok &= selftest_check_pin(ACCEL_PIN_SCL,err);
+  }
   if (!PUCKJS_HAS_TEMP_SENSOR) {
-    ok &= selftest_check_pin(6,err);
-    ok &= selftest_check_pin(7,err);
-    ok &= selftest_check_pin(8,err);
+    ok &= selftest_check_pin(TEMP_PIN_SCL,err); // 6
+    ok &= selftest_check_pin(TEMP_PIN_SDA,err); // 7
+    ok &= selftest_check_pin(TEMP_PIN_PWR,err); // 8
   }
   ok &= selftest_check_pin(28,err);
   ok &= selftest_check_pin(29,err);
@@ -1511,7 +1606,7 @@ void jswrap_puck_init() {
   jshDelayMicroseconds(2500); // 1.7ms from power on to ok
   // MAG3110 WHO_AM_I - for some reason we have to use this slightly odd SW I2C implementation for this
   unsigned char buf[2];
-  puckVersion = PUCKJS_1V0;
+  puckVersion = PUCKJS_UNKNOWN;
   mag_rd(0x07, buf, 1); // MAG3110 WHO_AM_I
   //jsiConsolePrintf("MAG3110 %d\n", buf[0]);
   if (buf[0]!=0xC4 && buf[0]!=0x00) { // sometimes MAG3110 reports ID 0!
@@ -1531,9 +1626,9 @@ void jswrap_puck_init() {
       if (buf[0] == 16) {
         puckVersion = PUCKJS_2V1;
       } else {
-        // uh-oh, no magnetometer found
-        jsWarn("No Magnetometer found");
-        puckVersion = PUCKJS_UNKNOWN;
+        //jsiConsolePrintf("No magnetometer\n");
+        // no magnetometer found - Puck.js lite!
+        puckVersion = PUCKJS_LITE_1V0;
       }
     }
   } else {

@@ -60,13 +60,14 @@ static void set_led_state(bool btn, bool progress)
 {
 #if defined(PIXLJS) || defined(BANGLEJS)
   // LED1 is backlight/HRM - don't use it!
-#else
-#if defined(LED2_PININDEX) && defined(LED3_PININDEX)
+#elif defined(PUCKJS_LITE)
+  jshPinOutput(LED1_PININDEX, progress);
+  jshPinOutput(LED2_PININDEX, btn);
+#elif defined(LED2_PININDEX) && defined(LED3_PININDEX)
   jshPinOutput(LED3_PININDEX, progress);
   jshPinOutput(LED2_PININDEX, btn);
 #elif defined(LED1_PININDEX)
   jshPinOutput(LED1_PININDEX, progress || btn);
-#endif
 #endif
 }
 
