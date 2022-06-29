@@ -812,7 +812,7 @@ bool jsble_has_central_connection() {
 }
 
 /** Return the index of the central connection in m_central_conn_handles, or -1 */
-bool jsble_get_central_connection_idx(uint16_t handle) {
+int jsble_get_central_connection_idx(uint16_t handle) {
 #if CENTRAL_LINK_COUNT>0
   for (int i=0;i<CENTRAL_LINK_COUNT;i++)
     if (m_central_conn_handles[i] == handle)
@@ -1293,7 +1293,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;
           // if we were on bluetooth and we disconnected, clear the input line so we're fresh next time (#2219)
           if (jsiGetConsoleDevice()==EV_BLUETOOTH) jsiClearInputLine(false);
-
           if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
           // by calling nus_transmit_string here, without a connection, we clear the Bluetooth output buffer
           nus_transmit_string();
