@@ -4,9 +4,9 @@
     options.buttons = {"Yes":true,"No":false};
   var loc = require("locale");
   var btns = Object.keys(options.buttons);
-  var btnPos = [];
-  function draw() {
-    g.reset().setFont("6x8",2).setFontAlign(0,-1);
+  var btnPos;
+  function draw(highlightedButton) {
+    g.reset().setFont("6x8:2").setFontAlign(0,-1);
     var Y = Bangle.appRect.y;
     var W = g.getWidth(), H = g.getHeight()-Y, FH=g.getFontHeight();
     var titleLines = g.wrapString(options.title, W-2);
@@ -35,6 +35,7 @@
       btns.forEach(btn=>buttonWidths += buttonPadding+g.stringWidth(loc.translate(btn)));
     }
     var x = (W-buttonWidths)/2;
+    btnPos = [];
     btns.forEach((btn,idx)=>{
       btn = loc.translate(btn);
       var w = g.stringWidth(btn);
@@ -52,7 +53,8 @@
       btnPos.push({x1:x-bw-buttonPadding/2, x2:x+bw+buttonPadding/2,
                    y1:y-30, y2:y+30,
                    poly: poly});
-      g.setColor(g.theme.bg2).fillPoly(poly).setColor(g.theme.fg2).drawPoly(poly).drawString(btn,x,y+1);
+      g.setColor(idx===highlightedButton ? g.theme.bgH : g.theme.bg2).fillPoly(poly).
+        setColor(idx===highlightedButton ? g.theme.fgH : g.theme.fg2).drawPoly(poly).drawString(btn,x,y+1);
       x += (buttonPadding+w)/2;
     });
     Bangle.setLCDPower(1); // ensure screen is on
@@ -68,7 +70,8 @@
       btnPos.forEach((b,i)=>{
         if (e.x > b.x1 && e.x < b.x2 &&
             e.y > b.y1 && e.y < b.y2) {
-          g.setColor(g.theme.bgH).fillPoly(b.poly).setColor(g.theme.fgH).drawPoly(b.poly).drawString(btns[i],(b.x1+b.x2)/2,((b.y1+b.y2)/2)+1).flip();
+          draw(i); // highlighted button
+          g.flip(); // write to screen
           E.showPrompt(); // remove
           resolve(options.buttons[btns[i]]);
         }
