@@ -7,6 +7,10 @@
             Bangle.js2: JIT now built in (only enabled for functions prefixed '"jit"')
             E.dumpVariables now outputs more info for variable values
             Puck.js Lite support
+            Puck.js: Immediately after flashing new firmware, Puck.js now does a self-test and sets its BLE to PASS or FAIL
+            nRF52: Fix recent regression which stopped reconnection after a bluetooth disconnect (fix #2226)
+            Bangle.js: Include the 'sched' library in installed apps (needed for alarm) (fix #2229)
+            Bangle.js2: Fix text size on buttons when they are tapped in E.showPrompt
 
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu

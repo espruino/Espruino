@@ -211,7 +211,7 @@ bool jsble_has_connection();
 bool jsble_has_central_connection();
 
 /** Return the index of the central connection in m_central_conn_handles, or -1 */
-bool jsble_get_central_connection_idx(uint16_t handle);
+int jsble_get_central_connection_idx(uint16_t handle);
 
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
 bool jsble_has_peripheral_connection();

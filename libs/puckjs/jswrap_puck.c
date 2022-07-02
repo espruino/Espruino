@@ -22,6 +22,7 @@
 #include "jshardware.h"
 #include "jsdevices.h"
 #include "jspin.h"
+#include "jsflags.h"
 #include "jstimer.h"
 #include "jswrap_bluetooth.h"
 #include "nrf_gpio.h"
@@ -1360,7 +1361,8 @@ If the self test fails, it'll set the Puck.js Bluetooth advertising name
 to `Puck.js !ERR` where ERR is a 3 letter error code.
 
 */
-bool jswrap_puck_selfTest() {
+
+bool _jswrap_puck_selfTest(bool advertisePassOrFail) {
   unsigned int timeout, i;
   JsVarFloat v;
   bool ok = true;
@@ -1564,10 +1566,19 @@ bool jswrap_puck_selfTest() {
   for (i=0;i<sizeof(PUCK_IO_PINS)/sizeof(Pin);i++)
     jshPinSetState(PUCK_IO_PINS[i], JSHPINSTATE_GPIO_IN);
 
-  if (err[0]) {
+  if (err[0] || advertisePassOrFail) {
     char deviceName[BLE_GAP_DEVNAME_MAX_LEN];
-    strcpy(deviceName,"Puck.js !");
-    strcat(deviceName,err);
+    if (advertisePassOrFail) {
+      if (err[0]) {
+        strcpy(deviceName,"FAIL ");
+        strcat(deviceName,err);
+      } else {
+        strcpy(deviceName,"PASS");
+      }
+    } else {
+      strcpy(deviceName,"Puck.js !");
+      strcat(deviceName,err);
+    }
     ble_gap_conn_sec_mode_t sec_mode;
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
     sd_ble_gap_device_name_set(&sec_mode,
@@ -1577,6 +1588,9 @@ bool jswrap_puck_selfTest() {
   }
 
   return ok;
+}
+bool jswrap_puck_selfTest() {
+  return _jswrap_puck_selfTest(false);
 }
 
 /*JSON{
@@ -1647,10 +1661,30 @@ void jswrap_puck_init() {
 
   /* If the button is pressed during reset, perform a self test.
    * With bootloader this means apply power while holding button for >3 secs */
-  bool firstStart = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrap_puck_init was called?;
-  if (firstStart && jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE) {
+  bool firstStart = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrap_puck_init was called?
+  bool firstRunAfterFlash = false;
+  if (firstStart) {
+    uint32_t firstStartFlagAddr = FLASH_SAVED_CODE_START-4;
+    // check the 4 bytes *right before* our saved code. If these are 0xFFFFFFFF
+    // then we have just been programmed...
+    uint32_t buf;
+    jshFlashRead(&buf, firstStartFlagAddr, 4);
+    if (buf==0xFFFFFFFF) {
+      firstRunAfterFlash = true;
+      buf = 0;
+      // set it to 0!
+      bool oldFlashStatus = jsfGetFlag(JSF_UNSAFE_FLASH);
+      jsfSetFlag(JSF_UNSAFE_FLASH, true);
+      jshFlashWrite(&buf, firstStartFlagAddr, 4);
+      jsfSetFlag(JSF_UNSAFE_FLASH, oldFlashStatus);
+    }
+  }
+
+  if (firstStart && (jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE || firstRunAfterFlash)) {
     // don't do it during a software reset - only first hardware reset
-    bool result = jswrap_puck_selfTest();
+    // if we're doing our first run after being flashed with new firmware, we set the advertising name
+    // up to say PASS or FAIL, to work with the factory test process.
+    bool result = _jswrap_puck_selfTest(firstRunAfterFlash);
     // green if good, red if bad
     Pin indicator = result ? LED2_PININDEX : LED1_PININDEX;
     int i;
