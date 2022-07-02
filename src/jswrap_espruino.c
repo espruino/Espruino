@@ -1698,12 +1698,56 @@ Set the time zone to be used with `Date` objects.
 
 For example `E.setTimeZone(1)` will be GMT+0100
 
+Note that E.setTimeZone() will have no effect when daylight savings time rules have been set with E.setDST()
+
 Time can be set with `setTime`.
 */
 void jswrap_espruino_setTimeZone(JsVarFloat zone) {
+// TODO Should have no effect when DST parameters are set
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_TIMEZONE_VAR,
       jsvNewFromInteger((int)(zone*60)));
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "setDST",
+  "generate" : "jswrap_espruino_setDST",
+  "params" : [
+    ["dstOffset","int","The number of minutes daylight savings time adds to the clock (usually 60) - set to 0 to disable DST"],
+	["timezone","int","The time zone, in minutes, when DST is not in effect - positive east of Greenwich"],
+	["startDowNumber","int","The index of the day-of-week in the month when DST starts - 0 for first, 1 for second, 2 for third, 3 for fourth and 4 for last"],
+	["startDow","int","The day-of-week for the DST start calculation - 0 for Sunday, 6 for Saturday"],
+	["startMonth","int","The number of the month that DST starts - 0 for January, 11 for December"],
+	["startDayOffset","int","The number of days between the selected day-of-week and the actual day that DST starts - usually 0"],
+	["startTimeOfDay","int","The number of minutes elapsed in the day before DST starts"],
+	["endDowNumber","int","The index of the day-of-week in the month when DST ends - 0 for first, 1 for second, 2 for third, 3 for fourth and 4 for last"],
+	["endDow","int","The day-of-week for the DST end calculation - 0 for Sunday, 6 for Saturday"],
+	["endMonth","int","The number of the month that DST ends - 0 for January, 11 for December"],
+	["endDayOffset","int","The number of days between the selected day-of-week and the actual day that DST ends - usually 0"],
+	["endTimeOfDay","int","The number of minutes elapsed in the day before DST ends"]
+  ]
+}
+Set the daylight savings time parameters to be used with `Date` objects.
+
+To determine what the dowNumber, dow, month, dayOffset and timeOfDay parameters should be, start with a sentence of the form
+"DST starts on the last Sunday of March (plus 0 days) at 03:00". Since it's the last Sunday, we have startDowNumber = 4, and since
+it's Sunday, we have startDow = 0. That it is March gives us startMonth = 2, and that the offset is zero days, we have
+startDayOffset = 0. The time that DST starts gives us startTimeOfDay = 3*60.
+
+"DST ends on the Friday before the second Sunday in November at 02:00" would give us endDowNumber=1, endDow=0, endMonth=10, endDayOffset=-2 and endTimeOfDay=120.
+
+Using Ukraine as an example, we have a time which is 2 hours ahead of GMT in winter (EET) and 3 hours in summer (EEST). DST starts at 03:00 EET on the last Sunday in March,
+and ends at 04:00 EEST on the last Sunday in October. So someone in Ukraine might call E.setDST(60,120,4,0,2,0,180,4,0,9,0,240)
+
+Note that when DST parameters are set (i.e. when dstOffset is not zero), E.setTimeZone() has no effect.
+*/
+void jswrap_espruino_setDST(JsVarInt dstOffset, JsVarInt timezone, JsVarInt startDowNumber, JsVarInt startDow, jsVarInt startMonth, jsVarInt startDayOffset,
+    jsVarInt startTimeOfDay, jsVarInt endDowNumber, jsVarInt endDow, jsVarInt endMonth, jsVarInt endDayOffset, jsVarInt endTimeOfDay) {
+// TODO implement this
+}
+	
+
 
 /*JSON{
   "type" : "staticmethod",
