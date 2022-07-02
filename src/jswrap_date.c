@@ -29,6 +29,62 @@ const short YDAYS[4] = {0,365,365*2,365*3+1};
 const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\0Dec";
 const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
+// Convert a y,m,d into a number of days since 1970. 0<=m<=11
+int dayNumber(int y, int m, int d) {
+  int ans;
+
+  if (m < 2) {
+    y--;
+    m+=12;
+  }
+  ans = (y/100);
+  ans = 365*y + (y>>2) - ans + (ans>>2) + 30*m + ((3*m+6)/5) + d - 719531;
+  return ans;
+}
+
+// Convert a number of days since 1970 into y,m,d. 0<=m<=11
+void getDate(int day, int *y, int *m, int *date) {
+  int a = day + 135081;
+  int b,c,d,e;
+  a = (a-(a/146097)+146095)/36524;
+  a = day + a - (a>>2);
+  c = ((a<<2)+2877911)/1461;
+  d = 365*c + (c>>2);
+  b = a + 719600 - d;
+  e = (5*b-1)/153;
+  *date=b-30*e-((3*e)/5);
+  if (e<14)
+    *m=e-2;
+  else
+    *m=e-14;
+  if (e>13)
+    *y=c+1;
+  else
+    *y=c;
+}
+
+// Given a set of DST change settings, calculate the time (in GMT seconds since 1970) that the change happens in year y
+int dstChangeDay(int y, int dow_number, int month, int dow, int day_offset, int timeOfDay, int is_start, int dst_offset, int timezone) {
+  int m = month;
+  int ans;
+  if (dow_number == 4) { // last X of this month? Work backwards from 1st of next month.
+    if (++m > 11) {
+      y++;
+      m-=12;
+    }
+  }
+  ans = dayNumber(y, m, 1); // ans % 7 is 0 for THU; (ans + 4) % 7 is 0 for SUN
+  if (dow_number == 4) {
+    ans -= 7 - (7 - ((ans + 4) % 7) + dow) % 7;
+  } else {
+    ans += 7 * dow_number + (14 + dow - ((ans + 4) % 7)) % 7;
+  }
+  ans = (ans - day_offset) * 1440 + timeOfDay - timezone;
+  if (!is_start) ans -= dst_offset;
+  return ans*60;
+}
+
+
 // TODO DST
 
 /// return time zone in minutes
