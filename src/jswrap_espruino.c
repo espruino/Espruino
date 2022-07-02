@@ -1704,7 +1704,7 @@ Time can be set with `setTime`.
 */
 void jswrap_espruino_setTimeZone(JsVarFloat zone) {
   JsVar *dst = jsvObjectGetChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, 0);
-  if ((dst) && (jsvIsArrayBuffer(dst)) (jsvGetLength(dst) == 12)) {
+  if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12)) {
 	JsVar *offset = jsvArrayBufferGet(dst,0);
 	if ((jsvIsInt(offset)) && (!offset->varData)) {
       jsvUnLock2(dst,offset);
@@ -1753,7 +1753,7 @@ Note that when DST parameters are set (i.e. when `dstOffset` is not zero), `E.se
 */
 void jswrap_espruino_setDST(JsVarInt dstOffset, JsVarInt timezone, JsVarInt startDowNumber, JsVarInt startDow, jsVarInt startMonth, jsVarInt startDayOffset,
     jsVarInt startTimeOfDay, jsVarInt endDowNumber, jsVarInt endDow, jsVarInt endMonth, jsVarInt endDayOffset, jsVarInt endTimeOfDay) {
-  JsVar dst = jsvNewTypedArray(ARRAYBUFFERVIEW_INT32, 12);
+  JsVar dst = jsvNewTypedArray(ARRAYBUFFERVIEW_INT16, 12);
   jsvArrayBufferSet(dst, 0, jsvNewFromInteger(dstOffset));
   jsvArrayBufferSet(dst, 1, jsvNewFromInteger(timezone));
   jsvArrayBufferSet(dst, 2, jsvNewFromInteger(startDowNumber));

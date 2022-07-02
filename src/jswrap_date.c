@@ -30,7 +30,7 @@ const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\
 const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
 // Convert a y,m,d into a number of days since 1970. 0<=m<=11
-int dayNumber(int y, int m, int d) {
+int getDayNumberFromDate(int y, int m, int d) {
   int ans;
 
   if (m < 2) {
@@ -43,7 +43,7 @@ int dayNumber(int y, int m, int d) {
 }
 
 // Convert a number of days since 1970 into y,m,d. 0<=m<=11
-void getDate(int day, int *y, int *m, int *date) {
+void getDateFromDayNumber(int day, int *y, int *m, int *date) {
   int a = day + 135081;
   int b,c,d,e;
   a = (a-(a/146097)+146095)/36524;
@@ -52,28 +52,32 @@ void getDate(int day, int *y, int *m, int *date) {
   d = 365*c + (c>>2);
   b = a + 719600 - d;
   e = (5*b-1)/153;
-  *date=b-30*e-((3*e)/5);
-  if (e<14)
-    *m=e-2;
-  else
-    *m=e-14;
-  if (e>13)
-    *y=c+1;
-  else
-    *y=c;
+  if (date) *date=b-30*e-((3*e)/5);
+  if (m) {
+	if (e<14)
+      *m=e-2;
+    else
+      *m=e-14;
+  }
+  if (y) {
+    if (e>13)
+      *y=c+1;
+    else
+      *y=c;
+  }
 }
 
 // Given a set of DST change settings, calculate the time (in GMT seconds since 1970) that the change happens in year y
-int dstChangeDay(int y, int dow_number, int month, int dow, int day_offset, int timeOfDay, int is_start, int dst_offset, int timezone) {
+unsigned int getDstChangeTime(int y, int dow_number, int month, int dow, int day_offset, int timeOfDay, int is_start, int dst_offset, int timezone) {
   int m = month;
-  int ans;
+  unsigned int ans;
   if (dow_number == 4) { // last X of this month? Work backwards from 1st of next month.
     if (++m > 11) {
       y++;
       m-=12;
     }
   }
-  ans = dayNumber(y, m, 1); // ans % 7 is 0 for THU; (ans + 4) % 7 is 0 for SUN
+  ans = getDayNumberFromDate(y, m, 1); // ans % 7 is 0 for THU; (ans + 4) % 7 is 0 for SUN
   if (dow_number == 4) {
     ans -= 7 - (7 - ((ans + 4) % 7) + dow) % 7;
   } else {
@@ -84,6 +88,55 @@ int dstChangeDay(int y, int dow_number, int month, int dow, int day_offset, int 
   return ans*60;
 }
 
+int jsdGetEffectiveTimeZone(JsVarFloat ms) {
+  JsVar *dst = jsvObjectGetChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, 0);
+  if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12) && (dst->varData.arraybuffer.type == ARRAYBUFFERVIEW_INT16)) {
+    unsigned int sec = ms/1000;
+    int y;
+	unsigned int dstStart,dstEnd;
+	JsVarInt dstSettings[12];
+	JsvArrayBufferIterator it;
+	
+	jsvArrayBufferIteratorNew(&it, dst, 0);
+	y = 0;
+	while (y < 12) {
+	  JsVar *setting = jsvArrayBufferIteratorGetValue(&it);
+	  dstSettings[y++]=(JsVarInt)(setting->varData);
+	  jsvUnlock(setting);
+	}
+	jsvArrayBufferIteratorFree(&it);
+	jsvUnLock(dst);
+	if (dstSetting[0]) {
+      getDateFromDayNumber(sec/86400,&y,0,0);
+	  dstStart = getDstChangeTime(y, dstSetting[2], dstSetting[3], dstSetting[4], dstSetting[5], dstSetting[6], 1, dstSetting[0], dstSetting[1]);
+	  dstEnd = getDstChangeTime(y, dstSetting[7], dstSetting[8], dstSetting[9], dstSetting[10], dstSetting[11], 0, dstSetting[0], dstSetting[1]);
+	  if (sec < dstStart) {
+	    if (sec < dstEnd) {
+	      if (dstStart < dstEnd) {
+		    return dstSetting[1];
+		  } else {
+		    return dstSetting[0] + dstSetting[1];
+		  }
+	    } else { // dstEnd <= sec < dstStart
+	      return dstSetting[0];
+	    }
+	  } else { // sec >= dstStart
+	    if (sec >= dstEnd) {
+		  if (dstStart < dstEnd) {
+	        return dstSetting[1];
+		  } else {
+			return dstSetting[0] + dstSetting[1];
+		  }
+	    } else { // sec >= dstStart, sec < dstEnd
+	      return dstSetting[0] + dstSetting[1];
+		}
+	  }
+	}
+  } else {
+    jsvUnLock(dst);
+  }
+  return jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR, 0));
+}
 
 // TODO DST
 
