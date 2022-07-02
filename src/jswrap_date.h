@@ -17,6 +17,7 @@ typedef struct {
   int daysSinceEpoch;
   int ms,sec,min,hour;
   int zone; // timezone in minutes
+  bool is_dst;
 } TimeInDay;
 
 typedef struct {
