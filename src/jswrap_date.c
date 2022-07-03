@@ -65,7 +65,7 @@ void getDateFromDayNumber(int day, int *y, int *m, int *date) {
 // If as_local_time is true, then returns the number of seconds in the timezone in effect, as opposed to GMT
 JsVarFloat getDstChangeTime(int y, int dow_number, int month, int dow, int day_offset, int timeOfDay, bool is_start, int dst_offset, int timezone, bool as_local_time) {
   int m = month;
-  unsigned int ans;
+  int ans;
   if (dow_number == 4) { // last X of this month? Work backwards from 1st of next month.
     if (++m > 11) {
       y++;
@@ -73,21 +73,23 @@ JsVarFloat getDstChangeTime(int y, int dow_number, int month, int dow, int day_o
     }
   }
   ans = getDayNumberFromDate(y, m, 1); // ans % 7 is 0 for THU; (ans + 4) % 7 is 0 for SUN
+  // ((14 - ((ans + 4) % 7) + dow) % 7) is zero if 1st is our dow, 1 if 1st is the day before our dow etc
   if (dow_number == 4) {
-    ans -= 7 - (7 - ((ans + 4) % 7) + dow) % 7;
+    ans += ((14 - ((ans + 4) % 7) + dow) % 7) - 7;
   } else {
-    ans += 7 * dow_number + (14 + dow - ((ans + 4) % 7)) % 7;
+    ans += 7 * dow_number + (14 - ((ans + 4) % 7) + dow) % 7;
   }
-  ans = (ans - day_offset) * 1440 + timeOfDay;
+  ans = (ans + day_offset) * 1440 + timeOfDay;
   if (!as_local_time) {
     ans -= timezone;
     if (!is_start) ans -= dst_offset;
   }
-  return ans*60.0;
+  return 60.0*ans;
 }
 
 // Returns the effective timezone in minutes east
 // is_local_time is true if ms is referenced to local time, false if it's referenced to GMT
+// if is_dst is not zero, then it will be set to true if DST is in effect
 int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
   JsVar *dst = jsvObjectGetChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, 0);
   if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12) && (dst->varData.arraybuffer.type == ARRAYBUFFERVIEW_INT16)) {
@@ -111,29 +113,36 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
 	  getDateFromDayNumber(sec/86400,&y,0,0);
 	  dstStart = getDstChangeTime(y, dstSetting[2], dstSetting[3], dstSetting[4], dstSetting[5], dstSetting[6], 1, dstSetting[0], dstSetting[1], is_local_time);
 	  dstEnd = getDstChangeTime(y, dstSetting[7], dstSetting[8], dstSetting[9], dstSetting[10], dstSetting[11], 0, dstSetting[0], dstSetting[1], is_local_time);
+	  // Now, check all permutations and combinations, noting that whereas in the northern hemisphere, dstStart<dstEnd, in the southern hemisphere dstEnd<dstStart
 	  if (sec < dstStart) {
 	    if (sec < dstEnd) {
 	      if (dstStart < dstEnd) {
+			// Northern hemisphere - DST hasn't started yet
 			if (is_dst) *is_dst = false;
 		    return dstSetting[1];
 		  } else {
+			// Southern hemisphere - DST hasn't ended yet
 			if (is_dst) *is_dst = true;
 		    return dstSetting[0] + dstSetting[1];
 		  }
 	    } else { // dstEnd <= sec < dstStart
+		  // Southern hemisphere - DST has ended for the winter
 		  if (is_dst) *is_dst = false;
 	      return dstSetting[0];
 	    }
 	  } else { // sec >= dstStart
 	    if (sec >= dstEnd) {
 		  if (dstStart < dstEnd) {
+			// Northern hemisphere - DST has ended
 			if (is_dst) *is_dst = false;
 	        return dstSetting[1];
 		  } else {
+			// Southern hemisphere - DST has started
 			if (is_dst) *is_dst = true;
 			return dstSetting[0] + dstSetting[1];
 		  }
 	    } else { // sec >= dstStart, sec < dstEnd
+		  // Northern hemisphere - DST has started for the summer
 		  if (is_dst) *is_dst = true;
 	      return dstSetting[0] + dstSetting[1];
 		}
@@ -146,16 +155,11 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
   return jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR, 0));
 }
 
-// TODO FIXME this needs to be called every time a TimeInDay is created or mangled.
+// this needs to be called just before a TimeInDay is used -- unless the TimeInDay timezone has been determined by other means.
 void setCorrectTimeZone(TimeInDay *td) {
   td->zone = 0;
   td->zone = jsdGetEffectiveTimeZone(fromTimeInDay(td),true,&(td->is_dst));
 }
-
-/// return time zone in minutes
-//int jsdGetTimeZone() {
-//  return jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR, 0));
-//}
 
 /* NOTE: we use / and % here because the compiler is smart enough to
  * condense them into one op. */
@@ -185,10 +189,6 @@ JsVarFloat fromTimeInDay(TimeInDay *td) {
   return (JsVarFloat)(td->ms + (((td->hour*60+td->min - td->zone)*60+td->sec)*1000) + (JsVarFloat)td->daysSinceEpoch*MSDAY);
 }
 
-// First calculate the number of four-year-interval, so calculation
-// of leap year will be simple. Btw, because 2000 IS a leap year and
-// 2100 is out of range, the formlua is simplified
-// dow,date/day/month/year will always be in range
 CalendarDate getCalendarDate(int d) {
   CalendarDate date;
 
@@ -249,6 +249,10 @@ The built-in class for handling Dates.
 timezone using the `E.setTimeZone(...)` function.
 
 For example `E.setTimeZone(1)` will be GMT+0100
+
+*However* if you have daylight savings time set with `E.setDST(...)` then the timezone set
+by `E.setTimeZone(...)` will be _ignored_.
+
  */
 
 /*JSON{
@@ -682,7 +686,7 @@ JsVarFloat jswrap_date_setFullYear(JsVar *parent, int yearValue, JsVar *monthVal
 }
 Converts to a String, eg: `Fri Jun 20 2014 14:52:20 GMT+0000`
 
- **Note:** This uses whatever timezone was set with `E.setTimeZone()`
+ **Note:** This uses whatever timezone was set with `E.setTimeZone()` or `E.setDST()`
 */
 JsVar *jswrap_date_toString(JsVar *parent) {
   TimeInDay time = getTimeFromDateVar(parent, false/*system timezone*/);
@@ -745,6 +749,30 @@ JsVar *jswrap_date_toISOString(JsVar *parent) {
   CalendarDate date = getCalendarDate(time.daysSinceEpoch);
 
   return jsvVarPrintf("%d-%02d-%02dT%02d:%02d:%02d.%03dZ", date.year, date.month+1, date.day, time.hour, time.min, time.sec, time.ms);
+}
+/*JSON{
+  "type" : "method",
+  "class" : "Date",
+  "name" : "toLocalISOString",
+  "generate" : "jswrap_date_toLocalISOString",
+  "return" : ["JsVar","A String"]
+}
+Converts to a ISO 8601 String (with timezone information), eg: `2014-06-20T14:52:20.123-0500`
+ */
+JsVar *jswrap_date_toLocalISOString(JsVar *parent) {
+  TimeInDay time = getTimeFromDateVar(parent, false/*system timezone*/);
+  CalendarDate date = getCalendarDate(time.daysSinceEpoch);
+  char zonesign;
+  int zone;
+  if (time.zone<0) {
+    zone = -time.zone;
+    zonesign = '-';
+  } else {
+    zone = +time.zone;
+    zonesign = '+';
+  }
+  zone = 100*(zone/60) + (zone%60)
+  return jsvVarPrintf("%d-%02d-%02dT%02d:%02d:%02d.%03d%c%04d", date.year, date.month+1, date.day, time.hour, time.min, time.sec, time.ms, zonesign, zone);
 }
 
 static JsVarInt _parse_int() {
