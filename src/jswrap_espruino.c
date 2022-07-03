@@ -1706,13 +1706,13 @@ void jswrap_espruino_setTimeZone(JsVarFloat zone) {
   JsVar *dst = jsvObjectGetChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, 0);
   if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12)) {
 	JsVar *offset = jsvArrayBufferGet(dst,0);
-	if ((jsvIsInt(offset)) && (!offset->varData)) {
+	if ((jsvIsInt(offset)) && (!offset->varData.integer)) {
       jsvUnLock2(dst,offset);
       return;
     }
     jsvUnLock(offset);
   }
-  jsvUnlock(dst);
+  jsvUnLock(dst);
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_TIMEZONE_VAR,
       jsvNewFromInteger((int)(zone*60)));
 }
@@ -1723,21 +1723,24 @@ void jswrap_espruino_setTimeZone(JsVarFloat zone) {
   "name" : "setDST",
   "generate" : "jswrap_espruino_setDST",
   "params" : [
-    ["dstOffset","int","The number of minutes daylight savings time adds to the clock (usually 60) - set to 0 to disable DST"],
-	["timezone","int","The time zone, in minutes, when DST is not in effect - positive east of Greenwich"],
-	["startDowNumber","int","The index of the day-of-week in the month when DST starts - 0 for first, 1 for second, 2 for third, 3 for fourth and 4 for last"],
-	["startDow","int","The day-of-week for the DST start calculation - 0 for Sunday, 6 for Saturday"],
-	["startMonth","int","The number of the month that DST starts - 0 for January, 11 for December"],
-	["startDayOffset","int","The number of days between the selected day-of-week and the actual day that DST starts - usually 0"],
-	["startTimeOfDay","int","The number of minutes elapsed in the day before DST starts"],
-	["endDowNumber","int","The index of the day-of-week in the month when DST ends - 0 for first, 1 for second, 2 for third, 3 for fourth and 4 for last"],
-	["endDow","int","The day-of-week for the DST end calculation - 0 for Sunday, 6 for Saturday"],
-	["endMonth","int","The number of the month that DST ends - 0 for January, 11 for December"],
-	["endDayOffset","int","The number of days between the selected day-of-week and the actual day that DST ends - usually 0"],
-	["endTimeOfDay","int","The number of minutes elapsed in the day before DST ends"]
+      ["params","JsVarArray","An array containing the settings for DST"]
   ]
 }
 Set the daylight savings time parameters to be used with `Date` objects.
+
+The parameters are
+- dstOffset: The number of minutes daylight savings time adds to the clock (usually 60) - set to 0 to disable DST
+- timezone: The time zone, in minutes, when DST is not in effect - positive east of Greenwich
+- startDowNumber: The index of the day-of-week in the month when DST starts - 0 for first, 1 for second, 2 for third, 3 for fourth and 4 for last
+- startDow: The day-of-week for the DST start calculation - 0 for Sunday, 6 for Saturday
+- startMonth: The number of the month that DST starts - 0 for January, 11 for December
+- startDayOffset: The number of days between the selected day-of-week and the actual day that DST starts - usually 0
+- startTimeOfDay: The number of minutes elapsed in the day before DST starts
+- endDowNumber: The index of the day-of-week in the month when DST ends - 0 for first, 1 for second, 2 for third, 3 for fourth and 4 for last
+- endDow: The day-of-week for the DST end calculation - 0 for Sunday, 6 for Saturday
+- endMonth: The number of the month that DST ends - 0 for January, 11 for December
+- endDayOffset: The number of days between the selected day-of-week and the actual day that DST ends - usually 0
+- endTimeOfDay: The number of minutes elapsed in the day before DST ends
 
 To determine what the `dowNumber, dow, month, dayOffset, timeOfDay` parameters should be, start with a sentence of the form
 "DST starts on the last Sunday of March (plus 0 days) at 03:00". Since it's the last Sunday, we have startDowNumber = 4, and since
@@ -1751,24 +1754,29 @@ and ends at 04:00 EEST on the last Sunday in October. So someone in Ukraine migh
 
 Note that when DST parameters are set (i.e. when `dstOffset` is not zero), `E.setTimeZone()` has no effect.
 */
-void jswrap_espruino_setDST(JsVarInt dstOffset, JsVarInt timezone, JsVarInt startDowNumber, JsVarInt startDow, jsVarInt startMonth, jsVarInt startDayOffset,
-    jsVarInt startTimeOfDay, jsVarInt endDowNumber, jsVarInt endDow, jsVarInt endMonth, jsVarInt endDayOffset, jsVarInt endTimeOfDay) {
-  JsVar dst = jsvNewTypedArray(ARRAYBUFFERVIEW_INT16, 12);
-  jsvArrayBufferSet(dst, 0, jsvNewFromInteger(dstOffset));
-  jsvArrayBufferSet(dst, 1, jsvNewFromInteger(timezone));
-  jsvArrayBufferSet(dst, 2, jsvNewFromInteger(startDowNumber));
-  jsvArrayBufferSet(dst, 3, jsvNewFromInteger(startDow));
-  jsvArrayBufferSet(dst, 4, jsvNewFromInteger(startMonth));
-  jsvArrayBufferSet(dst, 5, jsvNewFromInteger(startDayOffset));
-  jsvArrayBufferSet(dst, 6, jsvNewFromInteger(startTimeOfDay));
-  jsvArrayBufferSet(dst, 7, jsvNewFromInteger(endDowNumber));
-  jsvArrayBufferSet(dst, 8, jsvNewFromInteger(endDow));
-  jsvArrayBufferSet(dst, 9, jsvNewFromInteger(endMonth));
-  jsvArrayBufferSet(dst, 10,jsvNewFromInteger(endDayOffset));
-  jsvArrayBufferSet(dst, 11,jsvNewFromInteger(endTimeOfDay));
+void jswrap_espruino_setDST(JsVar *params) {
+  JsVar *dst;
+  JsvIterator it;
+  unsigned int i = 0;
+
+  if (!jsvIsIterable(params)) return;
+  if (jsvGetLength(params) != 12) return;
+  jsvIteratorNew(&it,params,JSIF_DEFINED_ARRAY_ElEMENTS);
+  dst = jsvNewTypedArray(ARRAYBUFFERVIEW_INT16, 12);
+  while (i < 12) {
+    JsVar *val = jsvIteratorGetValue(&it);
+    if (jsvIsInt(val)) {
+      jsvArrayBufferSet(dst,i++,jsvNewFromInteger(val->varData.integer));
+    } else {
+      jsvArrayBufferSet(dst,0,0);
+      jsvArrayBufferSet(dst,i++,0);
+    }
+    jsvIteratorNext(&it);
+    jsvUnLock(val);
+  }
+  jsvIteratorFree(&it);
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, dst);
 }
-	
 
 
 /*JSON{

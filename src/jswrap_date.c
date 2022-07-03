@@ -94,15 +94,15 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
   JsVar *dst = jsvObjectGetChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, 0);
   if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12) && (dst->varData.arraybuffer.type == ARRAYBUFFERVIEW_INT16)) {
     int y;
-	JsVarInt dstSettings[12];
+	JsVarInt dstSetting[12];
 	JsvArrayBufferIterator it;
 	
 	jsvArrayBufferIteratorNew(&it, dst, 0);
 	y = 0;
 	while (y < 12) {
 	  JsVar *setting = jsvArrayBufferIteratorGetValue(&it);
-	  dstSettings[y++]=(JsVarInt)(setting->varData);
-	  jsvUnlock(setting);
+	  dstSetting[y++]=setting->varData.integer;
+	  jsvUnLock(setting);
 	}
 	jsvArrayBufferIteratorFree(&it);
 	jsvUnLock(dst);
@@ -771,7 +771,7 @@ JsVar *jswrap_date_toLocalISOString(JsVar *parent) {
     zone = +time.zone;
     zonesign = '+';
   }
-  zone = 100*(zone/60) + (zone%60)
+  zone = 100*(zone/60) + (zone%60);
   return jsvVarPrintf("%d-%02d-%02dT%02d:%02d:%02d.%03d%c%04d", date.year, date.month+1, date.day, time.hour, time.min, time.sec, time.ms, zonesign, zone);
 }
 
@@ -881,7 +881,6 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
       }
     } else if (date.dow>=0) {
 	  // Mon, 25 Dec 1995
-      time.zone = jsdGetTimeZone();
       date.month = 0;
       jslGetNextToken();
       if (lex.tk==',') {
