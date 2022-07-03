@@ -1759,7 +1759,7 @@ void jswrap_espruino_setDST(JsVar *params) {
   JsvIterator it;
   unsigned int i = 0;
 
-  if (!jsvIsIterable(params)) return;
+  if (!jsvIsArray(params)) return;
   if (jsvGetLength(params) != 12) return;
   jsvIteratorNew(&it,params,JSIF_DEFINED_ARRAY_ElEMENTS);
   dst = jsvNewTypedArray(ARRAYBUFFERVIEW_INT16, 12);

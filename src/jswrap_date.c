@@ -17,6 +17,9 @@
 #include "jsparse.h"
 #include "jshardware.h"
 #include "jslex.h"
+#ifdef DEBUG
+#include "jsinteractive.h"
+#endif
 
 const int MSDAY = 24*60*60*1000;
 const int BASE_DOW = 4;
@@ -48,7 +51,7 @@ void getDateFromDayNumber(int day, int *y, int *m, int *date) {
   e = (5*b-1)/153;
   if (date) *date=b-30*e-((3*e)/5);
   if (m) {
-	if (e<14)
+  if (e<14)
       *m=e-2;
     else
       *m=e-14;
@@ -94,60 +97,62 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
   JsVar *dst = jsvObjectGetChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, 0);
   if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12) && (dst->varData.arraybuffer.type == ARRAYBUFFERVIEW_INT16)) {
     int y;
-	JsVarInt dstSetting[12];
-	JsvArrayBufferIterator it;
-	
-	jsvArrayBufferIteratorNew(&it, dst, 0);
-	y = 0;
-	while (y < 12) {
-	  JsVar *setting = jsvArrayBufferIteratorGetValue(&it);
-	  dstSetting[y++]=setting->varData.integer;
-	  jsvUnLock(setting);
-	}
-	jsvArrayBufferIteratorFree(&it);
-	jsvUnLock(dst);
-	if (dstSetting[0]) {
+    JsVarInt dstSetting[12];
+    JsvArrayBufferIterator it;
+  
+    jsvArrayBufferIteratorNew(&it, dst, 0);
+    y = 0;
+    while (y < 12) {
+      JsVar *setting = jsvArrayBufferIteratorGetValue(&it);
+jsDebug(DBG_INFO,"Setting %d is %d\n",y,setting->varData.integer);
+      dstSetting[y++]=setting->varData.integer;
+      jsvUnLock(setting);
+      jsvArrayBufferIteratorNext(&it);
+    }
+    jsvArrayBufferIteratorFree(&it);
+    jsvUnLock(dst);
+    if (dstSetting[0]) {
       JsVarFloat sec = ms/1000;
-	  JsVarFloat dstStart,dstEnd;
+      JsVarFloat dstStart,dstEnd;
       
-	  getDateFromDayNumber(sec/86400,&y,0,0);
-	  dstStart = getDstChangeTime(y, dstSetting[2], dstSetting[3], dstSetting[4], dstSetting[5], dstSetting[6], 1, dstSetting[0], dstSetting[1], is_local_time);
-	  dstEnd = getDstChangeTime(y, dstSetting[7], dstSetting[8], dstSetting[9], dstSetting[10], dstSetting[11], 0, dstSetting[0], dstSetting[1], is_local_time);
-	  // Now, check all permutations and combinations, noting that whereas in the northern hemisphere, dstStart<dstEnd, in the southern hemisphere dstEnd<dstStart
-	  if (sec < dstStart) {
-	    if (sec < dstEnd) {
-	      if (dstStart < dstEnd) {
-			// Northern hemisphere - DST hasn't started yet
-			if (is_dst) *is_dst = false;
-		    return dstSetting[1];
-		  } else {
-			// Southern hemisphere - DST hasn't ended yet
-			if (is_dst) *is_dst = true;
-		    return dstSetting[0] + dstSetting[1];
-		  }
-	    } else { // dstEnd <= sec < dstStart
-		  // Southern hemisphere - DST has ended for the winter
-		  if (is_dst) *is_dst = false;
-	      return dstSetting[0];
-	    }
-	  } else { // sec >= dstStart
-	    if (sec >= dstEnd) {
-		  if (dstStart < dstEnd) {
-			// Northern hemisphere - DST has ended
-			if (is_dst) *is_dst = false;
-	        return dstSetting[1];
-		  } else {
-			// Southern hemisphere - DST has started
-			if (is_dst) *is_dst = true;
-			return dstSetting[0] + dstSetting[1];
-		  }
-	    } else { // sec >= dstStart, sec < dstEnd
-		  // Northern hemisphere - DST has started for the summer
-		  if (is_dst) *is_dst = true;
-	      return dstSetting[0] + dstSetting[1];
-		}
+      getDateFromDayNumber(sec/86400,&y,0,0);
+      dstStart = getDstChangeTime(y, dstSetting[2], dstSetting[3], dstSetting[4], dstSetting[5], dstSetting[6], 1, dstSetting[0], dstSetting[1], is_local_time);
+      dstEnd = getDstChangeTime(y, dstSetting[7], dstSetting[8], dstSetting[9], dstSetting[10], dstSetting[11], 0, dstSetting[0], dstSetting[1], is_local_time);
+      // Now, check all permutations and combinations, noting that whereas in the northern hemisphere, dstStart<dstEnd, in the southern hemisphere dstEnd<dstStart
+      if (sec < dstStart) {
+	if (sec < dstEnd) {
+	  if (dstStart < dstEnd) {
+	    // Northern hemisphere - DST hasn't started yet
+	    if (is_dst) *is_dst = false;
+	    return dstSetting[1];
+	  } else {
+	    // Southern hemisphere - DST hasn't ended yet
+	    if (is_dst) *is_dst = true;
+	    return dstSetting[0] + dstSetting[1];
 	  }
+	} else { // dstEnd <= sec < dstStart
+	  // Southern hemisphere - DST has ended for the winter
+	  if (is_dst) *is_dst = false;
+	  return dstSetting[0];
 	}
+      } else { // sec >= dstStart
+	if (sec >= dstEnd) {
+	  if (dstStart < dstEnd) {
+	    // Northern hemisphere - DST has ended
+	    if (is_dst) *is_dst = false;
+	    return dstSetting[1];
+	  } else {
+	    // Southern hemisphere - DST has started
+	    if (is_dst) *is_dst = true;
+	    return dstSetting[0] + dstSetting[1];
+	  }
+	} else { // sec >= dstStart, sec < dstEnd
+	  // Northern hemisphere - DST has started for the summer
+	  if (is_dst) *is_dst = true;
+	  return dstSetting[0] + dstSetting[1];
+	}
+      }
+    }
   } else {
     jsvUnLock(dst);
   }
@@ -202,12 +207,12 @@ CalendarDate getCalendarDate(int d) {
 
 int fromCalenderDate(CalendarDate *date) {
   while (date->month < 0) {
-	date->year--;
-	date->month += 12;
+  date->year--;
+  date->month += 12;
   }
   while (date->month > 11) {
-	date->year++;
-	date->month -= 12;
+  date->year++;
+  date->month -= 12;
   }
   return getDayNumberFromDate(date->year, date->month, date->day);
 };
@@ -315,7 +320,7 @@ JsVar *jswrap_date_constructor(JsVar *args) {
     td.min = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4)));
     td.sec = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5)));
     td.ms = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 6)));
-	setCorrectTimeZone(&td);
+  setCorrectTimeZone(&td);
     time = fromTimeInDay(&td);
   }
 
@@ -800,8 +805,8 @@ static bool _parse_time(TimeInDay *time, int initialChars) {
               time->zone = 0;
               jslGetNextToken();
             } else {
-			  setCorrectTimeZone(&time);
-			}
+        setCorrectTimeZone(&time);
+      }
           }
           if (lex->tk == '+' || lex->tk == '-') {
             int sign = lex->tk == '+' ? 1 : -1;
@@ -813,11 +818,11 @@ static bool _parse_time(TimeInDay *time, int initialChars) {
               time->zone = i*sign;
               jslGetNextToken();
             } else {
-			  setCorrectTimeZone(&time);
-			}
+        setCorrectTimeZone(&time);
+      }
           } else {
-			setCorrectTimeZone(&time);
-		  }
+      setCorrectTimeZone(&time);
+      }
 
           return true;
         }
@@ -869,18 +874,18 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
           jslGetNextToken();
           if (lex.tk == LEX_INT) {
             date.year = _parse_int();
-			time.daysSinceEpoch = fromCalenderDate(&date);
+      time.daysSinceEpoch = fromCalenderDate(&date);
             jslGetNextToken();
             if (lex.tk == LEX_INT) {
               _parse_time(&time, 0);
             } else {
-			  setCorrectTimeZone(&time);
-			}
+        setCorrectTimeZone(&time);
+      }
           }
         }
       }
     } else if (date.dow>=0) {
-	  // Mon, 25 Dec 1995
+    // Mon, 25 Dec 1995
       date.month = 0;
       jslGetNextToken();
       if (lex.tk==',') {
@@ -898,8 +903,8 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
               if (lex.tk == LEX_INT) {
                 _parse_time(&time, 0);
               } else {
-				setCorrectTimeZone(&time);
-			  }
+        setCorrectTimeZone(&time);
+        }
             }
           }
         }
@@ -921,13 +926,13 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
           jslGetNextToken();
           if (lex.tk == LEX_INT) {
             date.day = _parse_int();
-			time.daysSinceEpoch = fromCalenderDate(&date);
+      time.daysSinceEpoch = fromCalenderDate(&date);
             jslGetNextToken();
             if (lex.tk == LEX_ID && jslGetTokenValueAsString()[0]=='T') {
               _parse_time(&time, 1);
             } else {
-			  setCorrectTimeZone(&time);
-			}
+        setCorrectTimeZone(&time);
+      }
           }
         }
       }
