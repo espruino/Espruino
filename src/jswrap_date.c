@@ -128,7 +128,7 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
         } else { // dstEnd <= sec < dstStart
           // Southern hemisphere - DST has ended for the winter
           if (is_dst) *is_dst = false;
-          return dstSetting[0];
+          return dstSetting[1];
         }
       } else { // sec >= dstStart
         if (sec >= dstEnd) {
