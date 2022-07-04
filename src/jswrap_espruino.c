@@ -1705,8 +1705,8 @@ Time can be set with `setTime`.
 void jswrap_espruino_setTimeZone(JsVarFloat zone) {
   JsVar *dst = jsvObjectGetChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, 0);
   if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12)) {
-	JsVar *offset = jsvArrayBufferGet(dst,0);
-	if ((jsvIsInt(offset)) && (!offset->varData.integer)) {
+    JsVar *offset = jsvArrayBufferGet(dst,0);
+    if ((jsvIsInt(offset)) && (!offset->varData.integer)) {
       jsvUnLock2(dst,offset);
       return;
     }

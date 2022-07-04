@@ -115,37 +115,37 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
       dstEnd = getDstChangeTime(y, dstSetting[7], dstSetting[8], dstSetting[9], dstSetting[10], dstSetting[11], 0, dstSetting[0], dstSetting[1], is_local_time);
       // Now, check all permutations and combinations, noting that whereas in the northern hemisphere, dstStart<dstEnd, in the southern hemisphere dstEnd<dstStart
       if (sec < dstStart) {
-	if (sec < dstEnd) {
-	  if (dstStart < dstEnd) {
-	    // Northern hemisphere - DST hasn't started yet
-	    if (is_dst) *is_dst = false;
-	    return dstSetting[1];
-	  } else {
-	    // Southern hemisphere - DST hasn't ended yet
-	    if (is_dst) *is_dst = true;
-	    return dstSetting[0] + dstSetting[1];
-	  }
-	} else { // dstEnd <= sec < dstStart
-	  // Southern hemisphere - DST has ended for the winter
-	  if (is_dst) *is_dst = false;
-	  return dstSetting[0];
-	}
+        if (sec < dstEnd) {
+          if (dstStart < dstEnd) {
+            // Northern hemisphere - DST hasn't started yet
+            if (is_dst) *is_dst = false;
+            return dstSetting[1];
+          } else {
+            // Southern hemisphere - DST hasn't ended yet
+            if (is_dst) *is_dst = true;
+            return dstSetting[0] + dstSetting[1];
+          }
+        } else { // dstEnd <= sec < dstStart
+          // Southern hemisphere - DST has ended for the winter
+          if (is_dst) *is_dst = false;
+          return dstSetting[0];
+        }
       } else { // sec >= dstStart
-	if (sec >= dstEnd) {
-	  if (dstStart < dstEnd) {
-	    // Northern hemisphere - DST has ended
-	    if (is_dst) *is_dst = false;
-	    return dstSetting[1];
-	  } else {
-	    // Southern hemisphere - DST has started
-	    if (is_dst) *is_dst = true;
-	    return dstSetting[0] + dstSetting[1];
-	  }
-	} else { // sec >= dstStart, sec < dstEnd
-	  // Northern hemisphere - DST has started for the summer
-	  if (is_dst) *is_dst = true;
-	  return dstSetting[0] + dstSetting[1];
-	}
+        if (sec >= dstEnd) {
+          if (dstStart < dstEnd) {
+            // Northern hemisphere - DST has ended
+            if (is_dst) *is_dst = false;
+            return dstSetting[1];
+          } else {
+            // Southern hemisphere - DST has started
+            if (is_dst) *is_dst = true;
+            return dstSetting[0] + dstSetting[1];
+          }
+        } else { // sec >= dstStart, sec < dstEnd
+          // Northern hemisphere - DST has started for the summer
+          if (is_dst) *is_dst = true;
+          return dstSetting[0] + dstSetting[1];
+        }
       }
     }
   } else {
@@ -799,9 +799,10 @@ static bool _parse_time(TimeInDay *time, int initialChars) {
             if (strcmp(tkstr,"GMT")==0 || strcmp(tkstr,"Z")==0) {
               time->zone = 0;
               jslGetNextToken();
+              if (lex->tk == LEX_EOF) return true;
             } else {
-	      setCorrectTimeZone(time);
-	    }
+              setCorrectTimeZone(time);
+            }
           }
           if (lex->tk == '+' || lex->tk == '-') {
             int sign = lex->tk == '+' ? 1 : -1;
@@ -813,11 +814,11 @@ static bool _parse_time(TimeInDay *time, int initialChars) {
               time->zone = i*sign;
               jslGetNextToken();
             } else {
-	      setCorrectTimeZone(time);
-	    }
+              setCorrectTimeZone(time);
+            }
           } else {
-	    setCorrectTimeZone(time);
-	  }
+            setCorrectTimeZone(time);
+          }
           return true;
         }
       }
@@ -869,12 +870,12 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
           jslGetNextToken();
           if (lex.tk == LEX_INT) {
             date.year = _parse_int();
-	    time.daysSinceEpoch = fromCalenderDate(&date);
+            time.daysSinceEpoch = fromCalenderDate(&date);
             jslGetNextToken();
             if (lex.tk == LEX_INT) {
               _parse_time(&time, 0);
-	      timezoneSet = true;
-	    }
+              timezoneSet = true;
+            }
           }
         }
       }
@@ -896,8 +897,8 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
               jslGetNextToken();
               if (lex.tk == LEX_INT) {
                 _parse_time(&time, 0);
-		timezoneSet = true;
-	      }
+                timezoneSet = true;
+              }
             }
           }
         }
@@ -919,12 +920,12 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
           jslGetNextToken();
           if (lex.tk == LEX_INT) {
             date.day = _parse_int();
-	    time.daysSinceEpoch = fromCalenderDate(&date);
+            time.daysSinceEpoch = fromCalenderDate(&date);
             jslGetNextToken();
             if (lex.tk == LEX_ID && jslGetTokenValueAsString()[0]=='T') {
               _parse_time(&time, 1);
-	      timezoneSet = true;
-	    }
+              timezoneSet = true;
+            }
           }
         }
       }
