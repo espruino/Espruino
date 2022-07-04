@@ -1698,21 +1698,12 @@ Set the time zone to be used with `Date` objects.
 
 For example `E.setTimeZone(1)` will be GMT+0100
 
-Note that `E.setTimeZone()` will have no effect when daylight savings time rules have been set with `E.setDST()`
+Note that `E.setTimeZone()` will have no effect when daylight savings time rules have been set with `E.setDST()`. The
+timezone value will be stored, but never used so long as DST settings are in effect.
 
 Time can be set with `setTime`.
 */
 void jswrap_espruino_setTimeZone(JsVarFloat zone) {
-  JsVar *dst = jsvObjectGetChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, 0);
-  if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12)) {
-    JsVar *offset = jsvArrayBufferGet(dst,0);
-    if ((jsvIsInt(offset)) && (!offset->varData.integer)) {
-      jsvUnLock2(dst,offset);
-      return;
-    }
-    jsvUnLock(offset);
-  }
-  jsvUnLock(dst);
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_TIMEZONE_VAR,
       jsvNewFromInteger((int)(zone*60)));
 }
@@ -1766,10 +1757,12 @@ void jswrap_espruino_setDST(JsVar *params) {
   while (i < 12) {
     JsVar *val = jsvIteratorGetValue(&it);
     if (jsvIsInt(val)) {
-      jsvArrayBufferSet(dst,i++,jsvNewFromInteger(val->varData.integer));
+      jsvArrayBufferSet(dst,i++,val);
     } else {
-      jsvArrayBufferSet(dst,0,0);
-      jsvArrayBufferSet(dst,i++,0);
+      JsVar *zero = jsvNewFromInteger(0);
+      jsvArrayBufferSet(dst,0,zero);
+      jsvArrayBufferSet(dst,i++,zero);
+      jsvUnLock(zero);
     }
     jsvIteratorNext(&it);
     jsvUnLock(val);

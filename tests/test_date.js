@@ -33,4 +33,14 @@ var cest = [
 
 cest.forEach(function(n) { if (n[0]==n[1]) pass++; });
 
-result = pass == gmt.length + cest.length;
+// Northern hemisphere, +2h summer and +3h winter. Change last Sun Mar @ 3am and last Sun Oct @ 4am.
+E.setDST(60,120,4,0,2,0,180,4,0,9,0,240);
+var dst = [
+[ new Date("2011-02-10T14:12:00").toLocalISOString() , "2011-02-10T14:12:00.000+0200" ],
+[ new Date("2011-06-11T11:12:00").toLocalISOString() , "2011-06-11T11:12:00.000+0300" ],
+[ new Date("2011-11-04T09:25:00").toLocalISOString() , "2011-11-04T09:25:00.000+0200" ]
+];
+
+dst.forEach(function(n) { if (n[0]==n[1]) pass++; });
+
+result = pass == gmt.length + cest.length + dst.length;
