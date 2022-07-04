@@ -17,9 +17,6 @@
 #include "jsparse.h"
 #include "jshardware.h"
 #include "jslex.h"
-#ifdef DEBUG
-#include "jsinteractive.h"
-#endif
 
 const int MSDAY = 24*60*60*1000;
 const int BASE_DOW = 4;
@@ -66,16 +63,15 @@ void getDateFromDayNumber(int day, int *y, int *m, int *date) {
 
 // Given a set of DST change settings, calculate the time (in GMT seconds since 1970) that the change happens in year y
 // If as_local_time is true, then returns the number of seconds in the timezone in effect, as opposed to GMT
-JsVarFloat getDstChangeTime(int y, int dow_number, int month, int dow, int day_offset, int timeOfDay, bool is_start, int dst_offset, int timezone, bool as_local_time) {
-  int m = month;
+JsVarFloat getDstChangeTime(int y, int dow_number, int dow, int month, int day_offset, int timeOfDay, bool is_start, int dst_offset, int timezone, bool as_local_time) {
   int ans;
   if (dow_number == 4) { // last X of this month? Work backwards from 1st of next month.
-    if (++m > 11) {
+    if (++month > 11) {
       y++;
-      m-=12;
+      month-=12;
     }
   }
-  ans = getDayNumberFromDate(y, m, 1); // ans % 7 is 0 for THU; (ans + 4) % 7 is 0 for SUN
+  ans = getDayNumberFromDate(y, month, 1); // ans % 7 is 0 for THU; (ans + 4) % 7 is 0 for SUN
   // ((14 - ((ans + 4) % 7) + dow) % 7) is zero if 1st is our dow, 1 if 1st is the day before our dow etc
   if (dow_number == 4) {
     ans += ((14 - ((ans + 4) % 7) + dow) % 7) - 7;
@@ -104,7 +100,6 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
     y = 0;
     while (y < 12) {
       JsVar *setting = jsvArrayBufferIteratorGetValue(&it);
-jsDebug(DBG_INFO,"Setting %d is %d\n",y,setting->varData.integer);
       dstSetting[y++]=setting->varData.integer;
       jsvUnLock(setting);
       jsvArrayBufferIteratorNext(&it);
@@ -115,7 +110,7 @@ jsDebug(DBG_INFO,"Setting %d is %d\n",y,setting->varData.integer);
       JsVarFloat sec = ms/1000;
       JsVarFloat dstStart,dstEnd;
       
-      getDateFromDayNumber(sec/86400,&y,0,0);
+      getDateFromDayNumber((int)(sec/86400),&y,0,0);
       dstStart = getDstChangeTime(y, dstSetting[2], dstSetting[3], dstSetting[4], dstSetting[5], dstSetting[6], 1, dstSetting[0], dstSetting[1], is_local_time);
       dstEnd = getDstChangeTime(y, dstSetting[7], dstSetting[8], dstSetting[9], dstSetting[10], dstSetting[11], 0, dstSetting[0], dstSetting[1], is_local_time);
       // Now, check all permutations and combinations, noting that whereas in the northern hemisphere, dstStart<dstEnd, in the southern hemisphere dstEnd<dstStart
@@ -805,8 +800,8 @@ static bool _parse_time(TimeInDay *time, int initialChars) {
               time->zone = 0;
               jslGetNextToken();
             } else {
-        setCorrectTimeZone(&time);
-      }
+	      setCorrectTimeZone(time);
+	    }
           }
           if (lex->tk == '+' || lex->tk == '-') {
             int sign = lex->tk == '+' ? 1 : -1;
@@ -818,18 +813,17 @@ static bool _parse_time(TimeInDay *time, int initialChars) {
               time->zone = i*sign;
               jslGetNextToken();
             } else {
-        setCorrectTimeZone(&time);
-      }
+	      setCorrectTimeZone(time);
+	    }
           } else {
-      setCorrectTimeZone(&time);
-      }
-
+	    setCorrectTimeZone(time);
+	  }
           return true;
         }
       }
     }
   }
-  setCorrectTimeZone(&time);
+  setCorrectTimeZone(time);
   return false;
 }
 
@@ -856,6 +850,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
   time.zone = 0;
   time.is_dst = false;
   CalendarDate date = getCalendarDate(0);
+  bool timezoneSet = false;
 
   JsLex lex;
   JsLex *oldLex = jslSetLex(&lex);
@@ -874,18 +869,17 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
           jslGetNextToken();
           if (lex.tk == LEX_INT) {
             date.year = _parse_int();
-      time.daysSinceEpoch = fromCalenderDate(&date);
+	    time.daysSinceEpoch = fromCalenderDate(&date);
             jslGetNextToken();
             if (lex.tk == LEX_INT) {
               _parse_time(&time, 0);
-            } else {
-        setCorrectTimeZone(&time);
-      }
+	      timezoneSet = true;
+	    }
           }
         }
       }
     } else if (date.dow>=0) {
-    // Mon, 25 Dec 1995
+      // Mon, 25 Dec 1995
       date.month = 0;
       jslGetNextToken();
       if (lex.tk==',') {
@@ -902,9 +896,8 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
               jslGetNextToken();
               if (lex.tk == LEX_INT) {
                 _parse_time(&time, 0);
-              } else {
-        setCorrectTimeZone(&time);
-        }
+		timezoneSet = true;
+	      }
             }
           }
         }
@@ -926,19 +919,19 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
           jslGetNextToken();
           if (lex.tk == LEX_INT) {
             date.day = _parse_int();
-      time.daysSinceEpoch = fromCalenderDate(&date);
+	    time.daysSinceEpoch = fromCalenderDate(&date);
             jslGetNextToken();
             if (lex.tk == LEX_ID && jslGetTokenValueAsString()[0]=='T') {
               _parse_time(&time, 1);
-            } else {
-        setCorrectTimeZone(&time);
-      }
+	      timezoneSet = true;
+	    }
           }
         }
       }
     }
   }
 
+  if (!timezoneSet) setCorrectTimeZone(&time);
   jslKill();
   jslSetLex(oldLex);
   return fromTimeInDay(&time);
