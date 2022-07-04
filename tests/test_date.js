@@ -18,7 +18,7 @@ gmt.forEach(function(n) { if (n[0]==n[1]) pass++; });
 
 E.setTimeZone(2);
 var cest = [
-[ Date.parse("2011-10-20") , 1319068800000.0 ],
+[ Date.parse("2011-10-20") , 1319061600000.0 ],
 [ Date.parse("2011-10-20T14:48:12.345") , 1319114892345.0 ],
 [ Date.parse("Aug 9, 1995") , 807919200000.0 ],
 [ new Date("Wed, 09 Aug 1995 00:00:00").getTime() , 807919200000.0 ],
