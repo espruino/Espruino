@@ -38,7 +38,11 @@ E.setDST(60,120,4,0,2,0,180,4,0,9,0,240);
 var dst = [
 [ new Date("2011-02-10T14:12:00").toLocalISOString() , "2011-02-10T14:12:00.000+0200" ],
 [ new Date("2011-06-11T11:12:00").toLocalISOString() , "2011-06-11T11:12:00.000+0300" ],
-[ new Date("2011-11-04T09:25:00").toLocalISOString() , "2011-11-04T09:25:00.000+0200" ]
+[ new Date("2011-11-04T09:25:00").toLocalISOString() , "2011-11-04T09:25:00.000+0200" ],
+[ new Date("2011-03-27T00:59:59.9Z").toLocalISOString() , "2011-03-27T02:59:59.900+0200" ],
+[ new Date("2011-03-27T01:00:00.1Z").toLocalISOString() , "2011-03-27T04:00:00.100+0300" ],
+[ new Date("2011-10-30T00:59:59.9Z").toLocalISOString() , "2011-10-30T03:59:59.900+0300" ],
+[ new Date("2011-10-30T01:00:00.1Z").toLocalISOString() , "2011-10-30T03:00:00.100+0200" ]
 ];
 
 dst.forEach(function(n) { if (n[0]==n[1]) pass++; });
