@@ -1752,22 +1752,7 @@ void jswrap_espruino_setDST(JsVar *params) {
 
   if (!jsvIsArray(params)) return;
   if (jsvGetLength(params) != 12) return;
-  jsvIteratorNew(&it,params,JSIF_DEFINED_ARRAY_ElEMENTS);
-  dst = jsvNewTypedArray(ARRAYBUFFERVIEW_INT16, 12);
-  while (i < 12) {
-    JsVar *val = jsvIteratorGetValue(&it);
-    if (jsvIsInt(val)) {
-      jsvArrayBufferSet(dst,i++,val);
-    } else {
-      JsVar *zero = jsvNewFromInteger(0);
-      jsvArrayBufferSet(dst,0,zero);
-      jsvArrayBufferSet(dst,i++,zero);
-      jsvUnLock(zero);
-    }
-    jsvIteratorNext(&it);
-    jsvUnLock(val);
-  }
-  jsvIteratorFree(&it);
+  dst = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT16, params, 0, 0);
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, dst);
 }
 

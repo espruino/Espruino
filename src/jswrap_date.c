@@ -24,6 +24,7 @@ const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\
 const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
 // Convert a y,m,d into a number of days since 1970. 0<=m<=11
+// https://github.com/deirdreobyrne/CalendarAndDST
 int getDayNumberFromDate(int y, int m, int d) {
   int ans;
 
@@ -37,6 +38,7 @@ int getDayNumberFromDate(int y, int m, int d) {
 }
 
 // Convert a number of days since 1970 into y,m,d. 0<=m<=11
+// https://github.com/deirdreobyrne/CalendarAndDST
 void getDateFromDayNumber(int day, int *y, int *m, int *date) {
   int a = day + 135081;
   int b,c,d,e;
@@ -63,6 +65,7 @@ void getDateFromDayNumber(int day, int *y, int *m, int *date) {
 
 // Given a set of DST change settings, calculate the time (in GMT seconds since 1970) that the change happens in year y
 // If as_local_time is true, then returns the number of seconds in the timezone in effect, as opposed to GMT
+// https://github.com/deirdreobyrne/CalendarAndDST
 JsVarFloat getDstChangeTime(int y, int dow_number, int dow, int month, int day_offset, int timeOfDay, bool is_start, int dst_offset, int timezone, bool as_local_time) {
   int ans;
   if (dow_number == 4) { // last X of this month? Work backwards from 1st of next month.
@@ -89,6 +92,7 @@ JsVarFloat getDstChangeTime(int y, int dow_number, int dow, int month, int day_o
 // Returns the effective timezone in minutes east
 // is_local_time is true if ms is referenced to local time, false if it's referenced to GMT
 // if is_dst is not zero, then it will be set to true if DST is in effect
+// https://github.com/deirdreobyrne/CalendarAndDST
 int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
   JsVar *dst = jsvObjectGetChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, 0);
   if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12) && (dst->varData.arraybuffer.type == ARRAYBUFFERVIEW_INT16)) {
@@ -99,9 +103,7 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
     jsvArrayBufferIteratorNew(&it, dst, 0);
     y = 0;
     while (y < 12) {
-      JsVar *setting = jsvArrayBufferIteratorGetValue(&it);
-      dstSetting[y++]=setting->varData.integer;
-      jsvUnLock(setting);
+      dstSetting[y++]=jsvArrayBufferIteratorGetIntegerValue(&it);
       jsvArrayBufferIteratorNext(&it);
     }
     jsvArrayBufferIteratorFree(&it);
@@ -202,12 +204,12 @@ CalendarDate getCalendarDate(int d) {
 
 int fromCalenderDate(CalendarDate *date) {
   while (date->month < 0) {
-  date->year--;
-  date->month += 12;
+    date->year--;
+    date->month += 12;
   }
   while (date->month > 11) {
-  date->year++;
-  date->month -= 12;
+    date->year++;
+    date->month -= 12;
   }
   return getDayNumberFromDate(date->year, date->month, date->day);
 };
@@ -315,7 +317,7 @@ JsVar *jswrap_date_constructor(JsVar *args) {
     td.min = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4)));
     td.sec = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5)));
     td.ms = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 6)));
-  setCorrectTimeZone(&td);
+    setCorrectTimeZone(&td);
     time = fromTimeInDay(&td);
   }
 
@@ -752,6 +754,7 @@ JsVar *jswrap_date_toISOString(JsVar *parent) {
 }
 /*JSON{
   "type" : "method",
+  "ifndef" : "SAVE_ON_FLASH",
   "class" : "Date",
   "name" : "toLocalISOString",
   "generate" : "jswrap_date_toLocalISOString",
