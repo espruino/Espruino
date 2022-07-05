@@ -12,6 +12,7 @@
             Bangle.js: Include the 'sched' library in installed apps (needed for alarm) (fix #2229)
             Bangle.js2: Fix text size on buttons when they are tapped in E.showPrompt
             nRF5x: Add 'onWriteDesc' in NRF.setServices - allowing you to know when something subscribed for notifications
+            nRF5x: Move advertising_start and restart_softdevice outside of IRQs (MEMORY_BUSY warnings less likely now)
 
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu
