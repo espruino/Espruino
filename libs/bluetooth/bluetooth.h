@@ -139,6 +139,8 @@ typedef enum {
   BLEP_ERROR,                       //< Softdevice threw some error (code in data)
   BLEP_CONNECTED,                   //< Peripheral connected (address as buffer)
   BLEP_DISCONNECTED,                //< Peripheral disconnected
+  BLEP_ADVERTISING_START,           //< Start adevrtising - do it outside of IRQ because we may need to allocate JsVars
+  BLEP_RESTART_SOFTDEVICE,          //< Perform a softdevice restart (again, we don't want to do this in an IRQ!)
   BLEP_RSSI_PERIPH,                 //< RSSI data from peripheral connection (rssi as data)
   BLEP_ADV_REPORT,                  //< Advertising received (as buffer)
   BLEP_RSSI_CENTRAL,                //< RSSI data from central connection (rssi as data low byte, index in m_central_conn_handles as high byte )

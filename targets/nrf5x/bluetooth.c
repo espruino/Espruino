@@ -366,6 +366,14 @@ int jsble_exec_pending(IOEvent *event) {
      bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
      break;
    }
+   case BLEP_ADVERTISING_START: {
+     jsble_advertising_start(); // start advertising - we ignore the return code here
+     break;
+   }
+   case BLEP_RESTART_SOFTDEVICE: {
+     jsble_restart_softdevice(NULL);
+     break;
+   }
    case BLEP_RSSI_PERIPH: {
      JsVar *evt = jsvNewFromInteger((signed char)data);
      if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
@@ -1179,7 +1187,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         {
           // the timeout for sd_ble_gap_adv_start expired - kick it off again
           bleStatus &= ~BLE_IS_ADVERTISING; // we still think we're advertising, but we stopped
-          jsble_advertising_start(); // ignore return code
+          jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again
         }
         break;
 
@@ -1298,12 +1306,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           nus_transmit_string();
           // restart advertising after disconnection
           if (!(bleStatus & BLE_IS_SLEEPING))
-            jsble_advertising_start(); // ignore return code
+            jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again
           jsble_queue_pending(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
-          jsble_restart_softdevice(NULL);
-
+          jsble_queue_pending(BLEP_RESTART_SOFTDEVICE, 0);
       } break;
 
       case BLE_GAP_EVT_RSSI_CHANGED:  {
@@ -1905,7 +1912,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             break;
 
         case PM_EVT_PEERS_DELETE_SUCCEEDED:
-          jsble_advertising_start(); // ignore return code
+            jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again
             break;
 
         case PM_EVT_PEERS_DELETE_FAILED:
@@ -2571,6 +2578,7 @@ void jsble_setup_advdata(ble_advdata_t *advdata) {
 }
 
 uint32_t jsble_advertising_start() {
+  // try not to call from IRQ as we might want to allocate JsVars
   if (bleStatus & BLE_IS_ADVERTISING) return 0;
   ble_advdata_t scanrsp;
 
@@ -3022,11 +3030,18 @@ void jsble_set_services(JsVar *data) {
         jsble_check_error(err_code);
         jsvUnLock(charValue); // unlock here in case we were storing data in a flat string
 
-        // Add Write callback
+        // Add onWrite callback
         JsVar *writeCb = jsvObjectGetChild(charVar, "onWrite", 0);
         if (writeCb) {
           char eventName[12];
           bleGetWriteEventName(eventName, characteristic_handles.value_handle);
+          jsvObjectSetChildAndUnLock(execInfo.root, eventName, writeCb);
+        }
+        // Add onWriteDesc callback for writes to the CCCD
+        writeCb = jsvObjectGetChild(charVar, "onWriteDesc", 0);
+        if (writeCb) {
+          char eventName[12];
+          bleGetWriteEventName(eventName, characteristic_handles.cccd_handle);
           jsvObjectSetChildAndUnLock(execInfo.root, eventName, writeCb);
         }
 

@@ -1,3 +1,7 @@
 [
-  {"class":"OneWire","name":"*"}
+  {"class":"OneWire","name":"*"},
+  {"class":"Array","name":"every"},
+  {"class":"Array","name":"some"},
+  {"class":"SPI","name":"send4bit"},
+  {"class":"NRF","name":"getBattery"}  
 ]

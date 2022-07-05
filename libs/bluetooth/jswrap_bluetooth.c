@@ -1249,6 +1249,10 @@ NRF.setServices({
       },
       onWrite : function(evt) { // optional
         console.log("Got ", evt.data); // an ArrayBuffer
+      },
+      onWriteDesc : function(evt) { // optional - called when the 'cccd' descriptor is written
+        // for example this is called when notifications are requested by the client:
+        console.log("Notifications enabled = ", evt.data[0]&1);
       }
     }
     // more characteristics allowed

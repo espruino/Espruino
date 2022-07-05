@@ -1143,6 +1143,7 @@ void jswrap_espruino_dumpFreeList() {
   "type" : "staticmethod",
   "class" : "E",
   "name" : "dumpFragmentation",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_e_dumpFragmentation"
 }
 Show fragmentation.
