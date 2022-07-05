@@ -3029,6 +3029,13 @@ void jsble_set_services(JsVar *data) {
           bleGetWriteEventName(eventName, characteristic_handles.value_handle);
           jsvObjectSetChildAndUnLock(execInfo.root, eventName, writeCb);
         }
+        // Add
+        writeCb = jsvObjectGetChild(charVar, "onWriteDesc", 0);
+        if (writeCb) {
+          char eventName[12];
+          bleGetWriteEventName(eventName, characteristic_handles.cccd_handle);
+          jsvObjectSetChildAndUnLock(execInfo.root, eventName, writeCb);
+        }
 
         jsvUnLock(charVar);
 
