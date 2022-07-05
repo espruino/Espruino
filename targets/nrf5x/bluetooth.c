@@ -3022,14 +3022,14 @@ void jsble_set_services(JsVar *data) {
         jsble_check_error(err_code);
         jsvUnLock(charValue); // unlock here in case we were storing data in a flat string
 
-        // Add Write callback
+        // Add onWrite callback
         JsVar *writeCb = jsvObjectGetChild(charVar, "onWrite", 0);
         if (writeCb) {
           char eventName[12];
           bleGetWriteEventName(eventName, characteristic_handles.value_handle);
           jsvObjectSetChildAndUnLock(execInfo.root, eventName, writeCb);
         }
-        // Add
+        // Add onWriteDesc callback for writes to the CCCD
         writeCb = jsvObjectGetChild(charVar, "onWriteDesc", 0);
         if (writeCb) {
           char eventName[12];
