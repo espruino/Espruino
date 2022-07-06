@@ -17,7 +17,7 @@ typedef struct {
   int daysSinceEpoch;
   int ms,sec,min,hour;
   int zone; // timezone in minutes
-  bool is_dst;
+  bool is_dst; // will always be false IFNDEF ESPR_NO_DAYLIGHT_SAVING
 } TimeInDay;
 
 typedef struct {
@@ -30,7 +30,9 @@ typedef struct {
 
 int getDayNumberFromDate(int y, int m, int d);
 void getDateFromDayNumber(int day, int *y, int *m, int *date);
+#ifndef ESPR_NO_DAYLIGHT_SAVING
 JsVarFloat getDstChangeTime(int y, int dow_number, int month, int dow, int day_offset, int timeOfDay, bool is_start, int dst_offset, int timezone, bool as_local_time);
+#endif
 int jstGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst);
 void setCorrectTimeZone(TimeInDay *td);
 TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in, bool forceGMT);
@@ -53,7 +55,9 @@ int jswrap_date_getDay(JsVar *parent);
 int jswrap_date_getDate(JsVar *parent);
 int jswrap_date_getMonth(JsVar *parent);
 int jswrap_date_getFullYear(JsVar *parent);
+#ifndef ESPR_NO_DAYLIGHT_SAVING
 int jswrap_date_getIsDST(JsVar *parent);
+#endif
 
 JsVarFloat jswrap_date_setHours(JsVar *parent, int hoursValue, JsVar *minutesValue, JsVar *secondsValue, JsVar *millisecondsValue);
 JsVarFloat jswrap_date_setMinutes(JsVar *parent, int minutesValue, JsVar *secondsValue, JsVar *millisecondsValue);

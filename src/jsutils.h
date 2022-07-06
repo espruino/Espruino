@@ -320,7 +320,9 @@ typedef int64_t JsSysTime;
 #define JSPARSE_FUNCTION_LINENUMBER_NAME JS_HIDDEN_CHAR_STR"lin" // The line number offset of the function
 #define JS_EVENT_PREFIX "#on"
 #define JS_TIMEZONE_VAR "tz"
+#ifndef ESPR_NO_DAYLIGHT_SAVING
 #define JS_DST_SETTINGS_VAR "dst"
+#endif
 #define JS_GRAPHICS_VAR "gfx"
 
 #define JSPARSE_EXCEPTION_VAR "except" // when exceptions are thrown, they're stored in the root scope

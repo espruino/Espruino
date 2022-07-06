@@ -23,7 +23,7 @@ const int BASE_DOW = 4;
 const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\0Dec";
 const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
-// Convert a y,m,d into a number of days since 1970. 0<=m<=11
+// Convert y,m,d into a number of days since 1970, where 0<=m<=11
 // https://github.com/deirdreobyrne/CalendarAndDST
 int getDayNumberFromDate(int y, int m, int d) {
   int ans;
@@ -33,36 +33,35 @@ int getDayNumberFromDate(int y, int m, int d) {
     m+=12;
   }
   ans = (y/100);
-  ans = 365*y + (y>>2) - ans + (ans>>2) + 30*m + ((3*m+6)/5) + d - 719531;
-  return ans;
+  return 365*y + (y>>2) - ans + (ans>>2) + 30*m + ((3*m+6)/5) + d - 719531;
 }
 
 // Convert a number of days since 1970 into y,m,d. 0<=m<=11
 // https://github.com/deirdreobyrne/CalendarAndDST
 void getDateFromDayNumber(int day, int *y, int *m, int *date) {
   int a = day + 135081;
-  int b,c,d,e;
+  int b,c,d;
   a = (a-(a/146097)+146095)/36524;
   a = day + a - (a>>2);
-  c = ((a<<2)+2877911)/1461;
-  d = 365*c + (c>>2);
-  b = a + 719600 - d;
-  e = (5*b-1)/153;
-  if (date) *date=b-30*e-((3*e)/5);
+  b = ((a<<2)+2877911)/1461;
+  c = a + 719600 - 365*b - (b>>2);
+  d = (5*c-1)/153;
+  if (date) *date=c-30*d-((3*d)/5);
   if (m) {
-  if (e<14)
-      *m=e-2;
+    if (d<14)
+      *m=d-2;
     else
-      *m=e-14;
+      *m=d-14;
   }
   if (y) {
-    if (e>13)
-      *y=c+1;
+    if (d>13)
+      *y=b+1;
     else
-      *y=c;
+      *y=b;
   }
 }
 
+#ifndef ESPR_NO_DAYLIGHT_SAVING
 // Given a set of DST change settings, calculate the time (in GMT seconds since 1970) that the change happens in year y
 // If as_local_time is true, then returns the number of seconds in the timezone in effect, as opposed to GMT
 // https://github.com/deirdreobyrne/CalendarAndDST
@@ -88,12 +87,14 @@ JsVarFloat getDstChangeTime(int y, int dow_number, int dow, int month, int day_o
   }
   return 60.0*ans;
 }
+#endif
 
 // Returns the effective timezone in minutes east
 // is_local_time is true if ms is referenced to local time, false if it's referenced to GMT
 // if is_dst is not zero, then it will be set to true if DST is in effect
 // https://github.com/deirdreobyrne/CalendarAndDST
 int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
+#ifndef ESPR_NO_DAYLIGHT_SAVING
   JsVar *dst = jsvObjectGetChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, 0);
   if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12) && (dst->varData.arraybuffer.type == ARRAYBUFFERVIEW_INT16)) {
     int y;
@@ -111,48 +112,23 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
     if (dstSetting[0]) {
       JsVarFloat sec = ms/1000;
       JsVarFloat dstStart,dstEnd;
+      bool dstActive;
       
       getDateFromDayNumber((int)(sec/86400),&y,0,0);
       dstStart = getDstChangeTime(y, dstSetting[2], dstSetting[3], dstSetting[4], dstSetting[5], dstSetting[6], 1, dstSetting[0], dstSetting[1], is_local_time);
       dstEnd = getDstChangeTime(y, dstSetting[7], dstSetting[8], dstSetting[9], dstSetting[10], dstSetting[11], 0, dstSetting[0], dstSetting[1], is_local_time);
-      // Now, check all permutations and combinations, noting that whereas in the northern hemisphere, dstStart<dstEnd, in the southern hemisphere dstEnd<dstStart
-      if (sec < dstStart) {
-        if (sec < dstEnd) {
-          if (dstStart < dstEnd) {
-            // Northern hemisphere - DST hasn't started yet
-            if (is_dst) *is_dst = false;
-            return dstSetting[1];
-          } else {
-            // Southern hemisphere - DST hasn't ended yet
-            if (is_dst) *is_dst = true;
-            return dstSetting[0] + dstSetting[1];
-          }
-        } else { // dstEnd <= sec < dstStart
-          // Southern hemisphere - DST has ended for the winter
-          if (is_dst) *is_dst = false;
-          return dstSetting[1];
-        }
-      } else { // sec >= dstStart
-        if (sec >= dstEnd) {
-          if (dstStart < dstEnd) {
-            // Northern hemisphere - DST has ended
-            if (is_dst) *is_dst = false;
-            return dstSetting[1];
-          } else {
-            // Southern hemisphere - DST has started
-            if (is_dst) *is_dst = true;
-            return dstSetting[0] + dstSetting[1];
-          }
-        } else { // sec >= dstStart, sec < dstEnd
-          // Northern hemisphere - DST has started for the summer
-          if (is_dst) *is_dst = true;
-          return dstSetting[0] + dstSetting[1];
-        }
+      if (dstStart < dstEnd) { // Northern hemisphere
+        dstActive = (sec >= dstStart) && (sec < dstEnd);
+      } else { // Southern hemisphere
+        dstActive = (sec < dstEnd) || (sec >= dstStart);
       }
+      if (is_dst) *is_dst = dstActive;
+      return dstActive ? dstSetting[0]+dstSetting[1] : dstSetting[1];
     }
   } else {
     jsvUnLock(dst);
   }
+#endif
   if (is_dst) *is_dst = false;
   return jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR, 0));
 }
@@ -339,6 +315,7 @@ int jswrap_date_getTimezoneOffset(JsVar *parent) {
   return -getTimeFromDateVar(parent, false/*system timezone*/).zone;
 }
 
+// I'm assuming SAVE_ON_FLASH always goes with ESPR_NO_DAYLIGHT_SAVING
 /*JSON{
   "type" : "method",
   "ifndef" : "SAVE_ON_FLASH",
@@ -353,7 +330,6 @@ This returns a boolean indicating whether daylight savings time is in effect.
 int jswrap_date_getIsDST(JsVar *parent) {
   return getTimeFromDateVar(parent, false/*system timezone*/).is_dst ? 1 : 0;
 }
-
 
 /*JSON{
   "type" : "method",

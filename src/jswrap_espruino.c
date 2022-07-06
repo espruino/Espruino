@@ -1709,8 +1709,10 @@ void jswrap_espruino_setTimeZone(JsVarFloat zone) {
       jsvNewFromInteger((int)(zone*60)));
 }
 
+#ifndef ESPR_NO_DAYLIGHT_SAVING
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "ESPR_NO_DAYLIGHT_SAVING",
   "class" : "E",
   "name" : "setDST",
   "generate" : "jswrap_espruino_setDST",
@@ -1756,7 +1758,7 @@ void jswrap_espruino_setDST(JsVar *params) {
   dst = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT16, params, 0, 0);
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, dst);
 }
-
+#endif
 
 /*JSON{
   "type" : "staticmethod",

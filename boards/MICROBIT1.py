@@ -34,6 +34,7 @@ info = {
    'makefile' : [
      'SAVE_ON_FLASH=1',
      'DEFINES+=-DSAVE_ON_FLASH_EXTREME',
+     'DEFINES+=-DESPR_NO_DAYLIGHT_SAVING',
      'DEFINES+=-DJSVAR_FORCE_NO_INLINE=1',
      'CFLAGS += -ffreestanding', # needed for SAVE_ON_FLASH_EXTREME (jswrap_math, __aeabi_dsub)
      'CFLAGS += -D__STARTUP_CLEAR_BSS -DLD_NOSTARTFILES',
