@@ -464,6 +464,22 @@ JsVar *jswrap_storage_getStats() {
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Storage",
+  "name" : "optimise",
+  "generate" : "jswrap_storage_optimise"
+}
+Writes a lookup table for files into Bangle.js's storage. This allows any file stored
+up to that point to be accessed quickly.
+ */
+void jswrap_storage_optimise() {
+#ifdef ESPR_STORAGE_FILENAME_TABLE
+  jsfCreateFileTable();
+#endif
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Storage",
   "name" : "open",
   "generate" : "jswrap_storage_open",
   "params" : [

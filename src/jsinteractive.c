@@ -798,7 +798,7 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
 #ifdef BANGLEJS
     jsiConsolePrintf("Checking storage...\n");
 #endif
-    if (!jsfIsStorageValid(JSFSTT_NORMAL)) {
+    if (!jsfIsStorageValid(JSFSTT_NORMAL | JSFSTT_FIND_FILENAME_TABLE)) {
       jsiConsolePrintf("Storage is corrupt.\n");
       jsfResetStorage();
     } else {
