@@ -287,7 +287,7 @@ bool jsfEraseAll() {
 }
 
 /// When a file is found in memory, erase it (by setting first bytes of name to 0). addr=ptr to data, NOT header
-static void jsfEraseFileInternal(uint32_t addr, JsfFileHeader *header) {
+static void jsfEraseFileInternal(uint32_t addr, JsfFileHeader *header, bool createFilenameTable) {
   jsDebug(DBG_INFO,"EraseFile 0x%08x\n", addr);
 
   addr -= (uint32_t)sizeof(JsfFileHeader);
@@ -296,7 +296,7 @@ static void jsfEraseFileInternal(uint32_t addr, JsfFileHeader *header) {
   jshFlashWrite(&header->name.firstChars,addr,(uint32_t)sizeof(header->name.firstChars));
 
 #ifdef ESPR_STORAGE_FILENAME_TABLE
-  if (addr>=JSF_START_ADDRESS && addr<JSF_END_ADDRESS) { // if was erasing in Bank 1
+  if (createFilenameTable && addr>=JSF_START_ADDRESS && addr<JSF_END_ADDRESS) { // if was erasing in Bank 1
     // do a scan from the last FILENAME_TABLE to see how many files there are
     uint32_t scanAddr = 0;
     if (jsfFilenameTableBank1Addr)
@@ -315,7 +315,7 @@ bool jsfEraseFile(JsfFileName name) {
   uint32_t addr = jsfFindFile(name, &header);
   if (!addr) return false;
   jsfCacheClearFile(name);
-  jsfEraseFileInternal(addr, &header);
+  jsfEraseFileInternal(addr, &header, true);
   return true;
 }
 
@@ -997,7 +997,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
     jsfStripDriveFromName(&shortname);
     JsfFileHeader header2;
     uint32_t addr2 = jsfFindFile(shortname, &header2);
-    if (addr2) jsfEraseFileInternal(addr2, &header2);  // erase if in wrong bank
+    if (addr2) jsfEraseFileInternal(addr2, &header2, true);  // erase if in wrong bank
   }
 #endif  
   if ((!addr && offset==0) || // No file
@@ -1016,7 +1016,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
     }
     if (addr) { // file exists, remove it!
       jsDebug(DBG_INFO,"jsfWriteFile remove existing file\n");
-      jsfEraseFileInternal(addr, &header);
+      jsfEraseFileInternal(addr, &header, true);
     }
     jsDebug(DBG_INFO,"jsfWriteFile create file\n");
     addr = jsfCreateFile(name, (uint32_t)size, flags, &header);
@@ -1080,6 +1080,7 @@ static void jsfBankListFiles(JsVar *files, uint32_t addr, JsVar *regex, JsfFileF
   memset(&header,0,sizeof(JsfFileHeader));
 #ifdef ESPR_STORAGE_FILENAME_TABLE
   if (jsfFilenameTableBank1Addr && addr==JSF_START_ADDRESS) {
+    //jsiConsolePrintf("jsfFilenameTable 0x%08x\n", jsfFilenameTableBank1Addr);
     uint32_t baseAddr = addr;
     uint32_t tableAddr = jsfFilenameTableBank1Addr;
     // Scan after this should start AFTER this table
@@ -1097,6 +1098,7 @@ static void jsfBankListFiles(JsVar *files, uint32_t addr, JsVar *regex, JsfFileF
     }
   }
 #endif
+  //jsiConsolePrintf("list from 0x%08x\n", addr);
   if (jsfGetFileHeader(addr, &header, true)) do {
     if (jsfIsRealFile(&header)) { // if not replaced or a system file
       jsfBankListFilesHandleFile(files, addr, &header, regex, containing, notContaining, hash);
@@ -1367,7 +1369,7 @@ static uint32_t jsfBankCreateFileTable(uint32_t startAddr) {
   // now write table
   JsfFileName name = jsfNameFromString("[FILENAME_TABLE]");
   uint32_t tableAddr = jsfFindFile(name, &header); // address of file data (not header)
-  if (tableAddr) jsfEraseFileInternal(tableAddr, &header);
+  if (tableAddr) jsfEraseFileInternal(tableAddr, &header, false);
   uint32_t tableSize = fileCount * (uint32_t)sizeof(JsfFileHeader);
   if (tableSize==0) return 0; // empty table
   tableAddr = jsfCreateFile(name, tableSize, JSFF_FILENAME_TABLE, &header);
