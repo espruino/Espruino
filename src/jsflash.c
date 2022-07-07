@@ -50,7 +50,7 @@
 #define JSF_CACHE_NOT_FOUND 0xFFFFFFFF
 
 #ifdef ESPR_STORAGE_FILENAME_TABLE
-uint32_t jsfFilenameTableBank1Addr = 0; // address of DATA in the table (or 0 if no table)
+uint32_t jsfFilenameTableBank1Addr = 0; // address of DATA in the table, NOT THE HEADER (or 0 if no table)
 uint32_t jsfFilenameTableBank1Size = 0; // size of table in bytes
 #endif
 
@@ -683,6 +683,7 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
   };
   // If we were going to straddle the next page and there's enough space,
   // push this file forwards so it starts on a clean page boundary
+  // Maybe we shouldn't do this any more - see https://github.com/espruino/Espruino/issues/2232
   addr = freeAddr;
   uint32_t spaceAvailable = jsfGetSpaceLeftInPage(addr);
   uint32_t nextPage = jsfGetAddressOfNextPage(addr);
@@ -714,10 +715,9 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
   if (jsfFilenameTableBank1Addr && addr==JSF_START_ADDRESS) {
     uint32_t baseAddr = addr;
     uint32_t tableAddr = jsfFilenameTableBank1Addr;
-    // Scan after this should start AFTER this table
-    addr = jsfAlignAddress(tableAddr+jsfFilenameTableBank1Size);
+    uint32_t tableEnd = tableAddr + jsfFilenameTableBank1Size;
     // Now scan the table and call back for each item
-    while (tableAddr < addr) {
+    while (tableAddr < tableEnd) {
       // read the address and name...
       jshFlashRead(&header, tableAddr, sizeof(JsfFileHeader));
       tableAddr += (uint32_t)sizeof(JsfFileHeader);
@@ -734,11 +734,18 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
         added after the table... */
       }
     }
-  }
+    // We didn't find the file in our table...
+    // Now point 'addr' to the start of this table and fill in the header.
+    // the normal code will see this, skip over it like a normal file
+    // and carry on regardless.
+    addr = jsfFilenameTableBank1Addr - sizeof(JsfFileHeader); // address of jsfFilenameTable's header
+    header.name.firstChars = 0;
+    header.size = jsfFilenameTableBank1Size;
+  } else
 #endif
-
-  memset(&header,0,sizeof(JsfFileHeader));
-  if (jsfGetFileHeader(addr, &header, false)) do {
+  if (!jsfGetFileHeader(addr, &header, false)) return 0;
+  // Now search through files in storage
+  do {
     // check for something with the same first 4 chars of name that hasn't been replaced.
     if (header.name.firstChars == name.firstChars) {
       // Now load the whole header (with name) and check properly
@@ -1084,10 +1091,9 @@ static void jsfBankListFiles(JsVar *files, uint32_t addr, JsVar *regex, JsfFileF
     //jsiConsolePrintf("jsfFilenameTable 0x%08x\n", jsfFilenameTableBank1Addr);
     uint32_t baseAddr = addr;
     uint32_t tableAddr = jsfFilenameTableBank1Addr;
-    // Scan after this should start AFTER this table
-    addr = jsfAlignAddress(tableAddr+jsfFilenameTableBank1Size);
+    uint32_t tableEnd = tableAddr + jsfFilenameTableBank1Size;
     // Now scan the table and call back for each item
-    while (tableAddr < addr) {
+    while (tableAddr < tableEnd) {
       // read just the address
       jshFlashRead(&header, tableAddr, 4);
       tableAddr += (uint32_t)sizeof(JsfFileHeader);
@@ -1097,15 +1103,21 @@ static void jsfBankListFiles(JsVar *files, uint32_t addr, JsVar *regex, JsfFileF
         jsfBankListFilesHandleFile(files, fileAddr, &header, regex, containing, notContaining, hash);
       }
     }
-  }
+    // We didn't find the file in our table...
+    // Now point 'addr' to the start of this table and fill in the header.
+    // the normal code will see this, skip over it like a normal file
+    // and carry on regardless.
+    addr = jsfFilenameTableBank1Addr - sizeof(JsfFileHeader); // address of jsfFilenameTable's header
+    header.name.firstChars = 0;
+    header.size = jsfFilenameTableBank1Size;
+  } else
 #endif
-  //jsiConsolePrintf("list from 0x%08x\n", addr);
-  if (jsfGetFileHeader(addr, &header, true)) do {
+  if (!jsfGetFileHeader(addr, &header, true)) return;
+  do {
     if (jsfIsRealFile(&header)) { // if not replaced or a system file
       jsfBankListFilesHandleFile(files, addr, &header, regex, containing, notContaining, hash);
     }
   } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL));
-
 }
 
 /** Return all files in flash as a JsVar array of names. If regex is supplied, it is used to filter the filenames using String.match(regexp)
