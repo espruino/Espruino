@@ -714,7 +714,7 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
     uint32_t baseAddr = addr;
     uint32_t tableAddr = jsfFilenameTableBank1Addr;
     // Scan after this should start AFTER this table
-    addr = tableAddr+jsfFilenameTableBank1Size;
+    addr = jsfAlignAddress(tableAddr+jsfFilenameTableBank1Size);
     // Now scan the table and call back for each item
     while (tableAddr < addr) {
       // read the address and name...
@@ -728,6 +728,9 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
             *returnedHeader = header;
           return fileAddr+(uint32_t)sizeof(JsfFileHeader);
         }
+        /* Or... the file was in our table but it's been replaced. In this case
+        stop scanning our table and instead just  do a normal scan for files
+        added after the table... */
       }
     }
   }
@@ -1080,7 +1083,7 @@ static void jsfBankListFiles(JsVar *files, uint32_t addr, JsVar *regex, JsfFileF
     uint32_t baseAddr = addr;
     uint32_t tableAddr = jsfFilenameTableBank1Addr;
     // Scan after this should start AFTER this table
-    addr = tableAddr+jsfFilenameTableBank1Size;
+    addr = jsfAlignAddress(tableAddr+jsfFilenameTableBank1Size);
     // Now scan the table and call back for each item
     while (tableAddr < addr) {
       // read just the address
@@ -1360,6 +1363,7 @@ static uint32_t jsfBankCreateFileTable(uint32_t startAddr) {
   if (jsfGetFileHeader(addr, &header, false)) do {
     if (jsfIsRealFile(&header)) fileCount++;
   } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL));
+  jsDebug(DBG_INFO,"jsfBankCreateFileTable - %d files\n", fileCount);
   // now write table
   JsfFileName name = jsfNameFromString("[FILENAME_TABLE]");
   uint32_t tableAddr = jsfFindFile(name, &header); // address of file data (not header)
