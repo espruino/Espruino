@@ -302,9 +302,10 @@ static void jsfEraseFileInternal(uint32_t addr, JsfFileHeader *header, bool crea
     if (jsfFilenameTableBank1Addr)
       scanAddr = jsfFilenameTableBank1Addr + jsfFilenameTableBank1Size;
     JsfStorageStats stats = jsfGetStorageStats(scanAddr, true);
-    /* if more than 20 files were added/deleted since the last
-    FILENAME_TABLE, try and make a new one */
-    if ((stats.trashCount+stats.fileCount)>20)
+    /* if more than 200 files were added/deleted since the last
+    FILENAME_TABLE, try and make a new one. 100 files seems to add
+    around 5ms to each Storage.list call, or 2ms to a file read. */
+    if ((stats.trashCount+stats.fileCount)>200)
       jsfBankCreateFileTable(JSF_START_ADDRESS);
   }
 #endif
