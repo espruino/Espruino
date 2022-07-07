@@ -681,20 +681,10 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
       }
     }
   };
-  // If we were going to straddle the next page and there's enough space,
-  // push this file forwards so it starts on a clean page boundary
-  // Maybe we shouldn't do this any more - see https://github.com/espruino/Espruino/issues/2232
+  /* We used to push files forward to the nearest page boundary but now there's very little point
+  doing this. While we still have to cope with it when reading storage, we now don't try and align
+  new files - see https://github.com/espruino/Espruino/issues/2232 */
   addr = freeAddr;
-  uint32_t spaceAvailable = jsfGetSpaceLeftInPage(addr);
-  uint32_t nextPage = jsfGetAddressOfNextPage(addr);
-  if (nextPage && // there is a next page
-      ((nextPage - addr) < requiredSize) && // it would straddle pages
-      (spaceAvailable > (size + nextPage - addr)) && // there is space
-      (requiredSize < 512) && // it's not too big. We should always try and put big files as near the start as possible. See note in jsfCompact
-      !jsfGetFileHeader(nextPage, &header, false)) { // the next page is free
-    jsDebug(DBG_INFO,"CreateFile straddles page boundary, pushed to next page (0x%08x -> 0x%08x)\n", addr, nextPage);
-    addr = nextPage;
-  }
   // write out the header
   jsDebug(DBG_INFO,"CreateFile new 0x%08x\n", addr+(uint32_t)sizeof(JsfFileHeader));
   header.size = size | (flags<<24);

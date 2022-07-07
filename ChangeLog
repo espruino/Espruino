@@ -14,7 +14,8 @@
             nRF5x: Add 'onWriteDesc' in NRF.setServices - allowing you to know when something subscribed for notifications
             nRF5x: Move advertising_start and restart_softdevice outside of IRQs (MEMORY_BUSY warnings less likely now)
             Bangle.js: Ensure E.showMessage background color comes from theme
-            Bangle.js: Add "filename table" support to Bangle.js - avoids slow file read/list when there are many deleted/updated files in Storage
+            Bangle.js: Add "filename table" support to Bangle.js - avoids slow file read/list when there are many deleted/updated files in Storage (fix #2152)
+            Storage: Don't align files <512 bytes to page boundaries - all files now stored in order (ref #2232)
 
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu
