@@ -1,0 +1,14 @@
+// arrange
+require("Storage").erase("sched.json");
+
+var timer = require("sched").newDefaultTimer();
+timer.timer = 1;
+timer.del = false;
+require("sched").setAlarm("unitTest", timer);
+
+// act
+load("sched.js");
+Bangle.emit("touch", 1, { x: 140, y: 140 });   // Stop
+
+// assert
+if (!require("Storage").readJSON("sched.json") || !require("Storage").readJSON("sched.json").some(alarm => !alarm.on)) throw "Error";

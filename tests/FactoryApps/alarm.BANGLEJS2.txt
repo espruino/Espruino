@@ -1,0 +1,15 @@
+// arrange
+require("Storage").erase("sched.json");
+
+// act
+load("alarm.app.js");
+Bangle.emit("touch", 0, { x: 0, y: 80 });   // new
+Bangle.emit("touch", 0, { x: 0, y: 80 });   // alarm
+Bangle.emit("touch", 0, { x: 0, y: 0 });    // back
+Bangle.emit("touch", 0, { x: 0, y: 80 });   // new
+Bangle.emit("touch", 0, { x: 0, y: 100 });  // timer
+Bangle.emit("touch", 0, { x: 0, y: 0 });    // back
+Bangle.emit("touch", 0, { x: 0, y: 0 });    // back
+
+// assert
+if (!require("Storage").list("sched.json").length) throw "Error";

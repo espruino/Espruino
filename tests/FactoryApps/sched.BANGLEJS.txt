@@ -1,0 +1,39 @@
+// arrange
+var bootCode = "";
+bootCode += "var setWatchOrg = setWatch;";
+bootCode += "var callBacks = [];";
+bootCode += "var setWatch = (callBack, btn) => {";
+bootCode += "  let watchNo = setWatchOrg.apply(null, arguments);";
+bootCode += "  callBacks[watchNo] = {btn: btn, callBack: callBack};";
+bootCode += "  return watchNo;";
+bootCode += "};";
+bootCode += "var clearWatchOrg = clearWatch;";
+bootCode += "var clearWatch = (watchNo) => {";
+bootCode += "  if (watchNo) {";
+bootCode += "    clearWatchOrg(watchNo);";
+bootCode += "    delete callBacks[watchNo];";
+bootCode += "  } else {";
+bootCode += "    clearWatchOrg();";
+bootCode += "    callBacks = [];";
+bootCode += "  }";
+bootCode += "};";
+
+bootCode += "press = (btn) => callBacks";
+bootCode += "  .filter(callBack => callBack.btn == btn)";
+bootCode += "  .forEach(callBack => callBack.callBack());";
+require("Storage").write(".boot1", bootCode);
+
+require("Storage").erase("sched.json");
+var timer = require("sched").newDefaultTimer();
+timer.timer = 1;
+timer.del = false;
+require("sched").setAlarm("unitTest", timer);
+
+// act
+load("sched.js");
+
+press(BTN3);  // right to stop
+press(BTN2);  // stop
+
+// assert
+if (!require("Storage").readJSON("sched.json") || !require("Storage").readJSON("sched.json").some(alarm => !alarm.on)) throw "Error";
