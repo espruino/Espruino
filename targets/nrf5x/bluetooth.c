@@ -1679,6 +1679,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         const ble_gattc_evt_hvx_t *p_hvx = &p_ble_evt->evt.gattc_evt.params.hvx;
         // p_hvx->type is BLE_GATT_HVX_NOTIFICATION or BLE_GATT_HVX_INDICATION
         jsble_queue_pending_buf(BLEP_NOTIFICATION, p_hvx->handle, (char*)p_hvx->data, p_hvx->len);
+        if (p_hvx->type == BLE_GATT_HVX_INDICATION) {
+          sd_ble_gattc_hv_confirm(p_ble_evt->evt.gattc_evt.conn_handle, p_hvx->handle);
+        }
       } break;
 #endif
 
