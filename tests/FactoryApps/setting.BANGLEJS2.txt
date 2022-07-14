@@ -1,0 +1,15 @@
+// arrange
+require("Storage").erase(".boot0");
+
+// act
+load("setting.app.js");
+
+Bangle.emit("drag", { "dx": 0,  "dy": -70 }); // scroll down
+Bangle.emit("touch", 0, { x: 0, y: 150 });    // utils
+Bangle.emit("touch", 0, { x: 0, y: 150 });    // rewrite settings
+Bangle.emit("touch", 0, { x: 0, y: 0 });      // back
+Bangle.emit("touch", 0, { x: 0, y: 0 });      // back
+
+// assert
+if (!require("Storage").list(".boot0").length) throw "Error";
+
