@@ -1,0 +1,35 @@
+// arrange
+var bootCode = "";
+bootCode += "var setWatchOrg = setWatch;";
+bootCode += "var callBacks = [];";
+bootCode += "var setWatch = (callBack, btn) => {";
+bootCode += "  let watchNo = setWatchOrg.apply(null, arguments);";
+bootCode += "  callBacks[watchNo] = {btn: btn, callBack: callBack};";
+bootCode += "  return watchNo;";
+bootCode += "};";
+bootCode += "var clearWatchOrg = clearWatch;";
+bootCode += "var clearWatch = (watchNo) => {";
+bootCode += "  if (watchNo) {";
+bootCode += "    clearWatchOrg(watchNo);";
+bootCode += "    delete callBacks[watchNo];";
+bootCode += "  } else {";
+bootCode += "    clearWatchOrg();";
+bootCode += "    callBacks = [];";
+bootCode += "  }";
+bootCode += "};";
+
+bootCode += "press = (btn) => callBacks";
+bootCode += "  .filter(callBack => callBack.btn == btn)";
+bootCode += "  .forEach(callBack => callBack.callBack());";
+
+bootCode += "var loadCalled = false;";
+bootCode += "var load = () => loadCalled = true;";
+require("Storage").write(".boot1", bootCode);
+
+// act
+load("about.app.js");
+
+press(BTN1);  // quit
+
+// assert
+if (!loadCalled) throw "Error";

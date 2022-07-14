@@ -1,0 +1,14 @@
+// arrange
+require("Storage").erase("health.json");
+
+// act
+load("health.app.js");
+Bangle.emit("drag", { "dx": 0,  "dy": -30 }); // scroll down
+Bangle.emit("touch", 0, { x: 0, y: 150 });    // Settings
+Bangle.emit("touch", 0, { x: 0, y: 80 });     // HRM Interval
+Bangle.emit("touch", 0, { x: 0, y: 100 });    // 3 min
+Bangle.emit("touch", 0, { x: 0, y: 0 });      // back
+Bangle.emit("touch", 0, { x: 0, y: 0 });      // back
+
+// assert
+if (!require("Storage").list("health.json").length) throw "Error";
