@@ -17,6 +17,7 @@
             Bangle.js: Add "filename table" support to Bangle.js - avoids slow file read/list when there are many deleted/updated files in Storage (fix #2152)
             Storage: Don't align files <512 bytes to page boundaries - all files now stored in order (ref #2232)
             nRF5x: Call sd_ble_gattc_hv_confirm in response to BLE indications
+            Bangle.js 2: Make Bangle.setBarometerPower retry twice if it has an I2C error
 
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu

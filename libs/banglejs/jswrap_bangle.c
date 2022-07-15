@@ -2550,56 +2550,62 @@ bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
   isOn = setDeviceRequested("Barom", appId, isOn);
   if (isOn) bangleFlags |= JSBF_BAROMETER_ON;
   else bangleFlags &= ~JSBF_BAROMETER_ON;
-  if (isOn) {
-    if (!wasOn) {
-#ifdef PRESSURE_DEVICE_SPL06_007_EN
-      if (PRESSURE_DEVICE_SPL06_007_EN) {
-        jswrap_banglejs_barometerWr(SPL06_CFGREG, 0); // No FIFO or IRQ (should be default but has been nonzero when read!
-        jswrap_banglejs_barometerWr(SPL06_PRSCFG, 0x33); // pressure oversample by 8x, 8 measurement per second
-        jswrap_banglejs_barometerWr(SPL06_TMPCFG, 0xB3); // temperature oversample by 8x, 8 measurements per second, external sensor
-        jswrap_banglejs_barometerWr(SPL06_MEASCFG, 7); // continuous temperature and pressure measurement
-        // read calibration data
-        unsigned char buf[SPL06_COEF_NUM];
-        buf[0] = SPL06_COEF_START; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
-        jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, SPL06_COEF_NUM, buf, true);
-        barometer_c0 = twosComplement(((unsigned short)buf[0] << 4) | (((unsigned short)buf[1] >> 4) & 0x0F), 12);
-        barometer_c1 = twosComplement((((unsigned short)buf[1] & 0x0F) << 8) | buf[2], 12);
-        barometer_c00 = twosComplement(((unsigned int)buf[3] << 12) | ((unsigned int)buf[4] << 4) | (((unsigned int)buf[5] >> 4) & 0x0F), 20);
-        barometer_c10 = twosComplement((((unsigned int)buf[5] & 0x0F) << 16) | ((unsigned int)buf[6] << 8) | (unsigned int)buf[7], 20);
-        barometer_c01 = twosComplement(((unsigned short)buf[8] << 8) | (unsigned short)buf[9], 16);
-        barometer_c11 = twosComplement(((unsigned short)buf[10] << 8) | (unsigned short)buf[11], 16);
-        barometer_c20 = twosComplement(((unsigned short)buf[12] << 8) | (unsigned short)buf[13], 16);
-        barometer_c21 = twosComplement(((unsigned short)buf[14] << 8) | (unsigned short)buf[15], 16);
-        barometer_c30 = twosComplement(((unsigned short)buf[16] << 8) | (unsigned short)buf[17], 16);
-      }
-#endif // PRESSURE_DEVICE_SPL06_007_EN
-#ifdef PRESSURE_DEVICE_BMP280_EN
-      if (PRESSURE_DEVICE_BMP280_EN) {
-        jswrap_banglejs_barometerWr(0xF4, 0x27); // ctrl_meas_reg - normal mode, no pressure/temp oversample
-        jswrap_banglejs_barometerWr(0xF5, 0xA0); // config_reg - 1s standby, no filter, I2C
-        // read calibration data
-        unsigned char buf[24];
-        buf[0] = 0x88; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
-        jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 24, buf, true);
-        int i;
-        barometerDT[0] = ((int)buf[1] << 8) | (int)buf[0];  //first coeff is unsigned
-        for (i=1;i<3;i++)
-          barometerDT[i] = twosComplement(((int)buf[(i*2)+1] << 8) | (int)buf[i*2], 16);
-        barometerDP[0] = ((int)buf[7] << 8) | (int)buf[6];  //first coeff is unsigned
-        for (i=1;i<9;i++)
-          barometerDP[i] = twosComplement(((int)buf[(i*2)+7] << 8) | (int)buf[(i*2)+6], 16);
-      }
-#endif // PRESSURE_DEVICE_BMP280_EN
-    } // wasOn
-  } else { // !isOn -> turn off
-#ifdef PRESSURE_DEVICE_SPL06_007_EN
-    if (PRESSURE_DEVICE_SPL06_007_EN)
-      jswrap_banglejs_barometerWr(SPL06_MEASCFG, 0); // Barometer off
-#endif
-#ifdef PRESSURE_DEVICE_BMP280_EN
-    if (PRESSURE_DEVICE_BMP280_EN)
-      jswrap_banglejs_barometerWr(0xF4, 0); // Barometer off
-#endif
+  int tries = 3;
+  while (tries-- > 0) {
+    if (isOn) {
+      if (!wasOn) {
+  #ifdef PRESSURE_DEVICE_SPL06_007_EN
+        if (PRESSURE_DEVICE_SPL06_007_EN) {
+          jswrap_banglejs_barometerWr(SPL06_CFGREG, 0); // No FIFO or IRQ (should be default but has been nonzero when read!
+          jswrap_banglejs_barometerWr(SPL06_PRSCFG, 0x33); // pressure oversample by 8x, 8 measurement per second
+          jswrap_banglejs_barometerWr(SPL06_TMPCFG, 0xB3); // temperature oversample by 8x, 8 measurements per second, external sensor
+          jswrap_banglejs_barometerWr(SPL06_MEASCFG, 7); // continuous temperature and pressure measurement
+          // read calibration data
+          unsigned char buf[SPL06_COEF_NUM];
+          buf[0] = SPL06_COEF_START; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
+          jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, SPL06_COEF_NUM, buf, true);
+          barometer_c0 = twosComplement(((unsigned short)buf[0] << 4) | (((unsigned short)buf[1] >> 4) & 0x0F), 12);
+          barometer_c1 = twosComplement((((unsigned short)buf[1] & 0x0F) << 8) | buf[2], 12);
+          barometer_c00 = twosComplement(((unsigned int)buf[3] << 12) | ((unsigned int)buf[4] << 4) | (((unsigned int)buf[5] >> 4) & 0x0F), 20);
+          barometer_c10 = twosComplement((((unsigned int)buf[5] & 0x0F) << 16) | ((unsigned int)buf[6] << 8) | (unsigned int)buf[7], 20);
+          barometer_c01 = twosComplement(((unsigned short)buf[8] << 8) | (unsigned short)buf[9], 16);
+          barometer_c11 = twosComplement(((unsigned short)buf[10] << 8) | (unsigned short)buf[11], 16);
+          barometer_c20 = twosComplement(((unsigned short)buf[12] << 8) | (unsigned short)buf[13], 16);
+          barometer_c21 = twosComplement(((unsigned short)buf[14] << 8) | (unsigned short)buf[15], 16);
+          barometer_c30 = twosComplement(((unsigned short)buf[16] << 8) | (unsigned short)buf[17], 16);
+        }
+  #endif // PRESSURE_DEVICE_SPL06_007_EN
+  #ifdef PRESSURE_DEVICE_BMP280_EN
+        if (PRESSURE_DEVICE_BMP280_EN) {
+          jswrap_banglejs_barometerWr(0xF4, 0x27); // ctrl_meas_reg - normal mode, no pressure/temp oversample
+          jswrap_banglejs_barometerWr(0xF5, 0xA0); // config_reg - 1s standby, no filter, I2C
+          // read calibration data
+          unsigned char buf[24];
+          buf[0] = 0x88; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
+          jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 24, buf, true);
+          int i;
+          barometerDT[0] = ((int)buf[1] << 8) | (int)buf[0];  //first coeff is unsigned
+          for (i=1;i<3;i++)
+            barometerDT[i] = twosComplement(((int)buf[(i*2)+1] << 8) | (int)buf[i*2], 16);
+          barometerDP[0] = ((int)buf[7] << 8) | (int)buf[6];  //first coeff is unsigned
+          for (i=1;i<9;i++)
+            barometerDP[i] = twosComplement(((int)buf[(i*2)+7] << 8) | (int)buf[(i*2)+6], 16);
+        }
+  #endif // PRESSURE_DEVICE_BMP280_EN
+      } // wasOn
+    } else { // !isOn -> turn off
+  #ifdef PRESSURE_DEVICE_SPL06_007_EN
+      if (PRESSURE_DEVICE_SPL06_007_EN)
+        jswrap_banglejs_barometerWr(SPL06_MEASCFG, 0); // Barometer off
+  #endif
+  #ifdef PRESSURE_DEVICE_BMP280_EN
+      if (PRESSURE_DEVICE_BMP280_EN)
+        jswrap_banglejs_barometerWr(0xF4, 0); // Barometer off
+  #endif
+    }
+    if (!tries || !jspHasError()) return isOn; // return -  all is going correctly (or we tried a few times and failed)
+    // we had an error (almost certainly I2C) - clear the error and try again hopefully
+    jsvUnLock(jspGetException());
   }
   return isOn;
 #else // PRESSURE_DEVICE
