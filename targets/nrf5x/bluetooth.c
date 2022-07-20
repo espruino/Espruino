@@ -244,12 +244,14 @@ typedef struct {
 } BLEAdvReportData;
 
 #if NRF_SD_BLE_API_VERSION>5
- // if m_scan_param.extended=1, use BLE_GAP_SCAN_BUFFER_EXTENDED_MIN
-uint8_t m_scan_buffer_data[BLE_GAP_SCAN_BUFFER_MIN]; /**< buffer where advertising reports will be stored by the SoftDevice. */
+// if m_scan_param.extended=0, use BLE_GAP_SCAN_BUFFER_MIN
+// if m_scan_param.extended=1, use BLE_GAP_SCAN_BUFFER_EXTENDED_MIN
+uint8_t m_scan_buffer_data[BLE_GAP_SCAN_BUFFER_EXTENDED_MIN]; /**< buffer where advertising reports will be stored by the SoftDevice. */
 ble_data_t m_scan_buffer = {
    m_scan_buffer_data,
-   BLE_GAP_SCAN_BUFFER_MIN
+   sizeof(m_scan_buffer_data)
 };
+// TODO: this is 255 bytes to allow extended advertising. Maybe we don't need that all the time?
 #endif
 
 // -----------------------------------------------------------------------------------
@@ -2617,6 +2619,8 @@ uint32_t jsble_advertising_start() {
     jsvObjectIteratorFree(&it);
   }
   jsvUnLock(advServices);
+  // check for any options set up
+  JsVar *advOptions = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, 0);
   // update scan response packet
   memset(&scanrsp, 0, sizeof(scanrsp));
   scanrsp.uuids_complete.uuid_cnt = adv_uuid_count;
@@ -2629,12 +2633,33 @@ uint32_t jsble_advertising_start() {
   bool non_scannable = bleStatus & BLE_IS_NOT_SCANNABLE;
 #if NRF_SD_BLE_API_VERSION>5
   adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
-  adv_params.p_peer_addr     = NULL;
-  adv_params.properties.type = non_connectable
-      ? (non_scannable ? BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED : BLE_GAP_ADV_TYPE_NONCONNECTABLE_SCANNABLE_UNDIRECTED)
-      : (non_scannable ? BLE_GAP_ADV_TYPE_EXTENDED_CONNECTABLE_NONSCANNABLE_UNDIRECTED/*experimental*/ : BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED);
+  adv_params.secondary_phy   = BLE_GAP_PHY_AUTO; // the default
   adv_params.filter_policy   = BLE_GAP_ADV_FP_ANY;
   adv_params.duration  = BLE_GAP_ADV_TIMEOUT_GENERAL_UNLIMITED;
+  //adv_params.scan_req_notification = 1; // creates a BLE_GAP_EVT_SCAN_REQ_REPORT event
+  if (jsvIsObject(advOptions)) { // extended SDK15+ options
+    JsVar *advPhy = jsvObjectGetChild(advOptions, "phy", 0);
+    if (jsvIsUndefined(advPhy) || jsvIsStringEqual(advPhy,"1mbps")) {
+      // default
+    } else if (jsvIsStringEqual(advPhy,"2mbps")) {
+      adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
+      adv_params.secondary_phy   = BLE_GAP_PHY_2MBPS;
+    } else if (jsvIsStringEqual(advPhy,"coded")) {
+      adv_params.primary_phy     = non_connectable ? BLE_GAP_PHY_CODED : BLE_GAP_PHY_1MBPS; // must use 1mbps phy if connectable?
+      adv_params.secondary_phy   = BLE_GAP_PHY_CODED;
+    } else jsWarn("Unknown phy %q\n", advPhy);
+    jsvUnLock(advPhy);
+  }
+  if (adv_params.secondary_phy == BLE_GAP_PHY_AUTO) {
+    // the default...
+    adv_params.properties.type = non_connectable
+          ? (non_scannable ? BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED : BLE_GAP_ADV_TYPE_NONCONNECTABLE_SCANNABLE_UNDIRECTED)
+          : (non_scannable ? BLE_GAP_ADV_TYPE_EXTENDED_CONNECTABLE_NONSCANNABLE_UNDIRECTED/*experimental*/ : BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED);
+  } else { // coded/2mbps - force use of extended advertising
+    adv_params.properties.type = non_connectable
+        ? (non_scannable ? BLE_GAP_ADV_TYPE_EXTENDED_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED : BLE_GAP_ADV_TYPE_EXTENDED_NONCONNECTABLE_SCANNABLE_UNDIRECTED)
+        : (non_scannable ? BLE_GAP_ADV_TYPE_EXTENDED_CONNECTABLE_NONSCANNABLE_UNDIRECTED : BLE_GAP_ADV_TYPE_CONNECTABLE_SCANNABLE_UNDIRECTED);
+  }
 #else
   adv_params.type        = non_connectable
       ? (non_scannable ? BLE_GAP_ADV_TYPE_ADV_NONCONN_IND : BLE_GAP_ADV_TYPE_ADV_SCAN_IND)
@@ -2642,6 +2667,7 @@ uint32_t jsble_advertising_start() {
   adv_params.fp          = BLE_GAP_ADV_FP_ANY;
   adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
 #endif
+  jsvUnLock(advOptions);
   adv_params.p_peer_addr = NULL;
   adv_params.interval = bleAdvertisingInterval;
 
@@ -2662,14 +2688,17 @@ uint32_t jsble_advertising_start() {
   //jsiConsolePrintf("adv_data_set %d %d\n", advPtr, advLen);
 #if NRF_SD_BLE_API_VERSION>5
   ble_gap_adv_data_t d;
+  memset(&d, 0, sizeof(d));
   d.adv_data.p_data = (uint8_t*)advPtr;
   d.adv_data.len = advLen;
-  d.scan_rsp_data.p_data = m_enc_scan_response_data;
-  d.scan_rsp_data.len = m_enc_scan_response_data_len;
+  if (!non_scannable) {
+    d.scan_rsp_data.p_data = m_enc_scan_response_data;
+    d.scan_rsp_data.len = m_enc_scan_response_data_len;
+  }
 
   err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, &adv_params);
   if (!err_code) {
-    sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, m_tx_power);
+    jsble_check_error(sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, m_tx_power));
     err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
   }
 #elif NRF_SD_BLE_API_VERSION<5
@@ -2820,33 +2849,53 @@ void jsble_restart_softdevice(JsVar *jsFunction) {
   jstRestartUtilTimer(); // restart the util timer
 }
 
-uint32_t jsble_set_scanning(bool enabled, bool activeScan) {
+uint32_t jsble_set_scanning(bool enabled, JsVar *options) {
   uint32_t err_code = 0;
   if (enabled) {
-     if (bleStatus & BLE_IS_SCANNING) return 0;
-     bleStatus |= BLE_IS_SCANNING;
-     ble_gap_scan_params_t     m_scan_param;
-     memset(&m_scan_param,0,sizeof(m_scan_param));
+    if (bleStatus & BLE_IS_SCANNING) return 0;
+    bleStatus |= BLE_IS_SCANNING;
+    ble_gap_scan_params_t     m_scan_param;
+    memset(&m_scan_param,0,sizeof(m_scan_param));
 #if NRF_SD_BLE_API_VERSION>5
-     m_scan_param.scan_phys         = BLE_GAP_PHY_AUTO;
-     m_scan_param.filter_policy     = BLE_GAP_SCAN_FP_ACCEPT_ALL;
+    m_scan_param.scan_phys         = BLE_GAP_PHY_AUTO;
+    m_scan_param.filter_policy     = BLE_GAP_SCAN_FP_ACCEPT_ALL;
 #endif
-     // non-selective scan
-     m_scan_param.active       = activeScan;   // Active scanning set.
-     m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
-     m_scan_param.window       = SCAN_WINDOW;  // Scan window.
-     m_scan_param.timeout      = 0x0000;       // No timeout - BLE_GAP_SCAN_TIMEOUT_UNLIMITED
+    m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
+    m_scan_param.window       = SCAN_WINDOW;  // Scan window.
+    m_scan_param.timeout      = 0x0000;       // No timeout - BLE_GAP_SCAN_TIMEOUT_UNLIMITED
 
-     err_code = sd_ble_gap_scan_start(&m_scan_param
+    if (jsvIsObject(options)) {
+      m_scan_param.active = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "active", 0)); // Active scanning set.
+      if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "extended", 0)))
+        m_scan_param.extended = 1;
+#if NRF_SD_BLE_API_VERSION>5
+      JsVar *advPhy = jsvObjectGetChild(options, "phy", 0);
+      if (jsvIsStringEqual(advPhy,"1mbps")) {
+        // default
+      } else if (jsvIsStringEqual(advPhy,"2mbps")) {
+        m_scan_param.scan_phys = BLE_GAP_PHY_2MBPS;
+        m_scan_param.extended = 1;
+      } else if (jsvIsStringEqual(advPhy,"both")) {
+        m_scan_param.scan_phys = BLE_GAP_PHYS_SUPPORTED;
+        m_scan_param.extended = 1;
+      } else if (jsvIsStringEqual(advPhy,"coded")) {
+        m_scan_param.scan_phys = BLE_GAP_PHY_CODED;
+        m_scan_param.extended = 1;
+      } else jsWarn("Unknown phy %q\n", advPhy);
+      jsvUnLock(advPhy);
+#endif
+    }
+
+    err_code = sd_ble_gap_scan_start(&m_scan_param
 #if NRF_SD_BLE_API_VERSION>5
          , &m_scan_buffer
 #endif
          );
-   } else {
-     if (!(bleStatus & BLE_IS_SCANNING)) return 0;
-     bleStatus &= ~BLE_IS_SCANNING;
-     err_code = sd_ble_gap_scan_stop();
-   }
+  } else {
+    if (!(bleStatus & BLE_IS_SCANNING)) return 0;
+    bleStatus &= ~BLE_IS_SCANNING;
+    err_code = sd_ble_gap_scan_stop();
+  }
   return err_code;
 }
 
@@ -3247,6 +3296,9 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
   m_scan_param.interval     = MSEC_TO_UNITS(100, UNIT_0_625_MS); // Scan interval.
   m_scan_param.window       = MSEC_TO_UNITS(90, UNIT_0_625_MS); // Scan window.
   m_scan_param.timeout      = 4;            // 4 second timeout.
+#if NRF_SD_BLE_API_VERSION>5
+  m_scan_param.scan_phys    = BLE_GAP_PHYS_SUPPORTED;
+#endif
 
   ble_gap_conn_params_t   gap_conn_params;
   memset(&gap_conn_params, 0, sizeof(gap_conn_params));

@@ -234,8 +234,8 @@ bool jsble_check_error(uint32_t err_code);
 /** Set the connection interval of the peripheral connection. Returns an error code */
 uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max);
 
-/// Scanning for advertising packets
-uint32_t jsble_set_scanning(bool enabled, bool activeScan);
+/// Scanning for advertising packets. options can be an object with optional {active:bool, phy:"1mbps/2mbps/coded"}
+uint32_t jsble_set_scanning(bool enabled, JsVar *options);
 
 /// returning RSSI values for current connection
 uint32_t jsble_set_rssi_scan(bool enabled);

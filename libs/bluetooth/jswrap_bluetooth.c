@@ -235,7 +235,7 @@ void jswrap_ble_reconfigure_softdevice() {
   JsVar *v,*o;
   // restart various
   v = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT,0);
-  if (v) jsble_set_scanning(true, false);
+  if (v) jsble_set_scanning(true, NULL);
   jsvUnLock(v);
   v = jsvObjectGetChild(execInfo.root, BLE_RSSI_EVENT,0);
   if (v) jsble_set_rssi_scan(true);
@@ -286,7 +286,7 @@ void jswrap_ble_kill() {
   if (bleTaskInfo2) jsvUnLock(bleTaskInfo2);
   bleTaskInfo2 = 0;
   // if we were scanning, make sure we stop
-  jsble_set_scanning(false, false);
+  jsble_set_scanning(false, NULL);
   jsble_set_rssi_scan(false);
 
 #if CENTRAL_LINK_COUNT>0
@@ -782,6 +782,7 @@ NRF.setAdvertising([
   interval: 600 // Advertising interval in msec, between 20 and 10000 (default is 375ms)
   manufacturer: 0x0590 // IF sending manufacturer data, this is the manufacturer ID
   manufacturerData: [...] // IF sending manufacturer data, this is an array of data
+  phy: "1mbps/2mbps/coded" // (NRF52840 only) use the long-range coded phy for transmission (1mbps default)
 }
 ```
 
@@ -1886,9 +1887,7 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
 
 void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
   JsVar *filters = 0;
-  bool activeScan = false;
   if (jsvIsObject(options)) {
-    activeScan = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "active", 0));
     filters = jsvObjectGetChild(options, "filters", 0);
     if (filters && !jsvIsArray(filters)) {
       jsvUnLock(filters);
@@ -1911,7 +1910,7 @@ void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
     jsvObjectRemoveChild(execInfo.root, BLE_SCAN_EVENT);
   }
   // either start or stop scanning
-  uint32_t err_code = jsble_set_scanning(callback != 0, activeScan);
+  uint32_t err_code = jsble_set_scanning(callback != 0, options);
   jsble_check_error(err_code);
   jsvUnLock(filters);
 }
@@ -2983,6 +2982,8 @@ Espruino will pick the FIRST device it finds, or it'll call `catch`.
 is found. eg. `NRF.requestDevice({ timeout:2000, filters: [ ... ] })`
 * `active` - whether to perform active scanning (requesting 'scan response' packets from any
 devices that are found). eg. `NRF.requestDevice({ active:true, filters: [ ... ] })`
+* `phy` - (NRF52840 only) use the long-range coded phy (`"1mbps"` default, can be `"1mbps/2mbps/both/coded"`)
+* `extended` - (NRF52840 only) support receiving extended-length advertising packets (default=true if phy isn't `"1mbps"`)
 
 **NOTE:** `timeout` and `active` are not part of the Web Bluetooth standard.
 
