@@ -5,26 +5,23 @@
 // This build a JSON description file for Tern.js as
 // specified here: http://ternjs.net/doc/manual.html#typedef
 
-var marked = v => v;
-try {
-  marked = require('marked');
-  // Set default options except highlight which has no default
-  marked.setOptions({
-    gfm: true, // github markdown
-    highlight: function (code) {
-      return require('highlight.js').highlightAuto(code).value;
-    },
-    tables: true,
-    breaks: false,
-    pedantic: false,
-    sanitize: false,
-    smartLists: true,
-    smartypants: false,
-    langPrefix: 'lang-'
-  });
-} catch (e) {
-  console.error("WARNING: marked is not installed");
-}
+var marked = require('marked');
+// yay - new marked version incompatible with old one...
+if (marked.marked) marked=marked.marked; 
+// Set default options except highlight which has no default
+marked.setOptions({
+  gfm: true, // github markdown
+  highlight: function (code) {
+    return require('highlight.js').highlightAuto(code).value;
+  },
+  tables: true,
+  breaks: false,
+  pedantic: false,
+  sanitize: false,
+  smartLists: true,
+  smartypants: false,
+  langPrefix: 'lang-'
+});
 
 var hadErrors = false;
 
