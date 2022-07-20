@@ -453,7 +453,8 @@ a full update of the screen.
 /*JSON{
   "type" : "property",
   "class" : "Graphics",
-  "name" : "buffer"
+  "name" : "buffer",
+  "return" : ["JsVar","An ArrayBuffer (or not defined on Graphics instances not created with `Graphics.createArrayBuffer`)"]
 }
 On Graphics instances with an offscreen buffer, this
 is an `ArrayBuffer` that provides access to the underlying

@@ -15,6 +15,28 @@
 #include "unistroke.h"
 
 /*JSON{
+    "type" : "class",
+    "class" : "Unistroke",
+    "ifdef" : "BANGLEJS2"
+}
+This class provides functionality to recognise gestures drawn
+on a touchscreen. It is only built into Bangle.js 2.
+
+Usage:
+
+```
+var strokes = {
+  stroke1 : Unistroke.new(new Uint8Array([x1, y1, x2, y2, x3, y3, ...])),
+  stroke2 : Unistroke.new(new Uint8Array([x1, y1, x2, y2, x3, y3, ...])),
+  stroke3 : Unistroke.new(new Uint8Array([x1, y1, x2, y2, x3, y3, ...]))
+};
+var r = Unistroke.recognise(strokes,new Uint8Array([x1, y1, x2, y2, x3, y3, ...]))
+print(r); // stroke1/stroke2/stroke3
+```
+
+*/
+
+/*JSON{
     "type" : "staticmethod",
     "class" : "Unistroke",
     "name" : "new",
