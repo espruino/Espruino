@@ -70,7 +70,7 @@ void jswrap_ESP8266_reboot() {
   "ifdef"    : "ESP8266",
   "name"     : "getResetInfo",
   "generate" : "jswrap_ESP8266_getResetInfo",
-  "return"   : ["JsVar","An object with the reset cause information"],
+  "return"   : ["JsVar","An object with the reset cause information"]
 }
 At boot time the esp8266's firmware captures the cause of the reset/reboot.  This function returns this information in an object with the following fields:
 
