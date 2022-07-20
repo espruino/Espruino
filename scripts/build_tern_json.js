@@ -47,7 +47,7 @@ require("./common.js").readAllWrapperFiles(function(json) {
         tern[j.name] = o;
       } else if (j.type=="library") {
         // TODO: bind this into 'require' somehow
-        var o = { "!type": "fn()" };
+        var o = { "!library": true, "!type": "fn()" };
         o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         tern[j.class] = o;
