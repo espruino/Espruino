@@ -6,6 +6,8 @@
 // specified here: http://ternjs.net/doc/manual.html#typedef
 
 var marked = require('marked');
+// yay - new marked version incompatible with old one...
+if (marked.marked) marked=marked.marked; 
 // Set default options except highlight which has no default
 marked.setOptions({
   gfm: true, // github markdown
@@ -20,6 +22,8 @@ marked.setOptions({
   smartypants: false,
   langPrefix: 'lang-'
 });
+
+var hadErrors = false;
 
 require("./common.js").readAllWrapperFiles(function(json) {
   var tern = { "!name": "Espruino" };
@@ -50,6 +54,7 @@ require("./common.js").readAllWrapperFiles(function(json) {
       }
     } catch (e) {
       console.error("Exception "+e, j);
+      hadErrors = true;
     }
   });
 
@@ -94,6 +99,7 @@ require("./common.js").readAllWrapperFiles(function(json) {
        console.warn("Unknown type "+j.type+" for ",j);
     } catch (e) {
       console.error("Exception "+e, e.stack, j);
+      hadErrors = true;
     }
   });
 
@@ -101,6 +107,10 @@ require("./common.js").readAllWrapperFiles(function(json) {
  delete tern["Telnet"]["!type"];
 
 
+ if (hadErrors) {
+   console.log("ERRORS PROCESING FILES");
+   process.exit(1);
+ }
  console.log(JSON.stringify(tern,null,2));
 
 });

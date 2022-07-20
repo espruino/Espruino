@@ -139,9 +139,13 @@ bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
 	return false;
 }
 /// Scanning for advertisign packets
-uint32_t jsble_set_scanning(bool enabled, bool activeScan){
-  if (activeScan) {
-  	jsWarn("active scan not implemented\n");
+uint32_t jsble_set_scanning(bool enabled, JsVar *options){
+  bool activeScan = false;
+  if (enabled && jsvIsObject(options)) {
+    activeScan = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "active", 0));
+    if (activeScan) {
+      jsWarn("active scan not implemented\n");
+    }
   }
 	bluetooth_gap_setScan(enabled);
 	return 0;
