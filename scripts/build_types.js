@@ -93,9 +93,7 @@ function getDeclaration(object, c) {
     const type =
       object.type === "object"
         ? object.instanceof
-        : object.return[2]
-        ? getBasicType(object.return[2])
-        : getBasicType(object.return[0]);
+        : getBasicType(object.return_object || object.return[0]);
     if (c) {
       return `${object.name}: ${type};`;
     } else {
