@@ -52,9 +52,10 @@ Builtin.prototype.getTernType = function() {
     var args = [];     
     if ("params" in this)
       args = this.params.map(function (p) {
-        if (p[0]=="pin" && p[1]=="JsVar")
-          return "pin: +Pin"; // hack because digitalRead/Write can also take arrays/objects (but most use cases are Pins)
-        return p[0]+": "+getBasicTernType(p[1]);
+        if (p[0] == "pin" && p[1] == "JsVar") return "pin: +Pin"; // hack because digitalRead/Write can also take arrays/objects (but most use cases are Pins)
+        var doc = typeof p[2] === "string" ? p[2] : p[2].join("\n");
+        var optional = doc && doc.startsWith("[optional]");
+        return p[0] + (optional ? "?" : "") + ": " + getBasicTernType(p[1]);
       });
     var ret = "";
     if ("return_object" in this)
