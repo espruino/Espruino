@@ -453,7 +453,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
   "class" : "ArrayBufferView",
   "name" : "buffer",
   "generate_full" : "jsvLock(jsvGetFirstChild(parent))",
-  "return" : ["JsVar","An ArrayBuffer object"]
+  "return" : ["JsVar","An ArrayBuffer object", "ArrayBufferLike"]
 }
 The buffer this view references
  */
