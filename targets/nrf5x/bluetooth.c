@@ -2868,7 +2868,7 @@ uint32_t jsble_set_scanning(bool enabled, JsVar *options) {
       m_scan_param.active = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "active", 0)); // Active scanning set.
 #if NRF_SD_BLE_API_VERSION>5
       if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "extended", 0)))
-        m_scan_param.extended = 1
+        m_scan_param.extended = 1;
       JsVar *advPhy = jsvObjectGetChild(options, "phy", 0);
       if (jsvIsStringEqual(advPhy,"1mbps")) {
         // default
