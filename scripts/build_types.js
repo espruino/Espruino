@@ -39,38 +39,54 @@ function getBasicType(type) {
   return type;
 }
 
+function getArguments(object) {
+  let args = [];
+  if ("params" in object)
+    args = object.params.map((param) => {
+      // hack because digitalRead/Write can also take arrays/objects (but most use cases are Pins)
+      if (param[0] == "pin" && param[1] == "JsLet") param[1] = "Pin";
+      if (param[0] === "function") param[0] = "func";
+      if (param[0] === "var") param[0] = "variable";
+      let doc = typeof param[2] === "string" ? param[2] : param[2].join("\n");
+      let optional = doc && doc.startsWith("[optional]");
+      let rest = param[1] === "JsVarArray";
+      return (
+        (rest ? "..." : "") +
+        param[0] +
+        (optional ? "?" : "") +
+        ": " +
+        getBasicType(param[1]) +
+        (rest ? "[]" : "")
+      );
+    });
+  return args.join(", ");
+}
+
 function getDeclaration(object, c) {
-  if (
+  if (object.type === "event") {
+    if (c) {
+      return `on(event: "${object.name}", callback: (${getArguments(
+        object
+      )}) => void): void;`;
+    } else {
+      return `function on(event: "${object.name}", callback: (${getArguments(
+        object
+      )}) => void): void;`;
+    }
+  } else if (
     ["function", "method", "staticmethod", "constructor"].includes(object.type)
   ) {
     // function
-    let args = [];
-    if ("params" in object)
-      args = object.params.map((param) => {
-        // hack because digitalRead/Write can also take arrays/objects (but most use cases are Pins)
-        if (param[0] == "pin" && param[1] == "JsLet") param[1] = "Pin";
-        if (param[0] === "function") param[0] = "func";
-        if (param[0] === "var") param[0] = "variable";
-        let doc = typeof param[2] === "string" ? param[2] : param[2].join("\n");
-        let optional = doc && doc.startsWith("[optional]");
-        let rest = param[1] === "JsVarArray";
-        return (
-          (rest ? "..." : "") +
-          param[0] +
-          (optional ? "?" : "") +
-          ": " +
-          getBasicType(param[1]) +
-          (rest ? "[]" : "")
-        );
-      });
     let returnValue = "any";
     if ("return_object" in object)
       returnValue = getBasicType(object.return_object);
     else if ("return" in object) returnValue = getBasicType(object.return[0]);
     if (c) {
-      return `${object.name}(${args.join(", ")}): ${returnValue};`;
+      return `${object.name}(${getArguments(object)}): ${returnValue};`;
     } else {
-      return `function ${object.name}(${args.join(", ")}): ${returnValue};`;
+      return `function ${object.name}(${getArguments(
+        object
+      )}): ${returnValue};`;
     }
   } else {
     // property
@@ -115,7 +131,7 @@ require("./common.js").readAllWrapperFiles(function (objects) {
     } else if (["class", "object", "library"].includes(object.type)) {
     } else if (["init", "idle", "kill"].includes(object.type)) {
     } else if (["event"].includes(object.type)) {
-      // TODO: handle events
+      getClass(object.class).staticProperties.push(object);
     } else if (object.type === "constructor") {
       getClass(object.class).constructor = object;
     } else if (["staticproperty", "staticmethod"].includes(object.type)) {
