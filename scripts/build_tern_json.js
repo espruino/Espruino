@@ -72,16 +72,22 @@ require("./common.js").readAllWrapperFiles(function(json) {
       } else if (["constructor"].indexOf(j.type)>=0) {
         var o = tern[j.class]; // overwrite existing class with constructor
         if (o===undefined) o=tern[j.class]={};
-        o["!type"] = j.getTernType();
+        var [type, rest] = j.getTernType();
+        o["!type"] = type;
+        if (rest) o["!rest"] = true;
         o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
       } else if (["staticproperty","staticmethod"].indexOf(j.type)>=0) {
-        var o = { "!type": j.getTernType() };
+        var [type, rest] = j.getTernType();
+        var o = { "!type": type };
+        if (rest) o["!rest"] = true;
         o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         tern[j.class][j.name] = o;
       } else if (["property","method"].indexOf(j.type)>=0) {
-        var o = { "!type": j.getTernType() };
+        var [type, rest] = j.getTernType();
+        var o = { "!type": type };
+        if (rest) o["!rest"] = true;
         o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         if (!("prototype" in tern[j.class])) {
@@ -92,6 +98,9 @@ require("./common.js").readAllWrapperFiles(function(json) {
         tern[j.class]["prototype"][j.name] = o;
       } else if (["function","variable"].indexOf(j.type)>=0) {
         var o = { "!type": j.getTernType() };
+        var [type, rest] = j.getTernType();
+        var o = { "!type": type };
+        if (rest) o["!rest"] = true;
         o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         tern[j.name] = o;

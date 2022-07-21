@@ -50,21 +50,21 @@ Builtin.prototype.getTernType = function() {
   } else if (["function","method","staticmethod","constructor"].indexOf(this.type)>=0) {
     // it's a function
     var args = [];     
+    var rest = false;
     if ("params" in this)
       args = this.params.map(function (p) {
         if (p[0] == "pin" && p[1] == "JsVar") return "pin: +Pin"; // hack because digitalRead/Write can also take arrays/objects (but most use cases are Pins)
         var doc = typeof p[2] === "string" ? p[2] : p[2].join("\n");
         var optional = doc && doc.startsWith("[optional]");
+        if (p[1] == "JsVarArray") rest = true;
         return p[0] + (optional ? "?" : "") + ": " + getBasicTernType(p[1]);
       });
     var ret = "";
-    if ("return_object" in this)
-      ret = " -> +"+this.return_object
-    else if ("return" in this) 
-      ret = " -> "+getBasicTernType(this.return[0]); 
-    return "fn("+args.join("\, ")+")"+ret;
+    if ("return_object" in this) ret = " -> +" + this.return_object;
+    else if ("return" in this) ret = " -> " + getBasicTernType(this.return[0]);
+    return ["fn(" + args.join(", ") + ")" + ret, rest];
   } else {
-    return getBasicTernType(this.return[0]);
+    return [getBasicTernType(this.return[0])];
   }
 };
 
