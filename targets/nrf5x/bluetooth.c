@@ -2645,7 +2645,7 @@ uint32_t jsble_advertising_start() {
       adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
       adv_params.secondary_phy   = BLE_GAP_PHY_2MBPS;
     } else if (jsvIsStringEqual(advPhy,"coded")) {
-      adv_params.primary_phy     = non_connectable ? BLE_GAP_PHY_CODED : BLE_GAP_PHY_1MBPS; // must use 1mbps phy if connectable?
+      adv_params.primary_phy     = BLE_GAP_PHY_CODED; // must use 1mbps phy if connectable?
       adv_params.secondary_phy   = BLE_GAP_PHY_CODED;
     } else jsWarn("Unknown phy %q\n", advPhy);
     jsvUnLock(advPhy);
