@@ -151,6 +151,8 @@
 #define UART0_CONFIG_USE_EASY_DMA 1
 #define UART1_ENABLED 1
 #define UART1_CONFIG_USE_EASY_DMA 1
+// To allow advertising transmit via coded phy (connectable:true,scannable:false)
+// #define NRF_SDH_BLE_GAP_EVENT_LENGTH 10
 #endif // NRF52840
 
 #if ESPR_LSE_ENABLE

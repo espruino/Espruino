@@ -2697,9 +2697,11 @@ uint32_t jsble_advertising_start() {
   }
 
   err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, &adv_params);
+  jsble_check_error(err_code);
   if (!err_code) {
     jsble_check_error(sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, m_tx_power));
     err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
+    jsble_check_error(err_code);
   }
 #elif NRF_SD_BLE_API_VERSION<5
   err_code = sd_ble_gap_adv_data_set(
