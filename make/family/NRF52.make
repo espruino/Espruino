@@ -77,7 +77,7 @@ endif
 endif
 
 # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
-ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
+ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=softfp -mfpu=fpv4-sp-d16
 
 # nRF52 specific.
 INCLUDE          += -I$(SOFTDEVICE_PATH)/headers

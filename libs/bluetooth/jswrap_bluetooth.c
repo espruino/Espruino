@@ -1746,7 +1746,7 @@ BluetoothDevice {
   "data": new Uint8Array([ ... ]).buffer, // ArrayBuffer of returned data
   "serviceData" : { "0123" : [ 1 ] }, // if service data is in 'data', it's extracted here
   "manufacturer" : 0x1234, // if manufacturer data is in 'data', the 16 bit manufacturer ID is extracted here
-  "manufacturerData" : [...], // if manufacturer data is in 'data', the data is extracted here
+  "manufacturerData" : new Uint8Array([...]).buffer, // if manufacturer data is in 'data', the data is extracted here as an ArrayBuffer
   "name": "DeviceName"       // the advertised device name
  }
 ```
@@ -1995,8 +1995,9 @@ prints something like:
     "rssi": -45,
     "services": [ "4567" ],
     "serviceData" : { "0123" : [ 1 ] },
-    "manufacturerData" : [...],
-    "data": new ArrayBuffer([ ... ]),
+    "manufacturer" : 1424,
+    "manufacturerData" : new Uint8Array([ ... ]).buffer,
+    "data": new ArrayBuffer([ ... ]).buffer,
     "name": "Puck.js 36a2"
    },
   BluetoothDevice {
