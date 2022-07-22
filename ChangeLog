@@ -20,6 +20,7 @@
             Bangle.js 2: Make Bangle.setBarometerPower retry twice if it has an I2C error
             Bangle.js 2: Fix `NRF.setAdvertising({},{scannable:false})`
             Bangle.js 2: Initial long range functionality (via `phy:"coded"` in `NRF.setAdvertising/setScan/requestDevice/findDevices`)
+            nRF52: Change from hard -> softfp calling convention (saves a few bytes, more compatible with compiled code)
 
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu
