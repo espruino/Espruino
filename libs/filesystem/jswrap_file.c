@@ -598,7 +598,7 @@ Pipe this file to a stream (an object with a 'write' method)
   ],
   "return" : ["bool","True on success, or false on failure"]  
 }
-Change the paramters used for the flash filesystem.
+Change the parameters used for the flash filesystem.
 The default address is the last 1Mb of 4Mb Flash, 0x300000, with total size of 1Mb.
 
 Before first use the media needs to be formatted.

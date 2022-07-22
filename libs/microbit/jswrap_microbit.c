@@ -647,7 +647,7 @@ void jswrap_microbit_accelOn() {
   "generate" : "jswrap_microbit_accelOff",
   "ifdef" : "MICROBIT2"
 }
-Turn off events from  the accelerometer (started with `Microbit.accelOn`)
+Turn off events from the accelerometer (started with `Microbit.accelOn`)
 */
 void jswrap_microbit_accelOff() {
   if (!accel_watch) return;
