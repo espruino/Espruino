@@ -72,7 +72,7 @@ void jswrap_ESP8266_reboot() {
   "generate" : "jswrap_ESP8266_getResetInfo",
   "return"   : ["JsVar","An object with the reset cause information"]
 }
-At boot time the esp8266's firmware captures the cause of the reset/reboot.  This function returns this information in an object with the following fields:
+At boot time the esp8266's firmware captures the cause of the reset/reboot. This function returns this information in an object with the following fields:
 
 * `reason`: "power on", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", or "reset pin"
 * `exccause`: exception cause
@@ -108,7 +108,7 @@ JsVar *jswrap_ESP8266_getResetInfo() {
     ["enable", "bool", "Enable or disable the debug logging."]
   ]
 }
-Enable or disable the logging of debug information.  A value of `true` enables debug logging while a value of `false` disables debug logging.  Debug output is sent to UART1 (gpio2).
+Enable or disable the logging of debug information. A value of `true` enables debug logging while a value of `false` disables debug logging. Debug output is sent to UART1 (gpio2).
  */
 void jswrap_ESP8266_logDebug(bool enable) {
   os_printf("ESP8266.logDebug, enable=%d\n", enable);

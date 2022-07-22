@@ -258,7 +258,7 @@ static void _wlan_getIP_set_address(JsVar *options, char *name, unsigned char *p
   "name" : "setIP",
   "generate" : "jswrap_wlan_setIP",
   "params" : [
-    ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."]
+    ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns }`, or do not supply an object in otder to force DHCP."]
   ],
   "return" : ["bool","True on success"]
 }

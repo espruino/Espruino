@@ -180,7 +180,7 @@ JsVarFloat jswrap_math_asin(JsVarFloat x) {
   "name" : "atan",
   "generate" : "jswrap_math_atan",
   "params" : [
-    ["x","float","The value to get the arc tangent  of"]
+    ["x","float","The value to get the arc tangent of"]
   ],
   "return" : ["float","The arc tangent of x, between -PI/2 and PI/2"]
 }*/
