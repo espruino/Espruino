@@ -632,7 +632,7 @@ JsVarFloat jswrap_date_setMonth(JsVar *parent, int monthValue, JsVar *dayValue) 
   "generate" : "jswrap_date_setFullYear",
   "params" : [
     ["yearValue","int","The full year - eg. 1989"],
-    ["yearValue","JsVar","optional - the month, between 0 and 11"],
+    ["monthValue","JsVar","optional - the month, between 0 and 11"],
     ["dayValue","JsVar","optional - the day, between 0 and 31"]
   ],
   "return" : ["float","The number of milliseconds since 1970"]

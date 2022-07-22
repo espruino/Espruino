@@ -25,7 +25,7 @@ Builtin.prototype.getDescription = function() {
 };
 
 Builtin.prototype.getURL = function() {
-  if (this.type == "class")
+  if (this.type == "class" || this.type == "library")
     anchor = this.class;
   else if ("class" in this)
     anchor = "l_"+this.class+"_"+this.name;

@@ -424,7 +424,7 @@ Use Graphics.createXXX to create a graphics object that renders in the way you w
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
-  "params" : [ ["all","bool","(only on some devices) If `true` then copy all pixels, not just those that have changed."] ],
+  "params" : [ ["all","bool","[optional] (only on some devices) If `true` then copy all pixels, not just those that have changed."] ],
   "name" : "flip"
 }
 On instances of graphics that drive a display with
@@ -1405,8 +1405,8 @@ unsigned int jswrap_graphics_blendColor(JsVar *parent, JsVar *ca, JsVar *cb, JsV
   "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true)",
   "params" : [
     ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#012345'`"],
-    ["g","JsVar","Green (between 0 and 1)"],
-    ["b","JsVar","Blue (between 0 and 1)"]
+    ["g","JsVar","[optional] Green (between 0 and 1)"],
+    ["b","JsVar","[optional] Blue (between 0 and 1)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"

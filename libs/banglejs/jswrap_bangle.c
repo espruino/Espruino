@@ -4458,8 +4458,8 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
     "name" : "buzz",
     "generate" : "jswrap_banglejs_buzz",
     "params" : [
-      ["time","int","Time in ms (default 200)"],
-      ["strength","float","Power of vibration from 0 to 1 (Default 1)"]
+      ["time","int","[optional] Time in ms (default 200)"],
+      ["strength","float","[optional] Power of vibration from 0 to 1 (Default 1)"]
     ],
     "return" : ["JsVar","A promise, completed when vibration is finished"],
     "return_object":"Promise",

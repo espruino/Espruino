@@ -286,7 +286,7 @@ present in a full ES6 JS engine. However it does contain support for the all the
   "generate" : "jswrap_regexp_constructor",
   "params" : [
     ["regex","JsVar","A regular expression as a string"],
-    ["regex","JsVar","Flags for the regular expression as a string"]
+    ["flags","JsVar","Flags for the regular expression as a string"]
   ],
   "return" : ["JsVar","A RegExp object"],
   "return_object" : "RegExp"
