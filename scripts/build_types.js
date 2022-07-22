@@ -9,8 +9,16 @@ function indent(string) {
     .join("\n");
 }
 
-// TODO: Document parameters
+function getParameterDescription(description) {
+  return !description
+    ? ""
+    : typeof description === "string"
+    ? description
+    : description.join("\n");
+}
+
 function getDocumentation(object) {
+  // See https://jsdoc.app/ for how JSDoc comments are formatted
   if (!object) return "";
   return (
     "/**\n" +
@@ -19,8 +27,57 @@ function getDocumentation(object) {
       .split("\n")
       .filter((line) => line)
       .map((line) => line)
+      .concat(object.type === "constructor" ? ["@constructor"] : [])
+      .concat(
+        object.type === "event"
+          ? [
+              "@param {string} event - The event to listen to.",
+              `@param {(${getArguments(
+                object
+              )}) => void} callback - A function that is executed when the event occurs.${
+                object.params ? " Its arguments are:" : ""
+              }`,
+            ].concat(
+              object.params
+                ? object.params.map(([name, _, description]) =>
+                    `* \`${name}\` ${getParameterDescription(
+                      description
+                    )}`.split("\n")
+                  )
+                : []
+            )
+          : object.params
+          ? [""].concat(
+              object.params
+                .map(([name, type, description]) => {
+                  const desc = getParameterDescription(description);
+                  return (
+                    "@param {" +
+                    getBasicType(type) +
+                    "} " +
+                    (desc.startsWith("[optional]") ? "[" + name + "]" : name) +
+                    (!description
+                      ? ""
+                      : typeof description === "string"
+                      ? " - " + desc
+                      : "\n" + desc)
+                  ).split("\n");
+                })
+                .flat(1)
+            )
+          : []
+      )
+      .concat(
+        object.return
+          ? [
+              `@returns {${getBasicType(object.return[0])}} ${
+                object.return[1] || ""
+              }`,
+            ]
+          : []
+      )
       .concat([`@url ${object.getURL()}`])
-      .map((line) => " * " + line)
+      .map((line) => (" * " + line).trimEnd())
       .join("\n") +
     "\n */"
   );
@@ -150,7 +207,7 @@ require("./common.js").readAllWrapperFiles(function (objects) {
       .map(([name, c]) =>
         name in global
           ? // builtin class (String, Boolean, etc)
-            `${getDocumentation(c.object)}\ninterface ${name}Constructor {\n` +
+            `interface ${name}Constructor {\n` +
             indent(
               c.staticProperties
                 .concat([c.cons])
@@ -174,7 +231,9 @@ require("./common.js").readAllWrapperFiles(function (objects) {
                 )
                 .join("\n\n")
             ) +
-            `\n}\n\ndeclare const ${name}: ${name}Constructor`
+            `\n}\n\n${getDocumentation(
+              c.object
+            )}\ndeclare const ${name}: ${name}Constructor`
           : // other class
             `${getDocumentation(c.object)}\ndeclare class ${name} {\n` +
             indent(
