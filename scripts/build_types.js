@@ -31,11 +31,10 @@ function getBasicType(type) {
   if (["int", "float", "int32"].includes(type)) return "number";
   if (type == "pin") return "Pin";
   if (type == "bool") return "boolean";
-  if (type == "File") return "EspFile";
   if (type == "JsVarArray") return "any";
   if (type == "JsVar") return "any";
   if (type == "Array") return "any[]";
-  if (type == "Promise") return "Promise<any>";
+  // if (type == "Promise") return "Promise<any>";
   return type;
 }
 
@@ -77,16 +76,15 @@ function getDeclaration(object, c) {
     ["function", "method", "staticmethod", "constructor"].includes(object.type)
   ) {
     // function
+    const name = object.type === "constructor" ? "new" : object.name;
     let returnValue = "any";
     if ("return_object" in object)
       returnValue = getBasicType(object.return_object);
     else if ("return" in object) returnValue = getBasicType(object.return[0]);
     if (c) {
-      return `${object.name}(${getArguments(object)}): ${returnValue};`;
+      return `${name}(${getArguments(object)}): ${returnValue};`;
     } else {
-      return `function ${object.name}(${getArguments(
-        object
-      )}): ${returnValue};`;
+      return `function ${name}(${getArguments(object)}): ${returnValue};`;
     }
   } else {
     // property
@@ -131,7 +129,7 @@ require("./common.js").readAllWrapperFiles(function (objects) {
     } else if (["event"].includes(object.type)) {
       getClass(object.class).staticProperties.push(object);
     } else if (object.type === "constructor") {
-      getClass(object.class).constructor = object;
+      getClass(object.class).cons = object;
     } else if (["staticproperty", "staticmethod"].includes(object.type)) {
       getClass(object.class).staticProperties.push(object);
     } else if (["property", "method"].includes(object.type)) {
@@ -144,21 +142,29 @@ require("./common.js").readAllWrapperFiles(function (objects) {
   });
 
   const file =
+    "// NOTE: This file has been automatically generated.\n\n" +
+    '/// <reference path="other.d.ts" />\n\n' +
+    "// CLASSES\n\n" +
     Object.entries(classes)
-      .filter(([name, c]) => !c.library && !(name in global))
-      .map(([name, c]) => {
-        if (name == "File") name = "EspFile";
-        return (
-          `${getDocumentation(c.object)}\ndeclare class ${name} {\n` +
-          indent(
-            c.staticProperties
-              .map((property) =>
-                `${getDocumentation(property)}\nstatic ${getDeclaration(
-                  property,
-                  true
-                )}`.trim()
-              )
-              .join("\n\n") +
+      .filter(([name, c]) => !c.library)
+      .map(([name, c]) =>
+        name in global
+          ? // builtin class (String, Boolean, etc)
+            `${getDocumentation(c.object)}\ninterface ${name}Constructor {\n` +
+            indent(
+              c.staticProperties
+                .concat([c.cons])
+                .filter((property) => property)
+                .map((property) =>
+                  `${getDocumentation(property)}\n${getDeclaration(
+                    property,
+                    true
+                  )}`.trim()
+                )
+                .join("\n\n")
+            ) +
+            `\n}\n\ninterface ${name}${name === "Array" ? "<T>" : ""} {\n` +
+            indent(
               c.prototype
                 .map((property) =>
                   `${getDocumentation(property)}\n${getDeclaration(
@@ -167,14 +173,35 @@ require("./common.js").readAllWrapperFiles(function (objects) {
                   )}`.trim()
                 )
                 .join("\n\n")
-          ) +
-          "\n}"
-        );
-      })
+            ) +
+            `\n}\n\ndeclare const ${name}: ${name}Constructor`
+          : // other class
+            `${getDocumentation(c.object)}\ndeclare class ${name} {\n` +
+            indent(
+              c.staticProperties
+                .concat([c.cons])
+                .filter((property) => property)
+                .map((property) =>
+                  `${getDocumentation(property)}\nstatic ${getDeclaration(
+                    property,
+                    true
+                  )}`.trim()
+                )
+                .join("\n\n") +
+                c.prototype
+                  .map((property) =>
+                    `${getDocumentation(property)}\n${getDeclaration(
+                      property,
+                      true
+                    )}`.trim()
+                  )
+                  .join("\n\n")
+            ) +
+            "\n}"
+      )
       .join("\n\n") +
     "\n\n// GLOBALS\n\n" +
     globals
-      .filter((g) => !(g.name in global))
       .map((global) => {
         if (global.name === "require") {
           return `${getDocumentation(global)}
