@@ -2872,7 +2872,7 @@ uint32_t jsble_set_scanning(bool enabled, JsVar *options) {
       if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "extended", 0)))
         m_scan_param.extended = 1;
       JsVar *advPhy = jsvObjectGetChild(options, "phy", 0);
-      if (jsvIsStringEqual(advPhy,"1mbps")) {
+      if (jsvIsUndefined(advPhy) || jsvIsStringEqual(advPhy,"1mbps")) {
         // default
       } else if (jsvIsStringEqual(advPhy,"2mbps")) {
         m_scan_param.scan_phys = BLE_GAP_PHY_2MBPS;
