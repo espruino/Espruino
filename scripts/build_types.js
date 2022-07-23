@@ -279,7 +279,18 @@ require("./common.js").readAllWrapperFiles(function (objects, types) {
       .join("\n\n") +
     "\n\n// GLOBALS\n\n" +
     globals
-      .map((global) => `${getDocumentation(global)}\n${getDeclaration(global)}`)
+      .map((global) =>
+        global.name === "global"
+          ? `declare const global: {\n` +
+            indent(
+              globals
+                .map((global) => `${global.name}: typeof ${global.name};`)
+                .concat("[key: string]: any;")
+                .join("\n")
+            ) +
+            "\n}"
+          : `${getDocumentation(global)}\n${getDeclaration(global)}`
+      )
       .join("\n\n") +
     "\n\n// LIBRARIES\n\ntype Libraries = {\n" +
     indent(
