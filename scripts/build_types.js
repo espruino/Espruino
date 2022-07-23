@@ -91,7 +91,7 @@ function getBasicType(type) {
   if (type == "JsVarArray") return "any";
   if (type == "JsVar") return "any";
   if (type == "Array") return "any[]";
-  // if (type == "Promise") return "Promise<any>";
+  if (type == "Promise") return "Promise<any>";
   return type;
 }
 
@@ -115,33 +115,42 @@ function getArguments(object) {
         (rest ? "[]" : "")
       );
     });
-  return args.join(", ");
+  return "(" + args.join(", ") + ")";
+}
+
+function getReturnType(object) {
+  if ("typescript" in object) return object.typescript[1];
+  if ("return_object" in object) return getBasicType(object.return_object);
+  if ("return" in object) return getBasicType(object.return[0]);
+  return "any";
 }
 
 function getDeclaration(object, c) {
+  if ("typescript" in object)
+    return typeof object.typescript === "string"
+      ? object.typescript
+      : object.typescript.join("\n");
   if (object.type === "event") {
     if (c) {
-      return `on(event: "${object.name}", callback: (${getArguments(
+      return `on(event: "${object.name}", callback: ${getArguments(
         object
-      )}) => void): void;`;
+      )} => void): void;`;
     } else {
-      return `function on(event: "${object.name}", callback: (${getArguments(
+      return `function on(event: "${object.name}", callback: ${getArguments(
         object
-      )}) => void): void;`;
+      )} => void): void;`;
     }
   } else if (
     ["function", "method", "staticmethod", "constructor"].includes(object.type)
   ) {
     // function
     const name = object.type === "constructor" ? "new" : object.name;
-    let returnValue = "any";
-    if ("return_object" in object)
-      returnValue = getBasicType(object.return_object);
-    else if ("return" in object) returnValue = getBasicType(object.return[0]);
     if (c) {
-      return `${name}(${getArguments(object)}): ${returnValue};`;
+      return `${name}${getArguments(object)}: ${getReturnType(object)};`;
     } else {
-      return `function ${name}(${getArguments(object)}): ${returnValue};`;
+      return `declare function ${name}${getArguments(object)}: ${getReturnType(
+        object
+      )};`;
     }
   } else {
     // property
@@ -152,12 +161,12 @@ function getDeclaration(object, c) {
     if (c) {
       return `${object.name}: ${type};`;
     } else {
-      return `const ${object.name}: ${type};`;
+      return `declare const ${object.name}: ${type};`;
     }
   }
 }
 
-require("./common.js").readAllWrapperFiles(function (objects) {
+require("./common.js").readAllWrapperFiles(function (objects, types) {
   const classes = {};
   const globals = [];
 
@@ -192,7 +201,9 @@ require("./common.js").readAllWrapperFiles(function (objects) {
     } else if (["property", "method"].includes(object.type)) {
       getClass(object.class)["prototype"].push(object);
     } else if (
-      ["function", "letiable", "object", "variable"].includes(object.type)
+      ["function", "letiable", "object", "variable", "typescript"].includes(
+        object.type
+      )
     ) {
       globals.push(object);
     } else console.warn("Unknown type " + object.type + " for ", object);
@@ -201,9 +212,13 @@ require("./common.js").readAllWrapperFiles(function (objects) {
   const file =
     "// NOTE: This file has been automatically generated.\n\n" +
     '/// <reference path="other.d.ts" />\n\n' +
-    "// CLASSES\n\n" +
+    "// TYPES\n" +
+    types
+      .map((type) => type.replace(/\\\//g, "/").replace(/\\\\/g, "\\"))
+      .join("") +
+    "\n\n// CLASSES\n\n" +
     Object.entries(classes)
-      .filter(([name, c]) => !c.library)
+      .filter(([_, c]) => !c.library)
       .map(([name, c]) =>
         name in global
           ? // builtin class (String, Boolean, etc)
@@ -220,7 +235,7 @@ require("./common.js").readAllWrapperFiles(function (objects) {
                 )
                 .join("\n\n")
             ) +
-            `\n}\n\ninterface ${name}${name === "Array" ? "<T>" : ""} {\n` +
+            `\n}\n\n${c.object?.typescript || "interface " + name} {\n` +
             indent(
               c.prototype
                 .map((property) =>
@@ -235,7 +250,9 @@ require("./common.js").readAllWrapperFiles(function (objects) {
               c.object
             )}\ndeclare const ${name}: ${name}Constructor`
           : // other class
-            `${getDocumentation(c.object)}\ndeclare class ${name} {\n` +
+            `${getDocumentation(c.object)}\ndeclare class ${
+              c.object?.typescript || name
+            } {\n` +
             indent(
               c.staticProperties
                 .concat([c.cons])
@@ -247,6 +264,7 @@ require("./common.js").readAllWrapperFiles(function (objects) {
                   )}`.trim()
                 )
                 .join("\n\n") +
+                "\n\n" +
                 c.prototype
                   .map((property) =>
                     `${getDocumentation(property)}\n${getDeclaration(
@@ -261,19 +279,7 @@ require("./common.js").readAllWrapperFiles(function (objects) {
       .join("\n\n") +
     "\n\n// GLOBALS\n\n" +
     globals
-      .map((global) => {
-        if (global.name === "require") {
-          return `${getDocumentation(global)}
-declare function require<T extends keyof Modules>(moduleName: T): Modules[T]
-declare function require<
-  T extends Exclude<string, keyof Modules>
->(moduleName: T): any`;
-        } else {
-          return `${getDocumentation(global)}\ndeclare ${getDeclaration(
-            global
-          )}`;
-        }
-      })
+      .map((global) => `${getDocumentation(global)}\n${getDeclaration(global)}`)
       .join("\n\n") +
     "\n\n// LIBRARIES\n\ntype Libraries = {\n" +
     indent(
