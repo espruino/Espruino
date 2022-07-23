@@ -32,9 +32,9 @@ function getDocumentation(object) {
         object.type === "event"
           ? [
               "@param {string} event - The event to listen to.",
-              `@param {(${getArguments(
+              `@param {${getArguments(
                 object
-              )}) => void} callback - A function that is executed when the event occurs.${
+              )} => void} callback - A function that is executed when the event occurs.${
                 object.params ? " Its arguments are:" : ""
               }`,
             ].concat(
