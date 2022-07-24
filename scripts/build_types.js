@@ -1,7 +1,10 @@
 #!/usr/bin/node
 
-const fs = require("fs");
-
+/**
+ * Add two spaces at the beginning of every line.
+ * @param {string} string - The string to indent.
+ * @returns {string} The indented string.
+ */
 function indent(string) {
   return string
     .split("\n")
@@ -9,6 +12,11 @@ function indent(string) {
     .join("\n");
 }
 
+/**
+ * Return the parameter's description.
+ * @param {string | string[]} - The description from the JSON comment.
+ * @returns {string} The description.
+ */
 function getParameterDescription(description) {
   return !description
     ? ""
@@ -17,6 +25,11 @@ function getParameterDescription(description) {
     : description.join("\n");
 }
 
+/**
+ * Return the documentation of the function or variable.
+ * @param {object} object - The object holding the function or variable.
+ * @returns {string} The object's documentation.
+ */
 function getDocumentation(object) {
   // See https://jsdoc.app/ for how JSDoc comments are formatted
   if (!object) return "";
@@ -83,6 +96,12 @@ function getDocumentation(object) {
   );
 }
 
+/**
+ * Convert a basic type to its corresponding TypeScript type.
+ * A "basic type" is any but an object or a function.
+ * @param {string} type - The basic type.
+ * @returns {string} The TypeScript type.
+ */
 function getBasicType(type) {
   if (!type) return "any";
   if (["int", "float", "int32"].includes(type)) return "number";
@@ -95,10 +114,15 @@ function getBasicType(type) {
   return type;
 }
 
-function getArguments(object) {
+/**
+ * Return the arguments of the method in TypeScript format.
+ * @param {object} method - The object containing the method's data.
+ * @returns {string} The argument list including brackets.
+ */
+function getArguments(method) {
   let args = [];
-  if ("params" in object)
-    args = object.params.map((param) => {
+  if ("params" in method)
+    args = method.params.map((param) => {
       // hack because digitalRead/Write can also take arrays/objects (but most use cases are Pins)
       if (param[0] == "pin" && param[1] == "JsLet") param[1] = "Pin";
       if (param[0] === "function") param[0] = "func";
@@ -118,20 +142,30 @@ function getArguments(object) {
   return "(" + args.join(", ") + ")";
 }
 
-function getReturnType(object) {
-  if ("typescript" in object) return object.typescript[1];
-  if ("return_object" in object) return getBasicType(object.return_object);
-  if ("return" in object) return getBasicType(object.return[0]);
+/**
+ * Return the return type of the method in TypeScript format.
+ * @param {object} method - The object containing the method's data.
+ * @returns {string} The return type.
+ */
+function getReturnType(method) {
+  if ("return_object" in method) return getBasicType(method.return_object);
+  if ("return" in method) return getBasicType(method.return[0]);
   return "any";
 }
 
-function getDeclaration(object, c) {
+/**
+ * Return the declaration of a function or variable.
+ * @param {object} object - The object containing the function or variable's data.
+ * @param {boolean} [property] - True if the object is a property of a class, etc.
+ * @returns {string} The function or variable's declaration.
+ */
+function getDeclaration(object, property) {
   if ("typescript" in object)
     return typeof object.typescript === "string"
       ? object.typescript
       : object.typescript.join("\n");
   if (object.type === "event") {
-    if (c) {
+    if (property) {
       return `on(event: "${object.name}", callback: ${getArguments(
         object
       )} => void): void;`;
@@ -145,7 +179,7 @@ function getDeclaration(object, c) {
   ) {
     // function
     const name = object.type === "constructor" ? "new" : object.name;
-    if (c) {
+    if (property) {
       return `${name}${getArguments(object)}: ${getReturnType(object)};`;
     } else {
       return `declare function ${name}${getArguments(object)}: ${getReturnType(
@@ -158,7 +192,7 @@ function getDeclaration(object, c) {
       object.type === "object"
         ? object.instanceof
         : getBasicType(object.return_object || object.return[0]);
-    if (c) {
+    if (property) {
       return `${object.name}: ${type};`;
     } else {
       return `declare const ${object.name}: ${type};`;
@@ -166,11 +200,21 @@ function getDeclaration(object, c) {
   }
 }
 
-require("./common.js").readAllWrapperFiles(function (objects, types) {
+/**
+ * Return classes and libraries.
+ * @param {object[]} objects - The list of objects.
+ * @returns {object}
+ * An object with class names as keys and the following as values:
+ * {
+ *   library?: true, // whether it's a library or a class
+ *   object?, // the object containing its data
+ *   staticProperties: [], // a list of its static properties
+ *   prototype: [], // a list of the prototype's properties
+ *   cons?: // the class's constructor
+ * }
+ */
+function getClasses(objects) {
   const classes = {};
-  const globals = [];
-
-  // Handle classes and libraries first
   objects.forEach(function (object) {
     if (object.type == "class" || object.type == "library") {
       classes[object.class] = {
@@ -181,41 +225,81 @@ require("./common.js").readAllWrapperFiles(function (objects, types) {
       };
     }
   });
+  return classes;
+}
 
+/**
+ * Return all the objects in an organised structure, so class are
+ * found inside their corresponding classes.
+ * @param {object[]} objects - The list of objects.
+ * @returns {[object, object[]]}
+ * An array. The first item is the classes object (see `getClasses`),
+ * and the second is an array of global objects.
+ */
+function getAll(objects) {
+  const classes = getClasses(objects);
+  const globals = [];
+
+  /**
+   * @param {string} c - The name of the class.
+   * @returns {object}
+   * The class with the corresponding name (see `getClasses` for its
+   * contents), or a new one if it doesn't exist.
+   */
   function getClass(c) {
     if (!classes[c]) classes[c] = { staticProperties: [], prototype: [] };
     return classes[c];
   }
 
-  // Handle contents
   objects.forEach(function (object) {
-    if (["include"].includes(object.type)) {
-    } else if (["class", "object", "library"].includes(object.type)) {
-    } else if (["init", "idle", "kill"].includes(object.type)) {
-    } else if (["event"].includes(object.type)) {
-      getClass(object.class).staticProperties.push(object);
+    if (["class", "object", "library"].includes(object.type)) {
+      // already handled in `getClases`
+    } else if (["include", "init", "idle", "kill"].includes(object.type)) {
+      // internal
     } else if (object.type === "constructor") {
+      // set as constructor
       getClass(object.class).cons = object;
-    } else if (["staticproperty", "staticmethod"].includes(object.type)) {
+    } else if (
+      ["event", "staticproperty", "staticmethod"].includes(object.type)
+    ) {
+      // add to static properties
       getClass(object.class).staticProperties.push(object);
     } else if (["property", "method"].includes(object.type)) {
+      // add to prototype
       getClass(object.class)["prototype"].push(object);
     } else if (
       ["function", "letiable", "object", "variable", "typescript"].includes(
         object.type
       )
     ) {
+      // add to globals
       globals.push(object);
     } else console.warn("Unknown type " + object.type + " for ", object);
   });
+  return [classes, globals];
+}
 
-  const file =
-    "// NOTE: This file has been automatically generated.\n\n" +
-    '/// <reference path="other.d.ts" />\n\n' +
+/**
+ * Return the declarations of custom types.
+ * @param {string[]} types - The list of types defined in comments.
+ * @returns {string} The joined declarations.
+ */
+function getTypeDeclarations(types) {
+  return (
     "// TYPES\n" +
     types
       .map((type) => type.replace(/\\\//g, "/").replace(/\\\\/g, "\\"))
-      .join("") +
+      .join("")
+  );
+}
+
+/**
+ * Return the class declarations (not including libraries).
+ * @param {object} classes - The object of classes (see `getClasses`).
+ * @returns {string} The class declarations.
+ */
+function getClassDeclarations(classes) {
+  return (
     "\n\n// CLASSES\n\n" +
     Object.entries(classes)
       .filter(([_, c]) => !c.library)
@@ -276,7 +360,17 @@ require("./common.js").readAllWrapperFiles(function (objects, types) {
             ) +
             "\n}"
       )
-      .join("\n\n") +
+      .join("\n\n")
+  );
+}
+
+/**
+ * Return the global declarations.
+ * @param {object[]} globals - The list of global objects.
+ * @returns {string} The global declarations.
+ */
+function getGlobalDeclarations(globals) {
+  return (
     "\n\n// GLOBALS\n\n" +
     globals
       .map((global) =>
@@ -291,7 +385,17 @@ require("./common.js").readAllWrapperFiles(function (objects, types) {
             "\n}"
           : `${getDocumentation(global)}\n${getDeclaration(global)}`
       )
-      .join("\n\n") +
+      .join("\n\n")
+  );
+}
+
+/**
+ * Return the library declarations.
+ * @param {object} classes - The object of classes and libraries (see `getClasses`).
+ * @returns {string} The library declarations.
+ */
+function getLibraryDeclarations(classes) {
+  return (
     "\n\n// LIBRARIES\n\ntype Libraries = {\n" +
     indent(
       Object.entries(classes)
@@ -313,6 +417,34 @@ require("./common.js").readAllWrapperFiles(function (objects, types) {
         )
         .join("\n\n")
     ) +
-    "\n}";
-  fs.writeFileSync("../BangleApps/typescript/types/main.d.ts", file);
-});
+    "\n}"
+  );
+}
+
+/**
+ * Build TypeScript declarations from the source code's comments.
+ * @returns {Promise<string>} Promise that is resolved with the contents of the file to write.
+ */
+function buildTypes() {
+  return new Promise((resolve) => {
+    require("./common.js").readAllWrapperFiles(function (objects, types) {
+      const [classes, globals] = getAll(objects);
+
+      resolve(
+        "// NOTE: This file has been automatically generated.\n\n" +
+          '/// <reference path="other.d.ts" />\n\n' +
+          getTypeDeclarations(types) +
+          getClassDeclarations(classes) +
+          getGlobalDeclarations(globals) +
+          getLibraryDeclarations(classes)
+      );
+    });
+  });
+}
+
+buildTypes().then((content) =>
+  require("fs").writeFileSync(
+    "../BangleApps/typescript/types/main.d.ts",
+    content
+  )
+);
