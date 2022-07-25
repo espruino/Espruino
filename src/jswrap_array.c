@@ -532,7 +532,7 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   if (index<0) index=0;
   if (index>len) index=len;
   JsVarInt howMany = len; // how many to delete!
-  if (jsvIsInt(howManyVar)) howMany = jsvGetInteger(howManyVar);
+  if (jsvIsNumeric(howManyVar)) howMany = jsvGetInteger(howManyVar);
   if (howMany > len-index) howMany = len-index;
   JsVarInt newItems = jsvGetArrayLength(elements);
   JsVarInt shift = newItems-howMany;
