@@ -495,6 +495,70 @@ Display a menu on Pixl.js's screen, and set up the buttons to navigate through i
 DEPRECATED: Use `E.showMenu`
 */
 
+/*TYPESCRIPT
+/**
+ * Menu item that holds a boolean value.
+ *\/
+type MenuBooleanItem = {
+  value: boolean;
+  format?: (value: boolean) => string;
+  onchange?: (value: boolean) => void;
+};
+
+/**
+ * Menu item that holds a numerical value.
+ *\/
+type MenuNumberItem = {
+  value: number;
+  format?: (value: number) => string;
+  onchange?: (value: number) => void;
+  step?: number;
+  min?: number;
+  max?: number;
+  wrap?: boolean;
+};
+
+/**
+ * Options passed to a menu.
+ *\/
+type MenuOptions = {
+  title?: string;
+  back?: () => void;
+  selected?: number;
+  fontHeight?: number;
+  x?: number;
+  y?: number;
+  x2?: number;
+  y2?: number;
+  cB?: number;
+  cF?: number;
+  cHB?: number;
+  cHF?: number;
+  predraw?: (g: Graphics) => void;
+  preflip?: (g: Graphics, less: boolean, more: boolean) => void;
+};
+
+/**
+ * Object containing data about a menu to pass to `E.showMenu`.
+ *\/
+type Menu = {
+  [key: string]:
+    | MenuOptions
+    | (() => void)
+    | MenuBooleanItem
+    | MenuNumberItem
+    | undefined;
+};
+
+/**
+ * Menu instance.
+ *\/
+type MenuInstance = {
+  draw: () => void;
+  move: (n: number) => void;
+  select: () => void;
+};
+*/
 
 /*JSON{
     "type" : "staticmethod",
@@ -504,7 +568,8 @@ DEPRECATED: Use `E.showMenu`
     "params" : [
       ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
     ],
-    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
+    "typescript": "showMenu(menu: Menu): MenuInstance;"
 }
 Display a menu on the screen, and set up the buttons to navigate through it.
 

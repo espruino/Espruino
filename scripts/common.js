@@ -79,6 +79,7 @@ exports.getWrapperFiles = function (callback) {
 exports.readWrapperFile = function(filename) {
   var contents = fs.readFileSync(filename).toString();
   var builtins = [];
+  var types = [];
   var comments = contents.match( /\/\*JSON(?:(?!\*\/).|[\n\r])*\*\//g );
   if (comments) comments.forEach(function(comment) {
     comment = comment.slice(6,-2); // pull off /*JSON ... */ bit
@@ -90,17 +91,25 @@ exports.readWrapperFile = function(filename) {
     j.implementation = filename;
     builtins.push(j);
   });
-  return builtins;
+  var comments = contents.match( /\/\*TYPESCRIPT(?:(?!\*\/).|[\n\r])*\*\//g );
+  if (comments) comments.forEach(function(comment) {
+    comment = comment.slice(12,-2);
+    types.push(comment);
+  });
+  return [builtins, types];
 }
 
 /// Extract all parsed /*JSON ... */ comments from all files
 exports.readAllWrapperFiles = function(callback) {
   exports.getWrapperFiles(function(files) {
     var builtins = [];
+    var types = [];
     files.forEach(function(filename) {
-      builtins = builtins.concat(exports.readWrapperFile(filename));
+      var [b, t] = exports.readWrapperFile(filename);
+      builtins = builtins.concat(b);
+      types = types.concat(t);
     });
-    callback(builtins);
+    callback(builtins, types);
   });
 }
 
