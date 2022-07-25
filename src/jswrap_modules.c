@@ -42,7 +42,11 @@ static JsVar *jswrap_modules_getModuleList() {
   "params" : [
     ["moduleName","JsVar","A String containing the name of the given module"]
   ],
-  "return" : ["JsVar","The result of evaluating the string"]
+  "return" : ["JsVar","The result of evaluating the string"],
+  "typescript": [
+    "declare function require<T extends keyof Libraries>(moduleName: T): Libraries[T];",
+    "declare function require<T extends Exclude<string, keyof Libraries>>(moduleName: T): any;"
+  ]
 }
 Load the given module, and return the exported functions and variables.
 

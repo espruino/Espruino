@@ -343,7 +343,7 @@ void jswrap_ble_dumpBluetoothInitialisation(vcbprintf_callback user_callback, vo
 // ------------------------------------------------------------------------------
 
 /*JSON{
-    "type": "class",
+    "type" : "class",
     "class" : "NRF"
 }
 The NRF class is for controlling functionality of the Nordic nRF51/nRF52 chips.
@@ -1974,8 +1974,9 @@ JsVar *jswrap_ble_filterDevices(JsVar *devices, JsVar *filters) {
     "generate" : "jswrap_ble_findDevices",
     "params" : [
       ["callback","JsVar","The callback to call with received advertising packets (as `BluetoothDevice`), or undefined to stop"],
-      ["options","JsVar","A time in milliseconds to scan for (defaults to 2000), Or an optional object `{filters: ..., timeout : ..., active: bool}` (as would be passed to `NRF.requestDevice`) to filter devices by"]
-    ]
+      ["options","JsVar","[optional] A time in milliseconds to scan for (defaults to 2000), Or an optional object `{filters: ..., timeout : ..., active: bool}` (as would be passed to `NRF.requestDevice`) to filter devices by"]
+    ],
+    "typescript" : "findDevices(callback: (devices: BluetoothDevice[]) => void, options?: number | { filters?: NRFFilters, timeout?: number, active?: boolean }): void;"
 }
 Utility function to return a list of BLE devices detected in range. Behind the scenes,
 this uses `NRF.setScan(...)` and collates the results.
@@ -1991,7 +1992,7 @@ prints something like:
 ```
 [
   BluetoothDevice {
-    "id": "e7:e0:57:ad:36:a2 random",
+    "id" : "e7:e0:57:ad:36:a2 random",
     "rssi": -45,
     "services": [ "4567" ],
     "serviceData" : { "0123" : [ 1 ] },
@@ -2961,6 +2962,17 @@ void jswrap_ble_amsCommand(JsVar *id) {
 #endif
 }
 
+/*TYPESCRIPT
+type NRFFilters = {
+  services?: string[];
+  name?: string;
+  namePrefix?: string;
+  id?: string;
+  serviceData?: object;
+  manufacturerData?: object;
+};
+*/
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
@@ -2970,6 +2982,7 @@ void jswrap_ble_amsCommand(JsVar *id) {
     "params" : [
       ["options","JsVar","Options used to filter the device to use"]
     ],
+    "typescript" : "requestDevice(options?: { filters?: NRFFilters, timeout?: number, active?: boolean, phy?: string, extended?: boolean }): Promise<any>;",
     "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when the connection is complete" ],
     "return_object" : "Promise"
 }

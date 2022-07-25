@@ -74,6 +74,18 @@
 #include "unistroke.h"
 #endif
 
+/*TYPESCRIPT
+declare const g: Graphics;
+
+type WidgetArea = "tl" | "tr" | "bl" | "br";
+type Widget = {
+  area: WidgetArea;
+  width: number;
+  draw: (this: { x: number; y: number }) => void;
+};
+declare const WIDGETS: { [key: string]: Widget };
+*/
+
 /*JSON{
   "type": "class",
   "class" : "Bangle",
@@ -4828,6 +4840,7 @@ to select an application to launch.
       ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
     ],
     "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
+    "typescript": "showMenu(menu: Menu): MenuInstance;",
     "ifdef" : "BANGLEJS"
 }
 Display a menu on the screen, and set up the buttons to navigate through it.

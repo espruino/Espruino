@@ -24,7 +24,8 @@
 /*JSON{
   "type" : "class",
   "class" : "Array",
-  "check" : "jsvIsArray(var)"
+  "check" : "jsvIsArray(var)",
+  "typescript": "interface Array<T>"
 }
 This is the built-in JavaScript class for arrays.
 
@@ -41,7 +42,7 @@ Arrays can be defined with ```[]```, ```new Array()```, or ```new Array(length)`
   ],
   "return" : ["JsVar","An Array"]
 }
-Create an Array. Either give it one integer argument (>=0) which is the length of the array, or any number of arguments 
+Create an Array. Either give it one integer argument (>=0) which is the length of the array, or any number of arguments
  */
 JsVar *jswrap_array_constructor(JsVar *args) {
   assert(args);
@@ -341,8 +342,9 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   "generate" : "jswrap_array_forEach",
   "params" : [
     ["function","JsVar","Function to be executed"],
-    ["thisArg","JsVar","if specified, the function is called with 'this' set to thisArg (optional)"]
-  ]
+    ["thisArg","JsVar","[optional] If specified, the function is called with 'this' set to thisArg (optional)"]
+  ],
+  "typescript": "forEach(callback: (item: T, index: number, array: T[]) => void, thisArg?: any): void;"
 }
 Executes a provided function once per array element.
  */

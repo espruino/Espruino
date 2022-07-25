@@ -28,6 +28,7 @@
 /*JSON{
   "type" : "class",
   "class" : "Promise",
+  "typescript": "interface Promise<T>",
   "ifndef" : "SAVE_ON_FLASH"
 }
 This is the built-in class for ES6 Promises
@@ -203,7 +204,8 @@ void jspromise_reject(JsVar *promise, JsVar *data) {
   "params" : [
     ["executor","JsVar","A function of the form `function (resolve, reject)`"]
   ],
-  "return" : ["JsVar","A Promise"]
+  "return" : ["JsVar","A Promise"],
+  "typescript": "new<T>(executor: (resolve: (value: T) => void, reject: (reason?: any) => void) => void): Promise<T>;"
 }
 Create a new Promise. The executor function is executed immediately (before the constructor even returns)
 and
@@ -242,7 +244,8 @@ JsVar *jswrap_promise_constructor(JsVar *executor) {
   "params" : [
     ["promises","JsVar","An array of promises"]
   ],
-  "return" : ["JsVar","A new Promise"]
+  "return" : ["JsVar","A new Promise"],
+  "typescript": "all(promises: Promise<any>[]): Promise<void>;"
 }
 Return a new promise that is resolved when all promises in the supplied
 array are resolved.
@@ -299,7 +302,8 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   "params" : [
     ["promises","JsVar","Data to pass to the `.then` handler"]
   ],
-  "return" : ["JsVar","A new Promise"]
+  "return" : ["JsVar","A new Promise"],
+  "typescript": "resolve<T extends any>(promises: T): Promise<T>;"
 }
 Return a new promise that is already resolved (at idle it'll
 call `.then`)
@@ -406,9 +410,10 @@ static JsVar *jswrap_promise_get_chained_promise(JsVar *parent) {
   "generate" : "jswrap_promise_then",
   "params" : [
     ["onFulfilled","JsVar","A callback that is called when this promise is resolved"],
-    ["onRejected","JsVar","A callback that is called when this promise is rejected (or nothing)"]
+    ["onRejected","JsVar","[optional] A callback that is called when this promise is rejected (or nothing)"]
   ],
-  "return" : ["JsVar","The original Promise"]
+  "return" : ["JsVar","The original Promise"],
+  "typescript": "then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | Promise<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | Promise<TResult2>) | undefined | null): Promise<TResult1 | TResult2>;"
 }
  */
 JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected) {
