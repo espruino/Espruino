@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2.7
 
 # This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #
