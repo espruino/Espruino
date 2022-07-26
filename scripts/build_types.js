@@ -106,6 +106,7 @@ function getBasicType(type) {
   if (!type) return "any";
   if (["int", "float", "int32"].includes(type)) return "number";
   if (type == "pin") return "Pin";
+  if (type == "String") return "string";
   if (type == "bool") return "boolean";
   if (type == "JsVarArray") return "any";
   if (type == "JsVar") return "any";
