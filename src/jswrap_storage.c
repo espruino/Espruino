@@ -86,7 +86,8 @@ void jswrap_storage_eraseAll() {
   "generate" : "jswrap_storage_erase",
   "params" : [
     ["name","JsVar","The filename - max 28 characters (case sensitive)"]
-  ]
+  ],
+  "typescript" : "erase(name: string): void;"
 }
 Erase a single file from the flash storage area.
 
@@ -107,7 +108,8 @@ void jswrap_storage_erase(JsVar *name) {
     ["offset","int","(optional) The offset in bytes to start from"],
     ["length","int","(optional) The length to read in bytes (if <=0, the entire file is read)"]
   ],
-  "return" : ["JsVar","A string of data, or `undefined` if the file is not found"]
+  "return" : ["JsVar","A string of data, or `undefined` if the file is not found"],
+  "typescript" : "read(name: string, offset?: number, length?: number): string | undefined;"
 }
 Read a file from the flash storage area that has
 been written with `require("Storage").write(...)`.
@@ -138,7 +140,8 @@ JsVar *jswrap_storage_read(JsVar *name, int offset, int length) {
     ["name","JsVar","The filename - max 28 characters (case sensitive)"],
     ["noExceptions","bool","If true and the JSON is not valid, just return `undefined` - otherwise an `Exception` is thrown"]
   ],
-  "return" : ["JsVar","An object containing parsed JSON from the file, or undefined"]
+  "return" : ["JsVar","An object containing parsed JSON from the file, or undefined"],
+  "typescript" : "readJSON(name: string, noExceptions: boolean): any;"
 }
 Read a file from the flash storage area that has
 been written with `require("Storage").write(...)`,
@@ -172,7 +175,8 @@ JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions) {
   "params" : [
     ["name","JsVar","The filename - max 28 characters (case sensitive)"]
   ],
-  "return" : ["JsVar","An ArrayBuffer containing data from the file, or undefined"]
+  "return" : ["JsVar","An ArrayBuffer containing data from the file, or undefined"],
+  "typescript" : "readArrayBuffer(name: string): ArrayBuffer | undefined;"
 }
 Read a file from the flash storage area that has
 been written with `require("Storage").write(...)`,
@@ -205,7 +209,8 @@ JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
     ["offset","int","[optional] The offset within the file to write"],
     ["size","int","[optional] The size of the file (if a file is to be created that is bigger than the data)"]
   ],
-  "return" : ["bool","True on success, false on failure"]
+  "return" : ["bool","True on success, false on failure"],
+  "typescript" : "write(name: string | ArrayBuffer | ArrayBufferView | number[] | object, data: any, offset?: number, size?: number): boolean;"
 }
 Write/create a file in the flash storage area. This is
 nonvolatile and will not disappear when the device resets
@@ -268,7 +273,8 @@ bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt _s
     ["name","JsVar","The filename - max 28 characters (case sensitive)"],
     ["data","JsVar","The JSON data to write"]
   ],
-  "return" : ["bool","True on success, false on failure"]
+  "return" : ["bool","True on success, false on failure"],
+  "typescript" : "writeJSON(name: string, data: any): boolean;"
 }
 Write/create a file in the flash storage area. This is
 nonvolatile and will not disappear when the device resets
@@ -298,7 +304,8 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
     ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being returned"],
     ["filter","JsVar","(optional) If supplied, File Types are filtered based on this: `{sf:true}` or `{sf:false}` for whether to show StorageFile"]
   ],
-  "return" : ["JsVar","An array of filenames"]
+  "return" : ["JsVar","An array of filenames"],
+  "typescript" : "list(regex?: RegExp, filter?: { sf: boolean }): string[];"
 }
 List all files in the flash storage area. An array of Strings is returned.
 
@@ -343,7 +350,8 @@ JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
   "params" : [
     ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being hashed"]
   ],
-  "return" : ["int","A hash of the files matching"]
+  "return" : ["int","A hash of the files matching"],
+  "typescript" : "hash(regex: RegExp): number;"
 }
 List all files in the flash storage area matching the specfied regex (ignores StorageFiles),
 and then hash their filenames *and* file locations.
@@ -487,7 +495,8 @@ void jswrap_storage_optimise() {
     ["mode","JsVar","The open mode - must be either `'r'` for read,`'w'` for write , or `'a'` for append"]
   ],
   "return" : ["JsVar","An object containing {read,write,erase}"],
-  "return_object" : "StorageFile"
+  "return_object" : "StorageFile",
+  "typescript" : "open(name: string, mode: \"r\" | \"w\" | \"a\"): StorageFile;"
 }
 Open a file in the Storage area. This can be used for appending data
 (normal read/write operations only write the entire file).
@@ -818,7 +827,8 @@ int jswrap_storagefile_getLength(JsVar *f) {
   "generate" : "jswrap_storagefile_write",
   "params" : [
     ["data","JsVar","The data to write. This should not include `'\\xFF'` (character code 255)"]
-  ]
+  ],
+  "typescript" : "write(data: string): void;"
 }
 Append the given data to a file. You should not attempt to append  `"\xFF"` (character code 255).
 */
