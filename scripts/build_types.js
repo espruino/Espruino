@@ -319,20 +319,22 @@ function getClassDeclarations(classes) {
                 )
                 .join("\n\n")
             ) +
-            `\n}\n\n${c.object?.typescript || "interface " + name} {\n` +
-            indent(
-              c.prototype
-                .map((property) =>
-                  `${getDocumentation(property)}\n${getDeclaration(
-                    property,
-                    true
-                  )}`.trim()
-                )
-                .join("\n\n")
-            ) +
-            `\n}\n\n${getDocumentation(
-              c.object
-            )}\ndeclare const ${name}: ${name}Constructor`
+            `\n}\n\n` +
+            (name.endsWith("Array") && !name.startsWith("Array")
+              ? `type ${name} = ArrayBufferView<${name}>;\n`
+              : `${c.object?.typescript || "interface " + name} {\n` +
+                indent(
+                  c.prototype
+                    .map((property) =>
+                      `${getDocumentation(property)}\n${getDeclaration(
+                        property,
+                        true
+                      )}`.trim()
+                    )
+                    .join("\n\n")
+                ) +
+                `\n}\n\n${getDocumentation(c.object)}`) +
+            `\ndeclare const ${name}: ${name}Constructor`
           : // other class
             `${getDocumentation(c.object)}\ndeclare class ${
               c.object?.typescript || name

@@ -19,6 +19,21 @@
 #include "jsnative.h"
 #include "jsinteractive.h"
 
+/*TYPESCRIPT
+interface ArrayLike<T> {
+  readonly length: number;
+  readonly [n: number]: T;
+}
+
+type TypedArrayConstructor<T> = ((length: number) => T) &
+  ((array: ArrayLike<number>) => T) &
+  ((
+    buffer: ArrayBuffer,
+    byteOffset?: number,
+    length?: number
+  ) => T);
+*/
+
 /*JSON{
   "type" : "class",
   "class" : "ArrayBuffer",
@@ -33,7 +48,8 @@ you may also find `DataView` useful.
 
 /*JSON{
   "type" : "class",
-  "class" : "ArrayBufferView"
+  "class" : "ArrayBufferView",
+  "typescript" : "ArrayBufferView<T = ArrayBuffer>"
 }
 This is the built-in JavaScript class that is the prototype for:
 
@@ -193,7 +209,8 @@ Arrays of this type include all the methods from [ArrayBufferView](/Reference#Ar
   "params" : [
     ["byteLength","int","The length in Bytes"]
   ],
-  "return" : ["JsVar","An ArrayBuffer object"]
+  "return" : ["JsVar","An ArrayBuffer object"],
+  "typescript" : "new(byteLength: number): ArrayBuffer;"
 }
 Create an Array Buffer object
  */
@@ -251,7 +268,8 @@ The length, in bytes, of the `ArrayBuffer`
     ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
   ],
   "return" : ["JsVar","A typed array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "new: TypedArrayConstructor<Uint8Array>;"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -266,7 +284,8 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
   ],
   "return" : ["JsVar","A typed array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "new: TypedArrayConstructor<Uint8ClampedArray>;"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
 
@@ -283,7 +302,8 @@ Clamped arrays clamp their values to the allowed range, rather than 'wrapping'. 
     ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
   ],
   "return" : ["JsVar","A typed array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "new: TypedArrayConstructor<Int8Array>;"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -298,7 +318,8 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
   ],
   "return" : ["JsVar","A typed array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "new: TypedArrayConstructor<Uint16Array>;"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -313,7 +334,8 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
   ],
   "return" : ["JsVar","A typed array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "new: TypedArrayConstructor<Int16Array>;"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -329,7 +351,8 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
   ],
   "return" : ["JsVar","A typed array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "new: TypedArrayConstructor<Uint24Array>;"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -344,7 +367,8 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
   ],
   "return" : ["JsVar","A typed array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "new: TypedArrayConstructor<Uint32Array>;"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -359,7 +383,8 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
   ],
   "return" : ["JsVar","A typed array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "new: TypedArrayConstructor<Int32Array>;"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -374,7 +399,8 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
   ],
   "return" : ["JsVar","A typed array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "new: TypedArrayConstructor<Float32Array>;"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -389,7 +415,8 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
   ],
   "return" : ["JsVar","A typed array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "new: TypedArrayConstructor<Float64Array>;"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -454,7 +481,8 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
   "name" : "buffer",
   "generate_full" : "jsvLock(jsvGetFirstChild(parent))",
   "return" : ["JsVar","An ArrayBuffer object"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "typescript" : "readonly buffer: T;"
 }
 The buffer this view references
  */
@@ -463,7 +491,8 @@ The buffer this view references
   "class" : "ArrayBufferView",
   "name" : "byteLength",
   "generate_full" : "(JsVarInt)(parent->varData.arraybuffer.length * JSV_ARRAYBUFFER_GET_SIZE(parent->varData.arraybuffer.type))",
-  "return" : ["int","The Length"]
+  "return" : ["int","The Length"],
+  "typescript" : "readonly byteLength: number;"
 }
 The length, in bytes, of the `ArrayBufferView`
  */
@@ -472,7 +501,8 @@ The length, in bytes, of the `ArrayBufferView`
   "class" : "ArrayBufferView",
   "name" : "byteOffset",
   "generate_full" : "parent->varData.arraybuffer.byteOffset",
-  "return" : ["int","The byte Offset"]
+  "return" : ["int","The byte Offset"],
+  "typescript" : "readonly byteOffset: number;"
 }
 The offset, in bytes, to the first byte of the view within the backing `ArrayBuffer`
  */
@@ -485,7 +515,8 @@ The offset, in bytes, to the first byte of the view within the backing `ArrayBuf
   "params" : [
     ["arr","JsVar","Floating point index to access"],
     ["offset","int32","The offset in this array at which to write the values (optional)"]
-  ]
+  ],
+  "typescript" : "set(arr: ArrayLike<number>, offset: number): void"
 }
 Copy the contents of `array` into this one, mapping `this[x+offset]=array[x];`
  */
@@ -548,7 +579,8 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
     ["thisArg","JsVar","if specified, the function is called with 'this' set to thisArg (optional)"]
   ],
   "return" : ["JsVar","An array containing the results"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "map(callbackfn: (value: number, index: number, array: T) => number, thisArg?: any): T;"
 }
 Return an array which is made from the following: ```A.map(function) = [function(A[0]), function(A[1]), ...]```
 
@@ -616,7 +648,8 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
     ["end","JsVar","Element to end at, exclusive. If negative, it is relative to the end of the array. If not specified the whole array is included"]
   ],
   "return" : ["JsVar","An `ArrayBufferView` of the same type as this one, referencing the same data"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "subarray(begin?: number, end?: number): T;"
 }
 Returns a smaller part of this array which references the same data (it doesn't copy it).
  */
@@ -665,7 +698,8 @@ JsVar *jswrap_arraybufferview_subarray(JsVar *parent, JsVarInt begin, JsVar *end
     ["value","JsVar","The value to check for"],
     ["startIndex","int","(optional) the index to search from, or 0 if not specified"]
   ],
-  "return" : ["JsVar","the index of the value in the array, or -1"]
+  "return" : ["JsVar","the index of the value in the array, or -1"],
+  "typescript" : "indexOf(value: number, startIndex?: number): number;"
 }
 Return the index of the value in the array, or `-1`
  */
@@ -679,7 +713,8 @@ Return the index of the value in the array, or `-1`
     ["value","JsVar","The value to check for"],
     ["startIndex","int","(optional) the index to search from, or 0 if not specified"]
   ],
-  "return" : ["bool","`true` if the array includes the value, `false` otherwise"]
+  "return" : ["bool","`true` if the array includes the value, `false` otherwise"],
+  "typescript" : "includes(value: number, startIndex?: number): boolean;"
 }
 Return `true` if the array includes the value, `false` otherwise
  */
@@ -691,7 +726,8 @@ Return `true` if the array includes the value, `false` otherwise
   "params" : [
     ["separator","JsVar","The separator"]
   ],
-  "return" : ["JsVar","A String representing the Joined array"]
+  "return" : ["JsVar","A String representing the Joined array"],
+  "typescript" : "join(separator?: string): string;"
 }
 Join all elements of this array together into one string, using 'separator' between them. eg. ```[1,2,3].join(' ')=='1 2 3'```
  */
@@ -705,7 +741,8 @@ Join all elements of this array together into one string, using 'separator' betw
     ["var","JsVar","A function to use to compare array elements (or undefined)"]
   ],
   "return" : ["JsVar","This array object"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "sort(compareFn?: (a: number, b: number) => number): this;"
 }
 Do an in-place quicksort of the array
  */
@@ -741,7 +778,8 @@ JsVar *jswrap_arraybufferview_sort(JsVar *array, JsVar *compareFn) {
   "params" : [
     ["function","JsVar","Function to be executed"],
     ["thisArg","JsVar","if specified, the function is called with 'this' set to thisArg (optional)"]
-  ]
+  ],
+  "typescript" : "forEach(callbackfn: (value: number, index: number, array: T) => void, thisArg?: any): void;"
 }
 Executes a provided function once per array element.
  */
@@ -755,7 +793,8 @@ Executes a provided function once per array element.
     ["callback","JsVar","Function used to reduce the array"],
     ["initialValue","JsVar","if specified, the initial value to pass to the function"]
   ],
-  "return" : ["JsVar","The value returned by the last function called"]
+  "return" : ["JsVar","The value returned by the last function called"],
+  "typescript" : "reduce(callbackfn: (previousValue: number, currentValue: number, currentIndex: number, array: T) => number, initialValue?: number): number;"
 }
 Execute `previousValue=initialValue` and then `previousValue = callback(previousValue, currentValue, index, array)` for each element in the array, and finally return previousValue.
  */
@@ -771,7 +810,8 @@ Execute `previousValue=initialValue` and then `previousValue = callback(previous
     ["end","JsVar","Optional. The index to end at (or the array length). If end is negative, it is treated as length+end."]
   ],
   "return" : ["JsVar","This array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "fill(value: number, start?: number, end?: number): T;"
 }
 Fill this array with the given value, for every index `>= start` and `< end`
  */
@@ -785,7 +825,8 @@ Fill this array with the given value, for every index `>= start` and `< end`
     ["function","JsVar","Function to be executed"],
     ["thisArg","JsVar","if specified, the function is called with 'this' set to thisArg (optional)"]
   ],
-  "return" : ["JsVar","An array containing the results"]
+  "return" : ["JsVar","An array containing the results"],
+  "typescript" : "filter(predicate: (value: number, index: number, array: T) => any, thisArg?: any): T;"
 }
 Return an array which contains only those elements for which the callback function returns 'true'
  */
@@ -798,7 +839,8 @@ Return an array which contains only those elements for which the callback functi
   "params" : [
     ["function","JsVar","Function to be executed"]
   ],
-  "return" : ["JsVar","The array element where `function` returns `true`, or `undefined`"]
+  "return" : ["JsVar","The array element where `function` returns `true`, or `undefined`"],
+  "typescript" : "find(predicate: (value: number, index: number, obj: T) => boolean, thisArg?: any): number | undefined;"
 }
 Return the array element where `function` returns `true`, or `undefined` if it doesn't returns `true` for any element.
  */
@@ -811,7 +853,8 @@ Return the array element where `function` returns `true`, or `undefined` if it d
   "params" : [
     ["function","JsVar","Function to be executed"]
   ],
-  "return" : ["JsVar","The array element's index where `function` returns `true`, or `-1`"]
+  "return" : ["JsVar","The array element's index where `function` returns `true`, or `-1`"],
+  "typescript" : "findIndex(predicate: (value: number, index: number, obj: T) => boolean, thisArg?: any): number;"
 }
 Return the array element's index where `function` returns `true`, or `-1` if it doesn't returns `true` for any element.
  */
@@ -822,7 +865,8 @@ Return the array element's index where `function` returns `true`, or `-1` if it 
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_array_reverse",
   "return" : ["JsVar","This array"],
-  "return_object" : "ArrayBufferView"
+  "return_object" : "ArrayBufferView",
+  "typescript" : "reverse(): T"
 }
 Reverse the contents of this `ArrayBufferView` in-place
  */
@@ -837,7 +881,8 @@ Reverse the contents of this `ArrayBufferView` in-place
     ["end","JsVar","End index (optional)"]
   ],
   "return" : ["JsVar","A new array"],
-  "return_object" : "Array"
+  "return_object" : "Array",
+  "typescript" : "slice(start?: number, end?: number): number[];"
 }
 Return a copy of a portion of this array (in a new array).
 
