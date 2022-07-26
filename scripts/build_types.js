@@ -150,7 +150,7 @@ function getArguments(method) {
 function getReturnType(method) {
   if ("return_object" in method) return getBasicType(method.return_object);
   if ("return" in method) return getBasicType(method.return[0]);
-  return "any";
+  return "void";
 }
 
 /**
