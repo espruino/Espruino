@@ -345,10 +345,13 @@ function getClassDeclarations(classes) {
                 .concat([c.cons])
                 .filter((property) => property)
                 .map((property) =>
-                  `${getDocumentation(property)}\nstatic ${getDeclaration(
+                  `${getDocumentation(property)}\n${getDeclaration(
                     property,
                     true
-                  )}`.trim()
+                  )
+                    .split("\n")
+                    .map((dec) => "static " + dec)
+                    .join("\n")}`.trim()
                 )
                 .join("\n\n") +
                 "\n\n" +
