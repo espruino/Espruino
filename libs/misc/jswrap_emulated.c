@@ -24,7 +24,8 @@
 */
 /*JSON{
   "type" : "class",
-  "class" : "Bluetooth"
+  "class" : "Bluetooth",
+  "typescript" : null
 }
 */
 
@@ -68,6 +69,7 @@
     "type" : "staticmethod",
     "class" : "Bluetooth",
     "name" : "setConsole",
-    "generate_full" : ""
+    "generate_full" : "",
+    "typescript" : null
 }
 */
