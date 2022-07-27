@@ -324,7 +324,7 @@ function getBuiltinClassDeclaration(name, c, types) {
     `\n}\n\n` +
     (name.endsWith("Array") && !name.startsWith("Array") // is a typed array?
       ? `type ${name} = ArrayBufferView<${name}>;\n`
-      : `${c.object?.typescript || "interface " + name} {\n` +
+      : `interface ${c.object?.typescript || name} {\n` +
         indent(
           c.prototype
             .map((property) =>
