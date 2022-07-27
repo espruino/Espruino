@@ -295,6 +295,85 @@ function getTypeDeclarations(types) {
 }
 
 /**
+ * Get the declaration of a builtin class, that is, that exists in
+ * vanilla JavaScript, e.g. String, Array.
+ * @param {string} name - The class's name.
+ * @param {object} c - The class's data.
+ * @returns {string} The class's declaration.
+ */
+function getBuiltinClassDeclaration(name, c) {
+  return (
+    `interface ${name}Constructor {\n` +
+    indent(
+      c.staticProperties
+        .concat([c.cons])
+        .filter((property) => property)
+        .map((property) =>
+          `${getDocumentation(property)}\n${getDeclaration(
+            property,
+            true
+          )}`.trim()
+        )
+        .join("\n\n")
+    ) +
+    `\n}\n\n` +
+    (name.endsWith("Array") && !name.startsWith("Array") // is a typed array?
+      ? `type ${name} = ArrayBufferView<${name}>;\n`
+      : `${c.object?.typescript || "interface " + name} {\n` +
+        indent(
+          c.prototype
+            .map((property) =>
+              `${getDocumentation(property)}\n${getDeclaration(
+                property,
+                true
+              )}`.trim()
+            )
+            .concat(name === "Array" ? ["[index: number]: T"] : [])
+            .join("\n\n")
+        ) +
+        `\n}\n\n${getDocumentation(c.object)}`) +
+    `\ndeclare const ${name}: ${name}Constructor`
+  );
+}
+
+/**
+ * Get the declaration of a class that is not builtin.
+ * @param {string} name - The class's name.
+ * @param {object} c - The class's data.
+ * @returns {string} The class's declaration.
+ */
+function getOtherClassDeclaration(name, c) {
+  return (
+    `${getDocumentation(c.object)}\ndeclare class ${
+      c.object?.typescript || name
+    } {\n` +
+    indent(
+      c.staticProperties
+        .concat([c.cons])
+        .filter((property) => property)
+        .map((property) =>
+          `${getDocumentation(property)}\n${getDeclaration(property, true)
+            .split("\n")
+            .map((dec) => "static " + dec)
+            .join("\n")}`.trim()
+        )
+        .join("\n\n") +
+        "\n\n" +
+        c.prototype
+          .map((property) =>
+            `${getDocumentation(property)}\n${getDeclaration(
+              property,
+              true
+            )}`.trim()
+          )
+          .concat(name === "ArrayBufferView" ? ["[index: number]: number"] : [])
+          .join("\n\n")
+    ) +
+    "\n}"
+  );
+}
+
+/**
  * Return the class declarations (not including libraries).
  * @param {object} classes - The object of classes (see `getClasses`).
  * @returns {string} The class declarations.
@@ -306,65 +385,8 @@ function getClassDeclarations(classes) {
       .filter(([_, c]) => !c.library)
       .map(([name, c]) =>
         name in global
-          ? // builtin class (String, Boolean, etc)
-            `interface ${name}Constructor {\n` +
-            indent(
-              c.staticProperties
-                .concat([c.cons])
-                .filter((property) => property)
-                .map((property) =>
-                  `${getDocumentation(property)}\n${getDeclaration(
-                    property,
-                    true
-                  )}`.trim()
-                )
-                .join("\n\n")
-            ) +
-            `\n}\n\n` +
-            (name.endsWith("Array") && !name.startsWith("Array")
-              ? `type ${name} = ArrayBufferView<${name}>;\n`
-              : `${c.object?.typescript || "interface " + name} {\n` +
-                indent(
-                  c.prototype
-                    .map((property) =>
-                      `${getDocumentation(property)}\n${getDeclaration(
-                        property,
-                        true
-                      )}`.trim()
-                    )
-                    .join("\n\n")
-                ) +
-                `\n}\n\n${getDocumentation(c.object)}`) +
-            `\ndeclare const ${name}: ${name}Constructor`
-          : // other class
-            `${getDocumentation(c.object)}\ndeclare class ${
-              c.object?.typescript || name
-            } {\n` +
-            indent(
-              c.staticProperties
-                .concat([c.cons])
-                .filter((property) => property)
-                .map((property) =>
-                  `${getDocumentation(property)}\n${getDeclaration(
-                    property,
-                    true
-                  )
-                    .split("\n")
-                    .map((dec) => "static " + dec)
-                    .join("\n")}`.trim()
-                )
-                .join("\n\n") +
-                "\n\n" +
-                c.prototype
-                  .map((property) =>
-                    `${getDocumentation(property)}\n${getDeclaration(
-                      property,
-                      true
-                    )}`.trim()
-                  )
-                  .join("\n\n")
-            ) +
-            "\n}"
+          ? getBuiltinClassDeclaration(name, c)
+          : getOtherClassDeclaration(name, c)
       )
       .join("\n\n")
   );
