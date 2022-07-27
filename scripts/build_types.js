@@ -255,7 +255,11 @@ function getAll(objects) {
   objects.forEach(function (object) {
     if (["class", "object", "library"].includes(object.type)) {
       // already handled in `getClases`
-    } else if (["include", "init", "idle", "kill"].includes(object.type)) {
+    } else if (
+      ["include", "init", "idle", "kill", "hwinit", "EV_SERIAL1"].includes(
+        object.type
+      )
+    ) {
       // internal
     } else if (object.type === "constructor") {
       // set as constructor
@@ -487,9 +491,10 @@ function buildTypes() {
   });
 }
 
-buildTypes().then((content) =>
+buildTypes().then((content) => {
   require("fs").writeFileSync(
     __dirname + "/../../BangleApps/typescript/types/main.d.ts",
     content
-  )
-);
+  );
+  console.log("Generated build types!");
+});
