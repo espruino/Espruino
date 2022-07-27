@@ -79,7 +79,7 @@ JsVar *jswrap_spi_constructor() {
   ],
   "return" : ["JsVar","An object of type `SPI`, or `undefined` if one couldn't be found."]
 }
-Try and find an SPI hardware device that will work on this pin (eg. `SPI1`)
+Try and find an SPI hardware device that will work on this pin (e.g. `SPI1`)
 
 May return undefined if no device can be found.
 */
@@ -541,7 +541,7 @@ JsVar *jswrap_i2c_constructor() {
   ],
   "return" : ["JsVar","An object of type `I2C`, or `undefined` if one couldn't be found."]
 }
-Try and find an I2C hardware device that will work on this pin (eg. `I2C1`)
+Try and find an I2C hardware device that will work on this pin (e.g. `I2C1`)
 
 May return undefined if no device can be found.
 */

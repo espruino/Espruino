@@ -231,7 +231,7 @@ Returns `null` if no match, or:
  ]
 ```
 
-'Global' RegEx matches just return an array of matches (with no indices):
+'Global' RegExp matches just return an array of matches (with no indices):
 
 ```
 "abcdefabcdef".match(/bcd/g) = [
@@ -305,7 +305,7 @@ JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
   ],
   "return" : ["JsVar","This string with `subStr` replaced"]
 }
-Search and replace ONE occurrance of `subStr` with `newSubStr` and return the
+Search and replace ONE occurrence of `subStr` with `newSubStr` and return the
 result. This doesn't alter the original string. Regular expressions not
 supported.
  */
@@ -480,10 +480,10 @@ JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   ],
   "return" : ["JsVar","Part of this string from start for len characters"]
 }
-Return an array made by splitting this string up by the separator. eg.
+Return an array made by splitting this string up by the separator. e.g.
 ```'1,2,3'.split(',')==['1', '2', '3']```
 
-Regular Expressions can also be used to split strings, eg. `'1a2b3
+Regular Expressions can also be used to split strings, e.g. `'1a2b3
 4'.split(/[^0-9]/)==['1', '2', '3', '4']`.
  */
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
@@ -757,7 +757,7 @@ JsVar *jswrap_string_repeat(JsVar *parent, int count) {
   "return" : ["JsVar","A string containing this string padded to the correct length"],
   "return_object" : "String"
 }
-Pad this string at the beginnind to the required number of characters
+Pad this string at the beginning to the required number of characters
 
 ```
 "Hello".padStart(10) == "     Hello"

@@ -334,10 +334,9 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options, JsVar *callback) {
   ],
   "return" : ["bool","True on success"]
 }
-Set hostname allow to set the hosname used during the dhcp request. min 8 and
-max 12 char, best set before calling `eth.setIP()` Default is WIZnet010203,
-010203 is the default nic as part of the mac. Best to set the hosname before
-calling setIP().
+Set hostname used during the DHCP request. Minimum 8 and maximum 12 characters,
+best set before calling `eth.setIP()`. Default is WIZnet010203, 010203 is the
+default nic as part of the mac.
 */
 bool jswrap_ethernet_setHostname(JsVar *wlanObj, JsVar *jsHostname, JsVar *callback){
   NOT_USED(wlanObj);
