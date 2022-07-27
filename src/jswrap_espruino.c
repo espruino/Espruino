@@ -197,7 +197,7 @@ int nativeCallGetCType() {
 }
 ADVANCED: This is a great way to crash Espruino if you're not sure what you are doing
 
-Create a native function that executes the code at the given address. Eg. `E.nativeCall(0x08012345,'double (double,double)')(1.1, 2.2)`
+Create a native function that executes the code at the given address, e.g. `E.nativeCall(0x08012345,'double (double,double)')(1.1, 2.2)`
 
 If you're executing a thumb function, you'll almost certainly need to set the bottom bit of the address to 1.
 
@@ -846,7 +846,7 @@ type Uint8ArrayResolvable =
 This creates a Uint8Array from the given arguments. These are handled as follows:
 
  * `Number` -> read as an integer, using the lowest 8 bits
- * `String` -> use each character's numeric value (eg. `String.charCodeAt(...)`)
+ * `String` -> use each character's numeric value (e.g. `String.charCodeAt(...)`)
  * `Array` -> Call itself on each element
  * `ArrayBuffer` or Typed Array -> use the lowest 8 bits of each element
  * `Object`:
@@ -1021,7 +1021,7 @@ The Pico's default is `{M:8, N:336, P:4, Q:7, PCLK1:2, PCLK2:4}`, use
 while keeping the peripherals running at the same speed (omitting PCLK1/2
 will lead to the peripherals changing speed too).
 
-On STM32F4 boards (eg. Espruino Pico), the USB clock needs to be kept at 48Mhz
+On STM32F4 boards (e.g. Espruino Pico), the USB clock needs to be kept at 48Mhz
 or USB will fail to work. You'll also experience USB instability if the processor
 clock falls much below 48Mhz.
 
@@ -1065,7 +1065,7 @@ any other *hardware* `Serial` device, or `null` to disable the console completel
 ```
 {
   force : bool // default false, force the console onto this device so it does not move
-               //   if false, changes in connection state (eg USB/Bluetooth) can move
+               //   if false, changes in connection state (e.g. USB/Bluetooth) can move
                //   the console automatically.
 }
 ```
@@ -1194,7 +1194,7 @@ Show fragmentation.
 
 * ` ` is free space
 * `#` is a normal variable
-* `L` is a locked variable (address used, cannopt be moved)
+* `L` is a locked variable (address used, cannot be moved)
 * `=` represents data in a Flat String (must be contiguous)
  */
 void jswrap_e_dumpFragmentation() {
@@ -1322,7 +1322,7 @@ is taking up most of the available space.
 
 If `depth>0` and the variable can be recursed into, an array listing all property
 names (including internal Espruino names) and their sizes is returned. If
-`depth>1` there is also a `more` field that inspects the objects's children's
+`depth>1` there is also a `more` field that inspects the objects' children's
 children.
 
 For instance `E.getSizeOf(function(a,b) { })` returns `5`.
@@ -1600,7 +1600,7 @@ Set the seed for the random number generator used by `Math.random()`.
   "return" : ["int32","A random number"]
 }
 Unlike 'Math.random()' which uses a pseudo-random number generator, this
-method reads from the internal voltage reference several times, xoring and
+method reads from the internal voltage reference several times, XOR-ing and
 rotating to try and make a relatively random value from the noise in the
 signal.
  */
@@ -1725,7 +1725,7 @@ To remove the password, call this function with no arguments.
 could conceivably try every password in a dictionary.
 
 **Note:** This password is stored in memory in plain text. If someone is able
-to execute arbitrary JavaScript code on the device (eg, you use `eval` on input
+to execute arbitrary JavaScript code on the device (e.g., you use `eval` on input
 from unknown sources) or read the device's firmware then they may be able to
 obtain it.
  */
@@ -1873,7 +1873,7 @@ JsVar *jswrap_espruino_memoryMap(JsVar *baseAddress, JsVar *registers) {
   "name" : "asm",
   "generate" : "jswrap_espruino_asm",
   "params" : [
-    ["callspec","JsVar","The arguments this assembly takes - eg `void(int)`"],
+    ["callspec","JsVar","The arguments this assembly takes - e.g. `void(int)`"],
     ["assemblycode","JsVarArray","One of more strings of assembler code"]
   ],
   "typescript" : "asm(callspec: string, ...assemblycode: string[]): any;"

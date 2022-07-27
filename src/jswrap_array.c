@@ -176,7 +176,7 @@ bool jswrap_array_includes(JsVar *arr, JsVar *value, JsVarInt startIdx) {
   "return" : ["JsVar","A String representing the Joined array"],
   "typescript" : "join(separator?: string): string;"
 }
-Join all elements of this array together into one string, using 'separator' between them. eg. ```[1,2,3].join(' ')=='1 2 3'```
+Join all elements of this array together into one string, using 'separator' between them. e.g. ```[1,2,3].join(' ')=='1 2 3'```
  */
 JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
   if (!jsvIsIterable(parent)) return 0;

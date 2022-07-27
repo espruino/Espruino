@@ -267,7 +267,7 @@ The length, in bytes, of the `ArrayBuffer`
     "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Uint8Array;"
   ]
 }
-Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (e.g. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
 /*JSON{
   "type" : "constructor",
@@ -287,7 +287,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Uint8ClampedArray;"
   ]
 }
-Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (e.g. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
 
 Clamped arrays clamp their values to the allowed range, rather than 'wrapping'. e.g. after `a[0]=12345;`, `a[0]==255`.
  */
@@ -309,7 +309,7 @@ Clamped arrays clamp their values to the allowed range, rather than 'wrapping'. 
     "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Int8Array;"
   ]
 }
-Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (e.g. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
 /*JSON{
   "type" : "constructor",
@@ -329,7 +329,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Uint16Array;"
   ]
 }
-Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (e.g. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
 /*JSON{
   "type" : "constructor",
@@ -349,7 +349,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Int16Array;"
   ]
 }
-Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (e.g. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
 /*JSON{
   "type" : "constructor",
@@ -370,7 +370,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Uint24Array;"
   ]
 }
-Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (e.g. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
 /*JSON{
   "type" : "constructor",
@@ -390,7 +390,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Uint32Array;"
   ]
 }
-Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (e.g. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
 /*JSON{
   "type" : "constructor",
@@ -410,7 +410,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Int32Array;"
   ]
 }
-Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (e.g. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
 /*JSON{
   "type" : "constructor",
@@ -430,7 +430,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Float32Array;"
   ]
 }
-Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (e.g. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
 /*JSON{
   "type" : "constructor",
@@ -450,7 +450,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
     "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Float64Array;"
   ]
 }
-Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (e.g. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
 
 JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *arr, JsVarInt byteOffset, JsVarInt length) {
@@ -558,7 +558,7 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
     return;
   }
   // Copy with the case where we copy from one arraybuffer to another but they use the
-  // same data. If we copy forward (eg `a.set(a.subarray(),1)`) then we
+  // same data. If we copy forward (e.g. `a.set(a.subarray(),1)`) then we
   // end up duplicating the same data, so we must copy in reverse.
   if (jsvIsArrayBuffer(parent) && jsvIsArrayBuffer(arr)) {
     JsVar *sa = jsvGetArrayBufferBackingString(parent, NULL);
@@ -616,7 +616,7 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
 }
 Return an array which is made from the following: ```A.map(function) = [function(A[0]), function(A[1]), ...]```
 
- **Note:** This returns an `ArrayBuffer` of the same type it was called on. To get an `Array`, use `Array.map`, eg. `[].map.call(myArray, x=>x+1)`
+ **Note:** This returns an `ArrayBuffer` of the same type it was called on. To get an `Array`, use `Array.map`, e.g. `[].map.call(myArray, x=>x+1)`
  */
 JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   if (!jsvIsArrayBuffer(parent)) {
@@ -761,7 +761,7 @@ Return `true` if the array includes the value, `false` otherwise
   "return" : ["JsVar","A String representing the Joined array"],
   "typescript" : "join(separator?: string): string;"
 }
-Join all elements of this array together into one string, using 'separator' between them. eg. ```[1,2,3].join(' ')=='1 2 3'```
+Join all elements of this array together into one string, using 'separator' between them. e.g. ```[1,2,3].join(' ')=='1 2 3'```
  */
 /*JSON{
   "type" : "method",

@@ -43,7 +43,7 @@ info = {
      'DEFINES+=-DCONFIG_NFCT_PINS_AS_GPIOS', # Don't use NFC - the pins are used for GPS
      'DEFINES += -DNRF_USB=1 -DUSB', # USB only works if connected at startup
      'DEFINES+=-DESPR_REGOUT0_1_8V=1', # Force RAK5010 nRF52 voltage regulator to 1.8v, which stops glitches in modem serial comms
-     'NRF_SDK15=1'
+     'NRF_SDK15=1',
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"iTracker"\'',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',

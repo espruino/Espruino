@@ -27,7 +27,7 @@ Improvements to Documentation are amazingly helpful, and are very rare so hugely
 
 ### Functions/Variables
 
-If you want to change something in a [built-in function's documentation](http://www.espruino.com/Reference), look at the heading for the function on that page and there will be a right-arrow (⇒). 
+If you want to change something in a [built-in function's documentation](http://www.espruino.com/Reference), look at the heading for the function on that page and there will be a right-arrow (⇒).
 
 If you click on that it will bring you to the area of Espruino's source code where the function *and the documentation for it* are stored. You can then edit the documentation in that file (above the function) on GitHub and issue a pull request - it's in Markdown format.
 
@@ -56,7 +56,7 @@ Please [see here](http://www.espruino.com/Writing+Modules)
 * Ensure that you are not contributing someone else's code, and that you are willing to add your code under Espruino's MPL Licence
 * Make sure that what you do doesn't break the Espruino board or the other boards we build for. We can't check all the boards for every commit, so if you break something you'll annoy a whole bunch of people.
 * Be aware that Espruino is designed for Microcontrollers - with very low amounts of flash and memory. Both are at a premium so don't statically allocate variables or do other stuff that will use up RAM.
-* Don't add a whole bunch of indirection/abstraction for the sake of it - it'll probably just use of more of our precious memory.
+* Don't add a whole bunch of indirection/abstraction for the sake of it - it'll probably just use more of our precious memory.
 * If you add a new API, try and make it familiar to Arduino/JavaScript users.
 * Please [RUN THE TESTS](tests/README.md) before and after your changes to check that there are no regressions
 * Finally, please issue us a pull request to [www.github.com/espruino](https://www.github.com/espruino/Espruino) via GitHub. It's way easier for us to incorporate, give credit, and track changes that way.
