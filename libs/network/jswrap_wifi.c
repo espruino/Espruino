@@ -235,7 +235,7 @@ passed as parameters. Put differently, if the passed SSID and password are
 identical to the currently connected AP then nothing is changed. When the
 connection attempt completes the callback function is invoked with one `err`
 parameter, which is NULL if there is no error and a string message if there is
-an error. If DHCP is enabled the callback occurs once an IP addres has been
+an error. If DHCP is enabled the callback occurs once an IP address has been
 obtained, if a static IP is set the callback occurs once the AP's network has
 been joined. The callback is also invoked if a connection already exists and
 does not need to be changed.
@@ -568,7 +568,7 @@ connecting to an access point.
     ["callback", "JsVar", "An optional `callback()` function to be called back when the hostname is set"]
   ]
 }
-Set the hostname. Depending on implemenation, the hostname is sent with every
+Set the hostname. Depending on implementation, the hostname is sent with every
 DHCP request and is broadcast via mDNS. The DHCP hostname may be visible in the
 access point and may be forwarded into DNS as hostname.local. If a DHCP lease
 currently exists changing the hostname will cause a disconnect and reconnect in
@@ -667,6 +667,6 @@ Switch to using a higher communication speed with the WiFi module.
 
 * `true` = 921600 baud
 * `false` = 115200
-* `1843200` (or any number) = use a specific baud rate. * eg.
+* `1843200` (or any number) = use a specific baud rate. * e.g.
 `wifi.turbo(true,callback)` or `wifi.turbo(1843200,callback)`
 */

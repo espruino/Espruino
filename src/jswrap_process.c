@@ -37,7 +37,7 @@ This class contains information about Espruino itself
   "name" : "uncaughtException",
   "params" : [["exception","JsVar","The uncaught exception"]]
 }
-This event is called when an exception gets thrown and isn't caught (eg. it gets
+This event is called when an exception gets thrown and isn't caught (e.g. it gets
 all the way back to the event loop).
 
 You can use this for logging potential problems that might occur during
@@ -106,7 +106,7 @@ Returns an Object containing various pre-defined variables.
 
 * `VERSION` - is the Espruino version
 * `GIT_COMMIT` - is Git commit hash this firmware was built from
-* `BOARD` - the board's ID (eg. `PUCKJS`)
+* `BOARD` - the board's ID (e.g. `PUCKJS`)
 * `RAM` - total amount of on-chip RAM in bytes
 * `FLASH` - total amount of on-chip flash memory in bytes
 * `SPIFLASH` - (on Bangle.js) total amount of off-chip flash memory in bytes

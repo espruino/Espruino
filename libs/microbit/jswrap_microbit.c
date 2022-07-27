@@ -230,11 +230,11 @@ Show an image on the in-built 5x5 LED screen.
 
 Image can be:
 
-* A number where each bit represents a pixel (so 25 bits). eg. `5` or
+* A number where each bit represents a pixel (so 25 bits). e.g. `5` or
   `0x1FFFFFF`
-* A string, eg: `show("10001")`. Newlines are ignored, and anything that is not
+* A string, e.g: `show("10001")`. Newlines are ignored, and anything that is not
 a space or `0` is treated as a 1.
-* An array of 4 bytes (more will be ignored), eg `show([1,2,3,0])`
+* An array of 4 bytes (more will be ignored), e.g `show([1,2,3,0])`
 
 For instance the following works for images:
 

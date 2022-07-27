@@ -58,7 +58,7 @@ simple contiguous files of fixed length. This is the recommended file type.
 in numbered chunks (`"filename\1"`/`"filename\2"`/etc). It allows data to be
 appended and for the file to be read line by line.
 
-You must read a file using the same method you used to write it - eg. you can't
+You must read a file using the same method you used to write it - e.g. you can't
 create a file with `require("Storage").open(...)` and then read it with
 `require("Storage").read(...)`.
 
@@ -317,11 +317,11 @@ require("Storage").list()
 require("Storage").list(/\.js$/)
 // All Storage Files
 require("Storage").list(undefined, {sf:true})
-// All normal files (eg created with Storage.write)
+// All normal files (e.g. created with Storage.write)
 require("Storage").list(undefined, {sf:false})
 ```
 
-**Note:** This will output system files (eg. saved code) as well as files that
+**Note:** This will output system files (e.g. saved code) as well as files that
 you may have written.
  */
 JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
@@ -351,10 +351,10 @@ JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
   "return" : ["int","A hash of the files matching"],
   "typescript" : "hash(regex: RegExp): number;"
 }
-List all files in the flash storage area matching the specfied regex (ignores
+List all files in the flash storage area matching the specified regex (ignores
 StorageFiles), and then hash their filenames *and* file locations.
 
-Identical files may have different hashes (eg. if Storage is compacted and the
+Identical files may have different hashes (e.g. if Storage is compacted and the
 file moves) but the changes of different files having the same hash are
 extremely small.
 
@@ -389,7 +389,7 @@ when it is running low on flash, or when `compact` is called.
 space, however in this case it will not lose data.
 
 **Note:** `compact` rearranges the contents of memory. If code is referencing
-that memory (eg. functions that have their code stored in flash) then they may
+that memory (e.g. functions that have their code stored in flash) then they may
 become garbled when compaction happens. To avoid this, call `eraseFiles` before
 uploading data that you intend to reference to ensure that uploaded files are
 right at the start of flash and cannot be compacted further.
@@ -597,7 +597,7 @@ contiguous area to allow them to be accessed easily from Espruino.
 
 This presents a challenge for `StorageFile` which allows you to append to a
 file, so instead `StorageFile` stores files in chunks. It uses the last
-character of the filename to denote the chunk number (eg `"foobar\1"`,
+character of the filename to denote the chunk number (e.g. `"foobar\1"`,
 `"foobar\2"`, etc).
 
 This means that while `StorageFile` files exist in the same area as those from

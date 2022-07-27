@@ -72,7 +72,7 @@ errors:true });`
 **Note:** Even though there was an error, the byte will still be received and
 passed to the `data` handler.
 
-**Note:** This only works on STM32 and NRF52 based devices (eg. all official
+**Note:** This only works on STM32 and NRF52 based devices (e.g. all official
 Espruino boards)
  */
 /*JSON{
@@ -89,7 +89,7 @@ errors:true });`
 **Note:** Even though there was an error, the byte will still be received and
 passed to the `data` handler.
 
-**Note:** This only works on STM32 and NRF52 based devices (eg. all official
+**Note:** This only works on STM32 and NRF52 based devices (e.g. all official
 Espruino boards)
  */
 // this is created in jsiIdle based on EV_SERIALx_STATUS ecents
@@ -104,7 +104,7 @@ Espruino boards)
   ],
   "return" : ["JsVar","An object of type `Serial`, or `undefined` if one couldn't be found."]
 }
-Try and find a USART (Serial) hardware device that will work on this pin (eg.
+Try and find a USART (Serial) hardware device that will work on this pin (e.g.
 `Serial1`)
 
 May return undefined if no device can be found.
@@ -233,7 +233,7 @@ void jswrap_serial_setConsole(JsVar *parent, bool force) {
 }
 Setup this Serial port with the given baud rate and options.
 
-eg.
+e.g.
 
 ```
 Serial1.setup(9600,{rx:a_pin, tx:a_pin});
@@ -426,7 +426,7 @@ void _jswrap_serial_print(JsVar *parent, JsVar *arg, bool isPrint, bool newLine)
 }
 Print a string to the serial port - without a line feed
 
- **Note:** This function replaces any occurances of `\n` in the string with
+ **Note:** This function replaces any occurrences of `\n` in the string with
  `\r\n`. To avoid this, use `Serial.write`.
  */
 /*JSON{
@@ -440,7 +440,7 @@ Print a string to the serial port - without a line feed
 }
 Print a line to the serial port with a newline (`\r\n`) at the end of it.
 
- **Note:** This function converts data to a string first, eg
+ **Note:** This function converts data to a string first, e.g.
  `Serial.print([1,2,3])` is equivalent to `Serial.print("1,2,3"). If you'd like
  to write raw bytes, use `Serial.write`.
  */
@@ -461,7 +461,7 @@ void jswrap_serial_println(JsVar *parent,  JsVar *str) {
 }
 Write a character or array of data to the serial port
 
-This method writes unmodified data, eg `Serial.write([1,2,3])` is equivalent to
+This method writes unmodified data, e.g. `Serial.write([1,2,3])` is equivalent to
 `Serial.write("\1\2\3")`. If you'd like data converted to a string first, use
 `Serial.print`.
  */
