@@ -489,7 +489,9 @@ function buildTypes() {
       const [classes, globals] = getAll(objects, types);
 
       resolve(
-        "// NOTE: This file has been automatically generated.\n\n" +
+        "// Type definitions for Espruino latest\n" +
+          "// Project: http://www.espruino.com/, https://github.com/espruino/espruinotools" +
+          "// Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped\n\n" +
           '/// <reference path="other.d.ts" />\n\n' +
           getTypeDeclarations(types) +
           getClassDeclarations(classes, types) +
