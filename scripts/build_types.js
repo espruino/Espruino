@@ -282,14 +282,18 @@ function getAll(objects) {
 
 /**
  * Return the declarations of custom types.
- * @param {string[]} types - The list of types defined in comments.
+ * @param {object[]} types - The list of types defined in comments.
+ * Of the form { declaration: string, implementation: string }.
  * @returns {string} The joined declarations.
  */
 function getTypeDeclarations(types) {
   return (
     "// TYPES\n" +
     types
-      .map((type) => type.replace(/\\\//g, "/").replace(/\\\\/g, "\\"))
+      .filter((type) => !type.class)
+      .map((type) =>
+        type.declaration.replace(/\\\//g, "/").replace(/\\\\/g, "\\")
+      )
       .join("")
   );
 }
@@ -299,9 +303,10 @@ function getTypeDeclarations(types) {
  * vanilla JavaScript, e.g. String, Array.
  * @param {string} name - The class's name.
  * @param {object} c - The class's data.
+ * @param {object[]} types
  * @returns {string} The class's declaration.
  */
-function getBuiltinClassDeclaration(name, c) {
+function getBuiltinClassDeclaration(name, c, types) {
   return (
     `interface ${name}Constructor {\n` +
     indent(
@@ -329,6 +334,7 @@ function getBuiltinClassDeclaration(name, c) {
               )}`.trim()
             )
             .concat(name === "Array" ? ["[index: number]: T"] : [])
+            .concat(types.map((type) => type.declaration))
             .join("\n\n")
         ) +
         `\n}\n\n${getDocumentation(c.object)}`) +
@@ -340,9 +346,10 @@ function getBuiltinClassDeclaration(name, c) {
  * Get the declaration of a class that is not builtin.
  * @param {string} name - The class's name.
  * @param {object} c - The class's data.
+ * @param {object[]} types
  * @returns {string} The class's declaration.
  */
-function getOtherClassDeclaration(name, c) {
+function getOtherClassDeclaration(name, c, types) {
   return (
     `${getDocumentation(c.object)}\ndeclare class ${
       c.object?.typescript || name
@@ -367,6 +374,7 @@ function getOtherClassDeclaration(name, c) {
             )}`.trim()
           )
           .concat(name === "ArrayBufferView" ? ["[index: number]: number"] : [])
+          .concat(types.map((type) => type.declaration))
           .join("\n\n")
     ) +
     "\n}"
@@ -376,17 +384,26 @@ function getOtherClassDeclaration(name, c) {
 /**
  * Return the class declarations (not including libraries).
  * @param {object} classes - The object of classes (see `getClasses`).
+ * @param {object[]} types
  * @returns {string} The class declarations.
  */
-function getClassDeclarations(classes) {
+function getClassDeclarations(classes, types) {
   return (
     "\n\n// CLASSES\n\n" +
     Object.entries(classes)
       .filter(([_, c]) => !c.library)
       .map(([name, c]) =>
         name in global
-          ? getBuiltinClassDeclaration(name, c)
-          : getOtherClassDeclaration(name, c)
+          ? getBuiltinClassDeclaration(
+              name,
+              c,
+              types.filter((type) => type.class === name)
+            )
+          : getOtherClassDeclaration(
+              name,
+              c,
+              types.filter((type) => type.class === name)
+            )
       )
       .join("\n\n")
   );
@@ -456,13 +473,13 @@ function getLibraryDeclarations(classes) {
 function buildTypes() {
   return new Promise((resolve) => {
     require("./common.js").readAllWrapperFiles(function (objects, types) {
-      const [classes, globals] = getAll(objects);
+      const [classes, globals] = getAll(objects, types);
 
       resolve(
         "// NOTE: This file has been automatically generated.\n\n" +
           '/// <reference path="other.d.ts" />\n\n' +
           getTypeDeclarations(types) +
-          getClassDeclarations(classes) +
+          getClassDeclarations(classes, types) +
           getGlobalDeclarations(globals) +
           getLibraryDeclarations(classes)
       );
