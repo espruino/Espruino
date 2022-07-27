@@ -1835,7 +1835,7 @@ Bangle.setLCDPower(1); // keep screen on
 
 
 **When on full, the LCD draws roughly 40mA.** You can adjust
-When brightness using `Bange.setLCDBrightness`.
+When brightness using `Bangle.setLCDBrightness`.
 */
 void jswrap_banglejs_setLCDPower(bool isOn) {
 #ifdef ESPR_BACKLIGHT_FADE
@@ -2147,7 +2147,7 @@ Set internal options used for gestures, etc...
 * `wakeOnFaceUp` should the LCD turn on when the watch is turned face up? default = `false`
 * `wakeOnTouch` should the LCD turn on when the touchscreen is pressed? default = `false`
 * `wakeOnTwist` should the LCD turn on when the watch is twisted? default = `true`
-* `twistThreshold`  How much acceleration to register a twist of the watch strap? Can be negative for oppsite direction. default = `800`
+* `twistThreshold`  How much acceleration to register a twist of the watch strap? Can be negative for opposite direction. default = `800`
 * `twistMaxY` Maximum acceleration in Y to trigger a twist (low Y means watch is facing the right way up). default = `-800`
 * `twistTimeout`  How little time (in ms) must a twist take from low->high acceleration? default = `1000`
 * `gestureStartThresh` how big a difference before we consider a gesture started? default = `sqr(800)`
@@ -2157,7 +2157,7 @@ Set internal options used for gestures, etc...
 * `powerSave` after a minute of not being moved, Bangle.js will change the accelerometer poll interval down to 800ms (10x accelerometer samples).
    On movement it'll be raised to the default 80ms. If `Bangle.setPollInterval` is used this is disabled, and for it to work the poll interval
    must be either 80ms or 800ms. default = `true`. Setting `powerSave:false` will disable this automatic power saving, but will **not** change
-   the poll interval from its current value. If you desire a specific interval (eg the default 80ms) you must set it manually with `Bangle.setPollInterval(80)`
+   the poll interval from its current value. If you desire a specific interval (e.g. the default 80ms) you must set it manually with `Bangle.setPollInterval(80)`
    after setting `powerSave:false`.
 * `lockTimeout` how many milliseconds before the screen locks
 * `lcdPowerTimeout` how many milliseconds before the screen turns off
@@ -2275,7 +2275,7 @@ int jswrap_banglejs_isLCDOn() {
     "ifdef" : "BANGLEJS"
 }
 This function can be used to lock or unlock Bangle.js
-(eg whether buttons and touchscreen work or not)
+(e.g. whether buttons and touchscreen work or not)
 */
 void jswrap_banglejs_setLocked(bool isLocked) {
 #if defined(TOUCH_I2C)
@@ -2675,7 +2675,7 @@ void jswrap_banglejs_resetCompass() {
     "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)",
     "typescript" : "setBarometerPower(isOn: boolean, appID: string): boolean;"
 }
-Set the power to the barometer IC. Once enbled, `Bangle.pressure` events
+Set the power to the barometer IC. Once enabled, `Bangle.pressure` events
 are fired each time a new barometer reading is available.
 
 When on, the barometer draws roughly 50uA
@@ -5327,7 +5327,7 @@ Currently supported interface types are:
 * 'clockupdown' - called for clocks. Sets `Bangle.CLOCK=1`, allows a button to start the launcher, but also provides up/down functionality
   * Bangle.js 1 BTN2 starts the launcher, BTN1/BTN3 call `cb(-1)` and `cb(1)`
   * Bangle.js 2 BTN1 starts the launcher, touchscreen tap in top/bottom right hand side calls `cb(-1)` and `cb(1)`
-* `{mode:"custom", ...}` allows you to specify custom handlers for different interations. See below.
+* `{mode:"custom", ...}` allows you to specify custom handlers for different interactions. See below.
 * `undefined` removes all user interaction code
 
 While you could use setWatch/etc manually, the benefit here is that you don't end up with multiple `setWatch` instances, and

@@ -887,7 +887,7 @@ int jswrap_graphics_getBPP(JsVar *parent) {
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-Reset the state of Graphics to the defaults (eg. Color, Font, etc)
+Reset the state of Graphics to the defaults (e.g. Color, Font, etc)
 that would have been used when Graphics was initialised.
 */
 JsVar *jswrap_graphics_reset(JsVar *parent) {
@@ -1550,7 +1550,7 @@ JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
 This sets the 'clip rect' that subsequent drawing operations are clipped to
 sit between.
 
-These values are inclusive - eg `g.setClipRect(1,0,5,0)` will ensure that only
+These values are inclusive - e.g. `g.setClipRect(1,0,5,0)` will ensure that only
 pixel rows 1,2,3,4,5 are touched on column 0.
 
 **Note:** For maximum flexibility on Bangle.js 1, the values here are not range checked. For normal
@@ -2284,7 +2284,7 @@ Draw a string of text in the current font.
 g.drawString("Hello World", 10, 10);
 ```
 
-Images may also be embedded inside strings (eg to render Emoji or characters not in the current font).
+Images may also be embedded inside strings (e.g. to render Emoji or characters not in the current font).
 To do this, just add `0` then the image string ([about Images](http://www.espruino.com/Graphics#images-bitmaps))
 For example:
 
@@ -2556,7 +2556,7 @@ JsVar *jswrap_graphics_drawLineAA(JsVar *parent, double x1, double y1, double x2
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-Draw a line from the last position of lineTo or moveTo to this position
+Draw a line from the last position of `lineTo` or `moveTo` to this position
 */
 JsVar *jswrap_graphics_lineTo(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -3831,7 +3831,7 @@ Returns an object of the form:
   bg2 : 0x0007,  // accented background colour
   fgH : 0xFFFF,  // highlighted foreground colour
   bgH : 0x02F7,  // highlighted background colour
-  dark : true,  // Is background dark (eg. foreground should be a light colour)
+  dark : true,  // Is background dark (e.g. foreground should be a light colour)
 }
 ```
 
