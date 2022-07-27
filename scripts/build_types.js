@@ -489,7 +489,7 @@ function buildTypes() {
 
 buildTypes().then((content) =>
   require("fs").writeFileSync(
-    "../BangleApps/typescript/types/main.d.ts",
+    __dirname + "/../../BangleApps/typescript/types/main.d.ts",
     content
   )
 );
