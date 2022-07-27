@@ -197,7 +197,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     // initialise image layer
     GfxDrawImageLayer l;
     l.x1 = 0;
-    l.y1 = 0;
+    l.y1 = lcdOverlayY;
     l.img = overlayImg;
     l.rotate = 0;
     l.scale = 1;
@@ -205,7 +205,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     l.repeat = false;
     jsvStringIteratorNew(&l.it, l.img.buffer, (size_t)l.img.bitmapOffset);
     _jswrap_drawImageLayerInit(&l);
-    _jswrap_drawImageLayerSetStart(&l, 0, 0);
+    _jswrap_drawImageLayerSetStart(&l, 0, y1);
     for (int y=y1;y<=y2;y++) {
       int bufferLine = LCD_HEIGHT + (y&1); // alternate lines so we still get dither AND we can send while
       unsigned char *buf = &lcdBuffer[LCD_STRIDE*bufferLine]; // point to line right on the end of gfx
@@ -220,8 +220,8 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
             lcdMemLCD_setPixel(NULL, x+lcdOverlayX, bufferLine, c);
           _jswrap_drawImageLayerNextX(&l);
         }
-        _jswrap_drawImageLayerNextY(&l);
       }
+      _jswrap_drawImageLayerNextY(&l);
       // send the line
 #ifdef EMULATED
       memcpy(&fakeLCDBuffer[LCD_STRIDE*y], buf, LCD_STRIDE);
