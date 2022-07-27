@@ -96,7 +96,7 @@ Convert the Array to a string
   "class" : "Array",
   "name" : "length",
   "generate" : "jswrap_object_length",
-  "return" : ["JsVar","The value of the array"],
+  "return" : ["JsVar","The length of the array"],
   "typescript" : "length: number;"
 }
 Find the length of the array
