@@ -75,7 +75,7 @@
 #endif
 
 /*TYPESCRIPT
-declare const g: Graphics;
+declare const g: Graphics<false>;
 
 type WidgetArea = "tl" | "tr" | "bl" | "br";
 type Widget = {
