@@ -1960,6 +1960,33 @@ void jswrap_banglejs_setLCDOffset(int y) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
+    "name" : "setLCDOverlay",
+    "generate" : "jswrap_banglejs_setLCDOverlay",
+    "params" : [
+      ["gfx","JsVar","A Graphics instance"],
+      ["x","int","The X offset the graphics instance should be overlaid on the screen with"],
+      ["y","int","The Y offset the graphics instance should be overlaid on the screen with"]
+    ],
+    "ifdef" : "BANGLEJS2"
+}
+Overlay a graphics instance on top of the contents of the graphics buffer.
+
+This only works on Bangle.js 2 because Bangle.js 1 doesn't have an offscreen buffer accessible from the CPU.
+*/
+void jswrap_banglejs_setLCDOverlay(JsVar *gfxVar, int x, int y) {
+#ifdef LCD_CONTROLLER_LPM013M126
+  lcdMemLCD_setOverlay(gfxVar, x, y);
+  // set all as modified
+  graphicsInternal.data.modMinX = 0;
+  graphicsInternal.data.modMinY = 0;
+  graphicsInternal.data.modMaxX = LCD_WIDTH-1;
+  graphicsInternal.data.modMaxY = LCD_HEIGHT-1;
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
     "name" : "setLCDTimeout",
     "generate" : "jswrap_banglejs_setLCDTimeout",
     "params" : [
@@ -3424,6 +3451,8 @@ void jswrap_banglejs_kill() {
   jshPinWatch(BTN5_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN5_PININDEX,false);
 #endif
+  // ensure we remove any overlay we might have set
+  lcdMemLCD_setOverlay(NULL, 0, 0);
   // Graphics var is getting removed, so set this to null.
   jsvUnLock(graphicsInternal.graphicsVar);
   graphicsInternal.graphicsVar = NULL;

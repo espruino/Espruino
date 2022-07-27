@@ -24,8 +24,15 @@
 #define LCD_ROWHEADER 2
 #define LCD_STRIDE (LCD_ROWHEADER+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
 
-unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT +2/*2 bytes end of transfer*/ +4/*allow extra for fast scroll*/];
-bool isBacklightOn;
+/** Buffer for our LCD data.
+  - We add one extra line (LCD_HEIGHT+1) as a scratch area for doing the overlay
+  - 2 bytes at end of transfer (needed by LCD) included in that extra line
+  - 4 bytes at end (needed to allow fast scrolling) also handled by the extra line
+ */
+unsigned char lcdBuffer[LCD_STRIDE*(LCD_HEIGHT+1)];
+bool isBacklightOn; ///< is LCD backlight on? If so we need to toggle EXTCOMIN faster
+JsVar *lcdOverlayGraphics; ///< if set, a Graphics instance to use for overlays
+unsigned char lcdOverlayX,lcdOverlayY; ///< coordinates of the graphics instance
 
 #ifdef EMULATED
 bool EMSCRIPTEN_GFX_CHANGED;
@@ -160,7 +167,6 @@ void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1
 }
 
 // -----------------------------------------------------------------------------
-
 void lcdMemLCD_flip(JsGraphics *gfx) {
   if (gfx->data.modMinY > gfx->data.modMaxY) return; // nothing to do!
 
@@ -168,10 +174,44 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
   int y2 = gfx->data.modMaxY;
   int l = 1+y2-y1;
 
+  bool hasOverlay = false;
+  JsGraphics overlayGfx;
+  if (lcdOverlayGraphics)
+    hasOverlay = graphicsGetFromVar(&overlayGfx, lcdOverlayGraphics);
+
   jshPinSetValue(LCD_SPI_CS, 1);
-  //jshDelayMicroseconds(10000);
-  jshSPISendMany(LCD_SPI, &lcdBuffer[LCD_STRIDE*y1], NULL, (l*LCD_STRIDE)+2, NULL);
-  //jshDelayMicroseconds(10000);
+  if (hasOverlay) {
+    /* If lcdOverlayGraphics is defined, we want to overlay this graphics
+     * instance on top of what we have in our LCD buffer. Do this line by
+     * line. It's slower but it won't use a bunch of memory.
+     *
+     * We use an extra line added to the end of lcdBuffer for this, which
+     * allows us to use lcdMemLCD_setPixel to do color conversion and dither
+     * without loads of duplicate code.
+     *
+     * Optimisation: we could just send any non-overlaid stuff above or below
+     * the overlay...
+     */
+    unsigned char *buf = &lcdBuffer[LCD_STRIDE*LCD_HEIGHT]; // point to line right on the end of gfx
+    for (int y=y1;y<=y2;y++) {
+      // copy original line in
+      memcpy(buf, &lcdBuffer[LCD_STRIDE*y], LCD_STRIDE);
+      // overwrite areas with overlay
+      if (y>=lcdOverlayY && y<lcdOverlayY+overlayGfx.data.height)
+        for (int x=0;x<overlayGfx.data.width;x++) {
+          unsigned int c = graphicsGetPixel(&overlayGfx, x, y-lcdOverlayY);
+          if (x+lcdOverlayX < LCD_WIDTH)
+            lcdMemLCD_setPixel(NULL, x+lcdOverlayX, LCD_HEIGHT, c);
+        }
+      // send the line
+      jshSPISendMany(LCD_SPI, buf, NULL, LCD_STRIDE, NULL);
+    }
+    // final 2 bytes to finish the transfer
+    buf[0]=0; buf[1]=0;
+    jshSPISendMany(LCD_SPI, buf, NULL, 2, NULL);
+  } else {
+    jshSPISendMany(LCD_SPI, &lcdBuffer[LCD_STRIDE*y1], NULL, (l*LCD_STRIDE)+2, NULL);
+  }
   jshPinSetValue(LCD_SPI_CS, 0);
   // Reset modified-ness
   gfx->data.modMaxX = -32768;
@@ -227,6 +267,20 @@ void lcdMemLCD_extcominBacklight(bool isOn) {
     } else {
       jshPinOutput(LCD_EXTCOMIN, 0);
     }
+  }
+}
+
+// Enable overlay mode (to overlay a graphics instance on top of the LCD contents)
+void lcdMemLCD_setOverlay(JsVar *gfxVar, int x, int y) {
+  if (lcdOverlayGraphics) jsvUnLock(lcdOverlayGraphics);
+  if (gfxVar) {
+    lcdOverlayGraphics = jsvLockAgain(gfxVar);
+    lcdOverlayX = (unsigned char)x;
+    lcdOverlayY = (unsigned char)y;
+  } else {
+    lcdOverlayGraphics = 0;
+    lcdOverlayX = 0;
+    lcdOverlayY = 0;
   }
 }
 
