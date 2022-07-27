@@ -141,12 +141,14 @@ JsVar *jswrap_number_toFixed(JsVar *parent, int decimals) {
   "type" : "variable",
   "name" : "HIGH",
   "generate_full" : "1",
-  "return" : ["int32","Logic 1 for Arduino compatibility - this is the same as just typing `1`"]
+  "return" : ["int32","Logic 1 for Arduino compatibility - this is the same as just typing `1`"],
+  "typescript" : "declare const HIGH: 1;"
 }*/
 
 /*JSON{
   "type" : "variable",
   "name" : "LOW",
   "generate_full" : "0",
-  "return" : ["int32","Logic 0 for Arduino compatibility - this is the same as just typing `0`"]
+  "return" : ["int32","Logic 0 for Arduino compatibility - this is the same as just typing `0`"],
+  "typescript" : "declare const LOW: 0;"
 }*/
