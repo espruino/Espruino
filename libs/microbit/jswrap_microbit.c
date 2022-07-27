@@ -223,13 +223,15 @@ void jswrap_microbit_kill() {
   ],
   "ifdef" : "MICROBIT"
 }
-**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit)
+board
 
 Show an image on the in-built 5x5 LED screen.
 
 Image can be:
 
-* A number where each bit represents a pixel (so 25 bits). eg. `5` or `0x1FFFFFF`
+* A number where each bit represents a pixel (so 25 bits). eg. `5` or
+  `0x1FFFFFF`
 * A string, eg: `show("10001")`. Newlines are ignored, and anything that is not
 a space or `0` is treated as a 1.
 * An array of 4 bytes (more will be ignored), eg `show([1,2,3,0])`
@@ -330,7 +332,8 @@ JsVar *getXYZ(int x, int y, int z, JsVarFloat range) {
   "return" : ["JsVar", "An object with x, y, and z fields in it"],
   "ifdef" : "MICROBIT"
 }
-**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit)
+board
 
 Get the current acceleration of the micro:bit from the on-board accelerometer
 
@@ -369,9 +372,11 @@ JsVar *jswrap_microbit_acceleration() {
   "return" : ["JsVar", "An object with x, y, and z fields in it"],
   "ifdef" : "MICROBIT"
 }
-**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit)
+board
 
-Get the current compass position for the micro:bit from the on-board magnetometer
+Get the current compass position for the micro:bit from the on-board
+magnetometer
 
 **This is deprecated.** Please use `Microbit.mag` instead.
 */
@@ -562,7 +567,8 @@ The micro:bit's microphone enable pin
     "class" : "Microbit",
     "ifdef" : "MICROBIT"
 }
-Class containing [micro:bit's](https://www.espruino.com/MicroBit) utility functions.
+Class containing [micro:bit's](https://www.espruino.com/MicroBit) utility
+functions.
 */
 /*JSON{
   "type" : "event",
@@ -573,7 +579,8 @@ Class containing [micro:bit's](https://www.espruino.com/MicroBit) utility functi
   ],
   "ifdef" : "MICROBIT2"
 }
-Called when the Micro:bit is moved in a deliberate fashion, and includes data on the detected gesture.
+Called when the Micro:bit is moved in a deliberate fashion, and includes data on
+the detected gesture.
  */
 /*JSON{
   "type" : "staticmethod",
@@ -602,7 +609,8 @@ Called when the Micro:bit is moved in a deliberate fashion, and includes data on
   ],
   "ifdef" : "MICROBIT2"
 }
-**Note:** This function is only available on the [BBC micro:bit](/MicroBit) board
+**Note:** This function is only available on the [BBC micro:bit](/MicroBit)
+board
 
 Write the given value to the accelerometer
 */
@@ -627,10 +635,11 @@ void jswrap_microbit_accelWr(int a, int data) {
   "generate" : "jswrap_microbit_accelOn",
   "ifdef" : "MICROBIT2"
 }
-Turn on the accelerometer, and create `Microbit.accel` and `Microbit.gesture` events.
+Turn on the accelerometer, and create `Microbit.accel` and `Microbit.gesture`
+events.
 
-**Note:** The accelerometer is currently always enabled - this code
-just responds to interrupts and reads
+**Note:** The accelerometer is currently always enabled - this code just
+responds to interrupts and reads
 */
 void jswrap_microbit_accelOn() {
   if (accel_watch) return;

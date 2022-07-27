@@ -28,9 +28,8 @@
 }
 A simple VT100 terminal emulator.
 
-When data is sent to the `Terminal` object, `Graphics.getInstance()`
-is called and if an instance of `Graphics` is found then characters
-are written to it.
+When data is sent to the `Terminal` object, `Graphics.getInstance()` is called
+and if an instance of `Graphics` is found then characters are written to it.
 */
 
 #ifdef USE_FONT_6X8

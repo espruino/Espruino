@@ -19,8 +19,8 @@
     "class" : "Unistroke",
     "ifdef" : "BANGLEJS2"
 }
-This class provides functionality to recognise gestures drawn
-on a touchscreen. It is only built into Bangle.js 2.
+This class provides functionality to recognise gestures drawn on a touchscreen.
+It is only built into Bangle.js 2.
 
 Usage:
 

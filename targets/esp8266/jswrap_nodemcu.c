@@ -20,7 +20,8 @@
   "type" : "class",
   "class" : "NodeMCU"
 }
-This is a built-in class to allow you to use the ESP8266 NodeMCU boards's pin namings to access pins. It is only available on ESP8266-based boards.
+This is a built-in class to allow you to use the ESP8266 NodeMCU boards's pin
+namings to access pins. It is only available on ESP8266-based boards.
 */
 
 // TODO: Sigh - because everyone is using `Pin(..)` now, we can't have a proper 'A0' pin defined because it'd shift all the pins created by`Pin(..)`

@@ -45,7 +45,9 @@
 }
 Cryptographic functions
 
-**Note:** This library is currently only included in builds for boards where there is space. For other boards there is `crypto.js` which implements SHA1 in JS.
+**Note:** This library is currently only included in builds for boards where
+there is space. For other boards there is `crypto.js` which implements SHA1 in
+JS.
 */
 
 
@@ -57,7 +59,9 @@ Cryptographic functions
 }
 Class containing AES encryption/decryption
 
-**Note:** This library is currently only included in builds for boards where there is space. For other boards there is `crypto.js` which implements SHA1 in JS.
+**Note:** This library is currently only included in builds for boards where
+there is space. For other boards there is `crypto.js` which implements SHA1 in
+JS.
 */
 /*JSON{
   "type" : "staticproperty",
@@ -190,9 +194,9 @@ JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
 
 Performs a SHA1 hash and returns the result as a 20 byte ArrayBuffer.
 
-**Note:** On some boards (currently only Espruino Original) there
-isn't space for a fully unrolled SHA1 implementation so a slower
-all-JS implementation is used instead.
+**Note:** On some boards (currently only Espruino Original) there isn't space
+for a fully unrolled SHA1 implementation so a slower all-JS implementation is
+used instead.
 */
 /*JSON{
   "type" : "staticmethod",

@@ -168,7 +168,8 @@ Return all enumerable keys of the given object
   ],
   "return" : ["JsVar","An array of the Object's own properties"]
 }
-Returns an array of all properties (enumerable or not) found directly on a given object.
+Returns an array of all properties (enumerable or not) found directly on a given
+object.
 */
 
 static void _jswrap_object_keys_or_property_names_iterator(
@@ -360,7 +361,8 @@ JsVar *jswrap_object_values_or_entries(JsVar *object, bool returnEntries) {
   ],
   "return" : ["JsVar","A new object"]
 }
-Creates a new object with the specified prototype object and properties. properties are currently unsupported.
+Creates a new object with the specified prototype object and properties.
+properties are currently unsupported.
  */
 JsVar *jswrap_object_create(JsVar *proto, JsVar *propertiesObject) {
   if (!jsvIsObject(proto) && !jsvIsNull(proto)) {
@@ -444,7 +446,8 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
 }
 Return true if the object (not its prototype) has the given property.
 
-NOTE: This currently returns false-positives for built-in functions in prototypes
+NOTE: This currently returns false-positives for built-in functions in
+prototypes
  */
 bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
   JsVar *propName = jsvAsArrayIndex(name);
@@ -491,14 +494,20 @@ bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
 }
 Add a new property to the Object. 'Desc' is an object with the following fields:
 
-* `configurable` (bool = false) - can this property be changed/deleted (not implemented)
-* `enumerable` (bool = false) - can this property be enumerated (not implemented)
+* `configurable` (bool = false) - can this property be changed/deleted (not
+  implemented)
+* `enumerable` (bool = false) - can this property be enumerated (not
+  implemented)
 * `value` (anything) - the value of this property
-* `writable` (bool = false) - can the value be changed with the assignment operator?
-* `get` (function) - the getter function, or undefined if no getter (only supported on some platforms)
-* `set` (function) - the setter function, or undefined if no setter (only supported on some platforms)
+* `writable` (bool = false) - can the value be changed with the assignment
+  operator?
+* `get` (function) - the getter function, or undefined if no getter (only
+  supported on some platforms)
+* `set` (function) - the setter function, or undefined if no setter (only
+  supported on some platforms)
 
-**Note:** `configurable`, `enumerable` and `writable` are not implemented and will be ignored.
+**Note:** `configurable`, `enumerable` and `writable` are not implemented and
+will be ignored.
 
  */
 JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc) {
@@ -552,7 +561,8 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
   ],
   "return" : ["JsVar","The object, obj."]
 }
-Adds new properties to the Object. See `Object.defineProperty` for more information
+Adds new properties to the Object. See `Object.defineProperty` for more
+information
  */
 JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props) {
   if (!jsvIsObject(parent)) {
@@ -605,8 +615,8 @@ JsVar *jswrap_object_getPrototypeOf(JsVar *object) {
   ],
   "return" : ["JsVar","The object passed in"]
 }
-Set the prototype of the given object - this is like writing
-`object.__proto__ = prototype` but is the 'proper' ES6 way of doing it
+Set the prototype of the given object - this is like writing `object.__proto__ =
+prototype` but is the 'proper' ES6 way of doing it
  */
 JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto) {
   JsVar *v = (jsvIsFunction(object)||jsvIsObject(object)) ? jsvFindChildFromString(object, "__proto__", true) : 0;
@@ -700,10 +710,11 @@ void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (
     ["listener","JsVar","The listener to call when this event is received"]
   ]
 }
-Register an event listener for this object, for instance `Serial1.on('data', function(d) {...})`.
+Register an event listener for this object, for instance `Serial1.on('data',
+function(d) {...})`.
 
-This is the same as Node.js's [EventEmitter](https://nodejs.org/api/events.html) but on Espruino
-the functionality is built into every object:
+This is the same as Node.js's [EventEmitter](https://nodejs.org/api/events.html)
+but on Espruino the functionality is built into every object:
 
 * `Object.on`
 * `Object.emit`
@@ -794,7 +805,8 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     ["args","JsVarArray","Optional arguments"]
   ]
 }
-Call any event listeners that were added to this object with `Object.on`, for instance `obj.emit('data', 'Foo')`.
+Call any event listeners that were added to this object with `Object.on`, for
+instance `obj.emit('data', 'Foo')`.
 
 For more information see `Object.on`
  */
@@ -967,8 +979,9 @@ void jswrap_object_removeAllListeners_cstr(JsVar *parent, const char *event) {
     ["newFunc","JsVar","The new function to replace this function with"]
   ]
 }
-This replaces the function with the one in the argument - while keeping the old function's scope.
-This allows inner functions to be edited, and is used when edit() is called on an inner function.
+This replaces the function with the one in the argument - while keeping the old
+function's scope. This allows inner functions to be edited, and is used when
+edit() is called on an inner function.
  */
 void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   if ((!jsvIsFunction(oldFunc)) || (!jsvIsFunction(newFunc))) {

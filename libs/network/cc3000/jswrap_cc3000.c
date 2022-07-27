@@ -166,7 +166,8 @@ bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callbac
   "name" : "disconnect",
   "generate" : "jswrap_wlan_disconnect"
 }
-Completely uninitialise and power down the CC3000. After this you'll have to use ```require("CC3000").connect()``` again.
+Completely uninitialise and power down the CC3000. After this you'll have to use
+```require("CC3000").connect()``` again.
 */
 void jswrap_wlan_disconnect(JsVar *wlanObj) {
   JsNetwork net;
@@ -186,7 +187,8 @@ void jswrap_wlan_disconnect(JsVar *wlanObj) {
   "name" : "reconnect",
   "generate" : "jswrap_wlan_reconnect"
 }
-Completely uninitialise and power down the CC3000, then reconnect to the old access point.
+Completely uninitialise and power down the CC3000, then reconnect to the old
+access point.
 */
 void jswrap_wlan_reconnect(JsVar *wlanObj) {
   JsNetwork net;
@@ -262,9 +264,11 @@ static void _wlan_getIP_set_address(JsVar *options, char *name, unsigned char *p
   ],
   "return" : ["bool","True on success"]
 }
-Set the current IP address for get an IP from DHCP (if no options object is specified).
+Set the current IP address for get an IP from DHCP (if no options object is
+specified).
 
-**Note:** Changes are written to non-volatile memory, but will only take effect after calling `wlan.reconnect()`
+**Note:** Changes are written to non-volatile memory, but will only take effect
+after calling `wlan.reconnect()`
 */
 bool jswrap_wlan_setIP(JsVar *wlanObj, JsVar *options) {
   NOT_USED(wlanObj);

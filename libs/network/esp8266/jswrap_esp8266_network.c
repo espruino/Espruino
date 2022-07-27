@@ -218,8 +218,11 @@ static char macFmt[] = "%02x:%02x:%02x:%02x:%02x:%02x";
    "type": "library",
    "class": "ESP8266"
 }
-The ESP8266 library is specific to the ESP8266 version of Espruino, i.e., running Espruino on an ESP8266 module (not to be confused with using the ESP8266 as Wifi add-on to an Espruino board).  This library contains functions to handle ESP8266-specific actions.
-For example: `var esp8266 = require('ESP8266'); esp8266.reboot();` performs a hardware reset of the module.
+The ESP8266 library is specific to the ESP8266 version of Espruino, i.e.,
+running Espruino on an ESP8266 module (not to be confused with using the ESP8266
+as Wifi add-on to an Espruino board). This library contains functions to handle
+ESP8266-specific actions. For example: `var esp8266 = require('ESP8266');
+esp8266.reboot();` performs a hardware reset of the module.
 */
 
 /** Get the global object for the Wifi library/module, this is used in order to send the
@@ -1255,8 +1258,9 @@ void   jswrap_ESP8266_wifi_init1() {
   "generate":"jswrap_ESP8266_wifi_soft_init"
 }
 
-// This function is called in soft_init to hook-up the network. This happens from user_main's
-// init_done() and also from `reset()` in order to re-hook-up the network.
+// This function is called in soft_init to hook-up the network. This happens
+from user_main's // init_done() and also from `reset()` in order to re-hook-up
+the network.
 */
 void jswrap_ESP8266_wifi_soft_init() {
   DBGV("> Wifi.soft_init\n");
@@ -1283,7 +1287,8 @@ void jswrap_ESP8266_wifi_soft_init() {
 }
 **DEPRECATED** - please use `Wifi.ping` instead.
 
-Perform a network ping request. The parameter can be either a String or a numeric IP address.
+Perform a network ping request. The parameter can be either a String or a
+numeric IP address.
 */
 void jswrap_wifi_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.

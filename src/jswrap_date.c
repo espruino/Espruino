@@ -223,13 +223,13 @@ static CalendarDate getCalendarDateFromDateVar(JsVar *date, bool forceGMT) {
 }
 The built-in class for handling Dates.
 
-**Note:** By default the time zone is GMT+0, however you can change the
-timezone using the `E.setTimeZone(...)` function.
+**Note:** By default the time zone is GMT+0, however you can change the timezone
+using the `E.setTimeZone(...)` function.
 
 For example `E.setTimeZone(1)` will be GMT+0100
 
-*However* if you have daylight savings time set with `E.setDST(...)` then the timezone set
-by `E.setTimeZone(...)` will be _ignored_.
+*However* if you have daylight savings time set with `E.setDST(...)` then the
+timezone set by `E.setTimeZone(...)` will be _ignored_.
 
  */
 
@@ -240,7 +240,8 @@ by `E.setTimeZone(...)` will be _ignored_.
   "generate" : "jswrap_date_now",
   "return" : ["float",""]
 }
-Get the number of milliseconds elapsed since 1970 (or on embedded platforms, since startup)
+Get the number of milliseconds elapsed since 1970 (or on embedded platforms,
+since startup)
  */
 JsVarFloat jswrap_date_now() {
   // Not quite sure why we need this, but (JsVarFloat)jshGetSystemTime() / (JsVarFloat)jshGetTimeFromMilliseconds(1) in inaccurate on STM32
@@ -676,7 +677,8 @@ JsVarFloat jswrap_date_setFullYear(JsVar *parent, int yearValue, JsVar *monthVal
 }
 Converts to a String, eg: `Fri Jun 20 2014 14:52:20 GMT+0000`
 
- **Note:** This uses whatever timezone was set with `E.setTimeZone()` or `E.setDST()`
+ **Note:** This uses whatever timezone was set with `E.setTimeZone()` or
+ `E.setDST()`
 */
 JsVar *jswrap_date_toString(JsVar *parent) {
   TimeInDay time = getTimeFromDateVar(parent, false/*system timezone*/);
@@ -752,7 +754,8 @@ JsVar *jswrap_date_toISOString(JsVar *parent) {
   "return" : ["JsVar","A String"],
   "typescript" : "toLocalISOString(): string;"
 }
-Converts to a ISO 8601 String (with timezone information), eg: `2014-06-20T14:52:20.123-0500`
+Converts to a ISO 8601 String (with timezone information), eg:
+`2014-06-20T14:52:20.123-0500`
  */
 JsVar *jswrap_date_toLocalISOString(JsVar *parent) {
   TimeInDay time = getTimeFromDateVar(parent, false/*system timezone*/);
@@ -834,7 +837,8 @@ static bool _parse_time(TimeInDay *time, int initialChars) {
   "return" : ["float","The number of milliseconds since 1970"],
   "typescript" : "parse(str: string): number;"
 }
-Parse a date string and return milliseconds since 1970. Data can be either '2011-10-20T14:48:00', '2011-10-20' or 'Mon, 25 Dec 1995 13:30:00 +0430' 
+Parse a date string and return milliseconds since 1970. Data can be either
+'2011-10-20T14:48:00', '2011-10-20' or 'Mon, 25 Dec 1995 13:30:00 +0430'
  */
 JsVarFloat jswrap_date_parse(JsVar *str) {
   if (!jsvIsString(str)) return 0;

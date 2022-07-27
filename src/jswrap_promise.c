@@ -207,8 +207,8 @@ void jspromise_reject(JsVar *promise, JsVar *data) {
   "return" : ["JsVar","A Promise"],
   "typescript": "new<T>(executor: (resolve: (value: T) => void, reject: (reason?: any) => void) => void): Promise<T>;"
 }
-Create a new Promise. The executor function is executed immediately (before the constructor even returns)
-and
+Create a new Promise. The executor function is executed immediately (before the
+constructor even returns) and
  */
 JsVar *jswrap_promise_constructor(JsVar *executor) {
   JsVar *obj = jspromise_create();
@@ -247,8 +247,8 @@ JsVar *jswrap_promise_constructor(JsVar *executor) {
   "return" : ["JsVar","A new Promise"],
   "typescript": "all(promises: Promise<any>[]): Promise<void>;"
 }
-Return a new promise that is resolved when all promises in the supplied
-array are resolved.
+Return a new promise that is resolved when all promises in the supplied array
+are resolved.
 */
 JsVar *jswrap_promise_all(JsVar *arr) {
   if (!jsvIsIterable(arr)) {
@@ -305,8 +305,7 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   "return" : ["JsVar","A new Promise"],
   "typescript": "resolve<T extends any>(promises: T): Promise<T>;"
 }
-Return a new promise that is already resolved (at idle it'll
-call `.then`)
+Return a new promise that is already resolved (at idle it'll call `.then`)
 */
 JsVar *jswrap_promise_resolve(JsVar *data) {
   JsVar *promise = 0;
@@ -340,8 +339,7 @@ JsVar *jswrap_promise_resolve(JsVar *data) {
   ],
   "return" : ["JsVar","A new Promise"]
 }
-Return a new promise that is already rejected (at idle it'll
-call `.catch`)
+Return a new promise that is already rejected (at idle it'll call `.catch`)
 */
 JsVar *jswrap_promise_reject(JsVar *data) {
   JsVar *promise = jspromise_create();

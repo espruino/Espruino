@@ -38,7 +38,8 @@ const Pin PIXL_IO_PINS[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
     "type": "class",
     "class" : "Pixl"
 }
-Class containing utility functions for [Pixl.js](http://www.espruino.com/Pixl.js)
+Class containing utility functions for
+[Pixl.js](http://www.espruino.com/Pixl.js)
 */
 
 /*JSON{
@@ -50,8 +51,8 @@ Class containing utility functions for [Pixl.js](http://www.espruino.com/Pixl.js
 }
 DEPRECATED - Please use `E.getBattery()` instead.
 
-Return an approximate battery percentage remaining based on
-a normal CR2032 battery (2.8 - 2.2v)
+Return an approximate battery percentage remaining based on a normal CR2032
+battery (2.8 - 2.2v)
 */
 JsVarInt jswrap_pixljs_getBattery() {
   JsVarFloat v = jshReadVRef();
@@ -71,7 +72,8 @@ JsVarInt jswrap_pixljs_getBattery() {
   "ifdef" : "PIXLJS",
   "return" : ["pin",""]
 }
-The pin marked SDA on the Arduino pin footprint. This is connected directly to pin A4.
+The pin marked SDA on the Arduino pin footprint. This is connected directly to
+pin A4.
 */
 /*JSON{
   "type" : "variable",
@@ -80,7 +82,8 @@ The pin marked SDA on the Arduino pin footprint. This is connected directly to p
   "ifdef" : "PIXLJS",
   "return" : ["pin",""]
 }
-The pin marked SDA on the Arduino pin footprint. This is connected directly to pin A5.
+The pin marked SDA on the Arduino pin footprint. This is connected directly to
+pin A5.
 */
 
 
@@ -491,7 +494,8 @@ bool jswrap_pixljs_idle() {
     "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
     "typescript" : "menu(menu: Menu): MenuInstance;"
 }
-Display a menu on Pixl.js's screen, and set up the buttons to navigate through it.
+Display a menu on Pixl.js's screen, and set up the buttons to navigate through
+it.
 
 DEPRECATED: Use `E.showMenu`
 */
@@ -579,8 +583,8 @@ type MenuInstance = {
 }
 Display a menu on the screen, and set up the buttons to navigate through it.
 
-Supply an object containing menu items. When an item is selected, the
-function it references will be executed. For example:
+Supply an object containing menu items. When an item is selected, the function
+it references will be executed. For example:
 
 ```
 var boolean = false;
@@ -614,8 +618,8 @@ var submenu = {
 E.showMenu(mainmenu);
 ```
 
-The menu will stay onscreen and active until explicitly removed,
-which you can do by calling `E.showMenu()` without arguments.
+The menu will stay onscreen and active until explicitly removed, which you can
+do by calling `E.showMenu()` without arguments.
 
 See http://www.espruino.com/graphical_menu for more detailed information.
 */
@@ -659,12 +663,11 @@ E.showMessage("These are\nLots of\nLines","My Title")
     ]
 }
 
-Displays a full screen prompt on the screen, with the buttons
-requested (or `Yes` and `No` for defaults).
+Displays a full screen prompt on the screen, with the buttons requested (or
+`Yes` and `No` for defaults).
 
-When the button is pressed the promise is resolved with the
-requested values (for the `Yes` and `No` defaults, `true` and `false`
-are returned).
+When the button is pressed the promise is resolved with the requested values
+(for the `Yes` and `No` defaults, `true` and `false` are returned).
 
 ```
 E.showPrompt("Do you like fish?").then(function(v) {

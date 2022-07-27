@@ -178,7 +178,8 @@ Class containing utility functions for accessing IO on the hexagonal badge
 }
 Capacitive sense - the higher the capacitance, the higher the number returned.
 
-Supply a corner number between 1 and 6, and an integer value will be returned that is proportional to the capacitance
+Supply a corner number between 1 and 6, and an integer value will be returned
+that is proportional to the capacitance
 */
 int jswrap_badge_capSense(int corner) {
   if (corner>=1 && corner<=6) {
@@ -194,8 +195,8 @@ int jswrap_badge_capSense(int corner) {
     "generate" : "jswrap_badge_getBatteryPercentage",
     "return" : ["int", "A percentage between 0 and 100" ]
 }
-Return an approximate battery percentage remaining based on
-a normal CR2032 battery (2.8 - 2.2v)
+Return an approximate battery percentage remaining based on a normal CR2032
+battery (2.8 - 2.2v)
 */
 int jswrap_badge_getBatteryPercentage() {
   JsVarFloat v = jswrap_ble_getBattery();
@@ -246,7 +247,7 @@ void badge_lcd_flip(JsVar *g) {
       ["c","float","Contrast between 0 and 1"]
     ]
 }
-Set the LCD's contrast */
+Set the LCD's contrast*/
 void jswrap_badge_setContrast(JsVarFloat c) {
   if (c<0) c=0;
   if (c>1) c=1;

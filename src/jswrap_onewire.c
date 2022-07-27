@@ -21,7 +21,8 @@
   "type" : "class",
   "class" : "OneWire"
 }
-This class provides a software-defined OneWire master. It is designed to be similar to Arduino's OneWire library.
+This class provides a software-defined OneWire master. It is designed to be
+similar to Arduino's OneWire library.
  */
 
 static Pin onewire_getpin(JsVar *parent) {
