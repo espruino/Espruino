@@ -701,7 +701,7 @@ JsVarFloat jswrap_ble_getBattery() {
     "generate" : "jswrap_ble_setAdvertising",
     "params" : [
       ["data","JsVar","The service data to advertise as an object - see below for more info"],
-      ["options","JsVar","An optional object of options"]
+      ["options","JsVar","[optional] Object of options"]
     ]
 }
 Change the data that Espruino advertises.
@@ -1185,6 +1185,7 @@ void jswrap_ble_setScanResponse(JsVar *data) {
   }
 }
 
+// TODO TypeScript improve
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
@@ -1192,8 +1193,9 @@ void jswrap_ble_setScanResponse(JsVar *data) {
     "generate" : "jswrap_ble_setServices",
     "params" : [
       ["data","JsVar","The service (and characteristics) to advertise"],
-      ["options","JsVar","Optional object containing options"]
-    ]
+      ["options","JsVar","[optional] Object containing options"]
+    ],
+    "typescript" : "setServices(data: { [key: number]: { [key: number]: { value?: string, maxLen?: number, broadcast?: boolean, readable?: boolean, writable?: boolean, notify?: boolean, indicate?: boolean, description?: string, security?: { read?: { encrypted?: boolean, mitm?: boolean, lesc?: boolean, signed?: boolean }, write?: { encrypted?: boolean, mitm?: boolean, lesc?: boolean, signed?: boolean } }, onWrite?: (evt: { data: ArrayBuffer }) => void } } }, options?: any): void;"
 }
 
 Change the services and characteristics Espruino advertises.
@@ -1994,7 +1996,7 @@ JsVar *jswrap_ble_filterDevices(JsVar *devices, JsVar *filters) {
       ["callback","JsVar","The callback to call with received advertising packets (as `BluetoothDevice`), or undefined to stop"],
       ["options","JsVar","[optional] A time in milliseconds to scan for (defaults to 2000), Or an optional object `{filters: ..., timeout : ..., active: bool}` (as would be passed to `NRF.requestDevice`) to filter devices by"]
     ],
-    "typescript" : "findDevices(callback: (devices: BluetoothDevice[]) => void, options?: number | { filters?: NRFFilters, timeout?: number, active?: boolean }): void;"
+    "typescript" : "findDevices(callback: (devices: BluetoothDevice[]) => void, options?: number | { filters?: NRFFilters[], timeout?: number, active?: boolean }): void;"
 }
 Utility function to return a list of BLE devices detected in range. Behind the
 scenes, this uses `NRF.setScan(...)` and collates the results.
@@ -3016,7 +3018,7 @@ type NRFFilters = {
     "params" : [
       ["options","JsVar","Options used to filter the device to use"]
     ],
-    "typescript" : "requestDevice(options?: { filters?: NRFFilters, timeout?: number, active?: boolean, phy?: string, extended?: boolean }): Promise<any>;",
+    "typescript" : "requestDevice(options?: { filters?: NRFFilters[], timeout?: number, active?: boolean, phy?: string, extended?: boolean }): Promise<any>;",
     "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when the connection is complete" ],
     "return_object" : "Promise"
 }

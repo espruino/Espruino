@@ -218,6 +218,7 @@ Stop being an access point and disable the AP operation mode. AP mode can be
 re-enabled by calling `startAP`.
 */
 
+// TODO TypeScript: Is authMode an option?
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "Wifi",
@@ -228,7 +229,7 @@ re-enabled by calling `startAP`.
     ["options", "JsVar", "Connection options (optional)."],
     ["callback", "JsVar", "A `callback(err)`  function to be called back on completion. `err` is null on success, or contains an error string on failure."]
   ],
-  "typescript" : "function connect(ssid: string, options?: { password?: string, dnsServers?: string[], channel?: number, bssid?: string }, callback?: (err: string | null) => void): void;"
+  "typescript" : "function connect(ssid: string, options?: { password?: string, dnsServers?: string[], authMode?: string, channel?: number, bssid?: string }, callback?: (err: string | null) => void): void;"
 }
 Connect to an access point as a station. If there is an existing connection to
 an AP it is first disconnected if the SSID or password are different from those
