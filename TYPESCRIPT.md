@@ -97,6 +97,8 @@ Here are some guidelines for making manual declarations:
   with `"[optional]"`. If adding this keyword saves having to declare the
   function manually, add it!
 
+- Include the `declare` keyword in global functions and variables.
+
 - Try to keep argument names the same as the ones specified in the `"param"`
   field. In cases that this isn't possible (with reserved keywords such as
   `function` or `var`) you'll have to change the name a little (for example,
