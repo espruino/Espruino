@@ -481,7 +481,7 @@ the `touch` event are clipped.
   "class" : "Bangle",
   "name" : "stroke",
   "params" : [["event","JsVar","Object of form `{xy:Uint8Array([x1,y1,x2,y2...])}` containing touch coordinates"]],
-  "ifdef" : "BANGLEJS_Q3"
+  "ifdef" : "BANGLEJS_Q3",
   "typescript" : "on(event: \"stroke\", callback: (event: { xy: Uint8Array, stroke?: string }) => void): void;"
 }
 Emitted when the touchscreen is dragged for a large enough distance to count as
