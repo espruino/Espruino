@@ -20,7 +20,7 @@
   "type" : "class",
   "class" : "NodeMCU"
 }
-This is a built-in class to allow you to use the ESP8266 NodeMCU boards's pin
+This is a built-in class to allow you to use the ESP8266 NodeMCU boards' pin
 namings to access pins. It is only available on ESP8266-based boards.
 */
 

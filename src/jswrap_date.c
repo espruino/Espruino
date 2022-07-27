@@ -477,7 +477,7 @@ int jswrap_date_getMonth(JsVar *parent) {
   "generate" : "jswrap_date_getFullYear",
   "return" : ["int32",""]
 }
-The year, eg. 2014
+The year, e.g. 2014
  */
 int jswrap_date_getFullYear(JsVar *parent) {
   return getCalendarDateFromDateVar(parent, false/*system timezone*/).year;
@@ -675,7 +675,7 @@ JsVarFloat jswrap_date_setFullYear(JsVar *parent, int yearValue, JsVar *monthVal
   "return" : ["JsVar","A String"],
   "typescript" : "toString(): string;"
 }
-Converts to a String, eg: `Fri Jun 20 2014 14:52:20 GMT+0000`
+Converts to a String, e.g: `Fri Jun 20 2014 14:52:20 GMT+0000`
 
  **Note:** This uses whatever timezone was set with `E.setTimeZone()` or
  `E.setDST()`
@@ -706,7 +706,7 @@ JsVar *jswrap_date_toString(JsVar *parent) {
   "return" : ["JsVar","A String"],
   "typescript" : "toUTCString(): string;"
 }
-Converts to a String, eg: `Fri, 20 Jun 2014 14:52:20 GMT`
+Converts to a String, e.g: `Fri, 20 Jun 2014 14:52:20 GMT`
 
  **Note:** This always assumes a timezone of GMT
  */
@@ -725,7 +725,7 @@ JsVar *jswrap_date_toUTCString(JsVar *parent) {
   "return" : ["JsVar","A String"],
   "typescript" : "toISOString(): string;"
 }
-Converts to a ISO 8601 String, eg: `2014-06-20T14:52:20.123Z`
+Converts to a ISO 8601 String, e.g: `2014-06-20T14:52:20.123Z`
 
  **Note:** This always assumes a timezone of GMT
  */
@@ -754,7 +754,7 @@ JsVar *jswrap_date_toISOString(JsVar *parent) {
   "return" : ["JsVar","A String"],
   "typescript" : "toLocalISOString(): string;"
 }
-Converts to a ISO 8601 String (with timezone information), eg:
+Converts to a ISO 8601 String (with timezone information), e.g:
 `2014-06-20T14:52:20.123-0500`
  */
 JsVar *jswrap_date_toLocalISOString(JsVar *parent) {

@@ -158,7 +158,7 @@ void jswrap_io_poke(JsVarInt addr, JsVar *data, int wordSize) {
   ],
   "return" : ["float","The analog Value of the Pin between 0 and 1"]
 }
-Get the analog value of the given pin
+Get the analogue value of the given pin
 
 This is different to Arduino which only returns an integer between 0 and 1023
 
@@ -181,7 +181,7 @@ Set the analog Value of a pin. It will be output using PWM.
 
 Objects can contain:
 
-* `freq` - pulse frequency in Hz, eg. ```analogWrite(A0,0.5,{ freq : 10 });``` -
+* `freq` - pulse frequency in Hz, e.g. ```analogWrite(A0,0.5,{ freq : 10 });``` -
   specifying a frequency will force PWM output, even if the pin has a DAC
 * `soft` - boolean, If true software PWM is used if hardware is not available.
 * `forceSoft` - boolean, If true software PWM is used even if hardware PWM or a
@@ -219,7 +219,7 @@ hardware timer to produce accurate pulses, and returns immediately (before the
 pulse has finished). Use `digitalPulse(A0,1,0)` to wait until a previous pulse
 has finished.
 
-eg. `digitalPulse(A0,1,5);` pulses A0 high for 5ms.
+e.g. `digitalPulse(A0,1,5);` pulses A0 high for 5ms.
 `digitalPulse(A0,1,[5,2,4]);` pulses A0 high for 5ms, low for 2ms, and high for
 4ms
 
@@ -285,7 +285,7 @@ Set the digital value of the given pin.
  **Note:** if you didn't call `pinMode` beforehand then this function will also
  reset pin's state to `"output"`
 
-If pin argument is an array of pins (eg. `[A2,A1,A0]`) the value argument will
+If pin argument is an array of pins (e.g. `[A2,A1,A0]`) the value argument will
 be treated as an array of bits where the last array element is the least
 significant bit.
 
@@ -343,7 +343,7 @@ Get the digital value of the given pin.
  **Note:** if you didn't call `pinMode` beforehand then this function will also
  reset pin's state to `"input"`
 
-If the pin argument is an array of pins (eg. `[A2,A1,A0]`) the value returned
+If the pin argument is an array of pins (e.g. `[A2,A1,A0]`) the value returned
 will be an number where the last array element is the least significant bit, for
 example if `A0=A1=1` and `A2=0`, `digitalRead([A2,A1,A0]) == 0b011`
 
@@ -705,7 +705,7 @@ will happen on both edges and there will be no debouncing.
 pin's state to `"input"`
 
 **Note:** The STM32 chip (used in the [Espruino Board](/EspruinoBoard) and
-[Pico](/Pico)) cannot watch two pins with the same number - eg `A0` and `B0`.
+[Pico](/Pico)) cannot watch two pins with the same number - e.g. `A0` and `B0`.
 
 **Note:** On nRF52 chips (used in Puck.js, Pixl.js, MDBT42Q) `setWatch` disables
 the GPIO output on that pin. In order to be able to write to the pin again you

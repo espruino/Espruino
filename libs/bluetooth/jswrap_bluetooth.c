@@ -615,7 +615,7 @@ void jswrap_ble_restart(JsVar *callback) {
 }
 Get this device's default Bluetooth MAC address.
 
-For Puck.js, the last 5 characters of this (eg. `ee:ff`) are used in the
+For Puck.js, the last 5 characters of this (e.g. `ee:ff`) are used in the
 device's advertised Bluetooth name.
 */
 JsVar *jswrap_ble_getAddress() {
@@ -826,7 +826,7 @@ NRF.setAdvertising({},{
 ```
 
 If you're using [EspruinoHub](https://github.com/espruino/EspruinoHub) then it
-will automatically decode this into the folling MQTT topics:
+will automatically decode this into the following MQTT topics:
 
 * `/ble/advertise/ma:c_:_a:dd:re:ss/espruino` -> `{"a":10,"b":15}`
 * `/ble/advertise/ma:c_:_a:dd:re:ss/a` -> `1`
@@ -1738,7 +1738,7 @@ bool jswrap_ble_filter_device(JsVar *filters, JsVar *device) {
 }
 
 Start/stop listening for BLE advertising packets within range. Returns a
-`BluetoothDevice` for each advertsing packet. **By default this is not an active
+`BluetoothDevice` for each advertising packet. **By default this is not an active
 scan, so Scan Response advertising data is not included (see below)**
 
 ```
@@ -2775,7 +2775,7 @@ void jswrap_ble_ancsAction(int uid, bool isPositive) {
     "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when the connection is complete" ],
     "return_object" : "Promise"
 }
-Get ANCS info for a notification, eg:
+Get ANCS info for a notification, e.g.:
 
 
 
@@ -3028,9 +3028,9 @@ here, Espruino will pick the FIRST device it finds, or it'll call `catch`.
 * `filters` - a list of filters that a device must match before it is returned
   (see below)
 * `timeout` - the maximum time to scan for in milliseconds (scanning stops when
-a match is found. eg. `NRF.requestDevice({ timeout:2000, filters: [ ... ] })`
+a match is found. e.g. `NRF.requestDevice({ timeout:2000, filters: [ ... ] })`
 * `active` - whether to perform active scanning (requesting 'scan response'
-packets from any devices that are found). eg. `NRF.requestDevice({ active:true,
+packets from any devices that are found). e.g. `NRF.requestDevice({ active:true,
 filters: [ ... ] })`
 * `phy` - (NRF52840 only) use the long-range coded phy (`"1mbps"` default, can
   be `"1mbps/2mbps/both/coded"`)
@@ -3269,7 +3269,7 @@ void jswrap_ble_setWhitelist(bool whitelist) {
     ]
 }
 When connected, Bluetooth LE devices communicate at a set interval. Lowering the
-interval (eg. more packets/second) means a lower delay when sending data, higher
+interval (e.g. more packets/second) means a lower delay when sending data, higher
 bandwidth, but also more power consumption.
 
 By default, when connected as a peripheral Espruino automatically adjusts the
@@ -3358,7 +3358,7 @@ NRF.setSecurity({passkey:"123456", mitm:1, display:1});
 ```
 
 However, while most devices will request a passkey for pairing at this point it
-is still possible for a device to connect without requiring one (eg. using the
+is still possible for a device to connect without requiring one (e.g. using the
 'NRF Connect' app).
 
 

@@ -217,7 +217,7 @@ JsVarFloat jswrap_parseFloat(JsVar *v) {
   ],
   "return" : ["bool","True is the value is a Finite number, false if not."]
 }
-Is the parameter a finite num,ber or not? If needed, the parameter is first
+Is the parameter a finite number or not? If needed, the parameter is first
 converted to a number.
  */
 bool jswrap_isFinite(JsVar *v) {
