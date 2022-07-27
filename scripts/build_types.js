@@ -111,7 +111,7 @@ function getBasicType(type) {
   if (type == "JsVarArray") return "any";
   if (type == "JsVar") return "any";
   if (type == "Array") return "any[]";
-  if (type == "Promise") return "Promise<any>";
+  if (type == "Promise") return "Promise<void>";
   return type;
 }
 
