@@ -488,7 +488,8 @@ bool jswrap_pixljs_idle() {
     "params" : [
       ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
     ],
-    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ]
+    "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
+    "typescript" : "menu(menu: Menu): MenuInstance;"
 }
 Display a menu on Pixl.js's screen, and set up the buttons to navigate through it.
 
@@ -542,11 +543,13 @@ type MenuOptions = {
  * Object containing data about a menu to pass to `E.showMenu`.
  *\/
 type Menu = {
+  ""?: MenuOptions;
   [key: string]:
     | MenuOptions
     | (() => void)
     | MenuBooleanItem
     | MenuNumberItem
+    | { value: string; onchange?: () => void }
     | undefined;
 };
 
@@ -569,7 +572,10 @@ type MenuInstance = {
       ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
     ],
     "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
-    "typescript": "showMenu(menu: Menu): MenuInstance;"
+    "typescript": [
+      "showMenu(menu: Menu): MenuInstance;",
+      "showMenu(): void;"
+    ]
 }
 Display a menu on the screen, and set up the buttons to navigate through it.
 
@@ -623,7 +629,8 @@ See http://www.espruino.com/graphical_menu for more detailed information.
       ["message","JsVar","A message to display. Can include newlines"],
       ["title","JsVar","(optional) a title for the message"]
     ],
-    "ifdef" : "PIXLJS"
+    "ifdef" : "PIXLJS",
+    "typescript" : "showMessage(message: string, title?: string): void;"
 }
 
 A utility function for displaying a full screen message on the screen.
@@ -645,7 +652,11 @@ E.showMessage("These are\nLots of\nLines","My Title")
       ["options","JsVar","(optional) an object of options (see below)"]
     ],
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
-    "ifdef" : "PIXLJS"
+    "ifdef" : "PIXLJS",
+    "typescript" : [
+      "showPrompt<T = boolean>(message: string, options?: { title?: string, buttons?: { [key: string]: T } }): Promise<T>;",
+      "showPrompt(): void;"
+    ]
 }
 
 Displays a full screen prompt on the screen, with the buttons
@@ -691,7 +702,8 @@ The second `options` argument can contain:
       ["options","JsVar","(optional) a title for the message"]
     ],
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
-    "ifdef" : "PIXLJS"
+    "ifdef" : "PIXLJS",
+    "typescript" : "showAlert(message?: string, options?: string): Promise<void>;"
 }
 
 Displays a full screen prompt on the screen, with a single 'Ok' button.
