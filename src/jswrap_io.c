@@ -296,7 +296,7 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
     ["pin",   "JsVar","The pin to use"],
     ["value", "int","Whether to pulse high (true) or low (false)"]
   ],
-  "typescript" : "declare function digitalWrite(pin: Pin, value: typeof HIGH | typeof LOW): void;"
+  "typescript" : "declare function digitalWrite(pin: Pin, value: boolean): void;"
 }
 Set the digital value of the given pin.
 
