@@ -14,7 +14,6 @@ BangleApps repository!
 
 **Note**: The script currently only works if this repository and `BangleApps`
 are in the same directory on your file system.
-in the same folder do:
 
 ## Making manual declarations
 
