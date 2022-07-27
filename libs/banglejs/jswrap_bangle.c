@@ -481,7 +481,7 @@ the `touch` event are clipped.
   "class" : "Bangle",
   "name" : "stroke",
   "params" : [["event","JsVar","Object of form `{xy:Uint8Array([x1,y1,x2,y2...])}` containing touch coordinates"]],
-  "ifdef" : "BANGLEJS2",
+  "ifdef" : "BANGLEJS_Q3"
   "typescript" : "on(event: \"stroke\", callback: (event: { xy: Uint8Array, stroke?: string }) => void): void;"
 }
 Emitted when the touchscreen is dragged for a large enough distance to count as
@@ -2075,6 +2075,33 @@ void jswrap_banglejs_setLCDOffset(int y) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
+    "name" : "setLCDOverlay",
+    "generate" : "jswrap_banglejs_setLCDOverlay",
+    "params" : [
+      ["img","JsVar","An image"],
+      ["x","int","The X offset the graphics instance should be overlaid on the screen with"],
+      ["y","int","The Y offset the graphics instance should be overlaid on the screen with"]
+    ],
+    "ifdef" : "BANGLEJS_Q3"
+}
+Overlay a graphics instance on top of the contents of the graphics buffer.
+
+This only works on Bangle.js 2 because Bangle.js 1 doesn't have an offscreen buffer accessible from the CPU.
+*/
+void jswrap_banglejs_setLCDOverlay(JsVar *imgVar, int x, int y) {
+#ifdef LCD_CONTROLLER_LPM013M126
+  lcdMemLCD_setOverlay(imgVar, x, y);
+  // set all as modified
+  graphicsInternal.data.modMinX = 0;
+  graphicsInternal.data.modMinY = 0;
+  graphicsInternal.data.modMaxX = LCD_WIDTH-1;
+  graphicsInternal.data.modMaxY = LCD_HEIGHT-1;
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
     "name" : "setLCDTimeout",
     "generate" : "jswrap_banglejs_setLCDTimeout",
     "params" : [
@@ -3603,6 +3630,10 @@ void jswrap_banglejs_kill() {
 #ifdef BTN5_PININDEX
   jshPinWatch(BTN5_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN5_PININDEX,false);
+#endif
+#ifdef LCD_CONTROLLER_LPM013M126
+  // ensure we remove any overlay we might have set
+  lcdMemLCD_setOverlay(NULL, 0, 0);
 #endif
   // Graphics var is getting removed, so set this to null.
   jsvUnLock(graphicsInternal.graphicsVar);
