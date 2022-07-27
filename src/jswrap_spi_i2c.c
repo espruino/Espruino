@@ -24,7 +24,8 @@
   "type" : "class",
   "class" : "SPI"
 }
-This class allows use of the built-in SPI ports. Currently it is SPI master only.
+This class allows use of the built-in SPI ports. Currently it is SPI master
+only.
  */
 
 /*JSON{
@@ -59,7 +60,8 @@ The third SPI port
   "generate" : "jswrap_spi_constructor",
   "return" : ["JsVar","A SPI object"]
 }
-Create a software SPI port. This has limited functionality (no baud rate), but it can work on any pins.
+Create a software SPI port. This has limited functionality (no baud rate), but
+it can work on any pins.
 
 Use `SPI.setup` to configure this port.
  */
@@ -107,13 +109,21 @@ Options can contain the following (defaults are shown where relevant):
 }
 ```
 
-If `sck`,`miso` and `mosi` are left out, they will automatically be chosen. However if one or more is specified then the unspecified pins will not be set up.
+If `sck`,`miso` and `mosi` are left out, they will automatically be chosen.
+However if one or more is specified then the unspecified pins will not be set
+up.
 
-You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `SPI` marker. Some boards such as those based on `nRF52` chips can have SPI on any pins, so don't have specific markings.
+You can find out which pins to use by looking at [your board's reference
+page](#boards) and searching for pins with the `SPI` marker. Some boards such as
+those based on `nRF52` chips can have SPI on any pins, so don't have specific
+markings.
 
-The SPI `mode` is between 0 and 3 - see http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus#Clock_polarity_and_phase
+The SPI `mode` is between 0 and 3 - see
+http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus#Clock_polarity_and_phase
 
-On STM32F1-based parts, you cannot mix AF and non-AF pins (SPI pins are usually grouped on the chip - and you can't mix pins from two groups). Espruino will not warn you about this.
+On STM32F1-based parts, you cannot mix AF and non-AF pins (SPI pins are usually
+grouped on the chip - and you can't mix pins from two groups). Espruino will not
+warn you about this.
 */
 void jswrap_spi_setup(
     JsVar *parent, //!< The variable that is the class instance of this function.
@@ -168,11 +178,16 @@ void jswrap_spi_setup(
   ],
   "return" : ["JsVar","The data that was returned"]
 }
-Send data down SPI, and return the result. Sending an integer will return an integer, a String will return a String, and anything else will return a Uint8Array.
+Send data down SPI, and return the result. Sending an integer will return an
+integer, a String will return a String, and anything else will return a
+Uint8Array.
 
-Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds.
+Sending multiple bytes in one call to send is preferable as they can then be
+transmitted end to end. Using multiple calls to send() will result in
+significantly slower transmission speeds.
 
-For maximum speeds, please pass either Strings or Typed Arrays as arguments. Note that you can even pass arrays of arrays, like `[1,[2,3,4],5]`
+For maximum speeds, please pass either Strings or Typed Arrays as arguments.
+Note that you can even pass arrays of arrays, like `[1,[2,3,4],5]`
 
  */
 typedef struct {
@@ -299,7 +314,8 @@ void jswrap_spi_write_cb(
     ["data","JsVarArray",["One or more items to write. May be ints, strings, arrays, or special objects (see `E.toUint8Array` for more info).","If the last argument is a pin, it is taken to be the NSS pin"]]
   ]
 }
-Write a character or array of characters to SPI - without reading the result back.
+Write a character or array of characters to SPI - without reading the result
+back.
 
 For maximum speeds, please pass either Strings or Typed Arrays as arguments.
  */
@@ -357,9 +373,12 @@ void jswrap_spi_write(
     ["nss_pin","pin","An nSS pin - this will be lowered before SPI output and raised afterwards (optional). There will be a small delay between when this is lowered and when sending starts, and also between sending finishing and it being raised."]
   ]
 }
-Send data down SPI, using 4 bits for each 'real' bit (MSB first). This can be useful for faking one-wire style protocols
+Send data down SPI, using 4 bits for each 'real' bit (MSB first). This can be
+useful for faking one-wire style protocols
 
-Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds.
+Sending multiple bytes in one call to send is preferable as they can then be
+transmitted end to end. Using multiple calls to send() will result in
+significantly slower transmission speeds.
  */
 void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
   if (!jsvIsObject(parent)) return;
@@ -427,9 +446,12 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
     ["nss_pin","pin","An nSS pin - this will be lowered before SPI output and raised afterwards (optional). There will be a small delay between when this is lowered and when sending starts, and also between sending finishing and it being raised"]
   ]
 }
-Send data down SPI, using 8 bits for each 'real' bit (MSB first). This can be useful for faking one-wire style protocols
+Send data down SPI, using 8 bits for each 'real' bit (MSB first). This can be
+useful for faking one-wire style protocols
 
-Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds.
+Sending multiple bytes in one call to send is preferable as they can then be
+transmitted end to end. Using multiple calls to send() will result in
+significantly slower transmission speeds.
  */
 void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
   if (!jsvIsObject(parent)) return;
@@ -487,9 +509,11 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   "type" : "class",
   "class" : "I2C"
 }
-This class allows use of the built-in I2C ports. Currently it allows I2C Master mode only.
+This class allows use of the built-in I2C ports. Currently it allows I2C Master
+mode only.
 
-All addresses are in 7 bit format. If you have an 8 bit address then you need to shift it one bit to the right.
+All addresses are in 7 bit format. If you have an 8 bit address then you need to
+shift it one bit to the right.
  */
 /*JSON{
   "type" : "constructor",
@@ -498,7 +522,8 @@ All addresses are in 7 bit format. If you have an 8 bit address then you need to
   "generate" : "jswrap_i2c_constructor",
   "return" : ["JsVar","An I2C object"]
 }
-Create a software I2C port. This has limited functionality (no baud rate), but it can work on any pins.
+Create a software I2C port. This has limited functionality (no baud rate), but
+it can work on any pins.
 
 Use `I2C.setup` to configure this port.
  */
@@ -559,7 +584,8 @@ The third I2C port
 }
 Set up this I2C port
 
-If not specified in options, the default pins are used (usually the lowest numbered pins on the lowest port that supports this peripheral)
+If not specified in options, the default pins are used (usually the lowest
+numbered pins on the lowest port that supports this peripheral)
  */
 void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
   if (!jsvIsObject(parent)) return;
@@ -621,7 +647,8 @@ static NO_INLINE int i2c_get_address(JsVar *address, bool *sendStop) {
     ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or special objects (see `E.toUint8Array` for more info)."]
   ]
 }
-Transmit to the slave device with the given address. This is like Arduino's beginTransmission, write, and endTransmission rolled up into one.
+Transmit to the slave device with the given address. This is like Arduino's
+beginTransmission, write, and endTransmission rolled up into one.
  */
 
 void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
@@ -663,7 +690,9 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
   "return" : ["JsVar","The data that was returned - as a Uint8Array"],
   "return_object" : "Uint8Array"
 }
-Request bytes from the given slave device, and return them as a Uint8Array (packed array of bytes). This is like using Arduino Wire's requestFrom, available and read functions.  Sends a STOP
+Request bytes from the given slave device, and return them as a Uint8Array
+(packed array of bytes). This is like using Arduino Wire's requestFrom,
+available and read functions. Sends a STOP
  */
 JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
   if (!jsvIsObject(parent)) return 0;

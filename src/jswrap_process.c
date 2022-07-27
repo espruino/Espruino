@@ -37,10 +37,12 @@ This class contains information about Espruino itself
   "name" : "uncaughtException",
   "params" : [["exception","JsVar","The uncaught exception"]]
 }
-This event is called when an exception gets thrown and isn't caught (eg. it gets all the way back to the event loop).
+This event is called when an exception gets thrown and isn't caught (eg. it gets
+all the way back to the event loop).
 
-You can use this for logging potential problems that might occur during execution when you
-might not be able to see what is written to the console, for example:
+You can use this for logging potential problems that might occur during
+execution when you might not be able to see what is written to the console, for
+example:
 
 ```
 var lastError;
@@ -54,8 +56,8 @@ function checkError() {
 }
 ```
 
-**Note:** When this is used, exceptions will cease to be reported on the console - which
-may make debugging difficult!
+**Note:** When this is used, exceptions will cease to be reported on the
+console - which may make debugging difficult!
 */
 
 /*JSON{
@@ -108,15 +110,21 @@ Returns an Object containing various pre-defined variables.
 * `RAM` - total amount of on-chip RAM in bytes
 * `FLASH` - total amount of on-chip flash memory in bytes
 * `SPIFLASH` - (on Bangle.js) total amount of off-chip flash memory in bytes
-* `HWVERSION` - For Puck.js this is the board revision (1, 2, 2.1), or for Bangle.js it's 1 or 2
+* `HWVERSION` - For Puck.js this is the board revision (1, 2, 2.1), or for
+  Bangle.js it's 1 or 2
 * `STORAGE` - memory in bytes dedicated to the `Storage` module
 * `SERIAL` - the serial number of this chip
-* `CONSOLE` - the name of the current console device being used (`Serial1`, `USB`, `Bluetooth`, etc)
+* `CONSOLE` - the name of the current console device being used (`Serial1`,
+  `USB`, `Bluetooth`, etc)
 * `MODULES` - a list of built-in modules separated by commas
-* `EXPTR` - The address of the `exportPtrs` structure in flash (this includes links to built-in functions that compiled JS code needs)
-* `APP_RAM_BASE` - On nRF5x boards, this is the RAM required by the Softdevice *if it doesn't exactly match what was allocated*. You can use this to update `LD_APP_RAM_BASE` in the `BOARD.py` file
+* `EXPTR` - The address of the `exportPtrs` structure in flash (this includes
+  links to built-in functions that compiled JS code needs)
+* `APP_RAM_BASE` - On nRF5x boards, this is the RAM required by the Softdevice
+  *if it doesn't exactly match what was allocated*. You can use this to update
+  `LD_APP_RAM_BASE` in the `BOARD.py` file
 
-For example, to get a list of built-in modules, you can use `process.env.MODULES.split(',')`
+For example, to get a list of built-in modules, you can use
+`process.env.MODULES.split(',')`
 */
 JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewObject();
@@ -163,22 +171,33 @@ JsVar *jswrap_process_env() {
   ],
   "return" : ["JsVar","Information about memory usage"]
 }
-Run a Garbage Collection pass, and return an object containing information on memory usage.
+Run a Garbage Collection pass, and return an object containing information on
+memory usage.
 
-* `free`  : Memory that is available to be used (in blocks)
+* `free` : Memory that is available to be used (in blocks)
 * `usage` : Memory that has been used (in blocks)
 * `total` : Total memory (in blocks)
-* `history` : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'
-* `gc`      : Memory freed during the GC pass
-* `gctime`  : Time taken for GC pass (in milliseconds)
+* `history` : Memory used for command history - that is freed if memory is low.
+  Note that this is INCLUDED in the figure for 'free'
+* `gc` : Memory freed during the GC pass
+* `gctime` : Time taken for GC pass (in milliseconds)
 * `blocksize` : Size of a block (variable) in bytes
-* `stackEndAddress` : (on ARM) the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion the bytes above this can be used.
-* `flash_start`      : (on ARM) the address of the start of flash memory (usually `0x8000000`)
-* `flash_binary_end` : (on ARM) the address in flash memory of the end of Espruino's firmware.
-* `flash_code_start` : (on ARM) the address in flash memory of pages that store any code that you save with `save()`.
-* `flash_length` : (on ARM) the amount of flash memory this firmware was built for (in bytes). **Note:** Some STM32 chips actually have more memory than is advertised.
+* `stackEndAddress` : (on ARM) the address (that can be used with peek/poke/etc)
+  of the END of the stack. The stack grows down, so unless you do a lot of
+  recursion the bytes above this can be used.
+* `flash_start` : (on ARM) the address of the start of flash memory (usually
+  `0x8000000`)
+* `flash_binary_end` : (on ARM) the address in flash memory of the end of
+  Espruino's firmware.
+* `flash_code_start` : (on ARM) the address in flash memory of pages that store
+  any code that you save with `save()`.
+* `flash_length` : (on ARM) the amount of flash memory this firmware was built
+  for (in bytes). **Note:** Some STM32 chips actually have more memory than is
+  advertised.
 
-Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). The actual size is available in `blocksize`. See http://www.espruino.com/Performance for more information.
+Memory units are specified in 'blocks', which are around 16 bytes each
+(depending on your device). The actual size is available in `blocksize`. See
+http://www.espruino.com/Performance for more information.
 
 **Note:** To find free areas of flash memory, see `require('Flash').getFree()`
  */

@@ -64,7 +64,8 @@ void jswrap_net_kill() {
   "type" : "class",
   "class" : "url"
 }
-This class helps to convert URLs into Objects of information ready for http.request/get
+This class helps to convert URLs into Objects of information ready for
+http.request/get
 */
 
 
@@ -83,7 +84,8 @@ A utility function to split a URL into parts
 
 This is useful in web servers for instance when handling a request.
 
-For instance `url.parse("/a?b=c&d=e",true)` returns `{"method":"GET","host":"","path":"/a?b=c&d=e","pathname":"/a","search":"?b=c&d=e","port":80,"query":{"b":"c","d":"e"}}`
+For instance `url.parse("/a?b=c&d=e",true)` returns
+`{"method":"GET","host":"","path":"/a?b=c&d=e","pathname":"/a","search":"?b=c&d=e","port":80,"query":{"b":"c","d":"e"}}`
 */
 JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
   if (!jsvIsString(url)) return 0;
@@ -219,7 +221,9 @@ This library allows you to create TCPIP servers and clients
 
 In order to use this, you will need an extra module to get network connectivity.
 
-This is designed to be a cut-down version of the [node.js library](http://nodejs.org/api/net.html). Please see the [Internet](/Internet) page for more information on how to use it.
+This is designed to be a cut-down version of the [node.js
+library](http://nodejs.org/api/net.html). Please see the [Internet](/Internet)
+page for more information on how to use it.
 */
 
 /*JSON{
@@ -244,7 +248,9 @@ An actual socket connection - allowing transmit/receive of TCP data
     ["data","JsVar","A string containing one or more characters of received data"]
   ]
 }
-The 'data' event is called when data is received. If a handler is defined with `X.on('data', function(data) { ... })` then it will be called, otherwise data will be stored in an internal buffer, where it can be retrieved with `X.read()`
+The 'data' event is called when data is received. If a handler is defined with
+`X.on('data', function(data) { ... })` then it will be called, otherwise data
+will be stored in an internal buffer, where it can be retrieved with `X.read()`
 */
 /*JSON{
   "type" : "event",
@@ -264,10 +270,12 @@ Called when the connection closes.
     ["details","JsVar","An error object with an error code (a negative integer) and a message."]
   ]
 }
-There was an error on this socket and it is closing (or wasn't opened in the first place). If a "connected" event was issued on this socket then the error event is always followed by a close event.
-The error codes are:
+There was an error on this socket and it is closing (or wasn't opened in the
+first place). If a "connected" event was issued on this socket then the error
+event is always followed by a close event. The error codes are:
 
-* -1: socket closed (this is not really an error and will not cause an error callback)
+* -1: socket closed (this is not really an error and will not cause an error
+  callback)
 * -2: out of memory (typically while allocating a buffer to hold data)
 * -3: timeout
 * -4: no route
@@ -290,7 +298,8 @@ The error codes are:
   "generate" : "jswrap_stream_available",
   "return" : ["int","How many bytes are available"]
 }
-Return how many bytes are available to read. If there is already a listener for data, this will always return 0.
+Return how many bytes are available to read. If there is already a listener for
+data, this will always return 0.
 */
 /*JSON{
   "type" : "method",
@@ -322,7 +331,8 @@ Pipe this to a stream (an object with a 'write' method)
   "class" : "Socket",
   "name" : "drain"
 }
-An event that is fired when the buffer is empty and it can accept more data to send.
+An event that is fired when the buffer is empty and it can accept more data to
+send.
 */
 
 
@@ -344,7 +354,9 @@ An event that is fired when the buffer is empty and it can accept more data to s
 }
 Create a Server
 
-When a request to the server is made, the callback is called. In the callback you can use the methods on the connection to send data. You can also add `connection.on('data',function() { ... })` to listen for received data
+When a request to the server is made, the callback is called. In the callback
+you can use the methods on the connection to send data. You can also add
+`connection.on('data',function() { ... })` to listen for received data
 */
 
 JsVar *jswrap_net_createServer(JsVar *callback) {
@@ -434,7 +446,9 @@ This library allows you to create UDP/DATAGRAM servers and clients
 
 In order to use this, you will need an extra module to get network connectivity.
 
-This is designed to be a cut-down version of the [node.js library](http://nodejs.org/api/dgram.html). Please see the [Internet](/Internet) page for more information on how to use it.
+This is designed to be a cut-down version of the [node.js
+library](http://nodejs.org/api/dgram.html). Please see the [Internet](/Internet)
+page for more information on how to use it.
 */
 
 /*JSON{
@@ -524,7 +538,8 @@ void jswrap_dgram_socket_send(JsVar *parent, JsVar *buffer, JsVar *offset, JsVar
     ["rinfo","JsVar","Sender address,port containing information"]
   ]
 }
-The 'message' event is called when a datagram message is received. If a handler is defined with `X.on('message', function(msg) { ... })` then it will be called`
+The 'message' event is called when a datagram message is received. If a handler
+is defined with `X.on('message', function(msg) { ... })` then it will be called`
 */
 
 /*JSON{
@@ -609,7 +624,9 @@ This library allows you to create TCPIP servers and clients using TLS encryption
 
 In order to use this, you will need an extra module to get network connectivity.
 
-This is designed to be a cut-down version of the [node.js library](http://nodejs.org/api/tls.html). Please see the [Internet](/Internet) page for more information on how to use it.
+This is designed to be a cut-down version of the [node.js
+library](http://nodejs.org/api/tls.html). Please see the [Internet](/Internet)
+page for more information on how to use it.
 */
 
 /*JSON{
@@ -627,7 +644,8 @@ This is designed to be a cut-down version of the [node.js library](http://nodejs
 }
 Create a socket connection using TLS
 
-Options can have `ca`, `key` and `cert` fields, which should be the decoded content of the certificate.
+Options can have `ca`, `key` and `cert` fields, which should be the decoded
+content of the certificate.
 
 ```
 var options = url.parse("localhost:1234");
@@ -637,11 +655,15 @@ options.ca = atob("MIIFgDCC ... GosQML4sc=");
 require("tls").connect(options, ... );
 ```
 
-If you have the certificates as `.pem` files, you need to load these files, take the information between the lines beginning with `----`, remove the newlines from it so you have raw base64, and then feed it into `atob` as above.
+If you have the certificates as `.pem` files, you need to load these files, take
+the information between the lines beginning with `----`, remove the newlines
+from it so you have raw base64, and then feed it into `atob` as above.
 
 You can also:
-* Just specify the filename (<=100 characters) and it will be loaded and parsed if you have an SD card connected. For instance `options.key = "key.pem";`
-* Specify a function, which will be called to retrieve the data.  For instance `options.key = function() { eeprom.load_my_info(); };
+* Just specify the filename (<=100 characters) and it will be loaded and parsed
+  if you have an SD card connected. For instance `options.key = "key.pem";`
+* Specify a function, which will be called to retrieve the data. For instance
+  `options.key = function() { eeprom.load_my_info(); };
 
 For more information about generating and using certificates, see:
 
@@ -710,13 +732,13 @@ void jswrap_net_server_close(JsVar *parent) {
   "return" : ["bool","For node.js compatibility, returns the boolean false. When the send buffer is empty, a `drain` event will be sent"]
 }
 This function writes the `data` argument as a string. Data that is passed in
-(including arrays) will be converted to a string with the normal JavaScript 
+(including arrays) will be converted to a string with the normal JavaScript
 `toString` method.
 
-If you wish to send binary data then you need to convert that data directly to a 
+If you wish to send binary data then you need to convert that data directly to a
 String. This can be done with `String.fromCharCode`, however it's often easier
-and faster to use the Espruino-specific `E.toString`, which will read its arguments
-as an array of bytes and convert that to a String:
+and faster to use the Espruino-specific `E.toString`, which will read its
+arguments as an array of bytes and convert that to a String:
 
 ```
 socket.write(E.toString([0,1,2,3,4,5]));

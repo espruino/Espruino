@@ -26,9 +26,12 @@
 }
 This library allows you to create http servers and make http requests
 
-In order to use this, you will need an extra module to get network connectivity such as the [TI CC3000](/CC3000) or [WIZnet W5500](/WIZnet).
+In order to use this, you will need an extra module to get network connectivity
+such as the [TI CC3000](/CC3000) or [WIZnet W5500](/WIZnet).
 
-This is designed to be a cut-down version of the [node.js library](http://nodejs.org/api/http.html). Please see the [Internet](/Internet) page for more information on how to use it.
+This is designed to be a cut-down version of the [node.js
+library](http://nodejs.org/api/http.html). Please see the [Internet](/Internet)
+page for more information on how to use it.
 */
 
 /*JSON{
@@ -55,7 +58,9 @@ The HTTP server request
     ["data","JsVar","A string containing one or more characters of received data"]
   ]
 }
-The 'data' event is called when data is received. If a handler is defined with `X.on('data', function(data) { ... })` then it will be called, otherwise data will be stored in an internal buffer, where it can be retrieved with `X.read()`
+The 'data' event is called when data is received. If a handler is defined with
+`X.on('data', function(data) { ... })` then it will be called, otherwise data
+will be stored in an internal buffer, where it can be retrieved with `X.read()`
 */
 /*JSON{
   "type" : "event",
@@ -104,7 +109,8 @@ The URL requested in this HTTP request, for instance:
   "generate" : "jswrap_stream_available",
   "return" : ["int","How many bytes are available"]
 }
-Return how many bytes are available to read. If there is already a listener for data, this will always return 0.
+Return how many bytes are available to read. If there is already a listener for
+data, this will always return 0.
 */
 /*JSON{
   "type" : "method",
@@ -144,7 +150,8 @@ The HTTP server response
   "class" : "httpSRs",
   "name" : "drain"
 }
-An event that is fired when the buffer is empty and it can accept more data to send.
+An event that is fired when the buffer is empty and it can accept more data to
+send.
 */
 /*JSON{
   "type" : "event",
@@ -166,14 +173,18 @@ The HTTP client request, returned by `http.request()` and `http.get()`.
   "class" : "httpCRq",
   "name" : "drain"
 }
-An event that is fired when the buffer is empty and it can accept more data to send.
+An event that is fired when the buffer is empty and it can accept more data to
+send.
 */
 /*JSON{
   "type" : "event",
   "class" : "httpCRq",
   "name" : "error"
 }
-An event that is fired if there is an error making the request and the response callback has not been invoked. In this case the error event concludes the request attempt. The error event function receives an error object as parameter with a `code` field and a `message` field.
+An event that is fired if there is an error making the request and the response
+callback has not been invoked. In this case the error event concludes the
+request attempt. The error event function receives an error object as parameter
+with a `code` field and a `message` field.
 */
 
 /*JSON{
@@ -181,7 +192,8 @@ An event that is fired if there is an error making the request and the response 
   "library" : "http",
   "class" : "httpCRs"
 }
-The HTTP client response, passed to the callback of `http.request()` an `http.get()`.
+The HTTP client response, passed to the callback of `http.request()` an
+`http.get()`.
 */
 /*JSON{
   "type" : "event",
@@ -191,21 +203,27 @@ The HTTP client response, passed to the callback of `http.request()` an `http.ge
     ["data","JsVar","A string containing one or more characters of received data"]
   ]
 }
-The 'data' event is called when data is received. If a handler is defined with `X.on('data', function(data) { ... })` then it will be called, otherwise data will be stored in an internal buffer, where it can be retrieved with `X.read()`
+The 'data' event is called when data is received. If a handler is defined with
+`X.on('data', function(data) { ... })` then it will be called, otherwise data
+will be stored in an internal buffer, where it can be retrieved with `X.read()`
 */
 /*JSON{
   "type" : "event",
   "class" : "httpCRs",
   "name" : "close"
 }
-Called when the connection closes with one `hadError` boolean parameter, which indicates whether an error occurred.
+Called when the connection closes with one `hadError` boolean parameter, which
+indicates whether an error occurred.
 */
 /*JSON{
   "type" : "event",
   "class" : "httpCRs",
   "name" : "error"
 }
-An event that is fired if there is an error receiving the response. The error event function receives an error object as parameter with a `code` field and a `message` field. After the error event the close even will also be triggered to conclude the HTTP request/response.
+An event that is fired if there is an error receiving the response. The error
+event function receives an error object as parameter with a `code` field and a
+`message` field. After the error event the close even will also be triggered to
+conclude the HTTP request/response.
 */
 /*JSON{
     "type" : "property",
@@ -250,7 +268,8 @@ The HTTP version reported back by the server - usually `"1.1"`
   "generate" : "jswrap_stream_available",
   "return" : ["int","How many bytes are available"]
 }
-Return how many bytes are available to read. If there is a 'data' event handler, this will always return 0.
+Return how many bytes are available to read. If there is a 'data' event handler,
+this will always return 0.
 */
 /*JSON{
   "type" : "method",
@@ -300,7 +319,9 @@ Pipe this to a stream (an object with a 'write' method)
 }
 Create an HTTP Server
 
-When a request to the server is made, the callback is called. In the callback you can use the methods on the response (`httpSRs`) to send data. You can also add `request.on('data',function() { ... })` to listen for POSTed data
+When a request to the server is made, the callback is called. In the callback
+you can use the methods on the response (`httpSRs`) to send data. You can also
+add `request.on('data',function() { ... })` to listen for POSTed data
 */
 
 JsVar *jswrap_http_createServer(JsVar *callback) {
@@ -326,7 +347,8 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
   "return" : ["JsVar","Returns a new httpCRq object"],
   "return_object" : "httpCRq"
 }
-Create an HTTP Request - `end()` must be called on it to complete the operation. `options` is of the form:
+Create an HTTP Request - `end()` must be called on it to complete the operation.
+`options` is of the form:
 
 ```
 var options = {
@@ -349,12 +371,14 @@ var req = require("http").request(options, function(res) {
 req.end(); // called to finish the HTTP request and get the response
 ```
 
-You can easily pre-populate `options` from a URL using `var options = url.parse("http://www.example.com/foo.html")`
+You can easily pre-populate `options` from a URL using `var options =
+url.parse("http://www.example.com/foo.html")`
 
-There's an example of using [`http.request` for HTTP POST here](/Internet#http-post)
+There's an example of using [`http.request` for HTTP POST
+here](/Internet#http-post)
 
-**Note:** if TLS/HTTPS is enabled, options can have `ca`, `key` and `cert` fields. See `tls.connect` for
-more information about these and how to use them.
+**Note:** if TLS/HTTPS is enabled, options can have `ca`, `key` and `cert`
+fields. See `tls.connect` for more information about these and how to use them.
 
 */
 
@@ -370,7 +394,8 @@ more information about these and how to use them.
   "return" : ["JsVar","Returns a new httpCRq object"],
   "return_object" : "httpCRq"
 }
-Request a webpage over HTTP - a convenience function for `http.request()` that makes sure the HTTP command is 'GET', and that calls `end` automatically.
+Request a webpage over HTTP - a convenience function for `http.request()` that
+makes sure the HTTP command is 'GET', and that calls `end` automatically.
 
 ```
 require("http").get("http://pur3.co.uk/hello.txt", function(res) {
@@ -383,7 +408,8 @@ require("http").get("http://pur3.co.uk/hello.txt", function(res) {
 });
 ```
 
-See `http.request()` and [the Internet page](/Internet) and ` for more usage examples.
+See `http.request()` and [the Internet page](/Internet) and ` for more usage
+examples.
 */
 JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   JsNetwork net;
@@ -469,8 +495,9 @@ The default contents are:
   "return" : ["bool","For node.js compatibility, returns the boolean false. When the send buffer is empty, a `drain` event will be sent"]
 }
 This function writes the `data` argument as a string. Data that is passed in
-(including arrays) will be converted to a string with the normal JavaScript 
-`toString` method. For more information about sending binary data see `Socket.write`
+(including arrays) will be converted to a string with the normal JavaScript
+`toString` method. For more information about sending binary data see
+`Socket.write`
 */
 bool jswrap_httpSRs_write(JsVar *parent, JsVar *data) {
   serverResponseWrite(parent, data);
@@ -504,12 +531,11 @@ void jswrap_httpSRs_end(JsVar *parent, JsVar *data) {
     ["headers","JsVar","An object containing the headers"]
   ]
 }
-Send the given status code and headers. If not explicitly called
-this will be done automatically the first time data is written
-to the response.
+Send the given status code and headers. If not explicitly called this will be
+done automatically the first time data is written to the response.
 
-This cannot be called twice, or after data has already been sent
-in the response.
+This cannot be called twice, or after data has already been sent in the
+response.
 */
 void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
   serverResponseWriteHead(parent, statusCode, headers);
@@ -525,9 +551,11 @@ void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
     ["value","JsVar","The value of the header as a String"]
   ]
 }
-Set a value to send in the header of this HTTP response. This updates the `httpSRs.headers` property.
+Set a value to send in the header of this HTTP response. This updates the
+`httpSRs.headers` property.
 
-Any headers supplied to `writeHead` will overwrite any headers with the same name.
+Any headers supplied to `writeHead` will overwrite any headers with the same
+name.
 */
 void jswrap_httpSRs_setHeader(JsVar *parent, JsVar *name, JsVar *value) {
   serverResponseSetHeader(parent, name, value);
@@ -548,8 +576,9 @@ void jswrap_httpSRs_setHeader(JsVar *parent, JsVar *name, JsVar *value) {
   "return" : ["bool","For node.js compatibility, returns the boolean false. When the send buffer is empty, a `drain` event will be sent"]
 }
 This function writes the `data` argument as a string. Data that is passed in
-(including arrays) will be converted to a string with the normal JavaScript 
-`toString` method. For more information about sending binary data see `Socket.write`
+(including arrays) will be converted to a string with the normal JavaScript
+`toString` method. For more information about sending binary data see
+`Socket.write`
 */
 // Re-use existing
 

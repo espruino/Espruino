@@ -458,7 +458,8 @@ double jswrap_math_sqrt(double x) {
   ],
   "return" : ["float","The value of x, clipped so as not to be below min or above max."]
 }
-DEPRECATED - Please use `E.clip()` instead. Clip a number to be between min and max (inclusive)
+DEPRECATED - Please use `E.clip()` instead. Clip a number to be between min and
+max (inclusive)
 */
 JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
   if (x<min) x=min;
@@ -480,7 +481,8 @@ JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
 }
 DEPRECATED - This is not part of standard JavaScript libraries
 
-Wrap a number around if it is less than 0 or greater than or equal to max. For instance you might do: ```Math.wrap(angleInDegrees, 360)```
+Wrap a number around if it is less than 0 or greater than or equal to max. For
+instance you might do: ```Math.wrap(angleInDegrees, 360)```
 */
 
 /*JSON{

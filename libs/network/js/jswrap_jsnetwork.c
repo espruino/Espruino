@@ -38,7 +38,8 @@ Library that initialises a network device that calls into JavaScript
   ],
   "return" : ["JsVar","The object passed in"]
 }
-Initialise the network using the callbacks given and return the first argument. For instance:
+Initialise the network using the callbacks given and return the first argument.
+For instance:
 
 ```
 require("NetworkJS").create({
@@ -68,8 +69,9 @@ require("NetworkJS").create({
 });
 ```
 
-`socketType` is an integer - 2 for UDP, or see SocketType in https://github.com/espruino/Espruino/blob/master/libs/network/network.h
-for more information.
+`socketType` is an integer - 2 for UDP, or see SocketType in
+https://github.com/espruino/Espruino/blob/master/libs/network/network.h for more
+information.
 */
 JsVar *jswrap_networkjs_create(JsVar *obj) {
   JsNetwork net;

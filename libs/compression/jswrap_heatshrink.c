@@ -25,11 +25,17 @@
   "class" : "heatshrink",
   "ifndef" : "SAVE_ON_FLASH"
 }
-Simple library for compression/decompression using [heatshrink](https://github.com/atomicobject/heatshrink), an [LZSS](https://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Storer%E2%80%93Szymanski) compression tool.
+Simple library for compression/decompression using
+[heatshrink](https://github.com/atomicobject/heatshrink), an
+[LZSS](https://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Storer%E2%80%93Szymanski)
+compression tool.
 
-Espruino uses heatshrink internally to compress RAM down to fit in Flash memory when `save()` is used. This just exposes that functionality.
+Espruino uses heatshrink internally to compress RAM down to fit in Flash memory
+when `save()` is used. This just exposes that functionality.
 
-Functions here take and return buffers of data. There is no support for streaming, so both the compressed and decompressed data must be able to fit in memory at the same time.
+Functions here take and return buffers of data. There is no support for
+streaming, so both the compressed and decompressed data must be able to fit in
+memory at the same time.
 */
 
 

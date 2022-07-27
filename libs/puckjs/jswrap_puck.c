@@ -593,7 +593,8 @@ Class containing [Puck.js's](http://www.puck-js.com) utility functions.
   "ifdef" : "PUCKJS",
   "return" : ["pin",""]
 }
-On Puck.js V2 (not v1.0) this is the pin that controls the FET, for high-powered outputs.
+On Puck.js V2 (not v1.0) this is the pin that controls the FET, for high-powered
+outputs.
 */
 
 /*JSON{
@@ -607,20 +608,20 @@ On Puck.js V2 (not v1.0) this is the pin that controls the FET, for high-powered
 Turn on the magnetometer, take a single reading, and then turn it off again.
 
 An object of the form `{x,y,z}` is returned containing magnetometer readings.
-Due to residual magnetism in the Puck and magnetometer itself, with
-no magnetic field the Puck will not return `{x:0,y:0,z:0}`.
+Due to residual magnetism in the Puck and magnetometer itself, with no magnetic
+field the Puck will not return `{x:0,y:0,z:0}`.
 
-Instead, it's up to you to figure out what the 'zero value' is for your
-Puck in your location and to then subtract that from the value returned. If
-you're not trying to measure the Earth's magnetic field then it's a good idea
-to just take a reading at startup and use that.
+Instead, it's up to you to figure out what the 'zero value' is for your Puck in
+your location and to then subtract that from the value returned. If you're not
+trying to measure the Earth's magnetic field then it's a good idea to just take
+a reading at startup and use that.
 
 With the aerial at the top of the board, the `y` reading is vertical, `x` is
 horizontal, and `z` is through the board.
 
 Readings are in increments of 0.1 micro Tesla (uT). The Earth's magnetic field
-varies from around 25-60 uT, so the reading will vary by 250 to 600 depending
-on location.
+varies from around 25-60 uT, so the reading will vary by 250 to 600 depending on
+location.
 */
 JsVar *jswrap_puck_mag() {
   if (!PUCKJS_HAS_MAG) {
@@ -652,14 +653,17 @@ JsVar *jswrap_puck_mag() {
   "generate" : "jswrap_puck_magTemp",
   "return" : ["float", "Temperature in degrees C" ]
 }
-Turn on the magnetometer, take a single temperature reading from the MAG3110 chip, and then turn it off again.
+Turn on the magnetometer, take a single temperature reading from the MAG3110
+chip, and then turn it off again.
 
 (If the magnetometer is already on, this just returns the last reading obtained)
 
-`E.getTemperature()` uses the microcontroller's temperature sensor, but this uses the magnetometer's.
+`E.getTemperature()` uses the microcontroller's temperature sensor, but this
+uses the magnetometer's.
 
-The reading obtained is an integer (so no decimal places), but the sensitivity is factory trimmed. to 1&deg;C, however the temperature
-offset isn't - so absolute readings may still need calibrating.
+The reading obtained is an integer (so no decimal places), but the sensitivity
+is factory trimmed. to 1&deg;C, however the temperature offset isn't - so
+absolute readings may still need calibrating.
 */
 JsVarFloat jswrap_puck_magTemp() {
   if (!PUCKJS_HAS_MAG) {
@@ -682,13 +686,13 @@ JsVarFloat jswrap_puck_magTemp() {
   "name" : "mag",
   "ifdef" : "PUCKJS"
 }
-Called after `Puck.magOn()` every time magnetometer data
-is sampled. There is one argument which is an object
-of the form `{x,y,z}` containing magnetometer readings
-as integers (for more information see `Puck.mag()`).
+Called after `Puck.magOn()` every time magnetometer data is sampled. There is
+one argument which is an object of the form `{x,y,z}` containing magnetometer
+readings as integers (for more information see `Puck.mag()`).
 
-Check out [the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals)
-for more information.
+Check out [the Puck.js page on the
+magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+information.
  */
 
 /*JSON{
@@ -699,13 +703,13 @@ for more information.
 }
 Only on Puck.js v2.0
 
-Called after `Puck.accelOn()` every time accelerometer data
-is sampled. There is one argument which is an object
-of the form `{acc:{x,y,z}, gyro:{x,y,z}}` containing the data.
+Called after `Puck.accelOn()` every time accelerometer data is sampled. There is
+one argument which is an object of the form `{acc:{x,y,z}, gyro:{x,y,z}}`
+containing the data.
 
-The data is as it comes off the accelerometer and is not
-scaled to 1g. For more information see `Puck.accel()` or
-[the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals).
+The data is as it comes off the accelerometer and is not scaled to 1g. For more
+information see `Puck.accel()` or [the Puck.js page on the
+magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals).
  */
 
 /*JSON{
@@ -718,8 +722,8 @@ scaled to 1g. For more information see `Puck.accel()` or
       ["samplerate","float","The sample rate in Hz, or undefined"]
   ]
 }
-Turn the magnetometer on and start periodic sampling. Samples will then cause
-a 'mag' event on 'Puck':
+Turn the magnetometer on and start periodic sampling. Samples will then cause a
+'mag' event on 'Puck':
 
 ```
 Puck.magOn();
@@ -732,8 +736,9 @@ Puck.on('mag', function(xyz) {
 
 This call will be ignored if the sampling is already on.
 
-If given an argument, the sample rate is set (if not, it's at 0.63 Hz). 
-The sample rate must be one of the following (resulting in the given power consumption):
+If given an argument, the sample rate is set (if not, it's at 0.63 Hz). The
+sample rate must be one of the following (resulting in the given power
+consumption):
 
 * 80 Hz - 900uA
 * 40 Hz - 550uA
@@ -747,12 +752,13 @@ The sample rate must be one of the following (resulting in the given power consu
 * 0.16 Hz - 8uA
 * 0.08 Hz - 8uA
 
-When the battery level drops too low while sampling is turned on,
-the magnetometer may stop sampling without warning, even while other
-Puck functions continue uninterrupted.
+When the battery level drops too low while sampling is turned on, the
+magnetometer may stop sampling without warning, even while other Puck functions
+continue uninterrupted.
 
-Check out [the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals)
-for more information.
+Check out [the Puck.js page on the
+magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+information.
 
 */
 void jswrap_puck_magOn(JsVarFloat hz) {
@@ -819,10 +825,12 @@ void jswrap_puck_magOff() {
     ],
     "ifdef" : "PUCKJS"
 }
-Writes a register on the LIS3MDL / MAX3110 Magnetometer. Can be used for configuring advanced functions.
+Writes a register on the LIS3MDL / MAX3110 Magnetometer. Can be used for
+configuring advanced functions.
 
-Check out [the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals)
-for more information and links to modules that use this function.
+Check out [the Puck.js page on the
+magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+information and links to modules that use this function.
 */
 void jswrap_puck_magWr(JsVarInt reg, JsVarInt data) {
   if (!PUCKJS_HAS_MAG) {
@@ -843,10 +851,12 @@ void jswrap_puck_magWr(JsVarInt reg, JsVarInt data) {
     "return" : ["int",""],
     "ifdef" : "PUCKJS"
 }
-Reads a register from the LIS3MDL / MAX3110 Magnetometer. Can be used for configuring advanced functions.
+Reads a register from the LIS3MDL / MAX3110 Magnetometer. Can be used for
+configuring advanced functions.
 
-Check out [the Puck.js page on the magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals)
-for more information and links to modules that use this function.
+Check out [the Puck.js page on the
+magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+information and links to modules that use this function.
 */
 int jswrap_puck_magRd(JsVarInt reg) {
   if (!PUCKJS_HAS_MAG) {
@@ -890,7 +900,8 @@ void temp_off() {
   "generate" : "jswrap_puck_getTemperature",
   "return" : ["float", "Temperature in degrees C" ]
 }
-On Puck.js v2.0 this will use the on-board PCT2075TP temperature sensor, but on Puck.js the less accurate on-chip Temperature sensor is used.
+On Puck.js v2.0 this will use the on-board PCT2075TP temperature sensor, but on
+Puck.js the less accurate on-chip Temperature sensor is used.
 */
 JsVarFloat jswrap_puck_getTemperature() {
   if (PUCKJS_HAS_TEMP_SENSOR) {
@@ -936,7 +947,8 @@ Accepted values are:
 * 833 Hz (with Gyro) (not recommended)
 * 1660 Hz (with Gyro) (not recommended)
 
-Once `Puck.accelOn()` is called, the `Puck.accel` event will be called each time data is received. `Puck.accelOff()` can be called to turn the accelerometer off.
+Once `Puck.accelOn()` is called, the `Puck.accel` event will be called each time
+data is received. `Puck.accelOff()` can be called to turn the accelerometer off.
 
 For instance to light the red LED whenever Puck.js is face up:
 
@@ -947,8 +959,9 @@ Puck.on('accel', function(a) {
 Puck.accelOn();
 ```
 
-Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals)
-for more information.
+Check out [the Puck.js page on the
+accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+information.
 
 */
 void jswrap_puck_accelOn(JsVarFloat hz) {
@@ -977,10 +990,11 @@ void jswrap_puck_accelOn(JsVarFloat hz) {
   "ifdef" : "PUCKJS",
   "generate" : "jswrap_puck_accelOff"
 }
-Turn the accelerometer off after it has been turned on by `Puck.accelOn()`. 
+Turn the accelerometer off after it has been turned on by `Puck.accelOn()`.
 
-Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals)
-for more information.
+Check out [the Puck.js page on the
+accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+information.
 */
 void jswrap_puck_accelOff() {
   if (!PUCKJS_HAS_ACCEL) {
@@ -1006,10 +1020,13 @@ Turn on the accelerometer, take a single reading, and then turn it off again.
 
 The values reported are the raw values from the chip. In normal configuration:
 
-* accelerometer: full-scale (32768) is 4g, so you need to divide by 8192 to get correctly scaled values
-* gyro: full-scale (32768) is 245 dps, so you need to divide by 134 to get correctly scaled values
+* accelerometer: full-scale (32768) is 4g, so you need to divide by 8192 to get
+  correctly scaled values
+* gyro: full-scale (32768) is 245 dps, so you need to divide by 134 to get
+  correctly scaled values
 
-If taking more than one reading, we'd suggest you use `Puck.accelOn()` and the `Puck.accel` event.
+If taking more than one reading, we'd suggest you use `Puck.accelOn()` and the
+`Puck.accel` event.
 */
 JsVar *jswrap_puck_accel() {
   if (!PUCKJS_HAS_ACCEL) {
@@ -1041,10 +1058,12 @@ JsVar *jswrap_puck_accel() {
     ],
     "ifdef" : "PUCKJS"
 }
-Writes a register on the LSM6DS3TR-C Accelerometer. Can be used for configuring advanced functions.
+Writes a register on the LSM6DS3TR-C Accelerometer. Can be used for configuring
+advanced functions.
 
-Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals)
-for more information and links to modules that use this function.
+Check out [the Puck.js page on the
+accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+information and links to modules that use this function.
 */
 void jswrap_puck_accelWr(JsVarInt reg, JsVarInt data) {
   if (!PUCKJS_HAS_ACCEL) {
@@ -1068,10 +1087,12 @@ void jswrap_puck_accelWr(JsVarInt reg, JsVarInt data) {
     "return" : ["int",""],
     "ifdef" : "PUCKJS"
 }
-Reads a register from the LSM6DS3TR-C Accelerometer. Can be used for configuring advanced functions.
+Reads a register from the LSM6DS3TR-C Accelerometer. Can be used for configuring
+advanced functions.
 
-Check out [the Puck.js page on the accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals)
-for more information and links to modules that use this function.
+Check out [the Puck.js page on the
+accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
+information and links to modules that use this function.
 */
 int jswrap_puck_accelRd(JsVarInt reg) {
   if (!PUCKJS_HAS_ACCEL) {
@@ -1097,17 +1118,17 @@ int jswrap_puck_accelRd(JsVarInt reg) {
       ["anode","pin","(optional) pin to use for IR LED anode - if not defined, the built-in IR LED is used"]
   ]
 }
-Transmit the given set of IR pulses - data should be an array of pulse times
-in milliseconds (as `[on, off, on, off, on, etc]`).
+Transmit the given set of IR pulses - data should be an array of pulse times in
+milliseconds (as `[on, off, on, off, on, etc]`).
 
 For example `Puck.IR(pulseTimes)` - see http://www.espruino.com/Puck.js+Infrared
 for a full example.
 
-You can also attach an external LED to Puck.js, in which case
-you can just execute `Puck.IR(pulseTimes, led_cathode, led_anode)`
+You can also attach an external LED to Puck.js, in which case you can just
+execute `Puck.IR(pulseTimes, led_cathode, led_anode)`
 
-It is also possible to just supply a single pin for IR transmission
-with `Puck.IR(pulseTimes, led_anode)` (on 2v05 and above).
+It is also possible to just supply a single pin for IR transmission with
+`Puck.IR(pulseTimes, led_anode)` (on 2v05 and above).
 */
 Pin _jswrap_puck_IR_pin;
 void _jswrap_puck_IR_on() {
@@ -1210,17 +1231,16 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
 }
 Capacitive sense - the higher the capacitance, the higher the number returned.
 
-If called without arguments, a value depending on the capacitance of what is 
+If called without arguments, a value depending on the capacitance of what is
 attached to pin D11 will be returned. If you attach a length of wire to D11,
 you'll be able to see a higher value returned when your hand is near the wire
 than when it is away.
 
-You can also supply pins to use yourself, however if you do this then
-the TX pin must be connected to RX pin and sense plate via a roughly 1MOhm 
-resistor.
+You can also supply pins to use yourself, however if you do this then the TX pin
+must be connected to RX pin and sense plate via a roughly 1MOhm resistor.
 
-When not supplying pins, Puck.js uses an internal resistor between D12(tx)
-and D11(rx).
+When not supplying pins, Puck.js uses an internal resistor between D12(tx) and
+D11(rx).
 */
 int jswrap_puck_capSense(Pin tx, Pin rx) {
   if (!PUCKJS_HAS_CAPSENSE) {
@@ -1243,8 +1263,8 @@ int jswrap_puck_capSense(Pin tx, Pin rx) {
 }
 Return a light value based on the light the red LED is seeing.
 
-**Note:** If called more than 5 times per second, the received light value
-may not be accurate.
+**Note:** If called more than 5 times per second, the received light value may
+not be accurate.
 */
 JsVarFloat jswrap_puck_light() {
   // If pin state wasn't an analog input before, make it one now,
@@ -1281,8 +1301,8 @@ JsVarFloat jswrap_puck_light() {
 }
 DEPRECATED - Please use `E.getBattery()` instead.
 
-Return an approximate battery percentage remaining based on
-a normal CR2032 battery (2.8 - 2.2v).
+Return an approximate battery percentage remaining based on a normal CR2032
+battery (2.8 - 2.2v).
 */
 JsVarInt jswrap_puck_getBattery() {
   JsVarFloat v = jshReadVRef();
@@ -1349,16 +1369,16 @@ static bool selftest_check_pin(Pin pin, char *err) {
     "generate" : "jswrap_puck_selfTest",
     "return" : ["bool", "True if the self-test passed" ]
 }
-Run a self-test, and return true for a pass. This checks for shorts
-between pins, so your Puck shouldn't have anything connected to it.
+Run a self-test, and return true for a pass. This checks for shorts between
+pins, so your Puck shouldn't have anything connected to it.
 
-**Note:** This self-test auto starts if you hold the button on your Puck
-down while inserting the battery, leave it pressed for 3 seconds (while
-the green LED is lit) and release it soon after all LEDs turn on. 5
-red blinks is a fail, 5 green is a pass.
+**Note:** This self-test auto starts if you hold the button on your Puck down
+while inserting the battery, leave it pressed for 3 seconds (while the green LED
+is lit) and release it soon after all LEDs turn on. 5 red blinks is a fail, 5
+green is a pass.
 
-If the self test fails, it'll set the Puck.js Bluetooth advertising name
-to `Puck.js !ERR` where ERR is a 3 letter error code.
+If the self test fails, it'll set the Puck.js Bluetooth advertising name to
+`Puck.js !ERR` where ERR is a 3 letter error code.
 
 */
 
