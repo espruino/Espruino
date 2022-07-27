@@ -93,6 +93,12 @@ declare const WIDGETS: { [key: string]: Widget };
 }
 Class containing utility functions for the [Bangle.js Smart Watch](http://www.espruino.com/Bangle.js)
 */
+/*TYPESCRIPT{
+  "class" : "Bangle"
+}
+static CLOCK: boolean;
+static strokes: undefined | { [key: string]: Unistroke };
+*/
 
 
 /*JSON{
@@ -105,12 +111,22 @@ Class containing utility functions for the [Bangle.js Smart Watch](http://www.es
 The Bangle.js's vibration motor.
 */
 
+/*TYPESCRIPT
+type AccelData = {
+  x: number;
+  y: number;
+  z: number;
+  diff: number;
+  mag: number;
+};
+*/
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
   "name" : "accel",
   "params" : [["xyz","JsVar",""]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript": "on(event: \"accel\", callback: (xyz: AccelData) => void): void;"
 }
 Accelerometer data available with `{x,y,z,diff,mag}` object as a parameter.
 
@@ -131,12 +147,21 @@ You can also retrieve the most recent reading with `Bangle.getAccel()`.
 }
 Called whenever a step is detected by Bangle.js's pedometer.
  */
+/*TYPESCRIPT
+type HealthStatus = {
+  movement: number;
+  steps: number;
+  bpm: number;
+  bpmConfidence: number;
+};
+*/
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
   "name" : "health",
   "params" : [["info","JsVar","An object containing the last 10 minutes health data"]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"health\", callback: (info: HealthStatus) => void): void;"
 }
 See `Bangle.getHealthStatus()` for more information. This is used for health tracking to
 allow Bangle.js to record historical exercise data.
@@ -169,12 +194,24 @@ To tweak when this happens, see the `twist*` options in `Bangle.setOptions()`
 }
 Is the battery charging or not?
  */
+/*TYPESCRIPT
+type CompassData = {
+  x: number;
+  y: number;
+  z: number;
+  dx: number;
+  dy: number;
+  dz: number;
+  heading: number;
+};
+*/
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
   "name" : "mag",
   "params" : [["xyz","JsVar",""]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"mag\", callback: (xyz: CompassData) => void): void;"
 }
 Magnetometer/Compass data available with `{x,y,z,dx,dy,dz,heading}` object as a parameter
 
@@ -195,19 +232,34 @@ You can also retrieve the most recent reading with `Bangle.getCompass()`.
      ["nmea","JsVar","A string containing the raw NMEA data from the GPS"],
      ["dataLoss","bool","This is set to true if some lines of GPS data have previously been lost (eg because system was too busy to queue up a GPS-raw event)"]
   ],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"GPS-raw\", callback: (nmea: string, dataLoss: boolean) => void): void;"
 }
 Raw NMEA GPS / u-blox data messages received as a string
 
 To get this event you must turn the GPS on
 with `Bangle.setGPSPower(1)`.
  */
+/*TYPESCRIPT
+type GPSFix = {
+  lat: number;
+  lon: number;
+  alt: number;
+  speed: number;
+  course: number;
+  time: Date;
+  satellites: number;
+  fix: number;
+  hdop: number
+};
+*/
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
   "name" : "GPS",
   "params" : [["fix","JsVar","An object with fix info (see below)"]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"GPS\", callback: (fix: GPSFix) => void): void;"
 }
 GPS data, as an object. Contains:
 
@@ -239,7 +291,8 @@ with `Bangle.setGPSPower(1)`.
   "class" : "Bangle",
   "name" : "HRM",
   "params" : [["hrm","JsVar","An object with heart rate info (see below)"]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"HRM\", callback: (hrm: { bpm: number, confidence: number, raw: Uint8Array }) => void): void;"
 }
 Heat rate data, as an object. Contains:
 
@@ -258,7 +311,8 @@ with `Bangle.setHRMPower(1)`.
   "class" : "Bangle",
   "name" : "HRM-raw",
   "params" : [["hrm","JsVar","A object containing instant readings from the heart rate sensor"]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"HRM-raw\", callback: (hrm: { raw: number, filt: number, bpm: number, confidence: number }) => void): void;"
 }
 Called when heart rate sensor data is available - see `Bangle.setHRMPower(1)`.
 
@@ -272,12 +326,20 @@ Called when heart rate sensor data is available - see `Bangle.setHRMPower(1)`.
 }
 ```
  */
+/*TYPESCRIPT
+type PressureData = {
+  temperature: number;
+  pressure: number;
+  altitude: number;
+}
+*/
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
   "name" : "pressure",
   "params" : [["e","JsVar","An object containing `{temperature,pressure,altitude}`"]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"pressure\", callback: (e: PressureData) => void): void;"
 }
 When `Bangle.setBarometerPower(true)` is called, this event is fired containing barometer readings.
 
@@ -301,12 +363,16 @@ Has the screen been turned on or off? Can be used to stop tasks that are no long
 }
 Has the screen been locked? Also see `Bangle.isLocked()`
 */
+/*TYPESCRIPT
+type TapAxis = -2 | -1 | 0 | 1 | 2;
+*/
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
   "name" : "tap",
   "params" : [["data","JsVar","`{dir, double, x, y, z}`"]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"tap\", callback: (data: { dir: \"left\" | \"right\" | \"top\" | \"bottom\" | \"front\" | \"back\", double: boolean, x: TapAxis, y: TapAxis, z: TapAxis }) => void): void;"
 }
 If the watch is tapped, this event contains information on the way it was tapped.
 
@@ -326,7 +392,8 @@ If the watch is tapped, this event contains information on the way it was tapped
   "class" : "Bangle",
   "name" : "gesture",
   "params" : [["xyz","JsVar","An Int8Array of XYZXYZXYZ data"]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"gesture\", callback: (xyz: Int8Array) => void): void;"
 }
 Emitted when a 'gesture' (fast movement) is detected
 */
@@ -336,7 +403,8 @@ Emitted when a 'gesture' (fast movement) is detected
   "name" : "aiGesture",
   "params" : [["gesture","JsVar","The name of the gesture (if '.tfnames' exists, or the index. 'undefined' if not matching"],
               ["weights","JsVar","An array of floating point values output by the model"]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"aiGesture\", callback: (gesture: string | undefined, weights: number[]) => void): void;"
 }
 Emitted when a 'gesture' (fast movement) is detected, and a Tensorflow model is in
 storage in the `".tfmodel"` file.
@@ -344,17 +412,24 @@ storage in the `".tfmodel"` file.
 If a `".tfnames"` file is specified as a comma-separated list of names, it will be used
 to decode `gesture` from a number into a string.
 */
+/*TYPESCRIPT
+type SwipeCallback = (directionLR: -1 | 0 | 1, directionUD?: -1 | 0 | 1) => void;
+*/
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
   "name" : "swipe",
   "params" : [["directionLR","int","`-1` for left, `1` for right, `0` for up/down"],
               ["directionUD","int","`-1` for up, `1` for down, `0` for left/right (Bangle.js 2 only)"]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"swipe\", callback: SwipeCallback): void;"
 }
 Emitted when a swipe on the touchscreen is detected (a movement from left->right, right->left, down->up or up->down) 
 
 Bangle.js 1 is only capable of detecting left/right swipes as it only contains a 2 zone touchscreen.
+*/
+/*TYPESCRIPT
+type TouchCallback = (button: number, xy?: { x: number, y: number }) => void;
 */
 /*JSON{
   "type" : "event",
@@ -364,16 +439,27 @@ Bangle.js 1 is only capable of detecting left/right swipes as it only contains a
     ["button","int","`1` for left, `2` for right"],
     ["xy","JsVar","Object of form `{x,y}` containing touch coordinates (if the device supports full touch). Clipped to 0..175 (LCD pixel coordinates) on firmware 2v13 and later."]
   ],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"touch\", callback: TouchCallback): void;"
 }
 Emitted when the touchscreen is pressed
+*/
+/*TYPESCRIPT
+type DragCallback = (event: {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  b: 1 | 0;
+}) => void;
 */
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
   "name" : "drag",
   "params" : [["event","JsVar","Object of form `{x,y,dx,dy,b}` containing touch coordinates, difference in touch coordinates, and an integer `b` containing number of touch points (currently 1 or 0)"]],
-  "ifdef" : "BANGLEJS"
+  "ifdef" : "BANGLEJS",
+  "typescript" : "on(event: \"drag\", callback: DragCallback): void;"
 }
 Emitted when the touchscreen is dragged or released
 
@@ -388,7 +474,8 @@ or smaller than 0. Coordinates from the `touch` event are clipped.
   "class" : "Bangle",
   "name" : "stroke",
   "params" : [["event","JsVar","Object of form `{xy:Uint8Array([x1,y1,x2,y2...])}` containing touch coordinates"]],
-  "ifdef" : "BANGLEJS2"
+  "ifdef" : "BANGLEJS2",
+  "typescript" : "on(event: \"stroke\", callback: (event: { xy: Uint8Array, stroke?: string }) => void): void;"
 }
 Emitted when the touchscreen is dragged for a large enough distance to count as a gesture.
 
@@ -1811,6 +1898,13 @@ void jswrap_banglejs_setLCDBrightness(JsVarFloat v) {
     jswrap_banglejs_setLCDPowerBacklight(1);
 }
 
+/*TYPESCRIPT
+type LCDMode =
+  | "direct"
+  | "doublebuffered"
+  | "120x120"
+  | "80x80"
+*/
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -1819,7 +1913,8 @@ void jswrap_banglejs_setLCDBrightness(JsVarFloat v) {
     "params" : [
       ["mode","JsVar","The LCD mode (See below)"]
     ],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "setLCDMode(mode?: LCDMode): void;"
 }
 This function can be used to change the way graphics is handled on Bangle.js.
 
@@ -1906,7 +2001,8 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
     "name" : "getLCDMode",
     "generate" : "jswrap_banglejs_getLCDMode",
     "return" : ["JsVar","The LCD mode as a String"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "getLCDMode(): LCDMode;"
 }
 The current LCD mode.
 
@@ -2011,6 +2107,27 @@ void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
   jswrap_banglejs_setPollInterval_internal((uint16_t)interval);
 }
 
+/*TYPESCRIPT
+type BangleOptions = {
+  wakeOnBTN1: boolean;
+  wakeOnBTN2: boolean;
+  wakeOnBTN3: boolean;
+  wakeOnFaceUp: boolean;
+  wakeOnTouch: boolean;
+  wakeOnTwist: boolean;
+  twistThreshold: number;
+  twistMaxY: number;
+  twistTimeout: number;
+  gestureStartThresh: number;
+  gestureEndThresh: number;
+  gestureInactiveCount: number;
+  gestureMinLength: number;
+  powerSave: boolean;
+  lockTimeout: number;
+  lcdPowerTimeout: number;
+  backlightTimeout: number;
+};
+*/
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -2019,7 +2136,8 @@ void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
     "params" : [
       ["options","JsVar",""]
     ],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "setOptions(options: { [key in keyof BangleOptions]?: BangleOptions[key] }): void;"
 }
 Set internal options used for gestures, etc...
 
@@ -2122,7 +2240,8 @@ void jswrap_banglejs_setOptions(JsVar *options) {
     "name" : "getOptions",
     "generate" : "jswrap_banglejs_getOptions",
     "return" : ["JsVar","The current state of all options"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "getOptions(): BangleOptions;"
 }
 Return the current state of options as set by `Bangle.setOptions`
 */
@@ -2294,7 +2413,8 @@ void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
       ["appID","JsVar","A string with the app's name in, used to ensure one app can't turn off something another app is using"]
     ],
     "return" : ["bool","Is HRM on?"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "setHRMPower(isOn: boolean, appID: string): boolean;"
 }
 Set the power to the Heart rate monitor
 
@@ -2366,7 +2486,8 @@ void gpsClearLine() {
       ["appID","JsVar","A string with the app's name in, used to ensure one app can't turn off something another app is using"]
     ],
     "return" : ["bool","Is the GPS on?"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "setGPSPower(isOn: boolean, appID: string): boolean;"
 }
 Set the power to the GPS.
 
@@ -2429,7 +2550,8 @@ int jswrap_banglejs_isGPSOn() {
     "name" : "getGPSFix",
     "generate" : "jswrap_banglejs_getGPSFix",
     "return" : ["JsVar","A GPS fix object with `{lat,lon,...}`"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "getGPSFix(): GPSFix;"
 }
 Get the last available GPS fix info (or `undefined` if GPS is off).
 
@@ -2454,7 +2576,8 @@ JsVar *jswrap_banglejs_getGPSFix() {
       ["appID","JsVar","A string with the app's name in, used to ensure one app can't turn off something another app is using"]
     ],
     "return" : ["bool","Is the Compass on?"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "setCompassPower(isOn: boolean, appID: string): boolean;"
 }
 Set the power to the Compass
 
@@ -2549,7 +2672,8 @@ void jswrap_banglejs_resetCompass() {
       ["appID","JsVar","A string with the app's name in, used to ensure one app can't turn off something another app is using"]
     ],
     "return" : ["bool","Is the Barometer on?"],
-    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)"
+    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)",
+    "typescript" : "setBarometerPower(isOn: boolean, appID: string): boolean;"
 }
 Set the power to the barometer IC. Once enbled, `Bangle.pressure` events
 are fired each time a new barometer reading is available.
@@ -2679,7 +2803,8 @@ void jswrap_banglejs_setStepCount(JsVarInt count) {
     "name" : "getCompass",
     "generate" : "jswrap_banglejs_getCompass",
     "return" : ["JsVar","An object containing magnetometer readings (as below)"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "getCompass(): CompassData;"
 }
 Get the most recent Magnetometer/Compass reading. Data is in the same format as the `Bangle.on('mag',` event.
 
@@ -2726,7 +2851,8 @@ JsVar *jswrap_banglejs_getCompass() {
     "name" : "getAccel",
     "generate" : "jswrap_banglejs_getAccel",
     "return" : ["JsVar","An object containing accelerometer readings (as below)"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "getAccel(): AccelData & { td: number };"
 }
 Get the most recent accelerometer reading. Data is in the same format as the `Bangle.on('accel',` event.
 
@@ -2758,7 +2884,8 @@ JsVar *jswrap_banglejs_getAccel() {
     "params" : [
       ["range","JsVar","What time period to return data for, see below:"]
     ],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "getHealthStatus(range?: \"current\" | \"last\" | \"day\"): HealthStatus;"
 }
 
 `range` is one of:
@@ -3908,6 +4035,7 @@ modifies beep & buzz behaviour accordingly (the bootloader
 doesn't need to do it).
 */
 
+// TODO Improve TypeScript declaration
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -3984,7 +4112,11 @@ void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
       ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : [
+      "accelRd(reg: number, cnt?: 0): number;",
+      "accelRd(reg: number, cnt: number): number[];"
+    ]
 }
 Reads a register from the accelerometer
 
@@ -4030,7 +4162,11 @@ void jswrap_banglejs_barometerWr(JsVarInt reg, JsVarInt data) {
       ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
-    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)"
+    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)",
+    "typescript" : [
+      "barometerRd(reg: number, cnt?: 0): number;",
+      "barometerRd(reg: number, cnt: number): number[];"
+    ]
 }
 Reads a register from the barometer IC
 */
@@ -4072,7 +4208,11 @@ void jswrap_banglejs_compassWr(JsVarInt reg, JsVarInt data) {
       ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : [
+      "compassRd(reg: number, cnt?: 0): number;",
+      "compassRd(reg: number, cnt: number): number[];"
+    ]
 }
 Read a register on the Magnetometer/Compass
 */
@@ -4113,7 +4253,11 @@ void jswrap_banglejs_hrmWr(JsVarInt reg, JsVarInt data) {
       ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : [
+      "hrmRd(reg: number, cnt?: 0): number;",
+      "hrmRd(reg: number, cnt: number): number[];"
+    ]
 }
 Read a register on the Heart rate monitor
 */
@@ -4157,7 +4301,8 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
     "name" : "getPressure",
     "generate" : "jswrap_banglejs_getPressure",
     "return" : ["JsVar","A promise that will be resolved with `{temperature, pressure, altitude}`"],
-    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)"
+    "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)",
+    "typescript" : "getPressure(): PressureData;"
 }
 Read temperature, pressure and altitude data. A promise is returned
 which will be resolved with `{temperature, pressure, altitude}`.
@@ -4365,7 +4510,8 @@ JsVar *jswrap_banglejs_getPressure() {
       ["latlong","JsVar","`{lat:..., lon:...}`"]
     ],
     "return" : ["JsVar","{x:..., y:...}"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "project(latlong: { lat: number, lon: number }): { x: number, y: number };"
 }
 Perform a Spherical [Web Mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection)
 of latitude and longitude into `x` and `y` coordinates, which are roughly
@@ -4412,8 +4558,8 @@ static NO_INLINE void _jswrap_banglejs_setVibration() {
     "name" : "beep",
     "generate" : "jswrap_banglejs_beep",
     "params" : [
-      ["time","int","Time in ms (default 200)"],
-      ["freq","int","Frequency in hz (default 4000)"]
+      ["time","int","[optional] Time in ms (default 200)"],
+      ["freq","int","[optional] Frequency in hz (default 4000)"]
     ],
     "return" : ["JsVar","A promise, completed when beep is finished"],
     "return_object":"Promise",
@@ -4648,7 +4794,8 @@ void jswrap_banglejs_softOff() {
     "name" : "getLogo",
     "generate" : "jswrap_banglejs_getLogo",
     "return" : ["JsVar", "An image to be used with `g.drawImage` (as a String)" ],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "getLogo(): string;"
 }
 
 * On platforms with an LCD of >=8bpp this is 222 x 104 x 2 bits
@@ -4840,8 +4987,11 @@ to select an application to launch.
       ["menu","JsVar","An object containing name->function mappings to to be used in a menu"]
     ],
     "return" : ["JsVar", "A menu object with `draw`, `move` and `select` functions" ],
-    "typescript": "showMenu(menu: Menu): MenuInstance;",
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript": [
+      "showMenu(menu: Menu): MenuInstance;",
+      "showMenu(): void;"
+    ]
 }
 Display a menu on the screen, and set up the buttons to navigate through it.
 
@@ -4919,7 +5069,8 @@ E.showMenu(menu);
       ["message","JsVar","A message to display. Can include newlines"],
       ["options","JsVar","(optional) a title for the message, or an object of options `{title:string, img:image_string}`"]
     ],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "showMessage(message: string, title?: string | { title?: string, img?: string }): void;"
 }
 
 A utility function for displaying a full screen message on the screen.
@@ -4952,7 +5103,11 @@ E.showMessage("Lots of text will wrap automatically",{
       ["options","JsVar","(optional) an object of options (see below)"]
     ],
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : [
+      "showPrompt<T = boolean>(message: string, options?: { title?: string, buttons?: { [key: string]: T } }): Promise<T>;",
+      "showPrompt(): void;"
+    ]
 }
 
 Displays a full screen prompt on the screen, with the buttons
@@ -5005,7 +5160,11 @@ The second `options` argument can contain:
       ["options","JsVar","An object containing `{ h, c, draw, select }` (see below) "]
     ],
     "return" : ["JsVar", "A menu object with `draw()` and `drawItem(itemNo)` functions" ],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : [
+      "showScroller(options?: { h: number, c: number, draw: (idx: number, rect: { x: number, y: number, w: number, h: number }) => void, select: (idx: number) => void, back?: () => void }): { draw: () => void, drawItem: (itemNo: number) => void };",
+      "showScroller(): void;"
+    ]
 }
 Display a scrollable menu on the screen, and set up the buttons/touchscreen to navigate through it
 and select items.
@@ -5076,7 +5235,8 @@ To remove the scroller, just call `E.showScroller()`
       ["options","JsVar","(optional) a title for the message"]
     ],
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "showAlert(message?: string, options?: string): Promise<void>;"
 }
 
 Displays a full screen prompt on the screen, with a single 'Ok' button.
@@ -5139,7 +5299,6 @@ expect an LED, this is an object that behaves like a pin, but which just display
 a circle on the display
 */
 
-
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -5149,7 +5308,8 @@ a circle on the display
       ["type","JsVar","The type of UI input: 'updown', 'leftright', 'clock', 'clockupdown' or undefined to cancel. Can also be an object (see below)"],
       ["callback","JsVar","A function with one argument which is the direction"]
     ],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "setUI(type?: \"updown\" | \"leftright\" | \"clock\" | \"clockupdown\" | { mode: \"custom\"; back?: () => void; touch?: TouchCallback; swipe?: SwipeCallback; drag?: DragCallback; btn?: (n: number) => void, clock?: boolean }, callback?: (direction?: -1 | 1) => void): void;"
 }
 This puts Bangle.js into the specified UI input mode, and calls the callback provided when there is user input.
 
@@ -5237,7 +5397,8 @@ void jswrap_banglejs_factoryReset() {
     "name" : "appRect",
     "generate" : "jswrap_banglejs_appRect",
     "return" : ["JsVar","An object of the form `{x,y,w,h,x2,y2}`"],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS",
+    "typescript" : "appRect: { x: number, y: number, w: number, h: number, x2: number, y2: number };"
 }
 Returns the rectangle on the screen that is currently
 reserved for the app.

@@ -86,15 +86,31 @@ exports.readWrapperFile = function(filename) {
     var endOfJson = comment.indexOf("\n}")+2;
     var json = comment.substr(0,endOfJson);
     var description =  comment.substr(endOfJson).trim();
-    var j = new Builtin(JSON.parse(json));
-    if (description.length) j.description = description;
-    j.implementation = filename;
-    builtins.push(j);
+    try {
+      var j = new Builtin(JSON.parse(json));
+      if (description.length) j.description = description;
+      j.implementation = filename;
+      builtins.push(j);
+    } catch(e) {
+      console.log("Error in ", filename);
+      console.log(json);
+      console.log(e);
+    }
   });
   var comments = contents.match( /\/\*TYPESCRIPT(?:(?!\*\/).|[\n\r])*\*\//g );
   if (comments) comments.forEach(function(comment) {
     comment = comment.slice(12,-2);
-    types.push(comment);
+    var j = {};
+    var declaration = comment;
+    if (comment[0] === "{") {
+      var endOfJson = comment.indexOf("\n}")+2;
+      var json = comment.substr(0,endOfJson);
+      j = new Builtin(JSON.parse(json));
+      declaration =  comment.substr(endOfJson).trim();
+    }
+    j.declaration = declaration;
+    j.implementation = filename;
+    types.push(j);
   });
   return [builtins, types];
 }

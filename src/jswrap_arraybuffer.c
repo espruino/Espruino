@@ -24,14 +24,6 @@ interface ArrayLike<T> {
   readonly length: number;
   readonly [n: number]: T;
 }
-
-type TypedArrayConstructor<T> = ((length: number) => T) &
-  ((array: ArrayLike<number>) => T) &
-  ((
-    buffer: ArrayBuffer,
-    byteOffset?: number,
-    length?: number
-  ) => T);
 */
 
 /*JSON{
@@ -269,7 +261,11 @@ The length, in bytes, of the `ArrayBuffer`
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
-  "typescript" : "new: TypedArrayConstructor<Uint8Array>;"
+  "typescript" : [
+    "new(length: number): Uint8Array;",
+    "new(array: ArrayLike<number>): Uint8Array;",
+    "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Uint8Array;"
+  ]
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -285,7 +281,11 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
-  "typescript" : "new: TypedArrayConstructor<Uint8ClampedArray>;"
+  "typescript" : [
+    "new(length: number): Uint8ClampedArray;",
+    "new(array: ArrayLike<number>): Uint8ClampedArray;",
+    "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Uint8ClampedArray;"
+  ]
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
 
@@ -303,7 +303,11 @@ Clamped arrays clamp their values to the allowed range, rather than 'wrapping'. 
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
-  "typescript" : "new: TypedArrayConstructor<Int8Array>;"
+  "typescript" : [
+    "new(length: number): Int8Array;",
+    "new(array: ArrayLike<number>): Int8Array;",
+    "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Int8Array;"
+  ]
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -319,7 +323,11 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
-  "typescript" : "new: TypedArrayConstructor<Uint16Array>;"
+  "typescript" : [
+    "new(length: number): Uint16Array;",
+    "new(array: ArrayLike<number>): Uint16Array;",
+    "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Uint16Array;"
+  ]
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -335,7 +343,11 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
-  "typescript" : "new: TypedArrayConstructor<Int16Array>;"
+  "typescript" : [
+    "new(length: number): Int16Array;",
+    "new(array: ArrayLike<number>): Int16Array;",
+    "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Int16Array;"
+  ]
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -352,7 +364,11 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
-  "typescript" : "new: TypedArrayConstructor<Uint24Array>;"
+  "typescript" : [
+    "new(length: number): Uint24Array;",
+    "new(array: ArrayLike<number>): Uint24Array;",
+    "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Uint24Array;"
+  ]
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -368,7 +384,11 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
-  "typescript" : "new: TypedArrayConstructor<Uint32Array>;"
+  "typescript" : [
+    "new(length: number): Uint32Array;",
+    "new(array: ArrayLike<number>): Uint32Array;",
+    "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Uint32Array;"
+  ]
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -384,7 +404,11 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
-  "typescript" : "new: TypedArrayConstructor<Int32Array>;"
+  "typescript" : [
+    "new(length: number): Int32Array;",
+    "new(array: ArrayLike<number>): Int32Array;",
+    "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Int32Array;"
+  ]
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -400,7 +424,11 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
-  "typescript" : "new: TypedArrayConstructor<Float32Array>;"
+  "typescript" : [
+    "new(length: number): Float32Array;",
+    "new(array: ArrayLike<number>): Float32Array;",
+    "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Float32Array;"
+  ]
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
@@ -416,7 +444,11 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
-  "typescript" : "new: TypedArrayConstructor<Float64Array>;"
+  "typescript" : [
+    "new(length: number): Float64Array;",
+    "new(array: ArrayLike<number>): Float64Array;",
+    "new(buffer: ArrayBuffer, byteOffset?: number, length?: number): Float64Array;"
+  ]
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an `ArrayBufferView` (eg. `Uint8Array` rather than `ArrayBuffer`) is given, it will be completely copied rather than referenced.
  */
