@@ -39,7 +39,8 @@ This class helps
   ],
   "return" : ["JsVar","A `DataView` object"],
   "return_object" : "DataView",
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "new(buffer: ArrayBuffer, byteOffset?: number, byteLength?: number): DataView;"
 }
 Create a `DataView` object that can be used to access the data in an `ArrayBuffer`.
 
@@ -122,7 +123,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
   "return" : ["JsVar","the index of the value in the array, or -1"],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "getFloat32(byteOffset: number, littleEndian?: boolean): number;"
 }
 */
 /*JSON{
@@ -135,7 +137,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
   "return" : ["JsVar","the index of the value in the array, or -1"],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "getFloat64(byteOffset: number, littleEndian?: boolean): number;"
 }
 */
 /*JSON{
@@ -148,7 +151,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
   "return" : ["JsVar","the index of the value in the array, or -1"],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "getInt8(byteOffset: number, littleEndian?: boolean): number;"
 }
 */
 /*JSON{
@@ -161,7 +165,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
   "return" : ["JsVar","the index of the value in the array, or -1"],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "getInt16(byteOffset: number, littleEndian?: boolean): number;"
 }
 */
 /*JSON{
@@ -174,7 +179,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
   "return" : ["JsVar","the index of the value in the array, or -1"],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "getInt32(byteOffset: number, littleEndian?: boolean): number;"
 }
 */
 /*JSON{
@@ -187,7 +193,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
   "return" : ["JsVar","the index of the value in the array, or -1"],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "getUint8(byteOffset: number, littleEndian?: boolean): number;"
 }
 */
 /*JSON{
@@ -200,7 +207,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
   "return" : ["JsVar","the index of the value in the array, or -1"],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "getUint16(byteOffset: number, littleEndian?: boolean): number;"
 }
 */
 /*JSON{
@@ -213,7 +221,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
   "return" : ["JsVar","the index of the value in the array, or -1"],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "getUint32(byteOffset: number, littleEndian?: boolean): number;"
 }
 */
 
@@ -229,7 +238,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["value","JsVar","The value to write"],
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "setFloat32(byteOffset: number, value: number, littleEndian?: boolean): void;"
 }
 */
 /*JSON{
@@ -242,7 +252,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["value","JsVar","The value to write"],
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "setFloat64(byteOffset: number, value: number, littleEndian?: boolean): void;"
 }
 */
 /*JSON{
@@ -255,7 +266,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["value","JsVar","The value to write"],
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "setInt8(byteOffset: number, value: number, littleEndian?: boolean): void;"
 }
 */
 /*JSON{
@@ -268,7 +280,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["value","JsVar","The value to write"],
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "setInt16(byteOffset: number, value: number, littleEndian?: boolean): void;"
 }
 */
 /*JSON{
@@ -281,7 +294,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["value","JsVar","The value to write"],
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "setInt32(byteOffset: number, value: number, littleEndian?: boolean): void;"
 }
 */
 /*JSON{
@@ -294,7 +308,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["value","JsVar","The value to write"],
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "setUint8(byteOffset: number, value: number, littleEndian?: boolean): void;"
 }
 */
 /*JSON{
@@ -307,7 +322,8 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["value","JsVar","The value to write"],
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "setUint16(byteOffset: number, value: number, littleEndian?: boolean): void;"
 }
 */
 /*JSON{
@@ -320,6 +336,7 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     ["value","JsVar","The value to write"],
     ["littleEndian","bool","(optional) Whether to read in little endian - if false or undefined data is read as big endian"]
   ],
-  "ifndef" : "SAVE_ON_FLASH"
+  "ifndef" : "SAVE_ON_FLASH",
+  "typescript" : "setUint32(byteOffset: number, value: number, littleEndian?: boolean): void;"
 }
 */
