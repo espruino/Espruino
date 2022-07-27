@@ -412,7 +412,8 @@ NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxD
 
 /*JSON{
   "type" : "class",
-  "class" : "Graphics"
+  "class" : "Graphics",
+  "typescript" : "Graphics<IsBuffer extends boolean = boolean>"
 }
 This class provides Graphics operations that can be applied to a surface.
 
@@ -454,7 +455,8 @@ a full update of the screen.
   "type" : "property",
   "class" : "Graphics",
   "name" : "buffer",
-  "return" : ["JsVar","An ArrayBuffer (or not defined on Graphics instances not created with `Graphics.createArrayBuffer`)"]
+  "return" : ["JsVar","An ArrayBuffer (or not defined on Graphics instances not created with `Graphics.createArrayBuffer`)"],
+  "typescript" : "buffer: IsBuffer extends true ? ArrayBuffer : undefined"
 }
 On Graphics instances with an offscreen buffer, this
 is an `ArrayBuffer` that provides access to the underlying
@@ -527,7 +529,8 @@ void jswrap_graphics_init() {
   "class" : "Graphics",
   "name" : "getInstance",
   "generate" : "jswrap_graphics_getInstance",
-  "return" : ["JsVar","An instance of `Graphics` or undefined"]
+  "return" : ["JsVar","An instance of `Graphics` or undefined"],
+  "typescript" : "getInstance(): Graphics | undefined"
 }
 On devices like Pixl.js or HYSTM boards that contain a built-in display
 this will return an instance of the graphics class that can be used to
@@ -562,7 +565,8 @@ static bool isValidBPP(int bpp) {
     ]]
   ],
   "return" : ["JsVar","The new Graphics object"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "createArrayBuffer(width: number, height: number, bpp: number, options?: { zigzag?: boolean, vertical_byte?: boolean, msb?: boolean, color_order?: \"rgb\" | \"rbg\" | \"brg\" | \"bgr\" | \"grb\" | \"gbr\" }): Graphics<true>;"
 }
 Create a Graphics object that renders to an Array Buffer. This will have a field called 'buffer' that can get used to get at the buffer itself
 */
@@ -641,7 +645,8 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
     ["callback","JsVar","A function of the form ```function(x,y,col)``` that is called whenever a pixel needs to be drawn, or an object with: ```{setPixel:function(x,y,col),fillRect:function(x1,y1,x2,y2,col)}```. All arguments are already bounds checked."]
   ],
   "return" : ["JsVar","The new Graphics object"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "createCallback(width: number, height: number, bpp: number, callback: ((x: number, y: number, col: number) => void) | { setPixel: (x: number, y: number, col: number) => void; fillRect: (x1: number, y1: number, x2: number, y2: number, col: number) => void }): Graphics<false>;"
 }
 Create a Graphics object that renders by calling a JavaScript callback function to draw pixels
 */
@@ -722,6 +727,18 @@ JsVar *jswrap_graphics_createSDL(int width, int height, int bpp) {
 #endif
 
 
+/*TYPESCRIPT
+type ImageObject = {
+  width: number;
+  height: number;
+  bpp?: number;
+  buffer: ArrayBuffer | string;
+  transparent?: number;
+  palette?: Uint16Array;
+};
+
+type Image = string | ImageObject | ArrayBuffer | Graphics<true>;
+*/
 /*JSON{
   "type" : "staticmethod",
   "class" : "Graphics",
@@ -731,7 +748,8 @@ JsVar *jswrap_graphics_createSDL(int width, int height, int bpp) {
   "params" : [
     ["str","JsVar","A String containing a newline-separated image - space is 0, anything else is 1"]
   ],
-  "return" : ["JsVar","An Image object that can be used with `Graphics.drawImage`"]
+  "return" : ["JsVar","An Image object that can be used with `Graphics.drawImage`"],
+  "typescript" : "createImage(str: string): ImageObject;"
 }
 Create a simple Black and White image for use with `Graphics.drawImage`.
 
@@ -887,7 +905,7 @@ JsVar *jswrap_graphics_reset(JsVar *parent) {
   "name" : "clear",
   "generate" : "jswrap_graphics_clear",
   "params" : [
-    ["reset","bool","If `true`, resets the state of Graphics to the default (eg. Color, Font, etc) as if calling `Graphics.reset`"]
+    ["reset","bool","[optional] If `true`, resets the state of Graphics to the default (eg. Color, Font, etc) as if calling `Graphics.reset`"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
@@ -983,7 +1001,11 @@ JsVar *_jswrap_graphics_fillRect_col(JsVar *parent, JsVar *opt, int y1, int x2, 
     ["y2","int32","The bottom Y coordinate"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : [
+    "fillRect(x1: number, y1: number, x2: number, y2: number): Graphics;",
+    "fillRect(rect: { x: number, y: number, x2: number, y2: number } | { x: number, y: number, w: number, h: number }): Graphics;"
+  ]
 }
 Fill a rectangular area in the Foreground Color
 
@@ -1009,7 +1031,11 @@ JsVar *jswrap_graphics_fillRect(JsVar *parent, JsVar *opt, int y1, int x2, int y
     ["y2","int32","The bottom Y coordinate"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : [
+    "clearRect(x1: number, y1: number, x2: number, y2: number): Graphics;",
+    "clearRect(rect: { x: number, y: number, x2: number, y2: number } | { x: number, y: number, w: number, h: number }): Graphics;"
+  ]
 }
 Fill a rectangular area in the Background Color
 
@@ -1032,7 +1058,11 @@ JsVar *jswrap_graphics_clearRect(JsVar *parent, JsVar *opt, int y1, int x2, int 
     ["y2","int32","The bottom Y coordinate"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : [
+    "drawRect(x1: number, y1: number, x2: number, y2: number): Graphics;",
+    "drawRect(rect: { x: number, y: number, x2: number, y2: number } | { x: number, y: number, w: number, h: number }): Graphics;"
+  ]
 }
 Draw an unfilled rectangle 1px wide in the Foreground Color
 */
@@ -1177,6 +1207,9 @@ int jswrap_graphics_getPixel(JsVar *parent, int x, int y) {
   return (int)graphicsGetPixel(&gfx, x, y);
 }
 
+/*TYPESCRIPT
+type ColorResolvable = number | `#${string}`;
+*/
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
@@ -1188,7 +1221,8 @@ int jswrap_graphics_getPixel(JsVar *parent, int x, int y) {
     ["col","JsVar","The color (if `undefined`, the foreground color is useD)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "setPixel(x: number, y: number, col?: ColorResolvable): Graphics;"
 }
 Set a pixel's color
 */
@@ -1215,7 +1249,11 @@ JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
     ["g","JsVar","Green (between 0 and 1)"],
     ["b","JsVar","Blue (between 0 and 1)"]
   ],
-  "return" : ["int","The color index represented by the arguments"]
+  "return" : ["int","The color index represented by the arguments"],
+  "typescript" : [
+    "toColor(r: number, g: number, b: number): number;",
+    "toColor(col: ColorResolvable): number;"
+  ]
 }
 Work out the color value to be used in the current bit depth based on the arguments.
 
@@ -1377,7 +1415,8 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
     ["col_b","JsVar","Color to blend to (either a single integer color value, or a string)"],
     ["amt","JsVar","The amount to blend. 0=col_a, 1=col_b, 0.5=halfway between (and so on)"]
   ],
-  "return" : ["int","The color index represented by the blended colors"]
+  "return" : ["int","The color index represented by the blended colors"],
+  "typescript" : "blendColor(col_a: ColorResolvable, col_b: ColorResolvable, amt: number): number;"
 }
 Blend between two colors, and return the result.
 
@@ -1409,7 +1448,11 @@ unsigned int jswrap_graphics_blendColor(JsVar *parent, JsVar *ca, JsVar *cb, JsV
     ["b","JsVar","[optional] Blue (between 0 and 1)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : [
+    "setColor(r: number, g: number, b: number): number;",
+    "setColor(col: ColorResolvable): number;"
+  ]
 }
 Set the color to use for subsequent drawing operations.
 
@@ -1440,7 +1483,11 @@ be a floating point value, and `g` and `b` are ignored.
     ["b","JsVar","Blue (between 0 and 1)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : [
+    "setBgColor(r: number, g: number, b: number): number;",
+    "setBgColor(col: ColorResolvable): number;"
+  ]
 }
 Set the background color to use for subsequent drawing operations.
 
@@ -1609,7 +1656,8 @@ JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) 
     ["height","int32","The height as an integer (max 255). Bits 8-15 represent the scale factor (eg. `2<<8` is twice the size). Bits 16-23 represent the BPP (0,1=1 bpp, 2=2 bpp, 4=4 bpp)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "setFontCustom(bitmap: ArrayBuffer, firstChar: number, width: number | string, height: number): Graphics;"
 }
 Make subsequent calls to `drawString` use a Custom Font of the given height. See the [Fonts page](http://www.espruino.com/Fonts) for more
 information about custom fonts and how to create them.
@@ -1669,7 +1717,8 @@ JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar
     ["rotation","int32","Rotation of the text. 0=normal, 1=90 degrees clockwise, 2=180, 3=270"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "setFontAlign(x: -1 | 0 | 1, y?: -1 | 0 | 1, rotation?: 0 | 1 | 2 | 3): Graphics;"
 }
 Set the alignment for subsequent calls to `drawString`
 */
@@ -1692,6 +1741,36 @@ JsVar *jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
 #endif
 }
 
+/*TYPESCRIPT
+type FontName =
+  | "4x4"
+  | "4x4Numeric"
+  | "4x5"
+  | "4x5Numeric"
+  | "4x8Numeric"
+  | "5x7Numeric7Seg"
+  | "5x9Numeric7Seg"
+  | "6x8"
+  | "6x12"
+  | "7x11Numeric7Seg"
+  | "8x12"
+  | "8x16"
+  | "Dennis8"
+  | "Cherry6x10"
+  | "Copasectic40x58Numeric"
+  | "Dylex7x13"
+  | "HaxorNarrow7x17"
+  | "Sinclair"
+  | "Teletext10x18Mode7"
+  | "Teletext5x9Ascii"
+  | "Teletext5x9Mode7"
+  | "Vector";
+
+type FontNameWithScaleFactor =
+  | FontName
+  | `${FontName}:${number}`
+  | `${FontName}:${number}x${number}`;
+*/
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
@@ -1703,7 +1782,11 @@ JsVar *jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r) {
     ["size","int","The size of the font (or undefined)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : [
+    "setFont(name: FontNameWithScaleFactor): Graphics;",
+    "setFont(name: FontName, size: number): Graphics;"
+  ]
 }
 Set the font by name. Various forms are available:
 
@@ -1798,7 +1881,8 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_getFont",
   "return" : ["JsVar","Get the name of the current font"],
-  "return_object" : "String"
+  "return_object" : "String",
+  "typescript" : "getFont(): FontNameWithScaleFactor | \"Custom\""
 }
 Get the font by name - can be saved and used with `Graphics.setFont`.
 
@@ -1850,7 +1934,8 @@ JsVar *jswrap_graphics_getFont(JsVar *parent) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_getFonts",
   "return" : ["JsVar","And array of font names"],
-  "return_object" : "Array"
+  "return_object" : "Array",
+  "typescript" : "getFonts(): FontName[];"
 }
 Return an array of all fonts currently in the Graphics library.
 
@@ -2036,7 +2121,8 @@ JsVarInt _jswrap_graphics_stringWidth(JsGraphics *gfx, JsVar *var, int lineStart
   "params" : [
     ["str","JsVar","The string"]
   ],
-  "return" : ["int","The length of the string in pixels"]
+  "return" : ["int","The length of the string in pixels"],
+  "typescript" : "stringWidth(str: string): number;"
 }
 Return the size in pixels of a string of text in the current font
 */
@@ -2053,7 +2139,8 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   "params" : [
     ["str","JsVar","The string"]
   ],
-  "return" : ["JsVar","An object containing `{width,height}` of the string"]
+  "return" : ["JsVar","An object containing `{width,height}` of the string"],
+  "typescript" : "stringMetrics(str: string): { width: number, height: number };"
 }
 Return the width and height in pixels of a string of text in the current font
 */
@@ -2078,7 +2165,8 @@ JsVar* jswrap_graphics_stringMetrics(JsVar *parent, JsVar *var) {
     ["str","JsVar","The string"],
     ["maxWidth","int","The width in pixels"]
   ],
-  "return" : ["JsVar","An array of lines that are all less than `maxWidth`"]
+  "return" : ["JsVar","An array of lines that are all less than `maxWidth`"],
+  "typescript" : "wrapString(str: string, maxWidth: number): string[];"
 }
 Wrap a string to the given pixel width using the current font, and return the
 lines as an array.
@@ -2187,7 +2275,8 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
     ["solid","bool","For bitmap fonts, should empty pixels be filled with the background color?"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "drawString(str: string, x: number, y: number, solid?: boolean): Graphics;"
 }
 Draw a string of text in the current font.
 
@@ -2511,7 +2600,8 @@ JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
     ["closed","bool","Draw another line between the last element of the array and the first"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "drawPoly(poly: number[], closed?: boolean): Graphics;"
 }
 Draw a polyline (lines between each of the points in `poly`) in the current foreground color
 
@@ -2528,7 +2618,8 @@ Draw a polyline (lines between each of the points in `poly`) in the current fore
     ["closed","bool","Draw another line between the last element of the array and the first"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "drawPolyAA(poly: number[], closed?: boolean): Graphics;"
 }
 Draw an **antialiased** polyline (lines between each of the points in `poly`) in the current foreground color
 
@@ -2594,7 +2685,8 @@ JsVar *jswrap_graphics_drawPoly_X(JsVar *parent, JsVar *poly, bool closed, bool 
     ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "fillPoly(poly: number[]): Graphics;"
 }
 Draw a filled polygon in the current foreground color.
 
@@ -2625,7 +2717,8 @@ same pixels as `drawPoly` (drawing a line around the edge of the polygon).
     ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "fillPolyAA(poly: number[]): Graphics;"
 }
 Draw a filled polygon in the current foreground color.
 
@@ -2692,7 +2785,8 @@ JsVar *jswrap_graphics_fillPoly_X(JsVar *parent, JsVar *poly, bool antiAlias) {
     ["reflect","bool","Whether to reflect the image"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "setRotation(rotation: 0 | 1 | 2 | 3, reflect?: boolean): Graphics;"
 }
 Set the current rotation of the graphics device.
 */
@@ -2735,7 +2829,8 @@ JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
   "params" : [
     ["str","JsVar","The string"]
   ],
-  "return" : ["JsVar","An object containing `{width,height,bpp,transparent}` for the image"]
+  "return" : ["JsVar","An object containing `{width,height,bpp,transparent}` for the image"],
+  "typescript" : "imageMetrics(img: Image): { width: number, height: number, bpp: number, transparent: number, frames?: ArrayBuffer[] } | undefined;"
 }
 Return the width and height in pixels of an image (either Graphics, Image Object, Image String or ArrayBuffer). Returns
 `undefined` if image couldn't be decoded.
@@ -2774,7 +2869,8 @@ JsVar *jswrap_graphics_imageMetrics(JsVar *parent, JsVar *var) {
     ["options","JsVar","options for scaling,rotation,etc (see below)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "drawImage(image: Image, x: number, y: number, options?: { rotate?: number, scale?: number, frame?: number }): Graphics;"
 }
 Image can be:
 
@@ -2989,7 +3085,8 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     ["options","JsVar","options for rendering - see below"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "drawImages(layers: { x: number, y: number, image: Image, scale?: number, rotate?: number, center?: boolean, repeat?: boolean, nobounds?: boolean }[], options?: { x: number, y: number, width: number, height: number }): Graphics;"
 }
 Draws multiple images *at once* - which avoids flicker on unbuffered systems
 like Bangle.js. Maximum layer count right now is 4.
@@ -3120,7 +3217,11 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
   "params" : [
     ["type","JsVar","The type of image to return. Either `object`/undefined to return an image object, or `string` to return an image string"]
   ],
-  "return" : ["JsVar","An Image that can be used with `Graphics.drawImage`"]
+  "return" : ["JsVar","An Image that can be used with `Graphics.drawImage`"],
+  "typescript" : [
+    "asImage(type?: \"object\"): ImageObject;",
+    "asImage(type: \"string\"): string;"
+  ]
 }
 Return this Graphics object as an Image that can be used with `Graphics.drawImage`.
 Check out [the Graphics reference page](http://www.espruino.com/Graphics#images-bitmaps)
@@ -3228,7 +3329,8 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   "params" : [
     ["reset","bool","Whether to reset the modified area or not"]
   ],
-  "return" : ["JsVar","An object {x1,y1,x2,y2} containing the modified area, or undefined if not modified"]
+  "return" : ["JsVar","An object {x1,y1,x2,y2} containing the modified area, or undefined if not modified"],
+  "typescript" : "getModified(reset?: boolean): { x1: number, y1: number, x2: number, y2: number };"
 }
 Return the area of the Graphics canvas that has been modified, and optionally clear
 the modified area to 0.
@@ -3298,7 +3400,8 @@ JsVar *jswrap_graphics_scroll(JsVar *parent, int xdir, int ydir) {
     ["options","JsVar","options - see below"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "blit(options: { x1: number, y1: number, x2: number, y2: number, w: number, h: number, setModified?: boolean }): Graphics;"
 }
 Blit one area of the screen (x1,y1 w,h) to another (x2,y2 w,h)
 
@@ -3380,7 +3483,8 @@ JsVar *jswrap_graphics_blit(JsVar *parent, JsVar *options) {
   "name" : "asBMP",
   "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_asBMP",
-  "return" : ["JsVar","A String representing the Graphics as a Windows BMP file (or 'undefined' if not possible)"]
+  "return" : ["JsVar","A String representing the Graphics as a Windows BMP file (or 'undefined' if not possible)"],
+  "typescript" : "asBMP(): string;"
 }
 Create a Windows BMP file from this Graphics instance, and return it as a String.
 */
@@ -3497,7 +3601,8 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   "name" : "asURL",
   "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_asURL",
-  "return" : ["JsVar","A String representing the Graphics as a URL (or 'undefined' if not possible)"]
+  "return" : ["JsVar","A String representing the Graphics as a URL (or 'undefined' if not possible)"],
+  "typescript" : "asURL(): string;"
 }
 Create a URL of the form `data:image/bmp;base64,...` that can be pasted into the browser.
 
@@ -3545,7 +3650,8 @@ void jswrap_graphics_dump(JsVar *parent) {
     ["arr","JsVar","An array of three vertices, six enties in form of ```[x0,y0,x1,y1,x2,y2]```"],
     ["options","JsVar","number of points to calulate"]
   ],
-  "return" : ["JsVar", "Array with calculated points" ]
+  "return" : ["JsVar", "Array with calculated points" ],
+  "typescript" : "quadraticBezier(arr: [number, number, number, number, number, number], options?: number): number[];"
 }
  Calculate the square area under a Bezier curve.
 
@@ -3617,7 +3723,8 @@ JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *option
     ["verts","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"],
     ["transformation","JsVar","The transformation to apply, either an Object or an Array (see below)"]
   ],
-  "return" : ["JsVar", "Array of transformed vertices" ]
+  "return" : ["JsVar", "Array of transformed vertices" ],
+  "typescript" : "transformVertices(arr: number[], transformation: { x?: number, y?: number, scale?: number, rotate?: number } | [number, number, number, number, number, number]): number[];"
 }
 Transformation can be:
 
@@ -3694,13 +3801,25 @@ JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *tra
   return result;
 }
 
+/*TYPESCRIPT
+type Theme = {
+  fg: number;
+  bg: number;
+  fg2: number;
+  bg2: number;
+  fgH: number;
+  bgH: number;
+  dark: boolean;
+};
+*/
 /*JSON{
   "type" : "property",
   "class" : "Graphics",
   "name" : "theme",
   "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_theme",
-  "return" : ["JsVar","An object containing the current 'theme' (see below)"]
+  "return" : ["JsVar","An object containing the current 'theme' (see below)"],
+  "typescript" : "theme: Theme;"
 }
 Returns an object of the form:
 
@@ -3749,7 +3868,8 @@ JsVar *jswrap_graphics_theme(JsVar *parent) {
     ["theme","JsVar","An object of the form returned by `Graphics.theme`"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
-  "return_object" : "Graphics"
+  "return_object" : "Graphics",
+  "typescript" : "setTheme(theme: { [key in keyof Theme]?: Theme[key] extends number ? ColorResolvable | Theme[key] }): Graphics;"
 }
 Set the global colour scheme. On Bangle.js, this is reloaded from `settings.json` for each new app loaded.
 
