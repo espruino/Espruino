@@ -388,7 +388,7 @@ or smaller than 0. Coordinates from the `touch` event are clipped.
   "class" : "Bangle",
   "name" : "stroke",
   "params" : [["event","JsVar","Object of form `{xy:Uint8Array([x1,y1,x2,y2...])}` containing touch coordinates"]],
-  "ifdef" : "BANGLEJS2"
+  "ifdef" : "BANGLEJS_Q3"
 }
 Emitted when the touchscreen is dragged for a large enough distance to count as a gesture.
 
@@ -1963,19 +1963,19 @@ void jswrap_banglejs_setLCDOffset(int y) {
     "name" : "setLCDOverlay",
     "generate" : "jswrap_banglejs_setLCDOverlay",
     "params" : [
-      ["gfx","JsVar","A Graphics instance"],
+      ["img","JsVar","An image"],
       ["x","int","The X offset the graphics instance should be overlaid on the screen with"],
       ["y","int","The Y offset the graphics instance should be overlaid on the screen with"]
     ],
-    "ifdef" : "BANGLEJS2"
+    "ifdef" : "BANGLEJS_Q3"
 }
 Overlay a graphics instance on top of the contents of the graphics buffer.
 
 This only works on Bangle.js 2 because Bangle.js 1 doesn't have an offscreen buffer accessible from the CPU.
 */
-void jswrap_banglejs_setLCDOverlay(JsVar *gfxVar, int x, int y) {
+void jswrap_banglejs_setLCDOverlay(JsVar *imgVar, int x, int y) {
 #ifdef LCD_CONTROLLER_LPM013M126
-  lcdMemLCD_setOverlay(gfxVar, x, y);
+  lcdMemLCD_setOverlay(imgVar, x, y);
   // set all as modified
   graphicsInternal.data.modMinX = 0;
   graphicsInternal.data.modMinY = 0;
@@ -3451,8 +3451,10 @@ void jswrap_banglejs_kill() {
   jshPinWatch(BTN5_PININDEX, false, JSPW_NONE);
   jshSetPinShouldStayWatched(BTN5_PININDEX,false);
 #endif
+#ifdef LCD_CONTROLLER_LPM013M126
   // ensure we remove any overlay we might have set
   lcdMemLCD_setOverlay(NULL, 0, 0);
+#endif
   // Graphics var is getting removed, so set this to null.
   jsvUnLock(graphicsInternal.graphicsVar);
   graphicsInternal.graphicsVar = NULL;

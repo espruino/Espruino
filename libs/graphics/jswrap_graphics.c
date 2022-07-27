@@ -82,32 +82,14 @@ const uint16_t PALETTE_4BIT_TO_8BIT[16] = { 0, 43, 129, 172, 121, 78, 12, 18, 23
 
 // ==========================================================================================
 
-/// Info about an image to be used for rendering
-typedef struct {
-  int width, height, bpp;
-  bool isTransparent;
-  unsigned int transparentCol;
-  JsVar *buffer; // must be unlocked!
-  uint32_t bitmapOffset; // start offset in imageBuffer
-  const uint16_t *palettePtr;
-  uint32_t paletteMask;
-  unsigned int bitMask;
-  unsigned int pixelsPerByteMask;
-  int stride; ///< bytes per line
-  unsigned short headerLength; ///< size of header (inc palette)
-  unsigned short bitmapLength; ///< size of data (excl header)
-
-  uint16_t _simplePalette[16]; // used when a palette is created for rendering
-} GfxDrawImageInfo;
-
-static void _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info) {
+void _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info) {
   jsvUnLock(info->buffer);
 }
 
 /** Parse an image into GfxDrawImageInfo. See drawImage for image format docs. Returns true on success.
  * if 'image' is a string or ArrayBuffer, imageOffset is the offset within that (usually 0)
  */
-static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int imageOffset, GfxDrawImageInfo *info) {
+bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int imageOffset, GfxDrawImageInfo *info) {
   memset(info, 0, sizeof(GfxDrawImageInfo));
 #ifndef SAVE_ON_FLASH
   if (jsvIsObject(image) && jsvIsInstanceOf(image,"Graphics")) {
@@ -259,24 +241,6 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
   info->bitmapLength = (info->width*info->height*info->bpp + 7)>>3;
   return true;
 }
-
-
-
-/// This is for rotating and scaling layers
-typedef struct {
-  int x1,y1,x2,y2; //x2/y2 is exclusive
-  double rotate; // radians
-  double scale; // 1 = 1:1, 2 = big
-  bool center; // center on x1/y1 (which are then offset)
-  bool repeat; // tile the image
-  GfxDrawImageInfo img;
-  // for rendering
-  JsvStringIterator it;
-  int mx,my; //< max - width and height << 8
-  int sx,sy; //< iterator X increment
-  int px,py; //< y iterator position
-  int qx,qy; //< x iterator position
-} GfxDrawImageLayer;
 
 bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) {
   int qx = l->qx+127;

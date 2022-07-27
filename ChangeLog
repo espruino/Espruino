@@ -17,11 +17,12 @@
             Bangle.js: Add "filename table" support to Bangle.js - avoids slow file read/list when there are many deleted/updated files in Storage (fix #2152)
             Storage: Don't align files <512 bytes to page boundaries - all files now stored in order (ref #2232)
             nRF5x: Call sd_ble_gattc_hv_confirm in response to BLE indications
-            Bangle.js 2: Make Bangle.setBarometerPower retry twice if it has an I2C error
-            Bangle.js 2: Fix `NRF.setAdvertising({},{scannable:false})`
-            Bangle.js 2: Initial long range functionality (via `phy:"coded"` in `NRF.setAdvertising/setScan/requestDevice/findDevices`)
+            Bangle.js2: Make Bangle.setBarometerPower retry twice if it has an I2C error
+            Bangle.js2: Fix `NRF.setAdvertising({},{scannable:false})`
+            Bangle.js2: Initial long range functionality (via `phy:"coded"` in `NRF.setAdvertising/setScan/requestDevice/findDevices`)
             nRF52: Change from hard -> softfp calling convention (saves a few bytes, more compatible with compiled code)
             Fix 'console.log([1,2,3].splice(0, 1.0))' (fix #2245)
+            Bangle.js2: Added `Bangle.setLCDOverlay(img,x,y)` to allow an image to be overlaid on top of screen contents (eg for notifications)
 
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu

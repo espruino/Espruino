@@ -17,6 +17,7 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 #include "lcd_memlcd.h"
+#include "jswrap_graphics.h"
 
 // ======================================================================
 
@@ -25,17 +26,19 @@
 #define LCD_STRIDE (LCD_ROWHEADER+((LCD_WIDTH*LCD_BPP+7)>>3)) // data in required BPP, plus 2 bytes LCD command
 
 /** Buffer for our LCD data.
-  - We add one extra line (LCD_HEIGHT+1) as a scratch area for doing the overlay
+  - We add 2 extra lines (LCD_HEIGHT+2) as a scratch area for doing the overlay (if enabled)
   - 2 bytes at end of transfer (needed by LCD) included in that extra line
   - 4 bytes at end (needed to allow fast scrolling) also handled by the extra line
  */
-unsigned char lcdBuffer[LCD_STRIDE*(LCD_HEIGHT+1)];
+unsigned char lcdBuffer[LCD_STRIDE*(LCD_HEIGHT+2)];
 bool isBacklightOn; ///< is LCD backlight on? If so we need to toggle EXTCOMIN faster
-JsVar *lcdOverlayGraphics; ///< if set, a Graphics instance to use for overlays
+JsVar *lcdOverlayImage; ///< if set, an Image to use for overlays
 unsigned char lcdOverlayX,lcdOverlayY; ///< coordinates of the graphics instance
 
 #ifdef EMULATED
 bool EMSCRIPTEN_GFX_CHANGED;
+
+unsigned char fakeLCDBuffer[LCD_STRIDE*LCD_HEIGHT];
 
 bool jsGfxChanged() {
   bool b = EMSCRIPTEN_GFX_CHANGED;
@@ -44,7 +47,7 @@ bool jsGfxChanged() {
 }
 char *jsGfxGetPtr(int line) {
   if (line<0 || line>=LCD_HEIGHT) return 0;
-  return &lcdBuffer[LCD_ROWHEADER + (line*LCD_STRIDE)];
+  return &fakeLCDBuffer[LCD_ROWHEADER + (line*LCD_STRIDE)];
 }
 #endif
 
@@ -82,9 +85,6 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 
 
 void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
-#ifdef EMULATED
-  EMSCRIPTEN_GFX_CHANGED = true;
-#endif
   col = lcdMemLCD_convert16to3(col,x,y);
 #if LCD_BPP==3
   int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
@@ -102,9 +102,6 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 
 #if LCD_BPP==3
 void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
-#ifdef EMULATED
-  EMSCRIPTEN_GFX_CHANGED = true;
-#endif
   for (int y=y1;y<=y2;y++) {
     int bitaddr = LCD_ROWHEADER*8 + (x1*3) + (y*LCD_STRIDE*8);
     for (int x=x1;x<=x2;x++) {
@@ -143,9 +140,6 @@ void lcdMemLCD_scrollX(struct JsGraphics *gfx, unsigned char *dst, unsigned char
 }
 
 void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
-#ifdef EMULATED
-  EMSCRIPTEN_GFX_CHANGED = true;
-#endif
   // if we can't shift entire line in one go, go with the slow method as this case would be a nightmare in 3 bits
   if (x1!=0 || x2!=LCD_WIDTH-1)
     return graphicsFallbackScroll(gfx, xdir, ydir, x1,y1,x2,y2);
@@ -167,22 +161,29 @@ void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1
 }
 
 // -----------------------------------------------------------------------------
+// used to allow SPI send to work async (we don't care when it finishes)
+void lcdMemLCD_flip_spi_callback() {}
+
+// send the data to the screen
 void lcdMemLCD_flip(JsGraphics *gfx) {
   if (gfx->data.modMinY > gfx->data.modMaxY) return; // nothing to do!
+#ifdef EMULATED
+  EMSCRIPTEN_GFX_CHANGED = true;
+#endif
 
   int y1 = gfx->data.modMinY;
   int y2 = gfx->data.modMaxY;
   int l = 1+y2-y1;
 
   bool hasOverlay = false;
-  JsGraphics overlayGfx;
-  if (lcdOverlayGraphics)
-    hasOverlay = graphicsGetFromVar(&overlayGfx, lcdOverlayGraphics);
+  GfxDrawImageInfo overlayImg;
+  if (lcdOverlayImage)
+    hasOverlay = _jswrap_graphics_parseImage(gfx, lcdOverlayImage, 0, &overlayImg);
 
   jshPinSetValue(LCD_SPI_CS, 1);
   if (hasOverlay) {
-    /* If lcdOverlayGraphics is defined, we want to overlay this graphics
-     * instance on top of what we have in our LCD buffer. Do this line by
+    /* If lcdOverlayImage is defined, we want to overlay this image
+     * on top of what we have in our LCD buffer. Do this line by
      * line. It's slower but it won't use a bunch of memory.
      *
      * We use an extra line added to the end of lcdBuffer for this, which
@@ -192,25 +193,54 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
      * Optimisation: we could just send any non-overlaid stuff above or below
      * the overlay...
      */
-    unsigned char *buf = &lcdBuffer[LCD_STRIDE*LCD_HEIGHT]; // point to line right on the end of gfx
+
+    // initialise image layer
+    GfxDrawImageLayer l;
+    l.x1 = 0;
+    l.y1 = 0;
+    l.img = overlayImg;
+    l.rotate = 0;
+    l.scale = 1;
+    l.center = false;
+    l.repeat = false;
+    jsvStringIteratorNew(&l.it, l.img.buffer, (size_t)l.img.bitmapOffset);
+    _jswrap_drawImageLayerInit(&l);
+    _jswrap_drawImageLayerSetStart(&l, 0, 0);
     for (int y=y1;y<=y2;y++) {
+      int bufferLine = LCD_HEIGHT + (y&1); // alternate lines so we still get dither AND we can send while
+      unsigned char *buf = &lcdBuffer[LCD_STRIDE*bufferLine]; // point to line right on the end of gfx
       // copy original line in
       memcpy(buf, &lcdBuffer[LCD_STRIDE*y], LCD_STRIDE);
-      // overwrite areas with overlay
-      if (y>=lcdOverlayY && y<lcdOverlayY+overlayGfx.data.height)
-        for (int x=0;x<overlayGfx.data.width;x++) {
-          unsigned int c = graphicsGetPixel(&overlayGfx, x, y-lcdOverlayY);
-          if (x+lcdOverlayX < LCD_WIDTH)
-            lcdMemLCD_setPixel(NULL, x+lcdOverlayX, LCD_HEIGHT, c);
+      // overwrite areas with overlay image
+      if (y>=lcdOverlayY && y<lcdOverlayY+overlayImg.height) {
+        _jswrap_drawImageLayerStartX(&l);
+        for (int x=0;x<overlayImg.width;x++) {
+          unsigned int c;
+          if (_jswrap_drawImageLayerGetPixel(&l, &c) && x+lcdOverlayX < LCD_WIDTH)
+            lcdMemLCD_setPixel(NULL, x+lcdOverlayX, bufferLine, c);
+          _jswrap_drawImageLayerNextX(&l);
         }
+        _jswrap_drawImageLayerNextY(&l);
+      }
       // send the line
-      jshSPISendMany(LCD_SPI, buf, NULL, LCD_STRIDE, NULL);
+#ifdef EMULATED
+      memcpy(&fakeLCDBuffer[LCD_STRIDE*y], buf, LCD_STRIDE);
+#else
+      jshSPISendMany(LCD_SPI, buf, NULL, LCD_STRIDE, lcdMemLCD_flip_spi_callback);
+#endif
     }
-    // final 2 bytes to finish the transfer
-    buf[0]=0; buf[1]=0;
-    jshSPISendMany(LCD_SPI, buf, NULL, 2, NULL);
+    jsvStringIteratorFree(&l.it);
+    _jswrap_graphics_freeImageInfo(&overlayImg);
+    // any 2 final bytes to finish the transfer
+#ifndef EMULATED
+    jshSPISendMany(LCD_SPI, lcdBuffer, NULL, 2, NULL);
+#endif
   } else {
+#ifdef EMULATED
+    memcpy(fakeLCDBuffer, lcdBuffer, LCD_HEIGHT*LCD_STRIDE);
+#else
     jshSPISendMany(LCD_SPI, &lcdBuffer[LCD_STRIDE*y1], NULL, (l*LCD_STRIDE)+2, NULL);
+#endif
   }
   jshPinSetValue(LCD_SPI_CS, 0);
   // Reset modified-ness
@@ -271,14 +301,14 @@ void lcdMemLCD_extcominBacklight(bool isOn) {
 }
 
 // Enable overlay mode (to overlay a graphics instance on top of the LCD contents)
-void lcdMemLCD_setOverlay(JsVar *gfxVar, int x, int y) {
-  if (lcdOverlayGraphics) jsvUnLock(lcdOverlayGraphics);
-  if (gfxVar) {
-    lcdOverlayGraphics = jsvLockAgain(gfxVar);
+void lcdMemLCD_setOverlay(JsVar *imgVar, int x, int y) {
+  if (lcdOverlayImage) jsvUnLock(lcdOverlayImage);
+  if (imgVar) {
+    lcdOverlayImage = jsvLockAgain(imgVar);
     lcdOverlayX = (unsigned char)x;
     lcdOverlayY = (unsigned char)y;
   } else {
-    lcdOverlayGraphics = 0;
+    lcdOverlayImage = 0;
     lcdOverlayX = 0;
     lcdOverlayY = 0;
   }
