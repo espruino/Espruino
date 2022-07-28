@@ -437,6 +437,13 @@ void jslGetNextToken() {
   // record beginning of this token
   lex->tokenLastStart = lex->tokenStart;
   unsigned char jumpCh = (unsigned char)lex->currCh;
+
+  // lexer must stop parsing for a variable name if the current char is not UTF-8
+  if ((jumpCh < 0x20 || jumpCh > 0x7e) && jumpCh != 0x00) {
+    jsError("Non UTF-8 character detected.");
+    exit(1);
+  }
+
   if (jumpCh > jslJumpTableEnd) jumpCh = 0; // which also happens to be JSLJT_SINGLE_CHAR - what we want.
   jslGetNextToken_start:
   lex->tokenStart = jsvStringIteratorGetIndex(&lex->it) - 1;
