@@ -264,7 +264,7 @@ def removeBlacklistForWrapper(blacklistfile,datas):
 print("BOARD "+boardName)
 board = importlib.import_module(boardName)
 
-jsondatas = common.get_jsondata(is_for_document = False, parseArgs = True, board = board)
+jsondatas = common.get_jsondata(is_for_document = False, parseArgs = True, boardObject = board)
 if 'BLACKLIST' in os.environ:
 	jsondatas = removeBlacklistForWrapper(os.environ['BLACKLIST'],jsondatas)
 
