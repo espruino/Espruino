@@ -37,11 +37,11 @@ hello("Test")  // 1 ["Test"]
 hello(1,2,3)   // 3 [1,2,3]
 ```
 
-**Note:** Due to the way Espruino works this is doesn't behave exactly
-the same as in normal JavaScript. The length of the arguments array
-will never be less than the number of arguments specified in the 
-function declaration: `(function(a){ return arguments.length; })() == 1`.
-Normal JavaScript interpreters would return `0` in the above case.
+**Note:** Due to the way Espruino works this is doesn't behave exactly the same
+as in normal JavaScript. The length of the arguments array will never be less
+than the number of arguments specified in the function declaration:
+`(function(a){ return arguments.length; })() == 1`. Normal JavaScript
+interpreters would return `0` in the above case.
 
  */
 extern JsExecInfo execInfo;
@@ -217,7 +217,8 @@ JsVarFloat jswrap_parseFloat(JsVar *v) {
   ],
   "return" : ["bool","True is the value is a Finite number, false if not."]
 }
-Is the parameter a finite num,ber or not? If needed, the parameter is first converted to a number.
+Is the parameter a finite number or not? If needed, the parameter is first
+converted to a number.
  */
 bool jswrap_isFinite(JsVar *v) {
   JsVarFloat f = jsvGetFloat(v);
@@ -401,7 +402,8 @@ JsVar *jswrap_atob(JsVar *base64Data) {
   ],
   "return" : ["JsVar","A string containing the encoded data"]
 }
-Convert a string with any character not alphanumeric or `- _ . ! ~ * ' ( )` converted to the form `%XY` where `XY` is its hexadecimal representation
+Convert a string with any character not alphanumeric or `- _ . ! ~ * ' ( )`
+converted to the form `%XY` where `XY` is its hexadecimal representation
  */
 JsVar *jswrap_encodeURIComponent(JsVar *arg) {
   JsVar *v = jsvAsString(arg);
@@ -449,7 +451,8 @@ JsVar *jswrap_encodeURIComponent(JsVar *arg) {
   ],
   "return" : ["JsVar","A string containing the decoded data"]
 }
-Convert any groups of characters of the form '%ZZ', into characters with hex code '0xZZ'
+Convert any groups of characters of the form '%ZZ', into characters with hex
+code '0xZZ'
  */
 JsVar *jswrap_decodeURIComponent(JsVar *arg) {
   JsVar *v = jsvAsString(arg);

@@ -32,7 +32,11 @@
     ["addr", "int", "The address in memory to read"],
     ["count", "int", "(optional) the number of items to read. If >1 a Uint8Array will be returned."]
   ],
-  "return"        : ["JsVar","The value of memory at the given location"]
+  "return"        : ["JsVar","The value of memory at the given location"],
+  "typescript"    : [
+    "declare function peek8(addr: number, count?: 1): number;",
+    "declare function peek8(addr: number, count: number): Uint8Array;"
+  ]
 }
 Read 8 bits of memory at the given location - DANGEROUS!
  */
@@ -43,7 +47,8 @@ Read 8 bits of memory at the given location - DANGEROUS!
   "params" : [
     ["addr","int","The address in memory to write"],
     ["value","JsVar","The value to write, or an array of values"]
-  ]
+  ],
+  "typescript"    : "declare function poke8(addr: number, value: number | number[]): void;"
 }
 Write 8 bits of memory at the given location - VERY DANGEROUS!
  */
@@ -55,7 +60,11 @@ Write 8 bits of memory at the given location - VERY DANGEROUS!
     ["addr","int","The address in memory to read"],
     ["count","int","(optional) the number of items to read. If >1 a Uint16Array will be returned."]
   ],
-  "return" : ["JsVar","The value of memory at the given location"]
+  "return" : ["JsVar","The value of memory at the given location"],
+  "typescript" : [
+    "declare function peek16(addr: number, count?: 1): number;",
+    "declare function peek16(addr: number, count: number): Uint8Array;"
+  ]
 }
 Read 16 bits of memory at the given location - DANGEROUS!
  */
@@ -66,7 +75,8 @@ Read 16 bits of memory at the given location - DANGEROUS!
   "params" : [
     ["addr","int","The address in memory to write"],
     ["value","JsVar","The value to write, or an array of values"]
-  ]
+  ],
+  "typescript" : "declare function poke16(addr: number, value: number | number[]): void;"
 }
 Write 16 bits of memory at the given location - VERY DANGEROUS!
  */
@@ -78,7 +88,11 @@ Write 16 bits of memory at the given location - VERY DANGEROUS!
     ["addr","int","The address in memory to read"],
     ["count","int","(optional) the number of items to read. If >1 a Uint32Array will be returned."]
   ],
-  "return" : ["JsVar","The value of memory at the given location"]
+  "return" : ["JsVar","The value of memory at the given location"],
+  "typescript" : [
+    "declare function peek32(addr: number, count?: 1): number;",
+    "declare function peek32(addr: number, count: number): Uint8Array;"
+  ]
 }
 Read 32 bits of memory at the given location - DANGEROUS!
  */
@@ -89,7 +103,8 @@ Read 32 bits of memory at the given location - DANGEROUS!
   "params" : [
     ["addr","int","The address in memory to write"],
     ["value","JsVar","The value to write, or an array of values"]
-  ]
+  ],
+  "typescript" : "declare function poke32(addr: number, value: number | number[]): void;"
 }
 Write 32 bits of memory at the given location - VERY DANGEROUS!
  */
@@ -158,13 +173,14 @@ void jswrap_io_poke(JsVarInt addr, JsVar *data, int wordSize) {
   ],
   "return" : ["float","The analog Value of the Pin between 0 and 1"]
 }
-Get the analog value of the given pin
+Get the analogue value of the given pin
 
 This is different to Arduino which only returns an integer between 0 and 1023
 
 However only pins connected to an ADC will work (see the datasheet)
 
- **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"analog"`
+ **Note:** if you didn't call `pinMode` beforehand then this function will also
+ reset pin's state to `"analog"`
  */
 /*JSON{
   "type" : "function",
@@ -174,17 +190,21 @@ However only pins connected to an ADC will work (see the datasheet)
     ["pin","pin",["The pin to use","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `PWM` or `DAC` markers."]],
     ["value","float","A value between 0 and 1"],
     ["options","JsVar",["An object containing options for analog output - see below"]]
-  ]
+  ],
+  "typescript" : "declare function analogWrite(pin: Pin, value: number, options?: { freq?: number, soft?: boolean, forceSoft?: boolean }): void;"
 }
 Set the analog Value of a pin. It will be output using PWM.
 
 Objects can contain:
 
-* `freq` - pulse frequency in Hz, eg. ```analogWrite(A0,0.5,{ freq : 10 });``` - specifying a frequency will force PWM output, even if the pin has a DAC
+* `freq` - pulse frequency in Hz, e.g. ```analogWrite(A0,0.5,{ freq : 10 });``` -
+  specifying a frequency will force PWM output, even if the pin has a DAC
 * `soft` - boolean, If true software PWM is used if hardware is not available.
-* `forceSoft` - boolean, If true software PWM is used even if hardware PWM or a DAC is available
+* `forceSoft` - boolean, If true software PWM is used even if hardware PWM or a
+  DAC is available
 
- **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
+ **Note:** if you didn't call `pinMode` beforehand then this function will also
+ reset pin's state to `"output"`
  */
 void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
   JsVarFloat freq = 0;
@@ -208,15 +228,23 @@ void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
     ["pin","pin","The pin to use"],
     ["value","bool","Whether to pulse high (true) or low (false)"],
     ["time","JsVar","A time in milliseconds, or an array of times (in which case a square wave will be output starting with a pulse of 'value')"]
-  ]
+  ],
+  "typescript" : "declare function digitalPulse(pin: Pin, value: boolean, time: number | number[]): void;"
 }
-Pulse the pin with the value for the given time in milliseconds. It uses a hardware timer to produce accurate pulses, and returns immediately (before the pulse has finished). Use `digitalPulse(A0,1,0)` to wait until a previous pulse has finished.
+Pulse the pin with the value for the given time in milliseconds. It uses a
+hardware timer to produce accurate pulses, and returns immediately (before the
+pulse has finished). Use `digitalPulse(A0,1,0)` to wait until a previous pulse
+has finished.
 
-eg. `digitalPulse(A0,1,5);` pulses A0 high for 5ms. `digitalPulse(A0,1,[5,2,4]);` pulses A0 high for 5ms, low for 2ms, and high for 4ms
+e.g. `digitalPulse(A0,1,5);` pulses A0 high for 5ms.
+`digitalPulse(A0,1,[5,2,4]);` pulses A0 high for 5ms, low for 2ms, and high for
+4ms
 
- **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
+ **Note:** if you didn't call `pinMode` beforehand then this function will also
+ reset pin's state to `"output"`
 
-digitalPulse is for SHORT pulses that need to be very accurate. If you're doing anything over a few milliseconds, use setTimeout instead.
+digitalPulse is for SHORT pulses that need to be very accurate. If you're doing
+anything over a few milliseconds, use setTimeout instead.
  */
 void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
   if (!jshIsPinValid(pin)) {
@@ -267,18 +295,22 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
   "params"   : [
     ["pin",   "JsVar","The pin to use"],
     ["value", "int","Whether to pulse high (true) or low (false)"]
-  ]
+  ],
+  "typescript" : "declare function digitalWrite(pin: Pin, value: boolean): void;"
 }
 Set the digital value of the given pin.
 
- **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
+ **Note:** if you didn't call `pinMode` beforehand then this function will also
+ reset pin's state to `"output"`
 
-If pin argument is an array of pins (eg. `[A2,A1,A0]`) the value argument will be treated
-as an array of bits where the last array element is the least significant bit.
+If pin argument is an array of pins (e.g. `[A2,A1,A0]`) the value argument will
+be treated as an array of bits where the last array element is the least
+significant bit.
 
-In this case, pin values are set least significant bit first (from the right-hand side
-of the array of pins). This means you can use the same pin multiple times, for
-example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0 followed by A1.
+In this case, pin values are set least significant bit first (from the
+right-hand side of the array of pins). This means you can use the same pin
+multiple times, for example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0
+followed by A1.
 
 If the pin argument is an object with a `write` method, the `write` method will
 be called with the value passed through.
@@ -322,17 +354,20 @@ void jswrap_io_digitalWrite(
   "params"   : [
     ["pin","JsVar","The pin to use"]
   ],
-  "return"   : ["int","The digital Value of the Pin"]
+  "return"   : ["int","The digital Value of the Pin"],
+  "typescript" : "declare function digitalRead(pin: Pin): number;"
 }
 Get the digital value of the given pin.
 
- **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"input"`
+ **Note:** if you didn't call `pinMode` beforehand then this function will also
+ reset pin's state to `"input"`
 
-If the pin argument is an array of pins (eg. `[A2,A1,A0]`) the value returned will be an number where
-the last array element is the least significant bit, for example if `A0=A1=1` and `A2=0`, `digitalRead([A2,A1,A0]) == 0b011`
+If the pin argument is an array of pins (e.g. `[A2,A1,A0]`) the value returned
+will be an number where the last array element is the least significant bit, for
+example if `A0=A1=1` and `A2=0`, `digitalRead([A2,A1,A0]) == 0b011`
 
-If the pin argument is an object with a `read` method, the `read` method will be called and the integer value it returns
-passed back.
+If the pin argument is an object with a `read` method, the `read` method will be
+called and the integer value it returns passed back.
 */
 JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   // Hadnle the case where it is an array of pins.
@@ -366,6 +401,17 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   }
 }
 
+/*TYPESCRIPT
+type PinMode =
+  | "analog"
+  | "input"
+  | "input_pullup"
+  | "input_pulldown"
+  | "output"
+  | "opendrain"
+  | "af_output"
+  | "af_opendrain";
+*/
 /*JSON{
   "type"     : "function",
   "name"     : "pinMode",
@@ -374,25 +420,32 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
     ["pin", "pin", "The pin to set pin mode for"],
     ["mode", "JsVar", "The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument or use 'auto' if you want to revert to automatic pin mode setting."],
     ["automatic", "bool", "Optional, default is false. If true, subsequent commands will automatically change the state (see notes below)"]
-  ]
+  ],
+  "typescript" : "declare function pinMode(pin: Pin, mode?: PinMode | \"auto\", automatic?: boolean): void;"
 }
 Set the mode of the given pin.
 
- * `auto`/`undefined` - Don't change state, but allow `digitalWrite`/etc to automatically change state as appropriate
+ * `auto`/`undefined` - Don't change state, but allow `digitalWrite`/etc to
+   automatically change state as appropriate
  * `analog` - Analog input
  * `input` - Digital input
  * `input_pullup` - Digital input with internal ~40k pull-up resistor
  * `input_pulldown` - Digital input with internal ~40k pull-down resistor
  * `output` - Digital output
- * `opendrain` - Digital output that only ever pulls down to 0v. Sending a logical `1` leaves the pin open circuit
- * `opendrain_pullup` - Digital output that pulls down to 0v. Sending a logical `1` enables internal ~40k pull-up resistor
+ * `opendrain` - Digital output that only ever pulls down to 0v. Sending a
+   logical `1` leaves the pin open circuit
+ * `opendrain_pullup` - Digital output that pulls down to 0v. Sending a logical
+   `1` enables internal ~40k pull-up resistor
  * `af_output` - Digital output from built-in peripheral
- * `af_opendrain` - Digital output from built-in peripheral that only ever pulls down to 0v. Sending a logical `1` leaves the pin open circuit
+ * `af_opendrain` - Digital output from built-in peripheral that only ever pulls
+   down to 0v. Sending a logical `1` leaves the pin open circuit
 
- **Note:** `digitalRead`/`digitalWrite`/etc set the pin mode automatically *unless* `pinMode` has been called first.
-If you want `digitalRead`/etc to set the pin mode automatically after you have called `pinMode`, simply call it again
-with no mode argument (`pinMode(pin)`), `auto` as the argument (`pinMode(pin, "auto")`), or with the 3rd 'automatic'
-argument set to true (`pinMode(pin, "output", true)`).
+ **Note:** `digitalRead`/`digitalWrite`/etc set the pin mode automatically
+*unless* `pinMode` has been called first. If you want `digitalRead`/etc to set
+the pin mode automatically after you have called `pinMode`, simply call it again
+with no mode argument (`pinMode(pin)`), `auto` as the argument (`pinMode(pin,
+"auto")`), or with the 3rd 'automatic' argument set to true (`pinMode(pin,
+"output", true)`).
 */
 void jswrap_io_pinMode(
     Pin pin,
@@ -434,9 +487,11 @@ void jswrap_io_pinMode(
   "params" : [
     ["pin","pin","The pin to check"]
   ],
-  "return" : ["JsVar","The pin mode, as a string"]
+  "return" : ["JsVar","The pin mode, as a string"],
+  "typescript" : "declare function getPinMode(pin: Pin): PinMode;"
 }
-Return the current mode of the given pin. See `pinMode` for more information on returned values.
+Return the current mode of the given pin. See `pinMode` for more information on
+returned values.
  */
 JsVar *jswrap_io_getPinMode(Pin pin) {
   if (!jshIsPinValid(pin)) {
@@ -512,10 +567,11 @@ void jswrap_io_shiftOutCallback(int val, void *data) {
     ["pins","JsVar","A pin, or an array of pins to use"],
     ["options","JsVar","Options, for instance the clock (see below)"],
     ["data","JsVar","The data to shift out (see `E.toUint8Array` for info on the forms this can take)"]
-  ]
+  ],
+  "typescript" : "declare function shiftOut(pins: Pin | Pin[], options: { clk?: Pin, clkPol?: boolean, repeat?: number }, data: Uint8ArrayResolvable): void;"
 }
-Shift an array of data out using the pins supplied *least significant bit first*,
-for example:
+Shift an array of data out using the pins supplied *least significant bit
+first*, for example:
 
 ```
 // shift out to single clk+data
@@ -542,9 +598,9 @@ shiftOut([A3,A2,A1,A0], { clk : A4 }, [1,2,3,4]);
 }
 ```
 
-Each item in the `data` array will be output to the pins, with the first
-pin in the array being the MSB and the last the LSB, then the clock will be
-pulsed in the polarity given.
+Each item in the `data` array will be output to the pins, with the first pin in
+the array being the MSB and the last the LSB, then the clock will be pulsed in
+the polarity given.
 
 `repeat` is the amount of times shift data out for each array item. For instance
 we may want to shift 8 bits out through 2 pins - in which case we need to set
@@ -623,11 +679,14 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
     ["pin", "pin", "The pin to watch"],
     ["options", "JsVar","If a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true). Can be an object of the form `{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}` - see below for more information."]
   ],
-  "return" : ["JsVar","An ID that can be passed to clearWatch"]
+  "return" : ["JsVar","An ID that can be passed to clearWatch"],
+  "typescript" : "declare function setWatch(func: ((arg: { state: boolean, time: number, lastTime: number }) => void) | string, pin: Pin, options?: boolean | { repeat?: boolean, edge?: \"rising\" | \"falling\" | \"both\", debounce?: number, irq?: boolean, data?: Pin, hispeed?: boolean }): number;"
 }
-Call the function specified when the pin changes. Watches set with `setWatch` can be removed using `clearWatch`.
+Call the function specified when the pin changes. Watches set with `setWatch`
+can be removed using `clearWatch`.
 
-If the `options` parameter is an object, it can contain the following information (all optional):
+If the `options` parameter is an object, it can contain the following
+information (all optional):
 
 ```
 {
@@ -652,30 +711,39 @@ If the `options` parameter is an object, it can contain the following informatio
 }
 ```
 
-The `function` callback is called with an argument, which is an object of type `{state:bool, time:float, lastTime:float}`.
+The `function` callback is called with an argument, which is an object of type
+`{state:bool, time:float, lastTime:float}`.
 
  * `state` is whether the pin is currently a `1` or a `0`
  * `time` is the time in seconds at which the pin changed state
- * `lastTime` is the time in seconds at which the **pin last changed state**. When using `edge:'rising'` or `edge:'falling'`, this is not the same as when the function was last called.
- * `data` is included if `data:pin` was specified in the options, and can be used for reading in clocked data
+ * `lastTime` is the time in seconds at which the **pin last changed state**.
+   When using `edge:'rising'` or `edge:'falling'`, this is not the same as when
+   the function was last called.
+ * `data` is included if `data:pin` was specified in the options, and can be
+   used for reading in clocked data
 
-For instance, if you want to measure the length of a positive pulse you could use `setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });`.
-This will only be called on the falling edge of the pulse, but will be able to measure the width of the pulse because `e.lastTime` is the time of the rising edge.
+For instance, if you want to measure the length of a positive pulse you could
+use `setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, {
+repeat:true, edge:'falling' });`. This will only be called on the falling edge
+of the pulse, but will be able to measure the width of the pulse because
+`e.lastTime` is the time of the rising edge.
 
-Internally, an interrupt writes the time of the pin's state change into a queue with the exact
-time that it happened, and the function supplied to `setWatch` is executed only from the main
-message loop. However, if the callback is a native function `void (bool state)` then you can
-add `irq:true` to options, which will cause the function to be called from within the IRQ.
-When doing this, interrupts will happen on both edges and there will be no debouncing.
+Internally, an interrupt writes the time of the pin's state change into a queue
+with the exact time that it happened, and the function supplied to `setWatch` is
+executed only from the main message loop. However, if the callback is a native
+function `void (bool state)` then you can add `irq:true` to options, which will
+cause the function to be called from within the IRQ. When doing this, interrupts
+will happen on both edges and there will be no debouncing.
 
-**Note:** if you didn't call `pinMode` beforehand then this function will reset pin's state to `"input"`
+**Note:** if you didn't call `pinMode` beforehand then this function will reset
+pin's state to `"input"`
 
-**Note:** The STM32 chip (used in the [Espruino Board](/EspruinoBoard) and [Pico](/Pico)) cannot
-watch two pins with the same number - eg `A0` and `B0`.
+**Note:** The STM32 chip (used in the [Espruino Board](/EspruinoBoard) and
+[Pico](/Pico)) cannot watch two pins with the same number - e.g. `A0` and `B0`.
 
-**Note:** On nRF52 chips (used in Puck.js, Pixl.js, MDBT42Q) `setWatch` disables the GPIO
-output on that pin. In order to be able to write to the pin again you need to disable
-the watch with `clearWatch`.
+**Note:** On nRF52 chips (used in Puck.js, Pixl.js, MDBT42Q) `setWatch` disables
+the GPIO output on that pin. In order to be able to write to the pin again you
+need to disable the watch with `clearWatch`.
 
  */
 JsVar *jswrap_interface_setWatch(
@@ -789,7 +857,8 @@ JsVar *jswrap_interface_setWatch(
   "generate" : "jswrap_interface_clearWatch",
   "params" : [
     ["id","JsVarArray","The id returned by a previous call to setWatch. **Only one argument is allowed.**"]
-  ]
+  ],
+  "typescript" : "declare function clearWatch(id: number): void;"
 }
 Clear the Watch that was created with setWatch. If no parameter is supplied, all watches will be removed.
 

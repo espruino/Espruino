@@ -245,10 +245,11 @@ static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *pt
   ],
   "return" : ["bool","True on success"]
 }
-Set the current IP address or get an IP from DHCP (if no options object is specified)
+Set the current IP address or get an IP from DHCP (if no options object is
+specified)
 
-If 'mac' is specified as an option, it must be a string of the form `"00:01:02:03:04:05"`
-The default mac is 00:08:DC:01:02:03.
+If 'mac' is specified as an option, it must be a string of the form
+`"00:01:02:03:04:05"` The default mac is 00:08:DC:01:02:03.
 */
 bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options, JsVar *callback) {
   NOT_USED(wlanObj);
@@ -333,10 +334,9 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options, JsVar *callback) {
   ],
   "return" : ["bool","True on success"]
 }
-Set hostname allow to set the hosname used during the dhcp request.
-min 8 and max 12 char, best set before calling `eth.setIP()`
-Default is WIZnet010203, 010203 is the default nic as part of the mac.
-Best to set the hosname before calling setIP().
+Set hostname used during the DHCP request. Minimum 8 and maximum 12 characters,
+best set before calling `eth.setIP()`. Default is WIZnet010203, 010203 is the
+default nic as part of the mac.
 */
 bool jswrap_ethernet_setHostname(JsVar *wlanObj, JsVar *jsHostname, JsVar *callback){
   NOT_USED(wlanObj);
@@ -402,7 +402,7 @@ JsVar * jswrap_ethernet_getHostname(JsVar *wlanObj, JsVar *callback) {
   ],
   "return" : ["JsVar" ]
 }
-Get the current status of the ethernet device 
+Get the current status of the ethernet device
 
 */
 JsVar * jswrap_ethernet_getStatus( JsVar *wlanObj, JsVar *callback) {

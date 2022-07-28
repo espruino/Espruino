@@ -82,32 +82,14 @@ const uint16_t PALETTE_4BIT_TO_8BIT[16] = { 0, 43, 129, 172, 121, 78, 12, 18, 23
 
 // ==========================================================================================
 
-/// Info about an image to be used for rendering
-typedef struct {
-  int width, height, bpp;
-  bool isTransparent;
-  unsigned int transparentCol;
-  JsVar *buffer; // must be unlocked!
-  uint32_t bitmapOffset; // start offset in imageBuffer
-  const uint16_t *palettePtr;
-  uint32_t paletteMask;
-  unsigned int bitMask;
-  unsigned int pixelsPerByteMask;
-  int stride; ///< bytes per line
-  unsigned short headerLength; ///< size of header (inc palette)
-  unsigned short bitmapLength; ///< size of data (excl header)
-
-  uint16_t _simplePalette[16]; // used when a palette is created for rendering
-} GfxDrawImageInfo;
-
-static void _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info) {
+void _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info) {
   jsvUnLock(info->buffer);
 }
 
 /** Parse an image into GfxDrawImageInfo. See drawImage for image format docs. Returns true on success.
  * if 'image' is a string or ArrayBuffer, imageOffset is the offset within that (usually 0)
  */
-static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int imageOffset, GfxDrawImageInfo *info) {
+bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int imageOffset, GfxDrawImageInfo *info) {
   memset(info, 0, sizeof(GfxDrawImageInfo));
 #ifndef SAVE_ON_FLASH
   if (jsvIsObject(image) && jsvIsInstanceOf(image,"Graphics")) {
@@ -260,24 +242,6 @@ static bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned 
   return true;
 }
 
-
-
-/// This is for rotating and scaling layers
-typedef struct {
-  int x1,y1,x2,y2; //x2/y2 is exclusive
-  double rotate; // radians
-  double scale; // 1 = 1:1, 2 = big
-  bool center; // center on x1/y1 (which are then offset)
-  bool repeat; // tile the image
-  GfxDrawImageInfo img;
-  // for rendering
-  JsvStringIterator it;
-  int mx,my; //< max - width and height << 8
-  int sx,sy; //< iterator X increment
-  int px,py; //< y iterator position
-  int qx,qy; //< x iterator position
-} GfxDrawImageLayer;
-
 bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) {
   int qx = l->qx+127;
   int qy = l->qy+127;
@@ -417,9 +381,13 @@ NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxD
 }
 This class provides Graphics operations that can be applied to a surface.
 
-Use Graphics.createXXX to create a graphics object that renders in the way you want. See [the Graphics page](https://www.espruino.com/Graphics) for more information.
+Use Graphics.createXXX to create a graphics object that renders in the way you
+want. See [the Graphics page](https://www.espruino.com/Graphics) for more
+information.
 
-**Note:** On boards that contain an LCD, there is a built-in 'LCD' object of type Graphics. For instance to draw a line you'd type: ```LCD.drawLine(0,0,100,100)```
+**Note:** On boards that contain an LCD, there is a built-in 'LCD' object of
+type Graphics. For instance to draw a line you'd type:
+```LCD.drawLine(0,0,100,100)```
 */
 
 /*JSON{
@@ -428,28 +396,23 @@ Use Graphics.createXXX to create a graphics object that renders in the way you w
   "params" : [ ["all","bool","[optional] (only on some devices) If `true` then copy all pixels, not just those that have changed."] ],
   "name" : "flip"
 }
-On instances of graphics that drive a display with
-an offscreen buffer, calling this function will
-copy the contents of the offscreen buffer to the
+On instances of graphics that drive a display with an offscreen buffer, calling
+this function will copy the contents of the offscreen buffer to the screen.
+
+Call this when you have drawn something to Graphics and you want it shown on the
 screen.
 
-Call this when you have drawn something to Graphics
-and you want it shown on the screen.
+If a display does not have an offscreen buffer, it may not have a `g.flip()`
+method.
 
-If a display does not have an offscreen buffer,
-it may not have a `g.flip()` method.
+On Bangle.js 1, there are different graphics modes chosen with
+`Bangle.setLCDMode()`. The default mode is unbuffered and in this mode
+`g.flip()` does not affect the screen contents.
 
-On Bangle.js 1, there are different graphics modes
-chosen with `Bangle.setLCDMode()`. The default mode
-is unbuffered and in this mode `g.flip()` does not
-affect the screen contents.
-
-On some devices, this command will attempt to
-only update the areas of the screen that have
-changed in order to increase speed. If you have
-accessed the `Graphics.buffer` directly then you
-may need to use `Graphics.flip(true)` to force
-a full update of the screen.
+On some devices, this command will attempt to only update the areas of the
+screen that have changed in order to increase speed. If you have accessed the
+`Graphics.buffer` directly then you may need to use `Graphics.flip(true)` to
+force a full update of the screen.
 */
 /*JSON{
   "type" : "property",
@@ -458,9 +421,8 @@ a full update of the screen.
   "return" : ["JsVar","An ArrayBuffer (or not defined on Graphics instances not created with `Graphics.createArrayBuffer`)"],
   "typescript" : "buffer: IsBuffer extends true ? ArrayBuffer : undefined"
 }
-On Graphics instances with an offscreen buffer, this
-is an `ArrayBuffer` that provides access to the underlying
-pixel data.
+On Graphics instances with an offscreen buffer, this is an `ArrayBuffer` that
+provides access to the underlying pixel data.
 
 ```
 g=Graphics.createArrayBuffer(8,8,8)
@@ -532,9 +494,9 @@ void jswrap_graphics_init() {
   "return" : ["JsVar","An instance of `Graphics` or undefined"],
   "typescript" : "getInstance(): Graphics | undefined"
 }
-On devices like Pixl.js or HYSTM boards that contain a built-in display
-this will return an instance of the graphics class that can be used to
-access that display.
+On devices like Pixl.js or HYSTM boards that contain a built-in display this
+will return an instance of the graphics class that can be used to access that
+display.
 
 Internally, this is stored as a member called `gfx` inside the 'hiddenRoot'.
 */
@@ -568,7 +530,8 @@ static bool isValidBPP(int bpp) {
   "return_object" : "Graphics",
   "typescript" : "createArrayBuffer(width: number, height: number, bpp: number, options?: { zigzag?: boolean, vertical_byte?: boolean, msb?: boolean, color_order?: \"rgb\" | \"rbg\" | \"brg\" | \"bgr\" | \"grb\" | \"gbr\" }): Graphics<true>;"
 }
-Create a Graphics object that renders to an Array Buffer. This will have a field called 'buffer' that can get used to get at the buffer itself
+Create a Graphics object that renders to an Array Buffer. This will have a field
+called 'buffer' that can get used to get at the buffer itself
 */
 JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *options) {
   if (width<=0 || height<=0 || width>32767 || height>32767) {
@@ -648,7 +611,8 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   "return_object" : "Graphics",
   "typescript" : "createCallback(width: number, height: number, bpp: number, callback: ((x: number, y: number, col: number) => void) | { setPixel: (x: number, y: number, col: number) => void; fillRect: (x1: number, y1: number, x2: number, y2: number, col: number) => void }): Graphics<false>;"
 }
-Create a Graphics object that renders by calling a JavaScript callback function to draw pixels
+Create a Graphics object that renders by calling a JavaScript callback function
+to draw pixels
 */
 JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *callback) {
   if (width<=0 || height<=0 || width>32767 || height>32767) {
@@ -767,8 +731,8 @@ XXXXXXXXX
 g.drawImage(img, x,y);
 ```
 
-If the characters at the beginning and end of the string are newlines, they
-will be ignored. Spaces are treated as `0`, and any other character is a `1`
+If the characters at the beginning and end of the string are newlines, they will
+be ignored. Spaces are treated as `0`, and any other character is a `1`
 */
 JsVar *jswrap_graphics_createImage(JsVar *data) {
   if (!jsvIsString(data)) {
@@ -865,10 +829,10 @@ int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
 }
 The number of bits per pixel of this Graphics instance
 
-**Note:** Bangle.js 2 behaves a little differently here. The display
-is 3 bit, so `getBPP` returns 3 and `asBMP`/`asImage`/etc return 3 bit images.
-However in order to allow dithering, the colors returned by `Graphics.getColor` and `Graphics.theme`
-are actually 16 bits.
+**Note:** Bangle.js 2 behaves a little differently here. The display is 3 bit,
+so `getBPP` returns 3 and `asBMP`/`asImage`/etc return 3 bit images. However in
+order to allow dithering, the colors returned by `Graphics.getColor` and
+`Graphics.theme` are actually 16 bits.
 */
 int jswrap_graphics_getBPP(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -887,8 +851,8 @@ int jswrap_graphics_getBPP(JsVar *parent) {
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-Reset the state of Graphics to the defaults (e.g. Color, Font, etc)
-that would have been used when Graphics was initialised.
+Reset the state of Graphics to the defaults (e.g. Color, Font, etc) that would
+have been used when Graphics was initialised.
 */
 JsVar *jswrap_graphics_reset(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -1547,17 +1511,18 @@ JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-This sets the 'clip rect' that subsequent drawing operations are clipped to
-sit between.
+This sets the 'clip rect' that subsequent drawing operations are clipped to sit
+between.
 
 These values are inclusive - e.g. `g.setClipRect(1,0,5,0)` will ensure that only
 pixel rows 1,2,3,4,5 are touched on column 0.
 
-**Note:** For maximum flexibility on Bangle.js 1, the values here are not range checked. For normal
-use, X and Y should be between 0 and `getWidth()-1`/`getHeight()-1`.
+**Note:** For maximum flexibility on Bangle.js 1, the values here are not range
+checked. For normal use, X and Y should be between 0 and
+`getWidth()-1`/`getHeight()-1`.
 
-**Note:** The x/y values here are rotated, so that if `Graphics.setRotation` is used
-they correspond to the coordinates given to the draw functions, *not to the
+**Note:** The x/y values here are rotated, so that if `Graphics.setRotation` is
+used they correspond to the coordinates given to the draw functions, *not to the
 physical device pixels*.
 */
 JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2) {
@@ -1617,7 +1582,8 @@ It is recommended that you use `Graphics.setFont("4x6")` for more flexibility.
 }
 Make subsequent calls to `drawString` use a Vector Font of the given height.
 
-It is recommended that you use `Graphics.setFont("Vector", size)` for more flexibility.
+It is recommended that you use `Graphics.setFont("Vector", size)` for more
+flexibility.
 */
 JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -1659,13 +1625,16 @@ JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont) 
   "return_object" : "Graphics",
   "typescript" : "setFontCustom(bitmap: ArrayBuffer, firstChar: number, width: number | string, height: number): Graphics;"
 }
-Make subsequent calls to `drawString` use a Custom Font of the given height. See the [Fonts page](http://www.espruino.com/Fonts) for more
-information about custom fonts and how to create them.
+Make subsequent calls to `drawString` use a Custom Font of the given height. See
+the [Fonts page](http://www.espruino.com/Fonts) for more information about
+custom fonts and how to create them.
 
-For examples of use, see the [font modules](https://www.espruino.com/Fonts#font-modules).
+For examples of use, see the [font
+modules](https://www.espruino.com/Fonts#font-modules).
 
-**Note:** while you can specify the character code of the first character with `firstChar`,
-the newline character 13 will always be treated as a newline and not rendered.
+**Note:** while you can specify the character code of the first character with
+`firstChar`, the newline character 13 will always be treated as a newline and
+not rendered.
 */
 #ifndef SAVE_ON_FLASH
 JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height) {
@@ -1802,7 +1771,7 @@ You can also use these forms, but they are not recommended:
 
 `g.getFont()` will return the current font as a String.
 
-For a list of available font names, you can use `g.getFonts()`. 
+For a list of available font names, you can use `g.getFonts()`.
 
 */
 JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
@@ -1886,11 +1855,11 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
 }
 Get the font by name - can be saved and used with `Graphics.setFont`.
 
-Normally this might return something like `"4x6"`, but if a scale
-factor is specified, a colon and then the size is reported, like "4x6:2"
+Normally this might return something like `"4x6"`, but if a scale factor is
+specified, a colon and then the size is reported, like "4x6:2"
 
-**Note:** For custom fonts, `Custom` is currently
-reported instead of the font name.
+**Note:** For custom fonts, `Custom` is currently reported instead of the font
+name.
 */
 JsVar *jswrap_graphics_getFont(JsVar *parent) {
 #ifndef SAVE_ON_FLASH
@@ -1939,8 +1908,8 @@ JsVar *jswrap_graphics_getFont(JsVar *parent) {
 }
 Return an array of all fonts currently in the Graphics library.
 
-**Note:** Vector fonts are specified as `Vector#` where `#` is the font height. As there
-are effectively infinite fonts, just `Vector` is included in the list.
+**Note:** Vector fonts are specified as `Vector#` where `#` is the font height.
+As there are effectively infinite fonts, just `Vector` is included in the list.
 */
 
 void jswrap_graphics_getFonts_callback(void *cbdata, JsVar *key) {
@@ -2284,9 +2253,9 @@ Draw a string of text in the current font.
 g.drawString("Hello World", 10, 10);
 ```
 
-Images may also be embedded inside strings (e.g. to render Emoji or characters not in the current font).
-To do this, just add `0` then the image string ([about Images](http://www.espruino.com/Graphics#images-bitmaps))
-For example:
+Images may also be embedded inside strings (e.g. to render Emoji or characters
+not in the current font). To do this, just add `0` then the image string ([about
+Images](http://www.espruino.com/Graphics#images-bitmaps)) For example:
 
 ```
 g.drawString("Hi \0\7\5\1\x82 D\x17\xC0");
@@ -2603,7 +2572,8 @@ JsVar *jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
   "return_object" : "Graphics",
   "typescript" : "drawPoly(poly: number[], closed?: boolean): Graphics;"
 }
-Draw a polyline (lines between each of the points in `poly`) in the current foreground color
+Draw a polyline (lines between each of the points in `poly`) in the current
+foreground color
 
 **Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
@@ -2621,7 +2591,8 @@ Draw a polyline (lines between each of the points in `poly`) in the current fore
   "return_object" : "Graphics",
   "typescript" : "drawPolyAA(poly: number[], closed?: boolean): Graphics;"
 }
-Draw an **antialiased** polyline (lines between each of the points in `poly`) in the current foreground color
+Draw an **antialiased** polyline (lines between each of the points in `poly`) in
+the current foreground color
 
 **Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
@@ -2700,10 +2671,10 @@ g.fillPoly([
   0, 27 ]);
 ```
 
-This fills from the top left hand side of the polygon (low X, low Y)
-*down to but not including* the bottom right. When placed together polygons
-will align perfectly without overdraw - but this will not fill the
-same pixels as `drawPoly` (drawing a line around the edge of the polygon).
+This fills from the top left hand side of the polygon (low X, low Y) *down to
+but not including* the bottom right. When placed together polygons will align
+perfectly without overdraw - but this will not fill the same pixels as
+`drawPoly` (drawing a line around the edge of the polygon).
 
 **Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
@@ -2732,10 +2703,10 @@ g.fillPolyAA([
   0, 27 ]);
 ```
 
-This fills from the top left hand side of the polygon (low X, low Y)
-*down to but not including* the bottom right. When placed together polygons
-will align perfectly without overdraw - but this will not fill the
-same pixels as `drawPoly` (drawing a line around the edge of the polygon).
+This fills from the top left hand side of the polygon (low X, low Y) *down to
+but not including* the bottom right. When placed together polygons will align
+perfectly without overdraw - but this will not fill the same pixels as
+`drawPoly` (drawing a line around the edge of the polygon).
 
 **Note:** there is a limit of 64 points (128 XY elements) for polygons
 */
@@ -2832,11 +2803,13 @@ JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
   "return" : ["JsVar","An object containing `{width,height,bpp,transparent}` for the image"],
   "typescript" : "imageMetrics(img: Image): { width: number, height: number, bpp: number, transparent: number, frames?: ArrayBuffer[] } | undefined;"
 }
-Return the width and height in pixels of an image (either Graphics, Image Object, Image String or ArrayBuffer). Returns
-`undefined` if image couldn't be decoded.
+Return the width and height in pixels of an image (either Graphics, Image
+Object, Image String or ArrayBuffer). Returns `undefined` if image couldn't be
+decoded.
 
-`frames` is also included is the image contains more information than you'd expect for a single bitmap. In
-this case the bitmap might be an animation with multiple frames
+`frames` is also included is the image contains more information than you'd
+expect for a single bitmap. In this case the bitmap might be an animation with
+multiple frames
 */
 JsVar *jswrap_graphics_imageMetrics(JsVar *parent, JsVar *var) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -2874,21 +2847,32 @@ JsVar *jswrap_graphics_imageMetrics(JsVar *parent, JsVar *var) {
 }
 Image can be:
 
-* An object with the following fields `{ width : int, height : int, bpp : optional int, buffer : ArrayBuffer/String, transparent: optional int, palette : optional Uint16Array(2/4/16) }`. bpp = bits per pixel (default is 1), transparent (if defined) is the colour that will be treated as transparent, and palette is a color palette that each pixel will be looked up in first
-* A String where the the first few bytes are: `width,height,bpp,[transparent,]image_bytes...`. If a transparent colour is specified the top bit of `bpp` should be set.
-* An ArrayBuffer Graphics object (if `bpp<8`, `msb:true` must be set) - this is disabled on devices without much flash memory available
+* An object with the following fields `{ width : int, height : int, bpp :
+  optional int, buffer : ArrayBuffer/String, transparent: optional int,
+  palette : optional Uint16Array(2/4/16) }`. bpp = bits per pixel (default is
+  1), transparent (if defined) is the colour that will be treated as
+  transparent, and palette is a color palette that each pixel will be looked up
+  in first
+* A String where the the first few bytes are:
+  `width,height,bpp,[transparent,]image_bytes...`. If a transparent colour is
+  specified the top bit of `bpp` should be set.
+* An ArrayBuffer Graphics object (if `bpp<8`, `msb:true` must be set) - this is
+  disabled on devices without much flash memory available
 
 Draw an image at the specified position.
 
-* If the image is 1 bit, the graphics foreground/background colours will be used.
-* If `img.palette` is a Uint16Array or 2/4/16 elements, color data will be looked from the supplied palette
+* If the image is 1 bit, the graphics foreground/background colours will be
+  used.
+* If `img.palette` is a Uint16Array or 2/4/16 elements, color data will be
+  looked from the supplied palette
 * On Bangle.js, 2 bit images blend from background(0) to foreground(1) colours
 * On Bangle.js, 4 bit images use the Apple Mac 16 color palette
 * On Bangle.js, 8 bit images use the Web Safe 216 color palette
 * Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first
 
-If `options` is supplied, `drawImage` will allow images to be rendered at any scale or angle. If `options.rotate` is set it will
-center images at `x,y`. `options` must be an object of the form:
+If `options` is supplied, `drawImage` will allow images to be rendered at any
+scale or angle. If `options.rotate` is set it will center images at `x,y`.
+`options` must be an object of the form:
 
 ```
 {
@@ -3223,9 +3207,10 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
     "asImage(type: \"string\"): string;"
   ]
 }
-Return this Graphics object as an Image that can be used with `Graphics.drawImage`.
-Check out [the Graphics reference page](http://www.espruino.com/Graphics#images-bitmaps)
-for more information on images.
+Return this Graphics object as an Image that can be used with
+`Graphics.drawImage`. Check out [the Graphics reference
+page](http://www.espruino.com/Graphics#images-bitmaps) for more information on
+images.
 
 Will return undefined if data can't be allocated for the image.
 
@@ -3236,8 +3221,7 @@ The image data itself will be referenced rather than copied if:
 * Is 8 bpp *OR* the `{msb:true}` option was given
 * No other format options (zigzag/etc) were given
 
-Otherwise data will be copied, which takes up more space and
-may be quite slow.
+Otherwise data will be copied, which takes up more space and may be quite slow.
 */
 JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -3332,10 +3316,11 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   "return" : ["JsVar","An object {x1,y1,x2,y2} containing the modified area, or undefined if not modified"],
   "typescript" : "getModified(reset?: boolean): { x1: number, y1: number, x2: number, y2: number };"
 }
-Return the area of the Graphics canvas that has been modified, and optionally clear
-the modified area to 0.
+Return the area of the Graphics canvas that has been modified, and optionally
+clear the modified area to 0.
 
-For instance if `g.setPixel(10,20)` was called, this would return `{x1:10, y1:20, x2:10, y2:20}`
+For instance if `g.setPixel(10,20)` was called, this would return `{x1:10,
+y1:20, x2:10, y2:20}`
 */
 JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
 #ifndef NO_MODIFIED_AREA
@@ -3379,8 +3364,8 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
 Scroll the contents of this graphics in a certain direction. The remaining area
 is filled with the background color.
 
-Note: This uses repeated pixel reads and writes, so will not work on platforms that
-don't support pixel reads.
+Note: This uses repeated pixel reads and writes, so will not work on platforms
+that don't support pixel reads.
 */
 JsVar *jswrap_graphics_scroll(JsVar *parent, int xdir, int ydir) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -3414,8 +3399,8 @@ g.blit({
 });
 ```
 
-Note: This uses repeated pixel reads and writes, so will not work on platforms that
-don't support pixel reads.
+Note: This uses repeated pixel reads and writes, so will not work on platforms
+that don't support pixel reads.
 */
 JsVar *jswrap_graphics_blit(JsVar *parent, JsVar *options) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -3486,7 +3471,8 @@ JsVar *jswrap_graphics_blit(JsVar *parent, JsVar *options) {
   "return" : ["JsVar","A String representing the Graphics as a Windows BMP file (or 'undefined' if not possible)"],
   "typescript" : "asBMP(): string;"
 }
-Create a Windows BMP file from this Graphics instance, and return it as a String.
+Create a Windows BMP file from this Graphics instance, and return it as a
+String.
 */
 JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -3604,9 +3590,11 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   "return" : ["JsVar","A String representing the Graphics as a URL (or 'undefined' if not possible)"],
   "typescript" : "asURL(): string;"
 }
-Create a URL of the form `data:image/bmp;base64,...` that can be pasted into the browser.
+Create a URL of the form `data:image/bmp;base64,...` that can be pasted into the
+browser.
 
-The Espruino Web IDE can detect this data on the console and render the image inline automatically.
+The Espruino Web IDE can detect this data on the console and render the image
+inline automatically.
 */
 JsVar *jswrap_graphics_asURL(JsVar *parent) {
   JsVar *imgData = jswrap_graphics_asBMP(parent);
@@ -3626,12 +3614,17 @@ JsVar *jswrap_graphics_asURL(JsVar *parent) {
   "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_dump"
 }
-Output this image as a bitmap URL of the form `data:image/bmp;base64,...`. The Espruino Web IDE will detect this on the console and will render the image inline automatically.
+Output this image as a bitmap URL of the form `data:image/bmp;base64,...`. The
+Espruino Web IDE will detect this on the console and will render the image
+inline automatically.
 
-This is identical to `console.log(g.asURL())` - it is just a convenient function for easy debugging and producing screenshots of what is currently in the Graphics instance.
+This is identical to `console.log(g.asURL())` - it is just a convenient function
+for easy debugging and producing screenshots of what is currently in the
+Graphics instance.
 
-**Note:** This may not work on some bit depths of Graphics instances. It will also not work for the main Graphics instance
-of Bangle.js 1 as the graphics on Bangle.js 1 are stored in write-only memory.
+**Note:** This may not work on some bit depths of Graphics instances. It will
+also not work for the main Graphics instance of Bangle.js 1 as the graphics on
+Bangle.js 1 are stored in write-only memory.
 */
 void jswrap_graphics_dump(JsVar *parent) {
   JsVar *url = jswrap_graphics_asURL(parent);
@@ -3655,9 +3648,7 @@ void jswrap_graphics_dump(JsVar *parent) {
 }
  Calculate the square area under a Bezier curve.
 
- x0,y0: start point
- x1,y1: control point
- y2,y2: end point
+ x0,y0: start point x1,y1: control point y2,y2: end point
 
  Max 10 points without start point.
 */
@@ -3835,11 +3826,14 @@ Returns an object of the form:
 }
 ```
 
-These values can then be passed to `g.setColor`/`g.setBgColor` for example `g.setColor(g.theme.fg2)`. When the Graphics
-instance is reset, the background color is automatically set to `g.theme.bg` and foreground is set to `g.theme.fg`.
+These values can then be passed to `g.setColor`/`g.setBgColor` for example
+`g.setColor(g.theme.fg2)`. When the Graphics instance is reset, the background
+color is automatically set to `g.theme.bg` and foreground is set to
+`g.theme.fg`.
 
-On Bangle.js these values can be changed by writing updated values to `theme` in `settings.js` and reloading the app - or they can
-be changed temporarily by calling `Graphics.setTheme`
+On Bangle.js these values can be changed by writing updated values to `theme` in
+`settings.js` and reloading the app - or they can be changed temporarily by
+calling `Graphics.setTheme`
 */
 JsVar *jswrap_graphics_theme(JsVar *parent) {
   NOT_USED(parent);
@@ -3869,12 +3863,13 @@ JsVar *jswrap_graphics_theme(JsVar *parent) {
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics",
-  "typescript" : "setTheme(theme: { [key in keyof Theme]?: Theme[key] extends number ? ColorResolvable | Theme[key] }): Graphics;"
+  "typescript" : "setTheme(theme: { [key in keyof Theme]?: Theme[key] extends number ? ColorResolvable : Theme[key] }): Graphics;"
 }
-Set the global colour scheme. On Bangle.js, this is reloaded from `settings.json` for each new app loaded.
+Set the global colour scheme. On Bangle.js, this is reloaded from
+`settings.json` for each new app loaded.
 
-See `Graphics.theme` for the fields that can be provided. For instance you can change
-the background to red using:
+See `Graphics.theme` for the fields that can be provided. For instance you can
+change the background to red using:
 
 ```
 g.setTheme({bg:"#f00"});

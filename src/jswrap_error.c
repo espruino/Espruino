@@ -44,8 +44,8 @@ The base class for internal errors
   "type" : "class",
   "class" : "ReferenceError"
 }
-The base class for reference errors - where a variable
-which doesn't exist has been accessed.
+The base class for reference errors - where a variable which doesn't exist has
+been accessed.
  */
 
 JsVar *_jswrap_error_constructor(JsVar *msg, char *type) {

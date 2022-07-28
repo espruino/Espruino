@@ -69,9 +69,9 @@ static uint8_t      tnSrvMode;    ///< current mode for the telnet server
   "type"  : "library",
   "class" : "TelnetServer"
 }
-This library implements a telnet console for the Espruino interpreter. It requires a network
-connection, e.g. Wifi, and **currently only functions on the ESP8266 and on Linux **. It uses
-port 23 on the ESP8266 and port 2323 on Linux.
+This library implements a telnet console for the Espruino interpreter. It
+requires a network connection, e.g. Wifi, and **currently only functions on the
+ESP8266 and on Linux **. It uses port 23 on the ESP8266 and port 2323 on Linux.
 
 **Note:** To enable on Linux, run `./espruino --telnet`
 */

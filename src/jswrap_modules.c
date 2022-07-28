@@ -59,8 +59,8 @@ print(s.read("test"));
 // prints "hello world"
 ```
 
-Check out [the page on Modules](/Modules) for an explanation
-of what modules are and how you can use them.
+Check out [the page on Modules](/Modules) for an explanation of what modules are
+and how you can use them.
  */
 JsVar *jswrap_require(JsVar *moduleName) {
   if (!jsvIsString(moduleName)) {

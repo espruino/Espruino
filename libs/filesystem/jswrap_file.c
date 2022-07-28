@@ -119,7 +119,8 @@ bool jsfsInit() {
     ["csPin","pin","The pin to use for Chip Select"]
   ]
 }
-Setup the filesystem so that subsequent calls to `E.openFile` and `require('fs').*` will use an SD card on the supplied SPI device and pin.
+Setup the filesystem so that subsequent calls to `E.openFile` and
+`require('fs').*` will use an SD card on the supplied SPI device and pin.
 
 It can even work using software SPI - for instance:
 
@@ -136,11 +137,12 @@ console.log(require("fs").readdirSync());
 
 See [the page on File IO](http://www.espruino.com/File+IO) for more information.
 
-**Note:** We'd strongly suggest you add a pullup resistor from CD/CS pin to 3.3v. It is
-good practise to avoid accidental writes before Espruino is initialised, and some cards
-will not work reliably without one.
+**Note:** We'd strongly suggest you add a pullup resistor from CD/CS pin to
+3.3v. It is good practise to avoid accidental writes before Espruino is
+initialised, and some cards will not work reliably without one.
 
-**Note:** If you want to remove an SD card after you have started using it, you *must* call `E.unmountSD()` or you may cause damage to the card.
+**Note:** If you want to remove an SD card after you have started using it, you
+*must* call `E.unmountSD()` or you may cause damage to the card.
 */
 void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
 #ifdef SD_CARD_ANYWHERE
@@ -165,11 +167,16 @@ void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
   "type" : "class",
   "class" : "File"
 }
-This is the File object - it allows you to stream data to and from files (As opposed to the `require('fs').readFile(..)` style functions that read an entire file).
+This is the File object - it allows you to stream data to and from files (As
+opposed to the `require('fs').readFile(..)` style functions that read an entire
+file).
 
-To create a File object, you must type ```var fd = E.openFile('filepath','mode')``` - see [E.openFile](#l_E_openFile) for more information.
+To create a File object, you must type ```var fd =
+E.openFile('filepath','mode')``` - see [E.openFile](#l_E_openFile) for more
+information.
 
-**Note:** If you want to remove an SD card after you have started using it, you *must* call `E.unmountSD()` or you may cause damage to the card.
+**Note:** If you want to remove an SD card after you have started using it, you
+*must* call `E.unmountSD()` or you may cause damage to the card.
 */
 
 static JsVar* fsGetArray(bool create) {
@@ -227,7 +234,9 @@ void jswrap_file_kill() {
   "name" : "unmountSD",
   "generate" : "jswrap_E_unmountSD"
 }
-Unmount the SD card, so it can be removed. If you remove the SD card without calling this you may cause corruption, and you will be unable to access another SD card until you reset Espruino or call `E.unmountSD()`.
+Unmount the SD card, so it can be removed. If you remove the SD card without
+calling this you may cause corruption, and you will be unable to access another
+SD card until you reset Espruino or call `E.unmountSD()`.
 */
 void jswrap_E_unmountSD() {
   jswrap_file_kill();
@@ -394,12 +403,11 @@ void jswrap_file_close(JsVar* parent) {
 }
 Write data to a file.
 
-**Note:** By default this function flushes all changes to the
-SD card, which makes it slow (but also safe!). You can use
-`E.setFlags({unsyncFiles:1})` to disable this behaviour and
-really speed up writes - but then you must be sure to close
-all files you are writing before power is lost or you will
-cause damage to your SD card's filesystem.
+**Note:** By default this function flushes all changes to the SD card, which
+makes it slow (but also safe!). You can use `E.setFlags({unsyncFiles:1})` to
+disable this behaviour and really speed up writes - but then you must be sure to
+close all files you are writing before power is lost or you will cause damage to
+your SD card's filesystem.
 */
 size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
   if (!buffer) return 0;
@@ -598,8 +606,8 @@ Pipe this file to a stream (an object with a 'write' method)
   ],
   "return" : ["bool","True on success, or false on failure"]  
 }
-Change the parameters used for the flash filesystem.
-The default address is the last 1Mb of 4Mb Flash, 0x300000, with total size of 1Mb.
+Change the parameters used for the flash filesystem. The default address is the
+last 1Mb of 4Mb Flash, 0x300000, with total size of 1Mb.
 
 Before first use the media needs to be formatted.
 
@@ -615,8 +623,9 @@ fs.writeFileSync("bang.txt", "This is the way the world ends\nnot with a bang bu
 fs.readdirSync();
 ```
 
-This will create a drive of 100 * 4096 bytes at 0x300000. Be careful with the selection of flash addresses as you can overwrite firmware!
-You only need to format once, as each will erase the content.
+This will create a drive of 100 * 4096 bytes at 0x300000. Be careful with the
+selection of flash addresses as you can overwrite firmware! You only need to
+format once, as each will erase the content.
 
 `E.flashFatFS({ addr:0x300000,sectors:100,format:true });`
 */

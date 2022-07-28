@@ -23,3 +23,5 @@ void lcdMemLCD_cmd(int cmd, int dataLen, const char *data); // to send specific 
 void lcdMemLCD_extcominToggle();
 /// If backlight is on, we need to raise EXTCOMIN freq (use HW PWM)
 void lcdMemLCD_extcominBacklight(bool isOn);
+// Enable overlay mode (to overlay an image on top of the LCD contents)
+void lcdMemLCD_setOverlay(JsVar *imgVar, int x, int y);

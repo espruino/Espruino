@@ -42,7 +42,8 @@ This class helps
   "ifndef" : "SAVE_ON_FLASH",
   "typescript" : "new(buffer: ArrayBuffer, byteOffset?: number, byteLength?: number): DataView;"
 }
-Create a `DataView` object that can be used to access the data in an `ArrayBuffer`.
+Create a `DataView` object that can be used to access the data in an
+`ArrayBuffer`.
 
 ```
 var b = new ArrayBuffer(8)

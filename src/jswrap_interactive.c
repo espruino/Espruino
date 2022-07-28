@@ -47,7 +47,8 @@ A reference to the global scope, where everything is defined.
     ["pin","JsVar",""]
   ]
 }
-When Espruino is busy, set the pin specified here high. Set this to undefined to disable the feature.
+When Espruino is busy, set the pin specified here high. Set this to undefined to
+disable the feature.
  */
 #ifndef SAVE_ON_FLASH
 void jswrap_interface_setBusyIndicator(JsVar *pinVar) {
@@ -70,7 +71,8 @@ void jswrap_interface_setBusyIndicator(JsVar *pinVar) {
     ["pin","JsVar",""]
   ]
 }
-When Espruino is asleep, set the pin specified here low (when it's awake, set it high). Set this to undefined to disable the feature.
+When Espruino is asleep, set the pin specified here low (when it's awake, set it
+high). Set this to undefined to disable the feature.
 
 Please see http://www.espruino.com/Power+Consumption for more details on this.
  */
@@ -95,7 +97,9 @@ void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
     ["sleep","bool",""]
   ]
 }
-Set whether we can enter deep sleep mode, which reduces power consumption to around 100uA. This only works on STM32 Espruino Boards (nRF52 boards sleep automatically).
+Set whether we can enter deep sleep mode, which reduces power consumption to
+around 100uA. This only works on STM32 Espruino Boards (nRF52 boards sleep
+automatically).
 
 Please see http://www.espruino.com/Power+Consumption for more details on this.
  */
@@ -115,7 +119,8 @@ void jswrap_interface_setDeepSleep(bool sleep) {
 }
 Output debugging information
 
-Note: This is not included on boards with low amounts of flash memory, or the Espruino board.
+Note: This is not included on boards with low amounts of flash memory, or the
+Espruino board.
  */
 void jswrap_interface_trace(JsVar *root) {
   #ifdef ESPRUINOBOARD
@@ -137,11 +142,16 @@ void jswrap_interface_trace(JsVar *root) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jsiDumpState((vcbprintf_callback)jsiConsolePrintString, 0)"
 }
-Output current interpreter state in a text form such that it can be copied to a new device
+Output current interpreter state in a text form such that it can be copied to a
+new device
 
-Espruino keeps its current state in RAM (even if the function code is stored in Flash). When you type `dump()` it dumps the current state of code in RAM plus the hardware state, then if there's code saved in flash it writes "// Code saved with E.setBootCode" and dumps that too.
+Espruino keeps its current state in RAM (even if the function code is stored in
+Flash). When you type `dump()` it dumps the current state of code in RAM plus
+the hardware state, then if there's code saved in flash it writes "// Code saved
+with E.setBootCode" and dumps that too.
 
-**Note:** 'Internal' functions are currently not handled correctly. You will need to recreate these in the `onInit` function.
+**Note:** 'Internal' functions are currently not handled correctly. You will
+need to recreate these in the `onInit` function.
  */
 /*JSON{
   "type" : "function",
@@ -159,14 +169,15 @@ This command only executes when the Interpreter returns to the Idle state - for
 instance ```a=1;load();a=2;``` will still leave 'a' as undefined (or what it was
 set to in the saved program).
 
-Espruino will resume from where it was when you last typed `save()`.
-If you want code to be executed right after loading (for instance to initialise
-devices connected to Espruino), add an `init` event handler to `E` with
-`E.on('init', function() { ... your_code ... });`. This will then be automatically
-executed by Espruino every time it starts.
+Espruino will resume from where it was when you last typed `save()`. If you want
+code to be executed right after loading (for instance to initialise devices
+connected to Espruino), add an `init` event handler to `E` with `E.on('init',
+function() { ... your_code ... });`. This will then be automatically executed by
+Espruino every time it starts.
 
-**If you specify a filename in the argument then that file will be loaded
-from Storage after reset** in much the same way as calling `reset()` then `eval(require("Storage").read(filename))`
+**If you specify a filename in the argument then that file will be loaded from
+Storage after reset** in much the same way as calling `reset()` then
+`eval(require("Storage").read(filename))`
  */
 void jswrap_interface_load(JsVar *storageName) {
   jsiStatus |= JSIS_TODO_FLASH_LOAD;
@@ -181,27 +192,31 @@ void jswrap_interface_load(JsVar *storageName) {
   "#if" : "!defined(BANGLEJS)"
 }
 Save the state of the interpreter into flash (including the results of calling
-`setWatch`, `setInterval`, `pinMode`, and any listeners). The state will then be loaded automatically
- every time Espruino powers on or is hard-reset. To see what will get saved you can call `dump()`.
+`setWatch`, `setInterval`, `pinMode`, and any listeners). The state will then be
+loaded automatically every time Espruino powers on or is hard-reset. To see what
+will get saved you can call `dump()`.
 
-**Note:** If you set up intervals/etc in `onInit()` and you have already called `onInit`
-before running `save()`, when Espruino resumes there will be two copies of your intervals -
-the ones from before the save, and the ones from after - which may cause you problems.
+**Note:** If you set up intervals/etc in `onInit()` and you have already called
+`onInit` before running `save()`, when Espruino resumes there will be two copies
+of your intervals - the ones from before the save, and the ones from after -
+which may cause you problems.
 
-For more information about this and other options for saving, please see
-the [Saving code on Espruino](https://www.espruino.com/Saving) page.
+For more information about this and other options for saving, please see the
+[Saving code on Espruino](https://www.espruino.com/Saving) page.
 
 This command only executes when the Interpreter returns to the Idle state - for
 instance ```a=1;save();a=2;``` will save 'a' as 2.
 
-When Espruino powers on, it will resume from where it was when you typed `save()`.
-If you want code to be executed right after loading (for instance to initialise
-devices connected to Espruino), add a function called `onInit`, or add a `init`
-event handler to `E` with `E.on('init', function() { ... your_code ... });`.
-This will then be automatically executed by Espruino every time it starts.
+When Espruino powers on, it will resume from where it was when you typed
+`save()`. If you want code to be executed right after loading (for instance to
+initialise devices connected to Espruino), add a function called `onInit`, or
+add a `init` event handler to `E` with `E.on('init', function() { ... your_code
+... });`. This will then be automatically executed by Espruino every time it
+starts.
 
 In order to stop the program saved with this command being loaded automatically,
-check out [the Troubleshooting guide](https://www.espruino.com/Troubleshooting#espruino-stopped-working-after-i-typed-save-)
+check out [the Troubleshooting
+guide](https://www.espruino.com/Troubleshooting#espruino-stopped-working-after-i-typed-save-)
  */
 /*JSON{
   "type" : "function",
@@ -211,18 +226,21 @@ check out [the Troubleshooting guide](https://www.espruino.com/Troubleshooting#e
     ["clearFlash","bool","Remove saved code from flash as well"]
   ]
 }
-Reset the interpreter - clear program memory in RAM, and do not load a saved program from flash. This does NOT reset the underlying hardware (which allows you to reset the device without it disconnecting from USB).
+Reset the interpreter - clear program memory in RAM, and do not load a saved
+program from flash. This does NOT reset the underlying hardware (which allows
+you to reset the device without it disconnecting from USB).
 
-This command only executes when the Interpreter returns to the Idle state - for instance ```a=1;reset();a=2;``` will still leave 'a' as undefined.
+This command only executes when the Interpreter returns to the Idle state - for
+instance ```a=1;reset();a=2;``` will still leave 'a' as undefined.
 
 The safest way to do a full reset is to hit the reset button.
 
-If `reset()` is called with no arguments, it will reset the board's state in
-RAM but will not reset the state in flash. When next powered on (or when
-`load()` is called) the board will load the previously saved code.
+If `reset()` is called with no arguments, it will reset the board's state in RAM
+but will not reset the state in flash. When next powered on (or when `load()` is
+called) the board will load the previously saved code.
 
-Calling `reset(true)` will cause *all saved code in flash memory to
-be cleared as well*.
+Calling `reset(true)` will cause *all saved code in flash memory to be cleared
+as well*.
 
 */
 void jswrap_interface_reset(bool clearFlash) {
@@ -240,7 +258,10 @@ void jswrap_interface_reset(bool clearFlash) {
 }
 Print the supplied string(s) to the console
 
- **Note:** If you're connected to a computer (not a wall adaptor) via USB but **you are not running a terminal app** then when you print data Espruino may pause execution and wait until the computer requests the data it is trying to print.
+ **Note:** If you're connected to a computer (not a wall adaptor) via USB but
+ **you are not running a terminal app** then when you print data Espruino may
+ pause execution and wait until the computer requests the data it is trying to
+ print.
  */
 /*JSON{
   "type" : "staticmethod",
@@ -253,7 +274,10 @@ Print the supplied string(s) to the console
 }
 Print the supplied string(s) to the console
 
- **Note:** If you're connected to a computer (not a wall adaptor) via USB but **you are not running a terminal app** then when you print data Espruino may pause execution and wait until the computer requests the data it is trying to print.
+ **Note:** If you're connected to a computer (not a wall adaptor) via USB but
+ **you are not running a terminal app** then when you print data Espruino may
+ pause execution and wait until the computer requests the data it is trying to
+ print.
  */
 void jswrap_interface_print(JsVar *v) {
   assert(jsvIsArray(v));
@@ -287,7 +311,8 @@ void jswrap_interface_print(JsVar *v) {
 }
 Fill the console with the contents of the given function, so you can edit it.
 
-NOTE: This is a convenience function - it will not edit 'inner functions'. For that, you must edit the 'outer function' and re-execute it.
+NOTE: This is a convenience function - it will not edit 'inner functions'. For
+that, you must edit the 'outer function' and re-execute it.
  */
 void jswrap_interface_edit(JsVar *funcName) {
   JsVar *func = 0;
@@ -351,7 +376,9 @@ void jswrap_interface_edit(JsVar *funcName) {
     ["echoOn","bool",""]
   ]
 }
-Should Espruino echo what you type back to you? true = yes (Default), false = no. When echo is off, the result of executing a command is not returned. Instead, you must use 'print' to send output.
+Should Espruino echo what you type back to you? true = yes (Default), false =
+no. When echo is off, the result of executing a command is not returned.
+Instead, you must use 'print' to send output.
  */
 void jswrap_interface_echo(bool echoOn) {
   if (echoOn)
@@ -377,14 +404,13 @@ Return the current system time in Seconds (as a floating point number)
     ["time","float",""]
   ]
 }
-Set the current system time in seconds (`time` can be a floating
-point value).
+Set the current system time in seconds (`time` can be a floating point value).
 
-This is used with `getTime`, the time reported from `setWatch`, as
-well as when using `new Date()`.
+This is used with `getTime`, the time reported from `setWatch`, as well as when
+using `new Date()`.
 
-`Date.prototype.getTime()` reports the time in milliseconds, so
-you can set the time to a `Date` object using:
+`Date.prototype.getTime()` reports the time in milliseconds, so you can set the
+time to a `Date` object using:
 
 ```
 setTime((new Date("Tue, 19 Feb 2019 10:57")).getTime()/1000)
@@ -440,7 +466,8 @@ JsVar *jswrap_interface_getSerial() {
   ],
   "return" : ["JsVar","An ID that can be passed to clearInterval"]
 }
-Call the function (or evaluate the string) specified REPEATEDLY after the timeout in milliseconds.
+Call the function (or evaluate the string) specified REPEATEDLY after the
+timeout in milliseconds.
 
 For instance:
 
@@ -453,7 +480,8 @@ setInterval('console.log("Hello World");', 1000);
 // both print 'Hello World' every second
 ```
 
-You can also specify extra arguments that will be sent to the function when it is executed. For example:
+You can also specify extra arguments that will be sent to the function when it
+is executed. For example:
 
 ```
 setInterval(function (a,b) {
@@ -462,10 +490,13 @@ setInterval(function (a,b) {
 // prints 'Hello World' every second
 ```
 
-If you want to stop your function from being called, pass the number that
-was returned by `setInterval` into the `clearInterval` function.
+If you want to stop your function from being called, pass the number that was
+returned by `setInterval` into the `clearInterval` function.
 
- **Note:** If `setDeepSleep(true)` has been called and the interval is greater than 5 seconds, Espruino may execute the interval up to 1 second late. This is because Espruino can only wake from deep sleep every second - and waking early would cause Espruino to waste power while it waited for the correct time.
+ **Note:** If `setDeepSleep(true)` has been called and the interval is greater
+ than 5 seconds, Espruino may execute the interval up to 1 second late. This is
+ because Espruino can only wake from deep sleep every second - and waking early
+ would cause Espruino to waste power while it waited for the correct time.
  */
 /*JSON{
   "type" : "function",
@@ -478,7 +509,8 @@ was returned by `setInterval` into the `clearInterval` function.
   ],
   "return" : ["JsVar","An ID that can be passed to clearTimeout"]
 }
-Call the function (or evaluate the string) specified ONCE after the timeout in milliseconds.
+Call the function (or evaluate the string) specified ONCE after the timeout in
+milliseconds.
 
 For instance:
 
@@ -491,7 +523,8 @@ setTimeout('console.log("Hello World");', 1000);
 // both print 'Hello World' after a second
 ```
 
-You can also specify extra arguments that will be sent to the function when it is executed. For example:
+You can also specify extra arguments that will be sent to the function when it
+is executed. For example:
 
 ```
 setTimeout(function (a,b) {
@@ -500,10 +533,13 @@ setTimeout(function (a,b) {
 // prints 'Hello World' after 1 second
 ```
 
-If you want to stop the function from being called, pass the number that
-was returned by `setTimeout` into the `clearTimeout` function.
+If you want to stop the function from being called, pass the number that was
+returned by `setTimeout` into the `clearTimeout` function.
 
- **Note:** If `setDeepSleep(true)` has been called and the interval is greater than 5 seconds, Espruino may execute the interval up to 1 second late. This is because Espruino can only wake from deep sleep every second - and waking early would cause Espruino to waste power while it waited for the correct time.
+ **Note:** If `setDeepSleep(true)` has been called and the interval is greater
+ than 5 seconds, Espruino may execute the interval up to 1 second late. This is
+ because Espruino can only wake from deep sleep every second - and waking early
+ would cause Espruino to waste power while it waited for the correct time.
  */
 JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, JsVar *args, bool isTimeout) {
   // NOTE: The 5 sec delay mentioned in the description is handled by jshSleep
@@ -633,8 +669,8 @@ Change the Interval on a callback created with `setInterval`, for example:
 ```changeInterval(id, 1500); // now runs every 1.5 seconds```
 
 This takes effect immediately and resets the timeout, so in the example above,
-regardless of when you call `changeInterval`, the next interval will occur 1500ms
-after it.
+regardless of when you call `changeInterval`, the next interval will occur
+1500ms after it.
  */
 void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
   JsVar *timerArrayPtr = jsvLock(timerArray);

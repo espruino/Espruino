@@ -25,11 +25,12 @@
   "type" : "class",
   "class" : "Array",
   "check" : "jsvIsArray(var)",
-  "typescript" : "interface Array<T>"
+  "typescript" : "Array<T>"
 }
 This is the built-in JavaScript class for arrays.
 
-Arrays can be defined with ```[]```, ```new Array()```, or ```new Array(length)```
+Arrays can be defined with ```[]```, ```new Array()```, or ```new
+Array(length)```
  */
 
 /*JSON{
@@ -50,7 +51,8 @@ Arrays can be defined with ```[]```, ```new Array()```, or ```new Array(length)`
     "<T>(...items: T[]): T[];"
   ]
 }
-Create an Array. Either give it one integer argument (>=0) which is the length of the array, or any number of arguments
+Create an Array. Either give it one integer argument (>=0) which is the length
+of the array, or any number of arguments
  */
 JsVar *jswrap_array_constructor(JsVar *args) {
   assert(args);
@@ -176,7 +178,8 @@ bool jswrap_array_includes(JsVar *arr, JsVar *value, JsVarInt startIdx) {
   "return" : ["JsVar","A String representing the Joined array"],
   "typescript" : "join(separator?: string): string;"
 }
-Join all elements of this array together into one string, using 'separator' between them. e.g. ```[1,2,3].join(' ')=='1 2 3'```
+Join all elements of this array together into one string, using 'separator'
+between them. e.g. ```[1,2,3].join(' ')=='1 2 3'```
  */
 JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
   if (!jsvIsIterable(parent)) return 0;
@@ -203,7 +206,8 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
 }
 Push a new value onto the end of this array'
 
-This is the opposite of `[1,2,3].unshift(0)`, which adds one or more elements to the beginning of the array.
+This is the opposite of `[1,2,3].unshift(0)`, which adds one or more elements to
+the beginning of the array.
  */
 JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
   if (!jsvIsArray(parent)) return -1;
@@ -233,7 +237,8 @@ JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
 }
 Remove and return the value on the end of this array.
 
-This is the opposite of `[1,2,3].shift()`, which removes an element from the beginning of the array.
+This is the opposite of `[1,2,3].shift()`, which removes an element from the
+beginning of the array.
  */
 
 /// return types for _jswrap_array_iterate_with_callback
@@ -345,7 +350,8 @@ static JsVar *_jswrap_array_iterate_with_callback(
   "return" : ["JsVar","An array containing the results"],
   "typescript" : "map<U>(callbackfn: (value: T, index: number, array: T[]) => U, thisArg?: any): U[];"
 }
-Return an array which is made from the following: ```A.map(function) = [function(A[0]), function(A[1]), ...]```
+Return an array which is made from the following: ```A.map(function) =
+[function(A[0]), function(A[1]), ...]```
  */
 JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   return _jswrap_array_iterate_with_callback("map", parent, funcVar, thisVar, RETURN_ARRAY, false, false);
@@ -383,7 +389,8 @@ void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
     "filter(predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): T[];"
   ]
 }
-Return an array which contains only those elements for which the callback function returns 'true'
+Return an array which contains only those elements for which the callback
+function returns 'true'
  */
 JsVar *jswrap_array_filter(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   return _jswrap_array_iterate_with_callback("filter", parent, funcVar, thisVar, RETURN_ARRAY, true, true);
@@ -404,7 +411,8 @@ JsVar *jswrap_array_filter(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
     "find(predicate: (value: T, index: number, obj: T[]) => unknown): T | undefined;"
   ]
 }
-Return the array element where `function` returns `true`, or `undefined` if it doesn't returns `true` for any element.
+Return the array element where `function` returns `true`, or `undefined` if it
+doesn't returns `true` for any element.
 
 ```
 ["Hello","There","World"].find(a=>a[0]=="T")
@@ -427,7 +435,8 @@ JsVar *jswrap_array_find(JsVar *parent, JsVar *funcVar) {
   "return" : ["JsVar","The array element's index where `function` returns `true`, or `-1`"],
   "typescript" : "findIndex(predicate: (value: T, index: number, obj: T[]) => unknown): number;"
 }
-Return the array element's index where `function` returns `true`, or `-1` if it doesn't returns `true` for any element.
+Return the array element's index where `function` returns `true`, or `-1` if it
+doesn't returns `true` for any element.
 
 ```
 ["Hello","There","World"].findIndex(a=>a[0]=="T")
@@ -452,7 +461,8 @@ JsVar *jswrap_array_findIndex(JsVar *parent, JsVar *funcVar) {
   "return" : ["JsVar","A boolean containing the result"],
   "typescript" : "some(predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean;"
 }
-Return 'true' if the callback returns 'true' for any of the elements in the array
+Return 'true' if the callback returns 'true' for any of the elements in the
+array
  */
 JsVar *jswrap_array_some(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   return _jswrap_array_iterate_with_callback("some", parent, funcVar, thisVar, RETURN_BOOL, true, false);
@@ -489,7 +499,9 @@ JsVar *jswrap_array_every(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   "return" : ["JsVar","The value returned by the last function called"],
   "typescript" : "reduce(callback: (previousValue: T, currentValue: T, currentIndex: number, array: T[]) => T, initialValue?: T): T;"
 }
-Execute `previousValue=initialValue` and then `previousValue = callback(previousValue, currentValue, index, array)` for each element in the array, and finally return previousValue.
+Execute `previousValue=initialValue` and then `previousValue =
+callback(previousValue, currentValue, index, array)` for each element in the
+array, and finally return previousValue.
  */
 JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
   const char *name = "reduce";
@@ -673,7 +685,8 @@ JsVar *jswrap_array_shift(JsVar *parent) {
 }
 Add one or more items to the start of the array, and return its new length.
 
-This is the opposite of `[1,2,3].push(4)`, which puts one or more elements on the end.
+This is the opposite of `[1,2,3].push(4)`, which puts one or more elements on
+the end.
  */
 JsVarInt jswrap_array_unshift(JsVar *parent, JsVar *elements) {
   // just use splice, as this does all the hard work for us
@@ -907,7 +920,8 @@ JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
   "return" : ["JsVar","An Array"],
   "typescript" : "concat(...args: (T | T[])[]): T[];"
 }
-Create a new array, containing the elements from this one and any arguments, if any argument is an array then those elements will be added.
+Create a new array, containing the elements from this one and any arguments, if
+any argument is an array then those elements will be added.
  */
 JsVar *jswrap_array_concat(JsVar *parent, JsVar *args) {
   JsVar *result = jsvNewEmptyArray();

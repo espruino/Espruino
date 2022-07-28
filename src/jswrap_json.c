@@ -46,12 +46,14 @@ An Object that handles conversion to and from the JSON data interchange format
   ],
   "return" : ["JsVar","A JSON string"]
 }
-Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval.
+Convert the given object into a JSON string which can subsequently be parsed
+with JSON.parse or eval.
 
 **Note:** This differs from JavaScript's standard `JSON.stringify` in that:
 
 * The `replacer` argument is ignored
-* Typed arrays like `new Uint8Array(5)` will be dumped as if they were arrays, not as if they were objects (since it is more compact)
+* Typed arrays like `new Uint8Array(5)` will be dumped as if they were arrays,
+  not as if they were objects (since it is more compact)
  */
 JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space) {
   NOT_USED(replacer);
@@ -169,7 +171,8 @@ JsVar *jswrap_json_parse_internal() {
 }
 Parse the given JSON string into a JavaScript object
 
-NOTE: This implementation uses eval() internally, and as such it is unsafe as it can allow arbitrary JS commands to be executed.
+NOTE: This implementation uses eval() internally, and as such it is unsafe as it
+can allow arbitrary JS commands to be executed.
  */
 JsVar *jswrap_json_parse(JsVar *v) {
   JsLex lex;

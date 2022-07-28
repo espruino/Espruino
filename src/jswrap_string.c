@@ -27,7 +27,8 @@
 }
 This is the built-in class for Text Strings.
 
-Text Strings in Espruino are not zero-terminated, so you can store zeros in them.
+Text Strings in Espruino are not zero-terminated, so you can store zeros in
+them.
  */
 
 /*JSON{
@@ -125,7 +126,8 @@ JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
   ],
   "return" : ["int32","The integer value of a character in the string"]
 }
-Return the integer value of a single character at the given position in the String.
+Return the integer value of a single character at the given position in the
+String.
 
 Note that this returns 0 not 'NaN' for out of bounds characters
  */
@@ -229,7 +231,7 @@ Returns `null` if no match, or:
  ]
 ```
 
-'Global' RegEx matches just return an array of matches (with no indices):
+'Global' RegExp matches just return an array of matches (with no indices):
 
 ```
 "abcdefabcdef".match(/bcd/g) = [
@@ -303,7 +305,9 @@ JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
   ],
   "return" : ["JsVar","This string with `subStr` replaced"]
 }
-Search and replace ONE occurrance of `subStr` with `newSubStr` and return the result. This doesn't alter the original string. Regular expressions not supported.
+Search and replace ONE occurrence of `subStr` with `newSubStr` and return the
+result. This doesn't alter the original string. Regular expressions not
+supported.
  */
 JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
   JsVar *str = jsvAsString(parent);
@@ -476,9 +480,11 @@ JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   ],
   "return" : ["JsVar","Part of this string from start for len characters"]
 }
-Return an array made by splitting this string up by the separator. eg. ```'1,2,3'.split(',')==['1', '2', '3']```
+Return an array made by splitting this string up by the separator. e.g.
+```'1,2,3'.split(',')==['1', '2', '3']```
 
-Regular Expressions can also be used to split strings, eg. `'1a2b3 4'.split(/[^0-9]/)==['1', '2', '3', '4']`.
+Regular Expressions can also be used to split strings, e.g. `'1a2b3
+4'.split(/[^0-9]/)==['1', '2', '3', '4']`.
  */
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
   if (!jsvIsString(parent)) return 0;
@@ -636,7 +642,8 @@ JsVar *jswrap_string_trim(JsVar *parent) {
   ],
   "return" : ["JsVar","The result of appending all arguments to this string"]
 }
-Append all arguments to this `String` and return the result. Does not modify the original `String`.
+Append all arguments to this `String` and return the result. Does not modify the
+original `String`.
 */
 JsVar *jswrap_string_concat(JsVar *parent, JsVar *args) {
   if (!jsvIsString(parent)) return 0;
@@ -750,7 +757,7 @@ JsVar *jswrap_string_repeat(JsVar *parent, int count) {
   "return" : ["JsVar","A string containing this string padded to the correct length"],
   "return_object" : "String"
 }
-Pad this string at the beginnind to the required number of characters
+Pad this string at the beginning to the required number of characters
 
 ```
 "Hello".padStart(10) == "     Hello"
