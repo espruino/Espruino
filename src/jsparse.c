@@ -2307,10 +2307,12 @@ NO_INLINE JsVar *jspeStatementVar() {
         jsvReplaceWith(a, var);
       jsvUnLock(var);
     }
-    if (isConstant)
-      a->flags |= JSV_CONSTANT;
-    jsvUnLock(lastDefined);
-    lastDefined = a;
+    if (JSP_SHOULD_EXECUTE) {
+      if (isConstant)
+        a->flags |= JSV_CONSTANT;
+      jsvUnLock(lastDefined);
+      lastDefined = a;
+    }
     hasComma = lex->tk == ',';
     if (hasComma) JSP_MATCH_WITH_RETURN(',', lastDefined);
   }
