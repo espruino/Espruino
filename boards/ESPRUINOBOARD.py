@@ -15,7 +15,7 @@
 
 import pinutils;
 info = {
- 'name' : "Original Espruino Board rev 1.3/1.4",
+ 'name' : "Original Espruino Board", # rev 1.3/1.4
  'link' : [ "https://espruino.com/Original" ],
  'espruino_page_link' : "EspruinoBoard",
  'default_console' : "EV_SERIAL1",

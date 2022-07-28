@@ -15,7 +15,7 @@
 
 import pinutils;
 info = {
- 'name' : "Espruino Pico rev 1.3/1.4",
+ 'name' : "Espruino Pico", # rev 1.3/1.4
  'link' : [ "https://espruino.com/Pico" ],
  'espruino_page_link' : 'Pico',
  'default_console' : "EV_SERIAL1",
