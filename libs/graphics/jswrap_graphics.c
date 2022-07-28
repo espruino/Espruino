@@ -3863,7 +3863,7 @@ JsVar *jswrap_graphics_theme(JsVar *parent) {
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics",
-  "typescript" : "setTheme(theme: { [key in keyof Theme]?: Theme[key] extends number ? ColorResolvable | Theme[key] }): Graphics;"
+  "typescript" : "setTheme(theme: { [key in keyof Theme]?: Theme[key] extends number ? ColorResolvable : Theme[key] }): Graphics;"
 }
 Set the global colour scheme. On Bangle.js, this is reloaded from
 `settings.json` for each new app loaded.

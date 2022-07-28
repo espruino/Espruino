@@ -75,6 +75,12 @@
 #endif
 
 /*TYPESCRIPT
+declare const BTN1: Pin;
+declare const BTN2: Pin;
+declare const BTN3: Pin;
+declare const BTN4: Pin;
+declare const BTN5: Pin;
+
 declare const g: Graphics<false>;
 
 type WidgetArea = "tl" | "tr" | "bl" | "br";

@@ -25,7 +25,7 @@
   "type" : "class",
   "class" : "Array",
   "check" : "jsvIsArray(var)",
-  "typescript" : "interface Array<T>"
+  "typescript" : "Array<T>"
 }
 This is the built-in JavaScript class for arrays.
 

@@ -28,7 +28,7 @@
 /*JSON{
   "type" : "class",
   "class" : "Promise",
-  "typescript": "interface Promise<T>",
+  "typescript": "Promise<T>",
   "ifndef" : "SAVE_ON_FLASH"
 }
 This is the built-in class for ES6 Promises

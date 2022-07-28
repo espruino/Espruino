@@ -157,16 +157,23 @@ function getReturnType(method) {
 /**
  * Return the declaration of a function or variable.
  * @param {object} object - The object containing the function or variable's data.
- * @param {boolean} [property] - True if the object is a property of a class, etc.
+ * @param {string} [context] - Either "global", "class" or "module".
  * @returns {string} The function or variable's declaration.
  */
-function getDeclaration(object, property) {
-  if ("typescript" in object)
-    return typeof object.typescript === "string"
-      ? object.typescript
-      : object.typescript.join("\n");
+function getDeclaration(object, context) {
+  if ("typescript" in object) {
+    let declaration =
+      typeof object.typescript === "string"
+        ? object.typescript
+        : object.typescript.join("\n");
+    if (!declaration.startsWith("function") && context === "library") {
+      declaration = "function " + declaration;
+    }
+    return declaration;
+  }
+
   if (object.type === "event") {
-    if (property) {
+    if (context === "class") {
       return `on(event: "${object.name}", callback: ${getArguments(
         object
       )} => void): void;`;
@@ -180,24 +187,18 @@ function getDeclaration(object, property) {
   ) {
     // function
     const name = object.type === "constructor" ? "new" : object.name;
-    if (property) {
-      return `${name}${getArguments(object)}: ${getReturnType(object)};`;
-    } else {
-      return `declare function ${name}${getArguments(object)}: ${getReturnType(
-        object
-      )};`;
-    }
+    return `${context === "global" ? "declare " : ""}${
+      context !== "class" ? "function " : ""
+    }${name}${getArguments(object)}: ${getReturnType(object)};`;
   } else {
     // property
     const type =
       object.type === "object"
         ? object.instanceof
         : getBasicType(object.return_object || object.return[0]);
-    if (property) {
-      return `${object.name}: ${type};`;
-    } else {
-      return `declare const ${object.name}: ${type};`;
-    }
+    return `${context === "global" ? "declare " : ""}${
+      context !== "class" ? "const " : ""
+    }${object.name}: ${type};`;
   }
 }
 
@@ -217,6 +218,7 @@ function getDeclaration(object, property) {
 function getClasses(objects) {
   const classes = {};
   objects.forEach(function (object) {
+    if (object.typescript === null) return;
     if (object.type == "class" || object.type == "library") {
       classes[object.class] = {
         library: object.type === "library",
@@ -253,9 +255,14 @@ function getAll(objects) {
   }
 
   objects.forEach(function (object) {
-    if (["class", "object", "library"].includes(object.type)) {
+    if (object.typescript === null) return;
+    if (["class", "library"].includes(object.type)) {
       // already handled in `getClases`
-    } else if (["include", "init", "idle", "kill"].includes(object.type)) {
+    } else if (
+      ["include", "init", "idle", "kill", "hwinit", "EV_SERIAL1"].includes(
+        object.type
+      )
+    ) {
       // internal
     } else if (object.type === "constructor") {
       // set as constructor
@@ -316,7 +323,7 @@ function getBuiltinClassDeclaration(name, c, types) {
         .map((property) =>
           `${getDocumentation(property)}\n${getDeclaration(
             property,
-            true
+            "class"
           )}`.trim()
         )
         .join("\n\n")
@@ -324,13 +331,13 @@ function getBuiltinClassDeclaration(name, c, types) {
     `\n}\n\n` +
     (name.endsWith("Array") && !name.startsWith("Array") // is a typed array?
       ? `type ${name} = ArrayBufferView<${name}>;\n`
-      : `${c.object?.typescript || "interface " + name} {\n` +
+      : `interface ${c.object?.typescript || name} {\n` +
         indent(
           c.prototype
             .map((property) =>
               `${getDocumentation(property)}\n${getDeclaration(
                 property,
-                true
+                "class"
               )}`.trim()
             )
             .concat(name === "Array" ? ["[index: number]: T"] : [])
@@ -359,7 +366,7 @@ function getOtherClassDeclaration(name, c, types) {
         .concat([c.cons])
         .filter((property) => property)
         .map((property) =>
-          `${getDocumentation(property)}\n${getDeclaration(property, true)
+          `${getDocumentation(property)}\n${getDeclaration(property, "class")
             .split("\n")
             .map((dec) => "static " + dec)
             .join("\n")}`.trim()
@@ -370,7 +377,7 @@ function getOtherClassDeclaration(name, c, types) {
           .map((property) =>
             `${getDocumentation(property)}\n${getDeclaration(
               property,
-              true
+              "class"
             )}`.trim()
           )
           .concat(name === "ArrayBufferView" ? ["[index: number]: number"] : [])
@@ -414,12 +421,21 @@ function getClassDeclarations(classes, types) {
  * @param {object[]} globals - The list of global objects.
  * @returns {string} The global declarations.
  */
-function getGlobalDeclarations(globals) {
+function getGlobalDeclarations(globals, classes) {
   return (
     "\n\n// GLOBALS\n\n" +
     globals
       .map((global) =>
-        global.name === "global"
+        global.name === "require"
+          ? Object.entries(classes)
+              .filter(([_, c]) => c.library)
+              .map(
+                ([name]) =>
+                  `declare function require(moduleName: "${name}"): typeof import("${name}");`
+              )
+              .concat(["declare function require(moduleName: string): any;"])
+              .join("\n")
+          : global.name === "global"
           ? `declare const global: {\n` +
             indent(
               globals
@@ -428,7 +444,7 @@ function getGlobalDeclarations(globals) {
                 .join("\n")
             ) +
             "\n}"
-          : `${getDocumentation(global)}\n${getDeclaration(global)}`
+          : `${getDocumentation(global)}\n${getDeclaration(global, "global")}`
       )
       .join("\n\n")
   );
@@ -441,28 +457,25 @@ function getGlobalDeclarations(globals) {
  */
 function getLibraryDeclarations(classes) {
   return (
-    "\n\n// LIBRARIES\n\ntype Libraries = {\n" +
-    indent(
-      Object.entries(classes)
-        .filter(([_, c]) => c.library)
-        .map(
-          ([name, library]) =>
-            `${getDocumentation(library.object)}\n${name}: {\n` +
-            indent(
-              library.staticProperties
-                .map((property) =>
-                  `${getDocumentation(property)}\n${getDeclaration(
-                    property,
-                    true
-                  )}`.trim()
-                )
-                .join("\n\n")
-            ) +
-            "\n}"
-        )
-        .join("\n\n")
-    ) +
-    "\n}"
+    "\n\n// LIBRARIES\n\n" +
+    Object.entries(classes)
+      .filter(([_, c]) => c.library)
+      .map(
+        ([name, library]) =>
+          `${getDocumentation(library.object)}\ndeclare module "${name}" {\n` +
+          indent(
+            library.staticProperties
+              .map((property) =>
+                `${getDocumentation(property)}\n${getDeclaration(
+                  property,
+                  "library"
+                )}`.trim()
+              )
+              .join("\n\n")
+          ) +
+          "\n}"
+      )
+      .join("\n\n")
   );
 }
 
@@ -476,20 +489,30 @@ function buildTypes() {
       const [classes, globals] = getAll(objects, types);
 
       resolve(
-        "// NOTE: This file has been automatically generated.\n\n" +
+        "// Type definitions for Espruino latest\n" +
+          "// Project: http://www.espruino.com/, https://github.com/espruino/espruinotools" +
+          "// Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped\n\n" +
           '/// <reference path="other.d.ts" />\n\n' +
           getTypeDeclarations(types) +
           getClassDeclarations(classes, types) +
-          getGlobalDeclarations(globals) +
+          getGlobalDeclarations(globals, classes) +
           getLibraryDeclarations(classes)
       );
     });
   });
 }
 
-buildTypes().then((content) =>
+buildTypes().then((content) => {
   require("fs").writeFileSync(
-    "../BangleApps/typescript/types/main.d.ts",
+    __dirname + "/../../BangleApps/typescript/types/main.d.ts",
     content
-  )
-);
+  );
+  // Write to DefinitelyTyped if repository exists
+  try {
+    require("fs").writeFileSync(
+      __dirname + "/../../DefinitelyTyped/types/espruino/index.d.ts",
+      content
+    );
+  } catch (e) {}
+  console.log("Generated build types!");
+});
