@@ -21,7 +21,8 @@ info = {
   # It frees up roughly 60kB extra Flash memory which can be used for Storage,
   # bringing the total to 98kB.
  'boardname' : "PUCKJS",
- 'link' :  [ "http://www.espruino.com/PuckJS" ],
+ 'link' :  [ "https://espruino.com/Puck.js" ],
+ 'espruino_page_link' : 'Puck.js',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D28",
  'default_console_rx' : "D29",

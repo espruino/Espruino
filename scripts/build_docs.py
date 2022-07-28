@@ -205,9 +205,15 @@ for jsondata in jsondatas:
   if not duplicate: unduplicatedjsondatas.append(jsondata)
 jsondatas = unduplicatedjsondatas
 
+title = ""
+if common.board:
+  title = common.board.info["name"]+" Software Reference"
+else:
+  title = "Espruino Software Reference"
+
 html("<html>")
 html(" <head>")
-html("  <title>Espruino Reference</title>")
+html("  <title>"+title+"</title>")
 html("  <style>")
 html("   body { font: 71%/1.5em  Verdana, 'Trebuchet MS', Arial, Sans-serif; color: #666666; }")
 html("   h1, h2, h3, h4 { color: #000000; margin-left: 0px; }")
@@ -259,7 +265,7 @@ html("    }")
 html("  }</script>")
 html(" </head>")
 html(" <body>")
-html("  <h1>Espruino Software Reference</h1>")
+html("  <h1>"+title+"</h1>")
 html("  <p style=\"text-align:right;\">Version "+common.get_version()+"</p>")
 
 if htmldev == True:

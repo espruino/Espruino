@@ -20,7 +20,8 @@ info = {
   # The Puck.js lite can use the same firmware as normal, but the bootloader needs to know
   # there's no LED3, so it can light up red instead of blue when connected
  'boardname' : "PUCKJS",
- 'link' :  [ "http://www.espruino.com/PuckJS" ],
+ 'link' :  [ "https://espruino.com/Puck.js" ],
+ 'espruino_page_link' : 'Puck.js',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D28",
  'default_console_rx' : "D29",

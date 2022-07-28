@@ -17,7 +17,7 @@ import pinutils;
 
 info = {
  'name' : "MDBT42Q Module",
- 'link' :  [ "http://www.espruino.com/MDBT42Q" ],
+ 'link' :  [ "https://espruino.com/MDBT42Q" ],
  'espruino_page_link' : 'MDBT42Q', 
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D6",

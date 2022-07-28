@@ -17,7 +17,7 @@ import pinutils;
 
 info = {
  'name' : "Bangle.js 2", # Using SMA Q3
- 'link' :  [ "https://www.espruino.com/Bangle.js2" ],
+ 'link' :  [ "https://espruino.com/Bangle.js2" ],
  'espruino_page_link' : 'Bangle.js2',
  'default_console' : "EV_TERMINAL",
  #'default_console' : "EV_SERIAL1",
@@ -36,7 +36,7 @@ info = {
      'GRAPHICS',
      'CRYPTO','SHA256','SHA512',
      'LCD_MEMLCD',
-     'TENSORFLOW',
+#     'TENSORFLOW',
      'JIT' # JIT compiler enabled
    ],
    'makefile' : [
@@ -183,8 +183,7 @@ devices = {
 # left-right, or top-bottom order
 board = {
 };
-board["_css"] = """
-""";
+
 
 def get_pins():
   pins = pinutils.generate_pins(0,47) # 48 General Purpose I/O Pins.

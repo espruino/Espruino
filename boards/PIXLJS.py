@@ -17,7 +17,8 @@ import pinutils;
 
 info = {
  'name' : "Pixl.js",
- 'link' :  [ "http://www.espruino.com/Pixl.js" ],
+ 'link' :  [ "https://espruino.com/Pixl.js" ],
+ 'espruino_page_link' : 'Pixl.js',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D1",
  'default_console_rx' : "D0",
