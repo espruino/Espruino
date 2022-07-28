@@ -2695,10 +2695,12 @@ negative:true
 }
 ```
 
-You can then get more information with something like:
+You can then get more information with `NRF.ancsGetNotificationInfo`, for instance:
 
 ```
-NRF.ancsGetNotificationInfo( event.uid ).then(a=>print("Notify",E.toJS(a)));
+E.on('ANCS', event => {
+  NRF.ancsGetNotificationInfo( event.uid ).then(a=>print("Notify",E.toJS(a)));
+});
 ```
 */
 
@@ -2777,9 +2779,29 @@ void jswrap_ble_ancsAction(int uid, bool isPositive) {
     "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when the connection is complete" ],
     "return_object" : "Promise"
 }
-Get ANCS info for a notification, e.g.:
+Get ANCS info for a notification event received via `E.ANCS`, e.g.:
 
+```
+E.on('ANCS', event => {
+  NRF.ancsGetNotificationInfo( event.uid ).then(a=>print("Notify",E.toJS(a)));
+});
+```
 
+Returns:
+
+```
+{
+  "uid" : integer,
+  "appId": string,
+  "title": string,
+  "subtitle": string,
+  "message": string,
+  "messageSize": string,
+  "date": string,
+  "posAction": string,
+  "negAction": string
+}
+```
 
 */
 JsVar *jswrap_ble_ancsGetNotificationInfo(JsVarInt uid) {
@@ -2810,7 +2832,7 @@ JsVar *jswrap_ble_ancsGetNotificationInfo(JsVarInt uid) {
     "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when the connection is complete" ],
     "return_object" : "Promise"
 }
-Get ANCS info for an app (add id is available via `ancsGetNotificationInfo`)
+Get ANCS info for an app (app id is available via `NRF.ancsGetNotificationInfo`)
 
 Promise returns:
 
