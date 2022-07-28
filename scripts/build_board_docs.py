@@ -368,29 +368,31 @@ if not embeddable:
   # only output pinout if we have pin info
   if hasattr(board, 'boards') or board.board:
     writeHTML('  <H2>Pinout</H2>')
-    writeHTML("""
-    <P>Hover the mouse over a pin function for more information. Clicking in a function will tell you how to use it in Espruino.</P>
-    <ul>
-      <li><span class="pinfunction DEVICE">Purple</span> boxes show pins that are used for other functionality on the board. You should avoid using these unless you know that the marked device is not used.</li>
-      <li><span class="pinfunction NOTE">!</span> boxes contain extra information about the pin. Hover your mouse over them to see it.</li>
-      <li><span class="pinfunction NOT_5V">3.3v</span> boxes mark pins that are not 5v tolerant (they only take inputs from 0 - 3.3v, not 0 - 5v).</li>""")
-    if has_pin("3.3"): writeHTML("""   <li><span class="pinfunction">3.3</span> is a 3.3v output from the on-board Voltage regulator.</li>""")
-    if has_pin("GND"): writeHTML("""    <li><span class="pinfunction">GND</span> is ground (0v).</li>""")
-    if has_pin("VBAT"): writeHTML("""    <li><span class="pinfunction">VBAT</span> is the battery voltage output (see <a href="/EspruinoBoard">the Espruino Board Reference</a>).</li>""")
-    if "ADC" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction ADC">ADC</span> is an <a href="/ADC">Analog to Digital Converter</a> (for reading analog voltages)</li>""");
-    if "DAC" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction DAC">DAC</span> is a <a href="/DAC">Digital to Analog Converter</a> (for creating analog voltages). This is not available on all boards.</li>""");
-    if "PWM" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction PWM">PWM</span> is for <a href="/PWM">Pulse Width Modulation</a>. This creates analog voltages from a digital output by sending a series of pulses.</li>""");
-    if "SPI" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction SPI">SPI</span> is the 3 wire <a href="/SPI">Serial Peripheral Interface</a>.</li>""");
-    if "USART" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction USART">USART</span> is a 2 wire peripheral for <a href="/USART">Serial Data</a>.</li>""");
-    if "I2C" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction I2C">I2C</span> is the 2 wire <a href="/I2C">Inter-Integrated Circuit</a> bus.</li>""");
-    if "CAN" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction CAN">CAN</span> is for the <a href="http://en.wikipedia.org/wiki/CAN_bus">Controller Area Network</a>. It is not supported by Espruino.</li>""")
-    writeHTML("  </ul>");
     
-    if hasattr(board, 'boards'):
-      for brdnum in range(len(board.boards)):
-        writeBoard(board.boards[brdnum], brdnum)
-    else:
-      writeBoard(board.board, 0)
+if hasattr(board, 'boards') or board.board:    
+  writeHTML("""
+  <P>Hover the mouse over a pin function for more information. Clicking in a function will tell you how to use it in Espruino.</P>
+  <ul>
+    <li><span class="pinfunction DEVICE">Purple</span> boxes show pins that are used for other functionality on the board. You should avoid using these unless you know that the marked device is not used.</li>
+    <li><span class="pinfunction NOTE">!</span> boxes contain extra information about the pin. Hover your mouse over them to see it.</li>
+    <li><span class="pinfunction NOT_5V">3.3v</span> boxes mark pins that are not 5v tolerant (they only take inputs from 0 - 3.3v, not 0 - 5v).</li>""")
+  if has_pin("3.3"): writeHTML("""   <li><span class="pinfunction">3.3</span> is a 3.3v output from the on-board Voltage regulator.</li>""")
+  if has_pin("GND"): writeHTML("""    <li><span class="pinfunction">GND</span> is ground (0v).</li>""")
+  if has_pin("VBAT"): writeHTML("""    <li><span class="pinfunction">VBAT</span> is the battery voltage output (see <a href="/EspruinoBoard">the Espruino Board Reference</a>).</li>""")
+  if "ADC" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction ADC">ADC</span> is an <a href="/ADC">Analog to Digital Converter</a> (for reading analog voltages)</li>""");
+  if "DAC" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction DAC">DAC</span> is a <a href="/DAC">Digital to Analog Converter</a> (for creating analog voltages). This is not available on all boards.</li>""");
+  if "PWM" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction PWM">PWM</span> is for <a href="/PWM">Pulse Width Modulation</a>. This creates analog voltages from a digital output by sending a series of pulses.</li>""");
+  if "SPI" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction SPI">SPI</span> is the 3 wire <a href="/SPI">Serial Peripheral Interface</a>.</li>""");
+  if "USART" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction USART">USART</span> is a 2 wire peripheral for <a href="/USART">Serial Data</a>.</li>""");
+  if "I2C" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction I2C">I2C</span> is the 2 wire <a href="/I2C">Inter-Integrated Circuit</a> bus.</li>""");
+  if "CAN" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction CAN">CAN</span> is for the <a href="http://en.wikipedia.org/wiki/CAN_bus">Controller Area Network</a>. It is not supported by Espruino.</li>""")
+  writeHTML("  </ul>");
+  
+  if hasattr(board, 'boards'):
+    for brdnum in range(len(board.boards)):
+      writeBoard(board.boards[brdnum], brdnum)
+  else:
+    writeBoard(board.board, 0)
 
 
 #writeHTML('<SCRIPT type="text/javascript"> $(function() {');
