@@ -370,10 +370,20 @@ bool mag_on(int milliHz, bool instant) {
     // not supported
     return false;
   }
-
+  // if instant, we take a reading right away
   if (instant) {
     mag_wait();
     mag_read();
+    if (puckVersion == PUCKJS_2V1) { // MMC5603NJ
+      /* On newest batch of MMC5603NJ (used from June 2022) the first read after power on
+       * doesn't always seem to be reliable, so if we're instant (in which case magnetometer
+       * is working at ~1000Hz) then if the data seems wrong we'll wait until we get a good reading */
+      int timeout = 5;
+      while (mag_reading[0]==-32768 && mag_reading[1]==-32768 && mag_reading[2]==-32768 && --timeout) {
+        mag_wait();
+        mag_read();
+      }
+    }
   }
 
   return true;
