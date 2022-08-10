@@ -25,6 +25,7 @@
             Bangle.js2: Added `Bangle.setLCDOverlay(img,x,y)` to allow an image to be overlaid on top of screen contents (eg for notifications)
             Fix issue parsing constant decls when not executing (fix #2255)
             Puck.js: Fix Puck.mag() in newest batch of Puck.js 2.1a sometimes returning -32768
+            Correctly handle parsing of template literals inside template literals
 
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu

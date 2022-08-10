@@ -284,7 +284,14 @@ static void jslLexString() {
   jsvStringIteratorNew(&it, lex->tokenValue, 0);
   // strings...
   jslGetNextCh();
-  while (lex->currCh && lex->currCh!=delim) {
+  char lastCh = delim;
+  int nesting = 0;
+  while (lex->currCh && (lex->currCh!=delim || nesting)) {
+    // in template literals, cope with a literal inside another: `${`Hello`}`
+    if (delim=='`') {
+      if ((lastCh=='$' || nesting) && lex->currCh=='{') nesting++;
+      if (nesting && lex->currCh=='}') nesting--;
+    }
     if (lex->currCh == '\\') {
       jslGetNextCh();
       char ch = lex->currCh;
@@ -330,6 +337,7 @@ static void jslLexString() {
         }
         break;
       }
+      lastCh = ch;
       jslTokenAppendChar(ch);
       jsvStringIteratorAppend(&it, ch);
     } else if (lex->currCh=='\n' && delim!='`') {
@@ -339,6 +347,7 @@ static void jslLexString() {
     } else {
       jslTokenAppendChar(lex->currCh);
       jsvStringIteratorAppend(&it, lex->currCh);
+      lastCh = lex->currCh;
       jslGetNextCh();
     }
   }
