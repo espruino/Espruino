@@ -171,7 +171,7 @@ cd $DIR
 sed 's/$/\r/' dist_readme.txt | sed "s/#v##/$VERSION/" > $ZIPDIR/readme.txt
 bash scripts/extract_changelog.sh | sed 's/$/\r/' > $ZIPDIR/changelog.txt
 #bash scripts/extract_todo.sh  >  $ZIPDIR/todo.txt
-python scripts/build_docs.py  || { echo 'Build failed' ; exit 1; }
+scripts/build_docs.py  || { echo 'Build failed' ; exit 1; }
 mv $DIR/functions.html $ZIPDIR/functions.html
 cp $DIR/dist_licences.txt $ZIPDIR/licences.txt
 
