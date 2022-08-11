@@ -26,6 +26,7 @@
             Fix issue parsing constant decls when not executing (fix #2255)
             Puck.js: Fix Puck.mag() in newest batch of Puck.js 2.1a sometimes returning -32768
             Correctly handle parsing of template literals inside template literals
+            Don't store command history if echo=off (eg for Web IDE/App Loader uploads)
 
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu

@@ -1439,7 +1439,8 @@ void jsiHandleNewLine(bool execute) {
         JsVar *v = jspEvaluateVar(lineToExecute, 0, jsiLineNumberOffset);
         // add input line to history
         bool isEmpty = jsvIsEmptyString(lineToExecute);
-        if (!isEmpty)
+        // Don't store history if we're not echoing back to the console (it probably wasn't typed by the user)
+        if (!isEmpty && jsiEcho())
           jsiHistoryAddLine(lineToExecute);
         jsvUnLock(lineToExecute);
         jsiLineNumberOffset = 0; // forget the current line number now
