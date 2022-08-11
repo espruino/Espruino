@@ -27,7 +27,8 @@
             Puck.js: Fix Puck.mag() in newest batch of Puck.js 2.1a sometimes returning -32768
             Correctly handle parsing of template literals inside template literals
             Don't store command history if echo=off (eg for Web IDE/App Loader uploads)
-
+            E.defrag now kicks the watchdog (on Bangle.js 2 it can take long enough that the watchdog fires)
+            
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu
             Bangle.js2: Double input buffer size from 1kb to 2kb
