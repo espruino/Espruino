@@ -34,6 +34,16 @@ jobs:
         source ./scripts/provision.sh  ${{ matrix.board }}
         make
         ./scripts/ci_upload.sh
+    - name: Upload ${{ matrix.board }} build artifact
+      uses: actions/upload-artifact@v3.1.0
+      with:
+        name: ${{ matrix.board }}
+        path: |
+          *.bin
+          *.hex
+          *.tgz
+          *.zip
+    
         
   # Builds with DFU_UPDATE_BUILD=1        
   build_dfu:
@@ -59,6 +69,15 @@ jobs:
         source ./scripts/provision.sh  ${{ matrix.board }}
         make
         ./scripts/ci_upload.sh       
+    - name: Upload ${{ matrix.board }} build artifact
+      uses: actions/upload-artifact@v3.1.0
+      with:
+        name: ${{ matrix.board }}
+        path: |
+          *.bin
+          *.hex
+          *.tgz
+          *.zip
        
   # Builds with PAD_FOR_BOOTLOADER=1
   build_padded:
@@ -84,6 +103,15 @@ jobs:
         source ./scripts/provision.sh  ${{ matrix.board }}
         make
         ./scripts/ci_upload.sh 
+    - name: Upload ${{ matrix.board }} build artifact
+      uses: actions/upload-artifact@v3.1.0
+      with:
+        name: ${{ matrix.board }}
+        path: |
+          *.bin
+          *.hex
+          *.tgz
+          *.zip
  
  
 # Disable doc building for now 
