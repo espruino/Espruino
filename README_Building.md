@@ -10,11 +10,26 @@ make clean && make
 
 **Note:**
 
-* In general, have a look through the Makefile to see what other options are available
+* In general, have a look through the head of the Makefile to see what other options are available
 * If you're swapping between compiling for different targets, you need to call `make clean` before you compile for the new target.
-* If you have a ld error, check the board name in the BOARDNAME=1 make in the Makefile.
 * ```RELEASE=1``` for performance and code size, without it, assertions are kept for debugging.
-* ```DEBUG=1``` is available.
+* ```DEBUG=1``` is available (it may not be possible to build many targets with `DEBUG=1` without first disabling features in `boards/BOARDNAME.py`
+
+## Building a specific board
+
+To work out which 'Board name' to use, simply look in the `boards` folder for the
+right `BOARD.py` file. To build for `boards/PUCKJS.py` use `BOARD=PUCKJS RELEASE=1 make`
+
+## Super Easy GitHub method
+
+GitHub now automatically builds Espruino for the most popular targets. 
+
+Simply go to `https://github.com/espruino/Espruino/actions`, click on the build you're interested in,
+then scroll down to the `Artefacts` heading. Just click on an artefact (for instance `PUCKJS`) to download
+a zip containing the files.
+
+If you fork the Espruino repository and make changes yourself you should be able
+to see the builds for your changes at `https://github.com/YOUR_USERNAME/Espruino/actions`
 
 ## Under Linux (recommended)
 
@@ -33,7 +48,7 @@ This should work for common platforms on Linux, but will only set
 paths up for your current session. You'll have to run it again
 next time you log in.
 
-### Manual Method
+### Manual Method (not recommended)
 
 #### For Espruino
 
