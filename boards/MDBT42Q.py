@@ -87,14 +87,13 @@ board_module = {
   'right2' : [ 'D24', '', 'D23'],
   'right' : [ 'GND','D22','SWDIO','SWDCLK','D21','D20','D19','D18','D17','D16','D15','D14','D13','D12','D11' ],
   'bottom' : [ 'GND','D0','D1','D2','D3','D4','D5','D6','D7','D8','D9','D10','GND' ],
+  '_title' : "MDBT42Q module",        
   '_notes' : {
     'D21' : "Also NRST if configured",
     'D13' : "This is used as LRCK when driving Neopixels, and will output a signal when 'require('neopixel').write' is called",
     'D23' : "This is used as SCK when driving Neopixels, and will output a signal when 'require('neopixel').write' is called",
-  }
-};
-
-board_module["_css"] = """
+  },
+  '_css' : """
 #board {
   width: 359px;
   height: 484px;
@@ -126,22 +125,22 @@ board_module["_css"] = """
 #board .left2pin { height: 17px; }
 #board .rightpin { height: 17px; }
 #board .bottompin { width: 15px; padding:0px; }
-""";
+"""
+};
 
 board_breakout = {
   'left' : [ 'D25','D26','D27','D28','D29','D30','D31','D3','D4','D5','D11' ],
   'right' : [ 'D22','D20','D19','D18','D17','D16','D15','D14','3.3','Vin','GND'],
   'bottom' : [ 'D6','D8','D7','Vin','GND' ],
-  'top' : [ 'D9','D10' ], 
+  'top' : [ 'D9','D10' ],   
   '_hide_not_on_connectors' : True,
+  '_title' : "MDBT42Q breakout board",      
   '_class' : "board_breakout",
   '_notes' : {
     'D8' : "Serial Console RX when Bluetooth disconnected",
     'D6' : "Serial Console TX when Bluetooth disconnected",    
-  }
-};
-
-board_breakout["_css"] = """
+  },
+  '_css' : """
 #board {
   width: 255px;
   height: 400px;
@@ -173,7 +172,7 @@ board_breakout["_css"] = """
 #board .rightpin { height: 33px; }
 #board .toppin { width: 15px; padding:0px; }
 #board .bottompin { width: 31px; padding:0px; }
-""";
+"""};
 
 boards = [board_module, board_breakout];
 

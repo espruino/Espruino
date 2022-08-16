@@ -172,8 +172,13 @@ def writeBoard(brd, brdnum):
     writeHTML(brd["_css"].replace("#board", "#"+boardname));
   writeHTML('  </STYLE>')
 
+  if "_title" in brd:
+    writeHTML('   <H3>'+brd["_title"]+'</H3>');
   writeHTML('  <DIV id="'+boardname+'container" class="boardcontainer">')
-  writeHTML('  <DIV id="'+boardname+'" class="board">')
+  classes = ""
+  if "_class" in brd: 
+    classes = " "+brd["_class"]
+  writeHTML('  <DIV id="'+boardname+'" class="board'+classes+'">')
 
   usedpins = []
   for pinstrip in brd:
@@ -195,7 +200,7 @@ def writeBoard(brd, brdnum):
 
   if otherpins>0 and not ('_hide_not_on_connectors' in brd and brd["_hide_not_on_connectors"]):
     writeHTML('  <DIV id="otherpins">')
-    writeHTML('   <H2>Pins not on connectors</H2>')
+    writeHTML('   <H4>Pins not on connectors</H4>')
     for pinstruct in pins:
       pin = pinstruct["name"]
       if not pin in usedpins:
