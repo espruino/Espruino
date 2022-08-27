@@ -356,7 +356,7 @@ double jswrap_math_pow(double x, double y) {
 }*/
 JsVar *jswrap_math_round(double x) {
   if (!isfinite(x) || isNegativeZero(x)) return jsvNewFromFloat(x);
-  x += (x<0) ? -0.4999999999 : 0.4999999999;
+  x += (x<0) ? -0.5 : 0.5;
   long long i = (long long)x;
   if (i==0 && (x<0))
     return jsvNewFromFloat(-0.0); // pass -0 through
