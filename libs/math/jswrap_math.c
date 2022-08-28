@@ -525,3 +525,20 @@ JsVarFloat jswrap_math_minmax(JsVar *args, bool isMax) {
   return v;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
+  "class" : "Math",
+  "name" : "sign",
+  "generate" : "jswrap_math_sign",
+  "params" : [
+    ["x","float","The value to get the sign from"]
+  ],
+  "return" : ["int","sign on x - -1, 1, or 0"]
+}*/
+int jswrap_math_sign(double x)
+{
+  if (x == 0 || isNegativeZero(x))
+    return 0;
+  return x > 0 ? 1 : -1;
+}
