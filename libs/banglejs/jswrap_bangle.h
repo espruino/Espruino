@@ -25,6 +25,7 @@ void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout);
 int jswrap_banglejs_isLCDOn();
 void jswrap_banglejs_setLocked(bool isLocked);
 int jswrap_banglejs_isLocked();
+int jswrap_banglejs_isWorn();
 
 void jswrap_banglejs_setPollInterval(JsVarFloat interval);
 void jswrap_banglejs_setOptions(JsVar *options);
