@@ -2405,6 +2405,20 @@ int jswrap_banglejs_isLocked() {
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
+    "name" : "isWorn",
+    "generate" : "jswrap_banglejs_isWorn",
+    "return" : ["bool","Is the watch being worn or not?"],
+    "ifdef" : "BANGLEJS"
+}
+*/
+// emscripten bug means we can't use 'bool' as return value here!
+int jswrap_banglejs_isWorn() {
+  return 1;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
     "name" : "isCharging",
     "generate" : "jswrap_banglejs_isCharging",
     "return" : ["bool","Is the battery charging or not?"],
