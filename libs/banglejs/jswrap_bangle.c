@@ -2413,6 +2413,10 @@ int jswrap_banglejs_isLocked() {
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isWorn() {
+  if (jswrap_banglejs_isCharging())
+    return 0;
+  // if (jswrap_banglejs_getAccel().mag > 1.045)
+  //   return 1;
   return 1;
 }
 
