@@ -2415,9 +2415,11 @@ int jswrap_banglejs_isLocked() {
 int jswrap_banglejs_isWorn() {
   if (jswrap_banglejs_isCharging())
     return 0;
-  // if (jswrap_banglejs_getAccel().mag > 1.045)
-  //   return 1;
-  return 1;
+  if (jswrap_espruino_getTemperature() > 24.625)
+    return 1;
+  if (jswrap_banglejs_getAccel().mag > 1.045)
+    return 1;
+  return 0;
 }
 
 /*JSON{
