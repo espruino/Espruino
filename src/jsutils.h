@@ -314,6 +314,7 @@ typedef int64_t JsSysTime;
 #define JS_HIDDEN_CHAR '\xFF' // initial character of var name determines that we shouldn't see this stuff
 #define JS_HIDDEN_CHAR_STR "\xFF"
 #define JSPARSE_FUNCTION_CODE_NAME JS_HIDDEN_CHAR_STR"cod" // the function's code!
+#define JSPARSE_FUNCTION_JIT_CODE_NAME JS_HIDDEN_CHAR_STR"jit" // the function's code for a JIT function
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"sco" // the scope of the function's definition
 #define JSPARSE_FUNCTION_THIS_NAME JS_HIDDEN_CHAR_STR"ths" // the 'this' variable - for bound functions
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"nam" // for named functions (a = function foo() { foo(); })

@@ -346,15 +346,16 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
         JslCharPos funcCodeStart;
         jslCharPosFromLex(&funcCodeStart);
         JsVar *funcCodeVar = jsjParseFunction();
-        if (funcCodeVar) { // compilation could have failed!
-          funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_NATIVE_FUNCTION; // convert to native fn
-          funcVar->varData.native.ptr = (void *)(size_t)1; // offset 1 = 'thumb'
-          funcVar->varData.native.argTypes = JSWAT_JSVAR; // FIXME - need to add parameters if any specified...
-          jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME), funcCodeVar);
+        if (jsvIsFlatString(funcCodeVar)) { // compilation could have failed!
+          jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_JIT_CODE_NAME), funcCodeVar);
           JSP_MATCH('}');
           jslCharPosFree(&funcCodeStart);
           return true;
         } else {
+          if (funcCodeVar) {
+            jsiConsolePrintf("JIT ok, but unable to create flat string\n");
+          }
+          jsvUnLock(funcCodeVar);
           // Set lex to start back... now we parse function as normal JS like before
           jslSeekToP(&funcCodeStart);
           jslCharPosFree(&funcCodeStart);
@@ -662,6 +663,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 #ifndef ESPR_NO_LINE_NUMBERS
       uint16_t functionLineNumber = 0;
 #endif
+#ifdef ESPR_JIT
+      bool functionIsJIT = false; // is functionCode actually Thumb Assembly (for JS)
+#endif
 
       /** NOTE: We expect that the function object will have:
        *
@@ -723,6 +727,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         if (jsvIsString(param)) {
           if (jsvIsStringEqual(param, JSPARSE_FUNCTION_SCOPE_NAME)) functionScope = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_CODE_NAME)) functionCode = jsvSkipName(param);
+#ifdef ESPR_JIT
+          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_JIT_CODE_NAME)) { functionCode = jsvSkipName(param); functionIsJIT = true; }
+#endif
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_NAME_NAME)) functionInternalName = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_THIS_NAME)) {
             jsvUnLock(thisVar);
@@ -775,14 +782,22 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           else
             execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
 
-
+#ifdef ESPR_JIT
+          /* Handle the case where we're executing a JITed function. In this case functionCode
+           * points to assembly code...
+           */
+          if (functionIsJIT) {
+            void *nativePtr = jsvGetFlatStringPointer(functionCode);
+            if (nativePtr)
+              returnVar = jsnCallFunction(nativePtr+1/*thumb*/, JSWAT_JSVAR/*JS Variable as return type*/, thisVar, NULL, 0);
+          } else
+#endif
           /* we just want to execute the block, but something could
            * have messed up and left us with the wrong Lexer, so
            * we want to be careful here... */
           if (functionCode) {
 #ifdef USE_DEBUGGER
             bool hadDebuggerNextLineOnly = false;
-
             if (execInfo.execute&EXEC_DEBUGGER_STEP_INTO) {
               if (functionName)
                 jsiConsolePrintf("Stepping into %v\n", functionName);

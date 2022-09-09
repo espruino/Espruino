@@ -214,9 +214,16 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
   }
   jsvObjectIteratorFree(&it);
   cbprintf(user_callback, user_data, ") ");
-
+#ifdef ESPR_JIT
+  JsVar *jitCode = 0;
+#endif
   if (jsvIsNativeFunction(var)) {
     cbprintf(user_callback, user_data, "{ [native code] }");
+#ifdef ESPR_JIT
+  } else if (jitCode = jsvFindChildFromString(var, JSPARSE_FUNCTION_JIT_CODE_NAME, false)) {
+    jsvUnLock(jitCode);
+    cbprintf(user_callback, user_data, "{ [JIT] }");
+#endif
   } else {
     if (codeVar) {
       if (flags & JSON_LIMIT) {
