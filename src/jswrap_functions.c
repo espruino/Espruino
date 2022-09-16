@@ -241,7 +241,7 @@ bool jswrap_isNaN(JsVar *v) {
       jsvIsObject(v) ||
       ((jsvIsFloat(v)||jsvIsArray(v)) && isnan(jsvGetFloat(v)))) return true;
   if (jsvIsString(v)) {
-    // this is where is can get a bit crazy
+    // this is where it can get a bit crazy
     bool allWhiteSpace = true;
     JsvStringIterator it;
     jsvStringIteratorNew(&it,v,0);
