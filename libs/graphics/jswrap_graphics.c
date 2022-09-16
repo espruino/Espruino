@@ -385,9 +385,9 @@ Use Graphics.createXXX to create a graphics object that renders in the way you
 want. See [the Graphics page](https://www.espruino.com/Graphics) for more
 information.
 
-**Note:** On boards that contain an LCD, there is a built-in 'LCD' object of
-type Graphics. For instance to draw a line you'd type:
-```LCD.drawLine(0,0,100,100)```
+**Note:** On boards that contain an LCD, there is a built-in `g` object of
+type `Graphics`. For instance to draw a line you'd type:
+```g.drawLine(0,0,100,100)```
 */
 
 /*JSON{
@@ -459,7 +459,7 @@ void jswrap_graphics_init() {
   // _init to a) not have GFX and b) not get their theme
   // settings overwritten
 #ifdef USE_LCD_FSMC
-  JsVar *parent = jspNewObject("LCD", "Graphics");
+  JsVar *parent = jspNewObject("g", "Graphics");
   if (parent) {
     JsVar *parentObj = jsvSkipName(parent);
     jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, parentObj);
