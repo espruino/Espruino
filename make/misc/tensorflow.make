@@ -69,5 +69,9 @@ INCLUDE += \
 -I$(TENSOR_ROOT)/third_party/flatbuffers/include \
 -I$(TENSOR_ROOT)/third_party/ruy
 
-CCFLAGS += -DNDEBUG -g -DTF_LITE_STATIC_MEMORY --std=c++11 -g -fno-rtti -fpermissive -Wno-sign-compare -Wno-conversion -Wno-sign-conversion -Wno-missing-field-initializers -Wno-type-limits -Wno-unused-parameter -Wno-unused-variable
+ifdef RELEASE
+CCFLAGS += -DNDEBUG
+# to strip all error messages add -DTF_LITE_STRIP_ERROR_STRINGS
+endif
+CCFLAGS += -g -DTF_LITE_STATIC_MEMORY --std=c++11 -g -fno-rtti -fpermissive -Wno-sign-compare -Wno-conversion -Wno-sign-conversion -Wno-missing-field-initializers -Wno-type-limits -Wno-unused-parameter -Wno-unused-variable
 DEFINES += -DUSE_TENSORFLOW=1
