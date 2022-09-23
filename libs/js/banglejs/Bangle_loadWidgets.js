@@ -1,4 +1,5 @@
 (function() {
+  if (global.WIDGETS) return; // widgets already loaded. Don't double-reload	
   global.WIDGETS={};
   require("Storage").list(/\.wid\.js$/).forEach(widget=>{try { eval(require("Storage").read(widget)); } catch (e) {print(widget,e);}}); 
   var W = WIDGETS;

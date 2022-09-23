@@ -104,6 +104,8 @@
     }
   } else
     throw new Error("Unknown UI mode");
+  if (options.remove) // handler for removing the UI (intervals/etc)
+    Bangle.uiRemove = options.remove;
   if (options.back) {
     var touchHandler = (_,e) => {
       if (e.y<36 && e.x<48) {

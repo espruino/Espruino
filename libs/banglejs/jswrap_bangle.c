@@ -5463,6 +5463,7 @@ specified:
 Bangle.setUI({
   mode : "custom",
   back : function() {}, // optional - add a 'back' icon in top-left widget area and call this function when it is pressed
+  remove : function() {}, // optional - add a handler for when the UI should be removed (eg stop any intervals/timers here)
   touch : function(n,e) {}, // optional - handler for 'touch' events
   swipe : function(dir) {}, // optional - handler for 'swipe' events
   drag : function(e) {}, // optional - handler for 'drag' events (Bangle.js 2 only)
@@ -5470,6 +5471,11 @@ Bangle.setUI({
   clock : 0 // optional - if set the behavior of 'clock' mode is added (does not override btn if defined)
 });
 ```
+
+If `remove` is specified, `Bangle.showLauncher` (and some apps) may choose to just call this and then
+load a new app without resetting Bangle.js. As a result, **if you specify 'remove' you should
+make sure you test that after calling it your app is completely unloaded** otherwise you may
+end up with a memory leak.
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
