@@ -26,6 +26,18 @@
 #endif
 
 /*JSON{
+    "type" : "variable",
+    "name" : "__FILE__",
+    "generate" : false
+}
+The filename of the app that is currently executing.
+
+If `load` has been called with a filename (eg `load("myfile.js")`) then
+`__FILE__` is set to that filename. Otherwise (eg `load()`) or immediately
+after booting, `__FILE__` is not set.
+*//*Documentation only*/
+
+/*JSON{
   "type" : "class",
   "class" : "E"
 }
