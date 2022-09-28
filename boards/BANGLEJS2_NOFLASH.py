@@ -51,6 +51,7 @@ info = {
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2ec0', # set RAM base to match MTU
      'DEFINES += -DESPR_DCDC_ENABLE=1', # Use DC/DC converter
      'ESPR_BLUETOOTH_ANCS=1', # Enable ANCS (Apple notifications) support
+     'DEFINES += -DSPIFLASH_SLEEP_CMD', # SPI flash needs to be explicitly slept and woken up
      'DEFINES += -DAPP_TIMER_OP_QUEUE_SIZE=6', # Bangle.js accelerometer poll handler needs something else in queue size
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
@@ -162,7 +163,17 @@ devices = {
             'addr' : 0x76, # both versions use the same address
             'pin_sda' : 'D47',
             'pin_scl' : 'D2'            
-  }
+  },
+  'SPIFLASH' : {
+            'pin_cs' : 'D14',
+            'pin_sck' : 'D16',
+            'pin_mosi' : 'D15', # D0
+            'pin_miso' : 'D13', # D1
+#            'pin_wp' : 'D', # D2
+#            'pin_rst' : 'D', # D3
+            'size' : 4096*2048, # 8MB
+            'memmap_base' : 0x60000000 # map into the address space (in software)
+          }
 };
 
 # left-right, or top-bottom order
