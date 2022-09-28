@@ -33,7 +33,7 @@
 unsigned char lcdBuffer[LCD_STRIDE*(LCD_HEIGHT+2)];
 bool isBacklightOn; ///< is LCD backlight on? If so we need to toggle EXTCOMIN faster
 JsVar *lcdOverlayImage; ///< if set, an Image to use for overlays
-unsigned char lcdOverlayX,lcdOverlayY; ///< coordinates of the graphics instance
+short lcdOverlayX,lcdOverlayY; ///< coordinates of the graphics instance
 
 #ifdef EMULATED
 bool EMSCRIPTEN_GFX_CHANGED;
@@ -216,8 +216,9 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
         _jswrap_drawImageLayerStartX(&l);
         for (int x=0;x<overlayImg.width;x++) {
           unsigned int c;
-          if (_jswrap_drawImageLayerGetPixel(&l, &c) && x+lcdOverlayX < LCD_WIDTH)
-            lcdMemLCD_setPixel(NULL, x+lcdOverlayX, bufferLine, c);
+          int ox = x+lcdOverlayX;
+          if (_jswrap_drawImageLayerGetPixel(&l, &c) && (ox < LCD_WIDTH) && (ox >= 0))
+            lcdMemLCD_setPixel(NULL, ox, bufferLine, c);
           _jswrap_drawImageLayerNextX(&l);
         }
       }
@@ -305,8 +306,8 @@ void lcdMemLCD_setOverlay(JsVar *imgVar, int x, int y) {
   if (lcdOverlayImage) jsvUnLock(lcdOverlayImage);
   if (imgVar) {
     lcdOverlayImage = jsvLockAgain(imgVar);
-    lcdOverlayX = (unsigned char)x;
-    lcdOverlayY = (unsigned char)y;
+    lcdOverlayX = (short)x;
+    lcdOverlayY = (short)y;
   } else {
     lcdOverlayImage = 0;
     lcdOverlayX = 0;

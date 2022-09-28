@@ -2090,14 +2090,52 @@ void jswrap_banglejs_setLCDOffset(int y) {
     ],
     "ifdef" : "BANGLEJS_Q3"
 }
-Overlay a graphics instance on top of the contents of the graphics buffer.
+Overlay an image or graphics instance on top of the contents of the graphics buffer.
 
 This only works on Bangle.js 2 because Bangle.js 1 doesn't have an offscreen buffer accessible from the CPU.
+
+```
+// display an alarm clock icon on the screen
+var img = require("heatshrink").decompress(atob(`lss4UBvvv///ovBlMyqoADv/VAwlV//1qtfAQX/BINXDoPVq/9DAP
+/AYIKDrWq0oREAYPW1QAB1IWCBQXaBQWq04WCAQP6BQeqA4P1AQPq1WggEK1WrBAIkBBQJsCBYO///fBQOoPAcqCwP3BQnwgECCwP9
+GwIKCngWC14sB7QKCh4CBCwN/64KDgfACwWn6vWGwYsBCwOputWJgYsCgGqytVBQYsCLYOlqtqwAsFEINVrR4BFgghBBQosDEINWIQ
+YsDEIQ3DFgYhCG4msSYeVFgnrFhMvOAgsEkE/FhEggYWCFgIhDkEACwQKBEIYKBCwSGFBQJxCQwYhBBQTKDqohCBQhCCEIJlDXwrKE
+BQoWHBQdaCwuqJoI4CCwgKECwJ9CJgIKDq+qBYUq1WtBQf+BYIAC3/VBQX/tQKDz/9BQY5BAAVV/4WCBQJcBKwVf+oHBv4wCAAYhB`));
+Bangle.setLCDOverlay(img,80,80);
+```
+
+Or use a `Graphics` instance:
+
+```
+var ovr = Graphics.createArrayBuffer(100,100,1,{msb:true}); // 1bpp
+ovr.drawLine(0,0,100,100);
+ovr.drawRect(0,0,99,99);
+Bangle.setLCDOverlay(ovr,38,38);
+```
+
+Although `Graphics` can be specified directly, it can often make more sense to
+create an Image from the `Graphics` instance, as this gives you access
+to color palettes and transparent colors. For instance this will draw a colored
+overlay with rounded corners:
+
+```
+var ovr = Graphics.createArrayBuffer(100,100,2,{msb:true});
+ovr.setColor(1).fillRect({x:0,y:0,w:99,h:99,r:8});
+ovr.setColor(3).fillRect({x:2,y:2,w:95,h:95,r:7});
+ovr.setColor(2).setFont("Vector:30").setFontAlign(0,0).drawString("Hi",50,50);
+Bangle.setLCDOverlay({
+  width:ovr.getWidth(), height:ovr.getHeight(),
+  bpp:2, transparent:0,
+  palette:new Uint16Array([0,0,g.toColor("#F00"),g.toColor("#FFF")]),
+  buffer:ovr.buffer
+},38,38);
+```
 */
 void jswrap_banglejs_setLCDOverlay(JsVar *imgVar, int x, int y) {
 #ifdef LCD_CONTROLLER_LPM013M126
   lcdMemLCD_setOverlay(imgVar, x, y);
   // set all as modified
+  // TODO: Could look at old vs new overlay state and update only lines that had changed?
   graphicsInternal.data.modMinX = 0;
   graphicsInternal.data.modMinY = 0;
   graphicsInternal.data.modMaxX = LCD_WIDTH-1;
