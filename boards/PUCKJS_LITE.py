@@ -37,10 +37,7 @@ info = {
      'GRAPHICS',
      'CRYPTO','SHA256',#'SHA512',
      'AES',
-     'NFC',
-     'NEOPIXEL',
-     #'FILESYSTEM'
-     #'TLS'
+     'NEOPIXEL'
    ],
    'makefile' : [
      'DEFINES+=-DPUCKJS_LITE', 
