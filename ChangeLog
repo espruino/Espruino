@@ -3,6 +3,7 @@
             Fix print(()=>{}) printing 'function (undefined) {}' - saves 1 var for arrow fn without args (fix #2265)
             Bangle.js: Add support for `Bangle.setUI({remove:...})` to allow apps to be unloaded without a full reboot.
             Bangle.js2: Fixed `Bangle.setLCDOverlay(img,x,y)` with negative offsets
+            Allow `atob` to accept base64 with whitespace inside it
 
      2v15 : Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
             Fix issue accessing `arguments` after/inside 'let/const' keyword (fix #2224)

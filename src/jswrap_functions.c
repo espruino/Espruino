@@ -353,27 +353,39 @@ JsVar *jswrap_atob(JsVar *base64Data) {
     jsExceptionHere(JSET_ERROR, "Expecting a string, got %t", base64Data);
     return 0;
   }
-  size_t inputLength = jsvGetStringLength(base64Data);
+  // work out input length (ignoring whitespace)
+  size_t inputLength = 0;
+  JsvStringIterator itsrc;
+  jsvStringIteratorNew(&itsrc, base64Data, 0);
+  char prevCh = 0, prevPrevCh = 0;
+  while (jsvStringIteratorHasChar(&itsrc)) {
+    char ch = jsvStringIteratorGetChar(&itsrc);
+    if (!isWhitespace(ch)) {
+      prevPrevCh = prevCh;
+      prevCh = ch;
+      inputLength++;
+    }
+    jsvStringIteratorNext(&itsrc);
+  }
+  jsvStringIteratorFree(&itsrc);
+  // work out output length and allocate buffer
   size_t outputLength = inputLength*3/4;
-  if (jsvGetCharInString(base64Data,inputLength-1)=='=') outputLength--;
-  if (jsvGetCharInString(base64Data,inputLength-2)=='=') outputLength--;
+  if (prevCh=='=') outputLength--;
+  if (prevPrevCh=='=') outputLength--;
   JsVar* binaryData = jsvNewStringOfLength((unsigned int)outputLength, NULL);
   if (!binaryData) return 0;
-  JsvStringIterator itsrc;
+  // decode...
   JsvStringIterator itdst;
   jsvStringIteratorNew(&itsrc, base64Data, 0);
   jsvStringIteratorNew(&itdst, binaryData, 0);
-  // skip whitespace
-  while (jsvStringIteratorHasChar(&itsrc) &&
-      isWhitespace(jsvStringIteratorGetChar(&itsrc)))
-    jsvStringIteratorNext(&itsrc);
-
   while (jsvStringIteratorHasChar(&itsrc) && !jspIsInterrupted()) {
     uint32_t triple = 0;
     int i, valid=0;
     for (i=0;i<4;i++) {
       if (jsvStringIteratorHasChar(&itsrc)) {
-        int sextet = jswrap_atob_decode(jsvStringIteratorGetCharAndNext(&itsrc));
+        char ch = ' '; // get char, skip whitespace. If string ends, ch=0 and we break out
+        while (ch && isWhitespace(ch)) ch=jsvStringIteratorGetCharAndNext(&itsrc);
+        int sextet = jswrap_atob_decode(ch);
         if (sextet>=0) {
           triple |= (unsigned int)(sextet) << ((3-i)*6);
           valid=i;
