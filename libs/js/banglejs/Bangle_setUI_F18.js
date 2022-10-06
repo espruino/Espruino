@@ -21,6 +21,7 @@
     Bangle.removeListener("touch", Bangle.touchHandler);
     delete Bangle.touchHandler;
   }
+  delete Bangle.CLOCK;
   if (Bangle.uiRemove) {
     Bangle.uiRemove();
     delete Bangle.uiRemove;
