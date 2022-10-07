@@ -28,7 +28,8 @@
   if (Bangle.uiRemove) {
     Bangle.uiRemove();
     delete Bangle.uiRemove;
-  }  
+  }
+  delete Bangle.CLOCK;
   function b() {
     try{Bangle.buzz(30);}catch(e){}
   }
