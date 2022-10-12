@@ -1,0 +1,61 @@
+diff --git a/libs/tensorflow/tensorflow/lite/c/common.h b/libs/tensorflow/tensorflow/lite/c/common.h
+index 18997298d..4a7ba8bb6 100644
+--- a/libs/tensorflow/tensorflow/lite/c/common.h
++++ b/libs/tensorflow/tensorflow/lite/c/common.h
+@@ -173,12 +173,22 @@ void TfLiteFloatArrayFree(TfLiteFloatArray* a);
+ #define TF_LITE_MAYBE_KERNEL_LOG(context, ...)
+ #endif  // TF_LITE_STRIP_ERROR_STRINGS
+ 
++#ifdef NDEBUG
++#define TF_DEBUG_FILE ""
++#define TF_DEBUG_FMT ""
++#define TF_DEBUG_PARAMS
++#else
++#define TF_DEBUG_FILE __FILE__ " "
++#define TF_DEBUG_FMT "%s:%d "
++#define TF_DEBUG_PARAMS ,__FILE__,__LINE__
++#endif
++
+ // Check whether value is true, and if not return kTfLiteError from
+ // the current function (and report the error string msg).
+ #define TF_LITE_ENSURE_MSG(context, value, msg)        \
+   do {                                                 \
+     if (!(value)) {                                    \
+-      TF_LITE_KERNEL_LOG((context), __FILE__ " " msg); \
++      TF_LITE_KERNEL_LOG((context), TF_DEBUG_FILE msg); \
+       return kTfLiteError;                             \
+     }                                                  \
+   } while (0)
+@@ -188,8 +198,8 @@ void TfLiteFloatArrayFree(TfLiteFloatArray* a);
+ #define TF_LITE_ENSURE(context, a)                                      \
+   do {                                                                  \
+     if (!(a)) {                                                         \
+-      TF_LITE_KERNEL_LOG((context), "%s:%d %s was not true.", __FILE__, \
+-                         __LINE__, #a);                                 \
++      TF_LITE_KERNEL_LOG((context), TF_DEBUG_FMT "%s was not true." TF_DEBUG_PARAMS, \
++                         #a);                                 \
+       return kTfLiteError;                                              \
+     }                                                                   \
+   } while (0)
+@@ -210,8 +220,8 @@ void TfLiteFloatArrayFree(TfLiteFloatArray* a);
+ #define TF_LITE_ENSURE_EQ(context, a, b)                                   \
+   do {                                                                     \
+     if ((a) != (b)) {                                                      \
+-      TF_LITE_KERNEL_LOG((context), "%s:%d %s != %s (%d != %d)", __FILE__, \
+-                         __LINE__, #a, #b, (a), (b));                      \
++      TF_LITE_KERNEL_LOG((context), TF_DEBUG_FMT "%s != %s (%d != %d)" TF_DEBUG_PARAMS, \
++                         #a, #b, (a), (b));                      \
+       return kTfLiteError;                                                 \
+     }                                                                      \
+   } while (0)
+@@ -219,8 +229,8 @@ void TfLiteFloatArrayFree(TfLiteFloatArray* a);
+ #define TF_LITE_ENSURE_TYPES_EQ(context, a, b)                             \
+   do {                                                                     \
+     if ((a) != (b)) {                                                      \
+-      TF_LITE_KERNEL_LOG((context), "%s:%d %s != %s (%s != %s)", __FILE__, \
+-                         __LINE__, #a, #b, TfLiteTypeGetName(a),           \
++      TF_LITE_KERNEL_LOG((context), TF_DEBUG_FMT "%s != %s (%s != %s)" TF_DEBUG_PARAMS, \
++                         #a, #b, TfLiteTypeGetName(a),           \
+                          TfLiteTypeGetName(b));                            \
+       return kTfLiteError;                                                 \
+     }                                                                      \
