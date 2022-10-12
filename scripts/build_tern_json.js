@@ -65,7 +65,7 @@ require("./common.js").readAllWrapperFiles(function(json) {
         // meh
       } else if (["class","object","library"].indexOf(j.type)>=0) {
         // aready handled above
-      } else if (["init","idle","kill"].indexOf(j.type)>=0) {
+      } else if (["init","idle","kill","hwinit"].indexOf(j.type)>=0) {
         // internal
       } else if (["event"].indexOf(j.type)>=0) {
         // TODO: handle events
@@ -90,11 +90,13 @@ require("./common.js").readAllWrapperFiles(function(json) {
              tern[j.class]["prototype"]["!stdProto"] = j.class;
         }
         tern[j.class]["prototype"][j.name] = o;
-      } else if (["function","variable"].indexOf(j.type)>=0) {
+      } else if (["function","variable"].indexOf(j.type)>=0) {      
         var o = { "!type": j.getTernType() };
         o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         tern[j.name] = o;
+      } else if (j.type.startsWith("EV_SERIAL")) {
+        // internal - no type info needed
       } else
        console.warn("Unknown type "+j.type+" for ",j);
     } catch (e) {
@@ -108,7 +110,7 @@ require("./common.js").readAllWrapperFiles(function(json) {
 
 
  if (hadErrors) {
-   console.log("ERRORS PROCESING FILES");
+   console.log("ERROR PROCESSING JSWRAP FILES");
    process.exit(1);
  }
  console.log(JSON.stringify(tern,null,2));

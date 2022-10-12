@@ -28,9 +28,10 @@
 /*JSON{
     "type" : "variable",
     "name" : "__FILE__",
-    "generate" : false
+    "generate" : false,
+    "return" : ["JsVar","The filename of the JavaScript that is currently executing"]
 }
-The filename of the app that is currently executing.
+The filename of the JavaScript that is currently executing.
 
 If `load` has been called with a filename (eg `load("myfile.js")`) then
 `__FILE__` is set to that filename. Otherwise (eg `load()`) or immediately
