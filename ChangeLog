@@ -6,6 +6,9 @@
             Allow `atob` to accept base64 with whitespace inside it
             Puck.js Lite: remove NFC from build (no NFC on board the Lite version)
             Storage: When using Filename Table, be absolutely sure it's correct before using it (stops hang at startup if storage corrupt)
+            Bangle.js: Add Bangle.setOptions({btnLoadTimeout:...}) to allow home button timeout to be configurable
+            Bangle.js: A forced interrupt after button held now occurs 0.5s (not 0.1s) after the reboot request
+            Bangle.js: Holding the button during storage compact now won't try and break out of it
 
      2v15 : Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
             Fix issue accessing `arguments` after/inside 'let/const' keyword (fix #2224)

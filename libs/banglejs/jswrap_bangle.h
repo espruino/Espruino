@@ -82,6 +82,11 @@ void jswrap_banglejs_kill();
 bool jswrap_banglejs_idle();
 bool jswrap_banglejs_gps_character(char ch);
 
+/* If we're busy and really don't want to be interrupted (eg clearing flash memory)
+ then we should *NOT* allow the home button to set EXEC_INTERRUPTED (which happens
+ if it was held, JSBT_RESET was set, and then 0.5s later it wasn't handled).
+ */
+void jswrap_banglejs_kickPollWatchdog();
 
 #ifdef EMULATED
 extern void touchHandlerInternal(int tx, int ty, int pts, int gesture);

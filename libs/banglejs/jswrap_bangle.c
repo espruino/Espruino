@@ -602,7 +602,7 @@ JshI2CInfo i2cInternal;
 #define PRESSURE_I2C &i2cInternal
 #define MAG_I2C &i2cInternal
 #define HOME_BTN 2
-#define BTN_LOAD_TIMEOUT 4000
+#define DEFAULT_BTN_LOAD_TIMEOUT 4000
 #define DEFAULT_LCD_POWER_TIMEOUT 20000
 #endif
 
@@ -633,8 +633,8 @@ JshI2CInfo i2cInternal;
 #define POWER_SAVE_MIN_ACCEL 1638 // min acceleration before we exit power save... (8192*0.2)
 #define POWER_SAVE_TIMEOUT 60000 // 60 seconds of inactivity
 #define ACCEL_POLL_INTERVAL_MAX 4000 // in msec - DEFAULT_ACCEL_POLL_INTERVAL_MAX+TIMER_MAX must be <65535
-#ifndef BTN_LOAD_TIMEOUT
-#define BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
+#ifndef DEFAULT_BTN_LOAD_TIMEOUT
+#define DEFAULT_BTN_LOAD_TIMEOUT 1500 // in msec - how long does the button have to be pressed for before we restart
 #endif
 #define TIMER_MAX 60000 // 60 sec - enough to fit in uint16_t without overflow if we add ACCEL_POLL_INTERVAL
 #ifndef DEFAULT_LCD_POWER_TIMEOUT
@@ -756,8 +756,12 @@ bool faceUpSent;
 volatile bool wasCharging;
 /// time since a button/touchscreen/etc was last pressed
 volatile uint16_t inactivityTimer; // in ms
-/// How long has BTN1 been held down for
+/// How long has BTN1 been held down for (or TIMER_MAX is a reset has already happened)
 volatile uint16_t homeBtnTimer; // in ms
+/// How long has BTN1 been held down and watch hasn't reset (used to queue an interrupt)
+volatile uint16_t homeBtnInterruptTimer; // in ms
+/// How long does the home button have to be pressed before the default app is reloaded?
+int btnLoadTimeout; // in ms
 /// Is LCD power automatic? If true this is the number of ms for the timeout, if false it's 0
 int lcdPowerTimeout; // in ms
 /// Is LCD backlight automatic? If true this is the number of ms for the timeout, if false it's 0
@@ -1085,6 +1089,14 @@ void jswrap_banglejs_setPollInterval_internal(uint16_t msec) {
 #endif
 }
 
+/* If we're busy and really don't want to be interrupted (eg clearing flash memory)
+ then we should *NOT* allow the home button to set EXEC_INTERRUPTED (which happens
+ if it was held, JSBT_RESET was set, and then 0.5s later it wasn't handled).
+ */
+void jswrap_banglejs_kickPollWatchdog() {
+  homeBtnInterruptTimer = 0;
+}
+
 #ifndef EMULATED
 /* Scan peripherals for any data that's needed
  * Also, holding down both buttons will reboot */
@@ -1097,19 +1109,15 @@ void peripheralPollHandler() {
 #endif
        ))
     jshKickWatchDog();
+
   // power on display if a button is pressed
   if (inactivityTimer < TIMER_MAX)
     inactivityTimer += pollInterval;
   // If button is held down, trigger a soft reset so we go back to the clock
   if (jshPinGetValue(HOME_BTN_PININDEX)) {
-    if (bangleTasks & JSBT_RESET) {
-      // We already wanted to reset but we didn't get back to idle loop in
-      // 1/10th sec - let's force a break out of JS execution
-      jsiConsolePrintf("Button held down - interrupt JS execution...\n");
-      execInfo.execute |= EXEC_INTERRUPTED;
-    } else if (homeBtnTimer < TIMER_MAX) {
+    if (homeBtnTimer < TIMER_MAX) {
       homeBtnTimer += pollInterval;
-      if (homeBtnTimer >= BTN_LOAD_TIMEOUT) {
+      if (btnLoadTimeout && (homeBtnTimer >= btnLoadTimeout)) {
         bangleTasks |= JSBT_RESET;
         jshHadEvent();
         homeBtnTimer = TIMER_MAX;
@@ -1120,8 +1128,19 @@ void peripheralPollHandler() {
         }
       }
     }
+    if (bangleTasks & JSBT_RESET) {
+      homeBtnInterruptTimer += pollInterval;
+      if (homeBtnInterruptTimer >= 500) {
+        // We already wanted to reset but we didn't get back to idle loop in
+        // 0.5 sec - let's force a break out of JS execution
+        jsiConsolePrintf("Button held down - interrupt JS execution... %d %d\n", homeBtnTimer, btnLoadTimeout);
+        execInfo.execute |= EXEC_INTERRUPTED;
+      }
+    } else
+      homeBtnInterruptTimer = 0;
   } else {
     homeBtnTimer = 0;
+    homeBtnInterruptTimer = 0;
   }
 
 #ifdef LCD_CONTROLLER_LPM013M126
@@ -2223,6 +2242,7 @@ type BangleOptions = {
   lockTimeout: number;
   lcdPowerTimeout: number;
   backlightTimeout: number;
+  btnLoadTimeout: number;
 };
 */
 /*JSON{
@@ -2276,6 +2296,8 @@ Set internal options used for gestures, etc...
 * `lcdPowerTimeout` how many milliseconds before the screen turns off
 * `backlightTimeout` how many milliseconds before the screen's backlight turns
   off
+* `btnLoadTimeout` how many milliseconds does the home button have to be pressed
+for before the clock is reloaded? 1500ms default, or 0 means never.
 * `hrmPollInterval` set the requested poll interval (in milliseconds) for the
   heart rate monitor. On Bangle.js 2 only 10,20,40,80,160,200 ms are supported,
   and polling rate may not be exact. The algorithm's filtering is tuned for
@@ -2326,7 +2348,8 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
       {"powerSave", JSV_BOOLEAN, &powerSave},
       {"lockTimeout", JSV_INTEGER, &lockTimeout},
       {"lcdPowerTimeout", JSV_INTEGER, &lcdPowerTimeout},
-      {"backlightTimeout", JSV_INTEGER, &backlightTimeout}
+      {"backlightTimeout", JSV_INTEGER, &backlightTimeout},
+      {"btnLoadTimeout", JSV_INTEGER, &btnLoadTimeout},
   };
   if (createObject) {
     return jsvCreateConfigObject(configs, sizeof(configs) / sizeof(jsvConfigObject));
@@ -3265,6 +3288,7 @@ NO_INLINE void jswrap_banglejs_init() {
   } 
   bangleFlags |= JSBF_POWER_SAVE; // ensure we turn power-save on by default every restart
   inactivityTimer = 0; // reset the LCD timeout timer
+  btnLoadTimeout = DEFAULT_BTN_LOAD_TIMEOUT;
   lcdPowerTimeout = DEFAULT_LCD_POWER_TIMEOUT;
   backlightTimeout = DEFAULT_BACKLIGHT_TIMEOUT;
   lockTimeout = DEFAULT_LOCK_TIMEOUT;
@@ -4625,9 +4649,8 @@ JsVar *jswrap_banglejs_getPressure() {
     jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, powerOnTimeout));
     return jsvLockAgain(promisePressure);
   }
-#else
-  return 0;
 #endif
+  return 0;
 }
 
 /*JSON{

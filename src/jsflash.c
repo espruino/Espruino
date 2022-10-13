@@ -235,7 +235,7 @@ static bool jsfIsErased(uint32_t addr, uint32_t len) {
       if (buf[i]!=0xFF) return false;
     addr += l;
     len -= l;
-    if (watchdogCtr++ > 5000) {
+    if (watchdogCtr++ > 500) {
       // stop watchdog reboots when checking large areas
       // we don't kick all the time so that in *normal* work
       // we don't end up calling jshKickWatchDog, so it's harder
@@ -529,6 +529,8 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
         jsfCompactWriteBuffer(&writeAddress, alignedPtr, swapBuffer, swapBufferSize, &swapBufferUsed, &swapBufferTail);
       }
     }
+    // kick watchdog to ensure we don't reboot
+    jshKickWatchDog();
   } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL));
   jsDebug(DBG_INFO,"compact> finished reading...\n");
   // try and write the remaining
