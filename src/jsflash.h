@@ -58,8 +58,10 @@ JsfFileName jsfNameFromString(const char *name);
 JsfFileName jsfNameFromVar(JsVar *name);
 /// utility function for creating JsfFileName
 JsfFileName jsfNameFromVarAndUnLock(JsVar *name);
-// create a JsVar from a JsfFileName
+/// create a JsVar from a JsfFileName
 JsVar *jsfVarFromName(JsfFileName name);
+/// Are two filenames equal?
+bool jsfIsNameEqual(JsfFileName a, JsfFileName b);
 /// Return the size in bytes of a file based on the header
 uint32_t jsfGetFileSize(JsfFileHeader *header);
 /// Return the flags for this file based on the header

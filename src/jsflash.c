@@ -27,6 +27,7 @@
 #define JSF_START_ADDRESS FLASH_SAVED_CODE_START
 #define JSF_END_ADDRESS (FLASH_SAVED_CODE_START+FLASH_SAVED_CODE_LENGTH)
 
+
 #ifdef FLASH_SAVED_CODE2_START // if there's a second bank of flash to use..
 #define JSF_BANK2_START_ADDRESS FLASH_SAVED_CODE2_START
 #define JSF_BANK2_END_ADDRESS (FLASH_SAVED_CODE2_START+FLASH_SAVED_CODE2_LENGTH)
@@ -48,6 +49,8 @@
 #endif
 
 #define JSF_CACHE_NOT_FOUND 0xFFFFFFFF
+#define JSF_MAX_FILES 10000 // 10k files max - we use this for sanity checking our data
+#define JSF_FILENAME_TABLE_NAME "[FILENAME_TABLE]"
 
 #ifdef ESPR_STORAGE_FILENAME_TABLE
 uint32_t jsfFilenameTableBank1Addr = 0; // address of DATA in the table, NOT THE HEADER (or 0 if no table)
@@ -78,7 +81,7 @@ static void jsfCacheClear() {
 }
 static void jsfCacheClearFile(JsfFileName name) {
   for (int i=0;i<jsfCacheEntries;i++) {
-    if (memcmp(jsfCache[i].header.name.c, name.c, sizeof(name.c))!=0)
+    if (jsfIsNameEqual(jsfCache[i].header.name, name))
       continue;
     // if found, shift subsequent files forward over this one
     for (;i<jsfCacheEntries-1;i++)
@@ -92,7 +95,7 @@ static void jsfCacheClearFile(JsfFileName name) {
 // Find an item in the cache - returns JSF_CACHE_NOT_FOUND on failure as it's handy to know about files that don't exist too
 static uint32_t jsfCacheFind(JsfFileName name, JsfFileHeader *returnedHeader) {
   for (int i=0;i<jsfCacheEntries;i++)
-    if (memcmp(jsfCache[i].header.name.c, name.c, sizeof(name.c))==0) {
+    if (jsfIsNameEqual(jsfCache[i].header.name, name)) {
       JsfCacheEntry curr = jsfCache[i];
       if (i) { // if not at front, put to front
         // shift others forward
@@ -168,6 +171,11 @@ JsVar *jsfVarFromName(JsfFileName name) {
   nameBuf[sizeof(JsfFileName)] = 0;
   memcpy(nameBuf, &name, sizeof(JsfFileName));
   return jsvNewFromString(nameBuf);
+}
+
+/// Are two filenames equal?
+bool jsfIsNameEqual(JsfFileName a, JsfFileName b) {
+  return memcmp(a.c, b.c, sizeof(a.c))==0;
 }
 
 /// Return the size in bytes of a file based on the header
@@ -711,7 +719,7 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
       // read the address and name...
       jshFlashRead(&header, tableAddr, sizeof(JsfFileHeader));
       tableAddr += (uint32_t)sizeof(JsfFileHeader);
-      if (memcmp(header.name.c, name.c, sizeof(name.c))==0) { // name matches
+      if (jsfIsNameEqual(header.name, name)) { // name matches
         uint32_t fileAddr = baseAddr + header.size;
         if (jsfGetFileHeader(fileAddr, &header, true) && // read the real header
             (header.name.firstChars != 0)) { // check the file was not replaced
@@ -740,7 +748,7 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
     if (header.name.firstChars == name.firstChars) {
       // Now load the whole header (with name) and check properly
       if (jsfGetFileHeader(addr, &header, true) && // get file (checks file length is ok)
-          memcmp(header.name.c, name.c, sizeof(name.c))==0) {
+          jsfIsNameEqual(header.name, name)) {
         if (returnedHeader)
           *returnedHeader = header;
         return addr+(uint32_t)sizeof(JsfFileHeader);
@@ -868,8 +876,13 @@ static bool jsfIsBankStorageValid(uint32_t startAddr, JsfStorageTestType testFla
       if ((testFlags & JSFSTT_FIND_FILENAME_TABLE) &&
           (startAddr==JSF_START_ADDRESS) &&
           (jsfGetFileFlags(&header) & JSFF_FILENAME_TABLE)) {
-        jsfFilenameTableBank1Addr = addr + (uint32_t)sizeof(JsfFileHeader);
-        jsfFilenameTableBank1Size  = jsfGetFileSize(&header);
+        jsfGetFileHeader(addr, &header, true); // get all data from header
+        if (jsfIsNameEqual(header.name, jsfNameFromString(JSF_FILENAME_TABLE_NAME)) &&
+            (jsfGetFileSize(&header) < JSF_MAX_FILES)) {
+          // Only set the table if we're sure it's ok (sensible size, correct filename)
+          jsfFilenameTableBank1Addr = addr + (uint32_t)sizeof(JsfFileHeader);
+          jsfFilenameTableBank1Size  = jsfGetFileSize(&header);
+        }
       }
 #endif
       oldAddr = addr;
@@ -1370,7 +1383,7 @@ static uint32_t jsfBankCreateFileTable(uint32_t startAddr) {
   } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL));
   jsDebug(DBG_INFO,"jsfBankCreateFileTable - %d files\n", fileCount);
   // now write table
-  JsfFileName name = jsfNameFromString("[FILENAME_TABLE]");
+  JsfFileName name = jsfNameFromString(JSF_FILENAME_TABLE_NAME);
   uint32_t tableAddr = jsfFindFile(name, &header); // address of file data (not header)
   if (tableAddr) jsfEraseFileInternal(tableAddr, &header, false);
   uint32_t tableSize = fileCount * (uint32_t)sizeof(JsfFileHeader);
