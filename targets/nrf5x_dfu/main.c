@@ -77,7 +77,7 @@ void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t
 
 void turn_off() {
   lcd_kill();
-#ifdef SPIFLASH_SLEEP_CMD  
+#if defined(SPIFLASH_SLEEP_CMD) && defined(ESPR_BOOTLOADER_SPIFLASH)
   flashPowerDown();  // Put the SPI Flash into deep power-down
 #endif  
 #ifdef VIBRATE_PIN
