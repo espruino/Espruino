@@ -424,6 +424,17 @@ static jshUARTState uart[USART_COUNT];
 #endif
 
 #ifdef SPIFLASH_BASE
+
+#define QSPI_STD_CMD_WRSR   0x01
+#define QSPI_STD_CMD_WREN   0x06
+#define QSPI_STD_CMD_RSTEN  0x66
+#define QSPI_STD_CMD_RST    0x99
+#define QSPI_STD_CMD_WAKEUP 0xAB // Release from Power-down
+#define QSPI_STD_CMD_SLEEP  0xB9
+#define QSPI_STD_CMD_ERASE_4K 0x20
+#define QSPI_STD_CMD_ERASE_64K 0xD8
+#define QSPI_STD_CMD_ERASE_ALL 0xC7
+
 /* 0 means CS is not enabled. If nonzero CS is enabled
 and we're in the middle of reading We'd never be at 0
 anyway because we're always expecting to have read something.  */
@@ -481,16 +492,16 @@ static unsigned char spiFlashStatus() {
 
 static void spiFlashReset(){
   unsigned char buf[1];
-  buf[0] = 0x66;
+  buf[0] = QSPI_STD_CMD_RSTEN;
   spiFlashWriteCS(buf,1);
-  buf[0] = 0x99;
+  buf[0] = QSPI_STD_CMD_RST;
   spiFlashWriteCS(buf,1);
   nrf_delay_us(50); 
 }
 
 static void spiFlashWakeUp() {
   unsigned char buf[1];
-  buf[0] = 0xAB;
+  buf[0] = QSPI_STD_CMD_WAKEUP;
   spiFlashWriteCS(buf,1);
   nrf_delay_us(50); // datasheet tRES2 period > 20us  CS remains high
 }
@@ -529,12 +540,12 @@ void spiFlashSleep() {
     spiFlashLastAddress = 0;
   }
   unsigned char buf[1];
-  buf[0] = 0xB9;
+  buf[0] = QSPI_STD_CMD_SLEEP;
   spiFlashWriteCS(buf,1);
 //  nrf_delay_us(2); // Wait at least 1us for Flash IC to enter deep power-down
   spiFlashAwake = false;
 }
-#endif
+#endif // SPIFLASH_SLEEP_CMD
 #endif
 
 
@@ -744,12 +755,12 @@ void jshResetPeripherals() {
     // wait for write enable
     int timeout = 1000;
     while (timeout-- && !(spiFlashStatus()&2)) {
-      buf[0] = 6; // write enable
+      buf[0] = QSPI_STD_CMD_WREN; // write enable
       spiFlashWriteCS(buf,1);
       jshDelayMicroseconds(10);
     }
     jshDelayMicroseconds(10);
-    buf[0] = 1; // write status register, disable BP0/1/2
+    buf[0] = QSPI_STD_CMD_WRSR; // write status register, disable BP0/1/2
     buf[1] = 0;
     spiFlashWriteCS(buf,2);
     jshDelayMicroseconds(10);
@@ -2288,7 +2299,7 @@ void jshFlashErasePage(uint32_t addr) {
     b[0] = 0x06;
     spiFlashWriteCS(b,1);
     // Erase
-    b[0] = 0x20;
+    b[0] = QSPI_STD_CMD_ERASE_4K; // but 0xD8 can erase 64kB! 0xC7 can also erase ALL!
     b[1] = addr>>16;
     b[2] = addr>>8;
     b[3] = addr;
