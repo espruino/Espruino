@@ -426,6 +426,7 @@ static jshUARTState uart[USART_COUNT];
 #ifdef SPIFLASH_BASE
 
 #define QSPI_STD_CMD_WRSR   0x01
+#define QSPI_STD_CMD_WRITE  0x02
 #define QSPI_STD_CMD_WREN   0x06
 #define QSPI_STD_CMD_RSTEN  0x66
 #define QSPI_STD_CMD_RST    0x99
@@ -2312,16 +2313,25 @@ bool jshFlashErasePages(uint32_t addr, uint32_t byteLength) {
         erasedBytes = SPIFLASH_LENGTH;
       }
       // WREN
-      b[0] = 0x06;
+      b[0] = QSPI_STD_CMD_WREN;
       spiFlashWriteCS(b,1);
       // Erase
       b[0] = eraseCmd;
       b[1] = addr>>16;
       b[2] = addr>>8;
       b[3] = addr;
-      spiFlashWriteCS(b,4);
-      // Check busy
-      WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashErasePage");
+      if (eraseCmd == QSPI_STD_CMD_ERASE_ALL) {
+        // erase all needs just one arg, but it can also take a while! handle separately
+        spiFlashWriteCS(b,1);
+        int timeout = WAIT_UNTIL_N_CYCLES*5;
+        while ((spiFlashStatus()&1) && !jspIsInterrupted() && (timeout--)>0)
+          jshKickWatchDog();
+        if (timeout<=0 || jspIsInterrupted())
+          jsExceptionHere(JSET_INTERNALERROR, "Timeout on jshFlashErasePage (all)");
+      } else {
+        spiFlashWriteCS(b,4);
+        WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashErasePage"); // Check busy
+      }
       byteLength -= erasedBytes;
       addr += erasedBytes;
       // Erasing can take a while, so kick the watchdog throughout
@@ -2416,10 +2426,10 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
      * quickly. Also this way works around paging issues. */
     for (unsigned int i=0;i<len;i++) {
       // WREN
-      b[0] = 0x06;
+      b[0] = QSPI_STD_CMD_WREN;
       spiFlashWriteCS(b,1);
       // Write
-      b[0] = 0x02;
+      b[0] = QSPI_STD_CMD_WRITE;
       b[1] = addr>>16;
       b[2] = addr>>8;
       b[3] = addr;
@@ -2443,10 +2453,10 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
       int retries = 3;
       while (retries>0) {
         // WREN
-        b[0] = 0x06;
+        b[0] = QSPI_STD_CMD_WREN;
         spiFlashWriteCS(b,1);
         // Write
-        b[0] = 0x02;
+        b[0] = QSPI_STD_CMD_WRITE;
         b[1] = addr>>16;
         b[2] = addr>>8;
         b[3] = addr;
