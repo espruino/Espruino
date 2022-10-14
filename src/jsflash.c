@@ -81,7 +81,7 @@ static void jsfCacheClear() {
 }
 static void jsfCacheClearFile(JsfFileName name) {
   for (int i=0;i<jsfCacheEntries;i++) {
-    if (jsfIsNameEqual(jsfCache[i].header.name, name))
+    if (!jsfIsNameEqual(jsfCache[i].header.name, name))
       continue;
     // if found, shift subsequent files forward over this one
     for (;i<jsfCacheEntries-1;i++)
