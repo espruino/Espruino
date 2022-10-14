@@ -263,23 +263,6 @@ static bool jsfIsEqual(uint32_t addr, const unsigned char *data, uint32_t len) {
   return true;
 }
 
-/// Erase an area of the memory store. Return true on success
-static bool jsfEraseArea(uint32_t startAddr, uint32_t endAddr) {
-  uint32_t addr, len;
-  if (!jshFlashGetPage(startAddr, &addr, &len))
-    return false;
-  while (addr<endAddr && !jspIsInterrupted()) {
-    jsDebug(DBG_INFO,"EraseArea page 0x%08x\n", addr);
-    if (!jsfIsErased(addr,len))
-      jshFlashErasePage(addr);
-    if (!jshFlashGetPage(addr+len, &addr, &len))
-      return true;
-    // Erasing can take a while, so kick the watchdog throughout
-    jshKickWatchDog();
-  }
-  return !jspIsInterrupted();
-}
-
 /// Erase the entire contents of the memory store
 bool jsfEraseAll() {
   jsDebug(DBG_INFO,"EraseAll\n");
@@ -289,9 +272,9 @@ bool jsfEraseAll() {
   jsfFilenameTableBank1Size = 0;
 #endif
 #ifdef JSF_BANK2_START_ADDRESS
-  if (!jsfEraseArea(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS)) return false;
+  if (!jshFlashErasePages(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS-JSF_BANK2_START_ADDRESS)) return false;
 #endif
-  return jsfEraseArea(JSF_START_ADDRESS, JSF_END_ADDRESS);
+  return jshFlashErasePages(JSF_START_ADDRESS, JSF_END_ADDRESS-JSF_START_ADDRESS);
 }
 
 /// When a file is found in memory, erase it (by setting first bytes of name to 0). addr=ptr to data, NOT header
@@ -544,7 +527,7 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
     if (!addr) addr=jsfGetBankEndAddress(writeAddress);
     jsDebug(DBG_INFO,"compact> erase 0x%08x => 0x%08x\n", writeAddress, addr);
     // addr is the address of the last area in flash
-    jsfEraseArea(writeAddress, addr);
+    jshFlashErasePages(writeAddress, addr-writeAddress);
   }
   jsDebug(DBG_INFO,"Compaction Complete\n");
   return true;

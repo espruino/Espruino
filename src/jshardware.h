@@ -359,6 +359,8 @@ bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize);
 JsVar *jshFlashGetFree();
 /// Erase the flash page containing the address
 void jshFlashErasePage(uint32_t addr);
+/// Erase the flash pages containing the address - return true on success
+bool jshFlashErasePages(uint32_t addr, uint32_t byteLength);
 /** Read data from flash memory into the buffer, the flash address has no alignment restrictions
   * and the len may be (and often is) 1 byte */
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len);

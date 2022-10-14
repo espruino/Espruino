@@ -2282,6 +2282,11 @@ JsVar *jshFlashGetFree() {
 
 /// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr) {
+  jshFlashErasePages(addr, 4096);
+}
+
+/// Erase the flash pages containing the address - return true on success
+bool jshFlashErasePages(uint32_t addr, uint32_t byteLength) {
 #ifdef SPIFLASH_BASE
   if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
     addr &= 0xFFFFFF;
@@ -2295,35 +2300,58 @@ void jshFlashErasePage(uint32_t addr) {
     }
     //jsiConsolePrintf("SPI Erase %d\n",addr);
     unsigned char b[4];
-    // WREN
-    b[0] = 0x06;
-    spiFlashWriteCS(b,1);
-    // Erase
-    b[0] = QSPI_STD_CMD_ERASE_4K; // but 0xD8 can erase 64kB! 0xC7 can also erase ALL!
-    b[1] = addr>>16;
-    b[2] = addr>>8;
-    b[3] = addr;
-    spiFlashWriteCS(b,4);
-    // Check busy
-    WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashErasePage");
-    return;
+    while (byteLength>=4096 && !jspIsInterrupted()) {
+      int erasedBytes = 4096;
+      unsigned char eraseCmd = QSPI_STD_CMD_ERASE_4K;
+      if (byteLength>=65536 && !(addr&0xFFFF)) { // if 64k aligned and >64k pages left
+        eraseCmd = QSPI_STD_CMD_ERASE_64K;
+        erasedBytes = 65536;
+      }
+      if (addr==0 && byteLength>=SPIFLASH_LENGTH) { // if starts at 0 and all flash - erase EVERYTHING
+        eraseCmd = QSPI_STD_CMD_ERASE_ALL;
+        erasedBytes = SPIFLASH_LENGTH;
+      }
+      // WREN
+      b[0] = 0x06;
+      spiFlashWriteCS(b,1);
+      // Erase
+      b[0] = eraseCmd;
+      b[1] = addr>>16;
+      b[2] = addr>>8;
+      b[3] = addr;
+      spiFlashWriteCS(b,4);
+      // Check busy
+      WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashErasePage");
+      byteLength -= erasedBytes;
+      addr += erasedBytes;
+      // Erasing can take a while, so kick the watchdog throughout
+      jshKickWatchDog();
+    }
+    return !jspIsInterrupted();
   }
 #endif
   uint32_t startAddr;
   uint32_t pageSize;
   if (!jshFlashGetPage(addr, &startAddr, &pageSize))
-    return;
+    return false;
   if (jshFlashWriteProtect(startAddr) ||
-      jshFlashWriteProtect(startAddr+pageSize-1))
-    return;
+      jshFlashWriteProtect(startAddr + byteLength - 1))
+    return false;
   uint32_t err;
-  flashIsBusy = true;
-  while ((err = sd_flash_page_erase(startAddr / NRF_FICR->CODEPAGESIZE)) == NRF_ERROR_BUSY);
-  if (err!=NRF_SUCCESS) flashIsBusy = false;
-  WAIT_UNTIL(!flashIsBusy, "jshFlashErasePage");
-  /*if (err!=NRF_SUCCESS)
-    jsiConsolePrintf("jshFlashErasePage got err %d at 0x%x\n", err, addr);*/
-  //nrf_nvmc_page_erase(addr);
+  while (byteLength>=4096 && !jspIsInterrupted()) {
+    flashIsBusy = true;
+    while ((err = sd_flash_page_erase(startAddr / NRF_FICR->CODEPAGESIZE)) == NRF_ERROR_BUSY);
+    if (err!=NRF_SUCCESS) flashIsBusy = false;
+    WAIT_UNTIL(!flashIsBusy, "jshFlashErasePage");
+    /*if (err!=NRF_SUCCESS)
+      jsiConsolePrintf("jshFlashErasePage got err %d at 0x%x\n", err, addr);*/
+    //nrf_nvmc_page_erase(addr);
+    byteLength -= 4096;
+    startAddr += 4096;
+    // Erasing can take a while, so kick the watchdog throughout
+    jshKickWatchDog();
+  }
+  return !jspIsInterrupted();
 }
 
 /**

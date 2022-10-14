@@ -129,3 +129,19 @@ __attribute__((weak)) void jshUSARTUnSetup(IOEventFlags device) {
   NOT_USED(device);
   // placeholder - not all platforms implement this
 }
+
+/// Erase the flash pages containing the address.
+__attribute__((weak)) bool jshFlashErasePages(uint32_t startAddr, uint32_t byteLength) {
+  uint32_t endAddr = startAddr + byteLength;
+  uint32_t addr, len;
+  if (!jshFlashGetPage(startAddr, &addr, &len))
+    return false; // not a valid page
+  while (addr<endAddr && !jspIsInterrupted()) {
+    jshFlashErasePage(addr);
+    if (!jshFlashGetPage(addr+len, &addr, &len))
+      return true; // no more pages
+    // Erasing can take a while, so kick the watchdog throughout
+    jshKickWatchDog();
+  }
+  return !jspIsInterrupted();
+}

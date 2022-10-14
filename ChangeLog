@@ -9,6 +9,7 @@
             Bangle.js: Add Bangle.setOptions({btnLoadTimeout:...}) to allow home button timeout to be configurable
             Bangle.js: A forced interrupt after button held now occurs 0.5s (not 0.1s) after the reboot request
             Bangle.js: Holding the button during storage compact now won't try and break out of it
+            Bangle.js: Use 4k/64k/all flash clear commands to make erasing (and hence compact) external flash faster
 
      2v15 : Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
             Fix issue accessing `arguments` after/inside 'let/const' keyword (fix #2224)
