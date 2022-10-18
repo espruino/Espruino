@@ -14,6 +14,7 @@
 
 #include "jsinteractive.h"
 #include "bluetooth.h"
+#include "bluetooth_utils.h"
 #include "bluetooth_ancs.h"
 #include "jswrap_bluetooth.h"
 
