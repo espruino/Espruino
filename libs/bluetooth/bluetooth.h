@@ -34,7 +34,7 @@
  * rebooting Espruino. */
 #define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) { uint32_t line = __LINE__; jsble_queue_pending_buf(BLEP_ERROR, ERR_CODE, (char*)&line, 4); }
 
-#else
+#else // !NRF5X
 typedef struct {
   uint16_t uuid;
   uint8_t type;			//see BLE_UUID_TYPE_... definitions
@@ -66,7 +66,10 @@ typedef struct {
 #define MSEC_TO_UNITS(MS,MEH) MS
 #define GATT_MTU_SIZE_DEFAULT 23
 #define BLE_NUS_MAX_DATA_LEN 20 //GATT_MTU_SIZE_DEFAULT - 3
-#endif
+#define BLE_CCCD_VALUE_LEN 2
+#define BLE_GATT_HVX_NOTIFICATION 1 // flag in CCCD
+#define BLE_GATT_HVX_INDICATION 2 // flag in CCCD
+#endif //!NRF5X (fudge NRF5X API for ESP32)
 
 #ifndef CENTRAL_LINK_COUNT /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
 #if defined(NRF52_SERIES) || defined(ESP32) // nRF52 gets the ability to connect to other devices
@@ -190,10 +193,7 @@ extern volatile uint16_t                         m_central_conn_handles[CENTRAL_
 void jsble_init();
 /** Completely deinitialise the BLE stack. Return true on success */
 bool jsble_kill();
-/** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
-void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
-/** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with simple data */
-void jsble_queue_pending(BLEPending blep, uint16_t data);
+
 /** Execute a task that was added by jsble_queue_pending - this is done outside of IRQ land. Returns number of events handled */
 int jsble_exec_pending(IOEvent *event);
 

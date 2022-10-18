@@ -256,3 +256,35 @@ uint16_t bleGetGATTHandle(ble_uuid_t char_uuid) {
 #endif
   return BLE_GATT_HANDLE_INVALID;
 }
+
+/// Add a new bluetooth event to the queue with a buffer of data
+void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len) {
+  // check to ensure we have space for the data we're adding
+  if (!jshHasEventSpaceForChars(len+IOEVENT_MAXCHARS)) {
+    jsErrorFlags |= JSERR_RX_FIFO_FULL;
+    return;
+  }
+  // Push the data for the event first
+  while (len) {
+    int evtLen = len;
+    if (evtLen > IOEVENT_MAXCHARS) evtLen=IOEVENT_MAXCHARS;
+    IOEvent evt;
+    evt.flags = EV_BLUETOOTH_PENDING_DATA;
+    IOEVENTFLAGS_SETCHARS(evt.flags, evtLen);
+    memcpy(evt.data.chars, ptr, evtLen);
+    jshPushEvent(&evt);
+    ptr += evtLen;
+    len -= evtLen;
+  }
+  // Push the actual event
+  JsSysTime d = (JsSysTime)((data<<8)|blep);
+  jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
+  jshHadEvent();
+}
+
+/// Add a new bluetooth event to the queue with 16 bits of data
+void jsble_queue_pending(BLEPending blep, uint16_t data) {
+  JsSysTime d = (JsSysTime)((data<<8)|blep);
+  jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
+  jshHadEvent();
+}

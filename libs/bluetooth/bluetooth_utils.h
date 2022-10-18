@@ -77,3 +77,8 @@ void bleGetWriteEventName(char *eventName, uint16_t handle);
 
 /// Look up the characteristic's handle from the UUID. returns BLE_GATT_HANDLE_INVALID if not found
 uint16_t bleGetGATTHandle(ble_uuid_t char_uuid);
+
+/** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
+void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
+/** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with simple data */
+void jsble_queue_pending(BLEPending blep, uint16_t data);

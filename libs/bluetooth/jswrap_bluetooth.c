@@ -150,7 +150,6 @@ void bleSwitchTask(BleTask task) {
 
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
-#ifdef NRF52_SERIES
 void bleSetActiveBluetoothGattServer(int idx, JsVar *var) {
   assert(idx >=0 && idx < CENTRAL_LINK_COUNT);
   if (idx<0) return;
@@ -166,7 +165,6 @@ JsVar *bleGetActiveBluetoothGattServer(int idx) {
   name[BLE_NAME_GATT_SERVER_LEN-2] = '0'+idx;
   return jsvObjectGetChild(execInfo.hiddenRoot, name, 0);
 }
-#endif
 
 uint16_t jswrap_ble_BluetoothRemoteGATTServer_getHandle(JsVar *parent) {
   JsVar *handle = jsvObjectGetChild(parent, "handle", 0);
@@ -489,7 +487,7 @@ NRF.requestDevice(...).then(function(device) {
   "type" : "event",
   "class" : "BluetoothRemoteGATTCharacteristic",
   "name" : "characteristicvaluechanged",
-  "ifdef" : "NRF52_SERIES"
+  "ifdef" : "BLUETOOTH"
 }
 Called when a characteristic's value changes, *after*
 `BluetoothRemoteGATTCharacteristic.startNotifications` has been called.
@@ -4012,7 +4010,7 @@ https://webbluetoothcg.github.io/web-bluetooth/#bluetoothremotegattservice
   "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristic",
   "params" : [ ["characteristic","JsVar","The characteristic UUID"] ],
   "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when the characteristic is found (the argument contains a `BluetoothRemoteGATTCharacteristic`)" ],
-    "return_object" : "Promise",
+  "return_object" : "Promise",
   "#if" : "defined(NRF52_SERIES) || defined(ESP32)"
 }
 See `NRF.connect` for usage examples.
@@ -4045,7 +4043,7 @@ JsVar *jswrap_BluetoothRemoteGATTService_getCharacteristic(JsVar *parent, JsVar 
   "name" : "getCharacteristics",
   "generate" : "jswrap_BluetoothRemoteGATTService_getCharacteristics",
   "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when the characteristic is found (the argument contains an array of `BluetoothRemoteGATTCharacteristic`)" ],
-    "return_object" : "Promise",
+  "return_object" : "Promise",
   "#if" : "defined(NRF52_SERIES) || defined(ESP32)"
 }
 */
@@ -4184,7 +4182,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteris
     "generate" : "jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications",
     "return" : ["JsVar", "A `Promise` that is resolved (or rejected) with data when notifications have been added" ],
     "return_object" : "Promise",
-    "ifdef" : "NRF52_SERIES"
+    "ifdef" : "BLUETOOTH"
 }
 Starts notifications - whenever this characteristic's value changes, a
 `characteristicvaluechanged` event is fired and `characteristic.value` will then
@@ -4244,7 +4242,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
   }
   
   JsVar *promise;
-  
+#ifndef ESP32
   // Check for existing cccd_handle 
   JsVar *cccdVar = jsvObjectGetChild(characteristic,"handle_cccd", 0);
   if ( !cccdVar ) { // if it doesn't exist, try and find it
@@ -4254,6 +4252,9 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
     jsble_central_characteristicDescDiscover(central_conn_handle, characteristic);
   } else {
     jsvUnLock(cccdVar);
+#else
+  {
+#endif
     if (!bleNewTask(BLETASK_CHARACTERISTIC_NOTIFY, characteristic/*BluetoothRemoteGATTCharacteristic*/))
       return 0;
     promise = jsvLockAgainSafe(blePromise);    

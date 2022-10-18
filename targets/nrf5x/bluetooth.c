@@ -288,38 +288,6 @@ JsVar *jsble_get_error_string(uint32_t err_code) {
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
-/// Add a new bluetooth event to the queue with a buffer of data
-void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len) {
-  // check to ensure we have space for the data we're adding
-  if (!jshHasEventSpaceForChars(len+IOEVENT_MAXCHARS)) {
-    jsErrorFlags |= JSERR_RX_FIFO_FULL;
-    return;
-  }
-  // Push the data for the event first
-  while (len) {
-    int evtLen = len;
-    if (evtLen > IOEVENT_MAXCHARS) evtLen=IOEVENT_MAXCHARS;
-    IOEvent evt;
-    evt.flags = EV_BLUETOOTH_PENDING_DATA;
-    IOEVENTFLAGS_SETCHARS(evt.flags, evtLen);
-    memcpy(evt.data.chars, ptr, evtLen);
-    jshPushEvent(&evt);
-    ptr += evtLen;
-    len -= evtLen;
-  }
-  // Push the actual event
-  JsSysTime d = (JsSysTime)((data<<8)|blep);
-  jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
-  jshHadEvent();
-}
-
-/// Add a new bluetooth event to the queue with 16 bits of data
-void jsble_queue_pending(BLEPending blep, uint16_t data) {
-  JsSysTime d = (JsSysTime)((data<<8)|blep);
-  jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
-  jshHadEvent();
-}
-
 /// Executes a pending BLE event - returns the number of events Handled
 int jsble_exec_pending(IOEvent *event) {
   int eventsHandled = 1;
@@ -444,12 +412,13 @@ int jsble_exec_pending(IOEvent *event) {
    case BLEP_TASK_FAIL_DISCONNECTED:
      bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Disconnected"));
      break;
-   case BLEP_TASK_CENTRAL_CONNECTED: /* bleTaskInfo is a BluetoothRemoteGATTServer */
+   case BLEP_TASK_CENTRAL_CONNECTED: /* data = centralIdx, bleTaskInfo is a BluetoothRemoteGATTServer */
+     bleSetActiveBluetoothGattServer(data, bleTaskInfo); /* bleTaskInfo = instance of BluetoothRemoteGATTServer */
      jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
      jsvObjectSetChildAndUnLock(bleTaskInfo, "handle", jsvNewFromInteger(m_central_conn_handles[data]));
      bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
      break;
-   case BLEP_TASK_DISCOVER_SERVICE: { /* bleTaskInfo = BluetoothDevice, bleTaskInfo2 = an array of BluetoothRemoteGATTService, or 0 */
+   case BLEP_TASK_DISCOVER_SERVICE: { /* buffer = ble_gattc_service_t, bleTaskInfo = BluetoothDevice, bleTaskInfo2 = an array of BluetoothRemoteGATTService, or 0 */
      if (!bleInTask(BLETASK_PRIMARYSERVICE)) {
        jsExceptionHere(JSET_INTERNALERROR,"Wrong task: %d vs %d", bleGetCurrentTask(), BLETASK_PRIMARYSERVICE);
        break;
@@ -1259,7 +1228,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           APP_ERROR_CHECK_NOT_URGENT(err_code);
 #endif
 #endif
-          bleSetActiveBluetoothGattServer(centralIdx, bleTaskInfo); /* bleTaskInfo = instance of BluetoothRemoteGATTServer */
           jsble_queue_pending(BLEP_TASK_CENTRAL_CONNECTED, centralIdx); // index in m_central_conn_handles
         }
 #endif

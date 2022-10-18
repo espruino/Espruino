@@ -25,8 +25,6 @@ struct gattc_profile_inst {
     uint16_t gattc_if;
     uint16_t app_id;
     uint16_t conn_id;
-    uint16_t service_start_handle;
-    uint16_t service_end_handle;
     uint16_t char_handle;
     esp_bd_addr_t remote_bda;
 };
@@ -38,9 +36,10 @@ void gattc_connect(ble_gap_addr_t peer_addr, JsVar *options);
 uint32_t gattc_disconnect(uint16_t conn_handle);
 //void gattc_searchService(uint16_t service_uuid);
 void gattc_searchService(ble_uuid_t uuid);
-void gattc_getCharacteristic(ble_uuid_t char_uuid);
+void gattc_getCharacteristics(JsVar *service, ble_uuid_t char_uuid);
 void gattc_readValue(uint16_t charHandle);
 void gattc_writeValue(uint16_t charHandle,char *data,size_t dataLen);
-void gattc_readDesc(uint16_t charHandle);
+void gattc_writeDescriptor(uint16_t charHandle, char *data, size_t dataLen);
+void gattc_readDescriptor(uint16_t charHandle);
 
 #endif /* GATTC_FUNC_H_ */
