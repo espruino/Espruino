@@ -249,7 +249,7 @@ void bleRemoveChilds(JsVar *parent){
 	jsvUnLock(blevar);
 }
 
-void bleuuid_TO_espbtuuid(ble_uuid_t ble_uuid,esp_bt_uuid_t *esp_uuid){
+void bleuuid_TO_espbtuuid(ble_uuid_t ble_uuid, esp_bt_uuid_t *esp_uuid){
 	switch(ble_uuid.type){
 		case BLE_UUID_TYPE_UNKNOWN:
 			jsError("empty UUID type\n");
@@ -265,10 +265,27 @@ void bleuuid_TO_espbtuuid(ble_uuid_t ble_uuid,esp_bt_uuid_t *esp_uuid){
 			}
 			break;
 		default:
-			jsError("unknown UUID TYPE\n");
+			jsError("bleuuid_TO_espbtuuid unknown UUID TYPE\n");
 	}
 }
-void bleuuid_To_uuid128(ble_uuid_t ble_uuid,uint8_t *ble128){
+
+void espbtuuid_TO_bleuuid(esp_bt_uuid_t esp_uuid, ble_uuid_t *ble_uuid) {
+  switch(esp_uuid.len) {
+    case ESP_UUID_LEN_16:
+      ble_uuid->type = BLE_UUID_TYPE_BLE;
+      ble_uuid->uuid = esp_uuid.uuid.uuid16;
+      break;
+    case ESP_UUID_LEN_128:
+      ble_uuid->type = BLE_UUID_TYPE_128;
+      for(int i = 0; i < 16; i++)
+        ble_uuid->uuid128[i] = esp_uuid.uuid.uuid128[i];
+      break;
+    default:
+      jsError("espbtuuid_TO_bleuuid unknown UUID TYPE\n");
+  }
+}
+
+void bleuuid_To_uuid128(ble_uuid_t ble_uuid, uint8_t *ble128){
 	uint8_t tmp[] = {0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00};
 	switch (ble_uuid.type){
 		case BLE_UUID_TYPE_UNKNOWN:
@@ -289,4 +306,27 @@ void bleuuid_To_uuid128(ble_uuid_t ble_uuid,uint8_t *ble128){
 		default:
 			jsError("unknown UUID type\n");
 	}
+}
+
+bool espbtuuid_equal(esp_bt_uuid_t a, esp_bt_uuid_t b) {
+  return
+      (a.len == ESP_UUID_LEN_16 && b.len == ESP_UUID_LEN_16 && a.uuid.uuid16 == b.uuid.uuid16) ||
+      (a.len == ESP_UUID_LEN_32 && b.len == ESP_UUID_LEN_32 && a.uuid.uuid32 == b.uuid.uuid32) ||
+      (a.len == ESP_UUID_LEN_128 && b.len == ESP_UUID_LEN_128 && memcmp(a.uuid.uuid128, b.uuid.uuid128, ESP_UUID_LEN_128)==0);
+}
+
+void bleaddr_TO_espbtaddr(ble_gap_addr_t ble_addr, esp_bd_addr_t remote_bda, esp_ble_addr_type_t *remote_bda_type) {
+  memcpy(remote_bda, ble_addr.addr, sizeof(esp_bd_addr_t));
+  // reverse bytes in address
+  int x, n = 5;
+  uint8_t t;
+  for(x = 0; x < n;) {
+    t = remote_bda[x];
+    remote_bda[x] = remote_bda[n];
+    remote_bda[n] = t;
+    x++;
+    n--;
+  }
+  // BLE_GAP_ADDR_TYPES and esp_ble_addr_type_t match (no need for conversion)
+  *remote_bda_type = ble_addr.addr_type;
 }

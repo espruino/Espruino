@@ -29,8 +29,6 @@
 #include "BLE/esp32_gattc_func.h"
 #include "BLE/esp32_bluetooth_utils.h"
 #include "jshardwareESP32.h"
-
-#define UNUSED(x) (void)(x)
  
 volatile BLEStatus bleStatus;
 uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
@@ -66,21 +64,21 @@ bool jsble_kill(){
 
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len){
 	jsWarn("queue_pending_buf not implemented yet");
-	UNUSED(blep);	
-	UNUSED(data);
-	UNUSED(ptr);
-	UNUSED(len);
+	NOT_USED(blep);
+	NOT_USED(data);
+	NOT_USED(ptr);
+	NOT_USED(len);
 }
 
 void jsble_queue_pending(BLEPending blep, uint16_t data){
 	jsWarn("queue_pending not implemented yet");
-	UNUSED(blep);
-	UNUSED(data);
+	NOT_USED(blep);
+	NOT_USED(data);
 }
 
 int jsble_exec_pending(IOEvent *event){
 	jsWarn("exec_pending not implemented yet");
-	UNUSED(event);
+	NOT_USED(event);
 	return 0;
 }
 
@@ -133,9 +131,13 @@ bool jsble_has_peripheral_connection(){
 
 /// Checks for error and reports an exception if there was one. Return true on error
 bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
-	jsWarn("check error not implemented yet:%x\n", err_code);
-	UNUSED(err_code);
-	UNUSED(lineNumber);
+  if (err_code != ESP_OK) {
+    const char *n = esp_err_to_name(err_code);
+    jsExceptionHere(JSET_ERROR, "BLE: %s (:%d)", n?n:"?", lineNumber);
+    return true;
+  }
+	NOT_USED(err_code);
+	NOT_USED(lineNumber);
 	return false;
 }
 /// Scanning for advertisign packets
@@ -154,7 +156,7 @@ uint32_t jsble_set_scanning(bool enabled, JsVar *options){
 /// returning RSSI values for current connection
 uint32_t jsble_set_rssi_scan(bool enabled){
 	jsWarn("set rssi scan not implemeted yet\n");
-	UNUSED(enabled);
+	NOT_USED(enabled);
 	return 0;
 }
 
@@ -174,14 +176,14 @@ uint32_t jsble_disconnect(uint16_t conn_handle){
 /// For BLE HID, send an input report to the receiver. Must be <= HID_KEYS_MAX_LEN
 void jsble_send_hid_input_report(uint8_t *data, int length){
 	jsWarn("send hid input report not implemented yet\n");
-	UNUSED(data);
-	UNUSED(length);
+	NOT_USED(data);
+	NOT_USED(length);
 }
 
 /// Connect to the given peer address. When done call bleCompleteTask
 void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options){
   // Ignore options for now
-	gattc_connect(peer_addr.addr);
+	gattc_connect(peer_addr, options);
 }
 /// Get primary services. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
 void jsble_central_getPrimaryServices(uint16_t central_conn_handle, ble_uuid_t uuid){
@@ -190,7 +192,7 @@ void jsble_central_getPrimaryServices(uint16_t central_conn_handle, ble_uuid_t u
 /// Get characteristics. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
 void jsble_central_getCharacteristics(uint16_t central_conn_handle, JsVar *service, ble_uuid_t uuid){
 	gattc_getCharacteristic(uuid);
-	UNUSED(service);
+	NOT_USED(service);
 }
 // Write data to the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicWrite(uint16_t central_conn_handle, JsVar *characteristic, char *dataPtr, size_t dataLen){
@@ -205,18 +207,18 @@ void jsble_central_characteristicRead(uint16_t central_conn_handle, JsVar *chara
 // Discover descriptors of characteristic
 void jsble_central_characteristicDescDiscover(uint16_t central_conn_handle, JsVar *characteristic){
 	jsWarn("Central characteristicDescDiscover not implemented yet\n");
-	UNUSED(characteristic);
+	NOT_USED(characteristic);
 }
 // Set whether to notify on the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicNotify(uint16_t central_conn_handle, JsVar *characteristic, bool enable){
 	jsWarn("central characteristic notify not implemented yet\n");
-	UNUSED(characteristic);
-	UNUSED(enable);
+	NOT_USED(characteristic);
+	NOT_USED(enable);
 }
 /// Start bonding on the current central connection
 void jsble_central_startBonding(uint16_t central_conn_handle, bool forceRePair){
 	jsWarn("central start bonding not implemented yet\n");
-	UNUSED(forceRePair);
+	NOT_USED(forceRePair);
 }
 /// RSSI monitoring in central mode
 uint32_t jsble_set_central_rssi_scan(uint16_t central_conn_handle, bool enabled){

@@ -99,8 +99,8 @@ void gap_event_scan_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t
 			break;
 		}
 		case ESP_GAP_BLE_SCAN_STOP_COMPLETE_EVT:{
-			if (param->scan_stop_cmpl.status != ESP_BT_STATUS_SUCCESS){jsWarn("Scan stop failed");}
-			else {jsWarn("Stop scan successfully");}
+			if (param->scan_stop_cmpl.status != ESP_BT_STATUS_SUCCESS)
+			  jsWarn("Scan stop failed");
 			break;		
 		}
 		default: break;

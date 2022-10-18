@@ -23,7 +23,6 @@
 
 #include "bluetooth.h"
 
-#define BLE_WRITE_EVENT				JS_EVENT_PREFIX"blewv"
 #define BLE_READ_EVENT				JS_EVENT_PREFIX"blerv"
 #define BLE_CONNECT_EVENT			JS_EVENT_PREFIX"connect"
 #define BLE_DISCONNECT_EVENT		JS_EVENT_PREFIX"disconnect"
@@ -51,7 +50,10 @@ void jsWarnHeap(char * whereAmI);
 void bleGetHiddenName(char *eventName, char *hiddenName, uint16_t pos);
 void bleRemoveChilds(JsVar *parent);
 
-void bleuuid_TO_espbtuuid(ble_uuid_t ble_uuid,esp_bt_uuid_t *esp_uuid);
-void bleuuid_To_uuid128(ble_uuid_t ble_uuid,uint8_t *ble128);  
+void bleuuid_TO_espbtuuid(ble_uuid_t ble_uuid, esp_bt_uuid_t *esp_uuid);
+void espbtuuid_TO_bleuuid(esp_bt_uuid_t esp_uuid, ble_uuid_t *ble_uuid);
+void bleuuid_To_uuid128(ble_uuid_t ble_uuid, uint8_t *ble128);
+bool espbtuuid_equal(esp_bt_uuid_t a, esp_bt_uuid_t b); ///< Equality check
+void bleaddr_TO_espbtaddr(ble_gap_addr_t ble_addr, esp_bd_addr_t remote_bda, esp_ble_addr_type_t *remote_bda_type);
 
 #endif /* ESP32_BLUETOOTH_UTILS_H_ */
