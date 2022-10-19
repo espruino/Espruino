@@ -652,6 +652,7 @@ unsigned char touchX, touchY; ///< current touch event coordinates
 unsigned char lastTouchX, lastTouchY; ///< last touch event coordinates - updated when JSBT_DRAG is fired
 bool touchPts, lastTouchPts; ///< whether a fnger is currently touching or not
 unsigned char touchType; ///< variable to differentiate press, long press, double press
+unsigned char touchMinX = 0, touchMinY = 0, touchMaxX = 160, touchMaxY = 160; ///< touchscreen calibration values (what we expect from hardware, then we map this to LCD_WIDTH/HEIGHT)
 #endif
 
 #ifdef PRESSURE_DEVICE
@@ -1737,8 +1738,8 @@ void touchHandler(bool state, IOEventFlags flags) {
   // 4: Y hi
   // 5: Y lo (0..160)
   touchHandlerInternal(
-    buf[3] * LCD_WIDTH / 160, // touchX
-    buf[5] * LCD_HEIGHT / 160, // touchY
+    (buf[3]-touchMinX) * LCD_WIDTH / (touchMaxX-touchMinX), // touchX
+    (buf[5]-touchMinY) * LCD_HEIGHT / (touchMaxY-touchMinY), // touchY
     buf[1], // touchPts
     buf[0]); // gesture
 }
@@ -2323,6 +2324,12 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
 #ifdef HEARTRATE
   int _hrmPollInterval = hrmPollInterval;
 #endif
+#ifdef TOUCH_DEVICE
+  int touchX1 = touchMinX;
+  int touchY1 = touchMinY;
+  int touchX2 = touchMaxX;
+  int touchY2 = touchMaxY;
+#endif
   jsvConfigObject configs[] = {
 #ifdef HEARTRATE
       {"hrmPollInterval", JSV_INTEGER, &_hrmPollInterval},
@@ -2350,6 +2357,12 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
       {"lcdPowerTimeout", JSV_INTEGER, &lcdPowerTimeout},
       {"backlightTimeout", JSV_INTEGER, &backlightTimeout},
       {"btnLoadTimeout", JSV_INTEGER, &btnLoadTimeout},
+#ifdef TOUCH_DEVICE
+      {"touchX1", JSV_INTEGER, &touchX1},
+      {"touchY1", JSV_INTEGER, &touchY1},
+      {"touchX2", JSV_INTEGER, &touchX2},
+      {"touchY2", JSV_INTEGER, &touchY2},
+#endif
   };
   if (createObject) {
     return jsvCreateConfigObject(configs, sizeof(configs) / sizeof(jsvConfigObject));
@@ -2369,6 +2382,12 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
     accelGestureEndThresh = int_sqrt32(_accelGestureEndThresh);
 #ifdef HEARTRATE
     hrmPollInterval = (uint16_t)_hrmPollInterval;
+#endif
+#ifdef TOUCH_DEVICE
+    touchMinX = touchX1;
+    touchMinY = touchY1;
+    touchMaxX = touchX2;
+    touchMaxY = touchY2;
 #endif
   }
   return 0;
@@ -3352,7 +3371,19 @@ NO_INLINE void jswrap_banglejs_init() {
     graphicsTheme.bgH = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bgH",0));
     graphicsTheme.dark = jsvGetBoolAndUnLock(jsvObjectGetChild(v,"dark",0));
   }
-  jsvUnLock2(v,settings);
+  jsvUnLock(v);
+#ifdef TOUCH_DEVICE
+  // load touchscreen calibration
+  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"touch",0) : 0;
+    if (jsvIsObject(v)) {
+      touchMinX = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"x1",0));
+      touchMinY = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"y1",0));
+      touchMaxX = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"x2",0));
+      touchMaxY = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"y2",0));
+    }
+    jsvUnLock(v);
+#endif
+    jsvUnLock(settings);
 
 #ifdef LCD_WIDTH
   // Just reset any graphics settings that may need updating
