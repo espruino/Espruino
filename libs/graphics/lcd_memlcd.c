@@ -102,6 +102,13 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 
 #if LCD_BPP==3
 void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  /*if (x1==0 && x2==LCD_WIDTH-1 && (col==0 || col==0xFFFF)) {
+    for (int y=y1;y<=y2;y++) {
+      int addr = LCD_ROWHEADER + y*LCD_STRIDE;
+      memset(&lcdBuffer[addr], (col==0)?0:0xFF, LCD_STRIDE-LCD_ROWHEADER);
+    }
+    return;
+  }*/
   for (int y=y1;y<=y2;y++) {
     int bitaddr = LCD_ROWHEADER*8 + (x1*3) + (y*LCD_STRIDE*8);
     for (int x=x1;x<=x2;x++) {
