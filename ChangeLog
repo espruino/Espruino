@@ -12,6 +12,7 @@
             Bangle.js: Use 4k/64k/all flash clear commands to make erasing (and hence compact) external flash faster
             Bangle.js2: Add built-in touchscreen calibration
             Bangle.js2: Add fast-path for all-white or all-black full-width graphics fill/clear (24ms -> 2ms)
+            Bangle.js2: LCD background flip (send to LCD while returning to execute other code)
 
      2v15 : Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
             Fix issue accessing `arguments` after/inside 'let/const' keyword (fix #2224)

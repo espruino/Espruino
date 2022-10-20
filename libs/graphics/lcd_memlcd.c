@@ -34,6 +34,7 @@ unsigned char lcdBuffer[LCD_STRIDE*(LCD_HEIGHT+2)];
 bool isBacklightOn; ///< is LCD backlight on? If so we need to toggle EXTCOMIN faster
 JsVar *lcdOverlayImage; ///< if set, an Image to use for overlays
 short lcdOverlayX,lcdOverlayY; ///< coordinates of the graphics instance
+volatile bool lcdIsBusy; ///< We're now allowing SPI send in the background - if we're sending, block execution until it finishes
 
 #ifdef EMULATED
 bool EMSCRIPTEN_GFX_CHANGED;
@@ -66,6 +67,20 @@ static unsigned int lcdMemLCD_convert16to3(unsigned int c, int x, int y) {
       ((c&0x00020)?1:0);
 }
 
+/** 'Flip' now ends while data is still sending to the LCD. This
+ * function allows us to wait until the flip has finished (or a timeout
+ * has occurred) which we'll need to do before we next modify what
+ * is on the LCD.
+ */
+void lcdMemLCD_waitForSendComplete() {
+  int timeout = 1000000;
+  while (lcdIsBusy && --timeout) {};
+  if (lcdIsBusy) {
+    // LCD timeout! Do we want to log this?
+    lcdIsBusy = false;
+  }
+}
+
 // ======================================================================
 
 unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
@@ -86,6 +101,7 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 
 void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
   col = lcdMemLCD_convert16to3(col,x,y);
+  lcdMemLCD_waitForSendComplete();
 #if LCD_BPP==3
   int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
   int bit = bitaddr&7;
@@ -102,13 +118,14 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 
 #if LCD_BPP==3
 void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
-  /*if (x1==0 && x2==LCD_WIDTH-1 && (col==0 || col==0xFFFF)) {
+  lcdMemLCD_waitForSendComplete();
+  if (x1==0 && x2==LCD_WIDTH-1 && (col==0 || col==0xFFFF)) {
     for (int y=y1;y<=y2;y++) {
       int addr = LCD_ROWHEADER + y*LCD_STRIDE;
       memset(&lcdBuffer[addr], (col==0)?0:0xFF, LCD_STRIDE-LCD_ROWHEADER);
     }
     return;
-  }*/
+  }
   for (int y=y1;y<=y2;y++) {
     int bitaddr = LCD_ROWHEADER*8 + (x1*3) + (y*LCD_STRIDE*8);
     for (int x=x1;x<=x2;x++) {
@@ -123,7 +140,7 @@ void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, 
 }
 #endif
 
-void lcdMemLCD_scrollX(struct JsGraphics *gfx, unsigned char *dst, unsigned char *src, int xdir) {
+static void lcdMemLCD_scrollX(struct JsGraphics *gfx, unsigned char *dst, unsigned char *src, int xdir) {
   uint32_t *dw = (uint32_t*)&dst[LCD_ROWHEADER];
   uint32_t *sw = (uint32_t*)&src[LCD_ROWHEADER];
 
@@ -147,6 +164,7 @@ void lcdMemLCD_scrollX(struct JsGraphics *gfx, unsigned char *dst, unsigned char
 }
 
 void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
+  lcdMemLCD_waitForSendComplete();
   // if we can't shift entire line in one go, go with the slow method as this case would be a nightmare in 3 bits
   if (x1!=0 || x2!=LCD_WIDTH-1)
     return graphicsFallbackScroll(gfx, xdir, ydir, x1,y1,x2,y2);
@@ -168,15 +186,21 @@ void lcdMemLCD_scroll(struct JsGraphics *gfx, int xdir, int ydir, int x1, int y1
 }
 
 // -----------------------------------------------------------------------------
-// used to allow SPI send to work async (we don't care when it finishes)
-void lcdMemLCD_flip_spi_callback() {}
-
+// used to allow SPI send to work async WHEN DOING OVERLAYS (we don't care when it finishes)
+void lcdMemLCD_flip_spi_ovr_callback() {}
+// used to allow SPI send to work async for normal sends.
+void lcdMemLCD_flip_spi_callback() {
+  jshPinSetValue(LCD_SPI_CS, 0);
+  lcdIsBusy = false;
+}
 // send the data to the screen
 void lcdMemLCD_flip(JsGraphics *gfx) {
   if (gfx->data.modMinY > gfx->data.modMaxY) return; // nothing to do!
 #ifdef EMULATED
   EMSCRIPTEN_GFX_CHANGED = true;
 #endif
+  bool wasBusy = lcdIsBusy;
+  lcdMemLCD_waitForSendComplete();
 
   int y1 = gfx->data.modMinY;
   int y2 = gfx->data.modMaxY;
@@ -234,7 +258,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
 #ifdef EMULATED
       memcpy(&fakeLCDBuffer[LCD_STRIDE*y], buf, LCD_STRIDE);
 #else
-      jshSPISendMany(LCD_SPI, buf, NULL, LCD_STRIDE, lcdMemLCD_flip_spi_callback);
+      jshSPISendMany(LCD_SPI, buf, NULL, LCD_STRIDE, lcdMemLCD_flip_spi_ovr_callback);
 #endif
     }
     jsvStringIteratorFree(&l.it);
@@ -242,15 +266,18 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     // any 2 final bytes to finish the transfer
 #ifndef EMULATED
     jshSPISendMany(LCD_SPI, lcdBuffer, NULL, 2, NULL);
+    lcdMemLCD_flip_spi_callback();
 #endif
-  } else {
+  } else { // standard, non-overlay
 #ifdef EMULATED
     memcpy(fakeLCDBuffer, lcdBuffer, LCD_HEIGHT*LCD_STRIDE);
 #else
-    jshSPISendMany(LCD_SPI, &lcdBuffer[LCD_STRIDE*y1], NULL, (l*LCD_STRIDE)+2, NULL);
+    lcdIsBusy = true;
+    if (!jshSPISendMany(LCD_SPI, &lcdBuffer[LCD_STRIDE*y1], NULL, (l*LCD_STRIDE)+2, lcdMemLCD_flip_spi_callback))
+      lcdMemLCD_flip_spi_callback();
+    // lcdMemLCD_flip_spi_callback will call jshPinSetValue(LCD_SPI_CS, 0); when done and set lcdIsBusy=false
 #endif
   }
-  jshPinSetValue(LCD_SPI_CS, 0);
   // Reset modified-ness
   gfx->data.modMaxX = -32768;
   gfx->data.modMaxY = -32768;
