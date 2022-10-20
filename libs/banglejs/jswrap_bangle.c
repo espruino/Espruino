@@ -648,11 +648,11 @@ JshI2CInfo i2cInternal;
 #endif
 
 #ifdef TOUCH_DEVICE
-unsigned char touchX, touchY; ///< current touch event coordinates
-unsigned char lastTouchX, lastTouchY; ///< last touch event coordinates - updated when JSBT_DRAG is fired
+short touchX, touchY; ///< current touch event coordinates
+short lastTouchX, lastTouchY; ///< last touch event coordinates - updated when JSBT_DRAG is fired
 bool touchPts, lastTouchPts; ///< whether a fnger is currently touching or not
 unsigned char touchType; ///< variable to differentiate press, long press, double press
-unsigned char touchMinX = 0, touchMinY = 0, touchMaxX = 160, touchMaxY = 160; ///< touchscreen calibration values (what we expect from hardware, then we map this to LCD_WIDTH/HEIGHT)
+short touchMinX = 0, touchMinY = 0, touchMaxX = 160, touchMaxY = 160; ///< touchscreen calibration values (what we expect from hardware, then we map this to LCD_WIDTH/HEIGHT)
 #endif
 
 #ifdef PRESSURE_DEVICE
