@@ -1657,6 +1657,27 @@ void btn4Handler(bool state, IOEventFlags flags) {
 #endif
 
 #ifdef TOUCH_DEVICE // so it's available even in emulator
+
+// Convert Touchscreen gesture based on graphics orientation
+TouchGestureType touchSwipeRotate(TouchGestureType g) {
+  // gesture is the value that comes straight from the touchscreen
+  if (graphicsInternal.data.flags & JSGRAPHICSFLAGS_INVERT_X) {
+    if (g==TG_SWIPE_LEFT) g=TG_SWIPE_RIGHT;
+    else if (g==TG_SWIPE_RIGHT) g=TG_SWIPE_LEFT;
+  }
+  if (graphicsInternal.data.flags & JSGRAPHICSFLAGS_INVERT_Y) {
+    if (g==TG_SWIPE_UP) g=TG_SWIPE_DOWN;
+    else if (g==TG_SWIPE_DOWN) g=TG_SWIPE_UP;
+  }
+  if (graphicsInternal.data.flags & JSGRAPHICSFLAGS_SWAP_XY) {
+    if (g==TG_SWIPE_LEFT) g=TG_SWIPE_UP;
+    else if (g==TG_SWIPE_RIGHT) g=TG_SWIPE_DOWN;
+    else if (g==TG_SWIPE_UP) g=TG_SWIPE_LEFT;
+    else if (g==TG_SWIPE_DOWN) g=TG_SWIPE_RIGHT;
+  }
+  return g;
+}
+
 void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
   // ignore if locked
   if (bangleFlags & JSBF_LOCKED) return;
@@ -1674,19 +1695,19 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
     switch (gesture) { // gesture
     case 0:break; // no gesture
     case 1: // slide down
-      touchGesture = TG_SWIPE_DOWN;
+      touchGesture = touchSwipeRotate(TG_SWIPE_DOWN);
       bangleTasks |= JSBT_SWIPE;
       break;
     case 2: // slide up
-      touchGesture = TG_SWIPE_UP;
+      touchGesture = touchSwipeRotate(TG_SWIPE_UP);
       bangleTasks |= JSBT_SWIPE;
       break;
     case 3: // slide left
-      touchGesture = TG_SWIPE_LEFT;
+      touchGesture = touchSwipeRotate(TG_SWIPE_LEFT);
       bangleTasks |= JSBT_SWIPE;
       break;
     case 4: // slide right
-      touchGesture = TG_SWIPE_RIGHT;
+      touchGesture = touchSwipeRotate(TG_SWIPE_RIGHT);
       bangleTasks |= JSBT_SWIPE;
       break;
     case 5: // single click
