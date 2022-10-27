@@ -39,7 +39,6 @@ void gattc_searchService(ble_uuid_t uuid);
 void gattc_getCharacteristics(JsVar *service, ble_uuid_t char_uuid);
 void gattc_readValue(uint16_t charHandle);
 void gattc_writeValue(uint16_t charHandle,char *data,size_t dataLen);
-void gattc_writeDescriptor(uint16_t charHandle, char *data, size_t dataLen);
-void gattc_readDescriptor(uint16_t charHandle);
+void gattc_characteristicNotify(uint16_t charHandle, uint16_t cccdHandle, bool enable);
 
 #endif /* GATTC_FUNC_H_ */

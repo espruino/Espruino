@@ -13,7 +13,7 @@
  */
 #include <stdio.h>
 
-#include "bt.h"
+#include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_gatt_common_api.h"
 #include "esp_log.h"
@@ -65,6 +65,12 @@ bool jsble_kill(){
   return true;
 }
 
+/// Checks for error and reports an exception string if there was one, else 0 if no error
+JsVar *jsble_get_error_string(uint32_t err_code) {
+  if (!err_code) return 0;
+  return jsvVarPrintf("ERR 0x%x", err_code);
+}
+
 /// Executes a pending BLE event - returns the number of events Handled
 int jsble_exec_pending(IOEvent *event) {
   int eventsHandled = 1;
@@ -91,107 +97,12 @@ int jsble_exec_pending(IOEvent *event) {
   assert(IOEVENTFLAGS_GETTYPE(event->flags) == EV_BLUETOOTH_PENDING);
 
   // Now handle the actual event
-  BLEPending blep = (BLEPending)event->data.time;
+  BLEPending blep = (BLEPending)(event->data.time&255);
   uint16_t data = (uint16_t)(event->data.time>>8);
-  switch (blep) {
-   case BLEP_NONE: break;
-   /*case BLEP_ERROR: {
-     JsVar *v = jsble_get_error_string(data);
-     jsWarn("SD %v (:%d)",v, *(uint32_t*)buffer);
-     jsvUnLock(v);
-     break;
-   }
-   case BLEP_CONNECTED: {
-     assert(bufferLen == sizeof(ble_gap_addr_t));
-     ble_gap_addr_t *peer_addr = (ble_gap_addr_t*)buffer;
-     bleQueueEventAndUnLock(JS_EVENT_PREFIX"connect", bleAddrToStr(*peer_addr));
-     jshHadEvent();
-     break;
-   }
-   case BLEP_DISCONNECTED: {
-     JsVar *reason = jsvNewFromInteger(data);
-     bleQueueEventAndUnLock(JS_EVENT_PREFIX"disconnect", reason);
-     break;
-   }*/
-   case BLEP_TASK_DISCOVER_SERVICE: { /* buffer = esp_ble_gattc_cb_param_t, bleTaskInfo = BluetoothDevice, bleTaskInfo2 = an array of BluetoothRemoteGATTService, or 0 */
-     if (!bleInTask(BLETASK_PRIMARYSERVICE)) {
-       jsExceptionHere(JSET_INTERNALERROR,"Wrong task: %d vs %d", bleGetCurrentTask(), BLETASK_PRIMARYSERVICE);
-       break;
-     }
-     esp_ble_gattc_cb_param_t *p_data = (esp_ble_gattc_cb_param_t *)buffer;
-     esp_gatt_srvc_id_t *srvc_id = (esp_gatt_srvc_id_t *)&p_data->search_res.srvc_id;
-
-     if (!bleTaskInfo2) bleTaskInfo2 = jsvNewEmptyArray();
-     if (!bleTaskInfo2) break;
-     JsVar *o = jspNewObject(0, "BluetoothRemoteGATTService");
-     if (o) {
-       ble_uuid_t ble_uuid;
-       espbtuuid_TO_bleuuid(srvc_id->id.uuid, &ble_uuid);
-       jsvObjectSetChild(o,"device", bleTaskInfo);
-       jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(ble_uuid));
-       jsvObjectSetChildAndUnLock(o,"isPrimary", jsvNewFromBool(true));
-       jsvObjectSetChildAndUnLock(o,"start_handle", jsvNewFromInteger(p_data->search_res.start_handle));
-       jsvObjectSetChildAndUnLock(o,"end_handle", jsvNewFromInteger(p_data->search_res.end_handle));
-       jsvArrayPushAndUnLock(bleTaskInfo2, o);
-     }
-     break;
-   }
-   case BLEP_TASK_DISCOVER_SERVICE_COMPLETE: { /* bleTaskInfo = BluetoothDevice, bleTaskInfo2 = an array of BluetoothRemoteGATTService */
-     // When done, send the result to the handler
-     if (bleTaskInfo2 && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
-       // single item because filtering
-       JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(bleTaskInfo2));
-       jsvUnLock(bleTaskInfo2);
-       bleTaskInfo2 = t;
-     }
-     if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, bleTaskInfo2);
-     else bleCompleteTaskFailAndUnLock(BLETASK_PRIMARYSERVICE, jsvNewFromString("No Services found"));
-     break;
-   }
-   case BLEP_TASK_CENTRAL_CONNECTED: {
-     int centralIdx = 0; // FIXME: only one central right now
-     bleSetActiveBluetoothGattServer(centralIdx, bleTaskInfo); /* bleTaskInfo = instance of BluetoothRemoteGATTServer */
-     jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
-     jsvObjectSetChildAndUnLock(bleTaskInfo, "handle", jsvNewFromInteger(0));
-     bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
-     break;
-   }
-   case BLEP_TASK_CHARACTERISTIC_READ: {
-     JsVar *d = jsvNewDataViewWithData(bufferLen, buffer);
-     jsvObjectSetChild(bleTaskInfo, "value", d); // set this.value
-     bleCompleteTaskSuccessAndUnLock(BLETASK_CHARACTERISTIC_READ, d);
-     break;
-   }
-   case BLEP_TASK_CHARACTERISTIC_WRITE: {
-     bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_WRITE, 0);
-     break;
-   }
-   case BLEP_TASK_CHARACTERISTIC_NOTIFY: {
-     bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_NOTIFY, 0);
-     break;
-   }
-   case BLEP_CENTRAL_DISCONNECTED: { // reason as data low byte
-     int centralIdx = 0; // FIXME: only one central right now
-     if (bleInTask(BLETASK_DISCONNECT))
-       bleCompleteTaskSuccess(BLETASK_DISCONNECT, bleTaskInfo);
-     JsVar *gattServer = bleGetActiveBluetoothGattServer(centralIdx);
-     if (gattServer) {
-       JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
-       jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
-       jsvObjectRemoveChild(gattServer, "handle");
-       if (bluetoothDevice) {
-         // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h
-         JsVar *reason = jsvNewFromInteger(data & 255);
-         jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", &reason, 1);
-         jsvUnLock(reason);
-         jshHadEvent();
-       }
-       jsvUnLock2(gattServer, bluetoothDevice);
-     }
-     bleSetActiveBluetoothGattServer(centralIdx, 0);
-     break;
-   }
-
+  /* jsble_exec_pending_common handles 'common' events between nRF52/ESP32, then
+   * we handle nRF52-specific events below */
+  if (!jsble_exec_pending_common(blep, data, buffer, bufferLen)) switch (blep) {
+   // ESP32 specific handlers go here ...
    default:
      jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
   }
@@ -330,7 +241,10 @@ void jsble_central_characteristicDescDiscover(uint16_t central_conn_handle, JsVa
 // Set whether to notify on the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicNotify(uint16_t central_conn_handle, JsVar *characteristic, bool enable){
   uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
-
+  uint16_t handle_cccd = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_cccd", 0));
+  if (!handle_cccd)
+    return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_NOTIFY, jsvNewFromString("No CCCD handle found"));
+  gattc_characteristicNotify(handle, handle_cccd, enable);
   // see https://github.com/espressif/esp-idf/blob/master/examples/bluetooth/bluedroid/ble/gatt_client/tutorial/Gatt_Client_Example_Walkthrough.md#registering-for-notifications
 }
 /// Start bonding on the current central connection

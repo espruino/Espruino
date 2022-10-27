@@ -17,19 +17,13 @@
 #include "BLE/esp32_gap_func.h"
 #include "BLE/esp32_gatts_func.h"
 #include "BLE/esp32_gattc_func.h"
-#include "bt.h"
+#include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_gatt_common_api.h"
 #include "freertos/FreeRTOS.h"
 #include "jsvariterator.h"
 
-int bleEventDebug = 0;
-
-typedef enum{
-	ESP_BLE_DEBUG_GAP = 1,
-	ESP_BLE_DEBUG_GATTS = 2,
-	ESP_BLE_DEBUG_GATTC = 4
-} esp_ble_debug_t;
+esp_ble_debug_t bleEventDebug = 0;
 
 esp_err_t initController(){
 	esp_err_t ret;  	

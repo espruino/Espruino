@@ -126,7 +126,7 @@ JsVar *jswrap_ESP32_getState() {
  "name"     : "setBLE_Debug",
  "generate" : "jswrap_ESP32_setBLE_Debug",
  "params"   : [
-   ["level", "int", "which events should be shown (GATTS, GATTC, GAP)"]
+   ["level", "int", "which events should be shown (GAP=1, GATTS=2, GATTC=4). Use 255 for everything"]
  ],
  "ifdef"	: "BLUETOOTH"
 }

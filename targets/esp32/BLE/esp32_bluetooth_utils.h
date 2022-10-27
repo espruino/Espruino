@@ -29,6 +29,15 @@
 
 #define BLE_CHAR_VALUE			"BLE_CHAR_V"
 
+typedef enum{
+  ESP_BLE_DEBUG_GAP = 1,
+  ESP_BLE_DEBUG_GATTS = 2,
+  ESP_BLE_DEBUG_GATTC = 4
+} esp_ble_debug_t;
+
+extern esp_ble_debug_t bleEventDebug;
+
+
 esp_err_t initController();
 esp_err_t initBluedroid();
 esp_err_t deinitController();

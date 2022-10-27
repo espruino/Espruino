@@ -17,9 +17,15 @@
 #include "jsinteractive.h"
 #include "jsparse.h"
 #include "jshardware.h"
+#include "jswrap_bluetooth.h"
 
 #ifdef NRF5X
 #include "app_error.h"
+#endif
+#ifdef ESP32
+#include "esp_bt.h"
+#include "esp_gattc_api.h"
+#include "BLE/esp32_bluetooth_utils.h"
 #endif
 
 /// Return true if two UUIDs are equal
@@ -287,4 +293,143 @@ void jsble_queue_pending(BLEPending blep, uint16_t data) {
   JsSysTime d = (JsSysTime)((data<<8)|blep);
   jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
   jshHadEvent();
+}
+
+/* Handler for common event types (between nRF52/ESP32). Called first
+ * from ESP32/nRF52 jsble_exec_pending function */
+bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *buffer, size_t bufferLen) {
+  switch (blep) {
+  case BLEP_NONE: break;
+  case BLEP_ERROR: {
+    JsVar *v = jsble_get_error_string(data);
+    jsWarn("SD %v (:%d)",v, *(uint32_t*)buffer);
+    jsvUnLock(v);
+    break;
+  }
+  case BLEP_TASK_FAIL:
+    bleCompleteTaskFail(bleGetCurrentTask(), 0);
+    break;
+  case BLEP_TASK_FAIL_CONN_TIMEOUT:
+    bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Connection Timeout"));
+    break;
+  case BLEP_TASK_FAIL_DISCONNECTED:
+    bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Disconnected"));
+    break;
+  case BLEP_TASK_CENTRAL_CONNECTED: { /* data = centralIdx, bleTaskInfo is a BluetoothRemoteGATTServer */
+#ifdef NRF5X
+    uint16_t handle = m_central_conn_handles[data];
+#endif
+#ifdef ESP32
+    uint16_t handle = 0; // FIXME: multi-connection handling
+#endif
+
+    bleSetActiveBluetoothGattServer(data, bleTaskInfo); /* bleTaskInfo = instance of BluetoothRemoteGATTServer */
+    jsvObjectSetChildAndUnLock(bleTaskInfo, "connected", jsvNewFromBool(true));
+    jsvObjectSetChildAndUnLock(bleTaskInfo, "handle", jsvNewFromInteger(handle));
+    bleCompleteTaskSuccess(BLETASK_CONNECT, bleTaskInfo);
+    break;
+  }
+  case BLEP_TASK_DISCOVER_SERVICE: { /* buffer = ble_gattc_service_t, bleTaskInfo = BluetoothDevice, bleTaskInfo2 = an array of BluetoothRemoteGATTService, or 0 */
+    if (!bleInTask(BLETASK_PRIMARYSERVICE)) {
+      jsExceptionHere(JSET_INTERNALERROR,"Wrong task: %d vs %d", bleGetCurrentTask(), BLETASK_PRIMARYSERVICE);
+      break;
+    }
+#ifdef NRF5X
+    ble_gattc_service_t *p_srv = (ble_gattc_service_t*)buffer;
+    uint16_t start_handle = p_srv->handle_range.start_handle;
+    uint16_t end_handle = p_srv->handle_range.end_handle;
+    ble_uuid_t uuid = p_srv->uuid;
+#endif
+#ifdef ESP32
+    esp_ble_gattc_cb_param_t *p_data = (esp_ble_gattc_cb_param_t *)buffer;
+    esp_gatt_srvc_id_t *srvc_id = (esp_gatt_srvc_id_t *)&p_data->search_res.srvc_id;
+    uint16_t start_handle = p_data->search_res.start_handle;
+    uint16_t end_handle = p_data->search_res.end_handle;
+    ble_uuid_t uuid;
+    espbtuuid_TO_bleuuid(srvc_id->id.uuid, &uuid);
+#endif
+    if (!bleTaskInfo2) bleTaskInfo2 = jsvNewEmptyArray();
+    if (!bleTaskInfo2) break;
+    JsVar *o = jspNewObject(0, "BluetoothRemoteGATTService");
+    if (o) {
+      jsvObjectSetChild(o,"device", bleTaskInfo);
+      jsvObjectSetChildAndUnLock(o,"uuid", bleUUIDToStr(uuid));
+      jsvObjectSetChildAndUnLock(o,"isPrimary", jsvNewFromBool(true));
+      jsvObjectSetChildAndUnLock(o,"start_handle", jsvNewFromInteger(start_handle));
+      jsvObjectSetChildAndUnLock(o,"end_handle", jsvNewFromInteger(end_handle));
+      jsvArrayPushAndUnLock(bleTaskInfo2, o);
+    }
+    break;
+  }
+  case BLEP_TASK_DISCOVER_SERVICE_COMPLETE: { /* bleTaskInfo = BluetoothDevice, bleTaskInfo2 = an array of BluetoothRemoteGATTService */
+     // When done, send the result to the handler
+     if (bleTaskInfo2 && bleUUIDFilter.type != BLE_UUID_TYPE_UNKNOWN) {
+       // single item because filtering
+       JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(bleTaskInfo2));
+       jsvUnLock(bleTaskInfo2);
+       bleTaskInfo2 = t;
+     }
+     if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_PRIMARYSERVICE, bleTaskInfo2);
+     else bleCompleteTaskFailAndUnLock(BLETASK_PRIMARYSERVICE, jsvNewFromString("No Services found"));
+     break;
+   }
+  case BLEP_TASK_CHARACTERISTIC_READ: {
+    JsVar *d = jsvNewDataViewWithData(bufferLen, buffer);
+    jsvObjectSetChild(bleTaskInfo, "value", d); // set this.value
+    bleCompleteTaskSuccessAndUnLock(BLETASK_CHARACTERISTIC_READ, d);
+    break;
+  }
+  case BLEP_TASK_CHARACTERISTIC_WRITE: {
+    bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_WRITE, 0);
+    break;
+  }
+  case BLEP_TASK_CHARACTERISTIC_NOTIFY: {
+    bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC_NOTIFY, 0);
+    break;
+  }
+  case BLEP_CENTRAL_DISCONNECTED: { // reason as data low byte, index in m_central_conn_handles as high byte
+    int centralIdx = data>>8; // index in m_central_conn_handles
+    if (bleInTask(BLETASK_DISCONNECT))
+      bleCompleteTaskSuccess(BLETASK_DISCONNECT, bleTaskInfo);
+    JsVar *gattServer = bleGetActiveBluetoothGattServer(centralIdx);
+    if (gattServer) {
+      JsVar *bluetoothDevice = jsvObjectGetChild(gattServer, "device", 0);
+      jsvObjectSetChildAndUnLock(gattServer, "connected", jsvNewFromBool(false));
+      jsvObjectRemoveChild(gattServer, "handle");
+      if (bluetoothDevice) {
+        // HCI error code, see BLE_HCI_STATUS_CODES in ble_hci.h
+        JsVar *reason = jsvNewFromInteger(data & 255);
+        jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"gattserverdisconnected", &reason, 1);
+        jsvUnLock(reason);
+        jshHadEvent();
+      }
+      jsvUnLock2(gattServer, bluetoothDevice);
+    }
+    bleSetActiveBluetoothGattServer(centralIdx, 0);
+    break;
+  }
+  case BLEP_NOTIFICATION: {
+   JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", 0);
+   if (handles) {
+     JsVar *characteristic = jsvGetArrayItem(handles, data/*the handle*/);
+     if (characteristic) {
+       // Set characteristic.value, and return {target:characteristic}
+       jsvObjectSetChildAndUnLock(characteristic, "value",
+           jsvNewDataViewWithData(bufferLen, (unsigned char*)buffer));
+       JsVar *evt = jsvNewObject();
+       if (evt) {
+         jsvObjectSetChild(evt, "target", characteristic);
+         jsiExecuteEventCallbackName(characteristic, JS_EVENT_PREFIX"characteristicvaluechanged", 1, &evt);
+         jshHadEvent();
+         jsvUnLock(evt);
+       }
+     }
+     jsvUnLock2(characteristic, handles);
+   }
+   break;
+  }
+  default:
+    return false;
+  }
+  return true;
 }

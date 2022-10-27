@@ -14,6 +14,8 @@
             Bangle.js2: Add fast-path for all-white or all-black full-width graphics fill/clear (24ms -> 2ms)
             Bangle.js2: LCD background flip (send to LCD while returning to execute other code)
             Bangle.js2: Swipe direction is now modified based on g.setRotation
+            ESP32: Bluetooth LE tweaks - central mode connects, scans, reads, writes and notifies
+            Bluetooth: fix for incorrect Bluetooth task strings shown in some errors
 
      2v15 : Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
             Fix issue accessing `arguments` after/inside 'let/const' keyword (fix #2224)

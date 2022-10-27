@@ -80,5 +80,10 @@ uint16_t bleGetGATTHandle(ble_uuid_t char_uuid);
 
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
+
 /** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with simple data */
 void jsble_queue_pending(BLEPending blep, uint16_t data);
+
+/* Handler for common event types (between nRF52/ESP32). Called first
+ * from ESP32/nRF52 jsble_exec_pending function */
+bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *buffer, size_t bufferLen);

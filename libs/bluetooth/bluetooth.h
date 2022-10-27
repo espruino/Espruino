@@ -147,8 +147,9 @@ typedef enum {
   BLEP_RSSI_PERIPH,                 //< RSSI data from peripheral connection (rssi as data)
   BLEP_ADV_REPORT,                  //< Advertising received (as buffer)
   BLEP_RSSI_CENTRAL,                //< RSSI data from central connection (rssi as data low byte, index in m_central_conn_handles as high byte )
-  BLEP_TASK_FAIL_CONN_TIMEOUT,      //< Central: Connection timeout
-  BLEP_TASK_FAIL_DISCONNECTED,      //< Central: Task failed because disconnected
+  BLEP_TASK_FAIL,                   //< Task failed because unknown
+  BLEP_TASK_FAIL_CONN_TIMEOUT,      //< Task failed becauseConnection timeout
+  BLEP_TASK_FAIL_DISCONNECTED,      //< Task failed because disconnected
   BLEP_TASK_CENTRAL_CONNECTED,      //< Central: Connected, (m_central_conn_handles index as data)
   BLEP_TASK_DISCOVER_SERVICE,       //< New service discovered (as buffer)
   BLEP_TASK_DISCOVER_SERVICE_COMPLETE,       //< Service discovery complete
@@ -182,7 +183,11 @@ typedef enum {
 
 
 extern volatile BLEStatus bleStatus;
+/// Filter to use when discovering BLE Services/Characteristics
+extern ble_uuid_t bleUUIDFilter;
+
 extern uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
+
 extern volatile uint16_t                         m_peripheral_conn_handle;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
 extern volatile uint16_t                         m_central_conn_handles[CENTRAL_LINK_COUNT]; /**< Handle for central mode connection */
@@ -193,6 +198,9 @@ extern volatile uint16_t                         m_central_conn_handles[CENTRAL_
 void jsble_init();
 /** Completely deinitialise the BLE stack. Return true on success */
 bool jsble_kill();
+
+/// Checks for error and reports an exception string if there was one, else 0 if no error
+JsVar *jsble_get_error_string(uint32_t err_code);
 
 /** Execute a task that was added by jsble_queue_pending - this is done outside of IRQ land. Returns number of events handled */
 int jsble_exec_pending(IOEvent *event);
