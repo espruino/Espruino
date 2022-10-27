@@ -799,10 +799,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 #ifdef USE_DEBUGGER
             bool hadDebuggerNextLineOnly = false;
             if (execInfo.execute&EXEC_DEBUGGER_STEP_INTO) {
-              if (functionName)
-                jsiConsolePrintf("Stepping into %v\n", functionName);
-              else
-                jsiConsolePrintf("Stepping into function\n", functionName);
+	      if (functionName)
+		jsiConsolePrintf("Stepping into %v\n", functionName);
+	      else
+		jsiConsolePrintf("Stepping into function\n", functionName);
             } else {
               hadDebuggerNextLineOnly = execInfo.execute&EXEC_DEBUGGER_NEXT_LINE;
               if (hadDebuggerNextLineOnly)
@@ -1078,13 +1078,15 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
   else return jsvSkipNameAndUnLock(child);
 }
 
-NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
+NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult, bool *isOptional) {
   /* The parent if we're executing a method call */
   JsVar *parent = 0;
 
-  while (lex->tk=='.' || lex->tk=='[') {
-    if (lex->tk == '.') { // ------------------------------------- Record Access
-      JSP_ASSERT_MATCH('.');
+  while (lex->tk==LEX_OPTIONAL_CHAINING || lex->tk=='.' || lex->tk=='[') {
+    bool optionalTk = lex->tk == LEX_OPTIONAL_CHAINING;
+    *isOptional |= optionalTk;
+    if (lex->tk == '.' || optionalTk) { // ------------------------------------- Record Access
+      jslGetNextToken();
       if (jslIsIDOrReservedWord()) {
         if (JSP_SHOULD_EXECUTE) {
           // Note: name will go away when we parse something else!
@@ -1101,6 +1103,8 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               JsVar *nameVar = jslGetTokenValueAsVar();
               child = jsvCreateNewChild(aVar, nameVar, 0);
               jsvUnLock(nameVar);
+            } else if (*isOptional) {
+              child = 0; // undefined
             } else {
               // could have been a string...
               jsExceptionHere(JSET_ERROR, "Cannot read property '%s' of %s", name, jsvIsUndefined(aVar) ? "undefined" : "null");
@@ -1113,6 +1117,20 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
         }
         // skip over current token (we checked above that it was an ID or reserved word)
         jslGetNextToken();
+#ifndef ESPR_NO_OPTIONAL_CHAINING
+      } else if ((lex->tk == '(' || lex->tk == '[') && optionalTk) {
+        // handle a?.() and a?.[0]
+
+        JsVar *aVar = jsvSkipNameWithParent(a, true, parent);
+
+        jsvUnLock(a);
+        if (jsvIsNullish(aVar)) {
+          a = 0; // undefined
+        } else {
+          a = aVar;
+        }
+        continue;
+#endif
       } else {
         // incorrect token - force a match fail by asking for an ID
         JSP_MATCH_WITH_RETURN(LEX_ID, a);
@@ -1121,6 +1139,15 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
       JsVar *index;
       JSP_ASSERT_MATCH('[');
       if (!jspCheckStackPosition()) return parent;
+
+#ifndef ESPR_NO_OPTIONAL_CHAINING
+      JSP_SAVE_EXECUTE();
+      if (jsvIsUndefined(a) && *isOptional) {
+        // there was a previous a?.b where a was undefined
+        jspSetNoExecute();
+      }
+#endif
+
       index = jsvSkipNameAndUnLock(jspeAssignmentExpression());
       JSP_MATCH_WITH_CLEANUP_AND_RETURN(']', jsvUnLock2(parent, index);, a);
       if (JSP_SHOULD_EXECUTE) {
@@ -1146,6 +1173,10 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
         jsvUnLock(aVar);
       }
       jsvUnLock(index);
+
+#ifndef ESPR_NO_OPTIONAL_CHAINING
+      JSP_RESTORE_EXECUTE();
+#endif
     } else {
       assert(0);
     }
@@ -1208,7 +1239,8 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
 #ifndef SAVE_ON_FLASH
   bool wasSuper = lex->tk==LEX_R_SUPER;
 #endif
-  JsVar *a = jspeFactorMember(jspeFactor(), &parent);
+  bool optional;
+  JsVar *a = jspeFactorMember(jspeFactor(), &parent, &optional);
 #ifndef SAVE_ON_FLASH
   if (wasSuper) {
     /* if this was 'super.something' then we need
@@ -1219,24 +1251,44 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
     parent = jsvLockAgainSafe(execInfo.thisVar);
   }
 #endif
-
   while ((lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) && !jspIsInterrupted()) {
-    JsVar *funcName = a;
-    JsVar *func = jsvSkipName(funcName);
+#ifndef ESPR_NO_OPTIONAL_CHAINING
+    if (jsvIsUndefined(a) && optional) {
+      JSP_SAVE_EXECUTE();
+      jspSetNoExecute();
 
-    /* The constructor function doesn't change parsing, so if we're
-     * not executing, just short-cut it. */
-    if (isConstructor && JSP_SHOULD_EXECUTE) {
-      // If we have '(' parse an argument list, otherwise don't look for any args
-      bool parseArgs = lex->tk=='(';
-      a = jspeConstruct(func, funcName, parseArgs);
-      isConstructor = false; // don't treat subsequent brackets as constructors
-    } else
+      JsVar *funcName = a;
+      JsVar *func = jsvSkipName(funcName);
+
       a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
 
-    jsvUnLock3(funcName, func, parent);
+      jsvUnLock3(funcName, func, parent);
+
+      JSP_RESTORE_EXECUTE();
+    } else if (jsvIsUndefined(a)) {
+      break;
+    } else {
+#endif
+      JsVar *funcName = a;
+      JsVar *func = jsvSkipName(funcName);
+
+      /* The constructor function doesn't change parsing, so if we're
+      * not executing, just short-cut it. */
+      if (isConstructor && JSP_SHOULD_EXECUTE) {
+        // If we have '(' parse an argument list, otherwise don't look for any args
+        bool parseArgs = lex->tk=='(';
+        a = jspeConstruct(func, funcName, parseArgs);
+        isConstructor = false; // don't treat subsequent brackets as constructors
+      } else
+        a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
+
+      jsvUnLock3(funcName, func, parent);
+#ifndef ESPR_NO_OPTIONAL_CHAINING
+    }
+#endif
     parent=0;
-    a = jspeFactorMember(a, &parent);
+    optional=false;
+    a = jspeFactorMember(a, &parent, &optional);
   }
 #ifndef SAVE_ON_FLASH
   /* If we've got something that we care about the parent of (eg. a getter/setter)
@@ -1426,7 +1478,8 @@ NO_INLINE JsVar *jspeFactorTypeOf() {
 NO_INLINE JsVar *jspeFactorDelete() {
   JSP_ASSERT_MATCH(LEX_R_DELETE);
   JsVar *parent = 0;
-  JsVar *a = jspeFactorMember(jspeFactor(), &parent);
+  bool optional;
+  JsVar *a = jspeFactorMember(jspeFactor(), &parent, &optional);
   JsVar *result = 0;
   if (JSP_SHOULD_EXECUTE) {
     bool ok = false;
