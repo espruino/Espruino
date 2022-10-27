@@ -71,7 +71,7 @@ void jsspiSoftwareFunc(
         if (inf->pinSCK != PIN_UNDEFINED)
           jshPinSetValue(inf->pinSCK, !CPOL );
         if (inf->pinMISO != PIN_UNDEFINED)
-          result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
+          result |= (jshPinGetValue(inf->pinMISO )?1:0)<<bit;
         if (inf->pinSCK != PIN_UNDEFINED)
           jshPinSetValue(inf->pinSCK, CPOL );
       } else { // CPHA=1
@@ -82,7 +82,7 @@ void jsspiSoftwareFunc(
         if (inf->pinSCK != PIN_UNDEFINED)
           jshPinSetValue(inf->pinSCK, CPOL );
         if (inf->pinMISO != PIN_UNDEFINED)
-          result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
+          result |= (jshPinGetValue(inf->pinMISO )?1:0)<<bit;
       }
     }
     if (rx) rx[i] = result;
