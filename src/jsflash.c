@@ -1300,6 +1300,7 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset) {
 
 bool jsfLoadBootCodeFromFlash(bool isReset) {
   // Load code in .boot0/1/2/3 UNLESS BTN1 is HELD DOWN FOR BANGLE.JS ON FIRST BOOT
+  // On an average Bangle.js 2 this takes 0.25 ms (so not worth optimising)
 #if (defined(BANGLEJS) && !defined(DICKENS))
   if (!(jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE &&
        (jsiStatus & JSIS_FIRST_BOOT)))
