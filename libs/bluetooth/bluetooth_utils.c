@@ -315,6 +315,7 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
   case BLEP_TASK_FAIL_DISCONNECTED:
     bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Disconnected"));
     break;
+#if CENTRAL_LINK_COUNT>0
   case BLEP_TASK_CENTRAL_CONNECTED: { /* data = centralIdx, bleTaskInfo is a BluetoothRemoteGATTServer */
 #ifdef NRF5X
     uint16_t handle = m_central_conn_handles[data];
@@ -408,7 +409,7 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
     bleSetActiveBluetoothGattServer(centralIdx, 0);
     break;
   }
-  case BLEP_NOTIFICATION: {
+  case BLEP_CENTRAL_NOTIFICATION: {
    JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", 0);
    if (handles) {
      JsVar *characteristic = jsvGetArrayItem(handles, data/*the handle*/);
@@ -428,6 +429,7 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
    }
    break;
   }
+#endif // CENTRAL_LINK_COUNT > 0
   default:
     return false;
   }

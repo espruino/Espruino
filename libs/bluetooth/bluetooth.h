@@ -167,7 +167,7 @@ typedef enum {
   BLEP_HID_SENT,                    //< A HID report has been sent
   BLEP_HID_VALUE,                   //< A HID value was received (eg caps lock)
   BLEP_WRITE,                       //< One of our characteristics written by someone else
-  BLEP_NOTIFICATION,                //< A characteristic we were watching has changes
+  BLEP_CENTRAL_NOTIFICATION,                //< A characteristic we were watching has changed
   BLEP_TASK_PASSKEY_DISPLAY,        //< We're pairing and have been provided with a passkey to display (data = conn_handle)
   BLEP_TASK_AUTH_KEY_REQUEST,       //< We're pairing and the device wants a passkey from us (data = conn_handle)
   BLEP_TASK_AUTH_STATUS,            //< Data on how authentication was going has been received

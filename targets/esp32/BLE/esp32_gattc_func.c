@@ -97,7 +97,7 @@ void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
     case ESP_GATTC_NOTIFY_EVT:
       // We've been notified of new data
       // p_data->notify.is_notify is whether it's notify or indicate
-      jsble_queue_pending_buf(BLEP_NOTIFICATION, p_data->notify.handle, (char*)p_data->notify.value, p_data->notify.value_len);
+      jsble_queue_pending_buf(BLEP_CENTRAL_NOTIFICATION, p_data->notify.handle, (char*)p_data->notify.value, p_data->notify.value_len);
       // Do we have to send a confirmation if it's an indication?
       break;
     case ESP_GATTC_PREP_WRITE_EVT: break;
