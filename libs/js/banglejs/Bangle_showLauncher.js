@@ -25,6 +25,7 @@
   } else {
     if (Bangle.uiRemove) {
       Bangle.setUI(); // remove all existing UI (and call Bangle.uiRemove)
+      __FILE__=s.launcher;
       setTimeout(eval,0,launcherApp); // Load launcher direct without a reboot
     } else load(s.launcher);
   }

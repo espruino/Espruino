@@ -16,6 +16,7 @@
             Bangle.js2: Swipe direction is now modified based on g.setRotation
             ESP32: Bluetooth LE tweaks - central mode connects, scans, reads, writes and notifies
             Bluetooth: fix for incorrect Bluetooth task strings shown in some errors
+            Bangle.js: showLauncher's 'fast load' now updates __FILE__
 
      2v15 : Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
             Fix issue accessing `arguments` after/inside 'let/const' keyword (fix #2224)
