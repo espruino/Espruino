@@ -87,6 +87,9 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 
 // These defines take 'f' as 'v->flags&JSV_VARTYPEMASK
 #define JSV_IS_NULL(f) (f)==JSV_NULL
+#define JSV_IS_PIN(f) (f)==JSV_PIN
+#define JSV_IS_BOOL(f) f==JSV_BOOLEAN || f==JSV_NAME_INT_BOOL
+#define JSV_IS_INT(f) f==JSV_INTEGER || f==JSV_PIN || f==JSV_NAME_INT || f==JSV_NAME_INT_INT || f==JSV_NAME_INT_BOOL
 #define JSV_IS_NUMERIC(f) ((f)>=_JSV_NUMERIC_START && (f)<=_JSV_NUMERIC_END)
 #define JSV_IS_STRING(f) ((f)>=_JSV_STRING_START && (f)<=_JSV_STRING_END)
 #define JSV_IS_ARRAY(f) (f)==JSV_ARRAY
@@ -98,9 +101,9 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 bool jsvIsRoot(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ROOT; }
 bool jsvIsPin(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_PIN; }
 bool jsvIsSimpleInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; } // is just a very basic integer value
-bool jsvIsInt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return f==JSV_INTEGER || f==JSV_PIN || f==JSV_NAME_INT || f==JSV_NAME_INT_INT || f==JSV_NAME_INT_BOOL; }
+bool jsvIsInt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_INT(f); }
 bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
-bool jsvIsBoolean(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return f==JSV_BOOLEAN || f==JSV_NAME_INT_BOOL; }
+bool jsvIsBoolean(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_BOOL(f); }
 bool jsvIsString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_STRING(f); } ///< String, or a NAME too
 bool jsvIsBasicString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return f>=JSV_STRING_0 && f<=JSV_STRING_MAX; } ///< Just a string (NOT a name/flatstr/nativestr or flashstr)
 bool jsvIsStringExt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return f>=JSV_STRING_EXT_0 && f<=JSV_STRING_EXT_MAX; } ///< The extra bits dumped onto the end of a string to store more data
@@ -148,7 +151,12 @@ bool jsvIsGetterOrSetter(const JsVar *v) {
 bool jsvIsRefUsedForData(const JsVar *v) { return jsvIsStringExt(v) || (jsvIsString(v)&&!jsvIsName(v)) ||  jsvIsFloat(v) || jsvIsNativeFunction(v) || jsvIsArrayBuffer(v) || jsvIsArrayBufferName(v); }
 
 /// Can the given variable be converted into an integer without loss of precision
-bool jsvIsIntegerish(const JsVar *v) { return jsvIsInt(v) || jsvIsPin(v) || jsvIsBoolean(v) || jsvIsNull(v); }
+bool jsvIsIntegerish(const JsVar *v) {  
+  //return jsvIsInt(v) || jsvIsPin(v) || jsvIsBoolean(v) || jsvIsNull(v); 
+  if (!v) return false;
+  char f = v->flags&JSV_VARTYPEMASK;
+  return JSV_IS_INT(f) || JSV_IS_PIN(f) || JSV_IS_BOOL(f) || JSV_IS_NULL(f);
+}
 
 bool jsvIsIterable(const JsVar *v) {
   //return jsvIsArray(v) || jsvIsObject(v) || jsvIsFunction(v) || jsvIsString(v) || jsvIsArrayBuffer(v);
