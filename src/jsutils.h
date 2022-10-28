@@ -44,6 +44,7 @@
 #define ESPR_NO_GET_SET 1
 #define ESPR_NO_LINE_NUMBERS 1
 #define ESPR_NO_LET_SCOPING 1
+#define ESPR_NO_PROMISES 1
 #endif
 
 #ifndef alloca

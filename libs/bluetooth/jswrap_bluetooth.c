@@ -60,7 +60,9 @@
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
 
+#ifndef ESPR_NO_PROMISES
 JsVar *blePromise = 0;
+#endif
 JsVar *bleTaskInfo = 0;
 JsVar *bleTaskInfo2 = 0;
 BleTask bleTask = BLETASK_NONE;
@@ -102,8 +104,10 @@ bool bleNewTask(BleTask task, JsVar *taskInfo) {
     jsiConsolePrintf("Existing bleTaskInfo!\n");
     jsvTrace(bleTaskInfo,2);
   }*/
+#ifndef ESPR_NO_PROMISES
   assert(!blePromise && !bleTaskInfo && !bleTaskInfo2);
   blePromise = jspromise_create();
+#endif
   bleTask = task;
   bleTaskInfo = jsvLockAgainSafe(taskInfo);
   bleTaskInfo2 = NULL;
@@ -117,12 +121,14 @@ void bleCompleteTask(BleTask task, bool ok, JsVar *data) {
     return;
   }
   bleTask = BLETASK_NONE;
+#ifndef ESPR_NO_PROMISES
   if (blePromise) {
     if (ok) jspromise_resolve(blePromise, data);
     else jspromise_reject(blePromise, data);
     jsvUnLock(blePromise);
     blePromise = 0;
   }
+#endif
   jsvUnLock(bleTaskInfo);
   bleTaskInfo = 0;
   jsvUnLock(bleTaskInfo2);
@@ -150,6 +156,7 @@ void bleSwitchTask(BleTask task) {
 
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
+#if CENTRAL_LINK_COUNT>0
 void bleSetActiveBluetoothGattServer(int idx, JsVar *var) {
   assert(idx >=0 && idx < CENTRAL_LINK_COUNT);
   if (idx<0) return;
@@ -189,6 +196,7 @@ uint16_t jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(JsVar *parent) {
   if (service) handle = jswrap_ble_BluetoothRemoteGATTService_getHandle(service);
   return handle;
 }
+#endif
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
 
@@ -277,8 +285,10 @@ void jswrap_ble_kill() {
 #endif
   // stop any BLE tasks
   bleTask = BLETASK_NONE;
+#ifndef ESPR_NO_PROMISES
   if (blePromise) jsvUnLock(blePromise);
   blePromise = 0;
+#endif
   if (bleTaskInfo) jsvUnLock(bleTaskInfo);
   bleTaskInfo = 0;
   if (bleTaskInfo2) jsvUnLock(bleTaskInfo2);
@@ -3486,12 +3496,14 @@ JsVar *jswrap_ble_getSecurityStatus(JsVar *parent) {
 }
 */
 JsVar *jswrap_ble_startBonding(bool forceRePair) {
+#ifdef NRF52_SERIES
   if (bleNewTask(BLETASK_BONDING, NULL)) {
-     JsVar *promise = jsvLockAgainSafe(blePromise);
-     jsble_startBonding(forceRePair);
-     return promise;
-   }
-   return 0;
+    JsVar *promise = jsvLockAgainSafe(blePromise);
+    jsble_startBonding(forceRePair);
+    return promise;
+  }
+#endif
+  return 0;
 }
 
 /*JSON{

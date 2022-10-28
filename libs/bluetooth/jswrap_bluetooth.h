@@ -48,6 +48,7 @@ typedef enum {
 #define BLETASK_IS_AMS(x) ((x)==BLETASK_AMS_ATTR)
 #endif
 
+
 extern JsVar *bleTaskInfo; // info related to the current task
 extern JsVar *bleTaskInfo2; // info related to the current task
 
@@ -61,12 +62,12 @@ void bleCompleteTaskFail(BleTask task, JsVar *data);
 void bleCompleteTaskFailAndUnLock(BleTask task, JsVar *data);
 void bleSwitchTask(BleTask task);
 
+#if CENTRAL_LINK_COUNT>0
 // Set the currently active GATT server based on the index in m_central_conn_handles
 void bleSetActiveBluetoothGattServer(int idx, JsVar *var);
 // Get the currently active GATT server based on the index in m_central_conn_handles (the return value needs unlocking)
 JsVar *bleGetActiveBluetoothGattServer(int idx);
 
-#ifdef NRF52_SERIES
 uint16_t jswrap_ble_BluetoothRemoteGATTServer_getHandle(JsVar *parent);
 uint16_t jswrap_ble_BluetoothDevice_getHandle(JsVar *parent);
 uint16_t jswrap_ble_BluetoothRemoteGATTService_getHandle(JsVar *parent);

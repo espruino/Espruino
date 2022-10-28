@@ -13,6 +13,11 @@
  * ES6 Promise implementation
  * ----------------------------------------------------------------------------
  */
+
+#include "jsutils.h"
+
+#ifndef ESPR_NO_PROMISES
+
 #include "jswrap_promise.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
@@ -437,3 +442,4 @@ JsVar *jswrap_promise_catch(JsVar *parent, JsVar *onRejected) {
   _jswrap_promise_add(parent, onRejected, false);
   return jswrap_promise_get_chained_promise(parent);
 }
+#endif // ESPR_NO_PROMISES

@@ -142,10 +142,11 @@ typedef enum {
   BLEP_ERROR,                       //< Softdevice threw some error (code in data)
   BLEP_CONNECTED,                   //< Peripheral connected (address as buffer)
   BLEP_DISCONNECTED,                //< Peripheral disconnected
-  BLEP_ADVERTISING_START,           //< Start adevrtising - do it outside of IRQ because we may need to allocate JsVars
+  BLEP_ADVERTISING_START,           //< Start advertising - do it outside of IRQ because we may need to allocate JsVars
   BLEP_RESTART_SOFTDEVICE,          //< Perform a softdevice restart (again, we don't want to do this in an IRQ!)
   BLEP_RSSI_PERIPH,                 //< RSSI data from peripheral connection (rssi as data)
   BLEP_ADV_REPORT,                  //< Advertising received (as buffer)
+#if CENTRAL_LINK_COUNT>0
   BLEP_RSSI_CENTRAL,                //< RSSI data from central connection (rssi as data low byte, index in m_central_conn_handles as high byte )
   BLEP_TASK_FAIL,                   //< Task failed because unknown
   BLEP_TASK_FAIL_CONN_TIMEOUT,      //< Task failed becauseConnection timeout
@@ -159,18 +160,23 @@ typedef enum {
   BLEP_TASK_CHARACTERISTIC_READ,    //< Central: Characteristic read finished (as buffer)
   BLEP_TASK_CHARACTERISTIC_WRITE,   //< Central: Characteristic write finished
   BLEP_TASK_CHARACTERISTIC_NOTIFY,  //< Central: Started requesting notifications
+  BLEP_CENTRAL_NOTIFICATION,        //< A characteristic we were watching has changed
   BLEP_CENTRAL_DISCONNECTED,        //< Central: Disconnected (reason as data low byte, index in m_central_conn_handles as high byte )
   BLEP_TASK_BONDING,                //< Bonding negotiation complete (success in data)
-  BLEP_NFC_STATUS,                  //< NFC changed state
-  BLEP_NFC_RX,                      //< NFC data received (as buffer)
-  BLEP_NFC_TX,                      //< NFC data sent
-  BLEP_HID_SENT,                    //< A HID report has been sent
-  BLEP_HID_VALUE,                   //< A HID value was received (eg caps lock)
+#endif
   BLEP_WRITE,                       //< One of our characteristics written by someone else
-  BLEP_CENTRAL_NOTIFICATION,                //< A characteristic we were watching has changed
   BLEP_TASK_PASSKEY_DISPLAY,        //< We're pairing and have been provided with a passkey to display (data = conn_handle)
   BLEP_TASK_AUTH_KEY_REQUEST,       //< We're pairing and the device wants a passkey from us (data = conn_handle)
   BLEP_TASK_AUTH_STATUS,            //< Data on how authentication was going has been received
+#ifdef USE_NFC
+  BLEP_NFC_STATUS,                  //< NFC changed state
+  BLEP_NFC_RX,                      //< NFC data received (as buffer)
+  BLEP_NFC_TX,                      //< NFC data sent
+#endif
+#if BLE_HIDS_ENABLED
+  BLEP_HID_SENT,                    //< A HID report has been sent
+  BLEP_HID_VALUE,                   //< A HID value was received (eg caps lock)
+#endif
 #ifdef ESPR_BLUETOOTH_ANCS
   BLEP_ANCS_NOTIF,                  //< Apple Notification Centre notification received
   BLEP_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes received
