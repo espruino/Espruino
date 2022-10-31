@@ -416,9 +416,6 @@ bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint);
  * and makes the assertion that int_to_string(string_to_int(var))==var */
 bool jsvIsStringNumericStrict(const JsVar *var);
 
-/// See jsvIsNewChild - for fields that don't exist yet
-JsVar *jsvCreateNewChild(JsVar *parent, JsVar *index, JsVar *child);
-
 // TODO: maybe isName shouldn't include ArrayBufferName?
 bool jsvHasCharacterData(const JsVar *v); ///< does the v->data union contain character data?
 bool jsvHasStringExt(const JsVar *v);
@@ -426,6 +423,9 @@ bool jsvHasStringExt(const JsVar *v);
 bool jsvHasChildren(const JsVar *v);
 /// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
 bool jsvHasSingleChild(const JsVar *v);
+
+/// See jsvIsNewChild - for fields that don't exist yet
+JsVar *jsvCreateNewChild(JsVar *parent, JsVar *index, JsVar *child);
 
 /// Does this variable have a 'ref' argument? Stringexts use it for extra character data
 static ALWAYS_INLINE bool jsvHasRef(const JsVar *v) { return !jsvIsStringExt(v); }

@@ -86,27 +86,36 @@ void jsvSetRefs(JsVar *v, JsVarRefCounter refs) { v->varData.ref.refs = refs; }
 unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK_SHIFT) & JSV_LOCK_MAX); }
 
 // These defines take 'f' as 'v->flags&JSV_VARTYPEMASK
+#define JSV_IS_ROOT(f) (f)==JSV_ROOT
 #define JSV_IS_NULL(f) (f)==JSV_NULL
 #define JSV_IS_PIN(f) (f)==JSV_PIN
-#define JSV_IS_BOOL(f) f==JSV_BOOLEAN || f==JSV_NAME_INT_BOOL
-#define JSV_IS_INT(f) f==JSV_INTEGER || f==JSV_PIN || f==JSV_NAME_INT || f==JSV_NAME_INT_INT || f==JSV_NAME_INT_BOOL
+#define JSV_IS_BOOL(f) ((f)==JSV_BOOLEAN || (f)==JSV_NAME_INT_BOOL)
+#define JSV_IS_INT(f) ((f)==JSV_INTEGER || (f)==JSV_PIN || (f)==JSV_NAME_INT || (f)==JSV_NAME_INT_INT || (f)==JSV_NAME_INT_BOOL)
 #define JSV_IS_NUMERIC(f) ((f)>=_JSV_NUMERIC_START && (f)<=_JSV_NUMERIC_END)
 #define JSV_IS_STRING(f) ((f)>=_JSV_STRING_START && (f)<=_JSV_STRING_END)
+#define JSV_IS_STRING_EXT(f) ((f)>=JSV_STRING_EXT_0 && (f)<=JSV_STRING_EXT_MAX)
 #define JSV_IS_ARRAY(f) (f)==JSV_ARRAY
-#define JSV_IS_OBJECT(f) (f)==JSV_OBJECT || (f)==JSV_ROOT
-#define JSV_IS_FUNCTION(f) (f)==JSV_FUNCTION || (f)==JSV_FUNCTION_RETURN || (f)==JSV_NATIVE_FUNCTION
+#define JSV_IS_OBJECT(f) ((f)==JSV_OBJECT || (f)==JSV_ROOT)
+#define JSV_IS_FUNCTION(f) ((f)==JSV_FUNCTION || (f)==JSV_FUNCTION_RETURN || (f)==JSV_NATIVE_FUNCTION)
 #define JSV_IS_ARRAYBUFFER(f) (f)==JSV_ARRAYBUFFER
+#define JSV_IS_NAME(f) ((f)>=_JSV_NAME_START && (f)<=_JSV_NAME_END)
+#define JSV_IS_NAME_WITH_VALUE(f) ((f)>=_JSV_NAME_WITH_VALUE_START && (f)<=_JSV_NAME_WITH_VALUE_END)
+#ifdef ESPR_NO_GET_SET
+#define JSV_IS_GETTER_OR_SETTER(f) false
+#else
+#define JSV_IS_GETTER_OR_SETTER(f) (f)==JSV_GET_SET
+#endif
 
 
-bool jsvIsRoot(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ROOT; }
-bool jsvIsPin(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_PIN; }
+bool jsvIsRoot(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_ROOT(f); }
+bool jsvIsPin(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_PIN(f); }
 bool jsvIsSimpleInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; } // is just a very basic integer value
 bool jsvIsInt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_INT(f); }
 bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
 bool jsvIsBoolean(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_BOOL(f); }
 bool jsvIsString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_STRING(f); } ///< String, or a NAME too
 bool jsvIsBasicString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return f>=JSV_STRING_0 && f<=JSV_STRING_MAX; } ///< Just a string (NOT a name/flatstr/nativestr or flashstr)
-bool jsvIsStringExt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return f>=JSV_STRING_EXT_0 && f<=JSV_STRING_EXT_MAX; } ///< The extra bits dumped onto the end of a string to store more data
+bool jsvIsStringExt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_STRING_EXT(f); } ///< The extra bits dumped onto the end of a string to store more data
 bool jsvIsFlatString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLAT_STRING; }
 bool jsvIsNativeString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NATIVE_STRING; }
 bool jsvIsConstant(const JsVar *v) { return v && (v->flags&JSV_CONSTANT)==JSV_CONSTANT; }
@@ -130,25 +139,23 @@ bool jsvIsUndefined(const JsVar *v) { return v==0; }
 bool jsvIsNull(const JsVar *v) { return v && JSV_IS_NULL(v->flags&JSV_VARTYPEMASK); }
 bool jsvIsNullish(const JsVar *v) { return !v || JSV_IS_NULL(v->flags&JSV_VARTYPEMASK); } // jsvIsUndefined(v) || jsvIsNull(v);
 bool jsvIsBasic(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return JSV_IS_NUMERIC(f) || JSV_IS_STRING(f); } ///< Is this *not* an array/object/etc
-bool jsvIsName(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return f>=_JSV_NAME_START && f<=_JSV_NAME_END; } ///< NAMEs are what's used to name a variable (it is not the data itself)
+bool jsvIsName(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return JSV_IS_NAME(f); } ///< NAMEs are what's used to name a variable (it is not the data itself)
 bool jsvIsBasicName(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return f>=JSV_NAME_STRING_0 && f<=JSV_NAME_STRING_MAX; } ///< Simple NAME that links to a variable via firstChild
 /// Names with values have firstChild set to a value - AND NOT A REFERENCE
-bool jsvIsNameWithValue(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return f>=_JSV_NAME_WITH_VALUE_START && f<=_JSV_NAME_WITH_VALUE_END; }
+bool jsvIsNameWithValue(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return JSV_IS_NAME_WITH_VALUE(f); }
 bool jsvIsNameInt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return f==JSV_NAME_INT_INT || (f>=JSV_NAME_STRING_INT_0 && f<=JSV_NAME_STRING_INT_MAX); } ///< Is this a NAME pointing to an Integer value
 bool jsvIsNameIntInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT; }
 bool jsvIsNameIntBool(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL; }
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
 bool jsvIsNewChild(const JsVar *v) { return jsvIsName(v) && jsvGetNextSibling(v) && jsvGetNextSibling(v)==jsvGetPrevSibling(v); }
 /// Returns true if v is a getter/setter
-bool jsvIsGetterOrSetter(const JsVar *v) {
-#ifdef ESPR_NO_GET_SET
-  return false;
-#else
-  return v && (v->flags&JSV_VARTYPEMASK)==JSV_GET_SET;
-#endif
-}
+bool jsvIsGetterOrSetter(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_GETTER_OR_SETTER(f); }
 /// Are var.varData.ref.* (excl pad) used for data (so we expect them not to be empty)
-bool jsvIsRefUsedForData(const JsVar *v) { return jsvIsStringExt(v) || (jsvIsString(v)&&!jsvIsName(v)) ||  jsvIsFloat(v) || jsvIsNativeFunction(v) || jsvIsArrayBuffer(v) || jsvIsArrayBufferName(v); }
+bool jsvIsRefUsedForData(const JsVar *v) {
+  // Used for assert - no need to optimise
+  return jsvIsStringExt(v) || (jsvIsString(v)&&!jsvIsName(v)) ||  jsvIsFloat(v) ||
+         jsvIsNativeFunction(v) || jsvIsArrayBuffer(v) || jsvIsArrayBufferName(v);
+}
 
 /// Can the given variable be converted into an integer without loss of precision
 bool jsvIsIntegerish(const JsVar *v) {  
@@ -165,6 +172,36 @@ bool jsvIsIterable(const JsVar *v) {
   return
       JSV_IS_ARRAY(f) || JSV_IS_OBJECT(f) || JSV_IS_FUNCTION(f) ||
       JSV_IS_STRING(f) || JSV_IS_ARRAYBUFFER(f);
+}
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+bool jsvHasCharacterData(const JsVar *v) {
+  if (!v) return false;
+  char f = v->flags&JSV_VARTYPEMASK;
+  return JSV_IS_STRING(f) || JSV_IS_STRING_EXT(f);
+}
+
+bool jsvHasStringExt(const JsVar *v) {
+  if (!v) return false;
+    char f = v->flags&JSV_VARTYPEMASK;
+  return JSV_IS_STRING(f) || JSV_IS_STRING_EXT(f);
+}
+
+bool jsvHasChildren(const JsVar *v) {
+  if (!v) return false;
+  char f = v->flags&JSV_VARTYPEMASK;
+  return JSV_IS_FUNCTION(f) || JSV_IS_OBJECT(f) || JSV_IS_ARRAY(f) ||
+         JSV_IS_ROOT(f) || JSV_IS_GETTER_OR_SETTER(f);
+}
+
+/// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
+bool jsvHasSingleChild(const JsVar *v) {
+  if (!v) return false;
+  char f = v->flags&JSV_VARTYPEMASK;
+  return JSV_IS_ARRAYBUFFER(f) ||
+      (JSV_IS_NAME(f) && !JSV_IS_NAME_WITH_VALUE(v));
 }
 
 // ----------------------------------------------------------------------------
@@ -422,24 +459,6 @@ void jsvShowAllocated() {
       jsvTrace(jsvGetAddressOf(i), 2);
     }
   }
-}
-
-bool jsvHasCharacterData(const JsVar *v) {
-  return jsvIsString(v) || jsvIsStringExt(v);
-}
-
-bool jsvHasStringExt(const JsVar *v) {
-  return jsvIsString(v) || jsvIsStringExt(v);
-}
-
-bool jsvHasChildren(const JsVar *v) {
-  return jsvIsFunction(v) || jsvIsObject(v) || jsvIsArray(v) || jsvIsRoot(v) || jsvIsGetterOrSetter(v);
-}
-
-/// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
-bool jsvHasSingleChild(const JsVar *v) {
-  return jsvIsArrayBuffer(v) ||
-      (jsvIsName(v) && !jsvIsNameWithValue(v));
 }
 
 /** Return the is the number of characters this one JsVar can contain, NOT string length (eg, a chain of JsVars)
