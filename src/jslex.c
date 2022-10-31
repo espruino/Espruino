@@ -24,11 +24,6 @@ JsLex *lex;
 #define JSLEX_INLINE ALWAYS_INLINE
 #endif
 
-/** Point it->ptr at LEX_EOF_BUFFER if we have no data.
-This avoids a null pointer check in jslNextCh which is called
-extremely often */
-static char LEX_EOF_BUFFER = 0;
-
 JsLex *jslSetLex(JsLex *l) {
   JsLex *old = lex;
   lex = l;
@@ -57,7 +52,7 @@ void jslCharPosNew(JslCharPos *dstpos, JsVar *src, size_t tokenStart) {
 /// Return the next character (do not move to the next character)
 static JSLEX_INLINE char jslNextCh() {
   assert(lex->it.ptr || lex->it.charIdx==0);
-  return (char)READ_FLASH_UINT8(&lex->it.ptr[lex->it.charIdx]);
+  return (char)(lex->it.ptr ? READ_FLASH_UINT8(&lex->it.ptr[lex->it.charIdx]) : 0);
 }
 
 /// Move on to the next character
@@ -84,7 +79,7 @@ static void NO_INLINE jslGetNextCh() {
       lex->it.charsInVar = jsvGetCharactersInVar(lex->it.var);
     } else {
       lex->it.var = 0;
-      lex->it.ptr = &LEX_EOF_BUFFER;
+      lex->it.ptr = 0;
       lex->it.charsInVar = 0;
       lex->it.varIndex += lex->it.charIdx;
       lex->it.charIdx = 0;
