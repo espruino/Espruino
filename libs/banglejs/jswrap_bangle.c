@@ -5640,10 +5640,12 @@ JsVar *jswrap_banglejs_appRect() {
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *widget = jsvObjectIteratorGetValue(&it);
       JsVar *area = jsvObjectGetChild(widget, "area", 0);
-      if (jsvIsString(area)) {
+      JsVar *width = jsvObjectGetChild(widget, "width", 0);
+      if (jsvIsString(area) && jsvIsNumeric(width)) {
         char a = jsvGetCharInString(area, 0);
-        if (a=='t') top=24;
-        if (a=='b') btm=24;
+        int w = jsvGetIntegerAndUnLock(width);
+        if (a=='t' && w > 0) top=24;
+        if (a=='b' && w > 0) btm=24;
       }
       jsvUnLock2(area,widget);
       jsvObjectIteratorNext(&it);
