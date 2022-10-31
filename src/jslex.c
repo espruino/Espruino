@@ -24,6 +24,11 @@ JsLex *lex;
 #define JSLEX_INLINE ALWAYS_INLINE
 #endif
 
+/** Point it->ptr at LEX_EOF_BUFFER if we have no data.
+This avoids a null pointer check in jslNextCh which is called
+extremely often */
+static char LEX_EOF_BUFFER = 0;
+
 JsLex *jslSetLex(JsLex *l) {
   JsLex *old = lex;
   lex = l;
@@ -51,7 +56,8 @@ void jslCharPosNew(JslCharPos *dstpos, JsVar *src, size_t tokenStart) {
 
 /// Return the next character (do not move to the next character)
 static JSLEX_INLINE char jslNextCh() {
-  return (char)(lex->it.ptr ? READ_FLASH_UINT8(&lex->it.ptr[lex->it.charIdx]) : 0);
+  assert(lex->it.ptr || lex->it.charIdx==0);
+  return (char)READ_FLASH_UINT8(&lex->it.ptr[lex->it.charIdx]);
 }
 
 /// Move on to the next character
@@ -78,7 +84,7 @@ static void NO_INLINE jslGetNextCh() {
       lex->it.charsInVar = jsvGetCharactersInVar(lex->it.var);
     } else {
       lex->it.var = 0;
-      lex->it.ptr = 0;
+      lex->it.ptr = &LEX_EOF_BUFFER;
       lex->it.charsInVar = 0;
       lex->it.varIndex += lex->it.charIdx;
       lex->it.charIdx = 0;
@@ -407,7 +413,7 @@ static void jslLexRegex() {
 void jslSkipWhiteSpace() {
   jslSkipWhiteSpace_start:
   // Skip whitespace
-  while (isWhitespace(lex->currCh))
+  while (isWhitespaceInline(lex->currCh))
     jslGetNextCh();
   // Search for comments
   if (lex->currCh=='/') {
@@ -466,7 +472,7 @@ void jslGetNextToken() {
       if (lex->tk == LEX_R_THIS) lex->hadThisKeyword=true;
       break;
     case JSLJT_ID: {
-      while (isAlpha(lex->currCh) || isNumeric(lex->currCh) || lex->currCh=='$') {
+      while (isAlphaInline(lex->currCh) || isNumericInline(lex->currCh) || lex->currCh=='$') {
         jslTokenAppendChar(lex->currCh);
         jslGetNextCh();
       }
@@ -531,7 +537,7 @@ void jslGetNextToken() {
         bool canBeFloating = true;
         if (lex->currCh=='.') {
           jslGetNextCh();
-          if (isNumeric(lex->currCh)) {
+          if (isNumericInline(lex->currCh)) {
             // it is a float
             lex->tk = LEX_FLOAT;
             jslTokenAppendChar('.');
@@ -552,7 +558,7 @@ void jslGetNextToken() {
             }
           }
           lex->tk = LEX_INT;
-          while (isNumeric(lex->currCh) || (!canBeFloating && isHexadecimal(lex->currCh)) || lex->currCh=='_') {
+          while (isNumericInline(lex->currCh) || (!canBeFloating && isHexadecimal(lex->currCh)) || lex->currCh=='_') {
             if (lex->currCh != '_') jslTokenAppendChar(lex->currCh);
             jslGetNextCh();
           }

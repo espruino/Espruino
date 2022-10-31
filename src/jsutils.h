@@ -417,6 +417,22 @@ typedef int64_t JsSysTime;
   #define UNALIGNED_UINT16(addr) (*(uint16_t*)addr)
 #endif
 
+/* We define these for the lexer so we can definitely get it to inline the function call */
+static ALWAYS_INLINE bool isWhitespaceInline(char ch) {
+    return (ch==0x09) || // \t - tab
+           (ch==0x0B) || // vertical tab
+           (ch==0x0C) || // form feed
+           (ch==0x20) || // space
+           (ch=='\n') ||
+           (ch=='\r');
+}
+static ALWAYS_INLINE bool isAlphaInline(char ch) {
+    return ((ch>='a') && (ch<='z')) || ((ch>='A') && (ch<='Z')) || ch=='_';
+}
+static ALWAYS_INLINE bool isNumericInline(char ch) {
+    return (ch>='0') && (ch<='9');
+}
+
 bool isWhitespace(char ch);
 bool isNumeric(char ch);
 bool isHexadecimal(char ch);
