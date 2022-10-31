@@ -201,7 +201,7 @@ bool jsvHasSingleChild(const JsVar *v) {
   if (!v) return false;
   char f = v->flags&JSV_VARTYPEMASK;
   return JSV_IS_ARRAYBUFFER(f) ||
-      (JSV_IS_NAME(f) && !JSV_IS_NAME_WITH_VALUE(v));
+      (JSV_IS_NAME(f) && !JSV_IS_NAME_WITH_VALUE(f));
 }
 
 // ----------------------------------------------------------------------------
@@ -4227,6 +4227,10 @@ JsVar *jsvCreateConfigObject(jsvConfigObject *configs, int nConfigs) {
         v = jsvNewFromInteger(*((JsVarInt*)configs[i].ptr)); break;
       case JSV_FLOAT:
         v = jsvNewFromFloat(*((JsVarFloat*)configs[i].ptr)); break;
+      default:
+        assert(0);
+        // ignore stuff we don't know about
+        break;
       }
       jsvObjectSetChildAndUnLock(o, configs[i].name, v);
     }
