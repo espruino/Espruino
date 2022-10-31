@@ -798,39 +798,48 @@ static NO_INLINE void jsvUnLockFreeIfNeeded(JsVar *var) {
   }
 }
 
+/** Unlock this variable - this is SAFE for null variables
+ * This version is used so we can ensure that the relatively
+ * simple code here gets inlined for jsvUnLock2/etc */
+static ALWAYS_INLINE void jsvUnLockInline(JsVar *var) {
+  if (!var) return;
+  assert(jsvGetLocks(var)>0);
+  /* Reduce lock count. Since ->flags is volatile
+   * it helps to explicitly save it to a var to avoid a
+   * load-store-load */
+  JsVarFlags f = var->flags -= JSV_LOCK_ONE;
+  // Now see if we can properly free the data
+  // Note: we check locks first as they are already in a register
+  if ((f & JSV_LOCK_MASK) == 0) jsvUnLockFreeIfNeeded(var);
+}
 
 /// Unlock this variable - this is SAFE for null variables
 void jsvUnLock(JsVar *var) {
-  if (!var) return;
-  assert(jsvGetLocks(var)>0);
-  var->flags -= JSV_LOCK_ONE;
-  // Now see if we can properly free the data
-  // Note: we check locks first as they are already in a register
-  if ((var->flags & JSV_LOCK_MASK) == 0) jsvUnLockFreeIfNeeded(var);
+  jsvUnLockInline(var);
 }
 
 /// Unlock 2 variables in one go
 void jsvUnLock2(JsVar *var1, JsVar *var2) {
-  jsvUnLock(var1);
-  jsvUnLock(var2);
+  jsvUnLockInline(var1);
+  jsvUnLockInline(var2);
 }
 /// Unlock 3 variables in one go
 void jsvUnLock3(JsVar *var1, JsVar *var2, JsVar *var3) {
-  jsvUnLock(var1);
-  jsvUnLock(var2);
-  jsvUnLock(var3);
+  jsvUnLockInline(var1);
+  jsvUnLockInline(var2);
+  jsvUnLockInline(var3);
 }
 /// Unlock 4 variables in one go
 void jsvUnLock4(JsVar *var1, JsVar *var2, JsVar *var3, JsVar *var4) {
-  jsvUnLock(var1);
-  jsvUnLock(var2);
-  jsvUnLock(var3);
-  jsvUnLock(var4);
+  jsvUnLockInline(var1);
+  jsvUnLockInline(var2);
+  jsvUnLockInline(var3);
+  jsvUnLockInline(var4);
 }
 
 /// Unlock an array of variables
 NO_INLINE void jsvUnLockMany(unsigned int count, JsVar **vars) {
-  while (count) jsvUnLock(vars[--count]);
+  while (count) jsvUnLockInline(vars[--count]);
 }
 
 /// Reference - set this variable as used by something
