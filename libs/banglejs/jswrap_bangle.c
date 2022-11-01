@@ -4235,19 +4235,6 @@ bool jswrap_banglejs_gps_character(char ch) {
   return true; // handled
 }
 
-/*JSON{
-    "type" : "staticproperty",
-    "class" : "Bangle",
-    "name" : "F_BEEPSET",
-    "generate_full" : "true",
-    "return" : ["bool",""],
-    "ifdef" : "BANGLEJS"
-}
-Feature flag - If true, this Bangle.js firmware reads `setting.json` and
-modifies beep & buzz behaviour accordingly (the bootloader doesn't need to do
-it).
-*/
-
 // TODO Improve TypeScript declaration
 /*JSON{
     "type" : "staticmethod",
