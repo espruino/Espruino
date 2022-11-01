@@ -227,7 +227,11 @@ parameter
 * `x/y/z` raw x,y,z magnetometer readings
 * `dx/dy/dz` readings based on calibration since magnetometer turned on
 * `heading` in degrees based on calibrated readings (will be NaN if magnetometer
-  hasn't been rotated around 360 degrees)
+  hasn't been rotated around 360 degrees).
+
+**Note:** In 2v15 firmware and earlier the heading is inverted (360-heading). There's
+a fix in the bootloader which will apply a fix for those headings, but old apps may
+still expect an inverted value.
 
 To get this event you must turn the compass on with `Bangle.setCompassPower(1)`.
 
@@ -2996,7 +3000,11 @@ Returns an `{x,y,z,dx,dy,dz,heading}` object
 * `x/y/z` raw x,y,z magnetometer readings
 * `dx/dy/dz` readings based on calibration since magnetometer turned on
 * `heading` in degrees based on calibrated readings (will be NaN if magnetometer
-  hasn't been rotated around 360 degrees)
+  hasn't been rotated around 360 degrees).
+
+**Note:** In 2v15 firmware and earlier the heading is inverted (360-heading). There's
+a fix in the bootloader which will apply a fix for those headings, but old apps may
+still expect an inverted value.
 
 To get this event you must turn the compass on with `Bangle.setCompassPower(1)`.*/
 JsVar *jswrap_banglejs_getCompass() {
@@ -3019,6 +3027,7 @@ JsVar *jswrap_banglejs_getCompass() {
     if (c>3000) { // only give a heading if we think we have valid data (eg enough magnetic field difference in min/max
       h = jswrap_math_atan2(dx,dy)*180/PI;
       if (h<0) h+=360;
+      h = 360-h; // ensure heading matches with what we'd expect from a compass
     }
     jsvObjectSetChildAndUnLock(o, "heading", jsvNewFromFloat(h));
   }
