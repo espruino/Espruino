@@ -19,6 +19,7 @@
             Bangle.js: showLauncher's 'fast load' now updates __FILE__
             Improve jsvIs* functions (because v->flags is volatile). >5% speed improvement
             Lexer speed improvements
+            Bangle.js: Compass 'heading' now provides correct value (without 360-heading) required
 
      2v15 : Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
             Fix issue accessing `arguments` after/inside 'let/const' keyword (fix #2224)
