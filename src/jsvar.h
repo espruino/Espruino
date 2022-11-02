@@ -139,16 +139,18 @@ typedef struct {
   uint16_t argTypes; ///< Actually a list of JsnArgumentType
 } PACKED_FLAGS JsVarDataNative;
 
+#if JSVARREF_SIZE==1
+typedef uint16_t JsVarDataNativeStrLength;
+#define JSV_NATIVE_STR_MAX_LENGTH 65535
+#else
+typedef uint32_t JsVarDataNativeStrLength;
+#define JSV_NATIVE_STR_MAX_LENGTH 0xFFFFFFFF
+#endif
+
 /// Data for native strings
 typedef struct {
   char *ptr;
-#if JSVARREF_SIZE==1
-  uint16_t len;
-#define JSV_NATIVE_STR_MAX_LENGTH 65535
-#else
-  uint32_t len;
-#define JSV_NATIVE_STR_MAX_LENGTH 0xFFFFFFFF
-#endif
+  JsVarDataNativeStrLength len;
 } PACKED_FLAGS JsVarDataNativeStr;
 
 /// References
@@ -233,15 +235,16 @@ typedef struct {
  sizeof(JsVar) is between 10 and 16bytes depending on JSVARREF_BITS. As an example, for a 16 byte JsVar:
 
 
- | Offset  | Size | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER |
- |---------|------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|
- | 0 - 3   | 4    | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        |
- | 4 - 5  | ?    | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
- | 6 - 7  | ?    | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
- | 8 - 9  | ?    | first   | data   | data     |  child   | child    |  -   | data?   | first          | stringPtr   |
- | 10-11  | ?    | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
- | 12-13  | ?    | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |
- | 14-15  | 2    | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       |
+ | Offset | Size | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER | NATIVE_STR | FLAT_STR |
+ |        |      |         |        |          |          |          |      |         |                |             | FLASH_STR  |          |
+ |--------|------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|------------|----------|
+ | 0 - 3  | 4    | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        | ptr        | charLen  |
+ | 4 - 5  | ?    | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      | len        | -        |
+ | 6 - 7  | ?    | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      | ..len      | -        |
+ | 8 - 9  | ?    | first   | data   | data     |  child   | child    |  -   | data?   | first          | stringPtr   | -          | -        |
+ | 10-11  | ?    | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        | refs       | refs     |
+ | 12-13  | ?    | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           | -          | -        |
+ | 14-15  | 2    | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       | Flags      | Flags    |
 
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer

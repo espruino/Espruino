@@ -1127,7 +1127,7 @@ JsVar *jsvNewNativeString(char *ptr, size_t len) {
   JsVar *str = jsvNewWithFlags(JSV_NATIVE_STRING);
   if (!str) return 0;
   str->varData.nativeStr.ptr = ptr;
-  str->varData.nativeStr.len = len;
+  str->varData.nativeStr.len = (JsVarDataNativeStrLength)len;
   return str;
 }
 
@@ -1137,7 +1137,7 @@ JsVar *jsvNewFlashString(char *ptr, size_t len) {
     JsVar *str = jsvNewWithFlags(JSV_FLASH_STRING);
     if (!str) return 0;
     str->varData.nativeStr.ptr = ptr;
-    str->varData.nativeStr.len = len;
+    str->varData.nativeStr.len = (JsVarDataNativeStrLength)len;
     return str;
 }
 #endif
@@ -1812,7 +1812,7 @@ JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength) {
     if (stridx+maxLength>l) maxLength=l-stridx;
     JsVar *res = jsvNewWithFlags(str->flags&JSV_VARTYPEMASK);
     res->varData.nativeStr.ptr = str->varData.nativeStr.ptr + stridx;
-    res->varData.nativeStr.len = maxLength;
+    res->varData.nativeStr.len = (JsVarDataNativeStrLength)maxLength;
     return res;
   }
   JsVar *var = jsvNewFromEmptyString();
@@ -4003,12 +4003,12 @@ void jsvDefragment() {
   JsVarRef defragVars[DEFRAGVARS];
   memset(defragVars, 0, sizeof(defragVars));
   int defragVarIdx = 0;
-  for (int i=0;i<jsvGetMemoryTotal();i++) {
-    JsVarRef vr = i+1;
+  for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
+    JsVarRef vr = (JsVarRef)(i+1);
     JsVar *v = _jsvGetAddressOf(vr);
     if ((v->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
       if (jsvIsFlatString(v)) {
-        i += jsvGetFlatStringBlocks(v); // skip forward
+        i += (unsigned int)jsvGetFlatStringBlocks(v); // skip forward
       } else if (jsvGetLocks(v)==0) {
         defragVars[defragVarIdx] = vr;
         defragVarIdx = (defragVarIdx+1) & (DEFRAGVARS-1);
@@ -4033,12 +4033,12 @@ void jsvDefragment() {
     *defragTo = *defragFrom;
     defragFrom->flags = JSV_UNUSED;
     // find references!
-    for (int i=0;i<jsvGetMemoryTotal();i++) {
-      JsVarRef vr = i+1;
+    for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
+      JsVarRef vr = (JsVarRef)(i+1);
       JsVar *v = _jsvGetAddressOf(vr);
       if ((v->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
         if (jsvIsFlatString(v)) {
-          i += jsvGetFlatStringBlocks(v); // skip forward
+          i += (unsigned int)jsvGetFlatStringBlocks(v); // skip forward
         } else {
           if (jsvHasSingleChild(v))
             if (jsvGetFirstChild(v)==defragFromRef)
