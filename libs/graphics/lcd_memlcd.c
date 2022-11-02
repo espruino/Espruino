@@ -158,7 +158,7 @@ void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, 
       lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (ditheredCol&0x0F);
       addr++;x++;
     }
-    for (;x<=x2;x+=2) // middle in blocks of 2, aligned so just a copy
+    for (;x<x2;x+=2) // middle in blocks of 2, aligned so just a copy
       lcdBuffer[addr++] = ditheredCol;
     if (!(x2&1)) // final pixel on an even coordinate, unaligned
       lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (ditheredCol&0xF0);
