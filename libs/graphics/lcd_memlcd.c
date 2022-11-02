@@ -135,20 +135,24 @@ void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, 
   }
   // Otherwise go line-by line
   for (int y=y1;y<=y2;y++) {
+    // 2x2 dither, so we can't work out one single pixel color
 #if LCD_BPP==3
-    // For 3 bit we have to use setPixel pretty much as-is
+    // For 3 bit, precalculate what the 2 pixels go to
+    unsigned int c[2] = {
+        lcdMemLCD_convert16toLCD(col,0,y),
+        lcdMemLCD_convert16toLCD(col,1,y)
+    };
     int bitaddr = LCD_ROWHEADER*8 + (x1*3) + (y*LCD_STRIDE*8);
     for (int x=x1;x<=x2;x++) {
       int bit = bitaddr&7;
-      unsigned int c =  lcdMemLCD_convert16toLCD(col,x,y);
       uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]);
-      b = (b & (0xFF1FFF>>bit)) | (c<<(13-bit));
+      b = (b & (0xFF1FFF>>bit)) | (c[x&1]<<(13-bit));
       *(uint16_t*)&lcdBuffer[bitaddr>>3] = __builtin_bswap16(b);
       bitaddr += 3;
     }
 #endif
 #if LCD_BPP==4
-    // For 4 bit, because we 2x2 dither we'll pre-calculate what 2 pixels on this line dither to
+    // For 4 bit, we can pack the 2 pixels into a byte
     unsigned char ditheredCol =
         lcdMemLCD_convert16toLCD(col,1,y) |
         (lcdMemLCD_convert16toLCD(col,0,y)<<4);

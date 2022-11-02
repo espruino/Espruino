@@ -118,7 +118,7 @@ devices = {
   'LED1' : { 'pin' : 'D8', 'novariable':True }, # Backlight flash for low level debug - but in code we just use 'fake' LEDs
   'LCD' : {
             'width' : 176, 'height' : 176, 
-            'bpp' : 4, # LCD is native 3 bit, but 4 is faster as writes are aligned
+            'bpp' : 3, # LCD is native 3 bit (fastest transfers), but 4 is faster for drawing and slow to transfer
             'controller' : 'LPM013M126', # LPM013M126C
             'pin_cs' : 'D5',
             'pin_extcomin' : 'D6',
