@@ -94,6 +94,8 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 #define JSV_IS_NUMERIC(f) ((f)>=_JSV_NUMERIC_START && (f)<=_JSV_NUMERIC_END)
 #define JSV_IS_STRING(f) ((f)>=_JSV_STRING_START && (f)<=_JSV_STRING_END)
 #define JSV_IS_STRING_EXT(f) ((f)>=JSV_STRING_EXT_0 && (f)<=JSV_STRING_EXT_MAX)
+#define JSV_IS_FLAT_STRING(f) (f)==JSV_FLAT_STRING
+#define JSV_IS_NATIVE_STRING(f) (f)==JSV_NATIVE_STRING
 #define JSV_IS_ARRAY(f) (f)==JSV_ARRAY
 #define JSV_IS_OBJECT(f) ((f)==JSV_OBJECT || (f)==JSV_ROOT)
 #define JSV_IS_FUNCTION(f) ((f)==JSV_FUNCTION || (f)==JSV_FUNCTION_RETURN || (f)==JSV_NATIVE_FUNCTION)
@@ -105,7 +107,12 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 #else
 #define JSV_IS_GETTER_OR_SETTER(f) (f)==JSV_GET_SET
 #endif
-
+#ifdef SPIFLASH_BASE
+#define JSV_IS_FLASH_STRING(f) (f)==JSV_FLASH_STRING
+#else
+#define JSV_IS_FLASH_STRING(f) false
+#endif
+#define JSV_IS_NONAPPENDABLE_STRING(f) (JSV_IS_FLAT_STRING(f) || JSV_IS_NATIVE_STRING(f) || JSV_IS_FLASH_STRING(f))
 
 bool jsvIsRoot(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_ROOT(f); }
 bool jsvIsPin(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_PIN(f); }
@@ -116,16 +123,10 @@ bool jsvIsBoolean(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_
 bool jsvIsString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_STRING(f); } ///< String, or a NAME too
 bool jsvIsBasicString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return f>=JSV_STRING_0 && f<=JSV_STRING_MAX; } ///< Just a string (NOT a name/flatstr/nativestr or flashstr)
 bool jsvIsStringExt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_STRING_EXT(f); } ///< The extra bits dumped onto the end of a string to store more data
-bool jsvIsFlatString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLAT_STRING; }
-bool jsvIsNativeString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NATIVE_STRING; }
+bool jsvIsFlatString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_FLAT_STRING(f); }
+bool jsvIsNativeString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_NATIVE_STRING(f); }
+bool jsvIsFlashString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_FLASH_STRING(f); }
 bool jsvIsConstant(const JsVar *v) { return v && (v->flags&JSV_CONSTANT)==JSV_CONSTANT; }
-bool jsvIsFlashString(const JsVar *v) {
-#ifdef SPIFLASH_BASE
-  return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLASH_STRING;
-#else
-  return false;
-#endif
-}
 bool jsvIsNumeric(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return f>=_JSV_NUMERIC_START && f<=_JSV_NUMERIC_END; }
 bool jsvIsFunction(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return JSV_IS_FUNCTION(f); }
 bool jsvIsFunctionReturn(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION_RETURN); } ///< Is this a function with an implicit 'return' at the start?
@@ -186,7 +187,7 @@ bool jsvHasCharacterData(const JsVar *v) {
 bool jsvHasStringExt(const JsVar *v) {
   if (!v) return false;
     char f = v->flags&JSV_VARTYPEMASK;
-  return JSV_IS_STRING(f) || JSV_IS_STRING_EXT(f);
+  return (JSV_IS_STRING(f) || JSV_IS_STRING_EXT(f)) && !JSV_IS_NONAPPENDABLE_STRING(f);
 }
 
 bool jsvHasChildren(const JsVar *v) {
@@ -468,6 +469,7 @@ size_t jsvGetMaxCharactersInVar(const JsVar *v) {
   if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_MAX_LEN;
   assert(jsvHasCharacterData(v));
   if (jsvIsName(v)) return JSVAR_DATA_STRING_NAME_LEN;
+  if (jsvIsFlatString(v) || jsvIsFlashString(v) || jsvIsNativeString(v)) return jsvGetCharactersInVar(v);
   return JSVAR_DATA_STRING_LEN;
 }
 
@@ -659,44 +661,43 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
       stringDataRef = jsvGetLastChild(child);
       jsvFreePtrInternal(child);
     }
-    // We might be a flat string
-    if (jsvIsFlatString(var)) {
-      // in which case we need to free all the blocks.
-      size_t count = jsvGetFlatStringBlocks(var);
-      JsVarRef i = (JsVarRef)(jsvGetRef(var)+count);
-      // Because this is a whole bunch of blocks, try
-      // and insert it in the right place in the free list
-      // So, iterate along free list to figure out where we
-      // need to insert the free items
-      jshInterruptOff(); // to allow this to be used from an IRQ
-      JsVarRef insertBefore = jsVarFirstEmpty;
-      JsVarRef insertAfter = 0;
-      while (insertBefore && insertBefore<i) {
-        insertAfter = insertBefore;
-        insertBefore = jsvGetNextSibling(jsvGetAddressOf(insertBefore));
-      }
-      // free in reverse, so the free list ends up in kind of the right order
-      while (count--) {
-        JsVar *p = jsvGetAddressOf(i--);
-        p->flags = JSV_UNUSED; // set locks to 0 so the assert in jsvFreePtrInternal doesn't get fed up
-        // add this to our free list
-        jsvSetNextSibling(p, insertBefore);
-        insertBefore = jsvGetRef(p);
-      }
-      // patch up jsVarFirstEmpty/rejoin the list
-      if (insertAfter)
-        jsvSetNextSibling(jsvGetAddressOf(insertAfter), insertBefore);
-      else
-        jsVarFirstEmpty = insertBefore;
-      touchedFreeList = true;
-      jshInterruptOn();
-    } else if (jsvIsBasicString(var)) {
-#ifdef CLEAR_MEMORY_ON_FREE
+    if (jsvIsBasicString(var)) {
+  #ifdef CLEAR_MEMORY_ON_FREE
       jsvSetFirstChild(var, 0); // firstchild could have had string data in
-#endif // CLEAR_MEMORY_ON_FREE
+  #endif // CLEAR_MEMORY_ON_FREE
     }
-
+  } else if (jsvIsFlatString(var)) { // We might be a flat string (we're not allowing strings to be added to flat strings yet)
+    // in which case we need to free all the blocks.
+    size_t count = jsvGetFlatStringBlocks(var);
+    JsVarRef i = (JsVarRef)(jsvGetRef(var)+count);
+    // Because this is a whole bunch of blocks, try
+    // and insert it in the right place in the free list
+    // So, iterate along free list to figure out where we
+    // need to insert the free items
+    jshInterruptOff(); // to allow this to be used from an IRQ
+    JsVarRef insertBefore = jsVarFirstEmpty;
+    JsVarRef insertAfter = 0;
+    while (insertBefore && insertBefore<i) {
+      insertAfter = insertBefore;
+      insertBefore = jsvGetNextSibling(jsvGetAddressOf(insertBefore));
+    }
+    // free in reverse, so the free list ends up in kind of the right order
+    while (count--) {
+      JsVar *p = jsvGetAddressOf(i--);
+      p->flags = JSV_UNUSED; // set locks to 0 so the assert in jsvFreePtrInternal doesn't get fed up
+      // add this to our free list
+      jsvSetNextSibling(p, insertBefore);
+      insertBefore = jsvGetRef(p);
+    }
+    // patch up jsVarFirstEmpty/rejoin the list
+    if (insertAfter)
+      jsvSetNextSibling(jsvGetAddressOf(insertAfter), insertBefore);
+    else
+      jsVarFirstEmpty = insertBefore;
+    touchedFreeList = true;
+    jshInterruptOn();
   }
+
   /* NO ELSE HERE - because jsvIsNewChild stuff can be for Names, which
     can be ints or strings */
 
@@ -3604,7 +3605,13 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       // Don't copy 'da' if it's not used elsewhere (eg we made it in 'jsvAsString' above)
       if (jsvIsBasicString(da) && jsvGetLocks(da)==1 && jsvGetRefs(da)==0)
         v = jsvLockAgain(da);
-      else
+      else if (JSV_IS_NONAPPENDABLE_STRING(da->flags & JSV_VARTYPEMASK)) {
+        // It's a string, but it can't be appended - don't copy as copying will just keep the same var type!
+        // Instead we create a new string var by copying
+        // opt: should we allocate a flat string here? but repeated appends would then be slow
+        v = jsvNewFromEmptyString(); // don't use jsvNewFromStringVar as this does a copy for native/flash strs too
+        if (v) jsvAppendStringVar(v, da, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+      } else // otherwise just copy it
         v = jsvCopy(da, false);
       if (v) // could be out of memory
         jsvAppendStringVarComplete(v, db);
@@ -3836,7 +3843,7 @@ static bool jsvGarbageCollectMarkUsed(JsVar *var) {
   JsVarRef child;
   JsVar *childVar;
 
-  if (jsvHasCharacterData(var)) {
+  if (jsvHasStringExt(var)) {
     // non-recursively scan strings
     child = jsvGetLastChild(var);
     while (child) {

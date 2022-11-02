@@ -359,6 +359,8 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
    * be smaller than charIdx, which will force a new string to be
    * appended onto the end  */
   if (it->charIdx >= jsvGetMaxCharactersInVar(it->var)) {
+    assert(jsvHasStringExt(it->var)); // we can't add to something if we can't add a StringExt!
+    if (!jsvHasStringExt(it->var)) return; // safety check!
     assert(!jsvGetLastChild(it->var));
     JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
     if (!next) {
