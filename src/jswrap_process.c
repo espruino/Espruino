@@ -125,6 +125,10 @@ Returns an Object containing various pre-defined variables.
 
 For example, to get a list of built-in modules, you can use
 `process.env.MODULES.split(',')`
+
+**Note:** `process.env` is not writeable - so as not to waste RAM, the contents
+are generated on demand. If you need to be able to change them, use `process.env=process.env;`
+first to ensure the values stay allocated.
 */
 JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewObject();
@@ -185,6 +189,8 @@ memory usage.
 * `stackEndAddress` : (on ARM) the address (that can be used with peek/poke/etc)
   of the END of the stack. The stack grows down, so unless you do a lot of
   recursion the bytes above this can be used.
+* `stackFree` : (on ARM) how many bytes of free execution stack are there
+  at the point of execution.
 * `flash_start` : (on ARM) the address of the start of flash memory (usually
   `0x8000000`)
 * `flash_binary_end` : (on ARM) the address in flash memory of the end of
@@ -233,6 +239,7 @@ JsVar *jswrap_process_memory(JsVar *gc) {
     extern uint32_t LINKER_END_VAR; // end of ram used (variables) - should be 'void', but 'int' avoids warnings
     extern uint32_t LINKER_ETEXT_VAR; // end of flash text (binary) section - should be 'void', but 'int' avoids warnings
     jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_END_VAR));
+    jsvObjectSetChildAndUnLock(obj, "stackFree", jsvNewFromInteger((JsVarInt)(unsigned int)jsuGetFreeStack()));
     jsvObjectSetChildAndUnLock(obj, "flash_start", jsvNewFromInteger((JsVarInt)FLASH_START));
     jsvObjectSetChildAndUnLock(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_ETEXT_VAR));
     jsvObjectSetChildAndUnLock(obj, "flash_code_start", jsvNewFromInteger((JsVarInt)FLASH_SAVED_CODE_START));
