@@ -18,6 +18,7 @@
 #include "jsinteractive.h"
 #include "lcd_memlcd.h"
 #include "jswrap_graphics.h"
+#include "jswrap_espruino.h" // for reversebyte
 
 // ======================================================================
 
@@ -62,16 +63,9 @@ const unsigned short BAYER2[2][2] = {
 static ALWAYS_INLINE unsigned int lcdMemLCD_convert16toLCD(unsigned int c, int x, int y) {
   c = (c&0b1110011100011100) + BAYER2[y&1][x&1];
   return
-#if LCD_BPP==3
-      ((c&0x10000)?4:0) |
+      ((c&0x10000)?1:0) |
       ((c&0x00800)?2:0) |
-      ((c&0x00020)?1:0);
-#endif
-#if LCD_BPP==4 // LCD in 4-bit mode has LSB ignored
-      ((c&0x10000)?8:0) |
-      ((c&0x00800)?4:0) |
-      ((c&0x00020)?2:0);
-#endif
+      ((c&0x00020)?4:0);
 }
 
 /** 'Flip' now ends while data is still sending to the LCD. This
@@ -94,32 +88,41 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 #if LCD_BPP==3
   int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
   int bit = bitaddr&7;
-  uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]); // get in MSB format
-  unsigned int c = ((b<<bit) & 0xE000) >> 13;
+  uint16_t b = *(uint16_t*)&lcdBuffer[bitaddr>>3]; // get in MSB format
+  unsigned int c = (b>>bit) & 0x7;
 #endif
 #if LCD_BPP==4
   int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
   unsigned char b = lcdBuffer[addr];
   unsigned int c = (x&1) ? ((b>>1)&7) : (b>>5);
 #endif
-  return GRAPHICS_COL_3_TO_16(c);
+  return  ((((c)&1)?0xF800:0)|(((c)&2)?0x07E0:0)|(((c)&4)?0x001F:0));
 }
 
+/*
 
+
+ 0123456701234567
+ RGB               bpp=0,
+              RGB  bpp=13
+
+
+
+
+ */
 void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
   col =  lcdMemLCD_convert16toLCD(col,x,y);
   lcdMemLCD_waitForSendComplete();
 #if LCD_BPP==3
   int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
   int bit = bitaddr&7;
-  uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]);
-  b = (b & (0xFF1FFF>>bit)) | (col<<(13-bit));
-  *(uint16_t*)&lcdBuffer[bitaddr>>3] = __builtin_bswap16(b);
+  uint16_t b = *(uint16_t*)&lcdBuffer[bitaddr>>3];
+  *(uint16_t*)&lcdBuffer[bitaddr>>3] = (b & ~(7<<bit)) | (col<<bit);
 #endif
 #if LCD_BPP==4
   int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
-  if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | col;
-  else lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (col << 4);
+  if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (col << 4);
+  else lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | col;
 #endif
 }
 
@@ -145,27 +148,26 @@ void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, 
     int bitaddr = LCD_ROWHEADER*8 + (x1*3) + (y*LCD_STRIDE*8);
     for (int x=x1;x<=x2;x++) {
       int bit = bitaddr&7;
-      uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]);
-      b = (b & (0xFF1FFF>>bit)) | (c[x&1]<<(13-bit));
-      *(uint16_t*)&lcdBuffer[bitaddr>>3] = __builtin_bswap16(b);
+      uint16_t b = *(uint16_t*)&lcdBuffer[bitaddr>>3];
+      *(uint16_t*)&lcdBuffer[bitaddr>>3] = (b & ~(7<<bit)) | (c[x&1]<<bit);
       bitaddr += 3;
     }
 #endif
 #if LCD_BPP==4
     // For 4 bit, we can pack the 2 pixels into a byte
     unsigned char ditheredCol =
-        lcdMemLCD_convert16toLCD(col,1,y) |
-        (lcdMemLCD_convert16toLCD(col,0,y)<<4);
+        lcdMemLCD_convert16toLCD(col,0,y) |
+        (lcdMemLCD_convert16toLCD(col,1,y)<<4);
     int x=x1;
     int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
     if (x&1) { // first pixel on odd coordinate, unaligned
-      lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (ditheredCol&0x0F);
+      lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (ditheredCol&0xF0);
       addr++;x++;
     }
     for (;x<x2;x+=2) // middle in blocks of 2, aligned so just a copy
       lcdBuffer[addr++] = ditheredCol;
     if (!(x2&1)) // final pixel on an even coordinate, unaligned
-      lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (ditheredCol&0xF0);
+      lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (ditheredCol&0x0F);
 #endif
   }
 }
@@ -178,19 +180,19 @@ static void lcdMemLCD_scrollX(struct JsGraphics *gfx, unsigned char *dst, unsign
   if (xdir==0) {
     memcpy(dst, src, LCD_STRIDE);
   } else if (xdir<0) {
-    int shiftBits = -xdir * LCD_BPP;
+    int shiftBits = -xdir * LCD_BPP; // shiftBits positive
     int shiftWords = shiftBits>>5;
     shiftBits &= 31;
     int wordLen = (LCD_WIDTH*LCD_BPP - shiftBits)>>5;
     for (int x=0;x<=wordLen;x++)
-      dw[x] = __builtin_bswap32((__builtin_bswap32(sw[x+shiftWords])<<shiftBits) | __builtin_bswap32(sw[x+shiftWords+1])>>(32-shiftBits));
+      dw[x] = (sw[x+shiftWords]>>shiftBits) | (sw[x+shiftWords+1]<<(32-shiftBits));
   } else { // >0
     int shiftBits = xdir * LCD_BPP;
     int shiftWords = shiftBits>>5;
     shiftBits &= 31;
     int wordLen = (LCD_WIDTH*LCD_BPP + 15 - shiftBits)>>5;
     for (int x=0;x<=wordLen;x++)
-      dw[x] = __builtin_bswap32((__builtin_bswap32(sw[x-shiftWords])>>shiftBits) | __builtin_bswap32(sw[x-(shiftWords+1)])<<(32-shiftBits));
+      dw[x] = (sw[x-shiftWords]<<shiftBits) | (sw[x-(shiftWords+1)]>>(32-shiftBits));
   }
 }
 
@@ -230,7 +232,6 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
 #ifdef EMULATED
   EMSCRIPTEN_GFX_CHANGED = true;
 #endif
-  bool wasBusy = lcdIsBusy;
   lcdMemLCD_waitForSendComplete();
 
   int y1 = gfx->data.modMinY;
@@ -323,12 +324,12 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   memset(lcdBuffer,0,sizeof(lcdBuffer));
   for (int y=0;y<LCD_HEIGHT;y++) {
 #if LCD_BPP==3
-    lcdBuffer[y*LCD_STRIDE]=0b10000000;
+    lcdBuffer[y*LCD_STRIDE]=jswrap_espruino_reverseByte(0b10000000);
 #endif
 #if LCD_BPP==4
-    lcdBuffer[y*LCD_STRIDE]=0b10010000;
+    lcdBuffer[y*LCD_STRIDE]=jswrap_espruino_reverseByte(0b10010000);
 #endif
-    lcdBuffer[(y*LCD_STRIDE)+1]=y+1;
+    lcdBuffer[(y*LCD_STRIDE)+1]=jswrap_espruino_reverseByte(y+1);
   }
 
   jshPinOutput(LCD_SPI_CS,0);
@@ -342,6 +343,7 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   inf.baudRate = 4000000; // it seems 8000000 is too fast to be reliable
   inf.pinMOSI = LCD_SPI_MOSI;
   inf.pinSCK = LCD_SPI_SCK;
+  inf.spiMSB = false; // LSB first!
   jshSPISetup(LCD_SPI, &inf);
 }
 
