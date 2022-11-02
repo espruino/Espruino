@@ -1696,22 +1696,25 @@ JsVar *jswrap_espruino_CRC32(JsVar *data) {
     ["hue","float","The hue, as a value between 0 and 1"],
     ["sat","float","The saturation, as a value between 0 and 1"],
     ["bri","float","The brightness, as a value between 0 and 1"],
-    ["asArray","bool","If true, return an array of [R,G,B] values betwen 0 and 255"]
+    ["format","int","If `true` or `1`, return an array of [R,G,B] values betwen 0 and 255. If `16`, return a 16 bit number. `undefined`/`24` is the same as normal (returning a 24 bit number)"]
   ],
   "return" : ["JsVar","A 24 bit number containing bytes representing red, green, and blue `0xBBGGRR`. Or if `asArray` is true, an array `[R,G,B]`"],
   "typescript" : [
-    "HSBtoRGB(hue: number, sat: number, bri: number, asArray?: false): number;",
-    "HSBtoRGB(hue: number, sat: number, bri: number, asArray: true): [number, number, number];"
+    "HSBtoRGB(hue: number, sat: number, bri: number, format?: false): number;",
+    "HSBtoRGB(hue: number, sat: number, bri: number, format: 16): number;",
+    "HSBtoRGB(hue: number, sat: number, bri: number, format: 24): number;",
+    "HSBtoRGB(hue: number, sat: number, bri: number, format: true): [number, number, number];"
   ]
 }
 Convert hue, saturation and brightness to red, green and blue (packed into an
 integer if `asArray==false` or an array if `asArray==true`).
 
 This replaces `Graphics.setColorHSB` and `Graphics.setBgColorHSB`. On devices
-with 24 bit colour it can be used as: `Graphics.setColor(E.HSBtoRGB(h, s, b))`
+with 24 bit colour it can be used as: `Graphics.setColor(E.HSBtoRGB(h, s, b))`,
+or on devices with 26 bit colour use `Graphics.setColor(E.HSBtoRGB(h, s, b, 16))`
 
 You can quickly set RGB items in an Array or Typed Array using
-`array.set(E.HSBtoRGB(h, s, b,true), offset)`, which can be useful with arrays
+`array.set(E.HSBtoRGB(h, s, b, true), offset)`, which can be useful with arrays
 used with `require("neopixel").write`.
  */
 int jswrap_espruino_HSBtoRGB_int(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri) {
@@ -1747,13 +1750,21 @@ int jswrap_espruino_HSBtoRGB_int(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri)
     return (b<<16) | (g<<8) | r;
   }
 }
-JsVar *jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri, bool asArray) {
+JsVar *jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri, int format) {
   int rgb = jswrap_espruino_HSBtoRGB_int(hue, sat, bri);
-  if (!asArray) return jsvNewFromInteger(rgb);
+  if (format==0 || format==24) return jsvNewFromInteger(rgb);
+  int r = rgb&0xFF;
+  int g = (rgb>>8)&0xFF;
+  int b = (rgb>>16)&0xFF;
+  if (format==16) return jsvNewFromInteger((unsigned int)((b>>3) | (g>>2)<<5 | (r>>3)<<11));
+  if (format!=1) {
+    jsExceptionHere(JSET_ERROR, "HSBtoRGB's format arg expects undefined/1/16/24");
+    return 0;
+  }
   JsVar *arrayElements[] = {
-      jsvNewFromInteger(rgb&0xFF),
-      jsvNewFromInteger((rgb>>8)&0xFF),
-      jsvNewFromInteger((rgb>>16)&0xFF)
+      jsvNewFromInteger(r),
+      jsvNewFromInteger(g),
+      jsvNewFromInteger(b)
   };
   JsVar *arr = jsvNewArray(arrayElements, 3);
   jsvUnLockMany(3, arrayElements);

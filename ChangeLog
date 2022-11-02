@@ -23,6 +23,8 @@
             Bangle.js: Remove F_BEEPSET feature flag (now 3 years old)
             Espruino: Ensure flash/native strings really can't be appended to (fix #2282)
             Bangle.js2: Switch to 4 bit LCD mode (3900b wasted, but 5x fill speed increase)
+            process.memory() reports `stackFree` which allows us to easily check if we're ok for recursion
+            E.HSBtoRGB can now be called with `E.HSBtoRGB(h,s,b,16)` to return a 16 bit value suitable for Bangle.js/etc
 
      2v15 : Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
             Fix issue accessing `arguments` after/inside 'let/const' keyword (fix #2224)
