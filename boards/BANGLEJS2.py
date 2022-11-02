@@ -25,6 +25,7 @@ info = {
 # 'default_console_rx' : "D8",
 # 'default_console_baudrate' : "9600",
  'variables' : 12000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+                      # Currently leaves around 38k of free stack - *loads* more than we need
  'io_buffer_size' : 512, # How big is the input buffer (in 4 byte words). Default on nRF52 is 256
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_banglejs2.hex',
@@ -117,7 +118,7 @@ devices = {
   'LED1' : { 'pin' : 'D8', 'novariable':True }, # Backlight flash for low level debug - but in code we just use 'fake' LEDs
   'LCD' : {
             'width' : 176, 'height' : 176, 
-            'bpp' : 3,
+            'bpp' : 4, # LCD is native 3 bit, but 4 is faster as writes are aligned
             'controller' : 'LPM013M126', # LPM013M126C
             'pin_cs' : 'D5',
             'pin_extcomin' : 'D6',

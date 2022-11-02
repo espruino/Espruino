@@ -59,12 +59,19 @@ const unsigned short BAYER2[2][2] = {
     { BAYER_RGBSHIFT(7), BAYER_RGBSHIFT(3) }
 };
 
-static unsigned int lcdMemLCD_convert16to3(unsigned int c, int x, int y) {
+static ALWAYS_INLINE unsigned int lcdMemLCD_convert16toLCD(unsigned int c, int x, int y) {
   c = (c&0b1110011100011100) + BAYER2[y&1][x&1];
   return
+#if LCD_BPP==3
       ((c&0x10000)?4:0) |
       ((c&0x00800)?2:0) |
       ((c&0x00020)?1:0);
+#endif
+#if LCD_BPP==4 // LCD in 4-bit mode has LSB ignored
+      ((c&0x10000)?8:0) |
+      ((c&0x00800)?4:0) |
+      ((c&0x00020)?2:0);
+#endif
 }
 
 /** 'Flip' now ends while data is still sending to the LCD. This
@@ -72,7 +79,7 @@ static unsigned int lcdMemLCD_convert16to3(unsigned int c, int x, int y) {
  * has occurred) which we'll need to do before we next modify what
  * is on the LCD.
  */
-void lcdMemLCD_waitForSendComplete() {
+static ALWAYS_INLINE void lcdMemLCD_waitForSendComplete() {
   int timeout = 1000000;
   while (lcdIsBusy && --timeout) {};
   if (lcdIsBusy) {
@@ -100,7 +107,7 @@ unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 
 
 void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
-  col = lcdMemLCD_convert16to3(col,x,y);
+  col =  lcdMemLCD_convert16toLCD(col,x,y);
   lcdMemLCD_waitForSendComplete();
 #if LCD_BPP==3
   int bitaddr = LCD_ROWHEADER*8 + (x*3) + (y*LCD_STRIDE*8);
@@ -111,14 +118,14 @@ void lcdMemLCD_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 #endif
 #if LCD_BPP==4
   int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
-  if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (col<<1);
-  else lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (col << 5);
+  if (x&1) lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | col;
+  else lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (col << 4);
 #endif
 }
 
-#if LCD_BPP==3
 void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   lcdMemLCD_waitForSendComplete();
+  // Super-fast fill if whole width
   if (x1==0 && x2==LCD_WIDTH-1 && (col==0 || col==0xFFFF)) {
     for (int y=y1;y<=y2;y++) {
       int addr = LCD_ROWHEADER + y*LCD_STRIDE;
@@ -126,19 +133,39 @@ void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, 
     }
     return;
   }
+  // Otherwise go line-by line
   for (int y=y1;y<=y2;y++) {
+#if LCD_BPP==3
+    // For 3 bit we have to use setPixel pretty much as-is
     int bitaddr = LCD_ROWHEADER*8 + (x1*3) + (y*LCD_STRIDE*8);
     for (int x=x1;x<=x2;x++) {
       int bit = bitaddr&7;
-      unsigned int c = lcdMemLCD_convert16to3(col,x,y);
+      unsigned int c =  lcdMemLCD_convert16toLCD(col,x,y);
       uint16_t b = __builtin_bswap16(*(uint16_t*)&lcdBuffer[bitaddr>>3]);
       b = (b & (0xFF1FFF>>bit)) | (c<<(13-bit));
       *(uint16_t*)&lcdBuffer[bitaddr>>3] = __builtin_bswap16(b);
       bitaddr += 3;
     }
+#endif
+#if LCD_BPP==4
+    // For 4 bit, because we 2x2 dither we'll pre-calculate what 2 pixels on this line dither to
+    unsigned char ditheredCol =
+        lcdMemLCD_convert16toLCD(col,1,y) |
+        (lcdMemLCD_convert16toLCD(col,0,y)<<4);
+    int x=x1;
+    int addr = LCD_ROWHEADER + (x>>1) + (y*LCD_STRIDE);
+    if (x&1) { // first pixel on odd coordinate, unaligned
+      lcdBuffer[addr] = (lcdBuffer[addr] & 0xF0) | (ditheredCol&0x0F);
+      addr++;x++;
+    }
+    for (;x<=x2;x+=2) // middle in blocks of 2, aligned so just a copy
+      lcdBuffer[addr++] = ditheredCol;
+    if (!(x2&1)) // final pixel on an even coordinate, unaligned
+      lcdBuffer[addr] = (lcdBuffer[addr] & 0x0F) | (ditheredCol&0xF0);
+#endif
   }
 }
-#endif
+
 
 static void lcdMemLCD_scrollX(struct JsGraphics *gfx, unsigned char *dst, unsigned char *src, int xdir) {
   uint32_t *dw = (uint32_t*)&dst[LCD_ROWHEADER];
@@ -351,9 +378,7 @@ void lcdMemLCD_setOverlay(JsVar *imgVar, int x, int y) {
 
 void lcdMemLCD_setCallbacks(JsGraphics *gfx) {
   gfx->setPixel = lcdMemLCD_setPixel;
-#if LCD_BPP==3
   gfx->fillRect = lcdMemLCD_fillRect;
-#endif
   gfx->getPixel = lcdMemLCD_getPixel;
   gfx->scroll = lcdMemLCD_scroll;
 }
