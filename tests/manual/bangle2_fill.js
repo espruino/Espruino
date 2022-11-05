@@ -1,6 +1,6 @@
 /*
 make clean
-BOARD=BANGLEJS2_LINUX DEBUG=1 make && ./espruino_banglejs2 tests/manual/bangle2_fill.js && display test.bmp
+BOARD=BANGLEJS2_LINUX DEBUG=1 make && ./espruino_banglejs2 tests/manual/bangle2_fill.js && display tests/manual/bangle2_fill.out.bmp
 compare tests/manual/bangle2_fill.bmp tests/manual/bangle2_fill.out.bmp
 */
 

@@ -130,27 +130,70 @@ void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, 
   lcdMemLCD_waitForSendComplete();
   // Super-fast fill if whole width
   if (x1==0 && x2==LCD_WIDTH-1 && (col==0 || col==0xFFFF)) {
+    int addr = LCD_ROWHEADER + y1*LCD_STRIDE;
     for (int y=y1;y<=y2;y++) {
-      int addr = LCD_ROWHEADER + y*LCD_STRIDE;
       memset(&lcdBuffer[addr], (col==0)?0:0xFF, LCD_STRIDE-LCD_ROWHEADER);
+      addr += LCD_STRIDE;
     }
     return;
   }
-  // Otherwise go line-by line
-  for (int y=y1;y<=y2;y++) {
-    // 2x2 dither, so we can't work out one single pixel color
+  /* Otherwise go line-by line. 2x2 dithering means we're not writing the
+   * same color to every pixel, so we usually work out what a 2x2 block
+   * or 2x1 row is beforehand to save time
+   */
+
 #if LCD_BPP==3
+  /* On 3bpp if we're filling a small width of pixels, just set them
+  individually - it's possible to do with a mask too, but it hurts
+  my head and it's not quite as big a performance improvement. */
+  if (x2-x1 < 8) {
     // For 3 bit, precalculate what the 2 pixels go to
-    unsigned int c[2] = {
-        lcdMemLCD_convert16toLCD(col,0,y),
-        lcdMemLCD_convert16toLCD(col,1,y)
+    unsigned int cols[2][2] = {
+        { lcdMemLCD_convert16toLCD(col,0,0), lcdMemLCD_convert16toLCD(col,1,0) }, // even row
+        { lcdMemLCD_convert16toLCD(col,0,1), lcdMemLCD_convert16toLCD(col,1,1) } // odd row
     };
-    int bitaddr = LCD_ROWHEADER*8 + (x1*3) + (y*LCD_STRIDE*8);
-    for (int x=x1;x<=x2;x++) {
-      int bit = bitaddr&7;
-      uint16_t b = *(uint16_t*)&lcdBuffer[bitaddr>>3];
-      *(uint16_t*)&lcdBuffer[bitaddr>>3] = (b & ~(7<<bit)) | (c[x&1]<<bit);
-      bitaddr += 3;
+    // write pixels individually
+    for (int y=y1;y<=y2;y++) {
+      unsigned int *c = cols[y&1];
+      int bitaddr = LCD_ROWHEADER*8 + (x1*3) + (y*LCD_STRIDE*8);
+      for (int x=x1;x<=x2;x++) {
+        int bit = bitaddr&7;
+        uint16_t b = *(uint16_t*)&lcdBuffer[bitaddr>>3];
+        *(uint16_t*)&lcdBuffer[bitaddr>>3] = (b & ~(7<<bit)) | (c[x&1]<<bit);
+        bitaddr += 3;
+      }
+    }
+    return;
+  }
+#endif
+
+  for (int y=y1;y<=y2;y++) {
+#if LCD_BPP==3
+    // For 3 bit with a lot of pixels, precalculate what the 2 pixels go to, then build up a 24 bit block
+    unsigned int c = lcdMemLCD_convert16toLCD(col,0,y) | lcdMemLCD_convert16toLCD(col,1,y)<<3;
+    c |= c<<6;
+    c |= c<<12;
+    /* Now things get a bit crazy - instead of doing every pixel we just mask off
+     what we need from the 24 bit block of colour (8 pixels) and write it in  */
+    uint8_t *row = (uint8_t*)&lcdBuffer[LCD_ROWHEADER + y*LCD_STRIDE];
+    if (x1&7) { // do the first block before we're aligned (up to 8 pixels)
+      int byteAddr = (x1>>3)*3;
+      int bit = x1&7;
+      uint32_t *pixels = (uint32_t*)&row[byteAddr];
+      uint32_t mask = (0xFFFFFF<<(bit*3)) & 0xFFFFFF;
+      *pixels = (*pixels&~mask) | (c&mask);
+    }
+    for (int x=(x1+7)>>3;x<(x2+1)>>3;x++) { // do the middle blocks of 24 bits (8 pixels)
+      uint32_t *pixels = (uint32_t*)&row[x*3];
+      uint32_t mask = 0xFFFFFF;
+      *pixels = (*pixels&~mask) | (c&mask);
+    }
+    if ((x2+1)&7) { // do the final block after we're aligned (up to 8 pixels)
+      int byteAddr = ((x2+1)>>3)*3;
+      int bit = (x2+1)&7;
+      uint32_t *pixels = (uint32_t*)&row[byteAddr];
+      uint32_t mask = (0xFFFFFF<<(bit*3)) | 0xFF000000;
+      *pixels = (*pixels&mask) | (c&~mask);
     }
 #endif
 #if LCD_BPP==4
