@@ -1349,7 +1349,7 @@ void jsfResetStorage() {
 #if ESPR_STORAGE_INITIAL_CONTENTS
   // if we store initial contents, write them here after erasing storage
   jsiConsolePrintf("Writing initial storage contents...\n");
-  extern const char jsfStorageInitialContents[];
+  extern const unsigned char jsfStorageInitialContents[];
   extern const int jsfStorageInitialContentLength;
   jshFlashWrite(jsfStorageInitialContents, FLASH_SAVED_CODE_START, jsfStorageInitialContentLength);
   jsiConsolePrintf("Write complete.\n");
