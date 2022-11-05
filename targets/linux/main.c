@@ -417,6 +417,7 @@ int main(int argc, char **argv) {
         if (i + 1 >= argc)
           fatal(1, "Expecting an extra argument");
         jshInit();
+        jswHWInit();
         jsvInit(JSVAR_CACHE_SIZE);
         jsiInit(true);
         addNativeFunction("quit", nativeQuit);
@@ -503,6 +504,7 @@ int main(int argc, char **argv) {
         cmd++;
     }
     jshInit();
+    jswHWInit();
     jsvInit(JSVAR_CACHE_SIZE);
     jsiInit(false /* do not autoload!!! */);
     addNativeFunction("quit", nativeQuit);
@@ -546,6 +548,7 @@ int main(int argc, char **argv) {
 #endif //!__MINGW32__
 
   jshInit();
+  jswHWInit();
   jsvInit(JSVAR_CACHE_SIZE);
   jsiInit(true);
 

@@ -19,6 +19,7 @@
 #include "jsinteractive.h"
 #include "jsi2c.h"
 
+#ifndef EMULATED
 
 extern JshI2CInfo i2cHRM;
 HrmCallback hrmCallback;
@@ -865,3 +866,5 @@ void hrm_sensor_init() {
   if (hrmCallback!=NULL) // if is running
     vc31_watch_on();
 }
+
+#endif

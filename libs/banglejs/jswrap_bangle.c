@@ -3230,7 +3230,7 @@ NO_INLINE void jswrap_banglejs_hwinit() {
   i2cInternal.pinSCL = ACCEL_PIN_SCL;
   i2cInternal.clockStretch = false;
   jsi2cSetup(&i2cInternal);
-#endif
+#endif // BANGLEJS_Q3/ACCEL_PIN_SDA
 #ifdef BANGLEJS_Q3
   // Touch init
   jshPinOutput(TOUCH_PIN_RST, 0);
@@ -3271,8 +3271,9 @@ NO_INLINE void jswrap_banglejs_hwinit() {
   jswrap_banglejs_pwrBacklight(true); // backlight on
   jshDelayMicroseconds(10000);
 #endif
-#endif
+#endif //EMULATED
   // we need ESPR_GRAPHICS_INTERNAL=1
+
   graphicsStructInit(&graphicsInternal, LCD_WIDTH, LCD_HEIGHT, LCD_BPP);
 #ifdef LCD_CONTROLLER_LPM013M126
   graphicsInternal.data.type = JSGRAPHICSTYPE_MEMLCD;
