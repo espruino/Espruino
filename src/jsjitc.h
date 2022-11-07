@@ -69,6 +69,8 @@ void jsjcEmitBlock(JsVar *block);
 // Get what byte we're at in our code
 int jsjcGetByteCount();
 
+// Add 8 bit literal
+void jsjcLiteral8(int reg, uint8_t data);
 // Add 16 bit literal
 void jsjcLiteral16(int reg, bool hi16, uint16_t data);
 // Add 32 bit literal

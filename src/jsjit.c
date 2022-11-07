@@ -204,6 +204,21 @@ NO_INLINE JsVar *_jsxMathsOpSkipNamesAndUnLock(JsVar *a, JsVar *b, int op) {
   return r;
 }
 
+// Add a variable to the current scope (eg VAR statement)
+NO_INLINE void _jsxAddVar(const char *name, bool isConstant, JsVar *initialValue) {
+  JsVar *scope = jspeiGetTopScope();
+  JsVar *a = jsvFindChildFromString(scope, name, true);
+  jsvUnLock(scope);
+  if (!a) return; // no memory
+  if (isConstant)
+    a->flags |= JSV_CONSTANT;
+  if (initialValue) {
+    initialValue = jsvSkipNameAndUnLock(initialValue);
+    jsvReplaceWith(a, initialValue);
+  }
+  jsvUnLock2(a,initialValue);
+}
+
 // Parse ./[] - return true if the parent of the current item is currently on the stack
 bool jsjFactorMember() {
   bool parentOnStack = false;
@@ -567,6 +582,35 @@ void jsjBlock() {
   JSP_MATCH('}');
 }
 
+void jsjStatementVar() {
+  assert(lex->tk==LEX_R_VAR || lex->tk==LEX_R_LET || lex->tk==LEX_R_CONST);
+  // FIXME: Ignore block scoping for now
+  bool isConstant = lex->tk==LEX_R_CONST;
+  jslGetNextToken();
+  bool hasComma = true; // for first time in loop
+  while (hasComma && lex->tk == LEX_ID && JSJ_PARSING) {
+    JsVar *a = 0;
+    // Get the name
+    JsVar *name = jslGetTokenValueAsVar();
+    JSP_ASSERT_MATCH(LEX_ID);
+    bool hasInitialiser = lex->tk == '=';
+    if (hasInitialiser) { // sort out initialiser
+      JSP_ASSERT_MATCH('=');
+      jsjAssignmentExpression();
+
+    }
+    // _jsxAddVar(r0:name, r1:isConstant, r2:initialValue)
+    jsjcLiteralString(0, name, true); // null terminated
+    jsvUnLock(name);
+    jsjcLiteral8(1, isConstant?1:0); // r1 -> if we're a constant
+    if (hasInitialiser) jsjPopAsVar(2); // r2 -> initial value
+    else jsjcLiteral8(2, 0); // r2 -> no initial value
+    jsjcCall(_jsxAddVar); // add the variable
+    hasComma = lex->tk == ',';
+    if (hasComma) JSP_ASSERT_MATCH(',');
+  }
+}
+
 void jsjStatementIf() {
   JSP_ASSERT_MATCH(LEX_R_IF);
   DEBUG_JIT("; IF condition\n");
@@ -684,10 +728,10 @@ void jsjStatement() {
     jsjBlock();
   } else if (lex->tk==';') {
     JSP_ASSERT_MATCH(';');/* Empty statement - to allow things like ;;; */
-/*} else if (lex->tk==LEX_R_VAR ||
+} else if (lex->tk==LEX_R_VAR ||
             lex->tk==LEX_R_LET ||
             lex->tk==LEX_R_CONST) {
-    return jsjStatementVar();*/
+    return jsjStatementVar();
   } else if (lex->tk==LEX_R_IF) {
     return jsjStatementIf();
   /*} else if (lex->tk==LEX_R_DO) {
