@@ -1138,7 +1138,7 @@ void peripheralPollHandler() {
       if (homeBtnInterruptTimer >= 500) {
         // We already wanted to reset but we didn't get back to idle loop in
         // 0.5 sec - let's force a break out of JS execution
-        jsiConsolePrintf("Button held down - interrupt JS execution... %d %d\n", homeBtnTimer, btnLoadTimeout);
+        jsiConsolePrintf("Button held down - interrupting JS execution...\n");
         execInfo.execute |= EXEC_INTERRUPTED;
       }
     } else
