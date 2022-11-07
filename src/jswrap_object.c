@@ -1017,11 +1017,15 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
     if (!jsvIsStringEqual(el, JSPARSE_FUNCTION_SCOPE_NAME) &&
         !jsvIsStringEqual(el, JSPARSE_PROTOTYPE_VAR)) {
       JsVar *copy;
-      if (jsvIsStringEqual(el, JSPARSE_FUNCTION_CODE_NAME)) {
+      if (jsvIsStringEqual(el, JSPARSE_FUNCTION_CODE_NAME)
+#ifdef ESPR_JIT
+          || jsvIsStringEqual(el, JSPARSE_FUNCTION_JIT_CODE_NAME)
+#endif
+          ) {
         // don't copy function code - just use it as-is. But we do have to
         // make a new NAME for it!
         JsVar *fnCode = jsvSkipName(el);
-        copy = jsvMakeIntoVariableName(jsvNewFromString(JSPARSE_FUNCTION_CODE_NAME), fnCode);
+        copy = jsvMakeIntoVariableName(jsvNewFromStringVar(el,  0, JSVAPPENDSTRINGVAR_MAXLENGTH), fnCode);
         jsvUnLock(fnCode);
       } else
         copy = jsvCopy(el, true);

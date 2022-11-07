@@ -74,6 +74,7 @@ The Pi can execute Thumb-2 code (Pi 3 and on only)
 ### Build for an actual device
 
 * Build for ARM: `USE_JIT=1 BOARD=BOARD_NAME RELEASE=1 make flash`
+* You can also add `CFLAGS+=-DDEBUG_JIT_CALLS=1` to ensure that function names are included in debug info even for a release build
 
 
 ```
