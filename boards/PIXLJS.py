@@ -39,6 +39,7 @@ info = {
      #'SHA256',
      #'AES',
      'FILESYSTEM',
+     'JIT',     
      'TERMINAL'
    ],
    'makefile' : [

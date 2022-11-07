@@ -36,7 +36,8 @@ info = {
      #'AES',
      'NFC',
      'NEOPIXEL',
-     'FILESYSTEM'
+     'FILESYSTEM',
+     'JIT'     
      #'TLS'
    ],
    'makefile' : [

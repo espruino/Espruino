@@ -30,7 +30,8 @@ info = {
      'TERMINAL',
      'GRAPHICS', 
      'LCD_ST7789_8BIT',
-     'TENSORFLOW'     
+     'TENSORFLOW',
+     'JIT'
    ],
    'makefile' : [
      'DEFINES += -DESPR_HWVERSION=1',

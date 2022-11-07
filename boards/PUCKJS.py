@@ -36,6 +36,7 @@ info = {
      'AES',
      'NFC',
      'NEOPIXEL',
+     'JIT'
      #'FILESYSTEM'
      #'TLS'
    ],
