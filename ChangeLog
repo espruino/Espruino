@@ -28,7 +28,8 @@
             Bangle.js2: Flip LCD SPI bit order so operations in Espruino can be faster (45% faster fillRect)
             Bangle.js2: Use 8x3bpp block fill with masking (now at least 6x faster than 2v15)
             Fix JIT when overwriting a pre-existing function, JIT now allows `var/let/const`, fix lock leak in function call, work around postinc issue
-            JIT compiler now included in MDBT42Q/Pixl.js/Puck.js/Bangle.js 1          
+            JIT compiler now included in MDBT42Q/Pixl.js/Puck.js/Bangle.js 1     
+            Bangle.js: Do not clear widget area if only zero width wigets are using it     
 
      2v15 : Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
             Fix issue accessing `arguments` after/inside 'let/const' keyword (fix #2224)
