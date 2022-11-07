@@ -123,7 +123,6 @@
       };
       Bangle.on("touch", Bangle.touchHandler);
     }
-    
     if (!options.btn) { // Back function does not override if other function has been assigned to btn
       var btnWatch = setWatch(function() {
         btnWatch = undefined;
