@@ -50,7 +50,7 @@ if len(fsdata):
 print("CODE: "+str(codeStart)+" -> "+str(codeEnd)+" ("+str(codeSize)+" bytes)");
 
 if codeEnd<storageStart and codeStart<storageStart:
-  print("Code area Fits before Storage Area")
+  print("Code area Fits before Storage Area ("+str(storageStart-codeEnd)+"b free)")
 elif codeEnd>storageEnd and codeStart>storageEnd:
   print("Code area Fits after Storage Area")
 else:
