@@ -164,7 +164,8 @@ uint64_t _jsjxObjectLookup(JsVar *index, JsVar *parent, JsVar *a) {
 }
 
 // Like jspeFunctionCall but we unlock ALL the vars supplied
-NO_INLINE JsVar *_jsjxFunctionCallAndUnLock(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr) {
+NO_INLINE JsVar *_jsjxFunctionCallAndUnLock(JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr) {
+  JsVar *function = jsvSkipName(functionName);
   JsVar *r = jspeFunctionCall(function, functionName, thisArg, isParsing, argCount, argPtr);
   jsvUnLockMany(argCount, argPtr);
   jsvUnLock3(function, functionName, thisArg);
@@ -177,20 +178,28 @@ NO_INLINE void _jsxReplaceWithOrAddToRootUnlockSrc(JsVar *dst, JsVar *src) {
   jsvUnLock(src);
 }
 
-// Handle postfix inc and dec nicely - without us having to add a bunch of extra code
+// Handle postfix inc and dec nicely - without us having to add a bunch of extra code. var is unlocked automatically, the result is returned
 NO_INLINE JsVar *_jsxPostfixIncDec(JsVar *var, char op) {
-  // FIXME: duplicate code in __jspePostfixExpression
+  /* FIXME: THIS IS PREINC. Postinc should be as follows but returning anything other than var causes
+   strange errors like "Uncaught ReferenceError: "\5" is not defined" for code like
+   function f(){"jit";for (var j=0;j<5;j++);}
+
   JsVar *one = jsvNewFromInteger(1);
   JsVar *oldValue = jsvAsNumberAndUnLock(jsvSkipName(var)); // keep the old value (but convert to number)
-  JsVar *res = jsvMathsOpSkipNames(oldValue, one, op);
+  JsVar *res = jsvMathsOpSkipNames(var, one, op);
   jsvReplaceWith(var, res);
   jsvUnLock3(var,res,one);
   return oldValue; // return the number from before we incremented
+  */
+  JsVar *one = jsvNewFromInteger(1);
+  JsVar *res = jsvMathsOpSkipNames(var, one, op);
+  jsvReplaceWith(var, res);
+  jsvUnLock2(res, one);
+  return var; // return the number from before we incremented - FIXME
 }
 
 // Handle prefix inc and dec nicely - without us having to add a bunch of extra code
 NO_INLINE JsVar *_jsxPrefixIncDec(JsVar *var, char op) {
-  // FIXME: duplicate code in jspePostfixExpression
   JsVar *one = jsvNewFromInteger(1);
   JsVar *res = jsvMathsOpSkipNames(var, one, op);
   jsvReplaceWith(var, res);
@@ -269,6 +278,8 @@ void jsjFactorFunctionCall() {
       DEBUG_JIT("; FUNCTION CALL r6 = 'this'\n");
       jsjcPop(6); // r6 = this/parent
       parentOnStack = false;
+    } else {
+      jsjcLiteral32(6, 0); // no parent
     }
     DEBUG_JIT("; FUNCTION CALL r4 = funcName\n");
     jsjcPop(4); // r4 = funcName
@@ -294,7 +305,7 @@ void jsjFactorFunctionCall() {
     JSP_MATCH(')');
     // r4=funcName, args on the stack
     jsjcMov(7, JSJAR_SP); // r7 = argPtr
-    jsjcPush(7, JSJVT_INT); // argPtr (6th arg - on stack)
+    jsjcPush(7, JSJVT_INT); // argPtr (5th arg - on stack)
     // Args are in the wrong order - we have to swap them around if we have >1!
     if (argCount>1) {
       DEBUG_JIT("; FUNCTION CALL reverse arguments\n");
@@ -309,25 +320,21 @@ void jsjFactorFunctionCall() {
     }
     DEBUG_JIT("; FUNCTION CALL jspeFunctionCall\n");
     // First arg
-    jsjcMov(0, 4); jsjcCall(jsvSkipName); // r0 = func
-    jsjcMov(5, 0); // r5 = func
+    jsjcMov(0, 4); // r0 = funcName
     // for constructors we'd have to do something special here
-    jsjcMov(1, 4); // Second arg, r1 = funcName
-    jsjcLiteral32(2, argCount); //
-    jsjcPush(2, JSJVT_INT); // argCount (5th arg - on stack)
-    jsjcMov(2, 6); // parent (from r6)
-    jsjcLiteral32(3, 0); // isParsing = false
-    jsjcCall(_jsjxFunctionCallAndUnLock); // a = jspeFunctionCall(func, funcName, thisArg/parent, isParsing, argCount, argPtr);
+    jsjcMov(1, 6); // parent (from r6)
+    jsjcLiteral32(2, 0); // isParsing = false
+    jsjcLiteral32(3, argCount); // argCount 4th arg
+    jsjcCall(_jsjxFunctionCallAndUnLock); // a = _jsjxFunctionCallAndUnLock(funcName, thisArg/parent, isParsing, argCount, argPtr[on stack]);
     DEBUG_JIT("; FUNCTION CALL cleanup stack\n");
-    jsjcAddSP(4*(2+argCount)); // pop off argCount,argPtr + all the arguments
+    jsjcAddSP(4*(1+argCount)); // pop off argPtr + all the arguments
     jsjcPush(0, JSJVT_JSVAR); // push return value from jspeFunctionCall
     DEBUG_JIT("; FUNCTION CALL end\n");
-    // FIXME - also unlock/clear 'parent'
-    // parent=0;
-    // a = jsjFactorMember(a, &parent);
+    // 'parent', 'funcName' and all args are unlocked by _jsjxFunctionCallAndUnLock
   }
   if (parentOnStack) {
-    jsjcPop(4); // just remove parent from the stack. We don't care where it goes!
+    jsjcPop(0); // remove parent from the stack and unlock it
+    jsjcCall(jsvUnLock);
   }
 }
 
@@ -354,7 +361,7 @@ void jsjPostfixExpression() {
     jsjcPush(0, JSJVT_JSVAR); // push result (value AFTER we inc/dec)
   } else
     jsjFactorFunctionCall();
-   __jsjPostfixExpression();
+  __jsjPostfixExpression();
 }
 
 void jsjUnaryExpression() {
@@ -669,7 +676,7 @@ void jsjStatementFor() {
     // We add a jump to the end after we've parsed everything and know the size
   }
   JSP_MATCH(';');
-  DEBUG_JIT("; FOR Iterator block\n");
+  DEBUG_JIT("; Parsing FOR Iterator block\n");
   JsVar *oldBlock = jsjcStartBlock();
   if (lex->tk != ')')  { // we could have 'for (;;)'
     jsjExpression(); // iterator
@@ -678,9 +685,11 @@ void jsjStatementFor() {
   JsVar *iteratorBlock = jsjcStopBlock(oldBlock);
   JSP_MATCH(')'); // FIXME: clean up on exit
   // Now parse the actual code to execute
+  DEBUG_JIT("; Parsing FOR Main block\n");
   oldBlock = jsjcStartBlock();
   jsjBlockOrStatement();
   JsVar *mainBlock = jsjcStopBlock(oldBlock);
+  DEBUG_JIT("; Branch OVER main block to END\n");
   // Now figure out the jump length and jump (if condition is false)
   jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(iteratorBlock) + jsvGetStringLength(mainBlock) + 2);
   DEBUG_JIT("; FOR Main block\n");
