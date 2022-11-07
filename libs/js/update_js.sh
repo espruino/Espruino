@@ -48,6 +48,8 @@ node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_drawWidgets.js banglejs
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_drawWidgets_Q3.js banglejs/Bangle_drawWidgets_Q3.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_loadWidgets.js banglejs/Bangle_loadWidgets.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_showLauncher.js banglejs/Bangle_showLauncher.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_showClock.js banglejs/Bangle_showClock.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_load.js banglejs/Bangle_load.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_setUI_F18.js banglejs/Bangle_setUI_F18.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_setUI_Q3.js banglejs/Bangle_setUI_Q3.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/locale.js banglejs/locale.min.js
