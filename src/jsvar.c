@@ -3794,10 +3794,10 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
 
   // print a value if it was stored in here as well...
   if (jsvIsNameInt(var)) {
-    jsiConsolePrintf("= int %d\n", (int)jsvGetFirstChildSigned(var));
+    jsiConsolePrintf(" = int %d\n", (int)jsvGetFirstChildSigned(var));
     return;
   } else if (jsvIsNameIntBool(var)) {
-    jsiConsolePrintf("= bool %s\n", jsvGetFirstChild(var)?"true":"false");
+    jsiConsolePrintf(" = bool %s\n", jsvGetFirstChild(var)?"true":"false");
     return;
   }
 
