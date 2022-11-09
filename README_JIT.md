@@ -98,18 +98,16 @@ var test = "Hello world";
 function jit() {'jit';return test;}
 jit()=="Hello world";
 
-var test = "Hello ";
-var jit = E.nativeCall(1, "JsVar()", E.JIT("test+'World!'"))
-jit()=="Hello World!"
-
 function t() { print("Hello"); }
 function jit() {'jit';t();}
 jit(); // prints 'hello'
 
 function jit() {'jit';print(42);}
+jit(); // prints 42
+
 
 function jit() {'jit';print(42);return 123;}
-jit()==123
+jit()==123 // prints 42, returns 123
 
 function jit() {'jit';return !123;}
 jit()==false
@@ -159,7 +157,7 @@ jit(); // prints 0,1,2,3,4
 
 function nojit() {for (i=0;i<1000;i=i+1);}
 function jit() {"jit";for (i=0;i<1000;i=i+1);}
-t=getTime();jit();getTime()-t // 0.14 sec
+t=getTime();jit();getTime()-t // 0.11 sec
 t=getTime();nojit();getTime()-t // 0.28 sec
 
 
@@ -186,6 +184,21 @@ print(btoa(jit["\xffcod"]))
 // On Linux
 echo ASBL8Kz7AbQBvHBH | base64 -d  > jit.bin
 arm-none-eabi-objdump -D -Mforce-thumb -b binary -m cortex-m4 jit.bin
+```
+
+Seeing what GCC does:
+
+```
+// test.c
+void main() {
+  int data[400];
+  volatile int x = data[1];
+}
+```
+
+```
+arm-none-eabi-gcc -Os -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16 -nostartfiles test.c
+arm-none-eabi-objdump -D -Mforce-thumb -m cortex-m4 a.out
 ```
 
 ## Useful links
