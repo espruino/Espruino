@@ -5572,7 +5572,7 @@ specified:
 ```
 Bangle.setUI({
   mode : "custom",
-  back : function() {}, // optional - add a 'back' icon in top-left widget area and call this function when it is pressed , also call the function when the hardware button is clicked (does not override btn if defined)
+  back : function() {}, // optional - add a 'back' icon in top-left widget area and call this function when it is pressed , also call it when the hardware button is clicked (does not override btn if defined)
   remove : function() {}, // optional - add a handler for when the UI should be removed (eg stop any intervals/timers here)
   touch : function(n,e) {}, // optional - handler for 'touch' events
   swipe : function(dir) {}, // optional - handler for 'swipe' events
