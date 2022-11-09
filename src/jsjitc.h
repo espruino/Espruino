@@ -25,11 +25,13 @@
 // Called to print debug info - best to use DEBUG_JIT so we can disable debug lines for final compiles though
 void jsjcDebugPrintf(const char *fmt, ...);
 
+#define JSJ_TYPE_STACK_SIZE 64 // Most amount of types stored on stack
+
 typedef enum {
   JSJVT_INT,
   JSJVT_JSVAR,        ///< A JsVar
   JSJVT_JSVAR_NO_NAME ///< A JsVar, and we know it's not a name so it doesn't need SkipName
-} JsjValueType;
+} PACKED_FLAGS JsjValueType;
 
 typedef enum {
   JSJAC_EQ, // 0
@@ -80,6 +82,8 @@ typedef struct {
   int varCount;
   /// How much stuff has been pushed on the stack so far? (including variables)
   int stackDepth;
+  /// For each item on the stack, we store its type
+  JsjValueType typeStack[JSJ_TYPE_STACK_SIZE];
 } JsjInfo;
 
 // JIT state
@@ -129,6 +133,8 @@ void jsjcMov(int regTo, int regFrom);
 void jsjcMVN(int regTo, int regFrom);
 // regTo = regTo & regFrom
 void jsjcAND(int regTo, int regFrom);
+// Convert the var type in the given reg to a JsVar
+void jsjcConvertToJsVar(int reg, JsjValueType varType);
 // Push a register onto the stack
 void jsjcPush(int reg, JsjValueType type);
 // Get the type of the variable on the top of the stack

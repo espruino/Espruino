@@ -39,6 +39,14 @@
 // JIT state
 JsjInfo jit;
 
+const char *jsjcGetTypeName(JsjValueType t) {
+  switch(t) {
+    case JSJVT_INT: return "int";
+    case JSJVT_JSVAR: return "JsVar";
+    case JSJVT_JSVAR_NO_NAME: return "JsVar-value";
+    default: return "unknown";
+  }
+}
 
 void jsjcDebugPrintf(const char *fmt, ...) {
   if (jsFlags & JSF_JIT_DEBUG) {
@@ -302,8 +310,26 @@ void jsjcAND(int regTo, int regFrom) {
   jsjcEmit16((uint16_t)(0b0100000000000000 | (regFrom<<3) | (regTo&7)));
 }
 
+// Convert the var type in the given reg to a JsVar
+void jsjcConvertToJsVar(int reg, JsjValueType varType) {
+  if (varType==JSJVT_JSVAR || varType==JSJVT_JSVAR_NO_NAME) return; // no conversion needed
+  if (varType==JSJVT_INT) {
+    if (reg) jsjcMov(0, reg);
+    jsjcCall(jsvNewFromInteger); // FIXME: what about clobbering r1-r3? Do a push/pop?
+    if (reg) jsjcMov(reg, 0);
+    return;
+  }
+  assert(0);
+}
+
 void jsjcPush(int reg, JsjValueType type) {
-  DEBUG_JIT("PUSH {r%d}   (=> stack depth %d)\n", reg, jit.stackDepth);
+  DEBUG_JIT("PUSH {r%d}   (%s => stack depth %d)\n", reg, jsjcGetTypeName(type), jit.stackDepth);
+  if (jit.stackDepth>=JSJ_TYPE_STACK_SIZE) { // not enough space on type staclk
+    DEBUG_JIT("!!! not enough space on type stack - converting to JsVar\n");
+    jsjcConvertToJsVar(reg, type);
+    type = JSJVT_JSVAR;
+  } else
+    jit.typeStack[jit.stackDepth] = type;
   jit.stackDepth++;
   assert(reg>=0 && reg<8);
   jsjcEmit16((uint16_t)(0b1011010000000000 | (1<<reg)));
@@ -311,13 +337,16 @@ void jsjcPush(int reg, JsjValueType type) {
 
 // Get the type of the variable on the top of the stack
 JsjValueType jsjcGetTopType() {
-  return JSJVT_JSVAR; // FIXME - no type stack yet!
+  assert(jit.stackDepth>0);
+  if (jit.stackDepth==0) return JSJVT_INT; // Error!
+  if (jit.stackDepth>JSJ_TYPE_STACK_SIZE) return JSJVT_JSVAR; // If too many types, assume JSVAR (we convert when we push)
+  return jit.typeStack[jit.stackDepth-1];
 }
 
 JsjValueType jsjcPop(int reg) {
   JsjValueType varType = jsjcGetTopType();
   jit.stackDepth--;
-  DEBUG_JIT("POP {r%d}   (<= stack depth %d)\n", reg, jit.stackDepth);
+  DEBUG_JIT("POP {r%d}   (%s <= stack depth %d)\n", reg, jsjcGetTypeName(varType), jit.stackDepth);
   assert(reg>=0 && reg<8);
   jsjcEmit16((uint16_t)(0b1011110000000000 | (1<<reg)));
   return varType;

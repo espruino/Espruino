@@ -115,14 +115,7 @@ NO_INLINE void _jsxVarInitialAssign(JsVar *a, bool isConstant, JsVar *initialVal
 
 void jsjPopAsVar(int reg) {
   JsjValueType varType = jsjcPop(reg);
-  if (varType==JSJVT_JSVAR || varType==JSJVT_JSVAR_NO_NAME) return;
-  if (varType==JSJVT_INT) {
-    if (reg) jsjcMov(0, reg);
-    jsjcCall(jsvNewFromInteger); // FIXME: what about clobbering r1-r3?
-    if (reg) jsjcMov(reg, 0);
-    return;
-  }
-  assert(0);
+  jsjcConvertToJsVar(reg, varType);
 }
 
 void jsjPopAsBool(int reg) {
@@ -163,6 +156,8 @@ void jsjFunctionReturn(bool isReturnStatement) {
     jsjcMov(4, 0); // save r0 (return value)
     jsjcMov(1, JSJAR_SP);
     jsjcLiteral32(0, jit.stackDepth);
+    for (int i=0;i<jit.stackDepth;i++) // we don't want to be trying to unlock ints!
+      assert(jit.typeStack[i]==JSJVT_JSVAR || jit.typeStack[i]==JSJVT_JSVAR_NO_NAME);
     jsjcCall(jsvUnLockMany);
     jsjcAddSP(4*jit.varCount); // pop off anything on the stack
     jsjcMov(0, 4); // restore r0
@@ -226,7 +221,7 @@ void jsjFactor() {
         jsjcLiteral32(0, (uint32_t)v);
         jsjcCall(jsvNewFromInteger);
       }
-      jsjcPush(0, JSJVT_JSVAR); // FIXME - push an int and convert later
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME, FIXME - push an int and convert later
     }
   } else if (lex->tk==LEX_FLOAT) {
     double v = stringToFloat(jslGetTokenValueAsString());
@@ -380,9 +375,11 @@ void jsjFactorFunctionCall() {
     while (JSJ_PARSING && lex->tk!=')' && lex->tk!=LEX_EOF) {
       argCount++;
       jsjAssignmentExpression();
-      if (jit.phase == JSJP_EMIT) { // FIXME: why do we have this? it does nothing except convert to a var?
-        jsjPopNoName(0);
-        jsjcPush(0, JSJVT_JSVAR); // push argument to stack
+      if (jit.phase == JSJP_EMIT) {
+        if (jsjcGetTopType() != JSJVT_JSVAR_NO_NAME) {
+          jsjPopNoName(0);
+          jsjcPush(0, JSJVT_JSVAR_NO_NAME); // push argument to stack
+        }
       }
       if (lex->tk!=')') JSP_MATCH(',');
     }
