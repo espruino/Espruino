@@ -337,11 +337,13 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
         jsWarn("Function marked with \"compiled\" uploaded in source form");
       if (!strcmp(jslGetTokenValueAsString(), "ram")) {
         JSP_ASSERT_MATCH(LEX_STR);
+        if (lex->tk==';') JSP_ASSERT_MATCH(';');
         forcePretokenise = true;
       }
 #ifdef ESPR_JIT
       if (!strcmp(jslGetTokenValueAsString(), "jit")) {
         JSP_ASSERT_MATCH(LEX_STR);
+        if (lex->tk==';') JSP_ASSERT_MATCH(';');
         // save start position so if we fail we go back to a normal function parse
         JslCharPos funcCodeStart;
         jslCharPosFromLex(&funcCodeStart);
