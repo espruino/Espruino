@@ -227,19 +227,34 @@ void jsjcBranchRelative(int bytes) {
   DEBUG_JIT("B %s%d (addr 0x%04x)\n", (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
   bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
-  assert(bytes>=-4096 && bytes<4096); // only multiples of 2 bytes
+  assert(bytes>=-2048 && bytes<2048); // check it's in range...
+  if (bytes<-2048 || bytes>=2048)
+    jsExceptionHere(JSET_ERROR, "JIT: B jump (%d) out of range", bytes);
   int imm11 = ((unsigned int)(bytes)>>1) & 2047;
   jsjcEmit16((uint16_t)(0b1110000000000000 | imm11)); // unconditional branch
 }
 
 // Jump a number of bytes forward or back, based on condition flags
 void jsjcBranchConditionalRelative(JsjAsmCondition cond, int bytes) {
-  DEBUG_JIT("B[%d] %s%d (addr 0x%04x)\n", cond, (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
   bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
-  assert(bytes>=-512 && bytes<512); // only multiples of 2 bytes
-  int imm8 = (bytes>>1) & 255;
-  jsjcEmit16((uint16_t)(0b1101000000000000 | (cond<<8) | imm8)); // conditional branch
+  if (bytes>=-256 && bytes<256) { // B<c>
+    DEBUG_JIT("B<%d> %s%d (addr 0x%04x)\n", cond, (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
+    int imm8 = (bytes>>1) & 255;
+    jsjcEmit16((uint16_t)(0b1101000000000000 | (cond<<8) | imm8)); // conditional branch
+  } else if (bytes>=-1048576 && bytes<(1048576-2)) { // B<c>.W
+    bytes += 2; // must pad out by 1 byte because this is a double-length instruction!
+    DEBUG_JIT("B<%d>.W %s%d (addr 0x%04x)\n", cond, (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
+    int imm20 = (bytes>>1);
+    int S = (imm20>>19) & 1;
+    int J2 = (imm20>>18) & 1;
+    int J1 = (imm20>>17) & 1;
+    int imm6 = (imm20>>11) & 63;
+    int imm11 = imm20 & 2047;
+    jsjcEmit16((uint16_t)(0b1111000000000000 | (S<<10) | (cond<<6) | imm6)); // conditional branch
+    jsjcEmit16((uint16_t)(0b1000000000000000 | (J1<<13) | (J2<<11) | imm11)); // conditional branch
+  } else
+    jsExceptionHere(JSET_ERROR, "JIT: B<> jump (%d) out of range", bytes);
 }
 
 #ifdef DEBUG_JIT_CALLS
@@ -294,12 +309,18 @@ void jsjcPush(int reg, JsjValueType type) {
   jsjcEmit16((uint16_t)(0b1011010000000000 | (1<<reg)));
 }
 
+// Get the type of the variable on the top of the stack
+JsjValueType jsjcGetTopType() {
+  return JSJVT_JSVAR; // FIXME - no type stack yet!
+}
+
 JsjValueType jsjcPop(int reg) {
+  JsjValueType varType = jsjcGetTopType();
   jit.stackDepth--;
   DEBUG_JIT("POP {r%d}   (<= stack depth %d)\n", reg, jit.stackDepth);
   assert(reg>=0 && reg<8);
   jsjcEmit16((uint16_t)(0b1011110000000000 | (1<<reg)));
-  return JSJVT_JSVAR; // FIXME
+  return varType;
 }
 
 void jsjcAddSP(int amt) {

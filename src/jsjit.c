@@ -115,7 +115,7 @@ NO_INLINE void _jsxVarInitialAssign(JsVar *a, bool isConstant, JsVar *initialVal
 
 void jsjPopAsVar(int reg) {
   JsjValueType varType = jsjcPop(reg);
-  if (varType==JSJVT_JSVAR) return;
+  if (varType==JSJVT_JSVAR || varType==JSJVT_JSVAR_NO_NAME) return;
   if (varType==JSJVT_INT) {
     if (reg) jsjcMov(0, reg);
     jsjcCall(jsvNewFromInteger); // FIXME: what about clobbering r1-r3?
@@ -139,8 +139,13 @@ void jsjPopAndUnLock() {
 }
 
 void jsjPopNoName(int reg) {
+  if (jsjcGetTopType()==JSJVT_JSVAR_NO_NAME) {
+    // if we know we don't have a name here, we can skip jsvSkipNameAndUnLock
+    jsjPopAsVar(reg);
+    return;
+  }
   jsjPopAsVar(0); // a -> r0
-  jsjcCall(jsvSkipNameAndUnLock); // optimisation: we should know if we have a var or a name here, so can skip jsvSkipNameAndUnLock sometimes
+  jsjcCall(jsvSkipNameAndUnLock);
   if (reg != 0) jsjcMov(reg, 0);
 }
 
@@ -229,7 +234,7 @@ void jsjFactor() {
     if (jit.phase == JSJP_EMIT) {
       jsjcLiteral64(0, *((uint64_t*)&v));
       jsjcCall(jsvNewFromFloat);
-      jsjcPush(0, JSJVT_JSVAR);
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
   } else if (lex->tk=='(') {
     JSP_ASSERT_MATCH('(');
@@ -241,7 +246,7 @@ void jsjFactor() {
     if (jit.phase == JSJP_EMIT) {
       jsjcLiteral32(0, lex->tk==LEX_R_TRUE);
       jsjcCall(jsvNewFromBool);
-      jsjcPush(0, JSJVT_JSVAR);
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
     JSP_ASSERT_MATCH(lex->tk);
   } else if (lex->tk==LEX_R_NULL) {
@@ -249,13 +254,13 @@ void jsjFactor() {
     if (jit.phase == JSJP_EMIT) {
       jsjcLiteral32(0, JSV_NULL);
       jsjcCall(jsvNewWithFlags);
-      jsjcPush(0, JSJVT_JSVAR);
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
   } else if (lex->tk==LEX_R_UNDEFINED) {
     JSP_ASSERT_MATCH(LEX_R_UNDEFINED);
     if (jit.phase == JSJP_EMIT) {
       jsjcLiteral32(0, 0);
-      jsjcPush(0, JSJVT_JSVAR);
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
   } else if (lex->tk==LEX_STR) {
     JsVar *a = jslGetTokenValueAsVar();
@@ -264,7 +269,7 @@ void jsjFactor() {
       int len = jsjcLiteralString(1, a, false);
       jsjcLiteral32(0, len);
       jsjcCall(jsvNewStringOfLength);
-      jsjcPush(0, JSJVT_JSVAR);
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
     jsvUnLock(a);
   }/* else if (lex->tk=='{') {
@@ -292,7 +297,7 @@ void jsjFactor() {
       jsjUnaryExpression();
       jsjcCall(jsvUnLock);
       jsjcLiteral32(0, 0);
-      jsjcPush(0, JSJVT_JSVAR);
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
   } else JSP_MATCH(LEX_EOF);
 }
@@ -375,7 +380,7 @@ void jsjFactorFunctionCall() {
     while (JSJ_PARSING && lex->tk!=')' && lex->tk!=LEX_EOF) {
       argCount++;
       jsjAssignmentExpression();
-      if (jit.phase == JSJP_EMIT) {
+      if (jit.phase == JSJP_EMIT) { // FIXME: why do we have this? it does nothing except convert to a var?
         jsjPopNoName(0);
         jsjcPush(0, JSJVT_JSVAR); // push argument to stack
       }
@@ -408,7 +413,7 @@ void jsjFactorFunctionCall() {
     jsjcCall(_jsjxFunctionCallAndUnLock); // a = _jsjxFunctionCallAndUnLock(funcName, thisArg/parent, isParsing, argCount, argPtr[on stack]);
     DEBUG_JIT("; FUNCTION CALL cleanup stack\n");
     jsjcAddSP(4*(1+argCount)); // pop off argPtr + all the arguments
-    jsjcPush(0, JSJVT_JSVAR); // push return value from jspeFunctionCall
+    jsjcPush(0, JSJVT_JSVAR); // push return value from jspeFunctionCall (FIXME: can we be sure this isn't a NAME so use JSJVT_JSVAR_NO_NAME? I think so)
     DEBUG_JIT("; FUNCTION CALL end\n");
     // 'parent', 'funcName' and all args are unlocked by _jsjxFunctionCallAndUnLock
     }
@@ -427,7 +432,7 @@ void __jsjPostfixExpression() {
       jsjPopAsVar(0); // old value -> r0
       jsjcLiteral32(1, op==LEX_PLUSPLUS ? '+' : '-'); // add the operation
       jsjcCall(_jsxPostfixIncDec); // JsVar *_jsxPostfixIncDec(JsVar *var, char op)
-      jsjcPush(0, JSJVT_JSVAR); // push result (value BEFORE we inc/dec)
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // push result (value BEFORE we inc/dec)
     }
   }
 }
@@ -442,7 +447,7 @@ void jsjPostfixExpression() {
       jsjPopAsVar(0); // old value -> r0
       jsjcLiteral32(1, op==LEX_PLUSPLUS ? '+' : '-'); // add the operation
       jsjcCall(_jsxPrefixIncDec); // JsVar *_jsxPrefixIncDec(JsVar *var, char op)
-      jsjcPush(0, JSJVT_JSVAR); // push result (value AFTER we inc/dec)
+      jsjcPush(0, JSJVT_JSVAR); // push result (value AFTER we inc/dec) - this is STILL a NAME
     }
   } else
     jsjFactorFunctionCall();
@@ -471,7 +476,7 @@ void jsjUnaryExpression() {
       } else if (op=='+') { // unary plus (convert to number)
         jsjcCall(jsvAsNumberAndUnLock);
       } else assert(0);
-      jsjcPush(0, JSJVT_JSVAR);
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
   } else
     jsjPostfixExpression();
@@ -575,7 +580,7 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
         jsjPopAsVar(0); // a -> r0
         jsjcLiteral32(2, op);
         jsjcCall(_jsxMathsOpSkipNamesAndUnLock); // unlocks arguments
-        jsjcPush(0, JSJVT_JSVAR); // push result
+        jsjcPush(0, JSJVT_JSVAR_NO_NAME); // push result - a value, not a NAME
       }
     }
     precedence = jsjGetBinaryExpressionPrecedence(lex->tk);
@@ -608,7 +613,7 @@ NO_INLINE void jsjAssignmentExpression() {
     if (jit.phase == JSJP_EMIT) {
       jsjPopNoName(1); // ensure we get rid of any references on the RHS
       jsjcPop(0); // pop LHS
-      jsjcPush(0, JSJVT_JSVAR); // push LHS back on as this is our result value
+      jsjcPush(0, JSJVT_JSVAR); // push LHS back on as this is our result value (still a NAME)
       //jsjcPush(1, JSJVT_JSVAR); // push RHS back on, so we can pop it off and unlock after jsvReplaceWithOrAddToRoot
 
 

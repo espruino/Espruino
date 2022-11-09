@@ -27,7 +27,8 @@ void jsjcDebugPrintf(const char *fmt, ...);
 
 typedef enum {
   JSJVT_INT,
-  JSJVT_JSVAR
+  JSJVT_JSVAR,        ///< A JsVar
+  JSJVT_JSVAR_NO_NAME ///< A JsVar, and we know it's not a name so it doesn't need SkipName
 } JsjValueType;
 
 typedef enum {
@@ -130,6 +131,8 @@ void jsjcMVN(int regTo, int regFrom);
 void jsjcAND(int regTo, int regFrom);
 // Push a register onto the stack
 void jsjcPush(int reg, JsjValueType type);
+// Get the type of the variable on the top of the stack
+JsjValueType jsjcGetTopType();
 // Pop off the stack to a register
 JsjValueType jsjcPop(int reg);
 // Add a value to the stack pointer (only multiple of 4)

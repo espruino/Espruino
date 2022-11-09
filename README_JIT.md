@@ -171,6 +171,22 @@ jit(); // prints 'hello {b:42,...}'
 
 function jit(a,b) {'jit';return a+"Hello world"+b;}
 jit(1,2)=="1Hello world2"
+
+
+function nojit() {
+  for (var i=0;i<10000;i++) {
+    digitalWrite(LED,1);
+    digitalWrite(LED,0);
+  }
+}
+function jit() {"jit";
+  for (var i=0;i<10000;i++) {
+    digitalWrite(LED,1);
+    digitalWrite(LED,0);
+  }
+}
+t=getTime();nojit();getTime()-t // 6.96
+t=getTime();jit();getTime()-t   // 2.02
 ```
 
 Run JIT on ARM and then disassemble:
