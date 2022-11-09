@@ -80,8 +80,6 @@
     Bangle.btnWatches = [
       setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
     ];
-  } else if (mode=="touch") {
-    Bangle.touchHandler = (_,e) => {b();cb(e);};
   } else if (mode=="custom") {
     if (options.clock) Bangle.CLOCK=1;
     if (options.touch)
@@ -123,10 +121,12 @@
       };
       Bangle.on("touch", Bangle.touchHandler);
     }
-    var btnWatch = setWatch(function() {
-      btnWatch = undefined;
-      options.back();
-    }, BTN1, {edge:"falling"});
+    var btnWatch;
+    if (Bangle.btnWatches===undefined) // only add back button handler if there's no existing watch on BTN1
+	    btnWatch = setWatch(function() {
+	      btnWatch = undefined;
+	      options.back();
+	    }, BTN1, {edge:"falling"});
     WIDGETS = Object.assign({back:{ 
       area:"tl", width:24, 
       draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
