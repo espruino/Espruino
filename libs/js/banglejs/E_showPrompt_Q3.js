@@ -66,7 +66,7 @@
   }
   draw();
   return new Promise(resolve=>{
-    Bangle.setUI("touch", e=>{
+    Bangle.setUI({mode:"custom", touch:e=>{
       btnPos.forEach((b,i)=>{
         if (e.x > b.x1 && e.x < b.x2 &&
             e.y > b.y1 && e.y < b.y2) {
@@ -76,6 +76,6 @@
           resolve(options.buttons[btns[i]]);
         }
       });
-    });
+    }});
   });
 })
