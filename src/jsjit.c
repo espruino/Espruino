@@ -30,6 +30,88 @@ void jsjExpression();
 void jsjStatement();
 void jsjBlockOrStatement();
 // ----------------------------------------------------------------------------
+// These are helper functions that get called FROM the JITed code
+
+/// Look up 'parent.a[index]'. Utility function called from JIT code
+uint64_t _jsjxObjectLookup(JsVar *index, JsVar *parent, JsVar *a) {
+  JsVar *resultParent = jsvSkipNameWithParent(a,true,parent);
+  jsvUnLock2(a, parent);
+  JsVar *resultA = 0;
+  if (resultParent)
+    resultA = jspGetVarNamedField(resultParent, index, true);
+  if (!resultA) {
+    if (jsvHasChildren(resultParent)) {
+      // if no child found, create a pointer to where it could be
+      // as we don't want to allocate it until it's written
+      resultA = jsvCreateNewChild(resultParent, index, 0);
+    } else {
+      jsExceptionHere(JSET_ERROR, "Field or method %q does not already exist, and can't create it on %t", index, resultParent);
+    }
+  }
+  jsvUnLock(index);
+  return ((uint64_t)(size_t)resultA) | (((uint64_t)(size_t)resultParent)<<32);
+}
+
+// Like jspeFunctionCall but we unlock ALL the vars supplied
+NO_INLINE JsVar *_jsjxFunctionCallAndUnLock(JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr) {
+  JsVar *function = jsvSkipName(functionName);
+  JsVar *r = jspeFunctionCall(function, functionName, thisArg, isParsing, argCount, argPtr);
+  jsvUnLockMany(argCount, argPtr);
+  jsvUnLock3(function, functionName, thisArg);
+  return r;
+}
+
+// Call jsvReplaceWithOrAddToRoot but unlock the second argument
+NO_INLINE void _jsxReplaceWithOrAddToRootUnlockSrc(JsVar *dst, JsVar *src) {
+  jsvReplaceWithOrAddToRoot(dst, src);
+  jsvUnLock(src);
+}
+
+// Handle postfix inc and dec nicely - without us having to add a bunch of extra code. var is unlocked automatically, the result is returned
+NO_INLINE JsVar *_jsxPostfixIncDec(JsVar *var, char op) {
+  JsVar *one = jsvNewFromInteger(1);
+  JsVar *oldValue = jsvAsNumberAndUnLock(jsvSkipName(var)); // keep the old value (but convert to number)
+  JsVar *res = jsvMathsOpSkipNames(var, one, op);
+  jsvReplaceWith(var, res);
+  jsvUnLock3(var,res,one);
+  return oldValue; // return the number from before we incremented
+}
+
+// Handle prefix inc and dec nicely - without us having to add a bunch of extra code
+NO_INLINE JsVar *_jsxPrefixIncDec(JsVar *var, char op) {
+  JsVar *one = jsvNewFromInteger(1);
+  JsVar *res = jsvMathsOpSkipNames(var, one, op);
+  jsvReplaceWith(var, res);
+  jsvUnLock2(res, one);
+  return var; // return the number from before we incremented
+}
+
+NO_INLINE JsVar *_jsxMathsOpSkipNamesAndUnLock(JsVar *a, JsVar *b, int op) {
+  JsVar *r = jsvMathsOpSkipNames(a,b,op);
+  jsvUnLock2(a,b);
+  return r;
+}
+
+// Add a variable to the current scope (eg VAR statement), and return it
+NO_INLINE JsVar *_jsxAddVar(const char *name) {
+  JsVar *scope = jspeiGetTopScope();
+  JsVar *a = jsvFindChildFromString(scope, name, true);
+  jsvUnLock(scope);
+  return a;
+}
+
+// Assign to a variable for its initial assignment (VAR/LET/CONST) and unlock it
+NO_INLINE void _jsxVarInitialAssign(JsVar *a, bool isConstant, JsVar *initialValue) {
+  if (!a) return; // no memory
+  if (initialValue) {
+    initialValue = jsvSkipNameAndUnLock(initialValue);
+    jsvReplaceWith(a, initialValue);
+  }
+  if (isConstant)
+    a->flags |= JSV_CONSTANT;
+  jsvUnLock2(a, initialValue);
+}
+// ----------------------------------------------------------------------------
 
 void jsjPopAsVar(int reg) {
   JsjValueType varType = jsjcPop(reg);
@@ -89,32 +171,45 @@ void jsjFunctionReturn(bool isReturnStatement) {
     jit.stackDepth = oldStackDepth;
 }
 
+/* Called when we encounter an ID. This checks if it's in our 'jit.vars'
+list and if not either creates (creationOp==LEX_R_VAR/LET/CONST) or
+tries to find it (creationOp==LEX_ID) it in our global scope.
+hasInitialiser=true if an initial value is already on the stack */
+void jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
+  // search for var in our list...
+  JsVar *varIndex = jsvFindChildFromVar(jit.vars, name, true/*addIfNotFound*/);
+  JsVar *varIndexVal = jsvSkipName(varIndex);
+  if (jit.phase == JSJP_SCAN && jsvIsUndefined(varIndexVal)) {
+    // We don't have it yet - create a var list entry
+    varIndexVal = jsvNewFromInteger(jit.varCount++);
+    jsvSetValueOfName(varIndex, varIndexVal);
+    jsjcLiteralString(0, name, true); // null terminated string in r0
+    if (creationOp==LEX_ID) { // Just a normal ID
+      jsjcDebugPrintf("; Find Variable %j\n", name);
+      jsjcCall(jspGetNamedVariable); // Find the var in the current scopes (always returns something even if it's jsvNewChild)
+    } else if (creationOp==LEX_R_VAR || creationOp==LEX_R_LET || creationOp==LEX_R_CONST) {
+      jsjcDebugPrintf("; Variable Decl %j\n", name);
+      // _jsxAddVar(r0:name)
+      jsjcCall(_jsxAddVar); // add the variable
+    } else assert(0);
+    jsjcPush(0, JSJVT_JSVAR); // We're pushing a NAME here
+  }
+  // Now, we have the var already - just reference it
+  int varIndexI = jsvGetIntegerAndUnLock(varIndexVal);
+  if (jit.phase == JSJP_EMIT) {
+    jsjcDebugPrintf("; Reference var %j\n", name);
+    jsjcLoadImm(0, JSJAR_SP, (jit.stackDepth - (varIndexI+1)) * 4);
+    jsjcCall(jsvLockAgain);
+    jsjcPush(0, JSJVT_JSVAR); // We're pushing a NAME here
+  }
+  jsvUnLock2(varIndex, name);
+}
+
 void jsjFactor() {
   if (lex->tk==LEX_ID) {
-    JsVar *a = jslGetTokenValueAsVar();
+    JsVar *name = jslGetTokenValueAsVar();
     JSP_ASSERT_MATCH(LEX_ID);
-    // search for var in our list...
-    JsVar *varIndex = jsvFindChildFromVar(jit.vars, a, true/*addIfNotFound*/);
-    JsVar *varIndexVal = jsvSkipName(varIndex);
-    if (jit.phase == JSJP_SCAN && jsvIsUndefined(varIndexVal)) {
-      jsjcDebugPrintf("; Find Variable %j\n",a);
-      // We don't have it yet - create a var list entry
-      varIndexVal = jsvNewFromInteger(jit.varCount++);
-      jsvSetValueOfName(varIndex, varIndexVal);
-      // Add the init code to push the var
-      jsjcLiteralString(0, a, true); // null terminated
-      jsjcCall(jspGetNamedVariable);
-      jsjcPush(0, JSJVT_JSVAR); // We're pushing a NAME here
-    }
-    // Now, we have the var already - just reference it
-    int varIndexI = jsvGetIntegerAndUnLock(varIndexVal);
-    if (jit.phase == JSJP_EMIT) {
-      jsjcDebugPrintf("; Variable %j\n",a);
-      jsjcLoadImm(0, JSJAR_SP, (jit.stackDepth - (varIndexI+1)) * 4);
-      jsjcCall(jsvLockAgain);
-      jsjcPush(0, JSJVT_JSVAR); // We're pushing a NAME here
-    }
-    jsvUnLock2(varIndex,a);
+    jsjFactorIDAndUnLock(name, LEX_ID);
   } else if (lex->tk==LEX_INT) {
     int64_t v = stringToInt(jslGetTokenValueAsString());
     JSP_ASSERT_MATCH(LEX_INT);
@@ -200,82 +295,6 @@ void jsjFactor() {
       jsjcPush(0, JSJVT_JSVAR);
     }
   } else JSP_MATCH(LEX_EOF);
-}
-
-/// Look up 'parent.a[index]'. Utility function called from JIT code
-uint64_t _jsjxObjectLookup(JsVar *index, JsVar *parent, JsVar *a) {
-  JsVar *resultParent = jsvSkipNameWithParent(a,true,parent);
-  jsvUnLock2(a, parent);
-  JsVar *resultA = 0;
-  if (resultParent)
-    resultA = jspGetVarNamedField(resultParent, index, true);
-  if (!resultA) {
-    if (jsvHasChildren(resultParent)) {
-      // if no child found, create a pointer to where it could be
-      // as we don't want to allocate it until it's written
-      resultA = jsvCreateNewChild(resultParent, index, 0);
-    } else {
-      jsExceptionHere(JSET_ERROR, "Field or method %q does not already exist, and can't create it on %t", index, resultParent);
-    }
-  }
-  jsvUnLock(index);
-  return ((uint64_t)(size_t)resultA) | (((uint64_t)(size_t)resultParent)<<32);
-}
-
-// Like jspeFunctionCall but we unlock ALL the vars supplied
-NO_INLINE JsVar *_jsjxFunctionCallAndUnLock(JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr) {
-  JsVar *function = jsvSkipName(functionName);
-  JsVar *r = jspeFunctionCall(function, functionName, thisArg, isParsing, argCount, argPtr);
-  jsvUnLockMany(argCount, argPtr);
-  jsvUnLock3(function, functionName, thisArg);
-  return r;
-}
-
-// Call jsvReplaceWithOrAddToRoot but unlock the second argument
-NO_INLINE void _jsxReplaceWithOrAddToRootUnlockSrc(JsVar *dst, JsVar *src) {
-  jsvReplaceWithOrAddToRoot(dst, src);
-  jsvUnLock(src);
-}
-
-// Handle postfix inc and dec nicely - without us having to add a bunch of extra code. var is unlocked automatically, the result is returned
-NO_INLINE JsVar *_jsxPostfixIncDec(JsVar *var, char op) {
-  JsVar *one = jsvNewFromInteger(1);
-  JsVar *oldValue = jsvAsNumberAndUnLock(jsvSkipName(var)); // keep the old value (but convert to number)
-  JsVar *res = jsvMathsOpSkipNames(var, one, op);
-  jsvReplaceWith(var, res);
-  jsvUnLock3(var,res,one);
-  return oldValue; // return the number from before we incremented
-}
-
-// Handle prefix inc and dec nicely - without us having to add a bunch of extra code
-NO_INLINE JsVar *_jsxPrefixIncDec(JsVar *var, char op) {
-  JsVar *one = jsvNewFromInteger(1);
-  JsVar *res = jsvMathsOpSkipNames(var, one, op);
-  jsvReplaceWith(var, res);
-  jsvUnLock2(res, one);
-  return var; // return the number from before we incremented
-}
-
-NO_INLINE JsVar *_jsxMathsOpSkipNamesAndUnLock(JsVar *a, JsVar *b, int op) {
-  JsVar *r = jsvMathsOpSkipNames(a,b,op);
-  jsvUnLock2(a,b);
-  return r;
-}
-
-// Add a variable to the current scope (eg VAR statement)
-NO_INLINE void _jsxAddVar(const char *name, bool isConstant, JsVar *initialValue) {
-  // FIXME WE NEED TO HANDLE PHASES HERE
-  JsVar *scope = jspeiGetTopScope();
-  JsVar *a = jsvFindChildFromString(scope, name, true);
-  jsvUnLock(scope);
-  if (!a) return; // no memory
-  if (isConstant)
-    a->flags |= JSV_CONSTANT;
-  if (initialValue) {
-    initialValue = jsvSkipNameAndUnLock(initialValue);
-    jsvReplaceWith(a, initialValue);
-  }
-  jsvUnLock2(a,initialValue);
 }
 
 // Parse ./[] - return true if the parent of the current item is currently on the stack
@@ -660,7 +679,7 @@ void jsjBlock() {
 void jsjStatementVar() {
   assert(lex->tk==LEX_R_VAR || lex->tk==LEX_R_LET || lex->tk==LEX_R_CONST);
   // FIXME: Ignore block scoping for now
-  bool isConstant = lex->tk==LEX_R_CONST;
+  LEX_TYPES declType = lex->tk;
   jslGetNextToken();
   bool hasComma = true; // for first time in loop
   while (hasComma && lex->tk == LEX_ID && JSJ_PARSING) {
@@ -668,19 +687,22 @@ void jsjStatementVar() {
     JsVar *name = jslGetTokenValueAsVar();
     JSP_ASSERT_MATCH(LEX_ID);
     bool hasInitialiser = lex->tk == '=';
+    /* create the variable locally, and in our var table. If we're emitting now
+    and there's no initial value, we don't need to do anything */
+    if (hasInitialiser || jit.phase != JSJP_EMIT)
+      jsjFactorIDAndUnLock(name, declType);
     if (hasInitialiser) { // sort out initialiser
+      DEBUG_JIT_EMIT("; Variable's intitialiser\n");
       JSP_ASSERT_MATCH('=');
       jsjAssignmentExpression();
+      if (jit.phase == JSJP_EMIT) {
+        // _jsxVarInitialAssign(r0:var, r1:isConstant, r2:initialValue)
+        jsjcLiteral8(1, (declType==LEX_R_CONST)?1:0); // r1 -> if we're a constant
+        jsjPopAsVar(2); // r2 -> initial value
+        jsjPopAsVar(0); // r0 -> variable (from jsjFactorIDAndUnLock)
+        jsjcCall(_jsxVarInitialAssign); // set the var's initial value
+      }
     }
-    if (jit.phase == JSJP_EMIT) {
-      // _jsxAddVar(r0:name, r1:isConstant, r2:initialValue)
-      jsjcLiteralString(0, name, true); // null terminated
-      jsjcLiteral8(1, isConstant?1:0); // r1 -> if we're a constant
-      if (hasInitialiser) jsjPopAsVar(2); // r2 -> initial value
-      else jsjcLiteral8(2, 0); // r2 -> no initial value
-      jsjcCall(_jsxAddVar); // add the variable
-    }
-    jsvUnLock(name);
     hasComma = lex->tk == ',';
     if (hasComma) JSP_ASSERT_MATCH(',');
   }
