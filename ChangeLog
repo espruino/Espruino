@@ -27,7 +27,7 @@
             E.HSBtoRGB can now be called with `E.HSBtoRGB(h,s,b,16)` to return a 16 bit value suitable for Bangle.js/etc
             Bangle.js2: Flip LCD SPI bit order so operations in Espruino can be faster (45% faster fillRect)
             Bangle.js2: Use 8x3bpp block fill with masking (now at least 6x faster than 2v15)
-            Fix JIT when overwriting a pre-existing function, JIT now allows `var/let/const`, fix lock leak in function call, work around postinc issue
+            Fix JIT when overwriting a pre-existing function, JIT now allows `var/let/const`, fix lock leak in function call, fix FOR postinc issue
             JIT compiler now included in MDBT42Q/Pixl.js/Puck.js/Bangle.js 1          
             Bangle.js 2: Bangle.setUI remove unused 'touch' mode, ensure 'back' button doesn't overlap if button is already used (fix #2287)
 

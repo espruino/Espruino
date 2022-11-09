@@ -153,7 +153,7 @@ jit(); // prints 0,1,2,3,4
 function jit() {"jit";for (i=0;i<5;i++) print(i);} // BROKEN?  Uncaught ReferenceError: "" is not defined
 jit(); // prints 0,1,2,3,4
 
-function jit() {"jit";for (i=0;i<5;++i) print(i);}
+function jit() {"jit";for (var i=0;i<5;++i) print(i);}
 jit(); // prints 0,1,2,3,4
 
 
@@ -181,6 +181,7 @@ Run JIT on ARM and then disassemble:
 // on ARM
 function jit() {"jit";return 1;}
 print(btoa(jit["\xffcod"]))
+// prints ASBL8Kz7AbQBvHBH
 
 // On Linux
 echo ASBL8Kz7AbQBvHBH | base64 -d  > jit.bin

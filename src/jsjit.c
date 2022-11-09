@@ -180,22 +180,12 @@ NO_INLINE void _jsxReplaceWithOrAddToRootUnlockSrc(JsVar *dst, JsVar *src) {
 
 // Handle postfix inc and dec nicely - without us having to add a bunch of extra code. var is unlocked automatically, the result is returned
 NO_INLINE JsVar *_jsxPostfixIncDec(JsVar *var, char op) {
-  /* FIXME: THIS IS PREINC. Postinc should be as follows but returning anything other than var causes
-   strange errors like "Uncaught ReferenceError: "\5" is not defined" for code like
-   function f(){"jit";for (var j=0;j<5;j++);}
-
   JsVar *one = jsvNewFromInteger(1);
   JsVar *oldValue = jsvAsNumberAndUnLock(jsvSkipName(var)); // keep the old value (but convert to number)
   JsVar *res = jsvMathsOpSkipNames(var, one, op);
   jsvReplaceWith(var, res);
   jsvUnLock3(var,res,one);
   return oldValue; // return the number from before we incremented
-  */
-  JsVar *one = jsvNewFromInteger(1);
-  JsVar *res = jsvMathsOpSkipNames(var, one, op);
-  jsvReplaceWith(var, res);
-  jsvUnLock2(res, one);
-  return var; // return the number from before we incremented - FIXME
 }
 
 // Handle prefix inc and dec nicely - without us having to add a bunch of extra code
@@ -700,7 +690,7 @@ void jsjStatementFor() {
   jsvUnLock(iteratorBlock);
   // after the iterator, jump back to condition
   DEBUG_JIT("; FOR jump back to condition\n");
-  jsjcBranchRelative(codePosCondition - jsjcGetByteCount());
+  jsjcBranchRelative(codePosCondition - (jsjcGetByteCount()+2));
   DEBUG_JIT("; FOR end\n");
 }
 
