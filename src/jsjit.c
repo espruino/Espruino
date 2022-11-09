@@ -406,8 +406,8 @@ void jsjPostfixExpression() {
     // PREFIX expression =>  ++i, --i
     int op = lex->tk;
     JSP_ASSERT_MATCH(op);
+    jsjPostfixExpression(); // recurse to get our var...
     if (jit.phase == JSJP_EMIT) {
-      jsjPostfixExpression(); // recurse to get our var...
       jsjPopAsVar(0); // old value -> r0
       jsjcLiteral32(1, op==LEX_PLUSPLUS ? '+' : '-'); // add the operation
       jsjcCall(_jsxPrefixIncDec); // JsVar *_jsxPrefixIncDec(JsVar *var, char op)
@@ -422,8 +422,8 @@ void jsjUnaryExpression() {
   if (lex->tk=='!' || lex->tk=='~' || lex->tk=='-' || lex->tk=='+') {
     int op = lex->tk;
     JSP_ASSERT_MATCH(op);
+    jsjUnaryExpression();
     if (jit.phase == JSJP_EMIT) {
-      jsjUnaryExpression();
       jsjPopNoName(0); // value -> r0 (but ensure it's not a name)
       if (op=='!') { // logical not
         jsjcCall(jsvGetBoolAndUnLock);
@@ -573,8 +573,8 @@ NO_INLINE void jsjAssignmentExpression() {
 
     int op = lex->tk;
     JSP_ASSERT_MATCH(op);
+    jsjAssignmentExpression();
     if (jit.phase == JSJP_EMIT) {
-      jsjAssignmentExpression();
       jsjPopNoName(1); // ensure we get rid of any references on the RHS
       jsjcPop(0); // pop LHS
       jsjcPush(0, JSJVT_JSVAR); // push LHS back on as this is our result value
@@ -648,7 +648,7 @@ void jsjBlock() {
 
 void jsjStatementIf() {
   JSP_ASSERT_MATCH(LEX_R_IF);
-  DEBUG_JIT("; IF condition\n");
+  DEBUG_JIT_EMIT("; IF condition\n");
   JSP_MATCH('(');
   jsjExpression();
   if (jit.phase == JSJP_EMIT) {
@@ -657,7 +657,7 @@ void jsjStatementIf() {
   }
   JSP_MATCH(')');
 
-  DEBUG_JIT("; capture IF true block\n");
+  DEBUG_JIT_EMIT("; capture IF true block\n");
   JsVar *oldBlock = jsjcStartBlock();
   jsjBlockOrStatement();
   JsVar *trueBlock = jsjcStopBlock(oldBlock);
@@ -665,7 +665,7 @@ void jsjStatementIf() {
 
   if (lex->tk==LEX_R_ELSE) {
     JSP_ASSERT_MATCH(LEX_R_ELSE);
-    DEBUG_JIT("; capture IF false block\n");
+    DEBUG_JIT_EMIT("; capture IF false block\n");
     oldBlock = jsjcStartBlock();
     jsjBlockOrStatement();
     falseBlock = jsjcStopBlock(oldBlock);
@@ -676,15 +676,14 @@ void jsjStatementIf() {
     jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(trueBlock) + (falseBlock?2:0));
     DEBUG_JIT("; IF true block\n");
     jsjcEmitBlock(trueBlock);
-    jsvUnLock(trueBlock);
     if (falseBlock) {
       jsjcBranchRelative(jsvGetStringLength(falseBlock)); // jump over false block
       DEBUG_JIT("; IF false block\n");
       jsjcEmitBlock(falseBlock);
-      jsvUnLock(falseBlock);
     }
     DEBUG_JIT("; IF end\n");
   }
+  jsvUnLock2(trueBlock,falseBlock);
 }
 
 void jsjStatementFor() {
@@ -692,14 +691,14 @@ void jsjStatementFor() {
   JSP_MATCH('(');
   // we could have 'for (;;)' - so don't munch up our semicolon if that's all we have
   // Parse initialiser - we always run this so march right in and create code
-  DEBUG_JIT("; FOR initialiser\n");
+  DEBUG_JIT_EMIT("; FOR initialiser\n");
   if (lex->tk != ';')
     jsjStatement();
   JSP_MATCH(';');
   // Condition - we run this first time, so we go straight through here, but save the position so we can jump back here
   // after the main loop
   int codePosCondition = jsjcGetByteCount();
-  DEBUG_JIT("; FOR condition\n");
+  DEBUG_JIT_EMIT("; FOR condition\n");
   if (lex->tk != ';') {
     jsjExpression(); // condition
     if (jit.phase == JSJP_EMIT) {
@@ -709,7 +708,7 @@ void jsjStatementFor() {
     // We add a jump to the end after we've parsed everything and know the size
   }
   JSP_MATCH(';');
-  DEBUG_JIT("; FOR Iterator block\n");
+  DEBUG_JIT_EMIT("; FOR Iterator block\n");
   JsVar *oldBlock = jsjcStartBlock();
   if (lex->tk != ')')  { // we could have 'for (;;)'
     jsjExpression(); // iterator
@@ -724,19 +723,18 @@ void jsjStatementFor() {
   jsjBlockOrStatement();
   JsVar *mainBlock = jsjcStopBlock(oldBlock);
   // Now figure out the jump length and jump (if condition is false)
-  if (jit.phase == JSJP_EMIT)
+  if (jit.phase == JSJP_EMIT) {
     jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(iteratorBlock) + jsvGetStringLength(mainBlock) + 2);
-  DEBUG_JIT("; FOR Main block\n");
-  jsjcEmitBlock(mainBlock);
-  jsvUnLock(mainBlock);
-  DEBUG_JIT("; FOR Iterator block\n");
-  jsjcEmitBlock(iteratorBlock);
-  jsvUnLock(iteratorBlock);
-  // after the iterator, jump back to condition
-  DEBUG_JIT("; FOR jump back to condition\n");
-  if (jit.phase == JSJP_EMIT)
-    jsjcBranchRelative(codePosCondition - jsjcGetByteCount());
-  DEBUG_JIT("; FOR end\n");
+    DEBUG_JIT_EMIT("; FOR Main block\n");
+    jsjcEmitBlock(mainBlock);
+    DEBUG_JIT_EMIT("; FOR Iterator block\n");
+    jsjcEmitBlock(iteratorBlock);
+    // after the iterator, jump back to condition
+    DEBUG_JIT_EMIT("; FOR jump back to condition\n");
+    jsjcBranchRelative(codePosCondition - (jsjcGetByteCount()+2));
+    DEBUG_JIT_EMIT("; FOR end\n");
+  }
+  jsvUnLock2(mainBlock, iteratorBlock);
 }
 
 void jsjStatement() {

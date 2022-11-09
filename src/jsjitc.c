@@ -104,6 +104,7 @@ JsVar *jsjcStop() {
 
 // Called before start of a block of code. Returns the old code jsVar that should be passed into jsjcStopBlock
 JsVar *jsjcStartBlock() {
+  if (jit.phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
   JsVar *v = jit.code;
   jit.code = jsvNewFromEmptyString();
   jit.blockCount++;
@@ -120,6 +121,7 @@ JsVar *jsjcStartInitCodeBlock() {
 
 // Called when JIT output stops, pass it the return value from jsjcStartBlock. Returns the code parsed in the block
 JsVar *jsjcStopBlock(JsVar *oldBlock) {
+  if (jit.phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
   JsVar *v = jit.code;
   jit.code = oldBlock;
   jit.blockCount--;

@@ -18,7 +18,10 @@
 #include "jsutils.h"
 #include "jsjit.h"
 
+// Write debug info to the console
 #define DEBUG_JIT jsjcDebugPrintf
+// Write debug info to the console IF we're in the 'emit' phase
+#define DEBUG_JIT_EMIT if (jit.phase == JSJP_EMIT) jsjcDebugPrintf
 // Called to print debug info - best to use DEBUG_JIT so we can disable debug lines for final compiles though
 void jsjcDebugPrintf(const char *fmt, ...);
 
@@ -85,11 +88,11 @@ extern JsjInfo jit;
 void jsjcStart();
 // Called when JIT output stops
 JsVar *jsjcStop();
-// Called before start of a block of code. Returns the old code jsVar that should be passed into jsjcStopBlock
+// Called before start of a block of code. Returns the old code jsVar that should be passed into jsjcStopBlock. Ignored unless in JSJP_EMIT phase
 JsVar *jsjcStartBlock();
 // Called to start writing to 'init code' (which is inserted before everything else). Returns the old code jsVar that should be passed into jsjcStopBlock
 JsVar *jsjcStartInitCodeBlock();
-// Called when JIT output stops, pass it the return value from jsjcStartBlock. Returns the code parsed in the block
+// Called when JIT output stops, pass it the return value from jsjcStartBlock. Returns the code parsed in the block. Ignored unless in JSJP_EMIT phase
 JsVar *jsjcStopBlock(JsVar *oldBlock);
 // Emit a whole block of code
 void jsjcEmitBlock(JsVar *block);
