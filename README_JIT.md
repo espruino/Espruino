@@ -150,7 +150,7 @@ i=5;jit(); // prints X,--
 function jit() {"jit";for (i=0;i<5;i=i+1) print(i);}
 jit(); // prints 0,1,2,3,4
 
-function jit() {"jit";for (i=0;i<5;i++) print(i);} // BROKEN?  Uncaught ReferenceError: "" is not defined
+function jit() {"jit";for (i=0;i<5;i++) print(i);}
 jit(); // prints 0,1,2,3,4
 
 function jit() {"jit";for (var i=0;i<5;++i) print(i);}
