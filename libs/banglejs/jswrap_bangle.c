@@ -5448,7 +5448,7 @@ To remove the scroller, just call `E.showScroller()`
     "ifdef" : "BANGLEJS",
     "typescript" : [
       "showAlert(message?: string, options?: string): Promise<void>;",
-      "showAlert(message?: string, options?: { title?: string, remove?: () => void }): Promise<void>;",
+      "showAlert(message?: string, options?: { title?: string, remove?: () => void }): Promise<void>;"
     ]
 }
 
