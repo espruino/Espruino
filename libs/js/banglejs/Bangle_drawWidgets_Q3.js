@@ -8,7 +8,7 @@
   }, p;
   for (var wd of WIDGETS) {
     p = pos[wd.area];
-  	if (!p) continue;
+  	if (!p || wd.width == 0) continue;
   	wd.x = p.x - p.r*wd.width;
   	wd.y = p.y;
   	p.x += wd.width*(1-2*p.r);
