@@ -18,14 +18,20 @@
 #include "jsutils.h"
 #include "jsjit.h"
 
+// Write debug info to the console
 #define DEBUG_JIT jsjcDebugPrintf
+// Write debug info to the console IF we're in the 'emit' phase
+#define DEBUG_JIT_EMIT if (jit.phase == JSJP_EMIT) jsjcDebugPrintf
 // Called to print debug info - best to use DEBUG_JIT so we can disable debug lines for final compiles though
 void jsjcDebugPrintf(const char *fmt, ...);
 
+#define JSJ_TYPE_STACK_SIZE 64 // Most amount of types stored on stack
+
 typedef enum {
   JSJVT_INT,
-  JSJVT_JSVAR
-} JsjValueType;
+  JSJVT_JSVAR,        ///< A JsVar
+  JSJVT_JSVAR_NO_NAME ///< A JsVar, and we know it's not a name so it doesn't need SkipName
+} PACKED_FLAGS JsjValueType;
 
 typedef enum {
   JSJAC_EQ, // 0
@@ -54,15 +60,44 @@ typedef enum {
   JSJAR_PC = 15,
 } JsjAsmReg;
 
+typedef enum {
+  JSJP_UNKNOWN,
+  JSJP_SCAN, /// scan for variables used
+  JSJP_EMIT  /// emit code
+} JsjPhase;
 
+
+typedef struct {
+  /// Which compilation phase are we in?
+  JsjPhase phase;
+  /// The ARM Thumb-2 code we're in the process of creating
+  JsVar *code;
+  /// The ARM Thumb-2 variable init code block (this goes right at the start of our function)
+  JsVar *initCode;
+  /// How many blocks deep are we? blockCount=0 means we're writing to the 'code' var
+  int blockCount;
+  /// An Object mapping var name -> index on the stack
+  JsVar *vars;
+  /// How many words (not bytes) are on the stack reserved for variables?
+  int varCount;
+  /// How much stuff has been pushed on the stack so far? (including variables)
+  int stackDepth;
+  /// For each item on the stack, we store its type
+  JsjValueType typeStack[JSJ_TYPE_STACK_SIZE];
+} JsjInfo;
+
+// JIT state
+extern JsjInfo jit;
 
 // Called before start of JIT output
 void jsjcStart();
 // Called when JIT output stops
 JsVar *jsjcStop();
-// Called before start of a block of code. Returns the old code jsVar that should be passed into jsjcStopBlock
+// Called before start of a block of code. Returns the old code jsVar that should be passed into jsjcStopBlock. Ignored unless in JSJP_EMIT phase
 JsVar *jsjcStartBlock();
-// Called when JIT output stops, pass it the return value from jsjcStartBlock. Returns the code parsed in the block
+// Called to start writing to 'init code' (which is inserted before everything else). Returns the old code jsVar that should be passed into jsjcStopBlock
+JsVar *jsjcStartInitCodeBlock();
+// Called when JIT output stops, pass it the return value from jsjcStartBlock. Returns the code parsed in the block. Ignored unless in JSJP_EMIT phase
 JsVar *jsjcStopBlock(JsVar *oldBlock);
 // Emit a whole block of code
 void jsjcEmitBlock(JsVar *block);
@@ -98,8 +133,12 @@ void jsjcMov(int regTo, int regFrom);
 void jsjcMVN(int regTo, int regFrom);
 // regTo = regTo & regFrom
 void jsjcAND(int regTo, int regFrom);
+// Convert the var type in the given reg to a JsVar
+void jsjcConvertToJsVar(int reg, JsjValueType varType);
 // Push a register onto the stack
 void jsjcPush(int reg, JsjValueType type);
+// Get the type of the variable on the top of the stack
+JsjValueType jsjcGetTopType();
 // Pop off the stack to a register
 JsjValueType jsjcPop(int reg);
 // Add a value to the stack pointer (only multiple of 4)
