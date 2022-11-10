@@ -77,7 +77,7 @@
       ];
     }
   } else
-    throw new Error("Unknown UI mode");
+    throw new Error("Unknown UI mode "+E.toJS(mode));
   if (options.remove) // handler for removing the UI (intervals/etc)
     Bangle.uiRemove = options.remove;
   if (options.back) {

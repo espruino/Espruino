@@ -19,7 +19,7 @@
  * Allow us to check what the last instruction was, and to replace it. Can then do peephole optimisations:
    * 'push+pop' is just a 'mov' (or maybe even nothing)
    *
- * Use a String iterator for writing to jitCode - it'll be a lot faster
+ * Use a String iterator for writing to jit.code - it'll be a lot faster
 
  */
 #ifdef ESPR_JIT
@@ -34,16 +34,23 @@
 
 #ifdef JIT_OUTPUT_FILE
 #include <stdio.h>
-FILE *f;
 #endif
 
-// The ARM Thumb-2 code we're in the process of creating
-JsVar *jitCode = 0;
-int blockCount = 0;
+// JIT state
+JsjInfo jit;
+
+const char *jsjcGetTypeName(JsjValueType t) {
+  switch(t) {
+    case JSJVT_INT: return "int";
+    case JSJVT_JSVAR: return "JsVar";
+    case JSJVT_JSVAR_NO_NAME: return "JsVar-value";
+    default: return "unknown";
+  }
+}
 
 void jsjcDebugPrintf(const char *fmt, ...) {
   if (jsFlags & JSF_JIT_DEBUG) {
-    if (!blockCount) jsiConsolePrintf("%6x: ", jsjcGetByteCount());
+    if (!jit.blockCount) jsiConsolePrintf("%6x: ", jsjcGetByteCount());
     else jsiConsolePrintf("       : ");
     va_list argp;
     va_start(argp, fmt);
@@ -53,48 +60,85 @@ void jsjcDebugPrintf(const char *fmt, ...) {
 }
 
 void jsjcStart() {
-#ifdef JIT_OUTPUT_FILE
-  f = fopen(JIT_OUTPUT_FILE, "wb");
-#endif
-  jitCode = jsvNewFromEmptyString();
-  blockCount = 0;
+  jit.phase = JSJP_UNKNOWN;
+  jit.code = jsvNewFromEmptyString();
+  jit.initCode = jsvNewFromEmptyString(); // FIXME: maybe we don't need this?
+  jit.blockCount = 0;
+  jit.vars = jsvNewObject();
+  jit.varCount = 0;
+  jit.stackDepth = 0;
 }
 
 JsVar *jsjcStop() {
-  assert(blockCount==0);
+  jsjcDebugPrintf("VARS: %j\n", jit.vars);
+  jsvUnLock(jit.vars);
+  jit.vars = 0;
+  assert(jit.stackDepth == 0);
+
+  assert(jit.blockCount==0);
 #ifdef JIT_OUTPUT_FILE
+  FILE *f = fopen(JIT_OUTPUT_FILE, "wb");
+  JSV_GET_AS_CHAR_ARRAY(icPtr, icLen, jit.initCode);
+  if (icPtr) fwrite(icPtr, 1, icLen, f);
+  JSV_GET_AS_CHAR_ARRAY(cPtr, cLen, jit.code);
+  if (cPtr) fwrite(cPtr, 1, cLen, f);
   fclose(f);
 #endif
-  JsVar *v = jsvAsFlatString(jitCode);
-  jsvUnLock(jitCode);
-  jitCode = 0;
-  return v;
+  // Like AsFlatString but we need to concat two blocks instead
+  size_t len = jsvGetStringLength(jit.code) + jsvGetStringLength(jit.initCode);
+  JsVar *flat = jsvNewFlatStringOfLength((unsigned int)len);
+  if (flat) {
+    JsvStringIterator src;
+    JsvStringIterator dst;
+    jsvStringIteratorNew(&src, jit.initCode, 0);
+    jsvStringIteratorNew(&dst, flat, 0);
+    while (jsvStringIteratorHasChar(&src)) {
+      jsvStringIteratorSetCharAndNext(&dst, jsvStringIteratorGetCharAndNext(&src));
+    }
+    jsvStringIteratorFree(&src);
+    jsvStringIteratorNew(&src, jit.code, 0);
+    while (jsvStringIteratorHasChar(&src)) {
+      jsvStringIteratorSetCharAndNext(&dst, jsvStringIteratorGetCharAndNext(&src));
+    }
+    jsvStringIteratorFree(&src);
+    jsvStringIteratorFree(&dst);
+  }
+  jsvUnLock(jit.code);
+  jit.code = 0;
+  jsvUnLock(jit.initCode);
+  jit.code = 0;
+  return flat;
 }
 
 // Called before start of a block of code. Returns the old code jsVar that should be passed into jsjcStopBlock
 JsVar *jsjcStartBlock() {
-  JsVar *v = jitCode;
-  jitCode = jsvNewFromEmptyString();
-  blockCount++;
+  if (jit.phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
+  JsVar *v = jit.code;
+  jit.code = jsvNewFromEmptyString();
+  jit.blockCount++;
   return v;
 }
+
+// Called to start writing to 'init code' (which is inserted before everything else). Returns the old code jsVar that should be passed into jsjcStopBlock
+JsVar *jsjcStartInitCodeBlock() {
+  JsVar *v = jit.code;
+  jit.code = jsvLockAgain(jit.initCode);
+  jit.blockCount++;
+  return v;
+}
+
 // Called when JIT output stops, pass it the return value from jsjcStartBlock. Returns the code parsed in the block
 JsVar *jsjcStopBlock(JsVar *oldBlock) {
-  JsVar *v = jitCode;
-  jitCode = oldBlock;
-  blockCount--;
+  if (jit.phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
+  JsVar *v = jit.code;
+  jit.code = oldBlock;
+  jit.blockCount--;
   return v;
 }
 
 void jsjcEmit16(uint16_t v) {
   //DEBUG_JIT("> %04x\n", v);
-#ifdef JIT_OUTPUT_FILE
-  if (!blockCount) {
-    fputc(v&255, f);
-    fputc(v>>8, f);
-  }
-#endif
-  jsvAppendStringBuf(jitCode, (char *)&v, 2);
+  jsvAppendStringBuf(jit.code, (char *)&v, 2);
 }
 
 // Emit a whole block of code
@@ -111,7 +155,7 @@ void jsjcEmitBlock(JsVar *block) {
 }
 
 int jsjcGetByteCount() {
-  return jsvGetStringLength(jitCode);
+  return jsvGetStringLength(jit.code);
 }
 
 void jsjcLiteral8(int reg, uint8_t data) {
@@ -191,19 +235,34 @@ void jsjcBranchRelative(int bytes) {
   DEBUG_JIT("B %s%d (addr 0x%04x)\n", (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
   bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
-  assert(bytes>=-4096 && bytes<4096); // only multiples of 2 bytes
+  assert(bytes>=-2048 && bytes<2048); // check it's in range...
+  if (bytes<-2048 || bytes>=2048)
+    jsExceptionHere(JSET_ERROR, "JIT: B jump (%d) out of range", bytes);
   int imm11 = ((unsigned int)(bytes)>>1) & 2047;
   jsjcEmit16((uint16_t)(0b1110000000000000 | imm11)); // unconditional branch
 }
 
 // Jump a number of bytes forward or back, based on condition flags
 void jsjcBranchConditionalRelative(JsjAsmCondition cond, int bytes) {
-  DEBUG_JIT("B[%d] %s%d (addr 0x%04x)\n", cond, (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
   bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
-  assert(bytes>=-512 && bytes<512); // only multiples of 2 bytes
-  int imm8 = (bytes>>1) & 255;
-  jsjcEmit16((uint16_t)(0b1101000000000000 | (cond<<8) | imm8)); // conditional branch
+  if (bytes>=-256 && bytes<256) { // B<c>
+    DEBUG_JIT("B<%d> %s%d (addr 0x%04x)\n", cond, (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
+    int imm8 = (bytes>>1) & 255;
+    jsjcEmit16((uint16_t)(0b1101000000000000 | (cond<<8) | imm8)); // conditional branch
+  } else if (bytes>=-1048576 && bytes<(1048576-2)) { // B<c>.W
+    bytes += 2; // must pad out by 1 byte because this is a double-length instruction!
+    DEBUG_JIT("B<%d>.W %s%d (addr 0x%04x)\n", cond, (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
+    int imm20 = (bytes>>1);
+    int S = (imm20>>19) & 1;
+    int J2 = (imm20>>18) & 1;
+    int J1 = (imm20>>17) & 1;
+    int imm6 = (imm20>>11) & 63;
+    int imm11 = imm20 & 2047;
+    jsjcEmit16((uint16_t)(0b1111000000000000 | (S<<10) | (cond<<6) | imm6)); // conditional branch
+    jsjcEmit16((uint16_t)(0b1000000000000000 | (J1<<13) | (J2<<11) | imm11)); // conditional branch
+  } else
+    jsExceptionHere(JSET_ERROR, "JIT: B<> jump (%d) out of range", bytes);
 }
 
 #ifdef DEBUG_JIT_CALLS
@@ -251,38 +310,77 @@ void jsjcAND(int regTo, int regFrom) {
   jsjcEmit16((uint16_t)(0b0100000000000000 | (regFrom<<3) | (regTo&7)));
 }
 
+// Convert the var type in the given reg to a JsVar
+void jsjcConvertToJsVar(int reg, JsjValueType varType) {
+  if (varType==JSJVT_JSVAR || varType==JSJVT_JSVAR_NO_NAME) return; // no conversion needed
+  if (varType==JSJVT_INT) {
+    if (reg) jsjcMov(0, reg);
+    jsjcCall(jsvNewFromInteger); // FIXME: what about clobbering r1-r3? Do a push/pop?
+    if (reg) jsjcMov(reg, 0);
+    return;
+  }
+  assert(0);
+}
+
 void jsjcPush(int reg, JsjValueType type) {
-  DEBUG_JIT("PUSH {r%d}\n", reg);
+  DEBUG_JIT("PUSH {r%d}   (%s => stack depth %d)\n", reg, jsjcGetTypeName(type), jit.stackDepth);
+  if (jit.stackDepth>=JSJ_TYPE_STACK_SIZE) { // not enough space on type staclk
+    DEBUG_JIT("!!! not enough space on type stack - converting to JsVar\n");
+    jsjcConvertToJsVar(reg, type);
+    type = JSJVT_JSVAR;
+  } else
+    jit.typeStack[jit.stackDepth] = type;
+  jit.stackDepth++;
   assert(reg>=0 && reg<8);
   jsjcEmit16((uint16_t)(0b1011010000000000 | (1<<reg)));
 }
 
+// Get the type of the variable on the top of the stack
+JsjValueType jsjcGetTopType() {
+  assert(jit.stackDepth>0);
+  if (jit.stackDepth==0) return JSJVT_INT; // Error!
+  if (jit.stackDepth>JSJ_TYPE_STACK_SIZE) return JSJVT_JSVAR; // If too many types, assume JSVAR (we convert when we push)
+  return jit.typeStack[jit.stackDepth-1];
+}
+
 JsjValueType jsjcPop(int reg) {
-  DEBUG_JIT("POP {r%d}\n", reg);
+  JsjValueType varType = jsjcGetTopType();
+  jit.stackDepth--;
+  DEBUG_JIT("POP {r%d}   (%s <= stack depth %d)\n", reg, jsjcGetTypeName(varType), jit.stackDepth);
   assert(reg>=0 && reg<8);
   jsjcEmit16((uint16_t)(0b1011110000000000 | (1<<reg)));
-  return JSJVT_JSVAR; // FIXME
+  return varType;
 }
 
 void jsjcAddSP(int amt) {
   assert((amt&3)==0 && amt>0 && amt<512);
-  DEBUG_JIT("ADD SP,SP,#%d\n", amt);
+  jit.stackDepth -= (amt>>2); // stack grows down -> negate
+  DEBUG_JIT("ADD SP,SP,#%d   (stack depth now %d)\n", amt, jit.stackDepth);
   jsjcEmit16((uint16_t)(0b1011000000000000 | (amt>>2)));
 }
 
 void jsjcSubSP(int amt) {
   assert((amt&3)==0 && amt>0 && amt<512);
-  DEBUG_JIT("SUB SP,SP,#%d\n", amt);
+  jit.stackDepth += (amt>>2); // stack grows down -> negate
+  DEBUG_JIT("SUB SP,SP,#%d   (stack depth now %d)\n", amt, jit.stackDepth);
   jsjcEmit16((uint16_t)(0b1011000010000000 | (amt>>2)));
 }
 
-
 void jsjcLoadImm(int reg, int regAddr, int offset) {
-  assert((offset&3)==0 && offset>=0 && offset<128);
-  assert(reg<8);
-  assert(regAddr<8);
-  DEBUG_JIT("LDR r%d,r%d,#%d\n", reg, regAddr, offset);
-  jsjcEmit16((uint16_t)(0b0110100000000000 | ((offset>>2)<<6) | (regAddr<<3) | reg));
+  assert((offset&3)==0 && offset>=0);
+  // https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Alphabetical-list-of-Thumb-instructions/LDR--immediate-
+  if (regAddr == JSJAR_SP) {
+    assert(reg<2);
+    assert(offset<4096);
+    DEBUG_JIT("LDR r%d,[SP,#%d]\n", reg, offset);
+    jsjcEmit16((uint16_t)(0b1001100000000000 | (offset>>2) | (reg<<10)));
+  } else {
+    assert(reg<8);
+    assert(regAddr<8);
+    assert(offset<128);
+    DEBUG_JIT("LDR r%d,[r%d,#%d]\n", reg, regAddr, offset);
+    jsjcEmit16((uint16_t)(0b0110100000000000 | ((offset>>2)<<6) | (regAddr<<3) | reg));
+  }
 }
 
 void jsjcStoreImm(int reg, int regAddr, int offset) {
