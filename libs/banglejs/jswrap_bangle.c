@@ -5204,7 +5204,7 @@ Load the Bangle.js clock.
     ]
 }
 Load an app while checking if fast loading is possible. Calling this without
-a name loads a configured default app. In most cases either clock or launcher.
+a name loads the clock.
 */
 
 /*JSON{
