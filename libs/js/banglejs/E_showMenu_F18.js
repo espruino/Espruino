@@ -189,7 +189,7 @@
     }
   };
   l.draw();
-  Bangle.setUI({mode: "updown", back: items["< Back"]?l.back:undefined}, dir => {
+  Bangle.setUI({mode: "updown", back: items["< Back"]?l.back:undefined, remove: options.remove}, dir => {
     if (dir) l.move(dir);
     else l.select();
   });

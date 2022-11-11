@@ -5,9 +5,10 @@
     scroll = initial scroll position
     scrollMin = minimum scroll amount (can be negative)
     draw = function(idx, rect)
+    remove = function()
     select = function(idx)
   }
-  
+
   returns {
     draw  = draw all
     drawItem(idx) = draw specific item
@@ -52,6 +53,7 @@ g.flip(); // force an update now to make this snappier
 Bangle.setUI({
   mode : "custom",
   back : options.back,
+  remove : options.remove,
   drag : e=>{
     var dy = e.dy;
     if (s.scroll - dy > menuScrollMax)

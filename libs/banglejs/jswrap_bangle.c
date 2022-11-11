@@ -5241,6 +5241,8 @@ On Bangle.js there are a few additions over the standard `graphical_menu`:
 * The options object can contain:
   * `back : function() { }` - add a 'back' button, with the function called when
     it is pressed
+  * `remove : function() { }` - add a handler function to be called when the 
+    menu is removed
   * (Bangle.js 2) `scroll : int` - an integer specifying how much the initial
     menu should be scrolled by
 * The object returned by `E.showMenu` contains:
@@ -5311,7 +5313,7 @@ E.showMessage("Lots of text will wrap automatically",{
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
     "ifdef" : "BANGLEJS",
     "typescript" : [
-      "showPrompt<T = boolean>(message: string, options?: { title?: string, buttons?: { [key: string]: T } }): Promise<T>;",
+      "showPrompt<T = boolean>(message: string, options?: { title?: string, buttons?: { [key: string]: T }, remove?: () => void }): Promise<T>;",
       "showPrompt(): void;"
     ]
 }
@@ -5352,6 +5354,7 @@ The second `options` argument can contain:
   title: "Hello",                       // optional Title
   buttons : {"Ok":true,"Cancel":false}, // optional list of button text & return value
   img: "image_string"                   // optional image string to draw
+  remove: function() { }                // Bangle.js: optional function to be called when the prompt is removed
 }
 ```
 */
@@ -5362,12 +5365,12 @@ The second `options` argument can contain:
     "name" : "showScroller",
     "generate_js" : "libs/js/banglejs/E_showScroller.min.js",
     "params" : [
-      ["options","JsVar","An object containing `{ h, c, draw, select }` (see below) "]
+      ["options","JsVar","An object containing `{ h, c, draw, select, back, remove }` (see below) "]
     ],
     "return" : ["JsVar", "A menu object with `draw()` and `drawItem(itemNo)` functions" ],
     "ifdef" : "BANGLEJS",
     "typescript" : [
-      "showScroller(options?: { h: number, c: number, draw: (idx: number, rect: { x: number, y: number, w: number, h: number }) => void, select: (idx: number) => void, back?: () => void }): { draw: () => void, drawItem: (itemNo: number) => void };",
+      "showScroller(options?: { h: number, c: number, draw: (idx: number, rect: { x: number, y: number, w: number, h: number }) => void, select: (idx: number) => void, back?: () => void, remove?: () => void }): { draw: () => void, drawItem: (itemNo: number) => void };",
       "showScroller(): void;"
     ]
 }
@@ -5386,6 +5389,8 @@ Supply an object containing:
   select : function(idx) { ... }
   // optional function to be called when 'back' is tapped
   back : function() { ...}
+  // Bangle.js: optional function to be called when the scroller should be removed
+  remove : function() {}
 }
 ```
 
@@ -5437,11 +5442,14 @@ To remove the scroller, just call `E.showScroller()`
     "generate_js" : "libs/js/banglejs/E_showAlert.min.js",
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
-      ["options","JsVar","(optional) a title for the message"]
+      ["options","JsVar","(optional) a title for the message or an object containing options"]
     ],
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
     "ifdef" : "BANGLEJS",
-    "typescript" : "showAlert(message?: string, options?: string): Promise<void>;"
+    "typescript" : [
+      "showAlert(message?: string, options?: string): Promise<void>;",
+      "showAlert(message?: string, options?: { title?: string, remove?: () => void }): Promise<void>;"
+    ]
 }
 
 Displays a full screen prompt on the screen, with a single 'Ok' button.
