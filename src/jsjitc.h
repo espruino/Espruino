@@ -34,20 +34,21 @@ typedef enum {
 } PACKED_FLAGS JsjValueType;
 
 typedef enum {
-  JSJAC_EQ, // 0
-  JSJAC_NE,
-  JSJAC_CS,
-  JSJAC_CC,
-  JSJAC_MI,
-  JSJAC_PL,
-  JSJAC_VS,
-  JSJAC_VC,
-  JSJAC_HI,
-  JSJAC_LI,
-  JSJAC_GE,
-  JSJAC_LT,
-  JSJAC_GT,
-  JSJAC_LE,
+  JSJAC_EQ, // Equal / equals zero
+  JSJAC_NE, // Not equal
+  JSJAC_CS, // Carry set / unsigned higher or same
+  JSJAC_CC, // Carry clear / unsigned lower
+  JSJAC_MI, // Minus / negative
+  JSJAC_PL, // Plus / positive or zero
+  JSJAC_VS, // Overflow
+  JSJAC_VC, // No overflow
+  JSJAC_HI, // Unsigned higher
+  JSJAC_LI, // Unsigned lower or same
+  JSJAC_GE, // Signed greater than or equal
+  JSJAC_LT, // Signed less than
+  JSJAC_GT, // Signed greater than
+  JSJAC_LE, // Signed less than or equal
+  JSJAC_AL  // Always
 } JsjAsmCondition;
 
 typedef enum {

@@ -134,6 +134,12 @@ i=0;jit()==0 && i==1
 function jit() {'jit';return ++i;}
 i=0;jit()==1 && i==1
 
+function jit() {'jit';return i+=" world";}
+i="hello";jit()=="hello world" && i=="hello world";
+
+function jit() {'jit';return i-=2;}
+i=3;jit()==1 && i==1
+
 function jit() {'jit';i=42;}
 jit();i==42
 

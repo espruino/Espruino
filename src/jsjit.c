@@ -61,10 +61,12 @@ NO_INLINE JsVar *_jsjxFunctionCallAndUnLock(JsVar *functionName, JsVar *thisArg,
   return r;
 }
 
-// Call jsvReplaceWithOrAddToRoot but unlock the second argument
-NO_INLINE void _jsxReplaceWithOrAddToRootUnlockSrc(JsVar *dst, JsVar *src) {
+// Call jsvReplaceWithOrAddToRoot but unlock (and skip names on) the second argument
+NO_INLINE JsVar *_jsxAssignment(JsVar *dst, JsVar *src) {
+  src = jsvSkipNameAndUnLock(src);
   jsvReplaceWithOrAddToRoot(dst, src);
   jsvUnLock(src);
+  return dst;
 }
 
 // Handle postfix inc and dec nicely - without us having to add a bunch of extra code. var is unlocked automatically, the result is returned
@@ -83,6 +85,14 @@ NO_INLINE JsVar *_jsxPrefixIncDec(JsVar *var, char op) {
   JsVar *res = jsvMathsOpSkipNames(var, one, op);
   jsvReplaceWith(var, res);
   jsvUnLock2(res, one);
+  return var; // return the number from before we incremented
+}
+
+// Handle +=/-=/etc nicely - without us having to add a bunch of extra code (unlocks rhs)
+NO_INLINE JsVar *_jsxMathAssignment(JsVar *var, JsVar *rhs, char op) {
+  JsVar *res = jsvMathsOpSkipNames(var, rhs, op);
+  jsvReplaceWith(var, res);
+  jsvUnLock2(res, rhs);
   return var; // return the number from before we incremented
 }
 
@@ -321,7 +331,7 @@ bool jsjFactorMember() {
       JSP_ASSERT_MATCH('[');
       jsjAssignmentExpression();
       if (jit.phase == JSJP_EMIT) {
-        jsjcPop(0);
+        jsjPopAsVar(0);
         jsjcCall(jsvAsArrayIndexAndUnLock);
       }
       JSP_MATCH_WITH_RETURN(']', false); // if we fail we're stopping compilation anyway
@@ -331,9 +341,9 @@ bool jsjFactorMember() {
     }
     if (jit.phase == JSJP_EMIT) {
       // r0 currently = index
-      if (parentOnStack) jsjcPop(1); // r1 = parent
+      if (parentOnStack) jsjPopAsVar(1); // r1 = parent
       else jsjcLiteral32(1, 0);
-      jsjcPop(2); // r2 = the variable itself
+      jsjPopAsVar(2); // r2 = the variable itself
       jsjcCall(_jsjxObjectLookup); // (a,parent) = _jsjxObjectLookup(index, parent, a)
       jsjcPush(0, JSJVT_JSVAR); // a
       jsjcPush(1, JSJVT_JSVAR); // parent
@@ -352,13 +362,13 @@ void jsjFactorFunctionCall() {
     if (jit.phase == JSJP_EMIT) {
       if (parentOnStack) {
         DEBUG_JIT("; FUNCTION CALL r6 = 'this'\n");
-        jsjcPop(6); // r6 = this/parent
+        jsjPopAsVar(6); // r6 = this/parent
         parentOnStack = false;
       } else {
         jsjcLiteral32(6, 0); // no parent
       }
       DEBUG_JIT("; FUNCTION CALL r4 = funcName\n");
-      jsjcPop(4); // r4 = funcName
+      jsjPopAsVar(4); // r4 = funcName
       DEBUG_JIT("; FUNCTION CALL arguments\n");
     }
     /* PARSE OUR ARGUMENTS
@@ -417,7 +427,7 @@ void jsjFactorFunctionCall() {
     }
   }
   if ((jit.phase == JSJP_EMIT) && parentOnStack) {
-    jsjcPop(0); // remove parent from the stack and unlock it
+    jsjPopAsVar(0); // remove parent from the stack and unlock it
     jsjcCall(jsvUnLock);
   }
 }
@@ -576,7 +586,7 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
       } else */if (jit.phase == JSJP_EMIT) {  // --------------------------------------------- NORMAL
         jsjPopAsVar(1); // b -> r1
         jsjPopAsVar(0); // a -> r0
-        jsjcLiteral32(2, op);
+        jsjcLiteral8(2, op);
         jsjcCall(_jsxMathsOpSkipNamesAndUnLock); // unlocks arguments
         jsjcPush(0, JSJVT_JSVAR_NO_NAME); // push result - a value, not a NAME
       }
@@ -599,57 +609,39 @@ NO_INLINE void jsjAssignmentExpression() {
   // parse LHS
   jsjConditionalExpression();
   if (!JSJ_PARSING) return;
-  if (lex->tk=='='/* || lex->tk==LEX_PLUSEQUAL || lex->tk==LEX_MINUSEQUAL ||
+  if (lex->tk=='=' || lex->tk==LEX_PLUSEQUAL || lex->tk==LEX_MINUSEQUAL ||
       lex->tk==LEX_MULEQUAL || lex->tk==LEX_DIVEQUAL || lex->tk==LEX_MODEQUAL ||
       lex->tk==LEX_ANDEQUAL || lex->tk==LEX_OREQUAL ||
       lex->tk==LEX_XOREQUAL || lex->tk==LEX_RSHIFTEQUAL ||
-      lex->tk==LEX_LSHIFTEQUAL || lex->tk==LEX_RSHIFTUNSIGNEDEQUAL*/) {
+      lex->tk==LEX_LSHIFTEQUAL || lex->tk==LEX_RSHIFTUNSIGNEDEQUAL) {
 
     int op = lex->tk;
     JSP_ASSERT_MATCH(op);
+
     jsjAssignmentExpression();
     if (jit.phase == JSJP_EMIT) {
-      jsjPopNoName(1); // ensure we get rid of any references on the RHS
-      jsjcPop(0); // pop LHS
-      jsjcPush(0, JSJVT_JSVAR); // push LHS back on as this is our result value (still a NAME)
-      //jsjcPush(1, JSJVT_JSVAR); // push RHS back on, so we can pop it off and unlock after jsvReplaceWithOrAddToRoot
-
-
-    if (op=='=') {
-      // this is like jsvReplaceWithOrAddToRoot but it unlocks the RHS for us
-      jsjcCall(_jsxReplaceWithOrAddToRootUnlockSrc); // void _jsxReplaceWithOrAddToRootUnlockSrc(JsVar *dst, JsVar *src)
-    } else {
-/*
-      if (op==LEX_PLUSEQUAL) op='+';
-      else if (op==LEX_MINUSEQUAL) op='-';
-      else if (op==LEX_MULEQUAL) op='*';
-      else if (op==LEX_DIVEQUAL) op='/';
-      else if (op==LEX_MODEQUAL) op='%';
-      else if (op==LEX_ANDEQUAL) op='&';
-      else if (op==LEX_OREQUAL) op='|';
-      else if (op==LEX_XOREQUAL) op='^';
-      else if (op==LEX_RSHIFTEQUAL) op=LEX_RSHIFT;
-      else if (op==LEX_LSHIFTEQUAL) op=LEX_LSHIFT;
-      else if (op==LEX_RSHIFTUNSIGNEDEQUAL) op=LEX_RSHIFTUNSIGNED;
-      if (op=='+' && jsvIsName(lhs)) {
-        JsVar *currentValue = jsvSkipName(lhs);
-        if (jsvIsBasicString(currentValue) && jsvGetRefs(currentValue)==1 && rhs!=currentValue) {
-          // A special case for string += where this is the only use of the string
-          // and we're not appending to ourselves. In this case we can do a
-          // simple append (rather than clone + append)
-          JsVar *str = jsvAsString(rhs);
-          jsvAppendStringVarComplete(currentValue, str);
-          jsvUnLock(str);
-          op = 0;
-        }
-        if (op) {
-          // Fallback which does a proper add
-          JsVar *res = jsvMathsOpSkipNames(lhs,rhs,op);
-          jsvReplaceWith(lhs, res);
-          jsvUnLock(res);
-        }
-  */
+      jsjPopAsVar(1); // pop RHS to r1
+      jsjPopAsVar(0); // pop LHS to r0
+      if (op=='=') {
+        // this is like jsvReplaceWithOrAddToRoot but it unlocks the RHS for us
+        jsjcCall(_jsxAssignment); // JsVar *_jsxAssignment(JsVar *dst, JsVar *src)
+      } else {
+        if (op==LEX_PLUSEQUAL) op='+';
+        else if (op==LEX_MINUSEQUAL) op='-';
+        else if (op==LEX_MULEQUAL) op='*';
+        else if (op==LEX_DIVEQUAL) op='/';
+        else if (op==LEX_MODEQUAL) op='%';
+        else if (op==LEX_ANDEQUAL) op='&';
+        else if (op==LEX_OREQUAL) op='|';
+        else if (op==LEX_XOREQUAL) op='^';
+        else if (op==LEX_RSHIFTEQUAL) op=LEX_RSHIFT;
+        else if (op==LEX_LSHIFTEQUAL) op=LEX_LSHIFT;
+        else if (op==LEX_RSHIFTUNSIGNEDEQUAL) op=LEX_RSHIFTUNSIGNED;
+        else assert(0);
+        jsjcLiteral8(2, op);
+        jsjcCall(_jsxMathAssignment); // JsVar *_jsxMathAssignment(JsVar *var, JsVar *rhs, char op)
       }
+      jsjcPush(0, JSJVT_JSVAR); // push the result (LHS) back on
     }
   }
 }

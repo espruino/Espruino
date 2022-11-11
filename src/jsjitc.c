@@ -236,10 +236,13 @@ void jsjcBranchRelative(int bytes) {
   bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
   assert(bytes>=-2048 && bytes<2048); // check it's in range...
-  if (bytes<-2048 || bytes>=2048)
-    jsExceptionHere(JSET_ERROR, "JIT: B jump (%d) out of range", bytes);
-  int imm11 = ((unsigned int)(bytes)>>1) & 2047;
-  jsjcEmit16((uint16_t)(0b1110000000000000 | imm11)); // unconditional branch
+  if (bytes<-2048 || bytes>=2048) {
+    // out of range, so use jsjcBranchConditionalRelative that can handle big jumps
+    jsjcBranchConditionalRelative(JSJAC_AL, bytes+2);
+  } else {
+    int imm11 = ((unsigned int)(bytes)>>1) & 2047;
+    jsjcEmit16((uint16_t)(0b1110000000000000 | imm11)); // unconditional branch
+  }
 }
 
 // Jump a number of bytes forward or back, based on condition flags
