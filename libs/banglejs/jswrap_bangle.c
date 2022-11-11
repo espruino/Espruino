@@ -5186,7 +5186,7 @@ application to launch.
     "generate_js" : "libs/js/banglejs/Bangle_showClock.min.js",
     "ifdef" : "BANGLEJS"
 }
-Load the Bangle.js clock.
+Load the Bangle.js clock - this has the same effect as calling `Bangle.load()`.
 */
 
 /*JSON{
@@ -5195,7 +5195,7 @@ Load the Bangle.js clock.
     "name" : "load",
     "generate_js" : "libs/js/banglejs/Bangle_load.min.js",
     "params" : [
-      ["file","JsVar","A string containing the file name for the app to be loaded"]
+      ["file","JsVar","(optional) A string containing the file name for the app to be loaded"]
     ],
     "ifdef" : "BANGLEJS",
     "typescript": [
@@ -5203,8 +5203,16 @@ Load the Bangle.js clock.
       "load(): void;"
     ]
 }
-Load an app while checking if fast loading is possible. Calling this without
-a name loads the clock.
+This behaves the same as the global `load()` function, but if fast
+loading is possible (`Bangle.setUI` was called with a `remove` handler)
+then instead of a complete reload, the `remove` handler will be
+called and the new app will be loaded straight after.
+
+`load()` is slower, but safer. As such, care should be taken
+when using `Bangle.load()` with `Bangle.setUI({..., remove:...})`
+as if your remove handler doesn't completely clean up after your app,
+memory leaks or other issues could occur - see `Bangle.setUI` for more
+information.
 */
 
 /*JSON{
@@ -5618,10 +5626,11 @@ Bangle.setUI({
 });
 ```
 
-If `remove` is specified, `Bangle.showLauncher` (and some apps) may choose to just call this and then
-load a new app without resetting Bangle.js. As a result, **if you specify 'remove' you should
-make sure you test that after calling it your app is completely unloaded** otherwise you may
-end up with a memory leak.
+If `remove` is specified, `Bangle.showLauncher`, `Bangle.showClock`, `Bangle.load` and some apps
+may choose to just call the `remove` function and then load a new app without resetting Bangle.js.
+As a result, **if you specify 'remove' you should make sure you test that after calling `Bangle.setUI()`
+without arguments your app is completely unloaded**, otherwise you may end up with memory leaks or
+other issues when switching apps.
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
