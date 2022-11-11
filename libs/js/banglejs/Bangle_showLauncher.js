@@ -23,11 +23,7 @@
   if (!launcherApp) {
     eval(`E.showMessage("No Launcher Found");setWatch(()=>{load();}, global.BTN2||BTN, {repeat:false,edge:"falling"});`);
   } else {
-    if (Bangle.uiRemove) {
-      Bangle.setUI(); // remove all existing UI (and call Bangle.uiRemove)
-      __FILE__=s.launcher;
-      setTimeout(eval,0,launcherApp); // Load launcher direct without a reboot
-    } else load(s.launcher);
+    Bangle.load(s.launcher);
   }
   delete s;
   delete launcherApp;

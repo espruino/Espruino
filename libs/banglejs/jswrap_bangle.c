@@ -5181,6 +5181,34 @@ application to launch.
 
 /*JSON{
     "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "showClock",
+    "generate_js" : "libs/js/banglejs/Bangle_showClock.min.js",
+    "ifdef" : "BANGLEJS"
+}
+Load the Bangle.js clock.
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "load",
+    "generate_js" : "libs/js/banglejs/Bangle_load.min.js",
+    "params" : [
+      ["file","JsVar","A string containing the file name for the app to be loaded"]
+    ],
+    "ifdef" : "BANGLEJS",
+    "typescript": [
+      "load(file: string): void;",
+      "load(): void;"
+    ]
+}
+Load an app while checking if fast loading is possible. Calling this without
+a name loads the clock.
+*/
+
+/*JSON{
+    "type" : "staticmethod",
     "class" : "E",
     "name" : "showMenu",
     "generate_js" : "libs/js/banglejs/E_showMenu_F18.min.js",
