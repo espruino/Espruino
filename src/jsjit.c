@@ -531,6 +531,10 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
   unsigned int precedence = jsjGetBinaryExpressionPrecedence(lex->tk);
   while (precedence && precedence>lastPrecedence) {
     int op = lex->tk;
+    if (op==LEX_R_IN || op==LEX_ANDAND || op==LEX_OROR) {
+      JSP_MATCH(LEX_EOF); // not supported yet
+      return;
+    }
     JSP_ASSERT_MATCH(op);
     // if we have short-circuit ops, then if we know the outcome
     // we don't bother to execute the other op. Even if not
