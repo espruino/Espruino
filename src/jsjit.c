@@ -376,6 +376,7 @@ void jsjFactorFunctionCall() {
       argCount++;
       jsjAssignmentExpression();
       if (jit.phase == JSJP_EMIT) {
+        // Ensure params are always just JsVar (no int/etc or even names)
         if (jsjcGetTopType() != JSJVT_JSVAR_NO_NAME) {
           jsjPopNoName(0);
           jsjcPush(0, JSJVT_JSVAR_NO_NAME); // push argument to stack

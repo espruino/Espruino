@@ -31,6 +31,7 @@
             JIT compiler now included in MDBT42Q/Pixl.js/Puck.js/Bangle.js 1          
             Bangle.js 2: Bangle.setUI remove unused 'touch' mode, ensure 'back' button doesn't overlap if button is already used (fix #2287)
             Bangle.js: Do not clear widget area if only zero width wigets are using it
+            Bangle.js: Allow setting remove methods for E.show*
             Bangle.js: Add Bangle.load() and Bangle.showClock() methods
 
      2v15 : Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
