@@ -62,7 +62,7 @@
   }
   draw();
   return new Promise(resolve=>{
-    Bangle.setUI("leftright", dir=>{
+    Bangle.setUI({mode: "leftright", remove: options.remove}, dir=>{
       if (dir<0) {
         if (options.selected>0) {
           options.selected--;
