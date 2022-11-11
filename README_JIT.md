@@ -120,6 +120,10 @@ jit()==-1
 function jit() {'jit';return +"0123";} 
 jit()==83 // octal!
 
+function jit(a) {'jit';return a?5:10;} 
+jit(1)==5
+jit(0)==10
+
 function t() { return "Hello"; }
 function jit() {'jit'; return t()+" world";}
 jit()=="Hello world"

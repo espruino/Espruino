@@ -128,19 +128,6 @@ void jsjPopAsVar(int reg) {
   jsjcConvertToJsVar(reg, varType);
 }
 
-void jsjPopAsBool(int reg) {
-  // FIXME handle int/bool differently?
-  jsjPopAsVar(0);
-  jsjcCall(jsvGetBoolAndUnLock); // optimisation: we should know if we have a var or a name here, so can skip jsvSkipNameAndUnLock sometimes
-  if (reg != 0) jsjcMov(reg, 0);
-}
-
-void jsjPopAndUnLock() {
-  jsjPopAsVar(0); // a -> r0
-  // optimisation: if item on stack is NOT a variable, no need to covert+unlock!
-  jsjcCall(jsvUnLock); // we're throwing this away now - unlock
-}
-
 void jsjPopNoName(int reg) {
   if (jsjcGetTopType()==JSJVT_JSVAR_NO_NAME) {
     // if we know we don't have a name here, we can skip jsvSkipNameAndUnLock
@@ -150,6 +137,19 @@ void jsjPopNoName(int reg) {
   jsjPopAsVar(0); // a -> r0
   jsjcCall(jsvSkipNameAndUnLock);
   if (reg != 0) jsjcMov(reg, 0);
+}
+
+void jsjPopAsBool(int reg) {
+  // FIXME handle int/bool differently?
+  jsjPopNoName(0);
+  jsjcCall(jsvGetBoolAndUnLock); // optimisation: we should know if we have a var or a name here, so can skip jsvSkipNameAndUnLock sometimes
+  if (reg != 0) jsjcMov(reg, 0);
+}
+
+void jsjPopAndUnLock() {
+  jsjPopAsVar(0); // a -> r0
+  // optimisation: if item on stack is NOT a variable, no need to covert+unlock!
+  jsjcCall(jsvUnLock); // we're throwing this away now - unlock
 }
 
 /// Code to add at the beginning of the function
@@ -605,8 +605,37 @@ void jsjBinaryExpression() {
 }
 
 void jsjConditionalExpression() {
-  // FIXME return __jsjConditionalExpression(jsjBinaryExpression());
   jsjBinaryExpression();
+  if (lex->tk=='?') {
+    JSP_ASSERT_MATCH('?');
+    DEBUG_JIT_EMIT("; capture ternary true block\n");
+    JsVar *oldBlock = jsjcStartBlock();
+    jsjAssignmentExpression();
+    if (jit.phase == JSJP_EMIT) jsjPopAsVar(0); // we pop to r0 here so we can push after and avoid confusing the stack size checker
+    JsVar *trueBlock = jsjcStopBlock(oldBlock);
+    JSP_MATCH(':');
+    DEBUG_JIT_EMIT("; capture ternary false block\n");
+    oldBlock = jsjcStartBlock();
+    jsjAssignmentExpression();
+    if (jit.phase == JSJP_EMIT) jsjPopAsVar(0); // we pop to r0 here so we can push after and avoid confusing the stack size checker
+    JsVar *falseBlock = jsjcStopBlock(oldBlock);
+    if (jit.phase == JSJP_EMIT) {
+      DEBUG_JIT("; ternary condition\n");
+      jsjPopAsBool(0);
+      jsjcCompareImm(0, 0);
+      DEBUG_JIT("; ternary jump after condition\n");
+      // if false, jump after true block (if an 'else' we need to jump over the jsjcBranchRelative
+      jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(trueBlock) + 2);
+      DEBUG_JIT("; ternary true block\n");
+      jsjcEmitBlock(trueBlock);
+      jsjcBranchRelative(jsvGetStringLength(falseBlock)); // jump over false block
+      DEBUG_JIT("; ternary false block\n");
+      jsjcEmitBlock(falseBlock);
+      DEBUG_JIT("; ternary end\n");
+      jsjcPush(0, JSJVT_JSVAR); // push the result (LHS) back on
+    }
+    jsvUnLock2(trueBlock,falseBlock);
+  }
 }
 
 NO_INLINE void jsjAssignmentExpression() {
