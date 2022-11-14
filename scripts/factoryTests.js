@@ -28,7 +28,6 @@ eval(require("fs").readFileSync(__dirname + "/../../EspruinoWebIDE/emu/common.js
 
 var Const = {};
 var module = undefined;
-var Espruino = require(__dirname + "/../../EspruinoAppLoaderCore/lib/espruinotools.js");
 
 /* we factory reset ONCE, get this, then we can use it to reset
 state quickly for each new app */

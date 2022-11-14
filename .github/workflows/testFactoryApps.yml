@@ -35,13 +35,6 @@ jobs:
           submodules: recursive
           path: 'EspruinoWebIDE'
 
-      - name: Checkout EspruinoAppLoaderCore
-        uses: actions/checkout@v3
-        with:
-          repository: espruino/EspruinoAppLoaderCore
-          submodules: recursive
-          path: 'EspruinoAppLoaderCore'
-
       - name: Setup emsdk
         uses: mymindstorm/setup-emsdk@v11
         with:
