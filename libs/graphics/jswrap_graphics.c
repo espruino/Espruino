@@ -856,6 +856,10 @@ have been used when Graphics was initialised.
 */
 JsVar *jswrap_graphics_reset(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+#ifndef SAVE_ON_FLASH
+  // If we had a custom font, remove it.
+  jsvUnLock(jswrap_graphics_setFontSizeX(parent, 1+JSGRAPHICS_FONTSIZE_4X6, false));
+#endif
   // properly reset state
   graphicsStructResetState(&gfx);
   graphicsSetVar(&gfx); // gfx data changed because modified area
