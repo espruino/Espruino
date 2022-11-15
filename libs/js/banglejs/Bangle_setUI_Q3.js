@@ -25,16 +25,18 @@
     Bangle.removeListener("touch", Bangle.touchHandler);
     delete Bangle.touchHandler;
   }
-  if (Bangle.uiRemove) {
-    Bangle.uiRemove();
-    delete Bangle.uiRemove;
-  }
   delete Bangle.CLOCK;
+  if (Bangle.uiRemove) {
+	let r = Bangle.uiRemove;
+	delete Bangle.uiRemove; // stop recursion if setUI is called inside uiRemove
+    r();     
+  }
+  g.reset();// reset graphics state, just in case
+  if (!mode) return;  
   function b() {
     try{Bangle.buzz(30);}catch(e){}
-  }
-  if (!mode) return;
-  else if (mode=="updown") {
+  }  
+  if (mode=="updown") {
     var dy = 0;    
     Bangle.dragHandler = e=>{
       dy += e.dy;

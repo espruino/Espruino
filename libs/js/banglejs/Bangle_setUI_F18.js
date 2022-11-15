@@ -23,11 +23,13 @@
   }
   delete Bangle.CLOCK;
   if (Bangle.uiRemove) {
-    Bangle.uiRemove();
-    delete Bangle.uiRemove;
-  }  
-  if (!mode) return;
-  else if (mode=="updown") {
+	let r = Bangle.uiRemove;
+	delete Bangle.uiRemove; // stop recursion if setUI is called inside uiRemove
+    r();     
+  }
+  g.reset();// reset graphics state, just in case
+  if (!mode) return;  
+  if (mode=="updown") {
     Bangle.btnWatches = [
       setWatch(function() { cb(-1); }, BTN1, {repeat:1,edge:"falling"}),
       setWatch(function() { cb(1); }, BTN3, {repeat:1,edge:"falling"}),
