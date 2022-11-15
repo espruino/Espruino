@@ -5206,7 +5206,10 @@ Load the Bangle.js clock - this has the same effect as calling `Bangle.load()`.
 This behaves the same as the global `load()` function, but if fast
 loading is possible (`Bangle.setUI` was called with a `remove` handler)
 then instead of a complete reload, the `remove` handler will be
-called and the new app will be loaded straight after.
+called and the new app will be loaded straight after with `eval`.
+
+**This should only be used if the app being loaded also uses widgets**
+(eg it contains a `Bangle.loadWidgets()` call).
 
 `load()` is slower, but safer. As such, care should be taken
 when using `Bangle.load()` with `Bangle.setUI({..., remove:...})`
