@@ -5409,7 +5409,7 @@ The second `options` argument can contain:
     "return" : ["JsVar", "A menu object with `draw()` and `drawItem(itemNo)` functions" ],
     "ifdef" : "BANGLEJS",
     "typescript" : [
-      "showScroller(options?: { h: number, c: number, draw: (idx: number, rect: { x: number, y: number, w: number, h: number }) => void, select: (idx: number) => void, back?: () => void, remove?: () => void }): { draw: () => void, drawItem: (itemNo: number) => void };",
+      "showScroller(options?: { h: number, c: number, draw: (idx: number, rect: { x: number, y: number, w: number, h: number }) => void, select: (idx: number, touch?: {x: number, y: number}) => void, back?: () => void, remove?: () => void }): { draw: () => void, drawItem: (itemNo: number) => void };",
       "showScroller(): void;"
     ]
 }
@@ -5424,8 +5424,9 @@ Supply an object containing:
   c : 10, // number of menu items
   // a function to draw a menu item
   draw : function(idx, rect) { ... }
-  // a function to call when the item is selected
-  select : function(idx) { ... }
+  // a function to call when the item is selected, touch parameter is only relevant
+  // for Bangle.js 2 and contains the coordintes touched inside the selected item
+  select : function(idx, touch) { ... }
   // optional function to be called when 'back' is tapped
   back : function() { ...}
   // Bangle.js: optional function to be called when the scroller should be removed
