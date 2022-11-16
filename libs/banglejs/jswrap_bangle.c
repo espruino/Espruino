@@ -5425,7 +5425,7 @@ Supply an object containing:
   // a function to draw a menu item
   draw : function(idx, rect) { ... }
   // a function to call when the item is selected, touch parameter is only relevant
-  // for Bangle.js 2 and contains the coordintes touched inside the selected item
+  // for Bangle.js 2 and contains the coordinates touched inside the selected item
   select : function(idx, touch) { ... }
   // optional function to be called when 'back' is tapped
   back : function() { ...}
