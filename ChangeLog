@@ -1,4 +1,4 @@
-            JIT functions now execute in their own function scope (allows arguments)
+     2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
             Fix print(()=>{}) printing 'function (undefined) {}' - saves 1 var for arrow fn without args (fix #2265)
             Bangle.js: Add support for `Bangle.setUI({remove:...})` to allow apps to be unloaded without a full reboot.
