@@ -6,7 +6,7 @@
     scrollMin = minimum scroll amount (can be negative)
     draw = function(idx, rect)
     remove = function()
-    select = function(idx)
+    select = function(idx, touch)
   }
 
   returns {
@@ -91,8 +91,11 @@ Bangle.setUI({
   }, touch : (_,e)=>{
     if (e.y<R.y-4) return;
     var i = YtoIdx(e.y);
-    if ((menuScrollMin<0 || i>=0) && i<options.c)
-      options.select(i);
+    if ((menuScrollMin<0 || i>=0) && i<options.c){
+      let yAbs = (e.y + rScroll - R.y);
+      let yInElement = yAbs - i*options.h;
+      options.select(i, {x:e.x, y:yInElement});
+    }
   }
 });
 return s;
