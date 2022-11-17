@@ -14,24 +14,27 @@ Works:
 * `for (;;)` loops
 * `if ()`
 * `i++` / `++i`
+* `i+=`
+* ternary operators
 * `~i`/`!i`/`+i`/`-i`
-* On the whole functions that can't be JITed will produce a message on the console and will be treated as normal functions.
 * Function arguments
+* `var/const/let` (`const`/`let` scoping does not work at the moment)
+* On the whole functions that can't be JITed will produce a message on the console and will be treated as normal functions.
 
 Doesn't work:
 
+* Short-circuit execution (`&&`/`||`)
 * Everything else
-* `var/const/let`
 
 Performance:
 
 * When calling a JIT function, we use existing FunctionCall code to set up args and an execution scope (so args can be passed in)
-* Right now, variables are referenced at the start just once and stored on the stack
+* Variables are referenced at the start just once and stored on the stack
   * We could also maybe extend it to allow caching of constant field access, for instance 'console.log'
 * Built-in functions could be called directly, which would be a TON faster
 * Peephole optimisation could still be added (eg. removing `push r0, pop r0`) but this is the least of our worries
 * Stuff is in place to allow ints to be stored on the stack and converted when needed. This could maybe allow us to keep some vars as ints.
-* When a function is called we load up the address as a 32 bit literal each time. We could maybe have a constant pool?
+* When a function is called we load up the address as a 32 bit literal each time. We could maybe have a constant pool or local stub functions?
 * When we emit code, we just use StringAppend which can be very slow. We should use an iterator (it's an easy win for compile performance)
 
 
