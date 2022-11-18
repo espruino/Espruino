@@ -135,6 +135,8 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_NO_LOADING_SCREEN` - Bangle.js, don't show a 'loading' screen when loading a new app
 * `ESPR_BOOTLOADER_SPIFLASH` - Allow bootloader to flash direct from a file in SPI flash storage
 * `ESPR_BANGLE_UNISTROKE` - Build in 'unistroke' touch gesture recognition
+* `SPIFLASH_SLEEP_CMD` - Set if SPI flash needs to be explicitly slept and woken up
+* `SPIFLASH_READ2X` - Enable 2x speed reads of external flash (using MOSI+MOSI as inputs)
 
 These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
 
