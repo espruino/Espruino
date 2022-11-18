@@ -457,8 +457,8 @@ static void spiFlashRead(unsigned char *rx, unsigned int len) {
 #ifdef SPIFLASH_READ2X
 // Use MISO and MOSI to read data from flash (Dual Output Fast Read 0x3B)
 static void spiFlashRead2x(unsigned char *rx, unsigned int len) {
-  assert(SPIFLASH_PIN_MOSI==15);
-  assert(SPIFLASH_PIN_MISO==13);
+  assert((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin<32); // port 0
+  assert((uint32_t)pinInfo[SPIFLASH_PIN_MISO].pin<32); // port 0
   NRF_GPIO_PIN_CNF((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, 0); // High-Z input
   //#define NRF_GPIO_PIN_READ_FAST(PIN) ((NRF_P0->IN >> (PIN))&1)
   //#define NRF_GPIO_PIN_CNF(PIN,value) NRF_P0->PIN_CNF[PIN]=value;
@@ -468,7 +468,7 @@ static void spiFlashRead2x(unsigned char *rx, unsigned int len) {
     for (int bit=0;bit<4;bit++) {
       NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
       uint32_t io = NRF_P0->IN;
-      result = (result<<2) | ((io>>12)&2) | ((io>>15)&1);
+      result = (result<<2) | ((io>>(pinInfo[SPIFLASH_PIN_MISO].pin-1))&2) | ((io>>pinInfo[SPIFLASH_PIN_MOSI].pin)&1);
       NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
     }
     rx[i] = result;
@@ -485,6 +485,14 @@ static void spiFlashWrite(unsigned char *tx, unsigned int len) {
       NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
       NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
     }
+  }
+}
+static void spiFlashWrite32(uint32_t data) {
+  for (int bit=31;bit>=0;bit--) {
+    NRF_GPIO_PIN_WRITE_FAST((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, data & 0x80000000 );
+    data<<=1;
+    NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+    NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
   }
 }
 static void spiFlashWriteCS(unsigned char *tx, unsigned int len) {
@@ -2408,19 +2416,17 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
         || spiFlashLastAddress==0 
 #endif
        ) {
-      nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
-      unsigned char b[4];
+      NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+      uint32_t b;
       // Read
 #ifdef SPIFLASH_READ2X
-      b[0] = 0x3B; // uses MOSI to double-up data transfer
+      b = 0x3B000000; // uses MOSI to double-up data transfer
 #else
-      b[0] = 0x03;
+      b = 0x03000000;
 #endif
-      b[1] = addr>>16;
-      b[2] = addr>>8;
-      b[3] = addr;
-      nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
-      spiFlashWrite(b,4);
+      b |= addr;
+      NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+      spiFlashWrite32(b);
 #ifdef SPIFLASH_READ2X
       // Shift out dummy byte as fast as we can
       for (int bit=0;bit<8;bit++) {
