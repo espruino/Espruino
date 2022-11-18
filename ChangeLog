@@ -1,4 +1,5 @@
             Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
+            Bangle.js2: Increase flash buffer size from 32->64 bytes (5% performance increase)
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

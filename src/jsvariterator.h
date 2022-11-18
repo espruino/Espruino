@@ -17,6 +17,11 @@
 #include "jsvar.h"
 #ifdef SPIFLASH_BASE
 #include "jshardware.h"
+
+#ifndef ESPR_JSVAR_FLASH_BUFFER_SIZE
+#define ESPR_JSVAR_FLASH_BUFFER_SIZE 32
+#endif
+
 #endif
 
 /// Callback function to be used with jsvIterateCallback
@@ -55,7 +60,7 @@ typedef struct JsvStringIterator {
   JsVar *var; ///< current StringExt we're looking at
   char  *ptr; ///< a pointer to string data
 #ifdef SPIFLASH_BASE // when using flash strings, we need somewhere to put the data
-  char flashStringBuffer[16];
+  char flashStringBuffer[ESPR_JSVAR_FLASH_BUFFER_SIZE];
 #endif
 } JsvStringIterator;
 

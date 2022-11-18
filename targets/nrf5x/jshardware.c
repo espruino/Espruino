@@ -498,7 +498,7 @@ static void spiFlashWrite32(uint32_t data) {
 static void spiFlashWriteCS(unsigned char *tx, unsigned int len) {
   NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
   spiFlashWrite(tx,len);
-  nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
 }
 /* Get SPI flash status bits:
 
