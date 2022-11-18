@@ -19,7 +19,7 @@
 #include "jshardware.h"
 
 #ifndef ESPR_JSVAR_FLASH_BUFFER_SIZE
-#define ESPR_JSVAR_FLASH_BUFFER_SIZE 32
+#define ESPR_JSVAR_FLASH_BUFFER_SIZE 16
 #endif
 
 #endif
