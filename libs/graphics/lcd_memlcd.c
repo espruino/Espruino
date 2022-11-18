@@ -146,7 +146,11 @@ void lcdMemLCD_fillRect(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, 
   /* On 3bpp if we're filling a small width of pixels, just set them
   individually - it's possible to do with a mask too, but it hurts
   my head and it's not quite as big a performance improvement. */
+#ifdef EMSCRIPTEN
+  if (true) { // on emscripten, unaligned 32 bit access doesn't work - we just set pixels individually (speed doesn't matter as it's emulated)
+#else
   if (x2-x1 < 8) {
+#endif
     // For 3 bit, precalculate what the 2 pixels go to
     unsigned int cols[2][2] = {
         { lcdMemLCD_convert16toLCD(col,0,0), lcdMemLCD_convert16toLCD(col,1,0) }, // even row
