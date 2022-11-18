@@ -696,25 +696,35 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
   JsfFileHeader header;
 #ifdef ESPR_STORAGE_FILENAME_TABLE
   if (jsfFilenameTableBank1Addr && addr==JSF_START_ADDRESS) {
+    #define FILENAME_TABLE_CHUNKS 8 // how many file headers do we read at once?
+    JsfFileHeader tableHeaders[FILENAME_TABLE_CHUNKS];
     uint32_t baseAddr = addr;
     uint32_t tableAddr = jsfFilenameTableBank1Addr;
     uint32_t tableEnd = tableAddr + jsfFilenameTableBank1Size;
+    int tableEntries = (tableEnd-tableAddr) / sizeof(JsfFileHeader);
     // Now scan the table and call back for each item
-    while (tableAddr < tableEnd) {
+    while (tableEntries) {
+      int readEntries = tableEntries;
+      if (readEntries > FILENAME_TABLE_CHUNKS)
+        readEntries = FILENAME_TABLE_CHUNKS;
       // read the address and name...
-      jshFlashRead(&header, tableAddr, sizeof(JsfFileHeader));
-      tableAddr += (uint32_t)sizeof(JsfFileHeader);
-      if (jsfIsNameEqual(header.name, name)) { // name matches
-        uint32_t fileAddr = baseAddr + header.size;
-        if (jsfGetFileHeader(fileAddr, &header, true) && // read the real header
-            (header.name.firstChars != 0)) { // check the file was not replaced
-          if (returnedHeader)
-            *returnedHeader = header;
-          return fileAddr+(uint32_t)sizeof(JsfFileHeader);
+      jshFlashRead(&tableHeaders, tableAddr, readEntries*sizeof(JsfFileHeader));
+      tableAddr += readEntries*(uint32_t)sizeof(JsfFileHeader);
+      tableEntries -= readEntries;
+
+      for (int i=0;i<readEntries;i++) {
+        if (jsfIsNameEqual(tableHeaders[i].name, name)) { // name matches
+          uint32_t fileAddr = baseAddr + tableHeaders[i].size;
+          if (jsfGetFileHeader(fileAddr, &tableHeaders[i], true) && // read the real header
+              (tableHeaders[i].name.firstChars != 0)) { // check the file was not replaced
+            if (returnedHeader)
+              *returnedHeader = tableHeaders[i];
+            return fileAddr+(uint32_t)sizeof(JsfFileHeader);
+          }
+          /* Or... the file was in our table but it's been replaced. In this case
+          stop scanning our table and instead just  do a normal scan for files
+          added after the table... */
         }
-        /* Or... the file was in our table but it's been replaced. In this case
-        stop scanning our table and instead just  do a normal scan for files
-        added after the table... */
       }
     }
     // We didn't find the file in our table...

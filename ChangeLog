@@ -1,3 +1,5 @@
+            Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
+
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
             Fix print(()=>{}) printing 'function (undefined) {}' - saves 1 var for arrow fn without args (fix #2265)
