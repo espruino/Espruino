@@ -63,11 +63,11 @@ INCLUDE+=\
 -I$(ESP_IDF_PATH)/components/esp32/include \
 -I$(ESP_IDF_PATH)/components/freertos/include \
 -I$(ESP_IDF_PATH)/components/heap/include \
--I$(ESP_IDF_PATH)/components/json/include \
 -I$(ESP_IDF_PATH)/components/log/include \
--I$(ESP_IDF_PATH)/components/lwip/include/lwip \
--I$(ESP_IDF_PATH)/components/lwip/include/lwip/port \
--I$(ESP_IDF_PATH)/components/lwip/include/lwip/posix \
+-I$(ESP_IDF_PATH)/components/lwip/lwip/src/include/posix \
+-I$(ESP_IDF_PATH)/components/lwip/lwip/src/include  \
+-I$(ESP_IDF_PATH)/components/lwip/port/esp32/include \
+-I$(ESP_IDF_PATH)/components/lwip/include_compat \
 -I$(ESP_IDF_PATH)/components/newlib/include \
 -I$(ESP_IDF_PATH)/components/newlib/platform_include \
 -I$(ESP_IDF_PATH)/components/nvs_flash/include \
@@ -77,10 +77,14 @@ INCLUDE+=\
 -I$(ESP_IDF_PATH)/components/soc/esp32/include \
 -I$(ESP_IDF_PATH)/components/soc/esp32/include/soc \
 -I$(ESP_IDF_PATH)/components/vfs/include \
--Itargets/esp32/include
+-I$(ESP_IDF_PATH)/components/esp_ringbuf/include \
+-I$(ESP_IDF_PATH)/components/lwip/include/apps/sntp \
+-I$(ESP_IDF_PATH)/components/esp_event/include \
+-I$(ESP_IDF_PATH)/components/lwip/include/apps
+
 LDFLAGS+=-nostdlib -u call_user_start_cpu0 -u ld_include_panic_highint_hdl -Wl,--gc-sections -Wl,-static -Wl,-EL
 LIBS+=-T esp32_out.ld \
--T$(ESP_IDF_PATH)/components/esp32/ld/esp32.common.ld \
+-T esp32.project.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.rom.ld \
 -T$(ESP_IDF_PATH)/components/esp32/ld/esp32.peripherals.ld \
 $(ESP_IDF_PATH)/components/esp32/lib/librtc.a \
@@ -92,6 +96,9 @@ $(ESP_IDF_PATH)/components/esp32/lib/libwps.a \
 $(ESP_IDF_PATH)/components/newlib/lib/libc-psram-workaround.a \
 $(ESP_IDF_PATH)/components/newlib/lib/libm-psram-workaround.a \
 $(ESP_IDF_PATH)/components/esp32/lib/libcore.a \
+$(ESP_APP_TEMPLATE_PATH)/build/esp_ringbuf/libesp_ringbuf.a \
+$(ESP_APP_TEMPLATE_PATH)/build/bootloader_support/libbootloader_support.a \
+$(ESP_APP_TEMPLATE_PATH)/build/bootloader/efuse/libefuse.a \
 -lbt \
 -lbtdm_app \
 -ldriver \
