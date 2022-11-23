@@ -1,6 +1,7 @@
             Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
             ESP32: update esp-idf to v3.3.6
+            Bangle.js2: Fix issue where Bangle.getPressure could leave the barometer on
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

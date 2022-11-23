@@ -4642,15 +4642,14 @@ JsVar *jswrap_banglejs_getBarometerObject() {
 
 void jswrap_banglejs_getPressure_callback() {
   JsVar *o = 0;
-  i2cBusy = true;
   if (jswrap_banglejs_barometerPoll()) {
     o = jswrap_banglejs_getBarometerObject();
-    // disable sensor now we have a result
-    JsVar *id = jsvNewFromString("getPressure");
-    jswrap_banglejs_setBarometerPower(0, id);
-    jsvUnLock(id);
   }
-  i2cBusy = false;
+  // disable sensor now we have a result
+  JsVar *id = jsvNewFromString("getPressure");
+  jswrap_banglejs_setBarometerPower(0, id);
+  jsvUnLock(id);
+  // resolve the promise
   jspromise_resolve(promisePressure, o);
   jsvUnLock2(promisePressure,o);
   promisePressure = 0;
