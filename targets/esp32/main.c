@@ -60,7 +60,7 @@ static void espruinoTask(void *data) {
   initADC(1);
   jshInit();     // Initialize the hardware
   jswHWInit();
-  heapVars = (esp_get_free_heap_size() - 40000) / 16;  //calculate space for jsVars
+  heapVars = (esp_get_free_heap_size() - 40000) / sizeof(JsVar);  //calculate space for jsVars
   heapVars = heapVars - heapVars % 100; //round to 100
   if(heapVars > 20000) heapVars = 20000;  //WROVER boards have much more RAM, so we set a limit
   jsvInit(heapVars);     // Initialize the variables
