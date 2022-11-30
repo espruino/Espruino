@@ -13,13 +13,40 @@
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
 
+
+
+# A Note about the 'variables' parameter on ESP32 Builds
+# ------------------------------------------------------
+# 
+# For the ESP32 build, the number of JsVars is governed by two factors:
+#     * Available memory
+#     * Maximum number of JsVars for the used JsVar format
+#
+# This setting will chose the optimum JsVar format for a given number
+# of JsVars.
+
+# If you add PSRAM to your ESP32 or compile without disused modules, you
+# may wish to select a value using this table:
+#
+# Value |  Max JsVars  | Bytes per JsVar |
+# ------+--------------+-----------------+
+# 4095  |         4095 |              13 |
+# 8191  |         8191 |              14 |
+# 65535 |        65535 |              16 |
+# ------+--------------+-----------------+
+
+# Using too large a JsVar format may limit how many JsVars can fit into
+# available memory. Using too small a JsVar format will under utilise
+# available memory.
+
+
 import pinutils;
 info = {
  'name'                     : "ESP32",
  'espruino_page_link'       : 'ESP32',
  'default_console'          : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
- 'variables'                : 2500, # JSVAR_MALLOC is defined below - so this can vary depending on what is initialised
+ 'variables'                : 4095, # See note above 
  'binary_name'              : 'espruino_%v_esp32.bin',
  'build' : {
    'optimizeflags' : '-Og',
