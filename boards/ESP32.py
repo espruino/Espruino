@@ -25,15 +25,19 @@
 # This setting will chose the optimum JsVar format for a given number
 # of JsVars.
 
-# If you add PSRAM to your ESP32 or compile without disused modules, you
+# If you add PSRAM to your ESP32 or compile with modules removed, you
 # may wish to select a value using this table:
 #
-# Value |  Max JsVars  | Bytes per JsVar |
-# ------+--------------+-----------------+
-# 4095  |         4095 |              13 |
-# 8191  |         8191 |              14 |
-# 65535 |        65535 |              16 |
-# ------+--------------+-----------------+
+# Value |  Max JsVars  | Bytes per JsVar | Maximum References |
+# ------+--------------+-----------------+--------------------+
+# 4095  |         4095 |              13 |               255  |
+# 8191  |         8191 |              13 |                 7  |
+# 16383 |        16383 |              14 |               255  |
+# 65535 |        65535 |              16 |               255  |
+# ------+--------------+-----------------+--------------------+
+
+# CAUTION: Chosing 8191 only allows 7 references to a variable. This
+# may be too restrictive to run some code.
 
 # Using too large a JsVar format may limit how many JsVars can fit into
 # available memory. Using too small a JsVar format will under utilise
