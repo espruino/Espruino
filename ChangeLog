@@ -2,6 +2,8 @@
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
             ESP32: update esp-idf to v3.3.6
             Bangle.js2: Fix issue where Bangle.getPressure could leave the barometer on
+            Bangle.js2: Bootloader update - triple-check CRC after writing firmware and retry if it fails
+            Bangle.js2: setUI(updown/leftright) now responds to button on falling (not rising) edge
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

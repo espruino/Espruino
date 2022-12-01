@@ -50,7 +50,7 @@
     Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
     Bangle.btnWatches = [
-      setWatch(function() { b();cb(); }, BTN1, {repeat:1}),
+      setWatch(function() { b();cb(); }, BTN1, {repeat:1, edge:"falling"}),
     ];
   } else if (mode=="leftright") {
     var dx = 0;    
@@ -66,7 +66,7 @@
     Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
     Bangle.btnWatches = [
-      setWatch(function() { b();cb(); }, BTN1, {repeat:1}),
+      setWatch(function() { b();cb(); }, BTN1, {repeat:1, edge:"falling"}),
     ];
   } else if (mode=="clock") {
     Bangle.CLOCK=1;
