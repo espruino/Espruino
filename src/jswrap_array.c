@@ -774,7 +774,11 @@ Returns true if the provided object is an array
 
 
 NO_INLINE static JsVarInt _jswrap_array_sort_compare(JsVar *a, JsVar *b, JsVar *compareFn) {
-  if (compareFn) {
+  if(jsvIsUndefined(a)) {
+    return 1;
+  } else if(jsvIsUndefined(b)) {
+    return -1;
+  } else if (compareFn) {
     JsVar *args[2] = {a,b};
     JsVarFloat f = jsvGetFloatAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
     if (f==0) return 0;
