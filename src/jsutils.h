@@ -222,6 +222,11 @@ See comments after JsVar in jsvar.c for more info.
     #define JSVARREFCOUNT_BITS 4 // 56 - 13*4
     typedef uint16_t JsVarRef;
     typedef int16_t JsVarRefSigned;
+  #elif JSVAR_CACHE_SIZE <= 16383 // 14 bytes
+    #define JSVARREF_BITS 14
+    #define JSVARREFCOUNT_BITS 8 // 64 - 13*4
+    typedef uint16_t JsVarRef;
+    typedef int16_t JsVarRefSigned;
   #elif JSVAR_CACHE_SIZE <= 65535 // 16 bytes
     #define JSVARREF_BITS 16
     #define JSVARREFCOUNT_BITS 8
