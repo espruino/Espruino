@@ -386,6 +386,11 @@ int jsble_exec_pending(IOEvent *event) {
      }
      break;
    }
+   case BLEP_TASK_CHARACTERISTIC_WRITE_HVC: { 
+     bleQueueEventAndUnLock(JS_EVENT_PREFIX"indicateconfirmed", 0);
+     jshHadEvent();
+     break;
+   }
 #if CENTRAL_LINK_COUNT>0
    case BLEP_RSSI_CENTRAL: { //  rssi as data low byte, index in m_central_conn_handles as high byte
      int centralIdx = data>>8; // index in m_central_conn_handles
@@ -1448,6 +1453,14 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         // TODO: detect if this was a nus write. If so, DO NOT create an event for it!
         // We got a param write event - add this to the bluetooth event queue
         jsble_queue_pending_buf(BLEP_WRITE, p_evt_write->handle, (char*)p_evt_write->data, p_evt_write->len);
+        jsble_peripheral_activity(); // flag that we've been busy
+        break;
+      }
+      
+      case BLE_GATTS_EVT_HVC: {
+        // Peripheral sent a ATT Handle Value Confirmation
+        const ble_gatts_evt_hvc_t * p_evt_hvc = &p_ble_evt->evt.gatts_evt.params.hvc;
+        jsble_queue_pending(BLEP_TASK_CHARACTERISTIC_WRITE_HVC, 0); // send HVC event
         jsble_peripheral_activity(); // flag that we've been busy
         break;
       }
