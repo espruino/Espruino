@@ -31,12 +31,12 @@
 # Value |  Max JsVars  | Bytes per JsVar | Maximum References |
 # ------+--------------+-----------------+--------------------+
 # 4095  |         4095 |              13 |               255  |
-# 8191  |         8191 |              13 |                 7  |
+# 8191  |         8191 |              13 |                15  |
 # 16383 |        16383 |              14 |               255  |
 # 65535 |        65535 |              16 |               255  |
 # ------+--------------+-----------------+--------------------+
 
-# CAUTION: Chosing 8191 only allows 7 references to a variable. This
+# CAUTION: Chosing 8191 only allows 15 references to a variable. This
 # may be too restrictive to run some code.
 
 # Using too large a JsVar format may limit how many JsVars can fit into
