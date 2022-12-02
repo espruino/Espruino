@@ -86,8 +86,10 @@ ifeq ($(shell uname),Darwin)
 MACOSX=1
 CFLAGS+=-D__MACOSX__
 STAT_FLAGS='-f ''%z'''
+REALPATH='grealpath'
 else
 STAT_FLAGS='-c ''%s'''
+REALPATH='realpath'
 endif
 
 ifeq ($(OS),Windows_NT)
@@ -776,11 +778,11 @@ $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	$(Q)python scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME)
 
 # If realpath exists, use relative paths
-ifneq ("$(shell realpath --version > /dev/null;echo "$$?")","0")
+ifneq ("$(shell ${REALPATH} --version > /dev/null;echo "$$?")","0")
 compile=$(CC) $(CFLAGS) $< -o $@
 else
 # when macros use __FILE__ this stops us including the whole build path
-compile=$(CC) $(CFLAGS) $(shell realpath --relative-to $(shell pwd) $<) -o $@
+compile=$(CC) $(CFLAGS) $(shell ${REALPATH} --relative-to $(shell pwd) $<) -o $@
 endif
 
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
