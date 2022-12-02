@@ -131,8 +131,14 @@ void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool r
     jsvUnLock(fn);
   } else if (!resolve) {
     JsVar *previouslyResolved = jsvFindChildFromString(promise, JS_PROMISE_RESOLVED_NAME, false);
-    if (!previouslyResolved)
+    if (!previouslyResolved) {
       jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
+      // If there was an exception with a stack trace, pass it through so we can keep adding stack to it
+      JsVar *stack = 0;
+      if (jsvIsObject(data) && (stack=jsvObjectGetChild(data, "stack", 0))) {
+        jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, stack);
+      }
+    }
     jsvUnLock(previouslyResolved);
   }
 }
