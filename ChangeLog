@@ -5,6 +5,7 @@
             Bangle.js2: Bootloader update - triple-check CRC after writing firmware and retry if it fails
             Bangle.js2: setUI(updown/leftright) now responds to button on falling (not rising) edge
             If we get an unhandled exception, ensure we keep the stack trace intact
+            Array.sort() with undefined elements now puts them at the end of the array (as per spec - #2300)
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
