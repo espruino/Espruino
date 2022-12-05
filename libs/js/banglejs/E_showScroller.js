@@ -7,10 +7,18 @@
   }*/
   
 if (!options) return Bangle.setUI();
-var w = Bangle.appRect.w;
-var h = Bangle.appRect.h;
-var X = Bangle.appRect.x;
-var Y = Bangle.appRect.y;
+Bangle.setUI({mode:"updown", back:options.back, remove:options.remove},dir=>{
+  if (dir) {
+    s.scroll += dir;
+    if (s.scroll<0) s.scroll = options.c-1;
+    if (s.scroll>=options.c) s.scroll = 0;
+    s.draw();
+  } else {
+    options.select(s.scroll);
+  }
+});
+var R = Bangle.appRect;
+var w = R.w, h = R.h, X = R.x, Y = R.y;
 
 var s = {
   scroll : 0|options.scroll,
@@ -62,17 +70,7 @@ var s = {
   drawItem : idx => draw(idx)
 };
 
-g.reset().clearRect(X,Y,X+w-1,Y+h-1);
+g.reset().clearRect(R);
 s.draw();
-Bangle.setUI({mode:"updown", back:options.back, remove:options.remove},dir=>{
-  if (dir) {
-    s.scroll += dir;
-    if (s.scroll<0) s.scroll = options.c-1;
-    if (s.scroll>=options.c) s.scroll = 0;
-    s.draw();
-  } else {
-    options.select(s.scroll);
-  }
-});
 return s;
 })

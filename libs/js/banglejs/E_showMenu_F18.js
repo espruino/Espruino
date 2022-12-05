@@ -27,6 +27,21 @@
     options.selected = 0;
   if (!options.fontHeight)
     options.fontHeight = 6;
+  function back() {
+    if (l.main) { // exit submenu
+      options.selected = l.main.selected;
+      options.title = l.main.title;
+      items = l.main.items;
+      menuItems = l.main.menuItems;
+      delete l.main;
+      g.reset().clearRect(Bangle.appRect);
+      l.draw();
+    } else if (items["< Back"]) items["< Back"]();
+  }
+  Bangle.setUI({mode: "updown", back: items["< Back"]?back:undefined, remove: options.remove}, dir => {
+    if (dir) l.move(dir);
+    else l.select();
+  });
   var ar = Bangle.appRect;
   var x = ar.x;
   var x2 = ar.x2-11; // padding at side for up/down
@@ -176,22 +191,8 @@
         l.draw(Math.min(lastSelected,options.selected), Math.max(lastSelected,options.selected));
       }
     },
-    back : function() {
-      if (l.main) { // exit submenu
-        options.selected = l.main.selected;
-        options.title = l.main.title;
-        items = l.main.items;
-        menuItems = l.main.menuItems;
-        delete l.main;
-        g.reset().clearRect(Bangle.appRect);
-        l.draw();
-      } else if (items["< Back"]) items["< Back"]();
-    }
+    back : back
   };
-  l.draw();
-  Bangle.setUI({mode: "updown", back: items["< Back"]?l.back:undefined, remove: options.remove}, dir => {
-    if (dir) l.move(dir);
-    else l.select();
-  });
+  l.draw();  
   return l;
 })
