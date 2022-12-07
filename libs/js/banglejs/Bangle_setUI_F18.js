@@ -87,10 +87,17 @@
       if (z==1) options.back();
     };
     Bangle.on("touch", touchHandler);
+    var btnWatch;
+    if (Bangle.btnWatches===undefined) // only add back button handler if there's no existing watch on BTN1
+      btnWatch = setWatch(function() {
+        btnWatch = undefined;
+        options.back();
+      }, BTN3, {edge:"falling"});
     WIDGETS = Object.assign({back:{ 
       area:"tl", width:24,
       draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
       remove:(noclear)=>{
+        if (btnWatch) clearWatch(btnWatch);
         Bangle.removeListener("touch", touchHandler);
         if (!noclear) g.reset().clearRect({x:WIDGETS.back.x, y:WIDGETS.back.y, w:24,h:24});
         delete WIDGETS.back;
