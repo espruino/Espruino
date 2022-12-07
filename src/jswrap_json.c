@@ -416,10 +416,14 @@ void jsfGetJSONWithCallback(JsVar *var, JsVar *varName, JSONFlags flags, const c
       if (isBasicArrayBuffer && !asArray) cbprintf(user_callback, user_data, ".buffer");
     }
   } else if (jsvIsObject(var)) {
+#ifndef ESPR_EMBED
     IOEventFlags device = (flags & JSON_SHOW_DEVICES) ? jsiGetDeviceFromClass(var) : EV_NONE;
     if (device!=EV_NONE) {
       cbprintf(user_callback, user_data, "%s", jshGetDeviceString(device));
     } else {
+#else
+    {
+#endif
       bool showContents = true;
       if (flags & JSON_SHOW_OBJECT_NAMES) {
         JsVar *proto = jsvObjectGetChild(var, JSPARSE_INHERITS_VAR, 0);

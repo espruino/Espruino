@@ -49,9 +49,10 @@ typedef enum {
   _JSV_NUMERIC_START = JSV_INTEGER, ///< --------- Start of numeric variable types
     JSV_FLOAT       = JSV_INTEGER+1, ///< floating point double (note JSV_NUMERICMASK)
     JSV_BOOLEAN     = JSV_FLOAT+1, ///< boolean (note JSV_NUMERICMASK)
-    JSV_PIN         = JSV_BOOLEAN+1, ///< pin (note JSV_NUMERICMASK)
-
-    JSV_ARRAYBUFFERNAME = JSV_PIN+1, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
+#ifndef ESPR_EMBED
+    JSV_PIN,             ///< pin (note JSV_NUMERICMASK)
+#endif
+    JSV_ARRAYBUFFERNAME, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
   _JSV_NAME_START = JSV_ARRAYBUFFERNAME, ///< ---------- Start of NAMEs (names of variables, object fields/etc)
     JSV_NAME_INT    = JSV_ARRAYBUFFERNAME+1, ///< integer array/object index
   _JSV_NAME_INT_START = JSV_NAME_INT,
@@ -303,7 +304,6 @@ JsVar *jsvNewFromBool(bool value);
 JsVar *jsvNewFromFloat(JsVarFloat value);
 /// Create an integer (or float) from this value, depending on whether it'll fit in 32 bits or not.
 JsVar *jsvNewFromLongInteger(long long value);
-JsVar *jsvNewFromPin(int pin);
 JsVar *jsvNewObject(); ///< Create a new object
 JsVar *jsvNewEmptyArray(); ///< Create a new array
 JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array containing the given elements
@@ -314,6 +314,11 @@ JsVar *jsvNewNativeString(char *ptr, size_t len); ///< Create a Native String po
 JsVar *jsvNewFlashString(char *ptr, size_t len); ///< Create a Flash String pointing to the given memory area
 #endif
 JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
+
+#ifndef ESPR_EMBED
+JsVar *jsvNewFromPin(int pin);
+#endif
+
 
 /// Turns var into a Variable name that links to the given value... No locking so no need to unlock var
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);

@@ -1176,7 +1176,7 @@ void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void
 
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos) {
   size_t line,col;
-#ifndef SAVE_ON_FLASH
+#if !defined(SAVE_ON_FLASH) && !defined(ESPR_EMBED)
   if (jsvIsNativeString(lex->sourceVar) || jsvIsFlashString(lex->sourceVar)) {
     uint32_t stringAddr = (uint32_t)(size_t)lex->sourceVar->varData.nativeStr.ptr;
     JsfFileHeader header;

@@ -829,7 +829,9 @@ void vcbprintf(
         user_callback(n, user_data);
         break;
       }
+#ifndef ESPR_EMBED
       case 'p': jshGetPinString(buf, (Pin)va_arg(argp, int/*Pin*/)); user_callback(buf, user_data); break;
+#endif
       default: assert(0); return; // eep
       }
     } else {

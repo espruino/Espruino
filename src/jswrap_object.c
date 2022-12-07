@@ -273,6 +273,7 @@ void jswrap_object_keys_or_property_names_cb(
     }
   }
 
+#ifndef ESPR_EMBED
   // If this is the root object, add all the pins (as these are not part of the symbol table)
   if (jsvIsRoot(obj)) {
     int i;
@@ -284,6 +285,7 @@ void jswrap_object_keys_or_property_names_cb(
       jsvUnLock(str);
     }
   }
+#endif
 }
 
 JsVar *jswrap_object_keys_or_property_names(
@@ -704,6 +706,7 @@ void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (
   "type" : "method",
   "class" : "Object",
   "name" : "on",
+  "ifndef" : "ESPR_EMBED",
   "generate" : "jswrap_object_on",
   "params" : [
     ["event","JsVar","The name of the event, for instance 'data'"],
@@ -747,6 +750,7 @@ o.emit('answer', 44);
 ```
  */
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
+#ifndef ESPR_EMBED
   if (!jsvHasChildren(parent)) {
     jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
     return;
@@ -793,12 +797,14 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     }
     jsvUnLock(buf);
   }
+#endif
 }
 
 /*JSON{
   "type" : "method",
   "class" : "Object",
   "name" : "emit",
+  "ifndef" : "ESPR_EMBED",
   "generate" : "jswrap_object_emit",
   "params" : [
     ["event","JsVar","The name of the event, for instance 'data'"],
@@ -811,6 +817,7 @@ instance `obj.emit('data', 'Foo')`.
 For more information see `Object.on`
  */
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
+#ifndef ESPR_EMBED
   if (!jsvHasChildren(parent)) {
     jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
     return;
@@ -846,6 +853,7 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
 
   // unlock
   jsvUnLockMany(n, args);
+#endif
 }
 
 /*JSON{

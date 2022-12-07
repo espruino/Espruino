@@ -3036,6 +3036,7 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
     jsvUnLock(prototypeName);
     return 0;
   }
+#ifndef ESPR_EMBED
   if (name) {
     // If it's a device, set the device number up as the Object data
     // See jsiGetDeviceFromClass
@@ -3046,8 +3047,8 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
       obj->varData.str[2] = 'V';
       obj->varData.str[3] = (char)device;
     }
-
   }
+#endif
   // add __proto__
   JsVar *prototypeVar = jsvSkipName(prototypeName);
   jsvUnLock3(jsvAddNamedChild(obj, prototypeVar, JSPARSE_INHERITS_VAR), prototypeVar, prototypeName);prototypeName=0;

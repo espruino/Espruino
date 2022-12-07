@@ -88,9 +88,15 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 // These defines take 'f' as 'v->flags&JSV_VARTYPEMASK
 #define JSV_IS_ROOT(f) (f)==JSV_ROOT
 #define JSV_IS_NULL(f) (f)==JSV_NULL
-#define JSV_IS_PIN(f) (f)==JSV_PIN
 #define JSV_IS_BOOL(f) ((f)==JSV_BOOLEAN || (f)==JSV_NAME_INT_BOOL)
-#define JSV_IS_INT(f) ((f)==JSV_INTEGER || (f)==JSV_PIN || (f)==JSV_NAME_INT || (f)==JSV_NAME_INT_INT || (f)==JSV_NAME_INT_BOOL)
+
+#ifndef ESPR_EMBED
+#define JSV_IS_PIN(f) (f)==JSV_PIN
+#else
+#define JSV_IS_PIN(f) false
+#endif
+
+#define JSV_IS_INT(f) ((f)==JSV_INTEGER || JSV_IS_PIN(f) || (f)==JSV_NAME_INT || (f)==JSV_NAME_INT_INT || (f)==JSV_NAME_INT_BOOL)
 #define JSV_IS_NUMERIC(f) ((f)>=_JSV_NUMERIC_START && (f)<=_JSV_NUMERIC_END)
 #define JSV_IS_STRING(f) ((f)>=_JSV_STRING_START && (f)<=_JSV_STRING_END)
 #define JSV_IS_STRING_EXT(f) ((f)>=JSV_STRING_EXT_0 && (f)<=JSV_STRING_EXT_MAX)
@@ -1079,6 +1085,7 @@ JsVar *jsvNewFromLongInteger(long long value) {
     return jsvNewFromFloat((JsVarFloat)value);
 }
 
+#ifndef ESPR_EMBED
 JsVar *jsvNewFromPin(int pin) {
   JsVar *v = jsvNewFromInteger((JsVarInt)pin);
   if (v) {
@@ -1086,6 +1093,7 @@ JsVar *jsvNewFromPin(int pin) {
   }
   return v;
 }
+#endif
 
 JsVar *jsvNewObject() {
   return jsvNewWithFlags(JSV_OBJECT);
@@ -1474,9 +1482,11 @@ JsVar *jsvAsString(JsVar *v) {
     if (constChar) {
       // if we could get this as a simple const char, do that..
       str = jsvNewFromString(constChar);
+#ifndef ESPR_EMBED
     } else if (jsvIsPin(v)) {
       jshGetPinString(buf, (Pin)v->varData.integer);
       str = jsvNewFromString(buf);
+#endif
     } else if (jsvIsInt(v)) {
       itostr(v->varData.integer, buf, 10);
       str = jsvNewFromString(buf);
@@ -1991,8 +2001,10 @@ void jsvSetInteger(JsVar *v, JsVarInt value) {
 bool jsvGetBool(const JsVar *v) {
   if (jsvIsString(v))
     return jsvGetStringLength((JsVar*)v)!=0;
+#ifndef ESPR_EMBED
   if (jsvIsPin(v))
     return jshIsPinValid(jshGetPinFromVar((JsVar*)v));
+#endif
   if (jsvIsFunction(v) || jsvIsArray(v) || jsvIsObject(v) || jsvIsArrayBuffer(v))
     return true;
   if (jsvIsFloat(v)) {
@@ -4199,7 +4211,9 @@ bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs) 
           case JSV_ARRAY:
           case JSV_FUNCTION:
             *((JsVar**)configs[i].ptr) = jsvLockAgain(val); break;
+#ifndef ESPR_EMBED
           case JSV_PIN: *((Pin*)configs[i].ptr) = jshGetPinFromVar(val); break;
+#endif
           case JSV_BOOLEAN: *((bool*)configs[i].ptr) = jsvGetBool(val); break;
           case JSV_INTEGER: *((JsVarInt*)configs[i].ptr) = jsvGetInteger(val); break;
           case JSV_FLOAT: *((JsVarFloat*)configs[i].ptr) = jsvGetFloat(val); break;
@@ -4235,8 +4249,10 @@ JsVar *jsvCreateConfigObject(jsvConfigObject *configs, int nConfigs) {
       case JSV_ARRAY:
       case JSV_FUNCTION:
         v = jsvLockAgain(*((JsVar**)configs[i].ptr)); break;
+#ifndef ESPR_EMBED
       case JSV_PIN:
         v = jsvNewFromPin(*((Pin*)configs[i].ptr)); break;
+#endif
       case JSV_BOOLEAN:
         v = jsvNewFromBool(*((bool*)configs[i].ptr)); break;
       case JSV_INTEGER:

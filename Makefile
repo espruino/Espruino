@@ -186,6 +186,9 @@ endif
 # ----------------------------- end of board defines ------------------------------
 # ---------------------------------------------------------------------------------
 
+ifneq ($(FAMILY),)
+include make/family/$(FAMILY).make
+endif
 
 # ---------------------------------------------------------------------------------
 
@@ -240,39 +243,47 @@ src/jswrap_arraybuffer.c \
 src/jswrap_dataview.c \
 src/jswrap_date.c \
 src/jswrap_error.c \
-src/jswrap_espruino.c \
-src/jswrap_flash.c \
 src/jswrap_functions.c \
-src/jswrap_interactive.c \
-src/jswrap_io.c \
 src/jswrap_json.c \
-src/jswrap_modules.c \
-src/jswrap_pin.c \
 src/jswrap_number.c \
 src/jswrap_object.c \
-src/jswrap_onewire.c \
+src/jswrap_regexp.c \
+src/jswrap_stream.c \
+src/jswrap_string.c
+
+ifndef ESPR_EMBED # These are wrapper sources to do with hardware, if embedding we don't need these
+WRAPPERSOURCES += \
+src/jswrap_espruino.c \
+src/jswrap_flash.c \
+src/jswrap_interactive.c \
+src/jswrap_io.c \
+src/jswrap_pin.c \
 src/jswrap_pipe.c \
 src/jswrap_process.c \
+src/jswrap_modules.c \
+src/jswrap_onewire.c \
 src/jswrap_promise.c \
-src/jswrap_regexp.c \
 src/jswrap_serial.c \
 src/jswrap_storage.c \
 src/jswrap_spi_i2c.c \
-src/jswrap_stream.c \
-src/jswrap_string.c \
-src/jswrap_waveform.c \
+src/jswrap_waveform.c 
+endif
 
 # it is important that _pin comes before stuff which uses
 # integers (as the check for int *includes* the chek for pin)
 SOURCES += \
 src/jslex.c \
 src/jsflags.c \
-src/jsflash.c \
 src/jsvar.c \
 src/jsvariterator.c \
 src/jsutils.c \
 src/jsnative.c \
 src/jsparse.c \
+$(WRAPPERFILE)
+
+ifndef ESPR_EMBED # These are sources to do with hardware, if embedding we don't need these
+SOURCES += \
+src/jsflash.c \
 src/jspin.c \
 src/jsinteractive.c \
 src/jsdevices.c \
@@ -280,8 +291,10 @@ src/jstimer.c \
 src/jsi2c.c \
 src/jsserial.c \
 src/jsspi.c \
-src/jshardware_common.c \
-$(WRAPPERFILE)
+src/jshardware_common.c
+endif
+
+
 CPPSOURCES =
 CCSOURCES =
 
@@ -657,10 +670,7 @@ endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF AB
 
 all: 	 proj
 
-# =========================================================================
-ifneq ($(FAMILY),)
-include make/family/$(FAMILY).make
-endif
+
 # =========================================================================
 
 
@@ -825,6 +835,8 @@ else ifdef ESP32
 include make/targets/ESP32.make
 else ifdef ESP8266
 include make/targets/ESP8266.make
+else ifdef ESPR_EMBED
+include make/targets/EMBED.make
 else # ARM/etc, so generate bin, etc ---------------------------
 include make/targets/ARM.make
 endif	    # ---------------------------------------------------
