@@ -56,14 +56,38 @@ int main() {
 
   bool buttonState = false;
   jsvInit(0);
+  jspInit();
 //  jsiInit(!buttonState /* load from flash by default */); // pressing USER button skips autoload
 //  while (1) {
 //    jsiLoop();
 //  }
 //  jsiKill();
-  JsVar *v = jspEvaluate("1+2", true);
-  jsvTrace(v,0);
-  jsvUnLock(v);
+  printf("Embedded Espruino test. Type JS and hit enter:\n>");
+
+  char buf[1000];
+  while (true) {
+    fgets(buf, sizeof(buf), stdin);
+    JsVar *v = jspEvaluate(buf, false);
+    jsiConsolePrintf("=%v\n>",v);
+    jsvUnLock(v);
+    JsVar *exception = jspGetException();
+    if (exception) {
+      jsiConsolePrintf("Uncaught %v\n", exception);
+      if (jsvIsObject(exception)) {
+        JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
+        if (stackTrace) {
+          jsiConsolePrintf("%v\n", stackTrace);
+          jsvUnLock(stackTrace);
+        }
+      }
+      jsvUnLock(exception);
+    }
+    if (jspIsInterrupted()) {
+      jsiConsolePrint("Execution Interrupted\n");
+      jspSetInterrupted(false);
+    }
+  }  
+  jspKill();
   jsvKill();
 }
 
