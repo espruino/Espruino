@@ -13,7 +13,12 @@
  * JavaScript 'process' object - for information about the Espruino board
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_PROCESS_H_
+#define JSWRAP_PROCESS_H_
+
 #include "jsvar.h"
 
 JsVar *jswrap_process_env();
 JsVar *jswrap_process_memory(JsVar *gc);
+
+#endif // JSWRAP_PROCESS_H_

@@ -11,6 +11,9 @@
  * JavaScript methods and functions in the global namespace
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_FUNCTIONS_H_
+#define JSWRAP_FUNCTIONS_H_
+
 #include "jsvar.h"
 
 JsVar *jswrap_arguments();
@@ -21,8 +24,13 @@ JsVarFloat jswrap_parseFloat(JsVar *v);
 bool jswrap_isFinite(JsVar *v);
 bool jswrap_isNaN(JsVar *v);
 
-
 JsVar *jswrap_btoa(JsVar *binaryData);
 JsVar *jswrap_atob(JsVar *base64Data);
 JsVar *jswrap_encodeURIComponent(JsVar *arg);
 JsVar *jswrap_decodeURIComponent(JsVar *arg);
+
+void jswrap_trace(JsVar *root);
+void jswrap_print(JsVar *v);
+
+
+#endif // JSWRAP_FUNCTIONS_H_

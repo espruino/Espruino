@@ -19,7 +19,9 @@
 #include "jsvar.h"
 #include "jswrapper.h"
 
+#ifndef ESPR_EMBED
 #include <stdint.h> // uint32_t
+#endif
 
 #if defined(__WORDSIZE) && __WORDSIZE == 64
  #define JSWAT_IS_64BIT(N) (\

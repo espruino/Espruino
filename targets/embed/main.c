@@ -1,7 +1,7 @@
 /*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
- * Copyright (C) 2021 Gordon Williams <gw@pur3.co.uk>
+ * Copyright (C) 2022 Gordon Williams <gw@pur3.co.uk>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,9 +11,6 @@
  * Platform Specific entry point
  * ----------------------------------------------------------------------------
  */
-
-#include <stdio.h>
-#include <sys/time.h>
 
 #include "platform_config.h"
 #include "jsinteractive.h"
@@ -34,8 +31,12 @@ void jsiConsolePrintf(const char *fmt, ...) {
   vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
   va_end(argp);
 }
-bool jsiFreeMoreMemory() { return false; }
-void jshKickWatchDog() {}
+void jsiConsolePrintStringVar(JsVar *v) {
+  // the jsinteractive one converts \n -> \r\n but we don't care here
+  jsiConsolePrintf("%v", v);
+}
+bool jsiFreeMoreMemory() { return false; } // no extra memory is allocated
+void jshKickWatchDog() { }
 void jsiConsoleRemoveInputLine() {}
 
 JsSysTime jshGetSystemTime() {

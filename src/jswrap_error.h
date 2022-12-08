@@ -11,6 +11,9 @@
  * JavaScript methods for Errors
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_ERROR_H_
+#define JSWRAP_ERROR_H_
+
 #include "jsvar.h"
 
 JsVar *jswrap_error_constructor(JsVar *msg);
@@ -20,3 +23,5 @@ JsVar *jswrap_internalerror_constructor(JsVar *msg);
 JsVar *jswrap_referenceerror_constructor(JsVar *msg);
 
 JsVar *jswrap_error_toString(JsVar *parent);
+
+#endif // JSWRAP_ERROR_H_

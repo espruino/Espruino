@@ -11,7 +11,12 @@
  * JavaScript methods for Numbers
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_NUMBER_H_
+#define JSWRAP_NUMBER_H_
+
 #include "jsvar.h"
 
 JsVar *jswrap_number_constructor(JsVar *val);
 JsVar *jswrap_number_toFixed(JsVar *parent, int decimals);
+
+#endif // JSWRAP_NUMBER_H_

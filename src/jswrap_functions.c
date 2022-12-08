@@ -13,8 +13,11 @@
  * JavaScript methods and functions in the global namespace
  * ----------------------------------------------------------------------------
  */
+#ifndef ESPR_EMBED
 #include <math.h>
+#endif
 #include "jswrap_functions.h"
+#include "jswrap_json.h" // for print/console.log
 #include "jslex.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
@@ -501,3 +504,85 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg) {
   jsvUnLock(v);
   return result;
 }
+
+/*JSON{
+  "type" : "function",
+  "name" : "trace",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_trace",
+  "params" : [
+    ["root","JsVar","The symbol to output (optional). If nothing is specified, everything will be output"]
+  ]
+}
+Output debugging information
+
+Note: This is not included on boards with low amounts of flash memory, or the
+Espruino board.
+ */
+void jswrap_trace(JsVar *root) {
+  #ifdef ESPRUINOBOARD
+  // leave this function out on espruino board - we need to save as much flash as possible
+  jsiConsolePrintf("Trace not included on this board");
+  #else
+  if (jsvIsUndefined(root)) {
+    jsvTrace(execInfo.root, 0);
+  } else {
+    jsvTrace(root, 0);
+  }
+  #endif
+}
+
+
+/*JSON{
+  "type" : "function",
+  "name" : "print",
+  "generate" : "jswrap_print",
+  "params" : [
+    ["text","JsVarArray",""]
+  ]
+}
+Print the supplied string(s) to the console
+
+ **Note:** If you're connected to a computer (not a wall adaptor) via USB but
+ **you are not running a terminal app** then when you print data Espruino may
+ pause execution and wait until the computer requests the data it is trying to
+ print.
+ */
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "console",
+  "name" : "log",
+  "generate" : "jswrap_print",
+  "params" : [
+    ["text","JsVarArray","One or more arguments to print"]
+  ]
+}
+Print the supplied string(s) to the console
+
+ **Note:** If you're connected to a computer (not a wall adaptor) via USB but
+ **you are not running a terminal app** then when you print data Espruino may
+ pause execution and wait until the computer requests the data it is trying to
+ print.
+ */
+void jswrap_print(JsVar *v) {
+  assert(jsvIsArray(v));
+
+  jsiConsoleRemoveInputLine();
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, v);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *v = jsvObjectIteratorGetValue(&it);
+    if (jsvIsString(v))
+      jsiConsolePrintStringVar(v);
+    else
+      jsfPrintJSON(v, JSON_PRETTY | JSON_SOME_NEWLINES | JSON_SHOW_OBJECT_NAMES);
+    jsvUnLock(v);
+    jsvObjectIteratorNext(&it);
+    if (jsvObjectIteratorHasValue(&it))
+      jsiConsolePrint(" ");
+  }
+  jsvObjectIteratorFree(&it);
+  jsiConsolePrint("\n");
+}
+
+

@@ -11,6 +11,9 @@
  * JavaScript methods for Regular Expressions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_REGEXP_H_
+#define JSWRAP_REGEXP_H_
+
 #include "jsvar.h"
 
 JsVar *jswrap_regexp_constructor(JsVar *str, JsVar *flags);
@@ -19,3 +22,5 @@ bool jswrap_regexp_test(JsVar *parent, JsVar *str);
 
 /// Does this regex have the given flag?
 bool jswrap_regexp_hasFlag(JsVar *parent, char flag);
+
+#endif // JSWRAP_REGEXP_H_

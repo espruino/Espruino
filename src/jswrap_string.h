@@ -11,6 +11,9 @@
  * JavaScript String Functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_STRING_H_
+#define JSWRAP_STRING_H_
+
 #include "jsvar.h"
 
 JsVar *jswrap_string_constructor(JsVar *a);
@@ -31,3 +34,5 @@ bool jswrap_string_startsWith(JsVar *parent, JsVar *search, int position);
 bool jswrap_string_endsWith(JsVar *parent, JsVar *search, JsVar *length);
 JsVar *jswrap_string_repeat(JsVar *parent, int count);
 JsVar *jswrap_string_padX(JsVar *str, int targetLength, JsVar *padString, bool padStart);
+
+#endif // JSWRAP_STRING_H_

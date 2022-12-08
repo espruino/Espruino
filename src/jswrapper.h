@@ -12,8 +12,8 @@
  * ----------------------------------------------------------------------------
  */
 
-#ifndef JSWRAPPER_H
-#define JSWRAPPER_H
+#ifndef JSWRAPPER_H_
+#define JSWRAPPER_H_
 
 #include "jsutils.h"
 #include "jsvar.h"
@@ -142,4 +142,4 @@ const char *jswGetBuiltInLibraryNames();
 JsVar *jswCallFunctionHack(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount);
 #endif
 
-#endif // JSWRAPPER_H
+#endif // JSWRAPPER_H_

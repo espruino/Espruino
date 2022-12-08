@@ -5,7 +5,7 @@ $(PROJ_NAME): $(OBJS)
 	@$(call link)
 	
 sourcecode: $(SOURCES) $(PLATFORM_CONFIG_FILE)
-	cat $(SOURCES) > gen/out.c
-	@echo gcc $(INCLUDE) -E gen/out.c	
-	gcc $(DEFINES) $(INCLUDE) -E -P gen/out.c -o sourcecode.c
-#	rm gen/out.c
+	cat $(SOURCES) > gen/temp.c
+	gcc $(DEFINES) $(INCLUDE) -E -P gen/temp.c -o gen/temp2.c
+	cat targets/embed/embed_header.c gen/temp2.c > sourcecode.c
+	rm gen/temp.c gen/temp2.c

@@ -1,5 +1,7 @@
+#ifndef ESPR_EMBED
 #include <stdlib.h>
 #include <string.h>
+#endif
 #include "heatshrink_decoder.h"
 
 /* States for the polling state machine. */

@@ -837,7 +837,7 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   jsvObjectIteratorNew(&it, argArray);
   while (jsvObjectIteratorHasValue(&it)) {
     if (n>=MAX_EMIT_ARGS) {
-      jsExceptionHere(JSET_TYPEERROR, "Too many arguments (>%d)", MAX_ARGS);
+      jsExceptionHere(JSET_TYPEERROR, "Too many arguments (>%d)", MAX_EMIT_ARGS);
       break;
     }
     args[n++] = jsvObjectIteratorGetValue(&it);

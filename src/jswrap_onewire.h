@@ -11,6 +11,9 @@
  * JavaScript OneWire Functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_ONEWIRE_H_
+#define JSWRAP_ONEWIRE_H_
+
 #include "jsvar.h"
 #include "jspin.h"
 
@@ -21,3 +24,5 @@ void jswrap_onewire_skip(JsVar *parent);
 void jswrap_onewire_write(JsVar *parent, JsVar *data, bool leavePowerOn);
 JsVar *jswrap_onewire_read(JsVar *parent, JsVar *count);
 JsVar *jswrap_onewire_search(JsVar *parent, int command);
+
+#endif // JSWRAP_ONEWIRE_H_

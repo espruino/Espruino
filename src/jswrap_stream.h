@@ -11,8 +11,10 @@
  * JavaScript Stream Functions
  * ----------------------------------------------------------------------------
  */
-#include "jsvar.h"
+#ifndef JSWRAP_STREAM_H_
+#define JSWRAP_STREAM_H_
 
+#include "jsvar.h"
 
 #define STREAM_BUFFER_NAME JS_HIDDEN_CHAR_STR"buf" // the buffer to store data in when no listener is defined
 #define STREAM_CALLBACK_NAME JS_EVENT_PREFIX"data"
@@ -32,3 +34,4 @@ JsVar *jswrap_stream_read(JsVar *parent, JsVarInt chars);
  */
 bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, bool force);
 
+#endif // JSWRAP_STREAM_H_

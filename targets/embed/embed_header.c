@@ -1,26 +1,24 @@
 /*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
- * Copyright (C) 2018 Gordon Williams <gw@pur3.co.uk>
+ * Copyright (C) 2022 Gordon Williams <gw@pur3.co.uk>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * JavaScript Flash IO functions
+ * Espruino 'embedded' single-file JS interpreter
  * ----------------------------------------------------------------------------
  */
-#ifndef JSWRAP_FLASH_H_
-#define JSWRAP_FLASH_H_
 
-#include "jsvar.h"
+#include <stdio.h>
+#include <stddef.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdarg.h> // for va_args
+#include <stdint.h>
+#include <stdbool.h>
+#include <math.h>
+#include <sys/time.h> // gettimeofday
 
-// Flash Library exports
-JsVar *jswrap_flash_getPage(int addr);
-JsVar *jswrap_flash_getFree();
-void jswrap_flash_erasePage(JsVar *addr);
-void jswrap_flash_write(JsVar *data, int addr);
-JsVar *jswrap_flash_read(int length, int addr);
-
-#endif // JSWRAP_FLASH_H_

@@ -11,8 +11,14 @@
  * JavaScript DataView Implementation
  * ----------------------------------------------------------------------------
  */
+
+#ifndef JSWRAP_DATAVIEW_H_
+#define JSWRAP_DATAVIEW_H_
+
 #include "jsvar.h"
 
 JsVar *jswrap_dataview_constructor(JsVar *buffer, int byteOffset, int byteLength);
 JsVar *jswrap_dataview_get(JsVar *dataview, JsVarDataArrayBufferViewType type, int byteOffset, bool littleEndian);
 void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int byteOffset, JsVar *value, bool littleEndian);
+
+#endif // JSWRAP_DATAVIEW_H_

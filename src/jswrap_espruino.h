@@ -11,6 +11,10 @@
  * JavaScript methods for Espruino utility functions
  * ----------------------------------------------------------------------------
  */
+
+#ifndef JSWRAP_ESPRUINO_H_
+#define JSWRAP_ESPRUINO_H_
+
 #include "jsvar.h"
 #include "jshardware.h"
 #include "jsflags.h" // for E.get/setFlags
@@ -70,3 +74,5 @@ JsVarInt jswrap_espruino_getBattery();
 void jswrap_espruino_setRTCPrescaler(int prescale);
 int jswrap_espruino_getRTCPrescaler(bool calibrate);
 JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn);
+
+#endif // JSWRAP_ESPRUINO_H_

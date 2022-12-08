@@ -11,6 +11,9 @@
  * JavaScript Serial Port Functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_SERIAL_H_
+#define JSWRAP_SERIAL_H_
+
 #include "jsvar.h"
 
 JsVar *jswrap_serial_constructor();
@@ -22,3 +25,5 @@ void jswrap_serial_print(JsVar *parent, JsVar *str);
 void jswrap_serial_println(JsVar *parent, JsVar *str);
 void jswrap_serial_write(JsVar *parent, JsVar *data);
 void jswrap_serial_inject(JsVar *parent, JsVar *args);
+
+#endif // JSWRAP_SERIAL_H_

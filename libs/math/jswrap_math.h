@@ -11,10 +11,15 @@
  * Contains built-in functions for Maths
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_MATH_H_
+#define JSWRAP_MATH_H_
+
 #include "jsutils.h"
 #include "jsvar.h"
 
+#ifndef ESPR_EMBED
 #include <math.h>
+#endif
 
 #define PI (3.141592653589793)
 
@@ -32,3 +37,5 @@ double jswrap_math_atan2(double y, double x);
 JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max);
 JsVarFloat jswrap_math_minmax(JsVar *args, bool isMax);
 int jswrap_math_sign(double x);
+
+#endif // JSWRAP_MATH_H_
