@@ -11,6 +11,9 @@
  * JavaScript Hardware IO Functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_IO_H_
+#define JSWRAP_IO_H_
+
 #include "jsvar.h"
 #include "jsinteractive.h"
 
@@ -31,3 +34,5 @@ void jswrap_interface_clearWatch(JsVar *idVarArr);
 int jswrap_interface_setWatch_int(void(*callback)(), Pin pin, bool repeat, int edge);
 /// function for internal use
 void jswrap_interface_clearWatch_int(int watchNumber);
+
+#endif // JSWRAP_IO_H_

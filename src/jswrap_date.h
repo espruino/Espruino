@@ -11,6 +11,9 @@
  * JavaScript methods for Date Handling
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_DATE_H_
+#define JSWRAP_DATE_H_
+
 #include "jsvar.h"
 
 typedef struct {
@@ -73,3 +76,4 @@ JsVar *jswrap_date_toISOString(JsVar *parent);
 JsVar *jswrap_date_toLocalISOString(JsVar *parent);
 JsVarFloat jswrap_date_parse(JsVar *str);
 
+#endif // JSWRAP_DATE_H_

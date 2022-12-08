@@ -11,6 +11,9 @@
  * JavaScript methods for Objects and Functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_OBJECT_H_
+#define JSWRAP_OBJECT_H_
+
 #include "jsvar.h"
 #include "jswrapper.h"
 
@@ -61,3 +64,5 @@ bool jswrap_boolean_constructor(JsVar *value);
 
 /** A convenience function for adding event listeners */
 void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (*callback)(), JsnArgumentType argTypes);
+
+#endif // JSWRAP_OBJECT_H_

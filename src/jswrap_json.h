@@ -11,6 +11,9 @@
  * JavaScript JSON-handling Functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_JSON_H_
+#define JSWRAP_JSON_H_
+
 #include "jsvar.h"
 
 JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space);
@@ -58,3 +61,5 @@ void jsfGetJSON(JsVar *var, JsVar *result, JSONFlags flags);
 void jsfPrintJSON(JsVar *var, JSONFlags flags);
 /* Convenience function for using jsfGetJSONForFunctionWithCallback - print to console */
 void jsfPrintJSONForFunction(JsVar *var, JSONFlags flags);
+
+#endif // JSWRAP_JSON_H_

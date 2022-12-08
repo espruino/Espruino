@@ -11,6 +11,8 @@
  *  Wrapper for heatshrink encode/decode
  * ----------------------------------------------------------------------------
  */
+#ifndef COMPRESS_HEATSHRINK_H_
+#define COMPRESS_HEATSHRINK_H_
 
 typedef struct {
   unsigned char *ptr;
@@ -33,3 +35,5 @@ uint32_t heatshrink_encode(unsigned char *in_data, size_t in_len, void (*out_cal
 
 /** gets data from callback, writes it into array if nonzero. Returns total length */
 uint32_t heatshrink_decode(int (*in_callback)(uint32_t *cbdata), uint32_t *in_cbdata, unsigned char *out_data);
+
+#endif // COMPRESS_HEATSHRINK_H_

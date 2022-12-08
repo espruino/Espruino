@@ -11,7 +11,8 @@
  * Platform Specific entry point
  * ----------------------------------------------------------------------------
  */
-#include <stdio.h> 
+
+#include <stdio.h>
 #include <sys/time.h>
 
 #include "platform_config.h"
@@ -92,3 +93,5 @@ int main() {
 }
 
 
+// V=1 BOARD=EMBED DEBUG=1 make sourcecode
+// gcc sourcecode.c -lm
