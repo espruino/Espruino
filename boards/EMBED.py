@@ -17,10 +17,12 @@ import pinutils;
 info = {
  'name' : "Embedded Espruino",
  'variables' :  4000, # 0 = resizable variables, rather than fixed
- 'binary_name' : 'espruino_embedded',
+ 'binary_name' : 'espruino_embedded.c',
  'build' : {
    'libraries' : [],
-   'makefile' : []
+   'makefile' : [
+     'DEFINES+=-DUSE_CALLFUNCTION_HACK' # for now, just ensure we can be properly multiplatform
+   ]
  }
 };
 chip = {
