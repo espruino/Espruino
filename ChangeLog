@@ -8,6 +8,7 @@
             Array.sort() with undefined elements now puts them at the end of the array (as per spec - #2300)
             Bangle.js1/2: Fix showMenu/showScroller spacing with back if no widgets loaded (ref #2286)
             Bangle.js1: Bangle.setUI({back}) now responds to BTN3 if there were no other watches on buttons
+            ESP32: Allow up to 16k vars (if enough memory), allow non-active scan, and remove 30s BLE scan limit
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

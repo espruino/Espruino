@@ -112,7 +112,7 @@ int jsble_exec_pending(IOEvent *event) {
 void jsble_restart_softdevice(JsVar *jsFunction){
 	bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
 	if (bleStatus & BLE_IS_SCANNING) {
-		bluetooth_gap_setScan(false);
+		bluetooth_gap_setScan(false, false);
 	}
 	if (jsvIsFunction(jsFunction))
 	  jspExecuteFunction(jsFunction,NULL,0,NULL);
@@ -172,11 +172,8 @@ uint32_t jsble_set_scanning(bool enabled, JsVar *options){
   bool activeScan = false;
   if (enabled && jsvIsObject(options)) {
     activeScan = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "active", 0));
-    if (activeScan) {
-      jsWarn("active scan not implemented\n");
-    }
   }
-	bluetooth_gap_setScan(enabled);
+	bluetooth_gap_setScan(enabled, activeScan);
 	return 0;
 }
 
