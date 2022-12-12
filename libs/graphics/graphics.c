@@ -873,13 +873,7 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
   graphicsToDeviceCoordinates(gfx, &x2, &y2);
   xdir = x2-x1;
   ydir = y2-y1;
-  // range check - if too big no point scrolling
-  bool scroll = true;
-  if (xdir>gfx->data.width) { xdir=gfx->data.width; scroll=false; }
-  if (xdir<-gfx->data.width) { xdir=-gfx->data.width; scroll=false; }
-  if (ydir>gfx->data.height) { ydir=gfx->data.height; scroll=false; }
-  if (ydir<-gfx->data.height) { ydir=-gfx->data.height; scroll=false; }
-  // do the scrolling
+  // work out cliprect
 #ifdef NO_MODIFIED_AREA
   x1=0;
   y1=0;
@@ -891,6 +885,15 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
   x2=gfx->data.clipRect.x2;
   y2=gfx->data.clipRect.y2;
 #endif
+  // range check - if too big no point scrolling
+  bool scroll = true;
+  int w = 1+x2-x1;
+  int h = 1+y2-y1;
+  if (xdir>=w) { xdir=w; scroll=false; }
+  if (xdir<=-w) { xdir=-w; scroll=false; }
+  if (ydir>=h) { ydir=h; scroll=false; }
+  if (ydir<=-h) { ydir=-h; scroll=false; }
+  // do the scrolling
   if (scroll) gfx->scroll(gfx, xdir, ydir, x1,y1,x2,y2);
   graphicsSetModified(gfx, x1,y1,x2,y2);
   // fill the new area
