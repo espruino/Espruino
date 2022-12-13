@@ -1650,13 +1650,13 @@ void jswrap_puck_init() {
   jshDelayMicroseconds(2500); // 1.7ms from power on to ok
   // MAG3110 WHO_AM_I - for some reason we have to use this slightly odd SW I2C implementation for this
   unsigned char buf[2];
-  puckVersion = PUCKJS_UNKNOWN;
+  puckVersion = PUCKJS_1V0; // set version so we use the correct I2C address
   mag_rd(0x07, buf, 1); // MAG3110 WHO_AM_I
   //jsiConsolePrintf("MAG3110 %d\n", buf[0]);
   if (buf[0]!=0xC4 && buf[0]!=0x00) { // sometimes MAG3110 reports ID 0!
     // Not found, check for LIS3MDL - Puck.js v2
     nrf_delay_ms(1); // LIS3MDL takes longer to boot
-    puckVersion = PUCKJS_2V0;
+    puckVersion = PUCKJS_2V0; // set version so we use the correct I2C address
     mag_rd(0x0F, buf, 1); // LIS3MDL WHO_AM_I
     //jsiConsolePrintf("LIS3 %d\n", buf[0]);
     if (buf[0] == 0b00111101) {
@@ -1664,7 +1664,7 @@ void jswrap_puck_init() {
       puckVersion = PUCKJS_2V0;
     } else {
       // Is it 2v1?
-      puckVersion = PUCKJS_2V1;
+      puckVersion = PUCKJS_2V1; // set version so we use the correct I2C address
       mag_rd(0x39, buf, 1); // MMC5603NJ WHO_AM_I
       //jsiConsolePrintf("MMC5603NJ %d\n", buf[0]);
       if (buf[0] == 16) {

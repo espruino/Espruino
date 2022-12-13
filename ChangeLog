@@ -10,6 +10,7 @@
             Bangle.js1: Bangle.setUI({back}) now responds to BTN3 if there were no other watches on buttons
             ESP32: Allow up to 16k vars (if enough memory), allow non-active scan, and remove 30s BLE scan limit
             Graphics: Ensure a scroll inside a cliprect can't go out of bounds (previously it was bounded to screen)
+            Puck.js: Fix regression in 2v15/2v16 that stopped Puck.js v1 using magnetometer
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
