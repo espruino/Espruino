@@ -1763,8 +1763,8 @@ void touchHandler(bool state, IOEventFlags flags) {
   // 4: Y hi
   // 5: Y lo (0..160)
   touchHandlerInternal(
-    (buf[3]-touchMinX) * LCD_WIDTH / (touchMaxX-touchMinX), // touchX
-    (buf[5]-touchMinY) * LCD_HEIGHT / (touchMaxY-touchMinY), // touchY
+    (((int)buf[3])-touchMinX) * LCD_WIDTH / (touchMaxX-touchMinX), // touchX
+    (((int)buf[5])-touchMinY) * LCD_HEIGHT / (touchMaxY-touchMinY), // touchY
     buf[1], // touchPts
     buf[0]); // gesture
 }
