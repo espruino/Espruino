@@ -3084,9 +3084,8 @@ JsVar *jswrap_banglejs_getAccel() {
 
 `range` is one of:
 
-* `undefined` or `'current'` - health data so far in the last 10 minutes is
-  returned,
-* `'last'` - health data during the last 10 minutes
+* `undefined` or `'10min'` - health data so far in this 10 minute block (eg. 9:00.00 - 9:09.59)
+* `'last'` - health data during the last 10 minute block
 * `'day'` - the health data so far for the day
 
 
