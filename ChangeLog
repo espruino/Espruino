@@ -11,6 +11,7 @@
             ESP32: Allow up to 16k vars (if enough memory), allow non-active scan, and remove 30s BLE scan limit
             Graphics: Ensure a scroll inside a cliprect can't go out of bounds (previously it was bounded to screen)
             Puck.js: Fix regression in 2v15/2v16 that stopped Puck.js v1 using magnetometer
+            Bangle.js2: Fix scroller overlap with widget bar when scrolled more than the screen's height in one step
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
