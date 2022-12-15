@@ -639,6 +639,10 @@ uint8_t match_request : 1;               If 1 requires the application to report
       case BLEP_AMS_ATTRIBUTE:
         ble_ams_handle_attribute(blep, (char *)buffer, bufferLen);
         break;
+      case BLEP_ANCS_ERROR:
+        if (BLETASK_IS_ANCS(bleGetCurrentTask()))
+          bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("ANCS Error"));
+        break;
 #endif
    default:
      jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);

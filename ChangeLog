@@ -13,6 +13,7 @@
             Puck.js: Fix regression in 2v15/2v16 that stopped Puck.js v1 using magnetometer
             Bangle.js2: Fix scroller overlap with widget bar when scrolled more than the screen's height in one step
             Bangle.js2: Decode touchscreen high bytes
+            Bangle.js: Improve ANCS stability - cancel ongoing tasks if an error is reported
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
