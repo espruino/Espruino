@@ -1763,8 +1763,10 @@ void touchHandler(bool state, IOEventFlags flags) {
   // 4: Y hi
   // 5: Y lo (0..160)
 
-  int tx = buf[3] | ((buf[2] & 0x0F)<<8);
-  int ty = buf[5] | ((buf[4] & 0x0F)<<8);
+  int tx = buf[3]/* | ((buf[2] & 0x0F)<<8)*/; // top bits are never used on our touchscreen
+  int ty = buf[5]/* | ((buf[4] & 0x0F)<<8)*/;
+  if (tx>250) tx=0; // on some devices, 251-255 gets reported for touches right at the top of the screen
+  if (ty>250) ty=0;
   touchHandlerInternal(
     (tx-touchMinX) * LCD_WIDTH / (touchMaxX-touchMinX), // touchX
     (ty-touchMinY) * LCD_HEIGHT / (touchMaxY-touchMinY), // touchY
