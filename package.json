@@ -1,0 +1,14 @@
+{
+  "name": "Espruino",
+  "description": "Espruino JavaScript Interpreter",
+  "author": "Gordon Williams <gw@pur3.co.uk> (http://espruino.com)",
+  "license": "MPLv2",
+  "repository": "https://github.com/espruino/Espruino",
+  "scripts": {
+    "test": "scripts/factoryTests.js BANGLEJS && scripts/factoryTests.js BANGLEJS2"
+  },  
+  "devDependencies": {
+    "highlight.js": "^11.6.0",
+    "marked": "^4.0.18"
+  }
+}
