@@ -69,7 +69,9 @@ static esp_ble_adv_data_t adv_data = {
 
 static void execScanFunc(esp_ble_gap_cb_param_t *p){
 	JsVar *evt = jsvNewObject();
-	jsvObjectSetChildAndUnLock(evt, "id", bda2JsVarString(p->scan_rst.bda));
+	ble_gap_addr_t ble_addr;
+	espbtaddr_TO_bleaddr(p->scan_rst.bda, p->scan_rst.ble_addr_type, &ble_addr);
+	jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(ble_addr));
 	jsvObjectSetChildAndUnLock(evt, "rssi",jsvNewFromInteger(p->scan_rst.rssi));
   JsVar *data = jsvNewStringOfLength(p->scan_rst.adv_data_len, (char*)p->scan_rst.ble_adv);
 	if(data){

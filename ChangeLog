@@ -14,6 +14,8 @@
             Bangle.js2: Fix scroller overlap with widget bar when scrolled more than the screen's height in one step
             Bangle.js2: Improve touchscreen handling to handle out of range data from the controller on some devices
             Bangle.js: Improve ANCS stability - cancel ongoing tasks if an error is reported
+            ESP32: setScan/findDevices/requestDevice now fill in `id` with the mac address followed by private/random/etc as NRF52 does
+            ESP32: disconnect event now gives 'reason' (as NRF52)
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
