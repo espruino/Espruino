@@ -12,6 +12,9 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifndef ESPRUINO_EMBEDDED_H_
+#define ESPRUINO_EMBEDDED_H_
+
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
@@ -20,5 +23,5 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
-#include <sys/time.h> // gettimeofday
 
+void jsiConsolePrintf(const char *fmt, ...);

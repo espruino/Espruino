@@ -17,14 +17,11 @@
 #include "jshardware.h"
 #include "jswrapper.h"
 
-
 // Fixing up undefined functions
 void jshInterruptOn() {}
 void jshInterruptOff() {}
 bool jshIsInInterrupt() { return false; }
-void jsiConsolePrint(const char *str) {
-  printf("%s",str);
-}
+
 void jsiConsolePrintf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
@@ -38,61 +35,78 @@ void jsiConsolePrintStringVar(JsVar *v) {
 bool jsiFreeMoreMemory() { return false; } // no extra memory is allocated
 void jshKickWatchDog() { }
 void jsiConsoleRemoveInputLine() {}
-
-JsSysTime jshGetSystemTime() {
-  struct timeval tm;
-  gettimeofday(&tm, 0);
-  return (JsSysTime)(tm.tv_sec)*1000000L + tm.tv_usec;
-}
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
   return (JsSysTime)(ms*1000);
 }
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
   return ((JsVarFloat)time)/1000;
 }
+// ===============================
+JsSysTime jshGetSystemTime() {
+  return ejs_get_microseconds();
+}
+void jsiConsolePrintString(const char *str) {
+  ejs_print(str);
+}
+// ===============================
 
-// 
-int main() {
-
-  jswHWInit();
-
-  bool buttonState = false;
-  jsvInit(0);
-  jspInit();
-//  jsiInit(!buttonState /* load from flash by default */); // pressing USER button skips autoload
-//  while (1) {
-//    jsiLoop();
-//  }
-//  jsiKill();
-  printf("Embedded Espruino test. Type JS and hit enter:\n>");
-
-  char buf[1000];
-  while (true) {
-    fgets(buf, sizeof(buf), stdin);
-    JsVar *v = jspEvaluate(buf, false);
-    jsiConsolePrintf("=%v\n>",v);
-    jsvUnLock(v);
-    JsVar *exception = jspGetException();
-    if (exception) {
-      jsiConsolePrintf("Uncaught %v\n", exception);
-      if (jsvIsObject(exception)) {
-        JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
-        if (stackTrace) {
-          jsiConsolePrintf("%v\n", stackTrace);
-          jsvUnLock(stackTrace);
-        }
-      }
-      jsvUnLock(exception);
-    }
-    if (jspIsInterrupted()) {
-      jsiConsolePrint("Execution Interrupted\n");
-      jspSetInterrupted(false);
-    }
-  }  
-  jspKill();
-  jsvKill();
+void ejs_set_instance(struct ejs *ejs) {
+  jsVarsSize = ejs->varCount;
+  jsVars = ejs->vars;
+  execInfo.hiddenRoot = ejs->hiddenRoot;
+  execInfo.root = ejs->root; 
+}
+void ejs_unset_instance() {
+  jsVarsSize = 0;
+  jsVars = NULL; 
+  execInfo.hiddenRoot = NULL;
+  execInfo.root = NULL; 
 }
 
+/* Create an instance */
+struct ejs *ejs_create(unsigned int varCount) {
+  struct ejs *ejs = (struct ejs*)malloc(sizeof(ejs));
+  if (!ejs) return 0;
+  ejs->varCount = varCount;
+ 
+  jswHWInit();
+  jsvInit(varCount);
+  jspInit();
+  
+  ejs->vars = jsVars;
+  ejs->hiddenRoot = execInfo.hiddenRoot;
+  ejs->root = execInfo.root; 
+  ejs_unset_instance();
+  return ejs;
+}
 
-// V=1 BOARD=EMBED DEBUG=1 make sourcecode
-// gcc sourcecode.c -lm
+/* Destroy the instance */
+void ejs_destroy(struct ejs *ejs) {
+  jspKill();
+  jsvKill();
+  
+  if (!ejs) return;
+  if (!ejs->vars) return;
+  ejs->varCount=0;  
+  ejs->vars=NULL;
+  free(ejs);
+}
+
+struct JsVar *ejs_exec(struct ejs *, const char *src) {
+  JsVar *v = jspEvaluate(src, false/* string is assumed to not be static */);  
+  // ^ if the string is static, we can let functions reference it directly
+  JsVar *exception = jspGetException();
+  if (exception) {
+    jsiConsolePrintf("Uncaught %v\n", exception);
+    if (jsvIsObject(exception)) {
+      JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
+      if (stackTrace) {
+        jsiConsolePrintf("%v\n", stackTrace);
+        jsvUnLock(stackTrace);
+      }
+    }
+    jsvUnLock(exception);
+  }
+  return v;
+}
+

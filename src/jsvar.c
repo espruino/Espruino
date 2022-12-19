@@ -362,6 +362,10 @@ void jsvKill() {
   free(jsVarBlocks);
   jsVarBlocks = 0;
   jsVarsSize = 0;
+#elif defined(JSVAR_MALLOC)
+  free(jsVars);
+  jsVars = NULL;
+  jsVarsSize = 0;
 #endif
 }
 

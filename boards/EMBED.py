@@ -16,17 +16,19 @@
 import pinutils;
 info = {
  'name' : "Embedded Espruino",
- 'variables' :  4000, # 0 = resizable variables, rather than fixed
+ 'variables' :  16000, # this forces 14 byte variables
  'binary_name' : 'espruino_embedded.c',
  'build' : {
    'libraries' : [],
    'makefile' : [
-     'DEFINES+=-DUSE_CALLFUNCTION_HACK' # for now, just ensure we can be properly multiplatform
+     'DEFINES+=-DUSE_CALLFUNCTION_HACK', # for now, just ensure we can be properly multiplatform
+     'DEFINES+=-DJSVAR_MALLOC'
    ]
  }
 };
 chip = {
-  'part' : "EMBED", 'family' : "EMBED",
+  'part' : "EMBED", 
+  'family' : "EMBED",
   'package' : "",
   'ram' : 0,
   'flash' : 0, # size of file used to fake flash memory (kb)
@@ -42,6 +44,6 @@ devices = {
 };
 
 def get_pins():
-  pins = pinutils.generate_pins(0,32) # FIXME - no pins
+  pins = pinutils.generate_pins(0,32) # FIXME - no pins needed
   # just fake pins D0 .. D32
   return pins
