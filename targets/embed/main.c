@@ -57,10 +57,12 @@ void ejs_set_instance(struct ejs *ejs) {
   execInfo.root = ejs->root; 
 }
 void ejs_unset_instance() {
-  jsVarsSize = 0;
+ /* FIXME - we need these but if they are in, js* functions (eg to print/get values)
+   can't be called from outside of ejs_exec */
+ /* jsVarsSize = 0;
   jsVars = NULL; 
   execInfo.hiddenRoot = NULL;
-  execInfo.root = NULL; 
+  execInfo.root = NULL; */
 }
 
 /* Create an instance */
@@ -92,7 +94,8 @@ void ejs_destroy(struct ejs *ejs) {
   free(ejs);
 }
 
-struct JsVar *ejs_exec(struct ejs *, const char *src) {
+struct JsVar *ejs_exec(struct ejs *ejs, const char *src) {
+  ejs_set_instance(ejs);
   JsVar *v = jspEvaluate(src, false/* string is assumed to not be static */);  
   // ^ if the string is static, we can let functions reference it directly
   JsVar *exception = jspGetException();
@@ -107,6 +110,7 @@ struct JsVar *ejs_exec(struct ejs *, const char *src) {
     }
     jsvUnLock(exception);
   }
+  ejs_unset_instance();
   return v;
 }
 

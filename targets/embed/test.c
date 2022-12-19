@@ -26,6 +26,7 @@ int main() {
   while (true) {
     fgets(buf, sizeof(buf), stdin);
     struct JsVar *v = ejs_exec(ejs, buf);
+    // FIXME - we need a way to set the active interpreter to 'ejs' here for the js* functions
     jsiConsolePrintf("=%v\n>", v);
     jsvUnLock(v);
   }  

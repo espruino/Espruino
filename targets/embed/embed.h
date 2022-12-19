@@ -28,6 +28,6 @@ struct ejs *ejs_create(unsigned int varCount);
 /* Destroy the instance */
 void ejs_destroy(struct ejs *ejs);
 /* Evaluate the given string */
-struct JsVar *ejs_exec(struct ejs *, const char *src);
+struct JsVar *ejs_exec(struct ejs *ejs, const char *src);
 
 
