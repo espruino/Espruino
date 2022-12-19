@@ -1762,9 +1762,14 @@ void touchHandler(bool state, IOEventFlags flags) {
   // 3: X lo (0..160)
   // 4: Y hi
   // 5: Y lo (0..160)
+
+  int tx = buf[3]/* | ((buf[2] & 0x0F)<<8)*/; // top bits are never used on our touchscreen
+  int ty = buf[5]/* | ((buf[4] & 0x0F)<<8)*/;
+  if (tx>=250) tx=0; // on some devices, 251-255 gets reported for touches right at the top of the screen
+  if (ty>=250) ty=0;
   touchHandlerInternal(
-    (buf[3]-touchMinX) * LCD_WIDTH / (touchMaxX-touchMinX), // touchX
-    (buf[5]-touchMinY) * LCD_HEIGHT / (touchMaxY-touchMinY), // touchY
+    (tx-touchMinX) * LCD_WIDTH / (touchMaxX-touchMinX), // touchX
+    (ty-touchMinY) * LCD_HEIGHT / (touchMaxY-touchMinY), // touchY
     buf[1], // touchPts
     buf[0]); // gesture
 }
@@ -3084,9 +3089,8 @@ JsVar *jswrap_banglejs_getAccel() {
 
 `range` is one of:
 
-* `undefined` or `'current'` - health data so far in the last 10 minutes is
-  returned,
-* `'last'` - health data during the last 10 minutes
+* `undefined` or `'10min'` - health data so far in this 10 minute block (eg. 9:00.00 - 9:09.59)
+* `'last'` - health data during the last 10 minute block
 * `'day'` - the health data so far for the day
 
 

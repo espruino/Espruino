@@ -8,6 +8,12 @@
             Array.sort() with undefined elements now puts them at the end of the array (as per spec - #2300)
             Bangle.js1/2: Fix showMenu/showScroller spacing with back if no widgets loaded (ref #2286)
             Bangle.js1: Bangle.setUI({back}) now responds to BTN3 if there were no other watches on buttons
+            ESP32: Allow up to 16k vars (if enough memory), allow non-active scan, and remove 30s BLE scan limit
+            Graphics: Ensure a scroll inside a cliprect can't go out of bounds (previously it was bounded to screen)
+            Puck.js: Fix regression in 2v15/2v16 that stopped Puck.js v1 using magnetometer
+            Bangle.js2: Fix scroller overlap with widget bar when scrolled more than the screen's height in one step
+            Bangle.js2: Improve touchscreen handling to handle out of range data from the controller on some devices
+            Bangle.js: Improve ANCS stability - cancel ongoing tasks if an error is reported
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

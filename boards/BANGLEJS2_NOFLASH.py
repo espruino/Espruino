@@ -125,7 +125,7 @@ devices = {
             'pin_bl' : 'D8',
           },
   'TOUCH' : {
-            'device' : 'CTS816S', 'addr' : 0x15,
+            'device' : 'CST816S', 'addr' : 0x15,
             'pin_sda' : 'D33',
             'pin_scl' : 'D34',
             'pin_rst' : 'D35',

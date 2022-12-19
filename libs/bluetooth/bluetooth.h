@@ -181,6 +181,7 @@ typedef enum {
   BLEP_ANCS_NOTIF,                  //< Apple Notification Centre notification received
   BLEP_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes received
   BLEP_ANCS_APP_ATTR,               //< Apple Notification Centre app attributes received
+  BLEP_ANCS_ERROR,                  //< Apple Notification Centre error - cancel any active tasks
   BLEP_AMS_TRACK_UPDATE,            //< Apple Media Service Track info updated
   BLEP_AMS_PLAYER_UPDATE,           //< Apple Media Service Player info updated
   BLEP_AMS_ATTRIBUTE                //< Apple Media Service Track or Player info read response

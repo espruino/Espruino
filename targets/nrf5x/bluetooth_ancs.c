@@ -137,8 +137,6 @@ static char m_attr_date[20];                            /**< Buffer to store att
 static char m_attr_posaction[16];                       /**< Buffer to store attribute data. */
 static char m_attr_negaction[16];                       /**< Buffer to store attribute data. */
 // static char m_attr_disp_name[32];                       /**< Buffer to store attribute data. */
-//AMS state
-static uint8_t m_entity_attribute[BLE_AMS_EA_MAX_DATA_LENGTH];
 
 /** Handle notification event (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ancs_handle_notif(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
@@ -435,6 +433,8 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt) {
       jsble_queue_pending_buf(BLEP_ANCS_APP_ATTR, 0, p_evt->attr.p_attr_data, p_evt->attr.attr_len);
       break;
     case BLE_ANCS_C_EVT_NP_ERROR:
+    case BLE_ANCS_C_EVT_INVALID_NOTIF:
+      jsble_queue_pending(BLEP_ANCS_ERROR, 0);
       err_code_print_ancs(p_evt->err_code_np);
       break;
     default:

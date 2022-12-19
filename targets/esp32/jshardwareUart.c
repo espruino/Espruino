@@ -27,7 +27,7 @@ bool serial3_initialized = false;
 
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
 
-void initUart(int uart_num,uart_config_t uart_config,int txpin,int rxpin){
+void initUart(int uart_num, uart_config_t uart_config, int txpin, int rxpin){
   int r;
   r = uart_param_config(uart_num, &uart_config);   //Configure UART1 parameters
   r = uart_set_pin(uart_num, txpin, rxpin, -1, -1); //Set UART0 pins(TX: IO16, RX: IO17, RTS: IO18, CTS: IO19)
@@ -59,11 +59,13 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
   }
   if(device == EV_SERIAL1) {
     initUart(uart_console,uart_config,-1,-1);
+    jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
   } else if(device == EV_SERIAL2){
     if(inf->pinTX == 0xff) inf->pinTX = 4;
     if(inf->pinRX == 0xff) inf->pinRX = 5;
     if(serial2_initialized) uart_driver_delete(uart_Serial2);
     initUart(uart_Serial2,uart_config,inf->pinTX,inf->pinRX);
+    jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
     jshSetDeviceInitialised(EV_SERIAL2,true);
     serial2_initialized = true;
   } else if(device == EV_SERIAL3){
@@ -71,6 +73,7 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
     if(inf->pinRX == 0xff) inf->pinRX = 16;
     if(serial3_initialized) uart_driver_delete(uart_Serial3);
     initUart(uart_Serial3,uart_config,inf->pinTX,inf->pinRX);
+    jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
     jshSetDeviceInitialised(EV_SERIAL3,true);
     serial3_initialized = true;
   }
@@ -85,7 +88,8 @@ void initConsole(){
     .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
     .rx_flow_ctrl_thresh = 122,
   }; 
-  initUart(uart_console,uart_config,-1,-1);  
+  initUart(uart_console,uart_config,-1,-1);
+  jshSetFlowControlEnabled(EV_SERIAL1, true, PIN_UNDEFINED); // should we use hardware flow control on most ESP32 boards?
   jshSetDeviceInitialised(EV_SERIAL1,true);  
 }
 

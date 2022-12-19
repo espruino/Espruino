@@ -1,4 +1,4 @@
-(function(options) {    
+(function(options) {
   /* options = {
     h = height
     c = # of items
@@ -31,22 +31,23 @@ Bangle.setUI({
     rScroll = s.scroll &~1;
     dy = oldScroll-rScroll;
     if (!dy) return;
-    g.reset().setClipRect(R.x,R.y,R.x2,R.y2);
-    g.scroll(0,dy);
+    g.reset().setClipRect(R.x,R.y,R.x2,R.y2).scroll(0,dy);
     var d = e.dy;
     if (d < 0) {
-      g.setClipRect(R.x,R.y2-(1-d),R.x2,R.y2);
-      let i = YtoIdx(R.y2-(1-d));
-      let y = idxToY(i);
+      let y = Math.max(R.y2-(1-d), R.y);
+      g.setClipRect(R.x,y,R.x2,R.y2);
+      let i = YtoIdx(y);
+      y = idxToY(i);
       while (y < R.y2) {
         options.draw(i, {x:R.x,y:y,w:R.w,h:options.h});
         i++;
         y += options.h;
       }
     } else { // d>0
-      g.setClipRect(R.x,R.y,R.x2,R.y+d);
-      let i = YtoIdx(R.y+d);
-      let y = idxToY(i);
+      let y = Math.min(R.y+d, R.y2);
+      g.setClipRect(R.x,R.y,R.x2,y);
+      let i = YtoIdx(y);
+      y = idxToY(i);
       while (y > R.y-options.h) {
         options.draw(i, {x:R.x,y:y,w:R.w,h:options.h});
         y -= options.h;
@@ -83,19 +84,19 @@ function YtoIdx(y) {
 var s = {  
   scroll : E.clip(0|options.scroll,menuScrollMin,menuScrollMax),
   draw : () => {
-  g.reset().clearRect(R.x,R.y,R.x2,R.y2);
-  g.setClipRect(R.x,R.y,R.x2,R.y2);
-  var a = YtoIdx(R.y);
-  var b = Math.min(YtoIdx(R.y2),options.c-1);
-  for (var i=a;i<=b;i++)
-    options.draw(i, {x:R.x,y:idxToY(i),w:R.w,h:options.h});
-  g.setClipRect(0,0,g.getWidth()-1,g.getHeight()-1);
-}, drawItem : i => {
-  var y = idxToY(i);
-  g.reset().setClipRect(R.x,y,R.x2,y+options.h);
-  options.draw(i, {x:R.x,y:y,w:R.w,h:options.h});
-  g.setClipRect(0,0,g.getWidth()-1,g.getHeight()-1);
-}};
+    g.reset().clearRect(R).setClipRect(R.x,R.y,R.x2,R.y2);
+    var a = YtoIdx(R.y);
+    var b = Math.min(YtoIdx(R.y2),options.c-1);
+    for (var i=a;i<=b;i++)
+      options.draw(i, {x:R.x,y:idxToY(i),w:R.w,h:options.h});
+    g.setClipRect(0,0,g.getWidth()-1,g.getHeight()-1);
+  }, drawItem : i => {
+    var y = idxToY(i);
+    g.reset().setClipRect(R.x,y,R.x2,y+options.h);
+    options.draw(i, {x:R.x,y:y,w:R.w,h:options.h});
+    g.setClipRect(0,0,g.getWidth()-1,g.getHeight()-1);
+  }
+};
 var rScroll = s.scroll&~1; // rendered menu scroll (we only shift by 2 because of dither)
 s.draw(); // draw the full scroller
 g.flip(); // force an update now to make this snappier
