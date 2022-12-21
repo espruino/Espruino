@@ -25,7 +25,12 @@ bool jshIsInInterrupt() { return false; }
 void jsiConsolePrintf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
+#ifdef USE_FLASH_MEMORY
+  // TODO
+  assert(0);
+#else
+  vcbprintf(vcbprintf_callback_jsiConsolePrintString,0, fmt, argp);
+#endif
   va_end(argp);
 }
 void jsiConsolePrintStringVar(JsVar *v) {
@@ -55,9 +60,9 @@ void vcbprintf_callback_jsiConsolePrintString(const char *str, void* user_data) 
 
 void ejs_set_instance(struct ejs *ejs) {
   jsVarsSize = ejs->varCount;
-  jsVars = ejs->vars;
-  execInfo.hiddenRoot = ejs->hiddenRoot;
-  execInfo.root = ejs->root; 
+  jsVars = (JsVar*)ejs->vars;
+  execInfo.hiddenRoot = (JsVar*)ejs->hiddenRoot;
+  execInfo.root = (JsVar*)ejs->root; 
 }
 void ejs_unset_instance() {
  /* FIXME - we need these but if they are in, js* functions (eg to print/get values)
@@ -78,9 +83,9 @@ struct ejs *ejs_create(unsigned int varCount) {
   jsvInit(varCount);
   jspInit();
   
-  ejs->vars = jsVars;
-  ejs->hiddenRoot = execInfo.hiddenRoot;
-  ejs->root = execInfo.root; 
+  ejs->vars = (struct JsVar*)jsVars;
+  ejs->hiddenRoot = (struct JsVar*)execInfo.hiddenRoot;
+  ejs->root = (struct JsVar*)execInfo.root; 
   ejs_unset_instance();
   return ejs;
 }
@@ -114,6 +119,6 @@ struct JsVar *ejs_exec(struct ejs *ejs, const char *src) {
     jsvUnLock(exception);
   }
   ejs_unset_instance();
-  return v;
+  return (struct JsVar*)v;
 }
 
