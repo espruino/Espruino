@@ -48,6 +48,9 @@ JsSysTime jshGetSystemTime() {
 void jsiConsolePrintString(const char *str) {
   ejs_print(str);
 }
+void vcbprintf_callback_jsiConsolePrintString(const char *str, void* user_data) {
+  jsiConsolePrintString(str);
+}
 // ===============================
 
 void ejs_set_instance(struct ejs *ejs) {

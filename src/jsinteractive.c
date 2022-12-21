@@ -230,6 +230,10 @@ NO_INLINE void jsiConsolePrintString(const char *str) {
   }
 }
 
+void vcbprintf_callback_jsiConsolePrintString(const char *str, void* user_data) {
+  jsiConsolePrintString(str);
+}
+
 #ifdef USE_FLASH_MEMORY
 // internal version that copies str from flash to an internal buffer
 NO_INLINE void jsiConsolePrintString_int(const char *str) {
@@ -259,7 +263,7 @@ void jsiConsolePrintf_int(const char *fmt, ...) {
   flash_strncpy(buff, fmt, len+1);
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString, 0, buff, argp);
+  vcbprintf(vcbprintf_callback_jsiConsolePrintString, 0, buff, argp);
   va_end(argp);
 }
 #endif
@@ -2513,7 +2517,7 @@ void jsiDebuggerLoop() {
     while (lineLen < sizeof(lineStr)-1) lineStr[lineLen++]=' ';
     lineStr[lineLen] = 0;
     // print the line of code, prefixed by the line number, and with a pointer to the exact character in question
-    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrintString, 0, lex->tokenLastStart, lineStr);
+    jslPrintTokenLineMarker(vcbprintf_callback_jsiConsolePrintString, 0, lex->tokenLastStart, lineStr);
   }
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&

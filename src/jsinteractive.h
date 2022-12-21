@@ -84,6 +84,7 @@ bool jsiIsConsoleDeviceForced();
 void jsiConsolePrintChar(char data);
 /// Transmit a string (may be any string)
 void jsiConsolePrintString(const char *str);
+void vcbprintf_callback_jsiConsolePrintString(const char *str, void* user_data);
 #ifndef USE_FLASH_MEMORY
 #define jsiConsolePrint jsiConsolePrintString
 /// Write the formatted string to the console (see vcbprintf)

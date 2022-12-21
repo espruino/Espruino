@@ -734,7 +734,7 @@ codeOut('#ifdef USE_CALLFUNCTION_HACK')
 codeOut('// on Emscripten and i386 we cant easily hack around function calls with floats/etc, plus we have enough')
 codeOut('// resources, so just brute-force by handling every call pattern we use in a switch')
 codeOut('JsVar *jswCallFunctionHack(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {')
-codeOut('  switch(argumentSpecifier) {')
+codeOut('  switch((int)argumentSpecifier) {')
 #for argSpec in argSpecs:
 #  codeOut('  case '+argSpec+":")
 argSpecs = []

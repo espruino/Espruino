@@ -113,7 +113,7 @@ void jswrap_interface_setDeepSleep(bool sleep) {
   "type" : "function",
   "name" : "dump",
   "ifndef" : "SAVE_ON_FLASH",
-  "generate_full" : "jsiDumpState((vcbprintf_callback)jsiConsolePrintString, 0)"
+  "generate_full" : "jsiDumpState(vcbprintf_callback_jsiConsolePrintString, 0)"
 }
 Output current interpreter state in a text form such that it can be copied to a
 new device

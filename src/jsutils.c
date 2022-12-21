@@ -211,7 +211,7 @@ NO_INLINE void jsError(const char *fmt, ...) {
   jsiConsolePrint("ERROR: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, fmt, argp);
+  vcbprintf(vcbprintf_callback_jsiConsolePrintString,0, fmt, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
@@ -221,7 +221,7 @@ NO_INLINE void jsWarn(const char *fmt, ...) {
   jsiConsolePrint("WARNING: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, fmt, argp);
+  vcbprintf(vcbprintf_callback_jsiConsolePrintString,0, fmt, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
@@ -281,7 +281,7 @@ NO_INLINE void jsError_flash(const char *fmt, ...) {
   jsiConsolePrint("ERROR: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
+  vcbprintf(vcbprintf_callback_jsiConsolePrintString,0, buff, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
@@ -295,7 +295,7 @@ NO_INLINE void jsWarn_flash(const char *fmt, ...) {
   jsiConsolePrint("WARNING: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
+  vcbprintf(vcbprintf_callback_jsiConsolePrintString,0, buff, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
