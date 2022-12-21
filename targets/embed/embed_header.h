@@ -24,4 +24,8 @@
 #include <stdbool.h>
 #include <math.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void jsiConsolePrintf(const char *fmt, ...);
