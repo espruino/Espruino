@@ -90,6 +90,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
     moduleExport = jsvNewNativeFunction(builtInLib, 0);
   }
 
+#ifndef ESPR_EMBED
 #ifndef SAVE_ON_FLASH
   // Has it been manually saved to Flash Storage? Use Storage support.
   if ((!moduleExport) && (strlen(moduleNameBuf) <= JSF_MAX_FILENAME_LENGTH)) {
@@ -101,7 +102,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
     }
   }
 #endif
-
+#endif
 
   // Ok - it's not built-in as native or storage.
   // Look and see if it's compiled-in as a C-String of JS - if so get the actual text and execute it

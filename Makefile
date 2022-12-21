@@ -248,7 +248,8 @@ src/jswrap_json.c \
 src/jswrap_number.c \
 src/jswrap_object.c \
 src/jswrap_regexp.c \
-src/jswrap_string.c
+src/jswrap_string.c \
+src/jswrap_modules.c
 
 ifndef ESPR_EMBED # These are wrapper sources to do with hardware, if embedding we don't need these
 WRAPPERSOURCES += \
@@ -259,7 +260,6 @@ src/jswrap_io.c \
 src/jswrap_pin.c \
 src/jswrap_pipe.c \
 src/jswrap_process.c \
-src/jswrap_modules.c \
 src/jswrap_onewire.c \
 src/jswrap_promise.c \
 src/jswrap_serial.c \
