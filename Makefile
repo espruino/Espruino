@@ -101,6 +101,8 @@ ifdef RELEASE
 DEFINES += -DNO_ASSERT -DRELEASE
 endif
 
+PYTHON?=python
+
 ifndef ALT_RELEASE
 # Default release labeling.  (This may fail and give inconsistent results due to the fact that
 # travis does a shallow clone.)
@@ -175,7 +177,7 @@ endif
 # ---------------------------------------------------------------------------------
 # TODO: could check board here and make clean if it's different?
 $(shell rm -f CURRENT_BOARD.make)
-$(shell python scripts/get_makefile_decls.py $(BOARD) > CURRENT_BOARD.make)
+$(shell $(PYTHON) scripts/get_makefile_decls.py $(BOARD) > CURRENT_BOARD.make)
 include CURRENT_BOARD.make
 
 #set or reset defines like USE_GRAPHIC from an external file to customize firmware
@@ -753,9 +755,9 @@ boardjson: scripts/build_board_json.py $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
 ifdef USE_NET
         # hack to ensure that Pico/etc have all possible firmware configs listed
-	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -DUSE_WIZNET=1 -DUSE_CC3000=1 -B$(BOARD)
+	$(Q)$(PYTHON) scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -DUSE_WIZNET=1 -DUSE_CC3000=1 -B$(BOARD)
 else
-	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
+	$(Q)$(PYTHON) scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 endif
 
 docs:
@@ -767,25 +769,25 @@ $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
-	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(JSMODULESOURCES) $(DEFINES) -B$(BOARD) -F$(WRAPPERFILE)
+	$(Q)$(PYTHON) scripts/build_jswrapper.py $(WRAPPERSOURCES) $(JSMODULESOURCES) $(DEFINES) -B$(BOARD) -F$(WRAPPERFILE)
 
 ifdef PININFOFILE
 $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
 	@echo Generating pin info
-	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
+	$(Q)$(PYTHON) scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
 
 ifndef NRF5X # nRF5x devices use their own linker files that aren't automatically generated.
 ifndef EFM32
 $(LINKER_FILE): scripts/build_linker.py
 	@echo Generating linker scripts
-	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+	$(Q)$(PYTHON) scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
 endif # EFM32
 endif # NRF5X
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
-	$(Q)python scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME)
+	$(Q)$(PYTHON) scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME)
 
 # If realpath exists, use relative paths
 ifneq ("$(shell ${REALPATH} --version > /dev/null;echo "$$?")","0")
