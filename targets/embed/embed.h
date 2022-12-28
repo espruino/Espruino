@@ -31,4 +31,6 @@ void ejs_destroy(struct ejs *ejs);
 /* Evaluate the given string */
 JsVar *ejs_exec(struct ejs *ejs, const char *src);
 
+// Export functions
+size_t jsvGetString(const JsVar *v, char *str, size_t len);
 
