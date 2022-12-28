@@ -4,7 +4,8 @@ final espruino_embedded.h file
  */
 
 // forward decl
-struct JsVar;
+struct JsVarStruct;
+typedef struct JsVarStruct JsVar;
 
 // ---------------------------------------------------
 // YOU MUST DEFINE THESE
@@ -17,10 +18,10 @@ void ejs_print(const char *str);
 
 // Declaration for multiple instances
 struct ejs {
-  struct JsVar *vars;
+  JsVar *vars;
   unsigned int varCount;
-  struct JsVar *root;
-  struct JsVar *hiddenRoot;
+  JsVar *root;
+  JsVar *hiddenRoot;
 };
 
 /* Create an instance */
@@ -28,6 +29,6 @@ struct ejs *ejs_create(unsigned int varCount);
 /* Destroy the instance */
 void ejs_destroy(struct ejs *ejs);
 /* Evaluate the given string */
-struct JsVar *ejs_exec(struct ejs *ejs, const char *src);
+JsVar *ejs_exec(struct ejs *ejs, const char *src);
 
 

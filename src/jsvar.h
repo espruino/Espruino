@@ -208,7 +208,7 @@ typedef union {
 
 
 
-typedef struct {
+typedef struct JsVarStruct {
   /** The actual variable data, as well as references (see below). Put first so word aligned */
   JsVarData varData;
 

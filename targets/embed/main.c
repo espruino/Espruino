@@ -83,9 +83,9 @@ struct ejs *ejs_create(unsigned int varCount) {
   jsvInit(varCount);
   jspInit();
   
-  ejs->vars = (struct JsVar*)jsVars;
-  ejs->hiddenRoot = (struct JsVar*)execInfo.hiddenRoot;
-  ejs->root = (struct JsVar*)execInfo.root; 
+  ejs->vars = jsVars;
+  ejs->hiddenRoot = execInfo.hiddenRoot;
+  ejs->root = execInfo.root;
   ejs_unset_instance();
   return ejs;
 }
@@ -102,7 +102,7 @@ void ejs_destroy(struct ejs *ejs) {
   free(ejs);
 }
 
-struct JsVar *ejs_exec(struct ejs *ejs, const char *src) {
+JsVar *ejs_exec(struct ejs *ejs, const char *src) {
   ejs_set_instance(ejs);
   JsVar *v = jspEvaluate(src, false/* string is assumed to not be static */);  
   // ^ if the string is static, we can let functions reference it directly
@@ -119,6 +119,6 @@ struct JsVar *ejs_exec(struct ejs *ejs, const char *src) {
     jsvUnLock(exception);
   }
   ejs_unset_instance();
-  return (struct JsVar*)v;
+  return v;
 }
 
