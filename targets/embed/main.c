@@ -60,9 +60,9 @@ void vcbprintf_callback_jsiConsolePrintString(const char *str, void* user_data) 
 
 void ejs_set_instance(struct ejs *ejs) {
   jsVarsSize = ejs->varCount;
-  jsVars = (JsVar*)ejs->vars;
-  execInfo.hiddenRoot = (JsVar*)ejs->hiddenRoot;
-  execInfo.root = (JsVar*)ejs->root; 
+  jsVars = ejs->vars;
+  execInfo.hiddenRoot = ejs->hiddenRoot;
+  execInfo.root = ejs->root;
 }
 void ejs_unset_instance() {
  /* FIXME - we need these but if they are in, js* functions (eg to print/get values)
@@ -75,7 +75,7 @@ void ejs_unset_instance() {
 
 /* Create an instance */
 struct ejs *ejs_create(unsigned int varCount) {
-  struct ejs *ejs = (struct ejs*)malloc(sizeof(ejs));
+  struct ejs *ejs = (struct ejs*)malloc(sizeof(struct ejs));
   if (!ejs) return 0;
   ejs->varCount = varCount;
  
