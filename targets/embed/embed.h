@@ -22,6 +22,7 @@ struct ejs {
   unsigned int varCount;
   JsVar *root;
   JsVar *hiddenRoot;
+  JsVar *exception;
 };
 
 /* Create an instance */
@@ -35,4 +36,5 @@ JsVar *ejs_exec(struct ejs *ejs, const char *src);
 size_t jsvGetString(const JsVar *v, char *str, size_t len);
 JsVar *jsvAsString(JsVar *v);
 size_t jsvGetStringLength(const JsVar *v);
+JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFound);
 

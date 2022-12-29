@@ -77,6 +77,7 @@ void ejs_unset_instance() {
 struct ejs *ejs_create(unsigned int varCount) {
   struct ejs *ejs = (struct ejs*)malloc(sizeof(struct ejs));
   if (!ejs) return 0;
+  ejs->exception = NULL;
   ejs->varCount = varCount;
  
   jswHWInit();
@@ -104,10 +105,15 @@ void ejs_destroy(struct ejs *ejs) {
 
 JsVar *ejs_exec(struct ejs *ejs, const char *src) {
   ejs_set_instance(ejs);
+  if(ejs->exception) {
+    jsvUnLock(ejs->exception);
+    ejs->exception = NULL;
+  }
   JsVar *v = jspEvaluate(src, false/* string is assumed to not be static */);  
   // ^ if the string is static, we can let functions reference it directly
   JsVar *exception = jspGetException();
   if (exception) {
+    ejs->exception = exception;
     jsiConsolePrintf("Uncaught %v\n", exception);
     if (jsvIsObject(exception)) {
       JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
@@ -116,7 +122,6 @@ JsVar *ejs_exec(struct ejs *ejs, const char *src) {
         jsvUnLock(stackTrace);
       }
     }
-    jsvUnLock(exception);
   }
   ejs_unset_instance();
   return v;
