@@ -36,5 +36,5 @@ JsVar *ejs_exec(struct ejs *ejs, const char *src);
 size_t jsvGetString(const JsVar *v, char *str, size_t len);
 JsVar *jsvAsString(JsVar *v);
 size_t jsvGetStringLength(const JsVar *v);
-JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFound);
+JsVar *jsvObjectGetChild(JsVar *obj, const char *name, unsigned short createChild);
 
