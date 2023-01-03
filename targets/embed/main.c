@@ -79,7 +79,9 @@ struct ejs *ejs_create(unsigned int varCount) {
   if (!ejs) return 0;
   ejs->exception = NULL;
   ejs->varCount = varCount;
- 
+
+  jsVars = NULL; // or else jsvInit will reuse the old jsVars
+
   jswHWInit();
   jsvInit(varCount);
   jspInit();
