@@ -30,7 +30,7 @@ struct ejs *ejs_create(unsigned int varCount);
 /* Destroy the instance */
 void ejs_destroy(struct ejs *ejs);
 /* Evaluate the given string */
-JsVar *ejs_exec(struct ejs *ejs, const char *src);
+JsVar *ejs_exec(struct ejs *ejs, const char *src, bool stringIsStatic);
 
 // Export functions
 size_t jsvGetString(const JsVar *v, char *str, size_t len);
