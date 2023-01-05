@@ -235,6 +235,8 @@ TARGETSOURCES ?=
 # These are JS files to be included as pre-built Espruino modules
 JSMODULESOURCES ?=
 
+ESPRUINO_WRAPPERSOURCES ?=
+
 # Files that contains objects/functions/methods that will be
 # exported to JS. The order here actually determines the order
 # objects will be matched in. So for example Pins must come
@@ -682,6 +684,8 @@ endif
 
 PININFOFILE=$(GENDIR)/jspininfo
 SOURCES += $(PININFOFILE).c
+
+WRAPPERSOURCES += $(ESPRUINO_WRAPPERSOURCES)
 
 SOURCES += $(WRAPPERSOURCES) $(TARGETSOURCES)
 SOURCEOBJS = $(SOURCES:.c=.o) $(CPPSOURCES:.cpp=.o) $(CCSOURCES:.cc=.o)

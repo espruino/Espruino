@@ -21,7 +21,6 @@ info = {
  'build' : {
    'libraries' : [],
    'makefile' : [
-     'WRAPPERSOURCES += libs/shelly/jswrap_shelly.c',
      'DEFINES+=-DUSE_CALLFUNCTION_HACK', # for now, just ensure we can be properly multiplatform
      'DEFINES+=-DJSVAR_MALLOC'
    ]
