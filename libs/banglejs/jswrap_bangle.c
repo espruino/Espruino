@@ -4249,7 +4249,7 @@ bool jswrap_banglejs_gps_character(char ch) {
     "return" : ["JsVar",""],
     "ifdef" : "BANGLEJS"
 }
-Reads debug info
+Reads debug info. Exposes the current values of `accHistoryIdx`, `accGestureCount`, `accIdleCount` and `pollInterval`.
 */
 JsVar *jswrap_banglejs_dbg() {
   JsVar *o = jsvNewObject();
@@ -4257,6 +4257,7 @@ JsVar *jswrap_banglejs_dbg() {
   jsvObjectSetChildAndUnLock(o,"accHistoryIdx",jsvNewFromInteger(accHistoryIdx));
   jsvObjectSetChildAndUnLock(o,"accGestureCount",jsvNewFromInteger(accGestureCount));
   jsvObjectSetChildAndUnLock(o,"accIdleCount",jsvNewFromInteger(accIdleCount));
+  jsvObjectSetChildAndUnLock(o,"pollInterval",jsvNewFromInteger(pollInterval));
   return o;
 }
 
