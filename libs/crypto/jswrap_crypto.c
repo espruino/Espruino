@@ -20,6 +20,7 @@
 
 #ifdef USE_AES
 #include "mbedtls/include/mbedtls/aes.h"
+#include "mbedtls/include/mbedtls/gcm.h"
 #endif
 #ifndef USE_SHA1_JS
 #include "mbedtls/include/mbedtls/sha1.h"
@@ -116,6 +117,7 @@ typedef enum {
   CM_CTR,
   CM_OFB,
   CM_ECB,
+  CM_GCM,
 } CryptoMode;
 
 CryptoMode jswrap_crypto_getMode(JsVar *mode) {
@@ -124,6 +126,7 @@ CryptoMode jswrap_crypto_getMode(JsVar *mode) {
   if (jsvIsStringEqual(mode, "CTR")) return CM_CTR;
   if (jsvIsStringEqual(mode, "OFB")) return CM_OFB;
   if (jsvIsStringEqual(mode, "ECB")) return CM_ECB;
+  if (jsvIsStringEqual(mode, "GCM")) return CM_GCM;
   jsExceptionHere(JSET_ERROR, "Unknown Crypto mode %q", mode);
   return CM_NONE;
 }
@@ -339,31 +342,75 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
 static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar *options, bool encrypt) {
   int err;
 
-  unsigned char iv[16]; // initialisation vector
-  memset(iv, 0, 16);
+  size_t iv_size = 0;
+  unsigned char *iv_bytes;
 
   CryptoMode mode = CM_CBC;
+  unsigned int tagLength = 0;
+  
+  size_t additionalDataLen = 0;
+  
+  char *additionalDataPtr = NULL;
 
   if (jsvIsObject(options)) {
+    
     JsVar *ivVar = jsvObjectGetChild(options, "iv", 0);
-    if (ivVar) {
-      jsvIterateCallbackToBytes(ivVar, iv, sizeof(iv));
+    if (ivVar && !jsvIsUndefined(ivVar)) {
+      iv_size = (size_t)jsvGetLength(ivVar);
+      jsvIterateCallbackToBytes(ivVar, &iv_bytes, (unsigned int)iv_size);
       jsvUnLock(ivVar);
     }
+    
     JsVar *modeVar = jsvObjectGetChild(options, "mode", 0);
-    if (!jsvIsUndefined(modeVar))
+    if (modeVar && !jsvIsUndefined(modeVar))
       mode = jswrap_crypto_getMode(modeVar);
     jsvUnLock(modeVar);
     if (mode == CM_NONE) return 0;
+    
+    JsVar *addDataVar = jsvObjectGetChild(options, "additionalData", 0);
+    if(addDataVar && !jsvIsUndefined(addDataVar)){
+      additionalDataPtr = jsvGetDataPointer(addDataVar, &additionalDataLen);                 
+      if (addDataVar && !additionalDataPtr) {                                                          
+       additionalDataLen = (size_t)jsvIterateCallbackCount(addDataVar);                     
+        if (additionalDataLen+256 > jsuGetFreeStack()) {                              
+          jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  
+        } else {                                                                  
+          additionalDataPtr = (char *)alloca(additionalDataLen);                             
+          jsvIterateCallbackToBytes(addDataVar, (unsigned char *)additionalDataPtr,            
+                                          (unsigned int)additionalDataLen);           
+        }                                                                         
+      }
+      jsvUnLock(addDataVar);
+    }
+    
+    JsVar *tagLengthVar = jsvObjectGetChild(options, "tagLength", 0);
+    if (tagLengthVar && !jsvIsUndefined(tagLengthVar)){
+      tagLength = ((unsigned int)jsvGetInteger(tagLengthVar) / 8);
+      jsvUnLock(tagLengthVar);
+    }
+    
+    
   } else if (!jsvIsUndefined(options)) {
     jsError("'options' must be undefined, or an Object");
     return 0;
   }
-
-
-
-  mbedtls_aes_context aes;
-  mbedtls_aes_init( &aes );
+  
+  bool zero_iv = false;
+  
+  if(tagLength == 0 || tagLength > 16)//128bit or below
+    tagLength = 16;
+  
+  if(iv_size == 0 || iv_size > 16){//128bit or below
+    if(iv_size == 0) zero_iv = true;
+      iv_size = 16;
+  }
+    
+  unsigned char iv[iv_size];
+  memset(iv, 0, iv_size); 
+    
+  if(!zero_iv){
+    memcpy(iv, &iv_bytes, iv_size); 
+  }
 
   JSV_GET_AS_CHAR_ARRAY(messagePtr, messageLen, message);
   if (!messagePtr) return 0;
@@ -371,24 +418,44 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, key);
   if (!keyPtr) return 0;
 
-  if (encrypt)
-    err = mbedtls_aes_setkey_enc( &aes, (unsigned char*)keyPtr, (unsigned int)keyLen*8 );
-  else
-    err = mbedtls_aes_setkey_dec( &aes, (unsigned char*)keyPtr, (unsigned int)keyLen*8 );
-  if (err) {
-    jswrap_crypto_error(err);
-    return 0;
+
+  mbedtls_gcm_context aes_gcm;
+  mbedtls_aes_context aes;
+  
+  char *outPtr = 0;
+  JsVar *outVar;
+  if(mode == CM_GCM){
+    
+    // #define tagLength 16
+    mbedtls_gcm_init( &aes_gcm );
+    
+    err = mbedtls_gcm_setkey( &aes_gcm, MBEDTLS_CIPHER_ID_AES , (unsigned char*)keyPtr, (unsigned int)keyLen*8);
+    if (err) {
+      jswrap_crypto_error(err);
+      return 0;
+    }
+    
+    outVar = jsvNewArrayBufferWithPtr(encrypt ? (unsigned int) messageLen + tagLength : (unsigned int) messageLen - tagLength, &outPtr);
+  
+  }else{
+    mbedtls_aes_init( &aes );
+    
+    if (encrypt)
+      err = mbedtls_aes_setkey_enc( &aes, (unsigned char*)keyPtr, (unsigned int)keyLen*8 );
+    else
+      err = mbedtls_aes_setkey_dec( &aes, (unsigned char*)keyPtr, (unsigned int)keyLen*8 );
+    if (err) {
+      jswrap_crypto_error(err);
+      return 0;
+    }
+    outVar = jsvNewArrayBufferWithPtr((unsigned int) messageLen, &outPtr);
   }
 
-  char *outPtr = 0;
-  JsVar *outVar = jsvNewArrayBufferWithPtr((unsigned int)messageLen, &outPtr);
   if (!outPtr) {
     jsError("Not enough memory for result");
     return 0;
   }
-
-
-
+  
   switch (mode) {
   case CM_CBC:
     err = mbedtls_aes_crypt_cbc( &aes,
@@ -432,12 +499,54 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
     }
     break;
   }
+  
+  case CM_GCM: {
+    
+    unsigned char msgtag[tagLength];
+    unsigned char input[encrypt ? (unsigned int) messageLen + tagLength : (unsigned int) messageLen - tagLength];
+    unsigned char output[!encrypt ? (unsigned int) messageLen + tagLength : (unsigned int) messageLen - tagLength];
+    memcpy(input,  messagePtr, sizeof(input));
+    if(!encrypt){
+      memcpy(msgtag, &messagePtr[sizeof(input)], tagLength);
+      err = mbedtls_gcm_auth_decrypt(&aes_gcm,
+        sizeof(input),
+        iv, 
+        iv_size,
+        (const unsigned char *)additionalDataPtr, 
+        additionalDataLen,
+        (unsigned char*)msgtag,
+        tagLength,
+        (unsigned char*)input, 
+        (unsigned char*)output );
+        memcpy(&outPtr[0], output, sizeof(output) - tagLength);
+    }else{
+      err = mbedtls_gcm_crypt_and_tag(&aes_gcm,
+        MBEDTLS_GCM_ENCRYPT,
+        (unsigned int) messageLen,
+        iv, 
+        iv_size,
+        (const unsigned char *)additionalDataPtr, 
+        additionalDataLen,
+        (unsigned char*)input, 
+        (unsigned char*)output,
+        (const size_t)tagLength, 
+        (unsigned char*)msgtag );
+      memcpy(&outPtr[0], output, sizeof(input));
+      memcpy(&outPtr[sizeof(input)-tagLength], msgtag, tagLength);
+      
+    }
+    
+    break;
+  }
   default:
     err = MBEDTLS_ERR_MD_FEATURE_UNAVAILABLE;
     break;
   }
 
-  mbedtls_aes_free( &aes );
+  if(mode == CM_GCM)
+    mbedtls_gcm_free( &aes_gcm );
+  else
+    mbedtls_aes_free( &aes );
   if (!err) {
     return outVar;
   } else {
@@ -447,6 +556,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   }
 }
 
+
 /*JSON{
   "type" : "staticmethod",
   "class" : "AES",
@@ -455,7 +565,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   "params" : [
     ["passphrase","JsVar","Message to encrypt"],
     ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
-    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
+    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB|GCM' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer",
@@ -474,7 +584,7 @@ JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
   "params" : [
     ["passphrase","JsVar","Message to decrypt"],
     ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
-    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
+    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB|GCM' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer",
