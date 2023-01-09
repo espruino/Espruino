@@ -6,6 +6,7 @@ final espruino_embedded.h file
 // forward decl
 struct JsVarStruct;
 typedef struct JsVarStruct JsVar;
+typedef uint16_t JsVarRef;
 
 // ---------------------------------------------------
 // YOU MUST DEFINE THESE
@@ -23,6 +24,7 @@ struct ejs {
   JsVar *root;
   JsVar *hiddenRoot;
   JsVar *exception;
+  JsVarRef jsVarFirstEmpty;
 };
 
 /* Create an instance */
@@ -31,10 +33,4 @@ struct ejs *ejs_create(unsigned int varCount);
 void ejs_destroy(struct ejs *ejs);
 /* Evaluate the given string */
 JsVar *ejs_exec(struct ejs *ejs, const char *src, bool stringIsStatic);
-
-// Export functions
-size_t jsvGetString(const JsVar *v, char *str, size_t len);
-JsVar *jsvAsString(JsVar *v);
-size_t jsvGetStringLength(const JsVar *v);
-JsVar *jsvObjectGetChild(JsVar *obj, const char *name, unsigned short createChild);
-
+JsVar *ejs_execf(struct ejs *ejs, JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);

@@ -17,6 +17,8 @@
 #include "jshardware.h"
 #include "jswrapper.h"
 
+extern volatile JsVarRef jsVarFirstEmpty;
+
 // Fixing up undefined functions
 void jshInterruptOn() {}
 void jshInterruptOff() {}
@@ -64,14 +66,26 @@ void ejs_set_instance(struct ejs *ejs) {
   execInfo.hiddenRoot = ejs->hiddenRoot;
   execInfo.root = ejs->root;
   execInfo.baseScope = ejs->root;
+  jsVarFirstEmpty = ejs->jsVarFirstEmpty;
+  if(ejs->exception) {
+    jsvUnLock(ejs->exception);
+    ejs->exception = NULL;
+  }
 }
-void ejs_unset_instance() {
- /* FIXME - we need these but if they are in, js* functions (eg to print/get values)
-   can't be called from outside of ejs_exec */
- /* jsVarsSize = 0;
-  jsVars = NULL; 
-  execInfo.hiddenRoot = NULL;
-  execInfo.root = NULL; */
+
+static void ejs_process_exceptions(struct ejs *ejs) {
+  JsVar *exception = jspGetException();
+  if (exception) {
+    ejs->exception = exception;
+    jsiConsolePrintf("Uncaught %v\n", exception);
+    if (jsvIsObject(exception)) {
+      JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
+      if (stackTrace) {
+        jsiConsolePrintf("%v\n", stackTrace);
+        jsvUnLock(stackTrace);
+      }
+    }
+  }
 }
 
 /* Create an instance */
@@ -90,7 +104,7 @@ struct ejs *ejs_create(unsigned int varCount) {
   ejs->vars = jsVars;
   ejs->hiddenRoot = execInfo.hiddenRoot;
   ejs->root = execInfo.root;
-  ejs_unset_instance();
+  ejs->jsVarFirstEmpty = jsVarFirstEmpty;
   return ejs;
 }
 
@@ -108,25 +122,15 @@ void ejs_destroy(struct ejs *ejs) {
 
 JsVar *ejs_exec(struct ejs *ejs, const char *src, bool stringIsStatic) {
   ejs_set_instance(ejs);
-  if(ejs->exception) {
-    jsvUnLock(ejs->exception);
-    ejs->exception = NULL;
-  }
   JsVar *v = jspEvaluate(src, stringIsStatic);
   // ^ if the string is static, we can let functions reference it directly
-  JsVar *exception = jspGetException();
-  if (exception) {
-    ejs->exception = exception;
-    jsiConsolePrintf("Uncaught %v\n", exception);
-    if (jsvIsObject(exception)) {
-      JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
-      if (stackTrace) {
-        jsiConsolePrintf("%v\n", stackTrace);
-        jsvUnLock(stackTrace);
-      }
-    }
-  }
-  ejs_unset_instance();
+  ejs_process_exceptions(ejs);
   return v;
 }
 
+JsVar *ejs_execf(struct ejs *ejs, JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr) {
+  ejs_set_instance(ejs);
+  JsVar *v = jspExecuteFunction(func, thisArg, argCount, argPtr);
+  ejs_process_exceptions(ejs);
+  return v;
+}
