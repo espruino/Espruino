@@ -58,7 +58,7 @@ typedef enum {
   MEM_NOT_BUSY,
   MEMBUSY_SYSTEM,
   MEMBUSY_GC
-} MemBusyType;
+} PACKED_FLAGS MemBusyType;
 
 volatile bool touchedFreeList = false;
 volatile JsVarRef jsVarFirstEmpty; ///< reference of first unused variable (variables are in a linked list)
