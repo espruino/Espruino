@@ -17,7 +17,8 @@
 #include "jshardware.h"
 #include "jswrapper.h"
 
-extern volatile JsVarRef jsVarFirstEmpty;
+/// This is the currently active EJS instance (if one is active at all)
+struct ejs *activeEJS = NULL;
 
 // Fixing up undefined functions
 void jshInterruptOn() {}
@@ -48,6 +49,9 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
   return ((JsVarFloat)time)/1000;
 }
+JsVar *jsvFindOrCreateRoot() {
+  return activeEJS->root;
+}
 // ===============================
 JsSysTime jshGetSystemTime() {
   return ejs_get_microseconds();
@@ -61,17 +65,15 @@ void vcbprintf_callback_jsiConsolePrintString(const char *str, void* user_data) 
 // ===============================
 
 void ejs_set_instance(struct ejs *ejs) {
-  jsVarsSize = ejs->varCount;
-  jsVars = ejs->vars;
   execInfo.hiddenRoot = ejs->hiddenRoot;
   execInfo.root = ejs->root;
   execInfo.baseScope = ejs->root;
-  jsVarFirstEmpty = (JsVarRef)ejs->jsVarFirstEmpty;
   if(ejs->exception) {
     jsvUnLock(ejs->exception);
     ejs->exception = NULL;
   }
   ejs->active = true;
+  activeEJS = ejs;
 }
 
 void ejs_unset_instance(struct ejs *ejs) {
@@ -88,34 +90,40 @@ void ejs_unset_instance(struct ejs *ejs) {
     }
   }
   ejs->active = false;
+  activeEJS = 0;
 }
 
 /* Create an instance */
-struct ejs *ejs_create(unsigned int varCount) {
+bool ejs_create(unsigned int varCount) {
+  jsVars = NULL; // or else jsvInit will reuse the old jsVars
+  jswHWInit();
+  jsvInit(varCount);
+  return jsVars!=NULL;
+}
+
+/* Create an instance */
+struct ejs *ejs_create_instance(unsigned int varCount) {
   struct ejs *ejs = (struct ejs*)malloc(sizeof(struct ejs));
   if (!ejs) return 0;
   ejs->active = false;
-  ejs->varCount = varCount;
   ejs->exception = NULL;
-
-  jsVars = NULL; // or else jsvInit will reuse the old jsVars
-
-  jswHWInit();
-  jsvInit(varCount);
+  ejs->root = jsvRef(jsvNewWithFlags(JSV_ROOT));
+  activeEJS = ejs;
   jspInit();
-  
-  ejs->vars = jsVars;
-  ejs->root = execInfo.root;
   ejs->hiddenRoot = execInfo.hiddenRoot;
-  ejs->jsVarFirstEmpty = (unsigned int)jsVarFirstEmpty;
   return ejs;
 }
 
 /* Destroy the instance */
-void ejs_destroy(struct ejs *ejs) {
+void ejs_destroy_instance(struct ejs *ejs) {
+  ejs_set_instance(ejs);
   jspKill();
-  jsvKill();
   free(ejs);
+}
+
+/* Destroy the instance */
+void ejs_destroy() {
+  jsvKill();
 }
 
 JsVar *ejs_exec(struct ejs *ejs, const char *src, bool stringIsStatic) {

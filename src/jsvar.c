@@ -369,6 +369,7 @@ void jsvKill() {
 #endif
 }
 
+#ifndef EMBED
 /** Find or create the ROOT variable item - used mainly
  * if recovering from a saved state. */
 JsVar *jsvFindOrCreateRoot() {
@@ -379,6 +380,7 @@ JsVar *jsvFindOrCreateRoot() {
 
   return jsvRef(jsvNewWithFlags(JSV_ROOT));
 }
+#endif
 
 /// Get number of memory records (JsVars) used
 unsigned int jsvGetMemoryUsage() {

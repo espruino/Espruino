@@ -14,19 +14,20 @@ void ejs_print(const char *str);
 
 // Declaration for multiple instances
 struct ejs {
-  bool active;
-  JsVar *vars;
-  unsigned int varCount;
-  JsVar *root;
+  bool active; ///< Is this currently being used?
+  JsVar *root; ///< The root element of this instance
   JsVar *hiddenRoot;
   JsVar *exception;
-  unsigned int jsVarFirstEmpty;
 };
 
+/* Initialise the Espruino interpreter - must be called before anything else */
+bool ejs_create(unsigned int varCount);
 /* Create an instance */
-struct ejs *ejs_create(unsigned int varCount);
+struct ejs *ejs_create_instance();
 /* Destroy the instance */
-void ejs_destroy(struct ejs *ejs);
+void ejs_destroy_instance(struct ejs *ejs);
+/* Destroy the interpreter. Call this after all instances destroyed */
+void ejs_destroy();
 /* Evaluate the given string */
 JsVar *ejs_exec(struct ejs *ejs, const char *src, bool stringIsStatic);
 JsVar *ejs_execf(struct ejs *ejs, JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);

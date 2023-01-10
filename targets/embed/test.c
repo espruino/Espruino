@@ -19,19 +19,27 @@ void ejs_print(const char *str) {
 
 // 
 int main() {
-
-  struct ejs *ejs = ejs_create(1000);
-  printf("Embedded Espruino test. Type JS and hit enter:\n>");
+  ejs_create(1000);
+  struct ejs* ejs[2];
+  ejs[0] = ejs_create_instance();
+  ejs[1] = ejs_create_instance();
+  printf("Embedded Espruino test.\n===========================\nTwo instances.\nType JS and hit enter, or type 'quit' to exit:\n0>");
+  int instanceNumber = 0;
 
   char buf[1000];
   while (true) {
     fgets(buf, sizeof(buf), stdin);
-    JsVar *v = ejs_exec(ejs, buf, false);
+    if (strcmp(buf,"quit\n")==0) break;
+    JsVar *v = ejs_exec(ejs[instanceNumber], buf, false);
     // FIXME - we need a way to set the active interpreter to 'ejs' here for the js* functions
-    jsiConsolePrintf("=%v\n>", v);
+    instanceNumber = !instanceNumber; // toggle instance
+    jsiConsolePrintf("=%v\n%d>", v, instanceNumber);
     jsvUnLock(v);
   }  
-  ejs_destroy(ejs);
+
+  ejs_destroy_instance(ejs[0]);
+  ejs_destroy_instance(ejs[1]);
+  ejs_destroy();
 }
 
 
