@@ -115,9 +115,6 @@ struct ejs *ejs_create(unsigned int varCount) {
 void ejs_destroy(struct ejs *ejs) {
   jspKill();
   jsvKill();
-  
-  if (!ejs) return;
-  if (!ejs->vars) return;
   free(ejs);
 }
 
