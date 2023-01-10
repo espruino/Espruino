@@ -18,6 +18,7 @@ struct ejs {
   JsVar *root; ///< The root element of this instance
   JsVar *hiddenRoot;
   JsVar *exception;
+  unsigned char jsFlags, jsErrorFlags; ///< Interpreter state/error flags to keep track of
 };
 
 /* Initialise the Espruino interpreter - must be called before anything else */

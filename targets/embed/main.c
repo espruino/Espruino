@@ -16,6 +16,7 @@
 #include "jsinteractive.h"
 #include "jshardware.h"
 #include "jswrapper.h"
+#include "jsflags.h"
 
 /// This is the currently active EJS instance (if one is active at all)
 struct ejs *activeEJS = NULL;
@@ -68,6 +69,8 @@ void ejs_set_instance(struct ejs *ejs) {
   execInfo.hiddenRoot = ejs->hiddenRoot;
   execInfo.root = ejs->root;
   execInfo.baseScope = ejs->root;
+  jsFlags = (JsFlags)ejs->jsFlags;
+  jsErrorFlags = (JsErrorFlags)ejs->jsErrorFlags;
   if(ejs->exception) {
     jsvUnLock(ejs->exception);
     ejs->exception = NULL;
@@ -77,6 +80,8 @@ void ejs_set_instance(struct ejs *ejs) {
 }
 
 void ejs_unset_instance(struct ejs *ejs) {
+  ejs->jsFlags = (unsigned char)jsFlags;
+  ejs->jsErrorFlags = (unsigned char)jsErrorFlags;
   JsVar *exception = jspGetException();
   if (exception) {
     ejs->exception = exception;
