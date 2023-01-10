@@ -71,9 +71,10 @@ void ejs_set_instance(struct ejs *ejs) {
     jsvUnLock(ejs->exception);
     ejs->exception = NULL;
   }
+  ejs->active = true;
 }
 
-static void ejs_process_exceptions(struct ejs *ejs) {
+void ejs_unset_instance(struct ejs *ejs) {
   JsVar *exception = jspGetException();
   if (exception) {
     ejs->exception = exception;
@@ -86,14 +87,16 @@ static void ejs_process_exceptions(struct ejs *ejs) {
       }
     }
   }
+  ejs->active = false;
 }
 
 /* Create an instance */
 struct ejs *ejs_create(unsigned int varCount) {
   struct ejs *ejs = (struct ejs*)malloc(sizeof(struct ejs));
   if (!ejs) return 0;
-  ejs->exception = NULL;
+  ejs->active = false;
   ejs->varCount = varCount;
+  ejs->exception = NULL;
 
   jsVars = NULL; // or else jsvInit will reuse the old jsVars
 
@@ -102,8 +105,8 @@ struct ejs *ejs_create(unsigned int varCount) {
   jspInit();
   
   ejs->vars = jsVars;
-  ejs->hiddenRoot = execInfo.hiddenRoot;
   ejs->root = execInfo.root;
+  ejs->hiddenRoot = execInfo.hiddenRoot;
   ejs->jsVarFirstEmpty = jsVarFirstEmpty;
   return ejs;
 }
@@ -115,8 +118,6 @@ void ejs_destroy(struct ejs *ejs) {
   
   if (!ejs) return;
   if (!ejs->vars) return;
-  ejs->varCount=0;  
-  ejs->vars=NULL;
   free(ejs);
 }
 
@@ -124,13 +125,13 @@ JsVar *ejs_exec(struct ejs *ejs, const char *src, bool stringIsStatic) {
   ejs_set_instance(ejs);
   JsVar *v = jspEvaluate(src, stringIsStatic);
   // ^ if the string is static, we can let functions reference it directly
-  ejs_process_exceptions(ejs);
+  ejs_unset_instance(ejs);
   return v;
 }
 
 JsVar *ejs_execf(struct ejs *ejs, JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr) {
   ejs_set_instance(ejs);
   JsVar *v = jspExecuteFunction(func, thisArg, argCount, argPtr);
-  ejs_process_exceptions(ejs);
+  ejs_unset_instance(ejs);
   return v;
 }

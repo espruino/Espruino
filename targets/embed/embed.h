@@ -19,6 +19,7 @@ void ejs_print(const char *str);
 
 // Declaration for multiple instances
 struct ejs {
+  bool active;
   JsVar *vars;
   unsigned int varCount;
   JsVar *root;
