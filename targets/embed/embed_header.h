@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include "jstypes.h"
 
 #ifdef __cplusplus
 extern "C" {

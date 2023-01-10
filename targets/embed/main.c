@@ -66,7 +66,7 @@ void ejs_set_instance(struct ejs *ejs) {
   execInfo.hiddenRoot = ejs->hiddenRoot;
   execInfo.root = ejs->root;
   execInfo.baseScope = ejs->root;
-  jsVarFirstEmpty = ejs->jsVarFirstEmpty;
+  jsVarFirstEmpty = (JsVarRef)ejs->jsVarFirstEmpty;
   if(ejs->exception) {
     jsvUnLock(ejs->exception);
     ejs->exception = NULL;
@@ -107,7 +107,7 @@ struct ejs *ejs_create(unsigned int varCount) {
   ejs->vars = jsVars;
   ejs->root = execInfo.root;
   ejs->hiddenRoot = execInfo.hiddenRoot;
-  ejs->jsVarFirstEmpty = jsVarFirstEmpty;
+  ejs->jsVarFirstEmpty = (unsigned int)jsVarFirstEmpty;
   return ejs;
 }
 

@@ -3,11 +3,6 @@ This file is run through the preprocessor to generate the
 final espruino_embedded.h file
  */
 
-// forward decl
-struct JsVarStruct;
-typedef struct JsVarStruct JsVar;
-typedef uint16_t JsVarRef;
-
 // ---------------------------------------------------
 // YOU MUST DEFINE THESE
 
@@ -25,7 +20,7 @@ struct ejs {
   JsVar *root;
   JsVar *hiddenRoot;
   JsVar *exception;
-  JsVarRef jsVarFirstEmpty;
+  unsigned int jsVarFirstEmpty;
 };
 
 /* Create an instance */

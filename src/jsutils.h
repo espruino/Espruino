@@ -17,6 +17,7 @@
 #include "platform_config.h"
 
 #ifndef ESPR_EMBED
+#include "jstypes.h"
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
@@ -471,14 +472,6 @@ long long stringToInt(const char *s);
 // forward decl
 struct JsLex;
 // ------------
-typedef enum {
-  JSET_STRING,
-  JSET_ERROR,
-  JSET_SYNTAXERROR,
-  JSET_TYPEERROR,
-  JSET_INTERNALERROR,
-  JSET_REFERENCEERROR
-} JsExceptionType;
 
 void jsAssertFail(const char *file, int line, const char *expr);
 

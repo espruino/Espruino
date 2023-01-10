@@ -1,5 +1,19 @@
-#ifndef ESPRUIONO_EMBEDDED_UTILS_H_
-#define ESPRUIONO_EMBEDDED_UTILS_H_
+/*
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
+ *
+ * Copyright (C) 2022 Gordon Williams <gw@pur3.co.uk>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * Exported functions that are useful when extending Espruino
+ * ----------------------------------------------------------------------------
+ */
+
+#ifndef ESPRUINO_EMBEDDED_UTILS_H_
+#define ESPRUINO_EMBEDDED_UTILS_H_
 
 #include "espruino_embedded.h"
 
@@ -8,15 +22,6 @@ extern "C" {
 #endif
 
 extern JsVar *jsVars;
-
-typedef enum {
-  JSET_STRING,
-  JSET_ERROR,
-  JSET_SYNTAXERROR,
-  JSET_TYPEERROR,
-  JSET_INTERNALERROR,
-  JSET_REFERENCEERROR
-} JsExceptionType;
 
 typedef int32_t JsVarInt;
 typedef double JsVarFloat;
@@ -50,4 +55,4 @@ JsVar *jsvNewArray(JsVar **elements, int elementCount);
 }
 #endif
 
-#endif  // ESPRUIONO_EMBEDDED_UTILS_H_
+#endif  // ESPRUINO_EMBEDDED_UTILS_H_

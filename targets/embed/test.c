@@ -4,6 +4,7 @@
 
 #include <sys/time.h> // gettimeofday
 #include "../../espruino_embedded.h"
+#include "../../espruino_embedded_utils.h"
 
 /** We have to define these */
 uint64_t ejs_get_microseconds() {
@@ -25,7 +26,7 @@ int main() {
   char buf[1000];
   while (true) {
     fgets(buf, sizeof(buf), stdin);
-    struct JsVar *v = ejs_exec(ejs, buf);
+    JsVar *v = ejs_exec(ejs, buf, false);
     // FIXME - we need a way to set the active interpreter to 'ejs' here for the js* functions
     jsiConsolePrintf("=%v\n>", v);
     jsvUnLock(v);

@@ -8,8 +8,10 @@ $(PROJ_NAME): $(SOURCES) $(PLATFORM_CONFIG_FILE)
 	cat $(SOURCES) > $(PROJ_NAME)
 	gcc $(DEFINES) $(INCLUDE) -E -P $(PROJ_NAME) -o gen/temp.c
 	cat targets/embed/embed_header.c gen/temp.c > $(PROJ_NAME)
+	cp targets/embed/embed_utils.h espruino_embedded_utils.h
 	rm gen/temp.c gen/temp.h
 	@echo ========================================
 	@echo Created $(PROJ_HEADER_NAME)
 	@echo Created $(PROJ_NAME)	
-	@echo Test with:  "gcc targets/embed/test.c $(PROJ_NAME) -lm"
+	@echo Created espruino_embedded_utils.h
+	@echo Test with:  "gcc targets/embed/test.c $(PROJ_NAME) -Isrc -lm"
