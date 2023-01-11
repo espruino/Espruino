@@ -31,6 +31,9 @@
 # PROFILE=1               # Compile with gprof profiling info
 # CFILE=test.c            # Compile in the supplied C file
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
+# ESPRUINO_WRAPPERSOURCES=jswrap_x.c 
+#                         # Compile in a wrapper file to the build (with JS functions in). WRAPPERSOURCES can be used too, but this adds the files to the END of the sources list
+# PYTHON=python3          # The python command used for this build
 #
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet W5500 support
 # W5100=1                 # Compile for WIZnet W5100 (not W5500)
@@ -50,6 +53,7 @@
 #                         # BLACKLIST=/home/mydir/myBlackList
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py
+
 #
 # -- STM32 Only
 # PAD_FOR_BOOTLOADER=1    # Pad the binary out with 0xFF where the bootloader should be (allows the Web IDE to flash the binary)
@@ -93,8 +97,10 @@ ifeq ($(shell uname),Darwin)
 MACOSX=1
 CFLAGS+=-D__MACOSX__
 STAT_FLAGS='-f ''%z'''
+REALPATH='grealpath'
 else
 STAT_FLAGS='-c ''%s'''
+REALPATH='realpath'
 endif
 
 ifeq ($(OS),Windows_NT)
@@ -105,6 +111,8 @@ ifdef RELEASE
 # force no asserts to be compiled in
 DEFINES += -DNO_ASSERT -DRELEASE
 endif
+
+PYTHON?=python
 
 ifndef ALT_RELEASE
 # Default release labeling.  (This may fail and give inconsistent results due to the fact that
@@ -179,8 +187,9 @@ endif
 #                                                      Get info out of BOARDNAME.py
 # ---------------------------------------------------------------------------------
 # TODO: could check board here and make clean if it's different?
+
 $(shell rm -f $(GENDIR)/CURRENT_BOARD.make)
-$(shell python scripts/get_makefile_decls.py $(BOARD) > $(GENDIR)/CURRENT_BOARD.make)
+$(shell $(PYTHON) scripts/get_makefile_decls.py $(BOARD) > $(GENDIR)/CURRENT_BOARD.make)
 include $(GENDIR)/CURRENT_BOARD.make
 
 #set or reset defines like USE_GRAPHIC from an external file to customize firmware
@@ -190,6 +199,7 @@ endif
 
 # ----------------------------- end of board defines ------------------------------
 # ---------------------------------------------------------------------------------
+
 
 
 # ---------------------------------------------------------------------------------
@@ -222,9 +232,6 @@ ifdef DEBUG
  else
   OPTIMIZEFLAGS=-g
  endif
- ifeq ($(FAMILY),EFM32GG)
-  DEFINES += -DDEBUG_EFM=1 -DDEBUG=1
- endif
 DEFINES+=-DDEBUG
 endif
 
@@ -238,6 +245,9 @@ TARGETSOURCES ?=
 # These are JS files to be included as pre-built Espruino modules
 JSMODULESOURCES ?=
 
+# These are jswrap_.c files specified on the command-line that get added to the build after other WRAPPERSOURCES
+ESPRUINO_WRAPPERSOURCES ?=
+
 # Files that contains objects/functions/methods that will be
 # exported to JS. The order here actually determines the order
 # objects will be matched in. So for example Pins must come
@@ -248,39 +258,49 @@ src/jswrap_arraybuffer.c \
 src/jswrap_dataview.c \
 src/jswrap_date.c \
 src/jswrap_error.c \
-src/jswrap_espruino.c \
-src/jswrap_flash.c \
 src/jswrap_functions.c \
-src/jswrap_interactive.c \
-src/jswrap_io.c \
 src/jswrap_json.c \
-src/jswrap_modules.c \
-src/jswrap_pin.c \
 src/jswrap_number.c \
 src/jswrap_object.c \
-src/jswrap_onewire.c \
+src/jswrap_regexp.c \
+src/jswrap_string.c \
+src/jswrap_modules.c \
+src/jswrap_math.c
+
+
+ifndef ESPR_EMBED # These are wrapper sources to do with hardware, if embedding we don't need these
+WRAPPERSOURCES += \
+src/jswrap_espruino.c \
+src/jswrap_flash.c \
+src/jswrap_interactive.c \
+src/jswrap_io.c \
+src/jswrap_pin.c \
 src/jswrap_pipe.c \
 src/jswrap_process.c \
+src/jswrap_onewire.c \
 src/jswrap_promise.c \
-src/jswrap_regexp.c \
 src/jswrap_serial.c \
 src/jswrap_storage.c \
 src/jswrap_spi_i2c.c \
 src/jswrap_stream.c \
-src/jswrap_string.c \
-src/jswrap_waveform.c \
+src/jswrap_waveform.c 
+endif
 
 # it is important that _pin comes before stuff which uses
 # integers (as the check for int *includes* the chek for pin)
 SOURCES += \
 src/jslex.c \
 src/jsflags.c \
-src/jsflash.c \
 src/jsvar.c \
 src/jsvariterator.c \
 src/jsutils.c \
 src/jsnative.c \
 src/jsparse.c \
+$(WRAPPERFILE)
+
+ifndef ESPR_EMBED # These are sources to do with hardware, if embedding we don't need these
+SOURCES += \
+src/jsflash.c \
 src/jspin.c \
 src/jsinteractive.c \
 src/jsdevices.c \
@@ -288,8 +308,10 @@ src/jstimer.c \
 src/jsi2c.c \
 src/jsserial.c \
 src/jsspi.c \
-src/jshardware_common.c \
-$(WRAPPERFILE)
+src/jshardware_common.c
+endif
+
+
 CPPSOURCES =
 CCSOURCES =
 
@@ -339,6 +361,15 @@ endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER
 
+ifeq ($(FAMILY),ESP8266)
+# special ESP8266 maths lib that doesn't go into RAM
+LIBS += -lmirom
+LDFLAGS += -L$(ROOT)/targets/esp8266
+else
+# everything else uses normal maths lib
+LIBS += -lm
+endif
+
 ifeq ($(USE_FILESYSTEM),1)
 DEFINES += -DUSE_FILESYSTEM
 INCLUDE += -I$(ROOT)/libs/filesystem
@@ -369,18 +400,6 @@ endif #USE_FLASHFS
 endif #USE_FILESYSTEM_SDIO
 endif #!LINUX
 endif #USE_FILESYSTEM
-
-DEFINES += -DUSE_MATH
-INCLUDE += -I$(ROOT)/libs/math
-WRAPPERSOURCES += libs/math/jswrap_math.c
-ifeq ($(FAMILY),ESP8266)
-# special ESP8266 maths lib that doesn't go into RAM
-LIBS += -lmirom
-LDFLAGS += -L$(ROOT)/targets/esp8266
-else
-# everything else uses normal maths lib
-LIBS += -lm
-endif
 
 ifeq ($(USE_GRAPHICS),1)
 DEFINES += -DUSE_GRAPHICS
@@ -651,6 +670,11 @@ ifeq ($(USE_TENSORFLOW),1)
 include make/misc/tensorflow.make
 endif
 
+ifeq ($(USE_JIT),1)
+  DEFINES += -DESPR_JIT
+  SOURCES += src/jsjit.c src/jsjitc.c
+endif
+
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 
@@ -659,7 +683,6 @@ endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF AB
 .PHONY:  proj
 
 all: 	 proj
-
 # =========================================================================
 ifneq ($(FAMILY),)
 include make/family/$(FAMILY).make
@@ -673,7 +696,7 @@ endif
 
 PININFOFILE=$(GENDIR)/jspininfo
 SOURCES += $(PININFOFILE).c
-
+WRAPPERSOURCES += $(ESPRUINO_WRAPPERSOURCES)
 SOURCES += $(WRAPPERSOURCES) $(TARGETSOURCES)
 SOURCEOBJS = $(patsubst %.c,$(OBJDIR)/%.o,$(SOURCES))
 ifdef CPPSOURCES
@@ -698,9 +721,6 @@ ifdef NRF5X
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
 else ifdef STM32
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) --specs=nano.specs -lc -lnosys
-else ifdef EFM32
- LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
- LDFLAGS += -Wl,--start-group -lgcc -lc -lnosys -Wl,--end-group
 else
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
 endif
@@ -755,46 +775,46 @@ boardjson: scripts/build_board_json.py $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
 ifdef USE_NET
         # hack to ensure that Pico/etc have all possible firmware configs listed
-	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -DUSE_WIZNET=1 -DUSE_CC3000=1 -B$(BOARD)
+	$(Q)$(PYTHON) scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -DUSE_WIZNET=1 -DUSE_CC3000=1 -B$(BOARD)
 else
-	$(Q)python scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
+	$(Q)$(PYTHON) scripts/build_board_json.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 endif
 
 docs:
 	@echo Generating Board docs
-	$(Q)python scripts/build_docs.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
+	$(Q)python2.7 scripts/build_docs.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 	@echo functions.html created
 
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
-	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(JSMODULESOURCES) $(DEFINES) -B$(BOARD) -F$(WRAPPERFILE)
+	$(Q)$(PYTHON) scripts/build_jswrapper.py $(WRAPPERSOURCES) $(JSMODULESOURCES) $(DEFINES) -B$(BOARD) -F$(WRAPPERFILE)
 
 ifdef PININFOFILE
 $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
 	@echo Generating pin info
-	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
+	$(Q)$(PYTHON) scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
 
 ifndef NRF5X # nRF5x devices use their own linker files that aren't automatically generated.
 ifndef EFM32
 $(LINKER_FILE): scripts/build_linker.py
 	@echo Generating linker scripts
-	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+	$(Q)$(PYTHON) scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
 endif # EFM32
 endif # NRF5X
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
-	$(Q)python scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME)
+	$(Q)$(PYTHON) scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME)
 
 # If realpath exists, use relative paths
-ifneq ("$(shell realpath --version > /dev/null;echo "$$?")","0")
+ifneq ("$(shell ${REALPATH} --version > /dev/null;echo "$$?")","0")
 compile=$(CC) $(CFLAGS) $< -o $@
 else
 # when macros use __FILE__ this stops us including the whole build path
-compile=$(CC) $(CFLAGS) $(shell realpath --relative-to $(shell pwd) $<) -o $@
+compile=$(CC) $(CFLAGS) $(shell ${REALPATH} --relative-to $(shell pwd) $<) -o $@
 endif
 
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -842,6 +862,8 @@ else ifdef ESP32
 include make/targets/ESP32.make
 else ifdef ESP8266
 include make/targets/ESP8266.make
+else ifdef ESPR_EMBED
+include make/targets/EMBED.make
 else # ARM/etc, so generate bin, etc ---------------------------
 include make/targets/ARM.make
 endif	    # ---------------------------------------------------
@@ -858,6 +880,8 @@ clean:
 	$(Q)rm -f $(PROJ_NAME).bin
 	$(Q)rm -f $(PROJ_NAME).srec
 	$(Q)rm -f $(PROJ_NAME).lst
+	$(Q)rm -f espruino_embedded.h
+	$(Q)rm -f espruino_embedded.c
 
 wrappersources:
 	$(info WRAPPERSOURCES=$(WRAPPERSOURCES))

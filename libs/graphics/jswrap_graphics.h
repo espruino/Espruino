@@ -14,6 +14,7 @@
 
 #include "jsvar.h"
 #include "graphics.h"
+#include "jsvariterator.h"
 
 #ifdef GRAPHICS_PALETTED_IMAGES
 // 16 color MAC OS palette
@@ -34,7 +35,6 @@ JsVar *jswrap_graphics_createSDL(int width, int height, int bpp);
 #endif
 JsVar *jswrap_graphics_createImage(JsVar *data);
 
-
 int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height);
 int jswrap_graphics_getBPP(JsVar *parent);
 JsVar *jswrap_graphics_reset(JsVar *parent);
@@ -50,6 +50,7 @@ JsVar *jswrap_graphics_fillEllipse(JsVar *parent, int x, int y, int x2, int y2);
 int jswrap_graphics_getPixel(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color);
 unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b);
+unsigned int jswrap_graphics_blendColor(JsVar *parent, JsVar *ca, JsVar *cb, JsVar* amt);
 JsVar *jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground);
 JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground);
 JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2);
@@ -86,3 +87,55 @@ JsVar *jswrap_graphics_quadraticBezier(JsVar *parent, JsVar * arr, JsVar *option
 JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *transformation);
 JsVar *jswrap_graphics_theme();
 JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme);
+
+
+/// Info about an image to be used for rendering
+typedef struct {
+  int width, height, bpp;
+  bool isTransparent;
+  unsigned int transparentCol;
+  JsVar *buffer; // must be unlocked!
+  uint32_t bitmapOffset; // start offset in imageBuffer
+  const uint16_t *palettePtr;
+  uint32_t paletteMask;
+  unsigned int bitMask;
+  unsigned int pixelsPerByteMask;
+  int stride; ///< bytes per line
+  unsigned short headerLength; ///< size of header (inc palette)
+  unsigned short bitmapLength; ///< size of data (excl header)
+
+  uint16_t _simplePalette[16]; // used when a palette is created for rendering
+} GfxDrawImageInfo;
+
+void _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info);
+
+/** Parse an image into GfxDrawImageInfo. See drawImage for image format docs. Returns true on success.
+ * if 'image' is a string or ArrayBuffer, imageOffset is the offset within that (usually 0)
+ */
+bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int imageOffset, GfxDrawImageInfo *info);
+
+
+/// This is for rotating and scaling layers
+typedef struct {
+  int x1,y1,x2,y2; //x2/y2 is exclusive
+  double rotate; // radians
+  double scale; // 1 = 1:1, 2 = big
+  bool center; // center on x1/y1 (which are then offset)
+  bool repeat; // tile the image
+  GfxDrawImageInfo img;
+  // for rendering
+  JsvStringIterator it;
+  int mx,my; //< max - width and height << 8
+  int sx,sy; //< iterator X increment
+  int px,py; //< y iterator position
+  int qx,qy; //< x iterator position
+} GfxDrawImageLayer;
+
+bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result);
+void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l);
+void _jswrap_drawImageLayerSetStart(GfxDrawImageLayer *l, int x, int y);
+void _jswrap_drawImageLayerStartX(GfxDrawImageLayer *l);
+void _jswrap_drawImageLayerNextX(GfxDrawImageLayer *l);
+void _jswrap_drawImageLayerNextXRepeat(GfxDrawImageLayer *l);
+void _jswrap_drawImageLayerNextY(GfxDrawImageLayer *l);
+void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxDrawImageInfo *img, JsvStringIterator *it);

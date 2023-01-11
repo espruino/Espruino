@@ -5,7 +5,7 @@ Espruino JavaScript for Microcontrollers
 |   __|___ ___ ___ _ _|_|___ ___
 |   __|_ -| . |  _| | | |   | . |
 |_____|___|  _|_| |___|_|_|_|___|
-          |_|      
+          |_|
 </pre>
 https://www.espruino.com &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [![Join the chat at https://gitter.im/espruino/Espruino](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/espruino/Espruino?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
@@ -16,7 +16,7 @@ About
 
 Espruino is a JavaScript interpreter for microcontrollers. It is designed for devices with as little as 128kB Flash and 8kB RAM.
 
-Please support Espruino by [ordering one of our official boards](https://www.espruino.com/Order) or [donating](https://www.espruino.com/Donate)
+Please support Espruino by [ordering one of our official boards](https://www.espruino.com/Order) or [donating](https://www.espruino.com/Donate).
 
 
 Documentation
@@ -28,7 +28,7 @@ Browse the [Espruino Website](https://www.espruino.com) (try using search in the
 
 There's also a [Reference](https://www.espruino.com/Reference) for JavaScript commands as well as [Tutorials](https://www.espruino.com/Tutorials). However the documentation on the Espruino website will match the version [available for download](https://www.espruino.com/Download) but **not** the latest version on GitHub.
 
-Builds for the [Espruino Board](https://www.espruino.com/EspruinoBoard) and [Pico Board](https://www.espruino.com/Pico) (built automatically for each Git commit) are [available from here](https://www.espruino.com/binaries/git)
+Builds for the [Espruino Board](https://www.espruino.com/EspruinoBoard) and [Pico Board](https://www.espruino.com/Pico) (built automatically for each Git commit) are [available from here](https://www.espruino.com/binaries/git).
 
 Other documentation of use is:
 
@@ -60,13 +60,13 @@ We try and support users of the boards we sell, but if you bought a non-official
 License
 -------
 
-Please see the [LICENSE](LICENSE) file
+Please see the [LICENSE](LICENSE) file.
 
 
 Building
 --------
 
-Check out [the page on building Espruino](README_Building.md)
+Check out [the page on building Espruino](README_Building.md).
 
 
 Testing
@@ -82,7 +82,7 @@ The [officially supported boards](https://www.espruino.com/Order) are the best s
 
 While Espruino can run on other boards, we make no money from them and so cannot afford to test, fix or support the firmware on them. We're dependent on the community.
 
-You can download binaries from https://www.espruino.com/Download
+You can download binaries from https://www.espruino.com/Download.
 
 If you are a board manufacturer interested in getting your board officially supported, please [check out this page](https://www.espruino.com/Business).
 

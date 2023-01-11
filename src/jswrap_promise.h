@@ -11,8 +11,13 @@
  * ES6 Promise implementation
  * ----------------------------------------------------------------------------
  */
-#include "jsvar.h"
+#ifndef JSWRAP_PROMISE_H_
+#define JSWRAP_PROMISE_H_
 
+#include "jsvar.h"
+#include "jsutils.h"
+
+#ifndef ESPR_NO_PROMISES
 
 /// Create a new promise
 JsVar *jspromise_create();
@@ -27,3 +32,6 @@ JsVar *jswrap_promise_reject(JsVar *data);
 JsVar *jswrap_promise_resolve(JsVar *data);
 JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected);
 JsVar *jswrap_promise_catch(JsVar *parent, JsVar *onRejected);
+
+#endif // ESPR_NO_PROMISES
+#endif // JSWRAP_PROMISE_H_

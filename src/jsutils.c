@@ -25,16 +25,7 @@ volatile JsErrorFlags jsErrorFlags;
 
 
 bool isWhitespace(char ch) {
-    return (ch==0x09) || // \t - tab
-           (ch==0x0B) || // vertical tab
-           (ch==0x0C) || // form feed
-           (ch==0x20) || // space
-           (ch=='\n') ||
-           (ch=='\r');
-}
-
-bool isNumeric(char ch) {
-    return (ch>='0') && (ch<='9');
+    return isWhitespaceInline(ch);
 }
 
 bool isHexadecimal(char ch) {
@@ -43,7 +34,10 @@ bool isHexadecimal(char ch) {
            ((ch>='A') && (ch<='F'));
 }
 bool isAlpha(char ch) {
-    return ((ch>='a') && (ch<='z')) || ((ch>='A') && (ch<='Z')) || ch=='_';
+    return isAlphaInline(ch);
+}
+bool isNumeric(char ch) {
+    return isNumericInline(ch);
 }
 
 
@@ -69,7 +63,7 @@ char charToLowerCase(char ch) {
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again.
 If jsonStyle=true, only string escapes supported by JSON are used */
-const char *escapeCharacter(char ch, bool jsonStyle) {
+const char *escapeCharacter(char ch, char nextCh, bool jsonStyle) {
   if (ch=='\b') return "\\b"; // 8
   if (ch=='\t') return "\\t"; // 9
   if (ch=='\n') return "\\n"; // A
@@ -80,7 +74,7 @@ const char *escapeCharacter(char ch, bool jsonStyle) {
   if (ch=='"') return "\\\"";
   static char buf[7];
   unsigned char uch = (unsigned char)ch;
-  if (uch<8 && !jsonStyle) {
+  if (uch<8 && !jsonStyle && (nextCh<'0' || nextCh>'7')) {
     // encode less than 8 as \#
     buf[0]='\\';
     buf[1] = (char)('0'+uch);
@@ -217,7 +211,7 @@ NO_INLINE void jsError(const char *fmt, ...) {
   jsiConsolePrint("ERROR: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, fmt, argp);
+  vcbprintf(vcbprintf_callback_jsiConsolePrintString,0, fmt, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
@@ -227,7 +221,7 @@ NO_INLINE void jsWarn(const char *fmt, ...) {
   jsiConsolePrint("WARNING: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, fmt, argp);
+  vcbprintf(vcbprintf_callback_jsiConsolePrintString,0, fmt, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
@@ -287,7 +281,7 @@ NO_INLINE void jsError_flash(const char *fmt, ...) {
   jsiConsolePrint("ERROR: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
+  vcbprintf(vcbprintf_callback_jsiConsolePrintString,0, buff, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
@@ -301,7 +295,7 @@ NO_INLINE void jsWarn_flash(const char *fmt, ...) {
   jsiConsolePrint("WARNING: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
+  vcbprintf(vcbprintf_callback_jsiConsolePrintString,0, buff, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
@@ -811,8 +805,9 @@ void vcbprintf(
           // OPT: this could be faster than it is (sending whole blocks at once)
           while (jsvStringIteratorHasChar(&it)) {
             buf[0] = jsvStringIteratorGetCharAndNext(&it);
+            char nextCh = jsvStringIteratorGetChar(&it);
             if (quoted) {
-              user_callback(escapeCharacter(buf[0], isJSONStyle), user_data);
+              user_callback(escapeCharacter(buf[0], nextCh, isJSONStyle), user_data);
             } else {
               user_callback(buf,user_data);
             }
@@ -834,7 +829,9 @@ void vcbprintf(
         user_callback(n, user_data);
         break;
       }
+#ifndef ESPR_EMBED
       case 'p': jshGetPinString(buf, (Pin)va_arg(argp, int/*Pin*/)); user_callback(buf, user_data); break;
+#endif
       default: assert(0); return; // eep
       }
     } else {

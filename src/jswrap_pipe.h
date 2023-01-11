@@ -11,6 +11,8 @@
  * Handling of the 'pipe' function - to pipe one stream to another
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_PIPE_H_
+#define JSWRAP_PIPE_H_
 
 #include "jsutils.h"
 #include "jsvar.h"
@@ -21,3 +23,5 @@ bool jswrap_pipe_idle();
 void jswrap_pipe_kill();
 
 void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options);
+
+#endif // JSWRAP_PIPE_H_

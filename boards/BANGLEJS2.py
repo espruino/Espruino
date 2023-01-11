@@ -17,7 +17,7 @@ import pinutils;
 
 info = {
  'name' : "Bangle.js 2", # Using SMA Q3
- 'link' :  [ "https://www.espruino.com/Bangle.js2" ],
+ 'link' :  [ "https://espruino.com/Bangle.js2" ],
  'espruino_page_link' : 'Bangle.js2',
  'default_console' : "EV_TERMINAL",
  #'default_console' : "EV_SERIAL1",
@@ -25,6 +25,8 @@ info = {
 # 'default_console_rx' : "D8",
 # 'default_console_baudrate' : "9600",
  'variables' : 12000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+                      # Currently leaves around 38k of free stack - *loads* more than we need
+ 'io_buffer_size' : 512, # How big is the input buffer (in 4 byte words). Default on nRF52 is 256
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_banglejs2.hex',
  'build' : {
@@ -35,7 +37,8 @@ info = {
      'GRAPHICS',
      'CRYPTO','SHA256','SHA512',
      'LCD_MEMLCD',
-     'TENSORFLOW'  
+     'TENSORFLOW',
+     'JIT' # JIT compiler enabled
    ],
    'makefile' : [
      'DEFINES += -DESPR_HWVERSION=2 -DBANGLEJS -DBANGLEJS_Q3',
@@ -48,11 +51,14 @@ info = {
      'DEFINES += -DESPR_DCDC_ENABLE=1', # Use DC/DC converter
      'ESPR_BLUETOOTH_ANCS=1', # Enable ANCS (Apple notifications) support
      'DEFINES += -DSPIFLASH_SLEEP_CMD', # SPI flash needs to be explicitly slept and woken up
+     'DEFINES += -DSPIFLASH_READ2X', # Read SPI flash at 2x speed using MISO and MOSI for IO
+     'DEFINES += -DESPR_JSVAR_FLASH_BUFFER_SIZE=32', # The buffer size we use when executing/iterating over data in flash memory (default 16). Should be set based on benchmarks.
      'DEFINES += -DAPP_TIMER_OP_QUEUE_SIZE=6', # Bangle.js accelerometer poll handler needs something else in queue size
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
+     'DEFINES+=-DESPR_BATTERY_FULL_VOLTAGE=0.3144',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS',
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
      'DEFINES += -DESPR_NO_LINE_NUMBERS=1', # we execute mainly from flash, so line numbers can be worked out
@@ -114,7 +120,7 @@ devices = {
   'LED1' : { 'pin' : 'D8', 'novariable':True }, # Backlight flash for low level debug - but in code we just use 'fake' LEDs
   'LCD' : {
             'width' : 176, 'height' : 176, 
-            'bpp' : 3,
+            'bpp' : 3, # LCD is native 3 bit (fastest transfers), but 4 is faster for drawing and slow to transfer
             'controller' : 'LPM013M126', # LPM013M126C
             'pin_cs' : 'D5',
             'pin_extcomin' : 'D6',
@@ -124,7 +130,7 @@ devices = {
             'pin_bl' : 'D8',
           },
   'TOUCH' : {
-            'device' : 'CTS816S', 'addr' : 0x15,
+            'device' : 'CST816S', 'addr' : 0x15,
             'pin_sda' : 'D33',
             'pin_scl' : 'D34',
             'pin_rst' : 'D35',
@@ -180,8 +186,7 @@ devices = {
 # left-right, or top-bottom order
 board = {
 };
-board["_css"] = """
-""";
+
 
 def get_pins():
   pins = pinutils.generate_pins(0,47) # 48 General Purpose I/O Pins.

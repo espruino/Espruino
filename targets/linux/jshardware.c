@@ -579,15 +579,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   return JSH_NOTHING;
 }
 
-void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
-  if (jshIsPinValid(pin)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-    jshDelayMicroseconds(time*1000000);
-    jshPinSetValue(pin, !value);
-  } else jsError("Invalid pin!");
-}
-
 bool jshCanWatch(Pin pin) {
   if (jshIsPinValid(pin)) {
      IOEventFlags exti = getNewEVEXTI();
@@ -597,7 +588,7 @@ bool jshCanWatch(Pin pin) {
     return false;
 }
 
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   if (jshIsPinValid(pin)) {
     IOEventFlags exti = getNewEVEXTI();
     if (shouldWatch) {

@@ -1,5 +1,4 @@
 let unicodeRemap = {
-  // Use lowercase unicode hex values!
   0x20ac:"\u0080", // Euro symbol
   0x2026:"\u0085", // Ellipsis
 };

@@ -12,8 +12,8 @@
  * ----------------------------------------------------------------------------
  */
 
-#ifndef JSWRAPPER_H
-#define JSWRAPPER_H
+#ifndef JSWRAPPER_H_
+#define JSWRAPPER_H_
 
 #include "jsutils.h"
 #include "jsvar.h"
@@ -66,6 +66,11 @@ typedef enum {
 // reads. Telling the compiler to pack the structs defeats that, so we have to take it out.
 #define PACKED_JSW_SYM
 #endif
+#if defined(__arm64__)
+#undef PACKED_JSW_SYM
+#define PACKED_JSW_SYM __attribute__((aligned(2)))
+#endif
+
 
 /// Structure for each symbol in the list of built-in symbols
 typedef struct {
@@ -137,4 +142,4 @@ const char *jswGetBuiltInLibraryNames();
 JsVar *jswCallFunctionHack(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount);
 #endif
 
-#endif // JSWRAPPER_H
+#endif // JSWRAPPER_H_

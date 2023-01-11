@@ -10,7 +10,13 @@
   var h = g.getHeight();
   var menuItems = Object.keys(items);
   var options = items[""];
-  if (options) menuItems.splice(menuItems.indexOf(""),1);
+  if (options) {
+    menuItems.splice(menuItems.indexOf(""),1);
+    if (options.back) { // handle 'options.back'
+      items["< Back"] = options.back;
+      menuItems.unshift("< Back");
+    }
+  }
   if (!(options instanceof Object)) options = {};
   options.fontHeight=8;
   options.x=0;
@@ -48,6 +54,7 @@
       while (rows--) {
         var name = menuItems[idx];
         var item = items[name];
+        if (item.title) name = item.title;
         var hl = (idx==options.selected && !l.selectEdit);
         g.setColor(hl ? cHighlightBg : cBg);
         g.fillRect(x,iy,x2,iy+options.fontHeight-1);

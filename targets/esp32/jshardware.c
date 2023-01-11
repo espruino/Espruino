@@ -51,6 +51,7 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
+#include "esp_task_wdt.h"
 #include "rom/ets_sys.h"
 #include "rom/uart.h"
 #include "driver/gpio.h"
@@ -80,8 +81,11 @@ static IOEventFlags pinToEV_EXTI(
 
 static uint8_t g_pinState[JSH_PIN_COUNT];
 
-// Whether a pin is being used for soft PWM or not
+/// Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+
+/// Has the watchdog been enabled?
+bool wdt_enabled = false;
 
 static uint64_t DEVICE_INITIALISED_FLAGS = 0L;
 
@@ -406,23 +410,16 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   }
 }
 
-
-/**
- *
- */
 void jshEnableWatchDog(JsVarFloat timeout) {
-  UNUSED(timeout);
-#ifdef DEBUG
-  jsError(">> jshEnableWatchDog Not implemented,using taskwatchdog from RTOS");
-#endif
+  wdt_enabled = true;
+  esp_task_wdt_init((int)(timeout+0.5), true); //enable panic so ESP32 restarts
+  esp_task_wdt_add(NULL); //add current thread to WDT watch
 }
-
 
 // Kick the watchdog
 void jshKickWatchDog() {
-#ifdef DEBUG
-  jsError(">> jshKickWatchDog Not implemented,using taskwatchdog from RTOS");
-#endif
+  if (wdt_enabled)
+    esp_task_wdt_reset();
 }
 
 
@@ -433,42 +430,6 @@ bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // ca
   gpio_num_t gpioNum = pinToESP32Pin((Pin)(eventFlag-EV_EXTI0));
   bool level = gpio_get_level(gpioNum);
   return level;
-}
-
-
-/**
- * Set the value of the pin to be the value supplied and then wait for
- * a given period and set the pin value again to be the opposite.
- */
-void jshPinPulse(
-    Pin pin,              //!< The pin to be pulsed.
-    bool pulsePolarity,   //!< The value to be pulsed into the pin.
-    JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
-) {
-  // ESP32 specific version, replaced by Espruino Style version from nrf52
-  //int duration = (int)pulseTime * 1000; //from millisecs to microsecs
-  //sendPulse(pin, pulsePolarity, duration);
-
-  // ---- USE TIMER FOR PULSE
-  if (!jshIsPinValid(pin)) {
-       jsExceptionHere(JSET_ERROR, "Invalid pin!");
-       return;
-  }
-  if (pulseTime<=0) {
-    // just wait for everything to complete
-    jstUtilTimerWaitEmpty();
-    return;
-  } else {
-    // find out if we already had a timer scheduled
-    UtilTimerTask task;
-    if (!jstGetLastPinTimerTask(pin, &task)) {
-      // no timer - just start the pulse now!
-      jshPinOutput(pin, pulsePolarity);
-      task.time = jshGetSystemTime();
-    }
-    // Now set the end of the pulse to happen on a timer
-    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
-  }
 }
 
 
@@ -488,8 +449,9 @@ bool jshCanWatch(
  * \return The event flag for this pin.
  */
 IOEventFlags jshPinWatch(
-    Pin pin,         //!< The pin to be watched.
-    bool shouldWatch //!< True for watching and false for unwatching.
+    Pin pin,          //!< The pin to be watched.
+    bool shouldWatch, //!< True for watching and false for unwatching.
+    JshPinWatchFlags flags
   ) {
       gpio_num_t gpioNum = pinToESP32Pin(pin);
       if(shouldWatch){

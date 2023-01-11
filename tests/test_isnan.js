@@ -5,7 +5,7 @@ function test(a,b) {
    //console.log("Test "+tests+" passed.");
    testPass++;
  } else {
-  console.log("Test "+tests+" failed.");
+  console.log("Test "+tests+" failed. ("+JSON.stringify(a)+" => "+isNaN(a)+","+b+")");
  }
 }
 

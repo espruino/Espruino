@@ -16,6 +16,16 @@
 
 #include "jsvar.h"
 
+#ifdef BANGLEJS
+#define ESPR_NO_VARIMAGE // don't allow saving an image of current state to flash - no use on Bangle.js
+#define ESPR_STORAGE_FILENAME_TABLE // on non-Bangle.js boards without external flash this doesn't make much sense
+#endif
+
+#ifdef LINUX // for testing...
+#define ESPR_STORAGE_FILENAME_TABLE
+#endif
+
+
 /// Simple filename used for Flash Storage. We use firstChars so we can do a quick first pass check for equality
 typedef union {
   uint32_t firstChars; ///< Set these all to 0 to indicate a replaced/deleted file
@@ -32,9 +42,12 @@ typedef struct {
 } JsfFileHeader;
 
 typedef enum {
-  JSFF_NONE,
-  JSFF_STORAGEFILE = 64,  // This file is a 'storage file' created by Storage.open
-  JSFF_COMPRESSED = 128   // This file contains compressed data (used only for .varimg currently)
+  JSFF_NONE,              ///< A normal file
+#ifndef SAVE_ON_FLASH
+  JSFF_FILENAME_TABLE = 32,        ///< A file that contains a list of JsfFileHeader structs with 'size' pointing to the file addresses at the time it was created
+#endif
+  JSFF_STORAGEFILE = 64,  ///< This file is a 'storage file' created by Storage.open
+  JSFF_COMPRESSED = 128   ///< This file contains compressed data (used only for .varimg currently)
 } JsfFileFlags; // these are stored in the top 8 bits of JsfFileHeader.size
 
 
@@ -45,8 +58,10 @@ JsfFileName jsfNameFromString(const char *name);
 JsfFileName jsfNameFromVar(JsVar *name);
 /// utility function for creating JsfFileName
 JsfFileName jsfNameFromVarAndUnLock(JsVar *name);
-// create a JsVar from a JsfFileName
+/// create a JsVar from a JsfFileName
 JsVar *jsfVarFromName(JsfFileName name);
+/// Are two filenames equal?
+bool jsfIsNameEqual(JsfFileName a, JsfFileName b);
 /// Return the size in bytes of a file based on the header
 uint32_t jsfGetFileSize(JsfFileHeader *header);
 /// Return the flags for this file based on the header
@@ -81,9 +96,11 @@ uint32_t jsfHashFiles(JsVar *regex, JsfFileFlags containing, JsfFileFlags notCon
 void jsfDebugFiles();
 
 typedef enum {
-  JSFSTT_QUICK,  ///< Just files
-  JSFSTT_NORMAL, ///< Just files, or all space if storage empty
-  JSFSTT_ALL     ///< all space, including empty space
+  JSFSTT_QUICK,    ///< Just files
+  JSFSTT_NORMAL,   ///< Just files, or all space if storage empty
+  JSFSTT_ALL,      ///< all space, including empty space
+  JSFSTT_TYPE_MASK = 7,
+  JSFSTT_FIND_FILENAME_TABLE = 128, ///< When we scan, should we also update our link to the FILENAME_TABLE
 } JsfStorageTestType;
 /** Return false if the current storage is not valid
  * or is corrupt somehow. Basically that means if
@@ -93,7 +110,7 @@ typedef enum {
  * For instance the first page may be blank but other pages
  * may contain info (which is invalid)...
  */
-bool jsfIsStorageValid(JsfStorageTestType testType);
+bool jsfIsStorageValid(JsfStorageTestType testFlags);
 /** Return true if there is nothing at all in Storage (first header on first page is all 0xFF) */
 bool jsfIsStorageEmpty();
 
@@ -129,5 +146,11 @@ void jsfRemoveCodeFromFlash();
 
 // Erase storage to 'factory' values.
 void jsfResetStorage();
+
+
+#ifdef ESPR_STORAGE_FILENAME_TABLE
+/// Create a lookup table for files - this speeds up file access
+void jsfCreateFileTable();
+#endif
 
 #endif //JSFLASH_H_

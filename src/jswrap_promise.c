@@ -13,6 +13,11 @@
  * ES6 Promise implementation
  * ----------------------------------------------------------------------------
  */
+
+#include "jsutils.h"
+
+#ifndef ESPR_NO_PROMISES
+
 #include "jswrap_promise.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
@@ -28,6 +33,7 @@
 /*JSON{
   "type" : "class",
   "class" : "Promise",
+  "typescript": "Promise<T>",
   "ifndef" : "SAVE_ON_FLASH"
 }
 This is the built-in class for ES6 Promises
@@ -125,8 +131,14 @@ void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool r
     jsvUnLock(fn);
   } else if (!resolve) {
     JsVar *previouslyResolved = jsvFindChildFromString(promise, JS_PROMISE_RESOLVED_NAME, false);
-    if (!previouslyResolved)
+    if (!previouslyResolved) {
       jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
+      // If there was an exception with a stack trace, pass it through so we can keep adding stack to it
+      JsVar *stack = 0;
+      if (jsvIsObject(data) && (stack=jsvObjectGetChild(data, "stack", 0))) {
+        jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, stack);
+      }
+    }
     jsvUnLock(previouslyResolved);
   }
 }
@@ -203,10 +215,11 @@ void jspromise_reject(JsVar *promise, JsVar *data) {
   "params" : [
     ["executor","JsVar","A function of the form `function (resolve, reject)`"]
   ],
-  "return" : ["JsVar","A Promise"]
+  "return" : ["JsVar","A Promise"],
+  "typescript": "new<T>(executor: (resolve: (value: T) => void, reject: (reason?: any) => void) => void): Promise<T>;"
 }
-Create a new Promise. The executor function is executed immediately (before the constructor even returns)
-and
+Create a new Promise. The executor function is executed immediately (before the
+constructor even returns) and
  */
 JsVar *jswrap_promise_constructor(JsVar *executor) {
   JsVar *obj = jspromise_create();
@@ -242,10 +255,11 @@ JsVar *jswrap_promise_constructor(JsVar *executor) {
   "params" : [
     ["promises","JsVar","An array of promises"]
   ],
-  "return" : ["JsVar","A new Promise"]
+  "return" : ["JsVar","A new Promise"],
+  "typescript": "all(promises: Promise<any>[]): Promise<void>;"
 }
-Return a new promise that is resolved when all promises in the supplied
-array are resolved.
+Return a new promise that is resolved when all promises in the supplied array
+are resolved.
 */
 JsVar *jswrap_promise_all(JsVar *arr) {
   if (!jsvIsIterable(arr)) {
@@ -299,10 +313,10 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   "params" : [
     ["promises","JsVar","Data to pass to the `.then` handler"]
   ],
-  "return" : ["JsVar","A new Promise"]
+  "return" : ["JsVar","A new Promise"],
+  "typescript": "resolve<T extends any>(promises: T): Promise<T>;"
 }
-Return a new promise that is already resolved (at idle it'll
-call `.then`)
+Return a new promise that is already resolved (at idle it'll call `.then`)
 */
 JsVar *jswrap_promise_resolve(JsVar *data) {
   JsVar *promise = 0;
@@ -336,8 +350,7 @@ JsVar *jswrap_promise_resolve(JsVar *data) {
   ],
   "return" : ["JsVar","A new Promise"]
 }
-Return a new promise that is already rejected (at idle it'll
-call `.catch`)
+Return a new promise that is already rejected (at idle it'll call `.catch`)
 */
 JsVar *jswrap_promise_reject(JsVar *data) {
   JsVar *promise = jspromise_create();
@@ -406,9 +419,10 @@ static JsVar *jswrap_promise_get_chained_promise(JsVar *parent) {
   "generate" : "jswrap_promise_then",
   "params" : [
     ["onFulfilled","JsVar","A callback that is called when this promise is resolved"],
-    ["onRejected","JsVar","A callback that is called when this promise is rejected (or nothing)"]
+    ["onRejected","JsVar","[optional] A callback that is called when this promise is rejected (or nothing)"]
   ],
-  "return" : ["JsVar","The original Promise"]
+  "return" : ["JsVar","The original Promise"],
+  "typescript": "then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | Promise<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | Promise<TResult2>) | undefined | null): Promise<TResult1 | TResult2>;"
 }
  */
 JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected) {
@@ -434,3 +448,4 @@ JsVar *jswrap_promise_catch(JsVar *parent, JsVar *onRejected) {
   _jswrap_promise_add(parent, onRejected, false);
   return jswrap_promise_get_chained_promise(parent);
 }
+#endif // ESPR_NO_PROMISES

@@ -6,6 +6,8 @@
 // specified here: http://ternjs.net/doc/manual.html#typedef
 
 var marked = require('marked');
+// yay - new marked version incompatible with old one...
+if (marked.marked) marked=marked.marked; 
 // Set default options except highlight which has no default
 marked.setOptions({
   gfm: true, // github markdown
@@ -20,6 +22,8 @@ marked.setOptions({
   smartypants: false,
   langPrefix: 'lang-'
 });
+
+var hadErrors = false;
 
 require("./common.js").readAllWrapperFiles(function(json) {
   var tern = { "!name": "Espruino" };
@@ -50,6 +54,7 @@ require("./common.js").readAllWrapperFiles(function(json) {
       }
     } catch (e) {
       console.error("Exception "+e, j);
+      hadErrors = true;
     }
   });
 
@@ -60,7 +65,7 @@ require("./common.js").readAllWrapperFiles(function(json) {
         // meh
       } else if (["class","object","library"].indexOf(j.type)>=0) {
         // aready handled above
-      } else if (["init","idle","kill"].indexOf(j.type)>=0) {
+      } else if (["init","idle","kill","hwinit"].indexOf(j.type)>=0) {
         // internal
       } else if (["event"].indexOf(j.type)>=0) {
         // TODO: handle events
@@ -85,15 +90,18 @@ require("./common.js").readAllWrapperFiles(function(json) {
              tern[j.class]["prototype"]["!stdProto"] = j.class;
         }
         tern[j.class]["prototype"][j.name] = o;
-      } else if (["function","variable"].indexOf(j.type)>=0) {
+      } else if (["function","variable"].indexOf(j.type)>=0) {      
         var o = { "!type": j.getTernType() };
         o["!doc"] = marked(j.getDescription());
         o["!url"] = j.getURL();
         tern[j.name] = o;
+      } else if (j.type.startsWith("EV_SERIAL")) {
+        // internal - no type info needed
       } else
        console.warn("Unknown type "+j.type+" for ",j);
     } catch (e) {
       console.error("Exception "+e, e.stack, j);
+      hadErrors = true;
     }
   });
 
@@ -101,6 +109,10 @@ require("./common.js").readAllWrapperFiles(function(json) {
  delete tern["Telnet"]["!type"];
 
 
+ if (hadErrors) {
+   console.log("ERROR PROCESSING JSWRAP FILES");
+   process.exit(1);
+ }
  console.log(JSON.stringify(tern,null,2));
 
 });

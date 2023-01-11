@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "heartrate.h"
+#include "hrm.h"
 #include "jshardware.h"
 
 /*
@@ -370,7 +371,11 @@ bool hrm_new(int hrmValue) {
     hadBeat = hrm_had_beat();
   }
 
-  hrmInfo.avg = ((hrmInfo.avg*31) + h) >> 5;
+  if (hrmPollInterval > 30) // 40 = 25Hz, Bangle.js 2 default sample rate
+    hrmInfo.avg = ((hrmInfo.avg*7) + h) >> 3;
+  else // 20 = 50Hz, Bangle.js 1 default sample rate
+    hrmInfo.avg = ((hrmInfo.avg*15) + h) >> 4;
+  
 
   return hadBeat;
 }

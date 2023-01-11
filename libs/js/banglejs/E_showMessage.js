@@ -2,8 +2,8 @@
   if ("string" == typeof options)
     options = { title : options };
   options = options||{};
-  g.clearRect(Bangle.appRect); // clear screen
-  g.reset().setFont("6x8",(g.getWidth()>128)?2:1).setFontAlign(0,-1);
+  g.reset().clearRect(Bangle.appRect); // clear screen
+  g.setFont("6x8",(g.getWidth()>128)?2:1).setFontAlign(0,-1);
   var Y = Bangle.appRect.y;
   var W = g.getWidth(), H = g.getHeight()-Y, FH=g.getFontHeight();
   var titleLines = g.wrapString(options.title, W-2);

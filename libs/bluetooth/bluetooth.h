@@ -34,7 +34,7 @@
  * rebooting Espruino. */
 #define APP_ERROR_CHECK_NOT_URGENT(ERR_CODE) if (ERR_CODE) { uint32_t line = __LINE__; jsble_queue_pending_buf(BLEP_ERROR, ERR_CODE, (char*)&line, 4); }
 
-#else
+#else // !NRF5X
 typedef struct {
   uint16_t uuid;
   uint8_t type;			//see BLE_UUID_TYPE_... definitions
@@ -66,15 +66,25 @@ typedef struct {
 #define MSEC_TO_UNITS(MS,MEH) MS
 #define GATT_MTU_SIZE_DEFAULT 23
 #define BLE_NUS_MAX_DATA_LEN 20 //GATT_MTU_SIZE_DEFAULT - 3
-#endif
+#define BLE_CCCD_VALUE_LEN 2
+#define BLE_GATT_HVX_NOTIFICATION 1 // flag in CCCD
+#define BLE_GATT_HVX_INDICATION 2 // flag in CCCD
+#endif //!NRF5X (fudge NRF5X API for ESP32)
 
-#if defined(NRF52_SERIES) || defined(ESP32)
-// nRF52 gets the ability to connect to other
-#define CENTRAL_LINK_COUNT              1                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
-#define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
+#ifndef CENTRAL_LINK_COUNT /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
+#if defined(NRF52_SERIES) || defined(ESP32) // nRF52 gets the ability to connect to other devices
+#define CENTRAL_LINK_COUNT              1
 #else
 #define CENTRAL_LINK_COUNT              0                                           /**<number of central links used by the application. When changing this number remember to adjust the RAM settings*/
+#endif
+#endif
+
+#ifndef PERIPHERAL_LINK_COUNT /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
+#if defined(NRF52_SERIES) || defined(ESP32) // nRF52 gets the ability to connect to other devices
+#define PERIPHERAL_LINK_COUNT           1
+#else
 #define PERIPHERAL_LINK_COUNT           1                                           /**<number of peripheral links used by the application. When changing this number remember to adjust the RAM settings*/
+#endif
 #endif
 
 #ifndef APP_TIMER_OP_QUEUE_SIZE
@@ -132,12 +142,16 @@ typedef enum {
   BLEP_ERROR,                       //< Softdevice threw some error (code in data)
   BLEP_CONNECTED,                   //< Peripheral connected (address as buffer)
   BLEP_DISCONNECTED,                //< Peripheral disconnected
+  BLEP_ADVERTISING_START,           //< Start advertising - do it outside of IRQ because we may need to allocate JsVars
+  BLEP_RESTART_SOFTDEVICE,          //< Perform a softdevice restart (again, we don't want to do this in an IRQ!)
   BLEP_RSSI_PERIPH,                 //< RSSI data from peripheral connection (rssi as data)
   BLEP_ADV_REPORT,                  //< Advertising received (as buffer)
-  BLEP_RSSI_CENTRAL,                //< RSSI data from central connection (rssi as data)
-  BLEP_TASK_FAIL_CONN_TIMEOUT,      //< Central: Connection timeout
-  BLEP_TASK_FAIL_DISCONNECTED,      //< Central: Task failed because disconnected
-  BLEP_TASK_CENTRAL_CONNECTED,      //< Central: Connected
+#if CENTRAL_LINK_COUNT>0
+  BLEP_RSSI_CENTRAL,                //< RSSI data from central connection (rssi as data low byte, index in m_central_conn_handles as high byte )
+  BLEP_TASK_FAIL,                   //< Task failed because unknown
+  BLEP_TASK_FAIL_CONN_TIMEOUT,      //< Task failed becauseConnection timeout
+  BLEP_TASK_FAIL_DISCONNECTED,      //< Task failed because disconnected
+  BLEP_TASK_CENTRAL_CONNECTED,      //< Central: Connected, (m_central_conn_handles index as data)
   BLEP_TASK_DISCOVER_SERVICE,       //< New service discovered (as buffer)
   BLEP_TASK_DISCOVER_SERVICE_COMPLETE,       //< Service discovery complete
   BLEP_TASK_DISCOVER_CHARACTERISTIC, //< New characteristic discovered (as buffer)
@@ -146,22 +160,28 @@ typedef enum {
   BLEP_TASK_CHARACTERISTIC_READ,    //< Central: Characteristic read finished (as buffer)
   BLEP_TASK_CHARACTERISTIC_WRITE,   //< Central: Characteristic write finished
   BLEP_TASK_CHARACTERISTIC_NOTIFY,  //< Central: Started requesting notifications
-  BLEP_CENTRAL_DISCONNECTED,        //< Central: Disconnected (reason as data)
+  BLEP_CENTRAL_NOTIFICATION,        //< A characteristic we were watching has changed
+  BLEP_CENTRAL_DISCONNECTED,        //< Central: Disconnected (reason as data low byte, index in m_central_conn_handles as high byte )
   BLEP_TASK_BONDING,                //< Bonding negotiation complete (success in data)
+#endif
+  BLEP_WRITE,                       //< One of our characteristics written by someone else
+  BLEP_TASK_PASSKEY_DISPLAY,        //< We're pairing and have been provided with a passkey to display (data = conn_handle)
+  BLEP_TASK_AUTH_KEY_REQUEST,       //< We're pairing and the device wants a passkey from us (data = conn_handle)
+  BLEP_TASK_AUTH_STATUS,            //< Data on how authentication was going has been received
+#ifdef USE_NFC
   BLEP_NFC_STATUS,                  //< NFC changed state
   BLEP_NFC_RX,                      //< NFC data received (as buffer)
   BLEP_NFC_TX,                      //< NFC data sent
+#endif
+#if BLE_HIDS_ENABLED
   BLEP_HID_SENT,                    //< A HID report has been sent
   BLEP_HID_VALUE,                   //< A HID value was received (eg caps lock)
-  BLEP_WRITE,                       //< One of our characteristics written by someone else
-  BLEP_NOTIFICATION,                //< A characteristic we were watching has changes
-  BLEP_TASK_PASSKEY_DISPLAY,        //< We're pairing and have been provided with a passkey to display
-  BLEP_TASK_AUTH_KEY_REQUEST,       //< We're pairing and the device wants a passkey from us
-  BLEP_TASK_AUTH_STATUS,            //< Data on how authentication was going has been received
+#endif
 #ifdef ESPR_BLUETOOTH_ANCS
   BLEP_ANCS_NOTIF,                  //< Apple Notification Centre notification received
   BLEP_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes received
   BLEP_ANCS_APP_ATTR,               //< Apple Notification Centre app attributes received
+  BLEP_ANCS_ERROR,                  //< Apple Notification Centre error - cancel any active tasks
   BLEP_AMS_TRACK_UPDATE,            //< Apple Media Service Track info updated
   BLEP_AMS_PLAYER_UPDATE,           //< Apple Media Service Player info updated
   BLEP_AMS_ATTRIBUTE                //< Apple Media Service Track or Player info read response
@@ -170,20 +190,33 @@ typedef enum {
 
 
 extern volatile BLEStatus bleStatus;
+/// Filter to use when discovering BLE Services/Characteristics
+extern ble_uuid_t bleUUIDFilter;
+
 extern uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
+
 extern volatile uint16_t                         m_peripheral_conn_handle;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
-extern volatile uint16_t                         m_central_conn_handle; /**< Handle for central mode connection */
+extern volatile uint16_t                         m_central_conn_handles[CENTRAL_LINK_COUNT]; /**< Handle for central mode connection */
 #endif
+
+
+/// for BLEP_ADV_REPORT
+typedef struct {
+  ble_gap_addr_t            peer_addr;
+  int8_t                    rssi;                  /**< Received Signal Strength Indication in dBm of the last packet received. */
+  uint8_t        dlen;                  /**< Advertising or scan response data length. */
+  uint8_t        data[BLE_GAP_ADV_MAX_SIZE];    /**< Advertising or scan response data. */
+} BLEAdvReportData;
 
 /** Initialise the BLE stack */
 void jsble_init();
 /** Completely deinitialise the BLE stack. Return true on success */
 bool jsble_kill();
-/** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
-void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
-/** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with simple data */
-void jsble_queue_pending(BLEPending blep, uint16_t data);
+
+/// Checks for error and reports an exception string if there was one, else 0 if no error
+JsVar *jsble_get_error_string(uint32_t err_code);
+
 /** Execute a task that was added by jsble_queue_pending - this is done outside of IRQ land. Returns number of events handled */
 int jsble_exec_pending(IOEvent *event);
 
@@ -201,6 +234,9 @@ bool jsble_has_connection();
 
 /** Is BLE connected to a central device at all? */
 bool jsble_has_central_connection();
+
+/** Return the index of the central connection in m_central_conn_handles, or -1 */
+int jsble_get_central_connection_idx(uint16_t handle);
 
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
 bool jsble_has_peripheral_connection();
@@ -221,8 +257,8 @@ bool jsble_check_error(uint32_t err_code);
 /** Set the connection interval of the peripheral connection. Returns an error code */
 uint32_t jsble_set_periph_connection_interval(JsVarFloat min, JsVarFloat max);
 
-/// Scanning for advertising packets
-uint32_t jsble_set_scanning(bool enabled, bool activeScan);
+/// Scanning for advertising packets. options can be an object with optional {active:bool, phy:"1mbps/2mbps/coded"}
+uint32_t jsble_set_scanning(bool enabled, JsVar *options);
 
 /// returning RSSI values for current connection
 uint32_t jsble_set_rssi_scan(bool enabled);
@@ -246,6 +282,10 @@ void jsble_update_security();
 
 /// Return an object showing the security status of the given connection
 JsVar *jsble_get_security_status(uint16_t conn_handle);
+
+/// Set the transmit power of the current (and future) connections
+void jsble_set_tx_power(int8_t pwr);
+
 
 // ------------------------------------------------- lower-level utility fns
 
@@ -296,25 +336,25 @@ void jsble_nfc_send_rsp(const uint8_t data, size_t len);
  See BluetoothRemoteGATTServer.connect docs for more docs */
 void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options);
 /// Get primary services. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
-void jsble_central_getPrimaryServices(ble_uuid_t uuid);
+void jsble_central_getPrimaryServices(uint16_t central_conn_handle, ble_uuid_t uuid);
 /// Get characteristics. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
-void jsble_central_getCharacteristics(JsVar *service, ble_uuid_t uuid);
+void jsble_central_getCharacteristics(uint16_t central_conn_handle, JsVar *service, ble_uuid_t uuid);
 // Write data to the given characteristic. When done call bleCompleteTask
-void jsble_central_characteristicWrite(JsVar *characteristic, char *dataPtr, size_t dataLen);
+void jsble_central_characteristicWrite(uint16_t central_conn_handle, JsVar *characteristic, char *dataPtr, size_t dataLen);
 // Read data from the given characteristic. When done call bleCompleteTask
-void jsble_central_characteristicRead(JsVar *characteristic);
+void jsble_central_characteristicRead(uint16_t central_conn_handle, JsVar *characteristic);
 // Discover descriptors of characteristic
-void jsble_central_characteristicDescDiscover(JsVar *characteristic);
+void jsble_central_characteristicDescDiscover(uint16_t central_conn_handle, JsVar *characteristic);
 // Set whether to notify on the given characteristic. When done call bleCompleteTask
-void jsble_central_characteristicNotify(JsVar *characteristic, bool enable);
+void jsble_central_characteristicNotify(uint16_t central_conn_handle, JsVar *characteristic, bool enable);
 /// Start bonding on the current central connection
-void jsble_central_startBonding(bool forceRePair);
+void jsble_central_startBonding(uint16_t central_conn_handle, bool forceRePair);
 /// Get the security status of the current link
-JsVar *jsble_central_getSecurityStatus();
+JsVar *jsble_central_getSecurityStatus(uint16_t central_conn_handle);
 /// RSSI monitoring in central mode
-uint32_t jsble_set_central_rssi_scan(bool enabled);
+uint32_t jsble_set_central_rssi_scan(uint16_t central_conn_handle, bool enabled);
 /// Send a passkey if one was requested (passkey = 6 bytes long)
-uint32_t jsble_central_send_passkey(char *passkey);
+uint32_t jsble_central_send_passkey(uint16_t central_conn_handle, char *passkey);
 #endif
 #if PEER_MANAGER_ENABLED
 /// Set whether or not the whitelist is enabled

@@ -29,7 +29,8 @@
 #define BLE_NAME_HID_DATA               "BLE_HID_D"
 #define BLE_NAME_NUS                    "BLE_UART"
 #define BLE_NAME_FLAGS                  "BLE_FLAGS"
-#define BLE_NAME_GATT_SERVER            "BLE_GATTS"
+#define BLE_NAME_GATT_SERVER            "BLE_GATTSx" // x is replaced with the index in m_central_conn_handles
+#define BLE_NAME_GATT_SERVER_LEN        11 // include null terminator
 #define BLE_NAME_SECURITY               "BLE_SEC"
 #define BLE_NAME_MAC_ADDRESS            "BLE_MAC"
 #if ESPR_BLUETOOTH_ANCS
@@ -76,3 +77,13 @@ void bleGetWriteEventName(char *eventName, uint16_t handle);
 
 /// Look up the characteristic's handle from the UUID. returns BLE_GATT_HANDLE_INVALID if not found
 uint16_t bleGetGATTHandle(ble_uuid_t char_uuid);
+
+/** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with a buffer of data */
+void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len);
+
+/** Add a task to the queue to be executed (to be called mainly from IRQ-land) - with simple data */
+void jsble_queue_pending(BLEPending blep, uint16_t data);
+
+/* Handler for common event types (between nRF52/ESP32). Called first
+ * from ESP32/nRF52 jsble_exec_pending function */
+bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *buffer, size_t bufferLen);

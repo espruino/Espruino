@@ -11,6 +11,9 @@
  * JavaScript Pin Object Functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_PIN_H_
+#define JSWRAP_PIN_H_
+
 #include "jsvar.h"
 #include "jsinteractive.h"
 
@@ -24,3 +27,5 @@ JsVar *jswrap_pin_getMode(JsVar *parent);
 void jswrap_pin_mode(JsVar *parent, JsVar *mode);
 bool jswrap_pin_toggle(JsVar *parent);
 JsVar *jswrap_pin_getInfo(JsVar *parent);
+
+#endif // JSWRAP_PIN_H_

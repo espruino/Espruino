@@ -1,0 +1,46 @@
+// arrange
+var bootCode = "";
+bootCode += "var setWatchOrg = setWatch;";
+bootCode += "var callBacks = [];";
+bootCode += "var setWatch = (callBack, btn) => {";
+bootCode += "  let watchNo = setWatchOrg.apply(null, arguments);";
+bootCode += "  callBacks[watchNo] = {btn: btn, callBack: callBack};";
+bootCode += "  return watchNo;";
+bootCode += "};";
+bootCode += "var clearWatchOrg = clearWatch;";
+bootCode += "var clearWatch = (watchNo) => {";
+bootCode += "  if (watchNo) {";
+bootCode += "    clearWatchOrg(watchNo);";
+bootCode += "    delete callBacks[watchNo];";
+bootCode += "  } else {";
+bootCode += "    clearWatchOrg();";
+bootCode += "    callBacks = [];";
+bootCode += "  }";
+bootCode += "};";
+
+bootCode += "press = (btn) => callBacks";
+bootCode += "  .filter(callBack => callBack.btn == btn)";
+bootCode += "  .forEach(callBack => callBack.callBack());";
+
+bootCode += "var load = () => require('welcome.boot.js');";
+require("Storage").write(".boot1", bootCode);
+
+require("Storage").erase("welcome.json");
+
+// act
+load("welcome.app.js");
+
+press(BTN3);  // next scene
+press(BTN3);  // next scene
+press(BTN3);  // next scene
+press(BTN3);  // next scene
+press(BTN3);  // next scene
+press(BTN3);  // next scene
+press(BTN3);  // next scene
+press(BTN3);  // next scene
+press(BTN3);  // next scene
+press(BTN3);  // next scene
+press(BTN2);  // back
+
+// assert
+if (!require("Storage").list("welcome.json").length) throw "Error";

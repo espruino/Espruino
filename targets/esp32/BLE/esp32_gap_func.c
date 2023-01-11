@@ -47,8 +47,8 @@ static esp_ble_scan_params_t ble_scan_params = 	{
 	.scan_type              = BLE_SCAN_TYPE_ACTIVE,
 	.own_addr_type          = BLE_ADDR_TYPE_PUBLIC,
 	.scan_filter_policy     = BLE_SCAN_FILTER_ALLOW_ALL,
-	.scan_interval          = 0x50,
-	.scan_window            = 0x30		
+	.scan_interval          = 0x10, // default = 0x10 (10ms)
+	.scan_window            = 0x10  // default = 0x10 (10ms)
 };
 
 static esp_ble_adv_data_t adv_data = {
@@ -67,49 +67,9 @@ static esp_ble_adv_data_t adv_data = {
     .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
 };
 
-static void execScanFunc(esp_ble_gap_cb_param_t *p){
-	JsVar *evt = jsvNewObject();
-	jsvObjectSetChildAndUnLock(evt, "id", bda2JsVarString(p->scan_rst.bda));
-	jsvObjectSetChildAndUnLock(evt, "rssi",jsvNewFromInteger(p->scan_rst.rssi));
-    JsVar *data = jsvNewStringOfLength(p->scan_rst.adv_data_len, (char*)p->scan_rst.ble_adv);
-	if(data){
-		JsVar *ab = jsvNewArrayBufferFromString(data,p->scan_rst.adv_data_len);
-		jsvUnLock(data);
-		jsvObjectSetChildAndUnLock(evt,"data",ab);
-	}
-    jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt,1);
-	jsvUnLock(evt);
-	jshHadEvent();
-}
-
-void gap_event_scan_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
-    uint8_t *adv_name = NULL;
-    uint8_t adv_name_len = 0;
-	esp_ble_gap_cb_param_t *p = (esp_ble_gap_cb_param_t *)param;
-	switch(event){
-		case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:		{
-			break;
-		}
-		case ESP_GAP_BLE_SCAN_START_COMPLETE_EVT:{
-			if (param->scan_start_cmpl.status != ESP_BT_STATUS_SUCCESS)	{jsWarn("Scan start failed:d\n",param->scan_start_cmpl.status);}
-			break;		
-		}
-		case ESP_GAP_BLE_SCAN_RESULT_EVT:{
-			execScanFunc(param);
-			break;
-		}
-		case ESP_GAP_BLE_SCAN_STOP_COMPLETE_EVT:{
-			if (param->scan_stop_cmpl.status != ESP_BT_STATUS_SUCCESS){jsWarn("Scan stop failed");}
-			else {jsWarn("Stop scan successfully");}
-			break;		
-		}
-		default: break;
-	}
-}
-
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
 	jsWarnGapEvent(event);
-    switch (event) {
+  switch (event) {
 		case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:{
 			adv_config_done &= (~adv_config_flag);
 			if (adv_config_done == 0){
@@ -118,6 +78,7 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 			break;
 		}
 		case ESP_GAP_BLE_SCAN_RSP_DATA_SET_COMPLETE_EVT:{
+
 			adv_config_done &= (~scan_rsp_config_flag);
 			if (adv_config_done == 0){
 				esp_ble_gap_start_advertising(&adv_params);
@@ -140,32 +101,57 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 			break;
 		}
 		case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:{
-			jsWarn("update connetion params status = %d, min_int = %d, max_int = %d,conn_int = %d,latency = %d, timeout = %d",
+			/*jsWarn("update connection params: status = %d, min_int = %d, max_int = %d, conn_int = %d, latency = %d, timeout = %d",
                   param->update_conn_params.status,
                   param->update_conn_params.min_int,
                   param->update_conn_params.max_int,
                   param->update_conn_params.conn_int,
                   param->update_conn_params.latency,
-                  param->update_conn_params.timeout);
+                  param->update_conn_params.timeout);*/
 			break;
 		}
 		case ESP_GAP_BLE_SEC_REQ_EVT:{
 		    esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
 			break;
 		}
+		case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:   {
+        break;
+		}
+    case ESP_GAP_BLE_SCAN_START_COMPLETE_EVT:{
+      if (param->scan_start_cmpl.status != ESP_BT_STATUS_SUCCESS) {
+        jsWarn("Scan start failed:d\n",param->scan_start_cmpl.status);
+      }
+      break;
+    }
+    case ESP_GAP_BLE_SCAN_RESULT_EVT:{
+      BLEAdvReportData adv;
+      espbtaddr_TO_bleaddr(param->scan_rst.bda, param->scan_rst.ble_addr_type, &adv.peer_addr);
+      adv.rssi = param->scan_rst.rssi;
+      adv.dlen = param->scan_rst.adv_data_len;
+      if (adv.dlen > BLE_GAP_ADV_MAX_SIZE) adv.dlen = BLE_GAP_ADV_MAX_SIZE;
+      memcpy(adv.data, param->scan_rst.ble_adv, adv.dlen);
+      size_t len = sizeof(BLEAdvReportData) + adv.dlen - BLE_GAP_ADV_MAX_SIZE;
+      jsble_queue_pending_buf(BLEP_ADV_REPORT, 0, (char*)&adv, len);
+      break;
+    }
+    case ESP_GAP_BLE_SCAN_STOP_COMPLETE_EVT:{
+      if (param->scan_stop_cmpl.status != ESP_BT_STATUS_SUCCESS)
+        jsWarn("Scan stop failed");
+      break;
+    }
 		default:{
-			gap_event_scan_handler(event,param);
 			break;
 		}
     }
 }
 
-void bluetooth_gap_setScan(bool enable){
+void bluetooth_gap_setScan(bool enable, bool activeScan){
 	esp_err_t status;
+	ble_scan_params.scan_type = activeScan ? BLE_SCAN_TYPE_ACTIVE : BLE_SCAN_TYPE_PASSIVE;
 	status = esp_ble_gap_set_scan_params(&ble_scan_params);
 	if (status){ jsWarn("gap set scan error code = %x", status);return;}
 	if(enable == true){
-	  status = esp_ble_gap_start_scanning(30); 
+	  status = esp_ble_gap_start_scanning(0);
 	  if (status != ESP_OK) jsWarn("esp_ble_gap_start_scanning: rc=%d", status);
 	}
 	else{

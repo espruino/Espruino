@@ -240,6 +240,8 @@ elif board.chip["family"]=="ESP32":
 elif board.chip["family"]=="SAMD":
   board.chip["class"]="SAMD"
   codeOut('#include "targetlibs/samd/include/due_sam3x.init.h"')
+elif board.chip["family"]=="EMBED":
+  board.chip["class"]="EMBED"
 else:
   die('Unknown chip family '+board.chip["family"])
 
@@ -279,6 +281,8 @@ if variables==0:
   codeOut('#define RESIZABLE_JSVARS // Allocate variables in blocks using malloc - slow, and linux-only')
 else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
+  if LINUX:
+    codeOut("#define JSVAR_MALLOC 1")
 
 if LINUX:  
   codeOut("#define FLASH_START                     "+hex(0x10000000))
@@ -362,8 +366,11 @@ else:
 
 if 'util_timer_tasks' in board.info:
   bufferSizeTimer = board.info['util_timer_tasks']
+  
+if 'io_buffer_size' in board.info:
+  bufferSizeIO = board.info['io_buffer_size']
 
-codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255) amount of items in event buffer - events take 5 bytes each")
+codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 65535) amount of items in event buffer - events take 5 bytes each")
 codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255) amount of items in the transmit buffer - 2 bytes each")
 codeOut("#define UTILTIMERTASK_TASKS ("+str(bufferSizeTimer)+") // Must be power of 2 - and max 256")
 

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2.7
 
 # This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #
@@ -76,7 +76,7 @@ htmlFile = open('functions.html', 'w')
 def html(s): htmlFile.write(s+"\n");
 
 def htmlify(d,current):
-  d = markdown.markdown(d, extensions=['urlize'], tab_length=2)
+  d = markdown.markdown(d, extensions=['mdx_urlize'], tab_length=2)
   # replace <code> with newlines with pre
   idx = d.find("<code>")
   end = d.find("</code>", idx)
@@ -205,9 +205,15 @@ for jsondata in jsondatas:
   if not duplicate: unduplicatedjsondatas.append(jsondata)
 jsondatas = unduplicatedjsondatas
 
+title = ""
+if common.board:
+  title = common.board.info["name"]+" Software Reference"
+else:
+  title = "Espruino Software Reference"
+
 html("<html>")
 html(" <head>")
-html("  <title>Espruino Reference</title>")
+html("  <title>"+title+"</title>")
 html("  <style>")
 html("   body { font: 71%/1.5em  Verdana, 'Trebuchet MS', Arial, Sans-serif; color: #666666; }")
 html("   h1, h2, h3, h4 { color: #000000; margin-left: 0px; }")
@@ -259,7 +265,7 @@ html("    }")
 html("  }</script>")
 html(" </head>")
 html(" <body>")
-html("  <h1>Espruino Software Reference</h1>")
+html("  <h1>"+title+"</h1>")
 html("  <p style=\"text-align:right;\">Version "+common.get_version()+"</p>")
 
 if htmldev == True:

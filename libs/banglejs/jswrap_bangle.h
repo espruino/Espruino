@@ -20,6 +20,7 @@ void jswrap_banglejs_setLCDBrightness(JsVarFloat v);
 void jswrap_banglejs_setLCDMode(JsVar *mode);
 JsVar *jswrap_banglejs_getLCDMode();
 void jswrap_banglejs_setLCDOffset(int y);
+void jswrap_banglejs_setLCDOverlay(JsVar *imgVar, int x, int y);
 void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout);
 int jswrap_banglejs_isLCDOn();
 void jswrap_banglejs_setLocked(bool isLocked);
@@ -81,6 +82,11 @@ void jswrap_banglejs_kill();
 bool jswrap_banglejs_idle();
 bool jswrap_banglejs_gps_character(char ch);
 
+/* If we're busy and really don't want to be interrupted (eg clearing flash memory)
+ then we should *NOT* allow the home button to set EXEC_INTERRUPTED (which happens
+ if it was held, JSBT_RESET was set, and then 0.5s later it wasn't handled).
+ */
+void jswrap_banglejs_kickPollWatchdog();
 
 #ifdef EMULATED
 extern void touchHandlerInternal(int tx, int ty, int pts, int gesture);

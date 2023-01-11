@@ -185,6 +185,9 @@ bool graphicsSetCallbacks(JsGraphics *gfx);
 size_t graphicsGetMemoryRequired(const JsGraphics *gfx);
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y);
+// If graphics is flipped or rotated then the coordinates need modifying. This is to go back - eg for touchscreens
+void deviceToGraphicsCoordinates(const JsGraphics *gfx, int *x, int *y);
+
 unsigned short graphicsGetWidth(const JsGraphics *gfx);
 unsigned short graphicsGetHeight(const JsGraphics *gfx);
 // Set the area modified (inclusive of x2,y2) by a draw command and also clip to the screen/clipping bounds. Returns true if clipped

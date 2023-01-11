@@ -11,6 +11,9 @@
  * JavaScript Filesystem-style Flash IO functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_STORAGE_H_
+#define JSWRAP_STORAGE_H_
+
 #include "jsvar.h"
 
 #define WIFI_CONFIG_STORAGE_NAME ".wificfg"
@@ -28,6 +31,7 @@ JsVarInt jswrap_storage_hash(JsVar *regex);
 void jswrap_storage_debug();
 int jswrap_storage_getFree();
 JsVar *jswrap_storage_getStats();
+void jswrap_storage_optimise();
 
 JsVar *jswrap_storage_open(JsVar *name, JsVar *mode);
 JsVar *jswrap_storagefile_read(JsVar *f, int len);
@@ -35,3 +39,5 @@ JsVar *jswrap_storagefile_readLine(JsVar *f);
 int jswrap_storagefile_getLength(JsVar *f);
 void jswrap_storagefile_write(JsVar *parent, JsVar *_data);
 void jswrap_storagefile_erase(JsVar *f);
+
+#endif // JSWRAP_STORAGE_H_

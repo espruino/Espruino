@@ -39,7 +39,7 @@ typedef enum {
     JSV_ARRAY,           ///< A JavaScript Array Buffer - Implemented just like a String at the moment
     JSV_ARRAYBUFFER,     ///< An arraybuffer (see varData.arraybuffer)
     JSV_OBJECT,
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
     JSV_GET_SET,         ///< Getter/setter (an object with get/set fields)
 #endif
     JSV_FUNCTION,
@@ -49,9 +49,10 @@ typedef enum {
   _JSV_NUMERIC_START = JSV_INTEGER, ///< --------- Start of numeric variable types
     JSV_FLOAT       = JSV_INTEGER+1, ///< floating point double (note JSV_NUMERICMASK)
     JSV_BOOLEAN     = JSV_FLOAT+1, ///< boolean (note JSV_NUMERICMASK)
-    JSV_PIN         = JSV_BOOLEAN+1, ///< pin (note JSV_NUMERICMASK)
-
-    JSV_ARRAYBUFFERNAME = JSV_PIN+1, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
+#ifndef ESPR_EMBED
+    JSV_PIN,             ///< pin (note JSV_NUMERICMASK)
+#endif
+    JSV_ARRAYBUFFERNAME, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
   _JSV_NAME_START = JSV_ARRAYBUFFERNAME, ///< ---------- Start of NAMEs (names of variables, object fields/etc)
     JSV_NAME_INT    = JSV_ARRAYBUFFERNAME+1, ///< integer array/object index
   _JSV_NAME_INT_START = JSV_NAME_INT,
@@ -83,18 +84,20 @@ typedef enum {
     // _JSV_VAR_END is:
     //     39 on systems with 8 bit JsVarRefs
     //     43 on systems with 16 bit JsVarRefs
-    //     51 on systems with 32 bit JsVarRefs (more if on a 64 bit platform though)
+    //     51 on systems with 32 bit JsVarRefs
+    //     81 on a 64 bit platform
 
     JSV_VARTYPEMASK = NEXT_POWER_2(_JSV_VAR_END)-1, // probably this is 63
 
-    JSV_NATIVE      = JSV_VARTYPEMASK+1, ///< to specify if this is a function parameter
+    JSV_CONSTANT    = JSV_VARTYPEMASK+1, ///< to specify if this variable is a constant or not. Only used for NAMEs
+    JSV_NATIVE      = JSV_CONSTANT<<1, ///< to specify if this is a function parameter
     JSV_GARBAGE_COLLECT = JSV_NATIVE<<1, ///< When garbage collecting, this flag is true IF we should GC!
     JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
     JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
     JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
     JSV_LOCK_SHIFT  = GET_BIT_NUMBER(JSV_LOCK_ONE), ///< The amount of bits we must shift to get the number of locks - forced to be a constant
 
-    JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NATIVE, // if we're copying a variable, this is all the stuff we want to copy
+    JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NATIVE | JSV_CONSTANT, // if we're copying a variable, this is all the stuff we want to copy
 } PACKED_FLAGS JsVarFlags; // aiming to get this in 2 bytes!
 
 
@@ -137,16 +140,18 @@ typedef struct {
   uint16_t argTypes; ///< Actually a list of JsnArgumentType
 } PACKED_FLAGS JsVarDataNative;
 
+#if JSVARREF_SIZE==1
+typedef uint16_t JsVarDataNativeStrLength;
+#define JSV_NATIVE_STR_MAX_LENGTH 65535
+#else
+typedef uint32_t JsVarDataNativeStrLength;
+#define JSV_NATIVE_STR_MAX_LENGTH 0xFFFFFFFF
+#endif
+
 /// Data for native strings
 typedef struct {
   char *ptr;
-#if JSVARREF_SIZE==1
-  uint16_t len;
-#define JSV_NATIVE_STR_MAX_LENGTH 65535
-#else
-  uint32_t len;
-#define JSV_NATIVE_STR_MAX_LENGTH 0xFFFFFFFF
-#endif
+  JsVarDataNativeStrLength len;
 } PACKED_FLAGS JsVarDataNativeStr;
 
 /// References
@@ -197,13 +202,13 @@ typedef union {
     JsVarFloat floating; ///< The contents of this variable if it is a double
     JsVarDataArrayBufferView arraybuffer; ///< information for array buffer views.
     JsVarDataNative native; ///< A native function
-    JsVarDataNativeStr nativeStr; ///< A native string
+    JsVarDataNativeStr nativeStr; ///< A native string (or flash string)
     JsVarDataRef ref; ///< References
 } PACKED_FLAGS JsVarData;
 
 
 
-typedef struct {
+typedef struct JsVarStruct {
   /** The actual variable data, as well as references (see below). Put first so word aligned */
   JsVarData varData;
 
@@ -231,15 +236,16 @@ typedef struct {
  sizeof(JsVar) is between 10 and 16bytes depending on JSVARREF_BITS. As an example, for a 16 byte JsVar:
 
 
- | Offset  | Size | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER |
- |---------|------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|
- | 0 - 3   | 4    | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        |
- | 4 - 5  | ?    | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
- | 6 - 7  | ?    | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
- | 8 - 9  | ?    | first   | data   | data     |  child   | child    |  -   | data?   | first          | stringPtr   |
- | 10-11  | ?    | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
- | 12-13  | ?    | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |
- | 14-15  | 2    | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       |
+ | Offset | Size | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER | NATIVE_STR | FLAT_STR |
+ |        |      |         |        |          |          |          |      |         |                |             | FLASH_STR  |          |
+ |--------|------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|------------|----------|
+ | 0 - 3  | 4    | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        | ptr        | charLen  |
+ | 4 - 5  | ?    | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      | len        | -        |
+ | 6 - 7  | ?    | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      | ..len      | -        |
+ | 8 - 9  | ?    | first   | data   | data     |  child   | child    |  -   | data?   | first          | stringPtr   | -          | -        |
+ | 10-11  | ?    | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        | refs       | refs     |
+ | 12-13  | ?    | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           | -          | -        |
+ | 14-15  | 2    | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       | Flags      | Flags    |
 
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
@@ -298,7 +304,6 @@ JsVar *jsvNewFromBool(bool value);
 JsVar *jsvNewFromFloat(JsVarFloat value);
 /// Create an integer (or float) from this value, depending on whether it'll fit in 32 bits or not.
 JsVar *jsvNewFromLongInteger(long long value);
-JsVar *jsvNewFromPin(int pin);
 JsVar *jsvNewObject(); ///< Create a new object
 JsVar *jsvNewEmptyArray(); ///< Create a new array
 JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array containing the given elements
@@ -309,6 +314,11 @@ JsVar *jsvNewNativeString(char *ptr, size_t len); ///< Create a Native String po
 JsVar *jsvNewFlashString(char *ptr, size_t len); ///< Create a Flash String pointing to the given memory area
 #endif
 JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
+
+#ifndef ESPR_EMBED
+JsVar *jsvNewFromPin(int pin);
+#endif
+
 
 /// Turns var into a Variable name that links to the given value... No locking so no need to unlock var
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
@@ -373,6 +383,7 @@ bool jsvIsBasicString(const JsVar *v); ///< Just a string (NOT a name)
 bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
 bool jsvIsFlatString(const JsVar *v);
 bool jsvIsNativeString(const JsVar *v);
+bool jsvIsConstant(const JsVar *v);
 bool jsvIsFlashString(const JsVar *v);
 bool jsvIsNumeric(const JsVar *v);
 bool jsvIsFunction(const JsVar *v);
@@ -385,6 +396,7 @@ bool jsvIsArrayBufferName(const JsVar *v);
 bool jsvIsNativeFunction(const JsVar *v);
 bool jsvIsUndefined(const JsVar *v);
 bool jsvIsNull(const JsVar *v);
+bool jsvIsNullish(const JsVar *v);
 bool jsvIsBasic(const JsVar *v); ///< Is this *not* an array/object/etc
 bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
 bool jsvIsBasicName(const JsVar *v); ///< Simple NAME that links to a variable via firstChild
@@ -412,9 +424,6 @@ bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint);
  * and makes the assertion that int_to_string(string_to_int(var))==var */
 bool jsvIsStringNumericStrict(const JsVar *var);
 
-/// See jsvIsNewChild - for fields that don't exist yet
-JsVar *jsvCreateNewChild(JsVar *parent, JsVar *index, JsVar *child);
-
 // TODO: maybe isName shouldn't include ArrayBufferName?
 bool jsvHasCharacterData(const JsVar *v); ///< does the v->data union contain character data?
 bool jsvHasStringExt(const JsVar *v);
@@ -422,6 +431,9 @@ bool jsvHasStringExt(const JsVar *v);
 bool jsvHasChildren(const JsVar *v);
 /// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
 bool jsvHasSingleChild(const JsVar *v);
+
+/// See jsvIsNewChild - for fields that don't exist yet
+JsVar *jsvCreateNewChild(JsVar *parent, JsVar *index, JsVar *child);
 
 /// Does this variable have a 'ref' argument? Stringexts use it for extra character data
 static ALWAYS_INLINE bool jsvHasRef(const JsVar *v) { return !jsvIsStringExt(v); }
@@ -503,8 +515,8 @@ JsVarFloat jsvGetFloat(const JsVar *v); ///< Get the floating point representati
 bool jsvGetBool(const JsVar *v);
 long long jsvGetLongInteger(const JsVar *v);
 JsVar *jsvAsNumber(JsVar *var); ///< Convert the given variable to a number
+JsVar *jsvAsNumberAndUnLock(JsVar *v); ///< Convert the given variable to a number, unlock v after
 
-static ALWAYS_INLINE JsVar *jsvAsNumberAndUnLock(JsVar *v) { JsVar *n = jsvAsNumber(v); jsvUnLock(v); return n; }
 static ALWAYS_INLINE JsVarInt _jsvGetIntegerAndUnLock(JsVar *v) { JsVarInt i = jsvGetInteger(v); jsvUnLock(v); return i; }
 static ALWAYS_INLINE JsVarFloat _jsvGetFloatAndUnLock(JsVar *v) { JsVarFloat f = jsvGetFloat(v); jsvUnLock(v); return f; }
 static ALWAYS_INLINE bool _jsvGetBoolAndUnLock(JsVar *v) { bool b = jsvGetBool(v); jsvUnLock(v); return b; }
@@ -513,7 +525,7 @@ JsVarFloat jsvGetFloatAndUnLock(JsVar *v);
 bool jsvGetBoolAndUnLock(JsVar *v);
 long long jsvGetLongIntegerAndUnLock(JsVar *v);
 
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
 // Executes the given getter, or if there are problems returns undefined
 JsVar *jsvExecuteGetter(JsVar *parent, JsVar *getset);
 // Executes the given setter
@@ -728,10 +740,8 @@ bool jsvIsInstanceOf(JsVar *var, const char *constructorName);
 /// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
 
-#ifndef NO_DATAVIEW
 /// Create a new DataView of the given length (in elements), and fill it with the given data (if set)
 JsVar *jsvNewDataViewWithData(JsVarInt length, unsigned char *data);
-#endif
 
 /** Create a new arraybuffer of the given type and length, also return a pointer
  * to the contiguous memory area containing it. Returns 0 if it was unable to
@@ -774,3 +784,8 @@ void jsvFree(void *ptr);
   }
 
 #endif /* JSVAR_H_ */
+
+#if defined(JSVAR_MALLOC) && defined(ESPR_EMBED)
+extern unsigned int jsVarsSize;
+extern JsVar *jsVars;
+#endif

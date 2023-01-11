@@ -12,6 +12,9 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifndef JSSPI_H_
+#define JSSPI_H_
+
 #include "jshardware.h"
 
 typedef JshSPIInfo spi_sender_data; // the larger of JshSPIInfo or IOEventFlags
@@ -41,3 +44,5 @@ void jsspiSend4bit(IOEventFlags device, unsigned char data, int bit0, int bit1);
 
 /// Send 8 bits, but with a byte for each bit - used by jswrap_spi_send8bit. Expects SPI in 16 bit mode
 void jsspiSend8bit(IOEventFlags device, unsigned char data, int bit0, int bit1);
+
+#endif // JSSPI_H_

@@ -35,13 +35,20 @@
   "type" : "library",
   "class" : "fs"
 }
-This library handles interfacing with a FAT32 filesystem on an SD card. The API is designed to be similar to node.js's - However Espruino does not currently support asynchronous file IO, so the functions behave like node.js's xxxxSync functions. Versions of the functions with 'Sync' after them are also provided for compatibility.
+This library handles interfacing with a FAT32 filesystem on an SD card. The API
+is designed to be similar to node.js's - However Espruino does not currently
+support asynchronous file IO, so the functions behave like node.js's xxxxSync
+functions. Versions of the functions with 'Sync' after them are also provided
+for compatibility.
 
-To use this, you must type ```var fs = require('fs')``` to get access to the library
+To use this, you must type ```var fs = require('fs')``` to get access to the
+library
 
-See [the page on File IO](http://www.espruino.com/File+IO) for more information, and for examples on wiring up an SD card if your device doesn't come with one.
+See [the page on File IO](http://www.espruino.com/File+IO) for more information,
+and for examples on wiring up an SD card if your device doesn't come with one.
 
-**Note:** If you want to remove an SD card after you have started using it, you *must* call `E.unmountSD()` or you may cause damage to the card.
+**Note:** If you want to remove an SD card after you have started using it, you
+*must* call `E.unmountSD()` or you may cause damage to the card.
 */
 
 #ifndef LINUX
@@ -78,7 +85,8 @@ extern void jsfsReportError(const char *msg, FRESULT res);
 }
 List all files in the supplied directory, returning them as an array of strings.
 
-NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+NOTE: Espruino does not yet support Async file IO, so this function behaves like
+the 'Sync' version.
 */
 /*JSON{
   "type" : "staticmethod",
@@ -160,7 +168,8 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
 }
 Write the data to the given file
 
-NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+NOTE: Espruino does not yet support Async file IO, so this function behaves like
+the 'Sync' version.
 */
 /*JSON{
   "type" : "staticmethod",
@@ -189,7 +198,8 @@ Write the data to the given file
 }
 Append the data to the given file, created a new file if it doesn't exist
 
-NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+NOTE: Espruino does not yet support Async file IO, so this function behaves like
+the 'Sync' version.
 */
 /*JSON{
   "type" : "staticmethod",
@@ -229,7 +239,8 @@ bool jswrap_fs_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
 }
 Read all data from a file and return as a string
 
-NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+NOTE: Espruino does not yet support Async file IO, so this function behaves like
+the 'Sync' version.
 */
 /*JSON{
   "type" : "staticmethod",
@@ -244,7 +255,8 @@ NOTE: Espruino does not yet support Async file IO, so this function behaves like
 }
 Read all data from a file and return as a string.
 
-**Note:** The size of files you can load using this method is limited by the amount of available RAM. To read files a bit at a time, see the `File` class.
+**Note:** The size of files you can load using this method is limited by the
+amount of available RAM. To read files a bit at a time, see the `File` class.
 */
 JsVar *jswrap_fs_readFile(JsVar *path) {
   JsVar *fMode = jsvNewFromString("r");
@@ -270,7 +282,8 @@ JsVar *jswrap_fs_readFile(JsVar *path) {
 }
 Delete the given file
 
-NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+NOTE: Espruino does not yet support Async file IO, so this function behaves like
+the 'Sync' version.
 */
 /*JSON{
   "type" : "staticmethod",
@@ -320,8 +333,7 @@ bool jswrap_fs_unlink(JsVar *path) {
 Return information on the given file. This returns an object with the following
 fields:
 
-size: size in bytes
-dir: a boolean specifying if the file is a directory or not
+size: size in bytes dir: a boolean specifying if the file is a directory or not
 mtime: A Date structure specifying the time the file was last modified
 */
 JsVar *jswrap_fs_stat(JsVar *path) {
@@ -351,7 +363,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
       td.min = (int)((info.ftime>>5)&63);
       td.sec = (int)((info.ftime)&63);
       td.ms = 0;
-      td.zone = jsdGetTimeZone();  // TomWS: add adjustment for timezone offset introduced in date_from_milliseconds 
+      setCorrectTimeZone(&td);  // TomWS: add adjustment for timezone offset introduced in date_from_milliseconds 
       jsvObjectSetChildAndUnLock(obj, "mtime", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
       return obj;
     }
@@ -384,7 +396,8 @@ JsVar *jswrap_fs_stat(JsVar *path) {
 }
 Create the directory
 
-NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+NOTE: Espruino does not yet support Async file IO, so this function behaves like
+the 'Sync' version.
 */
 /*JSON{
   "type" : "staticmethod",

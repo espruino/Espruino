@@ -1,4 +1,5 @@
 var history = [324,64,6473,3754,7543];
+var LCD = {width:320};
 
 function draw() {
   var lastx = 0;

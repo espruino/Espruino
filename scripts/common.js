@@ -25,7 +25,7 @@ Builtin.prototype.getDescription = function() {
 };
 
 Builtin.prototype.getURL = function() {
-  if (this.type == "class")
+  if (this.type == "class" || this.type == "library")
     anchor = this.class;
   else if ("class" in this)
     anchor = "l_"+this.class+"_"+this.name;
@@ -79,28 +79,53 @@ exports.getWrapperFiles = function (callback) {
 exports.readWrapperFile = function(filename) {
   var contents = fs.readFileSync(filename).toString();
   var builtins = [];
+  var types = [];
   var comments = contents.match( /\/\*JSON(?:(?!\*\/).|[\n\r])*\*\//g );
   if (comments) comments.forEach(function(comment) {
     comment = comment.slice(6,-2); // pull off /*JSON ... */ bit
     var endOfJson = comment.indexOf("\n}")+2;
     var json = comment.substr(0,endOfJson);
     var description =  comment.substr(endOfJson).trim();
-    var j = new Builtin(JSON.parse(json));
-    if (description.length) j.description = description;
-    j.implementation = filename;
-    builtins.push(j);
+    try {
+      var j = new Builtin(JSON.parse(json));
+      if (description.length) j.description = description;
+      j.implementation = filename;
+      builtins.push(j);
+    } catch(e) {
+      console.log("Error in ", filename);
+      console.log(json);
+      console.log(e);
+    }
   });
-  return builtins;
+  var comments = contents.match( /\/\*TYPESCRIPT(?:(?!\*\/).|[\n\r])*\*\//g );
+  if (comments) comments.forEach(function(comment) {
+    comment = comment.slice(12,-2);
+    var j = {};
+    var declaration = comment;
+    if (comment[0] === "{") {
+      var endOfJson = comment.indexOf("\n}")+2;
+      var json = comment.substr(0,endOfJson);
+      j = new Builtin(JSON.parse(json));
+      declaration =  comment.substr(endOfJson).trim();
+    }
+    j.declaration = declaration;
+    j.implementation = filename;
+    types.push(j);
+  });
+  return [builtins, types];
 }
 
 /// Extract all parsed /*JSON ... */ comments from all files
 exports.readAllWrapperFiles = function(callback) {
   exports.getWrapperFiles(function(files) {
     var builtins = [];
+    var types = [];
     files.forEach(function(filename) {
-      builtins = builtins.concat(exports.readWrapperFile(filename));
+      var [b, t] = exports.readWrapperFile(filename);
+      builtins = builtins.concat(b);
+      types = types.concat(t);
     });
-    callback(builtins);
+    callback(builtins, types);
   });
 }
 

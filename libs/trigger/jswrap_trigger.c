@@ -22,7 +22,11 @@
   "type" : "class",
   "class" : "Trig"
 }
-This class exists in order to interface Espruino with fast-moving trigger wheels. Trigger wheels are physical discs with evenly spaced teeth cut into them, and often with one or two teeth next to each other missing. A sensor sends a signal whenever a tooth passed by, and this allows a device to measure not only RPM, but absolute position.
+This class exists in order to interface Espruino with fast-moving trigger
+wheels. Trigger wheels are physical discs with evenly spaced teeth cut into
+them, and often with one or two teeth next to each other missing. A sensor sends
+a signal whenever a tooth passed by, and this allows a device to measure not
+only RPM, but absolute position.
 
 This class is currently in testing - it is NOT AVAILABLE on normal boards.
 */
@@ -102,9 +106,9 @@ void jswrap_trig_setup(Pin pin, JsVar *options) {
   trig->wrongTriggerTeeth = 0;
   // finally set up the watch!
   if (jshIsPinValid(trig->sensorPin))
-    jshPinWatch(trig->sensorPin, false);
+    jshPinWatch(trig->sensorPin, false, JSPW_NONE);
   trig->sensorPin = pin;
-  jshPinWatch(trig->sensorPin, true);
+  jshPinWatch(trig->sensorPin, true, JSPW_HIGH_SPEED);
 }
 
 /*JSON{

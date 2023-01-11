@@ -45,22 +45,7 @@
 #include "dfu_status.h"
 #endif
 
-
-#ifdef LED3_PININDEX
-#define UPDATE_IN_PROGRESS_LED          LED3_PININDEX                                            /**< Led used to indicate that DFU is active. */
-#define UPDATE_IN_PROGRESS_LED_ONSTATE  LED3_ONSTATE                                            /**< Led used to indicate that DFU is active. */
-#else
-#define UPDATE_IN_PROGRESS_LED          LED1_PININDEX                                            /**< Led used to indicate that DFU is active. */
-#define UPDATE_IN_PROGRESS_LED_ONSTATE  LED1_ONSTATE                                            /**< Led used to indicate that DFU is active. */
-#endif
-#if defined(LED2_PININDEX) && !defined(LED2_NO_BOOTLOADER)
-#define BOOTLOADER_BUTTON_PRESS_LED          LED2_PININDEX                                            /**< Led used to indicate that DFU is active. */
-#define BOOTLOADER_BUTTON_PRESS_LED_ONSTATE  LED2_ONSTATE                                            /**< Led used to indicate that DFU is active. */
-#else
-#define BOOTLOADER_BUTTON_PRESS_LED          LED1_PININDEX                                            /**< Led used to indicate that DFU is active. */
-#define BOOTLOADER_BUTTON_PRESS_LED_ONSTATE  LED1_ONSTATE                                            /**< Led used to indicate that DFU is active. */
-#endif
-// Other LED is set in targetlibs/nrf5x/nrf5_sdk/components/libraries/bootloader_dfu/dfu_transport_ble.c (currently LED1)
+// LEDs to use are defined in set_led_state in hardware.h
 
 /// Set up when DFU is connected to
 static bool dfuIsConnected = false;
@@ -92,7 +77,7 @@ void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t
 
 void turn_off() {
   lcd_kill();
-#ifdef SPIFLASH_SLEEP_CMD  
+#if defined(SPIFLASH_SLEEP_CMD) && defined(ESPR_BOOTLOADER_SPIFLASH)
   flashPowerDown();  // Put the SPI Flash into deep power-down
 #endif  
 #ifdef VIBRATE_PIN

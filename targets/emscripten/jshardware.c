@@ -147,9 +147,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   return JSH_NOTHING;
 }
 
-void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
-}
-
 bool jshCanWatch(Pin pin) {
   return true;
 }
@@ -161,7 +158,7 @@ IOEventFlags jshGetEventFlagsForPin(Pin pin) {
   return EV_NONE;
 }
 
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   if (shouldWatch)
     for (int i=0;i<16;i++)
       if (eventFlagsToPin[i]==PIN_UNDEFINED) {
@@ -275,8 +272,9 @@ void jshFlashErasePage(uint32_t addr) {
   uint32_t startAddr;
   uint32_t pageSize;
   if (jshFlashGetPage(addr, &startAddr, &pageSize)) {
-    for (uint32_t i=0;i<pageSize;i++)
-      EM_ASM_({ hwFlashWrite($0,0xFF); }, startAddr+i-FLASH_START);
+    char ff[FAKE_FLASH_BLOCKSIZE];
+    memset(ff,0xFF,FAKE_FLASH_BLOCKSIZE);
+    EM_ASM_({ hwFlashWritePtr($0,$1,$2); }, startAddr-FLASH_START, ff, pageSize );
   }
 #endif
 }
@@ -290,8 +288,7 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   if (addr<FLASH_START) return;
 #ifdef EMSCRIPTEN
-  for (uint32_t i=0;i<len;i++)
-    EM_ASM_({ hwFlashWrite($0,$1); }, addr+i-FLASH_START, ((uint8_t*)buf)[i]);
+  EM_ASM_({ hwFlashWritePtr($0,$1,$2); }, addr-FLASH_START, (uint8_t*)buf, len);
 #endif
 }
 

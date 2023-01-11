@@ -11,6 +11,9 @@
  * JavaScript methods for Arrays
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_ARRAY_H_
+#define JSWRAP_ARRAY_H_
+
 #include "jsvar.h"
 
 JsVar *jswrap_array_constructor(JsVar *args);
@@ -35,3 +38,5 @@ JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn);
 JsVar *jswrap_array_concat(JsVar *parent, JsVar *args);
 JsVar *jswrap_array_fill(JsVar *parent, JsVar *value, JsVarInt start, JsVar *endVar);
 JsVar *jswrap_array_reverse(JsVar *parent);
+
+#endif // JSWRAP_ARRAY_H_

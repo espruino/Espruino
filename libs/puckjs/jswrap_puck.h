@@ -19,12 +19,17 @@ typedef enum {
   PUCKJS_1V0, // MAG3110 magnetometer
   PUCKJS_2V0, // LIS3MDLTR magnetometer, LSM6DS3TR-C accel/gyro, PCT2075TP temperature
   PUCKJS_2V1, // MMC5603NJ magnetometer, LSM6DS3TR-C accel/gyro, PCT2075TP temperature
+  PUCKJS_LITE_1V0, // R+G LED
 } PuckVersion;
 
 PuckVersion puckVersion;
 
-#define PUCKJS_HAS_ACCEL (puckVersion==PUCKJS_2V0 || puckVersion==PUCKJS_2V1)
+#define PUCKJS_HAS_LED3 (puckVersion==PUCKJS_1V0 || puckVersion==PUCKJS_2V0 || puckVersion==PUCKJS_2V1)
+#define PUCKJS_HAS_MAG (puckVersion==PUCKJS_1V0 || puckVersion==PUCKJS_2V0 || puckVersion==PUCKJS_2V1)
+#define PUCKJS_HAS_IR (puckVersion==PUCKJS_1V0 || puckVersion==PUCKJS_2V0 || puckVersion==PUCKJS_2V1)
 #define PUCKJS_HAS_IR_FET (puckVersion==PUCKJS_2V0 || puckVersion==PUCKJS_2V1)
+#define PUCKJS_HAS_CAPSENSE (puckVersion==PUCKJS_1V0 || puckVersion==PUCKJS_2V0 || puckVersion==PUCKJS_2V1)
+#define PUCKJS_HAS_ACCEL (puckVersion==PUCKJS_2V0 || puckVersion==PUCKJS_2V1)
 #define PUCKJS_HAS_TEMP_SENSOR (puckVersion==PUCKJS_2V0 || puckVersion==PUCKJS_2V1)
 
 JsVar *jswrap_puck_getHardwareVersion();

@@ -11,6 +11,11 @@
  * JavaScript methods and functions in the global namespace
  * ----------------------------------------------------------------------------
  */
+
+#ifndef JSWRAP_ARRAYBUFFER_H_
+#define JSWRAP_ARRAYBUFFER_H_
+
+
 #include "jsvar.h"
 
 JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength);
@@ -19,3 +24,5 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset);
 JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar);
 JsVar *jswrap_arraybufferview_subarray(JsVar *parent, JsVarInt begin, JsVar *endVar);
 JsVar *jswrap_arraybufferview_sort(JsVar *array, JsVar *compareFn);
+
+#endif // JSWRAP_ARRAYBUFFER_H_

@@ -25,22 +25,24 @@
   "ifndef" : "SAVE_ON_FLASH"
 }
 
-This module allows you to read and write the nonvolatile flash memory of your device.
+This module allows you to read and write the nonvolatile flash memory of your
+device.
 
-Also see the `Storage` library, which provides a safer file-like
-interface to nonvolatile storage.
+Also see the `Storage` library, which provides a safer file-like interface to
+nonvolatile storage.
 
-It should be used with extreme caution, as it is easy to overwrite parts of Flash
-memory belonging to Espruino or even its bootloader. If you damage the bootloader
-then you may need external hardware such as a USB-TTL converter to restore it. For
-more information on restoring the bootloader see `Advanced Reflashing` in your
-board's reference pages.
+It should be used with extreme caution, as it is easy to overwrite parts of
+Flash memory belonging to Espruino or even its bootloader. If you damage the
+bootloader then you may need external hardware such as a USB-TTL converter to
+restore it. For more information on restoring the bootloader see `Advanced
+Reflashing` in your board's reference pages.
 
 To see which areas of memory you can and can't overwrite, look at the values
 reported by `process.memory()`.
 
 **Note:** On Nordic platforms there are checks in place to help you avoid
-'bricking' your device be damaging the bootloader. You can disable these with `E.setFlags({unsafeFlash:1})`
+'bricking' your device be damaging the bootloader. You can disable these with
+`E.setFlags({unsafeFlash:1})`
  */
 
 /*JSON{
@@ -75,12 +77,13 @@ JsVar *jswrap_flash_getPage(int addr) {
   "generate" : "jswrap_flash_getFree",
   "return"   : ["JsVar", "Array of objects with `addr` and `length` properties"]
 }
-This method returns an array of objects of the form `{addr : #, length : #}`, representing
-contiguous areas of flash memory in the chip that are not used for anything.
+This method returns an array of objects of the form `{addr : #, length : #}`,
+representing contiguous areas of flash memory in the chip that are not used for
+anything.
 
-The memory areas returned are on page boundaries. This means that you can
-safely erase the page containing any address here, and you won't risk
-deleting part of the Espruino firmware.
+The memory areas returned are on page boundaries. This means that you can safely
+erase the page containing any address here, and you won't risk deleting part of
+the Espruino firmware.
 */
 JsVar *jswrap_flash_getFree() {
   JsVar *arr = jshFlashGetFree();
@@ -123,8 +126,8 @@ Write data into memory at the given address
 
 In flash memory you may only turn bits that are 1 into bits that are 0. If
 you're writing data into an area that you have already written (so `read`
-doesn't return all `0xFF`) you'll need to call `erasePage` to clear the
-entire page.
+doesn't return all `0xFF`) you'll need to call `erasePage` to clear the entire
+page.
  */
 void jswrap_flash_write(JsVar *data, int addr) {
   if (jsvIsUndefined(data)) {

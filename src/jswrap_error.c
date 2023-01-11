@@ -44,8 +44,8 @@ The base class for internal errors
   "type" : "class",
   "class" : "ReferenceError"
 }
-The base class for reference errors - where a variable
-which doesn't exist has been accessed.
+The base class for reference errors - where a variable which doesn't exist has
+been accessed.
  */
 
 JsVar *_jswrap_error_constructor(JsVar *msg, char *type) {
@@ -69,7 +69,8 @@ JsVar *_jswrap_error_constructor(JsVar *msg, char *type) {
   "params" : [
     ["message","JsVar","An optional message string"]
   ],
-  "return" : ["JsVar","An Error object"]
+  "return" : ["JsVar","An Error object"],
+  "typescript" : "new(message?: string): Error;"
 }
 Creates an Error object
  */
@@ -84,7 +85,8 @@ JsVar *jswrap_error_constructor(JsVar *msg) {
   "params" : [
     ["message","JsVar","An optional message string"]
   ],
-  "return" : ["JsVar","A SyntaxError object"]
+  "return" : ["JsVar","A SyntaxError object"],
+  "typescript" : "new(message?: string): SyntaxError;"
 }
 Creates a SyntaxError object
  */
@@ -99,7 +101,8 @@ JsVar *jswrap_syntaxerror_constructor(JsVar *msg) {
   "params" : [
     ["message","JsVar","An optional message string"]
   ],
-  "return" : ["JsVar","A TypeError object"]
+  "return" : ["JsVar","A TypeError object"],
+  "typescript" : "new(message?: string): TypeError;"
 }
 Creates a TypeError object
  */
@@ -114,7 +117,8 @@ JsVar *jswrap_typeerror_constructor(JsVar *msg) {
   "params" : [
     ["message","JsVar","An optional message string"]
   ],
-  "return" : ["JsVar","An InternalError object"]
+  "return" : ["JsVar","An InternalError object"],
+  "typescript" : "new(message?: string): InternalError;"
 }
 Creates an InternalError object
  */
@@ -130,7 +134,8 @@ JsVar *jswrap_internalerror_constructor(JsVar *msg) {
   "params" : [
     ["message","JsVar","An optional message string"]
   ],
-  "return" : ["JsVar","A ReferenceError object"]
+  "return" : ["JsVar","A ReferenceError object"],
+  "typescript" : "new(message?: string): ReferenceError;"
 }
 Creates a ReferenceError object
  */
@@ -143,35 +148,40 @@ JsVar *jswrap_referenceerror_constructor(JsVar *msg) {
   "class" : "Error",
   "name" : "toString",
   "generate" : "jswrap_error_toString",
-  "return" : ["JsVar","A String"]
+  "return" : ["JsVar","A String"],
+  "typescript" : "toString(): string;"
 }*/
 /*JSON{
   "type" : "method",
   "class" : "SyntaxError",
   "name" : "toString",
   "generate" : "jswrap_error_toString",
-  "return" : ["JsVar","A String"]
+  "return" : ["JsVar","A String"],
+  "typescript" : "toString(): string;"
 }*/
 /*JSON{
   "type" : "method",
   "class" : "TypeError",
   "name" : "toString",
   "generate" : "jswrap_error_toString",
-  "return" : ["JsVar","A String"]
+  "return" : ["JsVar","A String"],
+  "typescript" : "toString(): string;"
 }*/
 /*JSON{
   "type" : "method",
   "class" : "InternalError",
   "name" : "toString",
   "generate" : "jswrap_error_toString",
-  "return" : ["JsVar","A String"]
+  "return" : ["JsVar","A String"],
+  "typescript" : "toString(): string;"
 }*/
 /*JSON{
   "type" : "method",
   "class" : "ReferenceError",
   "name" : "toString",
   "generate" : "jswrap_error_toString",
-  "return" : ["JsVar","A String"]
+  "return" : ["JsVar","A String"],
+  "typescript" : "toString(): string;"
 }*/
 JsVar *jswrap_error_toString(JsVar *parent) {
   JsVar *str = jsvObjectGetChild(parent, "type", 0);

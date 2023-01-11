@@ -23,6 +23,10 @@ import importlib;
 # Local
 import pinutils;
 
+# Exported - this is set if a board is specified on the command-line
+board = False
+
+
 silent = os.getenv("SILENT");
 if silent:
   class Discarder(object):
@@ -48,6 +52,8 @@ if "check_output" not in dir( subprocess ):
             raise subprocess.CalledProcessError(retcode, cmd)
         return output
     subprocess.check_output = f
+
+#
 
 
 # Scans files for comments of the form /*JSON......*/
@@ -95,8 +101,9 @@ if "check_output" not in dir( subprocess ):
 # COMMAND LINE OPTIONS
 # -Ddefinition
 # -BBOARDFILE
-
-def get_jsondata(is_for_document, parseArgs = True, board = False):
+def get_jsondata(is_for_document, parseArgs = True, boardObject = False):
+    global board # use the board object defined above
+    board = boardObject
     scriptdir = os.path.dirname	(os.path.realpath(__file__))
     print("Script location "+scriptdir)
     os.chdir(scriptdir+"/..")
@@ -161,6 +168,9 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
     if len(defines)>1:
       print("Got #DEFINES:")
       for d in defines: print("   "+d)
+      
+    githash = get_git_hash()
+    if len(githash)==0: githash="master"
 
     jsondatas = []
     for jswrap in jswraps:
@@ -191,7 +201,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
           jsondata["filename"] = jswrap
           if jswrap[-2:]==".c":
             jsondata["include"] = jswrap[:-2]+".h"
-          jsondata["githublink"] = "https://github.com/espruino/Espruino/blob/master/"+jswrap+"#L"+str(linenumber)
+          jsondata["githublink"] = "https://github.com/espruino/Espruino/blob/"+githash+"/"+jswrap+"#L"+str(linenumber)
 
           dropped_prefix = "Dropped "
           if "name" in jsondata: dropped_prefix += jsondata["name"]+" "
@@ -249,9 +259,11 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
             jsondatas.append(jsondata)
         except ValueError as e:
           sys.stderr.write( "JSON PARSE FAILED for " +  jsonstring + " - "+ str(e) + "\n")
+          print(''.join(traceback.format_exception(None, exc_obj, exc_obj.__traceback__)))          
           exit(1)
-        except:
-          sys.stderr.write( "JSON PARSE FAILED for " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
+        except Exception as e:
+          sys.stderr.write( "JSON PARSE FAILED for " + jsonstring + " - "+str(e) + "\n" )
+          print(''.join(traceback.format_exception(None, exc_obj, exc_obj.__traceback__)))
           exit(1)
     print("Scanning finished.")
 
@@ -452,6 +464,9 @@ def get_ifdef_description(d):
 
 def get_script_dir():
         return os.path.dirname(os.path.realpath(__file__))
+
+def get_git_hash():
+        return subprocess.check_output('git log -1 --format="%h"', shell=True).strip().decode("utf-8")
 
 def get_version():
         # Warning: the same release label derivation is also in the Makefile

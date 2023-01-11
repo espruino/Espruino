@@ -29,7 +29,8 @@
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Waveform"
 }
-This class handles waveforms. In Espruino, a Waveform is a set of data that you want to input or output.
+This class handles waveforms. In Espruino, a Waveform is a set of data that you
+want to input or output.
  */
 
 static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber, bool *is16Bit) {
@@ -145,9 +146,13 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
   ],
   "return" : ["JsVar","An Waveform object"]
 }
-Create a waveform class. This allows high speed input and output of waveforms. It has an internal variable called `buffer` (as well as `buffer2` when double-buffered - see `options` below) which contains the data to input/output.
+Create a waveform class. This allows high speed input and output of waveforms.
+It has an internal variable called `buffer` (as well as `buffer2` when
+double-buffered - see `options` below) which contains the data to input/output.
 
-When double-buffered, a 'buffer' event will be emitted each time a buffer is finished with (the argument is that buffer). When the recording stops, a 'finish' event will be emitted (with the first argument as the buffer).
+When double-buffered, a 'buffer' event will be emitted each time a buffer is
+finished with (the argument is that buffer). When the recording stops, a
+'finish' event will be emitted (with the first argument as the buffer).
  */
 JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
   if (samples<=0) {
@@ -202,12 +207,12 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
     return;
   }
 
-  JsSysTime startTime = jshGetSystemTime();
+  JsSysTime startTime = 0;
   bool repeat = false;
   if (jsvIsObject(options)) {
     JsVarFloat t = jsvGetFloatAndUnLock(jsvObjectGetChild(options, "time", 0));
     if (isfinite(t) && t>0)
-      startTime = jshGetTimeFromMilliseconds(t*1000);
+      startTime = jshGetTimeFromMilliseconds(t*1000) - jshGetSystemTime();
     repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "repeat", 0));
   } else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
@@ -253,7 +258,9 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
     ["options","JsVar","Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"]
   ]
 }
-Will start outputting the waveform on the given pin - the pin must have previously been initialised with analogWrite. If not repeating, it'll emit a `finish` event when it is done.
+Will start outputting the waveform on the given pin - the pin must have
+previously been initialised with analogWrite. If not repeating, it'll emit a
+`finish` event when it is done.
  */
 void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options) {
   jswrap_waveform_start(waveform, pin, freq, options, true/*write*/);
@@ -271,7 +278,8 @@ void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVa
     ["options","JsVar","Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"]
   ]
 }
-Will start inputting the waveform on the given pin that supports analog. If not repeating, it'll emit a `finish` event when it is done.
+Will start inputting the waveform on the given pin that supports analog. If not
+repeating, it'll emit a `finish` event when it is done.
  */
 void jswrap_waveform_startInput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options) {
   // Setup analog, and also bail out on failure

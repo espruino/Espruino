@@ -42,7 +42,11 @@ static JsVar *jswrap_modules_getModuleList() {
   "params" : [
     ["moduleName","JsVar","A String containing the name of the given module"]
   ],
-  "return" : ["JsVar","The result of evaluating the string"]
+  "return" : ["JsVar","The result of evaluating the string"],
+  "typescript": [
+    "declare function require<T extends keyof Libraries>(moduleName: T): Libraries[T];",
+    "declare function require<T extends Exclude<string, keyof Libraries>>(moduleName: T): any;"
+  ]
 }
 Load the given module, and return the exported functions and variables.
 
@@ -55,8 +59,8 @@ print(s.read("test"));
 // prints "hello world"
 ```
 
-Check out [the page on Modules](/Modules) for an explanation
-of what modules are and how you can use them.
+Check out [the page on Modules](/Modules) for an explanation of what modules are
+and how you can use them.
  */
 JsVar *jswrap_require(JsVar *moduleName) {
   if (!jsvIsString(moduleName)) {
@@ -86,6 +90,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
     moduleExport = jsvNewNativeFunction(builtInLib, 0);
   }
 
+#ifndef ESPR_EMBED
 #ifndef SAVE_ON_FLASH
   // Has it been manually saved to Flash Storage? Use Storage support.
   if ((!moduleExport) && (strlen(moduleNameBuf) <= JSF_MAX_FILENAME_LENGTH)) {
@@ -97,7 +102,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
     }
   }
 #endif
-
+#endif
 
   // Ok - it's not built-in as native or storage.
   // Look and see if it's compiled-in as a C-String of JS - if so get the actual text and execute it

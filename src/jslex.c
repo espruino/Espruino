@@ -51,6 +51,7 @@ void jslCharPosNew(JslCharPos *dstpos, JsVar *src, size_t tokenStart) {
 
 /// Return the next character (do not move to the next character)
 static JSLEX_INLINE char jslNextCh() {
+  assert(lex->it.ptr || lex->it.charIdx==0);
   return (char)(lex->it.ptr ? READ_FLASH_UINT8(&lex->it.ptr[lex->it.charIdx]) : 0);
 }
 
@@ -94,9 +95,10 @@ static JSLEX_INLINE void jslTokenAppendChar(char ch) {
   }
 }
 
-static bool jslIsToken(const char *token, int startOffset) {
+// Check if a token matches (IGNORING FIRST CHAR)
+static bool jslIsToken(const char *token) {
   int i;
-  for (i=startOffset;i<lex->tokenl;i++) {
+  for (i=1;i<lex->tokenl;i++) {
     if (lex->token[i]!=token[i]) return false;
     // if token is smaller than lex->token, there will be a null char
     // which will be different from the token
@@ -112,6 +114,7 @@ typedef enum {
   JSLJT_NUMBER,
   JSLJT_STRING,
 
+  JSJLT_QUESTION,
   JSLJT_EXCLAMATION,
   JSLJT_PLUS,
   JSLJT_MINUS,
@@ -196,7 +199,7 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+2] = {
     JSLJT_LESSTHAN, // <
     JSLJT_EQUAL, // =
     JSLJT_GREATERTHAN, // >
-    JSLJT_SINGLE_CHAR, // ?
+    JSJLT_QUESTION, // ?
     // 64
     JSLJT_SINGLE_CHAR, // @
     JSLJT_ID, // A
@@ -283,7 +286,14 @@ static void jslLexString() {
   jsvStringIteratorNew(&it, lex->tokenValue, 0);
   // strings...
   jslGetNextCh();
-  while (lex->currCh && lex->currCh!=delim) {
+  char lastCh = delim;
+  int nesting = 0;
+  while (lex->currCh && (lex->currCh!=delim || nesting)) {
+    // in template literals, cope with a literal inside another: `${`Hello`}`
+    if (delim=='`') {
+      if ((lastCh=='$' || nesting) && lex->currCh=='{') nesting++;
+      if (nesting && lex->currCh=='}') nesting--;
+    }
     if (lex->currCh == '\\') {
       jslGetNextCh();
       char ch = lex->currCh;
@@ -329,6 +339,7 @@ static void jslLexString() {
         }
         break;
       }
+      lastCh = ch;
       jslTokenAppendChar(ch);
       jsvStringIteratorAppend(&it, ch);
     } else if (lex->currCh=='\n' && delim!='`') {
@@ -338,6 +349,7 @@ static void jslLexString() {
     } else {
       jslTokenAppendChar(lex->currCh);
       jsvStringIteratorAppend(&it, lex->currCh);
+      lastCh = lex->currCh;
       jslGetNextCh();
     }
   }
@@ -397,7 +409,7 @@ static void jslLexRegex() {
 void jslSkipWhiteSpace() {
   jslSkipWhiteSpace_start:
   // Skip whitespace
-  while (isWhitespace(lex->currCh))
+  while (isWhitespaceInline(lex->currCh))
     jslGetNextCh();
   // Search for comments
   if (lex->currCh=='/') {
@@ -456,63 +468,64 @@ void jslGetNextToken() {
       if (lex->tk == LEX_R_THIS) lex->hadThisKeyword=true;
       break;
     case JSLJT_ID: {
-      while (isAlpha(lex->currCh) || isNumeric(lex->currCh) || lex->currCh=='$') {
+      while (isAlphaInline(lex->currCh) || isNumericInline(lex->currCh) || lex->currCh=='$') {
         jslTokenAppendChar(lex->currCh);
         jslGetNextCh();
       }
       lex->tk = LEX_ID;
+      if (!lex->token[1]) break; // there are no single-character reserved words - skip the check!
       // We do fancy stuff here to reduce number of compares (hopefully GCC creates a jump table)
       switch (lex->token[0]) {
-      case 'b': if (jslIsToken("break", 1)) lex->tk = LEX_R_BREAK;
+      case 'b': if (jslIsToken("break")) lex->tk = LEX_R_BREAK;
       break;
-      case 'c': if (jslIsToken("case", 1)) lex->tk = LEX_R_CASE;
-      else if (jslIsToken("catch", 1)) lex->tk = LEX_R_CATCH;
-      else if (jslIsToken("class", 1)) lex->tk = LEX_R_CLASS;
-      else if (jslIsToken("const", 1)) lex->tk = LEX_R_CONST;
-      else if (jslIsToken("continue", 1)) lex->tk = LEX_R_CONTINUE;
+      case 'c': if (jslIsToken("case")) lex->tk = LEX_R_CASE;
+      else if (jslIsToken("catch")) lex->tk = LEX_R_CATCH;
+      else if (jslIsToken("class")) lex->tk = LEX_R_CLASS;
+      else if (jslIsToken("const")) lex->tk = LEX_R_CONST;
+      else if (jslIsToken("continue")) lex->tk = LEX_R_CONTINUE;
       break;
-      case 'd': if (jslIsToken("default", 1)) lex->tk = LEX_R_DEFAULT;
-      else if (jslIsToken("delete", 1)) lex->tk = LEX_R_DELETE;
-      else if (jslIsToken("do", 1)) lex->tk = LEX_R_DO;
-      else if (jslIsToken("debugger", 1)) lex->tk = LEX_R_DEBUGGER;
+      case 'd': if (jslIsToken("default")) lex->tk = LEX_R_DEFAULT;
+      else if (jslIsToken("delete")) lex->tk = LEX_R_DELETE;
+      else if (jslIsToken("do")) lex->tk = LEX_R_DO;
+      else if (jslIsToken("debugger")) lex->tk = LEX_R_DEBUGGER;
       break;
-      case 'e': if (jslIsToken("else", 1)) lex->tk = LEX_R_ELSE;
-      else if (jslIsToken("extends", 1)) lex->tk = LEX_R_EXTENDS;
+      case 'e': if (jslIsToken("else")) lex->tk = LEX_R_ELSE;
+      else if (jslIsToken("extends")) lex->tk = LEX_R_EXTENDS;
       break;
-      case 'f': if (jslIsToken("false", 1)) lex->tk = LEX_R_FALSE;
-      else if (jslIsToken("finally", 1)) lex->tk = LEX_R_FINALLY;
-      else if (jslIsToken("for", 1)) lex->tk = LEX_R_FOR;
-      else if (jslIsToken("function", 1)) lex->tk = LEX_R_FUNCTION;
+      case 'f': if (jslIsToken("false")) lex->tk = LEX_R_FALSE;
+      else if (jslIsToken("finally")) lex->tk = LEX_R_FINALLY;
+      else if (jslIsToken("for")) lex->tk = LEX_R_FOR;
+      else if (jslIsToken("function")) lex->tk = LEX_R_FUNCTION;
       break;
-      case 'i': if (jslIsToken("if", 1)) lex->tk = LEX_R_IF;
-      else if (jslIsToken("in", 1)) lex->tk = LEX_R_IN;
-      else if (jslIsToken("instanceof", 1)) lex->tk = LEX_R_INSTANCEOF;
+      case 'i': if (jslIsToken("if")) lex->tk = LEX_R_IF;
+      else if (jslIsToken("in")) lex->tk = LEX_R_IN;
+      else if (jslIsToken("instanceof")) lex->tk = LEX_R_INSTANCEOF;
       break;
-      case 'l': if (jslIsToken("let", 1)) lex->tk = LEX_R_LET;
+      case 'l': if (jslIsToken("let")) lex->tk = LEX_R_LET;
       break;
-      case 'n': if (jslIsToken("new", 1)) lex->tk = LEX_R_NEW;
-      else if (jslIsToken("null", 1)) lex->tk = LEX_R_NULL;
+      case 'n': if (jslIsToken("new")) lex->tk = LEX_R_NEW;
+      else if (jslIsToken("null")) lex->tk = LEX_R_NULL;
       break;
-      case 'o': if (jslIsToken("of", 1)) lex->tk = LEX_R_OF;
+      case 'o': if (jslIsToken("of")) lex->tk = LEX_R_OF;
       break;
-      case 'r': if (jslIsToken("return", 1)) lex->tk = LEX_R_RETURN;
+      case 'r': if (jslIsToken("return")) lex->tk = LEX_R_RETURN;
       break;
-      case 's': if (jslIsToken("static", 1)) lex->tk = LEX_R_STATIC;
-      else if (jslIsToken("super", 1)) lex->tk = LEX_R_SUPER;
-      else if (jslIsToken("switch", 1)) lex->tk = LEX_R_SWITCH;
+      case 's': if (jslIsToken("static")) lex->tk = LEX_R_STATIC;
+      else if (jslIsToken("super")) lex->tk = LEX_R_SUPER;
+      else if (jslIsToken("switch")) lex->tk = LEX_R_SWITCH;
       break;
-      case 't': if (jslIsToken("this", 1)) { lex->tk = LEX_R_THIS; lex->hadThisKeyword=true; }
-      else if (jslIsToken("throw", 1)) lex->tk = LEX_R_THROW;
-      else if (jslIsToken("true", 1)) lex->tk = LEX_R_TRUE;
-      else if (jslIsToken("try", 1)) lex->tk = LEX_R_TRY;
-      else if (jslIsToken("typeof", 1)) lex->tk = LEX_R_TYPEOF;
+      case 't': if (jslIsToken("this")) { lex->tk = LEX_R_THIS; lex->hadThisKeyword=true; }
+      else if (jslIsToken("throw")) lex->tk = LEX_R_THROW;
+      else if (jslIsToken("true")) lex->tk = LEX_R_TRUE;
+      else if (jslIsToken("try")) lex->tk = LEX_R_TRY;
+      else if (jslIsToken("typeof")) lex->tk = LEX_R_TYPEOF;
       break;
-      case 'u': if (jslIsToken("undefined", 1)) lex->tk = LEX_R_UNDEFINED;
+      case 'u': if (jslIsToken("undefined")) lex->tk = LEX_R_UNDEFINED;
       break;
-      case 'w': if (jslIsToken("while", 1)) lex->tk = LEX_R_WHILE;
+      case 'w': if (jslIsToken("while")) lex->tk = LEX_R_WHILE;
       break;
-      case 'v': if (jslIsToken("var", 1)) lex->tk = LEX_R_VAR;
-      else if (jslIsToken("void", 1)) lex->tk = LEX_R_VOID;
+      case 'v': if (jslIsToken("var")) lex->tk = LEX_R_VAR;
+      else if (jslIsToken("void")) lex->tk = LEX_R_VOID;
       break;
       default: break;
       } break;
@@ -521,7 +534,7 @@ void jslGetNextToken() {
         bool canBeFloating = true;
         if (lex->currCh=='.') {
           jslGetNextCh();
-          if (isNumeric(lex->currCh)) {
+          if (isNumericInline(lex->currCh)) {
             // it is a float
             lex->tk = LEX_FLOAT;
             jslTokenAppendChar('.');
@@ -542,8 +555,8 @@ void jslGetNextToken() {
             }
           }
           lex->tk = LEX_INT;
-          while (isNumeric(lex->currCh) || (!canBeFloating && isHexadecimal(lex->currCh))) {
-            jslTokenAppendChar(lex->currCh);
+          while (isNumericInline(lex->currCh) || (!canBeFloating && isHexadecimal(lex->currCh)) || lex->currCh=='_') {
+            if (lex->currCh != '_') jslTokenAppendChar(lex->currCh);
             jslGetNextCh();
           }
           if (canBeFloating && lex->currCh=='.') {
@@ -554,18 +567,24 @@ void jslGetNextToken() {
         }
         // parse fractional part
         if (lex->tk == LEX_FLOAT) {
-          while (isNumeric(lex->currCh)) {
-            jslTokenAppendChar(lex->currCh);
+          while (isNumeric(lex->currCh) || lex->currCh=='_') {
+            if (lex->currCh != '_') jslTokenAppendChar(lex->currCh);
             jslGetNextCh();
           }
         }
         // do fancy e-style floating point
         if (canBeFloating && (lex->currCh=='e'||lex->currCh=='E')) {
           lex->tk = LEX_FLOAT;
-          jslTokenAppendChar(lex->currCh); jslGetNextCh();
-          if (lex->currCh=='-' || lex->currCh=='+') { jslTokenAppendChar(lex->currCh); jslGetNextCh(); }
-          while (isNumeric(lex->currCh)) {
-            jslTokenAppendChar(lex->currCh); jslGetNextCh();
+          jslTokenAppendChar(lex->currCh);
+          jslGetNextCh();
+          if (lex->currCh=='-' || lex->currCh=='+')
+          {
+            jslTokenAppendChar(lex->currCh);
+            jslGetNextCh();
+          }
+          while (isNumeric(lex->currCh) || lex->currCh=='_') {
+            if (lex->currCh != '_') jslTokenAppendChar(lex->currCh);
+            jslGetNextCh();
           }
         }
       } break;
@@ -580,50 +599,56 @@ void jslGetNextToken() {
         }
       } break;
       case JSLJT_PLUS: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // +=
         lex->tk = LEX_PLUSEQUAL;
         jslGetNextCh();
-      } else if (lex->currCh=='+') {
+      } else if (lex->currCh=='+') { // ++
         lex->tk = LEX_PLUSPLUS;
         jslGetNextCh();
       } break;
       case JSLJT_MINUS: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // -=
         lex->tk = LEX_MINUSEQUAL;
         jslGetNextCh();
-      } else if (lex->currCh=='-') {
+      } else if (lex->currCh=='-') { // --
         lex->tk = LEX_MINUSMINUS;
         jslGetNextCh();
       } break;
       case JSLJT_AND: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // &=
         lex->tk = LEX_ANDEQUAL;
         jslGetNextCh();
-      } else if (lex->currCh=='&') {
+      } else if (lex->currCh=='&') { // &&
         lex->tk = LEX_ANDAND;
         jslGetNextCh();
       } break;
       case JSLJT_OR: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // |=
         lex->tk = LEX_OREQUAL;
         jslGetNextCh();
-      } else if (lex->currCh=='|') {
+      } else if (lex->currCh=='|') { // ||
         lex->tk = LEX_OROR;
         jslGetNextCh();
       } break;
       case JSLJT_TOPHAT: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // ^=
         lex->tk = LEX_XOREQUAL;
         jslGetNextCh();
       } break;
       case JSLJT_STAR: jslSingleChar();
-      if (lex->currCh=='=') {
+      if (lex->currCh=='=') { // *=
         lex->tk = LEX_MULEQUAL;
+        jslGetNextCh();
+      } break;
+      case JSJLT_QUESTION: jslSingleChar();
+      if(lex->currCh=='?'){ // ??
+        lex->tk = LEX_NULLISH;
         jslGetNextCh();
       } break;
       case JSLJT_FORWARDSLASH:
       // yay! JS is so awesome.
       if (lastToken==LEX_EOF ||
+          (lastToken>=_LEX_TOKENS_START && lastToken<=_LEX_TOKENS_END) || // any keyword or operator
           lastToken=='!' ||
           lastToken=='%' ||
           lastToken=='&' ||
@@ -635,18 +660,13 @@ void jslGetNextToken() {
           lastToken=='=' ||
           lastToken=='>' ||
           lastToken=='?' ||
-          (lastToken>=_LEX_OPERATOR_START && lastToken<=_LEX_OPERATOR_END) ||
-          (lastToken>=_LEX_R_LIST_START && lastToken<=_LEX_R_LIST_END) || // keywords
-          lastToken==LEX_R_CASE ||
-          lastToken==LEX_R_NEW ||
           lastToken=='[' ||
           lastToken=='{' ||
           lastToken=='}' ||
           lastToken=='(' ||
           lastToken==',' ||
           lastToken==';' ||
-          lastToken==':' ||
-          lastToken==LEX_ARROW_FUNCTION) {
+          lastToken==':') {
         // EOF operator keyword case new [ { } ( , ; : =>
         // phew. We're a regex
         jslLexRegex();
@@ -788,6 +808,7 @@ void jslFunctionCharAsString(unsigned char ch, char *str, size_t len) {
 
 const char* jslReservedWordAsString(int token) {
   static const char tokenNames[] =
+      // Operators 1
       /* LEX_EQUAL      :   */ "==\0"
       /* LEX_TYPEEQUAL  :   */ "===\0"
       /* LEX_NEQUAL     :   */ "!=\0"
@@ -848,12 +869,16 @@ const char* jslReservedWordAsString(int token) {
       /*LEX_R_DEBUGGER : */ "debugger\0"
       /*LEX_R_CLASS :    */ "class\0"
       /*LEX_R_EXTENDS :  */ "extends\0"
-      /*LEX_R_SUPER :  */   "super\0"
+      /*LEX_R_SUPER :    */ "super\0"
       /*LEX_R_STATIC :   */ "static\0"
-      /*LEX_R_OF    :   */  "of\0"
+      /*LEX_R_OF    :    */ "of\0"
+      /* padding to be replaced with new reserved words */ "\0\0\0\0\0\0\0\0\0"
+
+      // operators 2
+      /* LEX_NULLISH :   */ "??\0"
       ;
   unsigned int p = 0;
-  int n = token-_LEX_OPERATOR_START;
+  int n = token-_LEX_TOKENS_START;
   while (n>0 && p<sizeof(tokenNames)) {
     while (tokenNames[p] && p<sizeof(tokenNames)) p++;
     p++; // skip the zero
@@ -890,7 +915,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
   case LEX_UNFINISHED_COMMENT : strcpy(str, "UNFINISHED COMMENT"); return;
   case 255 : strcpy(str, "[ERASED]"); return;
   }
-  if (token>=_LEX_OPERATOR_START && token<=_LEX_R_LIST_END) {
+  if (token>=_LEX_TOKENS_START && token<=_LEX_TOKENS_END) {
     strcpy(str, jslReservedWordAsString(token));
     return;
   }
@@ -1151,7 +1176,7 @@ void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void
 
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos) {
   size_t line,col;
-#ifndef SAVE_ON_FLASH
+#if !defined(SAVE_ON_FLASH) && !defined(ESPR_EMBED)
   if (jsvIsNativeString(lex->sourceVar) || jsvIsFlashString(lex->sourceVar)) {
     uint32_t stringAddr = (uint32_t)(size_t)lex->sourceVar->varData.nativeStr.ptr;
     JsfFileHeader header;

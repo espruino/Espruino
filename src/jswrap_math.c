@@ -180,7 +180,7 @@ JsVarFloat jswrap_math_asin(JsVarFloat x) {
   "name" : "atan",
   "generate" : "jswrap_math_atan",
   "params" : [
-    ["x","float","The value to get the arc tangent  of"]
+    ["x","float","The value to get the arc tangent of"]
   ],
   "return" : ["float","The arc tangent of x, between -PI/2 and PI/2"]
 }*/
@@ -356,7 +356,7 @@ double jswrap_math_pow(double x, double y) {
 }*/
 JsVar *jswrap_math_round(double x) {
   if (!isfinite(x) || isNegativeZero(x)) return jsvNewFromFloat(x);
-  x += (x<0) ? -0.4999999999 : 0.4999999999;
+  x += (x<0) ? -0.5 : 0.5;
   long long i = (long long)x;
   if (i==0 && (x<0))
     return jsvNewFromFloat(-0.0); // pass -0 through
@@ -458,7 +458,8 @@ double jswrap_math_sqrt(double x) {
   ],
   "return" : ["float","The value of x, clipped so as not to be below min or above max."]
 }
-DEPRECATED - Please use `E.clip()` instead. Clip a number to be between min and max (inclusive)
+DEPRECATED - Please use `E.clip()` instead. Clip a number to be between min and
+max (inclusive)
 */
 JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
   if (x<min) x=min;
@@ -480,7 +481,8 @@ JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
 }
 DEPRECATED - This is not part of standard JavaScript libraries
 
-Wrap a number around if it is less than 0 or greater than or equal to max. For instance you might do: ```Math.wrap(angleInDegrees, 360)```
+Wrap a number around if it is less than 0 or greater than or equal to max. For
+instance you might do: ```Math.wrap(angleInDegrees, 360)```
 */
 
 /*JSON{
@@ -523,3 +525,20 @@ JsVarFloat jswrap_math_minmax(JsVar *args, bool isMax) {
   return v;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH_EXTREME",
+  "class" : "Math",
+  "name" : "sign",
+  "generate" : "jswrap_math_sign",
+  "params" : [
+    ["x","float","The value to get the sign from"]
+  ],
+  "return" : ["int","sign on x - -1, 1, or 0"]
+}*/
+int jswrap_math_sign(double x)
+{
+  if (x == 0 || isNegativeZero(x))
+    return 0;
+  return x > 0 ? 1 : -1;
+}

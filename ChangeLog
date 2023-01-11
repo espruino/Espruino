@@ -1,4 +1,141 @@
-            Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
+            Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
+            Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
+            ESP32: update esp-idf to v3.3.6
+            Bangle.js2: Fix issue where Bangle.getPressure could leave the barometer on
+            Bangle.js2: Bootloader update - triple-check CRC after writing firmware and retry if it fails
+            Bangle.js2: setUI(updown/leftright) now responds to button on falling (not rising) edge
+            If we get an unhandled exception, ensure we keep the stack trace intact
+            Array.sort() with undefined elements now puts them at the end of the array (as per spec - #2300)
+            Bangle.js1/2: Fix showMenu/showScroller spacing with back if no widgets loaded (ref #2286)
+            Bangle.js1: Bangle.setUI({back}) now responds to BTN3 if there were no other watches on buttons
+            ESP32: Allow up to 16k vars (if enough memory), allow non-active scan, and remove 30s BLE scan limit
+            Graphics: Ensure a scroll inside a cliprect can't go out of bounds (previously it was bounded to screen)
+            Puck.js: Fix regression in 2v15/2v16 that stopped Puck.js v1 using magnetometer
+            Bangle.js2: Fix scroller overlap with widget bar when scrolled more than the screen's height in one step
+            Bangle.js2: Improve touchscreen handling to handle out of range data from the controller on some devices
+            Bangle.js: Improve ANCS stability - cancel ongoing tasks if an error is reported
+            ESP32: setScan/findDevices/requestDevice now fill in `id` with the mac address followed by private/random/etc as NRF52 does
+            ESP32: disconnect event now gives 'reason' (as NRF52)
+            ESP32: Bluetooth scanning now uses event queue (fixes MEMORY_BUSY)
+            ESP32: Implement E.enableWatchdog
+
+     2v16 : JIT functions now execute in their own function scope (allows arguments)
+            Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
+            Fix print(()=>{}) printing 'function (undefined) {}' - saves 1 var for arrow fn without args (fix #2265)
+            Bangle.js: Add support for `Bangle.setUI({remove:...})` to allow apps to be unloaded without a full reboot.
+            Bangle.js2: Fixed `Bangle.setLCDOverlay(img,x,y)` with negative offsets
+            Allow `atob` to accept base64 with whitespace inside it
+            Puck.js Lite: remove NFC from build (no NFC on board the Lite version)
+            Storage: When using Filename Table, be absolutely sure it's correct before using it (stops hang at startup if storage corrupt)
+            Bangle.js: Add Bangle.setOptions({btnLoadTimeout:...}) to allow home button timeout to be configurable
+            Bangle.js: A forced interrupt after button held now occurs 0.5s (not 0.1s) after the reboot request
+            Bangle.js: Holding the button during storage compact now won't try and break out of it
+            Bangle.js: Use 4k/64k/all flash clear commands to make erasing (and hence compact) external flash faster
+            Bangle.js2: Add built-in touchscreen calibration
+            Bangle.js2: Add fast-path for all-white or all-black full-width graphics fill/clear (24ms -> 2ms)
+            Bangle.js2: LCD background flip (send to LCD while returning to execute other code)
+            Bangle.js2: Swipe direction is now modified based on g.setRotation
+            ESP32: Bluetooth LE tweaks - central mode connects, scans, reads, writes and notifies
+            Bluetooth: fix for incorrect Bluetooth task strings shown in some errors
+            Bangle.js: showLauncher's 'fast load' now updates __FILE__
+            Improve jsvIs* functions (because v->flags is volatile). >5% speed improvement
+            Lexer speed improvements
+            Bangle.js: Compass 'heading' now provides correct value (without 360-heading) required
+            Bangle.js: Remove F_BEEPSET feature flag (now 3 years old)
+            Espruino: Ensure flash/native strings really can't be appended to (fix #2282)
+            Bangle.js2: Improved 3 bit LCD fill (20% faster)
+            process.memory() reports `stackFree` which allows us to easily check if we're ok for recursion
+            E.HSBtoRGB can now be called with `E.HSBtoRGB(h,s,b,16)` to return a 16 bit value suitable for Bangle.js/etc
+            Bangle.js2: Flip LCD SPI bit order so operations in Espruino can be faster (45% faster fillRect)
+            Bangle.js2: Use 8x3bpp block fill with masking (now at least 6x faster than 2v15)
+            Fix JIT when overwriting a pre-existing function, JIT now allows `var/let/const`, fix lock leak in function call, fix FOR postinc issue
+            JIT compiler now included in MDBT42Q/Pixl.js/Puck.js/Bangle.js 1          
+            Bangle.js2: Bangle.setUI remove unused 'touch' mode, ensure 'back' button doesn't overlap if button is already used (fix #2287)
+            Bangle.js: Do not clear widget area if only zero width wigets are using it
+            Bangle.js: Allow setting remove methods for E.show*
+            Bangle.js: Add Bangle.load() and Bangle.showClock() methods
+            Graphics: Ensure g.reset() after a custom font was set de-allocates the custom font (fix #2290) 
+            Bangle.js: setUI now calls g.reset(), and also protects against recursion in uiRemove
+            Bangle.js2: Touched item coordinates in E.showScroller's select callback
+
+     2v15 : Fix issue where `E.toJS("\0"+"0") == '"\00"'` which is just `"\0"`
+            Fix issue accessing `arguments` after/inside 'let/const' keyword (fix #2224)
+            let/const now don't add a scope if executed in a function outside a block (fix #2225)
+            When executing a function, ensure the scope doesn't include a `return` var
+            Rename internal return var to fit it inside one JsVar on embedded systems
+            nRF52: Added support for 2 concurrent Bluetooth Central connections to Puck.js, Pixl.js, MDBT42Q (fix #1360)
+            Bangle.js2: JIT now built in (only enabled for functions prefixed '"jit"')
+            E.dumpVariables now outputs more info for variable values
+            Puck.js Lite support
+            Puck.js: Immediately after flashing new firmware, Puck.js now does a self-test and sets its BLE to PASS or FAIL
+            nRF52: Fix recent regression which stopped reconnection after a bluetooth disconnect (fix #2226)
+            Bangle.js: Include the 'sched' library in installed apps (needed for alarm) (fix #2229)
+            Bangle.js2: Fix text size on buttons when they are tapped in E.showPrompt
+            nRF5x: Add 'onWriteDesc' in NRF.setServices - allowing you to know when something subscribed for notifications
+            nRF5x: Move advertising_start and restart_softdevice outside of IRQs (MEMORY_BUSY warnings less likely now)
+            Bangle.js: Ensure E.showMessage background color comes from theme
+            Bangle.js: Add "filename table" support to Bangle.js - avoids slow file read/list when there are many deleted/updated files in Storage (fix #2152)
+            Storage: Don't align files <512 bytes to page boundaries - all files now stored in order (ref #2232)
+            nRF5x: Call sd_ble_gattc_hv_confirm in response to BLE indications
+            Bangle.js2: Make Bangle.setBarometerPower retry twice if it has an I2C error
+            Bangle.js2: Fix `NRF.setAdvertising({},{scannable:false})`
+            Bangle.js2: Initial long range functionality (via `phy:"coded"` in `NRF.setAdvertising/setScan/requestDevice/findDevices`)
+            nRF52: Change from hard -> softfp calling convention (saves a few bytes, more compatible with compiled code)
+            Fix 'console.log([1,2,3].splice(0, 1.0))' (fix #2245)
+            Bangle.js2: Added `Bangle.setLCDOverlay(img,x,y)` to allow an image to be overlaid on top of screen contents (eg for notifications)
+            Fix issue parsing constant decls when not executing (fix #2255)
+            Puck.js: Fix Puck.mag() in newest batch of Puck.js 2.1a sometimes returning -32768
+            Correctly handle parsing of template literals inside template literals
+            Don't store command history if echo=off (eg for Web IDE/App Loader uploads)
+            E.defrag now kicks the watchdog (on Bangle.js 2 it can take long enough that the watchdog fires)
+            
+     2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
+            Bangle.js2: Recheck string wrapping after font change inside E.showMenu
+            Bangle.js2: Double input buffer size from 1kb to 2kb
+            Bangle.js2: Fix E.showMenu title changing color after scroll down+up *if* a non-standard theme was used
+            Bangle.js2: Fix wear detection on latest Bangle.js 2 (VC31B variant) (fix #2141)
+            Bangle.js2: Allow variable HRM poll rates on Bangle.js 2 VC31B variant
+            Bangle.js2: VC31 HRM variant now polls at 25hz (not 50)
+            Bangle.js1: E.showMenu now displays boolean values with no `format` as a checkbox
+            Bangle.js1: E.showMenu now displays a submenu for multiple choice menu items (#2184)
+            Bangle.js: built-in locale now doesn't depend on argument being an instance of Date (#2187)
+            Bangle.js: Add ".noList" property to prevent E.showScroller inside E.showMenu            
+            Bangle.js2: Add "Back"-Button on submenus inside E_showMenu 
+            Graphics: g.setClipRect now uses rotated coordinates
+            Graphics: g.draw/fillCircle now works with rotated coordinates
+            Bangle.js2: Touch/drag coordinates now obey g.setRotation
+            Graphics: Fix drawString with combination of g.setClipRect and g.setRotation
+            nRF5x: Allow 'high speed' watches via 'hispeed' argument to setWatch. Higher power consumption but detects fast (<25us) pulses.
+            Bangle.js2: E.showMenu now returns 'scroller', `format` is called with a second argument, font in popup is scaled to fit (fix #2190)
+            Fix recent class method regression (24247e4ec9) (fix #2197)
+            Bangle.js2: 6x15 font tweaks for better ISO8859-1 support
+            Bangle.js: Add clock property to "custom" mode in setUI
+            Allow method declarations in objects - ES6 'Enhanced Object Literals' (#2202 / #1302)
+            Added Object.values/Object.entries (#1302)
+            Added block scoping for let and const (#971)
+            Honour non-writable const vars (fix #971)
+            Remove Line Numbers from 'save on flash' builds
+            Added Object shorthand, eg. x={a}
+            Added numeric separator support eg. 12_34
+            Add Nullish coalescing operator
+            Enable releases and cutting edge builds for Puck.js minimal releases (with 98kB of free Storage)
+            nRF5x: Fix memory leak (of address) when using NRF.setScan/requestDevice/findDevice (regression in 2v13)
+            Fix issue with const in a module when called from a scope with const already in (fix #2215, fix #2207)
+            Add `seaLevelPressure` to Bangle.setOptions (fix #2213)
+            Bangle.js: speed up HRM average adjustment (specifically when sample rate is 25Hz, eg. for Bangle.js 2)
+            Bangle.js: Change default distance units to m,km (from m,miles) (fix #2209, fix #2210)
+            Bangle.js: Rename default locale to 'system' (from 'en_GB')
+            Ctrl-C will now *not* break out of short-running intervals/watches, only long-running ones
+            Bangle.js: Allow E.showMenu to be given an array and title option (fix #2175)
+            nRF5x: We now clear the console's input line when connecting or disconnecting Bluetooth (fix #2219)
+            Graphics: Add g.blendColor to expose the ability to figure out what color is between two others (fix #2150)
+            Fix stack overflow if deallocating a massive linked list (fix #2136)
+            String substr/substring/slice now work on native/flash strings by changing pointers rather than doing an actual copy (fix #2066)
+            Fix over-iteration if breaking out of the very first iteration of FOR loop (fix #2012)
+            JSON.stringify(pin) now returns valid JSON (Pin name as a string). E.toJS still leaves it as an ID (fix #271)
+            Bangle.js2: Fix exception when using 'back' and physical button with Bangle.setUI
+            
+     2v13 : Memory usage improvement: Function scopes no longer stored as an array if they only contain one scope
             Memory usage improvement: The root scope is never stored in the scope list (it's searched by default)
             E.dumpVariables now dumps variable flags
             Tidying up Native Function handling (now JSV_NATIVE_FUNCTION not JSV_NATIVE|JSV_FUNCTION)
@@ -23,6 +160,36 @@
             Report errors created during execution of `E.on('kill',...)`
             Bangle.js: ANCS/AMS now advertises 16 bit time service (doesn't crop the name, and good enough for iOS pairing)
             Number.toFixed(...) now doesn't exponentiate when the number is very small (fix #2157)
+            Add E.showMenu({"":{back:function}, ...}) for easy specification of 'back' menu item
+            Bangle.js2: Add 'back' option to E.showScroller and Bangle.setUI 
+            Bangle.js2: Ensure that if Bangle.getPressure errors, the next call doesn't say 'Conversion in progress'
+            Bangle.js2: Update E.showPrompt with a bigger touchable area around buttons
+            Bangle.js2: 'touch' event coordinates are now clipped to screen coordinates (drag stay unclipped to allow touchscreen use for scrolling)
+            Bangle.js1: Fix regression that caused setLCDMode not to work in 2v12 (fix #2155)
+            Bangle.js1: Improved 'E.showScroller' menus
+            Bangle.js1: Add 'back' option to E.showScroller and Bangle.setUI 
+            Bangle.js1: setUI button handlers now work on falling edge
+            Bangle.js: Add setUI custom 'swipe' handler
+            Util Timer now runs independently of system time. More accurate on nRF52 (fix #2125)
+            Bangle.js2: Battery discharge curve is now scaled better, and setting.json:batFullVoltage can be used to account for differences in sense voltage between devices
+            Bangle.js2: Ensure NRF.setTxPower works for all connections and advertising
+            If a process.on("uncaughtException" handler creates an exception, make sure we report it as Uncaught
+            Bangle.js: If home button held and JS is still executing, force a break (like Ctrl-C)
+            Graphics: Fix text bounding box calculation when just the top line of a character would be visible
+            Bangle.js2: setUI now doesn't forward touch events if tapping over the back button
+            Bangle.js2: New E.showMenu now allows menu items of type 'string' - fixes 'Passkey' settings menu
+            Bangle.js2: Add visual feedback when showPrompt button is pressed
+            Storage: Fix erase-after-compact bug if Storage completely full (fix #2174)
+            Fix out of bounds jsvGetAddressOf in jsvNewFlatStringOfLength (wasn't a cause of instability)
+            Storage: Now put all .js files into internal storage (if 2 storage areas). Fix corruption issue when reading using file with explicit drive letter 
+            Bangle.js: default 'locale' now supports second 'dp' argument for decimal places in distance/speed/temp
+            Graphics: Restrict setClipRect coordinates (Except on ST7789_8BIT (Bangle.js 1) where we need it for notifications. This stops potential out of bounds writes is setClipRect is wrong.
+            Fix issues accessing object/array fields when the field itself has a null character in it (fix #2176)
+            nRF5x: Fix merging of packers for `NRF.findDevice` - previously name fields in subsequent packets may have been left as 'undefined'
+            nRF5x: NRF.findDevice now aggregates multiple packets even if only one packet matches the filter (fix #2178)
+            nRF5x: Allow NRF.setAdvertising to set advertised service UUIDs (vs service data) easily with `NRF.setAdvertising({'180D':undefined})`
+            Ensure JSON.stringify([undefined])=="[null]" as per the spec
+            Bangle.js2: Unistroke recognition accuracy improvements
 
      2v12 : nRF52840: Flow control XOFF is now sent at only 3/8th full - delays in BLE mean we can sometimes fill our 1k input buffer otherwise
             __FILE__ is now set correctly for apps (fixes 2v11 regression)

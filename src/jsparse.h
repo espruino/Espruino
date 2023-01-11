@@ -134,12 +134,20 @@ typedef struct {
   JsVar  *root;       //!< root of symbol table
   JsVar  *hiddenRoot; //!< root of the symbol table that's hidden
 
-  /// JsVar array of scopes
+  /// JsVar array of all execution scopes (`root` is not included)
   JsVar *scopesVar;
+#ifndef ESPR_NO_LET_SCOPING
+  /// This is the base scope of execution - `root`, or the execution scope of the function. Scopes added for let/const are not included
+  JsVar *baseScope;
+  /// IF nonzero, this the scope of the current block (which gets added when 'let/const' is used in a block)
+  JsVar *blockScope;
+  /// how many blocks '{}' deep are we?
+  uint8_t blockCount;
+#endif
   /// Value of 'this' reserved word
   JsVar *thisVar;
 
-  volatile JsExecFlags execute;
+  volatile JsExecFlags execute; //!< Should we be executing, do we have errors, etc
 } JsExecInfo;
 
 /* Info about execution when Parsing - this saves passing it on the stack
@@ -189,13 +197,6 @@ JsVar *jspGetNamedVariable(const char *tokenName);
  * a symbol rather than a variable. To handle these use jspGetVarNamedField  */
 JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName);
 JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName);
-
-/** Call the function named on the given object. For example you might call:
- *
- *  JsVar *str = jspCallNamedFunction(var, "toString", 0, 0);
- */
-JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **argPtr);
-
 
 // These are exported for the Web IDE's compiler. See exportPtrs in jswrap_process.c
 JsVar *jspeiFindInScopes(const char *name);

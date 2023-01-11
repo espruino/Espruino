@@ -24,7 +24,7 @@
   #error USE_CALLFUNCTION_HACK is required to make i386 builds work correctly
 #endif
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) || defined(__arm64__)
     #define USE_SEPARATE_DOUBLES
 #endif
 
@@ -145,16 +145,18 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     case JSWAT_INT32: // 32 bit int
       argData[argCount++] = (uint32_t)jsvGetInteger(param);
       break;
+#ifndef ESPR_EMBED
     case JSWAT_PIN: // 16 bit int
       argData[argCount++] = (uint32_t)jshGetPinFromVar(param);
       break;
+#endif
     case JSWAT_JSVARFLOAT: { // 64 bit float
       JsVarFloat f = jsvGetFloat(param);
 #ifdef USE_SEPARATE_DOUBLES
       doubleData[doubleCount++] = f;
 #else
       uint64_t i = *(uint64_t*)&f;
-#if USE_64BIT
+#ifdef USE_64BIT
       argData[argCount++] = (size_t)i;
 #else // 32 bit...
  #ifdef USE_ARG_REORDERING
@@ -255,8 +257,10 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     return (JsVar*)(size_t)result;
   case JSWAT_BOOL: // boolean
     return jsvNewFromBool(result!=0);
+#ifndef ESPR_EMBED
   case JSWAT_PIN:
     return jsvNewFromPin((Pin)result);
+#endif
   case JSWAT_INT32: // 32 bit int
     return jsvNewFromInteger((JsVarInt)result);
   case JSWAT_JSVARFLOAT: // 64 bit float

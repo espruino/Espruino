@@ -16,8 +16,8 @@
 import pinutils;
 
 info = {
- 'name' : "Espruino Bangle.js",
- 'link' :  [ "http://www.espruino.com/Bangle.js" ],
+ 'name' : "Bangle.js",
+ 'link' :  [ "https://espruino.com/Bangle.js" ],
  'espruino_page_link' : 'Bangle.js',
  'default_console' : "EV_BLUETOOTH",
  'variables' : 2584, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
@@ -30,7 +30,8 @@ info = {
      'TERMINAL',
      'GRAPHICS', 
      'LCD_ST7789_8BIT',
-     'TENSORFLOW'     
+     'TENSORFLOW',
+     'JIT'
    ],
    'makefile' : [
      'DEFINES += -DESPR_HWVERSION=1',
@@ -156,13 +157,7 @@ devices = {
 
 # left-right, or top-bottom order
 board = {
-  'left' : [],
-  'right' : [],
-  '_notes' : {
-  }
 };
-board["_css"] = """
-""";
 
 def get_pins():
   pins = pinutils.generate_pins(0,31) # 32 General Purpose I/O Pins.

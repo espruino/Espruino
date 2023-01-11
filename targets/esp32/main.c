@@ -47,12 +47,9 @@ static void uartTask(void *data) {
 static void espruinoTask(void *data) {
   int heapVars;
 
-#ifdef ESP32
-    espruino_stackHighPtr = &heapVars;  //Ignore the name, 'heapVars' is on the stack!
-                          //I didn't use another variable becaue this function never ends so
-                          //all variables declared here consume stack space that is never freed. 
-#endif
-
+  espruino_stackHighPtr = &heapVars;  //Ignore the name, 'heapVars' is on the stack!
+                        //I didn't use another variable becaue this function never ends so
+                        //all variables declared here consume stack space that is never freed. 
 
   PWMInit();
   RMTInit();
@@ -60,10 +57,22 @@ static void espruinoTask(void *data) {
   initADC(1);
   jshInit();     // Initialize the hardware
   jswHWInit();
-  heapVars = (esp_get_free_heap_size() - 40000) / 16;  //calculate space for jsVars
-  heapVars = heapVars - heapVars % 100; //round to 100
-  if(heapVars > 20000) heapVars = 20000;  //WROVER boards have much more RAM, so we set a limit
+
+
+  heapVars = (esp_get_free_heap_size() - 40000) / sizeof(JsVar);  //calculate space for jsVars
+
+  //Limit number of JsVars to maximum addressable. Can otherwise be
+  //breached by builds with modules removed or boards using PSRAM.
+  {
+    int maxVars = (1 << JSVARREF_BITS) - 1;
+    
+    if (heapVars > maxVars) {
+      heapVars = maxVars;
+    }
+  }
+
   jsvInit(heapVars);     // Initialize the variables
+
   // not sure why this delay is needed?
   vTaskDelay(200 / portTICK_PERIOD_MS);
   jsiInit(true); // Initialize the interactive subsystem

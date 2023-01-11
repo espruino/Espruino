@@ -11,6 +11,9 @@
  * JavaScript methods for Objects and Functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_OBJECT_H_
+#define JSWRAP_OBJECT_H_
+
 #include "jsvar.h"
 #include "jswrapper.h"
 
@@ -19,18 +22,24 @@ JsVar *jswrap_object_length(JsVar *parent);
 JsVar *jswrap_object_valueOf(JsVar *parent);
 JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0);
 JsVar *jswrap_object_clone(JsVar *parent);
+
+typedef enum {
+  JSWOKPF_NONE,
+  JSWOKPF_INCLUDE_NON_ENUMERABLE = 1, ///< include 'hidden' items
+  JSWOKPF_INCLUDE_PROTOTYPE = 2 ///< include items for the prototype too (for autocomplete)
+} JswObjectKeysOrPropertiesFlags;
+
 /** This is for Object.keys and Object. However it uses a callback so doesn't allocate anything */
 void jswrap_object_keys_or_property_names_cb(
     JsVar *obj,
-    bool includeNonEnumerable,  ///< include 'hidden' items
-    bool includePrototype, ///< include items for the prototype too (for autocomplete)
+    JswObjectKeysOrPropertiesFlags flags,
     void (*callback)(void *data, JsVar *name),
     void *data
 );
 JsVar *jswrap_object_keys_or_property_names(
     JsVar *obj,
-    bool includeNonEnumerable,
-    bool includePrototype);
+    JswObjectKeysOrPropertiesFlags flags);
+JsVar *jswrap_object_values_or_entries(JsVar *object, bool returnEntries);
 JsVar *jswrap_object_create(JsVar *proto, JsVar *propertiesObject);
 JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name);
 bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name);
@@ -55,3 +64,5 @@ bool jswrap_boolean_constructor(JsVar *value);
 
 /** A convenience function for adding event listeners */
 void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (*callback)(), JsnArgumentType argTypes);
+
+#endif // JSWRAP_OBJECT_H_

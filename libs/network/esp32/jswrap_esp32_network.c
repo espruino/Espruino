@@ -27,8 +27,8 @@
 #include "tcpip_adapter.h"
 #include "mdns/include/mdns.h"
 
-#include "lwip/apps/ping/ping.h"
-#include "lwip/apps/ping/esp_ping.h"
+#include "lwip/include/apps/ping/ping.h"
+#include "lwip/include/apps/esp_ping.h"
 #include "apps/sntp/sntp.h"
 #include "lwip/dns.h"
 

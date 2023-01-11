@@ -1,8 +1,11 @@
 #ifndef HEATSHRINK_DECODER_H
 #define HEATSHRINK_DECODER_H
 
+#ifndef ESPR_EMBED
 #include <stdint.h>
 #include <stddef.h>
+#endif
+
 #include "heatshrink_common.h"
 #include "heatshrink_config.h"
 

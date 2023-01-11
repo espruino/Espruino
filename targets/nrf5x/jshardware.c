@@ -424,6 +424,18 @@ static jshUARTState uart[USART_COUNT];
 #endif
 
 #ifdef SPIFLASH_BASE
+
+#define QSPI_STD_CMD_WRSR   0x01
+#define QSPI_STD_CMD_WRITE  0x02
+#define QSPI_STD_CMD_WREN   0x06
+#define QSPI_STD_CMD_RSTEN  0x66
+#define QSPI_STD_CMD_RST    0x99
+#define QSPI_STD_CMD_WAKEUP 0xAB // Release from Power-down
+#define QSPI_STD_CMD_SLEEP  0xB9
+#define QSPI_STD_CMD_ERASE_4K 0x20
+#define QSPI_STD_CMD_ERASE_64K 0xD8
+#define QSPI_STD_CMD_ERASE_ALL 0xC7
+
 /* 0 means CS is not enabled. If nonzero CS is enabled
 and we're in the middle of reading We'd never be at 0
 anyway because we're always expecting to have read something.  */
@@ -442,6 +454,29 @@ static void spiFlashRead(unsigned char *rx, unsigned int len) {
   }
 }
 
+#ifdef SPIFLASH_READ2X
+// Use MISO and MOSI to read data from flash (Dual Output Fast Read 0x3B)
+static void spiFlashRead2x(unsigned char *rx, unsigned int len) {
+  assert((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin<32); // port 0
+  assert((uint32_t)pinInfo[SPIFLASH_PIN_MISO].pin<32); // port 0
+  NRF_GPIO_PIN_CNF((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, 0); // High-Z input
+  //#define NRF_GPIO_PIN_READ_FAST(PIN) ((NRF_P0->IN >> (PIN))&1)
+  //#define NRF_GPIO_PIN_CNF(PIN,value) NRF_P0->PIN_CNF[PIN]=value;
+  for (unsigned int i=0;i<len;i++) {
+    int result = 0;
+    #pragma GCC unroll 4
+    for (int bit=0;bit<4;bit++) {
+      NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+      uint32_t io = NRF_P0->IN;
+      result = (result<<2) | ((io>>(pinInfo[SPIFLASH_PIN_MISO].pin-1))&2) | ((io>>pinInfo[SPIFLASH_PIN_MOSI].pin)&1);
+      NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+    }
+    rx[i] = result;
+  }
+  NRF_GPIO_PIN_CNF((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, 0x303); // high drive output
+}
+#endif
+
 static void spiFlashWrite(unsigned char *tx, unsigned int len) {
   for (unsigned int i=0;i<len;i++) {
     int data = tx[i];
@@ -452,10 +487,18 @@ static void spiFlashWrite(unsigned char *tx, unsigned int len) {
     }
   }
 }
+static void spiFlashWrite32(uint32_t data) {
+  for (int bit=31;bit>=0;bit--) {
+    NRF_GPIO_PIN_WRITE_FAST((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin, data & 0x80000000 );
+    data<<=1;
+    NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+    NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+  }
+}
 static void spiFlashWriteCS(unsigned char *tx, unsigned int len) {
   NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
   spiFlashWrite(tx,len);
-  nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+  NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
 }
 /* Get SPI flash status bits:
 
@@ -481,16 +524,16 @@ static unsigned char spiFlashStatus() {
 
 static void spiFlashReset(){
   unsigned char buf[1];
-  buf[0] = 0x66;
+  buf[0] = QSPI_STD_CMD_RSTEN;
   spiFlashWriteCS(buf,1);
-  buf[0] = 0x99;
+  buf[0] = QSPI_STD_CMD_RST;
   spiFlashWriteCS(buf,1);
   nrf_delay_us(50); 
 }
 
 static void spiFlashWakeUp() {
   unsigned char buf[1];
-  buf[0] = 0xAB;
+  buf[0] = QSPI_STD_CMD_WAKEUP;
   spiFlashWriteCS(buf,1);
   nrf_delay_us(50); // datasheet tRES2 period > 20us  CS remains high
 }
@@ -529,12 +572,12 @@ void spiFlashSleep() {
     spiFlashLastAddress = 0;
   }
   unsigned char buf[1];
-  buf[0] = 0xB9;
+  buf[0] = QSPI_STD_CMD_SLEEP;
   spiFlashWriteCS(buf,1);
 //  nrf_delay_us(2); // Wait at least 1us for Flash IC to enter deep power-down
   spiFlashAwake = false;
 }
-#endif
+#endif // SPIFLASH_SLEEP_CMD
 #endif
 
 
@@ -744,12 +787,12 @@ void jshResetPeripherals() {
     // wait for write enable
     int timeout = 1000;
     while (timeout-- && !(spiFlashStatus()&2)) {
-      buf[0] = 6; // write enable
+      buf[0] = QSPI_STD_CMD_WREN; // write enable
       spiFlashWriteCS(buf,1);
       jshDelayMicroseconds(10);
     }
     jshDelayMicroseconds(10);
-    buf[0] = 1; // write status register, disable BP0/1/2
+    buf[0] = QSPI_STD_CMD_WRSR; // write status register, disable BP0/1/2
     buf[1] = 0;
     spiFlashWriteCS(buf,2);
     jshDelayMicroseconds(10);
@@ -1569,30 +1612,6 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 #endif
 }
 
-void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
-  // ---- USE TIMER FOR PULSE
-  if (!jshIsPinValid(pin)) {
-       jsExceptionHere(JSET_ERROR, "Invalid pin!");
-       return;
-  }
-  if (pulseTime<=0) {
-    // just wait for everything to complete
-    jstUtilTimerWaitEmpty();
-    return;
-  } else {
-    // find out if we already had a timer scheduled
-    UtilTimerTask task;
-    if (!jstGetLastPinTimerTask(pin, &task)) {
-      // no timer - just start the pulse now!
-      jshPinOutput(pin, pulsePolarity);
-      task.time = jshGetSystemTime();
-    }
-    // Now set the end of the pulse to happen on a timer
-    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
-  }
-}
-
-
 static IOEventFlags jshGetEventFlagsForWatchedPin(nrf_drv_gpiote_pin_t pin) {
   for (int i=0;i<EXTI_COUNT;i++)
     if (pin == extiToPin[i])
@@ -1616,7 +1635,7 @@ bool jshCanWatch(Pin pin) {
   return true;
 }
 
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   if (!jshIsPinValid(pin)) return EV_NONE;
 #if JSH_PORTV_COUNT>0
   // handle virtual ports (eg. pins on an IO Expander)
@@ -1630,7 +1649,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
       if (extiToPin[i] == p) return EV_EXTI0+i; //already allocated
       if (extiToPin[i] == PIN_UNDEFINED) {
         // use low accuracy for GPIOTE as we can shut down the high speed oscillator then
-       nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(false /* hi/low accuracy */);
+       nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE((flags&JSPW_HIGH_SPEED)!=0 /* hi/low accuracy */);
        cls_1_config.is_watcher = true; // stop this resetting the input state
        if (nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler)!=0) {
          jsWarn("No free GPIOTE for watch");
@@ -1675,6 +1694,13 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 
 void jshKickWatchDog() {
   NRF_WDT->RR[0] = 0x6E524635;
+#ifdef BANGLEJS
+  /* If we're busy and really don't want to be interrupted (eg clearing flash memory)
+   then we should *NOT* allow the home button to set EXEC_INTERRUPTED (which happens
+   if it was held, JSBT_RESET was set, and then 0.1s later it wasn't handled). */
+  void jswrap_banglejs_kickPollWatchdog();
+  jswrap_banglejs_kickPollWatchdog();
+#endif
 }
 
 /** Check the pin associated with this EXTI - return true if it is a 1 */
@@ -1938,6 +1964,7 @@ int jshSPISend(IOEventFlags device, int data) {
 #if SPI_ENABLED
   if (device!=EV_SPI1 || !jshIsDeviceInitialised(device)) return -1;
   jshSPIWait(device);
+  if (jspIsInterrupted()) return -1;
 #if defined(SPI0_USE_EASY_DMA)  && (SPI0_USE_EASY_DMA==1) && NRF52832
   // Hack for https://infocenter.nordicsemi.com/topic/­errata_nRF52832_Rev2/ERR/nRF52832/Rev2/l­atest/anomaly_832_58.html?cp=4_2_1_0_1_8
   // Can't use DMA for single bytes as it's broken
@@ -2009,6 +2036,7 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
   }
 #endif
   jshSPIWait(device);
+  if (jspIsInterrupted()) return false;
   spi0Sending = true;
 
   size_t c = count;
@@ -2038,6 +2066,7 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
   }
   if (!callback) {
     jshSPIWait(device);
+    if (jspIsInterrupted()) return false;
   }
   return true;
 #else
@@ -2285,6 +2314,11 @@ JsVar *jshFlashGetFree() {
 
 /// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr) {
+  jshFlashErasePages(addr, 4096);
+}
+
+/// Erase the flash pages containing the address - return true on success
+bool jshFlashErasePages(uint32_t addr, uint32_t byteLength) {
 #ifdef SPIFLASH_BASE
   if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
     addr &= 0xFFFFFF;
@@ -2298,35 +2332,67 @@ void jshFlashErasePage(uint32_t addr) {
     }
     //jsiConsolePrintf("SPI Erase %d\n",addr);
     unsigned char b[4];
-    // WREN
-    b[0] = 0x06;
-    spiFlashWriteCS(b,1);
-    // Erase
-    b[0] = 0x20;
-    b[1] = addr>>16;
-    b[2] = addr>>8;
-    b[3] = addr;
-    spiFlashWriteCS(b,4);
-    // Check busy
-    WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashErasePage");
-    return;
+    while (byteLength>=4096 && !jspIsInterrupted()) {
+      int erasedBytes = 4096;
+      unsigned char eraseCmd = QSPI_STD_CMD_ERASE_4K;
+      if (byteLength>=65536 && !(addr&0xFFFF)) { // if 64k aligned and >64k pages left
+        eraseCmd = QSPI_STD_CMD_ERASE_64K;
+        erasedBytes = 65536;
+      }
+      if (addr==0 && byteLength>=SPIFLASH_LENGTH) { // if starts at 0 and all flash - erase EVERYTHING
+        eraseCmd = QSPI_STD_CMD_ERASE_ALL;
+        erasedBytes = SPIFLASH_LENGTH;
+      }
+      // WREN
+      b[0] = QSPI_STD_CMD_WREN;
+      spiFlashWriteCS(b,1);
+      // Erase
+      b[0] = eraseCmd;
+      b[1] = addr>>16;
+      b[2] = addr>>8;
+      b[3] = addr;
+      if (eraseCmd == QSPI_STD_CMD_ERASE_ALL) {
+        // erase all needs just one arg, but it can also take a while! handle separately
+        spiFlashWriteCS(b,1);
+        int timeout = WAIT_UNTIL_N_CYCLES*5;
+        while ((spiFlashStatus()&1) && !jspIsInterrupted() && (timeout--)>0)
+          jshKickWatchDog();
+        if (timeout<=0 || jspIsInterrupted())
+          jsExceptionHere(JSET_INTERNALERROR, "Timeout on jshFlashErasePage (all)");
+      } else {
+        spiFlashWriteCS(b,4);
+        WAIT_UNTIL(!(spiFlashStatus()&1), "jshFlashErasePage"); // Check busy
+      }
+      byteLength -= erasedBytes;
+      addr += erasedBytes;
+      // Erasing can take a while, so kick the watchdog throughout
+      jshKickWatchDog();
+    }
+    return !jspIsInterrupted();
   }
 #endif
   uint32_t startAddr;
   uint32_t pageSize;
   if (!jshFlashGetPage(addr, &startAddr, &pageSize))
-    return;
+    return false;
   if (jshFlashWriteProtect(startAddr) ||
-      jshFlashWriteProtect(startAddr+pageSize-1))
-    return;
+      jshFlashWriteProtect(startAddr + byteLength - 1))
+    return false;
   uint32_t err;
-  flashIsBusy = true;
-  while ((err = sd_flash_page_erase(startAddr / NRF_FICR->CODEPAGESIZE)) == NRF_ERROR_BUSY);
-  if (err!=NRF_SUCCESS) flashIsBusy = false;
-  WAIT_UNTIL(!flashIsBusy, "jshFlashErasePage");
-  /*if (err!=NRF_SUCCESS)
-    jsiConsolePrintf("jshFlashErasePage got err %d at 0x%x\n", err, addr);*/
-  //nrf_nvmc_page_erase(addr);
+  while (byteLength>=4096 && !jspIsInterrupted()) {
+    flashIsBusy = true;
+    while ((err = sd_flash_page_erase(startAddr / NRF_FICR->CODEPAGESIZE)) == NRF_ERROR_BUSY);
+    if (err!=NRF_SUCCESS) flashIsBusy = false;
+    WAIT_UNTIL(!flashIsBusy, "jshFlashErasePage");
+    /*if (err!=NRF_SUCCESS)
+      jsiConsolePrintf("jshFlashErasePage got err %d at 0x%x\n", err, addr);*/
+    //nrf_nvmc_page_erase(addr);
+    byteLength -= 4096;
+    startAddr += 4096;
+    // Erasing can take a while, so kick the watchdog throughout
+    jshKickWatchDog();
+  }
+  return !jspIsInterrupted();
 }
 
 /**
@@ -2350,17 +2416,30 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
         || spiFlashLastAddress==0 
 #endif
        ) {
-      nrf_gpio_pin_set((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
-      unsigned char b[4];
+      NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+      uint32_t b;
       // Read
-      b[0] = 0x03;
-      b[1] = addr>>16;
-      b[2] = addr>>8;
-      b[3] = addr;
-      nrf_gpio_pin_clear((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
-      spiFlashWrite(b,4);
+#ifdef SPIFLASH_READ2X
+      b = 0x3B000000; // uses MOSI to double-up data transfer
+#else
+      b = 0x03000000;
+#endif
+      b |= addr;
+      NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
+      spiFlashWrite32(b);
+#ifdef SPIFLASH_READ2X
+      // Shift out dummy byte as fast as we can
+      for (int bit=0;bit<8;bit++) {
+        NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+        NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_SCK].pin);
+      }
+#endif
     }
+#ifdef SPIFLASH_READ2X
+    spiFlashRead2x((unsigned char*)buf,len);
+#else
     spiFlashRead((unsigned char*)buf,len);
+#endif
     spiFlashLastAddress = addr + len;
     return;
   }
@@ -2391,10 +2470,10 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
      * quickly. Also this way works around paging issues. */
     for (unsigned int i=0;i<len;i++) {
       // WREN
-      b[0] = 0x06;
+      b[0] = QSPI_STD_CMD_WREN;
       spiFlashWriteCS(b,1);
       // Write
-      b[0] = 0x02;
+      b[0] = QSPI_STD_CMD_WRITE;
       b[1] = addr>>16;
       b[2] = addr>>8;
       b[3] = addr;
@@ -2418,10 +2497,10 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
       int retries = 3;
       while (retries>0) {
         // WREN
-        b[0] = 0x06;
+        b[0] = QSPI_STD_CMD_WREN;
         spiFlashWriteCS(b,1);
         // Write
-        b[0] = 0x02;
+        b[0] = QSPI_STD_CMD_WRITE;
         b[1] = addr>>16;
         b[2] = addr>>8;
         b[3] = addr;

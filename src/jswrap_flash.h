@@ -11,6 +11,9 @@
  * JavaScript Flash IO functions
  * ----------------------------------------------------------------------------
  */
+#ifndef JSWRAP_FLASH_H_
+#define JSWRAP_FLASH_H_
+
 #include "jsvar.h"
 
 // Flash Library exports
@@ -20,3 +23,4 @@ void jswrap_flash_erasePage(JsVar *addr);
 void jswrap_flash_write(JsVar *data, int addr);
 JsVar *jswrap_flash_read(int length, int addr);
 
+#endif // JSWRAP_FLASH_H_

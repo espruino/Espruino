@@ -73,8 +73,14 @@ Pin jshSerialDeviceCTSPins[JSHSERIALDEVICESTATUSES];
 
 // ----------------------------------------------------------------------------
 //                                                              IO EVENT BUFFER
+#if IOBUFFERMASK<256
+typedef uint8_t IOBufferIdx;
+#else
+typedef uint16_t IOBufferIdx;
+#endif
+
 volatile IOEvent ioBuffer[IOBUFFERMASK+1];
-volatile unsigned char ioHead=0, ioTail=0;
+volatile IOBufferIdx ioHead=0, ioTail=0;
 
 // ----------------------------------------------------------------------------
 
@@ -380,7 +386,7 @@ void CALLED_FROM_INTERRUPT jshPushEvent(IOEvent *evt) {
    * USB and USART data to be coming in at the same time, and it can trip
    * things up if one IRQ interrupts another. */
   jshInterruptOff();
-  unsigned char nextHead = (unsigned char)((ioHead+1) & IOBUFFERMASK);
+  IOBufferIdx nextHead = (IOBufferIdx)((ioHead+1) & IOBUFFERMASK);
   if (ioTail == nextHead) {
     jshInterruptOn();
     jshIOEventOverflowed();
@@ -393,7 +399,7 @@ void CALLED_FROM_INTERRUPT jshPushEvent(IOEvent *evt) {
 
 /// Attempt to push characters onto an existing event
 static bool jshPushIOCharEventAppend(IOEventFlags channel, char charData) {
-  unsigned char lastHead = (unsigned char)((ioHead+IOBUFFERMASK) & IOBUFFERMASK); // one behind head
+  IOBufferIdx lastHead = (IOBufferIdx)((ioHead+IOBUFFERMASK) & IOBUFFERMASK); // one behind head
   if (ioHead!=ioTail && lastHead!=ioTail) {
     // we can do this because we only read in main loop, and we're in an interrupt here
     if (IOEVENTFLAGS_GETTYPE(ioBuffer[lastHead].flags) == channel) {
@@ -503,7 +509,7 @@ void CALLED_FROM_INTERRUPT jshPushIOEvent(
 bool jshPopIOEvent(IOEvent *result) {
   if (ioHead==ioTail) return false;
   *result = ioBuffer[ioTail];
-  ioTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
+  ioTail = (IOBufferIdx)((ioTail+1) & IOBUFFERMASK);
   return true;
 }
 
@@ -513,7 +519,7 @@ bool jshPopIOEventOfType(IOEventFlags eventType, IOEvent *result) {
   if (IOEVENTFLAGS_GETTYPE(ioBuffer[ioTail].flags) == eventType)
     return jshPopIOEvent(result);
   // Now check non-top
-  unsigned char i = ioTail;
+  IOBufferIdx i = ioTail;
   while (ioHead!=i) {
     if (IOEVENTFLAGS_GETTYPE(ioBuffer[i].flags) == eventType) {
       /* We need IRQ off for this, because if we get data it's possible
@@ -522,18 +528,18 @@ bool jshPopIOEventOfType(IOEventFlags eventType, IOEvent *result) {
       jshInterruptOff();
       *result = ioBuffer[i];
       // work back and shift all items in out queue
-      unsigned char n = (unsigned char)((i+IOBUFFERMASK) & IOBUFFERMASK);
+      IOBufferIdx n = (IOBufferIdx)((i+IOBUFFERMASK) & IOBUFFERMASK);
       while (n!=ioTail) {
         ioBuffer[i] = ioBuffer[n];
         i = n;
-        n = (unsigned char)((n+IOBUFFERMASK) & IOBUFFERMASK);
+        n = (IOBufferIdx)((n+IOBUFFERMASK) & IOBUFFERMASK);
       }
       // finally update the tail pointer, and return
-      ioTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
+      ioTail = (IOBufferIdx)((ioTail+1) & IOBUFFERMASK);
       jshInterruptOn();
       return true;
     }
-    i = (unsigned char)((i+1) & IOBUFFERMASK);
+    i = (IOBufferIdx)((i+1) & IOBUFFERMASK);
   }
   return false;
 }

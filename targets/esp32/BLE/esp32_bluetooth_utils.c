@@ -17,19 +17,13 @@
 #include "BLE/esp32_gap_func.h"
 #include "BLE/esp32_gatts_func.h"
 #include "BLE/esp32_gattc_func.h"
-#include "bt.h"
+#include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_gatt_common_api.h"
 #include "freertos/FreeRTOS.h"
 #include "jsvariterator.h"
 
-int bleEventDebug = 0;
-
-typedef enum{
-	ESP_BLE_DEBUG_GAP = 1,
-	ESP_BLE_DEBUG_GATTS = 2,
-	ESP_BLE_DEBUG_GATTC = 4
-} esp_ble_debug_t;
+esp_ble_debug_t bleEventDebug = 0;
 
 esp_err_t initController(){
 	esp_err_t ret;  	
@@ -67,11 +61,6 @@ esp_err_t setMtu(){
 	esp_err_t ret;
 	ret = esp_ble_gatt_set_local_mtu(500);if(ret)jsWarn("set local MTU failed:%x\n",ret);
 	return ret;
-}
- 
-JsVar *bda2JsVarString(esp_bd_addr_t bda){
-	JsVar *s = jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",bda[0],bda[1],bda[2],bda[3],bda[4],bda[5]);
-	return s;
 }
 
 void ESP32_setBLE_Debug(int level){
@@ -249,7 +238,7 @@ void bleRemoveChilds(JsVar *parent){
 	jsvUnLock(blevar);
 }
 
-void bleuuid_TO_espbtuuid(ble_uuid_t ble_uuid,esp_bt_uuid_t *esp_uuid){
+void bleuuid_TO_espbtuuid(ble_uuid_t ble_uuid, esp_bt_uuid_t *esp_uuid){
 	switch(ble_uuid.type){
 		case BLE_UUID_TYPE_UNKNOWN:
 			jsError("empty UUID type\n");
@@ -265,10 +254,27 @@ void bleuuid_TO_espbtuuid(ble_uuid_t ble_uuid,esp_bt_uuid_t *esp_uuid){
 			}
 			break;
 		default:
-			jsError("unknown UUID TYPE\n");
+			jsError("bleuuid_TO_espbtuuid unknown UUID TYPE\n");
 	}
 }
-void bleuuid_To_uuid128(ble_uuid_t ble_uuid,uint8_t *ble128){
+
+void espbtuuid_TO_bleuuid(esp_bt_uuid_t esp_uuid, ble_uuid_t *ble_uuid) {
+  switch(esp_uuid.len) {
+    case ESP_UUID_LEN_16:
+      ble_uuid->type = BLE_UUID_TYPE_BLE;
+      ble_uuid->uuid = esp_uuid.uuid.uuid16;
+      break;
+    case ESP_UUID_LEN_128:
+      ble_uuid->type = BLE_UUID_TYPE_128;
+      for(int i = 0; i < 16; i++)
+        ble_uuid->uuid128[i] = esp_uuid.uuid.uuid128[i];
+      break;
+    default:
+      jsError("espbtuuid_TO_bleuuid unknown UUID TYPE\n");
+  }
+}
+
+void bleuuid_To_uuid128(ble_uuid_t ble_uuid, uint8_t *ble128){
 	uint8_t tmp[] = {0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00};
 	switch (ble_uuid.type){
 		case BLE_UUID_TYPE_UNKNOWN:
@@ -289,4 +295,27 @@ void bleuuid_To_uuid128(ble_uuid_t ble_uuid,uint8_t *ble128){
 		default:
 			jsError("unknown UUID type\n");
 	}
+}
+
+bool espbtuuid_equal(esp_bt_uuid_t a, esp_bt_uuid_t b) {
+  return
+      (a.len == ESP_UUID_LEN_16 && b.len == ESP_UUID_LEN_16 && a.uuid.uuid16 == b.uuid.uuid16) ||
+      (a.len == ESP_UUID_LEN_32 && b.len == ESP_UUID_LEN_32 && a.uuid.uuid32 == b.uuid.uuid32) ||
+      (a.len == ESP_UUID_LEN_128 && b.len == ESP_UUID_LEN_128 && memcmp(a.uuid.uuid128, b.uuid.uuid128, ESP_UUID_LEN_128)==0);
+}
+
+void bleaddr_TO_espbtaddr(ble_gap_addr_t ble_addr, esp_bd_addr_t remote_bda, esp_ble_addr_type_t *remote_bda_type) {
+  // reverse bytes in address and copy
+  for(int i=0;i<6;i++)
+    remote_bda[5-i] = ble_addr.addr[i];
+  // BLE_GAP_ADDR_TYPES and esp_ble_addr_type_t match (no need for conversion)
+  *remote_bda_type = ble_addr.addr_type;
+}
+
+void espbtaddr_TO_bleaddr(esp_bd_addr_t remote_bda, esp_ble_addr_type_t remote_bda_type, ble_gap_addr_t *ble_addr) {
+  // reverse bytes in address and copy
+  for(int i=0;i<6;i++)
+    ble_addr->addr[i] = remote_bda[5-i];
+  // BLE_GAP_ADDR_TYPES and esp_ble_addr_type_t match (no need for conversion)
+  ble_addr->addr_type = remote_bda_type;
 }

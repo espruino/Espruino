@@ -44,25 +44,26 @@ const int STORAGEFILE_CHUNKSIZE =
   "class" : "Storage"
 }
 
-This module allows you to read and write part of the nonvolatile flash
-memory of your device using a filesystem-like API.
+This module allows you to read and write part of the nonvolatile flash memory of
+your device using a filesystem-like API.
 
-Also see the `Flash` library, which provides a low level, more dangerous way
-to access all parts of your flash memory.
+Also see the `Flash` library, which provides a low level, more dangerous way to
+access all parts of your flash memory.
 
 The `Storage` library provides two distinct types of file:
 
-* `require("Storage").write(...)`/`require("Storage").read(...)`/etc create simple
-contiguous files of fixed length. This is the recommended file type.
-* `require("Storage").open(...)` creates a `StorageFile`, which stores the file in
-numbered chunks (`"filename\1"`/`"filename\2"`/etc). It allows data to be appended
-and for the file to be read line by line.
+* `require("Storage").write(...)`/`require("Storage").read(...)`/etc create
+simple contiguous files of fixed length. This is the recommended file type.
+* `require("Storage").open(...)` creates a `StorageFile`, which stores the file
+in numbered chunks (`"filename\1"`/`"filename\2"`/etc). It allows data to be
+appended and for the file to be read line by line.
 
-You must read a file using the same method you used to write it - eg. you can't create a
-file with `require("Storage").open(...)` and then read it with `require("Storage").read(...)`.
+You must read a file using the same method you used to write it - e.g. you can't
+create a file with `require("Storage").open(...)` and then read it with
+`require("Storage").read(...)`.
 
-**Note:** In firmware 2v05 and later, the maximum length for filenames
-is 28 characters. However in 2v04 and earlier the max length is 8.
+**Note:** In firmware 2v05 and later, the maximum length for filenames is 28
+characters. However in 2v04 and earlier the max length is 8.
 */
 
 /*JSON{
@@ -71,9 +72,9 @@ is 28 characters. However in 2v04 and earlier the max length is 8.
   "name" : "eraseAll",
   "generate" : "jswrap_storage_eraseAll"
 }
-Erase the flash storage area. This will remove all files
-created with `require("Storage").write(...)` as well
-as any code saved with `save()` or `E.setBootCode()`.
+Erase the flash storage area. This will remove all files created with
+`require("Storage").write(...)` as well as any code saved with `save()` or
+`E.setBootCode()`.
  */
 void jswrap_storage_eraseAll() {
   jsfEraseAll();
@@ -86,12 +87,13 @@ void jswrap_storage_eraseAll() {
   "generate" : "jswrap_storage_erase",
   "params" : [
     ["name","JsVar","The filename - max 28 characters (case sensitive)"]
-  ]
+  ],
+  "typescript" : "erase(name: string): void;"
 }
 Erase a single file from the flash storage area.
 
-**Note:** This function should be used with normal files, and not
-`StorageFile`s created with `require("Storage").open(filename, ...)`
+**Note:** This function should be used with normal files, and not `StorageFile`s
+created with `require("Storage").open(filename, ...)`
  */
 void jswrap_storage_erase(JsVar *name) {
   jsfEraseFile(jsfNameFromVar(name));
@@ -107,22 +109,23 @@ void jswrap_storage_erase(JsVar *name) {
     ["offset","int","(optional) The offset in bytes to start from"],
     ["length","int","(optional) The length to read in bytes (if <=0, the entire file is read)"]
   ],
-  "return" : ["JsVar","A string of data, or `undefined` if the file is not found"]
+  "return" : ["JsVar","A string of data, or `undefined` if the file is not found"],
+  "typescript" : "read(name: string, offset?: number, length?: number): string | undefined;"
 }
-Read a file from the flash storage area that has
-been written with `require("Storage").write(...)`.
+Read a file from the flash storage area that has been written with
+`require("Storage").write(...)`.
 
-This function returns a memory-mapped String that points to the actual
-memory area in read-only memory, so it won't use up RAM.
+This function returns a memory-mapped String that points to the actual memory
+area in read-only memory, so it won't use up RAM.
 
-As such you can check if a file exists efficiently using `require("Storage").read(filename)!==undefined`.
+As such you can check if a file exists efficiently using
+`require("Storage").read(filename)!==undefined`.
 
-If you evaluate this string with `eval`, any functions
-contained in the String will keep their code stored
-in flash memory.
+If you evaluate this string with `eval`, any functions contained in the String
+will keep their code stored in flash memory.
 
-**Note:** This function should be used with normal files, and not
-`StorageFile`s created with `require("Storage").open(filename, ...)`
+**Note:** This function should be used with normal files, and not `StorageFile`s
+created with `require("Storage").open(filename, ...)`
 */
 JsVar *jswrap_storage_read(JsVar *name, int offset, int length) {
   return jsfReadFile(jsfNameFromVar(name), offset, length);
@@ -138,18 +141,17 @@ JsVar *jswrap_storage_read(JsVar *name, int offset, int length) {
     ["name","JsVar","The filename - max 28 characters (case sensitive)"],
     ["noExceptions","bool","If true and the JSON is not valid, just return `undefined` - otherwise an `Exception` is thrown"]
   ],
-  "return" : ["JsVar","An object containing parsed JSON from the file, or undefined"]
+  "return" : ["JsVar","An object containing parsed JSON from the file, or undefined"],
+  "typescript" : "readJSON(name: string, noExceptions: boolean): any;"
 }
-Read a file from the flash storage area that has
-been written with `require("Storage").write(...)`,
-and parse JSON in it into a JavaScript object.
+Read a file from the flash storage area that has been written with
+`require("Storage").write(...)`, and parse JSON in it into a JavaScript object.
 
-This is identical to `JSON.parse(require("Storage").read(...))`.
-It will throw an exception if the data in the file is not
-valid JSON.
+This is identical to `JSON.parse(require("Storage").read(...))`. It will throw
+an exception if the data in the file is not valid JSON.
 
-**Note:** This function should be used with normal files, and not
-`StorageFile`s created with `require("Storage").open(filename, ...)`
+**Note:** This function should be used with normal files, and not `StorageFile`s
+created with `require("Storage").open(filename, ...)`
 */
 JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name),0,0);
@@ -172,19 +174,21 @@ JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions) {
   "params" : [
     ["name","JsVar","The filename - max 28 characters (case sensitive)"]
   ],
-  "return" : ["JsVar","An ArrayBuffer containing data from the file, or undefined"]
+  "return" : ["JsVar","An ArrayBuffer containing data from the file, or undefined"],
+  "typescript" : "readArrayBuffer(name: string): ArrayBuffer | undefined;"
 }
-Read a file from the flash storage area that has
-been written with `require("Storage").write(...)`,
-and return the raw binary data as an ArrayBuffer.
+Read a file from the flash storage area that has been written with
+`require("Storage").write(...)`, and return the raw binary data as an
+ArrayBuffer.
 
 This can be used:
 
 * In a `DataView` with `new DataView(require("Storage").readArrayBuffer("x"))`
-* In a `Uint8Array/Float32Array/etc` with `new Uint8Array(require("Storage").readArrayBuffer("x"))`
+* In a `Uint8Array/Float32Array/etc` with `new
+  Uint8Array(require("Storage").readArrayBuffer("x"))`
 
-**Note:** This function should be used with normal files, and not
-`StorageFile`s created with `require("Storage").open(filename, ...)`
+**Note:** This function should be used with normal files, and not `StorageFile`s
+created with `require("Storage").open(filename, ...)`
 */
 JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name),0,0);
@@ -205,27 +209,27 @@ JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
     ["offset","int","[optional] The offset within the file to write"],
     ["size","int","[optional] The size of the file (if a file is to be created that is bigger than the data)"]
   ],
-  "return" : ["bool","True on success, false on failure"]
+  "return" : ["bool","True on success, false on failure"],
+  "typescript" : "write(name: string | ArrayBuffer | ArrayBufferView | number[] | object, data: any, offset?: number, size?: number): boolean;"
 }
-Write/create a file in the flash storage area. This is
-nonvolatile and will not disappear when the device resets
-or power is lost.
+Write/create a file in the flash storage area. This is nonvolatile and will not
+disappear when the device resets or power is lost.
 
-Simply write `require("Storage").write("MyFile", "Some data")` to write
-a new file, and `require("Storage").read("MyFile")` to read it.
+Simply write `require("Storage").write("MyFile", "Some data")` to write a new
+file, and `require("Storage").read("MyFile")` to read it.
 
 If you supply:
 
 * A String, it will be written as-is
 * An array, will be written as a byte array (but read back as a String)
-* An object, it will automatically be converted to
-a JSON string before being written.
+* An object, it will automatically be converted to a JSON string before being
+written.
 
-**Note:** If an array is supplied it will not be converted to JSON.
-To be explicit about the conversion you can use `Storage.writeJSON`
+**Note:** If an array is supplied it will not be converted to JSON. To be
+explicit about the conversion you can use `Storage.writeJSON`
 
-You may also create a file and then populate data later **as long as you
-don't try and overwrite data that already exists**. For instance:
+You may also create a file and then populate data later **as long as you don't
+try and overwrite data that already exists**. For instance:
 
 ```
 var f = require("Storage");
@@ -237,12 +241,12 @@ f.write("a"," ",0); // Writing to location 0 again will cause the file to be re-
 print(f.read("a")); // " "
 ```
 
-This can be useful if you've got more data to write than you
-have RAM available - for instance the Web IDE uses this method
-to write large files into onboard storage.
+This can be useful if you've got more data to write than you have RAM
+available - for instance the Web IDE uses this method to write large files into
+onboard storage.
 
-**Note:** This function should be used with normal files, and not
-`StorageFile`s created with `require("Storage").open(filename, ...)`
+**Note:** This function should be used with normal files, and not `StorageFile`s
+created with `require("Storage").open(filename, ...)`
 */
 bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt _size) {
   JsVar *d;
@@ -268,19 +272,19 @@ bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt _s
     ["name","JsVar","The filename - max 28 characters (case sensitive)"],
     ["data","JsVar","The JSON data to write"]
   ],
-  "return" : ["bool","True on success, false on failure"]
+  "return" : ["bool","True on success, false on failure"],
+  "typescript" : "writeJSON(name: string, data: any): boolean;"
 }
-Write/create a file in the flash storage area. This is
-nonvolatile and will not disappear when the device resets
-or power is lost.
+Write/create a file in the flash storage area. This is nonvolatile and will not
+disappear when the device resets or power is lost.
 
-Simply write `require("Storage").writeJSON("MyFile", [1,2,3])` to write
-a new file, and `require("Storage").readJSON("MyFile")` to read it.
+Simply write `require("Storage").writeJSON("MyFile", [1,2,3])` to write a new
+file, and `require("Storage").readJSON("MyFile")` to read it.
 
 This is equivalent to: `require("Storage").write(name, JSON.stringify(data))`
 
-**Note:** This function should be used with normal files, and not
-`StorageFile`s created with `require("Storage").open(filename, ...)`
+**Note:** This function should be used with normal files, and not `StorageFile`s
+created with `require("Storage").open(filename, ...)`
 */
 bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
   JsVar *d = jswrap_json_stringify(data,0,0);
@@ -298,7 +302,8 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
     ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being returned"],
     ["filter","JsVar","(optional) If supplied, File Types are filtered based on this: `{sf:true}` or `{sf:false}` for whether to show StorageFile"]
   ],
-  "return" : ["JsVar","An array of filenames"]
+  "return" : ["JsVar","An array of filenames"],
+  "typescript" : "list(regex?: RegExp, filter?: { sf: boolean }): string[];"
 }
 List all files in the flash storage area. An array of Strings is returned.
 
@@ -312,12 +317,12 @@ require("Storage").list()
 require("Storage").list(/\.js$/)
 // All Storage Files
 require("Storage").list(undefined, {sf:true})
-// All normal files (eg created with Storage.write)
+// All normal files (e.g. created with Storage.write)
 require("Storage").list(undefined, {sf:false})
 ```
 
-**Note:** This will output system files (eg. saved code) as well as
-files that you may have written.
+**Note:** This will output system files (e.g. saved code) as well as files that
+you may have written.
  */
 JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
   JsfFileFlags containing = 0;
@@ -343,13 +348,15 @@ JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
   "params" : [
     ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being hashed"]
   ],
-  "return" : ["int","A hash of the files matching"]
+  "return" : ["int","A hash of the files matching"],
+  "typescript" : "hash(regex: RegExp): number;"
 }
-List all files in the flash storage area matching the specfied regex (ignores StorageFiles),
-and then hash their filenames *and* file locations.
+List all files in the flash storage area matching the specified regex (ignores
+StorageFiles), and then hash their filenames *and* file locations.
 
-Identical files may have different hashes (eg. if Storage is compacted and the file moves) but
-the changes of different files having the same hash are extremely small.
+Identical files may have different hashes (e.g. if Storage is compacted and the
+file moves) but the changes of different files having the same hash are
+extremely small.
 
 ```
 // Hash files
@@ -358,10 +365,9 @@ require("Storage").hash()
 require("Storage").hash(/\.boot\.js$/)
 ```
 
-**Note:** This function is used by Bangle.js as a way to cache files.
-For instance the bootloader will add all `.boot.js` files together into
-a single `.boot0` file, but it needs to know quickly whether anything has
-changed.
+**Note:** This function is used by Bangle.js as a way to cache files. For
+instance the bootloader will add all `.boot.js` files together into a single
+`.boot0` file, but it needs to know quickly whether anything has changed.
  */
 JsVarInt jswrap_storage_hash(JsVar *regex) {
   return jsfHashFiles(regex, 0, JSFF_STORAGEFILE);
@@ -374,21 +380,19 @@ JsVarInt jswrap_storage_hash(JsVar *regex) {
   "name" : "compact",
   "generate" : "jswrap_storage_compact"
 }
-The Flash Storage system is journaling. To make the most of the limited
-write cycles of Flash memory, Espruino marks deleted/replaced files as
-garbage and moves on to a fresh part of flash memory. Espruino only
-fully erases those files when it is running low on flash, or when
-`compact` is called.
+The Flash Storage system is journaling. To make the most of the limited write
+cycles of Flash memory, Espruino marks deleted/replaced files as garbage and
+moves on to a fresh part of flash memory. Espruino only fully erases those files
+when it is running low on flash, or when `compact` is called.
 
-`compact` may fail if there isn't enough RAM free on the stack to
-use as swap space, however in this case it will not lose data.
+`compact` may fail if there isn't enough RAM free on the stack to use as swap
+space, however in this case it will not lose data.
 
-**Note:** `compact` rearranges the contents of memory. If code is
-referencing that memory (eg. functions that have their code stored in flash)
-then they may become garbled when compaction happens. To avoid this,
-call `eraseFiles` before uploading data that you intend to reference to
-ensure that uploaded files are right at the start of flash and cannot be
-compacted further.
+**Note:** `compact` rearranges the contents of memory. If code is referencing
+that memory (e.g. functions that have their code stored in flash) then they may
+become garbled when compaction happens. To avoid this, call `eraseFiles` before
+uploading data that you intend to reference to ensure that uploaded files are
+right at the start of flash and cannot be compacted further.
  */
 void jswrap_storage_compact() {
   jsfCompact();
@@ -401,9 +405,8 @@ void jswrap_storage_compact() {
   "name" : "debug",
   "generate" : "jswrap_storage_debug"
 }
-This writes information about all blocks in flash
-memory to the console - and is only useful for debugging
-flash storage.
+This writes information about all blocks in flash memory to the console - and is
+only useful for debugging flash storage.
  */
 void jswrap_storage_debug() {
   jsfDebugFiles();
@@ -417,10 +420,9 @@ void jswrap_storage_debug() {
   "generate" : "jswrap_storage_getFree",
   "return" : ["int","The amount of free bytes"]
 }
-Return the amount of free bytes available in
-Storage. Due to fragmentation there may be more
-bytes available, but this represents the maximum
-size of file that can be written.
+Return the amount of free bytes available in Storage. Due to fragmentation there
+may be more bytes available, but this represents the maximum size of file that
+can be written.
  */
 int jswrap_storage_getFree() {
   return (int)jsfGetStorageStats(0,true).free;
@@ -464,6 +466,22 @@ JsVar *jswrap_storage_getStats() {
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Storage",
+  "name" : "optimise",
+  "generate" : "jswrap_storage_optimise"
+}
+Writes a lookup table for files into Bangle.js's storage. This allows any file
+stored up to that point to be accessed quickly.
+ */
+void jswrap_storage_optimise() {
+#ifdef ESPR_STORAGE_FILENAME_TABLE
+  jsfCreateFileTable();
+#endif
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Storage",
   "name" : "open",
   "generate" : "jswrap_storage_open",
   "params" : [
@@ -471,7 +489,8 @@ JsVar *jswrap_storage_getStats() {
     ["mode","JsVar","The open mode - must be either `'r'` for read,`'w'` for write , or `'a'` for append"]
   ],
   "return" : ["JsVar","An object containing {read,write,erase}"],
-  "return_object" : "StorageFile"
+  "return_object" : "StorageFile",
+  "typescript" : "open(name: string, mode: \"r\" | \"w\" | \"a\"): StorageFile;"
 }
 Open a file in the Storage area. This can be used for appending data
 (normal read/write operations only write the entire file).
@@ -569,22 +588,20 @@ JsVar *jswrap_storage_open(JsVar *name, JsVar *modeVar) {
   "ifndef" : "SAVE_ON_FLASH"
 }
 
-These objects are created from `require("Storage").open`
-and allow Storage items to be read/written.
+These objects are created from `require("Storage").open` and allow Storage items
+to be read/written.
 
-The `Storage` library writes into Flash memory (which
-can only be erased in chunks), and unlike a normal filesystem
-it allocates files in one long contiguous area to allow them
-to be accessed easily from Espruino.
+The `Storage` library writes into Flash memory (which can only be erased in
+chunks), and unlike a normal filesystem it allocates files in one long
+contiguous area to allow them to be accessed easily from Espruino.
 
-This presents a challenge for `StorageFile` which allows you
-to append to a file, so instead `StorageFile` stores files
-in chunks. It uses the last character of the filename
-to denote the chunk number (eg `"foobar\1"`, `"foobar\2"`, etc).
+This presents a challenge for `StorageFile` which allows you to append to a
+file, so instead `StorageFile` stores files in chunks. It uses the last
+character of the filename to denote the chunk number (e.g. `"foobar\1"`,
+`"foobar\2"`, etc).
 
-This means that while `StorageFile` files exist in the same
-area as those from `Storage`, they should be
-read using `Storage.open` (and not `Storage.read`).
+This means that while `StorageFile` files exist in the same area as those from
+`Storage`, they should be read using `Storage.open` (and not `Storage.read`).
 
 ```
 f = s.open("foobar","w");
@@ -611,9 +628,9 @@ f.readLine() // undefined
 f.erase();
 ```
 
-**Note:** `StorageFile` uses the fact that all bits of erased flash memory
-are 1 to detect the end of a file. As such you should not write character
-code 255 (`"\xFF"`) to these files.
+**Note:** `StorageFile` uses the fact that all bits of erased flash memory are 1
+to detect the end of a file. As such you should not write character code 255
+(`"\xFF"`) to these files.
 */
 
 JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
@@ -706,10 +723,11 @@ JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
   "return" : ["JsVar","A String, or undefined "],
   "return_object" : "String"
 }
-Read 'len' bytes of data from the file, and return a String containing those bytes.
+Read 'len' bytes of data from the file, and return a String containing those
+bytes.
 
-If the end of the file is reached, the String may be smaller than the amount of bytes
-requested, or if the file is already at the end, `undefined` is returned.
+If the end of the file is reached, the String may be smaller than the amount of
+bytes requested, or if the file is already at the end, `undefined` is returned.
 */
 JsVar *jswrap_storagefile_read(JsVar *f, int len) {
   if (len<0) len=0;
@@ -739,8 +757,8 @@ JsVar *jswrap_storagefile_readLine(JsVar *f) {
 }
 Return the length of the current file.
 
-This requires Espruino to read the file from scratch,
-which is not a fast operation.
+This requires Espruino to read the file from scratch, which is not a fast
+operation.
 */
 int jswrap_storagefile_getLength(JsVar *f) {
   // Get name and position of name digit
@@ -802,9 +820,11 @@ int jswrap_storagefile_getLength(JsVar *f) {
   "generate" : "jswrap_storagefile_write",
   "params" : [
     ["data","JsVar","The data to write. This should not include `'\\xFF'` (character code 255)"]
-  ]
+  ],
+  "typescript" : "write(data: string): void;"
 }
-Append the given data to a file. You should not attempt to append  `"\xFF"` (character code 255).
+Append the given data to a file. You should not attempt to append `"\xFF"`
+(character code 255).
 */
 void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
   char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"mode",0));

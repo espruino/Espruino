@@ -1481,31 +1481,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   return 0;
 }
 
-/// Pulse a pin for a certain time, but via IRQs, not JS: `digitalWrite(pin,value);setTimeout("digitalWrite(pin,!value)", time*1000);`
-void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime){
-  // ---- USE TIMER FOR PULSE
-  if (!jshIsPinValid(pin)) {
-       jsExceptionHere(JSET_ERROR, "Invalid pin!");
-       return;
-  }
-  if (pulseTime<=0) {
-    // just wait for everything to complete
-    jstUtilTimerWaitEmpty();
-    return;
-  } else {
-    // find out if we already had a timer scheduled
-    UtilTimerTask task;
-    if (!jstGetLastPinTimerTask(pin, &task)) {
-      // no timer - just start the pulse now!
-      jshPinOutput(pin, pulsePolarity);
-      task.time = jshGetSystemTime();
-    }
-    // Now set the end of the pulse to happen on a timer
-    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
-  }
-
-}
-
 /// Can the given pin be watched? it may not be possible because of conflicts
 bool jshCanWatch(Pin pin){
   if (jshIsPinValid(pin)) {
@@ -1515,7 +1490,7 @@ bool jshCanWatch(Pin pin){
 }
 
 /// start watching pin - return the EXTI (IRQ number flag) associated with it
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch){
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   if (jshIsPinValid(pin)) {
     // TODO: check for DUPs, also disable interrupt
     /*int idx = pinToPinSource(IOPIN_DATA[pin].pin);

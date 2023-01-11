@@ -46,12 +46,14 @@ An Object that handles conversion to and from the JSON data interchange format
   ],
   "return" : ["JsVar","A JSON string"]
 }
-Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval.
+Convert the given object into a JSON string which can subsequently be parsed
+with JSON.parse or eval.
 
 **Note:** This differs from JavaScript's standard `JSON.stringify` in that:
 
 * The `replacer` argument is ignored
-* Typed arrays like `new Uint8Array(5)` will be dumped as if they were arrays, not as if they were objects (since it is more compact)
+* Typed arrays like `new Uint8Array(5)` will be dumped as if they were arrays,
+  not as if they were objects (since it is more compact)
  */
 JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space) {
   NOT_USED(replacer);
@@ -169,7 +171,8 @@ JsVar *jswrap_json_parse_internal() {
 }
 Parse the given JSON string into a JavaScript object
 
-NOTE: This implementation uses eval() internally, and as such it is unsafe as it can allow arbitrary JS commands to be executed.
+NOTE: This implementation uses eval() internally, and as such it is unsafe as it
+can allow arbitrary JS commands to be executed.
  */
 JsVar *jswrap_json_parse(JsVar *v) {
   JsLex lex;
@@ -211,9 +214,16 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
   }
   jsvObjectIteratorFree(&it);
   cbprintf(user_callback, user_data, ") ");
-
+#ifdef ESPR_JIT
+  JsVar *jitCode = 0;
+#endif
   if (jsvIsNativeFunction(var)) {
     cbprintf(user_callback, user_data, "{ [native code] }");
+#ifdef ESPR_JIT
+  } else if (jitCode = jsvFindChildFromString(var, JSPARSE_FUNCTION_JIT_CODE_NAME, false)) {
+    jsvUnLock(jitCode);
+    cbprintf(user_callback, user_data, "{ [JIT] }");
+#endif
   } else {
     if (codeVar) {
       if (flags & JSON_LIMIT) {
@@ -296,7 +306,7 @@ void jsfGetJSONWithCallback(JsVar *var, JsVar *varName, JSONFlags flags, const c
   if (!whitespace) whitespace="  ";
 
   if (jsvIsUndefined(var)) {
-    cbprintf(user_callback, user_data, "undefined");
+    cbprintf(user_callback, user_data, (flags&JSON_NO_UNDEFINED)?"null":"undefined");
     return;
   }
   // Use IS_RECURSING flag to stop recursion
@@ -406,10 +416,14 @@ void jsfGetJSONWithCallback(JsVar *var, JsVar *varName, JSONFlags flags, const c
       if (isBasicArrayBuffer && !asArray) cbprintf(user_callback, user_data, ".buffer");
     }
   } else if (jsvIsObject(var)) {
+#ifndef ESPR_EMBED
     IOEventFlags device = (flags & JSON_SHOW_DEVICES) ? jsiGetDeviceFromClass(var) : EV_NONE;
     if (device!=EV_NONE) {
       cbprintf(user_callback, user_data, "%s", jshGetDeviceString(device));
     } else {
+#else
+    {
+#endif
       bool showContents = true;
       if (flags & JSON_SHOW_OBJECT_NAMES) {
         JsVar *proto = jsvObjectGetChild(var, JSPARSE_INHERITS_VAR, 0);
@@ -464,7 +478,7 @@ void jsfGetJSONWithCallback(JsVar *var, JsVar *varName, JSONFlags flags, const c
       cbprintf(user_callback, user_data, "function ");
       jsfGetJSONForFunctionWithCallback(var, nflags, user_callback, user_data);
     }
-  } else if (jsvIsString(var) && !jsvIsName(var)) {
+  } else if ((jsvIsString(var) && !jsvIsName(var)) || ((flags&JSON_JSON_COMPATIBILE)&&jsvIsPin(var))) {
     if ((flags&JSON_LIMIT) && jsvGetStringLength(var)>JSON_LIMIT_STRING_AMOUNT) {
       // if the string is too big, split it and put dots in the middle
       JsVar *var1 = jsvNewFromStringVar(var, 0, JSON_LIMITED_STRING_AMOUNT);
@@ -499,8 +513,8 @@ void jsfGetJSON(JsVar *var, JsVar *result, JSONFlags flags) {
 }
 
 void jsfPrintJSON(JsVar *var, JSONFlags flags) {
-  jsfGetJSONWithCallback(var, NULL, flags, 0, (vcbprintf_callback)jsiConsolePrintString, 0);
+  jsfGetJSONWithCallback(var, NULL, flags, 0, vcbprintf_callback_jsiConsolePrintString, 0);
 }
 void jsfPrintJSONForFunction(JsVar *var, JSONFlags flags) {
-  jsfGetJSONForFunctionWithCallback(var, flags, (vcbprintf_callback)jsiConsolePrintString, 0);
+  jsfGetJSONForFunctionWithCallback(var, flags, vcbprintf_callback_jsiConsolePrintString, 0);
 }

@@ -17,12 +17,13 @@ import pinutils;
 
 info = {
  'name' : "Pixl.js",
- 'link' :  [ "http://www.espruino.com/Pixl.js" ],
+ 'link' :  [ "https://espruino.com/Pixl.js" ],
+ 'espruino_page_link' : 'Pixl.js',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D1",
  'default_console_rx' : "D0",
  'default_console_baudrate' : "9600",
- 'variables' : 3076, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 2950, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_pixljs.hex',
  'build' : {
@@ -38,14 +39,16 @@ info = {
      #'SHA256',
      #'AES',
      'FILESYSTEM',
+     'JIT',     
      'TERMINAL'
    ],
    'makefile' : [
      'WIZNET=1','W5100=1', # Add WIZnet support - W5100 is the most common Arduino shield
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
 #     'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
-     'DEFINES+=-DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
-     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2c40', # set RAM base to match MTU
+     'DEFINES += -DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
+     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once     
+     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3290', # set RAM base to match MTU=53 + CENTRAL_LINK_COUNT=2
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Pixl.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_pixljs_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://www.espruino.com/ide"\'',

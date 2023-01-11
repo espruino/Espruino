@@ -37,8 +37,6 @@
 #define CHAR_DELETE_SEND '\b'
 #endif
 
-#define CTRL_C_TIME_FOR_BREAK jshGetTimeFromMilliseconds(100)
-
 #ifdef ESP8266
 extern void jshPrintBanner(void); // prints a debugging banner while we're in beta
 extern void jshSoftInit(void);    // re-inits wifi after a soft-reset
@@ -69,7 +67,9 @@ Pin pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
 #endif
 JsiStatus jsiStatus = 0;
 JsSysTime jsiLastIdleTime;  ///< The last time we went around the idle loop - use this for timers
-uint32_t jsiTimeSinceCtrlC;
+#ifndef EMBEDDED
+uint32_t jsiTimeSinceCtrlC; ///< When was Ctrl-C last pressed. We use this so we quit on desktop when we do Ctrl-C + Ctrl-C
+#endif
 // ----------------------------------------------------------------------------
 JsVar *inputLine = 0; ///< The current input line
 JsvStringIterator inputLineIterator; ///< Iterator that points to the end of the input line
@@ -230,6 +230,10 @@ NO_INLINE void jsiConsolePrintString(const char *str) {
   }
 }
 
+void vcbprintf_callback_jsiConsolePrintString(const char *str, void* user_data) {
+  jsiConsolePrintString(str);
+}
+
 #ifdef USE_FLASH_MEMORY
 // internal version that copies str from flash to an internal buffer
 NO_INLINE void jsiConsolePrintString_int(const char *str) {
@@ -259,7 +263,7 @@ void jsiConsolePrintf_int(const char *fmt, ...) {
   flash_strncpy(buff, fmt, len+1);
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString, 0, buff, argp);
+  vcbprintf(vcbprintf_callback_jsiConsolePrintString, 0, buff, argp);
   va_end(argp);
 }
 #endif
@@ -459,7 +463,9 @@ void jsiSoftInit(bool hasBeenReset) {
   // Make sure we set up lastIdleTime, as this could be used
   // when adding an interval from onInit (called below)
   jsiLastIdleTime = jshGetSystemTime();
+#ifndef EMBEDDED
   jsiTimeSinceCtrlC = 0xFFFFFFFF;
+#endif
 
   // Set up interpreter flags and remove
   JsVar *flags = jsvObjectGetChild(execInfo.hiddenRoot, JSI_JSFLAGS_NAME, 0);
@@ -489,7 +495,8 @@ void jsiSoftInit(bool hasBeenReset) {
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *watch = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChild(watch, "pin", 0);
-      jshPinWatch(jshGetPinFromVar(watchPin), true);
+      bool highAcc = jsvGetBoolAndUnLock(jsvObjectGetChild(watch, "hispeed", 0));
+      jshPinWatch(jshGetPinFromVar(watchPin), true, highAcc?JSPW_HIGH_SPEED:JSPW_NONE);
       jsvUnLock2(watchPin, watch);
       jsvObjectIteratorNext(&it);
     }
@@ -741,7 +748,7 @@ void jsiSoftKill() {
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
-      jshPinWatch(jshGetPinFromVar(watchPin), false);
+      jshPinWatch(jshGetPinFromVar(watchPin), false, JSPW_NONE);
       jsvUnLock2(watchPin, watchPtr);
       jsvObjectIteratorNext(&it);
     }
@@ -795,7 +802,7 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
 #ifdef BANGLEJS
     jsiConsolePrintf("Checking storage...\n");
 #endif
-    if (!jsfIsStorageValid(JSFSTT_NORMAL)) {
+    if (!jsfIsStorageValid(JSFSTT_NORMAL | JSFSTT_FIND_FILENAME_TABLE)) {
       jsiConsolePrintf("Storage is corrupt.\n");
       jsfResetStorage();
     } else {
@@ -1182,7 +1189,7 @@ void jsiCheckErrors() {
   if (exception) {
     if (jsiExecuteEventCallbackOn("process", JS_EVENT_PREFIX"uncaughtException", 1, &exception)) {
       jsvUnLock(exception);
-      exception = 0;
+      exception = jspGetException();
     }
   }
   if (exception) {
@@ -1385,7 +1392,7 @@ void jsiTabComplete() {
   // Now try and autocomplete
   data.possible = 0;
   data.matches = 0;
-  jswrap_object_keys_or_property_names_cb(object, true, true, jsiTabComplete_findCommon, &data);
+  jswrap_object_keys_or_property_names_cb(object, JSWOKPF_INCLUDE_NON_ENUMERABLE|JSWOKPF_INCLUDE_PROTOTYPE, jsiTabComplete_findCommon, &data);
   // If we've got >1 match and are at the end of a line, print hints
   if (data.matches>1) {
     // Remove the current line and add a newline
@@ -1394,7 +1401,7 @@ void jsiTabComplete() {
     jsiConsolePrint("\n\n");
     data.lineLength = 0;
     // Output hints
-    jswrap_object_keys_or_property_names_cb(object, true, true, jsiTabComplete_printCommon, &data);
+    jswrap_object_keys_or_property_names_cb(object, JSWOKPF_INCLUDE_NON_ENUMERABLE|JSWOKPF_INCLUDE_PROTOTYPE, jsiTabComplete_printCommon, &data);
     if (data.lineLength) jsiConsolePrint("\n");
     jsiConsolePrint("\n");
     // Return the input line
@@ -1436,7 +1443,8 @@ void jsiHandleNewLine(bool execute) {
         JsVar *v = jspEvaluateVar(lineToExecute, 0, jsiLineNumberOffset);
         // add input line to history
         bool isEmpty = jsvIsEmptyString(lineToExecute);
-        if (!isEmpty)
+        // Don't store history if we're not echoing back to the console (it probably wasn't typed by the user)
+        if (!isEmpty && jsiEcho())
           jsiHistoryAddLine(lineToExecute);
         jsvUnLock(lineToExecute);
         jsiLineNumberOffset = 0; // forget the current line number now
@@ -1700,7 +1708,7 @@ void jsiExecuteEvents() {
   }
   if (hasEvents) {
     jsiSetBusy(BUSY_INTERACTIVE, false);
-    if (jspIsInterrupted() || jsiTimeSinceCtrlC<CTRL_C_TIME_FOR_BREAK)
+    if (jspIsInterrupted())
       interruptedDuringEvent = true;
   }
 }
@@ -1745,7 +1753,7 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsig
       jsError("Unknown type of callback in Event Queue");
     jsvUnLock(callbackNoNames);
   }
-  if (!ok || jspIsInterrupted() || jsiTimeSinceCtrlC<CTRL_C_TIME_FOR_BREAK) {
+  if (!ok || jspIsInterrupted()) {
     interruptedDuringEvent = true;
     return false;
   }
@@ -2042,7 +2050,7 @@ void jsiIdle() {
                 jsvObjectIteratorRemoveAndGotoNext(&it, watchArrayPtr);
                 hasDeletedWatch = true;
                 if (!jsiIsWatchingPin(pin))
-                  jshPinWatch(pin, false);
+                  jshPinWatch(pin, false, JSPW_NONE);
               }
               jsvUnLock(watchCallback);
             }
@@ -2069,11 +2077,13 @@ void jsiIdle() {
   JsSysTime time = jshGetSystemTime();
   JsSysTime timePassed = time - jsiLastIdleTime;
   jsiLastIdleTime = time;
+#ifndef EMBEDDED
   // add time to Ctrl-C counter, checking for overflow
   uint32_t oldTimeSinceCtrlC = jsiTimeSinceCtrlC;
   jsiTimeSinceCtrlC += (uint32_t)timePassed;
   if (oldTimeSinceCtrlC > jsiTimeSinceCtrlC)
     jsiTimeSinceCtrlC = 0xFFFFFFFF;
+#endif
 
   JsVar *timerArrayPtr = jsvLock(timerArray);
   JsvObjectIterator it;
@@ -2168,7 +2178,7 @@ void jsiIdle() {
               jsvUnLock(watchArrayPtr);
               Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(watchPtr, "pin", 0));
               if (!jsiIsWatchingPin(pin))
-                jshPinWatch(pin, false);
+                jshPinWatch(pin, false, JSPW_NONE);
             }
           }
           jsvUnLock(watchPtr);
@@ -2326,8 +2336,8 @@ bool jsiLoop() {
         jsiConsoleRemoveInputLine();
         jsiConsolePrintf("Press Ctrl-C again to exit\n");
       }
-#endif
       jsiTimeSinceCtrlC = 0;
+#endif
     }
     jsiClearInputLine(true);
   }
@@ -2507,7 +2517,7 @@ void jsiDebuggerLoop() {
     while (lineLen < sizeof(lineStr)-1) lineStr[lineLen++]=' ';
     lineStr[lineLen] = 0;
     // print the line of code, prefixed by the line number, and with a pointer to the exact character in question
-    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrintString, 0, lex->tokenLastStart, lineStr);
+    jslPrintTokenLineMarker(vcbprintf_callback_jsiConsolePrintString, 0, lex->tokenLastStart, lineStr);
   }
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&

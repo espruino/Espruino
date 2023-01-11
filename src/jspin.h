@@ -12,8 +12,8 @@
  * ----------------------------------------------------------------------------
  */
 
-#ifndef JSPIN_H
-#define JSPIN_H
+#ifndef JSPIN_H_
+#define JSPIN_H_
 
 typedef unsigned char Pin; ///< for specifying pins for hardware
 #define PIN_UNDEFINED ((Pin)0xFF)
@@ -266,4 +266,4 @@ JshPinFunction jshGetDeviceFor(JshPinFunction deviceMin, JshPinFunction deviceMa
 /** Like jshGetDeviceFor, but returns an actual Object (eg. SPI) if one can be found. */
 JsVar *jshGetDeviceObjectFor(JshPinFunction deviceMin, JshPinFunction deviceMax, Pin pin);
 
-#endif //JSPIN_H
+#endif //JSPIN_H_

@@ -10,11 +10,26 @@ make clean && make
 
 **Note:**
 
-* In general, have a look through the Makefile to see what other options are available
+* In general, have a look through the head of the Makefile to see what other options are available
 * If you're swapping between compiling for different targets, you need to call `make clean` before you compile for the new target.
-* If you have a ld error, check the board name in the BOARDNAME=1 make in the Makefile.
 * ```RELEASE=1``` for performance and code size, without it, assertions are kept for debugging.
-* ```DEBUG=1``` is available.
+* ```DEBUG=1``` is available (it may not be possible to build many targets with `DEBUG=1` without first disabling features in `boards/BOARDNAME.py`
+
+## Building a specific board
+
+To work out which 'Board name' to use, simply look in the `boards` folder for the
+right `BOARD.py` file. To build for `boards/PUCKJS.py` use `BOARD=PUCKJS RELEASE=1 make`
+
+## Super Easy GitHub method
+
+GitHub now automatically builds Espruino for the most popular targets. 
+
+Simply go to `https://github.com/espruino/Espruino/actions`, click on the build you're interested in,
+then scroll down to the `Artefacts` heading. Just click on an artefact (for instance `PUCKJS`) to download
+a zip containing the files.
+
+If you fork the Espruino repository and make changes yourself you should be able
+to see the builds for your changes at `https://github.com/YOUR_USERNAME/Espruino/actions`
 
 ## Under Linux (recommended)
 
@@ -33,7 +48,7 @@ This should work for common platforms on Linux, but will only set
 paths up for your current session. You'll have to run it again
 next time you log in.
 
-### Manual Method
+### Manual Method (not recommended)
 
 #### For Espruino
 
@@ -318,48 +333,14 @@ You only need to use the *EspruinoBuildTools* if you want to compile esp-idf lib
 When building on Eclipse, update the Makefile properties to include the definitions show above.  The easiest way to achieve
 that task is to right-click your Espruino project and select `properties`.  From there, navigate to `C/C++ Build > Environment`.
 
-#### for EMW3165
+## Embedding in other applications
 
-Note: the emw3165 port is very preliminary and does not include Wifi support at this time.
-_The text below is what is planned in order to support Wifi, but it doesn't exist yet._
+You can build Espruino with `BOARD=EMBED RELEASE=1 make` and a `.c` and `.h` file will be generated.
 
-The EMW3165 port uses WICED, which is an application framework provided by Broadcom for its
-wifi chips, such as the BCM43362 used in the EMW3165 module. The module consists of an
-STM32F411CE processor and the BCM43362. The WICED framework comes with everything and the kitchen
-sink plus a rather complex build process in order to support umpteen different processor and
-wifi chip combinations, plus various use-cases. WICED includes FreeRTOS and LwIP plus
-proprietary code to manage the Wifi chip.
+It doesn't contain any of the hardware access code, just the basic JS interpreter.
 
-The strategy employed is to compile portions of WICED into a library using the WICED toolchain
-and then linking this into Espruino.
+See `targets/embed/test.c` for an example of usage.
 
-Setting up WICED:
-
-* WICED does not officially support the EMW3165.
-* Clone <https://github.com/MXCHIP-EMW/WICED-for-EMW> and follow the instructions there to configure
-  WICED and build it. (You will need to sign up for a developer acct with Broadcom.)
-* Build the apsta sample program (snippet) using a command-line like
-  `./make EMW3165-FreeRTOS-LwIP-snip.apsta download run JTAG=stlink-v2`
-* Hook up your emw3165 to an ST-Link-v2 or your preferred STM32 programmer and flash using the
-  above command-line. You should see the EMW's access point.
-* An alternative program to test with is the "scan" snip as it will also print something on the
-  console (works well with the WifiMCU board): `./make EMW3165-FreeRTOS-LwIP-snip.scan ...`
-
-Compiling WICED into a library:
-
-* ... if only this worked ...
-
-Compiling Espruino:
-
-* To compile Espruino you will need to point to the WICED root and include files. This is
-  done by specifying a WICED_ROOT environment variable.
-* Adapt the pathnames from the following script:
-
-```bash
-
-  WICED_ROOT=/home/emw3165/WICED-for-EMW/WICED-SDK-3.3.1 make $*
-
-```
 
 ## Documentation
 

@@ -16,7 +16,7 @@
 import pinutils;
 info = {
  'name' : "Espruino WiFi",
- 'link' : [ "http://www.espruino.com/EspruinoWiFi" ],
+ 'link' : [ "https://espruino.com/EspruinoWiFi" ],
  'espruino_page_link' : 'EspruinoWiFi',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "B6",

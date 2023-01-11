@@ -1,0 +1,72 @@
+name: Test Factory Apps
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      git-ref:
+        description: Git Ref (Optional)    
+        required: false
+  
+permissions:
+  contents: read
+
+jobs:
+  # This workflow contains a single job called "build"
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Espruino
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          path: 'Espruino'
+          ref: ${{ github.event.inputs.git-ref }}
+
+      - name: Checkout EspruinoWebIDE
+        uses: actions/checkout@v3
+        with:
+          repository: espruino/EspruinoWebIDE
+          submodules: recursive
+          path: 'EspruinoWebIDE'
+
+      - name: Setup emsdk
+        uses: mymindstorm/setup-emsdk@v11
+        with:
+          # Make sure to set a version number!
+          version: 3.1.12
+          # This is the name of the cache folder.
+          # The cache folder will be placed in the build directory,
+          #  so make sure it doesn't conflict with anything!
+          actions-cache-folder: 'emsdk'
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+
+      - name: Create Emulator
+        run: |
+          cd $GITHUB_WORKSPACE/Espruino
+          make clean
+          BOARD=EMSCRIPTEN make || exit 1
+          make clean
+          BOARD=EMSCRIPTEN2 make || exit 1       
+          cp $GITHUB_WORKSPACE/Espruino/emulator_banglejs*.js $GITHUB_WORKSPACE/EspruinoWebIDE/emu/ -v
+
+      - name: Run Tests Bangle.js
+        run: node $GITHUB_WORKSPACE/Espruino/scripts/factoryTests.js BANGLEJS
+        id: TestBangle1
+        continue-on-error: true
+
+      - name: Run Tests Bangle.js2
+        run: node $GITHUB_WORKSPACE/Espruino/scripts/factoryTests.js BANGLEJS2
+        id: TestBangle2
+        continue-on-error: true
+      
+      - name: Fail test
+        if: (steps.TestBangle1.outcome != 'skipped' && steps.TestBangle1.outcome != 'success')  || (steps.TestBangle2.outcome != 'skipped' && steps.TestBangle2.outcome != 'success')
+        run: exit 1

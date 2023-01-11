@@ -359,6 +359,8 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
    * be smaller than charIdx, which will force a new string to be
    * appended onto the end  */
   if (it->charIdx >= jsvGetMaxCharactersInVar(it->var)) {
+    assert(jsvHasStringExt(it->var)); // we can't add to something if we can't add a StringExt!
+    if (!jsvHasStringExt(it->var)) return; // safety check!
     assert(!jsvGetLastChild(it->var));
     JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
     if (!next) {
@@ -769,7 +771,9 @@ void jsvIteratorNext(JsvIterator *it) {
 
 void jsvIteratorFree(JsvIterator *it) {
   switch (it->type) {
-  case JSVI_FULLARRAY: jsvUnLock(it->it.obj.var); // intentionally no break
+  case JSVI_FULLARRAY: jsvUnLock(it->it.obj.var);
+                       jsvObjectIteratorFree(&it->it.obj.it);
+       break;
   case JSVI_OBJECT : jsvObjectIteratorFree(&it->it.obj.it); break;
   case JSVI_STRING : jsvStringIteratorFree(&it->it.str); break;
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorFree(&it->it.buf); break;
@@ -781,7 +785,9 @@ void jsvIteratorClone(JsvIterator *dstit, JsvIterator *it) {
   dstit->type = it->type;
   switch (it->type) {
   case JSVI_FULLARRAY: dstit->it.obj.index = it->it.obj.index;
-                       dstit->it.obj.var = jsvLockAgain(it->it.obj.var);  // intentionally no break
+                       dstit->it.obj.var = jsvLockAgain(it->it.obj.var);
+                       jsvObjectIteratorClone(&dstit->it.obj.it, &it->it.obj.it);
+                       break;
   case JSVI_OBJECT : jsvObjectIteratorClone(&dstit->it.obj.it, &it->it.obj.it); break;
   case JSVI_STRING : jsvStringIteratorClone(&dstit->it.str, &it->it.str); break;
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorClone(&dstit->it.buf, &it->it.buf); break;

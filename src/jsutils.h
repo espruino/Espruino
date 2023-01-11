@@ -16,19 +16,20 @@
 
 #include "platform_config.h"
 
+#ifndef ESPR_EMBED
+#include "jstypes.h"
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h> // for va_args
-#include <stdint.h>
 #include <stdbool.h>
-
 #include <math.h>
+#endif
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "2v12"
+#define JS_VERSION "2v16"
 #else
-#define JS_VERSION "2v12." BUILDNUMBER
+#define JS_VERSION "2v16." BUILDNUMBER
 #endif
 /*
   In code:
@@ -39,9 +40,12 @@
 
 #ifdef SAVE_ON_FLASH
 #define SAVE_ON_FLASH_MATH 1
-#ifndef BLUETOOTH
-#define NO_DATAVIEW
-#endif
+#define ESPR_NO_OBJECT_METHODS 1
+#define ESPR_NO_PROPERTY_SHORTHAND 1
+#define ESPR_NO_GET_SET 1
+#define ESPR_NO_LINE_NUMBERS 1
+#define ESPR_NO_LET_SCOPING 1
+#define ESPR_NO_PROMISES 1
 #endif
 
 #ifndef alloca
@@ -219,6 +223,11 @@ See comments after JsVar in jsvar.c for more info.
     #define JSVARREFCOUNT_BITS 4 // 56 - 13*4
     typedef uint16_t JsVarRef;
     typedef int16_t JsVarRefSigned;
+  #elif JSVAR_CACHE_SIZE <= 16383 // 14 bytes
+    #define JSVARREF_BITS 14
+    #define JSVARREFCOUNT_BITS 8 // 64 - 13*4
+    typedef uint16_t JsVarRef;
+    typedef int16_t JsVarRefSigned;
   #elif JSVAR_CACHE_SIZE <= 65535 // 16 bytes
     #define JSVARREF_BITS 16
     #define JSVARREFCOUNT_BITS 8
@@ -304,7 +313,7 @@ typedef int64_t JsSysTime;
 #endif
 
 // javascript specific names
-#define JSPARSE_RETURN_VAR "return" // variable name used for returning function results
+#define JSPARSE_RETURN_VAR JS_HIDDEN_CHAR_STR"rtn" // variable name used for returning function results
 #define JSPARSE_PROTOTYPE_VAR "prototype"
 #define JSPARSE_CONSTRUCTOR_VAR "constructor"
 #define JSPARSE_INHERITS_VAR "__proto__"
@@ -312,12 +321,16 @@ typedef int64_t JsSysTime;
 #define JS_HIDDEN_CHAR '\xFF' // initial character of var name determines that we shouldn't see this stuff
 #define JS_HIDDEN_CHAR_STR "\xFF"
 #define JSPARSE_FUNCTION_CODE_NAME JS_HIDDEN_CHAR_STR"cod" // the function's code!
+#define JSPARSE_FUNCTION_JIT_CODE_NAME JS_HIDDEN_CHAR_STR"jit" // the function's code for a JIT function
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"sco" // the scope of the function's definition
 #define JSPARSE_FUNCTION_THIS_NAME JS_HIDDEN_CHAR_STR"ths" // the 'this' variable - for bound functions
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"nam" // for named functions (a = function foo() { foo(); })
 #define JSPARSE_FUNCTION_LINENUMBER_NAME JS_HIDDEN_CHAR_STR"lin" // The line number offset of the function
 #define JS_EVENT_PREFIX "#on"
 #define JS_TIMEZONE_VAR "tz"
+#ifndef ESPR_NO_DAYLIGHT_SAVING
+#define JS_DST_SETTINGS_VAR "dst"
+#endif
 #define JS_GRAPHICS_VAR "gfx"
 
 #define JSPARSE_EXCEPTION_VAR "except" // when exceptions are thrown, they're stored in the root scope
@@ -408,7 +421,23 @@ typedef int64_t JsSysTime;
   #define UNALIGNED_UINT16(addr) ((((uint16_t)*((uint8_t*)(addr)+1)) << 8) | (*(uint8_t*)(addr)))
 #else
   #define UNALIGNED_UINT16(addr) (*(uint16_t*)addr)
-#endif 
+#endif
+
+/* We define these for the lexer so we can definitely get it to inline the function call */
+static ALWAYS_INLINE bool isWhitespaceInline(char ch) {
+    return (ch==0x09) || // \t - tab
+           (ch==0x0B) || // vertical tab
+           (ch==0x0C) || // form feed
+           (ch==0x20) || // space
+           (ch=='\n') ||
+           (ch=='\r');
+}
+static ALWAYS_INLINE bool isAlphaInline(char ch) {
+    return ((ch>='a') && (ch<='z')) || ((ch>='A') && (ch<='Z')) || ch=='_';
+}
+static ALWAYS_INLINE bool isNumericInline(char ch) {
+    return (ch>='0') && (ch<='9');
+}
 
 bool isWhitespace(char ch);
 bool isNumeric(char ch);
@@ -421,8 +450,9 @@ char charToLowerCase(char ch);
 
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again.
-If jsonStyle=true, only string escapes supported by JSON are used */
-const char *escapeCharacter(char ch, bool jsonStyle);
+If jsonStyle=true, only string escapes supported by JSON are used. 'nextCh' is needed
+to ensure that certain escape combinations are avoided. For instance "\0" + "0" is NOT "\00" */
+const char *escapeCharacter(char ch, char nextCh, bool jsonStyle);
 /** Parse radix prefixes, or return 0 */
 int getRadix(const char **s,  bool *hasError);
 /// Convert a character to the hexadecimal equivalent (or -1)
@@ -441,14 +471,6 @@ long long stringToInt(const char *s);
 // forward decl
 struct JsLex;
 // ------------
-typedef enum {
-  JSET_STRING,
-  JSET_ERROR,
-  JSET_SYNTAXERROR,
-  JSET_TYPEERROR,
-  JSET_INTERNALERROR,
-  JSET_REFERENCEERROR
-} JsExceptionType;
 
 void jsAssertFail(const char *file, int line, const char *expr);
 
@@ -457,15 +479,15 @@ void jsAssertFail(const char *file, int line, const char *expr);
 
 /*
 #if defined(DEBUG) || __FILE__ == DEBUG_FILE
-   #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__) 
- #else 
-   #define jsDebug(dbg_type, format, ...) do { } while(0) 
+   #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__)
+ #else
+   #define jsDebug(dbg_type, format, ...) do { } while(0)
  #endif
  */
 #if (defined DEBUG ) ||  ( defined __FILE__ == DEBUG_FILE)
-  #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__) 
-#else 
-  #define jsDebug(dbg_type, format, ...) do { } while(0) 
+  #define jsDebug(dbg_type, format, ...) jsiConsolePrintf("[" __FILE__ "]:" format, ## __VA_ARGS__)
+#else
+  #define jsDebug(dbg_type, format, ...) do { } while(0)
 #endif
 
 #ifndef USE_FLASH_MEMORY

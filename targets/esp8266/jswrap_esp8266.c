@@ -40,7 +40,8 @@ typedef long long int64_t;
   "class" : "ESP8266",
   "ifdef" : "ESP8266"
 }
-Class containing utility functions for the [ESP8266](http://www.espruino.com/EspruinoESP8266)
+Class containing utility functions for the
+[ESP8266](http://www.espruino.com/EspruinoESP8266)
 */
 
 // ESP8266.reboot
@@ -70,12 +71,13 @@ void jswrap_ESP8266_reboot() {
   "ifdef"    : "ESP8266",
   "name"     : "getResetInfo",
   "generate" : "jswrap_ESP8266_getResetInfo",
-  "return"   : ["JsVar","An object with the reset cause information"],
-  "return_object" : "RstInfo"
+  "return"   : ["JsVar","An object with the reset cause information"]
 }
-At boot time the esp8266's firmware captures the cause of the reset/reboot.  This function returns this information in an object with the following fields:
+At boot time the esp8266's firmware captures the cause of the reset/reboot. This
+function returns this information in an object with the following fields:
 
-* `reason`: "power on", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", or "reset pin"
+* `reason`: "power on", "wdt reset", "exception", "soft wdt", "restart", "deep
+  sleep", or "reset pin"
 * `exccause`: exception cause
 * `epc1`, `epc2`, `epc3`: instruction pointers
 * `excvaddr`: address being accessed
@@ -109,7 +111,9 @@ JsVar *jswrap_ESP8266_getResetInfo() {
     ["enable", "bool", "Enable or disable the debug logging."]
   ]
 }
-Enable or disable the logging of debug information.  A value of `true` enables debug logging while a value of `false` disables debug logging.  Debug output is sent to UART1 (gpio2).
+Enable or disable the logging of debug information. A value of `true` enables
+debug logging while a value of `false` disables debug logging. Debug output is
+sent to UART1 (gpio2).
  */
 void jswrap_ESP8266_logDebug(bool enable) {
   os_printf("ESP8266.logDebug, enable=%d\n", enable);
@@ -126,7 +130,8 @@ void jswrap_ESP8266_logDebug(bool enable) {
     ["mode", "int", "Debug log mode: 0=off, 1=in-memory only, 2=in-mem and uart0, 3=in-mem and uart1."]
   ]
 }
-Set the debug logging mode. It can be disabled (which frees ~1.2KB of heap), enabled in-memory only, or in-memory and output to a UART.
+Set the debug logging mode. It can be disabled (which frees ~1.2KB of heap),
+enabled in-memory only, or in-memory and output to a UART.
  */
 void jswrap_ESP8266_setLog(int mode) {
   os_printf("ESP8266 setLog, mode=%d\n", mode);
@@ -172,7 +177,8 @@ Returns one line from the log or up to 128 characters.
   "name"     : "dumpSocketInfo",
   "generate" : "jswrap_ESP8266_dumpSocketInfo"
 }
-Dumps info about all sockets to the log. This is for troubleshooting the socket implementation.
+Dumps info about all sockets to the log. This is for troubleshooting the socket
+implementation.
  */
 void jswrap_ESP8266_dumpSocketInfo(void) {
   esp8266_dumpAllSocketData();
@@ -190,11 +196,12 @@ void jswrap_ESP8266_dumpSocketInfo(void) {
     ["freq", "JsVar", "Desired frequency - either 80 or 160."]
   ]
 }
-**Note:** This is deprecated. Use `E.setClock(80/160)`
-**Note:**
-Set the operating frequency of the ESP8266 processor. The default is 160Mhz.
+**Note:** This is deprecated. Use `E.setClock(80/160)` **Note:** Set the
+operating frequency of the ESP8266 processor. The default is 160Mhz.
 
-**Warning**: changing the cpu frequency affects the timing of some I/O operations, notably of software SPI and I2C, so things may be a bit slower at 80Mhz.
+**Warning**: changing the cpu frequency affects the timing of some I/O
+operations, notably of software SPI and I2C, so things may be a bit slower at
+80Mhz.
 
 */
 void jswrap_ESP8266_setCPUFreq(
@@ -213,15 +220,17 @@ void jswrap_ESP8266_setCPUFreq(
   "generate" : "jswrap_ESP8266_getState",
   "return"   : ["JsVar", "The state of the ESP8266"]
 }
-Returns an object that contains details about the state of the ESP8266 with the following fields:
+Returns an object that contains details about the state of the ESP8266 with the
+following fields:
 
-* `sdkVersion`   - Version of the SDK.
+* `sdkVersion` - Version of the SDK.
 * `cpuFrequency` - CPU operating frequency in Mhz.
-* `freeHeap`     - Amount of free heap in bytes.
-* `maxCon`       - Maximum number of concurrent connections.
-* `flashMap`     - Configured flash size&map: '512KB:256/256' .. '4MB:512/512'
-* `flashKB`      - Configured flash size in KB as integer
-* `flashChip`    - Type of flash chip as string with manufacturer & chip, ex: '0xEF 0x4016`
+* `freeHeap` - Amount of free heap in bytes.
+* `maxCon` - Maximum number of concurrent connections.
+* `flashMap` - Configured flash size&map: '512KB:256/256' .. '4MB:512/512'
+* `flashKB` - Configured flash size in KB as integer
+* `flashChip` - Type of flash chip as string with manufacturer & chip, ex: '0xEF
+  0x4016`
 
 */
 JsVar *jswrap_ESP8266_getState() {
@@ -332,7 +341,8 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
  ]
 }
 
-**This function is deprecated.** Please use `require("neopixel").write(pin, data)` instead
+**This function is deprecated.** Please use `require("neopixel").write(pin,
+data)` instead
 */
 void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   jswrap_neopixel_write(pin, jsArrayOfData);
@@ -350,12 +360,13 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
     ["option", "JsVar", "posible values are 0, 1, 2 or 4"]
   ]
 }
-Put the ESP8266 into 'deep sleep' for the given number of microseconds, 
-reducing power consumption drastically. 
+Put the ESP8266 into 'deep sleep' for the given number of microseconds, reducing
+power consumption drastically.
 
 meaning of option values:
 
-0 - the 108th Byte of init parameter decides whether RF calibration will be performed or not.
+0 - the 108th Byte of init parameter decides whether RF calibration will be
+performed or not.
 
 1 - run RF calibration after waking up. Power consumption is high.
 
@@ -363,10 +374,13 @@ meaning of option values:
 
 4 - no RF after waking up. Power consumption is the lowest.
 
-**Note:** unlike normal Espruino boards' 'deep sleep' mode, ESP8266 deep sleep actually turns off the processor. After the given number of microseconds have elapsed, the ESP8266 will restart as if power had been turned off and then back on. *All contents of RAM will be lost*. 
-Connect GPIO 16 to RST to enable wakeup.
+**Note:** unlike normal Espruino boards' 'deep sleep' mode, ESP8266 deep sleep
+actually turns off the processor. After the given number of microseconds have
+elapsed, the ESP8266 will restart as if power had been turned off and then back
+on. *All contents of RAM will be lost*. Connect GPIO 16 to RST to enable wakeup.
 
-**Special:** 0 microseconds cause sleep forever until external wakeup RST pull down occurs.
+**Special:** 0 microseconds cause sleep forever until external wakeup RST pull
+down occurs.
 
 */
 void   jswrap_ESP8266_deepSleep(JsVar *jsMicros, JsVar *jsOption) {
