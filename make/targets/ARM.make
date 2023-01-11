@@ -15,6 +15,7 @@ $(PROJ_NAME).bin : $(PROJ_NAME).elf
 	@$(call obj_to_bin,binary,bin)
 	bash scripts/check_size.sh $(PROJ_NAME).bin
 ifdef PAD_FOR_BOOTLOADER
+	@echo Padding $(PROJ_NAME).bin
 	mv $(PROJ_NAME).bin $(PROJ_NAME).bin.unpadded
 	tr "\000" "\377" < /dev/zero | dd bs=1 count=$(shell python scripts/get_board_info.py $(BOARD) "common.get_espruino_binary_address(board)") of=$(PROJ_NAME).bin
 	cat $(PROJ_NAME).bin.unpadded >> $(PROJ_NAME).bin

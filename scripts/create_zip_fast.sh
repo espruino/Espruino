@@ -73,8 +73,8 @@ ESP32
 EOF
 
 THREADS=16
-echo $BOARDS | xargs -I{} -d " " -P $THREADS scripts/create_zip_board.sh {} 
-rm -rf obj_*
+echo $BOARDS | xargs -I{} -d " " -P $THREADS sh -c "scripts/create_zip_board.sh {} || true"
+rm -rf obj_* gen_*
 echo ===========================================================
 if [ -n "$(ls $ZIPDIR/*.error 2>/dev/null)" ]
 then

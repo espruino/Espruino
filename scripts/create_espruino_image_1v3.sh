@@ -15,12 +15,15 @@
 cd `dirname $0` # scripts
 cd ..            # main dir
 BASEDIR=`pwd`
-
+if [[ ! -v BINDIR ]]; then 
+  echo "BINDIR not set, assuming 'bin'";
+  BINDIR=bin
+fi
 BOARDNAME=ESPRUINOBOARD
 ESPRUINOBINARY=`python scripts/get_board_info.py $BOARDNAME "common.get_board_binary_name(board)"`
-BOOTLOADERFILE=bin/bootloader_$ESPRUINOBINARY
-IMGFILE=bin/espruino_full.bin
-ESPRUINOFILE=bin/$ESPRUINOBINARY
+BOOTLOADERFILE=$BINDIR/bootloader_$ESPRUINOBINARY
+IMGFILE=$BINDIR/full_$ESPRUINOBINARY
+ESPRUINOFILE=$BINDIR/$ESPRUINOBINARY
 rm -f $ESPRUINOFILE $BOOTLOADERFILE $IMGFILE
 
 export BOARD=ESPRUINOBOARD
@@ -54,7 +57,7 @@ echo ---------------------
 dd bs=1 seek=$BOOTLOADERSIZE if=$ESPRUINOFILE of=$IMGFILE conv=notrunc || { echo 'ERROR Build failed' ; exit 255; }
 
 
-cp $IMGFILE $ESPRUINOFILE || { echo 'ERROR Build failed' ; exit 255; }
+mv $IMGFILE $ESPRUINOFILE || { echo 'ERROR Build failed' ; exit 255; }
 echo ---------------------
 echo Finished! Written to $IMGFILE and copied to $ESPRUINOFILE
 echo python scripts/stm32loader.py -p /dev/ttyUSB0 -b 460800 -ewv $ESPRUINOFILE

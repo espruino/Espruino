@@ -15,12 +15,15 @@
 cd `dirname $0` # scripts
 cd ..            # main dir
 BASEDIR=`pwd`
-
+if [[ ! -v BINDIR ]]; then 
+  echo "BINDIR not set, assuming 'bin'";
+  BINDIR=bin
+fi
 BOARDNAME=ESPRUINOWIFI
 ESPRUINOBINARY=`python scripts/get_board_info.py $BOARDNAME "common.get_board_binary_name(board)"`
-BOOTLOADERFILE=bin/bootloader_$ESPRUINOBINARY
-IMGFILE=bin/espruinowifi_full.bin
-ESPRUINOFILE=bin/$ESPRUINOBINARY
+BOOTLOADERFILE=$BINDIR/bootloader_$ESPRUINOBINARY
+IMGFILE=$BINDIR/full_$ESPRUINOBINARY
+ESPRUINOFILE=$BINDIR/$ESPRUINOBINARY
 rm -f $ESPRUINOFILE $BOOTLOADERFILE $IMGFILE
 
 export BOARD=ESPRUINOWIFI
@@ -53,7 +56,7 @@ echo ---------------------
 dd bs=1 seek=$BOOTLOADERSIZE if=$ESPRUINOFILE of=$IMGFILE conv=notrunc || { echo 'ERROR Build failed' ; exit 255; }
 
 
-cp $IMGFILE $ESPRUINOFILE || { echo 'ERROR Build failed' ; exit 255; }
+mv $IMGFILE $ESPRUINOFILE || { echo 'ERROR Build failed' ; exit 255; }
 echo ---------------------
 echo Finished! Written to $IMGFILE and copied to $ESPRUINOFILE
 echo dfu-util -a 0 -s 0x08000000 -D ${ESPRUINOFILE}
