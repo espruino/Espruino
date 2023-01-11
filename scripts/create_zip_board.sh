@@ -54,7 +54,7 @@ mkdir $GENDIR
 
 echo ------------------------------------------------------
 echo                          Building Version $VERSION
-echo    $BOARDNAME
+echo "  BOARD $BOARDNAME"
 echo ------------------------------------------------------
 EXTRADEFS="OBJDIR=$OBJDIR GENDIR=$OBJDIR "
 EXTRANAME=

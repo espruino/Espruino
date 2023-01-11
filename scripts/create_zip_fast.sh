@@ -87,12 +87,12 @@ echo ===========================================================
 
 cd $DIR
 
-sed 's/$/\r/' dist_readme.txt | sed "s/#v##/$VERSION/" > $ZIPDIR/readme.txt
+sed 's/$/\r/' $DIR/scripts/create_zip_dist_readme.txt | sed "s/#v##/$VERSION/" > $ZIPDIR/readme.txt
 bash scripts/extract_changelog.sh | sed 's/$/\r/' > $ZIPDIR/changelog.txt
 #bash scripts/extract_todo.sh  >  $ZIPDIR/todo.txt
 scripts/build_docs.py  || { echo 'Build failed' ; exit 1; }
 mv $DIR/functions.html $ZIPDIR/functions.html
-cp $DIR/dist_licences.txt $ZIPDIR/licences.txt
+cp $DIR/scripts/create_zip_dist_licences.txt $ZIPDIR/licences.txt
 
 rm -f $ZIPFILE
 cd zipcontents
