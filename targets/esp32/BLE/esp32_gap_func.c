@@ -67,53 +67,9 @@ static esp_ble_adv_data_t adv_data = {
     .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
 };
 
-static void execScanFunc(esp_ble_gap_cb_param_t *p){
-	JsVar *evt = jsvNewObject();
-	ble_gap_addr_t ble_addr;
-	espbtaddr_TO_bleaddr(p->scan_rst.bda, p->scan_rst.ble_addr_type, &ble_addr);
-	jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(ble_addr));
-	jsvObjectSetChildAndUnLock(evt, "rssi",jsvNewFromInteger(p->scan_rst.rssi));
-  JsVar *data = jsvNewStringOfLength(p->scan_rst.adv_data_len, (char*)p->scan_rst.ble_adv);
-	if(data){
-		JsVar *ab = jsvNewArrayBufferFromString(data,p->scan_rst.adv_data_len);
-		jsvUnLock(data);
-		jsvObjectSetChildAndUnLock(evt,"data",ab);
-	}
-  jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt,1);
-	jsvUnLock(evt);
-	jshHadEvent();
-}
-
-void gap_event_scan_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
-    uint8_t *adv_name = NULL;
-    uint8_t adv_name_len = 0;
-	esp_ble_gap_cb_param_t *p = (esp_ble_gap_cb_param_t *)param;
-	switch(event){
-		case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:		{
-			break;
-		}
-		case ESP_GAP_BLE_SCAN_START_COMPLETE_EVT:{
-			if (param->scan_start_cmpl.status != ESP_BT_STATUS_SUCCESS)	{
-			  jsWarn("Scan start failed:d\n",param->scan_start_cmpl.status);
-			}
-			break;		
-		}
-		case ESP_GAP_BLE_SCAN_RESULT_EVT:{
-			execScanFunc(param);
-			break;
-		}
-		case ESP_GAP_BLE_SCAN_STOP_COMPLETE_EVT:{
-			if (param->scan_stop_cmpl.status != ESP_BT_STATUS_SUCCESS)
-			  jsWarn("Scan stop failed");
-			break;		
-		}
-		default: break;
-	}
-}
-
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
 	jsWarnGapEvent(event);
-    switch (event) {
+  switch (event) {
 		case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:{
 			adv_config_done &= (~adv_config_flag);
 			if (adv_config_done == 0){
@@ -158,8 +114,32 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 		    esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
 			break;
 		}
+		case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:   {
+        break;
+		}
+    case ESP_GAP_BLE_SCAN_START_COMPLETE_EVT:{
+      if (param->scan_start_cmpl.status != ESP_BT_STATUS_SUCCESS) {
+        jsWarn("Scan start failed:d\n",param->scan_start_cmpl.status);
+      }
+      break;
+    }
+    case ESP_GAP_BLE_SCAN_RESULT_EVT:{
+      BLEAdvReportData adv;
+      espbtaddr_TO_bleaddr(param->scan_rst.bda, param->scan_rst.ble_addr_type, &adv.peer_addr);
+      adv.rssi = param->scan_rst.rssi;
+      adv.dlen = param->scan_rst.adv_data_len;
+      if (adv.dlen > BLE_GAP_ADV_MAX_SIZE) adv.dlen = BLE_GAP_ADV_MAX_SIZE;
+      memcpy(adv.data, param->scan_rst.ble_adv, adv.dlen);
+      size_t len = sizeof(BLEAdvReportData) + adv.dlen - BLE_GAP_ADV_MAX_SIZE;
+      jsble_queue_pending_buf(BLEP_ADV_REPORT, 0, (char*)&adv, len);
+      break;
+    }
+    case ESP_GAP_BLE_SCAN_STOP_COMPLETE_EVT:{
+      if (param->scan_stop_cmpl.status != ESP_BT_STATUS_SUCCESS)
+        jsWarn("Scan stop failed");
+      break;
+    }
 		default:{
-			gap_event_scan_handler(event,param);
 			break;
 		}
     }

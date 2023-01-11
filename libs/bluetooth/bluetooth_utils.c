@@ -306,6 +306,31 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
     jsvUnLock(v);
     break;
   }
+  case BLEP_ADV_REPORT: {
+    BLEAdvReportData *p_adv = (BLEAdvReportData *)buffer;
+    size_t len = sizeof(BLEAdvReportData) + p_adv->dlen - BLE_GAP_ADV_MAX_SIZE;
+    if (bufferLen != len) {
+      jsiConsolePrintf("%d %d %d\n", bufferLen,len,p_adv->dlen);
+      assert(0);
+      break;
+    }
+    JsVar *evt = jsvNewObject();
+    if (evt) {
+      jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
+      //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(blePendingAdvReport.peer_addr.addr_type));
+      jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
+      JsVar *data = jsvNewStringOfLength(p_adv->dlen, (char*)p_adv->data);
+      if (data) {
+        JsVar *ab = jsvNewArrayBufferFromString(data, p_adv->dlen);
+        jsvUnLock(data);
+        jsvObjectSetChildAndUnLock(evt, "data", ab);
+      }
+      // push onto queue
+      jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
+      jsvUnLock(evt);
+    }
+    break;
+  }
 #if CENTRAL_LINK_COUNT>0
   case BLEP_TASK_FAIL:
     bleCompleteTaskFail(bleGetCurrentTask(), 0);
