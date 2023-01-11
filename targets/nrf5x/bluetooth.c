@@ -235,14 +235,6 @@ bool bleHighInterval;
 
 static ble_gap_sec_params_t get_gap_sec_params();
 
-/// for BLEP_ADV_REPORT
-typedef struct {
-  ble_gap_addr_t            peer_addr;
-  int8_t                    rssi;                  /**< Received Signal Strength Indication in dBm of the last packet received. */
-  uint8_t        dlen;                  /**< Advertising or scan response data length. */
-  uint8_t        data[BLE_GAP_ADV_MAX_SIZE];    /**< Advertising or scan response data. */
-} BLEAdvReportData;
-
 #if NRF_SD_BLE_API_VERSION>5
 // if m_scan_param.extended=0, use BLE_GAP_SCAN_BUFFER_MIN
 // if m_scan_param.extended=1, use BLE_GAP_SCAN_BUFFER_EXTENDED_MIN
