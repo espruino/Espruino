@@ -14,6 +14,10 @@
 #ifndef JSTYPES_H_
 #define JSTYPES_H_
 
+#ifndef ESPR_EMBED
+#include <stdint.h>
+#endif
+
 /// Forward declarations
 struct JsVarStruct;
 typedef struct JsVarStruct JsVar;

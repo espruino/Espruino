@@ -22,7 +22,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h> // for va_args
-#include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
 #endif

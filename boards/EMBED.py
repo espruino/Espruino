@@ -11,6 +11,10 @@
 # This file contains information for a specific board - the available pins, and where LEDs,
 # Buttons, and other in-built peripherals are. It is used to build documentation as well
 # as various source and header files for Espruino.
+#
+# The EMBED target allows us to build Espruino into a single, embeddable C file for use
+# in other projects. It doesn't contain any of the hardware access code, just the basic
+# JS interpreter.
 # ----------------------------------------------------------------------------------------
 
 import pinutils;
@@ -21,6 +25,8 @@ info = {
  'build' : {
    'libraries' : [],
    'makefile' : [
+     'ESPR_EMBED=1',
+     'USE_DEBUGGER=0',
      'DEFINES+=-DUSE_CALLFUNCTION_HACK', # for now, just ensure we can be properly multiplatform
      'DEFINES+=-DJSVAR_MALLOC'
    ]
