@@ -235,14 +235,6 @@ bool bleHighInterval;
 
 static ble_gap_sec_params_t get_gap_sec_params();
 
-/// for BLEP_ADV_REPORT
-typedef struct {
-  ble_gap_addr_t            peer_addr;
-  int8_t                    rssi;                  /**< Received Signal Strength Indication in dBm of the last packet received. */
-  uint8_t        dlen;                  /**< Advertising or scan response data length. */
-  uint8_t        data[BLE_GAP_ADV_MAX_SIZE];    /**< Advertising or scan response data. */
-} BLEAdvReportData;
-
 #if NRF_SD_BLE_API_VERSION>5
 // if m_scan_param.extended=0, use BLE_GAP_SCAN_BUFFER_MIN
 // if m_scan_param.extended=1, use BLE_GAP_SCAN_BUFFER_EXTENDED_MIN
@@ -343,31 +335,6 @@ int jsble_exec_pending(IOEvent *event) {
      JsVar *evt = jsvNewFromInteger((signed char)data);
      if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
      jsvUnLock(evt);
-     break;
-   }
-   case BLEP_ADV_REPORT: {
-     BLEAdvReportData *p_adv = (BLEAdvReportData *)buffer;
-     size_t len = sizeof(BLEAdvReportData) + p_adv->dlen - BLE_GAP_ADV_MAX_SIZE;
-     if (bufferLen != len) {
-       jsiConsolePrintf("%d %d %d\n", bufferLen,len,p_adv->dlen);
-       assert(0);
-       break;
-     }
-     JsVar *evt = jsvNewObject();
-     if (evt) {
-       jsvObjectSetChildAndUnLock(evt, "rssi", jsvNewFromInteger(p_adv->rssi));
-       //jsvObjectSetChildAndUnLock(evt, "addr_type", jsvNewFromInteger(blePendingAdvReport.peer_addr.addr_type));
-       jsvObjectSetChildAndUnLock(evt, "id", bleAddrToStr(p_adv->peer_addr));
-       JsVar *data = jsvNewStringOfLength(p_adv->dlen, (char*)p_adv->data);
-       if (data) {
-         JsVar *ab = jsvNewArrayBufferFromString(data, p_adv->dlen);
-         jsvUnLock(data);
-         jsvObjectSetChildAndUnLock(evt, "data", ab);
-       }
-       // push onto queue
-       jsiQueueObjectCallbacks(execInfo.root, BLE_SCAN_EVENT, &evt, 1);
-       jsvUnLock(evt);
-     }
      break;
    }
    case BLEP_WRITE: {

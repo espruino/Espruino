@@ -51,6 +51,7 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
+#include "esp_task_wdt.h"
 #include "rom/ets_sys.h"
 #include "rom/uart.h"
 #include "driver/gpio.h"
@@ -80,8 +81,11 @@ static IOEventFlags pinToEV_EXTI(
 
 static uint8_t g_pinState[JSH_PIN_COUNT];
 
-// Whether a pin is being used for soft PWM or not
+/// Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+
+/// Has the watchdog been enabled?
+bool wdt_enabled = false;
 
 static uint64_t DEVICE_INITIALISED_FLAGS = 0L;
 
@@ -406,23 +410,16 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   }
 }
 
-
-/**
- *
- */
 void jshEnableWatchDog(JsVarFloat timeout) {
-  UNUSED(timeout);
-#ifdef DEBUG
-  jsError(">> jshEnableWatchDog Not implemented,using taskwatchdog from RTOS");
-#endif
+  wdt_enabled = true;
+  esp_task_wdt_init((int)(timeout+0.5), true); //enable panic so ESP32 restarts
+  esp_task_wdt_add(NULL); //add current thread to WDT watch
 }
-
 
 // Kick the watchdog
 void jshKickWatchDog() {
-#ifdef DEBUG
-  jsError(">> jshKickWatchDog Not implemented,using taskwatchdog from RTOS");
-#endif
+  if (wdt_enabled)
+    esp_task_wdt_reset();
 }
 
 

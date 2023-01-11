@@ -201,6 +201,14 @@ extern volatile uint16_t                         m_central_conn_handles[CENTRAL_
 #endif
 
 
+/// for BLEP_ADV_REPORT
+typedef struct {
+  ble_gap_addr_t            peer_addr;
+  int8_t                    rssi;                  /**< Received Signal Strength Indication in dBm of the last packet received. */
+  uint8_t        dlen;                  /**< Advertising or scan response data length. */
+  uint8_t        data[BLE_GAP_ADV_MAX_SIZE];    /**< Advertising or scan response data. */
+} BLEAdvReportData;
+
 /** Initialise the BLE stack */
 void jsble_init();
 /** Completely deinitialise the BLE stack. Return true on success */

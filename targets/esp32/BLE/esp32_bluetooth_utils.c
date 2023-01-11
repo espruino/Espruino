@@ -62,11 +62,6 @@ esp_err_t setMtu(){
 	ret = esp_ble_gatt_set_local_mtu(500);if(ret)jsWarn("set local MTU failed:%x\n",ret);
 	return ret;
 }
- 
-JsVar *bda2JsVarString(esp_bd_addr_t bda){
-	JsVar *s = jsvVarPrintf("%02x:%02x:%02x:%02x:%02x:%02x",bda[0],bda[1],bda[2],bda[3],bda[4],bda[5]);
-	return s;
-}
 
 void ESP32_setBLE_Debug(int level){
 	bleEventDebug = level;
@@ -310,17 +305,17 @@ bool espbtuuid_equal(esp_bt_uuid_t a, esp_bt_uuid_t b) {
 }
 
 void bleaddr_TO_espbtaddr(ble_gap_addr_t ble_addr, esp_bd_addr_t remote_bda, esp_ble_addr_type_t *remote_bda_type) {
-  memcpy(remote_bda, ble_addr.addr, sizeof(esp_bd_addr_t));
-  // reverse bytes in address
-  int x, n = 5;
-  uint8_t t;
-  for(x = 0; x < n;) {
-    t = remote_bda[x];
-    remote_bda[x] = remote_bda[n];
-    remote_bda[n] = t;
-    x++;
-    n--;
-  }
+  // reverse bytes in address and copy
+  for(int i=0;i<6;i++)
+    remote_bda[5-i] = ble_addr.addr[i];
   // BLE_GAP_ADDR_TYPES and esp_ble_addr_type_t match (no need for conversion)
   *remote_bda_type = ble_addr.addr_type;
+}
+
+void espbtaddr_TO_bleaddr(esp_bd_addr_t remote_bda, esp_ble_addr_type_t remote_bda_type, ble_gap_addr_t *ble_addr) {
+  // reverse bytes in address and copy
+  for(int i=0;i<6;i++)
+    ble_addr->addr[i] = remote_bda[5-i];
+  // BLE_GAP_ADDR_TYPES and esp_ble_addr_type_t match (no need for conversion)
+  ble_addr->addr_type = remote_bda_type;
 }
