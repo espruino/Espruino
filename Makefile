@@ -31,6 +31,9 @@
 # PROFILE=1               # Compile with gprof profiling info
 # CFILE=test.c            # Compile in the supplied C file
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
+# ESPRUINO_WRAPPERSOURCES=jswrap_x.c 
+#                         # Compile in a wrapper file to the build (with JS functions in). WRAPPERSOURCES can be used too, but this adds the files to the END of the sources list
+# PYTHON=python3          # The python command used for this build
 #
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet W5500 support
 # W5100=1                 # Compile for WIZnet W5100 (not W5500)
@@ -49,6 +52,7 @@
 #                         # BLACKLIST=/home/mydir/myBlackList
 # VARIABLES=1700          # Sets number of variables for project defined firmware. This parameter can be dangerous, be careful before changing.
 #                         # used in build_platform_config.py
+
 #
 # -- STM32 Only
 # PAD_FOR_BOOTLOADER=1    # Pad the binary out with 0xFF where the bootloader should be (allows the Web IDE to flash the binary)
@@ -235,6 +239,7 @@ TARGETSOURCES ?=
 # These are JS files to be included as pre-built Espruino modules
 JSMODULESOURCES ?=
 
+# These are jswrap_.c files specified on the command-line that get added to the build after other WRAPPERSOURCES
 ESPRUINO_WRAPPERSOURCES ?=
 
 # Files that contains objects/functions/methods that will be
@@ -684,9 +689,7 @@ endif
 
 PININFOFILE=$(GENDIR)/jspininfo
 SOURCES += $(PININFOFILE).c
-
 WRAPPERSOURCES += $(ESPRUINO_WRAPPERSOURCES)
-
 SOURCES += $(WRAPPERSOURCES) $(TARGETSOURCES)
 SOURCEOBJS = $(SOURCES:.c=.o) $(CPPSOURCES:.cpp=.o) $(CCSOURCES:.cc=.o)
 OBJS = $(PRECOMPILED_OBJS) $(SOURCEOBJS)
