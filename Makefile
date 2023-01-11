@@ -258,7 +258,9 @@ src/jswrap_number.c \
 src/jswrap_object.c \
 src/jswrap_regexp.c \
 src/jswrap_string.c \
-src/jswrap_modules.c
+src/jswrap_modules.c \
+src/jswrap_math.c
+
 
 ifndef ESPR_EMBED # These are wrapper sources to do with hardware, if embedding we don't need these
 WRAPPERSOURCES += \
@@ -353,6 +355,15 @@ endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER
 
+ifeq ($(FAMILY),ESP8266)
+# special ESP8266 maths lib that doesn't go into RAM
+LIBS += -lmirom
+LDFLAGS += -L$(ROOT)/targets/esp8266
+else
+# everything else uses normal maths lib
+LIBS += -lm
+endif
+
 ifeq ($(USE_FILESYSTEM),1)
 DEFINES += -DUSE_FILESYSTEM
 INCLUDE += -I$(ROOT)/libs/filesystem
@@ -383,18 +394,6 @@ endif #USE_FLASHFS
 endif #USE_FILESYSTEM_SDIO
 endif #!LINUX
 endif #USE_FILESYSTEM
-
-DEFINES += -DUSE_MATH
-INCLUDE += -I$(ROOT)/libs/math
-WRAPPERSOURCES += libs/math/jswrap_math.c
-ifeq ($(FAMILY),ESP8266)
-# special ESP8266 maths lib that doesn't go into RAM
-LIBS += -lmirom
-LDFLAGS += -L$(ROOT)/targets/esp8266
-else
-# everything else uses normal maths lib
-LIBS += -lm
-endif
 
 ifeq ($(USE_GRAPHICS),1)
 DEFINES += -DUSE_GRAPHICS
