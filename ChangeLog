@@ -17,6 +17,7 @@
             ESP32: setScan/findDevices/requestDevice now fill in `id` with the mac address followed by private/random/etc as NRF52 does
             ESP32: disconnect event now gives 'reason' (as NRF52)
             ESP32: Bluetooth scanning now uses event queue (fixes MEMORY_BUSY)
+            ESP32: Implement E.enableWatchdog
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
