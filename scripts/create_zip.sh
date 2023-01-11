@@ -44,7 +44,7 @@ echo ------------------------------------------------------
 # The following have been removed because it's too hard to keep the build going:
 # STM32F3DISCOVERY OLIMEXINO_STM32 HYSTM32_32 HYSTM32_28 HYSTM32_24 RAK8211 RAK8212 RUUVITAG THINGY52 RASPBERRYPI
 # 
-for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_AT ESPRUINO_1V3_WIZ PICO_1V3 PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINOWIFI PUCKJS PUCKJS_MINIMAL PIXLJS BANGLEJS BANGLEJS2 MDBT42Q NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F4DISCOVERY STM32L496GDISCOVERY MICROBIT1 MICROBIT2 ESP8266_BOARD ESP8266_4MB ESP32 WIO_LTE RAK5010 SMARTIBOT 
+for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_AT ESPRUINO_1V3_WIZ PICO_1V3 PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINOWIFI PUCKJS PUCKJS_MINIMAL PIXLJS BANGLEJS BANGLEJS2 MDBT42Q NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F4DISCOVERY STM32L496GDISCOVERY MICROBIT1 MICROBIT2 ESP8266_BOARD ESP8266_4MB ESP32 WIO_LTE RAK5010 SMARTIBOT
 do
   echo ------------------------------
   echo                  $BOARDNAME
@@ -141,25 +141,25 @@ do
   fi
   # copy...
   if [ "$BOARDNAME" == "ESP8266_BOARD" ]; then
-    tar -C $ZIPDIR -xzf ${ESP_BINARY_NAME}.tgz || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
+    tar -C $ZIPDIR -xzf bin/${ESP_BINARY_NAME}.tgz || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
     # build a combined image
     bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make combined" || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
-    cp ${ESP_BINARY_NAME}_combined_512.bin $ZIPDIR || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
+    cp bin/${ESP_BINARY_NAME}_combined_512.bin $ZIPDIR || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
   elif [ "$BOARDNAME" == "ESP8266_4MB" ]; then
-    tar -C $ZIPDIR -xzf ${ESP_BINARY_NAME}.tgz || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
+    tar -C $ZIPDIR -xzf bin/${ESP_BINARY_NAME}.tgz || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
     # build a combined image
     bash -c "$EXTRADEFS RELEASE=1 BOARD=$BOARDNAME make combined" || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
-    cp ${ESP_BINARY_NAME}_combined_4096.bin $ZIPDIR || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
+    cp bin/${ESP_BINARY_NAME}_combined_4096.bin $ZIPDIR || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
   else
     echo Copying ${ESP_BINARY_NAME} to $ZIPDIR/$NEW_BINARY_NAME
-    cp ${ESP_BINARY_NAME} $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
+    cp bin/${ESP_BINARY_NAME} $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
     if [ "$BOARDNAME" == "ESP32" ]; then
-      tar -C $ZIPDIR -xzf  `basename $ESP_BINARY_NAME .bin`.tgz || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
+      tar -C $ZIPDIR -xzf  bin/`basename $ESP_BINARY_NAME .bin`.tgz || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
     fi
   fi
   # Copy second binary
   if [ -n "$ESP_BINARY2_NAME" ]; then
-    cp ${ESP_BINARY2_NAME} $ZIPDIR || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
+    cp bin/${ESP_BINARY2_NAME} $ZIPDIR || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 1; }
   fi
 
 done

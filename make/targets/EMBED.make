@@ -3,15 +3,15 @@ PROJ_HEADER_NAME = $(PROJ_NAME:.c=.h)
 proj: 	$(PLATFORM_CONFIG_FILE) $(PROJ_NAME)
 	
 $(PROJ_NAME): $(SOURCES) $(PLATFORM_CONFIG_FILE)
-	gcc $(DEFINES) $(INCLUDE) -E -P targets/embed/embed.h -o gen/temp.h
-	cat targets/embed/embed_header.h gen/temp.h targets/embed/embed_footer.h > $(PROJ_HEADER_NAME)
+	gcc $(DEFINES) $(INCLUDE) -E -P targets/embed/embed.h -o $(OBJDIR)/temp.h
+	cat targets/embed/embed_header.h $(OBJDIR)/temp.h targets/embed/embed_footer.h > $(PROJ_HEADER_NAME)
 	cat $(SOURCES) > $(PROJ_NAME)
-	gcc $(DEFINES) $(INCLUDE) -E -P $(PROJ_NAME) -o gen/temp.c
-	cat targets/embed/embed_header.c gen/temp.c > $(PROJ_NAME)
-	cp targets/embed/embed_utils.h espruino_embedded_utils.h
-	rm gen/temp.c gen/temp.h
+	gcc $(DEFINES) $(INCLUDE) -E -P $(PROJ_NAME) -o $(OBJDIR)/temp.c
+	cat targets/embed/embed_header.c $(OBJDIR)/temp.c > $(PROJ_NAME)
+	cp targets/embed/embed_utils.h $(BINDIR)/espruino_embedded_utils.h
+	rm $(OBJDIR)/temp.c $(OBJDIR)/temp.h
 	@echo ========================================
 	@echo Created $(PROJ_HEADER_NAME)
 	@echo Created $(PROJ_NAME)	
-	@echo Created espruino_embedded_utils.h
+	@echo Created $(BINDIR)/espruino_embedded_utils.h
 	@echo Test with:  "gcc targets/embed/test.c $(PROJ_NAME) -Isrc -lm"

@@ -46,8 +46,11 @@ LOGFILE=$ZIPDIR/${BOARDNAME}.error
 
 # We assume all setup has been done by create_zip
 OBJDIR=obj_$BOARDNAME
+GENDIR=gen_$BOARDNAME
 rm -rf $OBJDIR
 mkdir $OBJDIR
+rm -rf $GENDIR
+mkdir $GENDIR
 
 echo ------------------------------------------------------
 echo                          Building Version $VERSION
@@ -86,6 +89,10 @@ fi
 # actually build
 ESP_BINARY_NAME=`python scripts/get_board_info.py $BOARDNAME "common.get_board_binary_name(board)"`
 if [ "$BOARDNAME" == "PUCKJS" ]; then
+  ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
+  EXTRADEFS+=DFU_UPDATE_BUILD=1
+fi
+if [ "$BOARDNAME" == "PUCKJS_MINIMAL" ]; then
   ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
   EXTRADEFS+=DFU_UPDATE_BUILD=1
 fi

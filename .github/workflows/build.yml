@@ -39,10 +39,10 @@ jobs:
       with:
         name: ${{ matrix.board }}
         path: |
-          *.bin
-          *.hex
-          *.tgz
-          *.zip
+          bin/*.bin
+          bin/*.hex
+          bin/*.tgz
+          bin/*.zip
     
         
   # Builds with DFU_UPDATE_BUILD=1        
@@ -74,10 +74,10 @@ jobs:
       with:
         name: ${{ matrix.board }}
         path: |
-          *.bin
-          *.hex
-          *.tgz
-          *.zip
+          bin/*.bin
+          bin/*.hex
+          bin/*.tgz
+          bin/*.zip
        
   # Builds with PAD_FOR_BOOTLOADER=1
   build_padded:
@@ -108,10 +108,10 @@ jobs:
       with:
         name: ${{ matrix.board }}
         path: |
-          *.bin
-          *.hex
-          *.tgz
-          *.zip
+          bin/*.bin
+          bin/*.hex
+          bin/*.tgz
+          bin/*.zip
  
  
 # Disable doc building for now 

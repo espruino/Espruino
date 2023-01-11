@@ -68,7 +68,7 @@ $(USER1_ELF): $(PARTIAL) $(LINKER_FILE)
 	$(Q)$(LD) $(LDFLAGS) -T$(LD_SCRIPT1) -o $@ $(PARTIAL) -Wl,--start-group $(LIBS) -Wl,--end-group
 	$(Q)$(OBJDUMP) --headers -j .data -j .rodata -j .bss -j .irom0.text -j .text $@ | tail -n +4
 	@echo To disassemble: $(OBJDUMP) -d -l -x $@
-	$(OBJDUMP) -d -l -x $@ >espruino_esp8266_user1.lst
+	$(OBJDUMP) -d -l -x $@ > $(BINDIR)/espruino_esp8266_user1.lst
 
 # generate fully linked 'user2' .elf using linker script for second OTA partition
 $(USER2_ELF): $(PARTIAL) $(LINKER_FILE)

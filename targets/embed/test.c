@@ -3,8 +3,8 @@
  */
 
 #include <sys/time.h> // gettimeofday
-#include "../../espruino_embedded.h"
-#include "../../espruino_embedded_utils.h"
+#include "../../bin/espruino_embedded.h"
+#include "../../bin/espruino_embedded_utils.h"
 
 /** We have to define these */
 uint64_t ejs_get_microseconds() {
