@@ -55,7 +55,7 @@ jobs:
           BOARD=EMSCRIPTEN make || exit 1
           make clean
           BOARD=EMSCRIPTEN2 make || exit 1       
-          cp $GITHUB_WORKSPACE/Espruino/emulator_banglejs*.js $GITHUB_WORKSPACE/EspruinoWebIDE/emu/ -v
+          cp $GITHUB_WORKSPACE/Espruino/bin/emulator_banglejs*.js $GITHUB_WORKSPACE/EspruinoWebIDE/emu/ -v
 
       - name: Run Tests Bangle.js
         run: node $GITHUB_WORKSPACE/Espruino/scripts/factoryTests.js BANGLEJS
