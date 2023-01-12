@@ -14,4 +14,6 @@ $(PROJ_NAME): $(SOURCES) $(PLATFORM_CONFIG_FILE)
 	@echo Created $(PROJ_HEADER_NAME)
 	@echo Created $(PROJ_NAME)	
 	@echo Created $(BINDIR)/espruino_embedded_utils.h
-	@echo Test with:  "gcc targets/embed/test.c $(PROJ_NAME) -Isrc -lm"
+	@echo ========================================	
+	@echo Test with:  "gcc targets/embed/test.c $(PROJ_NAME) -Isrc -lm -m32"
+	@echo NOTE: This build is for 32 bit targets only

@@ -43,5 +43,5 @@ int main() {
 }
 
 
-// V=1 BOARD=EMBED DEBUG=1 make sourcecode
-// gcc espruino_embed.c test.c -lm
+// BOARD=EMBED DEBUG=1 make
+// gcc targets/embed/test.c bin/espruino_embedded.c -Isrc -lm -m32 -g
