@@ -51,7 +51,7 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
   return ((JsVarFloat)time)/1000;
 }
 JsVar *jsvFindOrCreateRoot() {
-  return activeEJS->root;
+  return jsvLockAgain(activeEJS->root);
 }
 // ===============================
 JsSysTime jshGetSystemTime() {
