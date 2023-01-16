@@ -206,7 +206,7 @@ void jswrap_object_keys_or_property_names_cb(
 ) {
   // add the keys that are on this object itself
   // strings are iterable, but we shouldn't try and show keys for them
-  if (jsvIsIterable(obj)) {
+  if (jsvIsIterable(obj) && !(jsvIsArrayBuffer(obj) && (flags&JSWOKPF_NO_INCLUDE_ARRAYBUFFER))) {
     JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(obj);
 
     JsvIterator it;

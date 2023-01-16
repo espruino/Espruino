@@ -26,7 +26,8 @@ JsVar *jswrap_object_clone(JsVar *parent);
 typedef enum {
   JSWOKPF_NONE,
   JSWOKPF_INCLUDE_NON_ENUMERABLE = 1, ///< include 'hidden' items
-  JSWOKPF_INCLUDE_PROTOTYPE = 2 ///< include items for the prototype too (for autocomplete)
+  JSWOKPF_INCLUDE_PROTOTYPE = 2, ///< include items for the prototype too (for autocomplete)
+  JSWOKPF_NO_INCLUDE_ARRAYBUFFER = 4 ///< don't include the numerical contents of arraybuffers
 } JswObjectKeysOrPropertiesFlags;
 
 /** This is for Object.keys and Object. However it uses a callback so doesn't allocate anything */
