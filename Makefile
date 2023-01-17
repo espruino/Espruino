@@ -880,8 +880,9 @@ clean:
 	$(Q)rm -f $(PROJ_NAME).bin
 	$(Q)rm -f $(PROJ_NAME).srec
 	$(Q)rm -f $(PROJ_NAME).lst
-	$(Q)rm -f espruino_embedded.h
-	$(Q)rm -f espruino_embedded.c
+	$(Q)rm -f $(BINDIR)/espruino_embedded.h
+	$(Q)rm -f $(BINDIR)/espruino_embedded.c
+	$(Q)rm -f $(BINDIR)/espruino_embedded_utils.h
 
 wrappersources:
 	$(info WRAPPERSOURCES=$(WRAPPERSOURCES))

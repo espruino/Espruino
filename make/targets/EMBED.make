@@ -3,6 +3,7 @@ PROJ_HEADER_NAME = $(PROJ_NAME:.c=.h)
 proj: 	$(PLATFORM_CONFIG_FILE) $(PROJ_NAME)
 	
 $(PROJ_NAME): $(SOURCES) $(PLATFORM_CONFIG_FILE)
+	@mkdir -p $(OBJDIR) # create directory if it doesn't exist
 	gcc $(DEFINES) $(INCLUDE) -E -P targets/embed/embed.h -o $(OBJDIR)/temp.h
 	cat targets/embed/embed_header.h $(OBJDIR)/temp.h targets/embed/embed_footer.h > $(PROJ_HEADER_NAME)
 	cat $(SOURCES) > $(PROJ_NAME)
