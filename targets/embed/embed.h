@@ -32,3 +32,5 @@ void ejs_destroy();
 /* Evaluate the given string */
 JsVar *ejs_exec(struct ejs *ejs, const char *src, bool stringIsStatic);
 JsVar *ejs_execf(struct ejs *ejs, JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
+void ejs_set_instance(struct ejs *ejs);
+void ejs_unset_instance(struct ejs *ejs);
