@@ -882,7 +882,6 @@ clean:
 	$(Q)rm -f $(PROJ_NAME).lst
 	$(Q)rm -f $(BINDIR)/espruino_embedded.h
 	$(Q)rm -f $(BINDIR)/espruino_embedded.c
-	$(Q)rm -f $(BINDIR)/espruino_embedded_utils.h
 	$(Q)rm -f $(BINDIR)/jstypes.h
 
 wrappersources:

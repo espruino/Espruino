@@ -71,31 +71,30 @@ void ejs_set_instance(struct ejs *ejs) {
   execInfo.baseScope = ejs->root;
   jsFlags = (JsFlags)ejs->jsFlags;
   jsErrorFlags = (JsErrorFlags)ejs->jsErrorFlags;
-  if(ejs->exception) {
-    jsvUnLock(ejs->exception);
-    ejs->exception = NULL;
-  }
-  ejs->active = true;
   activeEJS = ejs;
 }
 
-void ejs_unset_instance(struct ejs *ejs) {
-  ejs->jsFlags = (unsigned char)jsFlags;
-  ejs->jsErrorFlags = (unsigned char)jsErrorFlags;
-  JsVar *exception = jspGetException();
-  if (exception) {
-    ejs->exception = exception;
-    jsiConsolePrintf("Uncaught %v\n", exception);
-    if (jsvIsObject(exception)) {
-      JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
-      if (stackTrace) {
-        jsiConsolePrintf("%v\n", stackTrace);
-        jsvUnLock(stackTrace);
-      }
-    }
+void ejs_unset_instance() {
+  if (!activeEJS) return;
+  activeEJS->jsFlags = (unsigned char)jsFlags;
+  activeEJS->jsErrorFlags = (unsigned char)jsErrorFlags;
+  execInfo.hiddenRoot = NULL;
+  execInfo.root = NULL;
+  execInfo.baseScope = NULL;
+  jsFlags = 0;
+  jsErrorFlags = 0;
+  activeEJS = NULL;
+}
+
+struct ejs *ejs_get_active_instance() {
+  return activeEJS;
+}
+
+void ejs_clear_exception(struct ejs *ejs) {
+  if (ejs->exception) {
+    jsvUnLock(ejs->exception);
+    ejs->exception = NULL;
   }
-  ejs->active = false;
-  activeEJS = 0;
 }
 
 /* Create an instance */
@@ -110,7 +109,6 @@ bool ejs_create(unsigned int varCount) {
 struct ejs *ejs_create_instance(unsigned int varCount) {
   struct ejs *ejs = (struct ejs*)malloc(sizeof(struct ejs));
   if (!ejs) return 0;
-  ejs->active = false;
   ejs->exception = NULL;
   ejs->root = jsvRef(jsvNewWithFlags(JSV_ROOT));
   activeEJS = ejs;
@@ -131,17 +129,37 @@ void ejs_destroy() {
   jsvKill();
 }
 
+static void process_exceptions() {
+  JsVar *exception = jspGetException();
+  if (exception) {
+    if (activeEJS->exception) {
+      ejs_clear_exception(activeEJS);
+    }
+    activeEJS->exception = exception;
+    jsiConsolePrintf("Uncaught %v\n", exception);
+    if (jsvIsObject(exception)) {
+      JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
+      if (stackTrace) {
+        jsiConsolePrintf("%v\n", stackTrace);
+        jsvUnLock(stackTrace);
+      }
+    }
+  }
+}
+
 JsVar *ejs_exec(struct ejs *ejs, const char *src, bool stringIsStatic) {
   ejs_set_instance(ejs);
   JsVar *v = jspEvaluate(src, stringIsStatic);
   // ^ if the string is static, we can let functions reference it directly
-  ejs_unset_instance(ejs);
+  process_exceptions();
+  ejs_unset_instance();
   return v;
 }
 
 JsVar *ejs_execf(struct ejs *ejs, JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr) {
   ejs_set_instance(ejs);
   JsVar *v = jspExecuteFunction(func, thisArg, argCount, argPtr);
-  ejs_unset_instance(ejs);
+  process_exceptions();
+  ejs_unset_instance();
   return v;
 }

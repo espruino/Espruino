@@ -10,7 +10,6 @@ $(PROJ_NAME): $(SOURCES) $(PLATFORM_CONFIG_FILE)
 	gcc $(DEFINES) $(INCLUDE) -E -P $(PROJ_NAME) -o $(OBJDIR)/temp.c
 	cat targets/embed/embed_header.c $(OBJDIR)/temp.c > $(PROJ_NAME)
 	cp src/jstypes.h $(BINDIR)/jstypes.h
-	cp targets/embed/embed_utils.h $(BINDIR)/espruino_embedded_utils.h
 	rm $(OBJDIR)/temp.c $(OBJDIR)/temp.h
 	@echo ========================================
 	@echo Created $(PROJ_HEADER_NAME)
