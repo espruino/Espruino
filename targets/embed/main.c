@@ -66,6 +66,7 @@ void vcbprintf_callback_jsiConsolePrintString(const char *str, void* user_data) 
 // ===============================
 
 void ejs_set_instance(struct ejs *ejs) {
+  if (activeEJS) ejs_unset_instance();
   execInfo.hiddenRoot = ejs->hiddenRoot;
   execInfo.root = ejs->root;
   execInfo.baseScope = ejs->root;
