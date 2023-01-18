@@ -851,9 +851,11 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
               /* get the real return var before we remove it from our function.
                * We can unlock below because returnVarName is still part of
                * functionRoot, so won't get freed. */
-              returnVar = jsvSkipNameAndUnLock(returnVarName);
-              if (returnVarName) // could have failed with out of memory
+              returnVar = jsvSkipName(returnVarName);
+              if (returnVarName) { // could have failed with out of memory
                 jsvRemoveChild(functionRoot, returnVarName); // remove return value (helps stops circular references, saves RAM)
+                jsvUnLock(returnVarName);
+              }
             }
             // Store a stack trace if we had an error
             JsExecFlags hasError = execInfo.execute&EXEC_ERROR_MASK;

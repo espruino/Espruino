@@ -867,8 +867,14 @@ JsVar *jsvRef(JsVar *var) {
 /// Unreference - set this variable as not used by anything
 void jsvUnRef(JsVar *var) {
   assert(var && jsvGetRefs(var)>0 && jsvHasRef(var));
-  if (jsvGetRefs(var) < JSVARREFCOUNT_MAX) // if we hit max refcounts, just keep them - GC will fix it later
-    jsvSetRefs(var, (JsVarRefCounter)(jsvGetRefs(var)-1));
+  JsVarRefCounter refs = jsvGetRefs(var);
+  if (refs < JSVARREFCOUNT_MAX) { // if we hit max refcounts, just keep them - GC will fix it later
+    refs--;
+    jsvSetRefs(var, refs);
+    // if no references or locks, free this now (don't wait for GC!)
+    if (!refs && !jsvGetLocks(var))
+      jsvUnLockFreeIfNeeded(var);
+  }
 }
 
 /// Helper fn, Reference - set this variable as used by something
@@ -2929,6 +2935,7 @@ void jsvRemoveChild(JsVar *parent, JsVar *child) {
   jsvSetNextSibling(child, 0);
   if (wasChild)
     jsvUnRef(child);
+
 }
 
 void jsvRemoveAllChildren(JsVar *parent) {
