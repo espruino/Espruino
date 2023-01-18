@@ -125,12 +125,24 @@ typedef enum {
 #define JSV_ARRAYBUFFER_IS_FLOAT(T) (((T)&ARRAYBUFFERVIEW_FLOAT)!=0)
 #define JSV_ARRAYBUFFER_IS_CLAMPED(T) (((T)&ARRAYBUFFERVIEW_CLAMPED)!=0)
 
+#if JSVAR_DATA_STRING_LEN<8 // only enough space for a 16 bit length
+typedef uint16_t JsVarDataNativeStrLength;
+#define JSV_NATIVE_STR_MAX_LENGTH 65535
+typedef uint16_t JsVarArrayBufferLength;
 #define JSV_ARRAYBUFFER_MAX_LENGTH 65535
+#define JSV_ARRAYBUFFER_LENGTH_BITS
+#else // enough space for 24 bit length
+typedef uint32_t JsVarDataNativeStrLength;
+#define JSV_NATIVE_STR_MAX_LENGTH 0xFFFFFFFF
+typedef uint32_t JsVarArrayBufferLength;
+#define JSV_ARRAYBUFFER_MAX_LENGTH 0xFFFFFF
+#define JSV_ARRAYBUFFER_LENGTH_BITS : 24
+#endif
 
 /// Data for ArrayBuffers. Max size here is 6 bytes in most cases (4 byte data + 2x JsVarRef)
 typedef struct {
   unsigned short byteOffset;
-  unsigned short length;
+  JsVarArrayBufferLength length JSV_ARRAYBUFFER_LENGTH_BITS;
   JsVarDataArrayBufferViewType type;
 } PACKED_FLAGS JsVarDataArrayBufferView;
 
@@ -139,14 +151,6 @@ typedef struct {
   void (*ptr)(void); ///< Function pointer - this may not be the real address - see jsvGetNativeFunctionPtr
   uint16_t argTypes; ///< Actually a list of JsnArgumentType
 } PACKED_FLAGS JsVarDataNative;
-
-#if JSVARREF_SIZE==1
-typedef uint16_t JsVarDataNativeStrLength;
-#define JSV_NATIVE_STR_MAX_LENGTH 65535
-#else
-typedef uint32_t JsVarDataNativeStrLength;
-#define JSV_NATIVE_STR_MAX_LENGTH 0xFFFFFFFF
-#endif
 
 /// Data for native strings
 typedef struct {

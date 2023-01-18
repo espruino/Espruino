@@ -1140,6 +1140,8 @@ JsVar *jsvNewNativeString(char *ptr, size_t len) {
   if (len>JSV_NATIVE_STR_MAX_LENGTH) len=JSV_NATIVE_STR_MAX_LENGTH; // crop string to what we can store in nativeStr.len
   JsVar *str = jsvNewWithFlags(JSV_NATIVE_STRING);
   if (!str) return 0;
+  if (len > JSV_NATIVE_STR_MAX_LENGTH)
+    len = JSV_NATIVE_STR_MAX_LENGTH;
   str->varData.nativeStr.ptr = ptr;
   str->varData.nativeStr.len = (JsVarDataNativeStrLength)len;
   return str;
@@ -1164,7 +1166,7 @@ JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero) {
   arr->varData.arraybuffer.type = ARRAYBUFFERVIEW_ARRAYBUFFER;
   assert(arr->varData.arraybuffer.byteOffset == 0);
   if (lengthOrZero==0) lengthOrZero = (unsigned int)jsvGetStringLength(str);
-  arr->varData.arraybuffer.length = (unsigned short)lengthOrZero;
+  arr->varData.arraybuffer.length = (JsVarArrayBufferLength)lengthOrZero;
   return arr;
 }
 

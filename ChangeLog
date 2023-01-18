@@ -19,6 +19,7 @@
             ESP32: Bluetooth scanning now uses event queue (fixes MEMORY_BUSY)
             ESP32: Implement E.enableWatchdog
             Speed up tab complete on large ArrayBuffers
+            Support for ArrayBuffers over 64k in size
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

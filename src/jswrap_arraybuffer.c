@@ -237,7 +237,7 @@ Arrays of this type include all the methods from
 Create an Array Buffer object
  */
 JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
-  if (byteLength < 0 || byteLength>65535) {
+  if (byteLength < 0) {
     jsExceptionHere(JSET_ERROR, "Invalid length for ArrayBuffer\n");
     return 0;
   }
@@ -542,7 +542,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
   if (typedArr) {
     typedArr->varData.arraybuffer.type = type;
     typedArr->varData.arraybuffer.byteOffset = (unsigned short)byteOffset;
-    typedArr->varData.arraybuffer.length = (unsigned short)length;
+    typedArr->varData.arraybuffer.length = (JsVarArrayBufferLength)length;
     jsvSetFirstChild(typedArr, jsvGetRef(jsvRef(arrayBuffer)));
 
     if (copyData) {
