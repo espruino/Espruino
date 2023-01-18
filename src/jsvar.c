@@ -333,6 +333,7 @@ void jsvInit(unsigned int size) {
   jsVarBlocks[0] = malloc(sizeof(JsVar) * JSVAR_BLOCK_SIZE);
 #endif
 #elif defined(JSVAR_MALLOC)
+  jsVarsSize = JSVAR_CACHE_SIZE;
   if (size) jsVarsSize = size;
 #if defined(ESPR_JIT) && defined(LINUX)
   if (!jsVars)
