@@ -91,10 +91,10 @@ struct ejs *ejs_get_active_instance() {
   return activeEJS;
 }
 
-void ejs_clear_exception(struct ejs *ejs) {
-  if (ejs->exception) {
-    jsvUnLock(ejs->exception);
-    ejs->exception = NULL;
+void ejs_clear_exception() {
+  if (activeEJS->exception) {
+    jsvUnLock(activeEJS->exception);
+    activeEJS->exception = NULL;
   }
 }
 
@@ -130,12 +130,9 @@ void ejs_destroy() {
   jsvKill();
 }
 
-static void process_exceptions() {
+JsVar *ejs_catch_exception() {
   JsVar *exception = jspGetException();
   if (exception) {
-    if (activeEJS->exception) {
-      ejs_clear_exception(activeEJS);
-    }
     activeEJS->exception = exception;
     jsiConsolePrintf("Uncaught %v\n", exception);
     if (jsvIsObject(exception)) {
@@ -146,21 +143,24 @@ static void process_exceptions() {
       }
     }
   }
+  return exception;
 }
 
 JsVar *ejs_exec(struct ejs *ejs, const char *src, bool stringIsStatic) {
   ejs_set_instance(ejs);
+  ejs_clear_exception();
   JsVar *v = jspEvaluate(src, stringIsStatic);
   // ^ if the string is static, we can let functions reference it directly
-  process_exceptions();
+  ejs_catch_exception();
   ejs_unset_instance();
   return v;
 }
 
 JsVar *ejs_execf(struct ejs *ejs, JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr) {
   ejs_set_instance(ejs);
+  ejs_clear_exception();
   JsVar *v = jspExecuteFunction(func, thisArg, argCount, argPtr);
-  process_exceptions();
+  ejs_catch_exception();
   ejs_unset_instance();
   return v;
 }

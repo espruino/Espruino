@@ -38,8 +38,8 @@ void ejs_destroy();
 JsVar *ejs_exec(struct ejs *ejs, const char *src, bool stringIsStatic);
 /* Call the given function with arguments */
 JsVar *ejs_execf(struct ejs *ejs, JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
-/* Clear ejs.exception after processing */
-void ejs_clear_exception(struct ejs *ejs);
+/* Clear the exception after processing */
+void ejs_clear_exception();
 
 // Functions that can be used when an instance is active
 size_t jsvGetString(const JsVar *v, char *str, size_t len);
@@ -69,3 +69,6 @@ JsVar *jsvLockAgainSafe(JsVar *var);
 void jsvUnLock(JsVar *var);
 
 void jsExceptionHere(JsExceptionType type, const char *fmt, ...);
+
+// Some of the functions above may throw exception that needs to be caught:
+JsVar *ejs_catch_exception();
