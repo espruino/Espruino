@@ -70,5 +70,7 @@ void jsvUnLock(JsVar *var);
 
 void jsExceptionHere(JsExceptionType type, const char *fmt, ...);
 
-// Some of the functions above may throw exception that needs to be caught:
+/* Handle an exception, and return it if there was one. The exception
+returned is NOT locked and will be freed on the next call to ejs_catch_exception
+or ejs_clear_exception */
 JsVar *ejs_catch_exception();

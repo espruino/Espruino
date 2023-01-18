@@ -92,7 +92,7 @@ struct ejs *ejs_get_active_instance() {
 }
 
 void ejs_clear_exception() {
-  if (activeEJS->exception) {
+  if (activeEJS && activeEJS->exception) {
     jsvUnLock(activeEJS->exception);
     activeEJS->exception = NULL;
   }
@@ -121,7 +121,9 @@ struct ejs *ejs_create_instance(unsigned int varCount) {
 /* Destroy the instance */
 void ejs_destroy_instance(struct ejs *ejs) {
   ejs_set_instance(ejs);
+  ejs_clear_exception();
   jspKill();
+  jsvUnLock(ejs->root);
   free(ejs);
 }
 
@@ -130,9 +132,13 @@ void ejs_destroy() {
   jsvKill();
 }
 
+/* Handle an exception, and return it if there was one. The exception
+returned is NOT locked and will be freed on the next call to ejs_catch_exception
+or ejs_clear_exception */
 JsVar *ejs_catch_exception() {
   JsVar *exception = jspGetException();
   if (exception) {
+    ejs_clear_exception();
     activeEJS->exception = exception;
     jsiConsolePrintf("Uncaught %v\n", exception);
     if (jsvIsObject(exception)) {
