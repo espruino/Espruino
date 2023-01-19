@@ -92,6 +92,9 @@ if [ "$PROVISION_ESP32" = "1" ]; then
            echo "Folder found"
         fi
     fi
+    echo ESP_IDF_PATH=`pwd`/esp-idf
+    echo ESP_APP_TEMPLATE_PATH=`pwd`/app
+    echo "PATH=\$PATH:`pwd`/xtensa-esp32-elf/bin/"
     export ESP_IDF_PATH=`pwd`/esp-idf
     export ESP_APP_TEMPLATE_PATH=`pwd`/app
     export PATH=$PATH:`pwd`/xtensa-esp32-elf/bin/
