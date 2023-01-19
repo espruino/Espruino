@@ -2331,9 +2331,9 @@ NO_INLINE JsVar *jspeStatementVar() {
     if (JSP_SHOULD_EXECUTE) {
       if (isConstant)
         a->flags |= JSV_CONSTANT;
-      jsvUnLock(lastDefined);
-      lastDefined = a;
     }
+    jsvUnLock(lastDefined);
+    lastDefined = a;
     hasComma = lex->tk == ',';
     if (hasComma) JSP_MATCH_WITH_RETURN(',', lastDefined);
   }

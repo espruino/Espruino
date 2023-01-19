@@ -21,6 +21,7 @@
             Speed up tab complete on large ArrayBuffers
             Support for ArrayBuffers over 64k in size
             Fix issue that could cause some variables not to be freed as soon as they weren't needed (requiring GC more often)
+            Fix lock leak if out of memory error occurs during 'var' initial assignment
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
