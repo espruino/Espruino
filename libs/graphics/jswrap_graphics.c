@@ -50,7 +50,11 @@ const uint16_t PALETTE_8BIT[256] = { 0x0,0x3,0x6,0x9,0xc,0xf,0x30,0x33,0x36,0x39
 // 8 color RGB - [0,0,0,0,0,0,0,0].map((x,i)=>((i&4)?0xF800:0)|((i&2)?0x7E0:0)|((i&1)?0x1F:0))
 const uint16_t PALETTE_3BIT[16] = { 0, 31, 2016, 2047, 63488, 63519, 65504, 65535 };
 // 16 color MAC OS palette
+#if LCD_BPP==3 // for 3bpp LCDs we use a more saturated palette that maps better to the less vibrant LCD
+const uint16_t PALETTE_4BIT[16] = { 0x0,0x4228,0x8c51,0xbdd7,0xcc40,0x8a20,0x320,0x7e0,0x7ff,0x1f,0x8811,0xf81f,0xf800,0xfc40,0xffe0,0xffff };
+#else // otherwise we use the standard Mac pallete
 const uint16_t PALETTE_4BIT[16] = { 0x0,0x4228,0x8c51,0xbdd7,0x9b26,0x6180,0x320,0x540,0x4df,0x19,0x3013,0xf813,0xd800,0xfb20,0xffe0,0xffff };
+#endif
 // 256 color 16 bit Web-safe palette
 const uint16_t PALETTE_8BIT[256] = {
     0x0,0x6,0xc,0x13,0x19,0x1f,0x180,0x186,0x18c,0x193,0x199,0x19f,0x320,0x326,0x32c,0x333,0x339,0x33f,0x4c0,
@@ -77,6 +81,12 @@ const uint16_t PALETTE_8BIT[256] = {
 #endif
 // map Mac to web-safe palette. Must be uint16_t because drawImage uses uint16_t* for palette
 const uint16_t PALETTE_4BIT_TO_8BIT[16] = { 0, 43, 129, 172, 121, 78, 12, 18, 23, 4, 39, 183, 144, 192, 210, 215 };
+// g2=Graphics.createArrayBuffer(8,8,8);print((new Uint8Array(8)).map((n,i)=>g2.toColor((i&4)>>2,(i&2)>>1,i&1)).join(","));
+// map Mac to web-safe palette. Must be uint16_t because drawImage uses uint16_t* for palette
+const uint16_t PALETTE_3BIT_TO_8BIT[8] = { 0,5,30,35,180,185,210,215 };
+// g2=Graphics.createArrayBuffer(8,8,4);print((new Uint8Array(8)).map((n,i)=>g2.toColor((i&4)>>2,(i&2)>>1,i&1)).join(","));
+// map Mac to web-safe palette. Must be uint16_t because drawImage uses uint16_t* for palette
+const uint16_t PALETTE_3BIT_TO_4BIT[8] = { 0,9,7,8,12,11,14,15 };
 #endif
 
 
@@ -223,6 +233,12 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
     } else if (gfx->data.bpp==8 && info->bpp==4) {
       info->palettePtr = PALETTE_4BIT_TO_8BIT;
       info->paletteMask = 15;
+    } else if (gfx->data.bpp==8 && info->bpp==3) {
+      info->palettePtr = PALETTE_3BIT_TO_8BIT;
+      info->paletteMask = 7;
+    } else if (gfx->data.bpp==4 && info->bpp==3) {
+      info->palettePtr = PALETTE_3BIT_TO_4BIT;
+      info->paletteMask = 7;
   #endif
     }
   }
