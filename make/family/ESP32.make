@@ -80,7 +80,9 @@ INCLUDE+=\
 -I$(ESP_IDF_PATH)/components/esp_ringbuf/include \
 -I$(ESP_IDF_PATH)/components/lwip/include/apps/sntp \
 -I$(ESP_IDF_PATH)/components/esp_event/include \
--I$(ESP_IDF_PATH)/components/lwip/include/apps
+-I$(ESP_IDF_PATH)/components/lwip/include/apps \
+-I$(ESP_IDF_PATH)/components/app_update/include \
+-I$(ESP_IDF_PATH)/components/bootloader_support/include
 
 LDFLAGS+=-nostdlib -u call_user_start_cpu0 -u ld_include_panic_highint_hdl -Wl,--gc-sections -Wl,-static -Wl,-EL
 LIBS+=-T esp32_out.ld \

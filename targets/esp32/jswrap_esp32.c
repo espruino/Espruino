@@ -23,6 +23,7 @@
 #include "esp_system.h"
 #include "esp_sleep.h"
 #include "esp_heap_caps.h"
+#include "esp_ota_ops.h"
 
 #ifdef BLUETOOTH
 #include "BLE/esp32_bluetooth_utils.h"
@@ -149,7 +150,7 @@ void jswrap_ESP32_setBLE_Debug(int level){
 Switches Bluetooth off/on, removes saved code from Flash, resets the board, and
 on restart creates jsVars depending on available heap (actual additional 1800)
 */
-void jswrap_ESP32_enableBLE(bool enable){ //may be later, we will support BLEenable(ALL/SERVER/CLIENT)
+void jswrap_ESP32_enableBLE(bool enable) { //may be later, we will support BLEenable(ALL/SERVER/CLIENT)
   ESP32_Set_NVS_Status(ESP_NETWORK_BLE,enable);
   jsfRemoveCodeFromFlash();
   esp_restart();
@@ -168,8 +169,34 @@ void jswrap_ESP32_enableBLE(bool enable){ //may be later, we will support BLEena
 Switches Wifi off/on, removes saved code from Flash, resets the board, and on
 restart creates jsVars depending on available heap (actual additional 3900)
 */
-void jswrap_ESP32_enableWifi(bool enable){ //may be later, we will support BLEenable(ALL/SERVER/CLIENT)
+void jswrap_ESP32_enableWifi(bool enable) { //may be later, we will support BLEenable(ALL/SERVER/CLIENT)
   ESP32_Set_NVS_Status(ESP_NETWORK_WIFI,enable);
   jsfRemoveCodeFromFlash();
   esp_restart();
 }
+
+/*JSON{
+ "type" : "staticmethod",
+ "class"  : "ESP32",
+ "ifdef" : "ESP32",
+ "name"   : "setOTAValid",
+ "generate" : "jswrap_ESP32_setOTAValid",
+ "params" : [
+   ["isValid", "bool", "Set whether this app is valid or not. If `isValid==false` the device will reboot." ]
+ ]
+}
+This function is useful for ESP32 [OTA Updates](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/ota.html)
+
+Normally Espruino is uploaded to the `factory` partition so this isn't so useful,
+but it is possible to upload Espruino to the `ota_0` partition (or ota_1 if a different table has been added).
+
+If this is the case, you can use this function to mark the currently running version of Espruino as good or bad.
+ * If set as valid, Espruino will continue running, and the fact that everything is ok is written to flash
+ * If set as invalid (false) Espruino will mark itself as not working properly and will reboot. The ESP32 bootloader
+ will then start and will load any other partition it can find that is marked as ok.
+*/
+void jswrap_ESP32_setOTAValid(bool isValid) {
+  if (isValid) esp_ota_mark_app_valid_cancel_rollback();
+  else esp_ota_mark_app_invalid_rollback_and_reboot();
+}
+

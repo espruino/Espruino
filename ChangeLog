@@ -24,6 +24,8 @@
             Fix lock leak if out of memory error occurs during 'var' initial assignment
             Graphics: Add color mappings when rendering 3->4bpp and 3->8bpp
             Bangle.js2: make the 4bpp mac palette more saturated to account for the LCD
+            ESP32: partition table updated in EspruinoBuildTools to ensure bootloader doesn't mistake js_code/storage for an otadata partition
+            ESP32: Add ESP32.setOTAValid(false) to allow the current partition to be marked as invalid (causing 'factory' to be booted into)
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
