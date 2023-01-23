@@ -185,6 +185,8 @@ jit(); // prints 'hello {b:42,...}'
 function jit(a,b) {'jit';return a+"Hello world"+b;}
 jit(1,2)=="1Hello world2"
 
+function jit(a,b) {'jit';return [1,2,1+2,"Hello","World"];}
+jit(1,2)=="1,2,3,Hello,World"
 
 function nojit() {
   for (var i=0;i<10000;i++) {

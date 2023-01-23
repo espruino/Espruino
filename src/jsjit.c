@@ -121,6 +121,16 @@ NO_INLINE void _jsxVarInitialAssign(JsVar *a, bool isConstant, JsVar *initialVal
     a->flags |= JSV_CONSTANT;
   jsvUnLock2(a, initialValue);
 }
+
+// When parsing [1,2,3] this is called to add each new array item. It frees 'value'
+NO_INLINE void _jsxArrayNewElement(JsVar *array, uint32_t index, JsVar *value) {
+  JsVar *indexName = jsvMakeIntoVariableName(jsvNewFromInteger(index),  value);
+  if (indexName) { // could be out of memory
+    jsvAddName(array, indexName);
+    jsvUnLock(indexName);
+  }
+  jsvUnLock(value);
+}
 // ----------------------------------------------------------------------------
 
 void jsjPopAsVar(int reg) {
@@ -215,6 +225,41 @@ void jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
   jsvUnLock2(varIndex, name);
 }
 
+void jsjFactorArray() {
+  uint32_t idx = 0;
+
+  if (jit.phase == JSJP_EMIT) {
+    // create the array
+    jsjcCall(jsvNewEmptyArray);
+    jsjcMov(4, 0); // Store it in r4
+  }
+
+  /* JSON-style array */
+  JSP_ASSERT_MATCH('[');
+  while (JSJ_PARSING && lex->tk != ']') {
+    if (lex->tk != ',') { // #287 - [,] and [1,2,,4] are allowed
+      jsjAssignmentExpression();
+      if (jit.phase == JSJP_EMIT) {
+        jsjcMov(0, 4); // r0 = array
+        jsjcLiteral32(1, idx); // r1 = index
+        jsjPopNoName(2); // r2 = array item
+        jsjcCall(_jsxArrayNewElement);
+      }
+    }
+    if (lex->tk != ']') JSP_MATCH(',');
+    idx++;
+  }
+  JSP_MATCH(']');
+  if (jit.phase == JSJP_EMIT) {
+    jsjcMov(0, 4); // r0 = array
+    jsjcLiteral32(1, idx); // r1 = array size
+    jsjcLiteral32(2, 0); // r1 = truncate = false
+    jsjcCall(jsvSetArrayLength);
+    // push the finished array on
+    jsjcPush(4, JSJVT_JSVAR_NO_NAME);
+  }
+}
+
 void jsjFactor() {
   if (lex->tk==LEX_ID) {
     JsVar *name = jslGetTokenValueAsVar();
@@ -277,13 +322,13 @@ void jsjFactor() {
       jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
     jsvUnLock(a);
-  }/* else if (lex->tk=='{') {
+  /*} else if (lex->tk=='{') {
     if (!jspCheckStackPosition()) return 0;
-    return jsjFactorObject();
+    return jsjFactorObject();*/
   } else if (lex->tk=='[') {
     if (!jspCheckStackPosition()) return 0;
     return jsjFactorArray();
-  } else if (lex->tk==LEX_R_FUNCTION) {
+  } /*else if (lex->tk==LEX_R_FUNCTION) {
     if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_FUNCTION);
     return jsjFunctionDefinition(true);

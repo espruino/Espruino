@@ -1370,17 +1370,15 @@ NO_INLINE JsVar *jspeFactorArray() {
   JSP_MATCH_WITH_RETURN('[', contents);
   while (!JSP_SHOULDNT_PARSE && lex->tk != ']') {
     if (JSP_SHOULD_EXECUTE) {
-      JsVar *aVar = 0;
-      JsVar *indexName = 0;
       if (lex->tk != ',') { // #287 - [,] and [1,2,,4] are allowed
-        aVar = jsvSkipNameAndUnLock(jspeAssignmentExpression());
-        indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  aVar);
+        JsVar *aVar = aVar = jsvSkipNameAndUnLock(jspeAssignmentExpression());
+        JsVar *indexName = indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  aVar);
+        if (indexName) { // could be out of memory
+          jsvAddName(contents, indexName);
+          jsvUnLock(indexName);
+        }
+        jsvUnLock(aVar);
       }
-      if (indexName) { // could be out of memory
-        jsvAddName(contents, indexName);
-        jsvUnLock(indexName);
-      }
-      jsvUnLock(aVar);
     } else {
       jsvUnLock(jspeAssignmentExpression());
     }
