@@ -332,7 +332,7 @@ void jsjcConvertToJsVar(int reg, JsjValueType varType) {
 }
 
 void jsjcPush(int reg, JsjValueType type) {
-  DEBUG_JIT("PUSH {r%d}   (%s => stack depth %d)\n", reg, jsjcGetTypeName(type), jit.stackDepth);
+  DEBUG_JIT("PUSH {r%d}   (%s => stack depth %d)\n", reg, jsjcGetTypeName(type), jit.stackDepth+1);
   if (jit.stackDepth>=JSJ_TYPE_STACK_SIZE) { // not enough space on type staclk
     DEBUG_JIT("!!! not enough space on type stack - converting to JsVar\n");
     jsjcConvertToJsVar(reg, type);

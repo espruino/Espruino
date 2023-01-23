@@ -473,23 +473,15 @@ bool jsjFactorMember() {
 
 void jsjFactorFunctionCall() {
   jsjFactor();
-  bool parentOnStack = jsjFactorMember(); // FIXME we need to call this and also somehow remember 'parent'
+  bool parentOnStack = jsjFactorMember();
   // FIXME: what about 'new'?
 
   while (lex->tk=='(' /*|| (isConstructor && JSP_SHOULD_EXECUTE))*/ && JSJ_PARSING) {
-    if (jit.phase == JSJP_EMIT) {
-      if (parentOnStack) {
-        DEBUG_JIT("; FUNCTION CALL r6 = 'this'\n");
-        jsjPopAsVar(6); // r6 = this/parent
-        parentOnStack = false;
-      } else {
-        jsjcLiteral32(6, 0); // no parent
-      }
-      DEBUG_JIT("; FUNCTION CALL r4 = funcName\n");
-      jsjPopAsVar(4); // r4 = funcName
-      DEBUG_JIT("; FUNCTION CALL arguments\n");
-    }
-    /* PARSE OUR ARGUMENTS
+    /* Right now, the parent (if parentOnStack) is on the stack,
+     follow by the function...
+
+     NOW PARSE OUR ARGUMENTS
+
      * Push each new argument onto the stack (it grows down)
      * Args are in the wrong order, so we emit code to swap around the args in the array
      * At the end, SP = what we need as 'argPtr' for jspeFunctionCall
@@ -500,6 +492,7 @@ void jsjFactorFunctionCall() {
      */
     int argCount = 0;
     JSP_MATCH('(');
+    DEBUG_JIT_EMIT("; FUNCTION CALL arguments\n");
     while (JSJ_PARSING && lex->tk!=')' && lex->tk!=LEX_EOF) {
       argCount++;
       jsjAssignmentExpression();
@@ -514,7 +507,9 @@ void jsjFactorFunctionCall() {
     }
     JSP_MATCH(')');
     if (jit.phase == JSJP_EMIT) {
-      // r4=funcName, args on the stack
+      // Stack looks like this now:
+      //  <top of stack> argN, ... arg2, arg1, funcName, [funcParent], <rest of stack>
+      DEBUG_JIT("; FUNCTION CALL argPtr\n");
       jsjcMov(7, JSJAR_SP); // r7 = argPtr
       jsjcPush(7, JSJVT_INT); // argPtr (5th arg - on stack)
       // Args are in the wrong order - we have to swap them around if we have >1!
@@ -529,20 +524,30 @@ void jsjFactorFunctionCall() {
           jsjcStoreImm(1, 7, a1);
         }
       }
+      // Stack looks like this now:
+      //  <top of stack> arg1, arg2, ... argN, funcName, [funcParent], <rest of stack>
       DEBUG_JIT("; FUNCTION CALL jspeFunctionCall\n");
-    // First arg
-    jsjcMov(0, 4); // r0 = funcName
-    // for constructors we'd have to do something special here
-    jsjcMov(1, 6); // parent (from r6)
-    jsjcLiteral32(2, 0); // isParsing = false
-    jsjcLiteral32(3, argCount); // argCount 4th arg
-    jsjcCall(_jsjxFunctionCallAndUnLock); // a = _jsjxFunctionCallAndUnLock(funcName, thisArg/parent, isParsing, argCount, argPtr[on stack]);
-    DEBUG_JIT("; FUNCTION CALL cleanup stack\n");
-    jsjcAddSP(4*(1+argCount)); // pop off argPtr + all the arguments
-    jsjcPush(0, JSJVT_JSVAR); // push return value from jspeFunctionCall (FIXME: can we be sure this isn't a NAME so use JSJVT_JSVAR_NO_NAME? I think so)
-    DEBUG_JIT("; FUNCTION CALL end\n");
-    // 'parent', 'funcName' and all args are unlocked by _jsjxFunctionCallAndUnLock
+      // Get function var and parent (r7 == SP)
+
+      if (parentOnStack) { // parent
+        jsjcLoadImm(0, 7, 4*(argCount+1)); // r0 = funcName
+        jsjcLoadImm(1, 7, 4*(argCount));
+      } else { // no parent
+        jsjcLoadImm(0, 7, 4*argCount); // r0 = funcName
+        jsjcLiteral32(1, 0);
+      }
+      jsjcLiteral32(2, 0); // isParsing = false
+      jsjcLiteral32(3, argCount); // argCount 4th arg
+      jsjcCall(_jsjxFunctionCallAndUnLock); // a = _jsjxFunctionCallAndUnLock(funcName, thisArg/parent, isParsing, argCount, argPtr[on stack]);
+      DEBUG_JIT("; FUNCTION CALL cleanup stack\n");
+      jsjcAddSP(4*(2+argCount+(parentOnStack?1:0))); // pop off argPtr + all the arguments + funcName + parent
+      parentOnStack = false;
+      jsjcPush(0, JSJVT_JSVAR); // push return value from jspeFunctionCall (FIXME: can we be sure this isn't a NAME so use JSJVT_JSVAR_NO_NAME? I think so)
+      DEBUG_JIT("; FUNCTION CALL end\n");
+      // 'parent', 'funcName' and all args are unlocked by _jsjxFunctionCallAndUnLock
     }
+    // Check for another '.'/etc after this function
+    parentOnStack = jsjFactorMember();
   }
   if ((jit.phase == JSJP_EMIT) && parentOnStack) {
     jsjPopAsVar(0); // remove parent from the stack and unlock it
