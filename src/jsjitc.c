@@ -62,6 +62,7 @@ void jsjcDebugPrintf(const char *fmt, ...) {
 void jsjcStart() {
   jit.phase = JSJP_UNKNOWN;
   jit.code = jsvNewFromEmptyString();
+  jsvStringIteratorNew(&jit.codeIt, jit.code, 0);
   jit.initCode = jsvNewFromEmptyString(); // FIXME: maybe we don't need this?
   jit.blockCount = 0;
   jit.vars = jsvNewObject();
@@ -103,6 +104,7 @@ JsVar *jsjcStop() {
     jsvStringIteratorFree(&src);
     jsvStringIteratorFree(&dst);
   }
+  jsvStringIteratorFree(&jit.codeIt);
   jsvUnLock(jit.code);
   jit.code = 0;
   jsvUnLock(jit.initCode);
@@ -114,7 +116,9 @@ JsVar *jsjcStop() {
 JsVar *jsjcStartBlock() {
   if (jit.phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
   JsVar *v = jit.code;
+  jsvStringIteratorFree(&jit.codeIt);
   jit.code = jsvNewFromEmptyString();
+  jsvStringIteratorNew(&jit.codeIt, jit.code, 0);
   jit.blockCount++;
   return v;
 }
@@ -122,7 +126,10 @@ JsVar *jsjcStartBlock() {
 // Called to start writing to 'init code' (which is inserted before everything else). Returns the old code jsVar that should be passed into jsjcStopBlock
 JsVar *jsjcStartInitCodeBlock() {
   JsVar *v = jit.code;
+  jsvStringIteratorFree(&jit.codeIt);
   jit.code = jsvLockAgain(jit.initCode);
+  jsvStringIteratorNew(&jit.codeIt, jit.code, 0);
+  jsvStringIteratorGotoEnd(&jit.codeIt);
   jit.blockCount++;
   return v;
 }
@@ -131,27 +138,26 @@ JsVar *jsjcStartInitCodeBlock() {
 JsVar *jsjcStopBlock(JsVar *oldBlock) {
   if (jit.phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
   JsVar *v = jit.code;
+  jsvStringIteratorFree(&jit.codeIt);
   jit.code = oldBlock;
+  jsvStringIteratorNew(&jit.codeIt, jit.code, 0);
+  jsvStringIteratorGotoEnd(&jit.codeIt);
   jit.blockCount--;
   return v;
 }
 
 void jsjcEmit16(uint16_t v) {
   //DEBUG_JIT("> %04x\n", v);
-  jsvAppendStringBuf(jit.code, (char *)&v, 2);
+  char *bytes = (char *)&v;
+  //jsvAppendStringBuf(jit.code, bytes, 2);
+  jsvStringIteratorAppend(&jit.codeIt, bytes[0]);
+  jsvStringIteratorAppend(&jit.codeIt, bytes[1]);
 }
 
 // Emit a whole block of code
 void jsjcEmitBlock(JsVar *block) {
   DEBUG_JIT("... code block ...\n");
-  JsvStringIterator it;
-  jsvStringIteratorNew(&it, block, 0);
-  while (jsvStringIteratorHasChar(&it)) {
-    unsigned int v = (unsigned)jsvStringIteratorGetCharAndNext(&it);
-    v = v | (((unsigned)jsvStringIteratorGetCharAndNext(&it)) << 8);
-    jsjcEmit16((uint16_t)v);
-  }
-  jsvStringIteratorFree(&it);
+  jsvStringIteratorAppendString(&jit.codeIt, block, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
 }
 
 int jsjcGetByteCount() {

@@ -219,6 +219,16 @@ function jit() {"jit";
 }
 t=getTime();nojit();getTime()-t // 6.96
 t=getTime();jit();getTime()-t   // 2.02
+
+
+t=getTime();function jit() {"jit";
+  for (var i=0;i<10;i++) {
+    print("Start");
+    digitalWrite(LED,1);
+    digitalWrite(LED,0);
+    print("Stop");
+  }
+};print("JIT compile time", getTime()-t)
 ```
 
 Run JIT on ARM and then disassemble:
