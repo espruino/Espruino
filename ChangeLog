@@ -27,6 +27,8 @@
             ESP32: partition table updated in EspruinoBuildTools to ensure bootloader doesn't mistake js_code/storage for an otadata partition
             ESP32: Add ESP32.setOTAValid(false) to allow the current partition to be marked as invalid (causing 'factory' to be booted into)
             JIT: Arrays can now be defined in JIT code (`[1,2,3]`/etc)
+            JIT: Objects can now be defined in JIT code (`{a:2,b:3}`/etc)
+            JIT: 'this' can be used in JIT code
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

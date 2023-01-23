@@ -185,8 +185,15 @@ jit(); // prints 'hello {b:42,...}'
 function jit(a,b) {'jit';return a+"Hello world"+b;}
 jit(1,2)=="1Hello world2"
 
-function jit(a,b) {'jit';return [1,2,1+2,"Hello","World"];}
-jit(1,2)=="1,2,3,Hello,World"
+function jit() {'jit';return [1,2,1+2,"Hello","World"];}
+jit()=="1,2,3,Hello,World"
+
+function jit() {'jit';return {a:42,b:10,12:5};}
+JSON.stringify(jit()) == '{"a":42,"b":10,"12":5}'
+
+
+jit = {a:42, jit:function(){'jit';return this.a;}}
+jit.jit()==42
 
 function nojit() {
   for (var i=0;i<10000;i++) {

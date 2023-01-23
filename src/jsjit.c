@@ -20,6 +20,7 @@
 
 #define JSP_ASSERT_MATCH(TOKEN) { assert(0+lex->tk==(TOKEN));jslGetNextToken(); } // Match where if we have the wrong token, it's an internal error
 #define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) if (!jslMatch((TOKEN))) return RETURN_VAL;
+#define JSP_MATCH_WITH_CLEANUP(TOKEN, CLEANUP_CODE) { if (!jslMatch((TOKEN))) { CLEANUP_CODE; return; } }
 #define JSP_MATCH(TOKEN) if (!jslMatch((TOKEN))) return; // Match where the user could have given us the wrong token
 #define JSJ_PARSING (!(execInfo.execute&EXEC_EXCEPTION))
 
@@ -122,7 +123,15 @@ NO_INLINE void _jsxVarInitialAssign(JsVar *a, bool isConstant, JsVar *initialVal
   jsvUnLock2(a, initialValue);
 }
 
-// When parsing [1,2,3] this is called to add each new array item. It frees 'value'
+// When parsing {a:5} this is called to add each new object element. It unlocks 'varName' and 'value'
+NO_INLINE void _jsxObjectNewElement(JsVar *object, JsVar *varName, JsVar *value) {
+  JsVar *contentsName = jsvFindChildFromVar(object, varName, true);
+  if (contentsName)
+    jsvUnLock(jsvSetValueOfName(contentsName, value));
+  jsvUnLock2(varName, value);
+}
+
+// When parsing [1,2,3] this is called to add each new array item. It unlocks 'value'
 NO_INLINE void _jsxArrayNewElement(JsVar *array, uint32_t index, JsVar *value) {
   JsVar *indexName = jsvMakeIntoVariableName(jsvNewFromInteger(index),  value);
   if (indexName) { // could be out of memory
@@ -130,6 +139,11 @@ NO_INLINE void _jsxArrayNewElement(JsVar *array, uint32_t index, JsVar *value) {
     jsvUnLock(indexName);
   }
   jsvUnLock(value);
+}
+
+// Return a locked 'this' variable
+NO_INLINE JsVar *_jsxGetThis() {
+  return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.root );
 }
 // ----------------------------------------------------------------------------
 
@@ -160,6 +174,23 @@ void jsjPopAndUnLock() {
   jsjPopAsVar(0); // a -> r0
   // optimisation: if item on stack is NOT a variable, no need to covert+unlock!
   jsjcCall(jsvUnLock); // we're throwing this away now - unlock
+}
+
+// Write the code to create variable 'var' in register 'reg'. Clobbers r0-r3
+void jsjJsVar(int reg, JsVar *var) {
+  if (jsvIsString(var)) {
+    int len = jsjcLiteralString(1, var, false);
+    jsjcLiteral32(0, len);
+    jsjcCall(jsvNewStringOfLength);
+    if (reg) jsjcMov(reg, 0);
+  } else if (jsvIsSimpleInt(var)) {
+    jsjcLiteral32(0, (uint32_t)jsvGetInteger(var));
+    jsjcCall(jsvNewFromInteger);
+    if (reg) jsjcMov(reg, 0);
+  } else {
+    jsjcLiteral32(reg, 0);
+    jsExceptionHere(JSET_ERROR, "jsjJsVar for %t not implemented yet", var);
+  }
 }
 
 /// Code to add at the beginning of the function
@@ -225,8 +256,51 @@ void jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
   jsvUnLock2(varIndex, name);
 }
 
+void jsjFactorObject() {
+  if (jit.phase == JSJP_EMIT) {
+    // create the object
+    jsjcCall(jsvNewObject);
+    jsjcMov(4, 0); // Store it in r4
+  }
+  /* JSON-style object definition */
+  JSP_ASSERT_MATCH('{');
+  while (JSJ_PARSING && lex->tk != '}') {
+    JsVar *varName = 0;
+    // we only allow strings or IDs on the left hand side of an initialisation
+    if (jslIsIDOrReservedWord()) {
+      varName = jslGetTokenValueAsVar();
+      jslGetNextToken(); // skip over current token
+    } else if (
+        lex->tk==LEX_STR ||
+        lex->tk==LEX_FLOAT ||
+        lex->tk==LEX_INT) {
+      JsVar *jspeFactor(); // use the main parser to get these into a var for us!
+      varName = jspeFactor();
+    } else {
+      JSP_ASSERT_MATCH(LEX_ID); // fail nicely
+    }
+    JSP_MATCH_WITH_CLEANUP(':', jsvUnLock(varName));
+    jsjAssignmentExpression();
+    if (jit.phase == JSJP_EMIT) {
+      varName = jsvAsArrayIndexAndUnLock(varName);
+      jsjJsVar(1, varName); // r1 = index
+      jsjcMov(0, 4); // r0 = array
+      jsjPopNoName(2); // r2 = array item
+      jsjcCall(_jsxObjectNewElement);
+    }
+    jsvUnLock(varName);
+    // no need to clean here, as it will definitely be used
+    if (lex->tk != '}') JSP_MATCH(',');
+  }
+  JSP_ASSERT_MATCH('}');
+  if (jit.phase == JSJP_EMIT) {
+    // push the finished object on the stack
+    jsjcPush(4, JSJVT_JSVAR_NO_NAME);
+  }
+}
+
 void jsjFactorArray() {
-  uint32_t idx = 0;
+  uint32_t idx = 0; // current array index
 
   if (jit.phase == JSJP_EMIT) {
     // create the array
@@ -316,32 +390,31 @@ void jsjFactor() {
     JsVar *a = jslGetTokenValueAsVar();
     JSP_ASSERT_MATCH(LEX_STR);
     if (jit.phase == JSJP_EMIT) {
-      int len = jsjcLiteralString(1, a, false);
-      jsjcLiteral32(0, len);
-      jsjcCall(jsvNewStringOfLength);
+      jsjJsVar(0, a);
       jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
     jsvUnLock(a);
-  /*} else if (lex->tk=='{') {
-    if (!jspCheckStackPosition()) return 0;
-    return jsjFactorObject();*/
+  } else if (lex->tk=='{') {
+    jsjFactorObject();
   } else if (lex->tk=='[') {
-    if (!jspCheckStackPosition()) return 0;
-    return jsjFactorArray();
-  } /*else if (lex->tk==LEX_R_FUNCTION) {
+    jsjFactorArray();
+  /*} else if (lex->tk==LEX_R_FUNCTION) {
     if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_FUNCTION);
-    return jsjFunctionDefinition(true);
+    return jsjFunctionDefinition(true);*/
   } else if (lex->tk==LEX_R_THIS) {
     JSP_ASSERT_MATCH(LEX_R_THIS);
-    return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.root );
-  } else if (lex->tk==LEX_R_DELETE) {
+    if (jit.phase == JSJP_EMIT) {
+      jsjcCall(_jsxGetThis);
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
+    }
+  /*} else if (lex->tk==LEX_R_DELETE) {
     if (!jspCheckStackPosition()) return 0;
     return jsjFactorDelete();
   } else if (lex->tk==LEX_R_TYPEOF) {
     if (!jspCheckStackPosition()) return 0;
     return jsjFactorTypeOf();
-  } */else if (lex->tk==LEX_R_VOID) {
+  */} else if (lex->tk==LEX_R_VOID) {
     JSP_ASSERT_MATCH(LEX_R_VOID);
     if (jit.phase == JSJP_EMIT) {
       jsjUnaryExpression();
