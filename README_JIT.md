@@ -20,10 +20,11 @@ Works:
 * Function arguments
 * `var/const/let` (`const`/`let` scoping does not work at the moment)
 * On the whole functions that can't be JITed will produce a message on the console and will be treated as normal functions.
+* Short-circuit execution (`&&`/`||`)
+* Array `[]` and Object `{}` declarations
 
 Doesn't work:
 
-* Short-circuit execution (`&&`/`||`)
 * Everything else
 
 Performance:
@@ -36,6 +37,10 @@ Performance:
 * Stuff is in place to allow ints to be stored on the stack and converted when needed. This could maybe allow us to keep some vars as ints.
 * When a function is called we load up the address as a 32 bit literal each time. We could maybe have a constant pool or local stub functions?
 * When we emit code, we just use StringAppend which can be very slow. We should use an iterator (it's an easy win for compile performance)
+
+Possible improvements:
+
+* We always output a `return undefined` even if the function has already returned
 
 
 ## Testing
