@@ -29,6 +29,7 @@
             JIT: Arrays can now be defined in JIT code (`[1,2,3]`/etc)
             JIT: Objects can now be defined in JIT code (`{a:2,b:3}`/etc)
             JIT: 'this' can be used in JIT code
+            JIT: Support for short-circuit operators (#2313) 
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

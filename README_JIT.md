@@ -191,6 +191,16 @@ jit()=="1,2,3,Hello,World"
 function jit() {'jit';return {a:42,b:10,12:5};}
 JSON.stringify(jit()) == '{"a":42,"b":10,"12":5}'
 
+E.setFlags({jitDebug:1});
+function jit() {'jit';return 0&&2;}
+jit()==0
+function jit() {'jit';return 3&&2;}
+jit()==2
+function jit() {'jit';return 0||2;}
+jit()==2
+function jit() {'jit';return 3||2;}
+jit()==3
+
 
 jit = {a:42, jit:function(){'jit';return this.a;}}
 jit.jit()==42

@@ -649,7 +649,7 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
   unsigned int precedence = jsjGetBinaryExpressionPrecedence(lex->tk);
   while (precedence && precedence>lastPrecedence) {
     int op = lex->tk;
-    if (op==LEX_R_IN || op==LEX_ANDAND || op==LEX_OROR) {
+    if (op==LEX_R_IN) {
       JSP_MATCH(LEX_EOF); // not supported yet
       return;
     }
@@ -657,21 +657,35 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
     // if we have short-circuit ops, then if we know the outcome
     // we don't bother to execute the other op. Even if not
     // we need to tell mathsOp it's an & or |
- /*   if (op==LEX_ANDAND || op==LEX_OROR) {
-      bool aValue = jsvGetBoolAndUnLock(jsvSkipName(a));
-      if ((!aValue && op==LEX_ANDAND) ||
-          (aValue && op==LEX_OROR)) {
-        // use first argument (A)
-        JSP_SAVE_EXECUTE();
-        jspSetNoExecute();
-        jsvUnLock(__jsjBinaryExpression(jsjUnaryExpression(),precedence));
-        JSP_RESTORE_EXECUTE();
-      } else {
-        // use second argument (B)
-        jsvUnLock(a);
-        a = __jsjBinaryExpression(jsjUnaryExpression(),precedence);
+    if (op==LEX_ANDAND || op==LEX_OROR) {
+
+      if (jit.phase == JSJP_EMIT) {
+        DEBUG_JIT("; shortcitcuit (&&,||)  - first arg just parsed\n");
+        DEBUG_JIT("; shortcitcuit compare\n");
+        jsjPopNoName(0); // value -> r0 (but ensure it's not a name)
+        jsjcPush(0, JSJVT_JSVAR_NO_NAME); // put value back
+        jsjcCall(jsvGetBool); // now we have it as a boolean in r0
+        jsjcCompareImm(0,  0); // compare with 0
       }
-    } else*/ { // else it's a more 'normal' logical expression - just use Maths
+      // parse second argument
+      JsVar *oldBlock = jsjcStartBlock();
+      if (jit.phase == JSJP_EMIT) {
+        DEBUG_JIT("; shortcitcuit parse second block\n");
+        jsjPopAndUnLock(); // throw away result from first block!
+      }
+      jsjUnaryExpression();
+      __jsjBinaryExpression(precedence);
+      JsVar *secondBlock = jsjcStopBlock(oldBlock);
+      if (jit.phase == JSJP_EMIT) {
+        DEBUG_JIT("; shortcitcuit jump\n");
+        // if false, jump after true block (if an 'else' we need to jump over the jsjcBranchRelative
+        jsjcBranchConditionalRelative((op==LEX_ANDAND) ? JSJAC_EQ : JSJAC_NE, jsvGetStringLength(secondBlock));
+        DEBUG_JIT("; shortcitcuit second block\n");
+        jsjcEmitBlock(secondBlock);
+        DEBUG_JIT("; shortcitcuit end\n");
+      }
+      jsvUnLock(secondBlock);
+    } else { // else it's a more 'normal' logical expression - just use Maths
       jsjUnaryExpression();
       __jsjBinaryExpression(precedence);
      /*
