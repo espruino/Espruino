@@ -182,6 +182,10 @@ jit()==42
 function jit() {"jit";a.c();}
 jit(); // prints 'hello {b:42,...}'
 
+a=Uint8Array([42])
+function jit(){"jit";var i=0;return a[i];}
+jit()==42
+
 function jit(a,b) {'jit';return a+"Hello world"+b;}
 jit(1,2)=="1Hello world2"
 
@@ -228,7 +232,7 @@ t=getTime();function jit() {"jit";
     digitalWrite(LED,0);
     print("Stop");
   }
-};print("JIT compile time", getTime()-t)
+};print("JIT compile time", getTime()-t,"s")
 ```
 
 Run JIT on ARM and then disassemble:

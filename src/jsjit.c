@@ -449,7 +449,7 @@ bool jsjFactorMember() {
       JSP_ASSERT_MATCH('[');
       jsjAssignmentExpression();
       if (jit.phase == JSJP_EMIT) {
-        jsjPopAsVar(0);
+        jsjPopNoName(0);
         jsjcCall(jsvAsArrayIndexAndUnLock);
       }
       JSP_MATCH_WITH_RETURN(']', false); // if we fail we're stopping compilation anyway
