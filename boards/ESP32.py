@@ -97,6 +97,8 @@ chip = {
   },
 };
 devices = {
+  'LED1' : { 'pin' : 'D2' },
+  'BTN1' : { 'pin' : 'D0', "inverted":1, 'pinstate' : 'IN_PULLUP' }
 };
 
 # left-right, or top-bottom order

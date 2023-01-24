@@ -240,6 +240,7 @@ JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
 		jsExceptionHere(JSET_TYPEERROR, "Expecting object array or undefined, got %t",data);
 		return 0;
 	}
+	if (i==0) return 0;
 	return jsvNewArrayBufferWithData(i,encoded_advdata);
 }
 

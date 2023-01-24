@@ -80,8 +80,7 @@ int jsble_exec_pending(IOEvent *event) {
 #else
   unsigned char buffer[64];
 #endif
-  assert(sizeof(buffer) >= sizeof(ble_gap_evt_adv_report_t));
-  assert(sizeof(buffer) >= NRF_BLE_MAX_MTU_SIZE);
+  assert(sizeof(buffer) >= sizeof(BLEAdvReportData));
   size_t bufferLen = 0;
   while (IOEVENTFLAGS_GETTYPE(event->flags) == EV_BLUETOOTH_PENDING_DATA) {
     int i, chars = IOEVENTFLAGS_GETCHARS(event->flags);
