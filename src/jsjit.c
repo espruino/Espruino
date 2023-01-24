@@ -828,11 +828,16 @@ void jsjExpression() {
   }
 }
 
-void jsjBlockNoBrackets() {
+// Returns true if isFunctionRoot and we had a RETURN statement (so we definitely already returned;
+bool jsjBlockNoBrackets() {
+  // if isFunctionRoot we're at the root scope
+  bool hadReturn = false;
   while (lex->tk && lex->tk!='}' && JSJ_PARSING) {
+    if (lex->tk == LEX_R_RETURN)
+      hadReturn = true;
     jsjStatement();
   }
-  return;
+  return hadReturn;
 }
 
 void jsjBlock() {
@@ -1061,12 +1066,14 @@ JsVar *jsjParseFunction() {
   if (JSJ_PARSING) { // if no error, re-parse and create code
     jslSeekTo(codeStartPosition);
     jit.phase = JSJP_EMIT; DEBUG_JIT("; ============ EMIT PHASE\n");
-    jsjBlockNoBrackets();
-    // optimisation: if the last statement was a return, no need for this. Could check if last instruction was 'POP {r4,r5,r6,r7,pc}'
-    // Return 'undefined' from function if no other return statement
-    DEBUG_JIT_EMIT("; END of function - return undefined\n");
-    jsjcLiteral32(0, 0);
-    jsjFunctionReturn(false/*isReturnStatement*/);
+    bool hadReturnStatement = jsjBlockNoBrackets(true);
+    // if this block had a return in it (eg not behind 'if'/etc), hadReturnStatement=true
+    // if so, we can skip adding a return statement
+    if (!hadReturnStatement) {
+      DEBUG_JIT_EMIT("; END of function - return undefined\n");
+      jsjcLiteral32(0, 0);
+      jsjFunctionReturn(false/*isReturnStatement*/);
+    }
   }
   JsVar *v = jsjcStop();
   JsVar *exception = jspGetException();

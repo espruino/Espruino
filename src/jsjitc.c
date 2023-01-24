@@ -50,8 +50,12 @@ const char *jsjcGetTypeName(JsjValueType t) {
 
 void jsjcDebugPrintf(const char *fmt, ...) {
   if (jsFlags & JSF_JIT_DEBUG) {
-    if (!jit.blockCount) jsiConsolePrintf("%6x: ", jsjcGetByteCount());
-    else jsiConsolePrintf("       : ");
+    if (fmt[0]==';') { // just a comment - don't add address
+      jsiConsolePrintf("      ");
+    } else {
+      if (!jit.blockCount) jsiConsolePrintf("%6x: ", jsjcGetByteCount());
+      else jsiConsolePrintf("       : ");
+    }
     va_list argp;
     va_start(argp, fmt);
     vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
@@ -71,7 +75,7 @@ void jsjcStart() {
 }
 
 JsVar *jsjcStop() {
-  jsjcDebugPrintf("VARS: %j\n", jit.vars);
+  jsjcDebugPrintf("; VARS: %j\n", jit.vars);
   jsvUnLock(jit.vars);
   jit.vars = 0;
   assert(jit.stackDepth == 0);
