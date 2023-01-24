@@ -130,7 +130,14 @@ bool jswOnCharEvent(IOEventFlags channel, char charData);
   pointer of the object's constructor */
 void *jswGetBuiltInLibrary(const char *name);
 
-/** If we have a built-in JS module with the given name, return the module's contents - or 0 */
+/** If we have a built-in JS module with the given name, return the module's contents - or 0.
+ * These can be added using teh followinf in the Makefile/BOARD.py file:
+ *
+ * JSMODULESOURCES+=path/to/modulename:path.js
+ * JSMODULESOURCES+=modulename:path/to/module.js
+ * JSMODULESOURCES+=_:code_to_run_at_startup.js
+ *
+ *  */
 const char *jswGetBuiltInJSLibrary(const char *name);
 
 /** Return a comma-separated list of built-in libraries */

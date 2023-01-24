@@ -27,7 +27,14 @@ import common;
 from collections import OrderedDict;
 
 if len(sys.argv)<2 or sys.argv[len(sys.argv)-2][:2]!="-B" or sys.argv[len(sys.argv)-1][:2]!="-F":
-	print("USAGE: build_jswrapper.py ... -BBOARD -Fwrapperfile.c")
+	print("USAGE: build_jswrapper.py ... -BBOARD -Fwrapperfile.c modulename:path/to/modulesource.js")
+	print("")
+	print("           -Fwrapperfile.c                     ; include a jswrap file in the build ")
+	print("")
+	print("           path/to/modulename.js               ; include a JS module called modulename")
+	print("           modulename:path/to/modulesource.js  ; include a JS module called modulename")
+	print("           _:bootcode                          ; JS code to be executed at boot time")
+	print("             ; These can be specified in the JSMODULESOURCES environment variable")  
 	exit(1)
 
 boardName = sys.argv[len(sys.argv)-2]
@@ -37,7 +44,8 @@ wrapperFileName = sys.argv[len(sys.argv)-1]
 wrapperFileName = wrapperFileName[2:]
 
 # Load any JS modules specified on command-line
-jsmodules = {}
+jsmodules = {}     # JS modules to be included
+jsbootcode = False # if set, JS code to be run at boot time
 for i in range(1,len(sys.argv)):
   arg = sys.argv[i]
   if arg[0]!="-" and arg[-3:]==".js":
@@ -50,7 +58,10 @@ for i in range(1,len(sys.argv)):
       if modulename[-4:]==".min": modulename=modulename[:-4]
     print("Loading JS module: "+arg+" -> "+modulename)
     jscode = open(arg, "r").read()
-    jsmodules[modulename] = jscode
+    if modulename=="_":
+      jsbootcode = jscode
+    else:
+      jsmodules[modulename] = jscode
 
 # List of argument specifiers (JSWAT...) that have been used
 argSpecs = []
@@ -688,6 +699,8 @@ codeOut('')
 
 codeOut("/** Tasks to run on Initialisation (eg boot/load/reset/after save/etc) */")
 codeOut('void jswInit() {')
+if jsbootcode!=False:
+  codeOut('  jsvUnLock(jspEvaluate('+json.dumps(jsbootcode)+', true/*static*/));')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="init":
     codeOut("  "+jsondata["generate"]+"();")
@@ -715,7 +728,7 @@ codeOut("/** If we have a built-in module with the given name, return the module
 codeOut('const char *jswGetBuiltInJSLibrary(const char *name) {')
 for modulename in jsmodules:
   codeOut("  if (!strcmp(name,\""+modulename+"\")) return "+json.dumps(jsmodules[modulename])+";")
-codeOut('  return 0;')
+  codeOut('  return 0;')
 codeOut('}')
 
 codeOut('')
