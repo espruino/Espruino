@@ -2524,6 +2524,7 @@ void _jswrap_graphics_getVectorFontPolys_cb(void *data, int points, short *verti
 
 }
 JsVar *jswrap_graphics_getVectorFontPolys(JsGraphics *gfx, JsVar *str, JsVar *options) {
+#ifndef NO_VECTOR_FONT
   int x = 0, y = 0, scalex = 256, scaley = 256;
   jsvConfigObject configs[] = {
       {"x", JSV_INTEGER, &x},
@@ -2543,6 +2544,9 @@ JsVar *jswrap_graphics_getVectorFontPolys(JsGraphics *gfx, JsVar *str, JsVar *op
   jsvStringIteratorFree(&it);
   jsvUnLock(str);
   return arr;
+#else
+  return 0;
+#endif
 }
 
 
