@@ -15,8 +15,13 @@
 #ifndef NO_VECTOR_FONT
 #include "graphics.h"
 
+
 // returns the width of a character
-unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int sizex, char ch);
-// prints character, returns width
-unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int sizex, int sizey, char ch);
+unsigned int graphicsVectorCharWidth(unsigned int sizex, char ch);
+
+// Callback for graphicsFillVectorChar
+typedef void(*graphicsPolyCallback)(void *data, int points, short *vertices);
+
+// prints character by calling callback with the data (x16), returns width
+unsigned int graphicsGetVectorChar(graphicsPolyCallback callback, void *callbackData, int x1, int y1, int sizex, int sizey, char ch);
 #endif

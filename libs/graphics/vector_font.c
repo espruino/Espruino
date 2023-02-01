@@ -13,7 +13,7 @@
  */
 
 #ifndef NO_VECTOR_FONT
-#include "graphics.h"
+#include "vector_font.h"
 
 const uint8_t vfFirstChar = 33;
 const uint8_t vfLastChar = 255;
@@ -440,7 +440,7 @@ static const uint8_t *vfGetCharPtr(char sch, int *charLen) {
 }
 
 // prints character, returns width
-unsigned int vfDrawCharPtr(JsGraphics *gfx, int x1, int y1, int sizex, int sizey, const uint8_t *charPtr, int charLen) {
+unsigned int vfGetCharFromPtr(graphicsPolyCallback callback, void *callbackData, int x1, int y1, int sizex, int sizey, const uint8_t *charPtr, int charLen) {
   x1 = (x1<<4) - 8;
   y1 = (y1<<4) - 8;
   int w = 0;
@@ -456,14 +456,13 @@ unsigned int vfDrawCharPtr(JsGraphics *gfx, int x1, int y1, int sizex, int sizey
       poly[j*2  ] = (short)(x1 + vx*sizex*16/VF_SCALE);
       poly[j*2+1] = (short)(y1 + (vy+VF_OFFSET_Y)*sizey*16/VF_SCALE);
     }
-    graphicsFillPoly(gfx, polyLen, poly);
+    callback(callbackData, polyLen, poly);
   }
   return (unsigned int)(((w+1+VF_CHAR_SPACING)*sizex*16/VF_SCALE+7)>>4);
 }
 
 // returns the width of a character
-unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int sizex, char ch) {
-  NOT_USED(gfx);
+unsigned int graphicsVectorCharWidth(unsigned int sizex, char ch) {
   int charLen;
   const uint8_t *charPtr = vfGetCharPtr(ch, &charLen);
   if (!charPtr) return (unsigned int)(sizex/2); // space
@@ -481,11 +480,11 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, unsigned int sizex, char c
 }
 
 // prints character, returns width
-unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int sizex, int sizey, char ch) {
+unsigned int graphicsGetVectorChar(graphicsPolyCallback callback, void *callbackData, int x1, int y1, int sizex, int sizey, char ch) {
   int charLen;
   const uint8_t *charPtr = vfGetCharPtr(ch, &charLen);
   if (!charPtr) return (unsigned int)(sizex/2); // space
-  return vfDrawCharPtr(gfx, x1, y1, sizex, sizey, charPtr, charLen);
+  return vfGetCharFromPtr(callback, callbackData, x1, y1, sizex, sizey, charPtr, charLen);
 }
 
 #endif

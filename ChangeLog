@@ -36,6 +36,7 @@
             Add ability to add custom boot code inside the build with JSMODULESOURCES+=_:bootfile.js
             Pixl.js: Don't load the splash screen if BTN1 and BTN4 held down (for recovery purposes)
             Fix potential lock leaks during out of memory errors
+            Graphics: Added g.getVectorFontPolys to allow the underlying polygons behind a vector font to be retrieved
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

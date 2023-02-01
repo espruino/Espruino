@@ -1990,7 +1990,7 @@ static void _jswrap_graphics_getFontInfo(JsGraphics *gfx, JsGraphicsFontInfo *in
 static int _jswrap_graphics_getCharWidth(JsGraphics *gfx, JsGraphicsFontInfo *info, char ch) {
   if (info->font == JSGRAPHICS_FONTSIZE_VECTOR) {
 #ifndef NO_VECTOR_FONT
-    return (int)graphicsVectorCharWidth(gfx, info->scalex, ch);
+    return (int)graphicsVectorCharWidth(info->scalex, ch);
 #endif
   } else if (info->font == JSGRAPHICS_FONTSIZE_4X6) {
     return 4*info->scalex;
@@ -2386,11 +2386,12 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
 #endif
     if (info.font == JSGRAPHICS_FONTSIZE_VECTOR) {
 #ifndef NO_VECTOR_FONT
-      int w = (int)graphicsVectorCharWidth(&gfx, info.scalex, ch);
+      int w = (int)graphicsVectorCharWidth(info.scalex, ch);
+      // TODO: potentially we could do this in x16 accuracy so vector chars rendered together better
       if (x>minX-w && x<maxX  && y>minY-fontHeight && y<=maxY) {
         if (solidBackground)
           graphicsFillRect(&gfx,x,y,x+w-1,y+fontHeight-1, gfx.data.bgColor);
-        graphicsFillVectorChar(&gfx, x, y, info.scalex, info.scaley, ch);
+        graphicsGetVectorChar((graphicsPolyCallback)graphicsFillPoly, &gfx, x, y, info.scalex, info.scaley, ch);
       }
       x+=w;
 #endif
@@ -2477,6 +2478,72 @@ void jswrap_graphics_drawCString(JsGraphics *gfx, int x, int y, char *str) {
   jsvUnLock2(jswrap_graphics_drawString(gfx->graphicsVar, s, x, y, false),s);
 }
 
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getVectorFontPolys",
+  "#if" : "!defined(SAVE_ON_FLASH) || !defined(NO_VECTOR_FONT)",
+  "generate" : "jswrap_graphics_getVectorFontPolys",
+  "params" : [
+    ["str","JsVar","The string"],
+    ["options","JsVar","[optional] `{x,y,w,h}` (see below)"]
+  ],
+  "return" : ["JsVar","An array of Uint8Arrays for vector font polygons"],
+  "return_object" : "Array"
+}
+Return the current string as a series of polygons (using the current vector font). `options` is as follows:
+
+* `x` - X offset of font (default 0)
+* `y` - Y offset of font (default 0)
+* `w` - Width of font (default 256) - the actual width will likely be less than this as most characters are non-square
+* `h` - Height of font (default 256) - the actual height will likely be less than this as most characters don't fully fill the font box
+
+```
+g.getVectorFontPolys("Hi", {x:-80,y:-128});
+```
+*/
+void _jswrap_graphics_getVectorFontPolys_cb(void *data, int points, short *vertices) {
+  JsVar *arr = (JsVar *)data;
+  if (!arr) return;
+  // scale back down
+  for (int i=0;i<points*2;i+=2) {
+    vertices[i  ] = (vertices[i  ]+8)>>4;
+    vertices[i+1] = (vertices[i+1]+8)>>4;
+  }
+  // create 16 bit array with the data
+  JsVar *v = jsvNewTypedArray(ARRAYBUFFERVIEW_INT16, points*2);
+  if (v) {
+    JsVar *d = jsvGetArrayBufferBackingString(v, NULL);
+    if (d) {
+      jsvSetString(d, (char*)vertices, points*4);
+      jsvUnLock(d);
+    }
+    jsvArrayPushAndUnLock(arr, v);
+  }
+
+}
+JsVar *jswrap_graphics_getVectorFontPolys(JsGraphics *gfx, JsVar *str, JsVar *options) {
+  int x = 0, y = 0, scalex = 256, scaley = 256;
+  jsvConfigObject configs[] = {
+      {"x", JSV_INTEGER, &x},
+      {"y", JSV_INTEGER, &y},
+      {"w", JSV_INTEGER, &scalex},
+      {"h", JSV_INTEGER, &scaley},
+  };
+  jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject));
+  str = jsvAsString(str);
+  JsVar *arr = jsvNewEmptyArray();
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, str, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetCharAndNext(&it);
+    x += graphicsGetVectorChar(_jswrap_graphics_getVectorFontPolys_cb, arr, x, y, scalex, scaley, ch);
+  }
+  jsvStringIteratorFree(&it);
+  jsvUnLock(str);
+  return arr;
+}
 
 
 /*JSON{
