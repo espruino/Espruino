@@ -475,6 +475,7 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
   }
   // Create a new timer
   JsVar *timerPtr = jsvNewObject();
+  if (!timerPtr) return 0;
   JsSysTime intervalInt = jshGetTimeFromMilliseconds(interval);
   jsvObjectSetChildAndUnLock(timerPtr, "time", jsvNewFromLongInteger((jshGetSystemTime() - jsiLastIdleTime) + intervalInt));
   if (!isTimeout) {

@@ -2991,10 +2991,10 @@ JsVar *jsvObjectGetChildI(JsVar *obj, const char *name) {
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
   assert(jsvHasChildren(obj));
-  if (!jsvHasChildren(obj)) return 0;
+  if (!jsvHasChildren(obj)) return child; // even if not an object, we still want to unlock the child
   // child can actually be a name (for instance if it is a named function)
   JsVar *childName = jsvFindChildFromString(obj, name, true);
-  if (!childName) return 0; // out of memory
+  if (!childName) return child; // out of memory, even if no memory, we still want to unlock the child
   jsvSetValueOfName(childName, child);
   jsvUnLock(childName);
   return child;

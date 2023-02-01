@@ -35,6 +35,7 @@
             ESP32: Add BTN1 (D0/BOOT) and LED1 (D2) as these appear to be reasonably common in boards
             Add ability to add custom boot code inside the build with JSMODULESOURCES+=_:bootfile.js
             Pixl.js: Don't load the splash screen if BTN1 and BTN4 held down (for recovery purposes)
+            Fix potential lock leaks during out of memory errors
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
