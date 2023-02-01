@@ -22,7 +22,11 @@ function SHOULD_BE(a) {
 }
 
 // 3 bit 20x20
-var img = E.toArrayBuffer(atob("FBSDAAAAAkkkAAAAAAkkkkkAAAAkkkkkkkAAEkkkkkkkgAEkkkkkkkgAkkkkkklkkAkkkkkkv8kEkkkkkl/0kkkkkkkv+kkkklkkl/0kkkkt+kv+kkkkkl/1/0kkkkkkv/+kkkkgkkl/0kkkkAkkkskkkkkAEkkkkkkkgAEkkkkkkkgAAkkkkkkkAAAAkkkkkAAAAAAkkkAAAA=="))
+var img = {
+  width:20,height:20,bpp:3,transparent:0,
+  palette:new Uint16Array([0,1,2,3,4,5,6,7]),
+  buffer: new Uint8Array([0, 0, 2, 73, 36, 0, 0, 0, 0, 9, 36, 146, 73, 0, 0, 0, 36, 146, 73, 36, 146, 64, 0, 18, 73, 36, 146, 73, 36, 128, 1, 36, 146, 73, 36, 146, 72, 0, 146, 73, 36, 146, 73, 100, 144, 9, 36, 146, 73, 36, 191, 201, 4, 146, 73, 36, 146, 95, 244, 146, 73, 36, 146, 73, 47, 250, 73, 36, 146, 89, 36, 151, 253, 36, 146, 73, 45, 250, 75, 254, 146, 73, 36, 146, 95, 245, 255, 73, 36, 146, 73, 36, 191, 255, 164, 146, 73, 32, 146, 73, 127, 210, 73, 36, 144, 9, 36, 146, 201, 36, 146, 73, 0, 18, 73, 36, 146, 73, 36, 128, 1, 36, 146, 73, 36, 146, 72, 0, 2, 73, 36, 146, 73, 36, 0, 0, 0, 146, 73, 36, 144, 0, 0, 0, 0, 36, 146, 64, 0, 0])
+};
 
 // Normal
 g.clear(1).drawImage(img,0,0); 
