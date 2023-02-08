@@ -1434,8 +1434,8 @@ unsigned int jswrap_graphics_blendColor(JsVar *parent, JsVar *ca, JsVar *cb, JsV
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics",
   "typescript" : [
-    "setColor(r: number, g: number, b: number): number;",
-    "setColor(col: ColorResolvable): number;"
+    "setColor(r: number, g: number, b: number): Graphics;",
+    "setColor(col: ColorResolvable): Graphics;"
   ]
 }
 Set the color to use for subsequent drawing operations.
@@ -1469,8 +1469,8 @@ be a floating point value, and `g` and `b` are ignored.
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics",
   "typescript" : [
-    "setBgColor(r: number, g: number, b: number): number;",
-    "setBgColor(col: ColorResolvable): number;"
+    "setBgColor(r: number, g: number, b: number): Graphics;",
+    "setBgColor(col: ColorResolvable): Graphics;"
   ]
 }
 Set the background color to use for subsequent drawing operations.

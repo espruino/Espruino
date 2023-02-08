@@ -113,7 +113,8 @@ JsVar *jswrap_object_valueOf(JsVar *parent) {
   "params" : [
     ["radix","JsVar","If the object is an integer, the radix (between 2 and 36) to use. NOTE: Setting a radix does not work on floating point numbers."]
   ],
-  "return" : ["JsVar","A String representing the object"]
+  "return" : ["JsVar","A String representing the object"],
+  "return_object" : "string"
 }
 Convert the Object to a string
  */
@@ -154,7 +155,8 @@ JsVar *jswrap_object_clone(JsVar *parent) {
   "params" : [
     ["object","JsVar","The object to return keys for"]
   ],
-  "return" : ["JsVar","An array of strings - one for each key on the given object"]
+  "return" : ["JsVar","An array of strings - one for each key on the given object"],
+  "return_object" : "Array<any>"
 }
 Return all enumerable keys of the given object
  */
@@ -166,7 +168,8 @@ Return all enumerable keys of the given object
   "params" : [
     ["object","JsVar","The Object to return a list of property names for"]
   ],
-  "return" : ["JsVar","An array of the Object's own properties"]
+  "return" : ["JsVar","An array of the Object's own properties"],
+  "return_object" : "Array<any>"
 }
 Returns an array of all properties (enumerable or not) found directly on a given
 object.
@@ -309,7 +312,8 @@ JsVar *jswrap_object_keys_or_property_names(
   "params" : [
     ["object","JsVar","The object to return values for"]
   ],
-  "return" : ["JsVar","An array of values - one for each key on the given object"]
+  "return" : ["JsVar","An array of values - one for each key on the given object"],
+  "return_object" : "Array<any>"
 }
 Return all enumerable values of the given object
  */
@@ -322,7 +326,8 @@ Return all enumerable values of the given object
   "params" : [
     ["object","JsVar","The object to return values for"]
   ],
-  "return" : ["JsVar","An array of `[key,value]` pairs - one for each key on the given object"]
+  "return" : ["JsVar","An array of `[key,value]` pairs - one for each key on the given object"],
+  "return_object" : "Array<[string, any]>"
 }
 Return all enumerable keys and values of the given object
  */
