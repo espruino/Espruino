@@ -5203,7 +5203,7 @@ Load the Bangle.js clock - this has the same effect as calling `Bangle.load()`.
     "name" : "load",
     "generate_js" : "libs/js/banglejs/Bangle_load.min.js",
     "params" : [
-      ["file","JsVar","(optional) A string containing the file name for the app to be loaded"]
+      ["file","JsVar","[optional] A string containing the file name for the app to be loaded"]
     ],
     "ifdef" : "BANGLEJS",
     "typescript": [
@@ -5322,7 +5322,7 @@ E.showMenu(menu);
     "generate_js" : "libs/js/banglejs/E_showMessage.min.js",
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
-      ["options","JsVar","(optional) a title for the message, or an object of options `{title:string, img:image_string}`"]
+      ["options","JsVar","[optional] a title for the message, or an object of options `{title:string, img:image_string}`"]
     ],
     "ifdef" : "BANGLEJS",
     "typescript" : "showMessage(message: string, title?: string | { title?: string, img?: string }): void;"
@@ -5355,12 +5355,12 @@ E.showMessage("Lots of text will wrap automatically",{
     "generate_js" : "libs/js/banglejs/E_showPrompt.min.js",
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
-      ["options","JsVar","(optional) an object of options (see below)"]
+      ["options","JsVar","[optional] an object of options (see below)"]
     ],
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
     "ifdef" : "BANGLEJS",
     "typescript" : [
-      "showPrompt<T = boolean>(message: string, options?: { title?: string, buttons?: { [key: string]: T }, remove?: () => void }): Promise<T>;",
+      "showPrompt<T = boolean>(message: string, options?: { title?: string, buttons?: { [key: string]: T }, image?: string, remove?: () => void }): Promise<T>;",
       "showPrompt(): void;"
     ]
 }
@@ -5490,7 +5490,7 @@ To remove the scroller, just call `E.showScroller()`
     "generate_js" : "libs/js/banglejs/E_showAlert.min.js",
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
-      ["options","JsVar","(optional) a title for the message or an object containing options"]
+      ["options","JsVar","[optional] a title for the message or an object containing options"]
     ],
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
     "ifdef" : "BANGLEJS",

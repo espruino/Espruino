@@ -62,7 +62,7 @@
     "generate_full" : "",
     "params" : [
       ["data","JsVar","The data to advertise as an object - see below for more info"],
-      ["options","JsVar","An optional object of options"]
+      ["options","JsVar","[optional] An object of options"]
     ]
 }*/
 /*JSON{

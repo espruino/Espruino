@@ -591,7 +591,7 @@ void jswrap_ble_wake() {
     "name" : "restart",
     "generate" : "jswrap_ble_restart",
     "params" : [
-      ["callback","JsVar","An optional function to be called while the softdevice is uninitialised. Use with caution - accessing console/bluetooth will almost certainly result in a crash."]
+      ["callback","JsVar","[optional] A function to be called while the softdevice is uninitialised. Use with caution - accessing console/bluetooth will almost certainly result in a crash."]
     ]
 }
 Restart the Bluetooth softdevice (if there is currently a BLE connection, it
@@ -991,7 +991,7 @@ JsVar *jswrap_ble_getCurrentAdvertisingData() {
     "generate" : "jswrap_ble_getAdvertisingData",
     "params" : [
       ["data","JsVar","The data to advertise as an object"],
-      ["options","JsVar","An optional object of options"]
+      ["options","JsVar","[optional] An object of options"]
     ],
     "return" : ["JsVar", "An array containing the advertising data" ]
 }
@@ -1743,7 +1743,7 @@ bool jswrap_ble_filter_device(JsVar *filters, JsVar *device) {
     "generate" : "jswrap_ble_setScan",
     "params" : [
       ["callback","JsVar","The callback to call with received advertising packets, or undefined to stop"],
-      ["options","JsVar","An optional object `{filters: ...}` (as would be passed to `NRF.requestDevice`) to filter devices by"]
+      ["options","JsVar","[optional] An object `{filters: ...}` (as would be passed to `NRF.requestDevice`) to filter devices by"]
     ]
 }
 
@@ -3636,7 +3636,7 @@ void jswrap_ble_BluetoothDevice_sendPasskey(JsVar *parent, JsVar *passkeyVar) {
     "#if" : "defined(NRF52_SERIES) || defined(ESP32)",
     "generate" : "jswrap_ble_BluetoothRemoteGATTServer_connect",
     "params" : [
-      ["options","JsVar","(Espruino-specific) An object of connection options (see below)"]
+      ["options","JsVar","[optional] (Espruino-specific) An object of connection options (see below)"]
     ],
     "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when the connection is complete" ],
     "return_object" : "Promise"

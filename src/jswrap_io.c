@@ -30,7 +30,7 @@
   "generate_full" : "jswrap_io_peek(addr,count,1)",
   "params"        : [
     ["addr", "int", "The address in memory to read"],
-    ["count", "int", "(optional) the number of items to read. If >1 a Uint8Array will be returned."]
+    ["count", "int", "[optional] the number of items to read. If >1 a Uint8Array will be returned."]
   ],
   "return"        : ["JsVar","The value of memory at the given location"],
   "typescript"    : [
@@ -58,7 +58,7 @@ Write 8 bits of memory at the given location - VERY DANGEROUS!
   "generate_full" : "jswrap_io_peek(addr,count,2)",
   "params" : [
     ["addr","int","The address in memory to read"],
-    ["count","int","(optional) the number of items to read. If >1 a Uint16Array will be returned."]
+    ["count","int","[optional] the number of items to read. If >1 a Uint16Array will be returned."]
   ],
   "return" : ["JsVar","The value of memory at the given location"],
   "typescript" : [
@@ -86,7 +86,7 @@ Write 16 bits of memory at the given location - VERY DANGEROUS!
   "generate_full" : "jswrap_io_peek(addr,count,4)",
   "params" : [
     ["addr","int","The address in memory to read"],
-    ["count","int","(optional) the number of items to read. If >1 a Uint32Array will be returned."]
+    ["count","int","[optional] the number of items to read. If >1 a Uint32Array will be returned."]
   ],
   "return" : ["JsVar","The value of memory at the given location"],
   "typescript" : [

@@ -455,7 +455,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   "params" : [
     ["passphrase","JsVar","Message to encrypt"],
     ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
-    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
+    ["options","JsVar","[optional] An object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer",
@@ -474,7 +474,7 @@ JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
   "params" : [
     ["passphrase","JsVar","Message to decrypt"],
     ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
-    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
+    ["options","JsVar","[optional] An object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer",
