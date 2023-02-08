@@ -111,7 +111,7 @@ JsVar *jswrap_object_valueOf(JsVar *parent) {
   "name" : "toString",
   "generate" : "jswrap_object_toString",
   "params" : [
-    ["radix","JsVar","If the object is an integer, the radix (between 2 and 36) to use. NOTE: Setting a radix does not work on floating point numbers."]
+    ["radix","JsVar","[optional] If the object is an integer, the radix (between 2 and 36) to use. NOTE: Setting a radix does not work on floating point numbers."]
   ],
   "return" : ["JsVar","A String representing the object"],
   "return_object" : "string"
