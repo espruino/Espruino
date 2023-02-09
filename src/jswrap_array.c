@@ -111,7 +111,7 @@ Find the length of the array
   "generate" : "jswrap_array_indexOf",
   "params" : [
     ["value","JsVar","The value to check for"],
-    ["startIndex","int","(optional) the index to search from, or 0 if not specified"]
+    ["startIndex","int","[optional] the index to search from, or 0 if not specified"]
   ],
   "return" : ["JsVar","the index of the value in the array, or -1"],
   "typescript" : "indexOf(value: T, startIndex?: number): number;"
@@ -133,7 +133,7 @@ JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value, JsVarInt startIdx) {
   "generate" : "jswrap_array_includes",
   "params" : [
     ["value","JsVar","The value to check for"],
-    ["startIndex","int","(optional) the index to search from, or 0 if not specified"]
+    ["startIndex","int","[optional] the index to search from, or 0 if not specified"]
   ],
   "return" : ["bool","`true` if the array includes the value, `false` otherwise"],
   "typescript" : "includes(value: T, startIndex?: number): boolean;"
@@ -345,7 +345,7 @@ static JsVar *_jswrap_array_iterate_with_callback(
   "generate" : "jswrap_array_map",
   "params" : [
     ["function","JsVar","Function used to map one item to another"],
-    ["thisArg","JsVar","if specified, the function is called with 'this' set to thisArg (optional)"]
+    ["thisArg","JsVar","[optional] If specified, the function is called with 'this' set to thisArg"]
   ],
   "return" : ["JsVar","An array containing the results"],
   "typescript" : "map<U>(callbackfn: (value: T, index: number, array: T[]) => U, thisArg?: any): U[];"
@@ -364,7 +364,7 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   "generate" : "jswrap_array_forEach",
   "params" : [
     ["function","JsVar","Function to be executed"],
-    ["thisArg","JsVar","[optional] If specified, the function is called with 'this' set to thisArg (optional)"]
+    ["thisArg","JsVar","[optional] If specified, the function is called with 'this' set to thisArg"]
   ],
   "typescript" : "forEach(callbackfn: (value: T, index: number, array: T[]) => void, thisArg?: any): void;"
 }
@@ -381,7 +381,7 @@ void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   "generate" : "jswrap_array_filter",
   "params" : [
     ["function","JsVar","Function to be executed"],
-    ["thisArg","JsVar","if specified, the function is called with 'this' set to thisArg (optional)"]
+    ["thisArg","JsVar","[optional] If specified, the function is called with 'this' set to thisArg"]
   ],
   "return" : ["JsVar","An array containing the results"],
   "typescript" : [
@@ -456,7 +456,7 @@ JsVar *jswrap_array_findIndex(JsVar *parent, JsVar *funcVar) {
   "generate" : "jswrap_array_some",
   "params" : [
     ["function","JsVar","Function to be executed"],
-    ["thisArg","JsVar","if specified, the function is called with 'this' set to thisArg (optional)"]
+    ["thisArg","JsVar","[optional] If specified, the function is called with 'this' set to thisArg"]
   ],
   "return" : ["JsVar","A boolean containing the result"],
   "typescript" : "some(predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean;"
@@ -475,7 +475,7 @@ JsVar *jswrap_array_some(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   "generate" : "jswrap_array_every",
   "params" : [
     ["function","JsVar","Function to be executed"],
-    ["thisArg","JsVar","if specified, the function is called with 'this' set to thisArg (optional)"]
+    ["thisArg","JsVar","[optional] If specified, the function is called with 'this' set to thisArg"]
   ],
   "return" : ["JsVar","A boolean containing the result"],
   "typescript" : "every(predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean;"
@@ -704,7 +704,7 @@ JsVarInt jswrap_array_unshift(JsVar *parent, JsVar *elements) {
   "generate" : "jswrap_array_slice",
   "params" : [
     ["start","int","Start index"],
-    ["end","JsVar","End index (optional)"]
+    ["end","JsVar","[optional] End index"]
   ],
   "return" : ["JsVar","A new array"],
   "typescript" : "slice(start?: number, end?: number): T[];"

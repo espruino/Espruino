@@ -106,8 +106,8 @@ void jswrap_storage_erase(JsVar *name) {
   "generate" : "jswrap_storage_read",
   "params" : [
     ["name","JsVar","The filename - max 28 characters (case sensitive)"],
-    ["offset","int","(optional) The offset in bytes to start from"],
-    ["length","int","(optional) The length to read in bytes (if <=0, the entire file is read)"]
+    ["offset","int","[optional] The offset in bytes to start from"],
+    ["length","int","[optional] The length to read in bytes (if <=0, the entire file is read)"]
   ],
   "return" : ["JsVar","A string of data, or `undefined` if the file is not found"],
   "typescript" : "read(name: string, offset?: number, length?: number): string | undefined;"
@@ -299,8 +299,8 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
   "name" : "list",
   "generate" : "jswrap_storage_list",
   "params" : [
-    ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being returned"],
-    ["filter","JsVar","(optional) If supplied, File Types are filtered based on this: `{sf:true}` or `{sf:false}` for whether to show StorageFile"]
+    ["regex","JsVar","[optional] If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being returned"],
+    ["filter","JsVar","[optional] If supplied, File Types are filtered based on this: `{sf:true}` or `{sf:false}` for whether to show StorageFile"]
   ],
   "return" : ["JsVar","An array of filenames"],
   "typescript" : "list(regex?: RegExp, filter?: { sf: boolean }): string[];"
@@ -346,7 +346,7 @@ JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
   "name" : "hash",
   "generate" : "jswrap_storage_hash",
   "params" : [
-    ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being hashed"]
+    ["regex","JsVar","[optional] If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being hashed"]
   ],
   "return" : ["int","A hash of the files matching"],
   "typescript" : "hash(regex: RegExp): number;"

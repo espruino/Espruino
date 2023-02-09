@@ -533,6 +533,7 @@ type MenuOptions = {
   back?: () => void;
   selected?: number;
   fontHeight?: number;
+  scroll?: number;
   x?: number;
   y?: number;
   x2?: number;
@@ -633,7 +634,7 @@ See http://www.espruino.com/graphical_menu for more detailed information.
     "generate_js" : "libs/js/pixljs/E_showMessage.min.js",
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
-      ["title","JsVar","(optional) a title for the message"]
+      ["title","JsVar","[optional] a title for the message"]
     ],
     "ifdef" : "PIXLJS",
     "typescript" : "showMessage(message: string, title?: string): void;"
@@ -655,7 +656,7 @@ E.showMessage("These are\nLots of\nLines","My Title")
     "generate_js" : "libs/js/pixljs/E_showPrompt.min.js",
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
-      ["options","JsVar","(optional) an object of options (see below)"]
+      ["options","JsVar","[optional] an object of options (see below)"]
     ],
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
     "ifdef" : "PIXLJS",
@@ -704,7 +705,7 @@ The second `options` argument can contain:
     "generate_js" : "libs/js/pixljs/E_showAlert.min.js",
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
-      ["options","JsVar","(optional) a title for the message"]
+      ["options","JsVar","[optional] a title for the message"]
     ],
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
     "ifdef" : "PIXLJS",

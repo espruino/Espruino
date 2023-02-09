@@ -171,7 +171,7 @@ JsVar *jswrap_process_env() {
   "name" : "memory",
   "generate" : "jswrap_process_memory",
   "params" : [
-    ["gc","JsVar","An optional boolean. If `undefined` or `true` Garbage collection is performed, if `false` it is not"]
+    ["gc","JsVar","[optional] A boolean. If `undefined` or `true` Garbage collection is performed, if `false` it is not"]
   ],
   "return" : ["JsVar","Information about memory usage"]
 }

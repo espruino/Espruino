@@ -143,7 +143,7 @@ JsVar *jswrap_eval(JsVar *v) {
   "generate" : "jswrap_parseInt",
   "params" : [
     ["string","JsVar",""],
-    ["radix","JsVar","The Radix of the string (optional)"]
+    ["radix","JsVar","[optional] The Radix of the string"]
   ],
   "return" : ["JsVar","The integer value of the string (or NaN)"]
 }
