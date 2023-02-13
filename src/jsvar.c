@@ -631,6 +631,23 @@ static void jsvFreePtrInternal(JsVar *var) {
   jshInterruptOn();
 }
 
+void jsvFreePtrStringExt(JsVarRef ref) {
+  JsVarRef previousRef = 0;
+  while (ref) { // create temporary links
+    JsVar *child = jsvGetAddressOf(ref);
+    assert(jsvIsStringExt(child));
+    jsvSetPrevSibling(child, previousRef); // temporarily use prev sibling
+    previousRef = ref;
+    ref = jsvGetLastChild(child);
+  }
+  ref = previousRef;
+  while (ref) { // free last to first
+    JsVar *child = jsvGetAddressOf(ref);
+    ref = jsvGetPrevSibling(child);
+    jsvFreePtrInternal(child);
+  }
+}
+
 ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
   /* To be here, we're not supposed to be part of anything else. If
    * we were, we'd have been freed by jsvGarbageCollect */
@@ -664,21 +681,13 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
   /* Now, free children - see jsvar.h comments for how! */
   if (jsvHasStringExt(var)) {
     // Free the string without recursing
-    JsVarRef stringDataRef = jsvGetLastChild(var);
+    jsvFreePtrStringExt(jsvGetLastChild(var));
 #ifdef CLEAR_MEMORY_ON_FREE
     jsvSetLastChild(var, 0);
-#endif // CLEAR_MEMORY_ON_FREE
-    while (stringDataRef) {
-      JsVar *child = jsvGetAddressOf(stringDataRef);
-      assert(jsvIsStringExt(child));
-      stringDataRef = jsvGetLastChild(child);
-      jsvFreePtrInternal(child);
-    }
     if (jsvIsBasicString(var)) {
-  #ifdef CLEAR_MEMORY_ON_FREE
       jsvSetFirstChild(var, 0); // firstchild could have had string data in
-  #endif // CLEAR_MEMORY_ON_FREE
     }
+#endif // CLEAR_MEMORY_ON_FREE
   } else if (jsvIsFlatString(var)) { // We might be a flat string (we're not allowing strings to be added to flat strings yet)
     // in which case we need to free all the blocks.
     size_t count = jsvGetFlatStringBlocks(var);
@@ -1223,12 +1232,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
       }
       jsvSetCharactersInVar(var, JSVAR_DATA_STRING_NAME_LEN);
       // Free any old stringexts
-      JsVarRef oldRef = jsvGetLastChild(var);
-      while (oldRef) {
-        JsVar *v = jsvGetAddressOf(oldRef);
-        oldRef = jsvGetLastChild(v);
-        jsvFreePtrInternal(v);
-      }
+      jsvFreePtrStringExt(jsvGetLastChild(var));
       // set up new stringexts
       jsvSetLastChild(var, jsvGetRef(startExt));
       jsvSetNextSibling(var, 0);
