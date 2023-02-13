@@ -724,7 +724,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
     can be ints or strings */
 
   if (jsvHasChildren(var)) {
-    JsVarRef childref = jsvGetFirstChild(var);
+    JsVarRef childref = jsvGetLastChild(var);
 #ifdef CLEAR_MEMORY_ON_FREE
     jsvSetFirstChild(var, 0);
     jsvSetLastChild(var, 0);
@@ -732,7 +732,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
     while (childref) {
       JsVar *child = jsvLock(childref);
       assert(jsvIsName(child));
-      childref = jsvGetNextSibling(child);
+      childref = jsvGetPrevSibling(child);
       jsvSetPrevSibling(child, 0);
       jsvSetNextSibling(child, 0);
       jsvUnRef(child);
