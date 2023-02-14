@@ -1195,46 +1195,61 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | t;
   } else if (varType>=_JSV_STRING_START && varType<=_JSV_STRING_END) {
     if (jsvGetCharactersInVar(var) > JSVAR_DATA_STRING_NAME_LEN) {
-      /* Argh. String is too large to fit in a JSV_NAME! We must chomp make
-       * new STRINGEXTs to put the data in
+      /* Argh. String is too large to fit in a JSV_NAME! We must chomp adjust
+       * STRINGEXTs and potentially add one to put the data in
        */
       JsvStringIterator it;
+      char queue[JSVAR_DATA_STRING_LEN - JSVAR_DATA_STRING_NAME_LEN];
+      int index;
+
+      // fill queue
       jsvStringIteratorNew(&it, var, JSVAR_DATA_STRING_NAME_LEN);
-      JsVar *startExt = jsvNewWithFlags(JSV_STRING_EXT_0);
-      JsVar *ext = jsvLockAgainSafe(startExt);
-      size_t nChars = 0;
-      while (ext && jsvStringIteratorHasChar(&it)) {
-        if (nChars >= JSVAR_DATA_STRING_MAX_LEN) {
-          jsvSetCharactersInVar(ext, nChars);
-          JsVar *ext2 = jsvNewWithFlags(JSV_STRING_EXT_0);
-          if (ext2) {
-            jsvSetLastChild(ext, jsvGetRef(ext2));
-          }
-          jsvUnLock(ext);
-          ext = ext2;
-          nChars = 0;
-        }
-        ext->varData.str[nChars++] = jsvStringIteratorGetCharAndNext(&it);
+      for (index = 0; index < sizeof(queue) && jsvStringIteratorHasChar(&it); index++) {
+        queue[index] = jsvStringIteratorGetCharAndNext(&it);
       }
       jsvStringIteratorFree(&it);
-      if (ext) {
-        jsvSetCharactersInVar(ext, nChars);
-        jsvUnLock(ext);
+
+      // "set" string length
+      JsVar* last = var;
+      while (jsvGetLastChild(last)) last = jsvGetAddressOf(jsvGetLastChild(last)); // TODO lock?
+
+      if (last != var) {
+        size_t nChars = jsvGetCharactersInVar(last) + index;
+        if (nChars <= JSVAR_DATA_STRING_MAX_LEN) { // fit inside existing StringExt
+          jsvSetCharactersInVar(last, nChars);
+          last = 0;
+        } else {
+          index = nChars - JSVAR_DATA_STRING_MAX_LEN; // remaining
+        }
       }
+      if (last) { // no StringExt or didn't fit
+        jsvSetCharactersInVar(last, jsvGetMaxCharactersInVar(last));
+        JsVar* ext = jsvNewWithFlags(JSV_STRING_EXT_0);
+        if (ext) {
+          jsvSetCharactersInVar(ext, index);
+          jsvSetLastChild(last, jsvGetRef(ext));
+          jsvUnLock(ext);
+        } // TODO else?
+      }
+
+      // juggle characters
+      jsvStringIteratorNew(&it, var, JSVAR_DATA_STRING_LEN);
+      assert(it.var == jsvGetAddressOf(jsvGetLastChild(var)) && it.charIdx == 0);
+      index = 0;
+      while (jsvStringIteratorHasChar(&it)) {
+        char c = jsvStringIteratorGetChar(&it);
+        jsvStringIteratorSetChar(&it, queue[index]);
+        queue[index] = c;
+
+        jsvStringIteratorNext(&it);
+        index = (index + 1) % sizeof(queue);
+      }
+      jsvStringIteratorFree(&it);
+
       jsvSetCharactersInVar(var, JSVAR_DATA_STRING_NAME_LEN);
-      // Free any old stringexts
-      JsVarRef oldRef = jsvGetLastChild(var);
-      while (oldRef) {
-        JsVar *v = jsvGetAddressOf(oldRef);
-        oldRef = jsvGetLastChild(v);
-        jsvFreePtrInternal(v);
-      }
-      // set up new stringexts
-      jsvSetLastChild(var, jsvGetRef(startExt));
       jsvSetNextSibling(var, 0);
       jsvSetPrevSibling(var, 0);
       jsvSetFirstChild(var, 0);
-      jsvUnLock(startExt);
     }
 
     size_t t = JSV_NAME_STRING_0;
