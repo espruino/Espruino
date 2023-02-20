@@ -2050,11 +2050,20 @@ static void peer_manager_init(bool erase_bonds) {
   if (bleStatus & BLE_PM_INITIALISED) return;
   bleStatus |= BLE_PM_INITIALISED;
 
-  /* If the button is pressed at boot, clear out flash
+  /* If ALL buttons are pressed at boot, clear out flash
    * pages as well. Nice easy way to reset! */
   bool buttonPressed = false;
 #ifdef BTN1_PININDEX
   buttonPressed = jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
+#endif
+#ifdef BTN2_PININDEX
+  buttonPressed &= jshPinGetValue(BTN2_PININDEX) == BTN2_ONSTATE;
+#endif
+#ifdef BTN3_PININDEX
+  buttonPressed &= jshPinGetValue(BTN3_PININDEX) == BTN3_ONSTATE;
+#endif
+#ifdef BTN4_PININDEX
+  buttonPressed &= jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE;
 #endif
   if (buttonPressed) {
     peer_manager_erase_pages();
