@@ -41,6 +41,7 @@
             Graphics: Fix font clipping on rotated non-square graphics instances (fix #2326)
             Fix jsvDumpLockedVars when flat strings are in memory (https://github.com/espruino/Espruino/issues/2323#issuecomment-1426107603)
             Fix bool return values when building for 64 bit (fix #2323)
+            nRF52: Add support for 7 bit UART tx/rx (and parity) and error if a UART setting can't be honoured (fix #2324)
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

@@ -607,6 +607,9 @@ char clipi8(int x);
 /// Convert the given value to a signed integer assuming it has the given number of bits
 int twosComplement(int val, unsigned char bits);
 
+/// Calculate the parity of an 8 bit number
+bool calculateParity(uint8_t v);
+
 /// quick integer square root
 unsigned short int int_sqrt32(unsigned int x);
 
