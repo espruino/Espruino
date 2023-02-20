@@ -2339,13 +2339,15 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y2 : gfx.data.clipRect.x2;
   int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x2 : gfx.data.clipRect.y2;
   if (gfx.data.flags & JSGRAPHICSFLAGS_INVERT_X) {
-    int t = gfx.data.width - (minX+1);
-    minX = gfx.data.width - (maxX+1);
+    int w = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
+    int t = w - (minX+1);
+    minX = w - (maxX+1);
     maxX = t;
   }
   if (gfx.data.flags & JSGRAPHICSFLAGS_INVERT_Y) {
-    int t = gfx.data.height - (minY+1);
-    minY = gfx.data.height - (maxY+1);
+    int h = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
+    int t = h - (minY+1);
+    minY = h - (maxY+1);
     maxY = t;
   }
 #else
