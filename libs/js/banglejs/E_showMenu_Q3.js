@@ -109,7 +109,7 @@
         g.drawImage(/* 9x18 */atob("CRKBAGA4Hg8DwPB4HgcDg8PB4eHg8HAwAA=="), r.x+r.w-21, r.y+H/2-9);
         pad += 16;
       }
-      var title = item.title??keys[idx];
+      var title = (item&&item.title)??keys[idx];
       var l = g.wrapString(title,r.w-pad);
       if (l.length>1)
         l = g.setFont("6x15").wrapString(title,r.w-pad);
