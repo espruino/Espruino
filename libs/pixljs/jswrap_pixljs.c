@@ -418,7 +418,8 @@ void jswrap_pixljs_init() {
   static bool firstStart = true;
 
   JsVar *splashScreen = 0;
-  if (!(jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE && jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE))
+  if (!((jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE) &&
+        (jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE)))
     splashScreen = jsfReadFile(jsfNameFromString(".splash"),0,0);
   if (jsvIsString(splashScreen)) {
     if (jsvGetStringLength(splashScreen)) {

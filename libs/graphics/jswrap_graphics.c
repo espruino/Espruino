@@ -120,6 +120,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
     info->height = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
     info->bpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
     if (info->bpp<=0) info->bpp=1;
+    info->palettePtr = 0;
     JsVar *v;
     v = jsvObjectGetChild(image, "transparent", 0);
     info->isTransparent = v!=0;
@@ -169,6 +170,11 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
     info->bitmapOffset += info->headerLength;
     if (info->bpp & 64) { // included palette data
       info->bpp = info->bpp&63;
+      if (info->bpp > 8) {
+        jsExceptionHere(JSET_ERROR, "Can't have palette on >8 bit images");
+        _jswrap_graphics_freeImageInfo(info);
+        return false;
+      }
       int paletteEntries = 1<<info->bpp;
       info->paletteMask = (uint32_t)paletteEntries-1;
       if (paletteEntries*2 <= sizeof(info->_simplePalette)) {

@@ -43,6 +43,7 @@
             Fix bool return values when building for 64 bit (fix #2323)
             nRF52: Add support for 7 bit UART tx/rx (and parity) and error if a UART setting can't be honoured (fix #2324)
             Bangle.js2: Fix regression in E.showMenu so you can use menu items with ':undefined' (as in the example in the reference)
+            Graphics: Ensure that an error is thrown if a palette is used in >8 bit images. It was previously possible to ask for a palette on a 32 bit image, which caused an overflow
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
