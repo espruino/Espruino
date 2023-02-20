@@ -196,7 +196,7 @@ station by the esp8266's access point. The details include:
   "name"     : "disconnect",
   "generate" : "jswrap_wifi_disconnect",
   "params"   : [
-    ["callback", "JsVar", "An optional `callback()` function to be called back on disconnection. The callback function receives no argument."]
+    ["callback", "JsVar", "[optional] An `callback()` function to be called back on disconnection. The callback function receives no argument."]
   ]
 }
 Disconnect the wifi station from an access point and disable the station mode.
@@ -211,7 +211,7 @@ re-enabled by calling `connect` or `scan`.
   "name"     : "stopAP",
   "generate" : "jswrap_wifi_stopAP",
   "params"   : [
-    ["callback", "JsVar", "An optional `callback()` function to be called back on successful stop. The callback function receives no argument."]
+    ["callback", "JsVar", "[optional] An `callback()` function to be called back on successful stop. The callback function receives no argument."]
   ]
 }
 Stop being an access point and disable the AP operation mode. AP mode can be
@@ -226,7 +226,7 @@ re-enabled by calling `startAP`.
   "generate" : "jswrap_wifi_connect",
   "params"   : [
     ["ssid", "JsVar", "The access point network id."],
-    ["options", "JsVar", "Connection options (optional)."],
+    ["options", "JsVar", "[optional] Connection options."],
     ["callback", "JsVar", "A `callback(err)`  function to be called back on completion. `err` is null on success, or contains an error string on failure."]
   ],
   "typescript" : "function connect(ssid: string, options?: { password?: string, dnsServers?: string[], authMode?: string, channel?: number, bssid?: string }, callback?: (err: string | null) => void): void;"
@@ -299,7 +299,7 @@ Notes:
   "generate" : "jswrap_wifi_startAP",
   "params"   : [
     ["ssid", "JsVar", "The network id."],
-    ["options", "JsVar", "Configuration options (optional)."],
+    ["options", "JsVar", "[optional] Configuration options."],
     ["callback", "JsVar", "Optional `callback(err)` function to be called when the AP is successfully started. `err==null` on success, or an error string on failure."]
   ],
   "typescript" : "function startAP(ssid: string, options?: { password?: string, authMode?: \"open\" | \"wpa2\" | \"wpa\" | \"wpa_wpa2\", channel?: number, hidden?: boolean }, callback?: (err: string | null) => void): void;"
@@ -400,7 +400,7 @@ which all set the esp8266 opmode indirectly.
   "#if" : "defined(ESP32) || defined(ESP8266)",
   "return"   : ["JsVar", "An object representing the wifi station details, if available immediately."],
   "params"   : [
-    ["callback", "JsVar", "An optional `callback(details)` function to be called back with the wifi details, i.e. the same object as returned directly."]
+    ["callback", "JsVar", "[optional] An `callback(details)` function to be called back with the wifi details, i.e. the same object as returned directly."]
   ]
 }
 Retrieve the wifi station configuration and status details. The details object
@@ -431,7 +431,7 @@ has the following properties:
   "#if" : "defined(ESP32) || defined(ESP8266)",
   "return"   : ["JsVar", "An object representing the current access point details, if available immediately."],
   "params"   : [
-    ["callback", "JsVar", "An optional `callback(details)` function to be called back with the current access point details, i.e. the same object as returned directly."]
+    ["callback", "JsVar", "[optional] A `callback(details)` function to be called back with the current access point details, i.e. the same object as returned directly."]
   ]
 }
 Retrieve the current access point configuration and status. The details object
@@ -495,7 +495,7 @@ Restores the saved Wifi configuration from flash. See `Wifi.save()`.
   "generate" : "jswrap_wifi_getIP",
   "return"   : ["JsVar", "An object representing the station IP information, if available immediately (**ONLY** on ESP8266/ESP32)."],
   "params"   : [
-    ["callback", "JsVar", "An optional `callback(err, ipinfo)` function to be called back with the IP information."]
+    ["callback", "JsVar", "[optional] A `callback(err, ipinfo)` function to be called back with the IP information."]
   ]
 }
 Return the station IP information in an object as follows:
@@ -515,7 +515,7 @@ Note that the `ip`, `netmask`, and `gw` fields are omitted if no connection is e
   "generate" : "jswrap_wifi_getAPIP",
   "return"   : ["JsVar", "An object representing the esp8266's Access Point IP information, if available immediately (**ONLY** on ESP8266/ESP32)."],
   "params"   : [
-    ["callback", "JsVar", "An optional `callback(err, ipinfo)` function to be called back with the the IP information."]
+    ["callback", "JsVar", "[optional] A `callback(err, ipinfo)` function to be called back with the the IP information."]
   ]
 }
 Return the access point IP information in an object which contains:
@@ -553,7 +553,7 @@ lookups are not supported.
   "#if" : "defined(ESP8266)  || defined(ESP32)",
   "return"   : ["JsVar", "The currently configured hostname, if available immediately."],
   "params"   : [
-    ["callback", "JsVar", "An optional `callback(hostname)` function to be called back with the hostname."]
+    ["callback", "JsVar", "[optional] A `callback(hostname)` function to be called back with the hostname."]
   ]
 }
 Returns the hostname announced to the DHCP server and broadcast via mDNS when
@@ -568,7 +568,7 @@ connecting to an access point.
   "#if" : "defined(ESP8266) || defined(ESPRUINOWIFI) || defined(ESP32)",
   "params"   : [
     ["hostname", "JsVar", "The new hostname."],
-    ["callback", "JsVar", "An optional `callback()` function to be called back when the hostname is set"]
+    ["callback", "JsVar", "[optional] A `callback()` function to be called back when the hostname is set"]
   ]
 }
 Set the hostname. Depending on implementation, the hostname is sent with every

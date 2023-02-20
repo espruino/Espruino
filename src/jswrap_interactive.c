@@ -131,7 +131,7 @@ need to recreate these in the `onInit` function.
   "name" : "load",
   "generate" : "jswrap_interface_load",
   "params" : [
-    ["filename","JsVar","optional: The name of a text JS file to load from Storage after reset"]
+    ["filename","JsVar","[optional] The name of a text JS file to load from Storage after reset"]
   ]
 }
 Restart and load the program out of flash - this has an effect similar to

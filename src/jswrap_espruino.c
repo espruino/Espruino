@@ -778,7 +778,7 @@ their values.
   "params" : [
     ["source","JsVar","The source file/stream that will send content."],
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
-    ["options","JsVar",["An optional object `{ chunkSize : int=64, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+    ["options","JsVar",["[optional] An object `{ chunkSize : int=64, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
   ],
   "typescript" : "pipe(source: any, destination: any, options?: { chunkSize?: number, end?: boolean, complete?: () => void }): void"
 }*/
@@ -1096,7 +1096,7 @@ int jswrap_espruino_setClock(JsVar *options) {
   "generate" : "jswrap_espruino_setConsole",
   "params" : [
     ["device","JsVar",""],
-    ["options","JsVar","(optional) object of options, see below"]
+    ["options","JsVar","[optional] object of options, see below"]
   ],
   "typescript" : "setConsole(device: \"Serial1\" | \"USB\" | \"Bluetooth\" | \"Telnet\" | \"Terminal\" | Serial | null, options?: { force?: boolean }): void;"
 }

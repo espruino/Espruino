@@ -245,7 +245,7 @@ static void jswrap_pipe_dst_close_listener(JsVar *destination) {
   "params" : [
     ["source","JsVar","The source file/stream that will send content."],
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
-    ["options","JsVar",["An optional object `{ chunkSize : int=64, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+    ["options","JsVar",["[optional] An object `{ chunkSize : int=64, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
   ]
 }*/
 void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {

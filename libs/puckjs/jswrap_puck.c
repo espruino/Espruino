@@ -1124,8 +1124,8 @@ int jswrap_puck_accelRd(JsVarInt reg) {
   "generate" : "jswrap_puck_IR",
   "params" : [
       ["data","JsVar","An array of pulse lengths, in milliseconds"],
-      ["cathode","pin","(optional) pin to use for IR LED cathode - if not defined, the built-in IR LED is used"],
-      ["anode","pin","(optional) pin to use for IR LED anode - if not defined, the built-in IR LED is used"]
+      ["cathode","pin","[optional] pin to use for IR LED cathode - if not defined, the built-in IR LED is used"],
+      ["anode","pin","[optional] pin to use for IR LED anode - if not defined, the built-in IR LED is used"]
   ]
 }
 Transmit the given set of IR pulses - data should be an array of pulse times in
