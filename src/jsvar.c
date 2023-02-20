@@ -631,21 +631,22 @@ static void jsvFreePtrInternal(JsVar *var) {
   jshInterruptOn();
 }
 
-void jsvFreePtrStringExt(JsVarRef ref) {
-  JsVarRef previousRef = 0;
-  while (ref) { // create temporary links
-    JsVar *child = jsvGetAddressOf(ref);
-    assert(jsvIsStringExt(child));
-    jsvSetPrevSibling(child, previousRef); // temporarily use prev sibling
-    previousRef = ref;
-    ref = jsvGetLastChild(child);
+void jsvFreePtrStringExt(JsVar* var) {
+  JsVarRef ref = jsvGetLastChild(var);
+  if (!ref) return;
+  JsVar* ext = jsvGetAddressOf(ref);
+  while (true) {
+    ext->flags = JSV_UNUSED;
+    ref = jsvGetLastChild(ext);
+    if (!ref) break;
+    jsvSetNextSibling(ext, ref);
+    ext = jsvGetAddressOf(ref);
   }
-  ref = previousRef;
-  while (ref) { // free last to first
-    JsVar *child = jsvGetAddressOf(ref);
-    ref = jsvGetPrevSibling(child);
-    jsvFreePtrInternal(child);
-  }
+  jshInterruptOff(); // to allow this to be used from an IRQ
+  jsvSetNextSibling(ext, jsVarFirstEmpty);
+  jsVarFirstEmpty = jsvGetLastChild(var);
+  touchedFreeList = true;
+  jshInterruptOn();
 }
 
 ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
@@ -681,7 +682,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
   /* Now, free children - see jsvar.h comments for how! */
   if (jsvHasStringExt(var)) {
     // Free the string without recursing
-    jsvFreePtrStringExt(jsvGetLastChild(var));
+    jsvFreePtrStringExt(var);
 #ifdef CLEAR_MEMORY_ON_FREE
     jsvSetLastChild(var, 0);
     if (jsvIsBasicString(var)) {
@@ -1232,7 +1233,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
       }
       jsvSetCharactersInVar(var, JSVAR_DATA_STRING_NAME_LEN);
       // Free any old stringexts
-      jsvFreePtrStringExt(jsvGetLastChild(var));
+      jsvFreePtrStringExt(var);
       // set up new stringexts
       jsvSetLastChild(var, jsvGetRef(startExt));
       jsvSetNextSibling(var, 0);
