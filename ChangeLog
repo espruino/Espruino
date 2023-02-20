@@ -39,6 +39,7 @@
             Graphics: Added g.getVectorFontPolys to allow the underlying polygons behind a vector font to be retrieved
             nRF5x: ensure we only clear pairing data if ALL buttons are pressed at boot to avoid accidental deletion
             Graphics: Fix font clipping on rotated non-square graphics instances (fix #2326)
+            Fix jsvDumpLockedVars when flat strings are in memory (https://github.com/espruino/Espruino/issues/2323#issuecomment-1426107603)
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

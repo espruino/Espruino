@@ -4128,6 +4128,9 @@ void jsvDumpLockedVars() {
         jsvGarbageCollectMarkUsed(var);
         jsvTrace(var, 0);
       }
+      // if we have a flat string, skip that many blocks
+      if (jsvIsFlatString(var))
+        i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
     }
   }
   isMemoryBusy = MEM_NOT_BUSY;
