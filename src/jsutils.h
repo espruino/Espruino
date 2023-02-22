@@ -46,6 +46,10 @@
 #define ESPR_NO_LINE_NUMBERS 1
 #define ESPR_NO_LET_SCOPING 1
 #define ESPR_NO_PROMISES 1
+#define ESPR_NO_CLASSES 1
+#define ESPR_NO_ARROW_FN 1
+#define ESPR_NO_REGEX 1
+#define ESPR_NO_TEMPLATE_LITERAL 1
 #endif
 
 #ifndef alloca

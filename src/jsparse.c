@@ -19,7 +19,7 @@
 #include "jswrap_functions.h" // insane check for eval in jspeFunctionCall
 #include "jswrap_json.h" // for jsfPrintJSON
 #include "jswrap_espruino.h" // for jswrap_espruino_memoryArea
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_REGEX
 #include "jswrap_regexp.h" // for jswrap_regexp_constructor
 #endif
 #ifdef ESPR_JIT
@@ -39,7 +39,7 @@ void jspeBlockNoBrackets();
 JsVar *jspeStatement();
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_ARROW_FN
 JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a);
 #endif
 // ----------------------------------------------- Utils
@@ -492,7 +492,7 @@ NO_INLINE bool jspeParseFunctionCallBrackets() {
   JSP_MATCH('(');
   while (!JSP_SHOULDNT_PARSE && lex->tk != ')') {
     jsvUnLock(jspeAssignmentExpression());
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_ARROW_FN
     if (lex->tk==LEX_ARROW_FUNCTION) {
       jsvUnLock(jspeArrowFunction(0, 0));
     }
@@ -1209,11 +1209,11 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
   }
 
   JsVar *parent = 0;
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_CLASSES
   bool wasSuper = lex->tk==LEX_R_SUPER;
 #endif
   JsVar *a = jspeFactorMember(jspeFactor(), &parent);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_CLASSES
   if (wasSuper) {
     /* if this was 'super.something' then we need
      * to overwrite the parent, because it'll be
@@ -1242,7 +1242,7 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
     parent=0;
     a = jspeFactorMember(a, &parent);
   }
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
   /* If we've got something that we care about the parent of (eg. a getter/setter)
    * then we repackage it into a 'NewChild' name that references the parent before
    * we leave. Note: You can't do this on everything because normally NewChild
@@ -1462,7 +1462,7 @@ NO_INLINE JsVar *jspeFactorDelete() {
   return result;
 }
 
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_TEMPLATE_LITERAL
 JsVar *jspeTemplateLiteral() {
   JsVar *a = 0;
   if (JSP_SHOULD_EXECUTE) {
@@ -1531,7 +1531,7 @@ NO_INLINE JsVar *jspeAddNamedFunctionParameter(JsVar *funcVar, JsVar *name) {
   return funcVar;
 }
 
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_ARROW_FN
 // parse an arrow function
 NO_INLINE JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a) {
   assert(!a || jsvIsName(a));
@@ -1681,7 +1681,7 @@ NO_INLINE JsVar *jspeFactor() {
   if (lex->tk==LEX_ID) {
     JsVar *a = jspGetNamedVariable(jslGetTokenValueAsString());
     JSP_ASSERT_MATCH(LEX_ID);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_TEMPLATE_LITERAL
     if (lex->tk==LEX_TEMPLATE_LITERAL)
       jsExceptionHere(JSET_SYNTAXERROR, "Tagged template literals not supported");
     else if (lex->tk==LEX_ARROW_FUNCTION &&
@@ -1710,7 +1710,7 @@ NO_INLINE JsVar *jspeFactor() {
   } else if (lex->tk=='(') {
     JSP_ASSERT_MATCH('(');
     if (!jspCheckStackPosition()) return 0;
-#ifdef SAVE_ON_FLASH
+#ifdef ESPR_NO_ARROW_FN
     // Just parse a normal expression (which can include commas)
     JsVar *a = jspeExpression();
     if (!JSP_SHOULDNT_PARSE) JSP_MATCH_WITH_RETURN(')',a);
@@ -1737,13 +1737,13 @@ NO_INLINE JsVar *jspeFactor() {
       a = jslGetTokenValueAsVar();
     JSP_ASSERT_MATCH(LEX_STR);
     return a;
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_TEMPLATE_LITERAL
   } else if (lex->tk==LEX_TEMPLATE_LITERAL) {
     return jspeTemplateLiteral();
 #endif
   } else if (lex->tk==LEX_REGEX) {
     JsVar *a = 0;
-#ifdef SAVE_ON_FLASH
+#ifdef ESPR_NO_REGEX
     jsExceptionHere(JSET_SYNTAXERROR, "RegEx are not supported in this version of Espruino\n");
 #else
     JsVar *regex = jslGetTokenValueAsVar();
@@ -1775,7 +1775,7 @@ NO_INLINE JsVar *jspeFactor() {
     if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_FUNCTION);
     return jspeFunctionDefinition(true);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_CLASSES
   } else if (lex->tk==LEX_R_CLASS) {
     if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_CLASS);
@@ -2850,7 +2850,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
   JsVar *funcName = 0;
   JsVar *funcVar;
 
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_CLASSES
   JSP_ASSERT_MATCH(isClass ? LEX_R_CLASS : LEX_R_FUNCTION);
 #else
   JSP_ASSERT_MATCH(LEX_R_FUNCTION);
@@ -2864,7 +2864,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
     }
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(funcName), 0);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_CLASSES
   funcVar = isClass ? jspeClassDefinition(false) : jspeFunctionDefinition(false);
 #else
   funcVar = jspeFunctionDefinition(false);
@@ -2960,7 +2960,7 @@ NO_INLINE JsVar *jspeStatement() {
     return jspeStatementThrow();
   } else if (lex->tk==LEX_R_FUNCTION) {
     return jspeStatementFunctionDecl(false/* function */);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_CLASSES
   } else if (lex->tk==LEX_R_CLASS) {
       return jspeStatementFunctionDecl(true/* class */);
 #endif
