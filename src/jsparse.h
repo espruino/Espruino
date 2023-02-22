@@ -146,6 +146,10 @@ typedef struct {
 #endif
   /// Value of 'this' reserved word
   JsVar *thisVar;
+#ifndef ESPR_NO_CLASSES
+  // Allows 'super' to call 'super' on the correct class on subclasses - see #1529
+  JsVar *currentClassConstructor;
+#endif
 
   volatile JsExecFlags execute; //!< Should we be executing, do we have errors, etc
 } JsExecInfo;

@@ -1209,20 +1209,80 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
   }
 
   JsVar *parent = 0;
+  JsVar *a = 0;
+
 #ifndef ESPR_NO_CLASSES
-  bool wasSuper = lex->tk==LEX_R_SUPER;
-#endif
-  JsVar *a = jspeFactorMember(jspeFactor(), &parent);
-#ifndef ESPR_NO_CLASSES
-  if (wasSuper) {
-    /* if this was 'super.something' then we need
-     * to overwrite the parent, because it'll be
-     * set to the prototype otherwise.
+  bool hasSetCurrentClassConstructor = false;
+  if (lex->tk==LEX_R_SUPER) {
+    JSP_ASSERT_MATCH(LEX_R_SUPER);
+    /* We would normally handle this in jspeFactor, but we're doing it here
+     as we have access to parent, which we need to be able to set because
+     super() is a bit like calling 'this.super()'. We also need to do some
+     hacky stuff to ensure
+
+     This is kind of nasty, since super appears to do
+     three different things depending on what 'this' is.
+
+      * In the constructor it references the extended class's constructor
+      * in a method it references the constructor's prototype.
+      * in a static method it references the extended class's constructor (but this is different)
      */
-    jsvUnLock(parent);
-    parent = jsvLockAgainSafe(execInfo.thisVar);
-  }
+    if (jsvIsObject(execInfo.thisVar)) {
+      // 'this' is an object - must be calling a normal method
+      JsVar *proto1;
+      if (execInfo.currentClassConstructor && lex->tk=='(') {
+        // If we're doing super() we want the constructor. We have to be careful
+        // we don't keep asking for the same one so don't get it from 'this' which has to be the
+        // same each time https://github.com/espruino/Espruino/issues/1529
+        proto1 = jsvObjectGetChild(execInfo.currentClassConstructor, JSPARSE_PROTOTYPE_VAR, 0);
+      } else {
+        proto1 = jsvObjectGetChild(execInfo.thisVar, JSPARSE_INHERITS_VAR, 0); // if we're in a method, get __proto__ first
+
+      }
+      JsVar *proto2 = jsvIsObject(proto1) ? jsvObjectGetChild(proto1, JSPARSE_INHERITS_VAR, 0) : 0; // still in method, get __proto__.__proto__
+      jsvUnLock(proto1);
+      if (!proto2) {
+        jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
+        return 0;
+      }
+      // If we're doing super() we want the constructor
+      if (lex->tk=='(') {
+        JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
+        jsvUnLock(proto2);
+        execInfo.currentClassConstructor = constr;
+        hasSetCurrentClassConstructor = true;
+        a = constr;
+      } else {
+        // But if we're doing something else - eg 'super.' or 'super[' then it needs to reference the prototype
+        a = proto2;
+      }
+    } else if (jsvIsFunction(execInfo.thisVar)) {
+      // 'this' is a function - must be calling a static method
+      JsVar *proto1 = jsvObjectGetChild(execInfo.thisVar, JSPARSE_PROTOTYPE_VAR, 0);
+      JsVar *proto2 = jsvIsObject(proto1) ? jsvObjectGetChild(proto1, JSPARSE_INHERITS_VAR, 0) : 0;
+      jsvUnLock(proto1);
+      if (!proto2) {
+        jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
+        return 0;
+      }
+      JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
+      jsvUnLock(proto2);
+      a = constr;
+    } else {
+      jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
+      return 0;
+    }
+    // search for member accesses eg 'super.xyz'...
+    JsVar *superVar = a;
+    a = jspeFactorMember(a, &parent);
+    // Set the parent to 'this' if it was undefined or equal to the 'super' var
+    if (!parent || parent==superVar) {
+      jsvUnLock(parent);
+      parent = jsvLockAgain(execInfo.thisVar);
+    }
+  } else
 #endif
+  a = jspeFactorMember(jspeFactor(), &parent);
 
   while ((lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) && !jspIsInterrupted()) {
     JsVar *funcName = a;
@@ -1237,11 +1297,15 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
       isConstructor = false; // don't treat subsequent brackets as constructors
     } else
       a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
-
     jsvUnLock3(funcName, func, parent);
     parent=0;
     a = jspeFactorMember(a, &parent);
   }
+#ifndef ESPR_NO_CLASSES
+  if (hasSetCurrentClassConstructor)
+    execInfo.currentClassConstructor = 0;
+#endif
+
 #ifndef ESPR_NO_GET_SET
   /* If we've got something that we care about the parent of (eg. a getter/setter)
    * then we repackage it into a 'NewChild' name that references the parent before
@@ -1612,7 +1676,12 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
   }
   if (lex->tk==LEX_R_EXTENDS) {
     JSP_ASSERT_MATCH(LEX_R_EXTENDS);
-    JsVar *extendsFrom = actuallyCreateClass ? jsvSkipNameAndUnLock(jspGetNamedVariable(jslGetTokenValueAsString())) : 0;
+    JsVar *extendsFromName = 0;
+    JsVar *extendsFrom = 0;
+    if (actuallyCreateClass) {
+      extendsFromName = jspGetNamedVariable(jslGetTokenValueAsString());
+      extendsFrom = jsvSkipName(extendsFromName);
+    }
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(extendsFrom,classFunction,classInternalName,classPrototype),0);
     if (classPrototype) {
       if (jsvIsFunction(extendsFrom)) {
@@ -1620,13 +1689,16 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
         if (extendsFromProto) {
           jsvObjectSetChild(classPrototype, JSPARSE_INHERITS_VAR, extendsFromProto);
           // link in default constructor if ours isn't supplied
-          jsvObjectSetChildAndUnLock(classFunction, JSPARSE_FUNCTION_CODE_NAME, jsvNewFromString("if(this.__proto__.__proto__.constructor)this.__proto__.__proto__.constructor.apply(this,arguments)"));
+          // We must reference it explicitly to ensure that we call the correct one when extending from a class that's already extended
+          // see https://github.com/espruino/Espruino/issues/1529#issuecomment-655217322
+          jsvObjectSetChildAndUnLock(classFunction, JSPARSE_FUNCTION_CODE_NAME,
+              jsvVarPrintf("%v.apply(this,arguments)", extendsFromName));
           jsvUnLock(extendsFromProto);
         }
       } else
-        jsExceptionHere(JSET_SYNTAXERROR, "'extends' argument should be a function, got %t", extendsFrom);
+        jsExceptionHere(JSET_SYNTAXERROR, "'extends' argument %q should be a function, got %t", extendsFromName, extendsFrom);
     }
-    jsvUnLock(extendsFrom);
+    jsvUnLock2(extendsFrom, extendsFromName);
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('{',jsvUnLock3(classFunction,classInternalName,classPrototype),0);
 
@@ -1780,48 +1852,7 @@ NO_INLINE JsVar *jspeFactor() {
     if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_CLASS);
     return jspeClassDefinition(true);
-  } else if (lex->tk==LEX_R_SUPER) {
-    JSP_ASSERT_MATCH(LEX_R_SUPER);
-    /* This is kind of nasty, since super appears to do
-      three different things.
-
-      * In the constructor it references the extended class's constructor
-      * in a method it references the constructor's prototype.
-      * in a static method it references the extended class's constructor (but this is different)
-     */
-
-    if (jsvIsObject(execInfo.thisVar)) {
-      // 'this' is an object - must be calling a normal method
-      JsVar *proto1 = jsvObjectGetChild(execInfo.thisVar, JSPARSE_INHERITS_VAR, 0); // if we're in a method, get __proto__ first
-      JsVar *proto2 = jsvIsObject(proto1) ? jsvObjectGetChild(proto1, JSPARSE_INHERITS_VAR, 0) : 0; // still in method, get __proto__.__proto__
-      jsvUnLock(proto1);
-      if (!proto2) {
-        jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
-        return 0;
-      }
-      // If we're doing super() we want the constructor
-      if (lex->tk=='(') {
-        JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
-        jsvUnLock(proto2);
-        return constr;
-      }
-      // But if we're doing something else - eg 'super.' or 'super[' then it needs to reference the prototype
-      return proto2;
-    } else if (jsvIsFunction(execInfo.thisVar)) {
-      // 'this' is a function - must be calling a static method
-      JsVar *proto1 = jsvObjectGetChild(execInfo.thisVar, JSPARSE_PROTOTYPE_VAR, 0);
-      JsVar *proto2 = jsvIsObject(proto1) ? jsvObjectGetChild(proto1, JSPARSE_INHERITS_VAR, 0) : 0;
-      jsvUnLock(proto1);
-      if (!proto2) {
-        jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
-        return 0;
-      }
-      JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
-      jsvUnLock(proto2);
-      return constr;
-    }
-    jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
-    return 0;
+  // LEX_R_SUPER is handled in jspeFactorFunctionCall now
 #endif
   } else if (lex->tk==LEX_R_THIS) {
     JSP_ASSERT_MATCH(LEX_R_THIS);
