@@ -356,6 +356,38 @@ JsVar *jswrap_object_values_or_entries(JsVar *object, bool returnEntries) {
   return cbData[0];
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Object",
+  "name" : "fromEntries",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate_full" : "jswrap_object_fromentries(entries);",
+  "params" : [
+    ["entries","JsVar","An array of `[key,value]` pairs to be used to create an object"]
+  ],
+  "return" : ["JsVar","An object containing all the specified pairs"],
+  "return_object" : "any"
+}
+Return all enumerable keys and values of the given object
+ */
+JsVar *jswrap_object_fromentries(JsVar *entries) {
+  JsVar *obj = jsvNewObject();
+  if (!obj) return 0;
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, entries);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *key = jsvObjectIteratorGetKey(&it);
+    JsVar *value = jsvObjectIteratorGetValue(&it);
+    if (jsvIsString(key)) {
+      jsvObjectSetChildAndUnLock(obj, key, value);
+    } else {
+      jsvUnLock(key);
+      jsvUnLock(value);
+    }
+    jsvObjectIteratorNext(&it);
+  }
+  return obj;
+}
 
 /*JSON{
   "type" : "staticmethod",
