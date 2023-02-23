@@ -361,29 +361,30 @@ JsVar *jswrap_object_values_or_entries(JsVar *object, bool returnEntries) {
   "class" : "Object",
   "name" : "fromEntries",
   "ifndef" : "SAVE_ON_FLASH",
-  "generate_full" : "jswrap_object_fromentries(entries);",
+  "generate" : "jswrap_object_fromEntries",
   "params" : [
     ["entries","JsVar","An array of `[key,value]` pairs to be used to create an object"]
   ],
-  "return" : ["JsVar","An object containing all the specified pairs"],
-  "return_object" : "any"
+  "return" : ["JsVar","An object containing all the specified pairs"]
 }
-Return all enumerable keys and values of the given object
+Transforms an array of key-value pairs into an object
  */
-JsVar *jswrap_object_fromentries(JsVar *entries) {
+JsVar *jswrap_object_fromEntries(JsVar *entries) {
+  if (!jsvIsArray(entries)) return 0;
   JsVar *obj = jsvNewObject();
   if (!obj) return 0;
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, entries);
   while (jsvObjectIteratorHasValue(&it)) {
-    JsVar *key = jsvObjectIteratorGetKey(&it);
-    JsVar *value = jsvObjectIteratorGetValue(&it);
-    if (jsvIsString(key)) {
-      jsvObjectSetChildAndUnLock(obj, key, value);
-    } else {
-      jsvUnLock(key);
-      jsvUnLock(value);
+    JsVar *e = jsvObjectIteratorGetValue(&it);
+    if (jsvIsArray(e)) {
+      JsVar *key = jsvGetArrayItem(e, 0);
+      JsVar *value = jsvGetArrayItem(e, 1);
+      if (jsvIsString(key))
+        jsvObjectSetChildVar(obj, key, value);
+      jsvUnLock2(key,value);
     }
+    jsvUnLock(e);
     jsvObjectIteratorNext(&it);
   }
   return obj;
