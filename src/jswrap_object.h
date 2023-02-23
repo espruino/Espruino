@@ -43,6 +43,7 @@ JsVar *jswrap_object_keys_or_property_names(
 JsVar *jswrap_object_values_or_entries(JsVar *object, bool returnEntries);
 JsVar *jswrap_object_create(JsVar *proto, JsVar *propertiesObject);
 JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name);
+JsVar *jswrap_object_getOwnPropertyDescriptors(JsVar *parent);
 bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name);
 JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc);
 JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props);

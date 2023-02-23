@@ -442,6 +442,50 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
 }
 
 /*JSON{
+  "type" : "staticmethod",
+  "class" : "Object",
+  "name" : "getOwnPropertyDescriptors",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_object_getOwnPropertyDescriptors",
+  "params" : [
+    ["obj","JsVar","The object"]
+  ],
+  "return" : ["JsVar","An object containing all the property descriptors of an object"]
+}
+Get information on all properties in the object (from `Object.getOwnPropertyDescriptor`), or just `{}` if no properties
+ */
+JsVar *jswrap_object_getOwnPropertyDescriptors(JsVar *parent) {
+  if (!jsvHasChildren(parent)) {
+    jsExceptionHere(JSET_TYPEERROR, "First argument must be an object, got %t", parent);
+    return 0;
+  }
+  JsVar *descriptors = jsvNewObject();
+  if (!descriptors) return 0;
+
+  /* There is some code mentioned at https://github.com/espruino/Espruino/issues/1302#issuecomment-1430833414
+
+  const protoPropDescriptor = Object.getOwnPropertyDescriptor(obj, '__proto__');
+  const descriptors = protoPropDescriptor ? { ['__proto__']: protoPropDescriptor } : {};
+
+  which we're not implementing here - but I think the current implementation is fine for 99% of cases
+  */
+
+  JsVar *ownPropertyNames = jswrap_object_keys_or_property_names(parent, JSWOKPF_INCLUDE_NON_ENUMERABLE);
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, ownPropertyNames);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *propName = jsvObjectIteratorGetValue(&it);
+    JsVar *propValue = jswrap_object_getOwnPropertyDescriptor(parent, propName);
+    jsvObjectSetChildVar(descriptors, propName, propValue);
+    jsvUnLock2(propName, propValue);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  jsvUnLock(ownPropertyNames);
+  return descriptors;
+}
+
+/*JSON{
   "type" : "method",
   "class" : "Object",
   "name" : "hasOwnProperty",
