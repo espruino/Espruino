@@ -48,6 +48,7 @@
             Added Object.getOwnPropertyDescriptors
             Added Object.fromEntries (fix #2327)
             Ignore whitespace after ':' in HTTP headers (fix #2331)
+            Don't allocate RegEx if just scanning over code 
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

@@ -158,6 +158,8 @@ typedef struct {
  * for each call */
 extern JsExecInfo execInfo;
 
+#define JSP_SHOULD_EXECUTE (((execInfo.execute)&EXEC_RUN_MASK)==EXEC_YES)
+
 /// flags for jspParseFunction
 typedef enum {
   JSP_NOSKIP_A = 1,

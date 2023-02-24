@@ -47,7 +47,6 @@ JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a);
 #define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , RETURN_VAL)
 #define JSP_MATCH(TOKEN) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , 0) // Match where the user could have given us the wrong token
 #define JSP_ASSERT_MATCH(TOKEN) { assert(0+lex->tk==(TOKEN));jslGetNextToken(); } // Match where if we have the wrong token, it's an internal error
-#define JSP_SHOULD_EXECUTE (((execInfo.execute)&EXEC_RUN_MASK)==EXEC_YES)
 #define JSP_SAVE_EXECUTE() JsExecFlags oldExecute = execInfo.execute
 #define JSP_RESTORE_EXECUTE() execInfo.execute = (execInfo.execute&(JsExecFlags)(~EXEC_SAVE_RESTORE_MASK)) | (oldExecute&EXEC_SAVE_RESTORE_MASK);
 #define JSP_HAS_ERROR (((execInfo.execute)&EXEC_ERROR_MASK)!=0)
@@ -1818,22 +1817,24 @@ NO_INLINE JsVar *jspeFactor() {
 #ifdef ESPR_NO_REGEX
     jsExceptionHere(JSET_SYNTAXERROR, "RegEx are not supported in this version of Espruino\n");
 #else
-    JsVar *regex = jslGetTokenValueAsVar();
-    size_t regexEnd = 0, regexLen = 0;
-    JsvStringIterator it;
-    jsvStringIteratorNew(&it, regex, 0);
-    while (jsvStringIteratorHasChar(&it)) {
-      regexLen++;
-      if (jsvStringIteratorGetCharAndNext(&it)=='/')
-        regexEnd = regexLen;
+    if (JSP_SHOULD_EXECUTE) {
+      JsVar *regex = jslGetTokenValueAsVar();
+      size_t regexEnd = 0, regexLen = 0;
+      JsvStringIterator it;
+      jsvStringIteratorNew(&it, regex, 0);
+      while (jsvStringIteratorHasChar(&it)) {
+        regexLen++;
+        if (jsvStringIteratorGetCharAndNext(&it)=='/')
+          regexEnd = regexLen;
+      }
+      jsvStringIteratorFree(&it);
+      JsVar *flags = 0;
+      if (regexEnd < regexLen)
+        flags = jsvNewFromStringVar(regex, regexEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
+      JsVar *regexSource = jsvNewFromStringVar(regex, 1, regexEnd-2);
+      a = jswrap_regexp_constructor(regexSource, flags);
+      jsvUnLock3(regex, flags, regexSource);
     }
-    jsvStringIteratorFree(&it);
-    JsVar *flags = 0;
-    if (regexEnd < regexLen)
-      flags = jsvNewFromStringVar(regex, regexEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
-    JsVar *regexSource = jsvNewFromStringVar(regex, 1, regexEnd-2);
-    a = jswrap_regexp_constructor(regexSource, flags);
-    jsvUnLock3(regex, flags, regexSource);
 #endif
     JSP_ASSERT_MATCH(LEX_REGEX);
     return a;
