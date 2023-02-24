@@ -127,6 +127,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
   int lineNumber = 0;
   int lastLineStart = 0;
   int colonPos = 0;
+  int valueStart = 0;
   //jsiConsolePrintStringVar(receiveData);
   jsvStringIteratorNew(&it, *receiveData, 0);
     while (jsvStringIteratorHasChar(&it)) {
@@ -136,12 +137,13 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
         else if (secondSpace<0) secondSpace = strIdx;
       }
       if (ch == ':' && colonPos<0) colonPos = strIdx;
+      else if (colonPos>0 && !valueStart && !isWhitespace(ch)) valueStart = strIdx; // ignore whitespace after :
       if (ch == '\r') {
         if (firstEOL<0) firstEOL=strIdx;
-        if (lineNumber>0 && colonPos>lastLineStart && lastLineStart<strIdx) {
+        if (lineNumber>0 && colonPos>lastLineStart && valueStart>lastLineStart && lastLineStart<strIdx) {
           JsVar *hVal = jsvNewFromEmptyString();
           if (hVal)
-            jsvAppendStringVar(hVal, *receiveData, (size_t)colonPos+2, (size_t)(strIdx-(colonPos+2)));
+            jsvAppendStringVar(hVal, *receiveData, (size_t)valueStart, (size_t)(strIdx-valueStart));
           JsVar *hKey = jsvNewFromEmptyString();
           if (hKey) {
             jsvMakeIntoVariableName(hKey, hVal);
@@ -153,6 +155,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
         }
         lineNumber++;
         colonPos=-1;
+        valueStart = 0;
       }
       if (ch == '\r' || ch == '\n') {
         lastLineStart = strIdx+1;
