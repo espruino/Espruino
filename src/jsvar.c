@@ -1001,9 +1001,9 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
   return flatString;
 }
 
-JsVar *jsvNewFromString(const char *str) {
+static JsVar *jsvNewNameOrString(const char *str, bool isName) {
   // Create a var
-  JsVar *first = jsvNewWithFlags(JSV_STRING_0);
+  JsVar *first = jsvNewWithFlags(isName ? JSV_NAME_STRING_0 : JSV_STRING_0);
   if (!first) return 0; // out of memory
   // Now we copy the string, but keep creating new jsVars if we go
   // over the end
@@ -1036,6 +1036,17 @@ JsVar *jsvNewFromString(const char *str) {
   jsvUnLock(var);
   // return
   return first;
+}
+
+JsVar *jsvNewFromString(const char *str) {
+  return jsvNewNameOrString(str, false/*isName*/);
+}
+
+JsVar *jsvNewNameFromString(const char *str, JsVar *valueOrZero) {
+  JsVar *var = jsvNewNameOrString(str, true/*isName*/);
+  if (var && valueOrZero)
+    jsvSetFirstChild(var, jsvGetRef(jsvRef(valueOrZero)));
+  return var;
 }
 
 JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData) {
@@ -1205,7 +1216,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | t;
   } else if (varType>=_JSV_STRING_START && varType<=_JSV_STRING_END) {
     if (jsvGetCharactersInVar(var) > JSVAR_DATA_STRING_NAME_LEN) {
-      /* Argh. String is too large to fit in a JSV_NAME! We must chomp make
+      /* Argh. String is too large to fit in a JSV_NAME! We must make
        * new STRINGEXTs to put the data in
        */
       JsvStringIterator it;
@@ -2722,7 +2733,7 @@ void jsvAddName(JsVar *parent, JsVar *namedChild) {
 }
 
 JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name) {
-  JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromString(name), child);
+  JsVar *namedChild = jsvNewNameFromString(name, child);
   if (!namedChild) return 0; // Out of memory
   jsvAddName(parent, namedChild);
   return namedChild;
@@ -2817,7 +2828,7 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFoun
 
   JsVar *child = 0;
   if (addIfNotFound) {
-    child = jsvMakeIntoVariableName(jsvNewFromString(name), 0);
+    child = jsvNewNameFromString(name, 0);
     if (child) // could be out of memory
       jsvAddName(parent, child);
   }

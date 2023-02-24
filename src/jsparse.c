@@ -944,7 +944,7 @@ JsVar *jspGetNamedVariable(const char *tokenName) {
       if (!a) {
         /* Variable doesn't exist! JavaScript says we should create it
          * (we won't add it here. This is done in the assignment operator)*/
-        a = jsvMakeIntoVariableName(jsvNewFromString(tokenName), 0);
+        a = jsvNewNameFromString(tokenName, 0);
       }
     }
   }
@@ -2890,7 +2890,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
 
   bool actuallyCreateFunction = JSP_SHOULD_EXECUTE;
   if (actuallyCreateFunction) {
-    funcName = jsvMakeIntoVariableName(jslGetTokenValueAsVar(), 0);
+    funcName = jsvNewNameFromString(jslGetTokenValueAsString(), 0);
     if (!funcName) { // out of memory
       return 0;
     }

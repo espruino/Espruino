@@ -298,6 +298,7 @@ void jsvUpdateMemoryAddress(size_t oldAddr, size_t length, size_t newAddr);
 JsVar *jsvNewWithFlags(JsVarFlags flags); ///< Create a new variable with the given flags
 JsVar *jsvNewFlatStringOfLength(unsigned int byteLength); ///< Try and create a special flat string, return 0 on failure
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
+JsVar *jsvNewNameFromString(const char *str, JsVar *valueOrZero); ///< Create a new name from a string, and optionally add a value
 JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData); ///< Create a new string of the given length - full of 0s (or initialData if specified)
 static ALWAYS_INLINE JsVar *jsvNewFromEmptyString() { return jsvNewWithFlags(JSV_STRING_0); } ;///< Create a new empty string
 static ALWAYS_INLINE JsVar *jsvNewNull() { return jsvNewWithFlags(JSV_NULL); } ;///< Create a new null variable
