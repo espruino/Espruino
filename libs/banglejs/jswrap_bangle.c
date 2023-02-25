@@ -87,7 +87,10 @@ type WidgetArea = "tl" | "tr" | "bl" | "br";
 type Widget = {
   area: WidgetArea;
   width: number;
-  draw: (this: { x: number; y: number }) => void;
+  sortorder?: number;
+  draw: (this: Widget, w: Widget) => void;
+  x?: number;
+  y?: number;
 };
 declare const WIDGETS: { [key: string]: Widget };
 */
