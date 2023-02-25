@@ -1141,7 +1141,7 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   "name" : "call",
   "generate" : "jswrap_function_apply_or_call",
   "params" : [
-    ["this","JsVar","The value to use as the 'this' argument when executing the function"],
+    ["thisArg","JsVar","The value to use as the 'this' argument when executing the function"],
     ["params","JsVarArray","Optional Parameters"]
   ],
   "return" : ["JsVar","The return value of executing this function"]
@@ -1157,10 +1157,13 @@ This executes the function with the supplied 'this' argument and parameters
   "name" : "apply",
   "generate" : "jswrap_function_apply_or_call",
   "params" : [
-    ["this","JsVar","The value to use as the 'this' argument when executing the function"],
-    ["args","JsVar","Optional Array of Arguments"]
+    ["thisArg","JsVar","The value to use as the 'this' argument when executing the function"],
+    ["args","JsVarArray","Optional Array of Arguments"]
   ],
-  "return" : ["JsVar","The return value of executing this function"]
+  "return" : ["JsVar","The return value of executing this function"],
+  "typescript" : [
+    "apply(thisArg: any, args: ArrayLike<any>): any;"
+  ]
 }
 This executes the function with the supplied 'this' argument and parameters
  */
@@ -1209,7 +1212,7 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
   "name" : "bind",
   "generate" : "jswrap_function_bind",
   "params" : [
-    ["this","JsVar","The value to use as the 'this' argument when executing the function"],
+    ["thisArg","JsVar","The value to use as the 'this' argument when executing the function"],
     ["params","JsVarArray","Optional Default parameters that are prepended to the call"]
   ],
   "return" : ["JsVar","The 'bound' function"]
