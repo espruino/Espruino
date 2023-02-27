@@ -1027,7 +1027,7 @@ static JsVar *jsvNewNameOrString(const char *str, bool isName) {
         jsvUnLock(var);
         return first;
       }
-      // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
+      // we don't ref, because StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
       jsvSetLastChild(var, jsvGetRef(next));
       jsvUnLock(var);
       var = next;
