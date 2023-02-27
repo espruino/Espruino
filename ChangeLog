@@ -54,6 +54,7 @@
             Bangle.js2: Fix Compass Z heading (fix #2332)
             Micro:bit 1: remove support for paletted images to free up flash
             Bangle.js: Fix for Bangle.is* functions after #2323 fix
+            MakeIntoVariableName now shifts oversize strings around rather than re-allocating, which reduces fragmentation (#2329)
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
