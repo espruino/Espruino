@@ -1205,7 +1205,7 @@ void peripheralPollHandler() {
       // &32 might be reading in progress
       mag.y = buf[2] | (buf[1]<<8);
       mag.x = buf[4] | (buf[3]<<8);
-      mag.z = buf[5] | (buf[5]<<8);
+      mag.z = buf[6] | (buf[5]<<8);
       // Now read 0x3E which should kick off a new reading
       buf[0]=0x3E;
       jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, false);
