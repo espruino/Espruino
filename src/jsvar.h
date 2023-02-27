@@ -298,6 +298,7 @@ void jsvUpdateMemoryAddress(size_t oldAddr, size_t length, size_t newAddr);
 JsVar *jsvNewWithFlags(JsVarFlags flags); ///< Create a new variable with the given flags
 JsVar *jsvNewFlatStringOfLength(unsigned int byteLength); ///< Try and create a special flat string, return 0 on failure
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
+JsVar *jsvNewNameFromString(const char *str); ///< Create a new name from a string
 JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData); ///< Create a new string of the given length - full of 0s (or initialData if specified)
 static ALWAYS_INLINE JsVar *jsvNewFromEmptyString() { return jsvNewWithFlags(JSV_STRING_0); } ;///< Create a new empty string
 static ALWAYS_INLINE JsVar *jsvNewNull() { return jsvNewWithFlags(JSV_NULL); } ;///< Create a new null variable
@@ -636,8 +637,8 @@ JsVar *jsvCopy(JsVar *src, bool copyChildren);
 JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName);
 /// Tree related stuff
 void jsvAddName(JsVar *parent, JsVar *nameChild); // Add a child, which is itself a name
-JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a child, and create a name for it. Returns a LOCKED var. DOES NOT CHECK FOR DUPLICATES
-JsVar *jsvSetNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a child, and create a name for it. Returns a LOCKED name var. CHECKS FOR DUPLICATES
+JsVar *jsvAddNamedChild(JsVar *parent, JsVar *value, const char *name); // Add a child, and create a name for it. Returns a LOCKED var. DOES NOT CHECK FOR DUPLICATES
+JsVar *jsvSetNamedChild(JsVar *parent, JsVar *value, const char *name); // Add a child, and create a name for it. Returns a LOCKED name var. CHECKS FOR DUPLICATES
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild. Returns the UNLOCKED name argument
 JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
 JsVar *jsvFindChildFromStringI(JsVar *parent, const char *name); ///< Find a child with a matching name using a case insensitive search

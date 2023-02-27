@@ -455,7 +455,7 @@ JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
   "generate" : "jswrap_string_slice",
   "params" : [
     ["start","int","The start character index, if negative it is from the end of the string"],
-    ["end","JsVar","The end character index, if negative it is from the end of the string, and if omitted it is the end of the string"]
+    ["end","JsVar","[optional] The end character index, if negative it is from the end of the string, and if omitted it is the end of the string"]
   ],
   "return" : ["JsVar","Part of this string from start for len characters"]
 }*/

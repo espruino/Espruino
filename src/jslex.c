@@ -12,6 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jslex.h"
+#include "jsparse.h"
 #ifndef SAVE_ON_FLASH
 #include "jsflash.h"
 #endif
@@ -277,13 +278,17 @@ static JSLEX_INLINE void jslSingleChar() {
 
 static void jslLexString() {
   char delim = lex->currCh;
-  lex->tokenValue = jsvNewFromEmptyString();
-  if (!lex->tokenValue) {
-    lex->tk = LEX_EOF;
-    return;
-  }
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, lex->tokenValue, 0);
+  it.var = 0; // now jsvStringIteratorAppend/Free will silently do nothing
+  if (JSP_SHOULD_EXECUTE) { // tokenValue already set to 0
+    // Only allocate a string/iterator (and so only append) if we are executing
+    lex->tokenValue = jsvNewFromEmptyString();
+    if (!lex->tokenValue) {
+      lex->tk = LEX_EOF;
+      return;
+    }
+    jsvStringIteratorNew(&it, lex->tokenValue, 0);
+  }
   // strings...
   jslGetNextCh();
   char lastCh = delim;
@@ -364,14 +369,18 @@ static void jslLexString() {
 }
 
 static void jslLexRegex() {
-  lex->tokenValue = jsvNewFromEmptyString();
-  if (!lex->tokenValue) {
-    lex->tk = LEX_EOF;
-    return;
-  }
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, lex->tokenValue, 0);
-  jsvStringIteratorAppend(&it, '/');
+  it.var = 0; // now jsvStringIteratorAppend/Free will silently do nothing
+  if (JSP_SHOULD_EXECUTE) { // tokenValue already set to 0
+    // Only allocate a string/iterator (and so only append) if we are executing
+    lex->tokenValue = jsvNewFromEmptyString();
+    if (!lex->tokenValue) {
+      lex->tk = LEX_EOF;
+      return;
+    }
+    jsvStringIteratorNew(&it, lex->tokenValue, 0);
+    jsvStringIteratorAppend(&it, '/');
+  }
   // strings...
   jslGetNextCh();
   while (lex->currCh && lex->currCh!='/') {

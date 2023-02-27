@@ -87,7 +87,10 @@ type WidgetArea = "tl" | "tr" | "bl" | "br";
 type Widget = {
   area: WidgetArea;
   width: number;
-  draw: (this: { x: number; y: number }) => void;
+  sortorder?: number;
+  draw: (this: Widget, w: Widget) => void;
+  x?: number;
+  y?: number;
 };
 declare const WIDGETS: { [key: string]: Widget };
 */
@@ -1205,7 +1208,7 @@ void peripheralPollHandler() {
       // &32 might be reading in progress
       mag.y = buf[2] | (buf[1]<<8);
       mag.x = buf[4] | (buf[3]<<8);
-      mag.z = buf[5] | (buf[5]<<8);
+      mag.z = buf[6] | (buf[5]<<8);
       // Now read 0x3E which should kick off a new reading
       buf[0]=0x3E;
       jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, false);
@@ -2653,7 +2656,7 @@ Set power with `Bangle.setHRMPower(...);`
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isHRMOn() {
-  return bangleFlags & JSBF_HRM_ON;
+  return (bangleFlags & JSBF_HRM_ON)!=0;
 }
 
 #ifdef GPS_PIN_RX
@@ -2732,7 +2735,7 @@ Set power with `Bangle.setGPSPower(...);`
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isGPSOn() {
-  return bangleFlags & JSBF_GPS_ON;
+  return (bangleFlags & JSBF_GPS_ON)!=0;
 }
 
 /*JSON{
@@ -2825,7 +2828,7 @@ Set power with `Bangle.setCompassPower(...);`
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isCompassOn() {
-  return bangleFlags & JSBF_COMPASS_ON;
+  return (bangleFlags & JSBF_COMPASS_ON)!=0;
 }
 
 /*JSON{
@@ -2955,7 +2958,7 @@ Set power with `Bangle.setBarometerPower(...);`
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isBarometerOn() {
-  return bangleFlags & JSBF_BAROMETER_ON;
+  return (bangleFlags & JSBF_BAROMETER_ON)!=0;
 }
 
 /*JSON{

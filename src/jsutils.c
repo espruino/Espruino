@@ -960,6 +960,13 @@ int twosComplement(int val, unsigned char bits) {
   return val;
 }
 
+/// Calculate the parity of an 8 bit number
+bool calculateParity(uint8_t v) {
+  // https://graphics.stanford.edu/~seander/bithacks.html#ParityParallel
+  v ^= v >> 4;
+  return (0x6996 >> (v&0xf)) & 1;
+}
+
 // quick integer square root
 // https://stackoverflow.com/questions/31117497/fastest-integer-square-root-in-the-least-amount-of-instructions
 unsigned short int int_sqrt32(unsigned int x) {

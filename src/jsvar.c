@@ -631,6 +631,24 @@ static void jsvFreePtrInternal(JsVar *var) {
   jshInterruptOn();
 }
 
+void jsvFreePtrStringExt(JsVar* var) {
+  JsVarRef ref = jsvGetLastChild(var);
+  if (!ref) return;
+  JsVar* ext = jsvGetAddressOf(ref);
+  while (true) {
+    ext->flags = JSV_UNUSED;
+    ref = jsvGetLastChild(ext);
+    if (!ref) break;
+    jsvSetNextSibling(ext, ref);
+    ext = jsvGetAddressOf(ref);
+  }
+  jshInterruptOff(); // to allow this to be used from an IRQ
+  jsvSetNextSibling(ext, jsVarFirstEmpty);
+  jsVarFirstEmpty = jsvGetLastChild(var);
+  touchedFreeList = true;
+  jshInterruptOn();
+}
+
 ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
   /* To be here, we're not supposed to be part of anything else. If
    * we were, we'd have been freed by jsvGarbageCollect */
@@ -664,21 +682,13 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
   /* Now, free children - see jsvar.h comments for how! */
   if (jsvHasStringExt(var)) {
     // Free the string without recursing
-    JsVarRef stringDataRef = jsvGetLastChild(var);
+    jsvFreePtrStringExt(var);
 #ifdef CLEAR_MEMORY_ON_FREE
     jsvSetLastChild(var, 0);
-#endif // CLEAR_MEMORY_ON_FREE
-    while (stringDataRef) {
-      JsVar *child = jsvGetAddressOf(stringDataRef);
-      assert(jsvIsStringExt(child));
-      stringDataRef = jsvGetLastChild(child);
-      jsvFreePtrInternal(child);
-    }
     if (jsvIsBasicString(var)) {
-  #ifdef CLEAR_MEMORY_ON_FREE
       jsvSetFirstChild(var, 0); // firstchild could have had string data in
-  #endif // CLEAR_MEMORY_ON_FREE
     }
+#endif // CLEAR_MEMORY_ON_FREE
   } else if (jsvIsFlatString(var)) { // We might be a flat string (we're not allowing strings to be added to flat strings yet)
     // in which case we need to free all the blocks.
     size_t count = jsvGetFlatStringBlocks(var);
@@ -715,7 +725,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
     can be ints or strings */
 
   if (jsvHasChildren(var)) {
-    JsVarRef childref = jsvGetFirstChild(var);
+    JsVarRef childref = jsvGetLastChild(var);
 #ifdef CLEAR_MEMORY_ON_FREE
     jsvSetFirstChild(var, 0);
     jsvSetLastChild(var, 0);
@@ -723,7 +733,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
     while (childref) {
       JsVar *child = jsvLock(childref);
       assert(jsvIsName(child));
-      childref = jsvGetNextSibling(child);
+      childref = jsvGetPrevSibling(child);
       jsvSetPrevSibling(child, 0);
       jsvSetNextSibling(child, 0);
       jsvUnRef(child);
@@ -991,9 +1001,9 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
   return flatString;
 }
 
-JsVar *jsvNewFromString(const char *str) {
+static JsVar *jsvNewNameOrString(const char *str, bool isName) {
   // Create a var
-  JsVar *first = jsvNewWithFlags(JSV_STRING_0);
+  JsVar *first = jsvNewWithFlags(isName ? JSV_NAME_STRING_0 : JSV_STRING_0);
   if (!first) return 0; // out of memory
   // Now we copy the string, but keep creating new jsVars if we go
   // over the end
@@ -1017,7 +1027,7 @@ JsVar *jsvNewFromString(const char *str) {
         jsvUnLock(var);
         return first;
       }
-      // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
+      // we don't ref, because StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
       jsvSetLastChild(var, jsvGetRef(next));
       jsvUnLock(var);
       var = next;
@@ -1026,6 +1036,14 @@ JsVar *jsvNewFromString(const char *str) {
   jsvUnLock(var);
   // return
   return first;
+}
+
+JsVar *jsvNewFromString(const char *str) {
+  return jsvNewNameOrString(str, false/*isName*/);
+}
+
+JsVar *jsvNewNameFromString(const char *str) {
+  return jsvNewNameOrString(str, true/*isName*/);
 }
 
 JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData) {
@@ -1195,8 +1213,8 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | t;
   } else if (varType>=_JSV_STRING_START && varType<=_JSV_STRING_END) {
     if (jsvGetCharactersInVar(var) > JSVAR_DATA_STRING_NAME_LEN) {
-      /* Argh. String is too large to fit in a JSV_NAME! We must chomp adjust
-       * STRINGEXTs and potentially add one to put the data in
+      /* Argh. String is too large to fit in a JSV_NAME! We must chomp
+       * new STRINGEXTs to put the data in
        */
       JsvStringIterator it;
       char queue[JSVAR_DATA_STRING_LEN - JSVAR_DATA_STRING_NAME_LEN];
@@ -1245,7 +1263,6 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
         index = (index + 1) % sizeof(queue);
       }
       jsvStringIteratorFree(&it);
-
       jsvSetCharactersInVar(var, JSVAR_DATA_STRING_NAME_LEN);
       jsvSetNextSibling(var, 0);
       jsvSetPrevSibling(var, 0);
@@ -2731,17 +2748,19 @@ void jsvAddName(JsVar *parent, JsVar *namedChild) {
   }
 }
 
-JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name) {
-  JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromString(name), child);
+JsVar *jsvAddNamedChild(JsVar *parent, JsVar *value, const char *name) {
+  assert(parent);
+  JsVar *namedChild = jsvNewNameFromString(name);
   if (!namedChild) return 0; // Out of memory
+  if (value) jsvSetFirstChild(namedChild, jsvGetRef(jsvRef(value)));
   jsvAddName(parent, namedChild);
   return namedChild;
 }
 
-JsVar *jsvSetNamedChild(JsVar *parent, JsVar *child, const char *name) {
+JsVar *jsvSetNamedChild(JsVar *parent, JsVar *value, const char *name) {
   JsVar *namedChild = jsvFindChildFromString(parent, name, true);
   if (namedChild) // could be out of memory
-    return jsvSetValueOfName(namedChild, child);
+    return jsvSetValueOfName(namedChild, value);
   return 0;
 }
 
@@ -2827,7 +2846,7 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFoun
 
   JsVar *child = 0;
   if (addIfNotFound) {
-    child = jsvMakeIntoVariableName(jsvNewFromString(name), 0);
+    child = jsvNewNameFromString(name);
     if (child) // could be out of memory
       jsvAddName(parent, child);
   }
@@ -3006,10 +3025,10 @@ JsVar *jsvObjectGetChildI(JsVar *obj, const char *name) {
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
   assert(jsvHasChildren(obj));
-  if (!jsvHasChildren(obj)) return child; // even if not an object, we still want to unlock the child
+  if (!jsvHasChildren(obj)) return 0;
   // child can actually be a name (for instance if it is a named function)
   JsVar *childName = jsvFindChildFromString(obj, name, true);
-  if (!childName) return child; // out of memory, even if no memory, we still want to unlock the child
+  if (!childName) return 0; // out of memory
   jsvSetValueOfName(childName, child);
   jsvUnLock(childName);
   return child;
@@ -3028,7 +3047,8 @@ JsVar *jsvObjectSetChildVar(JsVar *obj, JsVar *name, JsVar *child) {
 }
 
 void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child) {
-  jsvUnLock(jsvObjectSetChild(obj, name, child));
+  jsvObjectSetChild(obj, name, child);
+  jsvUnLock(child);
 }
 
 void jsvObjectRemoveChild(JsVar *obj, const char *name) {
@@ -4142,6 +4162,9 @@ void jsvDumpLockedVars() {
         jsvGarbageCollectMarkUsed(var);
         jsvTrace(var, 0);
       }
+      // if we have a flat string, skip that many blocks
+      if (jsvIsFlatString(var))
+        i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
     }
   }
   isMemoryBusy = MEM_NOT_BUSY;

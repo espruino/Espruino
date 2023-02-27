@@ -19,7 +19,7 @@
 #include "jswrap_functions.h" // insane check for eval in jspeFunctionCall
 #include "jswrap_json.h" // for jsfPrintJSON
 #include "jswrap_espruino.h" // for jswrap_espruino_memoryArea
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_REGEX
 #include "jswrap_regexp.h" // for jswrap_regexp_constructor
 #endif
 #ifdef ESPR_JIT
@@ -39,7 +39,7 @@ void jspeBlockNoBrackets();
 JsVar *jspeStatement();
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_ARROW_FN
 JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a);
 #endif
 // ----------------------------------------------- Utils
@@ -47,7 +47,6 @@ JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a);
 #define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , RETURN_VAL)
 #define JSP_MATCH(TOKEN) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , 0) // Match where the user could have given us the wrong token
 #define JSP_ASSERT_MATCH(TOKEN) { assert(0+lex->tk==(TOKEN));jslGetNextToken(); } // Match where if we have the wrong token, it's an internal error
-#define JSP_SHOULD_EXECUTE (((execInfo.execute)&EXEC_RUN_MASK)==EXEC_YES)
 #define JSP_SAVE_EXECUTE() JsExecFlags oldExecute = execInfo.execute
 #define JSP_RESTORE_EXECUTE() execInfo.execute = (execInfo.execute&(JsExecFlags)(~EXEC_SAVE_RESTORE_MASK)) | (oldExecute&EXEC_SAVE_RESTORE_MASK);
 #define JSP_HAS_ERROR (((execInfo.execute)&EXEC_ERROR_MASK)!=0)
@@ -492,7 +491,7 @@ NO_INLINE bool jspeParseFunctionCallBrackets() {
   JSP_MATCH('(');
   while (!JSP_SHOULDNT_PARSE && lex->tk != ')') {
     jsvUnLock(jspeAssignmentExpression());
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_ARROW_FN
     if (lex->tk==LEX_ARROW_FUNCTION) {
       jsvUnLock(jspeArrowFunction(0, 0));
     }
@@ -945,7 +944,7 @@ JsVar *jspGetNamedVariable(const char *tokenName) {
       if (!a) {
         /* Variable doesn't exist! JavaScript says we should create it
          * (we won't add it here. This is done in the assignment operator)*/
-        a = jsvMakeIntoVariableName(jsvNewFromString(tokenName), 0);
+        a = jsvNewNameFromString(tokenName);
       }
     }
   }
@@ -980,7 +979,7 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
       child = t;
     }
     // create a new name
-    JsVar *nameVar = jsvNewFromString(name);
+    JsVar *nameVar = jsvNewNameFromString(name);
     JsVar *newChild = jsvCreateNewChild(object, nameVar, child);
     jsvUnLock2(nameVar, child);
     child = newChild;
@@ -1002,7 +1001,7 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
         JsVar *p = jsvSkipNameAndUnLock(jspNewPrototype(objName));
         // jspNewPrototype returns a 'prototype' name that's already a child of eg. an array
         // Create a new 'name' called __proto__ that links to it
-        JsVar *i = jsvNewFromString(JSPARSE_INHERITS_VAR);
+        JsVar *i = jsvNewNameFromString(JSPARSE_INHERITS_VAR);
         if (p) child = jsvCreateNewChild(object, i, p);
         jsvUnLock2(p, i);
       }
@@ -1102,7 +1101,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
             if (!jsvIsNullish(aVar)) {
               // if no child found, create a pointer to where it could be
               // as we don't want to allocate it until it's written
-              JsVar *nameVar = jslGetTokenValueAsVar();
+              JsVar *nameVar = jsvNewNameFromString(jslGetTokenValueAsString());
               child = jsvCreateNewChild(aVar, nameVar, 0);
               jsvUnLock(nameVar);
             } else {
@@ -1209,20 +1208,80 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
   }
 
   JsVar *parent = 0;
-#ifndef SAVE_ON_FLASH
-  bool wasSuper = lex->tk==LEX_R_SUPER;
-#endif
-  JsVar *a = jspeFactorMember(jspeFactor(), &parent);
-#ifndef SAVE_ON_FLASH
-  if (wasSuper) {
-    /* if this was 'super.something' then we need
-     * to overwrite the parent, because it'll be
-     * set to the prototype otherwise.
+  JsVar *a = 0;
+
+#ifndef ESPR_NO_CLASSES
+  bool hasSetCurrentClassConstructor = false;
+  if (lex->tk==LEX_R_SUPER) {
+    JSP_ASSERT_MATCH(LEX_R_SUPER);
+    /* We would normally handle this in jspeFactor, but we're doing it here
+     as we have access to parent, which we need to be able to set because
+     super() is a bit like calling 'this.super()'. We also need to do some
+     hacky stuff to ensure
+
+     This is kind of nasty, since super appears to do
+     three different things depending on what 'this' is.
+
+      * In the constructor it references the extended class's constructor
+      * in a method it references the constructor's prototype.
+      * in a static method it references the extended class's constructor (but this is different)
      */
-    jsvUnLock(parent);
-    parent = jsvLockAgainSafe(execInfo.thisVar);
-  }
+    if (jsvIsObject(execInfo.thisVar)) {
+      // 'this' is an object - must be calling a normal method
+      JsVar *proto1;
+      if (execInfo.currentClassConstructor && lex->tk=='(') {
+        // If we're doing super() we want the constructor. We have to be careful
+        // we don't keep asking for the same one so don't get it from 'this' which has to be the
+        // same each time https://github.com/espruino/Espruino/issues/1529
+        proto1 = jsvObjectGetChild(execInfo.currentClassConstructor, JSPARSE_PROTOTYPE_VAR, 0);
+      } else {
+        proto1 = jsvObjectGetChild(execInfo.thisVar, JSPARSE_INHERITS_VAR, 0); // if we're in a method, get __proto__ first
+
+      }
+      JsVar *proto2 = jsvIsObject(proto1) ? jsvObjectGetChild(proto1, JSPARSE_INHERITS_VAR, 0) : 0; // still in method, get __proto__.__proto__
+      jsvUnLock(proto1);
+      if (!proto2) {
+        jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
+        return 0;
+      }
+      // If we're doing super() we want the constructor
+      if (lex->tk=='(') {
+        JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
+        jsvUnLock(proto2);
+        execInfo.currentClassConstructor = constr;
+        hasSetCurrentClassConstructor = true;
+        a = constr;
+      } else {
+        // But if we're doing something else - eg 'super.' or 'super[' then it needs to reference the prototype
+        a = proto2;
+      }
+    } else if (jsvIsFunction(execInfo.thisVar)) {
+      // 'this' is a function - must be calling a static method
+      JsVar *proto1 = jsvObjectGetChild(execInfo.thisVar, JSPARSE_PROTOTYPE_VAR, 0);
+      JsVar *proto2 = jsvIsObject(proto1) ? jsvObjectGetChild(proto1, JSPARSE_INHERITS_VAR, 0) : 0;
+      jsvUnLock(proto1);
+      if (!proto2) {
+        jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
+        return 0;
+      }
+      JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
+      jsvUnLock(proto2);
+      a = constr;
+    } else {
+      jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
+      return 0;
+    }
+    // search for member accesses eg 'super.xyz'...
+    JsVar *superVar = a;
+    a = jspeFactorMember(a, &parent);
+    // Set the parent to 'this' if it was undefined or equal to the 'super' var
+    if (!parent || parent==superVar) {
+      jsvUnLock(parent);
+      parent = jsvLockAgain(execInfo.thisVar);
+    }
+  } else
 #endif
+  a = jspeFactorMember(jspeFactor(), &parent);
 
   while ((lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) && !jspIsInterrupted()) {
     JsVar *funcName = a;
@@ -1237,12 +1296,16 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
       isConstructor = false; // don't treat subsequent brackets as constructors
     } else
       a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
-
     jsvUnLock3(funcName, func, parent);
     parent=0;
     a = jspeFactorMember(a, &parent);
   }
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_CLASSES
+  if (hasSetCurrentClassConstructor)
+    execInfo.currentClassConstructor = 0;
+#endif
+
+#ifndef ESPR_NO_GET_SET
   /* If we've got something that we care about the parent of (eg. a getter/setter)
    * then we repackage it into a 'NewChild' name that references the parent before
    * we leave. Note: You can't do this on everything because normally NewChild
@@ -1462,7 +1525,7 @@ NO_INLINE JsVar *jspeFactorDelete() {
   return result;
 }
 
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_TEMPLATE_LITERAL
 JsVar *jspeTemplateLiteral() {
   JsVar *a = 0;
   if (JSP_SHOULD_EXECUTE) {
@@ -1531,7 +1594,7 @@ NO_INLINE JsVar *jspeAddNamedFunctionParameter(JsVar *funcVar, JsVar *name) {
   return funcVar;
 }
 
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_ARROW_FN
 // parse an arrow function
 NO_INLINE JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a) {
   assert(!a || jsvIsName(a));
@@ -1612,7 +1675,12 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
   }
   if (lex->tk==LEX_R_EXTENDS) {
     JSP_ASSERT_MATCH(LEX_R_EXTENDS);
-    JsVar *extendsFrom = actuallyCreateClass ? jsvSkipNameAndUnLock(jspGetNamedVariable(jslGetTokenValueAsString())) : 0;
+    JsVar *extendsFromName = 0;
+    JsVar *extendsFrom = 0;
+    if (actuallyCreateClass) {
+      extendsFromName = jspGetNamedVariable(jslGetTokenValueAsString());
+      extendsFrom = jsvSkipName(extendsFromName);
+    }
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(extendsFrom,classFunction,classInternalName,classPrototype),0);
     if (classPrototype) {
       if (jsvIsFunction(extendsFrom)) {
@@ -1620,13 +1688,16 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
         if (extendsFromProto) {
           jsvObjectSetChild(classPrototype, JSPARSE_INHERITS_VAR, extendsFromProto);
           // link in default constructor if ours isn't supplied
-          jsvObjectSetChildAndUnLock(classFunction, JSPARSE_FUNCTION_CODE_NAME, jsvNewFromString("if(this.__proto__.__proto__.constructor)this.__proto__.__proto__.constructor.apply(this,arguments)"));
+          // We must reference it explicitly to ensure that we call the correct one when extending from a class that's already extended
+          // see https://github.com/espruino/Espruino/issues/1529#issuecomment-655217322
+          jsvObjectSetChildAndUnLock(classFunction, JSPARSE_FUNCTION_CODE_NAME,
+              jsvVarPrintf("%v.apply(this,arguments)", extendsFromName));
           jsvUnLock(extendsFromProto);
         }
       } else
-        jsExceptionHere(JSET_SYNTAXERROR, "'extends' argument should be a function, got %t", extendsFrom);
+        jsExceptionHere(JSET_SYNTAXERROR, "'extends' argument %q should be a function, got %t", extendsFromName, extendsFrom);
     }
-    jsvUnLock(extendsFrom);
+    jsvUnLock2(extendsFrom, extendsFromName);
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('{',jsvUnLock3(classFunction,classInternalName,classPrototype),0);
 
@@ -1681,7 +1752,7 @@ NO_INLINE JsVar *jspeFactor() {
   if (lex->tk==LEX_ID) {
     JsVar *a = jspGetNamedVariable(jslGetTokenValueAsString());
     JSP_ASSERT_MATCH(LEX_ID);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_TEMPLATE_LITERAL
     if (lex->tk==LEX_TEMPLATE_LITERAL)
       jsExceptionHere(JSET_SYNTAXERROR, "Tagged template literals not supported");
     else if (lex->tk==LEX_ARROW_FUNCTION &&
@@ -1710,7 +1781,7 @@ NO_INLINE JsVar *jspeFactor() {
   } else if (lex->tk=='(') {
     JSP_ASSERT_MATCH('(');
     if (!jspCheckStackPosition()) return 0;
-#ifdef SAVE_ON_FLASH
+#ifdef ESPR_NO_ARROW_FN
     // Just parse a normal expression (which can include commas)
     JsVar *a = jspeExpression();
     if (!JSP_SHOULDNT_PARSE) JSP_MATCH_WITH_RETURN(')',a);
@@ -1737,31 +1808,33 @@ NO_INLINE JsVar *jspeFactor() {
       a = jslGetTokenValueAsVar();
     JSP_ASSERT_MATCH(LEX_STR);
     return a;
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_TEMPLATE_LITERAL
   } else if (lex->tk==LEX_TEMPLATE_LITERAL) {
     return jspeTemplateLiteral();
 #endif
   } else if (lex->tk==LEX_REGEX) {
     JsVar *a = 0;
-#ifdef SAVE_ON_FLASH
+#ifdef ESPR_NO_REGEX
     jsExceptionHere(JSET_SYNTAXERROR, "RegEx are not supported in this version of Espruino\n");
 #else
-    JsVar *regex = jslGetTokenValueAsVar();
-    size_t regexEnd = 0, regexLen = 0;
-    JsvStringIterator it;
-    jsvStringIteratorNew(&it, regex, 0);
-    while (jsvStringIteratorHasChar(&it)) {
-      regexLen++;
-      if (jsvStringIteratorGetCharAndNext(&it)=='/')
-        regexEnd = regexLen;
+    if (JSP_SHOULD_EXECUTE) {
+      JsVar *regex = jslGetTokenValueAsVar();
+      size_t regexEnd = 0, regexLen = 0;
+      JsvStringIterator it;
+      jsvStringIteratorNew(&it, regex, 0);
+      while (jsvStringIteratorHasChar(&it)) {
+        regexLen++;
+        if (jsvStringIteratorGetCharAndNext(&it)=='/')
+          regexEnd = regexLen;
+      }
+      jsvStringIteratorFree(&it);
+      JsVar *flags = 0;
+      if (regexEnd < regexLen)
+        flags = jsvNewFromStringVar(regex, regexEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
+      JsVar *regexSource = jsvNewFromStringVar(regex, 1, regexEnd-2);
+      a = jswrap_regexp_constructor(regexSource, flags);
+      jsvUnLock3(regex, flags, regexSource);
     }
-    jsvStringIteratorFree(&it);
-    JsVar *flags = 0;
-    if (regexEnd < regexLen)
-      flags = jsvNewFromStringVar(regex, regexEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
-    JsVar *regexSource = jsvNewFromStringVar(regex, 1, regexEnd-2);
-    a = jswrap_regexp_constructor(regexSource, flags);
-    jsvUnLock3(regex, flags, regexSource);
 #endif
     JSP_ASSERT_MATCH(LEX_REGEX);
     return a;
@@ -1775,53 +1848,12 @@ NO_INLINE JsVar *jspeFactor() {
     if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_FUNCTION);
     return jspeFunctionDefinition(true);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_CLASSES
   } else if (lex->tk==LEX_R_CLASS) {
     if (!jspCheckStackPosition()) return 0;
     JSP_ASSERT_MATCH(LEX_R_CLASS);
     return jspeClassDefinition(true);
-  } else if (lex->tk==LEX_R_SUPER) {
-    JSP_ASSERT_MATCH(LEX_R_SUPER);
-    /* This is kind of nasty, since super appears to do
-      three different things.
-
-      * In the constructor it references the extended class's constructor
-      * in a method it references the constructor's prototype.
-      * in a static method it references the extended class's constructor (but this is different)
-     */
-
-    if (jsvIsObject(execInfo.thisVar)) {
-      // 'this' is an object - must be calling a normal method
-      JsVar *proto1 = jsvObjectGetChild(execInfo.thisVar, JSPARSE_INHERITS_VAR, 0); // if we're in a method, get __proto__ first
-      JsVar *proto2 = jsvIsObject(proto1) ? jsvObjectGetChild(proto1, JSPARSE_INHERITS_VAR, 0) : 0; // still in method, get __proto__.__proto__
-      jsvUnLock(proto1);
-      if (!proto2) {
-        jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
-        return 0;
-      }
-      // If we're doing super() we want the constructor
-      if (lex->tk=='(') {
-        JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
-        jsvUnLock(proto2);
-        return constr;
-      }
-      // But if we're doing something else - eg 'super.' or 'super[' then it needs to reference the prototype
-      return proto2;
-    } else if (jsvIsFunction(execInfo.thisVar)) {
-      // 'this' is a function - must be calling a static method
-      JsVar *proto1 = jsvObjectGetChild(execInfo.thisVar, JSPARSE_PROTOTYPE_VAR, 0);
-      JsVar *proto2 = jsvIsObject(proto1) ? jsvObjectGetChild(proto1, JSPARSE_INHERITS_VAR, 0) : 0;
-      jsvUnLock(proto1);
-      if (!proto2) {
-        jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
-        return 0;
-      }
-      JsVar *constr = jsvObjectGetChild(proto2, JSPARSE_CONSTRUCTOR_VAR, 0);
-      jsvUnLock(proto2);
-      return constr;
-    }
-    jsExceptionHere(JSET_SYNTAXERROR, "Calling 'super' outside of class");
-    return 0;
+  // LEX_R_SUPER is handled in jspeFactorFunctionCall now
 #endif
   } else if (lex->tk==LEX_R_THIS) {
     JSP_ASSERT_MATCH(LEX_R_THIS);
@@ -2850,7 +2882,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
   JsVar *funcName = 0;
   JsVar *funcVar;
 
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_CLASSES
   JSP_ASSERT_MATCH(isClass ? LEX_R_CLASS : LEX_R_FUNCTION);
 #else
   JSP_ASSERT_MATCH(LEX_R_FUNCTION);
@@ -2858,13 +2890,13 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
 
   bool actuallyCreateFunction = JSP_SHOULD_EXECUTE;
   if (actuallyCreateFunction) {
-    funcName = jsvMakeIntoVariableName(jslGetTokenValueAsVar(), 0);
+    funcName = jsvNewNameFromString(jslGetTokenValueAsString());
     if (!funcName) { // out of memory
       return 0;
     }
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(funcName), 0);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_CLASSES
   funcVar = isClass ? jspeClassDefinition(false) : jspeFunctionDefinition(false);
 #else
   funcVar = jspeFunctionDefinition(false);
@@ -2960,7 +2992,7 @@ NO_INLINE JsVar *jspeStatement() {
     return jspeStatementThrow();
   } else if (lex->tk==LEX_R_FUNCTION) {
     return jspeStatementFunctionDecl(false/* function */);
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_CLASSES
   } else if (lex->tk==LEX_R_CLASS) {
       return jspeStatementFunctionDecl(true/* class */);
 #endif

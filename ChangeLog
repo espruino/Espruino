@@ -37,6 +37,23 @@
             Pixl.js: Don't load the splash screen if BTN1 and BTN4 held down (for recovery purposes)
             Fix potential lock leaks during out of memory errors
             Graphics: Added g.getVectorFontPolys to allow the underlying polygons behind a vector font to be retrieved
+            nRF5x: ensure we only clear pairing data if ALL buttons are pressed at boot to avoid accidental deletion
+            Graphics: Fix font clipping on rotated non-square graphics instances (fix #2326)
+            Fix jsvDumpLockedVars when flat strings are in memory (https://github.com/espruino/Espruino/issues/2323#issuecomment-1426107603)
+            Fix bool return values when building for 64 bit (fix #2323)
+            nRF52: Add support for 7 bit UART tx/rx (and parity) and error if a UART setting can't be honoured (fix #2324)
+            Bangle.js2: Fix regression in E.showMenu so you can use menu items with ':undefined' (as in the example in the reference)
+            Graphics: Ensure that an error is thrown if a palette is used in >8 bit images. It was previously possible to ask for a palette on a 32 bit image, which caused an overflow
+            Fix issue extending a class from a class from a class (fix #1529)
+            Added Object.getOwnPropertyDescriptors
+            Added Object.fromEntries (fix #2327)
+            Ignore whitespace after ':' in HTTP headers (fix #2331)
+            Don't allocate RegEx if just scanning over code 
+            Don't store String/RegEx data in variables if we're just scanning over code
+            Ensure that if possible we create a JsVar Name direct from the underlying string, rather than creating and then converting (#2329)
+            Bangle.js2: Fix Compass Z heading (fix #2332)
+            Micro:bit 1: remove support for paletted images to free up flash
+            Bangle.js: Fix for Bangle.is* functions after #2323 fix
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

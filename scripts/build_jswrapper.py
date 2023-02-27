@@ -728,7 +728,7 @@ codeOut("/** If we have a built-in module with the given name, return the module
 codeOut('const char *jswGetBuiltInJSLibrary(const char *name) {')
 for modulename in jsmodules:
   codeOut("  if (!strcmp(name,\""+modulename+"\")) return "+json.dumps(jsmodules[modulename])+";")
-  codeOut('  return 0;')
+codeOut('  return 0;')
 codeOut('}')
 
 codeOut('')

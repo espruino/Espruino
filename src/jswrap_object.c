@@ -356,6 +356,39 @@ JsVar *jswrap_object_values_or_entries(JsVar *object, bool returnEntries) {
   return cbData[0];
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Object",
+  "name" : "fromEntries",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_object_fromEntries",
+  "params" : [
+    ["entries","JsVar","An array of `[key,value]` pairs to be used to create an object"]
+  ],
+  "return" : ["JsVar","An object containing all the specified pairs"]
+}
+Transforms an array of key-value pairs into an object
+ */
+JsVar *jswrap_object_fromEntries(JsVar *entries) {
+  if (!jsvIsArray(entries)) return 0;
+  JsVar *obj = jsvNewObject();
+  if (!obj) return 0;
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, entries);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *e = jsvObjectIteratorGetValue(&it);
+    if (jsvIsArray(e)) {
+      JsVar *key = jsvGetArrayItem(e, 0);
+      JsVar *value = jsvGetArrayItem(e, 1);
+      if (jsvIsString(key))
+        jsvObjectSetChildVar(obj, key, value);
+      jsvUnLock2(key,value);
+    }
+    jsvUnLock(e);
+    jsvObjectIteratorNext(&it);
+  }
+  return obj;
+}
 
 /*JSON{
   "type" : "staticmethod",
@@ -439,6 +472,50 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
 
   jsvUnLock(varName);
   return obj;
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Object",
+  "name" : "getOwnPropertyDescriptors",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_object_getOwnPropertyDescriptors",
+  "params" : [
+    ["obj","JsVar","The object"]
+  ],
+  "return" : ["JsVar","An object containing all the property descriptors of an object"]
+}
+Get information on all properties in the object (from `Object.getOwnPropertyDescriptor`), or just `{}` if no properties
+ */
+JsVar *jswrap_object_getOwnPropertyDescriptors(JsVar *parent) {
+  if (!jsvHasChildren(parent)) {
+    jsExceptionHere(JSET_TYPEERROR, "First argument must be an object, got %t", parent);
+    return 0;
+  }
+  JsVar *descriptors = jsvNewObject();
+  if (!descriptors) return 0;
+
+  /* There is some code mentioned at https://github.com/espruino/Espruino/issues/1302#issuecomment-1430833414
+
+  const protoPropDescriptor = Object.getOwnPropertyDescriptor(obj, '__proto__');
+  const descriptors = protoPropDescriptor ? { ['__proto__']: protoPropDescriptor } : {};
+
+  which we're not implementing here - but I think the current implementation is fine for 99% of cases
+  */
+
+  JsVar *ownPropertyNames = jswrap_object_keys_or_property_names(parent, JSWOKPF_INCLUDE_NON_ENUMERABLE);
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, ownPropertyNames);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *propName = jsvObjectIteratorGetValue(&it);
+    JsVar *propValue = jswrap_object_getOwnPropertyDescriptor(parent, propName);
+    jsvObjectSetChildVar(descriptors, propName, propValue);
+    jsvUnLock2(propName, propValue);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  jsvUnLock(ownPropertyNames);
+  return descriptors;
 }
 
 /*JSON{
