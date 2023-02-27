@@ -170,6 +170,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
     info->bitmapOffset += info->headerLength;
     if (info->bpp & 64) { // included palette data
       info->bpp = info->bpp&63;
+#ifndef SAVE_ON_FLASH_EXTREME
       if (info->bpp > 8) {
         jsExceptionHere(JSET_ERROR, "Can't have palette on >8 bit images");
         _jswrap_graphics_freeImageInfo(info);
@@ -205,6 +206,9 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
       // modify image start
       info->headerLength += (unsigned short)(paletteEntries*2);
       info->bitmapOffset += (unsigned short)(paletteEntries*2);
+#else
+      jsExceptionHere(JSET_ERROR, "Image Palette not supported on this build");
+#endif
     }
   } else {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
