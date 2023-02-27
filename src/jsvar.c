@@ -1042,11 +1042,8 @@ JsVar *jsvNewFromString(const char *str) {
   return jsvNewNameOrString(str, false/*isName*/);
 }
 
-JsVar *jsvNewNameFromString(const char *str, JsVar *valueOrZero) {
-  JsVar *var = jsvNewNameOrString(str, true/*isName*/);
-  if (var && valueOrZero)
-    jsvSetFirstChild(var, jsvGetRef(jsvRef(valueOrZero)));
-  return var;
+JsVar *jsvNewNameFromString(const char *str) {
+  return jsvNewNameOrString(str, true/*isName*/);
 }
 
 JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData) {
@@ -2732,17 +2729,19 @@ void jsvAddName(JsVar *parent, JsVar *namedChild) {
   }
 }
 
-JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name) {
-  JsVar *namedChild = jsvNewNameFromString(name, child);
+JsVar *jsvAddNamedChild(JsVar *parent, JsVar *value, const char *name) {
+  assert(parent);
+  JsVar *namedChild = jsvNewNameFromString(name);
   if (!namedChild) return 0; // Out of memory
+  if (value) jsvSetFirstChild(namedChild, jsvGetRef(jsvRef(value)));
   jsvAddName(parent, namedChild);
   return namedChild;
 }
 
-JsVar *jsvSetNamedChild(JsVar *parent, JsVar *child, const char *name) {
+JsVar *jsvSetNamedChild(JsVar *parent, JsVar *value, const char *name) {
   JsVar *namedChild = jsvFindChildFromString(parent, name, true);
   if (namedChild) // could be out of memory
-    return jsvSetValueOfName(namedChild, child);
+    return jsvSetValueOfName(namedChild, value);
   return 0;
 }
 
@@ -2828,7 +2827,7 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFoun
 
   JsVar *child = 0;
   if (addIfNotFound) {
-    child = jsvNewNameFromString(name, 0);
+    child = jsvNewNameFromString(name);
     if (child) // could be out of memory
       jsvAddName(parent, child);
   }

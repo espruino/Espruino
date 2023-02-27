@@ -944,7 +944,7 @@ JsVar *jspGetNamedVariable(const char *tokenName) {
       if (!a) {
         /* Variable doesn't exist! JavaScript says we should create it
          * (we won't add it here. This is done in the assignment operator)*/
-        a = jsvNewNameFromString(tokenName, 0);
+        a = jsvNewNameFromString(tokenName);
       }
     }
   }
@@ -979,7 +979,7 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
       child = t;
     }
     // create a new name
-    JsVar *nameVar = jsvNewFromString(name);
+    JsVar *nameVar = jsvNewNameFromString(name);
     JsVar *newChild = jsvCreateNewChild(object, nameVar, child);
     jsvUnLock2(nameVar, child);
     child = newChild;
@@ -1001,7 +1001,7 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
         JsVar *p = jsvSkipNameAndUnLock(jspNewPrototype(objName));
         // jspNewPrototype returns a 'prototype' name that's already a child of eg. an array
         // Create a new 'name' called __proto__ that links to it
-        JsVar *i = jsvNewFromString(JSPARSE_INHERITS_VAR);
+        JsVar *i = jsvNewNameFromString(JSPARSE_INHERITS_VAR);
         if (p) child = jsvCreateNewChild(object, i, p);
         jsvUnLock2(p, i);
       }
@@ -1101,7 +1101,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
             if (!jsvIsNullish(aVar)) {
               // if no child found, create a pointer to where it could be
               // as we don't want to allocate it until it's written
-              JsVar *nameVar = jslGetTokenValueAsVar();
+              JsVar *nameVar = jsvNewNameFromString(jslGetTokenValueAsString());
               child = jsvCreateNewChild(aVar, nameVar, 0);
               jsvUnLock(nameVar);
             } else {
@@ -2890,7 +2890,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
 
   bool actuallyCreateFunction = JSP_SHOULD_EXECUTE;
   if (actuallyCreateFunction) {
-    funcName = jsvNewNameFromString(jslGetTokenValueAsString(), 0);
+    funcName = jsvNewNameFromString(jslGetTokenValueAsString());
     if (!funcName) { // out of memory
       return 0;
     }
