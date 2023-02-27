@@ -51,7 +51,7 @@
             Don't allocate RegEx if just scanning over code 
             Don't store String/RegEx data in variables if we're just scanning over code
             Ensure that if possible we create a JsVar Name direct from the underlying string, rather than creating and then converting (#2329)
-            Bangle.js2: Fix Compass Z heading (fix #1208)
+            Bangle.js2: Fix Compass Z heading (fix #2332)
             Micro:bit 1: remove support for paletted images to free up flash
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
