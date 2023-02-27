@@ -2656,7 +2656,7 @@ Set power with `Bangle.setHRMPower(...);`
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isHRMOn() {
-  return bangleFlags & JSBF_HRM_ON;
+  return (bangleFlags & JSBF_HRM_ON)!=0;
 }
 
 #ifdef GPS_PIN_RX
@@ -2735,7 +2735,7 @@ Set power with `Bangle.setGPSPower(...);`
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isGPSOn() {
-  return bangleFlags & JSBF_GPS_ON;
+  return (bangleFlags & JSBF_GPS_ON)!=0;
 }
 
 /*JSON{
@@ -2828,7 +2828,7 @@ Set power with `Bangle.setCompassPower(...);`
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isCompassOn() {
-  return bangleFlags & JSBF_COMPASS_ON;
+  return (bangleFlags & JSBF_COMPASS_ON)!=0;
 }
 
 /*JSON{
@@ -2958,7 +2958,7 @@ Set power with `Bangle.setBarometerPower(...);`
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isBarometerOn() {
-  return bangleFlags & JSBF_BAROMETER_ON;
+  return (bangleFlags & JSBF_BAROMETER_ON)!=0;
 }
 
 /*JSON{
