@@ -160,10 +160,7 @@ void jswrap_spi_setup(
       jshPinSetState(inf.pinMOSI,  JSHPINSTATE_GPIO_OUT);
   } else return;
   // Set up options, so we can initialise it on startup
-  if (options)
-    jsvUnLock(jsvSetNamedChild(parent, options, DEVICE_OPTIONS_NAME));
-  else
-    jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
+  jsvObjectSetOrRemoveChild(parent, DEVICE_OPTIONS_NAME, options);
 }
 
 
@@ -618,10 +615,7 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
 #endif
     }
     // Set up options, so we can initialise it on startup
-    if (options)
-      jsvUnLock(jsvSetNamedChild(parent, options, DEVICE_OPTIONS_NAME));
-    else
-      jsvObjectRemoveChild(parent, DEVICE_OPTIONS_NAME);
+    jsvObjectSetOrRemoveChild(parent, DEVICE_OPTIONS_NAME, options);
   }
 }
 

@@ -2757,13 +2757,6 @@ JsVar *jsvAddNamedChild(JsVar *parent, JsVar *value, const char *name) {
   return namedChild;
 }
 
-JsVar *jsvSetNamedChild(JsVar *parent, JsVar *value, const char *name) {
-  JsVar *namedChild = jsvFindChildFromString(parent, name, true);
-  if (namedChild) // could be out of memory
-    return jsvSetValueOfName(namedChild, value);
-  return 0;
-}
-
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
   assert(name && jsvIsName(name));
   assert(name!=src); // no infinite loops!
