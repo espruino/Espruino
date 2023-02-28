@@ -63,6 +63,7 @@ function getDocumentation(object) {
           ? [""].concat(
               object.params
                 .map(([name, type, description]) => {
+                  if (name === "this") name = "thisArg";
                   const desc = getParameterDescription(description);
                   return (
                     "@param {" +
@@ -128,6 +129,7 @@ function getArguments(method) {
       if (param[0] == "pin" && param[1] == "JsLet") param[1] = "Pin";
       if (param[0] === "function") param[0] = "func";
       if (param[0] === "var") param[0] = "variable";
+      if (param[0] === "this") param[0] = "thisArg";
       let doc = typeof param[2] === "string" ? param[2] : param[2].join("\n");
       let optional = doc && doc.startsWith("[optional]");
       let rest = param[1] === "JsVarArray";
