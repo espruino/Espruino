@@ -23,7 +23,7 @@ $(ESP_ZIP): $(PROJ_NAME).bin
 	  $(ESP_APP_TEMPLATE_PATH)/build/partitions_espruino.bin \
 	  targets/esp32/README_flash.txt \
 	  $(PROJ_NAME)
-	$(Q)tar -zcf $(ESP_ZIP) $(PROJ_NAME) --transform='s/$(BINDIR)\///g'
+	$(Q)$(TAR) -zcf $(ESP_ZIP) $(PROJ_NAME) --transform='s/$(BINDIR)\///g'
 
 proj: $(PROJ_NAME).bin $(ESP_ZIP)
 

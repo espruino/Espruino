@@ -98,9 +98,11 @@ MACOSX=1
 CFLAGS+=-D__MACOSX__
 STAT_FLAGS='-f ''%z'''
 REALPATH='grealpath'
+TAR='gtar'
 else
 STAT_FLAGS='-c ''%s'''
 REALPATH='realpath'
+TAR='tar'
 endif
 
 ifeq ($(OS),Windows_NT)

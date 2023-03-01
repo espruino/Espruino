@@ -109,7 +109,7 @@ $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	  targets/esp8266/README_flash.txt \
 	  targets/esp8266/Makefile \
 	  $(PROJ_NAME)
-	$(Q)tar -zcf $(ESP_ZIP) $(PROJ_NAME) --transform='s/$(BINDIR)\///g'
+	$(Q)$(TAR) -zcf $(ESP_ZIP) $(PROJ_NAME) --transform='s/$(BINDIR)\///g'
 
 # Combined 512k/4096k binary that includes everything that's needed and can be
 # flashed to 0 in 512k/4096k parts
