@@ -903,6 +903,188 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
   else if (ydir<0) gfx->fillRect(gfx,x1,y2+1+ydir,x2,y2, gfx->data.bgColor);
 }
 
+/** Draw a bitmap of w,h at x,y. These bitmaps are stored column-ordered (as
+ they are designed for fonts of variable width) */
+void graphicsDrawGlyph(JsGraphics *gfx, int x, int y, int scalex, int scaley, int cw, int ch, int bpp, int bitOffset, bool solidBackground, JsvStringIterator *cit) {
+  bitOffset &= 7;
+  int bppRange = (1<<bpp)-1;
+  int citdata = jsvStringIteratorGetCharAndNext(cit);
+  citdata <<= bpp*bitOffset;
+#ifndef SAVE_ON_FLASH
+  // fast path for 1bpp
+  if (scalex==1 && scaley==1 && bpp==1) {
+    for (int cx=0;cx<cw;cx++) {
+      for (int cy=0;cy<ch;cy++) {
+        int col = (citdata>>7)&1;
+        if (solidBackground || col)
+          graphicsSetPixel(gfx,x+cx,y+cy, col ? gfx->data.fgColor : gfx->data.bgColor);
+        bitOffset ++;
+        citdata <<= 1;
+        if (bitOffset>=8) {
+          bitOffset=0;
+          citdata = jsvStringIteratorGetCharAndNext(cit);
+        }
+      }
+    }
+    return;
+  }
+  // Nice font doubling/tripling code
+  #define MAX_FOUNTDOUBLE_HEIGHT 32
+  if (scalex==scaley && (scalex==2 || scalex==3) && ch<=MAX_FOUNTDOUBLE_HEIGHT) { // fast path for 1bpp
+    unsigned char cola[MAX_FOUNTDOUBLE_HEIGHT+2];
+    unsigned char colb[MAX_FOUNTDOUBLE_HEIGHT+2];
+    unsigned char colc[MAX_FOUNTDOUBLE_HEIGHT+2];
+    memset(cola,0,sizeof(cola));
+    memset(colb,0,sizeof(colb));
+    memset(colc,0,sizeof(colc));
+    for (int cx=0;cx<=cw;cx++) {
+      // Get the data
+      if (cx<cw) {
+        for (int cy=0;cy<ch;cy++) {
+          int col = ((citdata&255)>>(8-bpp));
+          colc[cy+1] = (unsigned char)col;
+          bitOffset += bpp;
+          citdata <<= bpp;
+          if (bitOffset>=8) {
+            bitOffset=0;
+            citdata = jsvStringIteratorGetCharAndNext(cit);
+          }
+        }
+      } else memset(colc,0,sizeof(colc));
+      // Do our algorithm
+      if (scalex==2) {
+        for (int cy=0;cy<ch;cy++) {
+          int lx = x+(cx-1)*2;
+          int ly = y+(cy*2);
+          /*   A
+          *  C P B
+          *    D
+          */
+          unsigned char A = cola[cy+1];
+          unsigned char C = colb[cy];
+          unsigned char P = colb[cy+1];
+          unsigned char B = colb[cy+2];
+          unsigned char D = colc[cy+1];
+          //AdvMAME2×
+          bool p1=P, p2=P, p3=P, p4=P;
+          if ((C==A) && (C!=D) && (A!=B)) p1=A;
+          if ((A==B) && (A!=C) && (B!=D)) p2=B;
+          if ((D==C) && (D!=B) && (C!=A)) p3=C;
+          if ((B==D) && (B!=A) && (D!=C)) p4=D;
+
+          if (solidBackground || p1)
+           graphicsSetPixel(gfx,
+                lx, ly,
+                p1 ? gfx->data.fgColor : gfx->data.bgColor);
+          if (solidBackground || p2)
+            graphicsSetPixel(gfx,
+                lx, ly+1,
+                p2 ? gfx->data.fgColor : gfx->data.bgColor);
+          if (solidBackground || p3)
+            graphicsSetPixel(gfx,
+                lx+1, ly,
+                p3 ? gfx->data.fgColor : gfx->data.bgColor);
+          if (solidBackground || p4)
+            graphicsSetPixel(gfx,
+                lx+1, ly+1,
+                p4 ? gfx->data.fgColor : gfx->data.bgColor);
+        }
+      }
+      if (scalex==3) {
+        for (int cy=0;cy<ch;cy++) {
+          int lx = x+(cx-1)*3;
+          int ly = y+(cy*3);
+          /* A B C
+          *  D E F   1 2
+          *  G H I    3 4
+          */
+          unsigned char A = cola[cy];
+          unsigned char B = cola[cy+1];
+          unsigned char C = cola[cy+2];
+          unsigned char D = colb[cy];
+          unsigned char E = colb[cy+1];
+          unsigned char F = colb[cy+2];
+          unsigned char G = colc[cy];
+          unsigned char H = colc[cy+1];
+          unsigned char I = colc[cy+2];
+
+          //AdvMAME3×
+          bool p1=E, p2=E, p3=E, p4=E, p5=E, p6=E, p7=E, p8=E, p9=E;
+          if (D==B && D!=H && B!=F) p1=D;
+          if ((D==B && D!=H && B!=F && E!=C) || (B==F && B!=D && F!=H && E!=A)) p2=B;
+          if (B==F && B!=D && F!=H) p3=F;
+          if ((H==D && H!=F && D!=B && E!=A) || (D==B && D!=H && B!=F && E!=G)) p4=D;
+          if ((B==F && B!=D && F!=H && E!=I) || (F==H && F!=B && H!=D && E!=C)) p6=F;
+          if (H==D && H!=F && D!=B) p7=D;
+          if ((F==H && F!=B && H!=D && E!=G) || (H==D && H!=F && D!=B && E!=I)) p8=H;
+          if (F==H && F!=B && H!=D) p9=F;
+
+          if (solidBackground || p1)
+           graphicsSetPixel(gfx,
+                lx, ly,
+                graphicsBlendGfxColor(gfx, (256*p1)/bppRange));
+          if (solidBackground || p2)
+            graphicsSetPixel(gfx,
+                lx, ly+1,
+                graphicsBlendGfxColor(gfx, (256*p2)/bppRange));
+          if (solidBackground || p3)
+            graphicsSetPixel(gfx,
+                lx, ly+2,
+                graphicsBlendGfxColor(gfx, (256*p3)/bppRange));
+          if (solidBackground || p4)
+            graphicsSetPixel(gfx,
+                lx+1, ly,
+                graphicsBlendGfxColor(gfx, (256*p4)/bppRange));
+          if (solidBackground || p5)
+           graphicsSetPixel(gfx,
+                lx+1, ly+1,
+                graphicsBlendGfxColor(gfx, (256*p5)/bppRange));
+          if (solidBackground || p6)
+            graphicsSetPixel(gfx,
+                lx+1, ly+2,
+                graphicsBlendGfxColor(gfx, (256*p6)/bppRange));
+          if (solidBackground || p7)
+            graphicsSetPixel(gfx,
+                lx+2, ly,
+                graphicsBlendGfxColor(gfx, (256*p7)/bppRange));
+          if (solidBackground || p8)
+            graphicsSetPixel(gfx,
+                lx+2, ly+1,
+                graphicsBlendGfxColor(gfx, (256*p8)/bppRange));
+          if (solidBackground || p9)
+            graphicsSetPixel(gfx,
+                lx+2, ly+2,
+                graphicsBlendGfxColor(gfx, (256*p9)/bppRange));
+        }
+      }
+      // move on
+      memcpy(cola, colb, sizeof(cola));
+      memcpy(colb, colc, sizeof(colb));
+    }
+    return;
+  }
+#endif
+  for (int cx=0;cx<cw;cx++) {
+    for (int cy=0;cy<ch;cy++) {
+      int col = ((citdata&255)>>(8-bpp));
+      if (solidBackground || col)
+        graphicsFillRect(gfx,
+            (x + cx*scalex),
+            (y + cy*scaley),
+            (x + cx*scalex + scalex-1),
+            (y + cy*scaley + scaley-1),
+            graphicsBlendGfxColor(gfx, (256*col)/bppRange));
+      bitOffset += bpp;
+      citdata <<= bpp;
+      if (bitOffset>=8) {
+        bitOffset=0;
+        citdata = jsvStringIteratorGetCharAndNext(cit);
+      }
+    }
+  }
+}
+
+
 static void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str) {
   // no need to modify coordinates as setPixel does that
   while (*str) {

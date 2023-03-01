@@ -17,6 +17,7 @@
 
 #include "jsutils.h"
 #include "jsvar.h"
+#include "jsvariterator.h"
 
 #ifdef SAVE_ON_FLASH
 #define NO_VECTOR_FONT
@@ -223,6 +224,9 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); ///< each p
 void graphicsDrawImage1bpp(JsGraphics *gfx, int x1, int y1, int width, int height, const unsigned char *pixelData);
 /// Scroll the graphics device (in user coords). X>0 = to right, Y >0 = down
 void graphicsScroll(JsGraphics *gfx, int xdir, int ydir);
+/** Draw a bitmap of w,h at x,y. These bitmaps are stored column-ordered (as
+ they are designed for fonts of variable width) */
+void graphicsDrawGlyph(JsGraphics *gfx, int x, int y, int scalex, int scaley, int cw, int ch, int bpp, int bitOffset, bool solidBackground, JsvStringIterator *cit);
 
 void graphicsSplash(JsGraphics *gfx); ///< splash screen
 

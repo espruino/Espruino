@@ -2442,29 +2442,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
         // now render character
         JsvStringIterator cit;
         jsvStringIteratorNew(&cit, customBitmap, (size_t)(bmpOffset>>3));
-        bmpOffset &= 7;
-        int cx,cy;
-        int citdata = jsvStringIteratorGetChar(&cit);
-        citdata <<= customBPP*bmpOffset;
-        for (cx=0;cx<width;cx++) {
-          for (cy=0;cy<ch;cy++) {
-            int col = ((citdata&255)>>(8-customBPP));
-            if (solidBackground || col)
-              graphicsFillRect(&gfx,
-                  (x + cx*info.scalex),
-                  (y + cy*info.scaley),
-                  (x + cx*info.scalex + info.scalex-1),
-                  (y + cy*info.scaley + info.scaley-1),
-                  graphicsBlendGfxColor(&gfx, (256*col)/customBPPRange));
-            bmpOffset += customBPP;
-            citdata <<= customBPP;
-            if (bmpOffset>=8) {
-              bmpOffset=0;
-              jsvStringIteratorNext(&cit);
-              citdata = jsvStringIteratorGetChar(&cit);
-            }
-          }
-        }
+        graphicsDrawGlyph(&gfx, x, y, info.scalex, info.scaley, width, ch, customBPP, bmpOffset, solidBackground, &cit);
         jsvStringIteratorFree(&cit);
       }
       x += width*info.scalex;
@@ -3629,14 +3607,14 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
 #if defined(GRAPHICS_PALETTED_IMAGES)
       } else if (realBPP==4) {
         for (int i=0;i<16;i++) {
-          int p = PALETTE_4BIT[i];
+          unsigned char p = PALETTE_4BIT[i];
           imgPtr[26 + (i*3)] = (p<<3)&0xF8;
           imgPtr[27 + (i*3)] = (p>>3)&0xFC;
           imgPtr[28 + (i*3)] = (p>>8)&0xF8;
         }
       } else if (realBPP==8) {
         for (int i=0;i<255;i++) {
-          int p = PALETTE_8BIT[i];
+          unsigned char p = PALETTE_8BIT[i];
           imgPtr[26 + (i*3)] = (p<<3)&0xF8;
           imgPtr[27 + (i*3)] = (p>>3)&0xFC;
           imgPtr[28 + (i*3)] = (p>>8)&0xF8;
@@ -3644,7 +3622,7 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
 #endif
       } else { // otherwise default to greyscale
         for (int i=0;i<(1<<realBPP);i++) {
-          int c = 255 * i / (1<<realBPP);
+          unsigned char c = 255 * i / (1<<realBPP);
           imgPtr[26 + (i*3)] = c;
           imgPtr[27 + (i*3)] = c;
           imgPtr[28 + (i*3)] = c;
