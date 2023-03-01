@@ -1160,7 +1160,10 @@ This executes the function with the supplied 'this' argument and parameters
     ["this","JsVar","The value to use as the 'this' argument when executing the function"],
     ["args","JsVar","Optional Array of Arguments"]
   ],
-  "return" : ["JsVar","The return value of executing this function"]
+  "return" : ["JsVar","The return value of executing this function"],
+  "typescript" : [
+    "apply(thisArg: any, args: ArrayLike<any>): any;"
+  ]
 }
 This executes the function with the supplied 'this' argument and parameters
  */
