@@ -34,7 +34,8 @@
     "class" : "NRF",
     "name" : "getSecurityStatus",
     "generate_full" : "jsvNewObject()",
-    "return" : ["JsVar", "An object" ]
+    "return" : ["JsVar", "An object" ],
+    "return_object" : "NRFSecurityStatus"
 }
 */
 /*JSON{

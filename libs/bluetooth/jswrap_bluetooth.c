@@ -3454,13 +3454,27 @@ void jswrap_ble_setSecurity(JsVar *options) {
   }
 }
 
+/*TYPESCRIPT
+type NRFSecurityStatus = {
+  connected: false
+} | {
+  connected: boolean,
+  encrypted: boolean,
+  mitm_protected: boolean,
+  bonded: boolean,
+  advertising: boolean,
+  connected_addr?: string,
+};
+*/
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "getSecurityStatus",
     "ifdef" : "NRF52_SERIES",
     "generate" : "jswrap_ble_getSecurityStatus",
-    "return" : ["JsVar", "An object" ]
+    "return" : ["JsVar", "An object" ],
+    "return_object" : "NRFSecurityStatus"
 }
 Return an object with information about the security state of the current
 peripheral connection:
@@ -3859,7 +3873,8 @@ JsVar *jswrap_ble_BluetoothRemoteGATTServer_startBonding(JsVar *parent, bool for
     "name" : "getSecurityStatus",
     "ifdef" : "NRF52_SERIES",
     "generate" : "jswrap_ble_BluetoothRemoteGATTServer_getSecurityStatus",
-    "return" : ["JsVar", "An object" ]
+    "return" : ["JsVar", "An object" ],
+    "return_object" : "NRFSecurityStatus"
 }
 Return an object with information about the security state of the current
 connection:
