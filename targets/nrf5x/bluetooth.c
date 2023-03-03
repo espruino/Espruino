@@ -3100,6 +3100,8 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
     jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
     jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
     jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
+    bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
+    jsvObjectSetChildAndUnLock(result, "advertising", jsvNewFromBool(isAdvertising));
 #ifndef SAVE_ON_FLASH
     if (status.connected && conn_handle==m_peripheral_conn_handle)
       jsvObjectSetChildAndUnLock(result, "connected_addr", bleAddrToStr(m_peripheral_addr));
