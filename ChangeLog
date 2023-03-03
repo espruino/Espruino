@@ -56,6 +56,7 @@
             Bangle.js: Fix for Bangle.is* functions after #2323 fix
             MakeIntoVariableName now shifts oversize strings around rather than re-allocating, which reduces fragmentation (#2329)
             Fix scopes in `eval` (now uses the current function's scope) - fixes `(function(){eval("var x=42;print(x);")})()` 
+            Ensure new StorageFiles have 'len' set to 0
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

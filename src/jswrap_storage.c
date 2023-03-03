@@ -525,14 +525,13 @@ JsVar *jswrap_storage_open(JsVar *name, JsVar *modeVar) {
   int offset = 0; // offset in file
   JsfFileHeader header;
   uint32_t addr = jsfFindFile(fname, &header);
-  uint32_t fileLen = jsfGetFileSize(&header);
   if (mode=='w') { // write,
     if (addr) { // we had a file - erase it
       jswrap_storagefile_erase(f);
       addr = 0;
-      fileLen = 0;
     }
   }
+  uint32_t fileLen = addr ? jsfGetFileSize(&header) : 0;
   if (mode=='a') { // append
     // Find the last free page (eg it has 0xFF at the end)
     unsigned char lastCh = 255;
