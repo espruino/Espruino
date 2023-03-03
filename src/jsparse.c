@@ -2837,10 +2837,13 @@ NO_INLINE JsVar *jspeStatementTry() {
   }
   if (lex->tk == LEX_R_FINALLY || (!hadCatch && ((execInfo.execute&(EXEC_ERROR|EXEC_INTERRUPTED))==0))) {
     JSP_MATCH(LEX_R_FINALLY);
-    // clear the exception flag - but only momentarily!
-    if (hadException) execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_EXCEPTION;
+    // clear the exception flag so we can execute 'finally' - but only momentarily!
+    JsExecFlags oldExec = execInfo.execute;
+    if (shouldExecuteBefore)
+      execInfo.execute = (execInfo.execute & (JsExecFlags)~(EXEC_EXCEPTION|EXEC_RETURN|EXEC_BREAK|EXEC_CONTINUE)) | EXEC_YES;
     jspeBlock();
     // put the flag back!
+    execInfo.execute = oldExec;
     if (hadException && !hadCatch) execInfo.execute = execInfo.execute | EXEC_EXCEPTION;
   }
   return 0;
