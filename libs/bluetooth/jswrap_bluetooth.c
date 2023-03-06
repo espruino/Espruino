@@ -3456,15 +3456,21 @@ void jswrap_ble_setSecurity(JsVar *options) {
 
 /*TYPESCRIPT
 type NRFSecurityStatus = {
-  connected: false
-} | {
-  connected: boolean,
-  encrypted: boolean,
-  mitm_protected: boolean,
-  bonded: boolean,
   advertising: boolean,
-  connected_addr?: string,
-};
+} & (
+  {
+    connected: true,
+    encrypted: boolean,
+    mitm_protected: boolean,
+    bonded: boolean,
+    connected_addr?: string,
+  } | {
+    connected: false,
+    encrypted: false,
+    mitm_protected: false,
+    bonded: false,
+  }
+);
 */
 
 /*JSON{
