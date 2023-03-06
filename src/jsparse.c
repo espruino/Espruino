@@ -2414,6 +2414,7 @@ NO_INLINE JsVar *jspeStatementSwitch() {
   JSP_ASSERT_MATCH(LEX_R_SWITCH);
   JSP_MATCH('(');
   JsVar *switchOn = jspeExpression();
+  JsExecFlags preservedExecState = execInfo.execute&EXEC_IN_LOOP;
   JSP_SAVE_EXECUTE();
   bool execute = JSP_SHOULD_EXECUTE;
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(switchOn), 0);
@@ -2422,13 +2423,13 @@ NO_INLINE JsVar *jspeStatementSwitch() {
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('{', jsvUnLock(switchOn), 0);
 
   bool executeDefault = true;
-  if (execute) execInfo.execute=EXEC_NO|EXEC_IN_SWITCH;
+  if (execute) execInfo.execute=EXEC_NO|EXEC_IN_SWITCH|preservedExecState;
   while (lex->tk==LEX_R_CASE) {
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_CASE, jsvUnLock(switchOn), 0);
     JsExecFlags oldFlags = execInfo.execute;
-    if (execute) execInfo.execute=EXEC_YES|EXEC_IN_SWITCH;
+    if (execute) execInfo.execute=EXEC_YES|EXEC_IN_SWITCH|preservedExecState;
     JsVar *test = jspeAssignmentExpression();
-    execInfo.execute = oldFlags|EXEC_IN_SWITCH;;
+    execInfo.execute = oldFlags|EXEC_IN_SWITCH;
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock2(switchOn, test), 0);
     bool cond = false;
     if (execute)
@@ -2436,14 +2437,14 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     if (cond) executeDefault = false;
     jsvUnLock(test);
     if (cond && (execInfo.execute&EXEC_RUN_MASK)==EXEC_NO)
-      execInfo.execute=EXEC_YES|EXEC_IN_SWITCH;
+      execInfo.execute=EXEC_YES|EXEC_IN_SWITCH|preservedExecState;
     while (!JSP_SHOULDNT_PARSE && lex->tk!=LEX_EOF && lex->tk!=LEX_R_CASE && lex->tk!=LEX_R_DEFAULT && lex->tk!='}')
       jsvUnLock(jspeBlockOrStatement());
-    oldExecute |= execInfo.execute & (EXEC_ERROR_MASK|EXEC_RETURN); // copy across any errors/exceptions/returns
+    oldExecute |= execInfo.execute & (EXEC_ERROR_MASK|EXEC_RETURN|EXEC_CONTINUE); // copy across any errors/exceptions/returns
   }
   jsvUnLock(switchOn);
   if (execute && (execInfo.execute&EXEC_RUN_MASK)==EXEC_BREAK) {
-    execInfo.execute=EXEC_YES|EXEC_IN_SWITCH;
+    execInfo.execute=EXEC_YES|EXEC_IN_SWITCH|preservedExecState;
   } else {
     executeDefault = true;
   }
@@ -2457,7 +2458,7 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     else execInfo.execute |= EXEC_IN_SWITCH;
     while (!JSP_SHOULDNT_PARSE && lex->tk!=LEX_EOF && lex->tk!='}' && lex->tk!=LEX_R_CASE)
       jsvUnLock(jspeBlockOrStatement());
-    oldExecute |= execInfo.execute & (EXEC_ERROR_MASK|EXEC_RETURN); // copy across any errors/exceptions/returns
+    oldExecute |= execInfo.execute & (EXEC_ERROR_MASK|EXEC_RETURN|EXEC_CONTINUE); // copy across any errors/exceptions/returns
     execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_BREAK;
     JSP_RESTORE_EXECUTE();
   }
