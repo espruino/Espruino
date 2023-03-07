@@ -2,6 +2,7 @@
 *.pyc
 /gen/*
 /bin/*
+/bin_*/*
 /obj/*
 /.vagrant/*
 /boards/*.html
