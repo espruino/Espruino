@@ -875,7 +875,7 @@ lst: $(PROJ_NAME).lst
 clean:
 	@echo Cleaning targets
 	$(Q)rm -rf $(OBJDIR)/*
-	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
+	$(Q)rm -f $(GENDIR)/*.c $(GENDIR)/*.h $(GENDIR)/*.ld
 	$(Q)rm -f $(ROOT)/scripts/*.pyc $(ROOT)/boards/*.pyc
 	$(Q)rm -f $(PROJ_NAME).elf
 	$(Q)rm -f $(PROJ_NAME).hex
