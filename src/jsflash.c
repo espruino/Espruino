@@ -593,7 +593,13 @@ bool jsfCompact() {
 #endif
   return compacted;
 }
-char jsfStripDriveFromName(JsfFileName *name){
+
+/* If we have a filename like "C:foo", take the 'C:' bit
+ * off it and return the drive. If explicitOnly==false,
+ * we also return the drive name if we think a file should
+ * go somewhere (eg it's *.js or .boot0 it should go in internal flash)
+ */
+char jsfStripDriveFromName(JsfFileName *name, bool explicitOnly){
 #ifndef SAVE_ON_FLASH
   if (name->c[1]==':') { // if a 'drive' is specified like "C:foobar.js"
     char drive = name->c[0];
@@ -602,6 +608,7 @@ char jsfStripDriveFromName(JsfFileName *name){
     return drive;
   }
 #ifdef JSF_BANK2_START_ADDRESS
+  if (explicitOnly) return 0; // if explicitOnly==false, ensure *.js and .boot0 files go in C:
   int l = 0;
   while (name->c[l] && l<sizeof(JsfFileName)) l++;
   if (strcmp(name,".boot0")==0 ||
@@ -631,7 +638,7 @@ void jsfGetDriveBankAddress(char drive, uint32_t *bankStartAddr, uint32_t *bankE
 /// Create a new 'file' in the memory store - DOES NOT remove existing files with same name. Return the address of data start, or 0 on error
 static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flags, JsfFileHeader *returnedHeader) {
   jsDebug(DBG_INFO,"CreateFile (%d bytes)\n", size);
-  char drive = jsfStripDriveFromName(&name);
+  char drive = jsfStripDriveFromName(&name, false/* ensure .js/etc go in C */);
   jsfCacheClearFile(name);
   uint32_t bankStartAddress,bankEndAddress;
   jsfGetDriveBankAddress(drive,&bankStartAddress,&bankEndAddress);
@@ -755,7 +762,7 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
 
 /// Find a 'file' in the memory store. Return the address of data start (and header if returnedHeader!=0). Returns 0 if not found
 uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
-  char drive = jsfStripDriveFromName(&name);
+  char drive = jsfStripDriveFromName(&name, true/* ensure we search both drive if not explicitly requested */);
   uint32_t a = jsfCacheFind(name, returnedHeader);
   if (a!=JSF_CACHE_NOT_FOUND) return a;
   JsfFileHeader header;
@@ -998,9 +1005,9 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
   uint32_t addr = jsfFindFile(name, &header);
 #ifdef JSF_BANK2_START_ADDRESS
   if (!addr && name.c[1]==':'){
-    // if not found where it should be, try also another bank to not end with two files
+    // if not found where it should be, try another bank to not end with two files
     JsfFileName shortname = name;
-    jsfStripDriveFromName(&shortname);
+    jsfStripDriveFromName(&shortname, true/* we're not using the return value - we just want the ':' bit stripped off */);
     JsfFileHeader header2;
     uint32_t addr2 = jsfFindFile(shortname, &header2);
     if (addr2) jsfEraseFileInternal(addr2, &header2, true);  // erase if in wrong bank

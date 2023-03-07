@@ -60,6 +60,7 @@
             try...finally block now executes even if we do a 'return/break/continue' inside it (fix #2338)
             Bluetooth: getSecurityStatus now returns 'advertising' field showing if we're advertising or not
             Fix continue when used inside switch statement (fix #2339)
+            Storage: Fix issue locating js/.boot0 files on external storage when running with 2 Storage banks (doesn't affect Bangle.js 1/2)
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
