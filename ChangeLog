@@ -61,6 +61,7 @@
             Bluetooth: getSecurityStatus now returns 'advertising' field showing if we're advertising or not
             Fix continue when used inside switch statement (fix #2339)
             Storage: Fix issue locating js/.boot0 files on external storage when running with 2 Storage banks (doesn't affect Bangle.js 1/2)
+            Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
