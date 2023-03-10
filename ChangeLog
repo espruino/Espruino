@@ -1,3 +1,6 @@
+     2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
+            Pico/Wifi: Enabled JIT compiler
+
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
             ESP32: update esp-idf to v3.3.6
@@ -61,7 +64,6 @@
             Bluetooth: getSecurityStatus now returns 'advertising' field showing if we're advertising or not
             Fix continue when used inside switch statement (fix #2339)
             Storage: Fix issue locating js/.boot0 files on external storage when running with 2 Storage banks (doesn't affect Bangle.js 1/2)
-            Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)
