@@ -2344,21 +2344,15 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     y -= stringHeight * (gfx.data.fontAlignY+1)/2;
   }
   // figure out clip rectangles
-  int minX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y1 : gfx.data.clipRect.x1;
-  int minY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x1 : gfx.data.clipRect.y1;
-  int maxX = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.y2 : gfx.data.clipRect.x2;
-  int maxY = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.clipRect.x2 : gfx.data.clipRect.y2;
-  if (gfx.data.flags & JSGRAPHICSFLAGS_INVERT_X) {
-    int w = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.height : gfx.data.width;
-    int t = w - (minX+1);
-    minX = w - (maxX+1);
-    maxX = t;
+  int minX = gfx.data.clipRect.x1, minY = gfx.data.clipRect.y1;
+  int maxX = gfx.data.clipRect.x2, maxY = gfx.data.clipRect.y2;
+  deviceToGraphicsCoordinates(&gfx, &minX, &minY);
+  deviceToGraphicsCoordinates(&gfx, &maxX, &maxY);
+  if (maxX < minX) {
+    int t = minX; minX = maxX; maxX = t;
   }
-  if (gfx.data.flags & JSGRAPHICSFLAGS_INVERT_Y) {
-    int h = (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx.data.width : gfx.data.height;
-    int t = h - (minY+1);
-    minY = h - (maxY+1);
-    maxY = t;
+  if (maxY < minY) {
+    int t = minY; minY = maxY; maxY = t;
   }
 #else
   int minX = 0;
