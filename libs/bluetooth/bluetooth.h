@@ -165,6 +165,7 @@ typedef enum {
   BLEP_CENTRAL_NOTIFICATION,        //< A characteristic we were watching has changed
   BLEP_CENTRAL_DISCONNECTED,        //< Central: Disconnected (reason as data low byte, index in m_central_conn_handles as high byte )
   BLEP_TASK_BONDING,                //< Bonding negotiation complete (success in data)
+  BLEP_TASK_CHARACTERISTIC_WRITE_HVC,   //< Central: ATT Handle Value Confirmation after an indication packet 
 #endif
   BLEP_WRITE,                       //< One of our characteristics written by someone else
   BLEP_TASK_PASSKEY_DISPLAY,        //< We're pairing and have been provided with a passkey to display (data = conn_handle)
