@@ -791,15 +791,17 @@ NRF.setAdvertising([
 
 ```
 {
-  name: "Hello" // The name of the device
-  showName: true/false // include full name, or nothing
-  discoverable: true/false // general discoverable, or limited - default is limited
-  connectable: true/false // whether device is connectable - default is true
-  scannable : true/false // whether device can be scanned for scan response packets - default is true
-  interval: 600 // Advertising interval in msec, between 20 and 10000 (default is 375ms)
-  manufacturer: 0x0590 // IF sending manufacturer data, this is the manufacturer ID
-  manufacturerData: [...] // IF sending manufacturer data, this is an array of data
-  phy: "1mbps/2mbps/coded" // (NRF52840 only) use the long-range coded phy for transmission (1mbps default)
+  name: "Hello"              // The name of the device
+  showName: true/false       // include full name, or nothing
+  discoverable: true/false   // general discoverable, or limited - default is limited
+  connectable: true/false    // whether device is connectable - default is true
+  scannable : true/false     // whether device can be scanned for scan response packets - default is true
+  whenConnected : true/false // keep advertising when connected (nRF52 only)
+                             // switches to advertising as non-connectable when it is connected
+  interval: 600              // Advertising interval in msec, between 20 and 10000 (default is 375ms)
+  manufacturer: 0x0590       // IF sending manufacturer data, this is the manufacturer ID
+  manufacturerData: [...]    // IF sending manufacturer data, this is an array of data
+  phy: "1mbps/2mbps/coded"   // (NRF52840 only) use the long-range coded phy for transmission (1mbps default)
 }
 ```
 
@@ -870,6 +872,15 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
     if (v) {
       if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_SCANNABLE;
       else bleStatus |= BLE_IS_NOT_SCANNABLE;
+    }
+
+    v = jsvObjectGetChild(options, "whenConnected", 0);
+    if (v) {
+      if (jsvGetBoolAndUnLock(v)) {
+        bleStatus |= BLE_ADVERTISE_WHEN_CONNECTED;
+        if (jsble_has_peripheral_connection()) // if we're connected now, start advertising
+          isAdvertising = true;
+      } else bleStatus &= ~BLE_ADVERTISE_WHEN_CONNECTED;
     }
 
     v = jsvObjectGetChild(options, "name", 0);

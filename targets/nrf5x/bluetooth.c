@@ -324,6 +324,7 @@ int jsble_exec_pending(IOEvent *event) {
      break;
    }
    case BLEP_ADVERTISING_START: {
+     if (bleStatus & BLE_IS_ADVERTISING) jsble_advertising_stop(); // if we were advertising, stop
      jsble_advertising_start(); // start advertising - we ignore the return code here
      break;
    }
@@ -1065,7 +1066,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #if BLE_HIDS_ENABLED
           bleStatus &= ~BLE_IS_SENDING_HID;
 #endif
-          bleStatus &= ~BLE_IS_ADVERTISING; // we're not advertising now we're connected
+          jsble_advertising_stop(); // we're not advertising now we're connected
+          if (!(bleStatus & BLE_IS_SLEEPING) && (bleStatus & BLE_ADVERTISE_WHEN_CONNECTED))
+            jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again
+
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED)) {
             jsiClearInputLine(false); // clear the input line on connect
             jsiSetConsoleDevice(EV_BLUETOOTH, false);
@@ -2475,7 +2479,7 @@ uint32_t jsble_advertising_start() {
 
   ble_gap_adv_params_t adv_params;
   memset(&adv_params, 0, sizeof(adv_params));
-  bool non_connectable = bleStatus & BLE_IS_NOT_CONNECTABLE;
+  bool non_connectable = (bleStatus & BLE_IS_NOT_CONNECTABLE) || jsble_has_peripheral_connection(); // can't advertise connectable if we already have a connection
   bool non_scannable = bleStatus & BLE_IS_NOT_SCANNABLE;
 #if NRF_SD_BLE_API_VERSION>5
   adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
@@ -3089,6 +3093,12 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
   JsVar *result = jsvNewWithFlags(JSV_OBJECT);
   if (!result) return 0;
 
+  if (conn_handle == BLE_CONN_HANDLE_INVALID ||
+      conn_handle == m_peripheral_conn_handle) {
+    // is this NRF.getSecurityStatus?
+    bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
+    jsvObjectSetChildAndUnLock(result, "advertising", jsvNewFromBool(isAdvertising));
+  }
   if (conn_handle == BLE_CONN_HANDLE_INVALID) {
     jsvObjectSetChildAndUnLock(result, "connected", jsvNewFromBool(false));
     return result;
@@ -3100,8 +3110,6 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
     jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
     jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
     jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
-    bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
-    jsvObjectSetChildAndUnLock(result, "advertising", jsvNewFromBool(isAdvertising));
 #ifndef SAVE_ON_FLASH
     if (status.connected && conn_handle==m_peripheral_conn_handle)
       jsvObjectSetChildAndUnLock(result, "connected_addr", bleAddrToStr(m_peripheral_addr));
