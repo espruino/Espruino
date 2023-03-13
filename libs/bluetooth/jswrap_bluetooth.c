@@ -873,7 +873,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
       if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_SCANNABLE;
       else bleStatus |= BLE_IS_NOT_SCANNABLE;
     }
-
+#ifndef SAVE_ON_FLASH
     v = jsvObjectGetChild(options, "whenConnected", 0);
     if (v) {
       if (jsvGetBoolAndUnLock(v)) {
@@ -882,6 +882,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
           isAdvertising = true;
       } else bleStatus &= ~BLE_ADVERTISE_WHEN_CONNECTED;
     }
+#endif
 
     v = jsvObjectGetChild(options, "name", 0);
     if (v) {

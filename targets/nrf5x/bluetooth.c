@@ -1067,8 +1067,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           bleStatus &= ~BLE_IS_SENDING_HID;
 #endif
           jsble_advertising_stop(); // we're not advertising now we're connected
+#ifndef SAVE_ON_FLASH
           if (!(bleStatus & BLE_IS_SLEEPING) && (bleStatus & BLE_ADVERTISE_WHEN_CONNECTED))
             jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again
+#endif
 
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED)) {
             jsiClearInputLine(false); // clear the input line on connect

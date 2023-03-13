@@ -127,8 +127,9 @@ typedef enum  {
   BLE_AMS_INITED = 1<<17,   //< Apple Media Service enabled
   BLE_ANCS_OR_AMS_INITED = BLE_ANCS_INITED|BLE_AMS_INITED, //< Apple Notifications or Media Service enabled
 #endif
-
+#ifndef SAVE_ON_FLASH
   BLE_ADVERTISE_WHEN_CONNECTED = 1<<18, // Do we keep advertising when we're connected?
+#endif
   BLE_IS_ADVERTISING_MULTIPLE = 1<<19, // We have multiple different advertising packets
   BLE_ADVERTISING_MULTIPLE_SHIFT = 20,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_ONE = 1 << BLE_ADVERTISING_MULTIPLE_SHIFT,
