@@ -457,7 +457,7 @@ type TouchCallback = (button: number, xy?: { x: number, y: number }) => void;
   "name" : "touch",
   "params" : [
     ["button","int","`1` for left, `2` for right"],
-    ["xy","JsVar","Object of form `{x,y}` containing touch coordinates (if the device supports full touch). Clipped to 0..175 (LCD pixel coordinates) on firmware 2v13 and later."]
+    ["xy","JsVar","Object of form `{x,y,type}` containing touch coordinates (if the device supports full touch). Clipped to 0..175 (LCD pixel coordinates) on firmware 2v13 and later.`type` is only available on Bangle.js 2 and is an integer, either 0 for swift touches or 2 for longer ones."]
   ],
   "ifdef" : "BANGLEJS",
   "typescript" : "on(event: \"touch\", callback: TouchCallback): void;"
