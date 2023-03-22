@@ -4,6 +4,7 @@
             nRF52: Add NRF.setAdvertising({},{whenConnected:true}) to allow advertisements to be sent while a connection is active
             nRF52: Fix NRF.getSecurityStatus's 'advertising' field (only appeared when connected previously)
             Fix 'ghosting' issue on Welcome screen (forcing timeout/lcdPower/etc at boot could disable the EXTCOMIN toggle)
+            nRF52: OneWire accesses are now scheduled with the Timeslot API to avoid the softdevice interfering (fix #1831)
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
