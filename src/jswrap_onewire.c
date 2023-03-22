@@ -23,7 +23,7 @@
 
 #ifdef ESPR_ONEWIRE_IN_TIMESLOT
 #include "bluetooth.h"
-#include "softdevice_handler.h"
+#include "nrf_soc.h"
 #define ONEWIREREAD_FN _OneWireRead
 #define ONEWIREWRITE_FN _OneWireWrite
 #else
