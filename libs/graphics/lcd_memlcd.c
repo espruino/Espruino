@@ -405,13 +405,11 @@ void lcdMemLCD_extcominToggle() {
 
 // If backlight is on, we need to raise EXTCOMIN freq (use HW PWM)
 void lcdMemLCD_extcominBacklight(bool isOn) {
-  if (isBacklightOn != isOn) {
-    isBacklightOn = isOn;
-    if (isOn) {
-      jshPinAnalogOutput(LCD_EXTCOMIN, 0.0003, 120, JSAOF_NONE); // ~3us
-    } else {
-      jshPinOutput(LCD_EXTCOMIN, 0);
-    }
+  isBacklightOn = isOn;
+  if (isOn) {
+    jshPinAnalogOutput(LCD_EXTCOMIN, 0.0003, 120, JSAOF_NONE); // ~3us
+  } else {
+    jshPinOutput(LCD_EXTCOMIN, 0);
   }
 }
 

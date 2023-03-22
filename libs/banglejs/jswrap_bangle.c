@@ -1863,7 +1863,7 @@ static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
     lcdFadeHandlerActive = true;
     backlightFadeHandler();
   }
-#else
+#else // the default backlight mode (on Bangle.js 2/others)
   jswrap_banglejs_pwrBacklight(isOn && (lcdBrightness>0));
 #ifdef LCD_BL
   if (isOn && lcdBrightness > 0 && lcdBrightness < 255) {
