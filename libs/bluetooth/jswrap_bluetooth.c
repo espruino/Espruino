@@ -404,6 +404,35 @@ See Nordic's `ble_gap_evt_auth_status_t` structure for more information.
 /*JSON{
   "type" : "event",
   "class" : "NRF",
+  "name" : "advertising",
+  "#if" : "defined(NRF52_SERIES)",
+  "params" : [
+    ["isAdvertising","bool","Whether we are advertising or not"]
+  ]
+}
+Called when Bluetooth advertising starts or stops on Espruino
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "bond",
+  "#if" : "defined(NRF52_SERIES)",
+  "params" : [
+    ["status","JsVar","One of `'request'/'start'/'success'/'fail'`"]
+  ]
+}
+Called during the bonding process to update on status
+
+`status` is one of:
+
+* `"request"` - Bonding has been requested in code via `NRF.startBonding`
+* `"start"` - The bonding procedure has started
+* `"success"` - The bonding procedure has succeeded (`NRF.startBonding`'s promise resolves)
+* `"fail"` - The bonding procedure has failed (`NRF.startBonding`'s promise rejects)
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
   "name" : "HID",
   "#if" : "defined(NRF52_SERIES)"
 }
@@ -2760,6 +2789,8 @@ connection
 bool jswrap_ble_ancsIsActive() {
 #if ESPR_BLUETOOTH_ANCS
   return ((bleStatus & BLE_ANCS_INITED) && ble_ancs_is_active());
+#else
+  return false;
 #endif
 }
 
@@ -2903,6 +2934,8 @@ Check if Apple Media Service (AMS) is currently active on the BLE connection
 bool jswrap_ble_amsIsActive() {
 #if ESPR_BLUETOOTH_ANCS
   return ((bleStatus & BLE_AMS_INITED) && ble_ams_is_active());
+#else
+  return false;
 #endif
 }
 

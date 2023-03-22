@@ -328,6 +328,10 @@ int jsble_exec_pending(IOEvent *event) {
      jsble_advertising_start(); // start advertising - we ignore the return code here
      break;
    }
+   case BLEP_ADVERTISING_STOP: {
+     jsble_advertising_stop();
+     break;
+   }
    case BLEP_RESTART_SOFTDEVICE: {
      jsble_restart_softdevice(NULL);
      break;
@@ -428,9 +432,29 @@ int jsble_exec_pending(IOEvent *event) {
    }
 #endif // CENTRAL_LINK_COUNT>0
 #if PEER_MANAGER_ENABLED
-   case BLEP_TASK_BONDING: {
-     if (data) bleCompleteTaskSuccess(BLETASK_BONDING, 0);
-     else bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Securing failed"));
+   case BLEP_BONDING_STATUS: {
+     BLEBondingStatus bondStatus = (BLEBondingStatus)data;
+     const char *bondString = 0;
+     switch (bondStatus) {
+       case BLE_BOND_REQUEST:
+         bondString="request";
+         break;
+       case BLE_BOND_START:
+         bondString="start";
+         break;
+       case BLE_BOND_SUCCESS:
+         bondString="success";
+         if (bleInTask(BLETASK_BONDING))
+           bleCompleteTaskSuccess(BLETASK_BONDING, 0);
+         break;
+       case BLE_BOND_FAIL:
+         bondString="fail";
+         if (bleInTask(BLETASK_BONDING))
+           bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Bonding failed"));
+         break;
+     }
+     if (bondString)
+       bleQueueEventAndUnLock(JS_EVENT_PREFIX"bond", jsvNewFromString(bondString));
      break;
    }
 #endif
@@ -1066,10 +1090,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #if BLE_HIDS_ENABLED
           bleStatus &= ~BLE_IS_SENDING_HID;
 #endif
-          jsble_advertising_stop(); // we're not advertising now we're connected
+          jsble_queue_pending(BLEP_ADVERTISING_STOP, 0); //  we're not advertising now we're connected
 #ifndef SAVE_ON_FLASH
           if (!(bleStatus & BLE_IS_SLEEPING) && (bleStatus & BLE_ADVERTISE_WHEN_CONNECTED))
-            jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again
+            jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again if ADVERTISE_WHEN_CONNECTED
 #endif
 
           if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED)) {
@@ -1147,12 +1171,13 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           // if we were on bluetooth and we disconnected, clear the input line so we're fresh next time (#2219)
           if (jsiGetConsoleDevice()==EV_BLUETOOTH) jsiClearInputLine(false);
           if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
-          // by calling nus_transmit_string here, without a connection, we clear the Bluetooth output buffer
+          // by calling nus_transmit_string here without a connection, we clear the Bluetooth output buffer
           nus_transmit_string();
+          // send disconnect event
+          jsble_queue_pending(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
           // restart advertising after disconnection
           if (!(bleStatus & BLE_IS_SLEEPING))
             jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again
-          jsble_queue_pending(BLEP_DISCONNECTED, p_ble_evt->evt.gap_evt.params.disconnected.reason);
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
           jsble_queue_pending(BLEP_RESTART_SOFTDEVICE, 0);
@@ -1635,12 +1660,12 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
         } break;
 
         case PM_EVT_CONN_SEC_START: {
-          if (bleInTask(BLETASK_BONDING))
-            jsble_queue_pending(BLEP_TASK_BONDING, true);
+          jsble_queue_pending(BLEP_BONDING_STATUS, BLE_BOND_START);
         } break;
 
         case PM_EVT_CONN_SEC_SUCCEEDED:
         {
+            jsble_queue_pending(BLEP_BONDING_STATUS, BLE_BOND_SUCCESS);
             /*NRF_LOG_DEBUG("Link secured. Role: %d. conn_handle: %d, Procedure: %d\r\n",
                                  -1, // ble_conn_state_role(p_evt->conn_handle)
                                  p_evt->conn_handle,
@@ -1690,8 +1715,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
 
         case PM_EVT_CONN_SEC_FAILED:
         {
-          if (bleInTask(BLETASK_BONDING))
-            jsble_queue_pending(BLEP_TASK_BONDING, false);
+          jsble_queue_pending(BLEP_BONDING_STATUS, BLE_BOND_FAIL);
           /** In some cases, when securing fails, it can be restarted directly. Sometimes it can
            *  be restarted, but only after changing some Security Parameters. Sometimes, it cannot
            *  be restarted until the link is disconnected and reconnected. Sometimes it is
@@ -2571,6 +2595,7 @@ uint32_t jsble_advertising_start() {
 #endif
   bleStatus |= BLE_IS_ADVERTISING;
   jsvUnLock(advDataVar);
+  bleQueueEventAndUnLock(JS_EVENT_PREFIX"advertising", jsvNewFromBool(true));
   return err_code;
 }
 
@@ -2597,6 +2622,7 @@ void jsble_advertising_stop() {
   sd_ble_gap_adv_stop();
 #endif
   bleStatus &= ~BLE_IS_ADVERTISING;
+  bleQueueEventAndUnLock(JS_EVENT_PREFIX"advertising", jsvNewFromBool(false));
 }
 
 /** Initialise the BLE stack */
@@ -2973,7 +2999,7 @@ void jsble_startBonding(bool forceRePair) {
 #if PEER_MANAGER_ENABLED
   if (!jsble_has_peripheral_connection())
       return bleCompleteTaskFailAndUnLock(BLETASK_BONDING, jsvNewFromString("Not connected"));
-
+  jsble_queue_pending(BLEP_BONDING_STATUS, BLE_BOND_REQUEST); // report that we've requested bonding
   uint32_t err_code = pm_conn_secure(m_peripheral_conn_handle, forceRePair);
   JsVar *errStr = jsble_get_error_string(err_code);
   if (errStr) {

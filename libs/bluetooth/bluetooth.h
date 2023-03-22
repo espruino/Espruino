@@ -139,12 +139,20 @@ typedef enum  {
   BLE_RESET_ON_SOFTDEVICE_START = BLE_IS_SENDING|BLE_IS_SCANNING|BLE_IS_ADVERTISING
 } BLEStatus;
 
+typedef enum  {
+  BLE_BOND_REQUEST,
+  BLE_BOND_START,
+  BLE_BOND_SUCCESS,
+  BLE_BOND_FAIL
+} BLEBondingStatus;
+
 typedef enum {
   BLEP_NONE,
   BLEP_ERROR,                       //< Softdevice threw some error (code in data)
   BLEP_CONNECTED,                   //< Peripheral connected (address as buffer)
   BLEP_DISCONNECTED,                //< Peripheral disconnected
   BLEP_ADVERTISING_START,           //< Start advertising - do it outside of IRQ because we may need to allocate JsVars
+  BLEP_ADVERTISING_STOP,            //< Stop advertising - do it outside of IRQ
   BLEP_RESTART_SOFTDEVICE,          //< Perform a softdevice restart (again, we don't want to do this in an IRQ!)
   BLEP_RSSI_PERIPH,                 //< RSSI data from peripheral connection (rssi as data)
   BLEP_ADV_REPORT,                  //< Advertising received (as buffer)
@@ -164,7 +172,7 @@ typedef enum {
   BLEP_TASK_CHARACTERISTIC_NOTIFY,  //< Central: Started requesting notifications
   BLEP_CENTRAL_NOTIFICATION,        //< A characteristic we were watching has changed
   BLEP_CENTRAL_DISCONNECTED,        //< Central: Disconnected (reason as data low byte, index in m_central_conn_handles as high byte )
-  BLEP_TASK_BONDING,                //< Bonding negotiation complete (success in data)
+  BLEP_BONDING_STATUS,              //< Bonding negotiation status (data is one of BLEBondingStatus)
 #endif
   BLEP_WRITE,                       //< One of our characteristics written by someone else
   BLEP_TASK_PASSKEY_DISPLAY,        //< We're pairing and have been provided with a passkey to display (data = conn_handle)
