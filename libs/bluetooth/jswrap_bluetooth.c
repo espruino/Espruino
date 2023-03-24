@@ -392,6 +392,18 @@ The most common reason is:
 /*JSON{
   "type" : "event",
   "class" : "NRF",
+  "name" : "error",
+  "#if" : "defined(NRF52_SERIES)",
+  "params" : [
+    ["msg","JsVar","The error string"]
+  ]
+}
+Called when the Nordic Bluetooth stack (softdevice) generates an error. In pretty
+much all cases an Exception will also have been thrown.
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
   "name" : "security",
   "params" : [
     ["status","JsVar","An object containing `{auth_status,bonded,lv4,kdist_own,kdist_peer}"]

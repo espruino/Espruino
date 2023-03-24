@@ -735,7 +735,7 @@ bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
   JsVar *v = jsble_get_error_string(err_code);
   if (!v) return 0;
   jsExceptionHere(JSET_ERROR, "%v (:%d)", v, lineNumber);
-  jsvUnLock(v);
+  bleQueueEventAndUnLock(JS_EVENT_PREFIX"error", v);
   return true;
 }
 #else
