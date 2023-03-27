@@ -2816,7 +2816,10 @@ JsVar *jswrap_graphics_fillPoly_X(JsVar *parent, JsVar *poly, bool antiAlias) {
   JsvIterator it;
   jsvIteratorNew(&it, poly, JSIF_EVERY_ARRAY_ELEMENT);
   while (jsvIteratorHasElement(&it) && idx<maxVerts) {
-    verts[idx++] = (short)(0.5 + jsvIteratorGetFloatValue(&it)*16);
+    int v = (int)(0.5 + jsvIteratorGetFloatValue(&it)*16);
+    if (v<-32768) v=-32768;
+    if (v>32767) v=32767;
+    verts[idx++] = (short)v;
     jsvIteratorNext(&it);
   }
   if (jsvIteratorHasElement(&it))
