@@ -2461,6 +2461,13 @@ void jsble_setup_advdata(ble_advdata_t *advdata) {
 uint32_t jsble_advertising_start() {
   // try not to call from IRQ as we might want to allocate JsVars
   if (bleStatus & BLE_IS_ADVERTISING) return 0;
+  
+#ifndef SAVE_ON_FLASH
+  /* If we're not allowed to advertise because we are connected, just return */
+  if (!(bleStatus & BLE_ADVERTISE_WHEN_CONNECTED) && jsble_has_peripheral_connection()) 
+    return 0;
+#endif  
+
   ble_advdata_t scanrsp;
 
   JsVar *advDataVar = jswrap_ble_getCurrentAdvertisingData();
