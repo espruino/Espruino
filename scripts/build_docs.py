@@ -73,7 +73,9 @@ if os.path.isfile(mdnURLFile):
 
 # start writing
 htmlFile = open('functions.html', 'w')
-def html(s): htmlFile.write(s+"\n");
+def html(s):
+  print(s);
+  htmlFile.write(s.encode('utf-8')+"\n");
 
 def htmlify(d,current):
   d = markdown.markdown(d, extensions=['mdx_urlize'], tab_length=2)
