@@ -9,6 +9,7 @@
             Pixl.js: Switch to slower ROM-saving sin/cos/atan/atan2 (running out of free space after JIT enabled)
             Graphics: Ensure fillPoly clips out of range (+/-2048) coordinates
             nRF52: Fix regression after whenConnected:true addition. NRF.wake() will now not start advertising when connected unless whenConnected:true is set.
+            STM32: neopixel: Fix small glitches in the output pin just before writes that could throw off APA10x LEDs
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
