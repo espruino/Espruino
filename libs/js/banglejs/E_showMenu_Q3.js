@@ -94,7 +94,8 @@
       if (idx<0) // TITLE
         return g.setColor(g.theme.fg).setFont("12x20").setFontAlign(-1,0).drawString(
           menuIcon+" "+options.title, r.x+12, r.y+H-12);
-      g.setClipRect(0,24,175,175).setColor(g.theme.bg2).fillRect({x:r.x+4, y:r.y+2, w:r.w-8, h:r.h-4, r:5});
+      let R = Bangle.appRect;
+      g.setClipRect(R.x,R.y,R.x2,R.y2).setColor(g.theme.bg2).fillRect({x:r.x+4, y:r.y+2, w:r.w-8, h:r.h-4, r:5});
       g.setColor(g.theme.fg2).setFont("12x20");
       var pad = 24;
       var item = menu[keys[idx]];
