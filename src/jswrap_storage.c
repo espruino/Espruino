@@ -381,7 +381,7 @@ JsVarInt jswrap_storage_hash(JsVar *regex) {
   "generate" : "jswrap_storage_compact"
 }
 The Flash Storage system is journaling. To make the most of the limited write
-cycles of Flash memory, Espruino marks deleted/replaced files as garbage and
+cycles of Flash memory, Espruino marks deleted/replaced files as garbage/trash files and
 moves on to a fresh part of flash memory. Espruino only fully erases those files
 when it is running low on flash, or when `compact` is called.
 
@@ -445,7 +445,7 @@ Returns:
   fileBytes // How many bytes of allocated files do we have?
   fileCount // How many allocated files do we have?
   trashBytes // How many bytes of trash files do we have?
-  trashCount // How many trash files do we have?
+  trashCount // How many trash files do we have? (can be cleared with .compact)
 }
 ```
  */
