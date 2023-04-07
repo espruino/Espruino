@@ -5566,6 +5566,13 @@ might expect an LED, this is an object that behaves like a pin, but which just
 displays a circle on the display
 */
 
+/*TYPESCRIPT
+type SetUIArg<Mode> = Mode | {
+  mode: Mode,
+  back?: () => void,
+  remove?: () => void,
+};
+*/
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
@@ -5576,7 +5583,13 @@ displays a circle on the display
       ["callback","JsVar","A function with one argument which is the direction"]
     ],
     "ifdef" : "BANGLEJS",
-    "typescript" : "setUI(type?: \"updown\" | \"leftright\" | \"clock\" | \"clockupdown\" | { mode: \"custom\"; back?: () => void; touch?: TouchCallback; swipe?: SwipeCallback; drag?: DragCallback; btn?: (n: number) => void, remove?: () => void, clock?: boolean }, callback?: (direction?: -1 | 1) => void): void;"
+    "typescript" : [
+      "setUI(type?: undefined): void;",
+      "setUI(type: SetUIArg<\"updown\" | \"leftright\">, callback: (direction?: -1 | 1) => void): void;",
+      "setUI(type: SetUIArg<\"clock\">): void;",
+      "setUI(type: SetUIArg<\"clockupdown\">, callback?: (direction: -1 | 1) => void): void;",
+      "setUI(type: SetUIArg<\"custom\"> & { touch?: TouchCallback; swipe?: SwipeCallback; drag?: DragCallback; btn?: (n: 1 | 2 | 3) => void; clock?: boolean | 0 | 1 }): void;"
+    ]
 }
 This puts Bangle.js into the specified UI input mode, and calls the callback
 provided when there is user input.
