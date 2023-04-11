@@ -106,8 +106,11 @@ Watch](http://www.espruino.com/Bangle.js)
 /*TYPESCRIPT{
   "class" : "Bangle"
 }
-static CLOCK: boolean;
+static CLOCK: ShortBoolean;
 static strokes: undefined | { [key: string]: Unistroke };
+*/
+/*TYPESCRIPT
+type ShortBoolean = boolean | 0 | 1;
 */
 
 
@@ -2258,13 +2261,13 @@ void jswrap_banglejs_setPollInterval(JsVarFloat interval) {
 }
 
 /*TYPESCRIPT
-type BangleOptions = {
-  wakeOnBTN1: boolean;
-  wakeOnBTN2: boolean;
-  wakeOnBTN3: boolean;
-  wakeOnFaceUp: boolean;
-  wakeOnTouch: boolean;
-  wakeOnTwist: boolean;
+type BangleOptions<Boolean = boolean> = {
+  wakeOnBTN1: Boolean;
+  wakeOnBTN2: Boolean;
+  wakeOnBTN3: Boolean;
+  wakeOnFaceUp: Boolean;
+  wakeOnTouch: Boolean;
+  wakeOnTwist: Boolean;
   twistThreshold: number;
   twistMaxY: number;
   twistTimeout: number;
@@ -2288,7 +2291,7 @@ type BangleOptions = {
       ["options","JsVar",""]
     ],
     "ifdef" : "BANGLEJS",
-    "typescript" : "setOptions(options: { [key in keyof BangleOptions]?: BangleOptions[key] }): void;"
+    "typescript" : "setOptions(options: { [key in keyof BangleOptions]?: BangleOptions<ShortBoolean>[key] }): void;"
 }
 Set internal options used for gestures, etc...
 
@@ -2608,7 +2611,7 @@ void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
     ],
     "return" : ["bool","Is HRM on?"],
     "ifdef" : "BANGLEJS",
-    "typescript" : "setHRMPower(isOn: boolean, appID: string): boolean;"
+    "typescript" : "setHRMPower(isOn: ShortBoolean, appID: string): boolean;"
 }
 Set the power to the Heart rate monitor
 
@@ -2681,7 +2684,7 @@ void gpsClearLine() {
     ],
     "return" : ["bool","Is the GPS on?"],
     "ifdef" : "BANGLEJS",
-    "typescript" : "setGPSPower(isOn: boolean, appID: string): boolean;"
+    "typescript" : "setGPSPower(isOn: ShortBoolean, appID: string): boolean;"
 }
 Set the power to the GPS.
 
@@ -2771,7 +2774,7 @@ JsVar *jswrap_banglejs_getGPSFix() {
     ],
     "return" : ["bool","Is the Compass on?"],
     "ifdef" : "BANGLEJS",
-    "typescript" : "setCompassPower(isOn: boolean, appID: string): boolean;"
+    "typescript" : "setCompassPower(isOn: ShortBoolean, appID: string): boolean;"
 }
 Set the power to the Compass
 
@@ -2867,7 +2870,7 @@ void jswrap_banglejs_resetCompass() {
     ],
     "return" : ["bool","Is the Barometer on?"],
     "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)",
-    "typescript" : "setBarometerPower(isOn: boolean, appID: string): boolean;"
+    "typescript" : "setBarometerPower(isOn: ShortBoolean, appID: string): boolean;"
 }
 Set the power to the barometer IC. Once enabled, `Bangle.pressure` events are
 fired each time a new barometer reading is available.
