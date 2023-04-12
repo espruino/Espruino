@@ -93,7 +93,10 @@ BITFIELD_DECL(jshPinOpendrainPullup, JSH_PIN_COUNT);
 volatile unsigned char jshSPIBufHead[SPI_COUNT];
 volatile unsigned char jshSPIBufTail[SPI_COUNT];
 volatile unsigned char jshSPIBuf[SPI_COUNT][4]; // 4 bytes packed into an int
+Pin jshNeoPixelPin = PIN_UNDEFINED; ///< The currently setup Neopixel pin (set by jswrap_neopixel). This is reset to PIN_UNDEFINED if we think anything could have messed it up
 #endif
+
+
 
 #ifdef USB
 JsSysTime jshLastWokenByUSB = 0;
@@ -926,6 +929,9 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetState(Pin pin, JshPinState state) {
+  // if this is about to mess up the neopixel output, so reset our var so we know to re-init
+  if (pin == jshNeoPixelPin)
+    jshNeoPixelPin = PIN_UNDEFINED;  
   /* Make sure we kill software PWM if we set the pin state
    * after we've started it */
   if (BITFIELD_GET(jshPinSoftPWM, pin)) {
@@ -2226,6 +2232,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   JshPinFunction functions[3] = { JSH_SPI_SCK, JSH_SPI_MISO, JSH_SPI_MOSI };
   SPI_TypeDef *SPIx = (SPI_TypeDef *)checkPinsForDevice(funcType, 3, pins, functions);
   if (!SPIx) return; // failed to find matching pins
+
+  // this could be about to mess up the neopixel output, so reset our var so we know to re-init
+  jshNeoPixelPin = PIN_UNDEFINED;  
 
   SPI_InitTypeDef SPI_InitStructure;
   SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;

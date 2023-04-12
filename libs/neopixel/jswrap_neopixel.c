@@ -140,6 +140,8 @@ bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
 
 #elif defined(STM32) // ----------------------------------------------------------------
 
+extern Pin jshNeoPixelPin; ///< The currently setup Neopixel pin (set by jswrap_neopixel). This is reset to PIN_UNDEFINED if we think anything could have messed it up
+
 // this one could potentially work on other platforms as well...
 bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
   if (!jshIsPinValid(pin)) {
@@ -163,8 +165,10 @@ bool neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize) {
   jshSPIInitInfo(&inf);
   inf.baudRate = 3200000;
   inf.pinMOSI = pin;
-  if (!jshIsDeviceInitialised(device))
+  if (jshNeoPixelPin != pin) {
     jshSPISetup(device, &inf);
+    jshNeoPixelPin = pin;
+  }
   jshSPISet16(device, true); // 16 bit output
   // we're just sending (no receive)
   jshSPISetReceive(device, false);
