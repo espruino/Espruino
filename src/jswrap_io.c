@@ -856,9 +856,12 @@ JsVar *jswrap_interface_setWatch(
   "name" : "clearWatch",
   "generate" : "jswrap_interface_clearWatch",
   "params" : [
-    ["id","JsVarArray","The id returned by a previous call to setWatch. **Only one argument is allowed.**"]
+    ["id","JsVarArray","The id returned by a previous call to setWatch. **Only one argument is allowed.** (or pass nothing to clear all watches)"]
   ],
-  "typescript" : "declare function clearWatch(id: number): void;"
+  "typescript" : [
+    "declare function clearWatch(id: number): void;",
+    "declare function clearWatch(): void;"
+  ]
 }
 Clear the Watch that was created with setWatch. If no parameter is supplied, all watches will be removed.
 

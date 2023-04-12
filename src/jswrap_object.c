@@ -999,7 +999,7 @@ void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) 
   "name" : "removeAllListeners",
   "generate" : "jswrap_object_removeAllListeners",
   "params" : [
-    ["event","JsVar","The name of the event, for instance `'data'`. If not specified *all* listeners are removed."]
+    ["event","JsVar","[optional] The name of the event, for instance `'data'`. If not specified *all* listeners are removed."]
   ]
 }
 Removes all listeners (if `event===undefined`), or those of the specified event.
