@@ -236,6 +236,14 @@ static void jswrap_pipe_dst_close_listener(JsVar *destination) {
   jswrap_pipe_close_listener(destination, "destination");
 }
 
+/*TYPESCRIPT
+type PipeOptions = {
+  chunkSize?: number,
+  end?: boolean,
+  complete?: () => void,
+};
+*/
+
 /*JSON{
   "type" : "staticmethod",
   "class" : "fs",
@@ -246,7 +254,8 @@ static void jswrap_pipe_dst_close_listener(JsVar *destination) {
     ["source","JsVar","The source file/stream that will send content."],
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
     ["options","JsVar",["[optional] An object `{ chunkSize : int=64, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
-  ]
+  ],
+  "typescript": "pipe(destination: any, options?: PipeOptions): void"
 }*/
 void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
   if (!source || !dest) return;
