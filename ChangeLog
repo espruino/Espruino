@@ -11,6 +11,7 @@
             nRF52: Fix regression after whenConnected:true addition. NRF.wake() will now not start advertising when connected unless whenConnected:true is set.
             STM32: neopixel: Fix small glitches in the output pin just before writes that could throw off APA10x LEDs
             Bangle.js2: Ensure that changing a menu item when half-scrolled off screen doesn't overwrite widgets
+            Puck.js: Ensure acc/gyro doesn't cause watch events to be added to the input queue (more efficient)
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
