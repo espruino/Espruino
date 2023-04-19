@@ -178,7 +178,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
       }
       int paletteEntries = 1<<info->bpp;
       info->paletteMask = (uint32_t)paletteEntries-1;
-      if (paletteEntries*2 <= sizeof(info->_simplePalette)) {
+      if (paletteEntries*2 <= (int)sizeof(info->_simplePalette)) {
         // if it'll fit, put the palette data in _simplePalette
         uint32_t n = info->bitmapOffset;
         for (int i=0;i<paletteEntries;i++) {
@@ -3018,7 +3018,6 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   }
 
   int x=0, y=0;
-  int bits=0;
   unsigned int colData = 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, img.buffer, (size_t)img.bitmapOffset);
@@ -3074,6 +3073,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       } else
 #endif
       {
+        int bits=0;
         int yp = yPos;
         for (y=0;y<img.height;y++) {
           // Store current pos as we need to rewind

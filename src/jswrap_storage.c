@@ -793,7 +793,7 @@ int jswrap_storagefile_getLength(JsVar *f) {
         foundEnd = true;
         break;
       }
-      if (l>sizeof(buf)) l=sizeof(buf);
+      if (l>(int)sizeof(buf)) l=(int)sizeof(buf);
       jshFlashRead(buf, addr+offset, l);
       for (int i=0;i<l;i++) {
         if (buf[i]==(char)255) {

@@ -1060,7 +1060,7 @@ static void jsfBankListFilesHandleFile(JsVar *files, uint32_t addr, JsfFileHeade
   if (flags&JSFF_STORAGEFILE) {
     // find last char
     int i = 0;
-    while (i+1<sizeof(header->name) && header->name.c[i+1]) i++;
+    while (i+1<(int)sizeof(header->name) && header->name.c[i+1]) i++;
     // if last ch isn't \1 (eg first StorageFile) ignore this
     if (header->name.c[i]!=1) return;
     // if we're specifically asking for StorageFile, remove last char

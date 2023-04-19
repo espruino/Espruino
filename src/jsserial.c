@@ -17,9 +17,9 @@
 #include "jswrap_espruino.h"
 #include "jswrap_stream.h"
 
-void jsserialHardwareFunc(unsigned char data, serial_sender_data *info) {
+void jsserialHardwareFunc(int data, serial_sender_data *info) {
   IOEventFlags device = *(IOEventFlags*)info;
-  jshTransmit(device, data);
+  jshTransmit(device, (unsigned char)data);
 }
 
 #ifndef SAVE_ON_FLASH
@@ -27,7 +27,7 @@ void jsserialHardwareFunc(unsigned char data, serial_sender_data *info) {
  * Send a single byte through Serial.
  */
 void jsserialSoftwareFunc(
-    unsigned char data,
+    int data,
     serial_sender_data *info
   ) {
   //jsiConsolePrintf("jsserialSoftwareFunc: data=%x\n", data);

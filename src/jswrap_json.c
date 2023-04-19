@@ -220,7 +220,7 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
   if (jsvIsNativeFunction(var)) {
     cbprintf(user_callback, user_data, "{ [native code] }");
 #ifdef ESPR_JIT
-  } else if (jitCode = jsvFindChildFromString(var, JSPARSE_FUNCTION_JIT_CODE_NAME, false)) {
+  } else if ((jitCode = jsvFindChildFromString(var, JSPARSE_FUNCTION_JIT_CODE_NAME, false))) {
     jsvUnLock(jitCode);
     cbprintf(user_callback, user_data, "{ [JIT] }");
 #endif

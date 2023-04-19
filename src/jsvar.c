@@ -1222,7 +1222,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
 
       // fill queue
       jsvStringIteratorNew(&it, var, JSVAR_DATA_STRING_NAME_LEN);
-      for (index = 0; index < sizeof(queue) && jsvStringIteratorHasChar(&it); index++) {
+      for (index = 0; index < (int)sizeof(queue) && jsvStringIteratorHasChar(&it); index++) {
         queue[index] = jsvStringIteratorGetCharAndNext(&it);
       }
       jsvStringIteratorFree(&it);

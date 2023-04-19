@@ -289,7 +289,7 @@ int jshGetCharToTransmit(
     IOEventFlags device // The device being looked at for a transmission.
   ) {
   if (DEVICE_HAS_DEVICE_STATE(device)) {
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
+    volatile JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
     if ((*deviceState)&SDS_XOFF_PENDING) {
       (*deviceState) = ((*deviceState)&(~SDS_XOFF_PENDING)) | SDS_XOFF_SENT;
       return 19/*XOFF*/;
@@ -695,7 +695,7 @@ void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
     if (!hostShouldTransmit)
       jshSerialFlowControlWasSet = true;
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+    volatile JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if ((*deviceState) & SDS_FLOW_CONTROL_XON_XOFF) {
       if (hostShouldTransmit) {
         if (((*deviceState)&(SDS_XOFF_SENT|SDS_XON_PENDING)) == SDS_XOFF_SENT) {
@@ -739,7 +739,7 @@ JsVar *jshGetDeviceObject(IOEventFlags device) {
 void jshSetFlowControlEnabled(IOEventFlags device, bool software, Pin pinCTS) {
   if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+    volatile JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if (software)
       (*deviceState) |= SDS_FLOW_CONTROL_XON_XOFF;
     else
@@ -778,7 +778,7 @@ Pin jshGetEventDataPin(IOEventFlags channel) {
 void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling) {
   if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+    volatile JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if (errorHandling)
       (*deviceState) |= SDS_ERROR_HANDLING;
     else
@@ -789,7 +789,7 @@ void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling) {
 bool jshGetErrorHandlingEnabled(IOEventFlags device) {
   if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+    volatile JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     return (SDS_ERROR_HANDLING & *deviceState)!=0;
   } else
     return false;

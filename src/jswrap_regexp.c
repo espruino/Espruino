@@ -351,7 +351,7 @@ JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *arg) {
   JsVar *str = jsvAsString(arg);
   JsVarInt lastIndex = jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, "lastIndex", 0));
   JsVar *regex = jsvObjectGetChild(parent, "source", 0);
-  if (!jsvIsString(regex) || lastIndex>jsvGetStringLength(str)) {
+  if (!jsvIsString(regex) || lastIndex>(JsVarInt)jsvGetStringLength(str)) {
     jsvUnLock2(str,regex);
     return 0;
   }
