@@ -512,35 +512,31 @@ bool accel_on(int milliHz) {
   else return false;
 
 
-  jshPinSetState(ACCEL_PIN_INT, JSHPINSTATE_GPIO_IN);
+  jshI2CSetup(EV_I2C1, &i2cAccel);
 #ifdef ACCEL_PIN_PWR
   jshPinSetState(ACCEL_PIN_PWR, JSHPINSTATE_GPIO_OUT);
 #endif
-  jshPinSetState(ACCEL_PIN_SCL, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
-  jshPinSetState(ACCEL_PIN_SDA, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
 #ifdef ACCEL_PIN_PWR
   jshPinSetValue(ACCEL_PIN_PWR, 1);
 #endif
-  jshPinSetValue(ACCEL_PIN_SCL, 1);
-  jshPinSetValue(ACCEL_PIN_SDA, 1);
   jshDelayMicroseconds(20000); // 20ms boot from app note
 
   // LSM6DS3TR
   unsigned char buf[2];
   buf[0] = 0x15; buf[1]=0x10; // CTRL6-C - XL_HM_MODE=1, low power accelerometer
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 2, buf, true);
   buf[0] = 0x16; buf[1]=0x80; //  CTRL6-C - G_HM_MODE=1, low power gyro
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 2, buf, true);
   buf[0] = 0x18; buf[1]=0x38; // CTRL9_XL  Acc X, Y, Z axes enabled
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 2, buf, true);
   buf[0] = 0x10; buf[1]=reg | 0b00001011; // CTRL1_XL Accelerometer, +-4g, 50Hz AA filter
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 2, buf, true);
   buf[0] = 0x11; buf[1]=gyro ? reg : 0; // CTRL2_G  Gyro, 250 dps, no 125dps limit
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 2, buf, true);
   buf[0] = 0x12; buf[1]=0x44; // CTRL3_C, BDU, irq active high, push pull, auto-inc
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 2, buf, true);
   buf[0] = 0x0D; buf[1]=3; // INT1_CTRL - Gyro/accel data ready IRQ
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 2, buf, true);
 
   return true;
 }
@@ -549,8 +545,8 @@ bool accel_on(int milliHz) {
 void accel_read() {
   unsigned char buf[12];
   buf[0] = 0x22; // OUTX_L_G
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, false);
-  jsi2cRead(&i2cAccel, ACCEL_ADDR, 12, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 1, buf, false);
+  jshI2CRead(EV_I2C1, ACCEL_ADDR, 12, buf, true);
   gyro_reading[0] = (buf[1]<<8) | buf[0];
   gyro_reading[1] = (buf[3]<<8) | buf[2];
   gyro_reading[2] = (buf[5]<<8) | buf[4];
@@ -565,8 +561,8 @@ void accel_wait() {
   timeout = 400;
   do {
     buf[0] = 0x1E; // STATUS_REG
-    jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, false);
-    jsi2cRead(&i2cAccel, ACCEL_ADDR, 1, buf, true);
+    jshI2CWrite(EV_I2C1, ACCEL_ADDR, 1, buf, false);
+    jshI2CRead(EV_I2C1, ACCEL_ADDR, 1, buf, true);
     //jsiConsolePrintf("M %d\n", buf[0]);
   } while (!(buf[0]&3) && --timeout); // ZYXDA
   if (!timeout) jsExceptionHere(JSET_INTERNALERROR, "Timeout (Accelerometer)");
@@ -583,9 +579,9 @@ void accel_off() {
 #else
   unsigned char buf[2];
   buf[0] = 0x10; buf[1]=0; // CTRL1_XL  - power down
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 2, buf, true);
   buf[0] = 0x11; buf[1]=0; // CTRL2_G   - power down
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 2, buf, true);
 #endif
 }
 
@@ -1098,7 +1094,7 @@ void jswrap_puck_accelWr(JsVarInt reg, JsVarInt data) {
   unsigned char buf[2];
   buf[0] = (unsigned char)reg;
   buf[1] = (unsigned char)data;
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 2, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 2, buf, true);
 }
 
 /*JSON{
@@ -1126,8 +1122,8 @@ int jswrap_puck_accelRd(JsVarInt reg) {
   }
   unsigned char buf[1];
   buf[0] = (unsigned char)reg;
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, false);
-  jsi2cRead(&i2cAccel, ACCEL_ADDR, 1, buf, true);
+  jshI2CWrite(EV_I2C1, ACCEL_ADDR, 1, buf, false);
+  jshI2CRead(EV_I2C1, ACCEL_ADDR, 1, buf, true);
   return buf[0];
 }
 
@@ -1528,8 +1524,8 @@ bool _jswrap_puck_selfTest(bool advertisePassOrFail) {
     accel_on(1660000);
     unsigned char buf[1];
     buf[0] = 0x0F; // WHOAMI
-    jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, false);
-    jsi2cRead(&i2cAccel, ACCEL_ADDR, 1, buf, true);
+    jshI2CWrite(EV_I2C1, ACCEL_ADDR, 1, buf, false);
+    jshI2CRead(EV_I2C1, ACCEL_ADDR, 1, buf, true);
     accel_off();
     if (buf[0]!=106) {
       if (!err[0]) strcpy(err,"ACC");
@@ -1650,10 +1646,10 @@ void jswrap_puck_init() {
   i2cMag.pinSCL = MAG_PIN_SCL;
   i2cMag.clockStretch = false;
   jshI2CInitInfo(&i2cAccel);
-  i2cAccel.bitrate = 0x7FFFFFFF; // make it as fast as we can go
+  i2cAccel.bitrate = 400000;
   i2cAccel.pinSDA = ACCEL_PIN_SDA;
   i2cAccel.pinSCL = ACCEL_PIN_SCL;
-  i2cAccel.clockStretch = false;
+  //i2cAccel.clockStretch = false;
   jshI2CInitInfo(&i2cTemp);
   i2cTemp.bitrate = 0x7FFFFFFF; // make it as fast as we can go
   i2cTemp.pinSDA = TEMP_PIN_SDA;
