@@ -136,7 +136,7 @@ bool jstSetWakeUp(JsSysTime period);
  * before the wakeup event */
 void jstClearWakeUp();
 
-/// Start writing a string out at the given period between samples
+/// Start writing a string out at the given period between samples. 'time' is the time relative to the current time (0 = now)
 bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type);
 
 /// Stop a timer task
