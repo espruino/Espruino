@@ -957,7 +957,8 @@ void jswrap_storagefile_erase(JsVar *f) {
   "params" : [
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
     ["options","JsVar",["[optional] An object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
-  ]
+  ],
+  "typescript": "pipe(destination: any, options?: PipeOptions): void"
 }
 Pipe this file to a stream (an object with a 'write' method)
 */
