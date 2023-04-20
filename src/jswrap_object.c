@@ -831,8 +831,8 @@ o.emit('answer', 44);
 // nothing printed
 ```
  */
-void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
 #ifndef ESPR_EMBED
+void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
   if (!jsvHasChildren(parent)) {
     jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
     return;
@@ -879,8 +879,8 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     }
     jsvUnLock(buf);
   }
-#endif
 }
+#endif
 
 /*JSON{
   "type" : "method",
@@ -898,8 +898,8 @@ instance `obj.emit('data', 'Foo')`.
 
 For more information see `Object.on`
  */
-void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
 #ifndef ESPR_EMBED
+void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   if (!jsvHasChildren(parent)) {
     jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
     return;
@@ -935,8 +935,8 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
 
   // unlock
   jsvUnLockMany(n, args);
-#endif
 }
+#endif
 
 /*JSON{
   "type" : "method",
