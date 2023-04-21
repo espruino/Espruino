@@ -61,6 +61,7 @@ void jsiConsolePrintString(const char *str) {
   ejs_print(str);
 }
 void vcbprintf_callback_jsiConsolePrintString(const char *str, void* user_data) {
+  NOT_USED(user_data);
   jsiConsolePrintString(str);
 }
 // ===============================

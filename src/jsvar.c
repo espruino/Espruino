@@ -491,7 +491,8 @@ size_t jsvGetCharactersInVar(const JsVar *v) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
   if (f == JSV_FLAT_STRING)
     return (size_t)v->varData.integer;
-  if ((f == JSV_NATIVE_STRING)
+  if (false 
+  || (f == JSV_NATIVE_STRING)
 #ifdef SPIFLASH_BASE
   || (f == JSV_FLASH_STRING)
 #endif

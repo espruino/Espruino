@@ -291,13 +291,6 @@ field, but because they are bitfields we can't get pointers to them!
 #error JsVarDataRef is not big enough to store a double value
 #endif
 
-typedef int32_t JsVarInt;
-typedef uint32_t JsVarIntUnsigned;
-#ifdef USE_FLOATS
-typedef float JsVarFloat;
-#else
-typedef double JsVarFloat;
-#endif
 
 #define JSSYSTIME_MAX 0x7FFFFFFFFFFFFFFFLL
 typedef int64_t JsSysTime;

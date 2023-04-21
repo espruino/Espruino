@@ -398,6 +398,10 @@ codeOut('// --------------------------------------------------------------------
 codeOut('// -----------------------------------------------------------------------------------------');
 codeOut('');
 
+
+# In jswBinarySearch we used to use READ_FLASH_UINT16 for sym->strOffset and sym->functionSpec for ESP8266 
+# (where unaligned reads broke) but despite being packed, the structure JswSymPtr is still always an multiple
+# of 2 in length so they will always be halfword aligned.
 codeOut("""
 // Binary search coded to allow for JswSyms to be in flash on the esp8266 where they require
 // word accesses
@@ -405,13 +409,12 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
   uint8_t symbolCount = READ_FLASH_UINT8(&symbolsPtr->symbolCount);
   int searchMin = 0;
   int searchMax = symbolCount - 1;
-  while (searchMin <= searchMax) {
+  while (searchMin <= searchMax) {  
     int idx = (searchMin+searchMax) >> 1;
     const JswSymPtr *sym = &symbolsPtr->symbols[idx];
-    unsigned short strOffset = READ_FLASH_UINT16(&sym->strOffset);
-    int cmp = FLASH_STRCMP(name, &symbolsPtr->symbolChars[strOffset]);
+    int cmp = FLASH_STRCMP(name, &symbolsPtr->symbolChars[sym->strOffset]);
     if (cmp==0) {
-      unsigned short functionSpec = READ_FLASH_UINT16(&sym->functionSpec);
+      unsigned short functionSpec = sym->functionSpec;
       if ((functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
         return jsnCallFunction(sym->functionPtr, functionSpec, parent, 0, 0);
       return jsvNewNativeFunction(sym->functionPtr, functionSpec);
