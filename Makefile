@@ -728,7 +728,7 @@ else
 endif
 
 ifdef EMBEDDED
-DEFINES += -DEMBEDDED -DJSTYPES_H_
+DEFINES += -DEMBEDDED
 LDFLAGS += -Wl,--gc-sections
 endif
 

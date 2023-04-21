@@ -1,4 +1,6 @@
 PROJ_HEADER_NAME = $(PROJ_NAME:.c=.h)
+# We add a define here so we don't include jstypes.h - it should be manually required afterwards
+DEFINES+=-DJSTYPES_H_
 
 proj: 	$(PLATFORM_CONFIG_FILE) $(PROJ_NAME)
 	
