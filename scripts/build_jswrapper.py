@@ -305,7 +305,7 @@ for className in classes:
     });
 
 # ------------------------------------------------------------------------------------------------------
-#print json.dumps(tree, sort_keys=True, indent=2)
+#print(json.dumps(tree, sort_keys=True, indent=2))
 # ------------------------------------------------------------------------------------------------------
 
 wrapperFile = open(wrapperFileName,'w')
@@ -450,6 +450,7 @@ print("Classifying Functions")
 builtins = OrderedDict()
 for jsondata in jsondatas:
   if "name" in jsondata:
+    #print(json.dumps(jsondata, sort_keys=True, indent=2))
     jsondata["static"] = not (jsondata["type"]=="property" or jsondata["type"]=="method")
 
     testCode = "!parent"
@@ -466,7 +467,7 @@ for jsondata in jsondatas:
           builtinName = builtinName+"_proto";
 
     if not testCode in builtins:
-      print("Adding "+testCode+" to builtins")
+      print("Adding "+testCode+" to builtins ("+className+")")
       builtins[testCode] = { "name" : builtinName, "className" : className, "isProto" : isProto, "functions" : [] }
     builtins[testCode]["functions"].append(jsondata);
 

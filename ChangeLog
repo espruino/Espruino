@@ -13,6 +13,7 @@
             Bangle.js2: Ensure that changing a menu item when half-scrolled off screen doesn't overwrite widgets
             Puck.js: Ensure acc/gyro doesn't cause watch events to be added to the input queue (more efficient)
             Waveform: Fix waveform input/output when not done at system start - Since 2v13 start time was set in the past
+            Fix ordering of Pin check in wrapper (so autocomplete and Pin prototype works)
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)

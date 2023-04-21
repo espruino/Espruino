@@ -17,10 +17,17 @@
 #include "jswrap_io.h"
 #include "jstimer.h"
 
+/* We use sortorder ensure sort position for Pin class *and at least one non-static member function*
+  is before that of 'Number', so that jswGetBasicObjectName/jswFindBuiltInFunction/jswGetSymbolListForObjectProto 
+  check first (Pin is also Numeric) */
+
+
 /*JSON{
   "type"  : "class",
   "class" : "Pin",
-  "check" : "jsvIsPin(var)"
+  "name"  : "Pin",
+  "check" : "jsvIsPin(var)",
+  "sortorder" : -1
 }
 This is the built-in class for Pins, such as D0,D1,LED1, or BTN
 
@@ -56,7 +63,8 @@ JsVar *jswrap_pin_constructor(JsVar *val) {
   "class"    : "Pin",
   "name"     : "read",
   "generate" : "jswrap_pin_read",
-  "return"   : ["bool","Whether pin is a logical 1 or 0"]
+  "return"   : ["bool","Whether pin is a logical 1 or 0"],
+  "sortorder" : -1
 }
 Returns the input state of the pin as a boolean.
 
@@ -72,7 +80,8 @@ bool jswrap_pin_read(JsVar *parent) {
   "type"     : "method",
   "class"    : "Pin",
   "name"     : "set",
-  "generate" : "jswrap_pin_set"
+  "generate" : "jswrap_pin_set",
+  "sortorder" : -1
 }
 Sets the output state of the pin to a 1
 
