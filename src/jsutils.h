@@ -620,4 +620,8 @@ size_t jsuGetFreeStack();
   void *espruino_stackHighPtr;  //Used by jsuGetFreeStack
 #endif
 
+typedef struct {
+  short x,y,z;
+} Vector3;
+
 #endif /* JSUTILS_H_ */

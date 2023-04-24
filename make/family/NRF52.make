@@ -77,14 +77,20 @@ endif
 endif
 
 # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
-ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=softfp -mfpu=fpv4-sp-d16
+ARCHFLAGS += -mcpu=cortex-m4 -mthumb -mabi=aapcs 
+ifdef FLOAT_ABI_HARD 
+ARCHFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16 
+DEFINES += -DFLOAT_ABI_HARD 
+else
+ARCHFLAGS += -mfloat-abi=softfp -mfpu=fpv4-sp-d16
+endif
 
 # nRF52 specific.
 INCLUDE          += -I$(SOFTDEVICE_PATH)/headers
 INCLUDE          += -I$(SOFTDEVICE_PATH)/headers/nrf52
 
 DEFINES += -DBLE_STACK_SUPPORT_REQD
-DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DFLOAT_ABI_HARD 
+DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT
 DEFINES += -DNRF52_SERIES
 # Nordic screwed over anyone who used -DNRF52 in new SDK versions
 # but then old SDKs won't work without it

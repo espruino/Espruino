@@ -538,9 +538,6 @@ Can be used for housekeeping tasks that don't want to be run during the day.
 
 #define ACCEL_HISTORY_LEN 50 ///< Number of samples of accelerometer history
 
-typedef struct {
-  short x,y,z;
-} Vector3;
 
 // =========================================================================
 //                                            DEVICE SPECIFIC CONFIG
@@ -794,7 +791,7 @@ bool lcdFadeHandlerActive;
 // compass data
 Vector3 mag, magmin, magmax;
 #endif
-/// accelerometer data
+/// accelerometer data. 8192 = 1G
 Vector3 acc;
 /// squared accelerometer magnitude
 int accMagSquared;
@@ -1489,7 +1486,7 @@ void peripheralPollHandler() {
 
 #ifdef HEARTRATE
 static void hrmHandler(int ppgValue) {
-  if (hrm_new(ppgValue)) {
+  if (hrm_new(ppgValue, &acc)) {
     bangleTasks |= JSBT_HRM_DATA;
     // keep track of best HRM sample during this period
     if (hrmInfo.confidence >= healthCurrent.bpmConfidence) {
@@ -3910,13 +3907,13 @@ bool jswrap_banglejs_idle() {
 #ifdef HEARTRATE
     if (bangleTasks & JSBT_HRM_INSTANT_DATA) {
       JsVar *o = hrm_sensor_getJsVar();
-      if (o) {
+      if (o) {        
         jsvObjectSetChildAndUnLock(o,"raw",jsvNewFromInteger(hrmInfo.raw));
-        jsvObjectSetChildAndUnLock(o,"filt",jsvNewFromInteger(hrmInfo.filtered));
-        jsvObjectSetChildAndUnLock(o,"avg",jsvNewFromInteger(hrmInfo.avg));
-        jsvObjectSetChildAndUnLock(o,"isBeat",jsvNewFromBool(hrmInfo.isBeat));
         jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(hrmInfo.bpm10 / 10.0));
         jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
+        jsvObjectSetChildAndUnLock(o,"filt",jsvNewFromInteger(hrmInfo.filtered));
+        jsvObjectSetChildAndUnLock(o,"avg",jsvNewFromInteger(hrmInfo.avg));
+        hrm_get_hrm_raw_info(o);
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM-raw", &o, 1);
         jsvUnLock(o);
       }
@@ -3926,16 +3923,7 @@ bool jswrap_banglejs_idle() {
       if (o) {
         jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromInteger(hrmInfo.bpm10 / 10.0));
         jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
-        JsVar *a = jsvNewEmptyArray();
-        if (a) {
-          int n = hrmInfo.timeIdx;
-          for (int i=0;i<HRM_HIST_LEN;i++) {
-            jsvArrayPushAndUnLock(a, jsvNewFromFloat(hrm_time_to_bpm10(hrmInfo.times[n]) / 10.0));
-            n++;
-            if (n==HRM_HIST_LEN) n=0;
-          }
-          jsvObjectSetChildAndUnLock(o,"history",a);
-        }
+        hrm_get_hrm_info(o);
         jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM", &o, 1);
         jsvUnLock(o);
       }
