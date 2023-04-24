@@ -184,6 +184,8 @@ See comments after JsVar in jsvar.c for more info.
   typedef int32_t JsVarRefSigned;
   #define JSVARREF_BITS 32
   #define JSVARREFCOUNT_BITS 8
+  #define JSVARREF_MIN (-2147483648)
+  #define JSVARREF_MAX (2147483647)
 #else
    /** JsVarRaf stores References for variables - We treat 0 as null
    *  NOTE: we store JSVAR_DATA_STRING_* as actual values so we can do #if on them below
@@ -240,14 +242,15 @@ See comments after JsVar in jsvar.c for more info.
   #else
     #error "Assuming 16 bit refs we can't go above 65534 elements"
   #endif
+  #define JSVARREF_MIN (-(1<<(JSVARREF_BITS-1)))
+  #define JSVARREF_MAX ((1<<(JSVARREF_BITS-1))-1)
 #endif
 
 #ifndef JSVARREFCOUNT_PACK_BITS
 #define JSVARREFCOUNT_PACK_BITS 0
 #endif
 
-#define JSVARREF_MIN (-(1<<(JSVARREF_BITS-1)))
-#define JSVARREF_MAX ((1<<(JSVARREF_BITS-1))-1)
+
 #define JSVARREFCOUNT_MAX ((1<<JSVARREFCOUNT_BITS)-1)
 
 #if defined(__WORDSIZE) && __WORDSIZE == 64
@@ -288,13 +291,6 @@ field, but because they are bitfields we can't get pointers to them!
 #error JsVarDataRef is not big enough to store a double value
 #endif
 
-typedef int32_t JsVarInt;
-typedef uint32_t JsVarIntUnsigned;
-#ifdef USE_FLOATS
-typedef float JsVarFloat;
-#else
-typedef double JsVarFloat;
-#endif
 
 #define JSSYSTIME_MAX 0x7FFFFFFFFFFFFFFFLL
 typedef int64_t JsSysTime;
@@ -458,7 +454,7 @@ If jsonStyle=true, only string escapes supported by JSON are used. 'nextCh' is n
 to ensure that certain escape combinations are avoided. For instance "\0" + "0" is NOT "\00" */
 const char *escapeCharacter(char ch, char nextCh, bool jsonStyle);
 /** Parse radix prefixes, or return 0 */
-int getRadix(const char **s,  bool *hasError);
+int getRadix(const char **s);
 /// Convert a character to the hexadecimal equivalent (or -1)
 int chtod(char ch);
 /// Convert 2 characters to the hexadecimal equivalent (or -1)

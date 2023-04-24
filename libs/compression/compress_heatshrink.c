@@ -56,7 +56,6 @@ uint32_t heatshrink_encode_cb(int (*in_callback)(uint32_t *cbdata), uint32_t *in
 
   size_t i;
   size_t count = 0;
-  size_t sunk = 0;
   size_t polled = 0;
   int lastByte = 0;
   size_t inBufCount = 0;
@@ -76,7 +75,6 @@ uint32_t heatshrink_encode_cb(int (*in_callback)(uint32_t *cbdata), uint32_t *in
     assert(ok);NOT_USED(ok);
     inBufCount -= count;
     inBufOffset += count;
-    sunk += count;
     if ((inBufCount==0) && (lastByte < 0)) {
       heatshrink_encoder_finish(&hse);
     }
@@ -107,7 +105,6 @@ uint32_t heatshrink_decode_cb(int (*in_callback)(uint32_t *cbdata), uint32_t *in
 
   size_t i;
   size_t count = 0;
-  size_t sunk = 0;
   size_t polled = 0;
   int lastByte = 0;
   size_t inBufCount = 0;
@@ -127,12 +124,11 @@ uint32_t heatshrink_decode_cb(int (*in_callback)(uint32_t *cbdata), uint32_t *in
     assert(ok);NOT_USED(ok);
     inBufCount -= count;
     inBufOffset += count;
-    sunk += count;
     if ((inBufCount==0) && (lastByte < 0)) {
       heatshrink_decoder_finish(&hsd);
     }
 
-    HSE_poll_res pres;
+    HSD_poll_res pres;
     do {
       pres = heatshrink_decoder_poll(&hsd, outBuf, sizeof(outBuf), &count);
       assert(pres >= 0);

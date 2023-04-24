@@ -78,6 +78,7 @@ typedef struct {
   unsigned short functionSpec; // JsnArgumentType
   void (*functionPtr)(void);
 } PACKED_JSW_SYM JswSymPtr;
+// This should be a multiple of 2 in length or jswBinarySearch will need READ_FLASH_UINT16
 
 /// Information for each list of built-in symbols
 typedef struct {
