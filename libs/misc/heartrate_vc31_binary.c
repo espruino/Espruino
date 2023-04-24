@@ -64,7 +64,7 @@ bool hrm_new(int ppgValue, Vector3 *acc) {
   Algo_Input(&inputData, timeDiff, SPORT_TYPE_NORMAL,0/*surfaceRecogMode*/,0/*opticalAidMode*/);
   AlgoOutputData_t outputData;
   Algo_Output(&outputData);
-  jsiConsolePrintf("HRM %d %d %d\n", outputData.hrData, outputData.reliability, hrmInfo.msSinceLastHRM);
+  //jsiConsolePrintf("HRM %d %d %d\n", outputData.hrData, outputData.reliability, hrmInfo.msSinceLastHRM);
   if (outputData.hrData!=hrmInfo.lastHRM ||
       outputData.reliability!=hrmInfo.lastConfidence ||
       ((hrmInfo.msSinceLastHRM > 2000) && outputData.hrData && outputData.reliability)) {
