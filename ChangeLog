@@ -17,6 +17,7 @@
             Bangle.js2: Switched to 'hard' float abi from 'soft' (needed for proprietary hrm algorithm)
             Bangle.js2: Switched to proprietary heart rate algorithm (from our Open Source version). It just works better. 
             JIT: Implemented do { a } while (b)
+            Ensure that for(in), Object.keys and Object.getOwnPropertyNames return array indices as strings (not numbers)
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)

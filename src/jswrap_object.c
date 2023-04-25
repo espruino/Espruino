@@ -220,7 +220,7 @@ void jswrap_object_keys_or_property_names_cb(
         /* Not sure why constructor is included in getOwnPropertyNames, but
          * not in for (i in ...) but it is, so we must explicitly override the
          * check in jsvIsInternalObjectKey! */
-        JsVar *name = jsvAsArrayIndexAndUnLock(jsvCopyNameOnly(key, false, false));
+        JsVar *name = jsvAsStringAndUnLock(jsvCopyNameOnly(key, false, false));
         if (name) {
           callback(data, name);
           jsvUnLock(name);

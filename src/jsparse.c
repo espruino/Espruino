@@ -2655,9 +2655,7 @@ NO_INLINE JsVar *jspeStatementFor() {
             if (isForOf) { // for (... of ...)
               iteratorValue = jsvIteratorGetValue(&it);
             } else { // for (... in ...)
-              iteratorValue = jsvIsName(loopIndexVar) ?
-                  jsvCopyNameOnly(loopIndexVar, false/*no copy children*/, false/*not a name*/) :
-                  loopIndexVar;
+              iteratorValue = jsvAsString(loopIndexVar);
               assert(jsvGetRefs(iteratorValue)==0);
             }
             if (isForOf || iteratorValue) { // could be out of memory
@@ -2666,7 +2664,7 @@ NO_INLINE JsVar *jspeStatementFor() {
               if (startsWithConst) forStatement->flags &= ~JSV_CONSTANT; // for (const i in [1,2,3]) has to work
               jsvReplaceWithOrAddToRoot(forStatement, iteratorValue);
               if (startsWithConst) forStatement->flags |= JSV_CONSTANT;
-              if (iteratorValue!=loopIndexVar) jsvUnLock(iteratorValue);
+              jsvUnLock(iteratorValue);
 
               jslSeekToP(&forBodyStart);
               execInfo.execute |= EXEC_IN_LOOP;
