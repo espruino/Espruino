@@ -419,9 +419,6 @@ int accelGestureInactiveCount = 4;
 /// how many samples must a gesture have before we notify about it?
 int accelGestureMinLength = 10;
 
-typedef struct {
-  short x,y,z;
-} Vector3;
 /// accelerometer data
 Vector3 acc;
 /// squared accelerometer magnitude
