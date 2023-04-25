@@ -51,8 +51,11 @@ bool hrm_new(int ppgValue, Vector3 *acc) {
     hrmInfo.isWorn = vcInfo.isWearing;
     if (!hrmInfo.isWorn) return false;
   }
-  hrmInfo.filtered = ppgValue-hrmInfo.avg;
-  hrmInfo.avg = (hrmInfo.avg*15 + ppgValue) >> 4;  
+  int f = (ppgValue-hrmInfo.avg)*256;
+  if (f < HRMVALUE_MIN) f = HRMVALUE_MIN;
+  if (f > HRMVALUE_MAX) f = HRMVALUE_MAX;
+  hrmInfo.filtered = f;
+  hrmInfo.avg = ((int)hrmInfo.avg*7 + ppgValue) >> 3;  
   // Feed data into algorithm
   AlgoInputData_t inputData;
   inputData.axes.x = acc->y >> 5;  // perpendicular to the direction of the arm
