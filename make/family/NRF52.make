@@ -78,12 +78,8 @@ endif
 
 # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
 ARCHFLAGS += -mcpu=cortex-m4 -mthumb -mabi=aapcs 
-ifdef FLOAT_ABI_HARD 
-ARCHFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16 
-DEFINES += -DFLOAT_ABI_HARD 
-else
 ARCHFLAGS += -mfloat-abi=softfp -mfpu=fpv4-sp-d16
-endif
+# Espruino uses doubles, not floats - so actually using hardfp doesn't actually help us much and adds register-swapping overhead
 
 # nRF52 specific.
 INCLUDE          += -I$(SOFTDEVICE_PATH)/headers
