@@ -862,7 +862,7 @@ void jsjStatementVar() {
     if (hasInitialiser || jit.phase != JSJP_EMIT)
       jsjFactorIDAndUnLock(name, declType);
     if (hasInitialiser) { // sort out initialiser
-      DEBUG_JIT_EMIT("; Variable's intitialiser\n");
+      DEBUG_JIT_EMIT("; Variable's initialiser\n");
       JSP_ASSERT_MATCH('=');
       jsjAssignmentExpression();
       if (jit.phase == JSJP_EMIT) {
@@ -971,6 +971,47 @@ void jsjStatementFor() {
   jsvUnLock2(mainBlock, iteratorBlock);
 }
 
+void jsjStatementDoOrWhile(bool isWhile) {
+  int codePosStart = jsjcGetByteCount();
+  if (isWhile) { // while loop
+    assert(0);
+    /*JSP_ASSERT_MATCH(LEX_R_WHILE);
+    DEBUG_JIT_EMIT("; WHILE condition\n");
+    JSP_MATCH('(');
+    jsjExpression();
+    JSP_MATCH(')');
+    DEBUG_JIT_EMIT("; Parsing WHILE main block\n");
+    JsVar *oldBlock = jsjcStartBlock();
+    jsjBlockOrStatement();
+    JsVar *mainBlock = jsjcStopBlock(oldBlock);
+    if (jit.phase == JSJP_EMIT) {
+      DEBUG_JIT_EMIT("; WHILE condition jump\n");
+      jsjPopAsBool(0);
+      jsjcCompareImm(0, 0);
+      jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(mainBlock) + 2);
+      DEBUG_JIT_EMIT("; WHILE Main block\n");
+      jsjcEmitBlock(mainBlock);
+      DEBUG_JIT_EMIT("; WHILE jump back to condition\n");
+      jsjcBranchRelative(codePosStart - (jsjcGetByteCount()));
+    }
+    jsvUnLock(mainBlock);*/
+  } else { // do..while loop
+    JSP_ASSERT_MATCH(LEX_R_DO);
+    DEBUG_JIT_EMIT("; DO Main block\n");
+    jsjBlockOrStatement();
+    JSP_ASSERT_MATCH(LEX_R_WHILE);
+    DEBUG_JIT_EMIT("; DO condition\n");
+    JSP_MATCH('(');
+    jsjExpression();
+    JSP_MATCH(')');
+    if (jit.phase == JSJP_EMIT) {
+      jsjPopAsBool(0);
+      jsjcCompareImm(0, 0);
+      jsjcBranchConditionalRelative(JSJAC_NE, codePosStart - (jsjcGetByteCount()+2));
+    }    
+  }
+}
+
 void jsjStatement() {
   if (lex->tk==LEX_ID ||
       lex->tk==LEX_INT ||
@@ -1011,9 +1052,9 @@ void jsjStatement() {
     return jsjStatementVar();
   } else if (lex->tk==LEX_R_IF) {
     return jsjStatementIf();
-  /*} else if (lex->tk==LEX_R_DO) {
+  } else if (lex->tk==LEX_R_DO) {
     return jsjStatementDoOrWhile(false);
-  } else if (lex->tk==LEX_R_WHILE) {
+  /*} else if (lex->tk==LEX_R_WHILE) { // FIXME - WHILE loop seems somehow broken, so is disabled for now
     return jsjStatementDoOrWhile(true);*/
   } else if (lex->tk==LEX_R_FOR) {
     return jsjStatementFor();

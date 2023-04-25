@@ -39,6 +39,8 @@
 // JIT state
 JsjInfo jit;
 
+const char *JSJAC_STRINGS = JSJAC_STRING;
+
 const char *jsjcGetTypeName(JsjValueType t) {
   switch(t) {
     case JSJVT_INT: return "int";
@@ -242,7 +244,7 @@ void jsjcCompareImm(int reg, int literal) {
 }
 
 void jsjcBranchRelative(int bytes) {
-  DEBUG_JIT("B %s%d (addr 0x%04x)\n", (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
+  DEBUG_JIT("B %s%d (addr 0x%04x)\n", (bytes>=0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
   bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
   assert(bytes>=-2048 && bytes<2048); // check it's in range...
@@ -257,15 +259,17 @@ void jsjcBranchRelative(int bytes) {
 
 // Jump a number of bytes forward or back, based on condition flags
 void jsjcBranchConditionalRelative(JsjAsmCondition cond, int bytes) {
+  assert(cond<16);
   bytes -= 2; // because PC is ahead by 2
   assert(!(bytes&1)); // only multiples of 2 bytes
+  
   if (bytes>=-256 && bytes<256) { // B<c>
-    DEBUG_JIT("B<%d> %s%d (addr 0x%04x)\n", cond, (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
+    DEBUG_JIT("B<%s> %s%d (addr 0x%04x)\n", &JSJAC_STRINGS[cond*3], (bytes>=0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
     int imm8 = (bytes>>1) & 255;
     jsjcEmit16((uint16_t)(0b1101000000000000 | (cond<<8) | imm8)); // conditional branch
   } else if (bytes>=-1048576 && bytes<(1048576-2)) { // B<c>.W
     bytes += 2; // must pad out by 1 byte because this is a double-length instruction!
-    DEBUG_JIT("B<%d>.W %s%d (addr 0x%04x)\n", cond, (bytes>0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
+    DEBUG_JIT("B<%s>.W %s%d (addr 0x%04x)\n", &JSJAC_STRINGS[cond*3], (bytes>=0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
     int imm20 = (bytes>>1);
     int S = (imm20>>19) & 1;
     int J2 = (imm20>>18) & 1;
@@ -374,7 +378,7 @@ void jsjcAddSP(int amt) {
 
 void jsjcSubSP(int amt) {
   assert((amt&3)==0 && amt>0 && amt<512);
-  jit.stackDepth += (amt>>2); // stack grows down -> negate
+  jit.stackDepth += (amt>>2); // stack growsR down -> negate
   DEBUG_JIT("SUB SP,SP,#%d   (stack depth now %d)\n", amt, jit.stackDepth);
   jsjcEmit16((uint16_t)(0b1011000010000000 | (amt>>2)));
 }
