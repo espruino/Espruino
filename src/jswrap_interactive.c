@@ -543,7 +543,7 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVarArr, bool isTimeout) {
     jsvObjectIteratorNew(&it, timerArrayPtr);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *timerPtr = jsvObjectIteratorGetValue(&it);
-      JsVar *watchPtr = jsvObjectGetChild(timerPtr, "watch", 0);
+      JsVar *watchPtr = jsvObjectGetChildIfExists(timerPtr, "watch");
       if (!watchPtr)
         jsvObjectIteratorRemoveAndGotoNext(&it, timerArrayPtr);
       else

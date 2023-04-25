@@ -58,7 +58,7 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
   // https://github.com/espruino/Espruino/issues/894#issuecomment-402553934
   jsvObjectRemoveChild(promise, JS_PROMISE_THEN_NAME); // remove 'resolve' and 'reject' handlers
   jsvObjectRemoveChild(promise, JS_PROMISE_CATCH_NAME); // remove 'resolve' and 'reject' handlers
-  JsVar *chainedPromise = jsvObjectGetChild(promise, "chain", 0);
+  JsVar *chainedPromise = jsvObjectGetChildIfExists(promise, "chain");
   jsvObjectRemoveChild(promise, "chain"); // unlink chain
   // execute handlers from `fn`
   JsVar *result = 0;
@@ -109,17 +109,17 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
 void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool resolve) {
   const char *eventName = resolve ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
   // if we didn't have a catch, traverse the chain looking for one
-  JsVar *fn = jsvObjectGetChild(promise, eventName, 0);
+  JsVar *fn = jsvObjectGetChildIfExists(promise, eventName);
   if (!fn) {
-    JsVar *chainedPromise = jsvObjectGetChild(promise, "chain", 0);
+    JsVar *chainedPromise = jsvObjectGetChildIfExists(promise, "chain");
     while (chainedPromise) {
-      fn = jsvObjectGetChild(chainedPromise, eventName, 0);
+      fn = jsvObjectGetChildIfExists(chainedPromise, eventName);
       if (fn) {
         _jswrap_promise_resolve_or_reject(chainedPromise, data, fn);
         jsvUnLock2(fn, chainedPromise);
         return;
       }
-      JsVar *n = jsvObjectGetChild(chainedPromise, "chain", 0);
+      JsVar *n = jsvObjectGetChildIfExists(chainedPromise, "chain");
       jsvUnLock(chainedPromise);
       chainedPromise = n;
     }
@@ -135,7 +135,7 @@ void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool r
       jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
       // If there was an exception with a stack trace, pass it through so we can keep adding stack to it
       JsVar *stack = 0;
-      if (jsvIsObject(data) && (stack=jsvObjectGetChild(data, "stack", 0))) {
+      if (jsvIsObject(data) && (stack=jsvObjectGetChildIfExists(data, "stack"))) {
         jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, stack);
       }
     }
@@ -166,8 +166,8 @@ void _jswrap_promise_queuereject(JsVar *promise, JsVar *data) {
 }
 
 void jswrap_promise_all_resolve(JsVar *promise, JsVarInt index, JsVar *data) {
-  JsVarInt remaining = jsvGetIntegerAndUnLock(jsvObjectGetChild(promise, JS_PROMISE_REMAINING_NAME, 0));
-  JsVar *arr = jsvObjectGetChild(promise, JS_PROMISE_RESULT_NAME, 0);
+  JsVarInt remaining = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(promise, JS_PROMISE_REMAINING_NAME));
+  JsVar *arr = jsvObjectGetChildIfExists(promise, JS_PROMISE_RESULT_NAME);
   if (arr) {
     // set the result
     jsvSetArrayItem(arr, index, data);
@@ -181,7 +181,7 @@ void jswrap_promise_all_resolve(JsVar *promise, JsVarInt index, JsVar *data) {
   }
 }
 void jswrap_promise_all_reject(JsVar *promise, JsVar *data) {
-  JsVar *arr = jsvObjectGetChild(promise, JS_PROMISE_RESULT_NAME, 0);
+  JsVar *arr = jsvObjectGetChildIfExists(promise, JS_PROMISE_RESULT_NAME);
   if (arr) {
     // if not rejected before
     jsvUnLock(arr);
@@ -326,7 +326,7 @@ JsVar *jswrap_promise_resolve(JsVar *data) {
   // If the value is a thenable (i.e. has a "then" method), the
   // returned promise will "follow" that thenable, adopting its eventual state
   if (jsvIsObject(data)) {
-    JsVar *then = jsvObjectGetChild(data,"then",0);
+    JsVar *then = jsvObjectGetChildIfExists(data,"then");
     if (jsvIsFunction(then))
       promise = jswrap_promise_constructor(then);
     jsvUnLock(then);
@@ -381,7 +381,7 @@ void _jswrap_promise_add(JsVar *parent, JsVar *callback, bool resolve) {
 
 
   const char *name = resolve ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
-  JsVar *c = jsvObjectGetChild(parent, name, 0);
+  JsVar *c = jsvObjectGetChildIfExists(parent, name);
   if (!c) {
     jsvObjectSetChild(parent, name, callback);
   } else {
@@ -403,7 +403,7 @@ void _jswrap_promise_add(JsVar *parent, JsVar *callback, bool resolve) {
 }
 
 static JsVar *jswrap_promise_get_chained_promise(JsVar *parent) {
-  JsVar *chainedPromise = jsvObjectGetChild(parent, "chain", 0);
+  JsVar *chainedPromise = jsvObjectGetChildIfExists(parent, "chain");
   if (!chainedPromise) {
     chainedPromise = jspNewObject(0, "Promise");
     jsvObjectSetChild(parent, "chain", chainedPromise);

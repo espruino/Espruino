@@ -208,7 +208,7 @@ bool graphicsSetCallbacks(JsGraphics *gfx) {
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
   gfx->graphicsVar = parent;
   // jsvObjectGetChild can handle parent==NULL
-  JsVar *data = jsvObjectGetChild(parent, JS_HIDDEN_CHAR_STR"gfx", 0);
+  JsVar *data = jsvObjectGetChildIfExists(parent, JS_HIDDEN_CHAR_STR"gfx");
 #if ESPR_GRAPHICS_INTERNAL
   if (!data) {
     *gfx = graphicsInternal;

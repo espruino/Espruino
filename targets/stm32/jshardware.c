@@ -3023,7 +3023,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
 
 int jshSetSystemClockPClk(JsVar *options, const char *clkName) {
-  JsVar *v = jsvObjectGetChild(options, clkName, 0);
+  JsVar *v = jsvObjectGetChildIfExists(options, clkName);
   JsVarInt i = jsvGetIntegerAndUnLock(v);
   if (i==1) return RCC_HCLK_Div1;
   if (i==2) return RCC_HCLK_Div2;
@@ -3040,10 +3040,10 @@ int jshSetSystemClockPClk(JsVar *options, const char *clkName) {
 unsigned int jshSetSystemClock(JsVar *options) {
   // see system_stm32f4xx.c for clock configurations
 #ifdef STM32F4
-  unsigned int m = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "M", 0));
-  unsigned int n = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "N", 0));
-  unsigned int p = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "P", 0));
-  unsigned int q = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "Q", 0));
+  unsigned int m = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "M"));
+  unsigned int n = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "N"));
+  unsigned int p = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "P"));
+  unsigned int q = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "Q"));
   if (!IS_RCC_PLLM_VALUE(m)) {
     jsExceptionHere(JSET_ERROR, "Invalid PLL M value %d", m);
     return 0;
@@ -3061,7 +3061,7 @@ unsigned int jshSetSystemClock(JsVar *options) {
     return 0;
   }
   uint8_t latency = 255;
-  JsVar *v = jsvObjectGetChild(options, "latency", 0);
+  JsVar *v = jsvObjectGetChildIfExists(options, "latency");
   if (v) {
     latency = (uint8_t)jsvGetIntegerAndUnLock(v);
     if (!IS_FLASH_LATENCY(latency)) {

@@ -1787,7 +1787,7 @@ bool jswrap_puck_idle() {
     if (mag_data_ready) {
       JsVar *xyz = to_xyz(mag_reading, 1);
       mag_data_ready = false;
-      JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
+      JsVar *puck = jsvObjectGetChildIfExists(execInfo.root, "Puck");
       if (jsvHasChildren(puck))
           jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"mag", &xyz, 1);
       jsvUnLock2(puck, xyz);
@@ -1798,7 +1798,7 @@ bool jswrap_puck_idle() {
   if (accel_enabled && nrf_gpio_pin_read(ACCEL_PIN_INT)) {
     accel_read();
     JsVar *d = jswrap_puck_accel();
-    JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
+    JsVar *puck = jsvObjectGetChildIfExists(execInfo.root, "Puck");
     if (jsvHasChildren(puck))
         jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"accel", &d, 1);
     jsvUnLock2(puck, d);

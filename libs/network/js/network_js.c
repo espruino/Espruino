@@ -26,7 +26,7 @@ void net_js_setObj(JsVar *obj) {
 
 /// Call the named function on the object - whether it's built in, or predefined. Returns the return value of the function.
 JsVar *callFn(char* name, int argCount, JsVar **argPtr) {
-  JsVar *netObj = jsvObjectGetChild(execInfo.hiddenRoot, JSNET_NAME, 0);
+  JsVar *netObj = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSNET_NAME);
   JsVar *child = jspGetNamedField(netObj, name, false);
 
   JsVar *r = 0;
@@ -68,7 +68,7 @@ int net_js_createsocket(JsNetwork *net, SocketType socketType, uint32_t host, un
   if (host!=0) {
     // client
     if (host==0xFFFFFFFF) {
-      hostVar = jsvObjectGetChild(execInfo.hiddenRoot, JSNET_DNS_NAME, 0);
+      hostVar = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSNET_DNS_NAME);
     }
     if (!hostVar)
       hostVar = networkGetAddressAsString((unsigned char *)&host, 4,10,'.');
@@ -97,7 +97,7 @@ void net_js_closesocket(JsNetwork *net, int sckt) {
 /// If the given server socket can accept a connection, return the socket number of the new connection (or return < 0)
 int net_js_accept(JsNetwork *net, int serverSckt) {
   NOT_USED(net);
-  JsVar *netObj = jsvObjectGetChild(execInfo.hiddenRoot, JSNET_NAME, 0);
+  JsVar *netObj = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSNET_NAME);
   JsVar *args[1] = {
       jsvNewFromInteger(serverSckt)
   };

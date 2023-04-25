@@ -42,7 +42,7 @@ void net_cc3000_idle(JsNetwork *net) {
   cc3000_spi_check();
 
   if (networkState == NETWORKSTATE_INVOLUNTARY_DISCONNECT) {
-    JsVar *wlanObj = jsvObjectGetChild(execInfo.hiddenRoot, CC3000_OBJ_NAME, 0);
+    JsVar *wlanObj = jsvObjectGetChildIfExists(execInfo.hiddenRoot, CC3000_OBJ_NAME);
     if (wlanObj) {
       jswrap_wlan_reconnect(wlanObj);
       jsvUnLock(wlanObj);
@@ -63,7 +63,7 @@ bool net_cc3000_checkError(JsNetwork *net) {
     socketKill(net);
     socketInit();
     // power cycle
-    JsVar *wlan = jsvObjectGetChild(execInfo.hiddenRoot, CC3000_OBJ_NAME, 0);
+    JsVar *wlan = jsvObjectGetChildIfExists(execInfo.hiddenRoot, CC3000_OBJ_NAME);
     if (wlan) {
       jswrap_wlan_reconnect(wlan);
       jsvUnLock(wlan);

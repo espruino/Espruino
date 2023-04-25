@@ -1094,7 +1094,7 @@ int net_ESP8266_BOARD_createSocket(
 
   // multicast support
   // FIXME: perhaps extend the JsNetwork with addmembership/removemembership instead of using options
-  JsVar *mgrpVar = jsvObjectGetChild(options, "multicastGroup", 0);
+  JsVar *mgrpVar = jsvObjectGetChildIfExists(options, "multicastGroup");
   if (mgrpVar) {
       char ipStr[18];
 
@@ -1102,7 +1102,7 @@ int net_ESP8266_BOARD_createSocket(
       jsvUnLock(mgrpVar);
       uint32_t grpip = networkParseIPAddress(ipStr);
 
-      JsVar *ipVar = jsvObjectGetChild(options, "multicastIp", 0);
+      JsVar *ipVar = jsvObjectGetChildIfExists(options, "multicastIp");
       jsvGetString(ipVar, ipStr, sizeof(ipStr));
       jsvUnLock(ipVar);
       uint32_t ip = networkParseIPAddress(ipStr);

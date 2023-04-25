@@ -260,7 +260,7 @@ JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
     while (match && !jsvIsNull(match)) {
       // get info about match
       JsVar *matchStr = jsvGetArrayItem(match,0);
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(match,"index"));
       JsVarInt len = (JsVarInt)jsvGetStringLength(matchStr);
       int last = idx+len;
       jsvArrayPushAndUnLock(array, matchStr);
@@ -330,7 +330,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
     while (match && !jsvIsNull(match) && !jspIsInterrupted()) {
       // get info about match
       JsVar *matchStr = jsvGetArrayItem(match,0);
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(match,"index"));
       JsVarInt len = (JsVarInt)jsvGetStringLength(matchStr);
       // do the replacement
       jsvStringIteratorAppendString(&dst, str, (size_t)lastIndex, (idx-lastIndex)); // the string before the match
@@ -341,8 +341,8 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
         JsVar *v;
         while ((v = jsvGetArrayItem(match, (JsVarInt)argCount)))
           args[argCount++] = v;
-        args[argCount++] = jsvObjectGetChild(match,"index",0);
-        args[argCount++] = jsvObjectGetChild(match,"input",0);
+        args[argCount++] = jsvObjectGetChildIfExists(match,"index");
+        args[argCount++] = jsvObjectGetChildIfExists(match,"input");
         JsVar *result = jsvAsStringAndUnLock(jspeFunctionCall(replace, 0, 0, false, (JsVarInt)argCount, args));
         jsvUnLockMany(argCount, args);
         jsvStringIteratorAppendString(&dst, result, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
@@ -507,7 +507,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
     while (match && !jsvIsNull(match)) {
       // get info about match
       JsVar *matchStr = jsvGetArrayItem(match,0);
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(match,"index"));
       int len = (int)jsvGetStringLength(matchStr);
       jsvUnLock(matchStr);
       // do the replacement

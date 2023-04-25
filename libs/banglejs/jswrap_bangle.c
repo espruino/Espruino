@@ -1040,7 +1040,7 @@ bool setDeviceRequested(const char *deviceName, JsVar *appID, bool powerOn) {
     return powerOn;
   }
 
-  JsVar *bangle = jsvObjectGetChild(execInfo.root, "Bangle", 0);
+  JsVar *bangle = jsvObjectGetChildIfExists(execInfo.root, "Bangle");
   if (!bangle) return false;
   JsVar *uses = jsvObjectGetChild(bangle, "_PWR", JSV_OBJECT);
   if (!uses) {
@@ -1070,7 +1070,7 @@ bool setDeviceRequested(const char *deviceName, JsVar *appID, bool powerOn) {
 }
 // Check whether a specific device has been requested to be on or not
 bool getDeviceRequested(const char *deviceName) {
-  JsVar *bangle = jsvObjectGetChild(execInfo.root, "Bangle", 0);
+  JsVar *bangle = jsvObjectGetChildIfExists(execInfo.root, "Bangle");
   if (!bangle) return false;
   JsVar *uses = jsvObjectGetChild(bangle, "_PWR", JSV_OBJECT);
   if (!uses) {
@@ -1914,7 +1914,7 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
   jswrap_banglejs_setLCDPowerBacklight(isOn);
 #endif
   if (((bangleFlags&JSBF_LCD_ON)!=0) != isOn) {
-    JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
+    JsVar *bangle =jsvObjectGetChildIfExists(execInfo.root, "Bangle");
     if (bangle) {
       JsVar *v = jsvNewFromBool(isOn);
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"lcdPower", &v, 1);
@@ -2021,7 +2021,7 @@ void jswrap_banglejs_setLCDMode(JsVar *mode) {
   else
     jsExceptionHere(JSET_ERROR,"Unknown LCD Mode %j",mode);
 
-  JsVar *graphics = jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
+  JsVar *graphics = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JS_GRAPHICS_VAR);
   if (!graphics) return;
   jswrap_graphics_setFont(graphics, NULL, 1); // reset fonts - this will free any memory associated with a custom font
   // remove the buffer if it was defined
@@ -2486,7 +2486,7 @@ void jswrap_banglejs_setLocked(bool isLocked) {
   }
 #endif
   if ((bangleFlags&JSBF_LOCKED) != isLocked) {
-    JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
+    JsVar *bangle =jsvObjectGetChildIfExists(execInfo.root, "Bangle");
     if (bangle) {
       JsVar *v = jsvNewFromBool(isLocked);
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"lock", &v, 1);
@@ -3367,7 +3367,7 @@ NO_INLINE void jswrap_banglejs_init() {
   JsVar *settings = jswrap_storage_readJSON(settingsFN,true);
   jsvUnLock(settingsFN);
   JsVar *v;
-  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"beep",0) : 0;
+  v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"beep") : 0;
   if (v && jsvGetBool(v)==false) {
     bangleFlags &= ~JSBF_ENABLE_BEEP;
   } else {
@@ -3382,7 +3382,7 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
   }
   jsvUnLock(v);
-  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"vibrate",0) : 0;
+  v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"vibrate") : 0;
   if (v && jsvGetBool(v)==false) {
     bangleFlags &= ~JSBF_ENABLE_BUZZ;
   } else {
@@ -3393,31 +3393,31 @@ NO_INLINE void jswrap_banglejs_init() {
   // If enabled, load battery 'full' voltage
 #ifdef ESPR_BATTERY_FULL_VOLTAGE
   batteryFullVoltage = ESPR_BATTERY_FULL_VOLTAGE;
-  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"batFullVoltage",0) : 0;
+  v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"batFullVoltage") : 0;
   if (jsvIsNumeric(v)) batteryFullVoltage = jsvGetFloatAndUnLock(v);
 #endif // ESPR_BATTERY_FULL_VOLTAGE
 
   // Load themes from the settings.json file
   jswrap_banglejs_setTheme();
-  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"theme",0) : 0;
+  v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"theme") : 0;
   if (jsvIsObject(v)) {
-    graphicsTheme.fg = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fg",0));
-    graphicsTheme.bg = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bg",0));
-    graphicsTheme.fg2 = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fg2",0));
-    graphicsTheme.bg2 = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bg2",0));
-    graphicsTheme.fgH = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"fgH",0));
-    graphicsTheme.bgH = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"bgH",0));
-    graphicsTheme.dark = jsvGetBoolAndUnLock(jsvObjectGetChild(v,"dark",0));
+    graphicsTheme.fg = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fg"));
+    graphicsTheme.bg = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bg"));
+    graphicsTheme.fg2 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fg2"));
+    graphicsTheme.bg2 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bg2"));
+    graphicsTheme.fgH = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fgH"));
+    graphicsTheme.bgH = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bgH"));
+    graphicsTheme.dark = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(v,"dark"));
   }
   jsvUnLock(v);
 #ifdef TOUCH_DEVICE
   // load touchscreen calibration
-  v = jsvIsObject(settings) ? jsvObjectGetChild(settings,"touch",0) : 0;
+  v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"touch") : 0;
     if (jsvIsObject(v)) {
-      touchMinX = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"x1",0));
-      touchMinY = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"y1",0));
-      touchMaxX = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"x2",0));
-      touchMaxY = jsvGetIntegerAndUnLock(jsvObjectGetChild(v,"y2",0));
+      touchMinX = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"x1"));
+      touchMinY = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"y1"));
+      touchMaxX = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"x2"));
+      touchMaxY = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"y2"));
     }
     jsvUnLock(v);
 #endif
@@ -3782,7 +3782,7 @@ void jswrap_banglejs_kill() {
   "generate" : "jswrap_banglejs_idle"
 }*/
 bool jswrap_banglejs_idle() {
-  JsVar *bangle =jsvObjectGetChild(execInfo.root, "Bangle", 0);
+  JsVar *bangle =jsvObjectGetChildIfExists(execInfo.root, "Bangle");
   /* Check if we have an accelerometer listener, and set JSBF_ACCEL_LISTENER
    * accordingly - so we don't get a wakeup if we have no listener. */
   if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"accel"))
@@ -3863,7 +3863,7 @@ bool jswrap_banglejs_idle() {
     }
     if (bangleTasks & JSBT_GPS_DATA_PARTIAL) {
       if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw")) {
-        JsVar *data = jsvObjectGetChild(bangle,"_gpsdata",0);
+        JsVar *data = jsvObjectGetChildIfExists(bangle,"_gpsdata");
         if (!data) {
           data = jsvNewFromEmptyString();
           jsvObjectSetChild(bangle,"_gpsdata",data);
@@ -3876,7 +3876,7 @@ bool jswrap_banglejs_idle() {
       if (jsiObjectHasCallbacks(bangle, JS_EVENT_PREFIX"GPS-raw")) {
 
         // Get any data previously added with JSBT_GPS_DATA_PARTIAL
-        JsVar *line = jsvObjectGetChild(bangle,"_gpsdata",0);
+        JsVar *line = jsvObjectGetChildIfExists(bangle,"_gpsdata");
         if (line) {
           jsvObjectRemoveChild(bangle,"_gpsdata");
           jsvAppendStringBuf(line, gpsLastLine, gpsLastLineLength);
@@ -4728,8 +4728,8 @@ JsVar *jswrap_banglejs_project(JsVar *latlong) {
   const double degToRad = PI / 180; // degree to radian conversion
   const double latMax = 85.0511287798; // clip latitude to sane values
   const double R = 6378137; // earth radius in m
-  double lat = jsvGetFloatAndUnLock(jsvObjectGetChild(latlong,"lat",0));
-  double lon = jsvGetFloatAndUnLock(jsvObjectGetChild(latlong,"lon",0));
+  double lat = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(latlong,"lat"));
+  double lon = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(latlong,"lon"));
   if (lat > latMax) lat=latMax;
   if (lat < -latMax) lat=-latMax;
   double s = sin(lat * degToRad);
@@ -5691,7 +5691,7 @@ Returns the rectangle on the screen that is currently reserved for the app.
 JsVar *jswrap_banglejs_appRect() {
   JsVar *o = jsvNewObject();
   if (!o) return 0;
-  JsVar *widgetsVar = jsvObjectGetChild(execInfo.root,"WIDGETS",0);
+  JsVar *widgetsVar = jsvObjectGetChildIfExists(execInfo.root,"WIDGETS");
   int top = 0, btm = 0; // size of various widget areas
   // check all widgets and see if any are in the top or bottom areas,
   // set top/btm accordingly
@@ -5700,8 +5700,8 @@ JsVar *jswrap_banglejs_appRect() {
     jsvObjectIteratorNew(&it, widgetsVar);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *widget = jsvObjectIteratorGetValue(&it);
-      JsVar *area = jsvObjectGetChild(widget, "area", 0);
-      JsVar *width = jsvObjectGetChild(widget, "width", 0);
+      JsVar *area = jsvObjectGetChildIfExists(widget, "area");
+      JsVar *width = jsvObjectGetChildIfExists(widget, "width");
       if (jsvIsString(area) && jsvIsNumeric(width)) {
         char a = jsvGetCharInString(area, 0);
         int w = jsvGetIntegerAndUnLock(width);

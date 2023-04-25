@@ -185,7 +185,7 @@ static JsVar* fsGetArray(bool create) {
 
 static bool fileGetFromVar(JsFile *file, JsVar *parent) {
   bool ret = false;
-  JsVar *fHandle = jsvObjectGetChild(parent, JS_FS_DATA_NAME, 0);
+  JsVar *fHandle = jsvObjectGetChildIfExists(parent, JS_FS_DATA_NAME);
   if (fHandle && jsvIsFlatString(fHandle)) {
     file->data = (JsFileData*)jsvGetFlatStringPointer(fHandle);
     file->fileVar = parent;

@@ -182,7 +182,7 @@ int addAdvertisingData(uint8_t *advData,int pnt,int idx,JsVar *value){
 
 int addAdvertisingDeviceName(uint8_t *advData,int pnt){
 	JsVar *deviceName;
-	deviceName = jsvObjectGetChild(execInfo.hiddenRoot, BLE_DEVICE_NAME, 0);
+	deviceName = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_DEVICE_NAME);
 	if(deviceName){
 		JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
 		if(nameLen > 0){
@@ -232,7 +232,7 @@ JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
 		jsvObjectIteratorFree(&it);
 		//todo add support of manufacturerData
 		i = i + addAdvertisingDeviceName(&encoded_advdata,i);
-		if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "uart", 0))){
+		if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "uart"))){
 			i = i + addAdvertisingUart(&encoded_advdata,i);
 		}
 	}

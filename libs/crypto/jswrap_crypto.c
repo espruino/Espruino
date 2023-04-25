@@ -284,12 +284,12 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
 
 
   if (jsvIsObject(options)) {
-    keySize = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "keySize", 0));
+    keySize = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "keySize"));
     if (keySize<=0) keySize=128/32;
-    iterations = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "iterations", 0));
+    iterations = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "iterations"));
     if (iterations<1) iterations = 1;
 
-    JsVar *hashVar = jsvObjectGetChild(options, "hasher", 0);
+    JsVar *hashVar = jsvObjectGetChildIfExists(options, "hasher");
     if (!jsvIsUndefined(hashVar))
       hasher = jswrap_crypto_getHasher(hashVar);
     jsvUnLock(hashVar);
@@ -345,12 +345,12 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   CryptoMode mode = CM_CBC;
 
   if (jsvIsObject(options)) {
-    JsVar *ivVar = jsvObjectGetChild(options, "iv", 0);
+    JsVar *ivVar = jsvObjectGetChildIfExists(options, "iv");
     if (ivVar) {
       jsvIterateCallbackToBytes(ivVar, iv, sizeof(iv));
       jsvUnLock(ivVar);
     }
-    JsVar *modeVar = jsvObjectGetChild(options, "mode", 0);
+    JsVar *modeVar = jsvObjectGetChildIfExists(options, "mode");
     if (!jsvIsUndefined(modeVar))
       mode = jswrap_crypto_getMode(modeVar);
     jsvUnLock(modeVar);

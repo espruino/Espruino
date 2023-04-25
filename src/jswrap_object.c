@@ -253,7 +253,7 @@ void jswrap_object_keys_or_property_names_cb(
     if (flags & JSWOKPF_INCLUDE_PROTOTYPE) {
       JsVar *proto = 0;
       if (jsvIsObject(obj) || jsvIsFunction(obj)) {
-        proto = jsvObjectGetChild(obj, JSPARSE_INHERITS_VAR, 0);
+        proto = jsvObjectGetChildIfExists(obj, JSPARSE_INHERITS_VAR);
       }
 
       if (jsvIsObject(proto)) {
@@ -460,8 +460,8 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
 #ifndef ESPR_NO_GET_SET
   JsVar *getset = jsvGetValueOfName(varName);
   if (jsvIsGetterOrSetter(getset)) {
-    jsvObjectSetChildAndUnLock(obj, "get", jsvObjectGetChild(getset,"get",0));
-    jsvObjectSetChildAndUnLock(obj, "set", jsvObjectGetChild(getset,"set",0));
+    jsvObjectSetChildAndUnLock(obj, "get", jsvObjectGetChildIfExists(getset,"get"));
+    jsvObjectSetChildAndUnLock(obj, "set", jsvObjectGetChildIfExists(getset,"set"));
   } else {
 #endif
     jsvObjectSetChildAndUnLock(obj, "value", jsvSkipName(varName));
@@ -607,8 +607,8 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
   JsVar *name = jsvAsArrayIndex(propName);
   JsVar *value = 0;
 
-  JsVar *getter = jsvObjectGetChild(desc, "get", 0);
-  JsVar *setter = jsvObjectGetChild(desc, "set", 0);
+  JsVar *getter = jsvObjectGetChildIfExists(desc, "get");
+  JsVar *setter = jsvObjectGetChildIfExists(desc, "set");
   if (getter || setter) {
 #ifdef SAVE_ON_FLASH
     jsExceptionHere(JSET_ERROR, "get/set unsupported in this build");
@@ -622,10 +622,10 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
 #endif
     jsvUnLock2(getter,setter);
   }
-  if (!value) value = jsvObjectGetChild(desc, "value", 0);
+  if (!value) value = jsvObjectGetChildIfExists(desc, "value");
 
   jsvObjectSetChildVar(parent, name, value);
-  JsVar *writable = jsvObjectGetChild(desc, "writable", 0);
+  JsVar *writable = jsvObjectGetChildIfExists(desc, "writable");
   if (!jsvIsUndefined(writable) && !jsvGetBoolAndUnLock(writable))
     name->flags |= JSV_CONSTANT;
 
@@ -872,7 +872,7 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
   /* Special case if we're a data listener and data has already arrived then
    * we queue an event immediately. */
   if (jsvIsStringEqual(event, "data")) {
-    JsVar *buf = jsvObjectGetChild(parent, STREAM_BUFFER_NAME, 0);
+    JsVar *buf = jsvObjectGetChildIfExists(parent, STREAM_BUFFER_NAME);
     if (jsvIsString(buf)) {
       jsiQueueObjectCallbacks(parent, STREAM_CALLBACK_NAME, &buf, 1);
       jsvObjectRemoveChild(parent, STREAM_BUFFER_NAME);

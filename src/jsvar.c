@@ -2124,7 +2124,7 @@ bool jsvGetBoolAndUnLock(JsVar *v) { return _jsvGetBoolAndUnLock(v); }
 JsVar *jsvExecuteGetter(JsVar *parent, JsVar *getset) {
   assert(jsvIsGetterOrSetter(getset));
   if (!jsvIsGetterOrSetter(getset)) return 0; // wasn't an object?
-  JsVar *fn = jsvObjectGetChild(getset, "get", 0);
+  JsVar *fn = jsvObjectGetChildIfExists(getset, "get");
   if (!jsvIsFunction(fn)) {
     jsvUnLock(fn);
     return 0;
@@ -2138,7 +2138,7 @@ JsVar *jsvExecuteGetter(JsVar *parent, JsVar *getset) {
 void jsvExecuteSetter(JsVar *parent, JsVar *getset, JsVar *value) {
   assert(jsvIsGetterOrSetter(getset));
   if (!jsvIsGetterOrSetter(getset)) return; // wasn't an object?
-  JsVar *fn = jsvObjectGetChild(getset, "set", 0);
+  JsVar *fn = jsvObjectGetChildIfExists(getset, "set");
   if (!jsvIsFunction(fn)) {
     jsvUnLock(fn);
     return;
@@ -3007,6 +3007,13 @@ JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
   }
   jsvUnLock(childName);
   return child;
+}
+
+/// Get the named child of an object, or return 0
+JsVar *jsvObjectGetChildIfExists(JsVar *obj, const char *name) {
+  if (!obj) return 0;
+  assert(jsvHasChildren(obj));
+  return jsvSkipNameAndUnLock(jsvFindChildFromString(obj, name, 0));
 }
 
 /// Get the named child of an object using a case-insensitive search
@@ -4322,9 +4329,9 @@ JsVar *jsvCreateConfigObject(jsvConfigObject *configs, int nConfigs) {
 bool jsvIsInstanceOf(JsVar *var, const char *constructorName) {
   bool isInst = false;
   if (!jsvHasChildren(var)) return false;
-  JsVar *proto = jsvObjectGetChild(var, JSPARSE_INHERITS_VAR, 0);
+  JsVar *proto = jsvObjectGetChildIfExists(var, JSPARSE_INHERITS_VAR);
   if (jsvIsObject(proto)) {
-    JsVar *constr = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
+    JsVar *constr = jsvObjectGetChildIfExists(proto, JSPARSE_CONSTRUCTOR_VAR);
     if (constr)
       isInst = jspIsConstructor(constr, constructorName);
     jsvUnLock(constr);

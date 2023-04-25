@@ -328,7 +328,7 @@ JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
   JsfFileFlags containing = 0;
   JsfFileFlags notContaining = 0;
   if (jsvIsObject(filter)) {
-    JsVar *v = jsvObjectGetChild(filter, "sf", 0);
+    JsVar *v = jsvObjectGetChildIfExists(filter, "sf");
     if (v) {
       if (jsvGetBoolAndUnLock(v))
         containing |= JSFF_STORAGEFILE;
@@ -634,18 +634,18 @@ to detect the end of a file. As such you should not write character code 255
 
 JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
   bool isReadLine = len<0;
-  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"mode",0));
+  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"mode"));
   if (mode!='r') {
     jsExceptionHere(JSET_ERROR, "Can't read in this mode");
     return 0;
   }
 
-  uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"addr",0));
+  uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"addr"));
   if (!addr) return 0; // end of file
-  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"offset",0));
-  int fileLen = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"len",0));
-  int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"chunk",0));
-  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChild(f,"name",0));
+  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"offset"));
+  int fileLen = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"len"));
+  int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"chunk"));
+  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChildIfExists(f,"name"));
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;
   fname.c[fnamei]=chunk;
@@ -761,7 +761,7 @@ operation.
 */
 int jswrap_storagefile_getLength(JsVar *f) {
   // Get name and position of name digit
-  JsVar *n = jsvObjectGetChild(f,"name",0);
+  JsVar *n = jsvObjectGetChildIfExists(f,"name");
   JsfFileName fname = jsfNameFromVar(n);
   jsvUnLock(n);
   int fnamei = sizeof(fname)-1;
@@ -826,7 +826,7 @@ Append the given data to a file. You should not attempt to append `"\xFF"`
 (character code 255).
 */
 void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
-  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"mode",0));
+  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"mode"));
   if (mode!='w' && mode!='a') {
     jsExceptionHere(JSET_ERROR, "Can't write in this mode");
     return;
@@ -836,15 +836,15 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
   if (!data) return;
   size_t len = jsvGetStringLength(data);
   if (len==0) return;
-  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"offset",0));
-  int fileLen = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"len",0));
-  int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"chunk",0));
-  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChild(f,"name",0));
+  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"offset"));
+  int fileLen = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"len"));
+  int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"chunk"));
+  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChildIfExists(f,"name"));
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;
   //DBG("Filename[%d]=%d\n",fnamei,chunk);
   fname.c[fnamei]=chunk;
-  uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"addr",0));
+  uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"addr"));
   DBG("Write Chunk %d Offset %d addr 0x%08x\n",chunk,offset,addr);
   int remaining = fileLen - offset;
   if (addr) {
@@ -929,7 +929,7 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
 Erase this file
 */
 void jswrap_storagefile_erase(JsVar *f) {
-  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChild(f,"name",0));
+  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChildIfExists(f,"name"));
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;
   // erase all numbered files

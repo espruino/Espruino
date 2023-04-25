@@ -170,11 +170,11 @@ JsVar *bleGetActiveBluetoothGattServer(int idx) {
   if (idx<0) return 0;
   char name[BLE_NAME_GATT_SERVER_LEN] = BLE_NAME_GATT_SERVER;
   name[BLE_NAME_GATT_SERVER_LEN-2] = '0'+idx;
-  return jsvObjectGetChild(execInfo.hiddenRoot, name, 0);
+  return jsvObjectGetChildIfExists(execInfo.hiddenRoot, name);
 }
 
 uint16_t jswrap_ble_BluetoothRemoteGATTServer_getHandle(JsVar *parent) {
-  JsVar *handle = jsvObjectGetChild(parent, "handle", 0);
+  JsVar *handle = jsvObjectGetChildIfExists(parent, "handle");
   if (!jsvIsInt(handle)) return BLE_CONN_HANDLE_INVALID;
   return jsvGetIntegerAndUnLock(handle);
 }
@@ -185,13 +185,13 @@ uint16_t jswrap_ble_BluetoothDevice_getHandle(JsVar *parent) {
   return handle;
 }
 uint16_t jswrap_ble_BluetoothRemoteGATTService_getHandle(JsVar *parent) {
-  JsVar *device = jsvObjectGetChild(parent, "device", 0);
+  JsVar *device = jsvObjectGetChildIfExists(parent, "device");
   uint16_t handle = BLE_CONN_HANDLE_INVALID;
   if (device) handle = jswrap_ble_BluetoothDevice_getHandle(device);
   return handle;
 }
 uint16_t jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(JsVar *parent) {
-  JsVar *service = jsvObjectGetChild(parent, "service", 0);
+  JsVar *service = jsvObjectGetChildIfExists(parent, "service");
   uint16_t handle = BLE_CONN_HANDLE_INVALID;
   if (service) handle = jswrap_ble_BluetoothRemoteGATTService_getHandle(service);
   return handle;
@@ -222,7 +222,7 @@ void jswrap_ble_init() {
   } else {
 #ifdef USE_NFC
     // start NFC, if it had been set
-    JsVar *flatStr = jsvObjectGetChild(execInfo.hiddenRoot, "NfcEnabled", 0);
+    JsVar *flatStr = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "NfcEnabled");
     if (flatStr) {
       uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
       if (flatStrPtr) jsble_nfc_start(flatStrPtr, jsvGetLength(flatStr));
@@ -240,23 +240,23 @@ void jswrap_ble_init() {
 void jswrap_ble_reconfigure_softdevice() {
   JsVar *v,*o;
   // restart various
-  v = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT,0);
+  v = jsvObjectGetChildIfExists(execInfo.root, BLE_SCAN_EVENT);
   if (v) jsble_set_scanning(true, NULL);
   jsvUnLock(v);
-  v = jsvObjectGetChild(execInfo.root, BLE_RSSI_EVENT,0);
+  v = jsvObjectGetChildIfExists(execInfo.root, BLE_RSSI_EVENT);
   if (v) jsble_set_rssi_scan(true);
   jsvUnLock(v);
   // advertising
-  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
-  o = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, 0);
+  v = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA);
+  o = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS);
   jswrap_ble_setAdvertising(v, o);
   jsvUnLock2(v,o);
   // services
-  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, 0);
+  v = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA);
   jsble_set_services(v);
   jsvUnLock(v);
   // If we had scan response data set, update it
-  JsVar *scanData = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, 0);
+  JsVar *scanData = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA);
   if (scanData) jswrap_ble_setScanResponse(scanData);
   jsvUnLock(scanData);
   // Set up security related stuff
@@ -309,14 +309,14 @@ void jswrap_ble_dumpBluetoothInitialisation(vcbprintf_callback user_callback, vo
 
 
   JsVar *v,*o;
-  v = jsvObjectGetChild(execInfo.root, BLE_SCAN_EVENT,0);
+  v = jsvObjectGetChildIfExists(execInfo.root, BLE_SCAN_EVENT);
   if (v) {
     user_callback("NRF.setScan(", user_data);
     jsiDumpJSON(user_callback, user_data, v, 0);
     user_callback(");\n", user_data);
   }
   jsvUnLock(v);
-  v = jsvObjectGetChild(execInfo.root, BLE_RSSI_EVENT,0);
+  v = jsvObjectGetChildIfExists(execInfo.root, BLE_RSSI_EVENT);
   if (v) {
     user_callback("NRF.setRSSIHandler(", user_data);
     jsiDumpJSON(user_callback, user_data, v, 0);
@@ -324,24 +324,24 @@ void jswrap_ble_dumpBluetoothInitialisation(vcbprintf_callback user_callback, vo
   }
   jsvUnLock(v);
   // advertising
-  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
-  o = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, 0);
+  v = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA);
+  o = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS);
   if (v || o)
     cbprintf(user_callback, user_data, "NRF.setAdvertising(%j, %j);\n",v,o);
   jsvUnLock2(v,o);
   // services
-  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA, 0);
-  o = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS, 0);
+  v = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SERVICE_DATA);
+  o = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS);
   if (v || o)
     cbprintf(user_callback, user_data, "NRF.setServices(%j, %j);\n",v,o);
   jsvUnLock2(v,o);
   // security
-  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, 0);
+  v = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SECURITY);
   if (v)
     cbprintf(user_callback, user_data, "NRF.setSecurity(%j);\n",v);
   jsvUnLock(v);
   // mac address
-  v = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS, 0);
+  v = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS);
   if (v)
     cbprintf(user_callback, user_data, "NRF.setAddress(%j);\n",v);
   jsvUnLock(v);
@@ -882,7 +882,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
   if (jsvIsObject(options)) {
     JsVar *v;
 
-    v = jsvObjectGetChild(options, "interval", 0);
+    v = jsvObjectGetChildIfExists(options, "interval");
     if (v) {
       uint16_t new_advertising_interval = MSEC_TO_UNITS(jsvGetIntegerAndUnLock(v), UNIT_0_625_MS);
       if (new_advertising_interval<0x0020) new_advertising_interval=0x0020;
@@ -892,18 +892,18 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
       }
     }
 
-    v = jsvObjectGetChild(options, "connectable", 0);
+    v = jsvObjectGetChildIfExists(options, "connectable");
     if (v) {
       if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_CONNECTABLE;
       else bleStatus |= BLE_IS_NOT_CONNECTABLE;
     }
-    v = jsvObjectGetChild(options, "scannable", 0);
+    v = jsvObjectGetChildIfExists(options, "scannable");
     if (v) {
       if (jsvGetBoolAndUnLock(v)) bleStatus &= ~BLE_IS_NOT_SCANNABLE;
       else bleStatus |= BLE_IS_NOT_SCANNABLE;
     }
 #ifndef SAVE_ON_FLASH
-    v = jsvObjectGetChild(options, "whenConnected", 0);
+    v = jsvObjectGetChildIfExists(options, "whenConnected");
     if (v) {
       if (jsvGetBoolAndUnLock(v)) {
         bleStatus |= BLE_ADVERTISE_WHEN_CONNECTED;
@@ -913,7 +913,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
     }
 #endif
 
-    v = jsvObjectGetChild(options, "name", 0);
+    v = jsvObjectGetChildIfExists(options, "name");
     if (v) {
       JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, v);
       if (namePtr) {
@@ -1012,7 +1012,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
 /// Used by bluetooth.c internally when it needs to set up advertising at first
 JsVar *jswrap_ble_getCurrentAdvertisingData() {
   // This is safe if JS not initialised, jsvObjectGetChild returns 0
-  JsVar *adv = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, 0);
+  JsVar *adv = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA);
   if (!adv) adv = jswrap_ble_getAdvertisingData(NULL, NULL); // use the defaults
   else {
     if (bleStatus&BLE_IS_ADVERTISING_MULTIPLE) {
@@ -1054,17 +1054,17 @@ JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options) {
   if (jsvIsObject(options)) {
     JsVar *v;
 #ifdef NRF5X
-    v = jsvObjectGetChild(options, "showName", 0);
+    v = jsvObjectGetChildIfExists(options, "showName");
     if (v) advdata.name_type = jsvGetBoolAndUnLock(v) ?
         BLE_ADVDATA_FULL_NAME :
         BLE_ADVDATA_NO_NAME;
 
-    v = jsvObjectGetChild(options, "discoverable", 0);
+    v = jsvObjectGetChildIfExists(options, "discoverable");
     if (v) advdata.flags = jsvGetBoolAndUnLock(v) ?
         BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE :
         BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
 
-    v = jsvObjectGetChild(options, "manufacturerData", 0);
+    v = jsvObjectGetChildIfExists(options, "manufacturerData");
     if (v) {
       JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, v);
       if (dPtr && dLen) {
@@ -1075,7 +1075,7 @@ JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options) {
       }
       jsvUnLock(v);
     }
-    v = jsvObjectGetChild(options, "manufacturer", 0);
+    v = jsvObjectGetChildIfExists(options, "manufacturer");
     if (v) {
       if (advdata.p_manuf_specific_data)
         advdata.p_manuf_specific_data->company_identifier = jsvGetInteger(v);
@@ -1600,10 +1600,10 @@ void jswrap_ble_updateServices(JsVar *data) {
         uint16_t char_handle = bleGetGATTHandle(char_uuid);
         if (char_handle != BLE_GATT_HANDLE_INVALID) {
           JsVar *charVar = jsvObjectIteratorGetValue(&serviceit);
-          JsVar *charValue = jsvObjectGetChild(charVar, "value", 0);
+          JsVar *charValue = jsvObjectGetChildIfExists(charVar, "value");
 
-          bool notification_requested = jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0));
-          bool indication_requested = jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "indicate", 0));
+          bool notification_requested = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "notify"));
+          bool indication_requested = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "indicate"));
 
           if (charValue) {
             JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, charValue);
@@ -1678,9 +1678,9 @@ bool jswrap_ble_filter_device(JsVar *filters, JsVar *device) {
     JsVar *filter = jsvObjectIteratorGetValue(&fit);
     matches = true;
     JsVar *v;
-    if ((v = jsvObjectGetChild(filter, "services", 0))) {
+    if ((v = jsvObjectGetChildIfExists(filter, "services"))) {
       // Find one service in the device's service
-      JsVar *deviceServices = jsvObjectGetChild(device, "services", 0);
+      JsVar *deviceServices = jsvObjectGetChildIfExists(device, "services");
       JsvObjectIterator it;
       jsvObjectIteratorNew(&it, v);
       while (jsvObjectIteratorHasValue(&it)) {
@@ -1707,16 +1707,16 @@ bool jswrap_ble_filter_device(JsVar *filters, JsVar *device) {
       jsvObjectIteratorFree(&it);
       jsvUnLock2(v, deviceServices);
     }
-    if ((v = jsvObjectGetChild(filter, "name", 0))) {
+    if ((v = jsvObjectGetChildIfExists(filter, "name"))) {
       // match name exactly
-      JsVar *deviceName = jsvObjectGetChild(device, "name", 0);
+      JsVar *deviceName = jsvObjectGetChildIfExists(device, "name");
       if (!jsvIsEqual(v, deviceName))
         matches = false;
       jsvUnLock2(v, deviceName);
     }
-    if ((v = jsvObjectGetChild(filter, "namePrefix", 0))) {
+    if ((v = jsvObjectGetChildIfExists(filter, "namePrefix"))) {
       // match start of name
-      JsVar *deviceName = jsvObjectGetChild(device, "name", 0);
+      JsVar *deviceName = jsvObjectGetChildIfExists(device, "name");
       if (!jsvIsString(v) ||
           !jsvIsString(deviceName) ||
           jsvGetStringLength(v)>jsvGetStringLength(deviceName) ||
@@ -1725,20 +1725,20 @@ bool jswrap_ble_filter_device(JsVar *filters, JsVar *device) {
       jsvUnLock2(v, deviceName);
     }
     // Non-standard 'id' element
-    if ((v = jsvObjectGetChild(filter, "id", 0))) {
-      JsVar *w = jsvObjectGetChild(device, "id", 0);
+    if ((v = jsvObjectGetChildIfExists(filter, "id"))) {
+      JsVar *w = jsvObjectGetChildIfExists(device, "id");
       if (!jsvIsBasicVarEqual(v,w))
         matches = false;
       jsvUnLock2(v,w);
     }
     // match service data
-    if ((v = jsvObjectGetChild(filter, "serviceData", 0))) {
+    if ((v = jsvObjectGetChildIfExists(filter, "serviceData"))) {
       if (jsvIsObject(v)) {
         JsvObjectIterator it;
         jsvObjectIteratorNew(&it,v);
         while (jsvObjectIteratorHasValue(&it)) {
           JsVar *childName = jsvObjectIteratorGetKey(&it);
-          JsVar *serviceData = jsvObjectGetChild(device, "serviceData", 0);
+          JsVar *serviceData = jsvObjectGetChildIfExists(device, "serviceData");
           if (!serviceData) matches = false;
           else {
             JsVar *child = jsvFindChildFromVar(serviceData, childName, false);
@@ -1753,13 +1753,13 @@ bool jswrap_ble_filter_device(JsVar *filters, JsVar *device) {
       jsvUnLock(v);
     }
     // match manufacturer data
-    if ((v = jsvObjectGetChild(filter, "manufacturerData", 0))) {
+    if ((v = jsvObjectGetChildIfExists(filter, "manufacturerData"))) {
       if (jsvIsObject(v)) {
         JsvObjectIterator it;
         jsvObjectIteratorNew(&it,v);
         while (jsvObjectIteratorHasValue(&it)) {
           JsVar* manfacturera = jsvObjectIteratorGetKey(&it);
-          JsVar* manfacturerb = jsvObjectGetChild(device, "manufacturer", 0);
+          JsVar* manfacturerb = jsvObjectGetChildIfExists(device, "manufacturer");
           if (!jsvIsBasicVarEqual(manfacturera, manfacturerb))
             matches = false;
           jsvUnLock2(manfacturera, manfacturerb);
@@ -1856,12 +1856,12 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
   if (!adv) return;
   // Create a proper BluetoothDevice object
   JsVar *device = jspNewObject(0, "BluetoothDevice");
-  JsVar *deviceAddr =  jsvObjectGetChild(adv, "id", 0);
+  JsVar *deviceAddr =  jsvObjectGetChildIfExists(adv, "id");
   jsvObjectSetChild(device, "id", deviceAddr);
-  jsvObjectSetChildAndUnLock(device, "rssi", jsvObjectGetChild(adv, "rssi", 0));
+  jsvObjectSetChildAndUnLock(device, "rssi", jsvObjectGetChildIfExists(adv, "rssi"));
   JsVar *services = jsvNewEmptyArray();
   JsVar *serviceData = jsvNewObject();
-  JsVar *data = jsvObjectGetChild(adv, "data", 0);
+  JsVar *data = jsvObjectGetChildIfExists(adv, "data");
   if (data) {
     jsvObjectSetChild(device, "data", data);
     JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
@@ -1937,7 +1937,7 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
       jsvObjectIteratorNew(&it, arr);
       while (!deviceMatchedFilters && jsvObjectIteratorHasValue(&it)) {
         JsVar *obj = jsvObjectIteratorGetValue(&it);
-        JsVar *addr = jsvObjectGetChild(obj, "id", 0);
+        JsVar *addr = jsvObjectGetChildIfExists(obj, "id");
         if (jsvCompareString(addr, deviceAddr, 0, 0, true) == 0)
           deviceMatchedFilters = true; // we have already matched - so match this one
         jsvUnLock2(addr, obj);
@@ -1956,7 +1956,7 @@ void jswrap_ble_setScan_cb(JsVar *callback, JsVar *filters, JsVar *adv) {
 void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
   JsVar *filters = 0;
   if (jsvIsObject(options)) {
-    filters = jsvObjectGetChild(options, "filters", 0);
+    filters = jsvObjectGetChildIfExists(options, "filters");
     if (filters && !jsvIsArray(filters)) {
       jsvUnLock(filters);
       jsExceptionHere(JSET_TYPEERROR, "requestDevice expecting an array of filters, got %t", filters);
@@ -2111,13 +2111,13 @@ There may have been more packets. To get data for each packet individually use
 void jswrap_ble_findDevices_found_cb(JsVar *device) {
   JsVar *arr = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADV", JSV_ARRAY);
   if (!arr) return;
-  JsVar *deviceAddr = jsvObjectGetChild(device, "id", 0);
+  JsVar *deviceAddr = jsvObjectGetChildIfExists(device, "id");
   JsVar *found = 0;
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, arr);
   while (!found && jsvObjectIteratorHasValue(&it)) {
     JsVar *obj = jsvObjectIteratorGetValue(&it);
-    JsVar *addr = jsvObjectGetChild(obj, "id", 0);
+    JsVar *addr = jsvObjectGetChildIfExists(obj, "id");
     if (jsvCompareString(addr, deviceAddr, 0, 0, true) == 0)
       found = jsvLockAgain(obj);
     jsvUnLock2(addr, obj);
@@ -2159,7 +2159,7 @@ void jswrap_ble_findDevices_found_cb(JsVar *device) {
 void jswrap_ble_findDevices_timeout_cb() {
   jswrap_ble_setScan(0,0);
   JsVar *arr = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADV", JSV_ARRAY);
-  JsVar *cb = jsvObjectGetChild(execInfo.hiddenRoot, "BLEADVCB", 0);
+  JsVar *cb = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "BLEADVCB");
   jsvObjectRemoveChild(execInfo.hiddenRoot, "BLEADV");
   jsvObjectRemoveChild(execInfo.hiddenRoot, "BLEADVCB");
   if (arr && cb) {
@@ -2177,7 +2177,7 @@ void jswrap_ble_findDevices(JsVar *callback, JsVar *options) {
     time = jsvGetFloat(options);
     options = 0;
   } else if (jsvIsObject(options)) {
-    JsVar *v = jsvObjectGetChild(options,"timeout",0);
+    JsVar *v = jsvObjectGetChildIfExists(options,"timeout");
     if (v) time = jsvGetFloatAndUnLock(v);
   } else if (options) {
     jsExceptionHere(JSET_ERROR, "Expecting number or object, got %t", options);
@@ -2278,7 +2278,7 @@ This will only take effect after the connection is disconnected and
 re-established.
 */
 void jswrap_ble_setLowPowerConnection(bool lowPower) {
-  BLEFlags oldflags = jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_FLAGS, 0));
+  BLEFlags oldflags = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_FLAGS));
   BLEFlags flags = oldflags;
   if (lowPower)
     flags |= BLE_FLAGS_LOW_POWER;
@@ -3209,7 +3209,7 @@ JsVar *jswrap_ble_requestDevice(JsVar *options) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting an object, for %t", options);
     return 0;
   }
-  JsVar *filters = jsvObjectGetChild(options, "filters", 0);
+  JsVar *filters = jsvObjectGetChildIfExists(options, "filters");
   if (!jsvIsArray(filters)) {
     jsvUnLock(filters);
     jsExceptionHere(JSET_TYPEERROR, "requestDevice expecting an array of filters, got %t", filters);
@@ -3217,7 +3217,7 @@ JsVar *jswrap_ble_requestDevice(JsVar *options) {
   }
   jsvUnLock(filters);
 
-  JsVarFloat timeout = jsvGetFloatAndUnLock(jsvObjectGetChild(options, "timeout", 0));
+  JsVarFloat timeout = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(options, "timeout"));
   if (isnan(timeout) || timeout<=0) timeout = 2000;
 
   JsVar *promise = 0;
@@ -3385,8 +3385,8 @@ void jswrap_ble_setConnectionInterval(JsVar *interval) {
   } else if (jsvIsObject(interval)) {
     // disable auto interval
     bleStatus |= BLE_DISABLE_DYNAMIC_INTERVAL;
-    JsVarFloat min = jsvGetFloatAndUnLock(jsvObjectGetChild(interval,"minInterval",0));
-    JsVarFloat max = jsvGetFloatAndUnLock(jsvObjectGetChild(interval,"maxInterval",0));
+    JsVarFloat min = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(interval,"minInterval"));
+    JsVarFloat max = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(interval,"maxInterval"));
     jsble_check_error(jsble_set_periph_connection_interval(min, max));
   }
 #endif
@@ -3610,7 +3610,7 @@ NRF.requestDevice({ filters: [{ name: 'Puck.js abcd' }] }).then(function(device)
 */
 JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
 #if CENTRAL_LINK_COUNT>0
-  JsVar *gatt = jsvObjectGetChild(parent, "gatt", 0);
+  JsVar *gatt = jsvObjectGetChildIfExists(parent, "gatt");
   if (gatt) return gatt;
 
   gatt = jspNewObject(0, "BluetoothRemoteGATTServer");
@@ -3756,8 +3756,8 @@ static void _jswrap_ble_central_connect(JsVar *addr, JsVar *options) {
 JsVar *jswrap_ble_BluetoothRemoteGATTServer_connect(JsVar *parent, JsVar *options) {
 #if CENTRAL_LINK_COUNT>0
 
-  JsVar *device = jsvObjectGetChild(parent, "device", 0);
-  JsVar *addr = jsvObjectGetChild(device, "id", 0);
+  JsVar *device = jsvObjectGetChildIfExists(parent, "device");
+  JsVar *addr = jsvObjectGetChildIfExists(device, "id");
   // Convert mac address to something readable
   ble_gap_addr_t peer_addr;
   if (!bleVarToAddr(addr, &peer_addr)) {
@@ -3768,7 +3768,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTServer_connect(JsVar *parent, JsVar *option
   jsvUnLock(device);
 
   // we're already connected - just return a resolved promise
-  if (jsvGetBoolAndUnLock(jsvObjectGetChild(parent,"connected",0))) {
+  if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(parent,"connected"))) {
     return jswrap_promise_resolve(parent);
   }
 
@@ -3973,7 +3973,7 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryService(JsVar *parent, JsVar *
   const char *err;
   ble_uuid_t uuid;
 
-  JsVar *device = jsvObjectGetChild(parent, "device", 0);
+  JsVar *device = jsvObjectGetChildIfExists(parent, "device");
   bool ok = bleNewTask(BLETASK_PRIMARYSERVICE, device/*BluetoothDevice*/);
   jsvUnLock(device);
   if (!ok) {
@@ -4009,7 +4009,7 @@ JsVar *jswrap_BluetoothRemoteGATTServer_getPrimaryServices(JsVar *parent) {
   ble_uuid_t uuid;
   uuid.type = BLE_UUID_TYPE_UNKNOWN;
 
-  JsVar *device = jsvObjectGetChild(parent, "device", 0);
+  JsVar *device = jsvObjectGetChildIfExists(parent, "device");
   bool ok = bleNewTask(BLETASK_PRIMARYSERVICE, device/*BluetoothDevice*/);
   jsvUnLock(device);
   if (!ok)
@@ -4313,7 +4313,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
   
   // Set our characteristic's handle up in the list of handles to notify for
   // TODO: What happens when we close the connection and re-open another?
-  uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+  uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
   JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", JSV_ARRAY);
   if (handles) {
     jsvSetArrayItem(handles, handle, characteristic);
@@ -4323,7 +4323,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
   JsVar *promise;
 #ifndef ESP32
   // Check for existing cccd_handle 
-  JsVar *cccdVar = jsvObjectGetChild(characteristic,"handle_cccd", 0);
+  JsVar *cccdVar = jsvObjectGetChildIfExists(characteristic,"handle_cccd");
   if ( !cccdVar ) { // if it doesn't exist, try and find it
     if (!bleNewTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, characteristic/*BluetoothRemoteGATTCharacteristic*/))
       return 0;
@@ -4363,7 +4363,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *cha
   uint16_t central_conn_handle = jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(characteristic);
 
   // Remove our characteristic handle from the list of handles to notify for
-  uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+  uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
   JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", JSV_ARRAY);
   if (handles) {
     jsvSetArrayItem(handles, handle, 0);

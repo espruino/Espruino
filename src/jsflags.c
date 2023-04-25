@@ -50,7 +50,7 @@ void jsfSetFlags(JsVar *flags) {
   const char *p = jsFlagNames;
   JsFlags flag = 1;
   while (*p) {
-    JsVar *v = jsvObjectGetChild(flags, p, 0);
+    JsVar *v = jsvObjectGetChildIfExists(flags, p);
     if (v) jsfSetFlag(flag, jsvGetBoolAndUnLock(v));
     p += strlen(p)+1;
     flag<<=1;

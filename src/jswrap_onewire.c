@@ -48,7 +48,7 @@ a while to execute (around 1 second).
  */
 
 static Pin onewire_getpin(JsVar *parent) {
-  return jshGetPinFromVarAndUnLock(jsvObjectGetChild(parent, "pin", 0));
+  return jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(parent, "pin"));
 }
 
 /** Reset one-wire, return true if a device was present */

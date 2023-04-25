@@ -178,7 +178,7 @@ bool jshGetDevicePath(IOEventFlags device, char *buf, size_t bufSize) {
   if (!obj) return false;
 
   bool success = false;
-  JsVar *str = jsvObjectGetChild(obj, "path", 0);
+  JsVar *str = jsvObjectGetChildIfExists(obj, "path");
   if (jsvIsString(str)) {
     jsvGetString(str, buf, bufSize);
     success = true;

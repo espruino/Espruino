@@ -143,7 +143,7 @@ JsVar *ejs_catch_exception() {
     activeEJS->exception = exception;
     jsiConsolePrintf("Uncaught %v\n", exception);
     if (jsvIsObject(exception)) {
-      JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
+      JsVar *stackTrace = jsvObjectGetChildIfExists(exception, "stack");
       if (stackTrace) {
         jsiConsolePrintf("%v\n", stackTrace);
         jsvUnLock(stackTrace);

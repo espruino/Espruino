@@ -210,10 +210,10 @@ void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
   JsVarFloat freq = 0;
   JshAnalogOutputFlags flags = JSAOF_NONE;
   if (jsvIsObject(options)) {
-    freq = jsvGetFloatAndUnLock(jsvObjectGetChild(options, "freq", 0));
-    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "forceSoft", 0)))
+    freq = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(options, "freq"));
+    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "forceSoft")))
           flags |= JSAOF_FORCE_SOFTWARE;
-    else if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "soft", 0)))
+    else if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "soft")))
       flags |= JSAOF_ALLOW_SOFTWARE;
   }
 
@@ -772,12 +772,12 @@ JsVar *jswrap_interface_setWatch(
   }
   if (jsvIsObject(repeatOrObject)) {
     JsVar *v;
-    v = jsvObjectGetChild(repeatOrObject, "repeat", 0);
+    v = jsvObjectGetChildIfExists(repeatOrObject, "repeat");
     if (v) repeat = jsvGetBoolAndUnLock(v);
-    v = jsvObjectGetChild(repeatOrObject, "debounce", 0);
+    v = jsvObjectGetChildIfExists(repeatOrObject, "debounce");
     if (v) debounce = jsvGetFloatAndUnLock(v);
     if (isnan(debounce) || debounce<0) debounce=0;
-    v = jsvObjectGetChild(repeatOrObject, "edge", 0);
+    v = jsvObjectGetChildIfExists(repeatOrObject, "edge");
     if (jsvIsUndefined(v)) {
       // do nothing - use default
     } else if (jsvIsNumeric(v)) {
@@ -796,9 +796,9 @@ JsVar *jswrap_interface_setWatch(
       jsExceptionHere(JSET_TYPEERROR, "'edge' in setWatch should be 1, -1, 0, 'rising', 'falling' or 'both'");
       return 0;
     }
-    isIRQ = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "irq", 0));
-    isHighSpeed = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "hispeed", 0));
-    dataPin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(repeatOrObject, "data", 0));
+    isIRQ = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(repeatOrObject, "irq"));
+    isHighSpeed = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(repeatOrObject, "hispeed"));
+    dataPin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(repeatOrObject, "data"));
   } else
     repeat = jsvGetBool(repeatOrObject);
 
@@ -874,7 +874,7 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
     jsvObjectIteratorNew(&it, watchArrayPtr);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
-      JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
+      JsVar *watchPin = jsvObjectGetChildIfExists(watchPtr, "pin");
       Pin pin = jshGetPinFromVar(watchPin);
       if (!jshGetPinShouldStayWatched(pin))
         jshPinWatch(pin, false, JSPW_NONE);
@@ -896,7 +896,7 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
     jsvUnLock(watchArrayPtr);
     if (watchNamePtr) { // child is a 'name'
       JsVar *watchPtr = jsvSkipName(watchNamePtr);
-      Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(watchPtr, "pin", 0));
+      Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(watchPtr, "pin"));
       jsvUnLock(watchPtr);
 
       JsVar *watchArrayPtr = jsvLock(watchArray);

@@ -170,7 +170,7 @@ bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
 uint32_t jsble_set_scanning(bool enabled, JsVar *options){
   bool activeScan = false;
   if (enabled && jsvIsObject(options)) {
-    activeScan = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "active", 0));
+    activeScan = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "active"));
   }
 	bluetooth_gap_setScan(enabled, activeScan);
 	return 0;
@@ -221,12 +221,12 @@ void jsble_central_getCharacteristics(uint16_t central_conn_handle, JsVar *servi
 }
 // Write data to the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicWrite(uint16_t central_conn_handle, JsVar *characteristic, char *dataPtr, size_t dataLen){
-	uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+	uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
 	gattc_writeValue(handle, dataPtr, dataLen);
 }
 // Read data from the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicRead(uint16_t central_conn_handle, JsVar *characteristic){
-	uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
+	uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
 	gattc_readValue(handle);
 }
 // Discover descriptors of characteristic
@@ -236,8 +236,8 @@ void jsble_central_characteristicDescDiscover(uint16_t central_conn_handle, JsVa
 }
 // Set whether to notify on the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicNotify(uint16_t central_conn_handle, JsVar *characteristic, bool enable){
-  uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_value", 0));
-  uint16_t handle_cccd = jsvGetIntegerAndUnLock(jsvObjectGetChild(characteristic, "handle_cccd", 0));
+  uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
+  uint16_t handle_cccd = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_cccd"));
   if (!handle_cccd)
     return bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC_NOTIFY, jsvNewFromString("No CCCD handle found"));
   gattc_characteristicNotify(handle, handle_cccd, enable);

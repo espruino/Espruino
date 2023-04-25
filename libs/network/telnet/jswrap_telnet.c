@@ -94,7 +94,7 @@ void jswrap_telnet_setOptions(JsVar *jsOptions) {
   }
 
   // Get mode
-  JsVar *jsMode = jsvObjectGetChild(jsOptions, "mode", 0);
+  JsVar *jsMode = jsvObjectGetChildIfExists(jsOptions, "mode");
   if (jsvIsString(jsMode)) {
     if (jsvIsStringEqual(jsMode, "on")) {
       tnSrvMode = MODE_ON;

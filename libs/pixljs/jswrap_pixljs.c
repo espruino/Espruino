@@ -100,7 +100,7 @@ void lcd_wr(int data) {
 void lcd_flip_gfx(JsGraphics *gfx) {
   if (gfx->data.modMinX > gfx->data.modMaxX) return; // nothing to do!
 
-  JsVar *buf = jsvObjectGetChild(gfx->graphicsVar,"buffer",0);
+  JsVar *buf = jsvObjectGetChildIfExists(gfx->graphicsVar,"buffer");
   if (!buf) return;
   JSV_GET_AS_CHAR_ARRAY(bPtr, bLen, buf);
   if (!bPtr || bLen<128*8) return;

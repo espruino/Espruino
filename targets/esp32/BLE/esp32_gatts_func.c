@@ -100,7 +100,7 @@ uint8_t *getUartAdvice(){
 }
 
 void emitNRFEvent(char *event,JsVar *args,int argCnt){
-  JsVar *nrf = jsvObjectGetChild(execInfo.root, "NRF", 0);
+  JsVar *nrf = jsvObjectGetChildIfExists(execInfo.root, "NRF");
   if(nrf){
 	JsVar *eventName = jsvNewFromString(event);
     JsVar *callback = jsvSkipNameAndUnLock(jsvFindChildFromVar(nrf,eventName,0));
@@ -135,7 +135,7 @@ static void gatts_read_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
 		if (gatts_char[pos].char_handle==param->read.handle) {
 			char hiddenName[12];
 			bleGetHiddenName(hiddenName,BLE_READ_EVENT,pos);
-			JsVar *readCB = jsvObjectGetChild(execInfo.hiddenRoot,hiddenName,0);
+			JsVar *readCB = jsvObjectGetChildIfExists(execInfo.hiddenRoot,hiddenName);
 			if(readCB){
 				charValue = jspExecuteFunction(readCB,0,0,0);
 				jsvUnLock(readCB);
@@ -143,7 +143,7 @@ static void gatts_read_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
 			else {
 				char hiddenName[12];
 				bleGetHiddenName(hiddenName,BLE_CHAR_VALUE,pos);
-				charValue = jsvObjectGetChild(execInfo.hiddenRoot,hiddenName,0);
+				charValue = jsvObjectGetChildIfExists(execInfo.hiddenRoot,hiddenName);
 			}
 			if(charValue){
 				JSV_GET_AS_CHAR_ARRAY(vPtr,vLen,charValue);
@@ -176,7 +176,7 @@ static void gatts_write_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t 
 			jsvObjectSetChildAndUnLock(execInfo.hiddenRoot,hiddenName,
 			   jsvNewStringOfLength(param->write.len,param->write.value));
 			bleGetHiddenName(hiddenName,BLE_WRITE_EVENT,pos);
-			JsVar *writeCB = jsvObjectGetChild(execInfo.hiddenRoot,hiddenName,0);
+			JsVar *writeCB = jsvObjectGetChildIfExists(execInfo.hiddenRoot,hiddenName);
 			if(writeCB){
 				JsVar *evt = jsvNewObject();
 				if (evt) {
@@ -440,35 +440,35 @@ void gatts_char_init(){
 	gatts_char[ble_char_pos].char_uuid.len = ESP_UUID_LEN_16;
 	gatts_char[ble_char_pos].char_uuid.uuid.uuid16 = ble_uuid.uuid;
 	gatts_char[ble_char_pos].char_perm = 0;
-	if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "broadcast", 0)))
+	if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "broadcast")))
 		gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_BROADCAST;  
-	if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "notify", 0)))
+	if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "notify")))
 		gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_NOTIFY;  
-	if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "indicate", 0)))
+	if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "indicate")))
 		gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_INDICATE;  
-	if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "readable", 0))){
+	if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "readable"))){
 		gatts_char[ble_char_pos].char_perm += ESP_GATT_PERM_READ;
 		gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_READ;
 	}
-	if (jsvGetBoolAndUnLock(jsvObjectGetChild(charVar, "writable", 0))){
+	if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "writable"))){
 		gatts_char[ble_char_pos].char_perm += ESP_GATT_PERM_WRITE;
 		gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_WRITE|ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
 	}
 	gatts_char[ble_char_pos].char_control = NULL;
 	gatts_char[ble_char_pos].char_handle = 0;
-	JsVar *readCB = jsvObjectGetChild(charVar, "onRead", 0);
+	JsVar *readCB = jsvObjectGetChildIfExists(charVar, "onRead");
 	if(readCB){
 		char hiddenName[12];
 		bleGetHiddenName(hiddenName,BLE_READ_EVENT,ble_char_pos);
 		jsvObjectSetChildAndUnLock(execInfo.hiddenRoot,hiddenName,readCB);
 	}
-	JsVar *writeCB = jsvObjectGetChild(charVar, "onWrite", 0);
+	JsVar *writeCB = jsvObjectGetChildIfExists(charVar, "onWrite");
 	if(writeCB){
 		char hiddenName[12];
 		bleGetHiddenName(hiddenName,BLE_WRITE_EVENT,ble_char_pos);
 		jsvObjectSetChildAndUnLock(execInfo.hiddenRoot,hiddenName,writeCB);
 	}
-	JsVar *charDescriptionVar = jsvObjectGetChild(charVar, "description", 0);
+	JsVar *charDescriptionVar = jsvObjectGetChildIfExists(charVar, "description");
 	if (charDescriptionVar && jsvHasCharacterData(charDescriptionVar)) {
 		ble_descr_pos++;
 		gatts_descr[ble_descr_pos].char_pos = ble_char_pos;
@@ -480,7 +480,7 @@ void gatts_char_init(){
 		gatts_descr[ble_descr_pos].descr_handle = 0;
 	}
 	jsvUnLock(charDescriptionVar);
-	JsVar *charValue = jsvObjectGetChild(charVar,"value",0);
+	JsVar *charValue = jsvObjectGetChildIfExists(charVar,"value");
 	if(charValue){
 		char hiddenName[12];
 		bleGetHiddenName(hiddenName,BLE_CHAR_VALUE,ble_char_pos);
@@ -531,7 +531,7 @@ void gatts_structs_init(JsVar *options){
 		jsvObjectIteratorNext(&ble_service_it);
 	}
 	jsvObjectIteratorFree(&ble_service_it);
-	if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "uart", 0))){
+	if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "uart"))){
 		add_ble_uart();
 	}
 }
@@ -549,7 +549,7 @@ void gatts_create_structs(JsVar *options){
 		jsvObjectIteratorNew(&ble_char_it,serviceVar);
 		while(jsvObjectIteratorHasValue(&ble_char_it)){	
 			JsVar *charVar = jsvObjectIteratorGetValue(&ble_char_it);
-			JsVar *charDescriptionVar = jsvObjectGetChild(charVar, "description", 0);
+			JsVar *charDescriptionVar = jsvObjectGetChildIfExists(charVar, "description");
 			if (charDescriptionVar && jsvHasCharacterData(charDescriptionVar)) ble_descr_cnt++;
 			jsvUnLock(charDescriptionVar);
 			jsvUnLock(charVar);
@@ -561,7 +561,7 @@ void gatts_create_structs(JsVar *options){
 		jsvObjectIteratorNext(&ble_service_it);
 		ble_service_cnt++;
 	}
-    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "uart", 0))){
+    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "uart"))){
 		ble_service_cnt++;
 		ble_char_cnt += 2;
 		ble_descr_cnt += 2;
@@ -574,7 +574,7 @@ void gatts_create_structs(JsVar *options){
 }
 	
 void gatts_set_services(JsVar *data){
-	JsVar *options = jsvObjectGetChild(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS,0);
+	JsVar *options = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS);
 	gatts_reset(true);
 	gatts_services = data;
     if (jsvIsObject(gatts_services)) {
@@ -584,7 +584,7 @@ void gatts_set_services(JsVar *data){
 		ble_char_pos = 0;
 		ble_descr_pos = 0;
 		gatts_reg_app();  //this starts tons of api calls creating gatts-events. Ends in gatts_reg_app
-		if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "uart", 0))){
+		if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "uart"))){
 			setBleUart();
 		}
 	}

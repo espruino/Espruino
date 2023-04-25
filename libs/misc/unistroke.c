@@ -460,9 +460,9 @@ JsVar *unistroke_getEventVar() {
     jsvUnLock(s);
     jsvObjectSetChildAndUnLock(o, "xy", a);
   }
-  JsVar *bangle = jsvObjectGetChild(execInfo.root, "Bangle", 0);
+  JsVar *bangle = jsvObjectGetChildIfExists(execInfo.root, "Bangle");
   if (bangle) {
-    JsVar *strokes = jsvObjectGetChild(bangle, "strokes", 0);
+    JsVar *strokes = jsvObjectGetChildIfExists(bangle, "strokes");
     if (jsvIsObject(strokes)) {
       Unistroke uni = newUnistroke(touchHistory, touchHistoryLen);
       jsvObjectSetChildAndUnLock(o, "stroke", unistroke_recognise(strokes, &uni));

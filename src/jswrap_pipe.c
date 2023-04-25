@@ -39,10 +39,10 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
   jsiQueueObjectCallbacks(pipe, JS_EVENT_PREFIX"complete", &pipe, 1);
   // Check the source to see if there was more data... It may not be a stream,
   // but if it is and it has data it should have a a STREAM_BUFFER_NAME field
-  JsVar *source = jsvObjectGetChild(pipe,"source",0);
-  JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
+  JsVar *source = jsvObjectGetChildIfExists(pipe,"source");
+  JsVar *destination = jsvObjectGetChildIfExists(pipe,"destination");
   if (source && destination) {
-    JsVar *buffer = jsvObjectGetChild(source, STREAM_BUFFER_NAME, 0);
+    JsVar *buffer = jsvObjectGetChildIfExists(source, STREAM_BUFFER_NAME);
     if (buffer && jsvGetStringLength(buffer)) {
       jsvObjectRemoveChild(source, STREAM_BUFFER_NAME); // remove outstanding data
       /* call write fn - we ignore drain/etc here because the source has
@@ -53,14 +53,14 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
       }
       jsvUnLock(writeFunc);
       // update position
-      JsVar *position = jsvObjectGetChild(pipe,"position",0);
+      JsVar *position = jsvObjectGetChildIfExists(pipe,"position");
       jsvSetInteger(position, jsvGetInteger(position) + (JsVarInt)jsvGetStringLength(buffer));
       jsvUnLock(position);
     }
     jsvUnLock(buffer);
   }
   // also call 'end' if 'end' was passed as an initialisation option
-  if (jsvGetBoolAndUnLock(jsvObjectGetChild(pipe,"end",0))) {
+  if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(pipe,"end"))) {
     // call destination.end if available
     if (destination) {
       // remove our drain and close listeners.
@@ -101,13 +101,13 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
 }
 
 static bool handlePipe(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
-  bool paused = jsvGetBoolAndUnLock(jsvObjectGetChild(pipe,"drainWait",0));
+  bool paused = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(pipe,"drainWait"));
   if (paused) return false;
 
-  JsVar *position = jsvObjectGetChild(pipe,"position",0);
-  JsVar *chunkSize = jsvObjectGetChild(pipe,"chunkSize",0);
-  JsVar *source = jsvObjectGetChild(pipe,"source",0);
-  JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
+  JsVar *position = jsvObjectGetChildIfExists(pipe,"position");
+  JsVar *chunkSize = jsvObjectGetChildIfExists(pipe,"chunkSize");
+  JsVar *source = jsvObjectGetChildIfExists(pipe,"source");
+  JsVar *destination = jsvObjectGetChildIfExists(pipe,"destination");
 
   bool dataTransferred = false;
   if(source && destination && chunkSize && position) {
@@ -193,7 +193,7 @@ static void jswrap_pipe_drain_listener(JsVar *destination) {
     jsvObjectIteratorNew(&it, arr);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *pipe = jsvObjectIteratorGetValue(&it);
-      JsVar *dst = jsvObjectGetChild(pipe,"destination",0);
+      JsVar *dst = jsvObjectGetChildIfExists(pipe,"destination");
       if (dst == destination) {
         // found it! said wait to false
         jsvObjectSetChildAndUnLock(pipe,"drainWait",jsvNewFromBool(false));
@@ -216,7 +216,7 @@ static void jswrap_pipe_close_listener(JsVar *destination, const char *name) {
     jsvObjectIteratorNew(&it, arr);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *pipe = jsvObjectIteratorGetValue(&it);
-      JsVar *dst = jsvObjectGetChild(pipe,name,0);
+      JsVar *dst = jsvObjectGetChildIfExists(pipe,name);
       if (dst == destination) {
         // found it! said wait to false
         handlePipeClose(arr, &it, pipe);

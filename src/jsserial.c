@@ -176,8 +176,8 @@ bool jsserialGetSendFunction(JsVar *serialDevice, serial_sender *serialSend, ser
   } else if (device == EV_NONE) {
 #ifndef SAVE_ON_FLASH
     // Software Serial
-    JsVar *baud = jsvObjectGetChild(serialDevice, USART_BAUDRATE_NAME, 0);
-    JsVar *options = jsvObjectGetChild(serialDevice, DEVICE_OPTIONS_NAME, 0);
+    JsVar *baud = jsvObjectGetChildIfExists(serialDevice, USART_BAUDRATE_NAME);
+    JsVar *options = jsvObjectGetChildIfExists(serialDevice, DEVICE_OPTIONS_NAME);
     jsserialPopulateUSARTInfo(&inf, baud, options);
     jsvUnLock(options);
     jsvUnLock(baud);
@@ -239,7 +239,7 @@ bool jsserialEventCallbackInit(JsVar *parent, JshUSARTInfo *inf) {
 
 void jsserialEventCallbackKill(JsVar *parent, JshUSARTInfo *inf) {
   NOT_USED(inf);
-  JsVar *v = jsvObjectGetChild(parent, "exti", 0);
+  JsVar *v = jsvObjectGetChildIfExists(parent, "exti");
   if (v) {
     IOEventFlags exti = (IOEventFlags)jsvGetIntegerAndUnLock(v);
     jshPinWatch(exti, false, JSPW_NONE);
@@ -278,7 +278,7 @@ bool jsserialEventCallbackIdle() {
   jsvObjectIteratorNew(&it, list);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *parent = jsvObjectIteratorGetValue(&it);
-    JsVar *dataVar = jsvObjectGetChild(parent, "irqData", 0);
+    JsVar *dataVar = jsvObjectGetChildIfExists(parent, "irqData");
     SerialEventCallbackData *data = (SerialEventCallbackData *)jsvGetFlatStringPointer(dataVar);
     if (data) {
       if (data->bitCnt) {
@@ -318,7 +318,7 @@ void jsserialEventCallback(bool state, IOEventFlags channel) {
   if (!list) return;
   JsVar *parent = jsvGetArrayItem(list, (JsVarInt)channel);
   if (!parent) return;
-  JsVar *dataVar = jsvObjectGetChild(parent, "irqData", 0);
+  JsVar *dataVar = jsvObjectGetChildIfExists(parent, "irqData");
   SerialEventCallbackData *data = (SerialEventCallbackData *)jsvGetFlatStringPointer(dataVar);
   if (!data) return;
   // work out time difference

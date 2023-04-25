@@ -224,7 +224,7 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj, JsVar *callback) {
 
 
 static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *ptr) {
-  JsVar *info = jsvObjectGetChild(options, name, 0);
+  JsVar *info = jsvObjectGetChildIfExists(options, name);
   if (info) {
     char buf[64];
     jsvGetString(info, buf, sizeof(buf));
@@ -285,7 +285,7 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options, JsVar *callback) {
     _eth_getIP_set_address(options, "gateway", &gWIZNETINFO.gw[0]);
     _eth_getIP_set_address(options, "dns", &gWIZNETINFO.dns[0]);
 
-    JsVar *info = jsvObjectGetChild(options, "mac", 0);
+    JsVar *info = jsvObjectGetChildIfExists(options, "mac");
     if (info) {
       char buf[64];
       jsvGetString(info, buf, sizeof(buf));

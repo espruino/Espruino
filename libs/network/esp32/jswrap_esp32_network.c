@@ -801,7 +801,7 @@ jsDebug(DBG_INFO, "jswrap_wifi_connect: entry");
   char password[65];
   memset(password, 0, sizeof(password));
   if (jsOptions != NULL) {
-    JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
+    JsVar *jsPassword = jsvObjectGetChildIfExists(jsOptions, "password");
     if (jsPassword != NULL && !jsvIsString(jsPassword)) {
       jsExceptionHere(JSET_ERROR, "Expecting options.password to be a string but got %t", jsPassword);
       jsvUnLock(jsPassword);
@@ -992,7 +992,7 @@ void jswrap_wifi_startAP(
 
   if (jsvIsObject(jsOptions)) {
     // Handle channel
-    JsVar *jsChan = jsvObjectGetChild(jsOptions, "channel", 0);
+    JsVar *jsChan = jsvObjectGetChildIfExists(jsOptions, "channel");
     if (jsvIsInt(jsChan)) {
       int chan = jsvGetInteger(jsChan);
       if (chan >= 1 && chan <= 13) {
@@ -1002,7 +1002,7 @@ void jswrap_wifi_startAP(
     jsvUnLock(jsChan);
 
     // Handle password
-    JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
+    JsVar *jsPassword = jsvObjectGetChildIfExists(jsOptions, "password");
     if (jsPassword != NULL) {
       if (!jsvIsString(jsPassword) || jsvGetStringLength(jsPassword) < 8) {
         jsExceptionHere(JSET_ERROR, "Password must be string of at least 8 characters");
@@ -1014,7 +1014,7 @@ void jswrap_wifi_startAP(
     }
 
     // Handle the authMode
-    JsVar *jsAuth = jsvObjectGetChild(jsOptions, "authMode", 0);
+    JsVar *jsAuth = jsvObjectGetChildIfExists(jsOptions, "authMode");
     if (jsvIsString(jsAuth)) {
       if (jsvIsStringEqual(jsAuth, "open")) {
         apConfig.authmode = WIFI_AUTH_OPEN;
@@ -1182,7 +1182,7 @@ void jswrap_wifi_setConfig(JsVar *jsSettings) {
   }
 
   // phy setting
-  JsVar *jsPhy = jsvObjectGetChild(jsSettings, "phy", 0);
+  JsVar *jsPhy = jsvObjectGetChildIfExists(jsSettings, "phy");
   if (jsvIsString(jsPhy)) {
     if (jsvIsStringEqual(jsPhy, "11b")) {
       esp_wifi_set_protocol(WIFI_IF_AP,WIFI_PROTOCOL_11B);
@@ -1200,7 +1200,7 @@ void jswrap_wifi_setConfig(JsVar *jsSettings) {
 
   // powersave setting
   // Call esp_wifi_set_ps(WIFI_PS_MIN_MODEM) to enable Modem-sleep minimum power save mode or esp_wifi_set_ps(WIFI_PS_MAX_MODEM)
-  JsVar *jsPowerSave = jsvObjectGetChild(jsSettings, "powersave", 0);
+  JsVar *jsPowerSave = jsvObjectGetChildIfExists(jsSettings, "powersave");
   if (jsvIsString(jsPowerSave)) {
     if (jsvIsStringEqual(jsPowerSave, "none")) {
       esp_wifi_set_ps(WIFI_PS_NONE);
@@ -1364,16 +1364,16 @@ void jswrap_wifi_restore(void) {
   
   wifi_mode_t savedMode;
 
-  JsVar *v = jsvObjectGetChild(o,"mode",0);
+  JsVar *v = jsvObjectGetChildIfExists(o,"mode");
   savedMode=jsvGetInteger(v);
   esp_wifi_set_mode(savedMode);
   jsvUnLock(v);
   
-  //v = jsvObjectGetChild(o,"phyMode",0);
+  //v = jsvObjectGetChildIfExists(o,"phyMode");
   //wifi_set_phy_mode(jsvGetInteger(v));
   //jsvUnLock(v); 
 
-  //v = jsvObjectGetChild(o,"sleepType",0);
+  //v = jsvObjectGetChildIfExists(o,"sleepType");
   //esp_wifi_get_ps(jsvGetInteger(v));
   //jsvUnLock(v);
   
@@ -1385,25 +1385,25 @@ void jswrap_wifi_restore(void) {
     wifi_ap_config_t ap_config;
 	  bzero(&apConfig, sizeof(ap_config));
 
-    v = jsvObjectGetChild(o,"authmodeAP",0);
+    v = jsvObjectGetChildIfExists(o,"authmodeAP");
     ap_config.authmode =jsvGetInteger(v);
     jsvUnLock(v); 
 
-    v = jsvObjectGetChild(o,"hiddenAP",0);
+    v = jsvObjectGetChildIfExists(o,"hiddenAP");
     ap_config.ssid_hidden = jsvGetInteger(v);
     jsvUnLock(v);
 
-    v = jsvObjectGetChild(o,"ssidAP",0);
+    v = jsvObjectGetChildIfExists(o,"ssidAP");
     jsvGetString(v, (char *)ap_config.ssid, sizeof(ap_config.ssid));
 
     ap_config.ssid_len = jsvGetStringLength(v);
     jsvUnLock(v);
 
-    v = jsvObjectGetChild(o,"passwordAP",0);
+    v = jsvObjectGetChildIfExists(o,"passwordAP");
     jsvGetString(v, (char *)ap_config.password, sizeof(ap_config.password));
     jsvUnLock(v); 
 
-    v = jsvObjectGetChild(o,"channelAP",0);
+    v = jsvObjectGetChildIfExists(o,"channelAP");
     ap_config.channel = jsvGetInteger(v);
     jsvUnLock(v);
 
@@ -1418,11 +1418,11 @@ void jswrap_wifi_restore(void) {
     wifi_sta_config_t sta_config;
     bzero(&sta_config, sizeof(sta_config));
 
-    v = jsvObjectGetChild(o,"ssid",0);
+    v = jsvObjectGetChildIfExists(o,"ssid");
     jsvGetString(v, (char *)sta_config.ssid, sizeof(sta_config.ssid)); 
     jsvUnLock(v); 
 
-    v = jsvObjectGetChild(o,"password",0);
+    v = jsvObjectGetChildIfExists(o,"password");
     jsvGetString(v, (char *)sta_config.password, sizeof(sta_config.password));
     jsvUnLock(v); 
 
@@ -1436,7 +1436,7 @@ void jswrap_wifi_restore(void) {
     return;
   }
   if (savedMode & WIFI_MODE_STA) {
-    v = jsvObjectGetChild(o,"hostname",0);
+    v = jsvObjectGetChildIfExists(o,"hostname");
     if (v) {
       char hostname[64];
       jsvGetString(v, hostname, sizeof(hostname));

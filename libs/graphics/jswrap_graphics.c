@@ -109,24 +109,24 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
     info->width = ig.data.width;
     info->height = ig.data.height;
     info->bpp = ig.data.bpp;
-    JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
+    JsVar *buf = jsvObjectGetChildIfExists(image, "buffer");
     info->buffer = jsvGetArrayBufferBackingString(buf, &info->bitmapOffset);
     jsvUnLock(buf);
 #else
   if (false) {
 #endif
   } else if (jsvIsObject(image)) {
-    info->width = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
-    info->height = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
-    info->bpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
+    info->width = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "width"));
+    info->height = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "height"));
+    info->bpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "bpp"));
     if (info->bpp<=0) info->bpp=1;
     info->palettePtr = 0;
     JsVar *v;
-    v = jsvObjectGetChild(image, "transparent", 0);
+    v = jsvObjectGetChildIfExists(image, "transparent");
     info->isTransparent = v!=0;
     info->transparentCol = (unsigned int)jsvGetIntegerAndUnLock(v);
 #ifndef SAVE_ON_FLASH_EXTREME
-    v = jsvObjectGetChild(image, "palette", 0);
+    v = jsvObjectGetChildIfExists(image, "palette");
     if (v) {
       if (jsvIsArrayBuffer(v) && v->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16) {
         size_t l = 0;
@@ -145,7 +145,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
       }
     }
 #endif
-    JsVar *buf = jsvObjectGetChild(image, "buffer", 0);
+    JsVar *buf = jsvObjectGetChildIfExists(image, "buffer");
     info->buffer = jsvGetArrayBufferBackingString(buf, &info->bitmapOffset);
     jsvUnLock(buf);
     info->bitmapOffset += imageOffset;
@@ -527,7 +527,7 @@ display.
 Internally, this is stored as a member called `gfx` inside the 'hiddenRoot'.
 */
 JsVar *jswrap_graphics_getInstance() {
-  return jsvObjectGetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, 0);
+  return jsvObjectGetChildIfExists(execInfo.hiddenRoot, JS_GRAPHICS_VAR);
 }
 
 static bool isValidBPP(int bpp) {
@@ -579,13 +579,13 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   gfx.graphicsVar = parent;
 
   if (jsvIsObject(options)) {
-    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "zigzag", 0)))
+    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "zigzag")))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG);
-    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "msb", 0)))
+    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "msb")))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_MSB);
-    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "interleavex", 0)))
+    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "interleavex")))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX);
-    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "vertical_byte", 0))) {
+    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "vertical_byte"))) {
       if (gfx.data.bpp==1)
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE);
       else {
@@ -597,7 +597,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
         return 0;
       }
     }
-    JsVar *colorv = jsvObjectGetChild(options, "color_order", 0);
+    JsVar *colorv = jsvObjectGetChildIfExists(options, "color_order");
     if (colorv) {
       if (jsvIsStringEqual(colorv, "rgb")) ; // The default
       else if (!jsvIsStringEqual(colorv, "brg"))
@@ -653,8 +653,8 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   JsVar *callbackFillRect = 0;
   if (jsvIsObject(callback)) {
     jsvUnLock(callbackSetPixel);
-    callbackSetPixel = jsvObjectGetChild(callback, "setPixel", 0);
-    callbackFillRect = jsvObjectGetChild(callback, "fillRect", 0);
+    callbackSetPixel = jsvObjectGetChildIfExists(callback, "setPixel");
+    callbackFillRect = jsvObjectGetChildIfExists(callback, "fillRect");
   } else
     callbackSetPixel = jsvLockAgain(callback);
   if (!jsvIsFunction(callbackSetPixel)) {
@@ -1909,7 +1909,7 @@ JsVar *jswrap_graphics_getFont(JsVar *parent) {
 #endif
 #ifndef SAVE_ON_FLASH
   if (f & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
-    /*JsVar *n = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_NAME, 0);
+    /*JsVar *n = jsvObjectGetChildIfExists(parent, JSGRAPHICS_CUSTOMFONT_NAME);
     if (n) return n;*/
     name = "Custom";
   }
@@ -1991,7 +1991,7 @@ static void _jswrap_graphics_getFontInfo(JsGraphics *gfx, JsGraphicsFontInfo *in
   }
 #ifndef SAVE_ON_FLASH
   if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
-    info->customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
+    info->customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR));
   } else
 #endif
     info->customFirstChar = 0;
@@ -2013,7 +2013,7 @@ static int _jswrap_graphics_getCharWidth(JsGraphics *gfx, JsGraphicsFontInfo *in
     int w = 0;
     // FIXME: is getCharWidth is called a lot (eg for metrics), we do getChild for each
     // character - maybe we should store this in JsGraphicsFontInfo (but then we have to unlock it)
-    JsVar *customWidth = jsvObjectGetChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
+    JsVar *customWidth = jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_WIDTH);
     if (jsvIsString(customWidth)) {
       if (ch>=info->customFirstChar)
         w = info->scalex*(unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-info->customFirstChar));
@@ -2047,7 +2047,7 @@ static int _jswrap_graphics_getFontHeightInternal(JsGraphics *gfx, JsGraphicsFon
 #endif
 #ifndef SAVE_ON_FLASH
   } else if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
-    return info->scaley*(int)jsvGetIntegerAndUnLock(jsvObjectGetChild(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0));
+    return info->scaley*(int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_HEIGHT));
 #endif
   }
   return 0;
@@ -2311,8 +2311,8 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   if (info.font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
     if (info.font==JSGRAPHICS_FONTSIZE_CUSTOM_2BPP) customBPP = 2;
     if (info.font==JSGRAPHICS_FONTSIZE_CUSTOM_4BPP) customBPP = 4;
-    customBitmap = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, 0);
-    customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
+    customBitmap = jsvObjectGetChildIfExists(parent, JSGRAPHICS_CUSTOMFONT_BMP);
+    customWidth = jsvObjectGetChildIfExists(parent, JSGRAPHICS_CUSTOMFONT_WIDTH);
   }
 #endif
 #ifndef SAVE_ON_FLASH
@@ -3006,13 +3006,13 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   bool centerImage = false;
   if (jsvIsObject(options)) {
     // support for multi-frame rendering
-    int frame = jsvGetIntegerAndUnLock(jsvObjectGetChild(options,"frame",0));
+    int frame = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options,"frame"));
     if (frame>0)
       img.bitmapOffset += img.bitmapLength * frame;
     // rotate, scale
-    scale = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"scale",0));
+    scale = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(options,"scale"));
     if (!isfinite(scale) || scale<=0) scale=1;
-    rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(options,"rotate",0));
+    rotate = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(options,"rotate"));
     centerImage = isfinite(rotate);
     if (!centerImage) rotate = 0;
   }
@@ -3211,21 +3211,21 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
   for (i=0;i<layerCount;i++) {
     JsVar *layer = jsvGetArrayItem(layersVar, i);
     if (jsvIsObject(layer)) {
-      JsVar *image = jsvObjectGetChild(layer,"image",0);
+      JsVar *image = jsvObjectGetChildIfExists(layer,"image");
       if (_jswrap_graphics_parseImage(&gfx, image, 0, &layers[i].img)) {
-        layers[i].x1 = jsvGetIntegerAndUnLock(jsvObjectGetChild(layer,"x",0));
-        layers[i].y1 = jsvGetIntegerAndUnLock(jsvObjectGetChild(layer,"y",0));
+        layers[i].x1 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(layer,"x"));
+        layers[i].y1 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(layer,"y"));
         // rotate, scale
-        layers[i].scale = jsvGetFloatAndUnLock(jsvObjectGetChild(layer,"scale",0));
+        layers[i].scale = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(layer,"scale"));
         if (!isfinite(layers[i].scale) || layers[i].scale<=0)
           layers[i].scale=1;
-        layers[i].rotate = jsvGetFloatAndUnLock(jsvObjectGetChild(layer,"rotate",0));
+        layers[i].rotate = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(layer,"rotate"));
         if (!isfinite(layers[i].rotate)) layers[i].rotate=0;
-        layers[i].center = jsvGetBoolAndUnLock(jsvObjectGetChild(layer,"center",0));
-        layers[i].repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(layer,"repeat",0));
+        layers[i].center = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(layer,"center"));
+        layers[i].repeat = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(layer,"repeat"));
         _jswrap_drawImageLayerInit(&layers[i]);
         // add the calculated bounds to our default bounds
-        if (!jsvGetBoolAndUnLock(jsvObjectGetChild(layer,"nobounds",0))) {
+        if (!jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(layer,"nobounds"))) {
           if (layers[i].x1<x) x=layers[i].x1;
           if (layers[i].y1<y) y=layers[i].y1;
           if (layers[i].x2>x+width) width=layers[i].x2-x;
@@ -3357,7 +3357,7 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
         (bpp==8 || // 8 bit data is fine
         ((gfx.data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) && // must be MSB first
           !(gfx.data.flags & JSGRAPHICSFLAGS_NONLINEAR)))) { // must be in-order
-      jsvObjectSetChildAndUnLock(img,"buffer",jsvObjectGetChild(gfx.graphicsVar, "buffer", 0));
+      jsvObjectSetChildAndUnLock(img,"buffer",jsvObjectGetChildIfExists(gfx.graphicsVar, "buffer"));
       return img;
     }
   } else {
@@ -3773,7 +3773,7 @@ JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *option
   jsvIteratorFree(&it);
 
 
-  if (jsvIsObject(options)) count = jsvGetIntegerAndUnLock(jsvObjectGetChild(options,"count",0));
+  if (jsvIsObject(options)) count = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options,"count"));
 
   const int FP_MUL = 4096;
   const int FP_SHIFT = 12;
@@ -3980,37 +3980,37 @@ JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme) {
 #ifdef GRAPHICS_THEME
   if (jsvIsObject(theme)) {
     JsVar *v;
-    v = jsvObjectGetChild(theme, "fg", 0);
+    v = jsvObjectGetChildIfExists(theme, "fg");
     if (v) {
       graphicsTheme.fg = jswrap_graphics_toColor(parent, v,0,0);
       jsvUnLock(v);
     }
-    v = jsvObjectGetChild(theme, "bg", 0);
+    v = jsvObjectGetChildIfExists(theme, "bg");
     if (v) {
       graphicsTheme.bg = jswrap_graphics_toColor(parent, v,0,0);
       jsvUnLock(v);
     }
-    v = jsvObjectGetChild(theme, "fg2", 0);
+    v = jsvObjectGetChildIfExists(theme, "fg2");
     if (v) {
       graphicsTheme.fg2 = jswrap_graphics_toColor(parent, v,0,0);
       jsvUnLock(v);
     }
-    v = jsvObjectGetChild(theme, "bg2", 0);
+    v = jsvObjectGetChildIfExists(theme, "bg2");
     if (v) {
       graphicsTheme.bg2 = jswrap_graphics_toColor(parent, v,0,0);
       jsvUnLock(v);
     }
-    v = jsvObjectGetChild(theme, "fgH", 0);
+    v = jsvObjectGetChildIfExists(theme, "fgH");
     if (v) {
       graphicsTheme.fgH = jswrap_graphics_toColor(parent, v,0,0);
       jsvUnLock(v);
     }
-    v = jsvObjectGetChild(theme, "bgH", 0);
+    v = jsvObjectGetChildIfExists(theme, "bgH");
     if (v) {
       graphicsTheme.bgH = jswrap_graphics_toColor(parent, v,0,0);
       jsvUnLock(v);
     }
-    v = jsvObjectGetChild(theme, "dark", 0);
+    v = jsvObjectGetChildIfExists(theme, "dark");
     if (v) graphicsTheme.dark = jsvGetBoolAndUnLock(v);
   }
 #endif

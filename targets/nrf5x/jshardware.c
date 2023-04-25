@@ -2143,9 +2143,9 @@ static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
     {
     case TWIS_EVT_READ_REQ:
         if (p_event->data.buf_req) {
-          JsVar *i2c = jsvObjectGetChild(execInfo.root,"I2C1",0);
+          JsVar *i2c = jsvObjectGetChildIfExists(execInfo.root,"I2C1");
           if (i2c) {
-            JsVar *buf = jsvObjectGetChild(i2c,"buffer",0);
+            JsVar *buf = jsvObjectGetChildIfExists(i2c,"buffer");
             size_t bufLen;
             char *bufPtr = jsvGetDataPointer(buf, &bufLen);
             if (bufPtr && bufLen>twisAddr)
@@ -2171,9 +2171,9 @@ static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
           if (p_event->data.rx_amount>1) {
             jshPushIOEvent(EV_I2C1, twisAddr|((p_event->data.rx_amount-1)<<8)); // send event to indicate a write
             jshHadEvent();
-            JsVar *i2c = jsvObjectGetChild(execInfo.root,"I2C1",0);
+            JsVar *i2c = jsvObjectGetChildIfExists(execInfo.root,"I2C1");
             if (i2c) {
-              JsVar *buf = jsvObjectGetChild(i2c,"buffer",0);
+              JsVar *buf = jsvObjectGetChildIfExists(i2c,"buffer");
               size_t bufLen;
               char *bufPtr = jsvGetDataPointer(buf, &bufLen);
               for (unsigned int i=1;i<p_event->data.rx_amount;i++) {

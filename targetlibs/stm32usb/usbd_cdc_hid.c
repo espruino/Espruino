@@ -817,7 +817,7 @@ static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length)
 #ifdef USE_USB_HID
 unsigned char *USB_GetHIDReportDesc(unsigned int *len) {
   if (execInfo.hiddenRoot) {
-    JsVar *v = jsvObjectGetChild(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME, 0);
+    JsVar *v = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME);
     if (jsvIsFlatString(v)) {
       if (len) *len = jsvGetStringLength(v);
       unsigned char *p = jsvGetFlatStringPointer(v);

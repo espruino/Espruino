@@ -1812,7 +1812,7 @@ If a password has been set with `E.setPassword()`, this will lock the console so
 the password needs to be entered to unlock it.
 */
 void jswrap_espruino_lockConsole() {
-  JsVar *pwd = jsvObjectGetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, 0);
+  JsVar *pwd = jsvObjectGetChildIfExists(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME);
   if (pwd)
     jsiStatus |= JSIS_PASSWORD_PROTECTED;
   jsvUnLock(pwd);
@@ -2056,7 +2056,7 @@ void jswrap_espruino_setUSBHID(JsVar *arr) {
     return;
   }
 
-  JsVar *report = jsvObjectGetChild(arr, "reportDescriptor", 0);
+  JsVar *report = jsvObjectGetChildIfExists(arr, "reportDescriptor");
   if (!(jsvIsArray(report) || jsvIsArrayBuffer(report) || jsvIsString(report))) {
     jsExceptionHere(JSET_TYPEERROR, "Object.reportDescriptor should be an Array or String, got %t", arr);
     jsvUnLock(report);

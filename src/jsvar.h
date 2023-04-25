@@ -649,6 +649,8 @@ void jsvRemoveAllChildren(JsVar *parent);
 
 /// Get the named child of an object. If createChild!=0 then create the child
 JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
+/// Get the named child of an object, or return 0
+JsVar *jsvObjectGetChildIfExists(JsVar *obj, const char *name);
 /// Get the named child of an object using a case-insensitive search
 JsVar *jsvObjectGetChildI(JsVar *obj, const char *name);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)

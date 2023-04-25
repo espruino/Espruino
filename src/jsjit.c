@@ -1081,7 +1081,7 @@ JsVar *jsjParseFunction() {
   // We had an error - don't return half-complete code
   jsiConsolePrintf("JIT %v\n", exception);
   if (jsvIsObject(exception)) {
-    JsVar *stackTrace = jsvObjectGetChild(exception, "stack", 0);
+    JsVar *stackTrace = jsvObjectGetChildIfExists(exception, "stack");
     if (stackTrace) {
       jsiConsolePrintStringVar(stackTrace);
       jsvUnLock(stackTrace);

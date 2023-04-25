@@ -184,11 +184,11 @@ JsVar *jswrap_referenceerror_constructor(JsVar *msg) {
   "typescript" : "toString(): string;"
 }*/
 JsVar *jswrap_error_toString(JsVar *parent) {
-  JsVar *str = jsvObjectGetChild(parent, "type", 0);
+  JsVar *str = jsvObjectGetChildIfExists(parent, "type");
   if (!str) str = jsvNewFromString("Error");
   if (!str) return 0;
 
-  JsVar *msg = jsvObjectGetChild(parent, "message", 0);
+  JsVar *msg = jsvObjectGetChildIfExists(parent, "message");
   if (msg) {
     JsVar *newStr = jsvVarPrintf("%v: %v", str, msg);
     jsvUnLock2(msg, str);

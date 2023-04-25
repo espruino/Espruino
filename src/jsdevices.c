@@ -732,7 +732,7 @@ void jshSetFlowControlAllReady() {
 JsVar *jshGetDeviceObject(IOEventFlags device) {
   const char *deviceStr = jshGetDeviceString(device);
   if (!deviceStr) return 0;
-  return jsvObjectGetChild(execInfo.root, deviceStr, 0);
+  return jsvObjectGetChildIfExists(execInfo.root, deviceStr);
 }
 
 /// Set whether to use flow control on the given device or not. CTS is low when ready, high when not.

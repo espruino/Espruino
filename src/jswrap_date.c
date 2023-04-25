@@ -95,7 +95,7 @@ JsVarFloat getDstChangeTime(int y, int dow_number, int dow, int month, int day_o
 // https://github.com/deirdreobyrne/CalendarAndDST
 int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
 #ifndef ESPR_NO_DAYLIGHT_SAVING
-  JsVar *dst = jsvObjectGetChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, 0);
+  JsVar *dst = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR);
   if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12) && (dst->varData.arraybuffer.type == ARRAYBUFFERVIEW_INT16)) {
     int y;
     JsVarInt dstSetting[12];
@@ -130,7 +130,7 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
   }
 #endif
   if (is_dst) *is_dst = false;
-  return jsvGetIntegerAndUnLock(jsvObjectGetChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR, 0));
+  return jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, JS_TIMEZONE_VAR));
 }
 
 // this needs to be called just before a TimeInDay is used -- unless the TimeInDay timezone has been determined by other means.
@@ -357,7 +357,7 @@ Return the number of milliseconds since 1970
 Return the number of milliseconds since 1970
  */
 JsVarFloat jswrap_date_getTime(JsVar *date) {
-  return jsvGetFloatAndUnLock(jsvObjectGetChild(date, "ms", 0));
+  return jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(date, "ms"));
 }
 /*JSON{
   "type" : "method",

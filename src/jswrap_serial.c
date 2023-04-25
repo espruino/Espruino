@@ -299,14 +299,14 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   JshUSARTInfo inf;
 
   if (jsvIsUndefined(options)) {
-    options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
+    options = jsvObjectGetChildIfExists(parent, DEVICE_OPTIONS_NAME);
   } else
     jsvLockAgain(options);
 
   bool ok = jsserialPopulateUSARTInfo(&inf, baud, options);
 #ifdef LINUX
   if (ok && jsvIsObject(options))
-    jsvObjectSetChildAndUnLock(parent, "path", jsvObjectGetChild(options, "path", 0));
+    jsvObjectSetChildAndUnLock(parent, "path", jsvObjectGetChildIfExists(options, "path"));
 #endif
 
   if (!ok) {
@@ -360,8 +360,8 @@ void jswrap_serial_unsetup(JsVar *parent) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
   // Populate JshUSARTInfo from serial - if it exists
-  JsVar *options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
-  JsVar *baud = jsvObjectGetChild(parent, USART_BAUDRATE_NAME, 0);
+  JsVar *options = jsvObjectGetChildIfExists(parent, DEVICE_OPTIONS_NAME);
+  JsVar *baud = jsvObjectGetChildIfExists(parent, USART_BAUDRATE_NAME);
   if (options) {
     JshUSARTInfo inf;
     jsserialPopulateUSARTInfo(&inf, baud, options);

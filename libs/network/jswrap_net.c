@@ -399,7 +399,7 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
   }
 #ifdef USE_TLS
   if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
-    JsVar *protocol = jsvObjectGetChild(options, "protocol", 0);
+    JsVar *protocol = jsvObjectGetChildIfExists(options, "protocol");
     if (protocol && jsvIsStringEqual(protocol, "https:")) {
       socketType |= ST_TLS;
     }
@@ -416,7 +416,7 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
   if ((socketType&ST_TYPE_MASK) == ST_UDP) {
     JsNetwork net;
     if (networkGetFromVar(&net)) {
-      int recvBufferSize = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "recvBufferSize", 0));
+      int recvBufferSize = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "recvBufferSize"));
       if (recvBufferSize > net.data.recvBufferSize) {
         net.data.recvBufferSize = recvBufferSize;
         networkSet(&net);

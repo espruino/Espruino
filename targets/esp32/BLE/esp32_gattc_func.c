@@ -182,8 +182,8 @@ void gattc_searchService(ble_uuid_t uuid){
 // Search for a CCCD for this characteristic, return 0(INVALID_HANDLE) if none
 uint16_t gattc_getCharacteristicDescriptor(JsVar *service, uint16_t char_handle) {
   uint16_t count = 0;
-  uint16_t start_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "start_handle", 0));
-  uint16_t end_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "end_handle", 0));
+  uint16_t start_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(service, "start_handle"));
+  uint16_t end_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(service, "end_handle"));
   uint16_t cccd_handle = INVALID_HANDLE;
   esp_gattc_descr_elem_t *descr_elem_result;
 
@@ -227,8 +227,8 @@ uint16_t gattc_getCharacteristicDescriptor(JsVar *service, uint16_t char_handle)
 void gattc_getCharacteristics(JsVar *service, ble_uuid_t char_uuid){
   /* bleTaskInfo = BluetoothRemoteGATTService, bleTaskInfo2 = an array of BluetoothRemoteGATTCharacteristic, or 0 */
 	uint16_t count = 0;
-	uint16_t start_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "start_handle", 0));
-	uint16_t end_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "end_handle", 0));
+	uint16_t start_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(service, "start_handle"));
+	uint16_t end_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(service, "end_handle"));
   // work out how much data to allocate (not 100% right since this is the MAX number of characteristics)
 	esp_ble_gattc_get_attr_count( 
 	    (esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if,
