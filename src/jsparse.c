@@ -611,7 +611,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           if (lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',jsvUnLockMany((unsigned)argCount, argPtr);jsvUnLock(thisVar);, 0);
         }
 
-        JSP_MATCH(')');
+        JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jsvUnLockMany((unsigned)argCount, argPtr);jsvUnLock(thisVar);, 0);
         allocatedArgCount = argCount;
       }
 
