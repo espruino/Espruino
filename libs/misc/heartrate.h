@@ -53,6 +53,7 @@ typedef struct {
   value so we have to guess based on when it changes */
   int lastHRM, lastConfidence; 
   int msSinceLastHRM; // how long was it since the last HRM reading? 
+  uint8_t sportMode; // The sport mode passed to the algorithm
 #endif
 } HrmInfo;
 

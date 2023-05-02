@@ -2337,6 +2337,9 @@ for before the clock is reloaded? 1500ms default, or 0 means never.
   and polling rate may not be exact. The algorithm's filtering is tuned for
   20-40ms poll intervals, so higher/lower intervals may effect the reliability
   of the BPM reading.
+* `hrmSportMode` - on the newest Bangle.js 2 builds with with the proprietary
+  heart rate algorithm, this is the sport mode passed to the algorithm. See `libs/misc/vc31_binary/algo.h`
+  for more info. 0 = normal (default), 1 = running, 2 = ...
 * `seaLevelPressure` (Bangle.js 2) Normally 1013.25 millibars - this is used for
   calculating altitude with the pressure sensor
 
@@ -2357,6 +2360,9 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
 #ifdef HEARTRATE
   int _hrmPollInterval = hrmPollInterval;
 #endif
+#ifdef HEARTRATE_VC31_BINARY  
+  int _hrmSportMode = hrmInfo.sportMode;
+#endif
 #ifdef TOUCH_DEVICE
   int touchX1 = touchMinX;
   int touchY1 = touchMinY;
@@ -2366,6 +2372,9 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
   jsvConfigObject configs[] = {
 #ifdef HEARTRATE
       {"hrmPollInterval", JSV_INTEGER, &_hrmPollInterval},
+#endif      
+#ifdef HEARTRATE_VC31_BINARY      
+      {"hrmSportMode", JSV_INTEGER, &_hrmSportMode},
 #endif
 #ifdef PRESSURE_DEVICE
       {"seaLevelPressure", JSV_FLOAT, &barometerSeaLevelPressure},
@@ -2416,6 +2425,9 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
 #ifdef HEARTRATE
     hrmPollInterval = (uint16_t)_hrmPollInterval;
 #endif
+#ifdef HEARTRATE_VC31_BINARY
+    hrmInfo.sportMode = _hrmSportMode;
+#endif    
 #ifdef TOUCH_DEVICE
     touchMinX = touchX1;
     touchMinY = touchY1;

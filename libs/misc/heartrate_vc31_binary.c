@@ -30,6 +30,7 @@ void hrm_init() {
   memset(&hrmInfo, 0, sizeof(hrmInfo));
   hrmInfo.isWorn = false;
   hrmInfo.lastPPGTime = jshGetSystemTime();  
+  hrmInfo.sportMode = SPORT_TYPE_NORMAL;
 }
 
 /// Add new heart rate value
@@ -64,7 +65,7 @@ bool hrm_new(int ppgValue, Vector3 *acc) {
   inputData.ppgSample = vcInfo.ppgValue | (vcInfo.wasAdjusted ? 0x1000 : 0);
   inputData.envSample = vcInfo.envValue;
   hrmInfo.msSinceLastHRM += timeDiff;
-  Algo_Input(&inputData, timeDiff, SPORT_TYPE_NORMAL,0/*surfaceRecogMode*/,0/*opticalAidMode*/);
+  Algo_Input(&inputData, timeDiff, hrmInfo.sportMode, 0/*surfaceRecogMode*/,0/*opticalAidMode*/);
   AlgoOutputData_t outputData;
   Algo_Output(&outputData);
   //jsiConsolePrintf("HRM %d %d %d\n", outputData.hrData, outputData.reliability, hrmInfo.msSinceLastHRM);
