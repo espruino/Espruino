@@ -2236,10 +2236,11 @@ void jsiIdle() {
     JsiStatus s = jsiStatus;
     if ((s&JSIS_TODO_RESET) == JSIS_TODO_RESET) {
       // shut down everything and start up again
+      unsigned int oldJsVarsSize = jsVarsSize; // we must remember the old vars size - mainly for ESP32 where it can change
       jsiKill();
       jsvKill();
       jshReset();
-      jsvInit(0);
+      jsvInit(oldJsVarsSize);
       jsiSemiInit(false, NULL/* no filename */); // don't autoload
       jsiStatus &= (JsiStatus)~JSIS_TODO_RESET;
     }

@@ -789,9 +789,11 @@ void jsvFree(void *ptr);
     }                                                                         \
   }
 
-#endif /* JSVAR_H_ */
-
-#if defined(JSVAR_MALLOC) && defined(ESPR_EMBED)
+#if defined(JSVAR_MALLOC)
 extern unsigned int jsVarsSize;
 extern JsVar *jsVars;
 #endif
+
+#endif /* JSVAR_H_ */
+
+

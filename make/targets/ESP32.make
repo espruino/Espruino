@@ -2,8 +2,10 @@ ESP_ZIP     = $(PROJ_NAME).tgz
 
 COMPORT?=/dev/ttyUSB0
 
-$(PROJ_NAME).bin: $(OBJS)
+$(PROJ_NAME).elf: $(OBJS)
 	$(LD) $(LDFLAGS) -o $(PROJ_NAME).elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
+
+$(PROJ_NAME).bin: $(PROJ_NAME).elf
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
 	elf2image \
@@ -11,6 +13,9 @@ $(PROJ_NAME).bin: $(OBJS)
 	--flash_freq "40m" \
 	-o $(PROJ_NAME).bin \
 	$(PROJ_NAME).elf
+
+$(PROJ_NAME).lst : $(PROJ_NAME).elf
+	$(OBJDUMP) -d -l -x $(PROJ_NAME).elf > $(PROJ_NAME).lst
 
 $(ESP_ZIP): $(PROJ_NAME).bin
 	$(Q)rm -rf $(PROJ_NAME)
