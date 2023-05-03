@@ -2233,10 +2233,10 @@ void jsiIdle() {
   // check for TODOs
   if (jsiStatus&JSIS_TODO_MASK) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
+    unsigned int oldJsVarsSize = jsvGetMemoryTotal(); // we must remember the old memory size - mainly for ESP32 where it can change at boot time
     JsiStatus s = jsiStatus;
     if ((s&JSIS_TODO_RESET) == JSIS_TODO_RESET) {
-      // shut down everything and start up again
-      unsigned int oldJsVarsSize = jsVarsSize; // we must remember the old vars size - mainly for ESP32 where it can change
+      // shut down everything and start up again      
       jsiKill();
       jsvKill();
       jshReset();
@@ -2263,7 +2263,6 @@ void jsiIdle() {
         JsfFileName filename = jsfNameFromVarAndUnLock(filenameVar);
         // no need to jsvObjectRemoveChild as we're shutting down anyway!
         // go through steps as if we're resetting
-        unsigned int oldJsVarsSize = jsVarsSize; // we must remember the old vars size - mainly for ESP32 where it can change
         jsiKill();
         jsvKill();
         jshReset();
@@ -2274,7 +2273,6 @@ void jsiIdle() {
         if (code)
           jsvUnLock2(jspEvaluateVar(code,0,0), code);
       } else {
-        unsigned int oldJsVarsSize = jsVarsSize; // we must remember the old vars size - mainly for ESP32 where it can change
         jsiSoftKill();
         jspSoftKill();
         jsvSoftKill();
