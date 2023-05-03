@@ -49,10 +49,10 @@ esp_bt_uuid_t uart_tx_descr = {
 };
 uint8_t uart_advice[18] = {0x11,0x07,0x9e,0xca,0xdc,0x24,0x0e,0xe5,0xa9,0xe0,0x93,0xf3,0xa3,0xb5,0x01,0x00,0x40,0x6e,};
 
-JsVar *gatts_services;
-uint16_t ble_service_pos = -1;JsvObjectIterator ble_service_it;//ble_service_cnt is defined in .h
-uint16_t ble_char_pos = -1;JsvObjectIterator ble_char_it;uint16_t ble_char_cnt = 0;
-uint16_t ble_descr_pos = -1;JsvObjectIterator ble_descr_it;uint16_t ble_descr_cnt = 0;
+JsVar *gatts_services = 0;
+uint16_t ble_service_pos = -1;//ble_service_cnt is defined in .h
+uint16_t ble_char_pos = -1;uint16_t ble_char_cnt = 0;
+uint16_t ble_descr_pos = -1;uint16_t ble_descr_cnt = 0;
 
 struct gatts_service_inst *gatts_service = NULL;
 struct gatts_char_inst *gatts_char = NULL;
@@ -101,16 +101,14 @@ uint8_t *getUartAdvice(){
 
 void emitNRFEvent(char *event,JsVar *args,int argCnt){
   JsVar *nrf = jsvObjectGetChildIfExists(execInfo.root, "NRF");
-  if(nrf){
+  if(!nrf) return; // No NRF object found - it hasn't been used yet but if not we're fine as there won't be anything to accept events!
   JsVar *eventName = jsvNewFromString(event);
-    JsVar *callback = jsvSkipNameAndUnLock(jsvFindChildFromVar(nrf,eventName,0));
+  JsVar *callback = jsvSkipNameAndUnLock(jsvFindChildFromVar(nrf,eventName,0));
   jsvUnLock(eventName);
   if(callback) jsiQueueEvents(nrf,callback,args,argCnt);
   jsvUnLock(nrf);
   jsvUnLock(callback);
   if(args) jsvUnLockMany(argCnt,args);
-  }
-  else {jsWarn("sorry, no NRF Object found"); }
 } 
 
 int getIndexFromGatts_if(esp_gatt_if_t gatts_if){
@@ -429,7 +427,7 @@ void setBleUart(){
   }
 }
 
-void gatts_char_init(){
+void gatts_char_init(JsvObjectIterator *ble_char_it){
   const char *errorStr;
   ble_uuid_t ble_uuid;
   gatts_char[ble_char_pos].service_pos = ble_service_pos;
@@ -488,20 +486,21 @@ void gatts_char_init(){
   }
   jsvUnLock(charVar);
 }
-void gatts_service_struct_init(){
+void gatts_service_struct_init(JsvObjectIterator *ble_service_it){
   ble_uuid_t ble_uuid;uint16_t handles;
   const char *errorStr;
-  if((errorStr = bleVarToUUIDAndUnLock(&gatts_service[ble_service_pos].ble_uuid, jsvObjectIteratorGetKey(&ble_service_it)))){
+  if((errorStr = bleVarToUUIDAndUnLock(&gatts_service[ble_service_pos].ble_uuid, jsvObjectIteratorGetKey(ble_service_it)))){
     jsExceptionHere(JSET_ERROR,"invalid Service UUID:%s",errorStr);
   }
   handles = 1; //for service
   bleuuid_To_uuid128(gatts_service[ble_service_pos].ble_uuid,&adv_service_uuid128[ble_service_pos * 16]);
   gatts_service[ble_service_pos].uuid16 = gatts_service[ble_service_pos].ble_uuid.uuid;
-  JsVar *serviceVar = jsvObjectIteratorGetValue(&ble_service_it);
+  JsVar *serviceVar = jsvObjectIteratorGetValue(ble_service_it);
+  JsvObjectIterator ble_char_it;
   jsvObjectIteratorNew(&ble_char_it,serviceVar);
   while(jsvObjectIteratorHasValue(&ble_char_it)){
     ble_char_pos++;
-    gatts_char_init();
+    gatts_char_init(&ble_char_it);
       handles +=2; //2 for each char
     handles +=2; //placeholder for 2 descr
     jsvObjectIteratorNext(&ble_char_it);
@@ -511,7 +510,7 @@ void gatts_service_struct_init(){
   jsvUnLock(serviceVar);
 }
 void gatts_structs_init(bool enableUART){
-    for(int i = 0; i < ble_service_cnt; i++){
+  for(int i = 0; i < ble_service_cnt; i++){
     gatts_service[i].gatts_if = ESP_GATT_IF_NONE;
     gatts_service[i].num_handles = 0;
     gatts_service[i].serviceFlag = BLE_SERVICE_GENERAL;
@@ -524,13 +523,16 @@ void gatts_structs_init(bool enableUART){
   for(int i = 0; i < ble_descr_cnt;i++){
     gatts_descr[i].char_pos = -1;
   }
-  jsvObjectIteratorNew(&ble_service_it, gatts_services);
-  while(jsvObjectIteratorHasValue(&ble_service_it)){
-    ble_service_pos++;
-    gatts_service_struct_init();
-    jsvObjectIteratorNext(&ble_service_it);
+  if (gatts_services) {
+    JsvObjectIterator ble_service_it;
+    jsvObjectIteratorNew(&ble_service_it, gatts_services);
+    while(jsvObjectIteratorHasValue(&ble_service_it)){
+      ble_service_pos++;
+      gatts_service_struct_init(&ble_service_it);
+      jsvObjectIteratorNext(&ble_service_it);
+    }
+    jsvObjectIteratorFree(&ble_service_it);
   }
-  jsvObjectIteratorFree(&ble_service_it);
   if (enableUART) {
     add_ble_uart();
   }
@@ -540,33 +542,38 @@ void gatts_getAdvServiceUUID(uint8_t *p_service_uuid, uint16_t service_len){
   service_len = 16 * ble_service_cnt - 16;  
 }
   
+// Actually allocates gatts_services with enough space
 void gatts_create_structs(bool enableUART){
   ble_service_cnt = 0; ble_char_cnt = 0; ble_descr_cnt = 0;
   ble_service_pos = -1; ble_char_pos = -1; ble_descr_pos = -1;
-  jsvObjectIteratorNew(&ble_service_it,gatts_services);
-  while(jsvObjectIteratorHasValue(&ble_service_it)){
-    JsVar *serviceVar = jsvObjectIteratorGetValue(&ble_service_it);
-    jsvObjectIteratorNew(&ble_char_it,serviceVar);
-    while(jsvObjectIteratorHasValue(&ble_char_it)){  
-      JsVar *charVar = jsvObjectIteratorGetValue(&ble_char_it);
-      JsVar *charDescriptionVar = jsvObjectGetChildIfExists(charVar, "description");
-      if (charDescriptionVar && jsvHasCharacterData(charDescriptionVar)) ble_descr_cnt++;
-      jsvUnLock(charDescriptionVar);
-      jsvUnLock(charVar);
-      jsvObjectIteratorNext(&ble_char_it);
-      ble_char_cnt++;
+  if (gatts_services) {
+    JsvObjectIterator ble_service_it;
+    jsvObjectIteratorNew(&ble_service_it,gatts_services);
+    while(jsvObjectIteratorHasValue(&ble_service_it)){
+      JsVar *serviceVar = jsvObjectIteratorGetValue(&ble_service_it);
+      JsvObjectIterator ble_char_it;
+      jsvObjectIteratorNew(&ble_char_it,serviceVar);
+      while(jsvObjectIteratorHasValue(&ble_char_it)){  
+        JsVar *charVar = jsvObjectIteratorGetValue(&ble_char_it);
+        JsVar *charDescriptionVar = jsvObjectGetChildIfExists(charVar, "description");
+        if (charDescriptionVar && jsvHasCharacterData(charDescriptionVar)) ble_descr_cnt++;
+        jsvUnLock(charDescriptionVar);
+        jsvUnLock(charVar);
+        jsvObjectIteratorNext(&ble_char_it);
+        ble_char_cnt++;
+      }
+      jsvUnLock(serviceVar);
+      jsvObjectIteratorFree(&ble_char_it);
+      jsvObjectIteratorNext(&ble_service_it);
+      ble_service_cnt++;
     }
-    jsvUnLock(serviceVar);
-    jsvObjectIteratorFree(&ble_char_it);
-    jsvObjectIteratorNext(&ble_service_it);
-    ble_service_cnt++;
+    jsvObjectIteratorFree(&ble_service_it);
   }
   if (enableUART) {
     ble_service_cnt++;
     ble_char_cnt += 2;
     ble_descr_cnt += 2;
   }
-  jsvObjectIteratorFree(&ble_service_it);
   adv_service_uuid128 = calloc(sizeof(uint8_t),(ble_service_cnt * 16));
   gatts_service = calloc(sizeof(struct gatts_service_inst),ble_service_cnt);
   gatts_char = calloc(sizeof(struct gatts_char_inst),ble_char_cnt);
@@ -576,20 +583,26 @@ void gatts_create_structs(bool enableUART){
 void gatts_set_services(JsVar *data){
   JsVar *options = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS);
   gatts_reset(true);
+  jsvUnLock(gatts_services);
   gatts_services = data;
-  if (jsvIsObject(gatts_services)) {
-    JsVar *uartVar = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_NUS);
-    bool enableUART = !uartVar || jsvGetBool(uartVar); // if not set, default is enabled
-    jsvUnLock(uartVar);
-    gatts_create_structs(enableUART);
-    gatts_structs_init(enableUART);
-    ble_service_pos = 0;
-    ble_char_pos = 0;
-    ble_descr_pos = 0;
-    gatts_reg_app();  //this starts tons of api calls creating gatts-events. Ends in gatts_reg_app
-    if (enableUART) 
-      setBleUart();
+
+  JsVar *uartVar = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_NUS);
+  bool enableUART = !uartVar || jsvGetBool(uartVar); // if not set, default is enabled
+  jsvUnLock(uartVar);
+  // set the flags correctly
+  if (enableUART) {
+    bleStatus |= BLE_NUS_INITED;
+  } else {
+    bleStatus &= ~BLE_NUS_INITED;
   }
+  gatts_create_structs(enableUART); //  allocate gatts_services with enough space
+  gatts_structs_init(enableUART); // fill in gatts_services
+  ble_service_pos = 0;
+  ble_char_pos = 0;
+  ble_descr_pos = 0;
+  gatts_reg_app();  //this starts tons of api calls creating gatts-events. Ends in gatts_reg_app
+  if (enableUART) 
+    setBleUart();
   jsvUnLock(options);
 }
 void gatts_reset(bool removeValues){
