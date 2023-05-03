@@ -2263,22 +2263,24 @@ void jsiIdle() {
         JsfFileName filename = jsfNameFromVarAndUnLock(filenameVar);
         // no need to jsvObjectRemoveChild as we're shutting down anyway!
         // go through steps as if we're resetting
+        unsigned int oldJsVarsSize = jsVarsSize; // we must remember the old vars size - mainly for ESP32 where it can change
         jsiKill();
         jsvKill();
         jshReset();
-        jsvInit(0);
+        jsvInit(oldJsVarsSize);
         jsiSemiInit(false, &filename); // don't autoload code
         // load the code we specified
         JsVar *code = jsfReadFile(filename,0,0);
         if (code)
           jsvUnLock2(jspEvaluateVar(code,0,0), code);
       } else {
+        unsigned int oldJsVarsSize = jsVarsSize; // we must remember the old vars size - mainly for ESP32 where it can change
         jsiSoftKill();
         jspSoftKill();
         jsvSoftKill();
         jsvKill();
         jshReset();
-        jsvInit(0);
+        jsvInit(oldJsVarsSize);
         jsfLoadStateFromFlash();
         jsvSoftInit();
         jspSoftInit();
