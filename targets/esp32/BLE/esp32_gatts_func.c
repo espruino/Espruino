@@ -230,7 +230,7 @@ static void gatts_disconnect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
 		JsVar *args[1];
 		gatts_service[g].connected = false;
 		if(!gatts_if_connected()){
-			r = bluetooth_gap_startAdvertizing(true);
+			r = bluetooth_gap_startAdvertising(true);
 		}
 		args[0] = jsvNewFromInteger(param->disconnect.reason);
 		m_peripheral_conn_handle = BLE_GATT_HANDLE_INVALID;
@@ -245,7 +245,7 @@ void gatts_reg_app(){
 		if(r) jsWarn("app_register error:%d\n",r);
 	}
 	else{
-		bluetooth_gap_startAdvertizing(true);
+		bluetooth_gap_startAdvertising(true);
 		jshSetDeviceInitialised(EV_BLUETOOTH, true);
 	}
 }

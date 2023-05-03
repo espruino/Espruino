@@ -1002,7 +1002,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
   if (isAdvertising)
     jsble_advertising_stop();
 #ifdef ESP32
-  err_code = bluetooth_gap_setAdvertizing(advArray);
+  err_code = bluetooth_gap_setAdvertising(advArray);
 #endif
   jsble_check_error(err_code);
   if (isAdvertising)

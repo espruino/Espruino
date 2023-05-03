@@ -23,6 +23,7 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jshardware.h"
+#include "jshardwareESP32.h"
 #include "bluetooth_utils.h"
 
 #define adv_config_flag      (1 << 0)
@@ -119,7 +120,7 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 		}
     case ESP_GAP_BLE_SCAN_START_COMPLETE_EVT:{
       if (param->scan_start_cmpl.status != ESP_BT_STATUS_SUCCESS) {
-        jsWarn("Scan start failed:d\n",param->scan_start_cmpl.status);
+        jsWarn("Scan start failed (%d)\n", param->scan_start_cmpl.status);
       }
       break;
     }
@@ -136,7 +137,7 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
     }
     case ESP_GAP_BLE_SCAN_STOP_COMPLETE_EVT:{
       if (param->scan_stop_cmpl.status != ESP_BT_STATUS_SUCCESS)
-        jsWarn("Scan stop failed");
+        jsWarn("Scan stop failed (%d)", param->scan_stop_cmpl.status);
       break;
     }
 		default:{
@@ -153,13 +154,14 @@ void bluetooth_gap_setScan(bool enable, bool activeScan){
 	if(enable == true){
 	  status = esp_ble_gap_start_scanning(0);
 	  if (status != ESP_OK) jsWarn("esp_ble_gap_start_scanning: rc=%d", status);
-	}
-	else{
+	} else {
 	  status = esp_ble_gap_stop_scanning();
 	}
 }
 
-esp_err_t bluetooth_gap_startAdvertizing(bool enable){
+esp_err_t bluetooth_gap_startAdvertising(bool enable){
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
+    return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)  
 	if(enable){
 		return esp_ble_gap_start_advertising(&adv_params);
 	}
@@ -244,7 +246,9 @@ JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
 	return jsvNewArrayBufferWithData(i,encoded_advdata);
 }
 
-esp_err_t bluetooth_gap_setAdvertizing(JsVar *advArray){
+esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray){
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
+    return 0; // ESP32.enableBLE(false) - we return 0 here so we don't output an error message at boot
   esp_err_t ret;
   if(!advArray){
     adv_data.service_uuid_len = ble_service_cnt * 16;
