@@ -28,16 +28,16 @@
 int getTimerIndex(Pin pin,int freq){
   int i;
   for(i = 0; i < PWMFreqMax; i++){
-	if(PWMFreqChannels[i].pin == pin) return i;	
+  if(PWMFreqChannels[i].pin == pin) return i;  
   }
-  return -1;	
+  return -1;  
 }
 int getFreeTimer(Pin pin,int freq){
   int i;
   i = getTimerIndex(pin,freq);
   if(i >= 0) return i;
   for(i = 0; i < PWMFreqMax; i++){
-	if(PWMFreqChannels[i].pin == PWMPinEmpty) return i;
+  if(PWMFreqChannels[i].pin == PWMPinEmpty) return i;
   }
   return -1;
 }
@@ -54,7 +54,7 @@ int getFreeChannel(pin){
   i = getChannelIndex(pin);
   if(i >= 0) return i;
   for(i = 0; i < PWMMax; i++){
-	if(PWMChannels[i].pin == PWMPinEmpty) return i;
+  if(PWMChannels[i].pin == PWMPinEmpty) return i;
   }
   return -1;
 }
@@ -93,19 +93,19 @@ void writePWM(Pin pin,uint16_t value,int freq){
     channel = getFreeChannel(pin);
     if(channel < 0){jsError("no PWM channel available anymore");}
     else{
-	  PWMChannels[channel].pin = pin;
-	  channelConfig(PWMTimerDefault,channel,value,pin);
-	}
+    PWMChannels[channel].pin = pin;
+    channelConfig(PWMTimerDefault,channel,value,pin);
+  }
   }
   else{
-	timer = getFreeTimer(pin,freq);
-	if(timer < 0){jsError("no PWM channel available anymore");}
-	else{
-	  PWMFreqChannels[timer].pin = pin;
-	  PWMFreqChannels[timer].freq = freq;
-	  timerConfig(freq,timer);
-	  channelConfig(timer,PWMMax + timer,value,pin);
-	}
+  timer = getFreeTimer(pin,freq);
+  if(timer < 0){jsError("no PWM channel available anymore");}
+  else{
+    PWMFreqChannels[timer].pin = pin;
+    PWMFreqChannels[timer].freq = freq;
+    timerConfig(freq,timer);
+    channelConfig(timer,PWMMax + timer,value,pin);
+  }
   }  
 }
 
@@ -113,7 +113,7 @@ void setPWM(Pin pin,uint16_t value){
   int channel = getChannelIndex(pin);
   if(channel < 0){jsError("pin not assigned to pwm");}
   else{
-	ledc_set_duty(LEDC_HIGH_SPEED_MODE, channel, value);  
+  ledc_set_duty(LEDC_HIGH_SPEED_MODE, channel, value);  
   }
 }
 

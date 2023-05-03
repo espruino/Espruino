@@ -44,12 +44,12 @@ static esp_ble_adv_params_t adv_params = {
     .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
-static esp_ble_scan_params_t ble_scan_params = 	{	
-	.scan_type              = BLE_SCAN_TYPE_ACTIVE,
-	.own_addr_type          = BLE_ADDR_TYPE_PUBLIC,
-	.scan_filter_policy     = BLE_SCAN_FILTER_ALLOW_ALL,
-	.scan_interval          = 0x10, // default = 0x10 (10ms)
-	.scan_window            = 0x10  // default = 0x10 (10ms)
+static esp_ble_scan_params_t ble_scan_params =   {  
+  .scan_type              = BLE_SCAN_TYPE_ACTIVE,
+  .own_addr_type          = BLE_ADDR_TYPE_PUBLIC,
+  .scan_filter_policy     = BLE_SCAN_FILTER_ALLOW_ALL,
+  .scan_interval          = 0x10, // default = 0x10 (10ms)
+  .scan_window            = 0x10  // default = 0x10 (10ms)
 };
 
 static esp_ble_adv_data_t adv_data = {
@@ -69,55 +69,55 @@ static esp_ble_adv_data_t adv_data = {
 };
 
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param){
-	jsWarnGapEvent(event);
+  jsWarnGapEvent(event);
   switch (event) {
-		case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:{
-			adv_config_done &= (~adv_config_flag);
-			if (adv_config_done == 0){
-				esp_ble_gap_start_advertising(&adv_params);
-			}
-			break;
-		}
-		case ESP_GAP_BLE_SCAN_RSP_DATA_SET_COMPLETE_EVT:{
+    case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:{
+      adv_config_done &= (~adv_config_flag);
+      if (adv_config_done == 0){
+        esp_ble_gap_start_advertising(&adv_params);
+      }
+      break;
+    }
+    case ESP_GAP_BLE_SCAN_RSP_DATA_SET_COMPLETE_EVT:{
 
-			adv_config_done &= (~scan_rsp_config_flag);
-			if (adv_config_done == 0){
-				esp_ble_gap_start_advertising(&adv_params);
-			}
-			break;
-		}
-		case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:{
-			if (param->adv_start_cmpl.status != ESP_BT_STATUS_SUCCESS) {
-				jsWarn("Advertising start failed\n");
-			}
-			break;
-		}
-		case ESP_GAP_BLE_ADV_STOP_COMPLETE_EVT:{
-			if (param->adv_stop_cmpl.status != ESP_BT_STATUS_SUCCESS) {
-				jsWarn("Advertising stop failed\n");
-			}
-			else {
-				jsWarn("Stop adv successfully\n");
-			}
-			break;
-		}
-		case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:{
-			/*jsWarn("update connection params: status = %d, min_int = %d, max_int = %d, conn_int = %d, latency = %d, timeout = %d",
+      adv_config_done &= (~scan_rsp_config_flag);
+      if (adv_config_done == 0){
+        esp_ble_gap_start_advertising(&adv_params);
+      }
+      break;
+    }
+    case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:{
+      if (param->adv_start_cmpl.status != ESP_BT_STATUS_SUCCESS) {
+        jsWarn("Advertising start failed\n");
+      }
+      break;
+    }
+    case ESP_GAP_BLE_ADV_STOP_COMPLETE_EVT:{
+      if (param->adv_stop_cmpl.status != ESP_BT_STATUS_SUCCESS) {
+        jsWarn("Advertising stop failed\n");
+      }
+      else {
+        jsWarn("Stop adv successfully\n");
+      }
+      break;
+    }
+    case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:{
+      /*jsWarn("update connection params: status = %d, min_int = %d, max_int = %d, conn_int = %d, latency = %d, timeout = %d",
                   param->update_conn_params.status,
                   param->update_conn_params.min_int,
                   param->update_conn_params.max_int,
                   param->update_conn_params.conn_int,
                   param->update_conn_params.latency,
                   param->update_conn_params.timeout);*/
-			break;
-		}
-		case ESP_GAP_BLE_SEC_REQ_EVT:{
-		    esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
-			break;
-		}
-		case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:   {
+      break;
+    }
+    case ESP_GAP_BLE_SEC_REQ_EVT:{
+        esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
+      break;
+    }
+    case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:   {
         break;
-		}
+    }
     case ESP_GAP_BLE_SCAN_START_COMPLETE_EVT:{
       if (param->scan_start_cmpl.status != ESP_BT_STATUS_SUCCESS) {
         jsWarn("Scan start failed (%d)\n", param->scan_start_cmpl.status);
@@ -140,110 +140,110 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
         jsWarn("Scan stop failed (%d)", param->scan_stop_cmpl.status);
       break;
     }
-		default:{
-			break;
-		}
+    default:{
+      break;
+    }
     }
 }
 
 void bluetooth_gap_setScan(bool enable, bool activeScan){
-	esp_err_t status;
-	ble_scan_params.scan_type = activeScan ? BLE_SCAN_TYPE_ACTIVE : BLE_SCAN_TYPE_PASSIVE;
-	status = esp_ble_gap_set_scan_params(&ble_scan_params);
-	if (status){ jsWarn("gap set scan error code = %x", status);return;}
-	if(enable == true){
-	  status = esp_ble_gap_start_scanning(0);
-	  if (status != ESP_OK) jsWarn("esp_ble_gap_start_scanning: rc=%d", status);
-	} else {
-	  status = esp_ble_gap_stop_scanning();
-	}
+  esp_err_t status;
+  ble_scan_params.scan_type = activeScan ? BLE_SCAN_TYPE_ACTIVE : BLE_SCAN_TYPE_PASSIVE;
+  status = esp_ble_gap_set_scan_params(&ble_scan_params);
+  if (status){ jsWarn("gap set scan error code = %x", status);return;}
+  if(enable == true){
+    status = esp_ble_gap_start_scanning(0);
+    if (status != ESP_OK) jsWarn("esp_ble_gap_start_scanning: rc=%d", status);
+  } else {
+    status = esp_ble_gap_stop_scanning();
+  }
 }
 
 esp_err_t bluetooth_gap_startAdvertising(bool enable){
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)  
-	if(enable){
-		return esp_ble_gap_start_advertising(&adv_params);
-	}
-	else{
-		return esp_ble_gap_stop_advertising();
-	}
+  if(enable){
+    return esp_ble_gap_start_advertising(&adv_params);
+  }
+  else{
+    return esp_ble_gap_stop_advertising();
+  }
 }
 
 int addAdvertisingData(uint8_t *advData,int pnt,int idx,JsVar *value){
-	int len = 0;
-	JSV_GET_AS_CHAR_ARRAY(dPtr,dLen,value);
-	len = 4 + dLen;
-	advData[pnt++] = 3 + dLen;
-	advData[pnt++] = 22;
-	advData[pnt++] = idx & 255;
-	advData[pnt++] = idx >> 8;
-	for(int i = 0; i < dLen; i++){ advData[pnt++] = dPtr[i];}
-	return len;
+  int len = 0;
+  JSV_GET_AS_CHAR_ARRAY(dPtr,dLen,value);
+  len = 4 + dLen;
+  advData[pnt++] = 3 + dLen;
+  advData[pnt++] = 22;
+  advData[pnt++] = idx & 255;
+  advData[pnt++] = idx >> 8;
+  for(int i = 0; i < dLen; i++){ advData[pnt++] = dPtr[i];}
+  return len;
 }
 
 int addAdvertisingDeviceName(uint8_t *advData,int pnt){
-	JsVar *deviceName;
-	deviceName = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_DEVICE_NAME);
-	if(deviceName){
-		JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
-		if(nameLen > 0){
-			if((nameLen + pnt + 2) > BLE_GAP_ADV_MAX_SIZE){
-				nameLen = BLE_GAP_ADV_MAX_SIZE - 2 - pnt;
-				advData[pnt] = nameLen + 1;
-				advData[pnt + 1] = 8;
-			}
-			else{
-				advData[pnt] = nameLen + 1;
-				advData[pnt + 1] = 9;
-			}
-			for(int i = 0; i < nameLen; i++) advData[pnt + i + 2] = namePtr[i];
-			nameLen += 2;
-		}
-		jsvUnLock(deviceName);
-		return nameLen + 2;
-	}
-	else return 0;
+  JsVar *deviceName;
+  deviceName = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_DEVICE_NAME);
+  if(deviceName){
+    JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
+    if(nameLen > 0){
+      if((nameLen + pnt + 2) > BLE_GAP_ADV_MAX_SIZE){
+        nameLen = BLE_GAP_ADV_MAX_SIZE - 2 - pnt;
+        advData[pnt] = nameLen + 1;
+        advData[pnt + 1] = 8;
+      }
+      else{
+        advData[pnt] = nameLen + 1;
+        advData[pnt + 1] = 9;
+      }
+      for(int i = 0; i < nameLen; i++) advData[pnt + i + 2] = namePtr[i];
+      nameLen += 2;
+    }
+    jsvUnLock(deviceName);
+    return nameLen + 2;
+  }
+  else return 0;
 }
 
 int addAdvertisingUart(uint8_t *advData,int pnt){
-	uint8_t *uart_adv;
-	uart_adv = getUartAdvice();
-	for(int i = 0; i < 18; i++){ advData[pnt + i] = uart_adv[i];}
-	return 18;
+  uint8_t *uart_adv;
+  uart_adv = getUartAdvice();
+  for(int i = 0; i < 18; i++){ advData[pnt + i] = uart_adv[i];}
+  return 18;
 }
 
 JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
     uint8_t encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
-	int i = 0;
-	if(jsvIsArray(data) || jsvIsArrayBuffer(data)){
-		return jsvLockAgain(data);
-	} else if(jsvIsObject(data)){
-		encoded_advdata[i++] = 2;
-		encoded_advdata[i++] = 1;
-		encoded_advdata[i++] = 6;  //todo add support of showName == false
-		JsvObjectIterator it;
-		jsvObjectIteratorNew(&it, data);
-		while(jsvObjectIteratorHasValue(&it)){
-			JsVar *value = jsvObjectIteratorGetValue(&it);
-			int idx = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
-			i = i + addAdvertisingData(&encoded_advdata,i,idx,value);
-			jsvUnLock(value);
-			jsvObjectIteratorNext(&it);
-		}
-		jsvObjectIteratorFree(&it);
-		//todo add support of manufacturerData
-		i = i + addAdvertisingDeviceName(&encoded_advdata,i);
-		if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "uart"))){
-			i = i + addAdvertisingUart(&encoded_advdata,i);
-		}
-	}
-	else if (!jsvIsUndefined(data)){
-		jsExceptionHere(JSET_TYPEERROR, "Expecting object array or undefined, got %t",data);
-		return 0;
-	}
-	if (i==0) return 0;
-	return jsvNewArrayBufferWithData(i,encoded_advdata);
+  int i = 0;
+  if(jsvIsArray(data) || jsvIsArrayBuffer(data)){
+    return jsvLockAgain(data);
+  } else if(jsvIsObject(data)){
+    encoded_advdata[i++] = 2;
+    encoded_advdata[i++] = 1;
+    encoded_advdata[i++] = 6;  //todo add support of showName == false
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, data);
+    while(jsvObjectIteratorHasValue(&it)){
+      JsVar *value = jsvObjectIteratorGetValue(&it);
+      int idx = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
+      i = i + addAdvertisingData(&encoded_advdata,i,idx,value);
+      jsvUnLock(value);
+      jsvObjectIteratorNext(&it);
+    }
+    jsvObjectIteratorFree(&it);
+    //todo add support of manufacturerData
+    i = i + addAdvertisingDeviceName(&encoded_advdata,i);
+    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "uart"))){
+      i = i + addAdvertisingUart(&encoded_advdata,i);
+    }
+  }
+  else if (!jsvIsUndefined(data)){
+    jsExceptionHere(JSET_TYPEERROR, "Expecting object array or undefined, got %t",data);
+    return 0;
+  }
+  if (i==0) return 0;
+  return jsvNewArrayBufferWithData(i,encoded_advdata);
 }
 
 esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray){
@@ -255,8 +255,8 @@ esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray){
     ret = esp_ble_gap_config_adv_data(&adv_data);
   }
   else{
-	JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advArray);
-	ret = esp_ble_gap_config_adv_data_raw(advPtr, advLen);
+  JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advArray);
+  ret = esp_ble_gap_config_adv_data_raw(advPtr, advLen);
   }
   if (ret){
     jsWarn("config adv data failed, error code = %x", ret);
@@ -265,28 +265,28 @@ esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray){
 }
 
 esp_err_t bluetooth_setDeviceName(JsVar *deviceName){
-	esp_err_t r;
-	jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_DEVICE_NAME, deviceName);
-	JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
-	r = esp_ble_gap_set_device_name((uint8_t *)namePtr);
-	return r;
+  esp_err_t r;
+  jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_DEVICE_NAME, deviceName);
+  JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
+  r = esp_ble_gap_set_device_name((uint8_t *)namePtr);
+  return r;
 }
 
 void bluetooth_initDeviceName(){
-	char deviceName[14];
-	strcpy(deviceName,"ESP32.js 0123");
-	uint8_t macnr[6];
-	esp_efuse_mac_get_default(macnr);
-	deviceName[9] = itoch((macnr[4]>>4)&15);
-	deviceName[10] = itoch(macnr[4]&15);
-	deviceName[11] = itoch((macnr[5]>>4)&15);
-	deviceName[12] = itoch(macnr[5]&15);
-	deviceName[13] = '\0';
-	jsvObjectSetChild(execInfo.hiddenRoot, BLE_DEVICE_NAME,jsvNewFromString(deviceName));
+  char deviceName[14];
+  strcpy(deviceName,"ESP32.js 0123");
+  uint8_t macnr[6];
+  esp_efuse_mac_get_default(macnr);
+  deviceName[9] = itoch((macnr[4]>>4)&15);
+  deviceName[10] = itoch(macnr[4]&15);
+  deviceName[11] = itoch((macnr[5]>>4)&15);
+  deviceName[12] = itoch(macnr[5]&15);
+  deviceName[13] = '\0';
+  jsvObjectSetChild(execInfo.hiddenRoot, BLE_DEVICE_NAME,jsvNewFromString(deviceName));
 }
 
 void gap_init_security(){
-	/* set the security iocap & auth_req & key size & init key response key parameters to the stack*/
+  /* set the security iocap & auth_req & key size & init key response key parameters to the stack*/
     esp_ble_auth_req_t auth_req = ESP_LE_AUTH_BOND;     //bonding with peer device after authentication
     esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;           //set the IO capability to No output No input
     uint8_t key_size = 16;      //the key size should be 7~16 bytes

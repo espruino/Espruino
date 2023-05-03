@@ -129,23 +129,23 @@ JsVar *jswrap_ESP32_getState() {
  "params"   : [
    ["level", "int", "which events should be shown (GAP=1, GATTS=2, GATTC=4). Use 255 for everything"]
  ],
- "ifdef"	: "BLUETOOTH"
+ "ifdef"  : "BLUETOOTH"
 }
 */
 void jswrap_ESP32_setBLE_Debug(int level){
-	ESP32_setBLE_Debug(level);
+  ESP32_setBLE_Debug(level);
 }
 
 /*JSON{
- "type"	: "staticmethod",
- "class"	: "ESP32",
+ "type"  : "staticmethod",
+ "class"  : "ESP32",
  "ifdef" : "ESP32",
- "name"		: "enableBLE",
- "generate"	: "jswrap_ESP32_enableBLE",
- "params"	: [
+ "name"    : "enableBLE",
+ "generate"  : "jswrap_ESP32_enableBLE",
+ "params"  : [
    ["enable", "bool", "switches Bluetooth on or off" ]
  ],
- "ifdef"	: "BLUETOOTH" 
+ "ifdef"  : "BLUETOOTH" 
 }
 Switches Bluetooth off/on, removes saved code from Flash, resets the board, and
 on restart creates jsVars depending on available heap (actual additional 1800)
@@ -157,12 +157,12 @@ void jswrap_ESP32_enableBLE(bool enable) { //may be later, we will support BLEen
 }
 #endif
 /*JSON{
- "type"	: "staticmethod",
- "class"	: "ESP32",
+ "type"  : "staticmethod",
+ "class"  : "ESP32",
  "ifdef" : "ESP32",
- "name"		: "enableWifi",
- "generate"	: "jswrap_ESP32_enableWifi",
- "params"	: [
+ "name"    : "enableWifi",
+ "generate"  : "jswrap_ESP32_enableWifi",
+ "params"  : [
    ["enable", "bool", "switches Wifi on or off" ]
  ] 
 }

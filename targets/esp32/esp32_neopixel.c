@@ -26,17 +26,17 @@ This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 
 #include "esp32_neopixel.h"
 
-#define RMTCHANNEL	0
-#define MAX_PULSES	64
+#define RMTCHANNEL  0
+#define MAX_PULSES  64
 #define BUFFERS         8
-#define DIVIDER		4 /* Above 4, timings start to deviate*/
-#define DURATION	12.5 /* minimum time of a single RMT duration */
+#define DIVIDER    4 /* Above 4, timings start to deviate*/
+#define DURATION  12.5 /* minimum time of a single RMT duration */
 
-#define PULSE_T0H	(  350 / (DURATION * DIVIDER))
-#define PULSE_T1H	(  900 / (DURATION * DIVIDER))
-#define PULSE_T0L	(  900 / (DURATION * DIVIDER))
-#define PULSE_T1L	(  350 / (DURATION * DIVIDER))
-#define PULSE_TRS	(50000 / (DURATION * DIVIDER))
+#define PULSE_T0H  (  350 / (DURATION * DIVIDER))
+#define PULSE_T1H  (  900 / (DURATION * DIVIDER))
+#define PULSE_T0L  (  900 / (DURATION * DIVIDER))
+#define PULSE_T1L  (  350 / (DURATION * DIVIDER))
+#define PULSE_TRS  (50000 / (DURATION * DIVIDER))
 
 typedef union {
   struct {

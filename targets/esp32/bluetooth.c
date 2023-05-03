@@ -40,28 +40,28 @@ volatile uint16_t m_central_conn_handles[1]; /**< Handle of central mode connect
 
 /** Initialise the BLE stack */
 void jsble_init(){
-	esp_err_t ret;
-	if(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) {
-		ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
-		if(ret) {
-			jsExceptionHere(JSET_ERROR,"mem release failed:%x\n",ret);
-			return;
-		}
-	
-		if(initController()) return;
-		if(initBluedroid()) return;
-		if(registerCallbacks()) return;
-		setMtu();
-		gap_init_security();
-	}
-	else{
-		ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT); 
-		jsWarn("Bluetooth is disabled per ESP32.enableBLE(false)\n");
-	}
+  esp_err_t ret;
+  if(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) {
+    ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+    if(ret) {
+      jsExceptionHere(JSET_ERROR,"mem release failed:%x\n",ret);
+      return;
+    }
+  
+    if(initController()) return;
+    if(initBluedroid()) return;
+    if(registerCallbacks()) return;
+    setMtu();
+    gap_init_security();
+  }
+  else{
+    ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT); 
+    jsWarn("Bluetooth is disabled per ESP32.enableBLE(false)\n");
+  }
 }
 /** Completely deinitialise the BLE stack. Return true on success */
 bool jsble_kill(){
-	jsWarn("jsble_kill not implemented yet\n");
+  jsWarn("jsble_kill not implemented yet\n");
   return true;
 }
 
@@ -109,33 +109,33 @@ int jsble_exec_pending(IOEvent *event) {
 }
 
 void jsble_restart_softdevice(JsVar *jsFunction){
-	bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
-	if (bleStatus & BLE_IS_SCANNING) {
-		bluetooth_gap_setScan(false, false);
-	}
-	if (jsvIsFunction(jsFunction))
-	  jspExecuteFunction(jsFunction,NULL,0,NULL);
-	jswrap_ble_reconfigure_softdevice();
+  bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
+  if (bleStatus & BLE_IS_SCANNING) {
+    bluetooth_gap_setScan(false, false);
+  }
+  if (jsvIsFunction(jsFunction))
+    jspExecuteFunction(jsFunction,NULL,0,NULL);
+  jswrap_ble_reconfigure_softdevice();
 }
 
 uint32_t jsble_advertising_start() {
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
 
-	esp_err_t status;
-	if (bleStatus & BLE_IS_ADVERTISING) return;
-	status = bluetooth_gap_startAdvertising(true);
-	return status;
+  esp_err_t status;
+  if (bleStatus & BLE_IS_ADVERTISING) return;
+  status = bluetooth_gap_startAdvertising(true);
+  return status;
 }
 void jsble_advertising_stop() {
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
 
-	esp_err_t status;
-	status = bluetooth_gap_startAdvertising(false);
-	if(status){
-	   jsExceptionHere(JSET_ERROR,"error in stop advertising:0X%x",status);
-	}
+  esp_err_t status;
+  status = bluetooth_gap_startAdvertising(false);
+  if(status){
+     jsExceptionHere(JSET_ERROR,"error in stop advertising:0X%x",status);
+  }
 }
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection(){
@@ -174,9 +174,9 @@ bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
     jsExceptionHere(JSET_ERROR, "BLE: %s (:%d)", n?n:"?", lineNumber);
     return true;
   }
-	NOT_USED(err_code);
-	NOT_USED(lineNumber);
-	return false;
+  NOT_USED(err_code);
+  NOT_USED(lineNumber);
+  return false;
 }
 /// Scanning for advertising packets
 uint32_t jsble_set_scanning(bool enabled, JsVar *options){
@@ -196,15 +196,15 @@ uint32_t jsble_set_scanning(bool enabled, JsVar *options){
     bleStatus &= ~BLE_IS_SCANNING;
     bluetooth_gap_setScan(false, false);
   }
-	return 0;
+  return 0;
 }
 
 /// returning RSSI values for current connection
 uint32_t jsble_set_rssi_scan(bool enabled){
-	if (enabled)
+  if (enabled)
     jsWarn("set rssi scan not implemeted yet\n");
-	NOT_USED(enabled);
-	return 0;
+  NOT_USED(enabled);
+  return 0;
 }
 
 /** Actually set the services defined in the 'data' object. Note: we can
@@ -214,7 +214,7 @@ void jsble_set_services(JsVar *data){
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
     return; // ESP32.enableBLE(false)  
 
-	gatts_set_services(data);
+  gatts_set_services(data);
 }
 
 /// Disconnect from the given connection
@@ -222,14 +222,14 @@ uint32_t jsble_disconnect(uint16_t conn_handle){
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)   
 
-	return gattc_disconnect(conn_handle);
+  return gattc_disconnect(conn_handle);
 }
 
 /// For BLE HID, send an input report to the receiver. Must be <= HID_KEYS_MAX_LEN
 void jsble_send_hid_input_report(uint8_t *data, int length){
-	jsWarn("send hid input report not implemented yet\n");
-	NOT_USED(data);
-	NOT_USED(length);
+  jsWarn("send hid input report not implemented yet\n");
+  NOT_USED(data);
+  NOT_USED(length);
 }
 
 /// Connect to the given peer address. When done call bleCompleteTask
@@ -237,33 +237,33 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options){
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
     return; // ESP32.enableBLE(false)
   // Ignore options for now
-	gattc_connect(peer_addr, options);
+  gattc_connect(peer_addr, options);
 }
 /// Get primary services. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
 void jsble_central_getPrimaryServices(uint16_t central_conn_handle, ble_uuid_t uuid){
   NOT_USED(central_conn_handle);
   bleUUIDFilter = uuid;
-	gattc_searchService(uuid);
+  gattc_searchService(uuid);
 }
 /// Get characteristics. Filter by UUID unless UUID is invalid, in which case return all. When done call bleCompleteTask
 void jsble_central_getCharacteristics(uint16_t central_conn_handle, JsVar *service, ble_uuid_t uuid){
   NOT_USED(central_conn_handle);
-	gattc_getCharacteristics(service, uuid);
+  gattc_getCharacteristics(service, uuid);
 }
 // Write data to the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicWrite(uint16_t central_conn_handle, JsVar *characteristic, char *dataPtr, size_t dataLen){
-	uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
-	gattc_writeValue(handle, dataPtr, dataLen);
+  uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
+  gattc_writeValue(handle, dataPtr, dataLen);
 }
 // Read data from the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicRead(uint16_t central_conn_handle, JsVar *characteristic){
-	uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
-	gattc_readValue(handle);
+  uint16_t handle = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
+  gattc_readValue(handle);
 }
 // Discover descriptors of characteristic
 void jsble_central_characteristicDescDiscover(uint16_t central_conn_handle, JsVar *characteristic){
-	jsWarn("Central characteristicDescDiscover not implemented yet\n");
-	NOT_USED(characteristic);
+  jsWarn("Central characteristicDescDiscover not implemented yet\n");
+  NOT_USED(characteristic);
 }
 // Set whether to notify on the given characteristic. When done call bleCompleteTask
 void jsble_central_characteristicNotify(uint16_t central_conn_handle, JsVar *characteristic, bool enable){
@@ -276,17 +276,17 @@ void jsble_central_characteristicNotify(uint16_t central_conn_handle, JsVar *cha
 }
 /// Start bonding on the current central connection
 void jsble_central_startBonding(uint16_t central_conn_handle, bool forceRePair){
-	jsWarn("central start bonding not implemented yet\n");
-	NOT_USED(forceRePair);
+  jsWarn("central start bonding not implemented yet\n");
+  NOT_USED(forceRePair);
 }
 /// RSSI monitoring in central mode
 uint32_t jsble_set_central_rssi_scan(uint16_t central_conn_handle, bool enabled){
-	jsWarn("central set rssi scan not implemented yet\n");
-	return 0;
+  jsWarn("central set rssi scan not implemented yet\n");
+  return 0;
 }
 // Set whether or not the whitelist is enabled
 void jsble_central_setWhitelist(uint16_t central_conn_handle, bool whitelist){
-	jsWarn("central set Whitelist not implemented yet\n");
+  jsWarn("central set Whitelist not implemented yet\n");
 }
 
 void jsble_update_security() {

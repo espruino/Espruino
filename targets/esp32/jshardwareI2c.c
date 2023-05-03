@@ -63,7 +63,7 @@ static esp_err_t checkError( char * caller, esp_err_t ret ) {
 
 void I2CReset(){
   if(jshIsDeviceInitialised(EV_I2C1)){
-	i2c_driver_delete(I2C_NUM_0);
+  i2c_driver_delete(I2C_NUM_0);
     jshSetDeviceInitialised(EV_I2C1, false);
   }
   if(jshIsDeviceInitialised(EV_I2C2)){
@@ -89,7 +89,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
     return;
   }
   if(jshIsDeviceInitialised(device)){
-	i2c_driver_delete(i2c_master_port);
+  i2c_driver_delete(i2c_master_port);
   }
   Pin scl;
   Pin sda;
@@ -117,7 +117,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   }
   err=i2c_driver_install(i2c_master_port, conf.mode, 0, 0, 0);
   if ( err == ESP_OK ) {
-	  jsDebug(DBG_INFO, "jshI2CSetup: driver installed, sda: %d scl: %d freq: %d, \n", sda, scl, info->bitrate);
+    jsDebug(DBG_INFO, "jshI2CSetup: driver installed, sda: %d scl: %d freq: %d, \n", sda, scl, info->bitrate);
     jshSetDeviceInitialised(device, true);
   } else {
     checkError("jshI2CSetup",err); 

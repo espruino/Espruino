@@ -28,16 +28,16 @@ rmt_item32_t items[1];
 int getRMTIndex(Pin pin){
   int i;
   for(i = 0; i < RMTChannelMax; i++){
-	if(RMTChannels[i].pin == pin) return i;	
+  if(RMTChannels[i].pin == pin) return i;  
   }
-  return -1;	
+  return -1;  
 }
 int getFreeRMT(Pin pin){
   for(int i = 0; i < RMTChannelMax; i++){
-	if(RMTChannels[i].pin == RMTPinEmpty) {
-	  RMTChannels[i].pin = pin;	
-	  return i;
-	}
+  if(RMTChannels[i].pin == RMTPinEmpty) {
+    RMTChannels[i].pin = pin;  
+    return i;
+  }
   }
   return -1;
 }
@@ -95,10 +95,10 @@ void sendPulse(Pin pin, bool pulsePolarity, int duration){
   if(i < 0) i = RMTInitChannel(pin,pulsePolarity);
   if(i >= 0){
     if(pulsePolarity) setPulseLow(duration);else setPulseHigh(duration);
-	rmt_set_pin(i, RMT_MODE_TX, pin); //set pin to rmt, in case that it was reset to GPIO(see jshPinSetValue)
+  rmt_set_pin(i, RMT_MODE_TX, pin); //set pin to rmt, in case that it was reset to GPIO(see jshPinSetValue)
     rmt_write_items(i, items,1,1);
   }
   else printf("all RMT channels in use\n");
   return;
 }
-	
+  

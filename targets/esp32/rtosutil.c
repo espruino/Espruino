@@ -35,11 +35,11 @@ void queues_init(){
 int queue_indexByName(char *queueName){
   int i;
   for(i = 0; i < queueMax; i++){
-	if(RTOSqueues[i].handle != 0){
-	  if(strcmp(queueName,RTOSqueues[i].name) == 0){
+  if(RTOSqueues[i].handle != 0){
+    if(strcmp(queueName,RTOSqueues[i].name) == 0){
         return i;
-	  }
-	}
+    }
+  }
   }
   return -1;
 }
@@ -51,19 +51,19 @@ QueueHandle_t queue_handleByName(char *queueName){
 int queue_init(char *queueName,int length,int sizeOfEntry){
   int i;
   for(i = 0; i < queueMax; i++){
-	if(NULL == RTOSqueues[i].handle){
-	  RTOSqueues[i].name = queueName;
-	  RTOSqueues[i].handle = xQueueCreate(length,sizeOfEntry);
-	  return i;
-	}
+  if(NULL == RTOSqueues[i].handle){
+    RTOSqueues[i].name = queueName;
+    RTOSqueues[i].handle = xQueueCreate(length,sizeOfEntry);
+    return i;
+  }
   }
   return -1;
 }
 void queue_list(){
   int i;
   for(i = 0; i < queueMax; i++){
-	if(RTOSqueues[i].name == NULL) return;
-	printf("queue %s : %d\n",RTOSqueues[i].name,RTOSqueues[i].handle);
+  if(RTOSqueues[i].name == NULL) return;
+  printf("queue %s : %d\n",RTOSqueues[i].name,RTOSqueues[i].handle);
   }
 }
 char *queue_read(int idx){
@@ -87,11 +87,11 @@ void tasks_init(){
 int task_indexByName(char *taskName){
   int i;
   for(i = 0; i < taskMax; i++){
-	if(RTOStasks[i].handle != 0){
-	  if(strcmp(taskName,RTOStasks[i].name) == 0){
+  if(RTOStasks[i].handle != 0){
+    if(strcmp(taskName,RTOStasks[i].name) == 0){
         return i;
-	  }
-	}
+    }
+  }
   }
   return -1;
 }
@@ -104,9 +104,9 @@ int *task_getCurrentIndex(){
   int i;TaskHandle_t handle;
   handle = xTaskGetCurrentTaskHandle();
   for(i = 0; i < taskMax; i++){
-	if(RTOStasks[i].handle == handle){
-	  return i;
-	}
+  if(RTOStasks[i].handle == handle){
+    return i;
+  }
   }
   return NULL;
 }
@@ -115,7 +115,7 @@ char *task_getCurrentName(){
   handle = xTaskGetCurrentTaskHandle();
   for(i = 0; i < taskMax; i++){
     if(RTOStasks[i].handle == handle){
-	  return RTOStasks[i].name;
+    return RTOStasks[i].name;
     }
   }
   return NULL;
@@ -123,19 +123,19 @@ char *task_getCurrentName(){
 int task_init(TaskFunction_t taskCode, char *taskName,unsigned short stackDepth,UBaseType_t priority,BaseType_t coreId){
   int i;
   for(i = 0; i < taskMax; i++){
-	if(NULL == RTOStasks[i].handle){
-	  RTOStasks[i].name = taskName;
-	  xTaskCreatePinnedToCore(taskCode,taskName,stackDepth,NULL,priority,&RTOStasks[i].handle,coreId);
-	  return i;
-	}
+  if(NULL == RTOStasks[i].handle){
+    RTOStasks[i].name = taskName;
+    xTaskCreatePinnedToCore(taskCode,taskName,stackDepth,NULL,priority,&RTOStasks[i].handle,coreId);
+    return i;
+  }
   }
   return -1;
 }
 void task_list(){
   int i;
   for(i = 0; i < taskMax;i++){
-	if(RTOStasks[i].name == NULL) return;
-	printf("task %s : %d\n",RTOStasks[i].name,RTOStasks[i].handle);
+  if(RTOStasks[i].name == NULL) return;
+  printf("task %s : %d\n",RTOStasks[i].name,RTOStasks[i].handle);
   }
 }
 void task_Suspend(int idx){
@@ -186,26 +186,26 @@ void IRAM_ATTR test_isr(void *para){
 void timers_Init(){
   int i;
   for(i = 0; i < timerMax; i++){
-	ESP32Timers[i].name = NULL;
+  ESP32Timers[i].name = NULL;
   }
 }
 int timer_indexByName(char *timerName){
   int i;
   for(i = 0; i < timerMax; i++){
-	if(ESP32Timers[i].name == NULL) return -1;
-	if(strcmp(timerName,ESP32Timers[i].name) == 0){
-	  return i;
-	}
+  if(ESP32Timers[i].name == NULL) return -1;
+  if(strcmp(timerName,ESP32Timers[i].name) == 0){
+    return i;
+  }
   }
   return -1;
 }
 int timer_Init(char *timerName,int group,int index,int isr_idx){
   int i;
   for(i = 0; i < timerMax; i++){
-	if(ESP32Timers[i].name == NULL){
-	  ESP32Timers[i].name = timerName;
-	  ESP32Timers[i].group = group;
-	  ESP32Timers[i].index = index;
+  if(ESP32Timers[i].name == NULL){
+    ESP32Timers[i].name = timerName;
+    ESP32Timers[i].group = group;
+    ESP32Timers[i].index = index;
       timer_config_t config;
       config.alarm_en = 1;
       config.auto_reload = 1;
@@ -218,14 +218,14 @@ int timer_Init(char *timerName,int group,int index,int isr_idx){
       timer_set_counter_value(group, index, 0x00000000ULL);/*Load counter value */
       timer_enable_intr(group, index);
       if(isr_idx == 0){
-	    ESP32Timers[i].taskToNotifyIdx = task_indexByName("TimerTask");
+      ESP32Timers[i].taskToNotifyIdx = task_indexByName("TimerTask");
         timer_isr_register(group, index, espruino_isr, (void*) i, ESP_INTR_FLAG_IRAM, NULL);
       }
       else{
-	    timer_isr_register(group, index, test_isr, (void*) i, ESP_INTR_FLAG_IRAM, NULL);  
+      timer_isr_register(group, index, test_isr, (void*) i, ESP_INTR_FLAG_IRAM, NULL);  
       }
       return i;
-	}
+  }
   }
   return -1;
 }
@@ -242,8 +242,8 @@ void timer_Reschedule(int idx,uint64_t duration){
 void timer_List(){
   int i;
   for(i = 0; i < timerMax; i++){
-	if(ESP32Timers[i].name == NULL){printf("timer %d free\n",i);}
-	else {printf("timer %s : %d.%d\n",ESP32Timers[i].name,ESP32Timers[i].group,ESP32Timers[i].index);}
+  if(ESP32Timers[i].name == NULL){printf("timer %d free\n",i);}
+  else {printf("timer %s : %d.%d\n",ESP32Timers[i].name,ESP32Timers[i].group,ESP32Timers[i].index);}
   }
   return;
 }

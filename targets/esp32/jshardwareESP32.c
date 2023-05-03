@@ -21,29 +21,29 @@
 #include "nvs.h"
  
 static char *ESP32_hardwareName(esp_hardware_esp32_t hardware){
-	switch(hardware){
-		case ESP_NETWORK_BLE: return "bleStatus";
-		case ESP_NETWORK_WIFI: return "wifiStatus";
-	}
-	return "unknownHardware";
+  switch(hardware){
+    case ESP_NETWORK_BLE: return "bleStatus";
+    case ESP_NETWORK_WIFI: return "wifiStatus";
+  }
+  return "unknownHardware";
 }
  
 bool ESP32_Get_NVS_Status(esp_hardware_esp32_t hardware){
-	esp_err_t err;nvs_handle hardwareHandle; uint32_t status;
-	nvs_open("nvs",NVS_READWRITE,&hardwareHandle);
-	err = nvs_get_u32(hardwareHandle,ESP32_hardwareName(hardware),&status);
-	if(err) {
-		status = ESP32HARDWAREDEFAULT;
-		nvs_set_u32(hardwareHandle,ESP32_hardwareName(hardware),ESP32HARDWAREDEFAULT);
-	}
-	nvs_close(hardwareHandle);
-	return (bool) status;
+  esp_err_t err;nvs_handle hardwareHandle; uint32_t status;
+  nvs_open("nvs",NVS_READWRITE,&hardwareHandle);
+  err = nvs_get_u32(hardwareHandle,ESP32_hardwareName(hardware),&status);
+  if(err) {
+    status = ESP32HARDWAREDEFAULT;
+    nvs_set_u32(hardwareHandle,ESP32_hardwareName(hardware),ESP32HARDWAREDEFAULT);
+  }
+  nvs_close(hardwareHandle);
+  return (bool) status;
 }
 
 void ESP32_Set_NVS_Status(esp_hardware_esp32_t hardware, bool enable){
-	nvs_handle hardwareHandle; uint32_t status;
-	if(enable) status = 1; else status = 0;
-	nvs_open("nvs",NVS_READWRITE,&hardwareHandle);
-	nvs_set_u32(hardwareHandle,ESP32_hardwareName(hardware),status);
-	nvs_close(hardwareHandle);
+  nvs_handle hardwareHandle; uint32_t status;
+  if(enable) status = 1; else status = 0;
+  nvs_open("nvs",NVS_READWRITE,&hardwareHandle);
+  nvs_set_u32(hardwareHandle,ESP32_hardwareName(hardware),status);
+  nvs_close(hardwareHandle);
 }  
