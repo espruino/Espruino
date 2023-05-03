@@ -1169,8 +1169,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           bleStatus &= ~BLE_IS_RSSI_SCANNING; // scanning will have stopped now we're disconnected
           m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;
           // if we were on bluetooth and we disconnected, clear the input line so we're fresh next time (#2219)
-          if (jsiGetConsoleDevice()==EV_BLUETOOTH) jsiClearInputLine(false);
-          if (!jsiIsConsoleDeviceForced()) jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
+          if (jsiGetConsoleDevice()==EV_BLUETOOTH) {
+            jsiClearInputLine(false);
+            if (!jsiIsConsoleDeviceForced()) 
+              jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
+          }
           // by calling nus_transmit_string here without a connection, we clear the Bluetooth output buffer
           nus_transmit_string();
           // send disconnect event

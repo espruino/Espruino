@@ -68,7 +68,7 @@ bool uart_gatts_connected = false;
 
 #define notifBufferSize BLE_NUS_MAX_DATA_LEN
 uint8_t notifBuffer[notifBufferSize];
-uint8_t notifBufferPnt = 0;
+volatile uint8_t notifBufferPnt = 0;
 bool inNotif = false;
 
 void sendNotifBuffer(){
@@ -86,13 +86,20 @@ void startNotifTimer(){
   inNotif = true;
   JsSysTime period = jshGetTimeFromMilliseconds(10);
   JsSysTime time = jshGetSystemTime();
-  jstExecuteFn(notifTimerCB, NULL, time + period, period, NULL);
+  jstExecuteFn(notifTimerCB, NULL, period, period, NULL);
 }
-void gatts_sendNotification(int c){
+void gatts_sendNotification(int c) {
+  if (notifBufferPnt >= notifBufferSize) 
+    return;
+  // FIXME we can't just thropw this data away - we should just be leaving it in the queue in jshUSARTKick?
   notifBuffer[notifBufferPnt] = (uint8_t)c;
   notifBufferPnt++;
-  if(notifBufferPnt >= notifBufferSize) sendNotifBuffer();
-  if(!inNotif) startNotifTimer();
+  if(notifBufferPnt >= notifBufferSize) {
+    sendNotifBuffer();
+    // we can't block here either or we assert...
+  } else {
+    if(!inNotif) startNotifTimer();
+  }
 }
 
 uint8_t *getUartAdvice(){
@@ -205,6 +212,8 @@ static void gatts_write_nus_value_handler(esp_gatts_cb_event_t event, esp_gatt_i
   jshHadEvent();
   esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
 }
+
+// Called when something connects to us
 static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
   int g = getIndexFromGatts_if(gatts_if);
   esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
@@ -215,12 +224,20 @@ static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatt
 
     ble_gap_addr_t ble_addr;
     espbtaddr_TO_bleaddr(param->connect.remote_bda, 5/*force an unknown type so '' is reported*/, &ble_addr);
+
+    // If UART enabled, move to it
+    if (!jsiIsConsoleDeviceForced() && (bleStatus & BLE_NUS_INITED)) {
+      jsiClearInputLine(false); // clear the input line on connect
+      jsiSetConsoleDevice(EV_BLUETOOTH, false);
+    }
+
     args[0] = bleAddrToStr(ble_addr);
     m_peripheral_conn_handle = 0x01;
-    emitNRFEvent(BLE_CONNECT_EVENT,args,1);
+    emitNRFEvent(BLE_CONNECT_EVENT,args,1); // TODO: it might be better to use the BLEP_CONNECTED handler
     if(gatts_service[g].serviceFlag == BLE_SERVICE_NUS) uart_gatts_connected = true;
   }
 }
+// Called when something disconnects from us
 static void gatts_disconnect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
   int g = getIndexFromGatts_if(gatts_if);
   esp_err_t r;
@@ -230,6 +247,13 @@ static void gatts_disconnect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
     if(!gatts_if_connected()){
       r = bluetooth_gap_startAdvertising(true);
     }
+    // if we were on bluetooth and we disconnected, clear the input line so we're fresh next time (#2219)
+    if (jsiGetConsoleDevice()==EV_BLUETOOTH) {
+      jsiClearInputLine(false);
+      if (!jsiIsConsoleDeviceForced()) 
+        jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
+    }
+    // TODO: Maybe use BLEP_DISCONNECTED handler rather than doing this here?
     args[0] = jsvNewFromInteger(param->disconnect.reason);
     m_peripheral_conn_handle = BLE_GATT_HANDLE_INVALID;
     emitNRFEvent(BLE_DISCONNECT_EVENT,args,1);
