@@ -96,9 +96,6 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
       if (param->adv_stop_cmpl.status != ESP_BT_STATUS_SUCCESS) {
         jsWarn("Advertising stop failed\n");
       }
-      else {
-        jsWarn("Stop adv successfully\n");
-      }
       break;
     }
     case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:{
@@ -162,12 +159,10 @@ void bluetooth_gap_setScan(bool enable, bool activeScan){
 esp_err_t bluetooth_gap_startAdvertising(bool enable){
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)  
-  if(enable){
+  if(enable)
     return esp_ble_gap_start_advertising(&adv_params);
-  }
-  else{
+  else
     return esp_ble_gap_stop_advertising();
-  }
 }
 
 int addAdvertisingData(uint8_t *advData,int pnt,int idx,JsVar *value){
@@ -185,25 +180,27 @@ int addAdvertisingData(uint8_t *advData,int pnt,int idx,JsVar *value){
 int addAdvertisingDeviceName(uint8_t *advData,int pnt){
   JsVar *deviceName;
   deviceName = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_DEVICE_NAME);
-  if(deviceName){
+  if (!deviceName) { // if it's the first time this was called, try and create the name
+    bluetooth_initDeviceName();
+    deviceName = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_DEVICE_NAME);
+  }
+  if(deviceName) {
     JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
-    if(nameLen > 0){
-      if((nameLen + pnt + 2) > BLE_GAP_ADV_MAX_SIZE){
+    if(nameLen > 0) {
+      if((nameLen + pnt + 2) > BLE_GAP_ADV_MAX_SIZE) {
         nameLen = BLE_GAP_ADV_MAX_SIZE - 2 - pnt;
         advData[pnt] = nameLen + 1;
-        advData[pnt + 1] = 8;
-      }
-      else{
+        advData[pnt + 1] = 8; //  flag for "incomplete name"
+      } else{
         advData[pnt] = nameLen + 1;
-        advData[pnt + 1] = 9;
+        advData[pnt + 1] = 9; // flag for normal name
       }
-      for(int i = 0; i < nameLen; i++) advData[pnt + i + 2] = namePtr[i];
-      nameLen += 2;
+      for (int i = 0; i < nameLen; i++) 
+        advData[pnt + i + 2] = namePtr[i];
     }
     jsvUnLock(deviceName);
     return nameLen + 2;
-  }
-  else return 0;
+  } else return 0;
 }
 
 int addAdvertisingUart(uint8_t *advData,int pnt){
@@ -214,31 +211,35 @@ int addAdvertisingUart(uint8_t *advData,int pnt){
 }
 
 JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
-    uint8_t encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
+  uint8_t encoded_advdata[BLE_GAP_ADV_MAX_SIZE];
   int i = 0;
   if(jsvIsArray(data) || jsvIsArrayBuffer(data)){
     return jsvLockAgain(data);
-  } else if(jsvIsObject(data)){
+  } else if(jsvIsObject(data) || jsvIsUndefined(data)){
     encoded_advdata[i++] = 2;
     encoded_advdata[i++] = 1;
     encoded_advdata[i++] = 6;  //todo add support of showName == false
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, data);
-    while(jsvObjectIteratorHasValue(&it)){
-      JsVar *value = jsvObjectIteratorGetValue(&it);
-      int idx = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
-      i = i + addAdvertisingData(&encoded_advdata,i,idx,value);
-      jsvUnLock(value);
-      jsvObjectIteratorNext(&it);
+    if (jsvIsObject(data)) {
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, data);
+      while(jsvObjectIteratorHasValue(&it)){
+        JsVar *value = jsvObjectIteratorGetValue(&it);
+        int idx = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
+        i = i + addAdvertisingData(&encoded_advdata,i,idx,value);
+        jsvUnLock(value);
+        jsvObjectIteratorNext(&it);
+      }
+      jsvObjectIteratorFree(&it);
     }
-    jsvObjectIteratorFree(&it);
     //todo add support of manufacturerData
     i = i + addAdvertisingDeviceName(&encoded_advdata,i);
-    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "uart"))){
+
+    // This doesn't work - UART service needs to be in the scan response like we do for nRF52 (there's no space in the main packet)
+    /*JsVar *uartVar = jsvObjectGetChildIfExists(options, "uart"); // this is not ideal - we should be checking BLE_NAME_NUS
+    if (!uartVar || jsvGetBool(uartVar)) // default is on if not set
       i = i + addAdvertisingUart(&encoded_advdata,i);
-    }
-  }
-  else if (!jsvIsUndefined(data)){
+    jsvUnLock(uartVar);*/
+  } else {
     jsExceptionHere(JSET_TYPEERROR, "Expecting object array or undefined, got %t",data);
     return 0;
   }
@@ -246,20 +247,26 @@ JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
   return jsvNewArrayBufferWithData(i,encoded_advdata);
 }
 
-esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray){
+esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray) {
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
     return 0; // ESP32.enableBLE(false) - we return 0 here so we don't output an error message at boot
   esp_err_t ret;
-  if(!advArray){
+  JsVar *allocatedData = 0;
+  if(!advArray) { // work out what data to use
+    // this is what jswrap_ble_setAdvertising/jswrap_ble_getAdvertisingData would have used anyway
+    allocatedData = bluetooth_gap_getAdvertisingData(NULL, NULL);
+    advArray = allocatedData;
+  }
+  if(!advArray) { // fallback
     adv_data.service_uuid_len = ble_service_cnt * 16;
     ret = esp_ble_gap_config_adv_data(&adv_data);
-  }
-  else{
-  JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advArray);
-  ret = esp_ble_gap_config_adv_data_raw(advPtr, advLen);
-  }
-  if (ret){
-    jsWarn("config adv data failed, error code = %x", ret);
+  } else {
+    JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advArray);
+    ret = esp_ble_gap_config_adv_data_raw(advPtr, advLen);
+    jsvUnLock(allocatedData);
+  }  
+  if (ret) {
+    jsWarn("bluetooth_gap_setAdvertising failed, error code = %x", ret);
   }
   return ret;  
 }
@@ -274,7 +281,7 @@ esp_err_t bluetooth_setDeviceName(JsVar *deviceName){
 
 void bluetooth_initDeviceName(){
   char deviceName[14];
-  strcpy(deviceName,"ESP32.js 0123");
+  strcpy(deviceName,"Espruino 0123");
   uint8_t macnr[6];
   esp_efuse_mac_get_default(macnr);
   deviceName[9] = itoch((macnr[4]>>4)&15);

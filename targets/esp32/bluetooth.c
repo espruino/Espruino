@@ -38,7 +38,7 @@ uint16_t bleAdvertisingInterval;           /**< The advertising interval (in uni
 volatile uint16_t m_peripheral_conn_handle;    /**< Handle of the current connection. */
 volatile uint16_t m_central_conn_handles[1]; /**< Handle of central mode connection */
 
-/** Initialise the BLE stack */
+/** Initialise the BLE stack - called before Espruino is ready */
 void jsble_init(){
   esp_err_t ret;
   if(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) {
@@ -52,7 +52,9 @@ void jsble_init(){
     if(initBluedroid()) return;
     if(registerCallbacks()) return;
     setMtu();
-    gap_init_security();
+    gap_init_security();   
+    // force advertising with the right info
+    bleStatus |= BLE_IS_ADVERTISING;
   }
   else{
     ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT); 
@@ -121,10 +123,10 @@ void jsble_restart_softdevice(JsVar *jsFunction){
 uint32_t jsble_advertising_start() {
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
-
   esp_err_t status;
   if (bleStatus & BLE_IS_ADVERTISING) return;
   status = bluetooth_gap_startAdvertising(true);
+  bleStatus |= BLE_IS_ADVERTISING;
   return status;
 }
 void jsble_advertising_stop() {
@@ -132,7 +134,9 @@ void jsble_advertising_stop() {
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
 
   esp_err_t status;
+  if (!(bleStatus & BLE_IS_ADVERTISING)) return;
   status = bluetooth_gap_startAdvertising(false);
+  bleStatus &= ~BLE_IS_ADVERTISING;
   if(status){
      jsExceptionHere(JSET_ERROR,"error in stop advertising:0X%x",status);
   }
@@ -171,7 +175,10 @@ bool jsble_has_peripheral_connection(){
 bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
   if (err_code != ESP_OK) {
     const char *n = esp_err_to_name(err_code);
-    jsExceptionHere(JSET_ERROR, "BLE: %s (:%d)", n?n:"?", lineNumber);
+    if (!n || !strcmp(n,"ERROR"))
+      jsExceptionHere(JSET_ERROR, "BLE: ERROR 0x%x (:%d)", err_code, lineNumber);
+    else
+      jsExceptionHere(JSET_ERROR, "BLE: %s (:%d)", n, lineNumber);
     return true;
   }
   NOT_USED(err_code);

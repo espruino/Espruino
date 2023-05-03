@@ -943,9 +943,11 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
 
   if (jsvIsObject(data) || jsvIsUndefined(data)) {
     // if it's an object, work out what the advertising data for it is
+    // We still call this even for undefined as it does set some global parameters too unfortunately
     advArray = jswrap_ble_getAdvertisingData(data, options);
     // if undefined, make sure we *save* undefined
     if (jsvIsUndefined(data)) {
+      jsvUnLock(advArray);
       advArray = 0;
     }
   } else if (jsvIsArray(data)) {
@@ -993,7 +995,8 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
     // it's just data - no multiple advertising
     advArray = jsvLockAgain(data);
     bleStatus &= ~(BLE_IS_ADVERTISING_MULTIPLE|BLE_ADVERTISING_MULTIPLE_MASK);
-  }
+  } else
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Array or Object, got %t", data);
   // Save the current service data
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA, advArray);
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_OPTIONS, options);
@@ -1400,7 +1403,7 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
 #if BLE_HIDS_ENABLED
       {"hid", JSV_ARRAY, &use_hid},
 #endif
-      {"uart", JSV_BOOLEAN, &use_uart},
+      {"uart", JSV_BOOLEAN, &use_uart}, // sets BLE_NAME_NUS
 #if ESPR_BLUETOOTH_ANCS
       {"ancs", JSV_BOOLEAN, &use_ancs},
       {"ams", JSV_BOOLEAN, &use_ams},
