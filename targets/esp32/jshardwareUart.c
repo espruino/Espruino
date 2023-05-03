@@ -89,7 +89,9 @@ void initConsole(){
     .rx_flow_ctrl_thresh = 122,
   }; 
   initUart(uart_console,uart_config,-1,-1);
-  jshSetFlowControlEnabled(EV_SERIAL1, true, PIN_UNDEFINED); // should we use hardware flow control on most ESP32 boards?
+  // should we use hardware flow control on most ESP32 boards?
+  // No... It looks like CTS is not connected on most boards, so XON/XOFF is best!
+  jshSetFlowControlEnabled(EV_SERIAL1, true, PIN_UNDEFINED); 
   jshSetDeviceInitialised(EV_SERIAL1,true);  
 }
 

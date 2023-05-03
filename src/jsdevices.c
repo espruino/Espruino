@@ -108,6 +108,7 @@ void jshResetDevices() {
   unsigned int i;
   // Reset list of pins that were set manually
   jshResetPinStateIsManual();
+  
   // setup flow control
   for (i=0;i<JSHSERIALDEVICESTATUSES;i++) {
 #ifdef USB
@@ -116,6 +117,7 @@ void jshResetDevices() {
 #ifdef BLUETOOTH
     if (i==TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)) break; // don't update Bluetooth status
 #endif
+    if (i==TO_SERIAL_DEVICE_STATE(jsiGetConsoleDevice())) break; // if we're on a console device now, don't mess with flow/CTS for it
     jshSerialDeviceStates[i] = SDS_NONE;
     jshSerialDeviceCTSPins[i] = PIN_UNDEFINED;
   }
