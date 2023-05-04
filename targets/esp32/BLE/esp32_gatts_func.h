@@ -73,7 +73,7 @@ uint16_t gatts_get_service_cnt();
 void gatts_reset(bool removeValues);
 
 void gatts_sendNUSNotification(int c);
-bool gatts_canAcceptNUSChars();
+void gatts_sendNUSNotificationIfNotEmpty();
 
 void gatts_test();
 

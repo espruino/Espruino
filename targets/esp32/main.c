@@ -23,6 +23,7 @@
 #ifdef BLUETOOTH
 #include "libs/bluetooth/bluetooth.h"
 #include "BLE/esp32_gap_func.h"
+#include "BLE/esp32_gatts_func.h"
 #endif
 
 #include "esp_spi_flash.h"
@@ -82,6 +83,7 @@ static void espruinoTask(void *data) {
 #endif
   while(1) {
     jsiLoop();   // Perform the primary loop processing
+    gatts_sendNUSNotificationIfNotEmpty();
   }
 }
 

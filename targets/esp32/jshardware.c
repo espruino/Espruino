@@ -520,11 +520,6 @@ bool jshIsUSBSERIALConnected() {
  *
  */
 void jshUSARTKick(IOEventFlags device) {
-#ifdef BLUETOOTH  
-  // our buffer might be full, waiting to send data - if so don't send any more chars
-  if (device==EV_BLUETOOTH && !gatts_canAcceptNUSChars())
-    return;
-#endif  
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
   switch(device){

@@ -71,8 +71,6 @@ bool uart_gatts_connected = false;
 uint8_t nusBuffer[BLE_NUS_MAX_DATA_LEN];
 /// Amount of characters ready to send in Bluetooth UART
 volatile uint8_t nusBufferLen = 0;
-/// Have we started a timer
-volatile bool nusTimerStarted = false;
 
 
 void sendNotifBuffer() {
@@ -82,42 +80,22 @@ void sendNotifBuffer() {
   }
   nusBufferLen = 0;
 }
-void IRAM_ATTR nusTimerCB() {
-  if(nusBufferLen > 0) sendNotifBuffer();
-  nusTimerStarted = false;
-}
-void nusStartTimer() {  
-  JsSysTime period = jshGetTimeFromMilliseconds(20);
-  JsSysTime time = jshGetSystemTime();
-  nusTimerStarted = true;
-  jstExecuteFn(nusTimerCB, NULL, period, 0, NULL); // execute timer ONCE  
-}
 void gatts_sendNUSNotification(int c) {
-  if (nusBufferLen >= BLE_NUS_MAX_DATA_LEN) 
-    return; // This should never be called - it's just for sanity really
+  if (nusBufferLen >= BLE_NUS_MAX_DATA_LEN)
+    sendNotifBuffer();
   // Add this character to our buffer
   nusBuffer[nusBufferLen] = (uint8_t)c;
   nusBufferLen++;
   // If our buffer is full, send right away
   if(nusBufferLen >= BLE_NUS_MAX_DATA_LEN) {
-    // If the timer was started, ensure we stop it
-    if (nusTimerStarted) {
-      jstStopExecuteFn(nusTimerCB,NULL);
-      nusTimerStarted = false;
-    }
-    // Send what we have now...
     sendNotifBuffer();    
-    // we can't block here either or we assert...
-  } else {
-    // else start a timer - if that elapses then we'll send what we have
-    if (!nusTimerStarted) 
-      nusStartTimer();
   }
+  // otherwise, we'll wait until we hit idle next time when gatts_sendNUSNotificationIfNotEmpty will get called
 }
-bool gatts_canAcceptNUSChars() {
-  return nusBufferLen < BLE_NUS_MAX_DATA_LEN;
+void gatts_sendNUSNotificationIfNotEmpty() {  
+  if (nusBufferLen)
+    sendNotifBuffer();
 }
-
 
 void emitNRFEvent(char *event,JsVar *args,int argCnt){
   JsVar *nrf = jsvObjectGetChildIfExists(execInfo.root, "NRF");
