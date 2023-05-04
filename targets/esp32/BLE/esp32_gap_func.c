@@ -204,9 +204,9 @@ int addAdvertisingDeviceName(uint8_t *advData,int pnt){
 }
 
 int addAdvertisingUart(uint8_t *advData,int pnt){
-  uint8_t *uart_adv;
-  uart_adv = getUartAdvice();
-  for(int i = 0; i < 18; i++){ advData[pnt + i] = uart_adv[i];}
+  // Nordic UART service UUID (+packet ID+len)
+  uint8_t uart_advice[18] = {0x11,0x07,0x9e,0xca,0xdc,0x24,0x0e,0xe5,0xa9,0xe0,0x93,0xf3,0xa3,0xb5,0x01,0x00,0x40,0x6e,};
+  for(int i = 0; i < 18; i++){ advData[pnt + i] = uart_advice[i];}
   return 18;
 }
 
@@ -258,7 +258,7 @@ esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray) {
     advArray = allocatedData;
   }
   if(!advArray) { // fallback
-    adv_data.service_uuid_len = ble_service_cnt * 16;
+    adv_data.service_uuid_len = gatts_get_service_cnt() * 16;
     ret = esp_ble_gap_config_adv_data(&adv_data);
   } else {
     JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advArray);

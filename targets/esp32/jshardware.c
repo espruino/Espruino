@@ -519,15 +519,18 @@ bool jshIsUSBSERIALConnected() {
  * Kick a device into action (if required).
  *
  */
-void jshUSARTKick(
-    IOEventFlags device //!< The device to be kicked.
-) {
+void jshUSARTKick(IOEventFlags device) {
+#ifdef BLUETOOTH  
+  // our buffer might be full, waiting to send data - if so don't send any more chars
+  if (device==EV_BLUETOOTH && !gatts_canAcceptNUSChars())
+    return;
+#endif  
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
   switch(device){
 #ifdef BLUETOOTH
     case EV_BLUETOOTH:
-      gatts_sendNotification(c);
+      gatts_sendNUSNotification(c);
       break; 
 #endif
     case EV_SERIAL1:

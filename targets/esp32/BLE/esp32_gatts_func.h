@@ -64,17 +64,16 @@ struct gatts_descr_inst {
   uint16_t descr_handle;
 };
 
-static uint8_t *adv_service_uuid128 = NULL;
-
-static uint16_t ble_service_cnt = 0;
+extern uint8_t *adv_service_uuid128;
 
 void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 void gatts_register_app(uint16_t id);
 void gatts_set_services(JsVar *data);
+uint16_t gatts_get_service_cnt();
 void gatts_reset(bool removeValues);
 
-uint8_t *getUartAdvice();
-void gatts_sendNotification(int c);
+void gatts_sendNUSNotification(int c);
+bool gatts_canAcceptNUSChars();
 
 void gatts_test();
 

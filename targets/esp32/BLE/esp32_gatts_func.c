@@ -47,10 +47,11 @@ esp_bt_uuid_t uart_tx_descr = {
   .len = ESP_UUID_LEN_16,
   .uuid.uuid16 = 0x2902
 };
-uint8_t uart_advice[18] = {0x11,0x07,0x9e,0xca,0xdc,0x24,0x0e,0xe5,0xa9,0xe0,0x93,0xf3,0xa3,0xb5,0x01,0x00,0x40,0x6e,};
 
 JsVar *gatts_services = 0;
-uint16_t ble_service_pos = -1;//ble_service_cnt is defined in .h
+uint8_t *adv_service_uuid128 = NULL;
+
+uint16_t ble_service_pos = -1;uint16_t ble_service_cnt = 0;
 uint16_t ble_char_pos = -1;uint16_t ble_char_cnt = 0;
 uint16_t ble_descr_pos = -1;uint16_t ble_descr_cnt = 0;
 
@@ -66,45 +67,57 @@ esp_gatt_if_t uart_gatts_if;
 uint16_t uart_tx_handle;
 bool uart_gatts_connected = false;
 
-#define notifBufferSize BLE_NUS_MAX_DATA_LEN
-uint8_t notifBuffer[notifBufferSize];
-volatile uint8_t notifBufferPnt = 0;
-bool inNotif = false;
+/// Bluetooth UART transmit data
+uint8_t nusBuffer[BLE_NUS_MAX_DATA_LEN];
+/// Amount of characters ready to send in Bluetooth UART
+volatile uint8_t nusBufferLen = 0;
+/// Have we started a timer
+volatile bool nusTimerStarted = false;
 
-void sendNotifBuffer(){
-  if(uart_gatts_if != ESP_GATT_IF_NONE){
-    esp_ble_gatts_send_indicate(uart_gatts_if,0,uart_tx_handle,notifBufferPnt,notifBuffer,false);
+
+void sendNotifBuffer() {
+  if(uart_gatts_if != ESP_GATT_IF_NONE){    
+    esp_err_t err = esp_ble_gatts_send_indicate(uart_gatts_if,0,uart_tx_handle,nusBufferLen,nusBuffer,false);
+    // check error? resend if there was one? I think this just blocks if it can't send immediately
   }
-  notifBufferPnt = 0;
+  nusBufferLen = 0;
 }
-void notifTimerCB(){
-  if(notifBufferPnt > 0) sendNotifBuffer();
-  jstStopExecuteFn(notifTimerCB,NULL);
-  inNotif = false;
+void IRAM_ATTR nusTimerCB() {
+  if(nusBufferLen > 0) sendNotifBuffer();
+  nusTimerStarted = false;
 }
-void startNotifTimer(){
-  inNotif = true;
-  JsSysTime period = jshGetTimeFromMilliseconds(10);
+void nusStartTimer() {  
+  JsSysTime period = jshGetTimeFromMilliseconds(20);
   JsSysTime time = jshGetSystemTime();
-  jstExecuteFn(notifTimerCB, NULL, period, period, NULL);
+  nusTimerStarted = true;
+  jstExecuteFn(nusTimerCB, NULL, period, 0, NULL); // execute timer ONCE  
 }
-void gatts_sendNotification(int c) {
-  if (notifBufferPnt >= notifBufferSize) 
-    return;
-  // FIXME we can't just thropw this data away - we should just be leaving it in the queue in jshUSARTKick?
-  notifBuffer[notifBufferPnt] = (uint8_t)c;
-  notifBufferPnt++;
-  if(notifBufferPnt >= notifBufferSize) {
-    sendNotifBuffer();
+void gatts_sendNUSNotification(int c) {
+  if (nusBufferLen >= BLE_NUS_MAX_DATA_LEN) 
+    return; // This should never be called - it's just for sanity really
+  // Add this character to our buffer
+  nusBuffer[nusBufferLen] = (uint8_t)c;
+  nusBufferLen++;
+  // If our buffer is full, send right away
+  if(nusBufferLen >= BLE_NUS_MAX_DATA_LEN) {
+    // If the timer was started, ensure we stop it
+    if (nusTimerStarted) {
+      jstStopExecuteFn(nusTimerCB,NULL);
+      nusTimerStarted = false;
+    }
+    // Send what we have now...
+    sendNotifBuffer();    
     // we can't block here either or we assert...
   } else {
-    if(!inNotif) startNotifTimer();
+    // else start a timer - if that elapses then we'll send what we have
+    if (!nusTimerStarted) 
+      nusStartTimer();
   }
 }
-
-uint8_t *getUartAdvice(){
-  return uart_advice;
+bool gatts_canAcceptNUSChars() {
+  return nusBufferLen < BLE_NUS_MAX_DATA_LEN;
 }
+
 
 void emitNRFEvent(char *event,JsVar *args,int argCnt){
   JsVar *nrf = jsvObjectGetChildIfExists(execInfo.root, "NRF");
@@ -130,6 +143,9 @@ bool gatts_if_connected(){
     if(gatts_service[i].connected) r = true;
   }
   return r;
+}
+uint16_t gatts_get_service_cnt() {
+   return ble_service_cnt;
 }
 
 static void gatts_read_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
@@ -388,7 +404,8 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
 
   case ESP_GATTS_EXEC_WRITE_EVT:break;
   case ESP_GATTS_MTU_EVT:break;
-  case ESP_GATTS_CONF_EVT:break;
+  case ESP_GATTS_CONF_EVT: // if (gatts_if==uart_gatts_if) UART indicate TX has finished
+    break;
   case ESP_GATTS_ADD_INCL_SRVC_EVT:break;
   case ESP_GATTS_STOP_EVT:break;
   case ESP_GATTS_OPEN_EVT:break;
