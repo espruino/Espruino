@@ -156,6 +156,8 @@
             E.defrag now kicks the watchdog (on Bangle.js 2 it can take long enough that the watchdog fires)
             ESP32: Fix reset() causing meditation error (ref #1777)
             ESP32: Ensure XON/XOFF flow control is enabled
+            ESP32: Advertising name is now 'Espruino abcd'
+            ESP32: BLUETOOTH UART IS ENABLED BY DEFAULT - disable with `NRF.setServices({},{uart:false})`
             
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu
