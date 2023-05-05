@@ -24,6 +24,7 @@
             ESP32: Ensure XON/XOFF flow control is enabled            
             ESP32: Advertising name is now 'Espruino abcd'
             ESP32: BLUETOOTH UART IS ENABLED BY DEFAULT - disable with `NRF.setServices({},{uart:false})`
+            Bangle.js: GPS event now works even if only GGA NMEA events are enabled (which you might do for speed)
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
