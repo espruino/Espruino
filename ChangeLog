@@ -20,6 +20,10 @@
             Ensure that for(in), Object.keys and Object.getOwnPropertyNames return array indices as strings (not numbers)
             Fix memory leak when an error happens while parsing function arguments - eg `print(1,2,3,JSON.parse("!%^$^"),123)`
             Bangle.js2: Added Bangle.setOptions({hrmSportMode})
+            ESP32: Fix reset() causing meditation error (ref #1777)
+            ESP32: Ensure XON/XOFF flow control is enabled            
+            ESP32: Advertising name is now 'Espruino abcd'
+            ESP32: BLUETOOTH UART IS ENABLED BY DEFAULT - disable with `NRF.setServices({},{uart:false})`
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
@@ -154,10 +158,6 @@
             Correctly handle parsing of template literals inside template literals
             Don't store command history if echo=off (eg for Web IDE/App Loader uploads)
             E.defrag now kicks the watchdog (on Bangle.js 2 it can take long enough that the watchdog fires)
-            ESP32: Fix reset() causing meditation error (ref #1777)
-            ESP32: Ensure XON/XOFF flow control is enabled
-            ESP32: Advertising name is now 'Espruino abcd'
-            ESP32: BLUETOOTH UART IS ENABLED BY DEFAULT - disable with `NRF.setServices({},{uart:false})`
             
      2v14 : Bangle.js2: Fix issue with E.showMenu creating a global `s` variable
             Bangle.js2: Recheck string wrapping after font change inside E.showMenu
