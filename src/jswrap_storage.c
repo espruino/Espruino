@@ -142,7 +142,7 @@ JsVar *jswrap_storage_read(JsVar *name, int offset, int length) {
     ["noExceptions","bool","If true and the JSON is not valid, just return `undefined` - otherwise an `Exception` is thrown"]
   ],
   "return" : ["JsVar","An object containing parsed JSON from the file, or undefined"],
-  "typescript" : "readJSON(name: string, noExceptions: boolean): any;"
+  "typescript" : "readJSON(name: string, noExceptions: ShortBoolean): any;"
 }
 Read a file from the flash storage area that has been written with
 `require("Storage").write(...)`, and parse JSON in it into a JavaScript object.
