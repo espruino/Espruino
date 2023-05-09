@@ -2703,7 +2703,8 @@ void jswrap_nfc_send(JsVar *payload) {
     "params" : [
       ["data","JsVar","Input report data as an array"],
       ["callback","JsVar","A callback function to be called when the data is sent"]
-    ]
+    ],
+    "typescript" : "sendHIDReport(data: number[], callback?: () => void): void"
 }
 Send a USB HID report. HID must first be enabled with `NRF.setServices({}, {hid:
 hid_report})`
