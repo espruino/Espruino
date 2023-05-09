@@ -88,6 +88,24 @@ void jswrap_ESP32_deepSleep(int us) {
   esp_deep_sleep_start(); // This function does not return.
 } // End of jswrap_ESP32_deepSleep
 
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "ifdef" : "ESP32",
+  "name"     : "deepSleepExt0",
+  "generate" : "jswrap_ESP32_deepSleep_ext0",
+  "params"   : [
+    ["pin", "pin", "Pin to trigger wakeup"],
+    ["level", "int", "Logic level to trigger"]
+  ]
+}
+Put device in deepsleep state until interrupted by pin "pin".
+*/
+void jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
+  esp_sleep_enable_ext0_wakeup(pin, level);
+  esp_deep_sleep_start(); // This function does not return.
+} // End of jswrap_ESP32_deepSleep_ext0
+
 
 /*JSON{
   "type"     : "staticmethod",
