@@ -1078,7 +1078,8 @@ JsVar *jswrap_array_reverse(JsVar *parent) {
     JsVarInt last = jsvGetArrayLength(parent)-1;
     while (jsvIteratorHasElement(&it)) {
       JsVar *k = jsvIteratorGetKey(&it);
-      jsvSetInteger(k, last-jsvGetInteger(k));
+      if (jsvIsInt(k))
+        jsvSetInteger(k, last-jsvGetInteger(k));
       jsvUnLock(k);
       jsvIteratorNext(&it);
     }
