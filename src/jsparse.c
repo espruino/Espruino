@@ -1601,9 +1601,11 @@ NO_INLINE JsVar *jspeAddNamedFunctionParameter(JsVar *funcVar, JsVar *name) {
 #ifndef ESPR_NO_ARROW_FN
 // parse an arrow function
 NO_INLINE JsVar *jspeArrowFunction(JsVar *funcVar, JsVar *a) {
-  assert(!a || jsvIsName(a));
   JSP_ASSERT_MATCH(LEX_ARROW_FUNCTION);
-  funcVar = jspeAddNamedFunctionParameter(funcVar, a);
+  if (JSP_SHOULD_EXECUTE) {
+    assert(!a || jsvIsName(a));
+    funcVar = jspeAddNamedFunctionParameter(funcVar, a);
+  }
 
   bool expressionOnly = lex->tk!='{';
   bool fnIncludesThis = jspeFunctionDefinitionInternal(funcVar, expressionOnly);
