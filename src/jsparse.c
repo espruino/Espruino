@@ -2063,7 +2063,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
             if (jsvIsObject(av) || jsvIsFunction(av)) {
               JsVar *bproto = jspGetNamedField(bv, JSPARSE_PROTOTYPE_VAR, false);
               JsVar *proto = jsvObjectGetChildIfExists(av, JSPARSE_INHERITS_VAR);
-              while (proto) {
+              while (jsvHasChildren(proto)) { // proto could have been set to anything (null/number/etc) #2363
                 if (proto == bproto) inst=true;
                 // search prototype chain
                 JsVar *childProto = jsvObjectGetChildIfExists(proto, JSPARSE_INHERITS_VAR);
@@ -2071,7 +2071,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
                 proto = childProto;
               }
               if (jspIsConstructor(bv, "Object")) inst = true;
-              jsvUnLock(bproto);
+              jsvUnLock2(bproto, proto);
             }
             if (!inst) {
               const char *name = jswGetBasicObjectName(av);
