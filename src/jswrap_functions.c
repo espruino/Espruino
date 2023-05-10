@@ -114,6 +114,11 @@ JsVar *jswrap_function_constructor(JsVar *args) {
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
+  if (!jsvIsString(v)) {
+    jsExceptionHere(JSET_TYPEERROR,"Function code must be a String, got '%t'", v);
+    jsvUnLock2(v,fn);
+    return NULL;
+  }
   jsvObjectSetChildAndUnLock(fn, JSPARSE_FUNCTION_CODE_NAME, v);
   return fn;
 }
@@ -298,7 +303,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
     jsExceptionHere(JSET_ERROR, "Expecting a string or array, got %t", binaryData);
     return 0;
   }
-  size_t inputLength = jsvGetLength(binaryData);
+  size_t inputLength = (size_t)jsvGetLength(binaryData);
   size_t outputLength = ((inputLength+2)/3)*4;
   JsVar* base64Data = jsvNewStringOfLength((unsigned int)outputLength, NULL);
   if (!base64Data) return 0;
@@ -487,8 +492,8 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg) {
       if (ch!='%') {
         jsvStringIteratorAppend(&dst, ch);
       } else {
-        int hi = jsvStringIteratorGetCharAndNext(&it);
-        int lo = jsvStringIteratorGetCharAndNext(&it);
+        char hi = (char)jsvStringIteratorGetCharAndNext(&it);
+        char lo = (char)jsvStringIteratorGetCharAndNext(&it);
         int v = (char)hexToByte(hi,lo);
         if (v<0) {
           jsExceptionHere(JSET_ERROR, "Invalid URI\n");
