@@ -106,6 +106,29 @@ void jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
   esp_deep_sleep_start(); // This function does not return.
 } // End of jswrap_ESP32_deepSleep_ext0
 
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "ifdef" : "ESP32",
+  "name"     : "getWakeupCause",
+  "generate" : "jswrap_ESP32_getWakeupCause",
+  "return"   : ["int", "The cause of the ESP32's wakeup from sleep"]
+}
+Returns a variable identifying the cause of wakeup from deep sleep.
+Possible causes include:
+
+* `0: ESP_SLEEP_WAKEUP_UNDEFINED` - reset was not caused by exit from deep sleep
+* `2: ESP_SLEEP_WAKEUP_EXT0` - Wakeup caused by external signal using RTC_IO
+* `3: ESP_SLEEP_WAKEUP_EXT1` - Wakeup caused by external signal using RTC_CNTL
+* `4: ESP_SLEEP_WAKEUP_TIMER` - Wakeup caused by timer
+* `5: ESP_SLEEP_WAKEUP_TOUCHPAD` - Wakeup caused by touchpad
+* `6: ESP_SLEEP_WAKEUP_ULP` - Wakeup caused by ULP program
+
+*/
+int jswrap_ESP32_getWakeupCause() {
+  return esp_sleep_get_wakeup_cause();
+} // End of jswrap_ESP32_getWakeupCause
+
 
 /*JSON{
   "type"     : "staticmethod",
