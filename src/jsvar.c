@@ -323,7 +323,8 @@ static JsVarRef jsvInitJsVars(JsVarRef start, unsigned int count) {
 
 void jsvInit(unsigned int size) {
 #ifdef RESIZABLE_JSVARS
-  assert(size==0);
+  // ignore size here - we're always going to start off at our smallest size
+  NOT_USED(size);
   jsVarsSize = JSVAR_BLOCK_SIZE;
   jsVarBlocks = malloc(sizeof(JsVar*)); // just 1
 #if defined(ESPR_JIT) && defined(LINUX)
@@ -343,7 +344,7 @@ void jsvInit(unsigned int size) {
   if(!jsVars) jsVars = (JsVar *)malloc(sizeof(JsVar) * jsVarsSize);
 #endif
 #else
-  assert(size==0);
+  assert(size==JSVAR_CACHE_SIZE);
 #endif
 
   jsVarFirstEmpty = jsvInitJsVars(1/*first*/, jsVarsSize);
