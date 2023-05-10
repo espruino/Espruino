@@ -1216,6 +1216,11 @@ void jswrap_espruino_dumpTimers() {
 }
 Dump any locked variables that aren't referenced from `global` - for debugging
 memory leaks only.
+
+**Note:** This does a linear scan over memory, finding variables
+that are currently locked. In some cases it may show variables
+like `Unknown 66` which happen when *part* of a string has ended
+up placed in memory ahead of the String that it's part of. See https://github.com/espruino/Espruino/issues/2345
 */
 #ifndef RELEASE
 void jswrap_espruino_dumpLockedVars() {
