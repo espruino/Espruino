@@ -244,6 +244,11 @@ JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
 	return jsvNewArrayBufferWithData(i,encoded_advdata);
 }
 
+uint32_t jsble_advertising_update_scanresponse(char *dPtr, unsigned int dLen) {
+    jsiConsolePrintf("FIXME\n");
+    return 0xDEAD;
+}
+
 esp_err_t bluetooth_gap_setAdvertizing(JsVar *advArray){
   esp_err_t ret;
   if(!advArray){

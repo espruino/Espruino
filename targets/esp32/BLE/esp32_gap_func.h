@@ -16,6 +16,7 @@
 
 #include "esp_gap_ble_api.h"
 #include "jsvar.h"
+#include "bluetooth.h"
 
 #define BLE_DEVICE_NAME "BLE_DEV_N"
 

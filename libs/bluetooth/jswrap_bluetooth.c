@@ -1163,12 +1163,7 @@ void jswrap_ble_setScanResponse(JsVar *data) {
     // only set data if we managed to decode it ok
     jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, data);
 
-#ifdef NRF5X
   err_code=jsble_advertising_update_scanresponse((uint8_t *)respPtr, respLen);
-#else
-    err_code = 0xDEAD;
-    jsiConsolePrintf("FIXME\n");
-#endif
     jsble_check_error(err_code);
   } else {
     jsExceptionHere(JSET_TYPEERROR, "Expecting array-like object or undefined, got %t", data);
