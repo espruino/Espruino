@@ -76,16 +76,16 @@ void jswrap_trig_setup(Pin pin, JsVar *options) {
   JsVarFloat minRPM = 30;
   if (jsvIsObject(options)) {
     JsVar *v;
-    v = jsvObjectGetChild(options, "teethMissing", 0);
+    v = jsvObjectGetChildIfExists(options, "teethMissing");
     if (!jsvIsUndefined(v)) trig->teethMissing = (unsigned char)jsvGetInteger(v);
     jsvUnLock(v);
-    v = jsvObjectGetChild(options, "teethTotal", 0);
+    v = jsvObjectGetChildIfExists(options, "teethTotal");
     if (!jsvIsUndefined(v)) trig->teethTotal = (unsigned char)jsvGetInteger(v);
     jsvUnLock(v);
-    v = jsvObjectGetChild(options, "minRPM", 0);
+    v = jsvObjectGetChildIfExists(options, "minRPM");
     if (!jsvIsUndefined(v)) minRPM = jsvGetFloat(v);
     jsvUnLock(v);
-    v = jsvObjectGetChild(options, "keyPosition", 0);
+    v = jsvObjectGetChildIfExists(options, "keyPosition");
     if (!jsvIsUndefined(v)) trig->keyPosition = jsvGetFloat(v);
     jsvUnLock(v);
   }

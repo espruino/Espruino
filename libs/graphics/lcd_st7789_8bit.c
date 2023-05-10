@@ -240,7 +240,7 @@ void lcdST7789_flip(JsGraphics *gfx) {
     } break;
     case LCDST7789_MODE_BUFFER_120x120: {
       // offscreen buffer - BLIT
-      JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
+      JsVar *buffer = jsvObjectGetChildIfExists(gfx->graphicsVar, "buffer");
       JsVar *str = jsvGetArrayBufferBackingString(buffer, NULL);
       if (str) {
         JsvStringIterator it;
@@ -252,7 +252,7 @@ void lcdST7789_flip(JsGraphics *gfx) {
     } break;
     case LCDST7789_MODE_BUFFER_80x80: {
       // offscreen buffer - BLIT
-      JsVar *buffer = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
+      JsVar *buffer = jsvObjectGetChildIfExists(gfx->graphicsVar, "buffer");
       JsVar *str = jsvGetArrayBufferBackingString(buffer, NULL);
       if (str) {
         JsvStringIterator it;
@@ -587,7 +587,7 @@ void lcdST7789_setCallbacks(JsGraphics *gfx) {
   } else if (lcdMode==LCDST7789_MODE_BUFFER_120x120 ||
       lcdMode==LCDST7789_MODE_BUFFER_80x80) {
     size_t expectedLen = (lcdMode==LCDST7789_MODE_BUFFER_120x120) ? (120*120) : (80*80);
-    JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
+    JsVar *buf = jsvObjectGetChildIfExists(gfx->graphicsVar, "buffer");
     size_t len = 0;
     char *dataPtr = jsvGetDataPointer(buf, &len);
     jsvUnLock(buf);

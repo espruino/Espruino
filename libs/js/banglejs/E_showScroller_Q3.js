@@ -92,7 +92,7 @@ var s = {
     g.setClipRect(0,0,g.getWidth()-1,g.getHeight()-1);
   }, drawItem : i => {
     var y = idxToY(i);
-    g.reset().setClipRect(R.x,y,R.x2,y+options.h);
+    g.reset().setClipRect(R.x,Math.max(y,R.y),R.x2,Math.min(y+options.h,R.y2));
     options.draw(i, {x:R.x,y:y,w:R.w,h:options.h});
     g.setClipRect(0,0,g.getWidth()-1,g.getHeight()-1);
   }

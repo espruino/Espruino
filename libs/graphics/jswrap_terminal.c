@@ -219,7 +219,7 @@ bool jswrap_terminal_idle() {
 #else
     JsGraphics gfx;
     if (terminalGetGFX(&gfx)) {
-      JsVar *flip = jsvObjectGetChild(gfx.graphicsVar, "flip", 0);
+      JsVar *flip = jsvObjectGetChildIfExists(gfx.graphicsVar, "flip");
       if (flip) jsvUnLock2(jspExecuteFunction(flip,gfx.graphicsVar,0,0),flip);
       jsvUnLock(gfx.graphicsVar);
       terminalNeedsFlip = false;

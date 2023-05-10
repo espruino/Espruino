@@ -17,18 +17,39 @@
 #include "jsdevices.h"
 #include "jsinteractive.h"
 
+#if defined(BLUETOOTH) && defined(NRF52_SERIES)
+#define ESPR_ONEWIRE_IN_TIMESLOT
+#endif
+
+#ifdef ESPR_ONEWIRE_IN_TIMESLOT
+#include "bluetooth.h"
+#include "nrf_soc.h"
+#define ONEWIREREAD_FN _OneWireRead
+#define ONEWIREWRITE_FN _OneWireWrite
+#else
+#define ONEWIREREAD_FN OneWireRead
+#define ONEWIREWRITE_FN OneWireWrite
+#endif
+
 /*JSON{
   "type" : "class",
   "class" : "OneWire"
 }
 This class provides a software-defined OneWire master. It is designed to be
 similar to Arduino's OneWire library.
+
+**Note:** OneWire commands are very timing-sensitive, and on nRF52 devices
+(Bluetooth LE Espruino boards) the bluetooth stack can get in the way. Before
+version 2v18 of Espruino OneWire could be unreliable, but as of firmware 2v18
+Espruino now schedules OneWire accesses with the bluetooth stack to ensure it doesn't interfere.
+OneWire is now reliable but some functions such as `OneWire.search` can now take
+a while to execute (around 1 second).
+
  */
 
 static Pin onewire_getpin(JsVar *parent) {
-  return jshGetPinFromVarAndUnLock(jsvObjectGetChild(parent, "pin", 0));
+  return jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(parent, "pin"));
 }
-
 
 /** Reset one-wire, return true if a device was present */
 static bool NO_INLINE OneWireReset(Pin pin) {
@@ -45,7 +66,7 @@ static bool NO_INLINE OneWireReset(Pin pin) {
 }
 
 /** Write 'bits' bits, and return what was read (to read, you must send all 1s) */
-static JsVarInt NO_INLINE OneWireRead(Pin pin, int bits) {
+static JsVarInt NO_INLINE ONEWIREREAD_FN(Pin pin, int bits) {
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   JsVarInt result = 0;
   JsVarInt mask = 1;
@@ -61,12 +82,11 @@ static JsVarInt NO_INLINE OneWireRead(Pin pin, int bits) {
     jshDelayMicroseconds(53);
     mask = mask << 1;
   }
-
   return result;
 }
 
 /** Write 'bits' bits, and return what was read (to read, you must send all 1s) */
-static void NO_INLINE OneWireWrite(Pin pin, int bits, unsigned long long data) {
+static void NO_INLINE ONEWIREWRITE_FN(Pin pin, int bits, unsigned long long data) {
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP);
   unsigned long long mask = 1;
   while (bits-- > 0) {
@@ -88,6 +108,82 @@ static void NO_INLINE OneWireWrite(Pin pin, int bits, unsigned long long data) {
     mask = mask << 1;
   }
 }
+
+#ifdef ESPR_ONEWIRE_IN_TIMESLOT
+// Timeslot event handler
+static bool m_onewire_timeslot_busy = false;
+static Pin m_onewire_timeslot_pin;
+static int m_onewire_timeslot_bits; // negative value means a read, positive is write
+static unsigned long long m_onewire_timeslot_data;
+static nrf_radio_signal_callback_return_param_t m_signal_callback_return_param;
+
+nrf_radio_signal_callback_return_param_t * radio_callback(uint8_t signal_type) {
+  switch(signal_type) {
+      case NRF_RADIO_CALLBACK_SIGNAL_TYPE_START:
+          // now perform the command
+          if (m_onewire_timeslot_bits < 0) { // read
+            m_onewire_timeslot_data = _OneWireRead(m_onewire_timeslot_pin, -m_onewire_timeslot_bits);
+          } else { // write
+            _OneWireWrite(m_onewire_timeslot_pin, m_onewire_timeslot_bits, m_onewire_timeslot_data);
+          }
+          m_onewire_timeslot_busy = false;
+          // request a timeslot end
+          m_signal_callback_return_param.params.request.p_next = NULL;
+          m_signal_callback_return_param.callback_action = NRF_RADIO_SIGNAL_CALLBACK_ACTION_END;
+          break;
+      default:
+          break;
+  }
+  return (&m_signal_callback_return_param);
+}
+
+JsVarInt OneWirePerformInTimeSlot(Pin pin, int bits, unsigned long long data) {
+  uint32_t err_code;
+  err_code = sd_radio_session_open(radio_callback);
+  if (jsble_check_error(err_code)) return 0;
+
+  m_onewire_timeslot_pin = pin;
+  m_onewire_timeslot_bits = bits;
+  m_onewire_timeslot_data = data;
+  m_onewire_timeslot_busy = true;
+
+  // work out how much time we need - very pessimistic here!
+  uint32_t time_us;
+  if (bits<0) { //  a read
+    time_us = 100 - bits*100;
+  } else { //  a write
+    time_us = 100 + bits*100;
+  }
+
+  static nrf_radio_request_t  m_timeslot_request;
+  memset(&m_timeslot_request, 0, sizeof(m_timeslot_request));
+  m_timeslot_request.request_type               = NRF_RADIO_REQ_TYPE_EARLIEST;
+  m_timeslot_request.params.earliest.hfclk        = NRF_RADIO_HFCLK_CFG_XTAL_GUARANTEED;
+  m_timeslot_request.params.earliest.priority     = NRF_RADIO_PRIORITY_HIGH;
+  m_timeslot_request.params.earliest.timeout_us  = NRF_RADIO_EARLIEST_TIMEOUT_MAX_US;
+  m_timeslot_request.params.earliest.length_us    = time_us;
+
+  err_code = sd_radio_request(&m_timeslot_request);
+  if (!jsble_check_error(err_code)) {
+    WAIT_UNTIL(!m_onewire_timeslot_busy, "OneWire timeslot");
+  }
+  m_onewire_timeslot_busy = false;
+
+  err_code = sd_radio_session_close();
+  if (jsble_check_error(err_code)) return 0;
+
+  return m_onewire_timeslot_data;
+}
+
+static JsVarInt NO_INLINE OneWireRead(Pin pin, int bits) {
+  return OneWirePerformInTimeSlot(pin, -bits, 0);
+}
+
+/** Write 'bits' bits, and return what was read (to read, you must send all 1s) */
+static void NO_INLINE OneWireWrite(Pin pin, int bits, unsigned long long data) {
+  OneWirePerformInTimeSlot(pin, bits, data);
+}
+#endif
 
 /*JSON{
   "type" : "constructor",
@@ -220,7 +316,7 @@ void jswrap_onewire_write(JsVar *parent, JsVar *data, bool leavePowerOn) {
   "class" : "OneWire",
   "name" : "read",
   "generate" : "jswrap_onewire_read",
-  "params" : [["count","JsVar","(optional) The amount of bytes to read"]],
+  "params" : [["count","JsVar","[optional] The amount of bytes to read"]],
   "return" : ["JsVar","The byte that was read, or a Uint8Array if count was specified and >=0"]
 }
 Read a byte

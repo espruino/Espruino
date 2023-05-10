@@ -22,8 +22,8 @@
 #include "jsvar.h"
  
 typedef enum{
-	ESP_NETWORK_BLE = 1,
-	ESP_NETWORK_WIFI = 2
+  ESP_NETWORK_BLE = 1,
+  ESP_NETWORK_WIFI = 2
 } esp_hardware_esp32_t;
 
 #define ESP32HARDWAREDEFAULT 1

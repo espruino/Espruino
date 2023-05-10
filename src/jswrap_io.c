@@ -30,7 +30,7 @@
   "generate_full" : "jswrap_io_peek(addr,count,1)",
   "params"        : [
     ["addr", "int", "The address in memory to read"],
-    ["count", "int", "(optional) the number of items to read. If >1 a Uint8Array will be returned."]
+    ["count", "int", "[optional] the number of items to read. If >1 a Uint8Array will be returned."]
   ],
   "return"        : ["JsVar","The value of memory at the given location"],
   "typescript"    : [
@@ -58,7 +58,7 @@ Write 8 bits of memory at the given location - VERY DANGEROUS!
   "generate_full" : "jswrap_io_peek(addr,count,2)",
   "params" : [
     ["addr","int","The address in memory to read"],
-    ["count","int","(optional) the number of items to read. If >1 a Uint16Array will be returned."]
+    ["count","int","[optional] the number of items to read. If >1 a Uint16Array will be returned."]
   ],
   "return" : ["JsVar","The value of memory at the given location"],
   "typescript" : [
@@ -86,7 +86,7 @@ Write 16 bits of memory at the given location - VERY DANGEROUS!
   "generate_full" : "jswrap_io_peek(addr,count,4)",
   "params" : [
     ["addr","int","The address in memory to read"],
-    ["count","int","(optional) the number of items to read. If >1 a Uint32Array will be returned."]
+    ["count","int","[optional] the number of items to read. If >1 a Uint32Array will be returned."]
   ],
   "return" : ["JsVar","The value of memory at the given location"],
   "typescript" : [
@@ -210,10 +210,10 @@ void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
   JsVarFloat freq = 0;
   JshAnalogOutputFlags flags = JSAOF_NONE;
   if (jsvIsObject(options)) {
-    freq = jsvGetFloatAndUnLock(jsvObjectGetChild(options, "freq", 0));
-    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "forceSoft", 0)))
+    freq = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(options, "freq"));
+    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "forceSoft")))
           flags |= JSAOF_FORCE_SOFTWARE;
-    else if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "soft", 0)))
+    else if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "soft")))
       flags |= JSAOF_ALLOW_SOFTWARE;
   }
 
@@ -772,12 +772,12 @@ JsVar *jswrap_interface_setWatch(
   }
   if (jsvIsObject(repeatOrObject)) {
     JsVar *v;
-    v = jsvObjectGetChild(repeatOrObject, "repeat", 0);
+    v = jsvObjectGetChildIfExists(repeatOrObject, "repeat");
     if (v) repeat = jsvGetBoolAndUnLock(v);
-    v = jsvObjectGetChild(repeatOrObject, "debounce", 0);
+    v = jsvObjectGetChildIfExists(repeatOrObject, "debounce");
     if (v) debounce = jsvGetFloatAndUnLock(v);
     if (isnan(debounce) || debounce<0) debounce=0;
-    v = jsvObjectGetChild(repeatOrObject, "edge", 0);
+    v = jsvObjectGetChildIfExists(repeatOrObject, "edge");
     if (jsvIsUndefined(v)) {
       // do nothing - use default
     } else if (jsvIsNumeric(v)) {
@@ -796,9 +796,9 @@ JsVar *jswrap_interface_setWatch(
       jsExceptionHere(JSET_TYPEERROR, "'edge' in setWatch should be 1, -1, 0, 'rising', 'falling' or 'both'");
       return 0;
     }
-    isIRQ = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "irq", 0));
-    isHighSpeed = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "hispeed", 0));
-    dataPin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(repeatOrObject, "data", 0));
+    isIRQ = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(repeatOrObject, "irq"));
+    isHighSpeed = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(repeatOrObject, "hispeed"));
+    dataPin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(repeatOrObject, "data"));
   } else
     repeat = jsvGetBool(repeatOrObject);
 
@@ -856,9 +856,12 @@ JsVar *jswrap_interface_setWatch(
   "name" : "clearWatch",
   "generate" : "jswrap_interface_clearWatch",
   "params" : [
-    ["id","JsVarArray","The id returned by a previous call to setWatch. **Only one argument is allowed.**"]
+    ["id","JsVarArray","The id returned by a previous call to setWatch. **Only one argument is allowed.** (or pass nothing to clear all watches)"]
   ],
-  "typescript" : "declare function clearWatch(id: number): void;"
+  "typescript" : [
+    "declare function clearWatch(id: number): void;",
+    "declare function clearWatch(): void;"
+  ]
 }
 Clear the Watch that was created with setWatch. If no parameter is supplied, all watches will be removed.
 
@@ -871,7 +874,7 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
     jsvObjectIteratorNew(&it, watchArrayPtr);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
-      JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
+      JsVar *watchPin = jsvObjectGetChildIfExists(watchPtr, "pin");
       Pin pin = jshGetPinFromVar(watchPin);
       if (!jshGetPinShouldStayWatched(pin))
         jshPinWatch(pin, false, JSPW_NONE);
@@ -893,7 +896,7 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
     jsvUnLock(watchArrayPtr);
     if (watchNamePtr) { // child is a 'name'
       JsVar *watchPtr = jsvSkipName(watchNamePtr);
-      Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(watchPtr, "pin", 0));
+      Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(watchPtr, "pin"));
       jsvUnLock(watchPtr);
 
       JsVar *watchArrayPtr = jsvLock(watchArray);

@@ -108,6 +108,7 @@ void jshResetDevices() {
   unsigned int i;
   // Reset list of pins that were set manually
   jshResetPinStateIsManual();
+  
   // setup flow control
   for (i=0;i<JSHSERIALDEVICESTATUSES;i++) {
 #ifdef USB
@@ -116,6 +117,7 @@ void jshResetDevices() {
 #ifdef BLUETOOTH
     if (i==TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)) break; // don't update Bluetooth status
 #endif
+    if (i==TO_SERIAL_DEVICE_STATE(jsiGetConsoleDevice())) break; // if we're on a console device now, don't mess with flow/CTS for it
     jshSerialDeviceStates[i] = SDS_NONE;
     jshSerialDeviceCTSPins[i] = PIN_UNDEFINED;
   }
@@ -282,14 +284,12 @@ IOEventFlags jshGetDeviceToTransmit() {
 }
 
 /**
- * Try and get a character for transmission.
+ * Try and get a character for transmission on a device.
  * \return The next byte to transmit or -1 if there is none.
  */
-int jshGetCharToTransmit(
-    IOEventFlags device // The device being looked at for a transmission.
-  ) {
+int jshGetCharToTransmit(IOEventFlags device) {
   if (DEVICE_HAS_DEVICE_STATE(device)) {
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
+    volatile JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
     if ((*deviceState)&SDS_XOFF_PENDING) {
       (*deviceState) = ((*deviceState)&(~SDS_XOFF_PENDING)) | SDS_XOFF_SENT;
       return 19/*XOFF*/;
@@ -322,9 +322,29 @@ int jshGetCharToTransmit(
   return -1; // no data :(
 }
 
+/// Wait for all data in the transmit queue to be written
 void jshTransmitFlush() {
   jsiSetBusy(BUSY_TRANSMIT, true);
   while (jshHasTransmitData()) ; // wait for send to finish
+  jsiSetBusy(BUSY_TRANSMIT, false);
+}
+
+/// Wait for all data in the transmit queue to be written for a specific device
+void jshTransmitFlushDevice(IOEventFlags device) {
+  jsiSetBusy(BUSY_TRANSMIT, true);
+  bool deviceHasData = false;
+  do {
+    deviceHasData = false;    
+    // Check TX queue to see if there is any data to send
+    unsigned char tempTail = txTail;
+    while (txHead != tempTail) {
+      if (IOEVENTFLAGS_GETTYPE(txBuffer[tempTail].flags) == device) {
+        deviceHasData = true;
+        break;        
+      }
+      tempTail = (unsigned char)((tempTail+1)&TXBUFFERMASK);
+    }
+  } while (deviceHasData);
   jsiSetBusy(BUSY_TRANSMIT, false);
 }
 
@@ -695,7 +715,7 @@ void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
     if (!hostShouldTransmit)
       jshSerialFlowControlWasSet = true;
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+    volatile JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if ((*deviceState) & SDS_FLOW_CONTROL_XON_XOFF) {
       if (hostShouldTransmit) {
         if (((*deviceState)&(SDS_XOFF_SENT|SDS_XON_PENDING)) == SDS_XOFF_SENT) {
@@ -732,14 +752,14 @@ void jshSetFlowControlAllReady() {
 JsVar *jshGetDeviceObject(IOEventFlags device) {
   const char *deviceStr = jshGetDeviceString(device);
   if (!deviceStr) return 0;
-  return jsvObjectGetChild(execInfo.root, deviceStr, 0);
+  return jsvObjectGetChildIfExists(execInfo.root, deviceStr);
 }
 
 /// Set whether to use flow control on the given device or not. CTS is low when ready, high when not.
 void jshSetFlowControlEnabled(IOEventFlags device, bool software, Pin pinCTS) {
   if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+    volatile JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if (software)
       (*deviceState) |= SDS_FLOW_CONTROL_XON_XOFF;
     else
@@ -778,7 +798,7 @@ Pin jshGetEventDataPin(IOEventFlags channel) {
 void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling) {
   if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+    volatile JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     if (errorHandling)
       (*deviceState) |= SDS_ERROR_HANDLING;
     else
@@ -789,7 +809,7 @@ void jshSetErrorHandlingEnabled(IOEventFlags device, bool errorHandling) {
 bool jshGetErrorHandlingEnabled(IOEventFlags device) {
   if (DEVICE_HAS_DEVICE_STATE(device)) {
     int devIdx = TO_SERIAL_DEVICE_STATE(device);
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
+    volatile JshSerialDeviceState *deviceState = &jshSerialDeviceStates[devIdx];
     return (SDS_ERROR_HANDLING & *deviceState)!=0;
   } else
     return false;

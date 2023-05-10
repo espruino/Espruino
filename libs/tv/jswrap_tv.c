@@ -92,7 +92,7 @@ JsVar *jswrap_tv_setup(JsVar *options) {
     jsExceptionHere(JSET_ERROR, "Expecting an options object, got %t", options);
     return 0;
   }
-  JsVar *tvType = jsvObjectGetChild(options, "type",0);
+  JsVar *tvType = jsvObjectGetChildIfExists(options, "type");
   if (jsvIsStringEqual(tvType, "pal")) {
     jsvUnLock(tvType);
     tv_info_pal inf;

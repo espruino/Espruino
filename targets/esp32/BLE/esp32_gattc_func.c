@@ -31,31 +31,31 @@
 #define ESP_GATT_UUID_CHAR_CLIENT_CONFIG            0x2902          /*  Client Characteristic Configuration */
 
 static struct gattc_profile_inst gattc_apps[1] = {
-	[GATTC_PROFILE] = {
+  [GATTC_PROFILE] = {
         .gattc_cb = gattc_event_handler,
         .gattc_if = ESP_GATT_IF_NONE,       /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
     }
 };
 
 void gattc_init() {
-	esp_err_t ret = esp_ble_gattc_app_register(GATTC_PROFILE);
-	jsble_check_error((uint32_t)ret);
+  esp_err_t ret = esp_ble_gattc_app_register(GATTC_PROFILE);
+  jsble_check_error((uint32_t)ret);
 }
 void gattc_reset() {
-	esp_err_t ret;
-	if(gattc_apps[GATTC_PROFILE].gattc_if != ESP_GATT_IF_NONE){
-		ret = esp_ble_gattc_app_unregister((esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if);
-		if(ret) jsWarn("could not unregister GATTC(%d)\n",ret);
-	}
-	m_central_conn_handles[0] = BLE_GATT_HANDLE_INVALID;
+  esp_err_t ret;
+  if(gattc_apps[GATTC_PROFILE].gattc_if != ESP_GATT_IF_NONE){
+    ret = esp_ble_gattc_app_unregister((esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if);
+    if(ret) jsWarn("could not unregister GATTC(%d)\n",ret);
+  }
+  m_central_conn_handles[0] = BLE_GATT_HANDLE_INVALID;
 }
 
 void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
-	jsWarnGattcEvent(event,gattc_if);
-	esp_ble_gattc_cb_param_t *p_data = (esp_ble_gattc_cb_param_t *)param;
+  jsWarnGattcEvent(event,gattc_if);
+  esp_ble_gattc_cb_param_t *p_data = (esp_ble_gattc_cb_param_t *)param;
   if (bleEventDebug & ESP_BLE_DEBUG_GATTC)
     jsiConsolePrintf("gattc_event_handler: %d\n", event);
-	switch (event) {
+  switch (event) {
     case ESP_GATTC_REG_EVT:
       gattc_apps[param->reg.app_id].gattc_if = gattc_if;
       break;
@@ -149,8 +149,8 @@ void gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
       m_central_conn_handles[0] = BLE_GATT_HANDLE_INVALID;
       jsble_queue_pending(BLEP_CENTRAL_DISCONNECTED, p_data->disconnect.reason);
       break;
-	  default: break;
-	}
+    default: break;
+  }
 }
 
 void gattc_connect(ble_gap_addr_t peer_addr, JsVar *options) {
@@ -158,32 +158,32 @@ void gattc_connect(ble_gap_addr_t peer_addr, JsVar *options) {
   esp_bd_addr_t remote_bda;
   esp_ble_addr_type_t remote_bda_type;
   bleaddr_TO_espbtaddr(peer_addr, remote_bda, &remote_bda_type);
-	esp_err_t ret = esp_ble_gattc_open((esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if, remote_bda, remote_bda_type, true);
-	jsble_check_error((uint32_t)ret);
+  esp_err_t ret = esp_ble_gattc_open((esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if, remote_bda, remote_bda_type, true);
+  jsble_check_error((uint32_t)ret);
 }
 uint32_t gattc_disconnect(uint16_t conn_handle) {
   NOT_USED(conn_handle);
-	esp_err_t ret = esp_ble_gattc_close((esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if,gattc_apps[GATTC_PROFILE].conn_id);
-	jsble_check_error((uint32_t)ret);
-	return (uint32_t)ret;
+  esp_err_t ret = esp_ble_gattc_close((esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if,gattc_apps[GATTC_PROFILE].conn_id);
+  jsble_check_error((uint32_t)ret);
+  return (uint32_t)ret;
 }
 void gattc_searchService(ble_uuid_t uuid){
-	esp_bt_uuid_t espServiceFilter;
+  esp_bt_uuid_t espServiceFilter;
   bleuuid_TO_espbtuuid(uuid, &espServiceFilter);
-	esp_err_t ret = esp_ble_gattc_search_service(
-	    (esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if,
-	    gattc_apps[GATTC_PROFILE].conn_id,
-	    (uuid.type==BLE_UUID_TYPE_UNKNOWN) ? NULL : &espServiceFilter); // if filter not set, NULL => discover ALL
-	jsble_check_error((uint32_t)ret);
-	// this creates ESP_GATTC_SEARCH_RES_EVT for each service
-	// and then ESP_GATTC_SEARCH_CMPL_EVT when complete
+  esp_err_t ret = esp_ble_gattc_search_service(
+      (esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if,
+      gattc_apps[GATTC_PROFILE].conn_id,
+      (uuid.type==BLE_UUID_TYPE_UNKNOWN) ? NULL : &espServiceFilter); // if filter not set, NULL => discover ALL
+  jsble_check_error((uint32_t)ret);
+  // this creates ESP_GATTC_SEARCH_RES_EVT for each service
+  // and then ESP_GATTC_SEARCH_CMPL_EVT when complete
 }
 
 // Search for a CCCD for this characteristic, return 0(INVALID_HANDLE) if none
 uint16_t gattc_getCharacteristicDescriptor(JsVar *service, uint16_t char_handle) {
   uint16_t count = 0;
-  uint16_t start_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "start_handle", 0));
-  uint16_t end_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "end_handle", 0));
+  uint16_t start_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(service, "start_handle"));
+  uint16_t end_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(service, "end_handle"));
   uint16_t cccd_handle = INVALID_HANDLE;
   esp_gattc_descr_elem_t *descr_elem_result;
 
@@ -226,30 +226,30 @@ uint16_t gattc_getCharacteristicDescriptor(JsVar *service, uint16_t char_handle)
 
 void gattc_getCharacteristics(JsVar *service, ble_uuid_t char_uuid){
   /* bleTaskInfo = BluetoothRemoteGATTService, bleTaskInfo2 = an array of BluetoothRemoteGATTCharacteristic, or 0 */
-	uint16_t count = 0;
-	uint16_t start_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "start_handle", 0));
-	uint16_t end_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(service, "end_handle", 0));
+  uint16_t count = 0;
+  uint16_t start_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(service, "start_handle"));
+  uint16_t end_handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(service, "end_handle"));
   // work out how much data to allocate (not 100% right since this is the MAX number of characteristics)
-	esp_ble_gattc_get_attr_count( 
-	    (esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if,
-	    gattc_apps[GATTC_PROFILE].conn_id,
-	    ESP_GATT_DB_CHARACTERISTIC,
-	    start_handle, end_handle,
-	    INVALID_HANDLE,
-	    &count);
-	// Now attempt to get the characteristics
-	esp_gattc_char_elem_t *char_elem_result   = NULL;
-	if (count > 0) {
-		if (!bleTaskInfo2) bleTaskInfo2 = jsvNewEmptyArray();
-		char_elem_result = (esp_gattc_char_elem_t *)malloc(sizeof(esp_gattc_char_elem_t) * count);
-		if (char_uuid.type == BLE_UUID_TYPE_UNKNOWN) { // get all
-		  esp_ble_gattc_get_all_char(
+  esp_ble_gattc_get_attr_count( 
+      (esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if,
+      gattc_apps[GATTC_PROFILE].conn_id,
+      ESP_GATT_DB_CHARACTERISTIC,
+      start_handle, end_handle,
+      INVALID_HANDLE,
+      &count);
+  // Now attempt to get the characteristics
+  esp_gattc_char_elem_t *char_elem_result   = NULL;
+  if (count > 0) {
+    if (!bleTaskInfo2) bleTaskInfo2 = jsvNewEmptyArray();
+    char_elem_result = (esp_gattc_char_elem_t *)malloc(sizeof(esp_gattc_char_elem_t) * count);
+    if (char_uuid.type == BLE_UUID_TYPE_UNKNOWN) { // get all
+      esp_ble_gattc_get_all_char(
           (esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if,
           gattc_apps[GATTC_PROFILE].conn_id,
           start_handle, end_handle,
           char_elem_result,
           &count, 0 /*offset*/);
-		} else { // get just one - based on filter
+    } else { // get just one - based on filter
       esp_bt_uuid_t espCharFilter;
       bleuuid_TO_espbtuuid(char_uuid,&espCharFilter);
       esp_ble_gattc_get_char_by_uuid(
@@ -259,8 +259,8 @@ void gattc_getCharacteristics(JsVar *service, ble_uuid_t char_uuid){
           espCharFilter,
           char_elem_result,
           &count);
-		}
-		// convert to Espruino format - more than one characteristic in service
+    }
+    // convert to Espruino format - more than one characteristic in service
     for (int i=0;i<count;i++) {
       // Search for a CCCD for this characteristic
       uint16_t cccd_handle = gattc_getCharacteristicDescriptor(service, char_elem_result[i].char_handle);
@@ -288,31 +288,31 @@ void gattc_getCharacteristics(JsVar *service, ble_uuid_t char_uuid){
         jsvArrayPushAndUnLock(bleTaskInfo2,o);
       }
     }
-	}
-	if (char_elem_result) free(char_elem_result);
-	// If we were after a specific characteristic, just return a single result (not array)
-	if (char_uuid.type != BLE_UUID_TYPE_UNKNOWN) {
+  }
+  if (char_elem_result) free(char_elem_result);
+  // If we were after a specific characteristic, just return a single result (not array)
+  if (char_uuid.type != BLE_UUID_TYPE_UNKNOWN) {
     JsVar *t = jsvSkipNameAndUnLock(jsvArrayPopFirst(bleTaskInfo2));
     jsvUnLock(bleTaskInfo2);
     bleTaskInfo2 = t;
-	}
-	if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, bleTaskInfo2);
+  }
+  if (bleTaskInfo) bleCompleteTaskSuccess(BLETASK_CHARACTERISTIC, bleTaskInfo2);
   else bleCompleteTaskFailAndUnLock(BLETASK_CHARACTERISTIC, jsvNewFromString("No Characteristics found"));
 }
 void gattc_readValue(uint16_t charHandle) {
 // check for connected
   esp_err_t ret = esp_ble_gattc_read_char((esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if,gattc_apps[GATTC_PROFILE].conn_id,
-	charHandle,ESP_GATT_AUTH_REQ_NONE);
+  charHandle,ESP_GATT_AUTH_REQ_NONE);
   jsble_check_error((uint32_t)ret);
 }
 void gattc_writeValue(uint16_t charHandle, char *data, size_t dataLen) {
   esp_err_t ret = esp_ble_gattc_write_char(
-	    (esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if,
-	    gattc_apps[GATTC_PROFILE].conn_id,
-	    charHandle,
-	    (uint16_t)dataLen,
-	    (uint8_t*)data,
-	    ESP_GATT_WRITE_TYPE_RSP,ESP_GATT_AUTH_REQ_NONE);
+      (esp_gatt_if_t)gattc_apps[GATTC_PROFILE].gattc_if,
+      gattc_apps[GATTC_PROFILE].conn_id,
+      charHandle,
+      (uint16_t)dataLen,
+      (uint8_t*)data,
+      ESP_GATT_WRITE_TYPE_RSP,ESP_GATT_AUTH_REQ_NONE);
   jsble_check_error((uint32_t)ret);
 }
 void gattc_characteristicNotify(uint16_t charHandle, uint16_t cccdHandle, bool enable) {

@@ -43,6 +43,7 @@ cmp("Object.getOwnPropertyNames(Array.prototype)",
   'reduceRight',
   'lastIndexOf',
   'reverse',
+  'includes','at'
 ]);
 cmp("Object.getOwnPropertyNames(Array)",         
 [ 'prototype',
@@ -50,7 +51,7 @@ cmp("Object.getOwnPropertyNames(Array)",
   'length',
   'name',
   'arguments',
-  'caller',
+  'caller','of','from'
 ]);
 
 result = tests==pass;

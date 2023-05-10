@@ -52,12 +52,18 @@ bool isIDString(const char *s) {
   return true;
 }
 
+
+
 char charToUpperCase(char ch) {
-  return (char)(((ch>=97 && ch<=122) || (ch>=224 && ch<=246) || (ch>=248 && ch<=254)) ? ch - 32 : ch);
+  return (char)(((ch>=97 && ch<=122) || 
+    ((unsigned)ch>=224 && (unsigned)ch<=246) || 
+    ((unsigned)ch>=248 && (unsigned)ch<=254)) ? ch - 32 : ch);
 } // a-z, à-ö, ø-þ
 
 char charToLowerCase(char ch) {
-  return (char)(((ch>=65 && ch<=90) || (ch>=192 && ch<=214) || (ch>=216 && ch<=222))  ? ch + 32 : ch);
+  return (char)(((ch>=65 && ch<=90) || 
+    ((unsigned)ch>=192 && (unsigned)ch<=214) || 
+    ((unsigned)ch>=216 && (unsigned)ch<=222))  ? ch + 32 : ch);
 } // A-Z, À-Ö, Ø-Þ
 
 /** escape a character - if it is required. This may return a reference to a static array,
@@ -105,7 +111,7 @@ const char *escapeCharacter(char ch, char nextCh, bool jsonStyle) {
 }
 
 /** Parse radix prefixes, or return 0 */
-NO_INLINE int getRadix(const char **s, bool *hasError) {
+NO_INLINE int getRadix(const char **s) {
   int radix = 10;
   if (**s == '0') {
     radix = 8;
@@ -175,7 +181,7 @@ long long stringToIntWithRadix(const char *s,
   if (endOfInteger) (*endOfInteger)=s;
 
 
-  int radix = forceRadix ? forceRadix : getRadix(&s, hasError);
+  int radix = forceRadix ? forceRadix : getRadix(&s);
   if (!radix) return 0;
 
   while (*s) {
@@ -509,7 +515,7 @@ JsVarFloat stringToFloatWithRadix(
   const char *numberStart = s;
   if (endOfFloat) (*endOfFloat)=s;
 
-  int radix = forceRadix ? forceRadix : getRadix(&s, 0);
+  int radix = forceRadix ? forceRadix : getRadix(&s);
   if (!radix) return NAN;
 
 
@@ -955,9 +961,16 @@ char clipi8(int x) {
 
 /// Convert the given value to a signed integer assuming it has the given number of bits
 int twosComplement(int val, unsigned char bits) {
-  if (val & ((unsigned int)1 << (bits - 1)))
-    val -= (unsigned int)1 << bits;
+  if ((unsigned)val & ((unsigned int)1 << (bits - 1)))
+    val -= 1 << bits;
   return val;
+}
+
+/// Calculate the parity of an 8 bit number
+bool calculateParity(uint8_t v) {
+  // https://graphics.stanford.edu/~seander/bithacks.html#ParityParallel
+  v ^= v >> 4;
+  return (0x6996 >> (v&0xf)) & 1;
 }
 
 // quick integer square root

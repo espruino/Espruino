@@ -177,7 +177,7 @@ An instantiation of an Ethernet network adaptor
   "name" : "getIP",
   "generate" : "jswrap_ethernet_getIP",
   "params" : [
-    ["options","JsVar","An optional `callback(err, ipinfo)` function to be called back with the IP information."]
+    ["options","JsVar","[optional] An `callback(err, ipinfo)` function to be called back with the IP information."]
   ],
   "return" : ["JsVar",""]
 }
@@ -224,7 +224,7 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj, JsVar *callback) {
 
 
 static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *ptr) {
-  JsVar *info = jsvObjectGetChild(options, name, 0);
+  JsVar *info = jsvObjectGetChildIfExists(options, name);
   if (info) {
     char buf[64];
     jsvGetString(info, buf, sizeof(buf));
@@ -241,7 +241,7 @@ static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *pt
   "generate" : "jswrap_ethernet_setIP",
   "params" : [
     ["options","JsVar","Object containing IP address options `{ ip : '1.2.3.4', subnet : '...', gateway: '...', dns:'...', mac:':::::'  }`, or do not supply an object in order to force DHCP."],
-    ["callback","JsVar","An optional `callback(err)` function to invoke when ip is set. `err==null` on success, or a string on failure."]
+    ["callback","JsVar","[optional] An `callback(err)` function to invoke when ip is set. `err==null` on success, or a string on failure."]
   ],
   "return" : ["bool","True on success"]
 }
@@ -285,7 +285,7 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options, JsVar *callback) {
     _eth_getIP_set_address(options, "gateway", &gWIZNETINFO.gw[0]);
     _eth_getIP_set_address(options, "dns", &gWIZNETINFO.dns[0]);
 
-    JsVar *info = jsvObjectGetChild(options, "mac", 0);
+    JsVar *info = jsvObjectGetChildIfExists(options, "mac");
     if (info) {
       char buf[64];
       jsvGetString(info, buf, sizeof(buf));
@@ -330,7 +330,7 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options, JsVar *callback) {
   "generate" : "jswrap_ethernet_setHostname",
   "params" : [
     ["hostname","JsVar","hostname as string"],
-    ["callback","JsVar","An optional `callback(err)` function to be called back with null or error text."]
+    ["callback","JsVar","[optional] An `callback(err)` function to be called back with null or error text."]
   ],
   "return" : ["bool","True on success"]
 }
@@ -369,7 +369,7 @@ bool jswrap_ethernet_setHostname(JsVar *wlanObj, JsVar *jsHostname, JsVar *callb
   "name" : "getHostname",
   "generate" : "jswrap_ethernet_getHostname",
   "params" : [
-    ["callback","JsVar","An optional `callback(err,hostname)` function to be called back with the status information."]
+    ["callback","JsVar","[optional] An `callback(err,hostname)` function to be called back with the status information."]
   ],
   "return" : ["JsVar" ]
 }
@@ -398,7 +398,7 @@ JsVar * jswrap_ethernet_getHostname(JsVar *wlanObj, JsVar *callback) {
   "name" : "getStatus",
   "generate" : "jswrap_ethernet_getStatus",
   "params" : [
-    ["options","JsVar","An optional `callback(err, status)` function to be called back with the status information."]
+    ["options","JsVar","[optional] An `callback(err, status)` function to be called back with the status information."]
   ],
   "return" : ["JsVar" ]
 }

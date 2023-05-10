@@ -300,7 +300,7 @@ void lcdInit_ArrayBuffer(JsGraphics *gfx) {
 }
 
 void lcdSetCallbacks_ArrayBuffer(JsGraphics *gfx) {
-  JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
+  JsVar *buf = jsvObjectGetChildIfExists(gfx->graphicsVar, "buffer");
 #ifdef GRAPHICS_ARRAYBUFFER_OPTIMISATIONS
   size_t len = 0;
   char *dataPtr = jsvGetDataPointer(buf, &len);

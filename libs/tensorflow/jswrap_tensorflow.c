@@ -28,7 +28,7 @@
 */
 
 void *jswrap_tfmicrointerpreter_getTFMI(JsVar *parent) {
-  JsVar *mi = jsvObjectGetChild(parent, "mi", 0);
+  JsVar *mi = jsvObjectGetChildIfExists(parent, "mi");
   size_t tfSize;
   char *tfPtr = jsvGetDataPointer(mi, &tfSize);
   jsvUnLock(mi);
@@ -103,7 +103,7 @@ Class containing an instance of TFMicroInterpreter
 */
 JsVar *jswrap_tfmicrointerpreter_tensorToArrayBuffer(JsVar *parent, bool isInput) {
   void *tfmi = jswrap_tfmicrointerpreter_getTFMI(parent);
-  JsVar *mi = jsvObjectGetChild(parent, "mi", 0);
+  JsVar *mi = jsvObjectGetChildIfExists(parent, "mi");
   tf_tensorfinfo tensor = tf_get(tfmi, isInput);
   if (!tensor.data || !mi) {
     jsExceptionHere(JSET_ERROR, "Unable to get tensor");

@@ -217,6 +217,8 @@ void jshTransmit(IOEventFlags device, unsigned char data);
 void jshTransmitPrintf(IOEventFlags device, const char *fmt, ...);
 /// Wait for transmit to finish
 void jshTransmitFlush();
+/// Wait for all data in the transmit queue to be written for a specific device
+void jshTransmitFlushDevice(IOEventFlags device);
 /// Clear everything from a device
 void jshTransmitClearDevice(IOEventFlags device);
 /// Move all output from one device to another

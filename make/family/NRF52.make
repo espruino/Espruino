@@ -77,14 +77,16 @@ endif
 endif
 
 # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
-ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=softfp -mfpu=fpv4-sp-d16
+ARCHFLAGS += -mcpu=cortex-m4 -mthumb -mabi=aapcs 
+ARCHFLAGS += -mfloat-abi=softfp -mfpu=fpv4-sp-d16
+# Espruino uses doubles, not floats - so actually using hardfp doesn't actually help us much and adds register-swapping overhead
 
 # nRF52 specific.
 INCLUDE          += -I$(SOFTDEVICE_PATH)/headers
 INCLUDE          += -I$(SOFTDEVICE_PATH)/headers/nrf52
 
 DEFINES += -DBLE_STACK_SUPPORT_REQD
-DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DFLOAT_ABI_HARD 
+DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT
 DEFINES += -DNRF52_SERIES
 # Nordic screwed over anyone who used -DNRF52 in new SDK versions
 # but then old SDKs won't work without it

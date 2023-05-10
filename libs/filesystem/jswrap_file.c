@@ -185,7 +185,7 @@ static JsVar* fsGetArray(bool create) {
 
 static bool fileGetFromVar(JsFile *file, JsVar *parent) {
   bool ret = false;
-  JsVar *fHandle = jsvObjectGetChild(parent, JS_FS_DATA_NAME, 0);
+  JsVar *fHandle = jsvObjectGetChildIfExists(parent, JS_FS_DATA_NAME);
   if (fHandle && jsvIsFlatString(fHandle)) {
     file->data = (JsFileData*)jsvGetFlatStringPointer(fHandle);
     file->fileVar = parent;
@@ -587,8 +587,9 @@ void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
   "generate" : "jswrap_pipe",
   "params" : [
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
-    ["options","JsVar",["An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
-  ]
+    ["options","JsVar",["[optional] An object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+  ],
+  "typescript": "pipe(destination: any, options?: PipeOptions): void"
 }
 Pipe this file to a stream (an object with a 'write' method)
 */
@@ -602,9 +603,9 @@ Pipe this file to a stream (an object with a 'write' method)
   "generate" : "jswrap_E_flashFatFS",
   "ifdef" : "USE_FLASHFS",
    "params" : [
-    ["options","JsVar",["An optional object `{ addr : int=0x300000, sectors : int=256, format : bool=false }`","addr : start address in flash","sectors: number of sectors to use","format:  Format the media"]]
+    ["options","JsVar",["[optional] An object `{ addr : int=0x300000, sectors : int=256, format : bool=false }`","addr : start address in flash","sectors: number of sectors to use","format:  Format the media"]]
   ],
-  "return" : ["bool","True on success, or false on failure"]  
+  "return" : ["bool","True on success, or false on failure"]
 }
 Change the parameters used for the flash filesystem. The default address is the
 last 1Mb of 4Mb Flash, 0x300000, with total size of 1Mb.

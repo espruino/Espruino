@@ -30,7 +30,7 @@ void SPIChannelsInit(){
   for(i = 0; i < SPIMax; i++){
     SPIChannels[i].spi = NULL;
     SPIChannels[i].spi_read = false;
-	SPIChannels[i].g_lastSPIRead = (uint32_t)-1;
+    SPIChannels[i].g_lastSPIRead = (uint32_t)-1;
   }
   SPIChannels[0].HOST = HSPI_HOST;
   SPIChannels[1].HOST = VSPI_HOST;
@@ -45,7 +45,7 @@ void SPIChannelReset(int channelPnt){
 void SPIReset(){
   int i;
   for(i = 0; i < SPIMax; i++){
-	if(SPIChannels[i].spi != NULL) SPIChannelReset(i);
+    if(SPIChannels[i].spi != NULL) SPIChannelReset(i);
   }
 }
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
@@ -127,11 +127,11 @@ void jshSPISetup(
         .mode=inf->spiMode,
         .spics_io_num= -1,               //set CS not used by driver
         .queue_size=7,      //We want to be able to queue 7 transactions at a time
-		.flags=flags
+    .flags=flags
     };
   if(SPIChannels[channelPnt].spi){
-	SPIChannelReset(channelPnt);
-	jsWarn("spi was already in use, removed old assignment");
+  SPIChannelReset(channelPnt);
+  jsWarn("spi was already in use, removed old assignment");
   }
   esp_err_t ret=spi_bus_initialize(SPIChannels[channelPnt].HOST, &buscfg, dma_chan);
   assert(ret==ESP_OK);
@@ -178,23 +178,23 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
       if(callback)callback();
       return true;
     }
-	jshSPIWait(device);
+  jshSPIWait(device);
     int channelPnt = getSPIChannelPnt(device);
-	esp_err_t ret;
+  esp_err_t ret;
     memset(&spi_trans, 0, sizeof(spi_trans));
     spi_trans.length=count*8;
     spi_trans.tx_buffer=tx;
     spi_trans.rx_buffer=rx;
-	spi_Sending = true;
+  spi_Sending = true;
     ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, rx?0:portMAX_DELAY);
     
-	if (ret != ESP_OK) {
-	  spi_Sending = false;
+  if (ret != ESP_OK) {
+    spi_Sending = false;
       jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", ret);
       return false;
     }
-	jshSPIWait(device);
-	if(callback)callback();
+  jshSPIWait(device);
+  if(callback)callback();
   return true;
 }
 

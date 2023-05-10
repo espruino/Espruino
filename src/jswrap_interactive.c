@@ -131,7 +131,7 @@ need to recreate these in the `onInit` function.
   "name" : "load",
   "generate" : "jswrap_interface_load",
   "params" : [
-    ["filename","JsVar","optional: The name of a text JS file to load from Storage after reset"]
+    ["filename","JsVar","[optional] The name of a text JS file to load from Storage after reset"]
   ]
 }
 Restart and load the program out of flash - this has an effect similar to
@@ -543,7 +543,7 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVarArr, bool isTimeout) {
     jsvObjectIteratorNew(&it, timerArrayPtr);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *timerPtr = jsvObjectIteratorGetValue(&it);
-      JsVar *watchPtr = jsvObjectGetChild(timerPtr, "watch", 0);
+      JsVar *watchPtr = jsvObjectGetChildIfExists(timerPtr, "watch");
       if (!watchPtr)
         jsvObjectIteratorRemoveAndGotoNext(&it, timerArrayPtr);
       else

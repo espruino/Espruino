@@ -37,7 +37,8 @@ info = {
      'FILESYSTEM',
      'CRYPTO','SHA256','SHA512',
      'TLS',
-     'NEOPIXEL'
+     'NEOPIXEL',
+     'JIT'
    ],
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1 -DESPRUINOWIFI',

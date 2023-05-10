@@ -51,6 +51,7 @@ typedef enum {
   JSJAC_LE, // Signed less than or equal
   JSJAC_AL  // Always
 } JsjAsmCondition;
+#define JSJAC_STRING "EQ\0NE\0CS\0CC\0MI\0PL\0VS\0VC\0HI\0LI\0GE\0LT\0GT\0LE\0AL"
 
 typedef enum {
   JSJAR_r0,

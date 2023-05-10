@@ -29,7 +29,7 @@
 // Return how many bytes are available to read
 JsVarInt jswrap_stream_available(JsVar *parent) {
   if (!jsvIsObject(parent)) return 0;
-  JsVar *buf = jsvObjectGetChild(parent, STREAM_BUFFER_NAME, 0);
+  JsVar *buf = jsvObjectGetChildIfExists(parent, STREAM_BUFFER_NAME);
   JsVarInt chars = 0;
   if (jsvIsString(buf))
     chars = (JsVarInt)jsvGetStringLength(buf);
@@ -40,7 +40,7 @@ JsVarInt jswrap_stream_available(JsVar *parent) {
 // Return a string containing 'chars' bytes. If chars<=0 the string will be all available data
 JsVar *jswrap_stream_read(JsVar *parent, JsVarInt chars) {
   if (!jsvIsObject(parent)) return 0;
-  JsVar *buf = jsvObjectGetChild(parent, STREAM_BUFFER_NAME, 0);
+  JsVar *buf = jsvObjectGetChildIfExists(parent, STREAM_BUFFER_NAME);
   JsVar *data = 0;
   if (jsvIsString(buf)) {
     size_t len = jsvGetStringLength(buf);
@@ -85,7 +85,7 @@ bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, bool force) {
     jsvUnLock(callback);
   } else {
     // No callback - try and add buffer
-    JsVar *buf = jsvObjectGetChild(parent, STREAM_BUFFER_NAME, 0);
+    JsVar *buf = jsvObjectGetChildIfExists(parent, STREAM_BUFFER_NAME);
     if (!jsvIsString(buf)) {
       // no buffer, just set this one up
       jsvObjectSetChild(parent, STREAM_BUFFER_NAME, dataString);

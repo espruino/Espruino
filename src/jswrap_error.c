@@ -67,7 +67,7 @@ JsVar *_jswrap_error_constructor(JsVar *msg, char *type) {
   "name" : "Error",
   "generate" : "jswrap_error_constructor",
   "params" : [
-    ["message","JsVar","An optional message string"]
+    ["message","JsVar","[optional] An message string"]
   ],
   "return" : ["JsVar","An Error object"],
   "typescript" : "new(message?: string): Error;"
@@ -83,7 +83,7 @@ JsVar *jswrap_error_constructor(JsVar *msg) {
   "name" : "SyntaxError",
   "generate" : "jswrap_syntaxerror_constructor",
   "params" : [
-    ["message","JsVar","An optional message string"]
+    ["message","JsVar","[optional] An message string"]
   ],
   "return" : ["JsVar","A SyntaxError object"],
   "typescript" : "new(message?: string): SyntaxError;"
@@ -99,7 +99,7 @@ JsVar *jswrap_syntaxerror_constructor(JsVar *msg) {
   "name" : "TypeError",
   "generate" : "jswrap_typeerror_constructor",
   "params" : [
-    ["message","JsVar","An optional message string"]
+    ["message","JsVar","[optional] An message string"]
   ],
   "return" : ["JsVar","A TypeError object"],
   "typescript" : "new(message?: string): TypeError;"
@@ -115,7 +115,7 @@ JsVar *jswrap_typeerror_constructor(JsVar *msg) {
   "name" : "InternalError",
   "generate" : "jswrap_internalerror_constructor",
   "params" : [
-    ["message","JsVar","An optional message string"]
+    ["message","JsVar","[optional] An message string"]
   ],
   "return" : ["JsVar","An InternalError object"],
   "typescript" : "new(message?: string): InternalError;"
@@ -132,7 +132,7 @@ JsVar *jswrap_internalerror_constructor(JsVar *msg) {
   "name" : "ReferenceError",
   "generate" : "jswrap_referenceerror_constructor",
   "params" : [
-    ["message","JsVar","An optional message string"]
+    ["message","JsVar","[optional] An message string"]
   ],
   "return" : ["JsVar","A ReferenceError object"],
   "typescript" : "new(message?: string): ReferenceError;"
@@ -184,11 +184,11 @@ JsVar *jswrap_referenceerror_constructor(JsVar *msg) {
   "typescript" : "toString(): string;"
 }*/
 JsVar *jswrap_error_toString(JsVar *parent) {
-  JsVar *str = jsvObjectGetChild(parent, "type", 0);
+  JsVar *str = jsvObjectGetChildIfExists(parent, "type");
   if (!str) str = jsvNewFromString("Error");
   if (!str) return 0;
 
-  JsVar *msg = jsvObjectGetChild(parent, "message", 0);
+  JsVar *msg = jsvObjectGetChildIfExists(parent, "message");
   if (msg) {
     JsVar *newStr = jsvVarPrintf("%v: %v", str, msg);
     jsvUnLock2(msg, str);

@@ -106,8 +106,8 @@ void jswrap_storage_erase(JsVar *name) {
   "generate" : "jswrap_storage_read",
   "params" : [
     ["name","JsVar","The filename - max 28 characters (case sensitive)"],
-    ["offset","int","(optional) The offset in bytes to start from"],
-    ["length","int","(optional) The length to read in bytes (if <=0, the entire file is read)"]
+    ["offset","int","[optional] The offset in bytes to start from"],
+    ["length","int","[optional] The length to read in bytes (if <=0, the entire file is read)"]
   ],
   "return" : ["JsVar","A string of data, or `undefined` if the file is not found"],
   "typescript" : "read(name: string, offset?: number, length?: number): string | undefined;"
@@ -142,7 +142,7 @@ JsVar *jswrap_storage_read(JsVar *name, int offset, int length) {
     ["noExceptions","bool","If true and the JSON is not valid, just return `undefined` - otherwise an `Exception` is thrown"]
   ],
   "return" : ["JsVar","An object containing parsed JSON from the file, or undefined"],
-  "typescript" : "readJSON(name: string, noExceptions: boolean): any;"
+  "typescript" : "readJSON(name: string, noExceptions: ShortBoolean): any;"
 }
 Read a file from the flash storage area that has been written with
 `require("Storage").write(...)`, and parse JSON in it into a JavaScript object.
@@ -299,8 +299,8 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
   "name" : "list",
   "generate" : "jswrap_storage_list",
   "params" : [
-    ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being returned"],
-    ["filter","JsVar","(optional) If supplied, File Types are filtered based on this: `{sf:true}` or `{sf:false}` for whether to show StorageFile"]
+    ["regex","JsVar","[optional] If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being returned"],
+    ["filter","JsVar","[optional] If supplied, File Types are filtered based on this: `{sf:true}` or `{sf:false}` for whether to show StorageFile"]
   ],
   "return" : ["JsVar","An array of filenames"],
   "typescript" : "list(regex?: RegExp, filter?: { sf: boolean }): string[];"
@@ -328,7 +328,7 @@ JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
   JsfFileFlags containing = 0;
   JsfFileFlags notContaining = 0;
   if (jsvIsObject(filter)) {
-    JsVar *v = jsvObjectGetChild(filter, "sf", 0);
+    JsVar *v = jsvObjectGetChildIfExists(filter, "sf");
     if (v) {
       if (jsvGetBoolAndUnLock(v))
         containing |= JSFF_STORAGEFILE;
@@ -346,7 +346,7 @@ JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter) {
   "name" : "hash",
   "generate" : "jswrap_storage_hash",
   "params" : [
-    ["regex","JsVar","(optional) If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being hashed"]
+    ["regex","JsVar","[optional] If supplied, filenames are checked against this regular expression (with `String.match(regexp)`) to see if they match before being hashed"]
   ],
   "return" : ["int","A hash of the files matching"],
   "typescript" : "hash(regex: RegExp): number;"
@@ -381,7 +381,7 @@ JsVarInt jswrap_storage_hash(JsVar *regex) {
   "generate" : "jswrap_storage_compact"
 }
 The Flash Storage system is journaling. To make the most of the limited write
-cycles of Flash memory, Espruino marks deleted/replaced files as garbage and
+cycles of Flash memory, Espruino marks deleted/replaced files as garbage/trash files and
 moves on to a fresh part of flash memory. Espruino only fully erases those files
 when it is running low on flash, or when `compact` is called.
 
@@ -445,7 +445,7 @@ Returns:
   fileBytes // How many bytes of allocated files do we have?
   fileCount // How many allocated files do we have?
   trashBytes // How many bytes of trash files do we have?
-  trashCount // How many trash files do we have?
+  trashCount // How many trash files do we have? (can be cleared with .compact)
 }
 ```
  */
@@ -525,14 +525,13 @@ JsVar *jswrap_storage_open(JsVar *name, JsVar *modeVar) {
   int offset = 0; // offset in file
   JsfFileHeader header;
   uint32_t addr = jsfFindFile(fname, &header);
-  uint32_t fileLen = jsfGetFileSize(&header);
   if (mode=='w') { // write,
     if (addr) { // we had a file - erase it
       jswrap_storagefile_erase(f);
       addr = 0;
-      fileLen = 0;
     }
   }
+  uint32_t fileLen = addr ? jsfGetFileSize(&header) : 0;
   if (mode=='a') { // append
     // Find the last free page (eg it has 0xFF at the end)
     unsigned char lastCh = 255;
@@ -635,18 +634,18 @@ to detect the end of a file. As such you should not write character code 255
 
 JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
   bool isReadLine = len<0;
-  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"mode",0));
+  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"mode"));
   if (mode!='r') {
     jsExceptionHere(JSET_ERROR, "Can't read in this mode");
     return 0;
   }
 
-  uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"addr",0));
+  uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"addr"));
   if (!addr) return 0; // end of file
-  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"offset",0));
-  int fileLen = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"len",0));
-  int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"chunk",0));
-  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChild(f,"name",0));
+  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"offset"));
+  int fileLen = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"len"));
+  int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"chunk"));
+  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChildIfExists(f,"name"));
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;
   fname.c[fnamei]=chunk;
@@ -762,7 +761,7 @@ operation.
 */
 int jswrap_storagefile_getLength(JsVar *f) {
   // Get name and position of name digit
-  JsVar *n = jsvObjectGetChild(f,"name",0);
+  JsVar *n = jsvObjectGetChildIfExists(f,"name");
   JsfFileName fname = jsfNameFromVar(n);
   jsvUnLock(n);
   int fnamei = sizeof(fname)-1;
@@ -794,7 +793,7 @@ int jswrap_storagefile_getLength(JsVar *f) {
         foundEnd = true;
         break;
       }
-      if (l>sizeof(buf)) l=sizeof(buf);
+      if (l>(int)sizeof(buf)) l=(int)sizeof(buf);
       jshFlashRead(buf, addr+offset, l);
       for (int i=0;i<l;i++) {
         if (buf[i]==(char)255) {
@@ -827,7 +826,7 @@ Append the given data to a file. You should not attempt to append `"\xFF"`
 (character code 255).
 */
 void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
-  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"mode",0));
+  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"mode"));
   if (mode!='w' && mode!='a') {
     jsExceptionHere(JSET_ERROR, "Can't write in this mode");
     return;
@@ -837,15 +836,15 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
   if (!data) return;
   size_t len = jsvGetStringLength(data);
   if (len==0) return;
-  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"offset",0));
-  int fileLen = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"len",0));
-  int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"chunk",0));
-  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChild(f,"name",0));
+  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"offset"));
+  int fileLen = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"len"));
+  int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"chunk"));
+  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChildIfExists(f,"name"));
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;
   //DBG("Filename[%d]=%d\n",fnamei,chunk);
   fname.c[fnamei]=chunk;
-  uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChild(f,"addr",0));
+  uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"addr"));
   DBG("Write Chunk %d Offset %d addr 0x%08x\n",chunk,offset,addr);
   int remaining = fileLen - offset;
   if (addr) {
@@ -930,7 +929,7 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
 Erase this file
 */
 void jswrap_storagefile_erase(JsVar *f) {
-  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChild(f,"name",0));
+  JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChildIfExists(f,"name"));
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;
   // erase all numbered files
@@ -947,3 +946,19 @@ void jswrap_storagefile_erase(JsVar *f) {
   jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger(0));
   jsvObjectSetChildAndUnLock(f,"mode",jsvNewFromInteger(0));
 }
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "StorageFile",
+  "name" : "pipe",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_pipe",
+  "params" : [
+    ["destination","JsVar","The destination file/stream that will receive content from the source."],
+    ["options","JsVar",["[optional] An object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+  ],
+  "typescript": "pipe(destination: any, options?: PipeOptions): void"
+}
+Pipe this file to a stream (an object with a 'write' method)
+*/

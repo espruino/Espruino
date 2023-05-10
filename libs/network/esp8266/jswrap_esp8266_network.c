@@ -338,7 +338,7 @@ void jswrap_wifi_connect(
       char password[65];
       os_memset(password, 0, sizeof(password));
 
-      JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
+      JsVar *jsPassword = jsvObjectGetChildIfExists(jsOptions, "password");
       if (jsPassword != NULL && !jsvIsString(jsPassword)) {
         jsExceptionHere(JSET_ERROR, "Expecting options.password to be a string but got %t", jsPassword);
         jsvUnLock(jsPassword);
@@ -355,7 +355,7 @@ void jswrap_wifi_connect(
       jsvUnLock(jsPassword);
 
       // Handle bssid
-      JsVar *jsBssid= jsvObjectGetChild(jsOptions, "bssid", 0);
+      JsVar *jsBssid= jsvObjectGetChildIfExists(jsOptions, "bssid");
       if (jsBssid != NULL && jsvIsString(jsBssid)) {
         char macAddrString[6 * 3 + 1 ];
         int len = jsvGetString(jsBssid, macAddrString, sizeof(macAddrString)-1);
@@ -377,7 +377,7 @@ void jswrap_wifi_connect(
       jsvUnLock(jsBssid);
 
       //Handle channel
-      JsVar *jsChannel = jsvObjectGetChild(jsOptions, "channel", 0);
+      JsVar *jsChannel = jsvObjectGetChildIfExists(jsOptions, "channel");
       if(jsChannel != NULL && jsvIsInt(jsChannel)){
         uint8 channel = jsvGetInteger(jsChannel);
         if ( channel >= 0 && channel <= 14) {
@@ -392,7 +392,7 @@ void jswrap_wifi_connect(
       jsvUnLock(jsChannel);
 
       // Handle  dnsServers
-      JsVar *jsDNSServers = jsvObjectGetChild(jsOptions, "dnsServers", 0);
+      JsVar *jsDNSServers = jsvObjectGetChildIfExists(jsOptions, "dnsServers");
       if (jsvIsArray(jsDNSServers) != false) {
         int count = 0;
         DBGV(" - We have DNS servers!!\n");
@@ -554,7 +554,7 @@ void jswrap_wifi_startAP(
   // Handle any options that may have been supplied.
   if (jsvIsObject(jsOptions)) {
     // Handle hidden
-    JsVar *jsHidden = jsvObjectGetChild(jsOptions, "hidden", 0); 
+    JsVar *jsHidden = jsvObjectGetChildIfExists(jsOptions, "hidden"); 
     if (jsvIsInt(jsHidden)) {
       int hidden = jsvGetInteger(jsHidden);
       if (hidden >= 0 && hidden <= 1) softApConfig.ssid_hidden = hidden;
@@ -562,7 +562,7 @@ void jswrap_wifi_startAP(
     jsvUnLock(jsHidden);
 
     // Handle channel
-    JsVar *jsChan = jsvObjectGetChild(jsOptions, "channel", 0);
+    JsVar *jsChan = jsvObjectGetChildIfExists(jsOptions, "channel");
     if (jsvIsInt(jsChan)) {
       int chan = jsvGetInteger(jsChan);
       if (chan >= 1 && chan <= 13) softApConfig.channel = chan;
@@ -570,7 +570,7 @@ void jswrap_wifi_startAP(
     jsvUnLock(jsChan);
 
     // Handle password
-    JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
+    JsVar *jsPassword = jsvObjectGetChildIfExists(jsOptions, "password");
     if (jsPassword != NULL) {
       // handle password:null
       if (jsvGetStringLength(jsPassword) != 0) {
@@ -587,7 +587,7 @@ void jswrap_wifi_startAP(
 
     // Handle "authMode" processing.  Here we check that "authMode", if supplied, is
     // one of the allowed values and set the softApConfig object property appropriately.
-    JsVar *jsAuth = jsvObjectGetChild(jsOptions, "authMode", 0);
+    JsVar *jsAuth = jsvObjectGetChildIfExists(jsOptions, "authMode");
     if (jsvIsString(jsAuth)) {
       if (jsvIsStringEqual(jsAuth, "open")) {
         softApConfig.authmode = AUTH_OPEN;
@@ -704,7 +704,7 @@ void jswrap_wifi_setConfig(JsVar *jsSettings) {
   }
 
   // phy setting
-  JsVar *jsPhy = jsvObjectGetChild(jsSettings, "phy", 0);
+  JsVar *jsPhy = jsvObjectGetChildIfExists(jsSettings, "phy");
   if (jsvIsString(jsPhy)) {
     if (jsvIsStringEqual(jsPhy, "11b")) {
       wifi_set_phy_mode(PHY_MODE_11B);
@@ -721,7 +721,7 @@ void jswrap_wifi_setConfig(JsVar *jsSettings) {
   if (jsPhy != NULL) jsvUnLock(jsPhy);
 
   // powersave setting
-  JsVar *jsPowerSave = jsvObjectGetChild(jsSettings, "powersave", 0);
+  JsVar *jsPowerSave = jsvObjectGetChildIfExists(jsSettings, "powersave");
   if (jsvIsString(jsPowerSave)) {
     if (jsvIsStringEqual(jsPowerSave, "none")) {
       wifi_set_sleep_type(NONE_SLEEP_T);
@@ -912,16 +912,16 @@ void jswrap_wifi_restore(void) {
   }
 
   JsVar *v;
-  v = jsvObjectGetChild(o,"mode",0);
+  v = jsvObjectGetChildIfExists(o,"mode");
   savedMode = jsvGetInteger(v);
   jsvUnLock(v);   
   wifi_set_opmode_current(savedMode);
 
-  v = jsvObjectGetChild(o,"phyMode",0);
+  v = jsvObjectGetChildIfExists(o,"phyMode");
   wifi_set_phy_mode(jsvGetInteger(v));
   jsvUnLock(v); 
 
-  v = jsvObjectGetChild(o,"sleepType",0);
+  v = jsvObjectGetChildIfExists(o,"sleepType");
   wifi_set_sleep_type(jsvGetInteger(v));
   jsvUnLock(v);
  
@@ -930,25 +930,25 @@ void jswrap_wifi_restore(void) {
     struct softap_config ap_config;
     os_memset(&ap_config, 0, sizeof(ap_config));
 
-    v = jsvObjectGetChild(o,"authmodeAP",0);
+    v = jsvObjectGetChildIfExists(o,"authmodeAP");
     ap_config.authmode =jsvGetInteger(v);
     jsvUnLock(v); 
 
-    v = jsvObjectGetChild(o,"hiddenAP",0);
+    v = jsvObjectGetChildIfExists(o,"hiddenAP");
     ap_config.ssid_hidden = jsvGetInteger(v);
     jsvUnLock(v);
 
-    v = jsvObjectGetChild(o,"ssidAP",0);
+    v = jsvObjectGetChildIfExists(o,"ssidAP");
     jsvGetString(v, (char *)ap_config.ssid, sizeof(ap_config.ssid));
 
     ap_config.ssid_len = jsvGetStringLength(v);
     jsvUnLock(v);
 
-    v = jsvObjectGetChild(o,"passwordAP",0);
+    v = jsvObjectGetChildIfExists(o,"passwordAP");
     jsvGetString(v, (char *)ap_config.password, sizeof(ap_config.password));
     jsvUnLock(v); 
 
-    v = jsvObjectGetChild(o,"channelAP",0);
+    v = jsvObjectGetChildIfExists(o,"channelAP");
     ap_config.channel = jsvGetInteger(v);
     jsvUnLock(v);
 
@@ -960,7 +960,7 @@ void jswrap_wifi_restore(void) {
 
   if (savedMode & STATION_MODE) {
 
-    v = jsvObjectGetChild(o,"hostname",0);
+    v = jsvObjectGetChildIfExists(o,"hostname");
     
     if (v) {
       char hostname[64];
@@ -973,11 +973,11 @@ void jswrap_wifi_restore(void) {
     struct station_config sta_config;
     os_memset(&sta_config, 0, sizeof(sta_config));
 
-    v = jsvObjectGetChild(o,"ssid",0);
+    v = jsvObjectGetChildIfExists(o,"ssid");
     jsvGetString(v, (char *)sta_config.ssid, sizeof(sta_config.ssid)); 
     jsvUnLock(v); 
 
-    v = jsvObjectGetChild(o,"password",0);
+    v = jsvObjectGetChildIfExists(o,"password");
     jsvGetString(v, (char *)sta_config.password, sizeof(sta_config.password));
     jsvUnLock(v); 
 
@@ -1391,7 +1391,7 @@ static void setIP(JsVar *jsSettings, JsVar *jsCallback, int interface) {
   }
 
 // get,check and store ip
-  JsVar *jsIP = jsvObjectGetChild(jsSettings, "ip", 0);
+  JsVar *jsIP = jsvObjectGetChildIfExists(jsSettings, "ip");
   if (jsIP != NULL && !jsvIsString(jsIP)) {
       EXPECT_OPT_EXCEPTION(jsIP);
       jsvUnLock(jsIP);
@@ -1408,7 +1408,7 @@ static void setIP(JsVar *jsSettings, JsVar *jsCallback, int interface) {
   jsvUnLock(jsIP);
 
 // get, check and store gw
-  JsVar *jsGW = jsvObjectGetChild(jsSettings, "gw", 0);
+  JsVar *jsGW = jsvObjectGetChildIfExists(jsSettings, "gw");
   if (jsGW != NULL && !jsvIsString(jsGW)) {
       EXPECT_OPT_EXCEPTION(jsGW);
       jsvUnLock(jsGW);
@@ -1425,7 +1425,7 @@ static void setIP(JsVar *jsSettings, JsVar *jsCallback, int interface) {
   jsvUnLock(jsGW);
 
 // netmask setting
-  JsVar *jsNM = jsvObjectGetChild(jsSettings, "netmask", 0);
+  JsVar *jsNM = jsvObjectGetChildIfExists(jsSettings, "netmask");
   if (jsNM != NULL && !jsvIsString(jsNM)) {
       EXPECT_OPT_EXCEPTION(jsNM);
       jsvUnLock(jsNM);

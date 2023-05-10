@@ -13,6 +13,7 @@
  */
 
 #include "hrm.h"
+#include "hrm_vc31.h"
 #include "jsutils.h"
 #include "platform_config.h"
 #include "jshardware.h"
@@ -164,25 +165,6 @@ typedef enum {
   VC31B_DEVICE
 } VC31Type;
 
-// Hack to fix Eclipse syntax lint
-#ifndef PACKED_FLAGS
-#define PACKED_FLAGS
-#endif
-// ---
-
-// VC31 info shared between VC31A/B
-typedef struct {
-  bool isWearing;
-  int8_t isWearCnt, unWearCnt; // counters for switching worn/unworn state
-  uint16_t ppgValue; // current PPG value
-  uint16_t ppgLastValue; // last PPG value
-  int16_t ppgOffset; // PPG 'offset' value. When PPG adjusts we change the offset so it matches the last value, then slowly adjust 'ppgOffset' back down to 0
-  uint8_t wasAdjusted; // true if LED/etc adjusted since the last reading
-  // the meaning of these is device-dependent but it's nice to have them in one place
-  uint8_t irqStatus;
-  uint8_t raw[12];
-} PACKED_FLAGS VC31Info;
-
 // VC31A-specific info
 typedef struct {
   uint8_t ctrl; // current VC31A_CTRL reg value
@@ -191,7 +173,6 @@ typedef struct {
   uint16_t envValue;
   uint16_t psValue;
   VC31AdjustInfo_t adjustInfo;
-
 } PACKED_FLAGS VC31AInfo;
 // VC31B-specific info
 typedef struct {
@@ -591,6 +572,7 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
     vcaInfo.preValue = (buf[6] << 8) | buf[5];
     vcaInfo.psValue = (buf[8] << 8) | buf[7];
     vcaInfo.envValue = (buf[10] << 8) | buf[9];
+    vcInfo.envValue = vcaInfo.envValue;
 
     if (vcInfo.irqStatus & VC31A_STATUS_D_PPG_OK) {
       vc31_new_ppg(ppgValue); // send PPG value
@@ -614,7 +596,7 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
     vcbInfo.sampleData.envValue[1] = buf[4] >> 4;
     vcbInfo.sampleData.preValue[1] = buf[4] & 0x0F;
     vcbInfo.sampleData.envValue[2] = buf[5] >> 4;
-    vcbInfo.sampleData.psValue = buf[5] & 0x0F;
+    vcbInfo.sampleData.psValue = buf[5] & 0x0F;    
     buf = &vcInfo.raw[6];
     vc31_rx(VC31B_REG17, buf, 6);
     vcbInfo.sampleData.pdResValue[0] = (buf[3] >> 4) & 0x07;
@@ -626,6 +608,7 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
 
     // if we had environment sensing, check for wear status and update LEDs accordingly
     if (vcInfo.irqStatus & VC31B_INT_PS) {
+      vcInfo.envValue = vcbInfo.sampleData.envValue[2];
       //jsiConsolePrintf("e %d %d\n", vcbInfo.sampleData.psValue, vcbInfo.sampleData.envValue[2] );
       vc31b_wearstatus();
     }

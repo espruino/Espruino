@@ -34,7 +34,8 @@
     "class" : "NRF",
     "name" : "getSecurityStatus",
     "generate_full" : "jsvNewObject()",
-    "return" : ["JsVar", "An object" ]
+    "return" : ["JsVar", "An object" ],
+    "return_object" : "NRFSecurityStatus"
 }
 */
 /*JSON{
@@ -62,7 +63,7 @@
     "generate_full" : "",
     "params" : [
       ["data","JsVar","The data to advertise as an object - see below for more info"],
-      ["options","JsVar","An optional object of options"]
+      ["options","JsVar","[optional] An object of options"]
     ]
 }*/
 /*JSON{

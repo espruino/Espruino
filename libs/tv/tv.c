@@ -295,7 +295,7 @@ JsVar *tv_setup_pal(tv_info_pal *inf) {
 
   JsVar *gfx = jswrap_graphics_createArrayBuffer(tvWidth,tvHeight,1,0);
   if (!gfx) return 0;
-  JsVar *buffer = jsvObjectGetChild(gfx, "buffer", 0);
+  JsVar *buffer = jsvObjectGetChildIfExists(gfx, "buffer");
   JsVar *ab = jsvGetArrayBufferBackingString(buffer, NULL);
   jsvUnLock(buffer);
   tvPixelPtr = (char*)(ab+1);
@@ -346,7 +346,7 @@ JsVar *tv_setup_vga(tv_info_vga *inf) {
 
   JsVar *gfx = jswrap_graphics_createArrayBuffer(tvWidth,tvHeight,1,0);
   if (!gfx) return 0;
-  JsVar *buffer = jsvObjectGetChild(gfx, "buffer", 0);
+  JsVar *buffer = jsvObjectGetChildIfExists(gfx, "buffer");
   JsVar *ab = jsvGetArrayBufferBackingString(buffer, NULL);
   jsvUnLock(buffer);
   tvPixelPtr = (char*)(ab+1);

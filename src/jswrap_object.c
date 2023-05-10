@@ -111,9 +111,10 @@ JsVar *jswrap_object_valueOf(JsVar *parent) {
   "name" : "toString",
   "generate" : "jswrap_object_toString",
   "params" : [
-    ["radix","JsVar","If the object is an integer, the radix (between 2 and 36) to use. NOTE: Setting a radix does not work on floating point numbers."]
+    ["radix","JsVar","[optional] If the object is an integer, the radix (between 2 and 36) to use. NOTE: Setting a radix does not work on floating point numbers."]
   ],
-  "return" : ["JsVar","A String representing the object"]
+  "return" : ["JsVar","A String representing the object"],
+  "return_object" : "string"
 }
 Convert the Object to a string
  */
@@ -154,7 +155,8 @@ JsVar *jswrap_object_clone(JsVar *parent) {
   "params" : [
     ["object","JsVar","The object to return keys for"]
   ],
-  "return" : ["JsVar","An array of strings - one for each key on the given object"]
+  "return" : ["JsVar","An array of strings - one for each key on the given object"],
+  "return_object" : "Array<any>"
 }
 Return all enumerable keys of the given object
  */
@@ -166,7 +168,8 @@ Return all enumerable keys of the given object
   "params" : [
     ["object","JsVar","The Object to return a list of property names for"]
   ],
-  "return" : ["JsVar","An array of the Object's own properties"]
+  "return" : ["JsVar","An array of the Object's own properties"],
+  "return_object" : "Array<any>"
 }
 Returns an array of all properties (enumerable or not) found directly on a given
 object.
@@ -217,7 +220,7 @@ void jswrap_object_keys_or_property_names_cb(
         /* Not sure why constructor is included in getOwnPropertyNames, but
          * not in for (i in ...) but it is, so we must explicitly override the
          * check in jsvIsInternalObjectKey! */
-        JsVar *name = jsvAsArrayIndexAndUnLock(jsvCopyNameOnly(key, false, false));
+        JsVar *name = jsvAsStringAndUnLock(jsvCopyNameOnly(key, false, false));
         if (name) {
           callback(data, name);
           jsvUnLock(name);
@@ -250,7 +253,7 @@ void jswrap_object_keys_or_property_names_cb(
     if (flags & JSWOKPF_INCLUDE_PROTOTYPE) {
       JsVar *proto = 0;
       if (jsvIsObject(obj) || jsvIsFunction(obj)) {
-        proto = jsvObjectGetChild(obj, JSPARSE_INHERITS_VAR, 0);
+        proto = jsvObjectGetChildIfExists(obj, JSPARSE_INHERITS_VAR);
       }
 
       if (jsvIsObject(proto)) {
@@ -309,7 +312,8 @@ JsVar *jswrap_object_keys_or_property_names(
   "params" : [
     ["object","JsVar","The object to return values for"]
   ],
-  "return" : ["JsVar","An array of values - one for each key on the given object"]
+  "return" : ["JsVar","An array of values - one for each key on the given object"],
+  "return_object" : "Array<any>"
 }
 Return all enumerable values of the given object
  */
@@ -322,7 +326,8 @@ Return all enumerable values of the given object
   "params" : [
     ["object","JsVar","The object to return values for"]
   ],
-  "return" : ["JsVar","An array of `[key,value]` pairs - one for each key on the given object"]
+  "return" : ["JsVar","An array of `[key,value]` pairs - one for each key on the given object"],
+  "return_object" : "Array<[string, any]>"
 }
 Return all enumerable keys and values of the given object
  */
@@ -351,6 +356,39 @@ JsVar *jswrap_object_values_or_entries(JsVar *object, bool returnEntries) {
   return cbData[0];
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Object",
+  "name" : "fromEntries",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_object_fromEntries",
+  "params" : [
+    ["entries","JsVar","An array of `[key,value]` pairs to be used to create an object"]
+  ],
+  "return" : ["JsVar","An object containing all the specified pairs"]
+}
+Transforms an array of key-value pairs into an object
+ */
+JsVar *jswrap_object_fromEntries(JsVar *entries) {
+  if (!jsvIsArray(entries)) return 0;
+  JsVar *obj = jsvNewObject();
+  if (!obj) return 0;
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, entries);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *e = jsvObjectIteratorGetValue(&it);
+    if (jsvIsArray(e)) {
+      JsVar *key = jsvGetArrayItem(e, 0);
+      JsVar *value = jsvGetArrayItem(e, 1);
+      if (jsvIsString(key))
+        jsvObjectSetChildVar(obj, key, value);
+      jsvUnLock2(key,value);
+    }
+    jsvUnLock(e);
+    jsvObjectIteratorNext(&it);
+  }
+  return obj;
+}
 
 /*JSON{
   "type" : "staticmethod",
@@ -422,8 +460,8 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
 #ifndef ESPR_NO_GET_SET
   JsVar *getset = jsvGetValueOfName(varName);
   if (jsvIsGetterOrSetter(getset)) {
-    jsvObjectSetChildAndUnLock(obj, "get", jsvObjectGetChild(getset,"get",0));
-    jsvObjectSetChildAndUnLock(obj, "set", jsvObjectGetChild(getset,"set",0));
+    jsvObjectSetChildAndUnLock(obj, "get", jsvObjectGetChildIfExists(getset,"get"));
+    jsvObjectSetChildAndUnLock(obj, "set", jsvObjectGetChildIfExists(getset,"set"));
   } else {
 #endif
     jsvObjectSetChildAndUnLock(obj, "value", jsvSkipName(varName));
@@ -434,6 +472,50 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
 
   jsvUnLock(varName);
   return obj;
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Object",
+  "name" : "getOwnPropertyDescriptors",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_object_getOwnPropertyDescriptors",
+  "params" : [
+    ["obj","JsVar","The object"]
+  ],
+  "return" : ["JsVar","An object containing all the property descriptors of an object"]
+}
+Get information on all properties in the object (from `Object.getOwnPropertyDescriptor`), or just `{}` if no properties
+ */
+JsVar *jswrap_object_getOwnPropertyDescriptors(JsVar *parent) {
+  if (!jsvHasChildren(parent)) {
+    jsExceptionHere(JSET_TYPEERROR, "First argument must be an object, got %t", parent);
+    return 0;
+  }
+  JsVar *descriptors = jsvNewObject();
+  if (!descriptors) return 0;
+
+  /* There is some code mentioned at https://github.com/espruino/Espruino/issues/1302#issuecomment-1430833414
+
+  const protoPropDescriptor = Object.getOwnPropertyDescriptor(obj, '__proto__');
+  const descriptors = protoPropDescriptor ? { ['__proto__']: protoPropDescriptor } : {};
+
+  which we're not implementing here - but I think the current implementation is fine for 99% of cases
+  */
+
+  JsVar *ownPropertyNames = jswrap_object_keys_or_property_names(parent, JSWOKPF_INCLUDE_NON_ENUMERABLE);
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, ownPropertyNames);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *propName = jsvObjectIteratorGetValue(&it);
+    JsVar *propValue = jswrap_object_getOwnPropertyDescriptor(parent, propName);
+    jsvObjectSetChildVar(descriptors, propName, propValue);
+    jsvUnLock2(propName, propValue);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  jsvUnLock(ownPropertyNames);
+  return descriptors;
 }
 
 /*JSON{
@@ -525,8 +607,8 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
   JsVar *name = jsvAsArrayIndex(propName);
   JsVar *value = 0;
 
-  JsVar *getter = jsvObjectGetChild(desc, "get", 0);
-  JsVar *setter = jsvObjectGetChild(desc, "set", 0);
+  JsVar *getter = jsvObjectGetChildIfExists(desc, "get");
+  JsVar *setter = jsvObjectGetChildIfExists(desc, "set");
   if (getter || setter) {
 #ifdef SAVE_ON_FLASH
     jsExceptionHere(JSET_ERROR, "get/set unsupported in this build");
@@ -540,10 +622,10 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
 #endif
     jsvUnLock2(getter,setter);
   }
-  if (!value) value = jsvObjectGetChild(desc, "value", 0);
+  if (!value) value = jsvObjectGetChildIfExists(desc, "value");
 
   jsvObjectSetChildVar(parent, name, value);
-  JsVar *writable = jsvObjectGetChild(desc, "writable", 0);
+  JsVar *writable = jsvObjectGetChildIfExists(desc, "writable");
   if (!jsvIsUndefined(writable) && !jsvGetBoolAndUnLock(writable))
     name->flags |= JSV_CONSTANT;
 
@@ -749,8 +831,8 @@ o.emit('answer', 44);
 // nothing printed
 ```
  */
-void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
 #ifndef ESPR_EMBED
+void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
   if (!jsvHasChildren(parent)) {
     jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
     return;
@@ -790,15 +872,15 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
   /* Special case if we're a data listener and data has already arrived then
    * we queue an event immediately. */
   if (jsvIsStringEqual(event, "data")) {
-    JsVar *buf = jsvObjectGetChild(parent, STREAM_BUFFER_NAME, 0);
+    JsVar *buf = jsvObjectGetChildIfExists(parent, STREAM_BUFFER_NAME);
     if (jsvIsString(buf)) {
       jsiQueueObjectCallbacks(parent, STREAM_CALLBACK_NAME, &buf, 1);
       jsvObjectRemoveChild(parent, STREAM_BUFFER_NAME);
     }
     jsvUnLock(buf);
   }
-#endif
 }
+#endif
 
 /*JSON{
   "type" : "method",
@@ -816,8 +898,8 @@ instance `obj.emit('data', 'Foo')`.
 
 For more information see `Object.on`
  */
-void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
 #ifndef ESPR_EMBED
+void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   if (!jsvHasChildren(parent)) {
     jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
     return;
@@ -853,8 +935,8 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
 
   // unlock
   jsvUnLockMany(n, args);
-#endif
 }
+#endif
 
 /*JSON{
   "type" : "method",
@@ -917,7 +999,7 @@ void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) 
   "name" : "removeAllListeners",
   "generate" : "jswrap_object_removeAllListeners",
   "params" : [
-    ["event","JsVar","The name of the event, for instance `'data'`. If not specified *all* listeners are removed."]
+    ["event","JsVar","[optional] The name of the event, for instance `'data'`. If not specified *all* listeners are removed."]
   ]
 }
 Removes all listeners (if `event===undefined`), or those of the specified event.
@@ -1078,7 +1160,10 @@ This executes the function with the supplied 'this' argument and parameters
     ["this","JsVar","The value to use as the 'this' argument when executing the function"],
     ["args","JsVar","Optional Array of Arguments"]
   ],
-  "return" : ["JsVar","The return value of executing this function"]
+  "return" : ["JsVar","The return value of executing this function"],
+  "typescript" : [
+    "apply(thisArg: any, args: ArrayLike<any>): any;"
+  ]
 }
 This executes the function with the supplied 'this' argument and parameters
  */

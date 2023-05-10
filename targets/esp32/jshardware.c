@@ -370,12 +370,12 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
   if (value>1) value=1;
   if (!isfinite(freq)) freq=0;
   if(pin == 25 || pin == 26){
-	if(flags & (JSAOF_ALLOW_SOFTWARE | JSAOF_FORCE_SOFTWARE)) jsError("pin does not support software PWM");
+  if(flags & (JSAOF_ALLOW_SOFTWARE | JSAOF_FORCE_SOFTWARE)) jsError("pin does not support software PWM");
     writeDAC(pin,(uint8_t)(value * 256));
   }
   else{
-	if(flags & JSAOF_ALLOW_SOFTWARE){
-	  if (!jshGetPinStateIsManual(pin)){ 
+  if(flags & JSAOF_ALLOW_SOFTWARE){
+    if (!jshGetPinStateIsManual(pin)){ 
         BITFIELD_SET(jshPinSoftPWM, pin, 0);
         jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
       }
@@ -519,26 +519,24 @@ bool jshIsUSBSERIALConnected() {
  * Kick a device into action (if required).
  *
  */
-void jshUSARTKick(
-    IOEventFlags device //!< The device to be kicked.
-) {
+void jshUSARTKick(IOEventFlags device) {
   int c = jshGetCharToTransmit(device);
   while(c >= 0) {
-	switch(device){
+  switch(device){
 #ifdef BLUETOOTH
-		case EV_BLUETOOTH:
-			gatts_sendNotification(c);
-			break; 
+    case EV_BLUETOOTH:
+      gatts_sendNUSNotification(c);
+      break; 
 #endif
-		case EV_SERIAL1:
-			uart_tx_one_char((uint8_t)c);
-			break;
-		default:
-			writeSerial(device,(uint8_t)c);
-			break;
+    case EV_SERIAL1:
+      uart_tx_one_char((uint8_t)c);
+      break;
+    default:
+      writeSerial(device,(uint8_t)c);
+      break;
     //if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c); 
     //else writeSerial(device,(uint8_t)c);
-	}
+  }
     c = jshGetCharToTransmit(device);
   }
 }

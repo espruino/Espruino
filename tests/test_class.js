@@ -41,7 +41,6 @@ class Lion extends Cat {
     return super.speak()+this.name + ' roars.';
   }
   static isReallyADog() {
-    trace(super);
     return super.isDog();
   }
 }

@@ -321,8 +321,9 @@ Return a string containing characters that have been received
   "generate" : "jswrap_pipe",
   "params" : [
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
-    ["options","JsVar",["An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
-  ]
+    ["options","JsVar",["[optional] An object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+  ],
+  "typescript": "pipe(destination: any, options?: PipeOptions): void"
 }
 Pipe this to a stream (an object with a 'write' method)
 */
@@ -398,7 +399,7 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
   }
 #ifdef USE_TLS
   if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
-    JsVar *protocol = jsvObjectGetChild(options, "protocol", 0);
+    JsVar *protocol = jsvObjectGetChildIfExists(options, "protocol");
     if (protocol && jsvIsStringEqual(protocol, "https:")) {
       socketType |= ST_TLS;
     }
@@ -415,7 +416,7 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
   if ((socketType&ST_TYPE_MASK) == ST_UDP) {
     JsNetwork net;
     if (networkGetFromVar(&net)) {
-      int recvBufferSize = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "recvBufferSize", 0));
+      int recvBufferSize = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "recvBufferSize"));
       if (recvBufferSize > net.data.recvBufferSize) {
         net.data.recvBufferSize = recvBufferSize;
         networkSet(&net);

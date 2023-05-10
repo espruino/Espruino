@@ -46,9 +46,8 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
   char buf[NMEA_MAX_SIZE];
   strcpy(buf, nmeaLine);
   char *nmea = buf, *nextComma;
-  bool lastWasGSV = gpsFix->lastWasGSV;
   bool thisIsGSV = false;
-  gpsFix->lastWasGSV = false;
+  bool thisIsGGA = false;
   if (nmea[0]=='$' && nmea[1]=='G') {
     if (nmea[3]=='R' && nmea[4]=='M' && nmea[5]=='C') {
       // $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
@@ -115,13 +114,14 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
       gpsFix->alt = nmea_decode_float(nmea, nextComma);
       nmea = nextComma+1; nextComma = nmea_next_comma(nmea);
       // ....
+      thisIsGGA = true;
     }
     if (nmea[3]=='G' && nmea[4]=='S' && nmea[5]=='V') {
       // loads of cool data about what satellites we have and signal strength...
       thisIsGSV = true;
-      gpsFix->lastWasGSV = true;
     }
   }
+  bool createGPSEvent = false;
   /* When to create GPS data event?
   F18 (UBlox) GPS gives a bunch of data ending in GLL
     No fix:
@@ -153,14 +153,20 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
       $BDGSV,1,1,00,0*74
 
   The thing they have in common is they have GSV, then some stuff after that
-  we don't care about. So when that happens, trigger success
+  we don't care about. So when that happens, trigger success.
   */
-  if (lastWasGSV && !thisIsGSV) {
+  if (gpsFix->lastWasGSV && !thisIsGSV) { // we got something other than GSV (the item right after)
     // Complete set of data received
-    return true;
+    createGPSEvent = true;
   }
-
-  return false;
+  if (gpsFix->lastWasGGA && thisIsGGA) { // We got two GGAs - we can do this if 
+    // Complete set of data received
+    createGPSEvent = true;
+  }
+  // update info we had last
+  gpsFix->lastWasGSV = thisIsGSV;
+  gpsFix->lastWasGGA = thisIsGGA;
+  return createGPSEvent;
 }
 
 

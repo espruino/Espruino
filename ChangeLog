@@ -1,4 +1,33 @@
-            Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
+     2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
+            Pico/Wifi: Enabled JIT compiler
+            Ensure that if JIT fails, we correctly remove just the "jit" tag and treat the function as normal JS
+            nRF52: Add NRF.setAdvertising({},{whenConnected:true}) to allow advertisements to be sent while a connection is active
+            nRF52: Fix NRF.getSecurityStatus's 'advertising' field (only appeared when connected previously)
+            Fix 'ghosting' issue on Welcome screen (forcing timeout/lcdPower/etc at boot could disable the EXTCOMIN toggle)
+            nRF52: OneWire accesses are now scheduled with the Timeslot API to avoid the softdevice interfering (fix #1831)
+            nRF52: Add NRF.on('bond'/'advertising') events to keep track of BLE status more easily
+            Pixl.js: Switch to slower ROM-saving sin/cos/atan/atan2 (running out of free space after JIT enabled)
+            Graphics: Ensure fillPoly clips out of range (+/-2048) coordinates
+            nRF52: Fix regression after whenConnected:true addition. NRF.wake() will now not start advertising when connected unless whenConnected:true is set.
+            STM32: neopixel: Fix small glitches in the output pin just before writes that could throw off APA10x LEDs
+            Bangle.js2: Ensure that changing a menu item when half-scrolled off screen doesn't overwrite widgets
+            Puck.js: Ensure acc/gyro doesn't cause watch events to be added to the input queue (more efficient)
+            Waveform: Fix waveform input/output when not done at system start - Since 2v13 start time was set in the past
+            Fix ordering of Pin check in wrapper (so autocomplete and Pin prototype works)
+            Bangle.js2: Switched to 'hard' float abi from 'soft' (needed for proprietary hrm algorithm)
+            Bangle.js2: Switched to proprietary heart rate algorithm (from our Open Source version). It just works better. 
+            JIT: Implemented do { a } while (b)
+            Ensure that for(in), Object.keys and Object.getOwnPropertyNames return array indices as strings (not numbers)
+            Fix memory leak when an error happens while parsing function arguments - eg `print(1,2,3,JSON.parse("!%^$^"),123)`
+            Bangle.js2: Added Bangle.setOptions({hrmSportMode})
+            ESP32: Fix reset() causing meditation error (ref #1777)
+            ESP32: Ensure XON/XOFF flow control is enabled            
+            ESP32: Advertising name is now 'Espruino abcd'
+            ESP32: BLUETOOTH UART IS ENABLED BY DEFAULT - disable with `NRF.setServices({},{uart:false})`
+            Bangle.js: GPS event now works even if only GGA NMEA events are enabled (which you might do for speed)
+            Add Serial.flush() to allow us to wait for transmission on a device to finish
+
+     2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
             ESP32: update esp-idf to v3.3.6
             Bangle.js2: Fix issue where Bangle.getPressure could leave the barometer on
@@ -37,6 +66,30 @@
             Pixl.js: Don't load the splash screen if BTN1 and BTN4 held down (for recovery purposes)
             Fix potential lock leaks during out of memory errors
             Graphics: Added g.getVectorFontPolys to allow the underlying polygons behind a vector font to be retrieved
+            nRF5x: ensure we only clear pairing data if ALL buttons are pressed at boot to avoid accidental deletion
+            Graphics: Fix font clipping on rotated non-square graphics instances (fix #2326)
+            Fix jsvDumpLockedVars when flat strings are in memory (https://github.com/espruino/Espruino/issues/2323#issuecomment-1426107603)
+            Fix bool return values when building for 64 bit (fix #2323)
+            nRF52: Add support for 7 bit UART tx/rx (and parity) and error if a UART setting can't be honoured (fix #2324)
+            Bangle.js2: Fix regression in E.showMenu so you can use menu items with ':undefined' (as in the example in the reference)
+            Graphics: Ensure that an error is thrown if a palette is used in >8 bit images. It was previously possible to ask for a palette on a 32 bit image, which caused an overflow
+            Fix issue extending a class from a class from a class (fix #1529)
+            Added Object.getOwnPropertyDescriptors
+            Added Object.fromEntries (fix #2327)
+            Ignore whitespace after ':' in HTTP headers (fix #2331)
+            Don't allocate RegEx if just scanning over code 
+            Don't store String/RegEx data in variables if we're just scanning over code
+            Ensure that if possible we create a JsVar Name direct from the underlying string, rather than creating and then converting (#2329)
+            Bangle.js2: Fix Compass Z heading (fix #2332)
+            Micro:bit 1: remove support for paletted images to free up flash
+            Bangle.js: Fix for Bangle.is* functions after #2323 fix
+            MakeIntoVariableName now shifts oversize strings around rather than re-allocating, which reduces fragmentation (#2329)
+            Fix scopes in `eval` (now uses the current function's scope) - fixes `(function(){eval("var x=42;print(x);")})()` 
+            Ensure new StorageFiles have 'len' set to 0
+            try...finally block now executes even if we do a 'return/break/continue' inside it (fix #2338)
+            Bluetooth: getSecurityStatus now returns 'advertising' field showing if we're advertising or not
+            Fix continue when used inside switch statement (fix #2339)
+            Storage: Fix issue locating js/.boot0 files on external storage when running with 2 Storage banks (doesn't affect Bangle.js 1/2)
 
      2v16 : JIT functions now execute in their own function scope (allows arguments)
             Move older 'HY' boards to use `g` for the built-in graphics, not `LCD` (and change docs)

@@ -347,7 +347,7 @@ bool hrm_had_beat() {
 }
 
 /// Add new heart rate value
-bool hrm_new(int hrmValue) {
+bool hrm_new(int hrmValue, Vector3 *acc) {
   if (hrmValue<HRMVALUE_MIN) hrmValue=HRMVALUE_MIN;
   if (hrmValue>HRMVALUE_MAX) hrmValue=HRMVALUE_MAX;
   hrmInfo.raw = hrmValue;
@@ -378,4 +378,23 @@ bool hrm_new(int hrmValue) {
   
 
   return hadBeat;
+}
+
+// Append extra information to an existing HRM event object
+void hrm_get_hrm_info(JsVar *o) {
+  JsVar *a = jsvNewEmptyArray();
+  if (a) {
+    int n = hrmInfo.timeIdx;
+    for (int i=0;i<HRM_HIST_LEN;i++) {
+      jsvArrayPushAndUnLock(a, jsvNewFromFloat(hrm_time_to_bpm10(hrmInfo.times[n]) / 10.0));
+      n++;
+      if (n==HRM_HIST_LEN) n=0;
+    }
+    jsvObjectSetChildAndUnLock(o,"history",a);
+  }
+}
+
+// Append extra information to an existing HRM-raw event object
+void hrm_get_hrm_raw_info(JsVar *o) {
+  jsvObjectSetChildAndUnLock(o,"isBeat",jsvNewFromBool(hrmInfo.isBeat));
 }

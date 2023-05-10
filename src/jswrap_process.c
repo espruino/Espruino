@@ -171,7 +171,7 @@ JsVar *jswrap_process_env() {
   "name" : "memory",
   "generate" : "jswrap_process_memory",
   "params" : [
-    ["gc","JsVar","An optional boolean. If `undefined` or `true` Garbage collection is performed, if `false` it is not"]
+    ["gc","JsVar","[optional] A boolean. If `undefined` or `true` Garbage collection is performed, if `false` it is not"]
   ],
   "return" : ["JsVar","Information about memory usage"]
 }
@@ -218,7 +218,7 @@ JsVar *jswrap_process_memory(JsVar *gc) {
   JsVar *obj = jsvNewObject();
   if (obj) {
     unsigned int history = 0;
-    JsVar *historyVar = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
+    JsVar *historyVar = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_HISTORY_NAME);
     if (historyVar) {
       history = (unsigned int)jsvCountJsVarsUsed(historyVar); // vars used to store history
       jsvUnLock(historyVar);

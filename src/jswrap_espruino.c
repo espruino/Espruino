@@ -778,9 +778,9 @@ their values.
   "params" : [
     ["source","JsVar","The source file/stream that will send content."],
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
-    ["options","JsVar",["An optional object `{ chunkSize : int=64, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+    ["options","JsVar",["[optional] An object `{ chunkSize : int=64, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
   ],
-  "typescript" : "pipe(source: any, destination: any, options?: { chunkSize?: number, end?: boolean, complete?: () => void }): void"
+  "typescript" : "pipe(source: any, destination: any, options?: PipeOptions): void"
 }*/
 
 /*JSON{
@@ -1096,7 +1096,7 @@ int jswrap_espruino_setClock(JsVar *options) {
   "generate" : "jswrap_espruino_setConsole",
   "params" : [
     ["device","JsVar",""],
-    ["options","JsVar","(optional) object of options, see below"]
+    ["options","JsVar","[optional] object of options, see below"]
   ],
   "typescript" : "setConsole(device: \"Serial1\" | \"USB\" | \"Bluetooth\" | \"Telnet\" | \"Terminal\" | Serial | null, options?: { force?: boolean }): void;"
 }
@@ -1812,7 +1812,7 @@ If a password has been set with `E.setPassword()`, this will lock the console so
 the password needs to be entered to unlock it.
 */
 void jswrap_espruino_lockConsole() {
-  JsVar *pwd = jsvObjectGetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, 0);
+  JsVar *pwd = jsvObjectGetChildIfExists(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME);
   if (pwd)
     jsiStatus |= JSIS_PASSWORD_PROTECTED;
   jsvUnLock(pwd);
@@ -2056,7 +2056,7 @@ void jswrap_espruino_setUSBHID(JsVar *arr) {
     return;
   }
 
-  JsVar *report = jsvObjectGetChild(arr, "reportDescriptor", 0);
+  JsVar *report = jsvObjectGetChildIfExists(arr, "reportDescriptor");
   if (!(jsvIsArray(report) || jsvIsArrayBuffer(report) || jsvIsString(report))) {
     jsExceptionHere(JSET_TYPEERROR, "Object.reportDescriptor should be an Array or String, got %t", arr);
     jsvUnLock(report);

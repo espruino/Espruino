@@ -260,7 +260,7 @@ JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
     while (match && !jsvIsNull(match)) {
       // get info about match
       JsVar *matchStr = jsvGetArrayItem(match,0);
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(match,"index"));
       JsVarInt len = (JsVarInt)jsvGetStringLength(matchStr);
       int last = idx+len;
       jsvArrayPushAndUnLock(array, matchStr);
@@ -330,7 +330,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
     while (match && !jsvIsNull(match) && !jspIsInterrupted()) {
       // get info about match
       JsVar *matchStr = jsvGetArrayItem(match,0);
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(match,"index"));
       JsVarInt len = (JsVarInt)jsvGetStringLength(matchStr);
       // do the replacement
       jsvStringIteratorAppendString(&dst, str, (size_t)lastIndex, (idx-lastIndex)); // the string before the match
@@ -341,8 +341,8 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
         JsVar *v;
         while ((v = jsvGetArrayItem(match, (JsVarInt)argCount)))
           args[argCount++] = v;
-        args[argCount++] = jsvObjectGetChild(match,"index",0);
-        args[argCount++] = jsvObjectGetChild(match,"input",0);
+        args[argCount++] = jsvObjectGetChildIfExists(match,"index");
+        args[argCount++] = jsvObjectGetChildIfExists(match,"input");
         JsVar *result = jsvAsStringAndUnLock(jspeFunctionCall(replace, 0, 0, false, (JsVarInt)argCount, args));
         jsvUnLockMany(argCount, args);
         jsvStringIteratorAppendString(&dst, result, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
@@ -455,7 +455,7 @@ JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
   "generate" : "jswrap_string_slice",
   "params" : [
     ["start","int","The start character index, if negative it is from the end of the string"],
-    ["end","JsVar","The end character index, if negative it is from the end of the string, and if omitted it is the end of the string"]
+    ["end","JsVar","[optional] The end character index, if negative it is from the end of the string, and if omitted it is the end of the string"]
   ],
   "return" : ["JsVar","Part of this string from start for len characters"]
 }*/
@@ -507,7 +507,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
     while (match && !jsvIsNull(match)) {
       // get info about match
       JsVar *matchStr = jsvGetArrayItem(match,0);
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChild(match,"index",0));
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(match,"index"));
       int len = (int)jsvGetStringLength(matchStr);
       jsvUnLock(matchStr);
       // do the replacement

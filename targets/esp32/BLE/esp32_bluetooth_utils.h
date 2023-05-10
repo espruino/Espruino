@@ -23,11 +23,11 @@
 
 #include "bluetooth.h"
 
-#define BLE_READ_EVENT				JS_EVENT_PREFIX"blerv"
-#define BLE_CONNECT_EVENT			JS_EVENT_PREFIX"connect"
-#define BLE_DISCONNECT_EVENT		JS_EVENT_PREFIX"disconnect"
+#define BLE_READ_EVENT        JS_EVENT_PREFIX"blerv"
+#define BLE_CONNECT_EVENT      JS_EVENT_PREFIX"connect"
+#define BLE_DISCONNECT_EVENT    JS_EVENT_PREFIX"disconnect"
 
-#define BLE_CHAR_VALUE			"BLE_CHAR_V"
+#define BLE_CHAR_VALUE      "BLE_CHAR_V"
 
 typedef enum{
   ESP_BLE_DEBUG_GAP = 1,

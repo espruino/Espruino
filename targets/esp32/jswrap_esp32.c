@@ -88,6 +88,47 @@ void jswrap_ESP32_deepSleep(int us) {
   esp_deep_sleep_start(); // This function does not return.
 } // End of jswrap_ESP32_deepSleep
 
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "ifdef" : "ESP32",
+  "name"     : "deepSleepExt0",
+  "generate" : "jswrap_ESP32_deepSleep_ext0",
+  "params"   : [
+    ["pin", "pin", "Pin to trigger wakeup"],
+    ["level", "int", "Logic level to trigger"]
+  ]
+}
+Put device in deepsleep state until interrupted by pin "pin".
+*/
+void jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
+  esp_sleep_enable_ext0_wakeup(pin, level);
+  esp_deep_sleep_start(); // This function does not return.
+} // End of jswrap_ESP32_deepSleep_ext0
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "ifdef" : "ESP32",
+  "name"     : "getWakeupCause",
+  "generate" : "jswrap_ESP32_getWakeupCause",
+  "return"   : ["int", "The cause of the ESP32's wakeup from sleep"]
+}
+Returns a variable identifying the cause of wakeup from deep sleep.
+Possible causes include:
+
+* `0: ESP_SLEEP_WAKEUP_UNDEFINED` - reset was not caused by exit from deep sleep
+* `2: ESP_SLEEP_WAKEUP_EXT0` - Wakeup caused by external signal using RTC_IO
+* `3: ESP_SLEEP_WAKEUP_EXT1` - Wakeup caused by external signal using RTC_CNTL
+* `4: ESP_SLEEP_WAKEUP_TIMER` - Wakeup caused by timer
+* `5: ESP_SLEEP_WAKEUP_TOUCHPAD` - Wakeup caused by touchpad
+* `6: ESP_SLEEP_WAKEUP_ULP` - Wakeup caused by ULP program
+
+*/
+int jswrap_ESP32_getWakeupCause() {
+  return esp_sleep_get_wakeup_cause();
+} // End of jswrap_ESP32_getWakeupCause
+
 
 /*JSON{
   "type"     : "staticmethod",
@@ -129,23 +170,23 @@ JsVar *jswrap_ESP32_getState() {
  "params"   : [
    ["level", "int", "which events should be shown (GAP=1, GATTS=2, GATTC=4). Use 255 for everything"]
  ],
- "ifdef"	: "BLUETOOTH"
+ "ifdef"  : "BLUETOOTH"
 }
 */
 void jswrap_ESP32_setBLE_Debug(int level){
-	ESP32_setBLE_Debug(level);
+  ESP32_setBLE_Debug(level);
 }
 
 /*JSON{
- "type"	: "staticmethod",
- "class"	: "ESP32",
+ "type"  : "staticmethod",
+ "class"  : "ESP32",
  "ifdef" : "ESP32",
- "name"		: "enableBLE",
- "generate"	: "jswrap_ESP32_enableBLE",
- "params"	: [
+ "name"    : "enableBLE",
+ "generate"  : "jswrap_ESP32_enableBLE",
+ "params"  : [
    ["enable", "bool", "switches Bluetooth on or off" ]
  ],
- "ifdef"	: "BLUETOOTH" 
+ "ifdef"  : "BLUETOOTH" 
 }
 Switches Bluetooth off/on, removes saved code from Flash, resets the board, and
 on restart creates jsVars depending on available heap (actual additional 1800)
@@ -157,12 +198,12 @@ void jswrap_ESP32_enableBLE(bool enable) { //may be later, we will support BLEen
 }
 #endif
 /*JSON{
- "type"	: "staticmethod",
- "class"	: "ESP32",
+ "type"  : "staticmethod",
+ "class"  : "ESP32",
  "ifdef" : "ESP32",
- "name"		: "enableWifi",
- "generate"	: "jswrap_ESP32_enableWifi",
- "params"	: [
+ "name"    : "enableWifi",
+ "generate"  : "jswrap_ESP32_enableWifi",
+ "params"  : [
    ["enable", "bool", "switches Wifi on or off" ]
  ] 
 }

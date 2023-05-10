@@ -377,7 +377,7 @@ bool cc3000_socket_has_closed(int socketNum) {
 }
 
 static void cc3000_state_change(const char *data) {
-  JsVar *wlanObj = jsvObjectGetChild(execInfo.hiddenRoot, CC3000_OBJ_NAME, 0);
+  JsVar *wlanObj = jsvObjectGetChildIfExists(execInfo.hiddenRoot, CC3000_OBJ_NAME);
   JsVar *dataVar = jsvNewFromString(data);
   if (wlanObj)
     jsiQueueObjectCallbacks(wlanObj, CC3000_ON_STATE_CHANGE, &dataVar, 1);

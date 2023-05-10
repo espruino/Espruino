@@ -43,6 +43,7 @@ JshI2CInfo i2cMag;
 JshI2CInfo i2cAccel;
 JshI2CInfo i2cTemp;
 PuckVersion puckVersion;
+IOEventFlags puckAccelChannel = EV_NONE;
 APP_TIMER_DEF(m_poll_timer_id);
 
 const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
@@ -941,7 +942,7 @@ JsVarFloat jswrap_puck_getTemperature() {
   "ifdef" : "PUCKJS",
   "generate" : "jswrap_puck_accelOn",
   "params" : [
-      ["samplerate","float","The sample rate in Hz, or undefined"]
+      ["samplerate","float","The sample rate in Hz, or `undefined` (default is 12.5 Hz)"]
   ]
 }
 
@@ -973,7 +974,17 @@ Check out [the Puck.js page on the
 accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
 information.
 
+**Note:** Puck.js cannot currently read every sample from the
+accelerometer at sample rates above 208Hz.
+
 */
+void puck_accelHandler(bool state, IOEventFlags flags) {
+  jshHadEvent(); // ensure we leave sleep to go to the idle loop
+  /* By having this function defined, we ensure that we don't push
+  the event onto the IO event queue which would cause Espruino a 
+  little extra processing each time */
+}
+
 void jswrap_puck_accelOn(JsVarFloat hz) {
   if (!PUCKJS_HAS_ACCEL) {
     jswrap_puck_notAvailableException("Accelerometer");
@@ -989,7 +1000,8 @@ void jswrap_puck_accelOn(JsVarFloat hz) {
   if (!accel_on(milliHz)) {
     jsExceptionHere(JSET_ERROR, "Invalid sample rate %f - must be 1660, 833, 416, 208, 104, 52, 26, 12.5, 1.6 Hz", hz);
   }
-  jshPinWatch(ACCEL_PIN_INT, true, JSPW_NONE);
+  puckAccelChannel = jshPinWatch(ACCEL_PIN_INT, true, JSPW_NONE);
+  if (puckAccelChannel!=EV_NONE) jshSetEventCallback(puckAccelChannel, puck_accelHandler);
   accel_enabled = true;
 }
 
@@ -1012,6 +1024,9 @@ void jswrap_puck_accelOff() {
     return;
   }
   if (accel_enabled) {
+    if (puckAccelChannel!=EV_NONE) 
+      jshSetEventCallback(puckAccelChannel, NULL);
+    puckAccelChannel = EV_NONE;
     jshPinWatch(ACCEL_PIN_INT, false, JSPW_NONE);
     accel_off();
   }
@@ -1124,8 +1139,8 @@ int jswrap_puck_accelRd(JsVarInt reg) {
   "generate" : "jswrap_puck_IR",
   "params" : [
       ["data","JsVar","An array of pulse lengths, in milliseconds"],
-      ["cathode","pin","(optional) pin to use for IR LED cathode - if not defined, the built-in IR LED is used"],
-      ["anode","pin","(optional) pin to use for IR LED anode - if not defined, the built-in IR LED is used"]
+      ["cathode","pin","[optional] pin to use for IR LED cathode - if not defined, the built-in IR LED is used"],
+      ["anode","pin","[optional] pin to use for IR LED anode - if not defined, the built-in IR LED is used"]
   ]
 }
 Transmit the given set of IR pulses - data should be an array of pulse times in
@@ -1772,7 +1787,7 @@ bool jswrap_puck_idle() {
     if (mag_data_ready) {
       JsVar *xyz = to_xyz(mag_reading, 1);
       mag_data_ready = false;
-      JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
+      JsVar *puck = jsvObjectGetChildIfExists(execInfo.root, "Puck");
       if (jsvHasChildren(puck))
           jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"mag", &xyz, 1);
       jsvUnLock2(puck, xyz);
@@ -1783,7 +1798,7 @@ bool jswrap_puck_idle() {
   if (accel_enabled && nrf_gpio_pin_read(ACCEL_PIN_INT)) {
     accel_read();
     JsVar *d = jswrap_puck_accel();
-    JsVar *puck = jsvObjectGetChild(execInfo.root, "Puck", 0);
+    JsVar *puck = jsvObjectGetChildIfExists(execInfo.root, "Puck");
     if (jsvHasChildren(puck))
         jsiQueueObjectCallbacks(puck, JS_EVENT_PREFIX"accel", &d, 1);
     jsvUnLock2(puck, d);

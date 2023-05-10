@@ -228,7 +228,7 @@ void jswrap_serial_setConsole(JsVar *parent, bool force) {
   "generate" : "jswrap_serial_setup",
   "params" : [
     ["baudrate","JsVar","The baud rate - the default is 9600"],
-    ["options","JsVar","An optional structure containing extra information on initialising the serial port - see below."]
+    ["options","JsVar","[optional] A structure containing extra information on initialising the serial port - see below."]
   ]
 }
 Setup this Serial port with the given baud rate and options.
@@ -299,14 +299,14 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   JshUSARTInfo inf;
 
   if (jsvIsUndefined(options)) {
-    options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
+    options = jsvObjectGetChildIfExists(parent, DEVICE_OPTIONS_NAME);
   } else
     jsvLockAgain(options);
 
   bool ok = jsserialPopulateUSARTInfo(&inf, baud, options);
 #ifdef LINUX
   if (ok && jsvIsObject(options))
-    jsvObjectSetChildAndUnLock(parent, "path", jsvObjectGetChild(options, "path", 0));
+    jsvObjectSetChildAndUnLock(parent, "path", jsvObjectGetChildIfExists(options, "path"));
 #endif
 
   if (!ok) {
@@ -360,8 +360,8 @@ void jswrap_serial_unsetup(JsVar *parent) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
   // Populate JshUSARTInfo from serial - if it exists
-  JsVar *options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
-  JsVar *baud = jsvObjectGetChild(parent, USART_BAUDRATE_NAME, 0);
+  JsVar *options = jsvObjectGetChildIfExists(parent, DEVICE_OPTIONS_NAME);
+  JsVar *baud = jsvObjectGetChildIfExists(parent, USART_BAUDRATE_NAME);
   if (options) {
     JshUSARTInfo inf;
     jsserialPopulateUSARTInfo(&inf, baud, options);
@@ -533,8 +533,25 @@ Return a string containing characters that have been received
   "generate" : "jswrap_pipe",
   "params" : [
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
-    ["options","JsVar",["An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
-  ]
+    ["options","JsVar",["[optional] An object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+  ],
+  "typescript": "pipe(destination: any, options?: PipeOptions): void"
 }
 Pipe this USART to a stream (an object with a 'write' method)
  */
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "Serial",
+  "name" : "flush",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_serial_flush"
+}
+Flush this serial stream (pause execution until all data has been sent)
+ */
+void jswrap_serial_flush(JsVar *parent) {
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (device == EV_NONE) return;
+  jshTransmitFlushDevice(device);
+}

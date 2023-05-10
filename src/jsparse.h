@@ -146,6 +146,10 @@ typedef struct {
 #endif
   /// Value of 'this' reserved word
   JsVar *thisVar;
+#ifndef ESPR_NO_CLASSES
+  // Allows 'super' to call 'super' on the correct class on subclasses - see #1529
+  JsVar *currentClassConstructor;
+#endif
 
   volatile JsExecFlags execute; //!< Should we be executing, do we have errors, etc
 } JsExecInfo;
@@ -153,6 +157,8 @@ typedef struct {
 /* Info about execution when Parsing - this saves passing it on the stack
  * for each call */
 extern JsExecInfo execInfo;
+
+#define JSP_SHOULD_EXECUTE (((execInfo.execute)&EXEC_RUN_MASK)==EXEC_YES)
 
 /// flags for jspParseFunction
 typedef enum {

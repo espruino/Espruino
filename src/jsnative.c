@@ -256,7 +256,7 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
   case JSWAT_ARGUMENT_ARRAY: // a JsVar array containing all subsequent arguments
     return (JsVar*)(size_t)result;
   case JSWAT_BOOL: // boolean
-    return jsvNewFromBool(result!=0);
+    return jsvNewFromBool(result&1);
 #ifndef ESPR_EMBED
   case JSWAT_PIN:
     return jsvNewFromPin((Pin)result);

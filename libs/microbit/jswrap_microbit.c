@@ -419,9 +419,6 @@ int accelGestureInactiveCount = 4;
 /// how many samples must a gesture have before we notify about it?
 int accelGestureMinLength = 10;
 
-typedef struct {
-  short x,y,z;
-} Vector3;
 /// accelerometer data
 Vector3 acc;
 /// squared accelerometer magnitude
@@ -474,7 +471,7 @@ void jswrap_microbit_accelHandler() {
   accHistory[accHistoryIdx+2] = clipi8(newz>>7);
   // Push 'accel' event
   JsVar *xyz = getXYZ(newx, newy, newz, 8192);
-  JsVar *microbit = jsvObjectGetChild(execInfo.root, "Microbit", 0);
+  JsVar *microbit = jsvObjectGetChildIfExists(execInfo.root, "Microbit");
     if (microbit)
     jsiQueueObjectCallbacks(microbit, JS_EVENT_PREFIX"accel", &xyz, 1);
   jsvUnLock2(microbit, xyz);
@@ -521,7 +518,7 @@ void jswrap_microbit_accelHandler() {
       if (idx>=(int)sizeof(accHistory)) idx-=sizeof(accHistory);
     }
     jsvArrayBufferIteratorFree(&it);
-    JsVar *microbit = jsvObjectGetChild(execInfo.root, "Microbit", 0);
+    JsVar *microbit = jsvObjectGetChildIfExists(execInfo.root, "Microbit");
     if (microbit)
       jsiQueueObjectCallbacks(microbit, JS_EVENT_PREFIX"gesture", &arr, 1);
     jsvUnLock2(microbit, arr);

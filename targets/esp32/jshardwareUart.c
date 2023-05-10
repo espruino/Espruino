@@ -36,7 +36,7 @@ void initUart(int uart_num, uart_config_t uart_config, int txpin, int rxpin){
 
 void UartReset(){
   uart_driver_delete(uart_console);
-  initConsole();	
+  initConsole();  
   if(serial2_initialized) uart_driver_delete(uart_Serial2);
   if(serial3_initialized) uart_driver_delete(uart_Serial3);
 }
@@ -44,18 +44,18 @@ void UartReset(){
 void initSerial(IOEventFlags device,JshUSARTInfo *inf){
   // NOTE: we can get called for bluetooth and telnet, so this may not be a serial device!
   uart_config_t uart_config = {
-	.baud_rate = inf->baudRate,
-	.data_bits = (inf->bytesize == 7)? UART_DATA_7_BITS : UART_DATA_8_BITS,
-	.stop_bits = (inf->stopbits == 1)? UART_STOP_BITS_1 : UART_STOP_BITS_2,
-	//.flow_ctrl = (inf->xOnXOff)? UART_HW_FLOWCTRL_DISABLE : UART_HW_FLOWCTRL_CTS_RTS,
-	.flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-	.rx_flow_ctrl_thresh = 122,
-	.parity = UART_PARITY_DISABLE
+    .baud_rate = inf->baudRate,
+    .data_bits = (inf->bytesize == 7)? UART_DATA_7_BITS : UART_DATA_8_BITS,
+    .stop_bits = (inf->stopbits == 1)? UART_STOP_BITS_1 : UART_STOP_BITS_2,
+    //.flow_ctrl = (inf->xOnXOff)? UART_HW_FLOWCTRL_DISABLE : UART_HW_FLOWCTRL_CTS_RTS,
+    .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+    .rx_flow_ctrl_thresh = 122,
+    .parity = UART_PARITY_DISABLE
   };
   switch(inf->parity){
-	case 0: uart_config.parity = UART_PARITY_DISABLE; break;
-	case 1: uart_config.parity = UART_PARITY_ODD; break;
-	case 2: uart_config.parity = UART_PARITY_EVEN; break;
+    case 0: uart_config.parity = UART_PARITY_DISABLE; break;
+    case 1: uart_config.parity = UART_PARITY_ODD; break;
+    case 2: uart_config.parity = UART_PARITY_EVEN; break;
   }
   if(device == EV_SERIAL1) {
     initUart(uart_console,uart_config,-1,-1);
@@ -89,14 +89,16 @@ void initConsole(){
     .rx_flow_ctrl_thresh = 122,
   }; 
   initUart(uart_console,uart_config,-1,-1);
-  jshSetFlowControlEnabled(EV_SERIAL1, true, PIN_UNDEFINED); // should we use hardware flow control on most ESP32 boards?
+  // should we use hardware flow control on most ESP32 boards?
+  // No... It looks like CTS is not connected on most boards, so XON/XOFF is best!
+  jshSetFlowControlEnabled(EV_SERIAL1, true, PIN_UNDEFINED); 
   jshSetDeviceInitialised(EV_SERIAL1,true);  
 }
 
 uint8_t rxbuf[256];
 void consoleToEspruino(){
   int len = uart_read_bytes(uart_console, rxbuf, sizeof(rxbuf), 100);  //Read data from UART
-  if(len > 0) jshPushIOCharEvents(EV_SERIAL1, rxbuf, len);	  	
+  if(len > 0) jshPushIOCharEvents(EV_SERIAL1, rxbuf, len);      
 }
 
 void serialToEspruino(){

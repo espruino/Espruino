@@ -102,14 +102,14 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 	$(Q) mv eagle.app.flash.bin $@
 
 $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
-	$(Q)rm -rf build/$(basename $(ESP_ZIP))
-	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
+	$(Q)rm -rf $(PROJ_NAME)
+	$(Q)mkdir -p $(PROJ_NAME)
 	$(Q)cp $(USER1_BIN) $(USER2_BIN) scripts/wiflash.sh $(BLANK) \
 	  $(INIT_DATA) $(BOOTLOADER) \
 	  targets/esp8266/README_flash.txt \
 	  targets/esp8266/Makefile \
-	  build/$(basename $(ESP_ZIP))
-	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
+	  $(PROJ_NAME)
+	$(Q)$(TAR) -zcf $(ESP_ZIP) $(PROJ_NAME) --transform='s/$(BINDIR)\///g'
 
 # Combined 512k/4096k binary that includes everything that's needed and can be
 # flashed to 0 in 512k/4096k parts

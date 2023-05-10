@@ -172,8 +172,8 @@ void jswrap_Task_log(JsVar *parent) {
 }
 
 /*JSON{
-  "type"	: "class",
-  "class"	: "Timer"
+  "type"  : "class",
+  "class"  : "Timer"
 }
 A class to handle Timer on base of ESP32 Timer
 */
@@ -184,7 +184,7 @@ A class to handle Timer on base of ESP32 Timer
   "generate" : "jswrap_Timer_constructor",
   "params"   : [ ["timerName", "JsVar", "Timer Name"],
                  ["group", "int", "Timer group"],
-				 ["index", "int", "Timer index"],
+         ["index", "int", "Timer index"],
                  ["isrIndex", "int", "isr (0 = Espruino, 1 = test)"]  ],
   "return"   : ["JsVar","A Timer Object"]
 }

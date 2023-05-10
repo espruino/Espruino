@@ -27,8 +27,8 @@ void gap_init_security();
 esp_err_t bluetooth_setDeviceName(JsVar *deviceName);
 void bluetooth_initDeviceName();
 
-esp_err_t bluetooth_gap_startAdvertizing(bool enable);
-esp_err_t bluetooth_gap_setAdvertizing(JsVar *advArray);
+esp_err_t bluetooth_gap_startAdvertising(bool enable);
+esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray);
 
 JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options);
 

@@ -24,6 +24,7 @@ typedef struct {
   uint8_t satellites; // how many satellites
   double hdop; // GGA HDOP - Relative accuracy of horizontal position. Multiply by 5 to get an EXTREMELY ROUGH value in meters
   bool lastWasGSV; // Was the last entry received $GPGSV?
+  bool lastWasGGA; // Was the last entry received $GNGGA?
 } NMEAFixInfo;
 
 #define NMEA_MAX_SIZE 82  //  82 is the max for NMEA

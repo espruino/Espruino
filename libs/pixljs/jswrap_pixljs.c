@@ -100,7 +100,7 @@ void lcd_wr(int data) {
 void lcd_flip_gfx(JsGraphics *gfx) {
   if (gfx->data.modMinX > gfx->data.modMaxX) return; // nothing to do!
 
-  JsVar *buf = jsvObjectGetChild(gfx->graphicsVar,"buffer",0);
+  JsVar *buf = jsvObjectGetChildIfExists(gfx->graphicsVar,"buffer");
   if (!buf) return;
   JSV_GET_AS_CHAR_ARRAY(bPtr, bLen, buf);
   if (!bPtr || bLen<128*8) return;
@@ -418,7 +418,8 @@ void jswrap_pixljs_init() {
   static bool firstStart = true;
 
   JsVar *splashScreen = 0;
-  if (!(jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE && jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE))
+  if (!((jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE) &&
+        (jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE)))
     splashScreen = jsfReadFile(jsfNameFromString(".splash"),0,0);
   if (jsvIsString(splashScreen)) {
     if (jsvGetStringLength(splashScreen)) {
@@ -533,6 +534,7 @@ type MenuOptions = {
   back?: () => void;
   selected?: number;
   fontHeight?: number;
+  scroll?: number;
   x?: number;
   y?: number;
   x2?: number;
@@ -633,7 +635,7 @@ See http://www.espruino.com/graphical_menu for more detailed information.
     "generate_js" : "libs/js/pixljs/E_showMessage.min.js",
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
-      ["title","JsVar","(optional) a title for the message"]
+      ["title","JsVar","[optional] a title for the message"]
     ],
     "ifdef" : "PIXLJS",
     "typescript" : "showMessage(message: string, title?: string): void;"
@@ -655,7 +657,7 @@ E.showMessage("These are\nLots of\nLines","My Title")
     "generate_js" : "libs/js/pixljs/E_showPrompt.min.js",
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
-      ["options","JsVar","(optional) an object of options (see below)"]
+      ["options","JsVar","[optional] an object of options (see below)"]
     ],
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
     "ifdef" : "PIXLJS",
@@ -704,7 +706,7 @@ The second `options` argument can contain:
     "generate_js" : "libs/js/pixljs/E_showAlert.min.js",
     "params" : [
       ["message","JsVar","A message to display. Can include newlines"],
-      ["options","JsVar","(optional) a title for the message"]
+      ["options","JsVar","[optional] a title for the message"]
     ],
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
     "ifdef" : "PIXLJS",

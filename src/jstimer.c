@@ -547,7 +547,7 @@ bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *curre
   if (!jshIsPinValid(pin)) return false;
   UtilTimerTask task;
   task.repeatInterval = (unsigned int)period;
-  task.time = (int)(startTime-jshGetSystemTime() + period);
+  task.time = (int)(startTime + period);
   task.type = type;
   if (UET_IS_BUFFER_WRITE_EVENT(type)) {
     task.data.buffer.pinFunction = jshGetCurrentPinFunction(pin);

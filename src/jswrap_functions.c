@@ -132,7 +132,7 @@ Evaluate a string containing JavaScript code
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
   JsVar *s = jsvAsString(v); // get as a string
-  JsVar *result = jspEvaluateVar(s, execInfo.thisVar, 0);
+  JsVar *result = jspEvaluateVar(s, 0, 0); // don't set scope, so we use the current scope
   jsvUnLock(s);
   return result;
 }
@@ -143,7 +143,7 @@ JsVar *jswrap_eval(JsVar *v) {
   "generate" : "jswrap_parseInt",
   "params" : [
     ["string","JsVar",""],
-    ["radix","JsVar","The Radix of the string (optional)"]
+    ["radix","JsVar","[optional] The Radix of the string"]
   ],
   "return" : ["JsVar","The integer value of the string (or NaN)"]
 }

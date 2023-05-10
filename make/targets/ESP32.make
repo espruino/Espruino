@@ -2,8 +2,10 @@ ESP_ZIP     = $(PROJ_NAME).tgz
 
 COMPORT?=/dev/ttyUSB0
 
-$(PROJ_NAME).bin: $(OBJS)
+$(PROJ_NAME).elf: $(OBJS)
 	$(LD) $(LDFLAGS) -o $(PROJ_NAME).elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
+
+$(PROJ_NAME).bin: $(PROJ_NAME).elf
 	python $(ESP_IDF_PATH)/components/esptool_py/esptool/esptool.py \
 	--chip esp32 \
 	elf2image \
@@ -12,9 +14,12 @@ $(PROJ_NAME).bin: $(OBJS)
 	-o $(PROJ_NAME).bin \
 	$(PROJ_NAME).elf
 
+$(PROJ_NAME).lst : $(PROJ_NAME).elf
+	$(OBJDUMP) -d -l -x $(PROJ_NAME).elf > $(PROJ_NAME).lst
+
 $(ESP_ZIP): $(PROJ_NAME).bin
-	$(Q)rm -rf build/$(basename $(ESP_ZIP))
-	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
+	$(Q)rm -rf $(PROJ_NAME)
+	$(Q)mkdir -p $(PROJ_NAME)
 	$(Q)cp $(PROJ_NAME).bin $(BINDIR)/espruino_esp32.bin
 	@echo "** $(PROJ_NAME).bin uses $$( stat $(STAT_FLAGS) $(PROJ_NAME).bin) bytes of" $(ESP32_FLASH_MAX) "available"
 	@if [ $$( stat $(STAT_FLAGS) $(PROJ_NAME).bin) -gt $$(( $(ESP32_FLASH_MAX) )) ]; then echo "$(PROJ_NAME).bin is too big!"; false; fi
@@ -22,8 +27,8 @@ $(ESP_ZIP): $(PROJ_NAME).bin
 	  $(BINDIR)/espruino_esp32.bin \
 	  $(ESP_APP_TEMPLATE_PATH)/build/partitions_espruino.bin \
 	  targets/esp32/README_flash.txt \
-	  build/$(basename $(ESP_ZIP))
-	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
+	  $(PROJ_NAME)
+	$(Q)$(TAR) -zcf $(ESP_ZIP) $(PROJ_NAME) --transform='s/$(BINDIR)\///g'
 
 proj: $(PROJ_NAME).bin $(ESP_ZIP)
 

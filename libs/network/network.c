@@ -204,7 +204,7 @@ void networkCreate(JsNetwork *net, JsNetworkType type) {
 }
 
 bool networkWasCreated() {
-  JsVar *v = jsvObjectGetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, 0);
+  JsVar *v = jsvObjectGetChildIfExists(execInfo.hiddenRoot, NETWORK_VAR_NAME);
   if (v) {
     jsvUnLock(v);
     return true;
@@ -216,7 +216,7 @@ bool networkWasCreated() {
 bool networkGetFromVar(JsNetwork *net) {
   // Retrieve a reference to the JsVar that represents the network and save in the
   // JsNetwork C structure.
-  net->networkVar = jsvObjectGetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, 0);
+  net->networkVar = jsvObjectGetChildIfExists(execInfo.hiddenRoot, NETWORK_VAR_NAME);
 
   // Validate that we have a network variable.
   if (!net->networkVar) {
@@ -345,7 +345,7 @@ int ssl_entropy(void *data, unsigned char *output, size_t len ) {
 }
 
 void ssl_freeSocketData(int sckt) {
-  JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", 0);
+  JsVar *ssl = jsvObjectGetChildIfExists(execInfo.root, "ssl");
   if (!ssl) return;
   JsVar *scktVar = jsvNewFromInteger(sckt);
   JsVar *sslDataVar = jsvFindChildFromVar(ssl, scktVar, false);
@@ -435,7 +435,7 @@ JsVar *decode_certificate_var(JsVar *var) {
 }
 
 bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
-  JsVar *keyVar = jsvObjectGetChild(options, "key", 0);
+  JsVar *keyVar = jsvObjectGetChildIfExists(options, "key");
   if (!keyVar) {
     return true; // still ok - just no key
   }
@@ -460,7 +460,7 @@ bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
   return true;
 }
 bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
-  JsVar *certVar = jsvObjectGetChild(options, "cert", 0);
+  JsVar *certVar = jsvObjectGetChildIfExists(options, "cert");
   if (!certVar) {
     return true; // still ok - just no cert
   }
@@ -484,7 +484,7 @@ bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
   return true;
 }
 bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
-  JsVar *caVar = jsvObjectGetChild(options, "ca", 0);
+  JsVar *caVar = jsvObjectGetChildIfExists(options, "ca");
   if (!caVar) {
     return true; // still ok - just no ca
   }
@@ -628,7 +628,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
 
 SSLSocketData *ssl_getSocketData(int sckt) {
   // try and find the socket data variable
-  JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", 0);
+  JsVar *ssl = jsvObjectGetChildIfExists(execInfo.root, "ssl");
   if (!ssl) return 0;
   JsVar *sslData = jsvGetArrayItem(ssl, sckt);
   jsvUnLock(ssl);

@@ -126,7 +126,7 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
     }
 
     if (scktType != SOCK_DGRAM ||
-        jsvGetBoolAndUnLock(jsvObjectGetChild(options, "reuseAddr", 0))) {
+        jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "reuseAddr"))) {
       int optval = 1;
       if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
         jsWarn("setsockopt(SO_REUSADDR) failed\n");
@@ -153,7 +153,7 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
 
     // multicast support
     // FIXME: perhaps extend the JsNetwork with addmembership/removemembership instead of using options
-    JsVar *mgrpVar = jsvObjectGetChild(options, "multicastGroup", 0);
+    JsVar *mgrpVar = jsvObjectGetChildIfExists(options, "multicastGroup");
     if (mgrpVar) {
         char ipStr[18];
 
@@ -162,7 +162,7 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
         jsvUnLock(mgrpVar);
         net_esp32_gethostbyname(net, ipStr, &grpip);
 
-        JsVar *ipVar = jsvObjectGetChild(options, "multicastIp", 0);
+        JsVar *ipVar = jsvObjectGetChildIfExists(options, "multicastIp");
         jsvGetString(ipVar, ipStr, sizeof(ipStr));
         jsvUnLock(ipVar);
         uint32_t ip;

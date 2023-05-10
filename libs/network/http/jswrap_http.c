@@ -132,8 +132,9 @@ Return a string containing characters that have been received
   "generate" : "jswrap_pipe",
   "params" : [
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
-    ["options","JsVar",["An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
-  ]
+    ["options","JsVar",["[optional] An object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+  ],
+  "typescript": "pipe(dest: any, options?: PipeOptions): void"
 }
 Pipe this to a stream (an object with a 'write' method)
 */
@@ -291,8 +292,9 @@ Return a string containing characters that have been received
   "generate" : "jswrap_pipe",
   "params" : [
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
-    ["options","JsVar",["An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
-  ]
+    ["options","JsVar",["[optional] An object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+  ],
+  "typescript": "pipe(destination: any, options?: PipeOptions): void"
 }
 Pipe this to a stream (an object with a 'write' method)
 */
@@ -417,8 +419,7 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
 
   if (jsvIsObject(options)) {
     // if options is a string - it will be parsed, and GET will be set automatically
-    JsVar *method = jsvNewFromString("GET");
-    jsvUnLock2(jsvSetNamedChild(options, method, "method"), method);
+    jsvObjectSetChildAndUnLock(options, "method", jsvNewFromString("GET"));
   }
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsUndefined(skippedCallback) && !jsvIsFunction(skippedCallback)) {
