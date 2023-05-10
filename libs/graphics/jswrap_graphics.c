@@ -771,21 +771,23 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
   JsvStringIterator it;
   // First iterate and work out width and height
   jsvStringIteratorNew(&it,data,0);
+  char ch;
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetCharAndNext(&it);
+    ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
       if (x==0 && y==0 && !startCharacter) {
         startCharacter = 1; // ignore first character
       } else {
         x=0;
         y++;
+        if (y>height) height=y;
       }
     } else {
-      if (y>=height) height=y+1;
       x++;
       if (x>width) width=x;
     }
   }
+  if (height && ch=="\n") height--; // if the last char was a newline, ignore it
   jsvStringIteratorFree(&it);
   // Sorted - now create the object, set it up and create the buffer
   JsVar *img = jsvNewObject();
