@@ -774,7 +774,7 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetCharAndNext(&it);
     if (ch=='\n') {
-      if (x==0 && y==0) {
+      if (x==0 && y==0 && !startCharacter) {
         startCharacter = 1; // ignore first character
       } else {
         x=0;

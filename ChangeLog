@@ -32,6 +32,7 @@
             Fix debug assert when using instanceof if __proto__ was set to non-object (fix #2363)
             Fix debug assert when creating a function with code that isn't a string (fix #2364)
             Fix debug assert parsing {}=>{} when not executing (fix #2365)
+            Fix issue with Graphics.createImage if more than the first line was empty (fix #2296)
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
