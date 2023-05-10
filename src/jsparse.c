@@ -2646,7 +2646,8 @@ NO_INLINE JsVar *jspeStatementFor() {
           bool ignore = false;
           if (checkerFunction && checkerFunction(loopIndexVar)) {
             ignore = true;
-            if (jsvIsString(loopIndexVar) &&
+            if (!isForOf &&
+                jsvIsString(loopIndexVar) &&
                 jsvIsStringEqual(loopIndexVar, JSPARSE_INHERITS_VAR))
               foundPrototype = jsvSkipName(loopIndexVar);
           }
@@ -2688,6 +2689,7 @@ NO_INLINE JsVar *jspeStatementFor() {
           }
         }
         assert(!foundPrototype);
+        jsvUnLock(foundPrototype); // just in case...
         jsvIteratorFree(&it);
       } else if (!jsvIsUndefined(array)) {
         jsExceptionHere(JSET_ERROR, "FOR loop can only iterate over Arrays, Strings or Objects, not %t", array);
