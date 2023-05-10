@@ -1164,25 +1164,7 @@ void jswrap_ble_setScanResponse(JsVar *data) {
     jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, data);
 
 #ifdef NRF5X
-#if NRF_SD_BLE_API_VERSION<5
-    err_code = sd_ble_gap_adv_data_set(NULL, 0, (uint8_t *)respPtr, respLen);
-#else
-    extern uint8_t m_adv_handle;
-    // Get existing advertising data as on SDK15 we have to be able to re-supply this
-    // when changing the scan response
-    JsVar *advData = jswrap_ble_getCurrentAdvertisingData();
-    JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advData);
-
-    ble_gap_adv_data_t d;
-    d.adv_data.p_data = (uint8_t *)advPtr;
-    d.adv_data.len = advLen;
-    d.scan_rsp_data.p_data = (uint8_t *)respPtr;
-    d.scan_rsp_data.len = respLen;
-    if (bleStatus & BLE_IS_ADVERTISING) sd_ble_gap_adv_stop(m_adv_handle);
-    err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &d, NULL);
-    if (bleStatus & BLE_IS_ADVERTISING) sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
-    jsvUnLock(advData);
-#endif
+  err_code=jsble_advertising_update_scanresponse((uint8_t *)respPtr, respLen);
 #else
     err_code = 0xDEAD;
     jsiConsolePrintf("FIXME\n");

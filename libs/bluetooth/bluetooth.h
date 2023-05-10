@@ -227,6 +227,7 @@ void jsble_restart_softdevice(JsVar *jsFunction);
 
 uint32_t jsble_advertising_start();
 uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen);
+uint32_t jsble_advertising_update_scanresponse(char *dPtr, unsigned int dLen);
 void jsble_advertising_stop();
 
 /** Is BLE connected to any device at all? */
