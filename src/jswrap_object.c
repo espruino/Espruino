@@ -1080,10 +1080,13 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   }
   // If old was native or vice versa...
   if (jsvIsNativeFunction(oldFunc) != jsvIsNativeFunction(newFunc)) {
-    if (jsvIsNativeFunction(newFunc))
+    if (jsvIsNativeFunction(newFunc)) {
       oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_NATIVE_FUNCTION;
-    else
-      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_FUNCTION;
+      oldFunc->varData.native = newFunc->varData.native; // copy fn pointer
+    } else {
+      memset(&oldFunc->varData.native, 0, sizeof(oldFunc->varData.native)); // remove pointer info, zero it all out
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_FUNCTION;      
+    }
   }
   // If old fn started with 'return' or vice versa...
   if (jsvIsFunctionReturn(oldFunc) != jsvIsFunctionReturn(newFunc)) {

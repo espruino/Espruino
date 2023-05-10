@@ -26,6 +26,7 @@
             ESP32: BLUETOOTH UART IS ENABLED BY DEFAULT - disable with `NRF.setServices({},{uart:false})`
             Bangle.js: GPS event now works even if only GGA NMEA events are enabled (which you might do for speed)
             Add Serial.flush() to allow us to wait for transmission on a device to finish
+            Fix for var link corruption when replacing a native function with a normal one (fix #2361)
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
