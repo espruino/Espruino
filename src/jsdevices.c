@@ -284,12 +284,10 @@ IOEventFlags jshGetDeviceToTransmit() {
 }
 
 /**
- * Try and get a character for transmission.
+ * Try and get a character for transmission on a device.
  * \return The next byte to transmit or -1 if there is none.
  */
-int jshGetCharToTransmit(
-    IOEventFlags device // The device being looked at for a transmission.
-  ) {
+int jshGetCharToTransmit(IOEventFlags device) {
   if (DEVICE_HAS_DEVICE_STATE(device)) {
     volatile JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
     if ((*deviceState)&SDS_XOFF_PENDING) {
@@ -324,9 +322,29 @@ int jshGetCharToTransmit(
   return -1; // no data :(
 }
 
+/// Wait for all data in the transmit queue to be written
 void jshTransmitFlush() {
   jsiSetBusy(BUSY_TRANSMIT, true);
   while (jshHasTransmitData()) ; // wait for send to finish
+  jsiSetBusy(BUSY_TRANSMIT, false);
+}
+
+/// Wait for all data in the transmit queue to be written for a specific device
+void jshTransmitFlushDevice(IOEventFlags device) {
+  jsiSetBusy(BUSY_TRANSMIT, true);
+  bool deviceHasData = false;
+  do {
+    deviceHasData = false;    
+    // Check TX queue to see if there is any data to send
+    unsigned char tempTail = txTail;
+    while (txHead != tempTail) {
+      if (IOEVENTFLAGS_GETTYPE(txBuffer[tempTail].flags) == device) {
+        deviceHasData = true;
+        break;        
+      }
+      tempTail = (unsigned char)((tempTail+1)&TXBUFFERMASK);
+    }
+  } while (deviceHasData);
   jsiSetBusy(BUSY_TRANSMIT, false);
 }
 

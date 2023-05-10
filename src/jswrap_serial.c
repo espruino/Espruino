@@ -539,3 +539,19 @@ Return a string containing characters that have been received
 }
 Pipe this USART to a stream (an object with a 'write' method)
  */
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "Serial",
+  "name" : "flush",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_serial_flush"
+}
+Flush this serial stream (pause execution until all data has been sent)
+ */
+void jswrap_serial_flush(JsVar *parent) {
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (device == EV_NONE) return;
+  jshTransmitFlushDevice(device);
+}
