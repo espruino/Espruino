@@ -25,6 +25,8 @@
 #include "esp_heap_caps.h"
 #include "esp_ota_ops.h"
 
+#include "driver/rtc_io.h"
+
 #ifdef BLUETOOTH
 #include "BLE/esp32_bluetooth_utils.h"
 #endif
@@ -100,8 +102,14 @@ void jswrap_ESP32_deepSleep(int us) {
   ]
 }
 Put device in deepsleep state until interrupted by pin "pin".
+Eligible pin numbers are restricted to those [GPIOs designated
+as RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
 */
 void jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
+  if (!rtc_gpio_is_valid_gpio(pin)) {
+    jsExceptionHere(JSET_ERROR, "Invalid pin!");
+    return;
+  }
   esp_sleep_enable_ext0_wakeup(pin, level);
   esp_deep_sleep_start(); // This function does not return.
 } // End of jswrap_ESP32_deepSleep_ext0
