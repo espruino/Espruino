@@ -232,4 +232,7 @@ void graphicsIdle(); ///< called when idling
 #define GRAPHICS_COL_3_TO_16(x) ((((x)&4)?0xF800:0)|(((x)&2)?0x07E0:0)|(((x)&1)?0x001F:0))
 #define GRAPHICS_COL_RGB_TO_16(R,G,B) ((((R)&0xF8)<<8)|(((G)&0xFC)<<3)|(((B)&0xF8)>>3))
 
+void graphicsFallbackSetPixel(JsGraphics *gfx, int x, int y, unsigned int col); ///< Does nothing, used when not implemented
+unsigned int graphicsFallbackGetPixel(JsGraphics *gfx, int x, int y); ///< Does nothing, used when not implemented
+
 #endif // GRAPHICS_H

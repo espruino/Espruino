@@ -86,6 +86,7 @@ JsVar *jswrap_graphics_asURL(JsVar *parent);
 void jswrap_graphics_dump(JsVar *parent);
 JsVar *jswrap_graphics_quadraticBezier(JsVar *parent, JsVar * arr, JsVar *options);
 JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *transformation);
+JsVar *jswrap_graphics_floodFill(JsVar *parent, int x, int y, JsVar *col);
 JsVar *jswrap_graphics_theme();
 JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme);
 

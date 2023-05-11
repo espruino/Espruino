@@ -1917,7 +1917,7 @@ JsVar *jswrap_graphics_getFont(JsVar *parent) {
   }
   if (name) {
     int scale = gfx.data.fontSize & JSGRAPHICS_FONTSIZE_SCALE_MASK;
-    if (scale & JSGRAPHICS_FONTSIZE_SCALE_X_Y) 
+    if (scale & JSGRAPHICS_FONTSIZE_SCALE_X_Y)
       return jsvVarPrintf("%s:%dx%d",name, scale&JSGRAPHICS_FONTSIZE_SCALE_X_MASK, (scale & JSGRAPHICS_FONTSIZE_SCALE_Y_MASK)>>JSGRAPHICS_FONTSIZE_SCALE_Y_SHIFT);
     else if (scale>1) return jsvVarPrintf("%s:%d",name, scale);
     else return jsvNewFromString(name);
@@ -3591,7 +3591,7 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   else if (bpp>4 && bpp<8) bpp=8;
   bool hasPalette = bpp<=8;
   int rowstride = (((width*bpp)+31) >> 5) << 2; // padded to 32 bits
-  // palette length (byte size is 3x this) 
+  // palette length (byte size is 3x this)
   int paletteEntries = hasPalette?(1<<bpp):0;
   int headerLen = 14 + 12 + paletteEntries*3;
   int l = headerLen + height*rowstride;
@@ -3892,6 +3892,78 @@ JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *tra
   jsvIteratorFree(&it);
 
   return result;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "floodFill",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
+  "generate" : "jswrap_graphics_floodFill",
+  "params" : [
+    ["x","int","X coordinate to start from"],
+    ["y","int","Y coordinate to start from"],
+    ["col","JsVar","The color to fill with (if undefined, foreground is used)"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Flood fills the given Graphics instance out from a particular point.
+
+**Note:** This only works on Graphics instances that support readback with `getPixel`
+*/
+static bool _jswrap_graphics_floodFill_inside(JsGraphics *gfx, int x, int y, unsigned int col) {
+  if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return false;
+  return graphicsGetPixel(gfx, x, y)==col;
+}
+
+JsVar *jswrap_graphics_floodFill(JsVar *parent, int x, int y, JsVar *col) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  if (gfx.getPixel == graphicsFallbackGetPixel) {
+    jsExceptionHere(JSET_ERROR, "Can't use floodFill on Graphics with no getPixel");
+    return 0;
+  }
+  unsigned int fillCol = gfx.data.fgColor;
+  if (col) fillCol = jswrap_graphics_toColor(parent, col, NULL, NULL);
+  // https://en.wikipedia.org/wiki/Flood_fill#Span_filling
+  unsigned int currentCol = graphicsGetPixel(&gfx, x, y);
+  const int QUEUE_LEN = 64;
+  short s[QUEUE_LEN];
+  int si = 0; // index in queue
+  #define S_ADD(x,y) if (si<QUEUE_LEN) {s[si++]=(short)x;s[si++]=(short)y;} else {jsiConsolePrintf("fill overflow\n");return 0;}
+  S_ADD(x, y);
+  while (si) {
+    // get new area to work from...
+    short y = s[--si], x = s[--si], lx=x;
+    // scan left
+    while (_jswrap_graphics_floodFill_inside(&gfx, lx-1, y, currentCol))
+      graphicsSetPixel(&gfx, --lx, y, fillCol);
+    // scan right
+    while (_jswrap_graphics_floodFill_inside(&gfx, x, y, currentCol))
+      graphicsSetPixel(&gfx, x++, y, fillCol);
+    // scan down and add
+    bool span_added = false;
+    for (short ix=lx;ix<x;ix++) {
+      if (!_jswrap_graphics_floodFill_inside(&gfx, ix, y+1, currentCol))
+        span_added = false;
+      else if (!span_added) {
+        S_ADD(ix, y+1);
+        span_added = true;
+      }
+    }
+    // scan up and add
+    span_added = false;
+    for (short ix=lx;ix<x;ix++) {
+      if (!_jswrap_graphics_floodFill_inside(&gfx, ix, y-1, currentCol))
+        span_added = false;
+      else if (!span_added) {
+        S_ADD(ix, y-1);
+        span_added = true;
+      }
+    }
+  }
+  #undef S_ADD
+  return jsvLockAgain(parent);
 }
 
 /*TYPESCRIPT
