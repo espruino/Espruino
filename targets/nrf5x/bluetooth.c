@@ -2468,6 +2468,53 @@ static uint8_t m_adv_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
 static uint8_t m_scan_rsp_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX]; // 31
 #endif
 
+uint32_t jsble_advertising_update(uint8_t *advPtr, unsigned int advLen, uint8_t *rspPtr, unsigned int rspLen, ble_gap_adv_params_t *adv_params) {
+#if NRF_SD_BLE_API_VERSION>5
+  if (bleStatus & BLE_IS_ADVERTISING){
+    // first we need to switch away from our static live advertising data buffers
+    // otherwise we would get NRF_ERROR_INVALID_STATE from sd_ble_gap_adv_set_configure
+    ble_gap_adv_data_t tmp;
+    uint8_t tmp_adv_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
+    uint8_t tmp_scan_rsp_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
+
+    tmp.adv_data.len = m_ble_gap_adv_data.adv_data.len;
+    if (tmp.adv_data.len){
+      memcpy(tmp_adv_data, m_adv_data, tmp.adv_data.len);
+      tmp.adv_data.p_data = tmp_adv_data;
+    } else tmp.adv_data.p_data = NULL;
+
+    tmp.scan_rsp_data.len = m_ble_gap_adv_data.scan_rsp_data.len;
+    if (tmp.scan_rsp_data.len){
+      memcpy(tmp_scan_rsp_data, m_scan_rsp_data, tmp.scan_rsp_data.len);
+      tmp.scan_rsp_data.p_data = tmp_scan_rsp_data;
+    } else tmp.scan_rsp_data.p_data = NULL;
+
+    sd_ble_gap_adv_set_configure(&m_adv_handle, &tmp, NULL);
+  }
+
+  // now we can modify data and switch back to it
+  if (advPtr){
+    if (advLen){
+      advLen=MIN(advLen,BLE_GAP_ADV_SET_DATA_SIZE_MAX);
+      memcpy(m_adv_data, advPtr, advLen);
+    }
+    m_ble_gap_adv_data.adv_data.p_data = m_adv_data;
+    m_ble_gap_adv_data.adv_data.len = advLen;
+  }
+  if (rspPtr){
+    if (rspLen){
+      rspLen=MIN(rspLen,BLE_GAP_ADV_SET_DATA_SIZE_MAX);
+      memcpy(m_scan_rsp_data, rspPtr, rspLen);
+    }
+    m_ble_gap_adv_data.scan_rsp_data.p_data = m_scan_rsp_data;
+    m_ble_gap_adv_data.scan_rsp_data.len = rspLen;
+  }
+  return sd_ble_gap_adv_set_configure(&m_adv_handle, &m_ble_gap_adv_data, adv_params);
+#else
+  return sd_ble_gap_adv_data_set((uint8_t *)advPtr, advLen, (uint8_t *)rspPtr, rspLen);
+#endif
+}
+
 uint32_t jsble_advertising_start() {
   // try not to call from IRQ as we might want to allocate JsVars
   if (bleStatus & BLE_IS_ADVERTISING) return 0;
@@ -2577,38 +2624,27 @@ uint32_t jsble_advertising_start() {
     return err_code;
   }
 
-
   //jsiConsolePrintf("adv_data_set %d %d\n", advPtr, advLen);
 #if NRF_SD_BLE_API_VERSION>5
-  advLen=MIN(advLen,BLE_GAP_ADV_SET_DATA_SIZE_MAX);
   memset(&m_ble_gap_adv_data, 0, sizeof(m_ble_gap_adv_data));
-  memcpy(m_adv_data, advPtr, advLen);
-  m_ble_gap_adv_data.adv_data.p_data = m_adv_data;
-  m_ble_gap_adv_data.adv_data.len = advLen;
-  if (!non_scannable) {
-    memcpy(m_scan_rsp_data, m_enc_scan_response_data, m_enc_scan_response_data_len);
-    m_ble_gap_adv_data.scan_rsp_data.p_data = m_scan_rsp_data;
-    m_ble_gap_adv_data.scan_rsp_data.len = m_enc_scan_response_data_len;
-  }
-
-  err_code = sd_ble_gap_adv_set_configure(&m_adv_handle, &m_ble_gap_adv_data, &adv_params);
+#endif
+  err_code = jsble_advertising_update(
+    (uint8_t*)advPtr, advLen,
+    non_scannable ? NULL : m_enc_scan_response_data, non_scannable ? 0 : m_enc_scan_response_data_len,
+    &adv_params
+  );
   jsble_check_error(err_code);
+#if NRF_SD_BLE_API_VERSION>5
   if (!err_code) {
     jsble_check_error(sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_ADV, m_adv_handle, m_tx_power));
     err_code = sd_ble_gap_adv_start(m_adv_handle, APP_BLE_CONN_CFG_TAG);
     jsble_check_error(err_code);
   }
 #elif NRF_SD_BLE_API_VERSION<5
-  err_code = sd_ble_gap_adv_data_set(
-      (uint8_t *)advPtr, advLen,
-      m_enc_scan_response_data, m_enc_scan_response_data_len);
   if (!err_code)
     err_code = sd_ble_gap_adv_start(&adv_params);
 #else
   // do we care about SDK14?
-  err_code = sd_ble_gap_adv_data_set(
-      (uint8_t *)advPtr, advLen,
-      m_enc_scan_response_data, m_enc_scan_response_data_len);
   if (!err_code)
     err_code = sd_ble_gap_adv_start(&adv_params, APP_BLE_CONN_CFG_TAG);
 #endif
@@ -2618,50 +2654,11 @@ uint32_t jsble_advertising_start() {
   return err_code;
 }
 
-uint32_t jsble_advertising_update(char *advPtr, unsigned int advLen,char *rspPtr, unsigned int rspLen) {
-#if NRF_SD_BLE_API_VERSION>5
-  // first we need to switch away from our static live advertising data buffers
-  // otherwise we would get NRF_ERROR_INVALID_STATE from sd_ble_gap_adv_set_configure
-  ble_gap_adv_data_t tmp;
-  uint8_t tmp_adv_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
-  uint8_t tmp_scan_rsp_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
-
-  tmp.adv_data.len = m_ble_gap_adv_data.adv_data.len;
-  if (tmp.adv_data.len){
-    memcpy(tmp_adv_data, m_adv_data, tmp.adv_data.len);
-    tmp.adv_data.p_data = tmp_adv_data;
-  } else tmp.adv_data.p_data = NULL;
-
-  tmp.scan_rsp_data.len = m_ble_gap_adv_data.scan_rsp_data.len;
-  if (tmp.scan_rsp_data.len){
-    memcpy(tmp_scan_rsp_data, m_scan_rsp_data, tmp.scan_rsp_data.len);
-    tmp.scan_rsp_data.p_data = tmp_scan_rsp_data;
-  } else tmp.scan_rsp_data.p_data = NULL;
-
-  sd_ble_gap_adv_set_configure(&m_adv_handle, &tmp, NULL);
-
-  // now we can modify data and switch back to it
-  if (advLen){
-    advLen=MIN(advLen,BLE_GAP_ADV_SET_DATA_SIZE_MAX);
-    memcpy(m_adv_data,advPtr,advLen);
-    m_ble_gap_adv_data.adv_data.len = advLen;
-  }
-  if (rspLen){
-    rspLen=MIN(rspLen,BLE_GAP_ADV_SET_DATA_SIZE_MAX);
-    memcpy(m_scan_rsp_data, rspPtr, rspLen);
-    m_ble_gap_adv_data.scan_rsp_data.len = rspLen;
-  }
-  return sd_ble_gap_adv_set_configure(&m_adv_handle, &m_ble_gap_adv_data, NULL);
-#else
-  return sd_ble_gap_adv_data_set((uint8_t *)advPtr, advLen, (uint8_t *)rspPtr, rspLen);
-#endif
-}
-
 uint32_t jsble_advertising_update_advdata(char *dPtr, unsigned int dLen) {
-  return jsble_advertising_update(dPtr,dLen,NULL,0);
+  return jsble_advertising_update((uint8_t *)dPtr, dLen, NULL, 0, NULL);
 }
 uint32_t jsble_advertising_update_scanresponse(char *dPtr, unsigned int dLen) {
-  return jsble_advertising_update(NULL,0,dPtr,dLen);
+  return jsble_advertising_update(NULL, 0, (uint8_t*)dPtr, dLen, NULL);
 }
 
 void jsble_advertising_stop() {
