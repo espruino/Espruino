@@ -764,6 +764,8 @@ bool faceUpSent;
 volatile bool wasCharging;
 /// time since a button/touchscreen/etc was last pressed
 volatile uint16_t inactivityTimer; // in ms
+/// time since the Bangle's charge state was changed
+volatile uint16_t chargeTimer; // in ms
 /// How long has BTN1 been held down for (or TIMER_MAX is a reset has already happened)
 volatile uint16_t homeBtnTimer; // in ms
 /// How long has BTN1 been held down and watch hasn't reset (used to queue an interrupt)
@@ -790,6 +792,8 @@ bool lcdFadeHandlerActive;
 #ifdef MAG_I2C
 // compass data
 Vector3 mag, magmin, magmax;
+bool magOnWhenCharging;
+#define MAG_CHARGE_TIMEOUT 3000 // time after charging when magnetometer value gets automatically reset
 #endif
 /// accelerometer data. 8192 = 1G
 Vector3 acc;
@@ -1175,17 +1179,30 @@ void peripheralPollHandler() {
 
 
   // check charge status
+  if (chargeTimer < TIMER_MAX)
+    chargeTimer += pollInterval;
   bool isCharging = jswrap_banglejs_isCharging();
   if (isCharging != wasCharging) {
     wasCharging = isCharging;
     bangleTasks |= JSBT_CHARGE_EVENT;
+    chargeTimer = 0;
     jshHadEvent();
   }
   if (i2cBusy) return;
   i2cBusy = true;
   unsigned char buf[7];
+#ifdef MAG_I2C
   // check the magnetometer if we had it on
   if (bangleFlags & JSBF_COMPASS_ON) {
+    // handle automatic compass reset if the magnetic charge cable might
+    // have messed it up https://github.com/espruino/BangleApps/issues/2648
+    if (isCharging) // when charging set flag (no need to reset if not on when charging)
+      magOnWhenCharging = true;
+    else if (magOnWhenCharging && chargeTimer>MAG_CHARGE_TIMEOUT) {
+      jswrap_banglejs_resetCompass(); // after some time of not charging, reset if needed
+      magOnWhenCharging = false;
+    }
+
     bool newReading = false;
 #ifdef MAG_DEVICE_GMC303
     buf[0]=0x10;
@@ -1227,6 +1244,7 @@ void peripheralPollHandler() {
       jshHadEvent();
     }
   }
+#endif // MAG_I2C
 #ifdef ACCEL_I2C
 #ifdef ACCEL_DEVICE_KX023
   // poll KX023 accelerometer (no other way as IRQ line seems disconnected!)
