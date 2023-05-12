@@ -118,6 +118,63 @@ void jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
   "type"     : "staticmethod",
   "class"    : "ESP32",
   "ifdef" : "ESP32",
+  "name"     : "deepSleepExt1",
+  "generate" : "jswrap_ESP32_deepSleep_ext1",
+  "params"   : [
+    ["pinVar", "JsVar", "Array of Pins to trigger wakeup"],
+    ["mode", "int", "Trigger mode"]
+  ]
+}
+Put device in deepsleep state until interrupted by pins in the "pinVar" array.
+The trigger "mode" determines the pin state which will wake up the device.
+Valid modes are:
+
+* `0: ESP_EXT1_WAKEUP_ALL_LOW` - all nominated pins must be set LOW to trigger wakeup
+* `1: ESP_EXT1_WAKEUP_ANY_HIGH` - any of nominated pins set HIGH will trigger wakeup
+
+Eligible pin numbers are restricted to those [GPIOs designated
+as RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html#gpio-summary).
+*/
+void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
+  uint64_t pinSum = 0;
+  if (jsvIsArray(pinVar)) {
+    JsvIterator it;
+    jsvIteratorNew(&it, pinVar, JSIF_DEFINED_ARRAY_ElEMENTS);
+    while (jsvIteratorHasElement(&it)) {
+      Pin pin = jshGetPinFromVarAndUnLock(jsvIteratorGetValue(&it));
+      if (!rtc_gpio_is_valid_gpio(pin)) {
+        jsExceptionHere(JSET_ERROR, "Invalid pin (%d)!", pin);
+        return;
+      }
+      pinSum += 1<<pin;
+
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+  } else {
+    // We really expected an array of pins but
+    // handle case of a single pin anyway
+    Pin pin = jshGetPinFromVar(pinVar);
+    if (!rtc_gpio_is_valid_gpio(pin)) {
+      jsExceptionHere(JSET_ERROR, "Invalid pin (%d)!", pin);
+      return;
+    }
+    pinSum = 1<<pin;
+  }
+
+  if ((mode < 0) || (mode > 1)) {
+    jsExceptionHere(JSET_ERROR, "Invalid mode (%d)!", mode);
+    return;
+  }
+
+  esp_sleep_enable_ext1_wakeup(pinSum, mode);
+  esp_deep_sleep_start(); // This function does not return.
+} // End of jswrap_ESP32_deepSleep_ext1
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP32",
+  "ifdef" : "ESP32",
   "name"     : "getWakeupCause",
   "generate" : "jswrap_ESP32_getWakeupCause",
   "return"   : ["int", "The cause of the ESP32's wakeup from sleep"]
