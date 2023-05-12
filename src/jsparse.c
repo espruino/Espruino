@@ -352,7 +352,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
         // save start position so if we fail we go back to a normal function parse
         JsVar *funcCodeVar = jsjParseFunction();
         if (jsvIsFlatString(funcCodeVar)) { // compilation could have failed!
-          jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_JIT_CODE_NAME), funcCodeVar);
+          jsvAddNamedChildAndUnLock(funcVar, funcCodeVar, JSPARSE_FUNCTION_JIT_CODE_NAME);
           JSP_MATCH('}');
           jslCharPosFree(&funcCodeStart);
           return true;
@@ -431,18 +431,18 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
         funcCodeVar = jslNewStringFromLexer(&funcBegin, (size_t)lastTokenEnd);
       }
     }
-    jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME), funcCodeVar);
+    jsvAddNamedChildAndUnLock(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME);
     // scope var
     JsVar *funcScopeVar = jspeiGetScopesAsVar();
     if (funcScopeVar) {
-      jsvUnLock2(jsvAddNamedChild(funcVar, funcScopeVar, JSPARSE_FUNCTION_SCOPE_NAME), funcScopeVar);
+      jsvAddNamedChildAndUnLock(funcVar, funcScopeVar, JSPARSE_FUNCTION_SCOPE_NAME);
     }
 #ifndef ESPR_NO_LINE_NUMBERS
     // If we've got a line number, add a var for it
     if (lineNumber) {
       JsVar *funcLineNumber = jsvNewFromInteger(lineNumber);
       if (funcLineNumber) {
-        jsvUnLock2(jsvAddNamedChild(funcVar, funcLineNumber, JSPARSE_FUNCTION_LINENUMBER_NAME), funcLineNumber);
+        jsvAddNamedChildAndUnLock(funcVar, funcLineNumber, JSPARSE_FUNCTION_LINENUMBER_NAME);
       }
     }
 #endif
@@ -1175,8 +1175,7 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   // Make sure the function has a 'prototype' var
   JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
   jspEnsureIsPrototype(func, prototypeName); // make sure it's an object
-  JsVar *prototypeVar = jsvSkipName(prototypeName);
-  jsvUnLock3(jsvAddNamedChild(thisObj, prototypeVar, JSPARSE_INHERITS_VAR), prototypeVar, prototypeName);
+  jsvAddNamedChildAndUnLock(thisObj, jsvSkipNameAndUnLock(prototypeName), JSPARSE_INHERITS_VAR);
 
   JsVar *a = jspeFunctionCall(func, funcName, thisObj, hasArgs, 0, 0);
 
@@ -1665,7 +1664,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
     classFunction = jsvNewWithFlags(JSV_FUNCTION);
     JsVar *scopeVar = jspeiGetScopesAsVar();
     if (scopeVar)
-      jsvUnLock2(jsvAddNamedChild(classFunction, scopeVar, JSPARSE_FUNCTION_SCOPE_NAME), scopeVar);
+      jsvAddNamedChildAndUnLock(classFunction, scopeVar, JSPARSE_FUNCTION_SCOPE_NAME);
   }
 
   if (parseNamedClass && lex->tk==LEX_ID) {
@@ -3092,8 +3091,7 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
   }
 #endif
   // add __proto__
-  JsVar *prototypeVar = jsvSkipName(prototypeName);
-  jsvUnLock3(jsvAddNamedChild(obj, prototypeVar, JSPARSE_INHERITS_VAR), prototypeVar, prototypeName);prototypeName=0;
+  jsvAddNamedChildAndUnLock(obj, jsvSkipNameAndUnLock(prototypeName), JSPARSE_INHERITS_VAR);
 
   if (name) {
     JsVar *objName = jsvFindChildFromString(execInfo.root, name, true);

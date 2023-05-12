@@ -1649,19 +1649,15 @@ void jsiHandleChar(char ch) {
 /// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
 void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount) { // an array of functions, a string, or a single function
   assert(argCount<10);
-
   JsVar *event = jsvNewObject();
   if (event) { // Could be out of memory error!
     jsvUnLock(jsvAddNamedChild(event, callback, "func"));
-
     if (argCount) {
       JsVar *arr = jsvNewArray(args, argCount);
-      if (arr) {
-        jsvUnLock2(jsvAddNamedChild(event, arr, "args"), arr);
-      }
+      if (arr)
+        jsvAddNamedChildAndUnLock(event, arr, "args");
     }
     if (object) jsvUnLock(jsvAddNamedChild(event, object, "this"));
-
     jsvArrayPushAndUnLock(events, event);
   }
 }

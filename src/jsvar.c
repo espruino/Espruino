@@ -165,8 +165,8 @@ bool jsvIsRefUsedForData(const JsVar *v) {
 }
 
 /// Can the given variable be converted into an integer without loss of precision
-bool jsvIsIntegerish(const JsVar *v) {  
-  //return jsvIsInt(v) || jsvIsPin(v) || jsvIsBoolean(v) || jsvIsNull(v); 
+bool jsvIsIntegerish(const JsVar *v) {
+  //return jsvIsInt(v) || jsvIsPin(v) || jsvIsBoolean(v) || jsvIsNull(v);
   if (!v) return false;
   char f = v->flags&JSV_VARTYPEMASK;
   return JSV_IS_INT(f) || JSV_IS_PIN(f) || JSV_IS_BOOL(f) || JSV_IS_NULL(f);
@@ -492,7 +492,7 @@ size_t jsvGetCharactersInVar(const JsVar *v) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
   if (f == JSV_FLAT_STRING)
     return (size_t)v->varData.integer;
-  if (false 
+  if (false
   || (f == JSV_NATIVE_STRING)
 #ifdef SPIFLASH_BASE
   || (f == JSV_FLASH_STRING)
@@ -2757,6 +2757,10 @@ JsVar *jsvAddNamedChild(JsVar *parent, JsVar *value, const char *name) {
   if (value) jsvSetFirstChild(namedChild, jsvGetRef(jsvRef(value)));
   jsvAddName(parent, namedChild);
   return namedChild;
+}
+
+void jsvAddNamedChildAndUnLock(JsVar *parent, JsVar *value, const char *name) {
+  jsvUnLock2(jsvAddNamedChild(parent, value, name), value);
 }
 
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {

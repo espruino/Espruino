@@ -296,7 +296,7 @@ void lcdScroll_ArrayBuffer_flat8(JsGraphics *gfx, int xdir, int ydir, int x1, in
 void lcdInit_ArrayBuffer(JsGraphics *gfx) {
   // create buffer
   JsVar *buf = jswrap_arraybuffer_constructor((int)graphicsGetMemoryRequired(gfx));
-  jsvUnLock2(jsvAddNamedChild(gfx->graphicsVar, buf, "buffer"), buf);
+  jsvAddNamedChildAndUnLock(gfx->graphicsVar, buf, "buffer");
 }
 
 void lcdSetCallbacks_ArrayBuffer(JsGraphics *gfx) {
