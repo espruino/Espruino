@@ -615,18 +615,18 @@ If `isAuto` is false, you must call `E.kickWatchdog()` yourself every so often
 or the chip will reset.
 
 ```
-E.enableWatchdog(0.5); // automatic mode                                                        
+E.enableWatchdog(0.5); // automatic mode
 while(1); // Espruino will reboot because it has not been idle for 0.5 sec
 ```
 
 ```
-E.enableWatchdog(1, false);                                                         
+E.enableWatchdog(1, false);
 setInterval(function() {
   if (everything_ok)
     E.kickWatchdog();
 }, 500);
 // Espruino will now reset if everything_ok is false,
-// or if the interval fails to be called 
+// or if the interval fails to be called
 ```
 
 **NOTE:** This is only implemented on STM32, nRF5x and ESP32 devices (all official
@@ -2298,3 +2298,32 @@ JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn) {
   return dst;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "stopEventPropagation",
+  "generate" : "jswrap_espruino_stopEventPropagation"
+}
+When using events with `X.on('foo', function() { ... })`
+and then `X.emit('foo')` you might want to stop subsequent
+event handlers from being executed.
+
+Calling this function doing the execution of events will
+ensure that no subsequent event handlers are executed.
+
+```
+var X = {}; // in Espruino all objects are EventEmitters
+X.on('foo', function() { print("A"); })
+X.on('foo', function() { print("B"); E.stopEventPropagation(); })
+X.on('foo', function() { print("C"); })
+X.emit('foo');
+// prints A,B but not C
+```
+ */
+void jswrap_espruino_stopEventPropagation() {
+  if (jsiStatus & JSIS_EVENTEMITTER_PROCESSING) {
+    jsiStatus |= JSIS_EVENTEMITTER_STOP;
+  } else {
+    jsExceptionHere(JSET_ERROR, "E.stopEventPropagation() called when not handling events");
+  }
+}

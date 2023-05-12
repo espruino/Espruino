@@ -81,7 +81,6 @@ uint16_t inputStateNumber; ///< Number from when `Esc [ 1234` is sent - for stor
 uint16_t jsiLineNumberOffset; ///< When we execute code, this is the 'offset' we apply to line numbers in error/debug
 bool hasUsedHistory = false; ///< Used to speed up - if we were cycling through history and then edit, we need to copy the string
 unsigned char loopsIdling = 0; ///< How many times around the loop have we been entirely idle?
-bool interruptedDuringEvent; ///< Were we interrupted while executing an event? If so may want to clear timers
 JsErrorFlags lastJsErrorFlags = 0; ///< Compare with jsErrorFlags in order to report errors
 // ----------------------------------------------------------------------------
 
@@ -784,8 +783,6 @@ void jsiSoftKill() {
 void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
   // Set up execInfo.root/etc
   jspInit();
-  // Set state
-  interruptedDuringEvent = false;
   // Set defaults
   jsiStatus &= JSIS_SOFTINIT_MASK;
 #ifndef SAVE_ON_FLASH
@@ -1179,9 +1176,9 @@ bool jsiAtEndOfInputLine() {
 }
 
 void jsiCheckErrors() {
-  if (interruptedDuringEvent) {
+  if (jsiStatus & JSIS_EVENTEMITTER_INTERRUPTED) {
     jspSetInterrupted(false);
-    interruptedDuringEvent = false;
+    jsiStatus &= ~JSIS_EVENTEMITTER_INTERRUPTED;
     jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted during event processing.\n");
   }
@@ -1683,13 +1680,6 @@ void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **ar
   jsvUnLock(callback);
 }
 
-void jsiExecuteObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount) {
-  JsVar *callback = jsvObjectGetChildIfExists(object, callbackName);
-  if (!callback) return;
-  jsiExecuteEventCallback(object, callback, (unsigned int)argCount, args);
-  jsvUnLock(callback);
-}
-
 void jsiExecuteEvents() {
   bool hasEvents = !jsvArrayIsEmpty(events);
   if (hasEvents) jsiSetBusy(BUSY_INTERACTIVE, true);
@@ -1710,7 +1700,7 @@ void jsiExecuteEvents() {
   if (hasEvents) {
     jsiSetBusy(BUSY_INTERACTIVE, false);
     if (jspIsInterrupted())
-      interruptedDuringEvent = true;
+      jsiStatus |= JSIS_EVENTEMITTER_INTERRUPTED;
   }
 }
 
@@ -1733,34 +1723,34 @@ NO_INLINE bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackV
 
 NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr) { // array of functions or single function
   JsVar *callbackNoNames = jsvSkipName(callbackVar);
+  if (!callbackNoNames) return false;
 
   bool ok = true;
-  if (callbackNoNames) {
-    if (jsvIsArray(callbackNoNames)) {
-      JsvObjectIterator it;
-      jsvObjectIteratorNew(&it, callbackNoNames);
-      while (ok && jsvObjectIteratorHasValue(&it)) {
-        JsVar *child = jsvObjectIteratorGetValue(&it);
-        ok &= jsiExecuteEventCallback(thisVar, child, argCount, argPtr);
-        jsvUnLock(child);
-        jsvObjectIteratorNext(&it);
-      }
-      jsvObjectIteratorFree(&it);
-    } else if (jsvIsFunction(callbackNoNames)) {
-      jsvUnLock(jspExecuteFunction(callbackNoNames, thisVar, (int)argCount, argPtr));
-    } else if (jsvIsString(callbackNoNames)) {
-      jsvUnLock(jspEvaluateVar(callbackNoNames, 0, 0));
-    } else
-      jsError("Unknown type of callback in Event Queue");
-    jsvUnLock(callbackNoNames);
-  }
+  jsiStatus |= JSIS_EVENTEMITTER_PROCESSING;
+  if (jsvIsArray(callbackNoNames)) {
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, callbackNoNames);
+    while (ok && jsvObjectIteratorHasValue(&it) && !(jsiStatus & JSIS_EVENTEMITTER_STOP)) {
+      JsVar *child = jsvObjectIteratorGetValue(&it);
+      ok &= jsiExecuteEventCallback(thisVar, child, argCount, argPtr);
+      jsvUnLock(child);
+      jsvObjectIteratorNext(&it);
+    }
+    jsvObjectIteratorFree(&it);
+  } else if (jsvIsFunction(callbackNoNames)) {
+    jsvUnLock(jspExecuteFunction(callbackNoNames, thisVar, (int)argCount, argPtr));
+  } else if (jsvIsString(callbackNoNames)) {
+    jsvUnLock(jspEvaluateVar(callbackNoNames, 0, 0));
+  } else
+    jsError("Unknown type of callback in Event Queue");
+  jsvUnLock(callbackNoNames);
+  jsiStatus &= ~JSIS_EVENTEMITTER_PROCESSING;
   if (!ok || jspIsInterrupted()) {
-    interruptedDuringEvent = true;
+    jsiStatus |= JSIS_EVENTEMITTER_INTERRUPTED;
     return false;
   }
   return true;
 }
-
 
 // Execute the named Event callback on object, and return true if it exists
 bool jsiExecuteEventCallbackName(JsVar *obj, const char *cbName, unsigned int argCount, JsVar **argPtr) {
@@ -1783,7 +1773,6 @@ bool jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsig
   jsvUnLock(obj);
   return executed;
 }
-
 
 /// Create a timeout in JS to execute the given native function (outside of an IRQ). Returns the index
 JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds) {
@@ -1925,9 +1914,9 @@ void jsiIdle() {
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(event.flags))));
       if (jsvIsObject(usartClass)) {
         if (event.flags & EV_SERIAL_STATUS_FRAMING_ERR)
-          jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"framing", 0, 0);
+          jsiExecuteEventCallbackName(usartClass, JS_EVENT_PREFIX"framing", 0, 0);
         if (event.flags & EV_SERIAL_STATUS_PARITY_ERR)
-          jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
+          jsiExecuteEventCallbackName(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
       }
       jsvUnLock(usartClass);
 #endif
@@ -1946,7 +1935,7 @@ void jsiIdle() {
         if (obj) {
           jsvObjectSetChildAndUnLock(obj, "addr", jsvNewFromInteger(addr&0x7F));
           jsvObjectSetChildAndUnLock(obj, "length", jsvNewFromInteger(len));
-          jsiExecuteObjectCallbacks(i2cClass, (addr&0x80) ? JS_EVENT_PREFIX"read" : JS_EVENT_PREFIX"write", &obj, 1);
+          jsiExecuteEventCallbackName(i2cClass, (addr&0x80) ? JS_EVENT_PREFIX"read" : JS_EVENT_PREFIX"write", 1, &obj);
           jsvUnLock(obj);
         }
       }
@@ -2236,7 +2225,7 @@ void jsiIdle() {
     unsigned int oldJsVarsSize = jsvGetMemoryTotal(); // we must remember the old memory size - mainly for ESP32 where it can change at boot time
     JsiStatus s = jsiStatus;
     if ((s&JSIS_TODO_RESET) == JSIS_TODO_RESET) {
-      // shut down everything and start up again      
+      // shut down everything and start up again
       jsiKill();
       jsvKill();
       jshReset();
@@ -2493,7 +2482,7 @@ void jsiDebuggerLoop() {
   //   in debugger already
   //   echo is off for line (probably uploading)
   if (jsiStatus & (JSIS_IN_DEBUGGER|JSIS_ECHO_OFF_FOR_LINE)) return;
-       
+
   execInfo.execute &= (JsExecFlags)~(
       EXEC_CTRL_C_MASK |
       EXEC_DEBUGGER_NEXT_LINE |

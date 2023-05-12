@@ -53,8 +53,6 @@ void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount);
 bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);
 /// Queue up callbacks for other things (touchscreen? network?)
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount);
-/// Execute callbacks straight away (like jsiQueueObjectCallbacks, but without queueing)
-void jsiExecuteObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount);
 /// Execute the given function/string/array of functions and return true on success, false on failure (break during execution)
 bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr);
 /// Same as above, but with a JsVarArray (this calls jsiExecuteEventCallback, so use jsiExecuteEventCallback where possible)
@@ -161,6 +159,10 @@ typedef enum {
   JSIS_PASSWORD_PROTECTED = 1<<10, ///< Password protected
   JSIS_COMPLETELY_RESET   = 1<<11, ///< Has the board powered on *having not loaded anything from flash*
   JSIS_FIRST_BOOT         = 1<<12, ///< Is this the first time we started, or has load/reset/etc been called?
+
+  JSIS_EVENTEMITTER_PROCESSING = 1<<13, ///< Are we currently executing events with jsiExecuteEvent*
+  JSIS_EVENTEMITTER_STOP = 1<<14,       ///< Has E.stopEventPropagation() been called during event processing?
+  JSIS_EVENTEMITTER_INTERRUPTED = 1<<15,///< Has there been an error during jsiExecuteEvent* execution?
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE,
   JSIS_SOFTINIT_MASK = JSIS_PASSWORD_PROTECTED|JSIS_WATCHDOG_AUTO|JSIS_TODO_MASK|JSIS_FIRST_BOOT|JSIS_COMPLETELY_RESET // stuff that DOESN'T get reset on softinit

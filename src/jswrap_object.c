@@ -830,6 +830,10 @@ o.removeAllListeners('answer')
 o.emit('answer', 44);
 // nothing printed
 ```
+
+If you have more than one handler for an event, and you'd
+like that handler to stop the event being passed to other handlers
+then you can call `E.stopEventPropagation()` in that handler.
  */
 #ifndef ESPR_EMBED
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
@@ -1085,7 +1089,7 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
       oldFunc->varData.native = newFunc->varData.native; // copy fn pointer
     } else {
       memset(&oldFunc->varData.native, 0, sizeof(oldFunc->varData.native)); // remove pointer info, zero it all out
-      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_FUNCTION;      
+      oldFunc->flags = (oldFunc->flags&~JSV_VARTYPEMASK) | JSV_FUNCTION;
     }
   }
   // If old fn started with 'return' or vice versa...
