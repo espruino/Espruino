@@ -3910,7 +3910,8 @@ JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *tra
 }
 Flood fills the given Graphics instance out from a particular point.
 
-**Note:** This only works on Graphics instances that support readback with `getPixel`
+**Note:** This only works on Graphics instances that support readback with `getPixel`. It
+is also not capable of filling over dithered patterns (eg non-solid colours on Bangle.js 2)
 */
 static bool _jswrap_graphics_floodFill_inside(JsGraphics *gfx, int x, int y, unsigned int col) {
   if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return false;
@@ -3930,7 +3931,7 @@ JsVar *jswrap_graphics_floodFill(JsVar *parent, int x, int y, JsVar *col) {
   const int QUEUE_LEN = 64;
   short s[QUEUE_LEN];
   int si = 0; // index in queue
-  #define S_ADD(x,y) if (si<QUEUE_LEN) {s[si++]=(short)x;s[si++]=(short)y;} else {jsiConsolePrintf("fill overflow\n");return 0;}
+  #define S_ADD(x,y) if (si<QUEUE_LEN) {s[si++]=(short)x;s[si++]=(short)y;} else {jsiConsolePrintf("floodFill overflow\n");return jsvLockAgain(parent);}
   S_ADD(x, y);
   while (si) {
     // get new area to work from...
