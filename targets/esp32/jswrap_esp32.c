@@ -143,6 +143,7 @@ void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
     while (jsvIteratorHasElement(&it)) {
       Pin pin = jshGetPinFromVarAndUnLock(jsvIteratorGetValue(&it));
       if (!rtc_gpio_is_valid_gpio(pin)) {
+        jsvIteratorFree(&it);
         jsExceptionHere(JSET_ERROR, "Invalid pin (%d)!", pin);
         return;
       }
