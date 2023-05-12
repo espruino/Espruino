@@ -1717,18 +1717,16 @@ NO_INLINE bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackV
   return r;
 }
 
-NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr) { // array of functions or single function
-  JsVar *callbackNoNames = jsvSkipName(callbackVar);
+static NO_INLINE bool jsiExecuteEventCallbackInner(JsVar *thisVar, JsVar *callbackNoNames, unsigned int argCount, JsVar **argPtr) { // array of functions or single function
   if (!callbackNoNames) return false;
 
   bool ok = true;
-  jsiStatus |= JSIS_EVENTEMITTER_PROCESSING;
   if (jsvIsArray(callbackNoNames)) {
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, callbackNoNames);
     while (ok && jsvObjectIteratorHasValue(&it) && !(jsiStatus & JSIS_EVENTEMITTER_STOP)) {
-      JsVar *child = jsvObjectIteratorGetValue(&it);
-      ok &= jsiExecuteEventCallback(thisVar, child, argCount, argPtr);
+      JsVar *child = jsvObjectIteratorGetValue(&it); // name already skipped
+      ok &= jsiExecuteEventCallbackInner(thisVar, child, argCount, argPtr);
       jsvUnLock(child);
       jsvObjectIteratorNext(&it);
     }
@@ -1739,8 +1737,17 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsig
     jsvUnLock(jspEvaluateVar(callbackNoNames, 0, 0));
   } else
     jsError("Unknown type of callback in Event Queue");
+  return ok;
+}
+
+NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr) { // array of functions or single function
+  JsVar *callbackNoNames = jsvSkipName(callbackVar);
+  if (!callbackNoNames) return false;
+
+  jsiStatus |= JSIS_EVENTEMITTER_PROCESSING;
+  bool ok = jsiExecuteEventCallbackInner(thisVar, callbackNoNames, argCount, argPtr);
   jsvUnLock(callbackNoNames);
-  jsiStatus &= ~JSIS_EVENTEMITTER_PROCESSING;
+  jsiStatus &= ~(JSIS_EVENTEMITTER_PROCESSING|JSIS_EVENTEMITTER_STOP);
   if (!ok || jspIsInterrupted()) {
     jsiStatus |= JSIS_EVENTEMITTER_INTERRUPTED;
     return false;
