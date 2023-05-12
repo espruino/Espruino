@@ -138,21 +138,19 @@ as RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-re
 void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
   uint64_t pinSum = 0;
   if (jsvIsArray(pinVar)) {
-    JsVarRef pinName = jsvGetLastChild(pinVar);
-    while (pinName) {
-      JsVar *pinNamePtr = jsvLock(pinName);
-      JsVar *pinPtr = jsvSkipName(pinNamePtr);
-      Pin pin = jshGetPinFromVar(pinPtr);
+    JsvIterator it;
+    jsvIteratorNew(&it, pinVar, JSIF_DEFINED_ARRAY_ElEMENTS);
+    while (jsvIteratorHasElement(&it)) {
+      Pin pin = jshGetPinFromVar(jsvIteratorGetValue(&it));
       if (!rtc_gpio_is_valid_gpio(pin)) {
         jsExceptionHere(JSET_ERROR, "Invalid pin (%d)!", pin);
         return;
       }
       pinSum += (uint64_t)pow(2, pin);
 
-      jsvUnLock(pinPtr);
-      pinName = jsvGetPrevSibling(pinNamePtr);
-      jsvUnLock(pinNamePtr);
+      jsvIteratorNext(&it);
     }
+    jsvIteratorFree(&it);
   } else {
     // We really expected an array of pins but
     // handle case of a single pin anyway
