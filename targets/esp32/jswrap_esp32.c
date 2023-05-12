@@ -141,12 +141,12 @@ void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
     JsvIterator it;
     jsvIteratorNew(&it, pinVar, JSIF_DEFINED_ARRAY_ElEMENTS);
     while (jsvIteratorHasElement(&it)) {
-      Pin pin = jshGetPinFromVar(jsvIteratorGetValue(&it));
+      Pin pin = jshGetPinFromVarAndUnLock(jsvIteratorGetValue(&it));
       if (!rtc_gpio_is_valid_gpio(pin)) {
         jsExceptionHere(JSET_ERROR, "Invalid pin (%d)!", pin);
         return;
       }
-      pinSum += (uint64_t)pow(2, pin);
+      pinSum += 1<<pin;
 
       jsvIteratorNext(&it);
     }
@@ -159,7 +159,7 @@ void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
       jsExceptionHere(JSET_ERROR, "Invalid pin (%d)!", pin);
       return;
     }
-    pinSum = (uint64_t)pow(2, pin);
+    pinSum = 1<<pin;
   }
 
   if ((mode < 0) || (mode > 1)) {
