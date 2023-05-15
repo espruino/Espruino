@@ -3329,8 +3329,9 @@ The image data itself will be referenced rather than copied if:
 
 Otherwise data will be copied, which takes up more space and may be quite slow.
 
-If the `Graphics` object contains a `transparent` field, that
-will be included in the generated image;
+If the `Graphics` object contains `transparent` or `pelette` fields,
+[as you might find in an image](http://www.espruino.com/Graphics#images-bitmaps),
+those will be included in the generated image too.
 */
 JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -3346,6 +3347,7 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   int w = jswrap_graphics_getWidthOrHeight(parent,false);
   int h = jswrap_graphics_getWidthOrHeight(parent,true);
   int bpp = gfx.data.bpp;
+  int colorCount = (1<<bpp);
 #ifdef LCD_CONTROLLER_LPM013M126
   // memory LCD reports bit depth as 16 so it can do dithering
   // but when we get an image we only want it the real bit depth (3!)
@@ -3355,7 +3357,11 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   int transparent = -1;
   JsVar *v = jsvObjectGetChildIfExists(parent, "transparent");
   if (v) transparent = jsvGetIntegerAndUnLock(v);
-
+  JsVar *palette = jsvObjectGetChildIfExists(parent, "palette");
+  if (!(jsvIsArray(palette) || jsvIsArrayBuffer(palette))) {
+    jsvUnLock(palette);
+    palette = 0;
+  }
 
   JsVar *img = 0;
   if (isObject) {
@@ -3375,8 +3381,10 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
     }
     if (transparent>=0)
       jsvObjectSetChildAndUnLock(img,"transparent",jsvNewFromInteger(transparent));
+    if (palette) jsvObjectSetChild(img,"palette",palette);
   } else {
-    len += 3 + ((transparent>=0)?1:0); // for the header!
+
+    len += 3 + ((transparent>=0)?1:0) + (palette?(colorCount*2):0); // for the header!
   }
   JsVar *buffer = jsvNewStringOfLength((unsigned)len, NULL);
   if (!buffer) { // not enough memory
@@ -3389,11 +3397,32 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, buffer, 0);
   if (!isObject) { // if not an object, add the header
+    // info on image format at http://www.espruino.com/Graphics#images-bitmaps
     jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)w);
     jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)h);
-    jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)(bpp | ((transparent>=0)?128:0)));
+    jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)(bpp | ((transparent>=0)?128:0)) | (palette?64:0));
     if (transparent>=0)
       jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)transparent);
+    if (palette) {
+      JsvIterator pit;
+      int colorIdx = 0;
+      jsvIteratorNew(&pit, palette, JSIF_EVERY_ARRAY_ELEMENT);
+      while (jsvIteratorHasElement(&pit)) {
+        int colorValue = jsvIteratorGetIntegerValue(&pit);
+        if (colorIdx<colorCount) {
+          jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)(colorValue>>8));
+          jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)colorValue);
+        }
+        jsvIteratorNext(&pit);
+        colorIdx++;
+      }
+      jsvIteratorFree(&pit);
+      while (colorIdx<colorCount) {
+        jsvStringIteratorSetCharAndNext(&it, 0);
+        jsvStringIteratorSetCharAndNext(&it, 0);
+        colorIdx++;
+      }
+    }
   }
   while (jsvStringIteratorHasChar(&it)) {
     unsigned int pixel = graphicsGetPixel(&gfx, x, y);
@@ -3414,6 +3443,7 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
     }
   }
   jsvStringIteratorFree(&it);
+  jsvUnLock(palette);
   if (isObject) {
     jsvObjectSetChildAndUnLock(img,"buffer",buffer);
     return img;
