@@ -101,26 +101,29 @@ void _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info) {
  */
 bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int imageOffset, GfxDrawImageInfo *info) {
   memset(info, 0, sizeof(GfxDrawImageInfo));
+  if (jsvIsObject(image)) {
 #ifndef SAVE_ON_FLASH
-  if (jsvIsObject(image) && jsvIsInstanceOf(image,"Graphics")) {
-    JsGraphics ig;
-    if (!graphicsGetFromVar(&ig, image)) return false;
-    if (ig.data.type!=JSGRAPHICSTYPE_ARRAYBUFFER) return false; // if not arraybuffer Graphics, bail out
-    info->width = ig.data.width;
-    info->height = ig.data.height;
-    info->bpp = ig.data.bpp;
+    if (jsvIsInstanceOf(image,"Graphics")) { // handle a Graphics instance
+      JsGraphics ig;
+      if (!graphicsGetFromVar(&ig, image)) return false;
+      if (ig.data.type!=JSGRAPHICSTYPE_ARRAYBUFFER) return false; // if not arraybuffer Graphics, bail out
+      info->width = ig.data.width;
+      info->height = ig.data.height;
+      info->bpp = ig.data.bpp;
+    } else
+#endif
+    { // Normal image object
+      info->width = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "width"));
+      info->height = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "height"));
+      info->bpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "bpp"));
+      if (info->bpp<=0) info->bpp=1;
+    }
+    // Get the buffer for image data - this is the same in Graphics and Image objects
     JsVar *buf = jsvObjectGetChildIfExists(image, "buffer");
     info->buffer = jsvGetArrayBufferBackingString(buf, &info->bitmapOffset);
     jsvUnLock(buf);
-#else
-  if (false) {
-#endif
-  } else if (jsvIsObject(image)) {
-    info->width = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "width"));
-    info->height = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "height"));
-    info->bpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "bpp"));
-    if (info->bpp<=0) info->bpp=1;
-    info->palettePtr = 0;
+    info->bitmapOffset += imageOffset;
+
     JsVar *v;
     v = jsvObjectGetChildIfExists(image, "transparent");
     info->isTransparent = v!=0;
@@ -145,10 +148,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
       }
     }
 #endif
-    JsVar *buf = jsvObjectGetChildIfExists(image, "buffer");
-    info->buffer = jsvGetArrayBufferBackingString(buf, &info->bitmapOffset);
-    jsvUnLock(buf);
-    info->bitmapOffset += imageOffset;
+
   } else if (jsvIsString(image) || jsvIsArrayBuffer(image)) {
     if (jsvIsArrayBuffer(image)) {
       info->buffer = jsvGetArrayBufferBackingString(image, &info->bitmapOffset);
@@ -2960,7 +2960,9 @@ Image can be:
   `width,height,bpp,[transparent,]image_bytes...`. If a transparent colour is
   specified the top bit of `bpp` should be set.
 * An ArrayBuffer Graphics object (if `bpp<8`, `msb:true` must be set) - this is
-  disabled on devices without much flash memory available
+  disabled on devices without much flash memory available. If a Graphics object
+  is supplied, it can also contain transparent/palette fields as if it were
+  an image.
 
 Draw an image at the specified position.
 
@@ -3325,6 +3327,9 @@ The image data itself will be referenced rather than copied if:
 * No other format options (zigzag/etc) were given
 
 Otherwise data will be copied, which takes up more space and may be quite slow.
+
+If the `Graphics` object contains a `transparent` field, that
+will be included in the generated image;
 */
 JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -3346,6 +3351,10 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   if (gfx.data.type==JSGRAPHICSTYPE_MEMLCD) bpp=3;
 #endif
   int len = (w*h*bpp+7)>>3;
+  int transparent = -1;
+  JsVar *v = jsvObjectGetChildIfExists(parent, "transparent");
+  if (v) transparent = jsvGetIntegerAndUnLock(v);
+
 
   JsVar *img = 0;
   if (isObject) {
@@ -3363,8 +3372,10 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
       jsvObjectSetChildAndUnLock(img,"buffer",jsvObjectGetChildIfExists(gfx.graphicsVar, "buffer"));
       return img;
     }
+    if (transparent>=0)
+      jsvObjectSetChildAndUnLock(img,"transparent",jsvNewFromInteger(transparent));
   } else {
-    len += 3; // for the header!
+    len += 3 + ((transparent>=0)?1:0); // for the header!
   }
   JsVar *buffer = jsvNewStringOfLength((unsigned)len, NULL);
   if (!buffer) { // not enough memory
@@ -3379,7 +3390,9 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   if (!isObject) { // if not an object, add the header
     jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)w);
     jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)h);
-    jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)bpp);
+    jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)(bpp | ((transparent>=0)?128:0)));
+    if (transparent>=0)
+      jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)transparent);
   }
   while (jsvStringIteratorHasChar(&it)) {
     unsigned int pixel = graphicsGetPixel(&gfx, x, y);
