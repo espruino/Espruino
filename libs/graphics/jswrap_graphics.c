@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_graphics.h"
+#include "jswrap_math.h" // for jswrap_math_cos/sin
 #include "jsutils.h"
 #include "jsinteractive.h"
 
@@ -311,8 +312,8 @@ NO_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
   l->mx = l->img.width<<8;
   l->my = l->img.height<<8;
   // step values for blitting rotated image
-  double vcos = cos(l->rotate);
-  double vsin = sin(l->rotate);
+  double vcos = jswrap_math_cos(l->rotate);
+  double vsin = jswrap_math_sin(l->rotate);
   l->sx = (int)((vcos/l->scale)*256 + 0.5);
   l->sy = (int)((vsin/l->scale)*256 + 0.5);
   // work out actual image width and height
@@ -3873,8 +3874,8 @@ JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *tra
         return result;
     double cosr = 1, sinr = 0;
     if (rotate) {
-      cosr = cos(rotate);
-      sinr = sin(rotate);
+      cosr = jswrap_math_cos(rotate);
+      sinr = jswrap_math_sin(rotate);
     }
     m[0] = cosr*scale; m[2] = -sinr*scale; m[4] = x;
     m[1] = sinr*scale; m[3] = cosr*scale; m[5] = y;

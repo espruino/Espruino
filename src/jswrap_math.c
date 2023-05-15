@@ -69,6 +69,9 @@ double jswrap_math_sin(double x) {
   return sin(x);
 #endif
 }
+double jswrap_math_cos(double x) {
+  return jswrap_math_sin(x + (PI/2));
+}
 
 /*JSON{
   "type" : "class",
@@ -189,7 +192,6 @@ double jswrap_math_atan(double x) {
   /* To save on flash, do our own atan function that's slower/nastier
    * but is smaller! */
   // exploit symmetry - we're only accurate when x is small
-  double ox = x;
   bool negate = false;
   bool offset = false;
   if (x<0) {
@@ -253,7 +255,7 @@ double jswrap_math_atan2(double y, double x) {
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "cos",
-  "generate_full" : "jswrap_math_sin(theta + (PI/2))",
+  "generate" : "jswrap_math_cos",
   "params" : [
     ["theta","float","The angle to get the cosine of"]
   ],

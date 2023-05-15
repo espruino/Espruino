@@ -38,6 +38,7 @@
             Added E.stopEventPropagation() to allow event propagation to be stopped with multiple X.on('...', ...)
             Graphics: g.drawImage(gfx) now reads palette+transparent fields if they exist in a Graphics object
             Graphics: g.asImage() now reads transparent field (if it exists) in a Graphics object
+            Ensure Graphics uses jswrap_math_sin/jswrap_math_cos (saves ~5k on SAVE_ON_FLASH_MATH builds)
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
