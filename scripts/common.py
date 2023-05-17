@@ -101,6 +101,8 @@ if "check_output" not in dir( subprocess ):
 # COMMAND LINE OPTIONS
 # -Ddefinition
 # -BBOARDFILE
+#
+# Also adds 'defines' field to global 'board' object (if boardObject is defined)
 def get_jsondata(is_for_document, parseArgs = True, boardObject = False):
     global board # use the board object defined above
     board = boardObject
@@ -144,6 +146,7 @@ def get_jsondata(is_for_document, parseArgs = True, boardObject = False):
       jswraps = subprocess.check_output(["find", ".", "-name", "jswrap*.c"]).strip().split("\n")
 
     if board:
+      board.defines = defines
       if "usart" in board.chip: defines.append("USART_COUNT="+str(board.chip["usart"]));
       if "spi" in board.chip: defines.append("SPI_COUNT="+str(board.chip["spi"]));
       if "i2c" in board.chip: defines.append("I2C_COUNT="+str(board.chip["i2c"]));
