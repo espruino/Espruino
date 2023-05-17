@@ -63,7 +63,24 @@ var p = Promise.all([new Promise(function(res,rej) {
   if (r=="Ok") passes.push("RejectAll");
 });
 
+Promise.all([]).then(function(r) {  
+  passes.push("ResolveAll[]"); //  https://github.com/espruino/Espruino/issues/2371
+});
+
+var resolved = Promise.resolve("test");
 setTimeout(function() {
-  result = passes == "SimpleReject,InstantResolve,PreResolved,PreRejected,SimpleReject2,PreRejected2,SimpleResolve,Resolve1,ResolveAll,RejectAll";
+  Promise.all([42]).then(function(r) {  
+    passes.push("ResolveAll[42]"); //  https://github.com/espruino/Espruino/issues/2371
+  });
+  Promise.all([resolved]).then(function(r) {  
+    if (r=="test")
+      passes.push("ResolveAll[resolved]"); //  https://github.com/espruino/Espruino/issues/2371
+  });  
+}, 1);
+
+
+setTimeout(function() {
+  passes.sort();
+  result = passes == "InstantResolve,PreRejected,PreRejected2,PreResolved,RejectAll,Resolve1,ResolveAll,ResolveAll[42],ResolveAll[],ResolveAll[resolved],SimpleReject,SimpleReject2,SimpleResolve";
   if (!result) console.log(""+passes);
 },30);

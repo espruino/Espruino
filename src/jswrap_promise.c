@@ -269,36 +269,41 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   JsVar *promise = jspNewObject(0, "Promise");
   if (!promise) return 0;
   JsVar *reject = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
-  if (reject) {
-    jsvObjectSetChild(reject, JSPARSE_FUNCTION_THIS_NAME, promise); // bind 'this'
-    JsVar *promiseResults = jsvNewEmptyArray();
-    int promiseIndex = 0;
-    int promisesComplete = 0;
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, arr);
-    while (jsvObjectIteratorHasValue(&it)) {
-      JsVar *p = jsvObjectIteratorGetValue(&it);
-      if (_jswrap_promise_is_promise(p)) {
-        JsVar *resolve = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_JSVAR<<(JSWAT_BITS*2)));
-        // bind the index variable
-        JsVar *indexVar = jsvNewFromInteger(promiseIndex);
-        jsvAddFunctionParameter(resolve, 0, indexVar);
-        jsvUnLock(indexVar);
-        jsvObjectSetChild(resolve, JSPARSE_FUNCTION_THIS_NAME, promise); // bind 'this'
-        jsvUnLock2(jswrap_promise_then(p, resolve, reject), resolve);
-      } else {
-        jsvSetArrayItem(promiseResults, promiseIndex, p);
-        promisesComplete++;
-      }
-      jsvUnLock(p);
-      promiseIndex++;
-      jsvObjectIteratorNext(&it);
+  if (!reject) return promise; // out of memory error
+  jsvObjectSetChild(reject, JSPARSE_FUNCTION_THIS_NAME, promise); // bind 'this'
+  JsVar *promiseResults = jsvNewEmptyArray();
+  int promiseIndex = 0;
+  int promisesComplete = 0;
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, arr);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *p = jsvObjectIteratorGetValue(&it);
+    if (_jswrap_promise_is_promise(p)) {
+      JsVar *resolve = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_JSVAR<<(JSWAT_BITS*2)));
+      // bind the index variable
+      JsVar *indexVar = jsvNewFromInteger(promiseIndex);
+      jsvAddFunctionParameter(resolve, 0, indexVar);
+      jsvUnLock(indexVar);
+      jsvObjectSetChild(resolve, JSPARSE_FUNCTION_THIS_NAME, promise); // bind 'this'
+      jsvUnLock2(jswrap_promise_then(p, resolve, reject), resolve);
+    } else {
+      jsvSetArrayItem(promiseResults, promiseIndex, p);
+      promisesComplete++;
     }
-    jsvObjectIteratorFree(&it);
-
+    jsvUnLock(p);
+    promiseIndex++;
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  if (promisesComplete==promiseIndex) { // already all sorted - return a resolved promise
+    jsvUnLock(promise);
+    promise = jswrap_promise_resolve(promiseResults);
+    jsvUnLock(promiseResults);
+  } else { // return our new promise that will resolve when everything is done
     jsvObjectSetChildAndUnLock(promise, JS_PROMISE_REMAINING_NAME, jsvNewFromInteger(promiseIndex-promisesComplete));
     jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, promiseResults);
   }
+
   jsvUnLock(reject);
   return promise;
 }
