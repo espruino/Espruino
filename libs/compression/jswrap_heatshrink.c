@@ -36,6 +36,9 @@ when `save()` is used. This just exposes that functionality.
 Functions here take and return buffers of data. There is no support for
 streaming, so both the compressed and decompressed data must be able to fit in
 memory at the same time.
+
+If you'd like a way to perform compression/decompression on desktop, check out https://github.com/espruino/EspruinoWebTools#heatshrinkjs
+
 */
 
 
@@ -51,6 +54,9 @@ memory at the same time.
   "return_object" : "ArrayBuffer",
   "ifndef" : "SAVE_ON_FLASH"
 }
+Compress the heatshrink-encoded data supplied as input.
+
+If you'd like a way to perform compression/decompression on desktop, check out https://github.com/espruino/EspruinoWebTools#heatshrinkjs
 */
 JsVar *jswrap_heatshrink_compress(JsVar *data) {
   if (!jsvIsIterable(data)) {
@@ -94,6 +100,9 @@ JsVar *jswrap_heatshrink_compress(JsVar *data) {
   "return_object" : "ArrayBuffer",
   "ifndef" : "SAVE_ON_FLASH"
 }
+Decompress the heatshrink-encoded data supplied as input.
+
+If you'd like a way to perform compression/decompression on desktop, check out https://github.com/espruino/EspruinoWebTools#heatshrinkjs
 */
 JsVar *jswrap_heatshrink_decompress(JsVar *data) {
   if (!jsvIsIterable(data)) {

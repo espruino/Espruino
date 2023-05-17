@@ -17,6 +17,7 @@
 
 /**
  Iterate over the contents of the content of a variable, calling callback for each.
+ Used in `.write` methods, E.toString/toUint8Array and others
  Contents may be:
  * numeric -> output
  * a string -> output each character

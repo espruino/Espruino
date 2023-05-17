@@ -806,6 +806,53 @@ JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
   return jsvNewArrayBufferFromString(str, 0);
 }
 
+void (_jswrap_espruino_toString_char)(int ch,  JsvStringIterator *it) {
+  jsvStringIteratorSetCharAndNext(it, (char)ch);
+}
+
+JsVar *jswrap_espruino_toStringX(JsVar *args, bool forceFlat) {
+  // One argument
+  if (jsvGetArrayLength(args)==1) {
+    JsVar *arg = jsvGetArrayItem(args,0);
+    // Is it a flat string? If so we're there already - just return it
+    if ((jsvIsString(arg) && !forceFlat) || jsvIsFlatString(arg))
+      return arg;
+    // In the case where we have a Uint8Array,etc, return it directly
+    if (jsvIsArrayBuffer(arg) &&
+        JSV_ARRAYBUFFER_GET_SIZE(arg->varData.arraybuffer.type)==1 &&
+        arg->varData.arraybuffer.byteOffset==0) {
+      JsVar *backing = jsvGetArrayBufferBackingString(arg, NULL);
+      if (((backing && !forceFlat) || jsvIsFlatString(backing)) &&
+           jsvGetLength(backing) == arg->varData.arraybuffer.length) {
+        jsvUnLock(arg);
+        return backing;
+      }
+      jsvUnLock(backing);
+    }
+    jsvUnLock(arg);
+  }
+  // Allocate data
+  unsigned int len = (unsigned int)jsvIterateCallbackCount(args);
+  JsVar *str = forceFlat ? jsvNewFlatStringOfLength(len) : jsvNewStringOfLength(len, NULL);
+  if (forceFlat && !str) {
+    // if we couldn't do it, try again after garbage collecting/defrag
+#ifdef SAVE_ON_FLASH
+    jsvGarbageCollect();
+#else
+    jsvDefragment();
+#endif
+    str = jsvNewFlatStringOfLength(len);
+  }
+  if (!str) return 0;
+  // Now use jsvIterateCallback to add in data
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, str, 0);
+  jsvIterateCallback(args, (void (*)(int,  void *))_jswrap_espruino_toString_char, &it);
+  jsvStringIteratorFree(&it);
+
+  return str;
+}
+
 /*JSON{
   "type" : "staticmethod",
   "class" : "E",
@@ -814,62 +861,62 @@ JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
   "params" : [
     ["args","JsVarArray","The arguments to convert to a String"]
   ],
-  "return" : ["JsVar","A String (or `undefined` if a Flat String cannot be created)"],
+  "return" : ["JsVar","A String"],
   "return_object" : "String",
-  "typescript" : "toString(...args: any[]): string | undefined;"
+  "typescript" : "toString(...args: any[]): string;"
 }
-Returns a 'flat' string representing the data in the arguments, or return
-`undefined` if a flat string cannot be created.
+Returns a `String` representing the data in the arguments.
 
-This creates a string from the given arguments. If an argument is a String or an
-Array, each element is traversed and added as an 8 bit character. If it is
-anything else, it is converted to a character directly.
+This creates a string from the given arguments in the same way as `E.toUint8Array`. If each argument is:
+
+* A String or an Array, each element is traversed and added as an 8 bit character
+* `{data : ..., count : N}` causes `data` to be repeated `count` times
+* `{callback : fn}` calls the function and adds the result
+* Anything else is converted to a character directly.
 
 In the case where there's one argument which is an 8 bit typed array backed by a
 flat string of the same length, the backing string will be returned without
 doing a copy or other allocation. The same applies if there's a single argument
 which is itself a flat string.
+
+```JS
+E.toString(0,1,2,"Hi",3)
+"\0\1\2Hi\3"
+E.toString(1,2,{data:[3,4], count:4},5,6)
+"\1\2\3\4\3\4\3\4\3\4\5\6"
+>E.toString(1,2,{callback : () => "Hello World"},5,6)
+="\1\2Hello World\5\6"
+```
+
+**Note:** Prior to Espruino 2v18 `E.toString` would always return a flat string,
+or would return `undefined` if one couldn't be allocated. Now, it will return
+a normal (fragmented) String if a contiguous chunk of memory cannot be allocated.
+You can still check if the returned value is a Flat string using `E.getAddressOf(str, true)!=0`,
+or can use `E.toFlatString` instead.
+
  */
-void (_jswrap_espruino_toString_char)(int ch,  JsvStringIterator *it) {
-  jsvStringIteratorSetCharAndNext(it, (char)ch);
-}
-
 JsVar *jswrap_espruino_toString(JsVar *args) {
-  // One argument
-  if (jsvGetArrayLength(args)==1) {
-    JsVar *arg = jsvGetArrayItem(args,0);
-    // Is it a flat string? If so we're there already - just return it
-    if (jsvIsFlatString(arg))
-      return arg;
-    // In the case where we have a Uint8Array,etc, return it directly
-    if (jsvIsArrayBuffer(arg) &&
-        JSV_ARRAYBUFFER_GET_SIZE(arg->varData.arraybuffer.type)==1 &&
-        arg->varData.arraybuffer.byteOffset==0) {
-      JsVar *backing = jsvGetArrayBufferBackingString(arg, NULL);
-      if (jsvIsFlatString(backing) &&
-          jsvGetCharactersInVar(backing) == arg->varData.arraybuffer.length) {
-        jsvUnLock(arg);
-        return backing;
-      }
-      jsvUnLock(backing);
-    }
-    jsvUnLock(arg);
-  }
+  return jswrap_espruino_toStringX(args, false);
+}
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "toFlatString",
+  "generate" : "jswrap_espruino_toFlatString",
+  "params" : [
+    ["args","JsVarArray","The arguments to convert to a Flat String"]
+  ],
+  "return" : ["JsVar","A Flat String (or undefined)"],
+  "return_object" : "String",
+  "typescript" : "toFlatString(...args: any[]): string | undefined;"
+}
+Returns a Flat `String` representing the data in the arguments, or `undefined` if one can't be allocated.
 
-  unsigned int len = (unsigned int)jsvIterateCallbackCount(args);
-  JsVar *str = jsvNewFlatStringOfLength(len);
-  if (!str) {
-    // if we couldn't do it, try again after garbage collecting
-    jsvGarbageCollect();
-    str = jsvNewFlatStringOfLength(len);
-  }
-  if (!str) return 0;
-  JsvStringIterator it;
-  jsvStringIteratorNew(&it, str, 0);
-  jsvIterateCallback(args, (void (*)(int,  void *))_jswrap_espruino_toString_char, &it);
-  jsvStringIteratorFree(&it);
-
-  return str;
+This provides the same behaviour that `E.toString` had in Espruino before 2v18 - see `E.toString` for
+more information.
+ */
+JsVar *jswrap_espruino_toFlatString(JsVar *args) {
+  return jswrap_espruino_toStringX(args, true);
 }
 
 /*TYPESCRIPT
@@ -1762,7 +1809,7 @@ JsVar *jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri, 
   int r = rgb&0xFF;
   int g = (rgb>>8)&0xFF;
   int b = (rgb>>16)&0xFF;
-  if (format==16) return jsvNewFromInteger((unsigned int)((b>>3) | (g>>2)<<5 | (r>>3)<<11));
+  if (format==16) return jsvNewFromInteger((JsVarInt)((b>>3) | (g>>2)<<5 | (r>>3)<<11));
   if (format!=1) {
     jsExceptionHere(JSET_ERROR, "HSBtoRGB's format arg expects undefined/1/16/24");
     return 0;
@@ -1905,13 +1952,9 @@ Note that when DST parameters are set (i.e. when `dstOffset` is not zero),
 `E.setTimeZone()` has no effect.
 */
 void jswrap_espruino_setDST(JsVar *params) {
-  JsVar *dst;
-  JsvIterator it;
-  unsigned int i = 0;
-
   if (!jsvIsArray(params)) return;
   if (jsvGetLength(params) != 12) return;
-  dst = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT16, params, 0, 0);
+  JsVar *dst = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT16, params, 0, 0);
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, dst);
 }
 #endif

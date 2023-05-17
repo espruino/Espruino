@@ -4062,6 +4062,7 @@ int jsvGarbageCollect() {
   return (int)freedCount;
 }
 
+#ifndef SAVE_ON_FLASH
 void jsvDefragment() {
   // garbage collect - removes cruft
   // also puts free list in order
@@ -4141,6 +4142,7 @@ void jsvDefragment() {
   jsvCreateEmptyVarList();
   jshInterruptOn();
 }
+#endif
 
 // Dump any locked variables that aren't referenced from `global` - for debugging memory leaks
 void jsvDumpLockedVars() {
