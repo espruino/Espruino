@@ -42,6 +42,7 @@
             Modified E.toString to always return a String (not necessarily flat) - fixes occasion errors in Bangle.js clocks that use it when setting up fonts
             Added E.toFlatString (using old E.toString behaviour)
             Ensure Promise.all completes even if empty or containing pre-resolved promises (fix #2371)
+            Allow Graphics.createImage to use '.' as a placeholder for an empty area
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)

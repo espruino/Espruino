@@ -737,7 +737,7 @@ type Image = string | ImageObject | ArrayBuffer | Graphics<true>;
   "#if" : "!defined(SAVE_ON_FLASH) && !defined(ESPRUINOBOARD)",
   "generate" : "jswrap_graphics_createImage",
   "params" : [
-    ["str","JsVar","A String containing a newline-separated image - space is 0, anything else is 1"]
+    ["str","JsVar","A String containing a newline-separated image - space/. is 0, anything else is 1"]
   ],
   "return" : ["JsVar","An Image object that can be used with `Graphics.drawImage`"],
   "typescript" : "createImage(str: string): ImageObject;"
@@ -754,6 +754,14 @@ X   X   X
 X   X   X
 X       X
 XXXXXXXXX
+`);
+g.drawImage(img, x,y);
+var img = Graphics.createImage(`
+.....
+.XXX.
+.X.X.
+.XXX.
+.....
 `);
 g.drawImage(img, x,y);
 ```
@@ -813,7 +821,7 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
       x=0;
       y++;
     } else {
-      if (ch!=' ') {
+      if (ch!=' ' && ch!='.') {
         /* a pixel to set. This'll be slowish for non-flat strings,
          * but this is here for relatively small bitmaps
          * anyway so it's not a big deal */
