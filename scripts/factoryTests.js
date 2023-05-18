@@ -77,16 +77,17 @@ function runTest(file) {
 
 // wait until loaded...
 setTimeout(function() {
-  console.log("Loaded...");
+  console.log("Loaded Emulator...");
   jsInit();
+  console.log("jsInit complete.");
   jsIdle();
-  console.log("Factory reset");
+  console.log("jsIdle complete, performing factory reset.");
   jsTransmitString("Bangle.factoryReset()\n");
   factoryFlashMemory.set(flashMemory);
-  console.log("Ready!");
+  console.log("Emulator Ready!");
   appLog = "";
   require("fs").readdirSync(TESTS_DIR).forEach(file => file.endsWith(`.${DEVICEID}.txt`) && runTest(file));
-  console.log("Finish");
+  console.log("Finished.");
   jsStopIdle();
 
   if (erroredApps.length) {
