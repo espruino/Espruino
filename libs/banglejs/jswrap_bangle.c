@@ -58,7 +58,7 @@
 #include "lcd_spilcd.h"
 #endif
 
-#ifdef ACCEL_DEVICE_KX126 
+#ifdef ACCEL_DEVICE_KX126
 #include "kx126_registers.h"
 #endif
 
@@ -1297,7 +1297,7 @@ void peripheralPollHandler() {
 #endif
 #ifdef ACCEL_DEVICE_KX126
   // read interrupt source data (INS1 and INS2 registers)
-  buf[0]=KX126_INS1; 
+  buf[0]=KX126_INS1;
   jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
   jsi2cRead(ACCEL_I2C, ACCEL_ADDR, 2, buf, true);
   // 0 -> INS1 - step counter & tap events
@@ -1330,7 +1330,7 @@ void peripheralPollHandler() {
     short newz = (buf[5]<<8)|buf[4];
 #ifdef BANGLEJS_Q3
     newx = -newx; //consistent directions with Bangle
-    newz = -newz; 
+    newz = -newz;
 #endif
 #ifdef ACCEL_DEVICE_KX126
     newy = -newy;
@@ -1747,7 +1747,7 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
       break;
     case 0x0C:     // long touch
       if (touchX<80) bangleTasks |= JSBT_TOUCH_LEFT;
-      else bangleTasks |= JSBT_TOUCH_RIGHT;        
+      else bangleTasks |= JSBT_TOUCH_RIGHT;
       touchType = 2;
       break;
     }
@@ -2378,7 +2378,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
 #ifdef HEARTRATE
   int _hrmPollInterval = hrmPollInterval;
 #endif
-#ifdef HEARTRATE_VC31_BINARY  
+#ifdef HEARTRATE_VC31_BINARY
   int _hrmSportMode = hrmInfo.sportMode;
 #endif
 #ifdef TOUCH_DEVICE
@@ -2390,8 +2390,8 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
   jsvConfigObject configs[] = {
 #ifdef HEARTRATE
       {"hrmPollInterval", JSV_INTEGER, &_hrmPollInterval},
-#endif      
-#ifdef HEARTRATE_VC31_BINARY      
+#endif
+#ifdef HEARTRATE_VC31_BINARY
       {"hrmSportMode", JSV_INTEGER, &_hrmSportMode},
 #endif
 #ifdef PRESSURE_DEVICE
@@ -2445,7 +2445,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
 #endif
 #ifdef HEARTRATE_VC31_BINARY
     hrmInfo.sportMode = _hrmSportMode;
-#endif    
+#endif
 #ifdef TOUCH_DEVICE
     touchMinX = touchX1;
     touchMinY = touchY1;
@@ -3372,7 +3372,7 @@ NO_INLINE void jswrap_banglejs_init() {
     healthStateClear(&healthCurrent);
     healthStateClear(&healthLast);
     healthStateClear(&healthDaily);
-  } 
+  }
   bangleFlags |= JSBF_POWER_SAVE; // ensure we turn power-save on by default every restart
   inactivityTimer = 0; // reset the LCD timeout timer
   btnLoadTimeout = DEFAULT_BTN_LOAD_TIMEOUT;
@@ -3497,20 +3497,35 @@ NO_INLINE void jswrap_banglejs_init() {
 #ifndef ESPR_NO_LOADING_SCREEN
     if (!firstRun) {
       // Display a loading screen
-      int x = LCD_WIDTH/2;
-      int y = LCD_HEIGHT/2;
-      graphicsFillRect(&graphicsInternal, x-49, y-19, x+49, y+19, graphicsTheme.bg);
-      graphicsInternal.data.fgColor = graphicsTheme.fg;
-      graphicsDrawRect(&graphicsInternal, x-50, y-20, x+50, y+20);
-      y -= 4;
-      x -= 4*6;
-      const char *s = "Loading...";
-      while (*s) {
-        graphicsDrawChar6x8(&graphicsInternal, x, y, *s, 1, 1, false);
-        x+=6;
-        s++;
+      // Check for a '.loading' file
+      JsVar *img = jsfReadFile(jsfNameFromString(".loading"),0,0);
+      if (jsvIsString(img)) {
+        if (jsvGetStringLength(img)>3) {
+          // if it exists and is big enough to store an image, render the image in the middle of the screen
+          int w,h;
+          w = (int)(unsigned char)jsvGetCharInString(img, 0);
+          h = (int)(unsigned char)jsvGetCharInString(img, 1);
+          jsvUnLock2(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,(LCD_HEIGHT-h)/2,NULL),img);
+          graphicsInternalFlip();
+        }
+        // else if <3 bytes we don't render anything
+      } else {
+        // otherwise render the standard 'Loading...' box
+        int x = LCD_WIDTH/2;
+        int y = LCD_HEIGHT/2;
+        graphicsFillRect(&graphicsInternal, x-49, y-19, x+49, y+19, graphicsTheme.bg);
+        graphicsInternal.data.fgColor = graphicsTheme.fg;
+        graphicsDrawRect(&graphicsInternal, x-50, y-20, x+50, y+20);
+        y -= 4;
+        x -= 4*6;
+        const char *s = "Loading...";
+        while (*s) {
+          graphicsDrawChar6x8(&graphicsInternal, x, y, *s, 1, 1, false);
+          x+=6;
+          s++;
+        }
+        graphicsInternalFlip();
       }
-      graphicsInternalFlip();
     }
 #endif
   }
@@ -3937,7 +3952,7 @@ bool jswrap_banglejs_idle() {
 #ifdef HEARTRATE
     if (bangleTasks & JSBT_HRM_INSTANT_DATA) {
       JsVar *o = hrm_sensor_getJsVar();
-      if (o) {        
+      if (o) {
         jsvObjectSetChildAndUnLock(o,"raw",jsvNewFromInteger(hrmInfo.raw));
         jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(hrmInfo.bpm10 / 10.0));
         jsvObjectSetChildAndUnLock(o,"confidence",jsvNewFromInteger(hrmInfo.confidence));
@@ -5312,7 +5327,7 @@ On Bangle.js there are a few additions over the standard `graphical_menu`:
 * The options object can contain:
   * `back : function() { }` - add a 'back' button, with the function called when
     it is pressed
-  * `remove : function() { }` - add a handler function to be called when the 
+  * `remove : function() { }` - add a handler function to be called when the
     menu is removed
   * (Bangle.js 2) `scroll : int` - an integer specifying how much the initial
     menu should be scrolled by
