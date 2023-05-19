@@ -59,7 +59,7 @@
     });
     Bangle.setLCDPower(1); // ensure screen is on
   }
-  g.clearRect(Bangle.appRect); // clear screen
+  g.reset().clearRect(Bangle.appRect); // clear screen
   if (!msg) {
     Bangle.setUI(); // remove watches
     return Promise.resolve();
