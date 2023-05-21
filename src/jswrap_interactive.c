@@ -376,6 +376,11 @@ JsVar *jswrap_interface_getSerial() {
   return str;
 }
 
+/*TYPESCRIPT
+type IntervalId = number & { _brand: "interval" };
+type TimeoutId = number & { _brand: "timeout" };
+*/
+
 /*JSON{
   "type" : "function",
   "name" : "setInterval",
@@ -385,7 +390,8 @@ JsVar *jswrap_interface_getSerial() {
     ["timeout","float","The time between calls to the function (max 3153600000000 = 100 years"],
     ["args","JsVarArray","Optional arguments to pass to the function when executed"]
   ],
-  "return" : ["JsVar","An ID that can be passed to clearInterval"]
+  "return" : ["JsVar","An ID that can be passed to clearInterval"],
+  "typescript" : "declare function setInterval(func: string | Function, timeout: number, ...args: any[]): IntervalId;"
 }
 Call the function (or evaluate the string) specified REPEATEDLY after the
 timeout in milliseconds.
@@ -428,7 +434,8 @@ returned by `setInterval` into the `clearInterval` function.
     ["timeout","float","The time until the function will be executed (max 3153600000000 = 100 years"],
     ["args","JsVarArray","Optional arguments to pass to the function when executed"]
   ],
-  "return" : ["JsVar","An ID that can be passed to clearTimeout"]
+  "return" : ["JsVar","An ID that can be passed to clearTimeout"],
+  "typescript" : "declare function setTimeout(func: string | Function, timeout: number, ...args: any[]): TimeoutId;"
 }
 Call the function (or evaluate the string) specified ONCE after the timeout in
 milliseconds.
@@ -504,7 +511,8 @@ JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout, JsVar *args)
   "generate" : "jswrap_interface_clearInterval",
   "params" : [
     ["id","JsVarArray","The id returned by a previous call to setInterval. **Only one argument is allowed.**"]
-  ]
+  ],
+  "typescript": "declare function clearInterval(id: IntervalId): void;"
 }
 Clear the Interval that was created with `setInterval`, for example:
 
@@ -522,7 +530,8 @@ To avoid accidentally deleting all Intervals, if a parameter is supplied but is 
   "generate" : "jswrap_interface_clearTimeout",
   "params" : [
     ["id","JsVarArray","The id returned by a previous call to setTimeout. **Only one argument is allowed.**"]
-  ]
+  ],
+  "typescript": "declare function clearTimeout(id: TimeoutId): void;"
 }
 Clear the Timeout that was created with `setTimeout`, for example:
 
@@ -582,7 +591,8 @@ void jswrap_interface_clearTimeout(JsVar *idVarArr) {
   "params" : [
     ["id","JsVar","The id returned by a previous call to setInterval"],
     ["time","float","The new time period in ms"]
-  ]
+  ],
+  "typescript" : "declare function changeInterval(id: IntervalId, time: number): void;"
 }
 Change the Interval on a callback created with `setInterval`, for example:
 
