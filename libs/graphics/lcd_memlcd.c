@@ -303,13 +303,17 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
      * Optimisation: we could just send any non-overlaid stuff above or below
      * the overlay...
      */
+    // Take account of rotation - only check for a full 180 rotation - doing 90 is too hard
+    bool isRotated180 = (graphicsInternal.data.flags & (JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y)) ==
+                      (JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y);
+    int ovY = isRotated180 ? (LCD_HEIGHT-(lcdOverlayY+overlayImg.height)) : lcdOverlayY;
 
     // initialise image layer
     GfxDrawImageLayer l;
     l.x1 = 0;
-    l.y1 = lcdOverlayY;
+    l.y1 = ovY;
     l.img = overlayImg;
-    l.rotate = 0;
+    l.rotate = isRotated180 ? 3.141592 : 0;
     l.scale = 1;
     l.center = false;
     l.repeat = false;
@@ -322,7 +326,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
       // copy original line in
       memcpy(buf, &lcdBuffer[LCD_STRIDE*y], LCD_STRIDE);
       // overwrite areas with overlay image
-      if (y>=lcdOverlayY && y<lcdOverlayY+overlayImg.height) {
+      if (y>=ovY && y<ovY+overlayImg.height) {
         _jswrap_drawImageLayerStartX(&l);
         for (int x=0;x<overlayImg.width;x++) {
           unsigned int c;
