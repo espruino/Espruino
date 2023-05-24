@@ -706,6 +706,17 @@ JsVar *jswrap_banglejs_getBarometerObject();
 #ifdef HEARTRATE
 #include "hrm.h"
 #include "heartrate.h"
+#ifdef HEARTRATE_VC31_BINARY
+#include "vc31_binary/algo.h"
+/// The sport mode we're giving to the HRM algorithm. -1 = auto, >=0 = forced
+int8_t hrmSportMode;
+/// Running average of acceleration difference - if this goes above a certain level we assive we're doing sports
+unsigned int hrmSportActivity;
+#define HRM_SPORT_ACTIVITY_THRESHOLD 2000 ///< value in hrmSportActivity before we assume we're in sport mode
+#define HRM_SPORT_ACTIVITY_TIMEOUT 20000 ///< millisecs after sport activity detected to stay in sport mode
+/// milliseconds since last sporty activity detected - if less than some threshold we put HRM into sport mode
+volatile uint16_t hrmSportTimer;
+#endif
 #endif
 
 #ifdef GPS_PIN_RX
@@ -1348,6 +1359,19 @@ void peripheralPollHandler() {
     accHistory[accHistoryIdx  ] = clipi8(newx>>7);
     accHistory[accHistoryIdx+1] = clipi8(newy>>7);
     accHistory[accHistoryIdx+2] = clipi8(newz>>7);
+#ifdef HEARTRATE_VC31_BINARY
+    // Activity detection
+    hrmSportActivity = ((hrmSportActivity*63)+MIN(accDiff,4096))>>6; // running average
+    if (hrmSportTimer < TIMER_MAX) {
+      hrmSportTimer += pollInterval;
+    }
+    if (hrmSportActivity > HRM_SPORT_ACTIVITY_THRESHOLD) // if enough movement, zero timer (enter sport mode)
+      hrmSportTimer = 0;
+    if (hrmSportMode>=0) // if HRM sport mode is forced, just use that
+      hrmInfo.sportMode = hrmSportMode;
+    else  // else set to running mode if we've had enough activity recently
+      hrmInfo.sportMode = (hrmSportTimer < HRM_SPORT_ACTIVITY_TIMEOUT) ? SPORT_TYPE_RUNNING : SPORT_TYPE_NORMAL;
+#endif
     // Power saving
     if (bangleFlags & JSBF_POWER_SAVE) {
       if (accDiff > POWER_SAVE_MIN_ACCEL) {
@@ -2357,7 +2381,7 @@ for before the clock is reloaded? 1500ms default, or 0 means never.
   of the BPM reading.
 * `hrmSportMode` - on the newest Bangle.js 2 builds with with the proprietary
   heart rate algorithm, this is the sport mode passed to the algorithm. See `libs/misc/vc31_binary/algo.h`
-  for more info. 0 = normal (default), 1 = running, 2 = ...
+  for more info. -1 = auto, 0 = normal (default), 1 = running, 2 = ...
 * `seaLevelPressure` (Bangle.js 2) Normally 1013.25 millibars - this is used for
   calculating altitude with the pressure sensor
 
@@ -2379,7 +2403,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
   int _hrmPollInterval = hrmPollInterval;
 #endif
 #ifdef HEARTRATE_VC31_BINARY
-  int _hrmSportMode = hrmInfo.sportMode;
+  int _hrmSportMode = hrmSportMode;
 #endif
 #ifdef TOUCH_DEVICE
   int touchX1 = touchMinX;
@@ -2444,7 +2468,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
     hrmPollInterval = (uint16_t)_hrmPollInterval;
 #endif
 #ifdef HEARTRATE_VC31_BINARY
-    hrmInfo.sportMode = _hrmSportMode;
+    hrmSportMode = _hrmSportMode;
 #endif
 #ifdef TOUCH_DEVICE
     touchMinX = touchX1;
@@ -3673,6 +3697,11 @@ NO_INLINE void jswrap_banglejs_init() {
 #if ESPR_BANGLE_UNISTROKE
     unistroke_init();
 #endif
+#ifdef HEARTRATE_VC31_BINARY
+    hrmSportMode = -1;
+    hrmSportActivity = 0;
+    hrmSportTimer = HRM_SPORT_ACTIVITY_TIMEOUT;
+#endif
   } // firstRun
 
   i2cBusy = false;
@@ -4288,15 +4317,22 @@ bool jswrap_banglejs_gps_character(char ch) {
     "return" : ["JsVar",""],
     "ifdef" : "BANGLEJS"
 }
-Reads debug info. Exposes the current values of `accHistoryIdx`, `accGestureCount`, `accIdleCount` and `pollInterval`.
+Reads debug info. Exposes the current values of `accHistoryIdx`, `accGestureCount`, `accIdleCount`, `pollInterval` and others.
+
+Please see the declaration of this function for more information (click the `==>` link above [this description](http://www.espruino.com/Reference#l_Bangle_dbg))
 */
 JsVar *jswrap_banglejs_dbg() {
   JsVar *o = jsvNewObject();
   if (!o) return 0;
   jsvObjectSetChildAndUnLock(o,"accHistoryIdx",jsvNewFromInteger(accHistoryIdx));
   jsvObjectSetChildAndUnLock(o,"accGestureCount",jsvNewFromInteger(accGestureCount));
-  jsvObjectSetChildAndUnLock(o,"accIdleCount",jsvNewFromInteger(accIdleCount));
-  jsvObjectSetChildAndUnLock(o,"pollInterval",jsvNewFromInteger(pollInterval));
+  jsvObjectSetChildAndUnLock(o,"accIdleCount",jsvNewFromInteger(accIdleCount)); // How many acceleromneter samples have we not been moving for?
+  jsvObjectSetChildAndUnLock(o,"pollInterval",jsvNewFromInteger(pollInterval)); // How fast is the accelerometer running (in ms)
+#ifdef HEARTRATE_VC31_BINARY
+  jsvObjectSetChildAndUnLock(o,"hrmSportTimer",jsvNewFromInteger(hrmSportTimer)); // how long since we were sure we were doing sport?
+  jsvObjectSetChildAndUnLock(o,"hrmSportActivity",jsvNewFromInteger(hrmSportActivity)); // Sport activity running average
+  jsvObjectSetChildAndUnLock(o,"hrmSportMode",jsvNewFromInteger(hrmInfo.sportMode)); // The sport mode the HRM is currently in (different to getOptions().hrmSportMode which is what we're requesting)
+#endif
   return o;
 }
 

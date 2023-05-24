@@ -46,6 +46,7 @@
             If a Storage file called '.loading' exists, use that instead of the loading screen
             Bangle.js: E.showPrompt now resets background color before clearing the screen
             Bangle.js2: Ensure overlays are flipped when screen is flipped 180 degrees (eg. left-handed mode)
+            Bangle.js2: Automatically switch the heart rate algorithm into sport mode when a certain amount of movement is detected
 
      2v17 : Bangle.js: When reading file info from a filename table, do it in blocks of 8 (20% faster file search)
             Bangle.js2: Increase flash buffer size from 16->32 bytes (5% performance increase)
