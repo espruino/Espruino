@@ -16,7 +16,6 @@
             Puck.js: Ensure acc/gyro doesn't cause watch events to be added to the input queue (more efficient)
             Waveform: Fix waveform input/output when not done at system start - Since 2v13 start time was set in the past
             Fix ordering of Pin check in wrapper (so autocomplete and Pin prototype works)
-            Bangle.js2: Switched to 'hard' float abi from 'soft' (needed for proprietary hrm algorithm)
             Bangle.js2: Switched to proprietary heart rate algorithm (from our Open Source version). It just works better. 
             JIT: Implemented do { a } while (b)
             Ensure that for(in), Object.keys and Object.getOwnPropertyNames return array indices as strings (not numbers)
@@ -45,7 +44,7 @@
             Added E.toFlatString (using old E.toString behaviour)
             Ensure Promise.all completes even if empty or containing pre-resolved promises (fix #2371)
             Allow Graphics.createImage to use '.' as a placeholder for an empty area
-            If a Storage file called '.loading' exists, use that instead of the loading screen
+            Bangle.js: If a Storage file called '.loading' exists, use that instead of the loading screen
             Bangle.js: E.showPrompt now resets background color before clearing the screen
             Bangle.js2: Ensure overlays are flipped when screen is flipped 180 degrees (eg. left-handed mode)
             Bangle.js2: Automatically switch the heart rate algorithm into sport mode when a certain amount of movement is detected
