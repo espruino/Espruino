@@ -1,3 +1,5 @@
+     2v19 : 
+
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler
             Ensure that if JIT fails, we correctly remove just the "jit" tag and treat the function as normal JS
