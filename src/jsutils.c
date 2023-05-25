@@ -990,10 +990,38 @@ unsigned short int int_sqrt32(unsigned int x) {
 }
 
 /// Gets the length of a unicode char sequence by looking at the first char
-int jsUnicodeCharLength(char c) {
+int jsUTF8LengthFromChar(char c) {
   if ((c&0x80)==0) return 1; // ASCII - definitely just one byte
   if ((c&0xE0)==0xC0) return 2; // 2-byte code starts with 0b110xxxxx
   if ((c&0xF0)==0xE0) return 3; // 3-byte code starts with 0b1110xxxx
   if ((c&0xF8)==0xF0) return 4; // 4-byte code starts with 0b11110xxx
   return 1;
 }
+
+/// Given a codepoint, figure hot how many bytes it needs for UTF8 encoding
+int jsUTF8Bytes(int codepoint) {
+  if (codepoint <= 0x7F) return 1;
+  if (codepoint <= 0x7FF) return 2;
+  if (codepoint <= 0xFFFF) return 3;
+  if (codepoint <= 0x10FFFF) return 4;
+  return 0;
+}
+
+// encode a codepoint as a string, NOT null terminated (utf8 min size=4)
+int jsUTF8Encode(int codepoint, char* utf8) {
+  static const uint8_t masks[] = {
+    0x80, // 10000000
+    0xE0, // 11100000
+    0xF0, // 11110000
+    0xF8  // 11111000
+  };
+  int size = jsUTF8Bytes(codepoint);
+  if (!size) return 0;
+  for (int i = size - 1; i > 0; --i) {
+      utf8[i] = (char)((codepoint & ~0xC0) | 0x80);
+      codepoint >>= 6;
+  }
+  utf8[0] = (char)((codepoint & ~(masks[size - 1])) | (masks[size - 1] << 1));
+  return size;
+}
+

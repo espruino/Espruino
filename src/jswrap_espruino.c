@@ -919,6 +919,39 @@ JsVar *jswrap_espruino_toFlatString(JsVar *args) {
   return jswrap_espruino_toStringX(args, true);
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "asUTF8",
+  "generate" : "jswrap_espruino_asUTF8",
+  "params" : [
+    ["str","JsVar","The string to turn into a UTF8 Unicode String"]
+  ],
+  "return" : ["JsVar","A String"],
+  "return_object" : "String"
+}
+By default, strings in Espruino are standard 8 bit binary strings.
+
+However calling E.asUTF8 will convert one of those strings to
+UTF8.
+
+```
+var s = String.fromCharCode(0xF0,0x9F,0x8D,0x94);
+var u = E.asUTF8(s);
+s.length // 4
+s[0] // "\xF0"
+u.length // 1
+u[0] // hamburger emoji
+```
+*/
+JsVar *jswrap_espruino_asUTF8(JsVar *str) {
+  JsVar *v = jsvAsString(str);
+  if (!v) return 0;
+  JsVar *r = jsvNewUTF8String(v);
+  jsvUnLock(v);
+  return r;
+}
+
 /*TYPESCRIPT
 type Uint8ArrayResolvable =
   | number

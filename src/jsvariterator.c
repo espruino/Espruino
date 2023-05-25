@@ -255,10 +255,15 @@ static void jsvStringIteratorCatchUp(JsvStringIterator *it) {
 
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   assert(jsvHasCharacterData(str));
-  it->var = jsvLockAgain(str);
+  it->isUTF8 = jsvIsUTF8String(str);
+  if (it->isUTF8) {
+    it->var =  jsvLock(jsvGetFirstChild(str));
+    assert(jsvHasCharacterData(it->var));
+  } else
+    it->var = jsvLockAgain(str);
   it->varIndex = 0;
-  it->charsInVar = jsvGetCharactersInVar(str);
-  it->charIdx = startIdx;
+  it->charsInVar = jsvGetCharactersInVar(it->var);
+
   if (jsvIsFlatString(str)) {
     it->ptr = jsvGetFlatStringPointer(it->var);
   } else if (jsvIsNativeString(str)) {
@@ -271,6 +276,14 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   } else{
     it->ptr = &it->var->varData.str[0];
   }
+  if (it->isUTF8) {
+    it->charIdx = 0;
+    while (startIdx) {
+      jsvStringIteratorNextUTF8(it);
+      startIdx--;
+    }
+  } else
+    it->charIdx = startIdx;
   jsvStringIteratorCatchUp(it);
 }
 
@@ -289,6 +302,32 @@ char jsvStringIteratorGetCharAndNext(JsvStringIterator *it) {
   char ch = jsvStringIteratorGetChar(it);
   jsvStringIteratorNextInline(it);
   return ch;
+}
+
+// Get the unicode codepoint, and also return the unicode string in unicodeStr (if non-null) and length in unicodeStrLen (if non-null)
+int jsvStringIteratorGetUTF8CharAndNext(JsvStringIterator *it) {
+  if (!jsvStringIteratorHasChar(it)) {
+    return -1;
+  }
+  unsigned char c = (unsigned char)jsvStringIteratorGetCharAndNext(it);
+  if (!it->isUTF8)
+    return c;
+  int cp=c; // Code point defaults to ASCII
+  int ra=0; // Read ahead
+  if (c>127) {
+    if ((c&0xE0)==0xC0) { // 2-byte code starts with 0b110xxxxx
+      cp=c&0x1F;ra=1;
+    } else if ((c&0xF0)==0xE0) { // 3-byte code starts with 0b1110xxxx
+      cp=c&0x0F;ra=2;
+    } else if ((c&0xF8)==0xF0) { // 4-byte code starts with 0b11110xxx
+      cp=c&0x07;ra=3;
+    }
+    while (ra--) {
+      c = (unsigned char)jsvStringIteratorGetCharAndNext(it);
+      cp=(cp<<6)|((unsigned char)c & 0x3F);
+    }
+  }
+  return cp;
 }
 
 
@@ -312,6 +351,13 @@ void jsvStringIteratorSetCharAndNext(JsvStringIterator *it, char c) {
 
 void jsvStringIteratorNext(JsvStringIterator *it) {
   jsvStringIteratorNextInline(it);
+}
+
+void jsvStringIteratorNextUTF8(JsvStringIterator *it) {
+  if (it->isUTF8)
+    return jsvStringIteratorNext(it);
+  int l = jsUTF8LengthFromChar(jsvStringIteratorGetChar(it));
+  while (l--) jsvStringIteratorNext(it);
 }
 
 /// Returns a pointer to the next block of data and its length, and moves on to the data after
@@ -649,35 +695,13 @@ void   jsvArrayBufferIteratorFree(JsvArrayBufferIterator *it) {
   jsvStringIteratorFree(&it->it);
 }
 
-// For jsvIterator, get the next Unicode char
-void jsvIteratorUnicodeNext(JsvIterator *it) {
-  char *unicodeChars = &it->it.unicode.currentStr;
+// For jsvIterator, get the next UTF8 char
+void jsvIteratorUTF8Next(JsvIterator *it) {
   if (!jsvStringIteratorHasChar(&it->it.unicode.str)) {
     it->it.unicode.currentCh = -1;
-    *unicodeChars = 0;
     return;
   }
-  char ch = jsvStringIteratorGetCharAndNext(&it->it.unicode.str);
-  unsigned char c = (unsigned char)ch;
-  *(unicodeChars++) = ch;
-  int cp=c; // Code point defaults to ASCII
-  int ra=0; // Read ahead
-  if (c>127) {
-    if ((c&0xE0)==0xC0) { // 2-byte code starts with 0b110xxxxx
-      cp=c&0x1F;ra=1;
-    } else if ((c&0xF0)==0xE0) { // 3-byte code starts with 0b1110xxxx
-      cp=c&0x0F;ra=2;
-    } else if ((c&0xF8)==0xF0) { // 4-byte code starts with 0b11110xxx
-      cp=c&0x07;ra=3;
-    }
-    while (ra--) {
-      ch = jsvStringIteratorGetCharAndNext(&it->it.unicode.str);
-      *(unicodeChars++) = ch;
-      cp=(cp<<6)|((unsigned char)ch & 0x3F);
-    }
-    *(unicodeChars) = 0; // null terminate
-  }
-  it->it.unicode.currentCh = cp;
+  it->it.unicode.currentCh = jsvStringIteratorGetUTF8CharAndNext(&it->it.unicode.str);
 }
 // --------------------------------------------------------------------------------------------
 /* General Purpose iterator, for Strings, Arrays, Objects, Typed Arrays */
@@ -694,11 +718,11 @@ void jsvIteratorNew(JsvIterator *it, JsVar *obj, JsvIteratorFlags flags) {
   } else if (jsvIsArrayBuffer(obj)) {
     it->type = JSVI_ARRAYBUFFER;
     jsvArrayBufferIteratorNew(&it->it.buf, obj, 0);
-  } else if (jsvIsUnicodeString(obj)) {
+  } else if (jsvIsUTF8String(obj)) {
     it->type = JSVI_UNICODE;
     it->it.unicode.index = 0;
     jsvStringIteratorNew(&it->it.unicode.str, jsvLock(jsvGetFirstChild(obj)), 0);
-    jsvIteratorUnicodeNext(&it); // read a char as the current char
+    jsvIteratorUTF8Next(&it); // read a char as the current char
   } else if (jsvHasCharacterData(obj)) {
     it->type = JSVI_STRING;
     jsvStringIteratorNew(&it->it.str, obj, 0);
@@ -729,7 +753,11 @@ JsVar *jsvIteratorGetValue(JsvIterator *it) {
   case JSVI_OBJECT : return jsvObjectIteratorGetValue(&it->it.obj.it);
   case JSVI_STRING : { char buf = jsvStringIteratorGetChar(&it->it.str); return jsvNewStringOfLength(1, &buf); }
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetValueAndRewind(&it->it.buf);
-  case JSVI_UNICODE: return jsvNewFromString(it->it.unicode.currentStr);
+  case JSVI_UNICODE: {
+    char uBuf[4];
+    int l = jsUTF8Encode(it->it.unicode.currentCh, &uBuf);
+    return jsvNewStringOfLength(l, uBuf);
+  }
   default: assert(0); return 0;
   }
 }
@@ -807,7 +835,7 @@ void jsvIteratorNext(JsvIterator *it) {
   case JSVI_OBJECT : jsvObjectIteratorNext(&it->it.obj.it); break;
   case JSVI_STRING : jsvStringIteratorNext(&it->it.str); break;
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorNext(&it->it.buf); break;
-  case JSVI_UNICODE : it->it.unicode.index++; jsvIteratorUnicodeNext(it); break;
+  case JSVI_UNICODE : it->it.unicode.index++; jsvIteratorUTF8Next(it); break;
   default: assert(0); break;
   }
 }
@@ -837,7 +865,6 @@ void jsvIteratorClone(JsvIterator *dstit, JsvIterator *it) {
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorClone(&dstit->it.buf, &it->it.buf); break;
   case JSVI_UNICODE : jsvStringIteratorClone(&dstit->it.str, &it->it.str);
                       dstit->it.unicode.currentCh = it->it.unicode.currentCh;
-                      memcpy(dstit->it.unicode.currentStr, it->it.unicode.currentStr, sizeof(it->it.unicode.currentStr));
                       dstit->it.unicode.index = it->it.unicode.index;
                       break;
   default: assert(0); break;

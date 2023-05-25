@@ -19,6 +19,7 @@
 #include "jswrap_functions.h" // insane check for eval in jspeFunctionCall
 #include "jswrap_json.h" // for jsfPrintJSON
 #include "jswrap_espruino.h" // for jswrap_espruino_memoryArea
+#include "jswrap_string.h" // for jswrap_string_charAt
 #ifndef ESPR_NO_REGEX
 #include "jswrap_regexp.h" // for jswrap_regexp_constructor
 #endif
@@ -1061,8 +1062,7 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
     } else if (jsvIsString(object) && jsvIsInt(nameVar)) {
       JsVarInt idx = jsvGetInteger(nameVar);
       if (idx>=0 && idx<(JsVarInt)jsvGetStringLength(object)) {
-        char ch = jsvGetCharInString(object, (size_t)idx);
-        child = jsvNewStringOfLength(1, &ch);
+        return jswrap_string_charAt(object, idx);
       } else if (returnName)
         child = jsvCreateNewChild(object, nameVar, 0); // just return *something* to show this is handled
     } else {

@@ -2091,7 +2091,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
   int height = fontHeight;
   int maxWidth = 0;
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetCharAndNext(&it);
+    int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
     if (ch=='\n') {
       if (width>maxWidth) maxWidth=width;
       width = 0;
@@ -2211,7 +2211,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   jsvStringIteratorNew(&it, str, 0);
 
   while (jsvStringIteratorHasChar(&it) || endOfText) {
-    char ch = jsvStringIteratorGetCharAndNext(&it);
+    int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
     if (endOfText || ch=='\n' || ch==' ') { // newline or space
       int currentPos = jsvStringIteratorGetIndex(&it);
       if ((lineWidth + spaceWidth + wordWidth <= maxWidth) &&
@@ -2377,7 +2377,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
   while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetCharAndNext(&it);
+    int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
     if (ch=='\n') {
       x = startx;
 #ifndef SAVE_ON_FLASH

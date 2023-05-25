@@ -99,7 +99,7 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 #define JSV_IS_INT(f) ((f)==JSV_INTEGER || JSV_IS_PIN(f) || (f)==JSV_NAME_INT || (f)==JSV_NAME_INT_INT || (f)==JSV_NAME_INT_BOOL)
 #define JSV_IS_NUMERIC(f) ((f)>=_JSV_NUMERIC_START && (f)<=_JSV_NUMERIC_END)
 #define JSV_IS_STRING(f) ((f)>=_JSV_STRING_START && (f)<=_JSV_STRING_END)
-#define JSV_IS_UNICODE_STRING(f)  (f)==JSV_UNICODE_STRING
+#define JSV_IS_UNICODE_STRING(f)  (f)==JSV_UTF8_STRING
 #define JSV_IS_STRING_EXT(f) ((f)>=JSV_STRING_EXT_0 && (f)<=JSV_STRING_EXT_MAX)
 #define JSV_IS_FLAT_STRING(f) (f)==JSV_FLAT_STRING
 #define JSV_IS_NATIVE_STRING(f) (f)==JSV_NATIVE_STRING
@@ -128,7 +128,7 @@ bool jsvIsInt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VART
 bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
 bool jsvIsBoolean(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_BOOL(f); }
 bool jsvIsString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_STRING(f); } ///< String, or a NAME too
-bool jsvIsUnicodeString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_UNICODE_STRING(f); } ///< Just a unicode string (Unicode JsVar, pointing to a string)
+bool jsvIsUTF8String(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_UNICODE_STRING(f); } ///< Just a unicode string (UTF8 JsVar, pointing to a string)
 bool jsvIsBasicString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return f>=JSV_STRING_0 && f<=JSV_STRING_MAX; } ///< Just a string (NOT a name/flatstr/nativestr or flashstr)
 bool jsvIsStringExt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_STRING_EXT(f); } ///< The extra bits dumped onto the end of a string to store more data
 bool jsvIsFlatString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_FLAT_STRING(f); }
@@ -1096,9 +1096,9 @@ JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData) {
   return first;
 }
 
-JsVar *jsvNewUnicodeString(JsVar* dataString) {
+JsVar *jsvNewUTF8String(JsVar* dataString) {
   assert(jsvIsString(dataString));
-   JsVar *var = jsvNewWithFlags(JSV_UNICODE_STRING);
+   JsVar *var = jsvNewWithFlags(JSV_UTF8_STRING);
   if (!var) return 0; // no memory
   jsvSetFirstChild(var, jsvGetRef(jsvRef(dataString)));
   return var;
@@ -1643,6 +1643,18 @@ bool jsvIsEmptyString(JsVar *v) {
 
 size_t jsvGetStringLength(const JsVar *v) {
   size_t strLength = 0;
+  // For unicode, we just have to iterate to get a length
+  if (jsvIsUTF8String(v)) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, v, 0);
+    while (jsvStringIteratorHasChar(&it)) {
+      jsvStringIteratorNextUTF8(&it);
+      strLength++;
+    }
+    jsvStringIteratorFree(&it);
+    return strLength;
+  }
+
   const JsVar *var = v;
   JsVar *newVar = 0;
   if (!jsvHasCharacterData(v)) return 0;
@@ -1895,12 +1907,12 @@ void jsvAppendStringVarComplete(JsVar *var, const JsVar *str) {
   jsvAppendStringVar(var, str, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
 }
 
-char jsvGetCharInString(JsVar *v, size_t idx) {
+int jsvGetCharInString(JsVar *v, size_t idx) {
   if (!jsvIsString(v)) return 0;
 
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, idx);
-  char ch = jsvStringIteratorGetChar(&it);
+  int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
   jsvStringIteratorFree(&it);
   return ch;
 }
@@ -2493,9 +2505,8 @@ int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool eq
   jsvStringIteratorNew(&itb, vb, startb);
   // step to first positions
   while (true) {
-    int ca = jsvStringIteratorGetCharOrMinusOne(&ita);
-    int cb = jsvStringIteratorGetCharOrMinusOne(&itb);
-
+    int ca = jsvStringIteratorGetUTF8CharAndNext(&ita);
+    int cb = jsvStringIteratorGetUTF8CharAndNext(&itb);
     if (ca != cb) {
       jsvStringIteratorFree(&ita);
       jsvStringIteratorFree(&itb);
@@ -2507,8 +2518,6 @@ int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool eq
       jsvStringIteratorFree(&itb);
       return 0;
     }
-    jsvStringIteratorNext(&ita);
-    jsvStringIteratorNext(&itb);
   }
   // never get here, but the compiler warns...
   return true;
@@ -2522,14 +2531,12 @@ JsVar *jsvGetCommonCharacters(JsVar *va, JsVar *vb) {
   JsvStringIterator ita, itb;
   jsvStringIteratorNew(&ita, va, 0);
   jsvStringIteratorNew(&itb, vb, 0);
-  int ca = jsvStringIteratorGetCharOrMinusOne(&ita);
-  int cb = jsvStringIteratorGetCharOrMinusOne(&itb);
+  int ca = jsvStringIteratorGetUTF8CharAndNext(&ita);
+  int cb = jsvStringIteratorGetUTF8CharAndNext(&itb);
   while (ca>0 && cb>0 && ca == cb) {
     jsvAppendCharacter(v, (char)ca);
-    jsvStringIteratorNext(&ita);
-    jsvStringIteratorNext(&itb);
-    ca = jsvStringIteratorGetCharOrMinusOne(&ita);
-    cb = jsvStringIteratorGetCharOrMinusOne(&itb);
+    ca = jsvStringIteratorGetUTF8CharAndNext(&ita);
+    cb = jsvStringIteratorGetUTF8CharAndNext(&itb);
   }
   jsvStringIteratorFree(&ita);
   jsvStringIteratorFree(&itb);

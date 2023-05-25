@@ -625,6 +625,12 @@ typedef struct {
 } Vector3;
 
 /// Gets the length of a unicode char sequence by looking at the first char
-int jsUnicodeCharLength(char c);
+int jsUTF8LengthFromChar(char c);
+
+/// Given a codepoint, figure hot how many bytes it needs for UTF8 encoding
+int jsUTF8Bytes(int codepoint);
+
+// encode a codepoint as a string, NOT null terminated (utf8 min size=4)
+int jsUTF8Encode(int codepoint, char* utf8);
 
 #endif /* JSUTILS_H_ */

@@ -102,18 +102,20 @@ JsVar *jswrap_string_fromCharCode(JsVar *arr) {
 Return a single character at the given position in the String.
  */
 JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
-  // We do this so we can handle '/0' in a string
-  JsVar *r = jsvNewFromEmptyString();
-  if (r && jsvIsString(parent) && idx>=0) {
-    JsvStringIterator it;
-    jsvStringIteratorNew(&it, parent, (size_t)idx);
-    if (jsvStringIteratorHasChar(&it)) {
-      char ch = jsvStringIteratorGetChar(&it);
-      jsvAppendStringBuf(r, &ch, 1);
-    }
-    jsvStringIteratorFree(&it);
-  }
-  return r;
+  if (!jsvIsString(parent)) return 0;
+  char unicodeStr[5];
+  int unicodeStrLen;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, parent, (size_t)idx);
+  int uChar = jsvStringIteratorGetUTF8CharAndNext(&it);
+  char uBuf[4];
+  int l = 1;
+  if (it.isUTF8)
+    l = jsUTF8Encode(uChar, &uBuf);
+  else
+    uBuf[0] = uChar; // ensure we can handle >127 codes in normal strings
+  jsvStringIteratorFree(&it);
+  return jsvNewStringOfLength(l, uBuf);
 }
 
 /*JSON{

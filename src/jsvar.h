@@ -72,9 +72,9 @@ typedef enum {
     JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
     JSV_FLAT_STRING = JSV_STRING_MAX+1, ///< Flat strings store the length (in chars) as an int, and then the subsequent JsVars (in memory) store data
     JSV_NATIVE_STRING = JSV_FLAT_STRING+1, ///< Native strings store an address and length, and reference the underlying data directly
-    JSV_UNICODE_STRING = JSV_NATIVE_STRING+1, ///< Unicode just point to a normal string with firstChild, but just tag that the string is a unicode one
+    JSV_UTF8_STRING = JSV_NATIVE_STRING+1, ///< UTF8 just point to a normal string with firstChild, but just tag that the string is a unicode one
 #ifdef SPIFLASH_BASE
-    JSV_FLASH_STRING = JSV_UNICODE_STRING+1, ///< Like a native String, but not writable and uses jshFlashRead
+    JSV_FLASH_STRING = JSV_UTF8_STRING+1, ///< Like a native String, but not writable and uses jshFlashRead
     _JSV_STRING_END = JSV_FLASH_STRING,
 #else
     _JSV_STRING_END = JSV_NATIVE_STRING,
@@ -302,7 +302,7 @@ JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewNameFromString(const char *str); ///< Create a new name from a string
 JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData); ///< Create a new string of the given length - full of 0s (or initialData if specified)
 static ALWAYS_INLINE JsVar *jsvNewFromEmptyString() { return jsvNewWithFlags(JSV_STRING_0); } ;///< Create a new empty string
-JsVar *jsvNewUnicodeString(JsVar* dataString); ///< Create a new unicode string using the given data string for backing
+JsVar *jsvNewUTF8String(JsVar* dataString); ///< Create a new unicode string using the given data string for backing
 static ALWAYS_INLINE JsVar *jsvNewNull() { return jsvNewWithFlags(JSV_NULL); } ;///< Create a new null variable
 /** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)  */
 JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength);
@@ -386,7 +386,7 @@ bool jsvIsInt(const JsVar *v);
 bool jsvIsFloat(const JsVar *v);
 bool jsvIsBoolean(const JsVar *v);
 bool jsvIsString(const JsVar *v); ///< String, or a NAME too
-bool jsvIsUnicodeString(const JsVar *v); ///< Just a unicode string (Unicode JsVar, pointing to a string)
+bool jsvIsUTF8String(const JsVar *v); ///< Just a unicode string (UTF8 JsVar, pointing to a string)
 bool jsvIsBasicString(const JsVar *v); ///< Just a string (NOT a name)
 bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
 bool jsvIsFlatString(const JsVar *v);
@@ -513,7 +513,7 @@ static ALWAYS_INLINE void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStr
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)
 void jsvAppendStringVarComplete(JsVar *var, const JsVar *str); ///< Append all of str to var. Both must be strings.
-char jsvGetCharInString(JsVar *v, size_t idx); ///< Get a character at the given index in the String
+int jsvGetCharInString(JsVar *v, size_t idx); ///< Get a character at the given index in the String (handles unicode)
 void jsvSetCharInString(JsVar *v, size_t idx, char ch, bool bitwiseOR); ///< Set a character at the given index in the String. If bitwiseOR, ch will be ORed with the character already at that position.
 int jsvGetStringIndexOf(JsVar *str, char ch); ///< Get the index of a character in a string, or -1
 

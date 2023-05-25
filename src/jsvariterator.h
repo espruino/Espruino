@@ -63,6 +63,7 @@ typedef struct JsvStringIterator {
   size_t varIndex; ///< index in string of the start of this var
   JsVar *var; ///< current StringExt we're looking at
   char  *ptr; ///< a pointer to string data
+  bool isUTF8; ///< Is this string UTF8 or not?
 #ifdef SPIFLASH_BASE // when using flash strings, we need somewhere to put the data
   char flashStringBuffer[ESPR_JSVAR_FLASH_BUFFER_SIZE];
 #endif
@@ -86,6 +87,9 @@ static ALWAYS_INLINE char jsvStringIteratorGetChar(JsvStringIterator *it) {
 /// Gets the current character (or 0) and increment iterator. Not inlined for speed
 char jsvStringIteratorGetCharAndNext(JsvStringIterator *it);
 
+// Get the unicode codepoint, and also return the unicode string in unicodeStr (if non-null) and length in unicodeStrLen (if non-null)
+int jsvStringIteratorGetUTF8CharAndNext(JsvStringIterator *it);
+
 /// Gets the current (>=0) character (or -1)
 int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it);
 
@@ -105,8 +109,11 @@ static ALWAYS_INLINE size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
   return it->varIndex + it->charIdx;
 }
 
-/// Move to next character
+/// Move to next character (does not honour unicode)
 void jsvStringIteratorNext(JsvStringIterator *it);
+
+/// Move to next character, skipping unicode chars correctly
+void jsvStringIteratorNextUTF8(JsvStringIterator *it);
 
 /// Returns a pointer to the next block of data and its length, and moves on to the data after
 void jsvStringIteratorGetPtrAndNext(JsvStringIterator *it, unsigned char **data, unsigned int *len);
@@ -265,14 +272,13 @@ typedef struct {
   JsvStringIterator str; // iterator for underlying string
   JsVarInt index; // char index (because it's different from StringIterator index)
   int currentCh; // current character code
-  char currentStr[5]; // string that makes up the character code
-} JsvIteratorUnicode;
+} JsvIteratorUTF8;
 
 union JsvIteratorUnion {
   JsvStringIterator str;
   JsvIteratorObj obj;
   JsvArrayBufferIterator buf;
-  JsvIteratorUnicode unicode;
+  JsvIteratorUTF8 unicode;
 };
 
 /** General Purpose iterator, for Strings, Arrays, Objects, Typed Arrays */
@@ -283,7 +289,7 @@ typedef struct JsvIterator {
     JSVI_OBJECT,
     JSVI_ARRAYBUFFER,
     JSVI_FULLARRAY, // iterate over ALL array items - including not defined
-    JSVI_UNICODE // A Unicode string (actual string was stored in firstchild)
+    JSVI_UNICODE // A UTF8 string (actual string was stored in firstchild)
   } type;
   union JsvIteratorUnion it;
 } JsvIterator;
