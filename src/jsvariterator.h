@@ -261,10 +261,18 @@ typedef struct {
   JsVarInt index; // index when using JSVI_FULLARRAY
 } JsvIteratorObj;
 
+typedef struct {
+  JsvStringIterator str; // iterator for underlying string
+  JsVarInt index; // char index (because it's different from StringIterator index)
+  int currentCh; // current character code
+  char currentStr[5]; // string that makes up the character code
+} JsvIteratorUnicode;
+
 union JsvIteratorUnion {
   JsvStringIterator str;
   JsvIteratorObj obj;
   JsvArrayBufferIterator buf;
+  JsvIteratorUnicode unicode;
 };
 
 /** General Purpose iterator, for Strings, Arrays, Objects, Typed Arrays */
@@ -275,6 +283,7 @@ typedef struct JsvIterator {
     JSVI_OBJECT,
     JSVI_ARRAYBUFFER,
     JSVI_FULLARRAY, // iterate over ALL array items - including not defined
+    JSVI_UNICODE // A Unicode string (actual string was stored in firstchild)
   } type;
   union JsvIteratorUnion it;
 } JsvIterator;

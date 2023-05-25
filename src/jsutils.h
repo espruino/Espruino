@@ -624,4 +624,7 @@ typedef struct {
   short x,y,z;
 } Vector3;
 
+/// Gets the length of a unicode char sequence by looking at the first char
+int jsUnicodeCharLength(char c);
+
 #endif /* JSUTILS_H_ */

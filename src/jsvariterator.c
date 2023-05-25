@@ -648,6 +648,37 @@ void   jsvArrayBufferIteratorFree(JsvArrayBufferIterator *it) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
   jsvStringIteratorFree(&it->it);
 }
+
+// For jsvIterator, get the next Unicode char
+void jsvIteratorUnicodeNext(JsvIterator *it) {
+  char *unicodeChars = &it->it.unicode.currentStr;
+  if (!jsvStringIteratorHasChar(&it->it.unicode.str)) {
+    it->it.unicode.currentCh = -1;
+    *unicodeChars = 0;
+    return;
+  }
+  char ch = jsvStringIteratorGetCharAndNext(&it->it.unicode.str);
+  unsigned char c = (unsigned char)ch;
+  *(unicodeChars++) = ch;
+  int cp=c; // Code point defaults to ASCII
+  int ra=0; // Read ahead
+  if (c>127) {
+    if ((c&0xE0)==0xC0) { // 2-byte code starts with 0b110xxxxx
+      cp=c&0x1F;ra=1;
+    } else if ((c&0xF0)==0xE0) { // 3-byte code starts with 0b1110xxxx
+      cp=c&0x0F;ra=2;
+    } else if ((c&0xF8)==0xF0) { // 4-byte code starts with 0b11110xxx
+      cp=c&0x07;ra=3;
+    }
+    while (ra--) {
+      ch = jsvStringIteratorGetCharAndNext(&it->it.unicode.str);
+      *(unicodeChars++) = ch;
+      cp=(cp<<6)|((unsigned char)ch & 0x3F);
+    }
+    *(unicodeChars) = 0; // null terminate
+  }
+  it->it.unicode.currentCh = cp;
+}
 // --------------------------------------------------------------------------------------------
 /* General Purpose iterator, for Strings, Arrays, Objects, Typed Arrays */
 
@@ -663,6 +694,11 @@ void jsvIteratorNew(JsvIterator *it, JsVar *obj, JsvIteratorFlags flags) {
   } else if (jsvIsArrayBuffer(obj)) {
     it->type = JSVI_ARRAYBUFFER;
     jsvArrayBufferIteratorNew(&it->it.buf, obj, 0);
+  } else if (jsvIsUnicodeString(obj)) {
+    it->type = JSVI_UNICODE;
+    it->it.unicode.index = 0;
+    jsvStringIteratorNew(&it->it.unicode.str, jsvLock(jsvGetFirstChild(obj)), 0);
+    jsvIteratorUnicodeNext(&it); // read a char as the current char
   } else if (jsvHasCharacterData(obj)) {
     it->type = JSVI_STRING;
     jsvStringIteratorNew(&it->it.str, obj, 0);
@@ -673,11 +709,13 @@ void jsvIteratorNew(JsvIterator *it, JsVar *obj, JsvIteratorFlags flags) {
 }
 
 JsVar *jsvIteratorGetKey(JsvIterator *it) {
+  // FIXME: *which* things expect a variable name?
   switch (it->type) {
   case JSVI_FULLARRAY : return jsvNewFromInteger(it->it.obj.index);
   case JSVI_OBJECT : return jsvObjectIteratorGetKey(&it->it.obj.it);
-  case JSVI_STRING : return jsvMakeIntoVariableName(jsvNewFromInteger((JsVarInt)jsvStringIteratorGetIndex(&it->it.str)), 0); // some things expect a veriable name
+  case JSVI_STRING : return jsvMakeIntoVariableName(jsvNewFromInteger((JsVarInt)jsvStringIteratorGetIndex(&it->it.str)), 0); // some things expect a variable name
   case JSVI_ARRAYBUFFER : return jsvMakeIntoVariableName(jsvArrayBufferIteratorGetIndex(&it->it.buf), 0); // some things expect a veriable name
+  case JSVI_UNICODE: return jsvMakeIntoVariableName(jsvNewFromInteger((JsVarInt)it->it.unicode.index), 0);
   default: assert(0); return 0;
   }
 }
@@ -689,8 +727,9 @@ JsVar *jsvIteratorGetValue(JsvIterator *it) {
                          return jsvObjectIteratorGetValue(&it->it.obj.it);
                        return 0;
   case JSVI_OBJECT : return jsvObjectIteratorGetValue(&it->it.obj.it);
-  case JSVI_STRING : { char buf[2] = {jsvStringIteratorGetChar(&it->it.str),0}; return jsvNewFromString(buf); }
+  case JSVI_STRING : { char buf = jsvStringIteratorGetChar(&it->it.str); return jsvNewStringOfLength(1, &buf); }
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetValueAndRewind(&it->it.buf);
+  case JSVI_UNICODE: return jsvNewFromString(it->it.unicode.currentStr);
   default: assert(0); return 0;
   }
 }
@@ -714,6 +753,7 @@ JsVarInt jsvIteratorGetIntegerValue(JsvIterator *it) {
   }
   case JSVI_STRING : return (JsVarInt)jsvStringIteratorGetChar(&it->it.str);
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetIntegerValue(&it->it.buf);
+  case JSVI_UNICODE: return it->it.unicode.currentCh;
   default: assert(0); return 0;
   }
 }
@@ -725,9 +765,8 @@ JsVarFloat jsvIteratorGetFloatValue(JsvIterator *it) {
                          return jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it->it.obj.it));
                        return NAN;
   case JSVI_OBJECT : return jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it->it.obj.it));
-  case JSVI_STRING : return (JsVarFloat)jsvStringIteratorGetChar(&it->it.str);
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetFloatValue(&it->it.buf);
-  default: assert(0); return NAN;
+  default: return (JsVarFloat)jsvIteratorGetIntegerValue(it); // fallback to asking for integer value
   }
 }
 
@@ -741,6 +780,7 @@ JsVar *jsvIteratorSetValue(JsvIterator *it, JsVar *value) {
   case JSVI_OBJECT : jsvObjectIteratorSetValue(&it->it.obj.it, value); break;
   case JSVI_STRING : jsvStringIteratorSetChar(&it->it.str, (char)(jsvIsString(value) ? value->varData.str[0] : (char)jsvGetInteger(value))); break;
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorSetValueAndRewind(&it->it.buf, value); break;
+  case JSVI_UNICODE: break; // can't set a unicode value
   default: assert(0); break;
   }
   return value;
@@ -752,6 +792,7 @@ bool jsvIteratorHasElement(JsvIterator *it) {
   case JSVI_OBJECT : return jsvObjectIteratorHasValue(&it->it.obj.it);
   case JSVI_STRING : return jsvStringIteratorHasChar(&it->it.str);
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorHasElement(&it->it.buf);
+  case JSVI_UNICODE : return it->it.unicode.currentCh>=0;
   default: assert(0); return 0;
   }
 }
@@ -766,6 +807,7 @@ void jsvIteratorNext(JsvIterator *it) {
   case JSVI_OBJECT : jsvObjectIteratorNext(&it->it.obj.it); break;
   case JSVI_STRING : jsvStringIteratorNext(&it->it.str); break;
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorNext(&it->it.buf); break;
+  case JSVI_UNICODE : it->it.unicode.index++; jsvIteratorUnicodeNext(it); break;
   default: assert(0); break;
   }
 }
@@ -778,6 +820,7 @@ void jsvIteratorFree(JsvIterator *it) {
   case JSVI_OBJECT : jsvObjectIteratorFree(&it->it.obj.it); break;
   case JSVI_STRING : jsvStringIteratorFree(&it->it.str); break;
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorFree(&it->it.buf); break;
+  case JSVI_UNICODE : jsvStringIteratorFree(&it->it.unicode.str); break;
   default: assert(0); break;
   }
 }
@@ -792,6 +835,11 @@ void jsvIteratorClone(JsvIterator *dstit, JsvIterator *it) {
   case JSVI_OBJECT : jsvObjectIteratorClone(&dstit->it.obj.it, &it->it.obj.it); break;
   case JSVI_STRING : jsvStringIteratorClone(&dstit->it.str, &it->it.str); break;
   case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorClone(&dstit->it.buf, &it->it.buf); break;
+  case JSVI_UNICODE : jsvStringIteratorClone(&dstit->it.str, &it->it.str);
+                      dstit->it.unicode.currentCh = it->it.unicode.currentCh;
+                      memcpy(dstit->it.unicode.currentStr, it->it.unicode.currentStr, sizeof(it->it.unicode.currentStr));
+                      dstit->it.unicode.index = it->it.unicode.index;
+                      break;
   default: assert(0); break;
   }
 }

@@ -99,6 +99,7 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 #define JSV_IS_INT(f) ((f)==JSV_INTEGER || JSV_IS_PIN(f) || (f)==JSV_NAME_INT || (f)==JSV_NAME_INT_INT || (f)==JSV_NAME_INT_BOOL)
 #define JSV_IS_NUMERIC(f) ((f)>=_JSV_NUMERIC_START && (f)<=_JSV_NUMERIC_END)
 #define JSV_IS_STRING(f) ((f)>=_JSV_STRING_START && (f)<=_JSV_STRING_END)
+#define JSV_IS_UNICODE_STRING(f)  (f)==JSV_UNICODE_STRING
 #define JSV_IS_STRING_EXT(f) ((f)>=JSV_STRING_EXT_0 && (f)<=JSV_STRING_EXT_MAX)
 #define JSV_IS_FLAT_STRING(f) (f)==JSV_FLAT_STRING
 #define JSV_IS_NATIVE_STRING(f) (f)==JSV_NATIVE_STRING
@@ -127,6 +128,7 @@ bool jsvIsInt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VART
 bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
 bool jsvIsBoolean(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_BOOL(f); }
 bool jsvIsString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_STRING(f); } ///< String, or a NAME too
+bool jsvIsUnicodeString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_UNICODE_STRING(f); } ///< Just a unicode string (Unicode JsVar, pointing to a string)
 bool jsvIsBasicString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return f>=JSV_STRING_0 && f<=JSV_STRING_MAX; } ///< Just a string (NOT a name/flatstr/nativestr or flashstr)
 bool jsvIsStringExt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_STRING_EXT(f); } ///< The extra bits dumped onto the end of a string to store more data
 bool jsvIsFlatString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_FLAT_STRING(f); }
@@ -208,6 +210,7 @@ bool jsvHasSingleChild(const JsVar *v) {
   if (!v) return false;
   char f = v->flags&JSV_VARTYPEMASK;
   return JSV_IS_ARRAYBUFFER(f) ||
+      JSV_IS_UNICODE_STRING(f) ||
       (JSV_IS_NAME(f) && !JSV_IS_NAME_WITH_VALUE(f));
 }
 
@@ -1091,6 +1094,14 @@ JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData) {
   jsvUnLock(var);
   // return
   return first;
+}
+
+JsVar *jsvNewUnicodeString(JsVar* dataString) {
+  assert(jsvIsString(dataString));
+   JsVar *var = jsvNewWithFlags(JSV_UNICODE_STRING);
+  if (!var) return 0; // no memory
+  jsvSetFirstChild(var, jsvGetRef(jsvRef(dataString)));
+  return var;
 }
 
 JsVar *jsvNewFromInteger(JsVarInt value) {

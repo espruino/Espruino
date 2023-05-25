@@ -55,14 +55,14 @@ bool isIDString(const char *s) {
 
 
 char charToUpperCase(char ch) {
-  return (char)(((ch>=97 && ch<=122) || 
-    ((unsigned)ch>=224 && (unsigned)ch<=246) || 
+  return (char)(((ch>=97 && ch<=122) ||
+    ((unsigned)ch>=224 && (unsigned)ch<=246) ||
     ((unsigned)ch>=248 && (unsigned)ch<=254)) ? ch - 32 : ch);
 } // a-z, à-ö, ø-þ
 
 char charToLowerCase(char ch) {
-  return (char)(((ch>=65 && ch<=90) || 
-    ((unsigned)ch>=192 && (unsigned)ch<=214) || 
+  return (char)(((ch>=65 && ch<=90) ||
+    ((unsigned)ch>=192 && (unsigned)ch<=214) ||
     ((unsigned)ch>=216 && (unsigned)ch<=222))  ? ch + 32 : ch);
 } // A-Z, À-Ö, Ø-Þ
 
@@ -684,7 +684,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
         int v = (int)(val+((fractionalDigits==1) ? 0.5 : 0.00000001) );
         val = (val-v)*radix;
 	if (v==radix) v=radix-1;
-        if (!hasPt) {	
+        if (!hasPt) {
 	  hasPt = true;
           if (--len <= 0) { *str=0; return; } // bounds check
           *(str++)='.';
@@ -925,12 +925,12 @@ size_t jsuGetFreeStack() {
   //Early entries are in higher memory locations.
   //Later entries are in lower memory locations.
 
-  
+
   uint32_t stackPos   = (uint32_t)&ptr;
   uint32_t stackStart = (uint32_t)espruino_stackHighPtr - ESP_STACK_SIZE;
 
   if (stackPos < stackStart) return 0; // should never happen, but just in case of overflow!
-  
+
   return stackPos - stackStart;
 #else
   // stack depth seems pretty platform-specific :( Default to a value that disables it
@@ -987,4 +987,13 @@ unsigned short int int_sqrt32(unsigned int x) {
     add>>=1;
   }
   return res;
+}
+
+/// Gets the length of a unicode char sequence by looking at the first char
+int jsUnicodeCharLength(char c) {
+  if ((c&0x80)==0) return 1; // ASCII - definitely just one byte
+  if ((c&0xE0)==0xC0) return 2; // 2-byte code starts with 0b110xxxxx
+  if ((c&0xF0)==0xE0) return 3; // 3-byte code starts with 0b1110xxxx
+  if ((c&0xF8)==0xF0) return 4; // 4-byte code starts with 0b11110xxx
+  return 1;
 }
