@@ -36,6 +36,7 @@
 #include "bitmap_font_4x6.h"
 #include "bitmap_font_6x8.h"
 #include "vector_font.h"
+#include "pbf_font.h"
 
 #ifdef GRAPHICS_PALETTED_IMAGES
 #if defined(ESPR_GRAPHICS_12BIT)
@@ -797,7 +798,7 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
     }
   }
   if (x) height++;
-  if (height && ch=="\n") height--; // if the last char was a newline, ignore it
+  if (height && ch=='\n') height--; // if the last char was a newline, ignore it
   jsvStringIteratorFree(&it);
   // Sorted - now create the object, set it up and create the buffer
   JsVar *img = jsvNewObject();
@@ -1716,6 +1717,36 @@ JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar
   return jsvLockAgain(parent);
 }
 #endif
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setFontPBF",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_graphics_setFontPBF",
+  "params" : [
+    ["file","JsVar","The font as a PBF file"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+*/
+#ifndef SAVE_ON_FLASH
+JsVar *jswrap_graphics_setFontPBF(JsVar *parent, JsVar *file) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+
+  if (!jsvIsString(file)) {
+    jsExceptionHere(JSET_ERROR, "Font must be a String");
+    return 0;
+  }
+  int scale = 1;
+  jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, file);
+  gfx.data.fontSize = (unsigned short)(scale | JSGRAPHICS_FONTSIZE_CUSTOM_PBF);
+  graphicsSetVar(&gfx);
+  return jsvLockAgain(parent);
+}
+#endif
+
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
@@ -1990,6 +2021,9 @@ typedef struct {
   unsigned short scale;
   unsigned short scalex, scaley;
   unsigned char customFirstChar;
+  JsVar *widths; // Array of widths (for old-style fonts) or just an int for fixed width
+  JsVar *bitmap; // Bitmap/font data
+  PbfFontLoaderInfo pbfInfo;
 } JsGraphicsFontInfo;
 
 static void _jswrap_graphics_getFontInfo(JsGraphics *gfx, JsGraphicsFontInfo *info) {
@@ -2004,34 +2038,53 @@ static void _jswrap_graphics_getFontInfo(JsGraphics *gfx, JsGraphicsFontInfo *in
 #ifndef SAVE_ON_FLASH
   if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
     info->customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR));
+    info->widths = jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_WIDTH);
+    info->bitmap = jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_BMP);
+    if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK) == JSGRAPHICS_FONTSIZE_CUSTOM_PBF)
+      jspbfFontNew(&info->pbfInfo, info->bitmap);
   } else
 #endif
     info->customFirstChar = 0;
+
 }
 
-static int _jswrap_graphics_getCharWidth(JsGraphics *gfx, JsGraphicsFontInfo *info, char ch) {
-  if (info->font == JSGRAPHICS_FONTSIZE_VECTOR) {
+static void _jswrap_graphics_freeFontInfo(JsGraphicsFontInfo *info) {
+  if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
+    jsvUnLock(info->widths);
+    jsvUnLock(info->bitmap);
+    if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK) == JSGRAPHICS_FONTSIZE_CUSTOM_PBF)
+      jspbfFontFree(&info->pbfInfo);
+  }
+}
+
+static int _jswrap_graphics_getCharWidth(JsGraphics *gfx, JsGraphicsFontInfo *info, int ch) {
+  if ((info->font == JSGRAPHICS_FONTSIZE_VECTOR) && (ch<256)) {
 #ifndef NO_VECTOR_FONT
     return (int)graphicsVectorCharWidth(info->scalex, ch);
 #endif
-  } else if (info->font == JSGRAPHICS_FONTSIZE_4X6) {
+  } else if ((info->font == JSGRAPHICS_FONTSIZE_4X6) && (ch<256)) {
     return 4*info->scalex;
 #ifdef USE_FONT_6X8
-  } else if (info->font == JSGRAPHICS_FONTSIZE_6X8) {
+  } else if ((info->font == JSGRAPHICS_FONTSIZE_6X8) && (ch<256)) {
     return 6*info->scalex;
 #endif
 #ifndef SAVE_ON_FLASH
   } else if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
+    if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_PBF) {
+      PbfFontLoaderGlyph result;
+      if (jspbfFontFindGlyph(&info->pbfInfo, ch, &result))
+        return result.advance;
+      else
+        return 0;
+    }
     int w = 0;
-    // FIXME: is getCharWidth is called a lot (eg for metrics), we do getChild for each
-    // character - maybe we should store this in JsGraphicsFontInfo (but then we have to unlock it)
-    JsVar *customWidth = jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_WIDTH);
-    if (jsvIsString(customWidth)) {
-      if (ch>=info->customFirstChar)
-        w = info->scalex*(unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-info->customFirstChar));
-    } else
-      w = info->scalex*(int)jsvGetInteger(customWidth);
-    jsvUnLock(customWidth);
+    if (ch<256) {
+      if (jsvIsString(info->widths)) {
+        if (ch>=info->customFirstChar)
+          w = info->scalex*(unsigned char)jsvGetCharInString(info->widths, (size_t)(ch-info->customFirstChar));
+      } else
+        w = info->scalex*(int)jsvGetInteger(info->widths);
+    }
     return w;
 #endif
   }
@@ -2059,6 +2112,8 @@ static int _jswrap_graphics_getFontHeightInternal(JsGraphics *gfx, JsGraphicsFon
 #endif
 #ifndef SAVE_ON_FLASH
   } else if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
+    if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_PBF)
+      return info->pbfInfo.lineHeight;
     return info->scaley*(int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_HEIGHT));
 #endif
   }
@@ -2069,7 +2124,9 @@ int jswrap_graphics_getFontHeight(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   JsGraphicsFontInfo info;
   _jswrap_graphics_getFontInfo(&gfx, &info);
-  return _jswrap_graphics_getFontHeightInternal(&gfx, &info);
+  int h = _jswrap_graphics_getFontHeightInternal(&gfx, &info);
+  _jswrap_graphics_freeFontInfo(&info);
+  return h;
 #else
   return 0;
 #endif
@@ -2117,6 +2174,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
   jsvUnLock(str);
   if (stringWidth) *stringWidth = width>maxWidth ? width : maxWidth;
   if (stringHeight) *stringHeight = height;
+  _jswrap_graphics_freeFontInfo(&info);
 }
 JsVarInt _jswrap_graphics_stringWidth(JsGraphics *gfx, JsVar *var, int lineStartIndex) {
   int w,h;
@@ -2271,6 +2329,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   if (jsvGetStringLength(currentLine))
     jsvArrayPush(lines, currentLine);
   jsvUnLock2(str,currentLine);
+   _jswrap_graphics_freeFontInfo(&info);
   return lines;
 }
 
@@ -2317,14 +2376,11 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   int fontHeight = _jswrap_graphics_getFontHeightInternal(&gfx, &info);
 
 #ifndef SAVE_ON_FLASH
-  JsVar *customBitmap = 0, *customWidth = 0;
   int customBPP = 1;
 
   if (info.font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
-    if (info.font==JSGRAPHICS_FONTSIZE_CUSTOM_2BPP) customBPP = 2;
-    if (info.font==JSGRAPHICS_FONTSIZE_CUSTOM_4BPP) customBPP = 4;
-    customBitmap = jsvObjectGetChildIfExists(parent, JSGRAPHICS_CUSTOMFONT_BMP);
-    customWidth = jsvObjectGetChildIfExists(parent, JSGRAPHICS_CUSTOMFONT_WIDTH);
+    if ((info.font&JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_2BPP) customBPP = 2;
+    if ((info.font&JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_4BPP) customBPP = 4;
   }
 #endif
 #ifndef SAVE_ON_FLASH
@@ -2402,36 +2458,44 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
       continue;
     }
 #endif
-    if (info.font == JSGRAPHICS_FONTSIZE_VECTOR) {
+    if ((info.font == JSGRAPHICS_FONTSIZE_VECTOR) && (ch<256)) {
 #ifndef NO_VECTOR_FONT
       int w = (int)graphicsVectorCharWidth(info.scalex, ch);
       // TODO: potentially we could do this in x16 accuracy so vector chars rendered together better
       if (x>minX-w && x<maxX  && y>minY-fontHeight && y<=maxY) {
         if (solidBackground)
           graphicsFillRect(&gfx,x,y,x+w-1,y+fontHeight-1, gfx.data.bgColor);
-        graphicsGetVectorChar((graphicsPolyCallback)graphicsFillPoly, &gfx, x, y, info.scalex, info.scaley, ch);
+        graphicsGetVectorChar((graphicsPolyCallback)graphicsFillPoly, &gfx, x, y, info.scalex, info.scaley, (char)ch);
       }
       x+=w;
 #endif
-    } else if (info.font == JSGRAPHICS_FONTSIZE_4X6) {
+    } else if ((info.font == JSGRAPHICS_FONTSIZE_4X6) && (ch<256)) {
       if (x>minX-4*info.scalex && x<maxX && y>minY-fontHeight && y<=maxY)
-        graphicsDrawChar4x6(&gfx, x, y, ch, info.scalex, info.scaley, solidBackground);
+        graphicsDrawChar4x6(&gfx, x, y, (char)ch, info.scalex, info.scaley, solidBackground);
       x+=4*info.scalex;
 #ifdef USE_FONT_6X8
     } else if (info.font == JSGRAPHICS_FONTSIZE_6X8) {
       if (x>minX-6*info.scalex && x<maxX && y>minY-fontHeight && y<=maxY)
-        graphicsDrawChar6x8(&gfx, x, y, ch, info.scalex, info.scaley, solidBackground);
+        graphicsDrawChar6x8(&gfx, x, y, (char)ch, info.scalex, info.scaley, solidBackground);
       x+=6*info.scalex;
 #endif
 #ifndef SAVE_ON_FLASH
-    } else if (info.font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
+    } else if ((info.font & JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_PBF) {
+      PbfFontLoaderGlyph glyph;
+      if (jspbfFontFindGlyph(&info.pbfInfo, ch, &glyph)) {
+        jspbfFontRenderGlyph(&info.pbfInfo, &glyph, &gfx,
+                x+glyph.x*info.scalex, y+glyph.y*info.scaley,
+                solidBackground, info.scalex, info.scaley);
+        x+=glyph.advance*info.scalex;
+      }
+    } else if ((info.font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) && (ch<256)) {
       int customBPPRange = (1<<customBPP)-1;
       // get char width and offset in string
       int width = 0, bmpOffset = 0;
-      if (jsvIsString(customWidth)) {
+      if (jsvIsString(info.widths)) {
         if (ch>=info.customFirstChar) {
           JsvStringIterator wit;
-          jsvStringIteratorNew(&wit, customWidth, 0);
+          jsvStringIteratorNew(&wit, info.widths, 0);
           while (jsvStringIteratorHasChar(&wit) && (int)jsvStringIteratorGetIndex(&wit)<(ch-info.customFirstChar)) {
             bmpOffset += (unsigned char)jsvStringIteratorGetCharAndNext(&wit);
           }
@@ -2439,7 +2503,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
           jsvStringIteratorFree(&wit);
         }
       } else {
-        width = (int)jsvGetInteger(customWidth);
+        width = (int)jsvGetInteger(info.widths);
         bmpOffset = width*(ch-info.customFirstChar);
       }
       if (ch>=info.customFirstChar && (x>minX-width*info.scalex) && (x<maxX) && (y>minY-fontHeight) && y<=maxY) {
@@ -2447,7 +2511,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
         bmpOffset *= ch * customBPP;
         // now render character
         JsvStringIterator cit;
-        jsvStringIteratorNew(&cit, customBitmap, (size_t)(bmpOffset>>3));
+        jsvStringIteratorNew(&cit, info.bitmap, (size_t)(bmpOffset>>3));
         bmpOffset &= 7;
         int cx,cy;
         int citdata = jsvStringIteratorGetChar(&cit);
@@ -2481,12 +2545,10 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   jsvStringIteratorFree(&it);
   jsvUnLock(str);
 #ifndef SAVE_ON_FLASH
-  jsvUnLock2(customBitmap, customWidth);
-#endif
-#ifndef SAVE_ON_FLASH
   gfx.data.flags = oldFlags; // restore flags because of text rotation
   graphicsSetVar(&gfx); // gfx data changed because modified area
 #endif
+_jswrap_graphics_freeFontInfo(&info);
   return jsvLockAgain(parent);
 }
 
