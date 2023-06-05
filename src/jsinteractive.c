@@ -788,6 +788,9 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
 #ifndef SAVE_ON_FLASH
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 #endif
+#ifdef BANGLEJS
+  bool recoveryMode = false;
+#endif
   // Set __FILE__ if we have a filename available
   if (loadedFilename)
     jsvObjectSetChildAndUnLock(execInfo.root, "__FILE__", jsfVarFromName(*loadedFilename));
@@ -802,7 +805,12 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
 #endif
     if (!jsfIsStorageValid(JSFSTT_NORMAL | JSFSTT_FIND_FILENAME_TABLE)) {
       jsiConsolePrintf("Storage is corrupt.\n");
+#ifdef BANGLEJS // On Bangle.js if Storage is corrupt, show a recovery menu
+      autoLoad = false; // don't load code
+      recoveryMode = true; // start recovery menu at end of init
+#else
       jsfResetStorage();
+#endif
     } else {
 #ifdef BANGLEJS
       jsiConsolePrintf("Storage Ok.\n");
@@ -876,6 +884,11 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
       jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
   }
+
+#ifdef BANGLEJS // On Bangle.js if Storage is corrupt, show a recovery menu
+  if (recoveryMode) // start recovery menu at end of init
+    jsvUnLock(jspEvaluate("setTimeout(Bangle.showRecoveryMenu,100)",true));
+#endif
 }
 
 // The 'proper' init function - this should be called only once at bootup
