@@ -333,14 +333,18 @@ Return all enumerable keys and values of the given object
  */
 void _jswrap_object_values_cb(void *data, JsVar *name) {
   JsVar **cbData = (JsVar**)data;
-  jsvArrayPushAndUnLock(cbData[0], jspGetVarNamedField(cbData[1], name, false));
+  JsVar *field = jsvAsArrayIndex(name);
+  jsvArrayPushAndUnLock(cbData[0], jspGetVarNamedField(cbData[1], field, false));
+  jsvUnLock(field);
 }
 void _jswrap_object_entries_cb(void *data, JsVar *name) {
   JsVar **cbData = (JsVar**)data;
   JsVar *tuple = jsvNewEmptyArray();
   if (!tuple) return;
   jsvArrayPush(tuple, name);
-  jsvArrayPushAndUnLock(tuple, jspGetVarNamedField(cbData[1], name, false));
+  JsVar *field = jsvAsArrayIndex(name);
+  jsvArrayPushAndUnLock(tuple, jspGetVarNamedField(cbData[1], field, false));
+  jsvUnLock(field);
   jsvArrayPushAndUnLock(cbData[0], tuple);
 }
 JsVar *jswrap_object_values_or_entries(JsVar *object, bool returnEntries) {
