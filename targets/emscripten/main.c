@@ -26,7 +26,7 @@ void jsInit() {
 
   jshInit();
   jswHWInit();
-  jsvInit(0);
+  jsvInit(JSVAR_CACHE_SIZE);
   jsiInit(true);
 }
 
