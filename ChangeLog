@@ -3,6 +3,8 @@
             Bangle.js: Add Bangle.showRecoveryMenu, and if storage is corrupt then show it rather than automatically doing factory reset
             Fix Graphics.createImage if the last character is a newline
             Graphics: Fix issue if drawImage given a non-image
+            Added optional Unicode support (Linux/Bangle.js only currently)
+            Added optional PBF font loading support (Linux/Bangle.js only currently)
 
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

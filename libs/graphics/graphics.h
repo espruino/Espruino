@@ -88,7 +88,9 @@ typedef enum {
  JSGRAPHICS_FONTSIZE_CUSTOM_1BPP = 4 << 13,// a custom bitmap font made from fields in the graphics object (See below)
  JSGRAPHICS_FONTSIZE_CUSTOM_2BPP = 5 << 13,// a custom bitmap font made from fields in the graphics object (See below)
  JSGRAPHICS_FONTSIZE_CUSTOM_4BPP = 6 << 13,// a custom bitmap font made from fields in the graphics object (See below)
+#ifdef ESPR_PBF_FONTS
  JSGRAPHICS_FONTSIZE_CUSTOM_PBF = 7 << 13,// a custom bitmap font using PBF format (in JSGRAPHICS_CUSTOMFONT_BMP)
+#endif // ESPR_PBF_FONTS
  JSGRAPHICS_FONTSIZE_CUSTOM_BIT = 4 << 13 // all custom fonts have this bit set
 #endif
 } JsGraphicsFontSize;

@@ -36,7 +36,9 @@
 #include "bitmap_font_4x6.h"
 #include "bitmap_font_6x8.h"
 #include "vector_font.h"
+#ifdef ESPR_PBF_FONTS
 #include "pbf_font.h"
+#endif
 
 #ifdef GRAPHICS_PALETTED_IMAGES
 #if defined(ESPR_GRAPHICS_12BIT)
@@ -178,12 +180,12 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
         _jswrap_graphics_freeImageInfo(info);
         return false;
       }
-      int paletteEntries = 1<<info->bpp;
+      unsigned int paletteEntries = 1<<info->bpp;
       info->paletteMask = (uint32_t)paletteEntries-1;
       if (paletteEntries*2 <= (int)sizeof(info->_simplePalette)) {
         // if it'll fit, put the palette data in _simplePalette
         uint32_t n = info->bitmapOffset;
-        for (int i=0;i<paletteEntries;i++) {
+        for (unsigned int i=0;i<paletteEntries;i++) {
           info->_simplePalette[i] =
             ((unsigned char)jsvGetCharInString(info->buffer,n)) |
             ((unsigned char)jsvGetCharInString(info->buffer,n+1))<<8;
@@ -266,7 +268,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
   info->bitMask = (unsigned int)((1L<<info->bpp)-1L);
   info->pixelsPerByteMask = (unsigned int)((info->bpp<8)?(8/info->bpp)-1:0);
   info->stride = (info->width*info->bpp + 7)>>3;
-  info->bitmapLength = (info->width*info->height*info->bpp + 7)>>3;
+  info->bitmapLength = (unsigned short)((info->width*info->height*info->bpp + 7)>>3);
   return true;
 }
 
@@ -280,14 +282,14 @@ bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) 
    // TODO: getter callback for speed?
 #ifndef SAVE_ON_FLASH
    if (l->img.bpp==8) { // fast path for 8 bits
-     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bitmapOffset+imagex+(imagey*l->img.stride)));
+     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)((int)l->img.bitmapOffset+imagex+(imagey*l->img.stride)));
      colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
    } else
 #endif
    {
      int pixelOffset = (imagex+(imagey*l->img.width));
      int bitOffset = pixelOffset*l->img.bpp;
-     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)(l->img.bitmapOffset+(bitOffset>>3)));
+     jsvStringIteratorGoto(&l->it, l->img.buffer, (size_t)((int)l->img.bitmapOffset+(bitOffset>>3)));
      bitOffset &= 7; // so now it's bits within a byte
      // get first byte
      colData = (unsigned char)jsvStringIteratorGetChar(&l->it);
@@ -378,7 +380,8 @@ NO_INLINE void _jswrap_drawImageLayerNextY(GfxDrawImageLayer *l) {
 }
 
 NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxDrawImageInfo *img, JsvStringIterator *it) {
-  int bits=0, colData=0;
+  int bits=0;
+  uint32_t colData=0;
   JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelUnclippedFn(gfx, xPos, yPos, xPos+img->width-1, yPos+img->height-1);
   for (int y=yPos;y<yPos+img->height;y++) {
     for (int x=xPos;x<xPos+img->width;x++) {
@@ -1440,7 +1443,7 @@ unsigned int jswrap_graphics_blendColor(JsVar *parent, JsVar *ca, JsVar *cb, JsV
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   unsigned int a = jswrap_graphics_toColor(parent, ca, NULL, NULL);
   unsigned int b = jswrap_graphics_toColor(parent, cb, NULL, NULL);
-  return graphicsBlendColor(&gfx, b, a, jsvGetFloat(amt)*256);
+  return graphicsBlendColor(&gfx, b, a, (int)(jsvGetFloat(amt)*256));
 }
 
 /*JSON{
@@ -1711,7 +1714,7 @@ JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, width);
   jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height));
   jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar));
-  gfx.data.fontSize = (unsigned short)(scale + fontType);
+  gfx.data.fontSize = (unsigned short)((unsigned)scale + fontType);
   graphicsSetVar(&gfx);
   return jsvLockAgain(parent);
 }
@@ -1730,8 +1733,8 @@ JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar
   "return_object" : "Graphics"
 }
 */
-#ifndef SAVE_ON_FLASH
 JsVar *jswrap_graphics_setFontPBF(JsVar *parent, JsVar *file) {
+#ifdef ESPR_PBF_FONTS
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
   if (!jsvIsString(file)) {
@@ -1743,8 +1746,12 @@ JsVar *jswrap_graphics_setFontPBF(JsVar *parent, JsVar *file) {
   gfx.data.fontSize = (unsigned short)(scale | JSGRAPHICS_FONTSIZE_CUSTOM_PBF);
   graphicsSetVar(&gfx);
   return jsvLockAgain(parent);
-}
+#else
+  jsExceptionHere(JSET_ERROR, "PBF Fonts not enabled on this build");
+  return 0;
 #endif
+}
+
 
 /*JSON{
   "type" : "method",
@@ -2022,7 +2029,9 @@ typedef struct {
   unsigned char customFirstChar;
   JsVar *widths; // Array of widths (for old-style fonts) or just an int for fixed width
   JsVar *bitmap; // Bitmap/font data
+#ifdef ESPR_PBF_FONTS
   PbfFontLoaderInfo pbfInfo;
+#endif
 } JsGraphicsFontInfo;
 
 static void _jswrap_graphics_getFontInfo(JsGraphics *gfx, JsGraphicsFontInfo *info) {
@@ -2036,11 +2045,13 @@ static void _jswrap_graphics_getFontInfo(JsGraphics *gfx, JsGraphicsFontInfo *in
   }
 #ifndef SAVE_ON_FLASH
   if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
-    info->customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR));
+    info->customFirstChar = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR));
     info->widths = jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_WIDTH);
     info->bitmap = jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_BMP);
+#ifdef ESPR_PBF_FONTS
     if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK) == JSGRAPHICS_FONTSIZE_CUSTOM_PBF)
       jspbfFontNew(&info->pbfInfo, info->bitmap);
+#endif
   } else
 #endif
     info->customFirstChar = 0;
@@ -2051,15 +2062,17 @@ static void _jswrap_graphics_freeFontInfo(JsGraphicsFontInfo *info) {
   if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
     jsvUnLock(info->widths);
     jsvUnLock(info->bitmap);
+#ifdef ESPR_PBF_FONTS
     if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK) == JSGRAPHICS_FONTSIZE_CUSTOM_PBF)
       jspbfFontFree(&info->pbfInfo);
+#endif
   }
 }
 
 static int _jswrap_graphics_getCharWidth(JsGraphics *gfx, JsGraphicsFontInfo *info, int ch) {
   if ((info->font == JSGRAPHICS_FONTSIZE_VECTOR) && (ch<256)) {
 #ifndef NO_VECTOR_FONT
-    return (int)graphicsVectorCharWidth(info->scalex, ch);
+    return (int)graphicsVectorCharWidth(info->scalex, (char)ch);
 #endif
   } else if ((info->font == JSGRAPHICS_FONTSIZE_4X6) && (ch<256)) {
     return 4*info->scalex;
@@ -2069,6 +2082,7 @@ static int _jswrap_graphics_getCharWidth(JsGraphics *gfx, JsGraphicsFontInfo *in
 #endif
 #ifndef SAVE_ON_FLASH
   } else if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
+#ifdef ESPR_PBF_FONTS
     if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_PBF) {
       PbfFontLoaderGlyph result;
       if (jspbfFontFindGlyph(&info->pbfInfo, ch, &result))
@@ -2076,6 +2090,7 @@ static int _jswrap_graphics_getCharWidth(JsGraphics *gfx, JsGraphicsFontInfo *in
       else
         return 0;
     }
+#endif
     int w = 0;
     if (ch<256) {
       if (jsvIsString(info->widths)) {
@@ -2111,8 +2126,10 @@ static int _jswrap_graphics_getFontHeightInternal(JsGraphics *gfx, JsGraphicsFon
 #endif
 #ifndef SAVE_ON_FLASH
   } else if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
+#ifdef ESPR_PBF_FONTS
     if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_PBF)
       return info->pbfInfo.lineHeight;
+#endif
     return info->scaley*(int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_HEIGHT));
 #endif
   }
@@ -2270,7 +2287,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   while (jsvStringIteratorHasChar(&it) || endOfText) {
     int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
     if (endOfText || ch=='\n' || ch==' ') { // newline or space
-      int currentPos = jsvStringIteratorGetIndex(&it);
+      int currentPos = (int)jsvStringIteratorGetIndex(&it);
       if ((lineWidth + spaceWidth + wordWidth <= maxWidth) &&
           !wasNewLine) {
         // all on one line
@@ -2317,7 +2334,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
 #endif
     int w = _jswrap_graphics_getCharWidth(&gfx, &info, ch);
     if (wordWidth <= maxWidth && wordWidth+w>maxWidth) {
-      wordIdxAtMaxWidth = jsvStringIteratorGetIndex(&it);
+      wordIdxAtMaxWidth = (int)jsvStringIteratorGetIndex(&it);
       wordWidthAtMaxWidth = wordWidth;
     }
     wordWidth += w;
@@ -2459,7 +2476,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
 #endif
     if ((info.font == JSGRAPHICS_FONTSIZE_VECTOR) && (ch<256)) {
 #ifndef NO_VECTOR_FONT
-      int w = (int)graphicsVectorCharWidth(info.scalex, ch);
+      int w = (int)graphicsVectorCharWidth(info.scalex, (char)ch);
       // TODO: potentially we could do this in x16 accuracy so vector chars rendered together better
       if (x>minX-w && x<maxX  && y>minY-fontHeight && y<=maxY) {
         if (solidBackground)
@@ -2479,6 +2496,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
       x+=6*info.scalex;
 #endif
 #ifndef SAVE_ON_FLASH
+#ifdef ESPR_PBF_FONTS
     } else if ((info.font & JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_PBF) {
       PbfFontLoaderGlyph glyph;
       if (jspbfFontFindGlyph(&info.pbfInfo, ch, &glyph)) {
@@ -2487,6 +2505,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
                 solidBackground, info.scalex, info.scaley);
         x+=glyph.advance*info.scalex;
       }
+#endif
     } else if ((info.font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) && (ch<256)) {
       int customBPPRange = (1<<customBPP)-1;
       // get char width and offset in string
@@ -2587,8 +2606,8 @@ void _jswrap_graphics_getVectorFontPolys_cb(void *data, int points, short *verti
   if (!arr) return;
   // scale back down
   for (int i=0;i<points*2;i+=2) {
-    vertices[i  ] = (vertices[i  ]+8)>>4;
-    vertices[i+1] = (vertices[i+1]+8)>>4;
+    vertices[i  ] = (short)(vertices[i  ]+8)>>4;
+    vertices[i+1] = (short)(vertices[i+1]+8)>>4;
   }
   // create 16 bit array with the data
   JsVar *v = jsvNewTypedArray(ARRAYBUFFERVIEW_INT16, points*2);
@@ -3743,21 +3762,21 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
       } else if (realBPP==4) {
         for (int i=0;i<16;i++) {
           int p = PALETTE_4BIT[i];
-          imgPtr[26 + (i*3)] = (p<<3)&0xF8;
-          imgPtr[27 + (i*3)] = (p>>3)&0xFC;
-          imgPtr[28 + (i*3)] = (p>>8)&0xF8;
+          imgPtr[26 + (i*3)] = (unsigned char)((p<<3)&0xF8);
+          imgPtr[27 + (i*3)] = (unsigned char)((p>>3)&0xFC);
+          imgPtr[28 + (i*3)] = (unsigned char)((p>>8)&0xF8);
         }
       } else if (realBPP==8) {
         for (int i=0;i<255;i++) {
           int p = PALETTE_8BIT[i];
-          imgPtr[26 + (i*3)] = (p<<3)&0xF8;
-          imgPtr[27 + (i*3)] = (p>>3)&0xFC;
-          imgPtr[28 + (i*3)] = (p>>8)&0xF8;
+          imgPtr[26 + (i*3)] = (unsigned char)((p<<3)&0xF8);
+          imgPtr[27 + (i*3)] = (unsigned char)((p>>3)&0xFC);
+          imgPtr[28 + (i*3)] = (unsigned char)((p>>8)&0xF8);
         }
 #endif
       } else { // otherwise default to greyscale
         for (int i=0;i<(1<<realBPP);i++) {
-          int c = 255 * i / (1<<realBPP);
+          unsigned char c = (unsigned char)(255 * i / (1<<realBPP));
           imgPtr[26 + (i*3)] = c;
           imgPtr[27 + (i*3)] = c;
           imgPtr[28 + (i*3)] = c;

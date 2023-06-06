@@ -12,6 +12,10 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifdef ESPR_PBF_FONTS
+#ifndef PBF_FONT_H
+#define PBF_FONT_H
+
 #include "jsvar.h"
 #include "jsvariterator.h"
 #include "graphics.h"
@@ -45,3 +49,6 @@ void jspbfFontFree(PbfFontLoaderInfo *info);
 bool jspbfFontFindGlyph(PbfFontLoaderInfo *info, int codepoint, PbfFontLoaderGlyph *result);
 
 void jspbfFontRenderGlyph(PbfFontLoaderInfo *info, PbfFontLoaderGlyph *glyph, JsGraphics *gfx, int x, int y, bool solidBackground, int scalex, int scaley);
+
+#endif // PBF_FONT_H
+#endif // ESPR_PBF_FONTS

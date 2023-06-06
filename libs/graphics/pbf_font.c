@@ -12,6 +12,8 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifdef ESPR_PBF_FONTS
+
 #include "pbf_font.h"
 
 // https://github.com/pebble-dev/wiki/wiki/Firmware-Font-Format
@@ -133,3 +135,5 @@ void jspbfFontRenderGlyph(PbfFontLoaderInfo *info, PbfFontLoaderGlyph *glyph, Js
     }
   }
 }
+
+#endif // ESPR_PBF_FONTS
