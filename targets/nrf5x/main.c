@@ -11,7 +11,7 @@
  * Platform Specific entry point
  * ----------------------------------------------------------------------------
  */
- 
+
 #include "platform_config.h"
 #include "jsinteractive.h"
 #include "jshardware.h"
@@ -31,11 +31,10 @@ int main() {
 #ifdef BTN1_PININDEX
   buttonState = jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
 #endif
-  jsvInit(0);
+  jsvInit(JSVAR_CACHE_SIZE);
   jsiInit(!buttonState /* load from flash by default */); // pressing USER button skips autoload
 
-  while (1) 
-  {
+  while (1) {
     jsiLoop();
   }
   //jsiKill();

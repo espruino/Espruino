@@ -126,10 +126,10 @@ void jshPrintBanner() {
   os_printf("Espruino "JS_VERSION"\nFlash map %s, manuf 0x%lx chip 0x%lx\n",
       flash_maps[map], (long unsigned int) (fid & 0xff), (long unsigned int)chip);
   jsiConsolePrintf(
-    "Flash map %s, manuf 0x%x chip 0x%x\n", 
+    "Flash map %s, manuf 0x%x chip 0x%x\n",
     (( map == 2  && flash_kb[map] == 1024  && ESP_COMBINED_SIZE >= 1024) ? flash_maps_alt[map] : flash_maps[map]),
     fid & 0xff, chip);
-  if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4 && map != 6)) {  
+  if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4 && map != 6)) {
     jsiConsolePrint("WARNING: *** Your flash chip does not match your flash map ***\n");
   }
 }
@@ -259,7 +259,7 @@ static void initDone() {
 
   jshInit(); // Initialize the hardware
   jswHWInit();
-  jsvInit(0); // Initialize the variables
+  jsvInit(JSVAR_CACHE_SIZE); // Initialize the variables
   jsiInit(true); // Initialize the interactive subsystem
   // note: the wifi gets hooked-up via wifi_soft_init called from jsiInit
 
@@ -328,8 +328,8 @@ void user_rf_pre_init() {
 uint32 user_rf_cal_sector_set(void) {
   uint32_t rf_cal_sec = 0;
   switch (system_get_flash_size_map()) {
-    case FLASH_SIZE_4M_MAP_256_256: 
-      rf_cal_sec = 128 - 5; 
+    case FLASH_SIZE_4M_MAP_256_256:
+      rf_cal_sec = 128 - 5;
       break;
     case FLASH_SIZE_8M_MAP_512_512:
       rf_cal_sec = 256 - 5;
