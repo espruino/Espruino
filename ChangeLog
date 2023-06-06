@@ -1,4 +1,5 @@
-     2v19 : 
+     2v19 : Fix Graphics.createImage if the last character is a newline
+            Graphics: Fix issue if drawImage given a non-image
 
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

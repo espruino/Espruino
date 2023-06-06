@@ -790,14 +790,13 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
       } else {
         x=0;
         y++;
-        if (y>height) height=y;
+        if (y+1>height) height=y+1;
       }
     } else {
       x++;
       if (x>width) width=x;
     }
   }
-  if (x) height++;
   if (height && ch=='\n') height--; // if the last char was a newline, ignore it
   jsvStringIteratorFree(&it);
   // Sorted - now create the object, set it up and create the buffer
