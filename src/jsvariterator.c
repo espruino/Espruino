@@ -172,7 +172,7 @@ bool jsvIterateBufferCallback(
         unsigned char *data;
         unsigned int dataLen;
         jsvStringIteratorGetPtrAndNext(sit,&data,&dataLen);
-        if (dataLen>len) dataLen=len;
+        if (dataLen>len) dataLen=(unsigned int)len;
         callback(data, dataLen, callbackData);
         len -= dataLen;
       }
@@ -264,14 +264,19 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   it->varIndex = 0;
   it->charsInVar = jsvGetCharactersInVar(it->var);
 
-  if (jsvIsFlatString(str)) {
+  if (jsvIsFlatString(it->var)) {
     it->ptr = jsvGetFlatStringPointer(it->var);
-  } else if (jsvIsNativeString(str)) {
+  } else if (jsvIsNativeString(it->var)) {
     it->ptr = (char*)it->var->varData.nativeStr.ptr;
 #ifdef SPIFLASH_BASE
-  } else if (jsvIsFlashString(str)) {
+  } else if (jsvIsFlashString(it->var)) {
     it->charsInVar = 0;
-    return jsvStringIteratorLoadFlashString(it);
+    it->charIdx = 0;
+    if (!it->isUTF8) { // if it's not UTF8 we can just load up the bit we want immediately
+      it->charIdx = startIdx;
+    } // otherwise below we'll have to iterate
+    jsvStringIteratorLoadFlashString(it);
+    if (!it->isUTF8) return; // nothing else to do here if not UTF8
 #endif
   } else{
     it->ptr = &it->var->varData.str[0];
@@ -364,7 +369,7 @@ void jsvStringIteratorNextUTF8(JsvStringIterator *it) {
 void jsvStringIteratorGetPtrAndNext(JsvStringIterator *it, unsigned char **data, unsigned int *len) {
   assert(jsvStringIteratorHasChar(it));
   *data = (unsigned char *)&it->ptr[it->charIdx];
-  *len = it->charsInVar - it->charIdx;
+  *len = (unsigned int)(it->charsInVar - it->charIdx);
   it->charIdx = it->charsInVar - 1; // jsvStringIteratorNextInline will increment
   jsvStringIteratorNextInline(it);
 }
@@ -722,7 +727,7 @@ void jsvIteratorNew(JsvIterator *it, JsVar *obj, JsvIteratorFlags flags) {
     it->type = JSVI_UNICODE;
     it->it.unicode.index = 0;
     jsvStringIteratorNew(&it->it.unicode.str, jsvLock(jsvGetFirstChild(obj)), 0);
-    jsvIteratorUTF8Next(&it); // read a char as the current char
+    jsvIteratorUTF8Next(it); // read a char as the current char
   } else if (jsvHasCharacterData(obj)) {
     it->type = JSVI_STRING;
     jsvStringIteratorNew(&it->it.str, obj, 0);
@@ -755,7 +760,7 @@ JsVar *jsvIteratorGetValue(JsvIterator *it) {
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetValueAndRewind(&it->it.buf);
   case JSVI_UNICODE: {
     char uBuf[4];
-    int l = jsUTF8Encode(it->it.unicode.currentCh, &uBuf);
+    unsigned int l = (unsigned int)jsUTF8Encode(it->it.unicode.currentCh, uBuf);
     return jsvNewStringOfLength(l, uBuf);
   }
   default: assert(0); return 0;
