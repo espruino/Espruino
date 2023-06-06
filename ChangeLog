@@ -1,6 +1,8 @@
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)
             Bangle.js: Add Bangle.showRecoveryMenu, and if storage is corrupt then show it rather than automatically doing factory reset
+            Fix Graphics.createImage if the last character is a newline
+            Graphics: Fix issue if drawImage given a non-image
 
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler
