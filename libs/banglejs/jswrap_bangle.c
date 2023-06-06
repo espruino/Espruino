@@ -3388,6 +3388,8 @@ NO_INLINE void jswrap_banglejs_init() {
 #endif
 #endif
 
+  bool recoveryMode = false;
+
   //jsiConsolePrintf("bangleFlags %d\n",bangleFlags);
   if (firstRun) {
     bangleFlags = JSBF_DEFAULT | JSBF_LCD_ON | JSBF_LCD_BL_ON; // includes bangleFlags
@@ -3396,6 +3398,13 @@ NO_INLINE void jswrap_banglejs_init() {
     healthStateClear(&healthCurrent);
     healthStateClear(&healthLast);
     healthStateClear(&healthDaily);
+
+    /* If first run and button is held down, enter recovery mode. During this
+    we will try not to access storage */
+#ifndef DICKENS
+    if (jshPinGetValue(HOME_BTN_PININDEX))
+      recoveryMode = true;
+#endif
   }
   bangleFlags |= JSBF_POWER_SAVE; // ensure we turn power-save on by default every restart
   inactivityTimer = 0; // reset the LCD timeout timer
@@ -3417,56 +3426,57 @@ NO_INLINE void jswrap_banglejs_init() {
   buzzAmt = 0;
   beepFreq = 0;
   // Read settings and change beep/buzz behaviour...
-  JsVar *settingsFN = jsvNewFromString("setting.json");
-  JsVar *settings = jswrap_storage_readJSON(settingsFN,true);
-  jsvUnLock(settingsFN);
-  JsVar *v;
-  v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"beep") : 0;
-  if (v && jsvGetBool(v)==false) {
-    bangleFlags &= ~JSBF_ENABLE_BEEP;
-  } else {
-    bangleFlags |= JSBF_ENABLE_BEEP;
-#ifdef SPEAKER_PIN
-    if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
+  if (!recoveryMode) {
+    JsVar *settingsFN = jsvNewFromString("setting.json");
+    JsVar *settings = jswrap_storage_readJSON(settingsFN,true);
+    jsvUnLock(settingsFN);
+    JsVar *v;
+    v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"beep") : 0;
+    if (v && jsvGetBool(v)==false) {
+      bangleFlags &= ~JSBF_ENABLE_BEEP;
+    } else {
+      bangleFlags |= JSBF_ENABLE_BEEP;
+  #ifdef SPEAKER_PIN
+      if (!v || jsvIsStringEqual(v,"vib")) // default to use vibration for beep
+        bangleFlags |= JSBF_BEEP_VIBRATE;
+      else
+        bangleFlags &= ~JSBF_BEEP_VIBRATE;
+  #else
       bangleFlags |= JSBF_BEEP_VIBRATE;
-    else
-      bangleFlags &= ~JSBF_BEEP_VIBRATE;
-#else
-    bangleFlags |= JSBF_BEEP_VIBRATE;
-#endif
-  }
-  jsvUnLock(v);
-  v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"vibrate") : 0;
-  if (v && jsvGetBool(v)==false) {
-    bangleFlags &= ~JSBF_ENABLE_BUZZ;
-  } else {
-    bangleFlags |= JSBF_ENABLE_BUZZ;
-  }
-  jsvUnLock(v);
+  #endif
+    }
+    jsvUnLock(v);
+    v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"vibrate") : 0;
+    if (v && jsvGetBool(v)==false) {
+      bangleFlags &= ~JSBF_ENABLE_BUZZ;
+    } else {
+      bangleFlags |= JSBF_ENABLE_BUZZ;
+    }
+    jsvUnLock(v);
 
-  // If enabled, load battery 'full' voltage
-#ifdef ESPR_BATTERY_FULL_VOLTAGE
-  batteryFullVoltage = ESPR_BATTERY_FULL_VOLTAGE;
-  v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"batFullVoltage") : 0;
-  if (jsvIsNumeric(v)) batteryFullVoltage = jsvGetFloatAndUnLock(v);
-#endif // ESPR_BATTERY_FULL_VOLTAGE
+    // If enabled, load battery 'full' voltage
+  #ifdef ESPR_BATTERY_FULL_VOLTAGE
+    batteryFullVoltage = ESPR_BATTERY_FULL_VOLTAGE;
+    v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"batFullVoltage") : 0;
+    if (jsvIsNumeric(v)) batteryFullVoltage = jsvGetFloatAndUnLock(v);
+  #endif // ESPR_BATTERY_FULL_VOLTAGE
 
-  // Load themes from the settings.json file
-  jswrap_banglejs_setTheme();
-  v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"theme") : 0;
-  if (jsvIsObject(v)) {
-    graphicsTheme.fg = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fg"));
-    graphicsTheme.bg = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bg"));
-    graphicsTheme.fg2 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fg2"));
-    graphicsTheme.bg2 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bg2"));
-    graphicsTheme.fgH = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fgH"));
-    graphicsTheme.bgH = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bgH"));
-    graphicsTheme.dark = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(v,"dark"));
-  }
-  jsvUnLock(v);
-#ifdef TOUCH_DEVICE
-  // load touchscreen calibration
-  v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"touch") : 0;
+    // Load themes from the settings.json file
+    jswrap_banglejs_setTheme();
+    v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"theme") : 0;
+    if (jsvIsObject(v)) {
+      graphicsTheme.fg = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fg"));
+      graphicsTheme.bg = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bg"));
+      graphicsTheme.fg2 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fg2"));
+      graphicsTheme.bg2 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bg2"));
+      graphicsTheme.fgH = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fgH"));
+      graphicsTheme.bgH = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bgH"));
+      graphicsTheme.dark = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(v,"dark"));
+    }
+    jsvUnLock(v);
+  #ifdef TOUCH_DEVICE
+    // load touchscreen calibration
+    v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"touch") : 0;
     if (jsvIsObject(v)) {
       touchMinX = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"x1"));
       touchMinY = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"y1"));
@@ -3474,8 +3484,9 @@ NO_INLINE void jswrap_banglejs_init() {
       touchMaxY = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"y2"));
     }
     jsvUnLock(v);
-#endif
+  #endif
     jsvUnLock(settings);
+  } // recoveryMode
 
 #ifdef LCD_WIDTH
   // Just reset any graphics settings that may need updating
@@ -3519,7 +3530,7 @@ NO_INLINE void jswrap_banglejs_init() {
   if (jsiStatus & JSIS_TODO_FLASH_LOAD) {
     showSplashScreen = false;
 #ifndef ESPR_NO_LOADING_SCREEN
-    if (!firstRun) {
+    if (!firstRun && !recoveryMode) {
       // Display a loading screen
       // Check for a '.loading' file
       JsVar *img = jsfReadFile(jsfNameFromString(".loading"),0,0);
@@ -3559,6 +3570,8 @@ NO_INLINE void jswrap_banglejs_init() {
   if (!(jsiStatus & JSIS_COMPLETELY_RESET))
     showSplashScreen = false;
 #endif
+  if (recoveryMode)
+    showSplashScreen = false;
   if (showSplashScreen) {
     graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1; // 4x6 size is default
     graphicsClear(&graphicsInternal);
@@ -3788,6 +3801,12 @@ NO_INLINE void jswrap_banglejs_init() {
   if (!firstRun) {
     jsvUnLock(jsiSetTimeout(jswrap_banglejs_postInit, 500));
   }
+#ifdef BANGLEJS
+  // If this is recovery mode schedule a call to Bangle.jswrap_banglejs_showRecoveryMenu
+  if (recoveryMode) {
+    jsvUnLock(jspEvaluate("setTimeout(Bangle.showRecoveryMenu,100)",true));
+  }
+#endif
   //jsiConsolePrintf("bangleFlags2 %d\n",bangleFlags);
 }
 
@@ -5270,6 +5289,18 @@ application to launch.
     "ifdef" : "BANGLEJS"
 }
 Load the Bangle.js clock - this has the same effect as calling `Bangle.load()`.
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "showRecoveryMenu",
+    "generate_js" : "libs/js/banglejs/Bangle_showRecoveryMenu.js",
+    "ifdef" : "BANGLEJS"
+}
+Show a 'recovery' menu that allows you to perform certain tasks on your Bangle.
+
+You can also enter this menu by restarting while holding down the `BTN1`
 */
 
 /*JSON{
