@@ -945,11 +945,12 @@ u[0] // hamburger emoji
 ```
 */
 JsVar *jswrap_espruino_asUTF8(JsVar *str) {
-  JsVar *v = jsvAsString(str);
-  if (!v) return 0;
-  JsVar *r = jsvNewUTF8String(v);
-  jsvUnLock(v);
-  return r;
+#ifdef ESPR_UNICODE_SUPPORT
+  return jsvNewUTF8StringAndUnLock(jsvAsString(str));
+#else
+  jsExceptionHere(JSET_ERROR, "Unicode not supported on this build");
+  return 0;
+#endif
 }
 
 /*TYPESCRIPT
@@ -2320,7 +2321,7 @@ E.decodeUTF8("UTF-8 Euro: \u00e2\u0082\u00ac", unicodeRemap, '[?]') == "UTF-8 Eu
 
  */
 JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn) {
-  if (!(jsvIsString(str))) {
+  if (!jsvIsString(str)) {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be a string, not %t", str);
     return 0;
   }

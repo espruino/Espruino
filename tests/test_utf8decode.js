@@ -1,6 +1,6 @@
 let unicodeRemap = {
-  0x20ac:"\u0080", // Euro symbol
-  0x2026:"\u0085", // Ellipsis
+  0x20ac:"\x80", // Euro symbol
+  0x2026:"\x85", // Ellipsis
 };
 print(unicodeRemap)
 
@@ -14,9 +14,9 @@ function expect(a, ex) {
 }
 
 //print("Extended ASCII Euro: \u0080");
-expect(E.decodeUTF8("UTF-8 Euro: \u00e2\u0082\u00ac", unicodeRemap, '[?]'), "UTF-8 Euro: \u0080"); // Works OK
+expect(E.decodeUTF8("UTF-8 Euro: \xe2\x82\xac", unicodeRemap, '[?]'), "UTF-8 Euro: \x80"); // Works OK
 
 //print("Extended ASCII ellipsis: \u0085");
-expect(E.decodeUTF8("UTF-8 Ellipsis: \u00e2\u0080\u00a6", unicodeRemap, '[?]'), "UTF-8 Ellipsis: \u0085"); // Doesn't work
+expect(E.decodeUTF8("UTF-8 Ellipsis: \xe2\x80\xa6", unicodeRemap, '[?]'), "UTF-8 Ellipsis: \x85"); // Doesn't work
 
 result = testsFail==0;

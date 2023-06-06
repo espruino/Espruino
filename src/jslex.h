@@ -147,6 +147,9 @@ typedef struct JsLex
   JsVar *tokenValue; ///< JsVar containing the current token - used only for strings/regex
   unsigned char tokenl; ///< the current length of token
   bool hadThisKeyword; ///< We need this when scanning arrow functions (to avoid storing a 'this' link if not needed)
+#ifdef ESPR_UNICODE_SUPPORT
+  bool isUTF8;         ///< Is the current String a UTF8 String?
+#endif
 
 #ifndef ESPR_NO_LINE_NUMBERS
   /** Amount we add to the line number when we're reporting to the user

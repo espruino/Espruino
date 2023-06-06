@@ -106,6 +106,10 @@ JsVar *jswrap_json_parse_internal() {
   }
   case LEX_STR: {
     JsVar *a = jslGetTokenValueAsVar();
+#ifdef ESPR_UNICODE_SUPPORT
+    if (lex->isUTF8)  // If the parsed string was UTF8, we should wrap it up
+      a = jsvNewUTF8StringAndUnLock(a);
+#endif
     jslGetNextToken();
     return a;
   }

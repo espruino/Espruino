@@ -293,6 +293,10 @@ static void jslLexString() {
   jslGetNextCh();
   char lastCh = delim;
   int nesting = 0;
+#ifdef ESPR_UNICODE_SUPPORT
+  int high_surrogate = 0;
+  lex->isUTF8 = false;
+#endif  // ESPR_UNICODE_SUPPORT
   while (lex->currCh && (lex->currCh!=delim || nesting)) {
     // in template literals, cope with a literal inside another: `${`Hello`}`
     if (delim=='`') {
@@ -311,17 +315,58 @@ static void jslLexString() {
       case 'v'  : ch = 0x0B; jslGetNextCh(); break;
       case 'u' :
       case 'x' : { // hex digits
-        char buf[5] = "0x??";
-        if (lex->currCh == 'u') {
-          // We don't support unicode, so we just take the bottom 8 bits
-          // of the unicode character
-          jslGetNextCh();
+        char buf[5];
+        bool isUTF8 = lex->currCh=='u';
+        jslGetNextCh();
+        unsigned int len = isUTF8?4:2, n=0;
+        while (len--) {
+          if (!lex->currCh || !isHexadecimal(lex->currCh)) {
+            jsExceptionHere(JSET_ERROR, "Invalid escape sequence");
+            break;
+          }
+          buf[n++] = lex->currCh;
           jslGetNextCh();
         }
-        jslGetNextCh();
-        buf[2] = lex->currCh; jslGetNextCh();
-        buf[3] = lex->currCh; jslGetNextCh();
-        ch = (char)stringToInt(buf);
+        buf[n] = 0;
+        int codepoint = (int)stringToIntWithRadix(buf,16,NULL,NULL);
+#ifdef ESPR_UNICODE_SUPPORT
+        /* We're cheating a bit here. To stay compatible with original Espruino code
+          we say that if a char is specified with \x## then we copy its value in verbatim (no UTF8)
+          but if it's sent with \u#### then we apply UTF8 encoding */
+        if (isUTF8) {
+          if (high_surrogate) {
+            if (!jsUnicodeIsLowSurrogate(codepoint)) {
+              // Maybe we should append a replacement char here, but
+              // we are raising an exception, so probably it doesn't matter
+              jsExceptionHere(JSET_ERROR, "Unmatched Unicode surrogate");
+              if (jsUnicodeIsHighSurrogate(codepoint)) {
+                high_surrogate = codepoint;
+                continue;
+              }
+            } else {
+              // Calculate the actual codepoint
+              codepoint = 0x10000 + ((codepoint & 0x03FF) |
+                          ((high_surrogate & 0x03FF) << 10));
+            }
+            high_surrogate = 0;
+          } else if (jsUnicodeIsHighSurrogate(codepoint)) {
+            high_surrogate = codepoint;
+            continue;
+          } else if (jsUnicodeIsLowSurrogate(codepoint)) {
+            jsExceptionHere(JSET_ERROR, "Unmatched Unicode surrogate");
+          }
+          len = jsUTF8Encode(codepoint, buf);
+          ch = buf[len-1]; // last char is in 'ch' as jsvStringIteratorAppend(..., ch) is called later on
+          if (len>1) {
+            n=0;
+            while (n<len-1) {
+              char c = buf[n++];
+              jsvStringIteratorAppend(&it, c);
+            }
+          }
+        } else
+#endif
+          ch = (char)codepoint;
       } break;
       default:
         if (lex->currCh>='0' && lex->currCh<='7') {
@@ -345,18 +390,28 @@ static void jslLexString() {
         break;
       }
       lastCh = ch;
-      jslTokenAppendChar(ch);
       jsvStringIteratorAppend(&it, ch);
     } else if (lex->currCh=='\n' && delim!='`') {
       /* Was a newline - this is now allowed
        * unless we're a template string */
       break;
     } else {
-      jslTokenAppendChar(lex->currCh);
+#ifdef ESPR_UNICODE_SUPPORT
+      if (jsUTF8IsStartChar(lex->currCh))
+        lex->isUTF8 = true;
+#endif
       jsvStringIteratorAppend(&it, lex->currCh);
       lastCh = lex->currCh;
       jslGetNextCh();
     }
+#ifdef ESPR_UNICODE_SUPPORT
+    if (high_surrogate) {
+      // Leftover high surrogate, but it is too late for replacement char
+      // Maybe we should fix this at some stage if it really matters at all
+      jsExceptionHere(JSET_ERROR, "Unmatched Unicode surrogate");
+      high_surrogate = 0;
+    }
+#endif  // ESPR_UNICODE_SUPPORT
   }
   jsvStringIteratorFree(&it);
   if (delim=='`')
@@ -1122,7 +1177,7 @@ JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   block->varData.str[0] = charFrom->currCh;
   size_t blockChars = 1;
 
-#ifndef NO_ASSERT  
+#ifndef NO_ASSERT
   size_t totalStringLength = maxLength;
 #endif
   // now start appending

@@ -99,7 +99,6 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 #define JSV_IS_INT(f) ((f)==JSV_INTEGER || JSV_IS_PIN(f) || (f)==JSV_NAME_INT || (f)==JSV_NAME_INT_INT || (f)==JSV_NAME_INT_BOOL)
 #define JSV_IS_NUMERIC(f) ((f)>=_JSV_NUMERIC_START && (f)<=_JSV_NUMERIC_END)
 #define JSV_IS_STRING(f) ((f)>=_JSV_STRING_START && (f)<=_JSV_STRING_END)
-#define JSV_IS_UNICODE_STRING(f)  (f)==JSV_UTF8_STRING
 #define JSV_IS_STRING_EXT(f) ((f)>=JSV_STRING_EXT_0 && (f)<=JSV_STRING_EXT_MAX)
 #define JSV_IS_FLAT_STRING(f) (f)==JSV_FLAT_STRING
 #define JSV_IS_NATIVE_STRING(f) (f)==JSV_NATIVE_STRING
@@ -109,6 +108,11 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 #define JSV_IS_ARRAYBUFFER(f) (f)==JSV_ARRAYBUFFER
 #define JSV_IS_NAME(f) ((f)>=_JSV_NAME_START && (f)<=_JSV_NAME_END)
 #define JSV_IS_NAME_WITH_VALUE(f) ((f)>=_JSV_NAME_WITH_VALUE_START && (f)<=_JSV_NAME_WITH_VALUE_END)
+#ifdef ESPR_UNICODE_SUPPORT
+#define JSV_IS_UNICODE_STRING(f)  (f)==JSV_UTF8_STRING
+#else
+#define JSV_IS_UNICODE_STRING(f)  false
+#endif
 #ifdef ESPR_NO_GET_SET
 #define JSV_IS_GETTER_OR_SETTER(f) false
 #else
@@ -1096,13 +1100,22 @@ JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData) {
   return first;
 }
 
+#ifdef ESPR_UNICODE_SUPPORT
 JsVar *jsvNewUTF8String(JsVar* dataString) {
   assert(jsvIsString(dataString));
-   JsVar *var = jsvNewWithFlags(JSV_UTF8_STRING);
+  if (!jsvIsString(dataString)) return 0;
+  JsVar *var = jsvNewWithFlags(JSV_UTF8_STRING);
   if (!var) return 0; // no memory
   jsvSetFirstChild(var, jsvGetRef(jsvRef(dataString)));
   return var;
 }
+
+JsVar *jsvNewUTF8StringAndUnLock(JsVar* dataString) {
+  JsVar *v = jsvNewUTF8String(dataString);
+  jsvUnLock(dataString);
+  return v;
+}
+#endif
 
 JsVar *jsvNewFromInteger(JsVarInt value) {
   JsVar *var = jsvNewWithFlags(JSV_INTEGER);
@@ -3861,6 +3874,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   else if (jsvIsFunctionParameter(var)) jsiConsolePrintf("Param %q ", var);
   else if (jsvIsArrayBufferName(var)) jsiConsolePrintf("ArrayBufferName[%d] ", jsvGetInteger(var));
   else if (jsvIsArrayBuffer(var)) jsiConsolePrintf("%s (offs %d, len %d)", jswGetBasicObjectName(var)?jswGetBasicObjectName(var):"unknown ArrayBuffer", var->varData.arraybuffer.byteOffset, var->varData.arraybuffer.length); // way to get nice name
+  else if (jsvIsUTF8String(var)) jsiConsolePrintf("UTF8String");
   else if (jsvIsString(var)) {
     size_t blocks = 1;
     if (jsvGetLastChild(var)) {

@@ -63,7 +63,9 @@ typedef struct JsvStringIterator {
   size_t varIndex; ///< index in string of the start of this var
   JsVar *var; ///< current StringExt we're looking at
   char  *ptr; ///< a pointer to string data
+#ifdef ESPR_UNICODE_SUPPORT
   bool isUTF8; ///< Is this string UTF8 or not?
+#endif
 #ifdef SPIFLASH_BASE // when using flash strings, we need somewhere to put the data
   char flashStringBuffer[ESPR_JSVAR_FLASH_BUFFER_SIZE];
 #endif

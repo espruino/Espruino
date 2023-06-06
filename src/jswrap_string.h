@@ -18,6 +18,7 @@
 
 JsVar *jswrap_string_constructor(JsVar *a);
 JsVar *jswrap_string_fromCharCode(JsVar *arr);
+JsVar *jswrap_string_charAt_undefined(JsVar *parent, JsVarInt idx); // charAt, but returns undefined
 JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx);
 int jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx);
 int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, bool lastIndexOf);

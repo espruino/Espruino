@@ -101,21 +101,26 @@ JsVar *jswrap_string_fromCharCode(JsVar *arr) {
 }
 Return a single character at the given position in the String.
  */
+// charAt but returns undefined for out of range
+JsVar *jswrap_string_charAt_undefined(JsVar *parent, JsVarInt idx) {
+  int uChar = jswrap_string_charCodeAt(parent, idx);
+  if (uChar<0) return 0;
+#ifdef ESPR_UNICODE_SUPPORT
+  if (jsUTF8Bytes(uChar)>1) {
+    char uBuf[4];
+    unsigned int l = jsUTF8Encode(uChar, uBuf);
+    return jsvNewUTF8StringAndUnLock(jsvNewStringOfLength(l, uBuf));
+  } else
+#endif
+  {
+    char ch = (char)uChar;
+    return jsvNewStringOfLength(1, &ch);
+  }
+}
 JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
-  if (!jsvIsString(parent)) return 0;
-  char unicodeStr[5];
-  int unicodeStrLen;
-  JsvStringIterator it;
-  jsvStringIteratorNew(&it, parent, (size_t)idx);
-  int uChar = jsvStringIteratorGetUTF8CharAndNext(&it);
-  char uBuf[4];
-  int l = 1;
-  if (it.isUTF8)
-    l = jsUTF8Encode(uChar, &uBuf);
-  else
-    uBuf[0] = uChar; // ensure we can handle >127 codes in normal strings
-  jsvStringIteratorFree(&it);
-  return jsvNewStringOfLength(l, uBuf);
+  JsVar *v = jswrap_string_charAt_undefined(parent, idx);
+  if (v) return v;
+  return jsvNewFromEmptyString();
 }
 
 /*JSON{
@@ -134,7 +139,12 @@ String.
 Note that this returns 0 not 'NaN' for out of bounds characters
  */
 int jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
-  return (unsigned char)jsvGetCharInString(parent, (size_t)idx);
+  if (!jsvIsString(parent)) return -1;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, parent, (size_t)idx);
+  int uChar = jsvStringIteratorGetUTF8CharAndNext(&it);
+  jsvStringIteratorFree(&it);
+  return uChar;
 }
 
 

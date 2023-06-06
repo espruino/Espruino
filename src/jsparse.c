@@ -1062,7 +1062,7 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
     } else if (jsvIsString(object) && jsvIsInt(nameVar)) {
       JsVarInt idx = jsvGetInteger(nameVar);
       if (idx>=0 && idx<(JsVarInt)jsvGetStringLength(object)) {
-        return jswrap_string_charAt(object, idx);
+        return jswrap_string_charAt_undefined(object, idx);
       } else if (returnName)
         child = jsvCreateNewChild(object, nameVar, 0); // just return *something* to show this is handled
     } else {
@@ -1809,8 +1809,13 @@ NO_INLINE JsVar *jspeFactor() {
     return 0;
   } else if (lex->tk==LEX_STR) {
     JsVar *a = 0;
-    if (JSP_SHOULD_EXECUTE)
+    if (JSP_SHOULD_EXECUTE) {
       a = jslGetTokenValueAsVar();
+#ifdef ESPR_UNICODE_SUPPORT
+      if (lex->isUTF8)  // If the parsed string was UTF8, we should wrap it up
+        a = jsvNewUTF8StringAndUnLock(a);
+#endif
+    }
     JSP_ASSERT_MATCH(LEX_STR);
     return a;
 #ifndef ESPR_NO_TEMPLATE_LITERAL

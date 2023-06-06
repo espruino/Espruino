@@ -624,13 +624,26 @@ typedef struct {
   short x,y,z;
 } Vector3;
 
+#ifdef ESPR_UNICODE_SUPPORT
+/// Returns true if this character denotes the start of a UTF8 sequence
+bool jsUTF8IsStartChar(char c);
+
 /// Gets the length of a unicode char sequence by looking at the first char
-int jsUTF8LengthFromChar(char c);
+unsigned int jsUTF8LengthFromChar(char c);
 
 /// Given a codepoint, figure hot how many bytes it needs for UTF8 encoding
-int jsUTF8Bytes(int codepoint);
+unsigned int jsUTF8Bytes(int codepoint);
 
 // encode a codepoint as a string, NOT null terminated (utf8 min size=4)
-int jsUTF8Encode(int codepoint, char* utf8);
+unsigned int jsUTF8Encode(int codepoint, char* utf8);
+
+static ALWAYS_INLINE bool jsUnicodeIsHighSurrogate(int codepoint) {
+  return ((codepoint & 0xFC00) == 0xD800);
+}
+
+static ALWAYS_INLINE bool jsUnicodeIsLowSurrogate(int codepoint) {
+  return ((codepoint & 0xFC00) == 0xDC00);
+}
+#endif // ESPR_UNICODE_SUPPORT
 
 #endif /* JSUTILS_H_ */

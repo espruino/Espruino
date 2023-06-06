@@ -989,8 +989,16 @@ unsigned short int int_sqrt32(unsigned int x) {
   return res;
 }
 
+#ifdef ESPR_UNICODE_SUPPORT
+
+/// Returns true if this character denotes the start of a UTF8 sequence
+bool jsUTF8IsStartChar(char c) {
+  unsigned char ch = (unsigned char)ch;
+  return (ch>=0xC2) && (ch<=0xF4);
+}
+
 /// Gets the length of a unicode char sequence by looking at the first char
-int jsUTF8LengthFromChar(char c) {
+unsigned int jsUTF8LengthFromChar(char c) {
   if ((c&0x80)==0) return 1; // ASCII - definitely just one byte
   if ((c&0xE0)==0xC0) return 2; // 2-byte code starts with 0b110xxxxx
   if ((c&0xF0)==0xE0) return 3; // 3-byte code starts with 0b1110xxxx
@@ -999,7 +1007,7 @@ int jsUTF8LengthFromChar(char c) {
 }
 
 /// Given a codepoint, figure hot how many bytes it needs for UTF8 encoding
-int jsUTF8Bytes(int codepoint) {
+unsigned int jsUTF8Bytes(int codepoint) {
   if (codepoint <= 0x7F) return 1;
   if (codepoint <= 0x7FF) return 2;
   if (codepoint <= 0xFFFF) return 3;
@@ -1007,8 +1015,8 @@ int jsUTF8Bytes(int codepoint) {
   return 0;
 }
 
-// encode a codepoint as a string, NOT null terminated (utf8 min size=4)
-int jsUTF8Encode(int codepoint, char* utf8) {
+// encode a codepoint as a string, NOT null terminated (utf8 min size=4). Returns the length
+unsigned int jsUTF8Encode(int codepoint, char* utf8) {
   static const uint8_t masks[] = {
     0x80, // 10000000
     0xE0, // 11100000
@@ -1024,4 +1032,5 @@ int jsUTF8Encode(int codepoint, char* utf8) {
   utf8[0] = (char)((codepoint & ~(masks[size - 1])) | (masks[size - 1] << 1));
   return size;
 }
+#endif // ESPR_UNICODE_SUPPORT
 
