@@ -165,12 +165,12 @@ void _jswrap_promise_queuereject(JsVar *promise, JsVar *data) {
   jsvUnLock(fn);
 }
 
-void jswrap_promise_all_resolve(JsVar *promise, JsVarInt index, JsVar *data) {
+void jswrap_promise_all_resolve(JsVar *promise, JsVar *index, JsVar *data) {
   JsVarInt remaining = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(promise, JS_PROMISE_REMAINING_NAME));
   JsVar *arr = jsvObjectGetChildIfExists(promise, JS_PROMISE_RESULT_NAME);
   if (arr) {
     // set the result
-    jsvSetArrayItem(arr, index, data);
+    jsvSetArrayItem(arr, jsvGetInteger(index), data);
     // Update remaining list
     remaining--;
     jsvObjectSetChildAndUnLock(promise, JS_PROMISE_REMAINING_NAME, jsvNewFromInteger(remaining));
@@ -279,7 +279,8 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *p = jsvObjectIteratorGetValue(&it);
     if (_jswrap_promise_is_promise(p)) {
-      JsVar *resolve = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_JSVAR<<(JSWAT_BITS*2)));
+      JsVar *resolve = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS)|(JSWAT_JSVAR<<(JSWAT_BITS*2)));
+      // NOTE: we use (this,JsVar,JsVar) rather than an int to avoid #2377 on emscripten, since that argspec is already used for forEach/otehrs
       // bind the index variable
       JsVar *indexVar = jsvNewFromInteger(promiseIndex);
       jsvAddFunctionParameter(resolve, 0, indexVar);
