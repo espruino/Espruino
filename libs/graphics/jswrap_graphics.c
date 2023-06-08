@@ -2059,6 +2059,7 @@ static void _jswrap_graphics_getFontInfo(JsGraphics *gfx, JsGraphicsFontInfo *in
 }
 
 static void _jswrap_graphics_freeFontInfo(JsGraphicsFontInfo *info) {
+#ifndef SAVE_ON_FLASH
   if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
     jsvUnLock(info->widths);
     jsvUnLock(info->bitmap);
@@ -2067,6 +2068,7 @@ static void _jswrap_graphics_freeFontInfo(JsGraphicsFontInfo *info) {
       jspbfFontFree(&info->pbfInfo);
 #endif
   }
+#endif  
 }
 
 static int _jswrap_graphics_getCharWidth(JsGraphics *gfx, JsGraphicsFontInfo *info, int ch) {
