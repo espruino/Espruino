@@ -319,6 +319,7 @@ char jsvStringIteratorGetCharAndNext(JsvStringIterator *it) {
 // Get the unicode codepoint, and also return the unicode string in unicodeStr (if non-null) and length in unicodeStrLen (if non-null)
 int jsvStringIteratorGetUTF8CharAndNext(JsvStringIterator *it) {
   if (!jsvStringIteratorHasChar(it)) {
+    jsvStringIteratorNext(it); // we still need to increment our position even if we don't have a char
     return -1;
   }
 #ifdef ESPR_UNICODE_SUPPORT
@@ -373,7 +374,7 @@ void jsvStringIteratorNextUTF8(JsvStringIterator *it) {
 #ifdef ESPR_UNICODE_SUPPORT
   if (!it->isUTF8)
     return jsvStringIteratorNext(it);
-  int l = jsUTF8LengthFromChar(jsvStringIteratorGetChar(it));
+  unsigned int l = jsUTF8LengthFromChar(jsvStringIteratorGetChar(it));
   while (l--) jsvStringIteratorNext(it);
 #else
   return jsvStringIteratorNext(it);
