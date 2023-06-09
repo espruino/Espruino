@@ -2435,9 +2435,10 @@ NO_INLINE JsVar *jspeStatementSwitch() {
   bool executeDefault = true;
   if (execute) execInfo.execute=EXEC_NO|EXEC_IN_SWITCH|preservedExecState;
   while (lex->tk==LEX_R_CASE) {
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_CASE, jsvUnLock(switchOn), 0);
     JsExecFlags oldFlags = execInfo.execute;
     if (execute) execInfo.execute=EXEC_YES|EXEC_IN_SWITCH|preservedExecState;
+    // we do the match after setting execute so that we're definitely allocating a string (we don't if we're not executing)
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_CASE, jsvUnLock(switchOn), 0);
     JsVar *test = jspeAssignmentExpression();
     execInfo.execute = oldFlags|EXEC_IN_SWITCH;
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock2(switchOn, test), 0);

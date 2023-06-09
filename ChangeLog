@@ -5,7 +5,8 @@
             Graphics: Fix issue if drawImage given a non-image
             Added optional Unicode support (Linux/Bangle.js only currently)
             Added optional PBF font loading support (Linux/Bangle.js only currently)
-
+            Fix recent regression in switch handling caused by Strings only being interpreted when executing
+            
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler
             Ensure that if JIT fails, we correctly remove just the "jit" tag and treat the function as normal JS
