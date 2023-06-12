@@ -988,6 +988,8 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
     JsVar *newChild = jsvCreateNewChild(object, nameVar, child);
     jsvUnLock2(nameVar, child);
     child = newChild;
+    if (child && jsvIsArray(object) && !strcmp(name,"length"))
+      child->flags |= JSV_CONSTANT;
   }
 
   // If not found and is the prototype, create it
