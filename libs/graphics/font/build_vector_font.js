@@ -1,10 +1,10 @@
-#!/usr/bin/nodejs
+#!/usr/bin/node
 /* This is a super hacky bit of code that takes a specially formatted SVG file
 and creates an Espruino vector font from it.
 
 */
 
-// SVG contents from http://forum.espruino.com/conversations/347368/#comment15288563
+// SVG contents from http://forum.espruino.com/conversations/347368/#comment15288563 (fontmap_13x19.svg in thie directory)
 // Converted with https://nebbishhacker.github.io/svg2bangle/ tolerance 0
 var polyImg = [
   {fill: "#000000", points: [96,129,95,130,94,130,92,129,91,130,92,131,94,132,95,132,97,131,98,129,98,121,96,121]},
@@ -568,5 +568,5 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, int x1, int y1, int size, c
 `;
 
 
-require("fs").writeFileSync(__dirname + "/../libs/graphics/vector_font.c", vector_font_c);
-require("fs").writeFileSync(__dirname + "/../libs/graphics/vector_font.h", vector_font_h);
+require("fs").writeFileSync(__dirname + "/../vector_font.c", vector_font_c);
+require("fs").writeFileSync(__dirname + "/../vector_font.h", vector_font_h);
