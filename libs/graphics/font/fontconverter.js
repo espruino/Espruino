@@ -96,8 +96,8 @@ function loadJSON(fontInfo) {
   fontInfo.fmHeight = 16;
 
   fontInfo.getCharPixel = function(ch,x,y) {
-    if (!font[ch]) return false;
-    return ((font[ch][y] >> x) & 1)!=0;
+    if (!font[ch]) return 0;
+    return (((font[ch][y] >> x) & 1)!=0) ? 1 : 0;
   };
   return fontInfo;
 }
@@ -136,8 +136,8 @@ function loadPBFF(fontInfo) {
   });
 
   fontInfo.getCharPixel = function(ch,x,y) {
-    if (!font[ch]) return false;
-    return font[ch].bmp[y] && font[ch].bmp[y][x]=='#';
+    if (!font[ch]) return 0;
+    return (font[ch].bmp[y] && font[ch].bmp[y][x]=='#') ? 1 : 0;
   };
   return fontInfo;
 }
@@ -506,7 +506,7 @@ JsVar *jswrap_graphics_setFont${options.name}(JsVar *parent) {
   a `function getCharPixel(ch,x,y)` which can be used to get the font data
 */
 
-var f = load({
+/*var f = load({
 fn : "Light20px.png",
 bpp : 2,
 height : 20, // actual used height of font map
@@ -514,7 +514,7 @@ firstChar : 32,
 maxChars :  128-32
 });
 f.fullHeight = false;
-f.glyphPadX = 0;
+f.glyphPadX = 0;*/
 
 /*var f = load({
   fn : "fontx14.png",
@@ -537,6 +537,12 @@ var f = load({
   // fixed width
 });*/
 
+var f = load({
+  fn : "renaissance_28.pbff",
+  height : 28, // actual used height of font map
+  firstChar : 32,
+  yOffset : 4
+});
 f.debugChars();
 f.debugPixelsUsed();
 
