@@ -7,7 +7,7 @@
   var menuIcon = "\0\f\f\x81\0\xFF\xFF\xFF\0\0\0\0\x0F\xFF\xFF\xF0\0\0\0\0\xFF\xFF\xFF";
   var options = menu[""]||{};
   if (!options.title) options.title="Menu";
-  var back = options.back||menu["< Back"];  
+  var back = options.back||menu["< Back"];
   var keys = Object.keys(menu).filter(k=>k!=="" && k!="< Back");
   keys.forEach(k => {
     var item = menu[k];
@@ -18,7 +18,7 @@
   });
   // Submenu for editing menu options...
   function showSubMenu(item, title) {
-    /*if ("number"!=typeof item.value) 
+    /*if ("number"!=typeof item.value)
       return console.log("Unhandled item type");*/
     var step = item.step||1;
     if (!item.noList && item.min!==undefined && item.max!==undefined &&
@@ -54,7 +54,7 @@
       g.reset().clearRect(Bangle.appRect);
       g.setFont("12x20").setFontAlign(0,0).drawString(
           menuIcon+" "+title, R.x+R.w/2,R.y+12);
-      
+
       function draw() {
         var mx = R.x+R.w/2, my = 12+R.y+R.h/2, txt = item.format?item.format(v,2):v, s = 30;
         g.reset().setColor(g.theme.bg2).fillRect({x:R.x+24, y:R.y+36, w:R.w-48, h:R.h-48, r:5});
@@ -128,7 +128,7 @@
           if ("boolean"==typeof item.value)
             item.value=!item.value;
           if (item.onchange) item.onchange(item.value);
-          l.scroller.drawItem(idx);
+          if (l.scroller.isActive()) l.scroller.drawItem(idx);
         }
       }
     }

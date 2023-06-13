@@ -10,11 +10,24 @@
   }
 
   returns {
-    draw  = draw all
-    drawItem(idx) = draw specific item
+    scroll: int                // current scroll amount
+    draw: function()           // draw all
+    drawItem : function(idx)   // draw specific item
+    isActive : function()      // is this scroller still active?
   }
+
   */
 if (!options) return Bangle.setUI(); // remove existing handlers
+
+var touchHandler = (_,e)=>{
+  if (e.y<R.y-4) return;
+  var i = YtoIdx(e.y);
+  if ((menuScrollMin<0 || i>=0) && i<options.c){
+    let yAbs = (e.y + rScroll - R.y);
+    let yInElement = yAbs - i*options.h;
+    options.select(i, {x:e.x, y:yInElement});
+  }
+};
 
 Bangle.setUI({
   mode : "custom",
@@ -23,7 +36,7 @@ Bangle.setUI({
   drag : e=>{
     var dy = e.dy;
     if (s.scroll - dy > menuScrollMax)
-      dy = s.scroll - menuScrollMax;  
+      dy = s.scroll - menuScrollMax;
     if (s.scroll - dy < menuScrollMin)
       dy = s.scroll - menuScrollMin;
     s.scroll -= dy;
@@ -55,17 +68,9 @@ Bangle.setUI({
       }
     }
     g.setClipRect(0,0,g.getWidth()-1,g.getHeight()-1);
-  }, touch : (_,e)=>{
-    if (e.y<R.y-4) return;
-    var i = YtoIdx(e.y);
-    if ((menuScrollMin<0 || i>=0) && i<options.c){
-      let yAbs = (e.y + rScroll - R.y);
-      let yInElement = yAbs - i*options.h;
-      options.select(i, {x:e.x, y:yInElement});
-    }
-  }
-});  
-  
+  }, touch : touchHandler
+});
+
 var menuShowing = false;
 var R = Bangle.appRect;
 var Y = R.y;
@@ -80,8 +85,8 @@ function idxToY(i) {
 function YtoIdx(y) {
   return Math.floor((y + rScroll - R.y)/options.h);
 }
-  
-var s = {  
+
+var s = {
   scroll : E.clip(0|options.scroll,menuScrollMin,menuScrollMax),
   draw : () => {
     g.reset().clearRect(R).setClipRect(R.x,R.y,R.x2,R.y2);
@@ -95,7 +100,7 @@ var s = {
     g.reset().setClipRect(R.x,Math.max(y,R.y),R.x2,Math.min(y+options.h,R.y2));
     options.draw(i, {x:R.x,y:y,w:R.w,h:options.h});
     g.setClipRect(0,0,g.getWidth()-1,g.getHeight()-1);
-  }
+  }, isActive : () => Bangle.touchHandler == touchHandler
 };
 var rScroll = s.scroll&~1; // rendered menu scroll (we only shift by 2 because of dither)
 s.draw(); // draw the full scroller

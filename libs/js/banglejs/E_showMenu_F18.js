@@ -42,6 +42,8 @@
     if (dir) l.move(dir);
     else l.select();
   });
+  var touchHandler = () => {}; // fake touchHandler which we can use to see if we're still active
+  Bangle.touchHandler = touchHandler; // this will get cleared next time setUI is called
   var ar = Bangle.appRect;
   var x = ar.x;
   var x2 = ar.x2-11; // padding at side for up/down
@@ -173,7 +175,8 @@
           if ("boolean" == typeof item.value) item.value=!item.value;
           if (item.onchange) item.onchange(item.value);
         }
-        l.draw();
+        // redraw if we're still active
+        if (Bangle.touchHandler == touchHandler) l.draw();
       }
     },
     move : function(dir) {
@@ -193,6 +196,6 @@
     },
     back : back
   };
-  l.draw();  
+  l.draw();
   return l;
 })

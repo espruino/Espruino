@@ -4,8 +4,16 @@
     c = # of items
     draw = function(idx, rect, selected)
     select = function(idx)
-  }*/
-  
+  }
+
+  returns {
+    scroll: int                // current scroll amount
+    draw: function()           // draw all
+    drawItem : function(idx)   // draw specific item
+  }
+
+  */
+
 if (!options) return Bangle.setUI();
 Bangle.setUI({mode:"updown", back:options.back, remove:options.remove},dir=>{
   if (dir) {
@@ -17,6 +25,8 @@ Bangle.setUI({mode:"updown", back:options.back, remove:options.remove},dir=>{
     options.select(s.scroll);
   }
 });
+var touchHandler = () => {}; // fake touchHandler which we can use for isActive check
+Bangle.touchHandler = touchHandler; // this will get cleared next time setUI is called
 var R = Bangle.appRect;
 var w = R.w, h = R.h, X = R.x, Y = R.y;
 
@@ -67,7 +77,8 @@ var s = {
        .drawPoly(p,true);
     }
   },
-  drawItem : idx => draw(idx)
+  drawItem : idx => draw(idx),
+  isActive : () => Bangle.touchHandler == touchHandler
 };
 
 g.reset().clearRect(R);

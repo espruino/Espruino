@@ -23,12 +23,12 @@
   }
   delete Bangle.CLOCK;
   if (Bangle.uiRemove) {
-	let r = Bangle.uiRemove;
-	delete Bangle.uiRemove; // stop recursion if setUI is called inside uiRemove
-    r();     
+    let r = Bangle.uiRemove;
+    delete Bangle.uiRemove; // stop recursion if setUI is called inside uiRemove
+    r();
   }
   g.reset();// reset graphics state, just in case
-  if (!mode) return;  
+  if (!mode) return;
   if (mode=="updown") {
     Bangle.btnWatches = [
       setWatch(function() { cb(-1); }, BTN1, {repeat:1,edge:"falling"}),
@@ -93,7 +93,7 @@
         btnWatch = undefined;
         options.back();
       }, BTN3, {edge:"falling"});
-    WIDGETS = Object.assign({back:{ 
+    WIDGETS = Object.assign({back:{
       area:"tl", width:24,
       draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
       remove:(noclear)=>{
@@ -105,5 +105,5 @@
       }
     }},global.WIDGETS);
     if (redraw) Bangle.drawWidgets();
-  }  
+  }
 })
