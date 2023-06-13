@@ -100,6 +100,11 @@ bool jspbfFontFindGlyph(PbfFontLoaderInfo *info, int codepoint, PbfFontLoaderGly
       result->x = (int8_t)jspbfGetU8(&info->it);
       result->y = (int8_t)jspbfGetU8(&info->it);
       result->advance = (int8_t)jspbfGetU8(&info->it);
+      result->bpp = 1;
+      if (((uint8_t)result->advance)&128) { // extension for Espruino - if advance top bit set (eg. negative), it means we have 2 bpp data
+        result->advance &= 127;
+        result->bpp = 2;
+      }
       return true;
     }
   }
@@ -110,12 +115,10 @@ void jspbfFontRenderGlyph(PbfFontLoaderInfo *info, PbfFontLoaderGlyph *glyph, Js
   //bmpOffset *= ch * customBPP;
   // now render character
   int bmpOffset = 0;
-  int bpp = 1;
+  int bpp = glyph->bpp;
   int bppRange = (1<<bpp)-1;
-  bmpOffset &= 7;
   int cx,cy;
   int citdata = jsvStringIteratorGetCharAndNext(&info->it);
-  citdata <<= bpp*bmpOffset;
   for (cy=0;cy<glyph->h;cy++) {
     for (cx=0;cx<glyph->w;cx++) {
       int col = citdata&bppRange;

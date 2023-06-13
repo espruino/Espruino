@@ -39,6 +39,7 @@ typedef struct {
   int8_t x;
   int8_t y;
   int8_t advance; // how wide is the character itself?
+  uint8_t bpp; // bits per pixel
 } PbfFontLoaderGlyph;
 
 /// Load a .pbf file

@@ -123,7 +123,7 @@ void graphicsStructResetState(JsGraphics *gfx) {
   } else
 #endif
   {
-    gfx->data.fgColor = 0xFFFFFFFF;
+    gfx->data.fgColor = (gfx->data.bpp>=32) ? 0xFFFFFFFF : ((1<<gfx->data.bpp)-1);
     gfx->data.bgColor = 0;
   }
   gfx->data.fontSize = 1+JSGRAPHICS_FONTSIZE_4X6;
@@ -354,7 +354,7 @@ uint32_t graphicsBlendColor(JsGraphics *gfx, unsigned int fg, unsigned int bg, i
   if (amt>256) amt=256;
   if (gfx->data.bpp==2 || gfx->data.bpp==4 || gfx->data.bpp==8) {
     // TODO: if our graphics instance is paletted this isn't correct!
-    return (bg*(256-amt) + fg*amt) >> 8;
+    return (bg*(256-amt) + fg*amt + 127) >> 8;
   } else if (gfx->data.bpp==16) { // Blend from bg to fg
     unsigned int b = bg;
     unsigned int br = (b>>11)&0x1F;
@@ -737,7 +737,7 @@ void graphicsDrawCircleAA(JsGraphics *gfx, int x0, int y0, int r){
   int i, x2, e2;
   r = 1-err;
   do {
-     i = 255-255*abs(err-2*(x+y)-2)/r;  
+     i = 255-255*abs(err-2*(x+y)-2)/r;
      graphicsSetPixelDeviceBlended(gfx, x0-x, y0+y, i);
      graphicsSetPixelDeviceBlended(gfx, x0-y, y0-x, i);
      graphicsSetPixelDeviceBlended(gfx, x0+x, y0-y, i);

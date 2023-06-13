@@ -8,6 +8,8 @@
             Fix recent regression in switch handling caused by Strings only being interpreted when executing
             Ensure [].length is a constant (we don't support assignment)
             Bangle.js: showMenu now won't redraw menu items if the onchange handler changed the menu
+            Graphics: Add Espruino-specific extension to PBF font loader to handle 2bpp
+            Graphics: Improve blendColor when outputting to 2/4/8bpp Graphics
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler
