@@ -1907,7 +1907,8 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
     JsVar *fontSetter = jspGetVarNamedField(parent,setterName,false);
     if (fontSetter) {
       jsvUnLock(jspExecuteFunction(fontSetter,parent,0,NULL));
-      sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_CUSTOM_1BPP);
+      JsGraphics gfx; graphicsGetFromVar(&gfx, parent); // graphicsGetFromVar *may* fail, but all it means is size won't get set (and jswrap_graphics_setFontSizeX would fail too)
+      sz = (unsigned short)(size | (gfx.data.fontSize & JSGRAPHICS_FONTSIZE_FONT_MASK));
     }
     jsvUnLock2(fontSetter,setterName);
   }
@@ -2068,7 +2069,7 @@ static void _jswrap_graphics_freeFontInfo(JsGraphicsFontInfo *info) {
       jspbfFontFree(&info->pbfInfo);
 #endif
   }
-#endif  
+#endif
 }
 
 static int _jswrap_graphics_getCharWidth(JsGraphics *gfx, JsGraphicsFontInfo *info, int ch) {

@@ -10,6 +10,7 @@
             Bangle.js: showMenu now won't redraw menu items if the onchange handler changed the menu
             Graphics: Add Espruino-specific extension to PBF font loader to handle 2bpp
             Graphics: Improve blendColor when outputting to 2/4/8bpp Graphics
+            Graphics: Allow setFont(...) to work with >1bpp and PBF fonts
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler
