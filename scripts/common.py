@@ -125,6 +125,8 @@ def get_jsondata(is_for_document, parseArgs = True, boardObject = False):
         if arg[0]=="-":
           if arg[1]=="D":
             defines.append(arg[2:])
+            if "=" in arg: # eg ESPR_EMBED=1 needs to also have a define for ESPR_EMBED
+              defines.append(arg[2:arg.index("=")])
           elif arg[1]=="B":
             print("BOARD "+arg[2:]);
             print("Now ignore_ifdefs = False");

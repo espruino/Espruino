@@ -18,7 +18,9 @@
 
 static bool isNegativeZero(double x) {
   double NEGATIVE_ZERO = -0.0;
-  return *((long long*)&x) == *((long long*)&NEGATIVE_ZERO);
+  long long *NEGATIVE_ZERO_BITS = (long long*)&NEGATIVE_ZERO;
+  long long *DOUBLE_BITS = (long long*)&x;
+  return *DOUBLE_BITS == *NEGATIVE_ZERO_BITS;
 }
 
 #ifdef SAVE_ON_FLASH_EXTREME

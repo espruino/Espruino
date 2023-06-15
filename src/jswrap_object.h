@@ -51,9 +51,10 @@ JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props);
 JsVar *jswrap_object_getPrototypeOf(JsVar *object);
 JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto);
 JsVar *jswrap_object_assign(JsVar *args);
-
+#ifndef ESPR_EMBED
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener);
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray);
+#endif
 void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback);
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event);
 // For internal use - like jswrap_object_removeAllListeners but takes a C string

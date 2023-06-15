@@ -277,13 +277,9 @@ field, but because they are bitfields we can't get pointers to them!
  * a flat string than to use a normal string... */
 #define JSV_FLAT_STRING_BREAK_EVEN (JSVAR_DATA_STRING_LEN + JSVAR_DATA_STRING_MAX_LEN)
 
-// Sanity checks
-#if JSVARREFCOUNT_BITS <= 8
-    typedef uint8_t JsVarRefCounter;
-#else
-#error "Assumed JSVARREFCOUNT_BITS was 8 or less"
-#endif
+typedef uint16_t JsVarRefCounter;
 
+// Sanity checks
 #if (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS)>>3)) < 8
 #pragma message "required length (bits) : 64"
 #pragma message "initial data block length (bits) : " STRINGIFY(JSVAR_DATA_STRING_NAME_LEN*8)

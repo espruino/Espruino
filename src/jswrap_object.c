@@ -780,6 +780,7 @@ bool jswrap_boolean_constructor(JsVar *value) {
 // --------------------------------------------------------------------------
 //                                            These should be in EventEmitter
 
+#ifndef ESPR_EMBED
 /** A convenience function for adding event listeners */
 void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (*callback)(), JsnArgumentType argTypes) {
   JsVar *n = jsvNewFromString(eventName);
@@ -787,6 +788,7 @@ void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (
   jswrap_object_on(parent, n, cb);
   jsvUnLock2(cb, n);
 }
+#endif
 
 /*JSON{
   "type" : "method",

@@ -162,7 +162,7 @@ bool jsvIsNameIntBool(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
 bool jsvIsNewChild(const JsVar *v) { return jsvIsName(v) && jsvGetNextSibling(v) && jsvGetNextSibling(v)==jsvGetPrevSibling(v); }
 /// Returns true if v is a getter/setter
-bool jsvIsGetterOrSetter(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_GETTER_OR_SETTER(f); }
+bool jsvIsGetterOrSetter(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; NOT_USED(f); return JSV_IS_GETTER_OR_SETTER(f); }
 /// Are var.varData.ref.* (excl pad) used for data (so we expect them not to be empty)
 bool jsvIsRefUsedForData(const JsVar *v) {
   // Used for assert - no need to optimise
@@ -1659,7 +1659,7 @@ size_t jsvGetStringLength(const JsVar *v) {
   // For unicode, we just have to iterate to get a length
   if (jsvIsUTF8String(v)) {
     JsvStringIterator it;
-    jsvStringIteratorNew(&it, v, 0);
+    jsvStringIteratorNew(&it, (JsVar*)v, 0);
     while (jsvStringIteratorHasChar(&it)) {
       jsvStringIteratorNextUTF8(&it);
       strLength++;
