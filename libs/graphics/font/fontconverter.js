@@ -47,9 +47,12 @@ function Font(info) {
   this.maxChars = info.maxChars || (256-this.firstChar);
   this.lastChar = this.firstChar + this.maxChars - 1;
   this.fixedWidth = !!info.fixedWidth;
-  this.fullHeight = true; // output fonts at the full height available
+  this.fullHeight = !!info.fullHeight; // output fonts at the full height available
   this.glyphPadX = 1; // padding at the end of glyphs (needed for old-style JS fonts)
   this.glyphVertical = true; // are glyphs scanned out vertically or horizontally?
+  // set up later:
+  // fmWidth  - max width of any character (we scan this area when writing fonts, even if we crop down later)
+  // fmHeight - max height of any character (we scan this area when writing fonts, even if we crop down later)
 }
 
 // Load a 16x16 charmap file
@@ -107,6 +110,8 @@ function loadPBFF(fontInfo) {
   fontInfo = new Font(fontInfo);
   fontInfo.fmWidth = 0;
   fontInfo.fmHeight = fontInfo.height;
+  fontInfo.glyphPadX = 0;
+  fontInfo.fullHeight = false;
   var current = {
     idx : 0,
     bmp : []
@@ -129,10 +134,14 @@ function loadPBFF(fontInfo) {
         var verticalOffset = parseInt(l.trim().split(" ")[1]);
         while (verticalOffset--) current.bmp.push("");
       }
-    } else if (l.startsWith(" ") || l.startsWith("#")) {
+    } else if (l.startsWith(" ") || l.startsWith("#") || l=="") {
       current.bmp.push(l);
       if (l.length > fontInfo.fmWidth) fontInfo.fmWidth = l.length;
-    } else console.log(`Unknown line '${l}'`);
+      if (current.bmp.length > fontInfo.fmHeight) {
+        console.log(current.idx+" bump height to "+current.bmp.length);
+        fontInfo.fmHeight = current.bmp.length;
+      }
+    } else if (l!="") console.log(`Unknown line '${l}'`);
   });
 
   fontInfo.getCharPixel = function(ch,x,y) {
@@ -163,7 +172,7 @@ Font.prototype.getGlyph = function(ch, bits) {
     xStart = this.fmWidth;
     xEnd = 0;
     for (var x=0;x<this.fmWidth;x++) {
-      for (var y=0;y<this.height;y++) {
+      for (var y=0;y<this.fmHeight;y++) {
         var set = this.getCharPixel(ch,x,y+this.yOffset);
         if (set) {
           // check X max value
@@ -237,7 +246,7 @@ Font.prototype.debugChars = function() {
     var debugText = [];
     for (var y=0;y<this.fmHeight;y++) debugText.push("");
     for (var x=glyph.xStart;x<=glyph.xEnd;x++) {
-      for (var y=0;y<this.height;y++) {
+      for (var y=0;y<this.fmHeight;y++) {
         var col = this.getCharPixel(ch,x,y+this.yOffset);
         debugText[y] += (y>=glyph.yStart && y<=glyph.yEnd) ? map[col] : ".";
       }
@@ -541,7 +550,7 @@ var f = load({
   fn : "renaissance_28.pbff",
   height : 28, // actual used height of font map
   firstChar : 32,
-  yOffset : 4
+  //yOffset : 4,
 });
 f.debugChars();
 f.debugPixelsUsed();
