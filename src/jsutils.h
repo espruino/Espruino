@@ -261,6 +261,8 @@ See comments after JsVar in jsvar.c for more info.
 /// Max length of JSV_NAME_ strings
 #define JSVAR_DATA_STRING_NAME_LEN  4
 #endif
+/// these should be the same, but if we use sizeof in the #defines below they won't be constant
+#define JSVAR_DATA_STRING_NAME_LEN_  sizeof(size_t)
 
 
 /// Max length for a JSV_STRING, JsVar.varData.ref.refs (see comments under JsVar decl in jsvar.h)
@@ -278,7 +280,6 @@ field, but because they are bitfields we can't get pointers to them!
 #define JSV_FLAT_STRING_BREAK_EVEN (JSVAR_DATA_STRING_LEN + JSVAR_DATA_STRING_MAX_LEN)
 
 typedef uint16_t JsVarRefCounter;
-
 // Sanity checks
 #if (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS)>>3)) < 8
 #pragma message "required length (bits) : 64"

@@ -164,7 +164,7 @@ typedef struct {
 /// References
 typedef struct {
   /* padding for data. Must be big enough for an int */
-  int8_t pad[JSVAR_DATA_STRING_NAME_LEN];
+  int8_t pad[JSVAR_DATA_STRING_NAME_LEN_]; // use JSVAR_DATA_STRING_NAME_LEN_ not JSVAR_DATA_STRING_NAME_LEN here so EMBED builds can handle 64 bit
 
   /* For Variable NAMES (e.g. Object/Array keys) these store actual next/previous pointers for a linked list or 0.
    *   - if nextSibling==prevSibling==!0 then they point to the object that should contain this name if it ever gets set to anything that's not undefined
