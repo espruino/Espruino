@@ -356,6 +356,8 @@ static void jslLexString() {
             jsExceptionHere(JSET_ERROR, "Unmatched Unicode surrogate");
           }
           len = jsUTF8Encode(codepoint, buf);
+          if (jsUTF8IsStartChar(buf[0]))
+            lex->isUTF8 = true;
           ch = buf[len-1]; // last char is in 'ch' as jsvStringIteratorAppend(..., ch) is called later on
           if (len>1) {
             n=0;

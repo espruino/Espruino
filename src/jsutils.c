@@ -52,7 +52,11 @@ bool isIDString(const char *s) {
   return true;
 }
 
-
+// convert a number 0..15 to a hex char (this looks at only bottom 4 bits)
+char dtohex(int d) {
+  d &= 15;
+  return (char)((d<10)?('0'+d):('A'+d-10));
+}
 
 char charToUpperCase(char ch) {
   return (char)(((ch>=97 && ch<=122) ||
@@ -66,47 +70,62 @@ char charToLowerCase(char ch) {
     ((unsigned)ch>=216 && (unsigned)ch<=222))  ? ch + 32 : ch);
 } // A-Z, À-Ö, Ø-Þ
 
+static char* numericEscapeChar(char *dst, int ch, bool useUnicode) {
+  *(dst++) = '\\';
+  if (useUnicode) {
+    *(dst++) ='u';
+    *(dst++) = dtohex(ch>>12);
+    *(dst++) = dtohex(ch>>8);
+  } else {
+    *(dst++) = 'x';
+  }
+  *(dst++) = dtohex(ch>>4);
+  *(dst++) = dtohex(ch);
+  return dst;
+}
+
 /** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again.
 If jsonStyle=true, only string escapes supported by JSON are used */
-const char *escapeCharacter(char ch, char nextCh, bool jsonStyle) {
-  if (ch=='\b') return "\\b"; // 8
-  if (ch=='\t') return "\\t"; // 9
+const char *escapeCharacter(int ch, int nextCh, bool jsonStyle) {
   if (ch=='\n') return "\\n"; // A
+  if (ch=='\t') return "\\t"; // 9
+#ifndef SAVE_ON_FLASH_EXTREME
+  if (ch=='\b') return "\\b"; // 8
   if (ch=='\v' && !jsonStyle) return "\\v"; // B
   if (ch=='\f') return "\\f"; // C
   if (ch=='\r') return "\\r"; // D
+#endif
   if (ch=='\\') return "\\\\";
   if (ch=='"') return "\\\"";
-  static char buf[7];
-  unsigned char uch = (unsigned char)ch;
-  if (uch<8 && !jsonStyle && (nextCh<'0' || nextCh>'7')) {
+  static char buf[14]; // for surrogates
+#ifndef SAVE_ON_FLASH_EXTREME
+  if (ch<8 && !jsonStyle && (nextCh<'0' || nextCh>'7')) { // try and
     // encode less than 8 as \#
     buf[0]='\\';
-    buf[1] = (char)('0'+uch);
+    buf[1] = (char)('0'+ch);
     buf[2] = 0;
     return buf;
-  } else if (uch<32 || uch>=127) {
+  } else
+#endif
+  if (ch<32 || ch>=127) {
     /** just encode as hex - it's more understandable
      * and doesn't have the issue of "\16"+"1" != "\161" */
-    buf[0]='\\';
-    int o=2;
-    if (jsonStyle) {
-      buf[1]='u';
-      buf[o++] = '0';
-      buf[o++] = '0';
-    } else {
-      buf[1]='x';
+    char *p = buf;
+#ifdef ESPR_UNICODE_SUPPORT
+    if (ch >= 0x10000) { // we need surrogates
+      ch -= 0x10000;
+      p = numericEscapeChar(p, 0xD800 | ((ch>>10)&0x03FF), true); // high surrogate
+      ch = 0xDC00 | (ch & 0x03FF); // low surrogate
+      jsonStyle = true; // force /u output
     }
-    int n = (uch>>4)&15;
-    buf[o++] = (char)((n<10)?('0'+n):('A'+n-10));
-    n=uch&15;
-    buf[o++] = (char)((n<10)?('0'+n):('A'+n-10));
-    buf[o++] = 0;
+#endif
+    p = numericEscapeChar(p, ch, jsonStyle || ch>255);
+    *p = 0;
     return buf;
   }
   buf[1] = 0;
-  buf[0] = ch;
+  buf[0] = (char)ch;
   return buf;
 }
 
@@ -808,13 +827,20 @@ void vcbprintf(
         if (jsvIsString(v)) {
           JsvStringIterator it;
           jsvStringIteratorNew(&it, v, 0);
-          // OPT: this could be faster than it is (sending whole blocks at once)
-          while (jsvStringIteratorHasChar(&it)) {
-            buf[0] = jsvStringIteratorGetCharAndNext(&it);
-            char nextCh = jsvStringIteratorGetChar(&it);
-            if (quoted) {
-              user_callback(escapeCharacter(buf[0], nextCh, isJSONStyle), user_data);
-            } else {
+          if (quoted) {
+            int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
+            while (jsvStringIteratorHasChar(&it) || ch>=0) {
+              int nextCh = jsvStringIteratorGetUTF8CharAndNext(&it);
+              if (quoted) {
+                user_callback(escapeCharacter(ch, nextCh, isJSONStyle), user_data);
+              } else {
+                user_callback(buf,user_data);
+              }
+              ch = nextCh;
+            }
+          } else { // OPT: this could be faster than it is (sending whole blocks at once)
+            while (jsvStringIteratorHasChar(&it)) {
+              buf[0] = jsvStringIteratorGetCharAndNext(&it);
               user_callback(buf,user_data);
             }
           }
@@ -993,7 +1019,7 @@ unsigned short int int_sqrt32(unsigned int x) {
 
 /// Returns true if this character denotes the start of a UTF8 sequence
 bool jsUTF8IsStartChar(char c) {
-  unsigned char ch = (unsigned char)ch;
+  unsigned char ch = (unsigned char)c;
   return (ch>=0xC2) && (ch<=0xF4);
 }
 
@@ -1023,9 +1049,9 @@ unsigned int jsUTF8Encode(int codepoint, char* utf8) {
     0xF0, // 11110000
     0xF8  // 11111000
   };
-  int size = jsUTF8Bytes(codepoint);
+  unsigned int size = jsUTF8Bytes(codepoint);
   if (!size) return 0;
-  for (int i = size - 1; i > 0; --i) {
+  for (unsigned int i = size - 1; i > 0; --i) {
       utf8[i] = (char)((codepoint & ~0xC0) | 0x80);
       codepoint >>= 6;
   }
