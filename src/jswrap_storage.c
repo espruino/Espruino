@@ -358,7 +358,7 @@ List all files in the flash storage area matching the specified regex (ignores
 StorageFiles), and then hash their filenames *and* file locations.
 
 Identical files may have different hashes (e.g. if Storage is compacted and the
-file moves) but the changes of different files having the same hash are
+file moves) but the chances of different files having the same hash are
 extremely small.
 
 ```
