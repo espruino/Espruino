@@ -614,7 +614,7 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
   JsVar *getter = jsvObjectGetChildIfExists(desc, "get");
   JsVar *setter = jsvObjectGetChildIfExists(desc, "set");
   if (getter || setter) {
-#ifdef SAVE_ON_FLASH
+#ifdef ESPR_NO_GET_SET
     jsExceptionHere(JSET_ERROR, "get/set unsupported in this build");
 #else
     // also see jsvAddGetterOrSetter(contents, varName, isGetter, method);

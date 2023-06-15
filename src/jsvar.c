@@ -2402,7 +2402,7 @@ JsVar *jsvSkipNameWithParent(JsVar *a, bool repeat, JsVar *parent) {
     assert(pa!=a);
     if (!repeat) break;
   }
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_GET_SET
   if (jsvIsGetterOrSetter(pa)) {
     JsVar *getterParent = jsvIsNewChild(a)?jsvLock(jsvGetNextSibling(a)):0;
     JsVar *v = jsvExecuteGetter(getterParent?getterParent:parent, pa);
