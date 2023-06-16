@@ -1,30 +1,141 @@
 Espruino uses a few libraries of code that have been generously given away for
-free. Their licences are included below.
+free. Their licences are included below:
 
 -------------------------------------------------------------------------
- FATFS
+ HeatShrink
+ https://github.com/atomicobject/heatshrink
+    - All Espruino builds apart from those with SAVE_ON_FLASH defined
 -------------------------------------------------------------------------
 
-/*---------------------------------------------------------------------------/
-/  FatFs - FAT file system module include file  R0.07c       (C)ChaN, 2009
-/----------------------------------------------------------------------------/
-/ FatFs module is an open source software to implement FAT file system to
-/ small embedded systems. This is a free software and is opened for education,
-/ research and commercial developments under license policy of following terms.
-/
-/  Copyright (C) 2009, ChaN, all right reserved.
-/
-/ * The FatFs module is a free software and there is NO WARRANTY.
-/ * No restriction on use. You can use, modify and redistribute it for
-/   personal, non-profit or commercial product UNDER YOUR RESPONSIBILITY.
-/ * Redistributions of source code must retain the above copyright notice.*/
+  Copyright (c) 2013-2015, Scott Vokes <vokes.s@gmail.com>
+  All rights reserved.
+   
+  Permission to use, copy, modify, and/or distribute this software for any
+  purpose with or without fee is hereby granted, provided that the above
+  copyright notice and this permission notice appear in all copies.
+   
+  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+  ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+-------------------------------------------------------------------------
+ micro-ecc
+ https://github.com/kmackay/micro-ecc
+   - nRF52 device bootloaders
+-------------------------------------------------------------------------
+
+  Copyright (c) 2014, Kenneth MacKay
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without modification,
+  are permitted provided that the following conditions are met:
+   * Redistributions of source code must retain the above copyright notice, this
+     list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above copyright notice,
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-------------------------------------------------------------------------
+ nano-pb
+ https://github.com/nanopb/nanopb
+   - nRF52 device bootloaders
+-------------------------------------------------------------------------
+
+  Copyright (c) 2011 Petteri Aimonen <jpa at nanopb.mail.kapsi.fi>
+
+  This software is provided 'as-is', without any express or 
+  implied warranty. In no event will the authors be held liable 
+  for any damages arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any 
+  purpose, including commercial applications, and to alter it and 
+  redistribute it freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you 
+     must not claim that you wrote the original software. If you use 
+     this software in a product, an acknowledgment in the product 
+     documentation would be appreciated but is not required.
+
+  2. Altered source versions must be plainly marked as such, and 
+     must not be misrepresented as being the original software.
+
+  3. This notice may not be removed or altered from any source 
+     distribution.
+
+-------------------------------------------------------------------------
+ Tensorflow for Microcontrollers
+    - Bangle.js Tensorflow Implementation
+-------------------------------------------------------------------------
+
+  Copyright 2019 The TensorFlow Authors.  All rights reserved.
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+                        
+-------------------------------------------------------------------------
+ FlatBuffers: Memory Efficient Serialization Library
+ https://github.com/google/flatbuffers
+    - Bangle.js Tensorflow Implementation
+-------------------------------------------------------------------------
+
+  Copyright 2019 The TensorFlow Authors.  All rights reserved.
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+                        
+-------------------------------------------------------------------------
+ gemmlowp: Low-precision matrix multiplication
+ https://github.com/google/gemmlowp
+    - Bangle.js Tensorflow Implementation
+-------------------------------------------------------------------------
+
+  Copyright 2019 The TensorFlow Authors.  All rights reserved.
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+-------------------------------------------------------------------------
+ FATFS 
+ http://elm-chan.org/fsw/ff/00index_e.html
+   - Devices with SD cards
+-------------------------------------------------------------------------
+
+  FatFs module is an open source software to implement FAT file system to
+  small embedded systems. This is a free software and is opened for education,
+  research and commercial developments under license policy of following terms.
+
+  Copyright (C) 2009, ChaN, all right reserved.
+
+  * The FatFs module is a free software and there is NO WARRANTY.
+  * No restriction on use. You can use, modify and redistribute it for
+    personal, non-profit or commercial product UNDER YOUR RESPONSIBILITY.
+  * Redistributions of source code must retain the above copyright notice.*/
 
 
 -------------------------------------------------------------------------
  FATFS to SPI bridge
+    - Devices with SD cards
 -------------------------------------------------------------------------
 
-/* Copyright (c) 2009, Martin Thomas, ChaN
+   Copyright (c) 2009, Martin Thomas, ChaN
    All rights reserved.
 
    Redistribution and use in source and binary forms, with or without
@@ -50,39 +161,96 @@ free. Their licences are included below.
   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-  POSSIBILITY OF SUCH DAMAGE. */
+  POSSIBILITY OF SUCH DAMAGE. 
   
 -------------------------------------------------------------------------
- FATFS to SDIO bridge
+ MBED TLS Crypto Libraries
 -------------------------------------------------------------------------
 
-/* author: ickle */ -  No details given with source code. If you have 
-anything you'd like to include, pleas e-mail us and let us know. 
+  Unless specifically indicated otherwise in a file, files are licensed
+  under the Apache 2.0 license, as can be found in: libs/crypto/mbedtls/apache-2.0.txt
 
 -------------------------------------------------------------------------
- 8x8 LCD Font
+ $1 Unistroke Recognizer - https://depts.washington.edu/acelab/proj/dollar/index.html
 -------------------------------------------------------------------------
 
-/*
-http://forum.osdev.org/viewtopic.php?f=2&t=22033
+  The $1 Unistroke Recognizer (JavaScript version)
 
-Created Sunday, May 23, 2010 by Quinn Evans
-Renamed and updated Monday 24, 2010
+   Jacob O. Wobbrock, Ph.D.
+   The Information School
+   University of Washington
+   Seattle, WA 98195-2840
+   wobbrock@uw.edu
 
-This font (Vincent) is released by me into the public domain. I claim no
-copyright, and hereby make this software available to the public for any use,
-at any time, free of restrictions, legal or otherwise.
-*/
+   Andrew D. Wilson, Ph.D.
+   Microsoft Research
+   One Microsoft Way
+   Redmond, WA 98052
+   awilson@microsoft.com
+
+   Yang Li, Ph.D.
+   Department of Computer Science and Engineering
+   University of Washington
+   Seattle, WA 98195-2840
+   yangli@cs.washington.edu
+
+  The academic publication for the $1 recognizer, and what should be
+  used to cite it, is:
+
+      Wobbrock, J.O., Wilson, A.D. and Li, Y. (2007). Gestures without
+      libraries, toolkits or training: A $1 recognizer for user interface
+      prototypes. Proceedings of the ACM Symposium on User Interface
+      Software and Technology (UIST '07). Newport, Rhode Island (October
+      7-10, 2007). New York: ACM Press, pp. 159-168.
+      https://dl.acm.org/citation.cfm?id=1294238
+
+  The Protractor enhancement was separately published by Yang Li and programmed
+  here by Jacob O. Wobbrock:
+
+      Li, Y. (2010). Protractor: A fast and accurate gesture
+      recognizer. Proceedings of the ACM Conference on Human
+      Factors in Computing Systems (CHI '10). Atlanta, Georgia
+      (April 10-15, 2010). New York: ACM Press, pp. 2169-2172.
+      https://dl.acm.org/citation.cfm?id=1753654
+
+  This software is distributed under the "New BSD License" agreement:
+
+  Copyright (C) 2007-2012, Jacob O. Wobbrock, Andrew D. Wilson and Yang Li.
+  All rights reserved. Last updated July 14, 2018.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+     * Redistributions of source code must retain the above copyright
+       notice, this list of conditions and the following disclaimer.
+     * Redistributions in binary form must reproduce the above copyright
+       notice, this list of conditions and the following disclaimer in the
+       documentation and/or other materials provided with the distribution.
+     * Neither the names of the University of Washington nor Microsoft,
+       nor the names of its contributors may be used to endorse or promote
+       products derived from this software without specific prior written
+       permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+  IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Jacob O. Wobbrock OR Andrew D. Wilson
+  OR Yang Li BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+  OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 -------------------------------------------------------------------------
  CC3000 Host Driver Implementation.
+    - Espruino boards with CC3000 WiFi (when compiled in)
 -------------------------------------------------------------------------
 
- Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
+  Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
 
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions
- are met:
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions
+  are met:
 
    Redistributions of source code must retain the above copyright
    notice, this list of conditions and the following disclaimer.
@@ -96,151 +264,15 @@ at any time, free of restrictions, legal or otherwise.
    its contributors may be used to endorse or promote products derived
    from this software without specific prior written permission.
 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
- "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
- LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
- OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
- SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
- LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
- (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
- OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
--------------------------------------------------------------------------
- FIPS 180-2 SHA-224/256/384/512 implementation
--------------------------------------------------------------------------
-
-/*
- * FIPS 180-2 SHA-224/256/384/512 implementation
- * Last update: 02/02/2007
- * Issue date:  04/30/2005
- *
- * Copyright (C) 2005, 2007 Olivier Gay <olivier.gay@a3.epfl.ch>
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the project nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE PROJECT OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- */
-
--------------------------------------------------------------------------
- MBED TLS Crypto Libraries
--------------------------------------------------------------------------
-
-Unless specifically indicated otherwise in a file, files are licensed
-under the Apache 2.0 license, as can be found in: libs/crypto/mbedtls/apache-2.0.txt
-
--------------------------------------------------------------------------
- HeatShrink - https://github.com/atomicobject/heatshrink
--------------------------------------------------------------------------
-
-Copyright (c) 2013-2015, Scott Vokes <vokes.s@gmail.com>
-All rights reserved.
- 
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted, provided that the above
-copyright notice and this permission notice appear in all copies.
- 
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
-
--------------------------------------------------------------------------
- $1 Unistroke Recognizer - https://depts.washington.edu/acelab/proj/dollar/index.html
--------------------------------------------------------------------------
-/**
- * The $1 Unistroke Recognizer (JavaScript version)
- *
- *  Jacob O. Wobbrock, Ph.D.
- *  The Information School
- *  University of Washington
- *  Seattle, WA 98195-2840
- *  wobbrock@uw.edu
- *
- *  Andrew D. Wilson, Ph.D.
- *  Microsoft Research
- *  One Microsoft Way
- *  Redmond, WA 98052
- *  awilson@microsoft.com
- *
- *  Yang Li, Ph.D.
- *  Department of Computer Science and Engineering
- *  University of Washington
- *  Seattle, WA 98195-2840
- *  yangli@cs.washington.edu
- *
- * The academic publication for the $1 recognizer, and what should be
- * used to cite it, is:
- *
- *     Wobbrock, J.O., Wilson, A.D. and Li, Y. (2007). Gestures without
- *     libraries, toolkits or training: A $1 recognizer for user interface
- *     prototypes. Proceedings of the ACM Symposium on User Interface
- *     Software and Technology (UIST '07). Newport, Rhode Island (October
- *     7-10, 2007). New York: ACM Press, pp. 159-168.
- *     https://dl.acm.org/citation.cfm?id=1294238
- *
- * The Protractor enhancement was separately published by Yang Li and programmed
- * here by Jacob O. Wobbrock:
- *
- *     Li, Y. (2010). Protractor: A fast and accurate gesture
- *     recognizer. Proceedings of the ACM Conference on Human
- *     Factors in Computing Systems (CHI '10). Atlanta, Georgia
- *     (April 10-15, 2010). New York: ACM Press, pp. 2169-2172.
- *     https://dl.acm.org/citation.cfm?id=1753654
- *
- * This software is distributed under the "New BSD License" agreement:
- *
- * Copyright (C) 2007-2012, Jacob O. Wobbrock, Andrew D. Wilson and Yang Li.
- * All rights reserved. Last updated July 14, 2018.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *    * Redistributions of source code must retain the above copyright
- *      notice, this list of conditions and the following disclaimer.
- *    * Redistributions in binary form must reproduce the above copyright
- *      notice, this list of conditions and the following disclaimer in the
- *      documentation and/or other materials provided with the distribution.
- *    * Neither the names of the University of Washington nor Microsoft,
- *      nor the names of its contributors may be used to endorse or promote
- *      products derived from this software without specific prior written
- *      permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
- * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
- * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Jacob O. Wobbrock OR Andrew D. Wilson
- * OR Yang Li BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
- * OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-**/
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS 
+  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT 
+  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT 
+  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, 
+  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT 
+  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE 
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
