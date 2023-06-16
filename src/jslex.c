@@ -97,14 +97,19 @@ static JSLEX_INLINE void jslTokenAppendChar(char ch) {
 }
 
 // Check if a token matches (IGNORING FIRST CHAR)
-static bool jslIsToken(const char *token) {
+static bool jslCheckToken(const char *token, int tokenId) {
   int i;
+  token--; // because we add 1 in for loop
   for (i=1;i<lex->tokenl;i++) {
     if (lex->token[i]!=token[i]) return false;
     // if token is smaller than lex->token, there will be a null char
     // which will be different from the token
   }
-  return token[lex->tokenl] == 0; // only match if token ends now
+  if (token[lex->tokenl] == 0) { // only match if token ends now
+    lex->tk = tokenId;
+    return true;
+  }
+  return false;
 }
 
 typedef enum {
@@ -542,56 +547,56 @@ void jslGetNextToken() {
       if (!lex->token[1]) break; // there are no single-character reserved words - skip the check!
       // We do fancy stuff here to reduce number of compares (hopefully GCC creates a jump table)
       switch (lex->token[0]) {
-      case 'b': if (jslIsToken("break")) lex->tk = LEX_R_BREAK;
+      case 'b': jslCheckToken("reak", LEX_R_BREAK);
       break;
-      case 'c': if (jslIsToken("case")) lex->tk = LEX_R_CASE;
-      else if (jslIsToken("catch")) lex->tk = LEX_R_CATCH;
-      else if (jslIsToken("class")) lex->tk = LEX_R_CLASS;
-      else if (jslIsToken("const")) lex->tk = LEX_R_CONST;
-      else if (jslIsToken("continue")) lex->tk = LEX_R_CONTINUE;
+      case 'c': if (!jslCheckToken("ase", LEX_R_CASE))
+                if (!jslCheckToken("atch", LEX_R_CATCH))
+                if (!jslCheckToken("lass", LEX_R_CLASS))
+                if (!jslCheckToken("onst", LEX_R_CONST))
+                jslCheckToken("ontinue", LEX_R_CONTINUE);
       break;
-      case 'd': if (jslIsToken("default")) lex->tk = LEX_R_DEFAULT;
-      else if (jslIsToken("delete")) lex->tk = LEX_R_DELETE;
-      else if (jslIsToken("do")) lex->tk = LEX_R_DO;
-      else if (jslIsToken("debugger")) lex->tk = LEX_R_DEBUGGER;
+      case 'd': if (!jslCheckToken("efault", LEX_R_DEFAULT))
+                if (!jslCheckToken("elete", LEX_R_DELETE))
+                if (!jslCheckToken("o", LEX_R_DO))
+                jslCheckToken("ebugger", LEX_R_DEBUGGER);
       break;
-      case 'e': if (jslIsToken("else")) lex->tk = LEX_R_ELSE;
-      else if (jslIsToken("extends")) lex->tk = LEX_R_EXTENDS;
+      case 'e': if (!jslCheckToken("lse", LEX_R_ELSE))
+                jslCheckToken("xtends", LEX_R_EXTENDS);
       break;
-      case 'f': if (jslIsToken("false")) lex->tk = LEX_R_FALSE;
-      else if (jslIsToken("finally")) lex->tk = LEX_R_FINALLY;
-      else if (jslIsToken("for")) lex->tk = LEX_R_FOR;
-      else if (jslIsToken("function")) lex->tk = LEX_R_FUNCTION;
+      case 'f': if (!jslCheckToken("alse", LEX_R_FALSE))
+                if (!jslCheckToken("inally", LEX_R_FINALLY))
+                if (!jslCheckToken("or", LEX_R_FOR))
+                jslCheckToken("unction", LEX_R_FUNCTION);
       break;
-      case 'i': if (jslIsToken("if")) lex->tk = LEX_R_IF;
-      else if (jslIsToken("in")) lex->tk = LEX_R_IN;
-      else if (jslIsToken("instanceof")) lex->tk = LEX_R_INSTANCEOF;
+      case 'i': if (!jslCheckToken("f", LEX_R_IF))
+                if (!jslCheckToken("n", LEX_R_IN))
+                jslCheckToken("nstanceof", LEX_R_INSTANCEOF);
       break;
-      case 'l': if (jslIsToken("let")) lex->tk = LEX_R_LET;
+      case 'l': jslCheckToken("et", LEX_R_LET);
       break;
-      case 'n': if (jslIsToken("new")) lex->tk = LEX_R_NEW;
-      else if (jslIsToken("null")) lex->tk = LEX_R_NULL;
+      case 'n': if (!jslCheckToken("ew", LEX_R_NEW))
+                jslCheckToken("ull", LEX_R_NULL);
       break;
-      case 'o': if (jslIsToken("of")) lex->tk = LEX_R_OF;
+      case 'o': jslCheckToken("f", LEX_R_OF);
       break;
-      case 'r': if (jslIsToken("return")) lex->tk = LEX_R_RETURN;
+      case 'r': jslCheckToken("eturn", LEX_R_RETURN);
       break;
-      case 's': if (jslIsToken("static")) lex->tk = LEX_R_STATIC;
-      else if (jslIsToken("super")) lex->tk = LEX_R_SUPER;
-      else if (jslIsToken("switch")) lex->tk = LEX_R_SWITCH;
+      case 's': if (!jslCheckToken("tatic", LEX_R_STATIC))
+                if (!jslCheckToken("uper", LEX_R_SUPER))
+                jslCheckToken("witch", LEX_R_SWITCH);
       break;
-      case 't': if (jslIsToken("this")) { lex->tk = LEX_R_THIS; lex->hadThisKeyword=true; }
-      else if (jslIsToken("throw")) lex->tk = LEX_R_THROW;
-      else if (jslIsToken("true")) lex->tk = LEX_R_TRUE;
-      else if (jslIsToken("try")) lex->tk = LEX_R_TRY;
-      else if (jslIsToken("typeof")) lex->tk = LEX_R_TYPEOF;
+      case 't': if (jslCheckToken("his", LEX_R_THIS)) lex->hadThisKeyword=true;
+                else if (!jslCheckToken("hrow", LEX_R_THROW))
+                if (!jslCheckToken("rue", LEX_R_TRUE))
+                if (!jslCheckToken("ry", LEX_R_TRY))
+                     jslCheckToken("ypeof", LEX_R_TYPEOF);
       break;
-      case 'u': if (jslIsToken("undefined")) lex->tk = LEX_R_UNDEFINED;
+      case 'u': jslCheckToken("ndefined", LEX_R_UNDEFINED);
       break;
-      case 'w': if (jslIsToken("while")) lex->tk = LEX_R_WHILE;
+      case 'w': jslCheckToken("hile",LEX_R_WHILE);
       break;
-      case 'v': if (jslIsToken("var")) lex->tk = LEX_R_VAR;
-      else if (jslIsToken("void")) lex->tk = LEX_R_VOID;
+      case 'v': if (!jslCheckToken("ar",LEX_R_VAR))
+                jslCheckToken("oid",LEX_R_VOID);
       break;
       default: break;
       } break;
