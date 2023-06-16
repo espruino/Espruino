@@ -1,5 +1,6 @@
 require("Storage").writeJSON("utf8","Fön Kür Bär");
-g = Graphics.createArrayBuffer(8,8,1);
+g = Graphics.createArrayBuffer(32,16,1);
+g.drawString("F\u00F6n "+atob("AAoKATOc57/vc9zgAc5zjMA=")); // test image parsing in text is ok
 
 // Get underlying numeric values with "B\xE4r F\xF6n" .split("").map(n=>"0x"+n.charCodeAt().toString(16).padStart(2,0)).join(", ")
 
@@ -42,7 +43,11 @@ var tests = [
 
 ["F\u00F6n K\u00FCr B\u00E4r".split(" ").join(","), "F\u00F6n,K\u00FCr,B\u00E4r"], // split and join
 
-[g.wrapString("F\u00F6n K\u00FCr B\u00E4r",100).join("\n"),"F\xC3\xB6n K\xC3\xBCr B\xC3\xA4r"],
+[g.wrapString("F\u00F6n K\u00FCr B\u00E4r",100).join("\n"),"F\u00F6n K\u00FCr B\u00E4r"],
+
+["F\u00F6n"+"B\u00E4r", "F\u00F6nB\u00E4r"], // UTF8 + UTF8
+["F\u00F6n"+"B\xE4r", "F\u00F6nB\u00E4r"], // UTF8 + normal
+["F\xF6n"+"B\u00E4r", "F\u00F6nB\u00E4r"] // normal + UTF8
 
 // ["😂🍔❤️🔥🥺".match(/🍔/).index, 1], // regex - needs fixing (works in most cases but returns non-UTF8 index)
 ];

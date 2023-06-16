@@ -159,14 +159,16 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
     } else {
       info->buffer = jsvLockAgain(image);
     }
-    info->width = (unsigned char)jsvGetCharInString(info->buffer,imageOffset);
-    info->height = (unsigned char)jsvGetCharInString(info->buffer,imageOffset+1);
-    info->bpp = (unsigned char)jsvGetCharInString(info->buffer,imageOffset+2);
+    JsvStringIterator it;
+    jsvStringIteratorNewUTF8(&it, info->buffer, imageOffset);
+    info->width = jsvStringIteratorGetUTF8CharAndNext(&it);
+    info->height = jsvStringIteratorGetUTF8CharAndNext(&it);
+    info->bpp = jsvStringIteratorGetUTF8CharAndNext(&it);
     info->bitmapOffset += imageOffset;
     if (info->bpp & 128) {
       info->bpp = info->bpp&127;
       info->isTransparent = true;
-      info->transparentCol = (unsigned char)jsvGetCharInString(info->buffer,imageOffset+3);
+      info->transparentCol = jsvStringIteratorGetUTF8CharAndNext(&it);
       info->headerLength = 4;
     } else {
       info->headerLength = 3;
@@ -178,6 +180,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
       if (info->bpp > 8) {
         jsExceptionHere(JSET_ERROR, "Can't have palette on >8 bit images");
         _jswrap_graphics_freeImageInfo(info);
+        jsvStringIteratorFree(&it);
         return false;
       }
       unsigned int paletteEntries = 1<<info->bpp;
@@ -187,8 +190,8 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
         uint32_t n = info->bitmapOffset;
         for (unsigned int i=0;i<paletteEntries;i++) {
           info->_simplePalette[i] =
-            ((unsigned char)jsvGetCharInString(info->buffer,n)) |
-            ((unsigned char)jsvGetCharInString(info->buffer,n+1))<<8;
+            ((unsigned char)jsvStringIteratorGetUTF8CharAndNext(&it)) |
+            ((unsigned char)jsvStringIteratorGetUTF8CharAndNext(&it))<<8;
           n+=2;
         }
         info->palettePtr = info->_simplePalette;
@@ -205,6 +208,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
       if (!info->palettePtr) {
         jsExceptionHere(JSET_ERROR, "Unable to get pointer to palette. Image in flash?");
         _jswrap_graphics_freeImageInfo(info);
+        jsvStringIteratorFree(&it);
         return false;
       }
       // modify image start
@@ -214,6 +218,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
       jsExceptionHere(JSET_ERROR, "Image Palette not supported on this build");
 #endif
     }
+    jsvStringIteratorFree(&it);
   } else {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
     return 0;
@@ -387,7 +392,7 @@ NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxD
     for (int x=xPos;x<xPos+img->width;x++) {
       // Get the data we need...
       while (bits < img->bpp) {
-        colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetCharAndNext(it));
+        colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetUTF8CharAndNext(it));
         bits += 8;
       }
       // extract just the bits we want
