@@ -1117,6 +1117,8 @@ JsVar *jsvNewUTF8StringAndUnLock(JsVar* dataString) {
 }
 #endif
 
+
+
 JsVar *jsvNewFromInteger(JsVarInt value) {
   JsVar *var = jsvNewWithFlags(JSV_INTEGER);
   if (!var) return 0; // no memory
@@ -1912,6 +1914,10 @@ JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength) {
   }
   JsVar *var = jsvNewFromEmptyString();
   if (var) jsvAppendStringVar(var, str, stridx, maxLength);
+#ifdef ESPR_UNICODE_SUPPORT
+  if (jsvIsUTF8String(str))
+    var = jsvNewUTF8StringAndUnLock(var);
+#endif
   return var;
 }
 
@@ -1924,7 +1930,7 @@ int jsvGetCharInString(JsVar *v, size_t idx) {
   if (!jsvIsString(v)) return 0;
 
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, v, idx);
+  jsvStringIteratorNewUTF8(&it, v, idx);
   int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
   jsvStringIteratorFree(&it);
   return ch;
@@ -1954,6 +1960,28 @@ int jsvGetStringIndexOf(JsVar *str, char ch) {
   jsvStringIteratorFree(&it);
   return -1;
 }
+
+#ifdef ESPR_UNICODE_SUPPORT
+/// If we have a UTF8 string return the string behind it, or just return what was passed in
+JsVar *jsvGetUTF8BackingString(JsVar *str) {
+  if (!jsvIsUTF8String(str)) return str?jsvLockAgain(str):0;
+  return jsvLock(jsvGetFirstChild(str));
+}
+
+/// Convert an UTF8 index in a String to a String index in the backing String. On non-UTF8 builds it passes straight through
+int jsvConvertFromUTF8Index(JsVar *str, int idx) {
+  JsvStringIterator it;
+  jsvStringIteratorNewUTF8(&it, str, idx);
+  idx = jsvStringIteratorGetIndex(&it); // jsvStringIteratorGetIndex still reports back as non-UTF8
+  jsvStringIteratorFree(&it);
+  return idx;
+}
+#else
+/// Convert an UTF8 index in a String to a String index in the backing String. On non-UTF8 builds it passes straight through
+int jsvConvertFromUTF8Index(JsVar *str, int idx) {
+  return idx;
+}
+#endif
 
 /** Does this string contain only Numeric characters (with optional '-'/'+' at the front)? NOT '.'/'e' and similar (allowDecimalPoint is for '.' only) */
 bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
@@ -2515,8 +2543,8 @@ bool jsvIsStringIEqualAndUnLock(JsVar *var, const char *str) {
  *  */
 int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString) {
   JsvStringIterator ita, itb;
-  jsvStringIteratorNew(&ita, va, starta);
-  jsvStringIteratorNew(&itb, vb, startb);
+  jsvStringIteratorNewUTF8(&ita, va, starta);
+  jsvStringIteratorNewUTF8(&itb, vb, startb);
   // step to first positions
   while (true) {
     int ca = jsvStringIteratorGetUTF8CharAndNext(&ita);
@@ -2543,8 +2571,8 @@ JsVar *jsvGetCommonCharacters(JsVar *va, JsVar *vb) {
   JsVar *v = jsvNewFromEmptyString();
   if (!v) return 0;
   JsvStringIterator ita, itb;
-  jsvStringIteratorNew(&ita, va, 0);
-  jsvStringIteratorNew(&itb, vb, 0);
+  jsvStringIteratorNewUTF8(&ita, va, 0);
+  jsvStringIteratorNewUTF8(&itb, vb, 0);
   int ca = jsvStringIteratorGetUTF8CharAndNext(&ita);
   int cb = jsvStringIteratorGetUTF8CharAndNext(&itb);
   while (ca>0 && cb>0 && ca == cb) {
@@ -3491,6 +3519,9 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler, bool ignoreNull) {
   if (!str) return 0; // out of memory
   assert(!filler || jsvIsString(filler));
 
+#ifdef ESPR_UNICODE_SUPPORT
+  bool wasUTF8 = false;
+#endif
   JsvIterator it;
   jsvIteratorNew(&it, arr, JSIF_EVERY_ARRAY_ELEMENT);
   JsvStringIterator itdst;
@@ -3508,6 +3539,9 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler, bool ignoreNull) {
       if (value && (!ignoreNull || !jsvIsNull(value))) {
         JsVar *valueStr = jsvAsString(value);
         if (valueStr) { // could be out of memory
+#ifdef ESPR_UNICODE_SUPPORT
+          wasUTF8 |= jsvIsUTF8String(valueStr);
+#endif
           jsvStringIteratorAppendString(&itdst, valueStr, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
           jsvUnLock(valueStr);
         }
@@ -3519,6 +3553,10 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler, bool ignoreNull) {
   }
   jsvIteratorFree(&it);
   jsvStringIteratorFree(&itdst);
+#ifdef ESPR_UNICODE_SUPPORT
+  if (wasUTF8)
+    str = jsvNewUTF8StringAndUnLock(str);
+#endif
   return str;
 }
 

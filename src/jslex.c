@@ -97,7 +97,7 @@ static JSLEX_INLINE void jslTokenAppendChar(char ch) {
 }
 
 // Check if a token matches (IGNORING FIRST CHAR)
-static bool jslCheckToken(const char *token, int tokenId) {
+static bool jslCheckToken(const char *token, short int tokenId) {
   int i;
   token--; // because we add 1 in for loop
   for (i=1;i<lex->tokenl;i++) {
@@ -281,6 +281,39 @@ static JSLEX_INLINE void jslSingleChar() {
   jslGetNextCh();
 }
 
+#ifdef ESPR_UNICODE_SUPPORT
+/* We've now parsed some of a String and we didn't think it was UTF8,
+but we hit a UTF8 character. For instance:
+
+"F\xF6n F\u00F6n" where '\xF6' wouldn't have made the string Unicode but '\u00F6' would
+
+We need to go back over the String that
+we parsed and convert any non-ASCII escape codes we came across back to UTF8.
+*/
+static void jslConvertTokenValueUTF8(JsvStringIterator *it) {
+  JsVar *utf8str = jsvNewFromEmptyString();
+  if (!utf8str) return;
+  jsvStringIteratorFree(it);
+  JsvStringIterator src;
+  jsvStringIteratorNew(&src, lex->tokenValue, 0);
+  jsvStringIteratorNew(it, utf8str, 0);
+  while (jsvStringIteratorHasChar(&src)) {
+    char ch = jsvStringIteratorGetCharAndNext(&src);
+    if (jsUTF8IsStartChar(ch)) {
+      // convert to a UTF8 sequence
+      char utf8[4];
+      unsigned int l = jsUTF8Encode((unsigned char)ch, utf8);
+      for (unsigned int i=0;i<l;i++)
+        jsvStringIteratorAppend(it, utf8[i]);
+    } else // normal ASCII
+      jsvStringIteratorAppend(it, ch);
+  }
+  jsvStringIteratorFree(&src);
+  jsvUnLock(lex->tokenValue);
+  lex->tokenValue = utf8str;
+}
+#endif
+
 static void jslLexString() {
   char delim = lex->currCh;
   JsvStringIterator it;
@@ -299,6 +332,7 @@ static void jslLexString() {
   char lastCh = delim;
   int nesting = 0;
 #ifdef ESPR_UNICODE_SUPPORT
+  bool hadCharsInUTF8Range = false;
   int high_surrogate = 0;
   lex->isUTF8 = false;
 #endif  // ESPR_UNICODE_SUPPORT
@@ -361,8 +395,11 @@ static void jslLexString() {
             jsExceptionHere(JSET_ERROR, "Unmatched Unicode surrogate");
           }
           len = jsUTF8Encode(codepoint, buf);
-          if (jsUTF8IsStartChar(buf[0]))
+          if (jsUTF8IsStartChar(buf[0])) {
+            if (!lex->isUTF8 && hadCharsInUTF8Range)
+              jslConvertTokenValueUTF8(&it);
             lex->isUTF8 = true;
+          }
           ch = buf[len-1]; // last char is in 'ch' as jsvStringIteratorAppend(..., ch) is called later on
           if (len>1) {
             n=0;
@@ -371,9 +408,13 @@ static void jslLexString() {
               jsvStringIteratorAppend(&it, c);
             }
           }
-        } else
+        } else { // !isUTF8
+          hadCharsInUTF8Range |= jsUTF8IsStartChar((char)codepoint);
+#else
+        {
 #endif
           ch = (char)codepoint;
+        }
       } break;
       default:
         if (lex->currCh>='0' && lex->currCh<='7') {
@@ -404,12 +445,38 @@ static void jslLexString() {
       break;
     } else {
 #ifdef ESPR_UNICODE_SUPPORT
-      if (jsUTF8IsStartChar(lex->currCh))
-        lex->isUTF8 = true;
+      if (jsUTF8IsStartChar(lex->currCh)) {
+        char buf[4];
+        buf[0] = lex->currCh;
+        bool isValidUTF8 = true;
+        unsigned int len = jsUTF8LengthFromChar(lex->currCh);
+        for (unsigned int i=1;i<len;i++) {
+          jslGetNextCh();
+          buf[i] = lex->currCh;
+          if ((lex->currCh&0xC0) != 0x80) {
+            // not a valid UTF8 sequence! We'll actually just carry
+            // on as we would if we were a non-UTF8 Espruino implementation
+            isValidUTF8 = false;
+            len = i+1;
+            break;
+          }
+        }
+        if (isValidUTF8) {
+          if (!lex->isUTF8 && hadCharsInUTF8Range)
+            jslConvertTokenValueUTF8(&it);
+          lex->isUTF8 = true;
+        } else
+          hadCharsInUTF8Range = true;
+        // copy data back in
+        for (unsigned int i=0;i<len-1;i++)
+            jsvStringIteratorAppend(&it, buf[i]);
+      }
 #endif
-      jsvStringIteratorAppend(&it, lex->currCh);
-      lastCh = lex->currCh;
-      jslGetNextCh();
+      {
+        jsvStringIteratorAppend(&it, lex->currCh);
+        lastCh = lex->currCh;
+        jslGetNextCh();
+      }
     }
 #ifdef ESPR_UNICODE_SUPPORT
     if (high_surrogate) {

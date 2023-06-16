@@ -38,6 +38,8 @@ JsVar *jswrap_espruino_toUint8Array(JsVar *args);
 JsVar *jswrap_espruino_toString(JsVar *args);
 JsVar *jswrap_espruino_toFlatString(JsVar *args);
 JsVar *jswrap_espruino_asUTF8(JsVar *str);
+JsVar *jswrap_espruino_fromUTF8(JsVar *str);
+bool jswrap_espruino_isUTF8(JsVar *str);
 JsVar *jswrap_espruino_toJS(JsVar *v);
 JsVar *jswrap_espruino_memoryArea(int addr, int len);
 void jswrap_espruino_setBootCode(JsVar *code, bool alwaysExec);

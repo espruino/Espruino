@@ -826,7 +826,7 @@ void vcbprintf(
         buf[1] = 0;
         if (jsvIsString(v)) {
           JsvStringIterator it;
-          jsvStringIteratorNew(&it, v, 0);
+          jsvStringIteratorNewUTF8(&it, v, 0);
           if (quoted) {
             int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
             while (jsvStringIteratorHasChar(&it) || ch>=0) {

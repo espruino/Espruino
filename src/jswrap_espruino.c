@@ -921,6 +921,7 @@ JsVar *jswrap_espruino_toFlatString(JsVar *args) {
 
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "asUTF8",
   "generate" : "jswrap_espruino_asUTF8",
@@ -930,7 +931,9 @@ JsVar *jswrap_espruino_toFlatString(JsVar *args) {
   "return" : ["JsVar","A String"],
   "return_object" : "String"
 }
-By default, strings in Espruino are standard 8 bit binary strings.
+By default, strings in Espruino are standard 8 bit binary strings
+unless they contain Unicode chars or a `\u####` escape code
+that doesn't map to the range 0..255.
 
 However calling E.asUTF8 will convert one of those strings to
 UTF8.
@@ -943,6 +946,8 @@ s[0] // "\xF0"
 u.length // 1
 u[0] // hamburger emoji
 ```
+
+**NOTE:** UTF8 is currently only available on Bangle.js devices
 */
 JsVar *jswrap_espruino_asUTF8(JsVar *str) {
 #ifdef ESPR_UNICODE_SUPPORT
@@ -952,6 +957,66 @@ JsVar *jswrap_espruino_asUTF8(JsVar *str) {
   return 0;
 #endif
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "fromUTF8",
+  "generate" : "jswrap_espruino_fromUTF8",
+  "params" : [
+    ["str","JsVar","The string to check"]
+  ],
+  "return" : ["JsVar","A String"],
+  "return_object" : "String"
+}
+Given a UTF8 String (see `E.asUTF8`) this returns the underlying representation
+of that String.
+
+```
+E.fromUTF8("\u03C0") == "\xCF\x80"
+```
+
+**NOTE:** UTF8 is currently only available on Bangle.js devices
+*/
+JsVar *jswrap_espruino_fromUTF8(JsVar *str) {
+#ifdef ESPR_UNICODE_SUPPORT
+  if (!str) return 0;
+  return jsvGetUTF8BackingString(str);
+#else
+  return false;
+#endif
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "isUTF8",
+  "generate" : "jswrap_espruino_isUTF8",
+  "params" : [
+    ["str","JsVar","The string to check"]
+  ],
+  "return" : ["bool","True if the given String is treated as UTF8 by Espruino"]
+}
+By default, strings in Espruino are standard 8 bit binary strings
+unless they contain Unicode chars or a `\u####` escape code
+that doesn't map to the range 0..255.
+
+This checks if a String is being treated by Espruino as a UTF8 String
+
+See `E.asUTF8` to convert to a UTF8 String
+
+**NOTE:** UTF8 is currently only available on Bangle.js devices
+*/
+bool jswrap_espruino_isUTF8(JsVar *str) {
+#ifdef ESPR_UNICODE_SUPPORT
+  return jsvIsUTF8String(str);
+#else
+  return false;
+#endif
+}
+
 
 /*TYPESCRIPT
 type Uint8ArrayResolvable =

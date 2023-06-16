@@ -74,8 +74,11 @@ typedef struct JsvStringIterator {
 // slight hack to ensure we can use string iterator with const JsVars
 #define jsvStringIteratorNewConst(it,str,startIdx) jsvStringIteratorNew(it, (JsVar*)str, startIdx)
 
-/// Create a new String iterator from a string, starting from a specific character. NOTE: This does not keep a lock to the first element, so make sure you do or the string will be freed!
+/// Create a new String iterator from a string, starting from a specific character (in the non-UTF8 string). NOTE: This does not keep a lock to the first element, so make sure you do or the string will be freed!
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx);
+
+/// Create a new String iterator from a string, starting from a specific character (ensures start character matches with actual UTF8 char number)
+void jsvStringIteratorNewUTF8(JsvStringIterator *it, JsVar *str, size_t startIdx);
 
 /// Clone the string iterator
 void jsvStringIteratorClone(JsvStringIterator *dstit, JsvStringIterator *it);
@@ -106,7 +109,7 @@ void jsvStringIteratorSetChar(JsvStringIterator *it, char c);
 /// Sets a character (will not extend the string - just overwrites) and moves on to next character
 void jsvStringIteratorSetCharAndNext(JsvStringIterator *it, char c);
 
-/// Gets the current index in the string
+/// Gets the current index in the string (returns a non-UTF8 index)
 static ALWAYS_INLINE size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
   return it->varIndex + it->charIdx;
 }

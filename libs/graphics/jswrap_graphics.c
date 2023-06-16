@@ -2162,7 +2162,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
   int fontHeight = _jswrap_graphics_getFontHeightInternal(gfx, &info);
   JsVar *str = jsvAsString(var);
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, str, (lineStartIndex<0)?0:lineStartIndex);
+  jsvStringIteratorNewUTF8(&it, str, (lineStartIndex<0)?0:lineStartIndex);
   int width = 0;
   int height = fontHeight;
   int maxWidth = 0;
@@ -2285,7 +2285,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   bool wasNewLine = false;
 
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, str, 0);
+  jsvStringIteratorNewUTF8(&it, str, 0);
 
   while (jsvStringIteratorHasChar(&it) || endOfText) {
     int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
@@ -2302,12 +2302,21 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         lineWidth += wordWidth;
       } else { // doesn't fit one one line - move to new line
         lineWidth = wordWidth;
-        if (jsvGetStringLength(currentLine) || wasNewLine)
+        if (jsvGetStringLength(currentLine) || wasNewLine) {
+#ifdef ESPR_UNICODE_SUPPORT
+          if (jsvIsUTF8String(str))
+            currentLine = jsvNewUTF8StringAndUnLock(currentLine);
+#endif
           jsvArrayPush(lines, currentLine);
+        }
         jsvUnLock(currentLine);
         if (wordIdxAtMaxWidth) {
           // word is too long to fit on a line
           currentLine = jsvNewFromStringVar(str, wordStartIdx, wordIdxAtMaxWidth-(wordStartIdx+1));
+#ifdef ESPR_UNICODE_SUPPORT
+          if (jsvIsUTF8String(str))
+            currentLine = jsvNewUTF8StringAndUnLock(currentLine);
+#endif
           jsvArrayPushAndUnLock(lines, currentLine);
           wordStartIdx = wordIdxAtMaxWidth-1;
           lineWidth -= wordWidthAtMaxWidth;
@@ -2345,8 +2354,13 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   }
   jsvStringIteratorFree(&it);
   // deal with final line
-  if (jsvGetStringLength(currentLine))
+  if (jsvGetStringLength(currentLine)) {
+#ifdef ESPR_UNICODE_SUPPORT
+    if (jsvIsUTF8String(str))
+      currentLine = jsvNewUTF8StringAndUnLock(currentLine);
+#endif
     jsvArrayPush(lines, currentLine);
+  }
   jsvUnLock2(str,currentLine);
    _jswrap_graphics_freeFontInfo(&info);
   return lines;
@@ -2450,7 +2464,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   JsVar *str = jsvAsString(var);
 #endif
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, str, 0);
+  jsvStringIteratorNewUTF8(&it, str, 0);
   while (jsvStringIteratorHasChar(&it)) {
     int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
     if (ch=='\n') {

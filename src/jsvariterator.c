@@ -257,8 +257,8 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   assert(jsvHasCharacterData(str));
 #ifdef ESPR_UNICODE_SUPPORT
   it->isUTF8 = jsvIsUTF8String(str);
-  if (it->isUTF8) {
-    it->var =  jsvLock(jsvGetFirstChild(str));
+  if (it->isUTF8) { // if it's UTF8, skip the UTF8 tag and go straight to the data
+    it->var =  jsvGetUTF8BackingString(str);
     assert(jsvHasCharacterData(it->var));
   } else
 #endif
@@ -274,19 +274,18 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   } else if (jsvIsFlashString(it->var)) {
     it->charsInVar = 0;
     it->charIdx = startIdx; // if it's not UTF8 we can just load up the bit we want immediately
-#ifdef ESPR_UNICODE_SUPPORT
-    if (it->isUTF8)
-      it->charIdx = 0; // otherwise we'll have to iterate below this
-    jsvStringIteratorLoadFlashString(it);
-    if (!it->isUTF8) return; // nothing else to do here if not UTF8
-#else
     return jsvStringIteratorLoadFlashString(it);
-#endif
 #endif
   } else{
     it->ptr = &it->var->varData.str[0];
   }
+  it->charIdx = startIdx;
+  jsvStringIteratorCatchUp(it);
+}
+
+void jsvStringIteratorNewUTF8(JsvStringIterator *it, JsVar *str, size_t startIdx) {
 #ifdef ESPR_UNICODE_SUPPORT
+  jsvStringIteratorNew(it, str, 0);
   if (it->isUTF8) {
     it->charIdx = 0;
     while (startIdx) {
@@ -294,10 +293,13 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
       startIdx--;
     }
   } else
-#endif
-    it->charIdx = startIdx;
+  it->charIdx = startIdx;
   jsvStringIteratorCatchUp(it);
+#else
+ jsvStringIteratorNew(it, str, startIdx);
+#endif
 }
+
 
 void jsvStringIteratorClone(JsvStringIterator *dstit, JsvStringIterator *it) {
   *dstit = *it;
@@ -746,7 +748,7 @@ void jsvIteratorNew(JsvIterator *it, JsVar *obj, JsvIteratorFlags flags) {
   } else if (jsvIsUTF8String(obj)) {
     it->type = JSVI_UNICODE;
     it->it.unicode.index = 0;
-    jsvStringIteratorNew(&it->it.unicode.str, jsvLock(jsvGetFirstChild(obj)), 0);
+    jsvStringIteratorNew(&it->it.unicode.str, jsvGetUTF8BackingString(obj), 0);
     jsvIteratorUTF8Next(it); // read a char as the current char
 #endif
   } else if (jsvHasCharacterData(obj)) {

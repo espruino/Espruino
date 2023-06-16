@@ -522,6 +522,13 @@ int jsvGetCharInString(JsVar *v, size_t idx); ///< Get a character at the given 
 void jsvSetCharInString(JsVar *v, size_t idx, char ch, bool bitwiseOR); ///< Set a character at the given index in the String. If bitwiseOR, ch will be ORed with the character already at that position.
 int jsvGetStringIndexOf(JsVar *str, char ch); ///< Get the index of a character in a string, or -1
 
+#ifdef ESPR_UNICODE_SUPPORT
+/// If we have a UTF8 string return the string behind it, or just return what was passed in
+JsVar *jsvGetUTF8BackingString(JsVar *str);
+#endif
+/// Convert an UTF8 index in a String to a String index in the backing String. On non-UTF8 builds it passes straight through
+int jsvConvertFromUTF8Index(JsVar *str, int idx);
+
 JsVarInt jsvGetInteger(const JsVar *v);
 void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)
 JsVarFloat jsvGetFloat(const JsVar *v); ///< Get the floating point representation of this var

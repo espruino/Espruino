@@ -141,7 +141,7 @@ Note that this returns 0 not 'NaN' for out of bounds characters
 int jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
   if (!jsvIsString(parent)) return -1;
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, parent, (size_t)idx);
+  jsvStringIteratorNewUTF8(&it, parent, (size_t)idx);
   int uChar = jsvStringIteratorGetUTF8CharAndNext(&it);
   jsvStringIteratorFree(&it);
   return uChar;
@@ -553,7 +553,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
         if (splitlen==0) break;
       }
 
-      JsVar *part = jsvNewFromStringVar(parent, (size_t)last, (size_t)(idx-last));
+      JsVar *part = jsvNewFromStringVar(parent, (size_t)jsvConvertFromUTF8Index(parent, last), (size_t)(jsvConvertFromUTF8Index(parent, idx)-jsvConvertFromUTF8Index(parent, last)));
       if (!part) break; // out of memory
       jsvArrayPush(array, part);
       jsvUnLock(part);
