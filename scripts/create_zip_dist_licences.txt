@@ -165,6 +165,7 @@ free. Their licences are included below:
   
 -------------------------------------------------------------------------
  MBED TLS Crypto Libraries
+     - Devices with crypto and/or HTTPS support
 -------------------------------------------------------------------------
 
   Unless specifically indicated otherwise in a file, files are licensed
@@ -172,6 +173,7 @@ free. Their licences are included below:
 
 -------------------------------------------------------------------------
  $1 Unistroke Recognizer - https://depts.washington.edu/acelab/proj/dollar/index.html
+     - Bangle.js 2 Touchscreen gesture recognition
 -------------------------------------------------------------------------
 
   The $1 Unistroke Recognizer (JavaScript version)
