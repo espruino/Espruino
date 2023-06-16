@@ -2282,7 +2282,7 @@ void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
     ],
     "ifdef" : "BANGLEJS"
 }
-Set how often the watch should poll for new acceleration/gyro data and kick the
+Set how often the watch should poll its sensors (accel/hr/mag) for new data and kick the
 Watchdog timer. It isn't recommended that you make this interval much larger
 than 1000ms, but values up to 4000ms are allowed.
 
