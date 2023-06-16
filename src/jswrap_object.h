@@ -53,6 +53,7 @@ JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto);
 JsVar *jswrap_object_assign(JsVar *args);
 #ifndef ESPR_EMBED
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener);
+void jswrap_object_prependListener(JsVar *parent, JsVar *event, JsVar *listener);
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray);
 #endif
 void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback);

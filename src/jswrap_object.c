@@ -841,8 +841,23 @@ If you have more than one handler for an event, and you'd
 like that handler to stop the event being passed to other handlers
 then you can call `E.stopEventPropagation()` in that handler.
  */
+/*JSON{
+  "type" : "method",
+  "class" : "Object",
+  "name" : "addListener",
+  "ifndef" : "ESPR_EMBED",
+  "generate" : "jswrap_object_on",
+  "params" : [
+    ["event","JsVar","The name of the event, for instance 'data'"],
+    ["listener","JsVar","The listener to call when this event is received"]
+  ]
+}
+Register an event listener for this object, for instance `Serial1.addListener('data', function(d) {...})`.
+
+An alias for `Object.on`
+*/
 #ifndef ESPR_EMBED
-void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
+void jswrap_object_on_X(JsVar *parent, JsVar *event, JsVar *listener, bool addFirst) {
   if (!jsvHasChildren(parent)) {
     jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
     return;
@@ -863,20 +878,20 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
   jsvUnLock(eventName);
   JsVar *eventListeners = jsvSkipName(eventList);
   if (jsvIsUndefined(eventListeners)) {
-    // just add
+    // just add the one handler on its own
     jsvSetValueOfName(eventList, listener);
   } else {
-    if (jsvIsArray(eventListeners)) {
-      // we already have an array, just add to it
-      jsvArrayPush(eventListeners, listener);
-    } else {
-      // not an array - we need to make it an array
-      JsVar *arr = jsvNewEmptyArray();
+    // we already have an array and we just add to it
+    // OR it's not an array but we need to make it an array
+    JsVar *arr = jsvNewEmptyArray();
+    if (addFirst) jsvArrayPush(arr, listener);
+    if (jsvIsArray(eventListeners))
+      jsvArrayPushAll(arr, eventListeners, false);
+    else
       jsvArrayPush(arr, eventListeners);
-      jsvArrayPush(arr, listener);
-      jsvSetValueOfName(eventList, arr);
-      jsvUnLock(arr);
-    }
+    if (!addFirst) jsvArrayPush(arr, listener);
+    jsvSetValueOfName(eventList, arr);
+    jsvUnLock(arr);
   }
   jsvUnLock2(eventListeners, eventList);
   /* Special case if we're a data listener and data has already arrived then
@@ -890,7 +905,30 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     jsvUnLock(buf);
   }
 }
+void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
+  jswrap_object_on_X(parent, event, listener, false/*addFirst*/);
+}
+/*JSON{
+  "type" : "method",
+  "class" : "Object",
+  "name" : "prependListener",
+  "ifndef" : "ESPR_EMBED",
+  "generate" : "jswrap_object_prependListener",
+  "params" : [
+    ["event","JsVar","The name of the event, for instance 'data'"],
+    ["listener","JsVar","The listener to call when this event is received"]
+  ]
+}
+Register an event listener for this object, for instance `Serial1.addListener('data', function(d) {...})`.
+
+An alias for `Object.on`
+*/
+void jswrap_object_prependListener(JsVar *parent, JsVar *event, JsVar *listener) {
+  jswrap_object_on_X(parent, event, listener, true/*addFirst*/);
+}
 #endif
+
+
 
 /*JSON{
   "type" : "method",
