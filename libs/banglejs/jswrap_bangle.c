@@ -5761,7 +5761,7 @@ If `remove` is specified, `Bangle.showLauncher`, `Bangle.showClock`, `Bangle.loa
 may choose to just call the `remove` function and then load a new app without resetting Bangle.js.
 As a result, **if you specify 'remove' you should make sure you test that after calling `Bangle.setUI()`
 without arguments your app is completely unloaded**, otherwise you may end up with memory leaks or
-other issues when switching apps.
+other issues when switching apps. Please see http://www.espruino.com/Bangle.js+Fast+Load for more details on this.
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
