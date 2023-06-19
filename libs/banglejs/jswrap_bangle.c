@@ -376,6 +376,16 @@ longer useful if nothing is displayed. Also see `Bangle.isLCDOn()`
 /*JSON{
   "type" : "event",
   "class" : "Bangle",
+  "name" : "lcdPowerBacklight",
+  "params" : [["on","bool","`true` if backlight is on"]],
+  "ifdef" : "BANGLEJS"
+}
+Has the backlight been turned on or off? Can be used to stop tasks that are no
+longer useful if want to see in sun screen only. Also see `Bangle.isBacklightOn()`
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
   "name" : "lock",
   "params" : [["on","bool","`true` if screen is locked, `false` if it is unlocked and touchscreen/buttons will work"]],
   "ifdef" : "BANGLEJS"
@@ -965,8 +975,6 @@ typedef enum {
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
-static void jswrap_banglejs_setLCDPowerBacklight(bool isOn);
-
 void jswrap_banglejs_pwrGPS(bool on) {
   if (on) bangleFlags |= JSBF_GPS_ON;
   else bangleFlags &= ~JSBF_GPS_ON;
@@ -1275,19 +1283,23 @@ void peripheralPollHandler() {
     // wake on tap, for front (for Bangle.js 2)
 #ifdef BANGLEJS_Q3
     if ((bangleFlags&JSBF_WAKEON_TOUCH) && (tapInfo&2)) {
-      if (!(bangleFlags&JSBF_LCD_ON)) {
+      if (lcdPowerTimeout && !(bangleFlags&JSBF_LCD_ON)) {
         bangleTasks |= JSBT_LCD_ON;
         handled = true;
       }
-      if (!(bangleFlags&JSBF_LCD_BL_ON)) {
+      if (backlightTimeout && !(bangleFlags&JSBF_LCD_BL_ON)) {
         bangleTasks |= JSBT_LCD_BL_ON;
         handled = true;
       }
-      if (bangleFlags&JSBF_LOCKED) {
+      if (lockTimeout && bangleFlags&JSBF_LOCKED) {
         bangleTasks |= JSBT_UNLOCK;
         handled = true;
       }
     }
+    // ignore if locked
+    if (bangleFlags & JSBF_LOCKED) handled = false;
+    // extend timeouts when unlocked
+    inactivityTimer = 0;
 #endif
     // report tap
     if (!handled)
@@ -1448,11 +1460,11 @@ void peripheralPollHandler() {
       jshHadEvent();
       if (bangleFlags&JSBF_WAKEON_TWIST) {
         inactivityTimer = 0;
-        if (!(bangleFlags&JSBF_LCD_ON))
+        if (lcdPowerTimeout && !(bangleFlags&JSBF_LCD_ON))
           bangleTasks |= JSBT_LCD_ON;
-        if (!(bangleFlags&JSBF_LCD_BL_ON))
+        if (backlightTimeout && !(bangleFlags&JSBF_LCD_BL_ON))
           bangleTasks |= JSBT_LCD_BL_ON;
-        if (bangleFlags&JSBF_LOCKED)
+        if (lockTimeout && bangleFlags&JSBF_LOCKED)
           bangleTasks |= JSBT_UNLOCK;
       }
     }
@@ -1562,6 +1574,7 @@ void backlightOffHandler() {
 #endif // !EMULATED
 
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
+  bool pushEvent = true;
   // wake up IF LCD power or Lock has a timeout (so will turn off automatically)
   if (lcdPowerTimeout || backlightTimeout || lockTimeout) {
     if (((bangleFlags&JSBF_WAKEON_BTN1)&&(button==1)) ||
@@ -1570,7 +1583,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
 #ifdef DICKENS
         ((bangleFlags&JSBF_WAKEON_BTN3)&&(button==4)) ||
 #endif
-        false){
+        false){ // wake-bind-input
       // if a 'hard' button, turn LCD on
       inactivityTimer = 0;
       if (state) {
@@ -1592,17 +1605,17 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
           // rising or 'bounce' events
           lcdWakeButton = button;
           lcdWakeButtonTime = jshGetSystemTime() + jshGetTimeFromMilliseconds(100);
-          return; // don't push button event if the LCD is off
+          // don't push button event if an auto-off feature (on/on/unlock) fired on this input
+          return; 
         }
       }
-    } else {
-      // on touchscreen, keep LCD on if it was in previously
-      if (bangleFlags&JSBF_LCD_ON)
-        inactivityTimer = 0;
-      else // else don't push the event
-        return;
+    } else {// non-wake-bind input
+      // for this input, only keep awake if unlocked
+      if (!(bangleFlags&JSBF_LOCKED)) inactivityTimer = 0;
     }
   }
+  if (bangleFlags&JSBF_LOCKED) pushEvent = false;
+
   // Handle case where pressing 'home' button repeatedly at just the wrong times
   // could cause us to go home!
   if (button == HOME_BTN) homeBtnTimer = 0;
@@ -1623,7 +1636,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
     }
   }
   // if not locked, add to the event queue for normal processing for watches
-  if (!(bangleFlags&JSBF_LOCKED))
+  if (pushEvent)
     jshPushIOEvent(flags | (state?EV_EXTI_IS_HIGH:0), t);
 }
 
@@ -1633,11 +1646,11 @@ bool btnTouchHandler() {
   if (bangleFlags&JSBF_WAKEON_TOUCH) {
     inactivityTimer = 0; // ensure LCD doesn't sleep if we're touching it
     bool eventUsed = false;
-    if (!(bangleFlags&JSBF_LCD_ON)) {
+    if (lcdPowerTimeout && !(bangleFlags&JSBF_LCD_ON)) {
       bangleTasks |= JSBT_LCD_ON;
       eventUsed = true; // eat the event
     }
-    if (bangleFlags&JSBF_LOCKED) {
+    if (lockTimeout && bangleFlags&JSBF_LOCKED) {
       bangleTasks |= JSBT_UNLOCK;
       eventUsed = true;
     }
@@ -1648,6 +1661,9 @@ bool btnTouchHandler() {
     touchLastState = touchLastState2 = touchStatus = TS_NONE;
     return false;
   }
+  // even though btnCommandHandler sets this, require for on.("touch")
+  // extend timeouts when unlocked
+  inactivityTimer = 0;
   // Detect touch/swipe
   TouchState state =
       (jshPinGetValue(BTN4_PININDEX)?TS_LEFT:0) |
@@ -1878,8 +1894,46 @@ static void backlightFadeHandler() {
 }
 #endif
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "setLCDPowerBacklight",
+    "generate" : "jswrap_banglejs_setLCDPowerBacklight",
+    "params" : [
+      ["isOn","bool","True if the LCD backlight should be on, false if not"]
+    ],
+    "ifdef" : "BANGLEJS"
+}
+This function can be used to turn Bangle.js's LCD backlight off or on.
+
+This function resets the Bangle's 'activity timer' (like pressing a button or
+the screen would) so after a time period of inactivity set by
+`Bangle.setOptions({backlightTimeout: X});` the backlight will turn off.
+
+If you want to keep the backlight on permanently (until apps are changed) you can
+do:
+
+```
+Bangle.setOptions({backlightTimeout: 0}) // turn off the timeout
+Bangle.setLCDPowerBacklight(1); // keep screen on
+
+Ofcourse, backlight depends on LCDPower, so any lcdPowerTimeout/setLCDTimeout will
+ also turn the backlight off. The use case is when you require the backlight timeout
+ to be shorter than the power timeout. 
+```
+*/
 /// Turn just the backlight on or off (or adjust brightness)
-static void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
+void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
+  if (((bangleFlags&JSBF_LCD_BL_ON)!=0) != isOn) {
+    JsVar *bangle =jsvObjectGetChildIfExists(execInfo.root, "Bangle");
+    if (bangle) {
+      JsVar *v = jsvNewFromBool(isOn);
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"lcdPowerBacklight", &v, 1);
+      jsvUnLock(v);
+    }
+    jsvUnLock(bangle);
+  }
+  inactivityTimer = 0;
   if (isOn) bangleFlags |= JSBF_LCD_BL_ON;
   else bangleFlags &= ~JSBF_LCD_BL_ON;
 #ifndef EMULATED
@@ -2510,6 +2564,21 @@ Also see the `Bangle.lcdPower` event
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isLCDOn() {
   return (bangleFlags&JSBF_LCD_ON)!=0;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "isBacklightOn",
+    "generate" : "jswrap_banglejs_isBacklightOn",
+    "return" : ["bool","Is the backlight on or not?"],
+    "ifdef" : "BANGLEJS"
+}
+Also see the `Bangle.lcdPowerBacklight` event
+*/
+// emscripten bug means we can't use 'bool' as return value here!
+int jswrap_banglejs_isBacklightOn() {
+  return (bangleFlags&JSBF_LCD_BL_ON)!=0;
 }
 
 /*JSON{
