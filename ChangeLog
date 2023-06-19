@@ -13,6 +13,7 @@
             Graphics: Allow setFont(...) to work with >1bpp and PBF fonts
             Add Object.addListener(same as '.on') and prependListener to allow a handler to be added first
             Fix regression with g.wrapString and long UTF8 strings (fix #2385)
+            Bangle.js2: Fix reusing touch coordinates under high load
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler
