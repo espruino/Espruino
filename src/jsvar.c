@@ -1103,7 +1103,10 @@ JsVar *jsvNewStringOfLength(unsigned int byteLength, const char *initialData) {
 #ifdef ESPR_UNICODE_SUPPORT
 JsVar *jsvNewUTF8String(JsVar* dataString) {
   assert(jsvIsString(dataString));
+  assert(!jsvIsUTF8String(dataString));
   if (!jsvIsString(dataString)) return 0;
+  if (jsvIsUTF8String(dataString))
+    return jsvLockAgain(dataString); // ideally we don't want this, but better to just keep working if it happened!
   JsVar *var = jsvNewWithFlags(JSV_UTF8_STRING);
   if (!var) return 0; // no memory
   jsvSetFirstChild(var, jsvGetRef(jsvRef(dataString)));
@@ -1260,9 +1263,9 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
       while (jsvGetLastChild(last)) last = jsvGetAddressOf(jsvGetLastChild(last)); // TODO lock?
 
       if (last != var) {
-        size_t nChars = jsvGetCharactersInVar(last) + index;
+        int nChars = (int)jsvGetCharactersInVar(last) + index;
         if (nChars <= JSVAR_DATA_STRING_MAX_LEN) { // fit inside existing StringExt
-          jsvSetCharactersInVar(last, nChars);
+          jsvSetCharactersInVar(last, (size_t)nChars);
           last = 0;
         } else {
           index = nChars - JSVAR_DATA_STRING_MAX_LEN; // remaining
@@ -1272,7 +1275,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
         jsvSetCharactersInVar(last, jsvGetMaxCharactersInVar(last));
         JsVar* ext = jsvNewWithFlags(JSV_STRING_EXT_0);
         if (ext) {
-          jsvSetCharactersInVar(ext, index);
+          jsvSetCharactersInVar(ext, (size_t)index);
           jsvSetLastChild(last, jsvGetRef(ext));
           jsvUnLock(ext);
         } // TODO else?
@@ -1288,7 +1291,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
         queue[index] = c;
 
         jsvStringIteratorNext(&it);
-        index = (index + 1) % sizeof(queue);
+        index = (index + 1) % (int)sizeof(queue);
       }
       jsvStringIteratorFree(&it);
       jsvSetCharactersInVar(var, JSVAR_DATA_STRING_NAME_LEN);
@@ -1971,8 +1974,8 @@ JsVar *jsvGetUTF8BackingString(JsVar *str) {
 /// Convert an UTF8 index in a String to a String index in the backing String. On non-UTF8 builds it passes straight through
 int jsvConvertFromUTF8Index(JsVar *str, int idx) {
   JsvStringIterator it;
-  jsvStringIteratorNewUTF8(&it, str, idx);
-  idx = jsvStringIteratorGetIndex(&it); // jsvStringIteratorGetIndex still reports back as non-UTF8
+  jsvStringIteratorNewUTF8(&it, str, (size_t)idx);
+  idx = (int)jsvStringIteratorGetIndex(&it); // jsvStringIteratorGetIndex still reports back as non-UTF8
   jsvStringIteratorFree(&it);
   return idx;
 }

@@ -2279,6 +2279,10 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   str = jsvAsString(str);
   JsVar *lines = jsvNewEmptyArray();
   JsVar *currentLine = jsvNewFromEmptyString();
+#ifdef ESPR_UNICODE_SUPPORT
+  if (jsvIsUTF8String(str))
+    currentLine = jsvNewUTF8StringAndUnLock(currentLine);
+#endif
 
   int spaceWidth = _jswrap_graphics_getCharWidth(&gfx, &info, ' ');
   int wordWidth = 0;
@@ -2308,25 +2312,19 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
       } else { // doesn't fit one one line - move to new line
         lineWidth = wordWidth;
         if (jsvGetStringLength(currentLine) || wasNewLine) {
-#ifdef ESPR_UNICODE_SUPPORT
-          if (jsvIsUTF8String(str))
-            currentLine = jsvNewUTF8StringAndUnLock(currentLine);
-#endif
           jsvArrayPush(lines, currentLine);
         }
         jsvUnLock(currentLine);
         if (wordIdxAtMaxWidth) {
           // word is too long to fit on a line
           currentLine = jsvNewFromStringVar(str, wordStartIdx, wordIdxAtMaxWidth-(wordStartIdx+1));
-#ifdef ESPR_UNICODE_SUPPORT
-          if (jsvIsUTF8String(str))
-            currentLine = jsvNewUTF8StringAndUnLock(currentLine);
-#endif
+          // jsvNewFromStringVar will create a unicode string is str was a unicode string
           jsvArrayPushAndUnLock(lines, currentLine);
           wordStartIdx = wordIdxAtMaxWidth-1;
           lineWidth -= wordWidthAtMaxWidth;
         }
         currentLine = jsvNewFromStringVar(str, wordStartIdx, currentPos-(wordStartIdx+1));
+        // jsvNewFromStringVar will create a unicode string is str was a unicode string
       }
       wordWidth = 0;
       wordIdxAtMaxWidth = 0;
@@ -2360,10 +2358,6 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   jsvStringIteratorFree(&it);
   // deal with final line
   if (jsvGetStringLength(currentLine)) {
-#ifdef ESPR_UNICODE_SUPPORT
-    if (jsvIsUTF8String(str))
-      currentLine = jsvNewUTF8StringAndUnLock(currentLine);
-#endif
     jsvArrayPush(lines, currentLine);
   }
   jsvUnLock2(str,currentLine);
