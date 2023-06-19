@@ -177,8 +177,8 @@ fi
 if [ "$PROVISION_NRF_SDK17" = "1" ]; then
     if [ ! -d "targetlibs/nrf5x_17/components" ]; then
         echo Installing NRF SDK 17.0 to targetlibs/nrf5x_17/components
-        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5SDK1702d674dde.zip -o nRF5_SDK_17.zip
-        # This is nRF5_SDK_15.0.0_a53641a.zip without the docs/examples folder, and with line endings converted to unix (for patch)
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5_SDK_17.0.2_d674dde_no_docs_unix -o nRF5_SDK_17.zip
+        # This is nRF5_SDK_17.0.2_d674dde.zip without the docs/examples folder, and with line endings converted to unix (for patch)
         unzip -q -o nRF5_SDK_17.zip
         cp -r nRF5_SDK_17.0.2_d674dde/external/* targetlibs/nrf5x_17/external
         rm -rf nRF5_SDK_17.0.2_d674dde/external
