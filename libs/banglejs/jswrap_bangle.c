@@ -1739,6 +1739,7 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
   touchX = tx;
   touchY = ty;
   touchPts = pts;
+  JsBangleTasks lastBangleTasks = bangleTasks;
   static int lastGesture = 0;
   if (gesture!=lastGesture) {
     switch (gesture) { // gesture
@@ -1786,8 +1787,10 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
       bangleTasks |= JSBT_STROKE;
     }
 #endif
-    jshHadEvent();
   }
+  // Ensure we process events if we modified bangleTasks
+  if (lastBangleTasks != bangleTasks)
+    jshHadEvent();
 
   lastGesture = gesture;
 }
