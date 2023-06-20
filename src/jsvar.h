@@ -526,8 +526,10 @@ int jsvGetStringIndexOf(JsVar *str, char ch); ///< Get the index of a character 
 /// If we have a UTF8 string return the string behind it, or just return what was passed in
 JsVar *jsvGetUTF8BackingString(JsVar *str);
 #endif
-/// Convert an UTF8 index in a String to a String index in the backing String. On non-UTF8 builds it passes straight through
+/// Convert an UTF8 index in a String to a String index in the backing String. THIS IS SLOW. On non-UTF8 builds it passes straight through
 int jsvConvertFromUTF8Index(JsVar *str, int idx);
+/// Convert a String index in the backing String into a UTF8 index in a String. THIS IS SLOW. On non-UTF8 builds it passes straight through
+int jsvConvertToUTF8Index(JsVar *str, int idx);
 
 JsVarInt jsvGetInteger(const JsVar *v);
 void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)

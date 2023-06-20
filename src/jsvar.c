@@ -1971,17 +1971,37 @@ JsVar *jsvGetUTF8BackingString(JsVar *str) {
   return jsvLock(jsvGetFirstChild(str));
 }
 
-/// Convert an UTF8 index in a String to a String index in the backing String. On non-UTF8 builds it passes straight through
+/// Convert an UTF8 index in a String to a String index in the backing String. THIS IS SLOW. On non-UTF8 builds it passes straight through
 int jsvConvertFromUTF8Index(JsVar *str, int idx) {
+  if (!jsvIsUTF8String(str)) return idx;
   JsvStringIterator it;
   jsvStringIteratorNewUTF8(&it, str, (size_t)idx);
   idx = (int)jsvStringIteratorGetIndex(&it); // jsvStringIteratorGetIndex still reports back as non-UTF8
   jsvStringIteratorFree(&it);
   return idx;
 }
+
+/// Convert a String index in the backing String into a UTF8 index in a String. THIS IS SLOW. On non-UTF8 builds it passes straight through
+int jsvConvertToUTF8Index(JsVar *str, int idx) {
+  if (!jsvIsUTF8String(str)) return idx;
+  int utf8Index = 0;
+  JsvStringIterator it;
+  jsvStringIteratorNewUTF8(&it, str, 0);
+  while (jsvStringIteratorGetIndex(&it)<idx) {
+    jsvStringIteratorNextUTF8(&it);
+    utf8Index++;
+  }
+  jsvStringIteratorFree(&it);
+  return utf8Index;
+}
 #else
 /// Convert an UTF8 index in a String to a String index in the backing String. On non-UTF8 builds it passes straight through
 int jsvConvertFromUTF8Index(JsVar *str, int idx) {
+  return idx;
+}
+
+/// Convert a String index in the backing String into a UTF8 index in a String. On non-UTF8 builds it passes straight through
+int jsvConvertToUTF8Index(JsVar *str, int idx) {
   return idx;
 }
 #endif

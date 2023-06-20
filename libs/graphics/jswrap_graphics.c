@@ -2182,9 +2182,9 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
 #ifndef SAVE_ON_FLASH
     if (ch==0) { // If images are described in-line in the string, render them
       GfxDrawImageInfo img;
-      size_t idx = jsvStringIteratorGetIndex(&it);
+      size_t idx = jsvConvertToUTF8Index(str, jsvStringIteratorGetIndex(&it));
       if (_jswrap_graphics_parseImage(gfx, str, idx, &img)) {
-        jsvStringIteratorGoto(&it, str, idx+img.headerLength+img.bitmapLength);
+        jsvStringIteratorGotoUTF8(&it, str, idx+img.headerLength+img.bitmapLength);
         _jswrap_graphics_freeImageInfo(&img);
         // string iterator now points to the next char after image
         width += img.width;
@@ -2336,9 +2336,9 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
 #ifndef SAVE_ON_FLASH
     if (ch==0) { // If images are described in-line in the string, render them
       GfxDrawImageInfo img;
-      size_t idx = jsvStringIteratorGetIndex(&it);
+      size_t idx = jsvConvertToUTF8Index(str, jsvStringIteratorGetIndex(&it));
       if (_jswrap_graphics_parseImage(&gfx, str, idx, &img)) {
-        jsvStringIteratorGoto(&it, str, idx+img.headerLength+img.bitmapLength);
+        jsvStringIteratorGotoUTF8(&it, str, idx+img.headerLength+img.bitmapLength);
         _jswrap_graphics_freeImageInfo(&img);
         // string iterator now points to the next char after image
         wordWidth += img.width;
@@ -2479,9 +2479,9 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
 #ifndef SAVE_ON_FLASH
     if (ch==0) { // If images are described in-line in the string, render them
       GfxDrawImageInfo img;
-      size_t idx = jsvStringIteratorGetIndex(&it);
+      size_t idx = jsvConvertToUTF8Index(str, jsvStringIteratorGetIndex(&it));
       if (_jswrap_graphics_parseImage(&gfx, str, idx, &img)) {
-        jsvStringIteratorGoto(&it, str, idx+img.headerLength);
+        jsvStringIteratorGotoUTF8(&it, str, idx+img.headerLength);
         _jswrap_drawImageSimple(&gfx, x, y+(fontHeight-img.height)/2, &img, &it);
         _jswrap_graphics_freeImageInfo(&img);
         // string iterator now points to the next char after image
