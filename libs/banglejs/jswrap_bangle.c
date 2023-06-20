@@ -4155,8 +4155,8 @@ bool jswrap_banglejs_idle() {
                             ((bangleTasks & JSBT_TOUCH_RIGHT)?2:0)),
           jsvNewObject()
       };
-      int x = lastTouchX;
-      int y = lastTouchY;
+      int x = touchX;
+      int y = touchY;
       if (x<0) x=0;
       if (y<0) y=0;
       if (x>=LCD_WIDTH) x=LCD_WIDTH-1;
