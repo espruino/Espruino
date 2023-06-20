@@ -65,7 +65,8 @@
       Bangle.setUI({
           mode: "updown",
           back: show,
-          remove: options.remove
+          remove: options.remove,
+          redraw : l.draw()
         }, dir => {
         if (dir) {
           v -= (dir||1)*(item.step||1);

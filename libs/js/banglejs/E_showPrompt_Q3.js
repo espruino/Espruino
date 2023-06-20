@@ -66,7 +66,7 @@
   }
   draw();
   return new Promise(resolve=>{
-    Bangle.setUI({mode:"custom", remove: options.remove, touch:(_,e)=>{
+    Bangle.setUI({mode:"custom", remove: options.remove, redraw: draw, back:options.back, touch:(_,e)=>{
       btnPos.forEach((b,i)=>{
         if (e.x > b.x1 && e.x < b.x2 &&
             e.y > b.y1 && e.y < b.y2) {
