@@ -4010,12 +4010,12 @@ bool jswrap_banglejs_idle() {
 #else
         if (tapInfo&1) string="front";
         if (tapInfo&2) string="back";
-        if (tapInfo&4) string="bottom";
-        if (tapInfo&8) string="top";
+        if (tapInfo&4) string="top";
+        if (tapInfo&8) string="bottom";
 #endif
 
-        if (tapInfo&16) string="right";
-        if (tapInfo&32) string="left";
+        if (tapInfo&16) string="left";
+        if (tapInfo&32) string="right";
         int n = (tapInfo&0x80)?2:1;
         jsvObjectSetChildAndUnLock(o, "dir", jsvNewFromString(string));
         jsvObjectSetChildAndUnLock(o, "double", jsvNewFromBool(tapInfo&0x80));
