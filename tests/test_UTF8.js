@@ -47,7 +47,7 @@ var tests = [
 
 ["F\u00F6n"+"B\u00E4r", "F\u00F6nB\u00E4r"], // UTF8 + UTF8
 ["F\u00F6n"+"B\xE4r", "F\u00F6nB\u00E4r"], // UTF8 + normal
-["F\xF6n"+"B\u00E4r", "F\u00F6nB\u00E4r"] // normal + UTF8
+["F\xF6n"+"B\u00E4r", "F\xF6nB\u00E4r"] // normal + UTF8 (0xF6 isn't a unicode start char so doesn't have to be converted)
 
 // ["😂🍔❤️🔥🥺".match(/🍔/).index, 1], // regex - needs fixing (works in most cases but returns non-UTF8 index)
 ];

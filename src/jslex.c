@@ -298,6 +298,7 @@ static void jslConvertTokenValueUTF8(JsvStringIterator *it) {
   jsvStringIteratorNew(&src, lex->tokenValue, 0);
   jsvStringIteratorNew(it, utf8str, 0);
   while (jsvStringIteratorHasChar(&src)) {
+    // This is basically what's in jsvConvertToUTF8AndUnLock but we leave the iterator allocated
     char ch = jsvStringIteratorGetCharAndNext(&src);
     if (jsUTF8IsStartChar(ch)) {
       // convert to a UTF8 sequence
