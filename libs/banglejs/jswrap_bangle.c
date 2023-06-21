@@ -1953,9 +1953,16 @@ void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
     }
     jsvUnLock(bangle);
   }
-  inactivityTimer = 0;
-  if (isOn) bangleFlags |= JSBF_LCD_BL_ON;
-  else bangleFlags &= ~JSBF_LCD_BL_ON;
+  
+  if (isOn) {
+    inactivityTimer = 0;
+    bangleFlags |= JSBF_LCD_BL_ON;
+  }
+  else {
+    int dur = lockTimeout - backlightTimeout;
+    if ( dur == 0 ) jswrap_banglejs_setLocked(true);
+    bangleFlags &= ~JSBF_LCD_BL_ON;
+  }
 #ifndef EMULATED
 #ifdef BANGLEJS_F18
   app_timer_stop(m_backlight_on_timer_id);
@@ -1990,7 +1997,13 @@ void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
 #endif // !EMULATED
 }
 
-
+#if 0
+void _jswrap_bangle_lcd_lock(JsSysTime t, void *data)
+{
+  uint32_t d = (uint32_t)data;
+  jswrap_banglejs_setLocked((bool)d);
+}
+#endif
 
 /*JSON{
     "type" : "staticmethod",
@@ -2038,9 +2051,23 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
     }
     jsvUnLock(bangle);
   }
-  inactivityTimer = 0;
-  if (isOn) bangleFlags |= JSBF_LCD_ON;
-  else bangleFlags &= ~JSBF_LCD_ON;
+  
+  if (isOn) {
+    inactivityTimer = 0;
+    bangleFlags |= JSBF_LCD_ON;
+  }
+  else {
+    bangleFlags &= ~JSBF_LCD_ON;
+    int dur = lockTimeout - lcdPowerTimeout;
+    if ( dur == 0 ) jswrap_banglejs_setLocked(true);
+#if 0
+    else if (dur > 0) {
+      uint32_t d = 1; // lock in
+      JsSysTime time = jshGetSystemTime();
+      jstExecuteFn(_jswrap_bangle_lcd_lock, d, jshGetTimeFromMilliseconds(time), 0, NULL);
+    }
+#endif
+  }
 }
 
 
@@ -2638,9 +2665,11 @@ void jswrap_banglejs_setLocked(bool isLocked) {
     jsvUnLock(bangle);
   }
   if (isLocked) bangleFlags |= JSBF_LOCKED;
-  else bangleFlags &= ~JSBF_LOCKED;
-  // Reset inactivity timer so we will lock ourselves after a delay
-  inactivityTimer = 0;
+  else {
+    // Reset inactivity timer so we will lock ourselves after a delay
+    inactivityTimer = 0;
+    bangleFlags &= ~JSBF_LOCKED;
+  }
 }
 
 /*JSON{
