@@ -817,6 +817,9 @@ bool magOnWhenCharging;
 #define MAG_CHARGE_TIMEOUT 3000 // time after charging when magnetometer value gets automatically reset
 #define MAG_MAX_RANGE 500 // maximum range of readings allowed between magmin/magmax. In the UK at ~20uT 250 is ok, and the max field strength us ~40uT
 #endif
+#ifdef MAG_DEVICE_GMC303
+uint8_t magCalib[3]; // Magnetic Coefficient Registers - used to rescale the magnetometer values
+#endif
 /// accelerometer data. 8192 = 1G
 Vector3 acc;
 /// squared accelerometer magnitude
@@ -1239,6 +1242,16 @@ void peripheralPollHandler() {
       mag.x = (magRaw[1] * (128+magCalib[1])) >> 5;
       mag.z = (magRaw[2] * (128+magCalib[2])) >> 5;
 #ifdef LCD_ROTATION
+  int16_t magRaw[3];
+  magRaw[0] = buf[1] | (buf[2]<<8);
+  magRaw[1] = buf[3] | (buf[4]<<8);
+  magRaw[2] = buf[5] | (buf[6]<<8);
+  // no sign extend because magRaw is 16 bit signed already
+  // apply calibration
+  mag.y = magRaw[0] * (128+magCalib[0]) >> 7; // x/y are swapped
+  mag.x = magRaw[1] * (128+magCalib[1]) >> 7;
+  mag.z = magRaw[2] * (128+magCalib[2]) >> 7;
+
   #if LCD_ROTATION == 180
       mag.y = -mag.y;
       mag.x = -mag.x;
@@ -3004,6 +3017,10 @@ bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId) {
     if (!wasOn) { // If it wasn't on before, reset
 #ifdef MAG_DEVICE_GMC303
       jswrap_banglejs_compassWr(0x31,4); // continuous measurement mode, 20Hz
+      // Get magnetometer calibration values
+      magCalib[0] = 0x60;
+      jsi2cWrite(MAG_I2C, MAG_ADDR, 1, magCalib, false);
+      jsi2cRead(MAG_I2C, MAG_ADDR, 3, magCalib, true);
 #endif
 #ifdef MAG_DEVICE_UNKNOWN_0C
       // Read 0x3E to enable compass readings
