@@ -815,6 +815,7 @@ bool lcdFadeHandlerActive;
 Vector3 mag, magmin, magmax;
 bool magOnWhenCharging;
 #define MAG_CHARGE_TIMEOUT 3000 // time after charging when magnetometer value gets automatically reset
+#define MAG_MAX_RANGE 500 // maximum range of readings allowed between magmin/magmax. In the UK at ~20uT 250 is ok, and the max field strength us ~40uT
 #endif
 /// accelerometer data. 8192 = 1G
 Vector3 acc;
@@ -1228,9 +1229,25 @@ void peripheralPollHandler() {
     jsi2cWrite(MAG_I2C, MAG_ADDR, 1, buf, false);
     jsi2cRead(MAG_I2C, MAG_ADDR, 7, buf, true);
     if (buf[0]&1) { // then we have data
-      mag.y = buf[1] | (buf[2]<<8);
-      mag.x = buf[3] | (buf[4]<<8);
-      mag.z = buf[5] | (buf[6]<<8);
+      int16_t magRaw[3];
+      magRaw[0] = buf[1] | (buf[2]<<8);
+      magRaw[1] = buf[3] | (buf[4]<<8);
+      magRaw[2] = buf[5] | (buf[6]<<8);
+      // no sign extend because magRaw is 16 bit signed already
+      // apply calibration (and we multiply by 4 to bring the values more in line with what we get for Bangle.js's magnetometer)
+      mag.y = (magRaw[0] * (128+magCalib[0])) >> 5; // x/y are swapped
+      mag.x = (magRaw[1] * (128+magCalib[1])) >> 5;
+      mag.z = (magRaw[2] * (128+magCalib[2])) >> 5;
+#ifdef LCD_ROTATION
+  #if LCD_ROTATION == 180
+      mag.y = -mag.y;
+      mag.x = -mag.x;
+  #elif LCD_ROTATION == 0
+      // all ok
+  #else
+    #error "LCD rotation is only implemented for 180 and 0 degrees"
+  #endif
+#endif
       newReading = true;
     }
 #endif
@@ -1253,12 +1270,36 @@ void peripheralPollHandler() {
     }
 #endif
     if (newReading) {
-      if (mag.x<magmin.x) magmin.x=mag.x;
-      if (mag.y<magmin.y) magmin.y=mag.y;
-      if (mag.z<magmin.z) magmin.z=mag.z;
-      if (mag.x>magmax.x) magmax.x=mag.x;
-      if (mag.y>magmax.y) magmax.y=mag.y;
-      if (mag.z>magmax.z) magmax.z=mag.z;
+      if (mag.x<magmin.x) {
+        magmin.x=mag.x;
+        if (magmax.x-magmin.x > MAG_MAX_RANGE)
+          magmax.x = magmin.x+MAG_MAX_RANGE;
+      }
+      if (mag.y<magmin.y) {
+        magmin.y=mag.y;
+        if (magmax.y-magmin.y > MAG_MAX_RANGE)
+          magmax.y = magmin.y+MAG_MAX_RANGE;
+      }
+      if (mag.z<magmin.z) {
+        magmin.z=mag.z;
+        if (magmax.z-magmin.z > MAG_MAX_RANGE)
+          magmax.z = magmin.z+MAG_MAX_RANGE;
+      }
+      if (mag.x>magmax.x) {
+        magmax.x=mag.x;
+        if (magmax.x-magmin.x > MAG_MAX_RANGE)
+          magmin.x = magmax.x-MAG_MAX_RANGE;
+      }
+      if (mag.y>magmax.y) {
+        magmax.y=mag.y;
+        if (magmax.y-magmin.y > MAG_MAX_RANGE)
+          magmin.y = magmax.y-MAG_MAX_RANGE;
+      }
+      if (mag.z>magmax.z) {
+        magmax.z=mag.z;
+        if (magmax.z-magmin.z > MAG_MAX_RANGE)
+          magmin.z = magmax.z-MAG_MAX_RANGE;
+      }
       bangleTasks |= JSBT_MAG_DATA;
       jshHadEvent();
     }
