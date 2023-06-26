@@ -291,6 +291,7 @@ We need to go back over the String that
 we parsed and convert any non-ASCII escape codes we came across back to UTF8.
 */
 static void jslConvertTokenValueUTF8(JsvStringIterator *it) {
+  if (!lex->tokenValue) return; // no token value - so don't do anything
   JsVar *utf8str = jsvNewFromEmptyString();
   if (!utf8str) return;
   jsvStringIteratorFree(it);
@@ -395,6 +396,8 @@ static void jslLexString() {
           } else if (jsUnicodeIsLowSurrogate(codepoint)) {
             jsExceptionHere(JSET_ERROR, "Unmatched Unicode surrogate");
           }
+        }
+        if (isUTF8 || lex->isUTF8) { // if this char is UTF8 *or* this string is now UTF8
           len = jsUTF8Encode(codepoint, buf);
           if (jsUTF8IsStartChar(buf[0])) {
             if (!lex->isUTF8 && hadCharsInUTF8Range)
