@@ -18,6 +18,7 @@
             Now executes ".bootPowerOn" from Storage on first boot after power restored
             Bangle.js: Add Bangle.setBacklight(), Bangle.backlight event, Bangle.isBacklightOn() and allow input when lcd off if lockTimeout is 0 (fix #2383)
             Added NRF.eraseBonds() to allow peer manager info to be removed (other than by holding all buttons down)
+            nRF52840: Fix potential 'SPI Send Error 17' SPI lockup
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

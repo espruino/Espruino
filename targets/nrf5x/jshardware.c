@@ -2047,6 +2047,11 @@ int jshSPISend(IOEventFlags device, int data) {
   uint8_t rx = 0;
   spi0Sending = true;
   uint32_t err_code = nrf_drv_spi_transfer(&spi0, &tx, 1, &rx, 1);
+  if (err_code == NRF_ERROR_BUSY) {
+    jsWarn("NRF_ERROR_BUSY on SPI send - recovering");
+    nrf_drv_spi_abort(&spi0); // this should clear p_cb->transfer_in_progress which will fix NRF_ERROR_BUSY
+    err_code = nrf_drv_spi_transfer(&spi0, &tx, 1, &rx, 1);
+  }
   if (err_code != NRF_SUCCESS) {
     spi0Sending = false;
     jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d\n", err_code);
