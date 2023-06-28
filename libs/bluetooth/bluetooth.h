@@ -370,6 +370,8 @@ uint32_t jsble_central_send_passkey(uint16_t central_conn_handle, char *passkey)
 #if PEER_MANAGER_ENABLED
 /// Set whether or not the whitelist is enabled
 void jsble_central_setWhitelist(bool whitelist);
+/// Erase any saved bonding info for peers
+void jsble_central_eraseBonds();
 #endif
 
 #endif // BLUETOOTH_H

@@ -1171,7 +1171,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           // if we were on bluetooth and we disconnected, clear the input line so we're fresh next time (#2219)
           if (jsiGetConsoleDevice()==EV_BLUETOOTH) {
             jsiClearInputLine(false);
-            if (!jsiIsConsoleDeviceForced()) 
+            if (!jsiIsConsoleDeviceForced())
               jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
           }
           // by calling nus_transmit_string here without a connection, we clear the Bluetooth output buffer
@@ -1192,7 +1192,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         if (centralIdx) {
           jsble_queue_pending(BLEP_RSSI_CENTRAL, (p_ble_evt->evt.gap_evt.params.rssi_changed.rssi&255) | (centralIdx<<8));
         }
-#endif    
+#endif
         if (centralIdx < 0) {
           jsble_queue_pending(BLEP_RSSI_PERIPH, p_ble_evt->evt.gap_evt.params.rssi_changed.rssi);
         }
@@ -2084,7 +2084,11 @@ static void peer_manager_init(bool erase_bonds) {
   bleStatus |= BLE_PM_INITIALISED;
 
   /* If ALL buttons are pressed at boot, clear out flash
-   * pages as well. Nice easy way to reset! */
+   pages as well. Nice easy way to reset!
+
+   We know this only happens at boot because of the
+   BLE_PM_INITIALISED check above.
+  */
   bool buttonPressed = false;
 #ifdef BTN1_PININDEX
   buttonPressed = jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
@@ -2101,7 +2105,6 @@ static void peer_manager_init(bool erase_bonds) {
   if (buttonPressed) {
     peer_manager_erase_pages();
   }
-
 
   ret_code_t           err_code;
 
@@ -2463,7 +2466,7 @@ void jsble_setup_advdata(ble_advdata_t *advdata) {
 
 #if NRF_SD_BLE_API_VERSION>5
 static ble_gap_adv_data_t m_ble_gap_adv_data;
-// SoftDevice >= 6.1.0 needs this as static buffers 
+// SoftDevice >= 6.1.0 needs this as static buffers
 static uint8_t m_adv_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
 static uint8_t m_scan_rsp_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX]; // 31
 #endif
@@ -2518,12 +2521,12 @@ uint32_t jsble_advertising_update(uint8_t *advPtr, unsigned int advLen, uint8_t 
 uint32_t jsble_advertising_start() {
   // try not to call from IRQ as we might want to allocate JsVars
   if (bleStatus & BLE_IS_ADVERTISING) return 0;
-  
+
 #ifndef SAVE_ON_FLASH
   /* If we're not allowed to advertise because we are connected, just return */
-  if (!(bleStatus & BLE_ADVERTISE_WHEN_CONNECTED) && jsble_has_peripheral_connection()) 
+  if (!(bleStatus & BLE_ADVERTISE_WHEN_CONNECTED) && jsble_has_peripheral_connection())
     return 0;
-#endif  
+#endif
 
   ble_advdata_t scanrsp;
 
@@ -3071,7 +3074,7 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
   if (bleStatus & BLE_IS_SENDING_HID) {
     jsExceptionHere(JSET_ERROR, "BLE HID already sending");
     return;
-  }  
+  }
   if (length > HID_KEYS_MAX_LEN) {
     jsExceptionHere(JSET_ERROR, "BLE HID report too long - max length = %d\n", HID_KEYS_MAX_LEN);
     return;
@@ -3471,6 +3474,11 @@ void jsble_central_setWhitelist(bool whitelist) {
 #endif
 }
 
+void jsble_central_eraseBonds() {
+#if PEER_MANAGER_ENABLED
+  jsble_check_error(pm_peers_delete());
+#endif
+}
 
 #endif // BLUETOOTH
 

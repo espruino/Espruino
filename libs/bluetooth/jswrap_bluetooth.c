@@ -635,12 +635,36 @@ void jswrap_ble_restart(JsVar *callback) {
   if (jsble_has_connection()) {
     jsiConsolePrintf("BLE Connected, queueing BLE restart for later\n");
     bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
-    return;
   } else {
     // Not connected, so we can restart now
     jsble_restart_softdevice(jsvIsFunction(callback)?callback:NULL);
-    return;
   }
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "eraseBonds",
+    "#if" : "defined(NRF52_SERIES)",
+    "generate" : "jswrap_ble_eraseBonds",
+    "params" : [
+      ["callback","JsVar","[optional] A function to be called while the softdevice is uninitialised. Use with caution - accessing console/bluetooth will almost certainly result in a crash."]
+    ]
+}
+Delete all data stored for all peers (bonding data used for secure connections). This cannot be done
+while a connection is active, so if there is a connection it will be postponed until everything is disconnected
+(which can be done by calling `NRF.disconnect()` and waiting).
+
+Booting your device while holding all buttons down together should also have the same effect.
+*/
+void jswrap_ble_eraseBonds() {
+#if PEER_MANAGER_ENABLED
+  if (jsble_has_connection()) {
+    jsExceptionHere(JSET_ERROR, "BLE Connected, can't erase bonds.\n");
+  } else {
+    jsble_central_eraseBonds();
+  }
+#endif
 }
 
 /*JSON{
@@ -4291,7 +4315,7 @@ NRF.connect("pu:ck:js:ad:dr:es random").then(function(g) {
 JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *characteristic) {
 #if CENTRAL_LINK_COUNT>0
   uint16_t central_conn_handle = jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(characteristic);
-  
+
   // Set our characteristic's handle up in the list of handles to notify for
   // TODO: What happens when we close the connection and re-open another?
   uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
@@ -4300,10 +4324,10 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
     jsvSetArrayItem(handles, handle, characteristic);
     jsvUnLock(handles);
   }
-  
+
   JsVar *promise;
 #ifndef ESP32
-  // Check for existing cccd_handle 
+  // Check for existing cccd_handle
   JsVar *cccdVar = jsvObjectGetChildIfExists(characteristic,"handle_cccd");
   if ( !cccdVar ) { // if it doesn't exist, try and find it
     if (!bleNewTask(BLETASK_CHARACTERISTIC_DESC_AND_STARTNOTIFY, characteristic/*BluetoothRemoteGATTCharacteristic*/))
@@ -4317,7 +4341,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
 #endif
     if (!bleNewTask(BLETASK_CHARACTERISTIC_NOTIFY, characteristic/*BluetoothRemoteGATTCharacteristic*/))
       return 0;
-    promise = jsvLockAgainSafe(blePromise);    
+    promise = jsvLockAgainSafe(blePromise);
     jsble_central_characteristicNotify(central_conn_handle, characteristic, true);
   }
   return promise;
