@@ -61,6 +61,41 @@
 #endif // BLE_AMS_C_BLE_OBSERVER_PRIO
 #endif // ESPR_BLUETOOTH_ANCS
 
+
+#if SPI_COUNT>0
+#define SPI_ENABLED 1
+#define SPI0_ENABLED 1
+#define SPI0_USE_EASY_DMA 1
+#else
+#define SPI_ENABLED 0
+#endif // SPI_COUNT
+
+#if I2C_COUNT>0
+#define TWI_ENABLED 1
+#define TWI1_ENABLED 1
+#define TWI1_USE_EASY_DMA 0
+#else
+#define TWI_ENABLED 0
+#endif // I2C_COUNT
+
+#if USART_COUNT>0
+#define UART_ENABLED 1
+#define UART0_ENABLED 1
+#ifdef NRF52840 // SDK15/NRF52840
+#define UART_EASY_DMA_SUPPORT 1
+#define UART0_CONFIG_USE_EASY_DMA 1
+#define UART1_ENABLED 1 // enable UART1 as well on nRF52840
+#define UART1_CONFIG_USE_EASY_DMA 1
+#else // SDKs before 15
+#define UART_EASY_DMA_SUPPORT 0
+#define UART0_CONFIG_USE_EASY_DMA 0
+#endif
+#else // USART_COUNT=0
+#define UART_ENABLED 0
+#endif // USART_COUNT
+
+#define I2S_ENABLED 1 // For neopixels
+
 // Based on SDK12
 #ifdef NRF5X_SDK_12
 #define APP_FIFO_ENABLED 1
@@ -114,43 +149,10 @@
 #define PPI_ENABLED 1
 #define RNG_ENABLED 1
 #define SAADC_ENABLED 1
-
-#if SPI_COUNT>0
-#define SPI_ENABLED 1
-#define SPI0_ENABLED 1
-#define SPI0_USE_EASY_DMA 1
-#else
-#define SPI_ENABLED 0
-#endif // SPI_COUNT
-
-#if I2C_COUNT>0
-#define TWI_ENABLED 1
-#define TWI1_ENABLED 1
-#define TWI1_USE_EASY_DMA 0
-#else
-#define TWI_ENABLED 0
-#endif // I2C_COUNT
-
-#if USART_COUNT>0
-#define UART_ENABLED 1
-#define UART_EASY_DMA_SUPPORT 0 // 1 in SDK15+
-#define UART0_ENABLED 1
-#define UART0_CONFIG_USE_EASY_DMA 0
-#else
-#define UART_ENABLED 0
-#endif
-
-#define I2S_ENABLED 1
 #endif // NRF5X_SDK_12
 
-// SDK15
-#ifdef NRF52840
-#define UART_ENABLED 1
-#define UART_EASY_DMA_SUPPORT 1
-#define UART0_ENABLED 1
-#define UART0_CONFIG_USE_EASY_DMA 1
-#define UART1_ENABLED 1
-#define UART1_CONFIG_USE_EASY_DMA 1
+#ifdef NRF5X_SDK_15 // SDK15/NRF52840
+
 // To allow advertising transmit via coded phy (connectable:true,scannable:false)
 // #define NRF_SDH_BLE_GAP_EVENT_LENGTH 10
 #endif // NRF52840

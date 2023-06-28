@@ -537,7 +537,7 @@ static void spiFlashReset(){
   spiFlashWriteCS(buf,1);
   buf[0] = QSPI_STD_CMD_RST;
   spiFlashWriteCS(buf,1);
-  nrf_delay_us(50); 
+  nrf_delay_us(50);
 }
 
 static void spiFlashWakeUp() {
@@ -572,7 +572,7 @@ static void spiFlashWakeUp() {
   spiFlashWriteCS(buf,1);
   nrf_delay_us(30); // Wait at least 20us for Flash IC to wake up from deep power-down
   spiFlashWriteCS(buf,1); // Might need two attempts
-  nrf_delay_us(30); 
+  nrf_delay_us(30);
   spiFlashAwake = true;
 }
 void spiFlashSleep() {
@@ -1100,7 +1100,7 @@ void jshInterruptOn() {
 #if defined(BLUETOOTH)
 #if defined(NRF52_SERIES)
   __set_BASEPRI(0);
-#else  
+#else
   sd_nvic_critical_region_exit(0); // do not handle nesting, always enable interrupts
 #endif
 #else
@@ -1677,7 +1677,11 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
         extiToPin[i] = PIN_UNDEFINED;
         nrf_drv_gpiote_in_event_disable(p);
         uint32_t pin_number = p;
+#if NRF_SD_BLE_API_VERSION>5
         NRF_GPIO_Type * reg = nrf_gpio_pin_port_decode(&pin_number);
+#else
+        NRF_GPIO_Type *reg = NRF_GPIO;
+#endif
         uint32_t cnf = reg->PIN_CNF[pin_number]; // get old pin config
         nrf_drv_gpiote_in_uninit(p);
         // nrf_drv_gpiote_in_uninit calls nrf_gpio_cfg_default so we must re-enable
@@ -2248,7 +2252,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     else
       nrf_drv_twi_enable(twi);
   }
-#endif  
+#endif
   // nrf_drv_spi_init will set pins, but this ensures we know so can reset state later
   if (jshIsPinValid(inf->pinSCL)) {
     jshPinSetFunction(inf->pinSCL, JSH_I2C1|JSH_I2C_SCL);
@@ -2460,7 +2464,7 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
         || (nrf_gpio_pin_out_read((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin))
 #else
         /* our internal state that no read is pending = CS is high */
-        || spiFlashLastAddress==0 
+        || spiFlashLastAddress==0
 #endif
        ) {
       NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
