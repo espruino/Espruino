@@ -450,7 +450,7 @@ static void jsfCompactWriteBuffer(uint32_t *writeAddress, uint32_t readAddress, 
       jsDebug(DBG_INFO,"compact> erase page 0x%08x\n", *writeAddress);
       jshFlashErasePage(*writeAddress);
     }
-    assert(jsfIsErased(*writeAddress, s)); 
+    assert(jsfIsErased(*writeAddress, s));
     //if (!jsfIsErased(*writeAddress, s)) jsiConsolePrintf("ERROR: AREA NOT ERASED 0x%08x => 0x%08x\n", *writeAddress, *writeAddress + s);
     jsDebug(DBG_INFO,"compact> write 0x%08x => 0x%08x\n", *writeAddress, *writeAddress + s);
     jshFlashWrite(&swapBuffer[*swapBufferTail], *writeAddress, s);
@@ -1012,7 +1012,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
     uint32_t addr2 = jsfFindFile(shortname, &header2);
     if (addr2) jsfEraseFileInternal(addr2, &header2, true);  // erase if in wrong bank
   }
-#endif  
+#endif
   if ((!addr && offset==0) || // No file
       // we have a file, but it's wrong - remove it
       (addr && offset==0 && (
@@ -1316,7 +1316,18 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset) {
 }
 
 bool jsfLoadBootCodeFromFlash(bool isReset) {
-  // Load code in .boot0/1/2/3 UNLESS BTN1 is HELD DOWN FOR BANGLE.JS ON FIRST BOOT
+  // Load code in .bootFirst at first boot UNLESS BTN1 IS HELD DOWN
+#ifndef SAVE_ON_FLASH
+#if (defined(BANGLEJS) && !defined(DICKENS))
+  if (!(jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE))
+#endif
+  if (jsiStatus & JSIS_FIRST_BOOT) {
+    JsVar *code = jsfReadFile(jsfNameFromString(".bootPowerOn"),0,0);
+    if (code)
+      jsvUnLock2(jspEvaluateVar(code,0,0), code);
+  }
+#endif
+  // Load code in .boot0/1/2/3 UNLESS BTN1 IS HELD DOWN FOR BANGLE.JS ON FIRST BOOT
   // On an average Bangle.js 2 this takes 0.25 ms (so not worth optimising)
 #if (defined(BANGLEJS) && !defined(DICKENS))
   if (!(jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE &&

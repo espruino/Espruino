@@ -38,7 +38,7 @@
       l.draw();
     } else if (items["< Back"]) items["< Back"]();
   }
-  Bangle.setUI({mode: "updown", back: items["< Back"]?back:undefined, remove: options.remove}, dir => {
+  Bangle.setUI({mode: "updown", back: items["< Back"]?back:undefined, remove: options.remove, redraw: () => l.draw()}, dir => {
     if (dir) l.move(dir);
     else l.select();
   });

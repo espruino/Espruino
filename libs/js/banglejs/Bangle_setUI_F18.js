@@ -21,6 +21,7 @@
     Bangle.removeListener("touch", Bangle.touchHandler);
     delete Bangle.touchHandler;
   }
+  delete Bangle.uiRedraw;
   delete Bangle.CLOCK;
   if (Bangle.uiRemove) {
     let r = Bangle.uiRemove;
@@ -82,6 +83,8 @@
     throw new Error("Unknown UI mode "+E.toJS(mode));
   if (options.remove) // handler for removing the UI (intervals/etc)
     Bangle.uiRemove = options.remove;
+  if (options.redraw) // handler for redrawing the UI
+    Bangle.uiRedraw = options.redraw;
   if (options.back) {
     var touchHandler = (z) => {
       if (z==1) options.back();

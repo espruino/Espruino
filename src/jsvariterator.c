@@ -406,7 +406,7 @@ void jsvStringIteratorGotoEnd(JsvStringIterator *it) {
   else it->charIdx = 0;
 }
 
-/// Go to the given position in the string iterator. Needs the string again in case we're going back and need to start from the beginning
+/// Go to the given (non-UTF8) position in the string iterator. Needs the string again in case we're going back and need to start from the beginning
 void jsvStringIteratorGoto(JsvStringIterator *it, JsVar *str, size_t idx) {
   if (idx>=it->varIndex) {
     it->charIdx = idx - it->varIndex;
@@ -415,6 +415,21 @@ void jsvStringIteratorGoto(JsvStringIterator *it, JsVar *str, size_t idx) {
     jsvStringIteratorFree(it);
     jsvStringIteratorNew(it, str, idx);
   }
+}
+
+/// Go to the given UTF8 position in the string iterator. Needs the string again in case we're going back and need to start from the beginning
+void jsvStringIteratorGotoUTF8(JsvStringIterator *it, JsVar *str, size_t idx) {
+#ifdef ESPR_UNICODE_SUPPORT
+  if (!it->isUTF8 && idx>=it->varIndex) {
+    it->charIdx = idx - it->varIndex;
+    jsvStringIteratorCatchUp(it);
+  } else {
+    jsvStringIteratorFree(it);
+    jsvStringIteratorNewUTF8(it, str, idx);
+  }
+#else
+  jsvStringIteratorGoto(it, str, idx);
+#endif
 }
 
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {

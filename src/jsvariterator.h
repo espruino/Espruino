@@ -177,8 +177,11 @@ static ALWAYS_INLINE void jsvStringIteratorNextInline(JsvStringIterator *it) {
 /// Go to the end of the string iterator - for use with jsvStringIteratorAppend
 void jsvStringIteratorGotoEnd(JsvStringIterator *it);
 
-/// Go to the given position in the string iterator. Needs the string again in case we're going back and need to start from the beginning
+/// Go to the given (non-UTF8) position in the string iterator. Needs the string again in case we're going back and need to start from the beginning
 void jsvStringIteratorGoto(JsvStringIterator *it, JsVar *str, size_t startIdx);
+
+/// Go to the given UTF8 position in the string iterator. Needs the string again in case we're going back and need to start from the beginning
+void jsvStringIteratorGotoUTF8(JsvStringIterator *it, JsVar *str, size_t idx);
 
 /// Append a character TO THE END of a string iterator
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch);

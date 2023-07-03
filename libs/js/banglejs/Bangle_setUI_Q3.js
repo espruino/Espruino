@@ -25,19 +25,20 @@
     Bangle.removeListener("touch", Bangle.touchHandler);
     delete Bangle.touchHandler;
   }
+  delete Bangle.uiRedraw;
   delete Bangle.CLOCK;
   if (Bangle.uiRemove) {
-	let r = Bangle.uiRemove;
-	delete Bangle.uiRemove; // stop recursion if setUI is called inside uiRemove
-    r();     
+    let r = Bangle.uiRemove;
+    delete Bangle.uiRemove; // stop recursion if setUI is called inside uiRemove
+    r();
   }
   g.reset();// reset graphics state, just in case
-  if (!mode) return;  
+  if (!mode) return;
   function b() {
     try{Bangle.buzz(30);}catch(e){}
-  }  
+  }
   if (mode=="updown") {
-    var dy = 0;    
+    var dy = 0;
     Bangle.dragHandler = e=>{
       dy += e.dy;
       if (!e.b) dy=0;
@@ -53,7 +54,7 @@
       setWatch(function() { b();cb(); }, BTN1, {repeat:1, edge:"falling"}),
     ];
   } else if (mode=="leftright") {
-    var dx = 0;    
+    var dx = 0;
     Bangle.dragHandler = e=>{
       dx += e.dx;
       if (!e.b) dx=0;
@@ -107,6 +108,8 @@
     throw new Error("Unknown UI mode "+E.toJS(mode));
   if (options.remove) // handler for removing the UI (intervals/etc)
     Bangle.uiRemove = options.remove;
+  if (options.redraw) // handler for redrawing the UI
+    Bangle.uiRedraw = options.redraw;
   if (options.back) {
     var touchHandler = (_,e) => {
       if (e.y<36 && e.x<48) {
@@ -116,8 +119,8 @@
     };
     Bangle.on("touch", touchHandler);
     // If a touch handler was needed for setUI, add it - but ignore touches if they've already gone to the 'back' handler
-    if (Bangle.touchHandler) { 
-      var uiTouchHandler = Bangle.touchHandler; 
+    if (Bangle.touchHandler) {
+      var uiTouchHandler = Bangle.touchHandler;
       Bangle.touchHandler = (_,e) => {
         if (!e.handled) uiTouchHandler(_,e);
       };
@@ -129,8 +132,8 @@
       btnWatch = undefined;
       options.back();
     }, BTN1, {edge:"falling"});
-    WIDGETS = Object.assign({back:{ 
-      area:"tl", width:24, 
+    WIDGETS = Object.assign({back:{
+      area:"tl", width:24,
       draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
       remove:(noclear)=>{
         if (btnWatch) clearWatch(btnWatch);

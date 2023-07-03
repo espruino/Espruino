@@ -20,6 +20,7 @@
 #include "jsflash.h"
 #include "jswrapper.h"
 #include "jsinteractive.h"
+#include "jswrap_interactive.h"
 #include "jstimer.h"
 #ifdef PUCKJS
 #include "jswrap_puck.h" // jswrap_puck_getTemperature
@@ -2163,12 +2164,17 @@ reset pin had been toggled.
 Espruino (resetting the interpreter and pin states, but not all the hardware)
 */
 void jswrap_espruino_reboot() {
+#ifndef EMULATED
   // ensure `E.on('kill',...` gets called and everything is torn down correctly
   jsiKill();
   jsvKill();
   jshKill();
 
   jshReboot();
+#else // EMULATED
+  // if emulated, just call reset() to avoid a crash
+  jswrap_interface_reset(false);
+#endif
 }
 
 
