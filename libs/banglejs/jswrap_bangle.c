@@ -1785,7 +1785,6 @@ void touchHandlerInternal(int tx, int ty, int pts, int gesture) {
   touchPts = pts;
   JsBangleTasks lastBangleTasks = bangleTasks;
   static int lastGesture = 0;
-  JsBangleTasks lastBangleTasks = bangleTasks;
   if (gesture!=lastGesture) {
     switch (gesture) { // gesture
     case 0:break; // no gesture
@@ -1947,11 +1946,11 @@ do:
 ```
 Bangle.setOptions({backlightTimeout: 0}) // turn off the timeout
 Bangle.setBacklight(1); // keep screen on
-
-Ofcourse, backlight depends on LCDPower, so any lcdPowerTimeout/setLCDTimeout will
- also turn the backlight off. The use case is when you require the backlight timeout
- to be shorter than the power timeout. 
 ```
+
+Of course, the backlight depends on `Bangle.setLCDPower` too, so any lcdPowerTimeout/setLCDTimeout will
+also turn the backlight off. The use case is when you require the backlight timeout
+to be shorter than the power timeout. 
 */
 /// Turn just the backlight on or off (or adjust brightness)
 void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
