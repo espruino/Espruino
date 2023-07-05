@@ -28,7 +28,9 @@ int main() {
   jswHWInit();
 
   bool buttonState = false;
-#ifdef BTN1_PININDEX
+#ifdef DICKENS
+  buttonState = jshPinGetValue(BTN3_PININDEX) == BTN3_ONSTATE && jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE; // Hold BTN3 and BTN4 to skip autoload
+#elif defined(BTN1_PININDEX)
   buttonState = jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
 #endif
   jsvInit(JSVAR_CACHE_SIZE);

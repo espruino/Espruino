@@ -1,0 +1,11 @@
+--- ./targetlibs/nrf5x_15_3/components/ble/ble_services/ble_ancs_c/nrf_ble_ancs_c.c	2021-05-11 16:17:33.657482612 +0100
++++ ./targetlibs/nrf5x_15_3/components/ble/ble_services/ble_ancs_c/nrf_ble_ancs_c.c	2021-05-11 16:17:35.673510248 +0100
+@@ -521,7 +521,7 @@
+ {
+     VERIFY_PARAM_NOT_NULL(p_data);
+ 
+-    if ((len == 0) || (len > BLE_ANCS_ATTR_DATA_MAX))
++    if ((len == 0))
+     {
+         return NRF_ERROR_INVALID_LENGTH;
+     }

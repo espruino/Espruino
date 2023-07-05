@@ -864,9 +864,15 @@ void nrf_log_frontend_std_6(uint32_t           severity_mid,
 #endif
 }
 
+#ifdef NRF5X_SDK_15_3
+const nrf_log_module_const_data_t m_nrf_log_app_logs_data_const = {
+    .p_module_name = ""
+};
+#else
 nrf_log_module_dynamic_data_t NRF_LOG_MODULE_DATA_DYNAMIC = {
     .module_id = 0
 };
+#endif
 #endif
 
 /// Function for handling an event from the Connection Parameters Module.
@@ -2178,7 +2184,7 @@ static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     p_input_report->rep_ref.report_id   = HID_INPUT_REP_REF_ID;
     p_input_report->rep_ref.report_type = BLE_HIDS_REP_TYPE_INPUT;
 
-#if NRF_SD_BLE_API_VERSION>=7
+#if NRF_SD_BLE_API_VERSION>=7 || NRF5X_SDK_15_3
     p_input_report->sec.cccd_wr = SEC_JUST_WORKS;
     p_input_report->sec.wr      = SEC_JUST_WORKS;
     p_input_report->sec.rd      = SEC_JUST_WORKS;
@@ -2193,7 +2199,7 @@ static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     p_output_report->rep_ref.report_id   = HID_OUTPUT_REP_REF_ID;
     p_output_report->rep_ref.report_type = BLE_HIDS_REP_TYPE_OUTPUT;
 
-#if NRF_SD_BLE_API_VERSION>=7
+#if NRF_SD_BLE_API_VERSION>=7 || NRF5X_SDK_15_3
     p_output_report->sec.wr      = SEC_JUST_WORKS;
     p_output_report->sec.rd      = SEC_JUST_WORKS;
 #else
@@ -2223,7 +2229,7 @@ static void hids_init(uint8_t *reportPtr, size_t reportLen) {
     hids_init_obj.included_services_count        = 0;
     hids_init_obj.p_included_services_array      = NULL;
 
-#if NRF_SD_BLE_API_VERSION>=7
+#if NRF_SD_BLE_API_VERSION>=7 || NRF5X_SDK_15_3
     hids_init_obj.rep_map.rd_sec         = SEC_JUST_WORKS;
     hids_init_obj.hid_information.rd_sec = SEC_JUST_WORKS;
 
@@ -2653,7 +2659,8 @@ uint32_t jsble_advertising_start() {
 #endif
   bleStatus |= BLE_IS_ADVERTISING;
   jsvUnLock(advDataVar);
-  bleQueueEventAndUnLock(JS_EVENT_PREFIX"advertising", jsvNewFromBool(true));
+  if (execInfo.root) // JS interpreter may not be initialised yet!
+    bleQueueEventAndUnLock(JS_EVENT_PREFIX"advertising", jsvNewFromBool(true));
   return err_code;
 }
 
@@ -2749,7 +2756,9 @@ bool jsble_kill() {
 #if NRF_SD_BLE_API_VERSION < 5
   err_code = sd_softdevice_disable();
 #else
+#ifndef NRF5X_SDK_15_3
   nrf_drv_clock_lfclk_request(NULL); // https://devzone.nordicsemi.com/f/nordic-q-a/56256/disabling-the-softdevice-hangs-when-using-lfrc-with-an-active-watchdog
+#endif
   err_code = nrf_sdh_disable_request();
 #endif
   return !jsble_check_error(err_code);

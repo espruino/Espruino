@@ -24,14 +24,13 @@ TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52.c
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_7.2.0_softdevice.hex
 PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.S
 endif
-else # not SDK17
-ifdef NRF_SDK15
+else ifdef NRF_SDK15
 # Use SDK15
 NRF5X_SDK=15
 NRF5X_SDK_15=1
-NRF5X_SDK_PATH=targetlibs/nrf5x_15
 DEFINES += -DNRF_SD_BLE_API_VERSION=6
 DEFINES += -D__HEAP_SIZE=0
+NRF5X_SDK_PATH=targetlibs/nrf5x_15
 ifeq ($(CHIP),NRF52840)
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52840.c
 SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52_6.0.0_softdevice.hex
@@ -41,7 +40,26 @@ TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52.c
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_6.0.0_softdevice.hex
 PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.S
 endif
-else # not SDK15
+else ifdef NRF_SDK15_3
+# Use SDK15
+NRF5X_SDK=15
+NRF5X_SDK_15=1
+DEFINES += -DNRF_SD_BLE_API_VERSION=6
+DEFINES += -D__HEAP_SIZE=0
+NRF5X_SDK_15_3=1
+DEFINES += -DNRF5X_SDK_15_3=1
+NRF5X_SDK_PATH=targetlibs/nrf5x_15_3
+ifeq ($(CHIP),NRF52840)
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52840.c
+SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52_6.1.1_softdevice.hex
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52840.S
+else  # NRF52832
+TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52.c
+SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_6.1.1_softdevice.hex
+# SOFTDEVICE        = targetlibs/nrf5x_15/components/softdevice/s132/hex/s132_nrf52_6.0.0_softdevice.hex # force old SDK15 softdevice 
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.S
+endif
+else # not SDK15/SDK17
 PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 TARGETSOURCES    += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
 ifdef NRF_SDK14
@@ -56,23 +74,19 @@ SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52840_5.0.0-2.alpha_softdevice.
 else  # NRF52832
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_5.0.0_softdevice.hex
 endif
-else
-ifdef NRF_SDK11
+else ifdef NRF_SDK11
 # Use SDK11
 NRF5X_SDK=11
 NRF5X_SDK_11=1
 NRF5X_SDK_PATH=targetlibs/nrf5x_11
 DEFINES += -DNRF_SD_BLE_API_VERSION=2
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_2.0.0_softdevice.hex
-else
-# Use SDK12
+else # Use SDK12!
 NRF5X_SDK=12
 NRF5X_SDK_12=1
 NRF5X_SDK_PATH=targetlibs/nrf5x_12
 DEFINES += -DNRF_SD_BLE_API_VERSION=3
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_3.1.0_softdevice.hex
-endif
-endif
 endif
 endif
 
@@ -132,13 +146,15 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/usbd
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/power
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/systick
+ifneq (,$(findstring NRF_USB,$(DEFINES)))
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_core.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_string_desc.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/class/cdc/acm/app_usbd_cdc_acm.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/usbd/nrf_drv_usbd.c
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/usbd/app_usbd_serial_num.c
-endif
+endif # USB
+endif # NRF5X_SDK_15
 else # NRF52832
 DEFINES += -DNRF52832_XXAA -DNRF52_PAN_74 
 

@@ -123,8 +123,13 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log/src
 else
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common
+ifndef NRF5X_SDK_15_3
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log/src
+else # SDK 15.0
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/log/src
+endif
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/atomic
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/atomic_fifo
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/strerror
@@ -142,7 +147,13 @@ INCLUDE += -I$(NRF5X_SDK_PATH)/integration/nrfx/legacy
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/delay
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_link_ctx_manager
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/atomic_flags
+ifdef NRF5X_SDK_15_3
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/memobj/nrf_memobj.c
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/mutex
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/memobj
+else # SDK 15.0
 TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/experimental_memobj/nrf_memobj.c
+endif
 endif
 ifdef NRF5X_SDK_17
 INCLUDE += -I$(NRF5X_SDK_PATH)/modules/nrfx
@@ -197,8 +208,10 @@ TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/twis_slave/nrf_drv_twi
 endif
 
 ifndef NRF5X_SDK_17
+ifndef NRF5X_SDK_15_3
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_mutex.c 
+endif
 endif
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
@@ -310,7 +323,7 @@ else # NRF_BL_DFU_INSECURE
   TARGETSOURCES += $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/sha256/sha256.c
 endif # NRF_BL_DFU_INSECURE
-else # NRF5X_SDK_12
+else # !NRF5X_SDK_12
   DEFINES += -DAPP_TIMER_V2
   DEFINES += -DAPP_TIMER_V2_RTC1_ENABLED
   DEFINES += -DNRF_DFU_SETTINGS_VERSION=1
@@ -353,7 +366,6 @@ else # NRF5X_SDK_12
     -I$(NRF5X_SDK_PATH)/components/libraries/crypto \
     -I$(NRF5X_SDK_PATH)/components/libraries/scheduler \
     -I$(NRF5X_SDK_PATH)/external/nrf_cc310_bl/include \
-    -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log/src \
     -I$(NRF5X_SDK_PATH)/components/toolchain/cmsis/include \
     -I$(NRF5X_SDK_PATH)/components/libraries/balloc \
     -I$(NRF5X_SDK_PATH)/components/libraries/atomic_fifo \
@@ -365,8 +377,17 @@ else # NRF5X_SDK_12
     -I$(NRF5X_SDK_PATH)/components/softdevice/common \
     -I$(NRF5X_SDK_PATH)/external/nano-pb \
     -I$(NRF5X_SDK_PATH)/components/libraries/queue \
-    -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log \
     -I$(NRF5X_SDK_PATH)/components/libraries/experimental_memobj
+ifdef NRF5X_SDK_15_3
+INCLUDE += \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/optiga \
+    -I$(NRF5X_SDK_PATH)/components/libraries/log \
+    -I$(NRF5X_SDK_PATH)/components/libraries/log/src
+else
+INCLUDE += \
+    -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log \
+    -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log/src
+endif
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c \
   $(NRF5X_SDK_PATH)/components/libraries/sha256/sha256.c \

@@ -38,6 +38,8 @@ if [ "$BOARDNAME" = "ALL" ]; then
   PROVISION_NRF52=1
   PROVISION_NRF51=1
   PROVISION_NRF_SDK15=1
+  PROVISION_NRF_SDK15_3=1
+  PROVISION_NRF_SDK17=1
   PROVISION_STM32F1=1
   PROVISION_STM32F4=1
   PROVISION_STM32L4=1 
@@ -50,7 +52,12 @@ else
   fi  
   export PROVISION_$FAMILY=1
   export PROVISION_$BOARDNAME=1
-  if python scripts/get_makefile_decls.py $BOARDNAME | grep NRF_SDK15; then
+  if python scripts/get_makefile_decls.py $BOARDNAME | grep NRF_SDK17; then
+    PROVISION_NRF_SDK17=1
+  fi
+  if python scripts/get_makefile_decls.py $BOARDNAME | grep NRF_SDK15_3; then
+    PROVISION_NRF_SDK15_3=1
+  elif python scripts/get_makefile_decls.py $BOARDNAME | grep NRF_SDK15; then
     PROVISION_NRF_SDK15=1
   fi
 fi
@@ -160,7 +167,6 @@ fi
 if [ "$PROVISION_NRF_SDK15" = "1" ]; then
     if [ ! -d "targetlibs/nrf5x_15/components" ]; then
         echo Installing NRF SDK 15.0 to targetlibs/nrf5x_15/components
-        # curl https://developer.nordicsemi.com/nRF5_SDK/nRF5_SDK_v15.x.x/nRF5_SDK_15.0.0_a53641a.zip -o nRF5_SDK_15.0.0_a53641a.zip
         curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5_SDK_15.0.0_a53641a_no_docs_unix.zip -o nRF5_SDK_15.0.0_a53641a.zip
         # This is nRF5_SDK_15.0.0_a53641a.zip without the docs/examples folder, and with line endings converted to unix (for patch)
         unzip -q -o nRF5_SDK_15.0.0_a53641a.zip
@@ -172,6 +178,22 @@ if [ "$PROVISION_NRF_SDK15" = "1" ]; then
         echo "FIXME - SDK15 NFC patches don't apply cleanly"
         echo ======================================================
         cat targetlibs/nrf5x_15/patches/* | patch -p1 || true
+    fi
+fi
+if [ "$PROVISION_NRF_SDK15_3" = "1" ]; then
+    if [ ! -d "targetlibs/nrf5x_15_3/components" ]; then
+        echo Installing NRF SDK 15.3 to targetlibs/nrf5x_15_3/components
+        curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5_SDK_15.3.0_59ac345_no_docs_unix.zip -o nRF5_SDK_15.3.0_59ac345.zip
+        # This is nRF5_SDK_15.0.0_a53641a.zip without the docs/examples folder, and with line endings converted to unix (for patch)
+        unzip -q -o nRF5_SDK_15.3.0_59ac345.zip
+        cp -r nRF5_SDK_15.3.0_59ac345/external/* targetlibs/nrf5x_15_3/external 
+        rm -rf nRF5_SDK_15.3.0_59ac345/external       
+        cp -r nRF5_SDK_15.3.0_59ac345/* targetlibs/nrf5x_15_3
+        rm -rf nRF5_SDK_15.3.0_59ac345.zip nRF5_SDK_15.3.0_59ac345
+        echo ======================================================
+        echo "FIXME - SDK15 NFC patches don't apply cleanly"
+        echo ======================================================
+        cat targetlibs/nrf5x_15_3/patches/* | patch -p1 || true
     fi
 fi
 if [ "$PROVISION_NRF_SDK17" = "1" ]; then

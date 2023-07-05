@@ -168,4 +168,9 @@
 #define NRF_SDH_CLOCK_LF_ACCURACY NRF_CLOCK_LF_ACCURACY_500_PPM
 #endif // ESPR_LSE_ENABLE
 
+// APP_TIMER_SAFE_WINDOW_MS - Maximum possible latency (in milliseconds) of handling app_timer event, For SDK 15.3.0
+#define APP_TIMER_SAFE_WINDOW_MS 300000
+// For SDK 15.3.0
+#define FDS_VIRTUAL_PAGES_RESERVED 0
+
 // Other SDK configs are still in sdk_config.h

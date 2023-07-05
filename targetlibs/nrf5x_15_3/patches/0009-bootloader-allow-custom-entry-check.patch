@@ -1,0 +1,11 @@
+--- a/targetlibs/nrf5x_15_3/components/libraries/bootloader/nrf_bootloader.c
++++ b/targetlibs/nrf5x_15_3/components/libraries/bootloader/nrf_bootloader.c
+@@ -261,7 +261,7 @@
+ 
+ /**@brief Function for checking whether to enter DFU mode or not.
+  */
+-static bool dfu_enter_check(void)
++__WEAK bool dfu_enter_check(void)
+ {
+     if (!nrf_dfu_app_is_valid(crc_on_valid_app_required()))
+     {

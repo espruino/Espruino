@@ -1040,7 +1040,8 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
 JsVar *jswrap_ble_getCurrentAdvertisingData() {
   // This is safe if JS not initialised, jsvObjectGetChild returns 0
   JsVar *adv = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_ADVERTISE_DATA);
-  if (!adv) adv = jswrap_ble_getAdvertisingData(NULL, NULL); // use the defaults
+  // we may not even have started the JS interpreter yet!
+  if (!adv && execInfo.root) adv = jswrap_ble_getAdvertisingData(NULL, NULL); // use the defaults
   else {
     if (bleStatus&BLE_IS_ADVERTISING_MULTIPLE) {
       int idx = (bleStatus&BLE_ADVERTISING_MULTIPLE_MASK)>>BLE_ADVERTISING_MULTIPLE_SHIFT;
