@@ -608,21 +608,22 @@ This means that while `StorageFile` files exist in the same area as those from
 `Storage`, they should be read using `Storage.open` (and not `Storage.read`).
 
 ```
-f = s.open("foobar","w");
+f = require("Storage").open("foobar","w");
 f.write("Hell");
 f.write("o World\n");
 f.write("Hello\n");
 f.write("World 2\n");
+f.write("Hello World 3\n");
 // there's no need to call 'close'
 // then
-f = s.open("foobar","r");
+f = require("Storage").open("foobar","r");
 f.read(13) // "Hello World\nH"
 f.read(13) // "ello\nWorld 2\n"
 f.read(13) // "Hello World 3"
 f.read(13) // "\n"
 f.read(13) // undefined
 // or
-f = s.open("foobar","r");
+f = require("Storage").open("foobar","r");
 f.readLine() // "Hello World\n"
 f.readLine() // "Hello\n"
 f.readLine() // "World 2\n"
