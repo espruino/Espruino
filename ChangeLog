@@ -21,6 +21,7 @@
             nRF52840: Fix potential 'SPI Send Error 17' SPI lockup
             Bangle.js2: Fix number selector first draw in menu after 'redraw' argument added
             Bangle.js2: number selector now supports tapping at top/bottom to increment/decrement value
+            Storage: StorageFiles don't store addr/len any more, they look up the file for each write (safer, and fast now we have a filename cache)
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

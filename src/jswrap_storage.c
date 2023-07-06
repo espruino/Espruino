@@ -543,8 +543,12 @@ JsVar *jswrap_storage_open(JsVar *name, JsVar *modeVar) {
       chunk++;
       fname.c[fnamei]=(char)chunk;
       addr = jsfFindFile(fname, &header);
-      fileLen = (int)jsfGetFileSize(&header);
-      if (addr) jshFlashRead(&lastCh, addr+jsfGetFileSize(&header)-1, 1);
+      if (addr) {
+        fileLen = (int)jsfGetFileSize(&header);
+        jshFlashRead(&lastCh, addr+fileLen-1, 1);
+      } else {
+        fileLen = 0;
+      }
     }
     if (addr) {
       // if we have a page, try and find the end of it
@@ -577,8 +581,6 @@ JsVar *jswrap_storage_open(JsVar *name, JsVar *modeVar) {
   DBG("Open %j Chunk %d Offset %d addr 0x%08x len %d\n",name,chunk,offset,addr,fileLen);
   jsvObjectSetChildAndUnLock(f,"chunk",jsvNewFromInteger(chunk));
   jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(offset));
-  jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger((JsVarInt)addr));
-  jsvObjectSetChildAndUnLock(f,"len",jsvNewFromInteger(fileLen));
   jsvObjectSetChildAndUnLock(f,"mode",jsvNewFromInteger(mode));
 
   return f;
@@ -643,15 +645,16 @@ JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
     return 0;
   }
 
-  uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"addr"));
-  if (!addr) return 0; // end of file
-  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"offset"));
-  int fileLen = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"len"));
   int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"chunk"));
   JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChildIfExists(f,"name"));
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;
   fname.c[fnamei]=(char)chunk;
+  JsfFileHeader header;
+  uint32_t addr = jsfFindFile(fname, &header);
+  if (!addr) return 0; // end of file/no file chunk found
+  int fileLen = (int)jsfGetFileSize(&header);
+  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"offset"));
 
   JsVar *result = 0;
   char buf[32];
@@ -661,16 +664,13 @@ JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
     if (remaining<=0) { // next page
       offset = 0;
       if (chunk==255) {
-        addr=0;
+        addr=0; // end of file!
       } else {
         chunk++;
         fname.c[fnamei]=(char)chunk;
-        JsfFileHeader header;
         addr = jsfFindFile(fname, &header);
         fileLen = (int)jsfGetFileSize(&header);
-        jsvObjectSetChildAndUnLock(f,"len",jsvNewFromInteger(fileLen));
       }
-      jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger((JsVarInt)addr));
       jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(offset));
       jsvObjectSetChildAndUnLock(f,"chunk",jsvNewFromInteger(chunk));
       remaining = fileLen;
@@ -843,39 +843,26 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
     return;
   }
   int offset = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"offset"));
-  int fileLen = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"len"));
   int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"chunk"));
   JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChildIfExists(f,"name"));
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;
   //DBG("Filename[%d]=%d\n",fnamei,chunk);
   fname.c[fnamei]=(char)chunk;
-  uint32_t addr = (uint32_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"addr"));
+
+  JsfFileHeader header;
+  uint32_t addr = jsfFindFile(fname, &header);
+  int fileLen = addr ? (int)jsfGetFileSize(&header) : 0;
+
   DBG("Write Chunk %d Offset %d addr 0x%08x\n",chunk,offset,addr);
-  if (addr) {
-    JsfFileHeader header;
-    // check the header before we write, just to ensure it's all as expected!
-    jshFlashRead(&header, addr-(uint32_t)sizeof(JsfFileHeader), sizeof(JsfFileHeader));
-    if (memcmp(&header.name, &fname, sizeof(fname))!=0) { // uh-oh, it's different!
-      addr = jsfFindFile(fname, &header);
-      if (!addr) {
-        jsvUnLock(data);
-        jsExceptionHere(JSET_ERROR, "File deleted while writing!");
-        return;
-      } else { // file has moved - update addr
-        jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger((JsVarInt)addr));
-      }
-    }
-  } else {
+  if (!addr) {
     DBG("Write Create Chunk\n");
+    // What if data length > the chunk size? jsfWriteFile fails with error currently
     if (jsfWriteFile(fname, data, JSFF_STORAGEFILE, 0, STORAGEFILE_CHUNKSIZE)) {
-      JsfFileHeader header;
       addr = jsfFindFile(fname, &header);
       fileLen = (int)jsfGetFileSize(&header);
       offset = (int)len;
       jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(offset));
-      jsvObjectSetChildAndUnLock(f,"len",jsvNewFromInteger(fileLen));
-      jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger((JsVarInt)addr));
     } else {
       DBG("Write Create Chunk FAILED\n");
       // there would already have been an exception
@@ -911,15 +898,11 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
     // Write Next page
     part = jsvNewFromStringVar(data,(size_t)remaining,JSVAPPENDSTRINGVAR_MAXLENGTH);
     if (jsfWriteFile(fname, part, JSFF_STORAGEFILE, 0, STORAGEFILE_CHUNKSIZE)) {
-      JsfFileHeader header;
-      addr = jsfFindFile(fname, &header);
-      fileLen = (int)jsfGetFileSize(&header);
       offset = (int)jsvGetStringLength(part);
       jsvObjectSetChildAndUnLock(f,"chunk",jsvNewFromInteger(chunk));
       jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(offset));
-      jsvObjectSetChildAndUnLock(f,"len",jsvNewFromInteger(fileLen));
-      jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger((JsVarInt)addr));
     } else {
+      jsvObjectSetChildAndUnLock(f,"mode",jsvNewFromInteger(0)); // set mode to 0 so no more writing
       // there would already have been an exception - no need to return
       // we can free data up below
     }
@@ -952,7 +935,6 @@ void jswrap_storagefile_erase(JsVar *f) {
   // reset everything
   jsvObjectSetChildAndUnLock(f,"chunk",jsvNewFromInteger(1));
   jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(0));
-  jsvObjectSetChildAndUnLock(f,"addr",jsvNewFromInteger(0));
   jsvObjectSetChildAndUnLock(f,"mode",jsvNewFromInteger(0));
 }
 
