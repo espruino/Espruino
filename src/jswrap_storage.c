@@ -866,6 +866,7 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
     } else {
       DBG("Write Create Chunk FAILED\n");
       // there would already have been an exception
+      jsvObjectSetChildAndUnLock(f,"mode",jsvNewFromInteger(0)); // set mode to 0 so no more writing
     }
     jsvUnLock(data);
     return;
@@ -902,9 +903,9 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
       jsvObjectSetChildAndUnLock(f,"chunk",jsvNewFromInteger(chunk));
       jsvObjectSetChildAndUnLock(f,"offset",jsvNewFromInteger(offset));
     } else {
-      jsvObjectSetChildAndUnLock(f,"mode",jsvNewFromInteger(0)); // set mode to 0 so no more writing
       // there would already have been an exception - no need to return
       // we can free data up below
+      jsvObjectSetChildAndUnLock(f,"mode",jsvNewFromInteger(0)); // set mode to 0 so no more writing
     }
     jsvUnLock(part);
   }
