@@ -3725,7 +3725,7 @@ JsVar *jswrap_graphics_blit(JsVar *parent, JsVar *options) {
 Create a Windows BMP file from this Graphics instance, and return it as a
 String.
 */
-JsVar *jswrap_graphics_asBMP(JsVar *parent) {
+JsVar *jswrap_graphics_asBMP_X(JsVar *parent, bool printBase64) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   int width = graphicsGetWidth(&gfx);
   int height = graphicsGetHeight(&gfx);
@@ -3743,15 +3743,19 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
   // palette length (byte size is 3x this)
   int paletteEntries = hasPalette?(1<<bpp):0;
   int headerLen = 14 + 12 + paletteEntries*3;
-  int l = headerLen + height*rowstride;
-  JsVar *imgData = jsvNewFlatStringOfLength((unsigned)l);
+  int fileSize = headerLen + height*rowstride;
+  // if printing base64 we only need enough memory for header + one row
+  int imgDataLen = printBase64 ? (headerLen + rowstride) : fileSize;
+  JsVar *imgData = jsvNewFlatStringOfLength((unsigned)imgDataLen);
   if (!imgData) return 0; // not enough memory
   unsigned char *imgPtr = (unsigned char *)jsvGetFlatStringPointer(imgData);
-  imgPtr[0]=66;
-  imgPtr[1]=77;
-  imgPtr[2]=(unsigned char)l;
-  imgPtr[3]=(unsigned char)(l>>8);  // plus 2 more bytes for size
+  imgPtr[0]=66; //B
+  imgPtr[1]=77; //M
+  imgPtr[2]=(unsigned char)fileSize;
+  imgPtr[3]=(unsigned char)(fileSize>>8);  // plus 2 more bytes for size
   imgPtr[10]=(unsigned char)headerLen;
+  // maybe we want the InfoHeader, not BITMAPCOREHEADER (http://www.ece.ualberta.ca/~elliott/ee552/studentAppNotes/2003_w/misc/bmp_file_format/bmp_file_format.htm)
+  // Chrome doesn't like 16 bit BMPs in this format
   // BITMAPCOREHEADER
   imgPtr[14]=12; // sizeof(BITMAPCOREHEADER)
   imgPtr[18]=(unsigned char)width;
@@ -3800,12 +3804,14 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
       }
     }
   }
+
   int pixelMask = (1<<bpp)-1;
   int pixelsPerByte = 8 / bpp;
-  for (int y=0;y<height;y++) {
+  int idx = headerLen; //< index we're writing to our data at
+  for (int y=height-1;y>=0;y--) {
     int yi = height-(y+1);
+    int bytesWritten = 0;
     if (bpp<8) { // >1 pixels per byte
-      int idx = headerLen + (yi * rowstride);
       for (int x=0;x<width;) {
         unsigned int b = 0;
         for (int i=0;i<pixelsPerByte;i++) {
@@ -3817,19 +3823,48 @@ JsVar *jswrap_graphics_asBMP(JsVar *parent) {
           b = (b<<bpp)|(pixel&pixelMask);
         }
         imgPtr[idx++] = (unsigned char)b;
+        bytesWritten++;
       }
+
     } else { // <= 1 pixel per byte
       for (int x=0;x<width;x++) {
         unsigned int c = graphicsGetPixel(&gfx, x, y);
-        int i = headerLen + (yi*rowstride) + (x*(bpp>>3));
+        if (bpp==16) // 16 bit BMP is RGB555, not RGB565
+          c = (c&31) | ((c>>1)&~31);
         for (int j=0;j<bpp;j+=8) {
-          imgPtr[i++] = (unsigned char)(c);
+          imgPtr[idx++] = (unsigned char)(c);
+          bytesWritten++;
           c >>= 8;
         }
       }
     }
+    // ensure our index matches up
+    if (bytesWritten<rowstride)
+      idx += rowstride-bytesWritten;
+    // if printing to console, we're going to print everything as long as we have a multiple of 3 (or we're at the end)
+    if (printBase64 && idx>2) {
+      bool isLastRow = y==0;
+      int count = isLastRow ? idx : (idx-(idx%3));
+      JsVar *view = jsvNewArrayBufferFromString(imgData, count); // create an arraybuffer - this means we can pass to btoa with zero allocations
+      JsVar *b64 = jswrap_btoa(view);
+      jsvUnLock(view);
+      if (b64) jsiConsolePrintf("%v", b64);
+      jsvUnLock(b64);
+      // shift everything back so we can start again
+      if (count < idx)
+        memmove(imgPtr, &imgPtr[count], idx-count);
+      idx -= count;
+    }
+  }
+  if (printBase64) {
+    jsiConsolePrintf("\n");
+    jsvUnLock(imgData);
+    return 0;
   }
   return imgData;
+}
+JsVar *jswrap_graphics_asBMP(JsVar *parent) {
+  return jswrap_graphics_asBMP_X(parent, false/*printBase64*/);
 }
 
 /*JSON{
@@ -3848,7 +3883,7 @@ The Espruino Web IDE can detect this data on the console and render the image
 inline automatically.
 */
 JsVar *jswrap_graphics_asURL(JsVar *parent) {
-  JsVar *imgData = jswrap_graphics_asBMP(parent);
+  JsVar *imgData = jswrap_graphics_asBMP_X(parent, false/*printBase64*/);
   if (!imgData) return 0; // not enough memory
   JsVar *b64 = jswrap_btoa(imgData);
   jsvUnLock(imgData);
@@ -3878,10 +3913,8 @@ also not work for the main Graphics instance of Bangle.js 1 as the graphics on
 Bangle.js 1 are stored in write-only memory.
 */
 void jswrap_graphics_dump(JsVar *parent) {
-  JsVar *url = jswrap_graphics_asURL(parent);
-  if (url) jsiConsolePrintStringVar(url);
-  jsvUnLock(url);
-  jsiConsolePrint("\n");
+  jsiConsolePrintf("data:image/bmp;base64,");
+  jsvUnLock(jswrap_graphics_asBMP_X(parent, true/*printBase64*/));
 }
 
 /*JSON{
