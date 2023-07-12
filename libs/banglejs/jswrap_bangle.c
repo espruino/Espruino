@@ -5691,7 +5691,8 @@ type SetUIArg<Mode> = Mode | {
       "setUI(type: SetUIArg<\"updown\" | \"leftright\">, callback: (direction?: -1 | 1) => void): void;",
       "setUI(type: SetUIArg<\"clock\">): void;",
       "setUI(type: SetUIArg<\"clockupdown\">, callback?: (direction: -1 | 1) => void): void;",
-      "setUI(type: SetUIArg<\"custom\"> & { touch?: TouchCallback; swipe?: SwipeCallback; drag?: DragCallback; btn?: (n: 1 | 2 | 3) => void; clock?: boolean | 0 | 1 }): void;"
+      "setUI(type: SetUIArg<\"custom\"> & { touch?: TouchCallback; swipe?: SwipeCallback; drag?: DragCallback; btn?: (n: 1 | 2 | 3) => void; clock?: boolean | 0 | 1 }): void;",
+      "setUI(type: { [k in keyof SetUIArg<undefined>]?: SetUIArg<undefined>[k] }): void;"
     ]
 }
 This puts Bangle.js into the specified UI input mode, and calls the callback
