@@ -4,6 +4,10 @@ ifeq ($(BOARD),PICO)
 BOARD=PICO_R1_3
 endif
 
+ifeq ($(RELEASE),0)
+undefine RELEASE
+endif
+
 ifdef PUCKJS
 $(error You now need to build with 'BOARD=PUCKJS make')
 endif
