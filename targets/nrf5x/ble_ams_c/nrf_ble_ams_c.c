@@ -49,7 +49,11 @@
 #include "ble_db_discovery.h"
 #include "app_error.h"
 #ifdef DEBUG
+#if NRF_SD_BLE_API_VERSION>5
 #define NRF_LOG_MODULE_NAME ble_ams_c
+#else
+#define NRF_LOG_MODULE_NAME "ble_ams_c"
+#endif
 #include "nrf_log.h"
 NRF_LOG_MODULE_REGISTER();
 #else
