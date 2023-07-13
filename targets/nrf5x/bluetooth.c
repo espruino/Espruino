@@ -171,6 +171,7 @@ BLE_HIDS_DEF(m_hids,
 static bool                             m_in_boot_mode = false;
 #endif
 
+
 #if NRF_SD_BLE_API_VERSION > 5
 uint8_t m_adv_handle = BLE_GAP_ADV_SET_HANDLE_NOT_SET;                   /**< Advertising handle used to identify an advertising set. */
 int8_t m_tx_power = 0;
@@ -622,6 +623,10 @@ uint8_t match_request : 1;               If 1 requires the application to report
       case BLEP_ANCS_APP_ATTR:
         ble_ancs_handle_app_attr(blep, (char *)buffer, bufferLen);
         break;
+      case BLEP_ANCS_ERROR:
+        if (BLETASK_IS_ANCS(bleGetCurrentTask()))
+          bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("ANCS Error"));
+        break;
       case BLEP_AMS_TRACK_UPDATE:
         ble_ams_handle_track_update(blep, data, (char *)buffer, bufferLen);
         break;
@@ -631,9 +636,8 @@ uint8_t match_request : 1;               If 1 requires the application to report
       case BLEP_AMS_ATTRIBUTE:
         ble_ams_handle_attribute(blep, (char *)buffer, bufferLen);
         break;
-      case BLEP_ANCS_ERROR:
-        if (BLETASK_IS_ANCS(bleGetCurrentTask()))
-          bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("ANCS Error"));
+      case BLEP_CTS_TIME:
+        ble_cts_handle_time(blep, (char *)buffer, bufferLen);
         break;
 #endif
    default:
@@ -864,6 +868,12 @@ void nrf_log_frontend_std_6(uint32_t           severity_mid,
 #endif
 }
 
+void nrf_log_frontend_hexdump(uint32_t           severity_mid,
+                              const void * const p_data,
+                              uint16_t           length) {
+  jshTransmitPrintf(DEFAULT_CONSOLE_DEVICE, "[hexdump]\n");
+}
+
 #ifdef NRF5X_SDK_15_3
 const nrf_log_module_const_data_t m_nrf_log_app_logs_data_const = {
     .p_module_name = ""
@@ -1040,7 +1050,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       p_ble_evt->header.evt_id != BLE_EVT_TX_COMPLETE)
     jsiConsolePrintf("[%d %d]\n", p_ble_evt->header.evt_id, p_ble_evt->evt.gattc_evt.params.hvx.handle );*/
 #if ESPR_BLUETOOTH_ANCS
-  if (bleStatus & BLE_ANCS_OR_AMS_INITED)
+  if (bleStatus & BLE_ANCS_AMS_OR_CTS_INITED)
     ble_ancs_on_ble_evt(p_ble_evt);
 #endif
     uint32_t err_code;
@@ -1541,7 +1551,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         jsble_queue_pending(BLEP_TASK_DISCOVER_CCCD, cccd_handle);
       } break;
 
-      case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) {
+      case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) { // ignore read responses if not in a READ task (ANCS/AMS/CTS/etc can create READ_RSP events)
         const ble_gattc_evt_read_rsp_t *p_read = &p_ble_evt->evt.gattc_evt.params.read_rsp;
         jsble_queue_pending_buf(BLEP_TASK_CHARACTERISTIC_READ, 0, (char*)&p_read->data[0], p_read->len);
       } break;
@@ -1716,7 +1726,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
                 //      You should check on what kind of white list policy your application should use.
             }
 #if ESPR_BLUETOOTH_ANCS
-            if (bleStatus & BLE_ANCS_OR_AMS_INITED)
+            if (bleStatus & BLE_ANCS_AMS_OR_CTS_INITED)
               ble_ancs_bonding_succeeded(p_evt->conn_handle);
 #endif
 
@@ -2323,9 +2333,11 @@ static void services_init() {
 #if ESPR_BLUETOOTH_ANCS
     bool useANCS = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_ANCS));
     bool useAMS = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_AMS));
-    if (useANCS || useAMS) {
+    bool useCTS = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_CTS));
+    if (useANCS || useAMS || useCTS) {
       if (useANCS) bleStatus |= BLE_ANCS_INITED;
       if (useAMS) bleStatus |= BLE_AMS_INITED;
+      if (useCTS) bleStatus |= BLE_CTS_INITED;
       ble_ancs_init();
     }
 #endif
@@ -2750,7 +2762,7 @@ bool jsble_kill() {
   bleStatus &= ~BLE_HID_INITED;
 #if ESPR_BLUETOOTH_ANCS
   // BLE ANCS/AMS doesn't need deinitialising
-  bleStatus &= ~BLE_ANCS_OR_AMS_INITED;
+  bleStatus &= ~BLE_ANCS_AMS_OR_CTS_INITED;
 #endif
   uint32_t err_code;
 #if NRF_SD_BLE_API_VERSION < 5

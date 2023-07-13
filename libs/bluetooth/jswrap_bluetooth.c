@@ -1168,7 +1168,7 @@ JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options) {
   }
 
 #if ESPR_BLUETOOTH_ANCS
-  if (bleStatus & BLE_ANCS_OR_AMS_INITED) {
+  if (bleStatus & BLE_ANCS_AMS_OR_CTS_INITED) {
     static ble_uuid_t m_adv_uuids[1]; /**< Universally unique service identifiers. */
     ble_ancs_get_adv_uuid(m_adv_uuids);
     advdata.uuids_solicited.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
@@ -1339,8 +1339,9 @@ NRF.setServices(undefined, {
   hid : new Uint8Array(...), // optional, default is undefined. Enable BLE HID support
   uart : true, // optional, default is true. Enable BLE UART support
   advertise: [ '180D' ] // optional, list of service UUIDs to advertise
-  ancs : true, // optional, Bangle.js-only, enable Apple ANCS support for notifications
-  ams : true // optional, Bangle.js-only, enable Apple AMS support for media control
+  ancs : true, // optional, Bangle.js-only, enable Apple ANCS support for notifications (see `NRF.ancs*`)
+  ams : true // optional, Bangle.js-only, enable Apple AMS support for media control (see `NRF.ams*`)
+  cts : true // optional, Bangle.js-only, enable Apple Current Time Service support (see `NRF.ctsReadTime`)
 });
 ```
 
@@ -1398,6 +1399,7 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
 #if ESPR_BLUETOOTH_ANCS
   bool use_ancs = false;
   bool use_ams = false;
+  bool use_cts = false;
 #endif
   JsVar *advertise = 0;
 
@@ -1409,6 +1411,7 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
 #if ESPR_BLUETOOTH_ANCS
       {"ancs", JSV_BOOLEAN, &use_ancs},
       {"ams", JSV_BOOLEAN, &use_ams},
+      {"cts", JSV_BOOLEAN, &use_cts},
 #endif
       {"advertise",  JSV_ARRAY, &advertise},
   };
@@ -1457,6 +1460,15 @@ void jswrap_ble_setServices(JsVar *data, JsVar *options) {
     if (bleStatus & BLE_AMS_INITED)
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
     jsvObjectRemoveChild(execInfo.hiddenRoot, BLE_NAME_AMS);
+  }
+  if (use_cts) {
+    if (!(bleStatus & BLE_CTS_INITED))
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, BLE_NAME_CTS, jsvNewFromBool(true));
+  } else {
+    if (bleStatus & BLE_CTS_INITED)
+      bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+    jsvObjectRemoveChild(execInfo.hiddenRoot, BLE_NAME_CTS);
   }
 #endif
 
@@ -3078,6 +3090,70 @@ void jswrap_ble_amsCommand(JsVar *id) {
   ble_ams_command(cmd);
 #endif
 }
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "ctsIsActive",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : "jswrap_ble_ctsIsActive",
+    "params" : [ ],
+    "return" : ["bool", "True if Apple Current Time Service (CTS) has been initialised and is active" ]
+}
+Check if Apple Current Time Service (CTS) is currently active on the BLE connection
+*/
+bool jswrap_ble_ctsIsActive() {
+#if ESPR_BLUETOOTH_ANCS
+  return ((bleStatus & BLE_CTS_INITED) && ble_cts_is_active());
+#else
+  return false;
+#endif
+}
+
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "CTS",
+  "params" : [["info","JsVar","An object (see below)"]],
+  "ifdef" : "BANGLEJS"
+}
+Returns time information from the Current Time Service
+(if requested with `NRF.ctsReadTime` and is activated by calling `NRF.setServices(..., {..., cts:true})`)
+
+```
+{
+  date : // Date object with the current date
+  day :  // if known, 0=sun,1=mon (matches JS `Date`)
+  reason : [ // reason for the date change
+      "external", // External time change
+      "manual",   // Manual update
+      "timezone", // Timezone changed
+      "DST",      // Daylight savings
+    ]
+}
+```
+
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "ctsReadTime",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : "jswrap_ble_ctsReadTime"
+}
+Read the time from CTS - creates an `NRF.on('CTS', ...)` event
+*/
+void jswrap_ble_ctsReadTime() {
+#if ESPR_BLUETOOTH_ANCS
+  if (!(bleStatus & BLE_CTS_INITED) || !ble_cts_is_active()) {
+    jsExceptionHere(JSET_ERROR, "CTS not active");
+    return;
+  }
+  ble_cts_read_time();
+#endif
+}
+
 
 /*TYPESCRIPT
 type NRFFilters = {

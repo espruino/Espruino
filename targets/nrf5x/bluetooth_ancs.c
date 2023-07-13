@@ -17,6 +17,7 @@
 #include "bluetooth_utils.h"
 #include "bluetooth_ancs.h"
 #include "jswrap_bluetooth.h"
+#include "jswrap_date.h"
 
 #include "app_timer.h"
 #include "nrf_ble_ancs_c.h"
@@ -34,6 +35,7 @@
 #include "nrf_soc.h"
 #include "fds.h"
 #include "nrf_delay.h"
+#include "ble_cts_c.h"
 
 //=========================
 //#define DEBUG
@@ -44,6 +46,9 @@ Serial1.setConsole(1)
 NRF.setServices({},{ancs:true,ams:true})
 NRF.setAdvertising({})
 
+E.on('CTS',a=>{
+  print("CTS", E.toJS(a));
+});
 E.on('ANCS',a=>{
   print("ANCS", E.toJS(a));
 });
@@ -103,26 +108,32 @@ NRF.amsGetPlayerInfo("playbackinfo").then(a=>{
 #define SECURITY_REQUEST_DELAY         APP_TIMER_TICKS(1500, APP_TIMER_PRESCALER)
 #define NRF_SDH_BLE_GATT_MAX_MTU_SIZE (GATT_MTU_SIZE_DEFAULT - 3)
 #else
-#define SECURITY_REQUEST_DELAY         APP_TIMER_TICKS(1500)  
-#endif  
+#define SECURITY_REQUEST_DELAY         APP_TIMER_TICKS(1500)
+#endif
 
 
 APP_TIMER_DEF(m_sec_req_timer_id);                                     /**< Security request timer. The timer lets us start pairing request if one does not arrive from the Central. */
 #if NRF_SD_BLE_API_VERSION < 5
 static ble_ancs_c_t       m_ancs_c;                                    /**< Structure used to identify the Apple Notification Service Client. */
-static ble_ams_c_t        m_ams_c;                                     /**< Structure used to identify the Apple Notification Service Client. */
+static ble_ams_c_t        m_ams_c;                                     /**< Apple Media Service Client instance. */
+static ble_cts_c_t        m_cts_c;                                     /**< Current Time service instance. */
 static ble_db_discovery_t m_ble_db_discovery;                          /**< Structure used to identify the DB Discovery module. */
 #else
 BLE_ANCS_C_DEF(m_ancs_c);                                              /**< Apple Notification Service Client instance. */
 BLE_AMS_C_DEF(m_ams_c);                                                /**< Apple Media Service Client instance. */
+BLE_CTS_C_DEF(m_cts_c);                                                /**< Current Time service instance. */
 BLE_DB_DISCOVERY_DEF(m_ble_db_discovery);                              /**< DB Discovery module instance. */
 #endif
 
 static bool m_ancs_active = false;
 static bool m_ams_active = false;
+static bool m_cts_active = false;
 static ble_ancs_c_evt_notif_t m_notification_request;                   /**< Local copy to keep track of the newest arriving notifications. */
 static ble_ancs_c_attr_t      m_notif_attr_latest;                     /**< Local copy of the newest notification attribute. */
 static ble_ancs_c_attr_t      m_notif_attr_app_id_latest;              /**< Local copy of the newest app attribute. */
+
+
+
 
 // TODO: could we use a single buffer and then just write each attribute to JsVars as we get it?
 // ANCS APP
@@ -243,6 +254,46 @@ void ble_ams_handle_attribute(BLEPending blep, char *buffer, size_t bufferLen) {
 }
 
 
+void ble_cts_handle_time(BLEPending blep, char *buffer, size_t bufferLen) {
+  NRF_LOG_DEBUG("CTS update\n");
+  current_time_char_t *p_time = (current_time_char_t*)buffer;
+
+  JsVar *o = jsvNewObject();
+  if (!o) return;
+  ble_date_time_t time = p_time->exact_time_256.day_date_time.date_time;
+  CalendarDate date;
+  date.year = time.year;
+  date.month = time.month;
+  date.day = time.day;
+  TimeInDay td;
+  td.daysSinceEpoch = fromCalenderDate(&date);
+  td.hour = time.hours;
+  td.min = time.minutes;
+  td.sec = time.seconds;
+  td.ms = (((int)p_time->exact_time_256.fractions256) * 1000) >> 8;
+  td.zone = 0; // assume no timezone?
+  jsvObjectSetChildAndUnLock(o, "date", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
+
+  int dow = p_time->exact_time_256.day_date_time.day_of_week;
+  if (dow) {
+    if (dow==7) dow=0; // sunday, match JS dates
+    jsvObjectSetChildAndUnLock(o, "day", jsvNewFromInteger(dow));
+  }
+  JsVar *arr = jsvNewEmptyArray();
+  if (p_time->adjust_reason.manual_time_update)
+    jsvArrayPushAndUnLock(arr, jsvNewFromString("manual"));
+  if (p_time->adjust_reason.external_reference_time_update)
+    jsvArrayPushAndUnLock(arr, jsvNewFromString("external"));
+  if (p_time->adjust_reason.change_of_time_zone)
+    jsvArrayPushAndUnLock(arr, jsvNewFromString("timezone"));
+  if (p_time->adjust_reason.change_of_daylight_savings_time)
+    jsvArrayPushAndUnLock(arr, jsvNewFromString("DST"));
+  jsvObjectSetChildAndUnLock(o, "reason", arr);
+
+  jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"CTS", 1, &o);
+  jsvUnLock(o);
+}
+
 void ble_ancs_clear_app_attr() {
   memset(m_attr_appname      ,0, sizeof(m_attr_appname));
 }
@@ -348,8 +399,9 @@ static void err_code_print_ancs(uint16_t err_code_np)
       default:
         break;
   }
-  if (errmsg)
+  if (errmsg) {
     NRF_LOG_INFO("Error: %s\n", errmsg);
+  }
   if (BLETASK_IS_ANCS(bleGetCurrentTask()))
     bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), errmsg?jsvNewFromString(errmsg):0);
 }
@@ -378,8 +430,9 @@ static void err_code_print_ams(uint16_t err_code_ms)
   default:
     break;
   }
-  if (errmsg)
+  if (errmsg) {
     NRF_LOG_INFO("Error: %s\n", errmsg);
+  }
 
   if (BLETASK_IS_AMS(bleGetCurrentTask()))
       bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), errmsg?jsvNewFromString(errmsg):0);
@@ -400,7 +453,7 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt) {
     case BLE_ANCS_C_EVT_DISCOVERY_COMPLETE:
       NRF_LOG_DEBUG("Apple Notification Center Service discovered on the server.\n");
       ret = nrf_ble_ancs_c_handles_assign(&m_ancs_c, p_evt->conn_handle, &p_evt->service);
-      APP_ERROR_CHECK(ret);
+      APP_ERROR_CHECK_NOT_URGENT(ret);
       apple_notification_setup();
       break;
 
@@ -430,7 +483,7 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt) {
     case BLE_ANCS_C_EVT_APP_ATTRIBUTE:
       NRF_LOG_DEBUG("ANCS app attr\n");
       // if done, push - creates an 'ANCSAPP' event
-      jsble_queue_pending_buf(BLEP_ANCS_APP_ATTR, 0, p_evt->attr.p_attr_data, p_evt->attr.attr_len);
+      jsble_queue_pending_buf(BLEP_ANCS_APP_ATTR, 0, (char*)p_evt->attr.p_attr_data, p_evt->attr.attr_len);
       break;
     case BLE_ANCS_C_EVT_NP_ERROR:
     case BLE_ANCS_C_EVT_INVALID_NOTIF:
@@ -472,11 +525,11 @@ static void on_ams_c_evt(ble_ams_c_evt_t * p_evt) {
     if (p_evt->entity_update_data.entity_id == BLE_AMS_ENTITY_ID_PLAYER) {
       jsble_queue_pending_buf(BLEP_AMS_PLAYER_UPDATE,
           p_evt->entity_update_data.attribute_id | (p_evt->entity_update_data.entity_update_flag?128:0),
-          p_evt->entity_update_data.p_entity_update_data, p_evt->entity_update_data.entity_update_data_len);
+          (char*)p_evt->entity_update_data.p_entity_update_data, p_evt->entity_update_data.entity_update_data_len);
     } else {
       jsble_queue_pending_buf(BLEP_AMS_TRACK_UPDATE,
           p_evt->entity_update_data.attribute_id | (p_evt->entity_update_data.entity_update_flag?128:0),
-          p_evt->entity_update_data.p_entity_update_data, p_evt->entity_update_data.entity_update_data_len);
+          (char*)p_evt->entity_update_data.p_entity_update_data, p_evt->entity_update_data.entity_update_data_len);
     }
     break;
 
@@ -484,7 +537,7 @@ static void on_ams_c_evt(ble_ams_c_evt_t * p_evt) {
     NRF_LOG_INFO("BLE_AMS_C_EVT_ENTITY_ATTRIBUTE_READ_RESP\n");
     jsble_queue_pending_buf(BLEP_AMS_ATTRIBUTE,
             0,
-            p_evt->entity_attribute_data.p_entity_attribute_data, p_evt->entity_attribute_data.attribute_len);
+            (char*)p_evt->entity_attribute_data.p_entity_attribute_data, p_evt->entity_attribute_data.attribute_len);
     /* TODO: deal with very long track names:
     if (p_evt->entity_attribute_data.attribute_len
         < (NRF_SDH_BLE_GATT_MAX_MTU_SIZE - 3)) {
@@ -512,6 +565,51 @@ static void on_ams_c_evt(ble_ams_c_evt_t * p_evt) {
     // No implementation needed.
     break;
   }
+}
+
+static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
+{
+  ret_code_t err_code;
+  switch (p_evt->evt_type) {
+    case BLE_CTS_C_EVT_DISCOVERY_COMPLETE:
+      NRF_LOG_INFO("CTS discovered on server.\n");
+      err_code = ble_cts_c_handles_assign(&m_cts_c,
+                                          p_evt->conn_handle,
+                                          &p_evt->params.char_handles);
+      APP_ERROR_CHECK_NOT_URGENT(err_code);
+      m_cts_active = true;
+      ble_cts_c_current_time_read(&m_cts_c); // now it's discovered, ask for time
+      break;
+
+    case BLE_CTS_C_EVT_DISCOVERY_FAILED:
+      m_cts_active = false;
+      NRF_LOG_INFO("CTS not found on server.\n");
+      break;
+
+    case BLE_CTS_C_EVT_DISCONN_COMPLETE:
+      m_cts_active = false;
+      NRF_LOG_INFO("Disconnect Complete.\n");
+      break;
+
+    case BLE_CTS_C_EVT_CURRENT_TIME:
+      NRF_LOG_INFO("CTS Time received.\n");
+      jsble_queue_pending_buf(BLEP_CTS_TIME,
+          0,
+          (char*)&p_evt->params.current_time, sizeof(p_evt->params.current_time));
+      //current_time_print(p_evt);
+      break;
+
+    case BLE_CTS_C_EVT_INVALID_TIME:
+      NRF_LOG_INFO("CTS Invalid Time received.\n");
+      break;
+
+    default:
+      break;
+  }
+}
+
+static void current_time_error_handler(uint32_t nrf_error) {
+    APP_ERROR_HANDLER(nrf_error);
 }
 
 /**@brief Function for handling the Apple Notification Service client errors.
@@ -543,133 +641,145 @@ static void apple_media_error_handler(uint32_t nrf_error)
 void ble_ancs_on_ble_evt(const ble_evt_t * p_ble_evt)
 {
 #if NRF_SD_BLE_API_VERSION < 5
-    ble_db_discovery_on_ble_evt(&m_ble_db_discovery, p_ble_evt);
-    ble_ancs_c_on_ble_evt(&m_ancs_c, p_ble_evt);
-    ble_ams_c_on_ble_evt(p_ble_evt, &m_ancs_c);
+  ble_db_discovery_on_ble_evt(&m_ble_db_discovery, p_ble_evt);
+  ble_ancs_c_on_ble_evt(&m_ancs_c, p_ble_evt);
+  ble_ams_c_on_ble_evt(p_ble_evt, &m_ancs_c);
+  ble_cts_c_on_ble_evt(p_ble_evt, &m_cts_c);
 #endif
 
-    ret_code_t ret = NRF_SUCCESS;
+  ret_code_t ret = NRF_SUCCESS;
 
-    switch (p_ble_evt->header.evt_id)
-    {
-        case BLE_GAP_EVT_CONNECTED:
-            NRF_LOG_INFO("Connected.\n");
-            ret               = app_timer_start(m_sec_req_timer_id, SECURITY_REQUEST_DELAY, NULL);
-            APP_ERROR_CHECK_NOT_URGENT(ret);
-            break; // BLE_GAP_EVT_CONNECTED
+  switch (p_ble_evt->header.evt_id) {
+    case BLE_GAP_EVT_CONNECTED:
+      NRF_LOG_INFO("Connected.\n");
+      ret               = app_timer_start(m_sec_req_timer_id, SECURITY_REQUEST_DELAY, NULL);
+      APP_ERROR_CHECK_NOT_URGENT(ret);
+      break; // BLE_GAP_EVT_CONNECTED
 
-        case BLE_GAP_EVT_DISCONNECTED:
-            NRF_LOG_INFO("Disconnected.\n");
-            ret               = app_timer_stop(m_sec_req_timer_id);
-            APP_ERROR_CHECK_NOT_URGENT(ret);
-            if ((bleStatus & BLE_ANCS_INITED) && p_ble_evt->evt.gap_evt.conn_handle == m_ancs_c.conn_handle) {
-                m_ancs_c.conn_handle = BLE_CONN_HANDLE_INVALID;
-            }
-            if ((bleStatus & BLE_AMS_INITED) && p_ble_evt->evt.gap_evt.conn_handle == m_ams_c.conn_handle) {
-                m_ams_c.conn_handle = BLE_CONN_HANDLE_INVALID;
-            }
-            m_ancs_active = false;
-            m_ams_active = false;
-            if (BLETASK_IS_ANCS(bleGetCurrentTask()))
-                bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Disconnected"));
-            break; // BLE_GAP_EVT_DISCONNECTED
-        default:
-            // No implementation needed.
-            break;
-    }
+  case BLE_GAP_EVT_DISCONNECTED:
+      NRF_LOG_INFO("Disconnected.\n");
+      ret               = app_timer_stop(m_sec_req_timer_id);
+      APP_ERROR_CHECK_NOT_URGENT(ret);
+      if ((bleStatus & BLE_ANCS_INITED) && p_ble_evt->evt.gap_evt.conn_handle == m_ancs_c.conn_handle) {
+        m_ancs_c.conn_handle = BLE_CONN_HANDLE_INVALID;
+      }
+      if ((bleStatus & BLE_AMS_INITED) && p_ble_evt->evt.gap_evt.conn_handle == m_ams_c.conn_handle) {
+        m_ams_c.conn_handle = BLE_CONN_HANDLE_INVALID;
+      }
+      if ((bleStatus & BLE_CTS_INITED) && p_ble_evt->evt.gap_evt.conn_handle == m_cts_c.conn_handle) {
+        m_cts_c.conn_handle = BLE_CONN_HANDLE_INVALID;
+      }
+      m_ancs_active = false;
+      m_ams_active = false;
+      if (BLETASK_IS_ANCS(bleGetCurrentTask()))
+        bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Disconnected"));
+      break; // BLE_GAP_EVT_DISCONNECTED
+    default:
+      // No implementation needed.
+      break;
+  }
 }
 
 
 /**@brief Function for initializing the Apple Notification Center Service.
  */
 static void services_init(void) {
-    ret_code_t        ret;
+  ret_code_t        ret;
 
-    ble_ancs_clear_attr();
-    ble_ancs_clear_app_attr();
+  ble_ancs_clear_attr();
+  ble_ancs_clear_app_attr();
 
-    if (bleStatus & BLE_ANCS_INITED) {
-      ble_ancs_c_init_t ancs_init_obj;
-      memset(&ancs_init_obj, 0, sizeof(ancs_init_obj));
+  if (bleStatus & BLE_ANCS_INITED) {
+    ble_ancs_c_init_t ancs_init_obj;
+    memset(&ancs_init_obj, 0, sizeof(ancs_init_obj));
 
-      ret = nrf_ble_ancs_c_app_attr_add(&m_ancs_c,
-                                    BLE_ANCS_APP_ATTR_ID_DISPLAY_NAME,
-                                    (uint8_t*)m_attr_appname,
-                                    sizeof(m_attr_appname));
-      APP_ERROR_CHECK(ret);
+    ret = nrf_ble_ancs_c_app_attr_add(&m_ancs_c,
+                                  BLE_ANCS_APP_ATTR_ID_DISPLAY_NAME,
+                                  (uint8_t*)m_attr_appname,
+                                  sizeof(m_attr_appname));
+    APP_ERROR_CHECK(ret);
 
-      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                    BLE_ANCS_NOTIF_ATTR_ID_APP_IDENTIFIER,
-                                    (uint8_t*)m_attr_appid,
-                                    sizeof(m_attr_appid));
-      APP_ERROR_CHECK(ret);
+    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                  BLE_ANCS_NOTIF_ATTR_ID_APP_IDENTIFIER,
+                                  (uint8_t*)m_attr_appid,
+                                  sizeof(m_attr_appid));
+    APP_ERROR_CHECK(ret);
 
-      // ret = nrf_ble_ancs_c_app_attr_add(&m_ancs_c,
-      //                                   BLE_ANCS_APP_ATTR_ID_DISPLAY_NAME,
-      //                                   (uint8_t*)m_attr_disp_name,
-      //                                   sizeof(m_attr_disp_name));
-      // APP_ERROR_CHECK(ret);
+    // ret = nrf_ble_ancs_c_app_attr_add(&m_ancs_c,
+    //                                   BLE_ANCS_APP_ATTR_ID_DISPLAY_NAME,
+    //                                   (uint8_t*)m_attr_disp_name,
+    //                                   sizeof(m_attr_disp_name));
+    // APP_ERROR_CHECK(ret);
 
-      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                    BLE_ANCS_NOTIF_ATTR_ID_TITLE,
-                                    (uint8_t*)m_attr_title,
-                                    sizeof(m_attr_title));
-      APP_ERROR_CHECK(ret);
+    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                  BLE_ANCS_NOTIF_ATTR_ID_TITLE,
+                                  (uint8_t*)m_attr_title,
+                                  sizeof(m_attr_title));
+    APP_ERROR_CHECK(ret);
 
-      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                    BLE_ANCS_NOTIF_ATTR_ID_MESSAGE,
-                                    (uint8_t*)m_attr_message,
-                                    sizeof(m_attr_message));
-      APP_ERROR_CHECK(ret);
+    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                  BLE_ANCS_NOTIF_ATTR_ID_MESSAGE,
+                                  (uint8_t*)m_attr_message,
+                                  sizeof(m_attr_message));
+    APP_ERROR_CHECK(ret);
 
-      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                    BLE_ANCS_NOTIF_ATTR_ID_SUBTITLE,
-                                    (uint8_t*)m_attr_subtitle,
-                                    sizeof(m_attr_subtitle));
-      APP_ERROR_CHECK(ret);
+    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                  BLE_ANCS_NOTIF_ATTR_ID_SUBTITLE,
+                                  (uint8_t*)m_attr_subtitle,
+                                  sizeof(m_attr_subtitle));
+    APP_ERROR_CHECK(ret);
 
-      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                    BLE_ANCS_NOTIF_ATTR_ID_MESSAGE_SIZE,
-                                    (uint8_t*)m_attr_message_size,
-                                    sizeof(m_attr_message_size));
-      APP_ERROR_CHECK(ret);
+    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                  BLE_ANCS_NOTIF_ATTR_ID_MESSAGE_SIZE,
+                                  (uint8_t*)m_attr_message_size,
+                                  sizeof(m_attr_message_size));
+    APP_ERROR_CHECK(ret);
 
-      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                    BLE_ANCS_NOTIF_ATTR_ID_DATE,
-                                    (uint8_t*)m_attr_date,
-                                    sizeof(m_attr_date));
-      APP_ERROR_CHECK(ret);
+    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                  BLE_ANCS_NOTIF_ATTR_ID_DATE,
+                                  (uint8_t*)m_attr_date,
+                                  sizeof(m_attr_date));
+    APP_ERROR_CHECK(ret);
 
-      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                    BLE_ANCS_NOTIF_ATTR_ID_POSITIVE_ACTION_LABEL,
-                                    (uint8_t*)m_attr_posaction,
-                                    sizeof(m_attr_posaction));
-      APP_ERROR_CHECK(ret);
+    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                  BLE_ANCS_NOTIF_ATTR_ID_POSITIVE_ACTION_LABEL,
+                                  (uint8_t*)m_attr_posaction,
+                                  sizeof(m_attr_posaction));
+    APP_ERROR_CHECK(ret);
 
-      ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
-                                    BLE_ANCS_NOTIF_ATTR_ID_NEGATIVE_ACTION_LABEL,
-                                    (uint8_t*)m_attr_negaction,
-                                    sizeof(m_attr_negaction));
-      APP_ERROR_CHECK(ret);
+    ret = nrf_ble_ancs_c_attr_add(&m_ancs_c,
+                                  BLE_ANCS_NOTIF_ATTR_ID_NEGATIVE_ACTION_LABEL,
+                                  (uint8_t*)m_attr_negaction,
+                                  sizeof(m_attr_negaction));
+    APP_ERROR_CHECK(ret);
 
-      ancs_init_obj.evt_handler   = on_ancs_c_evt;
-      ancs_init_obj.error_handler = apple_notification_error_handler;
+    ancs_init_obj.evt_handler   = on_ancs_c_evt;
+    ancs_init_obj.error_handler = apple_notification_error_handler;
 
-      ret = ble_ancs_c_init(&m_ancs_c, &ancs_init_obj);
-      APP_ERROR_CHECK(ret);
-    }
+    ret = ble_ancs_c_init(&m_ancs_c, &ancs_init_obj);
+    APP_ERROR_CHECK(ret);
+  }
 
-    if (bleStatus & BLE_AMS_INITED) {
-      ble_ams_c_init_t ams_c_init;
-      // Init the Apple Media Service client module.
-      memset(&ams_c_init, 0, sizeof(ams_c_init));
+  if (bleStatus & BLE_AMS_INITED) {
+    ble_ams_c_init_t ams_c_init;
+    // Init the Apple Media Service client module.
+    memset(&ams_c_init, 0, sizeof(ams_c_init));
 
-      ams_c_init.evt_handler   = on_ams_c_evt;
-      ams_c_init.error_handler = apple_media_error_handler;
+    ams_c_init.evt_handler   = on_ams_c_evt;
+    ams_c_init.error_handler = apple_media_error_handler;
 
-      ret = ble_ams_c_init(&m_ams_c, &ams_c_init);
-      APP_ERROR_CHECK(ret);
-    }
+    ret = ble_ams_c_init(&m_ams_c, &ams_c_init);
+    APP_ERROR_CHECK(ret);
+  }
+
+  if (bleStatus & BLE_CTS_INITED) {
+    ble_cts_c_init_t   cts_init;
+    memset(&cts_init, 0, sizeof(cts_init));
+    cts_init.evt_handler   = on_cts_c_evt;
+    cts_init.error_handler = current_time_error_handler;
+    ret = ble_cts_c_init(&m_cts_c, &cts_init);
+    APP_ERROR_CHECK(ret);
+  }
 }
 
 
@@ -688,6 +798,8 @@ static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
     ble_ancs_c_on_db_disc_evt(&m_ancs_c, p_evt);
   if (bleStatus & BLE_AMS_INITED)
     ble_ams_c_on_db_disc_evt(&m_ams_c, p_evt);
+  if (bleStatus & BLE_CTS_INITED)
+    ble_cts_c_on_db_disc_evt(&m_cts_c, p_evt);
 }
 
 /**@brief Function for handling the security request timer time-out.
@@ -746,17 +858,19 @@ bool ble_ams_is_active() {
   return m_ams_active;
 }
 
+bool ble_cts_is_active() {
+  return m_cts_active;
+}
 
 void ble_ancs_get_adv_uuid(ble_uuid_t *p_adv_uuids) {
   // bool useANCS = bleStatus & BLE_ANCS_INITED;
   // p_adv_uuids[0].uuid = useANCS ? 0xF431/*ANCS_UUID_SERVICE*/ : 0x502B/*AMS_UUID_SERVICE*/;
   // p_adv_uuids[0].type = useANCS ? m_ancs_c.service.service.uuid.type : m_ams_c.service.service.uuid.type;
-  
+
   // Current Time Service has 16-bit UUID 0x1805, and soliciting for this (rather than the 128-bit ANCS UUID)
   // is enough to cause the device to show up in a scan on iOS's Bluetooth settings page
-  p_adv_uuids[0].uuid = 0x1805; 
+  p_adv_uuids[0].uuid = 0x1805;
   p_adv_uuids[0].type = BLE_UUID_TYPE_BLE;
-
 }
 
 /// Perform the given action for the current notification (positive/negative)
@@ -821,4 +935,16 @@ bool ble_ams_command(ble_ams_c_remote_control_id_val_t cmd) {
   ret_code_t ret = ble_ams_c_remote_command_write(&m_ams_c, cmd);
   jsble_check_error(ret);
   return ret==0;
+}
+
+
+
+// Read time using CTS service
+void ble_cts_read_time() {
+  if (m_cts_c.conn_handle != BLE_CONN_HANDLE_INVALID) {
+    uint32_t err_code = ble_cts_c_current_time_read(&m_cts_c);
+    if (err_code == NRF_ERROR_NOT_FOUND) {
+        NRF_LOG_INFO("Current Time Service is not discovered.");
+    }
+  }
 }

@@ -464,6 +464,7 @@ ifndef BOOTLOADER
 ifdef ESPR_BLUETOOTH_ANCS
 DEFINES += -DESPR_BLUETOOTH_ANCS=1
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c
+INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_cts_c
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_db_discovery
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common
 INCLUDE += -I$(ROOT)/targets/nrf5x/ble_ams_c
@@ -475,8 +476,9 @@ TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_attr_parser.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_tx_buffer.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/nrf_ble_ancs_c.c \
-  $(NRF5X_SDK_PATH)/components/ble/ble_db_discovery/ble_db_discovery.c
-endif
+  $(NRF5X_SDK_PATH)/components/ble/ble_db_discovery/ble_db_discovery.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_cts_c/ble_cts_c.c
+endif # ESPR_BLUETOOTH_ANCS
 endif
 
 # ==============================================================

@@ -36,6 +36,7 @@
 #if ESPR_BLUETOOTH_ANCS
 #define BLE_NAME_ANCS                   "BLE_ANCS"
 #define BLE_NAME_AMS                    "BLE_AMS"
+#define BLE_NAME_CTS                    "BLE_CTS"
 #endif
 
 typedef enum {

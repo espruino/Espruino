@@ -130,6 +130,8 @@ bool jswrap_ble_amsIsActive();
 JsVar *jswrap_ble_amsGetPlayerInfo(JsVar *id);
 JsVar *jswrap_ble_amsGetTrackInfo(JsVar *id);
 void jswrap_ble_amsCommand(JsVar *id);
+bool jswrap_ble_ctsIsActive();
+void jswrap_ble_ctsReadTime();
 
 JsVar *jswrap_ble_requestDevice(JsVar *options);
 JsVar *jswrap_ble_connect(JsVar *mac, JsVar *options);

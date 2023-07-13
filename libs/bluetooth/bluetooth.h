@@ -125,13 +125,14 @@ typedef enum  {
 #ifdef ESPR_BLUETOOTH_ANCS
   BLE_ANCS_INITED = 1<<16,   //< Apple Notification Centre enabled
   BLE_AMS_INITED = 1<<17,   //< Apple Media Service enabled
-  BLE_ANCS_OR_AMS_INITED = BLE_ANCS_INITED|BLE_AMS_INITED, //< Apple Notifications or Media Service enabled
+  BLE_CTS_INITED = 1<<18,   //< Apple Notification Centre enabled
+  BLE_ANCS_AMS_OR_CTS_INITED = BLE_ANCS_INITED|BLE_AMS_INITED|BLE_CTS_INITED, //< Apple Notifications or Media Service enabled
 #endif
 #ifndef SAVE_ON_FLASH
-  BLE_ADVERTISE_WHEN_CONNECTED = 1<<18, // Do we keep advertising when we're connected?
+  BLE_ADVERTISE_WHEN_CONNECTED = 1<<19, // Do we keep advertising when we're connected?
 #endif
-  BLE_IS_ADVERTISING_MULTIPLE = 1<<19, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_SHIFT = 20,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_IS_ADVERTISING_MULTIPLE = 1<<20, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_SHIFT = 21,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_ONE = 1 << BLE_ADVERTISING_MULTIPLE_SHIFT,
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 
@@ -194,7 +195,8 @@ typedef enum {
   BLEP_ANCS_ERROR,                  //< Apple Notification Centre error - cancel any active tasks
   BLEP_AMS_TRACK_UPDATE,            //< Apple Media Service Track info updated
   BLEP_AMS_PLAYER_UPDATE,           //< Apple Media Service Player info updated
-  BLEP_AMS_ATTRIBUTE                //< Apple Media Service Track or Player info read response
+  BLEP_AMS_ATTRIBUTE,               //< Apple Media Service Track or Player info read response
+  BLEP_CTS_TIME                     //< Apple Current Time Service data (data = current_time_char_t)
 #endif
 } BLEPending;
 

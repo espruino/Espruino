@@ -1,0 +1,38 @@
+--- targetlibs/nrf5x_15x/components/ble/ble_services/ble_cts_c/ble_cts_c.c	2023-07-13 16:10:04.676442538 +0100
++++ targetlibs/nrf5x_15/components/ble/ble_services/ble_cts_c/ble_cts_c.c	2023-07-13 16:10:01.148426070 +0100
+@@ -70,7 +70,7 @@
+  */
+ void ble_cts_c_on_db_disc_evt(ble_cts_c_t * p_cts, ble_db_discovery_evt_t * p_evt)
+ {
+-    NRF_LOG_DEBUG("Database Discovery handler called with event 0x%x", p_evt->evt_type);
++    NRF_LOG_DEBUG("ble_cts_c_on_db_disc_evt 0x%x", p_evt->evt_type);
+ 
+     ble_cts_c_evt_t evt;
+     const ble_gatt_db_char_t * p_chars = p_evt->params.discovered_db.charateristics;
+@@ -240,6 +240,7 @@
+ {
+     ble_cts_c_evt_t evt;
+     uint32_t        err_code = NRF_SUCCESS;
++    const ble_gattc_evt_read_rsp_t * p_response = &p_ble_evt->evt.gattc_evt.params.read_rsp;
+ 
+     // Check if the event is on the same connection as this cts instance
+     if (p_cts->conn_handle != p_ble_evt->evt.gattc_evt.conn_handle)
+@@ -247,7 +248,8 @@
+         return;
+     }
+ 
+-    if (p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS)
++    if ((p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) &&
++        (p_response->handle == p_cts->char_handles.cts_handle))
+     {
+         err_code = current_time_decode(&evt.params.current_time,
+                                        p_ble_evt->evt.gattc_evt.params.read_rsp.data,
+@@ -309,7 +311,7 @@
+ void ble_cts_c_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
+ {
+     ble_cts_c_t * p_cts = (ble_cts_c_t *)p_context;
+-    NRF_LOG_DEBUG("BLE event handler called with event 0x%x", p_ble_evt->header.evt_id);
++    //NRF_LOG_DEBUG("CTS event 0x%x", p_ble_evt->header.evt_id);
+ 
+     switch (p_ble_evt->header.evt_id)
+     {
