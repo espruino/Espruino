@@ -578,7 +578,6 @@ static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
                                           &p_evt->params.char_handles);
       APP_ERROR_CHECK_NOT_URGENT(err_code);
       m_cts_active = true;
-      ble_cts_c_current_time_read(&m_cts_c); // now it's discovered, ask for time
       break;
 
     case BLE_CTS_C_EVT_DISCOVERY_FAILED:

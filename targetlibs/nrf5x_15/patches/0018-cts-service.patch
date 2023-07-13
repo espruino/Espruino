@@ -1,5 +1,5 @@
---- targetlibs/nrf5x_15x/components/ble/ble_services/ble_cts_c/ble_cts_c.c	2023-07-13 16:10:04.676442538 +0100
-+++ targetlibs/nrf5x_15/components/ble/ble_services/ble_cts_c/ble_cts_c.c	2023-07-13 16:10:01.148426070 +0100
+--- a/targetlibs/nrf5x_15/components/ble/ble_services/ble_cts_c/ble_cts_c.c	2023-07-13 16:10:04.676442538 +0100
++++ b/targetlibs/nrf5x_15/components/ble/ble_services/ble_cts_c/ble_cts_c.c	2023-07-13 16:10:01.148426070 +0100
 @@ -70,7 +70,7 @@
   */
  void ble_cts_c_on_db_disc_evt(ble_cts_c_t * p_cts, ble_db_discovery_evt_t * p_evt)

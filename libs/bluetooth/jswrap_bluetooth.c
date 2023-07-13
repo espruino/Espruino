@@ -3133,6 +3133,14 @@ Returns time information from the Current Time Service
 }
 ```
 
+For instance this can be used as follows to update Espruino's time:
+
+```
+E.on('CTS',e=>{
+  setTime(e.date.getTime()/1000);
+});
+NRF.ctsReadTime();
+```
 */
 
 /*JSON{
