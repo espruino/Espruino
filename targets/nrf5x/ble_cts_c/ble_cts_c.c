@@ -43,6 +43,9 @@ THIS IS A MODIFIED VERSION OF ble_cts_c.c FROM SDK 15.0.0
 
 Modified by Gordon Williams (gw@pur3.co.uk), 2023
 
+* Added Local Time service
+* Subscribe for notifications
+
 */
 #include "sdk_common.h"
 #if NRF_MODULE_ENABLED(BLE_CTS_C)
@@ -62,7 +65,9 @@ NRF_LOG_MODULE_REGISTER();
 
 #define CTS_C_CURRENT_TIME_EXPECTED_LENGTH 10 /**< |     Year        |Month   |Day     |Hours   |Minutes |Seconds |Weekday |Fraction|Reason  |
                                                    |     2 bytes     |1 byte  |1 byte  |1 byte  |1 byte  |1 byte  |1 byte  |1 byte  |1 byte  | = 10 bytes. */
+#define LTI_C_CURRENT_TIME_EXPECTED_LENGTH 2
 
+#define BLE_CCCD_NOTIFY_BIT_MASK         0x0001 /**< Enable notification bit. */
 
 /**@brief Function for handling events from the database discovery module.
  *
@@ -88,24 +93,21 @@ void ble_cts_c_on_db_disc_evt(ble_cts_c_t * p_cts, ble_db_discovery_evt_t * p_ev
     // Check if the Current Time Service was discovered.
     if (   (p_evt->evt_type == BLE_DB_DISCOVERY_COMPLETE)
         && (p_evt->params.discovered_db.srv_uuid.uuid == BLE_UUID_CURRENT_TIME_SERVICE)
-        && (p_evt->params.discovered_db.srv_uuid.type == BLE_UUID_TYPE_BLE))
-    {
-        for (uint32_t i = 0; i < p_evt->params.discovered_db.char_count; i++)
-          NRF_LOG_INFO("CTS ch %04x\n", p_evt->params.discovered_db.charateristics[i].characteristic.uuid.uuid);
+        && (p_evt->params.discovered_db.srv_uuid.type == BLE_UUID_TYPE_BLE)) {
         // Find the handles of the Current Time characteristic.
-        for (uint32_t i = 0; i < p_evt->params.discovered_db.char_count; i++)
-        {
-            if (p_evt->params.discovered_db.charateristics[i].characteristic.uuid.uuid ==
-                BLE_UUID_CURRENT_TIME_CHAR)
-            {
-                // Found Current Time characteristic. Store CCCD and value handle and break.
-                evt.params.char_handles.cts_handle      = p_chars->characteristic.handle_value;
-                evt.params.char_handles.cts_cccd_handle = p_chars->cccd_handle;
+        for (uint32_t i = 0; i < p_evt->params.discovered_db.char_count; i++) {
+            if (p_chars[i].characteristic.uuid.uuid == BLE_UUID_CURRENT_TIME_CHAR) {
+                // Found Current Time characteristic. Store CCCD and value handle
+                NRF_LOG_INFO("Current Time Service discovered.");
+                evt.params.char_handles.cts_handle      = p_chars[i].characteristic.handle_value;
+                evt.params.char_handles.cts_cccd_handle = p_chars[i].cccd_handle;
             }
-            // BLE_UUID_LOCAL_TIME_INFORMATION_CHAR is also available
+            if (p_chars[i].characteristic.uuid.uuid == BLE_UUID_LOCAL_TIME_INFORMATION_CHAR) {
+                // Found Local Time Information characteristic. Store CCCD and value handle
+                NRF_LOG_INFO("Local Time Info Service discovered.");
+                evt.params.char_handles.lti_handle      = p_chars[i].characteristic.handle_value;
+            }
         }
-
-        NRF_LOG_INFO("Current Time Service discovered at peer.");
 
         evt.evt_type    = BLE_CTS_C_EVT_DISCOVERY_COMPLETE;
     }
@@ -130,6 +132,7 @@ uint32_t ble_cts_c_init(ble_cts_c_t * p_cts, ble_cts_c_init_t const * p_cts_init
     p_cts->conn_handle                  = BLE_CONN_HANDLE_INVALID;
     p_cts->char_handles.cts_handle      = BLE_GATT_HANDLE_INVALID;
     p_cts->char_handles.cts_cccd_handle = BLE_GATT_HANDLE_INVALID;
+    p_cts->char_handles.lti_handle      = BLE_GATT_HANDLE_INVALID;
 
     return ble_db_discovery_evt_register(&cts_uuid);
 }
@@ -148,16 +151,14 @@ static uint32_t current_time_decode(current_time_char_t * p_time,
                                     uint8_t const       * p_data,
                                     uint32_t const        length)
 {
-    //lint -save -e415 -e416 "Access of out of bounds pointer" "Creation of out of bounds pointer"
+    NRF_LOG_DEBUG("Current Time data:");
+    NRF_LOG_HEXDUMP_DEBUG(p_data, length);
 
     if (length != CTS_C_CURRENT_TIME_EXPECTED_LENGTH)
     {
         // Return to prevent accessing out of bounds data.
         return NRF_ERROR_DATA_SIZE;
     }
-
-    NRF_LOG_DEBUG("Current Time read response data:");
-    NRF_LOG_HEXDUMP_DEBUG(p_data, 10);
 
     uint32_t index = 0;
 
@@ -238,6 +239,46 @@ static uint32_t current_time_validate(current_time_char_t * p_time)
 }
 
 
+static void parse_current_time(ble_cts_c_t * p_cts, const uint8_t *data, uint32_t length) {
+  ble_cts_c_evt_t evt;
+  uint32_t err_code = NRF_SUCCESS;
+  err_code = current_time_decode(&evt.params.current_time, data, length);
+
+  if (err_code != NRF_SUCCESS)
+  {
+    // The data length was invalid, decoding was not completed.
+    evt.evt_type = BLE_CTS_C_EVT_INVALID_TIME;
+  } else {
+    // Verify That the time is valid.
+    err_code = current_time_validate(&evt.params.current_time);
+
+    if (err_code != NRF_SUCCESS)
+    {
+      // Invalid time received.
+      evt.evt_type = BLE_CTS_C_EVT_INVALID_TIME;
+    }
+    else
+    {
+      // Valid time reveiced.
+      evt.evt_type = BLE_CTS_C_EVT_CURRENT_TIME;
+    }
+  }
+  p_cts->evt_handler(p_cts, &evt);
+}
+
+static void parse_local_time(ble_cts_c_t * p_cts, const uint8_t *data, uint32_t length) {
+  ble_cts_c_evt_t evt;
+
+    NRF_LOG_DEBUG("Local Time data:");
+    NRF_LOG_HEXDUMP_DEBUG(data, length);
+
+  if (length!=2) return;
+  evt.params.local_time.timeZone = (int8_t)data[0];
+  evt.params.local_time.dst = data[1];
+  evt.evt_type = BLE_CTS_C_EVT_LOCAL_TIME;
+  p_cts->evt_handler(p_cts, &evt);
+}
+
 /**@brief Function for reading the current time. The time is decoded, then it is validated.
  *        Depending on the outcome the cts event handler will be called with
  *        the current time event or an invalid time event.
@@ -245,48 +286,39 @@ static uint32_t current_time_validate(current_time_char_t * p_time)
  * @param[in] p_cts      Current Time Service client structure.
  * @param[in] p_ble_evt  Event received from the BLE stack.
  */
-static void current_time_read(ble_cts_c_t * p_cts, ble_evt_t const * p_ble_evt)
-{
-    ble_cts_c_evt_t evt;
-    uint32_t        err_code = NRF_SUCCESS;
-    const ble_gattc_evt_read_rsp_t * p_response = &p_ble_evt->evt.gattc_evt.params.read_rsp;
+static void on_read_rsp(ble_cts_c_t * p_cts, ble_evt_t const * p_ble_evt) {
+  const ble_gattc_evt_read_rsp_t * p_response = &p_ble_evt->evt.gattc_evt.params.read_rsp;
 
-    // Check if the event is on the same connection as this cts instance
-    if (p_cts->conn_handle != p_ble_evt->evt.gattc_evt.conn_handle)
-    {
-        return;
-    }
+  // Check if the event is on the same connection as this cts instance
+  if (p_cts->conn_handle != p_ble_evt->evt.gattc_evt.conn_handle)
+    return;
 
-    if ((p_ble_evt->evt.gattc_evt.gatt_status == BLE_GATT_STATUS_SUCCESS) &&
-        (p_response->handle == p_cts->char_handles.cts_handle))
-    {
-        err_code = current_time_decode(&evt.params.current_time,
-                                       p_ble_evt->evt.gattc_evt.params.read_rsp.data,
-                                       p_ble_evt->evt.gattc_evt.params.read_rsp.len);
+  if (p_ble_evt->evt.gattc_evt.gatt_status != BLE_GATT_STATUS_SUCCESS)
+    return;
 
-        if (err_code != NRF_SUCCESS)
-        {
-            // The data length was invalid, decoding was not completed.
-            evt.evt_type = BLE_CTS_C_EVT_INVALID_TIME;
-        }
-        else
-        {
-            // Verify That the time is valid.
-            err_code = current_time_validate(&evt.params.current_time);
+  if (p_response->handle == p_cts->char_handles.cts_handle) {
+    parse_current_time(p_cts,
+                        p_response->data,
+                        p_response->len);
+  } else if (p_response->handle == p_cts->char_handles.lti_handle) {
+    parse_local_time(p_cts,
+                        p_response->data,
+                        p_response->len);
+  }
+}
 
-            if (err_code != NRF_SUCCESS)
-            {
-                // Invalid time received.
-                evt.evt_type = BLE_CTS_C_EVT_INVALID_TIME;
-            }
-            else
-            {
-                // Valid time reveiced.
-                evt.evt_type = BLE_CTS_C_EVT_CURRENT_TIME;
-            }
-        }
-        p_cts->evt_handler(p_cts, &evt);
-    }
+/* Function for receiving and validating notifications received from the CTS */
+static void on_evt_gattc_notif(ble_cts_c_t * p_cts, ble_evt_t const * p_ble_evt) {
+  const ble_gattc_evt_hvx_t * p_notif = &p_ble_evt->evt.gattc_evt.params.hvx;
+
+  if(p_ble_evt->evt.gattc_evt.conn_handle != p_cts->conn_handle)
+    return;
+
+  if(p_notif->handle == p_cts->char_handles.cts_handle) {
+    parse_current_time(p_cts,
+                      p_notif->data,
+                      p_notif->len);
+  }
 }
 
 
@@ -324,8 +356,12 @@ void ble_cts_c_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
 
     switch (p_ble_evt->header.evt_id)
     {
+        case BLE_GATTC_EVT_HVX:
+            on_evt_gattc_notif(p_cts, p_ble_evt);
+            break;
+
         case BLE_GATTC_EVT_READ_RSP:
-            current_time_read(p_cts, p_ble_evt);
+            on_read_rsp(p_cts, p_ble_evt);
             break;
 
         case BLE_GAP_EVT_DISCONNECTED:
@@ -339,30 +375,58 @@ void ble_cts_c_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context)
 }
 
 
-uint32_t ble_cts_c_current_time_read(ble_cts_c_t const * p_cts)
-{
-    if (!ble_cts_c_is_cts_discovered(p_cts))
-    {
-        return NRF_ERROR_NOT_FOUND;
-    }
-
-    return sd_ble_gattc_read(p_cts->conn_handle, p_cts->char_handles.cts_handle, 0);
+uint32_t ble_cts_c_current_time_read(ble_cts_c_t const * p_cts) {
+  if (!ble_cts_c_is_cts_discovered(p_cts))
+    return NRF_ERROR_NOT_FOUND;
+  return sd_ble_gattc_read(p_cts->conn_handle, p_cts->char_handles.cts_handle, 0);
 }
 
+uint32_t ble_cts_c_local_time_read(ble_cts_c_t const * p_cts) {
+  if (!ble_cts_c_is_cts_discovered(p_cts) || p_cts->char_handles.lti_handle==BLE_GATT_HANDLE_INVALID)
+    return NRF_ERROR_NOT_FOUND;
+
+  return sd_ble_gattc_read(p_cts->conn_handle, p_cts->char_handles.lti_handle, 0);
+}
 
 uint32_t ble_cts_c_handles_assign(ble_cts_c_t               * p_cts,
                                   const uint16_t              conn_handle,
-                                  const ble_cts_c_handles_t * p_peer_handles)
-{
-    VERIFY_PARAM_NOT_NULL(p_cts);
+                                  const ble_cts_c_handles_t * p_peer_handles) {
+  VERIFY_PARAM_NOT_NULL(p_cts);
 
-    p_cts->conn_handle = conn_handle;
-    if (p_peer_handles != NULL)
-    {
-        p_cts->char_handles.cts_cccd_handle = p_peer_handles->cts_cccd_handle;
-        p_cts->char_handles.cts_handle = p_peer_handles->cts_handle;
-    }
+  p_cts->conn_handle = conn_handle;
+  if (p_peer_handles != NULL) {
+    p_cts->char_handles.cts_cccd_handle = p_peer_handles->cts_cccd_handle;
+    p_cts->char_handles.cts_handle = p_peer_handles->cts_handle;
+    p_cts->char_handles.lti_handle = p_peer_handles->lti_handle;
+  }
 
-    return NRF_SUCCESS;
+  return NRF_SUCCESS;
 }
+
+static uint32_t cccd_configure(const uint16_t conn_handle, const uint16_t handle_cccd, bool enable) {
+  ble_gattc_write_params_t write_params;
+  memset(&write_params, 0, sizeof(write_params));
+  uint16_t cccd_val = enable ? BLE_CCCD_NOTIFY_BIT_MASK : 0;
+  write_params.handle   = handle_cccd;
+  write_params.len      = 2;
+  write_params.p_value  = (uint8_t*)&cccd_val;
+  write_params.offset   = 0;
+  write_params.write_op = BLE_GATT_OP_WRITE_REQ;
+
+  return sd_ble_gattc_write(conn_handle,
+                            &write_params);
+
+  return NRF_SUCCESS;
+}
+
+ret_code_t ble_cts_c_notif_enable(ble_cts_c_t *p_cts) {
+  NRF_LOG_INFO("Enable CTS Update notifications");
+  return cccd_configure(p_cts->conn_handle, p_cts->char_handles.cts_cccd_handle, true);
+}
+
+
+ret_code_t ble_cts_c_notif_disable(ble_cts_c_t *p_cts) {
+  return cccd_configure(p_cts->conn_handle, p_cts->char_handles.cts_cccd_handle, false);
+}
+
 #endif // NRF_MODULE_ENABLED(BLE_CTS_C)

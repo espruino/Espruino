@@ -1232,7 +1232,7 @@ void jswrap_ble_setScanResponse(JsVar *data) {
     // only set data if we managed to decode it ok
     jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, data);
 
-  err_code=jsble_advertising_update_scanresponse((uint8_t *)respPtr, respLen);
+  err_code=jsble_advertising_update_scanresponse((char *)respPtr, respLen);
     jsble_check_error(err_code);
   } else {
     jsExceptionHere(JSET_TYPEERROR, "Expecting array-like object or undefined, got %t", data);
@@ -1341,7 +1341,7 @@ NRF.setServices(undefined, {
   advertise: [ '180D' ] // optional, list of service UUIDs to advertise
   ancs : true, // optional, Bangle.js-only, enable Apple ANCS support for notifications (see `NRF.ancs*`)
   ams : true // optional, Bangle.js-only, enable Apple AMS support for media control (see `NRF.ams*`)
-  cts : true // optional, Bangle.js-only, enable Apple Current Time Service support (see `NRF.ctsReadTime`)
+  cts : true // optional, Bangle.js-only, enable Apple Current Time Service support (see `NRF.ctsGetTime`)
 });
 ```
 
@@ -3084,7 +3084,7 @@ void jswrap_ble_amsCommand(JsVar *id) {
   else if (jsvIsStringEqual(id,"dislike")) cmd=BLE_AMS_REMOTE_COMMAND_ID_DISLIKE_TRACK;
   else if (jsvIsStringEqual(id,"bookmark")) cmd=BLE_AMS_REMOTE_COMMAND_ID_BOOKMARK_TRACK;
   else {
-    jsExceptionHere(JSET_ERROR, "Unknown command %q", cmd);
+    jsExceptionHere(JSET_ERROR, "Unknown command %q", id);
     return;
   }
   ble_ams_command(cmd);
@@ -3118,7 +3118,7 @@ bool jswrap_ble_ctsIsActive() {
   "ifdef" : "BANGLEJS"
 }
 Returns time information from the Current Time Service
-(if requested with `NRF.ctsReadTime` and is activated by calling `NRF.setServices(..., {..., cts:true})`)
+(if requested with `NRF.ctsGetTime` and is activated by calling `NRF.setServices(..., {..., cts:true})`)
 
 ```
 {
@@ -3130,6 +3130,8 @@ Returns time information from the Current Time Service
       "timezone", // Timezone changed
       "DST",      // Daylight savings
     ]
+  timeZone // if LTI characteristic exists, this is the timezone
+  dst      // if LTI characteristic exists, this is the dst adjustment
 }
 ```
 
@@ -3139,27 +3141,39 @@ For instance this can be used as follows to update Espruino's time:
 E.on('CTS',e=>{
   setTime(e.date.getTime()/1000);
 });
-NRF.ctsReadTime();
+NRF.ctsGetTime(); // also returns a promise with CTS info
 ```
 */
 
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
-    "name" : "ctsReadTime",
+    "name" : "ctsGetTime",
     "ifdef" : "NRF52_SERIES",
-    "generate" : "jswrap_ble_ctsReadTime"
+    "generate" : "jswrap_ble_ctsGetTime",
+    "return" : ["JsVar", "A `Promise` that is resolved (or rejected) when time is received" ],
+    "return_object" : "Promise"
 }
-Read the time from CTS - creates an `NRF.on('CTS', ...)` event
+Read the time from CTS - creates an `NRF.on('CTS', ...)` event as well
+
+```
+NRF.ctsGetTime(); // also returns a promise
+```
 */
-void jswrap_ble_ctsReadTime() {
+JsVar *jswrap_ble_ctsGetTime() {
+  JsVar *promise = 0;
 #if ESPR_BLUETOOTH_ANCS
   if (!(bleStatus & BLE_CTS_INITED) || !ble_cts_is_active()) {
     jsExceptionHere(JSET_ERROR, "CTS not active");
     return;
   }
-  ble_cts_read_time();
+  if (ble_cts_read_time()) { // if fails, it'll create an exception
+    if (bleNewTask(BLETASK_CTS_GET_TIME, 0)) {
+      promise = jsvLockAgainSafe(blePromise);
+    }
+  }
 #endif
+  return promise;
 }
 
 

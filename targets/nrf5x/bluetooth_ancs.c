@@ -18,6 +18,7 @@
 #include "bluetooth_ancs.h"
 #include "jswrap_bluetooth.h"
 #include "jswrap_date.h"
+#include "jstimer.h"
 
 #include "app_timer.h"
 #include "nrf_ble_ancs_c.h"
@@ -132,9 +133,6 @@ static ble_ancs_c_evt_notif_t m_notification_request;                   /**< Loc
 static ble_ancs_c_attr_t      m_notif_attr_latest;                     /**< Local copy of the newest notification attribute. */
 static ble_ancs_c_attr_t      m_notif_attr_app_id_latest;              /**< Local copy of the newest app attribute. */
 
-
-
-
 // TODO: could we use a single buffer and then just write each attribute to JsVars as we get it?
 // ANCS APP
 static char m_attr_appname[32];                         /**< Buffer to store attribute data. */
@@ -148,6 +146,16 @@ static char m_attr_date[20];                            /**< Buffer to store att
 static char m_attr_posaction[16];                       /**< Buffer to store attribute data. */
 static char m_attr_negaction[16];                       /**< Buffer to store attribute data. */
 // static char m_attr_disp_name[32];                       /**< Buffer to store attribute data. */
+
+// forward decls
+static void apple_notification_setup();
+static void apple_media_setup();
+// ----------
+
+/** Service discovered - request notifications now */
+void ble_ancs_handle_discovered() {
+  apple_notification_setup();
+}
 
 /** Handle notification event (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ancs_handle_notif(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif) {
@@ -197,6 +205,11 @@ void ble_ancs_handle_app_attr(BLEPending blep, char *buffer, size_t bufferLen) {
   jsvObjectSetChild(o, "appId", bleTaskInfo);
   jsvObjectSetChildAndUnLock(o, "appName", jsvNewStringOfLength(bufferLen, buffer));
   bleCompleteTaskSuccessAndUnLock(BLETASK_ANCS_APP_ATTR, o);
+}
+
+/** Service discovered - request notifications now */
+void ble_ams_handle_discovered() {
+  apple_media_setup();
 }
 
 /** Handle AMS track info update */
@@ -254,6 +267,12 @@ void ble_ams_handle_attribute(BLEPending blep, char *buffer, size_t bufferLen) {
 }
 
 
+/** Service discovered - request notifications now */
+void ble_cts_handle_discovered() {
+  ret_code_t err_code = ble_cts_c_notif_enable(&m_cts_c);
+  APP_ERROR_CHECK_NOT_URGENT(err_code);
+}
+
 void ble_cts_handle_time(BLEPending blep, char *buffer, size_t bufferLen) {
   NRF_LOG_DEBUG("CTS update\n");
   current_time_char_t *p_time = (current_time_char_t*)buffer;
@@ -273,6 +292,11 @@ void ble_cts_handle_time(BLEPending blep, char *buffer, size_t bufferLen) {
   td.ms = (((int)p_time->exact_time_256.fractions256) * 1000) >> 8;
   td.zone = 0; // assume no timezone?
   jsvObjectSetChildAndUnLock(o, "date", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
+  if (bufferLen==12) {
+    local_time_char_t *p_lt = (local_time_char_t*)&buffer[10];
+    jsvObjectSetChildAndUnLock(o, "timeZone", jsvNewFromFloat(p_lt->timeZone / 4.0));
+    jsvObjectSetChildAndUnLock(o, "dst", jsvNewFromFloat(p_lt->dst / 4.0));
+  }
 
   int dow = p_time->exact_time_256.day_date_time.day_of_week;
   if (dow) {
@@ -291,7 +315,13 @@ void ble_cts_handle_time(BLEPending blep, char *buffer, size_t bufferLen) {
   jsvObjectSetChildAndUnLock(o, "reason", arr);
 
   jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"CTS", 1, &o);
+  if (bleInTask(BLETASK_CTS_GET_TIME))
+    bleCompleteTaskSuccess(BLETASK_CTS_GET_TIME, o);
   jsvUnLock(o);
+}
+
+void ble_cts_handle_local_time(BLEPending blep, char *buffer, size_t bufferLen) {
+  NRF_LOG_DEBUG("CTS local update\n");
 }
 
 void ble_ancs_clear_app_attr() {
@@ -325,8 +355,6 @@ static void apple_notification_setup(void)
 {
     ret_code_t ret;
 
-    nrf_delay_ms(100); // Delay because we cannot add a CCCD to close to starting encryption. iOS specific.
-
     ret = ble_ancs_c_notif_source_notif_enable(&m_ancs_c);
     APP_ERROR_CHECK_NOT_URGENT(ret);
 
@@ -334,7 +362,7 @@ static void apple_notification_setup(void)
     APP_ERROR_CHECK_NOT_URGENT(ret);
 
     m_ancs_active = true;
-    NRF_LOG_DEBUG("Notifications Enabled.\n");
+    NRF_LOG_DEBUG("ANCS Notifications Enabled.\n");
 
 }
 
@@ -345,8 +373,6 @@ static void apple_notification_setup(void)
 static void apple_media_setup(void) {
   ret_code_t ret;
 
-  nrf_delay_ms(100); // Delay because we cannot add a CCCD to close to starting encryption. iOS specific.
-
   ret = ble_ams_c_remote_command_notif_enable(&m_ams_c);
   APP_ERROR_CHECK_NOT_URGENT(ret);
 
@@ -354,7 +380,7 @@ static void apple_media_setup(void) {
   APP_ERROR_CHECK_NOT_URGENT(ret);
 
   m_ams_active = true;
-  NRF_LOG_INFO("Apple Media-Notifications Enabled.\n");
+  NRF_LOG_INFO("AMS Notifications Enabled.\n");
 
   // Register for all EntityPlayer Attributes (Name, PlaybackInfo, Volume);
   uint8_t attribute_number = 3;
@@ -400,7 +426,7 @@ static void err_code_print_ancs(uint16_t err_code_np)
         break;
   }
   if (errmsg) {
-    NRF_LOG_INFO("Error: %s\n", errmsg);
+    jsiConsolePrintf("Error: %s\n", errmsg);
   }
   if (BLETASK_IS_ANCS(bleGetCurrentTask()))
     bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), errmsg?jsvNewFromString(errmsg):0);
@@ -431,7 +457,7 @@ static void err_code_print_ams(uint16_t err_code_ms)
     break;
   }
   if (errmsg) {
-    NRF_LOG_INFO("Error: %s\n", errmsg);
+    jsiConsolePrintf("Error: %s\n", errmsg);
   }
 
   if (BLETASK_IS_AMS(bleGetCurrentTask()))
@@ -454,7 +480,8 @@ static void on_ancs_c_evt(ble_ancs_c_evt_t * p_evt) {
       NRF_LOG_DEBUG("Apple Notification Center Service discovered on the server.\n");
       ret = nrf_ble_ancs_c_handles_assign(&m_ancs_c, p_evt->conn_handle, &p_evt->service);
       APP_ERROR_CHECK_NOT_URGENT(ret);
-      apple_notification_setup();
+      // Queue event because we need to wait a bit before requesting notifications on iOS
+      jsble_queue_pending(BLEP_ANCS_DISCOVERED, 0);
       break;
 
     case BLE_ANCS_C_EVT_NOTIF:
@@ -513,7 +540,8 @@ static void on_ams_c_evt(ble_ams_c_evt_t * p_evt) {
     ret = nrf_ble_ams_c_handles_assign(&m_ams_c, p_evt->conn_handle,
         &p_evt->service);
     APP_ERROR_CHECK_NOT_URGENT(ret);
-    apple_media_setup();
+    // Queue event because we need to wait a bit before requesting notifications on iOS
+    jsble_queue_pending(BLEP_AMS_DISCOVERED, 0);
     break;
 
   case BLE_AMS_C_EVT_REMOTE_COMMAND_NOTIFICATION:
@@ -569,6 +597,8 @@ static void on_ams_c_evt(ble_ams_c_evt_t * p_evt) {
 
 static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
 {
+  static char time_buffer[12];
+
   ret_code_t err_code;
   switch (p_evt->evt_type) {
     case BLE_CTS_C_EVT_DISCOVERY_COMPLETE:
@@ -577,6 +607,8 @@ static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
                                           p_evt->conn_handle,
                                           &p_evt->params.char_handles);
       APP_ERROR_CHECK_NOT_URGENT(err_code);
+      // Queue event because we need to wait a bit before requesting notifications on iOS
+      jsble_queue_pending(BLEP_CTS_DISCOVERED, 0);
       m_cts_active = true;
       break;
 
@@ -592,10 +624,23 @@ static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
 
     case BLE_CTS_C_EVT_CURRENT_TIME:
       NRF_LOG_INFO("CTS Time received.\n");
-      jsble_queue_pending_buf(BLEP_CTS_TIME,
-          0,
-          (char*)&p_evt->params.current_time, sizeof(p_evt->params.current_time));
-      //current_time_print(p_evt);
+      // Try and get local time info
+      if (ble_cts_c_local_time_read(&m_cts_c) == NRF_SUCCESS) {
+        // Yes! We can get it - so now save the data and we will output it on BLE_CTS_C_EVT_LOCAL_TIME
+        memcpy(time_buffer, (char*)&p_evt->params.current_time, 10);
+      } else { // it failed - just push the data immediately
+        jsble_queue_pending_buf(BLEP_CTS_TIME, 0,
+            (char*)&p_evt->params.current_time, sizeof(p_evt->params.current_time));
+      }
+      break;
+
+    case BLE_CTS_C_EVT_LOCAL_TIME:
+      NRF_LOG_INFO("CTS Local Time received TZ = %d, DST = %d.\n", p_evt->params.local_time.timeZone, p_evt->params.local_time.dst );
+      // we only get here now because we asked for local time from BLE_CTS_C_EVT_CURRENT_TIME
+      // so time_buffer is filled in
+      time_buffer[10] = p_evt->params.local_time.timeZone;
+      time_buffer[11] = p_evt->params.local_time.dst;
+      jsble_queue_pending_buf(BLEP_CTS_TIME, 0, time_buffer, 12);
       break;
 
     case BLE_CTS_C_EVT_INVALID_TIME:
@@ -792,7 +837,7 @@ static void services_init(void) {
  */
 static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
 {
-  NRF_LOG_INFO("db_disc_handler %d\n", p_evt->evt_type);
+  //NRF_LOG_INFO("db_disc_handler %d\n", p_evt->evt_type);
   if (bleStatus & BLE_ANCS_INITED)
     ble_ancs_c_on_db_disc_evt(&m_ancs_c, p_evt);
   if (bleStatus & BLE_AMS_INITED)
@@ -936,14 +981,14 @@ bool ble_ams_command(ble_ams_c_remote_control_id_val_t cmd) {
   return ret==0;
 }
 
-
-
 // Read time using CTS service
-void ble_cts_read_time() {
+bool ble_cts_read_time() {
   if (m_cts_c.conn_handle != BLE_CONN_HANDLE_INVALID) {
     uint32_t err_code = ble_cts_c_current_time_read(&m_cts_c);
     if (err_code == NRF_ERROR_NOT_FOUND) {
-        NRF_LOG_INFO("Current Time Service is not discovered.");
-    }
+      jsiConsolePrint("Error: Current Time Service is not discovered.");
+    } else if (err_code) jsble_check_error(err_code);
+    else return true; // ok
   }
+  return false;
 }

@@ -33,6 +33,7 @@ typedef enum {
   BLETASK_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes (bleTaskInfo=0)
   BLETASK_ANCS_APP_ATTR,               //< Apple Notification Centre app attributes (bleTaskInfo=appId string)
   BLETASK_AMS_ATTR,                    //< Apple Media Service track info request (bleTaskInfo=0)
+  BLETASK_CTS_GET_TIME,                //< CMS get current time
 #endif
 } BleTask;
 
@@ -131,7 +132,7 @@ JsVar *jswrap_ble_amsGetPlayerInfo(JsVar *id);
 JsVar *jswrap_ble_amsGetTrackInfo(JsVar *id);
 void jswrap_ble_amsCommand(JsVar *id);
 bool jswrap_ble_ctsIsActive();
-void jswrap_ble_ctsReadTime();
+JsVar *jswrap_ble_ctsGetTime();
 
 JsVar *jswrap_ble_requestDevice(JsVar *options);
 JsVar *jswrap_ble_connect(JsVar *mac, JsVar *options);

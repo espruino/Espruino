@@ -29,8 +29,8 @@ bool ble_ams_request_track_info(ble_ams_c_track_attribute_id_val_t cmd);
 // Send a command like play/pause/etc
 bool ble_ams_command(ble_ams_c_remote_control_id_val_t cmd);
 
-// Read time using CTS service
-void ble_cts_read_time();
+// Read time using CTS service, true on success
+bool ble_cts_read_time();
 
 // These functions are called from bluetooth.c
 void ble_ancs_init();
@@ -41,19 +41,28 @@ void ble_ancs_get_adv_uuid(ble_uuid_t *p_adv_uuids);
 void ble_ancs_bonding_succeeded(uint16_t conn_handle);
 void ble_ancs_on_ble_evt(const ble_evt_t * p_ble_evt);
 
-
+/** Service discovered - request notifications now */
+void ble_ancs_handle_discovered();
 /** Handle notification event (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ancs_handle_notif(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif);
 /** Handle notification attributes received event (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ancs_handle_notif_attr(BLEPending blep, ble_ancs_c_evt_notif_t *p_notif);
 /** Handle app attributes received event (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ancs_handle_app_attr(BLEPending blep, char *buffer, size_t bufferLen);
+
+/** Service discovered - request notifications now */
+void ble_ams_handle_discovered();
 /** Handle AMS track info update (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ams_handle_track_update(BLEPending blep, uint16_t data, char *buffer, size_t bufferLen);
 /** Handle AMS player info update (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ams_handle_player_update(BLEPending blep, uint16_t data, char *buffer, size_t bufferLen);
 /** Handle AMS track or player info response (called outside of IRQ by Espruino) - will poke the relevant events in */
 void ble_ams_handle_attribute(BLEPending blep, char *buffer, size_t bufferLen);
+
+/** Service discovered - request notifications now */
+void ble_cts_handle_discovered();
 /** Handle CTS time update */
 void ble_cts_handle_time(BLEPending blep, char *buffer, size_t bufferLen);
+/** Handle CTS local time update */
+void ble_cts_handle_local_time(BLEPending blep, char *buffer, size_t bufferLen);
 

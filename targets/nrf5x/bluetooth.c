@@ -614,6 +614,9 @@ uint8_t match_request : 1;               If 1 requires the application to report
       }
 #endif
 #ifdef ESPR_BLUETOOTH_ANCS
+      case BLEP_ANCS_DISCOVERED:
+        ble_ancs_handle_discovered();
+        break;
       case BLEP_ANCS_NOTIF:
         ble_ancs_handle_notif(blep, (ble_ancs_c_evt_notif_t*)buffer);
         break;
@@ -627,6 +630,9 @@ uint8_t match_request : 1;               If 1 requires the application to report
         if (BLETASK_IS_ANCS(bleGetCurrentTask()))
           bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("ANCS Error"));
         break;
+      case BLEP_AMS_DISCOVERED:
+        ble_ams_handle_discovered();
+        break;
       case BLEP_AMS_TRACK_UPDATE:
         ble_ams_handle_track_update(blep, data, (char *)buffer, bufferLen);
         break;
@@ -635,6 +641,9 @@ uint8_t match_request : 1;               If 1 requires the application to report
         break;
       case BLEP_AMS_ATTRIBUTE:
         ble_ams_handle_attribute(blep, (char *)buffer, bufferLen);
+        break;
+      case BLEP_CTS_DISCOVERED:
+        ble_cts_handle_discovered();
         break;
       case BLEP_CTS_TIME:
         ble_cts_handle_time(blep, (char *)buffer, bufferLen);
@@ -871,7 +880,17 @@ void nrf_log_frontend_std_6(uint32_t           severity_mid,
 void nrf_log_frontend_hexdump(uint32_t           severity_mid,
                               const void * const p_data,
                               uint16_t           length) {
-  jshTransmitPrintf(DEFAULT_CONSOLE_DEVICE, "[hexdump]\n");
+  uint8_t *u8_data = (uint8_t *)p_data;
+  unsigned int i;
+  for (i=0;i<length;i++) {
+    jshTransmitPrintf(DEFAULT_CONSOLE_DEVICE, "%02x ", u8_data[i]);
+    if ((i&7) == 7) {
+      jshTransmit(DEFAULT_CONSOLE_DEVICE, '\r');
+      jshTransmit(DEFAULT_CONSOLE_DEVICE, '\n');
+    }
+  }
+  jshTransmit(DEFAULT_CONSOLE_DEVICE, '\r');
+  jshTransmit(DEFAULT_CONSOLE_DEVICE, '\n');
 }
 
 #ifdef NRF5X_SDK_15_3

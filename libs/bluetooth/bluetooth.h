@@ -189,14 +189,17 @@ typedef enum {
   BLEP_HID_VALUE,                   //< A HID value was received (eg caps lock)
 #endif
 #ifdef ESPR_BLUETOOTH_ANCS
+  BLEP_ANCS_DISCOVERED,             //< Apple ANCS discovered (need to request notifications)
   BLEP_ANCS_NOTIF,                  //< Apple Notification Centre notification received
   BLEP_ANCS_NOTIF_ATTR,             //< Apple Notification Centre notification attributes received
   BLEP_ANCS_APP_ATTR,               //< Apple Notification Centre app attributes received
   BLEP_ANCS_ERROR,                  //< Apple Notification Centre error - cancel any active tasks
+  BLEP_AMS_DISCOVERED,              //< Apple AMS discovered (need to request notifications)
   BLEP_AMS_TRACK_UPDATE,            //< Apple Media Service Track info updated
   BLEP_AMS_PLAYER_UPDATE,           //< Apple Media Service Player info updated
   BLEP_AMS_ATTRIBUTE,               //< Apple Media Service Track or Player info read response
-  BLEP_CTS_TIME                     //< Apple Current Time Service data (data = current_time_char_t)
+  BLEP_CTS_DISCOVERED,              //< Apple Current Time Service discovered (need to request notifications)
+  BLEP_CTS_TIME                     //< Apple Current Time Service data (data = current_time_char_t + optional local_time_char_t)
 #endif
 } BLEPending;
 

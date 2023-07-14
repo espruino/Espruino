@@ -1,30 +1,30 @@
 /**
  * Copyright (c) 2014 - 2018, Nordic Semiconductor ASA
- * 
+ *
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form, except as embedded into a Nordic
  *    Semiconductor ASA integrated circuit in a product or a software update for
  *    such product, must reproduce the above copyright notice, this list of
  *    conditions and the following disclaimer in the documentation and/or other
  *    materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
- * 
+ *
  * 4. This software, with or without modification, must only be used with a
  *    Nordic Semiconductor ASA integrated circuit.
- * 
+ *
  * 5. Any software provided in binary form under this license must not be reverse
  *    engineered, decompiled, modified and/or disassembled.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
  * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -35,7 +35,7 @@
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  */
 /** @file
  *
@@ -140,6 +140,13 @@ typedef struct
     adjust_reason_t  adjust_reason;
 } current_time_char_t;
 
+/**@brief Data structure for the Local Time Information Characteristic. */
+typedef struct
+{
+    int8_t timeZone;
+    uint8_t dst;
+} local_time_char_t;
+
 // Forward declaration of the ble_cts_c_t type.
 typedef struct ble_cts_c_s ble_cts_c_t;
 
@@ -150,6 +157,7 @@ typedef enum
     BLE_CTS_C_EVT_DISCOVERY_FAILED,   /**< The Current Time Service was not found at the peer. */
     BLE_CTS_C_EVT_DISCONN_COMPLETE,   /**< Event indicating that the Current Time Service client module has finished processing the BLE_GAP_EVT_DISCONNECTED event. This event is raised only if a valid instance of the Current Time Service was found at the server. The event can be used by the application to do clean up related to the Current Time Service client.*/
     BLE_CTS_C_EVT_CURRENT_TIME,       /**< A new current time reading has been received. */
+    BLE_CTS_C_EVT_LOCAL_TIME,         /**< A new local time reading has been received. */
     BLE_CTS_C_EVT_INVALID_TIME        /**< The current time value received from the peer is invalid.*/
 } ble_cts_c_evt_type_t;
 
@@ -158,6 +166,8 @@ typedef struct
 {
     uint16_t cts_handle;       /**< Handle of the Current Time characteristic as provided by the SoftDevice. */
     uint16_t cts_cccd_handle;  /**< Handle of the CCCD of the Current Time characteristic. */
+    uint16_t lti_handle;       /**< Handle of the Local Time Information characteristic as provided by the SoftDevice. */
+    // Local Time Information probably doesn't support notify
 } ble_cts_c_handles_t;
 
 /**@brief Current Time Service client event. */
@@ -168,6 +178,7 @@ typedef struct
     union
     {
         current_time_char_t current_time; /**< Current Time Characteristic data. This will be filled when the evt_type is @ref BLE_CTS_C_EVT_CURRENT_TIME. */
+        local_time_char_t local_time; /**< Local Time Information data. This will be filled when the evt_type is @ref BLE_CTS_C_EVT_LOCAL_TIME. */
         ble_cts_c_handles_t char_handles;  /**< Current Time related handles found on the peer device. This will be filled when the evt_type is @ref BLE_HRS_C_EVT_DISCOVERY_COMPLETE.*/
     } params;
 } ble_cts_c_evt_t;
@@ -252,6 +263,7 @@ static __INLINE bool ble_cts_c_is_cts_discovered(const ble_cts_c_t * p_cts)
  * @retval NRF_SUCCESS If the operation is successful. Otherwise, an error code is returned.
  */
 uint32_t ble_cts_c_current_time_read(ble_cts_c_t const * p_cts);
+uint32_t ble_cts_c_local_time_read(ble_cts_c_t const * p_cts);
 
 
 /**@brief Function for assigning handles to a this instance of cts_c.
@@ -273,6 +285,11 @@ uint32_t ble_cts_c_current_time_read(ble_cts_c_t const * p_cts);
 uint32_t ble_cts_c_handles_assign(ble_cts_c_t               * p_cts,
                                   const uint16_t              conn_handle,
                                   const ble_cts_c_handles_t * p_peer_handles);
+
+
+
+ret_code_t ble_cts_c_notif_enable(ble_cts_c_t *p_cts);
+ret_code_t ble_cts_c_notif_disable(ble_cts_c_t *p_cts);
 
 
 #ifdef __cplusplus
