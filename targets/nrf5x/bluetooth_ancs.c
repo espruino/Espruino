@@ -266,11 +266,15 @@ void ble_ams_handle_attribute(BLEPending blep, char *buffer, size_t bufferLen) {
   bleCompleteTaskSuccessAndUnLock(BLETASK_AMS_ATTR, jsvNewStringOfLength(bufferLen, buffer));
 }
 
+void apple_cts_setup() {
+  ret_code_t err_code = ble_cts_c_notif_enable(&m_cts_c);
+  APP_ERROR_CHECK_NOT_URGENT(err_code);
+}
 
 /** Service discovered - request notifications now */
 void ble_cts_handle_discovered() {
-  ret_code_t err_code = ble_cts_c_notif_enable(&m_cts_c);
-  APP_ERROR_CHECK_NOT_URGENT(err_code);
+  // wait a little as with ANCS/AMS enabled we can end up with a BUSY response
+  jsvUnLock(jsiSetTimeout(apple_cts_setup, 1000));
 }
 
 void ble_cts_handle_time(BLEPending blep, char *buffer, size_t bufferLen) {
@@ -294,7 +298,7 @@ void ble_cts_handle_time(BLEPending blep, char *buffer, size_t bufferLen) {
   jsvObjectSetChildAndUnLock(o, "date", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
   if (bufferLen==12) {
     local_time_char_t *p_lt = (local_time_char_t*)&buffer[10];
-    jsvObjectSetChildAndUnLock(o, "timeZone", jsvNewFromFloat(p_lt->timeZone / 4.0));
+    jsvObjectSetChildAndUnLock(o, "timezone", jsvNewFromFloat(p_lt->timezone / 4.0));
     jsvObjectSetChildAndUnLock(o, "dst", jsvNewFromFloat(p_lt->dst / 4.0));
   }
 
@@ -635,10 +639,10 @@ static void on_cts_c_evt(ble_cts_c_t * p_cts, ble_cts_c_evt_t * p_evt)
       break;
 
     case BLE_CTS_C_EVT_LOCAL_TIME:
-      NRF_LOG_INFO("CTS Local Time received TZ = %d, DST = %d.\n", p_evt->params.local_time.timeZone, p_evt->params.local_time.dst );
+      NRF_LOG_INFO("CTS Local Time received TZ = %d, DST = %d.\n", p_evt->params.local_time.timezone, p_evt->params.local_time.dst );
       // we only get here now because we asked for local time from BLE_CTS_C_EVT_CURRENT_TIME
       // so time_buffer is filled in
-      time_buffer[10] = p_evt->params.local_time.timeZone;
+      time_buffer[10] = p_evt->params.local_time.timezone;
       time_buffer[11] = p_evt->params.local_time.dst;
       jsble_queue_pending_buf(BLEP_CTS_TIME, 0, time_buffer, 12);
       break;

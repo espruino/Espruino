@@ -273,7 +273,7 @@ static void parse_local_time(ble_cts_c_t * p_cts, const uint8_t *data, uint32_t 
     NRF_LOG_HEXDUMP_DEBUG(data, length);
 
   if (length!=2) return;
-  evt.params.local_time.timeZone = (int8_t)data[0];
+  evt.params.local_time.timezone = (int8_t)data[0];
   evt.params.local_time.dst = data[1];
   evt.evt_type = BLE_CTS_C_EVT_LOCAL_TIME;
   p_cts->evt_handler(p_cts, &evt);

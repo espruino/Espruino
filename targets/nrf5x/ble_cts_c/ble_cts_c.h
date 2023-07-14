@@ -143,7 +143,7 @@ typedef struct
 /**@brief Data structure for the Local Time Information Characteristic. */
 typedef struct
 {
-    int8_t timeZone;
+    int8_t timezone;
     uint8_t dst;
 } local_time_char_t;
 

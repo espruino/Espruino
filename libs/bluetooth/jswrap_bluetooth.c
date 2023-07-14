@@ -3130,7 +3130,7 @@ Returns time information from the Current Time Service
       "timezone", // Timezone changed
       "DST",      // Daylight savings
     ]
-  timeZone // if LTI characteristic exists, this is the timezone
+  timezone // if LTI characteristic exists, this is the timezone
   dst      // if LTI characteristic exists, this is the dst adjustment
 }
 ```
