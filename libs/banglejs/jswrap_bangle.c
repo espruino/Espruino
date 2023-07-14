@@ -5836,7 +5836,8 @@ with a swipe by using:
 (function() {
   var sui = Bangle.setUI;
   Bangle.setUI = function(mode, cb) {
-    if (mode!="clock") return sui(mode,cb);
+    var m = ("object"==typeof mode) ? mode.mode : mode;
+    if (m!="clock") return sui(mode,cb);
     sui(); // clear
     Bangle.CLOCK=1;
     Bangle.swipeHandler = Bangle.showLauncher;
