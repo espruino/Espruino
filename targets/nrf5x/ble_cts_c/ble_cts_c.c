@@ -56,9 +56,20 @@ Modified by Gordon Williams (gw@pur3.co.uk), 2023
 #include "ble_cts_c.h"
 #include "ble_date_time.h"
 #include "ble_db_discovery.h"
+
+#ifdef DEBUG
+#if NRF_SD_BLE_API_VERSION>5
 #define NRF_LOG_MODULE_NAME ble_cts_c
+#else
+#define NRF_LOG_MODULE_NAME "ble_cts_c"
+#endif
 #include "nrf_log.h"
 NRF_LOG_MODULE_REGISTER();
+#else
+#define NRF_LOG_INFO(...)
+#define NRF_LOG_DEBUG(...)
+#define NRF_LOG_HEXDUMP_DEBUG(...)
+#endif
 
 #define CTS_YEAR_MIN 1582                     /**< The lowest valid Current Time year is the year when the western calendar was introduced. */
 #define CTS_YEAR_MAX 9999                     /**< The highest possible Current Time. */
