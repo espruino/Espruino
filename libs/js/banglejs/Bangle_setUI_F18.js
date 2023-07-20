@@ -3,6 +3,7 @@
   if ("object"==typeof mode) {
     options = mode;
     mode = options.mode;
+    if (!mode) throw new Error("Missing mode in setUI({...})");
   }
   var redraw = true;
   if (global.WIDGETS && WIDGETS.back) {
