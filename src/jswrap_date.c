@@ -269,7 +269,8 @@ JsVar *jswrap_date_from_milliseconds(JsVarFloat time) {
   "typescript" : [
     "new(): Date;",
     "new(value: number | string): Date;",
-    "new(year: number, month: number, date?: number, hours?: number, minutes?: number, seconds?: number, ms?: number): Date;"
+    "new(year: number, month: number, date?: number, hours?: number, minutes?: number, seconds?: number, ms?: number): Date;",
+    "(arg?: any): string;"
   ]
 }
 Creates a date object
