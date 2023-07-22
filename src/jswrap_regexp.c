@@ -290,7 +290,11 @@ basics.
     ["flags","JsVar","Flags for the regular expression as a string"]
   ],
   "return" : ["JsVar","A RegExp object"],
-  "return_object" : "RegExp"
+  "return_object" : "RegExp",
+  "typescript" : [
+    "new(...value: any[]): RegExp;",
+    "(value: any): RegExp;"
+  ]
 }
 Creates a RegExp object, for handling Regular Expressions
  */
