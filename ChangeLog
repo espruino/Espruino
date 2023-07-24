@@ -27,6 +27,7 @@
             nRF52: Add NRF.on('error') event to provide an easy way to check for Softdevice errors
             If a jshardware op is interrupted, report "Interrupted in X" and not "Timeout on X"
             Ensure Ctrl-C/holding button cannot break out of compaction
+            Bangle.js: don't compact storage if less than 10% battery
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

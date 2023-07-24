@@ -537,6 +537,7 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
 }
 #endif
 
+// Compacts one bank - return true if some free space was created
 bool jsfBankCompact(uint32_t startAddress) {
 #ifndef SAVE_ON_FLASH
   jsDebug(DBG_INFO,"Compacting\n");
@@ -549,7 +550,7 @@ bool jsfBankCompact(uint32_t startAddress) {
   JsfStorageStats stats = jsfGetStorageStats(startAddress, true);
   if (!stats.trashBytes) {
     jsDebug(DBG_INFO,"Already fully compacted\n");
-    return true;
+    return false;
   }
   uint32_t swapBufferSize = stats.fileBytes;
   if (swapBufferSize > maxRequired) swapBufferSize=maxRequired;
@@ -583,8 +584,15 @@ bool jsfBankCompact(uint32_t startAddress) {
   return false;
 }
 
-// Try and compact saved data so it'll fit in Flash again
+// Try and compact saved data so it'll fit in Flash again - return true if some free space was created
 bool jsfCompact() {
+#ifdef BANGLEJS
+  JsVarInt jswrap_banglejs_getBattery();
+  if (jswrap_banglejs_getBattery() < 10) {
+    jsiConsolePrintf("Less than 10% battery remaining - cannot compact\n");
+    return false;
+  }
+#endif
   jsfCacheClear();
 #ifdef ESPR_STORAGE_FILENAME_TABLE
   jsfFilenameTableBank1Addr = 0;
