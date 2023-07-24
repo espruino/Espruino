@@ -30,6 +30,7 @@
             Bangle.js: don't compact storage if less than 10% battery
             Support for Overlays when SPILCD driver used
             Bangle.js2: Show a message on screen when compacting storage (fix #2391)
+            Storage: Compaction now starts from the last uncompacted page - faster if only partly compacted (#2391)
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

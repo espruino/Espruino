@@ -400,7 +400,17 @@ JsfStorageStats jsfGetStorageStats(uint32_t addr, bool allPages) {
   JsfFileHeader header;
   memset(&header,0,sizeof(JsfFileHeader));
   uint32_t lastAddr = addr;
+#ifndef SAVE_ON_FLASH
+  uint32_t lastUnbrokenPageStart = addr; // address of last page that doesn't have a file straddling the start
+#endif
   if (jsfGetFileHeader(addr, &header, false)) do {
+    uint32_t pageAddr,pageLen;
+#ifndef SAVE_ON_FLASH
+    // check if this header sits right at the start of a page
+    if (jshFlashGetPage(addr, &pageAddr, &pageLen) && pageAddr==addr)
+      lastUnbrokenPageStart = pageAddr;
+#endif
+    // now look at the file...
     uint32_t fileSize = jsfAlignAddress(jsfGetFileSize(&header)) + (uint32_t)sizeof(JsfFileHeader);
     lastAddr = addr + fileSize;
     if (header.name.firstChars != 0) { // if not replaced
@@ -409,6 +419,10 @@ JsfStorageStats jsfGetStorageStats(uint32_t addr, bool allPages) {
     } else { // replaced
       stats.trashBytes += fileSize;
       stats.trashCount++;
+#ifndef SAVE_ON_FLASH
+      if (!stats.firstPageWithErasedFiles)
+        stats.firstPageWithErasedFiles = lastUnbrokenPageStart;
+#endif
     }
   } while (jsfGetNextFileHeader(&addr, &header, (allPages ? GNFH_GET_ALL : GNFH_GET_EMPTY)|GNFH_READ_ONLY_FILENAME_START));
   uint32_t pageEndAddr = allPages ? jsfGetBankEndAddress(startAddr) : jsfGetAddressOfNextPage(startAddr);
@@ -555,7 +569,7 @@ bool jsfBankCompact(uint32_t startAddress) {
 
   // On watches that support overlays, show a message over the screen warning that we're compacting and it may take some time
 #ifdef BANGLEJS_Q3
-  jsvUnLock(jspEvaluate("Bangle.setLCDOverlay(Graphics.createArrayBuffer(160,44,1,{msb:true}).drawRect(0,0,159,43).drawRect(1,1,158,42).setFont("12x20").setFontAlign(0,0).drawString('Please Wait',80,14).setColor('#888').setFont("6x8").drawString('STORAGE COMPACTION\n\nIN PROGRESS...',80,32),8,66);g.flip();",true));
+  jsvUnLock(jspEvaluate("Bangle.setLCDOverlay(Graphics.createArrayBuffer(160,44,1,{msb:true}).drawRect(0,0,159,43).drawRect(1,1,158,42).setFont('12x20').setFontAlign(0,0).drawString('Please Wait',80,14).setColor('#888').setFont('6x8').drawString('STORAGE COMPACTION\\nIN PROGRESS...',80,32),8,66);g.flip();",true));
 #endif
 #ifdef DICKENS
   jsvUnLock(jspEvaluate("Bangle.setLCDOverlay(Graphics.createArrayBuffer(160,40,16,{msb:true}).drawRect(0,0,159,39).drawRect(1,1,158,38).setFontArchitekt12().setFontAlign(0,0).drawString('PLEASE WAIT',80,8).setColor('#888').setFontArchitekt10().drawString('STORAGE COMPACTION\\nIN PROGRESS...',80,27),40,100);g.flip();",true));
@@ -568,14 +582,14 @@ bool jsfBankCompact(uint32_t startAddress) {
   if (swapBufferSize+256 < jsuGetFreeStack()) {
     jsDebug(DBG_INFO,"Enough stack for %d byte buffer\n", swapBufferSize);
     char *swapBuffer = alloca(swapBufferSize);
-    freedMemory = jsfCompactInternal(startAddress, swapBuffer, swapBufferSize);
+    freedMemory = jsfCompactInternal(stats.firstPageWithErasedFiles, swapBuffer, swapBufferSize);
   } else {
     jsDebug(DBG_INFO,"Not enough stack for (%d bytes)\n", swapBufferSize);
     JsVar *buf = jsvNewFlatStringOfLength(swapBufferSize);
     if (buf) {
       jsDebug(DBG_INFO,"Allocated data in JsVars\n");
       char *swapBuffer = jsvGetFlatStringPointer(buf);
-      freedMemory = jsfCompactInternal(startAddress, swapBuffer, swapBufferSize);
+      freedMemory = jsfCompactInternal(stats.firstPageWithErasedFiles, swapBuffer, swapBufferSize);
       jsvUnLock(buf);
     } else
       jsDebug(DBG_INFO,"Not enough memory to compact anything\n");
