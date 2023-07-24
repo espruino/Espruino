@@ -39,7 +39,11 @@ them.
   "params" : [
     ["str","JsVarArray","A value to turn into a string. If undefined or not supplied, an empty String is created."]
   ],
-  "return" : ["JsVar","A String"]
+  "return" : ["JsVar","A String"],
+  "typescript" : [
+    "new(...str: any[]): any;",
+    "(arg?: any): string;"
+  ]
 }
 Create a new String
  */

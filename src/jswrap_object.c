@@ -768,7 +768,11 @@ JsVar *jswrap_object_assign(JsVar *args) {
   "params" : [
     ["value","JsVar","A single value to be converted to a number"]
   ],
-  "return" : ["bool","A Boolean object"]
+  "return" : ["bool","A Boolean object"],
+  "typescript" : [
+    "new(...value: any[]): Number;",
+    "(value: any): boolean;"
+  ]
 }
 Creates a boolean
  */
