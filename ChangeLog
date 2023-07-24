@@ -25,6 +25,7 @@
             Graphics: g.dump() will now work without allocating huge buffers
             nRF52: Added CTS (Current Time Service) support to ANCS/AMS code
             nRF52: Add NRF.on('error') event to provide an easy way to check for Softdevice errors
+            If a jshardware op is interrupted, report "Interrupted in X" and not "Timeout on X"
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler
