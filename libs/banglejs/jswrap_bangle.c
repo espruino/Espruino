@@ -1333,7 +1333,7 @@ void peripheralPollHandler() {
     tapInfo = buf[0] | (tapType<<6);
   }
   if (tapType) {
-    
+
     // wake on tap, for front (for Bangle.js 2)
 #ifdef BANGLEJS_Q3
     if ((bangleFlags&JSBF_WAKEON_TOUCH) && (tapInfo&2)) {
@@ -1357,7 +1357,7 @@ void peripheralPollHandler() {
     // tap ignores lock
     bangleTasks |= JSBT_ACCEL_TAPPED;
     jshHadEvent();
-    
+
     // clear the IRQ flags
     buf[0]=0x17;
     jsi2cWrite(ACCEL_I2C, ACCEL_ADDR, 1, buf, false);
@@ -1655,7 +1655,7 @@ void backlightOffHandler() {
 #endif // !EMULATED
 
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
-  
+
   // wake up IF LCD power or Lock has a timeout (so will turn off automatically)
   if (lcdPowerTimeout || backlightTimeout || lockTimeout) {
     if (((bangleFlags&JSBF_WAKEON_BTN1)&&(button==1)) ||
@@ -1665,7 +1665,7 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
         ((bangleFlags&JSBF_WAKEON_BTN3)&&(button==4)) ||
 #endif
         false){ // wake-bind-input
-      // if a 'hard' button, turn LCD on  
+      // if a 'hard' button, turn LCD on
       if (state) {
         bool ignoreBtnUp = false;
         if (lcdPowerTimeout && !(bangleFlags&JSBF_LCD_ON)) {
@@ -1689,12 +1689,12 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
           return; // consume wake event
         }
       }
-    } 
+    }
   }
   bool pushEvent = true;
   if (bangleFlags&JSBF_LOCKED) pushEvent = false;
   else inactivityTimer = 0; // extend wake in unlocked state
-  
+
   // Handle case where pressing 'home' button repeatedly at just the wrong times
   // could cause us to go home!
   if (button == HOME_BTN) homeBtnTimer = 0;
@@ -2004,7 +2004,7 @@ Bangle.setBacklight(1); // keep screen on
 
 Of course, the backlight depends on `Bangle.setLCDPower` too, so any lcdPowerTimeout/setLCDTimeout will
 also turn the backlight off. The use case is when you require the backlight timeout
-to be shorter than the power timeout. 
+to be shorter than the power timeout.
 */
 /// Turn just the backlight on or off (or adjust brightness)
 void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
@@ -2017,7 +2017,7 @@ void jswrap_banglejs_setLCDPowerBacklight(bool isOn) {
     }
     jsvUnLock(bangle);
   }
-  
+
   if (isOn) {
     // programatically on counts as wake
     if (backlightTimeout > 0) inactivityTimer = 0;
@@ -2108,7 +2108,7 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
     }
     jsvUnLock(bangle);
   }
-  
+
   if (isOn) {
     // programatically on counts as wake
     if (lcdPowerTimeout > 0 || backlightTimeout > 0) inactivityTimer = 0;
@@ -2332,7 +2332,7 @@ void jswrap_banglejs_setLCDOffset(int y) {
       ["x","int","The X offset the graphics instance should be overlaid on the screen with"],
       ["y","int","The Y offset the graphics instance should be overlaid on the screen with"]
     ],
-    "ifdef" : "BANGLEJS_Q3"
+    "#if" : "defined(BANGLEJS_Q3) || defined(DICKENS)"
 }
 Overlay an image or graphics instance on top of the contents of the graphics buffer.
 
@@ -2378,13 +2378,16 @@ Bangle.setLCDOverlay({
 void jswrap_banglejs_setLCDOverlay(JsVar *imgVar, int x, int y) {
 #ifdef LCD_CONTROLLER_LPM013M126
   lcdMemLCD_setOverlay(imgVar, x, y);
+#endif
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
+  lcdSetOverlay_SPILCD(imgVar, x, y);
+#endif
   // set all as modified
   // TODO: Could look at old vs new overlay state and update only lines that had changed?
   graphicsInternal.data.modMinX = 0;
   graphicsInternal.data.modMinY = 0;
   graphicsInternal.data.modMaxX = LCD_WIDTH-1;
   graphicsInternal.data.modMaxY = LCD_HEIGHT-1;
-#endif
 }
 
 /*JSON{
@@ -4034,6 +4037,9 @@ void jswrap_banglejs_kill() {
 #ifdef LCD_CONTROLLER_LPM013M126
   // ensure we remove any overlay we might have set
   lcdMemLCD_setOverlay(NULL, 0, 0);
+#endif
+#if defined(LCD_CONTROLLER_ST7789V) || defined(LCD_CONTROLLER_ST7735) || defined(LCD_CONTROLLER_GC9A01)
+  lcdSetOverlay_SPILCD(NULL, 0, 0);
 #endif
   // Graphics var is getting removed, so set this to null.
   jsvUnLock(graphicsInternal.graphicsVar);
@@ -6001,4 +6007,3 @@ JsVar *jswrap_banglejs_appRect() {
 
   return o;
 }
-

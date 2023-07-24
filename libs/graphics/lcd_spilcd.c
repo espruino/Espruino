@@ -22,6 +22,7 @@
 #if defined(NRF52_SERIES)
 #include "nrf_gpio.h"
 #endif
+#include "jswrap_graphics.h"
 
 // ======================================================================
 
@@ -32,6 +33,11 @@ unsigned short lcdPalette[16];
 #endif
 #if LCD_BPP==8
 unsigned short lcdPalette[256];
+#endif
+
+#if LCD_BPP==12 || LCD_BPP==16
+JsVar *lcdOverlayImage; ///< if set, an Image to use for overlays
+short lcdOverlayX,lcdOverlayY; ///< coordinates of the graphics instance
 #endif
 
 #define LCD_SPI EV_SPI1
@@ -179,9 +185,24 @@ void lcdFlip_SPILCD_callback() {
 void lcdFlip_SPILCD(JsGraphics *gfx) {
   if (gfx->data.modMinX > gfx->data.modMaxX) return; // nothing to do!
 
-  // use nearest 2 pixels as we're sending 12 bits
-  gfx->data.modMinX = (gfx->data.modMinX)&~1;
-  gfx->data.modMaxX = (gfx->data.modMaxX+2)&~1;
+  unsigned char buffer1[LCD_STRIDE];
+
+  bool hasOverlay = false;
+  GfxDrawImageInfo overlayImg;
+  if (lcdOverlayImage)
+    hasOverlay = _jswrap_graphics_parseImage(gfx, lcdOverlayImage, 0, &overlayImg);
+
+  if (hasOverlay) {
+    /* If lcdOverlayImage is defined, we want to overlay this image
+     * on top of what we have in our LCD buffer. Do this line by
+     * line. It's slower but it won't use a bunch of memory.
+     *
+     * We use this rarely so don't mess around, we're just going to send the
+     * whole buffer rather than part of it.
+     */
+    gfx->data.modMinX = 0;
+    gfx->data.modMaxX = LCD_WIDTH-1;
+  }
 #if LCD_BPP==12 || LCD_BPP==16
   // Just send full rows as this allows us to issue a single SPI
   // transfer.
@@ -189,10 +210,12 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
   gfx->data.modMinX = 0;
   gfx->data.modMaxX = LCD_WIDTH-1;
 #else
+  // use nearest 2 pixels as we're sending 12 bits
+  gfx->data.modMinX = (gfx->data.modMinX)&~1;
+  gfx->data.modMaxX = (gfx->data.modMaxX+2)&~1;
   int xlen = gfx->data.modMaxX - gfx->data.modMinX;
   int xstart = gfx->data.modMinX;
 #endif
-  unsigned char buffer1[LCD_STRIDE];
 
 #ifdef ESPR_USE_SPI3
   // anomaly 195 workaround - enable SPI before use
@@ -224,24 +247,71 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
   jshPinSetValue(LCD_SPI_DC, 1); // data
 
 #if LCD_BPP==12 || LCD_BPP==16
-  // FIXME: hack because SPI send on NRF52 fails for >65k transfers
-  // we should fix this in jshardware.c
-  unsigned char *p = &lcdBuffer[LCD_STRIDE*gfx->data.modMinY];
-  int c = (gfx->data.modMaxY+1-gfx->data.modMinY)*LCD_STRIDE;
-  while (c) {
-    int n = c;
-    if (n>65535) n=65535;
-    jshSPISendMany(
-        LCD_SPI,
-        p,
-        0,
-        n,
-        NULL);
-    if (jspIsInterrupted()) break;
-    p+=n;
-    c-=n;
+  if (hasOverlay) { // we have an overlay, just send line by line
+    // initialise image layer
+    GfxDrawImageLayer l;
+    int ovY = lcdOverlayY;
+    l.x1 = 0;
+    l.y1 = ovY;
+    l.img = overlayImg;
+    l.rotate = 0;
+    l.scale = 1;
+    l.center = false;
+    l.repeat = false;
+    jsvStringIteratorNew(&l.it, l.img.buffer, (size_t)l.img.bitmapOffset);
+    _jswrap_drawImageLayerInit(&l);
+    _jswrap_drawImageLayerSetStart(&l, 0, gfx->data.modMinY);
+    unsigned char buffer2[LCD_STRIDE];
+    memcpy(buffer1, &lcdBuffer[LCD_STRIDE*0], LCD_STRIDE); // save first 2 lines
+    memcpy(buffer2, &lcdBuffer[LCD_STRIDE*1], LCD_STRIDE);
+
+    for (int y=gfx->data.modMinY;y<=gfx->data.modMaxY;y++) {
+      int bufferLine = y&1; // alternate lines so we can send while calculating next line
+      unsigned char *buf = &lcdBuffer[LCD_STRIDE * bufferLine];
+      // copy original line in
+      memcpy(buf, &lcdBuffer[LCD_STRIDE*y], LCD_STRIDE);
+      // overwrite areas with overlay image
+      if (y>=ovY && y<ovY+overlayImg.height) {
+        _jswrap_drawImageLayerStartX(&l);
+        for (int x=0;x<overlayImg.width;x++) {
+          unsigned int c;
+          int ox = x+lcdOverlayX;
+          if (_jswrap_drawImageLayerGetPixel(&l, &c) && (ox < LCD_WIDTH) && (ox >= 0))
+            lcdSetPixel_SPILCD(NULL, ox, y&1, c);
+          _jswrap_drawImageLayerNextX(&l);
+        }
+      }
+      _jswrap_drawImageLayerNextY(&l);
+      // send the line
+      jshSPISendMany(LCD_SPI, buf, 0, LCD_STRIDE, lcdFlip_SPILCD_callback);
+    }
+    jsvStringIteratorFree(&l.it);
+    _jswrap_graphics_freeImageInfo(&overlayImg);
+
+    memcpy(&lcdBuffer[LCD_STRIDE*0], buffer1, LCD_STRIDE); // restore first 2 lines
+    memcpy(&lcdBuffer[LCD_STRIDE*1], buffer2, LCD_STRIDE);
+
+    jshSPIWait(LCD_SPI);
+  } else { // ============================================  standard, non-overlay transfer
+    // FIXME: hack because SPI send on NRF52 fails for >65k transfers
+    // we should fix this in jshardware.c
+    unsigned char *p = &lcdBuffer[LCD_STRIDE*gfx->data.modMinY];
+    int c = (gfx->data.modMaxY+1-gfx->data.modMinY)*LCD_STRIDE;
+    while (c) {
+      int n = c;
+      if (n>65535) n=65535;
+      jshSPISendMany(
+          LCD_SPI,
+          p,
+          0,
+          n,
+          NULL);
+      if (jspIsInterrupted()) break;
+      p+=n;
+      c-=n;
+    }
   }
-#else
+#else // Data stored paletted - must decode the palette before sending
   unsigned char buffer2[LCD_STRIDE];
   for (int y=gfx->data.modMinY;y<=gfx->data.modMaxY;y++) {
     unsigned char *buffer = (y&1)?buffer1:buffer2;
@@ -272,7 +342,7 @@ void lcdFlip_SPILCD(JsGraphics *gfx) {
     if (jspIsInterrupted()) break;
   }
   jshSPIWait(LCD_SPI);
-#endif
+#endif // End of paletted send
   jshPinSetValue(LCD_SPI_CS,1);
 #ifdef ESPR_USE_SPI3
   // anomaly 195 workaround - disable SPI when done
@@ -342,6 +412,22 @@ void lcdInit_SPILCD(JsGraphics *gfx) {
 
   lcdSendInitCmd_SPILCD();
 }
+
+#if LCD_BPP==12 || LCD_BPP==16
+// Enable overlay mode (to overlay a graphics instance on top of the LCD contents)
+void lcdSetOverlay_SPILCD(JsVar *imgVar, int x, int y) {
+  if (lcdOverlayImage) jsvUnLock(lcdOverlayImage);
+  if (imgVar) {
+    lcdOverlayImage = jsvLockAgain(imgVar);
+    lcdOverlayX = (short)x;
+    lcdOverlayY = (short)y;
+  } else {
+    lcdOverlayImage = 0;
+    lcdOverlayX = 0;
+    lcdOverlayY = 0;
+  }
+}
+#endif
 
 void lcdSetCallbacks_SPILCD(JsGraphics *gfx) {
   gfx->setPixel = lcdSetPixel_SPILCD;

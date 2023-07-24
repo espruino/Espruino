@@ -321,7 +321,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     _jswrap_drawImageLayerInit(&l);
     _jswrap_drawImageLayerSetStart(&l, 0, y1);
     for (int y=y1;y<=y2;y++) {
-      int bufferLine = LCD_HEIGHT + (y&1); // alternate lines so we still get dither AND we can send while
+      int bufferLine = LCD_HEIGHT + (y&1); // alternate lines so we still get dither AND we can send while calculating next line
       unsigned char *buf = &lcdBuffer[LCD_STRIDE*bufferLine]; // point to line right on the end of gfx
       // copy original line in
       memcpy(buf, &lcdBuffer[LCD_STRIDE*y], LCD_STRIDE);

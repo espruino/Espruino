@@ -552,26 +552,39 @@ bool jsfBankCompact(uint32_t startAddress) {
     jsDebug(DBG_INFO,"Already fully compacted\n");
     return false;
   }
+
+  // On watches that support overlays, show a message over the screen warning that we're compacting and it may take some time
+#ifdef BANGLEJS_Q3
+  jsvUnLock(jspEvaluate("Bangle.setLCDOverlay(Graphics.createArrayBuffer(160,44,1,{msb:true}).drawRect(0,0,159,43).drawRect(1,1,158,42).setFont("12x20").setFontAlign(0,0).drawString('Please Wait',80,14).setColor('#888').setFont("6x8").drawString('STORAGE COMPACTION\n\nIN PROGRESS...',80,32),8,66);g.flip();",true));
+#endif
+#ifdef DICKENS
+  jsvUnLock(jspEvaluate("Bangle.setLCDOverlay(Graphics.createArrayBuffer(160,40,16,{msb:true}).drawRect(0,0,159,39).drawRect(1,1,158,38).setFontArchitekt12().setFontAlign(0,0).drawString('PLEASE WAIT',80,8).setColor('#888').setFontArchitekt10().drawString('STORAGE COMPACTION\\nIN PROGRESS...',80,27),40,100);g.flip();",true));
+#endif
+
   uint32_t swapBufferSize = stats.fileBytes;
   if (swapBufferSize > maxRequired) swapBufferSize=maxRequired;
   // See if we have enough memory...
+  bool freedMemory = false;
   if (swapBufferSize+256 < jsuGetFreeStack()) {
     jsDebug(DBG_INFO,"Enough stack for %d byte buffer\n", swapBufferSize);
     char *swapBuffer = alloca(swapBufferSize);
-    return jsfCompactInternal(startAddress, swapBuffer, swapBufferSize);
+    freedMemory = jsfCompactInternal(startAddress, swapBuffer, swapBufferSize);
   } else {
     jsDebug(DBG_INFO,"Not enough stack for (%d bytes)\n", swapBufferSize);
     JsVar *buf = jsvNewFlatStringOfLength(swapBufferSize);
     if (buf) {
       jsDebug(DBG_INFO,"Allocated data in JsVars\n");
       char *swapBuffer = jsvGetFlatStringPointer(buf);
-      bool r = jsfCompactInternal(startAddress, swapBuffer, swapBufferSize);
+      freedMemory = jsfCompactInternal(startAddress, swapBuffer, swapBufferSize);
       jsvUnLock(buf);
-      return r;
-    }
+    } else
+      jsDebug(DBG_INFO,"Not enough memory to compact anything\n");
   }
-  jsDebug(DBG_INFO,"Not enough memory to compact anything\n");
-
+#if defined(BANGLEJS_Q3) || defined(DICKENS)
+  // if we added the compact message, take it off
+  jsvUnLock(jspEvaluate("Bangle.setLCDOverlay();g.flip();",true));
+#endif
+  return freedMemory;
 #else
   /* If low on flash assume we only have a tiny bit of flash. Chances
    * are there'll only be one file so just erasing flash will do it. */

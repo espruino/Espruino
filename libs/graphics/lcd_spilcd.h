@@ -19,3 +19,8 @@ void lcdSetCallbacks_SPILCD(JsGraphics *gfx);
 void lcdFlip_SPILCD(JsGraphics *gfx); // run this to flip the offscreen buffer to the screen
 void lcdCmd_SPILCD(int cmd, int dataLen, const unsigned char *data); // to send specific commands to the display
 void lcdSetPalette_SPILCD(const char *pal);
+
+#if LCD_BPP==12 || LCD_BPP==16
+// Enable overlay mode (to overlay a graphics instance on top of the LCD contents)
+void lcdSetOverlay_SPILCD(JsVar *imgVar, int x, int y);
+#endif
