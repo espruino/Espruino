@@ -241,6 +241,7 @@ static bool jsfIsErased(uint32_t addr, uint32_t len) {
       // we don't end up calling jshKickWatchDog, so it's harder
       // to get in a state where things lock up.
       jshKickWatchDog();
+      jshKickSoftWatchDog();
       watchdogCtr = 0;
     }
   }
@@ -461,6 +462,7 @@ static void jsfCompactWriteBuffer(uint32_t *writeAddress, uint32_t readAddress, 
     *swapBufferUsed -= s;
     // ensure we don't reboot here if it takes a long time
     jshKickWatchDog();
+    jshKickSoftWatchDog();
   }
 }
 
@@ -514,6 +516,7 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
     }
     // kick watchdog to ensure we don't reboot
     jshKickWatchDog();
+    jshKickSoftWatchDog();
   } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_ALL));
   jsDebug(DBG_INFO,"compact> finished reading...\n");
   // try and write the remaining

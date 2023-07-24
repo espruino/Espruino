@@ -142,6 +142,21 @@ __attribute__((weak)) bool jshFlashErasePages(uint32_t startAddr, uint32_t byteL
       return true; // no more pages
     // Erasing can take a while, so kick the watchdog throughout
     jshKickWatchDog();
+    jshKickSoftWatchDog();
   }
   return !jspIsInterrupted();
+}
+
+void jshKickSoftWatchDog() {
+#ifdef BANGLEJS
+  /* If we're busy and really don't want to be interrupted (eg clearing flash memory)
+   then we should *NOT* allow the home button to set EXEC_INTERRUPTED (which happens
+   if it was held, JSBT_RESET was set, and then 0.1s later it wasn't handled). */
+  void jswrap_banglejs_kickPollWatchdog();
+  jswrap_banglejs_kickPollWatchdog();
+#endif
+  // We don't want CTRL-C to be able to turn into an interrupt either
+  if (execInfo.execute & EXEC_CTRL_C_WAIT) {
+    execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_CTRL_C;
+  }
 }

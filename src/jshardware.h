@@ -222,6 +222,12 @@ void jshEnableWatchDog(JsVarFloat timeout);
 // Kick the watchdog
 void jshKickWatchDog();
 
+/* Sometimes we allow a Ctrl-C or button press (eg. Bangle.js) to cause an interruption if there
+is no response from the interpreter, and that interruption can then break out of Flash Writes
+for instance. But there are certain things (like compaction) that we REALLY don't want to
+break out of, so they can call jshKickSoftWatchDog to stop it. */
+void jshKickSoftWatchDog();
+
 /// Check the pin associated with this EXTI - return true if the pin's input is a logic 1
 bool jshGetWatchedPinState(IOEventFlags device);
 

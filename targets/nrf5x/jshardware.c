@@ -1707,13 +1707,6 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 
 void jshKickWatchDog() {
   NRF_WDT->RR[0] = 0x6E524635;
-#ifdef BANGLEJS
-  /* If we're busy and really don't want to be interrupted (eg clearing flash memory)
-   then we should *NOT* allow the home button to set EXEC_INTERRUPTED (which happens
-   if it was held, JSBT_RESET was set, and then 0.1s later it wasn't handled). */
-  void jswrap_banglejs_kickPollWatchdog();
-  jswrap_banglejs_kickPollWatchdog();
-#endif
 }
 
 /** Check the pin associated with this EXTI - return true if it is a 1 */
@@ -2411,8 +2404,10 @@ bool jshFlashErasePages(uint32_t addr, uint32_t byteLength) {
         // erase all needs just one arg, but it can also take a while! handle separately
         spiFlashWriteCS(b,1);
         int timeout = WAIT_UNTIL_N_CYCLES*5;
-        while ((spiFlashStatus()&1) && !jspIsInterrupted() && (timeout--)>0)
+        while ((spiFlashStatus()&1) && !jspIsInterrupted() && (timeout--)>0) {
           jshKickWatchDog();
+          jshKickSoftWatchDog();
+        }
         if (timeout<=0 || jspIsInterrupted())
           jsExceptionHere(JSET_INTERNALERROR, "Timeout on jshFlashErasePage (all)");
       } else {
@@ -2423,6 +2418,7 @@ bool jshFlashErasePages(uint32_t addr, uint32_t byteLength) {
       addr += erasedBytes;
       // Erasing can take a while, so kick the watchdog throughout
       jshKickWatchDog();
+      jshKickSoftWatchDog();
     }
     return !jspIsInterrupted();
   }
@@ -2447,6 +2443,7 @@ bool jshFlashErasePages(uint32_t addr, uint32_t byteLength) {
     startAddr += 4096;
     // Erasing can take a while, so kick the watchdog throughout
     jshKickWatchDog();
+    jshKickSoftWatchDog();
   }
   return !jspIsInterrupted();
 }

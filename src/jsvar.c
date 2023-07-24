@@ -4269,6 +4269,7 @@ void jsvDefragment() {
     if (defragVarIdx<0) defragVarIdx+=DEFRAGVARS;
     // bump watchdog just in case it took too long
     jshKickWatchDog();
+    jshKickSoftWatchDog();
   }
   // rebuild free var list
   jsvCreateEmptyVarList();
