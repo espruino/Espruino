@@ -632,7 +632,7 @@ bool jsfCompact(bool showMessage) {
 #ifdef BANGLEJS
   JsVarInt jswrap_banglejs_getBattery();
   if (jswrap_banglejs_getBattery() < 10) {
-    jsiConsolePrintf("Less than 10% battery remaining - cannot compact\n");
+    jsiConsolePrintf("Less than 10 percent battery remaining - cannot compact\n");
     return false;
   }
 #endif

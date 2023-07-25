@@ -381,6 +381,9 @@ JsVarInt jswrap_storage_hash(JsVar *regex) {
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Storage",
   "name" : "compact",
+  "params" : [
+    ["showMessage","bool","[optional] If true, an overlay message will be displayed on the screen while compaction is happening. Default is false."]
+  ],
   "generate" : "jswrap_storage_compact"
 }
 The Flash Storage system is journaling. To make the most of the limited write
@@ -397,8 +400,8 @@ become garbled when compaction happens. To avoid this, call `eraseFiles` before
 uploading data that you intend to reference to ensure that uploaded files are
 right at the start of flash and cannot be compacted further.
  */
-void jswrap_storage_compact() {
-  jsfCompact();
+void jswrap_storage_compact(bool showMessage) {
+  jsfCompact(showMessage);
 }
 
 /*JSON{

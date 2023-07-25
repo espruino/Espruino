@@ -25,7 +25,7 @@ JsVar *jswrap_storage_readArrayBuffer(JsVar *name);
 bool jswrap_storage_write(JsVar *name, JsVar *data, JsVarInt offset, JsVarInt size);
 bool jswrap_storage_writeJSON(JsVar *name, JsVar *data);
 void jswrap_storage_erase(JsVar *name);
-void jswrap_storage_compact();
+void jswrap_storage_compact(bool showMessage);
 JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter);
 JsVarInt jswrap_storage_hash(JsVar *regex);
 void jswrap_storage_debug();
