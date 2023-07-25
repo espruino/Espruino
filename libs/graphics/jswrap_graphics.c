@@ -384,11 +384,22 @@ NO_INLINE void _jswrap_drawImageLayerNextY(GfxDrawImageLayer *l) {
   }
 }
 
-NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxDrawImageInfo *img, JsvStringIterator *it) {
+/* Draw an image 1:1 at xPos,yPos. If parseFullImage=true we ensure
+we leave the StringIterator pointing right at the end of the image. If not
+we can optimise if the image is clipped/offscreen. */
+NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxDrawImageInfo *img, JsvStringIterator *it, bool parseFullImage) {
   int bits=0;
   uint32_t colData=0;
-  JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelUnclippedFn(gfx, xPos, yPos, xPos+img->width-1, yPos+img->height-1);
-  for (int y=yPos;y<yPos+img->height;y++) {
+  int x1 = xPos, y1 = yPos, x2 = xPos+img->width-1, y2 = yPos+img->height-1;
+#ifndef SAVE_ON_FLASH
+  graphicsSetModifiedAndClip(gfx,&x1,&y1,&x2,&y2); // ensure we clip Y
+  /* force a skip forward as many bytes as we need. Ideally we would use
+  jsvStringIteratorGotoUTF8 but we don't have the UTF8 index or
+  source string here. This is still better than trying to render every pixel!*/
+  bits = -(y1-yPos)*img->bpp*img->width;
+#endif
+  JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelUnclippedFn(gfx, xPos, y1, xPos+img->width-1, y2);
+  for (int y=y1;y<=y2;y++) {
     for (int x=xPos;x<xPos+img->width;x++) {
       // Get the data we need...
       while (bits < img->bpp) {
@@ -405,6 +416,17 @@ NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxD
       }
     }
   }
+#ifndef SAVE_ON_FLASH
+  if (parseFullImage) {
+    /* If we didn't render the last bit of the image, and the caller needs
+    the StringIterator to point to the end of the image, skip forward */
+    bits += img->bpp-(yPos+img->height-(1+y2))*img->bpp*img->width;
+    while (bits < 0) {
+      jsvStringIteratorNextUTF8(it);
+      bits += 8;
+    }
+  }
+#endif
 }
 
 // ==========================================================================================
@@ -2482,9 +2504,8 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
       size_t idx = jsvConvertToUTF8Index(str, jsvStringIteratorGetIndex(&it));
       if (_jswrap_graphics_parseImage(&gfx, str, idx, &img)) {
         jsvStringIteratorGotoUTF8(&it, str, idx+img.headerLength);
-        _jswrap_drawImageSimple(&gfx, x, y+(fontHeight-img.height)/2, &img, &it);
+        _jswrap_drawImageSimple(&gfx, x, y+(fontHeight-img.height)/2, &img, &it, true/*string iterator now points to the next char after image*/);
         _jswrap_graphics_freeImageInfo(&img);
-        // string iterator now points to the next char after image
         x += img.width;
       }
       continue;
@@ -3153,7 +3174,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #else
     {
 #endif
-      _jswrap_drawImageSimple(&gfx, xPos, yPos, &img, &it);
+      _jswrap_drawImageSimple(&gfx, xPos, yPos, &img, &it, false/*don't care about string iterator now*/);
     }
   } else {
 #ifndef GRAPHICS_DRAWIMAGE_ROTATED

@@ -425,6 +425,7 @@ void jsvStringIteratorGotoUTF8(JsvStringIterator *it, JsVar *str, size_t idx) {
     jsvStringIteratorCatchUp(it);
   } else {
     jsvStringIteratorFree(it);
+    // TODO: could we just skip forwards if we knew the current UTF8 position?
     jsvStringIteratorNewUTF8(it, str, idx);
   }
 #else

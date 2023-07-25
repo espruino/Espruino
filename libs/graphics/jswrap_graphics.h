@@ -141,4 +141,4 @@ void _jswrap_drawImageLayerStartX(GfxDrawImageLayer *l);
 void _jswrap_drawImageLayerNextX(GfxDrawImageLayer *l);
 void _jswrap_drawImageLayerNextXRepeat(GfxDrawImageLayer *l);
 void _jswrap_drawImageLayerNextY(GfxDrawImageLayer *l);
-void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxDrawImageInfo *img, JsvStringIterator *it);
+void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxDrawImageInfo *img, JsvStringIterator *it, bool parseFullImage);
