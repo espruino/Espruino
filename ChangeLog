@@ -32,6 +32,8 @@
             Bangle.js2: Show a message on screen when compacting storage (fix #2391)
             Storage: Compaction now starts from the last uncompacted page - faster if only partly compacted (#2391)
             Graphics: drawImage now avoids getting pixels top/bottom of an image that might be cropped/offscreen
+            Bangle.js: Handle pushing events via the event queue (allows events to be queued rather than lost)
+            Bangle.js2: Allow HRM environment sensor data to be pushed, also add flags for disabling auto exposure and wear detect
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

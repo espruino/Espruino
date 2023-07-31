@@ -30,6 +30,9 @@
 #include "bluetooth.h"
 #include "jswrap_bluetooth.h"
 #endif
+#ifdef BANGLEJS
+#include "jswrap_bangle.h" // jsbangle_exec_pending
+#endif
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -1939,6 +1942,10 @@ void jsiIdle() {
 #ifdef BLUETOOTH
     } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
       maxEvents -= jsble_exec_pending(&event);
+#endif
+#ifdef BANGLEJS
+    } else if (eventType == EV_BANGLEJS) {
+      jsbangle_exec_pending(&event);
 #endif
 #ifdef I2C_SLAVE
     } else if (DEVICE_IS_I2C(eventType)) {

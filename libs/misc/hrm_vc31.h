@@ -32,6 +32,10 @@ typedef struct {
   // the meaning of these is device-dependent but it's nice to have them in one place
   uint8_t irqStatus;
   uint8_t raw[12];
+  // settings
+  bool allowGreenAdjust; // allow automatic adjustment of LED power
+  bool allowWearDetect; // allow automatic check for whether HRM is worn
+  bool pushEnvData; // call jsbangle_push_event to push data for every received ENV sample
 } PACKED_FLAGS VC31Info;
 
 extern VC31Info vcInfo;

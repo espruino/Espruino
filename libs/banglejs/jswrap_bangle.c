@@ -74,6 +74,10 @@
 #include "unistroke.h"
 #endif
 
+#ifdef HEARTRATE_DEVICE_VC31
+#include "hrm_vc31.h" // for Bangle.setOptions
+#endif
+
 /*TYPESCRIPT
 declare const BTN1: Pin;
 declare const BTN2: Pin;
@@ -342,6 +346,20 @@ Called when heart rate sensor data is available - see `Bangle.setHRMPower(1)`.
   "confidence": 0  // confidence in the BPM value
 }
 ```
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Bangle",
+  "name" : "HRM-env",
+  "params" : [["env","JsVar","An integer containing current environment reading"]],
+  "ifdef" : "BANGLEJS2"
+}
+Called when an environment sample heart rate sensor data is available. On the newest VC31B based watches this is only 4 bit (0..15)
+
+To get it you need to turn the HRM on with `Bangle.setHRMPower(1)` and also set `Bangle.setOptions({hrmPushEnv:true})`.
+
+It is also possible to poke registers with `Bangle.hrmWr` to increase the poll rate if needed.
+
  */
 /*TYPESCRIPT
 type PressureData = {
@@ -1635,6 +1653,9 @@ static void hrmHandler(int ppgValue) {
     jshHadEvent();
   }
   if (bangleFlags & JSBF_HRM_INSTANT_LISTENER) {
+    // what if we already have HRM data that was queued - eg if working with FIFO?
+    /*if (bangleTasks & JSBT_HRM_INSTANT_DATA)
+      jsWarn("Instant HRM data loss\n");*/
     bangleTasks |= JSBT_HRM_INSTANT_DATA;
     jshHadEvent();
   }
@@ -2534,6 +2555,9 @@ for before the clock is reloaded? 1500ms default, or 0 means never.
 * `hrmSportMode` - on the newest Bangle.js 2 builds with with the proprietary
   heart rate algorithm, this is the sport mode passed to the algorithm. See `libs/misc/vc31_binary/algo.h`
   for more info. -1 = auto, 0 = normal (default), 1 = running, 2 = ...
+* `hrmGreenAdjust` - (Bangle.js 2, 2v19+) if false (default is true) the green LED intensity won't be adjusted to get the HRM sensor 'exposure' correct
+* `hrmWearDetect` - (Bangle.js 2, 2v19+) if false (default is true) HRM readings won't be turned off if the watch isn't on your arm (based on HRM proximity sensor)
+* `hrmPushEnv` - (Bangle.js 2, 2v19+) if true (default is false) HRM environment readings will be produced as `Bangle.on(`HRM-env`, ...)` events
 * `seaLevelPressure` (Bangle.js 2) Normally 1013.25 millibars - this is used for
   calculating altitude with the pressure sensor
 
@@ -2569,6 +2593,11 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
 #endif
 #ifdef HEARTRATE_VC31_BINARY
       {"hrmSportMode", JSV_INTEGER, &_hrmSportMode},
+#endif
+#ifdef HEARTRATE_DEVICE_VC31
+      {"hrmGreenAdjust", JSV_BOOLEAN, &vcInfo.allowGreenAdjust},
+      {"hrmWearDetect", JSV_BOOLEAN, &vcInfo.allowWearDetect},
+      {"hrmPushEnv", JSV_BOOLEAN, &vcInfo.pushEnvData},
 #endif
 #ifdef PRESSURE_DEVICE
       {"seaLevelPressure", JSV_FLOAT, &barometerSeaLevelPressure},
@@ -6006,4 +6035,33 @@ JsVar *jswrap_banglejs_appRect() {
 
 
   return o;
+}
+
+
+/// Called from jsinteractive when an event is parsed from the event queue for Bangle.js (executed outside IRQ)
+void jsbangle_exec_pending(IOEvent *evt) {
+  assert(event=>type == EV_BANGLEJS);
+  uint16_t value = ((uint8_t)evt->data.chars[1])<<8 | (uint8_t)evt->data.chars[2];
+  switch ((JsBangleEvent)evt->data.chars[0]) {
+    case JSBE_HRM_ENV: {
+      JsVar *bangle = jsvObjectGetChildIfExists(execInfo.root, "Bangle");
+      if (bangle) {
+        JsVar *v = jsvNewFromInteger(value);
+        jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"HRM-env", &v, 1);
+        jsvUnLock(v);
+      }
+      jsvUnLock(bangle);
+      break;
+    }
+  }
+}
+
+/// Called from jsinteractive when an event is parsed from the event queue for Bangle.js
+void jsbangle_push_event(JsBangleEvent type, uint16_t value) {
+  IOEvent evt;
+  evt.flags = EV_BANGLEJS;
+  evt.data.chars[0] = type;
+  evt.data.chars[1] = (char)((value>>8) & 0xFF);
+  evt.data.chars[2] = (char)(value & 0xFF);
+  jshPushEvent(&evt);
 }

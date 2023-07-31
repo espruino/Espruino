@@ -92,3 +92,14 @@ void jswrap_banglejs_kickPollWatchdog();
 #ifdef EMULATED
 extern void touchHandlerInternal(int tx, int ty, int pts, int gesture);
 #endif
+
+// Used when pushing events/retrieving events from the event queue
+typedef enum {
+  JSBE_HRM_ENV, // new HRM environment reading
+} JsBangleEvent;
+
+/// Called from jsinteractive when an event is parsed from the event queue for Bangle.js (executed outside IRQ)
+void jsbangle_exec_pending(IOEvent *event);
+/// queue an event for Bangle.js (usually called from inside an IRQ)
+void jsbangle_push_event(JsBangleEvent type, uint16_t value);
+

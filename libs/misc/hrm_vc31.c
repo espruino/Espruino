@@ -19,6 +19,7 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 #include "jsi2c.h"
+#include "jswrap_bangle.h" // for jsbangle_push_event
 
 #ifndef EMULATED
 
@@ -49,18 +50,19 @@ uint16_t hrmPollInterval = HRM_POLL_INTERVAL_DEFAULT; // in msec, so 20 = 50hz
 #define VC31B_REG2         0x02 // read only IRQ status
 // see VC31B_INT_*
 #define VC31B_REG3         0x03 // FIFO write pos (where it'll write NEXT)
+// VC31B_REG4/5/6 contain the current PRE+ENV sensor values (4 bit each) for each of the 3 slots
 #define VC31B_REG7         0x07 // 2x 16 bit counter from internal oscillator (if 2nd is less than 1st there's some kind of rollover)
 #define VC31B_REG10        0x3B // write 0x5A for a soft reset
 #define VC31B_REG11        0x10 // CTRL
  // 0x80 = enable
  // 0x40 = ??? set for HRM measurement
- // 0x10 = if SPO2 w edisable this when not worn
+ // 0x10 = if SPO2 we disable this when not worn
  // 0x08 = LED control? disable when not worn
  // 0x04 = SLOT2 enable for env/wear detect sensor
  // 0x02 = SLOT1 enable for SPO2
  // 0x01 = SLOT0 enable for HRM/PPG
  // totalSlots = amount of bits set in 0x02/0x01
-#define VC31B_REG12        0x11 // INT?
+#define VC31B_REG12        0x11 // INT - VC31B_INT*, matches VC31B_REG2 (IRQ status)?
 // 0x80 appears to enable interrupts?
 // 0x10 = WearStatusDetection (ENV sensor IRQ?)
 #define VC31B_REG13        0x12 // ???
@@ -80,7 +82,7 @@ uint16_t hrmPollInterval = HRM_POLL_INTERVAL_DEFAULT; // in msec, so 20 = 50hz
 #define VC31B_STATUS_CONFLICT                       0x10
 #define VC31B_STATUS_INSAMPLE                       0x08
 #define VC31B_STATUS_OVERLOAD_MASK                  0x07 // 3x bits for each of the 3 channels
-/* Bit fields for VC31B_REG2 */
+/* Bit fields for VC31B_REG2, maybe VC31B_REG12 too */
 #define VC31B_INT_PS                          0x10 // used for wear detection
 #define VC31B_INT_OV                          0x08 // OvloadAdjust
 #define VC31B_INT_FIFO                        0x04
@@ -578,13 +580,17 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
       vc31_new_ppg(ppgValue); // send PPG value
 
       if (vcInfo.wasAdjusted>0) vcInfo.wasAdjusted--;
-      vc31_adjust();
+      if (vcInfo.allowGreenAdjust)
+        vc31_adjust();
     }
-    if (vcInfo.irqStatus & VC31A_STATUS_D_PS_OK)
-      vc31a_wearstatus();
-
-
+    if (vcInfo.irqStatus & VC31A_STATUS_D_PS_OK) {
+      if (vcInfo.pushEnvData)
+        jsbangle_push_event(JSBE_HRM_ENV, vcInfo.envValue);
+      if (vcInfo.allowWearDetect)
+        vc31a_wearstatus();
+    }
   }
+
   if (vcType == VC31B_DEVICE) {
     uint8_t *buf = &vcInfo.raw[0];
     vc31_rx(VC31B_REG1, buf, 6);
@@ -596,7 +602,7 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
     vcbInfo.sampleData.envValue[1] = buf[4] >> 4;
     vcbInfo.sampleData.preValue[1] = buf[4] & 0x0F;
     vcbInfo.sampleData.envValue[2] = buf[5] >> 4;
-    vcbInfo.sampleData.psValue = buf[5] & 0x0F;    
+    vcbInfo.sampleData.psValue = buf[5] & 0x0F;
     buf = &vcInfo.raw[6];
     vc31_rx(VC31B_REG17, buf, 6);
     vcbInfo.sampleData.pdResValue[0] = (buf[3] >> 4) & 0x07;
@@ -609,8 +615,11 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
     // if we had environment sensing, check for wear status and update LEDs accordingly
     if (vcInfo.irqStatus & VC31B_INT_PS) {
       vcInfo.envValue = vcbInfo.sampleData.envValue[2];
+      if (vcInfo.pushEnvData)
+        jsbangle_push_event(JSBE_HRM_ENV, vcInfo.envValue);
       //jsiConsolePrintf("e %d %d\n", vcbInfo.sampleData.psValue, vcbInfo.sampleData.envValue[2] );
-      vc31b_wearstatus();
+      if (vcInfo.allowWearDetect)
+        vc31b_wearstatus();
     }
     // read data from FIFO (right now FIFO isn't enabled so this is just one sample)
     if(vcInfo.irqStatus & VC31B_INT_FIFO) {
@@ -632,8 +641,10 @@ void vc31_irqhandler(bool state, IOEventFlags flags) {
       }
       // now we need to adjust the PPG
       if (vcInfo.wasAdjusted>0) vcInfo.wasAdjusted--;
-      for (int slotNum=0;slotNum<3;slotNum++) {
-        vc31b_slot_adjust(slotNum);
+      if (vcInfo.allowGreenAdjust) {
+        for (int slotNum=0;slotNum<3;slotNum++) {
+          vc31b_slot_adjust(slotNum);
+        }
       }
     }
     // Read just one PPG sample (the FIFO usually reads lots)
@@ -704,6 +715,8 @@ void hrm_sensor_on(HrmCallback callback) {
   vcInfo.unWearCnt = VC31A_UNWEAR_CNT;
   vcInfo.isWearCnt = VC31A_ISWEAR_CNT;
   vcInfo.ppgOffset = 0;
+  vcInfo.allowGreenAdjust = true;
+  vcInfo.allowWearDetect = true;
 
   if (vcType == VC31_DEVICE) {
     vcaInfo.adjustInfo.step  = 307200;
@@ -745,7 +758,7 @@ void hrm_sensor_on(HrmCallback callback) {
         0x00,      // VC31B_REG16 SLOT2 ENV sample rate - 6
         0x00,      // VC31B_REG17 SLOT0 LED current
         0x80,      // VC31B_REG18 SLOT1 LED current
-        0x00,      // VC31B_REG19 - LED current
+        0x00,      // VC31B_REG19 SLOT2 LED current?
         0x57,0x37, // VC31B_REG20/21 SLOT 0/1 ENV sensitivity?
         0x07,0x16, // 22,23
         0x56,0x16,0x00
@@ -767,7 +780,7 @@ void hrm_sensor_on(HrmCallback callback) {
     // vcbInfo.regConfig[3] |= vcbInfo.vcHr02SampleRate - 6; // Enable FIFO
     vcbInfo.regConfig[6] = vcbInfo.vcHr02SampleRate - 6; // VC31B_REG16 how often should ENV fire
 
-    vcbInfo.regConfig[9] = 0xE0; //CUR = 80mA//write Hs equal to 1
+    vcbInfo.regConfig[9] = 0xE0; //CUR = 80mA//write Hs equal to 1 (SLOT2?)
     vcbInfo.regConfig[12] = 0x67; // VC31B_REG22
     vcbInfo.regConfig[0] = 0x45; // VC31B_REG11 heart rate calculation - SLOT2(env) and SLOT0(hr)
     // Set up HRM speed - from testing, 200=100hz/10ms, 400=50hz/20ms, 800=25hz/40ms
