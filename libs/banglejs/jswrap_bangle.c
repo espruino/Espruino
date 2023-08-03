@@ -2349,11 +2349,15 @@ void jswrap_banglejs_setLCDOffset(int y) {
     "name" : "setLCDOverlay",
     "generate" : "jswrap_banglejs_setLCDOverlay",
     "params" : [
-      ["img","JsVar","An image"],
+      ["img","JsVar","An image, or undefined to clear"],
       ["x","int","The X offset the graphics instance should be overlaid on the screen with"],
       ["y","int","The Y offset the graphics instance should be overlaid on the screen with"]
     ],
-    "#if" : "defined(BANGLEJS_Q3) || defined(DICKENS)"
+    "#if" : "defined(BANGLEJS_Q3) || defined(DICKENS)",
+    "typescript" : [
+      "setLCDOverlay(img: any, x: number, y: number): void;",
+      "setLCDOverlay(): void;"
+    ]
 }
 Overlay an image or graphics instance on top of the contents of the graphics buffer.
 
