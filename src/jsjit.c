@@ -1008,7 +1008,7 @@ void jsjStatementDoOrWhile(bool isWhile) {
       jsjPopAsBool(0);
       jsjcCompareImm(0, 0);
       jsjcBranchConditionalRelative(JSJAC_NE, codePosStart - (jsjcGetByteCount()+2));
-    }    
+    }
   }
 }
 
@@ -1094,6 +1094,7 @@ void jsjBlockOrStatement() {
 }
 
 JsVar *jsjParseFunction() {
+  JsExecFlags oldExec = execInfo.execute;
   jsjcStart();
   // FIXME: I guess we need to create a function execution scope and unpack parameters?
   // Maybe we could use jspeFunctionCall to do all this for us (not creating a native function but a 'normal' one
@@ -1118,6 +1119,7 @@ JsVar *jsjParseFunction() {
   }
   JsVar *v = jsjcStop();
   JsVar *exception = jspGetException();
+  execInfo.execute = oldExec; // restore exec state
   if (!exception) return v;
   // We had an error - don't return half-complete code
   jsiConsolePrintf("JIT %v\n", exception);

@@ -330,18 +330,22 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
     if (funcVar)
       funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
   } else {
+    JsExecFlags oldExec = execInfo.execute;
+    execInfo.execute = EXEC_YES; // we need to force EXEC_YES so that the next token is parsed if it's a string, for compiled/ram/jit test
     JSP_MATCH('{');
-  #ifndef SAVE_ON_FLASH
+    execInfo.execute = oldExec;
+#ifndef SAVE_ON_FLASH
     if (lex->tk==LEX_STR) {
-      if (!strcmp(jslGetTokenValueAsString(), "compiled"))
+      JsVar *tokenValue = jslGetTokenValueAsVar();
+      if (jsvIsStringEqual(tokenValue, "compiled")) {
         jsWarn("Function marked with \"compiled\" uploaded in source form");
-      if (!strcmp(jslGetTokenValueAsString(), "ram")) {
+      } else if (jsvIsStringEqual(tokenValue, "ram")) {
         JSP_ASSERT_MATCH(LEX_STR);
         if (lex->tk==';') JSP_ASSERT_MATCH(';');
         forcePretokenise = true;
       }
 #ifdef ESPR_JIT
-      if (!strcmp(jslGetTokenValueAsString(), "jit")) {
+      else if (jsvIsStringEqual(tokenValue, "jit")) {
         JslCharPos funcCodeStart;
         jslCharPosFromLex(&funcCodeStart);
         JSP_ASSERT_MATCH(LEX_STR);
@@ -367,9 +371,10 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
           jslCharPosFree(&funcCodeStart);
         }
       }
-#endif
+#endif // ESPR_JIT
+      jsvUnLock(tokenValue);
     }
-  #endif
+#endif // SAVE_ON_FLASH
 
     /* If the function starts with return, treat it specially -
      * we don't want to store the 'return' part of it
