@@ -34,6 +34,7 @@ info = {
      'NET',
      'GRAPHICS',
      'NFC',
+     'JIT'
 #     'NEOPIXEL'
    ],
    'makefile' : [
