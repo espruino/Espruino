@@ -36,6 +36,7 @@
             Bangle.js2: Allow HRM environment sensor data to be pushed, also add flags for disabling auto exposure and wear detect
             Fix failure to run JIT caused by String interpreting optimisation
             JIT: JIT failures now don't stop execution of subsequent commands - function is just executed as normal JS
+            JIT: Fix scoping of JITed functions (they can now access vars in the scope they were defined in)
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

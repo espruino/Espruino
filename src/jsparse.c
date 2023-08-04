@@ -358,6 +358,10 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
         JsVar *funcCodeVar = jsjParseFunction();
         if (jsvIsFlatString(funcCodeVar)) { // compilation could have failed!
           jsvAddNamedChildAndUnLock(funcVar, funcCodeVar, JSPARSE_FUNCTION_JIT_CODE_NAME);
+          // scope var
+          JsVar *funcScopeVar = jspeiGetScopesAsVar();
+          if (funcScopeVar)
+            jsvAddNamedChildAndUnLock(funcVar, funcScopeVar, JSPARSE_FUNCTION_SCOPE_NAME);
           JSP_MATCH('}');
           jslCharPosFree(&funcCodeStart);
           return true;
