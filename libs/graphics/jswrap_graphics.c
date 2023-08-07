@@ -391,6 +391,7 @@ NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxD
   int bits=0;
   uint32_t colData=0;
   int x1 = xPos, y1 = yPos, x2 = xPos+img->width-1, y2 = yPos+img->height-1;
+  if (!jsvStringIteratorHasChar(it)) return; // no data
 #ifndef SAVE_ON_FLASH
   graphicsSetModifiedAndClip(gfx,&x1,&y1,&x2,&y2); // ensure we clip Y
   /* force a skip forward as many bytes as we need. Ideally we would use
