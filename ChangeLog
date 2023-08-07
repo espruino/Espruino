@@ -37,6 +37,7 @@
             Fix failure to run JIT caused by String interpreting optimisation
             JIT: JIT failures now don't stop execution of subsequent commands - function is just executed as normal JS
             JIT: Fix scoping of JITed functions (they can now access vars in the scope they were defined in)
+            Improve execution speed by not parsing strings when skipping blocks
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

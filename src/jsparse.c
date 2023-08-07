@@ -2231,14 +2231,19 @@ NO_INLINE JsVar *jspeExpression() {
 NO_INLINE void jspeSkipBlock() {
   // fast skip of blocks
   int brackets = 1;
+  // set execFlags to no, which means we won't try and parse strings into vars
+  JsExecFlags oldExec = execInfo.execute;
+  execInfo.execute = (JsExecFlags)(execInfo.execute & ~EXEC_RUN_MASK) | EXEC_NO;
+  // just run over every token
   while (lex->tk && brackets) {
     if (lex->tk == '{') brackets++;
     else if (lex->tk == '}') {
       brackets--;
-      if (!brackets) return;
+      if (!brackets) break;
     }
     JSP_ASSERT_MATCH(lex->tk);
   }
+  execInfo.execute = oldExec;
 }
 
 /// Called when a block starts, ensures that 'let/const' have the correct scoping
