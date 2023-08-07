@@ -3275,11 +3275,15 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 
 #ifndef SAVE_ON_FLASH
       if (filter && scale<0.75) { // 2x2 antialiasing
-        l.sx *= scale; // use scale rather than 0.5, so if scaling dithered it still works nicely
-        l.sy *= scale;
+        int sx = (int)(l.sx * scale); // use scale rather than 0.5, so if scaling dithered it still works nicely
+        int sy = (int)(l.sy * scale);
+        int s2x = l.sx - sx; // sx+s2x = l.sx
+        int s2y = l.sy - sy;
         GfxDrawImageLayer l2;
         memcpy(&l2, &l, sizeof(l));
         jsvStringIteratorNew(&l2.it, l2.img.buffer, 0);
+        l2.px += sy;
+        l2.py += sx;
          _jswrap_drawImageLayerNextY(&l2);
          // scan across image
         for (y = y1; y <= y2; y++) {
@@ -3289,13 +3293,17 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
             uint32_t ca,cb,cc,cd;
             bool nonTransparent = true;
             nonTransparent &= _jswrap_drawImageLayerGetPixel(&l, &ca);
-            _jswrap_drawImageLayerNextX(&l);
+            l.qx += sx;
+            l.qy -= sy;
             nonTransparent &= _jswrap_drawImageLayerGetPixel(&l, &cb);
-            _jswrap_drawImageLayerNextX(&l);
+            l.qx += s2x;
+            l.qy -= s2y;
             nonTransparent &= _jswrap_drawImageLayerGetPixel(&l2, &cc);
-            _jswrap_drawImageLayerNextX(&l2);
+            l2.qx += sx;
+            l2.qy -= sy;
             nonTransparent &= _jswrap_drawImageLayerGetPixel(&l2, &cd);
-            _jswrap_drawImageLayerNextX(&l2);
+            l2.qx += s2x;
+            l2.qy -= s2y;
             if (true) {
               ca = graphicsBlendColor(&gfx, ca, cb, 128);
               cc = graphicsBlendColor(&gfx, cc, cd, 128);
@@ -3304,8 +3312,6 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
             }
           }
           _jswrap_drawImageLayerNextY(&l);
-          _jswrap_drawImageLayerNextY(&l);
-          _jswrap_drawImageLayerNextY(&l2);
           _jswrap_drawImageLayerNextY(&l2);
         }
         jsvStringIteratorFree(&l2.it);
