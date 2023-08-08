@@ -81,7 +81,7 @@ bool jsfEraseFile(JsfFileName name);
 /// Erase the entire contents of the memory store
 bool jsfEraseAll();
 /// Try and compact saved data so it'll fit in Flash again. Return true if some free space was created
-bool jsfCompact();
+bool jsfCompact(bool showMessage);
 /** Return all files in flash as a JsVar array of names. If regex is supplied, it is used to filter the filenames using String.match(regexp)
  * If containing!=0, file flags must contain one of the 'containing' argument's bits.
  * Flags can't contain any bits in the 'notContaining' argument

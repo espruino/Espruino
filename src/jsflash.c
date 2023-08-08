@@ -552,7 +552,7 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
 #endif
 
 // Compacts one bank - return true if some free space was created
-bool jsfBankCompact(uint32_t startAddress) {
+bool jsfBankCompact(uint32_t startAddress, bool showMessage) {
 #ifndef SAVE_ON_FLASH
   jsDebug(DBG_INFO,"Compacting\n");
   uint32_t pageAddr,pageSize;
@@ -567,13 +567,15 @@ bool jsfBankCompact(uint32_t startAddress) {
     return false;
   }
 
-  // On watches that support overlays, show a message over the screen warning that we're compacting and it may take some time
+  if (showMessage) {
+    // On watches that support overlays, show a message over the screen warning that we're compacting and it may take some time
 #ifdef BANGLEJS_Q3
-  jsvUnLock(jspEvaluate("Bangle.setLCDOverlay(Graphics.createArrayBuffer(160,44,1,{msb:true}).drawRect(0,0,159,43).drawRect(1,1,158,42).setFont('12x20').setFontAlign(0,0).drawString('Please Wait',80,14).setColor('#888').setFont('6x8').drawString('STORAGE COMPACTION\\nIN PROGRESS...',80,32),8,66);g.flip();",true));
+    jsvUnLock(jspEvaluate("Bangle.setLCDOverlay(Graphics.createArrayBuffer(160,44,1,{msb:true}).drawRect(0,0,159,43).drawRect(1,1,158,42).setFont('12x20').setFontAlign(0,0).drawString('Please Wait',80,14).setColor('#888').setFont('6x8').drawString('STORAGE COMPACTION\\nIN PROGRESS...',80,32),8,66);g.flip();",true));
 #endif
 #ifdef DICKENS
-  jsvUnLock(jspEvaluate("Bangle.setLCDOverlay(Graphics.createArrayBuffer(160,40,16,{msb:true}).drawRect(0,0,159,39).drawRect(1,1,158,38).setFontArchitekt12().setFontAlign(0,0).drawString('PLEASE WAIT',80,8).setColor('#888').setFontArchitekt10().drawString('STORAGE COMPACTION\\nIN PROGRESS...',80,27),40,100);g.flip();",true));
+    jsvUnLock(jspEvaluate("Bangle.setLCDOverlay(Graphics.createArrayBuffer(160,40,16,{msb:true}).drawRect(0,0,159,39).drawRect(1,1,158,38).setFontArchitekt12().setFontAlign(0,0).drawString('PLEASE WAIT',80,8).setColor('#888').setFontArchitekt10().drawString('STORAGE COMPACTION\\nIN PROGRESS...',80,27),40,100);g.flip();",true));
 #endif
+  }
 
   uint32_t swapBufferSize = stats.fileBytes;
   if (swapBufferSize > maxRequired) swapBufferSize=maxRequired;
@@ -612,7 +614,7 @@ bool jsfBankCompact(uint32_t startAddress) {
 }
 
 // Try and compact saved data so it'll fit in Flash again - return true if some free space was created
-bool jsfCompact() {
+bool jsfCompact(bool showMessage) {
 #ifdef BANGLEJS
   JsVarInt jswrap_banglejs_getBattery();
   if (jswrap_banglejs_getBattery() < 10) {
@@ -625,9 +627,9 @@ bool jsfCompact() {
   jsfFilenameTableBank1Addr = 0;
   jsfFilenameTableBank1Size = 0;
 #endif
-  bool compacted = jsfBankCompact(JSF_START_ADDRESS);
+  bool compacted = jsfBankCompact(JSF_START_ADDRESS, showMessage);
 #ifdef JSF_BANK2_START_ADDRESS
-  compacted |= jsfBankCompact(JSF_BANK2_START_ADDRESS);
+  compacted |= jsfBankCompact(JSF_BANK2_START_ADDRESS, showMessage);
 #endif
   return compacted;
 }
@@ -707,7 +709,7 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
       // check this for sanity - in future we might compact forward into other pages, and don't compact if so
       if (!compacted) {
         compacted = true;
-        if (!jsfCompact()) {
+        if (!jsfCompact(true)) {
           jsDebug(DBG_INFO,"CreateFile - Compact failed\n");
           return 0;
         }
@@ -1265,7 +1267,7 @@ void jsfSaveToFlash() {
   // Ensure we get rid of any saved code we had before
   jsfEraseFile(name);
   // Try and compact, just to ensure we get the maximum amount saved
-  jsfCompact();
+  jsfCompact(true);
   jsiConsolePrint("Calculating Size...\n");
   // Work out how much data this'll take, plus 4 bytes for build hash
   uint32_t compressedSize = 4 + COMPRESS(varPtr, varSize, NULL, NULL);
@@ -1407,6 +1409,19 @@ void jsfRemoveCodeFromFlash() {
   jsiConsolePrint("\nDone!\n");
 }
 
+static void jsfResetStorage_progress(unsigned char *buf, uint32_t addr, uint32_t len) {
+  uint32_t l;
+  while (len) {
+    l = len;
+    if (l>8192) l=8192;
+    jshFlashWrite(buf, addr, l);
+    buf += l;
+    addr += l;
+    len -= l;
+    jsiConsolePrintf(".");
+  }
+}
+
 // Erase storage to 'factory' values.
 void jsfResetStorage() {
   jsiConsolePrintf("Erasing Storage Area...\n");
@@ -1417,8 +1432,23 @@ void jsfResetStorage() {
   jsiConsolePrintf("Writing initial storage contents...\n");
   extern const unsigned char jsfStorageInitialContents[];
   extern const int jsfStorageInitialContentLength;
-  jshFlashWrite(jsfStorageInitialContents, FLASH_SAVED_CODE_START, jsfStorageInitialContentLength);
-  jsiConsolePrintf("Write complete.\n");
+  if (jsfStorageInitialContentLength<FLASH_SAVED_CODE_LENGTH) {
+#ifdef FLASH_SAVED_CODE2_START
+    jsiConsolePrintf("Writing initial storage contents to internal flash");
+#else
+    jsiConsolePrintf("Writing initial storage contents");
+#endif
+    jsfResetStorage_progress(jsfStorageInitialContents, FLASH_SAVED_CODE_START, jsfStorageInitialContentLength);
+    jsiConsolePrintf("\nWrite complete.\n");
+  } else {
+#ifdef FLASH_SAVED_CODE2_START
+    jsiConsolePrintf("Writing initial storage contents to external SPI flash");
+    jsfResetStorage_progress(jsfStorageInitialContents, FLASH_SAVED_CODE2_START, jsfStorageInitialContentLength);
+    jsiConsolePrintf("\nWrite complete.\n");
+#else
+    jsWarn("Initial storage is too large to fit in internal SPI flash!\n");
+#endif
+  }
 #endif
 }
 
