@@ -40,6 +40,8 @@
             Improve execution speed by not parsing strings when skipping blocks
             Graphics: drawImage(...,{filter:1}) added to allow smooth downscaling of images
             Graphics: fix for images in drawString when completely offscreen (regression after drawImage optimisation)
+            Storage: Output progress on FactoryReset and Compact
+
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

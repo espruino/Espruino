@@ -485,12 +485,20 @@ static void jsfCompactWriteBuffer(uint32_t *writeAddress, uint32_t readAddress, 
 static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t swapBufferSize) {
   uint32_t writeAddress = startAddress;
   jsDebug(DBG_INFO,"Compacting from 0x%08x (%d byte buffer)\n", startAddress, swapBufferSize);
+
+#ifdef JSF_BANK2_START_ADDRESS
+  jsiConsolePrintf("Compacting Bank %d... ", (startAddress>=JSF_BANK2_START_ADDRESS && startAddress<JSF_BANK2_END_ADDRESS)?2:1);
+#else
+  jsiConsolePrintf("Compacting... ");
+#endif
+
   uint32_t swapBufferHead = 0;
   uint32_t swapBufferTail = 0;
   uint32_t swapBufferUsed = 0;
   JsfFileHeader header;
   memset(&header,0,sizeof(JsfFileHeader));
   uint32_t addr = startAddress;
+  uint32_t lastProgress = 0;
   if (jsfGetFileHeader(addr, &header, true)) do {
     if (jsfIsRealFile(&header)) { // if not replaced or system file
       jsDebug(DBG_INFO,"compact> copying file at 0x%08x\n", addr);
@@ -527,6 +535,11 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
         // Is the buffer big enough to write?
         jsfCompactWriteBuffer(&writeAddress, alignedPtr, swapBuffer, swapBufferSize, &swapBufferUsed, &swapBufferTail);
       }
+      uint32_t progress = (addr-startAddress)>>14; // every 16k
+      if (progress!=lastProgress) {
+        jsiConsolePrintf("\x08%c", "/-\\|"[progress&3]);
+        lastProgress = progress;
+      }
     }
     // kick watchdog to ensure we don't reboot
     jshKickWatchDog();
@@ -546,6 +559,7 @@ static bool jsfCompactInternal(uint32_t startAddress, char *swapBuffer, uint32_t
     // addr is the address of the last area in flash
     jshFlashErasePages(writeAddress, addr-writeAddress);
   }
+  jsiConsolePrintf("\n");
   jsDebug(DBG_INFO,"Compaction Complete\n");
   return true;
 }
@@ -601,15 +615,15 @@ bool jsfBankCompact(uint32_t startAddress, bool showMessage) {
   jsvUnLock(jspEvaluate("Bangle.setLCDOverlay();g.flip();",true));
 #endif
   return freedMemory;
-#else
-  /* If low on flash assume we only have a tiny bit of flash. Chances
+#else // SAVE_ON_FLASH
+  /* If a low flash uC assume we only have a tiny bit of flash. Chances
    * are there'll only be one file so just erasing flash will do it. */
   bool allocated = jsvGetBoolAndUnLock(jsfListFiles(NULL,0,0));
   if (!allocated) {
     jsfEraseAll();
     return true;
   }
-#endif
+#endif // SAVE_ON_FLASH
   return false;
 }
 
@@ -1411,6 +1425,7 @@ void jsfRemoveCodeFromFlash() {
 
 static void jsfResetStorage_progress(unsigned char *buf, uint32_t addr, uint32_t len) {
   uint32_t l;
+  int progress = 0;
   while (len) {
     l = len;
     if (l>8192) l=8192;
@@ -1418,7 +1433,8 @@ static void jsfResetStorage_progress(unsigned char *buf, uint32_t addr, uint32_t
     buf += l;
     addr += l;
     len -= l;
-    jsiConsolePrintf(".");
+    jsiConsolePrintf("\x08%c", "/-\\|"[progress&3]);
+    progress++;
   }
 }
 
@@ -1434,15 +1450,15 @@ void jsfResetStorage() {
   extern const int jsfStorageInitialContentLength;
   if (jsfStorageInitialContentLength<FLASH_SAVED_CODE_LENGTH) {
 #ifdef FLASH_SAVED_CODE2_START
-    jsiConsolePrintf("Writing initial storage contents to internal flash");
+    jsiConsolePrintf("Writing initial storage contents to internal flash... ");
 #else
-    jsiConsolePrintf("Writing initial storage contents");
+    jsiConsolePrintf("Writing initial storage contents... ");
 #endif
     jsfResetStorage_progress(jsfStorageInitialContents, FLASH_SAVED_CODE_START, jsfStorageInitialContentLength);
     jsiConsolePrintf("\nWrite complete.\n");
   } else {
 #ifdef FLASH_SAVED_CODE2_START
-    jsiConsolePrintf("Writing initial storage contents to external SPI flash");
+    jsiConsolePrintf("Writing initial storage contents to external SPI flash... ");
     jsfResetStorage_progress(jsfStorageInitialContents, FLASH_SAVED_CODE2_START, jsfStorageInitialContentLength);
     jsiConsolePrintf("\nWrite complete.\n");
 #else
