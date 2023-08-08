@@ -1822,7 +1822,8 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             break;
 
         case PM_EVT_PEERS_DELETE_SUCCEEDED:
-            jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again
+            if (!(bleStatus & BLE_IS_SLEEPING))
+              jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again if not asleep
             break;
 
         case PM_EVT_PEERS_DELETE_FAILED:
@@ -2768,8 +2769,9 @@ void jsble_advertising_stop() {
 
    // reset the status for things that aren't happening now we're rebooted
    bleStatus &= ~BLE_RESET_ON_SOFTDEVICE_START;
-
-   jswrap_ble_wake();
+   // if we weren't sleeping, start advertising again
+   if (!(bleStatus & BLE_IS_SLEEPING))
+    jswrap_ble_wake();
 }
 
 /** Completely deinitialise the BLE stack */

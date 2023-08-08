@@ -41,7 +41,7 @@
             Graphics: drawImage(...,{filter:1}) added to allow smooth downscaling of images
             Graphics: fix for images in drawString when completely offscreen (regression after drawImage optimisation)
             Storage: Output progress on FactoryReset and Compact
-
+            nRF5x: Ensure we don't start advertising immediately after softdevice restart if NRF.sleep() was used
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler
