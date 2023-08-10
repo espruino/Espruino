@@ -396,8 +396,18 @@ NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxD
   graphicsSetModifiedAndClip(gfx,&x1,&y1,&x2,&y2); // ensure we clip Y
   /* force a skip forward as many bytes as we need. Ideally we would use
   jsvStringIteratorGotoUTF8 but we don't have the UTF8 index or
-  source string here. This is still better than trying to render every pixel!*/
-  bits = -(y1-yPos)*img->bpp*img->width;
+  source string here. This is still better than trying to render every pixel! */
+  if (y2<y1 || x2<x1) { // offscreen - skip everything and exit
+    if (parseFullImage) {
+      bits = -img->bpp*img->width*img->height;
+      while (bits < 0) {
+        jsvStringIteratorNextUTF8(it);
+        bits += 8;
+      }
+    }
+    return;
+  } else // onscreen. y1!=yPos if clipped - ensure we skip enough bytes
+    bits = -(y1-yPos)*img->bpp*img->width;
 #endif
   JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelUnclippedFn(gfx, xPos, y1, xPos+img->width-1, y2);
   for (int y=y1;y<=y2;y++) {
