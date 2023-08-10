@@ -1,57 +1,88 @@
 --- a/targetlibs/nrf5x_15_3/components/ble/ble_services/ble_nus/ble_nus.c	2021-10-18 20:54:51.484970647 +0100
-+++ b/targetlibs/nrf5x_15_3/components/ble/ble_services/ble_nus/ble_nus.c	2021-10-18 20:55:28.765614856 +0100
-@@ -234,7 +234,11 @@
++++ b/targetlibs/nrf5x_15_3/components/ble/ble_services/ble_nus/ble_nus.c	2023-08-14 10:36:45.381885738 +0200
+@@ -234,7 +234,19 @@
      memset(&cccd_md, 0, sizeof(cccd_md));
- 
+
      BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.read_perm);
--    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
++#if PEER_MANAGER_ENABLED
 +    if (p_nus_init->encrypt) {
-+      BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&cccd_md.write_perm);
++        if (p_nus_init->mitmProtect) {
++            BLE_GAP_CONN_SEC_MODE_SET_ENC_WITH_MITM(&cccd_md.write_perm);
++        } else {
++            BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&cccd_md.write_perm);
++        }
 +    } else {
-+      BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
++        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
 +    }
- 
++#else
+     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&cccd_md.write_perm);
++#endif
+
      cccd_md.vloc = BLE_GATTS_VLOC_STACK;
- 
-@@ -252,8 +256,13 @@
- 
+
+@@ -252,8 +264,23 @@
+
      memset(&attr_md, 0, sizeof(attr_md));
- 
--    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
--    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+
++#if PEER_MANAGER_ENABLED
 +    if (p_nus_init->encrypt) {
-+      BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.read_perm);
-+      BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.write_perm);
++        if (p_nus_init->mitmProtect) {
++            BLE_GAP_CONN_SEC_MODE_SET_ENC_WITH_MITM(&attr_md.read_perm);
++            BLE_GAP_CONN_SEC_MODE_SET_ENC_WITH_MITM(&attr_md.write_perm);
++        } else {
++            BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.read_perm);
++            BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.write_perm);
++        }
 +    } else {
-+      BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
-+      BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
++        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
++        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
 +    }
- 
++#else
+     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
++#endif
+
      attr_md.vloc    = BLE_GATTS_VLOC_STACK;
      attr_md.rd_auth = 0;
-@@ -305,8 +314,13 @@
- 
+@@ -305,8 +332,23 @@
+
      memset(&attr_md, 0, sizeof(attr_md));
- 
--    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
--    BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
+
++#if PEER_MANAGER_ENABLED
 +    if (p_nus_init->encrypt) {
-+      BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.read_perm);
-+      BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.write_perm);
++        if (p_nus_init->mitmProtect) {
++            BLE_GAP_CONN_SEC_MODE_SET_ENC_WITH_MITM(&attr_md.read_perm);
++            BLE_GAP_CONN_SEC_MODE_SET_ENC_WITH_MITM(&attr_md.write_perm);
++        } else {
++            BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.read_perm);
++            BLE_GAP_CONN_SEC_MODE_SET_ENC_NO_MITM(&attr_md.write_perm);
++        }
 +    } else {
-+      BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
-+      BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
++        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
++        BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
 +    }
- 
++#else
+     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.read_perm);
+     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&attr_md.write_perm);
++#endif
+
      attr_md.vloc    = BLE_GATTS_VLOC_STACK;
      attr_md.rd_auth = 0;
+@@ -438,3 +480,4 @@
+
+
+ #endif // NRF_MODULE_ENABLED(BLE_NUS)
++
 --- a/targetlibs/nrf5x_15_3/components/ble/ble_services/ble_nus/ble_nus.h	2018-03-22 15:25:08.000000000 +0000
-+++ b/targetlibs/nrf5x_15_3/components/ble/ble_services/ble_nus/ble_nus.h	2020-05-13 10:26:53.632988548 +0100
-@@ -173,6 +173,7 @@
++++ b/targetlibs/nrf5x_15_3/components/ble/ble_services/ble_nus/ble_nus.h 2023-08-14 10:36:56.914007933 +0200
+@@ -173,6 +173,10 @@
  typedef struct
  {
      ble_nus_data_handler_t data_handler; /**< Event handler to be called for handling received data. */
++#if PEER_MANAGER_ENABLED
 +    bool encrypt; //< GW added - require encryption
++    bool mitmProtect; //< require mitm protection
++#endif
  } ble_nus_init_t;
 
 
