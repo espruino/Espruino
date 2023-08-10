@@ -2557,6 +2557,7 @@ uint32_t jsble_advertising_update(uint8_t *advPtr, unsigned int advLen, uint8_t 
 }
 
 uint32_t jsble_advertising_start() {
+  jsDebug(DBG_INFO,"jsble_advertising_start\n");
   // try not to call from IRQ as we might want to allocate JsVars
   if (bleStatus & BLE_IS_ADVERTISING) return 0;
 
@@ -2704,6 +2705,7 @@ uint32_t jsble_advertising_update_scanresponse(char *dPtr, unsigned int dLen) {
 }
 
 void jsble_advertising_stop() {
+  jsDebug(DBG_INFO,"jsble_advertising_stop\n");
   if (!(bleStatus & BLE_IS_ADVERTISING)) return;
 #if NRF_SD_BLE_API_VERSION > 5
   sd_ble_gap_adv_stop(m_adv_handle);
@@ -2716,6 +2718,7 @@ void jsble_advertising_stop() {
 
 /** Initialise the BLE stack */
  void jsble_init() {
+  jsDebug(DBG_INFO,"jsble_init\n");
    uint32_t err_code;
    ble_stack_init();
    err_code = radio_notification_init(
@@ -2776,6 +2779,7 @@ void jsble_advertising_stop() {
 
 /** Completely deinitialise the BLE stack */
 bool jsble_kill() {
+  jsDebug(DBG_INFO,"jsble_kill\n");
   jswrap_ble_sleep();
   // BLE NUS doesn't need deinitialising (no ble_nus_kill)
   bleStatus &= ~BLE_NUS_INITED;
@@ -2801,8 +2805,10 @@ bool jsble_kill() {
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID */
 void jsble_restart_softdevice(JsVar *jsFunction) {
+  jsDebug(DBG_INFO,"jsble_restart_softdevice (%s)\n", (bleStatus&BLE_IS_SLEEPING)?"sleep":"awake");
   assert(!jsble_has_connection());
   bleStatus &= ~(BLE_NEEDS_SOFTDEVICE_RESTART | BLE_SERVICES_WERE_SET);
+  bool bleWasSleeping = bleStatus & BLE_IS_SLEEPING;;
   // if we were scanning, make sure we stop
   if (bleStatus & BLE_IS_SCANNING) {
     sd_ble_gap_scan_stop();
@@ -2819,6 +2825,9 @@ void jsble_restart_softdevice(JsVar *jsFunction) {
     jshSetSystemTime(lastTime); // Softdevice resets the RTC - so we must reset our offsets
   }
   jstRestartUtilTimer(); // restart the util timer
+  if (!bleWasSleeping)
+    jswrap_ble_wake();
+  jsDebug(DBG_INFO,"jsble_restart_softdevice ends (%s)\n", (bleStatus&BLE_IS_SLEEPING)?"sleep":"awake");
 }
 
 uint32_t jsble_set_scanning(bool enabled, JsVar *options) {
