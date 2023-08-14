@@ -90,6 +90,7 @@ info = {
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'BOOTLOADER_SETTINGS_FAMILY=NRF52840',
      'DEFINES += -DESPR_BOOTLOADER_SPIFLASH', # Allow bootloader to flash direct from SPI flash
+     'DEFINES += -DESPR_BLE_PRIVATE_ADDRESS_SUPPORT',
      'NRF_SDK15=1'
    ]
  }

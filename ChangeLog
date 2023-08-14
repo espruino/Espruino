@@ -1,4 +1,5 @@
           : Fix XON/OFF thresholds to be based off the correct buffer size
+            Bangle.js2: Allow configuring device privacy to use random BLE addresses
          
      2v22 : Graphics: Ensure floodFill sets modified area correctly
             nRF52: Lower expected BLE XTAL accuracy to 50ppm (can improve BLE stability on some Bangle.js 2)
