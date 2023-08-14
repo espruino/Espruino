@@ -381,6 +381,8 @@ void jsble_central_setWhitelist(bool whitelist);
 void jsble_central_eraseBonds();
 /// Try to resolve a bonded peer's address from a random private resolvable address
 JsVar *jsble_resolveAddress(JsVar *address);
+JsVar *jsble_getPrivacy();
+void jsble_setPrivacy(JsVar *options);
 #endif
 
 #endif // BLUETOOTH_H

@@ -825,6 +825,96 @@ JsVar *jswrap_ble_resolveAddress(JsVar *address) {
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
+    "name" : "getPrivacy",
+    "#if" : "defined(NRF52_SERIES)",
+    "generate" : "jswrap_ble_getPrivacy",
+    "return" : ["JsVar", "Current privacy settings" ]
+}
+Get this device's Bluetooth privacy settings:
+
+```
+{
+  privacy_mode // The current privacy mode. Either "off" or "device_privacy".
+  private_addr_type // The type of address we are using. Either "random_private_resolvable" or "random_private_non_resolvable".
+  private_addr_cycle_s // How often the address changes, in seconds.
+}
+```
+
+If privacy_mode is "off", only `{privacy_mode: "off"}` will be returned.
+
+See `NRF.setPrivacy` for more info on the meaning of the different values.
+*/
+JsVar *jswrap_ble_getPrivacy() {
+#if PEER_MANAGER_ENABLED
+  return jsble_getPrivacy();
+#else
+  jsExceptionHere(JSET_ERROR, "Not implemented");
+  return 0;
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "setPrivacy",
+    "#if" : "defined(NRF52_SERIES)",
+    "generate" : "jswrap_ble_setPrivacy",
+    "params" : [
+      ["options" ,"JsVar", "The privacy settings that should be applied."]
+    ]
+}
+Set this device's Bluetooth privacy settings.
+
+The privacy feature provides a way to avoid being tracked over a period of time.
+This works by hiding the local device identity address, and replacing it with a random private address,
+that automatically changes at a specified interval.
+
+If a `"random_private_resolvable"` address is used, that address is generated with the help
+of an identity resolving key (IRK), that is exchanged during bonding.
+This allows a bonded device to still identify another device that is using a random private resolvable address.
+
+Note that, while this can help against being tracked, there are other ways a Bluetooth device can reveal its identity.
+For example, the name or services it advertises may be unique enough.
+If it is possible for anyone to connect, the services the device provides,
+and how it responds to trying to read from or write to their characteristics could be used as well.
+
+```
+NRF.setPrivacy({
+  privacy_mode // The privacy mode that should be used.
+  private_addr_type // The type of address to use.
+  private_addr_cycle_s // How often the address should change, in seconds.
+});
+```
+
+`privacy_mode` can be one of:
+
+* `"off"` - Disable the privacy feature.
+* `"device_privacy"` - The device will send and accept only private addresses for its own address.
+
+If `privacy_mode` is `"off"`, all other fields are ignored and become optional.
+
+`private_addr_type` can be one of:
+
+* `"random_private_resolvable"` - Address that can be resolved by a bonded peer that knows our IRK.
+* `"random_private_non_resolvable"` - Address that cannot be resolved.
+
+`private_addr_cycle_s` must be an integer. Pass `0` to use the default address change interval.
+The default is usually to change the address every 15 minutes (or 900 seconds).
+*/
+void jswrap_ble_setPrivacy(JsVar *options) {
+#if PEER_MANAGER_ENABLED
+  jsble_setPrivacy(options);
+  // privacy settings are only applied when the softdevice (re)starts
+  if (bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART)
+    jswrap_ble_restart(NULL);
+#else
+  jsExceptionHere(JSET_ERROR, "Not implemented");
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
     "name" : "getBattery",
     "generate" : "jswrap_ble_getBattery",
     "return" : ["float", "Battery level in volts" ]

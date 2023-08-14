@@ -95,6 +95,8 @@ void jswrap_ble_eraseBonds();
 JsVar *jswrap_ble_getAddress();
 void jswrap_ble_setAddress(JsVar *address);
 JsVar *jswrap_ble_resolveAddress(JsVar *address);
+JsVar *jswrap_ble_getPrivacy();
+void jswrap_ble_setPrivacy(JsVar *options);
 
 /// Used by bluetooth.c internally when it needs to set up advertising at first
 JsVar *jswrap_ble_getCurrentAdvertisingData();

@@ -2834,18 +2834,43 @@ void jsble_advertising_stop() {
                            NRF_RADIO_NOTIFICATION_DISTANCE_NONE);
    APP_ERROR_CHECK(err_code);
 
+#if PEER_MANAGER_ENABLED
+   peer_manager_init(false /*don't erase_bonds*/);
+   pm_privacy_params_t privacy_params = {
+     .privacy_mode = BLE_GAP_PRIVACY_MODE_OFF,
+     .private_addr_type = BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE,
+     .private_addr_cycle_s = BLE_GAP_DEFAULT_PRIVATE_ADDR_CYCLE_INTERVAL_S,
+     .p_device_irk = NULL
+   };
+   {
+     JsVar *options = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_PRIVACY);
+     pm_privacy_params_t privacy;
+     if (options && bleVarToPrivacy(options, &privacy)) {
+       privacy_params = privacy;
+     }
+     jsvUnLock(options);
+   }
+   err_code = pm_privacy_set(&privacy_params);
+   if (err_code) jsiConsolePrintf("pm_privacy_set failed: 0x%x\n", err_code);
+#endif
+
 #ifdef NRF52_SERIES
    // Set MAC address
    JsVar *v = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS);
    if (v) {
      ble_gap_addr_t p_addr;
      if (bleVarToAddr(v, &p_addr)) {
+#if PEER_MANAGER_ENABLED
+       err_code = pm_id_addr_set(&p_addr);
+       if (err_code) jsiConsolePrintf("pm_id_addr_set failed: 0x%x\n", err_code);
+#else
 #if NRF_SD_BLE_API_VERSION < 3
        err_code = sd_ble_gap_address_set(BLE_GAP_ADDR_CYCLE_MODE_NONE,&p_addr);
 #else
        err_code = sd_ble_gap_addr_set(&p_addr);
 #endif
        if (err_code) jsiConsolePrintf("sd_ble_gap_addr_set failed: 0x%x\n", err_code);
+#endif // PEER_MANAGER_ENABLED
      }
    }
    jsvUnLock(v);
@@ -2866,9 +2891,6 @@ void jsble_advertising_stop() {
  */
 #endif
 
-#if PEER_MANAGER_ENABLED
-   peer_manager_init(false /*don't erase_bonds*/);
-#endif
    gap_params_init();
    services_init();
    conn_params_init();
@@ -3654,6 +3676,44 @@ JsVar *jsble_resolveAddress(JsVar *address) {
     }
   }
   return 0;
+}
+#endif // PEER_MANAGER_ENABLED
+
+#if PEER_MANAGER_ENABLED
+JsVar *jsble_getPrivacy() {
+  pm_privacy_params_t privacy;
+  memset(&privacy, 0, sizeof(pm_privacy_params_t));
+  ble_gap_irk_t irk;
+  memset(&irk, 0, sizeof(ble_gap_irk_t));
+  privacy.p_device_irk = &irk;
+  uint32_t err_code = pm_privacy_get(&privacy);
+  if (!jsble_check_error(err_code)) {
+    return blePrivacyToVar(&privacy);
+  }
+  return 0;
+}
+#endif // PEER_MANAGER_ENABLED
+
+#if PEER_MANAGER_ENABLED
+void jsble_setPrivacy(JsVar *options) {
+  if (!jsvIsObject(options) && !jsvIsUndefined(options)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting an object or undefined, got %t", options);
+  } else {
+    pm_privacy_params_t privacy;
+    if (jsvIsObject(options) && !bleVarToPrivacy(options, &privacy)) {
+      jsExceptionHere(JSET_TYPEERROR, "Invalid or missing parameters, got %t", options);
+    } else {
+      // only update parameters if they are different
+      JsVar *currentPrivacy = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_PRIVACY);
+      if (!blePrivacyVarEqual(currentPrivacy, options)) {
+        jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_PRIVACY, options);
+        // privacy settings can only be applied while not advertising, scanning or in a connection
+        // we only apply them when the softdevice (re)starts
+        bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+      }
+      jsvUnLock(currentPrivacy);
+    }
+  }
 }
 #endif // PEER_MANAGER_ENABLED
 
