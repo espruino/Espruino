@@ -42,6 +42,7 @@
             Graphics: fix for images in drawString when completely offscreen (regression after drawImage optimisation)
             Storage: Output progress on FactoryReset and Compact
             nRF5x: Ensure we don't start advertising immediately after softdevice restart if NRF.sleep() was used
+            Bangle.js2: Ensure `HRM-raw.raw` is set correctly after we moved to binary hrm algorithm
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

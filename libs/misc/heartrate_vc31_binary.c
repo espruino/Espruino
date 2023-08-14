@@ -29,7 +29,7 @@ HrmInfo hrmInfo;
 void hrm_init() {
   memset(&hrmInfo, 0, sizeof(hrmInfo));
   hrmInfo.isWorn = false;
-  hrmInfo.lastPPGTime = jshGetSystemTime();  
+  hrmInfo.lastPPGTime = jshGetSystemTime();
   hrmInfo.sportMode = SPORT_TYPE_NORMAL;
 }
 
@@ -39,13 +39,13 @@ bool hrm_new(int ppgValue, Vector3 *acc) {
   JsSysTime time = jshGetSystemTime();
   int timeDiff = (int)(jshGetMillisecondsFromTime(time-hrmInfo.lastPPGTime)+0.5);
   hrmInfo.lastPPGTime = time;
-  // if we've just started wearing again, reset the algorith
+  // if we've just started wearing again, reset the algorithm
   if (vcInfo.isWearing && !hrmInfo.isWorn) {
     hrmInfo.isWorn = true;
     // initialise VC31 algorithm (should do when going from wearing to not wearing)
     Algo_Init();
     hrmInfo.lastHRM = 0;
-    hrmInfo.lastConfidence = 0; 
+    hrmInfo.lastConfidence = 0;
     hrmInfo.msSinceLastHRM = 0;
     hrmInfo.avg = ppgValue;
   } else {
@@ -56,7 +56,10 @@ bool hrm_new(int ppgValue, Vector3 *acc) {
   if (f < HRMVALUE_MIN) f = HRMVALUE_MIN;
   if (f > HRMVALUE_MAX) f = HRMVALUE_MAX;
   hrmInfo.filtered = f;
-  hrmInfo.avg = ((int)hrmInfo.avg*7 + ppgValue) >> 3;  
+  hrmInfo.avg = ((int)hrmInfo.avg*7 + ppgValue) >> 3;
+  if (ppgValue<HRMVALUE_MIN) ppgValue=HRMVALUE_MIN;
+  if (ppgValue>HRMVALUE_MAX) ppgValue=HRMVALUE_MAX;
+  hrmInfo.raw = ppgValue;
   // Feed data into algorithm
   AlgoInputData_t inputData;
   inputData.axes.x = acc->y >> 5;  // perpendicular to the direction of the arm
