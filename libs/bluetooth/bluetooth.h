@@ -119,20 +119,22 @@ typedef enum  {
   BLE_PM_INITIALISED = 1<<10,  //< Set when the Peer Manager has been initialised (only needs doing once, even after SD restart)
   BLE_IS_NOT_CONNECTABLE = 1<<11, //< Is the device connectable?
   BLE_IS_NOT_SCANNABLE = 1<<12, //< Is the device scannable? eg, scan response
-  BLE_WHITELIST_ON_BOND = 1<<13,  //< Should we write to the whitelist whenever we bond to a device?
-  BLE_DISABLE_DYNAMIC_INTERVAL = 1<<14, //< Disable automatically changing interval based on BLE peripheral activity
-  BLE_ENCRYPT_UART = 1<<15,  //< Has security with encryption been requested (if so UART must require it)
+  BLE_IS_NOT_PAIRABLE = 1<<13, //< Is the device pairable?
+  BLE_WHITELIST_ON_BOND = 1<<14,  //< Should we write to the whitelist whenever we bond to a device?
+  BLE_DISABLE_DYNAMIC_INTERVAL = 1<<15, //< Disable automatically changing interval based on BLE peripheral activity
+  BLE_ENCRYPT_UART = 1<<16,  //< Has security with encryption been requested (if so UART must require it)
+  BLE_SECURITY_MITM = 1 << 17, //< Has security with mitm protection been requested (if so UART must require it)
 #ifdef ESPR_BLUETOOTH_ANCS
-  BLE_ANCS_INITED = 1<<16,   //< Apple Notification Centre enabled
-  BLE_AMS_INITED = 1<<17,   //< Apple Media Service enabled
-  BLE_CTS_INITED = 1<<18,   //< Apple Notification Centre enabled
+  BLE_ANCS_INITED = 1<<18,   //< Apple Notification Centre enabled
+  BLE_AMS_INITED = 1<<19,   //< Apple Media Service enabled
+  BLE_CTS_INITED = 1<<20,   //< Apple Notification Centre enabled
   BLE_ANCS_AMS_OR_CTS_INITED = BLE_ANCS_INITED|BLE_AMS_INITED|BLE_CTS_INITED, //< Apple Notifications or Media Service enabled
 #endif
 #ifndef SAVE_ON_FLASH
-  BLE_ADVERTISE_WHEN_CONNECTED = 1<<19, // Do we keep advertising when we're connected?
+  BLE_ADVERTISE_WHEN_CONNECTED = 1<<21, // Do we keep advertising when we're connected?
 #endif
-  BLE_IS_ADVERTISING_MULTIPLE = 1<<20, // We have multiple different advertising packets
-  BLE_ADVERTISING_MULTIPLE_SHIFT = 21,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
+  BLE_IS_ADVERTISING_MULTIPLE = 1<<22, // We have multiple different advertising packets
+  BLE_ADVERTISING_MULTIPLE_SHIFT = 23,//GET_BIT_NUMBER(BLE_ADVERTISING_MULTIPLE_ONE),
   BLE_ADVERTISING_MULTIPLE_ONE = 1 << BLE_ADVERTISING_MULTIPLE_SHIFT,
   BLE_ADVERTISING_MULTIPLE_MASK = 255 << BLE_ADVERTISING_MULTIPLE_SHIFT,
 

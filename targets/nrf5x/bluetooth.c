@@ -74,6 +74,7 @@ static pm_peer_id_t   m_peer_id;                              /**< Device refere
 static pm_peer_id_t   m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];  /**< List of peers currently in the whitelist. */
 static uint32_t       m_whitelist_peer_cnt;                                 /**< Number of peers currently in the whitelist. */
 static bool           m_is_wl_changed;                                      /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
+static volatile ble_gap_sec_params_t  m_sec_params;                         /**< Current security parameters. */
 // needed for peer_manager_init so we can smoothly upgrade from pre 1v92 firmwares
 #include "fds_internal_defs.h"
 // If we have peer manager we have central mode and NRF52
@@ -235,6 +236,9 @@ bool bleHighInterval;
 #endif
 
 static ble_gap_sec_params_t get_gap_sec_params();
+#if PEER_MANAGER_ENABLED
+static bool jsble_can_pair_with_peer(const ble_gap_sec_params_t *own_params, const ble_gap_sec_params_t *peer_params);
+#endif
 
 #if NRF_SD_BLE_API_VERSION>5
 // if m_scan_param.extended=0, use BLE_GAP_SCAN_BUFFER_MIN
@@ -1233,6 +1237,22 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         }
       } break;
 
+#if PEER_MANAGER_ENABLED && (NRF_SD_BLE_API_VERSION < 5)
+      case BLE_GAP_EVT_SEC_PARAMS_REQUEST: {
+        ble_gap_sec_params_t own_params = m_sec_params;
+        ble_gap_sec_params_t peer_params = p_ble_evt->evt.gap_evt.params.sec_params_request.peer_params;
+        if (!jsble_can_pair_with_peer(&own_params, &peer_params)) {
+          // reject security procedure
+          ble_gap_sec_params_t sec_params = m_sec_params;
+          err_code = sd_ble_gap_sec_params_reply(m_peripheral_conn_handle,
+                                                 BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP,
+                                                 &sec_params,
+                                                 NULL);
+          APP_ERROR_CHECK_NOT_URGENT(err_code);
+        }
+      } break;
+#endif
+
 #if PEER_MANAGER_ENABLED==0
       case BLE_GAP_EVT_SEC_PARAMS_REQUEST:{
         //jsiConsolePrintf("BLE_GAP_EVT_SEC_PARAMS_REQUEST\n");
@@ -1785,6 +1805,19 @@ static void pm_evt_handler(pm_evt_t const * p_evt) {
             pm_conn_sec_config_reply(p_evt->conn_handle, &conn_sec_config);
         } break;
 
+#if (NRF_SD_BLE_API_VERSION >= 5)
+        case PM_EVT_CONN_SEC_PARAMS_REQ: {
+            ble_gap_sec_params_t own_params = m_sec_params;
+            const ble_gap_sec_params_t *peer_params = p_evt->params.conn_sec_params_req.p_peer_params;
+            if (!jsble_can_pair_with_peer(&own_params, peer_params)) {
+                // reject security procedure
+                err_code = pm_conn_sec_params_reply(p_evt->conn_handle, NULL,
+                                                    p_evt->params.conn_sec_params_req.p_context);
+                APP_ERROR_CHECK_NOT_URGENT(err_code);
+            }
+        } break;
+#endif
+
         case PM_EVT_STORAGE_FULL:
         {
             // Run garbage collection on the flash.
@@ -2027,12 +2060,70 @@ static ble_gap_sec_params_t get_gap_sec_params() {
   return sec_param;
 }
 
+#if PEER_MANAGER_ENABLED
+static bool jsble_can_pair_with_peer(const ble_gap_sec_params_t *own_params, const ble_gap_sec_params_t *peer_params) {
+  if (bleStatus & BLE_IS_NOT_PAIRABLE) {
+    // reject all security procedures to prevent any peer from pairing with us
+    return false;
+  } else {
+    if (own_params && peer_params) {
+      // reject security procedure if we want mitm protection, but this is impossible with the current peer
+      bool lesc = own_params->lesc == 1 && peer_params->lesc == 1;
+      bool useOob = lesc ?
+                    (own_params->oob == 1 || peer_params->oob == 1) :
+                    (own_params->oob == 1 && peer_params->oob == 1);
+      bool hasKeyboard = own_params->io_caps == BLE_GAP_IO_CAPS_KEYBOARD_ONLY ||
+                         own_params->io_caps == BLE_GAP_IO_CAPS_KEYBOARD_DISPLAY;
+      bool authenticated = false;
+      switch (peer_params->io_caps) {
+        case BLE_GAP_IO_CAPS_DISPLAY_ONLY:
+          authenticated = hasKeyboard;
+          break;
+        case BLE_GAP_IO_CAPS_DISPLAY_YESNO:
+          authenticated = lesc ?
+                          (hasKeyboard || own_params->io_caps == BLE_GAP_IO_CAPS_DISPLAY_YESNO) :
+                          hasKeyboard;
+          break;
+        case BLE_GAP_IO_CAPS_KEYBOARD_ONLY:
+          authenticated = own_params->io_caps != BLE_GAP_IO_CAPS_NONE;
+          break;
+        case BLE_GAP_IO_CAPS_NONE:
+          authenticated = false;
+          break;
+        case BLE_GAP_IO_CAPS_KEYBOARD_DISPLAY:
+          authenticated = own_params->io_caps != BLE_GAP_IO_CAPS_NONE;
+          break;
+        default:
+          authenticated = false;
+          break;
+      }
+      if (!useOob && own_params->mitm == 1 && !authenticated) {
+        // reject security procedure
+        return false;
+      }
+    }
+  }
+  return true;
+}
+#endif
+
 void jsble_update_security() {
 #if PEER_MANAGER_ENABLED
   bool encryptUart = false;
+  bool mitmProtect = false;
   ble_gap_sec_params_t sec_param = get_gap_sec_params();
-  // encrypt UART for out of band pairing
-  if (sec_param.oob) encryptUart = true;
+  m_sec_params = sec_param;
+  // encrypt UART and require mitm protection for out of band pairing
+  if (sec_param.oob) {
+    encryptUart = true;
+    mitmProtect = true;
+  }
+  // if mitm protection is requested, we also need to encrypt the UART
+  if (sec_param.mitm) {
+    encryptUart = true;
+    mitmProtect = true;
+  }
+
 
   uint32_t err_code = pm_sec_params_set(&sec_param);
   jsble_check_error(err_code);
@@ -2054,14 +2145,17 @@ void jsble_update_security() {
     if (passkey[0]) {
       pin_option.gap_opt.passkey.p_passkey = passkey;
       encryptUart = true;
+      mitmProtect = true;
     }
     uint32_t err_code =  sd_ble_opt_set(BLE_GAP_OPT_PASSKEY, &pin_option);
     jsble_check_error(err_code);
   }
-  // If UART encryption status changed, we need to update flags and restart Bluetooth
-  if (((bleStatus&BLE_ENCRYPT_UART)!=0) != encryptUart) {
+  // If UART encryption or mitm protection status changed, we need to update flags and restart Bluetooth
+  if (((bleStatus & BLE_ENCRYPT_UART) != 0) != encryptUart || ((bleStatus & BLE_SECURITY_MITM) != 0) != mitmProtect) {
     if (encryptUart) bleStatus |= BLE_ENCRYPT_UART;
     else bleStatus &= ~BLE_ENCRYPT_UART;
+    if (mitmProtect) bleStatus |= BLE_SECURITY_MITM;
+    else bleStatus &= ~BLE_SECURITY_MITM;
     // But only restart if the UART was enabled
     if (bleStatus & BLE_NUS_INITED)
       bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
@@ -2327,6 +2421,8 @@ static void services_init() {
 #if (NRF_SD_BLE_API_VERSION==3) || (NRF_SD_BLE_API_VERSION==6)
       if (bleStatus & BLE_ENCRYPT_UART)
         nus_init.encrypt = true;
+      if (bleStatus & BLE_SECURITY_MITM)
+        nus_init.mitmProtect = true;
 #else
 #if PEER_MANAGER_ENABLED
 #warning "No security on Nordic UART for this softdevice"
