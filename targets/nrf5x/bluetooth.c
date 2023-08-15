@@ -3643,7 +3643,7 @@ JsVar *jsble_resolveAddress(JsVar *address) {
       memset(&peer_data_bonding, 0, sizeof(peer_data_bonding));
       // iterate over all known peers
       pm_peer_id_t peer_id = PM_PEER_ID_INVALID;
-      while ((peer_id = pdb_next_peer_id_get(peer_id)) != PM_PEER_ID_INVALID) {
+      while ((peer_id = pm_next_peer_id_get(peer_id)) != PM_PEER_ID_INVALID) {
         if (pm_peer_data_bonding_load(peer_id, &peer_data_bonding) == NRF_SUCCESS){
           // address match?
           if (im_address_resolve(&addr, &peer_data_bonding.peer_ble_id.id_info)) {
