@@ -379,6 +379,8 @@ uint32_t jsble_central_send_passkey(uint16_t central_conn_handle, char *passkey)
 void jsble_central_setWhitelist(bool whitelist);
 /// Erase any saved bonding info for peers
 void jsble_central_eraseBonds();
+/// Try to resolve a bonded peer's address from a random private resolvable address
+JsVar *jsble_resolveAddress(JsVar *address);
 #endif
 
 #endif // BLUETOOTH_H

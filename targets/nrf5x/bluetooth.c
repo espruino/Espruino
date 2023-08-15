@@ -65,6 +65,7 @@
 #if PEER_MANAGER_ENABLED
 #include "peer_manager.h"
 #include "fds.h"
+#include "id_manager.h"
 #if NRF_SD_BLE_API_VERSION<5
 #include "fstorage.h"
 #include "fstorage_internal_defs.h"
@@ -3626,6 +3627,29 @@ void jsble_central_eraseBonds() {
   jsble_check_error(pm_peers_delete());
 #endif
 }
+
+#if PEER_MANAGER_ENABLED
+JsVar *jsble_resolveAddress(JsVar *address) {
+  ble_gap_addr_t addr;
+  if (bleVarToAddr(address, &addr)) {
+    if (addr.addr_type == BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE) {
+      pm_peer_data_bonding_t peer_data_bonding;
+      memset(&peer_data_bonding, 0, sizeof(peer_data_bonding));
+      // iterate over all known peers
+      pm_peer_id_t peer_id = PM_PEER_ID_INVALID;
+      while ((peer_id = pdb_next_peer_id_get(peer_id)) != PM_PEER_ID_INVALID) {
+        if (pm_peer_data_bonding_load(peer_id, &peer_data_bonding) == NRF_SUCCESS){
+          // address match?
+          if (im_address_resolve(&addr, &peer_data_bonding.peer_ble_id.id_info)) {
+            return bleAddrToStr(peer_data_bonding.peer_ble_id.id_addr_info);
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+#endif // PEER_MANAGER_ENABLED
 
 #endif // BLUETOOTH
 
