@@ -531,16 +531,21 @@ uint8_t match_request : 1;               If 1 requires the application to report
         int centralIdx = jsble_get_central_connection_idx(conn_handle);
         if (bufferLen==BLE_GAP_PASSKEY_LEN) {
           buffer[BLE_GAP_PASSKEY_LEN] = 0;
-          JsVar *gattServer = bleGetActiveBluetoothGattServer(centralIdx);
-          if (gattServer) {
-            JsVar *passkey = jsvNewFromString((char*)buffer);
-            JsVar *bluetoothDevice = jsvObjectGetChildIfExists(gattServer, "device");
-            if (bluetoothDevice) {
-              jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"passkey", &passkey, 1);
-              jshHadEvent();
+          JsVar *passkey = jsvNewFromString((char*)buffer);
+          if (centralIdx<0) { // it's on the peripheral connection
+            bleQueueEventAndUnLock(JS_EVENT_PREFIX"passkey", passkey);
+          } else { // it's on a central connection
+            JsVar *gattServer = bleGetActiveBluetoothGattServer(centralIdx);
+            if (gattServer) {
+              JsVar *bluetoothDevice = jsvObjectGetChildIfExists(gattServer, "device");
+              if (bluetoothDevice) {
+                jsiQueueObjectCallbacks(bluetoothDevice, JS_EVENT_PREFIX"passkey", &passkey, 1);
+                jshHadEvent();
+              }
+              jsvUnLock2(bluetoothDevice, gattServer);
             }
-            jsvUnLock3(passkey, bluetoothDevice, gattServer);
           }
+          jsvUnLock(passkey);
         }
         break;
       }
@@ -578,6 +583,7 @@ uint8_t match_request : 1;               If 1 requires the application to report
           }
           jsvUnLock(options);
           if (!ok) jsExceptionHere(JSET_INTERNALERROR, "Auth key requested, but NRF.setSecurity({oob}) not valid");
+          // TODO: this could be because we have keyboard:1 and the connecting device is displaying a passkey and wants US to send it back (we only implement that for central at the moment)
         }
         break;
        }

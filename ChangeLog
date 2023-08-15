@@ -43,6 +43,7 @@
             Storage: Output progress on FactoryReset and Compact
             nRF5x: Ensure we don't start advertising immediately after softdevice restart if NRF.sleep() was used
             Bangle.js2: Ensure `HRM-raw.raw` is set correctly after we moved to binary hrm algorithm
+            nRF5x: Add `NRF.on("passkey", ...)` to allow passkey pairing with `NRF.setSecurity({mitm:1, display:1});`
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

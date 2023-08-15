@@ -401,6 +401,32 @@ much all cases an Exception will also have been thrown.
 /*JSON{
   "type" : "event",
   "class" : "NRF",
+  "name" : "passkey",
+  "ifdef" : "NRF52_SERIES",
+  "params" : [
+    ["passkey","JsVar","A 6 character numeric String to be displayed"]
+  ]
+}
+(Added in 2v19) Called when a central device connects to Espruino, pairs, and sends a passkey that Espruino should display.
+
+For this to be used, you'll have to specify that your device has a display using `NRF.setSecurity({mitm:1, display:1});`
+
+For instance:
+
+```
+NRF.setSecurity({mitm:1, display:1});
+NRF.on("passkey", key => print("Enter PIN: ",passkey));
+```
+
+It is also possible to specify a static passkey with `NRF.setSecurity({passkey:"123456", mitm:1, display:1});`
+in which case no `passkey` event handler is needed (this method works on Espruino 2v02 and later)
+
+**Note:** A similar event, [`BluetoothDevice.on("passkey", ...)`](http://www.espruino.com/Reference#l_BluetoothDevice_passkey) is available
+for when Espruino is connecting *to* another device (central mode).
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
   "name" : "security",
   "params" : [
     ["status","JsVar","An object containing `{auth_status,bonded,lv4,kdist_own,kdist_peer}"]
@@ -780,7 +806,7 @@ NRF.on('connect',addr=> {
     // resolved is "aa:bb:cc:dd:ee:ff public"
     if (resolved) addr = resolved;
   }
-  console.log("Device connected: ", addr);    
+  console.log("Device connected: ", addr);
 })
 ```
 
@@ -3223,7 +3249,7 @@ JsVar *jswrap_ble_ctsGetTime() {
 #if ESPR_BLUETOOTH_ANCS
   if (!(bleStatus & BLE_CTS_INITED) || !ble_cts_is_active()) {
     jsExceptionHere(JSET_ERROR, "CTS not active");
-    return;
+    return 0;
   }
   if (ble_cts_read_time()) { // if fails, it'll create an exception
     if (bleNewTask(BLETASK_CTS_GET_TIME, 0)) {
@@ -3569,14 +3595,14 @@ central *and* peripheral mode.
 
 ```
 NRF.setSecurity({
-  display : bool  // default false, can this device display a passkey
+  display : bool  // default false, can this device display a passkey on a screen/etc?
                   // - sent via the `BluetoothDevice.passkey` event
   keyboard : bool // default false, can this device enter a passkey
                   // - request sent via the `BluetoothDevice.passkeyRequest` event
   bond : bool // default true, Perform bonding
   mitm : bool // default false, Man In The Middle protection
   lesc : bool // default false, LE Secure Connections
-  passkey : // default "", or a 6 digit passkey to use
+  passkey : // default "", or a 6 digit passkey to use (display must be true for this)
   oob : [0..15] // if specified, Out Of Band pairing is enabled and
                 // the 16 byte pairing code supplied here is used
   encryptUart : bool // default false (unless oob or passkey specified)
@@ -3596,10 +3622,17 @@ For instance, to require pairing and to specify a passkey, use:
 NRF.setSecurity({passkey:"123456", mitm:1, display:1});
 ```
 
+Or to require pairing and to display a PIN that the connecting device
+provides, use:
+
+```
+NRF.setSecurity({mitm:1, display:1});
+NRF.on("passkey", key => print("Enter PIN: ", key));
+```
+
 However, while most devices will request a passkey for pairing at this point it
 is still possible for a device to connect without requiring one (e.g. using the
 'NRF Connect' app).
-
 
 To force a passkey you need to protect each characteristic you define with
 `NRF.setSecurity`. For instance the following code will *require* that the
@@ -3820,7 +3853,7 @@ specifically for Espruino.
 Called when the device pairs, displays a passkey, and wants Espruino to tell it
 what the passkey was.
 
-Respond with `BluetoothDevice.sendPasskey()` with a 6 character string
+Respond with `BluetoothDevice.sendPasskey("123456")` with a 6 character string
 containing only `0..9`.
 
 For this to be used, you'll have to specify that there's a keyboard using
