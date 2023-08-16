@@ -37,6 +37,15 @@ Functions here take and return buffers of data. There is no support for
 streaming, so both the compressed and decompressed data must be able to fit in
 memory at the same time.
 
+```
+var c = require("heatshrink").compress("Hello World");
+// =new Uint8Array([....]).buffer
+var d = require("heatshrink").decompress(c);
+// =new Uint8Array([72, 101, ...]).buffer
+E.toString(d)
+// ="Hello World"
+```
+
 If you'd like a way to perform compression/decompression on desktop, check out https://github.com/espruino/EspruinoWebTools#heatshrinkjs
 
 */
@@ -54,7 +63,11 @@ If you'd like a way to perform compression/decompression on desktop, check out h
   "return_object" : "ArrayBuffer",
   "ifndef" : "SAVE_ON_FLASH"
 }
-Compress the heatshrink-encoded data supplied as input.
+Compress the data supplied as input, and return heatshrink encoded data as an ArrayBuffer.
+
+No type information is stored, and the `data` argument is treated as an array of bytes
+(whether it is a `String`/`Uint8Array` or even `Uint16Array`), so the result of
+decompressing any compressed data will always be an ArrayBuffer.
 
 If you'd like a way to perform compression/decompression on desktop, check out https://github.com/espruino/EspruinoWebTools#heatshrinkjs
 */
@@ -96,11 +109,13 @@ JsVar *jswrap_heatshrink_compress(JsVar *data) {
   "params" : [
     ["data","JsVar","The data to decompress"]
   ],
-  "return" : ["JsVar","Returns the result as an ArrayBuffer"],
+  "return" : ["JsVar","Returns the result as an `ArrayBuffer`"],
   "return_object" : "ArrayBuffer",
   "ifndef" : "SAVE_ON_FLASH"
 }
-Decompress the heatshrink-encoded data supplied as input.
+Decompress the heatshrink-encoded data supplied as input, and return it as an `ArrayBuffer`.
+
+To get the result as a String, wrap `require("heatshrink").decompress` in `E.toString`: `E.toString(require("heatshrink").decompress(...))`
 
 If you'd like a way to perform compression/decompression on desktop, check out https://github.com/espruino/EspruinoWebTools#heatshrinkjs
 */
