@@ -2140,6 +2140,16 @@ void jsble_update_security() {
     JsVar *v;
     if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "encryptUart")))
       encryptUart = true;
+    {
+      JsVar *pair;
+      pair = jsvObjectGetChildIfExists(options, "pair");
+      if (!jsvIsUndefined(pair) && !jsvGetBool(pair)) {
+        bleStatus |= BLE_IS_NOT_PAIRABLE;
+      } else {
+        bleStatus &= ~BLE_IS_NOT_PAIRABLE;
+      }
+      jsvUnLock(pair);
+    }
     // Check for passkey
     uint8_t passkey[BLE_GAP_PASSKEY_LEN+1];
     memset(passkey, 0, sizeof(passkey));
