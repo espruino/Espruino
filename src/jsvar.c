@@ -4196,6 +4196,9 @@ int jsvGarbageCollect() {
 
 #ifndef SAVE_ON_FLASH
 void jsvDefragment() {
+  /* FIXME: we should surely be able to go through without `defragVars`,
+  and just work from the beginning to the end. We really need to be able
+  to move flat strings: https://github.com/espruino/Espruino/issues/1740 */
   // garbage collect - removes cruft
   // also puts free list in order
   jsvGarbageCollect();
@@ -4214,6 +4217,7 @@ void jsvDefragment() {
       } else if (jsvGetLocks(v)==0) {
         defragVars[defragVarIdx] = vr;
         defragVarIdx = (defragVarIdx+1) & (DEFRAGVARS-1);
+        // why do we roll over and not stop?
       }
     }
   }
