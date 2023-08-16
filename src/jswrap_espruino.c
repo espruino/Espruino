@@ -777,12 +777,44 @@ their values.
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_pipe",
   "params" : [
-    ["source","JsVar","The source file/stream that will send content."],
+    ["source","JsVar","The source file/stream that will send content. As of 2v19 this can also be a `String`"],
     ["destination","JsVar","The destination file/stream that will receive content from the source."],
     ["options","JsVar",["[optional] An object `{ chunkSize : int=64, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
   ],
   "typescript" : "pipe(source: any, destination: any, options?: PipeOptions): void"
-}*/
+}
+Pipe one stream to another.
+
+This can be given any object with a `read` method as a source, and any object with a `.write(data)` method as a destination.
+
+Data will be piped from `source` to `destination` in the idle loop until `source.read(...)` returns `undefined`.
+
+For instance:
+
+```
+// Print a really big string to the console, 1 character at a time and write 'Finished!' at the end
+E.pipe("This is a really big String",
+       {write: print},
+       {chunkSize:1, complete:()=>print("Finished!")});
+
+// Pipe the numbers 1 to 100 to a StorageFile in Storage
+E.pipe({ n:0, read : function() { if (this.n<100) return (this.n++)+"\n"; }},
+       require("Storage").open("testfile","w"));
+
+// Pipe a StorageFile straight to the Bluetooth UART
+E.pipe(require("Storage").open("testfile","r"), Bluetooth);
+
+// Pipe a normal file in Storage (not StorageFile) straight to the Bluetooth UART
+E.pipe(require("Storage").read("blob.txt"), Bluetooth);
+
+// Pipe a normal file in Storage as a response to an HTTP request
+function onPageRequest(req, res) {
+  res.writeHead(200, {'Content-Type': 'text/plain'});
+  E.pipe(require("Storage").read("webpage.txt"), res);
+}
+require("http").createServer(onPageRequest).listen(80);
+```
+*/
 
 /*JSON{
   "type" : "staticmethod",

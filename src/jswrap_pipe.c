@@ -52,10 +52,6 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
         jsvUnLock(jspExecuteFunction(writeFunc, destination, 1, &buffer));
       }
       jsvUnLock(writeFunc);
-      // update position
-      JsVar *position = jsvObjectGetChildIfExists(pipe,"position");
-      jsvSetInteger(position, jsvGetInteger(position) + (JsVarInt)jsvGetStringLength(buffer));
-      jsvUnLock(position);
     }
     jsvUnLock(buffer);
   }
@@ -104,13 +100,12 @@ static bool handlePipe(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
   bool paused = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(pipe,"drainWait"));
   if (paused) return false;
 
-  JsVar *position = jsvObjectGetChildIfExists(pipe,"position");
   JsVar *chunkSize = jsvObjectGetChildIfExists(pipe,"chunkSize");
   JsVar *source = jsvObjectGetChildIfExists(pipe,"source");
   JsVar *destination = jsvObjectGetChildIfExists(pipe,"destination");
 
   bool dataTransferred = false;
-  if(source && destination && chunkSize && position) {
+  if(source && destination && chunkSize) {
     JsVar *readFunc = jspGetNamedField(source, "read", false);
     JsVar *writeFunc = jspGetNamedField(destination, "write", false);
     if (jsvIsFunction(readFunc) && jsvIsFunction(writeFunc)) { // do the objects have the necessary methods on them?
@@ -124,7 +119,6 @@ static bool handlePipe(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
             jsvObjectSetChildAndUnLock(pipe,"drainWait",jsvNewFromBool(true));
           }
           jsvUnLock(response);
-          jsvSetInteger(position, jsvGetInteger(position) + bufferSize);
         }
         jsvUnLock(buffer);
         dataTransferred = true; // so we don't close the pipe if we get an empty string
@@ -142,7 +136,6 @@ static bool handlePipe(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
     handlePipeClose(arr, it, pipe);
   }
   jsvUnLock3(source, destination, chunkSize);
-  jsvUnLock(position);
   return dataTransferred;
 }
 
@@ -256,13 +249,20 @@ type PipeOptions = {
     ["options","JsVar",["[optional] An object `{ chunkSize : int=64, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
   ],
   "typescript": "pipe(destination: any, options?: PipeOptions): void"
-}*/
+}
+Pipe this file to a destination stream (object which has a `.write(data)` method).
+*/
 void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
   if (!source || !dest) return;
+  jsvLockAgain(source); // source should be unlocked at end
   JsVar *pipe = jspNewObject(0, "Pipe");
   JsVar *arr = pipeGetArray(true);
-  JsVar* position = jsvNewFromInteger(0);
-  if (pipe && arr && position) {// out of memory?
+  if (pipe && arr) {// out of memory?
+    if (jsvIsString(source)) { // Single-line 'StringStream' object to add ability to stream from Strings
+      JsVar *stream = jspExecuteJSFunction("(function(s){var p=0;return{read:function(l){return s.substring(p,p+=l)||undefined;}}})",NULL,1,&source);
+      jsvUnLock(source);
+      source = stream;
+    }
     JsVar *readFunc = jspGetNamedField(source, "read", false);
     JsVar *writeFunc = jspGetNamedField(dest, "write", false);
     if(jsvIsFunction(readFunc)) {
@@ -297,19 +297,18 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
         // set up the rest of the pipe
         jsvObjectSetChildAndUnLock(pipe, "chunkSize", jsvNewFromInteger(chunkSize));
         jsvObjectSetChildAndUnLock(pipe, "end", jsvNewFromBool(callEnd));
-        jsvUnLock3(jsvAddNamedChild(pipe, position, "position"), 
-                   jsvAddNamedChild(pipe, source, "source"), 
+        jsvUnLock2(jsvAddNamedChild(pipe, source, "source"),
                    jsvAddNamedChild(pipe, dest, "destination"));
         // add the pipe to our list
         jsvArrayPush(arr, pipe);
       } else {
-        jsExceptionHere(JSET_ERROR, "Destination object does not implement the required write(buffer, length, position) method.");
+        jsExceptionHere(JSET_ERROR, "Destination object does not implement the required write(buffer, length) method.");
       }
     } else {
-      jsExceptionHere(JSET_ERROR, "Source object does not implement the required read(buffer, length, position) method.");
+      jsExceptionHere(JSET_ERROR, "Source object does not implement the required read(buffer, length) method.");
     }
     jsvUnLock2(readFunc, writeFunc);
   }
-  jsvUnLock3(arr, pipe, position);
+  jsvUnLock3(arr, pipe, source);
 }
 
