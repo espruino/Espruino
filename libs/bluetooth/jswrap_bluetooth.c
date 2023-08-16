@@ -3599,7 +3599,9 @@ NRF.setSecurity({
                   // - sent via the `BluetoothDevice.passkey` event
   keyboard : bool // default false, can this device enter a passkey
                   // - request sent via the `BluetoothDevice.passkeyRequest` event
+  pair : bool // default true, allow other devices to pair with this device
   bond : bool // default true, Perform bonding
+              // This stores info from pairing in flash and allows reconnecting without having to pair each time
   mitm : bool // default false, Man In The Middle protection
   lesc : bool // default false, LE Secure Connections
   passkey : // default "", or a 6 digit passkey to use (display must be true for this)
@@ -3607,7 +3609,7 @@ NRF.setSecurity({
                 // the 16 byte pairing code supplied here is used
   encryptUart : bool // default false (unless oob or passkey specified)
                      // This sets the BLE UART service such that it
-                     // is encrypted and can only be used from a bonded connection
+                     // is encrypted and can only be used from a paired connection
 });
 ```
 
