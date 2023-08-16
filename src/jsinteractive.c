@@ -519,6 +519,9 @@ void jsiSoftInit(bool hasBeenReset) {
     jsiExecuteEventCallback(0, onInit, 0, 0);
     jsvUnLock(onInit);
   }
+
+   // Run wrapper initialisation stuff that should happen after the initial JS has run
+  jswPostInit();
 }
 
 /** Output the given variable as JSON, or if it exists

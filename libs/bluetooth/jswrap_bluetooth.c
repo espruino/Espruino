@@ -232,6 +232,13 @@ void jswrap_ble_init() {
   }
   // Set advertising interval back to default
   bleAdvertisingInterval = MSEC_TO_UNITS(BLUETOOTH_ADVERTISING_INTERVAL, UNIT_0_625_MS);           /**< The advertising interval (in units of 0.625 ms). */
+}
+
+/*JSON{
+  "type" : "postinit",
+  "generate" : "jswrap_ble_postinit"
+}*/
+void jswrap_ble_postinit() {
   // Now set up whatever advertising we were doing before
   jswrap_ble_reconfigure_softdevice();
 }

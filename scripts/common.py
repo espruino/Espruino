@@ -66,6 +66,7 @@ if "check_output" not in dir( subprocess ):
 #                      // idle = function to run on idle regardless
 #                      // hwinit = function to run on Hardware Initialisation (called once at boot time, after jshInit, before jsvInit/etc)
 #                      // init = function to run on Initialisation (eg boot/load/reset/after save/etc)
+#                      // postinit = function to run on Initialisation AFTER the initial JS has run
 #                      // kill = function to run on Deinitialisation (eg before save/reset/etc)
 #                      // EV_xxx = Something to be called with a character in an IRQ when it is received (eg. EV_SERIAL1)
 #         "class" : "Double", "name" : "doubleToIntBits",

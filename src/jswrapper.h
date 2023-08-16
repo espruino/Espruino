@@ -120,6 +120,9 @@ void jswHWInit();
 /** Tasks to run on Initialisation */
 void jswInit();
 
+/** Tasks to run on Initialisation AFTER the initial JS has run */
+void jswPostInit();
+
 /** Tasks to run on Deinitialisation */
 void jswKill();
 

@@ -78,6 +78,7 @@ uint16_t jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(JsVar *parent);
 
 // ------------------------------------------------------------------------------
 void jswrap_ble_init();
+void jswrap_ble_postinit();
 bool jswrap_ble_idle();
 void jswrap_ble_kill();
 // Used to dump bluetooth initialisation info for 'dump'

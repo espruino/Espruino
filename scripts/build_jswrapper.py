@@ -34,7 +34,7 @@ if len(sys.argv)<2 or sys.argv[len(sys.argv)-2][:2]!="-B" or sys.argv[len(sys.ar
 	print("           path/to/modulename.js               ; include a JS module called modulename")
 	print("           modulename:path/to/modulesource.js  ; include a JS module called modulename")
 	print("           _:bootcode                          ; JS code to be executed at boot time")
-	print("             ; These can be specified in the JSMODULESOURCES environment variable")  
+	print("             ; These can be specified in the JSMODULESOURCES environment variable")
 	exit(1)
 
 boardName = sys.argv[len(sys.argv)-2]
@@ -262,7 +262,7 @@ def removeBlacklistForWrapper(blacklistfile,datas):
 						if black["name"] == "*":
 						  toremove.append(idx)
 						  print("Removing "+black["class"]+" due to blacklist wildcard")
-    
+
 #  end extension by jumjum
 	return delete_by_indices( datas, toremove)
 # ------------------------------------------------------------------------------------------------------
@@ -329,7 +329,7 @@ codeOut('');
 for jsondata in jsondatas:
   # Include 'inline' C declarations
   if ("generate_full" in jsondata) or (jsondata["type"]=="object"):
-    gen_name = "gen_jswrap"  
+    gen_name = "gen_jswrap"
     if "class" in jsondata: gen_name = gen_name + "_" + jsondata["class"];
     gen_name = gen_name + "_" + jsondata["name"];
     jsondata["generate"] = gen_name
@@ -355,18 +355,18 @@ for jsondata in jsondatas:
     codeOut('');
   # Include JavaScript functions
   if ("generate_js" in jsondata):
-    gen_name = "gen_jswrap"  
+    gen_name = "gen_jswrap"
     if "class" in jsondata: gen_name = gen_name + "_" + jsondata["class"];
     gen_name = gen_name + "_" + jsondata["name"];
     jsondata["generate"] = gen_name
-    
+
     s = [ ]
     params = getParams(jsondata)
     result = getResult(jsondata)
     if hasThis(jsondata): s.append("JsVar *parent")
     for param in params:
       if param[1]!="JsVar": FATAL_ERROR("All arguments to generate_js must be JsVars");
-      s.append(toCType(param[1])+" "+param[0]);   
+      s.append(toCType(param[1])+" "+param[0]);
 
     js = "";
     with open(basedir+jsondata["generate_js"], 'r') as file:
@@ -399,7 +399,7 @@ codeOut('// --------------------------------------------------------------------
 codeOut('');
 
 
-# In jswBinarySearch we used to use READ_FLASH_UINT16 for sym->strOffset and sym->functionSpec for ESP8266 
+# In jswBinarySearch we used to use READ_FLASH_UINT16 for sym->strOffset and sym->functionSpec for ESP8266
 # (where unaligned reads broke) but despite being packed, the structure JswSymPtr is still always an multiple
 # of 2 in length so they will always be halfword aligned.
 codeOut("""
@@ -409,7 +409,7 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
   uint8_t symbolCount = READ_FLASH_UINT8(&symbolsPtr->symbolCount);
   int searchMin = 0;
   int searchMax = symbolCount - 1;
-  while (searchMin <= searchMax) {  
+  while (searchMin <= searchMax) {
     int idx = (searchMin+searchMax) >> 1;
     const JswSymPtr *sym = &symbolsPtr->symbols[idx];
     int cmp = FLASH_STRCMP(name, &symbolsPtr->symbolChars[sym->strOffset]);
@@ -713,6 +713,16 @@ if jsbootcode!=False:
   codeOut('  jsvUnLock(jspEvaluate('+json.dumps(jsbootcode)+', true/*static*/));')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="init":
+    codeOut("  "+jsondata["generate"]+"();")
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+codeOut("/** Tasks to run on Initialisation AFTER the initial JS has run */")
+codeOut('void jswPostInit() {')
+for jsondata in jsondatas:
+  if "type" in jsondata and jsondata["type"]=="postinit":
     codeOut("  "+jsondata["generate"]+"();")
 codeOut('}')
 
