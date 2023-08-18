@@ -47,6 +47,7 @@
             nrf52: Allow disabling pairing with `NRF.setSecurity({pair:0})`
             Allow E.pipe to pipe from Strings, remove pipe's internal `position` counter (fix #2352)
             Bangle.js 1: remove OneWire and JIT as it uses too much flash space to exist alongside UTF8+Tensorflow on nRF52
+            ARM: Apply -fmerge-all-constants to the build (saves ~1kb)
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler
