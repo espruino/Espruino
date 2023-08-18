@@ -30,7 +30,10 @@ board = importlib.import_module(BOARD)
 # Call the included board_specific file - it sets up 'pins' and 'fill_gaps'
 storageStart = board.chip['saved_code']['address']
 storageEnd = storageStart + board.chip['saved_code']['page_size'] * board.chip['saved_code']['pages']
-print("STORAGE: "+str(storageStart)+" -> "+str(storageEnd));
+print("STORAGE: "+hex(storageStart)+" -> "+hex(storageEnd));
+areaName = "Storage"
+areaStart = storageStart
+areaEnd = storageEnd
 
 text = subprocess.check_output('arm-none-eabi-objdump -h '+ELF+' | grep "\\.text"', shell=True).strip().split()
 codeSize = int(text[2], 16)
@@ -44,18 +47,25 @@ if len(fsdata):
   fsStart = int(fsdata[4], 16)
   fsEnd = fsStart + fsSize
   if (fsEnd > codeEnd): 
-    print("FS DATA: "+str(fsStart)+" -> "+str(fsEnd)+" ("+str(fsSize)+" bytes)");
+    print("FS DATA: "+hex(fsStart)+" -> "+hex(fsEnd)+" ("+str(fsSize)+" bytes)");
     codeEnd = fsEnd
 
-print("CODE: "+str(codeStart)+" -> "+str(codeEnd)+" ("+str(codeSize)+" bytes)");
+if storageStart == 0x60000000: # it's the memory-mapped external flash
+  if board.chip['part']=="NRF52832":
+    areaStart = 118 * 4096 # Bootloader takes pages 120-127, FS takes 118-119
+    areaEnd = 120 * 4026
+    areaName = "FS"
+    print("FLASH_AVAILABLE: "+hex(areaStart));    
 
-if codeEnd<storageStart and codeStart<storageStart:
-  print("Code area Fits before Storage Area ("+str(storageStart-codeEnd)+"b free)")
-elif codeEnd>storageEnd and codeStart>storageEnd:
-  print("Code area Fits after Storage Area")
+print("CODE: "+hex(codeStart)+" -> "+hex(codeEnd)+" ("+str(codeSize)+" bytes)");
+
+if codeEnd<areaStart and codeStart<areaStart:
+  print("Code area Fits before "+areaName+" Area ("+str(areaStart-codeEnd)+"b free)")
+elif codeEnd>areaEnd and codeStart>areaEnd:
+  print("Code area Fits after "+areaName+" Area")
 else:
   print("==========================")
   print(" CODE AND STORAGE OVERLAP")
-  print("   by "+ str(codeEnd-storageStart) + " bytes")
+  print("   by "+ str(codeEnd-areaStart) + " bytes")
   print("==========================")
   exit(1)
