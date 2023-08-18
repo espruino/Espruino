@@ -30,10 +30,10 @@ info = {
      'TERMINAL',
      'GRAPHICS', 
      'LCD_ST7789_8BIT',
-     'TENSORFLOW',
-     'JIT'
+     'TENSORFLOW'
    ],
    'makefile' : [
+     'BLACKLIST=boards/BANGLEJS.blocklist', # force some stuff to be removed to save space   
      'DEFINES += -DESPR_HWVERSION=1',
      'DEFINES += -DBANGLEJS_F18',
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work

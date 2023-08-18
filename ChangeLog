@@ -46,6 +46,7 @@
             nRF5x: Add `NRF.on("passkey", ...)` to allow passkey pairing with `NRF.setSecurity({mitm:1, display:1});`
             nrf52: Allow disabling pairing with `NRF.setSecurity({pair:0})`
             Allow E.pipe to pipe from Strings, remove pipe's internal `position` counter (fix #2352)
+            Bangle.js 1: remove OneWire and JIT as it uses too much flash space to exist alongside UTF8+Tensorflow on nRF52
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler
