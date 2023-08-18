@@ -1,0 +1,4 @@
+[
+  {"class":"OneWire","name":"*"},
+  {"class":"SPI","name":"send4bit"}
+]
