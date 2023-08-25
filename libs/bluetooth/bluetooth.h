@@ -316,27 +316,39 @@ void jsble_setup_advdata(ble_advdata_t *advdata);
 
 #define TAG_HEADER_LEN            0x0A
 
-#define NDEF_HEADER "\x00\x00\x00\x00" /* |      UID/BCC      | TT = Tag Type            */ \
-                    "\x00\x00\x00\x00" /* |      UID/BCC      | ML = NDEF Message Length */ \
-                    "\x00\x00\xFF\xFF" /* | UID/BCC |   LOCK  | TF = TNF and Flags       */ \
-                    "\xE1\x11\x7C\x0F" /* |  Cap. Container   | TL = Type Legnth         */ \
-                    "\x03\x00\xC1\x01" /* | TT | ML | TF | TL | RT = Record Type         */ \
-                    "\x00\x00\x00\x00" /* |  Payload Length   | IC = URI Identifier Code */ \
-                    "\x55\x00"         /* | RT | IC | Payload |      0x00: No prepending */
+/*
+TT = Tag Type           
+ML = NDEF Message Length
+RT = Record Type
+TF = TNF and Flags
+TL = Type Legnth
+IC = URI Identifier Code
+*/
 
-#define NDEF_FULL_RAW_HEADER_LEN  0x12 /* full header until ML */
-#define NDEF_FULL_URL_HEADER_LEN  0x1A /* full header until IC */
+#define NDEF_HEADER "\x00\x00\x00\x00" /* |      UID/BCC          | */ \
+                    "\x00\x00\x00\x00" /* |      UID/BCC          | */ \
+                    "\x00\x00\xFF\xFF" /* | UID/BCC |   LOCK      | */ \
+                    "\xE1\x11\x7C\x0F" /* |  Cap. Container       | */ \
+                    "\x03\x00\x00\x00" /* | TT | ML (1 or 3 bytes)| */ 
 
-#define NDEF_RECORD_HEADER_LEN    0x08 /* record header (TF, TL, PL, RT, IC ) */
-#define NDEF_IC_OFFSET            0x19
+#define NDEF_HEADER_LEN_SHORT      0x12 /* with 1 byte length */
+#define NDEF_HEADER_LEN_LONG       0x14 /* with 3 byte length */
+#define NDEF_HEADER_MSG_LEN_OFFSET 0x11
+
+#define NDEF_URL_RECORD_HEADER \
+                    "\xC1\x01"         /* | TF | TL         |  */ \
+                    "\x00\x00\x00\x00" /* |  Payload Length |  */ \
+                    "\x55\x00"         /* | RT | IC         | 0x00: No prepending */
+
+#define NDEF_URL_RECORD_HEADER_LEN    0x08 /* record header (TF, TL, PL, RT, IC ) */
 #define NDEF_IC_LEN               0x01
 
-#define NDEF_MSG_LEN_OFFSET       0x11
-#define NDEF_PL_LEN_LSB_OFFSET    0x17 /* we support pl < 256 */
+#define NDEF_MSG_IC_OFFSET         7
+#define NDEF_MSG_PL_LEN_MSB_OFFSET 4
 
 #define NDEF_TERM_TLV             0xfe /* last TLV block / byte */
 #define NDEF_TERM_TLV_LEN         0x01
-
+#define NDEF_TAG2_VALUE_MAXLEN (992 - 4 - NDEF_TERM_TLV_LEN) /* max type 2 tag value size */
 void jsble_nfc_stop();
 void jsble_nfc_start(const uint8_t *data, size_t len);
 void jsble_nfc_get_internal(uint8_t *data, size_t *max_len);
