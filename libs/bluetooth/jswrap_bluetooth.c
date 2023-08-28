@@ -2631,9 +2631,8 @@ static void nfc_raw_data_start(uint8_t *dataPtr, size_t dataLen){
   char *uidPtr = jsvGetDataPointer(uid, &len);
   if(uidPtr) memcpy(flatStrPtr, uidPtr, TAG_HEADER_LEN);
   jsvUnLock(uid);
-#endif
 }
-
+#endif
 
 /*JSON{
     "type" : "staticmethod",
