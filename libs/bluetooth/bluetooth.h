@@ -348,7 +348,7 @@ IC = URI Identifier Code
 
 #define NDEF_TERM_TLV             0xfe /* last TLV block / byte */
 #define NDEF_TERM_TLV_LEN         0x01
-#define NDEF_TAG2_VALUE_MAXLEN (992 - 4 - NDEF_TERM_TLV_LEN) /* max type 2 tag value size */
+#define NDEF_TAG2_VALUE_MAXLEN (992 - 4 - NDEF_TERM_TLV_LEN) /* max NDEF data size for 0x7C size in cap. container (*8=992)*/
 void jsble_nfc_stop();
 void jsble_nfc_start(const uint8_t *data, size_t len);
 void jsble_nfc_get_internal(uint8_t *data, size_t *max_len);
