@@ -2391,7 +2391,52 @@ void jswrap_ble_setLowPowerConnection(bool lowPower) {
   }
 }
 
-static void nfc_raw_data_start(uint8_t *dataPtr,size_t dataLen);
+#ifdef USE_NFC
+static void nfc_raw_data_start(uint8_t *dataPtr, size_t dataLen){
+  /* Create a flat string - we need this to store the NFC data so it hangs around.
+   * Avoid having a static var so we have RAM available if not using NFC.
+   * NFC data is read by nfc_callback in bluetooth.c */
+  bool isLongMsg = dataLen > 254;
+  size_t nfcDataLen = dataLen + NDEF_TERM_TLV_LEN + (isLongMsg ? NDEF_HEADER_LEN_LONG : NDEF_HEADER_LEN_SHORT);
+
+
+  JsVar *flatStr = jsvNewFlatStringOfLength(nfcDataLen);
+  if (!flatStr)
+    return jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
+  jsvObjectSetChild(execInfo.hiddenRoot, "NfcData", flatStr);
+  uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
+  jsvUnLock(flatStr);
+
+/* assemble NDEF Message */
+  memcpy(flatStrPtr, NDEF_HEADER, NDEF_HEADER_LEN_LONG); /* fill header */
+  /* inject tag2 message length into header */
+  if (isLongMsg){
+    flatStrPtr[NDEF_HEADER_MSG_LEN_OFFSET] = 255;
+    flatStrPtr[NDEF_HEADER_MSG_LEN_OFFSET+1] = dataLen >> 8;
+    flatStrPtr[NDEF_HEADER_MSG_LEN_OFFSET+2] = dataLen & 255;
+  } else {
+    flatStrPtr[NDEF_HEADER_MSG_LEN_OFFSET] = dataLen;
+  }
+
+  /* add NDEF message record header after NDEF header */
+  uint8_t *ndefMsgPtr = flatStrPtr + (isLongMsg ? NDEF_HEADER_LEN_LONG : NDEF_HEADER_LEN_SHORT);
+  memcpy(ndefMsgPtr, dataPtr, dataLen); /* add payload */
+
+
+  /* write terminator TLV block */
+  flatStrPtr[nfcDataLen - NDEF_TERM_TLV_LEN] = NDEF_TERM_TLV;
+
+  /* start nfc peripheral */
+  JsVar* uid = jswrap_nfc_start(NULL);
+
+  /* inject UID/BCC */
+  size_t len;
+  char *uidPtr = jsvGetDataPointer(uid, &len);
+  if(uidPtr) memcpy(flatStrPtr, uidPtr, TAG_HEADER_LEN);
+  jsvUnLock(uid);
+}
+#endif
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "NRF",
@@ -2587,52 +2632,6 @@ void jswrap_nfc_raw(JsVar *payload) {
   nfc_raw_data_start((uint8_t*)dataPtr, dataLen);
 #endif
 }
-
-#ifdef USE_NFC
-static void nfc_raw_data_start(uint8_t *dataPtr, size_t dataLen){
-  /* Create a flat string - we need this to store the NFC data so it hangs around.
-   * Avoid having a static var so we have RAM available if not using NFC.
-   * NFC data is read by nfc_callback in bluetooth.c */
-  bool isLongMsg = dataLen > 254;
-  size_t nfcDataLen = dataLen + NDEF_TERM_TLV_LEN + (isLongMsg ? NDEF_HEADER_LEN_LONG : NDEF_HEADER_LEN_SHORT);
-
-
-  JsVar *flatStr = jsvNewFlatStringOfLength(nfcDataLen);
-  if (!flatStr)
-    return jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
-  jsvObjectSetChild(execInfo.hiddenRoot, "NfcData", flatStr);
-  uint8_t *flatStrPtr = (uint8_t*)jsvGetFlatStringPointer(flatStr);
-  jsvUnLock(flatStr);
-
-  /* assemble NDEF Message */
-  memcpy(flatStrPtr, NDEF_HEADER, NDEF_HEADER_LEN_LONG); /* fill header */
-  /* inject tag2 message length into header */
-  if (isLongMsg){
-    flatStrPtr[NDEF_HEADER_MSG_LEN_OFFSET] = 255;
-    flatStrPtr[NDEF_HEADER_MSG_LEN_OFFSET+1] = dataLen >> 8;
-    flatStrPtr[NDEF_HEADER_MSG_LEN_OFFSET+2] = dataLen & 255;
-  } else {
-    flatStrPtr[NDEF_HEADER_MSG_LEN_OFFSET] = dataLen;
-  }
-
-  /* add NDEF message record header after NDEF header */
-  uint8_t *ndefMsgPtr = flatStrPtr + (isLongMsg ? NDEF_HEADER_LEN_LONG : NDEF_HEADER_LEN_SHORT);
-  memcpy(ndefMsgPtr, dataPtr, dataLen); /* add payload */
-
-
-  /* write terminator TLV block */
-  flatStrPtr[nfcDataLen - NDEF_TERM_TLV_LEN] = NDEF_TERM_TLV;
-
-  /* start nfc peripheral */
-  JsVar* uid = jswrap_nfc_start(NULL);
-
-  /* inject UID/BCC */
-  size_t len;
-  char *uidPtr = jsvGetDataPointer(uid, &len);
-  if(uidPtr) memcpy(flatStrPtr, uidPtr, TAG_HEADER_LEN);
-  jsvUnLock(uid);
-}
-#endif
 
 /*JSON{
     "type" : "staticmethod",
