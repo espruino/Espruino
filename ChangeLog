@@ -49,6 +49,7 @@
             Bangle.js 1: remove OneWire,I2C,SPI as it uses too much flash space to exist alongside UTF8+Tensorflow+JIT on nRF52
             ARM: Apply -fmerge-all-constants to the build (saves ~1kb)
             Bangle.js: If screen is rotated, also rotate accelerometer and magnetometer values
+            Microbit1: don't include text versions of Bluetooth error messages (just the error number) to save some memory
             
      2v18 : Fix drawString with setClipRect with 90/270-degree rotation (fix #2343)
             Pico/Wifi: Enabled JIT compiler

@@ -52,6 +52,9 @@
 #define ESPR_NO_TEMPLATE_LITERAL 1
 #define ESPR_NO_SOFTWARE_SERIAL 1
 #endif
+#ifdef SAVE_ON_FLASH_EXTREME
+#define ESPR_NO_BLUETOOTH_MESSAGES 1
+#endif
 
 #ifndef alloca
 #define alloca(x) __builtin_alloca(x)
