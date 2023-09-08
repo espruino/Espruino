@@ -100,7 +100,7 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
     int y;
     JsVarInt dstSetting[12];
     JsvArrayBufferIterator it;
-  
+
     jsvArrayBufferIteratorNew(&it, dst, 0);
     y = 0;
     while (y < 12) {
@@ -113,7 +113,7 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
       JsVarFloat sec = ms/1000;
       JsVarFloat dstStart,dstEnd;
       bool dstActive;
-      
+
       getDateFromDayNumber((int)(sec/86400),&y,0,0);
       dstStart = getDstChangeTime(y, dstSetting[2], dstSetting[3], dstSetting[4], dstSetting[5], dstSetting[6], 1, dstSetting[0], dstSetting[1], is_local_time);
       dstEnd = getDstChangeTime(y, dstSetting[7], dstSetting[8], dstSetting[9], dstSetting[10], dstSetting[11], 0, dstSetting[0], dstSetting[1], is_local_time);
@@ -241,7 +241,10 @@ timezone set by `E.setTimeZone(...)` will be _ignored_.
   "return" : ["float",""]
 }
 Get the number of milliseconds elapsed since 1970 (or on embedded platforms,
-since startup)
+since startup).
+
+**Note:** Desktop JS engines return an integer value for `Date.now()`, however Espruino
+returns a floating point value, accurate to fractions of a millisecond.
  */
 JsVarFloat jswrap_date_now() {
   // Not quite sure why we need this, but (JsVarFloat)jshGetSystemTime() / (JsVarFloat)jshGetTimeFromMilliseconds(1) in inaccurate on STM32
