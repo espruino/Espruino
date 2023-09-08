@@ -248,7 +248,7 @@ The second argument can contain:
   ck:pin,                           // (default none) Clock Pin
   cts:pin,                          // (default none) Clear to Send Pin
   bytesize:8,                       // (default 8)How many data bits - 7 or 8
-  parity:null/'none'/'o'/'odd'/'e'/'even', 
+  parity:null/'none'/'o'/'odd'/'e'/'even',
                                     // (default none) Parity bit
   stopbits:1,                       // (default 1) Number of stop bits to use
   flow:null/undefined/'none'/'xon', // (default none) software flow control
@@ -327,7 +327,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
     if (DEVICE_IS_USART(device))
       jshUSARTSetup(device, &inf);
   } else if (device == EV_NONE) {
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_SOFTWARE_SERIAL
     // Software
     if (inf.pinTX != PIN_UNDEFINED) {
       jshPinSetState(inf.pinTX,  JSHPINSTATE_GPIO_OUT);
@@ -370,9 +370,11 @@ void jswrap_serial_unsetup(JsVar *parent) {
     if (inf.pinCTS!=PIN_UNDEFINED) jshPinSetState(inf.pinCTS, JSHPINSTATE_UNDEFINED);
     if (inf.pinRX!=PIN_UNDEFINED) jshPinSetState(inf.pinRX, JSHPINSTATE_UNDEFINED);
     if (inf.pinTX!=PIN_UNDEFINED) jshPinSetState(inf.pinTX, JSHPINSTATE_UNDEFINED);
+#ifndef ESPR_NO_SOFTWARE_SERIAL
     if (!DEVICE_IS_SERIAL(device))
       // It's software. Only thing we care about is RX as that uses watches
       jsserialEventCallbackKill(parent, &inf);
+#endif
   }
   jsvUnLock2(options, baud);
   // Remove stored settings
@@ -393,7 +395,7 @@ void jswrap_serial_unsetup(JsVar *parent) {
   "generate" : "jswrap_serial_idle"
 }*/
 bool jswrap_serial_idle() {
-#ifndef SAVE_ON_FLASH
+#ifndef ESPR_NO_SOFTWARE_SERIAL
   return jsserialEventCallbackIdle();
 #else
   return false;

@@ -50,6 +50,7 @@
 #define ESPR_NO_ARROW_FN 1
 #define ESPR_NO_REGEX 1
 #define ESPR_NO_TEMPLATE_LITERAL 1
+#define ESPR_NO_SOFTWARE_SERIAL 1
 #endif
 
 #ifndef alloca
