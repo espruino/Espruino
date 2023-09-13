@@ -93,6 +93,15 @@ JsVar *jswrap_string_fromCharCode(JsVar *arr) {
   return r;
 }
 
+int _jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
+  if (!jsvIsString(parent)) return -1;
+  JsvStringIterator it;
+  jsvStringIteratorNewUTF8(&it, parent, (size_t)idx);
+  int uChar = jsvStringIteratorGetUTF8CharAndNext(&it);
+  jsvStringIteratorFree(&it);
+  return uChar;
+}
+
 /*JSON{
   "type" : "method",
   "class" : "String",
@@ -107,7 +116,7 @@ Return a single character at the given position in the String.
  */
 // charAt but returns undefined for out of range
 JsVar *jswrap_string_charAt_undefined(JsVar *parent, JsVarInt idx) {
-  int uChar = jswrap_string_charCodeAt(parent, idx);
+  int uChar = _jswrap_string_charCodeAt(parent, idx);
   if (uChar<0) return 0;
 #ifdef ESPR_UNICODE_SUPPORT
   if (jsUTF8Bytes(uChar)>1) {
@@ -135,20 +144,15 @@ JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
   "params" : [
     ["pos","int","The character number in the string. Negative values return characters from end of string (-1 = last char)"]
   ],
-  "return" : ["int32","The integer value of a character in the string"]
+  "return" : ["JsVar","The integer value of a character in the string, or `NaN` if out of bounds"]
 }
 Return the integer value of a single character at the given position in the
 String.
-
-Note that this returns 0 not 'NaN' for out of bounds characters
- */
-int jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
-  if (!jsvIsString(parent)) return -1;
-  JsvStringIterator it;
-  jsvStringIteratorNewUTF8(&it, parent, (size_t)idx);
-  int uChar = jsvStringIteratorGetUTF8CharAndNext(&it);
-  jsvStringIteratorFree(&it);
-  return uChar;
+*/
+JsVar *jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
+  int uChar = _jswrap_string_charCodeAt(parent, idx);
+  if (uChar<0) return jsvNewFromFloat(NAN);
+  return jsvNewFromInteger(uChar);
 }
 
 
