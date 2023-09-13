@@ -1,4 +1,5 @@
      2v20 : Ensure String.charCodeAt returns NaN for out of bounds chars
+            Bangle.js2: When rendering overlays, *do not* use the current FG/BG color for 1 bit overlays
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)

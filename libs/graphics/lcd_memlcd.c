@@ -307,7 +307,11 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     bool isRotated180 = (graphicsInternal.data.flags & (JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y)) ==
                       (JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y);
     int ovY = isRotated180 ? (LCD_HEIGHT-(lcdOverlayY+overlayImg.height)) : lcdOverlayY;
-
+    // Set colors to current theme
+    unsigned int oldFgColor = gfx->data.fgColor;
+    unsigned int oldBgColor = gfx->data.bgColor;
+    gfx->data.fgColor = graphicsTheme.fg;
+    gfx->data.bgColor = graphicsTheme.bg;
     // initialise image layer
     GfxDrawImageLayer l;
     l.x1 = 0;
@@ -346,11 +350,14 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     }
     jsvStringIteratorFree(&l.it);
     _jswrap_graphics_freeImageInfo(&overlayImg);
-    // any 2 final bytes to finish the transfer
+    // and 2 final bytes to finish the transfer
 #ifndef EMULATED
     jshSPISendMany(LCD_SPI, lcdBuffer, NULL, 2, NULL);
     lcdMemLCD_flip_spi_callback();
 #endif
+    // Restore colors to previous state
+    gfx->data.fgColor = oldFgColor;
+    gfx->data.bgColor = oldBgColor;
   } else { // standard, non-overlay
 #ifdef EMULATED
     memcpy(fakeLCDBuffer, lcdBuffer, LCD_HEIGHT*LCD_STRIDE);
