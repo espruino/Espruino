@@ -2318,7 +2318,6 @@ NO_INLINE JsVar *jspeBlockOrStatement() {
     return 0;
   } else {
     JsVar *v = jspeStatement();
-    if (lex->tk==';') JSP_ASSERT_MATCH(';');
     return v;
   }
 }
@@ -2330,6 +2329,7 @@ NO_INLINE JsVar *jspParse() {
   while (!JSP_SHOULDNT_PARSE && lex->tk != LEX_EOF) {
     jsvUnLock(v);
     v = jspeBlockOrStatement();
+    while (lex->tk==';') JSP_ASSERT_MATCH(';');
     jsvCheckReferenceError(v);
   }
   return v;
@@ -2410,7 +2410,9 @@ NO_INLINE JsVar *jspeStatementIf() {
   JSP_SAVE_EXECUTE();
   if (!cond) jspSetNoExecute();
   JsExecFlags hasError = 0;
-  JsVar *a = jspeBlockOrStatement();
+  JsVar *a = 0;
+  if (lex->tk!=';')
+    a = jspeBlockOrStatement();
   hasError |= execInfo.execute&EXEC_ERROR_MASK;
   if (!cond) {
     jsvUnLock(a);
@@ -2419,11 +2421,16 @@ NO_INLINE JsVar *jspeStatementIf() {
   } else {
     result = a;
   }
+  /* We must manually parse ';' here, because if we did it when execInfo.execute==false (eg `if(0);`)
+  then if a String comes straight after it wouldn't have been interpreted */
+  if (lex->tk==';') JSP_ASSERT_MATCH(';');
   if (lex->tk==LEX_R_ELSE) {
     JSP_ASSERT_MATCH(LEX_R_ELSE);
     JSP_SAVE_EXECUTE();
     if (cond) jspSetNoExecute();
-    JsVar *a = jspeBlockOrStatement();
+    JsVar *a = 0;
+    if (lex->tk!=';')
+      a = jspeBlockOrStatement();
     hasError |= execInfo.execute&EXEC_ERROR_MASK;
     if (cond) {
       jsvUnLock(a);
