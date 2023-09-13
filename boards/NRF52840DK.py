@@ -34,15 +34,19 @@ info = {
      'NET',
      'GRAPHICS',
 #     'NFC',
-     'NEOPIXEL'
+     'NEOPIXEL',
+     'JIT' # JIT compiler enabled
    ],
    'makefile' : [
      'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DBOARD_PCA10056',
      'DEFINES += -DNRF_USB=1 -DUSB',
      'DEFINES += -DNEOPIXEL_SCK_PIN=22 -DNEOPIXEL_LRCK_PIN=23', # nRF52840 needs LRCK pin defined for neopixel
-     'NRF_SDK15=1',
+     'DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131', # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
+     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
+     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3660', # set RAM base to match MTU=131 + CENTRAL_LINK_COUNT=2
      'ESPR_BLUETOOTH_ANCS=1', # Enable ANCS (Apple notifications) support
+     'NRF_SDK15=1',
    ]
  }
 };
