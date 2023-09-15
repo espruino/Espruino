@@ -886,6 +886,7 @@ clean:
 	$(Q)rm -f $(BINDIR)/espruino_embedded.h
 	$(Q)rm -f $(BINDIR)/espruino_embedded.c
 	$(Q)rm -f $(BINDIR)/jstypes.h
+	$(Q)rm -f $(ROOT)/targetlibs/nrf5x_*/components/toolchain/gcc/gcc_startup_nrf5*.o $(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4*.o $(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_*.o
 
 wrappersources:
 	$(info WRAPPERSOURCES=$(WRAPPERSOURCES))
