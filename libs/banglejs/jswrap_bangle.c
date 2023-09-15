@@ -6062,7 +6062,7 @@ JsVar *jswrap_banglejs_appRect() {
 
 /// Called from jsinteractive when an event is parsed from the event queue for Bangle.js (executed outside IRQ)
 void jsbangle_exec_pending(IOEvent *evt) {
-  assert(event=>type == EV_BANGLEJS);
+  assert(evt->flags & EV_BANGLEJS);
   uint16_t value = ((uint8_t)evt->data.chars[1])<<8 | (uint8_t)evt->data.chars[2];
   switch ((JsBangleEvent)evt->data.chars[0]) {
     case JSBE_HRM_ENV: {
