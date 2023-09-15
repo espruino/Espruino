@@ -44,8 +44,3 @@ int main() {
   //jshKill();
 }
 
-#ifdef LD_NOSTARTFILES
-void _start(){
-  main();
-}
-#endif

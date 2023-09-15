@@ -37,7 +37,7 @@ info = {
      'DEFINES+=-DESPR_NO_DAYLIGHT_SAVING',
      'DEFINES+=-DJSVAR_FORCE_NO_INLINE=1',
      'CFLAGS += -ffreestanding', # needed for SAVE_ON_FLASH_EXTREME (jswrap_math, __aeabi_dsub)
-     'CFLAGS += -D__STARTUP_CLEAR_BSS -DLD_NOSTARTFILES',
+     'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main',
      'LDFLAGS += -nostartfiles',
      'BLACKLIST=boards/MICROBIT1.blocklist', # force some stuff to be removed to save space
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
