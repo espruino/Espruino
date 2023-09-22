@@ -83,7 +83,9 @@ static void espruinoTask(void *data) {
 #endif
   while(1) {
     jsiLoop();   // Perform the primary loop processing
+#ifdef BLUETOOTH
     gatts_sendNUSNotificationIfNotEmpty();
+#endif
   }
 }
 
