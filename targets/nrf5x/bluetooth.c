@@ -923,6 +923,7 @@ nrf_log_module_dynamic_data_t NRF_LOG_MODULE_DATA_DYNAMIC = {
 
 /// Function for handling an event from the Connection Parameters Module.
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {
+  // Either BLE_CONN_PARAMS_EVT_FAILED or BLE_CONN_PARAMS_EVT_SUCCEEDED - that's it
 }
 
 /// Sigh - NFC has lots of these, so we need to define it to build

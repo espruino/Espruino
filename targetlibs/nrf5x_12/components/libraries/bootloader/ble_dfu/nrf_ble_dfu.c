@@ -1,30 +1,30 @@
 /**
  * Copyright (c) 2016 - 2017, Nordic Semiconductor ASA
- * 
+ *
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice, this
  *    list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form, except as embedded into a Nordic
  *    Semiconductor ASA integrated circuit in a product or a software update for
  *    such product, must reproduce the above copyright notice, this list of
  *    conditions and the following disclaimer in the documentation and/or other
  *    materials provided with the distribution.
- * 
+ *
  * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
  *    contributors may be used to endorse or promote products derived from this
  *    software without specific prior written permission.
- * 
+ *
  * 4. This software, with or without modification, must only be used with a
  *    Nordic Semiconductor ASA integrated circuit.
- * 
+ *
  * 5. Any software provided in binary form under this license must not be reverse
  *    engineered, decompiled, modified and/or disassembled.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
  * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -35,7 +35,7 @@
  * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  */
 
 #include "nrf_ble_dfu.h"
@@ -143,7 +143,7 @@ static uint32_t conn_params_init(void)
 /**@brief     Function for the Advertising functionality initialization.
  *
  * @details   Encodes the required advertising data and passes it to the stack.
- *            The advertising data encoded here is specific for DFU. 
+ *            The advertising data encoded here is specific for DFU.
  *            Setting advertising data can by done by calling @ref ble_advdata_set.
  */
 static uint32_t advertising_init(uint8_t adv_flags)
@@ -154,12 +154,12 @@ static uint32_t advertising_init(uint8_t adv_flags)
     uint16_t    actual_device_name_length   = max_device_name_length;
 
     uint8_t     p_encoded_advdata[MAX_ADV_DATA_LENGTH];
-    
+
     // Encode flags.
     p_encoded_advdata[0]                    = 0x2;
     p_encoded_advdata[1]                    = BLE_GAP_AD_TYPE_FLAGS;
     p_encoded_advdata[2]                    = adv_flags;
-    
+
     // Encode 'more available' uuid list.
     p_encoded_advdata[3]                    = 0x3;
     p_encoded_advdata[4]                    = BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE;
@@ -172,7 +172,7 @@ static uint32_t advertising_init(uint8_t adv_flags)
     {
         return err_code;
     }
-    
+
     // Set GAP device in advertising data.
     if (actual_device_name_length <= max_device_name_length)
     {
@@ -524,7 +524,7 @@ static bool on_rw_authorize_req(ble_dfu_t * p_dfu, ble_evt_t * p_ble_evt)
     ble_gatts_rw_authorize_reply_params_t   auth_reply = {0};
     ble_gatts_evt_rw_authorize_request_t  * p_authorize_request;
     ble_gatts_evt_write_t                 * p_ble_write_evt;
-    
+
     p_authorize_request = &(p_ble_evt->evt.gatts_evt.params.authorize_request);
     p_ble_write_evt = &(p_ble_evt->evt.gatts_evt.params.authorize_request.request.write);
 
@@ -544,7 +544,7 @@ static bool on_rw_authorize_req(ble_dfu_t * p_dfu, ble_evt_t * p_ble_evt)
         {
             // Send an error response to the peer indicating that the CCCD is improperly configured.
             auth_reply.params.write.gatt_status = BLE_GATT_STATUS_ATTERR_CPS_CCCD_CONFIG_ERROR;
- 
+
             // Ignore response of auth reply
             (void)sd_ble_gatts_rw_authorize_reply(m_conn_handle, &auth_reply);
             return false;
@@ -660,9 +660,9 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             {
                 if (on_rw_authorize_req(&m_dfu, p_ble_evt))
                 {
-                    err_code = on_ctrl_pt_write(&m_dfu, 
+                    err_code = on_ctrl_pt_write(&m_dfu,
                            &(p_ble_evt->evt.gatts_evt.params.authorize_request.request.write));
-#ifdef NRF_DFU_DEBUG_VERSION  
+#ifdef NRF_DFU_DEBUG_VERSION
                     if (err_code != NRF_SUCCESS)
                     {
                         NRF_LOG_ERROR("Could not handle on_ctrl_pt_write. err_code: 0x%04x\r\n", err_code);
@@ -684,19 +684,19 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
             err_code = sd_ble_gatts_sys_attr_set(p_ble_evt->evt.gap_evt.conn_handle, NULL, 0, 0);
             APP_ERROR_CHECK(err_code);
             break;
-        
+
         case BLE_GATTS_EVT_WRITE:
             on_write(&m_dfu, p_ble_evt);
             break;
 
 #if (NRF_SD_BLE_API_VERSION == 3)
         case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST:
-            err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle, 
+            err_code = sd_ble_gatts_exchange_mtu_reply(p_ble_evt->evt.gatts_evt.conn_handle,
                                                        NRF_BLE_MAX_MTU_SIZE);
             APP_ERROR_CHECK(err_code);
             break; // BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST
 #endif
-        
+
         default:
             // No implementation needed.
             break;
@@ -771,8 +771,8 @@ static uint32_t gap_params_init(void)
                                           strlen(DEVICE_NAME));
     VERIFY_SUCCESS(err_code);
 
-    gap_conn_params.min_conn_interval = MIN_CONN_INTERVAL;
-    gap_conn_params.max_conn_interval = MAX_CONN_INTERVAL;
+    gap_conn_params.min_conn_interval = NRF_DFU_BLE_MIN_CONN_INTERVAL;
+    gap_conn_params.max_conn_interval = NRF_DFU_BLE_MAX_CONN_INTERVAL;
     gap_conn_params.slave_latency     = SLAVE_LATENCY;
     gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
 
@@ -809,8 +809,8 @@ static uint32_t ble_stack_init(bool init_softdevice)
 
 #if (NRF_SD_BLE_API_VERSION == 3)
     ble_enable_params.gatt_enable_params.att_mtu = NRF_BLE_MAX_MTU_SIZE;
-#endif    
-    
+#endif
+
     // Enable BLE stack.
     err_code = softdevice_enable(&ble_enable_params);
     return err_code;

@@ -6,6 +6,7 @@
             Ensure eval("1;;;")==1 - eval("1;")==1 before, but not eval("1;;")            
             Ensure AssignmentExpr returns the value of LHS, not the LHS. `(a=2)=3` now fails (as per spec)
             Ensure default args for arrow functions fail with error `(a,b=3)=>a+b` now fails (until default args get added)
+            nRF52: bootloader asks for connection interval 7.5->30ms now, not just 15ms. Should improve DFU on iOS 16 which doesn't honour 15ms request
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)

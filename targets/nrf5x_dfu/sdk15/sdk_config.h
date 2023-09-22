@@ -981,14 +981,14 @@
 // <i> Minimum GAP connection interval, in 1.25 ms units.
 
 #ifndef NRF_DFU_BLE_MIN_CONN_INTERVAL
-#define NRF_DFU_BLE_MIN_CONN_INTERVAL 12
+#define NRF_DFU_BLE_MIN_CONN_INTERVAL 6 // 7.5ms
 #endif
 
 // <o> NRF_DFU_BLE_MAX_CONN_INTERVAL - Maximum connection interval (units).
 // <i> Maximum GAP connection interval, in 1.25 ms units.
 
 #ifndef NRF_DFU_BLE_MAX_CONN_INTERVAL
-#define NRF_DFU_BLE_MAX_CONN_INTERVAL 12
+#define NRF_DFU_BLE_MAX_CONN_INTERVAL 24 // 30ms
 #endif
 
 // <o> NRF_DFU_BLE_CONN_SUP_TIMEOUT_MS - Supervision timeout (ms).
