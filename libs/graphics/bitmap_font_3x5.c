@@ -127,7 +127,7 @@ const unsigned short LCD_FONT_3X5[] IN_FLASH_MEMORY = { // from 33 up to 127
     PACK_5_TO_16( X_X , X_X , X__ , _X_ , X_X ),
     PACK_5_TO_16( X_X , XX_ , _X_ , _X_ , X_X ),
     PACK_5_TO_16( X_X , X_X , __X , _X_ , X_X ),
-    PACK_5_TO_16( _XX , X_X , XX_ , _X_ , _X_ ),
+    PACK_5_TO_16( _XX , X_X , XX_ , _X_ , XXX ),
 
     PACK_5_TO_16( ___ , ___ , ___ , X_X , ___ ), // vwxyz
     PACK_5_TO_16( ___ , X_X , X_X , X_X , ___ ),

@@ -617,6 +617,89 @@ JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
 /*JSON{
   "type" : "method",
   "class" : "String",
+  "name" : "removeAccents",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate_full" : "jswrap_string_removeAccents(parent)",
+  "return" : ["JsVar","This string with the accents/diacritics (such as é, ü) removed from characters in the ISO 8859-1 set"]
+}*/
+JsVar *jswrap_string_removeAccents(JsVar *parent) {
+  bool isLowerCase;
+  JsVar *res = jsvNewFromEmptyString();
+  if (!res) return 0; // out of memory
+  JsVar *parentStr = jsvAsString(parent);
+
+  JsvStringIterator itsrc, itdst;
+  jsvStringIteratorNew(&itsrc, parentStr, 0);
+  jsvStringIteratorNew(&itdst, res, 0);
+
+  while (jsvStringIteratorHasChar(&itsrc)) {
+    char ch = jsvStringIteratorGetCharAndNext(&itsrc);
+    if (ch >= 0xE0) {
+      isLowerCase = true;
+      ch -= 32;
+    } else {
+      isLowerCase = false;
+    }
+    if (ch >= 0xC0) {
+      switch (ch) {
+        case 0xC0 ... 0xC5: // À Á Â Ã Ä Å
+          ch = 'A';
+          break;
+        case 0xC6:  // convert Æ to AE
+          jsvStringIteratorAppend(&itdst, isLowerCase ? 'a' : 'A');
+          ch = 'E';
+          break;
+        case 0xC7: // Ç
+          ch = 'C';
+          break;
+        case 0xC8 ... 0xCB: // È É Ê Ë
+          ch = 'E';
+          break;
+        case 0xCC ... 0xCF: // Ì Í Î Ï
+          ch = 'I';
+          break;
+        case 0xD0: // Ð
+          ch = 'D';
+          break;
+        case 0xD1: // Ñ
+          ch = 'N';
+          break;
+        case 0xD2 ... 0xD6: // Ò Ó Ô Õ Ö
+        case 0xD8: // Ø
+          ch = 'O';
+          break;
+        case 0xD9 ... 0xDC: // Ù Ú Û Ü
+          ch = 'U';
+          break;
+        case 0xDD: // Ý
+          ch = 'Y';
+          break;
+        case 0xDE: // Þ
+          ch = 'P';
+          break;
+        case 0xDF: // ß to SS or ÿ to y (if lowercase)
+          if (isLowerCase) {
+            ch = 'Y';
+          } else {
+            jsvStringIteratorAppend(&itdst, 'S');
+            ch = 'S';
+          }
+          break;
+      }
+    }
+    jsvStringIteratorAppend(&itdst, isLowerCase ? ch+32 : ch);
+  }
+
+  jsvStringIteratorFree(&itsrc);
+  jsvStringIteratorFree(&itdst);
+  jsvUnLock(parentStr);
+
+  return res;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
   "name" : "trim",
   "generate" : "jswrap_string_trim",
   "return" : ["JsVar","A String with Whitespace removed from the beginning and end"],

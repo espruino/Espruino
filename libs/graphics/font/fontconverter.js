@@ -520,7 +520,7 @@ fn : "Light20px.png",
 bpp : 2,
 height : 20, // actual used height of font map
 firstChar : 32,
-maxChars :  128-32
+maxChars :  256-32
 });
 f.fullHeight = false;
 f.glyphPadX = 0;*/
@@ -558,7 +558,7 @@ f.debugPixelsUsed();
 console.log(f.outputJS());
 
 // Write a binary PBF file
-//require("fs").writeFileSync("font.pbf", Buffer.from(f.outputPBF()))
+require("fs").writeFileSync("font.pbf", Buffer.from(f.outputPBF()))
 
 // Write a PBF file as a jswrap_ C file that can be included in the build
 // by adding 'WRAPPERSOURCES += libs/graphics/jswrap_font_light20.c' to the BOARD.py file

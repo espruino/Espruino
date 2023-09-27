@@ -13,6 +13,9 @@
  */
 #include "graphics.h"
 
+#define LCD_STRIDE ((LCD_WIDTH*LCD_BPP+7)>>3)
+unsigned char lcdBuffer[LCD_STRIDE*LCD_HEIGHT];
+
 void lcdInit_SPILCD(JsGraphics *gfx);
 void lcdSetCallbacks_SPILCD(JsGraphics *gfx);
 

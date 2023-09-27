@@ -1,4 +1,4 @@
-#!/usr/bin/nodejs
+#!/usr/bin/env node
 /* This is a big hack - we take a hex file and turn it into 
 Espruino commands that write the memory directly via JS. Can
 be used to do bootloader updates/etc.

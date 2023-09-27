@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 /* This'll take JavaScript source files and convert them
 to jswrap files to be included in the interpreter.
 

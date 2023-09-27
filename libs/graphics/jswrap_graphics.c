@@ -32,6 +32,11 @@
 
 #include "jswrap_functions.h" // for asURL
 #include "jswrap_object.h" // for getFonts
+#ifdef DICKENS
+#include "jsflash.h" // for saveScreenshot
+#include "lcd_spilcd.h"
+#define ESPR_LINE_FONTS
+#endif
 
 #include "bitmap_font_4x6.h"
 #include "bitmap_font_6x8.h"
@@ -39,6 +44,10 @@
 #ifdef ESPR_PBF_FONTS
 #include "pbf_font.h"
 #endif
+#ifdef ESPR_LINE_FONTS
+#include "line_font.h"
+#endif
+
 
 #ifdef GRAPHICS_PALETTED_IMAGES
 #if defined(ESPR_GRAPHICS_12BIT)
@@ -1140,6 +1149,32 @@ Draw a filled circle in the Foreground Color
 */
  JsVar *jswrap_graphics_fillCircle(JsVar *parent, int x, int y, int rad) {
    return jswrap_graphics_fillEllipse(parent, x-rad, y-rad, x+rad, y+rad);
+ }
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "fillAnnulus",
+  "#if" : "defined(DICKENS)",
+  "generate" : "jswrap_graphics_fillAnnulus",
+  "params" : [
+    ["x","int32","The X axis"],
+    ["y","int32","The Y axis"],
+    ["r1","int32","The annulus inner radius"],
+    ["r2","int32","The annulus outer radius"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Draw a filled annulus in the Foreground Color
+*/
+// JsVar *jswrap_graphics_fillAnnulus(JsVar *parent, int x, int y, int r1, int r2, unsigned short quadrants) {  // Too many arguments!
+ JsVar *jswrap_graphics_fillAnnulus(JsVar *parent, int x, int y, int r1, int r2) {
+   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+   unsigned short quadrants = 0x0F; // Just do all quadrants for now
+   graphicsFillAnnulus(&gfx, x,y,r1,r2,quadrants);
+   graphicsSetVar(&gfx); // gfx data changed because modified area
+   return jsvLockAgain(parent);
  }
 
 /*JSON{
@@ -2699,6 +2734,75 @@ JsVar *jswrap_graphics_getVectorFontPolys(JsGraphics *gfx, JsVar *str, JsVar *op
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
+  "name" : "drawLineString",
+  "#if" : "defined(DICKENS)",
+  "generate" : "jswrap_graphics_drawLineString",
+  "params" : [
+    ["str","JsVar","The string"],
+    ["x","int32","The X position of the start of the text string"],
+    ["y","int32","The Y position of the middle of the text string"],
+    ["options","JsVar","Options for drawing this font (see below)"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Draw a string of text as a fixed-width line font
+
+`options` contains:
+
+* `size`: font size in pixels (char width is half font size) - default 16
+* `rotate`: Initial rotation in radians - default 0
+* `twist`: Subsequent rotation per character in radians - default 0
+*/
+#ifdef ESPR_LINE_FONTS
+JsVar *jswrap_graphics_drawLineString(JsVar *parent, JsVar *var, int x, int y, JsVar *options) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+
+  int fontSize = 16;
+  double rotate = 0, twist = 0;
+  jsvConfigObject configs[] = {
+      {"size", JSV_INTEGER, &fontSize},
+      {"rotate", JSV_FLOAT, &rotate},
+      {"twist", JSV_FLOAT, &twist}
+  };
+  if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    jsExceptionHere(JSET_ERROR, "Invalid options");
+    return 0;
+  }
+  fontSize *= 16;
+
+  x = x*16 - 8;
+  y = y*16 - 8;
+  int startx = x;
+
+  JsVar *str = jsvAsString(var);
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, str, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetCharAndNext(&it);
+    if (ch=='\n') {
+      x = startx;
+      y += fontSize;
+      continue;
+    }
+    int xdx = (int)(0.5 + fontSize*cos(rotate));
+    int xdy = (int)(0.5 + fontSize*sin(rotate));
+    graphicsDrawLineChar(&gfx, x, y, xdx, xdy, ch);
+    x += xdx * 1 / 2;
+    y += xdy * 1 / 2;
+    rotate += twist;
+    if (jspIsInterrupted()) break;
+  }
+  jsvStringIteratorFree(&it);
+  jsvUnLock(str);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+  return jsvLockAgain(parent);
+}
+#endif
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
   "name" : "drawLine",
   "generate" : "jswrap_graphics_drawLine",
   "params" : [
@@ -4001,6 +4105,38 @@ void jswrap_graphics_dump(JsVar *parent) {
   jsiConsolePrintf("data:image/bmp;base64,");
   jsvUnLock(jswrap_graphics_asBMP_X(parent, true/*printBase64*/));
 }
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "saveScreenshot",
+  "#if" : "defined(DICKENS)",
+  "generate" : "jswrap_graphics_saveScreenshot",
+  "params" : [
+    ["filename","JsVar","If supplied, a file to save, otherwise 'screenshot.img'"]
+  ]
+}
+*/
+void jswrap_graphics_saveScreenshot(JsVar *parent, JsVar *fileNameVar) {
+#ifdef DICKENS
+  JsfFileName fileName = jsfNameFromString("screenshot.img");
+  if (fileNameVar) fileName = jsfNameFromVar(fileNameVar);
+
+  JsVar *v = jsvNewFromString("\xF0\xF0\x10");
+  jsfWriteFile(fileName, v, JSFF_NONE, 0, sizeof(lcdBuffer)+3);
+  jsvUnLock(v);
+  const int chunkSize = 16384;
+  for (int i=0;i<sizeof(lcdBuffer);i+=chunkSize) {
+    int s = chunkSize;
+    if (s+i > sizeof(lcdBuffer))
+      s=sizeof(lcdBuffer)-i;
+    JsVar *gfxBufferString = jsvNewNativeString(&lcdBuffer[i], s);
+    jsfWriteFile(fileName, gfxBufferString, JSFF_NONE, 3+i, 0);
+    jsvUnLock(gfxBufferString);
+  }
+#endif
+}
+
 
 /*JSON{
   "type" : "method",

@@ -17,6 +17,7 @@
 #include "jspininfo.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
+#include "lcd.h"
 
 /// Because Nordic's library functions don't inline on NRF52840!
 #ifdef NRF_P1
@@ -81,6 +82,15 @@ static bool get_btn2_state() {
   return jshPinGetValue(BTN2_PININDEX)==BTN2_ONSTATE;
 }
 #endif
+#ifdef BAT_PIN_CHARGING
+static bool get_charging_state() {
+  return jshPinGetValue(BAT_PIN_CHARGING)==0;
+}
+#endif
+
+static void print_fw_version(void) {
+  lcd_println("BL " JS_VERSION "\n");
+}
 
 static void hardware_init(void) {
 #if defined(PIXLJS)
@@ -88,6 +98,15 @@ static void hardware_init(void) {
   jshPinOutput(LED1_PININDEX, 0);
 #endif
   set_led_state(false, false);
+#ifdef DICKENS // Simpler setup of BTN1 and BTN2 to save 48 bytes of code space
+  NRF_GPIO_PIN_CNF(BTN1_PININDEX,0x0000000c);     // BTN1 input (with pullup)
+  NRF_GPIO_PIN_CNF(BTN2_PININDEX,0x0000000c);     // BTN2 input (with pullup)
+  jshPinOutput(LCD_BL, !LCD_BL_ON);               // backlight off
+//  NRF_P1->OUT=0x00000001; // Backlight output high (for off) 
+#ifdef BAT_PIN_CHARGING
+  NRF_GPIO_PIN_CNF(BAT_PIN_CHARGING,0x0000000c);     // Charge input (with pullup)
+#endif
+#else // !DICKENS
 #ifdef BTN1_PININDEX
   bool polarity;
   uint32_t pin;
@@ -108,7 +127,10 @@ static void hardware_init(void) {
   nrf_gpio_cfg_input(pin,
           polarity ? NRF_GPIO_PIN_PULLDOWN : NRF_GPIO_PIN_PULLUP);
 #endif
+#endif // !DICKENS
 #ifdef VIBRATE_PIN
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
 #endif
+
+
 }

@@ -29,6 +29,7 @@ JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen);
 JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd);
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split);
 JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper);
+JsVar *jswrap_string_removeAccents(JsVar *parent);
 JsVar *jswrap_string_trim(JsVar *parent);
 JsVar *jswrap_string_concat(JsVar *parent, JsVar *args);
 bool jswrap_string_startsWith(JsVar *parent, JsVar *search, int position);

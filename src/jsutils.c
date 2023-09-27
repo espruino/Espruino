@@ -805,6 +805,7 @@ void vcbprintf(
         user_callback(buf,user_data);
         break;
       }
+      case 'i': // Added to support some NRF_LOG_INFO calls in, for example, nrf_ble_ancs_c.c
       case 'd': itostr(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
       case 'x': itostr_extra(va_arg(argp, int), buf, false, 16); user_callback(buf,user_data); break;
       case 'L': {

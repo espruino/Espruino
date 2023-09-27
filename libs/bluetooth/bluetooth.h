@@ -175,6 +175,8 @@ typedef enum {
   BLEP_TASK_CHARACTERISTIC_NOTIFY,  //< Central: Started requesting notifications
   BLEP_CENTRAL_NOTIFICATION,        //< A characteristic we were watching has changed
   BLEP_CENTRAL_DISCONNECTED,        //< Central: Disconnected (reason as data low byte, index in m_central_conn_handles as high byte )
+#endif
+#if PEER_MANAGER_ENABLED
   BLEP_BONDING_STATUS,              //< Bonding negotiation status (data is one of BLEBondingStatus)
 #endif
   BLEP_WRITE,                       //< One of our characteristics written by someone else

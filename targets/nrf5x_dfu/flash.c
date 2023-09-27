@@ -93,7 +93,6 @@ static void flashReset(){
   nrf_delay_us(50);
 }
 
-
 // Wake up the SPI Flash from deep power-down mode
 static void flashWakeUp() {
   unsigned char buf = 0xAB;  // SPI Flash release from deep power-down

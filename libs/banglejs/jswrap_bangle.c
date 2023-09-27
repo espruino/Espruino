@@ -639,6 +639,10 @@ JshI2CInfo i2cInternal;
 #define HOME_BTN 2
 #define DEFAULT_BTN_LOAD_TIMEOUT 4000
 #define DEFAULT_LCD_POWER_TIMEOUT 20000
+#define DEFAULT_TWIST_THRESHOLD 600
+#define DEFAULT_TWIST_MAXY 0
+#define WAKE_FROM_OFF_TIME 1000
+#define MAG_MAX_RANGE 400 // maximum range of readings allowed between magmin/magmax. In the UK at ~20uT 250 is ok, and the max field strength us ~40uT
 #endif
 
 #ifdef ID205
@@ -680,6 +684,15 @@ JshI2CInfo i2cInternal;
 #endif
 #ifndef DEFAULT_LOCK_TIMEOUT
 #define DEFAULT_LOCK_TIMEOUT 30000 // in msec - default for lockTimeout
+#endif
+#ifndef DEFAULT_TWIST_THRESHOLD
+#define DEFAULT_TWIST_THRESHOLD 800
+#endif
+#ifndef DEFAULT_TWIST_MAXY
+#define DEFAULT_TWIST_MAXY -800
+#endif
+#ifndef WAKE_FROM_OFF_TIME
+#define WAKE_FROM_OFF_TIME 200
 #endif
 
 #ifdef TOUCH_DEVICE
@@ -833,8 +846,10 @@ bool lcdFadeHandlerActive;
 Vector3 mag, magmin, magmax;
 bool magOnWhenCharging;
 #define MAG_CHARGE_TIMEOUT 3000 // time after charging when magnetometer value gets automatically reset
+#ifndef MAG_MAX_RANGE
 #define MAG_MAX_RANGE 500 // maximum range of readings allowed between magmin/magmax. In the UK at ~20uT 250 is ok, and the max field strength us ~40uT
 #endif
+#endif // MAG_I2C
 #ifdef MAG_DEVICE_GMC303
 uint8_t magCalib[3]; // Magnetic Coefficient Registers - used to rescale the magnetometer values
 #endif
@@ -869,9 +884,9 @@ int accelGestureInactiveCount = 4;
 /// how many samples must a gesture have before we notify about it?
 int accelGestureMinLength = 10;
 /// How much acceleration to register a twist of the watch strap?
-int twistThreshold = 800;
+int twistThreshold = DEFAULT_TWIST_THRESHOLD;
 /// Maximum acceleration in Y to trigger a twist (low Y means watch is facing the right way up)
-int twistMaxY = -800;
+int twistMaxY = DEFAULT_TWIST_MAXY;
 /// How little time (in ms) must a twist take from low->high acceleration?
 int twistTimeout = 1000;
 
@@ -1171,8 +1186,14 @@ void peripheralPollHandler() {
     if (homeBtnTimer < TIMER_MAX) {
       homeBtnTimer += pollInterval;
       if (btnLoadTimeout && (homeBtnTimer >= btnLoadTimeout)) {
-        bangleTasks |= JSBT_RESET;
-        jshHadEvent();
+#ifdef DICKENS
+        if (!jsfIsStorageEmpty()) { // Only reset if there's something in flash storage
+#else
+	{
+#endif
+          bangleTasks |= JSBT_RESET;
+          jshHadEvent();
+        }
         homeBtnTimer = TIMER_MAX;
         // Allow home button to break out of debugger
         if (jsiStatus & JSIS_IN_DEBUGGER) {
@@ -1410,7 +1431,26 @@ void peripheralPollHandler() {
   if (tapType) {
     // report tap
     tapInfo = buf[0] | (tapType<<6);
-    bangleTasks |= JSBT_ACCEL_TAPPED;
+    bool handled = false;
+    // wake on tap, for front (for Dickens)
+#ifdef DICKENS
+    if ((bangleFlags&JSBF_WAKEON_TOUCH) && (tapInfo&1)) {
+      if (!(bangleFlags&JSBF_LCD_ON)) {
+        bangleTasks |= JSBT_LCD_ON;
+        handled = true;
+      }
+      if (!(bangleFlags&JSBF_LCD_BL_ON)) {
+        bangleTasks |= JSBT_LCD_BL_ON;
+        handled = true;
+      }
+      if (bangleFlags&JSBF_LOCKED) {
+        bangleTasks |= JSBT_UNLOCK;
+        handled = true;
+      }
+    }
+#endif
+    if (!handled)
+      bangleTasks |= JSBT_ACCEL_TAPPED;
     jshHadEvent();
   }
   // clear the IRQ flags
@@ -1437,6 +1477,15 @@ void peripheralPollHandler() {
 #endif
 #ifdef ACCEL_DEVICE_KX126
     newy = -newy;
+#endif
+#ifdef LCD_ROTATION
+  #if LCD_ROTATION == 180
+    newy = -newy;
+  #elif LCD_ROTATION == 0
+    newx = -newx; //consistent directions with Bangle
+  #else
+    #error "LCD rotation is only implemented for 180 and 0 degrees"
+  #endif
 #endif
     // if the graphics instance is rotated, also rotate accelerometer values
     if (graphicsInternal.data.flags & JSGRAPHICSFLAGS_INVERT_X) newx = -newx;
@@ -1504,8 +1553,8 @@ void peripheralPollHandler() {
       bangleTasks |= JSBT_ACCEL_DATA;
       jshHadEvent();
     }
-    // check for 'face up'
-    faceUp = (acc.z<-6700) && (acc.z>-9000) && abs(acc.x)<2048 && abs(acc.y)<2048;
+    // check for 'face up' (or tilted towards the viewer, which reduces the Y value)
+    faceUp = (acc.z<-5700) && (acc.z>-9000) && abs(acc.x)<2048 && abs(acc.y+4096)<2048;
     if (faceUp!=wasFaceUp) {
       faceUpTimer = 0;
       faceUpSent = false;
@@ -1980,12 +2029,12 @@ static void jswrap_banglejs_setLCDPowerController(bool isOn) {
   // TODO: LCD_CONTROLLER_GC9A01 - has an enable/power pin
   if (isOn) { // wake
     lcdCmd_SPILCD(0x11, 0, NULL); // SLPOUT
-    jshDelayMicroseconds(20);
+    jshDelayMicroseconds(5000);   // For GC9A01, we should wait 5ms after SLPOUT for power supply and clocks to stabilise before sending next command
     lcdCmd_SPILCD(0x29, 0, NULL); // DISPON
   } else { // sleep
     lcdCmd_SPILCD(0x28, 0, NULL); // DISPOFF
     jshDelayMicroseconds(20);
-    lcdCmd_SPILCD(0x10, 0, NULL); // SLPIN
+    lcdCmd_SPILCD(0x10, 0, NULL); // SLPIN - for GC9A01, it takeds 120ms to get into sleep mode after sending SPLIN
   }
 #endif
 #ifdef LCD_EN
@@ -2133,7 +2182,6 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
 #ifdef ESPR_BACKLIGHT_FADE
   if (isOn) jswrap_banglejs_setLCDPowerController(1);
   else jswrap_banglejs_setLCDPowerBacklight(0); // RB: don't turn on the backlight here if fading is enabled
-  jswrap_banglejs_setLCDPowerBacklight(isOn);
 #else
   jswrap_banglejs_setLCDPowerController(isOn);
   jswrap_banglejs_setLCDPowerBacklight(isOn);
@@ -2457,6 +2505,9 @@ which the touchscreen/buttons start being ignored). To set both separately, use
 `Bangle.setOptions`
 */
 void jswrap_banglejs_setLCDTimeout(JsVarFloat timeout) {
+#ifdef DICKENS
+  inactivityTimer = 0; // reset the LCD timeout timer
+#endif
   if (!isfinite(timeout))
     timeout=0;
   else if (timeout<0) timeout=0;
@@ -3625,7 +3676,10 @@ NO_INLINE void jswrap_banglejs_init() {
 
     /* If first run and button is held down, enter recovery mode. During this
     we will try not to access storage */
-#ifndef DICKENS
+#ifdef DICKENS
+    if (jshPinGetValue(BTN1_PININDEX) && jshPinGetValue(BTN4_PININDEX))
+      recoveryMode = true;
+#else
     if (jshPinGetValue(HOME_BTN_PININDEX))
       recoveryMode = true;
 #endif
@@ -3653,6 +3707,14 @@ NO_INLINE void jswrap_banglejs_init() {
   if (!recoveryMode) {
     JsVar *settingsFN = jsvNewFromString("setting.json");
     JsVar *settings = jswrap_storage_readJSON(settingsFN,true);
+#ifdef DICKENS
+    // Remove the whitelist from settings, in case it was set when the watch
+    // was running the original factory firmware
+    if (jsvIsObject(settings)) {
+      jsvObjectRemoveChild(settings, "whitelist");
+      jswrap_storage_writeJSON(settingsFN, settings);
+    }
+#endif
     jsvUnLock(settingsFN);
     JsVar *v;
     v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"beep") : 0;
@@ -3809,6 +3871,22 @@ NO_INLINE void jswrap_banglejs_init() {
     }
     w = (int)(unsigned char)jsvGetCharInString(img, 0);
     h = (int)(unsigned char)jsvGetCharInString(img, 1);
+    char addrStr[20];
+#ifndef EMULATED
+    JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
+#else
+    JsVar *addr = jsvNewFromString("Emulated");
+#endif
+    jsvGetString(addr, addrStr, sizeof(addrStr));
+    jsvUnLock(addr);
+#if (defined(DICKENS) || defined(EMSCRIPTEN_DICKENS))
+    int y=111;
+    jswrap_graphics_drawCString(&graphicsInternal,20,y-10,"---------------");
+    jswrap_graphics_drawCString(&graphicsInternal,20,y,"PROJECT DICKENS");
+    jswrap_graphics_drawCString(&graphicsInternal,20,y+10,"---------------");
+    jswrap_graphics_drawCString(&graphicsInternal,20,y+30,JS_VERSION);
+    jswrap_graphics_drawCString(&graphicsInternal,20,y+40,addrStr);
+#else // not DICKENS
     int y=(LCD_HEIGHT-h)/2;
     jsvUnLock2(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,y,NULL),img);
     if (drawInfo) {
@@ -3826,8 +3904,13 @@ NO_INLINE void jswrap_banglejs_init() {
       jswrap_graphics_drawCString(&graphicsInternal,8,y+10,addrStr);
       jswrap_graphics_drawCString(&graphicsInternal,8,y+20,"Copyright 2021 G.Williams");
     }
+#endif // DICKENS
   }
-  graphicsInternalFlip();
+#ifdef DICKENS
+  if (showSplashScreen)
+#endif
+    graphicsInternalFlip();
+
   graphicsStructResetState(&graphicsInternal);
   // no need to unlock graphics as we stored it in 'graphicsVar'
 #endif
@@ -3880,17 +3963,20 @@ NO_INLINE void jswrap_banglejs_init() {
     jshDelayMicroseconds(2000);
     jswrap_banglejs_accelWr(KX126_CNTL3,KX126_CNTL3_OTP_12P5|KX126_CNTL3_OTDT_400|KX126_CNTL3_OWUF_0P781); // CNTL3 12.5Hz tilt, 400Hz tap, 0.781Hz motion detection
     jswrap_banglejs_accelWr(KX126_ODCNTL,KX126_ODCNTL_OSA_12P5); // ODCNTL - 12.5Hz output data rate (ODR), with low-pass filter set to ODR/9
-    jswrap_banglejs_accelWr(KX126_INC1,0); // INC1 - interrupt output pin INT1 disabled
-    jswrap_banglejs_accelWr(KX126_INC2,0); // INC2 - wake-up & back-to-sleep ignores all 3 axes
-    jswrap_banglejs_accelWr(KX126_INC3,0); // INC3 - tap detection ignores all 3 axes
-    jswrap_banglejs_accelWr(KX126_INC4,0); // INC4 - no routing of interrupt reporting to pin INT1
-    jswrap_banglejs_accelWr(KX126_INC5,0); // INC5 - interrupt output pin INT2 disabled
-    jswrap_banglejs_accelWr(KX126_INC6,0); // INC6 - no routing of interrupt reporting to pin INT2
-    jswrap_banglejs_accelWr(KX126_INC7,0); // INC7 - no step counter interrupts reported on INT1 or INT2
+    jswrap_banglejs_accelWr(KX126_INC1,0);      // INC1 - interrupt output pin INT1 disabled
+    jswrap_banglejs_accelWr(KX126_INC2,0);      // INC2 - wake-up & back-to-sleep ignores all 3 axes
+    jswrap_banglejs_accelWr(KX126_INC3,0x3F);   // INC3 - enable tap detection in all 6 directions
+    jswrap_banglejs_accelWr(KX126_INC4,0);      // INC4 - no routing of interrupt reporting to pin INT1
+    jswrap_banglejs_accelWr(KX126_INC5,0);      // INC5 - interrupt output pin INT2 disabled
+    jswrap_banglejs_accelWr(KX126_INC6,0);      // INC6 - no routing of interrupt reporting to pin INT2
+    jswrap_banglejs_accelWr(KX126_INC7,0);      // INC7 - no step counter interrupts reported on INT1 or INT2
+    jswrap_banglejs_accelWr(KX126_TDTRC,3);     // TDTRC - enable interrupts on single and double taps
+    jswrap_banglejs_accelWr(KX126_TDTC, 0x78);  // TDTC - tap detect double tap (0x78 default)
+    jswrap_banglejs_accelWr(KX126_TTH, 0xCB);   // TTH - tap detect threshold high (0xCB default)
+    jswrap_banglejs_accelWr(KX126_TTL, 0x22);   // TTL - tap detect threshold low (0x1A default)
     jswrap_banglejs_accelWr(KX126_BUF_CLEAR,0); // clear the buffer
-
-    jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G); // CNTL1 - standby mode, low power, enable "data ready" interrupt, 4g, disable tap, tilt & pedometer (for now)
-    jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G|KX126_CNTL1_PC1); // CNTL1 - same as above but change from standby to operating mode
+    jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G|KX126_CNTL1_TDTE); // CNTL1 - standby mode, low power, enable "data ready" interrupt, 4g, enable tap, disable tilt & pedometer (for now)
+    jswrap_banglejs_accelWr(KX126_CNTL1,KX126_CNTL1_DRDYE|KX126_CNTL1_GSEL_4G|KX126_CNTL1_TDTE|KX126_CNTL1_PC1); // CNTL1 - same as above but change from standby to operating mode
 #endif
 
 #ifdef PRESSURE_DEVICE
@@ -4140,6 +4226,14 @@ bool jswrap_banglejs_idle() {
       JsVar *o = jsvNewObject();
       if (o) {
         const char *string="";
+#ifdef DICKENS
+        if (tapInfo&1) string="front";
+        if (tapInfo&2) string="back";
+        if (tapInfo&4) string="top";
+        if (tapInfo&8) string="bottom";
+        if (tapInfo&16) string="left";
+        if (tapInfo&32) string="right";
+#else
 #ifdef BANGLEJS_Q3
         if (tapInfo&2) string="front";
         if (tapInfo&1) string="back";
@@ -4154,6 +4248,7 @@ bool jswrap_banglejs_idle() {
         if (tapInfo&8) string="bottom";
         if (tapInfo&16) string="left";
         if (tapInfo&32) string="right";
+#endif
 #endif
         int n = (tapInfo&0x80)?2:1;
         jsvObjectSetChildAndUnLock(o, "dir", jsvNewFromString(string));
@@ -5229,8 +5324,10 @@ static void jswrap_banglejs_periph_off() {
   nrf_gpio_cfg_sense_set(pinInfo[BTN4_PININDEX].pin, NRF_GPIO_PIN_NOSENSE);
 #endif
 
+#ifndef DICKENS // RB: the call to jswrap_banglejs_kill via jswInit can cause increased power draw
   jsiKill();
   jsvKill();
+#endif
   jshKill();
 
   /* The low power pin watch code (nrf_drv_gpiote_in_init) somehow causes
@@ -5239,10 +5336,23 @@ static void jswrap_banglejs_periph_off() {
   to re-enable everything. */
   jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
   nrf_gpio_cfg_sense_set(pinInfo[BTN1_PININDEX].pin, NRF_GPIO_PIN_SENSE_LOW);
+#ifdef DICKENS
+  jshPinWatch(BAT_PIN_CHARGING, true, JSPW_NONE); // watch for when power applied
+  nrf_gpio_cfg_sense_set(pinInfo[BAT_PIN_CHARGING].pin, NRF_GPIO_PIN_SENSE_LOW); // falling -> on charge
+#endif
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented on emulator");
 #endif
 
+}
+
+// True if a button/charge input/etc should wake the Bangle from being off
+static bool _jswrap_banglejs_shouldWake() {
+  return jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE
+#ifdef DICKENS
+      || jshPinGetValue(BAT_PIN_CHARGING)==0/*charging*/
+#endif
+      ;
 }
 
 /*JSON{
@@ -5257,7 +5367,7 @@ Turn Bangle.js off. It can only be woken by pressing BTN1.
 void jswrap_banglejs_off() {
 #ifndef EMULATED
   // If BTN1 is pressed wait until it is released
-  while (jshPinGetValue(BTN1_PININDEX));
+  while (_jswrap_banglejs_shouldWake());
   // turn peripherals off
   jswrap_banglejs_periph_off();
   // system off
@@ -5291,17 +5401,17 @@ void jswrap_banglejs_softOff() {
   // keep sleeping until a button is pressed
   jshKickWatchDog();
   do {
-  // sleep until BTN1 pressed
-  while (!jshPinGetValue(BTN1_PININDEX)) {
-    jshKickWatchDog();
-    jshSleep(jshGetTimeFromMilliseconds(4*1000));
-  }
-    // wait for button to be pressed for at least 200ms
-    int timeout = 200;
-    while (jshPinGetValue(BTN1_PININDEX) && timeout--)
+    // sleep until BTN1 pressed
+    while (!_jswrap_banglejs_shouldWake()) {
+      jshKickWatchDog();
+      jshSleep(jshGetTimeFromMilliseconds(4*1000));
+    }
+    // wait for button to be pressed for at least WAKE_FROM_OFF_TIME (200ms usually)
+    int timeout = WAKE_FROM_OFF_TIME;
+    while (_jswrap_banglejs_shouldWake() && timeout--)
       nrf_delay_ms(1);
     // if button not pressed, keep sleeping
-  } while (!jshPinGetValue(BTN1_PININDEX));
+  } while (!_jswrap_banglejs_shouldWake());
   // restart
   jshReboot();
 
@@ -5995,8 +6105,11 @@ other issues when switching apps. Please see http://www.espruino.com/Bangle.js+F
     "type" : "staticmethod",
     "class" : "Bangle",
     "name" : "factoryReset",
+    "params" : [
+      ["noReboot","bool","Do not reboot the watch when done (default false, so will reboot)"]
+    ],
     "generate" : "jswrap_banglejs_factoryReset",
-    "#if" : "defined(BANGLEJS_Q3) || defined(EMULATED)"
+    "#if" : "defined(BANGLEJS_Q3) || defined(EMULATED) || defined(DICKENS)"
 }
 
 Erase all storage and reload it with the default contents.
@@ -6005,9 +6118,9 @@ This is only available on Bangle.js 2.0. On Bangle.js 1.0 you need to use
 `Install Default Apps` under the `More...` tab of http://banglejs.com/apps
 */
 extern void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name);
-void jswrap_banglejs_factoryReset() {
+void jswrap_banglejs_factoryReset(bool noReboot) {
   jsfResetStorage();
-  jsiStatus |= JSIS_TODO_FLASH_LOAD;
+  if (!noReboot) jsiStatus |= JSIS_TODO_FLASH_LOAD;
 }
 
 /*JSON{

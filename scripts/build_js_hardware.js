@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 /* This builds a js file containing the addresses of a chip's PERIPHERALS and
  the values of the bits in each register. Can be used for quickly building
  ways to access the underlying hardware from JS.

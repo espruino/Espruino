@@ -45,6 +45,7 @@ JsVar *jswrap_graphics_drawRect(JsVar *parent, JsVar *opt, int y1, int x2, int y
 JsVar *jswrap_graphics_drawCircle(JsVar *parent, int x, int y, int rad);
 JsVar *jswrap_graphics_drawCircleAA(JsVar *parent, int x, int y, int r);
 JsVar *jswrap_graphics_fillCircle(JsVar *parent, int x, int y, int rad);
+JsVar *jswrap_graphics_fillAnnulus(JsVar *parent, int x, int y, int r1, int r2);
 JsVar *jswrap_graphics_drawEllipse(JsVar *parent, int x, int y, int x2, int y2);
 JsVar *jswrap_graphics_fillEllipse(JsVar *parent, int x, int y, int x2, int y2);
 int jswrap_graphics_getPixel(JsVar *parent, int x, int y);
@@ -66,6 +67,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth);
 JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *str, int x, int y, bool solidBackground);
 void jswrap_graphics_drawCString(JsGraphics *gfx, int x, int y, char *str); /// Convenience function for using drawString from C code
 JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var);
+JsVar *jswrap_graphics_drawLineString(JsVar *parent, JsVar *var, int x, int y, JsVar *options);
 JsVar* jswrap_graphics_stringMetrics(JsVar *parent, JsVar *var);
 JsVar *jswrap_graphics_getVectorFontPolys(JsGraphics *gfx, JsVar *var, JsVar *options);
 JsVar *jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2);
@@ -85,6 +87,7 @@ JsVar *jswrap_graphics_blit(JsVar *parent, JsVar *options);
 JsVar *jswrap_graphics_asBMP(JsVar *parent);
 JsVar *jswrap_graphics_asURL(JsVar *parent);
 void jswrap_graphics_dump(JsVar *parent);
+void jswrap_graphics_saveScreenshot(JsVar *parent, JsVar *fileNameVar);
 JsVar *jswrap_graphics_quadraticBezier(JsVar *parent, JsVar * arr, JsVar *options);
 JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *transformation);
 JsVar *jswrap_graphics_floodFill(JsVar *parent, int x, int y, JsVar *col);

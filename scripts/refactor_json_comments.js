@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 /* This was designed to be run once over Espruino 
  *  ... hence it has probably already been run.
  * 

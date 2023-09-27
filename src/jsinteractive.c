@@ -860,6 +860,12 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
           // set up terminal to avoid word wrap
           "\e[?7l"
 #endif
+#if (defined(DICKENS) || defined(EMSCRIPTEN_DICKENS))
+          "\n"
+          "------------------------\n"
+          "PROJECT DICKENS "JS_VERSION"\n"
+          "© 2023 G.Williams & TWC\n"
+#else
           // rectangles @ http://www.network-science.de/ascii/
           "\n"
           " ____                 _ \n"
@@ -867,7 +873,7 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
           "|  __|_ -| . |  _| | | |   | . |\n"
           "|____|___|  _|_| |___|_|_|_|___|\n"
           "         |_| espruino.com\n"
-          " "JS_VERSION" (c) 2021 G.Williams\n"
+          " "JS_VERSION" (c) 2023 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
 #if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS) && !defined(BANGLEJS) && !defined(EMSCRIPTEN)
@@ -875,6 +881,7 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
           "Espruino is Open Source. Our work is supported\n"
           "only by sales of official boards and donations:\n"
           "http://espruino.com/Donate\n"
+#endif
 #endif
         );
 #ifdef ESP8266

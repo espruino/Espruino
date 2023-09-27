@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 
 /**
  * Add two spaces at the beginning of every line.

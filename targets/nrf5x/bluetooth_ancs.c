@@ -286,7 +286,7 @@ void ble_cts_handle_time(BLEPending blep, char *buffer, size_t bufferLen) {
   ble_date_time_t time = p_time->exact_time_256.day_date_time.date_time;
   CalendarDate date;
   date.year = time.year;
-  date.month = time.month;
+  date.month = time.month-1; // JS months are 0-11, but CTS uses 1-12
   date.day = time.day;
   TimeInDay td;
   td.daysSinceEpoch = fromCalenderDate(&date);

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # (c) Alexander Belchenko, 2007, 2009
 
 # [2013/08] NOTE: This file is keeping for historical reasons.

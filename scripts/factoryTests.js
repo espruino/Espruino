@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 
 if (process.argv.length == 3 && process.argv[2] == "BANGLEJS") {
   var EMULATOR = "banglejs1";

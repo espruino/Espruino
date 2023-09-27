@@ -29,8 +29,8 @@ void jswrap_storage_compact(bool showMessage);
 JsVar *jswrap_storage_list(JsVar *regex, JsVar *filter);
 JsVarInt jswrap_storage_hash(JsVar *regex);
 void jswrap_storage_debug();
-int jswrap_storage_getFree();
-JsVar *jswrap_storage_getStats();
+int jswrap_storage_getFree(bool checkInternalFlash);
+JsVar *jswrap_storage_getStats(bool checkInternalFlash);
 void jswrap_storage_optimise();
 
 JsVar *jswrap_storage_open(JsVar *name, JsVar *mode);

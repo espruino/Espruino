@@ -423,15 +423,24 @@ void jswrap_storage_debug() {
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Storage",
   "name" : "getFree",
+  "params" : [
+    ["checkInternalFlash","bool","Check the internal flash (rather than external SPI flash).  Default false, so will check external storage"]
+  ],  
   "generate" : "jswrap_storage_getFree",
   "return" : ["int","The amount of free bytes"]
 }
 Return the amount of free bytes available in Storage. Due to fragmentation there
 may be more bytes available, but this represents the maximum size of file that
 can be written.
+
+**NOTE:** `checkInternalFlash` is only useful on DICKENS devices - other devices don't use two different flash banks
  */
-int jswrap_storage_getFree() {
-  return (int)jsfGetStorageStats(0,true).free;
+int jswrap_storage_getFree(bool checkInternalFlash) {
+  uint32_t addr = 0;
+#ifdef FLASH_SAVED_CODE2_START
+  addr = checkInternalFlash ? FLASH_SAVED_CODE_START : FLASH_SAVED_CODE2_START;
+#endif
+  return (int)jsfGetStorageStats(addr,true).free;
 }
 
 /*JSON{
@@ -439,6 +448,9 @@ int jswrap_storage_getFree() {
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Storage",
   "name" : "getStats",
+  "params" : [
+    ["checkInternalFlash","bool","Check the internal flash (rather than external SPI flash).  Default false, so will check external storage"]
+  ],  
   "generate" : "jswrap_storage_getStats",
   "return" : ["JsVar","An object containing info about the current Storage system"]
 }
@@ -454,11 +466,18 @@ Returns:
   trashCount // How many trash files do we have? (can be cleared with .compact)
 }
 ```
+
+**NOTE:** `checkInternalFlash` is only useful on DICKENS devices - other devices don't use two different flash banks
  */
-JsVar *jswrap_storage_getStats() {
+JsVar *jswrap_storage_getStats(bool checkInternalFlash) {
   JsVar *o = jsvNewObject();
   if (!o) return NULL;
-  JsfStorageStats stats = jsfGetStorageStats(0, true);
+  uint32_t addr = 0;
+#ifdef FLASH_SAVED_CODE2_START
+  addr = checkInternalFlash ? FLASH_SAVED_CODE_START : FLASH_SAVED_CODE2_START;
+  
+#endif  
+  JsfStorageStats stats = jsfGetStorageStats(addr, true);
   jsvObjectSetChildAndUnLock(o, "totalBytes", jsvNewFromInteger((JsVarInt)stats.total));
   jsvObjectSetChildAndUnLock(o, "freeBytes", jsvNewFromInteger((JsVarInt)stats.free));
   jsvObjectSetChildAndUnLock(o, "fileBytes", jsvNewFromInteger((JsVarInt)stats.fileBytes));

@@ -1370,10 +1370,14 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset) {
 }
 
 bool jsfLoadBootCodeFromFlash(bool isReset) {
-  // Load code in .bootFirst at first boot UNLESS BTN1 IS HELD DOWN
+  // Load code in .bootFirst at first boot UNLESS BTN1 IS HELD DOWN (BTN3 for Dickens)
 #ifndef SAVE_ON_FLASH
-#if (defined(BANGLEJS) && !defined(DICKENS))
+#if defined(BANGLEJS)
+#if defined(DICKENS)
+  if (!(jshPinGetValue(BTN3_PININDEX)==BTN3_ONSTATE))
+#else
   if (!(jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE))
+#endif
 #endif
   if (jsiStatus & JSIS_FIRST_BOOT) {
     JsVar *code = jsfReadFile(jsfNameFromString(".bootPowerOn"),0,0);
@@ -1381,11 +1385,16 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
       jsvUnLock2(jspEvaluateVar(code,0,0), code);
   }
 #endif
-  // Load code in .boot0/1/2/3 UNLESS BTN1 IS HELD DOWN FOR BANGLE.JS ON FIRST BOOT
+  // Load code in .boot0/1/2/3 UNLESS BTN1 IS HELD DOWN FOR BANGLE.JS ON FIRST BOOT (BTN3 for Dickens)
   // On an average Bangle.js 2 this takes 0.25 ms (so not worth optimising)
-#if (defined(BANGLEJS) && !defined(DICKENS))
+#if defined(BANGLEJS)
+#if defined(DICKENS)
+  if (!(jshPinGetValue(BTN3_PININDEX)==BTN3_ONSTATE &&
+       (jsiStatus & JSIS_FIRST_BOOT)))
+#else // not DICKENS
   if (!(jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE &&
        (jsiStatus & JSIS_FIRST_BOOT)))
+#endif
 #endif
   {
     char filename[7] = ".bootX";

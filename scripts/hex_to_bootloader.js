@@ -1,4 +1,4 @@
-#!/usr/bin/nodejs
+#!/usr/bin/env node
 /* Take a hex file and turn it into Espruino commands that write
  to external flash. Special flash bootloaders (targets/nrf52_dfu/flash.c)
  can then take this and do the firmware update.
@@ -18,7 +18,7 @@ var inputFile = process.argv[2];
 
 var hex = require("fs").readFileSync(inputFile).toString().split("\n");
 function parseLines(dataCallback) {
-var addrHi = 0;
+  var addrHi = 0;
   hex.forEach(function(hexline) {
     if (DEBUG) console.log(hexline);
     var bytes = hexline.substr(1,2);

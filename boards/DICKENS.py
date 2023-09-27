@@ -35,7 +35,7 @@ import pinutils;
 #     D42(btn)  GND
 
 # unfitted big flash-ish chip
-# o  D14    NC?
+# o  D14    VCC
 #    D15    D17
 #    D2     D19
 #    GND    D18      
@@ -61,7 +61,7 @@ info = {
  'espruino_page_link' : '',
  'default_console' : "EV_BLUETOOTH",
  'variables' : 5000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
- 'io_buffer_size' : 512, # How big is the input buffer (in 4 byte words). Default on nRF52 is 256
+ 'io_buffer_size' : 512, 
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_dickens.hex',
  'build' : {
@@ -69,14 +69,27 @@ info = {
    'libraries' : [
      'BLUETOOTH',
      'GRAPHICS',
-     'LCD_SPI'
+     'LCD_SPI',
+     'JIT'
    ],
    'makefile' : [
 #     'DEFINES += -DNRF_LOG_ENABLED=1 -DNRF_LOG_FILTERS_ENABLED=0',
-     'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
+     'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow us to use NFC pins as GPIO
+     'DEFINES += -DESPR_LSE_ENABLE=1', # Ensure low speed external osc enabled
+     'DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131', # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
+     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2ec0', # set RAM base to match MTU
+#     'DEFINES += -DESPR_REGOUT0_1_8V=1', # Leave REGOUT0 as 1.8v (not 3.3v) - seems to be what original watch firmware did
+     'DEFINES += -DESPR_DCDC_ENABLE=1', # Use DC/DC converter
+     'ESPR_BLUETOOTH_ANCS=1', # Enable ANCS (Apple notifications) support
+     'DEFINES += -DSPIFLASH_SLEEP_CMD', # SPI flash needs to be explicitly slept and woken up
+     'DEFINES += -DSPIFLASH_READ2X', # Read SPI flash at 2x speed using MISO and MOSI for IO
+     'DEFINES += -DESPR_USE_SPI3=1', # Use SPI3 (even though it has errata 195) as it's much faster
+     'DEFINES += -DESPR_BACKLIGHT_FADE=1', # Smoothly fade backlight on and off
      'DEFINES += -DNRF_BL_DFU_ENTER_METHOD_BUTTON=1 -DNRF_BL_DFU_ENTER_METHOD_BUTTON_PIN=29',
+     'DEFINES += -DNRF_BOOTLOADER_NO_WRITE_PROTECT=1', # By default the bootloader protects flash. Avoid this (a patch for NRF_BOOTLOADER_NO_WRITE_PROTECT must be applied first)
      'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'DEFINES += -DESPR_BOOTLOADER_SPIFLASH', # Allow bootloader to flash direct from SPI flash
+     'DEFINES += -DAPP_TIMER_OP_QUEUE_SIZE=6', # Bangle.js accelerometer poll handler needs something else in queue size
 
      'BOOTLOADER_SETTINGS_FAMILY = NRF52840',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
@@ -85,16 +98,24 @@ info = {
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Dickens"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
+     'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DESPR_GRAPHICS_12BIT -DGRAPHICS_ANTIALIAS',
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
-     'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
+     'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/dickens -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
+     'WRAPPERSOURCES += libs/dickens/jswrap_dickens.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_architekt10.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_architekt12.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_architekt15.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_architekt35.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_grotesk14.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_grotesk16.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_grotesk20.c',
+     'SOURCES += libs/graphics/line_font.c',
+     'SOURCES += libs/misc/stepcount.c',
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
      'DEFINES += -DBANGLEJS',
+     'DEFINES += -DESPR_NO_LOADING_SCREEN', # disable 'loading...' message when switching apps
 
      'NRF_SDK15=1'
    ]
@@ -115,10 +136,10 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-#    'address' : ((246 - 10) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
-#    'page_size' : 4096,
-#    'pages' : 10,
-#    'flash_available' : 1024 - ((31 + 8 + 2 + 10)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
+ #   'address' : ((246 - 10) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
+ #   'page_size' : 4096,
+ #   'pages' : 10,
+ #   'flash_available' : 1024 - ((31 + 8 + 2 + 10)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
     'address' : 0x60000000, # put this in external spiflash (see below)
     'page_size' : 4096,
     'pages' : 768, # 3MB of 4MB flash
@@ -143,7 +164,7 @@ devices = {
             'pin_mosi' : 'D5',
             'pin_miso' : 'D27',
             'pin_en' : 'D43', 
-            'pin_bl' : 'D33', # TESTED!
+            'pin_bl' : 'D33', # Also enables the power supply for the vibration motor
             'bitrate' : 32000000
           },
   'BAT' : {

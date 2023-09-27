@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 /** This scans a source code listing file for Thumb assembly
   code instructions that are repeated. It scores them according
   to `no_of_instructions * times_repeated` and outputs the top

@@ -1,4 +1,4 @@
-#!/usr/bin/node
+#!/usr/bin/env node
 /* This is a super hacky bit of code that takes a specially formatted SVG file
 and creates an Espruino vector font from it.
 

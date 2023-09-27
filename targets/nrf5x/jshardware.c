@@ -664,9 +664,12 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
   case JSH_TIMER2:
   case JSH_TIMER3: {
       NRF_PWM_Type *pwm = nrf_get_pwm(fType);
-      pwm->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin;
       // FIXME: Only disable if nothing else is using it!
-      if (pin==0xFFFFFFFF) nrf_pwm_disable(pwm);
+      if (pin==0xFFFFFFFF) {
+        nrf_pwm_task_trigger(pwm, NRF_PWM_TASK_STOP);
+        nrf_pwm_disable(pwm);
+      }
+      pwm->PSEL.OUT[fInfo>>JSH_SHIFT_INFO] = pin;
       break;
     }
 #endif

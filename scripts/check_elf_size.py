@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # Checks to see if an Elf file will fit in memory before the
 # area reserved for Storage (saved code). This is mainly used
 # for nRF5x parts (which don't generate binaries and which

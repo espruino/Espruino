@@ -80,38 +80,43 @@ void turn_off() {
 #if defined(SPIFLASH_SLEEP_CMD) && defined(ESPR_BOOTLOADER_SPIFLASH)
   flashPowerDown();  // Put the SPI Flash into deep power-down
 #endif  
-#ifdef VIBRATE_PIN
-  jshPinOutput(VIBRATE_PIN,1); // vibrate on
+#if defined(VIBRATE_PIN) && !defined(DICKENS)
+  jshPinOutput(VIBRATE_PIN,1); // vibrate whilst waiting for button release
 #endif
 #if defined(BTN2_PININDEX)
   while (get_btn1_state() || get_btn2_state()) {}; // wait for BTN1 and BTN2 to be released
 #else
-  while (get_btn1_state()) {}; // wait for BTN1 and BTN2 to be released
+  while (get_btn1_state()) {}; // wait for BTN1 to be released
 #endif
 #ifdef VIBRATE_PIN
   jshPinSetValue(VIBRATE_PIN,0); // vibrate off
 #endif
 #ifdef DICKENS
   NRF_P0->OUT=0x03300f04; // 00000011 00110000 00001111 00000100 - high pins: D2, D8, SDA, SCL, LCD_CS, FLASH_CS, FLASH_WP, FLASH_RST, FLASH_SCK
-//NRF_P0->OUT=0x03300e00; // 00000011 00110000 00001110 00000000 - high pins: SDA, SCL, LCD_CS, FLASH_CS, FLASH_WP, FLASH_RST, FLASH_SCK
+//NRF_P0->OUT=0x03300e00; // 00000011 00110000 00001110 00000000 - high pins:         SDA, SCL, LCD_CS, FLASH_CS, FLASH_WP, FLASH_RST, FLASH_SCK
   if (pinInfo[LCD_BL].port&JSH_PIN_NEGATED) // if backlight negated
-    NRF_P1->OUT=0x00000001; // High pins: LCD_BL
+    NRF_P1->OUT=0x00000101; // High pins: LCD_BL, P1.16 (doesn't exist, but seems to draw around 3 µA extra if this is not set)
   else
-    NRF_P1->OUT=0x00000000;
-  for (uint8_t pin=0; pin<48; pin++) {
-    NRF_GPIO_PIN_CNF(pin,0x00000004); // Set all pins as input with pulldown
-  }
+    NRF_P1->OUT=0x00000100;
+  // for (uint8_t pin=0; pin<48; pin++) {
+  //   NRF_GPIO_PIN_CNF(pin,0x00000006); // Set all pins as input disconnect with pulldown
+  // }
   NRF_GPIO_PIN_CNF(BAT_PIN_VOLTAGE,0x00000002);   //  D4 = battery voltage measurement (no pull, input buffer disconnected)
   NRF_GPIO_PIN_CNF(ACCEL_PIN_SDA,0x0000060d);     //  D9 = SDA open-drain output
   NRF_GPIO_PIN_CNF(ACCEL_PIN_SCL,0x0000060d);     // D10 = SCL open-drain output
-  NRF_GPIO_PIN_CNF(LCD_SPI_MISO,0x0000000c);      // D27 = LCD_MISO input with pullup
-  if (pinInfo[LCD_BL].port&JSH_PIN_NEGATED) // if backlight negated
-    NRF_GPIO_PIN_CNF(LCD_BL,0x00000003);            // D32 = LCD backlight pin
+#ifdef ACCEL_PIN_INT1
+  NRF_GPIO_PIN_CNF(ACCEL_PIN_INT1,0x00000002);    // D21 = INT1 (no pull, input buffer disconnected)
+  NRF_GPIO_PIN_CNF(ACCEL_PIN_INT2,0x00000002);    // D23 = INT2 (no pull, input buffer disconnected)
+#endif
+  NRF_GPIO_PIN_CNF(LCD_SPI_MISO,0x00000002);      // D27 = LCD_MISO (no pull, input buffer disconnected)
+//if (pinInfo[LCD_BL].port&JSH_PIN_NEGATED) // if backlight negated
+//  NRF_GPIO_PIN_CNF(LCD_BL,0x00000003);          // D32 = LCD backlight pin
 //NRF_GPIO_PIN_CNF(BTN2_PININDEX,0x0003000c);     // D28 = BTN2 input (with pullup and low-level sense)
 //NRF_GPIO_PIN_CNF(BTN3_PININDEX,0x0003000c);     // D29 = BTN3 input (with pullup and low-level sense)
 //NRF_GPIO_PIN_CNF(31,0x00000003);                // D31 = Debug output pin (brought out to external header on)
 //NRF_GPIO_PIN_CNF(BTN4_PININDEX,0x0003000c);     // D42 = BTN4 input (with pullup and low-level sense)
   NRF_GPIO_PIN_CNF(BTN1_PININDEX,0x0003000c);     // D46 = BTN1 input (with pullup and low-level sense)
+  NRF_GPIO_PIN_CNF(BAT_PIN_CHARGING,0x0000000c);     // Charge input (with pullup)
 #else  // !DICKENS
   set_led_state(0,0);
 #if defined(BTN2_PININDEX)
@@ -187,6 +192,7 @@ bool dfu_enter_check(void) {
 #endif
       } else {
         lcd_clear();
+        print_fw_version();
         lcd_println("DFU START");
       }
       set_led_state(true, true);
@@ -356,24 +362,33 @@ int main(void)
     dfuIsColdBoot = (r&0xF)==0;
 
 #if defined(DICKENS) || defined(BANGLEJS)  
-    // On smartwatches, turn on only if BTN1 held for >1 second
+    // On smartwatches, turn on only if BTN1 held for >1 second (or charging on Dickens)
     // This may help in cases where battery is TOTALLY flat
     if ((r&0b1011)==0) {
       // if not watchdog, lockup, or reset pin...
       if ((r&0xF)==0) { // Bangle.softOff causes 'SW RESET' after 1 sec, so r==4
         nrf_delay_ms(1000);
       }
+#ifndef DICKENS
       if (!get_btn1_state() && (r&0xF)==0) { // Don't turn off after a SW reset, to avoid user input needed during reflashing
         turn_off();
       } else {
-#ifdef DICKENS
+#else // DICKENS
+      if (!get_btn1_state() && get_charging_state()) {
+        nrf_delay_ms(3000); // wait 4 secs in total before booting if on charge
+      }
+      if (!get_btn1_state() && !get_charging_state() && (r&0xF)==0) { // Don't turn off after a SW reset, to avoid user input needed during reflashing
+        turn_off();
+      } else {
         // DICKENS: Enter bootloader only if BTN2 held as well
         if (!get_btn2_state()) {
           // Clear reset reason flags
           NRF_POWER->RESETREAS = 0xFFFFFFFF;
 #ifdef ESPR_BOOTLOADER_SPIFLASH
           lcd_init();
-          lcd_println("DFU " JS_VERSION "\n");
+#ifndef DICKENS
+          print_fw_version();
+#endif
           // Check if we should reflash new firmware
           flashCheckAndRun();
 #endif
@@ -400,7 +415,7 @@ int main(void)
     }
     // Clear reset reason flags
     NRF_POWER->RESETREAS = 0xFFFFFFFF;
-    lcd_println("DFU " JS_VERSION "\n");
+    print_fw_version();
 #ifdef ESPR_BOOTLOADER_SPIFLASH
     if (!get_btn1_state()) flashCheckAndRun();
 #endif

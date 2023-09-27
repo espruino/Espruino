@@ -262,6 +262,7 @@ size_t graphicsGetMemoryRequired(const JsGraphics *gfx) {
 
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y) {
+#ifndef DICKENS // For Dickens, we can use Bangle.lcdWr(0x36, xxx) to set the screen rotation
   if (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) {
     int t = *x;
     *x = *y;
@@ -269,6 +270,7 @@ void graphicsToDeviceCoordinates(const JsGraphics *gfx, int *x, int *y) {
   }
   if (gfx->data.flags & JSGRAPHICSFLAGS_INVERT_X) *x = (int)(gfx->data.width - (*x+1));
   if (gfx->data.flags & JSGRAPHICSFLAGS_INVERT_Y) *y = (int)(gfx->data.height - (*y+1));
+#endif
 }
 
 // If graphics is flipped or rotated then the coordinates need modifying. This is to go back - eg for touchscreens
@@ -284,6 +286,7 @@ void deviceToGraphicsCoordinates(const JsGraphics *gfx, int *x, int *y) {
 
 // If graphics is flipped or rotated then the coordinates need modifying
 void graphicsToDeviceCoordinates16x(const JsGraphics *gfx, int *x, int *y) {
+#ifndef DICKENS // For Dickens, we can use Bangle.lcdWr(0x36, xxx) to set the screen rotation
   if (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) {
     int t = *x;
     *x = *y;
@@ -291,6 +294,7 @@ void graphicsToDeviceCoordinates16x(const JsGraphics *gfx, int *x, int *y) {
   }
   if (gfx->data.flags & JSGRAPHICSFLAGS_INVERT_X) *x = (int)((gfx->data.width-1)*16 - *x);
   if (gfx->data.flags & JSGRAPHICSFLAGS_INVERT_Y) *y = (int)((gfx->data.height-1)*16 - *y);
+#endif
 }
 
 unsigned short graphicsGetWidth(const JsGraphics *gfx) {

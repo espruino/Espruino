@@ -18,10 +18,10 @@ wget https://www.espruino.com/modules/MPU9250.min.js  -O MPU9250.min.js
 wget https://www.espruino.com/modules/LPS22HB.min.js  -O LPS22HB.min.js
 wget https://www.espruino.com/modules/HTS221.min.js  -O HTS221.min.js
 wget https://www.espruino.com/modules/CCS811.min.js  -O CCS811.min.js
-wget https://www.espruino.com/modules/BH1745.min.js  -O BH1745.min.js 
+wget https://www.espruino.com/modules/BH1745.min.js  -O BH1745.min.js
 wget https://www.espruino.com/modules/SHT3C.min.js  -O SHT3C.min.js
-#wget https://www.espruino.com/modules/PCA9685.min.js  -O PCA9685.min.js 
-#wget https://www.espruino.com/modules/Smartibot.min.js  -O Smartibot.min.js 
+#wget https://www.espruino.com/modules/PCA9685.min.js  -O PCA9685.min.js
+#wget https://www.espruino.com/modules/Smartibot.min.js  -O Smartibot.min.js
 
 # Other libs
 wget https://www.espruino.com/modules/EspruinoWiFi.min.js -O espruino_wifi/Wifi.min.js
@@ -54,4 +54,9 @@ node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_setUI_F18.js banglejs/B
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_setUI_Q3.js banglejs/Bangle_setUI_Q3.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/locale.js banglejs/locale.min.js
 
+node ../../../EspruinoDocs/bin/minify.js dickens/Bangle_setUI_DICKENS.js dickens/Bangle_setUI_DICKENS.min.js
+node ../../../EspruinoDocs/bin/minify.js dickens/Bangle_drawWidgets_DICKENS.js dickens/Bangle_drawWidgets_DICKENS.min.js
+node ../../../EspruinoDocs/bin/minify.js dickens/E_showMenu_DICKENS.js dickens/E_showMenu_DICKENS.min.js
+node ../../../EspruinoDocs/bin/minify.js dickens/E_showPrompt_DICKENS.js dickens/E_showPrompt_DICKENS.min.js
+node ../../../EspruinoDocs/bin/minify.js dickens/E_showMessage_DICKENS.js dickens/E_showMessage_DICKENS.min.js
 
