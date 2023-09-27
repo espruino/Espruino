@@ -1281,16 +1281,6 @@ void peripheralPollHandler() {
       mag.x = (magRaw[1] * (128+magCalib[1])) >> 5;
       mag.z = (magRaw[2] * (128+magCalib[2])) >> 5;
 #ifdef LCD_ROTATION
-  int16_t magRaw[3];
-  magRaw[0] = buf[1] | (buf[2]<<8);
-  magRaw[1] = buf[3] | (buf[4]<<8);
-  magRaw[2] = buf[5] | (buf[6]<<8);
-  // no sign extend because magRaw is 16 bit signed already
-  // apply calibration
-  mag.y = magRaw[0] * (128+magCalib[0]) >> 7; // x/y are swapped
-  mag.x = magRaw[1] * (128+magCalib[1]) >> 7;
-  mag.z = magRaw[2] * (128+magCalib[2]) >> 7;
-
   #if LCD_ROTATION == 180
       mag.y = -mag.y;
       mag.x = -mag.x;
