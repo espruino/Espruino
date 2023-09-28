@@ -3987,8 +3987,9 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
     JsVar *v = jsvGetUTF8BackingString(var);
     _jsvTrace(v, 2, baseVar, level+1);
     jsvUnLock(v);
+  }
 #endif
-  } else if (jsvIsString(var)) {
+  else if (jsvIsString(var)) {
     size_t blocks = 1;
     if (jsvGetLastChild(var)) {
       JsVar *v = jsvGetAddressOf(jsvGetLastChild(var));
