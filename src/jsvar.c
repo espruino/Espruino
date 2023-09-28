@@ -109,7 +109,7 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 #define JSV_IS_NAME(f) ((f)>=_JSV_NAME_START && (f)<=_JSV_NAME_END)
 #define JSV_IS_NAME_WITH_VALUE(f) ((f)>=_JSV_NAME_WITH_VALUE_START && (f)<=_JSV_NAME_WITH_VALUE_END)
 #ifdef ESPR_UNICODE_SUPPORT
-#define JSV_IS_UNICODE_STRING(f)  (f)==JSV_UTF8_STRING
+#define JSV_IS_UNICODE_STRING(f)  ((f)==JSV_UTF8_STRING || (f)==JSV_NAME_UTF8_STRING)
 #else
 #define JSV_IS_UNICODE_STRING(f)  false
 #endif
@@ -123,7 +123,7 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 #else
 #define JSV_IS_FLASH_STRING(f) false
 #endif
-#define JSV_IS_NONAPPENDABLE_STRING(f) (JSV_IS_FLAT_STRING(f) || JSV_IS_NATIVE_STRING(f) || JSV_IS_FLASH_STRING(f) || JSV_IS_UNICODE_STRING(f))
+#define JSV_IS_NONAPPENDABLE_STRING(f) (JSV_IS_FLAT_STRING(f) || JSV_IS_NATIVE_STRING(f) || JSV_IS_FLASH_STRING(f))
 
 bool jsvIsRoot(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_ROOT(f); }
 bool jsvIsPin(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; NOT_USED(f); return JSV_IS_PIN(f); } // NOT_USED(f) avoids compile warnings for some builds
@@ -199,7 +199,7 @@ bool jsvHasCharacterData(const JsVar *v) {
 bool jsvHasStringExt(const JsVar *v) {
   if (!v) return false;
     char f = v->flags&JSV_VARTYPEMASK;
-  return (JSV_IS_STRING(f) || JSV_IS_STRING_EXT(f)) && !JSV_IS_NONAPPENDABLE_STRING(f);
+  return (JSV_IS_STRING(f) || JSV_IS_STRING_EXT(f) || JSV_IS_UNICODE_STRING(f)) && !JSV_IS_NONAPPENDABLE_STRING(f);
 }
 
 bool jsvHasChildren(const JsVar *v) {
@@ -214,7 +214,6 @@ bool jsvHasSingleChild(const JsVar *v) {
   if (!v) return false;
   char f = v->flags&JSV_VARTYPEMASK;
   return JSV_IS_ARRAYBUFFER(f) ||
-      JSV_IS_UNICODE_STRING(f) ||
       (JSV_IS_NAME(f) && !JSV_IS_NAME_WITH_VALUE(f));
 }
 
@@ -689,7 +688,10 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
    * also StringExts  */
 
   /* Now, free children - see jsvar.h comments for how! */
-  if (jsvHasStringExt(var)) {
+  if (jsvIsUTF8String(var)) {
+    jsvUnRefRef(jsvGetLastChild(var));
+    jsvSetLastChild(var, 0);
+  } else if (jsvHasStringExt(var)) {
     // Free the string without recursing
     jsvFreePtrStringExt(var);
 #ifdef CLEAR_MEMORY_ON_FREE
@@ -1109,7 +1111,7 @@ JsVar *jsvNewUTF8String(JsVar* dataString) {
     return jsvLockAgain(dataString); // ideally we don't want this, but better to just keep working if it happened!
   JsVar *var = jsvNewWithFlags(JSV_UTF8_STRING);
   if (!var) return 0; // no memory
-  jsvSetFirstChild(var, jsvGetRef(jsvRef(dataString)));
+  jsvSetLastChild(var, jsvGetRef(jsvRef(dataString)));
   return var;
 }
 
@@ -1242,6 +1244,10 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
       }
     }
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | t;
+#ifdef ESPR_UNICODE_SUPPORT
+  } else if (jsvIsUTF8String(var)) {
+    var->flags = (var->flags & (JsVarFlags)~JSV_VARTYPEMASK) | JSV_NAME_UTF8_STRING;
+#endif
   } else if (varType>=_JSV_STRING_START && varType<=_JSV_STRING_END) {
     if (jsvGetCharactersInVar(var) > JSVAR_DATA_STRING_NAME_LEN) {
       /* Argh. String is too large to fit in a JSV_NAME! We must chomp
@@ -1968,7 +1974,7 @@ int jsvGetStringIndexOf(JsVar *str, char ch) {
 /// If we have a UTF8 string return the string behind it, or just return what was passed in
 JsVar *jsvGetUTF8BackingString(JsVar *str) {
   if (!jsvIsUTF8String(str)) return str?jsvLockAgain(str):0;
-  return jsvLock(jsvGetFirstChild(str));
+  return jsvLock(jsvGetLastChild(str));
 }
 
 /// Converts the given string of bytes to UTF8 encoding. Doesn't tag the resulting string with UTF8 though
@@ -2896,7 +2902,7 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
           return name;
         }
       }
-    } else if (jsvIsString(name)) {
+    } else if (jsvIsString(name) && !jsvIsUTF8String(name)) {
       if (jsvIsInt(src) && !jsvIsPin(src)) {
         JsVarInt v = src->varData.integer;
         if (v>=JSVARREF_MIN && v<=JSVARREF_MAX) {
@@ -3801,7 +3807,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       // Don't copy 'da' if it's not used elsewhere (eg we made it in 'jsvAsString' above)
       if (jsvIsBasicString(da) && jsvGetLocks(da)==1 && jsvGetRefs(da)==0)
         v = jsvLockAgain(da);
-      else if (JSV_IS_NONAPPENDABLE_STRING(da->flags & JSV_VARTYPEMASK)) {
+      else if (JSV_IS_NONAPPENDABLE_STRING(da->flags & JSV_VARTYPEMASK) || jsvIsUTF8String(da)) {
         // It's a string, but it can't be appended - don't copy as copying will just keep the same var type!
         // Instead we create a new string var by copying
         // opt: should we allocate a flat string here? but repeated appends would then be slow
@@ -3955,7 +3961,9 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
     JsVar *parent = jsvGetAddressOf(jsvGetNextSibling(var));
     _jsvTrace(parent, indent+2, baseVar, level+1);
     jsiConsolePrint("CHILD: ");
-  } else if (jsvIsName(var)) jsiConsolePrint("Name ");
+  } else if (jsvIsName(var)) {
+    jsiConsolePrint("Name ");
+  }
 
   char endBracket = ' ';
   if (jsvIsObject(var)) { jsiConsolePrint("Object { "); endBracket = '}'; }
@@ -3973,8 +3981,14 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   else if (jsvIsFunctionParameter(var)) jsiConsolePrintf("Param %q ", var);
   else if (jsvIsArrayBufferName(var)) jsiConsolePrintf("ArrayBufferName[%d] ", jsvGetInteger(var));
   else if (jsvIsArrayBuffer(var)) jsiConsolePrintf("%s (offs %d, len %d)", jswGetBasicObjectName(var)?jswGetBasicObjectName(var):"unknown ArrayBuffer", var->varData.arraybuffer.byteOffset, var->varData.arraybuffer.length); // way to get nice name
-  else if (jsvIsUTF8String(var)) jsiConsolePrintf("UTF8String");
-  else if (jsvIsString(var)) {
+#ifdef ESPR_UNICODE_SUPPORT
+  else if (jsvIsUTF8String(var)) {
+    jsiConsolePrintf("UTF8String");
+    JsVar *v = jsvGetUTF8BackingString(var);
+    _jsvTrace(v, 2, baseVar, level+1);
+    jsvUnLock(v);
+#endif
+  } else if (jsvIsString(var)) {
     size_t blocks = 1;
     if (jsvGetLastChild(var)) {
       JsVar *v = jsvGetAddressOf(jsvGetLastChild(var));
