@@ -7,16 +7,14 @@
   NRF.removeAllListeners();
   Bangle.setLCDBrightness(1);
   E.showMenu({"":{title:"Recovery"},
-    "Attempt Compact": () => {
-      E.showMessage("Compacting...\nMay take\n5 min.");
-      if(!NRF.getSecurityStatus().connected)
-        Terminal.setConsole();
-      require("Storage").compact();
+    "Clean Boot": () => {
+      reset();
+    },  
+    "Reboot": () => {
       E.reboot();
     },
-    "Rewrite Bootloader": () => {
-      setTimeout(load,1000);
-      eval(require("Storage").read("bootupdate.js"));
+    "Turn Off": () => {
+      Bangle.off();
     },
     "Factory Reset": () => {
       E.showPrompt("Are you sure?\nThis will remove all data.",{title:"Factory Reset"}).then(ok => {
@@ -27,16 +25,7 @@
           Terminal.setConsole();
         Bangle.factoryReset();
       });
-    },
-    "Clean Boot": () => {
-      reset();
-    },
-    "Reboot": () => {
-      E.reboot();
-    },
-    "Turn Off": () => {
-      Bangle.off();
-    },
+    },    
     "Exit": () => {   
       if (require("Storage").list().length>0) {
         E.showMessage("Loading...");
@@ -46,6 +35,17 @@
       } else {
         E.reboot();
       }
+    },
+    "Attempt Compact": () => {
+      E.showMessage("Compacting...\nMay take\n5 min.");
+      if(!NRF.getSecurityStatus().connected)
+        Terminal.setConsole();
+      require("Storage").compact();
+      E.reboot();
+    },
+    "Rewrite Bootloader": () => {
+      setTimeout(load,1000);
+      eval(require("Storage").read("bootupdate.js"));
     },
   });
 })
