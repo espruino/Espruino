@@ -636,17 +636,17 @@ int jswrap_E_flashFatFS(JsVar* options) {
   uint16_t sectors = FS_SECTOR_COUNT;
   uint8_t format = 0;
   if (jsvIsObject(options)) {
-    JsVar *a = jsvObjectGetChild(options, "addr", false);
+    JsVar *a = jsvObjectGetChildIfExists(options, "addr");
     if (a) {
       if (jsvIsNumeric(a) && jsvGetInteger(a)>0x100000)
         addr = (uint32_t)jsvGetInteger(a);
     }
-    JsVar *s = jsvObjectGetChild(options, "sectors", false);
+    JsVar *s = jsvObjectGetChildIfExists(options, "sectors");
     if (s) {
       if (jsvIsNumeric(s) && jsvGetInteger(s)>0)
         sectors = (uint16_t)jsvGetInteger(s);
     }
-    JsVar *f = jsvObjectGetChild(options, "format", false);
+    JsVar *f = jsvObjectGetChildIfExists(options, "format");
     if (f) {
       if (jsvIsBoolean(f))
         format = jsvGetBool(f);

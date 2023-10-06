@@ -130,7 +130,7 @@ void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool r
     _jswrap_promise_resolve_or_reject(promise, data, fn);
     jsvUnLock(fn);
   } else if (!resolve) {
-    JsVar *previouslyResolved = jsvFindChildFromString(promise, JS_PROMISE_RESOLVED_NAME, false);
+    JsVar *previouslyResolved = jsvFindChildFromString(promise, JS_PROMISE_RESOLVED_NAME);
     if (!previouslyResolved) {
       jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
       // If there was an exception with a stack trace, pass it through so we can keep adding stack to it
@@ -378,7 +378,7 @@ void _jswrap_promise_add(JsVar *parent, JsVar *callback, bool resolve) {
     // Check to see if promise has already been resolved
     /* Note: we use jsvFindChildFromString not ObjectGetChild so we get the name.
      * If we didn't then we wouldn't know if it was resolved, but with undefined */
-    JsVar *resolved = jsvFindChildFromString(parent, JS_PROMISE_RESOLVED_NAME, 0);
+    JsVar *resolved = jsvFindChildFromString(parent, JS_PROMISE_RESOLVED_NAME);
     if (resolved) {
       resolveImmediately = true;
       resolveImmediatelyValue = jsvSkipNameAndUnLock(resolved);

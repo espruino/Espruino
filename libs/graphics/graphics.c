@@ -226,7 +226,7 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
 
 // Set the data variable for graphics - called initially when a graphics instance is first make
 void graphicsSetVarInitial(JsGraphics *gfx) {
-  JsVar *dataname = jsvFindChildFromString(gfx->graphicsVar, JS_HIDDEN_CHAR_STR"gfx", true);
+  JsVar *dataname = jsvFindOrAddChildFromString(gfx->graphicsVar, JS_HIDDEN_CHAR_STR"gfx");
   JsVar *data = jsvSkipName(dataname);
   if (!data) {
     data = jsvNewStringOfLength(sizeof(JsGraphicsData), NULL);
@@ -240,7 +240,7 @@ void graphicsSetVarInitial(JsGraphics *gfx) {
 
 // Set the data variable for graphics - graphics data must exist
 void graphicsSetVar(JsGraphics *gfx) {
-  JsVar *data = jsvSkipNameAndUnLock(jsvFindChildFromString(gfx->graphicsVar, JS_HIDDEN_CHAR_STR"gfx", false));
+  JsVar *data = jsvSkipNameAndUnLock(jsvFindChildFromString(gfx->graphicsVar, JS_HIDDEN_CHAR_STR"gfx"));
 #if ESPR_GRAPHICS_INTERNAL
   if (!data) {
     graphicsInternal = *gfx;

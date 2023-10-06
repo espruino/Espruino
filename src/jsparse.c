@@ -117,13 +117,13 @@ JsVar *jspeiFindInScopes(const char *name) {
     while (it) {
       JsVar *scope = jsvSkipName(it);
       JsVarRef next = jsvGetPrevSibling(it);
-      JsVar *ref = jsvFindChildFromString(scope, name, false);
+      JsVar *ref = jsvFindChildFromString(scope, name);
       jsvUnLock2(it, scope);
       if (ref) return ref;
       it = jsvLockSafe(next);
     }
   }
-  return jsvFindChildFromString(execInfo.root, name, false);
+  return jsvFindChildFromString(execInfo.root, name);
 }
 /// Return the topmost scope (and lock it)
 JsVar *jspeiGetTopScope() {
@@ -156,7 +156,7 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
     if (inheritsFrom && inheritsFrom!=parent) {
       // we have what it inherits from (this is ACTUALLY the prototype var)
       // https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Object/proto
-      JsVar *child = jsvFindChildFromString(inheritsFrom, name, false);
+      JsVar *child = jsvFindChildFromString(inheritsFrom, name);
       if (!child)
         child = jspeiFindChildFromStringInParents(inheritsFrom, name);
       jsvUnLock(inheritsFrom);
@@ -166,7 +166,7 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
   } else { // Not actually an object - but might be an array/string/etc
     const char *objectName = jswGetBasicObjectName(parent);
     while (objectName) {
-      JsVar *objName = jsvFindChildFromString(execInfo.root, objectName, false);
+      JsVar *objName = jsvFindChildFromString(execInfo.root, objectName);
       if (objName) {
         JsVar *result = 0;
         JsVar *obj = jsvSkipNameAndUnLock(objName);
@@ -175,7 +175,7 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
           // We have found an object with this name - search for the prototype var
           JsVar *proto = jsvObjectGetChildIfExists(obj, JSPARSE_PROTOTYPE_VAR);
           if (proto) {
-            result = jsvFindChildFromString(proto, name, false);
+            result = jsvFindChildFromString(proto, name);
             jsvUnLock(proto);
           }
         }
@@ -246,7 +246,7 @@ void jspAppendStackTrace(JsVar *stackTrace) {
 /// We had an exception (argument is the exception's value)
 void jspSetException(JsVar *value) {
   // Add the exception itself to a variable in root scope
-  JsVar *exception = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR, true);
+  JsVar *exception = jsvFindOrAddChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR);
   if (exception) {
     jsvSetValueOfName(exception, value);
     jsvUnLock(exception);
@@ -269,7 +269,7 @@ void jspSetException(JsVar *value) {
 
 /** Return the reported exception if there was one (and clear it) */
 JsVar *jspGetException() {
-  JsVar *exceptionName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR, false);
+  JsVar *exceptionName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR);
   if (exceptionName) {
     JsVar *exception = jsvSkipName(exceptionName);
     jsvRemoveChild(execInfo.hiddenRoot, exceptionName);
@@ -288,7 +288,7 @@ JsVar *jspGetException() {
 
 /** Return a stack trace string if there was one (and clear it) */
 JsVar *jspGetStackTrace() {
-  JsVar *stackTraceName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, false);
+  JsVar *stackTraceName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR);
   if (stackTraceName) {
     JsVar *stackTrace = jsvSkipName(stackTraceName);
     jsvRemoveChild(execInfo.hiddenRoot, stackTraceName);
@@ -1041,7 +1041,7 @@ JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName) {
   JsVar *child = 0;
   // if we're an object (or pretending to be one)
   if (jsvHasChildren(object))
-    child = jsvFindChildFromString(object, name, false);
+    child = jsvFindChildFromString(object, name);
 
   if (!child) {
     child = jspGetNamedFieldInParents(object, name, returnName);
@@ -1186,7 +1186,7 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   JsVar *thisObj = jsvNewObject();
   if (!thisObj) return 0; // out of memory
   // Make sure the function has a 'prototype' var
-  JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
+  JsVar *prototypeName = jsvFindOrAddChildFromString(func, JSPARSE_PROTOTYPE_VAR);
   jspEnsureIsPrototype(func, prototypeName); // make sure it's an object
   jsvAddNamedChildAndUnLock(thisObj, jsvSkipNameAndUnLock(prototypeName), JSPARSE_INHERITS_VAR);
 
@@ -1482,7 +1482,7 @@ NO_INLINE void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName) {
     jsvSetValueOfName(lastName, prototypeVar);
     jsvUnLock(lastName);
   }
-  JsVar *constructor = jsvFindChildFromString(prototypeVar, JSPARSE_CONSTRUCTOR_VAR, true);
+  JsVar *constructor = jsvFindOrAddChildFromString(prototypeVar, JSPARSE_CONSTRUCTOR_VAR);
   if (constructor) jsvSetValueOfName(constructor, instanceOf);
   jsvUnLock2(constructor, prototypeVar);
 }
@@ -1686,7 +1686,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
     JSP_ASSERT_MATCH(LEX_ID);
   }
   if (classFunction) {
-    JsVar *prototypeName = jsvFindChildFromString(classFunction, JSPARSE_PROTOTYPE_VAR, true);
+    JsVar *prototypeName = jsvFindOrAddChildFromString(classFunction, JSPARSE_PROTOTYPE_VAR);
     jspEnsureIsPrototype(classFunction, prototypeName); // make sure it's an object
     classPrototype = jsvSkipName(prototypeName);
     jsvUnLock(prototypeName);
@@ -2363,13 +2363,13 @@ NO_INLINE JsVar *jspeStatementVar() {
           execInfo.blockScope = jsvNewObject();
           jspeiAddScope(execInfo.blockScope);
         }
-        a = jsvFindChildFromString(execInfo.blockScope, name, true);
+        a = jsvFindOrAddChildFromString(execInfo.blockScope, name);
       } else {
-        a = jsvFindChildFromString(execInfo.baseScope, name, true);
+        a = jsvFindOrAddChildFromString(execInfo.baseScope, name);
       }
 #else
       JsVar *scope = jspeiGetTopScope();
-      a = jsvFindChildFromString(scope, name, true);
+      a = jsvFindOrAddChildFromString(scope, name);
       jsvUnLock(scope);
 #endif
       if (!a) { // out of memory
@@ -2837,7 +2837,7 @@ NO_INLINE JsVar *jspeStatementTry() {
     if (hadException) {
       scope = jsvNewObject();
       if (scope)
-        exceptionVar = jsvFindChildFromString(scope, jslGetTokenValueAsString(), true);
+        exceptionVar = jsvFindOrAddChildFromString(scope, jslGetTokenValueAsString());
     }
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock2(scope,exceptionVar),0);
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jsvUnLock2(scope,exceptionVar),0);
@@ -3068,7 +3068,7 @@ JsVar *jspNewBuiltin(const char *instanceOf) {
 
 /// Create a new Class of the given instance and return its prototype (as a name 'prototype')
 NO_INLINE JsVar *jspNewPrototype(const char *instanceOf) {
-  JsVar *objFuncName = jsvFindChildFromString(execInfo.root, instanceOf, true);
+  JsVar *objFuncName = jsvFindOrAddChildFromString(execInfo.root, instanceOf);
   if (!objFuncName) // out of memory
     return 0;
 
@@ -3084,7 +3084,7 @@ NO_INLINE JsVar *jspNewPrototype(const char *instanceOf) {
     jsvSetValueOfName(objFuncName, objFunc);
   }
 
-  JsVar *prototypeName = jsvFindChildFromString(objFunc, JSPARSE_PROTOTYPE_VAR, true);
+  JsVar *prototypeName = jsvFindOrAddChildFromString(objFunc, JSPARSE_PROTOTYPE_VAR);
   jspEnsureIsPrototype(objFunc, prototypeName); // make sure it's an object
   jsvUnLock2(objFunc, objFuncName);
 
@@ -3119,7 +3119,7 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
   jsvAddNamedChildAndUnLock(obj, jsvSkipNameAndUnLock(prototypeName), JSPARSE_INHERITS_VAR);
 
   if (name) {
-    JsVar *objName = jsvFindChildFromString(execInfo.root, name, true);
+    JsVar *objName = jsvFindOrAddChildFromString(execInfo.root, name);
     if (objName) jsvSetValueOfName(objName, obj);
     jsvUnLock(obj);
     if (!objName) { // out of memory

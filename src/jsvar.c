@@ -1351,7 +1351,7 @@ void jsvAddFunctionParameter(JsVar *fn, JsVar *paramName, JsVar *value) {
 void *jsvGetNativeFunctionPtr(const JsVar *function) {
   /* see descriptions in jsvar.h. If we have a child called JSPARSE_FUNCTION_CODE_NAME
    * then we execute code straight from that */
-  JsVar *flatString = jsvFindChildFromString((JsVar*)function, JSPARSE_FUNCTION_CODE_NAME, 0);
+  JsVar *flatString = jsvFindChildFromString((JsVar*)function, JSPARSE_FUNCTION_CODE_NAME);
   if (flatString) {
     flatString = jsvSkipNameAndUnLock(flatString);
     void *v = (void*)((size_t)function->varData.native.ptr + (char*)jsvGetFlatStringPointer(flatString));
@@ -2924,7 +2924,7 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
   return name;
 }
 
-JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFound) {
+JsVar *jsvFindChildFromString(JsVar *parent, const char *name) {
   /* Pull out first 4 bytes, and ensure that everything
    * is 0 padded so that we can do a nice speedy check. */
   char fastCheck[4] = {0,0,0,0};
@@ -2976,9 +2976,12 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFoun
       childref = jsvGetNextSibling(child);
     }
   }
+  return 0;
+}
 
-  JsVar *child = 0;
-  if (addIfNotFound) {
+JsVar *jsvFindOrAddChildFromString(JsVar *parent, const char *name) {
+  JsVar *child = jsvFindChildFromString(parent, name);
+  if (!child) {
     child = jsvNewNameFromString(name);
     if (child) // could be out of memory
       jsvAddName(parent, child);
@@ -3136,7 +3139,8 @@ bool jsvIsChild(JsVar *parent, JsVar *child) {
 JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
   if (!obj) return 0;
   assert(jsvHasChildren(obj));
-  JsVar *childName = jsvFindChildFromString(obj, name, createChild!=0);
+  JsVar *childName = createChild ? jsvFindOrAddChildFromString(obj, name) :
+                                   jsvFindChildFromString(obj, name);
   JsVar *child = jsvSkipName(childName);
   if (!child && createChild && childName!=0/*out of memory?*/) {
     child = jsvNewWithFlags(createChild);
@@ -3152,7 +3156,7 @@ JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
 JsVar *jsvObjectGetChildIfExists(JsVar *obj, const char *name) {
   if (!obj) return 0;
   assert(jsvHasChildren(obj));
-  return jsvSkipNameAndUnLock(jsvFindChildFromString(obj, name, 0));
+  return jsvSkipNameAndUnLock(jsvFindChildFromString(obj, name));
 }
 
 /// Get the named child of an object using a case-insensitive search
@@ -3167,7 +3171,7 @@ JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
   assert(jsvHasChildren(obj));
   if (!jsvHasChildren(obj)) return 0;
   // child can actually be a name (for instance if it is a named function)
-  JsVar *childName = jsvFindChildFromString(obj, name, true);
+  JsVar *childName = jsvFindOrAddChildFromString(obj, name);
   if (!childName) return 0; // out of memory
   jsvSetValueOfName(childName, child);
   jsvUnLock(childName);
@@ -3192,7 +3196,7 @@ void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child) {
 }
 
 void jsvObjectRemoveChild(JsVar *obj, const char *name) {
-  JsVar *child = jsvFindChildFromString(obj, name, false);
+  JsVar *child = jsvFindChildFromString(obj, name);
   if (child) {
     jsvRemoveChild(obj, child);
     jsvUnLock(child);

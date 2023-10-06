@@ -12,6 +12,7 @@
             Tidying up error messages (no trailing '.' or '\n'), making almost-similar error messages the same 
             Fix issue using `String.concat` with flash strings (fix #2268)
             jsvFindChildFromString enhancement - adds 10% performance on minified code
+            Remove createChild argument from jsvFindChildFromString, add jsvFindOrAddChildFromString instead
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)

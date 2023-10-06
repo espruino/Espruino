@@ -75,7 +75,7 @@ bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, bool force) {
   assert(jsvIsString(dataString));
   bool ok = true;
 
-  JsVar *callback = jsvFindChildFromString(parent, STREAM_CALLBACK_NAME, false);
+  JsVar *callback = jsvFindChildFromString(parent, STREAM_CALLBACK_NAME);
   if (callback) {
     if (!jsiExecuteEventCallback(parent, callback, 1, &dataString)) {
       jsError("Error processing Serial data handler - removing it.");

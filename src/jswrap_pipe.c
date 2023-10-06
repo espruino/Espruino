@@ -272,14 +272,14 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
         // parse Options Object
         if (jsvIsObject(options)) {
           JsVar *c;
-          c = jsvObjectGetChild(options, "complete", false);
+          c = jsvObjectGetChildIfExists(options, "complete");
           if (c) {
             jsvObjectSetChild(pipe, JS_EVENT_PREFIX"complete", c);
             jsvUnLock(c);
           }
-          c = jsvObjectGetChild(options, "end", false);
+          c = jsvObjectGetChildIfExists(options, "end");
           if (c) callEnd = jsvGetBoolAndUnLock(c);
-          c = jsvObjectGetChild(options, "chunkSize", false);
+          c = jsvObjectGetChildIfExists(options, "chunkSize");
           if (c) {
             if (jsvIsNumeric(c) && jsvGetInteger(c)>0)
               chunkSize = jsvGetInteger(c);

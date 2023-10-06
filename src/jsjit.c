@@ -106,7 +106,7 @@ NO_INLINE JsVar *_jsxMathsOpSkipNamesAndUnLock(JsVar *a, JsVar *b, int op) {
 // Add a variable to the current scope (eg VAR statement), and return it
 NO_INLINE JsVar *_jsxAddVar(const char *name) {
   JsVar *scope = jspeiGetTopScope();
-  JsVar *a = jsvFindChildFromString(scope, name, true);
+  JsVar *a = jsvFindOrAddChildFromString(scope, name);
   jsvUnLock(scope);
   return a;
 }

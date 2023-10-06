@@ -194,7 +194,7 @@ bool run_test(const char *filename) {
   while (isRunning && (jsiHasTimers() || isBusy))
     isBusy = jsiLoop();
 
-  JsVar *result = jsvObjectGetChild(execInfo.root, "result", 0 /*no create*/);
+  JsVar *result = jsvObjectGetChildIfExists(execInfo.root, "result");
   bool pass = jsvGetBool(result);
   jsvUnLock(result);
 

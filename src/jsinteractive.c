@@ -112,7 +112,7 @@ IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device) {
   const char *deviceName = jshGetDeviceString(device);
   if (!deviceName[0]) return 0; // could be empty string
-  return jsvFindChildFromString(execInfo.root, deviceName, false);
+  return jsvFindChildFromString(execInfo.root, deviceName);
 }
 
 NO_INLINE bool jsiEcho() {
@@ -595,7 +595,7 @@ NO_INLINE void jsiDumpObjectState(vcbprintf_callback user_callback, void *user_d
 
 /** Dump the code required to initialise a serial port to this string */
 void jsiDumpSerialInitialisation(vcbprintf_callback user_callback, void *user_data, const char *serialName, bool humanReadableDump) {
-  JsVar *serialVarName = jsvFindChildFromString(execInfo.root, serialName, false);
+  JsVar *serialVarName = jsvFindChildFromString(execInfo.root, serialName);
   JsVar *serialVar = jsvSkipName(serialVarName);
 
   if (serialVar) {
@@ -2446,7 +2446,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *timer = jsvObjectIteratorGetValue(&it);
     JsVar *timerNumber = jsvObjectIteratorGetKey(&it);
-    JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(timer, "callback", false));
+    JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(timer, "callback"));
     JsVar *timerInterval = jsvObjectGetChildIfExists(timer, "interval");
     user_callback(timerInterval ? "setInterval(" : "setTimeout(", user_data);
     jsiDumpJSON(user_callback, user_data, timerCallback, 0);
@@ -2463,7 +2463,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
   jsvUnLock(watchArrayPtr);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *watch = jsvObjectIteratorGetValue(&it);
-    JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(watch, "callback", false));
+    JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(watch, "callback"));
     bool watchRecur = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(watch, "recur"));
     int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(watch, "edge"));
     JsVar *watchPin = jsvObjectGetChildIfExists(watch, "pin");

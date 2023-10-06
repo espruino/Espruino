@@ -707,7 +707,7 @@ Set the prototype of the given object - this is like writing `object.__proto__ =
 prototype` but is the 'proper' ES6 way of doing it
  */
 JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto) {
-  JsVar *v = (jsvIsFunction(object)||jsvIsObject(object)) ? jsvFindChildFromString(object, "__proto__", true) : 0;
+  JsVar *v = (jsvIsFunction(object)||jsvIsObject(object)) ? jsvFindOrAddChildFromString(object, "__proto__") : 0;
   if (!jsvIsName(v)) {
     jsExceptionHere(JSET_TYPEERROR, "Can't extend %t", v);
   } else {
@@ -1149,8 +1149,8 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   }
 
   // Grab scope and prototype - the things we want to keep
-  JsVar *scope = jsvFindChildFromString(oldFunc, JSPARSE_FUNCTION_SCOPE_NAME, false);
-  JsVar *prototype = jsvFindChildFromString(oldFunc, JSPARSE_PROTOTYPE_VAR, false);
+  JsVar *scope = jsvFindChildFromString(oldFunc, JSPARSE_FUNCTION_SCOPE_NAME);
+  JsVar *prototype = jsvFindChildFromString(oldFunc, JSPARSE_PROTOTYPE_VAR);
   // so now remove all existing entries
   jsvRemoveAllChildren(oldFunc);
   // now re-add other entries
