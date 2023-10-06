@@ -9,7 +9,8 @@
             nRF52: bootloader asks for connection interval 7.5->30ms now, not just 15ms. Should improve DFU on iOS 16 which doesn't honour 15ms request
             Fix unicode in object keys when UTF8 support enabled, eg.  {'\u00e4':1}
             Bangle.js: Change order of items in the Recovery Menu (hold BTN at boot) to put more common options first
-            Tidying up error messages (no trailing '.' or '\n'), making almost-similar error messages the same
+            Tidying up error messages (no trailing '.' or '\n'), making almost-similar error messages the same 
+            Fix issue using `String.concat` with flash strings (fix #2268)
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)

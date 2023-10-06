@@ -750,7 +750,9 @@ original `String`.
 */
 JsVar *jswrap_string_concat(JsVar *parent, JsVar *args) {
   if (!jsvIsString(parent)) return 0;
-  JsVar *str = jsvNewFromStringVar(parent, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+  // don't use jsvNewFromStringVar here because it has an optimisation for Flash Strings that just clones (rather than copying)
+  JsVar *str = jsvNewFromEmptyString();
+  jsvAppendStringVarComplete(str, parent);
   JsVar *extra = jsvArrayJoin(args, NULL/*filler*/, false/*ignoreNull*/);
   jsvAppendStringVarComplete(str, extra);
   jsvUnLock(extra);
