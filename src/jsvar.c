@@ -553,11 +553,11 @@ void jsvSetCharactersInVar(JsVar *v, size_t chars) {
 
 void jsvResetVariable(JsVar *v, JsVarFlags flags) {
   assert((v->flags&JSV_VARTYPEMASK) == JSV_UNUSED);
-  // make sure we clear all data...
-  /* Force a proper zeroing of all data. We don't use
-   * memset because that'd create a function call. This
-   * should just generate a bunch of STR instructions */
-  // FIXME: this does not generate STR instructions - it's just a tight loop with STRB. We should be able to do better?
+  assert(!(flags & JSV_LOCK_MASK));
+  // make sure we clear all data and set 'flags'...
+  // Force a proper zeroing of all data. We don't use memset because that'd create a function call.
+  // This DOES NOT generate STR instructions - it's just a tight loop with STRB, but that seems faster.
+  // See below...
   unsigned int i;
   if ((sizeof(JsVar)&3) == 0) {
     for (i=0;i<sizeof(JsVar)/sizeof(uint32_t);i++)
@@ -566,9 +566,14 @@ void jsvResetVariable(JsVar *v, JsVarFlags flags) {
     for (i=0;i<sizeof(JsVar);i++)
       ((uint8_t*)v)[i] = 0;
   }
-  // set flags
-  assert(!(flags & JSV_LOCK_MASK));
   v->flags = flags | JSV_LOCK_ONE;
+  // This code really *should* be faster as it really does just
+  // create a handful of stores and the ARM assembly looks great.
+  // Somehow it's slower though!
+  //  *v = (JsVar) {
+  //  .varData = { },
+  //  .flags = flags | JSV_LOCK_ONE
+  //};
 }
 
 JsVar *jsvNewWithFlags(JsVarFlags flags) {
