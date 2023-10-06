@@ -540,7 +540,6 @@ static void jslLexRegex() {
         lex->currCh=='m' ||
         lex->currCh=='y' ||
         lex->currCh=='u') {
-      jslTokenAppendChar(lex->currCh);
       jsvStringIteratorAppend(&it, lex->currCh);
       jslGetNextCh();
     }
