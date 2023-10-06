@@ -442,6 +442,7 @@ bool jsvIsStringNumericStrict(const JsVar *var);
 
 // TODO: maybe isName shouldn't include ArrayBufferName?
 bool jsvHasCharacterData(const JsVar *v); ///< does the v->data union contain character data?
+/// Does this variable use lastChild to point to a StringExt?
 bool jsvHasStringExt(const JsVar *v);
 /// Does this variable use firstChild/lastChild to point to multiple children
 bool jsvHasChildren(const JsVar *v);

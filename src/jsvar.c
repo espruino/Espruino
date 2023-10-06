@@ -2927,7 +2927,12 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
 JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFound) {
   /* Pull out first 4 bytes, and ensure that everything
    * is 0 padded so that we can do a nice speedy check. */
-  char fastCheck[4];
+  char fastCheck[4] = {0,0,0,0};
+#ifdef SAVE_ON_FLASH // if saving flash, don't include this optimisation
+  const bool superFastCheck = false;
+#else
+  bool superFastCheck = true;
+#endif
   fastCheck[0] = name[0];
   if (name[0]) {
     fastCheck[1] = name[1];
@@ -2935,31 +2940,41 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFoun
       fastCheck[2] = name[2];
       if (name[2]) {
         fastCheck[3] = name[3];
-      } else {
-        fastCheck[3] = 0;
+#ifndef SAVE_ON_FLASH
+        if (name[3])
+          superFastCheck = name[4]==0; // 4 or less chars
+#endif
       }
-    } else {
-      fastCheck[2] = 0;
-      fastCheck[3] = 0;
     }
-  } else {
-    fastCheck[1] = 0;
-    fastCheck[2] = 0;
-    fastCheck[3] = 0;
   }
 
   assert(jsvHasChildren(parent));
   JsVarRef childref = jsvGetFirstChild(parent);
-  while (childref) {
-    // Don't Lock here, just use GetAddressOf - to try and speed up the finding
-    // TODO: We can do this now, but when/if we move to cacheing vars, it'll break
-    JsVar *child = jsvGetAddressOf(childref);
-    if (*(int*)fastCheck==*(int*)child->varData.str && // speedy check of first 4 bytes
-        jsvIsStringEqual(child, name)) {
-      // found it! unlock parent but leave child locked
-      return jsvLockAgain(child);
+  if (!superFastCheck) { // more than 4 chars so we MUST use stringequal
+    while (childref) {
+      // Don't Lock here, just use GetAddressOf - to try and speed up the finding
+      JsVar *child = jsvGetAddressOf(childref);
+      if (*(int*)fastCheck==*(int*)child->varData.str && // speedy check of first 4 bytes
+          jsvIsStringEqual(child, name)) {
+        // found it! unlock parent but leave child locked
+        return jsvLockAgain(child);
+      }
+      childref = jsvGetNextSibling(child);
     }
-    childref = jsvGetNextSibling(child);
+  } else { // 4 or less chars, so if 4 chars match, there is no StringExt + length matches, then we're good without jsvIsStringEqual
+    int charsInName = 0;
+    while (name[charsInName])
+      charsInName++;
+    while (childref) {
+      JsVar *child = jsvGetAddressOf(childref);
+      if (*(int*)fastCheck==*(int*)child->varData.str &&
+          !child->varData.ref.lastChild &&
+          jsvGetCharactersInVar(child)==charsInName) { // no extra stringexts - so it really is that small
+        // found it! unlock parent but leave child locked
+        return jsvLockAgain(child);
+      }
+      childref = jsvGetNextSibling(child);
+    }
   }
 
   JsVar *child = 0;
