@@ -440,7 +440,7 @@ int main(int argc, char **argv) {
       } else if (!strcmp(a, "--test")) {
         bool ok;
         if (i + 1 >= argc) {
-          fatal(1, "Expecting an extra arguments");
+          fatal(1, "Expecting extra arguments");
         } else if (i + 2 == argc) {
           ok = run_test(argv[i + 1]);
         } else {

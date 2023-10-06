@@ -616,7 +616,7 @@ Copy the contents of `array` into this one, mapping `this[x+offset]=array[x];`
  */
 void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
   if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
-    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an array, not %t", arr);
+    jsExceptionHere(JSET_ERROR, "First argument must be Array, not %t", arr);
     return;
   }
   // Copy with the case where we copy from one arraybuffer to another but they use the
@@ -684,15 +684,15 @@ Return an array which is made from the following: ```A.map(function) =
  */
 JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   if (!jsvIsArrayBuffer(parent)) {
-    jsExceptionHere(JSET_ERROR, "ArrayBufferView.map can only be called on an ArrayBufferView");
+    jsExceptionHere(JSET_ERROR, "Can only be called on an ArrayBufferView");
     return 0;
   }
   if (!jsvIsFunction(funcVar)) {
-    jsExceptionHere(JSET_ERROR, "ArrayBufferView.map's first argument should be a function");
+    jsExceptionHere(JSET_ERROR, "First argument must be a function");
     return 0;
   }
   if (!jsvIsUndefined(thisVar) && !jsvIsObject(thisVar)) {
-    jsExceptionHere(JSET_ERROR, "ArrayBufferView.map's second argument should be undefined, or an object");
+    jsExceptionHere(JSET_ERROR, "Second argument must be Object or undefined");
     return 0;
   }
 

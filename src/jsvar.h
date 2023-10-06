@@ -804,7 +804,7 @@ void jsvFree(void *ptr);
   if (DATA && !TARGET_PTR) {                                                          \
    TARGET_LENGTH = (size_t)jsvIterateCallbackCount(DATA);                     \
     if (TARGET_LENGTH+256 > jsuGetFreeStack()) {                              \
-      jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  \
+      jsExceptionHere(JSET_ERROR, "Not enough stack memory for data");  \
     } else {                                                                  \
       TARGET_PTR = (char *)alloca(TARGET_LENGTH);                             \
       jsvIterateCallbackToBytes(DATA, (unsigned char *)TARGET_PTR,            \

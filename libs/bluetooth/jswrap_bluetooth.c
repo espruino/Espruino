@@ -763,7 +763,7 @@ void jswrap_ble_setAddress(JsVar *address) {
 #ifdef NRF52_SERIES
   ble_gap_addr_t p_addr;
   if (!bleVarToAddr(address, &p_addr)) {
-    jsExceptionHere(JSET_ERROR, "Expecting a mac address of the form aa:bb:cc:dd:ee:ff");
+    jsExceptionHere(JSET_ERROR, "Expecting mac address of the form aa:bb:cc:dd:ee:ff");
     return;
   }
   jsvObjectSetChild(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS, address);
@@ -1043,7 +1043,7 @@ void jswrap_ble_setAdvertising(JsVar *data, JsVar *options) {
       jsvUnLock(v);
     }
   } else if (!jsvIsUndefined(options)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting 'options' to be object or undefined, got %t", options);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object or undefined, got %t", options);
     return;
   }
 
@@ -1197,7 +1197,7 @@ JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options) {
     }
 #endif
   } else if (!jsvIsUndefined(options)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting 'options' to be object or undefined, got %t", options);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object or undefined, got %t", options);
     return 0;
   }
 
@@ -1247,7 +1247,7 @@ JsVar *jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options) {
     advdata.uuids_complete.p_uuids  = adv_uuid;
 #endif
   } else if (!jsvIsUndefined(data)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting object, array or undefined, got %t", data);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object, Array or undefined, got %t", data);
     return 0;
   }
 
@@ -1472,7 +1472,7 @@ mitm. See `NRF.setSecurity` for more information.
 */
 void jswrap_ble_setServices(JsVar *data, JsVar *options) {
   if (!(jsvIsObject(data) || jsvIsUndefined(data))) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting object or undefined, got %t", data);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object or undefined, got %t", data);
     return;
   }
 
@@ -1765,7 +1765,7 @@ void jswrap_ble_updateServices(JsVar *data) {
     jsvObjectIteratorFree(&it);
 
   } else if (!jsvIsUndefined(data)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting object or undefined, got %t", data);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object or undefined, got %t", data);
   }
 }
 
@@ -2064,7 +2064,7 @@ void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
       return;
     }
   } else if (options)
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object got %t", options);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object, got %t", options);
   // set the callback event variable
   if (!jsvIsFunction(callback)) callback=0;
   if (callback) {
@@ -2463,7 +2463,7 @@ void jswrap_nfc_URL(JsVar *url) {
   }
 
   if (!jsvIsString(url)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting a String, got %t", url);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting String, got %t", url);
     return;
   }
 
@@ -2796,7 +2796,7 @@ void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback) {
       jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, callback);
     jsble_send_hid_input_report((uint8_t*)vPtr, vLen);
   } else {
-    jsExceptionHere(JSET_ERROR, "Expecting array, got %t", data);
+    jsExceptionHere(JSET_ERROR, "Expecting Array, got %t", data);
   }
 #endif
 }
@@ -3375,7 +3375,7 @@ void jswrap_ble_requestDevice_scan(JsVar *device) {
 JsVar *jswrap_ble_requestDevice(JsVar *options) {
 #if CENTRAL_LINK_COUNT>0
   if (!(jsvIsUndefined(options) || jsvIsObject(options))) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting an object, for %t", options);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object, got %t", options);
     return 0;
   }
   JsVar *filters = jsvObjectGetChildIfExists(options, "filters");
@@ -3667,7 +3667,7 @@ open.
 */
 void jswrap_ble_setSecurity(JsVar *options) {
   if (!jsvIsObject(options) && !jsvIsUndefined(options))
-    jsExceptionHere(JSET_TYPEERROR, "Expecting an object or undefined, got %t", options);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object or undefined, got %t", options);
   else {
     jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SECURITY, options);
     jsble_update_security();
@@ -3940,7 +3940,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTServer_connect(JsVar *parent, JsVar *option
   ble_gap_addr_t peer_addr;
   if (!bleVarToAddr(addr, &peer_addr)) {
     jsvUnLock2(device, addr);
-    jsExceptionHere(JSET_TYPEERROR, "Expecting a device with a mac address of the form aa:bb:cc:dd:ee:ff");
+    jsExceptionHere(JSET_TYPEERROR, "Expecting device with a mac address of the form aa:bb:cc:dd:ee:ff");
     return 0;
   }
   jsvUnLock(device);

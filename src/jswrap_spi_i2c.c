@@ -99,12 +99,12 @@ Options can contain the following (defaults are shown where relevant):
 
 ```
 {
-  sck:pin, 
-  miso:pin, 
-  mosi:pin, 
+  sck:pin,
+  miso:pin,
+  mosi:pin,
   baud:integer=100000, // ignored on software SPI
   mode:integer=0, // between 0 and 3
-  order:string='msb' // can be 'msb' or 'lsb' 
+  order:string='msb' // can be 'msb' or 'lsb'
   bits:8 // only available for software SPI
 }
 ```
@@ -698,7 +698,7 @@ JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
   if (nBytes<=0)
     return 0;
   if ((unsigned int)nBytes+256 > jsuGetFreeStack()) {
-    jsExceptionHere(JSET_ERROR, "Not enough free stack to receive this amount of data");
+    jsExceptionHere(JSET_ERROR, "Not enough stack memory for data");
     return 0;
   }
   unsigned char *buf = (unsigned char *)alloca((size_t)nBytes);

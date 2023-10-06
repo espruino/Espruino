@@ -673,11 +673,13 @@ uint8_t match_request : 1;               If 1 requires the application to report
         ble_cts_handle_time(blep, (char *)buffer, bufferLen);
         break;
 #endif
+#ifndef SAVE_ON_FLASH
    default:
      jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
+#endif
  }
  if (jspIsInterrupted())
-   jsWarn("jsble_exec_pending: Interrupted processing event %d",(int)blep);
+   jsWarn("Interrupted processing event %d",(int)blep);
  return eventsHandled;
 }
 

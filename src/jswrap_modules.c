@@ -64,7 +64,7 @@ and how you can use them.
  */
 JsVar *jswrap_require(JsVar *moduleName) {
   if (!jsvIsString(moduleName)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting a module name as a string, but got %t", moduleName);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting module name as a string, got %t", moduleName);
     return 0;
   }
   char moduleNameBuf[128];
@@ -206,7 +206,7 @@ Remove the given module from the list of cached modules
  */
 void jswrap_modules_removeCached(JsVar *id) {
   if (!jsvIsString(id)) {
-    jsExceptionHere(JSET_ERROR, "The argument to removeCached must be a string");
+    jsExceptionHere(JSET_ERROR, "First argument must be String");
     return;
   }
   JsVar *moduleList = jswrap_modules_getModuleList();

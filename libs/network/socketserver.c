@@ -270,7 +270,7 @@ int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData
   if ((socketType&ST_TYPE_MASK)==ST_UDP) {
       sndBufLen = (size_t)jsvGetStringLength(*sendData);
       if (sndBufLen+1024 > jsuGetFreeStack()) {
-          jsExceptionHere(JSET_ERROR, "Not enough free stack to send this amount of data");
+          jsExceptionHere(JSET_ERROR, "Not enough stack memory for data");
           return -1;
       }
   } else {

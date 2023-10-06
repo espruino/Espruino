@@ -98,8 +98,10 @@ bool jspeiAddScope(JsVar *scope) {
 
 void jspeiRemoveScope() {
   if (!execInfo.scopesVar || !jsvGetArrayLength(execInfo.scopesVar)) {
-    jsExceptionHere(JSET_INTERNALERROR, "Too many scopes removed");
-    jspSetError(false);
+    // This should never happen unless there's an interpreter error - no need to have an error message
+    assert(0);
+    //jsExceptionHere(JSET_INTERNALERROR, "Too many scopes removed");
+    //jspSetError(false);
     return;
   }
   jsvUnLock(jsvArrayPop(execInfo.scopesVar));
@@ -542,7 +544,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
     JsVar *returnVar = 0;
 
     if (!jsvIsFunction(function)) {
-      jsExceptionHere(JSET_ERROR, "Expecting a function to call, got %t", function);
+      jsExceptionHere(JSET_ERROR, "Expecting function, got %t", function);
       return 0;
     }
     JsVar *thisVar = jsvLockAgainSafe(thisArg);
@@ -1836,7 +1838,7 @@ NO_INLINE JsVar *jspeFactor() {
   } else if (lex->tk==LEX_REGEX) {
     JsVar *a = 0;
 #ifdef ESPR_NO_REGEX
-    jsExceptionHere(JSET_SYNTAXERROR, "RegEx are not supported in this version of Espruino");
+    jsExceptionHere(JSET_SYNTAXERROR, "RegEx not supported in this build");
 #else
     if (JSP_SHOULD_EXECUTE) {
       JsVar *regex = jslGetTokenValueAsVar();
@@ -2075,7 +2077,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
           JsVar *av = jsvSkipName(a);
           JsVar *bv = jsvSkipName(b);
           if (!jsvIsFunction(bv)) {
-            jsExceptionHere(JSET_ERROR, "Expecting a function on RHS in instanceof check, got %t", bv);
+            jsExceptionHere(JSET_ERROR, "Expecting function on RHS, got %t", bv);
           } else {
             if (jsvIsObject(av) || jsvIsFunction(av)) {
               JsVar *bproto = jspGetNamedField(bv, JSPARSE_PROTOTYPE_VAR, false);
@@ -2491,7 +2493,7 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     JSP_RESTORE_EXECUTE();
   }
   if (lex->tk==LEX_R_CASE) {
-    jsExceptionHere(JSET_SYNTAXERROR, "Espruino doesn't support CASE after DEFAULT");
+    jsExceptionHere(JSET_SYNTAXERROR, "CASE after DEFAULT unsupported");
     return 0;
   }
   JSP_MATCH('}');

@@ -260,7 +260,7 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
   if (jsvIsNumeric(times)) {
     JsVarFloat pulseTime = jsvGetFloat(times);
     if (pulseTime<0 || isnan(pulseTime)) {
-      jsExceptionHere(JSET_ERROR, "Pulse Time given for digitalPulse is less than 0, or not a number");
+      jsExceptionHere(JSET_ERROR, "Pulse Time is less than 0 or not a number");
     } else if (pulseTime>0) {
       if (!hasTimer) jshPinOutput(pin, value);
       task.time += jshGetTimeFromMilliseconds(pulseTime);
@@ -284,7 +284,7 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
     }
     jsvIteratorFree(&it);
   } else {
-    jsExceptionHere(JSET_ERROR, "Expecting a number or array, got %t", times);
+    jsExceptionHere(JSET_ERROR, "Expecting Number or Array, got %t", times);
   }
 }
 

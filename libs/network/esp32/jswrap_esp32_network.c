@@ -75,7 +75,7 @@ static system_event_sta_disconnected_t g_lastEventStaDisconnected;
 static bool g_isStaConnected = false;
 
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
-#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting options object but got %t", jsOPT)
+#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", jsOPT)
 
 
 //===== mDNS

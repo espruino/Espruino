@@ -140,7 +140,7 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
     uuid->uuid = i;
     return 0;
   }
-  if (!jsvIsString(v)) return "UUID Not a String or Integer";
+  if (!jsvIsString(v)) return "UUID not String or Integer";
   unsigned int expectedLength = 16;
   unsigned int startIdx = 0;
   if (jsvIsStringEqualOrStartsWith(v,"0x",true)) {
@@ -185,7 +185,7 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v) {
     data[13] = 0;
     err_code = sd_ble_uuid_vs_add((ble_uuid128_t*)data, &uuid->type);
     if (err_code == NRF_ERROR_NO_MEM)
-      return "Too many custom UUIDs already";
+      return "Too many custom UUIDs";
   }
   return err_code ? "BLE device error adding UUID" : 0;
 #else

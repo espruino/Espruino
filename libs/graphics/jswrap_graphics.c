@@ -229,7 +229,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
     }
     jsvStringIteratorFree(&it);
   } else {
-    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object or a String");
+    jsExceptionHere(JSET_ERROR, "First argument must be Object or String");
     return 0;
   }
   if (!info->isTransparent)
@@ -275,7 +275,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
       info->width<=0 ||
       info->height<=0 ||
       info->bpp>32) {
-    jsExceptionHere(JSET_ERROR, "Expecting first argument to a valid Image");
+    jsExceptionHere(JSET_ERROR, "Expecting valid Image");
     _jswrap_graphics_freeImageInfo(info);
     return false;
   }
@@ -822,7 +822,7 @@ be ignored. Spaces are treated as `0`, and any other character is a `1`
 */
 JsVar *jswrap_graphics_createImage(JsVar *data) {
   if (!jsvIsString(data)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting a String");
+    jsExceptionHere(JSET_TYPEERROR, "Expecting String");
     return 0;
   }
   int x=0,y=0;
@@ -3498,7 +3498,7 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
   GfxDrawImageLayer layers[MAXIMAGES];
   int i,layerCount;
   if (!(jsvIsArray(layersVar) &&  (layerCount=jsvGetArrayLength(layersVar))<=MAXIMAGES)) {
-    jsExceptionHere(JSET_TYPEERROR,"Expecting array for first argument with <%d entries", MAXIMAGES);
+    jsExceptionHere(JSET_TYPEERROR,"Expecting Array for first argument with <%d entries", MAXIMAGES);
     return 0;
   }
   // default bounds (=nothing)

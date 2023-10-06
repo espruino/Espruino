@@ -981,7 +981,7 @@ accelerometer at sample rates above 208Hz.
 void puck_accelHandler(bool state, IOEventFlags flags) {
   jshHadEvent(); // ensure we leave sleep to go to the idle loop
   /* By having this function defined, we ensure that we don't push
-  the event onto the IO event queue which would cause Espruino a 
+  the event onto the IO event queue which would cause Espruino a
   little extra processing each time */
 }
 
@@ -1024,7 +1024,7 @@ void jswrap_puck_accelOff() {
     return;
   }
   if (accel_enabled) {
-    if (puckAccelChannel!=EV_NONE) 
+    if (puckAccelChannel!=EV_NONE)
       jshSetEventCallback(puckAccelChannel, NULL);
     puckAccelChannel = EV_NONE;
     jshPinWatch(ACCEL_PIN_INT, false, JSPW_NONE);
@@ -1183,7 +1183,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
     return;
   }
   if (!jsvIsIterable(data)) {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting an array, got %t", data);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Array, got %t", data);
     return;
   }
   if (jshIsPinValid(anode) && !jshIsPinValid(cathode)) {

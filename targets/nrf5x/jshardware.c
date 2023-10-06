@@ -1739,9 +1739,13 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 void uart_startrx(int num) {
   uint32_t err_code;
   err_code = nrf_drv_uart_rx(&UART[num], &uart[num].rxBuffer[0],1);
+#ifndef SAVE_ON_FLASH
   if (err_code) jsWarn("nrf_drv_uart_rx 1 failed, error %d", err_code);
+#endif
   err_code = nrf_drv_uart_rx(&UART[num], &uart[num].rxBuffer[1],1);
+#ifndef SAVE_ON_FLASH
   if (err_code) jsWarn("nrf_drv_uart_rx 2 failed, error %d", err_code);
+#endif
 }
 
 void uart_starttx(int num) {
@@ -1756,7 +1760,9 @@ void uart_starttx(int num) {
     uart[num].isSending = true;
     uart[num].txBuffer[0] = ch;
     ret_code_t err_code = nrf_drv_uart_tx(&UART[num], uart[num].txBuffer, 1);
+#ifndef SAVE_ON_FLASH
     if (err_code) jsWarn("nrf_drv_uart_tx failed, error %d", err_code);
+#endif
   } else
     uart[num].isSending = false;
 }
@@ -2633,7 +2639,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
     WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
   }
   if (err!=NRF_SUCCESS)
-    jsExceptionHere(JSET_INTERNALERROR,"NRF ERROR %d", err);
+    jsExceptionHere(JSET_INTERNALERROR,"NRF ERROR 0x%x", err);
 }
 
 // Just pass data through, since we can access flash at the same address we wrote it

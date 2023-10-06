@@ -2131,7 +2131,7 @@ JsVarInt jsvGetInteger(const JsVar *v) {
   if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {
     char buf[32];
     if (jsvGetString(v, buf, sizeof(buf))==sizeof(buf))
-      jsExceptionHere(JSET_ERROR, "String too big to convert to integer");
+      jsExceptionHere(JSET_ERROR, "String too big to convert to number");
     else
       return (JsVarInt)stringToInt(buf);
   }
@@ -2197,7 +2197,7 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
   if (jsvIsString(v)) {
     char buf[64];
     if (jsvGetString(v, buf, sizeof(buf))==sizeof(buf)) {
-      jsExceptionHere(JSET_ERROR, "String too big to convert to float");
+      jsExceptionHere(JSET_ERROR, "String too big to convert to number");
     } else {
       if (buf[0]==0) return 0; // empty string -> 0
       if (!strcmp(buf,"Infinity")) return INFINITY;
@@ -2223,7 +2223,7 @@ JsVar *jsvAsNumber(JsVar *var) {
     // handle strings like this, in case they're too big for an int
     char buf[64];
     if (jsvGetString(var, buf, sizeof(buf))==sizeof(buf)) {
-      jsExceptionHere(JSET_ERROR, "String too big to convert to integer");
+      jsExceptionHere(JSET_ERROR, "String too big to convert to number");
       return jsvNewFromFloat(NAN);
     } else
       return jsvNewFromLongInteger(stringToInt(buf));
@@ -2331,7 +2331,7 @@ void jsvReplaceWith(JsVar *dst, JsVar *src) {
       // if we can't find a char in a string we still return a NewChild,
       // but we can't add character back in
       if (!jsvHasChildren(parent)) {
-        jsExceptionHere(JSET_ERROR, "Field or method \"%v\" does not already exist, and can't create it on %t", dst, parent);
+        jsExceptionHere(JSET_ERROR, "Field or method %q does not already exist, and can't create it on %t", dst, parent);
       } else {
         // Remove the 'new child' flagging
         jsvUnRef(parent);
@@ -4403,7 +4403,7 @@ JsvIsInternalChecker jsvGetInternalFunctionCheckerFor(JsVar *v) {
 bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs) {
   if (jsvIsUndefined(object)) return true;
   if (!jsvIsObject(object)) {
-    jsExceptionHere(JSET_ERROR, "Expecting an Object, or undefined");
+    jsExceptionHere(JSET_ERROR, "Expecting Object or undefined, got %t", object);
     return false;
   }
   // Ok, it's an object

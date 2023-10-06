@@ -314,7 +314,7 @@ Sum the contents of the given Array, String or ArrayBuffer and return the result
  */
 JsVarFloat jswrap_espruino_sum(JsVar *arr) {
   if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
-    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an array, not %t", arr);
+    jsExceptionHere(JSET_ERROR, "First argument must be Array, not %t", arr);
     return NAN;
   }
   JsVarFloat sum = 0;
@@ -348,7 +348,7 @@ v+=Math.pow(mean-arr[i],2)`
  */
 JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
   if (!(jsvIsIterable(arr))) {
-    jsExceptionHere(JSET_ERROR, "Expecting first argument to be iterable, not %t", arr);
+    jsExceptionHere(JSET_ERROR, "First argument must iterable, not %t", arr);
     return NAN;
   }
   JsVarFloat variance = 0;
@@ -2425,7 +2425,7 @@ E.decodeUTF8("UTF-8 Euro: \u00e2\u0082\u00ac", unicodeRemap, '[?]') == "UTF-8 Eu
  */
 JsVar *jswrap_espruino_decodeUTF8(JsVar *str, JsVar *lookup, JsVar *replaceFn) {
   if (!jsvIsString(str)) {
-    jsExceptionHere(JSET_ERROR, "Expecting first argument to be a string, not %t", str);
+    jsExceptionHere(JSET_ERROR, "First argument must be String");
     return 0;
   }
   JsvStringIterator it, dit;

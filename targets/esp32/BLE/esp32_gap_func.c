@@ -44,7 +44,7 @@ static esp_ble_adv_params_t adv_params = {
     .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
-static esp_ble_scan_params_t ble_scan_params =   {  
+static esp_ble_scan_params_t ble_scan_params =   {
   .scan_type              = BLE_SCAN_TYPE_ACTIVE,
   .own_addr_type          = BLE_ADDR_TYPE_PUBLIC,
   .scan_filter_policy     = BLE_SCAN_FILTER_ALLOW_ALL,
@@ -157,8 +157,8 @@ void bluetooth_gap_setScan(bool enable, bool activeScan){
 }
 
 esp_err_t bluetooth_gap_startAdvertising(bool enable){
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
-    return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)  
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
+    return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
   if(enable)
     return esp_ble_gap_start_advertising(&adv_params);
   else
@@ -195,7 +195,7 @@ int addAdvertisingDeviceName(uint8_t *advData,int pnt){
         advData[pnt] = nameLen + 1;
         advData[pnt + 1] = 9; // flag for normal name
       }
-      for (int i = 0; i < nameLen; i++) 
+      for (int i = 0; i < nameLen; i++)
         advData[pnt + i + 2] = namePtr[i];
     }
     jsvUnLock(deviceName);
@@ -240,7 +240,7 @@ JsVar *bluetooth_gap_getAdvertisingData(JsVar *data, JsVar *options){
       i = i + addAdvertisingUart(&encoded_advdata,i);
     jsvUnLock(uartVar);*/
   } else {
-    jsExceptionHere(JSET_TYPEERROR, "Expecting object array or undefined, got %t",data);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object, Array or undefined, got %t",data);
     return 0;
   }
   if (i==0) return 0;
@@ -253,7 +253,7 @@ uint32_t jsble_advertising_update_scanresponse(char *dPtr, unsigned int dLen) {
 }
 
 esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray) {
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
     return 0; // ESP32.enableBLE(false) - we return 0 here so we don't output an error message at boot
   esp_err_t ret;
   JsVar *allocatedData = 0;
@@ -269,11 +269,11 @@ esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray) {
     JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advArray);
     ret = esp_ble_gap_config_adv_data_raw(advPtr, advLen);
     jsvUnLock(allocatedData);
-  }  
+  }
   if (ret) {
     jsWarn("bluetooth_gap_setAdvertising failed, error code = %x", ret);
   }
-  return ret;  
+  return ret;
 }
 
 esp_err_t bluetooth_setDeviceName(JsVar *deviceName){

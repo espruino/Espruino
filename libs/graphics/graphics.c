@@ -197,7 +197,7 @@ bool graphicsSetCallbacks(JsGraphics *gfx) {
     lcd_spi_unbuf_setCallbacks(gfx);
 #endif
   } else {
-    jsExceptionHere(JSET_INTERNALERROR, "Unknown graphics type");
+    // this should never happen
     assert(0);
     return false;
   }

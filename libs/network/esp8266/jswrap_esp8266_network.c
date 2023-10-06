@@ -330,7 +330,7 @@ void jswrap_wifi_connect(
   // Check for jsOptions
   if (jsOptions != NULL) {
     if (!jsvIsObject(jsOptions)) {
-      jsExceptionHere(JSET_ERROR, "Expecting an Object");
+      jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", jsOptions);
       return;
     } else {
 

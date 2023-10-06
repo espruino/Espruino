@@ -118,7 +118,7 @@ bool jsserialPopulateUSARTInfo(
   if (!jsvIsUndefined(baud)) {
     int b = (int)jsvGetInteger(baud);
     if (b<=100 || b > 10000000)
-      jsExceptionHere(JSET_ERROR, "Invalid baud rate specified");
+      jsExceptionHere(JSET_ERROR, "Invalid baud rate %d", b);
     else
       inf->baudRate = b;
   }
