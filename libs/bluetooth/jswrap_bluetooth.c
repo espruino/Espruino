@@ -2281,7 +2281,7 @@ void jswrap_ble_findDevices(JsVar *callback, JsVar *options) {
     JsVar *v = jsvObjectGetChildIfExists(options,"timeout");
     if (v) time = jsvGetFloatAndUnLock(v);
   } else if (options) {
-    jsExceptionHere(JSET_ERROR, "Expecting number or object, got %t", options);
+    jsExceptionHere(JSET_ERROR, "Expecting Number or object, got %t", options);
     return;
   }
   if (isnan(time) || time < 10) {
