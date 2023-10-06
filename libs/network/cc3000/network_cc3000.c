@@ -67,7 +67,7 @@ bool net_cc3000_checkError(JsNetwork *net) {
     if (wlan) {
       jswrap_wlan_reconnect(wlan);
       jsvUnLock(wlan);
-    } else jsExceptionHere(JSET_INTERNALERROR, "No CC3000 object!\n");
+    } else jsExceptionHere(JSET_INTERNALERROR, "No CC3000 object!");
     // jswrap_wlan_reconnect could fail, which would mean we have to do this all over again
   }
   return hadErrors;

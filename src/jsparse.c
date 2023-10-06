@@ -1121,7 +1121,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               jsvUnLock(nameVar);
             } else {
               // could have been a string...
-              jsExceptionHere(JSET_ERROR, "Cannot read property '%s' of %s", name, jsvIsUndefined(aVar) ? "undefined" : "null");
+              jsExceptionHere(JSET_ERROR, "Can't read property '%s' of %s", name, jsvIsUndefined(aVar) ? "undefined" : "null");
             }
           }
           jsvUnLock(parent);
@@ -1836,7 +1836,7 @@ NO_INLINE JsVar *jspeFactor() {
   } else if (lex->tk==LEX_REGEX) {
     JsVar *a = 0;
 #ifdef ESPR_NO_REGEX
-    jsExceptionHere(JSET_SYNTAXERROR, "RegEx are not supported in this version of Espruino\n");
+    jsExceptionHere(JSET_SYNTAXERROR, "RegEx are not supported in this version of Espruino");
 #else
     if (JSP_SHOULD_EXECUTE) {
       JsVar *regex = jslGetTokenValueAsVar();
@@ -1892,7 +1892,7 @@ NO_INLINE JsVar *jspeFactor() {
     return 0;
   }
   JSP_MATCH(LEX_EOF);
-  jsExceptionHere(JSET_SYNTAXERROR, "Unexpected end of Input\n");
+  jsExceptionHere(JSET_SYNTAXERROR, "Unexpected end of Input");
   return 0;
 }
 
@@ -2064,7 +2064,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
               }
               a = jsvNewFromBool(found);
             } else { // not built-in, just assume we can't do it
-              jsExceptionHere(JSET_ERROR, "Cannot use 'in' operator to search a %t", bv);
+              jsExceptionHere(JSET_ERROR, "Can't use 'in' operator to search a %t", bv);
               jsvUnLock(a);
               a = 0;
             }
@@ -2810,7 +2810,7 @@ NO_INLINE JsVar *jspeStatementFor() {
 
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
     if (loopCount<=0) {
-      jsExceptionHere(JSET_ERROR, "FOR Loop exceeded the maximum number of iterations ("STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS)")");
+      jsExceptionHere(JSET_ERROR, "FOR loop exceeded the maximum number of iterations ("STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS)")");
     }
 #endif
   }
@@ -2892,7 +2892,7 @@ NO_INLINE JsVar *jspeStatementReturn() {
       jsvUnLock(resultVar);
       execInfo.execute |= EXEC_RETURN; // Stop anything else in this function executing
     } else {
-      jsExceptionHere(JSET_SYNTAXERROR, "RETURN statement, but not in a function.\n");
+      jsExceptionHere(JSET_SYNTAXERROR, "RETURN statement, but not in a function.");
     }
   }
   jsvUnLock(result);

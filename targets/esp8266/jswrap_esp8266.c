@@ -312,7 +312,7 @@ uint32_t crc32(uint8_t *buf, uint32_t len) {
 }*/
 JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
   if (!jsvIsArray(jsData)) {
-    jsExceptionHere(JSET_ERROR, "Data must be an array.");
+    jsExceptionHere(JSET_ERROR, "Data must be an array");
     return NULL;
   }
   JSV_GET_AS_CHAR_ARRAY(data, len, jsData);
@@ -385,10 +385,10 @@ down occurs.
 */
 void   jswrap_ESP8266_deepSleep(JsVar *jsMicros, JsVar *jsOption) {
   if (!jsvIsInt(jsMicros)) {
-    jsExceptionHere(JSET_ERROR, "Invalid microseconds.");
+    jsExceptionHere(JSET_ERROR, "Invalid microseconds");
     return;
   }
-  
+
   uint8_t option = jsvGetInteger(jsOption);
   system_deep_sleep_set_option(option);
 

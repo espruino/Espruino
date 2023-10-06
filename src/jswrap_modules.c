@@ -109,7 +109,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
   if (!moduleExport) {
     const char *builtInJS = jswGetBuiltInJSLibrary(moduleNameBuf);
     if (builtInJS) {
-      JsVar *fileContents = jsvNewNativeString((char*)builtInJS, strlen(builtInJS));       
+      JsVar *fileContents = jsvNewNativeString((char*)builtInJS, strlen(builtInJS));
       if (fileContents) {
         moduleExport = jspEvaluateModule(fileContents);
         jsvUnLock(fileContents);
@@ -120,7 +120,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
   // If we have filesystem support, look on the filesystem
 #ifdef USE_FILESYSTEM
   if (!moduleExport) {
-    JsVar *fileContents = 0;        
+    JsVar *fileContents = 0;
     JsVar *modulePath = jsvNewFromString("node_modules/");
     if (modulePath) { // out of memory
       jsvAppendString(modulePath, moduleNameBuf);
@@ -138,8 +138,8 @@ JsVar *jswrap_require(JsVar *moduleName) {
       jsvUnLock(fileContents);
     }
   }
-#endif    
-   
+#endif
+
 
   if (moduleExport) { // Found - now save module
     JsVar *moduleList = jswrap_modules_getModuleList();
@@ -157,7 +157,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
     }
 #endif
     // nope. no module
-    jsExceptionHere(JSET_ERROR, "Module %s not found", moduleNameBuf);
+    jsExceptionHere(JSET_ERROR, "Module %q not found", moduleName);
   }
 
   return moduleExport;

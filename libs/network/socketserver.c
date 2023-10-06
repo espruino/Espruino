@@ -868,7 +868,7 @@ void serverListen(JsNetwork *net, JsVar *server, unsigned short port, SocketType
 
   int sckt = netCreateSocket(net, socketType, 0/*server*/, port, options);
   if (sckt<0) {
-    jsExceptionHere(JSET_INTERNALERROR, "Unable to create socket\n");
+    jsExceptionHere(JSET_INTERNALERROR, "Unable to create socket");
     jsvObjectSetChildAndUnLock(server, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
   } else {
     jsvObjectSetChildAndUnLock(server, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1));
@@ -935,7 +935,7 @@ JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback) 
 
 void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, JsVar *host, unsigned short portNumber) {
   if (!_socketConnectionOpen(httpClientReqVar)) {
-    jsExceptionHere(JSET_ERROR, "This socket is closed.");
+    jsExceptionHere(JSET_ERROR, "This socket is closed");
     return;
   }
   SocketType socketType = socketGetType(httpClientReqVar);
@@ -1043,7 +1043,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
 
 
   if(!host_addr) {
-    jsExceptionHere(JSET_INTERNALERROR, "Unable to locate host\n");
+    jsExceptionHere(JSET_INTERNALERROR, "Unable to locate host");
     // As this is already in the list of connections, an error will be thrown on idle anyway
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
     jsvUnLock(options);
@@ -1062,7 +1062,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
 
   int sckt =  netCreateSocket(net, socketType, host_addr, port, options);
   if (sckt<0) {
-    jsExceptionHere(JSET_INTERNALERROR, "Unable to create socket\n");
+    jsExceptionHere(JSET_INTERNALERROR, "Unable to create socket");
     // As this is already in the list of connections, an error will be thrown on idle anyway
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
   } else {
@@ -1148,7 +1148,7 @@ void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar
 
 void serverResponseWrite(JsVar *httpServerResponseVar, JsVar *data) {
   if (!_socketConnectionOpen(httpServerResponseVar)) {
-    jsExceptionHere(JSET_ERROR, "This socket is closed.");
+    jsExceptionHere(JSET_ERROR, "This socket is closed");
     return;
   }
   // Append data to sendData

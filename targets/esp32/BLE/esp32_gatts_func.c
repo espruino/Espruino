@@ -74,7 +74,7 @@ volatile uint8_t nusBufferLen = 0;
 
 
 void sendNotifBuffer() {
-  if(uart_gatts_if != ESP_GATT_IF_NONE){    
+  if(uart_gatts_if != ESP_GATT_IF_NONE){
     esp_err_t err = esp_ble_gatts_send_indicate(uart_gatts_if,0,uart_tx_handle,nusBufferLen,nusBuffer,false);
     // check error? resend if there was one? I think this just blocks if it can't send immediately
   }
@@ -88,11 +88,11 @@ void gatts_sendNUSNotification(int c) {
   nusBufferLen++;
   // If our buffer is full, send right away
   if(nusBufferLen >= BLE_NUS_MAX_DATA_LEN) {
-    sendNotifBuffer();    
+    sendNotifBuffer();
   }
   // otherwise, we'll wait until we hit idle next time when gatts_sendNUSNotificationIfNotEmpty will get called
 }
-void gatts_sendNUSNotificationIfNotEmpty() {  
+void gatts_sendNUSNotificationIfNotEmpty() {
   if (nusBufferLen)
     sendNotifBuffer();
 }
@@ -107,7 +107,7 @@ void emitNRFEvent(char *event,JsVar *args,int argCnt){
   jsvUnLock(nrf);
   jsvUnLock(callback);
   if(args) jsvUnLockMany(argCnt,args);
-} 
+}
 
 int getIndexFromGatts_if(esp_gatt_if_t gatts_if){
   for(int i = 0; i < ble_service_cnt;i++){
@@ -244,7 +244,7 @@ static void gatts_disconnect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
     // if we were on bluetooth and we disconnected, clear the input line so we're fresh next time (#2219)
     if (jsiGetConsoleDevice()==EV_BLUETOOTH) {
       jsiClearInputLine(false);
-      if (!jsiIsConsoleDeviceForced()) 
+      if (!jsiIsConsoleDeviceForced())
         jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), 0);
     }
     // TODO: Maybe use BLEP_DISCONNECTED handler rather than doing this here?
@@ -271,14 +271,14 @@ void gatts_createService(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
   gatts_service[param->reg.app_id].service_id.id.inst_id = 0x00;
   gatts_service[param->reg.app_id].gatts_if = gatts_if;
   bleuuid_TO_espbtuuid(gatts_service[param->reg.app_id].ble_uuid,&gatts_service[param->reg.app_id].service_id.id);
-  r = esp_ble_gatts_create_service(gatts_if, &gatts_service[param->reg.app_id].service_id, gatts_service[param->reg.app_id].num_handles);  
+  r = esp_ble_gatts_create_service(gatts_if, &gatts_service[param->reg.app_id].service_id, gatts_service[param->reg.app_id].num_handles);
   if(r) jsWarn("createService error:%d\n",r);
 }
 void gatts_add_char(){
   esp_err_t r;
   for(uint16_t pos=0; pos < ble_char_cnt; pos++){
     if(gatts_char[pos].service_pos == ble_service_pos && gatts_char[pos].char_handle == 0){
-      ble_char_pos = pos;    
+      ble_char_pos = pos;
       r = esp_ble_gatts_add_char(gatts_service[ble_service_pos].service_handle,&gatts_char[pos].char_uuid,
         gatts_char[pos].char_perm,gatts_char[pos].char_property,
         NULL,gatts_char[pos].char_control);
@@ -458,11 +458,11 @@ void gatts_char_init(JsvObjectIterator *ble_char_it){
   gatts_char[ble_char_pos].char_uuid.uuid.uuid16 = ble_uuid.uuid;
   gatts_char[ble_char_pos].char_perm = 0;
   if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "broadcast")))
-    gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_BROADCAST;  
+    gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_BROADCAST;
   if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "notify")))
-    gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_NOTIFY;  
+    gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_NOTIFY;
   if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "indicate")))
-    gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_INDICATE;  
+    gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_INDICATE;
   if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "readable"))){
     gatts_char[ble_char_pos].char_perm += ESP_GATT_PERM_READ;
     gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_READ;
@@ -501,7 +501,7 @@ void gatts_char_init(JsvObjectIterator *ble_char_it){
   if(charValue){
     char hiddenName[12];
     bleGetHiddenName(hiddenName,BLE_CHAR_VALUE,ble_char_pos);
-    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot,hiddenName,charValue);  
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot,hiddenName,charValue);
   }
   jsvUnLock(charVar);
 }
@@ -509,7 +509,7 @@ void gatts_service_struct_init(JsvObjectIterator *ble_service_it){
   ble_uuid_t ble_uuid;uint16_t handles;
   const char *errorStr;
   if((errorStr = bleVarToUUIDAndUnLock(&gatts_service[ble_service_pos].ble_uuid, jsvObjectIteratorGetKey(ble_service_it)))){
-    jsExceptionHere(JSET_ERROR,"invalid Service UUID:%s",errorStr);
+    jsExceptionHere(JSET_ERROR,"Invalid Service UUID: %s",errorStr);
   }
   handles = 1; //for service
   bleuuid_To_uuid128(gatts_service[ble_service_pos].ble_uuid,&adv_service_uuid128[ble_service_pos * 16]);
@@ -558,9 +558,9 @@ void gatts_structs_init(bool enableUART){
 }
 void gatts_getAdvServiceUUID(uint8_t *p_service_uuid, uint16_t service_len){
   p_service_uuid = adv_service_uuid128;
-  service_len = 16 * ble_service_cnt - 16;  
+  service_len = 16 * ble_service_cnt - 16;
 }
-  
+
 // Actually allocates gatts_services with enough space
 void gatts_create_structs(bool enableUART){
   ble_service_cnt = 0; ble_char_cnt = 0; ble_descr_cnt = 0;
@@ -572,7 +572,7 @@ void gatts_create_structs(bool enableUART){
       JsVar *serviceVar = jsvObjectIteratorGetValue(&ble_service_it);
       JsvObjectIterator ble_char_it;
       jsvObjectIteratorNew(&ble_char_it,serviceVar);
-      while(jsvObjectIteratorHasValue(&ble_char_it)){  
+      while(jsvObjectIteratorHasValue(&ble_char_it)){
         JsVar *charVar = jsvObjectIteratorGetValue(&ble_char_it);
         JsVar *charDescriptionVar = jsvObjectGetChildIfExists(charVar, "description");
         if (charDescriptionVar && jsvHasCharacterData(charDescriptionVar)) ble_descr_cnt++;
@@ -598,7 +598,7 @@ void gatts_create_structs(bool enableUART){
   gatts_char = calloc(sizeof(struct gatts_char_inst),ble_char_cnt);
   gatts_descr = calloc(sizeof(struct gatts_descr_inst),ble_descr_cnt);
 }
-  
+
 void gatts_set_services(JsVar *data){
   JsVar *options = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_SERVICE_OPTIONS);
   gatts_reset(true);
@@ -620,7 +620,7 @@ void gatts_set_services(JsVar *data){
   ble_char_pos = 0;
   ble_descr_pos = 0;
   gatts_reg_app();  //this starts tons of api calls creating gatts-events. Ends in gatts_reg_app
-  if (enableUART) 
+  if (enableUART)
     setBleUart();
   jsvUnLock(options);
 }

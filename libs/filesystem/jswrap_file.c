@@ -41,7 +41,7 @@ bool isSdSPISetup();
 // 'path' must be of JS_DIR_BUF_SIZE
 bool jsfsGetPathString(char *pathStr, JsVar *path) {
   if (jsvGetString(path, pathStr, JS_DIR_BUF_SIZE)==JS_DIR_BUF_SIZE) {
-    jsExceptionHere(JSET_ERROR, "File path too long\n");
+    jsExceptionHere(JSET_ERROR, "File path too long");
     return false;
   }
   return true;
@@ -71,10 +71,10 @@ void jsfsReportError(const char *msg, FRESULT res) {
 }
 
 bool jsfsInit() {
-   
+
 #ifndef LINUX
   if (!fat_initialised) {
-#ifndef USE_FLASHFS  
+#ifndef USE_FLASHFS
 #ifdef SD_CARD_ANYWHERE
     if (!isSdSPISetup()) {
 #ifdef SD_SPI
@@ -95,7 +95,7 @@ bool jsfsInit() {
 #endif // SD_SPI
     }
 #endif // SD_CARD_ANYWHER
-#endif // USE_FLASHFS 
+#endif // USE_FLASHFS
     FRESULT res;
 
     if ((res = f_mount(&jsfsFAT, "", 1)) != FR_OK) {
@@ -147,7 +147,7 @@ initialised, and some cards will not work reliably without one.
 void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
 #ifdef SD_CARD_ANYWHERE
   if (!jsvIsObject(spi)) {
-    jsExceptionHere(JSET_ERROR, "First argument is a %t, not an SPI object\n", spi);
+    jsExceptionHere(JSET_ERROR, "First argument is a %t, not an SPI object", spi);
     return;
   }
   if (!jshIsPinValid(csPin)) {
@@ -557,9 +557,9 @@ Seek to a certain position in the file
 */
 void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
   if (nBytes<0) {
-    if ( is_skip ) 
+    if ( is_skip )
 	  jsWarn("Bytes to skip must be >=0");
-    else 
+    else
 	  jsWarn("Position to seek to must be >=0");
     return;
   }
@@ -655,7 +655,7 @@ int jswrap_E_flashFatFS(JsVar* options) {
   else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_TYPEERROR, "'options' must be an object, or undefined");
   }
-  
+
   uint8_t init=flashFatFsInit(addr, sectors);
   if (init) {
     if ( format ) {
@@ -666,7 +666,7 @@ int jswrap_E_flashFatFS(JsVar* options) {
         jsExceptionHere(JSET_INTERNALERROR, "Flash Formatting error:",res);
         return false;
      }
-   }    
+   }
   }
   jsfsInit();
   return true;

@@ -107,7 +107,7 @@ as RTC GPIOs](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-re
 */
 void jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
   if (!rtc_gpio_is_valid_gpio(pin)) {
-    jsExceptionHere(JSET_ERROR, "Invalid pin!");
+    jsExceptionHere(JSET_ERROR, "Invalid pin");
     return;
   }
   esp_sleep_enable_ext0_wakeup(pin, level);
@@ -144,7 +144,7 @@ void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
       Pin pin = jshGetPinFromVarAndUnLock(jsvIteratorGetValue(&it));
       if (!rtc_gpio_is_valid_gpio(pin)) {
         jsvIteratorFree(&it);
-        jsExceptionHere(JSET_ERROR, "Invalid pin (%d)!", pin);
+        jsExceptionHere(JSET_ERROR, "Invalid pin");
         return;
       }
       pinSum += 1<<pin;
@@ -157,7 +157,7 @@ void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
     // handle case of a single pin anyway
     Pin pin = jshGetPinFromVar(pinVar);
     if (!rtc_gpio_is_valid_gpio(pin)) {
-      jsExceptionHere(JSET_ERROR, "Invalid pin (%d)!", pin);
+      jsExceptionHere(JSET_ERROR, "Invalid pin");
       return;
     }
     pinSum = 1<<pin;
@@ -221,7 +221,7 @@ JsVar *jswrap_ESP32_getState() {
   jsvObjectSetChildAndUnLock(esp32State, "sdkVersion",   jsvNewFromString(esp_get_idf_version()));
   jsvObjectSetChildAndUnLock(esp32State, "freeHeap",     jsvNewFromInteger(esp_get_free_heap_size()));
   jsvObjectSetChildAndUnLock(esp32State, "BLE",          jsvNewFromBool(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)));
-  jsvObjectSetChildAndUnLock(esp32State, "Wifi",         jsvNewFromBool(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)));  
+  jsvObjectSetChildAndUnLock(esp32State, "Wifi",         jsvNewFromBool(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)));
   jsvObjectSetChildAndUnLock(esp32State, "minHeap",      jsvNewFromInteger(heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT)));
   return esp32State;
 } // End of jswrap_ESP32_getState
@@ -252,7 +252,7 @@ void jswrap_ESP32_setBLE_Debug(int level){
  "params"  : [
    ["enable", "bool", "switches Bluetooth on or off" ]
  ],
- "ifdef"  : "BLUETOOTH" 
+ "ifdef"  : "BLUETOOTH"
 }
 Switches Bluetooth off/on, removes saved code from Flash, resets the board, and
 on restart creates jsVars depending on available heap (actual additional 1800)
@@ -271,7 +271,7 @@ void jswrap_ESP32_enableBLE(bool enable) { //may be later, we will support BLEen
  "generate"  : "jswrap_ESP32_enableWifi",
  "params"  : [
    ["enable", "bool", "switches Wifi on or off" ]
- ] 
+ ]
 }
 Switches Wifi off/on, removes saved code from Flash, resets the board, and on
 restart creates jsVars depending on available heap (actual additional 3900)

@@ -182,7 +182,7 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   // probably had to miss some stuff off the end of the string
   // in jsvGetString
   if (endOfInteger == &buffer[sizeof(buffer)-1]) {
-    jsExceptionHere(JSET_ERROR, "String too big to convert to integer\n");
+    jsExceptionHere(JSET_ERROR, "String too big to convert to integer");
     return jsvNewFromFloat(NAN);
   }
   return jsvNewFromLongInteger(i);
@@ -210,7 +210,7 @@ JsVarFloat jswrap_parseFloat(JsVar *v) {
   // probably had to miss some stuff off the end of the string
   // in jsvGetString
   if (endOfFloat == &buffer[sizeof(buffer)-1]) {
-    jsExceptionHere(JSET_ERROR, "String too big to convert to float\n");
+    jsExceptionHere(JSET_ERROR, "String too big to convert to float");
     return NAN;
   }
   return f;
@@ -486,7 +486,7 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg) {
     while (jsvStringIteratorHasChar(&it)) {
       char ch = jsvStringIteratorGetCharAndNext(&it);
       if (ch>>7) {
-        jsExceptionHere(JSET_ERROR, "ASCII only\n");
+        jsExceptionHere(JSET_ERROR, "ASCII only");
         break;
       }
       if (ch!='%') {
@@ -496,7 +496,7 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg) {
         char lo = (char)jsvStringIteratorGetCharAndNext(&it);
         int v = (char)hexToByte(hi,lo);
         if (v<0) {
-          jsExceptionHere(JSET_ERROR, "Invalid URI\n");
+          jsExceptionHere(JSET_ERROR, "Invalid URI");
           break;
         }
         ch = (char)v;

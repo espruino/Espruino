@@ -9,7 +9,7 @@
  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
  ----------------------------------------------------------------------------------------
-  Bitmap font creator for Graphics custom fonts
+  Bitmap font creator for Espruino Graphics custom fonts
 
   Takes input as a PNG font map, PBFF, or bitfontmaker2 JSON
 

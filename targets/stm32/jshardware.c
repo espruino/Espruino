@@ -784,7 +784,7 @@ void jshSetupRTC(bool isUsingLSI) {
   RCC_RTCCLKConfig(isUsingLSI ? RCC_RTCCLKSource_LSI : RCC_RTCCLKSource_LSE); // set clock source to low speed internal
   RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
   RTC_WaitForSynchro();
-  jshSetupRTCPrescaler(isUsingLSI);  
+  jshSetupRTCPrescaler(isUsingLSI);
 }
 #endif
 
@@ -931,7 +931,7 @@ void jshDelayMicroseconds(int microsec) {
 void jshPinSetState(Pin pin, JshPinState state) {
   // if this is about to mess up the neopixel output, so reset our var so we know to re-init
   if (pin == jshNeoPixelPin)
-    jshNeoPixelPin = PIN_UNDEFINED;  
+    jshNeoPixelPin = PIN_UNDEFINED;
   /* Make sure we kill software PWM if we set the pin state
    * after we've started it */
   if (BITFIELD_GET(jshPinSoftPWM, pin)) {
@@ -2017,7 +2017,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
     EXTI_Init(&s);
 
     return shouldWatch ? (EV_EXTI0+pinInfo[pin].pin)  : EV_NONE;
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin");
   return EV_NONE;
 }
 
@@ -2126,7 +2126,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     usartIRQ = USART6_IRQn;
 #endif
   } else {
-    jsExceptionHere(JSET_INTERNALERROR, "Unknown serial port device.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unknown serial port device");
     return;
   }
 
@@ -2153,7 +2153,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     USART_InitStructure.USART_WordLength = USART_WordLength_9b;
   }
   else {
-    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial byte size.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial byte size");
     return;
   }
 
@@ -2164,7 +2164,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     USART_InitStructure.USART_StopBits = USART_StopBits_2;
   }
   else {
-    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial stopbits length.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial stopbits length");
     return;
   } // FIXME: How do we handle 1.5 stopbits?
 
@@ -2180,7 +2180,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     USART_InitStructure.USART_Parity = USART_Parity_Even;
   }
   else {
-    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial parity mode.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial parity mode");
     return;
   }
 
@@ -2234,7 +2234,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   if (!SPIx) return; // failed to find matching pins
 
   // this could be about to mess up the neopixel output, so reset our var so we know to re-init
-  jshNeoPixelPin = PIN_UNDEFINED;  
+  jshNeoPixelPin = PIN_UNDEFINED;
 
   SPI_InitTypeDef SPI_InitStructure;
   SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;

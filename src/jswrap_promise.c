@@ -367,7 +367,7 @@ JsVar *jswrap_promise_reject(JsVar *data) {
 
 void _jswrap_promise_add(JsVar *parent, JsVar *callback, bool resolve) {
   if (!jsvIsFunction(callback)) {
-    jsExceptionHere(JSET_TYPEERROR, "Callback must be a function, got %t", callback);
+    jsExceptionHere(JSET_TYPEERROR, "Callback is not a function");
     return;
   }
 

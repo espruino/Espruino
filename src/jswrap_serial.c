@@ -338,9 +338,9 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
       jsserialEventCallbackInit(parent, &inf);
     }
     if (inf.pinCK != PIN_UNDEFINED)
-      jsExceptionHere(JSET_ERROR, "Software Serial CK not implemented yet\n");
+      jsExceptionHere(JSET_ERROR, "Software Serial CK not implemented yet");
 #else
-    jsExceptionHere(JSET_ERROR, "No Software Serial in this build\n");
+    jsExceptionHere(JSET_ERROR, "No Software Serial in this build");
 #endif
   }
 }

@@ -2131,7 +2131,7 @@ JsVarInt jsvGetInteger(const JsVar *v) {
   if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {
     char buf[32];
     if (jsvGetString(v, buf, sizeof(buf))==sizeof(buf))
-      jsExceptionHere(JSET_ERROR, "String too big to convert to integer\n");
+      jsExceptionHere(JSET_ERROR, "String too big to convert to integer");
     else
       return (JsVarInt)stringToInt(buf);
   }
@@ -2197,7 +2197,7 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
   if (jsvIsString(v)) {
     char buf[64];
     if (jsvGetString(v, buf, sizeof(buf))==sizeof(buf)) {
-      jsExceptionHere(JSET_ERROR, "String too big to convert to float\n");
+      jsExceptionHere(JSET_ERROR, "String too big to convert to float");
     } else {
       if (buf[0]==0) return 0; // empty string -> 0
       if (!strcmp(buf,"Infinity")) return INFINITY;
@@ -2223,7 +2223,7 @@ JsVar *jsvAsNumber(JsVar *var) {
     // handle strings like this, in case they're too big for an int
     char buf[64];
     if (jsvGetString(var, buf, sizeof(buf))==sizeof(buf)) {
-      jsExceptionHere(JSET_ERROR, "String too big to convert to integer\n");
+      jsExceptionHere(JSET_ERROR, "String too big to convert to integer");
       return jsvNewFromFloat(NAN);
     } else
       return jsvNewFromLongInteger(stringToInt(buf));

@@ -247,7 +247,7 @@ bool jshPinInput(
     value = jshPinGetValue(pin);
   }
   // Handle pin being invalid.
-  else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+  else jsExceptionHere(JSET_ERROR, "Invalid pin");
   return value;
 }
 
@@ -265,7 +265,7 @@ void jshPinOutput(
       jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
   }
   // Handle pin being invalid.
-  else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+  else jsExceptionHere(JSET_ERROR, "Invalid pin");
 }
 
 

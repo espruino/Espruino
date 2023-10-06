@@ -238,11 +238,11 @@ Create an Array Buffer object
  */
 JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
   if (byteLength < 0) {
-    jsExceptionHere(JSET_ERROR, "Invalid length for ArrayBuffer\n");
+    jsExceptionHere(JSET_ERROR, "Invalid length for ArrayBuffer");
     return 0;
   }
   if (byteLength > JSV_ARRAYBUFFER_MAX_LENGTH) {
-    jsExceptionHere(JSET_ERROR, "ArrayBuffer too long\n");
+    jsExceptionHere(JSET_ERROR, "ArrayBuffer too long");
     return 0;
   }
   // try and use a flat string - which will be faster
@@ -531,11 +531,11 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
     copyData = true; // so later on we'll populate this
   }
   if (!arrayBuffer) {
-    jsExceptionHere(JSET_ERROR, "Unsupported first argument of type %t\n", arr);
+    jsExceptionHere(JSET_ERROR, "Unsupported first argument of type %t", arr);
     return 0;
   }
   if (length==0) {
-    length = ((JsVarInt)jsvGetArrayBufferLength(arrayBuffer)-byteOffset) / (JsVarInt)JSV_ARRAYBUFFER_GET_SIZE(type); 
+    length = ((JsVarInt)jsvGetArrayBufferLength(arrayBuffer)-byteOffset) / (JsVarInt)JSV_ARRAYBUFFER_GET_SIZE(type);
     if (length<0) length=0;
   }
   JsVar *typedArr = jsvNewWithFlags(JSV_ARRAYBUFFER);

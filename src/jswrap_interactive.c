@@ -556,7 +556,7 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVarArr, bool isTimeout) {
       if (!watchPtr)
         jsvObjectIteratorRemoveAndGotoNext(&it, timerArrayPtr);
       else
-        jsvObjectIteratorNext(&it); 
+        jsvObjectIteratorNext(&it);
       jsvUnLock2(watchPtr, timerPtr);
     }
     jsvObjectIteratorFree(&it);
@@ -564,7 +564,7 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVarArr, bool isTimeout) {
     JsVar *idVar = jsvGetArrayItem(idVarArr, 0);
     if (jsvIsUndefined(idVar)) {
       const char *name = isTimeout?"Timeout":"Interval";
-      jsExceptionHere(JSET_ERROR, "clear%s(undefined) not allowed. Use clear%s() instead.", name, name);
+      jsExceptionHere(JSET_ERROR, "clear%s(undefined) not allowed. Use clear%s() instead", name, name);
     } else {
       JsVar *child = jsvIsBasic(idVar) ? jsvFindChildFromVar(timerArrayPtr, idVar, false) : 0;
       if (child) {

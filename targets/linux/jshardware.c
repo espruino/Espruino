@@ -80,7 +80,7 @@ void sysfs_write(const char *path, const char *data) {
   if (f>=0) {
     write(f, data, strlen(data));
     close(f);
-  } 
+  }
 }
 
 void sysfs_write_int(const char *path, JsVarInt val) {
@@ -95,7 +95,7 @@ void sysfs_read(const char *path, char *data, unsigned int len) {
   if (f>=0) {
     amt = read(f, data, len-1);
     close(f);
-  } 
+  }
   if (amt<0) amt=0;
   data[amt]=0;
 }
@@ -353,7 +353,7 @@ void jshInit() {
   }
 #ifdef SYSFS_GPIO_DIR
   for (i=0;i<JSH_PIN_COUNT;i++) {
-    gpioShouldWatch[i] = false;    
+    gpioShouldWatch[i] = false;
   }
 #endif
 
@@ -398,10 +398,10 @@ void jshIdle() {
 
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
   long initialSerial = 0;
-  long long serial = 0xDEADDEADDEADDEADL; 
+  long long serial = 0xDEADDEADDEADDEADL;
   FILE *f = fopen("/proc/cpuinfo", "r");
   if (f) {
-    char line[256]; 
+    char line[256];
     while (fgets(line, 256, f)) {
       if (strncmp(line, "Serial", 6) == 0) {
         char serial_string[16 + 1];
@@ -602,7 +602,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
 #ifdef USE_WIRINGPI
         wiringPiISR(pin, INT_EDGE_BOTH, irqEXTIs[exti-EV_EXTI0]);
 #endif
-      } else 
+      } else
         jsError("You can only have a maximum of 16 watches!");
     }
     if (!shouldWatch || !exti) {
@@ -616,7 +616,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
 
     }
     return shouldWatch ? exti : EV_NONE;
-  } else jsError("Invalid pin!");
+  } else jsError("Invalid pin");
   return EV_NONE;
 }
 
@@ -636,12 +636,12 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   assert(DEVICE_IS_USART(device));
   if (ioDevices[device]) close(ioDevices[device]);
   ioDevices[device] = 0;
-  
+
   if (inf->errorHandling) {
     jsExceptionHere(JSET_ERROR, "Linux Espruino builds can't handle framing/parity errors (errors:true)");
     return;
-  } 
-  
+  }
+
   char path[256];
   if (jshGetDevicePath(device, path, sizeof(path))) {
     ioDevices[device] = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK);
@@ -695,10 +695,10 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
         cfmakeraw(&settings);
 
         settings.c_cflag &= ~(PARENB|PARODD); // none
-        
+
         if (inf->parity == 1) settings.c_cflag |= PARENB|PARODD; // odd
         if (inf->parity == 2) settings.c_cflag |= PARENB; // even
-        
+
         settings.c_cflag &= ~CSTOPB;
         if (inf->stopbits==2) settings.c_cflag |= CSTOPB;
 
@@ -790,14 +790,14 @@ bool jshSleep(JsSysTime timeUntilWake) {
   for (pin=0;pin<JSH_PIN_COUNT;pin++)
     if (gpioShouldWatch[pin]) hasWatches = true;
 #endif
- 
+
   JsVarFloat usecfloat = jshGetMillisecondsFromTime(timeUntilWake)*1000;
   unsigned int usecs = (usecfloat < 0xFFFFFFFF) ? (unsigned int)usecfloat : 0xFFFFFFFF;
-  if (hasWatches && usecs>1000) 
+  if (hasWatches && usecs>1000)
     usecs=1000; // don't sleep much if we have watches - we need to keep polling them
   if (usecs > 50000)
     usecs = 50000; // don't want to sleep too much (user input/HTTP/etc)
-  if (usecs >= 1000)  
+  if (usecs >= 1000)
     jshDelayMicroseconds(usecs);
   return true;
 }

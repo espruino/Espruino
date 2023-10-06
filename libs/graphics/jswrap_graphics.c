@@ -641,11 +641,11 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
       if (gfx.data.bpp==1)
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE);
       else {
-        jsExceptionHere(JSET_ERROR, "vertical_byte only works for 1bpp ArrayBuffers\n");
+        jsExceptionHere(JSET_ERROR, "vertical_byte only works for 1bpp ArrayBuffers");
         return 0;
       }
       if (gfx.data.height&7) {
-        jsExceptionHere(JSET_ERROR, "height must be a multiple of 8 when using vertical_byte\n");
+        jsExceptionHere(JSET_ERROR, "height must be a multiple of 8 when using vertical_byte");
         return 0;
       }
     }

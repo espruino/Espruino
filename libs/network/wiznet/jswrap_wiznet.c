@@ -108,7 +108,7 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
     jshSPISetup(ETH_SPI, &inf);
     spiDevice = ETH_SPI;
 #else
-    jsExceptionHere(JSET_ERROR, "No default SPI on this platform - you must specify one.");
+    jsExceptionHere(JSET_ERROR, "No default SPI on this platform - you must specify one");
     return 0;
 #endif
   }
@@ -418,16 +418,16 @@ JsVar * jswrap_ethernet_getStatus( JsVar *wlanObj, JsVar *callback) {
 
   jsvObjectSetChildAndUnLock(jsStatus, "state", jsvNewFromString(state[networkState]));
 
-  ctlwizchip(CW_GET_ID,(void*)tmpstr);  
+  ctlwizchip(CW_GET_ID,(void*)tmpstr);
   jsvObjectSetChildAndUnLock(jsStatus, "id",jsvNewFromString(tmpstr));
 
   ctlwizchip(CW_GET_PHYLINK, (void*)&tmp);
   jsvObjectSetChildAndUnLock(jsStatus, "phylink", jsvNewFromString(phylink[tmp]));
-  
+
   ctlwizchip(CW_GET_PHYPOWMODE,(void*)&tmp);
   jsvObjectSetChildAndUnLock(jsStatus, "phypowmode", jsvNewFromString(phypowm[tmp]));
 
-#if  _WIZCHIP_ == 5500 
+#if  _WIZCHIP_ == 5500
   wiz_PhyConf tmpPhycConf;
   ctlwizchip(CW_GET_PHYCONF,(void*)&tmpPhycConf);
   jsvObjectSetChildAndUnLock(jsStatus, "by", jsvNewFromInteger(tmpPhycConf.by));
@@ -445,6 +445,6 @@ JsVar * jswrap_ethernet_getStatus( JsVar *wlanObj, JsVar *callback) {
     params[1] = jsStatus;
     jsiQueueEvents(NULL, callback, params, 2);
     jsvUnLock(params[0]);
-  } 
+  }
   return jsStatus;
 }

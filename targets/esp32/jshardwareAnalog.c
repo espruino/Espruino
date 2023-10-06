@@ -2,7 +2,7 @@
  * This file is designed to support Analog functions in Espruino,
  * a JavaScript interpreter for Microcontrollers designed by Gordon Williams
  *
- * Copyright (C) 2016 by Juergen Marsch 
+ * Copyright (C) 2016 by Juergen Marsch
  *
  * This Source Code Form is subject to the terms of the Mozilla Publici
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -86,13 +86,13 @@ void initADC(int ADCgroup){
     for(int i = 0; i < adc_channel_max; i++){ adc_channel[i] = ADC_ATTEN_11db; }
     break;
   case 2:
-    jsExceptionHere(JSET_ERROR, "not implemented\n");
+    jsExceptionHere(JSET_ERROR, "Not implemented");
     break;
   case 3:
-    jsExceptionHere(JSET_ERROR, "not implemented\n");
+    jsExceptionHere(JSET_ERROR, "Not implemented");
     break;
   default:
-    jsExceptionHere(JSET_ERROR, "out of range\n");
+    jsExceptionHere(JSET_ERROR, "Out of range");
   break;
   }
 }
@@ -115,14 +115,14 @@ int readADC(Pin pin){
   value = adc1_get_voltage(channel);
   return value;
   }
-  else return -1;  
+  else return -1;
 }
 
 void writeDAC(Pin pin,uint8_t value){
   dac_channel_t channel;
   if(value > 255){
-  jsExceptionHere(JSET_ERROR, "not implemented, only 8 bit supported\n");
-  return;
+    jsExceptionHere(JSET_ERROR, "Not implemented, only 8 bit supported");
+    return;
   }
   channel = pinToDacChannel(pin);
   if(channel >= 0) dac_out_voltage(channel, value);

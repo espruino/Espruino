@@ -230,7 +230,7 @@ bool jsserialEventCallbackInit(JsVar *parent, JshUSARTInfo *inf) {
     jsvUnLock(list);
     jshSetEventCallback(exti, jsserialEventCallback);
   } else {
-    jsExceptionHere(JSET_ERROR, "Unable to watch pin %p, no Software Serial RX\n", inf->pinRX);
+    jsExceptionHere(JSET_ERROR, "Unable to watch pin %p, no Software Serial RX", inf->pinRX);
     return false;
   }
 

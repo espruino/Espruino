@@ -377,7 +377,7 @@ void jsjFactor() {
     JSP_ASSERT_MATCH(LEX_R_NULL);
     if (jit.phase == JSJP_EMIT) {
       jsjcLiteral32(0, JSV_NULL);
-      jsjcCall(jsvNewWithFlags);
+      jsjcCall(jsvNewWithFlagsX);
       jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
   } else if (lex->tk==LEX_R_UNDEFINED) {
@@ -718,7 +718,7 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
             }
             a = jsvNewFromBool(found);
           } else { // not built-in, just assume we can't do it
-            jsExceptionHere(JSET_ERROR, "Cannot use 'in' operator to search a %t", bv);
+            jsExceptionHere(JSET_ERROR, "Can't use 'in' operator to search a %t", bv);
             jsvUnLock(a);
             a = 0;
           }

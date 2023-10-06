@@ -548,7 +548,7 @@ ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
   bool out = JSHPINSTATE_IS_OUTPUT(state);
   /* bool af = JSHPINSTATE_IS_AF(state);
    * af function cannot be configured here because we do not know the af
-   * name... It should be done on the caller of jshPinSetState 
+   * name... It should be done on the caller of jshPinSetState
    * (This is due to a difference between SPL and LL libraries) */
   bool pullup = JSHPINSTATE_IS_PULLUP(state);
   bool pulldown = JSHPINSTATE_IS_PULLDOWN(state);
@@ -691,7 +691,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
     usartIRQ = USART3_IRQn;
 #endif
   } else {
-    jsExceptionHere(JSET_INTERNALERROR, "Unknown serial port device.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unknown serial port device");
     return;
   }
 
@@ -715,7 +715,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
     USART_InitStructure.DataWidth = LL_USART_DATAWIDTH_9B;
   }
   else {
-    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial byte size.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial byte size");
     return;
   }
 
@@ -726,7 +726,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
     USART_InitStructure.StopBits = LL_USART_STOPBITS_2;
   }
   else {
-    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial stopbits length.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial stopbits length");
     return;
   } // FIXME: How do we handle 1.5 stopbits?
 
@@ -742,7 +742,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf){
     USART_InitStructure.Parity = LL_USART_PARITY_EVEN;
   }
   else {
-    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial parity mode.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial parity mode");
     return;
   }
 
@@ -1518,7 +1518,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
     LL_EXTI_Init(&s);
 
     return shouldWatch ? (EV_EXTI0+pinInfo[pin].pin)  : EV_NONE;
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin");
   return EV_NONE;
 }
 

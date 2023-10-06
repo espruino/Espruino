@@ -31,7 +31,7 @@
 #include "BLE/esp32_gattc_func.h"
 #include "BLE/esp32_bluetooth_utils.h"
 #include "jshardwareESP32.h"
- 
+
 volatile BLEStatus bleStatus;
 ble_uuid_t bleUUIDFilter;
 uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
@@ -44,20 +44,20 @@ void jsble_init(){
   if(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) {
     ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
     if(ret) {
-      jsExceptionHere(JSET_ERROR,"mem release failed:%x\n",ret);
+      jsExceptionHere(JSET_ERROR,"mem release failed:%x",ret);
       return;
     }
-  
+
     if(initController()) return;
     if(initBluedroid()) return;
     if(registerCallbacks()) return;
     setMtu();
-    gap_init_security();   
+    gap_init_security();
     // force advertising with the right info
     bleStatus |= BLE_IS_ADVERTISING;
   }
   else{
-    ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT); 
+    ret = esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
     jsWarn("Bluetooth is disabled per ESP32.enableBLE(false)\n");
   }
 }
@@ -121,7 +121,7 @@ void jsble_restart_softdevice(JsVar *jsFunction){
 }
 
 uint32_t jsble_advertising_start() {
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
   esp_err_t status;
   if (bleStatus & BLE_IS_ADVERTISING) return;
@@ -130,7 +130,7 @@ uint32_t jsble_advertising_start() {
   return status;
 }
 void jsble_advertising_stop() {
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
     return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
 
   esp_err_t status;
@@ -143,7 +143,7 @@ void jsble_advertising_stop() {
 }
 /** Is BLE connected to any device at all? */
 bool jsble_has_connection(){
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
     return false; // ESP32.enableBLE(false)
 #if CENTRAL_LINK_COUNT>0
   return (m_central_conn_handles[0] != BLE_GATT_HANDLE_INVALID) ||
@@ -155,7 +155,7 @@ bool jsble_has_connection(){
 
 /** Is BLE connected to a central device at all? */
 bool jsble_has_central_connection(){
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
     return false; // ESP32.enableBLE(false)
 #if CENTRAL_LINK_COUNT>0
   return (m_central_conn_handles[0] != BLE_GATT_HANDLE_INVALID);
@@ -166,8 +166,8 @@ bool jsble_has_central_connection(){
 
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
 bool jsble_has_peripheral_connection(){
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
-    return false;  
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
+    return false;
   return (m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID);
 }
 
@@ -187,8 +187,8 @@ bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
 }
 /// Scanning for advertising packets
 uint32_t jsble_set_scanning(bool enabled, JsVar *options){
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
-    return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)  
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
+    return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
 
   if (enabled) {
     if (bleStatus & BLE_IS_SCANNING) return 0;
@@ -218,16 +218,16 @@ uint32_t jsble_set_rssi_scan(bool enabled){
  * only do this *once* - so to change it we must reset the softdevice and
  * then call this again */
 void jsble_set_services(JsVar *data){
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
-    return; // ESP32.enableBLE(false)  
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
+    return; // ESP32.enableBLE(false)
 
   gatts_set_services(data);
 }
 
 /// Disconnect from the given connection
 uint32_t jsble_disconnect(uint16_t conn_handle){
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
-    return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)   
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
+    return ESP_ERR_INVALID_STATE; // ESP32.enableBLE(false)
 
   return gattc_disconnect(conn_handle);
 }
@@ -241,7 +241,7 @@ void jsble_send_hid_input_report(uint8_t *data, int length){
 
 /// Connect to the given peer address. When done call bleCompleteTask
 void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options){
-  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) 
+  if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
     return; // ESP32.enableBLE(false)
   // Ignore options for now
   gattc_connect(peer_addr, options);

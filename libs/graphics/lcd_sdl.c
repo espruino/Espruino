@@ -76,12 +76,12 @@ void lcdSetPixel_SDL(JsGraphics *gfx, int x, int y, unsigned int col) {
 
 void lcdInit_SDL(JsGraphics *gfx) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0 ) {
-    jsExceptionHere(JSET_ERROR, "SDL_Init failed\n");
+    jsExceptionHere(JSET_ERROR, "SDL_Init failed");
     exit(1);
   }
   if (!(screen = SDL_SetVideoMode(gfx->data.width, gfx->data.height, 32, SDL_SWSURFACE)))
   {
-    jsExceptionHere(JSET_ERROR, "SDL_SetVideoMode failed\n");
+    jsExceptionHere(JSET_ERROR, "SDL_SetVideoMode failed");
     SDL_Quit();
     exit(1);
   }

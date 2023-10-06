@@ -14,7 +14,7 @@
  * Contains ESP32 board specific functions.
  * ----------------------------------------------------------------------------
  */
- 
+
 #include "jshardware.h"
 #include "jshardwareI2c.h"
 #include "driver/i2c.h"
@@ -28,12 +28,12 @@
 #define ACK_VAL  0x0     /*!< I2C ack value */
 #define NACK_VAL   0x1     /*!< I2C nack value */
 
-/* To do: 
+/* To do:
  support both i2c ports - done
  Test!
  Stop bits param -  bool sendStop
   https://esp-idf.readthedocs.io/en/latest/api/i2c.html
-  
+
  */
 
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
@@ -42,7 +42,7 @@ static esp_err_t checkError( char * caller, esp_err_t ret ) {
   switch(ret) {
     case ESP_OK: break;
   case ESP_ERR_INVALID_ARG: {
-    jsExceptionHere(JSET_ERROR, "%s:, Parameter error\n", caller );
+    jsExceptionHere(JSET_ERROR, "%s:, Parameter error", caller );
     break;
   }
   case ESP_FAIL: {
@@ -85,7 +85,7 @@ int getI2cFromDevice( IOEventFlags device  ) {
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   int i2c_master_port = getI2cFromDevice(device);
   if (i2c_master_port == -1) {
-    jsExceptionHere(JSET_ERROR,"Only I2C1 and I2C2 supported"); 
+    jsExceptionHere(JSET_ERROR,"Only I2C1 and I2C2 supported");
     return;
   }
   if(jshIsDeviceInitialised(device)){
@@ -101,7 +101,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   if ( i2c_master_port == I2C_NUM_1 ) {
     scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 16;
     sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 17;
-  }  
+  }
 
   i2c_config_t conf;
   conf.mode = I2C_MODE_MASTER;
@@ -112,7 +112,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   conf.master.clk_speed = info->bitrate;
   esp_err_t err=i2c_param_config(i2c_master_port, &conf);
   if ( err == ESP_ERR_INVALID_ARG ) {
-    jsExceptionHere(JSET_ERROR,"jshI2CSetup: Invalid arguments"); 
+    jsExceptionHere(JSET_ERROR,"jshI2CSetup: Invalid arguments");
   return;
   }
   err=i2c_driver_install(i2c_master_port, conf.mode, 0, 0, 0);
@@ -120,7 +120,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
     jsDebug(DBG_INFO, "jshI2CSetup: driver installed, sda: %d scl: %d freq: %d, \n", sda, scl, info->bitrate);
     jshSetDeviceInitialised(device, true);
   } else {
-    checkError("jshI2CSetup",err); 
+    checkError("jshI2CSetup",err);
   }
 }
 
@@ -128,17 +128,17 @@ void jshI2CWrite(IOEventFlags device,
   unsigned char address,
   int nBytes,
   const unsigned char *data,
-  bool sendStop) {  
+  bool sendStop) {
   int i2c_master_port = getI2cFromDevice(device);
   if (i2c_master_port == -1) {
-    jsExceptionHere(JSET_ERROR,"Only I2C1 and I2C2 supported"); 
+    jsExceptionHere(JSET_ERROR,"Only I2C1 and I2C2 supported");
     return;
   }
   esp_err_t ret;
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
   ret=i2c_master_start(cmd);
   ret=i2c_master_write_byte(cmd, address << 1 | I2C_MASTER_WRITE, ACK_CHECK_EN);
-  ret=i2c_master_write(cmd, data, nBytes, ACK_CHECK_EN);  
+  ret=i2c_master_write(cmd, data, nBytes, ACK_CHECK_EN);
   if ( sendStop ) ret=i2c_master_stop(cmd);
   ret = i2c_master_cmd_begin(i2c_master_port, cmd, 1000 / portTICK_RATE_MS); // 1000 seems very large for ticks_to_wait???
   i2c_cmd_link_delete(cmd);
@@ -155,9 +155,9 @@ void jshI2CRead(IOEventFlags device,
   }
   int i2c_master_port = getI2cFromDevice(device);
   if (i2c_master_port == -1) {
-    jsExceptionHere(JSET_ERROR,"Only I2C1 and I2C2 supported"); 
+    jsExceptionHere(JSET_ERROR,"Only I2C1 and I2C2 supported");
     return;
-  }  
+  }
   esp_err_t ret;
   i2c_cmd_handle_t cmd = i2c_cmd_link_create();
   ret=i2c_master_start(cmd);
@@ -169,5 +169,5 @@ void jshI2CRead(IOEventFlags device,
   if ( sendStop ) ret=i2c_master_stop(cmd);
   ret = i2c_master_cmd_begin(i2c_master_port, cmd, 1000 / portTICK_RATE_MS);
   i2c_cmd_link_delete(cmd);
-  checkError(  "jshI2CRead", ret);  
+  checkError(  "jshI2CRead", ret);
 }

@@ -654,11 +654,11 @@ information
  */
 JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props) {
   if (!jsvIsObject(parent)) {
-    jsExceptionHere(JSET_ERROR, "First argument must be an object, got %t\n", parent);
+    jsExceptionHere(JSET_ERROR, "First argument must be an object, got %t", parent);
     return 0;
   }
   if (!jsvIsObject(props)) {
-    jsExceptionHere(JSET_ERROR, "Second argument must be an object, got %t\n", props);
+    jsExceptionHere(JSET_ERROR, "Second argument must be an object, got %t", props);
     return 0;
   }
 
@@ -709,7 +709,7 @@ prototype` but is the 'proper' ES6 way of doing it
 JsVar *jswrap_object_setPrototypeOf(JsVar *object, JsVar *proto) {
   JsVar *v = (jsvIsFunction(object)||jsvIsObject(object)) ? jsvFindChildFromString(object, "__proto__", true) : 0;
   if (!jsvIsName(v)) {
-    jsExceptionHere(JSET_TYPEERROR, "Can't extend %t\n", v);
+    jsExceptionHere(JSET_TYPEERROR, "Can't extend %t", v);
   } else {
     jsvSetValueOfName(v, proto);
   }
@@ -743,7 +743,7 @@ JsVar *jswrap_object_assign(JsVar *args) {
     if (jsvIsUndefined(arg) || jsvIsNull(arg)) {
       // ignore
     } else if (!jsvIsObject(arg)) {
-      jsExceptionHere(JSET_TYPEERROR, "Expecting Object, got %t\n", arg);
+      jsExceptionHere(JSET_TYPEERROR, "Expecting Object, got %t", arg);
       error = true;
     } else if (!result) {
       result = jsvLockAgain(arg);
@@ -863,7 +863,7 @@ An alias for `Object.on`
 #ifndef ESPR_EMBED
 void jswrap_object_on_X(JsVar *parent, JsVar *event, JsVar *listener, bool addFirst) {
   if (!jsvHasChildren(parent)) {
-    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
+    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc");
     return;
   }
   if (!jsvIsString(event)) {
@@ -953,7 +953,7 @@ For more information see `Object.on`
 #ifndef ESPR_EMBED
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   if (!jsvHasChildren(parent)) {
-    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
+    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc");
     return;
   }
   if (!jsvIsString(event)) {
@@ -1014,7 +1014,7 @@ For more information see `Object.on`
  */
 void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) {
   if (!jsvHasChildren(parent)) {
-    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
+    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc");
     return;
   }
   if (jsvIsString(event)) {
@@ -1067,7 +1067,7 @@ For more information see `Object.on`
  */
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   if (!jsvHasChildren(parent)) {
-    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc.");
+    jsExceptionHere(JSET_TYPEERROR, "Parent must be an object - not a String, Integer, etc");
     return;
   }
   if (jsvIsString(event)) {

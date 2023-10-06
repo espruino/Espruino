@@ -3250,7 +3250,7 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
     return;
   }
   if (!jsble_has_peripheral_connection()) {
-    jsExceptionHere(JSET_ERROR, "Not connected!");
+    jsExceptionHere(JSET_ERROR, "Not connected");
     return;
   }
   if (bleStatus & BLE_IS_SENDING_HID) {
@@ -3258,7 +3258,7 @@ void jsble_send_hid_input_report(uint8_t *data, int length) {
     return;
   }
   if (length > HID_KEYS_MAX_LEN) {
-    jsExceptionHere(JSET_ERROR, "BLE HID report too long - max length = %d\n", HID_KEYS_MAX_LEN);
+    jsExceptionHere(JSET_ERROR, "BLE HID report too long - max length = %d", HID_KEYS_MAX_LEN);
     return;
   }
 

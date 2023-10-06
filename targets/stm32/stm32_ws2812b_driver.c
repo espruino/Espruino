@@ -15,23 +15,23 @@ bool stm32_neopixelWrite(Pin pin, unsigned char *rgbData, size_t rgbSize)
   unsigned char *p = (uint8_t *)rgbData;
 
   if (!jshIsPinValid(pin)) {
-    jsExceptionHere(JSET_ERROR, "Pin is not valid.");
+    jsExceptionHere(JSET_ERROR, "Pin is not valid");
     return false;
   }
 
-  // Set neopixel output pin 
+  // Set neopixel output pin
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-  
+
   jshInterruptOff();
   for(c = 0; c < rgbSize; c++) {
     for(int i = 7; i >= 0; i--)
     {
       if(p[c] & (0x01 << i)) {
         PATTERN_1_CODE(pin);
-      } 
+      }
       else {
         PATTERN_0_CODE(pin);
-      }    
+      }
     }
   }
   jshDelayMicroseconds(50);

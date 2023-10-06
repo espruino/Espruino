@@ -125,9 +125,9 @@ static bool handlePipe(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
       }
     } else {
       if(!jsvIsFunction(readFunc))
-        jsExceptionHere(JSET_ERROR, "Source Stream does not implement the required read(length) method.");
+        jsExceptionHere(JSET_ERROR, "Source Stream does not implement the required read(length) method");
       if(!jsvIsFunction(writeFunc))
-        jsExceptionHere(JSET_ERROR, "Destination Stream does not implement the required write(buffer) method.");
+        jsExceptionHere(JSET_ERROR, "Destination Stream does not implement the required write(buffer) method");
     }
     jsvUnLock2(readFunc, writeFunc);
   }
@@ -302,10 +302,10 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
         // add the pipe to our list
         jsvArrayPush(arr, pipe);
       } else {
-        jsExceptionHere(JSET_ERROR, "Destination object does not implement the required write(buffer, length) method.");
+        jsExceptionHere(JSET_ERROR, "Destination object does not implement the required write(buffer, length) method");
       }
     } else {
-      jsExceptionHere(JSET_ERROR, "Source object does not implement the required read(buffer, length) method.");
+      jsExceptionHere(JSET_ERROR, "Source object does not implement the required read(buffer, length) method");
     }
     jsvUnLock2(readFunc, writeFunc);
   }

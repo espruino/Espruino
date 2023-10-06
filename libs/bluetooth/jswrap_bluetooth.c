@@ -695,7 +695,7 @@ Booting your device while holding all buttons down together should also have the
 void jswrap_ble_eraseBonds() {
 #if PEER_MANAGER_ENABLED
   if (jsble_has_connection()) {
-    jsExceptionHere(JSET_ERROR, "BLE Connected, can't erase bonds.\n");
+    jsExceptionHere(JSET_ERROR, "BLE Connected, can't erase bonds.");
   } else {
     jsble_central_eraseBonds();
   }
@@ -2064,7 +2064,7 @@ void jswrap_ble_setScan(JsVar *callback, JsVar *options) {
       return;
     }
   } else if (options)
-    jsExceptionHere(JSET_TYPEERROR, "Expecting Object got %t\n", options);
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object got %t", options);
   // set the callback event variable
   if (!jsvIsFunction(callback)) callback=0;
   if (callback) {
