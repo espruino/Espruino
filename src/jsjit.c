@@ -377,7 +377,7 @@ void jsjFactor() {
     JSP_ASSERT_MATCH(LEX_R_NULL);
     if (jit.phase == JSJP_EMIT) {
       jsjcLiteral32(0, JSV_NULL);
-      jsjcCall(jsvNewWithFlagsX);
+      jsjcCall(jsvNewWithFlags);
       jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
   } else if (lex->tk==LEX_R_UNDEFINED) {
