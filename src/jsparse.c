@@ -2831,27 +2831,30 @@ NO_INLINE JsVar *jspeStatementTry() {
   if (lex->tk == LEX_R_CATCH) {
     JSP_ASSERT_MATCH(LEX_R_CATCH);
     hadCatch = true;
-    JSP_MATCH('(');
-    JsVar *scope = 0;
     JsVar *exceptionVar = 0;
-    if (hadException) {
-      scope = jsvNewObject();
-      if (scope)
-        exceptionVar = jsvFindOrAddChildFromString(scope, jslGetTokenValueAsString());
-    }
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock2(scope,exceptionVar),0);
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jsvUnLock2(scope,exceptionVar),0);
-    if (exceptionVar) {
-      // set the exception var up properly
-      JsVar *exception = jspGetException();
-      if (exception) {
-        jsvSetValueOfName(exceptionVar, exception);
-        jsvUnLock(exception);
+    JsVar *scope = 0;
+    JsVar *exception = jspGetException();
+    if (lex->tk == '(') {
+      JSP_MATCH('(');
+      if (hadException) {
+        scope = jsvNewObject();
+        if (scope)
+          exceptionVar = jsvFindOrAddChildFromString(scope, jslGetTokenValueAsString());
       }
-      // Now clear the exception flag (it's handled - we hope!)
-      execInfo.execute = execInfo.execute & (JsExecFlags)~(EXEC_EXCEPTION|EXEC_ERROR_LINE_REPORTED);
-      jsvUnLock(exceptionVar);
+      JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock2(scope,exceptionVar),0);
+      JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jsvUnLock2(scope,exceptionVar),0);
+      if (exceptionVar) {
+        // set the exception var up properly
+        if (exception)
+          jsvSetValueOfName(exceptionVar, exception);
+
+        jsvUnLock(exceptionVar);
+      }
+
     }
+    // Now clear the exception flag (it's handled - we hope!)
+    execInfo.execute = execInfo.execute & (JsExecFlags)~(EXEC_EXCEPTION|EXEC_ERROR_LINE_REPORTED);
+    jsvUnLock(exception);
 
     if (shouldExecuteBefore && !hadException) {
       JSP_SAVE_EXECUTE();
