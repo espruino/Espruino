@@ -222,9 +222,9 @@ bool jswrap_terminal_idle() {
       JsVar *flip = jsvObjectGetChildIfExists(gfx.graphicsVar, "flip");
       if (flip) jsvUnLock2(jspExecuteFunction(flip,gfx.graphicsVar,0,0),flip);
       jsvUnLock(gfx.graphicsVar);
-      terminalNeedsFlip = false;
     }
 #endif
+    terminalNeedsFlip = false;
   }
   return false;
 }
