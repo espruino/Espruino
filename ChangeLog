@@ -15,6 +15,7 @@
             Remove createChild argument from jsvFindChildFromString, add jsvFindOrAddChildFromString instead
             Add ES9 optional catch binding (`try {} catch {}`) 
             Bangle.js: Fix terminal's repeated call to '.flip' that broke double buffering on Bangle.js 1
+            JIT: Ensure ternary block skips 'named' variables (and references them correctly)
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)

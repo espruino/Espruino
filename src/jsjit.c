@@ -745,21 +745,25 @@ void jsjConditionalExpression() {
   jsjBinaryExpression();
   if (lex->tk=='?') {
     JSP_ASSERT_MATCH('?');
+    if (jit.phase == JSJP_EMIT) {
+      /* we handle the condition here because it means the stack level is
+      then the same when we capture the true/false blocks as when we emit them */
+      DEBUG_JIT("; ternary condition\n");
+      jsjPopAsBool(0);
+      jsjcCompareImm(0, 0);
+    }
     DEBUG_JIT_EMIT("; capture ternary true block\n");
     JsVar *oldBlock = jsjcStartBlock();
     jsjAssignmentExpression();
-    if (jit.phase == JSJP_EMIT) jsjPopAsVar(0); // we pop to r0 here so we can push after and avoid confusing the stack size checker
+    if (jit.phase == JSJP_EMIT) jsjPopNoName(0); // we pop to r0 here so we can push after and avoid confusing the stack size checker
     JsVar *trueBlock = jsjcStopBlock(oldBlock);
     JSP_MATCH(':');
     DEBUG_JIT_EMIT("; capture ternary false block\n");
     oldBlock = jsjcStartBlock();
     jsjAssignmentExpression();
-    if (jit.phase == JSJP_EMIT) jsjPopAsVar(0); // we pop to r0 here so we can push after and avoid confusing the stack size checker
+    if (jit.phase == JSJP_EMIT) jsjPopNoName(0); // we pop to r0 here so we can push after and avoid confusing the stack size checker
     JsVar *falseBlock = jsjcStopBlock(oldBlock);
     if (jit.phase == JSJP_EMIT) {
-      DEBUG_JIT("; ternary condition\n");
-      jsjPopAsBool(0);
-      jsjcCompareImm(0, 0);
       DEBUG_JIT("; ternary jump after condition\n");
       // if false, jump after true block (if an 'else' we need to jump over the jsjcBranchRelative
       jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(trueBlock) + 2);
