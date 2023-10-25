@@ -3740,7 +3740,7 @@ JsVar *jswrap_ble_getSecurityStatus(JsVar *parent) {
 }
 */
 JsVar *jswrap_ble_startBonding(bool forceRePair) {
-#if CENTRAL_LINK_COUNT>0
+#if PEER_MANAGER_ENABLED
   if (bleNewTask(BLETASK_BONDING, NULL)) {
     JsVar *promise = jsvLockAgainSafe(blePromise);
     jsble_startBonding(forceRePair);
