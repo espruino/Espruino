@@ -3041,6 +3041,8 @@ JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound) 
   JsVar *child;
   JsVarRef childref = jsvGetFirstChild(parent);
 
+  // TODO: could split this into separate loops looking for Numeric/String
+
   while (childref) {
     child = jsvLock(childref);
     if (jsvIsBasicVarEqual(child, childName)) {

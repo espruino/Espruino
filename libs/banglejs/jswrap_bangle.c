@@ -618,8 +618,6 @@ APP_TIMER_DEF(m_backlight_off_timer_id);
 #define IOEXP_LCD_BACKLIGHT 0x20
 #define IOEXP_LCD_RESET 0x40
 #define IOEXP_HRM 0x80
-
-
 #define HOME_BTN 3
 #endif
 
