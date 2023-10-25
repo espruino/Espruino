@@ -47,7 +47,7 @@ bool jsi2cPopulateI2CInfo(
     return false;
 }
 
-#ifndef SAVE_ON_FLASH
+#if ESPR_NO_SOFTWARE_I2C!=1
 
 // Do we check to see if we got a NACK or not?
 // Some devices (like Bangle.js IO controller) don't ever ACK
@@ -218,4 +218,4 @@ bool jsi2cRead(JshI2CInfo *inf, unsigned char address, int nBytes, unsigned char
   return true;
 }
 
-#endif // SAVE_ON_FLASH
+#endif // ESPR_NO_SOFT_I2C

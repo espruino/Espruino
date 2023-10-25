@@ -142,6 +142,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_PBF_FONTS` - Enable support for loading and displaying Pebble-style PBF font files with `g.setFontPBF`
 * `ESPR_BLUETOOTH_ANCS` - Enable Apple ANCS(notification), AMS and CTS support
 * `ESPR_NO_SOFTWARE_SERIAL` - don't build in software serial support
+* `ESPR_NO_SOFTWARE_I2C` - don't build in software I2C support
 * `ESPR_NO_BLUETOOTH_MESSAGES` - don't include text versions of Bluetooth error messages (just the error number)
 
 These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)

@@ -60,7 +60,7 @@
 // ------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------
 
-#ifndef ESPR_NO_PROMISES
+#if ESPR_NO_PROMISES!=1
 JsVar *blePromise = 0;
 #endif
 JsVar *bleTaskInfo = 0;
@@ -104,7 +104,7 @@ bool bleNewTask(BleTask task, JsVar *taskInfo) {
     jsiConsolePrintf("Existing bleTaskInfo!\n");
     jsvTrace(bleTaskInfo,2);
   }*/
-#ifndef ESPR_NO_PROMISES
+#if ESPR_NO_PROMISES!=1
   assert(!blePromise && !bleTaskInfo && !bleTaskInfo2);
   blePromise = jspromise_create();
 #endif
@@ -121,7 +121,7 @@ void bleCompleteTask(BleTask task, bool ok, JsVar *data) {
     return;
   }
   bleTask = BLETASK_NONE;
-#ifndef ESPR_NO_PROMISES
+#if ESPR_NO_PROMISES!=1
   if (blePromise) {
     if (ok) jspromise_resolve(blePromise, data);
     else jspromise_reject(blePromise, data);
@@ -282,7 +282,7 @@ void jswrap_ble_kill() {
 #endif
   // stop any BLE tasks
   bleTask = BLETASK_NONE;
-#ifndef ESPR_NO_PROMISES
+#if ESPR_NO_PROMISES!=1
   if (blePromise) jsvUnLock(blePromise);
   blePromise = 0;
 #endif
@@ -3740,7 +3740,7 @@ JsVar *jswrap_ble_getSecurityStatus(JsVar *parent) {
 }
 */
 JsVar *jswrap_ble_startBonding(bool forceRePair) {
-#ifdef NRF52_SERIES
+#if CENTRAL_LINK_COUNT>0
   if (bleNewTask(BLETASK_BONDING, NULL)) {
     JsVar *promise = jsvLockAgainSafe(blePromise);
     jsble_startBonding(forceRePair);

@@ -16,7 +16,7 @@
 
 #include "jsutils.h"
 
-#ifndef ESPR_NO_PROMISES
+#if ESPR_NO_PROMISES!=1
 
 #include "jswrap_promise.h"
 #include "jsparse.h"

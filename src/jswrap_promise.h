@@ -17,7 +17,7 @@
 #include "jsvar.h"
 #include "jsutils.h"
 
-#ifndef ESPR_NO_PROMISES
+#if ESPR_NO_PROMISES!=1
 
 /// Create a new promise
 JsVar *jspromise_create();
