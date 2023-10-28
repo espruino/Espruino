@@ -106,6 +106,10 @@
 // Do not include these for NRF51
 #define BLE_HIDS_ENABLED 1
 #define PEER_MANAGER_ENABLED 1
+#else
+#ifndef CENTRAL_LINK_COUNT
+#define CENTRAL_LINK_COUNT 0
+#endif
 #endif // NRF51_SERIES
 
 #define BLE_ADVERTISING_ENABLED 1
