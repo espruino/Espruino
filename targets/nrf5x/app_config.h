@@ -106,7 +106,7 @@
 // Do not include these for NRF51
 #define BLE_HIDS_ENABLED 1
 #define PEER_MANAGER_ENABLED 1
-#else
+#else // not NRF51_SERIES
 #ifndef CENTRAL_LINK_COUNT
 #define CENTRAL_LINK_COUNT 0
 #endif
@@ -153,6 +153,13 @@
 #define PPI_ENABLED 1
 #define RNG_ENABLED 1
 #define SAADC_ENABLED 1
+#else // not NRF5X_SDK_12
+
+// on anything newer than SDK12 the processors are big enough that we use peer manager by default
+#ifndef PEER_MANAGER_ENABLED
+#define PEER_MANAGER_ENABLED 1 // set in sdk_config anyway but we're just being explicit
+#endif
+
 #endif // NRF5X_SDK_12
 
 #ifdef NRF5X_SDK_15 // SDK15/NRF52840
