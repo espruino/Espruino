@@ -93,7 +93,8 @@ void jswrap_storage_eraseAll() {
 Erase a single file from the flash storage area.
 
 **Note:** This function should be used with normal files, and not `StorageFile`s
-created with `require("Storage").open(filename, ...)`
+created with `require("Storage").open(filename, ...)`. To erase those, use
+`require("Storage").open(..., "r").erase()`.
  */
 void jswrap_storage_erase(JsVar *name) {
   jsfEraseFile(jsfNameFromVar(name));
@@ -942,7 +943,10 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
   "name" : "erase",
   "generate" : "jswrap_storagefile_erase"
 }
-Erase this file
+Erase this `StorageFile` - after being called this file can no longer be written to.
+
+**Note:** You shouldn't call `require("Storage").erase(...)` on a `StorageFile`, but should
+instead open the StorageFile and call `.erase` on the returned file: `require("Storage").open(..., "r").erase()`
 */
 void jswrap_storagefile_erase(JsVar *f) {
   JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChildIfExists(f,"name"));
