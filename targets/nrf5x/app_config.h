@@ -106,6 +106,10 @@
 // Do not include these for NRF51
 #define BLE_HIDS_ENABLED 1
 #define PEER_MANAGER_ENABLED 1
+#else
+#ifndef CENTRAL_LINK_COUNT
+#define CENTRAL_LINK_COUNT 0
+#endif
 #endif // NRF51_SERIES
 
 #define BLE_ADVERTISING_ENABLED 1
@@ -173,16 +177,11 @@
 // For SDK 15.3.0
 #define FDS_VIRTUAL_PAGES_RESERVED 0
 
-
 #ifndef PERIPHERAL_LINK_COUNT
 #define PERIPHERAL_LINK_COUNT 1
 #endif
 #ifndef CENTRAL_LINK_COUNT
-#if PEER_MANAGER_ENABLED // if no peer manager, no central
 #define CENTRAL_LINK_COUNT 1
-#else
-#define CENTRAL_LINK_COUNT 0
-#endif
 #endif
 // SDK15+ (fixes BLE UART send when CENTRAL_LINK_COUNT>1)
 #define NRF_SDH_BLE_TOTAL_LINK_COUNT (CENTRAL_LINK_COUNT + PERIPHERAL_LINK_COUNT)
