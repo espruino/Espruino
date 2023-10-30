@@ -4904,7 +4904,7 @@ void jswrap_banglejs_ioWr(JsVarInt mask, bool on) {
     "generate" : "jswrap_banglejs_getPressure",
     "return" : ["JsVar","A promise that will be resolved with `{temperature, pressure, altitude}`"],
     "#if" : "defined(DTNO1_F5) || defined(BANGLEJS_Q3) || defined(DICKENS)",
-    "typescript" : "getPressure(): PressureData;"
+    "typescript" : "getPressure(): Promise<PressureData> | undefined;"
 }
 Read temperature, pressure and altitude data. A promise is returned which will
 be resolved with `{temperature, pressure, altitude}`.
@@ -4914,6 +4914,9 @@ will return almost immediately with the reading. If the Barometer is off,
 conversions take between 500-750ms.
 
 Altitude assumes a sea-level pressure of 1013.25 hPa
+
+If there's no pressure device (for example, the emulator),
+this returns undefined, rather than a promise.
 
 ```
 Bangle.getPressure().then(d=>{
