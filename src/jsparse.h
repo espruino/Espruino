@@ -55,7 +55,7 @@ bool jspHasError();
 void jspSetError(bool lineReported);
 /// We had an exception (argument is the exception's value)
 void jspSetException(JsVar *value);
-/** Return the reported exception if there was one (and clear it) */
+/** Return the reported exception if there was one (and clear it). May return undefined even if there was an exception - eg `throw undefined` */
 JsVar *jspGetException();
 /** Return a stack trace string if there was one (and clear it) */
 JsVar *jspGetStackTrace();

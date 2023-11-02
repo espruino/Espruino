@@ -382,12 +382,13 @@ void die(const char *txt) {
 
 int handleErrors() {
   int e = 0;
+  bool hasException = (execInfo.execute & EXEC_EXCEPTION)!=0;
   JsVar *exception = jspGetException();
-  if (exception) {
+  if (hasException) {
     jsiConsolePrintf("Uncaught %v\n", exception);
-    jsvUnLock(exception);
     e = 1;
   }
+  jsvUnLock(exception);
 
   if (jspIsInterrupted()) {
     jsiConsoleRemoveInputLine();

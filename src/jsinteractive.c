@@ -1206,14 +1206,16 @@ void jsiCheckErrors() {
     jsiConsolePrint("Execution Interrupted during event processing.\n");
   }
   bool reportedError = false;
+  bool hasException = (execInfo.execute & EXEC_EXCEPTION)!=0;
   JsVar *exception = jspGetException();
-  if (exception) {
+  if (hasException) {
     if (jsiExecuteEventCallbackOn("process", JS_EVENT_PREFIX"uncaughtException", 1, &exception)) {
       jsvUnLock(exception);
       exception = jspGetException();
+      if (!exception) hasException = false;
     }
   }
-  if (exception) {
+  if (hasException) {
     jsiConsoleRemoveInputLine();
     jsiConsolePrintf("Uncaught %v\n", exception);
     reportedError = true;
@@ -1224,8 +1226,8 @@ void jsiCheckErrors() {
         jsvUnLock(stackTrace);
       }
     }
-    jsvUnLock(exception);
   }
+  jsvUnLock(exception);
   if (jspIsInterrupted()
 #ifdef USE_DEBUGGER
       && !(jsiStatus & JSIS_EXIT_DEBUGGER)

@@ -267,7 +267,7 @@ void jspSetException(JsVar *value) {
 
 }
 
-/** Return the reported exception if there was one (and clear it) */
+/** Return the reported exception if there was one (and clear it). May return undefined even if there was an exception - eg `throw undefined` */
 JsVar *jspGetException() {
   JsVar *exceptionName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR);
   if (exceptionName) {
