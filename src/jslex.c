@@ -789,7 +789,8 @@ void jslGetNextToken() {
       case JSLJT_FORWARDSLASH:
       // yay! JS is so awesome.
       if (lastToken==LEX_EOF ||
-          (lastToken>=_LEX_TOKENS_START && lastToken<=_LEX_TOKENS_END) || // any keyword or operator
+          (lastToken>=_LEX_TOKENS_START && lastToken<=_LEX_TOKENS_END && // keyword or operator
+           lastToken!=LEX_R_TRUE && lastToken!=LEX_R_FALSE && lastToken!=LEX_R_NULL && lastToken!=LEX_R_UNDEFINED) || // but not values (#2424)
           lastToken=='!' ||
           lastToken=='%' ||
           lastToken=='&' ||
