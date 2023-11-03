@@ -405,12 +405,15 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
   lex->hadThisKeyword = lex->tk == LEX_R_THIS;
   if (!expressionOnly) {
     int brackets = 0;
+    JsExecFlags oldExec = execInfo.execute;
+    execInfo.execute = EXEC_NO; // set no execute so we don't parse strings    
     while (lex->tk && (brackets || lex->tk != '}')) {
       if (lex->tk == '{') brackets++;
       if (lex->tk == '}') brackets--;
       lastTokenEnd = (int)jsvStringIteratorGetIndex(&lex->it)-1;
       JSP_ASSERT_MATCH(lex->tk);
     }
+    execInfo.execute = oldExec; // restore correct exec state
     // FIXME: we might be including whitespace after the last token
   } else {
     JsExecFlags oldExec = execInfo.execute;

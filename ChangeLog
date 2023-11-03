@@ -18,6 +18,7 @@
             JIT: Ensure ternary block skips 'named' variables (and references them correctly)
             Fix for UNFINISHED REGEX syntax error when parsing `true / false` (fix #2424)
             Allow `throw undefined` to still show an exception in the REPL (fix #2423)
+            When parsing function declarations, don't interpret the strings inside them
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)
