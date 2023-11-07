@@ -548,6 +548,7 @@ bool accel_on(int milliHz) {
 // Read a value
 void accel_read() {
   unsigned char buf[12];
+  // FIXME: If just the accelerometer is on, we could avoid reading the gyro and read only 6 bytes
   buf[0] = 0x22; // OUTX_L_G
   jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, false);
   jsi2cRead(&i2cAccel, ACCEL_ADDR, 12, buf, true);
