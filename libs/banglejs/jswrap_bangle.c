@@ -3926,7 +3926,8 @@ NO_INLINE void jswrap_banglejs_init() {
     jswrap_banglejs_accelWr(0x24,3); // TDTRC Tap detect enable
     jswrap_banglejs_accelWr(0x25, 0x78); // TDTC Tap detect double tap (0x78 default)
     jswrap_banglejs_accelWr(0x26, 0xCB); // TTH Tap detect threshold high (0xCB default)
-    jswrap_banglejs_accelWr(0x27, 0x1A); // TTL Tap detect threshold low (0x1A default)
+    jswrap_banglejs_accelWr(0x27, 0x25); // TTL Tap detect threshold low (0x1A default)
+    // setting TTL=0x1A means that when the HRM is on, interference sometimes means a spurious tap is detected! https://forum.espruino.com/conversations/390041
     jswrap_banglejs_accelWr(0x30,1); // ATH low wakeup detect threshold
     //jswrap_banglejs_accelWr(0x35,0 << 4); // LP_CNTL no averaging of samples
     jswrap_banglejs_accelWr(0x35,2 << 4); // LP_CNTL 4x averaging of samples
