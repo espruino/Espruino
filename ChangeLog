@@ -20,6 +20,7 @@
             Allow `throw undefined` to still show an exception in the REPL (fix #2423)
             When parsing function declarations, don't interpret the strings inside them
             Bangle.js2: Fix spurious tap events when HRM enabled by changing threshold
+            Reinstate `if (0);"test"` fix after f87a53c accidentally reverted it
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)

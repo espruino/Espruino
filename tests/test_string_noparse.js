@@ -16,5 +16,6 @@ if (1) 1;"test"||fail("if(1)1;")   // ok
 if (0) 1;"test"||fail("if(0)1;")   // failed
 if (0);"test"||fail("if(0);")      // failed
 if (1);else;"test"||fail("if(1);else;") // failed
+(function(){ if(0)return 42;'OK'!='OK'&&fail('if(0)return')})()
 // if we got here we're ok
 result=1
