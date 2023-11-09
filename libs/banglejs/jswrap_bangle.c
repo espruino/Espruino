@@ -3203,12 +3203,22 @@ bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
       if (!wasOn) {
   #ifdef PRESSURE_DEVICE_SPL06_007_EN
         if (PRESSURE_DEVICE_SPL06_007_EN) {
+          unsigned char buf[SPL06_COEF_NUM];
+          jswrap_banglejs_barometerWr(SPL06_RESET, 0x89); // Perform soft reset
+          // wait for reset complete (max 100ms) - usually takes 40ms
+          int timeout = 10;
+          do {
+            // we can't poll every ms because initially the top bits are still set in MEAS_CFG
+            jshDelayMicroseconds(10000);
+            buf[0] = SPL06_MEASCFG; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
+            jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, true);
+          } while (((buf[0]&0xC0) != 0xC0) && timeout--);
+          // set up the sensor
           jswrap_banglejs_barometerWr(SPL06_CFGREG, 0); // No FIFO or IRQ (should be default but has been nonzero when read!
           jswrap_banglejs_barometerWr(SPL06_PRSCFG, 0x33); // pressure oversample by 8x, 8 measurement per second
           jswrap_banglejs_barometerWr(SPL06_TMPCFG, 0xB3); // temperature oversample by 8x, 8 measurements per second, external sensor
           jswrap_banglejs_barometerWr(SPL06_MEASCFG, 7); // continuous temperature and pressure measurement
           // read calibration data
-          unsigned char buf[SPL06_COEF_NUM];
           buf[0] = SPL06_COEF_START; jsi2cWrite(PRESSURE_I2C, PRESSURE_ADDR, 1, buf, false);
           jsi2cRead(PRESSURE_I2C, PRESSURE_ADDR, SPL06_COEF_NUM, buf, true);
           barometer_c0 = twosComplement(((unsigned short)buf[0] << 4) | (((unsigned short)buf[1] >> 4) & 0x0F), 12);
