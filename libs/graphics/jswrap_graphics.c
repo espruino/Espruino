@@ -2355,6 +2355,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   int spaceWidth = _jswrap_graphics_getCharWidth(&gfx, &info, ' ');
   int wordWidth = 0;
   int lineWidth = 0;
+  bool lineHasSpaceAfter = false;
   int wordStartIdx = 0;
   int wordIdxAtMaxWidth = 0; // index just before the word width>maxWidth
   int wordWidthAtMaxWidth = 0; // index just before the word width>maxWidth
@@ -2366,32 +2367,36 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
 
   while (jsvStringIteratorHasChar(&it) || endOfText) {
     int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
-    if (endOfText || ch=='\n' || ch==' ') { // newline or space
+    bool canBreakOnCh = endOfText || ch=='\n' || ch==' ';
+    bool canBreakAfterCh = ch==',' || ch=='.' || ch=='-';
+    if (canBreakOnCh || canBreakAfterCh) { // newline or space
       int currentPos = (int)jsvStringIteratorGetIndex(&it);
+      bool includeCh = canBreakAfterCh;
       if ((lineWidth + spaceWidth + wordWidth <= maxWidth) &&
           !wasNewLine) {
         // all on one line
-        if (lineWidth) {
+        if (lineHasSpaceAfter) {
           jsvAppendString(currentLine, " ");
           lineWidth += spaceWidth;
         }
-        jsvAppendStringVar(currentLine, str, wordStartIdx, currentPos-(wordStartIdx+1));
+        jsvAppendStringVar(currentLine, str, wordStartIdx, currentPos-(wordStartIdx+ (includeCh?0:1)));
+        lineHasSpaceAfter = !canBreakAfterCh;
         lineWidth += wordWidth;
-      } else { // doesn't fit one one line - move to new line
+      } else { // doesn't fit on one line - move to new line
         lineWidth = wordWidth;
         if (jsvGetStringLength(currentLine) || wasNewLine) {
           jsvArrayPush(lines, currentLine);
         }
         jsvUnLock(currentLine);
         if (wordIdxAtMaxWidth) {
-          // word is too long to fit on a line
-          currentLine = jsvNewFromStringVar(str, wordStartIdx, wordIdxAtMaxWidth-(wordStartIdx+1));
+          // word is too long to fit on a line, split it
           // jsvNewFromStringVar will create a unicode string is str was a unicode string
-          jsvArrayPushAndUnLock(lines, currentLine);
+          jsvArrayPushAndUnLock(lines, jsvNewFromStringVar(str, wordStartIdx, wordIdxAtMaxWidth-(wordStartIdx+1)));
           wordStartIdx = wordIdxAtMaxWidth-1;
           lineWidth -= wordWidthAtMaxWidth;
         }
         currentLine = jsvNewFromStringVar(str, wordStartIdx, currentPos-(wordStartIdx+1));
+        lineHasSpaceAfter = !canBreakAfterCh;
         // jsvNewFromStringVar will create a unicode string is str was a unicode string
       }
       wordWidth = 0;
