@@ -351,14 +351,14 @@ Called when heart rate sensor data is available - see `Bangle.setHRMPower(1)`.
   "type" : "event",
   "class" : "Bangle",
   "name" : "HRM-env",
-  "params" : [["env","JsVar","An integer containing current environment reading"]],
+  "params" : [["env","JsVar","An integer containing current environment reading (light level)"]],
   "ifdef" : "BANGLEJS2"
 }
-Called when an environment sample heart rate sensor data is available. On the newest VC31B based watches this is only 4 bit (0..15)
+Called when an environment sample heart rate sensor data is available (this is the amount of light received by the HRM sensor from the environment when its LED is off). On the newest VC31B based watches this is only 4 bit (0..15).
 
 To get it you need to turn the HRM on with `Bangle.setHRMPower(1)` and also set `Bangle.setOptions({hrmPushEnv:true})`.
 
-It is also possible to poke registers with `Bangle.hrmWr` to increase the poll rate if needed.
+It is also possible to poke registers with `Bangle.hrmWr` to increase the poll rate if needed. See https://banglejs.com/apps/?id=flashcount for an example of this.
 
  */
 /*TYPESCRIPT
@@ -2612,13 +2612,14 @@ for before the clock is reloaded? 1500ms default, or 0 means never.
   heart rate monitor. On Bangle.js 2 only 10,20,40,80,160,200 ms are supported,
   and polling rate may not be exact. The algorithm's filtering is tuned for
   20-40ms poll intervals, so higher/lower intervals may effect the reliability
-  of the BPM reading.
+  of the BPM reading. You must call this *before* `Bangle.setHRMPower` - calling
+  when the HRM is already on will not affect the poll rate.
 * `hrmSportMode` - on the newest Bangle.js 2 builds with with the proprietary
   heart rate algorithm, this is the sport mode passed to the algorithm. See `libs/misc/vc31_binary/algo.h`
   for more info. -1 = auto, 0 = normal (default), 1 = running, 2 = ...
-* `hrmGreenAdjust` - (Bangle.js 2, 2v19+) if false (default is true) the green LED intensity won't be adjusted to get the HRM sensor 'exposure' correct
-* `hrmWearDetect` - (Bangle.js 2, 2v19+) if false (default is true) HRM readings won't be turned off if the watch isn't on your arm (based on HRM proximity sensor)
-* `hrmPushEnv` - (Bangle.js 2, 2v19+) if true (default is false) HRM environment readings will be produced as `Bangle.on(`HRM-env`, ...)` events
+* `hrmGreenAdjust` - (Bangle.js 2, 2v19+) if false (default is true) the green LED intensity won't be adjusted to get the HRM sensor 'exposure' correct. This is reset when the HRM is initialised with `Bangle.setHRMPower`.
+* `hrmWearDetect` - (Bangle.js 2, 2v19+) if false (default is true) HRM readings won't be turned off if the watch isn't on your arm (based on HRM proximity sensor). This is reset when the HRM is initialised with `Bangle.setHRMPower`.
+* `hrmPushEnv` - (Bangle.js 2, 2v19+) if true (default is false) HRM environment readings will be produced as `Bangle.on(`HRM-env`, ...)` events. This is reset when the HRM is initialised with `Bangle.setHRMPower`.
 * `seaLevelPressure` (Bangle.js 2) Normally 1013.25 millibars - this is used for
   calculating altitude with the pressure sensor
 
