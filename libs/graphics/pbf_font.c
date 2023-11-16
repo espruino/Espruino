@@ -51,18 +51,25 @@ void jspbfFontNew(PbfFontLoaderInfo *info, JsVar *font) {
   jspbfGetU16(&info->it); // wildcard codepoint
   info->hashTableOffset = 6;
   info->hashTableSize = 255;
+  info->hashTableValueAsTopBits = false;
+  info->offsetTableEntrySize = 6;  // cp=2,address=4
   info->codepointSize = 2;
   if (info->version>=2)  {
     info->hashTableOffset = 8;
     info->hashTableSize = jspbfGetU8(&info->it);
     info->codepointSize = jspbfGetU8(&info->it);
   }
-  if (info->version==3) {
-    info->hashTableOffset = 10;
-    assert(0); // v3 not loaded yet
+  if (info->version>=3) {
+    info->hashTableOffset = jspbfGetU8(&info->it);
+    uint8_t features = jspbfGetU8(&info->it);
+    // &1 = OffsetTable offset sizes (default 0=32,  1=16)
+    // &2 = Storage of Glyphs (default 0=raw,  1=RLE4)
+    // &128 = ESPRUINO ONLY: Use redundant HashTable 'value' entry as extra 8 bits of offset
+    if (features & 1) info->offsetTableEntrySize = 4;  // cp=2,address=2
+    if (features & 128) info->hashTableValueAsTopBits = true;
   }
-  info->offsetTableOffset = (uint16_t)(info->hashTableOffset + info->hashTableSize*4);
-  info->glyphTableOffset = (uint16_t)(info->offsetTableOffset + info->glyphCount*6); // cp=2,address=4
+  info->offsetTableOffset = (uint32_t)(info->hashTableOffset + info->hashTableSize*4);
+  info->glyphTableOffset = (uint32_t)(info->offsetTableOffset + (info->glyphCount*info->offsetTableEntrySize));
 }
 
 void jspbfFontFree(PbfFontLoaderInfo *info) {
@@ -80,10 +87,13 @@ bool jspbfFontFindGlyph(PbfFontLoaderInfo *info, int codepoint, PbfFontLoaderGly
   0x01 u8 : Offset Table Size.
   0x02 u16 : Offset Table Offset. Measured in bytes from the beginning of the offset table.
   */
-  jsvStringIteratorGoto(&info->it, info->var, info->hashTableOffset + 4*hash + 1); // +1 because we don't care about value
+  jsvStringIteratorGoto(&info->it, info->var, info->hashTableOffset + 4*hash );
+  uint8_t value = jspbfGetU8(&info->it);
   uint8_t offsetTableSize = jspbfGetU8(&info->it);
   uint16_t o = jspbfGetU16(&info->it);
-  uint16_t offsetTableOffset = o + info->offsetTableOffset;
+  uint32_t offsetTableOffset = o + info->offsetTableOffset;
+  if (info->hashTableValueAsTopBits)
+    offsetTableOffset += (value<<16);
   jsvStringIteratorGoto(&info->it, info->var, offsetTableOffset);
   int cp;
   while (offsetTableSize--) {
@@ -91,8 +101,8 @@ bool jspbfFontFindGlyph(PbfFontLoaderInfo *info, int codepoint, PbfFontLoaderGly
     0x00 u16/u32 : Unicode codepoint (for example, 0x0622 for ∆).
     0x02 or 0x04 u16/u32 : Data offset.
     */
-    cp = jspbfGetU16(&info->it); assert(info->codepointSize==2); // only cp=2 suppported
-    uint32_t dataOffset = jspbfGetU32(&info->it); // only address=4 byte supported
+    cp = (info->codepointSize==2) ? jspbfGetU16(&info->it) : jspbfGetU32(&info->it);
+    uint32_t dataOffset = (info->offsetTableEntrySize==4) ? jspbfGetU16(&info->it) : jspbfGetU32(&info->it);
     if (cp==codepoint) {
       jsvStringIteratorGoto(&info->it, info->var, info->glyphTableOffset+dataOffset);
       result->w = jspbfGetU8(&info->it);

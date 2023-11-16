@@ -53,17 +53,21 @@ function Font(info) {
   // set up later:
   // fmWidth  - max width of any character (we scan this area when writing fonts, even if we crop down later)
   // fmHeight - max height of any character (we scan this area when writing fonts, even if we crop down later)
+  this.mapWidth = info.mapWidth||16; // for loadPNG
+  this.mapHeight = info.mapHeight||16;
+  this.mapOffsetX = 0|info.mapOffsetX;
+  this.mapOffsetY = 0|info.mapOffsetY;
 }
 
-// Load a 16x16 charmap file
+// Load a 16x16 charmap file (or mapWidth x mapHeight)
 function loadPNG(fontInfo) {
   fontInfo = new Font(fontInfo);
   var PNG = require("pngjs").PNG;
   var png = PNG.sync.read(require("fs").readFileSync(fontInfo.fn));
 
   console.log(`Font map is ${png.width}x${png.height}`);
-  fontInfo.fmWidth = png.width>>4;
-  fontInfo.fmHeight = png.height>>4;
+  fontInfo.fmWidth = Math.floor((png.width - fontInfo.mapOffsetX) / fontInfo.mapWidth);
+  fontInfo.fmHeight = Math.floor((png.height - fontInfo.mapOffsetY) / fontInfo.mapHeight);
   console.log(`Font map char is ${fontInfo.fmWidth}x${fontInfo.fmHeight}`);
 
   function getPngPixel(x,y) {
@@ -82,11 +86,11 @@ function loadPNG(fontInfo) {
   }
 
   fontInfo.getCharPixel = function(ch,x,y) {
-    var chx = ch&15;
-    var chy = ch>>4;
+    var chy = Math.floor(ch/fontInfo.mapWidth);
+    var chx = ch - chy*fontInfo.mapWidth;
     var py = chy*fontInfo.fmHeight + y;
     if (py>=png.height) return false;
-    return getPngPixel(chx*this.fmWidth + x, py);
+    return getPngPixel(fontInfo.mapOffsetX + chx*this.fmWidth + x, fontInfo.mapOffsetY + py);
   };
   return fontInfo;
 }
@@ -201,9 +205,14 @@ Font.prototype.getGlyph = function(ch, bits) {
     yStart = 0;
     yEnd = this.fmHeight-1;
   }
+  if (yStart>=yEnd) {
+    yStart = 1;
+    yEnd = 0;
+  }
   glyph.yStart = yStart;
   glyph.yEnd = yEnd;
   glyph.height = yEnd+1-yStart;
+
 
   if (bits) {
     if (this.glyphVertical) {
@@ -328,11 +337,12 @@ Font.prototype.outputPBF = function() {
   this.fullHeight = false;
   // now go through all glyphs
   var glyphs = [];
-  var hashtableSize = 64;
+  var hashtableSize = ((this.lastChar-this.firstChar)>1000) ? 255 : 64;
   var hashes = [];
   for (var i=0;i<hashtableSize;i++)
     hashes[i] = [];
   var dataOffset = 0;
+  var allOffsetsFitIn16Bits = true;
   for (var ch=this.firstChar; ch<=this.lastChar; ch++) {
     var bits = [];
     var glyph = this.getGlyph(ch, bits);
@@ -350,42 +360,70 @@ Font.prototype.outputPBF = function() {
     glyphs.push(glyph);
     glyph.hash = ch%hashtableSize;
     glyph.dataOffset = dataOffset;
+    if (glyph.ch == 32) console.log(glyph);
+    if (dataOffset > 65535)
+      allOffsetsFitIn16Bits = false;
     dataOffset += 5 + ((glyph.bits.length*glyph.bpp + 7)>>3); // supposedly we should be 4 byte aligned, but there seems no reason?
     hashes[glyph.hash].push(glyph);
   }
 
-  var pbfHeader = new DataView(new ArrayBuffer(8));
-  pbfHeader.setUint8(0, 2); // version
+  var useExtendedHashTableOffset = (6 * glyphs.length) > 65535;
+  var use16BitOffsets = allOffsetsFitIn16Bits;
+  var version = 3;//useExtendedHashTableOffset ? 3 : 2;
+  if (version==2 && allOffsetsFitIn16Bits) throw new Error("16 bit offsets not supported in PBFv2");
+  if (version==2 && useExtendedHashTableOffset) throw new Error("24 bit hashtable offsets not supported in PBFv2");
+  console.log("Using PBF version "+version);
+  console.log("  16 Bit Offsets = "+use16BitOffsets);
+  console.log("  24 Bit HashTable = "+useExtendedHashTableOffset);
+
+  var pbfOffsetTableEntrySize = use16BitOffsets ? 4 : 6;
+
+  var pbfHeader = new DataView(new ArrayBuffer((version>=3) ? 10 : 8));
+  pbfHeader.setUint8(0, version); // version
   pbfHeader.setUint8(1, this.height); // height
   pbfHeader.setUint16(2, glyphs.length, true/*LE*/); // glyph count
   pbfHeader.setUint16(4, 0, true/*LE*/); // wildcard codepoint
   pbfHeader.setUint8(6, hashtableSize); // hashtable Size
   pbfHeader.setUint8(7, 2); // codepoint size
+  if (version>=3) {
+    pbfHeader.setUint8(8, pbfHeader.byteLength ); // header length / hashtable offset
+    var features  =
+      (use16BitOffsets ? 1 : 0) |
+      (useExtendedHashTableOffset ? 128 : 0);
+    pbfHeader.setUint8(9, features); // features
+  }
+
+  console.log("offset table size "+(pbfOffsetTableEntrySize * glyphs.length)+", chars "+glyphs.length);
 
   var pbfHashTable = new DataView(new ArrayBuffer(4 * hashtableSize));
   var n = 0, offsetSize = 0;
   hashes.forEach((glyphs,i) => {
-    pbfHashTable.setUint8(n+0, i); // value - this is redundant by the look of it?
+    if (glyphs.length > 255) throw new Error("Too many hash entries!");
+    if (!useExtendedHashTableOffset && offsetSize > 65535) throw new Error("hashtable offset too big! "+offsetSize);
+    // if useExtendedHashTableOffset (an Espruino hack) then we use the value as the extra 8 bits of offset
+    pbfHashTable.setUint8(n+0, useExtendedHashTableOffset ? (offsetSize>>16) : i); // value - this is redundant by the look of it?
     pbfHashTable.setUint8(n+1, glyphs.length); // offset table size
-    pbfHashTable.setUint16(n+2, offsetSize, true/*LE*/); // offset in pbfOffsetTable
+    pbfHashTable.setUint16(n+2, offsetSize & 65535, true/*LE*/); // offset in pbfOffsetTable
     n +=4 ;
-    offsetSize += 6*glyphs.length;
+    offsetSize += pbfOffsetTableEntrySize*glyphs.length;
   });
 
-  var pbfOffsetTable = new DataView(new ArrayBuffer(6 * glyphs.length));
+    var pbfOffsetTable = new DataView(new ArrayBuffer(pbfOffsetTableEntrySize * glyphs.length));
   n = 0;
   hashes.forEach(glyphs => {
     glyphs.forEach(glyph => {
       pbfOffsetTable.setUint16(n+0, glyph.ch, true/*LE*/); // codepoint size = 2
-      pbfOffsetTable.setUint32(n+2, glyph.dataOffset, true/*LE*/); // offset in data
-      n+=6;
+      if (use16BitOffsets)
+        pbfOffsetTable.setUint16(n+2, glyph.dataOffset, true/*LE*/); // offset in data
+      else
+        pbfOffsetTable.setUint32(n+2, glyph.dataOffset, true/*LE*/); // offset in data
+      n += pbfOffsetTableEntrySize;
     });
   });
 
   var pbfGlyphTable = new DataView(new ArrayBuffer(dataOffset));
   n = 0;
   glyphs.forEach(glyph => {
-
     pbfGlyphTable.setUint8(n+0, glyph.width); // width
     pbfGlyphTable.setUint8(n+1, glyph.height); // height
     pbfGlyphTable.setInt8(n+2, glyph.xStart); // left
@@ -400,6 +438,12 @@ Font.prototype.outputPBF = function() {
   });
 
   // finally combine
+  if (1) {
+    console.log(`Header     :\t0\t${pbfHeader.byteLength}`);
+    console.log(`HashTable: \t${pbfHeader.byteLength}\t${pbfHashTable.byteLength}`);
+    console.log(`OffsetTable:\t${pbfHeader.byteLength+pbfHashTable.byteLength}\t${pbfOffsetTable.byteLength}`);
+    console.log(`GlyphTable: \t${pbfHeader.byteLength+pbfHashTable.byteLength+pbfOffsetTable.byteLength}\t${pbfGlyphTable.byteLength}`);
+  }
   var fontFile = new Uint8Array(pbfHeader.byteLength + pbfHashTable.byteLength + pbfOffsetTable.byteLength + pbfGlyphTable.byteLength);
   fontFile.set(new Uint8Array(pbfHeader.buffer), 0);
   fontFile.set(new Uint8Array(pbfHashTable.buffer), pbfHeader.byteLength);
@@ -546,16 +590,26 @@ var f = load({
   // fixed width
 });*/
 
-var f = load({
+/*var f = load({
   fn : "renaissance_28.pbff",
   height : 28, // actual used height of font map
   firstChar : 32,
   //yOffset : 4,
+});*/
+var f = load({
+  fn : "unifont-15.1.04.png",
+  mapWidth : 256, mapHeight : 256,
+  mapOffsetX : 32, mapOffsetY : 64,
+  height : 16, // actual used height of font map
+  firstChar : 32, maxChars : 6*16
+  //firstChar : 0x4E00, maxChars : 0x9FFF - 0x4E00
+  //firstChar : 0x8000, maxChars : 0x9FFF - 0x8000
 });
+
 f.debugChars();
 f.debugPixelsUsed();
 
-console.log(f.outputJS());
+//console.log(f.outputJS());
 
 // Write a binary PBF file
 require("fs").writeFileSync("font.pbf", Buffer.from(f.outputPBF()))

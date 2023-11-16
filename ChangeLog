@@ -23,6 +23,7 @@
             Reinstate `if (0);"test"` fix after f87a53c accidentally reverted it
             Bangle.js2: Do a soft reset every time we start the SPL06 pressure sensor (stops occasional sensor lockup)
             Graphics: wrapString will now wrap lines on comma, dot, dash, and between images
+            Graphics: Improve PBF font loading to handle v3, plus Espruino extension to handle >10k glyphs in one file
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)

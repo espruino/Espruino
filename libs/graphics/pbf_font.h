@@ -26,11 +26,13 @@ typedef struct {
   uint8_t version;
   uint8_t lineHeight;
   uint16_t glyphCount;
+  uint16_t hashTableOffset;
   uint8_t hashTableSize;
   uint8_t codepointSize;
-  uint16_t hashTableOffset;
-  uint16_t offsetTableOffset;
-  uint16_t glyphTableOffset;
+  uint8_t offsetTableEntrySize;
+  uint32_t offsetTableOffset;
+  uint32_t glyphTableOffset;
+  bool hashTableValueAsTopBits;
 } PbfFontLoaderInfo;
 
 typedef struct {
