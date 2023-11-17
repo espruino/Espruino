@@ -2316,7 +2316,7 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
     ["str","JsVar","The string"]
   ],
   "return" : ["JsVar","An object containing `{width,height,etc}` for the string - see below"],
-  "typescript" : "stringMetrics(str: string): { width: number, height: number, unknownChars: boolean, imageCount : number, maxImageHeight : number };"
+  "typescript" : "stringMetrics(str: string): { width: number, height: number, unrenderableChars: boolean, imageCount : number, maxImageHeight : number };"
 }
 Return the width and height in pixels of a string of text in the current font. The object returned contains:
 
