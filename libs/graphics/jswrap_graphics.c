@@ -2224,13 +2224,22 @@ int jswrap_graphics_getFontHeight(JsVar *parent) {
 #endif
 }
 
+typedef struct {
+  int stringWidth;     // width in pixels
+  int stringHeight;    // height in pixels
+  bool unrenderableChars; // are any chars in this not renderable in the current font?
+#ifndef SAVE_ON_FLASH
+  int imageCount;      // how many inline images are in this string?
+  int maxImageHeight;   // maximum height of image in this string
+#endif
+} StringMetricsResult;
 
 /** Work out the width and height of a bit of text. If 'lineStartIndex' is -1 the whole string is used
- * otherwise *just* the line of text starting at that char index is used
- */
-void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIndex, int *stringWidth, int *stringHeight, bool *hasAllChars) {
+ * otherwise *just* the line of text starting at that char index is used */
+void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIndex, StringMetricsResult *result) {
   JsGraphicsFontInfo info;
   _jswrap_graphics_getFontInfo(gfx, &info);
+  memset(result, 0, sizeof(result));
 
   int fontHeight = _jswrap_graphics_getFontHeightInternal(gfx, &info);
   JsVar *str = jsvAsString(var);
@@ -2239,7 +2248,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
   int width = 0;
   int height = fontHeight;
   int maxWidth = 0;
-  if (hasAllChars) *hasAllChars = true;
+
   while (jsvStringIteratorHasChar(&it)) {
     int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
     if (ch=='\n') {
@@ -2250,6 +2259,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
     }
 #ifndef SAVE_ON_FLASH
     if (ch==0) { // If images are described in-line in the string, render them
+      result->imageCount++;
       GfxDrawImageInfo img;
       size_t idx = jsvConvertToUTF8Index(str, jsvStringIteratorGetIndex(&it));
       if (_jswrap_graphics_parseImage(gfx, str, idx, &img)) {
@@ -2257,24 +2267,26 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
         _jswrap_graphics_freeImageInfo(&img);
         // string iterator now points to the next char after image
         width += img.width;
+        if (img.height > result->maxImageHeight)
+          result->maxImageHeight = img.height;
       }
       continue;
     }
 #endif
     int w = _jswrap_graphics_getCharWidth(gfx, &info, ch);
     width += w;
-    if (w==0 && hasAllChars) *hasAllChars = false; // assume width=0 means char not found
+    if (w==0) result->unrenderableChars = true; // assume width=0 means char not found
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(str);
-  if (stringWidth) *stringWidth = width>maxWidth ? width : maxWidth;
-  if (stringHeight) *stringHeight = height;
+  result->stringWidth = width>maxWidth ? width : maxWidth;
+  result->stringHeight = height;
   _jswrap_graphics_freeFontInfo(&info);
 }
 JsVarInt _jswrap_graphics_stringWidth(JsGraphics *gfx, JsVar *var, int lineStartIndex) {
-  int w,h;
-  _jswrap_graphics_stringMetrics(gfx, var, lineStartIndex, &w, &h, NULL);
-  return w;
+  StringMetricsResult metrics;
+  _jswrap_graphics_stringMetrics(gfx, var, lineStartIndex, &metrics);
+  return metrics.stringWidth;
 }
 
 /*JSON{
@@ -2303,23 +2315,35 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   "params" : [
     ["str","JsVar","The string"]
   ],
-  "return" : ["JsVar","An object containing `{width,height}` of the string"],
-  "typescript" : "stringMetrics(str: string): { width: number, height: number, unknownChars: boolean };"
+  "return" : ["JsVar","An object containing `{width,height,etc}` for the string - see below"],
+  "typescript" : "stringMetrics(str: string): { width: number, height: number, unknownChars: boolean, imageCount : number, maxImageHeight : number };"
 }
-Return the width and height in pixels of a string of text in the current font.
+Return the width and height in pixels of a string of text in the current font. The object returned contains:
 
-If `unknownChars` is true, it means the string contains characters that the current font isn't able to render.
+```JS
+{
+  width,              // Width of the string in pixels
+  height,             // Height of the string in pixels
+  unrenderableChars,  // If true, the string contains characters that the current font isn't able to render.
+  imageCount,         // How many inline images are in this string?
+  maxImageHeight,     // If there are images, what is the maximum height of all images?
+}
+```
+
 */
 JsVar* jswrap_graphics_stringMetrics(JsVar *parent, JsVar *var) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  int w,h;
-  bool hasAllChars;
+  StringMetricsResult metrics;
   JsVar *o = jsvNewObject();
   if (o) {
-    _jswrap_graphics_stringMetrics(&gfx, var, -1, &w, &h, &hasAllChars);
-    jsvObjectSetChildAndUnLock(o, "width", jsvNewFromInteger(w));
-    jsvObjectSetChildAndUnLock(o, "height", jsvNewFromInteger(h));
-    jsvObjectSetChildAndUnLock(o, "unknownChars", jsvNewFromBool(!hasAllChars));
+    _jswrap_graphics_stringMetrics(&gfx, var, -1, &metrics);
+    jsvObjectSetChildAndUnLock(o, "width", jsvNewFromInteger(metrics.stringWidth));
+    jsvObjectSetChildAndUnLock(o, "height", jsvNewFromInteger(metrics.stringHeight));
+    jsvObjectSetChildAndUnLock(o, "unrenderableChars", jsvNewFromBool(metrics.unrenderableChars));
+#ifndef SAVE_ON_FLASH
+    jsvObjectSetChildAndUnLock(o, "imageCount", jsvNewFromInteger(metrics.imageCount));
+    jsvObjectSetChildAndUnLock(o, "maxImageHeight", jsvNewFromInteger(metrics.maxImageHeight));
+#endif
   }
   return o;
 }
@@ -2537,9 +2561,10 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
   if (gfx.data.fontAlignX<2) // 0=center, 1=right, 2=undefined, 3=left
     x = startx - (_jswrap_graphics_stringWidth(&gfx, str, 0) * (gfx.data.fontAlignX+1)/2);
   if (gfx.data.fontAlignY<2) { // 0=center, 1=bottom, 2=undefined, 3=top
-    int stringWidth=0, stringHeight=0; // width/height of entire string
-    _jswrap_graphics_stringMetrics(&gfx, str, -1, &stringWidth, &stringHeight, NULL);
-    y -= stringHeight * (gfx.data.fontAlignY+1)/2;
+    StringMetricsResult metrics;
+    // Get width/height of entire string
+    _jswrap_graphics_stringMetrics(&gfx, str, -1, &metrics);
+    y -= metrics.stringHeight * (gfx.data.fontAlignY+1)/2;
   }
   // figure out clip rectangles
   int minX = gfx.data.clipRect.x1, minY = gfx.data.clipRect.y1;

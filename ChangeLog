@@ -24,10 +24,10 @@
             Bangle.js2: Do a soft reset every time we start the SPL06 pressure sensor (stops occasional sensor lockup)
             Graphics: wrapString will now wrap lines on comma, dot, dash, and between images
             Graphics: Improve PBF font loading to handle v3, plus Espruino extension to handle >10k glyphs in one file
-            Graphics: Graphics.stringMetrics now returns 'unknownChars' to indicate if a font can't render a character in the String
             Fix unicode in object accesses, eg c["\u00FC"]=42 (fix #2429)
             Storage: Storage.writeJSON now escapes with a more compact `\x##`/`\#` character escape notation (still valid JSON)
               This allows Espruino to save non-unicode strings with characters in the unicode range, and to also re-load them as non-unicode
+            Graphics: Graphics.stringMetrics now returns 'unrenderableChars/imageCount/maxImageHeight' for much more info about rendering strings
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)
