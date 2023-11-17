@@ -1287,7 +1287,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
         JsVar* ext = jsvNewWithFlags(JSV_STRING_EXT_0);
         if (ext) {
           jsvSetCharactersInVar(ext, (size_t)index);
-          jsvSetLastChild(last, jsvGetRef(ext));
+          jsvSetLastChild(last, jsvGetRef(ext));  // no ref for stringext
           jsvUnLock(ext);
         } // TODO else?
       }
@@ -2783,10 +2783,10 @@ JsVar *jsvCopy(JsVar *src, bool copyChildren) {
       } else {
         JsVar *childCopy = jsvCopy(child, true);
         if (childCopy) {// could be out of memory
-          jsvSetLastChild(dstChild, jsvGetRef(childCopy)); // no ref for stringext
+          jsvSetLastChild(dstChild, jsvGetRef(jsvRef(childCopy)));
           jsvUnLock(childCopy);
         }
-        jsvUnLock2(src, dstChild);
+        jsvUnLock3(src, dstChild, child);
         return dst;
       }
     }
