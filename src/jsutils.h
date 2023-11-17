@@ -581,8 +581,8 @@ typedef void (*vcbprintf_callback)(const char *str, void *user_data);
  * * `%s` = string (char *)
  * * `%c` = char
  * * `%v` = JsVar * (doesn't have to be a string - it'll be converted)
- * * `%q` = JsVar * (in quotes, and escaped)
- * * `%Q` = JsVar * (in quotes, and escaped the JSON subset of escape chars)
+ * * `%q` = JsVar * (in quotes, and escaped with \uXXXX,\xXX,\X whichever makes sense)
+ * * `%Q` = JsVar * (in quotes, and escaped with only \uXXXX)
  * * `%j` = Variable printed as JSON
  * * `%t` = Type of variable
  * * `%p` = Pin

@@ -285,13 +285,23 @@ disappear when the device resets or power is lost.
 Simply write `require("Storage").writeJSON("MyFile", [1,2,3])` to write a new
 file, and `require("Storage").readJSON("MyFile")` to read it.
 
-This is equivalent to: `require("Storage").write(name, JSON.stringify(data))`
+This is (almost) equivalent to: `require("Storage").write(name, JSON.stringify(data))`
 
 **Note:** This function should be used with normal files, and not `StorageFile`s
 created with `require("Storage").open(filename, ...)`
+
+**Note:** Normally `JSON.stringify` converts any non-standard character to an escape code with `\uXXXX`, but
+as of Espruino 2v20, when writing to a file we use the most compact form, like `\xXX` or `\X`. This saves
+space and is faster, but also means that if a String wasn't a UTF8 string but contained characters in the UTF8 codepoint range,
+when saved it won't end up getting reloaded as a UTF8 string.
 */
 bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
-  JsVar *d = jswrap_json_stringify(data,0,0);
+  JsVar *d = jsvNewFromEmptyString();
+  if (!d) return false;
+  /* Don't call jswrap_json_stringify directly because we want to ensure we don't use JSON_JSON_COMPATIBILE, so
+  String escapes like `\xFC` stay as `\xFC` and not `\u00FC` to save space and help with unicode compatibility
+  */
+  jsfGetJSON(data, d, (JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY|JSON_JSON_COMPATIBILE) &~JSON_ALL_UNICODE_ESCAPE);
   bool r = jsfWriteFile(jsfNameFromVar(name), d, JSFF_NONE, 0, 0);
   jsvUnLock(d);
   return r;
@@ -426,7 +436,7 @@ void jswrap_storage_debug() {
   "name" : "getFree",
   "params" : [
     ["checkInternalFlash","bool","Check the internal flash (rather than external SPI flash).  Default false, so will check external storage"]
-  ],  
+  ],
   "generate" : "jswrap_storage_getFree",
   "return" : ["int","The amount of free bytes"]
 }
@@ -451,7 +461,7 @@ int jswrap_storage_getFree(bool checkInternalFlash) {
   "name" : "getStats",
   "params" : [
     ["checkInternalFlash","bool","Check the internal flash (rather than external SPI flash).  Default false, so will check external storage"]
-  ],  
+  ],
   "generate" : "jswrap_storage_getStats",
   "return" : ["JsVar","An object containing info about the current Storage system"]
 }
@@ -476,8 +486,8 @@ JsVar *jswrap_storage_getStats(bool checkInternalFlash) {
   uint32_t addr = 0;
 #ifdef FLASH_SAVED_CODE2_START
   addr = checkInternalFlash ? FLASH_SAVED_CODE_START : FLASH_SAVED_CODE2_START;
-  
-#endif  
+
+#endif
   JsfStorageStats stats = jsfGetStorageStats(addr, true);
   jsvObjectSetChildAndUnLock(o, "totalBytes", jsvNewFromInteger((JsVarInt)stats.total));
   jsvObjectSetChildAndUnLock(o, "freeBytes", jsvNewFromInteger((JsVarInt)stats.free));

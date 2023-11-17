@@ -752,8 +752,8 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
  * * `%s` = string (char *)
  * * `%c` = char
  * * `%v` = JsVar * (doesn't have to be a string - it'll be converted)
- * * `%q` = JsVar * (in quotes, and escaped)
- * * `%Q` = JsVar * (in quotes, and escaped the JSON subset of escape chars)
+ * * `%q` = JsVar * (in quotes, and escaped with \uXXXX,\xXX,\X whichever makes sense)
+ * * `%Q` = JsVar * (in quotes, and escaped with only \uXXXX)
  * * `%j` = Variable printed as JSON
  * * `%t` = Type of variable
  * * `%p` = Pin
@@ -824,6 +824,7 @@ void vcbprintf(
         bool isJSONStyle = fmtChar=='Q';
         if (quoted) user_callback("\"",user_data);
         JsVar *v = jsvAsString(va_arg(argp, JsVar*));
+        if (jsvIsUTF8String(v)) isJSONStyle=true; // if it's a UTF8 string make sure we escape in UTF8 form to force Espruino to re-create it as a UTF8 string when parsing
         buf[1] = 0;
         if (jsvIsString(v)) {
           JsvStringIterator it;

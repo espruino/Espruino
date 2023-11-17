@@ -293,7 +293,7 @@ static bool jsfGetJSONForObjectItWithCallback(JsvObjectIterator *it, JSONFlags f
           if (isIDString(buf)) addQuotes=false;
         }
       }
-      cbprintf(user_callback, user_data, addQuotes?((flags&JSON_JSON_COMPATIBILE)?"%Q%s":"%q%s"):"%v%s", index, (flags&JSON_PRETTY)?": ":":");
+      cbprintf(user_callback, user_data, addQuotes?((flags&JSON_ALL_UNICODE_ESCAPE)?"%Q%s":"%q%s"):"%v%s", index, (flags&JSON_PRETTY)?": ":":");
       if (first)
         first = false;
       jsfGetJSONWithCallback(item, index, nflags, whitespace, user_callback, user_data);
@@ -482,7 +482,7 @@ void jsfGetJSONWithCallback(JsVar *var, JsVar *varName, JSONFlags flags, const c
       cbprintf(user_callback, user_data, "function ");
       jsfGetJSONForFunctionWithCallback(var, nflags, user_callback, user_data);
     }
-  } else if ((jsvIsString(var) && !jsvIsName(var)) || ((flags&JSON_JSON_COMPATIBILE)&&jsvIsPin(var))) {
+  } else if ((jsvIsString(var) && !jsvIsName(var)) || ((flags&JSON_PIN_TO_STRING)&&jsvIsPin(var))) {
     if ((flags&JSON_LIMIT) && jsvGetStringLength(var)>JSON_LIMIT_STRING_AMOUNT) {
       // if the string is too big, split it and put dots in the middle
       JsVar *var1 = jsvNewFromStringVar(var, 0, JSON_LIMITED_STRING_AMOUNT);
@@ -490,9 +490,9 @@ void jsfGetJSONWithCallback(JsVar *var, JsVar *varName, JSONFlags flags, const c
       cbprintf(user_callback, user_data, "%q%s%q", var1, JSON_LIMIT_TEXT, var2);
       jsvUnLock2(var1, var2);
     } else {
-      cbprintf(user_callback, user_data, (flags&JSON_JSON_COMPATIBILE)?"%Q":"%q", var);
+      cbprintf(user_callback, user_data, (flags&JSON_ALL_UNICODE_ESCAPE)?"%Q":"%q", var);
     }
-  } else if ((flags&JSON_JSON_COMPATIBILE) && jsvIsFloat(var) && !isfinite(jsvGetFloat(var))) {
+  } else if ((flags&JSON_NO_NAN) && jsvIsFloat(var) && !isfinite(jsvGetFloat(var))) {
     cbprintf(user_callback, user_data, "null");
   } else {
     cbprintf(user_callback, user_data, "%v", var);

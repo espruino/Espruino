@@ -32,14 +32,13 @@ typedef enum {
   JSON_ARRAYBUFFER_AS_ARRAY = 128, //< dump arraybuffers as arrays
   JSON_SHOW_OBJECT_NAMES    = 256, //< Show 'Promise {}'/etc for objects if the type is global
   JSON_DROP_QUOTES          = 512, //< When outputting objects, drop quotes for alphanumeric field names
-  JSON_JSON_COMPATIBILE     = 1024, /**<
-    Only use unicode for escape characters - needed for JSON compatibility
-    Don't output NaN for NaN numbers, only 'null'
-    Convert pins to Strings
-  */
-  JSON_ALLOW_TOJSON      = 2048, //< If there's a .toJSON function in an object, use it and parse that
+  JSON_PIN_TO_STRING        = 1024, //< Convert pins to Strings
+  JSON_ALL_UNICODE_ESCAPE   = 2048, //< Only use unicode \xXXXX for escape characters, not \xXX or \X
+  JSON_NO_NAN               = 4096, //< Don't output NaN for NaN numbers, only 'null'
+  JSON_JSON_COMPATIBILE     = JSON_PIN_TO_STRING|JSON_ALL_UNICODE_ESCAPE|JSON_NO_NAN, //< specific stuff needed for compatibility
+  JSON_ALLOW_TOJSON      = 8192, //< If there's a .toJSON function in an object, use it and parse that
   // ...
-  JSON_INDENT            = 4096, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
+  JSON_INDENT            = 16384, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
 } JSONFlags;
 
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */
