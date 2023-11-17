@@ -2228,7 +2228,7 @@ int jswrap_graphics_getFontHeight(JsVar *parent) {
 /** Work out the width and height of a bit of text. If 'lineStartIndex' is -1 the whole string is used
  * otherwise *just* the line of text starting at that char index is used
  */
-void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIndex, int *stringWidth, int *stringHeight) {
+void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIndex, int *stringWidth, int *stringHeight, bool *hasAllChars) {
   JsGraphicsFontInfo info;
   _jswrap_graphics_getFontInfo(gfx, &info);
 
@@ -2239,6 +2239,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
   int width = 0;
   int height = fontHeight;
   int maxWidth = 0;
+  if (hasAllChars) *hasAllChars = true;
   while (jsvStringIteratorHasChar(&it)) {
     int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
     if (ch=='\n') {
@@ -2260,7 +2261,9 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
       continue;
     }
 #endif
-    width += _jswrap_graphics_getCharWidth(gfx, &info, ch);
+    int w = _jswrap_graphics_getCharWidth(gfx, &info, ch);
+    width += w;
+    if (w==0 && hasAllChars) *hasAllChars = false; // assume width=0 means char not found
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(str);
@@ -2270,7 +2273,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
 }
 JsVarInt _jswrap_graphics_stringWidth(JsGraphics *gfx, JsVar *var, int lineStartIndex) {
   int w,h;
-  _jswrap_graphics_stringMetrics(gfx, var, lineStartIndex, &w, &h);
+  _jswrap_graphics_stringMetrics(gfx, var, lineStartIndex, &w, &h, NULL);
   return w;
 }
 
@@ -2301,18 +2304,22 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
     ["str","JsVar","The string"]
   ],
   "return" : ["JsVar","An object containing `{width,height}` of the string"],
-  "typescript" : "stringMetrics(str: string): { width: number, height: number };"
+  "typescript" : "stringMetrics(str: string): { width: number, height: number, unknownChars: boolean };"
 }
-Return the width and height in pixels of a string of text in the current font
+Return the width and height in pixels of a string of text in the current font.
+
+If `unknownChars` is true, it means the string contains characters that the current font isn't able to render.
 */
 JsVar* jswrap_graphics_stringMetrics(JsVar *parent, JsVar *var) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   int w,h;
+  bool hasAllChars;
   JsVar *o = jsvNewObject();
   if (o) {
-    _jswrap_graphics_stringMetrics(&gfx, var, -1, &w, &h);
+    _jswrap_graphics_stringMetrics(&gfx, var, -1, &w, &h, &hasAllChars);
     jsvObjectSetChildAndUnLock(o, "width", jsvNewFromInteger(w));
     jsvObjectSetChildAndUnLock(o, "height", jsvNewFromInteger(h));
+    jsvObjectSetChildAndUnLock(o, "unknownChars", jsvNewFromBool(!hasAllChars));
   }
   return o;
 }
@@ -2531,7 +2538,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
     x = startx - (_jswrap_graphics_stringWidth(&gfx, str, 0) * (gfx.data.fontAlignX+1)/2);
   if (gfx.data.fontAlignY<2) { // 0=center, 1=bottom, 2=undefined, 3=top
     int stringWidth=0, stringHeight=0; // width/height of entire string
-    _jswrap_graphics_stringMetrics(&gfx, str, -1, &stringWidth, &stringHeight);
+    _jswrap_graphics_stringMetrics(&gfx, str, -1, &stringWidth, &stringHeight, NULL);
     y -= stringHeight * (gfx.data.fontAlignY+1)/2;
   }
   // figure out clip rectangles
