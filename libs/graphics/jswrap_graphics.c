@@ -2473,7 +2473,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
     }
 #endif
     wordWidth += _jswrap_graphics_getCharWidth(&gfx, &info, ch);
-    if (ch==',' || ch=='.' || ch=='-' || ch=='-' || ch==':')
+    if (ch==',' || ch=='.' || ch=='-' || ch=='/' || ch=='\\' || ch==':')
       canSplitAfter = true;
     if (!jsvStringIteratorHasChar(&it)) endOfText=true;
   }
