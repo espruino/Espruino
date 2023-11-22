@@ -29,6 +29,7 @@
               This allows Espruino to save non-unicode strings with characters in the unicode range, and to also re-load them as non-unicode
             Graphics: Graphics.stringMetrics now returns 'unrenderableChars/imageCount/maxImageHeight' for much more info about rendering strings
             Graphics: wrapString now also wraps on slashes (to allow wrapping of URLs)
+            nRF5x: when connecting to other devices, allow a slave latency of 2 (might increase reliability)
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)
