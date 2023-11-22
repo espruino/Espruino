@@ -80,6 +80,9 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx);
 /// Create a new String iterator from a string, starting from a specific character (ensures start character matches with actual UTF8 char number)
 void jsvStringIteratorNewUTF8(JsvStringIterator *it, JsVar *str, size_t startIdx);
 
+/// Update the pointer on a String iterator (should not normally be needed except when allocating a new iterator, but we may call it if we think the pointer in the var may have changed, eg during compaction)
+void jsvStringIteratorUpdatePtr(JsvStringIterator *it);
+
 /// Clone the string iterator
 void jsvStringIteratorClone(JsvStringIterator *dstit, JsvStringIterator *it);
 

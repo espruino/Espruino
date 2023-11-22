@@ -265,20 +265,16 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
     it->var = jsvLockAgain(str);
   it->varIndex = 0;
   it->charsInVar = jsvGetCharactersInVar(it->var);
-
-  if (jsvIsFlatString(it->var)) {
-    it->ptr = jsvGetFlatStringPointer(it->var);
-  } else if (jsvIsNativeString(it->var)) {
-    it->ptr = (char*)it->var->varData.nativeStr.ptr;
 #ifdef SPIFLASH_BASE
-  } else if (jsvIsFlashString(it->var)) {
+  if (jsvIsFlashString(it->var)) {
+    /* We need to handle flash strings separately as we want
+    to preload a buffer of data */
     it->charsInVar = 0;
     it->charIdx = startIdx; // if it's not UTF8 we can just load up the bit we want immediately
     return jsvStringIteratorLoadFlashString(it);
-#endif
-  } else{
-    it->ptr = &it->var->varData.str[0];
   }
+#endif
+  jsvStringIteratorUpdatePtr(it);
   it->charIdx = startIdx;
   jsvStringIteratorCatchUp(it);
 }
@@ -300,6 +296,22 @@ void jsvStringIteratorNewUTF8(JsvStringIterator *it, JsVar *str, size_t startIdx
 #endif
 }
 
+/// Update the pointer on a String iterator (should not normally be needed except when allocating a new iterator, but we may call it if we think the pointer in the var may have changed, eg during compaction)
+void jsvStringIteratorUpdatePtr(JsvStringIterator *it) {
+  if (jsvIsFlatString(it->var)) {
+    it->ptr = jsvGetFlatStringPointer(it->var);
+  } else if (jsvIsNativeString(it->var)) {
+    it->ptr = (char*)it->var->varData.nativeStr.ptr;
+#ifdef SPIFLASH_BASE
+  } else if (jsvIsFlashString(it->var)) {
+    /* don't do anything for flash strings - they are
+    handled specially in jsvStringIteratorNew */
+#endif
+  } else if (it->var)
+    it->ptr = &it->var->varData.str[0];
+  else
+    it->ptr = 0;
+}
 
 void jsvStringIteratorClone(JsvStringIterator *dstit, JsvStringIterator *it) {
   *dstit = *it;

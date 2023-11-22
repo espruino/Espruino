@@ -406,7 +406,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
   if (!expressionOnly) {
     int brackets = 0;
     JsExecFlags oldExec = execInfo.execute;
-    execInfo.execute = EXEC_NO; // set no execute so we don't parse strings    
+    execInfo.execute = EXEC_NO; // set no execute so we don't parse strings
     while (lex->tk && (brackets || lex->tk != '}')) {
       if (lex->tk == '{') brackets++;
       if (lex->tk == '}') brackets--;
@@ -932,6 +932,11 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
     }
 
     jsvUnLock(thisVar);
+    /* It's possible that this call or a subcall may have compacted the filesystem
+    which changed the address the var in the iterator pointed to. If so we need to
+    copy it again. This should be quick-ish so lets' just do it rather than checking
+    whether we have compacted or not. https://github.com/espruino/Espruino/issues/2431 */
+    if (lex) jsvStringIteratorUpdatePtr(&lex->it);
 
     return returnVar;
   } else if (isParsing) { // ---------------------------------- function, but not executing - just parse args and be done
