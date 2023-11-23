@@ -80,7 +80,9 @@ JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space) {
 }
 
 
-JsVar *jswrap_json_parse_internal() {
+/* Parse JSON from the current lexer. unquoted fields aren't normally allowed,
+   but if flags&JSON_DROP_QUOTES we'll allow them */
+JsVar *jswrap_json_parse_internal(JSONFlags flags) {
   switch (lex->tk) {
   case LEX_R_TRUE:  jslGetNextToken(); return jsvNewFromBool(true);
   case LEX_R_FALSE: jslGetNextToken(); return jsvNewFromBool(false);
@@ -88,7 +90,7 @@ JsVar *jswrap_json_parse_internal() {
   case '-': {
     jslGetNextToken();
     if (lex->tk!=LEX_INT && lex->tk!=LEX_FLOAT) return 0;
-    JsVar *v = jswrap_json_parse_internal();
+    JsVar *v = jswrap_json_parse_internal(flags);
     JsVar *zero = jsvNewFromInteger(0);
     JsVar *r = jsvMathsOp(zero, v, '-');
     jsvUnLock2(v, zero);
@@ -117,7 +119,7 @@ JsVar *jswrap_json_parse_internal() {
     JsVar *arr = jsvNewEmptyArray(); if (!arr) return 0;
     jslGetNextToken(); // [
     while (lex->tk != ']' && !jspHasError()) {
-      JsVar *value = jswrap_json_parse_internal();
+      JsVar *value = jswrap_json_parse_internal(flags);
       if (!value ||
           (lex->tk!=']' && !jslMatch(','))) {
         jsvUnLock2(value, arr);
@@ -135,12 +137,16 @@ JsVar *jswrap_json_parse_internal() {
   case '{': {
     JsVar *obj = jsvNewObject(); if (!obj) return 0;
     jslGetNextToken(); // {
-    while (lex->tk == LEX_STR && !jspHasError()) {
+    while (lex->tk == LEX_STR || lex->tk == LEX_ID && !jspHasError()) {
+      if (!(flags&JSON_DROP_QUOTES)) {
+        jslMatch(LEX_STR);
+        return obj;
+      }
       JsVar *key = jsvAsArrayIndexAndUnLock(jslGetTokenValueAsVar());
       jslGetNextToken();
       JsVar *value = 0;
       if (!jslMatch(':') ||
-          !(value=jswrap_json_parse_internal()) ||
+          !(value=jswrap_json_parse_internal(flags)) ||
           (lex->tk!='}' && !jslMatch(','))) {
         jsvUnLock3(key, value, obj);
         return 0;
@@ -178,16 +184,19 @@ Parse the given JSON string into a JavaScript object
 NOTE: This implementation uses eval() internally, and as such it is unsafe as it
 can allow arbitrary JS commands to be executed.
  */
-JsVar *jswrap_json_parse(JsVar *v) {
+JsVar *jswrap_json_parse_ext(JsVar *v, JSONFlags flags) {
   JsLex lex;
   JsVar *str = jsvAsString(v);
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(str);
   jsvUnLock(str);
-  JsVar *res = jswrap_json_parse_internal();
+  JsVar *res = jswrap_json_parse_internal(flags);
   jslKill();
   jslSetLex(oldLex);
   return res;
+}
+JsVar *jswrap_json_parse(JsVar *v) {
+  return jswrap_json_parse_ext(v, 0);
 }
 
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */

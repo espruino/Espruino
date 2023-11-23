@@ -160,7 +160,7 @@ created with `require("Storage").open(filename, ...)`
 JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name),0,0);
   if (!v) return 0;
-  JsVar *r = jswrap_json_parse(v);
+  JsVar *r = jswrap_json_parse_ext(v, JSON_DROP_QUOTES);
   jsvUnLock(v);
   if (noExceptions) {
     jsvUnLock(jspGetException());
@@ -288,15 +288,17 @@ disappear when the device resets or power is lost.
 Simply write `require("Storage").writeJSON("MyFile", [1,2,3])` to write a new
 file, and `require("Storage").readJSON("MyFile")` to read it.
 
-This is (almost) equivalent to: `require("Storage").write(name, JSON.stringify(data))`
+This is (almost) equivalent to `require("Storage").write(name, JSON.stringify(data))` (see the notes below)
 
 **Note:** This function should be used with normal files, and not `StorageFile`s
 created with `require("Storage").open(filename, ...)`
 
 **Note:** Normally `JSON.stringify` converts any non-standard character to an escape code with `\uXXXX`, but
-as of Espruino 2v20, when writing to a file we use the most compact form, like `\xXX` or `\X`. This saves
-space and is faster, but also means that if a String wasn't a UTF8 string but contained characters in the UTF8 codepoint range,
-when saved it won't end up getting reloaded as a UTF8 string.
+as of Espruino 2v20, when writing to a file we use the most compact form, like `\xXX` or `\X`, as well as
+skipping quotes on fields. This saves space and is faster, but also means that if a String wasn't a UTF8
+string but contained characters in the UTF8 codepoint range, when saved it won't end up getting reloaded as a UTF8 string.
+It does mean that you cannot parse the file with just `JSON.parse` as it's no longer standard JSON but is JS,
+so you must use `Storage.readJSON`
 */
 bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
   JsVar *d = jsvNewFromEmptyString();
@@ -304,7 +306,7 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
   /* Don't call jswrap_json_stringify directly because we want to ensure we don't use JSON_JSON_COMPATIBILE, so
   String escapes like `\xFC` stay as `\xFC` and not `\u00FC` to save space and help with unicode compatibility
   */
-  jsfGetJSON(data, d, (JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY|JSON_JSON_COMPATIBILE) &~JSON_ALL_UNICODE_ESCAPE);
+  jsfGetJSON(data, d, (JSON_DROP_QUOTES|JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY|JSON_JSON_COMPATIBILE) &~JSON_ALL_UNICODE_ESCAPE);
   bool r = jsfWriteFile(jsfNameFromVar(name), d, JSFF_NONE, 0, 0);
   jsvUnLock(d);
   return r;

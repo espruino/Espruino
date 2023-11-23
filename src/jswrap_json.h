@@ -16,10 +16,6 @@
 
 #include "jsvar.h"
 
-JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space);
-JsVar *jswrap_json_parse_ext(JsVar *v, bool throwExceptions);
-JsVar *jswrap_json_parse(JsVar *v);
-
 typedef enum {
   JSON_NONE,
   JSON_SOME_NEWLINES     = 1, //< insert newlines in non-simple arrays and objects
@@ -31,7 +27,7 @@ typedef enum {
   JSON_NO_UNDEFINED      = 64, //< don't output undefined keys in objects, and use null for undefined in arrays
   JSON_ARRAYBUFFER_AS_ARRAY = 128, //< dump arraybuffers as arrays
   JSON_SHOW_OBJECT_NAMES    = 256, //< Show 'Promise {}'/etc for objects if the type is global
-  JSON_DROP_QUOTES          = 512, //< When outputting objects, drop quotes for alphanumeric field names
+  JSON_DROP_QUOTES          = 512, //< When outputting objects, drop quotes for alphanumeric field names (or allow unqouted when parsing)
   JSON_PIN_TO_STRING        = 1024, //< Convert pins to Strings
   JSON_ALL_UNICODE_ESCAPE   = 2048, //< Only use unicode \xXXXX for escape characters, not \xXX or \X
   JSON_NO_NAN               = 4096, //< Don't output NaN for NaN numbers, only 'null'
@@ -40,6 +36,10 @@ typedef enum {
   // ...
   JSON_INDENT            = 16384, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
 } JSONFlags;
+
+JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space);
+JsVar *jswrap_json_parse_ext(JsVar *v, JSONFlags flags);
+JsVar *jswrap_json_parse(JsVar *v);
 
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */
 void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user_callback, void *user_data);
