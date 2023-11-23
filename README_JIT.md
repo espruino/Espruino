@@ -173,22 +173,19 @@ jit(); // prints 0,1,2,3,4
 function jit() {"jit";for (var i=0;i<5;++i) print(i);}
 jit(); // prints 0,1,2,3,4
 
-/*
-// WHILE is broken, so disabled for now
-
 function jit() {"jit";while (0) {}}
 jit();
-E.setFlags({jitDebug:1});
 function jit() {"jit";while (1) return 42;}
 jit()==42
 function jit() {"jit";while (0) return 0;return 42;}
 jit()==42
 
+function jit(i) {"jit";while (i--) print(i);}
+jit(5) // prints 4,3,2,1,0
+
 function jit() {"jit";while (i--) j++;}
-i=1;j=0;jit();  // broken: Uncaught Error: Unable to assign value to non-reference ?
-function jit() {"jit";while (0) print(5); print("Done"); } jit(); // ok
-function jit() {"jit";while (1) print(5); print("Done"); } jit(); // Expecting a function to call, got Object (should print '5' forever)
-*/
+i=1;j=0;jit();  // ok, does nothing
+function jit() {"jit";while (0) print(5); print("Done"); } jit(); // prints 'Done'
 
 function jit() {"jit";do { print(i); } while (i--);}
 i=5;jit(); // prints 5,4,3,2,1,0
