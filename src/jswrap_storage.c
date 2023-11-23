@@ -210,7 +210,7 @@ JsVar *jswrap_storage_readArrayBuffer(JsVar *name) {
   "params" : [
     ["name","JsVar","The filename - max 28 characters (case sensitive)"],
     ["data","JsVar","The data to write"],
-    ["offset","int","[optional] The offset within the file to write"],
+    ["offset","int","[optional] The offset within the file to write (if `0`/`undefined` a new file is created, otherwise Espruino attempts to write within an existing file if one exists)"],
     ["size","int","[optional] The size of the file (if a file is to be created that is bigger than the data)"]
   ],
   "return" : ["bool","True on success, false on failure"],
@@ -237,9 +237,12 @@ try and overwrite data that already exists**. For instance:
 
 ```
 var f = require("Storage");
-f.write("a","Hello",0,14);
-f.write("a"," ",5);
-f.write("a","World!!!",6);
+f.write("a","Hello",0,14); // Creates a new file, 14 chars long
+print(JSON.stringify(f.read("a"))); // read the file
+// any nonwritten chars will be char code 255:
+"Hello\u00FF\u00FF\u00FF\u00FF\u00FF\u00FF\u00FF\u00FF\u00FF"
+f.write("a"," ",5); // write within the file
+f.write("a","World!!!",6); // write again within the file
 print(f.read("a")); // "Hello World!!!"
 f.write("a"," ",0); // Writing to location 0 again will cause the file to be re-written
 print(f.read("a")); // " "
