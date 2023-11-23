@@ -684,7 +684,7 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
       if (jit.phase == JSJP_EMIT) {
         DEBUG_JIT("; shortcitcuit jump\n");
         // if false, jump after true block (if an 'else' we need to jump over the jsjcBranchRelative
-        jsjcBranchConditionalRelative((op==LEX_ANDAND) ? JSJAC_EQ : JSJAC_NE, jsvGetStringLength(secondBlock));
+        jsjcBranchConditionalRelative((op==LEX_ANDAND) ? JSJAC_EQ : JSJAC_NE, jsvGetStringLength(secondBlock), JSJC_NONE);
         DEBUG_JIT("; shortcitcuit second block\n");
         jsjcEmitBlock(secondBlock);
         DEBUG_JIT("; shortcitcuit end\n");
@@ -763,13 +763,15 @@ void jsjConditionalExpression() {
     jsjAssignmentExpression();
     if (jit.phase == JSJP_EMIT) jsjPopNoName(0); // we pop to r0 here so we can push after and avoid confusing the stack size checker
     JsVar *falseBlock = jsjcStopBlock(oldBlock);
+    // true block has a jump at the end which depends on the length of the false block!
+    int trueBlockLen = jsvGetStringLength(trueBlock) + jsjcGetBranchRelativeLength(jsvGetStringLength(falseBlock));
     if (jit.phase == JSJP_EMIT) {
       DEBUG_JIT("; ternary jump after condition\n");
       // if false, jump after true block (if an 'else' we need to jump over the jsjcBranchRelative
-      jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(trueBlock) + 2);
+      jsjcBranchConditionalRelative(JSJAC_EQ, trueBlockLen, JSJC_NONE);
       DEBUG_JIT("; ternary true block\n");
       jsjcEmitBlock(trueBlock);
-      jsjcBranchRelative(jsvGetStringLength(falseBlock)); // jump over false block
+      jsjcBranchRelative(jsvGetStringLength(falseBlock), JSJC_NONE); // jump over false block
       DEBUG_JIT("; ternary false block\n");
       jsjcEmitBlock(falseBlock);
       DEBUG_JIT("; ternary end\n");
@@ -909,11 +911,13 @@ void jsjStatementIf() {
   if (jit.phase == JSJP_EMIT) {
     DEBUG_JIT("; IF jump after condition\n");
     // if false, jump after true block (if an 'else' we need to jump over the jsjcBranchRelative
-    jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(trueBlock) + (falseBlock?2:0));
+    // true block has a jump at the end (if an 'else') and the size of that jump instr can change
+    int trueBlockLen = jsvGetStringLength(trueBlock) + (falseBlock?jsjcGetBranchRelativeLength(jsvGetStringLength(falseBlock)):0);
+    jsjcBranchConditionalRelative(JSJAC_EQ, trueBlockLen, JSJC_NONE);
     DEBUG_JIT("; IF true block\n");
     jsjcEmitBlock(trueBlock);
     if (falseBlock) {
-      jsjcBranchRelative(jsvGetStringLength(falseBlock)); // jump over false block
+      jsjcBranchRelative(jsvGetStringLength(falseBlock), JSJC_NONE); // jump over false block
       DEBUG_JIT("; IF false block\n");
       jsjcEmitBlock(falseBlock);
     }
@@ -962,14 +966,14 @@ void jsjStatementFor() {
   DEBUG_JIT_EMIT("; Branch OVER main block to END\n");
   // Now figure out the jump length and jump (if condition is false)
   if (jit.phase == JSJP_EMIT) {
-    jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(iteratorBlock) + jsvGetStringLength(mainBlock) + 2);
+    jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(iteratorBlock) + jsvGetStringLength(mainBlock) + 4, JSJC_FORCE_4BYTE);
     DEBUG_JIT_EMIT("; FOR Main block\n");
     jsjcEmitBlock(mainBlock);
     DEBUG_JIT_EMIT("; FOR Iterator block\n");
     jsjcEmitBlock(iteratorBlock);
     // after the iterator, jump back to condition
     DEBUG_JIT_EMIT("; FOR jump back to condition\n");
-    jsjcBranchRelative(codePosCondition - (jsjcGetByteCount()+2));
+    jsjcBranchRelative(codePosCondition - (jsjcGetByteCount()+4), JSJC_FORCE_4BYTE);
     DEBUG_JIT_EMIT("; FOR end\n");
   }
   jsvUnLock2(mainBlock, iteratorBlock);
@@ -992,11 +996,11 @@ void jsjStatementDoOrWhile(bool isWhile) {
       DEBUG_JIT_EMIT("; WHILE condition jump\n");
       jsjPopAsBool(0);
       jsjcCompareImm(0, 0);
-      jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(mainBlock) + 2);
+      jsjcBranchConditionalRelative(JSJAC_EQ, jsvGetStringLength(mainBlock) + 2, JSJC_NONE);
       DEBUG_JIT_EMIT("; WHILE Main block\n");
       jsjcEmitBlock(mainBlock);
       DEBUG_JIT_EMIT("; WHILE jump back to condition\n");
-      jsjcBranchRelative(codePosStart - (jsjcGetByteCount()));
+      jsjcBranchRelative(codePosStart - (jsjcGetByteCount()), JSJC_NONE);
     }
     jsvUnLock(mainBlock);*/
   } else { // do..while loop
@@ -1011,7 +1015,7 @@ void jsjStatementDoOrWhile(bool isWhile) {
     if (jit.phase == JSJP_EMIT) {
       jsjPopAsBool(0);
       jsjcCompareImm(0, 0);
-      jsjcBranchConditionalRelative(JSJAC_NE, codePosStart - (jsjcGetByteCount()+2));
+      jsjcBranchConditionalRelative(JSJAC_NE, codePosStart - (jsjcGetByteCount()+2), JSJC_NONE);
     }
   }
 }

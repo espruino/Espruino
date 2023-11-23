@@ -80,7 +80,7 @@ JsVar *jsjcStop() {
   jsjcDebugPrintf("; VARS: %j\n", jit.vars);
   jsvUnLock(jit.vars);
   jit.vars = 0;
-  assert(jit.stackDepth == 0);
+  assert(jspHasError() || jit.stackDepth == 0); // stack depth may be wrong if there's an exception
 
   assert(jit.blockCount==0);
 #ifdef JIT_OUTPUT_FILE
@@ -216,10 +216,12 @@ int jsjcLiteralString(int reg, JsVar *str, bool nullTerminate) {
   int len = (int)jsvGetStringLength(str);
   int realLen = len + (nullTerminate?1:0);
   if (realLen&1) realLen++; // pad to even bytes
+  int branchLen = jsjcGetBranchRelativeLength(realLen);
   // Write location of data to register
   jsjcMov(reg, JSJAR_PC);
+  if (branchLen>2) jsjcAdd(reg,reg,branchLen); // double-len branch instruction, so data is off by 2 + add instr length
   // jump over the data
-  jsjcBranchRelative(realLen);
+  jsjcBranchRelative(realLen, JSJC_NONE);
   // write the data
   DEBUG_JIT("... %d bytes data (%q) ...\n", (uint32_t)(realLen), str);
   JsvStringIterator it;
@@ -243,32 +245,64 @@ void jsjcCompareImm(int reg, int literal) {
   jsjcEmit16((uint16_t)(0b0010100000000000 | (reg<<8) | imm8)); // unconditional branch
 }
 
-void jsjcBranchRelative(int bytes) {
-  DEBUG_JIT("B %s%d (addr 0x%04x)\n", (bytes>=0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
-  bytes -= 2; // because PC is ahead by 2
+// Get length of jsjcBranchRelative in bytes
+int jsjcGetBranchRelativeLength(int bytes) {
+  if (bytes<-2044 || bytes>=2050) // we subtract 2 later
+    return 4;
+  return 2;
+}
+
+// Jump a number of bytes forward or back, return number of bytes used for op
+int jsjcBranchRelative(int bytes, JsjsEmitOptions options) {
+  // https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Alphabetical-list-of-Thumb-instructions/B
   assert(!(bytes&1)); // only multiples of 2 bytes
-  assert(bytes>=-2048 && bytes<2048); // check it's in range...
-  if (bytes<-2048 || bytes>=2048) {
-    // out of range, so use jsjcBranchConditionalRelative that can handle big jumps
-    jsjcBranchConditionalRelative(JSJAC_AL, bytes+2);
-  } else {
+  if (jsjcGetBranchRelativeLength(bytes)==2 && !(options&JSJC_FORCE_4BYTE)) {
+    bytes -= 2; // because PC is ahead by 2
+    DEBUG_JIT("B %s%d (addr 0x%04x)\n", (bytes>=0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
+    assert(bytes>=-2048 && bytes<2048); // check it's in range...
     int imm11 = ((unsigned int)(bytes)>>1) & 2047;
     jsjcEmit16((uint16_t)(0b1110000000000000 | imm11)); // unconditional branch
+    return 2;
+  } else {
+    // out of range, need double-size instruction
+    // must pad out by 1 word because this is a double-length instruction - we just don't subtract 2 like we do for 2 byte instr
+    DEBUG_JIT("B.W %s%d (addr 0x%04x)\n", (bytes>=0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
+    int imm24 = (bytes>>1);
+    int S = (imm24>>23) & 1;
+    int J2 = (imm24>>22) & 1;
+    int J1 = (imm24>>21) & 1;
+    int I1 = !(J1^S);
+    int I2 = !(J2^S);
+    int imm10 = (imm24>>11) & 1023;
+    int imm11 = imm24 & 2047;
+    jsjcEmit16((uint16_t)(0b1111000000000000 | (S<<10) | imm10)); // conditional branch
+    jsjcEmit16((uint16_t)(0b1001000000000000 | (I1<<13) | (I2<<11) | imm11)); // conditional branch
+    return 4;
   }
 }
 
-// Jump a number of bytes forward or back, based on condition flags
-void jsjcBranchConditionalRelative(JsjAsmCondition cond, int bytes) {
-  assert(cond<16);
-  bytes -= 2; // because PC is ahead by 2
+
+
+// Get length of jsjcBranchConditionalRelative in bytes
+int jsjcGetBranchConditionalRelativeLength(int bytes) {
+  if (bytes<-254 || bytes>=258) // we subtract 2 later
+    return 4;
+  return 2;
+}
+
+// Jump a number of bytes forward or back, based on condition flags, return number of bytes used for op
+int jsjcBranchConditionalRelative(JsjAsmCondition cond, int bytes, JsjsEmitOptions options) {
+  assert(cond<14); // JSJAC_AL has a special meaning for these instructions
+  assert(cond!=14 && cond!=15); // undefined/SVC
   assert(!(bytes&1)); // only multiples of 2 bytes
-  
-  if (bytes>=-256 && bytes<256) { // B<c>
+  if (jsjcGetBranchConditionalRelativeLength(bytes)==2 && !(options&JSJC_FORCE_4BYTE)) { // B<c>
+    bytes -= 2; // because PC is ahead by 2
     DEBUG_JIT("B<%s> %s%d (addr 0x%04x)\n", &JSJAC_STRINGS[cond*3], (bytes>=0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
     int imm8 = (bytes>>1) & 255;
     jsjcEmit16((uint16_t)(0b1101000000000000 | (cond<<8) | imm8)); // conditional branch
+    return 2;
   } else if (bytes>=-1048576 && bytes<(1048576-2)) { // B<c>.W
-    bytes += 2; // must pad out by 1 byte because this is a double-length instruction!
+    // must pad out by 1 word because this is a double-length instruction - we just don't subtract 2 like we do for 2 byte instr
     DEBUG_JIT("B<%s>.W %s%d (addr 0x%04x)\n", &JSJAC_STRINGS[cond*3], (bytes>=0)?"+":"", (uint32_t)(bytes), jsjcGetByteCount()+bytes);
     int imm20 = (bytes>>1);
     int S = (imm20>>19) & 1;
@@ -278,8 +312,10 @@ void jsjcBranchConditionalRelative(JsjAsmCondition cond, int bytes) {
     int imm11 = imm20 & 2047;
     jsjcEmit16((uint16_t)(0b1111000000000000 | (S<<10) | (cond<<6) | imm6)); // conditional branch
     jsjcEmit16((uint16_t)(0b1000000000000000 | (J1<<13) | (J2<<11) | imm11)); // conditional branch
+    return 4;
   } else
     jsExceptionHere(JSET_ERROR, "JIT: B<> jump (%d) out of range", bytes);
+  return 0;
 }
 
 #ifdef DEBUG_JIT_CALLS
@@ -311,12 +347,21 @@ void jsjcMov(int regTo, int regFrom) {
                         //        TFFFFTTT
 }
 
+void jsjcAdd(int regTo, int regFrom, int lit) {
+  // https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Alphabetical-list-of-Thumb-instructions/ADD--immediate-
+  DEBUG_JIT("ADD r%d <- r%d + #%d\n", regTo, regFrom, lit);
+  assert(regTo>=0 && regTo<8);
+  assert(regFrom>=0 && regFrom<8);
+  assert(lit>=0 && lit<8);
+  jsjcEmit16((uint16_t)(0b0001110000000000 | (lit<<6) | (regFrom<<3) | (regTo)));
+}
+
 // Move negated register
 void jsjcMVN(int regTo, int regFrom) {
   DEBUG_JIT("MVNS r%d <- r%d\n", regTo, regFrom);
   assert(regTo>=0 && regTo<8);
   assert(regFrom>=0 && regFrom<8);
-  jsjcEmit16((uint16_t)(0b0100001111000000 | (regFrom<<3) | (regTo&7)));
+  jsjcEmit16((uint16_t)(0b0100001111000000 | (regFrom<<3) | (regTo)));
 }
 
 // regTo = regTo & regFrom
@@ -324,7 +369,7 @@ void jsjcAND(int regTo, int regFrom) {
   DEBUG_JIT("ANDS r%d <- r%d\n", regTo, regFrom);
   assert(regTo>=0 && regTo<8);
   assert(regFrom>=0 && regFrom<8);
-  jsjcEmit16((uint16_t)(0b0100000000000000 | (regFrom<<3) | (regTo&7)));
+  jsjcEmit16((uint16_t)(0b0100000000000000 | (regFrom<<3) | (regTo)));
 }
 
 // Convert the var type in the given reg to a JsVar

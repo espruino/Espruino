@@ -125,10 +125,11 @@ function jit() {'jit';return ~0;}
 jit()==-1
 function jit() {'jit';return -(1);}
 jit()==-1
-function jit() {'jit';return +"0123";} 
+function jit() {'jit';return +"0123";}
 jit()==83 // octal!
 
-function jit(a) {'jit';return a?5:10;} 
+E.setFlags({jitDebug:1});
+function jit(a) {'jit';return a?5:10;}
 jit(1)==5
 jit(0)==10
 
@@ -186,7 +187,7 @@ jit()==42
 function jit() {"jit";while (i--) j++;}
 i=1;j=0;jit();  // broken: Uncaught Error: Unable to assign value to non-reference ?
 function jit() {"jit";while (0) print(5); print("Done"); } jit(); // ok
-function jit() {"jit";while (1) print(5); print("Done"); } jit(); // Expecting a function to call, got Object (should print '5' forever) 
+function jit() {"jit";while (1) print(5); print("Done"); } jit(); // Expecting a function to call, got Object (should print '5' forever)
 */
 
 function jit() {"jit";do { print(i); } while (i--);}

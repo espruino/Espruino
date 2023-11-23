@@ -45,11 +45,12 @@ typedef enum {
   JSJAC_VC, // No overflow
   JSJAC_HI, // Unsigned higher
   JSJAC_LI, // Unsigned lower or same
-  JSJAC_GE, // Signed greater than or equal
-  JSJAC_LT, // Signed less than
-  JSJAC_GT, // Signed greater than
-  JSJAC_LE, // Signed less than or equal
-  JSJAC_AL  // Always
+  JSJAC_GE, // 10 - Signed greater than or equal
+  JSJAC_LT, // 11 - Signed less than
+  JSJAC_GT, // 12 - Signed greater than
+  JSJAC_LE, // 13 - Signed less than or equal
+  JSJAC_AL, // 14 - Always
+  JSJAC_SVC // 15 - SVC control - https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Alphabetical-list-of-Thumb-instructions/B
 } JsjAsmCondition;
 #define JSJAC_STRING "EQ\0NE\0CS\0CC\0MI\0PL\0VS\0VC\0HI\0LI\0GE\0LT\0GT\0LE\0AL"
 
@@ -94,6 +95,11 @@ typedef struct {
 // JIT state
 extern JsjInfo jit;
 
+typedef enum {
+  JSJC_NONE = 0,        ///< emit normally
+  JSJC_FORCE_4BYTE = 1  ///< create 4 byte instruction even if 2 byte would have done
+} JsjsEmitOptions;
+
 // Called before start of JIT output
 void jsjcStart();
 // Called when JIT output stops
@@ -128,12 +134,18 @@ void jsjcCall(void *c);
 int jsjcLiteralString(int reg, JsVar *str, bool nullTerminate);
 // Compare a register with a literal. jsjcBranchConditionalRelative can then be called
 void jsjcCompareImm(int reg, int literal);
-// Jump a number of bytes forward or back
-void jsjcBranchRelative(int bytes);
-// Jump a number of bytes forward or back, based on condition flags
-void jsjcBranchConditionalRelative(JsjAsmCondition cond, int bytes);
+// Get length of jsjcBranchRelative in bytes
+int jsjcGetBranchRelativeLength(int bytes);
+// Jump a number of bytes forward or back, return number of bytes used for op
+int jsjcBranchRelative(int bytes, JsjsEmitOptions options);
+// Get length of jsjcBranchConditionalRelative in bytes
+int jsjcGetBranchConditionalRelativeLength(int bytes);
+// Jump a number of bytes forward or back, based on condition flags, return number of bytes used for op
+int jsjcBranchConditionalRelative(JsjAsmCondition cond, int bytes, JsjsEmitOptions options);
 // Move one register to another
 void jsjcMov(int regTo, int regFrom);
+// Add a literal to a number
+void jsjcAdd(int regTo, int regFrom, int lit);
 // Move negated register
 void jsjcMVN(int regTo, int regFrom);
 // regTo = regTo & regFrom
