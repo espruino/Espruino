@@ -402,7 +402,7 @@ NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxD
   int x1 = xPos, y1 = yPos, x2 = xPos+img->width-1, y2 = yPos+img->height-1;
   if (!jsvStringIteratorHasChar(it)) return; // no data
 #ifndef SAVE_ON_FLASH
-  graphicsSetModifiedAndClip(gfx,&x1,&y1,&x2,&y2); // ensure we clip Y
+  graphicsSetModifiedAndClip(gfx,&x1,&y1,&x2,&y2, true); // ensure we clip Y, coords were already rotated
   /* force a skip forward as many bytes as we need. Ideally we would use
   jsvStringIteratorGotoUTF8 but we don't have the UTF8 index or
   source string here. This is still better than trying to render every pixel! */
@@ -418,7 +418,7 @@ NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxD
   } else // onscreen. y1!=yPos if clipped - ensure we skip enough bytes
     bits = -(y1-yPos)*img->bpp*img->width;
 #endif
-  JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelUnclippedFn(gfx, xPos, y1, xPos+img->width-1, y2);
+  JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelUnclippedFn(gfx, xPos, y1, xPos+img->width-1, y2, true);
   for (int y=y1;y<=y2;y++) {
     for (int x=xPos;x<xPos+img->width;x++) {
       // Get the data we need...
@@ -3421,7 +3421,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         }
         // update modified area since we went direct
         int x1=xPos, y1=yPos, x2=xPos+s*img.width, y2=yPos+s*img.height;
-        graphicsSetModifiedAndClip(&gfx,&x1,&y1,&x2,&y2);
+        graphicsSetModifiedAndClip(&gfx,&x1,&y1,&x2,&y2,false);
       }
     } else { // handle rotation, and default to center the image
 #else
@@ -3438,7 +3438,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       l.repeat = false;
       _jswrap_drawImageLayerInit(&l);
       int x1=l.x1, y1=l.y1, x2=l.x2-1, y2=l.y2-1;
-      graphicsSetModifiedAndClip(&gfx, &x1, &y1, &x2, &y2);
+      graphicsSetModifiedAndClip(&gfx, &x1, &y1, &x2, &y2,false);
       _jswrap_drawImageLayerSetStart(&l, x1, y1);
       JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelFn(&gfx);
 
@@ -3600,7 +3600,7 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
   if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject)))
     ok =  false;
   int x2 = x+width-1, y2 = y+height-1;
-  graphicsSetModifiedAndClip(&gfx, &x, &y, &x2, &y2);
+  graphicsSetModifiedAndClip(&gfx, &x, &y, &x2, &y2,false);
   JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelFn(&gfx);
 
   // If all good, start rendering!

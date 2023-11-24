@@ -193,14 +193,14 @@ void deviceToGraphicsCoordinates(const JsGraphics *gfx, int *x, int *y);
 
 unsigned short graphicsGetWidth(const JsGraphics *gfx);
 unsigned short graphicsGetHeight(const JsGraphics *gfx);
-// Set the area modified (inclusive of x2,y2) by a draw command and also clip to the screen/clipping bounds. Returns true if clipped
-bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int *y2);
+// Set the area modified by a draw command and also clip to the screen/clipping bounds. Returns true if clipped. If coordsRotatedAlready we assume the coordinates have gone through deviceToGraphicsCoordinates already
+bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int *y2, bool coordsRotatedAlready);
 // Set the area modified by a draw command
 void graphicsSetModified(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 /// Get a setPixel function (assuming coordinates already clipped with graphicsSetModifiedAndClip) - if all is ok it can choose a faster draw function
 JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx);
 /// Get a setPixel function and set modified area (assuming no clipping) (inclusive of x2,y2) - if all is ok it can choose a faster draw function
-JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2);
+JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2, bool coordsRotatedAlready);
 /// Merge one color into another based on current bit depth (amt is 0..256)
 uint32_t graphicsBlendColor(JsGraphics *gfx, unsigned int fg, unsigned int bg, int iamt);
 /// Merge one color into another based on current bit depth (amt is 0..256)

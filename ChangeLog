@@ -34,6 +34,7 @@
             JIT: Fix crashes when code got too big for simple 2-byte jump instructions (fix #2433)
             JIT: Fixed/re-added while loops (and DO for huge loops)
             Storage: Storage.writeJSON now skips quotes on alphanumeric field names to speed up settings read/write
+            Graphics: fix drawing image in string inside cliprect when rotated (fix #2435)
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)

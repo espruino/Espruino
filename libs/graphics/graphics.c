@@ -304,23 +304,35 @@ unsigned short graphicsGetHeight(const JsGraphics *gfx) {
   return (gfx->data.flags & JSGRAPHICSFLAGS_SWAP_XY) ? gfx->data.width : gfx->data.height;
 }
 
-// Set the area modified by a draw command and also clip to the screen/clipping bounds
-bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int *y2) {
+// Set the area modified by a draw command and also clip to the screen/clipping bounds. Returns true if clipped. If coordsRotatedAlready we assume the coordinates have gone through deviceToGraphicsCoordinates already
+bool graphicsSetModifiedAndClip(JsGraphics *gfx, int *x1, int *y1, int *x2, int *y2, bool coordsRotatedAlready) {
   bool modified = false;
 #ifndef NO_MODIFIED_AREA
-  if (*x1<gfx->data.clipRect.x1) { *x1 = gfx->data.clipRect.x1; modified = true; }
-  if (*y1<gfx->data.clipRect.y1) { *y1 = gfx->data.clipRect.y1; modified = true; }
-  if (*x2>gfx->data.clipRect.x2) { *x2 = gfx->data.clipRect.x2; modified = true; }
-  if (*y2>gfx->data.clipRect.y2) { *y2 = gfx->data.clipRect.y2; modified = true; }
+  int minX = gfx->data.clipRect.x1, minY = gfx->data.clipRect.y1;
+  int maxX = gfx->data.clipRect.x2, maxY = gfx->data.clipRect.y2;
+  if (coordsRotatedAlready) {
+    graphicsToDeviceCoordinates(gfx, &minX, &minY);
+    graphicsToDeviceCoordinates(gfx, &maxX, &maxY);
+    if (maxX < minX) {
+      int t = minX; minX = maxX; maxX = t;
+    }
+    if (maxY < minY) {
+      int t = minY; minY = maxY; maxY = t;
+    }
+  }
+#else
+  int minX = 0, minY = 0;
+  int maxX = gfx->data.width-1, maxY = gfx->data.height-1;
+#endif
+  if (*x1<minX) { *x1 = minX; modified = true; }
+  if (*y1<minY) { *y1 = minY; modified = true; }
+  if (*x2>maxX) { *x2 = maxX; modified = true; }
+  if (*y2>maxY) { *y2 = maxY; modified = true; }
+#ifndef NO_MODIFIED_AREA
   if (*x1 < gfx->data.modMinX) { gfx->data.modMinX=(short)*x1; modified = true; }
   if (*x2 > gfx->data.modMaxX) { gfx->data.modMaxX=(short)*x2; modified = true; }
   if (*y1 < gfx->data.modMinY) { gfx->data.modMinY=(short)*y1; modified = true; }
   if (*y2 > gfx->data.modMaxY) { gfx->data.modMaxY=(short)*y2; modified = true; }
-#else
-  if (*x1<0) { *x1 = 0; modified = true; }
-  if (*y1<0) { *y1 = 0; modified = true; }
-  if (*x2>=gfx->data.width) { *x2 = gfx->data.width-1; modified = true; }
-  if (*y2>=gfx->data.height) { *y2 = gfx->data.height-1; modified = true; }
 #endif
   return modified;
 }
@@ -344,9 +356,9 @@ JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx) {
 }
 
 /// Get a setPixel function (assuming no clipping by caller) - if all is ok it can choose a faster draw function, but it chooses a slower one if clipping is needed
-JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
+JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2, bool coordsRotatedAlready) {
   if ((gfx->data.flags & JSGRAPHICSFLAGS_MAPPEDXY) ||
-      graphicsSetModifiedAndClip(gfx,&x1,&y1,&x2,&y2))
+      graphicsSetModifiedAndClip(gfx,&x1,&y1,&x2,&y2,coordsRotatedAlready))
     return graphicsSetPixel; // fallback
   else
     return gfx->setPixel; // fast
