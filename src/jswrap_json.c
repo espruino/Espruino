@@ -138,9 +138,9 @@ JsVar *jswrap_json_parse_internal(JSONFlags flags) {
     JsVar *obj = jsvNewObject(); if (!obj) return 0;
     jslGetNextToken(); // {
     while ((lex->tk == LEX_STR || lex->tk == LEX_ID) && !jspHasError()) {
-      if (!(flags&JSON_DROP_QUOTES) && !jslMatch(LEX_STR)) {
-        jsvUnLock(obj);
-        return 0;
+      if (!(flags&JSON_DROP_QUOTES) && (lex->tk == LEX_ID)) {
+	jslMatch(LEX_STR);
+        return obj;
       }
       JsVar *key = jsvAsArrayIndexAndUnLock(jslGetTokenValueAsVar());
       jslGetNextToken();
