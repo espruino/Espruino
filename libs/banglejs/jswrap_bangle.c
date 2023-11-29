@@ -1014,7 +1014,7 @@ typedef enum {
 } JsBangleTasks;
 JsBangleTasks bangleTasks;
 
-const char *unlockReason = 0; ///< If JSBT_UNLOCK is set, this is the reason (if known) - should point to a constant string (not on stack!)
+const char *lockReason = 0; ///< If JSBT_LOCK/UNLOCK is set, this is the reason (if known) - should point to a constant string (not on stack!)
 void _jswrap_banglejs_setLocked(bool isLocked, const char *reason);
 
 void jswrap_banglejs_pwrGPS(bool on) {
@@ -1105,7 +1105,7 @@ bool wakeUpBangle(const char *reason) {
   }
   if (lockTimeout && bangleFlags&JSBF_LOCKED) {
     woke = true;
-    unlockReason = reason;
+    lockReason = reason;
     bangleTasks |= JSBT_UNLOCK;
   }
   if (woke) {
@@ -1262,7 +1262,7 @@ void peripheralPollHandler() {
   if (lockTimeout && !(bangleFlags&JSBF_LOCKED) && inactivityTimer>=lockTimeout) {
     // 10 seconds of inactivity, lock display
     bangleTasks |= JSBT_LOCK;
-    unlockReadon = "timeout";
+    lockReason = "timeout";
     jshHadEvent();
   }
 
@@ -4181,12 +4181,12 @@ bool jswrap_banglejs_idle() {
     if (bangleTasks & JSBT_LCD_BL_OFF) jswrap_banglejs_setLCDPowerBacklight(0);
     if (bangleTasks & JSBT_LCD_BL_ON) jswrap_banglejs_setLCDPowerBacklight(1);
     if (bangleTasks & JSBT_LOCK) {
-      _jswrap_banglejs_setLocked(1, unlockReason);
-      unlockReason = 0;
+      _jswrap_banglejs_setLocked(1, lockReason);
+      lockReason = 0;
     }
     if (bangleTasks & JSBT_UNLOCK) {
-      _jswrap_banglejs_setLocked(0, unlockReason);
-      unlockReason = 0;
+      _jswrap_banglejs_setLocked(0, lockReason);
+      lockReason = 0;
     }
     if (bangleTasks & JSBT_RESET) jsiStatus |= JSIS_TODO_FLASH_LOAD;
     if (bangleTasks & JSBT_ACCEL_INTERVAL_DEFAULT) jswrap_banglejs_setPollInterval_internal(DEFAULT_ACCEL_POLL_INTERVAL);
