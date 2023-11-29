@@ -124,6 +124,9 @@ _LEX_OPERATOR2_END = LEX_NULLISH,
 _LEX_TOKENS_END = _LEX_OPERATOR2_END, /* always the last entry for symbols */
 } LEX_TYPES;
 
+// Is the supplied token an ID that is a JS reserved word
+#define LEX_IS_RESERVED_WORD(tk) (tk >= _LEX_R_LIST_START && tk <= _LEX_R_LIST_END)
+
 
 typedef struct JslCharPos {
   JsvStringIterator it;

@@ -1077,7 +1077,7 @@ void jslGetTokenString(char *str, size_t len) {
 char *jslGetTokenValueAsString() {
   assert(lex->tokenl < JSLEX_MAX_TOKEN_LENGTH);
   lex->token[lex->tokenl]  = 0; // add final null
-  if (lex->tokenl==0 && lex->tk >= _LEX_R_LIST_START && lex->tk <= _LEX_R_LIST_END) {
+  if (lex->tokenl==0 && LEX_IS_RESERVED_WORD(lex->tk)) {
     // pretokenised - so we'll work out the name from our token name list
     // this isn't fast, but won't be called very often
     jslTokenAsString(lex->tk, lex->token, sizeof(lex->token));
@@ -1094,7 +1094,7 @@ int jslGetTokenLength() {
 JsVar *jslGetTokenValueAsVar() {
   if (lex->tokenValue) {
     return jsvLockAgain(lex->tokenValue);
-  } else if (lex->tk >= _LEX_R_LIST_START && lex->tk <= _LEX_R_LIST_END) {
+  } else if (LEX_IS_RESERVED_WORD(lex->tk)) {
     // in pretokenised code, we must make this up
     return jsvNewFromString(jslReservedWordAsString(lex->tk));
   } else {
@@ -1106,7 +1106,7 @@ JsVar *jslGetTokenValueAsVar() {
 
 bool jslIsIDOrReservedWord() {
   return lex->tk == LEX_ID ||
-         (lex->tk >= _LEX_R_LIST_START && lex->tk <= _LEX_R_LIST_END);
+         LEX_IS_RESERVED_WORD(lex->tk);
 }
 
 /* Match failed - report error message */
