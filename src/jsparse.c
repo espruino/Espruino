@@ -2848,7 +2848,7 @@ NO_INLINE JsVar *jspeStatementTry() {
     hadCatch = true;
     JsVar *exceptionVar = 0;
     JsVar *scope = 0;
-    JsVar *exception = jspGetException();
+    JsVar *exception = shouldExecuteBefore ? jspGetException() : 0;
     if (lex->tk == '(') {
       JSP_MATCH('(');
       if (hadException) {
@@ -2867,9 +2867,11 @@ NO_INLINE JsVar *jspeStatementTry() {
       }
 
     }
-    // Now clear the exception flag (it's handled - we hope!)
-    execInfo.execute = execInfo.execute & (JsExecFlags)~(EXEC_EXCEPTION|EXEC_ERROR_LINE_REPORTED);
-    jsvUnLock(exception);
+    if (shouldExecuteBefore) {
+      // Now clear the exception flag (it's handled - we hope!)
+      execInfo.execute = execInfo.execute & (JsExecFlags)~(EXEC_EXCEPTION|EXEC_ERROR_LINE_REPORTED);
+      jsvUnLock(exception);
+    }
 
     if (shouldExecuteBefore && !hadException) {
       JSP_SAVE_EXECUTE();
