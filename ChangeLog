@@ -37,6 +37,7 @@
             Graphics: fix drawing image in string inside cliprect when rotated (fix #2435)
             Bangle.js: Add wakeOnDoubleTap to Bangle.setOptions, "lock" event now has second argument giving a reason (if known)
             nRF5x: On SDK15 ensure nonconnectable+nonscannable advertisements are not sent as extended
+            nRF52840: jsvReadVRef now reads VDDH value (not VDD, which is almost always internally regulated) 
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)

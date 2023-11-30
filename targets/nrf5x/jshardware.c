@@ -2791,8 +2791,14 @@ JsVarFloat jshReadVRef() {
   config.acq_time = NRF_SAADC_ACQTIME_3US;
   config.gain = NRF_SAADC_GAIN1_6; // 1/6 of input volts
   config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
+
+#ifdef NRF52840
+  config.pin_p = 0x0D; // Not in Nordic's libs, but this is VDDHDIV5 - we probably want to be looking at VDDH
+  config.pin_n = 0x0D;
+#else
   config.pin_p = NRF_SAADC_INPUT_VDD;
   config.pin_n = NRF_SAADC_INPUT_VDD;
+#endif
   config.reference = NRF_SAADC_REFERENCE_INTERNAL; // 0.6v reference.
   config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
   config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
@@ -2810,6 +2816,9 @@ JsVarFloat jshReadVRef() {
     f = nrf_analog_read() * (6.0 * 0.6 / 16384.0);
   } while (nrf_analog_read_interrupted);
   nrf_analog_read_end(adcInUse);
+#ifdef NRF52840
+  f *= 5; // we were on VDDHDIV5
+#endif
 
   return f;
 #else
