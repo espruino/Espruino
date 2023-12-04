@@ -130,7 +130,9 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `USE_TAB_COMPLETE=0` - Don't include tab completion (default is yes unless SAVE_ON_FLASH is defined)
 * `USE_DEBUGGER=0` - Don't include the debugger (default is yes unless SAVE_ON_FLASH is defined)
 * `USE_NETWORK_JS=0` - Don't include JS networking lib used for handling AT commands (default is yes if networking is enabled)
-* `ESPR_DCDC_ENABLE` - On NRF52 use the built-in DCDC converter (requires external hardware)
+* `ESPR_DCDC_ENABLE=1` - On NRF52 use the built-in DCDC converter (requires external hardware)
+* `ESPR_DCDC_HV_ENABLE=1` - On NRF52840 use the built-in high-voltage (REG0) DCDC converter (requires external hardware)
+* `ESPR_REGOUT0_1_8V=1` - On NRF52830/40 set the REG0 VCC voltage to 1.8v (the default is 3.3v)
 * `ESPR_LSE_ENABLE` - On NRF52 use an external 32kHz Low Speed External crystal on D0/D1
 * `ESPR_NO_LOADING_SCREEN` - Bangle.js, don't show a 'loading' screen when loading a new app
 * `ESPR_BOOTLOADER_SPIFLASH` - Allow bootloader to flash direct from a file in SPI flash storage

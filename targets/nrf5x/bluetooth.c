@@ -2619,6 +2619,10 @@ static void ble_stack_init() {
     err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
     APP_ERROR_CHECK(err_code);
 #endif
+#if defined(ESPR_DCDC_HV_ENABLE)
+    err_code = sd_power_dcdc0_mode_set(NRF_POWER_DCDC_ENABLE);
+    APP_ERROR_CHECK(err_code);
+#endif
 #ifdef DEBUG
     // disable watchdog timer in debug mode, so we can use GDB
     NRF_WDT->CONFIG &= ~8;
