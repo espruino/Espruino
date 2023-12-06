@@ -25,7 +25,16 @@
   SPI1 / TWI1 -> Espruino's I2C1
   SPI2 -> free
 
- */
+On SDK15/7:
+
+USB doesn't autostart unless the board was reset with USB plugged in
+
+On SDK17:
+
+USB data receive is broken
+
+
+*/
 
 #include <stdlib.h>
 #include <stdbool.h>
@@ -2792,7 +2801,7 @@ JsVarFloat jshReadVRef() {
   config.gain = NRF_SAADC_GAIN1_6; // 1/6 of input volts
   config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
 
-#ifdef NRF52840
+#if defined(NRF52833) || defined(NRF52840)
   config.pin_p = 0x0D; // Not in Nordic's libs, but this is VDDHDIV5 - we probably want to be looking at VDDH
   config.pin_n = 0x0D;
 #else
@@ -2816,7 +2825,7 @@ JsVarFloat jshReadVRef() {
     f = nrf_analog_read() * (6.0 * 0.6 / 16384.0);
   } while (nrf_analog_read_interrupted);
   nrf_analog_read_end(adcInUse);
-#ifdef NRF52840
+#ifdef defined(NRF52833) || defined(NRF52840)
   f *= 5; // we were on VDDHDIV5
 #endif
 

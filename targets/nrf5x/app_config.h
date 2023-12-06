@@ -81,7 +81,7 @@
 #if USART_COUNT>0
 #define UART_ENABLED 1
 #define UART0_ENABLED 1
-#ifdef NRF52840 // SDK15/NRF52840
+#if defined(NRF52840) || defined(NRF52833) // SDK15/NRF52840
 #define UART_EASY_DMA_SUPPORT 1
 #define UART0_CONFIG_USE_EASY_DMA 1
 #define UART1_ENABLED 1 // enable UART1 as well on nRF52840
@@ -167,6 +167,17 @@
 // To allow advertising transmit via coded phy (connectable:true,scannable:false)
 // #define NRF_SDH_BLE_GAP_EVENT_LENGTH 10
 #endif // NRF52840
+
+#ifdef NRF5X_SDK_17
+#define NRF_CLOCK_ENABLED 1
+#include "../../targetlibs/nrf5x_17/nrf52_config/app_usbd_string_config.h"
+// APP_USBD_CDC_ACM_ZLP_ON_EPSIZE_WRITE  - Send ZLP on write with same size as endpoint
+// If enabled, CDC ACM class will automatically send a zero length packet after transfer which has the same size as endpoint.
+// This may limit throughput if a lot of binary data is sent, but in terminal mode operation it makes sure that the data is always displayed right after it is sent.
+#define APP_USBD_CDC_ACM_ZLP_ON_EPSIZE_WRITE 1
+#define NRFX_USBD_CONFIG_DMASCHEDULER_ISO_BOOST 1
+#define NRFX_USBD_CONFIG_IRQ_PRIORITY 6
+#endif
 
 #if ESPR_LSE_ENABLE
 #define NRF_SDH_CLOCK_LF_SRC 1 // 32.768 kHz crystal clock

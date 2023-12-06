@@ -938,7 +938,7 @@ NRF.setAdvertising([
   interval: 600              // Advertising interval in msec, between 20 and 10000 (default is 375ms)
   manufacturer: 0x0590       // IF sending manufacturer data, this is the manufacturer ID
   manufacturerData: [...]    // IF sending manufacturer data, this is an array of data
-  phy: "1mbps/2mbps/coded"   // (NRF52840 only) use the long-range coded phy for transmission (1mbps default)
+  phy: "1mbps/2mbps/coded"   // (NRF52833/NRF52840 only) use the long-range coded phy for transmission (1mbps default)
 }
 ```
 
@@ -3278,9 +3278,9 @@ a match is found. e.g. `NRF.requestDevice({ timeout:2000, filters: [ ... ] })`
 * `active` - whether to perform active scanning (requesting 'scan response'
 packets from any devices that are found). e.g. `NRF.requestDevice({ active:true,
 filters: [ ... ] })`
-* `phy` - (NRF52840 only) use the long-range coded phy (`"1mbps"` default, can
+* `phy` - (NRF52833/NRF52840 only) use the long-range coded phy (`"1mbps"` default, can
   be `"1mbps/2mbps/both/coded"`)
-* `extended` - (NRF52840 only) support receiving extended-length advertising
+* `extended` - (NRF52833/NRF52840 only) support receiving extended-length advertising
   packets (default=true if phy isn't `"1mbps"`)
 
 **NOTE:** `timeout` and `active` are not part of the Web Bluetooth standard.
