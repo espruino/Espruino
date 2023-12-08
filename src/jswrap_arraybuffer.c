@@ -497,7 +497,7 @@ rather than referenced.
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_FLOAT64, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
-    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer). Maximum 65535. "],
     ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
   ],
   "return" : ["JsVar","A typed array"],
@@ -518,6 +518,10 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
   JsVar *arrayBuffer = 0;
   // Only allow use of byteOffset/length if we're passing an ArrayBuffer - NOT A VIEW.
   bool copyData = false;
+  if (byteOffset < 0 || byteOffset > 65535) {
+    jsExceptionHere(JSET_ERROR, "byteOffset too large (or negative)");
+    return 0;
+  }
   if (jsvIsArrayBuffer(arr) && arr->varData.arraybuffer.type==ARRAYBUFFERVIEW_ARRAYBUFFER) {
     arrayBuffer = jsvLockAgain(arr);
   } else if (jsvIsNumeric(arr)) {
@@ -529,7 +533,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
     byteOffset = 0;
     arrayBuffer = jswrap_arraybuffer_constructor((int)JSV_ARRAYBUFFER_GET_SIZE(type)*length);
     copyData = true; // so later on we'll populate this
-  }
+  } // else what?
   if (!arrayBuffer) {
     jsExceptionHere(JSET_ERROR, "Unsupported first argument of type %t", arr);
     return 0;
