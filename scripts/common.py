@@ -19,7 +19,7 @@ import re;
 import json;
 import sys;
 import os;
-import importlib;
+import traceback;
 # Local
 import pinutils;
 
@@ -145,7 +145,7 @@ def get_jsondata(is_for_document, parseArgs = True, boardObject = False):
           print("WARNING: Ignoring unknown file type: " + arg)
     if not explicit_files:
       print("Scanning for jswrap.c files")
-      jswraps = subprocess.check_output(["find", ".", "-name", "jswrap*.c"]).strip().split("\n")
+      jswraps = subprocess.check_output(["find", ".", "-name", "jswrap*.c"]).strip().decode("utf-8").split("\n")
 
     if board:
       board.defines = defines
@@ -254,21 +254,25 @@ def get_jsondata(is_for_document, parseArgs = True, boardObject = False):
                 print(dropped_prefix+" because of #if "+jsondata["#if"]+ " -> "+expr)
                 drop = True
           if not drop and "patch" in jsondata:
-            targetjsondata = [x for x in jsondatas if x["type"]==jsondata["type"] and x["class"]==jsondata["class"] and x["name"]==jsondata["name"]][0]
-            for key in jsondata:
-               if not key in ["type","class","name","patch"]:
-                 print("Copying "+key+" --- "+jsondata[key]);
-                 targetjsondata[key] = jsondata[key]
+            targetjsondata = [x for x in jsondatas if x["type"]==jsondata["type"] and x["class"]==jsondata["class"] and x["name"]==jsondata["name"]]
+            if len(targetjsondata) > 0:
+              targetjsondata = targetjsondata[0]
+              for key in jsondata:
+                if not key in ["type","class","name","patch"]:
+                  print("Copying "+key+" --- "+jsondata[key])
+                  targetjsondata[key] = jsondata[key]
             drop = True 
           if not drop:
             jsondatas.append(jsondata)
         except ValueError as e:
           sys.stderr.write( "JSON PARSE FAILED for " +  jsonstring + " - "+ str(e) + "\n")
-          print(''.join(traceback.format_exception(None, exc_obj, exc_obj.__traceback__)))          
+          exc_obj = sys.exc_info()
+          print(''.join(traceback.format_exception(exc_obj)))           
           exit(1)
         except Exception as e:
           sys.stderr.write( "JSON PARSE FAILED for " + jsonstring + " - "+str(e) + "\n" )
-          print(''.join(traceback.format_exception(None, exc_obj, exc_obj.__traceback__)))
+          exc_obj = sys.exc_info()
+          print(''.join(traceback.format_exception(exc_obj)))
           exit(1)
     print("Scanning finished.")
 
