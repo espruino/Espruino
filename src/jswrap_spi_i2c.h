@@ -28,5 +28,6 @@ JsVar *jswrap_i2c_constructor();
 void jswrap_i2c_setup(JsVar *parent, JsVar *options);
 void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *data);
 JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes);
+JsVar *jswrap_i2c_readReg(JsVar *parent, int address, int reg, int nBytes);
 
 #endif // JSWRAP_SPI_I2C_H_
