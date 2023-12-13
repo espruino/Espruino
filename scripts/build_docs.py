@@ -14,8 +14,7 @@
 # ----------------------------------------------------------------------------------------
 
 # Needs:
-#    pip install markdown
-#    pip install markdown-urlize
+#    pip install markdown2
 #
 # See common.py -> get_jsondata for command line options
 
@@ -26,7 +25,7 @@ import sys;
 import os;
 import common
 import urllib3
-import markdown
+import markdown2
 import html.entities as htmlentitydefs
 
 sys.path.append(".");
@@ -79,7 +78,7 @@ def html(s):
   htmlFile.write(s +"\n");
 
 def htmlify(d,current):
-  d = markdown.markdown(d, extensions=['mdx_urlize'], tab_length=2)
+  d = markdown2.markdown(d)
   # replace <code> with newlines with pre
   idx = d.find("<code>")
   end = d.find("</code>", idx)
