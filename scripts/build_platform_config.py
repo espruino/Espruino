@@ -513,6 +513,15 @@ if "TOUCH" in board.devices:
   codeOut("#define TOUCH_ADDR "+str(board.devices["TOUCH"]["addr"]))
   codeOutDevicePins("TOUCH", "TOUCH")
 
+if "QWIIC1" in board.devices:
+  codeOutDevicePins("QWIIC1", "QWIIC1")
+if "QWIIC2" in board.devices:
+  codeOutDevicePins("QWIIC2", "QWIIC2")
+if "QWIIC3" in board.devices:
+  codeOutDevicePins("QWIIC3", "QWIIC3")
+if "QWIIC4" in board.devices:
+  codeOutDevicePins("QWIIC4", "QWIIC4")
+
 if "SPIFLASH" in board.devices:
   codeOut("#define SPIFLASH_PAGESIZE 4096")
   codeOut("#define SPIFLASH_LENGTH "+str(board.devices["SPIFLASH"]["size"]))
