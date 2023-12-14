@@ -19,6 +19,7 @@ import re;
 import json;
 import sys;
 import os;
+import importlib;
 import traceback;
 # Local
 import pinutils;
