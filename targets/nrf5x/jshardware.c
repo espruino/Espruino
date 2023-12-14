@@ -25,13 +25,9 @@
   SPI1 / TWI1 -> Espruino's I2C1
   SPI2 -> free
 
-On SDK15/7:
-
-USB doesn't autostart unless the board was reset with USB plugged in
-
 On SDK17:
 
-USB data receive is broken
+USB data receive is broken, although examples+config seem almost identical.
 
 
 */
@@ -136,7 +132,7 @@ volatile uint32_t lastSystemTimeInv __attribute__((section(".noinit"))) __attrib
  * Configure if example supports USB port connection
  */
 #ifndef USBD_POWER_DETECTION
-#define USBD_POWER_DETECTION false // power detection true doesn't seem to work
+#define USBD_POWER_DETECTION true // turns USB on/off as required
 #endif
 
 static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
@@ -160,7 +156,7 @@ APP_USBD_CDC_ACM_GLOBAL_DEF(m_app_cdc_acm,
                             CDC_ACM_COMM_EPIN,
                             CDC_ACM_DATA_EPIN,
                             CDC_ACM_DATA_EPOUT,
-                            APP_USBD_CDC_COMM_PROTOCOL_AT_V250
+                            APP_USBD_CDC_COMM_PROTOCOL_NONE
 );
 
 static char m_rx_buffer[1]; // only seems to work with 1 at the moment
@@ -173,72 +169,80 @@ static bool m_usb_connected = false;
 static bool m_usb_open = false;
 static bool m_usb_transmitting = false;
 
+void on_usb_disconnected() {
+  m_usb_open = false;
+  m_usb_transmitting = false;
+  // USB disconnected, move device back to the default
+  if (!jsiIsConsoleDeviceForced() && jsiGetConsoleDevice()==EV_USBSERIAL)
+    jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), false);
+  jshTransmitClearDevice(EV_USBSERIAL); // clear the transmit queue
+}
+
 /**
  * @brief User event handler @ref app_usbd_cdc_acm_user_ev_handler_t (headphones)
  * */
 static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
-                                    app_usbd_cdc_acm_user_event_t event)
-{
-    app_usbd_cdc_acm_t const * p_cdc_acm = app_usbd_cdc_acm_class_get(p_inst);
-    jshHadEvent();
+                                    app_usbd_cdc_acm_user_event_t event) {
+  //jsiConsolePrintf("U %d\n",event);
 
-    switch (event)
-    {
-        case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN: {
-            //jsiConsolePrintf("APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN\n");
-            m_usb_open = true;
-            m_usb_transmitting = false;
-            /*Setup first transfer*/
-            ret_code_t ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
-                                                   m_rx_buffer,
-                                                   sizeof(m_rx_buffer));
-            UNUSED_VARIABLE(ret);
-            // USB connected - so move console device over to it
-            if (jsiGetConsoleDevice()!=EV_LIMBO) {
-              if (!jsiIsConsoleDeviceForced())
-                jsiSetConsoleDevice(EV_USBSERIAL, false);
-            }
-            break;
-        }
-        case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE: {
-            //jsiConsolePrintf("APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE\n");
-            m_usb_open = false;
-            m_usb_transmitting = false;
-            // USB disconnected, move device back to the default
-            if (!jsiIsConsoleDeviceForced() && jsiGetConsoleDevice()==EV_USBSERIAL)
-              jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), false);
-            jshTransmitClearDevice(EV_USBSERIAL); // clear the transmit queue
-            break;
-        }
-        case APP_USBD_CDC_ACM_USER_EVT_TX_DONE: {
-            // TX finished - queue extra transmit here
-            m_usb_transmitting = false;
-            jshUSARTKick(EV_USBSERIAL);
-            break;
-        }
-        case APP_USBD_CDC_ACM_USER_EVT_RX_DONE: {
-            ret_code_t ret;
-            do {
-              /*Get amount of data transfered*/
-              size_t size = app_usbd_cdc_acm_rx_size(p_cdc_acm);
-              jshPushIOCharEvents(EV_USBSERIAL,  m_rx_buffer, size);
+  app_usbd_cdc_acm_t const * p_cdc_acm = app_usbd_cdc_acm_class_get(p_inst);
+  jshHadEvent();
 
+  switch (event)
+  {
+    case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN: {
+        //jsiConsolePrintf("APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN\n");
+        m_usb_open = true;
+        m_usb_transmitting = false;
+        /*Setup first transfer*/
+        ret_code_t ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
+                                                m_rx_buffer,
+                                                sizeof(m_rx_buffer));
+        UNUSED_VARIABLE(ret);
+        // we expect ret=NRF_ERROR_IO_PENDING here
+        // jsiConsolePrintf("app_usbd_cdc_acm_read -> %d\n", ret);
 
-              /*Setup next transfer*/
-              ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
-                                                   m_rx_buffer,
-                                                   sizeof(m_rx_buffer));
-            } while (ret == NRF_SUCCESS);
-            break;
+        // USB connected - so move console device over to it
+        if (jsiGetConsoleDevice()!=EV_LIMBO) {
+          if (!jsiIsConsoleDeviceForced())
+            jsiSetConsoleDevice(EV_USBSERIAL, false);
         }
-        default:
-            break;
+        break;
     }
+    case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE: {
+        //jsiConsolePrintf("APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE\n");
+        on_usb_disconnected();
+        break;
+    }
+    case APP_USBD_CDC_ACM_USER_EVT_TX_DONE: {
+        // TX finished - queue extra transmit here
+        m_usb_transmitting = false;
+        jshUSARTKick(EV_USBSERIAL);
+        break;
+    }
+    case APP_USBD_CDC_ACM_USER_EVT_RX_DONE: {
+        ret_code_t ret;
+        do {
+          /*Get amount of data transfered*/
+          size_t size = app_usbd_cdc_acm_rx_size(p_cdc_acm);
+          jshPushIOCharEvents(EV_USBSERIAL,  m_rx_buffer, size);
+
+
+          /*Setup next transfer*/
+          ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
+                                                m_rx_buffer,
+                                                sizeof(m_rx_buffer));
+        } while (ret == NRF_SUCCESS);
+        break;
+    }
+    default:
+        break;
+  }
 }
 
-static void usbd_user_ev_handler(app_usbd_event_type_t event)
-{
-  jshHadEvent();
+static void usbd_user_ev_handler(app_usbd_event_type_t event) {
+  //if (execInfo.root && event!=APP_USBD_EVT_DRV_SOF) jsiConsolePrintf("u %d\n",event);
+  if (event!=APP_USBD_EVT_DRV_SOF) jshHadEvent();
   switch (event)
   {
     case APP_USBD_EVT_DRV_SUSPEND:
@@ -253,6 +257,7 @@ static void usbd_user_ev_handler(app_usbd_event_type_t event)
     case APP_USBD_EVT_STOPPED:
       //jsiConsolePrintf("APP_USBD_EVT_STOPPED\n");
         app_usbd_disable();
+        on_usb_disconnected();
         break;
     case APP_USBD_EVT_POWER_DETECTED:
         //jsiConsolePrintf("APP_USBD_EVT_POWER_DETECTED\n");
@@ -985,7 +990,6 @@ void jshInit() {
 
 #ifdef NRF_USB
   if (USBD_POWER_DETECTION) {
-    //jsiConsolePrintf("app_usbd_power_events_enable\n");
     ret = app_usbd_power_events_enable();
     APP_ERROR_CHECK(ret);
   } else {
@@ -2825,7 +2829,7 @@ JsVarFloat jshReadVRef() {
     f = nrf_analog_read() * (6.0 * 0.6 / 16384.0);
   } while (nrf_analog_read_interrupted);
   nrf_analog_read_end(adcInUse);
-#ifdef defined(NRF52833) || defined(NRF52840)
+#if defined(NRF52833) || defined(NRF52840)
   f *= 5; // we were on VDDHDIV5
 #endif
 
