@@ -14,8 +14,7 @@
 # ----------------------------------------------------------------------------------------
 
 # Needs:
-#    pip install markdown
-#    pip install markdown-urlize
+#    pip install markdown2
 #
 # See common.py -> get_jsondata for command line options
 
@@ -25,9 +24,9 @@ import json;
 import sys;
 import os;
 import common
-import urllib2
-import markdown
-import htmlentitydefs
+import urllib3
+import markdown2
+import html.entities as htmlentitydefs
 
 sys.path.append(".");
 scriptdir = os.path.dirname(os.path.realpath(__file__))
@@ -45,6 +44,7 @@ sys.path.append(basedir+"boards");
 # --- skipping MDN links dump and validation to complete quicker
 
 htmldev = False
+http = urllib3.PoolManager()
 
 jsondatas = common.get_jsondata(True)
 
@@ -72,13 +72,13 @@ if os.path.isfile(mdnURLFile):
   valid_mdn_urls = json.loads(open(mdnURLFile, "r").read())
 
 # start writing
-htmlFile = open('functions.html', 'w')
+htmlFile = open('functions.html', 'w', encoding="utf-8")
 def html(s):
   print(s);
-  htmlFile.write(s.encode('utf-8')+"\n");
+  htmlFile.write(s +"\n");
 
 def htmlify(d,current):
-  d = markdown.markdown(d, extensions=['mdx_urlize'], tab_length=2)
+  d = markdown2.markdown(d)
   # replace <code> with newlines with pre
   idx = d.find("<code>")
   end = d.find("</code>", idx)
@@ -182,11 +182,11 @@ def insert_mdn_link(jsondata):
     else:
       print("Checking URL "+url)
       try:
-        connection = urllib2.urlopen(url)
-        code = connection.getcode()
+        connection =  http.request('GET', url)
+        code = connection.status
         connection.close()
-      except urllib2.HTTPError, e:
-        code = e.getcode()
+      except urllib3.HTTPError(e):
+        code = e.status
       if code==200: valid_mdn_urls['valid'].append(url)
       else: valid_mdn_urls['invalid'].append(url)
     if code==200:

@@ -644,32 +644,31 @@ static NO_INLINE int i2c_get_address(JsVar *address, bool *sendStop) {
 Transmit to the slave device with the given address. This is like Arduino's
 beginTransmission, write, and endTransmission rolled up into one.
  */
-
+void _jswrap_i2c_writeTo(JsVar *parent, IOEventFlags device, int address, bool sendStop, int dataLen, unsigned char *dataPtr) {
+  if (DEVICE_IS_I2C(device)) {
+    jshI2CWrite(device, (unsigned char)address, (int)dataLen, (unsigned char*)dataPtr, sendStop);
+  } else if (device == EV_NONE) {
+#ifndef SAVE_ON_FLASH
+    // software
+    JshI2CInfo inf;
+    JsVar *options = jsvObjectGetChildIfExists(parent, DEVICE_OPTIONS_NAME);
+    if (jsi2cPopulateI2CInfo(&inf, options)) {
+      inf.started = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(parent, "started"));
+      jsi2cWrite(&inf, (unsigned char)address, (int)dataLen, (unsigned char*)dataPtr, sendStop);
+    }
+    jsvUnLock2(jsvObjectSetChild(parent, "started", jsvNewFromBool(inf.started)), options);
+#endif
+  }
+}
 void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
   if (!jsvIsObject(parent)) return;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
   bool sendStop = true;
   int address = i2c_get_address(addressVar, &sendStop);
-
   JSV_GET_AS_CHAR_ARRAY( dataPtr, dataLen, args);
-
-  if (dataPtr && dataLen) {
-    if (DEVICE_IS_I2C(device)) {
-      jshI2CWrite(device, (unsigned char)address, (int)dataLen, (unsigned char*)dataPtr, sendStop);
-    } else if (device == EV_NONE) {
-#ifndef SAVE_ON_FLASH
-      // software
-      JshI2CInfo inf;
-      JsVar *options = jsvObjectGetChildIfExists(parent, DEVICE_OPTIONS_NAME);
-      if (jsi2cPopulateI2CInfo(&inf, options)) {
-        inf.started = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(parent, "started"));
-        jsi2cWrite(&inf, (unsigned char)address, (int)dataLen, (unsigned char*)dataPtr, sendStop);
-      }
-      jsvUnLock2(jsvObjectSetChild(parent, "started", jsvNewFromBool(inf.started)), options);
-#endif
-    }
-  }
+  if (dataPtr && dataLen)
+    _jswrap_i2c_writeTo(parent, device, address, sendStop, (int)dataLen, (unsigned char*)dataPtr);
 }
 
 /*JSON{
@@ -686,14 +685,9 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
 }
 Request bytes from the given slave device, and return them as a Uint8Array
 (packed array of bytes). This is like using Arduino Wire's requestFrom,
-available and read functions. Sends a STOP
+available and read functions. Sends a STOP unless `{address:X, stop:false}` is used.
  */
-JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
-  if (!jsvIsObject(parent)) return 0;
-  IOEventFlags device = jsiGetDeviceFromClass(parent);
-
-  bool sendStop = true;
-  int address = i2c_get_address(addressVar, &sendStop);
+JsVar *_jswrap_i2c_readFrom(JsVar *parent, IOEventFlags device, int address,  bool sendStop, int nBytes) {
 
   if (nBytes<=0)
     return 0;
@@ -730,4 +724,47 @@ JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
     jsvArrayBufferIteratorFree(&it);
   }
   return array;
+}
+JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
+  if (!jsvIsObject(parent)) return 0;
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+
+  bool sendStop = true;
+  int address = i2c_get_address(addressVar, &sendStop);
+  return _jswrap_i2c_readFrom(parent, device, address, sendStop, nBytes);
+}
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "I2C",
+  "name" : "readReg",
+  "generate" : "jswrap_i2c_readReg",
+  "params" : [
+    ["address","int","The 7 bit address of the device to request bytes from"],
+    ["reg","int","The register on the device to read bytes from"],
+    ["quantity","int","The number of bytes to request"]
+  ],
+  "return" : ["JsVar","The data that was returned - as a Uint8Array"],
+  "return_object" : "Uint8Array"
+}
+Request bytes from a register on the given I2C slave device, and return them as a Uint8Array
+(packed array of bytes).
+
+This is the same as calling `I2C.writeTo` and `I2C.readFrom`:
+
+```
+I2C.readReg = function(address, reg, quantity) {
+  this.writeTo({address:address, stop:false}, reg);
+  return this.readFrom(address, quantity);
+};
+```
+ */
+JsVar *jswrap_i2c_readReg(JsVar *parent, int address, int reg, int nBytes) {
+  if (!jsvIsObject(parent)) return;
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+  bool sendStop = false;
+  unsigned char i2cReg = (unsigned char)reg;
+  _jswrap_i2c_writeTo(parent, device, address, sendStop, 1, &i2cReg);
+  return _jswrap_i2c_readFrom(parent, device, address, sendStop, nBytes);
 }

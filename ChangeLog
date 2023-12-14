@@ -39,6 +39,7 @@
             nRF5x: On SDK15 ensure nonconnectable+nonscannable advertisements are not sent as extended
             nRF52840: jsvReadVRef now reads VDDH value (not VDD, which is almost always internally regulated) 
             Ensure we error if an unsupported byteOffset is supplied to types array constructor (fix #2439)
+            I2C: Add I2C.readReg to combine I2C.writeTo+readFrom in an easy/fast way
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)
