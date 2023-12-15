@@ -5088,7 +5088,7 @@ JsVar *jswrap_banglejs_getPressure() {
     JsVar *msg = jsvNewFromString("I2C barometer error");
     JsVar *exception = jswrap_internalerror_constructor(msg);
     jspromise_reject(promisePressure, exception);
-    jsvUnLock2(promisePressure, exception);
+    jsvUnLock3(promisePressure, exception, msg);
     JsVar *r = promisePressure;
     promisePressure = 0;
     return r;
