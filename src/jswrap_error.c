@@ -52,10 +52,8 @@ JsVar *_jswrap_error_constructor(JsVar *msg, char *type) {
   JsVar *d = jspNewObject(0,type);
   if (!d) return 0;
 
-  if (msg) {
-    msg = jsvAsString(msg);
-    jsvObjectSetChildAndUnLock(d, "message", msg);
-  }
+  if (msg)
+    jsvObjectSetChildAndUnLock(d, "message", jsvAsString(msg));
   jsvObjectSetChildAndUnLock(d, "type", jsvNewFromString(type));
 
   return d;
