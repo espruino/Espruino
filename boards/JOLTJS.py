@@ -19,13 +19,12 @@ info = {
  'name' : "Jolt.js",
  'link' :  [ "https://www.espruino.com/Jolt.js" ],
  'espruino_page_link' : 'Jolt.js',
-  # This is the PCA10036
 # 'default_console' : "EV_SERIAL1",
 # 'default_console_tx' : "D6",
 # 'default_console_rx' : "D8",
 # 'default_console_baudrate' : "9600",
- 'variables' : 12500, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
-# 'bootloader' : 1,
+ 'variables' : 12000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'bootloader' : 1,
  'binary_name' : 'espruino_%v_joltjs.hex',
  'build' : {
    'optimizeflags' : '-Os',
@@ -39,14 +38,18 @@ info = {
    ],
    'makefile' : [
 #     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
-     'DEFINES += -DNRF_USB=1 -DUSB',
+#     'DEFINES += -DNRF_USB=1 -DUSB',
      'DEFINES += -DNEOPIXEL_SCK_PIN=1 -DNEOPIXEL_LRCK_PIN=26', # nRF52840 needs LRCK pin defined for neopixel
      'DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131', # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
      'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3660', # set RAM base to match MTU=131 + CENTRAL_LINK_COUNT=2
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Jolt.js"\'',
+     'DEFINES += -DAPP_TIMER_OP_QUEUE_SIZE=6', 
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Jolt.js"\'',     
+     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0xa9,0xae,0xb6',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
+     'DEFINES += -DNRF_BOOTLOADER_NO_WRITE_PROTECT=1', # By default the bootloader protects flash. Avoid this (a patch for NRF_BOOTLOADER_NO_WRITE_PROTECT must be applied first)
+     #'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER', # not enabled so watchdog isn't started
+     'BOOTLOADER_SETTINGS_FAMILY=NRF52840',
      'INCLUDE += -I$(ROOT)/libs/jolt.js',
      'WRAPPERSOURCES += libs/joltjs/jswrap_jolt.c libs/joltjs/jswrap_qwiic.c',
      'NRF_SDK15=1',
