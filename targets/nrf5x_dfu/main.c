@@ -180,7 +180,7 @@ bool dfu_enter_check(void) {
 #endif
 #else
       // no button, ensure we enter bootloader
-      int count=1; 
+      int count=1;
 #endif
       if (!count) {
         dfu_start = false;
@@ -271,7 +271,7 @@ void dfu_evt_init() {
 #else
       APP_TIMER_TICKS(100),
 #endif
-      NULL);
+      NULL); // context
 #endif
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
   lcd_println("BTN1 = REBOOT");
@@ -344,9 +344,9 @@ int main(void)
     NRF_LOG_INFO("Inside main\r\n");
 
     hardware_init();
-    
+
     // Did we just power on? If not (we watchdog/softreset) RESETREAS will be nonzero
-    
+
     /* NRF_POWER->RESETREAS reset reason flags:
      * 0x000001 : RESETPIN  Reset pin
      * 0x000002 : DOG       Watchdog
@@ -361,7 +361,7 @@ int main(void)
     int r = NRF_POWER->RESETREAS;
     dfuIsColdBoot = (r&0xF)==0;
 
-#if defined(DICKENS) || defined(BANGLEJS)  
+#if defined(DICKENS) || defined(BANGLEJS)
     // On smartwatches, turn on only if BTN1 held for >1 second (or charging on Dickens)
     // This may help in cases where battery is TOTALLY flat
     if ((r&0b1011)==0) {
