@@ -2015,13 +2015,18 @@ Set the time zone to be used with `Date` objects.
 
 For example `E.setTimeZone(1)` will be GMT+0100
 
-Note that `E.setTimeZone()` will have no effect when daylight savings time rules
-have been set with `E.setDST()`. The timezone value will be stored, but never
-used so long as DST settings are in effect.
-
 Time can be set with `setTime`.
+
+**Note:** If daylight savings time rules have been set with `E.setDST()`,
+calling `E.setTimeZone()` will remove them and move back to using a static
+timezone that doesn't change based on the time of year.
+
 */
 void jswrap_espruino_setTimeZone(JsVarFloat zone) {
+#ifndef ESPR_NO_DAYLIGHT_SAVING
+  jswrap_espruino_setDST(0); // disable DST
+#endif
+  // update the timezone var
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_TIMEZONE_VAR,
       jsvNewFromInteger((int)(zone*60)));
 }
@@ -2034,7 +2039,7 @@ void jswrap_espruino_setTimeZone(JsVarFloat zone) {
   "name" : "setDST",
   "generate" : "jswrap_espruino_setDST",
   "params" : [
-      ["params","JsVarArray","An array containing the settings for DST"]
+      ["params","JsVarArray","An array containing the settings for DST, or `undefined` to disable"]
   ],
   "typescript" : "setDST(dstOffset: number, timezone: number, startDowNumber: number, startDow: number, startMonth: number, startDayOffset: number, startTimeOfDay: number, endDowNumber: number, endDow: number, endMonth: number, endDayOffset: number, endTimeOfDay: number): void"
 }
@@ -2080,12 +2085,34 @@ winter (EET) and 3 hours in summer (EEST). DST starts at 03:00 EET on the last
 Sunday in March, and ends at 04:00 EEST on the last Sunday in October. So
 someone in Ukraine might call `E.setDST(60,120,4,0,2,0,180,4,0,9,0,240);`
 
-Note that when DST parameters are set (i.e. when `dstOffset` is not zero),
-`E.setTimeZone()` has no effect.
+Examples:
+
+```
+// United Kingdom
+E.setDST(60,0,4,0,2,0,60,4,0,9,0,120);
+// California, USA
+E.setDST(60,-480,1,0,2,0,120,0,0,10,0,120);
+// Or adjust -480 (-8 hours) for other US states
+// Ukraine
+E.setDST(60,120,4,0,2,0,180,4,0,9,0,240);
+```
+
+**Note:** This is not compatible with `E.setTimeZone()`. Calling `E.setTimeZone()`
+after this will disable DST.
+
 */
 void jswrap_espruino_setDST(JsVar *params) {
-  if (!jsvIsArray(params)) return;
-  if (jsvGetLength(params) != 12) return;
+  if (jsvIsUndefined(params)) {
+    jsvObjectRemoveChild(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR);
+    return;
+  }
+  if (!jsvIsArray(params) || jsvGetLength(params) != 12) {
+    jsExceptionHere(JSET_ERROR, "Unexpected arguments");
+    return;
+  }
+  // remove timezone var
+  jsvObjectRemoveChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR);
+  // write DST var
   JsVar *dst = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT16, params, 0, 0);
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR, dst);
 }
