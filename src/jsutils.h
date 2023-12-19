@@ -276,6 +276,11 @@ See comments after JsVar in jsvar.c for more info.
 
 /// Max length for a JSV_STRING, JsVar.varData.ref.refs (see comments under JsVar decl in jsvar.h)
 #define JSVAR_DATA_STRING_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS)>>3))
+/// Max length for an arraybuffer or native function since it uses firstChild
+#define JSVAR_DATA_ARRAYBUFFER_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*2)>>3))
+#define JSVAR_DATA_NATIVE_LEN JSVAR_DATA_ARRAYBUFFER_LEN
+/// Max length for JsVarDataNativeStr since it uses refCount (but not the first 3 references)
+#define JSVAR_DATA_NATIVESTR_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3)>>3))
 /// Max length for a JSV_STRINGEXT, JsVar.varData.ref.lastChild (see comments under JsVar decl in jsvar.h)
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS + JSVARREFCOUNT_BITS)>>3))
 
@@ -618,6 +623,9 @@ bool calculateParity(uint8_t v);
 
 /// quick integer square root
 unsigned short int int_sqrt32(unsigned int x);
+
+// Reverse the order of bytes in an array, in place
+void reverseBytes(char *data, int len);
 
 /** get the amount of free stack we have, in bytes */
 size_t jsuGetFreeStack();

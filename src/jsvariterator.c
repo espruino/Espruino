@@ -558,16 +558,9 @@ static void jsvArrayBufferIteratorGetValueData(JsvArrayBufferIterator *it, char 
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
   assert(!it->hasAccessedElement); // we just haven't implemented this case yet
   int i,dataLen = (int)JSV_ARRAYBUFFER_GET_SIZE(it->type);
-  if (it->type & ARRAYBUFFERVIEW_BIG_ENDIAN) {
-    for (i=dataLen-1;i>=0;i--) {
-       data[i] = jsvStringIteratorGetChar(&it->it);
-       if (dataLen!=1) jsvStringIteratorNext(&it->it);
-     }
-  } else {
-    for (i=0;i<dataLen;i++) {
-      data[i] = jsvStringIteratorGetChar(&it->it);
-      if (dataLen!=1) jsvStringIteratorNext(&it->it);
-    }
+  for (i=0;i<dataLen;i++) {
+    data[i] = jsvStringIteratorGetChar(&it->it);
+    if (dataLen!=1) jsvStringIteratorNext(&it->it);
   }
   if (dataLen!=1) it->hasAccessedElement = true;
 }
@@ -592,15 +585,17 @@ static JsVarFloat jsvArrayBufferIteratorDataToFloat(JsvArrayBufferIterator *it, 
   return v;
 }
 
-JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it) {
+JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it, bool bigEndian) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return 0;
   char data[8];
   jsvArrayBufferIteratorGetValueData(it, data);
+  if (bigEndian)
+      reverseBytes(data, JSV_ARRAYBUFFER_GET_SIZE(it->type));
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
     return jsvNewFromFloat(jsvArrayBufferIteratorDataToFloat(it, data));
   } else {
     JsVarInt i = jsvArrayBufferIteratorDataToInt(it, data);
-    if ((it->type & ~ARRAYBUFFERVIEW_BIG_ENDIAN) == ARRAYBUFFERVIEW_UINT32)
+    if (it->type == ARRAYBUFFERVIEW_UINT32)
       return jsvNewFromLongInteger((long long)(uint32_t)i);
     return jsvNewFromInteger(i);
   }
@@ -609,7 +604,7 @@ JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it) {
 JsVar *jsvArrayBufferIteratorGetValueAndRewind(JsvArrayBufferIterator *it) {
   JsvStringIterator oldIt;
   jsvStringIteratorClone(&oldIt, &it->it);
-  JsVar *v = jsvArrayBufferIteratorGetValue(it);
+  JsVar *v = jsvArrayBufferIteratorGetValue(it, false/*little endian*/);
   jsvStringIteratorFree(&it->it);
   it->it = oldIt;
   it->hasAccessedElement = false;
@@ -675,7 +670,7 @@ void jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt 
   if (dataLen!=1) it->hasAccessedElement = true;
 }
 
-void jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) {
+void jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value, bool bigEndian) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
   assert(!it->hasAccessedElement); // we just haven't implemented this case yet
   char data[8];
@@ -687,16 +682,12 @@ void jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) {
     jsvArrayBufferIteratorIntToData(data, (unsigned)dataLen, it->type, jsvGetInteger(value));
   }
 
-  if (it->type & ARRAYBUFFERVIEW_BIG_ENDIAN) {
-    for (i=dataLen-1;i>=0;i--) {
-      jsvStringIteratorSetChar(&it->it, data[i]);
-      if (dataLen!=1) jsvStringIteratorNext(&it->it);
-    }
-  } else {
-    for (i=0;i<dataLen;i++) {
-      jsvStringIteratorSetChar(&it->it, data[i]);
-      if (dataLen!=1) jsvStringIteratorNext(&it->it);
-    }
+  if (bigEndian)
+    reverseBytes(data, dataLen);
+
+  for (i=0;i<dataLen;i++) {
+    jsvStringIteratorSetChar(&it->it, data[i]);
+    if (dataLen!=1) jsvStringIteratorNext(&it->it);
   }
   if (dataLen!=1) it->hasAccessedElement = true;
 }
@@ -712,7 +703,7 @@ void jsvArrayBufferIteratorSetByteValue(JsvArrayBufferIterator *it, char c) {
 void jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *value) {
   JsvStringIterator oldIt;
   jsvStringIteratorClone(&oldIt, &it->it);
-  jsvArrayBufferIteratorSetValue(it, value);
+  jsvArrayBufferIteratorSetValue(it, value, false/*little endian*/);
   jsvStringIteratorFree(&it->it);
   jsvStringIteratorClone(&it->it, &oldIt);
   jsvStringIteratorFree(&oldIt);

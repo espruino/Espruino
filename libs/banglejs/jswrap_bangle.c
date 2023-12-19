@@ -31,6 +31,7 @@
 #include "jswrap_heatshrink.h"
 #include "jswrap_espruino.h"
 #include "jswrap_terminal.h"
+#include "jswrap_error.h"
 #include "jsflash.h"
 #include "graphics.h"
 #include "bitmap_font_6x8.h"
@@ -5073,27 +5074,38 @@ JsVar *jswrap_banglejs_getPressure() {
   /* Occasionally on some devices (https://github.com/espruino/Espruino/issues/2137)
   you can get an I2C error. This stops the error from being fired when getPressure
   is called and instead rejects the promise. */
+  JsVar *exception = jspGetException();
+  if (exception) {
+    jspromise_reject(promisePressure, exception);
+    jsvUnLock2(promisePressure, exception);
+    JsVar *r = promisePressure;
+    promisePressure = 0;
+    return r;
+  }
+
   bool hadError = jspHasError();
   if (hadError) {
-    JsVar *exception = jspGetException();
+    JsVar *msg = jsvNewFromString("I2C barometer error");
+    JsVar *exception = jswrap_internalerror_constructor(msg);
     jspromise_reject(promisePressure, exception);
-    jsvUnLock2(promisePressure,exception);
+    jsvUnLock3(promisePressure, exception, msg);
+    JsVar *r = promisePressure;
     promisePressure = 0;
-  } else {
-    int powerOnTimeout = 500;
+    return r;
+  }
+
+  int powerOnTimeout = 500;
 #ifdef PRESSURE_DEVICE_BMP280_EN
-    if (PRESSURE_DEVICE_BMP280_EN)
-      powerOnTimeout = 750; // some devices seem to need this long to boot reliably
+  if (PRESSURE_DEVICE_BMP280_EN)
+    powerOnTimeout = 750; // some devices seem to need this long to boot reliably
 #endif
 #ifdef PRESSURE_DEVICE_SPL06_007_EN
-    if (PRESSURE_DEVICE_SPL06_007_EN)
-      powerOnTimeout = 400; // on SPL06 we may actually be leaving it *too long* before requesting data, and it starts to do another reading
+  if (PRESSURE_DEVICE_SPL06_007_EN)
+    powerOnTimeout = 400; // on SPL06 we may actually be leaving it *too long* before requesting data, and it starts to do another reading
 #endif
-    jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, powerOnTimeout));
-    return jsvLockAgain(promisePressure);
-  }
+  jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, powerOnTimeout));
+  return jsvLockAgain(promisePressure);
 #endif
-  return 0;
 }
 
 /*JSON{

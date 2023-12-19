@@ -43,6 +43,7 @@ info = {
    ],
    'makefile' : [
      'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
+     'DEFINES += -DNEOPIXEL_SCK_PIN=27 -DNEOPIXEL_LRCK_PIN=18', # SCK pin needs defining as something unused for neopixel (HW errata means they can't be disabled) 
      'DEFINES += -DGPIO_COUNT=2 -DP1_PIN_NUM=16 -DNRF_P1_BASE=0x50000300UL "-DNRF_P1=((NRF_GPIO_Type*)NRF_P1_BASE)"', # Hack for 52833 on SDK12
      'DEFINES += -DMICROBIT', # enable microbit-specific stuff
      'INCLUDE += -I$(ROOT)/libs/microbit',

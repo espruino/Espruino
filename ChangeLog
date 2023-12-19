@@ -40,6 +40,9 @@
             nRF52840: jsvReadVRef now reads VDDH value (not VDD, which is almost always internally regulated) 
             Ensure we error if an unsupported byteOffset is supplied to types array constructor (fix #2439)
             I2C: Add I2C.readReg to combine I2C.writeTo+readFrom in an easy/fast way
+            Microbit2: Set up SCK/LRCK to unused pins for neopixel to ensure neopixel will work ok
+            ESP8266/others: Fix ArrayBuffers with 12 bit JsVars (previously they overflowed)
+            Ensure E.setDST disables E.setTimeZone, and vice-versa. 
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)

@@ -1017,6 +1017,17 @@ unsigned short int int_sqrt32(unsigned int x) {
   return res;
 }
 
+// Reverse the order of bytes in an array, in place
+void reverseBytes(char *data, int len) {
+  int halflen = len>>1;
+  int j = len-1;
+  for (int i=0;i<halflen;i++,j--) {
+    char t = data[i];
+    data[i] = data[j];
+    data[j] = t;
+  }
+}
+
 #ifdef ESPR_UNICODE_SUPPORT
 
 /// Returns true if this character denotes the start of a UTF8 sequence

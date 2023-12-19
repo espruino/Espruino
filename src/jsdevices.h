@@ -125,7 +125,7 @@ typedef enum {
   // ----------------------------------------- WATCH EVENTS
   EV_EXTI_IS_HIGH = EV_TYPE_MASK+1,           //< if the pin we're watching is high, the handler sets this
   EV_EXTI_DATA_PIN_HIGH = EV_EXTI_IS_HIGH<<1  //< If a data pin was specified, its value is high
-} PACKED_FLAGS IOEventFlags;
+} PACKED_FLAGS IOEventFlags; // should be one byte
 
 #define DEVICE_SANITY_CHECK() if (EV_TYPE_MASK>63) jsError("DEVICE_SANITY_CHECK failed")
 

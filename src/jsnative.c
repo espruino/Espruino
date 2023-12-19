@@ -274,6 +274,17 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
 
 // -----------------------------------------------------------------------------------------
 
+// compile time sanity tests
+
+char const sanity_test_arraybuffer_type_one_byte[sizeof(JsVarDataArrayBufferViewType) == 1 ? 1 : -1];
+char const sanity_test_arraybuffer_in_jsvar[sizeof(JsVarDataArrayBufferView) <= JSVAR_DATA_ARRAYBUFFER_LEN ? 1 : -1];
+char const sanity_test_native_in_jsvar[sizeof(JsVarDataNative) <= JSVAR_DATA_NATIVE_LEN ? 1 : -1];
+char const sanity_test_nativestr_in_jsvar[sizeof(JsVarDataNativeStr) <= JSVAR_DATA_NATIVESTR_LEN ? 1 : -1];
+char const sanity_test_jsvarflags_is_2bytes[sizeof(JsVarFlags) == 2 ? 1 : -1];
+char const sanity_test_ioeventflags_is_1byte[sizeof(IOEventFlags) == 1 ? 1 : -1];
+
+// runtime sanity tests
+
 JsVarFloat sanity_pi() { return 3.141592; }
 int32_t sanity_int_pass(int32_t hello) { return (hello*10)+5; }
 int32_t sanity_int_flt_int(int32_t a, JsVarFloat b, int32_t c) {

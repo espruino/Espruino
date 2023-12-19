@@ -2389,7 +2389,7 @@ JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer, uint32_t *offset) {
 JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, size_t idx) {
   JsvArrayBufferIterator it;
   jsvArrayBufferIteratorNew(&it, arrayBuffer, idx);
-  JsVar *v = jsvArrayBufferIteratorGetValue(&it);
+  JsVar *v = jsvArrayBufferIteratorGetValue(&it, false/*little endian*/);
   jsvArrayBufferIteratorFree(&it);
   return v;
 }
@@ -2398,7 +2398,7 @@ JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, size_t idx) {
 void jsvArrayBufferSet(JsVar *arrayBuffer, size_t idx, JsVar *value) {
   JsvArrayBufferIterator it;
   jsvArrayBufferIteratorNew(&it, arrayBuffer, idx);
-  jsvArrayBufferIteratorSetValue(&it, value);
+  jsvArrayBufferIteratorSetValue(&it, value, false/*little endian*/);
   jsvArrayBufferIteratorFree(&it);
 }
 

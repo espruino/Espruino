@@ -115,7 +115,6 @@ typedef enum {
   ARRAYBUFFERVIEW_FLOAT = 32,
   ARRAYBUFFERVIEW_CLAMPED = 64, // As in Uint8ClampedArray - clamp to the acceptable bounds
   ARRAYBUFFERVIEW_ARRAYBUFFER = 1 | 128, ///< Basic ArrayBuffer type
-  ARRAYBUFFERVIEW_BIG_ENDIAN = 256, ///< access as big endian (normally little)
   ARRAYBUFFERVIEW_UINT8   = 1,
   ARRAYBUFFERVIEW_INT8    = 1 | ARRAYBUFFERVIEW_SIGNED,
   ARRAYBUFFERVIEW_UINT16  = 2,
@@ -131,15 +130,19 @@ typedef enum {
 #define JSV_ARRAYBUFFER_IS_FLOAT(T) (((T)&ARRAYBUFFERVIEW_FLOAT)!=0)
 #define JSV_ARRAYBUFFER_IS_CLAMPED(T) (((T)&ARRAYBUFFERVIEW_CLAMPED)!=0)
 
-#if JSVAR_DATA_STRING_LEN<8 // only enough space for a 16 bit length
+#if JSVAR_DATA_NATIVE_LEN<8 // only enough space for a 16 bit length
 typedef uint16_t JsVarDataNativeStrLength;
 #define JSV_NATIVE_STR_MAX_LENGTH 65535
+#else // enough space for 32 bits
+typedef uint32_t JsVarDataNativeStrLength;
+#define JSV_NATIVE_STR_MAX_LENGTH 0xFFFFFFFF
+#endif
+
+#if JSVAR_DATA_STRING_LEN<8 // only enough space for a 16 bit length
 typedef uint16_t JsVarArrayBufferLength;
 #define JSV_ARRAYBUFFER_MAX_LENGTH 65535
 #define JSV_ARRAYBUFFER_LENGTH_BITS
 #else // enough space for 24 bit length
-typedef uint32_t JsVarDataNativeStrLength;
-#define JSV_NATIVE_STR_MAX_LENGTH 0xFFFFFFFF
 typedef uint32_t JsVarArrayBufferLength;
 #define JSV_ARRAYBUFFER_MAX_LENGTH 0xFFFFFF
 #define JSV_ARRAYBUFFER_LENGTH_BITS : 24
@@ -152,13 +155,13 @@ typedef struct {
   JsVarDataArrayBufferViewType type;
 } PACKED_FLAGS JsVarDataArrayBufferView;
 
-/// Data for native functions
+/// Data for native functions. Has to fit behind firstChild
 typedef struct {
   void (*ptr)(void); ///< Function pointer - this may not be the real address - see jsvGetNativeFunctionPtr
   uint16_t argTypes; ///< Actually a list of JsnArgumentType
 } PACKED_FLAGS JsVarDataNative;
 
-/// Data for native strings
+/// Data for native strings. Has to fit behind refCount
 typedef struct {
   char *ptr;
   JsVarDataNativeStrLength len;
@@ -247,12 +250,12 @@ typedef struct JsVarStruct {
 
 
  | Offset | Size | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER | NATIVE_STR | FLAT_STR |
- |        |      |         |        |          |          |          |      |         |                |             | FLASH_STR  |          |
+ | 16b    |      |         |        |          |          |          |      |         |                |             | FLASH_STR  |          |
  |--------|------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|------------|----------|
  | 0 - 3  | 4    | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        | ptr        | charLen  |
  | 4 - 5  | ?    | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      | len        | -        |
  | 6 - 7  | ?    | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      | ..len      | -        |
- | 8 - 9  | ?    | first   | data   | data     |  child   | child    |  -   | data?   | first          | stringPtr   | -          | -        |
+ | 8 - 9  | ?    | first   | data   | data     |  child   | child    |  -   | data?   | first          | stringPtr   | ..len      | -        |
  | 10-11  | ?    | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        | refs       | refs     |
  | 12-13  | ?    | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           | -          | -        |
  | 14-15  | 2    | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       | Flags      | Flags    |
