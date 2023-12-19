@@ -15,10 +15,7 @@
 
 FIXME:
 
-Should Q1/2/3/4 provide:
-  * setPower() function
-  * i2c property for pre-initialised soft I2C?
-
+See https://docs.google.com/document/d/1Tw7fUkpj9dwBYASBCX9TjPcpgdqEw_7VL6MSRqVUUXY
 
  */
 
@@ -89,6 +86,8 @@ void setJoltProperty(const char *name, JsVar* prop) {
 }
 `Q1` and `Q2` Qwiic connectors can have their power controlled by a 500mA FET connected to GND.
 
+The `sda` and `scl` pins on this port are also analog inputs - use `analogRead(Jolt.Q1.sda)`/etc
+
 To turn this connector on run `Jolt.Q1.setPower(1)`
 */
 JsVar *jswrap_jolt_q1() {
@@ -110,6 +109,8 @@ JsVar *jswrap_jolt_q1() {
   "return_object" : "Qwiic"
 }
 `Q1` and `Q2` Qwiic connectors can have their power controlled by a 500mA FET connected to GND.
+
+The `sda` and `scl` pins on this port are also analog inputs - use `analogRead(Jolt.Q2.sda)`/etc
 
 To turn this connector on run `Jolt.Q2.setPower(1)`
 */
@@ -188,8 +189,28 @@ can be controlled independently.
 Mode can be:
 
 * `undefined` / `false` / `"off"` - the motor driver is off, all motor driver pins are open circuit
-* `true` / `"output"` - driver is set to "Independent bridge" mode. All 4 outputs are enabled and are either
-* `"motor"`
+* `true` / `"output"` - **[recommended]** driver is set to "Independent bridge" mode. All 4 outputs are enabled and are either
+* `"motor"` - driver is set to "4 pin interface" mode where pins are paired up (V0+V1, V2+V3, etc). If both
+in a pair are 0 the output is open circuit (motor coast), if both are 1 both otputs are 0 (motor brake), and
+if both are different, those values are on the output:
+
+`output` mode:
+
+| V0 | V1 | Out 0 | Out 1 |
+|----|----|-------|-------|
+| 0  | 0  | Low   | Low   |
+| 0  | 1  | Low   | High  |
+| 1  | 0  | High  | Low   |
+| 1  | 1  | High  | High  |
+
+`motor` mode
+
+| V0 | V1 | Out 0 | Out 1 |
+|----|----|-------|-------|
+| 0  | 0  | Open  | Open  |
+| 0  | 1  | Low   | High  |
+| 1  | 0  | High  | Low   |
+| 1  | 1  | Low   | Low   |
 
 
 */
