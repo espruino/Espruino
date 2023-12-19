@@ -655,7 +655,7 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
       jsvArrayBufferIteratorSetIntegerValue(&itdst, jsvIteratorGetIntegerValue(&itsrc));
     } else {
       JsVar *value = jsvIteratorGetValue(&itsrc);
-      jsvArrayBufferIteratorSetValue(&itdst, value);
+      jsvArrayBufferIteratorSetValue(&itdst, value, false/*little endian*/);
       jsvUnLock(value);
     }
     jsvArrayBufferIteratorNext(&itdst);
@@ -723,7 +723,7 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
       mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
       jsvUnLockMany(2,args);
       if (mapped) {
-        jsvArrayBufferIteratorSetValue(&itdst, mapped);
+        jsvArrayBufferIteratorSetValue(&itdst, mapped, false/*little endian*/);
         jsvUnLock(mapped);
       }
     }

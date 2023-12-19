@@ -417,7 +417,7 @@ void jsfGetJSONWithCallback(JsVar *var, JsVar *varName, JSONFlags flags, const c
           if (it.index>0) cbprintf(user_callback, user_data, (flags&JSON_PRETTY)?", ":",");
           if (flags&JSON_ALL_NEWLINES) jsonNewLine(nflags, whitespace, user_callback, user_data);
           if (limited && it.index==length-JSON_LIMITED_AMOUNT) cbprintf(user_callback, user_data, JSON_LIMIT_TEXT);
-          JsVar *item = jsvArrayBufferIteratorGetValue(&it);
+          JsVar *item = jsvArrayBufferIteratorGetValue(&it, false/*little endian*/);
           jsfGetJSONWithCallback(item, NULL, nflags, whitespace, user_callback, user_data);
           jsvUnLock(item);
         }

@@ -70,7 +70,6 @@ JsVar *jswrap_dataview_constructor(JsVar *buffer, int byteOffset, int byteLength
   return dataview;
 }
 
-
 JsVar *jswrap_dataview_get(JsVar *dataview, JsVarDataArrayBufferViewType type, int byteOffset, bool littleEndian) {
   JsVar *buffer = jsvObjectGetChildIfExists(dataview, "buffer");
   if (!jsvIsArrayBuffer(buffer)) {
@@ -80,13 +79,13 @@ JsVar *jswrap_dataview_get(JsVar *dataview, JsVarDataArrayBufferViewType type, i
   byteOffset += jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(dataview, "byteOffset"));
   JsVarInt length = JSV_ARRAYBUFFER_GET_SIZE(type);
   // TODO: range error based on byteLength?
-  if (!littleEndian) type |= ARRAYBUFFERVIEW_BIG_ENDIAN;
+
   JsVar *arr = jswrap_typedarray_constructor(type, buffer, byteOffset, length);
   jsvUnLock(buffer);
   if (!arr) return 0;
   JsvArrayBufferIterator it;
   jsvArrayBufferIteratorNew(&it, arr, 0);
-  JsVar *value = jsvArrayBufferIteratorGetValue(&it);
+  JsVar *value = jsvArrayBufferIteratorGetValue(&it, !littleEndian);
   jsvArrayBufferIteratorFree(&it);
   jsvUnLock(arr);
   return value;
@@ -100,13 +99,12 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
   byteOffset += jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(dataview, "byteOffset"));
   JsVarInt length = JSV_ARRAYBUFFER_GET_SIZE(type);
   // TODO: range error based on byteLength?
-  if (!littleEndian) type |= ARRAYBUFFERVIEW_BIG_ENDIAN;
   JsVar *arr = jswrap_typedarray_constructor(type, buffer, byteOffset, length);
   jsvUnLock(buffer);
   if (!arr) return;
   JsvArrayBufferIterator it;
   jsvArrayBufferIteratorNew(&it, arr, 0);
-  jsvArrayBufferIteratorSetValue(&it, value);
+  jsvArrayBufferIteratorSetValue(&it, value, !littleEndian);
   jsvArrayBufferIteratorFree(&it);
   jsvUnLock(arr);
 }

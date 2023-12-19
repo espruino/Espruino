@@ -260,11 +260,11 @@ void jsvArrayBufferIteratorClone(JsvArrayBufferIterator *dstit, JsvArrayBufferIt
 /** ArrayBuffers have the slightly odd side-effect that you can't write an element
  * once you have read it. That's why we have jsvArrayBufferIteratorGetValueAndRewind
  * which allows this, but is slower. */
-JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it);
+JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it, bool bigEndian);
 JsVar *jsvArrayBufferIteratorGetValueAndRewind(JsvArrayBufferIterator *it);
 JsVarInt jsvArrayBufferIteratorGetIntegerValue(JsvArrayBufferIterator *it);
 JsVarFloat jsvArrayBufferIteratorGetFloatValue(JsvArrayBufferIterator *it);
-void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value);
+void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value, bool bigEndian);
 void   jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *value);
 void   jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt value);
 void   jsvArrayBufferIteratorSetByteValue(JsvArrayBufferIterator *it, char c); ///< special case for when we know we're writing to a byte array

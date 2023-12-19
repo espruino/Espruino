@@ -115,7 +115,6 @@ typedef enum {
   ARRAYBUFFERVIEW_FLOAT = 32,
   ARRAYBUFFERVIEW_CLAMPED = 64, // As in Uint8ClampedArray - clamp to the acceptable bounds
   ARRAYBUFFERVIEW_ARRAYBUFFER = 1 | 128, ///< Basic ArrayBuffer type
-  ARRAYBUFFERVIEW_BIG_ENDIAN = 256, ///< access as big endian (normally little)
   ARRAYBUFFERVIEW_UINT8   = 1,
   ARRAYBUFFERVIEW_INT8    = 1 | ARRAYBUFFERVIEW_SIGNED,
   ARRAYBUFFERVIEW_UINT16  = 2,
@@ -247,7 +246,7 @@ typedef struct JsVarStruct {
 
 
  | Offset | Size | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER | NATIVE_STR | FLAT_STR |
- |        |      |         |        |          |          |          |      |         |                |             | FLASH_STR  |          |
+ | 16b    |      |         |        |          |          |          |      |         |                |             | FLASH_STR  |          |
  |--------|------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|------------|----------|
  | 0 - 3  | 4    | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        | ptr        | charLen  |
  | 4 - 5  | ?    | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      | len        | -        |

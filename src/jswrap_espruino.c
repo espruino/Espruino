@@ -1751,7 +1751,7 @@ void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bit
         assert(jsvIsArrayBuffer(map));
         v2 = jsvArrayBufferGet(map, (size_t)v);
       }
-      jsvArrayBufferIteratorSetValue(&itTo, v2);
+      jsvArrayBufferIteratorSetValue(&itTo, v2, false/*little endian*/);
       jsvUnLock(v2);
     } else { // no map - push right through
       jsvArrayBufferIteratorSetIntegerValue(&itTo, v);
