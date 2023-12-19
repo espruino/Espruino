@@ -84,11 +84,12 @@ void setJoltProperty(const char *name, JsVar* prop) {
   "class" : "Jolt",
   "name" : "Q1",
   "generate" : "jswrap_jolt_q1",
-  "return" : ["JsVar","An object containing the pins for Q1 - the first Qwiic connector on Jolt.js"]
+  "return" : ["JsVar","An object containing the pins for the Q1 connector on Jolt.js `{sda,scl,fet}`"],
+  "return_object" : "Qwiic"
 }
-`Q1` and `Q2` Qwiic connectors can have their power controlled by a 500mA FET.
+`Q1` and `Q2` Qwiic connectors can have their power controlled by a 500mA FET connected to GND.
 
-To turn this connector on run `Jolt.Q1.fet.set()`
+To turn this connector on run `Jolt.Q1.setPower(1)`
 */
 JsVar *jswrap_jolt_q1() {
   JsVar *o = jspNewObject(0, "Qwiic");
@@ -105,11 +106,12 @@ JsVar *jswrap_jolt_q1() {
   "class" : "Jolt",
   "name" : "Q2",
   "generate" : "jswrap_jolt_q2",
-  "return" : ["JsVar","An object containing the pins for Q2 - the first Qwiic connector on Jolt.js"]
+  "return" : ["JsVar","An object containing the pins for the Q2 connector on Jolt.js `{sda,scl,fet}`"],
+  "return_object" : "Qwiic"
 }
-`Q1` and `Q2` Qwiic connectors can have their power controlled by a 500mA FET.
+`Q1` and `Q2` Qwiic connectors can have their power controlled by a 500mA FET connected to GND.
 
-To turn this connector on run `Jolt.Q2.fet.set()`
+To turn this connector on run `Jolt.Q2.setPower(1)`
 */
 JsVar *jswrap_jolt_q2() {
   JsVar *o = jspNewObject(0, "Qwiic");
@@ -126,12 +128,13 @@ JsVar *jswrap_jolt_q2() {
   "class" : "Jolt",
   "name" : "Q3",
   "generate" : "jswrap_jolt_q3",
-  "return" : ["JsVar","An object containing the pins for Q3 - the first Qwiic connector on Jolt.js"]
+  "return" : ["JsVar","An object containing the pins for the Q3 connector on Jolt.js `{sda,scl,gnd,vcc}`"],
+  "return_object" : "Qwiic"
 }
 `Q3` and `Q4` have all 4 pins connected to Jolt.js's GPIO (including those usually used for power).
 As such only around 8mA of power can be supplied to any connected device.
 
-To use this as a normal Qwiic connector, run `Jolt.Q3.gnd.reset();Jolt.Q3.vcc.set();`
+To use this as a normal Qwiic connector, run `Jolt.Q3.setPower(1)`
 */
 JsVar *jswrap_jolt_q3() {
   JsVar *o = jspNewObject(0, "Qwiic");
@@ -149,12 +152,13 @@ JsVar *jswrap_jolt_q3() {
   "class" : "Jolt",
   "name" : "Q4",
   "generate" : "jswrap_jolt_q4",
-  "return" : ["JsVar","An object containing the pins for Q4 - the first Qwiic connector on Jolt.js"]
+  "return" : ["JsVar","An object containing the pins for the Q4 connector on Jolt.js `{sda,scl,gnd,vcc}`"],
+  "return_object" : "Qwiic"
 }
 `Q3` and `Q4` have all 4 pins connected to Jolt.js's GPIO (including those usually used for power).
 As such only around 8mA of power can be supplied to any connected device.
 
-To use this as a normal Qwiic connector, run `Jolt.Q3.gnd.reset();Jolt.Q3.vcc.set();`
+To use this as a normal Qwiic connector, run `Jolt.Q3.setPower(1)`
 */
 JsVar *jswrap_jolt_q4() {
   JsVar *o = jspNewObject(0, "Qwiic");
