@@ -278,8 +278,8 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
 
 char const sanity_test_arraybuffer_type_one_byte[sizeof(JsVarDataArrayBufferViewType) == 1 ? 1 : -1];
 char const sanity_test_arraybuffer_in_jsvar[sizeof(JsVarDataArrayBufferView) <= JSVAR_DATA_ARRAYBUFFER_LEN ? 1 : -1];
-char const sanity_test_native_in_jsvar[sizeof(JsVarDataNative) <= JSVAR_DATA_ARRAYBUFFER_LEN ? 1 : -1];
-char const sanity_test_nativestr_in_jsvar[sizeof(JsVarDataNativeStr) <= JSVAR_DATA_ARRAYBUFFER_LEN ? 1 : -1];
+char const sanity_test_native_in_jsvar[sizeof(JsVarDataNative) <= JSVAR_DATA_NATIVE_LEN ? 1 : -1];
+char const sanity_test_nativestr_in_jsvar[sizeof(JsVarDataNativeStr) <= JSVAR_DATA_NATIVE_LEN ? 1 : -1];
 
 
 // runtime sanity tests

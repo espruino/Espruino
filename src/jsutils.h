@@ -278,6 +278,8 @@ See comments after JsVar in jsvar.c for more info.
 #define JSVAR_DATA_STRING_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS)>>3))
 /// Max length for an arraybuffer since it uses firstChild
 #define JSVAR_DATA_ARRAYBUFFER_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*2)>>3))
+/// Max length for a native var since it uses refCount (but not the first 3 references)
+#define JSVAR_DATA_NATIVE_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3)>>3))
 /// Max length for a JSV_STRINGEXT, JsVar.varData.ref.lastChild (see comments under JsVar decl in jsvar.h)
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS + JSVARREFCOUNT_BITS)>>3))
 
