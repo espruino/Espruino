@@ -47,14 +47,14 @@
 #include "app_config.h"
 #endif
 
-// Changes needed whem moving from SDK 15.0.0 to 15.3.0
-#ifdef NRF5X_SDK_15_3
 #define APP_TIMER_SAFE_WINDOW_MS 300000
 #define NRF_DFU_SETTINGS_COMPATIBILITY_MODE 0
 #define NRF_BL_APP_SIGNATURE_CHECK_REQUIRED 0
-#define NRF_CRYPTO_BACKEND_MICRO_ECC_PUBLIC_KEY_TRUSTED_ENABLED 0
-#define NRF_CRYPTO_BACKEND_NRF_SW_HASH_LITTLE_ENDIAN_DIGEST_ENABLED 0
-#endif
+
+#define NRF_BL_RESET_DELAY_MS 0
+#define NRF_BL_DEBUG_PORT_DISABLE 0
+#define NRF_BL_DFU_ALLOW_UPDATE_FROM_APP 0
+
 
 // <h> nRF_Bootloader
 
@@ -778,15 +778,6 @@
 #define NRF_CRYPTO_BACKEND_MICRO_ECC_PUBLIC_KEY_TRUSTED_ENABLED 1
 #endif
 
-// <q> NRF_CRYPTO_BACKEND_MICRO_ECC_LITTLE_ENDIAN_ENABLED  - Enable non-standard little endian byte order.
-
-
-// <i> This affects parameters for all ECC API (raw keys, signature, digest, shared secret). Only for use in nRF SDK DFU!
-
-#ifndef NRF_CRYPTO_BACKEND_MICRO_ECC_LITTLE_ENDIAN_ENABLED
-#define NRF_CRYPTO_BACKEND_MICRO_ECC_LITTLE_ENDIAN_ENABLED 1
-#endif
-
 // </e>
 
 // <e> NRF_CRYPTO_BACKEND_NRF_HW_RNG_ENABLED - Enable the nRF HW RNG backend.
@@ -821,15 +812,6 @@
 
 #ifndef NRF_CRYPTO_BACKEND_NRF_SW_HASH_SHA256_ENABLED
 #define NRF_CRYPTO_BACKEND_NRF_SW_HASH_SHA256_ENABLED 1
-#endif
-
-// <q> NRF_CRYPTO_BACKEND_NRF_SW_HASH_LITTLE_ENDIAN_DIGEST_ENABLED  - nRF SW hash outputs digests in little endian
-
-
-// <i> Makes the nRF SH hash functions output digests in little endian format. Only for use in nRF SDK DFU!
-
-#ifndef NRF_CRYPTO_BACKEND_NRF_SW_HASH_LITTLE_ENDIAN_DIGEST_ENABLED
-#define NRF_CRYPTO_BACKEND_NRF_SW_HASH_LITTLE_ENDIAN_DIGEST_ENABLED 1
 #endif
 
 // </e>
