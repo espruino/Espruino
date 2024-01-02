@@ -203,6 +203,10 @@ Objects can contain:
 * `forceSoft` - boolean, If true software PWM is used even if hardware PWM or a
   DAC is available
 
+On nRF52-based devices (Puck.js, Pixl.js, MDBT42Q, etc) hardware PWM runs at
+16MHz, with a maximum output frequency of 4MHz (but with only 2 bit (0..3) accuracy).
+At 1Mhz, you have 4 bits (0..15), 1kHz = 14 bits and so on.
+
  **Note:** if you didn't call `pinMode` beforehand then this function will also
  reset pin's state to `"output"`
  */
