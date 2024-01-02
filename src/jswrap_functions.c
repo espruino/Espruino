@@ -591,3 +591,47 @@ void jswrap_print(JsVar *v) {
 }
 
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "console",
+  "name" : "debug",
+  "generate" : "jswrap_print",
+  "params" : [
+    ["text","JsVarArray","One or more arguments to print"]
+  ]
+}
+Implemented in Espruino as an alias of `console.log`
+ */
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "console",
+  "name" : "info",
+  "generate" : "jswrap_print",
+  "params" : [
+    ["text","JsVarArray","One or more arguments to print"]
+  ]
+}
+Implemented in Espruino as an alias of `console.log`
+ */
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "console",
+  "name" : "warn",
+  "generate" : "jswrap_print",
+  "params" : [
+    ["text","JsVarArray","One or more arguments to print"]
+  ]
+}
+Implemented in Espruino as an alias of `console.log`
+ */
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "console",
+  "name" : "error",
+  "generate" : "jswrap_print",
+  "params" : [
+    ["text","JsVarArray","One or more arguments to print"]
+  ]
+}
+Implemented in Espruino as an alias of `console.log`
+ */
