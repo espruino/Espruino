@@ -3450,6 +3450,15 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
     v = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(options,"maxInterval"));
     if (!isnan(v)) gap_conn_params.max_conn_interval = (uint16_t)(MSEC_TO_UNITS(v, UNIT_1_25_MS)+0.5);
   }
+  /* From NRF SDK: If both conn_sup_timeout and max_conn_interval are specified, then the following constraint applies:
+     conn_sup_timeout * 4 > (1 + slave_latency) * max_conn_interval
+     that corresponds to the following Bluetooth Spec requirement:
+     The Supervision_Timeout in milliseconds shall be larger than
+     (1 + Conn_Latency) * Conn_Interval_Max * 2, where Conn_Interval_Max is given in milliseconds.
+  */
+  unsigned int minSupTimeout = (((1+gap_conn_params.slave_latency) * gap_conn_params.max_conn_interval) + 4) >> 2; // round up (ceil)
+  if (gap_conn_params.conn_sup_timeout < minSupTimeout)
+    gap_conn_params.conn_sup_timeout = minSupTimeout;
 
   ble_gap_addr_t addr;
   addr = peer_addr;
