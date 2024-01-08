@@ -18,7 +18,7 @@
 #include "jstimer.h"
 
 /* We use sortorder ensure sort position for Pin class *and at least one non-static member function*
-  is before that of 'Number', so that jswGetBasicObjectName/jswFindBuiltInFunction/jswGetSymbolListForObjectProto 
+  is before that of 'Number', so that jswGetBasicObjectName/jswFindBuiltInFunction/jswGetSymbolListForObjectProto
   check first (Pin is also Numeric) */
 
 
@@ -164,7 +164,7 @@ void jswrap_pin_writeAtTime(JsVar *parent, bool value, JsVarFloat time) {
 Return the current mode of the given pin. See `pinMode` for more information.
  */
 JsVar *jswrap_pin_getMode(JsVar *parent) {
-  return jswrap_io_getPinMode(jshGetPinFromVar(parent));  
+  return jswrap_io_getPinMode(jshGetPinFromVar(parent));
 }
 
 /*JSON{
@@ -205,6 +205,68 @@ bool jswrap_pin_toggle(JsVar *parent) {
   return on;
 }
 
+/*JSON{
+  "type"     : "method",
+  "class"    : "Pin",
+  "name"     : "pulse",
+  "generate" : "jswrap_pin_pulse",
+  "params" : [
+    ["value","bool","Whether to pulse high (true) or low (false)"],
+    ["time","JsVar","A time in milliseconds, or an array of times (in which case a square wave will be output starting with a pulse of 'value')"]
+  ]
+}
+(Added in 2v20) Pulse the pin with the value for the given time in milliseconds.
+
+```
+LED.pulse(1, 100); // pulse LED on for 100ms
+LED.pulse(1, [100,1000,100]); // pulse LED on for 100ms, off for 1s, on for 100ms
+```
+
+This is identical to `digitalPulse`.
+ */
+void jswrap_pin_pulse(JsVar *parent, bool value, JsVar *times) {
+  jswrap_io_digitalPulse(jshGetPinFromVar(parent), value, times);
+}
+
+/*JSON{
+  "type"     : "method",
+  "class"    : "Pin",
+  "name" : "analog",
+  "generate" : "jswrap_pin_analog",
+  "return" : ["float","The analog Value of the Pin between 0 and 1"]
+}
+(Added in 2v20) Get the analogue value of the given pin. See `analogRead` for more information.
+ */
+JsVarFloat jswrap_pin_analog(JsVar *parent) {
+  return jshPinAnalog(jshGetPinFromVar(parent));
+}
+
+/*JSON{
+  "type"     : "method",
+  "class"    : "Pin",
+  "name" : "pwm",
+  "generate" : "jswrap_pin_pwm",
+  "params" : [
+    ["value","float","A value between 0 and 1"],
+    ["options","JsVar",["An object containing options for analog output - see below"]]
+  ]
+}
+(Added in 2v20) Set the analog Value of a pin. It will be output using PWM.
+
+See `analogWrite` for more information.
+
+Objects can contain:
+
+* `freq` - pulse frequency in Hz, e.g. ```analogWrite(A0,0.5,{ freq : 10 });``` -
+  specifying a frequency will force PWM output, even if the pin has a DAC
+* `soft` - boolean, If true software PWM is used if hardware is not available.
+* `forceSoft` - boolean, If true software PWM is used even if hardware PWM or a
+  DAC is available
+
+ */
+void jswrap_pin_pwm(JsVar *parent, JsVarFloat value, JsVar *options) {
+  jswrap_io_analogWrite(jshGetPinFromVar(parent), value, options);
+}
 
 /*JSON{
   "type"     : "method",

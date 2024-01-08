@@ -26,6 +26,9 @@ void jswrap_pin_writeAtTime(JsVar *parent, bool value, JsVarFloat time);
 JsVar *jswrap_pin_getMode(JsVar *parent);
 void jswrap_pin_mode(JsVar *parent, JsVar *mode);
 bool jswrap_pin_toggle(JsVar *parent);
+void jswrap_pin_pulse(JsVar *parent, bool value, JsVar *times);
+JsVarFloat jswrap_pin_analog(JsVar *parent);
+void jswrap_pin_pwm(JsVar *parent, JsVarFloat value, JsVar *options);
 JsVar *jswrap_pin_getInfo(JsVar *parent);
 
 #endif // JSWRAP_PIN_H_
