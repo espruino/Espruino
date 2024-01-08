@@ -5619,7 +5619,24 @@ Load the Bangle.js clock - this has the same effect as calling `Bangle.load()`.
 }
 Show a 'recovery' menu that allows you to perform certain tasks on your Bangle.
 
-You can also enter this menu by restarting while holding down the `BTN1`
+You can also enter this menu by restarting your Bangle while holding down the button.
+*/
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "showTestScreen",
+    "generate_js" : "libs/js/banglejs/Bangle_showTestScreen.js",
+    "ifdef" : "BANGLEJS2"
+}
+(2v20 and later) Show a test screen that lights green when each sensor on the Bangle
+works and reports within range.
+
+Swipe on the screen when all items are green and the Bangle will turn bluetooth off
+and display a `TEST PASS` screen for 60 minutes, after which it will turn off.
+
+You can enter this menu by restarting your Bangle while holding down the button,
+then choosing `Test` from the recovery menu.
 */
 
 /*JSON{

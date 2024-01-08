@@ -45,6 +45,7 @@
             Ensure E.setDST disables E.setTimeZone, and vice-versa. 
             Added console.debug/info/warn/error as aliases of console.log
             nRF5x: Fix INVALID_PARAM error when connecting to other BLE device when maxInterval or NRF.setLowPowerConnection specified 
+            Bangle.js2: Add 'Test' option to factory reset menu, and Bangle.showTestScreen()
 
      2v19 : Fix Object.values/entries for numeric keys after 2v18 regression (fix #2375)
             nRF52: for SD>5 use static buffers for advertising and scan response data (#2367)

@@ -1,4 +1,5 @@
 (function() {
+  Bangle.setUI();
   clearTimeout();
   clearInterval();
   clearWatch();
@@ -6,17 +7,20 @@
   E.removeAllListeners();
   NRF.removeAllListeners();
   Bangle.setLCDBrightness(1);
-  E.showMenu({"":{title:"Recovery"},
+  let menu = {"":{title:"Recovery"},
     "Clean Boot": () => {
       reset();
-    },  
+    },
     "Reboot": () => {
       E.reboot();
     },
     "Turn Off": () => {
       Bangle.off();
-    },
-    "Factory Reset": () => {
+    }
+  };
+  if (process.env.BOARD=="BANGLEJS2")
+    Object.assign(menu, {"Test": Bangle.showTestScreen});
+  Object.assign(menu, {"Factory Reset": () => {
       E.showPrompt("Are you sure?\nThis will remove all data.",{title:"Factory Reset"}).then(ok => {
         if (!ok) return Bangle.showRecoveryMenu();
         E.showMessage("Resetting");
@@ -25,8 +29,8 @@
           Terminal.setConsole();
         Bangle.factoryReset();
       });
-    },    
-    "Exit": () => {   
+    },
+    "Exit": () => {
       if (require("Storage").list().length>0) {
         E.showMessage("Loading...");
         if(!NRF.getSecurityStatus().connected)
@@ -48,4 +52,5 @@
       eval(require("Storage").read("bootupdate.js"));
     },
   });
+  E.showMenu(menu);
 })
