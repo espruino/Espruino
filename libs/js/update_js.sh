@@ -52,6 +52,7 @@ node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_showClock.js banglejs/B
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_load.js banglejs/Bangle_load.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_setUI_F18.js banglejs/Bangle_setUI_F18.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_setUI_Q3.js banglejs/Bangle_setUI_Q3.min.js
+node ../../../EspruinoDocs/bin/minify.js banglejs/Bangle_showRecoveryMenu_F18.js banglejs/Bangle_showRecoveryMenu_F18.min.js
 node ../../../EspruinoDocs/bin/minify.js banglejs/locale.js banglejs/locale.min.js
 
 node ../../../EspruinoDocs/bin/minify.js dickens/Bangle_setUI_DICKENS.js dickens/Bangle_setUI_DICKENS.min.js

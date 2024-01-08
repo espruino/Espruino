@@ -5621,6 +5621,12 @@ Show a 'recovery' menu that allows you to perform certain tasks on your Bangle.
 
 You can also enter this menu by restarting your Bangle while holding down the button.
 */
+/*JSON{
+    "type" : "staticmethod", "class" : "Bangle", "name" : "showRecoveryMenu", "patch":true,
+    "generate_js" : "libs/js/banglejs/Bangle_showRecoveryMenu_F18.min.js",
+    "#if" : "defined(BANGLEJS) && defined(BANGLEJS_F18)"
+}
+*/
 
 /*JSON{
     "type" : "staticmethod",
