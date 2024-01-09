@@ -3260,6 +3260,9 @@ Image can be:
   is supplied, it can also contain transparent/palette fields as if it were
   an image.
 
+See https://www.espruino.com/Graphics#images-bitmaps for more information about
+image formats.
+
 Draw an image at the specified position.
 
 * If the image is 1 bit, the graphics foreground/background colours will be
