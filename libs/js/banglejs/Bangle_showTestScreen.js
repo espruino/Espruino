@@ -1,5 +1,6 @@
 (function() {
   Bangle.setUI();clearInterval();clearWatch();g.clear(1);
+  Bangle.removeAllListeners();E.removeAllListeners();
   Bangle.setBarometerPower(1, "app");
   Bangle.setCompassPower(1, "app");
   Bangle.setGPSPower(1, "app");
@@ -36,7 +37,7 @@
     Bangle.setBacklight(0);
     Bangle.setLocked(1); // touchscreen off
     g.clear(1).setFont("12x20:2").setFontAlign(0,0).drawString("TEST\nPASS",88,88);
-    require('Storage').write('welcome.json', {welcomed: false});
+    require('Storage').writeJSON('welcome.json', {welcomed: false});
     setTimeout(function() {
       Bangle.softOff();
     }, 60*60*1000); // 1 hour
