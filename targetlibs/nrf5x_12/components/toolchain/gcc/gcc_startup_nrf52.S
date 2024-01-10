@@ -130,6 +130,9 @@ __isr_vector:
     .long   I2S_IRQHandler
     .long   FPU_IRQHandler
     .long   0                           /*Reserved */
+
+#ifdef BIG_VECTOR_TABLE // see https://github.com/espruino/Espruino/commit/da38facc65a8855f70fd4e25024a9276d8d4c8e0#commitcomment-135831015
+/* 0xE0 = 224 */
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
@@ -138,6 +141,7 @@ __isr_vector:
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
+/* 0x100 = 256 */
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
@@ -330,6 +334,7 @@ __isr_vector:
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
     .long   0                           /*Reserved */
+#endif
 
     .size __isr_vector, . - __isr_vector
 
