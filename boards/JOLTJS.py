@@ -43,8 +43,8 @@ info = {
      'DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131', # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
      'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3660', # set RAM base to match MTU=131 + CENTRAL_LINK_COUNT=2
-     'DEFINES += -DAPP_TIMER_OP_QUEUE_SIZE=6', 
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Jolt.js"\'',     
+     'DEFINES += -DAPP_TIMER_OP_QUEUE_SIZE=6',
+     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Jolt.js"\'',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0xa9,0xae,0xb6',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DEFINES += -DNRF_BOOTLOADER_NO_WRITE_PROTECT=1', # By default the bootloader protects flash. Avoid this (a patch for NRF_BOOTLOADER_NO_WRITE_PROTECT must be applied first)
@@ -84,23 +84,23 @@ devices = {
   'LED2' : { 'pin' : 'D8' }, # Pin negated in software
   'LED3' : { 'pin' : 'D41' }, # Pin negated in software
   # See Espruino/libs/joltjs/jswrap_jolt.c for other pins
-  'QWIIC1' : {
+  'QWIIC0' : {
     'pin_sda' : 'D3',
     'pin_scl' : 'D29',
     'pin_fet' : 'D7',
   },
-  'QWIIC2' : {
+  'QWIIC1' : {
     'pin_sda' : 'D2',
     'pin_scl' : 'D31',
-    'pin_fet' : 'D27',    
+    'pin_fet' : 'D27',
   },
-  'QWIIC3' : {
+  'QWIIC2' : {
     'pin_sda' : 'D44', # P1.12
     'pin_scl' : 'D45', # P1.13
     'pin_gnd' : 'D36', # P1.04
-    'pin_vcc' : 'D43', # P1.11    
+    'pin_vcc' : 'D43', # P1.11
   },
-  'QWIIC4' : {
+  'QWIIC3' : {
     'pin_sda' : 'D39', # P1.07
     'pin_scl' : 'D38', # P1.06
     'pin_gnd' : 'D37', # P1.05
@@ -111,7 +111,7 @@ devices = {
 
 # left-right, or top-bottom order
 board = {
-  '_hide_not_on_connectors' : True,    
+  '_hide_not_on_connectors' : True,
   '_notes' : {
     'V0' : "Motor driver 0, output 0. This pin is also connected to an analog input via a 39k/220k potential divider",
     'V1' : "Motor driver 0, output 1. This pin is also connected to an analog input via a 39k/220k potential divider",

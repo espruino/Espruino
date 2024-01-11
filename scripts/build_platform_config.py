@@ -79,16 +79,16 @@ flash_page_size = 1024
 
 if LINUX:
   flash_saved_code_pages = board.chip['flash']*1024 / flash_page_size
-  total_flash = flash_page_size*flash_saved_code_pages  
+  total_flash = flash_page_size*flash_saved_code_pages
 else: # NOT LINUX
   # 100xB and 103xB are mid-density, so have 1k page sizes
   if board.chip["part"][:7]=="STM32F1" and board.chip["part"][10]=="B": board.chip["subfamily"]="MD";
 
-  if board.chip["family"]=="STM32F1": 
+  if board.chip["family"]=="STM32F1":
     flash_page_size = 1024 if "subfamily" in board.chip and board.chip["subfamily"]=="MD" else 2048
   if board.chip["family"]=="STM32F2":
     flash_page_size = 128*1024
-  if board.chip["family"]=="STM32F3": 
+  if board.chip["family"]=="STM32F3":
     flash_page_size = 2*1024
   if board.chip["family"]=="STM32F4":
     flash_page_size = 128*1024
@@ -183,7 +183,7 @@ codeOut("")
 linker_end_var = "_end";     # End of RAM (eg top of stack)
 linker_etext_var = "_etext"; # End of text (function) section
 # External interrupt count
-exti_count = 16 
+exti_count = 16
 
 
 if board.chip["family"]=="LINUX":
@@ -284,10 +284,10 @@ else:
   if LINUX:
     codeOut("#define JSVAR_MALLOC 1")
 
-if LINUX:  
+if LINUX:
   codeOut("#define FLASH_START                     "+hex(0x10000000))
   codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
-else:  
+else:
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(int(flash_available_for_code)))
   if board.chip["class"]=="EFM32":
     codeOut("// FLASH_PAGE_SIZE defined in em_device.h");
@@ -352,21 +352,21 @@ else:
   if board.chip["ram"]>=20: bufferSizeIO = 128
   if board.chip["ram"]>=96: bufferSizeIO = 256
   # NRF52 needs this as Bluetooth traffic is funnelled through the buffer
-  if board.chip["family"]=="NRF52": 
+  if board.chip["family"]=="NRF52":
     bufferSizeIO = 256
     # we often use increased MTUs and even with a big buffer these mean we need to leave
     # a lot of space when we send XOFF (due to delay in response from sender)
-    xoff_thresh = 3 
+    xoff_thresh = 3
     xon_thresh = 2
   # TX buffer - for print/write/etc
-  bufferSizeTX = 32 
+  bufferSizeTX = 32
   if board.chip["ram"]>=20: bufferSizeTX = 128
   if board.chip["ram"]>=128: bufferSizeTX = 256
   bufferSizeTimer = 4 if board.chip["ram"]<20 else 16
 
 if 'util_timer_tasks' in board.info:
   bufferSizeTimer = board.info['util_timer_tasks']
-  
+
 if 'io_buffer_size' in board.info:
   bufferSizeIO = board.info['io_buffer_size']
 
@@ -513,14 +513,14 @@ if "TOUCH" in board.devices:
   codeOut("#define TOUCH_ADDR "+str(board.devices["TOUCH"]["addr"]))
   codeOutDevicePins("TOUCH", "TOUCH")
 
+if "QWIIC0" in board.devices:
+  codeOutDevicePins("QWIIC0", "QWIIC0")
 if "QWIIC1" in board.devices:
   codeOutDevicePins("QWIIC1", "QWIIC1")
 if "QWIIC2" in board.devices:
   codeOutDevicePins("QWIIC2", "QWIIC2")
 if "QWIIC3" in board.devices:
   codeOutDevicePins("QWIIC3", "QWIIC3")
-if "QWIIC4" in board.devices:
-  codeOutDevicePins("QWIIC4", "QWIIC4")
 
 if "SPIFLASH" in board.devices:
   codeOut("#define SPIFLASH_PAGESIZE 4096")

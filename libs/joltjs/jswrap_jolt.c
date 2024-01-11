@@ -79,12 +79,36 @@ void setJoltProperty(const char *name, JsVar* prop) {
 /*JSON{
   "type" : "staticproperty",
   "class" : "Jolt",
+  "name" : "Q0",
+  "generate" : "jswrap_jolt_q0",
+  "return" : ["JsVar","An object containing the pins for the Q0 connector on Jolt.js `{sda,scl,fet}`"],
+  "return_object" : "Qwiic"
+}
+`Q0` and `Q1` Qwiic connectors can have their power controlled by a 500mA FET connected to GND.
+
+The `sda` and `scl` pins on this port are also analog inputs - use `analogRead(Jolt.Q0.sda)`/etc
+
+To turn this connector on run `Jolt.Q0.setPower(1)`
+*/
+JsVar *jswrap_jolt_q0() {
+  JsVar *o = jspNewObject(0, "Qwiic");
+  if (!o) return 0;
+  jsvObjectSetChildAndUnLock(o, "sda", jsvNewFromPin(QWIIC0_PIN_SDA));
+  jsvObjectSetChildAndUnLock(o, "scl", jsvNewFromPin(QWIIC0_PIN_SCL));
+  jsvObjectSetChildAndUnLock(o, "fet", jsvNewFromPin(QWIIC0_PIN_FET));
+  setJoltProperty("Q0", o);
+  return o;
+}
+
+/*JSON{
+  "type" : "staticproperty",
+  "class" : "Jolt",
   "name" : "Q1",
   "generate" : "jswrap_jolt_q1",
   "return" : ["JsVar","An object containing the pins for the Q1 connector on Jolt.js `{sda,scl,fet}`"],
   "return_object" : "Qwiic"
 }
-`Q1` and `Q2` Qwiic connectors can have their power controlled by a 500mA FET connected to GND.
+`Q0` and `Q1` Qwiic connectors can have their power controlled by a 500mA FET connected to GND.
 
 The `sda` and `scl` pins on this port are also analog inputs - use `analogRead(Jolt.Q1.sda)`/etc
 
@@ -105,21 +129,21 @@ JsVar *jswrap_jolt_q1() {
   "class" : "Jolt",
   "name" : "Q2",
   "generate" : "jswrap_jolt_q2",
-  "return" : ["JsVar","An object containing the pins for the Q2 connector on Jolt.js `{sda,scl,fet}`"],
+  "return" : ["JsVar","An object containing the pins for the Q2 connector on Jolt.js `{sda,scl,gnd,vcc}`"],
   "return_object" : "Qwiic"
 }
-`Q1` and `Q2` Qwiic connectors can have their power controlled by a 500mA FET connected to GND.
+`Q2` and `Q3` have all 4 pins connected to Jolt.js's GPIO (including those usually used for power).
+As such only around 8mA of power can be supplied to any connected device.
 
-The `sda` and `scl` pins on this port are also analog inputs - use `analogRead(Jolt.Q2.sda)`/etc
-
-To turn this connector on run `Jolt.Q2.setPower(1)`
+To use this as a normal Qwiic connector, run `Jolt.Q2.setPower(1)`
 */
 JsVar *jswrap_jolt_q2() {
   JsVar *o = jspNewObject(0, "Qwiic");
   if (!o) return 0;
   jsvObjectSetChildAndUnLock(o, "sda", jsvNewFromPin(QWIIC2_PIN_SDA));
   jsvObjectSetChildAndUnLock(o, "scl", jsvNewFromPin(QWIIC2_PIN_SCL));
-  jsvObjectSetChildAndUnLock(o, "fet", jsvNewFromPin(QWIIC2_PIN_FET));
+  jsvObjectSetChildAndUnLock(o, "gnd", jsvNewFromPin(QWIIC2_PIN_GND));
+  jsvObjectSetChildAndUnLock(o, "vcc", jsvNewFromPin(QWIIC2_PIN_VCC));
   setJoltProperty("Q2", o);
   return o;
 }
@@ -132,7 +156,7 @@ JsVar *jswrap_jolt_q2() {
   "return" : ["JsVar","An object containing the pins for the Q3 connector on Jolt.js `{sda,scl,gnd,vcc}`"],
   "return_object" : "Qwiic"
 }
-`Q3` and `Q4` have all 4 pins connected to Jolt.js's GPIO (including those usually used for power).
+`Q2` and `Q3` have all 4 pins connected to Jolt.js's GPIO (including those usually used for power).
 As such only around 8mA of power can be supplied to any connected device.
 
 To use this as a normal Qwiic connector, run `Jolt.Q3.setPower(1)`
@@ -145,30 +169,6 @@ JsVar *jswrap_jolt_q3() {
   jsvObjectSetChildAndUnLock(o, "gnd", jsvNewFromPin(QWIIC3_PIN_GND));
   jsvObjectSetChildAndUnLock(o, "vcc", jsvNewFromPin(QWIIC3_PIN_VCC));
   setJoltProperty("Q3", o);
-  return o;
-}
-
-/*JSON{
-  "type" : "staticproperty",
-  "class" : "Jolt",
-  "name" : "Q4",
-  "generate" : "jswrap_jolt_q4",
-  "return" : ["JsVar","An object containing the pins for the Q4 connector on Jolt.js `{sda,scl,gnd,vcc}`"],
-  "return_object" : "Qwiic"
-}
-`Q3` and `Q4` have all 4 pins connected to Jolt.js's GPIO (including those usually used for power).
-As such only around 8mA of power can be supplied to any connected device.
-
-To use this as a normal Qwiic connector, run `Jolt.Q3.setPower(1)`
-*/
-JsVar *jswrap_jolt_q4() {
-  JsVar *o = jspNewObject(0, "Qwiic");
-  if (!o) return 0;
-  jsvObjectSetChildAndUnLock(o, "sda", jsvNewFromPin(QWIIC4_PIN_SDA));
-  jsvObjectSetChildAndUnLock(o, "scl", jsvNewFromPin(QWIIC4_PIN_SCL));
-  jsvObjectSetChildAndUnLock(o, "gnd", jsvNewFromPin(QWIIC4_PIN_GND));
-  jsvObjectSetChildAndUnLock(o, "vcc", jsvNewFromPin(QWIIC4_PIN_VCC));
-  setJoltProperty("Q4", o);
   return o;
 }
 

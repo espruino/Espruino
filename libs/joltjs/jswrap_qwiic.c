@@ -31,15 +31,15 @@
 Class containing utility functions for the Qwiic connectors
 on the [Jolt.js Smart Bluetooth driver](http://www.espruino.com/Jolt.js).
 
-Each class (available from `Jolt.Q1`/`Jolt.Q2`/`Jolt.Q3`/`Jolt.Q4`)
+Each class (available from `Jolt.Q0`/`Jolt.Q1`/`Jolt.Q2`/`Jolt.Q3`)
 has `sda` and `scl` fields with the pins for SDA and SCL on them.
 
 On Jolt.js, the four Qwiic connectors can be individually powered:
 
-* Q1/Q2 - GND is switched with a 500mA FET. The `fet` field contains the pin that controls the FET
-* Q3/Q4 - all 4 pins are connected to GPIO. `gnd` and `vcc` fields contain the pins for GND and VCC
+* Q0/Q1 - GND is switched with a 500mA FET. The `fet` field contains the pin that controls the FET
+* Q2/Q3 - all 4 pins are connected to GPIO. `gnd` and `vcc` fields contain the pins for GND and VCC
 
-To control the power, use `Qwiic.setPower`, for example: `Jolt.Q1.setPower(true)`
+To control the power, use `Qwiic.setPower`, for example: `Jolt.Q0.setPower(true)`
 
 */
 

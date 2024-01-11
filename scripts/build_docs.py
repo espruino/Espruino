@@ -78,7 +78,7 @@ def html(s):
   htmlFile.write(s +"\n");
 
 def htmlify(d,current):
-  d = markdown2.markdown(d)
+  d = markdown2.markdown(text=d, extras=["tables"])
   # replace <code> with newlines with pre
   idx = d.find("<code>")
   end = d.find("</code>", idx)
@@ -134,7 +134,7 @@ def get_surround(jsondata):
   s = common.get_prefix_name(jsondata)
   if s!="": s = s + " "
   if jsondata["type"]!="constructor":
-    if "class" in jsondata: 
+    if "class" in jsondata:
       if jsondata["class"] in libraries: s=s+"require(\""+jsondata["class"]+"\")."
       else: s=s+jsondata["class"]+"."
   s=s+jsondata["name"]
@@ -218,6 +218,7 @@ html(" <head>")
 html("  <title>"+title+"</title>")
 html("  <style>")
 html("   body { font: 71%/1.5em  Verdana, 'Trebuchet MS', Arial, Sans-serif; color: #666666; }")
+html("   table { font: inherit; }")
 html("   h1, h2, h3, h4 { color: #000000; margin-left: 0px; }")
 html("   h4 { padding-left: 20px; }")
 html("   ul { list-style-position: inside; }")
@@ -339,7 +340,7 @@ for jsondata in detail:
       text = ""
       for j in instances:
         text = text + " * [`"+j["name"]+"`](#l__global_"+j["name"]+")";
-        if "description" in j:           
+        if "description" in j:
           text = text + " " + j["description"].split("\n")[0]
         text = text + "\n"
       html_description(text, "")
@@ -353,7 +354,7 @@ for jsondata in detail:
     html("  </ul>")
 
   # Otherwise just output detail
-  link = get_link(jsondata)  
+  link = get_link(jsondata)
   html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a>")
   #html("<!-- "+json.dumps(jsondata, sort_keys=True, indent=2)+"-->");
   if "githublink" in jsondata:
@@ -385,7 +386,7 @@ for jsondata in detail:
     html("  <h4>Description</h4>")
     desc = jsondata["description"]
     if not isinstance(desc, list): desc = [ desc ]
-    if "ifdef" in jsondata: 
+    if "ifdef" in jsondata:
       desc.append("\n\n**Note:** This is only available in "+common.get_ifdef_description(jsondata["ifdef"]));
     if "ifndef" in jsondata:
       desc.append("\n\n**Note:** This is not available in "+common.get_ifdef_description(jsondata["ifndef"]));
