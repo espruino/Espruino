@@ -738,6 +738,7 @@ int barometerDP[9]; // pressure calibration
 
 /// Promise when pressure is requested
 JsVar *promisePressure;
+bool getPressureReady;
 double barometerPressure;
 double barometerTemperature;
 double barometerAltitude;
@@ -4241,7 +4242,18 @@ bool jswrap_banglejs_idle() {
   if (bangleTasks & JSBT_PRESSURE_DATA) {
     JsVar *o = jswrap_banglejs_getBarometerObject();
     if (o) {
-      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"pressure", &o, 1);
+      jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"pressure", &o, 1);  
+      if ( getPressureReady ) {
+        getPressureReady = false;
+        // disable sensor now we have a result
+        JsVar *id = jsvNewFromString("getPressure");
+        jswrap_banglejs_setBarometerPower(0, id);
+        jsvUnLock(id);
+        // resolve the promise
+        jspromise_resolve(promisePressure, o);
+        jsvUnLock(promisePressure);
+        promisePressure = 0;
+      }
       jsvUnLock(o);
     }
   }
@@ -5033,18 +5045,7 @@ JsVar *jswrap_banglejs_getBarometerObject() {
 }
 
 void jswrap_banglejs_getPressure_callback() {
-  JsVar *o = 0;
-  if (jswrap_banglejs_barometerPoll()) {
-    o = jswrap_banglejs_getBarometerObject();
-  }
-  // disable sensor now we have a result
-  JsVar *id = jsvNewFromString("getPressure");
-  jswrap_banglejs_setBarometerPower(0, id);
-  jsvUnLock(id);
-  // resolve the promise
-  jspromise_resolve(promisePressure, o);
-  jsvUnLock2(promisePressure,o);
-  promisePressure = 0;
+  getPressureReady = true;
 }
 #endif // PRESSURE_DEVICE
 
