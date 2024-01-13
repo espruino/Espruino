@@ -4243,7 +4243,7 @@ bool jswrap_banglejs_idle() {
     JsVar *o = jswrap_banglejs_getBarometerObject();
     if (o) {
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"pressure", &o, 1);  
-      if ( getPressureReady ) {
+      if (getPressureReady) {
         getPressureReady = false;
         // disable sensor now we have a result
         JsVar *id = jsvNewFromString("getPressure");
@@ -5058,16 +5058,6 @@ JsVar *jswrap_banglejs_getPressure() {
   }
   promisePressure = jspromise_create();
   if (!promisePressure) return 0;
-
-  // If barometer is already on, just resolve promise with the current result
-  if (bangleFlags & JSBF_BAROMETER_ON) {
-    JsVar *o = jswrap_banglejs_getBarometerObject();
-    jspromise_resolve(promisePressure, o);
-    jsvUnLock(o);
-    JsVar *r = promisePressure;
-    promisePressure = 0;
-    return r;
-  }
 
   JsVar *id = jsvNewFromString("getPressure");
   jswrap_banglejs_setBarometerPower(1, id);
