@@ -737,8 +737,9 @@ int barometerDP[9]; // pressure calibration
 #endif
 
 /// Promise when pressure is requested
-JsVar *promisePressure;
-bool getPressureReady;
+JsVar *promisePressure; // return promise of getPressure()
+bool getPressureReady; // getPressure() setInterval triggered
+JsSysTime pressureOnSince; // timestamp barometer last on
 double barometerPressure;
 double barometerTemperature;
 double barometerAltitude;
@@ -3174,6 +3175,7 @@ bool jswrap_banglejs_setBarometerPower(bool isOn, JsVar *appId) {
   while (tries-- > 0) {
     if (isOn) {
       if (!wasOn) {
+        pressureOnSince = jshGetSystemTime();
   #ifdef PRESSURE_DEVICE_SPL06_007_EN
         if (PRESSURE_DEVICE_SPL06_007_EN) {
           unsigned char buf[SPL06_COEF_NUM];
@@ -4123,6 +4125,7 @@ void jswrap_banglejs_kill() {
 #ifdef PRESSURE_DEVICE
   jsvUnLock(promisePressure);
   promisePressure = 0;
+
 #endif
 
   jshPinWatch(BTN1_PININDEX, false, JSPW_NONE);
@@ -4245,14 +4248,16 @@ bool jswrap_banglejs_idle() {
       jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"pressure", &o, 1);  
       if (getPressureReady) {
         getPressureReady = false;
-        // disable sensor now we have a result
-        JsVar *id = jsvNewFromString("getPressure");
-        jswrap_banglejs_setBarometerPower(0, id);
-        jsvUnLock(id);
-        // resolve the promise
-        jspromise_resolve(promisePressure, o);
-        jsvUnLock(promisePressure);
-        promisePressure = 0;
+        if (promisePressure) {
+          // disable sensor now we have a result
+          JsVar *id = jsvNewFromString("getPressure");
+          jswrap_banglejs_setBarometerPower(0, id);
+          jsvUnLock(id);
+          // resolve the promise
+          jspromise_resolve(promisePressure, o);
+          jsvUnLock(promisePressure);
+          promisePressure = 0;
+        }
       }
       jsvUnLock(o);
     }
@@ -5058,7 +5063,34 @@ JsVar *jswrap_banglejs_getPressure() {
   }
   promisePressure = jspromise_create();
   if (!promisePressure) return 0;
-
+  int powerOnTimeout = 500;
+#ifdef PRESSURE_DEVICE_BMP280_EN
+  if (PRESSURE_DEVICE_BMP280_EN)
+    powerOnTimeout = 750; // some devices seem to need this long to boot reliably
+#endif
+#ifdef PRESSURE_DEVICE_SPL06_007_EN
+if (PRESSURE_DEVICE_SPL06_007_EN)
+  powerOnTimeout = 400; // on SPL06 we may actually be leaving it *too long* before requesting data, and it starts to do another reading
+#endif
+  // If barometer is already on, just resolve promise with the current result
+  if (bangleFlags & JSBF_BAROMETER_ON) {
+    JsSysTime delta = jshGetSystemTime() - pressureOnSince;
+    if ( delta > 0 && delta < jshGetTimeFromMilliseconds(powerOnTimeout)) {
+      // barometer hasn't been on long enough
+      jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, jshGetMillisecondsFromTime(delta)));
+      return jsvLockAgain(promisePressure);
+    } else {
+      // we do not turn barometer on in this case
+      JsVar *o = jswrap_banglejs_getBarometerObject();
+      if (o) jspromise_resolve(promisePressure, o);
+      jsvUnLock(o);
+      JsVar *r = promisePressure;
+      promisePressure = 0;
+      return r;
+    }
+    
+  }
+  // Turning barometer on, will turn off in peripheralPollHandler
   JsVar *id = jsvNewFromString("getPressure");
   jswrap_banglejs_setBarometerPower(1, id);
   jsvUnLock(id);
@@ -5073,7 +5105,6 @@ JsVar *jswrap_banglejs_getPressure() {
     promisePressure = 0;
     return r;
   }
-
   bool hadError = jspHasError();
   if (hadError) {
     JsVar *msg = jsvNewFromString("I2C barometer error");
@@ -5084,17 +5115,8 @@ JsVar *jswrap_banglejs_getPressure() {
     promisePressure = 0;
     return r;
   }
-
-  int powerOnTimeout = 500;
-#ifdef PRESSURE_DEVICE_BMP280_EN
-  if (PRESSURE_DEVICE_BMP280_EN)
-    powerOnTimeout = 750; // some devices seem to need this long to boot reliably
-#endif
-#ifdef PRESSURE_DEVICE_SPL06_007_EN
-  if (PRESSURE_DEVICE_SPL06_007_EN)
-    powerOnTimeout = 400; // on SPL06 we may actually be leaving it *too long* before requesting data, and it starts to do another reading
-#endif
-  jsvUnLock(jsiSetTimeout(jswrap_banglejs_getPressure_callback, powerOnTimeout));
+  //sets getPressureReady=true
+  jswrap_banglejs_getPressure_callback();
   return jsvLockAgain(promisePressure);
 #endif
 }
