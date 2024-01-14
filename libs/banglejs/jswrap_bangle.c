@@ -4125,7 +4125,7 @@ void jswrap_banglejs_kill() {
 #ifdef PRESSURE_DEVICE
   jsvUnLock(promisePressure);
   promisePressure = 0;
-
+  getPressureReady = false;
 #endif
 
   jshPinWatch(BTN1_PININDEX, false, JSPW_NONE);
