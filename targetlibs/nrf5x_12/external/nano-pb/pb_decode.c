@@ -58,12 +58,21 @@ static void pb_release_single_field(const pb_field_iter_t *iter);
 static const pb_decoder_t PB_DECODERS[PB_LTYPES_COUNT] = {
     &pb_dec_varint,
     &pb_dec_uvarint,
+#if (defined(BOOTLOADER) && defined(NRF_BL_DFU_TRIM_EXTREME))
+    NULL, //&pb_dec_svarint,
+    NULL, //&pb_dec_fixed32,
+    NULL, //&pb_dec_fixed64,
+
+    &pb_dec_bytes,
+    NULL, //&pb_dec_string,
+#else
     &pb_dec_svarint,
     &pb_dec_fixed32,
     &pb_dec_fixed64,
     
     &pb_dec_bytes,
     &pb_dec_string,
+#endif
     &pb_dec_submessage,
     NULL /* extensions */
 };
@@ -354,7 +363,7 @@ static bool checkreturn decode_static_field(pb_istream_t *stream, pb_wire_type_t
     type = iter->pos->type;
     func = PB_DECODERS[PB_LTYPE(type)];
 
-    switch (PB_HTYPE(type))
+    if (func != NULL) switch (PB_HTYPE(type))
     {
         case PB_HTYPE_REQUIRED:
             return func(stream, iter->pos, iter->pData);
@@ -414,9 +423,8 @@ static bool checkreturn decode_static_field(pb_istream_t *stream, pb_wire_type_t
             }
             return func(stream, iter->pos, iter->pData);
 
-        default:
-            PB_RETURN_ERROR(stream, "invalid field type");
     }
+    PB_RETURN_ERROR(stream, "invalid field type");
 }
 
 #ifdef PB_ENABLE_MALLOC

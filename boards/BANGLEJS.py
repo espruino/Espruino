@@ -65,7 +65,14 @@ info = {
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
      'NRF_BL_DFU_INSECURE=1',
      'LINKER_BOOTLOADER=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_dfu.ld',
-     'LINKER_ESPRUINO=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_espruino.ld'
+     'LINKER_ESPRUINO=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_espruino.ld',
+# Uncomment these lines to allow the Bangle.js 1 bootloader to check external flash for firmware and
+# update from there. We do this by default on Bangle.js 2 but on Bangle.js 1 it's  bit tight to get it into 
+# available flash memory. See #2449
+#     'DEFINES += -DESPR_BOOTLOADER_SPIFLASH', # Allow bootloader to flash direct from SPI flash
+#     'BOOTLOADER_DEFINES += -DNRF_BL_DFU_TRIM_EXTREME',
+#     'BOOTLOADER_LDFLAGS += -nostartfiles',
+#     'BOOTLOADER_ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main',    
    ]
  }
 };
