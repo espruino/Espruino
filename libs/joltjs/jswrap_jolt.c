@@ -38,7 +38,7 @@ See https://docs.google.com/document/d/1Tw7fUkpj9dwBYASBCX9TjPcpgdqEw_7VL6MSRqVU
 #include "app_timer.h"
 
 /// Analog pins assigned to each IO output
-const char outputAnalogs[8] = { 4, 5, 30, 28 };
+const char outputAnalogs[8] = { 4, 0, 5, 0, 30, 0, 28, 0 };
 /// Digital output pins connected to each driver
 const char outputDriver[8] = { 17, 15, 13, 14, 22, 32, 25, 32+2 };
 
@@ -272,7 +272,7 @@ bool jshVirtualPinGetValue(Pin pin) {
 
 JsVarFloat jshVirtualPinGetAnalogValue(Pin pin) {
   int p = pinInfo[pin].pin;
-  if (p>3) return NAN;
+  if (outputAnalogs[p]==0) return NAN;
   return jshPinAnalog(outputAnalogs[p]); // FIXME: times some multiplier to get voltage??
 }
 

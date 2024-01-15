@@ -111,16 +111,26 @@ devices = {
 
 # left-right, or top-bottom order
 board = {
+  'bottom' : [ 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7' ],
+  'top' : [ 'D29', 'D3', 'VCC', 'D7', # Q0
+            'D31', 'D2', 'VCC', 'D27', # Q1
+            'D45', 'D44', 'D43', 'D36', # Q2
+            'D38', 'D39', 'D42', 'D37', # Q3
+   ],
+  'right' : ['NFC','NFC'],
   '_hide_not_on_connectors' : True,
   '_notes' : {
     'V0' : "Motor driver 0, output 0. This pin is also connected to an analog input via a 39k/220k potential divider",
-    'V1' : "Motor driver 0, output 1. This pin is also connected to an analog input via a 39k/220k potential divider",
+    'V1' : "Motor driver 0, output 1.",
     'V2' : "Motor driver 0, output 2. This pin is also connected to an analog input via a 39k/220k potential divider",
-    'V3' : "Motor driver 0, output 3. This pin is also connected to an analog input via a 39k/220k potential divider",
+    'V3' : "Motor driver 0, output 3.",
     'V4' : "Motor driver 1, output 0. This pin is also connected to an analog input via a 39k/220k potential divider",
-    'V5' : "Motor driver 1, output 1. This pin is also connected to an analog input via a 39k/220k potential divider",
+    'V5' : "Motor driver 1, output 1.",
     'V6' : "Motor driver 1, output 2. This pin is also connected to an analog input via a 39k/220k potential divider",
-    'V7' : "Motor driver 1, output 3. This pin is also connected to an analog input via a 39k/220k potential divider",
+    'V7' : "Motor driver 1, output 3.",
+    
+    'D7' : "This controls the power pin via a FET. When high, GND on Q0 is pulled low. When low, GNQ on Q0 is floating",
+    'D27' : "This controls the power pin via a FET. When high, GND on Q1 is pulled low. When low, GNQ on Q1 is floating",
   },
 };
 board["_css"] = """
@@ -135,13 +145,17 @@ board["_css"] = """
   height: 900px;
 }
 
-#left {
-    top: 219px;
-    right: 466px;
+#top {
+    top: 100px;
+    left: 0px;
+}
+#bottom {
+    top: 200px;
+    left: 0px;
 }
 #right {
-    top: 150px;
-    left: 466px;
+    top: 200px;
+    left: 500px;
 }
 
 .leftpin { height: 17px; }
@@ -170,6 +184,11 @@ def get_pins():
   pinutils.findpin(pins, "PD6", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PD8", True)["functions"]["NEGATED"]=0;
   pinutils.findpin(pins, "PD41", True)["functions"]["NEGATED"]=0;
+  # Virtual analogs
+  pinutils.findpin(pins, "PV0", True)["functions"]["ADC1_IN2"]=0;
+  pinutils.findpin(pins, "PV2", True)["functions"]["ADC1_IN3"]=0;
+  pinutils.findpin(pins, "PV4", True)["functions"]["ADC1_IN6"]=0;
+  pinutils.findpin(pins, "PV6", True)["functions"]["ADC1_IN4"]=0;
 
   # everything is non-5v tolerant
   for pin in pins:
