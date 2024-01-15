@@ -56,6 +56,10 @@ info = {
      'DEFINES+=-DAPP_TIMER_OP_QUEUE_SIZE=6', # Bangle.js accelerometer poll handler needs something else in queue size
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
+     'DEFINES += -DESPR_BOOTLOADER_SPIFLASH', # Allow bootloader to flash direct from SPI flash
+     'BOOTLOADER_DEFINES += -DNRF_BL_DFU_TRIM_EXTREME',
+     'BOOTLOADER_LDFLAGS += -nostartfiles',
+     'BOOTLOADER_ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main',
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
      'SOURCES += libs/misc/nmea.c',
