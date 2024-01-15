@@ -74,11 +74,13 @@ void SystemInit(void)
         *(volatile uint32_t *)0x4000053C = ((*(volatile uint32_t *)0x10000244) & 0x0000E000) >> 13;
     }
 
+#if !(defined(BOOTLOADER) && defined(NRF_BL_DFU_TRIM_EXTREME))
     /* Workaround for Errata 32 "DIF: Debug session automatically enables TracePort pins" found at the Errata document
        for your device located at https://infocenter.nordicsemi.com/ */
     if (errata_32()){
         CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk;
     }
+#endif
 
     /* Workaround for Errata 36 "CLOCK: Some registers are not reset when expected" found at the Errata document
        for your device located at https://infocenter.nordicsemi.com/  */
@@ -94,6 +96,7 @@ void SystemInit(void)
         *(volatile uint32_t *)0x400005A0 = 0x3;
     }
 
+#if !(defined(BOOTLOADER) && defined(NRF_BL_DFU_TRIM_EXTREME)) // not critical for bootloader
     /* Workaround for Errata 57 "NFCT: NFC Modulation amplitude" found at the Errata document
        for your device located at https://infocenter.nordicsemi.com/  */
     if (errata_57()){
@@ -124,6 +127,7 @@ void SystemInit(void)
         NRF_TEMP->T3 = NRF_FICR->TEMP.T3;
         NRF_TEMP->T4 = NRF_FICR->TEMP.T4;
     }
+#endif
 
     /* Workaround for Errata 108 "RAM: RAM content cannot be trusted upon waking up from System ON Idle or System OFF mode" found at the Errata document
        for your device located at https://infocenter.nordicsemi.com/  */
@@ -196,11 +200,23 @@ void SystemInit(void)
     SystemCoreClockUpdate();
 }
 
+// ARM Peripheral ID registers
+// ID0, ID1 - 12 bits of manufacturer part number
+// ID2 - 4 bits of revision
+static const uint32_t const *PID_REGS = (uint32_t *)0xF0000FE0;
+
+static const bool is_partno_006(){
+    return ((PID_REGS[0] & 0x000000FF) == 0x6) && ((PID_REGS[1] & 0x0000000F) == 0x0);
+}
+
+static const uint8_t part_rev(){
+    return (PID_REGS[2] & 0x000000F0);
+}
 
 static bool errata_16(void)
 {
-    if ((((*(uint32_t *)0xF0000FE0) & 0x000000FF) == 0x6) && (((*(uint32_t *)0xF0000FE4) & 0x0000000F) == 0x0)){
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x30){
+    if (is_partno_006()){
+        if (part_rev() == 0x30){
             return true;
         }
     }
@@ -210,14 +226,14 @@ static bool errata_16(void)
 
 static bool errata_31(void)
 {
-    if ((((*(uint32_t *)0xF0000FE0) & 0x000000FF) == 0x6) && (((*(uint32_t *)0xF0000FE4) & 0x0000000F) == 0x0)){
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x30){
+    if (is_partno_006()){
+        if (part_rev() == 0x30){
             return true;
         }
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x40){
+        if (part_rev() == 0x40){
             return true;
         }
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x50){
+        if (part_rev() == 0x50){
             return true;
         }
     }
@@ -227,8 +243,8 @@ static bool errata_31(void)
 
 static bool errata_32(void)
 {
-    if ((((*(uint32_t *)0xF0000FE0) & 0x000000FF) == 0x6) && (((*(uint32_t *)0xF0000FE4) & 0x0000000F) == 0x0)){
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x30){
+    if (is_partno_006()){
+        if (part_rev() == 0x30){
             return true;
         }
     }
@@ -238,14 +254,14 @@ static bool errata_32(void)
 
 static bool errata_36(void)
 {
-    if ((((*(uint32_t *)0xF0000FE0) & 0x000000FF) == 0x6) && (((*(uint32_t *)0xF0000FE4) & 0x0000000F) == 0x0)){
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x30){
+    if (is_partno_006()){
+        if (part_rev() == 0x30){
             return true;
         }
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x40){
+        if (part_rev() == 0x40){
             return true;
         }
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x50){
+        if (part_rev() == 0x50){
             return true;
         }
     }
@@ -255,8 +271,8 @@ static bool errata_36(void)
 
 static bool errata_37(void)
 {
-    if ((((*(uint32_t *)0xF0000FE0) & 0x000000FF) == 0x6) && (((*(uint32_t *)0xF0000FE4) & 0x0000000F) == 0x0)){
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x30){
+    if (is_partno_006()){
+        if (part_rev() == 0x30){
             return true;
         }
     }
@@ -266,8 +282,8 @@ static bool errata_37(void)
 
 static bool errata_57(void)
 {
-    if ((((*(uint32_t *)0xF0000FE0) & 0x000000FF) == 0x6) && (((*(uint32_t *)0xF0000FE4) & 0x0000000F) == 0x0)){
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x30){
+    if (is_partno_006()){
+        if (part_rev() == 0x30){
             return true;
         }
     }
@@ -277,8 +293,8 @@ static bool errata_57(void)
 
 static bool errata_66(void)
 {
-    if ((((*(uint32_t *)0xF0000FE0) & 0x000000FF) == 0x6) && (((*(uint32_t *)0xF0000FE4) & 0x0000000F) == 0x0)){
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x50){
+    if (is_partno_006()){
+        if (part_rev() == 0x50){
             return true;
         }
     }
@@ -289,14 +305,14 @@ static bool errata_66(void)
 
 static bool errata_108(void)
 {
-    if ((((*(uint32_t *)0xF0000FE0) & 0x000000FF) == 0x6) && (((*(uint32_t *)0xF0000FE4) & 0x0000000F) == 0x0)){
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x30){
+    if (is_partno_006()){
+        if (part_rev() == 0x30){
             return true;
         }
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x40){
+        if (part_rev() == 0x40){
             return true;
         }
-        if (((*(uint32_t *)0xF0000FE8) & 0x000000F0) == 0x50){
+        if (part_rev() == 0x50){
             return true;
         }
     }
