@@ -108,6 +108,10 @@ void _jswrap_promise_resolve_or_reject(JsVar *promise, JsVar *data, JsVar *fn) {
 }
 void _jswrap_promise_resolve_or_reject_chain(JsVar *promise, JsVar *data, bool resolve) {
   const char *eventName = resolve ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
+  if (_jswrap_promise_is_promise(data)) {
+    jsExceptionHere(JSET_ERROR, "Resolving a Promise with a value that is a Promise is not currently supported");
+    return;
+  }
   // if we didn't have a catch, traverse the chain looking for one
   JsVar *fn = jsvObjectGetChildIfExists(promise, eventName);
   if (!fn) {
