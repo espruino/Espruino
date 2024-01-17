@@ -39,7 +39,6 @@ volatile bool lcdIsBusy; ///< We're now allowing SPI send in the background - if
 
 #ifdef EMULATED
 bool EMSCRIPTEN_GFX_CHANGED;
-
 unsigned char fakeLCDBuffer[LCD_STRIDE*LCD_HEIGHT];
 
 bool jsGfxChanged() {
@@ -83,6 +82,11 @@ static ALWAYS_INLINE void lcdMemLCD_waitForSendComplete() {
 }
 
 // ======================================================================
+
+// return a pointer to the LCD's memory buffer
+unsigned char *lcdMemLCD_getRowPtr(int row) {
+  return &lcdBuffer[LCD_ROWHEADER + (row*LCD_STRIDE)];
+}
 
 unsigned int lcdMemLCD_getPixel(JsGraphics *gfx, int x, int y) {
 #if LCD_BPP==3

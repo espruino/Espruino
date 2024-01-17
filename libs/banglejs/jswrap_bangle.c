@@ -2585,6 +2585,7 @@ for before the clock is reloaded? 1500ms default, or 0 means never.
 * `hrmPushEnv` - (Bangle.js 2, 2v19+) if true (default is false) HRM environment readings will be produced as `Bangle.on(`HRM-env`, ...)` events. This is reset when the HRM is initialised with `Bangle.setHRMPower`.
 * `seaLevelPressure` (Bangle.js 2) Normally 1013.25 millibars - this is used for
   calculating altitude with the pressure sensor
+* `lcdBufferPtr` (Bangle.js 2 2v21+) Return a pointer to the first pixel of the 3 bit graphics buffer used by Bangle.js for the screen (stride = 178 bytes)
 
 Where accelerations are used they are in internal units, where `8192 = 1g`
 
@@ -2612,6 +2613,9 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
   int touchY1 = touchMinY;
   int touchX2 = touchMaxX;
   int touchY2 = touchMaxY;
+#endif
+#ifdef LCD_CONTROLLER_LPM013M126
+  int lcdBufferPtr = (int)(size_t)lcdMemLCD_getRowPtr(0);
 #endif
   jsvConfigObject configs[] = {
 #ifdef HEARTRATE
@@ -2654,6 +2658,9 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
       {"touchY1", JSV_INTEGER, &touchY1},
       {"touchX2", JSV_INTEGER, &touchX2},
       {"touchY2", JSV_INTEGER, &touchY2},
+#endif
+#ifdef LCD_CONTROLLER_LPM013M126
+      {"lcdBufferPtr", JSV_INTEGER, &lcdBufferPtr},
 #endif
   };
   if (createObject) {
