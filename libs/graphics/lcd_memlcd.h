@@ -25,3 +25,5 @@ void lcdMemLCD_extcominToggle();
 void lcdMemLCD_extcominBacklight(bool isOn);
 // Enable overlay mode (to overlay an image on top of the LCD contents)
 void lcdMemLCD_setOverlay(JsVar *imgVar, int x, int y);
+// return a pointer to the LCD's memory buffer
+unsigned char *lcdMemLCD_getRowPtr(int row);
