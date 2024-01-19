@@ -43,6 +43,7 @@ typedef enum {
   JSWAT_BOOL, ///< boolean
   JSWAT_INT32, ///< 32 bit int
   JSWAT_PIN, ///< A pin
+  JSWAT_FLOAT32, ///< 32 bit float
   JSWAT_JSVARFLOAT, ///< 64 bit float
   JSWAT__LAST = JSWAT_JSVARFLOAT,
   JSWAT_MASK = NEXT_POWER_2(JSWAT__LAST)-1,

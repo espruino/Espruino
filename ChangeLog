@@ -1,6 +1,7 @@
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)
             Add 'lcdBufferPtr' to Bangle.getOptions
+            Allow E.nativeCall to take 32 bit floats (eg for Inline C)
 
      2v20 : Ensure String.charCodeAt returns NaN for out of bounds chars
             Bangle.js2: When rendering overlays, *do not* use the current FG/BG color for 1 bit overlays

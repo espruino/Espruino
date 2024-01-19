@@ -196,6 +196,7 @@ int nativeCallGetCType() {
     if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
     if (strcmp(name,"Pin")==0) t=JSWAT_PIN;
     if (strcmp(name,"JsVar")==0) t=JSWAT_JSVAR;
+    if (strcmp(name,"float")==0) t=JSWAT_FLOAT32;
     jslMatch(LEX_ID);
     return t;
   }
@@ -210,14 +211,14 @@ int nativeCallGetCType() {
   "generate" : "jswrap_espruino_nativeCall",
   "params" : [
     ["addr","int","The address in memory of the function (or offset in `data` if it was supplied"],
-    ["sig","JsVar","The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`double`,`Pin`,`JsVar`"],
+    ["sig","JsVar","The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`double`,`float`,`Pin`,`JsVar`"],
     ["data","JsVar","(Optional) A string containing the function itself. If not supplied then 'addr' is used as an absolute address."]
   ],
   "return" : ["JsVar","The native function"],
   "typescript" : "nativeCall(addr: number, sig: string, data?: string): any;"
 }
-ADVANCED: This is a great way to crash Espruino if you're not sure what you are
-doing
+ADVANCED: It's very easy to crash Espruino using this function if
+you get the code/arguments you supply wrong!
 
 Create a native function that executes the code at the given address, e.g.
 `E.nativeCall(0x08012345,'double (double,double)')(1.1, 2.2)`
@@ -226,11 +227,21 @@ If you're executing a thumb function, you'll almost certainly need to set the
 bottom bit of the address to 1.
 
 Note it's not guaranteed that the call signature you provide can be used - there
-are limits on the number of arguments allowed.
+are limits on the number of arguments allowed (5).
 
 When supplying `data`, if it is a 'flat string' then it will be used directly,
 otherwise it'll be converted to a flat string and used.
- */
+
+The argument types in `sig` are:
+
+* `void` - returns nothing
+* `bool` -  boolean value
+* `int` - 32 bit integer
+* `double` - 64 bit floating point
+* `float` - 32 bit floating point (2v21 and later)
+* `Pin` - Espruino 'pin' value (8 bit integer)
+* `JsVar` - Pointer to an Espruino JsVar structure
+*/
 JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature, JsVar *data) {
   unsigned int argTypes = 0;
   if (jsvIsUndefined(signature)) {
