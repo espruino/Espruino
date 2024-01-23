@@ -74,9 +74,8 @@ void _jswrap_promise_reaction_call(JsVar *promise, JsVar *reaction, JsVar *data,
       JsVar * callback = jsvObjectGetChildIfExists(reaction, "cb");
       if (callback) {
         JsExecFlags oldExecute = execInfo.execute;
-        retVal = jspExecuteFunction(callback, promise, 1, &data);
+        retVal = jspeFunctionCall(callback, 0, promise, false, 1, &data);
         execInfo.execute = oldExecute;
-
         JsVar *exception = jspGetException();
         if (exception) {
           threw = true;
@@ -113,6 +112,41 @@ void _jswrap_promise_queue_reaction(JsVar *promise, JsVar *reaction, JsVar *valu
     jsvUnLock2(fn, bIsThenCb);
   }
 }
+void _jswrap_promise_seal(JsVar *promise, JsVar *data,bool resolving) {
+  if (resolving) {
+    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_STATE_NAME, jsvNewFromInteger(JS_PROMISE_STATE_FULFILLED));
+  } else {
+    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_STATE_NAME, jsvNewFromInteger(JS_PROMISE_STATE_REJECTED));
+  }
+
+  const char *eventName = resolving ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
+  JsVar *reactions = jsvObjectGetChildIfExists(promise, eventName);
+  if (!reactions) {
+    if (!resolving) {
+      jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
+      // If there was an exception with a stack trace, pass it through so we can keep adding stack to it
+      JsVar *stack = 0;
+      if (jsvIsObject(data) && (stack=jsvObjectGetChildIfExists(data, "stack"))) {
+        jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, stack);
+      }
+    }
+  } else {
+    if (jsvIsArray(reactions)) {
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, reactions);   
+      while (jsvObjectIteratorHasValue(&it)) {
+        JsVar *reaction = jsvObjectIteratorGetValue(&it);
+        _jswrap_promise_queue_reaction(promise,reaction,data,resolving);
+        jsvUnLock(reaction);
+        jsvObjectIteratorNext(&it);
+      }
+      jsvObjectIteratorFree(&it);
+    } else if (reactions) {
+      _jswrap_promise_queue_reaction(promise,reactions,data,resolving);
+    }
+    jsvUnLock(reactions);
+  }
+}
 
 void _jswrap_promise_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolving) {
   JsVar *isResolved = jsvObjectGetChildIfExists(prombox, JS_PROMISE_ISRESOLVED_NAME);
@@ -120,59 +154,59 @@ void _jswrap_promise_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolvi
     jsvUnLock(isResolved);
     return;
   }
+  jsvUnLock(isResolved);
   jsvObjectSetChildAndUnLock(prombox, JS_PROMISE_ISRESOLVED_NAME, jsvNewFromBool(true));
   JsVar * promise = jsvObjectGetChildIfExists(prombox, JS_PROMISE_PROM_NAME);
   if (promise) {
+    if (jsvIsEqual(data,promise)) {
+      jsExceptionHere(JSET_ERROR,"Illegal resolving to self");
+      jsvUnLock(promise);
+      return;
+    }
+
     jsvObjectSetChild(promise, JS_PROMISE_VALUE_NAME, data);
-    if (_jswrap_promise_is_promise(data)) {
-      JsVar *jsResolve = jsvNewNativeFunction((void (*)(void))_jswrap_promise_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
-      JsVar *jsReject = jsvNewNativeFunction((void (*)(void))_jswrap_promise_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+    if (!resolving || !jsvIsObject(data) ) {
+      _jswrap_promise_seal(promise, data, resolving);
+      jsvUnLock(promise);
+      return;
+    }
+    bool isProm = _jswrap_promise_is_promise(data);
+    bool isThenable = false;
+    JsVar *then = jsvObjectGetChildIfExists(data,"then");
+    if (jsvIsFunction(then)) isThenable = true;
+    
+    if (!isThenable && !isProm) {
+      _jswrap_promise_seal(promise, data, resolving);
+      jsvUnLock(promise);
+      return;
+    }
+    
+    JsVar *jsResolve = jsvNewNativeFunction((void (*)(void))_jswrap_promise_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+    JsVar *jsReject = jsvNewNativeFunction((void (*)(void))_jswrap_promise_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
 
-      JsVar *prombox = jsvNewObject();
-      if (prombox) {
-        jsvObjectSetChild(prombox, JS_PROMISE_PROM_NAME, promise);
-        jsvObjectSetChildAndUnLock(prombox,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false));
+    JsVar *prombox = jsvNewObject();
+    if (prombox) {
+      jsvObjectSetChild(prombox, JS_PROMISE_PROM_NAME, promise);
+      jsvObjectSetChildAndUnLock(prombox,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false));
 
-        if (jsResolve) jsvObjectSetChild(jsResolve, JSPARSE_FUNCTION_THIS_NAME, prombox);
-        if (jsReject) jsvObjectSetChild(jsReject, JSPARSE_FUNCTION_THIS_NAME, prombox);
-        
-        jsvUnLock4(jswrap_promise_then(data,jsResolve,jsReject),jsResolve,jsReject,prombox);
-      }
-    } else {
-      const char *eventName = resolving ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
+      if (jsResolve) jsvObjectSetChild(jsResolve, JSPARSE_FUNCTION_THIS_NAME, prombox);
+      if (jsReject) jsvObjectSetChild(jsReject, JSPARSE_FUNCTION_THIS_NAME, prombox);
       
-      if (resolving) {
-        jsvObjectSetChildAndUnLock(promise, JS_PROMISE_STATE_NAME, jsvNewFromInteger(JS_PROMISE_STATE_FULFILLED));
-      } else {
-        jsvObjectSetChildAndUnLock(promise, JS_PROMISE_STATE_NAME, jsvNewFromInteger(JS_PROMISE_STATE_REJECTED));
-      }
-
-      JsVar *reactions = jsvObjectGetChildIfExists(promise, eventName);
-      if (!reactions) {
-        if (!resolving) {
-          jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
-          // If there was an exception with a stack trace, pass it through so we can keep adding stack to it
-          JsVar *stack = 0;
-          if (jsvIsObject(data) && (stack=jsvObjectGetChildIfExists(data, "stack"))) {
-            jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, stack);
-          }
+      if (isThenable) {
+        JsVar *args[2] = {jsResolve,jsReject};
+        JsExecFlags oldExecute = execInfo.execute;
+        jsvUnLock(jspeFunctionCall(then, 0, data, false, 2, args));
+        execInfo.execute = oldExecute;
+        jsvUnLock(then);
+        JsVar *exception = jspGetException();
+        if (exception) {
+          _jswrap_promise_reject(prombox, exception);
+          jsvUnLock(exception);
         }
       } else {
-        if (jsvIsArray(reactions)) {
-          JsvObjectIterator it;
-          jsvObjectIteratorNew(&it, reactions);   
-          while (jsvObjectIteratorHasValue(&it)) {
-            JsVar *reaction = jsvObjectIteratorGetValue(&it);
-            _jswrap_promise_queue_reaction(promise,reaction,data,resolving);
-            jsvUnLock(reaction);
-            jsvObjectIteratorNext(&it);
-          }
-          jsvObjectIteratorFree(&it);
-        } else if (reactions) {
-          _jswrap_promise_queue_reaction(promise,reactions,data,resolving);
-        }
-        jsvUnLock(reactions);
+        jsvUnLock(jswrap_promise_then(data,jsResolve,jsReject));
       }
+      jsvUnLock3(jsResolve,jsReject,prombox);
     }
     jsvUnLock(promise);
   }
@@ -210,6 +244,7 @@ void jspromise_reject(JsVar *prombox, JsVar *data) {
   _jswrap_promise_queuereject(prombox, data);
 }
 
+//Now returns a promise box.
 JsVar *jspromise_create() {
   JsVar *p = jspNewObject(0, "Promise");
   if (!p) return 0;
@@ -448,6 +483,7 @@ Reactions
 */
 JsVar *_jswrap_promise_new_reaction(JsVar *nextPromBox, JsVar *callback) {
   JsVar *reaction = jsvNewObject();
+  if (!reaction) return 0;
   jsvObjectSetChild(reaction, "cb", callback);
   jsvObjectSetChild(reaction, "nextBox", nextPromBox);
   return reaction;
@@ -456,6 +492,7 @@ JsVar *_jswrap_promise_new_reaction(JsVar *nextPromBox, JsVar *callback) {
 void _jswrap_promise_add_reaction(JsVar *parent, JsVar * nextPromBox, JsVar *callback, bool resolve) {
   // reaction = [{cb:,box:},...]
   JsVar *reaction = _jswrap_promise_new_reaction(nextPromBox,callback);
+  if (!reaction) return;
   const char *name = resolve ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
   JsVar *c = jsvObjectGetChildIfExists(parent, name);
   if (!c) {
@@ -504,10 +541,13 @@ JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected)
         // case: Already resolved, fire Reaction.
         JsVar *resolveNowCallback = s == JS_PROMISE_STATE_FULFILLED ? onFulfilled : onRejected;
         JsVar *reaction = _jswrap_promise_new_reaction(nextPromBox,resolveNowCallback);
-        JsVar *value = jsvObjectGetChildIfExists(parent, JS_PROMISE_VALUE_NAME);
-        // Already resolved, go straight to firing reaction.
-        _jswrap_promise_queue_reaction(parent,reaction,value,false);
-        if (value) jsvUnLock(value);
+        if (reaction) {
+          JsVar *value = jsvObjectGetChildIfExists(parent, JS_PROMISE_VALUE_NAME);
+          // Already resolved, go straight to firing reaction.
+          _jswrap_promise_queue_reaction(parent,reaction,value,false);
+          if (value) jsvUnLock(value);
+          jsvUnLock(reaction);
+        }
       }
     } //state 
   }
