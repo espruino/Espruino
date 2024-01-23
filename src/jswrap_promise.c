@@ -52,9 +52,6 @@ void _jswrap_promise_resolve(JsVar *prombox, JsVar *data);
 void _jswrap_promise_reject(JsVar *prombox, JsVar *data);
 
 bool _jswrap_promise_is_promise(JsVar *promise) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("Checking if promise...\n");
-  #endif
   JsVar *constr = jspGetConstructor(promise);
   bool isPromise = constr && (void*)constr->varData.native.ptr==(void*)jswrap_promise_constructor;
   jsvUnLock(constr);
@@ -63,14 +60,8 @@ bool _jswrap_promise_is_promise(JsVar *promise) {
 
 // A single reaction chain - this is recursive until a promise is returned or chain ends. data can be undefined/0
 void _jswrap_promise_reaction_call(JsVar *promise, JsVar *reaction, JsVar *data, JsVar *isThen) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("_jswrap_promise_reaction_call()\n");
-  #endif
   JsVar *exceptionName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR);
   if (exceptionName) {
-    #ifdef PROMISE_DEBUG
-    jsiConsolePrintf("Previous Call had an Error, let it bubble up\n");
-    #endif
     jsvUnLock(exceptionName);
     return;
   }
@@ -88,26 +79,15 @@ void _jswrap_promise_reaction_call(JsVar *promise, JsVar *reaction, JsVar *data,
 
         JsVar *exception = jspGetException();
         if (exception) {
-          #ifdef PROMISE_DEBUG
-          jsiConsolePrintf("callback rejected\n");
-          #endif
           threw = true;
           jsvUnLock(retVal);
           retVal = exception;
-        } else {
-          #ifdef PROMISE_DEBUG
-          jsiConsolePrintf("After calling reaction, returned: \n");
-          jsvTrace(retVal,1);
-          #endif
         }
         jsvUnLock(callback);
       }
       else {
         //pass-through
         if (!jsvGetBool(isThen)) {
-          #ifdef PROMISE_DEBUG
-          jsiConsolePrintf("callback rejected or returned error\n");
-          #endif
           threw = true;
         }
         retVal = data;
@@ -123,9 +103,6 @@ void _jswrap_promise_reaction_call(JsVar *promise, JsVar *reaction, JsVar *data,
 }
 // Value can be undefined/0
 void _jswrap_promise_queue_reaction(JsVar *promise, JsVar *reaction, JsVar *value, bool isThenCb) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("_jswrap_promise_queue_reaction()\n");
-  #endif
   JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_reaction_call, 
     JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS)|(JSWAT_JSVAR<<JSWAT_BITS*2)|(JSWAT_JSVAR<<JSWAT_BITS*3));
   if (fn) {
@@ -138,17 +115,9 @@ void _jswrap_promise_queue_reaction(JsVar *promise, JsVar *reaction, JsVar *valu
 }
 
 void _jswrap_promise_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolving) {
-  assert(prombox);
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("_jswrap_promise_resolve_or_reject(%i)\n",resolving);
-  #endif
-
   JsVar *isResolved = jsvObjectGetChildIfExists(prombox, JS_PROMISE_ISRESOLVED_NAME);
   if (jsvGetBool(isResolved)){
     jsvUnLock(isResolved);
-    #ifdef PROMISE_DEBUG
-    jsiConsolePrintf("already resolved!!!\n");
-    #endif
     return;
   }
   jsvObjectSetChildAndUnLock(prombox, JS_PROMISE_ISRESOLVED_NAME, jsvNewFromBool(true));
@@ -156,9 +125,6 @@ void _jswrap_promise_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolvi
   if (promise) {
     jsvObjectSetChild(promise, JS_PROMISE_VALUE_NAME, data);
     if (_jswrap_promise_is_promise(data)) {
-      #ifdef PROMISE_DEBUG
-      jsiConsolePrintf("Inner promise detected\n");
-      #endif
       JsVar *jsResolve = jsvNewNativeFunction((void (*)(void))_jswrap_promise_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
       JsVar *jsReject = jsvNewNativeFunction((void (*)(void))_jswrap_promise_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
 
@@ -184,9 +150,6 @@ void _jswrap_promise_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolvi
       JsVar *reactions = jsvObjectGetChildIfExists(promise, eventName);
       if (!reactions) {
         if (!resolving) {
-          #ifdef PROMISE_DEBUG
-          jsiConsolePrintf("===Rejecting and no more .then calls for this promise===\n");
-          #endif
           jsExceptionHere(JSET_ERROR, "Unhandled promise rejection: %v", data);
           // If there was an exception with a stack trace, pass it through so we can keep adding stack to it
           JsVar *stack = 0;
@@ -195,16 +158,10 @@ void _jswrap_promise_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolvi
           }
         }
       } else {
-        #ifdef PROMISE_DEBUG
-        jsiConsolePrintf("Iterating reactions([{nextBox(nextProm,isResolved),cb},...])\n");
-        #endif
         if (jsvIsArray(reactions)) {
           JsvObjectIterator it;
           jsvObjectIteratorNew(&it, reactions);   
           while (jsvObjectIteratorHasValue(&it)) {
-            #ifdef PROMISE_DEBUG
-            jsiConsolePrintf("Promise has +1 reaction...\n");
-            #endif
             JsVar *reaction = jsvObjectIteratorGetValue(&it);
             _jswrap_promise_queue_reaction(promise,reaction,data,resolving);
             jsvUnLock(reaction);
@@ -212,9 +169,6 @@ void _jswrap_promise_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolvi
           }
           jsvObjectIteratorFree(&it);
         } else if (reactions) {
-          #ifdef PROMISE_DEBUG
-          jsiConsolePrintf("Promise has 1 reaction...\n");
-          #endif
           _jswrap_promise_queue_reaction(promise,reactions,data,resolving);
         }
         jsvUnLock(reactions);
@@ -225,25 +179,14 @@ void _jswrap_promise_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolvi
 }
 
 void _jswrap_promise_resolve(JsVar *prombox, JsVar *data) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("Resolving promise with value: \n");
-  jsvTrace(data,1);
-  #endif
   _jswrap_promise_resolve_or_reject(prombox, data, true);
 }
 
 void _jswrap_promise_reject(JsVar *prombox, JsVar *data) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("Rejecting promise with value: \n");
-  jsvTrace(data,1);
-  #endif
   _jswrap_promise_resolve_or_reject(prombox, data, false);
 }
 
 void _jswrap_promise_queueresolve(JsVar *prombox, JsVar *data) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("_jswrap_promise_queueresolve()\n");
-  #endif
   JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
   if (!fn) return;
   jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, prombox); // bind 'this'
@@ -252,9 +195,6 @@ void _jswrap_promise_queueresolve(JsVar *prombox, JsVar *data) {
 }
 
 void _jswrap_promise_queuereject(JsVar *prombox, JsVar *data) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("_jswrap_promise_queuereject()\n");
-  #endif
   JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
   if (!fn) return;
   jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, prombox); // bind 'this'
@@ -269,17 +209,6 @@ void jspromise_resolve(JsVar *prombox, JsVar *data) {
 void jspromise_reject(JsVar *prombox, JsVar *data) {
   _jswrap_promise_queuereject(prombox, data);
 }
-
-/*
-=====================================================================================
-=====================================================================================
-=====================================================================================
-=====================================================================================
-=====================================================================================
-=====================================================================================
-=====================================================================================
-=====================================================================================
-*/
 
 JsVar *jspromise_create() {
   JsVar *p = jspNewObject(0, "Promise");
@@ -312,9 +241,6 @@ Create a new Promise. The executor function is executed immediately (before the
 constructor even returns) and
  */
 JsVar *jswrap_promise_constructor(JsVar *executor) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("jswrap_promise_constructor()\n");
-  #endif
   if (!executor) {
     jsExceptionHere(JSET_ERROR,"Executor function required in promise constructor");
     return 0;
@@ -400,9 +326,6 @@ Return a new promise that is resolved when all promises in the supplied array
 are resolved.
 */
 JsVar *jswrap_promise_all(JsVar *arr) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("jswrap_promise_all()\n");
-  #endif
   if (!jsvIsIterable(arr)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting something iterable, got %t", arr);
     return 0;
@@ -467,9 +390,6 @@ JsVar *jswrap_promise_all(JsVar *arr) {
 Return a new promise that is already resolved (at idle it'll call `.then`)
 */
 JsVar *jswrap_promise_resolve(JsVar *data) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("jswrap_promise_resolve()\n");
-  #endif
   JsVar *promise = 0;
   // return the promise passed as value, if the value was a promise object.
   if (_jswrap_promise_is_promise(data))
@@ -511,9 +431,6 @@ Return a new promise that is already rejected (at idle it'll call `.catch`)
   Promise.reject()
 */
 JsVar *jswrap_promise_reject(JsVar *data) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("jswrap_promise_reject()\n");
-  #endif
   // otherwise the returned promise will be fulfilled with the value.
   JsVar *promBox = jspromise_create();
   if (!promBox) return 0;
@@ -530,9 +447,6 @@ JsVar *jswrap_promise_reject(JsVar *data) {
 Reactions
 */
 JsVar *_jswrap_promise_new_reaction(JsVar *nextPromBox, JsVar *callback) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("_jswrap_promise_new_reaction()\n");
-  #endif
   JsVar *reaction = jsvNewObject();
   jsvObjectSetChild(reaction, "cb", callback);
   jsvObjectSetChild(reaction, "nextBox", nextPromBox);
@@ -540,9 +454,6 @@ JsVar *_jswrap_promise_new_reaction(JsVar *nextPromBox, JsVar *callback) {
 }
 
 void _jswrap_promise_add_reaction(JsVar *parent, JsVar * nextPromBox, JsVar *callback, bool resolve) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("_jswrap_promise_add()\n");
-  #endif
   // reaction = [{cb:,box:},...]
   JsVar *reaction = _jswrap_promise_new_reaction(nextPromBox,callback);
   const char *name = resolve ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
@@ -576,9 +487,6 @@ void _jswrap_promise_add_reaction(JsVar *parent, JsVar * nextPromBox, JsVar *cal
 }
  */
 JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("jswrap_promise_then()\n");
-  #endif
   JsVar *nextPromBox = jspromise_create();
   if (!nextPromBox) return 0;
   JsVar * nextProm = jsvObjectGetChildIfExists(nextPromBox, JS_PROMISE_PROM_NAME);
@@ -588,14 +496,8 @@ JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected)
     JsVar *state = jsvObjectGetChildIfExists(parent, JS_PROMISE_STATE_NAME);
     if (state) {
       int s = jsvGetIntegerAndUnLock(state);
-      #ifdef PROMISE_DEBUG
-      jsiConsolePrintf("promise state is %i\n",s);
-      #endif
       if (s == JS_PROMISE_STATE_PENDING) { 
         // Create reaction and attach to promise.
-        #ifdef PROMISE_DEBUG
-        jsiConsolePrintf(".then binding callbacks()\n");
-        #endif
         _jswrap_promise_add_reaction(parent, nextPromBox, onFulfilled, true);
         _jswrap_promise_add_reaction(parent, nextPromBox, onRejected, false);
       } else {
@@ -625,9 +527,6 @@ JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected)
 }
  */
 JsVar *jswrap_promise_catch(JsVar *parent, JsVar *onRejected) {
-  #ifdef PROMISE_DEBUG
-  jsiConsolePrintf("jswrap_promise_catch()\n");
-  #endif
   return jswrap_promise_then(parent,0,onRejected);
 }
 
