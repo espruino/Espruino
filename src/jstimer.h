@@ -19,6 +19,7 @@
 #include "jspin.h"
 
 typedef enum {
+  UET_NONE, ///< Nothing
   UET_WAKEUP, ///< Does nothing except wake the device up!
   UET_SET, ///< Set a pin to a value
   UET_EXECUTE, ///< Execute something
@@ -27,6 +28,9 @@ typedef enum {
   UET_READ_BYTE, ///< Read a byte from an analog input
   UET_WRITE_SHORT, ///< Write a short to a DAC/Timer
   UET_READ_SHORT, ///< Read a short from an analog input
+#endif
+#ifdef ESPR_USE_STEPPER_TIMER
+  UET_STEP, ///< Write stepper motor
 #endif
 } PACKED_FLAGS UtilTimerEventType;
 
@@ -52,7 +56,7 @@ typedef enum {
 #define UTILTIMERTASK_PIN_COUNT (4)
 
 typedef struct UtilTimerTaskSet {
-  Pin pins[UTILTIMERTASK_PIN_COUNT]; ///< pins to set
+  Pin pins[UTILTIMERTASK_PIN_COUNT]; ///< pins to set (must be in same location as UtilTimerTaskStep.pins)
   uint8_t value; ///< value to set pins to
 } PACKED_FLAGS UtilTimerTaskSet;
 
@@ -81,11 +85,22 @@ typedef struct UtilTimerTaskExec {
   void *userdata;
 } PACKED_FLAGS UtilTimerTaskExec;
 
+#ifdef ESPR_USE_STEPPER_TIMER
+typedef struct UtilTimerTaskStep {
+  Pin pins[UTILTIMERTASK_PIN_COUNT];  //< the 4 pins for the stepper motor (must be in same location as UtilTimerTaskSet.pins)
+  int16_t steps;           //< How many steps? When this reaches 0 the timer task is removed
+  uint8_t pIndex;          //< Index in 8 entry pattern array
+  uint8_t pattern[4];      //< step pattern (2 patterns per array element)
+} PACKED_FLAGS UtilTimerTaskStep;
+#endif
 
 typedef union UtilTimerTaskData {
   UtilTimerTaskSet set;
   UtilTimerTaskBuffer buffer;
   UtilTimerTaskExec execute;
+#ifdef ESPR_USE_STEPPER_TIMER
+  UtilTimerTaskStep step;
+#endif
 } UtilTimerTaskData;
 
 typedef struct UtilTimerTask {
@@ -139,8 +154,11 @@ void jstClearWakeUp();
 /// Start writing a string out at the given period between samples. 'time' is the time relative to the current time (0 = now)
 bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type);
 
-/// Stop a timer task
+/// Remove the task that uses the buffer 'var'
 bool jstStopBufferTimerTask(JsVar *var);
+
+/// Remove the task that uses the given pin
+bool jstStopPinTimerTask(Pin pin);
 
 /// Stop ALL timer tasks (including digitalPulse - use this when resetting the VM)
 void jstReset();

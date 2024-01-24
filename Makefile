@@ -284,6 +284,7 @@ src/jswrap_promise.c \
 src/jswrap_serial.c \
 src/jswrap_storage.c \
 src/jswrap_spi_i2c.c \
+src/jswrap_stepper.c \
 src/jswrap_stream.c \
 src/jswrap_waveform.c 
 endif

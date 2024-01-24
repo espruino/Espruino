@@ -146,6 +146,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_NO_SOFTWARE_SERIAL` - don't build in software serial support
 * `ESPR_NO_SOFTWARE_I2C` - don't build in software I2C support
 * `ESPR_NO_BLUETOOTH_MESSAGES` - don't include text versions of Bluetooth error messages (just the error number)
+* `ESPR_USE_STEPPER_TIMER` - add builtin `Stepper` class to handle higher speed stepper handling
 
 These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
 

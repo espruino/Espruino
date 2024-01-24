@@ -54,6 +54,7 @@ info = {
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://www.espruino.com/ide"\'',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DNEOPIXEL_SCK_PIN=14 -DNEOPIXEL_LRCK_PIN=15', # see https://github.com/espruino/Espruino/issues/2071
+     'DEFINES += -DESPR_USE_STEPPER_TIMER=1', # Build in the code for stepping using the timer
      'DEFINES+=-DSAVE_ON_FLASH_MATH', 
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',

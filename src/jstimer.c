@@ -148,7 +148,7 @@ void jstUtilTimerInterruptHandler() {
         // now search for other tasks writing to this pin... (polyphony)
         int t = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
         while (t!=utilTimerTasksHead) {
-          if (UET_IS_BUFFER_WRITE_EVENT(utilTimerTasks[t].type) && 
+          if (UET_IS_BUFFER_WRITE_EVENT(utilTimerTasks[t].type) &&
               utilTimerTasks[t].data.buffer.pinFunction == task->data.buffer.pinFunction)
             sum += ((int)(unsigned int)utilTimerTasks[t].data.buffer.currentValue) - 32768;
           t = (t+1) & (UTILTIMERTASK_TASKS-1);
@@ -158,6 +158,27 @@ void jstUtilTimerInterruptHandler() {
         if (sum>65535) sum = 65535;
         // and output...
         jshSetOutputValue(task->data.buffer.pinFunction, sum);
+        break;
+      }
+#endif
+#ifdef ESPR_USE_STEPPER_TIMER
+      case UET_STEP: {
+        if (task->data.step.steps > 0) {
+          task->data.step.steps--;
+          task->data.step.pIndex = (task->data.step.pIndex+1) & 7;
+        } else if (task->data.step.steps < 0) {
+          task->data.step.steps++;
+          task->data.step.pIndex = (task->data.step.pIndex+7) & 7;
+        }
+        uint8_t step = task->data.step.pattern[task->data.step.pIndex>>1] >> (4*(task->data.step.pIndex&1));
+        jshPinSetValue(task->data.step.pins[0], (step&1)!=0);
+        jshPinSetValue(task->data.step.pins[1], (step&2)!=0);
+        jshPinSetValue(task->data.step.pins[2], (step&4)!=0);
+        jshPinSetValue(task->data.step.pins[3], (step&8)!=0);
+        if (task->data.step.steps == 0) {
+          task->repeatInterval = 0; // remove task
+          jshHadEvent(); // ensure idle loop runs so Stepper class can see if anything needs doing
+        }
         break;
       }
 #endif
@@ -338,10 +359,13 @@ static bool jstBufferTaskChecker(UtilTimerTask *task, void *data) {
 
 // data = *Pin
 static bool jstPinTaskChecker(UtilTimerTask *task, void *data) {
-  if (task->type != UET_SET) return false;
+  if (task->type != UET_SET
+#ifdef ESPR_USE_STEPPER_TIMER
+    && task->type != UET_STEP
+#endif
+     ) return false;
   Pin pin = *(Pin*)data;
-  int i;
-  for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
+  for (int i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
     if (task->data.set.pins[i] == pin) {
       return true;
     } else if (task->data.set.pins[i]==PIN_UNDEFINED)
@@ -354,6 +378,18 @@ static bool jstExecuteTaskChecker(UtilTimerTask *task, void *data) {
   if (task->type != UET_EXECUTE) return false;
   return memcmp(&task->data.execute, (UtilTimerTaskExec*)data, sizeof(UtilTimerTaskExec))==0;
 }
+
+#ifdef ESPR_USE_STEPPER_TIMER
+// data = *Pin[4]
+static bool jstStepTaskChecker(UtilTimerTask *task, void *data) {
+  if (task->type != UET_STEP) return false;
+  Pin *pins = (Pin*)data;
+  for (int i=0;i<4;i++)
+    if (task->data.step.pins[i] != pins[i])
+      return false;
+  return true;
+}
+#endif
 
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
@@ -580,6 +616,11 @@ bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *curre
 bool jstStopBufferTimerTask(JsVar *var) {
   JsVarRef ref = jsvGetRef(var);
   return utilTimerRemoveTask(jstBufferTaskChecker, (void*)&ref);
+}
+
+/// Remove the task that uses the given pin
+bool jstStopPinTimerTask(Pin pin) {
+  return utilTimerRemoveTask(jstPinTaskChecker, (void*)&pin);
 }
 
 #endif

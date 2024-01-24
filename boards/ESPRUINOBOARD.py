@@ -43,6 +43,7 @@ info = {
    'makefile' : [
      'DEFINES+=-DESPRUINO_1V3',
      'DEFINES+=-DSAVE_ON_FLASH_MATH', 
+     'DEFINES += -DESPR_USE_STEPPER_TIMER=1', # Build in the code for stepping using the timer
      'STLIB=STM32F10X_XL',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o'
    ]

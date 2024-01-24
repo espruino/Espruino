@@ -48,6 +48,7 @@ info = {
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3290', # set RAM base to match MTU=53 + CENTRAL_LINK_COUNT=2
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"MDBT42Q"\'',
      'DEFINES+=-DNEOPIXEL_SCK_PIN=23 -DNEOPIXEL_LRCK_PIN=13', # see https://github.com/espruino/Espruino/issues/2071
+     'DEFINES += -DESPR_USE_STEPPER_TIMER=1', # Build in the code for stepping using the timer
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91'
    ]
