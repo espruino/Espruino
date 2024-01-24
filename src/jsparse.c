@@ -167,13 +167,16 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
     const char *objectName = jswGetBasicObjectName(parent);
     while (objectName) {
       JsVar *objName = jsvFindChildFromString(execInfo.root, objectName);
+      if (!objName) {
+        objName = jspNewPrototype(objectName, true/*object*/);
+      }
       if (objName) {
         JsVar *result = 0;
         JsVar *obj = jsvSkipNameAndUnLock(objName);
         // could be something the user has made - eg. 'Array=1'
         if (jsvHasChildren(obj)) {
           // We have found an object with this name - search for the prototype var
-          JsVar *proto = jsvObjectGetChildIfExists(obj, JSPARSE_PROTOTYPE_VAR);
+          JsVar *proto = jspGetNamedField(obj, JSPARSE_PROTOTYPE_VAR, false);
           if (proto) {
             result = jsvFindChildFromString(proto, name);
             jsvUnLock(proto);
@@ -1024,7 +1027,7 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
     } else if (strcmp(name, JSPARSE_INHERITS_VAR)==0) {
       const char *objName = jswGetBasicObjectName(object);
       if (objName) {
-        JsVar *p = jsvSkipNameAndUnLock(jspNewPrototype(objName));
+        JsVar *p = jsvSkipNameAndUnLock(jspNewPrototype(objName, false/*prototype*/));
         // jspNewPrototype returns a 'prototype' name that's already a child of eg. an array
         // Create a new 'name' called __proto__ that links to it
         JsVar *i = jsvNewNameFromString(JSPARSE_INHERITS_VAR);
@@ -1052,10 +1055,12 @@ JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName) {
     child = jsvFindChildFromString(object, name);
 
   if (!child) {
-    child = jspGetNamedFieldInParents(object, name, returnName);
+    bool isPrototypeVar = strcmp(name, JSPARSE_PROTOTYPE_VAR)==0;
+    if (!isPrototypeVar) // only look in parents if it's not the prototype variable
+      child = jspGetNamedFieldInParents(object, name, returnName);
 
     // If not found and is the prototype, create it
-    if (!child && jsvIsFunction(object) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
+    if (!child && jsvIsFunction(object) && isPrototypeVar) {
       JsVar *value = jsvNewObject(); // prototype is supposed to be an object
       child = jsvAddNamedChild(object, value, JSPARSE_PROTOTYPE_VAR);
       jsvUnLock(value);
@@ -2729,8 +2734,7 @@ NO_INLINE JsVar *jspeStatementFor() {
             jsvUnLock(iterable);
           }
         }
-        assert(!foundPrototype);
-        jsvUnLock(foundPrototype); // just in case...
+        jsvUnLock(foundPrototype);
         jsvIteratorFree(&it);
       } else if (!jsvIsUndefined(array)) {
         jsExceptionHere(JSET_ERROR, "FOR loop can only iterate over Arrays, Strings or Objects, not %t", array);
@@ -3087,7 +3091,7 @@ JsVar *jspNewBuiltin(const char *instanceOf) {
 }
 
 /// Create a new Class of the given instance and return its prototype (as a name 'prototype')
-NO_INLINE JsVar *jspNewPrototype(const char *instanceOf) {
+NO_INLINE JsVar *jspNewPrototype(const char *instanceOf, bool returnObject) {
   JsVar *objFuncName = jsvFindOrAddChildFromString(execInfo.root, instanceOf);
   if (!objFuncName) // out of memory
     return 0;
@@ -3106,16 +3110,16 @@ NO_INLINE JsVar *jspNewPrototype(const char *instanceOf) {
 
   JsVar *prototypeName = jsvFindOrAddChildFromString(objFunc, JSPARSE_PROTOTYPE_VAR);
   jspEnsureIsPrototype(objFunc, prototypeName); // make sure it's an object
-  jsvUnLock2(objFunc, objFuncName);
+  jsvUnLock2(returnObject ? prototypeName : objFunc, objFuncName);
 
-  return prototypeName;
+  return returnObject ? objFunc : prototypeName;
 }
 
 /** Create a new object of the given instance and add it to root with name 'name'.
  * If name!=0, added to root with name, and the name is returned
  * If name==0, not added to root and Object itself returned */
 NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
-  JsVar *prototypeName = jspNewPrototype(instanceOf);
+  JsVar *prototypeName = jspNewPrototype(instanceOf, false/*prototype*/);
 
   JsVar *obj = jsvNewObject();
   if (!obj) { // out of memory
