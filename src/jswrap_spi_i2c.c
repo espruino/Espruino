@@ -761,7 +761,7 @@ I2C.readReg = function(address, reg, quantity) {
 ```
  */
 JsVar *jswrap_i2c_readReg(JsVar *parent, int address, int reg, int nBytes) {
-  if (!jsvIsObject(parent)) return;
+  if (!jsvIsObject(parent)) return 0;
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   bool sendStop = false;
   unsigned char i2cReg = (unsigned char)reg;
