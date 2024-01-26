@@ -44,6 +44,13 @@ SECTIONS
 SECTIONS
 {
   . = ALIGN(4);
+  .ramtext : /* for code running from RAM */
+  {
+    PROVIDE(__start_ramtext = .);
+    KEEP(*(.ramtext))
+    PROVIDE(__stop_ramtext = .);
+  } > RAM
+  . = ALIGN(4);
   .mem_section_dummy_ram :
   {
   }

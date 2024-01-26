@@ -14,6 +14,8 @@
 
 #ifdef ESPR_BOOTLOADER_SPIFLASH
 
+#define __CODE_IN_RAM __attribute__( ( long_call, section(".ramtext") ) )
+
 #include "flash.h"
 #include "platform_config.h"
 #include "jsutils.h"
@@ -45,7 +47,7 @@ typedef struct {
 #endif
 
 /// Read data while sending 0
-__attribute__( ( long_call, section(".data") ) ) static void spiFlashRead(unsigned char *rx, unsigned int len) {
+__CODE_IN_RAM static void spiFlashRead(unsigned char *rx, unsigned int len) {
   NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_MOSI].pin);
   for (unsigned int i=0;i<len;i++) {
     int result = 0;
@@ -58,7 +60,7 @@ __attribute__( ( long_call, section(".data") ) ) static void spiFlashRead(unsign
   }
 }
 
-__attribute__( ( long_call, section(".data") ) ) static void spiFlashWrite(unsigned char *tx, unsigned int len) {
+__CODE_IN_RAM static void spiFlashWrite(unsigned char *tx, unsigned int len) {
   for (unsigned int i=0;i<len;i++) {
     int data = tx[i];
     for (int bit=7;bit>=0;bit--) {
@@ -69,13 +71,13 @@ __attribute__( ( long_call, section(".data") ) ) static void spiFlashWrite(unsig
   }
 }
 
-__attribute__( ( long_call, section(".data") ) ) static void spiFlashWriteCS(unsigned char *tx, unsigned int len) {
+__CODE_IN_RAM static void spiFlashWriteCS(unsigned char *tx, unsigned int len) {
   NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
   spiFlashWrite(tx,len);
   NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
 }
 
-__attribute__( ( long_call, section(".data") ) ) static unsigned char spiFlashStatus() {
+__CODE_IN_RAM static unsigned char spiFlashStatus() {
   unsigned char buf = 5;
   NRF_GPIO_PIN_CLEAR_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
   spiFlashWrite(&buf, 1);
@@ -145,7 +147,7 @@ void spiFlashInit() {
   jshDelayMicroseconds(100000);
 }
 
-__attribute__( ( long_call, section(".data") ) ) void spiFlashReadAddr(unsigned char *buf, uint32_t addr, uint32_t len) {
+__CODE_IN_RAM void spiFlashReadAddr(unsigned char *buf, uint32_t addr, uint32_t len) {
   unsigned char b[4];
   // Read
   b[0] = 0x03;
@@ -158,7 +160,7 @@ __attribute__( ( long_call, section(".data") ) ) void spiFlashReadAddr(unsigned 
   NRF_GPIO_PIN_SET_FAST((uint32_t)pinInfo[SPIFLASH_PIN_CS].pin);
 }
 
-__attribute__( ( long_call, section(".data") ) ) void intFlashErase(uint32_t addr) {
+__CODE_IN_RAM void intFlashErase(uint32_t addr) {
   NRF_NVMC->CONFIG = 2;
   while(!NRF_NVMC->READY);
   NRF_NVMC->ERASEPAGE = addr;
@@ -167,7 +169,7 @@ __attribute__( ( long_call, section(".data") ) ) void intFlashErase(uint32_t add
   while(!NRF_NVMC->READY);
 }
 
-__attribute__( ( long_call, section(".data") ) ) void intFlashWrite(uint32_t addr, unsigned char *data, uint32_t len) {
+__CODE_IN_RAM void intFlashWrite(uint32_t addr, unsigned char *data, uint32_t len) {
   while (len) {
     NRF_NVMC->CONFIG = 1;
     while(!NRF_NVMC->READY);
@@ -212,7 +214,7 @@ bool flashEqual(FlashHeader header, uint32_t addr) {
 
 #if defined(LCD_CONTROLLER_GC9A01)
 // LCD output for generic SPI LCDs
-__attribute__( ( long_call, section(".data") ) ) void xlcd_wr(int data) {
+__CODE_IN_RAM void xlcd_wr(int data) {
   for (int bit=7;bit>=0;bit--) {
     NRF_GPIO_PIN_WRITE_FAST(LCD_SPI_SCK, 0 );
     NRF_GPIO_PIN_WRITE_FAST(LCD_SPI_MOSI, ((data>>bit)&1) );
@@ -221,7 +223,7 @@ __attribute__( ( long_call, section(".data") ) ) void xlcd_wr(int data) {
 }
 #endif
 
-__attribute__( ( long_call, section(".data") ) ) void xlcd_rect(int x1,int y1, int x2, int y2, bool white) {
+__CODE_IN_RAM void xlcd_rect(int x1,int y1, int x2, int y2, bool white) {
 #if defined(LCD_CONTROLLER_GC9A01)
   NRF_GPIO_PIN_WRITE_FAST(LCD_SPI_DC, 0); // command
   NRF_GPIO_PIN_WRITE_FAST(LCD_SPI_CS, 0);
@@ -258,7 +260,7 @@ __attribute__( ( long_call, section(".data") ) ) void xlcd_rect(int x1,int y1, i
 #endif
 }
 
-__attribute__( ( long_call, section(".data") ) ) void flashDoUpdate(FlashHeader header, uint32_t headerAddr) {
+__CODE_IN_RAM void flashDoUpdate(FlashHeader header, uint32_t headerAddr) {
   unsigned char buf[256];
   int size, addr;
 
