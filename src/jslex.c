@@ -1168,6 +1168,69 @@ static bool jslPreserveSpaceBetweenTokens(int lastTk, int newTk) {
   return false;
 }
 
+/// Tokenise a String - if dstit==0, just return the length (so we can preallocate a flat string)
+static size_t _jslNewTokenisedStringFromLexer(JsvStringIterator *dstit, JslCharPos *charFrom, size_t charTo) {
+  jslSeekToP(charFrom);
+  JsvStringIterator it;
+  char itch = charFrom->currCh;
+  if (dstit)
+    jsvStringIteratorClone(&it, &charFrom->it);
+  size_t length = 0;
+  int lastTk = LEX_EOF;
+  while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
+    if (jslPreserveSpaceBetweenTokens(lastTk, lex->tk)) {
+      length++;
+      if (dstit) jsvStringIteratorSetCharAndNext(dstit, ' ');
+    }
+    if (lex->tk==LEX_STR && !lex->isUTF8) {
+      size_t l = jslGetTokenLength();
+      if (dstit) {
+        jsvStringIteratorSetCharAndNext(dstit, (char)LEX_RAW_STRING);
+        jsvStringIteratorSetCharAndNext(dstit, (char)(l&255));
+        jsvStringIteratorSetCharAndNext(dstit, (char)(l>>8));
+        JsVar *v = jslGetTokenValueAsVar();
+        JsvStringIterator sit;
+        jsvStringIteratorNew(&sit, v, 0);
+        while (jsvStringIteratorHasChar(&sit)) {
+          jsvStringIteratorSetCharAndNext(dstit, jsvStringIteratorGetCharAndNext(&sit));
+        }
+        jsvStringIteratorFree(&sit);
+        jsvUnLock(v);
+      }
+      length += 3 + l;
+    } else if (lex->tk==LEX_ID ||
+        lex->tk==LEX_INT ||
+        lex->tk==LEX_FLOAT ||
+        lex->tk==LEX_STR ||
+        lex->tk==LEX_TEMPLATE_LITERAL ||
+        lex->tk==LEX_REGEX) {
+      // copy in string verbatim
+      length += jsvStringIteratorGetIndex(&lex->it)-(lex->tokenStart+1);
+      if (dstit) {
+        jsvStringIteratorSetCharAndNext(dstit, itch);
+        while (jsvStringIteratorGetIndex(&it)+1 < jsvStringIteratorGetIndex(&lex->it)) {
+          jsvStringIteratorSetCharAndNext(dstit, jsvStringIteratorGetCharAndNext(&it));
+        }
+      }
+    } else { // single char for the token
+      if (dstit)
+        jsvStringIteratorSetCharAndNext(dstit, (char)lex->tk);
+      length++;
+    }
+    lastTk = lex->tk;
+    jslSkipWhiteSpace();
+    if (dstit) {
+      jsvStringIteratorFree(&it);
+      jsvStringIteratorClone(&it, &lex->it);
+    }
+    itch = lex->currCh;
+    jslGetNextToken();
+  }
+  if (dstit)
+    jsvStringIteratorFree(&it);
+  return length;
+}
+
 JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   // New method - tokenise functions
   // save old lex
@@ -1175,80 +1238,14 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   JsLex newLex;
   lex = &newLex;
   // work out length
-  size_t length = 0;
   jslInit(oldLex->sourceVar);
-  jslSeekToP(charFrom);
-  int lastTk = LEX_EOF;
-  while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
-    if (jslPreserveSpaceBetweenTokens(lastTk, lex->tk)) {
-      length++; // we need to insert a space
-    }
-    if (lex->tk==LEX_STR && !lex->isUTF8) {
-      length += 3 + jslGetTokenLength();
-    } else if (lex->tk==LEX_ID ||
-        lex->tk==LEX_INT ||
-        lex->tk==LEX_FLOAT ||
-        lex->tk==LEX_STR ||
-        lex->tk==LEX_TEMPLATE_LITERAL ||
-        lex->tk==LEX_REGEX) {
-      length += jsvStringIteratorGetIndex(&lex->it)-(lex->tokenStart+1);
-    } else {
-      length++; // for single token
-    }
-    lastTk = lex->tk;
-    jslGetNextToken();
-  }
-
+  size_t length = _jslNewTokenisedStringFromLexer(NULL, charFrom, charTo);
   // Try and create a flat string first
   JsVar *var = jsvNewStringOfLength((unsigned int)length, NULL);
-  if (var) { // out of memory
+  if (var) { // if not out of memory, fill in new string
     JsvStringIterator dstit;
     jsvStringIteratorNew(&dstit, var, 0);
-    // now start appending
-    jslSeekToP(charFrom);
-    JsvStringIterator it;
-    char itch = charFrom->currCh;
-    jsvStringIteratorClone(&it, &charFrom->it);
-    lastTk = LEX_EOF;
-    while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
-      if (jslPreserveSpaceBetweenTokens(lastTk, lex->tk)) {
-        jsvStringIteratorSetCharAndNext(&dstit, ' ');
-      }
-      if (lex->tk==LEX_STR && !lex->isUTF8) {
-        size_t length = jslGetTokenLength();
-        jsvStringIteratorSetCharAndNext(&dstit, (char)LEX_RAW_STRING);
-        jsvStringIteratorSetCharAndNext(&dstit, (char)(length&255));
-        jsvStringIteratorSetCharAndNext(&dstit, (char)(length>>8));
-        JsVar *v = jslGetTokenValueAsVar();
-        JsvStringIterator sit;
-        jsvStringIteratorNew(&sit, v, 0);
-        while (jsvStringIteratorHasChar(&sit)) {
-          jsvStringIteratorSetCharAndNext(&dstit, jsvStringIteratorGetCharAndNext(&sit));
-        }
-        jsvStringIteratorFree(&sit);
-        jsvUnLock(v);
-      } else if (lex->tk==LEX_ID ||
-          lex->tk==LEX_INT ||
-          lex->tk==LEX_FLOAT ||
-          lex->tk==LEX_STR ||
-          lex->tk==LEX_TEMPLATE_LITERAL ||
-          lex->tk==LEX_REGEX) {
-        // copy in string verbatim
-        jsvStringIteratorSetCharAndNext(&dstit, itch);
-        while (jsvStringIteratorGetIndex(&it)+1 < jsvStringIteratorGetIndex(&lex->it)) {
-          jsvStringIteratorSetCharAndNext(&dstit, jsvStringIteratorGetCharAndNext(&it));
-        }
-      } else { // single char for the token
-        jsvStringIteratorSetCharAndNext(&dstit, (char)lex->tk);
-      }
-      lastTk = lex->tk;
-      jslSkipWhiteSpace();
-      jsvStringIteratorFree(&it);
-      jsvStringIteratorClone(&it, &lex->it);
-      itch = lex->currCh;
-      jslGetNextToken();
-    }
-    jsvStringIteratorFree(&it);
+    _jslNewTokenisedStringFromLexer(&dstit, charFrom, charTo);
     jsvStringIteratorFree(&dstit);
   }
   // restore lex
