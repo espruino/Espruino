@@ -13,6 +13,7 @@
  */
 #include "jslex.h"
 #include "jsparse.h"
+#include "jswrap_functions.h" // for jswrap_atob
 #ifndef SAVE_ON_FLASH
 #include "jsflash.h"
 #endif
@@ -580,7 +581,9 @@ void jslSkipWhiteSpace() {
 
 static void jslGetRawString() {
   lex->tk = LEX_STR;
+#ifdef ESPR_UNICODE_SUPPORT
   lex->isUTF8 = false; // not supporting UTF8 raw strings yet
+#endif
   size_t length = (unsigned char)lex->currCh;
   jslGetNextCh();
   length |= ((unsigned char)lex->currCh)<<8;
@@ -1169,7 +1172,7 @@ static bool jslPreserveSpaceBetweenTokens(int lastTk, int newTk) {
 }
 
 /// Tokenise a String - if dstit==0, just return the length (so we can preallocate a flat string)
-static size_t _jslNewTokenisedStringFromLexer(JsvStringIterator *dstit, JslCharPos *charFrom, size_t charTo) {
+static size_t _jslNewTokenisedStringFromLexer(JsvStringIterator *dstit, JsVar *dstVar, JslCharPos *charFrom, size_t charTo) {
   jslSeekToP(charFrom);
   JsvStringIterator it;
   char itch = charFrom->currCh;
@@ -1177,33 +1180,59 @@ static size_t _jslNewTokenisedStringFromLexer(JsvStringIterator *dstit, JslCharP
     jsvStringIteratorClone(&it, &charFrom->it);
   size_t length = 0;
   int lastTk = LEX_EOF;
+  int atobChecker = 0; // we increment this to see if we've got the `atob("...")` pattern. 0=nothing, 2='atob('
   while (lex->tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex->it)<=charTo+1) {
     if (jslPreserveSpaceBetweenTokens(lastTk, lex->tk)) {
       length++;
       if (dstit) jsvStringIteratorSetCharAndNext(dstit, ' ');
     }
-    if (lex->tk==LEX_STR && !lex->isUTF8) {
-      size_t l = jslGetTokenLength();
+    size_t l;
+    if (lex->tk==LEX_STR && ((l = jslGetTokenLength())!=0)
+#ifdef ESPR_UNICODE_SUPPORT
+        && !lex->isUTF8
+#endif
+                       ) { // ---------------------- token = string we can store as raw (and nonzero length)
+      JsVar *v = NULL;
+      jslSkipWhiteSpace();
+      if (atobChecker==2 && lex->currCh==')') { // we found the 'atob' pattern!
+        // now get the string and un-encode it so we can store it raw
+        JsVar *b64 = jslGetTokenValueAsVar();
+        v = jswrap_atob(b64);
+        jsvUnLock(b64);
+        l = jsvGetStringLength(v);
+        // now we need to remove 'atob(' from the string!
+        length -= 5;
+        if (dstit) jsvStringIteratorGoto(dstit, dstVar, length);
+        // finally read the next token to get rid of ')' as well
+        itch = lex->currCh;
+        jslGetNextToken();
+      }
+      atobChecker = 0;
       if (dstit) {
         jsvStringIteratorSetCharAndNext(dstit, (char)LEX_RAW_STRING);
         jsvStringIteratorSetCharAndNext(dstit, (char)(l&255));
         jsvStringIteratorSetCharAndNext(dstit, (char)(l>>8));
-        JsVar *v = jslGetTokenValueAsVar();
+        if (!v) v = jslGetTokenValueAsVar();
         JsvStringIterator sit;
         jsvStringIteratorNew(&sit, v, 0);
         while (jsvStringIteratorHasChar(&sit)) {
           jsvStringIteratorSetCharAndNext(dstit, jsvStringIteratorGetCharAndNext(&sit));
         }
         jsvStringIteratorFree(&sit);
-        jsvUnLock(v);
       }
+      jsvUnLock(v);
       length += 3 + l;
-    } else if (lex->tk==LEX_ID ||
+    } else if (lex->tk==LEX_ID || // ---------------------------------  token = string of chars
         lex->tk==LEX_INT ||
         lex->tk==LEX_FLOAT ||
         lex->tk==LEX_STR ||
         lex->tk==LEX_TEMPLATE_LITERAL ||
         lex->tk==LEX_REGEX) {
+      // check for `atob("...")` pattern
+      if (lex->tk==LEX_ID && strcmp(jslGetTokenValueAsString(),"atob")==0)
+        atobChecker = 1;
+      else
+        atobChecker = 0;
       // copy in string verbatim
       length += jsvStringIteratorGetIndex(&lex->it)-(lex->tokenStart+1);
       if (dstit) {
@@ -1212,7 +1241,13 @@ static size_t _jslNewTokenisedStringFromLexer(JsvStringIterator *dstit, JslCharP
           jsvStringIteratorSetCharAndNext(dstit, jsvStringIteratorGetCharAndNext(&it));
         }
       }
-    } else { // single char for the token
+    } else { // ---------------------------------  token = single char
+      // check for `atob("...")` pattern
+      if (atobChecker==1 && lex->tk=='(')
+        atobChecker = 2;
+      else
+        atobChecker = 0;
+      // copy in char verbatim
       if (dstit)
         jsvStringIteratorSetCharAndNext(dstit, (char)lex->tk);
       length++;
@@ -1239,13 +1274,13 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   lex = &newLex;
   // work out length
   jslInit(oldLex->sourceVar);
-  size_t length = _jslNewTokenisedStringFromLexer(NULL, charFrom, charTo);
+  size_t length = _jslNewTokenisedStringFromLexer(NULL, NULL, charFrom, charTo);
   // Try and create a flat string first
   JsVar *var = jsvNewStringOfLength((unsigned int)length, NULL);
   if (var) { // if not out of memory, fill in new string
     JsvStringIterator dstit;
     jsvStringIteratorNew(&dstit, var, 0);
-    _jslNewTokenisedStringFromLexer(&dstit, charFrom, charTo);
+    _jslNewTokenisedStringFromLexer(&dstit, var, charFrom, charTo);
     jsvStringIteratorFree(&dstit);
   }
   // restore lex

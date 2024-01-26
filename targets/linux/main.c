@@ -15,6 +15,7 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 #include "jswrapper.h"
+#include "jsflags.h"
 
 #ifdef ESPR_JIT
 #include "jsjit.h"
@@ -186,6 +187,8 @@ bool run_test(const char *filename) {
 
   addNativeFunction("quit", nativeQuit);
   addNativeFunction("interrupt", nativeInterrupt);
+  // reset flags
+  jsfSetFlag(JSF_PRETOKENISE, 0);
 
   jsvUnLock(jspEvaluate(buffer, false));
 
