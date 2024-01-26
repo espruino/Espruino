@@ -578,6 +578,23 @@ void jslSkipWhiteSpace() {
   }
 }
 
+static void jslGetRawString() {
+  lex->tk = LEX_STR;
+  lex->isUTF8 = false; // not supporting UTF8 raw strings yet
+  size_t length = (unsigned char)lex->currCh;
+  jslGetNextCh();
+  length |= ((unsigned char)lex->currCh)<<8;
+  jsvUnLock(lex->tokenValue);
+  size_t stringPos = jsvStringIteratorGetIndex(&lex->it);
+  lex->tokenValue = jsvNewFromStringVar(lex->sourceVar, stringPos, length);
+  // skip over string
+  // Why does lex->sourceVar get unlocked in this case???
+  jsvLockAgain(lex->it.var); // jsvStringIteratorGoto assumes var was locked
+  jsvStringIteratorGoto(&lex->it, lex->sourceVar, stringPos+length);
+  jsvUnLock(lex->it.var); // jsvStringIteratorGoto assumes var was locked
+  jslGetNextCh(); // ensure we're all set up with next char (might be able to optimise slightly, but this is safe)
+}
+
 void jslGetNextToken() {
   int lastToken = lex->tk;
   lex->tk = LEX_EOF;
@@ -589,7 +606,7 @@ void jslGetNextToken() {
   // record beginning of this token
   lex->tokenLastStart = lex->tokenStart;
   unsigned char jumpCh = (unsigned char)lex->currCh;
-  if (jumpCh > jslJumpTableEnd) jumpCh = 0; // which also happens to be JSLJT_SINGLE_CHAR - what we want.
+  if (jumpCh > jslJumpTableEnd) jumpCh = 0; // which also happens to be JSLJT_SINGLE_CHAR - what we want. Could be pretokenised too
   jslGetNextToken_start:
   lex->tokenStart = jsvStringIteratorGetIndex(&lex->it) - 1;
   // tokens
@@ -607,6 +624,7 @@ void jslGetNextToken() {
     case JSLJT_SINGLE_CHAR:
       jslSingleChar();
       if (lex->tk == LEX_R_THIS) lex->hadThisKeyword=true;
+      else if (lex->tk == LEX_RAW_STRING) jslGetRawString();
       break;
     case JSLJT_ID: {
       while (isAlphaInline(lex->currCh) || isNumericInline(lex->currCh) || lex->currCh=='$') {
@@ -1087,8 +1105,10 @@ char *jslGetTokenValueAsString() {
   return lex->token;
 }
 
-int jslGetTokenLength() {
-  return lex->tokenl;
+size_t jslGetTokenLength() {
+  if (lex->tokenValue)
+    return jsvGetStringLength(lex->tokenValue);
+  return (size_t)lex->tokenl;
 }
 
 JsVar *jslGetTokenValueAsVar() {
@@ -1163,7 +1183,9 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
     if (jslPreserveSpaceBetweenTokens(lastTk, lex->tk)) {
       length++; // we need to insert a space
     }
-    if (lex->tk==LEX_ID ||
+    if (lex->tk==LEX_STR && !lex->isUTF8) {
+      length += 3 + jslGetTokenLength();
+    } else if (lex->tk==LEX_ID ||
         lex->tk==LEX_INT ||
         lex->tk==LEX_FLOAT ||
         lex->tk==LEX_STR ||
@@ -1192,7 +1214,20 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
       if (jslPreserveSpaceBetweenTokens(lastTk, lex->tk)) {
         jsvStringIteratorSetCharAndNext(&dstit, ' ');
       }
-      if (lex->tk==LEX_ID ||
+      if (lex->tk==LEX_STR && !lex->isUTF8) {
+        size_t length = jslGetTokenLength();
+        jsvStringIteratorSetCharAndNext(&dstit, (char)LEX_RAW_STRING);
+        jsvStringIteratorSetCharAndNext(&dstit, (char)(length&255));
+        jsvStringIteratorSetCharAndNext(&dstit, (char)(length>>8));
+        JsVar *v = jslGetTokenValueAsVar();
+        JsvStringIterator sit;
+        jsvStringIteratorNew(&sit, v, 0);
+        while (jsvStringIteratorHasChar(&sit)) {
+          jsvStringIteratorSetCharAndNext(&dstit, jsvStringIteratorGetCharAndNext(&sit));
+        }
+        jsvStringIteratorFree(&sit);
+        jsvUnLock(v);
+      } else if (lex->tk==LEX_ID ||
           lex->tk==LEX_INT ||
           lex->tk==LEX_FLOAT ||
           lex->tk==LEX_STR ||
@@ -1309,10 +1344,21 @@ void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void
   jsvStringIteratorNew(&it, code, 0);
   while (jsvStringIteratorHasChar(&it)) {
     unsigned char ch = (unsigned char)jsvStringIteratorGetCharAndNext(&it);
-    if (jslNeedSpaceBetween(lastch, ch))
-      user_callback(" ", user_data);
-    jslFunctionCharAsString(ch, buf, sizeof(buf));
-    user_callback(buf, user_data);
+    if (ch==LEX_RAW_STRING) {
+      size_t length = (unsigned char)jsvStringIteratorGetCharAndNext(&it);
+      length |= ((unsigned char)jsvStringIteratorGetCharAndNext(&it))<<8;
+      user_callback("\"", user_data);
+      while (length--) {
+        char ch = jsvStringIteratorGetCharAndNext(&it);
+        user_callback(escapeCharacter(ch, 0, false), user_data);
+      }
+      user_callback("\"", user_data);
+    } else {
+      if (jslNeedSpaceBetween(lastch, ch))
+        user_callback(" ", user_data);
+      jslFunctionCharAsString(ch, buf, sizeof(buf));
+      user_callback(buf, user_data);
+    }
     lastch = ch;
   }
   jsvStringIteratorFree(&it);
