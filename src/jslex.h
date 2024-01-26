@@ -204,8 +204,10 @@ void jslGetNextToken(); ///< Get the text token from our text string
 /// Create a new STRING from part of the lexer
 JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo);
 
+#ifndef ESPR_NO_PRETOKENISE
 /// Create a new STRING from part of the lexer - keywords get tokenised
 JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo);
+#endif
 
 /// Return the line number at the current character position (this isn't fast as it searches the string)
 unsigned int jslGetLineNumber();

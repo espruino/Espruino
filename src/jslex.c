@@ -1157,6 +1157,7 @@ bool jslMatch(int expected_tk) {
   return true;
 }
 
+#ifndef ESPR_NO_PRETOKENISE
 // When minifying/pretokenising, do we need to insert a space between these tokens?
 static bool jslPreserveSpaceBetweenTokens(int lastTk, int newTk) {
   // spaces between numbers/IDs
@@ -1289,6 +1290,8 @@ JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo) {
 
   return var;
 }
+
+#endif // ESPR_NO_PRETOKENISE
 
 JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   // Original method - just copy it verbatim

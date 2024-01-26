@@ -344,11 +344,14 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
       JsVar *tokenValue = jslGetTokenValueAsVar();
       if (jsvIsStringEqual(tokenValue, "compiled")) {
         jsWarn("Function marked with \"compiled\" uploaded in source form");
-      } else if (jsvIsStringEqual(tokenValue, "ram")) {
+      }
+#ifndef ESPR_NO_PRETOKENISE
+      else if (jsvIsStringEqual(tokenValue, "ram")) {
         JSP_ASSERT_MATCH(LEX_STR);
         if (lex->tk==';') JSP_ASSERT_MATCH(';');
         forcePretokenise = true;
       }
+#endif
 #ifdef ESPR_JIT
       else if (jsvIsStringEqual(tokenValue, "jit")) {
         JslCharPos funcCodeStart;
@@ -443,11 +446,12 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
         funcCodeVar = jsvNewFlashString(lex->sourceVar->varData.nativeStr.ptr + s, (unsigned int)(lastTokenEnd - s));
 #endif
     } else {
-      if (jsfGetFlag(JSF_PRETOKENISE) || forcePretokenise) {
+#ifndef ESPR_NO_PRETOKENISE
+      if (jsfGetFlag(JSF_PRETOKENISE) || forcePretokenise)
         funcCodeVar = jslNewTokenisedStringFromLexer(&funcBegin, (size_t)lastTokenEnd);
-      } else {
+      else
+#endif
         funcCodeVar = jslNewStringFromLexer(&funcBegin, (size_t)lastTokenEnd);
-      }
     }
     jsvAddNamedChildAndUnLock(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME);
     // scope var

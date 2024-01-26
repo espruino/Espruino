@@ -19,16 +19,18 @@
 typedef enum {
   JSF_NONE,
   JSF_DEEP_SLEEP          = 1<<0, ///< Allow deep sleep modes (also set by setDeepSleep)
-  JSF_PRETOKENISE         = 1<<1, ///< When adding functions, pre-minify them and tokenise reserved words
-  JSF_UNSAFE_FLASH        = 1<<2, ///< Some platforms stop writes/erases to interpreter memory to stop you bricking the device accidentally - this removes that protection
-  JSF_UNSYNC_FILES        = 1<<3, ///< When accessing files, *don't* flush all data to the SD card after each command. Faster, but risky if power is lost
+  JSF_UNSAFE_FLASH        = 1<<1, ///< Some platforms stop writes/erases to interpreter memory to stop you bricking the device accidentally - this removes that protection
+  JSF_UNSYNC_FILES        = 1<<2, ///< When accessing files, *don't* flush all data to the SD card after each command. Faster, but risky if power is lost
+#ifndef ESPR_NO_PRETOKENISE
+  JSF_PRETOKENISE         = 1<<3, ///< When adding functions, pre-minify them and tokenise reserved words (adding "ram" at the start does this too)
+#endif
 #ifdef ESPR_JIT
   JSF_JIT_DEBUG           = 1<<4, ///< When JIT enabled,
 #endif
 } PACKED_FLAGS JsFlags;
 
 
-#define JSFLAG_NAMES "deepSleep\0pretokenise\0unsafeFlash\0unsyncFiles\0jitDebug\0"
+#define JSFLAG_NAMES "deepSleep\0unsafeFlash\0unsyncFiles\0pretokenise\0jitDebug\0"
 // NOTE: \0 also added by compiler - two \0's are required!
 
 extern volatile JsFlags jsFlags;
