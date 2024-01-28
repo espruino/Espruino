@@ -23,35 +23,15 @@ const int BASE_DOW = 4;
 const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\0Dec";
 const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
-int checkDaySinceEpoch(int d) {
-  if (d<-462962961 || d>462962961) {
-    jsExceptionHere(JSET_ERROR, "Date out of bounds");
-    return 0;
-  }
-  return -1;
-}
-
-int checkYear(int y) {
-  if (y<-1265579 || y>1269518) {
-    jsExceptionHere(JSET_ERROR, "Year out of bounds");
-    return 0;
-  }
-  return -1;
-}
-
-int checkTime(JsVarFloat ms) {
-  if (ms < -4.0e-16 || ms > 4.0e16) {
-    jsExceptionHere(JSET_ERROR, "Date out of bounds");
-    return 0;
-  }
-  return -1;
-}
-
 // Convert y,m,d into a number of days since 1970, where 0<=m<=11
 // https://github.com/deirdreobyrne/CalendarAndDST
 int getDayNumberFromDate(int y, int m, int d) {
-  int ans;
+  int ans = y<0 ? -y : y;
   
+  if (ans>1265579) {
+    jsExceptionHere(JSET_ERROR, "Date out of bounds");
+    return 0;
+  }
   if (m < 2) {
     y--;
     m+=12;
@@ -127,40 +107,38 @@ JsVarFloat getDstChangeTime(int y, int dow_number, int dow, int month, int day_o
 // https://github.com/deirdreobyrne/CalendarAndDST
 int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
 #ifndef ESPR_NO_DAYLIGHT_SAVING
-  if (checkTime(ms)) {
-    JsVar *dst = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR);
-    if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12) && (dst->varData.arraybuffer.type == ARRAYBUFFERVIEW_INT16)) {
-      int y;
-      JsVarInt dstSetting[12];
-      JsvArrayBufferIterator it;
+  JsVar *dst = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JS_DST_SETTINGS_VAR);
+  if ((dst) && (jsvIsArrayBuffer(dst)) && (jsvGetLength(dst) == 12) && (dst->varData.arraybuffer.type == ARRAYBUFFERVIEW_INT16)) {
+    int y;
+    JsVarInt dstSetting[12];
+    JsvArrayBufferIterator it;
 
-      jsvArrayBufferIteratorNew(&it, dst, 0);
-      y = 0;
-      while (y < 12) {
-        dstSetting[y++]=jsvArrayBufferIteratorGetIntegerValue(&it);
-        jsvArrayBufferIteratorNext(&it);
-      }
-      jsvArrayBufferIteratorFree(&it);
-      jsvUnLock(dst);
-      if (dstSetting[0]) {
-        JsVarFloat sec = ms/1000;
-        JsVarFloat dstStart,dstEnd;
-        bool dstActive;
-
-        getDateFromDayNumber((int)(sec/86400),&y,0,0);
-        dstStart = getDstChangeTime(y, dstSetting[2], dstSetting[3], dstSetting[4], dstSetting[5], dstSetting[6], 1, dstSetting[0], dstSetting[1], is_local_time);
-        dstEnd = getDstChangeTime(y, dstSetting[7], dstSetting[8], dstSetting[9], dstSetting[10], dstSetting[11], 0, dstSetting[0], dstSetting[1], is_local_time);
-        if (dstStart < dstEnd) { // Northern hemisphere
-          dstActive = (sec >= dstStart) && (sec < dstEnd);
-        } else { // Southern hemisphere
-          dstActive = (sec < dstEnd) || (sec >= dstStart);
-        }
-        if (is_dst) *is_dst = dstActive;
-        return dstActive ? dstSetting[0]+dstSetting[1] : dstSetting[1];
-      }
-    } else {
-      jsvUnLock(dst);
+    jsvArrayBufferIteratorNew(&it, dst, 0);
+    y = 0;
+    while (y < 12) {
+      dstSetting[y++]=jsvArrayBufferIteratorGetIntegerValue(&it);
+      jsvArrayBufferIteratorNext(&it);
     }
+    jsvArrayBufferIteratorFree(&it);
+    jsvUnLock(dst);
+    if (dstSetting[0]) {
+      JsVarFloat sec = ms/1000;
+      JsVarFloat dstStart,dstEnd;
+      bool dstActive;
+
+      getDateFromDayNumber((int)(sec/86400),&y,0,0);
+      dstStart = getDstChangeTime(y, dstSetting[2], dstSetting[3], dstSetting[4], dstSetting[5], dstSetting[6], 1, dstSetting[0], dstSetting[1], is_local_time);
+      dstEnd = getDstChangeTime(y, dstSetting[7], dstSetting[8], dstSetting[9], dstSetting[10], dstSetting[11], 0, dstSetting[0], dstSetting[1], is_local_time);
+      if (dstStart < dstEnd) { // Northern hemisphere
+        dstActive = (sec >= dstStart) && (sec < dstEnd);
+      } else { // Southern hemisphere
+        dstActive = (sec < dstEnd) || (sec >= dstStart);
+      }
+      if (is_dst) *is_dst = dstActive;
+      return dstActive ? dstSetting[0]+dstSetting[1] : dstSetting[1];
+    }
+  } else {
+    jsvUnLock(dst);
   }
 #endif
   if (is_dst) *is_dst = false;
@@ -177,25 +155,22 @@ void setCorrectTimeZone(TimeInDay *td) {
  * condense them into one op. */
 TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in, bool forceGMT) {
   TimeInDay t;
-  if (checkTime(ms_in)) {
-    t.zone = forceGMT ? 0 : jsdGetEffectiveTimeZone(ms_in, false, &(t.is_dst));
-    ms_in += t.zone*60000;
-    t.daysSinceEpoch = (int)(ms_in / MSDAY);
+  t.zone = forceGMT ? 0 : jsdGetEffectiveTimeZone(ms_in, false, &(t.is_dst));
+  ms_in += t.zone*60000;
+  t.daysSinceEpoch = (int)(ms_in / MSDAY);
 
-    if (ms_in < -4.0e-16 || ms_in > 4.0e16) jsExceptionHere(JSET_ERROR, "Date out of bounds");
-    if (forceGMT) t.is_dst = false;
-    int ms = (int)(ms_in - ((JsVarFloat)t.daysSinceEpoch * MSDAY));
-    if (ms<0) {
-      ms += MSDAY;
-      t.daysSinceEpoch--;
-    }
-    int s = ms / 1000;
-    t.ms = ms % 1000;
-    t.hour = s / 3600;
-    s = s % 3600;
-    t.min = s/60;
-    t.sec = s%60;
+  if (forceGMT) t.is_dst = false;
+  int ms = (int)(ms_in - ((JsVarFloat)t.daysSinceEpoch * MSDAY));
+  if (ms<0) {
+    ms += MSDAY;
+    t.daysSinceEpoch--;
   }
+  int s = ms / 1000;
+  t.ms = ms % 1000;
+  t.hour = s / 3600;
+  s = s % 3600;
+  t.min = s/60;
+  t.sec = s%60;
 
   return t;
 }
@@ -207,29 +182,24 @@ JsVarFloat fromTimeInDay(TimeInDay *td) {
 CalendarDate getCalendarDate(int d) {
   CalendarDate date;
 
-  if (checkDaySinceEpoch(d)) {
-    getDateFromDayNumber(d, &date.year, &date.month, &date.day);
-    date.daysSinceEpoch = d;
-    // Calculate day of week. Sunday is 0
-    date.dow=(date.daysSinceEpoch+BASE_DOW)%7;
-    if (date.dow<0) date.dow+=7;
-  }
+  getDateFromDayNumber(d, &date.year, &date.month, &date.day);
+  date.daysSinceEpoch = d;
+  // Calculate day of week. Sunday is 0
+  date.dow=(date.daysSinceEpoch+BASE_DOW)%7;
+  if (date.dow<0) date.dow+=7;
   return date;
 };
 
 int fromCalendarDate(CalendarDate *date) {
-  if (checkYear(date->year)) {
-    while (date->month < 0) {
-      date->year--;
-      date->month += 12;
-    }
-    while (date->month > 11) {
-      date->year++;
-      date->month -= 12;
-    }
-    return getDayNumberFromDate(date->year, date->month, date->day);
+  while (date->month < 0) {
+    date->year--;
+    date->month += 12;
   }
-  return 0;
+  while (date->month > 11) {
+    date->year++;
+    date->month -= 12;
+  }
+  return getDayNumberFromDate(date->year, date->month, date->day);
 };
 
 
@@ -295,12 +265,9 @@ JsVarFloat jswrap_date_now() {
 
 
 JsVar *jswrap_date_from_milliseconds(JsVarFloat time) {
-  if (checkTime(time)) {
-    JsVar *d = jspNewObject(0,"Date");
-    jswrap_date_setTime(d, time);
-    return d;
-  }
-  return jsvNewNull();
+  JsVar *d = jspNewObject(0,"Date");
+  jswrap_date_setTime(d, time);
+  return d;
 }
 
 
@@ -337,17 +304,9 @@ JsVar *jswrap_date_constructor(JsVar *args) {
     else
       jsExceptionHere(JSET_TYPEERROR, "Variables of type %t are not supported in date constructor", arg);
     jsvUnLock(arg);
-    if (!checkTime(time)) {
-      jsExceptionHere(JSET_ERROR, "Date out of bounds");
-      return jsvNewNull();
-    }
   } else {
     CalendarDate date;
     date.year = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 0));
-    if (!checkYear(date.year)) {
-      jsExceptionHere(JSET_ERROR,"Year out of bounds");
-      return jsvNewNull();
-    }
     date.month = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 1)));
     date.day = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 2)));
     TimeInDay td;
@@ -429,6 +388,10 @@ JsVarFloat jswrap_date_getTime(JsVar *date) {
 Set the time/date of this Date class
  */
 JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue) {
+  if (abs(timeValue) > 4.0e-16) {
+    jsExceptionHere(JSET_ERROR, "Date out of bounds");
+    return 0.0;
+  }
   if (date)
     jsvObjectSetChildAndUnLock(date, "ms", jsvNewFromFloat(timeValue));
   return timeValue;
@@ -673,11 +636,11 @@ JsVarFloat jswrap_date_setDate(JsVar *parent, int dayValue) {
   "name" : "setMonth",
   "generate" : "jswrap_date_setMonth",
   "params" : [
-    ["yearValue","int","The month, between 0 and 11"],
+    ["monthValue","int","The month, between 0 and 11"],
     ["dayValue","JsVar","[optional] the day, between 0 and 31"]
   ],
   "return" : ["float","The number of milliseconds since 1970"],
-  "typescript" : "setMonth(yearValue: number, dayValue?: number): number;"
+  "typescript" : "setMonth(monthValue: number, dayValue?: number): number;"
 }
 Month of the year 0..11
  */
@@ -708,19 +671,16 @@ JsVarFloat jswrap_date_setMonth(JsVar *parent, int monthValue, JsVar *dayValue) 
 }
  */
 JsVarFloat jswrap_date_setFullYear(JsVar *parent, int yearValue, JsVar *monthValue, JsVar *dayValue) {
-  if (checkYear(yearValue)) {
-    TimeInDay td = getTimeFromDateVar(parent, false/*system timezone*/);
-    CalendarDate d = getCalendarDate(td.daysSinceEpoch);
-    d.year = yearValue;
-    if (jsvIsNumeric(monthValue))
-      d.month = jsvGetInteger(monthValue);
-    if (jsvIsNumeric(dayValue))
-      d.day = jsvGetInteger(dayValue);
-    td.daysSinceEpoch = fromCalendarDate(&d);
-    setCorrectTimeZone(&td);
-    return jswrap_date_setTime(parent, fromTimeInDay(&td));
-  }
-  return jswrap_date_getTime(parent);
+  TimeInDay td = getTimeFromDateVar(parent, false/*system timezone*/);
+  CalendarDate d = getCalendarDate(td.daysSinceEpoch);
+  d.year = yearValue;
+  if (jsvIsNumeric(monthValue))
+    d.month = jsvGetInteger(monthValue);
+  if (jsvIsNumeric(dayValue))
+    d.day = jsvGetInteger(dayValue);
+  td.daysSinceEpoch = fromCalendarDate(&d);
+  setCorrectTimeZone(&td);
+  return jswrap_date_setTime(parent, fromTimeInDay(&td));
 }
 
 
