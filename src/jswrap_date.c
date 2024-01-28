@@ -388,7 +388,7 @@ JsVarFloat jswrap_date_getTime(JsVar *date) {
 Set the time/date of this Date class
  */
 JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue) {
-  if (abs(timeValue) > 4.0e-16) {
+  if (fabs(timeValue) > 4.0e16) {
     jsExceptionHere(JSET_ERROR, "Date out of bounds");
     return 0.0;
   }
