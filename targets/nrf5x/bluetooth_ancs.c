@@ -289,7 +289,7 @@ void ble_cts_handle_time(BLEPending blep, char *buffer, size_t bufferLen) {
   date.month = time.month-1; // JS months are 0-11, but CTS uses 1-12
   date.day = time.day;
   TimeInDay td;
-  td.daysSinceEpoch = fromCalenderDate(&date);
+  td.daysSinceEpoch = fromCalendarDate(&date);
   td.hour = time.hours;
   td.min = time.minutes;
   td.sec = time.seconds;
