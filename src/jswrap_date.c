@@ -30,7 +30,7 @@ int getDayNumberFromDate(int y, int m, int d) {
   
   if (ans>1265579) {
     jsExceptionHere(JSET_ERROR, "Date out of bounds");
-    return 0;
+    return 0; // Need to head off any overflow error
   }
   if (m < 2) {
     y--;
@@ -55,21 +55,21 @@ void getDateFromDayNumber(int day, int *y, int *m, int *date) {
   a += 146095;
   a = (a < 0) ? ((a-36523)/36524) : (a/36524);
   a = day + a - ((a < 0) ? ((a-3)/4) : (a/4));
-  b = (int)(((a<<2)+2877911-((a<0) ? 1460 : 0))/1461);
-  c = (int)(a + 719600 - 365*b - (((b<0) ? (b-3) : b)/4));
+  b = ((a<<2)+2877911-((a<0) ? 1460 : 0))/1461;
+  c = a + 719600 - 365*b - (((b<0) ? (b-3) : b)/4);
   d = (5*c-1)/153; // Floor behaviour not needed, as c is always positive
-  if (date) *date=(int)(c-30*d-((3*d)/5));
+  if (date) *date=c-30*d-((3*d)/5);
   if (m) {
     if (d<14)
-      *m=(int)(d-2);
+      *m=d-2;
     else
-      *m=(int)(d-14);
+      *m=d-14;
   }
   if (y) {
     if (d>13)
-      *y=(int)(b+1);
+      *y=b+1;
     else
-      *y=(int)b;
+      *y=b;
   }
 }
 
