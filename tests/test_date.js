@@ -1,5 +1,10 @@
 pass=0;
 
+try { new Date(4.1e16); pass--; } catch(e) { };
+try { new Date(-4.1e16); pass--; } catch(e) { };
+try { new Date(2000000,0); pass--; } catch(e) { };
+try { new Date(-2000000,0); pass--; } catch(e) { };
+
 var gmt = [
 [ Date.parse("2011-10-20") , 1319068800000.0 ],
 [ Date.parse("2011-10-20T14:48:12.345") , 1319122092345.0 ],
