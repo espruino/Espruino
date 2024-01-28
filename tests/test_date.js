@@ -11,7 +11,8 @@ var gmt = [
 [ new Date(807926400000.0).toString() , "Wed Aug 9 1995 00:00:00 GMT+0000" ],
 [ new Date("Fri, 20 Jun 2014 15:27:22 GMT").toString(), "Fri Jun 20 2014 15:27:22 GMT+0000"],
 [ new Date("Fri, 20 Jun 2014 15:27:22 GMT").toISOString(), "2014-06-20T15:27:22.000Z"],
-[ new Date("Fri, 20 Jun 2014 17:27:22 GMT+0200").toISOString(), "2014-06-20T15:27:22.000Z"]
+[ new Date("Fri, 20 Jun 2014 17:27:22 GMT+0200").toISOString(), "2014-06-20T15:27:22.000Z"],
+[ new Date("5000-1-1").toISOString(), "5000-01-01T00:00:00.000Z"]
 ];
 
 gmt.forEach(function(n) { if (n[0]==n[1]) pass++; });

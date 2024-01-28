@@ -27,7 +27,8 @@ const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 // https://github.com/deirdreobyrne/CalendarAndDST
 int getDayNumberFromDate(int y, int m, int d) {
   int ans;
-
+  
+  if (y<1601) jsExceptionHere(JSET_ERROR, "Date library starts in 1601");
   if (m < 2) {
     y--;
     m+=12;
@@ -41,6 +42,8 @@ int getDayNumberFromDate(int y, int m, int d) {
 void getDateFromDayNumber(int day, int *y, int *m, int *date) {
   int a = day + 135081;
   int b,c,d;
+
+  if (day < -134774) jsExceptionHere(JSET_ERROR, "Date library starts in 1601");
   a = (a-(a/146097)+146095)/36524;
   a = day + a - (a>>2);
   b = ((a<<2)+2877911)/1461;
