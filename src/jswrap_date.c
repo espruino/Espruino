@@ -28,13 +28,15 @@ const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 int getDayNumberFromDate(int y, int m, int d) {
   int ans;
   
-  if (y<1601) jsExceptionHere(JSET_ERROR, "Date library starts in 1601");
+  // if (y<1601) jsExceptionHere(JSET_ERROR, "Date library starts in 1601");
   if (m < 2) {
     y--;
     m+=12;
   }
-  ans = (y/100);
-  return 365*y + (y>>2) - ans + (ans>>2) + 30*m + ((3*m+6)/5) + d - 719531;
+  ans = (y<0) ? ((y-99)/100) : (y/100); // FLOOR
+  d += (ans < 0) ? ((ans - 3)/4) : (ans/4); // FLOOR
+  d += (y<0) ? ((y-3)/4) : (y/4); // FLOOR
+  return 365*y - ans + 30*m + ((3*m+6)/5) + d - 719531;
 }
 
 // Convert a number of days since 1970 into y,m,d. 0<=m<=11
@@ -43,24 +45,26 @@ void getDateFromDayNumber(int day, int *y, int *m, int *date) {
   int a = day + 135081;
   int b,c,d;
 
-  if (day < -134774) jsExceptionHere(JSET_ERROR, "Date library starts in 1601");
-  a = (a-(a/146097)+146095)/36524;
-  a = day + a - (a>>2);
-  b = ((a<<2)+2877911)/1461;
-  c = a + 719600 - 365*b - (b>>2);
-  d = (5*c-1)/153;
-  if (date) *date=c-30*d-((3*d)/5);
+  // if (day < -134774) jsExceptionHere(JSET_ERROR, "Date library starts in 1601");
+  a -= (a<0) ? ((a-146096)/146097) : (a/146097);
+  a += 146095;
+  a = (a < 0) ? ((a-36523)/36524) : (a/36524);
+  a = day + a - ((a < 0) ? ((a-3)/4) : (a/4));
+  b = (int)(((a<<2)+2877911-((a<0) ? 1460 : 0))/1461);
+  c = (int)(a + 719600 - 365*b - (((b<0) ? (b-3) : b)/4));
+  d = (5*c-1)/153; // Floor not needed, as c is always positive
+  if (date) *date=(int)(c-30*d-((3*d)/5));
   if (m) {
     if (d<14)
-      *m=d-2;
+      *m=(int)(d-2);
     else
-      *m=d-14;
+      *m=(int)(d-14);
   }
   if (y) {
     if (d>13)
-      *y=b+1;
+      *y=(int)(b+1);
     else
-      *y=b;
+      *y=(int)b;
   }
 }
 
