@@ -12,6 +12,7 @@
             Remove 65535-char max native string length restriction introduced in 2v20 on devices that could support more like Bangle.js 2
             E.memoryArea(0, ...) now returns `undefined`
             Fix issue using Flat/Flash/Native Strings to create fields in objects
+            Optimise pretokenised Strings so we load very short strings direct to RAM
 
      2v20 : Ensure String.charCodeAt returns NaN for out of bounds chars
             Bangle.js2: When rendering overlays, *do not* use the current FG/BG color for 1 bit overlays

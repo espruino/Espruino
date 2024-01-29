@@ -592,13 +592,22 @@ static void jslGetRawString() {
     length |= ((unsigned char)lex->currCh)<<8;
   }
   jsvUnLock(lex->tokenValue);
-  size_t stringPos = jsvStringIteratorGetIndex(&lex->it);
-  lex->tokenValue = jsvNewFromStringVar(lex->sourceVar, stringPos, length);
-  // skip over string
-  // Why does lex->sourceVar get unlocked in this case???
-  jsvLockAgain(lex->it.var); // jsvStringIteratorGoto assumes var was locked
-  jsvStringIteratorGoto(&lex->it, lex->sourceVar, stringPos+length);
-  jsvUnLock(lex->it.var); // jsvStringIteratorGoto assumes var was locked
+  if (length > JSVAR_DATA_STRING_LEN) {
+    /* if it won't fit in a single string var, keep it in flash */
+    size_t stringPos = jsvStringIteratorGetIndex(&lex->it);
+    lex->tokenValue = jsvNewFromStringVar(lex->sourceVar, stringPos, length);
+    // skip over string
+    jsvLockAgain(lex->it.var); // jsvStringIteratorGoto assumes var was locked
+    jsvStringIteratorGoto(&lex->it, lex->sourceVar, stringPos+length);
+    jsvUnLock(lex->it.var); // jsvStringIteratorGoto assumes var was locked
+  } else {
+    /* if it will fit in a single string, allocate one and fill it up! */
+    lex->tokenValue = jsvNewWithFlags(JSV_STRING_0 + length);
+    for (int i=0;i<length;i++) {
+      jslGetNextCh();
+      lex->tokenValue->varData.str[i] = lex->currCh;
+    }
+  }
   jslGetNextCh(); // ensure we're all set up with next char (might be able to optimise slightly, but this is safe)
 }
 
