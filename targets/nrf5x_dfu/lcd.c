@@ -619,7 +619,7 @@ static const char SPILCD_INIT_CODE[] = {
     0x36,0,1,  0xB8, // Memory Access Control (rotated 270 degrees)
  #else
     #error "Unexpected value defined for LCD_ROTATION - should be 0, 90, 180 or 270"
- #endif   
+ #endif
 #else
     0x36,0,1,  0x88, // Memory Access Control (no rotation)
 #endif
@@ -807,7 +807,7 @@ void lcd_flip() {
   jshPinSetValue(LCD_SPI_CS,0);
   static bool lcdToggle;
   jshPinSetValue(LCD_EXTCOMIN, lcdToggle = !lcdToggle);
-  ymin=LCD_HEIGHT;
+  ymin=LCD_DATA_HEIGHT;
   ymax=0;
 }
 
@@ -889,7 +889,7 @@ void lcd_clear() {
   lcdy=LCD_START_Y;
 #ifdef LCD_STORE_MODIFIED
   ymin=0;
-  ymax=LCD_HEIGHT-1;
+  ymax=LCD_DATA_HEIGHT-1;
 #endif
   lcd_flip();
 }
