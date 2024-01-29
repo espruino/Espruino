@@ -1557,7 +1557,7 @@ JsVar *jsvAsString(JsVar *v) {
   JsVar *str = 0;
   // If it is string-ish, but not quite a string, copy it
   if (jsvHasCharacterData(v) && jsvIsName(v)) {
-    str = jsvNewFromStringVar(v,0,JSVAPPENDSTRINGVAR_MAXLENGTH);
+    str = jsvNewFromStringVarComplete(v);
   } else if (jsvIsString(v)) { // If it is a string - just return a reference
     str = jsvLockAgain(v);
   } else if (jsvIsObject(v)) { // If it is an object and we can call toString on it
@@ -1934,12 +1934,17 @@ JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength) {
     return res;
   }
   JsVar *var = jsvNewFromEmptyString();
-  if (var) jsvAppendStringVar(var, str, stridx, maxLength);
+  jsvAppendStringVar(var, str, stridx, maxLength);
 #ifdef ESPR_UNICODE_SUPPORT
   if (jsvIsUTF8String(str))
     var = jsvNewUTF8StringAndUnLock(var);
 #endif
   return var;
+}
+
+/** Create a new variable from a string. argument must be a string. */
+JsVar *jsvNewFromStringVarComplete(JsVar *var) {
+  return jsvNewFromStringVar(var, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
 }
 
 /** Append all of str to var. Both must be strings.  */
@@ -2683,7 +2688,7 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
         /* it's not a simple name string - it has STRING_EXT bits on the end.
          * Because the max length of NAME and STRING is different we must just
          * copy */
-        dst = jsvNewFromStringVar(src, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+        dst = jsvNewFromStringVarComplete(src);
         if (!dst) return 0;
       } else {
         flags = (flags & (JsVarFlags)~JSV_VARTYPEMASK) | (JSV_STRING_0 + jsvGetCharactersInVar(src));
@@ -2731,7 +2736,7 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
 JsVar *jsvCopy(JsVar *src, bool copyChildren) {
   if (jsvIsFlatString(src)) {
     // Copy a Flat String into a non-flat string - it's just safer
-    return jsvNewFromStringVar(src, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    return jsvNewFromStringVarComplete(src);
   }
   JsVar *dst = jsvNewWithFlags(src->flags & JSV_VARIABLEINFOMASK);
   if (!dst) return 0; // out of memory

@@ -778,7 +778,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
       // setup a the function's name (if a named function)
       if (functionInternalName) {
-        JsVar *name = jsvMakeIntoVariableName(jsvNewFromStringVar(functionInternalName,0,JSVAPPENDSTRINGVAR_MAXLENGTH), function);
+        JsVar *name = jsvMakeIntoVariableName(jsvNewFromStringVarComplete(functionInternalName), function);
         jsvAddName(functionRoot, name);
         jsvUnLock2(name, functionInternalName);
       }

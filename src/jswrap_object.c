@@ -1170,7 +1170,7 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
         // don't copy function code - just use it as-is. But we do have to
         // make a new NAME for it!
         JsVar *fnCode = jsvSkipName(el);
-        copy = jsvMakeIntoVariableName(jsvNewFromStringVar(el,  0, JSVAPPENDSTRINGVAR_MAXLENGTH), fnCode);
+        copy = jsvMakeIntoVariableName(jsvNewFromStringVarComplete(el), fnCode);
         jsvUnLock(fnCode);
       } else
         copy = jsvCopy(el, true);

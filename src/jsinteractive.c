@@ -557,7 +557,7 @@ NO_INLINE void jsiDumpObjectState(vcbprintf_callback user_callback, void *user_d
     if (!checker || !checker(child)) {
       if (jsvIsStringEqual(child, JSPARSE_PROTOTYPE_VAR)) {
         // recurse to print prototypes
-        JsVar *name = jsvNewFromStringVar(parentName,0,JSVAPPENDSTRINGVAR_MAXLENGTH);
+        JsVar *name = jsvNewFromStringVarComplete(parentName);
         if (name) {
           jsvAppendString(name, ".prototype");
           jsiDumpObjectState(user_callback, user_data, name, data);
