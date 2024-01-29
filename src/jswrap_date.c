@@ -25,14 +25,13 @@ const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
 #ifdef ESPR_LIMIT_DATE_RANGE
 // This rounds towards zero - which is not what the algorithm needs. Hence the range for Date() is further limited when ESPR_LIMIT_DATE_RANGE is set
-int integerDivideFloor(int a, int b) {
-  return a/b;
-}
+#define INTEGER_DIVIDE_FLOOR(a,b) ((a)/(b))
 #else
 // This rounds down, which is what the algorithm needs
 int integerDivideFloor(int a, int b) {
   return (a < 0 ? a-b+1 : a)/b;
 }
+#define INTEGER_DIVIDE_FLOOR(a,b) integerDivideFloor((a),(b))
 #endif
 
 
@@ -54,8 +53,8 @@ int getDayNumberFromDate(int y, int m, int d) {
     m+=12;
   }
   // #2456 was created by integer division rounding towards zero, rather than the FLOOR-behaviour required by the algorithm.
-  ans = integerDivideFloor(y,100);
-  return 365*y + integerDivideFloor(y,4) - ans + integerDivideFloor(ans,4) + 30*m + ((3*m+6)/5) + d - 719531;
+  ans = INTEGER_DIVIDE_FLOOR(y,100);
+  return 365*y + INTEGER_DIVIDE_FLOOR(y,4) - ans + INTEGER_DIVIDE_FLOOR(ans,4) + 30*m + ((3*m+6)/5) + d - 719531;
 }
 
 // Convert a number of days since 1970 into y,m,d. 0<=m<=11
@@ -65,10 +64,10 @@ void getDateFromDayNumber(int day, int *y, int *m, int *date) {
   int b,c,d;
 
   // Bug #2456 fixed here too
-  a = integerDivideFloor(a - integerDivideFloor(a,146097) + 146095,36524);
-  a = day + a - integerDivideFloor(a,4);
-  b = integerDivideFloor((a<<2)+2877911,1461);
-  c = a + 719600 - 365*b - integerDivideFloor(b,4);
+  a = INTEGER_DIVIDE_FLOOR(a - INTEGER_DIVIDE_FLOOR(a,146097) + 146095,36524);
+  a = day + a - INTEGER_DIVIDE_FLOOR(a,4);
+  b = INTEGER_DIVIDE_FLOOR((a<<2)+2877911,1461);
+  c = a + 719600 - 365*b - INTEGER_DIVIDE_FLOOR(b,4);
   d = (5*c-1)/153; // Floor behaviour not needed, as c is always positive
   if (date) *date=c-30*d-((3*d)/5);
   if (m) {
