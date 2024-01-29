@@ -16,6 +16,17 @@ print(s.list())
 test(s.list().length,2);
 test(s.read("a").length,4000);
 test(s.read("b").length,10);
+
+/* This isn't really testing Storage, but somewhere we need to make sure 
+that the FlashStrings/NativeStrings returned from `read` are usable
+like normal Strings - and until just now you couldn't use them to
+create a field in an object! */
+require("Storage").write("test","Hello");
+a = require("Storage").read("test");
+var w = {};
+w[a] = 5;
+test(Object.keys(w).join(""), "Hello");
+
 s.eraseAll();
 
 result = tests==testsPass;

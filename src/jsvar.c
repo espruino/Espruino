@@ -100,6 +100,7 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 #define JSV_IS_NUMERIC(f) ((f)>=_JSV_NUMERIC_START && (f)<=_JSV_NUMERIC_END)
 #define JSV_IS_STRING(f) ((f)>=_JSV_STRING_START && (f)<=_JSV_STRING_END)
 #define JSV_IS_STRING_EXT(f) ((f)>=JSV_STRING_EXT_0 && (f)<=JSV_STRING_EXT_MAX)
+#define JSV_IS_BASIC_STRING(f) ((f)>=JSV_STRING_0 && (f)<=JSV_STRING_MAX)
 #define JSV_IS_FLAT_STRING(f) (f)==JSV_FLAT_STRING
 #define JSV_IS_NATIVE_STRING(f) (f)==JSV_NATIVE_STRING
 #define JSV_IS_ARRAY(f) (f)==JSV_ARRAY
@@ -133,7 +134,7 @@ bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FL
 bool jsvIsBoolean(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_BOOL(f); }
 bool jsvIsString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_STRING(f); } ///< String, or a NAME too
 bool jsvIsUTF8String(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_UNICODE_STRING(f); } ///< Just a unicode string (UTF8 JsVar, pointing to a string)
-bool jsvIsBasicString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return f>=JSV_STRING_0 && f<=JSV_STRING_MAX; } ///< Just a string (NOT a name/flatstr/nativestr or flashstr)
+bool jsvIsBasicString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_BASIC_STRING(f); } ///< Just a string (NOT a name/flatstr/nativestr or flashstr)
 bool jsvIsStringExt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_STRING_EXT(f); } ///< The extra bits dumped onto the end of a string to store more data
 bool jsvIsFlatString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_FLAT_STRING(f); }
 bool jsvIsNativeString(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK; return JSV_IS_NATIVE_STRING(f); }
@@ -1253,7 +1254,13 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   } else if (jsvIsUTF8String(var)) {
     var->flags = (var->flags & (JsVarFlags)~JSV_VARTYPEMASK) | JSV_NAME_UTF8_STRING;
 #endif
-  } else if (varType>=_JSV_STRING_START && varType<=_JSV_STRING_END) {
+  } else if (JSV_IS_STRING(varType)) {
+    if (JSV_IS_NONAPPENDABLE_STRING(varType)) {
+      JsVar *name = jsvNewWithFlags(JSV_NAME_STRING_0);
+      jsvAppendStringVarComplete(name, var);
+      jsvUnLock(var);
+      return name;
+    }
     if (jsvGetCharactersInVar(var) > JSVAR_DATA_STRING_NAME_LEN) {
       /* Argh. String is too large to fit in a JSV_NAME! We must chomp
        * new STRINGEXTs to put the data in
@@ -3831,14 +3838,15 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       }
 #endif
       // Don't copy 'da' if it's not used elsewhere (eg we made it in 'jsvAsString' above)
-      if (jsvIsBasicString(da) && jsvGetLocks(da)==1 && jsvGetRefs(da)==0)
+      JsVarFlags daf = da->flags & JSV_VARTYPEMASK;
+      if (JSV_IS_BASIC_STRING(daf) && jsvGetLocks(da)==1 && jsvGetRefs(da)==0)
         v = jsvLockAgain(da);
-      else if (JSV_IS_NONAPPENDABLE_STRING(da->flags & JSV_VARTYPEMASK) || jsvIsUTF8String(da)) {
+      else if (JSV_IS_NONAPPENDABLE_STRING(daf) || JSV_IS_UNICODE_STRING(daf)) {
         // It's a string, but it can't be appended - don't copy as copying will just keep the same var type!
         // Instead we create a new string var by copying
         // opt: should we allocate a flat string here? but repeated appends would then be slow
         v = jsvNewFromEmptyString(); // don't use jsvNewFromStringVar as this does a copy for native/flash strs too
-        if (v) jsvAppendStringVar(v, da, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+        if (v) jsvAppendStringVarComplete(v, da);
       } else // otherwise just copy it
         v = jsvCopy(da, false);
       if (v) // could be out of memory
