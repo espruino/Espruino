@@ -130,7 +130,7 @@ typedef enum {
 #define JSV_ARRAYBUFFER_IS_FLOAT(T) (((T)&ARRAYBUFFERVIEW_FLOAT)!=0)
 #define JSV_ARRAYBUFFER_IS_CLAMPED(T) (((T)&ARRAYBUFFERVIEW_CLAMPED)!=0)
 
-#if JSVAR_DATA_NATIVE_LEN<8 // only enough space for a 16 bit length
+#if JSVAR_DATA_NATIVESTR_LEN<8 // only enough space for a 16 bit length
 typedef uint16_t JsVarDataNativeStrLength;
 #define JSV_NATIVE_STR_MAX_LENGTH 65535
 #else // enough space for 32 bits
