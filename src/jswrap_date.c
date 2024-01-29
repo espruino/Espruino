@@ -23,12 +23,23 @@ const int BASE_DOW = 4;
 const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\0Dec";
 const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
+#ifdef ESPR_LIMIT_DATE_RANGE
+#define INTEGER_DIVIDE_FLOOR(a,b) (a/b)
+#else
+#define INTEGER_DIVIDE_FLOOR(a,b) ((a<0 ? a-b+1 : a)/b)
+#endif
+
+
 // Convert y,m,d into a number of days since 1970, where 0<=m<=11
 // https://github.com/deirdreobyrne/CalendarAndDST
 int getDayNumberFromDate(int y, int m, int d) {
-  int ans = y<0 ? -y : y;
+  int ans;
   
-  if (ans>1265579) {
+#ifdef ESPR_LIMIT_DATE_RANGE
+  if (y < 1601 || y > 1250000) {
+#else
+  if (y < -1265580 || y > 1269519) {
+#endif
     jsExceptionHere(JSET_ERROR, "Date out of bounds");
     return 0; // Need to head off any overflow error
   }
@@ -38,9 +49,9 @@ int getDayNumberFromDate(int y, int m, int d) {
   }
   // #2456 was created by integer division rounding towards zero, rather than the FLOOR-behaviour required by the algorithm.
   // We create the same effect as FLOOR by subtracting the divisor-minus-one from the dividend if the dividend is negative
-  ans = (y<0) ? ((y-99)/100) : (y/100); // FLOOR
-  d += (ans < 0) ? ((ans - 3)/4) : (ans/4); // FLOOR
-  d += (y<0) ? ((y-3)/4) : (y/4); // FLOOR
+  ans = INTEGER_DIVIDE_FLOOR(y,100);
+  d += INTEGER_DIVIDE_FLOOR(ans,4);
+  d += INTEGER_DIVIDE_FLOOR(y,4);
   return 365*y - ans + 30*m + ((3*m+6)/5) + d - 719531;
 }
 
@@ -51,12 +62,14 @@ void getDateFromDayNumber(int day, int *y, int *m, int *date) {
   int b,c,d;
 
   // Bug #2456 fixed here too
-  a -= (a<0) ? ((a-146096)/146097) : (a/146097);
+  a -= INTEGER_DIVIDE_FLOOR(a,146097);
   a += 146095;
-  a = (a < 0) ? ((a-36523)/36524) : (a/36524);
-  a = day + a - ((a < 0) ? ((a-3)/4) : (a/4));
-  b = ((a<<2)+2877911-((a<0) ? 1460 : 0))/1461;
-  c = a + 719600 - 365*b - (((b<0) ? (b-3) : b)/4);
+  a = INTEGER_DIVIDE_FLOOR(a,36524);
+  a = day + a - INTEGER_DIVIDE_FLOOR(a,4);
+  b = (a<<2) + 2877911;
+  b = INTEGER_DIVIDE_FLOOR(b,1461);
+  c = INTEGER_DIVIDE_FLOOR(b,4);
+  c = a + 719600 - 365*b - c;
   d = (5*c-1)/153; // Floor behaviour not needed, as c is always positive
   if (date) *date=c-30*d-((3*d)/5);
   if (m) {
@@ -388,7 +401,11 @@ JsVarFloat jswrap_date_getTime(JsVar *date) {
 Set the time/date of this Date class
  */
 JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue) {
+#ifdef ESPR_LIMIT_DATE_RANGE
+  if (timeValue < -1.16e13 || timeValue > 3.0e16)
+#else
   if (fabs(timeValue) > 4.0e16) {
+#endif
     jsExceptionHere(JSET_ERROR, "Date out of bounds");
     return 0.0;
   }
