@@ -41,7 +41,7 @@ void setCorrectTimeZone(TimeInDay *td);
 TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in, bool forceGMT);
 JsVarFloat fromTimeInDay(TimeInDay *td);
 CalendarDate getCalendarDate(int d);
-int fromCalenderDate(CalendarDate *date);
+int fromCalendarDate(CalendarDate *date);
 
 JsVarFloat jswrap_date_now();
 JsVar *jswrap_date_from_milliseconds(JsVarFloat time);

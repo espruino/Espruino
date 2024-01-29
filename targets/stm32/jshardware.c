@@ -1536,7 +1536,7 @@ JsSysTime jshGetRTCSystemTime() {
   cdate.month = date.RTC_Month-1; // 1..12 -> 0..11
   cdate.year = 2000+date.RTC_Year; // 0..99 -> 2000..2099
   cdate.dow = date.RTC_WeekDay%7; // 1(monday)..7 -> 0(sunday)..6
-  ctime.daysSinceEpoch = fromCalenderDate(&cdate);
+  ctime.daysSinceEpoch = fromCalendarDate(&cdate);
   ctime.zone = 0;
   ctime.ms = 0;
   ctime.sec = time.RTC_Seconds;

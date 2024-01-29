@@ -358,7 +358,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
       date.month = (int)(((info.fdate>>5)&15)-1);  // TomWS: Month is 0 based.
       date.day = (int)((info.fdate)&31);
       TimeInDay td;
-      td.daysSinceEpoch = fromCalenderDate(&date);
+      td.daysSinceEpoch = fromCalendarDate(&date);
       td.hour = (int)((info.ftime>>11)&31);
       td.min = (int)((info.ftime>>5)&63);
       td.sec = (int)((info.ftime)&63);

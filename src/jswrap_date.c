@@ -23,17 +23,38 @@ const int BASE_DOW = 4;
 const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\0Dec";
 const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
+#ifdef ESPR_LIMIT_DATE_RANGE
+// This rounds towards zero - which is not what the algorithm needs. Hence the range for Date() is further limited when ESPR_LIMIT_DATE_RANGE is set
+#define INTEGER_DIVIDE_FLOOR(a,b) ((a)/(b))
+#else
+// This rounds down, which is what the algorithm needs
+int integerDivideFloor(int a, int b) {
+  return (a < 0 ? a-b+1 : a)/b;
+}
+#define INTEGER_DIVIDE_FLOOR(a,b) integerDivideFloor((a),(b))
+#endif
+
+
 // Convert y,m,d into a number of days since 1970, where 0<=m<=11
 // https://github.com/deirdreobyrne/CalendarAndDST
 int getDayNumberFromDate(int y, int m, int d) {
   int ans;
-
-  if (m < 2) {
+  
+#ifdef ESPR_LIMIT_DATE_RANGE
+  if (y < 1500 || y >= 1250000) { // Should actually work down to 1101, but since the Gregorian calendar started in 1582 . . .
+#else
+  if (y < -1250000 || y >= 1250000) {
+#endif
+    jsExceptionHere(JSET_ERROR, "Date out of bounds");
+    return 0; // Need to head off any overflow error
+  }
+  while (m < 2) {
     y--;
     m+=12;
   }
-  ans = (y/100);
-  return 365*y + (y>>2) - ans + (ans>>2) + 30*m + ((3*m+6)/5) + d - 719531;
+  // #2456 was created by integer division rounding towards zero, rather than the FLOOR-behaviour required by the algorithm.
+  ans = INTEGER_DIVIDE_FLOOR(y,100);
+  return 365*y + INTEGER_DIVIDE_FLOOR(y,4) - ans + INTEGER_DIVIDE_FLOOR(ans,4) + 30*m + ((3*m+6)/5) + d - 719531;
 }
 
 // Convert a number of days since 1970 into y,m,d. 0<=m<=11
@@ -41,11 +62,13 @@ int getDayNumberFromDate(int y, int m, int d) {
 void getDateFromDayNumber(int day, int *y, int *m, int *date) {
   int a = day + 135081;
   int b,c,d;
-  a = (a-(a/146097)+146095)/36524;
-  a = day + a - (a>>2);
-  b = ((a<<2)+2877911)/1461;
-  c = a + 719600 - 365*b - (b>>2);
-  d = (5*c-1)/153;
+
+  // Bug #2456 fixed here too
+  a = INTEGER_DIVIDE_FLOOR(a - INTEGER_DIVIDE_FLOOR(a,146097) + 146095,36524);
+  a = day + a - INTEGER_DIVIDE_FLOOR(a,4);
+  b = INTEGER_DIVIDE_FLOOR((a<<2)+2877911,1461);
+  c = a + 719600 - 365*b - INTEGER_DIVIDE_FLOOR(b,4);
+  d = (5*c-1)/153; // Floor behaviour not needed, as c is always positive
   if (date) *date=c-30*d-((3*d)/5);
   if (m) {
     if (d<14)
@@ -178,7 +201,7 @@ CalendarDate getCalendarDate(int d) {
   return date;
 };
 
-int fromCalenderDate(CalendarDate *date) {
+int fromCalendarDate(CalendarDate *date) {
   while (date->month < 0) {
     date->year--;
     date->month += 12;
@@ -298,7 +321,7 @@ JsVar *jswrap_date_constructor(JsVar *args) {
     date.month = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 1)));
     date.day = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 2)));
     TimeInDay td;
-    td.daysSinceEpoch = fromCalenderDate(&date);
+    td.daysSinceEpoch = fromCalendarDate(&date);
     td.hour = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 3)));
     td.min = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4)));
     td.sec = (int)(jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5)));
@@ -376,6 +399,14 @@ JsVarFloat jswrap_date_getTime(JsVar *date) {
 Set the time/date of this Date class
  */
 JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue) {
+#ifdef ESPR_LIMIT_DATE_RANGE
+  if (timeValue < -1.48317696e13 || timeValue >= 3.93840543168E+016) { // This should actually work down to 1101AD . . .
+#else
+  if (timeValue < -3.95083256832E+016 || timeValue >= 3.93840543168E+016) {
+#endif
+    jsExceptionHere(JSET_ERROR, "Date out of bounds");
+    return 0.0;
+  }
   if (date)
     jsvObjectSetChildAndUnLock(date, "ms", jsvNewFromFloat(timeValue));
   return timeValue;
@@ -607,7 +638,7 @@ JsVarFloat jswrap_date_setDate(JsVar *parent, int dayValue) {
   TimeInDay td = getTimeFromDateVar(parent, false/*system timezone*/);
   CalendarDate d = getCalendarDate(td.daysSinceEpoch);
   d.day = dayValue;
-  td.daysSinceEpoch = fromCalenderDate(&d);
+  td.daysSinceEpoch = fromCalendarDate(&d);
   setCorrectTimeZone(&td);
   return jswrap_date_setTime(parent, fromTimeInDay(&td));
 }
@@ -620,11 +651,11 @@ JsVarFloat jswrap_date_setDate(JsVar *parent, int dayValue) {
   "name" : "setMonth",
   "generate" : "jswrap_date_setMonth",
   "params" : [
-    ["yearValue","int","The month, between 0 and 11"],
+    ["monthValue","int","The month, between 0 and 11"],
     ["dayValue","JsVar","[optional] the day, between 0 and 31"]
   ],
   "return" : ["float","The number of milliseconds since 1970"],
-  "typescript" : "setMonth(yearValue: number, dayValue?: number): number;"
+  "typescript" : "setMonth(monthValue: number, dayValue?: number): number;"
 }
 Month of the year 0..11
  */
@@ -634,7 +665,7 @@ JsVarFloat jswrap_date_setMonth(JsVar *parent, int monthValue, JsVar *dayValue) 
   d.month = monthValue;
   if (jsvIsNumeric(dayValue))
     d.day = jsvGetInteger(dayValue);
-  td.daysSinceEpoch = fromCalenderDate(&d);
+  td.daysSinceEpoch = fromCalendarDate(&d);
   setCorrectTimeZone(&td);
   return jswrap_date_setTime(parent, fromTimeInDay(&td));
 }
@@ -662,7 +693,7 @@ JsVarFloat jswrap_date_setFullYear(JsVar *parent, int yearValue, JsVar *monthVal
     d.month = jsvGetInteger(monthValue);
   if (jsvIsNumeric(dayValue))
     d.day = jsvGetInteger(dayValue);
-  td.daysSinceEpoch = fromCalenderDate(&d);
+  td.daysSinceEpoch = fromCalendarDate(&d);
   setCorrectTimeZone(&td);
   return jswrap_date_setTime(parent, fromTimeInDay(&td));
 }
@@ -874,7 +905,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
           jslGetNextToken();
           if (lex.tk == LEX_INT) {
             date.year = _parse_int();
-            time.daysSinceEpoch = fromCalenderDate(&date);
+            time.daysSinceEpoch = fromCalendarDate(&date);
             jslGetNextToken();
             if (lex.tk == LEX_INT) {
               _parse_time(&time, 0);
@@ -897,7 +928,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
             jslGetNextToken();
             if (lex.tk == LEX_INT) {
               date.year = _parse_int();
-              time.daysSinceEpoch = fromCalenderDate(&date);
+              time.daysSinceEpoch = fromCalendarDate(&date);
               jslGetNextToken();
               if (lex.tk == LEX_INT) {
                 _parse_time(&time, 0);
@@ -924,7 +955,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
           jslGetNextToken();
           if (lex.tk == LEX_INT) {
             date.day = _parse_int();
-            time.daysSinceEpoch = fromCalenderDate(&date);
+            time.daysSinceEpoch = fromCalendarDate(&date);
             jslGetNextToken();
             if (lex.tk == LEX_ID && jslGetTokenValueAsString()[0]=='T') {
               _parse_time(&time, 1);
