@@ -119,7 +119,8 @@ _LEX_R_LIST_END = LEX_R_OF, /* always the last entry for symbols */
 
 _LEX_OPERATOR2_START = _LEX_R_LIST_END+10, // padding for adding new symbols in the future!
     LEX_NULLISH = _LEX_OPERATOR2_START,
-    LEX_RAW_STRING, //< a pretokenised string stored as length_lo,length_hi,raw_binary_data
+    LEX_RAW_STRING8, //< a pretokenised string stored as 0xD1,length,raw_binary_data
+    LEX_RAW_STRING16, //< a pretokenised string stored as 0xD2,length_lo,length_hi,raw_binary_data
 _LEX_OPERATOR2_END = LEX_NULLISH,
 
 _LEX_TOKENS_END = _LEX_OPERATOR2_END, /* always the last entry for symbols */

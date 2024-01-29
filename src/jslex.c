@@ -580,13 +580,17 @@ void jslSkipWhiteSpace() {
 }
 
 static void jslGetRawString() {
+  assert(lex->tk == LEX_RAW_STRING8 || lex->tk == LEX_RAW_STRING16);
+  bool is16Bit = lex->tk == LEX_RAW_STRING16;
   lex->tk = LEX_STR;
 #ifdef ESPR_UNICODE_SUPPORT
   lex->isUTF8 = false; // not supporting UTF8 raw strings yet
 #endif
   size_t length = (unsigned char)lex->currCh;
-  jslGetNextCh();
-  length |= ((unsigned char)lex->currCh)<<8;
+  if (is16Bit) {
+    jslGetNextCh();
+    length |= ((unsigned char)lex->currCh)<<8;
+  }
   jsvUnLock(lex->tokenValue);
   size_t stringPos = jsvStringIteratorGetIndex(&lex->it);
   lex->tokenValue = jsvNewFromStringVar(lex->sourceVar, stringPos, length);
@@ -627,7 +631,7 @@ void jslGetNextToken() {
     case JSLJT_SINGLE_CHAR:
       jslSingleChar();
       if (lex->tk == LEX_R_THIS) lex->hadThisKeyword=true;
-      else if (lex->tk == LEX_RAW_STRING) jslGetRawString();
+      else if (lex->tk == LEX_RAW_STRING8 || lex->tk == LEX_RAW_STRING16) jslGetRawString();
       break;
     case JSLJT_ID: {
       while (isAlphaInline(lex->currCh) || isNumericInline(lex->currCh) || lex->currCh=='$') {
@@ -1210,9 +1214,9 @@ static size_t _jslNewTokenisedStringFromLexer(JsvStringIterator *dstit, JsVar *d
       }
       atobChecker = 0;
       if (dstit) {
-        jsvStringIteratorSetCharAndNext(dstit, (char)LEX_RAW_STRING);
+        jsvStringIteratorSetCharAndNext(dstit, (char)((l<256) ? LEX_RAW_STRING8 : LEX_RAW_STRING16));
         jsvStringIteratorSetCharAndNext(dstit, (char)(l&255));
-        jsvStringIteratorSetCharAndNext(dstit, (char)(l>>8));
+        if (l>=256) jsvStringIteratorSetCharAndNext(dstit, (char)(l>>8));
         if (!v) v = jslGetTokenValueAsVar();
         JsvStringIterator sit;
         jsvStringIteratorNew(&sit, v, 0);
@@ -1222,7 +1226,7 @@ static size_t _jslNewTokenisedStringFromLexer(JsvStringIterator *dstit, JsVar *d
         jsvStringIteratorFree(&sit);
       }
       jsvUnLock(v);
-      length += 3 + l;
+      length += ((l<256)?2:3) + l;
     } else if (lex->tk==LEX_ID || // ---------------------------------  token = string of chars
         lex->tk==LEX_INT ||
         lex->tk==LEX_FLOAT ||
@@ -1379,9 +1383,10 @@ void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void
   jsvStringIteratorNew(&it, code, 0);
   while (jsvStringIteratorHasChar(&it)) {
     unsigned char ch = (unsigned char)jsvStringIteratorGetCharAndNext(&it);
-    if (ch==LEX_RAW_STRING) {
+    if (ch==LEX_RAW_STRING8 || ch==LEX_RAW_STRING16) {
       size_t length = (unsigned char)jsvStringIteratorGetCharAndNext(&it);
-      length |= ((unsigned char)jsvStringIteratorGetCharAndNext(&it))<<8;
+      if (ch==LEX_RAW_STRING16)
+        length |= ((unsigned char)jsvStringIteratorGetCharAndNext(&it))<<8;
       user_callback("\"", user_data);
       while (length--) {
         char ch = jsvStringIteratorGetCharAndNext(&it);
