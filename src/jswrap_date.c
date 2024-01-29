@@ -24,15 +24,15 @@ const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\
 const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
 #ifdef ESPR_LIMIT_DATE_RANGE
-
+// This rounds towards zero - which is not what the algorithm needs. Hence the range for Date() is further limited when ESPR_LIMIT_DATE_RANGE is set
 int integerDivideFloor(int a, int b) {
   return a/b;
 }
-
-#define INTEGER_DIVIDE_FLOOR(a,b) integerDivideFloor(a,b)
-
 #else
-#define INTEGER_DIVIDE_FLOOR(a,b) ((a<0 ? a-b+1 : a)/b)
+// This rounds down, which is what the algorithm needs
+int integerDivideFloor(int a, int b) {
+  return (a < 0 ? a-b+1 : a)/b;
+}
 #endif
 
 
@@ -49,16 +49,13 @@ int getDayNumberFromDate(int y, int m, int d) {
     jsExceptionHere(JSET_ERROR, "Date out of bounds");
     return 0; // Need to head off any overflow error
   }
-  if (m < 2) {
+  while (m < 2) {
     y--;
     m+=12;
   }
   // #2456 was created by integer division rounding towards zero, rather than the FLOOR-behaviour required by the algorithm.
-  // We create the same effect as FLOOR by subtracting the divisor-minus-one from the dividend if the dividend is negative
-  ans = INTEGER_DIVIDE_FLOOR(y,100);
-  d += INTEGER_DIVIDE_FLOOR(ans,4);
-  d += INTEGER_DIVIDE_FLOOR(y,4);
-  return 365*y - ans + 30*m + ((3*m+6)/5) + d - 719531;
+  ans = integerDivideFloor(y,100);
+  return 365*y + integerDivideFloor(y,4) - ans + integerDivideFloor(ans,4) + 30*m + ((3*m+6)/5) + d - 719531;
 }
 
 // Convert a number of days since 1970 into y,m,d. 0<=m<=11
@@ -68,14 +65,10 @@ void getDateFromDayNumber(int day, int *y, int *m, int *date) {
   int b,c,d;
 
   // Bug #2456 fixed here too
-  a -= INTEGER_DIVIDE_FLOOR(a,146097);
-  a += 146095;
-  a = INTEGER_DIVIDE_FLOOR(a,36524);
-  a = day + a - INTEGER_DIVIDE_FLOOR(a,4);
-  b = (a<<2) + 2877911;
-  b = INTEGER_DIVIDE_FLOOR(b,1461);
-  c = INTEGER_DIVIDE_FLOOR(b,4);
-  c = a + 719600 - 365*b - c;
+  a = integerDivideFloor(a - integerDivideFloor(a,146097) + 146095,36524);
+  a = day + a - integerDivideFloor(a,4);
+  b = integerDivideFloor((a<<2)+2877911,1461);
+  c = a + 719600 - 365*b - integerDivideFloor(b,4);
   d = (5*c-1)/153; // Floor behaviour not needed, as c is always positive
   if (date) *date=c-30*d-((3*d)/5);
   if (m) {
