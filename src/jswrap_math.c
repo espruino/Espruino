@@ -145,15 +145,12 @@ This is a standard JavaScript class that contains useful Maths routines
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "abs",
-  "generate" : "jswrap_math_abs",
+  "generate" : "fabs",
   "params" : [
     ["x","float","A floating point value"]
   ],
   "return" : ["float","The absolute value of x (eg, ```Math.abs(2)==2```, but also ```Math.abs(-2)==2```)"]
 }*/
-JsVarFloat jswrap_math_abs(JsVarFloat x) {
-  return (x<0)?-x:x;
-}
 /*JSON{
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH_EXTREME",
