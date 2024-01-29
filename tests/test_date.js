@@ -4,6 +4,8 @@ try { new Date(4.1e16); pass--; } catch(e) { };
 try { new Date(-4.1e16); pass--; } catch(e) { };
 try { new Date(2000000,0); pass--; } catch(e) { };
 try { new Date(-2000000,0); pass--; } catch(e) { };
+// This next Date() constructor use to give a segfault. However it is now out of range for the PICO_R1_3
+try { a = new Date(-12,8).toString(); if (!(a== "Wed Aug 31 -12 00:00:00 GMT+0000")) pass--; } catch (e) { };
 
 var gmt = [
 [ Date.parse("2011-10-20") , 1319068800000.0 ],
@@ -17,8 +19,9 @@ var gmt = [
 [ new Date("Fri, 20 Jun 2014 15:27:22 GMT").toString(), "Fri Jun 20 2014 15:27:22 GMT+0000"],
 [ new Date("Fri, 20 Jun 2014 15:27:22 GMT").toISOString(), "2014-06-20T15:27:22.000Z"],
 [ new Date("Fri, 20 Jun 2014 17:27:22 GMT+0200").toISOString(), "2014-06-20T15:27:22.000Z"],
-[ new Date("5000-1-1").toISOString(), "5000-01-01T00:00:00.000Z"],
-[ new Date(-12,8).toString(), "Wed Aug 31 -12 00:00:00 GMT+0000"]
+[ new Date("5000-1-1").toString(), "Wed Jan 1 5000 00:00:00 GMT+0000"],
+[ new Date(1500,0,1).toString(), "Mon Jan 1 1500 00:00:00 GMT+0000"],
+[ new Date(1500,0,1).getTime(), -14831769600000]
 ];
 
 gmt.forEach(function(n) { if (n[0]==n[1]) pass++; });

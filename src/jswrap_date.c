@@ -24,7 +24,13 @@ const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\
 const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
 #ifdef ESPR_LIMIT_DATE_RANGE
-#define INTEGER_DIVIDE_FLOOR(a,b) (a/b)
+
+int integerDivideFloor(int a, int b) {
+  return a/b;
+}
+
+#define INTEGER_DIVIDE_FLOOR(a,b) integerDivideFloor(a,b)
+
 #else
 #define INTEGER_DIVIDE_FLOOR(a,b) ((a<0 ? a-b+1 : a)/b)
 #endif
@@ -36,9 +42,9 @@ int getDayNumberFromDate(int y, int m, int d) {
   int ans;
   
 #ifdef ESPR_LIMIT_DATE_RANGE
-  if (y < 1601 || y > 1250000) {
+  if (y < 1500 || y >= 1250000) { // Should actually work down to 1101, but since the Gregorian calendar started in 1582 . . .
 #else
-  if (y < -1265580 || y > 1269519) {
+  if (y < -1250000 || y >= 1250000) {
 #endif
     jsExceptionHere(JSET_ERROR, "Date out of bounds");
     return 0; // Need to head off any overflow error
@@ -402,9 +408,9 @@ Set the time/date of this Date class
  */
 JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue) {
 #ifdef ESPR_LIMIT_DATE_RANGE
-  if (timeValue < -1.16e13 || timeValue > 3.0e16) {
+  if (timeValue < -1.48317696e13 || timeValue >= 3.93840543168E+016) { // This should actually work down to 1101AD . . .
 #else
-  if (fabs(timeValue) > 4.0e16) {
+  if (timeValue < -3.95083256832E+016 || timeValue >= 3.93840543168E+016) {
 #endif
     jsExceptionHere(JSET_ERROR, "Date out of bounds");
     return 0.0;
