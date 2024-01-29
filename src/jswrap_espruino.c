@@ -1179,16 +1179,15 @@ JsVar *jswrap_espruino_toJS(JsVar *v) {
   "return" : ["JsVar","A String"],
   "return_object" : "String"
 }
-This creates and returns a special type of string, which actually references a
-specific memory address. It can be used in order to use sections of Flash memory
-directly in Espruino (for example to execute code straight from flash memory
-with `eval(E.memoryArea( ... ))`)
+This creates and returns a special type of string, which references a
+specific address in memory. It can be used in order to use sections of
+Flash memory directly in Espruino (for example `Storage` uses it
+to allow files to be read directly from Flash).
 
-**Note:** This is only tested on STM32-based platforms (Espruino Original and
-Espruino Pico) at the moment.
+**Note:** As of 2v21, Calling `E.memoryArea` with an address of 0 will return `undefined`
 */
 JsVar *jswrap_espruino_memoryArea(int addr, int len) {
-  if (len<0) return 0;
+  if (!addr || len<0) return 0;
   // hack for ESP8266/ESP32 where the address can be different
   size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
   return jsvNewNativeString((char*)mappedAddr, (size_t)len);
