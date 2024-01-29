@@ -1374,32 +1374,51 @@ bool jslNeedSpaceBetween(unsigned char lastch, unsigned char ch) {
          (ch>=_LEX_R_LIST_START || isAlpha((char)ch) || isNumeric((char)ch));
 }
 
+/* Called by jslPrintTokenisedString/jslPrintTokenLineMarker. This takes a string iterator and
+outputs it via user_callback(user_data), but it converts pretokenised characters and strings
+as it does so. */
+static void jslPrintTokenisedChar(JsvStringIterator *it, unsigned char *lastch, size_t *col, size_t *chars, vcbprintf_callback user_callback, void *user_data) {
+  unsigned char ch = (unsigned char)jsvStringIteratorGetCharAndNext(it);
+  // Decoding raw strings
+  if (ch==LEX_RAW_STRING8 || ch==LEX_RAW_STRING16) {
+    size_t length = (unsigned char)jsvStringIteratorGetCharAndNext(it);
+    if (ch==LEX_RAW_STRING16) {
+      (*chars)++;
+      length |= ((unsigned char)jsvStringIteratorGetCharAndNext(it))<<8;
+    }
+    (*chars)+=2; // token plus length
+    user_callback("\"", user_data);
+    while (length--) {
+      char ch = jsvStringIteratorGetCharAndNext(it);
+      const char *s = escapeCharacter(ch, 0, false);
+      (*chars)++;
+      user_callback(s, user_data);
+    }
+    user_callback("\"", user_data);
+    return;
+  }
+  if (jslNeedSpaceBetween(*lastch, ch)) {
+    (*col)++;
+    user_callback(" ", user_data);
+  }
+  char buf[32];
+  jslFunctionCharAsString(ch, buf, sizeof(buf));
+  size_t len = strlen(buf);
+  if (len) (*col) += len-1;
+  user_callback(buf, user_data);
+  (*chars)++;
+  *lastch = ch;
+}
+
 /// Output a tokenised string, replacing tokens with their text equivalents
 void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void *user_data) {
   // reconstruct the tokenised output into something more readable
-  char buf[32];
   unsigned char lastch = 0;
+  size_t col=0, chars=0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, code, 0);
   while (jsvStringIteratorHasChar(&it)) {
-    unsigned char ch = (unsigned char)jsvStringIteratorGetCharAndNext(&it);
-    if (ch==LEX_RAW_STRING8 || ch==LEX_RAW_STRING16) {
-      size_t length = (unsigned char)jsvStringIteratorGetCharAndNext(&it);
-      if (ch==LEX_RAW_STRING16)
-        length |= ((unsigned char)jsvStringIteratorGetCharAndNext(&it))<<8;
-      user_callback("\"", user_data);
-      while (length--) {
-        char ch = jsvStringIteratorGetCharAndNext(&it);
-        user_callback(escapeCharacter(ch, 0, false), user_data);
-      }
-      user_callback("\"", user_data);
-    } else {
-      if (jslNeedSpaceBetween(lastch, ch))
-        user_callback(" ", user_data);
-      jslFunctionCharAsString(ch, buf, sizeof(buf));
-      user_callback(buf, user_data);
-    }
-    lastch = ch;
+    jslPrintTokenisedChar(&it, &lastch, &col, &chars, user_callback, user_data);
   }
   jsvStringIteratorFree(&it);
 }
@@ -1453,27 +1472,15 @@ void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, 
   }
 
   // print the string until the end of the line, or 60 chars (whichever is less)
-  int chars = 0;
+  size_t chars = 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, lex->sourceVar, startOfLine);
   unsigned char lastch = 0;
   while (jsvStringIteratorHasChar(&it) && chars<60 && lastch!=255) {
-    unsigned char ch = (unsigned char)jsvStringIteratorGetCharAndNext(&it);
-    if (ch == '\n') break;
-    if (jslNeedSpaceBetween(lastch, ch)) {
-      col++;
-      user_callback(" ", user_data);
-    }
-    char buf[32];
-    jslFunctionCharAsString(ch, buf, sizeof(buf));
-    size_t len = strlen(buf);
-    if (len) col += len-1;
-    user_callback(buf, user_data);
-    chars++;
-    lastch = ch;
+    if (jsvStringIteratorGetChar(&it) == '\n') break;
+    jslPrintTokenisedChar(&it, &lastch, &col, &chars, user_callback, user_data);
   }
   jsvStringIteratorFree(&it);
-
   if (lineLength > 60)
     user_callback("...", user_data);
   user_callback("\n", user_data);
