@@ -87,7 +87,7 @@ bool jswrap_stepper_idle() {
     jsvObjectIteratorNew(&it, steppers);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *stepper = jsvObjectIteratorGetValue(&it);
-      bool running = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(stepper, "running"));
+      bool running = jsvObjectGetBoolChild(stepper, "running");
       Pin pins[4];
       if (running) {
         UtilTimerTask task;
@@ -97,12 +97,12 @@ bool jswrap_stepper_idle() {
           jsiQueueObjectCallbacks(stepper, JS_EVENT_PREFIX"finish", NULL, 0);
           // Update current position
           jsvObjectSetChildAndUnLock(stepper, "pos", jsvNewFromInteger(
-            jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(stepper, "pos"))+
-            jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(stepper, "_direction"))));
+            jsvObjectGetIntegerChild(stepper, "pos")+
+            jsvObjectGetIntegerChild(stepper, "_direction")));
           jsvObjectRemoveChild(stepper, "_direction");
-          if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(stepper, "_turnOff"))) {
+          if (jsvObjectGetBoolChild(stepper, "_turnOff")) {
             Pin pins[4];
-            int offpattern = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(stepper, "offpattern"));
+            int offpattern = jsvObjectGetIntegerChild(stepper, "offpattern");
             if (jswrap_stepper_getPins(stepper, pins)) {
               for (int i=0;i<4;i++)
                 jshPinSetValue(pins[i], (offpattern>>i)&1);
@@ -148,7 +148,7 @@ void jswrap_stepper_kill() { // be sure to remove all stepper instances...
     jsvObjectIteratorNew(&it, steppers);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *stepper = jsvObjectIteratorGetValue(&it);
-      bool running = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(stepper, "running"));
+      bool running = jsvObjectGetBoolChild(stepper, "running");
       if (running) {
         Pin pins[4];
         if (!jswrap_stepper_getPins(stepper, pins) || !jstStopPinTimerTask(pins[0]))
@@ -269,7 +269,7 @@ Move a certain number of steps in either direction, `options` can be:
 
  */
 JsVar *jswrap_stepper_moveTo(JsVar *stepper, int direction, JsVar *options) {
-  bool running = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(stepper, "running"));
+  bool running = jsvObjectGetBoolChild(stepper, "running");
   if (running) {
     jsExceptionHere(JSET_ERROR, "Stepper is already running");
     return 0;
@@ -277,9 +277,9 @@ JsVar *jswrap_stepper_moveTo(JsVar *stepper, int direction, JsVar *options) {
   if (direction==0) // resolve immediately if not moving
     return jswrap_promise_resolve(NULL);
 
-  JsVarFloat freq = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(stepper, "freq"));;
+  JsVarFloat freq = jsvObjectGetFloatChild(stepper, "freq");;
   if (jsvIsObject(options)) {
-    JsVarFloat t = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(options, "freq"));
+    JsVarFloat t = jsvObjectGetFloatChild(options, "freq");
     if (isfinite(t)) freq = t;
   } else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
@@ -288,7 +288,7 @@ JsVar *jswrap_stepper_moveTo(JsVar *stepper, int direction, JsVar *options) {
     jsExceptionHere(JSET_ERROR, "Frequency must be above 0.001Hz");
     return 0;
   }
-  bool turnOff = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "turnOff"));
+  bool turnOff = jsvObjectGetBoolChild(options, "turnOff");
 
 
   JsVar *promise = jspromise_create();
@@ -300,7 +300,7 @@ JsVar *jswrap_stepper_moveTo(JsVar *stepper, int direction, JsVar *options) {
   task.type = UET_STEP;
   jswrap_stepper_getPins(stepper, task.data.step.pins);
   task.data.step.steps = direction;
-  task.data.step.pIndex = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(stepper, "pos"))&7;
+  task.data.step.pIndex = jsvObjectGetIntegerChild(stepper, "pos")&7;
   task.data.step.pattern[0] = 0b00010010;
   task.data.step.pattern[1] = 0b01001000;
   task.data.step.pattern[2] = 0b00010010;
@@ -340,13 +340,13 @@ Stop a stepper motor that is currently running.
 You can specify `.stop({turnOff:true})` to force the stepper motor to turn off.
  */
 void jswrap_stepper_stop(JsVar *stepper, JsVar *options) {
-  bool running = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(stepper, "running"));
+  bool running = jsvObjectGetBoolChild(stepper, "running");
   if (!running) {
     jsExceptionHere(JSET_ERROR, "Stepper is not running");
     return;
   }
   if (jsvIsObject(options)) {
-    bool turnOff = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "turnOff"));
+    bool turnOff = jsvObjectGetBoolChild(options, "turnOff");
     if (turnOff)
       jsvObjectSetChildAndUnLock(stepper, "_turnOff", jsvNewFromBool(turnOff));
     // the _idle handler will see _turnOff and will turn off the stepper
@@ -359,7 +359,7 @@ void jswrap_stepper_stop(JsVar *stepper, JsVar *options) {
     if (jstGetLastPinTimerTask(pins[0], &task)) {
       // update step count to where the timer was when we stopped
       jsvObjectSetChildAndUnLock(stepper, "_direction", jsvNewFromInteger(
-            jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(stepper, "_direction")) -
+            jsvObjectGetIntegerChild(stepper, "_direction") -
             task.data.step.steps));
     }
     ok = jstStopPinTimerTask(pins[0]);

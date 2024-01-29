@@ -625,7 +625,7 @@ static NO_INLINE int i2c_get_address(JsVar *address, bool *sendStop) {
   if (jsvIsObject(address)) {
     JsVar *stopVar = jsvObjectGetChildIfExists(address, "stop");
     if (stopVar) *sendStop = jsvGetBoolAndUnLock(stopVar);
-    return jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(address, "address"));
+    return jsvObjectGetIntegerChild(address, "address");
   } else
     return jsvGetInteger(address);
 }
@@ -653,7 +653,7 @@ void _jswrap_i2c_writeTo(JsVar *parent, IOEventFlags device, int address, bool s
     JshI2CInfo inf;
     JsVar *options = jsvObjectGetChildIfExists(parent, DEVICE_OPTIONS_NAME);
     if (jsi2cPopulateI2CInfo(&inf, options)) {
-      inf.started = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(parent, "started"));
+      inf.started = jsvObjectGetBoolChild(parent, "started");
       jsi2cWrite(&inf, (unsigned char)address, (int)dataLen, (unsigned char*)dataPtr, sendStop);
     }
     jsvUnLock2(jsvObjectSetChild(parent, "started", jsvNewFromBool(inf.started)), options);
@@ -705,7 +705,7 @@ JsVar *_jswrap_i2c_readFrom(JsVar *parent, IOEventFlags device, int address,  bo
     JshI2CInfo inf;
     JsVar *options = jsvObjectGetChildIfExists(parent, DEVICE_OPTIONS_NAME);
     if (jsi2cPopulateI2CInfo(&inf, options)) {
-      inf.started = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(parent, "started"));
+      inf.started = jsvObjectGetBoolChild(parent, "started");
       jsi2cRead(&inf, (unsigned char)address, nBytes, buf, sendStop);
     }
     jsvUnLock2(jsvObjectSetChild(parent, "started", jsvNewFromBool(inf.started)), options);

@@ -3180,6 +3180,21 @@ JsVar *jsvObjectGetChildI(JsVar *obj, const char *name) {
   return jsvSkipNameAndUnLock(jsvFindChildFromStringI(obj, name));
 }
 
+/// Same as jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(obj, name))
+bool jsvObjectGetBoolChild(JsVar *obj, const char *name) {
+  return jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(obj, name));
+}
+
+/// Same as jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name))
+JsVarInt jsvObjectGetIntegerChild(JsVar *obj, const char *name) {
+  return jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name));
+}
+
+/// Same as jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(obj, name))
+JsVarFloat jsvObjectGetFloatChild(JsVar *obj, const char *name) {
+  return jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(obj, name));
+}
+
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
   assert(jsvHasChildren(obj));

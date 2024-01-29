@@ -61,7 +61,7 @@ bool jswrap_waveform_idle() {
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *waveform = jsvObjectIteratorGetValue(&it);
 
-      bool running = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(waveform, "running"));
+      bool running = jsvObjectGetBoolChild(waveform, "running");
       if (running) {
         JsVar *buffer = jswrap_waveform_getBuffer(waveform,0,0);
         UtilTimerTask task;
@@ -116,7 +116,7 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
     jsvObjectIteratorNew(&it, waveforms);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *waveform = jsvObjectIteratorGetValue(&it);
-      bool running = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(waveform, "running"));
+      bool running = jsvObjectGetBoolChild(waveform, "running");
       if (running) {
         JsVar *buffer = jswrap_waveform_getBuffer(waveform,0,0);
         if (!jstStopBufferTimerTask(buffer)) {
@@ -163,9 +163,9 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
   bool doubleBuffer = false;
   bool use16bit = false;
   if (jsvIsObject(options)) {
-    doubleBuffer = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "doubleBuffer"));
+    doubleBuffer = jsvObjectGetBoolChild(options, "doubleBuffer");
 
-    int bits = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "bits"));
+    int bits = (int)jsvObjectGetIntegerChild(options, "bits");
     if (bits!=0 && bits!=8 && bits!=16) {
       jsExceptionHere(JSET_ERROR, "Invalid number of bits");
       return 0;
@@ -193,7 +193,7 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
 }
 
 static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options, bool isWriting) {
-  bool running = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(waveform, "running"));
+  bool running = jsvObjectGetBoolChild(waveform, "running");
   if (running) {
     jsExceptionHere(JSET_ERROR, "Waveform is already running");
     return;
@@ -210,10 +210,10 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
   JsSysTime startTime = 0;
   bool repeat = false;
   if (jsvIsObject(options)) {
-    JsVarFloat t = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(options, "time"));
+    JsVarFloat t = jsvObjectGetFloatChild(options, "time");
     if (isfinite(t) && t>0)
       startTime = jshGetTimeFromMilliseconds(t*1000) - jshGetSystemTime();
-    repeat = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "repeat"));
+    repeat = jsvObjectGetBoolChild(options, "repeat");
   } else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
   }
@@ -298,7 +298,7 @@ void jswrap_waveform_startInput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar
 Stop a waveform that is currently outputting
  */
 void jswrap_waveform_stop(JsVar *waveform) {
-  bool running = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(waveform, "running"));
+  bool running = jsvObjectGetBoolChild(waveform, "running");
   if (!running) {
     jsExceptionHere(JSET_ERROR, "Waveform is not running");
     return;

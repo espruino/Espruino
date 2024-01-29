@@ -132,7 +132,7 @@ bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callbac
   if (!networkGetFromVar(&net)) return false;
 
   // if previously completely disconnected, try and reconnect
-  if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(wlanObj,JS_HIDDEN_CHAR_STR"DIS"))) {
+  if (jsvObjectGetBoolChild(wlanObj,JS_HIDDEN_CHAR_STR"DIS")) {
     cc3000_initialise(wlanObj);
     jsvObjectSetChildAndUnLock(wlanObj,JS_HIDDEN_CHAR_STR"DIS", jsvNewFromBool(false));
   }

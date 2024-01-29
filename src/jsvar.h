@@ -682,6 +682,12 @@ JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
 JsVar *jsvObjectGetChildIfExists(JsVar *obj, const char *name);
 /// Get the named child of an object using a case-insensitive search
 JsVar *jsvObjectGetChildI(JsVar *obj, const char *name);
+/// Same as jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(obj, name))
+bool jsvObjectGetBoolChild(JsVar *obj, const char *name);
+/// Same as jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name))
+JsVarInt jsvObjectGetIntegerChild(JsVar *obj, const char *name);
+/// Same as jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(obj, name))
+JsVarFloat jsvObjectGetFloatChild(JsVar *obj, const char *name);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)

@@ -76,7 +76,7 @@ JsVar *jswrap_dataview_get(JsVar *dataview, JsVarDataArrayBufferViewType type, i
     jsvUnLock(buffer);
     return 0;
   }
-  byteOffset += jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(dataview, "byteOffset"));
+  byteOffset += jsvObjectGetIntegerChild(dataview, "byteOffset");
   JsVarInt length = JSV_ARRAYBUFFER_GET_SIZE(type);
   // TODO: range error based on byteLength?
 
@@ -96,7 +96,7 @@ void jswrap_dataview_set(JsVar *dataview, JsVarDataArrayBufferViewType type, int
     jsvUnLock(buffer);
     return;
   }
-  byteOffset += jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(dataview, "byteOffset"));
+  byteOffset += jsvObjectGetIntegerChild(dataview, "byteOffset");
   JsVarInt length = JSV_ARRAYBUFFER_GET_SIZE(type);
   // TODO: range error based on byteLength?
   JsVar *arr = jswrap_typedarray_constructor(type, buffer, byteOffset, length);

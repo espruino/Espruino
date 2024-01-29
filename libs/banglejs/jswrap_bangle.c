@@ -3733,23 +3733,23 @@ NO_INLINE void jswrap_banglejs_init() {
     jswrap_banglejs_setTheme();
     v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"theme") : 0;
     if (jsvIsObject(v)) {
-      graphicsTheme.fg = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fg"));
-      graphicsTheme.bg = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bg"));
-      graphicsTheme.fg2 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fg2"));
-      graphicsTheme.bg2 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bg2"));
-      graphicsTheme.fgH = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"fgH"));
-      graphicsTheme.bgH = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"bgH"));
-      graphicsTheme.dark = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(v,"dark"));
+      graphicsTheme.fg = jsvObjectGetIntegerChild(v,"fg");
+      graphicsTheme.bg = jsvObjectGetIntegerChild(v,"bg");
+      graphicsTheme.fg2 = jsvObjectGetIntegerChild(v,"fg2");
+      graphicsTheme.bg2 = jsvObjectGetIntegerChild(v,"bg2");
+      graphicsTheme.fgH = jsvObjectGetIntegerChild(v,"fgH");
+      graphicsTheme.bgH = jsvObjectGetIntegerChild(v,"bgH");
+      graphicsTheme.dark = jsvObjectGetBoolChild(v,"dark");
     }
     jsvUnLock(v);
   #ifdef TOUCH_DEVICE
     // load touchscreen calibration
     v = jsvIsObject(settings) ? jsvObjectGetChildIfExists(settings,"touch") : 0;
     if (jsvIsObject(v)) {
-      touchMinX = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"x1"));
-      touchMinY = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"y1"));
-      touchMaxX = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"x2"));
-      touchMaxY = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(v,"y2"));
+      touchMinX = jsvObjectGetIntegerChild(v,"x1");
+      touchMinY = jsvObjectGetIntegerChild(v,"y1");
+      touchMaxX = jsvObjectGetIntegerChild(v,"x2");
+      touchMaxY = jsvObjectGetIntegerChild(v,"y2");
     }
     jsvUnLock(v);
   #endif
@@ -5137,8 +5137,8 @@ JsVar *jswrap_banglejs_project(JsVar *latlong) {
   const double degToRad = PI / 180; // degree to radian conversion
   const double latMax = 85.0511287798; // clip latitude to sane values
   const double R = 6378137; // earth radius in m
-  double lat = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(latlong,"lat"));
-  double lon = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(latlong,"lon"));
+  double lat = jsvObjectGetFloatChild(latlong,"lat");
+  double lon = jsvObjectGetFloatChild(latlong,"lon");
   if (lat > latMax) lat=latMax;
   if (lat < -latMax) lat=-latMax;
   double s = sin(lat * degToRad);

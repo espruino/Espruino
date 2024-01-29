@@ -457,17 +457,17 @@ void gatts_char_init(JsvObjectIterator *ble_char_it){
   gatts_char[ble_char_pos].char_uuid.len = ESP_UUID_LEN_16;
   gatts_char[ble_char_pos].char_uuid.uuid.uuid16 = ble_uuid.uuid;
   gatts_char[ble_char_pos].char_perm = 0;
-  if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "broadcast")))
+  if (jsvObjectGetBoolChild(charVar, "broadcast"))
     gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_BROADCAST;
-  if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "notify")))
+  if (jsvObjectGetBoolChild(charVar, "notify"))
     gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_NOTIFY;
-  if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "indicate")))
+  if (jsvObjectGetBoolChild(charVar, "indicate"))
     gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_INDICATE;
-  if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "readable"))){
+  if (jsvObjectGetBoolChild(charVar, "readable")){
     gatts_char[ble_char_pos].char_perm += ESP_GATT_PERM_READ;
     gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_READ;
   }
-  if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "writable"))){
+  if (jsvObjectGetBoolChild(charVar, "writable")){
     gatts_char[ble_char_pos].char_perm += ESP_GATT_PERM_WRITE;
     gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_WRITE|ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
   }

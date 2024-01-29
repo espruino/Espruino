@@ -416,7 +416,7 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
   if ((socketType&ST_TYPE_MASK) == ST_UDP) {
     JsNetwork net;
     if (networkGetFromVar(&net)) {
-      int recvBufferSize = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "recvBufferSize"));
+      int recvBufferSize = jsvObjectGetIntegerChild(options, "recvBufferSize");
       if (recvBufferSize > net.data.recvBufferSize) {
         net.data.recvBufferSize = recvBufferSize;
         networkSet(&net);

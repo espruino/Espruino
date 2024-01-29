@@ -678,13 +678,13 @@ to detect the end of a file. As such you should not write character code 255
 
 JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
   bool isReadLine = len<0;
-  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"mode"));
+  char mode = (char)jsvObjectGetIntegerChild(f,"mode");
   if (mode!='r') {
     jsExceptionHere(JSET_ERROR, "Can't read in this mode");
     return 0;
   }
 
-  int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"chunk"));
+  int chunk = jsvObjectGetIntegerChild(f,"chunk");
   JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChildIfExists(f,"name"));
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;
@@ -693,7 +693,7 @@ JsVar *jswrap_storagefile_read_internal(JsVar *f, int len) {
   uint32_t addr = jsfFindFile(fname, &header);
   if (!addr) return 0; // end of file/no file chunk found
   int fileLen = (int)jsfGetFileSize(&header);
-  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"offset"));
+  int offset = jsvObjectGetIntegerChild(f,"offset");
 
   JsVar *result = 0;
   char buf[32];
@@ -868,7 +868,7 @@ Append the given data to a file. You should not attempt to append `"\xFF"`
 (character code 255).
 */
 void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
-  char mode = (char)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"mode"));
+  char mode = (char)jsvObjectGetIntegerChild(f,"mode");
   if (mode!='w' && mode!='a') {
     jsExceptionHere(JSET_ERROR, "Can't write in this mode");
     return;
@@ -881,8 +881,8 @@ void jswrap_storagefile_write(JsVar *f, JsVar *_data) {
     jsvUnLock(data);
     return;
   }
-  int offset = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"offset"));
-  int chunk = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(f,"chunk"));
+  int offset = jsvObjectGetIntegerChild(f,"offset");
+  int chunk = jsvObjectGetIntegerChild(f,"chunk");
   JsfFileName fname = jsfNameFromVarAndUnLock(jsvObjectGetChildIfExists(f,"name"));
   int fnamei = sizeof(fname)-1;
   while (fnamei && fname.c[fnamei-1]==0) fnamei--;

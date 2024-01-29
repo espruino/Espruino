@@ -90,7 +90,7 @@ const char *jswrap_crypto_error_to_str(int err) {
     case MBEDTLS_ERR_MD_ALLOC_FAILED: return "Not enough memory";
     case MBEDTLS_ERR_MD_FEATURE_UNAVAILABLE: return "Feature unavailable";
     case MBEDTLS_ERR_MD_BAD_INPUT_DATA: return "Bad input data";
-#ifdef USE_AES	
+#ifdef USE_AES
     case MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH: return "Invalid input length";
 #endif
   }
@@ -284,9 +284,9 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
 
 
   if (jsvIsObject(options)) {
-    keySize = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "keySize"));
+    keySize = jsvObjectGetIntegerChild(options, "keySize");
     if (keySize<=0) keySize=128/32;
-    iterations = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "iterations"));
+    iterations = jsvObjectGetIntegerChild(options, "iterations");
     if (iterations<1) iterations = 1;
 
     JsVar *hashVar = jsvObjectGetChildIfExists(options, "hasher");

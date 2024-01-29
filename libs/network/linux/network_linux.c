@@ -127,7 +127,7 @@ int net_linux_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
     }
 
     if (scktType != SOCK_DGRAM ||
-        jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "reuseAddr"))) {
+        jsvObjectGetBoolChild(options, "reuseAddr")) {
       int optval = 1;
       if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
         jsWarn("setsockopt(SO_REUSADDR) failed\n");

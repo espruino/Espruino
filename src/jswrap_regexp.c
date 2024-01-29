@@ -353,7 +353,7 @@ Or with groups `/W(o)rld/.exec("Hello World")` returns:
  */
 JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *arg) {
   JsVar *str = jsvAsString(arg);
-  JsVarInt lastIndex = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(parent, "lastIndex"));
+  JsVarInt lastIndex = jsvObjectGetIntegerChild(parent, "lastIndex");
   JsVar *regex = jsvObjectGetChildIfExists(parent, "source");
   if (!jsvIsString(regex) || lastIndex>(JsVarInt)jsvGetStringLength(str)) {
     jsvUnLock2(str,regex);
@@ -376,7 +376,7 @@ JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *arg) {
     // if it's global, set lastIndex
     if (jswrap_regexp_hasFlag(parent,'g')) {
       JsVar *matchStr = jsvGetArrayItem(rmatch,0);
-      lastIndex = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(rmatch, "index")) +
+      lastIndex = jsvObjectGetIntegerChild(rmatch, "index") +
                   (JsVarInt)jsvGetStringLength(matchStr);
       jsvUnLock(matchStr);
     } else

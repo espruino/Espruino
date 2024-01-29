@@ -1703,8 +1703,8 @@ void jswrap_ble_updateServices(JsVar *data) {
           JsVar *charVar = jsvObjectIteratorGetValue(&serviceit);
           JsVar *charValue = jsvObjectGetChildIfExists(charVar, "value");
 
-          bool notification_requested = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "notify"));
-          bool indication_requested = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(charVar, "indicate"));
+          bool notification_requested = jsvObjectGetBoolChild(charVar, "notify");
+          bool indication_requested = jsvObjectGetBoolChild(charVar, "indicate");
 
           if (charValue) {
             JSV_GET_AS_CHAR_ARRAY(vPtr, vLen, charValue);
@@ -3386,7 +3386,7 @@ JsVar *jswrap_ble_requestDevice(JsVar *options) {
   }
   jsvUnLock(filters);
 
-  JsVarFloat timeout = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(options, "timeout"));
+  JsVarFloat timeout = jsvObjectGetFloatChild(options, "timeout");
   if (isnan(timeout) || timeout<=0) timeout = 2000;
 
   JsVar *promise = 0;
@@ -3554,8 +3554,8 @@ void jswrap_ble_setConnectionInterval(JsVar *interval) {
   } else if (jsvIsObject(interval)) {
     // disable auto interval
     bleStatus |= BLE_DISABLE_DYNAMIC_INTERVAL;
-    JsVarFloat min = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(interval,"minInterval"));
-    JsVarFloat max = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(interval,"maxInterval"));
+    JsVarFloat min = jsvObjectGetFloatChild(interval,"minInterval");
+    JsVarFloat max = jsvObjectGetFloatChild(interval,"maxInterval");
     jsble_check_error(jsble_set_periph_connection_interval(min, max));
   }
 #endif
@@ -3946,7 +3946,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTServer_connect(JsVar *parent, JsVar *option
   jsvUnLock(device);
 
   // we're already connected - just return a resolved promise
-  if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(parent,"connected"))) {
+  if (jsvObjectGetBoolChild(parent,"connected")) {
     return jswrap_promise_resolve(parent);
   }
 
@@ -4491,7 +4491,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
 
   // Set our characteristic's handle up in the list of handles to notify for
   // TODO: What happens when we close the connection and re-open another?
-  uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
+  uint16_t handle = (uint16_t)jsvObjectGetIntegerChild(characteristic, "handle_value");
   JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", JSV_ARRAY);
   if (handles) {
     jsvSetArrayItem(handles, handle, characteristic);
@@ -4541,7 +4541,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *cha
   uint16_t central_conn_handle = jswrap_ble_BluetoothRemoteGATTCharacteristic_getHandle(characteristic);
 
   // Remove our characteristic handle from the list of handles to notify for
-  uint16_t handle = (uint16_t)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(characteristic, "handle_value"));
+  uint16_t handle = (uint16_t)jsvObjectGetIntegerChild(characteristic, "handle_value");
   JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", JSV_ARRAY);
   if (handles) {
     jsvSetArrayItem(handles, handle, 0);

@@ -13,6 +13,7 @@
             E.memoryArea(0, ...) now returns `undefined`
             Fix issue using Flat/Flash/Native Strings to create fields in objects
             Optimise pretokenised Strings so we load very short strings direct to RAM
+            Add jsvGet...Child functions to replace common call patterns - saves 280 bytes on Pico
 
      2v20 : Ensure String.charCodeAt returns NaN for out of bounds chars
             Bangle.js2: When rendering overlays, *do not* use the current FG/BG color for 1 bit overlays

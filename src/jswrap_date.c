@@ -361,7 +361,7 @@ Return the number of milliseconds since 1970
 Return the number of milliseconds since 1970
  */
 JsVarFloat jswrap_date_getTime(JsVar *date) {
-  return jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(date, "ms"));
+  return jsvObjectGetFloatChild(date, "ms");
 }
 /*JSON{
   "type" : "method",

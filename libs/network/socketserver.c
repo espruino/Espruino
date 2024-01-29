@@ -969,7 +969,7 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data, Js
       jsvUnLock(headers);
       if (!hasHostHeader) {
         JsVar *host = jsvObjectGetChildIfExists(options, "host");
-        int port = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "port"));
+        int port = (int)jsvObjectGetIntegerChild(options, "port");
         if (port>0 && port!=80)
           jsvAppendPrintf(sendData, "Host: %v:%d\r\n", host, port);
         else
@@ -1026,7 +1026,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
   SocketType socketType = socketGetType(httpClientReqVar);
 
   JsVar *options = jsvObjectGetChildIfExists(httpClientReqVar, HTTP_NAME_OPTIONS_VAR);
-  unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "port"));
+  unsigned short port = (unsigned short)jsvObjectGetIntegerChild(options, "port");
 
   uint32_t host_addr = 0;
   JsVar *hostNameVar = jsvObjectGetChildIfExists(options, "host");

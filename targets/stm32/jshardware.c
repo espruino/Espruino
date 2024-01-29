@@ -3040,10 +3040,10 @@ int jshSetSystemClockPClk(JsVar *options, const char *clkName) {
 unsigned int jshSetSystemClock(JsVar *options) {
   // see system_stm32f4xx.c for clock configurations
 #ifdef STM32F4
-  unsigned int m = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "M"));
-  unsigned int n = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "N"));
-  unsigned int p = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "P"));
-  unsigned int q = (unsigned int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "Q"));
+  unsigned int m = (unsigned int)jsvObjectGetIntegerChild(options, "M");
+  unsigned int n = (unsigned int)jsvObjectGetIntegerChild(options, "N");
+  unsigned int p = (unsigned int)jsvObjectGetIntegerChild(options, "P");
+  unsigned int q = (unsigned int)jsvObjectGetIntegerChild(options, "Q");
   if (!IS_RCC_PLLM_VALUE(m)) {
     jsExceptionHere(JSET_ERROR, "Invalid PLL M value %d", m);
     return 0;

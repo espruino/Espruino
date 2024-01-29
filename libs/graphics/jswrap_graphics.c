@@ -126,9 +126,9 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
     } else
 #endif
     { // Normal image object
-      info->width = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "width"));
-      info->height = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "height"));
-      info->bpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(image, "bpp"));
+      info->width = (int)jsvObjectGetIntegerChild(image, "width");
+      info->height = (int)jsvObjectGetIntegerChild(image, "height");
+      info->bpp = (int)jsvObjectGetIntegerChild(image, "bpp");
       if (info->bpp<=0) info->bpp=1;
     }
     // Get the buffer for image data - this is the same in Graphics and Image objects
@@ -631,13 +631,13 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   gfx.graphicsVar = parent;
 
   if (jsvIsObject(options)) {
-    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "zigzag")))
+    if (jsvObjectGetBoolChild(options, "zigzag"))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG);
-    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "msb")))
+    if (jsvObjectGetBoolChild(options, "msb"))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_MSB);
-    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "interleavex")))
+    if (jsvObjectGetBoolChild(options, "interleavex"))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX);
-    if (jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "vertical_byte"))) {
+    if (jsvObjectGetBoolChild(options, "vertical_byte")) {
       if (gfx.data.bpp==1)
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE);
       else {
@@ -3314,17 +3314,17 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #endif
   if (jsvIsObject(options)) {
     // support for multi-frame rendering
-    int frame = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options,"frame"));
+    int frame = jsvObjectGetIntegerChild(options,"frame");
     if (frame>0)
       img.bitmapOffset += img.bitmapLength * frame;
     // rotate, scale
-    scale = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(options,"scale"));
+    scale = jsvObjectGetFloatChild(options,"scale");
     if (!isfinite(scale) || scale<=0) scale=1;
-    rotate = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(options,"rotate"));
+    rotate = jsvObjectGetFloatChild(options,"rotate");
     centerImage = isfinite(rotate);
     if (!centerImage) rotate = 0;
 #ifndef SAVE_ON_FLASH
-    filter = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options,"filter"));
+    filter = jsvObjectGetBoolChild(options,"filter");
 #endif
   }
 
@@ -3570,19 +3570,19 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
     if (jsvIsObject(layer)) {
       JsVar *image = jsvObjectGetChildIfExists(layer,"image");
       if (_jswrap_graphics_parseImage(&gfx, image, 0, &layers[i].img)) {
-        layers[i].x1 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(layer,"x"));
-        layers[i].y1 = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(layer,"y"));
+        layers[i].x1 = jsvObjectGetIntegerChild(layer,"x");
+        layers[i].y1 = jsvObjectGetIntegerChild(layer,"y");
         // rotate, scale
-        layers[i].scale = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(layer,"scale"));
+        layers[i].scale = jsvObjectGetFloatChild(layer,"scale");
         if (!isfinite(layers[i].scale) || layers[i].scale<=0)
           layers[i].scale=1;
-        layers[i].rotate = jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(layer,"rotate"));
+        layers[i].rotate = jsvObjectGetFloatChild(layer,"rotate");
         if (!isfinite(layers[i].rotate)) layers[i].rotate=0;
-        layers[i].center = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(layer,"center"));
-        layers[i].repeat = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(layer,"repeat"));
+        layers[i].center = jsvObjectGetBoolChild(layer,"center");
+        layers[i].repeat = jsvObjectGetBoolChild(layer,"repeat");
         _jswrap_drawImageLayerInit(&layers[i]);
         // add the calculated bounds to our default bounds
-        if (!jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(layer,"nobounds"))) {
+        if (!jsvObjectGetBoolChild(layer,"nobounds")) {
           if (layers[i].x1<x) x=layers[i].x1;
           if (layers[i].y1<y) y=layers[i].y1;
           if (layers[i].x2>x+width) width=layers[i].x2-x;
@@ -4236,7 +4236,7 @@ JsVar *jswrap_graphics_quadraticBezier( JsVar *parent, JsVar *arr, JsVar *option
   jsvIteratorFree(&it);
 
 
-  if (jsvIsObject(options)) count = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options,"count"));
+  if (jsvIsObject(options)) count = jsvObjectGetIntegerChild(options,"count");
 
   const int FP_MUL = 4096;
   const int FP_SHIFT = 12;
