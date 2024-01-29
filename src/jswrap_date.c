@@ -402,7 +402,7 @@ Set the time/date of this Date class
  */
 JsVarFloat jswrap_date_setTime(JsVar *date, JsVarFloat timeValue) {
 #ifdef ESPR_LIMIT_DATE_RANGE
-  if (timeValue < -1.16e13 || timeValue > 3.0e16)
+  if (timeValue < -1.16e13 || timeValue > 3.0e16) {
 #else
   if (fabs(timeValue) > 4.0e16) {
 #endif
