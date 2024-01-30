@@ -107,4 +107,11 @@ g.clear().setFont("4x6");
 lines = g.wrapString("F\u00F6n K\u00FCr B\u00E4r", 200);
 SHOULD_BE(lines, ["F\u00F6n K\u00FCr B\u00E4r"]);
 
+// Using wrapstring from Storage
+require("Storage").write("x","Compacting...\nTakes approx\n1 minute")
+lines = g.wrapString(require("Storage").read("x"), 176)
+require("Storage").erase("x")
+SHOULD_BE(lines, ["Compacting...","Takes approx","1 minute"]);
+
+
 result = ok;

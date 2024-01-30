@@ -2441,8 +2441,12 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
           jsvUnLock(currentLine);
         }
         // Add the remaining bit of word
-        currentLine = jsvNewFromStringVar(str, wordStartIdx, currentPos-(wordStartIdx+1));
-        // jsvNewFromStringVar will create a unicode string is str was a unicode string
+        currentLine = jsvNewFromEmptyString(); // don't use jsvNewFromStringVar as it'll clone flash strings/etc
+        jsvAppendStringVar(currentLine, str, wordStartIdx, currentPos-(wordStartIdx+1));
+#ifdef ESPR_UNICODE_SUPPORT
+        if (jsvIsUTF8String(str))
+          currentLine = jsvNewUTF8StringAndUnLock(currentLine);
+#endif
         if (wasNewLine) wordBreakCharacter = ' ';
       }
       if (canSplitAfter && !canBreakOnCh) currentPos--; // include the current ch in the next word
