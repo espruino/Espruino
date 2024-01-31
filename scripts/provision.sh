@@ -240,19 +240,37 @@ fi
 if [ "$ARM" = "1" ]; then
     # defaulting to ARM
     echo ===== ARM
+    EXPECTEDARMGCCVERSION="8.2.1"
+    EXPECTEDARMGCCFILENAME="gcc-arm-none-eabi-8-2018-q4-major"
     if type arm-none-eabi-gcc 2> /dev/null > /dev/null; then
-        echo arm-none-eabi-gcc installed
+        ARMGCCVERSION=$(arm-none-eabi-gcc -dumpfullversion)
+        echo arm-none-eabi-gcc installed, version $ARMGCCVERSION    
+        if [ ! "$ARMGCCVERSION" = "$EXPECTEDARMGCCVERSION" ]; then
+          echo "*********************************************************************"
+          echo "*********************************************************************"
+          echo "***                                                               ***"
+          echo "*** ARM GCC IS INSTALLED ALREADY, BUT IS NOT THE EXPECTED VERSION ***"
+          echo "***                                                               ***"
+          echo "***   The build may work with your compiler version, but it       ***"
+          echo "***   is possible you will encounter errors, or issues with       ***"
+          echo "***   build size                                                  ***"
+          echo "***                                                               ***"
+          echo "*********************************************************************"
+          echo "*********************************************************************"
+          echo "      Expected $EXPECTEDARMGCCVERSION"
+          echo "      Got      $ARMGCCVERSION"
+        fi    
     else
-        echo installing gcc-arm-embedded
+        echo "installing gcc-arm-embedded to Espruino/$EXPECTEDARMGCCFILENAME/bin"
         #sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
         #sudo apt-get update
         #sudo DEBIAN_FRONTEND=noninteractive apt-get --force-yes --yes install libsdl1.2-dev gcc-arm-embedded
         # Unpack - newer, and much faster
-        if [ ! -d "gcc-arm-none-eabi-8-2018-q4-major" ]; then
-          curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/arm/gcc-arm-none-eabi-8-2018-q4-major-linux.tar.bz2 | tar xfj - --no-same-owner
+        if [ ! -d "$EXPECTEDARMGCCFILENAME" ]; then
+          curl -Ls "https://github.com/espruino/EspruinoBuildTools/raw/master/arm/${EXPECTEDARMGCCFILENAME}-linux.tar.bz2" | tar xfj - --no-same-owner
         else
             echo "Folder found"
         fi
-	export PATH=$PATH:`pwd`/gcc-arm-none-eabi-8-2018-q4-major/bin
+	      export PATH=$PATH:`pwd`/$EXPECTEDARMGCCFILENAME/bin
     fi
 fi
