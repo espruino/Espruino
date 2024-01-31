@@ -9,8 +9,6 @@ Espruino JavaScript for Microcontrollers
 </pre>
 https://www.espruino.com &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [![Join the chat at https://gitter.im/espruino/Espruino](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/espruino/Espruino?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-[![Build Status](https://travis-ci.com/espruino/Espruino.svg?branch=master)](https://travis-ci.com/espruino/Espruino)
-
 About
 -----
 
