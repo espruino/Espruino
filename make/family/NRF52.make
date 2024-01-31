@@ -150,7 +150,7 @@ endif # USE_BOOTLOADER
 ifdef BOOTLOADER
 # we're trying to compile the bootloader itself
 LINKER_FILE = $(LINKER_BOOTLOADER)
-OPTIMIZEFLAGS=-Os -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition # try to reduce bootloader size
+OPTIMIZEFLAGS=-Os -flto=auto -fno-fat-lto-objects -Wl,--allow-multiple-definition # try to reduce bootloader size
 else # not BOOTLOADER - compiling something to run under a bootloader
 LINKER_FILE = $(LINKER_ESPRUINO)
 INCLUDE += -I$(NRF5X_SDK_PATH)/nrf52_config

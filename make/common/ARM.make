@@ -13,7 +13,7 @@ OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 # Given we've left 10k for it, there's no real reason to enable LTO anyway.
 ifndef BOOTLOADER
 # Enable link-time optimisations (inlining across files)
-OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+OPTIMIZEFLAGS += -flto=auto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 DEFINES += -DLINK_TIME_OPTIMISATION
 endif
 
