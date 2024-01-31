@@ -1259,9 +1259,8 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
       JsVar *name = jsvNewWithFlags(JSV_NAME_STRING_0);
       jsvAppendStringVarComplete(name, var);
       jsvUnLock(var);
-      return name;
-    }
-    if (jsvGetCharactersInVar(var) > JSVAR_DATA_STRING_NAME_LEN) {
+      var = name;
+    } else if (jsvGetCharactersInVar(var) > JSVAR_DATA_STRING_NAME_LEN) {
       /* Argh. String is too large to fit in a JSV_NAME! We must chomp
        * new STRINGEXTs to put the data in
        */
@@ -1336,10 +1335,12 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   return var;
 }
 
-void jsvMakeFunctionParameter(JsVar *v) {
+JsVar *jsvMakeFunctionParameter(JsVar *v) {
   assert(jsvIsString(v));
-  if (!jsvIsName(v)) jsvMakeIntoVariableName(v,0);
+  if (!jsvIsName(v))
+    v = jsvMakeIntoVariableName(v,0);
   v->flags = (JsVarFlags)(v->flags | JSV_NATIVE);
+  return v;
 }
 
 /// Add a new unnamed function parameter to a function - use this when binding function arguments. This unlocks paramName if specified, but not value.
@@ -1348,7 +1349,7 @@ void jsvAddFunctionParameter(JsVar *fn, JsVar *paramName, JsVar *value) {
   if (!paramName) paramName = jsvNewFromEmptyString();
   assert(jsvIsString(paramName));
   if (paramName) {
-    jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+    paramName = jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
     jsvSetValueOfName(paramName, value);
     jsvAddName(fn, paramName);
     jsvUnLock(paramName);
@@ -1653,6 +1654,8 @@ JsVar *jsvAsArrayIndex(JsVar *index) {
         jsvUnLock2(i,is);
       }
     }
+    // jsvAsString would do this anyway, but this is faster
+    return jsvLockAgain(index);
   } else if (jsvIsFloat(index)) {
     // if it's a float that is actually integral, return an integer...
     JsVarFloat v = jsvGetFloat(index);
@@ -3035,13 +3038,14 @@ JsVar *jsvCreateNewChild(JsVar *parent, JsVar *index, JsVar *child) {
   return newChild;
 }
 
-/** Try and turn the supplied variable into a name. If not, make a new one. This locks again. */
+/** Try and turn the supplied variable into a name. If not, make a new one. The result is locked but
+ * the parameter should still be unlocked by the caller. */
 JsVar *jsvAsName(JsVar *var) {
   if (!var) return 0;
   if (jsvGetRefs(var) == 0) {
     // Not reffed - great! let's just use it
     if (!jsvIsName(var))
-      var = jsvMakeIntoVariableName(var, 0);
+      return jsvMakeIntoVariableName(jsvLockAgain(var), 0);
     return jsvLockAgain(var);
   } else { // it was reffed, we must add a new one
     return jsvMakeIntoVariableName(jsvCopy(var, false), 0);

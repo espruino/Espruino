@@ -15,6 +15,7 @@
             Optimise pretokenised Strings so we load very short strings direct to RAM
             Add jsvGet...Child functions to replace common call patterns - saves 280 bytes on Pico
             Fix issue with g.wrapString when running on flash-based strings
+            Fix lock leak when using flat/flash/native strings as object indices
 
      2v20 : Ensure String.charCodeAt returns NaN for out of bounds chars
             Bangle.js2: When rendering overlays, *do not* use the current FG/BG color for 1 bit overlays

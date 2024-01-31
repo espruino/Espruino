@@ -169,7 +169,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
       if (ch=='&') {
         if (jsvGetStringLength(key)>0 || jsvGetStringLength(val)>0) {
           key = jsvAsArrayIndexAndUnLock(key); // make sure "0" gets made into 0
-          jsvMakeIntoVariableName(key, val);
+          key = jsvMakeIntoVariableName(key, val);
           jsvAddName(query, key);
           jsvUnLock2(key, val);
           key = jsvNewFromEmptyString();
@@ -196,7 +196,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
 
     if (jsvGetStringLength(key)>0 || jsvGetStringLength(val)>0) {
       key = jsvAsArrayIndexAndUnLock(key); // make sure "0" gets made into 0
-      jsvMakeIntoVariableName(key, val);
+      key = jsvMakeIntoVariableName(key, val);
       jsvAddName(query, key);
     }
     jsvUnLock2(key, val);

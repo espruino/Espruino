@@ -301,7 +301,7 @@ static JsVar *_jswrap_array_iterate_with_callback(
             } else { // map
               JsVar *name = jsvNewFromInteger(idxValue);
               if (name) { // out of memory?
-                jsvMakeIntoVariableName(name, cb_result);
+                name = jsvMakeIntoVariableName(name, cb_result);
                 jsvAddName(result, name);
                 jsvUnLock(name);
               }

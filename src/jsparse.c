@@ -316,7 +316,7 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
         jspSetError(false);
         return false;
       }
-      jsvMakeFunctionParameter(param); // force this to be called a function parameter
+      param = jsvMakeFunctionParameter(param); // force this to be called a function parameter
       jsvUnLock(param);
     }
     JSP_MATCH(LEX_ID);
@@ -1468,7 +1468,7 @@ NO_INLINE JsVar *jspeFactorArray() {
     if (JSP_SHOULD_EXECUTE) {
       if (lex->tk != ',') { // #287 - [,] and [1,2,,4] are allowed
         JsVar *aVar = aVar = jsvSkipNameAndUnLock(jspeAssignmentExpression());
-        JsVar *indexName = indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  aVar);
+        JsVar *indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  aVar);
         if (indexName) { // could be out of memory
           jsvAddName(contents, indexName);
           jsvUnLock(indexName);
@@ -1621,7 +1621,7 @@ NO_INLINE JsVar *jspeAddNamedFunctionParameter(JsVar *funcVar, JsVar *name) {
     size_t l = jsvGetString(name, &buf[1], JSLEX_MAX_TOKEN_LENGTH);
     buf[l+1] = 0; // zero terminate since jsvGetString doesn't add one
     JsVar *param = jsvAddNamedChild(funcVar, 0, buf);
-    jsvMakeFunctionParameter(param);
+    param = jsvMakeFunctionParameter(param);
     jsvUnLock(param);
   }
   return funcVar;

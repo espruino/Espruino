@@ -146,7 +146,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
             jsvAppendStringVar(hVal, *receiveData, (size_t)valueStart, (size_t)(strIdx-valueStart));
           JsVar *hKey = jsvNewFromEmptyString();
           if (hKey) {
-            jsvMakeIntoVariableName(hKey, hVal);
+            hKey = jsvMakeIntoVariableName(hKey, hVal);
             jsvAppendStringVar(hKey, *receiveData, (size_t)lastLineStart, (size_t)(colonPos-lastLineStart));
             jsvAddName(vHeaders, hKey);
             jsvUnLock(hKey);

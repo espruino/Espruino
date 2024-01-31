@@ -339,10 +339,10 @@ JsVar *jsvNewFromPin(int pin);
 #endif
 
 
-/// Turns var into a Variable name that links to the given value... No locking so no need to unlock var
+/// Turns var into a Variable name that links to the given value (or return a new var that is a name)... No need for the caller to unlock var.
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
 /// Turns var into a 'function parameter' that the parser recognises when parsing a function
-void jsvMakeFunctionParameter(JsVar *v);
+JsVar *jsvMakeFunctionParameter(JsVar *v);
 /// Add a new function parameter to a function (name may be 0) - use this when binding function arguments This unlocks paramName if specified, but not value.
 void jsvAddFunctionParameter(JsVar *fn, JsVar *name, JsVar *value);
 
@@ -642,7 +642,8 @@ JsVar *jsvAsArrayIndex(JsVar *index);
 /** Same as jsvAsArrayIndex, but ensures that 'index' is unlocked */
 JsVar *jsvAsArrayIndexAndUnLock(JsVar *a);
 
-/** Try and turn the supplied variable into a name. If not, make a new one. This locks again. */
+/** Try and turn the supplied variable into a name. If not, make a new one. The result is locked but
+ * the parameter should still be unlocked by the caller. */
 JsVar *jsvAsName(JsVar *var);
 
 /// MATHS!
