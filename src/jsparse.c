@@ -1319,9 +1319,12 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
   while ((lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) && !jspIsInterrupted()) {
     JsVar *funcName = a;
     JsVar *func = jsvSkipName(funcName);
-
+    if (!func)  { // could have ReferenceErrored while skipping name
+      jsvUnLock2(funcName, parent);
+      return 0;
+    }
     /* The constructor function doesn't change parsing, so if we're
-     * not executing, just short-cut it. */
+    * not executing, just short-cut it. */
     if (isConstructor && JSP_SHOULD_EXECUTE) {
       // If we have '(' parse an argument list, otherwise don't look for any args
       bool parseArgs = lex->tk=='(';
