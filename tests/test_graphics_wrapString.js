@@ -40,6 +40,11 @@ g.clear().setFont("4x6");
 lines = g.wrapString("X", 10);
 SHOULD_BE(lines, ["X"]);
 
+// wrapping when the area is too small to show even one char
+g.clear().setFont("4x6");
+lines = g.wrapString("XYZ", 2);
+SHOULD_BE(lines, ["X","Y","Z"]);
+
 // wrap a long word to multiple lines
 g.clear().setFont("4x6");
 lines = g.wrapString("ABCDEFGHIJ", 10);
@@ -112,6 +117,8 @@ require("Storage").write("x","Compacting...\nTakes approx\n1 minute")
 lines = g.wrapString(require("Storage").read("x"), 176)
 require("Storage").erase("x")
 SHOULD_BE(lines, ["Compacting...","Takes approx","1 minute"]);
+
+
 
 
 result = ok;

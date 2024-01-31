@@ -2428,7 +2428,8 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
           while (wordStartIdx < currentPos) {
             char wordCh = jsvGetCharInString(str, wordStartIdx);
             int w = _jswrap_graphics_getCharWidth(&gfx, &info, wordCh);
-            if (width+w < maxWidth) {
+            if (width+w < maxWidth || !width) { // add while it fits OR it's the first character
+              // !width stops us locking up if char width>split width
               wordStartIdx++;
               wordWidth -= w;
               lineWidth -= w;
