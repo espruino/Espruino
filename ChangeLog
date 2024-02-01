@@ -17,6 +17,7 @@
             Fix issue with g.wrapString when running on flash-based strings
             Fix lock leak when using flat/flash/native strings as object indices
             Fix g.wrapString lockup if wrap width is less than the character width
+            Fix potential for crash after ReferenceError during function declaration (fix #2457)
 
      2v20 : Ensure String.charCodeAt returns NaN for out of bounds chars
             Bangle.js2: When rendering overlays, *do not* use the current FG/BG color for 1 bit overlays

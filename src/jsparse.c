@@ -947,7 +947,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
     return returnVar;
   } else if (isParsing) { // ---------------------------------- function, but not executing - just parse args and be done
-    jspeParseFunctionCallBrackets();
+    if (jspCheckStackPosition()) // check for stack overflow
+      jspeParseFunctionCallBrackets();
     /* Do not return function, as it will be unlocked! */
     return 0;
   } else return 0;
@@ -1319,7 +1320,6 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
   while ((lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) && !jspIsInterrupted()) {
     JsVar *funcName = a;
     JsVar *func = jsvSkipName(funcName);
-
     /* The constructor function doesn't change parsing, so if we're
      * not executing, just short-cut it. */
     if (isConstructor && JSP_SHOULD_EXECUTE) {
