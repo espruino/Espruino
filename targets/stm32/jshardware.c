@@ -100,6 +100,8 @@ Pin jshNeoPixelPin = PIN_UNDEFINED; ///< The currently setup Neopixel pin (set b
 
 #ifdef USB
 JsSysTime jshLastWokenByUSB = 0;
+volatile unsigned char jshUSBReceiveLastActive = 0; ///< How many systicks since USB was actively requesting data?
+#define JSH_USB_MAX_INACTIVITY_TICKS 10 ///< How many systicks before we start throwing away/deleting EV_USBSERIAL data
 #endif
 
 #if USART_ENABLED
@@ -807,7 +809,11 @@ void jshDoSysTick() {
 
   if (ticksSinceStart!=0xFFFFFFFF)
     ticksSinceStart++;
- #ifdef USE_RTC
+#ifdef USB // if USB was connected but we haven't been able to send any data
+  if (jshUSBReceiveLastActive < 255)
+    jshUSBReceiveLastActive++;
+#endif
+#ifdef USE_RTC
   if (ticksSinceStart==RTC_INITIALISE_TICKS) {
     // Use LSI if the LSE hasn't stabilised
     bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
@@ -1434,6 +1440,8 @@ void jshIdle() {
   bool USBConnected = jshIsUSBSERIALConnected();
   if (wasUSBConnected != USBConnected) {
     wasUSBConnected = USBConnected;
+    if (USBConnected)
+      jshClearUSBIdleTimeout();
     if (USBConnected && jsiGetConsoleDevice()!=EV_LIMBO) {
       if (!jsiIsConsoleDeviceForced())
         jsiSetConsoleDevice(EV_USBSERIAL, false);
@@ -1478,7 +1486,7 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 
 bool jshIsUSBSERIALConnected() {
 #ifdef USB
-  return USB_IsConnected();
+  return USB_IsConnected() && (jshUSBReceiveLastActive < JSH_USB_MAX_INACTIVITY_TICKS);
 #else
   return false;
 #endif
@@ -2530,6 +2538,11 @@ void jshSetUSBPower(bool isOn) {
 #endif
 }
 #endif
+
+/// Flags that we've been able to send data down USB, so it's ok to have data in the output buffer
+void jshClearUSBIdleTimeout() {
+  jshUSBReceiveLastActive = 0;
+}
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {

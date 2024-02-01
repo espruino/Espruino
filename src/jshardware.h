@@ -425,6 +425,8 @@ void jshSetupRTCPrescalerValue(unsigned int prescale);
 int jshGetRTCPrescalerValue(bool calibrate);
 // Reset timers and average systick duration counters for RTC - when coming out of sleep or changing prescaler
 void jshResetRTCTimer();
+/// Flags that we've been able to send data down USB, so it's ok to have data in the output buffer
+void jshClearUSBIdleTimeout();
 #endif
 
 #if defined(NRF51_SERIES) || defined(NRF52_SERIES)
