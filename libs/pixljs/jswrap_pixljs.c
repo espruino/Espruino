@@ -49,7 +49,7 @@ Class containing utility functions for
     "generate" : "jswrap_espruino_getBattery",
     "return" : ["int", "A percentage between 0 and 100" ]
 }
-DEPRECATED - Please use `E.getBattery()` instead.
+**DEPRECATED** - Please use `E.getBattery()` instead.
 
 Return an approximate battery percentage remaining based on a normal CR2032
 battery (2.8 - 2.2v)
@@ -148,7 +148,7 @@ void lcd_flip_gfx(JsGraphics *gfx) {
 
 /// Send buffer contents to the screen. Usually only the modified data will be output, but if all=true then the whole screen contents is sent
 void lcd_flip(JsVar *parent, bool all) {
-  JsGraphics gfx; 
+  JsGraphics gfx;
   if (!graphicsGetFromVar(&gfx, parent)) return;
   if (all) {
     gfx.data.modMinX = 0;

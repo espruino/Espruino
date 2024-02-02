@@ -918,7 +918,7 @@ advertise battery level and its name as well as both Eddystone and iBeacon :
 
 ```
 NRF.setAdvertising([
-  {0x180F : [Puck.getBatteryPercentage()]}, // normal advertising, with battery %
+  {0x180F : [E.getBattery()]}, // normal advertising, with battery %
   require("ble_ibeacon").get(...), // iBeacon
   require("ble_eddystone").get(...), // eddystone
 ], {interval:300});

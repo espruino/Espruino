@@ -1325,7 +1325,7 @@ JsVarFloat jswrap_puck_light() {
     "generate" : "jswrap_espruino_getBattery",
     "return" : ["int", "A percentage between 0 and 100" ]
 }
-DEPRECATED - Please use `E.getBattery()` instead.
+**DEPRECATED** - Please use `E.getBattery()` instead.
 
 Return an approximate battery percentage remaining based on a normal CR2032
 battery (2.8 - 2.2v).
