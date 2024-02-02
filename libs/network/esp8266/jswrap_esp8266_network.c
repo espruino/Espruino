@@ -896,7 +896,6 @@ void jswrap_wifi_save(JsVar *what) {
   //JsVar *arr = jsvNewArray(&o,1);
   jswrap_storage_erase(name);
   jswrap_storage_write(name,o,0,0);
-  //jsvUnLock3(arr,name,o);
   jsvUnLock2(name,o);
 
   DBGV("< Wifi.save: write completed\n");
@@ -1070,8 +1069,7 @@ static void dnsFoundCallback(
       params[0] = networkGetAddressAsString((uint8_t *)&ipAddr->addr, 4, 10, '.');
     }
     jsiQueueEvents(NULL, g_jsHostByNameCallback, params, 1);
-    jsvUnLock(params[0]);
-    jsvUnLock(g_jsHostByNameCallback);
+    jsvUnLock2(params[0], g_jsHostByNameCallback);
     g_jsHostByNameCallback = NULL;
   }
   DBGV("<< Wifi.getHostByName CB\n");
@@ -1547,8 +1545,7 @@ static void scanCB(void *arg, STATUS status) {
   params[0] = jsAccessPointArray;
   jsiQueueEvents(NULL, g_jsScanCallback, params, 1);
 
-  jsvUnLock(jsAccessPointArray);
-  jsvUnLock(g_jsScanCallback);
+  jsvUnLock2(jsAccessPointArray, g_jsScanCallback);
   g_jsScanCallback = NULL;
   DBGV("<< Wifi.scanCB\n");
 }

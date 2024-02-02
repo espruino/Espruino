@@ -1016,8 +1016,7 @@ void jsiHistoryAddLine(JsVar *newLine) {
   // if it was already in history, remove it - we'll put it back in front
   JsVar *alreadyInHistory = jsvGetIndexOf(history, newLine, false/*not exact*/);
   if (alreadyInHistory) {
-    jsvRemoveChild(history, alreadyInHistory);
-    jsvUnLock(alreadyInHistory);
+    jsvRemoveChildAndUnLock(history, alreadyInHistory);
   }
   // put it back in front
   jsvArrayPush(history, newLine);
@@ -2194,8 +2193,7 @@ void jsiIdle() {
               JsVar *watchArrayPtr = jsvLock(watchArray);
               JsVar *watchNamePtr = jsvGetIndexOf(watchArrayPtr, watchPtr, true);
               if (watchNamePtr) {
-                jsvRemoveChild(watchArrayPtr, watchNamePtr);
-                jsvUnLock(watchNamePtr);
+                jsvRemoveChildAndUnLock(watchArrayPtr, watchNamePtr);
               }
               jsvUnLock(watchArrayPtr);
               Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(watchPtr, "pin"));

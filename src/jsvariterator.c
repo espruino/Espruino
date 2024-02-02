@@ -521,8 +521,7 @@ void jsvObjectIteratorSetValue(JsvObjectIterator *it, JsVar *value) {
 void jsvObjectIteratorRemoveAndGotoNext(JsvObjectIterator *it, JsVar *parent) {
   if (it->var) {
     JsVarRef next = jsvGetNextSibling(it->var);
-    jsvRemoveChild(parent, it->var);
-    jsvUnLock(it->var);
+    jsvRemoveChildAndUnLock(parent, it->var);
     it->var = jsvLockSafe(next);
   }
 }

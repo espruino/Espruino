@@ -680,13 +680,13 @@ void jswrap_espruino_kickWatchdog() {
 JsVar *jswrap_espruino_getErrorFlagArray(JsErrorFlags flags) {
   JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0;
-  if (flags&JSERR_RX_FIFO_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("FIFO_FULL"));
-  if (flags&JSERR_BUFFER_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("BUFFER_FULL"));
-  if (flags&JSERR_CALLBACK) jsvArrayPushAndUnLock(arr, jsvNewFromString("CALLBACK"));
-  if (flags&JSERR_LOW_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("LOW_MEMORY"));
-  if (flags&JSERR_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY"));
-  if (flags&JSERR_MEMORY_BUSY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY_BUSY"));
-  if (flags&JSERR_UART_OVERFLOW) jsvArrayPushAndUnLock(arr, jsvNewFromString("UART_OVERFLOW"));
+  if (flags&JSERR_RX_FIFO_FULL) jsvArrayPushString(arr, "FIFO_FULL");
+  if (flags&JSERR_BUFFER_FULL) jsvArrayPushString(arr, "BUFFER_FULL");
+  if (flags&JSERR_CALLBACK) jsvArrayPushString(arr, "CALLBACK");
+  if (flags&JSERR_LOW_MEMORY) jsvArrayPushString(arr, "LOW_MEMORY");
+  if (flags&JSERR_MEMORY) jsvArrayPushString(arr, "MEMORY");
+  if (flags&JSERR_MEMORY_BUSY) jsvArrayPushString(arr, "MEMORY_BUSY");
+  if (flags&JSERR_UART_OVERFLOW) jsvArrayPushString(arr, "UART_OVERFLOW");
 
   return arr;
 }

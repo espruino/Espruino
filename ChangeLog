@@ -19,6 +19,7 @@
             Fix g.wrapString lockup if wrap width is less than the character width
             Fix potential for crash after ReferenceError during function declaration (fix #2457)
             STM32: (Original/Pico/WiFi) if USB connected but PC not receiving data, throw away USB data rather than blocking (fix #2446)
+            Move commonly used sequences of function calls into functions (eg jsvRemoveChild,jsvUnLock -> jsvRemoveChildAndUnLock) - saves ~200b
 
      2v20 : Ensure String.charCodeAt returns NaN for out of bounds chars
             Bangle.js2: When rendering overlays, *do not* use the current FG/BG color for 1 bit overlays

@@ -567,10 +567,8 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVarArr, bool isTimeout) {
       jsExceptionHere(JSET_ERROR, "clear%s(undefined) not allowed. Use clear%s() instead", name, name);
     } else {
       JsVar *child = jsvIsBasic(idVar) ? jsvFindChildFromVar(timerArrayPtr, idVar, false) : 0;
-      if (child) {
-        jsvRemoveChild(timerArrayPtr, child);
-        jsvUnLock(child);
-      }
+      if (child)
+        jsvRemoveChildAndUnLock(timerArrayPtr, child);
       jsvUnLock(idVar);
     }
   }

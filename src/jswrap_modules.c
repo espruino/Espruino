@@ -216,8 +216,7 @@ void jswrap_modules_removeCached(JsVar *id) {
   if (!moduleExportName) {
     jsExceptionHere(JSET_ERROR, "Module %q not found", id);
   } else {
-    jsvRemoveChild(moduleList, moduleExportName);
-    jsvUnLock(moduleExportName);
+    jsvRemoveChildAndUnLock(moduleList, moduleExportName);
   }
 
   jsvUnLock(moduleList);

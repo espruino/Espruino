@@ -92,8 +92,7 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
   }
   jsvUnLock2(source, destination);
   JsVar *idx = jsvObjectIteratorGetKey(it);
-  jsvRemoveChild(arr,idx);
-  jsvUnLock(idx);
+  jsvRemoveChildAndUnLock(arr,idx);
 }
 
 static bool handlePipe(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {

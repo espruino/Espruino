@@ -153,8 +153,7 @@ bool jsserialPopulateUSARTInfo(
       }
     }
   }
-  jsvUnLock(parity);
-  jsvUnLock(flow);
+  jsvUnLock2(parity, flow);
   return ok;
 }
 

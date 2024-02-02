@@ -1138,8 +1138,7 @@ JsVar *jsjParseFunction() {
       jsvUnLock(stackTrace);
     }
   }
-  jsvUnLock(exception);
-  jsvUnLock(v);
+  jsvUnLock2(exception, v);
   return 0;
 }
 

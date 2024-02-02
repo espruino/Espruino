@@ -277,7 +277,7 @@ JsVar* jswrap_trig_getErrorArray() {
       if (errors & i) {
         const char *s = trigGetErrorString(i);
         if (s) {
-          jsvArrayPushAndUnLock(arr, jsvNewFromString(s));
+          jsvArrayPushString(arr);
         }
       }
     }

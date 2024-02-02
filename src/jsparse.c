@@ -275,8 +275,7 @@ JsVar *jspGetException() {
   JsVar *exceptionName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR);
   if (exceptionName) {
     JsVar *exception = jsvSkipName(exceptionName);
-    jsvRemoveChild(execInfo.hiddenRoot, exceptionName);
-    jsvUnLock(exceptionName);
+    jsvRemoveChildAndUnLock(execInfo.hiddenRoot, exceptionName);
 
     JsVar *stack = jspGetStackTrace();
     if (stack && jsvHasChildren(exception)) {
@@ -294,8 +293,7 @@ JsVar *jspGetStackTrace() {
   JsVar *stackTraceName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR);
   if (stackTraceName) {
     JsVar *stackTrace = jsvSkipName(stackTraceName);
-    jsvRemoveChild(execInfo.hiddenRoot, stackTraceName);
-    jsvUnLock(stackTraceName);
+    jsvRemoveChildAndUnLock(execInfo.hiddenRoot, stackTraceName);
     return stackTrace;
   }
   return 0;
@@ -878,8 +876,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
                * functionRoot, so won't get freed. */
               returnVar = jsvSkipName(returnVarName);
               if (returnVarName) { // could have failed with out of memory
-                jsvRemoveChild(functionRoot, returnVarName); // remove return value (helps stops circular references, saves RAM)
-                jsvUnLock(returnVarName);
+                jsvRemoveChildAndUnLock(functionRoot, returnVarName); // remove return value (helps stops circular references, saves RAM)
               }
             }
             // Store a stack trace if we had an error
@@ -934,8 +931,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         jsvUnLock(execInfo.scopesVar);
         execInfo.scopesVar = oldScopeVar;
       }
-      jsvUnLock(functionCode);
-      jsvUnLock(functionRoot);
+      jsvUnLock2(functionCode, functionRoot);
     }
 
     jsvUnLock(thisVar);

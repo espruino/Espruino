@@ -309,13 +309,13 @@ void ble_cts_handle_time(BLEPending blep, char *buffer, size_t bufferLen) {
   }
   JsVar *arr = jsvNewEmptyArray();
   if (p_time->adjust_reason.manual_time_update)
-    jsvArrayPushAndUnLock(arr, jsvNewFromString("manual"));
+    jsvArrayPushString(arr, "manual");
   if (p_time->adjust_reason.external_reference_time_update)
-    jsvArrayPushAndUnLock(arr, jsvNewFromString("external"));
+    jsvArrayPushString(arr, "external");
   if (p_time->adjust_reason.change_of_time_zone)
-    jsvArrayPushAndUnLock(arr, jsvNewFromString("timezone"));
+    jsvArrayPushString(arr, "timezone");
   if (p_time->adjust_reason.change_of_daylight_savings_time)
-    jsvArrayPushAndUnLock(arr, jsvNewFromString("DST"));
+    jsvArrayPushString(arr, "DST");
   jsvObjectSetChildAndUnLock(o, "reason", arr);
 
   jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"CTS", 1, &o);

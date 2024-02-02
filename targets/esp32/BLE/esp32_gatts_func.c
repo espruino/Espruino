@@ -104,8 +104,7 @@ void emitNRFEvent(char *event,JsVar *args,int argCnt){
   JsVar *callback = jsvSkipNameAndUnLock(jsvFindChildFromVar(nrf,eventName,0));
   jsvUnLock(eventName);
   if(callback) jsiQueueEvents(nrf,callback,args,argCnt);
-  jsvUnLock(nrf);
-  jsvUnLock(callback);
+  jsvUnLock2(nrf, callback);
   if(args) jsvUnLockMany(argCnt,args);
 }
 
@@ -576,8 +575,7 @@ void gatts_create_structs(bool enableUART){
         JsVar *charVar = jsvObjectIteratorGetValue(&ble_char_it);
         JsVar *charDescriptionVar = jsvObjectGetChildIfExists(charVar, "description");
         if (charDescriptionVar && jsvHasCharacterData(charDescriptionVar)) ble_descr_cnt++;
-        jsvUnLock(charDescriptionVar);
-        jsvUnLock(charVar);
+        jsvUnLock2(charDescriptionVar, charVar);
         jsvObjectIteratorNext(&ble_char_it);
         ble_char_cnt++;
       }

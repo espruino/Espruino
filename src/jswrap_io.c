@@ -339,8 +339,7 @@ void jswrap_io_digitalWrite(
     JsVar *w = jspGetNamedField(pinVar, "write", false);
     if (jsvIsFunction(w)) {
       JsVar *v = jsvNewFromInteger(value);
-      jsvUnLock(jspeFunctionCall(w,0,pinVar,false,1,&v));
-      jsvUnLock(v);
+      jsvUnLock2(jspeFunctionCall(w,0,pinVar,false,1,&v), v);
     } else jsExceptionHere(JSET_ERROR, "Invalid pin");
     jsvUnLock(w);
   } else {
@@ -904,8 +903,8 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
       jsvUnLock(watchPtr);
 
       JsVar *watchArrayPtr = jsvLock(watchArray);
-      jsvRemoveChild(watchArrayPtr, watchNamePtr);
-      jsvUnLock2(watchNamePtr, watchArrayPtr);
+      jsvRemoveChildAndUnLock(watchArrayPtr, watchNamePtr);
+      jsvUnLock(watchArrayPtr);
 
       // Now check if this pin is still being watched
       if (!jsiIsWatchingPin(pin))

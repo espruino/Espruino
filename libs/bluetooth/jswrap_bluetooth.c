@@ -1747,8 +1747,7 @@ void jswrap_ble_updateServices(JsVar *data) {
 #endif
             }
           }
-          jsvUnLock(charValue);
-          jsvUnLock(charVar);
+          jsvUnLock2(charValue, charVar);
         } else {
           JsVar *str = bleUUIDToStr(char_uuid);
           jsExceptionHere(JSET_ERROR, "Unable to find service with UUID %v", str);

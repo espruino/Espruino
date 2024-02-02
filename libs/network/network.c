@@ -351,8 +351,7 @@ void ssl_freeSocketData(int sckt) {
   JsVar *sslDataVar = jsvFindChildFromVar(ssl, scktVar, false);
   jsvUnLock(scktVar);
   JsVar *sslData = jsvSkipName(sslDataVar);
-  jsvRemoveChild(ssl, sslDataVar);
-  jsvUnLock(sslDataVar);
+  jsvRemoveChildAndUnLock(ssl, sslDataVar);
   jsvUnLock(ssl);
   SSLSocketData *sd = 0;
   if (jsvIsFlatString(sslData)) {
@@ -523,8 +522,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   if (!ssl) return false; // out of memory?
   JsVar *scktVar = jsvNewFromInteger(sckt);
   JsVar *sslDataVar = jsvFindChildFromVar(ssl, scktVar, true);
-  jsvUnLock(scktVar);
-  jsvUnLock(ssl);
+  jsvUnLock2(scktVar, ssl);
   if (!sslDataVar) {
     return 0; // out of memory
   }

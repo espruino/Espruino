@@ -11,7 +11,7 @@
  */ 
 
 var IGNORE_REGISTERS = true;
-var MIN_OCCURANCES = 3;
+var MIN_OCCURANCES = 2;
 var MIN_SCORE = 20;
 
 
@@ -20,17 +20,17 @@ if (process.argv.length!=3) {
   process.exit(1);
 }
 
-var lstFile = process.argv[2];
-console.log("Loading "+lstFile);
-var lst = require("fs").readFileSync(lstFile).toString().split("\n");
-
-
+function isFunctionHeader(line) {
+  return line.match(/^\s*[0-9A-Fa-f]{8}\s*<.*:/);
+}
 
 function getAssembly(line) {
   line = line.trim();
-  if (line.indexOf("\t")<0) line="";
+  if (line=="") return "";
+  if (isFunctionHeader(line)) return line; // function header
+  if (line.indexOf("\t")<0) return ""; // just code
   line = line.substr(line.indexOf("\t")+1);
-  if (line.indexOf("\t")<0) line="";      
+  if (line.indexOf("\t")<0) return ""; // hex dump of data
   line = line.substr(line.indexOf("\t")+1);
 
   
@@ -40,6 +40,10 @@ function getAssembly(line) {
   return line;
 }
 
+var lstFile = process.argv[2];
+console.log("Loading "+lstFile);
+var lst = require("fs").readFileSync(lstFile).toString().split("\n").map(getAssembly).filter(l=>l!="");
+
 function scanLines(lst) {
   var occurances = {};
   var mapCodeToIdx = {};
@@ -48,8 +52,6 @@ function scanLines(lst) {
   var history = [];
   console.log("Scanning for use count");
   lst.forEach(function(line) {
-    line = getAssembly(line);
-
     if (line!="") {
       var lineIdx = mapCodeToIdx[line];
       if (lineIdx===undefined) {
@@ -62,9 +64,7 @@ function scanLines(lst) {
   });
   console.log("Scanning for history");
   lst.forEach(function(line) {
-    line = getAssembly(line);
-
-    if (line=="") history = [];
+    if (isFunctionHeader(line)) history = [];
     else {
       var lineIdx = mapCodeToIdx[line];
       if (lineUses[lineIdx]<MIN_OCCURANCES) {

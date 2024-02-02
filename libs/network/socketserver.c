@@ -589,8 +589,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       _socketConnectionKill(net, connection);
       JsVar *connectionName = jsvObjectIteratorGetKey(&it);
       jsvObjectIteratorNext(&it);
-      jsvRemoveChild(arr, connectionName);
-      jsvUnLock(connectionName);
+      jsvRemoveChildAndUnLock(arr, connectionName);
     } else
       jsvObjectIteratorNext(&it);
     jsvUnLock2(connection, socket);
@@ -729,8 +728,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         _socketConnectionKill(net, connection);
         JsVar *connectionName = jsvObjectIteratorGetKey(&it);
         jsvObjectIteratorNext(&it);
-        jsvRemoveChild(arr, connectionName);
-        jsvUnLock(connectionName);
+        jsvRemoveChildAndUnLock(arr, connectionName);
         socketClosed = true;
 
         // fire error event, if there is an error
@@ -897,8 +895,7 @@ void serverClose(JsNetwork *net, JsVar *server) {
     // remove from array
     JsVar *idx = jsvGetIndexOf(arr, server, true);
     if (idx) {
-      jsvRemoveChild(arr, idx);
-      jsvUnLock(idx);
+      jsvRemoveChildAndUnLock(arr, idx);
     } else
       jsWarn("Server not found!");
     jsvUnLock(arr);

@@ -12,7 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 
- 
+
 #include "BLE/esp32_bluetooth_utils.h"
 #include "BLE/esp32_gap_func.h"
 #include "BLE/esp32_gatts_func.h"
@@ -26,14 +26,14 @@
 esp_ble_debug_t bleEventDebug = 0;
 
 esp_err_t initController(){
-  esp_err_t ret;    
+  esp_err_t ret;
   esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     ret = esp_bt_controller_init(&bt_cfg);if(ret) {jsWarn("init controller failed:%x\n",ret); return ret;}
   ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);if(ret) {jsWarn("enable controller failed:%x\n",ret); return ret;}
   return ret;
 }
 esp_err_t initBluedroid(){
-  esp_err_t ret;    
+  esp_err_t ret;
   ret = esp_bluedroid_init();if (ret) {jsWarn("init bluedroid failed:%x\n",ret);return ret;}
   ret = esp_bluedroid_enable();if (ret) {jsWarn("enable bluedroid failed:%x\n",ret);return ret;}
   return ret;
@@ -48,12 +48,12 @@ esp_err_t deinitBluedroid(){
   esp_err_t ret;
   ret = esp_bluedroid_disable();if (ret) {jsWarn("disable bluedroid failed:%x\n",ret);return ret;}
   ret = esp_bluedroid_deinit();if (ret) {jsWarn("deinit bluedroid failed:%x\n",ret);return ret;}
-  return ret;  
+  return ret;
 }
 esp_err_t registerCallbacks(){
   esp_err_t ret;
   ret = esp_ble_gap_register_callback(gap_event_handler);if (ret){jsWarn("gap register error:%x\n", ret);return ret;}
-  ret = esp_ble_gatts_register_callback(gatts_event_handler);if(ret){jsWarn("gatts register error:%x\n", ret);return ret;}  
+  ret = esp_ble_gatts_register_callback(gatts_event_handler);if(ret){jsWarn("gatts register error:%x\n", ret);return ret;}
   ret = esp_ble_gattc_register_callback(gattc_event_handler);if(ret){jsWarn("gattc regigister error:%x\n",ret);return ret;}
   return ret;
 }
@@ -225,8 +225,7 @@ bool bleRemoveChild(JsVar *parent, JsVar *blevar){
       jsvRemoveChild(parent,child);
       ret = true;
     }
-    jsvUnLock(child);
-    jsvUnLock(name);
+    jsvUnLock2(child, name);
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);

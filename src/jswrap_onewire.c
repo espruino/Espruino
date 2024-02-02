@@ -500,7 +500,7 @@ JsVar *jswrap_onewire_search(JsVar *parent, int command) {
         buf[i*2+1] = itoch(ROM_NO[i] & 15);
       }
       buf[16]=0;
-      jsvArrayPushAndUnLock(array, jsvNewFromString(buf));
+      jsvArrayPushString(array, buf);
     }
 
     NOT_USED(LastFamilyDiscrepancy);

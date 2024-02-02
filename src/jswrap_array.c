@@ -599,8 +599,7 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
         goToNext = false;
         JsVar *toRemove = jsvObjectIteratorGetKey(&it);
         jsvObjectIteratorNext(&it);
-        jsvRemoveChild(parent, toRemove);
-        jsvUnLock(toRemove);
+        jsvRemoveChildAndUnLock(parent, toRemove);
       } else { // we're greater than the amount we need to remove now
         needToAdd = true;
         goToNext = false;

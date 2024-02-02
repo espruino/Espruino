@@ -2083,9 +2083,9 @@ JsVar *jswrap_graphics_getFonts(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   JsVar *arr = jsvNewEmptyArray();
   if (!arr) return 0;
-  jsvArrayPushAndUnLock(arr, jsvNewFromString("4x6"));
+  jsvArrayPushString(arr, "4x6");
 #ifdef USE_FONT_6X8
-  jsvArrayPushAndUnLock(arr, jsvNewFromString("6x8"));
+  jsvArrayPushString(arr, "6x8");
 #endif
   // vector font is added by below..
   // scan for any functions 'setFont*' and add those names
@@ -2135,8 +2135,7 @@ static void _jswrap_graphics_getFontInfo(JsGraphics *gfx, JsGraphicsFontInfo *in
 static void _jswrap_graphics_freeFontInfo(JsGraphicsFontInfo *info) {
 #ifndef SAVE_ON_FLASH
   if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
-    jsvUnLock(info->widths);
-    jsvUnLock(info->bitmap);
+    jsvUnLock2(info->widths, info->bitmap);
 #ifdef ESPR_PBF_FONTS
     if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK) == JSGRAPHICS_FONTSIZE_CUSTOM_PBF)
       jspbfFontFree(&info->pbfInfo);

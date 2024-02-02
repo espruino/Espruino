@@ -3124,15 +3124,18 @@ void jsvRemoveChild(JsVar *parent, JsVar *child) {
   jsvSetNextSibling(child, 0);
   if (wasChild)
     jsvUnRef(child);
+}
 
+void jsvRemoveChildAndUnLock(JsVar *parent, JsVar *child) {
+  jsvRemoveChild(parent, child);
+  jsvUnLock(child);
 }
 
 void jsvRemoveAllChildren(JsVar *parent) {
   assert(jsvHasChildren(parent));
   while (jsvGetFirstChild(parent)) {
     JsVar *v = jsvLock(jsvGetFirstChild(parent));
-    jsvRemoveChild(parent, v);
-    jsvUnLock(v);
+    jsvRemoveChildAndUnLock(parent, v);
   }
 }
 
@@ -3230,10 +3233,8 @@ void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child) {
 
 void jsvObjectRemoveChild(JsVar *obj, const char *name) {
   JsVar *child = jsvFindChildFromString(obj, name);
-  if (child) {
-    jsvRemoveChild(obj, child);
-    jsvUnLock(child);
-  }
+  if (child)
+    jsvRemoveChildAndUnLock(obj, child);
 }
 
 /** Set the named child of an object, and return the child (so you can choose to unlock it if you want).
@@ -3521,6 +3522,11 @@ JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value) {
   JsVarInt l = jsvArrayPush(arr, value);
   jsvUnLock(value);
   return l;
+}
+
+/// Adds a new String element to the end of an array, and returns the new length. Same as jsvArrayPushAndUnLock(arr, jsvNewFromString(str))
+JsVarInt jsvArrayPushString(JsVar *arr, const char *string) {
+  return jsvArrayPushAndUnLock(arr, jsvNewFromString(string));
 }
 
 // Push 2 integers onto the end of an array
