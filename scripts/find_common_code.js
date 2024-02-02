@@ -11,7 +11,7 @@
  */ 
 
 var IGNORE_REGISTERS = true;
-var MIN_OCCURANCES = 2;
+var MIN_OCCURANCES = 3;
 var MIN_SCORE = 20;
 
 
@@ -65,7 +65,7 @@ function scanLines(lst) {
   console.log("Scanning for history");
   lst.forEach(function(line) {
     if (isFunctionHeader(line)) history = [];
-    else {
+    else if (line!="nop") {
       var lineIdx = mapCodeToIdx[line];
       if (lineUses[lineIdx]<MIN_OCCURANCES) {
         history = [];        
