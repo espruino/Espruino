@@ -2539,10 +2539,12 @@ void jshSetUSBPower(bool isOn) {
 }
 #endif
 
+#ifdef USB
 /// Flags that we've been able to send data down USB, so it's ok to have data in the output buffer
 void jshClearUSBIdleTimeout() {
   jshUSBReceiveLastActive = 0;
 }
+#endif
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {

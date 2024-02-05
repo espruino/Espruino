@@ -75,7 +75,7 @@ void WWDG_IRQHandler() {
   // why do we need this on the F401?
 }
 
-#endif 
+#endif
 
 
 
@@ -119,6 +119,9 @@ void jshDelayMicroseconds(int c) {
     int i;
     for (i=0;i<80;i++);
   }
+}
+
+void jshClearUSBIdleTimeout() {
 }
 
 int _getc() {
@@ -194,9 +197,9 @@ void initHardware() {
  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 #endif
 
- #if defined(BTN1_PINSTATE) 
+ #if defined(BTN1_PINSTATE)
   #if BTN1_PINSTATE==JSHPINSTATE_GPIO_IN_PULLDOWN
- GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN; 
+ GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
   #else
    #error Unknown pin state for BTN1
   #endif
