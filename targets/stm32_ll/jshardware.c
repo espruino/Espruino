@@ -1061,6 +1061,9 @@ void jshIdle(){
         return;
 }
 
+void jshClearUSBIdleTimeout() {
+}
+
 /** Enter sleep mode for the given period of time. Can be woken up by interrupts.
  * If time is 0xFFFFFFFFFFFFFFFF then go to sleep without setting a timer to wake
  * up.
