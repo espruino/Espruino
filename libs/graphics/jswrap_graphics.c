@@ -4396,9 +4396,9 @@ JsVar *jswrap_graphics_floodFill(JsVar *parent, int x, int y, JsVar *col) {
   const int QUEUE_LEN = 64;
   short s[QUEUE_LEN];
   int si = 0; // index in queue
-  #define S_ADD(x,y) if (si<QUEUE_LEN) {s[si++]=(short)x;s[si++]=(short)y;} else {jsiConsolePrintf("floodFill overflow\n");return jsvLockAgain(parent);}
+  #define S_ADD(x,y) if (si<QUEUE_LEN) {s[si++]=(short)x;s[si++]=(short)y;} else {si=QUEUE_LEN+1;}
   S_ADD(x, y);
-  while (si) {
+  while (si>0 && si <= QUEUE_LEN) {
     // get new area to work from...
     short y = s[--si], x = s[--si], lx=x;
     // scan left
@@ -4429,6 +4429,10 @@ JsVar *jswrap_graphics_floodFill(JsVar *parent, int x, int y, JsVar *col) {
     }
   }
   #undef S_ADD
+  if (si) {
+    jsiConsolePrintf("floodFill overflow\n");
+  }
+  graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);
 }
 
