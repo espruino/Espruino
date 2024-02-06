@@ -2526,7 +2526,7 @@ static void ble_stack_init() {
         .source        = NRF_CLOCK_LF_SRC_XTAL,
         .rc_ctiv       = 0,
         .rc_temp_ctiv  = 0,
-        .xtal_accuracy = NRF_CLOCK_LF_XTAL_ACCURACY_20_PPM,
+        .xtal_accuracy = NRF_CLOCK_LF_XTAL_ACCURACY_50_PPM,
 #else
         .source        = NRF_CLOCK_LF_SRC_RC,
         .rc_ctiv       = 16, // recommended for nRF52
