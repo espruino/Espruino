@@ -112,7 +112,7 @@ void _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info) {
 /** Parse an image into GfxDrawImageInfo. See drawImage for image format docs. Returns true on success.
  * if 'image' is a string or ArrayBuffer, imageOffset is the offset within that (usually 0)
  */
-bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int imageOffset, GfxDrawImageInfo *info) {
+bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, size_t imageOffset, GfxDrawImageInfo *info) {
   memset(info, 0, sizeof(GfxDrawImageInfo));
   if (jsvIsObject(image)) {
 #ifndef SAVE_ON_FLASH
@@ -135,7 +135,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
     JsVar *buf = jsvObjectGetChildIfExists(image, "buffer");
     info->buffer = jsvGetArrayBufferBackingString(buf, &info->bitmapOffset);
     jsvUnLock(buf);
-    info->bitmapOffset += imageOffset;
+    info->bitmapOffset += (uint32_t)imageOffset;
 
     JsVar *v;
     v = jsvObjectGetChildIfExists(image, "transparent");
@@ -173,11 +173,11 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, unsigned int ima
     info->width = jsvStringIteratorGetUTF8CharAndNext(&it);
     info->height = jsvStringIteratorGetUTF8CharAndNext(&it);
     info->bpp = jsvStringIteratorGetUTF8CharAndNext(&it);
-    info->bitmapOffset += imageOffset;
+    info->bitmapOffset += (uint32_t)imageOffset;
     if (info->bpp & 128) {
       info->bpp = info->bpp&127;
       info->isTransparent = true;
-      info->transparentCol = jsvStringIteratorGetUTF8CharAndNext(&it);
+      info->transparentCol = (unsigned int)jsvStringIteratorGetUTF8CharAndNext(&it);
       info->headerLength = 4;
     } else {
       info->headerLength = 3;
@@ -1944,11 +1944,11 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
     fontSizeCharIdx = colonIdx+1;
   JsVar *name;
   if (fontSizeCharIdx>=0) { // "FontName:FontSize"
-    JsVar *sizeVar = jsvNewFromStringVar(fontId, fontSizeCharIdx, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    JsVar *sizeVar = jsvNewFromStringVar(fontId, (size_t)fontSizeCharIdx, JSVAPPENDSTRINGVAR_MAXLENGTH);
     int xIndex = jsvGetStringIndexOf(sizeVar,'x');
     if (xIndex>=0) { // "FontName:1x3"
-      int sizex = jsvGetIntegerAndUnLock(jsvNewFromStringVar(sizeVar, 0, xIndex));
-      int sizey = jsvGetIntegerAndUnLock(jsvNewFromStringVar(sizeVar, xIndex+1, JSVAPPENDSTRINGVAR_MAXLENGTH));
+      int sizex = jsvGetIntegerAndUnLock(jsvNewFromStringVar(sizeVar, 0, (size_t)xIndex));
+      int sizey = jsvGetIntegerAndUnLock(jsvNewFromStringVar(sizeVar, (size_t)xIndex+1, JSVAPPENDSTRINGVAR_MAXLENGTH));
       if (sizex<0) sizex=0;
       if (sizey<0) sizey=0;
       if (sizex>63) sizex=63;
@@ -1958,7 +1958,7 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
       size = jsvGetInteger(sizeVar);
     }
     jsvUnLock(sizeVar);
-    name = jsvNewFromStringVar(fontId, 0, (fontSizeCharIdx>0)?fontSizeCharIdx-1:0);
+    name = jsvNewFromStringVar(fontId, 0, (size_t)((fontSizeCharIdx>0)?fontSizeCharIdx-1:0));
   } else {
     name = jsvLockAgain(fontId);
   }
@@ -1966,7 +1966,7 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
   if (size>JSGRAPHICS_FONTSIZE_SCALE_MASK) size=JSGRAPHICS_FONTSIZE_SCALE_MASK;
   unsigned short sz = 0xFFFF; // the actual data mask
   if (isVector) {
-    sz = size;
+    sz = (unsigned short)size;
   } else if (jsvIsUndefined(name) || jsvGetStringLength(name)==0 || jsvIsStringEqual(name, "4x6"))
     sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_4X6);
 #ifdef USE_FONT_6X8
@@ -2144,7 +2144,7 @@ static void _jswrap_graphics_freeFontInfo(JsGraphicsFontInfo *info) {
 #endif
 }
 
-static int _jswrap_graphics_getCharWidth(JsGraphics *gfx, JsGraphicsFontInfo *info, int ch) {
+static int _jswrap_graphics_getCharWidth(JsGraphicsFontInfo *info, int ch) {
   if ((info->font == JSGRAPHICS_FONTSIZE_VECTOR) && (ch<256)) {
 #ifndef NO_VECTOR_FONT
     return (int)graphicsVectorCharWidth(info->scalex, (char)ch);
@@ -2238,12 +2238,12 @@ typedef struct {
 void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIndex, StringMetricsResult *result) {
   JsGraphicsFontInfo info;
   _jswrap_graphics_getFontInfo(gfx, &info);
-  memset(result, 0, sizeof(result));
+  memset(result, 0, sizeof(StringMetricsResult));
 
   int fontHeight = _jswrap_graphics_getFontHeightInternal(gfx, &info);
   JsVar *str = jsvAsString(var);
   JsvStringIterator it;
-  jsvStringIteratorNewUTF8(&it, str, (lineStartIndex<0)?0:lineStartIndex);
+  jsvStringIteratorNewUTF8(&it, str, (size_t)((lineStartIndex<0)?0:lineStartIndex));
   int width = 0;
   int height = fontHeight;
   int maxWidth = 0;
@@ -2260,7 +2260,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
     if (ch==0) { // If images are described in-line in the string, render them
       result->imageCount++;
       GfxDrawImageInfo img;
-      size_t idx = jsvConvertToUTF8Index(str, jsvStringIteratorGetIndex(&it));
+      size_t idx = (size_t)jsvConvertToUTF8Index(str, (int)jsvStringIteratorGetIndex(&it));
       if (_jswrap_graphics_parseImage(gfx, str, idx, &img)) {
         jsvStringIteratorGotoUTF8(&it, str, idx+img.headerLength+img.bitmapLength);
         _jswrap_graphics_freeImageInfo(&img);
@@ -2272,7 +2272,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
       continue;
     }
 #endif
-    int w = _jswrap_graphics_getCharWidth(gfx, &info, ch);
+    int w = _jswrap_graphics_getCharWidth(&info, ch);
     width += w;
     if (w==0) result->unrenderableChars = true; // assume width=0 means char not found
   }
@@ -2382,7 +2382,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
     currentLine = jsvNewUTF8StringAndUnLock(currentLine);
 #endif
 
-  int spaceWidth = _jswrap_graphics_getCharWidth(&gfx, &info, ' ');
+  int spaceWidth = _jswrap_graphics_getCharWidth(&info, ' ');
   int wordWidth = 0;
   int lineWidth = 0;
   bool canSplitAfter = false;
@@ -2412,7 +2412,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
           lineWidth += spaceWidth;
           wordBreakCharacter = 0;
         }
-        jsvAppendStringVar(currentLine, str, wordStartIdx, currentPos-(wordStartIdx+1));
+        jsvAppendStringVar(currentLine, str, (size_t)wordStartIdx, (size_t)(currentPos-(wordStartIdx+1)));
         lineWidth += wordWidth;
       } else { // doesn't fit on one line - put word on new line
         lineWidth = wordWidth;
@@ -2425,15 +2425,15 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
           int width = 0;
           currentLine = jsvNewFromEmptyString();
           while (wordStartIdx < currentPos) {
-            char wordCh = jsvGetCharInString(str, wordStartIdx);
-            int w = _jswrap_graphics_getCharWidth(&gfx, &info, wordCh);
+            char wordCh = (char)jsvGetCharInString(str, (size_t)wordStartIdx);
+            int w = _jswrap_graphics_getCharWidth(&info, wordCh);
             if (width+w < maxWidth || !width) { // add while it fits OR it's the first character
               // !width stops us locking up if char width>split width
               wordStartIdx++;
               wordWidth -= w;
               lineWidth -= w;
               width += w;
-              jsvAppendCharacter(currentLine, wordCh);
+              jsvAppendCharacter(currentLine, wordCh); // FIXME: UTF8?
             } else
               break;
           }
@@ -2442,7 +2442,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         }
         // Add the remaining bit of word
         currentLine = jsvNewFromEmptyString(); // don't use jsvNewFromStringVar as it'll clone flash strings/etc
-        jsvAppendStringVar(currentLine, str, wordStartIdx, currentPos-(wordStartIdx+1));
+        jsvAppendStringVar(currentLine, str, (size_t)wordStartIdx, (size_t)(currentPos-(wordStartIdx+1)));
 #ifdef ESPR_UNICODE_SUPPORT
         if (jsvIsUTF8String(str))
           currentLine = jsvNewUTF8StringAndUnLock(currentLine);
@@ -2464,7 +2464,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
 #ifndef SAVE_ON_FLASH
     if (ch==0) { // If images are described in-line in the string, render them
       GfxDrawImageInfo img;
-      size_t idx = jsvConvertToUTF8Index(str, jsvStringIteratorGetIndex(&it));
+      size_t idx = (size_t)jsvConvertToUTF8Index(str, (int)jsvStringIteratorGetIndex(&it));
       if (_jswrap_graphics_parseImage(&gfx, str, idx, &img)) {
         jsvStringIteratorGotoUTF8(&it, str, idx+img.headerLength+img.bitmapLength);
         _jswrap_graphics_freeImageInfo(&img);
@@ -2476,7 +2476,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
       continue;
     }
 #endif
-    wordWidth += _jswrap_graphics_getCharWidth(&gfx, &info, ch);
+    wordWidth += _jswrap_graphics_getCharWidth(&info, ch);
     if (ch==',' || ch=='.' || ch=='-' || ch=='/' || ch=='\\' || ch==':')
       canSplitAfter = true;
     if (!jsvStringIteratorHasChar(&it)) endOfText=true;
@@ -2598,7 +2598,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
 #ifndef SAVE_ON_FLASH
       // alignment for non-left aligned multi-line strings
       if (gfx.data.fontAlignX<2) // 0=center, 1=right, 2=undefined, 3=left
-        x = startx - (_jswrap_graphics_stringWidth(&gfx, str, jsvStringIteratorGetIndex(&it)) * (gfx.data.fontAlignX+1)/2);
+        x = startx - (_jswrap_graphics_stringWidth(&gfx, str, (int)jsvStringIteratorGetIndex(&it)) * (gfx.data.fontAlignX+1)/2);
 #endif
       y += fontHeight;
       continue;
@@ -2606,7 +2606,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
 #ifndef SAVE_ON_FLASH
     if (ch==0) { // If images are described in-line in the string, render them
       GfxDrawImageInfo img;
-      size_t idx = jsvConvertToUTF8Index(str, jsvStringIteratorGetIndex(&it));
+      size_t idx = (size_t)jsvConvertToUTF8Index(str, (int)jsvStringIteratorGetIndex(&it));
       if (_jswrap_graphics_parseImage(&gfx, str, idx, &img)) {
         jsvStringIteratorGotoUTF8(&it, str, idx+img.headerLength);
         _jswrap_drawImageSimple(&gfx, x, y+(fontHeight-img.height)/2, &img, &it, true/*string iterator now points to the next char after image*/);
@@ -2756,7 +2756,7 @@ void _jswrap_graphics_getVectorFontPolys_cb(void *data, int points, short *verti
   if (v) {
     JsVar *d = jsvGetArrayBufferBackingString(v, NULL);
     if (d) {
-      jsvSetString(d, (char*)vertices, points*4);
+      jsvSetString(d, (char*)vertices, (size_t)points*4);
       jsvUnLock(d);
     }
     jsvArrayPushAndUnLock(arr, v);
@@ -2764,6 +2764,7 @@ void _jswrap_graphics_getVectorFontPolys_cb(void *data, int points, short *verti
 
 }
 JsVar *jswrap_graphics_getVectorFontPolys(JsGraphics *gfx, JsVar *str, JsVar *options) {
+  NOT_USED(gfx);
 #ifndef NO_VECTOR_FONT
   int x = 0, y = 0, scalex = 256, scaley = 256;
   jsvConfigObject configs[] = {
@@ -2779,7 +2780,7 @@ JsVar *jswrap_graphics_getVectorFontPolys(JsGraphics *gfx, JsVar *str, JsVar *op
   jsvStringIteratorNew(&it, str, 0);
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetCharAndNext(&it);
-    x += graphicsGetVectorChar(_jswrap_graphics_getVectorFontPolys_cb, arr, x, y, scalex, scaley, ch);
+    x += (int)graphicsGetVectorChar(_jswrap_graphics_getVectorFontPolys_cb, arr, x, y, scalex, scaley, ch);
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(str);
@@ -3219,7 +3220,7 @@ JsVar *jswrap_graphics_imageMetrics(JsVar *parent, JsVar *var) {
   GfxDrawImageInfo img;
   if (!_jswrap_graphics_parseImage(&gfx, var, 0, &img))
     return 0;
-  int bufferLen = jsvGetLength(img.buffer) - img.bitmapOffset;
+  int bufferLen = jsvGetLength(img.buffer) - (int)img.bitmapOffset;
   _jswrap_graphics_freeImageInfo(&img);
   JsVar *o = jsvNewObject();
   if (o) {
@@ -3320,7 +3321,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     // support for multi-frame rendering
     int frame = jsvObjectGetIntegerChild(options,"frame");
     if (frame>0)
-      img.bitmapOffset += img.bitmapLength * frame;
+      img.bitmapOffset += img.bitmapLength * (unsigned)frame;
     // rotate, scale
     scale = jsvObjectGetFloatChild(options,"scale");
     if (!isfinite(scale) || scale<=0) scale=1;
@@ -4056,11 +4057,10 @@ JsVar *jswrap_graphics_asBMP_X(JsVar *parent, bool printBase64) {
     }
   }
 
-  int pixelMask = (1<<bpp)-1;
+  unsigned int pixelMask = (1U<<bpp)-1;
   int pixelsPerByte = 8 / bpp;
   int idx = headerLen; //< index we're writing to our data at
   for (int y=height-1;y>=0;y--) {
-    int yi = height-(y+1);
     int bytesWritten = 0;
     if (bpp<8) { // >1 pixels per byte
       for (int x=0;x<width;) {
@@ -4081,7 +4081,7 @@ JsVar *jswrap_graphics_asBMP_X(JsVar *parent, bool printBase64) {
       for (int x=0;x<width;x++) {
         unsigned int c = graphicsGetPixel(&gfx, x, y);
         if (bpp==16) // 16 bit BMP is RGB555, not RGB565
-          c = (c&31) | ((c>>1)&~31);
+          c = (c&31) | ((c>>1)&~31U);
         for (int j=0;j<bpp;j+=8) {
           imgPtr[idx++] = (unsigned char)(c);
           bytesWritten++;
@@ -4096,14 +4096,14 @@ JsVar *jswrap_graphics_asBMP_X(JsVar *parent, bool printBase64) {
     if (printBase64 && idx>2) {
       bool isLastRow = y==0;
       int count = isLastRow ? idx : (idx-(idx%3));
-      JsVar *view = jsvNewArrayBufferFromString(imgData, count); // create an arraybuffer - this means we can pass to btoa with zero allocations
+      JsVar *view = jsvNewArrayBufferFromString(imgData, (unsigned int)count); // create an arraybuffer - this means we can pass to btoa with zero allocations
       JsVar *b64 = jswrap_btoa(view);
       jsvUnLock(view);
       if (b64) jsiConsolePrintf("%v", b64);
       jsvUnLock(b64);
       // shift everything back so we can start again
       if (count < idx)
-        memmove(imgPtr, &imgPtr[count], idx-count);
+        memmove(imgPtr, &imgPtr[count], (size_t)(idx-count));
       idx -= count;
     }
   }
