@@ -672,7 +672,7 @@ void jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt 
 void jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value, bool bigEndian) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
   assert(!it->hasAccessedElement); // we just haven't implemented this case yet
-  char data[8] __attribute__ ((aligned (8)));
+  char data[8] __attribute__ ((aligned (4)));
   int i,dataLen = (int)JSV_ARRAYBUFFER_GET_SIZE(it->type);
 
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
