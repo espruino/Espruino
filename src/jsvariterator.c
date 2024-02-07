@@ -586,7 +586,7 @@ static JsVarFloat jsvArrayBufferIteratorDataToFloat(JsvArrayBufferIterator *it, 
 
 JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it, bool bigEndian) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return 0;
-  char data[8];
+  char data[8] __attribute__ ((aligned (4)));
   jsvArrayBufferIteratorGetValueData(it, data);
   if (bigEndian)
       reverseBytes(data, JSV_ARRAYBUFFER_GET_SIZE(it->type));
@@ -612,7 +612,7 @@ JsVar *jsvArrayBufferIteratorGetValueAndRewind(JsvArrayBufferIterator *it) {
 
 JsVarInt jsvArrayBufferIteratorGetIntegerValue(JsvArrayBufferIterator *it) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return 0;
-  char data[8];
+  char data[8] __attribute__ ((aligned (4)));
   jsvArrayBufferIteratorGetValueData(it, data);
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
     return (JsVarInt)jsvArrayBufferIteratorDataToFloat(it, data);
@@ -623,7 +623,7 @@ JsVarInt jsvArrayBufferIteratorGetIntegerValue(JsvArrayBufferIterator *it) {
 
 JsVarFloat jsvArrayBufferIteratorGetFloatValue(JsvArrayBufferIterator *it) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return 0;
-  char data[8];
+  char data[8] __attribute__ ((aligned (4)));
   jsvArrayBufferIteratorGetValueData(it, data);
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
     return jsvArrayBufferIteratorDataToFloat(it, data);
@@ -653,7 +653,7 @@ static void jsvArrayBufferIteratorFloatToData(char *data,  unsigned int dataLen,
 void jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt v) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
   assert(!it->hasAccessedElement); // we just haven't implemented this case yet
-  char data[8];
+  char data[8] __attribute__ ((aligned (4)));
   unsigned int i,dataLen = JSV_ARRAYBUFFER_GET_SIZE(it->type);
 
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
@@ -672,7 +672,7 @@ void jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt 
 void jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value, bool bigEndian) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
   assert(!it->hasAccessedElement); // we just haven't implemented this case yet
-  char data[8];
+  char data[8] __attribute__ ((aligned (8)));
   int i,dataLen = (int)JSV_ARRAYBUFFER_GET_SIZE(it->type);
 
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
