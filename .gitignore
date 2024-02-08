@@ -29,6 +29,7 @@ node_modules
 /esp-idf
 xtensa-esp32-elf
 gcc-arm-none-eabi*
+arm-gnu-toolchain*
 *.c#
 /function_keywords.js
 /functions.html

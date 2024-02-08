@@ -1,6 +1,7 @@
           : Graphics: Ensure floodFill sets modified area correctly
             nRF52: Lower expected BLE XTAL accuracy to 50ppm (can improve BLE stability on some Bangle.js 2)
             Emulator: force stack alignment of 'data' variable when accessing ArrayBuffers (fix #2463)
+            Swapped GCC version from 8.2.1 to 13.2.1 (fix #2455)
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)
