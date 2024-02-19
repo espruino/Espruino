@@ -2641,8 +2641,8 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
       uint32_t l = len;
 #ifdef NRF51_SERIES
       if (l>1024) l=1024; // max write size
-#else
-      if (l>4096) l=4096; // max write size
+#else // SD 6.1.1 doesn't like flash ops that take too long so we must not write the full 4096 (probably a good plan on older SD too)
+      if (l>2048) l=2048; // max write size
 #endif
       len -= l;
       while ((err = sd_flash_write(((uint32_t*)addr)+wordOffset, ((uint32_t *)buf)+wordOffset, l>>2)) == NRF_ERROR_BUSY && !jspIsInterrupted());
