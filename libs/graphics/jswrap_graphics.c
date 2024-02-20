@@ -2410,7 +2410,6 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
           // add the space/etc before (but not a space at the start of a newline)
           jsvAppendCharacter(currentLine, wordBreakCharacter);
           lineWidth += spaceWidth;
-          wordBreakCharacter = 0;
         }
         jsvAppendStringVar(currentLine, str, (size_t)wordStartIdx, (size_t)(currentPos-(wordStartIdx+1)));
         lineWidth += wordWidth;
@@ -2424,19 +2423,30 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         while (wordWidth > maxWidth) {
           int width = 0;
           currentLine = jsvNewFromEmptyString();
-          while (wordStartIdx < currentPos) {
-            char wordCh = (char)jsvGetCharInString(str, (size_t)wordStartIdx);
+          JsvStringIterator wordIt;
+          jsvStringIteratorNew(&wordIt, str, wordStartIdx); // not UTF8 as wordStartIdx isn't UTF8 indexed
+          while (jsvStringIteratorGetIndex(&wordIt) < currentPos) {
+            int wordCh = jsvStringIteratorGetUTF8CharAndNext(&wordIt);
             int w = _jswrap_graphics_getCharWidth(&info, wordCh);
             if (width+w < maxWidth || !width) { // add while it fits OR it's the first character
               // !width stops us locking up if char width>split width
-              wordStartIdx++;
               wordWidth -= w;
               lineWidth -= w;
               width += w;
-              jsvAppendCharacter(currentLine, wordCh); // FIXME: UTF8?
+              wordStartIdx = jsvStringIteratorGetIndex(&wordIt);
+#ifdef ESPR_UNICODE_SUPPORT
+              jsvAppendUTF8Character(currentLine, wordCh);
+#else
+              jsvAppendCharacter(currentLine, wordCh);
+#endif
             } else
               break;
           }
+          jsvStringIteratorFree(&wordIt);
+#ifdef ESPR_UNICODE_SUPPORT
+          if (jsvIsUTF8String(str))
+            currentLine = jsvNewUTF8StringAndUnLock(currentLine);
+#endif
           jsvArrayPush(lines, currentLine);
           jsvUnLock(currentLine);
         }
@@ -2449,6 +2459,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
 #endif
         if (wasNewLine) wordBreakCharacter = ' ';
       }
+      wordBreakCharacter = 0;
       if (canSplitAfter && !canBreakOnCh) currentPos--; // include the current ch in the next word
       if (canBreakOnCh && ch>0)
         wordBreakCharacter = (char)ch;

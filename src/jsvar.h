@@ -523,6 +523,14 @@ void jsvAppendStringBuf(JsVar *var, const char *str, size_t length); ///< Append
 void jsvAppendPrintf(JsVar *var, const char *fmt, ...); ///< Append the formatted string to a variable (see vcbprintf)
 JsVar *jsvVarPrintf( const char *fmt, ...); ///< Create a var from the formatted string
 static ALWAYS_INLINE void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStringBuf(var, &ch, 1); }; ///< Append the given character to this string
+#ifdef ESPR_UNICODE_SUPPORT
+///< Append the given UTF8 character to this string
+static ALWAYS_INLINE void jsvAppendUTF8Character(JsVar *var, int ch) {
+  char utf8buf[4];
+  int utf8len = jsUTF8Encode(ch, utf8buf);
+  jsvAppendStringBuf(var, utf8buf, utf8len);
+}
+#endif
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)
 void jsvAppendStringVarComplete(JsVar *var, const JsVar *str); ///< Append all of str to var. Both must be strings.

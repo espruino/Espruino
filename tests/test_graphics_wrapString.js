@@ -112,13 +112,15 @@ g.clear().setFont("4x6");
 lines = g.wrapString("F\u00F6n K\u00FCr B\u00E4r", 200);
 SHOULD_BE(lines, ["F\u00F6n K\u00FCr B\u00E4r"]);
 
+// UTF8 https://github.com/espruino/BangleApps/issues/3037
+g.clear().setFont("6x8");
+lines = g.wrapString("Talmannen Kevin McCarthy avs\u00E4tts \u2014 partikamrater avgjorde\nF\u00F6rsta g\u00F6rsta i USA:s historia \u2022 Republikanen förlorar posten i represent\u2022anthuset test",100)
+SHOULD_BE(lines, ["Talmannen Kevin","McCarthy avs\u00E4tts","\u2014partikamrater","avgjorde","F\u00F6rsta g\u00F6rsta i","USA:s historia \u2022","Republikanen","f\u00F6rlorar posten","i","represent\u2022anthuse","t test"]);
+
 // Using wrapstring from Storage
 require("Storage").write("x","Compacting...\nTakes approx\n1 minute")
 lines = g.wrapString(require("Storage").read("x"), 176)
 require("Storage").erase("x")
 SHOULD_BE(lines, ["Compacting...","Takes approx","1 minute"]);
-
-
-
 
 result = ok;
