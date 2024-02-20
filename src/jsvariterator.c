@@ -342,7 +342,7 @@ int jsvStringIteratorGetUTF8CharAndNext(JsvStringIterator *it) {
     return c;
   int cp=c; // Code point defaults to ASCII
   int ra=0; // Read ahead
-  if (c>127) {
+  if (c>127 && c<=0xF4) {
     if ((c&0xE0)==0xC0) { // 2-byte code starts with 0b110xxxxx
       cp=c&0x1F;ra=1;
     } else if ((c&0xF0)==0xE0) { // 3-byte code starts with 0b1110xxxx

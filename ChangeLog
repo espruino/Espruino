@@ -4,6 +4,7 @@
             Swapped GCC version from 8.2.1 to 13.2.1 (fix #2455)
             nRF52: Write flash in 2k blocks (not 4k) as SD 6.1.1 can crash (probably good for earlier SD too)
             g.wrapString fix issues wrapping long words in UTF8 strings over multiple lines
+            Bangle.js2: Fix parsing of UTF8 strings containing char codes 0xF5..0xFF (which are not valid UTF8)
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)

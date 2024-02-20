@@ -1038,7 +1038,7 @@ bool jsUTF8IsStartChar(char c) {
 
 /// Gets the length of a unicode char sequence by looking at the first char
 unsigned int jsUTF8LengthFromChar(char c) {
-  if ((c&0x80)==0) return 1; // ASCII - definitely just one byte
+  if ((c&0x80)==0 || (((unsigned char)c)>0xF4)) return 1; // ASCII (or above UTF8 range) - definitely just one byte
   if ((c&0xE0)==0xC0) return 2; // 2-byte code starts with 0b110xxxxx
   if ((c&0xF0)==0xE0) return 3; // 3-byte code starts with 0b1110xxxx
   if ((c&0xF8)==0xF0) return 4; // 4-byte code starts with 0b11110xxx
