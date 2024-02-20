@@ -265,9 +265,10 @@ if [ "$ARM" = "1" ]; then
         #sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
         #sudo apt-get update
         #sudo DEBIAN_FRONTEND=noninteractive apt-get --force-yes --yes install libsdl1.2-dev gcc-arm-embedded
-        # Unpack - newer, and much faster
+        # OR download from https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-arm-none-eabi.tar.xz
+        # Unpack from GitHub-hosted file - newer, and much faster
         if [ ! -d "$EXPECTEDARMGCCFILENAME" ]; then
-          curl -Ls "https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-arm-none-eabi.tar.xz" | tar xfJ - --no-same-owner
+          curl -Ls "https://github.com/espruino/EspruinoBuildTools/raw/master/arm/arm-gnu-toolchain-13.2.rel1-x86_64-arm-none-eabi-stripped.tar.xz" | tar xfJ - --no-same-owner
         else
             echo "Folder found"
         fi
