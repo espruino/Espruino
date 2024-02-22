@@ -172,4 +172,7 @@ if [ -n "$ESP_BINARY2_NAME" ]; then
 fi
 
 rm $LOGFILE
+rm -rf $BINDIR
+rm -rf $OBJDIR
+rm -rf $GENDIR
 
