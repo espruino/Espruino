@@ -37,19 +37,25 @@ info = {
      'NEOPIXEL',
      'JIT' # JIT compiler enabled
    ],
+   'defines':{
+     "NRF_USB":1,
+     "NEOPIXEL_SCK_PIN": 22, "NEOPIXEL_LRCK_PIN": 23, # nRF52840 needs LRCK pin defined for neopixel
+     "NRF_SDH_BLE_GATT_MAX_MTU_SIZE":131,  # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
+     "CENTRAL_LINK_COUNT":2,  # allow two outgoing connections at once
+     "NRF_SDH_BLE_CENTRAL_LINK_COUNT":2,
+     "NRF_BOOTLOADER_NO_WRITE_PROTECT":1, # By default the bootloader protects flash. Avoid this (a patch for NRF_BOOTLOADER_NO_WRITE_PROTECT must be applied first)
+     "define":[
+       "CONFIG_GPIO_AS_PINRESET", # Allow the reset pin to work
+       "BOARD_PCA10056",
+       "USB",
+     ]
+   },
    'makefile' : [
-     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
-     'DEFINES += -DBOARD_PCA10056',
-     'DEFINES += -DNRF_USB=1 -DUSB',
-     'DEFINES += -DNEOPIXEL_SCK_PIN=22 -DNEOPIXEL_LRCK_PIN=23', # nRF52840 needs LRCK pin defined for neopixel
-     'DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131', # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
-     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3660', # set RAM base to match MTU=131 + CENTRAL_LINK_COUNT=2
 #     'ESPR_BLUETOOTH_ANCS=1', # Enable ANCS (Apple notifications) support
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0xa9,0xae,0xb6',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DEFINES += -DNRF_BOOTLOADER_NO_WRITE_PROTECT=1', # By default the bootloader protects flash. Avoid this (a patch for NRF_BOOTLOADER_NO_WRITE_PROTECT must be applied first)
-#     'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER', # enables watchdog timer
+     
      'BOOTLOADER_SETTINGS_FAMILY=NRF52840',
      'NRF_SDK15=1',
    ]

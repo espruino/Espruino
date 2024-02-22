@@ -40,30 +40,46 @@ info = {
      'TENSORFLOW',
      'JIT' # JIT compiler enabled
    ],
+   'defines':{
+     "ESPR_HWVERSION":2,
+     "NRF_SDH_BLE_GATT_MAX_MTU_SIZE":131, # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
+     "CENTRAL_LINK_COUNT":2,"NRF_SDH_BLE_CENTRAL_LINK_COUNT":2,# allow two outgoing connections at once
+     "ESPR_DCDC_ENABLE":1, # Use DC/DC converter
+     'ESPR_JSVAR_FLASH_BUFFER_SIZE':32, # The buffer size we use when executing/iterating over data in flash memory (default 16). Should be set based on benchmarks.
+     'APP_TIMER_OP_QUEUE_SIZE':6, # Bangle.js accelerometer poll handler needs something else in queue size
+     'BLUETOOTH_NAME_PREFIX':"\"Bangle.js\"",
+     'CUSTOM_GETBATTERY':'jswrap_banglejs_getBattery',
+     'DESPR_UNICODE_SUPPORT': 1,
+     'DUMP_IGNORE_VARIABLES': "\"g\\0\"" ,
+     "ESPR_GRAPHICS_INTERNAL":1,
+     "ESPR_BATTERY_FULL_VOLTAGE":0.3144,
+     'ESPR_NO_LINE_NUMBERS':1, # we execute mainly from flash, so line numbers can be worked out'
+     'HEARTRATE_VC31_BINARY':1,
+     'ESPR_BANGLE_UNISTROKE':1,
+     'ESPR_STORAGE_INITIAL_CONTENTS':1,  # use banglejs2_storage_default
+     'ESPR_USE_STORAGE_CACHE':32, # Add a 32 entry cache to speed up finding files
+     'NRF_BOOTLOADER_NO_WRITE_PROTECT': 1, # By default the bootloader protects flash. Avoid this (a patch for NRF_BOOTLOADER_NO_WRITE_PROTECT must be applied first)
+     "define":[
+       "BANGLEJS",
+       "BANGLEJS_Q3",
+#      "CONFIG_GPIO_AS_PINRESET", # Allow the reset pin to work
+       "CONFIG_NFCT_PINS_AS_GPIOS"
+#      "DESPR_REGOUT0_1_8V", # this increases power draw, so probably not correct!
+       "ESPR_LSE_ENABLE", # Ensure low speed external osc enabled
+       "SPIFLASH_SLEEP_CMD", # SPI flash needs to be explicitly slept and woken up
+       'SPIFLASH_READ2X', # Read SPI flash at 2x speed using MISO and MOSI for IO
+       'USE_FONT_6X8',
+       'GRAPHICS_PALETTED_IMAGES',
+       'GRAPHICS_ANTIALIAS',
+       'ESPR_PBF_FONTS',
+       'NO_DUMP_HARDWARE_INITIALISATION',  # don't dump hardware init - not used and saves 1k of flash
+       'BUTTONPRESS_TO_REBOOT_BOOTLOADER',
+       'ESPR_BOOTLOADER_SPIFLASH'
+     ]
+   },
    'makefile' : [
-     'DEFINES += -DESPR_HWVERSION=2 -DBANGLEJS -DBANGLEJS_Q3',
-#     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
-     'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow us to use NFC pins as GPIO
-     #'DEFINES += -DESPR_REGOUT0_1_8V=1', # this increases power draw, so probably not correct!
-     'DEFINES += -DESPR_LSE_ENABLE', # Ensure low speed external osc enabled
-     'DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131', # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
-     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3660', # set RAM base to match MTU=131 + CENTRAL_LINK_COUNT=2
-     'DEFINES += -DESPR_DCDC_ENABLE=1', # Use DC/DC converter
      'ESPR_BLUETOOTH_ANCS=1', # Enable ANCS (Apple notifications) support
-     'DEFINES += -DSPIFLASH_SLEEP_CMD', # SPI flash needs to be explicitly slept and woken up
-     'DEFINES += -DSPIFLASH_READ2X', # Read SPI flash at 2x speed using MISO and MOSI for IO
-     'DEFINES += -DESPR_JSVAR_FLASH_BUFFER_SIZE=32', # The buffer size we use when executing/iterating over data in flash memory (default 16). Should be set based on benchmarks.
-     'DEFINES += -DAPP_TIMER_OP_QUEUE_SIZE=6', # Bangle.js accelerometer poll handler needs something else in queue size
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
-     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
-     'DEFINES+=-DESPR_UNICODE_SUPPORT=1',
-     'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
-     'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
-     'DEFINES+=-DESPR_BATTERY_FULL_VOLTAGE=0.3144',
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS',
-     'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
-     'DEFINES += -DESPR_NO_LINE_NUMBERS=1', # we execute mainly from flash, so line numbers can be worked out
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_6x15.c',
@@ -74,22 +90,15 @@ info = {
 # Standard open-source heart rate algorithm:
 #    'SOURCES += libs/misc/heartrate.c',
 # Proprietary heart rate algorithm:
-     'SOURCES += libs/misc/heartrate_vc31_binary.c', 'DEFINES += -DHEARTRATE_VC31_BINARY=1', 'PRECOMPILED_OBJS += libs/misc/vc31_binary/algo.o libs/misc/vc31_binary/modle5_10.o libs/misc/vc31_binary/modle5_11.o libs/misc/vc31_binary/modle5_12.o libs/misc/vc31_binary/modle5_13.o libs/misc/vc31_binary/modle5_14.o libs/misc/vc31_binary/modle5_15.o libs/misc/vc31_binary/modle5_16.o libs/misc/vc31_binary/modle5_17.o libs/misc/vc31_binary/modle5_18.o libs/misc/vc31_binary/modle5_1.o libs/misc/vc31_binary/modle5_2.o libs/misc/vc31_binary/modle5_3.o libs/misc/vc31_binary/modle5_4.o libs/misc/vc31_binary/modle5_5.o libs/misc/vc31_binary/modle5_6.o libs/misc/vc31_binary/modle5_7.o libs/misc/vc31_binary/modle5_8.o libs/misc/vc31_binary/modle5_9.o',
+     'SOURCES += libs/misc/heartrate_vc31_binary.c', 'PRECOMPILED_OBJS += libs/misc/vc31_binary/algo.o libs/misc/vc31_binary/modle5_10.o libs/misc/vc31_binary/modle5_11.o libs/misc/vc31_binary/modle5_12.o libs/misc/vc31_binary/modle5_13.o libs/misc/vc31_binary/modle5_14.o libs/misc/vc31_binary/modle5_15.o libs/misc/vc31_binary/modle5_16.o libs/misc/vc31_binary/modle5_17.o libs/misc/vc31_binary/modle5_18.o libs/misc/vc31_binary/modle5_1.o libs/misc/vc31_binary/modle5_2.o libs/misc/vc31_binary/modle5_3.o libs/misc/vc31_binary/modle5_4.o libs/misc/vc31_binary/modle5_5.o libs/misc/vc31_binary/modle5_6.o libs/misc/vc31_binary/modle5_7.o libs/misc/vc31_binary/modle5_8.o libs/misc/vc31_binary/modle5_9.o',
 # ------------------------
      'SOURCES += libs/misc/unistroke.c',
      'WRAPPERSOURCES += libs/misc/jswrap_unistroke.c',
-     'DEFINES += -DESPR_BANGLE_UNISTROKE=1',
      'SOURCES += libs/banglejs/banglejs2_storage_default.c',
-     'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1', # use banglejs2_storage_default
-     'DEFINES += -DESPR_USE_STORAGE_CACHE=32', # Add a 32 entry cache to speed up finding files
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
-
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0xa9,0xae,0xb6',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
-     'DEFINES += -DNRF_BOOTLOADER_NO_WRITE_PROTECT=1', # By default the bootloader protects flash. Avoid this (a patch for NRF_BOOTLOADER_NO_WRITE_PROTECT must be applied first)
-     'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER',
      'BOOTLOADER_SETTINGS_FAMILY=NRF52840',
-     'DEFINES += -DESPR_BOOTLOADER_SPIFLASH', # Allow bootloader to flash direct from SPI flash
      'NRF_SDK15=1'
    ]
  }

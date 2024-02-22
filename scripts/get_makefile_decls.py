@@ -71,6 +71,21 @@ if "makefile" in board.info["build"]:
     for mfLine in board.info["build"]["makefile"]:
         print(mfLine)
 
+if "defines" in board.info["build"]:
+    for name,value in board.info["build"]["defines"].items():
+        if(name == "define"):
+            for i in value:
+                print("DEFINES += -D"+i + "\n")
+        else:
+            dataStr = str(value)
+            #format it so that the command line knows it's a string
+            if (dataStr[0] == '\"' or dataStr[0] == '\''):
+                dataStr = "\'" + value + "\'"
+            print("DEFINES += -D" + name + "=" + dataStr + "\n")
+            
+    print("DEFINES += -DSHOW_DEFINES\n") #hides the platform_config defines
+
+
 if 'USB' in board.devices:
     print("USB:=1")
 

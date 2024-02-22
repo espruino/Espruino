@@ -546,6 +546,16 @@ if "ESP8266" in board.devices:
     if entry[0:4]=="pin_":
       codeOut("#define ESP8266_"+str(entry[4:].upper())+" "+toPinDef(board.devices["ESP8266"][entry]))
 
+if "defines" in board.info["build"]:
+  codeOut("#ifndef SHOW_DEFINES")
+  for name,value in board.info["build"]["defines"].items():
+    if(name == "define"):
+      for i in value:
+        codeOut("\t#define " + i )
+    else:
+      codeOut("\t#define " + name + " " + str(value))
+  codeOut("#endif")
+
 codeOut("")
 
 codeOut("// definition to avoid compilation when Pin/platform config is not defined")

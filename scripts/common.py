@@ -154,22 +154,26 @@ def get_jsondata(is_for_document, parseArgs = True, boardObject = False):
       if "spi" in board.chip: defines.append("SPI_COUNT="+str(board.chip["spi"]));
       if "i2c" in board.chip: defines.append("I2C_COUNT="+str(board.chip["i2c"]));
       if "USB" in board.devices: defines.append("defined(USB)=True");
-      else: defines.append("defined(USB)=False");
-      if "build" in board.info:
-        if "defines" in board.info["build"]:
-          for i in board.info["build"]["defines"]:
-            print("board.defines: " + i);
-            defines.append(i)
-        if "makefile" in board.info["build"]:
-          for i in board.info["build"]["makefile"]:           
-            print("board.makefile: " + i);
-            i = i.strip()
-            if i.startswith("DEFINES"): 
-              defs = i[7:].strip()[2:].strip().split() # array of -Dsomething
-              for d in defs: 
-                if not d.startswith("-D"):
-                  print("WARNING: expecting -Ddefine, got " + d)
-                defines.append(d[2:])
+      else: defines.append("defined(USB)=False")
+      if ("build" in board.info and "defines" in board.info["build"]):
+        for name,value in board.info["build"]["defines"].items():
+          print("board.defines: " + name)
+          if(name == "define"):
+            for j in value:
+              defines.append(j)
+          else:
+            defines.append(name + "=" + str(value))
+ #[LEGACY] way of adding DEFINES   
+      if ("build" in board.info and "makefile" in board.info["build"]):      
+        for i in board.info["build"]["makefile"]:           
+          print("board.makefile: " + i);
+          i = i.strip()
+          if i.startswith("DEFINES"): 
+            defs = i[7:].strip()[2:].strip().split() # array of -Dsomething
+            for d in defs: 
+              if not d.startswith("-D"):
+                print("WARNING: expecting -Ddefine, got " + d)
+              defines.append(d[2:])
 
     if len(defines)>1:
       print("Got #DEFINES:")
