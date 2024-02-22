@@ -316,13 +316,13 @@ if flash_saved_code2_pages:
 codeOut("");
 
 codeOut("#define CLOCK_SPEED_MHZ                      "+str(board.chip["speed"]))
-codeOut("#define USART_COUNT                          "+str(board.chip["usart"]))
+codeOut("#define ESPR_USART_COUNT                     "+str(board.chip["usart"]))
 if "spi" in board.chip:
-  codeOut("#define SPI_COUNT                            "+str(board.chip["spi"]))
-codeOut("#define I2C_COUNT                            "+str(board.chip["i2c"]))
-codeOut("#define ADC_COUNT                            "+str(board.chip["adc"]))
-codeOut("#define DAC_COUNT                            "+str(board.chip["dac"]))
-codeOut("#define EXTI_COUNT                           "+str(exti_count))
+  codeOut("#define ESPR_SPI_COUNT                       "+str(board.chip["spi"]))
+codeOut("#define ESPR_I2C_COUNT                       "+str(board.chip["i2c"]))
+codeOut("#define ESPR_ADC_COUNT                       "+str(board.chip["adc"]))
+codeOut("#define ESPR_DAC_COUNT                       "+str(board.chip["dac"]))
+codeOut("#define ESPR_EXTI_COUNT                      "+str(exti_count))
 codeOut("");
 codeOut("#define DEFAULT_CONSOLE_DEVICE              "+board.info["default_console"]);
 if "default_console_tx" in board.info:

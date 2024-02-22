@@ -123,7 +123,7 @@ The USB Serial port
   "type" : "object",
   "name" : "Serial1",
   "instanceof" : "Serial",
-  "#if" : "USART_COUNT>=1"
+  "#if" : "ESPR_USART_COUNT>=1"
 }
 The first Serial (USART) port
  */
@@ -131,7 +131,7 @@ The first Serial (USART) port
   "type" : "object",
   "name" : "Serial2",
   "instanceof" : "Serial",
-  "#if" : "USART_COUNT>=2"
+  "#if" : "ESPR_USART_COUNT>=2"
 }
 The second Serial (USART) port
  */
@@ -139,7 +139,7 @@ The second Serial (USART) port
   "type" : "object",
   "name" : "Serial3",
   "instanceof" : "Serial",
-  "#if" : "USART_COUNT>=3"
+  "#if" : "ESPR_USART_COUNT>=3"
 }
 The third Serial (USART) port
  */
@@ -147,7 +147,7 @@ The third Serial (USART) port
   "type" : "object",
   "name" : "Serial4",
   "instanceof" : "Serial",
-  "#if" : "USART_COUNT>=4"
+  "#if" : "ESPR_USART_COUNT>=4"
 }
 The fourth Serial (USART) port
  */
@@ -155,7 +155,7 @@ The fourth Serial (USART) port
   "type" : "object",
   "name" : "Serial5",
   "instanceof" : "Serial",
-  "#if" : "USART_COUNT>=5"
+  "#if" : "ESPR_USART_COUNT>=5"
 }
 The fifth Serial (USART) port
  */
@@ -163,7 +163,7 @@ The fifth Serial (USART) port
   "type" : "object",
   "name" : "Serial6",
   "instanceof" : "Serial",
-  "#if" : "USART_COUNT>=6"
+  "#if" : "ESPR_USART_COUNT>=6"
 }
 The sixth Serial (USART) port
  */

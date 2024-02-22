@@ -18,8 +18,8 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
@@ -280,7 +280,7 @@ void RTC_WKUP_IRQHandler(void)
 }
 #endif
 
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
 NO_INLINE static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
   if (USART_GetFlagStatus(USART, USART_FLAG_FE) != RESET) {
     // If we have a framing error, push status info onto the event queue
@@ -321,36 +321,36 @@ NO_INLINE static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device
 }
 #endif
 
-#if defined(USART1) && USART_COUNT>=1
+#if defined(USART1) && ESPR_USART_COUNT>=1
 void USART1_IRQHandler(void) {
   USART_IRQHandler(USART1, EV_SERIAL1);
 }
 #endif
-#if defined(USART2) && USART_COUNT>=2
+#if defined(USART2) && ESPR_USART_COUNT>=2
 void USART2_IRQHandler(void) {
   USART_IRQHandler(USART2, EV_SERIAL2);
 }
 #endif
 
-#if defined(USART3) && USART_COUNT>=3
+#if defined(USART3) && ESPR_USART_COUNT>=3
 void USART3_IRQHandler(void) {
   USART_IRQHandler(USART3, EV_SERIAL3);
 }
 #endif
 
-#if defined(UART4) && USART_COUNT>=4
+#if defined(UART4) && ESPR_USART_COUNT>=4
 void UART4_IRQHandler(void) {
   USART_IRQHandler(UART4, EV_SERIAL4);
 }
 #endif
 
-#if defined(UART5) && USART_COUNT>=5
+#if defined(UART5) && ESPR_USART_COUNT>=5
 void UART5_IRQHandler(void) {
   USART_IRQHandler(UART5, EV_SERIAL5);
 }
 #endif
 
-#if defined(USART6) && USART_COUNT>=6
+#if defined(USART6) && ESPR_USART_COUNT>=6
 void USART6_IRQHandler(void) {
   USART_IRQHandler(USART6, EV_SERIAL6);
 }
@@ -364,19 +364,19 @@ static void SPI_IRQHandler(SPI_TypeDef *SPIx, IOEventFlags device) {
     }
 }
 
-#if SPI_COUNT>=1
+#if ESPR_SPI_COUNT>=1
 void SPI1_IRQHandler(void) {
   SPI_IRQHandler(SPI1, EV_SPI1);
 }
 #endif
 
-#if SPI_COUNT>=2
+#if ESPR_SPI_COUNT>=2
 void SPI2_IRQHandler(void) {
   SPI_IRQHandler(SPI2, EV_SPI2);
 }
 #endif
 
-#if SPI_COUNT>=3
+#if ESPR_SPI_COUNT>=3
 void SPI3_IRQHandler(void) {
   SPI_IRQHandler(SPI3, EV_SPI3);
 }

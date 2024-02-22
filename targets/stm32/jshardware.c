@@ -83,16 +83,16 @@ BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 BITFIELD_DECL(jshPinOpendrainPullup, JSH_PIN_COUNT);
 #endif
 
-#define SPI_ENABLED (SPI_COUNT>0)
-#define I2C_ENABLED (I2C_COUNT>0)
-#define USART_ENABLED (USART_COUNT>0)
+#define SPI_ENABLED (ESPR_SPI_COUNT>0)
+#define I2C_ENABLED (ESPR_I2C_COUNT>0)
+#define USART_ENABLED (ESPR_USART_COUNT>0)
 
 #if SPI_ENABLED
 // simple 4 byte buffers for SPI
 #define JSH_SPIBUF_MASK 3 // 4 bytes
-volatile unsigned char jshSPIBufHead[SPI_COUNT];
-volatile unsigned char jshSPIBufTail[SPI_COUNT];
-volatile unsigned char jshSPIBuf[SPI_COUNT][4]; // 4 bytes packed into an int
+volatile unsigned char jshSPIBufHead[ESPR_SPI_COUNT];
+volatile unsigned char jshSPIBufTail[ESPR_SPI_COUNT];
+volatile unsigned char jshSPIBuf[ESPR_SPI_COUNT][4]; // 4 bytes packed into an int
 Pin jshNeoPixelPin = PIN_UNDEFINED; ///< The currently setup Neopixel pin (set by jswrap_neopixel). This is reset to PIN_UNDEFINED if we think anything could have messed it up
 #endif
 
@@ -110,11 +110,11 @@ volatile unsigned char jshUSBReceiveLastActive = 0; ///< How many systicks since
  * and then masking off the top bit */
 unsigned char jsh7BitUART;
 bool jshIsSerial7Bit(IOEventFlags device) {
-  assert(USART_COUNT<=8);
+  assert(ESPR_USART_COUNT<=8);
   return jsh7BitUART & (1<<(device-EV_SERIAL1));
 }
 void jshSetIsSerial7Bit(IOEventFlags device, bool is7Bit) {
-  assert(USART_COUNT<=8);
+  assert(ESPR_USART_COUNT<=8);
   if (is7Bit) jsh7BitUART |= (1<<(device-EV_SERIAL1));
   else  jsh7BitUART &= ~(1<<(device-EV_SERIAL1));
 }
@@ -380,52 +380,52 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   device = device&JSH_MASK_TYPE;
   void *ptr = 0;
   if (0){
-#if defined(USART1) && USART_COUNT>=1
+#if defined(USART1) && ESPR_USART_COUNT>=1
   } else if (device == JSH_USART1) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, cmd);
     ptr = USART1;
 #endif
-#if defined(USART2) && USART_COUNT>=2
+#if defined(USART2) && ESPR_USART_COUNT>=2
   } else if (device == JSH_USART2) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, cmd);
     ptr = USART2;
 #endif
-#if defined(USART3) && USART_COUNT>=3
+#if defined(USART3) && ESPR_USART_COUNT>=3
   } else if (device == JSH_USART3) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, cmd);
     ptr = USART3;
 #endif
-#if defined(UART4) && USART_COUNT>=4
+#if defined(UART4) && ESPR_USART_COUNT>=4
   } else if (device == JSH_USART4) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, cmd);
     ptr = UART4;
 #endif
-#if defined(UART5) && USART_COUNT>=5
+#if defined(UART5) && ESPR_USART_COUNT>=5
   } else if (device == JSH_USART5) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, cmd);
     ptr = UART5;
 #endif
-#if defined(USART6) && USART_COUNT>=6
+#if defined(USART6) && ESPR_USART_COUNT>=6
   } else if (device == JSH_USART6) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, cmd);
     ptr = USART6;
 #endif
-#if SPI_COUNT >= 1
+#if ESPR_SPI_COUNT >= 1
   } else if (device==JSH_SPI1) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, cmd);
     ptr = SPI1;
 #endif
-#if SPI_COUNT >= 2
+#if ESPR_SPI_COUNT >= 2
   } else if (device==JSH_SPI2) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, cmd);
     ptr = SPI2;
 #endif
-#if SPI_COUNT >= 3
+#if ESPR_SPI_COUNT >= 3
   } else if (device==JSH_SPI3) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, cmd);
     ptr = SPI3;
 #endif
-#if I2C_COUNT >= 1
+#if ESPR_I2C_COUNT >= 1
   } else if (device==JSH_I2C1) {
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, cmd);
       /* Seems some F103 parts require this reset step - some hardware problem */
@@ -433,7 +433,7 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
       RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1, DISABLE);
       ptr = I2C1;
 #endif
-#if I2C_COUNT >= 2
+#if ESPR_I2C_COUNT >= 2
   } else if (device==JSH_I2C2) {
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, cmd);
       /* Seems some F103 parts require this reset step - some hardware problem */
@@ -441,7 +441,7 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
       RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C2, DISABLE);
       ptr = I2C2;
 #endif
-#if I2C_COUNT >= 3
+#if ESPR_I2C_COUNT >= 3
   } else if (device==JSH_I2C3) {
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C3, cmd);
       /* Seems some F103 parts require this reset step - some hardware problem */
@@ -603,19 +603,19 @@ TIM_TypeDef* getTimerFromPinFunction(JshPinFunction device) {
 USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SERIAL1 : return USART1;
-#if USART_COUNT>=2 && defined(USART2)
+#if ESPR_USART_COUNT>=2 && defined(USART2)
    case EV_SERIAL2 : return USART2;
 #endif
-#if USART_COUNT>=3 && defined(USART3)
+#if ESPR_USART_COUNT>=3 && defined(USART3)
    case EV_SERIAL3 : return USART3;
 #endif
-#if USART_COUNT>=4 && defined(UART4)
+#if ESPR_USART_COUNT>=4 && defined(UART4)
    case EV_SERIAL4 : return UART4;
 #endif
-#if USART_COUNT>=5 && defined(UART5)
+#if ESPR_USART_COUNT>=5 && defined(UART5)
    case EV_SERIAL5 : return UART5;
 #endif
-#if USART_COUNT>=6
+#if ESPR_USART_COUNT>=6
    case EV_SERIAL6 : return USART6;
 #endif
    default: return 0;
@@ -627,10 +627,10 @@ USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
 SPI_TypeDef* getSPIFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SPI1 : return SPI1;
-#if SPI_COUNT>=2
+#if ESPR_SPI_COUNT>=2
    case EV_SPI2 : return SPI2;
 #endif
-#if SPI_COUNT>=3
+#if ESPR_SPI_COUNT>=3
    case EV_SPI3 : return SPI3;
 #endif
    default: return 0;
@@ -642,10 +642,10 @@ SPI_TypeDef* getSPIFromDevice(IOEventFlags device) {
 I2C_TypeDef* getI2CFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_I2C1 : return I2C1;
-#if I2C_COUNT>=2
+#if ESPR_I2C_COUNT>=2
    case EV_I2C2 : return I2C2;
 #endif
-#if I2C_COUNT>=3
+#if ESPR_I2C_COUNT>=3
    case EV_I2C3 : return I2C3;
 #endif
    default: return 0;
@@ -1063,13 +1063,13 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
   else if ((func&JSH_MASK_TYPE)==JSH_SPI1) GPIO_PinRemapConfig( GPIO_Remap_SPI1, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_SPI3) GPIO_PinRemapConfig( GPIO_Remap_SPI3, remap );
 #endif
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
   else if ((func&JSH_MASK_TYPE)==JSH_USART1) GPIO_PinRemapConfig( GPIO_Remap_USART1, remap );
 #endif
-#if USART_COUNT>1
+#if ESPR_USART_COUNT>1
   else if ((func&JSH_MASK_TYPE)==JSH_USART2) GPIO_PinRemapConfig( GPIO_Remap_USART2, remap );
 #endif
-#if USART_COUNT>2
+#if ESPR_USART_COUNT>2
   else if ((func&JSH_MASK_TYPE)==JSH_USART3) {
     // nasty hack because USART3 actuall has 2 different remap states
     bool fullRemap = (JSH_PORTD_COUNT>9) && (pin==jshGetPinFromString("D8") || pin==jshGetPinFromString("D9"));
@@ -1414,7 +1414,7 @@ void jshInit() {
 
 #if SPI_ENABLED
   // reset SPI buffers
-  for (i=0;i<SPI_COUNT;i++) {
+  for (i=0;i<ESPR_SPI_COUNT;i++) {
     jshSPIBufHead[i] = 0;
     jshSPIBufTail[i] = 0;
   }
@@ -1882,7 +1882,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 
     // Otherwise
     jshPrintCapablePins(pin, "PWM Output", JSH_TIMER1, JSH_TIMERMAX, 0,0, false);
-  #if defined(DAC_COUNT) && DAC_COUNT>0
+  #if defined(ESPR_DAC_COUNT) && ESPR_DAC_COUNT>0
     jsiConsolePrint("\nOr pins with DAC output are:\n");
     jshPrintCapablePins(pin, 0, JSH_DAC, JSH_DAC, 0,0, false);
     jsiConsolePrint("\n");
@@ -1893,7 +1893,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   }
 
   if (JSH_PINFUNCTION_IS_DAC(func)) {
-#if defined(DAC_COUNT) && DAC_COUNT>0
+#if defined(ESPR_DAC_COUNT) && ESPR_DAC_COUNT>0
     // Special case for DAC output
     uint16_t data = (uint16_t)(value*0xFFFF);
     if ((func & JSH_MASK_INFO)==JSH_DAC_CH1) {
@@ -2113,23 +2113,23 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   IRQn_Type usartIRQ;
   if (device == EV_SERIAL1) {
     usartIRQ = USART1_IRQn;
-#if defined(USART2) && USART_COUNT>=2
+#if defined(USART2) && ESPR_USART_COUNT>=2
   } else if (device == EV_SERIAL2) {
     usartIRQ = USART2_IRQn;
 #endif
-#if defined(USART3) && USART_COUNT>=3
+#if defined(USART3) && ESPR_USART_COUNT>=3
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
-#if defined(UART4) && USART_COUNT>=4
+#if defined(UART4) && ESPR_USART_COUNT>=4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
 #endif
-#if defined(UART5) && USART_COUNT>=5
+#if defined(UART5) && ESPR_USART_COUNT>=5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
 #endif
-#if defined(USART6) && USART_COUNT>=6
+#if defined(USART6) && ESPR_USART_COUNT>=6
   } else if (device == EV_SERIAL6) {
     usartIRQ = USART6_IRQn;
 #endif
@@ -2280,10 +2280,10 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   uint8_t spiIRQ;
   switch (device) {
     case EV_SPI1: spiIRQ = SPI1_IRQn; break;
-#if SPI_COUNT>=2
+#if ESPR_SPI_COUNT>=2
     case EV_SPI2: spiIRQ = SPI2_IRQn; break;
 #endif
-#if SPI_COUNT>=3
+#if ESPR_SPI_COUNT>=3
     case EV_SPI3: spiIRQ = SPI3_IRQn; break;
 #endif
     default: assert(0); break;
@@ -2803,7 +2803,7 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
 // Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value) {
   if (JSH_PINFUNCTION_IS_DAC(func)) {
-#if DAC_COUNT>0
+#if ESPR_DAC_COUNT>0
     uint16_t dacVal = (uint16_t)value;
     switch (func & JSH_MASK_INFO) {
     case JSH_DAC_CH1:  DAC_SetChannel1Data(DAC_Align_12b_L, dacVal); break;

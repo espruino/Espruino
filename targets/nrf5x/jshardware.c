@@ -74,7 +74,7 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "nrf_adc.h"
 #endif
 
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
 #include "nrf_drv_uart.h"
 #endif
 #if TWI_ENABLED
@@ -312,7 +312,7 @@ unsigned int ticksSinceStart = 0;
 /// Current state of each pin
 JshPinFunction pinStates[JSH_PIN_COUNT];
 /// for each EXTI, which nordic pin (0..31 /  0..47) is used (PIN_UNDEFINED if unused)
-uint8_t extiToPin[EXTI_COUNT];
+uint8_t extiToPin[ESPR_EXTI_COUNT];
 
 #ifdef NRF52_SERIES
 /// This is used to handle the case where an analog read happens in an IRQ interrupts one being done outside
@@ -419,11 +419,11 @@ static uint8_t twisAddr;
 }
 
 #else // NRF5X_SDK_11
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
 
 static const nrf_drv_uart_t UART[] = {
     NRF_DRV_UART_INSTANCE(0),
-#if USART_COUNT>1
+#if ESPR_USART_COUNT>1
 //#define NRFX_UART1_INST_IDX 1
 //#define NRF_UART1                       ((NRF_UART_Type           *) NRF_UARTE1_BASE)
     NRF_DRV_UART_INSTANCE(1)
@@ -432,7 +432,7 @@ static const nrf_drv_uart_t UART[] = {
 #endif
 #endif // NRF5X_SDK_11
 
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
 typedef struct {
   uint8_t rxBuffer[2]; // 2 char buffer
   bool isSending;
@@ -443,7 +443,7 @@ typedef struct {
 #endif
   uint8_t txBuffer[1];
 } PACKED_FLAGS jshUARTState;
-static jshUARTState uart[USART_COUNT];
+static jshUARTState uart[ESPR_USART_COUNT];
 #endif
 
 #ifdef SPIFLASH_BASE
@@ -687,7 +687,7 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
       break;
     }
 #endif
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
   case JSH_USART1: if (fInfo==JSH_USART_RX) {
                      NRF_UART0->PSELRXD = pin;
                      if (pin==0xFFFFFFFF) nrf_drv_uart_rx_disable(&UART[0]);
@@ -697,7 +697,7 @@ static NO_INLINE void jshPinSetFunction_int(JshPinFunction func, uint32_t pin) {
                      jshUSARTUnSetup(EV_SERIAL1);
                    break;
 #endif
-#if USART_COUNT>1
+#if ESPR_USART_COUNT>1
   case JSH_USART2: if (fInfo==JSH_USART_RX) {
                      NRF_UARTE1->PSELRXD = pin;
                      if (pin==0xFFFFFFFF) nrf_drv_uart_rx_disable(&UART[1]);
@@ -884,7 +884,7 @@ void jshInit() {
   }
 #endif
 
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
 #ifdef MICROBIT2
   if (true) {
 #else
@@ -1638,7 +1638,7 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 }
 
 static IOEventFlags jshGetEventFlagsForWatchedPin(nrf_drv_gpiote_pin_t pin) {
-  for (int i=0;i<EXTI_COUNT;i++)
+  for (int i=0;i<ESPR_EXTI_COUNT;i++)
     if (pin == extiToPin[i])
       return EV_EXTI0+i;
   return EV_NONE;
@@ -1670,7 +1670,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
   uint32_t p = (uint32_t)pinInfo[pin].pin;
   if (shouldWatch) {
     // allocate an 'EXTI'
-    for (int i=0;i<EXTI_COUNT;i++) {
+    for (int i=0;i<ESPR_EXTI_COUNT;i++) {
       if (extiToPin[i] == p) return EV_EXTI0+i; //already allocated
       if (extiToPin[i] == PIN_UNDEFINED) {
         // use low accuracy for GPIOTE as we can shut down the high speed oscillator then
@@ -1688,7 +1688,7 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
     jsWarn("No free EXTI for watch");
     return EV_NONE;
   } else {
-    for (int i=0;i<EXTI_COUNT;i++)
+    for (int i=0;i<ESPR_EXTI_COUNT;i++)
       if (extiToPin[i] == p) {
         extiToPin[i] = PIN_UNDEFINED;
         nrf_drv_gpiote_in_event_disable(p);
@@ -1742,12 +1742,12 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 #if TWI_ENABLED
   if (device==EV_I2C1) return twi1Initialised;
 #endif
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
   if (DEVICE_IS_USART(device)) return uart[device-EV_SERIAL1].isInitialised;
 #endif
   return false;
 }
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
 
 void uart_startrx(int num) {
   uint32_t err_code;
@@ -1820,7 +1820,7 @@ static void uart_event_handle(int num, nrf_drv_uart_event_t * p_event, void* p_c
 static void uart0_event_handle(nrf_drv_uart_event_t * p_event, void* p_context) {
   uart_event_handle(0, p_event, p_context);
 }
-#if USART_COUNT>1
+#if ESPR_USART_COUNT>1
 static void uart1_event_handle(nrf_drv_uart_event_t * p_event, void* p_context) {
   uart_event_handle(1, p_event, p_context);
 }
@@ -1908,7 +1908,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   config.pselrxd = jshIsPinValid(inf->pinRX) ? pinInfo[inf->pinRX].pin : NRF_UART_PSEL_DISCONNECTED;
   config.pseltxd = jshIsPinValid(inf->pinTX) ? pinInfo[inf->pinTX].pin : NRF_UART_PSEL_DISCONNECTED;
   uint32_t err_code;
-#if USART_COUNT>1
+#if ESPR_USART_COUNT>1
   if (num==1) err_code = nrf_drv_uart_init(&UART[num], &config, uart1_event_handle);
 #endif
   if (num==0) err_code = nrf_drv_uart_init(&UART[num], &config, uart0_event_handle);
@@ -1927,7 +1927,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
   if (DEVICE_IS_USART(device)) {
     unsigned int num = device-EV_SERIAL1;
     if (uart[num].isInitialised) {

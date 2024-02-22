@@ -36,7 +36,7 @@ typedef enum {
   // device type
   EV_NONE,
   EV_EXTI0,  ///< External Interrupt
-  EV_EXTI_MAX = EV_EXTI0 + EXTI_COUNT - 1,
+  EV_EXTI_MAX = EV_EXTI0 + ESPR_EXTI_COUNT - 1,
   EV_SERIAL_START,
   EV_LOOPBACKA = EV_SERIAL_START,
   EV_LOOPBACKB,
@@ -55,28 +55,28 @@ typedef enum {
 #ifdef BLUETOOTH
   EV_BLUETOOTH, ///< Bluetooth LE
 #endif
-#if USART_COUNT>=1
+#if ESPR_USART_COUNT>=1
   EV_SERIAL1, // Used for IO for UARTS
 #endif
-#if USART_COUNT>=2
+#if ESPR_USART_COUNT>=2
   EV_SERIAL2,
 #endif
-#if USART_COUNT>=3
+#if ESPR_USART_COUNT>=3
   EV_SERIAL3,
 #endif
-#if USART_COUNT>=4
+#if ESPR_USART_COUNT>=4
   EV_SERIAL4,
 #endif
-#if USART_COUNT>=5
+#if ESPR_USART_COUNT>=5
   EV_SERIAL5,
 #endif
-#if USART_COUNT>=6
+#if ESPR_USART_COUNT>=6
   EV_SERIAL6,
 #endif
-#if USART_COUNT>=1
-  EV_SERIAL_MAX = EV_SERIAL1 + USART_COUNT - 1,
+#if ESPR_USART_COUNT>=1
+  EV_SERIAL_MAX = EV_SERIAL1 + ESPR_USART_COUNT - 1,
   EV_SERIAL1_STATUS, // Used to store serial status info
-  EV_SERIAL_STATUS_MAX = EV_SERIAL1_STATUS + USART_COUNT - 1,
+  EV_SERIAL_STATUS_MAX = EV_SERIAL1_STATUS + ESPR_USART_COUNT - 1,
 #else
   _EV_SERIAL_MAX_PLUS_ONE,
   EV_SERIAL_MAX = _EV_SERIAL_MAX_PLUS_ONE-1,
@@ -88,29 +88,29 @@ typedef enum {
 #ifdef BANGLEJS
   EV_BANGLEJS,               // sent whenever Bangle.js-specific data needs to be queued
 #endif
-#if SPI_COUNT>=1
+#if ESPR_SPI_COUNT>=1
   EV_SPI1, ///< SPI Devices
 #endif
-#if SPI_COUNT>=2
+#if ESPR_SPI_COUNT>=2
   EV_SPI2,
 #endif
-#if SPI_COUNT>=3
+#if ESPR_SPI_COUNT>=3
   EV_SPI3,
 #endif
-#if SPI_COUNT>=1
-  EV_SPI_MAX = EV_SPI1 + SPI_COUNT - 1,
+#if ESPR_SPI_COUNT>=1
+  EV_SPI_MAX = EV_SPI1 + ESPR_SPI_COUNT - 1,
 #endif
-#if I2C_COUNT>=1
+#if ESPR_I2C_COUNT>=1
   EV_I2C1, ///< I2C Devices
 #endif
-#if I2C_COUNT>=2
+#if ESPR_I2C_COUNT>=2
   EV_I2C2,
 #endif
-#if I2C_COUNT>=3
+#if ESPR_I2C_COUNT>=3
   EV_I2C3,
 #endif
-#if I2C_COUNT>=1
-  EV_I2C_MAX = EV_I2C1 + I2C_COUNT - 1,
+#if ESPR_I2C_COUNT>=1
+  EV_I2C_MAX = EV_I2C1 + ESPR_I2C_COUNT - 1,
 #endif
   EV_DEVICE_MAX,
   // EV_DEVICE_MAX should not be >64 - see DEVICE_INITIALISED_FLAGS
@@ -137,7 +137,7 @@ typedef enum {
 /// If DEVICE_HAS_DEVICE_STATE, this is the index where device state is stored
 #define TO_SERIAL_DEVICE_STATE(X) ((X)-EV_SERIAL_DEVICE_STATE_START)
 
-#if USART_COUNT>=1
+#if ESPR_USART_COUNT>=1
 /// Return true if the device is a USART (hardware serial)
 #define DEVICE_IS_USART(X) (((X)>=EV_SERIAL1) && ((X)<=EV_SERIAL_MAX))
 #define DEVICE_IS_USART_STATUS(X) (((X)>=EV_SERIAL1_STATUS) && ((X)<=EV_SERIAL_STATUS_MAX))
@@ -147,19 +147,19 @@ typedef enum {
 #endif
 
 // Return true if the device is an SPI.
-#if SPI_COUNT>=1
+#if ESPR_SPI_COUNT>=1
 #define DEVICE_IS_SPI(X) (((X)>=EV_SPI1) && ((X)<=EV_SPI_MAX))
 #else
 #define DEVICE_IS_SPI(X) (false)
 #endif
-#if I2C_COUNT>=1
+#if ESPR_I2C_COUNT>=1
 #define DEVICE_IS_I2C(X) (((X)>=EV_I2C1) && ((X)<=EV_I2C_MAX))
 #else
 #define DEVICE_IS_I2C(X) (false)
 #endif
 #define DEVICE_IS_EXTI(X) (((X)>=EV_EXTI0) && ((X)<=EV_EXTI_MAX))
 
-#if USART_COUNT>=1
+#if ESPR_USART_COUNT>=1
 #define IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(X) ((X) + EV_SERIAL1_STATUS - EV_SERIAL1)
 #define IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(X) ((X) + EV_SERIAL1 - EV_SERIAL1_STATUS)
 #endif

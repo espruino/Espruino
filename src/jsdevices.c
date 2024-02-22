@@ -108,7 +108,7 @@ void jshResetDevices() {
   unsigned int i;
   // Reset list of pins that were set manually
   jshResetPinStateIsManual();
-  
+
   // setup flow control
   for (i=0;i<JSHSERIALDEVICESTATUSES;i++) {
 #ifdef USB
@@ -334,13 +334,13 @@ void jshTransmitFlushDevice(IOEventFlags device) {
   jsiSetBusy(BUSY_TRANSMIT, true);
   bool deviceHasData = false;
   do {
-    deviceHasData = false;    
+    deviceHasData = false;
     // Check TX queue to see if there is any data to send
     unsigned char tempTail = txTail;
     while (txHead != tempTail) {
       if (IOEVENTFLAGS_GETTYPE(txBuffer[tempTail].flags) == device) {
         deviceHasData = true;
-        break;        
+        break;
       }
       tempTail = (unsigned char)((tempTail+1)&TXBUFFERMASK);
     }
@@ -617,40 +617,40 @@ const char *jshGetDeviceString(
 #ifdef USE_TERMINAL
   case EV_TERMINAL: return "Terminal";
 #endif
-#if USART_COUNT>=1
+#if ESPR_USART_COUNT>=1
   case EV_SERIAL1: return "Serial1";
 #endif
-#if USART_COUNT>=2
+#if ESPR_USART_COUNT>=2
   case EV_SERIAL2: return "Serial2";
 #endif
-#if USART_COUNT>=3
+#if ESPR_USART_COUNT>=3
   case EV_SERIAL3: return "Serial3";
 #endif
-#if USART_COUNT>=4
+#if ESPR_USART_COUNT>=4
   case EV_SERIAL4: return "Serial4";
 #endif
-#if USART_COUNT>=5
+#if ESPR_USART_COUNT>=5
   case EV_SERIAL5: return "Serial5";
 #endif
-#if USART_COUNT>=6
+#if ESPR_USART_COUNT>=6
   case EV_SERIAL6: return "Serial6";
 #endif
-#if SPI_COUNT>=1
+#if ESPR_SPI_COUNT>=1
   case EV_SPI1: return "SPI1";
 #endif
-#if SPI_COUNT>=2
+#if ESPR_SPI_COUNT>=2
   case EV_SPI2: return "SPI2";
 #endif
-#if SPI_COUNT>=3
+#if ESPR_SPI_COUNT>=3
   case EV_SPI3: return "SPI3";
 #endif
-#if I2C_COUNT>=1
+#if ESPR_I2C_COUNT>=1
   case EV_I2C1: return "I2C1";
 #endif
-#if I2C_COUNT>=2
+#if ESPR_I2C_COUNT>=2
   case EV_I2C2: return "I2C2";
 #endif
-#if I2C_COUNT>=3
+#if ESPR_I2C_COUNT>=3
   case EV_I2C3: return "I2C3";
 #endif
   default: return "";
@@ -687,22 +687,22 @@ IOEventFlags jshFromDeviceString(
 #endif
   }
   else if (device[0]=='S') {
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
   if (device[1]=='e' && device[2]=='r' && device[3]=='i' && device[4]=='a' && device[5]=='l' &&
-      device[6]>='1' && (device[6]-'1')<USART_COUNT &&
+      device[6]>='1' && (device[6]-'1')<ESPR_USART_COUNT &&
       device[7]==0)
     return EV_SERIAL1+device[6]-'1';
 #endif
-#if SPI_COUNT>0
+#if ESPR_SPI_COUNT>0
   if (device[1]=='P' && device[2]=='I' &&
-      device[3]>='1' && (device[3]-'1')<SPI_COUNT &&
+      device[3]>='1' && (device[3]-'1')<ESPR_SPI_COUNT &&
       device[4]==0)
     return EV_SPI1+device[3]-'1';
 #endif
   }
-#if I2C_COUNT>0
+#if ESPR_I2C_COUNT>0
   else if (device[0]=='I' && device[1]=='2' && device[2]=='C' &&
-           device[3]>='1' && (device[3]-'1')<I2C_COUNT &&
+           device[3]>='1' && (device[3]-'1')<ESPR_I2C_COUNT &&
            device[4]==0)
     return EV_I2C1+device[3]-'1';
 #endif
@@ -764,7 +764,7 @@ void jshSetFlowControlEnabled(IOEventFlags device, bool software, Pin pinCTS) {
       (*deviceState) |= SDS_FLOW_CONTROL_XON_XOFF;
     else
       (*deviceState) &= ~SDS_FLOW_CONTROL_XON_XOFF;
-  
+
     jshSerialDeviceCTSPins[devIdx] = PIN_UNDEFINED;
     if (jshIsPinValid(pinCTS)) {
       jshPinSetState(pinCTS, JSHPINSTATE_GPIO_OUT);

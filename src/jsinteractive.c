@@ -656,11 +656,11 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
   jsiDumpSerialInitialisation(user_callback, user_data, "USB", humanReadableDump);
 #endif
   int i;
-  for (i=0;i<USART_COUNT;i++)
+  for (i=0;i<ESPR_USART_COUNT;i++)
     jsiDumpSerialInitialisation(user_callback, user_data, jshGetDeviceString(EV_SERIAL1+i), humanReadableDump);
-  for (i=0;i<SPI_COUNT;i++)
+  for (i=0;i<ESPR_SPI_COUNT;i++)
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_SPI1+i));
-  for (i=0;i<I2C_COUNT;i++)
+  for (i=0;i<ESPR_I2C_COUNT;i++)
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_I2C1+i));
   // pins
   Pin pin;
@@ -1935,7 +1935,7 @@ void jsiIdle() {
         maxEvents -= jsiHandleIOEventForSerial(usartClass, &event);
       }
       jsvUnLock(usartClass);
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
     } else if (DEVICE_IS_USART_STATUS(eventType)) {
       // ------------------------------------------------------------------------ SERIAL STATUS CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(event.flags))));

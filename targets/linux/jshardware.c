@@ -109,8 +109,8 @@ JsVarInt sysfs_read_int(const char *path) {
 
 // ----------------------------------------------------------------------------
 #ifdef USE_WIRINGPI
-#if EXTI_COUNT < 16
-#error EXTI_COUNT needs to be 16 or above for WiringPi
+#if ESPR_EXTI_COUNT < 16
+#error ESPR_EXTI_COUNT needs to be 16 or above for WiringPi
 #endif
 
 void irqEXTI0() { jshPushIOWatchEvent(EV_EXTI0); }

@@ -62,23 +62,23 @@
 #endif // BLE_AMS_C_BLE_OBSERVER_PRIO
 #endif // ESPR_BLUETOOTH_ANCS
 
-#if SPI_COUNT>0
+#if ESPR_SPI_COUNT>0
 #define SPI_ENABLED 1
 #define SPI0_ENABLED 1
 #define SPI0_USE_EASY_DMA 1
 #else
 #define SPI_ENABLED 0
-#endif // SPI_COUNT
+#endif // ESPR_SPI_COUNT
 
-#if I2C_COUNT>0
+#if ESPR_I2C_COUNT>0
 #define TWI_ENABLED 1
 #define TWI1_ENABLED 1
 #define TWI1_USE_EASY_DMA 0
 #else
 #define TWI_ENABLED 0
-#endif // I2C_COUNT
+#endif // ESPR_I2C_COUNT
 
-#if USART_COUNT>0
+#if ESPR_USART_COUNT>0
 #define UART_ENABLED 1
 #define UART0_ENABLED 1
 #if defined(NRF52840) || defined(NRF52833) // SDK15/NRF52840
@@ -90,9 +90,9 @@
 #define UART_EASY_DMA_SUPPORT 0
 #define UART0_CONFIG_USE_EASY_DMA 0
 #endif
-#else // USART_COUNT=0
+#else // ESPR_USART_COUNT=0
 #define UART_ENABLED 0
-#endif // USART_COUNT
+#endif // ESPR_USART_COUNT
 
 #define I2S_ENABLED 1 // For neopixels
 
@@ -148,7 +148,7 @@
 #define GPIOTE_ENABLED 1
 //#define GPIOTE_CONFIG_IRQ_PRIORITY 6
 // Match platform_config - the default is 4 but on nRF52 we want 8
-#define GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS EXTI_COUNT
+#define GPIOTE_CONFIG_NUM_OF_LOW_POWER_EVENTS ESPR_EXTI_COUNT
 
 #define PPI_ENABLED 1
 #define RNG_ENABLED 1

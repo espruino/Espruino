@@ -321,7 +321,7 @@ JsVar *jswrap_pin_getInfo(
       JsVar *arr = jsvNewEmptyArray();
       if (arr) {
         int i;
-        for (i=0;i<ADC_COUNT;i++)
+        for (i=0;i<ESPR_ADC_COUNT;i++)
           if (inf->analog&(JSH_ANALOG1<<i))
             jsvArrayPushAndUnLock(arr, jsvNewFromInteger(1+i));
         jsvObjectSetChildAndUnLock(an, "ADCs", arr);
