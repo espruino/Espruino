@@ -71,7 +71,7 @@ Returns the version of Espruino as a String
  */
 
 #ifndef SAVE_ON_FLASH
-/* NOTE: The order of these is very important, as 
+/* NOTE: The order of these is very important, as
 the online compiler has its own copy of this table */
 const void * const exportPtrs[] = {
     jsvLockAgainSafe,
@@ -134,7 +134,7 @@ JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewObject();
   jsvObjectSetChildAndUnLock(obj, "VERSION", jsvNewFromString(JS_VERSION));
 #ifdef GIT_COMMIT
-  jsvObjectSetChildAndUnLock(obj, "GIT_COMMIT", jsvNewFromString(STRINGIFY(GIT_COMMIT)));
+  jsvObjectSetChildAndUnLock(obj, "GIT_COMMIT", jsvNewFromString(ESPR_STRINGIFY(GIT_COMMIT)));
 #endif
   jsvObjectSetChildAndUnLock(obj, "BOARD", jsvNewFromString(PC_BOARD_ID));
   jsvObjectSetChildAndUnLock(obj, "RAM", jsvNewFromInteger(RAM_TOTAL));

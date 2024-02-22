@@ -126,7 +126,7 @@ void jsjcLiteral64(int reg, uint64_t data);
 // Call a function
 #ifdef DEBUG_JIT_CALLS
 void _jsjcCall(void *c, const char *name);
-#define jsjcCall(c) _jsjcCall(c, STRINGIFY(c))
+#define jsjcCall(c) _jsjcCall(c, ESPR_STRINGIFY(c))
 #else
 void jsjcCall(void *c);
 #endif

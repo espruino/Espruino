@@ -1216,7 +1216,7 @@ uint32_t jsfHashFiles(JsVar *regex, JsfFileFlags containing, JsfFileFlags notCon
 // Get a hash of the current Git commit, so new builds won't load saved code
 static uint32_t getBuildHash() {
 #ifdef GIT_COMMIT
-  const unsigned char *s = (unsigned char*)STRINGIFY(GIT_COMMIT);
+  const unsigned char *s = (unsigned char*)ESPR_STRINGIFY(GIT_COMMIT);
   uint32_t hash = 0;
   while (*s)
     hash = (hash<<1) ^ *(s++);

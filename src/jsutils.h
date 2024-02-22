@@ -149,8 +149,8 @@ typedef uint32_t JsfWord;
 #endif
 #endif
 
-#define STRINGIFY_HELPER(x) #x
-#define STRINGIFY(x) STRINGIFY_HELPER(x)
+#define ESPR_STRINGIFY_HELPER(x) #x
+#define ESPR_STRINGIFY(x) ESPR_STRINGIFY_HELPER(x)
 #define NOT_USED(x) ( (void)(x) )
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
@@ -298,8 +298,8 @@ typedef uint16_t JsVarRefCounter;
 // Sanity checks
 #if (JSVAR_DATA_STRING_NAME_LEN + ((JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS)>>3)) < 8
 #pragma message "required length (bits) : 64"
-#pragma message "initial data block length (bits) : " STRINGIFY(JSVAR_DATA_STRING_NAME_LEN*8)
-#pragma message "3x refs plus packing (bits) : " STRINGIFY(JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS)
+#pragma message "initial data block length (bits) : " ESPR_STRINGIFY(JSVAR_DATA_STRING_NAME_LEN*8)
+#pragma message "3x refs plus packing (bits) : " ESPR_STRINGIFY(JSVARREF_BITS*3 + JSVARREFCOUNT_PACK_BITS)
 #error JsVarDataRef is not big enough to store a double value
 #endif
 

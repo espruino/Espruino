@@ -2605,7 +2605,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   jslCharPosFree(&whileBodyEnd);
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
   if (loopCount > JSPARSE_MAX_LOOP_ITERATIONS) {
-    jsExceptionHere(JSET_ERROR, "WHILE Loop exceeded the maximum number of iterations (" STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS) ")");
+    jsExceptionHere(JSET_ERROR, "WHILE Loop exceeded the maximum number of iterations (" ESPR_STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS) ")");
   }
 #endif
   return 0;
@@ -2831,7 +2831,7 @@ NO_INLINE JsVar *jspeStatementFor() {
 
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
     if (loopCount<=0) {
-      jsExceptionHere(JSET_ERROR, "FOR loop exceeded the maximum number of iterations ("STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS)")");
+      jsExceptionHere(JSET_ERROR, "FOR loop exceeded the maximum number of iterations (" ESPR_STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS)")");
     }
 #endif
   }

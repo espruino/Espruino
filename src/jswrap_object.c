@@ -1228,7 +1228,7 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
   if (jsvIsIterable(argsArray)) {
     argC = (unsigned int)jsvGetLength(argsArray);
     if (argC>JS_MAX_FUNCTION_ARGUMENTS) {
-      jsExceptionHere(JSET_ERROR, "Array passed to Function.apply is too big! Maximum "STRINGIFY(JS_MAX_FUNCTION_ARGUMENTS)" arguments, got %d", argC);
+      jsExceptionHere(JSET_ERROR, "Array passed to Function.apply is too big! Maximum "ESPR_STRINGIFY(JS_MAX_FUNCTION_ARGUMENTS)" arguments, got %d", argC);
       return 0;
     }
     args = (JsVar**)alloca((size_t)argC * sizeof(JsVar*));
