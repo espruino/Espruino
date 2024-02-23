@@ -714,9 +714,10 @@ OBJS = $(PRECOMPILED_OBJS) $(SOURCEOBJS)
 
 # -ffreestanding -nodefaultlibs -nostdlib -fno-common
 # -nodefaultlibs -nostdlib -nostartfiles
-
 # -fdata-sections -ffunction-sections are to help remove unused code
-CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE) -DESPR_AUTOCOMPLETE_NOT_REQUIRED
+
+# See the build_platform_config.py/platform_config.h for notes on why we define ESPR_DEFINES_ON_COMMANDLINE
+CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE) -DESPR_DEFINES_ON_COMMANDLINE
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
@@ -809,11 +810,9 @@ $(LINKER_FILE): scripts/build_linker.py
 endif # EFM32
 endif # NRF5X
 
-DEFINES_NULL_STRING = $(subst \0,\\0,$(DEFINES))
-DEFINES_ESCAPED = $(shell echo  $(DEFINES_NULL_STRING)  | sed 's/"/\\"/g')
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo ================================== Generating platform configs
-	$(Q)$(PYTHON) scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME) "$(DEFINES_ESCAPED)"
+	$(Q)$(PYTHON) scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME) $(DEFINES)
 
 # If realpath exists, use relative paths
 ifneq ("$(shell ${REALPATH} --version > /dev/null;echo "$$?")","0")

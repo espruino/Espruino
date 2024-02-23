@@ -35,14 +35,12 @@ import pinutils;
 # Now scan AF file
 print("Script location "+scriptdir)
 
-if not (len(sys.argv)==3 or len(sys.argv)==4):
-  print("ERROR, USAGE: build_platform_config.py BOARD_NAME HEADERFILENAME")
+if len(sys.argv)<3 :
+  print("ERROR, USAGE: build_platform_config.py BOARD_NAME HEADERFILENAME [-Ddefine=1 ...]")
   exit(1)
 boardname = sys.argv[1]
 headerFilename = sys.argv[2]
-defines = []
-if len(sys.argv)==4:
-  defines = sys.argv[3]
+defines = sys.argv[3:]
   
 print("HEADER_FILENAME "+headerFilename)
 print("BOARD "+boardname)
@@ -560,9 +558,14 @@ codeOut("#define IS_PIN_A_BUTTON(PIN) (("+")||(".join(btnChecks)+"))")
 codeOut("#endif")
 
 # add makefile defines
-if len(defines) > 2:
-  codeOut("\n#ifndef ESPR_AUTOCOMPLETE_NOT_REQUIRED")
-  for define in defines.strip().split():
+if len(defines) > 0:
+  codeOut("\n#ifndef ESPR_DEFINES_ON_COMMANDLINE")
+  codeOut("// The Makefile calls the compiler with ESPR_DEFINES_ON_COMMANDLINE defined so this")
+  codeOut("// is ignored and all these defines go on the command line and apply to every file")
+  codeOut("// whether or not platform_config was included. However if you're viewing a file in")
+  codeOut("// a code editor like VS Code it'll parse this and should then highlight the correct")
+  codeOut("// code based on your build")              
+  for define in defines:
     if not define.startswith("-D"):
       continue
     define = define[2:]
