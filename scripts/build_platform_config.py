@@ -557,6 +557,7 @@ codeOut("#define IS_PIN_USED_INTERNALLY(PIN) (("+")||(".join(usedPinChecks)+"))"
 codeOut("#define IS_PIN_A_LED(PIN) (("+")||(".join(ledChecks)+"))")
 codeOut("#ifndef IS_PIN_A_BUTTON")
 codeOut("#define IS_PIN_A_BUTTON(PIN) (("+")||(".join(btnChecks)+"))")
+codeOut("#endif")
 
 # add makefile defines
 if len(defines) > 2:
@@ -572,8 +573,6 @@ if len(defines) > 2:
       codeOut("\t#define " + define)
   codeOut("#endif")
 # end makefile defines
-  
-codeOut("#endif")
 
 codeOut("""
 #endif // _PLATFORM_CONFIG_H
