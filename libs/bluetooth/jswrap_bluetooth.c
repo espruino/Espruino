@@ -3281,6 +3281,11 @@ filters: [ ... ] })`
   be `"1mbps/2mbps/both/coded"`)
 * `extended` - (NRF52833/NRF52840 only) support receiving extended-length advertising
   packets (default=true if phy isn't `"1mbps"`)
+* `extended` - (NRF52833/NRF52840 only) support receiving extended-length advertising
+  packets (default=true if phy isn't `"1mbps"`)
+* `window` - (2v22+) how long we scan for in milliseconds (default 100ms)
+* `interval` - (2v22+) how often we scan in milliseconds (default 100ms) - `window=interval=100`(default) is all the time. When
+scanning on both `1mbps` and `coded`, `interval` needs to be twice `window`.
 
 **NOTE:** `timeout` and `active` are not part of the Web Bluetooth standard.
 

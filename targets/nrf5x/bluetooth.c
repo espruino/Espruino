@@ -3004,6 +3004,14 @@ uint32_t jsble_set_scanning(bool enabled, JsVar *options) {
       } else jsWarn("Unknown phy %q\n", advPhy);
       jsvUnLock(advPhy);
 #endif
+      uint32_t scan_window = MSEC_TO_UNITS(jsvObjectGetIntegerChild(options, "window"), UNIT_0_625_MS);
+      if (scan_window>=4 && scan_window<=16384)
+        m_scan_param.window = scan_window;
+      uint32_t scan_interval = MSEC_TO_UNITS(jsvObjectGetIntegerChild(options, "interval"), UNIT_0_625_MS);
+      if (scan_interval>=4 && scan_interval<=16384)
+        m_scan_param.interval = scan_interval;
+      if (m_scan_param.interval < m_scan_param.window)
+        m_scan_param.interval = m_scan_param.window;
     }
 
     err_code = sd_ble_gap_scan_start(&m_scan_param
