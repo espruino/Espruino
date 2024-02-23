@@ -716,7 +716,7 @@ OBJS = $(PRECOMPILED_OBJS) $(SOURCEOBJS)
 # -nodefaultlibs -nostdlib -nostartfiles
 
 # -fdata-sections -ffunction-sections are to help remove unused code
-CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
+CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE) -DESPR_AUTOCOMPLETE_NOT_REQUIRED
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
@@ -811,7 +811,7 @@ endif # NRF5X
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo ================================== Generating platform configs
-	$(Q)$(PYTHON) scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME)
+	$(Q)$(PYTHON) scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME) "$(DEFINES)"
 
 # If realpath exists, use relative paths
 ifneq ("$(shell ${REALPATH} --version > /dev/null;echo "$$?")","0")
