@@ -3277,8 +3277,12 @@ a match is found. e.g. `NRF.requestDevice({ timeout:2000, filters: [ ... ] })`
 * `active` - whether to perform active scanning (requesting 'scan response'
 packets from any devices that are found). e.g. `NRF.requestDevice({ active:true,
 filters: [ ... ] })`
-* `phy` - (NRF52833/NRF52840 only) use the long-range coded phy (`"1mbps"` default, can
-  be `"1mbps/2mbps/both/coded"`)
+* `phy` - (NRF52833/NRF52840 only) the type of Bluetooth signals to scan for (can
+  be `"1mbps/coded/both/2mbps"`)
+  * `1mbps` (default) - standard Bluetooth LE advertising
+  * `coded` - long range
+  * `both` - standard and long range
+  * `2mbps` - high speed 2mbps (not working)
 * `extended` - (NRF52833/NRF52840 only) support receiving extended-length advertising
   packets (default=true if phy isn't `"1mbps"`)
 * `extended` - (NRF52833/NRF52840 only) support receiving extended-length advertising

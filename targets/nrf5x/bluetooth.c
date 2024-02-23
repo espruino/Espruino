@@ -2996,12 +2996,13 @@ uint32_t jsble_set_scanning(bool enabled, JsVar *options) {
         m_scan_param.scan_phys = BLE_GAP_PHY_2MBPS;
         m_scan_param.extended = 1;
       } else if (jsvIsStringEqual(advPhy,"both")) {
-        m_scan_param.scan_phys = BLE_GAP_PHYS_SUPPORTED;
+        m_scan_param.scan_phys = BLE_GAP_PHY_1MBPS|BLE_GAP_PHY_CODED;
         m_scan_param.extended = 1;
       } else if (jsvIsStringEqual(advPhy,"coded")) {
         m_scan_param.scan_phys = BLE_GAP_PHY_CODED;
         m_scan_param.extended = 1;
       } else jsWarn("Unknown phy %q\n", advPhy);
+      // BLE_GAP_PHYS_SUPPORTED (all 3) doesn't appear to work - see https://github.com/espruino/Espruino/issues/2465
       jsvUnLock(advPhy);
 #endif
       uint32_t scan_window = MSEC_TO_UNITS(jsvObjectGetIntegerChild(options, "window"), UNIT_0_625_MS);
