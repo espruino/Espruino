@@ -809,7 +809,8 @@ $(LINKER_FILE): scripts/build_linker.py
 endif # EFM32
 endif # NRF5X
 
-DEFINES_ESCAPED = $(shell echo $(DEFINES) | sed 's/"/\\"/g')
+DEFINES_NULL_STRING = $(subst \0,\\0,$(DEFINES))
+DEFINES_ESCAPED = $(shell echo  $(DEFINES_NULL_STRING)  | sed 's/"/\\"/g')
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo ================================== Generating platform configs
 	$(Q)$(PYTHON) scripts/build_platform_config.py $(BOARD) $(HEADERFILENAME) "$(DEFINES_ESCAPED)"
