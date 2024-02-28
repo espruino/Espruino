@@ -23,6 +23,30 @@
 #include "jsinteractive.h"
 
 
+JsVar *jswrap_global() {
+  return jsvLockAgain(execInfo.root);
+}
+/*JSON{
+  "type" : "variable",
+  "name" : "global",
+  "generate" : "jswrap_global",
+  "return" : ["JsVar","The global scope"]
+}
+A reference to the global scope, where everything is defined.
+
+`global` is used in Node.js. Consider using the identical `globalThis` as it was introduced in the ECMAScript spec.
+*/
+/*JSON{
+  "type" : "variable",
+  "name" : "globalThis",
+  "generate" : "jswrap_global",
+  "return" : ["JsVar","The global scope"]
+}
+A reference to the global scope, where everything is defined.
+
+This is identical to `global` but was introduced in the ECMAScript spec.
+*/
+
 /*JSON{
   "type" : "variable",
   "name" : "arguments",
