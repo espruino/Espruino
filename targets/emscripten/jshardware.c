@@ -31,6 +31,14 @@
 
 #define FLASH_UNITARY_WRITE_SIZE 4
 #define FAKE_FLASH_BLOCKSIZE 4096
+
+// ----------------------------------------------------------------------------
+/*Reason - Needed for latest build of EMCC(3.1.55).  Else undefined symbol*/
+EM_JS(void, emscripten_memcpy_js, (uint8_t* dest, uint8_t* src, size_t numBytes), {
+  var destHeap = new Uint8Array(Module.HEAPU8.buffer, dest, numBytes);
+  var srcHeap = new Uint8Array(Module.HEAPU8.buffer, src, numBytes);
+  destHeap.set(srcHeap);
+});
 // ----------------------------------------------------------------------------
 
 Pin eventFlagsToPin[16];
