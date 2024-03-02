@@ -6,7 +6,8 @@ ESP32=1
 
 CFLAGS+=-Og -Wpointer-arith -Wno-error=unused-function -Wno-error=unused-but-set-variable \
 -Wno-error=unused-variable -Wall -ffunction-sections -fdata-sections -mlongcalls -nostdlib \
--MMD -MP -std=gnu99 -fstrict-volatile-bitfields -fgnu89-inline -mfix-esp32-psram-cache-issue
+-MMD -MP -fstrict-volatile-bitfields -fgnu89-inline -mfix-esp32-psram-cache-issue
+C_ONLY_FLAGS += -std=gnu99
 SOURCES += targets/esp32/jshardware.c \
 targets/esp32/jshardwareESP32.c \
 targets/esp32/esp32_neopixel.c

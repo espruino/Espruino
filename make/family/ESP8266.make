@@ -6,12 +6,13 @@ ESP8266=1
 # Enable link-time optimisations (inlining across files), use -Os 'cause else we end up with
 # too large a firmware (-Os is -O2 without optimizations that increase code size)
 ifndef DISABLE_LTO
-OPTIMIZEFLAGS+=-Os -g -std=gnu11 -fgnu89-inline -fno-fat-lto-objects -Wl,--allow-multiple-definition
+OPTIMIZEFLAGS+=-Os -g -fno-fat-lto-objects -Wl,--allow-multiple-definition
 #OPTIMIZEFLAGS+=-DLINK_TIME_OPTIMISATION # this actually slows things down!
 else
 # DISABLE_LTO is necessary in order to analyze static string sizes (see: topstring makefile target)
-OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
+OPTIMIZEFLAGS+=-Os -Wl,--allow-multiple-definition
 endif
+C_ONLY_FLAGS= -std=gnu11 -fgnu89-inline
 
 ET_FM               ?= qio      # Valid values are keep, qio, qout, dio, dout
 
