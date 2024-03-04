@@ -171,16 +171,20 @@ void jswrap_io_poke(JsVarInt addr, JsVar *data, int wordSize) {
   "params" : [
     ["pin","pin",["The pin to use","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `ADC` markers."]]
   ],
-  "return" : ["float","The analog Value of the Pin between 0 and 1"]
+  "return" : ["float","The Analog Value of the Pin between 0(GND) and 1(VCC). See below."]
 }
-Get the analogue value of the given pin
+Get the analogue value of the given pin.
 
 This is different to Arduino which only returns an integer between 0 and 1023
 
 However only pins connected to an ADC will work (see the datasheet)
 
- **Note:** if you didn't call `pinMode` beforehand then this function will also
- reset pin's state to `"analog"`
+**Note:** if you didn't call `pinMode` beforehand then this function will also
+reset pin's state to `"analog"`
+
+**Note:** [Jolt.js](https://www.espruino.com/Jolt.js) motor driver pins with
+analog inputs are scaled with a potential divider, and so those pins return a
+number which is the actual voltage.
  */
 /*JSON{
   "type" : "function",

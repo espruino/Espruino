@@ -45,7 +45,8 @@ info = {
      'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3660', # set RAM base to match MTU=131 + CENTRAL_LINK_COUNT=2
      'DEFINES += -DAPP_TIMER_OP_QUEUE_SIZE=6',
-     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Jolt.js"\'',
+     'DEFINES+= -DBLUETOOTH_NAME_PREFIX=\'"Jolt.js"\'',
+#    see targets/nrf5x/app_config.h for USB descriptors
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0xa9,0xae,0xb6',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DEFINES += -DNRF_BOOTLOADER_NO_WRITE_PROTECT=1', # By default the bootloader protects flash. Avoid this (a patch for NRF_BOOTLOADER_NO_WRITE_PROTECT must be applied first)

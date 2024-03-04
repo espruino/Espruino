@@ -204,4 +204,10 @@
 // SDK15+ (fixes BLE UART send when CENTRAL_LINK_COUNT>1)
 #define NRF_SDH_BLE_TOTAL_LINK_COUNT (CENTRAL_LINK_COUNT + PERIPHERAL_LINK_COUNT)
 
+// Ideally this would be in JOLTJS.py  but escaping it for the command-line looks horrible
+#ifdef JOLTJS
+#define APP_USBD_STRINGS_PRODUCT APP_USBD_STRING_DESC('E', 's', 'p', 'r', 'u', 'i', 'n', 'o', ' ', 'J', 'o', 'l', 't', '.', 'j', 's')
+// other USB strings in targetlibs/nrf5x_15/nrf52_config/app_usbd_string_config.h
+#endif
+
 // Other SDK configs are still in sdk_config.h

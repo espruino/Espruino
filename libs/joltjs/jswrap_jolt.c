@@ -41,6 +41,13 @@ See https://docs.google.com/document/d/1Tw7fUkpj9dwBYASBCX9TjPcpgdqEw_7VL6MSRqVU
 const char outputAnalogs[8] = { 4, 0, 5, 0, 30, 0, 28, 0 };
 /// Digital output pins connected to each driver
 const char outputDriver[8] = { 17, 15, 13, 14, 22, 32, 25, 32+2 };
+/// IO pins on Qwiic headers - check for shorts
+const Pin JOLT_IO_PINS[] = {
+  3,29,7,  // q0
+  2,31,27, // q1
+  44,45,36,43, // q2
+  39,38,37,42  // q3
+};
 
 #define DRIVER0_NSLEEP_PININDEX 21
 #define DRIVER0_NFAULT_PININDEX 19
@@ -84,7 +91,7 @@ void setJoltProperty(const char *name, JsVar* prop) {
   "return" : ["JsVar","An object containing the pins for the Q0 connector on Jolt.js `{sda,scl,fet}`"],
   "return_object" : "Qwiic"
 }
-`Q0` and `Q1` Qwiic connectors can have their power controlled by a 500mA FET connected to GND.
+`Q0` and `Q1` Qwiic connectors can have their power controlled by a 500mA FET (`Jolt.Q0.fet`) which switches GND.
 
 The `sda` and `scl` pins on this port are also analog inputs - use `analogRead(Jolt.Q0.sda)`/etc
 
@@ -108,7 +115,7 @@ JsVar *jswrap_jolt_q0() {
   "return" : ["JsVar","An object containing the pins for the Q1 connector on Jolt.js `{sda,scl,fet}`"],
   "return_object" : "Qwiic"
 }
-`Q0` and `Q1` Qwiic connectors can have their power controlled by a 500mA FET connected to GND.
+`Q0` and `Q1` Qwiic connectors can have their power controlled by a 500mA FET  (`Jolt.Q1.fet`) which switches GND.
 
 The `sda` and `scl` pins on this port are also analog inputs - use `analogRead(Jolt.Q1.sda)`/etc
 
@@ -247,6 +254,11 @@ void jswrap_jolt_setDriverMode(int driver, JsVar *mode) {
   }
 }
 
+static void jswrap_jolt_setDriverMode_(int driver, bool mode) {
+  JsVar *b = jsvNewFromBool(mode);
+  jswrap_jolt_setDriverMode(driver,b);
+  jsvUnLock(b);
+}
 
 
 void jshVirtualPinInitialise() {
@@ -263,17 +275,21 @@ void jshVirtualPinInitialise() {
 void jshVirtualPinSetValue(Pin pin, bool state) {
   int p = pinInfo[pin].pin;
   jshPinSetValue(outputDriver[p], state);
+  // TODO: warn if motor driver not on?
 }
 
 bool jshVirtualPinGetValue(Pin pin) {
    int p = pinInfo[pin].pin;
-  jshPinGetValue(outputDriver[p]);
+   return jshPinGetValue(outputDriver[p]);
 }
 
 JsVarFloat jshVirtualPinGetAnalogValue(Pin pin) {
   int p = pinInfo[pin].pin;
   if (outputAnalogs[p]==0) return NAN;
-  return jshPinAnalog(outputAnalogs[p]); // FIXME: times some multiplier to get voltage??
+  // Multiply up so we return the actual voltage
+  // 39k + 220k potential divider
+  // 3.3*(220+39)/39 = 21.915
+  return jshPinAnalog(outputAnalogs[p]) * 21.915;
 }
 
 void jshVirtualPinSetState(Pin pin, JshPinState state) {
@@ -285,7 +301,6 @@ JshPinState jshVirtualPinGetState(Pin pin) {
   return JSHPINSTATE_UNDEFINED;
 }
 
-/*
 static bool selftest_check_pin(Pin pin, char *err) {
   unsigned int i;
   char pinStr[4];
@@ -333,7 +348,7 @@ static bool selftest_check_pin(Pin pin, char *err) {
   jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
   return ok;
 }
-*/
+
 
 /*JSON{
     "type" : "staticmethod",
@@ -354,7 +369,7 @@ If the self test fails, it'll set the Jolt.js Bluetooth advertising name to
 `Jolt.js !ERR` where ERR is a 3 letter error code.
 */
 bool _jswrap_jolt_selfTest(bool advertisePassOrFail) {
-  unsigned int timeout, i;
+  unsigned int timeout;
   JsVarFloat v;
   bool ok = true;
   char err[4] = {0,0,0,0};
@@ -411,7 +426,42 @@ bool _jswrap_jolt_selfTest(bool advertisePassOrFail) {
   }
 
 
-  //ok &= selftest_check_pin(1,err);
+  jswrap_jolt_setDriverMode_(0,true);
+  jswrap_jolt_setDriverMode_(1,true);
+  // test every pin on the motor driver one at a time
+  for (int i=0;i<8;i++) {
+    for (int p=0;p<8;p++)
+      jshPinSetValue(JSH_PORTV_OFFSET+p, p == i);
+    nrf_delay_ms(5);
+    // we can only read V0/2/4/8
+    for (int p=0;p<8;p+=2) {
+      v = jshVirtualPinGetAnalogValue(JSH_PORTV_OFFSET+p);
+      if (i==p) {
+        if (v<2) {
+          if (!err[0]) { strcpy(err,"OLx"); err[2]='0'+i; }
+          jsiConsolePrintf("V%d low (%f) when V%d set\n", p, v, i);
+          ok = false;
+        }
+      } else {
+        if (v>1) {
+          if (!err[0]) { strcpy(err,"OHx"); err[2]='0'+i; }
+          jsiConsolePrintf("V%d high (%f) when V%d set\n", p, v, i);
+          ok = false;
+        }
+      }
+    }
+  }
+  // all drivers off
+  for (int p=0;p<8;p++)
+    jshPinSetValue(JSH_PORTV_OFFSET+p, 0);
+  jswrap_jolt_setDriverMode_(0,false);
+  jswrap_jolt_setDriverMode_(1,false);
+
+  // TODO: what about checking motor drivers if there's a short using nFault pins?
+  for (unsigned int i=0;i<sizeof(JOLT_IO_PINS)/sizeof(Pin);i++)
+    selftest_check_pin(JOLT_IO_PINS[i], err);
+  for (unsigned int i=0;i<sizeof(JOLT_IO_PINS)/sizeof(Pin);i++)
+    jshPinSetState(JOLT_IO_PINS[i], JSHPINSTATE_GPIO_IN);
 
   if (err[0] || advertisePassOrFail) {
     char deviceName[BLE_GAP_DEVNAME_MAX_LEN];
