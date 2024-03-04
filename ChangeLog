@@ -8,6 +8,7 @@
             nRF52: Added window/interval arguments to NRF.setScan (default was 100ms)
             nRF52840: setScan({... phy:"both"}) now means coded+1mbps (ref #2465)
             Added 'globalThis' var as it's the ECMAScript version of Node.js's 'global'
+            Bangle.js: Bangle.setUI's back widget now uses stopEventPropagation to stop other touch handlers getting called
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)

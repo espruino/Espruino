@@ -115,6 +115,7 @@
     var touchHandler = (_,e) => {
       if (e.y<36 && e.x<48) {
         e.handled = true;
+        E.stopEventPropagation();
         options.back();
       }
     };
