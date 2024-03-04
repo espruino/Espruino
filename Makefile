@@ -84,8 +84,9 @@ endif
 INCLUDE?=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(GENDIR)
 LIBS?=
 DEFINES?=
-C_ONLY_FLAGS?=
-CFLAGS?=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing -g
+
+CFLAGS_C_COMPILER?= -Werror=implicit-function-declaration
+CFLAGS?=-Wall -Wextra -Wconversion -fno-strict-aliasing -g
 CFLAGS+=-Wno-packed-bitfield-compat # remove warnings from packed var usage
 
 CCFLAGS?= # specific flags when compiling cc files
@@ -232,7 +233,7 @@ ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
  ifeq ($(FAMILY),ESP8266)
   OPTIMIZEFLAGS=-g -Os -Wl,--allow-multiple-definition
-  C_ONLY_FLAGS= -std=gnu11 -fgnu89-inline
+  CFLAGS_C_COMPILER= -std=gnu11 -fgnu89-inline
  else
   OPTIMIZEFLAGS=-g
  endif
@@ -818,10 +819,10 @@ $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 
 # If realpath exists, use relative paths
 ifneq ("$(shell ${REALPATH} --version > /dev/null;echo "$$?")","0")
-compile=$(CC) $(C_ONLY_FLAGS) $(CFLAGS) $< -o $@
+compile=$(CC) $(CFLAGS_C_COMPILER) $(CFLAGS) $< -o $@
 else
 # when macros use __FILE__ this stops us including the whole build path
-compile=$(CC) $(C_ONLY_FLAGS) $(CFLAGS) $(shell ${REALPATH} --relative-to $(shell pwd) $<) -o $@
+compile=$(CC) $(CFLAGS_C_COMPILER) $(CFLAGS) $(shell ${REALPATH} --relative-to $(shell pwd) $<) -o $@
 endif
 
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)

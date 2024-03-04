@@ -28,7 +28,7 @@ endif
 ifdef MACOSX
   CCFLAGS += -DTF_LITE_DISABLE_X86_NEON
 else
-  C_ONLY_FLAGS += -std=gnu99
+  CFLAGS_C_COMPILER += -std=gnu99
 endif
 DEFINES += -DLINUX
 INCLUDE += -I$(ROOT)/targets/linux

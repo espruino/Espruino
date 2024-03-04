@@ -12,7 +12,7 @@ else
 # DISABLE_LTO is necessary in order to analyze static string sizes (see: topstring makefile target)
 OPTIMIZEFLAGS+=-Os -Wl,--allow-multiple-definition
 endif
-C_ONLY_FLAGS= -std=gnu11 -fgnu89-inline
+CFLAGS_C_COMPILER= -std=gnu11 -fgnu89-inline
 
 ET_FM               ?= qio      # Valid values are keep, qio, qout, dio, dout
 
