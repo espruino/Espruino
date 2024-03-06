@@ -19,7 +19,8 @@
 bool jswrap_stepper_idle();
 void jswrap_stepper_kill();
 JsVar *jswrap_stepper_constructor(JsVar *options);
-JsVar *jswrap_stepper_moveTo(JsVar *stepper, int direction, JsVar *options);
+JsVar *jswrap_stepper_moveTo(JsVar *stepper, int position, JsVar *options);
 void jswrap_stepper_stop(JsVar *stepper, JsVar *options);
+int jswrap_stepper_getPosition(JsVar *stepper);
 
 #endif // JSWRAP_WAVEFORM_H_
