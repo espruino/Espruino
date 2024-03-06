@@ -114,10 +114,10 @@ devices = {
 # left-right, or top-bottom order
 board = {
   'bottom' : [ 'H0', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7' ],
-  'top' : [ 'Q0.sda', 'Q0.scl', 'VCC', 'Q0.fet',#'D29', 'D3', 'VCC', 'D7', # Q0
-            'Q1.sda', 'Q1.scl', 'VCC', 'Q1.fet',#'D31', 'D2', 'VCC', 'D27', # Q1
-            'Q2.sda', 'Q2.scl', 'Q2.vcc', 'Q0.gnd',#'D45', 'D44', 'D43', 'D36', # Q2
-            'Q3.sda', 'Q3.scl', 'Q3.vcc', 'Q0.gnd',#'D38', 'D39', 'D42', 'D37', # Q3
+  'top' : [ 'Q0.scl', 'Q0.sda', 'VCC', 'Q0.fet',#'D29', 'D3', 'VCC', 'D7', # Q0
+            'Q1.scl', 'Q1.sda', 'VCC', 'Q1.fet',#'D31', 'D2', 'VCC', 'D27', # Q1
+            'Q2.scl', 'Q2.sda', 'Q2.vcc', 'Q2.gnd',#'D45', 'D44', 'D43', 'D36', # Q2
+            'Q3.scl', 'Q3.sda', 'Q3.vcc', 'Q3.gnd',#'D38', 'D39', 'D42', 'D37', # Q3
    ],
   'right' : ['NFC','NFC'],
   '_hide_not_on_connectors' : True,
