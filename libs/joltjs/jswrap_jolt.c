@@ -260,7 +260,7 @@ static void jswrap_jolt_setDriverMode_(int driver, bool mode) {
   jsvUnLock(b);
 }
 
-
+#if 0
 void jshVirtualPinInitialise() {
   // ensure motor drivers are off
   jshPinOutput(DRIVER0_NSLEEP_PININDEX, 0);
@@ -300,6 +300,7 @@ void jshVirtualPinSetState(Pin pin, JshPinState state) {
 JshPinState jshVirtualPinGetState(Pin pin) {
   return JSHPINSTATE_UNDEFINED;
 }
+#endif
 
 static bool selftest_check_pin(Pin pin, char *err) {
   unsigned int i;
@@ -431,11 +432,11 @@ bool _jswrap_jolt_selfTest(bool advertisePassOrFail) {
   // test every pin on the motor driver one at a time
   for (int i=0;i<8;i++) {
     for (int p=0;p<8;p++)
-      jshPinSetValue(JSH_PORTV_OFFSET+p, p == i);
+      jshPinSetValue(JSH_PORTH_OFFSET+p, p == i);
     nrf_delay_ms(5);
     // we can only read V0/2/4/8
     for (int p=0;p<8;p+=2) {
-      v = jshVirtualPinGetAnalogValue(JSH_PORTV_OFFSET+p);
+      v = jshPinAnalog(JSH_PORTH_OFFSET+p);
       if (i==p) {
         if (v<2) {
           if (!err[0]) { strcpy(err,"OLx"); err[2]='0'+i; }
@@ -453,7 +454,7 @@ bool _jswrap_jolt_selfTest(bool advertisePassOrFail) {
   }
   // all drivers off
   for (int p=0;p<8;p++)
-    jshPinSetValue(JSH_PORTV_OFFSET+p, 0);
+    jshPinSetValue(JSH_PORTH_OFFSET+p, 0);
   jswrap_jolt_setDriverMode_(0,false);
   jswrap_jolt_setDriverMode_(1,false);
 
@@ -488,6 +489,21 @@ bool _jswrap_jolt_selfTest(bool advertisePassOrFail) {
 }
 bool jswrap_jolt_selfTest() {
   return _jswrap_jolt_selfTest(false);
+}
+
+/*JSON{
+  "type" : "hwinit",
+  "generate" : "jswrap_jolt_hwinit"
+}*/
+void jswrap_jolt_hwinit() {
+  // ensure motor drivers are off
+  jshPinOutput(DRIVER0_NSLEEP_PININDEX, 0);
+  jshPinOutput(DRIVER1_NSLEEP_PININDEX, 0);
+  driverMode[0] = JDM_OFF;
+  driverMode[1] = JDM_OFF;
+  // set all outputs to 0 by default
+  for (int i=0;i<8;i++)
+    jshPinOutput(outputDriver[i], 0);
 }
 
 /*JSON{

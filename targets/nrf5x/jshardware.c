@@ -1412,8 +1412,6 @@ JsVarFloat jshPinAnalog(Pin pin) {
   } while (nrf_analog_read_interrupted);
 
   nrf_analog_read_end(adcInUse);
-
-  return f;
 #else
   const nrf_adc_config_t nrf_adc_config =  {
       NRF_ADC_CONFIG_RES_10BIT,
@@ -1425,8 +1423,15 @@ JsVarFloat jshPinAnalog(Pin pin) {
   assert(ADC_CONFIG_PSEL_AnalogInput1 == 2);
   assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
   // make reading
-  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) / 1024.0;
+  JsVarFloat f = nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) / 1024.0;
 #endif
+#ifdef JOLTJS
+  // Bit of a hack for Jolt.js where we have a 39k + 220k potential divider
+  // Multiply up so we return the actual voltage -> 3.3*(220+39)/39 = 21.915
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTH)
+    return f * 21.915;
+#endif
+  return f;
 }
 
 /// Returns a quickly-read analog value in the range 0-65535
