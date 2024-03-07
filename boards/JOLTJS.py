@@ -108,7 +108,26 @@ devices = {
     'pin_gnd' : 'D37', # P1.05
     'pin_vcc' : 'D42', # P1.10
   },
-
+  'DRIVER0' : {
+    'pin_nsleep' : 'D21',
+    'pin_nfault' : 'D19',
+    'pin_mode' : 'D16',
+    'pin_trq' : 'D12',
+    'pin_d0' : 'D17',
+    'pin_d1' : 'D15',
+    'pin_d2' : 'D13',
+    'pin_d3' : 'D14'
+  },
+  'DRIVER1' : {
+    'pin_nsleep' : 'D23',
+    'pin_nfault' : 'D20',
+    'pin_mode' : 'D24',
+    'pin_trq' : 'D35',
+    'pin_d0' : 'D22',
+    'pin_d1' : 'D32',
+    'pin_d2' : 'D25',
+    'pin_d3' : 'D34'  
+  }
 };
 
 # left-right, or top-bottom order

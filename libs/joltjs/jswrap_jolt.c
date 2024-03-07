@@ -37,10 +37,6 @@ See https://docs.google.com/document/d/1Tw7fUkpj9dwBYASBCX9TjPcpgdqEw_7VL6MSRqVU
 #include "bluetooth.h"
 #include "app_timer.h"
 
-/// Analog pins assigned to each IO output
-const char outputAnalogs[8] = { 4, 0, 5, 0, 30, 0, 28, 0 };
-/// Digital output pins connected to each driver
-const char outputDriver[8] = { 17, 15, 13, 14, 22, 32, 25, 32+2 };
 /// IO pins on Qwiic headers - check for shorts
 const Pin JOLT_IO_PINS[] = {
   3,29,7,  // q0
@@ -48,16 +44,6 @@ const Pin JOLT_IO_PINS[] = {
   44,45,36,43, // q2
   39,38,37,42  // q3
 };
-
-#define DRIVER0_NSLEEP_PININDEX 21
-#define DRIVER0_NFAULT_PININDEX 19
-#define DRIVER0_SDA_MODE_PININDEX 16
-#define DRIVER0_SCL_TRQ_PININDEX 12
-
-#define DRIVER1_NSLEEP_PININDEX 23
-#define DRIVER1_NFAULT_PININDEX 19
-#define DRIVER1_SDA_MODE_PININDEX 24
-#define DRIVER1_SCL_TRQ_PININDEX (32+3)
 
 typedef enum {
   JDM_OFF,
@@ -241,16 +227,16 @@ void jswrap_jolt_setDriverMode(int driver, JsVar *mode) {
   driverMode[driver] = dMode;
   if (driver==0) {
     if (dMode == JDM_OUTPUT)
-      jshPinSetState(DRIVER0_SDA_MODE_PININDEX, JSHPINSTATE_GPIO_IN); // Z for independent bridge
+      jshPinSetState(DRIVER0_PIN_MODE, JSHPINSTATE_GPIO_IN); // Z for independent bridge
     else
-      jshPinOutput(DRIVER0_SDA_MODE_PININDEX, 0); // 0 for 4 pin interface
-    jshPinOutput(DRIVER0_NSLEEP_PININDEX, dMode != JDM_OFF);
+      jshPinOutput(DRIVER0_PIN_MODE, 0); // 0 for 4 pin interface
+    jshPinOutput(DRIVER0_PIN_NSLEEP, dMode != JDM_OFF);
   } else if (driver==1) {
     if (dMode == JDM_OUTPUT)
-      jshPinSetState(DRIVER1_SDA_MODE_PININDEX, JSHPINSTATE_GPIO_IN); // Z for independent bridge
+      jshPinSetState(DRIVER1_PIN_MODE, JSHPINSTATE_GPIO_IN); // Z for independent bridge
     else
-      jshPinOutput(DRIVER1_SDA_MODE_PININDEX, 0); // 0 for 4 pin interface
-    jshPinOutput(DRIVER1_NSLEEP_PININDEX, dMode != JDM_OFF);
+      jshPinOutput(DRIVER1_PIN_MODE, 0); // 0 for 4 pin interface
+    jshPinOutput(DRIVER1_PIN_NSLEEP, dMode != JDM_OFF);
   }
 }
 
@@ -260,47 +246,6 @@ static void jswrap_jolt_setDriverMode_(int driver, bool mode) {
   jsvUnLock(b);
 }
 
-#if 0
-void jshVirtualPinInitialise() {
-  // ensure motor drivers are off
-  jshPinOutput(DRIVER0_NSLEEP_PININDEX, 0);
-  jshPinOutput(DRIVER1_NSLEEP_PININDEX, 0);
-  driverMode[0] = JDM_OFF;
-  driverMode[1] = JDM_OFF;
-  // set all outputs to 0 by default
-  for (int i=0;i<8;i++)
-    jshPinOutput(outputDriver[i], 0);
-}
-
-void jshVirtualPinSetValue(Pin pin, bool state) {
-  int p = pinInfo[pin].pin;
-  jshPinSetValue(outputDriver[p], state);
-  // TODO: warn if motor driver not on?
-}
-
-bool jshVirtualPinGetValue(Pin pin) {
-   int p = pinInfo[pin].pin;
-   return jshPinGetValue(outputDriver[p]);
-}
-
-JsVarFloat jshVirtualPinGetAnalogValue(Pin pin) {
-  int p = pinInfo[pin].pin;
-  if (outputAnalogs[p]==0) return NAN;
-  // Multiply up so we return the actual voltage
-  // 39k + 220k potential divider
-  // 3.3*(220+39)/39 = 21.915
-  return jshPinAnalog(outputAnalogs[p]) * 21.915;
-}
-
-void jshVirtualPinSetState(Pin pin, JshPinState state) {
-  int p = pinInfo[pin].pin;
-  //if (JSHPINSTATE_IS_OUTPUT(state)) ...
-}
-
-JshPinState jshVirtualPinGetState(Pin pin) {
-  return JSHPINSTATE_UNDEFINED;
-}
-#endif
 
 static bool selftest_check_pin(Pin pin, char *err) {
   unsigned int i;
@@ -497,13 +442,25 @@ bool jswrap_jolt_selfTest() {
 }*/
 void jswrap_jolt_hwinit() {
   // ensure motor drivers are off
-  jshPinOutput(DRIVER0_NSLEEP_PININDEX, 0);
-  jshPinOutput(DRIVER1_NSLEEP_PININDEX, 0);
+  jshPinOutput(DRIVER0_PIN_NSLEEP, 0);
+  jshPinOutput(DRIVER1_PIN_NSLEEP, 0);
+  jshPinOutput(DRIVER0_PIN_MODE, 0);
+  jshPinOutput(DRIVER1_PIN_MODE, 0);
+  jshPinOutput(DRIVER0_PIN_TRQ, 0);
+  jshPinOutput(DRIVER1_PIN_TRQ, 0);
+  jshPinSetState(DRIVER0_PIN_NFAULT, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(DRIVER1_PIN_NFAULT, JSHPINSTATE_GPIO_IN_PULLUP);
   driverMode[0] = JDM_OFF;
   driverMode[1] = JDM_OFF;
   // set all outputs to 0 by default
-  for (int i=0;i<8;i++)
-    jshPinOutput(outputDriver[i], 0);
+  jshPinOutput(DRIVER0_PIN_D0, 0);
+  jshPinOutput(DRIVER0_PIN_D1, 0);
+  jshPinOutput(DRIVER0_PIN_D2, 0);
+  jshPinOutput(DRIVER0_PIN_D3, 0);
+  jshPinOutput(DRIVER1_PIN_D0, 0);
+  jshPinOutput(DRIVER1_PIN_D1, 0);
+  jshPinOutput(DRIVER1_PIN_D2, 0);
+  jshPinOutput(DRIVER1_PIN_D3, 0);
 }
 
 /*JSON{
@@ -561,8 +518,8 @@ void jswrap_jolt_init() {
 }*/
 void jswrap_jolt_kill() {
   // ensure motor drivers are off
-  jshPinOutput(DRIVER0_NSLEEP_PININDEX, 0);
-  jshPinOutput(DRIVER1_NSLEEP_PININDEX, 0);
+  jshPinOutput(DRIVER0_PIN_NSLEEP, 0);
+  jshPinOutput(DRIVER1_PIN_NSLEEP, 0);
 }
 
 /*JSON{

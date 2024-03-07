@@ -523,6 +523,10 @@ if "QWIIC2" in board.devices:
   codeOutDevicePins("QWIIC2", "QWIIC2")
 if "QWIIC3" in board.devices:
   codeOutDevicePins("QWIIC3", "QWIIC3")
+if "DRIVER0" in board.devices:
+  codeOutDevicePins("DRIVER0", "DRIVER0")
+if "DRIVER1" in board.devices:
+  codeOutDevicePins("DRIVER1", "DRIVER1")  
 
 if "SPIFLASH" in board.devices:
   codeOut("#define SPIFLASH_PAGESIZE 4096")
