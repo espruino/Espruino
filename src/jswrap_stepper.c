@@ -194,7 +194,7 @@ Create a `Stepper` class. `options` can contain:
   pins : [...], // required - 4 element array of pins
   pattern : [...], // optional - a 4/8 element array of step patterns
   offpattern : 0, // optional (default 0) - the pattern to output to stop driving the stepper motor
-  freq : 500,   // optional (default 500) steps per second
+  freq : 500,   // optional (default 100) steps per second
 })
 ```
 
@@ -213,7 +213,7 @@ JsVar *jswrap_stepper_constructor(JsVar *options) {
 
   JsVar *pinsVar = 0;
   JsVar *patternVar = 0;
-  JsVarFloat freq = 500;
+  JsVarFloat freq = 100;
   int offpattern = 0;
   jsvConfigObject configs[] = {
       {"pins", JSV_ARRAY, &pinsVar},
@@ -294,7 +294,7 @@ JsVar *jswrap_stepper_moveTo(JsVar *stepper, int position, JsVar *options) {
   }
 
   int currentPos = jsvObjectGetIntegerChild(stepper, "pos");
-  int direction = position - currentPos; 
+  int direction = position - currentPos;
   if (jsvObjectGetBoolChild(options, "relative"))
     direction = position;
 
