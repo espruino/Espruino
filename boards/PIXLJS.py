@@ -39,7 +39,7 @@ info = {
      #'SHA256',
      #'AES',
      'FILESYSTEM',
-     'JIT',     
+     'JIT',
      'TERMINAL'
    ],
    'makefile' : [
@@ -47,7 +47,7 @@ info = {
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
 #     'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
-     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once     
+     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3290', # set RAM base to match MTU=53 + CENTRAL_LINK_COUNT=2
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Pixl.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_pixljs_getBattery',
@@ -55,7 +55,7 @@ info = {
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DNEOPIXEL_SCK_PIN=14 -DNEOPIXEL_LRCK_PIN=15', # see https://github.com/espruino/Espruino/issues/2071
      'DEFINES += -DESPR_USE_STEPPER_TIMER=1', # Build in the code for stepping using the timer
-     'DEFINES+=-DSAVE_ON_FLASH_MATH', 
+     'DEFINES+=-DSAVE_ON_FLASH_MATH',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'INCLUDE += -I$(ROOT)/libs/pixljs',
@@ -157,11 +157,11 @@ def get_pins():
    { "name":"PD2",  "sortingname":"D02", "port":"D", "num":"27", "functions":{}, "csv":{} },
    { "name":"PD3",  "sortingname":"D03", "port":"D", "num":"30", "functions":{ "ADC1_IN6":0 }, "csv":{} },
    { "name":"PD4",  "sortingname":"D04", "port":"D", "num":"31", "functions":{ "ADC1_IN7":0 }, "csv":{} },
-   { "name":"PD5",  "sortingname":"D05", "port":"D", "num":"0", "functions":{}, "csv":{} }, 
-   { "name":"PD6",  "sortingname":"D06", "port":"D", "num":"1", "functions":{}, "csv":{} }, 
-   { "name":"PD7",  "sortingname":"D07", "port":"D", "num":"6", "functions":{}, "csv":{} }, 
+   { "name":"PD5",  "sortingname":"D05", "port":"D", "num":"0", "functions":{}, "csv":{} },
+   { "name":"PD6",  "sortingname":"D06", "port":"D", "num":"1", "functions":{}, "csv":{} },
+   { "name":"PD7",  "sortingname":"D07", "port":"D", "num":"6", "functions":{}, "csv":{} },
    { "name":"PD8",  "sortingname":"D08", "port":"D", "num":"7", "functions":{}, "csv":{} },
-   { "name":"PD9",  "sortingname":"D09", "port":"D", "num":"8", "functions":{}, "csv":{} }, 
+   { "name":"PD9",  "sortingname":"D09", "port":"D", "num":"8", "functions":{}, "csv":{} },
    { "name":"PD10", "sortingname":"D10", "port":"D", "num":"17", "functions":{}, "csv":{} },
    { "name":"PD11", "sortingname":"D11", "port":"D", "num":"18", "functions":{}, "csv":{} },
    { "name":"PD12", "sortingname":"D12", "port":"D", "num":"19", "functions":{}, "csv":{} },
@@ -194,5 +194,9 @@ def get_pins():
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;
+  for pin in pins:
+    if pin["port"]=="H":
+      pin["functions"]["NO_BLOCKLY"]=0;  # hide in blockly
+
   #The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
   return pins

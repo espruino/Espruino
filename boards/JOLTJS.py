@@ -126,7 +126,7 @@ devices = {
     'pin_d0' : 'D22',
     'pin_d1' : 'D32',
     'pin_d2' : 'D25',
-    'pin_d3' : 'D34'  
+    'pin_d3' : 'D34'
   }
 };
 
@@ -149,7 +149,7 @@ board = {
     'H5' : "Motor driver 1, output 1.", # D32
     'H6' : "Motor driver 1, output 2. This pin is also connected to an analog input via a 39k/220k potential divider", # D35
     'H7' : "Motor driver 1, output 3.", # D34
-    
+
     'Q0.fet' : "INVERTED. Connected to 500mA FET. When 1, GND on Q0 is pulled low. When 0, GND on Q0 is open circuit",
     'Q1.fet' : "INVERTED. Connected to 500mA FET. When 1, GND on Q1 is pulled low. When 0, GND on Q1 is open circuit",
   },
@@ -213,18 +213,19 @@ def get_pins():
   pinutils.findpin(pins, "PH6", True)["functions"]["ADC1_IN4"]=0;
   # renumber high power pins - the idea is despite being 'H' the pins still point to the correct 'real' pin number
   pinutils.findpin(pins, "PH0", True)["num"] = '17';
-  pinutils.findpin(pins, "PH1", True)["num"] = '15';  
+  pinutils.findpin(pins, "PH1", True)["num"] = '15';
   pinutils.findpin(pins, "PH2", True)["num"] = '13';
   pinutils.findpin(pins, "PH3", True)["num"] = '14';
-  pinutils.findpin(pins, "PH4", True)["num"] = '22';  
+  pinutils.findpin(pins, "PH4", True)["num"] = '22';
   pinutils.findpin(pins, "PH5", True)["num"] = '32';
   pinutils.findpin(pins, "PH6", True)["num"] = '25';
-  pinutils.findpin(pins, "PH7", True)["num"] = '34';  
-  
+  pinutils.findpin(pins, "PH7", True)["num"] = '34';
+
 
   # everything is non-5v tolerant
   for pin in pins:
     if pin["port"]!="H":
       pin["functions"]["3.3"]=0;
+      pin["functions"]["NO_BLOCKLY"]=0;  # hide in blockly
   #The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
   return pins

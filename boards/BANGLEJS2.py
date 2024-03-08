@@ -70,7 +70,7 @@ info = {
      'WRAPPERSOURCES += libs/graphics/jswrap_font_12x20.c',
      'SOURCES += libs/misc/nmea.c',
      'SOURCES += libs/misc/stepcount.c',
-     'SOURCES += libs/misc/hrm_vc31.c',     
+     'SOURCES += libs/misc/hrm_vc31.c',
 # Standard open-source heart rate algorithm:
 #    'SOURCES += libs/misc/heartrate.c',
 # Proprietary heart rate algorithm:
@@ -125,7 +125,7 @@ devices = {
   'BTN1' : { 'pin' : 'D17', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
   'LED1' : { 'pin' : 'D8', 'novariable':True }, # Backlight flash for low level debug - but in code we just use 'fake' LEDs
   'LCD' : {
-            'width' : 176, 'height' : 176, 
+            'width' : 176, 'height' : 176,
             'bpp' : 3, # LCD is native 3 bit (fastest transfers), but 4 is faster for drawing and slow to transfer
             'controller' : 'LPM013M126', # LPM013M126C
             'pin_cs' : 'D5',
@@ -146,7 +146,7 @@ devices = {
   'GPS' : {
             'device' : 'Casic URANUS',
             'pin_en' : 'D29', # IO expander P0
-            'pin_rx' : 'D30', 
+            'pin_rx' : 'D30',
             'pin_tx' : 'D31'
           },
   'BAT' : {
@@ -154,10 +154,10 @@ devices = {
             'pin_voltage' : 'D3'
           },
   'HEARTRATE' : {
-            'device' : 'VC31', 'addr' : 0x33,            
-            'pin_sda' : 'D24', 
-            'pin_scl' : 'D32', 
-            'pin_en' : 'D21', 
+            'device' : 'VC31', 'addr' : 0x33,
+            'pin_sda' : 'D24',
+            'pin_scl' : 'D32',
+            'pin_en' : 'D21',
             'pin_int' : 'D22'
           },
   'ACCEL' : {
@@ -166,7 +166,7 @@ devices = {
             'pin_scl' : 'D37'
           },
   'MAG' : { # Magnetometer/compass
-            'device' : 'UNKNOWN_0C', 
+            'device' : 'UNKNOWN_0C',
             'addr' : 0x0C,
             'pin_sda' : 'D44',
             'pin_scl' : 'D45'
@@ -175,7 +175,7 @@ devices = {
             'device' : 'BMP280', # v2.1 uses Goertek SPL06-001 - we handle both
             'addr' : 0x76, # both versions use the same address
             'pin_sda' : 'D47',
-            'pin_scl' : 'D2'            
+            'pin_scl' : 'D2'
   },
   'SPIFLASH' : {
             'pin_cs' : 'D14',
@@ -212,5 +212,6 @@ def get_pins():
   # everything is non-5v tolerant
   for pin in pins:
     pin["functions"]["3.3"]=0;
+    pin["functions"]["NO_BLOCKLY"]=0;  # hide in blockly
   #The boot/reset button will function as a reset button in normal operation. Pin reset on PD21 needs to be enabled on the nRF52832 device for this to work.
   return pins

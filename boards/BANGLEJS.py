@@ -28,13 +28,13 @@ info = {
    'libraries' : [
      'BLUETOOTH',
      'TERMINAL',
-     'GRAPHICS', 
+     'GRAPHICS',
      'LCD_ST7789_8BIT',
      'TENSORFLOW',
      'JIT'
    ],
    'makefile' : [
-     'BLACKLIST=boards/BANGLEJS.blocklist', # force some stuff to be removed to save space   
+     'BLACKLIST=boards/BANGLEJS.blocklist', # force some stuff to be removed to save space
      'DEFINES += -DESPR_HWVERSION=1',
      'DEFINES += -DBANGLEJS_F18',
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow the reset pin to work
@@ -67,12 +67,12 @@ info = {
      'LINKER_BOOTLOADER=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_dfu.ld',
      'LINKER_ESPRUINO=targetlibs/nrf5x_12/nrf5x_linkers/banglejs_espruino.ld',
 # Uncomment these lines to allow the Bangle.js 1 bootloader to check external flash for firmware and
-# update from there. We do this by default on Bangle.js 2 but on Bangle.js 1 it's  bit tight to get it into 
+# update from there. We do this by default on Bangle.js 2 but on Bangle.js 1 it's  bit tight to get it into
 # available flash memory. See #2449
 #     'DEFINES += -DESPR_BOOTLOADER_SPIFLASH', # Allow bootloader to flash direct from SPI flash
 #     'BOOTLOADER_DEFINES += -DNRF_BL_DFU_TRIM_EXTREME',
 #     'BOOTLOADER_LDFLAGS += -nostartfiles',
-#     'BOOTLOADER_ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main',    
+#     'BOOTLOADER_ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main',
    ]
  }
 };
@@ -126,7 +126,7 @@ devices = {
   'GPS' : {
             'device' : 'M8130-KT',
 #            'pin_en' : '', # IO expander P0
-            'pin_rx' : 'D25', 
+            'pin_rx' : 'D25',
             'pin_tx' : 'D26'
           },
   'BAT' : {
@@ -144,7 +144,7 @@ devices = {
             'pin_scl' : 'D14'
           },
   'MAG' : { # Magnetometer/compass
-            'device' : 'GMC303', 
+            'device' : 'GMC303',
             'addr' : 0x0C,
             'pin_sda' : 'D15',
             'pin_scl' : 'D14'
@@ -187,7 +187,8 @@ def get_pins():
   pinutils.findpin(pins, "PD22", True)["functions"]["NEGATED"]=0; # btn
   pinutils.findpin(pins, "PD23", True)["functions"]["NEGATED"]=0; # btn
   pinutils.findpin(pins, "PD24", True)["functions"]["NEGATED"]=0; # btn
-  
+  for pin in pins:
+    pin["functions"]["NO_BLOCKLY"]=0;  # hide in blockly
 
   # everything is non-5v tolerant
   for pin in pins:
