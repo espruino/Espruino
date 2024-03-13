@@ -385,13 +385,13 @@ bool _jswrap_jolt_selfTest(bool advertisePassOrFail) {
       if (i==p) {
         if (v<2) {
           if (!err[0]) { strcpy(err,"OLx"); err[2]='0'+i; }
-          jsiConsolePrintf("V%d low (%f) when V%d set\n", p, v, i);
+          jsiConsolePrintf("H%d low (%f) when H%d set\n", p, v, i);
           ok = false;
         }
       } else {
         if (v>1) {
           if (!err[0]) { strcpy(err,"OHx"); err[2]='0'+i; }
-          jsiConsolePrintf("V%d high (%f) when V%d set\n", p, v, i);
+          jsiConsolePrintf("H%d high (%f) when H%d set\n", p, v, i);
           ok = false;
         }
       }

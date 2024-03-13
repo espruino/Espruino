@@ -1387,6 +1387,12 @@ JsVarFloat jshPinAnalog(Pin pin) {
     return jshVirtualPinGetAnalogValue(pin);
 #endif
   if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
+
+#ifdef JOLTJS
+  // Bit of a hack for Jolt.js - don't change pin state as it's not actually the pin we're measuring! The defaults for analogs
+  // are JSHPINSTATE_ADC_IN anyway so we should be ok
+  if ((pinInfo[pin].port & JSH_PORT_MASK)!=JSH_PORTH)
+#endif
   if (!jshGetPinStateIsManual(pin))
     jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 #ifdef NRF52_SERIES
