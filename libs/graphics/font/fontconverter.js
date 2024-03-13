@@ -601,9 +601,10 @@ var f = load({
   mapWidth : 256, mapHeight : 256,
   mapOffsetX : 32, mapOffsetY : 64,
   height : 16, // actual used height of font map
-  firstChar : 32, maxChars : 6*16
+  //firstChar : 32, maxChars : 6*16
   //firstChar : 0x4E00, maxChars : 0x9FFF - 0x4E00
   //firstChar : 0x8000, maxChars : 0x9FFF - 0x8000
+  firstChar : 32, maxChars : 0xD7FF - 32 // all inc korean
 });
 
 f.debugChars();
