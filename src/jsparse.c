@@ -1313,6 +1313,14 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
 #endif
   a = jspeFactorMember(jspeFactor(), &parent);
 
+#ifndef ESPR_NO_TEMPLATE_LITERAL
+  if (lex->tk==LEX_TEMPLATE_LITERAL) {
+    jsExceptionHere(JSET_SYNTAXERROR, "Tagged Templates are not supported");
+    jsvUnLock2(a, parent);
+    return 0;
+  }
+#endif
+
   while ((lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) && !jspIsInterrupted()) {
     JsVar *funcName = a;
     JsVar *func = jsvSkipName(funcName);
