@@ -10,7 +10,7 @@
             Added 'globalThis' var as it's the ECMAScript version of Node.js's 'global'
             Bangle.js: Bangle.setUI's back widget now uses stopEventPropagation to stop other touch handlers getting called
             Improvements to Stepper module (default to absolute movement)
-            Throw error if there's an attempt to use Tagged Templates (fix #3214)
+            Throw error if there's an attempt to use Tagged Templates (fix #2475)
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)
