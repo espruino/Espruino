@@ -607,6 +607,7 @@ var mainmenu = {
   "A Number" : {
     value : number,
     min:0,max:100,step:10,
+    // noList : true, // On Bangle.js devices this forces use of the number-chooser (and not a scrolling list)
     onchange : v => { number=v; }
   },
   "Exit" : function() { E.showMenu(); }, // remove the menu

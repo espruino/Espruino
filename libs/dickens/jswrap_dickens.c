@@ -13,6 +13,7 @@
  * Contains JavaScript function just for the Dickens smartwatch
  * ----------------------------------------------------------------------------
  */
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py */
 
 #include "jswrap_dickens.h"
 #include "jswrap_graphics.h"
