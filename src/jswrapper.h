@@ -72,14 +72,41 @@ typedef enum {
 #define PACKED_JSW_SYM __attribute__((aligned(2)))
 #endif
 
+#define ESPR_PACKED_SYMPTR
 
-/// Structure for each symbol in the list of built-in symbols
+/// This is the Structure for storing each symbol in the list of built-in symbols (in flash)
+// JswSymPtr should be a multiple of 2 in length or jswBinarySearch will need READ_FLASH_UINT16
+#ifndef ESPR_PACKED_SYMPTR // 'Normal' symbol storage - strOffset is *not* packed into function pointer
 typedef struct {
   unsigned short strOffset;
   unsigned short functionSpec; // JsnArgumentType
   void (*functionPtr)(void);
 } PACKED_JSW_SYM JswSymPtr;
-// This should be a multiple of 2 in length or jswBinarySearch will need READ_FLASH_UINT16
+// Macro used for defining entries in JswSymPtr jswSymbols_*
+#define JSWSYMPTR_ENTRY(offset, argSpec, pointer) \
+  { offset, argSpec, pointer}
+#define JSWSYMPTR_OFFSET(symPtr) \
+  ((symPtr)->strOffset)
+#define JSWSYMPTR_FUNCTION_PTR(symPtr) \
+  ((symPtr)->functionPtr)
+#else // ESPR_PACKED_SYMPTR - strOffset *is* packed into function pointer
+// On most ARM embedded targets we know the top 12 bits of the address are 0, so we use them for storing 'strOffset'
+typedef struct {
+  unsigned short functionSpec; // JsnArgumentType
+  // top 12 bits are used for strOffset - must mask with JSWSYMPTR_MASK
+  // stored in top 12 bits, shift right with JSWSYMPTR_SHIFT
+  size_t functionPtrAndStrOffset;
+} PACKED_JSW_SYM JswSymPtr;
+#define JSWSYMPTR_MASK 0xFFFFF // bottom 20 bits for function pointer
+#define JSWSYMPTR_SHIFT 20 // top 12 bits used for String offset
+// Macro used for defining entries in JswSymPtr jswSymbols_*
+#define JSWSYMPTR_ENTRY(offset, argSpec, pointer) \
+  { argSpec, (((size_t)pointer) + ((offset) << JSWSYMPTR_SHIFT)) }
+#define JSWSYMPTR_OFFSET(symPtr) \
+  ((symPtr)->functionPtrAndStrOffset >> JSWSYMPTR_SHIFT)
+#define JSWSYMPTR_FUNCTION_PTR(symPtr) \
+  (void (*)(void))((symPtr)->functionPtrAndStrOffset & JSWSYMPTR_MASK)
+#endif
 
 /// Information for each list of built-in symbols
 typedef struct {

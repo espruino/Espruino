@@ -112,6 +112,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 
 * `SAVE_ON_FLASH` - Remove some features (like any ES6 support) to target devices with ~128kB Flash
 * `SAVE_ON_FLASH_EXTREME` - Pull out as many features as possible to target devices with ~128kB Flash that also want things like Filesystem support
+* `ESPR_PACKED_SYMPTR` - Packs string offsets of builtin symbols into their function pointers in JswSymPtr, saves 2 bytes per symbol
 * `BLUETOOTH_NAME_PREFIX="..."` - NRF52 only: Make the Bluetooth LE device's name `BLUETOOTH_NAME_PREFIX` followed by the last 2 bytes of the MAC address.
 * `BLUETOOTH_ADVERTISING_INTERVAL=375` - set the default Bluetooth advertising interval (default 375)
 * `NFC_DEFAULT_URL="http://foo"` - If defined, set the advertised NFC URL to the one given, plus `?a=ble_address`. Only do it for a fresh boot - not when code has been saved.

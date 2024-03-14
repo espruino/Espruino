@@ -212,11 +212,14 @@ def codeOutSymbolTable(builtin):
     if builtin["name"]=="global" and symName in libraries:
       continue # don't include libraries on global namespace
     if "generate" in sym:
-      listSymbols.append("{"+", ".join([str(strLen), getArgumentSpecifier(sym), "(void (*)(void))"+sym["generate"]])+"}")
+      listSymbols.append("JSWSYMPTR_ENTRY("+", ".join([str(strLen), getArgumentSpecifier(sym), "(void*)"+sym["generate"]])+")")
       listChars = listChars + symName + "\\0";
       strLen = strLen + len(symName) + 1
     else:
       print (codeName + "." + symName+" not included in Symbol Table because no 'generate'")
+  if strLen > 4096*1024:
+    print("ERROR: strOffset is too long for packing into the function pointer")
+    exit(1)
   builtin["symbolTableChars"] = "\""+listChars+"\"";
   builtin["symbolTableCount"] = str(len(listSymbols));
   codeOut("static const JswSymPtr jswSymbols_"+codeName+"[] FLASH_SECT = {\n  "+",\n  ".join(listSymbols)+"\n};");
@@ -412,12 +415,12 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
   while (searchMin <= searchMax) {
     int idx = (searchMin+searchMax) >> 1;
     const JswSymPtr *sym = &symbolsPtr->symbols[idx];
-    int cmp = FLASH_STRCMP(name, &symbolsPtr->symbolChars[sym->strOffset]);
+    int cmp = FLASH_STRCMP(name, &symbolsPtr->symbolChars[JSWSYMPTR_OFFSET(sym)]);
     if (cmp==0) {
       unsigned short functionSpec = sym->functionSpec;
       if ((functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
-        return jsnCallFunction(sym->functionPtr, functionSpec, parent, 0, 0);
-      return jsvNewNativeFunction(sym->functionPtr, functionSpec);
+        return jsnCallFunction(JSWSYMPTR_FUNCTION_PTR(sym), functionSpec, parent, 0, 0);
+      return jsvNewNativeFunction(JSWSYMPTR_FUNCTION_PTR(sym), functionSpec);
     } else {
       if (cmp<0) {
         // searchMin is the same
