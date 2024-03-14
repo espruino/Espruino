@@ -44,7 +44,7 @@ typedef struct {
   unsigned int last_index;
 } AccelFilter;
 
-const static int8_t filter_taps[ACCELFILTER_TAP_NUM] = {
+static const int8_t filter_taps[ACCELFILTER_TAP_NUM] = {
     -11, -15, 44, 68, 44, -15, -11
 };
 
@@ -288,6 +288,6 @@ int stepcount_new(int accMagSquared) {
     stepsCounted = stepcount_had_step();
     stepLength = 0;
   }
-  
+
   return stepsCounted;
 }

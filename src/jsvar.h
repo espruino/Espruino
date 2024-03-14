@@ -527,7 +527,7 @@ static ALWAYS_INLINE void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStr
 ///< Append the given UTF8 character to this string
 static ALWAYS_INLINE void jsvAppendUTF8Character(JsVar *var, int ch) {
   char utf8buf[4];
-  int utf8len = jsUTF8Encode(ch, utf8buf);
+  unsigned int utf8len = jsUTF8Encode(ch, utf8buf);
   jsvAppendStringBuf(var, utf8buf, utf8len);
 }
 #endif

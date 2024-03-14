@@ -2977,7 +2977,7 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name) {
       childref = jsvGetNextSibling(child);
     }
   } else { // 4 or less chars, so if 4 chars match, there is no StringExt + length matches, then we're good without jsvIsStringEqual
-    int charsInName = 0;
+    size_t charsInName = 0;
     while (name[charsInName])
       charsInName++;
     while (childref) {

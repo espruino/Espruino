@@ -286,7 +286,7 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, size_t imageOffs
   return true;
 }
 
-bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result) {
+bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, uint32_t *result) {
   int qx = l->qx+127;
   int qy = l->qy+127;
   if (qx>=0 && qy>=0 && qx<l->mx && qy<l->my) {
@@ -2402,7 +2402,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
     int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
     bool canBreakOnCh = endOfText || ch=='\n' || ch==' ';
     if (canBreakOnCh || canSplitAfter) { // is breakable - newline,space,dash, image before
-      int currentPos = (int)jsvStringIteratorGetIndex(&it);
+      size_t currentPos = jsvStringIteratorGetIndex(&it);
       if ((lineWidth + spaceWidth + wordWidth <= maxWidth) &&
           !wasNewLine) {
         // all on one line, just append the last word
@@ -3345,7 +3345,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
   }
 
   int x=0, y=0;
-  unsigned int colData = 0;
+  uint32_t colData = 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, img.buffer, (size_t)img.bitmapOffset);
 
@@ -3635,7 +3635,7 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
       for (int xi = x; xi <= x2 ; xi++) {
         // scan backwards until we hit a 'solid' pixel
         bool solid = false;
-        unsigned int colData = 0;
+        uint32_t colData = 0;
         for (i=layerCount-1;i>=0;i--) {
           if (_jswrap_drawImageLayerGetPixel(&layers[i], &colData)) {
             solid = true;

@@ -123,7 +123,7 @@ void graphicsStructResetState(JsGraphics *gfx) {
   } else
 #endif
   {
-    gfx->data.fgColor = (gfx->data.bpp>=32) ? 0xFFFFFFFF : ((1<<gfx->data.bpp)-1);
+    gfx->data.fgColor = (gfx->data.bpp>=32) ? 0xFFFFFFFF : ((1U<<gfx->data.bpp)-1);
     gfx->data.bgColor = 0;
   }
   gfx->data.fontSize = 1+JSGRAPHICS_FONTSIZE_4X6;

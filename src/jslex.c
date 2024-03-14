@@ -603,7 +603,7 @@ static void jslGetRawString() {
   } else {
     /* if it will fit in a single string, allocate one and fill it up! */
     lex->tokenValue = jsvNewWithFlags(JSV_STRING_0 + length);
-    for (int i=0;i<length;i++) {
+    for (size_t i=0;i<length;i++) {
       jslGetNextCh();
       lex->tokenValue->varData.str[i] = lex->currCh;
     }

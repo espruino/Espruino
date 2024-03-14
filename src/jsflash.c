@@ -816,7 +816,10 @@ static uint32_t jsfBankFindFile(uint32_t bankAddress, uint32_t bankEndAddress, J
 
 /// Find a 'file' in the memory store. Return the address of data start (and header if returnedHeader!=0). Returns 0 if not found
 uint32_t jsfFindFile(JsfFileName name, JsfFileHeader *returnedHeader) {
-  char drive = jsfStripDriveFromName(&name, true/* ensure we search both drive if not explicitly requested */);
+#ifdef JSF_BANK2_START_ADDRESS
+  char drive =
+#endif
+    jsfStripDriveFromName(&name, true/* ensure we search both drive if not explicitly requested */);
   uint32_t a = jsfCacheFind(name, returnedHeader);
   if (a!=JSF_CACHE_NOT_FOUND) return a;
   JsfFileHeader header;

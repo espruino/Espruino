@@ -1396,7 +1396,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
   if (!jshGetPinStateIsManual(pin))
     jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 #ifdef NRF52_SERIES
-  int channel = pinInfo[pin].analog & JSH_MASK_ANALOG_CH;
+  //int channel = pinInfo[pin].analog & JSH_MASK_ANALOG_CH;
   assert(NRF_SAADC_INPUT_AIN0 == 1);
   assert(NRF_SAADC_INPUT_AIN1 == 2);
   assert(NRF_SAADC_INPUT_AIN2 == 3);
@@ -2000,7 +2000,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   /* Numbers for SPI_FREQUENCY_FREQUENCY_M16/SPI_FREQUENCY_FREQUENCY_M32
   are in the nRF52 datasheet but they don't appear to actually work (and
   aren't in the header files either). */
-  spi_config.frequency =  freq;
+  spi_config.frequency = (nrf_drv_spi_frequency_t)freq;
   spi_config.mode = inf->spiMode;
   spi_config.bit_order = inf->spiMSB ? NRF_DRV_SPI_BIT_ORDER_MSB_FIRST : NRF_DRV_SPI_BIT_ORDER_LSB_FIRST;
   if (jshIsPinValid(inf->pinSCK))
@@ -2273,7 +2273,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     nrf_drv_twi_config_t    p_twi_config;
     p_twi_config.scl = (uint32_t)pinInfo[inf->pinSCL].pin;
     p_twi_config.sda = (uint32_t)pinInfo[inf->pinSDA].pin;
-    p_twi_config.frequency = (inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K);
+    p_twi_config.frequency = (nrf_drv_twi_frequency_t)((inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K));
     p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
     if (twi1Initialised) nrf_drv_twi_uninit(twi);
     twi1Initialised = true;

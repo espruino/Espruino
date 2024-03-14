@@ -105,12 +105,11 @@ void jshInitDevices() {
 /** Reset any devices that could have been set up differently by JS code.
  * Called from jshReset */
 void jshResetDevices() {
-  unsigned int i;
   // Reset list of pins that were set manually
   jshResetPinStateIsManual();
 
   // setup flow control
-  for (i=0;i<JSHSERIALDEVICESTATUSES;i++) {
+  for (int i=0;i<JSHSERIALDEVICESTATUSES;i++) {
 #ifdef USB
     if (i==TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)) break; // don't update USB status
 #endif
@@ -122,7 +121,7 @@ void jshResetDevices() {
     jshSerialDeviceCTSPins[i] = PIN_UNDEFINED;
   }
   // reset callbacks for events
-  for (i=EV_EXTI0;i<=EV_EXTI_MAX;i++)
+  for (int i=EV_EXTI0;i<=EV_EXTI_MAX;i++)
     jshEventCallbacks[i-EV_EXTI0] = 0;
   // Reset pin state for button
 #ifdef BTN1_PININDEX

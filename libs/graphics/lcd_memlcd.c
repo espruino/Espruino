@@ -337,7 +337,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
       if (y>=ovY && y<ovY+overlayImg.height) {
         _jswrap_drawImageLayerStartX(&l);
         for (int x=0;x<overlayImg.width;x++) {
-          unsigned int c;
+          uint32_t c;
           int ox = x+lcdOverlayX;
           if (_jswrap_drawImageLayerGetPixel(&l, &c) && (ox < LCD_WIDTH) && (ox >= 0))
             lcdMemLCD_setPixel(NULL, ox, bufferLine, c);

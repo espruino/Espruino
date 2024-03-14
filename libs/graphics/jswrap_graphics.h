@@ -137,7 +137,7 @@ typedef struct {
   int qx,qy; //< x iterator position
 } GfxDrawImageLayer;
 
-bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, unsigned int *result);
+bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, uint32_t *result);
 void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l);
 void _jswrap_drawImageLayerSetStart(GfxDrawImageLayer *l, int x, int y);
 void _jswrap_drawImageLayerStartX(GfxDrawImageLayer *l);
