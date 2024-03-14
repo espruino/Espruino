@@ -2273,7 +2273,9 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     nrf_drv_twi_config_t    p_twi_config;
     p_twi_config.scl = (uint32_t)pinInfo[inf->pinSCL].pin;
     p_twi_config.sda = (uint32_t)pinInfo[inf->pinSDA].pin;
-    p_twi_config.frequency = (nrf_drv_twi_frequency_t)((inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K));
+    // (nrf_drv_twi_frequency_t) cast can be used here on SDK15
+    p_twi_config.frequency =
+                      ((inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K));
     p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
     if (twi1Initialised) nrf_drv_twi_uninit(twi);
     twi1Initialised = true;

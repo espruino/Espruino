@@ -72,8 +72,6 @@ typedef enum {
 #define PACKED_JSW_SYM __attribute__((aligned(2)))
 #endif
 
-#define ESPR_PACKED_SYMPTR
-
 /// This is the Structure for storing each symbol in the list of built-in symbols (in flash)
 // JswSymPtr should be a multiple of 2 in length or jswBinarySearch will need READ_FLASH_UINT16
 #ifndef ESPR_PACKED_SYMPTR // 'Normal' symbol storage - strOffset is *not* packed into function pointer
