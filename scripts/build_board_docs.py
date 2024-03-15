@@ -383,6 +383,7 @@ if hasattr(board, 'boards') or board.board:
     <li><span class="pinfunction NOT_5V">3.3v</span> boxes mark pins that are not 5v tolerant (they only take inputs from 0 - 3.3v, not 0 - 5v).</li>""")
   if has_pin("3.3"): writeHTML("""   <li><span class="pinfunction">3.3</span> is a 3.3v output from the on-board Voltage regulator.</li>""")
   if has_pin("GND"): writeHTML("""    <li><span class="pinfunction">GND</span> is ground (0v).</li>""")
+  if has_pin("+V"): writeHTML("""    <li><span class="pinfunction">+V</span> is the positive voltage input (not the same as 3.3v!).</li>""")
   if has_pin("VBAT"): writeHTML("""    <li><span class="pinfunction">VBAT</span> is the battery voltage output (see <a href="/EspruinoBoard">the Espruino Board Reference</a>).</li>""")
   if "ADC" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction ADC">ADC</span> is an <a href="/ADC">Analog to Digital Converter</a> (for reading analog voltages)</li>""");
   if "DAC" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction DAC">DAC</span> is a <a href="/DAC">Digital to Analog Converter</a> (for creating analog voltages). This is not available on all boards.</li>""");

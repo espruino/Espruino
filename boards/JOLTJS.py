@@ -132,10 +132,10 @@ devices = {
 
 # left-right, or top-bottom order
 board = {
-  'bottom' : [ 'H0', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7' ],
-  'top' : [ 'Q0.scl', 'Q0.sda', 'VCC', 'Q0.fet',#'D29', 'D3', 'VCC', 'D7', # Q0
-            'Q1.scl', 'Q1.sda', 'VCC', 'Q1.fet',#'D31', 'D2', 'VCC', 'D27', # Q1
-            'Q2.scl', 'Q2.sda', 'Q2.vcc', 'Q2.gnd',#'D45', 'D44', 'D43', 'D36', # Q2
+  'bottom' : [ 'GND', '+V', 'H0', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7' ],
+  'top' : [ 'Q0.scl', 'Q0.sda', 'VCC', 'Q0.fet', '','',#'D29', 'D3', 'VCC', 'D7', # Q0
+            'Q1.scl', 'Q1.sda', 'VCC', 'Q1.fet', '','',#'D31', 'D2', 'VCC', 'D27', # Q1
+            'Q2.scl', 'Q2.sda', 'Q2.vcc', 'Q2.gnd', '','',#'D45', 'D44', 'D43', 'D36', # Q2
             'Q3.scl', 'Q3.sda', 'Q3.vcc', 'Q3.gnd',#'D38', 'D39', 'D42', 'D37', # Q3
    ],
   'right' : ['NFC','NFC'],
@@ -156,10 +156,10 @@ board = {
 };
 board["_css"] = """
 #board {
-  width: 628px;
-  height: 800px;
+  width: 800px;
+  height: 742px;
   top: 0px;
-  left : 200px;
+  left : 100px;
   background-image: url(img/JOLTJS.jpg);
 }
 #boardcontainer {
@@ -167,21 +167,21 @@ board["_css"] = """
 }
 
 #top {
-    top: 100px;
-    left: 50px;
+    top: 106px;
+    left: 272px;
 }
 #bottom {
-    top: 400px;
-    left: 0px;
+    top: 599px;
+    left: 125px;
 }
 #right {
-    top: 350px;
-    left: 400px;
+    top: 536px;
+    left: 714px;
 }
 
-.toppin { width: 15px; }
+.toppin { width: 13px; }
 .leftpin { height: 17px; }
-.bottompin { width: 40px; }
+.bottompin { width: 52px; }
 """;
 
 def get_pins():
