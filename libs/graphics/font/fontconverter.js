@@ -60,11 +60,10 @@ load = require("../../../../EspruinoWebTools/fontconverter.js").load;
 */
 
 /*var f = load({
-fn : "Light20px.png",
-bpp : 2,
-height : 20, // actual used height of font map
-firstChar : 32,
-maxChars :  256-32
+  fn : "Light20px.png",
+  bpp : 2,
+  height : 20, // actual used height of font map
+  range : [ min:32, max:255 ]
 });
 f.fullHeight = false;
 f.glyphPadX = 0;*/
@@ -72,61 +71,57 @@ f.glyphPadX = 0;*/
 /*var f = load({
   fn : "fontx14.png",
   height : 14, // actual used height of font map
-  firstChar : 32,
-  maxChars : 6*16
+  range : [ min:32, max:127 ]
 });
 var f = load({
   fn : "font4x6.png", // currently a built-in font
   height : 6, // actual used height of font map
-  firstChar : 32,
-  maxChars : 6*16+1
+  range : [ min:32, max:127 ]
   // fixed width
 });
 var f = load({
   fn : "font6x8.png", // currently a built-in font
   height : 8, // actual used height of font map
-  firstChar : 32,
-  maxChars :  256-32
+  range : [ min:32, max:255 ]
   // fixed width
 });
 var f = load({
   fn : "renaissance_28.pbff",
   height : 28, // actual used height of font map
-  firstChar : 32,
   //yOffset : 4,
 });
   var f = load({
     fn : "bitfontmaker_14px.json",
     height : 14, // actual used height of font map
-    firstChar : 32,
-    maxChars : 256-32
+    range : [ min:32, max:255 ]
   });*/
-var f = load({
+var font = load({
   fn : "unifont-15.1.04.png",
   mapWidth : 256, mapHeight : 256,
   mapOffsetX : 32, mapOffsetY : 64,
   height : 16, // actual used height of font map
-  //firstChar : 32, maxChars : 6*16
-  //firstChar : 0x4E00, maxChars : 0x9FFF - 0x4E00
-  //firstChar : 0x8000, maxChars : 0x9FFF - 0x8000
-  firstChar : 32, maxChars : 0xD7FF - 32 // all inc korean
+  // range : fontconverter.getRanges().ASCII/etc
+  //range : [ {min : 32, max : 127 } ],
+  //range : [ {min : 0x4E00, max : 0x9FFF } ]
+  //range : [ {min : 0x8000, max : 0x9FFF } ]
+  range : [ { min : 32, max : 0xD7FF } ] // all inc korean
 });
+font.removeUnifontPlaceholders();
+font.debugChars();
+//font.debugPixelsUsed();
 
-f.debugChars();
-//f.debugPixelsUsed();
-
-//console.log(f.outputJS());
+//console.log(font.outputJS());
 
 // Write a binary PBF file
-require("fs").writeFileSync("font.pbf", Buffer.from(f.getPBF()))
+require("fs").writeFileSync("font.pbf", Buffer.from(font.getPBF()))
 
 // Write a PBF file as a jswrap_ C file that can be included in the build
 // by adding 'WRAPPERSOURCES += libs/graphics/jswrap_font_light20.c' to the BOARD.py file
-/*f.getPBFAsC({
+/*console.log(font.getPBFAsC({
   name: "Light20",
   path: __dirname+"/../",
   filename: "jswrap_font_light20"
-});*/
+}));*/
 
-//console.log(f.getHeaderFile());
-//console.log(f.getJS());
+//console.log(font.getHeaderFile());
+//console.log(font.getJS());
