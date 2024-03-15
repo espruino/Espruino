@@ -1800,13 +1800,14 @@ JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_setFontPBF",
   "params" : [
-    ["file","JsVar","The font as a PBF file"]
+    ["file","JsVar","The font as a PBF file"],
+    ["scale","int","The scale factor, default=1 (2=2x size)"]
   ],
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
 */
-JsVar *jswrap_graphics_setFontPBF(JsVar *parent, JsVar *file) {
+JsVar *jswrap_graphics_setFontPBF(JsVar *parent, JsVar *file, int scale) {
 #ifdef ESPR_PBF_FONTS
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
@@ -1814,7 +1815,7 @@ JsVar *jswrap_graphics_setFontPBF(JsVar *parent, JsVar *file) {
     jsExceptionHere(JSET_ERROR, "Font must be a String");
     return 0;
   }
-  int scale = 1;
+  if (scale<0) scale = 1;
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, file);
   gfx.data.fontSize = (unsigned short)(scale | JSGRAPHICS_FONTSIZE_CUSTOM_PBF);
   graphicsSetVar(&gfx);
@@ -2071,6 +2072,7 @@ void jswrap_graphics_getFonts_callback(void *cbdata, JsVar *key) {
       jsvIsStringEqualOrStartsWith(key, "setFont", true)) {
     if (jsvIsStringEqual(key,"setFontBitmap") ||
         jsvIsStringEqual(key,"setFontAlign") ||
+        jsvIsStringEqual(key,"setFontPBF") ||
         jsvIsStringEqual(key,"setFontCustom")) return; // throw away non-font functions
     JsVar *n = jsvNewFromStringVar(key, 7, JSVAPPENDSTRINGVAR_MAXLENGTH);
     jsvArrayPush(result, n);
@@ -2161,7 +2163,7 @@ static int _jswrap_graphics_getCharWidth(JsGraphicsFontInfo *info, int ch) {
     if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_PBF) {
       PbfFontLoaderGlyph result;
       if (jspbfFontFindGlyph(&info->pbfInfo, ch, &result))
-        return result.advance;
+        return info->scalex*result.advance;
       else
         return 0;
     }
@@ -2203,7 +2205,7 @@ static int _jswrap_graphics_getFontHeightInternal(JsGraphics *gfx, JsGraphicsFon
   } else if (info->font & JSGRAPHICS_FONTSIZE_CUSTOM_BIT) {
 #ifdef ESPR_PBF_FONTS
     if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_PBF)
-      return info->pbfInfo.lineHeight;
+      return info->scaley*info->pbfInfo.lineHeight;
 #endif
     return info->scaley*(int)jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(gfx->graphicsVar, JSGRAPHICS_CUSTOMFONT_HEIGHT));
 #endif

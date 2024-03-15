@@ -12,6 +12,7 @@
             Improvements to Stepper module (default to absolute movement)
             Throw error if there's an attempt to use Tagged Templates (fix #2475)
             For built-in symbols, pack string offset inside function pointer, saving 2 bytes/symbol if ESPR_PACKED_SYMPTR set (fix #2405)
+            Graphics: font metrics for PBF now account for scale, setFontPBF takes a scale argument, 'PBF' no longer appears in getFonts
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)
