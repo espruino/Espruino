@@ -1159,7 +1159,7 @@ On the desktop [JSON5 parsers](https://github.com/json5/json5) will parse the
 strings produced by `E.toJS` without trouble.
  */
 JsVar *jswrap_espruino_toJS(JsVar *v) {
-  JSONFlags flags = JSON_DROP_QUOTES|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY;
+  JSONFlags flags = JSON_DROP_QUOTES|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY|JSON_ALLOW_TOJSON;
   JsVar *result = jsvNewFromEmptyString();
   if (result) {// could be out of memory
     jsfGetJSON(v, result, flags);

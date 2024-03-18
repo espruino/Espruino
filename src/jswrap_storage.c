@@ -306,7 +306,7 @@ bool jswrap_storage_writeJSON(JsVar *name, JsVar *data) {
   /* Don't call jswrap_json_stringify directly because we want to ensure we don't use JSON_JSON_COMPATIBILE, so
   String escapes like `\xFC` stay as `\xFC` and not `\u00FC` to save space and help with unicode compatibility
   */
-  jsfGetJSON(data, d, (JSON_DROP_QUOTES|JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY|JSON_JSON_COMPATIBILE) &~JSON_ALL_UNICODE_ESCAPE);
+  jsfGetJSON(data, d, (JSON_DROP_QUOTES|JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED|JSON_ARRAYBUFFER_AS_ARRAY|JSON_JSON_COMPATIBILE|JSON_ALLOW_TOJSON) &~JSON_ALL_UNICODE_ESCAPE);
   bool r = jsfWriteFile(jsfNameFromVar(name), d, JSFF_NONE, 0, 0);
   jsvUnLock(d);
   return r;
