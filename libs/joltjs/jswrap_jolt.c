@@ -340,6 +340,12 @@ bool _jswrap_jolt_selfTest(bool advertisePassOrFail) {
   jshPinInput(LED3_PININDEX);
   nrf_delay_ms(500);
 
+  v = jshReadVRef();
+  if (v<3.2 || v>3.4) {
+    if (!err[0]) strcpy(err,"VRG");
+    jsiConsolePrintf("VREG out of range (%fv)\n", v);
+    ok = false;
+  }
 
   jshPinSetState(LED1_PININDEX, JSHPINSTATE_GPIO_IN_PULLUP);
   nrf_delay_ms(1);
@@ -473,20 +479,14 @@ void jswrap_jolt_init() {
    * With bootloader this means apply power while holding button for >3 secs */
   bool firstStart = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrapjolt_init was called?
   bool firstRunAfterFlash = false;
+  uint32_t firstStartFlagAddr = FLASH_SAVED_CODE_START-4;
   if (firstStart) {
-    uint32_t firstStartFlagAddr = FLASH_SAVED_CODE_START-4;
     // check the 4 bytes *right before* our saved code. If these are 0xFFFFFFFF
     // then we have just been programmed...
     uint32_t buf;
     jshFlashRead(&buf, firstStartFlagAddr, 4);
     if (buf==0xFFFFFFFF) {
       firstRunAfterFlash = true;
-      buf = 0;
-      // set it to 0!
-      bool oldFlashStatus = jsfGetFlag(JSF_UNSAFE_FLASH);
-      jsfSetFlag(JSF_UNSAFE_FLASH, true);
-      jshFlashWrite(&buf, firstStartFlagAddr, 4);
-      jsfSetFlag(JSF_UNSAFE_FLASH, oldFlashStatus);
     }
   }
 
@@ -495,6 +495,14 @@ void jswrap_jolt_init() {
     // if we're doing our first run after being flashed with new firmware, we set the advertising name
     // up to say PASS or FAIL, to work with the factory test process.
     bool result = _jswrap_jolt_selfTest(firstRunAfterFlash);
+    // if we passed, set the flag in flash so we don't self-test again
+    if (firstRunAfterFlash && result) {
+      uint32_t buf = 0;
+      bool oldFlashStatus = jsfGetFlag(JSF_UNSAFE_FLASH);
+      jsfSetFlag(JSF_UNSAFE_FLASH, true);
+      jshFlashWrite(&buf, firstStartFlagAddr, 4);
+      jsfSetFlag(JSF_UNSAFE_FLASH, oldFlashStatus);
+    }
     // green if good, red if bad
     Pin indicator = result ? LED2_PININDEX : LED1_PININDEX;
     int i;
