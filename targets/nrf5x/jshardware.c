@@ -2818,9 +2818,6 @@ JsVarFloat jshReadVRef() {
   config.gain = NRF_SAADC_GAIN1_6; // 1/6 of input volts
   config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
 
-#if defined(NRF52833) || defined(NRF52840) && !defined(BANGLEJS2)
-  #define ESPR_VREF_VDDH
-#endif
 #ifdef ESPR_VREF_VDDH
   config.pin_p = 0x0D; // Not in Nordic's libs, but this is VDDHDIV5 - we probably want to be looking at VDDH
   config.pin_n = 0x0D;
