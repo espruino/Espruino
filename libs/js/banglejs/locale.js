@@ -3,7 +3,9 @@ function round(n, dp) {
   var p = Math.min(dp,dp - Math.floor(Math.log(n)/Math.log(10)));
   return n.toFixed(p);
 }
-exports = { name : "system", currencySym:"£",
+exports = { name : "system",
+  get currencySym(){console.log("Warning: Currency information is deprecated");return "£"},
+  set currencySym(v){},
   translate : str=>str, // as-is
   date : (d,short) => short?("0"+d.getDate()).substr(-2)+"/"+("0"+(d.getMonth()+1)).substr(-2)+"/"+d.getFullYear():d.toString().substr(4,11), // Date to "Feb 28 2020" or "28/02/2020"(short)
   time : (d,short) => { // Date to  "4:15.28 pm" or "15:42"(short)
@@ -25,7 +27,7 @@ exports = { name : "system", currencySym:"£",
   dow : (d,short) => "Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday".split(",")[d.getDay()].substr(0, short ? 3 : 10), // Date to "Monday" or "Mon"(short)
   month : (d,short) => "January,February,March,April,May,June,July,August,September,October,November,December".split(",")[d.getMonth()].substr(0, short ? 3 : 10), // Date to "February" or "Feb"(short)
   number : n => n.toString(), // more fancy?
-  currency : n => "£"+n.toFixed(2), // number to "£1.00"
+  currency : n => {console.log("Warning: Currency information is deprecated");return "£"+n.toFixed(2)}, // number to "£1.00"
   distance : (m,dp) => (m<1000)?round(m,dp)+"m":round(m/1000,dp)+"km", // meters to "123m" or "1.2km" depending on size
   speed : (s,dp) => round(s/1.60934,dp)+"mph",// kph to "123mph"
   temp : (t,dp) => round(t,dp)+"'C", // degrees C to degrees C
