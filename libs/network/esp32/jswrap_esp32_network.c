@@ -280,7 +280,7 @@ static char *wifiEventToString(uint32_t event){
     case SYSTEM_EVENT_ETH_DISCONNECTED: return "ETH_DISCONNECTED";
     case SYSTEM_EVENT_ETH_GOT_IP: return "ETH_GOT_IP";
     case SYSTEM_EVENT_MAX: return "MAX";
-    default: return "unknown event";
+    default: return "unknown event, see wifiEventToString";
   }
 }
 
@@ -290,22 +290,22 @@ static char *wifiEventToString(uint32_t event){
 static char *wifiErrorToString(esp_err_t err){
   jsDebug("wifiErrorToString %d", err);
   switch(err){
-    case 0x3001: return"WiFi driver was not installed by esp_wifi_init";
-    case 0x3002: return"WiFi driver was not started by esp_wifi_start";
-    case 0x3003: return"WiFi driver was not stopped by esp_wifi_stop";
-    case 0x3004: return"WiFi interface error";
-    case 0x3005: return"WiFi mode error";
-    case 0x3006: return"WiFi internal state error";
-    case 0x3007: return"WiFi internal control block of station or soft-AP error";
-    case 0x3008: return"WiFi internal NVS module error";
-    case 0x3009: return"MAC address is invalid";
-    case 0x300A: return"SSID is invalid";
-    case 0x300B: return"Password is invalid";
-    case 0x300C: return"Timeout error";
-    case 0x300D: return"WiFi is in sleep state(RF closed) and wakeup fail";
-    case 0x300E: return"The caller would block";
-    case 0x300F: return"Station still in disconnect status";
-    default: return "no WiFi error, see esp_err_to_name.c";
+    case 0x3001: return "WiFi driver was not installed by esp_wifi_init";
+    case 0x3002: return "WiFi driver was not started by esp_wifi_start";
+    case 0x3003: return "WiFi driver was not stopped by esp_wifi_stop";
+    case 0x3004: return "WiFi interface error";
+    case 0x3005: return "WiFi mode error";
+    case 0x3006: return "WiFi internal state error";
+    case 0x3007: return "WiFi internal control block of station or soft-AP error";
+    case 0x3008: return "WiFi internal NVS module error";
+    case 0x3009: return "MAC address is invalid";
+    case 0x300A: return "SSID is invalid";
+    case 0x300B: return "Password is invalid";
+    case 0x300C: return "Timeout error";
+    case 0x300D: return "WiFi is in sleep state(RF closed) and wakeup fail";
+    case 0x300E: return "The caller would block";
+    case 0x300F: return "Station still in disconnect status";
+    default: return "unkown WiFi error, see wifiErrorToString";
   }
 }
 
