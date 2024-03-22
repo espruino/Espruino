@@ -169,7 +169,7 @@ static char *htModeToString(wifi_second_chan_t htMode) {
  * Convert a Wifi reason code to a string representation.
  */
 static char *wifiReasonToString(uint8_t reason) {
-  jsDebug("wifiReasonToString %d",reason);
+  jsDebug(DBG_INFO, "wifiReasonToString %d",reason);
   switch(reason) {
   case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
     return "4WAY_HANDSHAKE_TIMEOUT";
@@ -253,7 +253,7 @@ static char *wifiModeToString(wifi_mode_t mode) {
  * Convert an wifi event to a string value.
  */
 static char *wifiEventToString(uint32_t event){
-  jsDebug("wifiReasonToString %d",event);
+  jsDebug(DBG_INFO, "wifiReasonToString %d",event);
   switch(event){
     case SYSTEM_EVENT_STA_CONNECTED:return "STA_CONNECTED";
     case SYSTEM_EVENT_STA_DISCONNECTED:return "STA_DISCONNECTED";
