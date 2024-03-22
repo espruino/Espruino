@@ -24,8 +24,21 @@ exports = { name : "system", currencySym:"£",
   },
   dow : (d,short) => "Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday".split(",")[d.getDay()].substr(0, short ? 3 : 10), // Date to "Monday" or "Mon"(short)
   month : (d,short) => "January,February,March,April,May,June,July,August,September,October,November,December".split(",")[d.getMonth()].substr(0, short ? 3 : 10), // Date to "February" or "Feb"(short)
-  number : n => n.toString(), // more fancy?
-  currency : n => "£"+n.toFixed(2), // number to "£1.00"
+  number: (n, dec) => {
+    if (dec == null) dec = 2;
+    var w = n.toFixed(dec),
+        k = w|0,
+        b = n < 0 ? 1 : 0,
+        u = Math.abs(w-k),
+        d = (''+u.toFixed(dec)).substr(2, dec),
+        s = ''+k,
+        i = s.length,
+        r = '';
+    while ((i-=3) > b)
+      r = ',' + s.substr(i, 3) + r;
+    return s.substr(0, i + 3) + r + (d ? '.' + d: '');
+  },
+  currency : n => {console.log("Warning: Currency information is deprecated");return "£"+n.toFixed(2)}, // number to "£1.00"
   distance : (m,dp) => (m<1000)?round(m,dp)+"m":round(m/1000,dp)+"km", // meters to "123m" or "1.2km" depending on size
   speed : (s,dp) => round(s/1.60934,dp)+"mph",// kph to "123mph"
   temp : (t,dp) => round(t,dp)+"'C", // degrees C to degrees C
