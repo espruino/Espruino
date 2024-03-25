@@ -1,0 +1,48 @@
+name: Emulator build
+
+on: 
+  # This workflow only runs manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      # Allows you to choose which version of emscripten the emulators are built with
+      emscripten_version:
+        description: Emscripten Version
+        default: 3.1.54
+      
+permissions:
+  contents: read
+
+jobs:
+
+  build_emu:
+    runs-on: ubuntu-20.04
+    steps:
+
+    - name: Checkout Espruino
+      uses: actions/checkout@v4
+      with:
+        path: "Espruino"
+    
+    - name: Checkout Espruino Web IDE
+      uses: actions/checkout@v4
+      with:
+        repository: espruino/EspruinoWebIDE
+        path: "EspruinoWebIDE"
+    
+    - name: Checkout Emscripten SDK
+      uses: actions/checkout@v4
+      with:
+        repository: emscripten-core/emsdk
+        path: "emsdk"
+    
+    - name: Setup Emscripten toolchain
+      run: cd emsdk && ./emsdk install ${{ inputs.emscripten_version }} && ./emsdk activate ${{ inputs.emscripten_version }}
+    
+    - name: Build emulators
+      run: cd EspruinoWebIDE && ./extras/create_emulator.sh
+
+    - name: Upload emulators
+      uses: actions/upload-artifact@v4
+      with:
+        name: emulators
+        path: EspruinoWebIDE/emu/emulator_*.js
