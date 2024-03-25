@@ -739,7 +739,7 @@ void jswrap_wifi_setConfig(JsVar *jsSettings) {
 }
 
 
-JsVar *jswrap_wifi_getDetails(JsVar *jsCallback) {{
+JsVar *jswrap_wifi_getDetails(JsVar *jsCallback) {
   DBGV("> Wifi.getDetails\n");
 
   // Check callback
@@ -787,7 +787,6 @@ JsVar *jswrap_wifi_getDetails(JsVar *jsCallback) {{
 
   DBGV("< Wifi.getDetails\n");
   return jsDetails;
-}
 }
 
 
