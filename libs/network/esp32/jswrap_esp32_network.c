@@ -710,6 +710,7 @@ void jswrap_wifi_disconnect(JsVar *jsCallback) {
   // ESP-IDF function to disconnect us from the access point.  The thinking is that will result
   // in a subsequent event which we will detect and use to call the callback.
   //
+  esp_err_t err;
   // Free any existing callback, then register new callback
   if (g_jsDisconnectCallback != NULL) {
     jsvUnLock(g_jsDisconnectCallback);
@@ -730,7 +731,13 @@ void jswrap_wifi_disconnect(JsVar *jsCallback) {
   // turn off auto-connect
   esp_wifi_set_auto_connect(false);
   s_retry_num = 0; // flag so we don't attempt to reconnect
-  esp_wifi_disconnect();
+  err = esp_wifi_disconnect();
+  if (err != ESP_OK) {
+    jsDebug(DBG_INFO, "jswrap_wifi_disconnect: esp_wifi_disconnect rc=%d(%s)", err,wifiErrorToString(err));
+  }
+  if (jsvIsFunction(jsCallback)) {
+    jsiQueueEvents(NULL, jsCallback, NULL, 0);
+  }
 } // End of jswrap_wifi_disconnect
 
 void jswrap_wifi_stopAP(JsVar *jsCallback) {
