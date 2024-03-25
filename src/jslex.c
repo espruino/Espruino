@@ -475,7 +475,7 @@ static void jslLexString() {
         // copy data back in
         for (unsigned int i=0;i<len-1;i++)
             jsvStringIteratorAppend(&it, buf[i]);
-      }
+      } else
 #endif
       {
         jsvStringIteratorAppend(&it, lex->currCh);
