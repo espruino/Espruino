@@ -121,6 +121,35 @@ jobs:
           bin/*.tgz
           bin/*.zip
  
+  # emulator builds
+  build_emulator:
+    runs-on: ubuntu-20.04
+    strategy:
+      # devices to build for
+      matrix:  # banglejs,   banglejs2
+        board: [EMSCRIPTEN, EMSCRIPTEN2]
+      # try and build for all devices even if one fails
+      fail-fast: false 
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: make ${{ matrix.board }}
+      env:
+        TRAVIS: 1
+        RELEASE: 1
+        BOARD: ${{ matrix.board }} 
+        UPLOADTOKEN: ${{ secrets.UPLOADTOKEN }}  
+      run: |
+        source ./scripts/provision.sh  ${{ matrix.board }}
+        make
+        ./scripts/ci_upload.sh
+    - name: Upload ${{ matrix.board }} build artifact
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: ${{ matrix.board }}
+        path: |
+          bin/*.js
  
 # Disable doc building for now 
 #  docs:

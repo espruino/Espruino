@@ -44,6 +44,8 @@ if [ "$BOARDNAME" = "ALL" ]; then
   PROVISION_STM32F4=1
   PROVISION_STM32L4=1 
   PROVISION_RASPBERRYPI=1 
+  PROVISION_EMSCRIPTEN=1
+  PROVISION_EMSCRIPTEN2=1
 else
   FAMILY=`scripts/get_board_info.py $BOARDNAME 'board.chip["family"]'`
   if [ "$FAMILY" = "" ]; then
@@ -275,3 +277,21 @@ if [ "$ARM" = "1" ]; then
 	      export PATH=$PATH:`pwd`/$EXPECTEDARMGCCFILENAME/bin
     fi
 fi
+
+#--------------------------------------------------------------------------------
+EMSCRIPTEN_VERSION="3.1.54"
+
+if [ "$PROVISION_EMSCRIPTEN" = "1" ] || [ "$PROVISION_EMSCRIPTEN2" = "1" ]; then
+    echo ===== EMULATOR
+    echo Installing Emscripten $EMSCRIPTEN_VERSION
+    if [ ! -d "targetlibs/emscripten/emsdk" ]; then
+        mkdir targetlibs/emscripten
+        cd targetlibs/emscripten
+        git clone --depth=1 https://github.com/emscripten-core/emsdk
+        cd ../..
+    fi
+    ./targetlibs/emscripten/emsdk/emsdk install $EMSCRIPTEN_VERSION
+    ./targetlibs/emscripten/emsdk/emsdk activate $EMSCRIPTEN_VERSION
+    source ./targetlibs/emscripten/emsdk/emsdk_env.sh
+fi
+#--------------------------------------------------------------------------------
