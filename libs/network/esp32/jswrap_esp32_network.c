@@ -1552,8 +1552,9 @@ void jswrap_wifi_setHostname(
   // now update mDNS
   startMDNS(hostname);
 
-  if (jsvIsFunction(jsCallback))
+  if (jsvIsFunction(jsCallback)) {
     jsiQueueEvents(0, jsCallback, 0, 0);
+  }
 }
 
 static uint8_t seq_no;
