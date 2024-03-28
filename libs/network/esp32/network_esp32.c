@@ -53,8 +53,9 @@
 void net_esp32_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   NOT_USED(net);
   struct hostent * host_addr_p = gethostbyname(hostName);
-  if (host_addr_p)
+  if (host_addr_p) {
     *out_ip_addr = *(uint32_t*)*host_addr_p->h_addr_list;
+  }
 }
 
 /// Called on idle. Do any checks required for this device
@@ -92,8 +93,9 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
     if (scktType == SOCK_DGRAM) { // only for UDP
       // set broadcast
       int optval = 1;
-      if (setsockopt(sckt,SOL_SOCKET,SO_BROADCAST,(const char *)&optval,sizeof(optval))<0)
-        jsWarn("setsockopt(SO_BROADCAST) failed\n");
+      if (setsockopt(sckt,SOL_SOCKET,SO_BROADCAST,(const char *)&optval,sizeof(optval))<0) {
+        jsDebug(DBG_INFO, "setsockopt(SO_BROADCAST) failed\n");
+      }
     } else {
       sockaddr_in       sin;
       sin.sin_family = AF_INET;
@@ -128,12 +130,13 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
     if (scktType != SOCK_DGRAM ||
         jsvObjectGetBoolChild(options, "reuseAddr")) {
       int optval = 1;
-      if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
-        jsWarn("setsockopt(SO_REUSADDR) failed\n");
+      if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0) {
+        jsDebug(DBG_INFO, "setsockopt(SO_REUSADDR) failed\n");
+      }  
 #ifdef SO_REUSEPORT
-    // not supported by esp-idf 3.1
-    //if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0)
-      //jsWarn("setsockopt(SO_REUSPORT) failed\n");
+      if (setsockopt(sckt,SOL_SOCKET,SO_REUSEPORT,(const char *)&optval,sizeof(optval)) < 0) {
+        jsDebug(DBG_INFO, "setsockopt(SO_REUSPORT) failed\n");
+      }
 #endif
     }
 
@@ -188,15 +191,17 @@ int net_esp32_createsocket(JsNetwork *net, SocketType socketType, uint32_t host,
 #ifdef SO_RCVBUF
   int rcvBufSize = net->data.recvBufferSize;
   if (rcvBufSize > 0) {
-    if (setsockopt(sckt,SOL_SOCKET,SO_RCVBUF,(const char *)&rcvBufSize,sizeof(rcvBufSize))<0)
-      jsWarn("setsockopt(SO_RCVBUF) failed\n");
+    if (setsockopt(sckt,SOL_SOCKET,SO_RCVBUF,(const char *)&rcvBufSize,sizeof(rcvBufSize))<0) {
+      jsDebug(DBG_INFO, "setsockopt(SO_RCVBUF) failed\n");
+    }
   }
 #endif
 #ifdef SO_NOSIGPIPE
   // disable SIGPIPE
   int optval = 1;
-  if (setsockopt(sckt,SOL_SOCKET,SO_NOSIGPIPE,(const char *)&optval,sizeof(optval))<0)
-    jsWarn("setsockopt(SO_NOSIGPIPE) failed\n");
+  if (setsockopt(sckt,SOL_SOCKET,SO_NOSIGPIPE,(const char *)&optval,sizeof(optval))<0) {
+    jsDebug(DBG_INFO, "setsockopt(SO_NOSIGPIPE) failed\n");
+  }
 #endif
 
   return sckt;
