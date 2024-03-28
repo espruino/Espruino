@@ -19,7 +19,7 @@ void lcdMemLCD_setCallbacks(JsGraphics *gfx);
 void lcdMemLCD_flip(JsGraphics *gfx); // run this to flip the offscreen buffer to the screen
 void lcdMemLCD_cmd(int cmd, int dataLen, const char *data); // to send specific commands to the display
 
-/// toggle EXTCOMIN to avoid burn-in
+/// pulse EXTCOMIN to avoid burn-in
 void lcdMemLCD_extcominToggle();
 /// If backlight is on, we need to raise EXTCOMIN freq (use HW PWM)
 void lcdMemLCD_extcominBacklight(bool isOn);

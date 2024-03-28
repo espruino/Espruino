@@ -32,7 +32,7 @@
   - 4 bytes at end (needed to allow fast scrolling) also handled by the extra line
  */
 unsigned char lcdBuffer[LCD_STRIDE*(LCD_HEIGHT+2)];
-bool isBacklightOn; ///< is LCD backlight on? If so we need to toggle EXTCOMIN faster
+bool isBacklightOn; ///< is LCD backlight on? If so we need to pulse EXTCOMIN faster
 JsVar *lcdOverlayImage; ///< if set, an Image to use for overlays
 short lcdOverlayX,lcdOverlayY; ///< coordinates of the graphics instance
 volatile bool lcdIsBusy; ///< We're now allowing SPI send in the background - if we're sending, block execution until it finishes
@@ -409,7 +409,7 @@ void lcdMemLCD_init(JsGraphics *gfx) {
   jshSPISetup(LCD_SPI, &inf);
 }
 
-// toggle EXTCOMIN to avoid burn-in
+// pulse EXTCOMIN to avoid burn-in
 void lcdMemLCD_extcominToggle() {
   if (!isBacklightOn) {
     jshPinSetValue(LCD_EXTCOMIN, 1);

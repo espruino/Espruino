@@ -19,6 +19,7 @@
             Bangle.js: Locale currency deprecated, 'number' updated to BangleApps version with thousands separator, date now doesn't sometimes have trailing spaces
             Bangle.js: 6x15 font tweaks for ISO8859-1
             Bangle.js2: Fix 'UNFINISHED STRING' error if non-UTF8 char within UTF8 start char range is at end of string
+            Bangle.js2: Add Bangle.setOptions({lcdDoubleRefresh:true}) to pulse EXTCOMIN for LCD twice, avoiding contrast 'toggle' effect when viewing LCD off axis
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)

@@ -963,6 +963,7 @@ typedef enum {
   JSBF_LCD_BL_ON     = 1<<17,
   JSBF_LOCKED        = 1<<18,
   JSBF_HRM_INSTANT_LISTENER = 1<<19,
+  JSBF_LCD_DBL_REFRESH = 1<<20, ///< On Bangle.js 2, toggle extcomin twice for each poll interval (avoids screen 'flashing' behaviour off axis)
 
   JSBF_DEFAULT = ///< default at power-on
       JSBF_WAKEON_TWIST|
@@ -1246,7 +1247,7 @@ void peripheralPollHandler() {
   }
 
 #ifdef LCD_CONTROLLER_LPM013M126
-  // toggle EXTCOMIN to avoid burn-in on LCD
+  // pulse EXTCOMIN to avoid burn-in on LCD
   if (bangleFlags & JSBF_LCD_ON)
     lcdMemLCD_extcominToggle();
 #endif
@@ -1672,6 +1673,13 @@ void peripheralPollHandler() {
 
   // we're done, ensure we clear I2C flag
   i2cBusy = false;
+
+#ifdef LCD_CONTROLLER_LPM013M126
+  // pulse EXTCOMIN to avoid burn-in on LCD (second toggle, if JSBF_LCD_DBL_REFRESH is set)
+  if ((bangleFlags & JSBF_LCD_ON) && (bangleFlags & JSBF_LCD_DBL_REFRESH))
+    lcdMemLCD_extcominToggle();
+#endif
+
 }
 
 #ifdef HEARTRATE
@@ -2586,6 +2594,7 @@ for before the clock is reloaded? 1500ms default, or 0 means never.
 * `seaLevelPressure` (Bangle.js 2) Normally 1013.25 millibars - this is used for
   calculating altitude with the pressure sensor
 * `lcdBufferPtr` (Bangle.js 2 2v21+) Return a pointer to the first pixel of the 3 bit graphics buffer used by Bangle.js for the screen (stride = 178 bytes)
+* `lcdDoubleRefresh` (Bangle.js 2 2v22+) If enabled, pulses EXTCOMIN twice per poll interval (avoids off-axis flicker)
 
 Where accelerations are used they are in internal units, where `8192 = 1g`
 
@@ -2616,6 +2625,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
 #endif
 #ifdef LCD_CONTROLLER_LPM013M126
   int lcdBufferPtr = (int)(size_t)lcdMemLCD_getRowPtr(0);
+  bool lcdDoubleRefresh = bangleFlags&JSBF_LCD_DBL_REFRESH;
 #endif
   jsvConfigObject configs[] = {
 #ifdef HEARTRATE
@@ -2661,6 +2671,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
 #endif
 #ifdef LCD_CONTROLLER_LPM013M126
       {"lcdBufferPtr", JSV_INTEGER, &lcdBufferPtr},
+      {"lcdDoubleRefresh", JSV_BOOLEAN, &lcdDoubleRefresh}
 #endif
   };
   if (createObject) {
@@ -2691,6 +2702,9 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
     touchMinY = touchY1;
     touchMaxX = touchX2;
     touchMaxY = touchY2;
+#endif
+#ifdef LCD_CONTROLLER_LPM013M126
+  bangleFlags = (bangleFlags&~JSBF_LCD_DBL_REFRESH) | (lcdDoubleRefresh?JSBF_LCD_DBL_REFRESH:0);
 #endif
   }
   return 0;
