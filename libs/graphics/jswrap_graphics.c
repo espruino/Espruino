@@ -2400,7 +2400,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
    This is all a bit of a mess but it appears to work as intended now. */
   JsvStringIterator it;
   jsvStringIteratorNewUTF8(&it, str, 0);
-  while (jsvStringIteratorHasChar(&it) || endOfText) {
+  while ((jsvStringIteratorHasChar(&it) || endOfText) && !jspIsInterrupted()) {
     int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
     bool canBreakOnCh = endOfText || ch=='\n' || ch==' ';
     if (canBreakOnCh || canSplitAfter) { // is breakable - newline,space,dash, image before
@@ -2429,6 +2429,15 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
           jsvStringIteratorNew(&wordIt, str, wordStartIdx); // not UTF8 as wordStartIdx isn't UTF8 indexed
           while (jsvStringIteratorGetIndex(&wordIt) < currentPos) {
             int wordCh = jsvStringIteratorGetUTF8CharAndNext(&wordIt);
+#ifndef SAVE_ON_FLASH
+            if (wordCh==0) { // it's an image, can't split it
+              jsvAppendStringVar(currentLine, str, (size_t)wordStartIdx, (size_t)(currentPos-(wordStartIdx+1)));
+              lineWidth += wordWidth;
+              wordWidth = 0;
+              wordStartIdx = currentPos-1;
+              break;
+            }
+#endif
             int w = _jswrap_graphics_getCharWidth(&info, wordCh);
             if (width+w < maxWidth || !width) { // add while it fits OR it's the first character
               // !width stops us locking up if char width>split width
@@ -2469,7 +2478,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
       wordWidth = 0;
       wordStartIdx = currentPos;
       wasNewLine = ch=='\n';
-      canSplitAfter = false;
+      canSplitAfter = ch==0; // can split after if there is an image next
       if (endOfText) break;
       if (ch!=0) continue; // allow us to handle images next
     }
@@ -2500,7 +2509,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
     jsvArrayPush(lines, currentLine);
   }
   jsvUnLock2(str,currentLine);
-   _jswrap_graphics_freeFontInfo(&info);
+  _jswrap_graphics_freeFontInfo(&info);
   return lines;
 }
 

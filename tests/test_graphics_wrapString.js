@@ -107,6 +107,15 @@ g.clear().setFont("4x6");
 lines = g.wrapString("\0\x08\x08\1\1\2\3\4\5\6\7\8\0\x08\x08\1\1\2\3\4\5\6\7\8\0\x08\x08\1\1\2\3\4\5\6\7\8\0\x08\x08\1\1\2\3\4\5\6\7\8",12)
 SHOULD_BE(lines, ["\0\x08\x08\1\1\2\3\4\5\6\7\8","\0\x08\x08\1\1\2\3\4\5\6\7\8","\0\x08\x08\1\1\2\3\4\5\6\7\8","\0\x08\x08\1\1\2\3\4\5\6\7\8"]);
 
+// 16*16px but wrapped to something smaller than the image width https://github.com/espruino/Espruino/issues/2481
+g.clear().setFont("4x6");
+let image = atob("ABAQAX/+gAGf+a/1t+273b29vn2+fb29u9237a/1n/mAAX/+");
+lines = g.wrapString(image+"ABC",8);
+SHOULD_BE(lines, ["\0\x10\x10\1\x7F\xFE\x80\1\x9F\xF9\xAF\xF5\xB7\xED\xBB\xDD\xBD\xBD\xBE}\xBE}\xBD\xBD\xBB\xDD\xB7\xED\xAF\xF5\x9F\xF9\x80\1\x7F\xFE","ABC"]);
+lines = g.wrapString("Test"+image,30);
+// This one is not ideal - we should really have wrapped Test+image after 'test' but we treat it as one word at the moment
+SHOULD_BE(lines, ["Test\0\x10\x10\1\x7F\xFE\x80\1\x9F\xF9\xAF\xF5\xB7\xED\xBB\xDD\xBD\xBD\xBE}\xBE}\xBD\xBD\xBB\xDD\xB7\xED\xAF\xF5\x9F\xF9\x80\1\x7F\xFE"]); 
+
 // UTF8 chars - no wrapping expected
 g.clear().setFont("4x6");
 lines = g.wrapString("F\u00F6n K\u00FCr B\u00E4r", 200);
