@@ -9,9 +9,22 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
-      git-ref:
-        description: Git Ref (Optional)    
-        required: false
+      enable_main:
+        description: Build default boards (linux, ESP, Microbit)
+        type: boolean
+        default: true
+      enable_dfu:
+        description: Build boards with DFU (puckjs, pixljs, banglejs)
+        type: boolean
+        default: true
+      enable_padded:
+        description: Build boards with bootloader padding (espruinoboard, -wifi, pico)
+        type: boolean
+        default: true
+      enable_emulator:
+        description: Build emulator for banglejs
+        type: boolean
+        default: true
       
 
 permissions:
@@ -21,6 +34,7 @@ jobs:
 
   # normal builds
   build_main:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.enable_main }}
     runs-on: ubuntu-20.04
     strategy:
       # devices to build for
@@ -55,6 +69,7 @@ jobs:
         
   # Builds with DFU_UPDATE_BUILD=1        
   build_dfu:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.enable_dfu }}
     runs-on: ubuntu-20.04
     strategy:
       # devices to build for
@@ -89,6 +104,7 @@ jobs:
        
   # Builds with PAD_FOR_BOOTLOADER=1
   build_padded:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.enable_padded }}
     runs-on: ubuntu-20.04
     strategy:
       # devices to build for
@@ -121,6 +137,36 @@ jobs:
           bin/*.tgz
           bin/*.zip
  
+  # emulator builds
+  build_emulator:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.enable_emulator }}
+    runs-on: ubuntu-20.04
+    strategy:
+      # devices to build for
+      matrix:  # banglejs,   banglejs2
+        board: [EMSCRIPTEN, EMSCRIPTEN2]
+      # try and build for all devices even if one fails
+      fail-fast: false 
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: make ${{ matrix.board }}
+      env:
+        TRAVIS: 1
+        RELEASE: 1
+        BOARD: ${{ matrix.board }} 
+        UPLOADTOKEN: ${{ secrets.UPLOADTOKEN }}  
+      run: |
+        source ./scripts/provision.sh  ${{ matrix.board }}
+        make
+        ./scripts/ci_upload.sh
+    - name: Upload ${{ matrix.board }} build artifact
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: ${{ matrix.board }}
+        path: |
+          bin/*.js
  
 # Disable doc building for now 
 #  docs:

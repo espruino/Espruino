@@ -33,6 +33,7 @@ arm-gnu-toolchain*
 *.c#
 /function_keywords.js
 /functions.html
+/targetlibs/emscripten/emsdk
 /targetlibs/nrf5x_11
 /targetlibs/nrf5x_12/examples
 /targetlibs/nrf5x_12/documentation/
