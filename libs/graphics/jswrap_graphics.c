@@ -2182,6 +2182,39 @@ static int _jswrap_graphics_getCharWidth(JsGraphicsFontInfo *info, int ch) {
   return 0;
 }
 
+/*
+static int _jswrap_graphics_fontInfoMaxChar(JsGraphicsFontInfo *info) {
+  if (info->font == JSGRAPHICS_FONTSIZE_4X6) return 132;
+  if (info->widths) return info->customFirstChar + jsvGetLength(info->widths) - 1;
+  return 255;
+}
+
+// Map the character to a version that's displayable in this font
+// potentially usable for https://github.com/espruino/BangleApps/issues/3312
+static int _jswrap_graphics_fontMapCharacter(JsGraphicsFontInfo *info, int ch) {
+#ifdef ESPR_PBF_FONTS
+  // if we have a PBF font then keep the character if we know it exists in the font
+  if ((info->font & JSGRAPHICS_FONTSIZE_FONT_MASK)==JSGRAPHICS_FONTSIZE_CUSTOM_PBF) {
+    // do we want to do this? this could make things very slow having to look up the char each time
+    PbfFontLoaderGlyph result;
+    if (jspbfFontFindGlyph(&info->pbfInfo, ch, &result)) {
+      return ch;
+    }
+  }
+#endif
+  int maxChar = _jswrap_graphics_fontInfoMaxChar(info);
+  if (ch<=maxChar) return ch;
+  //     from 0xC0: "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
+  const char *map = "AAAAAAACEEEEIIIIDNOOOOOx0UUUUYpBaaaaaaaceeeeiiiionooooo%ouuuuypy";
+  if (ch>255) return 0;
+  if (ch>=0xC0) ch = map[ch-0xC0];
+  if (maxChar<0x7A) { // if no lowercase chars
+    if (ch>='a' && ch<='z') ch -= 'a'-'A'; // convert from lower to uppercase
+  }
+  return ch;
+}
+*/
+
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
