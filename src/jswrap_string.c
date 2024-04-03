@@ -649,7 +649,11 @@ JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jswrap_string_removeAccents(parent)",
   "return" : ["JsVar","This string with the accents/diacritics (such as é, ü) removed from characters in the ISO 8859-1 set"]
-}*/
+}
+This is not a standard JavaScript function, but is provided to allow use of fonts
+that only support ASCII (char codes 0..127, like the 4x6 font) with character input
+that might be in the ISO8859-1 range.
+*/
 JsVar *jswrap_string_removeAccents(JsVar *parent) {
   bool isLowerCase;
   JsVar *res = jsvNewFromEmptyString();
@@ -661,7 +665,7 @@ JsVar *jswrap_string_removeAccents(JsVar *parent) {
   jsvStringIteratorNew(&itdst, res, 0);
 
   while (jsvStringIteratorHasChar(&itsrc)) {
-    char ch = jsvStringIteratorGetCharAndNext(&itsrc);
+    unsigned char ch = (unsigned char)jsvStringIteratorGetCharAndNext(&itsrc);
     if (ch >= 0xE0) {
       isLowerCase = true;
       ch -= 32;
@@ -715,7 +719,7 @@ JsVar *jswrap_string_removeAccents(JsVar *parent) {
           break;
       }
     }
-    jsvStringIteratorAppend(&itdst, isLowerCase ? ch+32 : ch);
+    jsvStringIteratorAppend(&itdst, (char)(isLowerCase ? ch+32 : ch));
   }
 
   jsvStringIteratorFree(&itsrc);
