@@ -777,7 +777,7 @@ void jswrap_ble_setAddress(JsVar *address) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "resolveAddress",
-    "#if" : "defined(NRF52_SERIES) && PEER_MANAGER_ENABLED",
+    "#if" : "defined(NRF52_SERIES)",
     "generate" : "jswrap_ble_resolveAddress",
     "params" : [
       ["options" ,"JsVar", "The address that should be resolved."]
@@ -814,7 +814,7 @@ You can get the current connection's address using `NRF.getSecurityStatus().conn
 so can for instance do `NRF.resolveAddress(NRF.getSecurityStatus().connected_addr)`.
 */
 JsVar *jswrap_ble_resolveAddress(JsVar *address) {
-#if defined(NRF52_SERIES) && PEER_MANAGER_ENABLED
+#if defined(NRF52_SERIES) && PEER_MANAGER_ENABLED==1
   return jsble_resolveAddress(address);
 #else
   jsExceptionHere(JSET_ERROR, "Not implemented");
