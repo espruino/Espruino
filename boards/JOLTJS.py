@@ -178,7 +178,7 @@ board["_css"] = """
   background-image: url(img/JOLTJS.jpg);
 }
 #boardcontainer {
-  height: 900px;
+  height: 742px;
 }
 
 #top {
