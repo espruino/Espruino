@@ -21,6 +21,7 @@
             Bangle.js2: Fix 'UNFINISHED STRING' error if non-UTF8 char within UTF8 start char range is at end of string
             Bangle.js2: Add Bangle.setOptions({lcdDoubleRefresh:true}) to pulse EXTCOMIN for LCD twice, avoiding contrast 'toggle' effect when viewing LCD off axis
             Graphics: Fix wrapString when attempting to wrap text containing an image that's too large for the wrappable area (fix #2481)
+            Add String.replaceAll to allow all occurrances of a string to be replaced (previously .replace(/substr/g, "") had to be used)
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)

@@ -314,22 +314,7 @@ JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr) {
   return jsvNewNull();
 }
 
-/*JSON{
-  "type" : "method",
-  "class" : "String",
-  "name" : "replace",
-  "generate" : "jswrap_string_replace",
-  "params" : [
-    ["subStr","JsVar","The string to search for"],
-    ["newSubStr","JsVar","The string to replace it with"]
-  ],
-  "return" : ["JsVar","This string with `subStr` replaced"]
-}
-Search and replace ONE occurrence of `subStr` with `newSubStr` and return the
-result. This doesn't alter the original string. Regular expressions not
-supported.
- */
-JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
+static JsVar *_jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr, bool replaceAll) {
   JsVar *str = jsvAsString(parent);
 #ifndef SAVE_ON_FLASH
   // Use RegExp if one is passed in
@@ -341,6 +326,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
       replace = jsvAsString(newSubStr);
     jsvObjectSetChildAndUnLock(subStr, "lastIndex", jsvNewFromInteger(0));
     bool global = jswrap_regexp_hasFlag(subStr,'g');
+    if (replaceAll) global = true;
     JsVar *newStr = jsvNewFromEmptyString();
     JsvStringIterator dst;
     jsvStringIteratorNew(&dst, newStr, 0);
@@ -359,7 +345,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
         JsVar *args[13];
         args[argCount++] = jsvLockAgain(matchStr);
         JsVar *v;
-        while ((v = jsvGetArrayItem(match, (JsVarInt)argCount)))
+        while ((v = jsvGetArrayItem(match, (JsVarInt)argCount)) && argCount<11)
           args[argCount++] = v;
         args[argCount++] = jsvObjectGetChildIfExists(match,"index");
         args[argCount++] = jsvObjectGetChildIfExists(match,"input");
@@ -413,17 +399,59 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
   newSubStr = jsvAsString(newSubStr);
   subStr = jsvAsString(subStr);
 
-  int idx = jswrap_string_indexOf(parent, subStr, 0, false);
-  if (idx>=0) {
+  int idx = jswrap_string_indexOf(str, subStr, NULL, false);
+  while (idx>=0  && !jspIsInterrupted()) {
     JsVar *newStr = jsvNewFromStringVar(str, 0, (size_t)idx);
     jsvAppendStringVarComplete(newStr, newSubStr);
     jsvAppendStringVar(newStr, str, (size_t)idx+jsvGetStringLength(subStr), JSVAPPENDSTRINGVAR_MAXLENGTH);
     jsvUnLock(str);
     str = newStr;
+    if (replaceAll) {
+      JsVar *fromIdx = jsvNewFromInteger(idx + (int)jsvGetStringLength(newSubStr));
+      idx = jswrap_string_indexOf(str, subStr, fromIdx, false);
+      jsvUnLock(fromIdx);
+    } else idx = -1;
   }
 
   jsvUnLock2(subStr, newSubStr);
   return str;
+}
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "replace",
+  "generate" : "jswrap_string_replace",
+  "params" : [
+    ["subStr","JsVar","The string (or Regular Expression) to search for"],
+    ["newSubStr","JsVar","The string to replace it with. Replacer functions are supported, but only when subStr is a `RegExp`"]
+  ],
+  "return" : ["JsVar","This string with `subStr` replaced"]
+}
+Search and replace ONE occurrence of `subStr` with `newSubStr` and return the
+result. This doesn't alter the original string.
+ */
+JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
+  return _jswrap_string_replace(parent, subStr, newSubStr, false);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "replaceAll",
+  "generate" : "jswrap_string_replaceAll",
+  "params" : [
+    ["subStr","JsVar","The string (or Regular Expression) to search for"],
+    ["newSubStr","JsVar","The string to replace it with. Replacer functions are supported, but only when subStr is a `RegExp`"]
+  ],
+  "return" : ["JsVar","This string with `subStr` replaced"]
+}
+Search and replace ALL occurrences of `subStr` with `newSubStr` and return the
+result. This doesn't alter the original string.
+ */
+JsVar *jswrap_string_replaceAll(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
+  return _jswrap_string_replace(parent, subStr, newSubStr, true);
 }
 
 /*JSON{

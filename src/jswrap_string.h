@@ -24,6 +24,7 @@ JsVar *jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx);
 int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, bool lastIndexOf);
 JsVar *jswrap_string_match(JsVar *parent, JsVar *subStr);
 JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr);
+JsVar *jswrap_string_replaceAll(JsVar *parent, JsVar *subStr, JsVar *newSubStr);
 JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd);
 JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen);
 JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd);
