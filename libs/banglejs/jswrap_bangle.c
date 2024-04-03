@@ -6086,26 +6086,15 @@ While you could use setWatch/etc manually, the benefit here is that you don't
 end up with multiple `setWatch` instances, and the actual input method (touch,
 or buttons) is implemented dependent on the watch (Bangle.js 1 or 2)
 
-**Note:** You can override this function in boot code to change the interaction
-mode with the watch. For instance you could make all clocks start the launcher
-with a swipe by using:
-
 ```
-(function() {
-  var sui = Bangle.setUI;
-  Bangle.setUI = function(mode, cb) {
-    var m = ("object"==typeof mode) ? mode.mode : mode;
-    if (m!="clock") return sui(mode,cb);
-    sui(); // clear
-    Bangle.CLOCK=1;
-    Bangle.swipeHandler = Bangle.showLauncher;
-    Bangle.on("swipe", Bangle.swipeHandler);
-  };
-})();
+Bangle.setUI("updown", function (dir) {
+  // dir is +/- 1 for swipes up/down
+  // dir is 0 when button pressed
+});
 ```
 
 The first argument can also be an object, in which case more options can be
-specified:
+specified with `mode:"custom"`:
 
 ```
 Bangle.setUI({
@@ -6125,7 +6114,25 @@ If `remove` is specified, `Bangle.showLauncher`, `Bangle.showClock`, `Bangle.loa
 may choose to just call the `remove` function and then load a new app without resetting Bangle.js.
 As a result, **if you specify 'remove' you should make sure you test that after calling `Bangle.setUI()`
 without arguments your app is completely unloaded**, otherwise you may end up with memory leaks or
-other issues when switching apps. Please see http://www.espruino.com/Bangle.js+Fast+Load for more details on this.
+other issues when switching apps. Please see the [Bangle.js Fast Load Tutorial](https://www.espruino.com/Bangle.js+Fast+Load) for more details on this.
+
+**Note:** You can override this function in boot code to change the interaction
+mode with the watch. For instance you could make all clocks start the launcher
+with a swipe by using:
+
+```
+(function() {
+  var sui = Bangle.setUI;
+  Bangle.setUI = function(mode, cb) {
+    var m = ("object"==typeof mode) ? mode.mode : mode;
+    if (m!="clock") return sui(mode,cb);
+    sui(); // clear
+    Bangle.CLOCK=1;
+    Bangle.swipeHandler = Bangle.showLauncher;
+    Bangle.on("swipe", Bangle.swipeHandler);
+  };
+})();
+```
 */
 /*JSON{
     "type" : "staticmethod", "class" : "Bangle", "name" : "setUI", "patch":true,
