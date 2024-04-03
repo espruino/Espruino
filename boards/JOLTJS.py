@@ -141,18 +141,33 @@ board = {
   'right' : ['NFC','NFC'],
   '_hide_not_on_connectors' : True,
   '_notes' : {
-    'H0' : "Motor driver 0, output 0. This pin is also connected to an analog input via a 39k/220k potential divider", # D17
+    'H0' : "Motor driver 0, output 0. This pin is also connected to analog input D4 via a 39k/220k potential divider", # D17
     'H1' : "Motor driver 0, output 1.", # D15
-    'H2' : "Motor driver 0, output 2. This pin is also connected to an analog input via a 39k/220k potential divider", # D13
+    'H2' : "Motor driver 0, output 2. This pin is also connected to analog input D5 via a 39k/220k potential divider", # D13
     'H3' : "Motor driver 0, output 3.", # D14
-    'H4' : "Motor driver 1, output 0. This pin is also connected to an analog input via a 39k/220k potential divider", # D22
+    'H4' : "Motor driver 1, output 0. This pin is also connected to analog input D30 via a 39k/220k potential divider", # D22
     'H5' : "Motor driver 1, output 1.", # D32
-    'H6' : "Motor driver 1, output 2. This pin is also connected to an analog input via a 39k/220k potential divider", # D35
+    'H6' : "Motor driver 1, output 2. This pin is also connected to analog input D28 via a 39k/220k potential divider", # D35
     'H7' : "Motor driver 1, output 3.", # D34
 
     'Q0.fet' : "INVERTED. Connected to 500mA FET. When 1, GND on Q0 is pulled low. When 0, GND on Q0 is open circuit",
     'Q1.fet' : "INVERTED. Connected to 500mA FET. When 1, GND on Q1 is pulled low. When 0, GND on Q1 is open circuit",
   },
+  '_pinfunctions' : {
+    'Q0.scl' : ["ADC1_IN5","3.3"], 
+    'Q0.sda' : ["ADC1_IN1","3.3"],
+    'Q1.scl' : ["ADC1_IN7","3.3"],
+    'Q1.sda' : ["ADC1_IN0","3.3"],
+    'Q2.scl' : ["3.3"], 
+    'Q2.sda' : ["3.3"],
+    'Q2.vcc' : ["3.3"],
+    'Q2.gnd' : ["3.3"],
+    'Q3.scl' : ["3.3"], 
+    'Q3.sda' : ["3.3"],
+    'Q3.vcc' : ["3.3"],
+    'Q3.gnd' : ["3.3"],    
+    'VCC' : ["3.3"]
+  }
 };
 board["_css"] = """
 #board {

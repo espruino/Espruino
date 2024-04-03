@@ -102,6 +102,10 @@ def dump_pin(brd, pin, pinstrip):
         pin = pinmap[pin];
       pininfo = pinutils.findpin(pins, pin, False)
 
+      # add pinfunctions that we want to appear only in docs
+      if ("_pinfunctions" in brd) and (pin in brd["_pinfunctions"]):
+        for pf in brd["_pinfunctions"][pin]:
+          pininfo["functions"][pf] = 0
 
       not_five_volt = False
 #      print(json.dumps(pininfo))
@@ -120,14 +124,14 @@ def dump_pin(brd, pin, pinstrip):
 
       if ("_notes" in brd) and (pin in brd["_notes"]):
         pinHTML2 += '<SPAN class="pinfunction NOTE" title="'+brd["_notes"][pin]+'">!</SPAN>\n';
-
+        
       reverse = pinstrip=="left" or pinstrip=="right2";
       if not reverse: writeHTML(pinHTML+"\n"+pinHTML2)
 
       pinfuncs = {}
-
+      
       for func in sorted(pininfo["functions"]):
-#       writeHTML('     '+func)
+        #writeHTML('     '+func)
         if func in pinutils.CLASSES:
           funcdata = str(pininfo["functions"][func])
           cls = pinutils.CLASSES[func]
