@@ -137,8 +137,8 @@ JsVar *jswrap_json_parse_internal(JSONFlags flags) {
   case '{': {
     JsVar *obj = jsvNewObject(); if (!obj) return 0;
     jslGetNextToken(); // {
-    while ((lex->tk == LEX_STR || jslIsIDOrReservedWord()) && !jspHasError()) {
-      if (!(flags&JSON_DROP_QUOTES) && jslIsIDOrReservedWord()) {
+    while ((lex->tk == LEX_STR || lex->tk == LEX_INT || jslIsIDOrReservedWord()) && !jspHasError()) {
+      if (!(flags&JSON_DROP_QUOTES) && (jslIsIDOrReservedWord() || lex->tk == LEX_INT)) {
 	      jslMatch(LEX_STR);
         return obj;
       }
