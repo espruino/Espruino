@@ -4,5 +4,5 @@
     __FILE__=name;
     if (!name) name = ".bootcde";
     setTimeout(eval,0,require("Storage").read(name)); // Load app without a reboot
-  } else load(name);
+  } else load((name!=".bootcde")?name:undefined);
 })
