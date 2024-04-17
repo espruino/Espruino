@@ -266,7 +266,7 @@ void jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
       // _jsxAddVar(r0:name)
       jsjcCall(_jsxAddVar); // add the variable
     } else assert(0);
-    jsjcPush(0, varType); // Push a fake value (we're scanning) with the correct type
+    jsjcPush(0, varType); // Push the value onto the stack (which will end up being our vars list after SCAN phase)
     // Now add the index to our list
     int varIndexNumber = jit.varCount++;
     if (varType == JSJVT_JSVAR_NO_NAME)
@@ -291,6 +291,7 @@ void jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
 
 void jsjFactorObject() {
   if (jit.phase == JSJP_EMIT) {
+    jsjcDebugPrintf("; New Object\n");
     // create the object
     jsjcCall(jsvNewObject);
     jsjcMov(4, 0); // Store it in r4
@@ -316,9 +317,11 @@ void jsjFactorObject() {
     jsjAssignmentExpression();
     if (jit.phase == JSJP_EMIT) {
       varName = jsvAsArrayIndexAndUnLock(varName);
+      jsjcDebugPrintf("; New Object field %j\n", varName);
+      jsjPopNoName(5); // r2 = array item
       jsjJsVar(1, varName); // r1 = index
+      jsjcMov(2, 5); // r2 = array item
       jsjcMov(0, 4); // r0 = array
-      jsjPopNoName(2); // r2 = array item
       jsjcCall(_jsxObjectNewElement);
     }
     jsvUnLock(varName);
@@ -347,9 +350,9 @@ void jsjFactorArray() {
     if (lex->tk != ',') { // #287 - [,] and [1,2,,4] are allowed
       jsjAssignmentExpression();
       if (jit.phase == JSJP_EMIT) {
-        jsjcMov(0, 4); // r0 = array
-        jsjcLiteral32(1, idx); // r1 = index
         jsjPopNoName(2); // r2 = array item
+        jsjcLiteral32(1, idx); // r1 = index
+        jsjcMov(0, 4); // r0 = array
         jsjcCall(_jsxArrayNewElement);
       }
     }
@@ -1156,6 +1159,8 @@ JsVar *jsjParseFunction() {
       DEBUG_JIT_EMIT("; END of function - return undefined\n");
       jsjcLiteral32(0, 0);
       jsjFunctionReturn(false/*isReturnStatement*/);
+    } else {
+      jit.stackDepth -= jit.varCount; // jsjFunctionReturn would have pulled these off the stack anyway
     }
   }
   JsVar *v = jsjcStop();
