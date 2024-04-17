@@ -25,6 +25,7 @@
             Jolt.js: Jolt.Q0/1/2/3 now available as global vars (Q0/1/2/3)
             Storage.readJSON will now read numeric field names like "{1:1}" which can be produced by writeJSON (fix #2484)
             Ensure `Bangle.load(".bootcde")` just calls `load()` if no uiRemove - fix error loading clock without widgets
+            Forward errors encountered while loading modules back into Espruino (fix #2485)
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)

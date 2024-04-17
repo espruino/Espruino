@@ -3376,7 +3376,9 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   assert(execInfo.blockCount==0);
   assert(execInfo.blockScope==0);
 #endif
+  JsExecFlags hasError = (execInfo.execute)&EXEC_ERROR_MASK;
   execInfo = oldExecInfo; // make sure we fully restore state after parsing a module
+  execInfo.execute |= hasError; // pass on any errors the occurred
 
   jsvUnLock2(moduleContents, scope);
   return jsvSkipNameAndUnLock(exportsName);
