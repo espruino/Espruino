@@ -25,18 +25,18 @@ Works:
 
 Doesn't work:
 
-* Everything else
+* `new X(...)`
+* Everything not mentioned under `Works`
 
 Performance:
 
 * When calling a JIT function, we use existing FunctionCall code to set up args and an execution scope (so args can be passed in)
 * Variables are referenced at the start just once and stored on the stack
-  * We could also maybe extend it to allow caching of constant field access, for instance 'console.log'
-* Built-in functions could be called directly, which would be a TON faster
+  * We could also maybe extend it to allow caching of constant field accesses, for instance 'console.log'
+* Built-in global functions are called directly which is a ton faster, but methods like 'console.log' are not currently
 * Peephole optimisation could still be added (eg. removing `push r0, pop r0`) but this is the least of our worries
-* Stuff is in place to allow ints to be stored on the stack and converted when needed. This could maybe allow us to keep some vars as ints.
+* Stuff is in place to allow ints to be stored on the stack and converted when needed. This could allow us to keep some vars as ints, but control flow makes this hard
 * When a function is called we load up the address as a 32 bit literal each time. We could maybe have a constant pool or local stub functions?
-* When we emit code, we just use StringAppend which can be very slow. We should use an iterator (it's an easy win for compile performance)
 
 Possible improvements:
 

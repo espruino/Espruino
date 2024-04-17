@@ -26,6 +26,8 @@
             Storage.readJSON will now read numeric field names like "{1:1}" which can be produced by writeJSON (fix #2484)
             Ensure `Bangle.load(".bootcde")` just calls `load()` if no uiRemove - fix error loading clock without widgets
             Forward errors encountered while loading modules back into Espruino (fix #2485)
+            JIT: Fix issue where the 'jit' keyword got included in compiled code
+            JIT: If using a builtin global function (eg digitalWrite), use it directly rather than searching by name
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)
