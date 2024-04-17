@@ -558,7 +558,7 @@ if "parent" in builtins:
 codeOut('  } else { /* if (!parent) */')
 codeOut('    // ------------------------------------------ FUNCTIONS')
 codeOut('    #ifndef ESPR_EMBED')
-codeOut('    // Handle pin names - eg LED1 or D5 (this is hardcoded in build_jsfunctions.py)')
+codeOut('    // Handle pin names - eg D5 (this is hardcoded in build_jsfunctions.py). LED/etc are in jswSymbols_global')
 codeOut('    Pin pin = jshGetPinFromString(name);')
 codeOut('    if (pin != PIN_UNDEFINED) ')
 codeOut('      return jsvNewFromPin(pin);')
