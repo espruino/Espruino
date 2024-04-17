@@ -954,26 +954,28 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 JsVar *jspGetNamedVariable(const char *tokenName) {
   JsVar *a = JSP_SHOULD_EXECUTE ? jspeiFindInScopes(tokenName) : 0;
   if (JSP_SHOULD_EXECUTE && !a) {
-    /* Special case! We haven't found the variable, so check out
-     * and see if it's one of our builtins...  */
-    if (jswIsBuiltInObject(tokenName)) {
-      // Check if we have a built-in function for it
-      // OPT: Could we instead have jswIsBuiltInObjectWithoutConstructor?
-      JsVar *obj = jswFindBuiltInFunction(0, tokenName);
-      // If not, make one
-      if (!obj)
-        obj = jspNewBuiltin(tokenName);
-      if (obj) { // not out of memory
-        a = jsvAddNamedChild(execInfo.root, obj, tokenName);
-        jsvUnLock(obj);
+    // We haven't found the variable, so check and see if it's one of our builtins...
+    a = jswFindBuiltInFunction(0, tokenName);
+    if (a) {
+      /* FIXME: Ideally we shouldn't have to add built-in objects to the global namespace here.
+      The issue is that we only add to the symbol table on write usually (to avoid wasting RAM)
+      but we do this using jsvCreateNewChild to reference the parent, but we only do it one level down.
+      So String.foo=5 works, but String.prototype.foo=5 won't add String to the global namespace
+      because jsvReplaceWithOrAddToRoot doesn't have any reference to `String`.
+      If we fix that we won't need to call jswIsBuiltInObject so we can avoid having to do a string search twice,
+      but it's not easy since by the time we get to the second '.' in jspeFactorMember we've forgotten the name
+      of the first object.
+      If we merge the real_prototype_chain branch we shouldn't need this either, which is probably the best option. */
+      if (jswIsBuiltInObject(tokenName)) {
+        // OPT: Could we instead have jswIsBuiltInObjectWithoutConstructor?
+        JsVar *name = jsvAddNamedChild(execInfo.root, a, tokenName);
+        jsvUnLock(a);
+        a = name;
       }
     } else {
-      a = jswFindBuiltInFunction(0, tokenName);
-      if (!a) {
-        /* Variable doesn't exist! JavaScript says we should create it
-         * (we won't add it here. This is done in the assignment operator)*/
-        a = jsvNewNameFromString(tokenName);
-      }
+      /* Variable doesn't exist! JavaScript says we should create it
+        * (we won't add it here. This is done in the assignment operator)*/
+      a = jsvNewNameFromString(tokenName);
     }
   }
   return a;
