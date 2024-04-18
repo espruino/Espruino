@@ -547,7 +547,6 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
   } // End of handle SYSTEM_EVENT_STA_CONNECTED
 
   if (event->event_id == SYSTEM_EVENT_STA_START) {
-    JsVar *jsDetails = jsvNewObject();
     // Perform an esp_wifi_connect
     esp_err_t err = esp_wifi_connect();
     if (err != ESP_OK) {
