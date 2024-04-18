@@ -478,9 +478,9 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
   JsSysTime intervalInt = jshGetTimeFromMilliseconds(interval);
   jsvObjectSetChildAndUnLock(timerPtr, "time", jsvNewFromLongInteger((jshGetSystemTime() - jsiLastIdleTime) + intervalInt));
   if (!isTimeout) {
-    jsvObjectSetChildAndUnLock(timerPtr, "interval", jsvNewFromLongInteger(intervalInt));
+    jsvObjectSetChildAndUnLock(timerPtr, "intr", jsvNewFromLongInteger(intervalInt));
   }
-  jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock
+  jsvObjectSetChild(timerPtr, "cb", func); // intentionally no unlock
   if (jsvGetArrayLength(args))
     jsvObjectSetChild(timerPtr, "args", args); // intentionally no unlock
 
@@ -601,7 +601,7 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
   if (timerName) {
     JsVar *timer = jsvSkipNameAndUnLock(timerName);
     JsSysTime intervalInt = jshGetTimeFromMilliseconds(interval);
-    jsvObjectSetChildAndUnLock(timer, "interval", jsvNewFromLongInteger(intervalInt));
+    jsvObjectSetChildAndUnLock(timer, "intr", jsvNewFromLongInteger(intervalInt));
     jsvObjectSetChildAndUnLock(timer, "time", jsvNewFromLongInteger((jshGetSystemTime()-jsiLastIdleTime) + intervalInt));
     jsvUnLock(timer);
     // timerName already unlocked

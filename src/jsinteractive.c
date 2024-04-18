@@ -2030,7 +2030,7 @@ void jsiIdle() {
               if (timeout) {
                 jsvObjectSetChild(timeout, "watch", watchPtr); // no unlock
                 jsvObjectSetChildAndUnLock(timeout, "time", jsvNewFromLongInteger((JsSysTime)(eventTime - jsiLastIdleTime) + debounce));
-                jsvObjectSetChildAndUnLock(timeout, "callback", jsvObjectGetChildIfExists(watchPtr, "callback"));
+                jsvObjectSetChildAndUnLock(timeout, "cb", jsvObjectGetChildIfExists(watchPtr, "cb"));
                 jsvObjectSetChildAndUnLock(timeout, "lastTime", jsvObjectGetChildIfExists(watchPtr, "lastTime"));
                 jsvObjectSetChildAndUnLock(timeout, "pin", jsvNewFromPin(pin));
                 jsvObjectSetChildAndUnLock(timeout, "state", jsvNewFromBool(pinIsHigh));
@@ -2047,7 +2047,7 @@ void jsiIdle() {
           if (executeNow) {
             JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(eventTime)/1000);
             if (jsiShouldExecuteWatch(watchPtr, pinIsHigh)) { // edge triggering
-              JsVar *watchCallback = jsvObjectGetChildIfExists(watchPtr, "callback");
+              JsVar *watchCallback = jsvObjectGetChildIfExists(watchPtr, "cb");
               bool watchRecurring = jsvObjectGetBoolChild(watchPtr,  "recur");
               JsVar *data = jsvNewObject();
               if (data) {
@@ -2131,7 +2131,7 @@ void jsiIdle() {
         // we're now doing work
         jsiSetBusy(BUSY_INTERACTIVE, true);
         wasBusy = true;
-        JsVar *timerCallback = jsvObjectGetChildIfExists(timerPtr, "callback");
+        JsVar *timerCallback = jsvObjectGetChildIfExists(timerPtr, "cb");
         JsVar *watchPtr = jsvObjectGetChildIfExists(timerPtr, "watch"); // for debounce - may be undefined
         bool exec = true;
         JsVar *data = 0;
@@ -2174,7 +2174,7 @@ void jsiIdle() {
             jsvUnLock(argsArray);
           }
           if (!execResult) {
-            JsVar *interval = jsvObjectGetChildIfExists(timerPtr, "interval");
+            JsVar *interval = jsvObjectGetChildIfExists(timerPtr, "intr");
             if (interval) { // if interval then it's setInterval not setTimeout
               jsvUnLock(interval);
               jsError("Ctrl-C while processing interval - removing it.");
@@ -2204,7 +2204,7 @@ void jsiIdle() {
           jsvUnLock(watchPtr);
         }
         // Load interval *after* executing code, in case it has changed
-        JsVar *interval = jsvObjectGetChildIfExists(timerPtr, "interval");
+        JsVar *interval = jsvObjectGetChildIfExists(timerPtr, "intr");
         if (!removeTimer && interval) {
           timerTime = timerTime + jsvGetLongInteger(interval);
           jsvObjectSetChildAndUnLock(timerPtr, "time", jsvNewFromLongInteger(timerTime));
@@ -2446,8 +2446,8 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *timer = jsvObjectIteratorGetValue(&it);
     JsVar *timerNumber = jsvObjectIteratorGetKey(&it);
-    JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(timer, "callback"));
-    JsVar *timerInterval = jsvObjectGetChildIfExists(timer, "interval");
+    JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(timer, "cb"));
+    JsVar *timerInterval = jsvObjectGetChildIfExists(timer, "intr");
     user_callback(timerInterval ? "setInterval(" : "setTimeout(", user_data);
     jsiDumpJSON(user_callback, user_data, timerCallback, 0);
     cbprintf(user_callback, user_data, ", %f); // %v\n", jshGetMillisecondsFromTime(timerInterval ? jsvGetLongInteger(timerInterval) : jsvGetLongIntegerAndUnLock(jsvObjectGetChildIfExists(timer, "time"))), timerNumber);
@@ -2463,7 +2463,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
   jsvUnLock(watchArrayPtr);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *watch = jsvObjectIteratorGetValue(&it);
-    JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(watch, "callback"));
+    JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(watch, "cb"));
     bool watchRecur = jsvObjectGetBoolChild(watch, "recur");
     int watchEdge = (int)jsvObjectGetIntegerChild(watch, "edge");
     JsVar *watchPin = jsvObjectGetChildIfExists(watch, "pin");

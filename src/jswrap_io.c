@@ -819,7 +819,7 @@ JsVar *jswrap_interface_setWatch(
       if (repeat) jsvObjectSetChildAndUnLock(watchPtr, "recur", jsvNewFromBool(repeat));
       if (debounce>0) jsvObjectSetChildAndUnLock(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce)));
       if (edge) jsvObjectSetChildAndUnLock(watchPtr, "edge", jsvNewFromInteger(edge));
-      jsvObjectSetChild(watchPtr, "callback", func); // no unlock intentionally
+      jsvObjectSetChild(watchPtr, "cb", func); // no unlock intentionally
       jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(jshPinInput(pin)));
       if (isHighSpeed)
         jsvObjectSetChildAndUnLock(watchPtr, "hispeed", jsvNewFromBool(true));
