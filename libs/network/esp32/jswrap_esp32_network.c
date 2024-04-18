@@ -512,7 +512,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(temp));
     sprintf(temp, "%d", event->event_info.disconnected.reason);
     jsvObjectSetChildAndUnLock(jsDetails, "reason", jsvNewFromString(temp));
-    jsvObjectSetChildAndUnLock(jsDetails, "msg", jsvNewFromString(wifiReasonToString(event->event_info.disconnected.reason))))
+    jsvObjectSetChildAndUnLock(jsDetails, "msg", jsvNewFromString(wifiReasonToString(event->event_info.disconnected.reason)));
     sendWifiEvent(event->event_id, jsDetails);
     return ESP_OK;
   } // End of handle SYSTEM_EVENT_STA_DISCONNECTED
