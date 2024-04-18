@@ -305,7 +305,7 @@ static char *wifiErrorToString(esp_err_t err){
     case 0x300D: return "WiFi is in sleep state(RF closed) and wakeup fail";
     case 0x300E: return "The caller would block";
     case 0x300F: return "Station still in disconnect status";
-    default: return "unkown WiFi error, see wifiErrorToString";
+    default: return "unknown WiFi error, see wifiErrorToString";
   }
 }
 
