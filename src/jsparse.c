@@ -37,7 +37,7 @@ JsVar *jspeExpression();
 JsVar *jspeUnaryExpression();
 void jspeBlock();
 void jspeBlockNoBrackets();
-JsVar *jspeStatement();
+JsVar *jspeStatement(bool *goAgain);
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 #ifndef ESPR_NO_ARROW_FN
@@ -2303,7 +2303,8 @@ NO_INLINE void jspeBlockNoBrackets() {
   JsVar *oldBlockScope = jspeBlockStart();
   if (JSP_SHOULD_EXECUTE) {
     while (lex->tk && lex->tk!='}') {
-      JsVar *a = jspeStatement();
+      bool goAgain;
+      JsVar *a = jspeStatement(&goAgain);
       jsvCheckReferenceError(a);
       jsvUnLock(a);
       if (JSP_HAS_ERROR) {
@@ -2323,6 +2324,8 @@ NO_INLINE void jspeBlockNoBrackets() {
         jspeSkipBlock();
         break;
       }
+      if (!goAgain)
+        break;
     }
   } else {
     jspeSkipBlock();
@@ -2338,12 +2341,13 @@ NO_INLINE void jspeBlock() {
   return;
 }
 
-NO_INLINE JsVar *jspeBlockOrStatement() {
+NO_INLINE JsVar *jspeBlockOrStatement(bool *goAgain) {
   if (lex->tk=='{') {
     jspeBlock();
+    *goAgain = true;
     return 0;
   } else {
-    JsVar *v = jspeStatement();
+    JsVar *v = jspeStatement(goAgain);
     return v;
   }
 }
@@ -2354,8 +2358,7 @@ NO_INLINE JsVar *jspParse() {
   JsVar *v = 0;
   while (!JSP_SHOULDNT_PARSE && lex->tk != LEX_EOF) {
     jsvUnLock(v);
-    v = jspeBlockOrStatement();
-    while (lex->tk==';') JSP_ASSERT_MATCH(';');
+    v = jspeBlockOrStatement(&goAgain);
     jsvCheckReferenceError(v);
   }
   return v;
@@ -2648,7 +2651,7 @@ NO_INLINE JsVar *jspeStatementFor() {
   bool startsWithConst = lex->tk==LEX_R_CONST;
   // we could have 'for (;;)' - so don't munch up our semicolon if that's all we have
   if (lex->tk != ';')
-    forStatement = jspeStatement();
+    forStatement = jspeStatement(0);
   if (jspIsInterrupted()) {
     jsvUnLock(forStatement);
     jspeBlockEnd(oldBlockScope);
@@ -2996,7 +2999,8 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
   return funcName;
 }
 
-NO_INLINE JsVar *jspeStatement() {
+NO_INLINE JsVar *jspeStatement(bool *goAgain) {
+  if (goAgain) *goAgain = true;
 #ifdef USE_DEBUGGER
   if (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE &&
       lex->tk!=';' &&
@@ -3030,7 +3034,17 @@ NO_INLINE JsVar *jspeStatement() {
       lex->tk=='[' ||
       lex->tk=='(') {
     /* Execute a simple statement that only contains basic arithmetic... */
-    return jspeExpression();
+    JsVar *exp = jspeExpression();
+
+    if (goAgain) *goAgain = false;
+    if (lex->tk == ';') {
+      JSP_ASSERT_MATCH(';');
+      if (goAgain) *goAgain = true;
+    } else if (atNewline) {
+      if (goAgain) *goAgain = true;
+    }
+
+    return exp;
   } else if (lex->tk=='{') {
     /* A block of code */
     if (!jspCheckStackPosition()) return 0;
