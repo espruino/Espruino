@@ -31,6 +31,7 @@
             JIT: Store type in 'vars' list so we're not having to jsvSkipName if we know it's not a name
             JIT: Fix passing function parameters to object constructors (also arrays) (fix #2480)
             Change 'hidden root' timers/watches callback->cb and interval->intr to save 2 vars per interval and make processing faster
+            Jolt.js: Add an 'auto' motor driver mode, and make it the default
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)

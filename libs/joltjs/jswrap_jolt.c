@@ -46,13 +46,15 @@ const Pin JOLT_IO_PINS[] = {
 };
 
 typedef enum {
+  JDM_AUTO,    // Automatic (JDM_OUTPUT whenever a pin is set as output mode)
+  JDM_AUTO_ON, // Automatic (currently on)
   JDM_OFF,
   JDM_OUTPUT, // Independent bridge
   JDM_MOTOR,   // 4 pin
   JDM_UNKNOWN  // just used when parsing to show we don't know
 } JoltDriverMode;
-
-JoltDriverMode driverMode[2];
+#define DRIVERCOUNT 2
+JoltDriverMode driverMode[DRIVERCOUNT];
 
 /*JSON{
   "type": "class",
@@ -223,67 +225,9 @@ JsVar *jswrap_jolt_q3() {
   return o;
 }
 
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "Jolt",
-  "name" : "setDriverMode",
-  "ifdef" : "JOLTJS",
-  "generate" : "jswrap_jolt_setDriverMode",
-  "params" : [
-    ["driver","int","The number of the motor driver (0 or 1)"],
-    ["mode","JsVar","The mode of the motor driver (see below)"]
-  ]
-}
-Sets the mode of the motor drivers. Jolt.js has two motor drivers,
-one (`0`) for outputs 0..3, and one (`1`) for outputs 4..7. They
-can be controlled independently.
 
-Mode can be:
-
-* `undefined` / `false` / `"off"` - the motor driver is off, all motor driver pins are open circuit
-* `true` / `"output"` - **[recommended]** driver is set to "Independent bridge" mode. All 4 outputs are enabled and are either
-* `"motor"` - driver is set to "4 pin interface" mode where pins are paired up (V0+V1, V2+V3, etc). If both
-in a pair are 0 the output is open circuit (motor coast), if both are 1 both otputs are 0 (motor brake), and
-if both are different, those values are on the output:
-
-`output` mode:
-
-| V0 | V1 | Out 0 | Out 1 |
-|----|----|-------|-------|
-| 0  | 0  | Low   | Low   |
-| 0  | 1  | Low   | High  |
-| 1  | 0  | High  | Low   |
-| 1  | 1  | High  | High  |
-
-`motor` mode
-
-| V0 | V1 | Out 0 | Out 1 |
-|----|----|-------|-------|
-| 0  | 0  | Open  | Open  |
-| 0  | 1  | Low   | High  |
-| 1  | 0  | High  | Low   |
-| 1  | 1  | Low   | Low   |
-
-
-*/
-void jswrap_jolt_setDriverMode(int driver, JsVar *mode) {
-  if (driver<0 || driver>1) {
-    jsExceptionHere(JSET_ERROR, "Invalid driver %d", driver);
-    return;
-  }
-  JoltDriverMode dMode = JDM_UNKNOWN;
-  if (jsvIsBoolean(mode) || jsvIsUndefined(mode)) {
-    dMode = jsvGetBool(mode) ? JDM_OUTPUT : JDM_OFF;
-  } else if (jsvIsString(mode)) {
-    if (jsvIsStringEqual(mode, "off")) dMode = JDM_OFF;
-    if (jsvIsStringEqual(mode, "output")) dMode = JDM_OUTPUT;
-    if (jsvIsStringEqual(mode, "motor")) dMode = JDM_MOTOR;
-  }
-  if (dMode == JDM_UNKNOWN) {
-    jsExceptionHere(JSET_ERROR, "Unknown driver mode %q", mode);
-    return;
-  }
-  driverMode[driver] = dMode;
+/// Actually sets the driver mode
+static void _jswrap_jolt_setDriverMode_int(int driver, JoltDriverMode dMode) {
   if (driver==0) {
     if (dMode == JDM_OUTPUT)
       jshPinSetState(DRIVER0_PIN_MODE, JSHPINSTATE_GPIO_IN); // Z for independent bridge
@@ -296,7 +240,104 @@ void jswrap_jolt_setDriverMode(int driver, JsVar *mode) {
     else
       jshPinOutput(DRIVER1_PIN_MODE, 0); // 0 for 4 pin interface
     jshPinOutput(DRIVER1_PIN_NSLEEP, dMode != JDM_OFF);
+  } else assert(0);
+}
+
+/// Called when drivermode=auto to figure out when to turn the driver on
+static void _jswrap_jolt_autoDriverMode(int driver) {
+  assert((driver>=0) && (driver<2));
+  // check the state of the 4 pins
+  bool pinIsOutput = false; // set if >0 pins are outputs
+  Pin pinBase = JSH_PORTH_OFFSET + driver*4;
+  for (int i=0;i<4;i++) {
+    uint32_t ipin = (uint32_t)pinInfo[pinBase + i].pin;
+    NRF_GPIO_Type *reg = nrf_gpio_pin_port_decode(&ipin);
+    if ((reg->PIN_CNF[ipin] & GPIO_PIN_CNF_DIR_Msk) ==
+        (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos))
+      pinIsOutput = true;
   }
+  // update driver state if different
+  bool isCurrentlyOn = driverMode[driver] == JDM_AUTO_ON;
+  if (pinIsOutput != isCurrentlyOn) {
+    //jsiConsolePrintf("autoDriverMode %d %d\n", driver, pinIsOutput);
+    if (pinIsOutput) driverMode[driver] = JDM_AUTO_ON;
+    else driverMode[driver] = JDM_AUTO;
+    _jswrap_jolt_setDriverMode_int(driver, pinIsOutput ? JDM_OUTPUT : JDM_OFF);
+  }
+}
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Jolt",
+  "name" : "setDriverMode",
+  "ifdef" : "JOLTJS",
+  "generate" : "jswrap_jolt_setDriverMode",
+  "params" : [
+    ["driver","int","The number of the motor driver (0 or 1)"],
+    ["mode","JsVar","The mode of the motor driver (see below)"]
+  ]
+}
+Sets the mode of the motor drivers. Jolt.js has two motor drivers,
+one (`0`) for outputs H0..H3, and one (`1`) for outputs H4..H7. They
+can be controlled independently.
+
+Mode can be:
+
+* `undefined` / `false` / `"off"` - the motor driver is off, all motor driver pins are open circuit (the motor driver still has a ~2.5k pulldown to GND)
+* `"auto"` - (default) - if any pin in the set of 4 pins (H0..H3, H4..H7) is set as an output, the driver is turned on. Eg `H0.set()` will
+turn the driver on with a high output, `H0.reset()` will pull the output to GND and `H0.read()` (or `H0.mode("input")` to set the state explicitly) is needed to
+turn the motor driver off.
+* `true` / `"output"` - **[recommended]** driver is set to "Independent bridge" mode. All 4 outputs in the bank are enabled
+* `"motor"` - driver is set to "4 pin interface" mode where pins are paired up (H0+H1, H2+H3, etc). If both
+in a pair are 0 the output is open circuit (motor coast), if both are 1 both otputs are 0 (motor brake), and
+if both are different, those values are on the output:
+
+`output`/`auto` mode:
+
+| H0 | H1 | Out 0 | Out 1 |
+|----|----|-------|-------|
+| 0  | 0  | Low   | Low   |
+| 0  | 1  | Low   | High  |
+| 1  | 0  | High  | Low   |
+| 1  | 1  | High  | High  |
+
+`motor` mode
+
+| H0 | H1 | Out 0 | Out 1 |
+|----|----|-------|-------|
+| 0  | 0  | Open  | Open  |
+| 0  | 1  | Low   | High  |
+| 1  | 0  | High  | Low   |
+| 1  | 1  | Low   | Low   |
+
+
+*/
+
+void jswrap_jolt_setDriverMode(int driver, JsVar *mode) {
+  if (driver<0 || driver>1) {
+    jsExceptionHere(JSET_ERROR, "Invalid driver %d", driver);
+    return;
+  }
+  JoltDriverMode dMode = JDM_UNKNOWN;
+  if (jsvIsBoolean(mode) || jsvIsUndefined(mode)) {
+    dMode = jsvGetBool(mode) ? JDM_OUTPUT : JDM_OFF;
+  } else if (jsvIsString(mode)) {
+    if (jsvIsStringEqual(mode, "off")) dMode = JDM_OFF;
+    else if (jsvIsStringEqual(mode, "auto")) dMode = JDM_AUTO;
+    else if (jsvIsStringEqual(mode, "output")) dMode = JDM_OUTPUT;
+    else if (jsvIsStringEqual(mode, "motor")) dMode = JDM_MOTOR;
+  }
+  if (dMode == JDM_UNKNOWN) {
+    jsExceptionHere(JSET_ERROR, "Unknown driver mode %q", mode);
+    return;
+  }
+  driverMode[driver] = dMode;
+  if (dMode==JDM_AUTO) {
+    _jswrap_jolt_setDriverMode_int(driver, JDM_OFF); // turn off
+    _jswrap_jolt_autoDriverMode(driver); // now let autoDriverMode update
+  } else
+    _jswrap_jolt_setDriverMode_int(driver, dMode);
 }
 
 static void jswrap_jolt_setDriverMode_(int driver, bool mode) {
@@ -445,7 +486,7 @@ bool _jswrap_jolt_selfTest(bool advertisePassOrFail) {
     for (int p=0;p<8;p++)
       jshPinSetValue(JSH_PORTH_OFFSET+p, p == i);
     nrf_delay_ms(5);
-    // we can only read V0/2/4/8
+    // we can only read H0/2/4/8
     for (int p=0;p<8;p+=2) {
       v = jshPinAnalog(JSH_PORTH_OFFSET+p);
       if (i==p) {
@@ -516,8 +557,8 @@ void jswrap_jolt_hwinit() {
   jshPinOutput(DRIVER1_PIN_TRQ, 0);
   jshPinSetState(DRIVER0_PIN_NFAULT, JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetState(DRIVER1_PIN_NFAULT, JSHPINSTATE_GPIO_IN_PULLUP);
-  driverMode[0] = JDM_OFF;
-  driverMode[1] = JDM_OFF;
+  driverMode[0] = JDM_AUTO;
+  driverMode[1] = JDM_AUTO;
   // set all outputs to 0 by default
   jshPinOutput(DRIVER0_PIN_D0, 0);
   jshPinOutput(DRIVER0_PIN_D1, 0);
@@ -596,5 +637,10 @@ void jswrap_jolt_kill() {
 }*/
 bool jswrap_jolt_idle() {
   bool busy = false;
+  // handle automatic driver mode
+  for (int i=0;i<DRIVERCOUNT;i++) {
+    if (driverMode[i]==JDM_AUTO || driverMode[i]==JDM_AUTO_ON)
+      _jswrap_jolt_autoDriverMode(i);
+  }
   return busy;
 }
