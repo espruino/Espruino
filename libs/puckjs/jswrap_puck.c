@@ -696,6 +696,7 @@ JsVarFloat jswrap_puck_magTemp() {
   "type" : "event",
   "class" : "Puck",
   "name" : "mag",
+  "params" : [["xyz","JsVar","an object of the form `{x,y,z}`"]],
   "ifdef" : "PUCKJS"
 }
 Called after `Puck.magOn()` every time magnetometer data is sampled. There is
@@ -705,12 +706,21 @@ readings as integers (for more information see `Puck.mag()`).
 Check out [the Puck.js page on the
 magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
 information.
+
+```JS
+Puck.magOn(10); // 10 Hz
+Puck.on('mag', function(e) {
+  print(e);
+});
+// { "x": -874, "y": -332, "z": -1938 }
+```
  */
 
 /*JSON{
   "type" : "event",
   "class" : "Puck",
   "name" : "accel",
+  "params" : [["e","JsVar","an object of the form `{acc:{x,y,z}, gyro:{x,y,z}}`"]],
   "ifdef" : "PUCKJS"
 }
 Only on Puck.js v2.0
@@ -718,6 +728,17 @@ Only on Puck.js v2.0
 Called after `Puck.accelOn()` every time accelerometer data is sampled. There is
 one argument which is an object of the form `{acc:{x,y,z}, gyro:{x,y,z}}`
 containing the data.
+
+```JS
+Puck.accelOn(12.5); // default 12.5Hz
+Puck.on('accel', function(e) {
+  print(e);
+});
+//{
+//  "acc": { "x": -525, "y": -112, "z": 8160 },
+//  "gyro": { "x": 154, "y": -152, "z": -34 }
+//}
+```
 
 The data is as it comes off the accelerometer and is not scaled to 1g. For more
 information see `Puck.accel()` or [the Puck.js page on the
