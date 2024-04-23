@@ -227,9 +227,10 @@ void bleGetWriteEventName(char *eventName, uint16_t handle) {
   itostr(handle, &eventName[strlen(eventName)], 16);
 }
 
+// ESP32 is defined in esp32_gatts_func
+#ifdef NRF5X
 /// Look up the characteristic's handle from the UUID. returns BLE_GATT_HANDLE_INVALID if not found
 uint16_t bleGetGATTHandle(ble_uuid_t char_uuid) {
-#ifdef NRF5X
   // Update value and notify/indicate if appropriate
   uint16_t char_handle;
   ble_uuid_t uuid_it;
@@ -257,11 +258,9 @@ uint16_t bleGetGATTHandle(ble_uuid_t char_uuid) {
     }
     char_handle++;
   }
-#else
-  jsiConsolePrintf("FIXME\n");
-#endif
   return BLE_GATT_HANDLE_INVALID;
 }
+#endif
 
 /// Add a new bluetooth event to the queue with a buffer of data
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len) {
@@ -455,6 +454,22 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
    break;
   }
 #endif // CENTRAL_LINK_COUNT > 0
+   case BLEP_WRITE: {
+     JsVar *evt = jsvNewObject();
+     if (evt) {
+       JsVar *str = jsvNewStringOfLength(bufferLen, (char*)buffer);
+       if (str) {
+         JsVar *ab = jsvNewArrayBufferFromString(str, bufferLen);
+         jsvUnLock(str);
+         jsvObjectSetChildAndUnLock(evt, "data", ab);
+       }
+       char eventName[12];
+       bleGetWriteEventName(eventName, data);
+       jsiQueueObjectCallbacks(execInfo.root, eventName, &evt, 1);
+       jsvUnLock(evt);
+     }
+     break;
+   }
   default:
     return false;
   }

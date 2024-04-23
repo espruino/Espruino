@@ -355,22 +355,6 @@ int jsble_exec_pending(IOEvent *event) {
      jsvUnLock(evt);
      break;
    }
-   case BLEP_WRITE: {
-     JsVar *evt = jsvNewObject();
-     if (evt) {
-       JsVar *str = jsvNewStringOfLength(bufferLen, (char*)buffer);
-       if (str) {
-         JsVar *ab = jsvNewArrayBufferFromString(str, bufferLen);
-         jsvUnLock(str);
-         jsvObjectSetChildAndUnLock(evt, "data", ab);
-       }
-       char eventName[12];
-       bleGetWriteEventName(eventName, data);
-       jsiQueueObjectCallbacks(execInfo.root, eventName, &evt, 1);
-       jsvUnLock(evt);
-     }
-     break;
-   }
 #if CENTRAL_LINK_COUNT>0
    case BLEP_RSSI_CENTRAL: { //  rssi as data low byte, index in m_central_conn_handles as high byte
      int centralIdx = data>>8; // index in m_central_conn_handles

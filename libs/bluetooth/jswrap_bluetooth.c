@@ -1745,6 +1745,9 @@ void jswrap_ble_updateServices(JsVar *data) {
                 }
               }
 #endif
+#ifdef ESP32
+              gatts_update_service(char_handle, vPtr, vLen, notification_requested, indication_requested);
+#endif
             }
           }
           jsvUnLock2(charValue, charVar);

@@ -43,7 +43,7 @@ esp_bt_uuid_t uart_char_tx_uuid = {
   .len = ESP_UUID_LEN_128,
   .uuid.uuid128 = {0x9e,0xca,0xdc,0x24,0x0e,0xe5,0xa9,0xe0,0x93,0xf3,0xa3,0xb5,0x03,0x00,0x40,0x6e}
 };
-esp_bt_uuid_t uart_tx_descr = {
+esp_bt_uuid_t descriptor_uuid = {
   .len = ESP_UUID_LEN_16,
   .uuid.uuid16 = 0x2902
 };
@@ -51,9 +51,12 @@ esp_bt_uuid_t uart_tx_descr = {
 JsVar *gatts_services = 0;
 uint8_t *adv_service_uuid128 = NULL;
 
-uint16_t ble_service_pos = -1;uint16_t ble_service_cnt = 0;
-uint16_t ble_char_pos = -1;uint16_t ble_char_cnt = 0;
-uint16_t ble_descr_pos = -1;uint16_t ble_descr_cnt = 0;
+uint16_t ble_service_pos = (uint16_t)-1;
+uint16_t ble_service_cnt = 0;
+uint16_t ble_char_pos = (uint16_t)-1;
+uint16_t ble_char_cnt = 0;
+uint16_t ble_descr_pos = (uint16_t)-1;
+uint16_t ble_descr_cnt = 0;
 
 struct gatts_service_inst *gatts_service = NULL;
 struct gatts_char_inst *gatts_char = NULL;
@@ -73,9 +76,22 @@ uint8_t nusBuffer[BLE_NUS_MAX_DATA_LEN];
 volatile uint8_t nusBufferLen = 0;
 
 
+/// Look up the characteristic's handle from the UUID. returns BLE_GATT_HANDLE_INVALID if not found
+// NRF52 ver is in bluetooth_utils.c
+uint16_t bleGetGATTHandle(ble_uuid_t char_uuid) {
+  for(uint16_t pos = 0; pos < ble_char_cnt; pos++) {
+    ble_uuid_t uuid;
+    espbtuuid_TO_bleuuid(gatts_char[pos].char_uuid, &uuid);
+    if (bleUUIDEqual(uuid, char_uuid)) {
+       return gatts_char[pos].char_handle;
+    }
+  }
+  return BLE_GATT_HANDLE_INVALID;
+}
+
 void sendNotifBuffer() {
   if(uart_gatts_if != ESP_GATT_IF_NONE){
-    esp_err_t err = esp_ble_gatts_send_indicate(uart_gatts_if,0,uart_tx_handle,nusBufferLen,nusBuffer,false);
+    /*esp_err_t err = */esp_ble_gatts_send_indicate(uart_gatts_if,0,uart_tx_handle,nusBufferLen,nusBuffer,false);
     // check error? resend if there was one? I think this just blocks if it can't send immediately
   }
   nusBufferLen = 0;
@@ -97,13 +113,13 @@ void gatts_sendNUSNotificationIfNotEmpty() {
     sendNotifBuffer();
 }
 
-void emitNRFEvent(char *event,JsVar *args,int argCnt){
+void emitNRFEvent(char *event,JsVar **args,unsigned int argCnt){
   JsVar *nrf = jsvObjectGetChildIfExists(execInfo.root, "NRF");
   if(!nrf) return; // No NRF object found - it hasn't been used yet but if not we're fine as there won't be anything to accept events!
   JsVar *eventName = jsvNewFromString(event);
   JsVar *callback = jsvSkipNameAndUnLock(jsvFindChildFromVar(nrf,eventName,0));
   jsvUnLock(eventName);
-  if(callback) jsiQueueEvents(nrf,callback,args,argCnt);
+  if(callback) jsiQueueEvents(nrf,callback,args,(int)argCnt);
   jsvUnLock2(nrf, callback);
   if(args) jsvUnLockMany(argCnt,args);
 }
@@ -126,14 +142,15 @@ uint16_t gatts_get_service_cnt() {
 }
 
 static void gatts_read_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
+  NOT_USED(event);
   esp_gatt_rsp_t rsp; JsVar *charValue;
   memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
   rsp.attr_value.handle = param->read.handle;
-  for (uint32_t pos=0;pos < ble_char_cnt;pos++) {
+  for (uint16_t pos=0;pos < ble_char_cnt;pos++) {
     if (gatts_char[pos].char_handle==param->read.handle) {
       char hiddenName[12];
       bleGetHiddenName(hiddenName,BLE_READ_EVENT,pos);
-      JsVar *readCB = jsvObjectGetChildIfExists(execInfo.hiddenRoot,hiddenName);
+      JsVar *readCB = jsvObjectGetChildIfExists(execInfo.root,hiddenName);
       if(readCB){
         charValue = jspExecuteFunction(readCB,0,0,0);
         jsvUnLock(readCB);
@@ -148,7 +165,7 @@ static void gatts_read_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
         for(uint16_t valpos = 0; valpos < vLen; valpos++){
           rsp.attr_value.value[valpos] = vPtr[valpos];
         }
-        rsp.attr_value.len = vLen;
+        rsp.attr_value.len = (uint16_t)vLen;
         jsvUnLock(charValue);
       }
       break;
@@ -156,58 +173,17 @@ static void gatts_read_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
   }
   for (uint32_t pos=0;pos < ble_descr_cnt;pos++) {
     if (gatts_descr[pos].descr_handle==param->read.handle) {
-      if(gatts_descr[pos].descrVal){
-        JSV_GET_AS_CHAR_ARRAY(vPtr,vLen,gatts_descr[pos].descrVal);
-        for(uint16_t descrpos = 0; descrpos < vLen; descrpos++){rsp.attr_value.value[descrpos] = vPtr[descrpos];}
-        rsp.attr_value.len = vLen;
-      }
+      memcpy(rsp.attr_value.value, gatts_descr[pos].value, gatts_descr[pos].len);
+      rsp.attr_value.len = gatts_descr[pos].len;
       break;
     }
   }
   esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id, ESP_GATT_OK, &rsp);
 }
-static void gatts_write_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
-  for(uint16_t pos = 0; pos < ble_char_cnt; pos++){
-    if(gatts_char[pos].char_handle == param->write.handle){
-      char hiddenName[12];
-      bleGetHiddenName(hiddenName,BLE_CHAR_VALUE,pos);
-      jsvObjectSetChildAndUnLock(execInfo.hiddenRoot,hiddenName,
-         jsvNewStringOfLength(param->write.len,param->write.value));
-      bleGetHiddenName(hiddenName,BLE_WRITE_EVENT,pos);
-      JsVar *writeCB = jsvObjectGetChildIfExists(execInfo.hiddenRoot,hiddenName);
-      if(writeCB){
-        JsVar *evt = jsvNewObject();
-        if (evt) {
-          JsVar *str = jsvNewStringOfLength(param->write.len, (char*)param->write.value);
-          if (str) {
-            JsVar *ab = jsvNewArrayBufferFromString(str, param->write.len);
-            jsvUnLock(str);
-            jsvObjectSetChildAndUnLock(evt, "data", ab);
-          }
-        }
-        JsVar *tmp = jspExecuteFunction(writeCB,0,1,&evt);
-        if(tmp) jsvUnLock(tmp);
-        if(evt) jsvUnLock(evt);
-      }
-      break;
-    }
-  }
-  for(uint16_t pos = 0; pos < ble_descr_cnt; pos++){
-    if(gatts_descr[pos].descr_handle == param->write.handle){
-      gatts_descr[pos].descrVal = jsvNewStringOfLength(param->write.len,param->write.value);
-      break;
-    }
-  }
-  esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
-}
-static void gatts_write_nus_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
-  jshPushIOCharEvents(EV_BLUETOOTH, (char*)param->write.value, param->write.len);
-  jshHadEvent();
-  esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
-}
 
 // Called when something connects to us
 static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
+  NOT_USED(event);
   int g = getIndexFromGatts_if(gatts_if);
   esp_ble_set_encryption(param->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
   if(g >= 0){
@@ -232,6 +208,7 @@ static void gatts_connect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatt
 }
 // Called when something disconnects from us
 static void gatts_disconnect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
+  NOT_USED(event);
   int g = getIndexFromGatts_if(gatts_if);
   esp_err_t r;
   if(g >= 0){
@@ -265,11 +242,12 @@ void gatts_reg_app(){
   }
 }
 void gatts_createService(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param){
+  NOT_USED(event);
   esp_err_t r;
   gatts_service[param->reg.app_id].service_id.is_primary = true;
   gatts_service[param->reg.app_id].service_id.id.inst_id = 0x00;
   gatts_service[param->reg.app_id].gatts_if = gatts_if;
-  bleuuid_TO_espbtuuid(gatts_service[param->reg.app_id].ble_uuid,&gatts_service[param->reg.app_id].service_id.id);
+  bleuuid_TO_espbtuuid(gatts_service[param->reg.app_id].ble_uuid, &gatts_service[param->reg.app_id].service_id.id.uuid);
   r = esp_ble_gatts_create_service(gatts_if, &gatts_service[param->reg.app_id].service_id, gatts_service[param->reg.app_id].num_handles);
   if(r) jsWarn("createService error:%d\n",r);
 }
@@ -278,9 +256,9 @@ void gatts_add_char(){
   for(uint16_t pos=0; pos < ble_char_cnt; pos++){
     if(gatts_char[pos].service_pos == ble_service_pos && gatts_char[pos].char_handle == 0){
       ble_char_pos = pos;
-      r = esp_ble_gatts_add_char(gatts_service[ble_service_pos].service_handle,&gatts_char[pos].char_uuid,
-        gatts_char[pos].char_perm,gatts_char[pos].char_property,
-        NULL,gatts_char[pos].char_control);
+      r = esp_ble_gatts_add_char(gatts_service[ble_service_pos].service_handle, &gatts_char[pos].char_uuid,
+        gatts_char[pos].char_perm, gatts_char[pos].char_property,
+        NULL, gatts_char[pos].char_control);
       if(r) jsWarn("add char error:%d\n",r);
       return;
     }
@@ -304,23 +282,27 @@ void gatts_add_descr(){
   gatts_add_char();
 }
 void gatts_check_add_descr(esp_bt_uuid_t descr_uuid, uint16_t attr_handle){
+  NOT_USED(descr_uuid);
   if(attr_handle != 0){
     gatts_descr[ble_descr_pos].descr_handle=attr_handle;
   }
   gatts_add_descr(); // try to add more descriptors
 }
 static void gatts_check_add_char(esp_bt_uuid_t char_uuid, uint16_t attr_handle) {
+  NOT_USED(char_uuid);
   if (attr_handle != 0) {
     gatts_char[ble_char_pos].char_handle=attr_handle;
     gatts_add_descr(); // try to add descriptors to this characteristic
   }
 }
 static void gatts_delete_service(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if){
+  NOT_USED(event);
   esp_err_t r;
   r = esp_ble_gatts_app_unregister(gatts_service[getIndexFromGatts_if(gatts_if)].gatts_if);
   if(r) jsWarn("error in app_unregister:%d\n",r);
 }
 static void gatts_unreg_app(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if){
+  NOT_USED(event);
   gatts_service[getIndexFromGatts_if(gatts_if)].gatts_if = ESP_GATT_IF_NONE;
   for(int i = 0; i < ble_service_cnt; i++){
     if(gatts_service[i].gatts_if != ESP_GATT_IF_NONE) return;
@@ -334,9 +316,20 @@ static void gatts_unreg_app(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if){
   ble_descr_cnt = 0;
   if(_removeValues) bleRemoveChilds(execInfo.hiddenRoot);
 }
+
+// Update our hidden var with the right value
+void gatts_set_char_value(uint16_t handle, char *data, int len) {
+  for(uint16_t pos = 0; pos < ble_char_cnt; pos++){
+    if (gatts_char[pos].char_handle == handle){
+      char hiddenName[12];
+      bleGetHiddenName(hiddenName,BLE_CHAR_VALUE,pos);
+      jsvObjectSetChildAndUnLock(execInfo.hiddenRoot,hiddenName,jsvNewStringOfLength((unsigned int)len, data));
+    }
+  }
+}
+
 void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
   jsWarnGattsEvent(event,gatts_if);
-  JsVar *args[1];
   switch (event) {
   case ESP_GATTS_REG_EVT:{gatts_createService(event,gatts_if,param);break;}
   case ESP_GATTS_CREATE_EVT:{
@@ -350,7 +343,7 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
     }
     else{
       jsWarn("add char failed:%d\n",param->add_char.status);
-      gatts_char[ble_char_pos].char_handle = -1;
+      gatts_char[ble_char_pos].char_handle = (uint16_t)-1;
       ble_char_pos++;
       gatts_add_char();
     }
@@ -368,14 +361,32 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
   case ESP_GATTS_CONNECT_EVT: {gatts_connect_handler(event,gatts_if,param); break;}
   case ESP_GATTS_READ_EVT: {gatts_read_value_handler(event, gatts_if, param);break;}
   case ESP_GATTS_WRITE_EVT:{
-    if(gatts_service[getIndexFromGatts_if(gatts_if)].serviceFlag == BLE_SERVICE_NUS){
-      gatts_write_nus_value_handler(event,gatts_if,param);
+    if(gatts_service[getIndexFromGatts_if(gatts_if)].serviceFlag == BLE_SERVICE_NUS){ // UART service
+      jshPushIOCharEvents(EV_BLUETOOTH, (char*)param->write.value, param->write.len);
+      jshHadEvent();
+    } else { // a normal write
+      // Update our hidden var with the right value (this is not great to do from an IRQ)
+      gatts_set_char_value(param->write.handle, (char*)param->write.value, param->write.len);
+      // queue the event execution if we have a handler
+      for(uint16_t pos = 0; pos < ble_char_cnt; pos++){
+        if(gatts_char[pos].char_handle == param->write.handle){ // onWrite
+          jsble_queue_pending_buf(BLEP_WRITE, pos, (char*)param->write.value, param->write.len);
+        }
+      }
+      for(uint16_t pos = 0; pos < ble_descr_cnt; pos++){
+        if(gatts_descr[pos].descr_handle == param->write.handle){ // onWriteDesc
+          // jsble_queue_pending_buf(BLEP_WRITE, pos, (char*)param->write.value, param->write.len); // can't send 'pos' as it's meant as an index in gatts_char not gatts_descr
+          gatts_descr[pos].len = param->write.len;
+          if (gatts_descr[pos].len > sizeof(gatts_descr[pos].value))
+            gatts_descr[pos].len = sizeof(gatts_descr[pos].value);
+          memcpy(gatts_descr[pos].value, param->write.value, gatts_descr[pos].len);
+        }
+      }
     }
-    else{
-      gatts_write_value_handler(event,gatts_if,param);
-    }
+    jsble_peripheral_activity(); // flag that we've been busy
+    esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
     break;
-    }
+  }
   case ESP_GATTS_DELETE_EVT:{gatts_delete_service(event,gatts_if);break;}
   case ESP_GATTS_UNREG_EVT:{gatts_unreg_app(event,gatts_if);break;}
 
@@ -396,7 +407,7 @@ void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp
 }
 
 void add_ble_uart(){
-  uint16_t handles = 1;
+  int handles = 1;
   ble_service_pos++;
   gatts_service[ble_service_pos].ble_uuid = uart_service_uuid;
   bleuuid_To_uuid128(gatts_service[ble_service_pos].ble_uuid,&adv_service_uuid128[ble_service_pos * 16]);
@@ -406,8 +417,8 @@ void add_ble_uart(){
   gatts_char[ble_char_pos].char_perm = 0;
   gatts_char[ble_char_pos].service_pos = ble_service_pos;
   gatts_char[ble_char_pos].char_uuid = uart_char_rx_uuid;
-  gatts_char[ble_char_pos].char_perm += ESP_GATT_PERM_WRITE;
-  gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_WRITE|ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
+  gatts_char[ble_char_pos].char_perm |= ESP_GATT_PERM_WRITE;
+  gatts_char[ble_char_pos].char_property |= ESP_GATT_CHAR_PROP_BIT_WRITE|ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
   gatts_char[ble_char_pos].char_control = NULL;
   gatts_char[ble_char_pos].char_handle = 0;
   gatts_char[ble_char_pos].charFlag = BLE_CHAR_UART_RX;
@@ -416,20 +427,21 @@ void add_ble_uart(){
   gatts_char[ble_char_pos].char_perm = 0;
   gatts_char[ble_char_pos].service_pos = ble_service_pos;
   gatts_char[ble_char_pos].char_uuid = uart_char_tx_uuid;
-  gatts_char[ble_char_pos].char_perm += ESP_GATT_PERM_READ;
-  gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+  gatts_char[ble_char_pos].char_perm |= ESP_GATT_PERM_READ;
+  gatts_char[ble_char_pos].char_property |= ESP_GATT_CHAR_PROP_BIT_NOTIFY;
   gatts_char[ble_char_pos].char_control = NULL;
   gatts_char[ble_char_pos].char_handle = 0;
   gatts_char[ble_char_pos].charFlag = BLE_CHAR_UART_TX;
   handles +=2;
   ble_descr_pos++;
   gatts_descr[ble_descr_pos].char_pos = ble_char_pos;
-  gatts_descr[ble_descr_pos].descr_uuid = uart_tx_descr;
+  gatts_descr[ble_descr_pos].descr_uuid = descriptor_uuid;
   gatts_descr[ble_descr_pos].descr_handle = 0;
   gatts_descr[ble_descr_pos].descr_perm = ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE;
+  gatts_descr[ble_descr_pos].len = 2;
   handles +=2;
   gatts_service[ble_service_pos].gatts_if = ESP_GATT_IF_NONE;
-  gatts_service[ble_service_pos].num_handles = handles;
+  gatts_service[ble_service_pos].num_handles = (uint16_t)handles;
 }
 void setBleUart(){
   uart_gatts_if = ESP_GATT_IF_NONE;
@@ -452,50 +464,64 @@ void gatts_char_init(JsvObjectIterator *ble_char_it){
   if((errorStr = bleVarToUUIDAndUnLock(&ble_uuid,jsvObjectIteratorGetKey(ble_char_it)))){
     jsExceptionHere(JSET_ERROR,"invalid Char UUID:%s",errorStr);
   }
+  // WARNING: Descriptors/chars this allocates must match gatts_create_structs exactly!
   JsVar *charVar = jsvObjectIteratorGetValue(ble_char_it);
   gatts_char[ble_char_pos].char_uuid.len = ESP_UUID_LEN_16;
   gatts_char[ble_char_pos].char_uuid.uuid.uuid16 = ble_uuid.uuid;
   gatts_char[ble_char_pos].char_perm = 0;
   if (jsvObjectGetBoolChild(charVar, "broadcast"))
-    gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_BROADCAST;
+    gatts_char[ble_char_pos].char_property |= ESP_GATT_CHAR_PROP_BIT_BROADCAST;
   if (jsvObjectGetBoolChild(charVar, "notify"))
-    gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_NOTIFY;
+    gatts_char[ble_char_pos].char_property |= ESP_GATT_CHAR_PROP_BIT_NOTIFY;
   if (jsvObjectGetBoolChild(charVar, "indicate"))
-    gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_INDICATE;
+    gatts_char[ble_char_pos].char_property |= ESP_GATT_CHAR_PROP_BIT_INDICATE;
   if (jsvObjectGetBoolChild(charVar, "readable")){
-    gatts_char[ble_char_pos].char_perm += ESP_GATT_PERM_READ;
-    gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_READ;
+    gatts_char[ble_char_pos].char_perm |= ESP_GATT_PERM_READ;
+    gatts_char[ble_char_pos].char_property |= ESP_GATT_CHAR_PROP_BIT_READ;
   }
   if (jsvObjectGetBoolChild(charVar, "writable")){
-    gatts_char[ble_char_pos].char_perm += ESP_GATT_PERM_WRITE;
-    gatts_char[ble_char_pos].char_property += ESP_GATT_CHAR_PROP_BIT_WRITE|ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
+    gatts_char[ble_char_pos].char_perm |= ESP_GATT_PERM_WRITE;
+    gatts_char[ble_char_pos].char_property |= ESP_GATT_CHAR_PROP_BIT_WRITE|ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
   }
   gatts_char[ble_char_pos].char_control = NULL;
   gatts_char[ble_char_pos].char_handle = 0;
-  JsVar *readCB = jsvObjectGetChildIfExists(charVar, "onRead");
+  JsVar *readCB = jsvObjectGetChildIfExists(charVar, "onRead"); // non-documented, not in nRF52
   if(readCB){
     char hiddenName[12];
     bleGetHiddenName(hiddenName,BLE_READ_EVENT,ble_char_pos);
-    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot,hiddenName,readCB);
+    jsvObjectSetChildAndUnLock(execInfo.root,hiddenName,readCB);
   }
   JsVar *writeCB = jsvObjectGetChildIfExists(charVar, "onWrite");
   if(writeCB){
     char hiddenName[12];
-    bleGetHiddenName(hiddenName,BLE_WRITE_EVENT,ble_char_pos);
-    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot,hiddenName,writeCB);
+    bleGetWriteEventName(hiddenName,ble_char_pos);
+    jsvObjectSetChildAndUnLock(execInfo.root,hiddenName,writeCB);
+  }
+  // notify/indicate need a descriptor to work
+  if (jsvObjectGetBoolChild(charVar, "notify") || jsvObjectGetBoolChild(charVar, "indicate")) {
+    ble_descr_pos++;
+    assert(ble_descr_pos < ble_descr_cnt);
+    gatts_descr[ble_descr_pos].char_pos = ble_char_pos;
+    gatts_descr[ble_descr_pos].descr_uuid = descriptor_uuid;
+    gatts_descr[ble_descr_pos].descr_handle = 0;
+    gatts_descr[ble_descr_pos].descr_perm = ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE;
+    gatts_descr[ble_descr_pos].len = 2;
   }
   JsVar *charDescriptionVar = jsvObjectGetChildIfExists(charVar, "description");
   if (charDescriptionVar && jsvHasCharacterData(charDescriptionVar)) {
     ble_descr_pos++;
+    assert(ble_descr_pos < ble_descr_cnt);
     gatts_descr[ble_descr_pos].char_pos = ble_char_pos;
     gatts_descr[ble_descr_pos].descr_uuid.len = ESP_UUID_LEN_16;
     gatts_descr[ble_descr_pos].descr_uuid.uuid.uuid16 = ESP_GATT_UUID_CHAR_DESCRIPTION;
     gatts_descr[ble_descr_pos].descr_perm = ESP_GATT_PERM_READ;
-    gatts_descr[ble_descr_pos].descrVal = charDescriptionVar;
+    gatts_descr[ble_descr_pos].len =
+      jsvGetString(charDescriptionVar, (char*)gatts_descr[ble_descr_pos].value, sizeof(gatts_descr[ble_descr_pos].value));
     gatts_descr[ble_descr_pos].descr_control = NULL;
     gatts_descr[ble_descr_pos].descr_handle = 0;
   }
   jsvUnLock(charDescriptionVar);
+
   JsVar *charValue = jsvObjectGetChildIfExists(charVar,"value");
   if(charValue){
     char hiddenName[12];
@@ -505,7 +531,8 @@ void gatts_char_init(JsvObjectIterator *ble_char_it){
   jsvUnLock(charVar);
 }
 void gatts_service_struct_init(JsvObjectIterator *ble_service_it){
-  ble_uuid_t ble_uuid;uint16_t handles;
+  ble_uuid_t ble_uuid;
+  int handles;
   const char *errorStr;
   if((errorStr = bleVarToUUIDAndUnLock(&gatts_service[ble_service_pos].ble_uuid, jsvObjectIteratorGetKey(ble_service_it)))){
     jsExceptionHere(JSET_ERROR,"Invalid Service UUID: %s",errorStr);
@@ -523,7 +550,7 @@ void gatts_service_struct_init(JsvObjectIterator *ble_service_it){
     handles +=2; //placeholder for 2 descr
     jsvObjectIteratorNext(&ble_char_it);
   }
-  gatts_service[ble_service_pos].num_handles = handles;
+  gatts_service[ble_service_pos].num_handles = (uint16_t)handles;
   jsvObjectIteratorFree(&ble_char_it);
   jsvUnLock(serviceVar);
 }
@@ -535,11 +562,11 @@ void gatts_structs_init(bool enableUART){
     gatts_service[i].connected = false;
   }
   for(int i = 0; i < ble_char_cnt;i++){
-    gatts_char[i].service_pos = -1;
+    gatts_char[i].service_pos = (uint16_t)-1;
     gatts_char[i].charFlag = BLE_CHAR_GENERAL;
   }
   for(int i = 0; i < ble_descr_cnt;i++){
-    gatts_descr[i].char_pos = -1;
+    gatts_descr[i].char_pos = (uint16_t)-1;
   }
   if (gatts_services) {
     JsvObjectIterator ble_service_it;
@@ -563,7 +590,7 @@ void gatts_getAdvServiceUUID(uint8_t *p_service_uuid, uint16_t service_len){
 // Actually allocates gatts_services with enough space
 void gatts_create_structs(bool enableUART){
   ble_service_cnt = 0; ble_char_cnt = 0; ble_descr_cnt = 0;
-  ble_service_pos = -1; ble_char_pos = -1; ble_descr_pos = -1;
+  ble_service_pos = (uint16_t)-1; ble_char_pos = (uint16_t)-1; ble_descr_pos = (uint16_t)-1;
   if (gatts_services) {
     JsvObjectIterator ble_service_it;
     jsvObjectIteratorNew(&ble_service_it,gatts_services);
@@ -572,7 +599,10 @@ void gatts_create_structs(bool enableUART){
       JsvObjectIterator ble_char_it;
       jsvObjectIteratorNew(&ble_char_it,serviceVar);
       while(jsvObjectIteratorHasValue(&ble_char_it)){
+        // WARNING: Descriptors/chars this allocates must match gatts_char_init exactly!
         JsVar *charVar = jsvObjectIteratorGetValue(&ble_char_it);
+        if (jsvObjectGetBoolChild(charVar, "notify") || jsvObjectGetBoolChild(charVar, "indicate"))
+          ble_descr_cnt++;
         JsVar *charDescriptionVar = jsvObjectGetChildIfExists(charVar, "description");
         if (charDescriptionVar && jsvHasCharacterData(charDescriptionVar)) ble_descr_cnt++;
         jsvUnLock2(charDescriptionVar, charVar);
@@ -630,6 +660,22 @@ void gatts_reset(bool removeValues){
       if(gatts_service[i].gatts_if != ESP_GATT_IF_NONE){
         r = esp_ble_gatts_delete_service(gatts_service[i].service_handle);
         if(r) jsWarn("delete service error:%d\n",r);
+      }
+    }
+  }
+}
+// called from NRF.updateServices
+void gatts_update_service(uint16_t char_handle, char *data, int len, bool isNotify, bool isIndicate){
+  gatts_set_char_value(char_handle, data, len);
+  if (isNotify || isIndicate) {
+    for(uint16_t pos = 0; pos < ble_char_cnt; pos++){
+      if (gatts_char[pos].char_handle == char_handle) {
+        esp_err_t err = esp_ble_gatts_send_indicate(
+          gatts_service[gatts_char[pos].service_pos].gatts_if,
+          gatts_service[gatts_char[pos].service_pos].conn_id, // connection ID
+          char_handle,
+          len,data,isIndicate /* false = notify */);
+        if (err) jsiConsolePrintf("NRF.updateServices esp_ble_gatts_send_indicate failed with %d\n", err);
       }
     }
   }

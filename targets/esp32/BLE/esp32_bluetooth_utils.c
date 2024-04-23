@@ -22,6 +22,7 @@
 #include "esp_gatt_common_api.h"
 #include "freertos/FreeRTOS.h"
 #include "jsvariterator.h"
+#include "jsinteractive.h"
 
 esp_ble_debug_t bleEventDebug = 0;
 
@@ -176,15 +177,15 @@ static char *gapEvent2String(esp_gap_ble_cb_event_t event){
 
 void jsWarnGattsEvent(esp_gatts_cb_event_t event,esp_gatt_if_t gatts_if){
   if(bleEventDebug & ESP_BLE_DEBUG_GATTS)
-    jsWarn("Event:ESP_GATTS_%s_EVT gatts_if:%d\n",gattsEvent2String(event), gatts_if);
+    jsiConsolePrintf("Event:ESP_GATTS_%s_EVT gatts_if:%d\n",gattsEvent2String(event), gatts_if);
 }
 void jsWarnGattcEvent(esp_gattc_cb_event_t event,esp_gatt_if_t gattc_if){
   if(bleEventDebug & ESP_BLE_DEBUG_GATTC)
-    jsWarn("Event:ESP_GATTC_%s_EVT gattc_if:%d\n",gattcEvent2String(event), gattc_if);
+    jsiConsolePrintf("Event:ESP_GATTC_%s_EVT gattc_if:%d\n",gattcEvent2String(event), gattc_if);
 }
 void jsWarnGapEvent(esp_gap_ble_cb_event_t event){
   if(bleEventDebug & ESP_BLE_DEBUG_GAP)
-    jsWarn("Event:ESP_GAP_BLE_%s_EVT\n",gapEvent2String(event));
+    jsiConsolePrintf("Event:ESP_GAP_BLE_%s_EVT\n",gapEvent2String(event));
 }
 
 void jsWarnUUID(esp_bt_uuid_t char_uuid){

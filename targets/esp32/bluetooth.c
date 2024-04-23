@@ -171,6 +171,11 @@ bool jsble_has_peripheral_connection(){
   return (m_peripheral_conn_handle != BLE_GATT_HANDLE_INVALID);
 }
 
+/** Call this when something happens on BLE with this as
+ * a peripheral - used with Dynamic Interval Adjustment  */
+void jsble_peripheral_activity() {
+}
+
 /// Checks for error and reports an exception if there was one. Return true on error
 bool jsble_check_error_line(uint32_t err_code, int lineNumber) {
   if (err_code != ESP_OK) {

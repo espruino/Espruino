@@ -59,8 +59,9 @@ struct gatts_descr_inst {
   uint32_t char_pos;
   esp_bt_uuid_t descr_uuid;
   esp_gatt_perm_t descr_perm;
-  JsVar *descrVal;
   esp_attr_control_t *descr_control;
+  uint8_t value[16];
+  uint8_t len;
   uint16_t descr_handle;
 };
 
@@ -69,9 +70,13 @@ extern uint8_t *adv_service_uuid128;
 void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 void gatts_register_app(uint16_t id);
 void gatts_set_services(JsVar *data);
+// called from NRF.updateServices
+void gatts_update_service(uint16_t char_handle, char *data, int len, bool isNotify, bool isIndicate);
+
 uint16_t gatts_get_service_cnt();
 void gatts_reset(bool removeValues);
 
+// For BLE UART
 void gatts_sendNUSNotification(int c);
 void gatts_sendNUSNotificationIfNotEmpty();
 
