@@ -33,7 +33,6 @@
             Change 'hidden root' timers/watches callback->cb and interval->intr to save 2 vars per interval and make processing faster
             Jolt.js: Add an 'auto' motor driver mode, and make it the default
             digitalWrite: ensure `digitalWrite(pins, true)` sets *all* pins to `true`, not just the first
-            Promises: rewrite of promise handling (fixes #2450,#2454,#2227)
             ESP32: Fix setServices with 128bit UUIDs, fix NRF.setServices' onWrite and notify/indicate
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
