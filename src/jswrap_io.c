@@ -302,14 +302,19 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
   "generate" : "jswrap_io_digitalWrite",
   "params"   : [
     ["pin",   "JsVar","The pin to use"],
-    ["value", "int","Whether to pulse high (true) or low (false)"]
+    ["value", "JsVar","Whether to write a high (true) or low (false) value"]
   ],
   "typescript" : "declare function digitalWrite(pin: Pin, value: boolean): void;"
 }
 Set the digital value of the given pin.
 
- **Note:** if you didn't call `pinMode` beforehand then this function will also
- reset pin's state to `"output"`
+```
+digitalWrite(LED1, 1); // light LED1
+digitalWrite([LED1,LED2,LED3], 0b101); // lights LED1 and LED3
+```
+
+ **Note:** if you didn't call `pinMode(pin, ...)` or `Pin.mode(...)` beforehand then this function will also
+reset pin's state to `"output"`
 
 If pin argument is an array of pins (e.g. `[A2,A1,A0]`) the value argument will
 be treated as an array of bits where the last array element is the least
@@ -320,13 +325,21 @@ right-hand side of the array of pins). This means you can use the same pin
 multiple times, for example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0
 followed by A1.
 
+In 2v22 and later firmwares, using a boolean for the value will set *all* pins in
+the array to the same value, eg `digitalWrite(pins, value?0xFFFFFFFF:0)`. Previously
+digitalWrite with a boolean behaved like `digitalWrite(pins, value?1:0)` and would
+only set the first pin.
+
 If the pin argument is an object with a `write` method, the `write` method will
 be called with the value passed through.
 */
 void jswrap_io_digitalWrite(
     JsVar *pinVar, //!< A pin or pins.
-    JsVarInt value //!< The value of the output.
+    JsVar *valueVar //!< The value of the output.
   ) {
+  JsVarInt value;
+  if (jsvIsBoolean(valueVar)) value = jsvGetBool(valueVar) ? 0xFFFFFFFF : 0;
+  else value = jsvGetInteger(valueVar);
   // Handle the case where it is an array of pins.
   if (jsvIsArray(pinVar)) {
     JsVarRef pinName = jsvGetLastChild(pinVar); // NOTE: start at end and work back!
