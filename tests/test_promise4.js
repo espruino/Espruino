@@ -12,10 +12,12 @@ p.then( function(value) {
 }).catch( function( value ) {
         sequence+="D"+value;
 } );
-p.then(function(value) {
-        sequence+="B"+value;
+p.then(function(value) { // resolve handler (not called)
+  sequence+="B"+value;
+}, function(value) { // reject handler
+  sequence+="r"+value;
 });
 setTimeout(function() {
-  result = sequence == "D1";
+  result = sequence == "r1D1";
   console.log(result, sequence);
 },10);
