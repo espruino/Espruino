@@ -449,10 +449,10 @@ void gatts_char_init(JsvObjectIterator *ble_char_it){
   const char *errorStr;
   ble_uuid_t ble_uuid;
   gatts_char[ble_char_pos].service_pos = ble_service_pos;
-  if((errorStr = bleVarToUUIDAndUnLock(&ble_uuid,jsvObjectIteratorGetKey(&ble_char_it)))){
+  if((errorStr = bleVarToUUIDAndUnLock(&ble_uuid,jsvObjectIteratorGetKey(ble_char_it)))){
     jsExceptionHere(JSET_ERROR,"invalid Char UUID:%s",errorStr);
   }
-  JsVar *charVar = jsvObjectIteratorGetValue(&ble_char_it);
+  JsVar *charVar = jsvObjectIteratorGetValue(ble_char_it);
   gatts_char[ble_char_pos].char_uuid.len = ESP_UUID_LEN_16;
   gatts_char[ble_char_pos].char_uuid.uuid.uuid16 = ble_uuid.uuid;
   gatts_char[ble_char_pos].char_perm = 0;
