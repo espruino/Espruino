@@ -21,6 +21,8 @@
 
 /// Create a new promise
 JsVar *jspromise_create();
+/// Create a promise and put it inside a promise box
+JsVar *jspromise_create_prombox(JsVar ** promise);
 /// Resolve the given promise
 void jspromise_resolve(JsVar *promise, JsVar *data);
 /// Reject the given promise
