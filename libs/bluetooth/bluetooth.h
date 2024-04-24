@@ -214,7 +214,7 @@ extern ble_uuid_t bleUUIDFilter;
 
 /// The advertising interval (in units of 0.625 ms)
 extern uint16_t bleAdvertisingInterval;
-/// The interval for the current peripheral connection (in units of 0.625 ms)
+/// The interval for the current peripheral connection (in units of 1.25 ms)
 extern uint16_t blePeriphConnectionInterval;
 
 extern volatile uint16_t                         m_peripheral_conn_handle;    /**< Handle of the current connection. */

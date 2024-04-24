@@ -239,8 +239,8 @@ bool bleHighInterval;
 #define DEFAULT_PERIPH_MAX_CONN_INTERVAL 20
 #endif
 
-/// The interval for the current connection (periph/central may be mixed) (in units of 0.625 ms)
-uint16_t blePeriphConnectionInterval = DEFAULT_PERIPH_MAX_CONN_INTERVAL;
+/// The interval for the current connection (periph/central may be mixed) (in units of 1.25 ms)
+uint16_t blePeriphConnectionInterval = 6;
 
 static ble_gap_sec_params_t get_gap_sec_params();
 #if PEER_MANAGER_ENABLED

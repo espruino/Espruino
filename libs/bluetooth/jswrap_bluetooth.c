@@ -4576,8 +4576,8 @@ void jswrap_ble_powerusage(JsVar *devices) {
 #ifdef NRF5X
   // https://devzone.nordicsemi.com/power/w/opp/2/online-power-profiler-for-bluetooth-le
   if (jsble_has_peripheral_connection()) {
-    int perSec = 1600 / blePeriphConnectionInterval; // blePeriphConnectionInterval is in units of 0.625ms
-    jsvObjectSetChildAndUnLock(devices, "BLE_periph", jsvNewFromInteger(6*perSec)); // ~6uA per connection
+    int perSec = 800 / blePeriphConnectionInterval; // blePeriphConnectionInterval is in units of 1.25ms
+    jsvObjectSetChildAndUnLock(devices, "BLE_periph", jsvNewFromInteger(5*perSec)); // ~5uA per connection interval
   }
   if (jsble_has_central_connection()) {
     jsvObjectSetChildAndUnLock(devices, "BLE_central", jsvNewFromInteger(500));

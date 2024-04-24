@@ -334,6 +334,7 @@ bool mag_on(int milliHz, bool instant) {
       hz=255; // max speed in default mode
       highPower = true;
     }
+    mag_power = 13 * hz;
 
 /*    mag_zero[0]=0;
     mag_zero[1]=0;
