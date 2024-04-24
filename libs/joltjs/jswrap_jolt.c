@@ -644,3 +644,25 @@ bool jswrap_jolt_idle() {
   }
   return busy;
 }
+
+
+/*JSON{
+  "type" : "powerusage",
+  "generate" : "jswrap_jolt_powerusage"
+}*/
+void jswrap_jolt_powerusage(JsVar *devices) {
+  if (!(driverMode[0]==JDM_OFF || driverMode[0]==JDM_AUTO))
+    jsvObjectSetChildAndUnLock(devices, "driver0", jsvNewFromInteger(1000));
+  if (!(driverMode[1]==JDM_OFF || driverMode[1]==JDM_AUTO))
+    jsvObjectSetChildAndUnLock(devices, "driver1", jsvNewFromInteger(1000));
+  int v;
+  v = (int)(jshPinAnalog(JSH_PORTH_OFFSET+0) * 400);
+  if (v>10) jsvObjectSetChildAndUnLock(devices, "pin0_internal_resistance", jsvNewFromInteger(v));
+  v = (int)(jshPinAnalog(JSH_PORTH_OFFSET+2) * 400);
+  if (v>10) jsvObjectSetChildAndUnLock(devices, "pin2_internal_resistance", jsvNewFromInteger(v));
+  v = (int)(jshPinAnalog(JSH_PORTH_OFFSET+4) * 400);
+  if (v>10) jsvObjectSetChildAndUnLock(devices, "pin4_internal_resistance", jsvNewFromInteger(v));
+  v = (int)(jshPinAnalog(JSH_PORTH_OFFSET+6) * 400);
+  if (v>10) jsvObjectSetChildAndUnLock(devices, "pin6_internal_resistance", jsvNewFromInteger(v));
+
+}

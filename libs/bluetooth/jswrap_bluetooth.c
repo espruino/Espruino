@@ -4566,3 +4566,27 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *cha
   return 0;
 #endif
 }
+
+
+/*JSON{
+  "type" : "powerusage",
+  "generate" : "jswrap_ble_powerusage"
+}*/
+void jswrap_ble_powerusage(JsVar *devices) {
+#ifdef NRF5X
+  // https://devzone.nordicsemi.com/power/w/opp/2/online-power-profiler-for-bluetooth-le
+  if (jsble_has_peripheral_connection()) {
+    int perSec = 1600 / blePeriphConnectionInterval; // blePeriphConnectionInterval is in units of 0.625ms
+    jsvObjectSetChildAndUnLock(devices, "BLE_periph", jsvNewFromInteger(6*perSec)); // ~6uA per connection
+  }
+  if (jsble_has_central_connection()) {
+    jsvObjectSetChildAndUnLock(devices, "BLE_central", jsvNewFromInteger(500));
+    // Could do finer grained central connection
+  }
+  if (bleStatus & BLE_IS_ADVERTISING) {
+    int perSec = 1600 / bleAdvertisingInterval; // bleAdvertisingInterval is in units of 0.625ms
+    jsvObjectSetChildAndUnLock(devices, "BLE_advertise", jsvNewFromInteger(12*perSec)); // ~12uA per advertisement
+    // Could try and take advertising length into account?
+  }
+#endif
+}

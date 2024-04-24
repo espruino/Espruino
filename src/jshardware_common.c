@@ -160,3 +160,8 @@ void jshKickSoftWatchDog() {
     execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_CTRL_C;
   }
 }
+
+/* Returns the estimated power usage of the microcontroller */
+__attribute__((weak))void jsvGetProcessorPowerUsage(JsVar *devices) {
+  // not implemented by default
+}

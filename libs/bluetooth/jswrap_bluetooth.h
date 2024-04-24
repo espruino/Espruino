@@ -158,3 +158,5 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
 JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteristic);
 JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *characteristic);
 JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *characteristic);
+
+void jswrap_ble_powerusage(JsVar *devices);

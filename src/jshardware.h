@@ -453,6 +453,9 @@ unsigned int jshGetRandomNumber();
  * speed in Hz though. */
 unsigned int jshSetSystemClock(JsVar *options);
 
+/* Adds the estimated power usage of the microcontroller in uA to the 'devices' object. The CPU should be called 'CPU' */
+void jsvGetProcessorPowerUsage(JsVar *devices);
+
 /// Perform a proper hard-reboot of the device
 void jshReboot();
 

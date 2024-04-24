@@ -58,11 +58,13 @@ const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 #endif
 
 bool mag_enabled = false; //< Has the magnetometer been turned on?
+uint16_t mag_power; // est mag power in uA
 int16_t mag_reading[3];  //< magnetometer xyz reading
 //int mag_zero[3]; //< magnetometer 'zero' reading, only for Puck 2.1 right now
 volatile bool mag_data_ready = false;
 
 bool accel_enabled = false; //< Has the accelerometer been turned on?
+uint16_t accel_power; // est mag power in uA
 int16_t accel_reading[3];
 int16_t gyro_reading[3];
 
@@ -278,21 +280,22 @@ void mag_pin_on() {
 bool mag_on(int milliHz, bool instant) {
   //jsiConsolePrintf("mag_on\n");
   mag_pin_on();
+  mag_power = 0;
   if (puckVersion == PUCKJS_1V0) { // MAG3110
     jshDelayMicroseconds(2500); // 1.7ms from power on to ok
     if (instant) milliHz = 80000;
     int reg1 = 0;
-    if (milliHz == 80000) reg1 |= (0x00)<<3; // 900uA
-    else if (milliHz == 40000) reg1 |= (0x04)<<3; // 550uA
-    else if (milliHz == 20000) reg1 |= (0x08)<<3; // 275uA
-    else if (milliHz == 10000) reg1 |= (0x0C)<<3; // 137uA
-    else if (milliHz == 5000) reg1 |= (0x10)<<3; // 69uA
-    else if (milliHz == 2500) reg1 |= (0x14)<<3; // 34uA
-    else if (milliHz == 1250) reg1 |= (0x18)<<3; // 17uA
-    else if (milliHz == 630) reg1 |= (0x1C)<<3; // 8uA
-    else if (milliHz == 310) reg1 |= (0x1D)<<3; // 8uA
-    else if (milliHz == 160) reg1 |= (0x1E)<<3; // 8uA
-    else if (milliHz == 80) reg1 |= (0x1F)<<3; // 8uA
+    if (milliHz == 80000) { reg1 |= (0x00)<<3; mag_power = 900; }
+    else if (milliHz == 40000) { reg1 |= (0x04)<<3; mag_power = 550; }
+    else if (milliHz == 20000) { reg1 |= (0x08)<<3; mag_power = 275; }
+    else if (milliHz == 10000) { reg1 |= (0x0C)<<3; mag_power = 137; }
+    else if (milliHz == 5000) { reg1 |= (0x10)<<3; mag_power = 69; }
+    else if (milliHz == 2500) { reg1 |= (0x14)<<3; mag_power = 34; }
+    else if (milliHz == 1250) { reg1 |= (0x18)<<3; mag_power = 17; }
+    else if (milliHz == 630) { reg1 |= (0x1C)<<3; mag_power = 8; }
+    else if (milliHz == 310) { reg1 |= (0x1D)<<3; mag_power = 8; }
+    else if (milliHz == 160) { reg1 |= (0x1E)<<3; mag_power = 8; }
+    else if (milliHz == 80) { reg1 |= (0x1F)<<3; mag_power = 8; }
     else return false;
 
     jshDelayMicroseconds(2000); // 1.7ms from power on to ok
@@ -303,16 +306,16 @@ bool mag_on(int milliHz, bool instant) {
     if (instant) milliHz = 80000;
     bool lowPower = false;
     int reg1 = 0x80; // temp sensor, low power
-    if (milliHz == 80000) reg1 |= 7<<2; // 900uA
-    else if (milliHz == 40000) reg1 |= 6<<2; // 550uA
-    else if (milliHz == 20000) reg1 |= 5<<2; // 275uA
-    else if (milliHz == 10000) reg1 |= 4<<2; // 137uA
-    else if (milliHz == 5000) reg1 |= 3<<2; // 69uA
-    else if (milliHz == 2500) reg1 |= 2<<2; // 34uA
-    else if (milliHz == 1250) reg1 |= 1<<2; // 17uA
+    if (milliHz == 80000) { reg1 |= 7<<2; mag_power = 900; }
+    else if (milliHz == 40000) { reg1 |= 6<<2; mag_power = 550; }
+    else if (milliHz == 20000) { reg1 |= 5<<2; mag_power = 275; }
+    else if (milliHz == 10000) { reg1 |= 4<<2; mag_power = 137; }
+    else if (milliHz == 5000) { reg1 |= 3<<2; mag_power = 69; }
+    else if (milliHz == 2500) { reg1 |= 2<<2; mag_power = 34; }
+    else if (milliHz == 1250) { reg1 |= 1<<2; mag_power = 17; }
     else if (milliHz <= 630) { /*if (milliHz == 630 || milliHz == 625)*/
       // We just go for the lowest power mode
-      reg1 |= 0<<2; // 8uA
+      reg1 |= 0<<2; mag_power = 8;
       lowPower = true;
     }
     else return false;
@@ -498,17 +501,19 @@ bool accel_on(int milliHz) {
   // CTRL1_XL / CTRL2_G
   int reg = 0;
   bool gyro = true;
+  accel_power = 0;
   if (milliHz<12500) { // 1.6Hz, no gyro
     reg = 11<<4;
     gyro = false;
-  } else if (milliHz==12500) reg=1<<4; // 12.5 Hz (low power)
-  else if (milliHz==26000) reg=2<<4; // 26 Hz (low power)
-  else if (milliHz==52000) reg=3<<4; // 52 Hz (low power)
-  else if (milliHz==104000) reg=4<<4; // 104 Hz (normal mode)
-  else if (milliHz==208000) reg=5<<4; // 208 Hz (normal mode)
-  else if (milliHz==416000) reg=6<<4; // 416 Hz (high performance)
-  else if (milliHz==833000) reg=7<<4; // 833 Hz (high performance)
-  else if (milliHz==1660000) reg=8<<4; // 1.66 kHz (high performance)
+    accel_power = 40;
+  } else if (milliHz==12500) { reg=1<<4; accel_power = 350; } // 12.5 Hz (low power)
+  else if (milliHz==26000) { reg=2<<4;accel_power = 450; } // 26 Hz (low power)
+  else if (milliHz==52000) { reg=3<<4; accel_power = 600; }// 52 Hz (low power)
+  else if (milliHz==104000) { reg=4<<4; accel_power = 1700; }// 104 Hz (normal mode)
+  else if (milliHz==208000) { reg=5<<4; accel_power = 3000; }// 208 Hz (normal mode)
+  else if (milliHz==416000) { reg=6<<4; accel_power = 5300; }// 416 Hz (high performance)
+  else if (milliHz==833000) { reg=7<<4; accel_power = 5500; }// 833 Hz (high performance)
+  else if (milliHz==1660000) { reg=8<<4; accel_power = 5500; }// 1.66 kHz (high performance)
   else return false;
 
 
@@ -1829,4 +1834,15 @@ bool jswrap_puck_idle() {
     busy = true;
   }
   return busy;
+}
+
+/*JSON{
+  "type" : "powerusage",
+  "generate" : "jswrap_puck_powerusage"
+}*/
+void jswrap_puck_powerusage(JsVar *devices) {
+  if (mag_enabled)
+    jsvObjectSetChildAndUnLock(devices, "magnetometer", jsvNewFromInteger(mag_power));
+  if (accel_enabled)
+    jsvObjectSetChildAndUnLock(devices, "accelerometer", jsvNewFromInteger(accel_power));
 }

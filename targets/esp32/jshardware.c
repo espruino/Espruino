@@ -142,7 +142,7 @@ void jshPinDefaultPullup() {
   jshPinSetStateRange(21,22,JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetStateRange(25,27,JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetStateRange(34,39,JSHPINSTATE_GPIO_IN_PULLUP);
-  
+
 }
 
 /**
@@ -205,7 +205,7 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
   return 6;
 }
 
-void jshInterruptOff() { 
+void jshInterruptOff() {
   taskDISABLE_INTERRUPTS();
 }
 
@@ -308,12 +308,12 @@ void jshPinSetState(
  * \return The current state of the selected pin.
  */
 JshPinState jshPinGetState(Pin pin) {
-  if ( jshPinGetValue(pin) & 1 ) 
+  if ( jshPinGetValue(pin) & 1 )
     return g_pinState[pin] | JSHPINSTATE_PIN_IS_ON;
   return g_pinState[pin];
 }
 
-/** 
+/**
  * Check if state is default - return true if default
 */
 bool jshIsPinStateDefault(Pin pin, JshPinState state) {
@@ -375,7 +375,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
   }
   else{
   if(flags & JSAOF_ALLOW_SOFTWARE){
-    if (!jshGetPinStateIsManual(pin)){ 
+    if (!jshGetPinStateIsManual(pin)){
         BITFIELD_SET(jshPinSoftPWM, pin, 0);
         jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
       }
@@ -526,7 +526,7 @@ void jshUSARTKick(IOEventFlags device) {
 #ifdef BLUETOOTH
     case EV_BLUETOOTH:
       gatts_sendNUSNotification(c);
-      break; 
+      break;
 #endif
     case EV_SERIAL1:
       uart_tx_one_char((uint8_t)c);
@@ -534,7 +534,7 @@ void jshUSARTKick(IOEventFlags device) {
     default:
       writeSerial(device,(uint8_t)c);
       break;
-    //if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c); 
+    //if(device == EV_SERIAL1) uart_tx_one_char((uint8_t)c);
     //else writeSerial(device,(uint8_t)c);
   }
     c = jshGetCharToTransmit(device);
@@ -576,7 +576,7 @@ JsSysTime CALLED_FROM_INTERRUPT jshGetSystemTime() { // in us -- can be called a
 void jshSetSystemTime(JsSysTime newTime) {
   struct timeval tm;
   struct timezone tz;
-  
+
   tm.tv_sec=(time_t)(newTime/1000000L);
   tm.tv_usec=(suseconds_t) (newTime - tm.tv_sec * 1000000L);
   tz.tz_minuteswest=0;
@@ -685,7 +685,7 @@ bool jshFlashGetPage(
   if (addr >= FLASH_MAX) return false;
   *startAddr = addr & ~(FLASH_PAGE-1);
   *pageSize = FLASH_PAGE;
-  return true; 
+  return true;
 }
 
 void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
@@ -749,4 +749,10 @@ gpio_num_t pinToESP32Pin(Pin pin) {
 /// Perform a proper hard-reboot of the device
 void jshReboot() {
   esp_restart(); // Call the ESP-IDF to restart the ESP32.
+}
+
+/* Adds the estimated power usage of the microcontroller in uA to the 'devices' object. The CPU should be called 'CPU' */
+void jsvGetProcessorPowerUsage(JsVar *devices) {
+  jsvObjectSetChildAndUnLock(devices, "CPU", jsvNewFromInteger(20000));
+  // standard power usage of ESP32S3 without Wifi
 }

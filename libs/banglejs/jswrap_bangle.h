@@ -103,3 +103,4 @@ void jsbangle_exec_pending(IOEvent *event);
 /// queue an event for Bangle.js (usually called from inside an IRQ)
 void jsbangle_push_event(JsBangleEvent type, uint16_t value);
 
+void jswrap_banglejs_powerusage(JsVar *devices);

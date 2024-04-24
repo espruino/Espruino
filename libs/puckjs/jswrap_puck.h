@@ -57,3 +57,4 @@ bool jswrap_puck_selfTest();
 void jswrap_puck_init();
 void jswrap_puck_kill();
 bool jswrap_puck_idle();
+void jswrap_puck_powerusage(JsVar *devices);

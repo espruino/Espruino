@@ -115,6 +115,11 @@ volatile JsSysTime baseSystemTime __attribute__((section(".noinit"))) __attribut
 volatile uint32_t lastSystemTime __attribute__((section(".noinit"))) __attribute__((aligned(4)));
 volatile uint32_t lastSystemTimeInv __attribute__((section(".noinit"))) __attribute__((aligned(4)));
 
+/// The last RTC time a system time 'tick' happened at
+JsSysTime lastSysTickTime;
+/// time taken for a system 'tick' - we can use this to work out how long we've been sleeping for
+uint32_t sysTickTime;
+
 #ifdef NRF_USB
 #include "app_usbd_core.h"
 #include "app_usbd.h"
@@ -652,6 +657,12 @@ void SysTick_Handler(void)  {
   if (ticksSinceStart == 6) {
     jsiOneSecondAfterStartup();
   }
+
+  JsSysTime currTime = jshGetSystemTime();
+  JsSysTime t = (currTime - lastSysTickTime);
+  if (t>0xFFFFFFFFU) t = 0xFFFFFFFFU;
+  sysTickTime = (uint32_t)t;
+  lastSysTickTime = currTime;
 }
 
 #ifdef NRF52_SERIES
@@ -842,6 +853,7 @@ void jshInit() {
   }
   lastSystemTime = 0;
   lastSystemTimeInv = ~lastSystemTime;
+  lastSysTickTime = jshGetSystemTime();
 
   memset(pinStates, 0, sizeof(pinStates));
   memset(extiToPin, PIN_UNDEFINED, sizeof(extiToPin));
@@ -2877,4 +2889,24 @@ unsigned int jshSetSystemClock(JsVar *options) {
 /// Perform a proper hard-reboot of the device
 void jshReboot() {
   NVIC_SystemReset();
+}
+
+/* Adds the estimated power usage of the microcontroller in uA to the 'devices' object. The CPU should be called 'CPU' */
+void jsvGetProcessorPowerUsage(JsVar *devices) {
+  // draws 4mA flat out, 3uA nothing otherwise
+  jsvObjectSetChildAndUnLock(devices, "CPU", jsvNewFromInteger(3 + ((4000 * 273152) / sysTickTime)));
+  // check UART - draws about 1mA when on
+  bool uartOn = false;
+  for (int i=0;i<ESPR_USART_COUNT;i++)
+    if (uart[i].isInitialised)
+      uartOn = true;
+  if (uartOn)
+    jsvObjectSetChildAndUnLock(devices, "UART", jsvNewFromInteger(1000));
+  // check if PWM is being used
+  bool pwmOn = false;
+  for (int i=0;i<JSH_PIN_COUNT;i++)
+    if (JSH_PINFUNCTION_IS_TIMER(pinStates[i]))
+      pwmOn = true;
+  if (pwmOn)
+    jsvObjectSetChildAndUnLock(devices, "PWM", jsvNewFromInteger(200));
 }

@@ -6240,3 +6240,30 @@ void jsbangle_push_event(JsBangleEvent type, uint16_t value) {
   evt.data.chars[2] = (char)(value & 0xFF);
   jshPushEvent(&evt);
 }
+
+/*JSON{
+  "type" : "powerusage",
+  "generate" : "jswrap_banglejs_powerusage"
+}*/
+void jswrap_banglejs_powerusage(JsVar *devices) {
+  // https://www.espruino.com/Bangle.js2#power-consumption
+#ifdef BANGLEJS_F18
+  if (jswrap_banglejs_isLCDOn())
+    jsvObjectSetChildAndUnLock(devices, "LCD", jsvNewFromInteger(40000));
+#endif
+#ifdef BANGLEJS_Q3
+  if (jswrap_banglejs_isBacklightOn())
+    jsvObjectSetChildAndUnLock(devices, "LCD_backlight", jsvNewFromInteger(16000));
+  if (!jswrap_banglejs_isLocked())
+    jsvObjectSetChildAndUnLock(devices, "LCD_touch", jsvNewFromInteger(2500));
+#endif
+  if (jswrap_banglejs_isHRMOn())
+    jsvObjectSetChildAndUnLock(devices, "HRM", jsvNewFromInteger(700));
+  if (jswrap_banglejs_isGPSOn())
+    jsvObjectSetChildAndUnLock(devices, "GPS", jsvNewFromInteger(20000));
+  if (jswrap_banglejs_isCompassOn())
+    jsvObjectSetChildAndUnLock(devices, "compass", jsvNewFromInteger(600));
+  if (jswrap_banglejs_isBarometerOn())
+    jsvObjectSetChildAndUnLock(devices, "baro", jsvNewFromInteger(200));
+  jsvObjectSetChildAndUnLock(devices, "polling", jsvNewFromInteger(15 * 1000 / pollInterval));
+}

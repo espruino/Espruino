@@ -61,7 +61,7 @@ if "check_output" not in dir( subprocess ):
 #
 # Comments look like:
 #
-#/*JSON{ "type":"staticmethod|staticproperty|constructor|method|property|function|variable|class|library|idle|init|kill|EV_xxx",
+#/*JSON{ "type":"staticmethod|staticproperty|constructor|method|property|function|variable|class|library|idle|init|kill|EV_xxx|powerusage",
 #                      // class = built-in class that does not require instantiation
 #                      // library = built-in class that needs require('classname')
 #                      // idle = function to run on idle regardless
@@ -69,6 +69,7 @@ if "check_output" not in dir( subprocess ):
 #                      // init = function to run on Initialisation (eg boot/load/reset/after save/etc)
 #                      // kill = function to run on Deinitialisation (eg before save/reset/etc)
 #                      // EV_xxx = Something to be called with a character in an IRQ when it is received (eg. EV_SERIAL1)
+#                      // powerusage = fn(JsVar*) called with an object, and should insert fields for deviec names and estimated power usage in uA
 #         "class" : "Double", "name" : "doubleToIntBits",
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
 #         "generate_full|generate|wrap" : "*(JsVarInt*)&x", // if generate=false, it'll only be used for docs

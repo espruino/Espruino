@@ -729,6 +729,15 @@ for jsondata in jsondatas:
     codeOut("  "+jsondata["generate"]+"();")
 codeOut('}')
 
+codeOut("/** When called with an Object, fields are added for each device that is used with estimated power usage in uA */")
+codeOut('void jswGetPowerUsage(JsVar *devices) {')
+for jsondata in jsondatas:
+  if "type" in jsondata and jsondata["type"]=="powerusage":
+    codeOut("  "+jsondata["generate"]+"(devices);")
+codeOut('}')
+
+
+
 codeOut("/** Tasks to run when a character event is received */")
 codeOut('bool jswOnCharEvent(IOEventFlags channel, char charData) {')
 codeOut('  NOT_USED(channel);')

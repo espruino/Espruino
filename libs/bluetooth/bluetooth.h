@@ -212,7 +212,10 @@ extern volatile BLEStatus bleStatus;
 /// Filter to use when discovering BLE Services/Characteristics
 extern ble_uuid_t bleUUIDFilter;
 
-extern uint16_t bleAdvertisingInterval;           /**< The advertising interval (in units of 0.625 ms). */
+/// The advertising interval (in units of 0.625 ms)
+extern uint16_t bleAdvertisingInterval;
+/// The interval for the current peripheral connection (in units of 0.625 ms)
+extern uint16_t blePeriphConnectionInterval;
 
 extern volatile uint16_t                         m_peripheral_conn_handle;    /**< Handle of the current connection. */
 #if CENTRAL_LINK_COUNT>0
@@ -319,7 +322,7 @@ void jsble_setup_advdata(ble_advdata_t *advdata);
 #define TAG_HEADER_LEN            0x0A
 
 /*
-TT = Tag Type           
+TT = Tag Type
 ML = NDEF Message Length
 RT = Record Type
 TF = TNF and Flags
@@ -331,7 +334,7 @@ IC = URI Identifier Code
                     "\x00\x00\x00\x00" /* |      UID/BCC          | */ \
                     "\x00\x00\xFF\xFF" /* | UID/BCC |   LOCK      | */ \
                     "\xE1\x11\x7C\x0F" /* |  Cap. Container       | */ \
-                    "\x03\x00\x00\x00" /* | TT | ML (1 or 3 bytes)| */ 
+                    "\x03\x00\x00\x00" /* | TT | ML (1 or 3 bytes)| */
 
 #define NDEF_HEADER_LEN_SHORT      0x12 /* with 1 byte length */
 #define NDEF_HEADER_LEN_LONG       0x14 /* with 3 byte length */

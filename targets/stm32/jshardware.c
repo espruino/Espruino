@@ -3117,3 +3117,9 @@ unsigned int jshSetSystemClock(JsVar *options) {
 void jshReboot() {
   NVIC_SystemReset();
 }
+
+/* Adds the estimated power usage of the microcontroller in uA to the 'devices' object. The CPU should be called 'CPU' */
+void jsvGetProcessorPowerUsage(JsVar *devices) {
+  jsvObjectSetChildAndUnLock(devices, "CPU", jsvNewFromInteger(15000));
+  // we're not in deep sleep now (should we be able to figure out how long we were sleeping for?)
+}

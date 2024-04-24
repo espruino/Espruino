@@ -149,6 +149,9 @@ void jswInit();
 /** Tasks to run on Deinitialisation */
 void jswKill();
 
+/** When called with an Object, fields are added for each device that is used with estimated power usage in uA */
+void jswGetPowerUsage(JsVar *devices);
+
 /** Tasks to run when a character is received on a certain event channel. True if handled and shouldn't go to IRQ */
 bool jswOnCharEvent(IOEventFlags channel, char charData);
 

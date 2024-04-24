@@ -203,7 +203,8 @@ const uint16_t m_central_effective_mtu = GATT_MTU_SIZE_DEFAULT;
 volatile bool nfcEnabled = false;
 #endif
 
-uint16_t bleAdvertisingInterval = MSEC_TO_UNITS(BLUETOOTH_ADVERTISING_INTERVAL, UNIT_0_625_MS);           /**< The advertising interval (in units of 0.625 ms). */
+/// The advertising interval (in units of 0.625 ms)
+uint16_t bleAdvertisingInterval = MSEC_TO_UNITS(BLUETOOTH_ADVERTISING_INTERVAL, UNIT_0_625_MS);
 
 volatile BLEStatus bleStatus = 0;
 ble_uuid_t bleUUIDFilter;
@@ -237,6 +238,9 @@ bool bleHighInterval;
 // No interval adjustment - allow us to enter a slightly lower power connection state
 #define DEFAULT_PERIPH_MAX_CONN_INTERVAL 20
 #endif
+
+/// The interval for the current connection (periph/central may be mixed) (in units of 0.625 ms)
+uint16_t blePeriphConnectionInterval = DEFAULT_PERIPH_MAX_CONN_INTERVAL;
 
 static ble_gap_sec_params_t get_gap_sec_params();
 #if PEER_MANAGER_ENABLED
@@ -1118,16 +1122,25 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           // comes in between sd_ble_gap_disconnect being called and the DISCONNECT
           // event being received. The SD obviously does the checks for us, so lets
           // avoid crashing because of it!
+
       } break; // BLE_GAP_EVT_CONN_PARAM_UPDATE_REQUEST
 #endif
+      case BLE_GAP_EVT_CONN_PARAM_UPDATE:
+        // Connection interval changed
+        if (p_ble_evt->evt.gap_evt.conn_handle == m_peripheral_conn_handle)
+          blePeriphConnectionInterval = p_ble_evt->evt.gap_evt.params.conn_param_update.conn_params.max_conn_interval;
+        break;
 
       case BLE_GAP_EVT_CONNECTED:
         // set connection transmit power
 #if NRF_SD_BLE_API_VERSION > 5
         sd_ble_gap_tx_power_set(BLE_GAP_TX_POWER_ROLE_CONN, p_ble_evt->evt.gap_evt.conn_handle, m_tx_power);
 #endif
+
+
         if (p_ble_evt->evt.gap_evt.params.connected.role == BLE_GAP_ROLE_PERIPH) {
           m_peripheral_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+          blePeriphConnectionInterval = p_ble_evt->evt.gap_evt.params.conn_param_update.conn_params.max_conn_interval;
 #ifdef EXTENSIBLE_MTU
           m_peripheral_effective_mtu = GATT_MTU_SIZE_DEFAULT;
 #endif
@@ -3359,6 +3372,9 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
     // is this NRF.getSecurityStatus?
     bool isAdvertising = bleStatus & BLE_IS_ADVERTISING;
     jsvObjectSetChildAndUnLock(result, "advertising", jsvNewFromBool(isAdvertising));
+  }
+  if (conn_handle == m_peripheral_conn_handle) {
+    jsvObjectSetChildAndUnLock(result, "connectionInterval", jsvNewFromInteger(blePeriphConnectionInterval));
   }
   if (conn_handle == BLE_CONN_HANDLE_INVALID) {
     jsvObjectSetChildAndUnLock(result, "connected", jsvNewFromBool(false));
