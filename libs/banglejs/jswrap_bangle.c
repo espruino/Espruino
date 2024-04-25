@@ -6253,9 +6253,9 @@ void jswrap_banglejs_powerusage(JsVar *devices) {
 #endif
 #ifdef BANGLEJS_Q3
   if (jswrap_banglejs_isBacklightOn())
-    jsvObjectSetChildAndUnLock(devices, "LCD_backlight", jsvNewFromInteger(16000));
+    jsvObjectSetChildAndUnLock(devices, "LCD_backlight", jsvNewFromInteger(14000));
   if (!jswrap_banglejs_isLocked())
-    jsvObjectSetChildAndUnLock(devices, "LCD_touch", jsvNewFromInteger(2500));
+    jsvObjectSetChildAndUnLock(devices, "LCD_touch", jsvNewFromInteger(1600));
 #endif
   if (jswrap_banglejs_isHRMOn())
     jsvObjectSetChildAndUnLock(devices, "HRM", jsvNewFromInteger(700));
@@ -6265,5 +6265,4 @@ void jswrap_banglejs_powerusage(JsVar *devices) {
     jsvObjectSetChildAndUnLock(devices, "compass", jsvNewFromInteger(600));
   if (jswrap_banglejs_isBarometerOn())
     jsvObjectSetChildAndUnLock(devices, "baro", jsvNewFromInteger(200));
-  jsvObjectSetChildAndUnLock(devices, "polling", jsvNewFromInteger(15 * 1000 / pollInterval));
 }
