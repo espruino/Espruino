@@ -4588,5 +4588,9 @@ void jswrap_ble_powerusage(JsVar *devices) {
     jsvObjectSetChildAndUnLock(devices, "BLE_advertise", jsvNewFromInteger(12*perSec)); // ~12uA per advertisement
     // Could try and take advertising length into account?
   }
+  if (bleStatus & BLE_IS_SCANNING) {
+    jsvObjectSetChildAndUnLock(devices, "BLE_scan", jsvNewFromInteger(10000));
+    // Could try and take advertising length into account?
+  }
 #endif
 }
