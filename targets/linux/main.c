@@ -259,10 +259,12 @@ bool run_test_list(struct filelist *fl) {
   }
 
   filelist_foreach(fl, fn) {
-    if (run_test(fn))
-      passed++;
-    else {
-      filelist_add(&fails, fn);
+    if (!strstr(fn, "/manual/")) { // ignore anything in the 'manual' subfolder
+      if (run_test(fn))
+        passed++;
+      else {
+        filelist_add(&fails, fn);
+      }
     }
   }
 
