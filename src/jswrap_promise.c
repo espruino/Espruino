@@ -25,8 +25,8 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 
-#define JS_PROMISE_THEN_NAME JS_HIDDEN_CHAR_STR"thn"
-#define JS_PROMISE_CATCH_NAME JS_HIDDEN_CHAR_STR"cat"
+#define JS_PROMISE_THEN_NAME JS_HIDDEN_CHAR_STR"thn" ///< array of reactions for resolving
+#define JS_PROMISE_CATCH_NAME JS_HIDDEN_CHAR_STR"cat" ///< array of reactions for rejecting
 #define JS_PROMISE_REMAINING_NAME JS_HIDDEN_CHAR_STR"left"
 #define JS_PROMISE_RESULT_NAME JS_HIDDEN_CHAR_STR"res"
 #define JS_PROMISE_ISRESOLVED_NAME JS_HIDDEN_CHAR_STR"resolved"
@@ -49,10 +49,12 @@ enum JS_PROMISE_STATE_ENUM {
 This is the built-in class for ES6 Promises
 */
 
-void _jswrap_promise_resolve(JsVar *prombox, JsVar *data);
-void _jswrap_promise_reject(JsVar *prombox, JsVar *data);
+static void _jswrap_prombox_resolve(JsVar *prombox, JsVar *data);
+static void _jswrap_prombox_reject(JsVar *prombox, JsVar *data);
+static void _jswrap_prombox_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolving);
+static JsVar *jspromise_create_prombox(JsVar ** promise);
 
-bool _jswrap_promise_is_promise(JsVar *promise) {
+static bool _jswrap_promise_is_promise(JsVar *promise) {
   JsVar *constr = jspGetConstructor(promise);
   bool isPromise = constr && (void*)constr->varData.native.ptr==(void*)jswrap_promise_constructor;
   jsvUnLock(constr);
@@ -60,12 +62,7 @@ bool _jswrap_promise_is_promise(JsVar *promise) {
 }
 
 // A single reaction chain - this is recursive until a promise is returned or chain ends. data can be undefined/0
-void _jswrap_promise_reaction_call(JsVar *promise, JsVar *reaction, JsVar *data, JsVar *isThen) {
-  JsVar *exceptionName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR);
-  if (exceptionName) {
-    jsvUnLock(exceptionName);
-    return;
-  }
+static void _jswrap_promise_reaction_call(JsVar *promise, JsVar *reaction, JsVar *data, JsVar *isThen) {
   JsVar * nextPromBox = jsvObjectGetChildIfExists(reaction, "nextBox");
   JsVar * nextProm = jsvObjectGetChildIfExists(nextPromBox, JS_PROMISE_PROM_NAME);
   if (nextPromBox) {
@@ -76,8 +73,8 @@ void _jswrap_promise_reaction_call(JsVar *promise, JsVar *reaction, JsVar *data,
       if (callback) {
         JsExecFlags oldExecute = execInfo.execute;
         retVal = jspeFunctionCall(callback, 0, promise, false, 1, &data);
-        execInfo.execute = oldExecute;
-        JsVar *exception = jspGetException();
+        execInfo.execute = oldExecute; // if there were errors executing the function, get rid of them
+        JsVar *exception = jspGetException(); // if there was an exception, reject with it
         if (exception) {
           threw = true;
           jsvUnLock(retVal);
@@ -92,8 +89,7 @@ void _jswrap_promise_reaction_call(JsVar *promise, JsVar *reaction, JsVar *data,
         }
         retVal = data;
       }
-      if (threw) _jswrap_promise_reject(nextPromBox, retVal);
-      else _jswrap_promise_resolve(nextPromBox, retVal);
+      _jswrap_prombox_resolve_or_reject(nextPromBox, retVal, !threw); // resolve if threw=false
 
       if (callback) jsvUnLock(retVal);
 
@@ -103,8 +99,8 @@ void _jswrap_promise_reaction_call(JsVar *promise, JsVar *reaction, JsVar *data,
   }
 }
 // Value can be undefined/0
-void _jswrap_promise_queue_reaction(JsVar *promise, JsVar *reaction, JsVar *value, bool isThenCb) {
-  JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_reaction_call, 
+static void _jswrap_promise_queue_reaction(JsVar *promise, JsVar *reaction, JsVar *value, bool isThenCb) {
+  JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_reaction_call,
     JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS)|(JSWAT_JSVAR<<JSWAT_BITS*2)|(JSWAT_JSVAR<<JSWAT_BITS*3));
   if (fn) {
     jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, promise); // bind 'this'
@@ -114,12 +110,8 @@ void _jswrap_promise_queue_reaction(JsVar *promise, JsVar *reaction, JsVar *valu
     jsvUnLock2(fn, bIsThenCb);
   }
 }
-void _jswrap_promise_seal(JsVar *promise, JsVar *data,bool resolving) {
-  if (resolving) {
-    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_STATE_NAME, jsvNewFromInteger(JS_PROMISE_STATE_FULFILLED));
-  } else {
-    jsvObjectSetChildAndUnLock(promise, JS_PROMISE_STATE_NAME, jsvNewFromInteger(JS_PROMISE_STATE_REJECTED));
-  }
+static void _jswrap_promise_seal(JsVar *promise, JsVar *data,bool resolving) {
+  jsvObjectSetChildAndUnLock(promise, JS_PROMISE_STATE_NAME, jsvNewFromInteger(resolving ? JS_PROMISE_STATE_FULFILLED : JS_PROMISE_STATE_REJECTED));
 
   const char *eventName = resolving ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
   JsVar *reactions = jsvObjectGetChildIfExists(promise, eventName);
@@ -135,7 +127,7 @@ void _jswrap_promise_seal(JsVar *promise, JsVar *data,bool resolving) {
   } else {
     if (jsvIsArray(reactions)) {
       JsvObjectIterator it;
-      jsvObjectIteratorNew(&it, reactions);   
+      jsvObjectIteratorNew(&it, reactions);
       while (jsvObjectIteratorHasValue(&it)) {
         JsVar *reaction = jsvObjectIteratorGetValue(&it);
         _jswrap_promise_queue_reaction(promise,reaction,data,resolving);
@@ -143,21 +135,16 @@ void _jswrap_promise_seal(JsVar *promise, JsVar *data,bool resolving) {
         jsvObjectIteratorNext(&it);
       }
       jsvObjectIteratorFree(&it);
-    } else if (reactions) {
-      _jswrap_promise_queue_reaction(promise,reactions,data,resolving);
-    }
+    } else assert(!reactions);
     jsvUnLock(reactions);
   }
 }
 
-void _jswrap_promise_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolving) {
-  JsVar *isResolved = jsvObjectGetChildIfExists(prombox, JS_PROMISE_ISRESOLVED_NAME);
-  if (jsvGetBool(isResolved)){
-    jsvUnLock(isResolved);
+static void _jswrap_prombox_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolving) {
+  bool isResolved = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(prombox, JS_PROMISE_ISRESOLVED_NAME));
+  if (isResolved)
     return;
-  }
 
-  jsvUnLock(isResolved);
   jsvObjectSetChildAndUnLock(prombox, JS_PROMISE_ISRESOLVED_NAME, jsvNewFromBool(true));
   JsVar * promise = jsvObjectGetChildIfExists(prombox, JS_PROMISE_PROM_NAME);
   if (promise) {
@@ -177,33 +164,32 @@ void _jswrap_promise_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolvi
     bool isThenable = false;
     JsVar *then = jsvObjectGetChildIfExists(data,"then");
     if (jsvIsFunction(then)) isThenable = true;
-    
+
     if (!isThenable && !isProm) {
       _jswrap_promise_seal(promise, data, resolving);
-      jsvUnLock(promise);
-      jsvUnLock(then);
+      jsvUnLock2(promise, then);
       return;
     }
-    
-    JsVar *jsResolve = jsvNewNativeFunction((void (*)(void))_jswrap_promise_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
-    JsVar *jsReject = jsvNewNativeFunction((void (*)(void))_jswrap_promise_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+
+    JsVar *jsResolve = jsvNewNativeFunction((void (*)(void))_jswrap_prombox_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+    JsVar *jsReject = jsvNewNativeFunction((void (*)(void))_jswrap_prombox_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
 
     JsVar *prombox = jsvNewObject();
     if (prombox) {
       jsvObjectSetChild(prombox, JS_PROMISE_PROM_NAME, promise);
       jsvObjectSetChildAndUnLock(prombox,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false));
 
-      if (jsResolve) jsvObjectSetChild(jsResolve, JSPARSE_FUNCTION_THIS_NAME, prombox);
-      if (jsReject) jsvObjectSetChild(jsReject, JSPARSE_FUNCTION_THIS_NAME, prombox);
-      
+      jsvObjectSetChild(jsResolve, JSPARSE_FUNCTION_THIS_NAME, prombox);
+      jsvObjectSetChild(jsReject, JSPARSE_FUNCTION_THIS_NAME, prombox);
+
       if (isThenable) {
         JsVar *args[2] = {jsResolve,jsReject};
         JsExecFlags oldExecute = execInfo.execute;
         jsvUnLock(jspeFunctionCall(then, 0, data, false, 2, args));
-        execInfo.execute = oldExecute;
-        JsVar *exception = jspGetException();
+        execInfo.execute = oldExecute; // if there were errors executing the function, get rid of them
+        JsVar *exception = jspGetException(); // if there was an exception, reject with it
         if (exception) {
-          _jswrap_promise_reject(prombox, exception);
+          _jswrap_prombox_reject(prombox, exception);
           jsvUnLock(exception);
         }
       } else {
@@ -211,63 +197,63 @@ void _jswrap_promise_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolvi
       }
       jsvUnLock3(jsResolve,jsReject,prombox);
     }
-    jsvUnLock(promise);
-    jsvUnLock(then);
+    jsvUnLock2(promise, then);
   }
 }
 
-void _jswrap_promise_resolve(JsVar *prombox, JsVar *data) {
-  _jswrap_promise_resolve_or_reject(prombox, data, true);
+static void _jswrap_prombox_resolve(JsVar *prombox, JsVar *data) {
+  _jswrap_prombox_resolve_or_reject(prombox, data, true);
 }
 
-void _jswrap_promise_reject(JsVar *prombox, JsVar *data) {
-  _jswrap_promise_resolve_or_reject(prombox, data, false);
+static void _jswrap_prombox_reject(JsVar *prombox, JsVar *data) {
+  _jswrap_prombox_resolve_or_reject(prombox, data, false);
 }
 
-void _jswrap_promise_queueresolve(JsVar *prombox, JsVar *data) {
-  JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+static void _jswrap_prombox_queueresolve_or_reject(JsVar *prombox, JsVar *data, bool isResolve) {
+  JsVar *fn = jsvNewNativeFunction((void (*)(void))(isResolve ? _jswrap_prombox_resolve : _jswrap_prombox_reject), JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
   if (!fn) return;
   jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, prombox); // bind 'this'
   jsiQueueEvents(prombox, fn, &data, 1);
   jsvUnLock(fn);
 }
 
-void _jswrap_promise_queuereject(JsVar *prombox, JsVar *data) {
-  JsVar *fn = jsvNewNativeFunction((void (*)(void))_jswrap_promise_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
-  if (!fn) return;
-  jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, prombox); // bind 'this'
-  jsiQueueEvents(prombox, fn, &data, 1);
-  jsvUnLock(fn);
+static void _jswrap_prombox_queueresolve(JsVar *prombox, JsVar *data) {
+  _jswrap_prombox_queueresolve_or_reject(prombox, data, true);
+}
+
+static void _jswrap_prombox_queuereject(JsVar *prombox, JsVar *data) {
+  _jswrap_prombox_queueresolve_or_reject(prombox, data, false);
+}
+
+static void jspromise_resolve_or_reject(JsVar *promise, JsVar *data, bool isResolve) {
+  // give the promise a prombox - ensure resolve once only in c.
+  // allows us to accept a promise instead of a prombox.
+  JsVar *prombox = jsvNewObject();
+  if (!prombox) {
+    return;
+  }
+  jsvObjectSetChild(prombox, JS_PROMISE_PROM_NAME, promise);
+  jsvObjectSetChildAndUnLock(prombox,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false));
+  _jswrap_prombox_queueresolve_or_reject(prombox, data, isResolve);
+  jsvUnLock(prombox);
 }
 
 void jspromise_resolve(JsVar *promise, JsVar *data) {
-  // give the promise a prombox - ensure resolve once only in c.
-  // allows us to accept a promise instead of a prombox.
-  JsVar *prombox = jsvNewObject();
-  if (!prombox) {
-    return;
-  }
-  jsvObjectSetChild(prombox, JS_PROMISE_PROM_NAME, promise);
-  jsvObjectSetChildAndUnLock(prombox,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false));
-  _jswrap_promise_queueresolve(prombox, data);
-  jsvUnLock(prombox);
+  jspromise_resolve_or_reject(promise, data, true);
 }
 
 void jspromise_reject(JsVar *promise, JsVar *data) {
-  // give the promise a prombox - ensure resolve once only in c.
-  // allows us to accept a promise instead of a prombox.
-  JsVar *prombox = jsvNewObject();
-  if (!prombox) {
-    return;
-  }
-  jsvObjectSetChild(prombox, JS_PROMISE_PROM_NAME, promise);
-  jsvObjectSetChildAndUnLock(prombox,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false));
-  _jswrap_promise_queuereject(prombox, data);
-  jsvUnLock(prombox);
+  jspromise_resolve_or_reject(promise, data, false);
 }
 
-JsVar *jspromise_create_prombox(JsVar ** promise) {
-  JsVar *p = jspNewObject(0, "Promise");
+/// Create a new promise
+JsVar *jspromise_create() {
+  return jspNewObject(0, "Promise");
+}
+
+/// Create a promise and put it inside a promise box (which we return in the argument)
+static JsVar *jspromise_create_prombox(JsVar ** promise) {
+  JsVar *p = jspromise_create();
   if (!p) return 0;
   JsVar *box = jsvNewObject();
   if (!box) {
@@ -275,16 +261,11 @@ JsVar *jspromise_create_prombox(JsVar ** promise) {
     return 0;
   }
   jsvObjectSetChildAndUnLock(p, JS_PROMISE_STATE_NAME, jsvNewFromInteger(JS_PROMISE_STATE_PENDING));
-
   jsvObjectSetChildAndUnLock(box, JS_PROMISE_PROM_NAME, p);
   jsvObjectSetChildAndUnLock(box,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false));
 
   *promise = p;
   return box;
-}
-/// Create a new promise
-JsVar *jspromise_create() {
-  return jspNewObject(0, "Promise");
 }
 
 /*JSON{
@@ -312,24 +293,23 @@ JsVar *jswrap_promise_constructor(JsVar *executor) {
   if (!promBox) return 0;
   if (promise) {
     //this=prombox, data
-    JsVar *resolve = jsvNewNativeFunction((void (*)(void))_jswrap_promise_queueresolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
-    JsVar *reject = jsvNewNativeFunction((void (*)(void))_jswrap_promise_queuereject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+    JsVar *resolve = jsvNewNativeFunction((void (*)(void))_jswrap_prombox_queueresolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+    JsVar *reject = jsvNewNativeFunction((void (*)(void))_jswrap_prombox_queuereject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
 
     // 'this' == prombox.
-    if (resolve) jsvObjectSetChild(resolve, JSPARSE_FUNCTION_THIS_NAME, promBox);
-    if (reject) jsvObjectSetChild(reject, JSPARSE_FUNCTION_THIS_NAME, promBox);
-    
+    jsvObjectSetChild(resolve, JSPARSE_FUNCTION_THIS_NAME, promBox);
+    jsvObjectSetChild(reject, JSPARSE_FUNCTION_THIS_NAME, promBox);
+
     JsVar *args[2] = {resolve,reject};
     // call the executor
-    //emulates try
-    
+    // emulates try
     JsExecFlags oldExecute = execInfo.execute;
     jsvUnLock(jspeFunctionCall(executor, 0, promise, false, 2, args));
-    execInfo.execute = oldExecute;
-
+    execInfo.execute = oldExecute; // if there were errors executing the function, get rid of them
+    // If we got an exception while executing, queue a rejection
     JsVar *exception = jspGetException();
     if (exception) {
-      _jswrap_promise_queuereject(promBox, exception);
+      _jswrap_prombox_queuereject(promBox, exception);
       jsvUnLock(exception);
     }
     jsvUnLock2(resolve,reject);
@@ -350,7 +330,7 @@ void jswrap_promise_all_resolve(JsVar *prombox, JsVar *index, JsVar *data) {
       remaining--;
       jsvObjectSetChildAndUnLock(promise, JS_PROMISE_REMAINING_NAME, jsvNewFromInteger(remaining));
       if (remaining==0) {
-        _jswrap_promise_queueresolve(prombox, arr);
+        _jswrap_prombox_queueresolve(prombox, arr);
       }
       jsvUnLock(arr);
     }
@@ -366,7 +346,7 @@ void jswrap_promise_all_reject(JsVar *prombox, JsVar *data) {
       // if not rejected before
       jsvUnLock(arr);
       jsvObjectRemoveChild(promise, JS_PROMISE_RESULT_NAME);
-      _jswrap_promise_queuereject(prombox, data);
+      _jswrap_prombox_queuereject(prombox, data);
     }
     jsvUnLock(promise);
   }
@@ -395,7 +375,7 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   JsVar * promise;
   JsVar *promBox = jspromise_create_prombox(&promise);
   if (!promBox) return 0;
-  if (promise) {  
+  if (promise) {
     JsVar *reject = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
     if (!reject) return jsvLockAgainSafe(promise); // out of memory error
     jsvObjectSetChild(reject, JSPARSE_FUNCTION_THIS_NAME, promBox); // bind 'this'
@@ -412,9 +392,8 @@ JsVar *jswrap_promise_all(JsVar *arr) {
         // bind the index variable
         JsVar *indexVar = jsvNewFromInteger(promiseIndex);
         jsvAddFunctionParameter(resolve, 0, indexVar);
-        jsvUnLock(indexVar);
         jsvObjectSetChild(resolve, JSPARSE_FUNCTION_THIS_NAME, promBox); // bind 'this'
-        jsvUnLock2(jswrap_promise_then(p, resolve, reject), resolve);
+        jsvUnLock3(jswrap_promise_then(p, resolve, reject), resolve, indexVar);
       } else {
         jsvSetArrayItem(promiseResults, promiseIndex, p);
         promisesComplete++;
@@ -426,8 +405,7 @@ JsVar *jswrap_promise_all(JsVar *arr) {
     jsvObjectIteratorFree(&it);
     if (promisesComplete==promiseIndex) { // already all sorted - return a resolved promise
       promise = jswrap_promise_resolve(promiseResults);
-      jsvUnLock(promise);
-      jsvUnLock(promiseResults);
+      jsvUnLock2(promise, promiseResults);
     } else { // return our new promise that will resolve when everything is done
       jsvObjectSetChildAndUnLock(promise, JS_PROMISE_REMAINING_NAME, jsvNewFromInteger(promiseIndex-promisesComplete));
       jsvObjectSetChildAndUnLock(promise, JS_PROMISE_RESULT_NAME, promiseResults);
@@ -469,7 +447,7 @@ JsVar *jswrap_promise_resolve(JsVar *data) {
   JsVar *promBox = jspromise_create_prombox(&promise);
   if (!promBox) return 0;
   if (promise) {
-    _jswrap_promise_queueresolve(promBox,data);
+    _jswrap_prombox_queueresolve(promBox, data);
   }
   jsvUnLock(promBox);
   return jsvLockAgainSafe(promise);
@@ -497,7 +475,7 @@ JsVar *jswrap_promise_reject(JsVar *data) {
   JsVar *promBox = jspromise_create_prombox(&promise);
   if (!promBox) return 0;
   if (promise) {
-    _jswrap_promise_queuereject(promBox,data);
+    _jswrap_prombox_queuereject(promBox,data);
   }
   jsvUnLock(promBox);
   return jsvLockAgainSafe(promise);
@@ -521,19 +499,13 @@ void _jswrap_promise_add_reaction(JsVar *parent, JsVar * nextPromBox, JsVar *cal
   if (!reaction) return;
   const char *name = resolve ? JS_PROMISE_THEN_NAME : JS_PROMISE_CATCH_NAME;
   JsVar *c = jsvObjectGetChildIfExists(parent, name);
-  if (!c) {
-    jsvObjectSetChild(parent, name, reaction);
+  if (jsvIsArray(c)) {
+    jsvArrayPush(c, reaction);
   } else {
-    if (jsvIsArray(c)) {
-      jsvArrayPush(c, reaction);
-    } else {
-      JsVar *fns[2] = {c,reaction};
-      JsVar *arr = jsvNewArray(fns, 2);
-      jsvObjectSetChildAndUnLock(parent, name, arr);
-    }
     jsvUnLock(c);
+    jsvObjectSetChildAndUnLock(parent, name, jsvNewArray(&reaction, 1));
   }
-  jsvUnLock(reaction);
+  jsvUnLock2(c,reaction);
 }
 /*JSON{
   "type" : "method",
@@ -561,12 +533,11 @@ JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected)
     if (state) {
 
       int s = jsvGetIntegerAndUnLock(state);
-      if (s == JS_PROMISE_STATE_PENDING) { 
+      if (s == JS_PROMISE_STATE_PENDING) {
 
         // Create reaction and attach to promise.
         _jswrap_promise_add_reaction(parent, nextPromBox, onFulfilled, true);
         _jswrap_promise_add_reaction(parent, nextPromBox, onRejected, false);
-
 
       } else {
 
@@ -578,11 +549,10 @@ JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected)
           // Already resolved, go straight to firing reaction.
           _jswrap_promise_queue_reaction(parent,reaction,value,false);
 
-          jsvUnLock(value);
-          jsvUnLock(reaction);
+          jsvUnLock2(value, reaction);
         }
       }
-    } //state 
+    } //state
 
   }
   jsvUnLock(nextPromBox);
