@@ -1101,12 +1101,12 @@ void jshSetSystemTime(JsSysTime time) {
 
 /// Convert a time in Milliseconds to one in ticks.
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-  return (JsSysTime) ((ms * SYSCLK_FREQ) / 1000);
+  return (JsSysTime) (ms * (SYSCLK_FREQ / 1000));
 }
 
 /// Convert ticks to a time in Milliseconds.
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-  return (time * 1000.0) / SYSCLK_FREQ;
+  return time * (1000.0 / SYSCLK_FREQ);
 }
 
 void jshInterruptOff() {
