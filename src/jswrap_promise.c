@@ -26,15 +26,18 @@
 #include "jswrapper.h"
 
 // field names
-#define JS_PROMISE_STATE_NAME JS_HIDDEN_CHAR_STR"state" ///< Promise: the state of the promise, one of JsPromiseStates(below)
+#define JS_PROMISE_STATE_NAME "state" ///< Promise: the state of the promise, one of JsPromiseStates(below)
 #define JS_PROMISE_THEN_NAME JS_HIDDEN_CHAR_STR"thn" ///< Promise: array of reactions for resolving
 #define JS_PROMISE_CATCH_NAME JS_HIDDEN_CHAR_STR"cat" ///< Promise: array of reactions for rejecting
-#define JS_PROMISE_REMAINING_NAME JS_HIDDEN_CHAR_STR"left" ///< Promise: int used in Promise.all to wait for as many promises are are needed
+#define JS_PROMISE_REMAINING_NAME JS_HIDDEN_CHAR_STR"n" ///< Promise: int used in Promise.all to wait for as many promises are are needed
 #define JS_PROMISE_RESULT_NAME JS_HIDDEN_CHAR_STR"res" ///< Promise: array used in Promise.all for results
-#define JS_PROMISE_VALUE_NAME JS_HIDDEN_CHAR_STR"value" ///< Promise: the value of this promise when it's resolved
+#define JS_PROMISE_VALUE_NAME JS_HIDDEN_CHAR_STR"val" ///< Promise: the value of this promise when it's resolved
 
-#define JS_PROMISE_ISRESOLVED_NAME JS_HIDDEN_CHAR_STR"resolved" // Prombox: boolean set when the Promise is resolved
-#define JS_PROMISE_PROM_NAME JS_HIDDEN_CHAR_STR"prom" ///< Prombox: link to promise
+// Prombox/reaction aren't user visible anyway so don't bother with JS_HIDDEN_CHAR_STR to hide them
+#define JS_PROMISE_ISRESOLVED_NAME "resl" // Prombox: boolean set when the Promise is resolved
+#define JS_PROMISE_PROM_NAME "prom" ///< Prombox: link to promise
+#define JS_PROMISE_NEXTBOX_NAME "next" ///< Reaction: link to next PromBox
+#define JS_PROMISE_CALLBACK_NAME "cb" ///< Reaction: link to callback function
 
 
 
@@ -74,13 +77,13 @@ static JsVar *_jswrap_promise_native_with_prombox(void (*fnPtr)(JsVar*,JsVar*), 
 
 // A single reaction chain - this is recursive until a promise is returned or chain ends. data can be undefined/0
 static void _jswrap_promise_reaction_call(JsVar *promise, JsVar *reaction, JsVar *data, JsVar *isThen) {
-  JsVar * nextPromBox = jsvObjectGetChildIfExists(reaction, "nextBox");
+  JsVar * nextPromBox = jsvObjectGetChildIfExists(reaction, JS_PROMISE_NEXTBOX_NAME);
   JsVar * nextProm = jsvObjectGetChildIfExists(nextPromBox, JS_PROMISE_PROM_NAME);
   if (nextPromBox) {
     if (nextProm) {
       bool threw = false;
       JsVar * retVal;
-      JsVar * callback = jsvObjectGetChildIfExists(reaction, "cb");
+      JsVar * callback = jsvObjectGetChildIfExists(reaction, JS_PROMISE_CALLBACK_NAME);
       if (callback) {
         JsExecFlags oldExecute = execInfo.execute;
         retVal = jspeFunctionCall(callback, 0, promise, false, 1, &data);
@@ -292,7 +295,7 @@ constructor even returns) and
  */
 JsVar *jswrap_promise_constructor(JsVar *executor) {
   if (!executor) {
-    jsExceptionHere(JSET_ERROR,"Executor function required in promise constructor");
+    jsExceptionHere(JSET_ERROR,"Function required in promise constructor");
     return 0;
   }
   JsVar * promise;
@@ -490,8 +493,8 @@ Reactions
 JsVar *_jswrap_promise_new_reaction(JsVar *nextPromBox, JsVar *callback) {
   JsVar *reaction = jsvNewObject();
   if (!reaction) return 0;
-  jsvObjectSetChild(reaction, "cb", callback);
-  jsvObjectSetChild(reaction, "nextBox", nextPromBox);
+  jsvObjectSetChild(reaction, JS_PROMISE_CALLBACK_NAME, callback);
+  jsvObjectSetChild(reaction, JS_PROMISE_NEXTBOX_NAME, nextPromBox);
   return reaction;
 }
 
