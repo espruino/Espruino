@@ -430,7 +430,7 @@ JsVar *jswrap_promise_all(JsVar *arr) {
     ["promises","JsVar","Data to pass to the `.then` handler"]
   ],
   "return" : ["JsVar","A new Promise"],
-  "typescript": "resolve<T extends any>(promises: T): Promise<T>;"
+  "typescript": "resolve<T extends any>(promises?: T): Promise<T>;"
 }
 Return a new promise that is already resolved (at idle it'll call `.then`)
 */
