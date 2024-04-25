@@ -58,6 +58,7 @@
             STM32: (Original/Pico/WiFi) if USB connected but PC not receiving data, throw away USB data rather than blocking (fix #2446)
             Move commonly used sequences of function calls into functions (eg jsvRemoveChild,jsvUnLock -> jsvRemoveChildAndUnLock) - saves ~200b
             Add E.getPowerUsage() to get estimated power usage of a device based on what internal hardware is powered on and CPU use
+            Use shorter Puck.selfTest messages to save a bit of flash storage space
 
      2v20 : Ensure String.charCodeAt returns NaN for out of bounds chars
             Bangle.js2: When rendering overlays, *do not* use the current FG/BG color for 1 bit overlays

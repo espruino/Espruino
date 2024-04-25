@@ -1215,7 +1215,7 @@ void jswrap_puck_IR(JsVar *data, Pin cathode, Pin anode) {
     return;
   }
   if (jshIsPinValid(anode) && !jshIsPinValid(cathode)) {
-    jsExceptionHere(JSET_TYPEERROR, "Invalid pin combination");
+    jsExceptionHere(JSET_TYPEERROR, "Invalid pin");
     return;
   }
 
@@ -1297,7 +1297,7 @@ D11(rx).
 */
 int jswrap_puck_capSense(Pin tx, Pin rx) {
   if (!PUCKJS_HAS_CAPSENSE) {
-    jswrap_puck_notAvailableException("Capacitive sense");
+    jswrap_puck_notAvailableException("Capsense");
     return 0;
   }
   if (jshIsPinValid(tx) && jshIsPinValid(rx)) {
@@ -1435,6 +1435,14 @@ If the self test fails, it'll set the Puck.js Bluetooth advertising name to
 
 */
 
+JsVarFloat _jswrap_puck_selfTest_led(Pin pin) {
+  jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLUP);
+  nrf_delay_ms(1);
+  JsVarFloat v = jshPinAnalog(LED1_PININDEX);
+  jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+  return v;
+}
+
 bool _jswrap_puck_selfTest(bool advertisePassOrFail) {
   unsigned int timeout, i;
   JsVarFloat v;
@@ -1451,7 +1459,7 @@ bool _jswrap_puck_selfTest(bool advertisePassOrFail) {
   while (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE && timeout--)
     nrf_delay_ms(1);
   if (jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE) {
-    jsiConsolePrintf("Timeout waiting for button to be released.\n");
+    jsiConsolePrintf("Timeout waiting for button\n");
     if (!err[0]) strcpy(err,"BTN");
     ok = false;
   }
@@ -1462,34 +1470,25 @@ bool _jswrap_puck_selfTest(bool advertisePassOrFail) {
   nrf_delay_ms(500);
 
 
-  jshPinSetState(LED1_PININDEX, JSHPINSTATE_GPIO_IN_PULLUP);
-  nrf_delay_ms(1);
-  v = jshPinAnalog(LED1_PININDEX);
-  jshPinSetState(LED1_PININDEX, JSHPINSTATE_GPIO_IN);
+  v = _jswrap_puck_selfTest_led(LED1_PININDEX);
   if (v<0.2 || v>0.65) {
     if (!err[0]) strcpy(err,"LD1");
-    jsiConsolePrintf("LED1 pullup voltage out of range (%f) - disconnected?\n", v);
+    jsiConsolePrintf("LED1 PU (%fv)\n", v);
     ok = false;
   }
 
-  jshPinSetState(LED2_PININDEX, JSHPINSTATE_GPIO_IN_PULLUP);
-  nrf_delay_ms(1);
-  v = jshPinAnalog(LED2_PININDEX);
-  jshPinSetState(LED2_PININDEX, JSHPINSTATE_GPIO_IN);
+  v = _jswrap_puck_selfTest_led(LED2_PININDEX);
   if (v<0.55 || v>0.85) {
     if (!err[0]) strcpy(err,"LD2");
-    jsiConsolePrintf("LED2 pullup voltage out of range (%f) - disconnected?\n", v);
+    jsiConsolePrintf("LED2 PU (%fv)\n", v);
     ok = false;
   }
 
   if (PUCKJS_HAS_LED3) {
-    jshPinSetState(LED3_PININDEX, JSHPINSTATE_GPIO_IN_PULLUP);
-    nrf_delay_ms(1);
-    v = jshPinAnalog(LED3_PININDEX);
-    jshPinSetState(LED3_PININDEX, JSHPINSTATE_GPIO_IN);
+    v = _jswrap_puck_selfTest_led(LED3_PININDEX);
     if (v<0.55 || v>0.90) {
       if (!err[0]) strcpy(err,"LD3");
-      jsiConsolePrintf("LED3 pullup voltage out of range (%f) - disconnected?\n", v);
+      jsiConsolePrintf("LED3 PU (%fv)\n", v);
       ok = false;
     }
   }
@@ -1501,7 +1500,7 @@ bool _jswrap_puck_selfTest(bool advertisePassOrFail) {
     nrf_delay_ms(1);
     if (jshPinGetValue(IR_ANODE_PIN)) {
       if (!err[0]) strcpy(err,"IRs");
-      jsiConsolePrintf("IR LED wrong way around/shorted?\n");
+      jsiConsolePrintf("IR anode short?\n");
       ok = false;
     }
 
@@ -1547,7 +1546,7 @@ bool _jswrap_puck_selfTest(bool advertisePassOrFail) {
     mag_enabled = false;
     if (mag_reading[0]==-1 && mag_reading[1]==-1 && mag_reading[2]==-1) {
       if (!err[0]) strcpy(err,"MAG");
-      jsiConsolePrintf("Magnetometer not working?\n");
+      jsiConsolePrintf("Mag not working?\n");
       ok = false;
     }
   }
@@ -1561,14 +1560,14 @@ bool _jswrap_puck_selfTest(bool advertisePassOrFail) {
     accel_off();
     if (buf[0]!=106) {
       if (!err[0]) strcpy(err,"ACC");
-      jsiConsolePrintf("Accelerometer WHOAMI failed\n");
+      jsiConsolePrintf("Acc WHOAMI fail\n");
       ok = false;
     }
 
     JsVarFloat t = jswrap_puck_getTemperature();
     if (t<0 || t>40) {
       if (!err[0]) strcpy(err,"TMP");
-      jsiConsolePrintf("Unexpected temperature\n");
+      jsiConsolePrintf("Unexpected temp %f\n", t);
       ok = false;
     }
 
@@ -1581,14 +1580,14 @@ bool _jswrap_puck_selfTest(bool advertisePassOrFail) {
     nrf_delay_ms(1);
     if (!jshPinGetValue(CAPSENSE_RX_PIN)) {
       if (!err[0]) strcpy(err,"CPu");
-      jsiConsolePrintf("Capsense resistor disconnected? (pullup)\n");
+      jsiConsolePrintf("Capsense disconnected? (PU)\n");
       ok = false;
     }
     jshPinSetValue(CAPSENSE_TX_PIN, 0);
     nrf_delay_ms(1);
     if (jshPinGetValue(CAPSENSE_RX_PIN)) {
       if (!err[0]) strcpy(err,"CPd");
-      jsiConsolePrintf("Capsense resistor disconnected? (pulldown)\n");
+      jsiConsolePrintf("Capsense disconnected? (PD)\n");
       ok = false;
     }
     jshPinSetState(CAPSENSE_TX_PIN, JSHPINSTATE_GPIO_IN);
@@ -1843,7 +1842,7 @@ bool jswrap_puck_idle() {
 }*/
 void jswrap_puck_powerusage(JsVar *devices) {
   if (mag_enabled)
-    jsvObjectSetChildAndUnLock(devices, "magnetometer", jsvNewFromInteger(mag_power));
+    jsvObjectSetChildAndUnLock(devices, "mag", jsvNewFromInteger(mag_power));
   if (accel_enabled)
-    jsvObjectSetChildAndUnLock(devices, "accelerometer", jsvNewFromInteger(accel_power));
+    jsvObjectSetChildAndUnLock(devices, "accel", jsvNewFromInteger(accel_power));
 }
