@@ -25,20 +25,25 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 
-#define JS_PROMISE_THEN_NAME JS_HIDDEN_CHAR_STR"thn" ///< array of reactions for resolving
-#define JS_PROMISE_CATCH_NAME JS_HIDDEN_CHAR_STR"cat" ///< array of reactions for rejecting
-#define JS_PROMISE_REMAINING_NAME JS_HIDDEN_CHAR_STR"left"
-#define JS_PROMISE_RESULT_NAME JS_HIDDEN_CHAR_STR"res"
-#define JS_PROMISE_ISRESOLVED_NAME JS_HIDDEN_CHAR_STR"resolved"
-#define JS_PROMISE_PROM_NAME JS_HIDDEN_CHAR_STR"prom"
-#define JS_PROMISE_VALUE_NAME JS_HIDDEN_CHAR_STR"value"
-#define JS_PROMISE_STATE_NAME JS_HIDDEN_CHAR_STR"state"
+// field names
+#define JS_PROMISE_STATE_NAME JS_HIDDEN_CHAR_STR"state" ///< Promise: the state of the promise, one of JsPromiseStates(below)
+#define JS_PROMISE_THEN_NAME JS_HIDDEN_CHAR_STR"thn" ///< Promise: array of reactions for resolving
+#define JS_PROMISE_CATCH_NAME JS_HIDDEN_CHAR_STR"cat" ///< Promise: array of reactions for rejecting
+#define JS_PROMISE_REMAINING_NAME JS_HIDDEN_CHAR_STR"left" ///< Promise: int used in Promise.all to wait for as many promises are are needed
+#define JS_PROMISE_RESULT_NAME JS_HIDDEN_CHAR_STR"res" ///< Promise: array used in Promise.all for results
+#define JS_PROMISE_VALUE_NAME JS_HIDDEN_CHAR_STR"value" ///< Promise: the value of this promise when it's resolved
 
-enum JS_PROMISE_STATE_ENUM {
+#define JS_PROMISE_ISRESOLVED_NAME JS_HIDDEN_CHAR_STR"resolved" // Prombox: boolean set when the Promise is resolved
+#define JS_PROMISE_PROM_NAME JS_HIDDEN_CHAR_STR"prom" ///< Prombox: link to promise
+
+
+
+/// Used in JS_PROMISE_STATE_NAME
+typedef enum {
     JS_PROMISE_STATE_PENDING,
     JS_PROMISE_STATE_REJECTED,
     JS_PROMISE_STATE_FULFILLED
-};
+} JsPromiseStates;
 
 /*JSON{
   "type" : "class",
@@ -59,6 +64,12 @@ static bool _jswrap_promise_is_promise(JsVar *promise) {
   bool isPromise = constr && (void*)constr->varData.native.ptr==(void*)jswrap_promise_constructor;
   jsvUnLock(constr);
   return isPromise;
+}
+
+static JsVar *_jswrap_promise_native_with_prombox(void (*fnPtr)(JsVar*,JsVar*), JsVar *prombox) {
+  JsVar *fn = jsvNewNativeFunction((void (*)(void))fnPtr, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+  jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, prombox);
+  return fn;
 }
 
 // A single reaction chain - this is recursive until a promise is returned or chain ends. data can be undefined/0
@@ -92,7 +103,6 @@ static void _jswrap_promise_reaction_call(JsVar *promise, JsVar *reaction, JsVar
       _jswrap_prombox_resolve_or_reject(nextPromBox, retVal, !threw); // resolve if threw=false
 
       if (callback) jsvUnLock(retVal);
-
       jsvUnLock(nextProm);
     }
     jsvUnLock(nextPromBox);
@@ -141,7 +151,7 @@ static void _jswrap_promise_seal(JsVar *promise, JsVar *data,bool resolving) {
 }
 
 static void _jswrap_prombox_resolve_or_reject(JsVar *prombox, JsVar *data, bool resolving) {
-  bool isResolved = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(prombox, JS_PROMISE_ISRESOLVED_NAME));
+  bool isResolved = jsvObjectGetBoolChild(prombox, JS_PROMISE_ISRESOLVED_NAME);
   if (isResolved)
     return;
 
@@ -171,16 +181,12 @@ static void _jswrap_prombox_resolve_or_reject(JsVar *prombox, JsVar *data, bool 
       return;
     }
 
-    JsVar *jsResolve = jsvNewNativeFunction((void (*)(void))_jswrap_prombox_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
-    JsVar *jsReject = jsvNewNativeFunction((void (*)(void))_jswrap_prombox_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
-
     JsVar *prombox = jsvNewObject();
+    JsVar *jsResolve = _jswrap_promise_native_with_prombox(_jswrap_prombox_resolve, prombox);
+    JsVar *jsReject = _jswrap_promise_native_with_prombox(_jswrap_prombox_reject, prombox);
     if (prombox) {
       jsvObjectSetChild(prombox, JS_PROMISE_PROM_NAME, promise);
       jsvObjectSetChildAndUnLock(prombox,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false));
-
-      jsvObjectSetChild(jsResolve, JSPARSE_FUNCTION_THIS_NAME, prombox);
-      jsvObjectSetChild(jsReject, JSPARSE_FUNCTION_THIS_NAME, prombox);
 
       if (isThenable) {
         JsVar *args[2] = {jsResolve,jsReject};
@@ -209,10 +215,10 @@ static void _jswrap_prombox_reject(JsVar *prombox, JsVar *data) {
   _jswrap_prombox_resolve_or_reject(prombox, data, false);
 }
 
+
 static void _jswrap_prombox_queueresolve_or_reject(JsVar *prombox, JsVar *data, bool isResolve) {
-  JsVar *fn = jsvNewNativeFunction((void (*)(void))(isResolve ? _jswrap_prombox_resolve : _jswrap_prombox_reject), JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+  JsVar *fn = _jswrap_promise_native_with_prombox(isResolve ? _jswrap_prombox_resolve : _jswrap_prombox_reject, prombox);
   if (!fn) return;
-  jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, prombox); // bind 'this'
   jsiQueueEvents(prombox, fn, &data, 1);
   jsvUnLock(fn);
 }
@@ -225,6 +231,7 @@ static void _jswrap_prombox_queuereject(JsVar *prombox, JsVar *data) {
   _jswrap_prombox_queueresolve_or_reject(prombox, data, false);
 }
 
+
 static void jspromise_resolve_or_reject(JsVar *promise, JsVar *data, bool isResolve) {
   // give the promise a prombox - ensure resolve once only in c.
   // allows us to accept a promise instead of a prombox.
@@ -233,7 +240,7 @@ static void jspromise_resolve_or_reject(JsVar *promise, JsVar *data, bool isReso
     return;
   }
   jsvObjectSetChild(prombox, JS_PROMISE_PROM_NAME, promise);
-  jsvObjectSetChildAndUnLock(prombox,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false));
+  //jsvObjectSetChildAndUnLock(prombox,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false)); // not setting will still; return false
   _jswrap_prombox_queueresolve_or_reject(prombox, data, isResolve);
   jsvUnLock(prombox);
 }
@@ -262,7 +269,7 @@ static JsVar *jspromise_create_prombox(JsVar ** promise) {
   }
   jsvObjectSetChildAndUnLock(p, JS_PROMISE_STATE_NAME, jsvNewFromInteger(JS_PROMISE_STATE_PENDING));
   jsvObjectSetChildAndUnLock(box, JS_PROMISE_PROM_NAME, p);
-  jsvObjectSetChildAndUnLock(box,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false));
+  //jsvObjectSetChildAndUnLock(box,JS_PROMISE_ISRESOLVED_NAME,jsvNewFromBool(false)); // not setting will still; return false
 
   *promise = p;
   return box;
@@ -293,12 +300,8 @@ JsVar *jswrap_promise_constructor(JsVar *executor) {
   if (!promBox) return 0;
   if (promise) {
     //this=prombox, data
-    JsVar *resolve = jsvNewNativeFunction((void (*)(void))_jswrap_prombox_queueresolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
-    JsVar *reject = jsvNewNativeFunction((void (*)(void))_jswrap_prombox_queuereject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
-
-    // 'this' == prombox.
-    jsvObjectSetChild(resolve, JSPARSE_FUNCTION_THIS_NAME, promBox);
-    jsvObjectSetChild(reject, JSPARSE_FUNCTION_THIS_NAME, promBox);
+    JsVar *resolve = _jswrap_promise_native_with_prombox(_jswrap_prombox_queueresolve, promBox);
+    JsVar *reject = _jswrap_promise_native_with_prombox(_jswrap_prombox_queuereject, promBox);
 
     JsVar *args[2] = {resolve,reject};
     // call the executor
@@ -318,10 +321,10 @@ JsVar *jswrap_promise_constructor(JsVar *executor) {
   return jsvLockAgain(promise);
 }
 
-void jswrap_promise_all_resolve(JsVar *prombox, JsVar *index, JsVar *data) {
+static void _jswrap_prombox_all_resolve(JsVar *prombox, JsVar *index, JsVar *data) {
   JsVar * promise = jsvObjectGetChildIfExists(prombox, JS_PROMISE_PROM_NAME);
   if (promise) {
-    JsVarInt remaining = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(promise, JS_PROMISE_REMAINING_NAME));
+    JsVarInt remaining = jsvObjectGetIntegerChild(promise, JS_PROMISE_REMAINING_NAME);
     JsVar *arr = jsvObjectGetChildIfExists(promise, JS_PROMISE_RESULT_NAME);
     if (arr) {
       // set the result
@@ -338,7 +341,7 @@ void jswrap_promise_all_resolve(JsVar *prombox, JsVar *index, JsVar *data) {
   }
 }
 
-void jswrap_promise_all_reject(JsVar *prombox, JsVar *data) {
+static void _jswrap_prombox_all_reject(JsVar *prombox, JsVar *data) {
   JsVar * promise = jsvObjectGetChildIfExists(prombox, JS_PROMISE_PROM_NAME);
   if (promise) {
     JsVar *arr = jsvObjectGetChildIfExists(promise, JS_PROMISE_RESULT_NAME);
@@ -376,9 +379,8 @@ JsVar *jswrap_promise_all(JsVar *arr) {
   JsVar *promBox = jspromise_create_prombox(&promise);
   if (!promBox) return 0;
   if (promise) {
-    JsVar *reject = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_reject, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS));
+    JsVar *reject = _jswrap_promise_native_with_prombox(_jswrap_prombox_all_reject, promBox);
     if (!reject) return jsvLockAgainSafe(promise); // out of memory error
-    jsvObjectSetChild(reject, JSPARSE_FUNCTION_THIS_NAME, promBox); // bind 'this'
     JsVar *promiseResults = jsvNewEmptyArray();
     int promiseIndex = 0;
     int promisesComplete = 0;
@@ -387,7 +389,7 @@ JsVar *jswrap_promise_all(JsVar *arr) {
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *p = jsvObjectIteratorGetValue(&it);
       if (_jswrap_promise_is_promise(p)) {
-        JsVar *resolve = jsvNewNativeFunction((void (*)(void))jswrap_promise_all_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS)|(JSWAT_JSVAR<<(JSWAT_BITS*2)));
+        JsVar *resolve = jsvNewNativeFunction((void (*)(void))_jswrap_prombox_all_resolve, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_JSVAR<<JSWAT_BITS)|(JSWAT_JSVAR<<(JSWAT_BITS*2)));
         // NOTE: we use (this,JsVar,JsVar) rather than an int to avoid #2377 on emscripten, since that argspec is already used for forEach/otehrs
         // bind the index variable
         JsVar *indexVar = jsvNewFromInteger(promiseIndex);
@@ -529,31 +531,23 @@ JsVar *jswrap_promise_then(JsVar *parent, JsVar *onFulfilled, JsVar *onRejected)
 
     if (!jsvIsFunction(onFulfilled)) onFulfilled = 0;
     if (!jsvIsFunction(onRejected)) onRejected = 0;
-    JsVar *state = jsvObjectGetChildIfExists(parent, JS_PROMISE_STATE_NAME);
-    if (state) {
+    int s = jsvObjectGetIntegerChild(parent, JS_PROMISE_STATE_NAME);
+    if (s == JS_PROMISE_STATE_PENDING) {
+      // Create reaction and attach to promise.
+      _jswrap_promise_add_reaction(parent, nextPromBox, onFulfilled, true);
+      _jswrap_promise_add_reaction(parent, nextPromBox, onRejected, false);
+    } else {
+      // case: Already resolved, fire Reaction.
+      JsVar *resolveNowCallback = s == JS_PROMISE_STATE_FULFILLED ? onFulfilled : onRejected;
+      JsVar *reaction = _jswrap_promise_new_reaction(nextPromBox,resolveNowCallback);
+      if (reaction) {
+        JsVar *value = jsvObjectGetChildIfExists(parent, JS_PROMISE_VALUE_NAME);
+        // Already resolved, go straight to firing reaction.
+        _jswrap_promise_queue_reaction(parent,reaction,value,false);
 
-      int s = jsvGetIntegerAndUnLock(state);
-      if (s == JS_PROMISE_STATE_PENDING) {
-
-        // Create reaction and attach to promise.
-        _jswrap_promise_add_reaction(parent, nextPromBox, onFulfilled, true);
-        _jswrap_promise_add_reaction(parent, nextPromBox, onRejected, false);
-
-      } else {
-
-        // case: Already resolved, fire Reaction.
-        JsVar *resolveNowCallback = s == JS_PROMISE_STATE_FULFILLED ? onFulfilled : onRejected;
-        JsVar *reaction = _jswrap_promise_new_reaction(nextPromBox,resolveNowCallback);
-        if (reaction) {
-          JsVar *value = jsvObjectGetChildIfExists(parent, JS_PROMISE_VALUE_NAME);
-          // Already resolved, go straight to firing reaction.
-          _jswrap_promise_queue_reaction(parent,reaction,value,false);
-
-          jsvUnLock2(value, reaction);
-        }
+        jsvUnLock2(value, reaction);
       }
-    } //state
-
+    }
   }
   jsvUnLock(nextPromBox);
   return jsvLockAgainSafe(nextProm);
