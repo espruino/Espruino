@@ -1,4 +1,4 @@
-/*
+#/*
  * This file is designed to support FREERTOS functions in Espruino,
  * a JavaScript interpreter for Microcontrollers designed by Gordon Williams
  *
@@ -15,17 +15,23 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <stdio.h>
+#include <string.h>
+
 #include "jsinteractive.h"
 #include "jstimer.h"
- 
+
+#if ESP_IDF_VERSION_5
+#include "soc/uart_reg.h"
+#include "esp_private/esp_clk.h"
+#endif 
 #include "rom/uart.h"
 #include "rtosutil.h"
 
 #include "soc/timer_group_struct.h"
 #include "driver/timer.h"
 
-#include <stdio.h>
-#include <string.h>
+
 
 // implementation of simple queue oriented commands. see header file for more info.
 void queues_init(){
@@ -154,18 +160,31 @@ void taskWaitNotify(){
 #define TIMER_INTR_SEL TIMER_INTR_LEVEL  /*!< Timer level interrupt */
 #define TIMER_GROUP    TIMER_GROUP_0     /*!< Test on timer group 0 */
 #define TIMER_DIVIDER  80               /*!< Hardware timer clock divider */
-#define TIMER_SCALE    (TIMER_BASE_CLK / TIMER_DIVIDER)  /*!< used to calculate counter value */
+#if ESP_IDF_VERSION_4 || ESP_IDF_VERSION_5
+#define TIMER_FINE_ADJ   (1.4*(esp_clk_apb_freq() / TIMER_DIVIDER)/1000000) /*!< used to compensate alarm value */
+#define TIMER_TX_UPDATE(TIMER_N) TIMERG0.hw_timer[TIMER_N].update.tx_update = 1
+#define TIMER_ALARM_EN(TIMER_N) TIMERG0.hw_timer[TIMER_N].config.tx_alarm_en = 1;
+#define TIMER_0_INT_CLR() TIMERG0.int_clr_timers.t0_int_clr = 1
+#define TIMER_1_INT_CLR() TIMERG0.int_clr_timers.t1_int_clr = 1
+#else
 #define TIMER_FINE_ADJ   (1.4*(TIMER_BASE_CLK / TIMER_DIVIDER)/1000000) /*!< used to compensate alarm value */
+#define TIMER_TX_UPDATE(TIMER_N) TIMERG0.hw_timer[TIMER_N].update = 1
+#define TIMER_ALARM_EN(TIMER_N) TIMERG0.hw_timer[TIMER_N].config.alarm_en = 1
+#define TIMER_0_INT_CLR() TIMERG0.int_clr_timers.t0 = 1;
+#define TIMER_1_INT_CLR() TIMERG0.int_clr_timers.t1 = 1;
+#endif
+
 BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
 void IRAM_ATTR espruino_isr(void *para){
   int idx = (int) para;
   if(idx == 0){
-    TIMERG0.hw_timer[TIMER_0].update = 1;
-    TIMERG0.int_clr_timers.t0 = 1;
+    TIMER_TX_UPDATE(TIMER_0);
+    TIMER_0_INT_CLR();
   }
   else{
-    TIMERG0.hw_timer[TIMER_1].update = 1;
-    TIMERG0.int_clr_timers.t1 = 1;
+    TIMER_TX_UPDATE(TIMER_1);
+    TIMER_1_INT_CLR();
   }
   jstUtilTimerInterruptHandler();
 }
@@ -173,12 +192,12 @@ void IRAM_ATTR test_isr(void *para){
   int idx = (int) para;
   printf("x\n");
   if(idx == 0){
-    TIMERG0.hw_timer[TIMER_0].update = 1;
-    TIMERG0.int_clr_timers.t0 = 1;
+    TIMER_TX_UPDATE(TIMER_0);
+    TIMER_0_INT_CLR();
   }
   else{
-    TIMERG0.hw_timer[TIMER_1].update = 1;
-    TIMERG0.int_clr_timers.t1 = 1;
+    TIMER_TX_UPDATE(TIMER_1);
+    TIMER_1_INT_CLR();
   }
 }
 
@@ -232,18 +251,34 @@ int timer_Init(char *timerName,int group,int index,int isr_idx){
 void timer_Start(int idx,uint64_t duration){
   timer_enable_intr(ESP32Timers[idx].group, ESP32Timers[idx].index);
   timer_set_alarm_value(ESP32Timers[idx].group, ESP32Timers[idx].index, duration - TIMER_FINE_ADJ);
-  TIMERG0.hw_timer[idx].config.alarm_en = 1;
+#if CONFIG_IDF_TARGET_ESP32
+  TIMER_ALARM_EN(idx);
+#elif CONFIG_IDF_TARGET_ESP32S3
+  TIMERG0.hw_timer[idx].config.tn_alarm_en=1;
+#else
+  #error Not an ESP32 or ESP32-S3
+#endif
   timer_start(ESP32Timers[idx].group, ESP32Timers[idx].index);
 }
 void timer_Reschedule(int idx,uint64_t duration){
   timer_set_alarm_value(ESP32Timers[idx].group, ESP32Timers[idx].index, duration - TIMER_FINE_ADJ);
-  TIMERG0.hw_timer[idx].config.alarm_en = 1;
+#if CONFIG_IDF_TARGET_ESP32
+    TIMER_ALARM_EN(idx);
+#elif CONFIG_IDF_TARGET_ESP32S3
+  TIMERG0.hw_timer[idx].config.tn_alarm_en=1;
+#else
+  #error Not an ESP32 or ESP32-S3
+#endif
 }
+	
 void timer_List(){
+#if ESP_IDF_VERSION_5  
+  printf("timer_List not implemented\n");
+#else
   int i;
   for(i = 0; i < timerMax; i++){
   if(ESP32Timers[i].name == NULL){printf("timer %d free\n",i);}
   else {printf("timer %s : %d.%d\n",ESP32Timers[i].name,ESP32Timers[i].group,ESP32Timers[i].index);}
   }
-  return;
+#endif
 }

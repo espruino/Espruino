@@ -11,10 +11,11 @@
  * Implementation of JsNetwork for ESP32 - cloned from linux
  * ----------------------------------------------------------------------------
  */
-#include "network_esp32.h"
-
-#include "network.h"
 #include <string.h> // for memset
+#include <stdlib.h>
+
+#include "network_esp32.h"
+#include "network.h"
 
 #define INVALID_SOCKET ((SOCKET)(-1))
 #define SOCKET_ERROR (-1)

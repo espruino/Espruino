@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "freertos/FreeRTOS.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
@@ -5,7 +7,6 @@
 #include "esp_event_loop.h"
 #include "nvs_flash.h"
 
-#include <stdio.h>
 #include <jsdevices.h>
 #include <jsinteractive.h>
 #include "rtosutil.h"
@@ -26,7 +27,12 @@
 #include "BLE/esp32_gatts_func.h"
 #endif
 
+#if ESP_IDF_VERSION_5
+#include "esp_flash.h"
+#include "spi_flash_mmap.h"
+#else
 #include "esp_spi_flash.h"
+#endif
 #include "esp_partition.h"
 #include "esp_log.h"
 
@@ -106,7 +112,11 @@ int app_main(void)
 #ifdef BLUETOOTH
   jsble_init();
 #endif
+#if ESP_IDF_VERSION_5
+  esp_flash_init(NULL);
+#else
   spi_flash_init();
+#endif  
   timers_Init();
   timer_Init("EspruinoTimer",0,0,0);
 

@@ -32,8 +32,13 @@ void SPIChannelsInit(){
     SPIChannels[i].spi_read = false;
     SPIChannels[i].g_lastSPIRead = (uint32_t)-1;
   }
+#if ESP_IDF_VERSION_5    
+  SPIChannels[0].HOST = SPI2_HOST;
+  SPIChannels[1].HOST = SPI3_HOST;
+#else
   SPIChannels[0].HOST = HSPI_HOST;
   SPIChannels[1].HOST = VSPI_HOST;
+#endif  
 }
 void SPIChannelReset(int channelPnt){
   spi_bus_remove_device(SPIChannels[channelPnt].spi);
@@ -99,7 +104,11 @@ void jshSPISetup(
   int channelPnt = getSPIChannelPnt(device);
   int dma_chan = 0;
   Pin sck, miso, mosi;
+#if ESP_IDF_VERSION_5   
+  if(SPIChannels[channelPnt].HOST == SPI2_HOST){
+#else
   if(SPIChannels[channelPnt].HOST == HSPI_HOST){
+#endif  
     dma_chan = 1;
     sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 14;
     miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 12;

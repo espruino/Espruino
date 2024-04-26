@@ -1,5 +1,4 @@
 /*
-/*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
  * Copyright (C) 2015 Gordon Williams <gw@pur3.co.uk>
@@ -24,11 +23,18 @@
 // Includes from ESP-IDF
 #include "esp_wifi.h"
 #include "esp_event_loop.h"
+#if ESP_IDF_VERSION_5   
+#include "esp_netif.h"
+#include "lwip/apps/mdns.h"
+#include "ping/ping.h"
+#include "esp_ping.h"
+#else
 #include "tcpip_adapter.h"
 #include "mdns/include/mdns.h"
-
 #include "lwip/include/apps/ping/ping.h"
 #include "lwip/include/apps/esp_ping.h"
+#endif
+
 #include "apps/sntp/sntp.h"
 #include "lwip/dns.h"
 
@@ -41,6 +47,10 @@
 #include "jsutils.h"
 
 #define UNUSED(x) (void)(x)
+
+#if ESP_IDF_VERSION_5   
+esp_netif_t *sta_netif;
+#endif
 
 static void sendWifiCompletionCB(
   JsVar **g_jsCallback,  //!< Pointer to the global callback variable
@@ -91,11 +101,16 @@ void startMDNS(char *hostname) {
   jsDebug(DBG_INFO, "Wifi:startMDNS - %s", hostname);
   if (mdns_started) stopMDNS();
 
-  // start mDNS
-    ESP_ERROR_CHECK( mdns_init() );
-    //set mDNS hostname (required if you want to advertise services)
-    ESP_ERROR_CHECK( mdns_hostname_set(hostname) );
-    mdns_service_add(NULL, "_telnet", "_tcp", 23, NULL, 0);
+  // start mDNS and set hostname (required if you want to advertise services)
+#if ESP_IDF_VERSION_5     
+  ESP_ERROR_CHECK( mdns_resp_init() );
+  ESP_ERROR_CHECK( mdns_resp_hostname_set(hostname) );
+  mdns_resp_add_service(NULL, "_telnet", "_tcp", 23, NULL, 0);
+#else
+  ESP_ERROR_CHECK( mdns_init() );
+  ESP_ERROR_CHECK( mdns_hostname_set(hostname) );
+  mdns_service_add(NULL, "_telnet", "_tcp", 23, NULL, 0);
+#endif
 
   mdns_started = true;
 }
@@ -580,7 +595,11 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     sendWifiEvent(event->event_id, jsDetails);
     // start mDNS
     const char * hostname;
+#if ESP_IDF_VERSION_5  
+    esp_err_t err = esp_netif_get_hostname(sta_netif, &hostname);
+#else
     esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);
+#endif      
     if (hostname && hostname[0] != 0) {
       startMDNS(hostname);
     }
@@ -650,7 +669,12 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
  * handler.
  */
 void esp32_wifi_init() {
+#if ESP_IDF_VERSION_5 
+  esp_netif_init();
+  sta_netif = esp_netif_create_default_wifi_sta();
+#else
   tcpip_adapter_init();
+#endif  
   ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -1355,7 +1379,11 @@ void jswrap_wifi_save(JsVar *what) {
   jsvObjectSetChildAndUnLock(o, "channelAP", jsvNewFromInteger(ap_config.channel));
 
   const char * hostname;
+#if ESP_IDF_VERSION_5  
+  esp_err_t err = esp_netif_get_hostname(sta_netif, &hostname);
+#else
   esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);
+#endif  
   if (hostname) jsvObjectSetChildAndUnLock(o, "hostname", jsvNewFromString((char *) hostname));
 
   // save object

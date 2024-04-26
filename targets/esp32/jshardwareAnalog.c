@@ -16,7 +16,13 @@
  */
 #include "jshardwareAnalog.h"
 #include "driver/adc.h"
-#include "driver/dac.h"
+#if CONFIG_IDF_TARGET_ESP32
+	#include "driver/dac.h"
+#elif CONFIG_IDF_TARGET_ESP32S3
+	typedef enum { DAC_CHAN_0=0 , DAC_CHAN_1=1 } dac_channel_t;	
+#else
+	#error Not an ESP32 or ESP32-S3
+#endif
 
 #include <stdio.h>
 
@@ -42,11 +48,19 @@ adc1_channel_t pinToAdcChannel(Pin pin){
 adc_atten_t rangeToAdcAtten(int range){
   adc_atten_t atten;
   switch (range){
-  case 1000: atten = ADC_ATTEN_0db; break;
-  case 1340: atten = ADC_ATTEN_2_5db; break;
-  case 2000: atten = ADC_ATTEN_6db; break;
-  case 3600: atten = ADC_ATTEN_11db; break;
-  default: atten = ADC_ATTEN_11db; break;
+#if ESP_IDF_VERSION_5
+	case 1000: atten = ADC_ATTEN_DB_0; break;
+	case 1340: atten = ADC_ATTEN_DB_2_5; break;
+	case 2000: atten = ADC_ATTEN_DB_6; break;
+	case 3600: atten = ADC_ATTEN_DB_11; break;
+	default: atten = ADC_ATTEN_DB_11; break;
+#else
+	case 1000: atten = ADC_ATTEN_0db; break;
+	case 1340: atten = ADC_ATTEN_2_5db; break;
+	case 2000: atten = ADC_ATTEN_6db; break;
+	case 3600: atten = ADC_ATTEN_11db; break;
+	default: atten = ADC_ATTEN_11db; break;
+#endif
   }
   return atten;
 }
@@ -67,6 +81,7 @@ int pinToAdcChannelIdx(Pin pin){
 }
 
 dac_channel_t pinToDacChannel(Pin pin){
+#if CONFIG_IDF_TARGET_ESP32
   dac_channel_t channel;
   switch(pin){
     case 25: channel = DAC_CHANNEL_1; break;
@@ -74,6 +89,12 @@ dac_channel_t pinToDacChannel(Pin pin){
     default: channel = -1; break;
   }
   return channel;
+#elif CONFIG_IDF_TARGET_ESP32S3
+  jsExceptionHere(JSET_ERROR, "not implemented\n");
+  return 0;
+#else
+	#error Not an ESP32 or ESP32-S3
+#endif
 }
 
 void ADCReset(){
@@ -82,8 +103,18 @@ void ADCReset(){
 void initADC(int ADCgroup){
   switch(ADCgroup){
   case 1:
+#if ESP_IDF_VERSION_5
+    adc1_config_width(ADC_WIDTH_BIT_12);
+#else
     adc1_config_width(ADC_WIDTH_12Bit);
-    for(int i = 0; i < adc_channel_max; i++){ adc_channel[i] = ADC_ATTEN_11db; }
+#endif    
+    for(int i = 0; i < adc_channel_max; i++) { 
+#if ESP_IDF_VERSION_5    
+      adc_channel[i] = ADC_ATTEN_DB_11; 
+#else
+      adc_channel[i] = ADC_ATTEN_11db; 
+#endif       
+     }
     break;
   case 2:
     jsExceptionHere(JSET_ERROR, "Not implemented");
@@ -112,7 +143,12 @@ int readADC(Pin pin){
   channel = pinToAdcChannel(pin);
   adc1_config_channel_atten(channel,adc_channel[pinToAdcChannelIdx(pin)]);
   if(channel >= 0) {
-  value = adc1_get_voltage(channel);
+#if ESP_IDF_VERSION_4 || ESP_IDF_VERSION_5
+	  // ESP_IDF 4.x - int adc1_get_voltage(adc1_channel_t channel)    //Deprecated. Use adc1_get_raw() instead
+	  int value=adc1_get_raw(channel);
+#else
+	  value = adc1_get_voltage(channel);	
+#endif	
   return value;
   }
   else return -1;
@@ -124,8 +160,18 @@ void writeDAC(Pin pin,uint8_t value){
     jsExceptionHere(JSET_ERROR, "Not implemented, only 8 bit supported");
     return;
   }
+#if CONFIG_IDF_TARGET_ESP32  
   channel = pinToDacChannel(pin);
-  if(channel >= 0) dac_out_voltage(channel, value);
+#if ESP_IDF_VERSION_5  
+  if(channel >= 0) dac_output_voltage(channel, value);
+#else
+  if(channel >= 0) dac_out_voltage(channel, value);  
+#endif  
+#elif CONFIG_IDF_TARGET_ESP32S3
+  jsExceptionHere(JSET_ERROR, "not implemented\n");
+#else
+	#error Not an ESP32 or ESP32-S3
+#endif
 }
 
 
