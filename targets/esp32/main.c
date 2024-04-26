@@ -27,7 +27,7 @@
 #include "BLE/esp32_gatts_func.h"
 #endif
 
-#if ESP_IDF_VERSION_5
+#if ESP_IDF_VERSION_MAJOR>=5
 #include "esp_flash.h"
 #include "spi_flash_mmap.h"
 #else
@@ -56,7 +56,7 @@ static void espruinoTask(void *data) {
 
   espruino_stackHighPtr = &heapVars;  //Ignore the name, 'heapVars' is on the stack!
                         //I didn't use another variable becaue this function never ends so
-                        //all variables declared here consume stack space that is never freed. 
+                        //all variables declared here consume stack space that is never freed.
 
   PWMInit();
   RMTInit();
@@ -72,7 +72,7 @@ static void espruinoTask(void *data) {
   //breached by builds with modules removed or boards using PSRAM.
   {
     int maxVars = (1 << JSVARREF_BITS) - 1;
-    
+
     if (heapVars > maxVars) {
       heapVars = maxVars;
     }
@@ -83,7 +83,7 @@ static void espruinoTask(void *data) {
   // not sure why this delay is needed?
   vTaskDelay(200 / portTICK_PERIOD_MS);
   jsiInit(true); // Initialize the interactive subsystem
-  if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) jswrap_wifi_restore();  
+  if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) jswrap_wifi_restore();
 #ifdef BLUETOOTH
   bluetooth_initDeviceName();
 #endif
@@ -103,7 +103,7 @@ char* romdata_jscode=0;
  */
 int app_main(void)
 {
-  esp_log_level_set("*", ESP_LOG_ERROR); // set all components to ERROR level - suppress Wifi Info 
+  esp_log_level_set("*", ESP_LOG_ERROR); // set all components to ERROR level - suppress Wifi Info
   esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
       ESP_ERROR_CHECK(nvs_flash_erase());
@@ -112,11 +112,11 @@ int app_main(void)
 #ifdef BLUETOOTH
   jsble_init();
 #endif
-#if ESP_IDF_VERSION_5
+#if ESP_IDF_VERSION_MAJOR>=5
   esp_flash_init(NULL);
 #else
   spi_flash_init();
-#endif  
+#endif
   timers_Init();
   timer_Init("EspruinoTimer",0,0,0);
 

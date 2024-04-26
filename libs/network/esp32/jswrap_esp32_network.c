@@ -23,7 +23,7 @@
 // Includes from ESP-IDF
 #include "esp_wifi.h"
 #include "esp_event_loop.h"
-#if ESP_IDF_VERSION_5   
+#if ESP_IDF_VERSION_MAJOR>=5
 #include "esp_netif.h"
 #include "lwip/apps/mdns.h"
 #include "ping/ping.h"
@@ -48,7 +48,7 @@
 
 #define UNUSED(x) (void)(x)
 
-#if ESP_IDF_VERSION_5   
+#if ESP_IDF_VERSION_MAJOR>=5
 esp_netif_t *sta_netif;
 #endif
 
@@ -102,7 +102,7 @@ void startMDNS(char *hostname) {
   if (mdns_started) stopMDNS();
 
   // start mDNS and set hostname (required if you want to advertise services)
-#if ESP_IDF_VERSION_5     
+#if ESP_IDF_VERSION_MAJOR>=5
   ESP_ERROR_CHECK( mdns_resp_init() );
   ESP_ERROR_CHECK( mdns_resp_hostname_set(hostname) );
   mdns_resp_add_service(NULL, "_telnet", "_tcp", 23, NULL, 0);
@@ -595,11 +595,11 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     sendWifiEvent(event->event_id, jsDetails);
     // start mDNS
     const char * hostname;
-#if ESP_IDF_VERSION_5  
+#if ESP_IDF_VERSION_MAJOR>=5
     esp_err_t err = esp_netif_get_hostname(sta_netif, &hostname);
 #else
     esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);
-#endif      
+#endif
     if (hostname && hostname[0] != 0) {
       startMDNS(hostname);
     }
@@ -669,12 +669,12 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
  * handler.
  */
 void esp32_wifi_init() {
-#if ESP_IDF_VERSION_5 
+#if ESP_IDF_VERSION_MAJOR>=5
   esp_netif_init();
   sta_netif = esp_netif_create_default_wifi_sta();
 #else
   tcpip_adapter_init();
-#endif  
+#endif
   ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL));
   wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -823,7 +823,7 @@ void jswrap_wifi_connect(
   }
 
   // Check callback
-  if (g_jsGotIpCallback != NULL) { 
+  if (g_jsGotIpCallback != NULL) {
     jsvUnLock(g_jsGotIpCallback);
   }
   g_jsGotIpCallback = NULL;
@@ -1011,7 +1011,7 @@ void jswrap_wifi_startAP(
   }
 
   // Check callback
-  if (g_jsAPStartedCallback != NULL) { 
+  if (g_jsAPStartedCallback != NULL) {
     jsvUnLock(g_jsAPStartedCallback);
   }
   g_jsAPStartedCallback = NULL;
@@ -1379,11 +1379,11 @@ void jswrap_wifi_save(JsVar *what) {
   jsvObjectSetChildAndUnLock(o, "channelAP", jsvNewFromInteger(ap_config.channel));
 
   const char * hostname;
-#if ESP_IDF_VERSION_5  
+#if ESP_IDF_VERSION_MAJOR>=5
   esp_err_t err = esp_netif_get_hostname(sta_netif, &hostname);
 #else
   esp_err_t err = tcpip_adapter_get_hostname(TCPIP_ADAPTER_IF_STA, &hostname);
-#endif  
+#endif
   if (hostname) jsvObjectSetChildAndUnLock(o, "hostname", jsvNewFromString((char *) hostname));
 
   // save object

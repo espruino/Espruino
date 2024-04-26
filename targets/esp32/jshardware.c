@@ -48,10 +48,10 @@
 
 #include "jswrap_esp32_network.h"
 
-#if ESP_IDF_VERSION_5
+#if ESP_IDF_VERSION_MAJOR>=4
 #include "soc/uart_reg.h"
 #include "esp_mac.h"
-#endif 
+#endif
 #include "esp_attr.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
@@ -61,7 +61,7 @@
 #include "driver/gpio.h"
 #include "soc/gpio_sig_map.h"
 
-#if ESP_IDF_VERSION_5
+#if ESP_IDF_VERSION_MAJOR>=5
 #include "esp_flash.h"
 #include "soc/gpio_reg.h"
 #else
@@ -309,11 +309,11 @@ void jshPinSetState(
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   gpio_set_direction(gpioNum, mode);
   gpio_set_pull_mode(gpioNum, pull_mode);
-#if ESP_IDF_VERSION_5
+#if ESP_IDF_VERSION_MAJOR>=4
   esp_rom_gpio_pad_select_gpio(gpioNum);
 #else
   gpio_pad_select_gpio(gpioNum);
-#endif  
+#endif
   g_pinState[pin] = state; // remember what we set this to...
 }
 
@@ -345,11 +345,11 @@ void jshPinSetValue(
     bool value //!< The new value of the pin.
   ) {
   gpio_num_t gpioNum = pinToESP32Pin(pin);
-#if ESP_IDF_VERSION_5
+#if ESP_IDF_VERSION_MAJOR>=5
   gpio_iomux_out(gpioNum,SIG_GPIO_OUT_IDX,0);  // reset pin to be GPIO in case it was used as rmt or something else
-#else  
+#else
   gpio_matrix_out(gpioNum,SIG_GPIO_OUT_IDX,0,0);  // reset pin to be GPIO in case it was used as rmt or something else
-#endif  
+#endif
   gpio_set_level(gpioNum, (uint32_t)value);
 }
 
@@ -432,9 +432,9 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 void jshEnableWatchDog(JsVarFloat timeout) {
   wdt_enabled = true;
   esp_task_wdt_init((int)(timeout+0.5)
-#if !ESP_IDF_VERSION_5  
+#if !(ESP_IDF_VERSION_MAJOR>=4)
    , true
-#endif   
+#endif
   ); //enable panic so ESP32 restarts
   esp_task_wdt_add(NULL); //add current thread to WDT watch
 }
@@ -604,7 +604,7 @@ void jshSetSystemTime(JsSysTime newTime) {
   tm.tv_usec=(suseconds_t) (newTime - tm.tv_sec * 1000000L);
   tz.tz_minuteswest=0;
   tz.tz_dsttime=0;
-  settimeofday(&tm, &tz); 
+  settimeofday(&tm, &tz);
 }
 
 void jshUtilTimerDisable() {
@@ -674,19 +674,19 @@ void jshFlashRead(
 
   if(len == 1){ // Can't read a single byte using the API, so read 4 and select the byte requested
     uint word;
-#if ESP_IDF_VERSION_5    
+#if ESP_IDF_VERSION_MAJOR>=5
     esp_flash_read(NULL, addr & 0xfffffffc,&word,4);
 #else
     spi_flash_read(addr & 0xfffffffc,&word,4);
-#endif    
+#endif
     *(uint8_t *)buf = (word >> ((addr & 3) << 3 )) & 255;
   } else {
-#if ESP_IDF_VERSION_5
+#if ESP_IDF_VERSION_MAJOR>=5
     esp_flash_read(NULL, addr, buf, len);
 #else
     spi_flash_read(addr, buf, len);
 #endif
-  }    
+  }
 }
 
 
@@ -701,11 +701,11 @@ void jshFlashWrite(
     uint32_t addr, //!< Flash address to write into
     uint32_t len   //!< Length of data to write
   ) {
-#if ESP_IDF_VERSION_5    
+#if ESP_IDF_VERSION_MAJOR>=5
   esp_flash_write(NULL, addr, buf, len);
 #else
   spi_flash_write(addr, buf, len);
-#endif  
+#endif
 }
 
 
@@ -750,11 +750,11 @@ JsVar *jshFlashGetFree() {
 void jshFlashErasePage(
     uint32_t addr //!<
   ) {
-#if ESP_IDF_VERSION_5      
+#if ESP_IDF_VERSION_MAJOR>=5
   esp_flash_erase_region(NULL, addr >> FLASH_PAGE_SHIFT, FLASH_PAGE);
-#else  
+#else
   spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);
-#endif  
+#endif
 }
 
 size_t jshFlashGetMemMapAddress(size_t ptr) {

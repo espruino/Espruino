@@ -2,7 +2,7 @@
  * This file is designed to support FREERTOS functions in Espruino,
  * a JavaScript interpreter for Microcontrollers designed by Gordon Williams
  *
- * Copyright (C) 2016 by Juergen Marsch 
+ * Copyright (C) 2016 by Juergen Marsch
  *
  * This Source Code Form is subject to the terms of the Mozilla Publici
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -21,10 +21,10 @@
 #include "jsinteractive.h"
 #include "jstimer.h"
 
-#if ESP_IDF_VERSION_5
+#if ESP_IDF_VERSION_MAJOR>=4
 #include "soc/uart_reg.h"
 #include "esp_private/esp_clk.h"
-#endif 
+#endif
 #include "rom/uart.h"
 #include "rtosutil.h"
 
@@ -76,7 +76,7 @@ char *queue_read(int idx){
   char data;
   if(xQueueReceive(RTOSqueues[idx].handle,&data,0)){
     return data;
-  } 
+  }
   return NULL;
 }
 void queue_writeChar(int idx,char c){
@@ -160,7 +160,7 @@ void taskWaitNotify(){
 #define TIMER_INTR_SEL TIMER_INTR_LEVEL  /*!< Timer level interrupt */
 #define TIMER_GROUP    TIMER_GROUP_0     /*!< Test on timer group 0 */
 #define TIMER_DIVIDER  80               /*!< Hardware timer clock divider */
-#if ESP_IDF_VERSION_4 || ESP_IDF_VERSION_5
+#if ESP_IDF_VERSION_MAJOR>=4
 #define TIMER_FINE_ADJ   (1.4*(esp_clk_apb_freq() / TIMER_DIVIDER)/1000000) /*!< used to compensate alarm value */
 #define TIMER_TX_UPDATE(TIMER_N) TIMERG0.hw_timer[TIMER_N].update.tx_update = 1
 #define TIMER_ALARM_EN(TIMER_N) TIMERG0.hw_timer[TIMER_N].config.tx_alarm_en = 1;
@@ -241,7 +241,7 @@ int timer_Init(char *timerName,int group,int index,int isr_idx){
         timer_isr_register(group, index, espruino_isr, (void*) i, ESP_INTR_FLAG_IRAM, NULL);
       }
       else{
-      timer_isr_register(group, index, test_isr, (void*) i, ESP_INTR_FLAG_IRAM, NULL);  
+      timer_isr_register(group, index, test_isr, (void*) i, ESP_INTR_FLAG_IRAM, NULL);
       }
       return i;
   }
@@ -270,9 +270,9 @@ void timer_Reschedule(int idx,uint64_t duration){
   #error Not an ESP32 or ESP32-S3
 #endif
 }
-	
+
 void timer_List(){
-#if ESP_IDF_VERSION_5  
+#if ESP_IDF_VERSION_MAJOR>=5
   printf("timer_List not implemented\n");
 #else
   int i;
