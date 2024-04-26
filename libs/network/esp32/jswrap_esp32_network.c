@@ -25,17 +25,22 @@
 #include "esp_event_loop.h"
 #if ESP_IDF_VERSION_MAJOR>=5
 #include "esp_netif.h"
-#include "lwip/apps/mdns.h"
-#include "ping/ping.h"
-#include "esp_ping.h"
 #else
 #include "tcpip_adapter.h"
+#endif
+
+#if ESP_IDF_VERSION_MAJOR>=4
+#include "mdns.h"
+#include "ping/ping.h"
+#include "esp_ping.h"
+#include "sntp/sntp.h"
+#else
 #include "mdns/include/mdns.h"
 #include "lwip/include/apps/ping/ping.h"
 #include "lwip/include/apps/esp_ping.h"
+#include "apps/sntp/sntp.h"
 #endif
 
-#include "apps/sntp/sntp.h"
 #include "lwip/dns.h"
 
 #include "jsinteractive.h"
@@ -751,7 +756,9 @@ void jswrap_wifi_disconnect(JsVar *jsCallback) {
   // Call the ESP-IDF to disconnect us from the access point.
   jsDebug(DBG_INFO, "Disconnecting.....");
   // turn off auto-connect
+#if !(ESP_IDF_VERSION_MAJOR>=4)
   esp_wifi_set_auto_connect(false);
+#endif  
   s_retry_num = 0; // flag so we don't attempt to reconnect
   err = esp_wifi_disconnect();
   if (err != ESP_OK) {
@@ -895,8 +902,10 @@ void jswrap_wifi_connect(
   memcpy(staConfig.sta.ssid, ssid, sizeof(staConfig.sta.ssid));
   memcpy(staConfig.sta.password, password, sizeof(staConfig.sta.password));
   staConfig.sta.bssid_set = false;
+#if !(ESP_IDF_VERSION_MAJOR>=4)  
   esp_wifi_set_auto_connect(true);
-  jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_set_autoconnect done");
+  jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_set_autoconnect done");  
+#endif  
 
   err = esp_wifi_set_config(ESP_IF_WIFI_STA,  &staConfig);
   if (err != ESP_OK) {
@@ -1148,9 +1157,18 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
   esp_wifi_get_ps(&psType);
   char *psTypeStr;
   switch(psType) {
+#if ESP_IDF_VERSION_MAJOR>=4
+  case WIFI_PS_MIN_MODEM:	
+    psTypeStr = "min_modem";
+    break;
+  case WIFI_PS_MAX_MODEM:	
+    psTypeStr = "max_modem";
+    break;
+#else
   case WIFI_PS_MODEM:
     psTypeStr = "modem";
-    break;
+    break;    
+#endif    
   case WIFI_PS_NONE:
     psTypeStr = "none";
     break;
@@ -1245,8 +1263,10 @@ void jswrap_wifi_setConfig(JsVar *jsSettings) {
   if (jsvIsString(jsPowerSave)) {
     if (jsvIsStringEqual(jsPowerSave, "none")) {
       esp_wifi_set_ps(WIFI_PS_NONE);
+#if !(ESP_IDF_VERSION_MAJOR>=4)
     } else if (jsvIsStringEqual(jsPowerSave, "ps-poll")) {
       esp_wifi_set_ps(WIFI_PS_MODEM);
+#endif      
     } else if (jsvIsStringEqual(jsPowerSave, "min")) {
       esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
     } else if (jsvIsStringEqual(jsPowerSave, "max")) {

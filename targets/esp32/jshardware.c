@@ -309,7 +309,7 @@ void jshPinSetState(
   gpio_num_t gpioNum = pinToESP32Pin(pin);
   gpio_set_direction(gpioNum, mode);
   gpio_set_pull_mode(gpioNum, pull_mode);
-#if ESP_IDF_VERSION_MAJOR>=4
+#if ESP_IDF_VERSION_MAJOR>=5
   esp_rom_gpio_pad_select_gpio(gpioNum);
 #else
   gpio_pad_select_gpio(gpioNum);
@@ -432,7 +432,7 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 void jshEnableWatchDog(JsVarFloat timeout) {
   wdt_enabled = true;
   esp_task_wdt_init((int)(timeout+0.5)
-#if !(ESP_IDF_VERSION_MAJOR>=4)
+#if !(ESP_IDF_VERSION_MAJOR>=5)
    , true
 #endif
   ); //enable panic so ESP32 restarts
