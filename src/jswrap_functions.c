@@ -40,12 +40,14 @@ A reference to the global scope, where everything is defined.
   "type" : "variable",
   "name" : "globalThis",
   "generate" : "jswrap_global",
-  "return" : ["JsVar","The global scope"]
+  "return" : ["JsVar","The global scope"],
+  "typescript" : "// globalThis - builtin"
 }
 A reference to the global scope, where everything is defined.
 
 This is identical to `global` but was introduced in the ECMAScript spec.
 */
+// no typescript generated for globalThis, it's already builtin to typescript
 
 /*JSON{
   "type" : "variable",
