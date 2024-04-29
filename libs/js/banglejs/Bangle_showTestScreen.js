@@ -31,11 +31,11 @@
   setTimeout(function() {
     var mv = (0.0001+analogRead(D3)+analogRead(D3)+analogRead(D3))/3, cup = 0, chg = 0;
     setInterval(function() {
-      var v = analogRead(D3);
+      var av = analogRead(D3), v=av*13.359;
       chg |= Bangle.isCharging();
-      if (v>mv) cup=1;
-      draw(8,'Chg',(v*13.359).toFixed(2)+"v "+(Bangle.isCharging()?"charge":"discharge"),chg&&cup);
-    },1000);
+      if (av>mv) cup=1;
+      draw(8,'Chg',v.toFixed(2)+"v "+(Bangle.isCharging()?"charge":"discharge"),chg&&cup&&(v>2)&&(v<4.4));
+    },500);
   },1000);
   Bangle.on('swipe', e => {
     if (!pass.every(a=>a)) return;
