@@ -122,7 +122,7 @@ write faster than the LCD is happy about
 #define LCD_SCK_CLR_FAST() NRF_P0->OUTCLR = 1<<LCD_PIN_SCK
 #define LCD_SCK_SET_FAST() NRF_P0->OUTSET = 1<<LCD_PIN_SCK
 #define LCD_DATA(data) (*((uint8_t*)&NRF_P0->OUT)=data)
-#define LCD_WR8(data) {LCD_DATA(data);LCD_SCK_CLR();LCD_SCK_SET();}
+#define LCD_WR8(data) {LCD_DATA(data);asm("nop");asm("nop");LCD_SCK_CLR();LCD_SCK_SET();}
 
 
 void lcd_send_cmd(uint8_t cmd) {
@@ -519,7 +519,7 @@ void lcdST7789_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigne
       asm("nop");asm("nop");
       while (pixels--) {
         LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
-        asm("nop");
+        asm("nop");asm("nop");
         LCD_SCK_CLR_FAST();LCD_SCK_SET_FAST();
       }
     } else {

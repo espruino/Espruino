@@ -36,7 +36,8 @@
             ESP32: Fix setServices with 128bit UUIDs, fix NRF.setServices' onWrite and notify/indicate
             Add E.getPowerUsage() to get estimated power usage of a device based on what internal hardware is powered on and CPU use
             Use shorter Puck.selfTest messages to save a bit of flash storage space
-            Bangle.js2: Bangle.showTestScreen now shows firmware and battery            
+            Bangle.js2: Bangle.showTestScreen now shows firmware and battery
+            Bangle.js1: After updating compiler, we need to add NOPs into display code to slow it down
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)
