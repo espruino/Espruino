@@ -582,10 +582,6 @@ void gatts_structs_init(bool enableUART){
     add_ble_uart();
   }
 }
-void gatts_getAdvServiceUUID(uint8_t *p_service_uuid, uint16_t service_len){
-  p_service_uuid = adv_service_uuid128;
-  service_len = 16 * ble_service_cnt - 16;
-}
 
 // Actually allocates gatts_services with enough space
 void gatts_create_structs(bool enableUART){
