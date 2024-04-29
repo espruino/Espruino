@@ -36,6 +36,11 @@ the thing in `BOARDNAME.zip` named `espruino_2vXX.YY_boardname` is another zip f
 If you fork the Espruino repository and make changes yourself you should be able
 to see the builds for your changes at `https://github.com/YOUR_USERNAME/Espruino/actions`
 
+**Note:** the firmware files produced by this method are for uploads via a bootloader only.
+If you need a full binary file for uploading [via SWD](https://www.espruino.com/AdvancedDebug)
+you'll need to follow the instructions below.
+
+
 ## Under Linux (recommended)
 
 Espruino is easy to build under Linux, for either for Espruino running on Linux or a board.
