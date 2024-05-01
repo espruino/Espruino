@@ -1815,7 +1815,7 @@ JsVar *jswrap_graphics_setFontPBF(JsVar *parent, JsVar *file, int scale) {
     jsExceptionHere(JSET_ERROR, "Font must be a String");
     return 0;
   }
-  if (scale<0) scale = 1;
+  if (scale<1) scale = 1;
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, file);
   gfx.data.fontSize = (unsigned short)(scale | JSGRAPHICS_FONTSIZE_CUSTOM_PBF);
   graphicsSetVar(&gfx);
