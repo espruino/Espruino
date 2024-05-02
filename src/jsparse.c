@@ -1747,9 +1747,10 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
     if (isStatic) JSP_ASSERT_MATCH(LEX_R_STATIC);
 
     JsVar *funcName = jslGetTokenValueAsVar();
+    bool isConstructor = jsvIsStringEqual(funcName, "constructor");
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(funcName,classFunction,classInternalName,classPrototype),0);
-#ifndef ESPR_NO_GET_SET
     bool isGetter = false, isSetter = false;
+#ifndef ESPR_NO_GET_SET
     if (lex->tk==LEX_ID) {
       isGetter = jsvIsStringEqual(funcName, "get");
       isSetter = jsvIsStringEqual(funcName, "set");
@@ -1760,23 +1761,29 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
       }
     }
 #endif
-    JsVar *method = jspeFunctionDefinition(false);
-    if (classFunction && classPrototype) {
-      JsVar *obj = isStatic ? classFunction : classPrototype;
-      if (jsvIsStringEqual(funcName, "constructor")) {
-        jswrap_function_replaceWith(classFunction, method);
-#ifndef ESPR_NO_GET_SET
-      } else if (isGetter || isSetter) {
-        jsvAddGetterOrSetter(obj, funcName, isGetter, method);
-#endif
-      } else {
-        funcName = jsvMakeIntoVariableName(funcName, 0);
-        jsvSetValueOfName(funcName, method);
-        jsvAddName(obj, funcName);
+    JsVar *obj = isStatic ? classFunction : classPrototype;
+    if (obj) {
+      if (isGetter || isSetter || isConstructor || lex->tk=='(') { // function
+        JsVar *method = jspeFunctionDefinition(false);
+        if (isConstructor) {
+          jswrap_function_replaceWith(classFunction, method);
+  #ifndef ESPR_NO_GET_SET
+        } else if (isGetter || isSetter) {
+          jsvAddGetterOrSetter(obj, funcName, isGetter, method);
+  #endif
+        } else {
+          jsvObjectSetChildVar(obj, funcName, method);
+        }
+        jsvUnLock(method);
+      } else { // value
+        JSP_MATCH_WITH_CLEANUP_AND_RETURN('=',jsvUnLock4(funcName,classFunction,classInternalName,classPrototype),0);
+        JsVar *value = jsvSkipNameAndUnLock(jspeAssignmentExpression());
+        jsvObjectSetChildVar(obj, funcName, value);
+        jsvUnLock(value);
       }
-
     }
-    jsvUnLock2(method,funcName);
+
+    jsvUnLock(funcName);
   }
   jsvUnLock(classPrototype);
   // If we had a name, add it to the end (or it gets confused with the constructor arguments)

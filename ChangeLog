@@ -39,6 +39,7 @@
             Bangle.js2: Bangle.showTestScreen now shows firmware and battery
             Bangle.js1: After updating compiler, we need to add NOPs into display code to slow it down
             Graphics: Fix g.setFontPBF(font) if no second argument for scale is provided
+            Add support for static+nonstatic fields in Classes
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)
