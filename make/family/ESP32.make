@@ -153,9 +153,9 @@ INCLUDE+= -I$(ESP_IDF_PATH)/components/bt/bluedroid/include \
 -I$(ESP_IDF_PATH)/components/bt/bluedroid/api/include/api \
 -I$(ESP_IDF_PATH)/components/bt/bluedroid/stack/include \
 -I$(ESP_IDF_PATH)/components/bt/bluedroid/stack/gatt/include \
--I$(ESP_IDF_PATH)/components/bt/bluedroid/osi/include 
+-I$(ESP_IDF_PATH)/components/bt/bluedroid/osi/include
 LDFLAGS+= -L$(ESP_APP_TEMPLATE_PATH)/build/components/bt/bluedroid/api \
--L$(ESP_APP_TEMPLATE_PATH)/build/components/bt/bluedroid/bta 
+-L$(ESP_APP_TEMPLATE_PATH)/build/components/bt/bluedroid/bta
 endif
 
-FLASH_BAUD          ?= 921600 # The flash baud rate
+

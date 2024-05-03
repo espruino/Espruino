@@ -1,6 +1,7 @@
 ESP_ZIP     = $(PROJ_NAME).tgz
 
 COMPORT?=/dev/ttyUSB0
+FLASH_BAUD          ?= 921600 # The flash baud rate
 
 $(PROJ_NAME).elf: $(OBJS)
 	$(LD) $(LDFLAGS) -o $(PROJ_NAME).elf -Wl,--start-group $(LIBS) $(OBJS) -Wl,--end-group
