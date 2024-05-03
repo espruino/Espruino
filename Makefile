@@ -31,7 +31,7 @@
 # PROFILE=1               # Compile with gprof profiling info
 # CFILE=test.c            # Compile in the supplied C file
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
-# ESPRUINO_WRAPPERSOURCES=jswrap_x.c 
+# ESPRUINO_WRAPPERSOURCES=jswrap_x.c
 #                         # Compile in a wrapper file to the build (with JS functions in). WRAPPERSOURCES can be used too, but this adds the files to the END of the sources list
 # PYTHON=python3          # The python command used for this build
 #
@@ -63,7 +63,7 @@
 # DFU_UPDATE_BUILD=1      # Uncomment this to build Espruino for a device firmware update over the air (nRF52).
 #
 # -- ESP32 Only
-# RTOS=1                  # adds RTOS functions, available only for ESP32 
+# RTOS=1                  # adds RTOS functions, available only for ESP32
 
 include make/sanitycheck.make
 
@@ -221,6 +221,8 @@ else ifeq ($(FAMILY),ESP8266)
 USE_ESP8266=1
 else ifeq ($(FAMILY),ESP32)
 USE_ESP32=1
+else ifeq ($(FAMILY),ESP32_IDF4)
+USE_ESP32=1
 else ifdef EMW3165
 USE_WICED=1
 else ifdef CC3000
@@ -289,7 +291,7 @@ src/jswrap_storage.c \
 src/jswrap_spi_i2c.c \
 src/jswrap_stepper.c \
 src/jswrap_stream.c \
-src/jswrap_waveform.c 
+src/jswrap_waveform.c
 endif
 
 # it is important that _pin comes before stuff which uses
@@ -627,7 +629,7 @@ ifeq ($(USE_CRYPTO),1)
     include make/crypto/$(FAMILY).make
   else
     include make/crypto/default.make
-  endif 
+  endif
 endif
 
 ifeq ($(USE_NEOPIXEL),1)
@@ -673,7 +675,7 @@ ifeq ($(USE_WIO_LTE),1)
   SOURCES += targets/stm32/stm32_ws2812b_driver.c
 endif
 
-ifeq ($(USE_TENSORFLOW),1) 
+ifeq ($(USE_TENSORFLOW),1)
 include make/misc/tensorflow.make
 endif
 
@@ -806,11 +808,9 @@ $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
 endif
 
 ifndef NRF5X # nRF5x devices use their own linker files that aren't automatically generated.
-ifndef EFM32
 $(LINKER_FILE): scripts/build_linker.py
 	@echo ================================== Generating linker scripts
 	$(Q)$(PYTHON) scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
-endif # EFM32
 endif # NRF5X
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
@@ -866,6 +866,8 @@ ifdef LINUX # ---------------------------------------------------
 include make/targets/LINUX.make
 else ifdef EMSCRIPTEN
 include make/targets/EMSCRIPTEN.make
+else ifdef ESP32_IDF4
+include make/targets/ESP32_IDF4.make
 else ifdef ESP32
 include make/targets/ESP32.make
 else ifdef ESP8266
