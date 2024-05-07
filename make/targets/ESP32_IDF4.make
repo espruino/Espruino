@@ -30,7 +30,7 @@ $(CMAKEFILE):
 	@echo "target_compile_options($$""{COMPONENT_LIB} PRIVATE -Wno-format)" >> $(CMAKEFILE)
 
 
-$(PROJ_NAME).bin: $(CMAKEFILE) $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
+$(PROJ_NAME).bin: $(CMAKEFILE) $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h $(PININFOFILE).c $(WRAPPERFILE)
 	cp ${ROOT}/targets/esp32/IDF4/sdkconfig $(BINDIR)
 	cp ${ROOT}/targets/esp32/IDF4/CMakeLists.txt $(BINDIR)
 	cd $(BINDIR) && idf.py build
