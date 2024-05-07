@@ -18,6 +18,9 @@
 #include "driver/adc.h"
 #if CONFIG_IDF_TARGET_ESP32
 	#include "driver/dac.h"
+#elif CONFIG_IDF_TARGET_ESP32C3
+	typedef enum { DAC_CHAN_0=0 , DAC_CHAN_1=1 } dac_channel_t;
+#else
 #elif CONFIG_IDF_TARGET_ESP32S3
 	typedef enum { DAC_CHAN_0=0 , DAC_CHAN_1=1 } dac_channel_t;
 #else
@@ -89,6 +92,9 @@ dac_channel_t pinToDacChannel(Pin pin){
     default: channel = -1; break;
   }
   return channel;
+#elif CONFIG_IDF_TARGET_ESP32C3
+  jsExceptionHere(JSET_ERROR, "not implemented\n");
+  return 0;
 #elif CONFIG_IDF_TARGET_ESP32S3
   jsExceptionHere(JSET_ERROR, "not implemented\n");
   return 0;
@@ -167,6 +173,9 @@ void writeDAC(Pin pin,uint8_t value){
 #else
   if(channel >= 0) dac_out_voltage(channel, value);
 #endif
+#elif CONFIG_IDF_TARGET_ESP32C3
+  jsExceptionHere(JSET_ERROR, "not implemented\n");
+#else
 #elif CONFIG_IDF_TARGET_ESP32S3
   jsExceptionHere(JSET_ERROR, "not implemented\n");
 #else

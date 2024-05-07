@@ -253,6 +253,8 @@ void timer_Start(int idx,uint64_t duration){
   timer_set_alarm_value(ESP32Timers[idx].group, ESP32Timers[idx].index, duration - TIMER_FINE_ADJ);
 #if CONFIG_IDF_TARGET_ESP32
   TIMER_ALARM_EN(idx);
+#elif CONFIG_IDF_TARGET_ESP32C3
+  TIMERG0.hw_timer[idx].config.tn_alarm_en=1;
 #elif CONFIG_IDF_TARGET_ESP32S3
   TIMERG0.hw_timer[idx].config.tn_alarm_en=1;
 #else
@@ -264,6 +266,8 @@ void timer_Reschedule(int idx,uint64_t duration){
   timer_set_alarm_value(ESP32Timers[idx].group, ESP32Timers[idx].index, duration - TIMER_FINE_ADJ);
 #if CONFIG_IDF_TARGET_ESP32
     TIMER_ALARM_EN(idx);
+#elif CONFIG_IDF_TARGET_ESP32C3
+  TIMERG0.hw_timer[idx].config.tn_alarm_en=1;
 #elif CONFIG_IDF_TARGET_ESP32S3
   TIMERG0.hw_timer[idx].config.tn_alarm_en=1;
 #else
