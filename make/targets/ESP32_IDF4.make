@@ -33,6 +33,7 @@ $(CMAKEFILE):
 $(PROJ_NAME).bin: $(CMAKEFILE) $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h $(PININFOFILE).c $(WRAPPERFILE)
 	cp ${ROOT}/targets/esp32/IDF4/sdkconfig $(BINDIR)
 	cp ${ROOT}/targets/esp32/IDF4/CMakeLists.txt $(BINDIR)
+	cp ${ROOT}/targets/esp32/IDF4/partitions.csv $(BINDIR)
 	cd $(BINDIR) && idf.py build
 
 #$(ESP_ZIP): $(PROJ_NAME).bin
