@@ -33,6 +33,7 @@ BOARDNAME=$1
 if [ "$BOARDNAME" = "ALL" ]; then
   echo "Installing dev tools for all boards"
   PROVISION_ESP32=1
+  PROVISION_ESP32_IDF4=1
   PROVISION_ESP8266=1
   PROVISION_LINUX=1
   PROVISION_NRF52=1
@@ -42,8 +43,8 @@ if [ "$BOARDNAME" = "ALL" ]; then
   PROVISION_NRF_SDK17=1
   PROVISION_STM32F1=1
   PROVISION_STM32F4=1
-  PROVISION_STM32L4=1 
-  PROVISION_RASPBERRYPI=1 
+  PROVISION_STM32L4=1
+  PROVISION_RASPBERRYPI=1
   PROVISION_EMSCRIPTEN=1
   PROVISION_EMSCRIPTEN2=1
 else
@@ -51,7 +52,7 @@ else
   if [ "$FAMILY" = "" ]; then
     echo "UNKNOWN BOARD ($BOARDNAME)"
     return 1
-  fi  
+  fi
   export PROVISION_$FAMILY=1
   export PROVISION_$BOARDNAME=1
   if python scripts/get_makefile_decls.py $BOARDNAME | grep NRF_SDK17; then
@@ -69,18 +70,18 @@ echo Provision FAMILY = $FAMILY
 if [ "$PROVISION_ESP32" = "1" ]; then
     echo ===== ESP32
     # needed for esptool for merging binaries
-    if pip --version 2>/dev/null; then 
+    if pip --version 2>/dev/null; then
       echo python/pip installed
     else
       echo Installing python/pip pyserial
       sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python3-pip
     fi
-    if pip list 2>/dev/null | grep pyserial >/dev/null; then 
-      echo pyserial installed; 
-    else 
+    if pip list 2>/dev/null | grep pyserial >/dev/null; then
+      echo pyserial installed;
+    else
       echo Installing pyserial
       sudo pip -q install pyserial
-    fi    
+    fi
     # SDK
     if [ ! -d "app" ]; then
         echo installing app folder
@@ -108,6 +109,20 @@ if [ "$PROVISION_ESP32" = "1" ]; then
     export ESP_APP_TEMPLATE_PATH=`pwd`/app
     export PATH=$PATH:`pwd`/xtensa-esp32-elf/bin/
     echo GCC is $(which xtensa-esp32-elf-gcc)
+fi
+#--------------------------------------------------------------------------------
+if [ "$PROVISION_ESP32_IDF4" = "1" ]; then
+    echo ===== ESP32 IDF4
+    # SDK
+    if [ ! -d "esp-idf-4" ]; then
+        echo installing esp-idf folder
+        mkdir esp-idf-4
+        cd esp-idf-4
+        git clone -b v4.4.7 --recursive https://github.com/espressif/esp-idf.git
+        esp-idf/install.sh
+        cd ..
+    fi
+    source esp-idf-4/esp-idf/export.sh
 fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_ESP8266" = "1" ]; then
@@ -138,12 +153,12 @@ if [ "$PROVISION_RASPBERRYPI" = "1" ]; then
     echo ===== RASPBERRYPI
     if [ ! -d "targetlibs/raspberrypi" ]; then
         echo Installing Raspberry pi tools
-        mkdir targetlibs/raspberrypi        
+        mkdir targetlibs/raspberrypi
         cd targetlibs/raspberrypi
         git clone --depth=1 https://github.com/raspberrypi/tools
         # wiringpi?
         cd ../..
-    fi    
+    fi
 fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_NRF52" = "1" ]; then
@@ -172,8 +187,8 @@ if [ "$PROVISION_NRF_SDK15" = "1" ]; then
         curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5_SDK_15.0.0_a53641a_no_docs_unix.zip -o nRF5_SDK_15.0.0_a53641a.zip
         # This is nRF5_SDK_15.0.0_a53641a.zip without the docs/examples folder, and with line endings converted to unix (for patch)
         unzip -q -o nRF5_SDK_15.0.0_a53641a.zip
-        cp -r nRF5_SDK_15.0.0_a53641a/external/* targetlibs/nrf5x_15/external 
-        rm -rf nRF5_SDK_15.0.0_a53641a/external       
+        cp -r nRF5_SDK_15.0.0_a53641a/external/* targetlibs/nrf5x_15/external
+        rm -rf nRF5_SDK_15.0.0_a53641a/external
         cp -r nRF5_SDK_15.0.0_a53641a/* targetlibs/nrf5x_15
         rm -rf nRF5_SDK_15.0.0_a53641a.zip nRF5_SDK_15.0.0_a53641a
         echo ======================================================
@@ -188,8 +203,8 @@ if [ "$PROVISION_NRF_SDK15_3" = "1" ]; then
         curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/nrf52/nRF5_SDK_15.3.0_59ac345_no_docs_unix.zip -o nRF5_SDK_15.3.0_59ac345.zip
         # This is nRF5_SDK_15.0.0_a53641a.zip without the docs/examples folder, and with line endings converted to unix (for patch)
         unzip -q -o nRF5_SDK_15.3.0_59ac345.zip
-        cp -r nRF5_SDK_15.3.0_59ac345/external/* targetlibs/nrf5x_15_3/external 
-        rm -rf nRF5_SDK_15.3.0_59ac345/external       
+        cp -r nRF5_SDK_15.3.0_59ac345/external/* targetlibs/nrf5x_15_3/external
+        rm -rf nRF5_SDK_15.3.0_59ac345/external
         cp -r nRF5_SDK_15.3.0_59ac345/* targetlibs/nrf5x_15_3
         rm -rf nRF5_SDK_15.3.0_59ac345.zip nRF5_SDK_15.3.0_59ac345
         echo ======================================================
@@ -246,7 +261,7 @@ if [ "$ARM" = "1" ]; then
     EXPECTEDARMGCCFILENAME="arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi"
     if type arm-none-eabi-gcc 2> /dev/null > /dev/null; then
         ARMGCCVERSION=$(arm-none-eabi-gcc -dumpfullversion)
-        echo arm-none-eabi-gcc installed, version $ARMGCCVERSION    
+        echo arm-none-eabi-gcc installed, version $ARMGCCVERSION
         if [ ! "$ARMGCCVERSION" = "$EXPECTEDARMGCCVERSION" ]; then
           echo "*********************************************************************"
           echo "*********************************************************************"
@@ -261,7 +276,7 @@ if [ "$ARM" = "1" ]; then
           echo "*********************************************************************"
           echo "      Expected $EXPECTEDARMGCCVERSION"
           echo "      Got      $ARMGCCVERSION"
-        fi    
+        fi
     else
         echo "installing gcc-arm-embedded to Espruino/$EXPECTEDARMGCCFILENAME/bin"
         #sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
