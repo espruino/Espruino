@@ -106,7 +106,6 @@ void channelConfig(int timer, int channel, int value, Pin pin){
     .speed_mode = LEDC_LOW_SPEED_MODE,//set LEDC mode, from ledc_mode_t
     .timer_sel = timer
   };
-#else
 #elif CONFIG_IDF_TARGET_ESP32S3
   ledc_channel_config_t PWM_channel = {
     .channel = channel,//set LEDC channel 0
@@ -158,7 +157,6 @@ void setPWM(Pin pin,uint16_t value){
   else ledc_set_duty(LEDC_HIGH_SPEED_MODE, channel, value);
 #elif CONFIG_IDF_TARGET_ESP32C3
 	// No DAC implemented on ESP32C3
-#else
 #elif CONFIG_IDF_TARGET_ESP32S3
 	// No DAC implemented on ESP32S3
 #else

@@ -20,7 +20,6 @@
 	#include "driver/dac.h"
 #elif CONFIG_IDF_TARGET_ESP32C3
 	typedef enum { DAC_CHAN_0=0 , DAC_CHAN_1=1 } dac_channel_t;
-#else
 #elif CONFIG_IDF_TARGET_ESP32S3
 	typedef enum { DAC_CHAN_0=0 , DAC_CHAN_1=1 } dac_channel_t;
 #else
@@ -175,7 +174,6 @@ void writeDAC(Pin pin,uint8_t value){
 #endif
 #elif CONFIG_IDF_TARGET_ESP32C3
   jsExceptionHere(JSET_ERROR, "not implemented\n");
-#else
 #elif CONFIG_IDF_TARGET_ESP32S3
   jsExceptionHere(JSET_ERROR, "not implemented\n");
 #else
