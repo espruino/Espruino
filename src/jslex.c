@@ -1361,7 +1361,9 @@ JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   jsvSetCharactersInVar(block, blockChars);
   jsvUnLock(block);
   // Just make sure we only assert if there's a bug here. If we just ran out of memory or at end of string it's ok
+#ifndef NO_ASSERT
   assert((totalStringLength == jsvGetStringLength(var)) || (jsErrorFlags&JSERR_MEMORY) || !jsvStringIteratorHasChar(&it));
+#endif
   jsvStringIteratorFree(&it);
 
 
