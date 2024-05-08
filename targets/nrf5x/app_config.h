@@ -177,7 +177,7 @@
 #define APP_USBD_CDC_ACM_ZLP_ON_EPSIZE_WRITE 1
 #define NRFX_USBD_CONFIG_DMASCHEDULER_ISO_BOOST 1
 #define NRFX_USBD_CONFIG_IRQ_PRIORITY 6
-#endif
+#endif // NRF5X_SDK_17
 
 #if ESPR_LSE_ENABLE
 #define NRF_SDH_CLOCK_LF_SRC 1 // 32.768 kHz crystal clock
@@ -185,7 +185,7 @@
 #define NRF_SDH_CLOCK_LF_RC_CTIV 0
 // SoftDevice calibration timer interval under constant temperature.
 #define NRF_SDH_CLOCK_LF_RC_TEMP_CTIV 0
-#define NRF_SDH_CLOCK_LF_ACCURACY NRF_CLOCK_LF_ACCURACY_20_PPM
+#define NRF_SDH_CLOCK_LF_ACCURACY NRF_CLOCK_LF_ACCURACY_50_PPM
 #else // On internal oscillator
 #define NRF_SDH_CLOCK_LF_ACCURACY NRF_CLOCK_LF_ACCURACY_500_PPM
 #endif // ESPR_LSE_ENABLE
