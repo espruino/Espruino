@@ -1508,7 +1508,7 @@ void jswrap_e_dumpVariables() {
     else if (jsvIsString(v)) {
       JsVar *s;
       if (jsvGetStringLength(v)>20) {
-        s = jsvNewFromStringVar(v, 0, 17);
+        s = jsvNewWritableStringFromStringVar(v, 0, 17);
         jsvAppendString(s,"...");
       } else
         s = jsvLockAgain(v);

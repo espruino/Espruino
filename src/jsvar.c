@@ -1924,7 +1924,20 @@ void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxL
   jsvStringIteratorFree(&dst);
 }
 
-/** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH) */
+/** Create a new String from a substring in RAM. It is always writable. jsvNewFromStringVar can reference a non-writable string.
+The Argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH) */
+JsVar *jsvNewWritableStringFromStringVar(const JsVar *str, size_t stridx, size_t maxLength) {
+  JsVar *var = jsvNewFromEmptyString();
+  jsvAppendStringVar(var, str, stridx, maxLength);
+#ifdef ESPR_UNICODE_SUPPORT
+  if (jsvIsUTF8String(str))
+    var = jsvNewUTF8StringAndUnLock(var);
+#endif
+  return var;
+}
+
+/** Create a new variable from a substring. If a Native or Flash String, the memory area will be referenced (so the new string may not be writable)
+The Argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH) */
 JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength) {
   if (jsvIsNativeString(str) || jsvIsFlashString(str)) {
     // if it's a flash string, just change the pointer (but we must check length)
@@ -1936,18 +1949,12 @@ JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength) {
     res->varData.nativeStr.len = (JsVarDataNativeStrLength)maxLength;
     return res;
   }
-  JsVar *var = jsvNewFromEmptyString();
-  jsvAppendStringVar(var, str, stridx, maxLength);
-#ifdef ESPR_UNICODE_SUPPORT
-  if (jsvIsUTF8String(str))
-    var = jsvNewUTF8StringAndUnLock(var);
-#endif
-  return var;
+  return jsvNewWritableStringFromStringVar(str, stridx, maxLength);
 }
 
-/** Create a new variable from a string. argument must be a string. */
+/** Create a new writable string from a string (flash/native strings will be cloned, not referenced). argument must be a string. */
 JsVar *jsvNewFromStringVarComplete(JsVar *var) {
-  return jsvNewFromStringVar(var, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+  return jsvNewWritableStringFromStringVar(var, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
 }
 
 /** Append all of str to var. Both must be strings.  */
@@ -3875,8 +3882,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
         // It's a string, but it can't be appended - don't copy as copying will just keep the same var type!
         // Instead we create a new string var by copying
         // opt: should we allocate a flat string here? but repeated appends would then be slow
-        v = jsvNewFromEmptyString(); // don't use jsvNewFromStringVar as this does a copy for native/flash strs too
-        if (v) jsvAppendStringVarComplete(v, da);
+        v = jsvNewFromStringVarComplete(da);
       } else // otherwise just copy it
         v = jsvCopy(da, false);
       if (v) // could be out of memory

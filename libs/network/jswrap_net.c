@@ -142,11 +142,11 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
 
   JsVar *v;
 
-  v = jsvNewFromStringVar(url, (size_t)pathStart, JSVAPPENDSTRINGVAR_MAXLENGTH);
+  v = jsvNewWritableStringFromStringVar(url, (size_t)pathStart, JSVAPPENDSTRINGVAR_MAXLENGTH);
   if (jsvGetStringLength(v)==0) jsvAppendString(v, "/");
   jsvObjectSetChildAndUnLock(obj, "path", v);
 
-  v = jsvNewFromStringVar(url, (size_t)pathStart, (size_t)((searchStart>=0)?(searchStart-pathStart):JSVAPPENDSTRINGVAR_MAXLENGTH));
+  v = jsvNewWritableStringFromStringVar(url, (size_t)pathStart, (size_t)((searchStart>=0)?(searchStart-pathStart):JSVAPPENDSTRINGVAR_MAXLENGTH));
   if (jsvGetStringLength(v)==0) jsvAppendString(v, "/");
   jsvObjectSetChildAndUnLock(obj, "pathname", v);
 

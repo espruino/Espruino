@@ -401,7 +401,7 @@ static JsVar *_jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSub
 
   int idx = jswrap_string_indexOf(str, subStr, NULL, false);
   while (idx>=0  && !jspIsInterrupted()) {
-    JsVar *newStr = jsvNewFromStringVar(str, 0, (size_t)idx);
+    JsVar *newStr = jsvNewWritableStringFromStringVar(str, 0, (size_t)idx);
     jsvAppendStringVarComplete(newStr, newSubStr);
     jsvAppendStringVar(newStr, str, (size_t)idx+jsvGetStringLength(subStr), JSVAPPENDSTRINGVAR_MAXLENGTH);
     jsvUnLock(str);
@@ -783,8 +783,7 @@ original `String`.
 JsVar *jswrap_string_concat(JsVar *parent, JsVar *args) {
   if (!jsvIsString(parent)) return 0;
   // don't use jsvNewFromStringVar here because it has an optimisation for Flash Strings that just clones (rather than copying)
-  JsVar *str = jsvNewFromEmptyString();
-  jsvAppendStringVarComplete(str, parent);
+  JsVar *str = jsvNewFromStringVarComplete(parent);
   JsVar *extra = jsvArrayJoin(args, NULL/*filler*/, false/*ignoreNull*/);
   jsvAppendStringVarComplete(str, extra);
   jsvUnLock(extra);
