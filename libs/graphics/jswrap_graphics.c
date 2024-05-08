@@ -3740,9 +3740,16 @@ The image data itself will be referenced rather than copied if:
 
 Otherwise data will be copied, which takes up more space and may be quite slow.
 
-If the `Graphics` object contains `transparent` or `pelette` fields,
+If the `Graphics` object contains `transparent` or `palette` fields,
 [as you might find in an image](http://www.espruino.com/Graphics#images-bitmaps),
 those will be included in the generated image too.
+
+```
+var gfx = Graphics.createArrayBuffer(8,8,1);
+gfx.transparent = 0;
+gfx.drawString("X",0,0);
+var im = gfx.asImage("string");
+```
 */
 JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -3821,8 +3828,8 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
       while (jsvIteratorHasElement(&pit)) {
         int colorValue = jsvIteratorGetIntegerValue(&pit);
         if (colorIdx<colorCount) {
-          jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)(colorValue>>8));
           jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)colorValue);
+          jsvStringIteratorSetCharAndNext(&it, (char)(uint8_t)(colorValue>>8));
         }
         jsvIteratorNext(&pit);
         colorIdx++;
