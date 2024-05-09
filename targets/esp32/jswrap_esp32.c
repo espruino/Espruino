@@ -110,7 +110,11 @@ void jswrap_ESP32_deepSleep_ext0(Pin pin, int level) {
     jsExceptionHere(JSET_ERROR, "Invalid pin");
     return;
   }
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+  esp_deep_sleep_enable_gpio_wakeup(1<<pin, level);
+#else
   esp_sleep_enable_ext0_wakeup(pin, level);
+#endif
   esp_deep_sleep_start(); // This function does not return.
 } // End of jswrap_ESP32_deepSleep_ext0
 
@@ -168,7 +172,11 @@ void jswrap_ESP32_deepSleep_ext1(JsVar *pinVar, JsVarInt mode) {
     return;
   }
 
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+  esp_deep_sleep_enable_gpio_wakeup(pinSum, mode);
+#else
   esp_sleep_enable_ext1_wakeup(pinSum, mode);
+#endif
   esp_deep_sleep_start(); // This function does not return.
 } // End of jswrap_ESP32_deepSleep_ext1
 

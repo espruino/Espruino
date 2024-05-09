@@ -40,9 +40,11 @@ adc1_channel_t pinToAdcChannel(Pin pin){
     case 38: channel = ADC1_CHANNEL_2; break;
     case 39: channel = ADC1_CHANNEL_3; break;
     case 32: channel = ADC1_CHANNEL_4; break;
+#ifndef CONFIG_IDF_TARGET_ESP32C3
     case 33: channel = ADC1_CHANNEL_5; break;
     case 34: channel = ADC1_CHANNEL_6; break;
     case 35: channel = ADC1_CHANNEL_7; break;
+#endif
     default: channel = -1; break;
   }
   return channel;

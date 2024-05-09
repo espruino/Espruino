@@ -9,8 +9,12 @@ DEFINES += -DESPR_DEFINES_ON_COMMANDLINE
 
 SOURCES += targets/esp32/main.c \
 targets/esp32/jshardware.c \
-targets/esp32/jshardwareESP32.c \
-targets/esp32/esp32_neopixel.c
+targets/esp32/jshardwareESP32.c 
+
+ifeq ($(USE_NEOPIXEL),1)
+SOURCES +=  targets/esp32/esp32_neopixel.c
+endif
+
 INCLUDE += -I$(ROOT)/targets/esp32
 
 ifdef USE_BLUETOOTH

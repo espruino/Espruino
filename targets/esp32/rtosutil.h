@@ -2,7 +2,7 @@
  * This file is designed to support FREERTOS functions in Espruino,
  * a JavaScript interpreter for Microcontrollers designed by Gordon Williams
  *
- * Copyright (C) 2016 by Juergen Marsch 
+ * Copyright (C) 2016 by Juergen Marsch
  *
  * This Source Code Form is subject to the terms of the Mozilla Publici
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +14,7 @@
  * Task, queue and timer specific exposed components.
  * ----------------------------------------------------------------------------
  */
- 
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -28,7 +28,11 @@ struct RTOSqueue RTOSqueues[queueMax];
 struct RTOStask{ char *name;TaskHandle_t handle;int rx;};
 struct RTOStask RTOStasks[taskMax];
 
+#ifndef CONFIG_IDF_TARGET_ESP32C3
 #define timerMax 2 //for Timer we use an array of timer relevant info
+#else
+#define timerMax 1 // C3 only has one
+#endif
 struct ESP32Timer{ char *name; int group; int index; uint64_t duration; int taskToNotifyIdx; };
 struct ESP32Timer ESP32Timers[timerMax];
 

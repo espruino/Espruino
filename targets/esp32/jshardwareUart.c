@@ -68,6 +68,7 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
     jshSetDeviceInitialised(EV_SERIAL2,true);
     serial2_initialized = true;
+#if ESPR_USART_COUNT>2  
   } else if(device == EV_SERIAL3){
     if(inf->pinTX == 0xff) inf->pinTX = 17;
     if(inf->pinRX == 0xff) inf->pinRX = 16;
@@ -76,6 +77,7 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
     jshSetDeviceInitialised(EV_SERIAL3,true);
     serial3_initialized = true;
+#endif  
   }
 }
 
@@ -111,10 +113,12 @@ void serialToEspruino(){
     len = uart_read_bytes(uart_Serial2,rxbuf, sizeof(rxbuf),0);
     if(len > 0)jshPushIOCharEvents(EV_SERIAL2, rxbuf, len);
   }
+#if ESPR_USART_COUNT>2    
   if(serial3_initialized){
     len = uart_read_bytes(uart_Serial3,rxbuf, sizeof(rxbuf),0);
     if(len > 0) jshPushIOCharEvents(EV_SERIAL3, rxbuf,len);
   }
+#endif  
 }
 
 void writeSerial(IOEventFlags device,uint8_t c){

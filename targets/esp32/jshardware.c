@@ -118,9 +118,13 @@ void IRAM_ATTR gpio_intr_handler(void* arg){
   IOEventFlags exti;
   Pin gpio_num = 0;
   uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);   //read status to get interrupt status for GPIO0-31
+#ifndef CONFIG_IDF_TARGET_ESP32C3
   uint32_t gpio_intr_status_h = READ_PERI_REG(GPIO_STATUS1_REG);//read status1 to get interrupt status for GPIO32-39
+#endif
   SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, gpio_intr_status);    //Clear intr for gpio0-gpio31
+#ifndef CONFIG_IDF_TARGET_ESP32C3
   SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, gpio_intr_status_h); //Clear intr for gpio32-39
+#endif
   do {
     g_pinState[gpio_num] = 0;
     if(gpio_num < 32) {
@@ -129,10 +133,12 @@ void IRAM_ATTR gpio_intr_handler(void* arg){
          jshPushIOWatchEvent(exti);
       }
     } else {
+#ifndef CONFIG_IDF_TARGET_ESP32C3
       if(gpio_intr_status_h & BIT(gpio_num - 32)) {
         exti = pinToEV_EXTI(gpio_num);
         jshPushIOWatchEvent(exti);
       }
+#endif
     }
   } while(++gpio_num < GPIO_PIN_COUNT);
 }

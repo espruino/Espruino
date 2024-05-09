@@ -160,7 +160,7 @@ void taskWaitNotify(){
 #define TIMER_INTR_SEL TIMER_INTR_LEVEL  /*!< Timer level interrupt */
 #define TIMER_GROUP    TIMER_GROUP_0     /*!< Test on timer group 0 */
 #define TIMER_DIVIDER  80               /*!< Hardware timer clock divider */
-#if ESP_IDF_VERSION_MAJOR>=5
+#if (ESP_IDF_VERSION_MAJOR>=5) || CONFIG_IDF_TARGET_ESP32C3
 #define TIMER_FINE_ADJ   (1.4*(esp_clk_apb_freq() / TIMER_DIVIDER)/1000000) /*!< used to compensate alarm value */
 #define TIMER_TX_UPDATE(TIMER_N) TIMERG0.hw_timer[TIMER_N].update.tx_update = 1
 #define TIMER_ALARM_EN(TIMER_N) TIMERG0.hw_timer[TIMER_N].config.tx_alarm_en = 1;
@@ -182,10 +182,12 @@ void IRAM_ATTR espruino_isr(void *para){
     TIMER_TX_UPDATE(TIMER_0);
     TIMER_0_INT_CLR();
   }
-  else{
+#ifndef CONFIG_IDF_TARGET_ESP32C3
+  else {
     TIMER_TX_UPDATE(TIMER_1);
     TIMER_1_INT_CLR();
   }
+#endif
   jstUtilTimerInterruptHandler();
 }
 void IRAM_ATTR test_isr(void *para){
@@ -195,10 +197,12 @@ void IRAM_ATTR test_isr(void *para){
     TIMER_TX_UPDATE(TIMER_0);
     TIMER_0_INT_CLR();
   }
-  else{
+#ifndef CONFIG_IDF_TARGET_ESP32C3
+  else {
     TIMER_TX_UPDATE(TIMER_1);
     TIMER_1_INT_CLR();
   }
+#endif
 }
 
 
@@ -225,25 +229,24 @@ int timer_Init(char *timerName,int group,int index,int isr_idx){
     ESP32Timers[i].name = timerName;
     ESP32Timers[i].group = group;
     ESP32Timers[i].index = index;
-      timer_config_t config;
-      config.alarm_en = 1;
-      config.auto_reload = 1;
-      config.counter_dir = TIMER_COUNT_UP;
-      config.divider = TIMER_DIVIDER;
-      config.intr_type = TIMER_INTR_SEL;
-      config.counter_en = TIMER_PAUSE;
-      timer_init(group, index, &config);/*Configure timer*/
-      timer_pause(group, index);/*Stop timer counter*/
-      timer_set_counter_value(group, index, 0x00000000ULL);/*Load counter value */
-      timer_enable_intr(group, index);
-      if(isr_idx == 0){
+    timer_config_t config;
+    config.alarm_en = 1;
+    config.auto_reload = 1;
+    config.counter_dir = TIMER_COUNT_UP;
+    config.divider = TIMER_DIVIDER;
+    config.intr_type = TIMER_INTR_SEL;
+    config.counter_en = TIMER_PAUSE;
+    timer_init(group, index, &config);/*Configure timer*/
+    timer_pause(group, index);/*Stop timer counter*/
+    timer_set_counter_value(group, index, 0x00000000ULL);/*Load counter value */
+    timer_enable_intr(group, index);
+    if(isr_idx == 0){
       ESP32Timers[i].taskToNotifyIdx = task_indexByName("TimerTask");
-        timer_isr_register(group, index, espruino_isr, (void*) i, ESP_INTR_FLAG_IRAM, NULL);
-      }
-      else{
+      timer_isr_register(group, index, espruino_isr, (void*) i, ESP_INTR_FLAG_IRAM, NULL);
+    } else {
       timer_isr_register(group, index, test_isr, (void*) i, ESP_INTR_FLAG_IRAM, NULL);
-      }
-      return i;
+    }
+    return i;
   }
   }
   return -1;
@@ -254,7 +257,7 @@ void timer_Start(int idx,uint64_t duration){
 #if CONFIG_IDF_TARGET_ESP32
   TIMER_ALARM_EN(idx);
 #elif CONFIG_IDF_TARGET_ESP32C3
-  TIMERG0.hw_timer[idx].config.tn_alarm_en=1;
+  TIMERG0.hw_timer[idx].config.tx_alarm_en=1;
 #elif CONFIG_IDF_TARGET_ESP32S3
   TIMERG0.hw_timer[idx].config.tn_alarm_en=1;
 #else
@@ -267,7 +270,7 @@ void timer_Reschedule(int idx,uint64_t duration){
 #if CONFIG_IDF_TARGET_ESP32
     TIMER_ALARM_EN(idx);
 #elif CONFIG_IDF_TARGET_ESP32C3
-  TIMERG0.hw_timer[idx].config.tn_alarm_en=1;
+  TIMERG0.hw_timer[idx].config.tx_alarm_en=1;
 #elif CONFIG_IDF_TARGET_ESP32S3
   TIMERG0.hw_timer[idx].config.tn_alarm_en=1;
 #else

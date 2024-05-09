@@ -63,19 +63,23 @@ static esp_err_t checkError( char * caller, esp_err_t ret ) {
 
 void I2CReset(){
   if(jshIsDeviceInitialised(EV_I2C1)){
-  i2c_driver_delete(I2C_NUM_0);
+    i2c_driver_delete(I2C_NUM_0);
     jshSetDeviceInitialised(EV_I2C1, false);
   }
+#if ESPR_I2C_COUNT>1
   if(jshIsDeviceInitialised(EV_I2C2)){
     i2c_driver_delete(I2C_NUM_1);
     jshSetDeviceInitialised(EV_I2C2, false);
   }
+#endif
 }
 
 int getI2cFromDevice( IOEventFlags device  ) {
   switch(device) {
   case EV_I2C1: return I2C_NUM_0;
+#if ESPR_I2C_COUNT>1
   case EV_I2C2: return I2C_NUM_1;
+#endif
   default: return -1;
   }
 }
@@ -97,11 +101,13 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
     scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 21;
     sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 22;
   }
+#if ESPR_I2C_COUNT>1
   // Unsure on what to default these pins to?
   if ( i2c_master_port == I2C_NUM_1 ) {
     scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 16;
     sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 17;
   }
+#endif
 
   i2c_config_t conf;
   conf.mode = I2C_MODE_MASTER;

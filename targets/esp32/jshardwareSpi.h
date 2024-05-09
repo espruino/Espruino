@@ -23,7 +23,11 @@
 // Convert an Espruino pin to an ESP32 pin number.
 gpio_num_t pinToESP32Pin(Pin pin);
 
+#if CONFIG_IDF_TARGET_ESP32C3
+#define SPIMax 1
+#else
 #define SPIMax 2
+#endif
 struct SPIChannel{
   spi_device_handle_t spi;
   bool spi_read;

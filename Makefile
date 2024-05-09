@@ -879,7 +879,7 @@ lst: $(PROJ_NAME).lst
 
 clean:
 	@echo Cleaning targets
-	$(Q)rm -rf $(OBJDIR)/* $(BINDIR)/build
+	$(Q)rm -rf $(OBJDIR)/* $(BINDIR)/build $(BINDIR)/main
 	$(Q)rm -f $(GENDIR)/*.c $(GENDIR)/*.h $(GENDIR)/*.ld
 	$(Q)rm -f $(ROOT)/scripts/*.pyc $(ROOT)/boards/*.pyc
 	$(Q)rm -f $(PROJ_NAME).elf
