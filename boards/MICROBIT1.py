@@ -45,7 +45,7 @@ info = {
      'DEFINES += -DMICROBIT', # enable microbit-specific stuff
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves a bunch of flash
      'DEFINES+=-DUSE_TAB_COMPLETE',
-#     'DEFINES+=-DUSE_DEBUGGER', # Removed  due to firmware size issues
+     'USE_DEBUGGER=0', # Removed  due to firmware size issues
      'INCLUDE += -I$(ROOT)/libs/microbit',
      'WRAPPERSOURCES += libs/microbit/jswrap_microbit.c',
      

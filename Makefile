@@ -344,12 +344,9 @@ libs/compression/compress_rle.c
 
 else
 
-ifneq ($(FAMILY),ESP8266)
 # If we have enough flash, include the debugger
-# ESP8266 can't do it because it expects tasks to finish within set time
 ifneq ($(USE_DEBUGGER),0)
 DEFINES+=-DUSE_DEBUGGER
-endif
 endif
 # Use use tab complete
 ifneq ($(USE_TAB_COMPLETE),0)

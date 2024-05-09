@@ -33,6 +33,7 @@ info = {
    ],
    'makefile' : [
      'EMSCRIPTEN=1',
+     'USE_DEBUGGER=0', # We can't use debugger in emulator as we're single-threaded and it uses IRQs on embedded to work
      'DEFINES += -DESPR_HWVERSION=2',
      'DEFINES += -DUSE_CALLFUNCTION_HACK', # required to handle calls properly
      'DEFINES += -DBANGLEJS -DBANGLEJS_Q3 -DEMULATED -DEMSCRIPTEN',
