@@ -2,7 +2,7 @@
  * This file is designed to support FREERTOS functions in Espruino,
  * a JavaScript interpreter for Microcontrollers designed by Gordon Williams
  *
- * Copyright (C) 2016 by Juergen Marsch 
+ * Copyright (C) 2016 by Juergen Marsch
  *
  * This Source Code Form is subject to the terms of the Mozilla Publici
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -14,7 +14,7 @@
  * Contains ESP32 board specific functions.
  * ----------------------------------------------------------------------------
  */
- 
+
 #include "jshardwareUart.h"
 #include "driver/uart.h"
 
@@ -36,7 +36,7 @@ void initUart(int uart_num, uart_config_t uart_config, int txpin, int rxpin){
 
 void UartReset(){
   uart_driver_delete(uart_console);
-  initConsole();  
+  initConsole();
   if(serial2_initialized) uart_driver_delete(uart_Serial2);
   if(serial3_initialized) uart_driver_delete(uart_Serial3);
 }
@@ -87,18 +87,22 @@ void initConsole(){
     .stop_bits = UART_STOP_BITS_1,
     .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
     .rx_flow_ctrl_thresh = 122,
-  }; 
+  };
   initUart(uart_console,uart_config,-1,-1);
   // should we use hardware flow control on most ESP32 boards?
   // No... It looks like CTS is not connected on most boards, so XON/XOFF is best!
-  jshSetFlowControlEnabled(EV_SERIAL1, true, PIN_UNDEFINED); 
-  jshSetDeviceInitialised(EV_SERIAL1,true);  
+  jshSetFlowControlEnabled(EV_SERIAL1, true, PIN_UNDEFINED);
+  jshSetDeviceInitialised(EV_SERIAL1,true);
 }
 
 uint8_t rxbuf[256];
 void consoleToEspruino(){
-  int len = uart_read_bytes(uart_console, rxbuf, sizeof(rxbuf), 100);  //Read data from UART
-  if(len > 0) jshPushIOCharEvents(EV_SERIAL1, rxbuf, len);      
+  TickType_t ticksToWait = 100;
+#if ESP_IDF_VERSION_MAJOR>=4
+  ticksToWait = 50 / portTICK_RATE_MS;
+#endif
+  int len = uart_read_bytes(uart_console, rxbuf, sizeof(rxbuf), ticksToWait);  // Read data from UART
+  if(len > 0) jshPushIOCharEvents(EV_SERIAL1, rxbuf, len);
 }
 
 void serialToEspruino(){

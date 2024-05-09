@@ -231,8 +231,15 @@ bool jshIsInInterrupt() {
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
+#if ESP_IDF_VERSION_MAJOR>=4
+  double ms = jshGetMillisecondsFromTime(timeUntilWake);
+  if (ms>50) ms=50; // hack for now - ideally jshHadEvent called from UART IRQs would break out of vTaskDelay
+  vTaskDelay(ms / portTICK_PERIOD_MS);
+#else
   UNUSED(timeUntilWake);
-   return true;
+  // we never sleep in older IDFs
+#endif
+  return true;
 } // End of jshSleep
 
 
