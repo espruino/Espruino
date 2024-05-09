@@ -41,4 +41,5 @@ $(PROJ_NAME).bin: $(CMAKEFILE) $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h $(PININF
 proj: $(PROJ_NAME).bin
 #depend on $(ESP_ZIP)
 
-#flash: $(PROJ_NAME).bin
+flash: $(PROJ_NAME).bin
+	cd $(BINDIR) && idf.py flash

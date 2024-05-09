@@ -3,3 +3,6 @@
 nvs,      data, nvs,     ,        0x6000,
 phy_init, data, phy,     ,        0x1000,
 factory,  app,  factory, ,        2000K,
+flash,data,0x40,0x310000,64K
+js_code,  data, undefined,0x320000,256K
+storage,  data, undefined,0x360000,640K
