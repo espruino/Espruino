@@ -63,10 +63,10 @@ info = {
      'GRAPHICS',
 #     'CRYPTO','SHA256','SHA512',
 #     'TLS',
-     'TELNET',
+#     'TELNET',
      'NEOPIXEL',
-     'FILESYSTEM',
-     'FLASHFS',
+#     'FILESYSTEM',
+#     'FLASHFS',
      'BLUETOOTH'	 
    ],
    'makefile' : [
