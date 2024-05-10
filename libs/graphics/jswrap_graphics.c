@@ -109,6 +109,21 @@ void _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info) {
   jsvUnLock(info->buffer);
 }
 
+/** Parse the palette data from an image. Return 'palette' so it can be unlocked if needed. info->palettePtr=0 on failure */
+JsVar *_jswrap_graphics_parseImage_palette(GfxDrawImageInfo *info, JsVar *palette) {
+  info->palettePtr = 0;
+  if (jsvIsArrayBuffer(palette) && palette->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16) {
+    size_t l = 0;
+    info->palettePtr = (uint16_t *)jsvGetDataPointer(palette, &l);
+    if (l==2 || l==4 || l==8 || l==16 || l==256) {
+      info->paletteMask = (uint32_t)(l-1);
+    }
+  }
+  if (!info->palettePtr)
+    jsExceptionHere(JSET_ERROR, "Palette specified, but must be a flat Uint16Array of 2,4,8,16,256 elements");
+  return palette;
+}
+
 /** Parse an image into GfxDrawImageInfo. See drawImage for image format docs. Returns true on success.
  * if 'image' is a string or ArrayBuffer, imageOffset is the offset within that (usually 0)
  */
@@ -144,21 +159,8 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, size_t imageOffs
 #ifndef SAVE_ON_FLASH_EXTREME
     v = jsvObjectGetChildIfExists(image, "palette");
     if (v) {
-      if (jsvIsArrayBuffer(v) && v->varData.arraybuffer.type==ARRAYBUFFERVIEW_UINT16) {
-        size_t l = 0;
-        info->palettePtr = (uint16_t *)jsvGetDataPointer(v, &l);
-        jsvUnLock(v);
-        if (l==2 || l==4 || l==8 || l==16 || l==256) {
-          info->paletteMask = (uint32_t)(l-1);
-        } else {
-          info->palettePtr = 0;
-        }
-      } else
-        jsvUnLock(v);
-      if (!info->palettePtr) {
-        jsExceptionHere(JSET_ERROR, "Palette specified, but must be a flat Uint16Array of 2,4,8,16,256 elements");
-        return false;
-      }
+      jsvUnLock(_jswrap_graphics_parseImage_palette(info, v));
+      if (!info->palettePtr) return false;
     }
 #endif
 
@@ -3595,17 +3597,19 @@ like Bangle.js. Maximum layer count right now is 4.
 layers = [ {
   {x : int, // x start position
    y : int, // y start position
-   image : string/object,
+   image : string/object/Graphics,
    scale : float, // scale factor, default 1
    rotate : float, // angle in radians
    center : bool // center on x,y? default is top left
    repeat : should this image be repeated (tiled?)
    nobounds : bool // if true, the bounds of the image are not used to work out the default area to draw
+   palette : new Uint16Array(2/4/8/16/256) // (2v22+) a color palette to use with the image (overrides the image's palette)
+   compose : ""/"add"/"or"/"xor" // (2v22+) if set, the operation used when combining with the previous layer
   }
 ]
-options = { // the area to render. Defaults to rendering just enough to cover what's requested
- x,y,
- width,height
+options = {
+ x,y, : int // the area to render. Defaults to rendering just enough to cover what's requested
+ width,height : int
 }
 ```
 */
@@ -3647,6 +3651,24 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
           if (layers[i].x2>x+width) width=layers[i].x2-x;
           if (layers[i].y2>y+height) height=layers[i].y2-y;
         }
+        // extra palette supplied
+        JsVar *v = jsvObjectGetChildIfExists(layer,"palette");
+        if (v) {
+          jsvUnLock(_jswrap_graphics_parseImage_palette(&layers[i].img, v));
+          if (!layers[i].img.palettePtr) ok = false;
+        }
+        // compose operation
+        JsVar *opVar = jsvObjectGetChildIfExists(layer,"compose");
+        layers[i].compose = GFXDILC_REPLACE;
+        if (!opVar || !jsvGetStringLength(opVar)) layers[i].compose = GFXDILC_REPLACE;
+        else if (jsvIsStringEqual(opVar,"add")) layers[i].compose = GFXDILC_ADD;
+        else if (jsvIsStringEqual(opVar,"or")) layers[i].compose = GFXDILC_OR;
+        else if (jsvIsStringEqual(opVar,"xor")) layers[i].compose = GFXDILC_XOR;
+        else {
+          jsExceptionHere(JSET_ERROR,"Unknown op type %q", opVar);
+          ok = false;
+        }
+        jsvUnLock(opVar);
       } else ok = false;
       jsvUnLock(image);
     } else ok = false;
@@ -3654,19 +3676,21 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
   }
 
   jsvConfigObject configs[] = {
-      {"x", JSV_INTEGER, &x},
-      {"y", JSV_INTEGER, &y},
-      {"width", JSV_INTEGER, &width},
-      {"height", JSV_INTEGER, &height}
+    {"x", JSV_INTEGER, &x},
+    {"y", JSV_INTEGER, &y},
+    {"width", JSV_INTEGER, &width},
+    {"height", JSV_INTEGER, &height}
   };
   if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject)))
     ok =  false;
+
   int x2 = x+width-1, y2 = y+height-1;
   graphicsSetModifiedAndClip(&gfx, &x, &y, &x2, &y2,false);
   JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelFn(&gfx);
 
   // If all good, start rendering!
   if (ok) {
+    uint32_t maxCol = ((1UL<<gfx.data.bpp)-1); // max color for gfx instance
     for (i=0;i<layerCount;i++) {
       jsvStringIteratorNew(&layers[i].it, layers[i].img.buffer, (size_t)layers[i].img.bitmapOffset);
       _jswrap_drawImageLayerSetStart(&layers[i], x, y);
@@ -3676,23 +3700,32 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
       for (i=0;i<layerCount;i++)
         _jswrap_drawImageLayerStartX(&layers[i]);
       for (int xi = x; xi <= x2 ; xi++) {
-        // scan backwards until we hit a 'solid' pixel
+        // if first layer isn't *replace* then we
         bool solid = false;
         uint32_t colData = 0;
-        for (i=layerCount-1;i>=0;i--) {
-          if (_jswrap_drawImageLayerGetPixel(&layers[i], &colData)) {
+        for (i=0;i<layerCount;i++) {
+          uint32_t layerCol;
+          if (_jswrap_drawImageLayerGetPixel(&layers[i], &layerCol)) {
             solid = true;
-            break;
+            if (i==0 && layers[0].compose!=GFXDILC_REPLACE)
+              colData = graphicsGetPixel(&gfx, xi, yi);
+            switch (layers[i].compose) {
+              case GFXDILC_REPLACE: colData = layerCol; break;
+              case GFXDILC_ADD: colData += layerCol;
+                                if (colData>maxCol)
+                                  colData = maxCol;
+                                break;
+              case GFXDILC_OR: colData |= layerCol; break;
+              case GFXDILC_XOR: colData ^= layerCol; break;
+            }
           }
+          // next in layers!
+          _jswrap_drawImageLayerNextX(&layers[i]);
+          _jswrap_drawImageLayerNextXRepeat(&layers[i]);
         }
         // if nontransparent, draw it!
         if (solid)
           setPixel(&gfx, xi, yi, colData);
-        // next in layers!
-        for (i=0;i<layerCount;i++) {
-          _jswrap_drawImageLayerNextX(&layers[i]);
-          _jswrap_drawImageLayerNextXRepeat(&layers[i]);
-        }
       }
       for (i=0;i<layerCount;i++)
         _jswrap_drawImageLayerNextY(&layers[i]);

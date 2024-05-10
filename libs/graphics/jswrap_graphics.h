@@ -120,8 +120,15 @@ void _jswrap_graphics_freeImageInfo(GfxDrawImageInfo *info);
  */
 bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, size_t imageOffset, GfxDrawImageInfo *info);
 
+/// When using drawImages, how should images be composed
+typedef enum {
+  GFXDILC_REPLACE, //< Normal, replace unless transparent
+  GFXDILC_ADD, //< add to what's there
+  GFXDILC_OR,  //< binary OR to what's there
+  GFXDILC_XOR  //< binary XOR with what's there
+} GfxDrawImageLayerCompose;
 
-/// This is for rotating and scaling layers
+/// This is for rotating and scaling layers with drawImages
 typedef struct {
   int x1,y1,x2,y2; //x2/y2 is exclusive
   double rotate; // radians
@@ -135,6 +142,7 @@ typedef struct {
   int sx,sy; //< iterator X increment
   int px,py; //< y iterator position
   int qx,qy; //< x iterator position
+  GfxDrawImageLayerCompose compose; //< How should this layer be composed onto previous layers?
 } GfxDrawImageLayer;
 
 bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, uint32_t *result);

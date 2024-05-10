@@ -6,7 +6,7 @@ g.dump = _=>{
   for (var y=0;y<g.getHeight();y++) {
     s+="\n";
     for (var x=0;x<g.getWidth();x++) 
-      s+=".#"[b[n++]?1:0];
+      s+=".oO#"[b[n++]&3];
   }
   return s;
 }
@@ -31,7 +31,7 @@ function testLine(IBPP) {
 
   g.clear(1);
   g.drawImages([{image:cgimg,x:0,y:0,scale:1}],{});
-console.log("bpp:",IBPP);
+  console.log("bpp:",IBPP);
 SHOULD_BE(`
 #...............
 .#..............
@@ -56,5 +56,80 @@ testLine(2);
 testLine(4);
 testLine(8);
 testLine(16);
+
+// test combining images (OR=almost the same apart from line ~12)
+g.clear(1).setColor(1);
+var im = atob("BwgBqgP////AVQ==");
+g.drawImages([
+  {image:im,x:0,y:0,scale:2},
+  {image:im,x:5,y:5,scale:1, compose:"or"}  
+],{});
+SHOULD_BE(`
+oo..oo..oo..oo..
+oo..oo..oo..oo..
+................
+................
+oooooooooooooo..
+oooooooooooooo..
+oooooooooooooo..
+oooooooooooooo..
+oooooooooooooo..
+oooooooooooooo..
+oooooooooooooo..
+oooooooooooooo..
+.....o.o.o.o....
+................
+oo..oo..oo..oo..
+oo..oo..oo..oo..`);
+
+// test combining images (ADD)
+g.clear(1).setColor(1);
+var im = atob("BwgBqgP////AVQ==");
+g.drawImages([
+  {image:im,x:0,y:0,scale:2},
+  {image:im,x:5,y:5,scale:1, compose:"add"}  
+],{});
+SHOULD_BE(`
+oo..oo..oo..oo..
+oo..oo..oo..oo..
+................
+................
+oooooooooooooo..
+oooooOoOoOoOoo..
+oooooooooooooo..
+oooooOOOOOOOoo..
+oooooOOOOOOOoo..
+oooooOOOOOOOoo..
+oooooOOOOOOOoo..
+oooooooooooooo..
+.....o.o.o.o....
+................
+oo..oo..oo..oo..
+oo..oo..oo..oo..`);
+
+// test combining images (OR with palette)
+g.clear(1).setColor(1);
+var im = atob("BwgBqgP////AVQ==");
+g.drawImages([
+  {image:im,x:0,y:0,scale:2},
+  {image:im,x:5,y:5,scale:1, compose:"or", palette:new Uint16Array([0,2])}  
+],{});
+SHOULD_BE(`
+oo..oo..oo..oo..
+oo..oo..oo..oo..
+................
+................
+oooooooooooooo..
+ooooo#o#o#o#oo..
+oooooooooooooo..
+ooooo#######oo..
+ooooo#######oo..
+ooooo#######oo..
+ooooo#######oo..
+oooooooooooooo..
+.....O.O.O.O....
+................
+oo..oo..oo..oo..
+oo..oo..oo..oo..`);
 
 result = ok;
