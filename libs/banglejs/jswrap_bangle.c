@@ -2129,7 +2129,6 @@ Bangle.setLCDTimeout(0); // turn off the timeout
 Bangle.setLCDPower(1); // keep screen on
 ```
 
-
 **When on full, the LCD draws roughly 40mA.** You can adjust When brightness
 using `Bangle.setLCDBrightness`.
 */
@@ -2176,7 +2175,7 @@ void jswrap_banglejs_setLCDPower(bool isOn) {
 This function can be used to adjust the brightness of Bangle.js's display, and
 hence prolong its battery life.
 
-Due to hardware design constraints, software PWM has to be used which means that
+Due to hardware design constraints on Bangle.js 1, software PWM has to be used which means that
 the display may flicker slightly when Bluetooth is active and the display is not
 at full power.
 
@@ -2188,13 +2187,16 @@ at full power.
 * 0.5 = 28mA
 * 0.9 = 40mA (switching overhead)
 * 1 = 40mA
+
+In 2v21 and earlier, this function would erroneously turn the LCD backlight on. 2v22 and later
+fix this, and if you want the backlight on your should use `Bangle.setLCDPowerBacklight()`
 */
 void jswrap_banglejs_setLCDBrightness(JsVarFloat v) {
   int b = (int)(v*256 + 0.5);
   if (b<0) b=0;
   if (b>255) b=255;
   lcdBrightness = b;
-  if (bangleFlags&JSBF_LCD_ON)  // need to re-run to adjust brightness
+  if (bangleFlags&JSBF_LCD_BL_ON)  // need to re-run to adjust brightness
     jswrap_banglejs_setLCDPowerBacklight(1);
 }
 
@@ -2736,6 +2738,8 @@ JsVar *jswrap_banglejs_getOptions() {
     "ifdef" : "BANGLEJS"
 }
 Also see the `Bangle.lcdPower` event
+
+You can use `Bangle.setLCDPower` to turn on the LCD (on Bangle.js 2 the LCD is normally on, and draws very little power so can be left on).
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isLCDOn() {
@@ -2751,6 +2755,8 @@ int jswrap_banglejs_isLCDOn() {
     "ifdef" : "BANGLEJS"
 }
 Also see the `Bangle.backlight` event
+
+You can use `Bangle.setLCDPowerBacklight` to turn on the LCD backlight.
 */
 // emscripten bug means we can't use 'bool' as return value here!
 int jswrap_banglejs_isBacklightOn() {
