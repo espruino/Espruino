@@ -594,6 +594,8 @@ bool pressureSPL06Enabled = false;
 #define PRESSURE_DEVICE_SPL06_007 1 // BMP280 already defined
 #define PRESSURE_DEVICE_BMP280_EN pressureBMP280Enabled
 #define PRESSURE_DEVICE_SPL06_007_EN pressureSPL06Enabled // hardware v2.1 is SPL06_001 - we need this as well
+
+IOEventFlags btn1EventFlags; // for JSBF_BTN_LOW_RESISTANCE_FIX
 #endif // EMULATED
 
 #define HOME_BTN 1
@@ -964,6 +966,13 @@ typedef enum {
   JSBF_LOCKED        = 1<<18,
   JSBF_HRM_INSTANT_LISTENER = 1<<19,
   JSBF_LCD_DBL_REFRESH = 1<<20, ///< On Bangle.js 2, toggle extcomin twice for each poll interval (avoids screen 'flashing' behaviour off axis)
+#ifdef BANGLEJS_Q3
+  /** On some Bangle.js 2, BTN1 (which is used for reloading apps) gets a low resistance across it
+  (possibly due to water damage) and the internal resistor can no longer overcome that resistance
+  so the button appears stuck on. With this fix we force the button pin low just before reading to try
+  and overcome that resistance, and we also disable the button watch interrupt. */
+  JSBF_BTN_LOW_RESISTANCE_FIX = 1<<21,
+#endif
 
   JSBF_DEFAULT = ///< default at power-on
       JSBF_WAKEON_TWIST|
@@ -1019,6 +1028,7 @@ JsBangleTasks bangleTasks;
 
 const char *lockReason = 0; ///< If JSBT_LOCK/UNLOCK is set, this is the reason (if known) - should point to a constant string (not on stack!)
 void _jswrap_banglejs_setLocked(bool isLocked, const char *reason);
+void btnHandlerCommon(int button, bool state, IOEventFlags flags);
 
 void jswrap_banglejs_pwrGPS(bool on) {
   if (on) bangleFlags |= JSBF_GPS_ON;
@@ -1199,6 +1209,24 @@ void jswrap_banglejs_kickPollWatchdog() {
  * Also, holding down both buttons will reboot */
 void peripheralPollHandler() {
   JsSysTime time = jshGetSystemTime();
+
+#ifdef BANGLEJS_Q3
+  /* See comments on JSBF_BTN_LOW_RESISTANCE_FIX - on Bangles with damaged buttons
+  that always stay on this can help to make them usable again. */
+  if (bangleFlags & JSBF_BTN_LOW_RESISTANCE_FIX) {
+    jshPinSetValue(BTN1_PININDEX, !BTN1_ONSTATE);
+    jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_OUT);
+    nrf_delay_us(10);
+    jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
+    static bool lastBtn1Value = 0;
+    bool btn1Value = jshPinGetValue(BTN1_PININDEX);
+    if (btn1Value != lastBtn1Value) {
+      btnHandlerCommon(1, btn1Value, btn1EventFlags);
+      lastBtn1Value = btn1Value;
+    }
+  }
+#endif
+
   // Handle watchdog
   if (!(jshPinGetValue(BTN1_PININDEX)
 #ifdef BTN2_PININDEX
@@ -1721,7 +1749,6 @@ void backlightOffHandler() {
 #endif // !EMULATED
 
 void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
-
   // wake up IF LCD power or Lock has a timeout (so will turn off automatically)
   if (lcdPowerTimeout || backlightTimeout || lockTimeout) {
     if (((bangleFlags&JSBF_WAKEON_BTN1)&&(button==1)) ||
@@ -1819,7 +1846,10 @@ bool btnTouchHandler() {
 }
 #endif
 void btn1Handler(bool state, IOEventFlags flags) {
-  btnHandlerCommon(1,state,flags);
+#ifdef BANGLEJS_Q3
+  if (!(bangleFlags&JSBF_BTN_LOW_RESISTANCE_FIX))
+#endif
+    btnHandlerCommon(1,state,flags);
 }
 #ifdef BTN2_PININDEX
 void btn2Handler(bool state, IOEventFlags flags) {
@@ -2575,6 +2605,10 @@ This uses the accelerometer, not the touchscreen itself. default = `false`
    current value. If you desire a specific interval (e.g. the default 80ms) you
    must set it manually with `Bangle.setPollInterval(80)` after setting
    `powerSave:false`.
+* `lowResistanceFix` (Bangle.js 2, 2v22+) In the very rare case that your watch button
+gets damaged such that it has a low resistance and always stays on, putting the watch
+into a boot loop, setting this flag may improve matters (by forcing the input low
+before reading and disabling the hardware watch on BTN1).
 * `lockTimeout` how many milliseconds before the screen locks
 * `lcdPowerTimeout` how many milliseconds before the screen turns off
 * `backlightTimeout` how many milliseconds before the screen's backlight turns
@@ -2610,6 +2644,9 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
   bool wakeOnDoubleTap = bangleFlags&JSBF_WAKEON_DBLTAP;
   bool wakeOnTwist = bangleFlags&JSBF_WAKEON_TWIST;
   bool powerSave = bangleFlags&JSBF_POWER_SAVE;
+#ifdef BANGLEJS_Q3
+  bool lowResistanceFix = bangleFlags&JSBF_BTN_LOW_RESISTANCE_FIX;
+#endif
   int stepCounterThresholdLow, stepCounterThresholdHigh; // ignore these with new step counter
   int _accelGestureStartThresh = accelGestureStartThresh*accelGestureStartThresh;
   int _accelGestureEndThresh = accelGestureEndThresh*accelGestureEndThresh;
@@ -2661,6 +2698,9 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
       {"wakeOnDoubleTap", JSV_BOOLEAN, &wakeOnDoubleTap},
       {"wakeOnTwist", JSV_BOOLEAN, &wakeOnTwist},
       {"powerSave", JSV_BOOLEAN, &powerSave},
+#ifdef BANGLEJS_Q3
+      {"lowResistanceFix", JSV_BOOLEAN, &lowResistanceFix},
+#endif
       {"lockTimeout", JSV_INTEGER, &lockTimeout},
       {"lcdPowerTimeout", JSV_INTEGER, &lcdPowerTimeout},
       {"backlightTimeout", JSV_INTEGER, &backlightTimeout},
@@ -2688,6 +2728,10 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
     bangleFlags = (bangleFlags&~JSBF_WAKEON_DBLTAP) | (wakeOnDoubleTap?JSBF_WAKEON_DBLTAP:0);
     bangleFlags = (bangleFlags&~JSBF_WAKEON_TWIST) | (wakeOnTwist?JSBF_WAKEON_TWIST:0);
     bangleFlags = (bangleFlags&~JSBF_POWER_SAVE) | (powerSave?JSBF_POWER_SAVE:0);
+#ifdef BANGLEJS_Q3
+    bangleFlags = (bangleFlags&~JSBF_BTN_LOW_RESISTANCE_FIX) | (lowResistanceFix?JSBF_BTN_LOW_RESISTANCE_FIX:0);
+#endif
+
     if (lockTimeout<0) lockTimeout=0;
     if (lcdPowerTimeout<0) lcdPowerTimeout=0;
     if (backlightTimeout<0) backlightTimeout=0;
@@ -3657,7 +3701,7 @@ NO_INLINE void jswrap_banglejs_init() {
   jshPinOutput(VIBRATE_PIN,0);
 #endif
 
-  #ifdef BANGLEJS_Q3
+#ifdef BANGLEJS_Q3
 #ifndef EMULATED
   jshSetPinShouldStayWatched(TOUCH_PIN_IRQ,true);
   channel = jshPinWatch(TOUCH_PIN_IRQ, true, JSPW_NONE);
@@ -4080,6 +4124,7 @@ NO_INLINE void jswrap_banglejs_init() {
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   channel = jshPinWatch(BTN1_PININDEX, true, JSPW_NONE);
   if (channel!=EV_NONE) jshSetEventCallback(channel, btn1Handler);
+  btn1EventFlags = channel;
 #else
   jshSetPinShouldStayWatched(BTN1_PININDEX,true);
   jshSetPinShouldStayWatched(BTN2_PININDEX,true);
