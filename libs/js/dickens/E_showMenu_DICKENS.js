@@ -28,7 +28,6 @@
   var cBg = 0; // background col
   var cFg = -1; // foreground col
   var cHighlightFg = -1;
-  var loc = require("locale");
   var l = {
     draw : function() {
       g.reset().setColor(cFg).setFontGrotesk16();
@@ -50,13 +49,12 @@
         g.setColor(hl ? cHighlightFg : cFg);
         g.clearRect(x,iy-1,x2,iy+options.fontHeight-1);
         g.setFontAlign(-1,-1);
-        g.drawString(loc.translate(name),x+2,iy);
+        g.drawString(name,x+2,iy);
         if ("object" == typeof item) {
           var xo = x2;
           var v = item.value;
           if (item.format) v=item.format(v);
           if (("number" == typeof v) && item.precision) v=v.toFixed(item.precision);
-          v = loc.translate(""+v);
           if (l.selectEdit && idx==options.selected) {
             xo -= 24 + 1;
             g.setColor(cHighlightBg);

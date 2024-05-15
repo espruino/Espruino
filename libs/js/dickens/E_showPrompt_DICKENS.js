@@ -5,7 +5,6 @@
   if (!options) options={};
   if (!options.buttons)
     options.buttons = {"Yes":true,"No":false};
-  var loc = require("locale");
   var btns = Object.keys(options.buttons);
   if (!options.selected)
     options.selected = 0;
@@ -23,7 +22,6 @@
     var H = g.getHeight();
     var title = options.title;
     if (title) {
-      title = loc.translate(title);
       g.setFontGrotesk16().setFontAlign(0,-1,0).setBgColor(cBorderBg).drawString(title,119,42).setBgColor(0);
     }
     var i =options.icon;
@@ -34,7 +32,7 @@
     var lines = msg.split("\n");
     var offset = 105 - lines.length*16/2;
     lines.forEach((line,y)=>
-      g.drawString(loc.translate(line),W/2,offset + y*16));
+      g.drawString(line,W/2,offset + y*16));
     var buttonWidths = 0;
     var buttonPadding = 16;
     var x, y, w, bw, poly;
@@ -42,7 +40,6 @@
       x = 120;
       y = 172-btns.length*18;
       btns.forEach((btn,idx)=>{
-        btn = loc.translate(btn);
         bw = 50;
         poly = [x-bw-4,y-9,x+bw+4,y-9,x+bw+4,y+9,x-bw-4,y+9];
         g.setColor(idx==options.selected ? cHighlightBg : 0).fillPoly(poly).setColor(-1).drawPoly(poly,1).setFontGrotesk14().drawString(btn,x,y+1);
@@ -50,11 +47,10 @@
       });
     } else
     {
-      btns.forEach(btn=>buttonWidths += buttonPadding+g.stringWidth(loc.translate(btn)));
+      btns.forEach(btn=>buttonWidths += buttonPadding+g.stringWidth(btn));
       x = (W-buttonWidths)/2;
       y = 150;
       btns.forEach((btn,idx)=>{
-        btn = loc.translate(btn);
         w = g.stringWidth(btn);
         x += (buttonPadding+w)/2;
         bw = 2+w/2;

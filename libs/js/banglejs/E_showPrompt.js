@@ -2,7 +2,6 @@
   if (!options) options={};
   if (!options.buttons)
     options.buttons = {"Yes":true,"No":false};
-  var loc = require("locale");
   var btns = Object.keys(options.buttons);
   if (!options.selected)
     options.selected = 0;
@@ -29,15 +28,14 @@
     var buttonWidths = 0;
     var buttonPadding = 16;
     g.setFontAlign(0,0);
-    btns.forEach(btn=>buttonWidths += buttonPadding+g.stringWidth(loc.translate(btn)));
+    btns.forEach(btn=>buttonWidths += buttonPadding+g.stringWidth(btn));
     if (buttonWidths>W) { // if they don't fit, use smaller font
       g.setFont("6x8");
       buttonWidths = 0;
-      btns.forEach(btn=>buttonWidths += buttonPadding+g.stringWidth(loc.translate(btn)));
+      btns.forEach(btn=>buttonWidths += buttonPadding+g.stringWidth(btn));
     }
     var x = (W-buttonWidths)/2;
     btns.forEach((btn,idx)=>{
-      btn = loc.translate(btn);
       var w = g.stringWidth(btn);
       x += (buttonPadding+w)/2;
       var bw = 2+w/2;
