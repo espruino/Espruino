@@ -97,13 +97,13 @@ static bool g_isStaConnected = false;
 static bool mdns_started = 0;
 
 void stopMDNS() {
-  jsDebug(DBG_INFO, "Wifi:stopMDNS");
+  jsDebug(DBG_INFO, "Wifi:stopMDNS\n");
   mdns_free();
   mdns_started = false;
 }
 
 void startMDNS(char *hostname) {
-  jsDebug(DBG_INFO, "Wifi:startMDNS - %s", hostname);
+  jsDebug(DBG_INFO, "Wifi:startMDNS - %s\n", hostname);
   if (mdns_started) stopMDNS();
 
   // start mDNS and set hostname (required if you want to advertise services)
@@ -189,7 +189,7 @@ static char *htModeToString(wifi_second_chan_t htMode) {
  * Convert a Wifi reason code to a string representation.
  */
 static char *wifiReasonToString(uint8_t reason) {
-  jsDebug(DBG_INFO, "wifiReasonToString %d",reason);
+  jsDebug(DBG_INFO, "wifiReasonToString %d\n",reason);
   switch(reason) {
   case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
     return "4WAY_HANDSHAKE_TIMEOUT";
@@ -248,7 +248,7 @@ static char *wifiReasonToString(uint8_t reason) {
   case WIFI_REASON_UNSUPP_RSN_IE_VERSION:
     return "REASON_UNSUPP_RSN_IE_VERSION";
   }
-  jsDebug(DBG_INFO, "wifiReasonToString: Unknown reason %d", reason);
+  jsDebug(DBG_INFO, "wifiReasonToString: Unknown reason %d\n", reason);
   return "Unknown reason";
 } // End of wifiReasonToString
 
@@ -273,7 +273,7 @@ static char *wifiModeToString(wifi_mode_t mode) {
  * Convert an wifi event to a string value.
  */
 static char *wifiEventToString(uint32_t event){
-  jsDebug(DBG_INFO, "wifiReasonToString %d",event);
+  jsDebug(DBG_INFO, "wifiReasonToString %d\n",event);
   switch(event){
     case SYSTEM_EVENT_STA_CONNECTED:return "STA_CONNECTED";
     case SYSTEM_EVENT_STA_DISCONNECTED:return "STA_DISCONNECTED";
@@ -308,7 +308,7 @@ static char *wifiEventToString(uint32_t event){
  * convert WiFi error to a string value.
  */
 static char *wifiErrorToString(esp_err_t err){
-  jsDebug(DBG_INFO, "wifiErrorToString %d", err);
+  jsDebug(DBG_INFO, "wifiErrorToString %d\n", err);
   switch(err){
     case 0x3001: return "WiFi driver was not installed by esp_wifi_init";
     case 0x3002: return "WiFi driver was not started by esp_wifi_start";
@@ -429,7 +429,7 @@ static JsVar *getWifiModule() {
 static int s_retry_num = 0;
 
 static char *wifiGetEvent(uint32_t event) {
-  jsDebug(DBG_INFO,"wifiGetEvent: Got event: %d", event);
+  jsDebug(DBG_INFO,"wifiGetEvent: Got event: %d\n", event);
   switch(event) {
     case SYSTEM_EVENT_AP_PROBEREQRECVED:
       return "#onprobe_recv";
@@ -459,7 +459,7 @@ static char *wifiGetEvent(uint32_t event) {
     case SYSTEM_EVENT_WIFI_READY:
       break;
   }
-  jsDebug(DBG_INFO, "Unhandled wifi event type: %d", event);
+  jsDebug(DBG_INFO, "Unhandled wifi event type: %d\n", event);
   return NULL;
 } // End of wifiGetEvent
 
@@ -483,7 +483,7 @@ static void sendWifiEvent(
   if (eventName == NULL) {
     return;
   }
-  jsDebug(DBG_INFO, "sendWifiEvent %s", eventName);
+  jsDebug(DBG_INFO, "sendWifiEvent %s\n", eventName);
   jsiQueueObjectCallbacks(module, eventName, params, 1);
   jsvUnLock(module);
   return;
@@ -511,7 +511,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
   if (event->event_id == SYSTEM_EVENT_STA_DISCONNECTED) {
     if (--s_retry_num > 0 ) {
       esp_wifi_connect();
-      jsDebug(DBG_INFO,"retry to AP connect");
+      jsDebug(DBG_INFO,"retry to AP connect\n");
       return;
       }
     g_isStaConnected = false; // Flag as disconnected
@@ -570,7 +570,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     // Perform an esp_wifi_connect
     esp_err_t err = esp_wifi_connect();
     if (err != ESP_OK) {
-      jsDebug(DBG_INFO, "Wifi: event_handler STA_START: esp_wifi_connect: %d(%s)", err,wifiErrorToString(err));
+      jsDebug(DBG_INFO, "Wifi: event_handler STA_START: esp_wifi_connect: %d(%s)\n", err,wifiErrorToString(err));
       return NULL;
     }
     return ESP_OK;
@@ -596,7 +596,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     jsvObjectSetChildAndUnLock(jsDetails, "netmask", jsvNewFromString(temp));
     sprintf(temp, IPSTR, IP2STR(&event->event_info.got_ip.ip_info.gw));
     jsvObjectSetChildAndUnLock(jsDetails, "gw", jsvNewFromString(temp));
-    jsDebug(DBG_INFO, "Wifi: About to emit connect!");
+    jsDebug(DBG_INFO, "Wifi: About to emit connect!\n");
     sendWifiEvent(event->event_id, jsDetails);
     // start mDNS
     const char * hostname;
@@ -664,7 +664,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     sendWifiCompletionCB(&g_jsAPStartedCallback, NULL);
     return ESP_OK;
   }
-  jsDebug(DBG_INFO, "Wifi: event_handler -> NOT HANDLED EVENT: %d", event->event_id );
+  jsDebug(DBG_INFO, "Wifi: event_handler -> NOT HANDLED EVENT: %d\n", event->event_id );
   return ESP_OK;
 } // End of event_handler
 
@@ -685,7 +685,7 @@ void esp32_wifi_init() {
   ESP_ERROR_CHECK(esp_wifi_init(&cfg));
   ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
-  jsDebug(DBG_INFO, "esp32_wifi_init complete");
+  jsDebug(DBG_INFO, "esp32_wifi_init complete\n");
 
 } // End of esp32_wifi_init
 
@@ -701,7 +701,7 @@ static void sendWifiCompletionCB(
     JsVar **g_jsCallback, //!< Pointer to the global callback variable
     char *reason          //!< NULL if successful, error string otherwise
 ) {
-  jsDebug(DBG_INFO, "sendWifiCompletionCB");
+  jsDebug(DBG_INFO, "sendWifiCompletionCB\n");
   // Check that we have a callback function.
   if (!jsvIsFunction(*g_jsCallback)) {
     return; // we have not got a function pointer: nothing to do
@@ -726,7 +726,7 @@ static void sendWifiCompletionCB(
  * Perform a soft initialization of ESP32 networking.
  */
 void jswrap_esp32_wifi_soft_init() {
-  jsDebug(DBG_INFO, "jswrap_esp32_wifi_soft_init()");
+  jsDebug(DBG_INFO, "jswrap_esp32_wifi_soft_init()\n");
   JsNetwork net;
   networkCreate(&net, JSNETWORKTYPE_ESP32); // Set the network type to be ESP32
   networkState = NETWORKSTATE_ONLINE; // Set the global state of the networking to be online
@@ -754,7 +754,7 @@ void jswrap_wifi_disconnect(JsVar *jsCallback) {
   g_jsDisconnectCallback = jsvLockAgainSafe(jsCallback);
 
   // Call the ESP-IDF to disconnect us from the access point.
-  jsDebug(DBG_INFO, "Disconnecting.....");
+  jsDebug(DBG_INFO, "Disconnecting.....\n");
   // turn off auto-connect
 #if !(ESP_IDF_VERSION_MAJOR>=4)
   esp_wifi_set_auto_connect(false);
@@ -762,7 +762,7 @@ void jswrap_wifi_disconnect(JsVar *jsCallback) {
   s_retry_num = 0; // flag so we don't attempt to reconnect
   err = esp_wifi_disconnect();
   if (err != ESP_OK) {
-    jsDebug(DBG_INFO, "jswrap_wifi_disconnect: esp_wifi_disconnect rc=%d(%s)", err,wifiErrorToString(err));
+    jsDebug(DBG_INFO, "jswrap_wifi_disconnect: esp_wifi_disconnect rc=%d(%s)\n", err,wifiErrorToString(err));
   }
   if (jsvIsFunction(jsCallback)) {
     jsiQueueEvents(NULL, jsCallback, NULL, 0);
@@ -796,7 +796,7 @@ void jswrap_wifi_stopAP(JsVar *jsCallback) {
   }
   err = esp_wifi_set_mode(mode);
   if (err != ESP_OK) {
-    jsDebug(DBG_INFO, "jswrap_wifi_stopAP: esp_wifi_set_mode rc=%d(%s)", err,wifiErrorToString(err));
+    jsDebug(DBG_INFO, "jswrap_wifi_stopAP: esp_wifi_set_mode rc=%d(%s)\n", err,wifiErrorToString(err));
   }
 
   if (jsvIsFunction(jsCallback)) {
@@ -810,7 +810,7 @@ void jswrap_wifi_connect(
     JsVar *jsCallback
   ) {
 
-  jsDebug(DBG_INFO, "jswrap_wifi_connect: entry");
+  jsDebug(DBG_INFO, "jswrap_wifi_connect: entry\n");
 
   // Check that the ssid value isn't obviously in error.
   if (!jsvIsString(jsSsid)) {
@@ -863,7 +863,7 @@ void jswrap_wifi_connect(
     }
     jsvUnLock(jsPassword);
   } // End of we had options
-  jsDebug(DBG_INFO, "jswrap_wifi_connect: SSID, password, Callback done");
+  jsDebug(DBG_INFO, "jswrap_wifi_connect: SSID, password, Callback done\n");
 
   // At this point, we have the ssid in "ssid" and the password in "password".
   // Perform an esp_wifi_set_mode
@@ -893,7 +893,7 @@ void jswrap_wifi_connect(
     jsError( "jswrap_wifi_connect: esp_wifi_set_mode: %d(%s), mode=%d", err,wifiErrorToString(err), mode);
     return;
   }
-  jsDebug(DBG_INFO, "jswrap_wifi_connect: esi_wifi_set_mode done");
+  jsDebug(DBG_INFO, "jswrap_wifi_connect: esi_wifi_set_mode done\n");
 
   // Perform a an esp_wifi_set_config
   wifi_config_t staConfig;
@@ -904,7 +904,7 @@ void jswrap_wifi_connect(
   staConfig.sta.bssid_set = false;
 #if !(ESP_IDF_VERSION_MAJOR>=4)  
   esp_wifi_set_auto_connect(true);
-  jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_set_autoconnect done");  
+  jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_set_autoconnect done\n");  
 #endif  
 
   err = esp_wifi_set_config(ESP_IF_WIFI_STA,  &staConfig);
@@ -912,10 +912,10 @@ void jswrap_wifi_connect(
     jsError( "jswrap_wifi_connect: esp_wifi_set_config: %d(%s)", err,wifiErrorToString(err));
     return;
   }
-  jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_set_config done");
+  jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_set_config done\n");
 
   // Perform an esp_wifi_start
-  jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_start %s",ssid);
+  jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_start %s\n",ssid);
   err = esp_wifi_start();
   if (err != ESP_OK) {
     jsError( "jswrap_wifi_connect: esp_wifi_start: %d(%s)", err,wifiErrorToString(err));
@@ -1362,7 +1362,7 @@ JsVar *jswrap_wifi_getAPDetails(JsVar *jsCallback) {
 } // End of jswrap_wifi_getAPDetails
 
 void jswrap_wifi_save(JsVar *what) {
-  jsDebug(DBG_INFO, "Wifi.save");
+  jsDebug(DBG_INFO, "Wifi.save\n");
   JsVar *o = jsvNewObject();
   if (!o) return;
 
@@ -1370,7 +1370,7 @@ void jswrap_wifi_save(JsVar *what) {
     JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
     jswrap_storage_erase(name);
     jsvUnLock(name);
-    jsDebug(DBG_INFO, "Wifi.save(clear)");
+    jsDebug(DBG_INFO, "Wifi.save(clear)\n");
     return;
   }
 
@@ -1412,16 +1412,16 @@ void jswrap_wifi_save(JsVar *what) {
   jswrap_storage_write(name,o,0,0);
   jsvUnLock2(name,o);
 
-  jsDebug(DBG_INFO, "Wifi.save: write completed");
+  jsDebug(DBG_INFO, "Wifi.save: write completed\n");
 }
 
 void jswrap_wifi_restore(void) {
-  jsDebug(DBG_INFO, "jswrap_wifi_restore");
+  jsDebug(DBG_INFO, "jswrap_wifi_restore\n");
 
   JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
   JsVar *o = jswrap_storage_readJSON(name, true);
   if (!o) { // no data
-    jsDebug(DBG_INFO, "jswrap_wifi_restore: No data - Starting default AP");
+    jsDebug(DBG_INFO, "jswrap_wifi_restore: No data - Starting default AP\n");
     esp_wifi_start();
     jsvUnLock2(name,o);
     return;
@@ -1475,7 +1475,7 @@ void jswrap_wifi_restore(void) {
     ap_config.max_connection = 4;
     ap_config.beacon_interval = 100;
     err = esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t *)&apConfig);
-    jsDebug(DBG_INFO, "jswrap_wifi_restore: AP=%s", ap_config.ssid);
+    jsDebug(DBG_INFO, "jswrap_wifi_restore: AP=%s\n", ap_config.ssid);
   }
 
   if (savedMode & WIFI_MODE_STA) {
@@ -1492,7 +1492,7 @@ void jswrap_wifi_restore(void) {
     jsvUnLock(v);
 
     err = esp_wifi_set_config(ESP_IF_WIFI_STA,  &sta_config);
-    jsDebug(DBG_INFO, "Wifi.restore: STA=%s", sta_config.ssid);
+    jsDebug(DBG_INFO, "Wifi.restore: STA=%s\n", sta_config.ssid);
 
   }
   err = esp_wifi_start();
@@ -1505,7 +1505,7 @@ void jswrap_wifi_restore(void) {
     if (v) {
       char hostname[64];
       jsvGetString(v, hostname, sizeof(hostname));
-      jsDebug(DBG_INFO, "Wifi.restore: hostname=%s", hostname);
+      jsDebug(DBG_INFO, "Wifi.restore: hostname=%s\n", hostname);
       tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA,hostname);
     }
     jsvUnLock(v);
@@ -1517,7 +1517,7 @@ void jswrap_wifi_restore(void) {
         return;
       }
   } else {
-    jsDebug(DBG_INFO, "Wifi: Both STA AND APSTA are off");
+    jsDebug(DBG_INFO, "Wifi: Both STA AND APSTA are off\n");
   }
 } // End of jswrap_wifi_restore
 
@@ -1708,7 +1708,7 @@ void jswrap_wifi_setSNTP(JsVar *jsServer, JsVar *jsZone) {
   sntp_setoperatingmode(SNTP_OPMODE_POLL);
   sntp_setservername(0, server);
   sntp_init();
-  jsDebug(DBG_INFO, "SNTP: %s %s", server, zone);
+  jsDebug(DBG_INFO, "SNTP: %s %s\n", server, zone);
 }
 
 /**
@@ -1721,7 +1721,7 @@ static void dnsFoundCallback(
     ip_addr_t *ipAddr,    //!< The ip address retrieved.  This may be 0.
     void *arg             //!< Parameter passed in from espconn_gethostbyname.
   ) {
-  jsDebug(DBG_INFO, "Wifi.getHostByName CB - %s %x", hostname, ipAddr );
+  jsDebug(DBG_INFO, "Wifi.getHostByName CB - %s %x\n", hostname, ipAddr );
   if (g_jsHostByNameCallback != NULL) {
     JsVar *params[1];
     if (ipAddr == NULL) {
@@ -1743,7 +1743,7 @@ void jswrap_wifi_getHostByName(
   ip_addr_t ipAddr;
   char hostname[256];
 
-  jsDebug(DBG_INFO, "Wifi.getHostByName");
+  jsDebug(DBG_INFO, "Wifi.getHostByName\n");
 
   if (!jsvIsString(jsHostname)) {
     jsExceptionHere(JSET_ERROR, "Hostname parameter is not a string");
@@ -1765,7 +1765,7 @@ void jswrap_wifi_getHostByName(
     jsDebug(DBG_INFO, "Already resolved\n");
     dnsFoundCallback(hostname, &ipAddr, NULL);
   } else {
-    jsDebug(DBG_INFO, "Error: %d from dns_gethostbyname", err);
+    jsDebug(DBG_INFO, "Error: %d from dns_gethostbyname\n", err);
     dnsFoundCallback(hostname, NULL, NULL);
   }
 }
