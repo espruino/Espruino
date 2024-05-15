@@ -3196,12 +3196,24 @@ JsVar *jsvObjectGetChildI(JsVar *obj, const char *name) {
 
 /// Same as jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(obj, name))
 bool jsvObjectGetBoolChild(JsVar *obj, const char *name) {
-  return jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(obj, name));
+  /* We could call jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(obj, name)) here
+  but if we're accessing a NAME_INT it involves creating a new JsVar just to get the value out */
+  return jsvObjectGetIntegerChild(obj,name)!=0;
 }
 
 /// Same as jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name))
 JsVarInt jsvObjectGetIntegerChild(JsVar *obj, const char *name) {
-  return jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name));
+  if (!obj) return 0;
+  assert(jsvHasChildren(obj));
+  /* We could call jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(obj, name)) here
+  but if we're accessing a NAME_INT it involves creating a new JsVar just to get the value out */
+  JsVar *v = jsvFindChildFromString(obj, name);
+  if (jsvIsNameInt(v) || jsvIsNameIntBool(v)) {
+    JsVarInt vi = jsvGetFirstChildSigned(v);
+    jsvUnLock(v);
+    return vi;
+  }
+  return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(v));
 }
 
 /// Same as jsvGetFloatAndUnLock(jsvObjectGetChildIfExists(obj, name))

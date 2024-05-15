@@ -39,7 +39,7 @@ int integerDivideFloor(int a, int b) {
 // https://github.com/deirdreobyrne/CalendarAndDST
 int getDayNumberFromDate(int y, int m, int d) {
   int ans;
-  
+
 #ifdef ESPR_LIMIT_DATE_RANGE
   if (y < 1500 || y >= 1250000) { // Should actually work down to 1101, but since the Gregorian calendar started in 1582 . . .
 #else
@@ -123,7 +123,6 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
     int y;
     JsVarInt dstSetting[12];
     JsvArrayBufferIterator it;
-
     jsvArrayBufferIteratorNew(&it, dst, 0);
     y = 0;
     while (y < 12) {
@@ -153,7 +152,7 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
   }
 #endif
   if (is_dst) *is_dst = false;
-  return jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, JS_TIMEZONE_VAR));
+  return jsvObjectGetIntegerChild(execInfo.hiddenRoot, JS_TIMEZONE_VAR);
 }
 
 // this needs to be called just before a TimeInDay is used -- unless the TimeInDay timezone has been determined by other means.
