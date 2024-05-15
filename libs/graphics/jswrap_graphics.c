@@ -2499,7 +2499,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         // Add the remaining bit of word
         currentLine = jsvNewWritableStringFromStringVar(str, (size_t)wordStartIdx, (size_t)(currentPos-(wordStartIdx+1)));
 #ifdef ESPR_UNICODE_SUPPORT
-        if (jsvIsUTF8String(str))
+        if (jsvIsUTF8String(str) && !jsvIsUTF8String(currentLine))
           currentLine = jsvNewUTF8StringAndUnLock(currentLine);
 #endif
         if (wasNewLine) wordBreakCharacter = ' ';
