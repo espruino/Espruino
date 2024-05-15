@@ -151,8 +151,11 @@ def get_pins():
   pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN2"]=0;
   pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN3"]=0;
   pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN4"]=0;
+  # pinutils.findpin(pins, "PD5", True)["functions"]["ADC2_IN0"]=0;  
   # On supermini D8 is (inverted) LED
   # On supermini D9 is (inverted) Button
+  # D12-D17 are SPI (internal SPI) - not sure they should even be exposed??
+  
   #18/19 are USB
   pinutils.findpin(pins, "PD20", True)["functions"]["USART0_RX"]=0;
   pinutils.findpin(pins, "PD21", True)["functions"]["USART0_TX"]=0;  
