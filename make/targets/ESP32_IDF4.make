@@ -6,9 +6,11 @@ INCLUDE_WITHOUT_GEN = $(subst -Igen,,$(INCLUDE)) -I$(ROOT)/gen
 
 ifeq ($(CHIP),ESP32C3)
 SDKCONFIG = sdkconfig_c3
+PORT ?= /dev/ttyACM0
 else 
 ifeq ($(CHIP),ESP32)
 SDKCONFIG = sdkconfig
+PORT ?= /dev/ttyUSB0
 else 
 $(error Unknown ESP32 chip)
 endif
@@ -52,4 +54,10 @@ proj: $(PROJ_NAME).bin
 #depend on $(ESP_ZIP)
 
 flash: $(PROJ_NAME).bin
-	cd $(BINDIR) && idf.py flash
+	cd $(BINDIR) && idf.py flash -p $(PORT)
+
+# flashes but also automatically runs a terminal app right after
+# Use Ctrl-] to exit
+flashmonitor: $(PROJ_NAME).bin
+	cd $(BINDIR) && idf.py flash -p $(PORT)
+	cd $(BINDIR) && idf.py monitor -p $(PORT)
