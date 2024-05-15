@@ -86,11 +86,13 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
 }
 
 void initConsole(){
+#ifdef CONFIG_IDF_TARGET_ESP32C3
   /* Configure USB-CDC */
   usb_serial_jtag_driver_config_t usb_serial_config = {.tx_buffer_size = 128,
                                                        .rx_buffer_size = 128};
 
   ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb_serial_config));
+#endif
 
   uart_config_t uart_config = {
     .baud_rate = 115200,
