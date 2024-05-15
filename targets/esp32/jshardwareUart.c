@@ -22,6 +22,10 @@
 #include <string.h>
 #include <jsdevices.h>
 
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+#include "driver/usb_serial_jtag.h"
+#endif
+
 bool serial2_initialized = false;
 bool serial3_initialized = false;
 
@@ -68,7 +72,7 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
     jshSetDeviceInitialised(EV_SERIAL2,true);
     serial2_initialized = true;
-#if ESPR_USART_COUNT>2  
+#if ESPR_USART_COUNT>2
   } else if(device == EV_SERIAL3){
     if(inf->pinTX == 0xff) inf->pinTX = 17;
     if(inf->pinRX == 0xff) inf->pinRX = 16;
@@ -77,11 +81,17 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
     jshSetFlowControlEnabled(device, inf->xOnXOff, inf->pinCTS);
     jshSetDeviceInitialised(EV_SERIAL3,true);
     serial3_initialized = true;
-#endif  
+#endif
   }
 }
 
 void initConsole(){
+  /* Configure USB-CDC */
+  usb_serial_jtag_driver_config_t usb_serial_config = {.tx_buffer_size = 128,
+                                                       .rx_buffer_size = 128};
+
+  ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb_serial_config));
+
   uart_config_t uart_config = {
     .baud_rate = 115200,
     .data_bits = UART_DATA_8_BITS,
@@ -91,6 +101,7 @@ void initConsole(){
     .rx_flow_ctrl_thresh = 122,
   };
   initUart(uart_console,uart_config,-1,-1);
+
   // should we use hardware flow control on most ESP32 boards?
   // No... It looks like CTS is not connected on most boards, so XON/XOFF is best!
   jshSetFlowControlEnabled(EV_SERIAL1, true, PIN_UNDEFINED);
@@ -103,7 +114,11 @@ void consoleToEspruino(){
 #if ESP_IDF_VERSION_MAJOR>=4
   ticksToWait = 50 / portTICK_RATE_MS;
 #endif
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+  int len = usb_serial_jtag_read_bytes(rxbuf, sizeof(rxbuf), ticksToWait);
+#else
   int len = uart_read_bytes(uart_console, rxbuf, sizeof(rxbuf), ticksToWait);  // Read data from UART
+#endif
   if(len > 0) jshPushIOCharEvents(EV_SERIAL1, rxbuf, len);
 }
 
@@ -113,12 +128,12 @@ void serialToEspruino(){
     len = uart_read_bytes(uart_Serial2,rxbuf, sizeof(rxbuf),0);
     if(len > 0)jshPushIOCharEvents(EV_SERIAL2, rxbuf, len);
   }
-#if ESPR_USART_COUNT>2    
+#if ESPR_USART_COUNT>2
   if(serial3_initialized){
     len = uart_read_bytes(uart_Serial3,rxbuf, sizeof(rxbuf),0);
     if(len > 0) jshPushIOCharEvents(EV_SERIAL3, rxbuf,len);
   }
-#endif  
+#endif
 }
 
 void writeSerial(IOEventFlags device,uint8_t c){

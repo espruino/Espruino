@@ -150,6 +150,9 @@ void jshPinSetStateRange( Pin start, Pin end, JshPinState state ) {
 }
 
 void jshPinDefaultPullup() {
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+
+#else
   // 6-11 are used by Flash chip
   // 32-33 are routed to rtc for xtal
   // 16-17 are used for PSRAM (future use)
@@ -159,7 +162,7 @@ void jshPinDefaultPullup() {
   jshPinSetStateRange(21,22,JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetStateRange(25,27,JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetStateRange(34,39,JSHPINSTATE_GPIO_IN_PULLUP);
-
+#endif
 }
 
 /**
