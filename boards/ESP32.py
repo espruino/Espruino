@@ -170,17 +170,16 @@ def get_pins():
   pinutils.findpin(pins, "PD35", True)["functions"]["ADC1_IN7"]=0;
 
 #ADC2 not supported yet, waiting for driver from espressif
-  pinutils.findpin(pins, "PD4", True)["functions"]["ADC2_IN0"]=0;
-  pinutils.findpin(pins, "PD0", True)["functions"]["ADC2_IN1"]=0;
-  pinutils.findpin(pins, "PD2", True)["functions"]["ADC2_IN2"]=0;
-  pinutils.findpin(pins, "PD15", True)["functions"]["ADC2_IN3"]=0;
-  pinutils.findpin(pins, "PD13", True)["functions"]["ADC2_IN4"]=0;
-  pinutils.findpin(pins, "PD12", True)["functions"]["ADC2_IN5"]=0;
-  pinutils.findpin(pins, "PD14", True)["functions"]["ADC2_IN6"]=0;
-  pinutils.findpin(pins, "PD27", True)["functions"]["ADC2_IN7"]=0;
+#  pinutils.findpin(pins, "PD4", True)["functions"]["ADC2_IN0"]=0;
+#  pinutils.findpin(pins, "PD0", True)["functions"]["ADC2_IN1"]=0;
+#  pinutils.findpin(pins, "PD2", True)["functions"]["ADC2_IN2"]=0;
+#  pinutils.findpin(pins, "PD15", True)["functions"]["ADC2_IN3"]=0;
+#  pinutils.findpin(pins, "PD13", True)["functions"]["ADC2_IN4"]=0;
+#  pinutils.findpin(pins, "PD12", True)["functions"]["ADC2_IN5"]=0;
+#  pinutils.findpin(pins, "PD14", True)["functions"]["ADC2_IN6"]=0;
+#  pinutils.findpin(pins, "PD27", True)["functions"]["ADC2_IN7"]=0;
 
   pinutils.findpin(pins, "PD25", True)["functions"]["DAC_OUT1"]=0;
-
   pinutils.findpin(pins, "PD26", True)["functions"]["DAC_OUT2"]=0;
 
   pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;

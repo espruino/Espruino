@@ -384,11 +384,15 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
 
 
 JsVarFloat jshPinAnalog(Pin pin) {
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE)
+    return NAN;
   return (JsVarFloat) readADC(pin) / 4096;
 }
 
 
 int jshPinAnalogFast(Pin pin) {
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE)
+    return 0;
   return readADC(pin) << 4;
 }
 

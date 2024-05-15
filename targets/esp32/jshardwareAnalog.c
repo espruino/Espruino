@@ -34,16 +34,18 @@ adc_atten_t adc_channel[8];
 
 adc1_channel_t pinToAdcChannel(Pin pin){
   adc1_channel_t channel;
-  switch(pin){
-    case 36: channel = ADC1_CHANNEL_0; break;
-    case 37: channel = ADC1_CHANNEL_1; break;
-    case 38: channel = ADC1_CHANNEL_2; break;
-    case 39: channel = ADC1_CHANNEL_3; break;
-    case 32: channel = ADC1_CHANNEL_4; break;
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE)
+    return -1;
+  switch(pinInfo[pin].analog & JSH_MASK_ANALOG_CH){
+    case 0: channel = ADC1_CHANNEL_0; break;
+    case 1: channel = ADC1_CHANNEL_1; break;
+    case 2: channel = ADC1_CHANNEL_2; break;
+    case 3: channel = ADC1_CHANNEL_3; break;
+    case 4: channel = ADC1_CHANNEL_4; break;
 #ifndef CONFIG_IDF_TARGET_ESP32C3
-    case 33: channel = ADC1_CHANNEL_5; break;
-    case 34: channel = ADC1_CHANNEL_6; break;
-    case 35: channel = ADC1_CHANNEL_7; break;
+    case 5: channel = ADC1_CHANNEL_5; break;
+    case 6: channel = ADC1_CHANNEL_6; break;
+    case 7: channel = ADC1_CHANNEL_7; break;
 #endif
     default: channel = -1; break;
   }
@@ -69,19 +71,9 @@ adc_atten_t rangeToAdcAtten(int range){
   return atten;
 }
 int pinToAdcChannelIdx(Pin pin){
-  int idx;
-  switch(pin){
-  case 36: idx = 0;break;
-  case 37: idx = 1;break;
-  case 38: idx = 2;break;
-  case 39: idx = 3;break;
-  case 32: idx = 4;break;
-  case 33: idx = 5;break;
-  case 34: idx = 6;break;
-  case 35: idx = 7;break;
-  default: idx = -1; break;
-  }
-  return idx;
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE)
+    return -1;
+  return pinInfo[pin].analog & JSH_MASK_ANALOG_CH;
 }
 
 dac_channel_t pinToDacChannel(Pin pin){
@@ -140,25 +132,24 @@ void rangeADC(Pin pin,int range){
   idx = pinToAdcChannelIdx(pin);
   printf("idx:%d\n",idx);
   if(idx >= 0){
-  adc_channel[idx] = rangeToAdcAtten(range);
-  printf("Atten:%d \n",adc_channel[idx]);
+    adc_channel[idx] = rangeToAdcAtten(range);
+    printf("Atten:%d \n",adc_channel[idx]);
   }
 }
 
 int readADC(Pin pin){
   adc1_channel_t channel; int value;
   channel = pinToAdcChannel(pin);
-  adc1_config_channel_atten(channel,adc_channel[pinToAdcChannelIdx(pin)]);
   if(channel >= 0) {
+    adc1_config_channel_atten(channel,adc_channel[pinToAdcChannelIdx(pin)]);
 #if ESP_IDF_VERSION_MAJOR>=4
 	  // ESP_IDF 4.x - int adc1_get_voltage(adc1_channel_t channel)    //Deprecated. Use adc1_get_raw() instead
 	  int value=adc1_get_raw(channel);
 #else
 	  value = adc1_get_voltage(channel);
 #endif
-  return value;
-  }
-  else return -1;
+    return value;
+  } else return -1;
 }
 
 void writeDAC(Pin pin,uint8_t value){
