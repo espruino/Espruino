@@ -308,7 +308,7 @@ static char *wifiEventToString(uint32_t event){
  * convert WiFi error to a string value.
  */
 static char *wifiErrorToString(esp_err_t err){
-  jsDebug("wifiErrorToString %d", err);
+  jsDebug(DBG_INFO, "wifiErrorToString %d", err);
   switch(err){
     case 0x3001: return "WiFi driver was not installed by esp_wifi_init";
     case 0x3002: return "WiFi driver was not started by esp_wifi_start";

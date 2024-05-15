@@ -16,6 +16,7 @@
 
 #include "network_esp32.h"
 #include "network.h"
+#include "jsinteractive.h"
 
 #define INVALID_SOCKET ((SOCKET)(-1))
 #define SOCKET_ERROR (-1)
