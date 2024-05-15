@@ -108,6 +108,7 @@ unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK
 #define JSV_IS_FUNCTION(f) ((f)==JSV_FUNCTION || (f)==JSV_FUNCTION_RETURN || (f)==JSV_NATIVE_FUNCTION)
 #define JSV_IS_ARRAYBUFFER(f) (f)==JSV_ARRAYBUFFER
 #define JSV_IS_NAME(f) ((f)>=_JSV_NAME_START && (f)<=_JSV_NAME_END)
+#define JSV_IS_NAME_INT(f) (f==JSV_NAME_INT_INT || (f>=JSV_NAME_STRING_INT_0 && f<=JSV_NAME_STRING_INT_MAX))
 #define JSV_IS_NAME_WITH_VALUE(f) ((f)>=_JSV_NAME_WITH_VALUE_START && (f)<=_JSV_NAME_WITH_VALUE_END)
 #ifdef ESPR_UNICODE_SUPPORT
 #define JSV_IS_UNICODE_STRING(f)  ((f)==JSV_UTF8_STRING || (f)==JSV_NAME_UTF8_STRING)
@@ -157,7 +158,7 @@ bool jsvIsName(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VAR
 bool jsvIsBasicName(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return f>=JSV_NAME_STRING_0 && f<=JSV_NAME_STRING_MAX; } ///< Simple NAME that links to a variable via firstChild
 /// Names with values have firstChild set to a value - AND NOT A REFERENCE
 bool jsvIsNameWithValue(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return JSV_IS_NAME_WITH_VALUE(f); }
-bool jsvIsNameInt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return f==JSV_NAME_INT_INT || (f>=JSV_NAME_STRING_INT_0 && f<=JSV_NAME_STRING_INT_MAX); } ///< Is this a NAME pointing to an Integer value
+bool jsvIsNameInt(const JsVar *v) { if (!v) return false; char f = v->flags&JSV_VARTYPEMASK;  return JSV_IS_NAME_INT(f); } ///< Is this a NAME pointing to an Integer value
 bool jsvIsNameIntInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT; }
 bool jsvIsNameIntBool(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL; }
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
@@ -2470,11 +2471,12 @@ bool jsvIsVariableDefined(JsVar *a) {
  * repeatedly get the name, or evaluate getters. */
 JsVar *jsvGetValueOfName(JsVar *a) {
   if (!a) return 0;
-  if (jsvIsArrayBufferName(a)) return jsvArrayBufferGetFromName(a);
-  if (jsvIsNameInt(a)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
-  if (jsvIsNameIntBool(a)) return jsvNewFromBool(jsvGetFirstChild(a)!=0);
+  JsVarFlags flags = a->flags&JSV_VARTYPEMASK;
+  if (flags==JSV_ARRAYBUFFERNAME/*jsvIsArrayBufferName(a)*/) return jsvArrayBufferGetFromName(a);
+  if (JSV_IS_NAME_INT(flags)/*jsvIsNameInt(a)*/) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
+  if (flags==JSV_NAME_INT_BOOL/*jsvIsNameIntBool(a)*/) return jsvNewFromBool(jsvGetFirstChild(a)!=0);
   assert(!jsvIsNameWithValue(a));
-  if (jsvIsName(a))
+  if (JSV_IS_NAME(flags))
     return jsvLockSafe(jsvGetFirstChild(a));
   return 0;
 }
@@ -2485,8 +2487,6 @@ void jsvCheckReferenceError(JsVar *a) {
     jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
 }
 
-
-
 /** If a is a name skip it and go to what it points to - and so on (if repeat=true).
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0. Throws a ReferenceError if variable is not defined,
@@ -2495,11 +2495,12 @@ void jsvCheckReferenceError(JsVar *a) {
  * gets used unless a NewChild overwrites it */
 JsVar *jsvSkipNameWithParent(JsVar *a, bool repeat, JsVar *parent) {
   if (!a) return 0;
-  if (jsvIsArrayBufferName(a)) return jsvArrayBufferGetFromName(a);
-  if (jsvIsNameInt(a)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
-  if (jsvIsNameIntBool(a)) return jsvNewFromBool(jsvGetFirstChild(a)!=0);
+  JsVarFlags flags = a->flags&JSV_VARTYPEMASK;
+  if (flags==JSV_ARRAYBUFFERNAME/*jsvIsArrayBufferName(a)*/) return jsvArrayBufferGetFromName(a);
+  if (JSV_IS_NAME_INT(flags)/*jsvIsNameInt(a)*/) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(a));
+  if (flags==JSV_NAME_INT_BOOL/*jsvIsNameIntBool(a)*/) return jsvNewFromBool(jsvGetFirstChild(a)!=0);
   JsVar *pa = jsvLockAgain(a);
-  while (jsvIsName(pa)) {
+  while (JSV_IS_NAME(flags)) {
     JsVarRef n = jsvGetFirstChild(pa);
     jsvUnLock(pa);
     if (!n) {
@@ -2508,6 +2509,7 @@ JsVar *jsvSkipNameWithParent(JsVar *a, bool repeat, JsVar *parent) {
       return 0;
     }
     pa = jsvLock(n);
+    flags = pa->flags&JSV_VARTYPEMASK;
     assert(pa!=a);
     if (!repeat) break;
   }

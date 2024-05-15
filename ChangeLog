@@ -46,8 +46,9 @@
             Graphics.drawImages: add 'compose' and 'palette' operators to allow one image to be composed on another (for instance XOR on background)
             Bangle.js2: Bangle.setOptions({lowResistanceFix:1}) now provides a workaround for Bangle.js owners that have a Bangle with a button that appears stuck on
             Bangle.js: Remove calls to require('locale').translate in menus as it's been deprecated and replaced with /*LANG*/
-            Espruino: fix potential MEMORY_BUSY caused by Date requesting an integer from a var
+            Fix potential MEMORY_BUSY caused by Date requesting an integer from a var
               - also speed up ObjectGetInteger by not requiring a new var to be allocated to unpack a NAME_INT
+            jsvSkipName speed improvements by avoiding repeated masking of flags 
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)
