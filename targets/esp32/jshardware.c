@@ -479,7 +479,11 @@ bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // ca
 bool jshCanWatch(
     Pin pin //!< The pin that we are asking whether or not we can watch it.
   ) {
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+  return (pin!=18) && (pin!=19); // USB
+#else
   return pin == 0 || ( pin >= 12 && pin <= 19 ) || pin == 21 ||  pin == 22 || ( pin >= 25 && pin <= 27 ) || ( pin >= 34 && pin <= 39 );
+#endif
 }
 
 
