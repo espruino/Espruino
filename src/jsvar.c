@@ -314,9 +314,12 @@ void jsvSoftKill() {
   jsvClearEmptyVarList();
 }
 
+#ifdef RESIZABLE_JSVARS
 /** This links all JsVars together, so we can have our nice
  * linked list of free JsVars. It returns the ref of the first
- * item - that we should set jsVarFirstEmpty to (if it is 0) */
+ * item - that we should set jsVarFirstEmpty to (if it is 0)
+ * It's just like jsvClearEmptyVarList but it can start from any point and doesn't set jsVarFirstEmpty
+ * */
 static JsVarRef jsvInitJsVars(JsVarRef start, unsigned int count) {
   JsVarRef i;
   for (i=start;i<start+count;i++) {
@@ -327,6 +330,21 @@ static JsVarRef jsvInitJsVars(JsVarRef start, unsigned int count) {
   }
   jsvSetNextSibling(jsvGetAddressOf((JsVarRef)(start+count-1)), (JsVarRef)0); // set the final one to 0
   return start;
+}
+#endif
+
+
+void jsvReset() {
+  jsVarFirstEmpty = 0; // jsvCreateEmptyVarList in jsvSoftInit sets this
+#ifdef RESIZABLE_JSVARS
+  unsigned int i;
+  for (i=0;i<jsVarsSize>>JSVAR_BLOCK_SHIFT;i++) {
+    memset(jsVarBlocks[i], 0, sizeof(JsVar) * JSVAR_BLOCK_SIZE);
+  }
+#else
+  memset(jsVars, 0, sizeof(JsVar)*jsVarsSize);
+#endif
+  jsvSoftInit();
 }
 
 void jsvInit(unsigned int size) {
@@ -355,8 +373,7 @@ void jsvInit(unsigned int size) {
   assert(size==JSVAR_CACHE_SIZE);
 #endif
 
-  jsVarFirstEmpty = jsvInitJsVars(1/*first*/, jsVarsSize);
-  jsvSoftInit();
+  jsvReset();
 }
 
 void jsvKill() {

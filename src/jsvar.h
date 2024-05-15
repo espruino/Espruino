@@ -286,11 +286,14 @@ JSV_INLINEABLE unsigned char jsvGetLocks(JsVar *v);
 // For debugging/testing ONLY - maximum # of vars we are allowed to use
 void jsvSetMaxVarsUsed(unsigned int size);
 
-// Init/kill vars as a whole. If JSVAR_MALLOC is defined, a size can be specified (or 0 uses the old size)
+// Init/kill vars as a whole. If JSVAR_MALLOC is defined, a size can be specified (or 0 uses the old size). Calls jsvReset
 void jsvInit(unsigned int size);
+// wipe all JsVars, reset the free list
+void jsvReset();
+// de-init, un-allocates JsVars if they were allocated previously
 void jsvKill();
-void jsvSoftInit(); ///< called when loading from flash
-void jsvSoftKill(); ///< called when saving to flash
+void jsvSoftInit(); ///< called when loading from flash - reinstates empty list
+void jsvSoftKill(); ///< called when saving to flash - clears empty list to ensure code compacts better
 JsVar *jsvFindOrCreateRoot(); ///< Find or create the ROOT variable item - used mainly if recovering from a saved state.
 unsigned int jsvGetMemoryUsage(); ///< Get number of memory records (JsVars) used
 unsigned int jsvGetMemoryTotal(); ///< Get total amount of memory records

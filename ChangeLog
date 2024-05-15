@@ -48,7 +48,8 @@
             Bangle.js: Remove calls to require('locale').translate in menus as it's been deprecated and replaced with /*LANG*/
             Fix potential MEMORY_BUSY caused by Date requesting an integer from a var
               - also speed up ObjectGetInteger by not requiring a new var to be allocated to unpack a NAME_INT
-            jsvSkipName speed improvements by avoiding repeated masking of flags 
+            jsvSkipName speed improvements by avoiding repeated masking of flags
+            No longer call jsvKill/Init when resetting, but just jsvReset (this avoids free+malloc on ESP32)
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)

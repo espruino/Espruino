@@ -2252,14 +2252,12 @@ void jsiIdle() {
   // check for TODOs
   if (jsiStatus&JSIS_TODO_MASK) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
-    unsigned int oldJsVarsSize = jsvGetMemoryTotal(); // we must remember the old memory size - mainly for ESP32 where it can change at boot time
     JsiStatus s = jsiStatus;
     if ((s&JSIS_TODO_RESET) == JSIS_TODO_RESET) {
       // shut down everything and start up again
       jsiKill();
-      jsvKill();
+      jsvReset();
       jshReset();
-      jsvInit(oldJsVarsSize);
       jsiSemiInit(false, NULL/* no filename */); // don't autoload
       jsiStatus &= (JsiStatus)~JSIS_TODO_RESET;
     }
@@ -2283,9 +2281,8 @@ void jsiIdle() {
         // no need to jsvObjectRemoveChild as we're shutting down anyway!
         // go through steps as if we're resetting
         jsiKill();
-        jsvKill();
+        jsvReset();
         jshReset();
-        jsvInit(oldJsVarsSize);
         jsiSemiInit(false, &filename); // don't autoload code
         // load the code we specified
         JsVar *code = jsfReadFile(filename,0,0);
@@ -2295,9 +2292,8 @@ void jsiIdle() {
         jsiSoftKill();
         jspSoftKill();
         jsvSoftKill();
-        jsvKill();
+        jsvReset();
         jshReset();
-        jsvInit(oldJsVarsSize);
         jsfLoadStateFromFlash();
         jsvSoftInit();
         jspSoftInit();
