@@ -2426,34 +2426,19 @@ var img = require("heatshrink").decompress(atob(`lss4UBvvv///ovBlMyqoADv/VAwlV//
 GwIKCngWC14sB7QKCh4CBCwN/64KDgfACwWn6vWGwYsBCwOputWJgYsCgGqytVBQYsCLYOlqtqwAsFEINVrR4BFgghBBQosDEINWIQ
 YsDEIQ3DFgYhCG4msSYeVFgnrFhMvOAgsEkE/FhEggYWCFgIhDkEACwQKBEIYKBCwSGFBQJxCQwYhBBQTKDqohCBQhCCEIJlDXwrKE
 BQoWHBQdaCwuqJoI4CCwgKECwJ9CJgIKDq+qBYUq1WtBQf+BYIAC3/VBQX/tQKDz/9BQY5BAAVV/4WCBQJcBKwVf+oHBv4wCAAYhB`));
-Bangle.setLCDOverlay(img,66,66);
+Bangle.setLCDOverlay(img,66,66, {id: "myOverlay", onRemove: () => print("Removed")});
 ```
 
 Or use a `Graphics` instance:
 
 ```
-var ovr = Graphics.createArrayBuffer(100,100,1,{msb:true}); // 1bpp
-ovr.drawLine(0,0,100,100);
-ovr.drawRect(0,0,99,99);
-Bangle.setLCDOverlay(ovr,38,38, {id: "myOverlay"});
-```
-
-Although `Graphics` can be specified directly, it can often make more sense to
-create an Image from the `Graphics` instance, as this gives you access
-to color palettes and transparent colors. For instance this will draw a colored
-overlay with rounded corners:
-
-```
 var ovr = Graphics.createArrayBuffer(100,100,2,{msb:true});
+ovr.transparent = 0; // (optional) set a transparent color
+ovr.palette = new Uint16Array([0,0,g.toColor("#F00"),g.toColor("#FFF")]); // (optional) set a color palette
 ovr.setColor(1).fillRect({x:0,y:0,w:99,h:99,r:8});
 ovr.setColor(3).fillRect({x:2,y:2,w:95,h:95,r:7});
 ovr.setColor(2).setFont("Vector:30").setFontAlign(0,0).drawString("Hi",50,50);
-Bangle.setLCDOverlay({
-  width:ovr.getWidth(), height:ovr.getHeight(),
-  bpp:2, transparent:0,
-  palette:new Uint16Array([0,0,g.toColor("#F00"),g.toColor("#FFF")]),
-  buffer:ovr.buffer
-},38,38, {id: "myOverlay", onRemove: () => print("Removed")});
+Bangle.setLCDOverlay(ovr,38,38, {id: "myOverlay", onRemove: () => print("Removed")});
 ```
 
 To remove an overlay, simply call:
