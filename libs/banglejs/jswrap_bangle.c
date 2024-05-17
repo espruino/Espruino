@@ -2403,13 +2403,16 @@ void jswrap_banglejs_setLCDOffset(int y) {
     "generate" : "jswrap_banglejs_setLCDOverlay",
     "params" : [
       ["img","JsVar","An image, or undefined to clear"],
-      ["x","int","The X offset the graphics instance should be overlaid on the screen with"],
-      ["y","int","The Y offset the graphics instance should be overlaid on the screen with"]
+      ["x","JsVar","The X offset the graphics instance should be overlaid on the screen with"],
+      ["y","int","The Y offset the graphics instance should be overlaid on the screen with"],
+      ["options","JsVar","[Optional] object `{onRemove:fn, id:\"str\"}`"]
     ],
     "#if" : "defined(BANGLEJS_Q3) || defined(DICKENS)",
     "typescript" : [
       "setLCDOverlay(img: any, x: number, y: number): void;",
-      "setLCDOverlay(): void;"
+      "setLCDOverlay(): void;",
+      "setLCDOverlay(img: any, x: number, y: number, options: { id : string, onRemove: () => void }): void;",
+      "setLCDOverlay(img: any, options: { id : string }}): void;"
     ]
 }
 Overlay an image or graphics instance on top of the contents of the graphics buffer.
@@ -2432,7 +2435,7 @@ Or use a `Graphics` instance:
 var ovr = Graphics.createArrayBuffer(100,100,1,{msb:true}); // 1bpp
 ovr.drawLine(0,0,100,100);
 ovr.drawRect(0,0,99,99);
-Bangle.setLCDOverlay(ovr,38,38);
+Bangle.setLCDOverlay(ovr,38,38, {id: "myOverlay"});
 ```
 
 Although `Graphics` can be specified directly, it can often make more sense to
@@ -2450,10 +2453,53 @@ Bangle.setLCDOverlay({
   bpp:2, transparent:0,
   palette:new Uint16Array([0,0,g.toColor("#F00"),g.toColor("#FFF")]),
   buffer:ovr.buffer
-},38,38);
+},38,38, {id: "myOverlay", onRemove: () => print("Removed")});
 ```
+
+To remove an overlay, simply call:
+
+```
+Bangle.setLCDOverlay(undefined, {id: "myOverlay"});
+```
+
+Before 2v22 the `options` object isn't parsed, and as a result
+the remove callback won't be called, and `Bangle.setLCDOverlay(undefined)` will
+remove *any* active overlay.
 */
-void jswrap_banglejs_setLCDOverlay(JsVar *imgVar, int x, int y) {
+void jswrap_banglejs_setLCDOverlay(JsVar *imgVar, JsVar *xv, int y, JsVar *options) {
+  bool removingOverlay = jsvIsUndefined(imgVar);
+  int x = jsvGetInteger(xv);
+  if (removingOverlay) // handle Bangle.setLCDOverlay(undefined, {id: "myOverlay"});
+    options = xv;
+  JsVar *id = 0;
+  if (jsvIsObject(options)) {
+    id = jsvObjectGetChildIfExists(options, "id");
+  }
+  JsVar *ovrId = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "lcdOvrId");
+  // if we are removing overlay, and supplied an ID, and it's different to the current one, don't do anything
+  if (removingOverlay && id && !jsvIsEqual(id, ovrId)) {
+    jsvUnLock2(ovrId, id);
+    return;
+  }
+  jsvUnLock(ovrId);
+  // We're definitely changing overlay now... run the remove callback if it exists
+  JsVar *removeCb = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "lcdOvrCb");
+  if (removeCb) {
+    jsiQueueEvents(0, removeCb, NULL, 0);
+    jsvUnLock(removeCb);
+  }
+  // update the fields in the Bangle object
+  if (imgVar) {
+    jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, "lcdOvrId", id);
+    removeCb = jsvIsObject(options) ? jsvObjectGetChildIfExists(options, "onRemove") : NULL;
+    jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, "lcdOvrCb", removeCb);
+    jsvUnLock(removeCb);
+  } else { // we're removing the overlay, remove all callbacks
+    jsvObjectRemoveChild(execInfo.hiddenRoot, "lcdOvrId");
+    jsvObjectRemoveChild(execInfo.hiddenRoot, "lcdOvrCb");
+  }
+  jsvUnLock(id);
+  // Send the command to the LCD
 #ifdef LCD_CONTROLLER_LPM013M126
   lcdMemLCD_setOverlay(imgVar, x, y);
 #endif
@@ -2835,7 +2881,7 @@ void _jswrap_banglejs_setLocked(bool isLocked, const char *reason) {
   }
 #endif
   if ((bangleFlags&JSBF_LOCKED) != isLocked) {
-    JsVar *bangle =jsvObjectGetChildIfExists(execInfo.root, "Bangle");
+    JsVar *bangle = jsvObjectGetChildIfExists(execInfo.root, "Bangle");
     if (bangle) {
       JsVar *v[2] = {
         jsvNewFromBool(isLocked),
