@@ -412,7 +412,6 @@ JsVar *load_cert_file(JsVar *cert) {
 }
 #endif /* USE_FILESYSTEM */
 
-
 /** Given a variable:
  *
  * if it's a string <=100 chars long use it as a filename (if filesystem is enabled)
@@ -557,7 +556,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
                              (const unsigned char *) pers,
                              strlen(pers))) != 0 ) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-    jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_ctr_drbg_seed: %v", e );
+    jsExceptionHere(JSET_INTERNALERROR, "mbedtls_ctr_drbg_seed: %v", e );
     jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
@@ -577,7 +576,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
                   MBEDTLS_SSL_TRANSPORT_STREAM,
                   MBEDTLS_SSL_PRESET_DEFAULT )) != 0 ) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-    jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_ssl_config_defaults returned: %v", e );
+    jsExceptionHere(JSET_INTERNALERROR, "mbedtls_ssl_config_defaults returned: %v", e );
     jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
@@ -587,7 +586,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
     // this would get set if options.key was set
     if (( ret = mbedtls_ssl_conf_own_cert(&sd->conf, &sd->owncert, &sd->pkey)) != 0 ) {
       JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-      jsExceptionHere(JSET_INTERNALERROR, "HTTPS init failed! mbedtls_ssl_conf_own_cert: %v", e );
+      jsExceptionHere(JSET_INTERNALERROR, "mbedtls_ssl_conf_own_cert: %v", e );
       jsvUnLock(e);
       ssl_freeSocketData(sckt);
       return false;
@@ -601,7 +600,7 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
 
   if (( ret = mbedtls_ssl_setup( &sd->ssl, &sd->conf )) != 0) {
     JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-    jsExceptionHere(JSET_INTERNALERROR, "Failed! mbedtls_ssl_setup: %v", e );
+    jsExceptionHere(JSET_INTERNALERROR, "mbedtls_ssl_setup: %v", e );
     jsvUnLock(e);
     ssl_freeSocketData(sckt);
     return false;
@@ -642,7 +641,7 @@ SSLSocketData *ssl_getSocketData(int sckt) {
     if ( ( ret = mbedtls_ssl_handshake( &sd->ssl ) ) != 0 ) {
       if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE ) {
         JsVar *e = jswrap_crypto_error_to_jsvar(ret);
-        jsExceptionHere(JSET_INTERNALERROR,  "Failed! mbedtls_ssl_handshake returned %v", e );
+        jsExceptionHere(JSET_INTERNALERROR,  "mbedtls_ssl_handshake returned %v", e );
         jsvUnLock(e);
         return 0; // this signals an error
       }
@@ -656,7 +655,7 @@ SSLSocketData *ssl_getSocketData(int sckt) {
       if( ( flags = mbedtls_ssl_get_verify_result( &sd->ssl ) ) != 0 ) {
         char vrfy_buf[512];
         mbedtls_x509_crt_verify_info( vrfy_buf, sizeof( vrfy_buf ), "  ! ", flags );
-        jsExceptionHere(JSET_INTERNALERROR, "Failed! %s", vrfy_buf );
+        jsExceptionHere(JSET_INTERNALERROR, "mbedtls_x509_crt_verify: %s", vrfy_buf );
         return 0;
       }
       sd->connecting = false;

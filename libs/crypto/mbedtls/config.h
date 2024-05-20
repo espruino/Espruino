@@ -25,7 +25,10 @@
  * See README.txt for usage instructions.
  */
 
-// 
+#if ESP_IDF_VERSION_MAJOR>=5
+// ESP32 IDF5 provides its own mbedtls, but paths mean this config file gets loaded by accident
+#include "mbedtls/mbedtls/include/mbedtls/config.h"
+#else
 
 #ifndef MBEDTLS_CONFIG_H
 #define MBEDTLS_CONFIG_H
@@ -124,3 +127,4 @@
 #include "mbedtls/check_config.h"
 
 #endif /* MBEDTLS_CONFIG_H */
+#endif // ESP_IDF_VERSION_MAJOR

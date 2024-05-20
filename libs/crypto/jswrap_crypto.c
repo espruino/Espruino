@@ -19,22 +19,22 @@
 #include "jsparse.h"
 
 #ifdef USE_AES
-#include "mbedtls/include/mbedtls/aes.h"
+#include "mbedtls/aes.h"
 #endif
 #ifndef USE_SHA1_JS
-#include "mbedtls/include/mbedtls/sha1.h"
+#include "mbedtls/sha1.h"
 #endif
 #ifdef USE_SHA256
-#include "mbedtls/include/mbedtls/sha256.h"
+#include "mbedtls/sha256.h"
 #endif
 #ifdef USE_SHA512
-#include "mbedtls/include/mbedtls/sha512.h"
+#include "mbedtls/sha512.h"
 #endif
-#include "mbedtls/include/mbedtls/pkcs5.h"
+#include "mbedtls/pkcs5.h"
 #ifdef USE_TLS
-#include "mbedtls/include/mbedtls/pk.h"
-#include "mbedtls/include/mbedtls/x509.h"
-#include "mbedtls/include/mbedtls/ssl.h"
+#include "mbedtls/pk.h"
+#include "mbedtls/x509.h"
+#include "mbedtls/ssl.h"
 #endif
 
 
