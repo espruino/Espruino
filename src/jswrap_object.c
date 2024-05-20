@@ -140,7 +140,15 @@ JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0) {
   "generate" : "jswrap_object_clone",
   "return" : ["JsVar","A copy of this Object"]
 }
-Copy this object completely
+Copy this object to a new object, but as a shallow copy. This has a similar effect to calling `Object.assign({}, obj)`.
+
+```
+orig = { a : 1, b : [ 2, 3 ] }
+copy = orig.clone();
+// copy = { a : 1, b : [ 2, 3 ] }
+```
+
+**Note:** This is not a standard JavaScript function, but is unique to Espruino
  */
 JsVar *jswrap_object_clone(JsVar *parent) {
   if (!parent) return 0;

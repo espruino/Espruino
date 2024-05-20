@@ -674,7 +674,7 @@ JsVar *jsvNegateAndUnLock(JsVar *v);
  * ignoreParent is a, don't! */
 JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent);
 
-/// Copy this variable and return the locked copy
+/// Copy this variable and return the locked copy (if copyChildren=true, children are copied, but *not* deeply)
 JsVar *jsvCopy(JsVar *src, bool copyChildren);
 /** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false.
     If keepAsName==false, this will be converted into a normal variable */
