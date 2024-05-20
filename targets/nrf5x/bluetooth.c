@@ -1098,9 +1098,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_TIMEOUT:
 #if CENTRAL_LINK_COUNT>0
         if (bleInTask(BLETASK_BONDING)) { // BLE_GAP_TIMEOUT_SRC_SECURITY_REQUEST ?
-          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT, 0);
+          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT, p_ble_evt->evt.gap_evt.params.timeout.src);
         } else if (bleInTask(BLETASK_CONNECT)) {
-          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT, 0);
+          jsble_queue_pending(BLEP_TASK_FAIL_CONN_TIMEOUT, p_ble_evt->evt.gap_evt.params.timeout.src);
         } else
 #endif
         {

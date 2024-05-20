@@ -335,7 +335,7 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
     bleCompleteTaskFail(bleGetCurrentTask(), 0);
     break;
   case BLEP_TASK_FAIL_CONN_TIMEOUT:
-    bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Connection Timeout"));
+    bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvVarPrintf("Connection Timeout (%d)", data));
     break;
   case BLEP_TASK_FAIL_DISCONNECTED:
     bleCompleteTaskFailAndUnLock(bleGetCurrentTask(), jsvNewFromString("Disconnected"));
