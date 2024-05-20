@@ -40,6 +40,16 @@
 
 extern void *espruino_stackHighPtr;  //Name spaced because this has to be a global variable.
                                      //Used in jsuGetFreeStack().
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+#include "hal/usb_serial_jtag_ll.h"
+volatile bool usbUARTIsNotFlushed;
+#endif
+
+void esp32USBUARTWasUsed() {
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+  usbUARTIsNotFlushed = true;
+#endif
+}
 
 extern void initialise_wifi(void);
 
@@ -48,6 +58,14 @@ static void uartTask(void *data) {
   while(1) {
     consoleToEspruino();
     serialToEspruino();
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+    /* The USB CDC UART on the C3 only writes the data to USB after a newline.
+    We don't want that, so we call flush in this uart task if any data has been sent. */
+    if (usbUARTIsNotFlushed) {
+      usb_serial_jtag_ll_txfifo_flush();
+      usbUARTIsNotFlushed = false;
+    }
+#endif
   }
 }
 

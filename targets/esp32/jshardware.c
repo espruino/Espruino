@@ -577,6 +577,11 @@ void jshUSARTKick(IOEventFlags device) {
 #endif
     case EV_SERIAL1:
       uart_tx_one_char((uint8_t)c);
+#ifdef CONFIG_IDF_TARGET_ESP32C3
+      // The USB CDC UART on the C3 only writes the data to USB after a newline. Ensure uartTask in main.c knows to flush the UART next time
+      extern void esp32USBUARTWasUsed();
+      esp32USBUARTWasUsed();
+#endif
       break;
     default:
       writeSerial(device,(uint8_t)c);
