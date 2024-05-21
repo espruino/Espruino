@@ -17,9 +17,9 @@ cd .. # Espruino
 
 VERSION=`sed -ne "s/^.*JS_VERSION.*\"\(.*\)\"/\1/p" src/jsutils.h | head -1`
 echo "VERSION $VERSION"
-DIR=`pwd`
-ZIPDIR=$DIR/zipcontents
-ZIPFILE=$DIR/archives/espruino_${VERSION}.zip
+ESPRUINODIR=`pwd`
+ZIPDIR=$ESPRUINODIR/zipcontents
+ZIPFILE=$ESPRUINODIR/archives/espruino_${VERSION}.zip
 rm -rf $ZIPDIR
 mkdir $ZIPDIR
 
@@ -42,23 +42,23 @@ echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 # The following have been removed because it's too hard to keep the build going:
-# STM32F3DISCOVERY OLIMEXINO_STM32 HYSTM32_32 HYSTM32_28 HYSTM32_24 RAK8211 RAK8212 RUUVITAG THINGY52 RASPBERRYPI
+# STM32F3DISCOVERY OLIMEXINO_STM32 HYSTM32_32 HYSTM32_28 HYSTM32_24 RAK8211 RAK8212 RUUVITAG THINGY52 RASPBERRYPI RAK5010
 # 
-for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_AT ESPRUINO_1V3_WIZ PICO_1V3 PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINOWIFI PUCKJS PUCKJS_MINIMAL PIXLJS BANGLEJS BANGLEJS2 MDBT42Q NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F4DISCOVERY STM32L496GDISCOVERY MICROBIT1 MICROBIT2 ESP8266_BOARD ESP8266_4MB ESP32 RAK5010 SMARTIBOT
+for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_AT ESPRUINO_1V3_WIZ PICO_1V3 PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINOWIFI PUCKJS PUCKJS_MINIMAL PIXLJS BANGLEJS BANGLEJS2 MDBT42Q NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F4DISCOVERY STM32L496GDISCOVERY MICROBIT1 MICROBIT2 ESP8266_BOARD ESP8266_4MB ESP32 SMARTIBOT
 do
   scripts/create_zip_board.sh $BOARDNAME
 done
 
 
 
-cd $DIR
+cd $ESPRUINODIR
 
-sed 's/$/\r/' $DIR/scripts/create_zip_dist_readme.txt | sed "s/#v##/$VERSION/" > $ZIPDIR/readme.txt
+sed 's/$/\r/' $ESPRUINODIR/scripts/create_zip_dist_readme.txt | sed "s/#v##/$VERSION/" > $ZIPDIR/readme.txt
 bash scripts/extract_changelog.sh | sed 's/$/\r/' > $ZIPDIR/changelog.txt
 #bash scripts/extract_todo.sh  >  $ZIPDIR/todo.txt
 scripts/build_docs.py  || { echo 'Build failed' ; exit 1; }
-mv $DIR/functions.html $ZIPDIR/functions.html
-cp $DIR/scripts/create_zip_dist_licences.txt $ZIPDIR/licences.txt
+mv $ESPRUINODIR/functions.html $ZIPDIR/functions.html
+cp $ESPRUINODIR/scripts/create_zip_dist_licences.txt $ZIPDIR/licences.txt
 
 rm -f $ZIPFILE
 cd zipcontents
