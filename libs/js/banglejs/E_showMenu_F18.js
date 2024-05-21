@@ -9,8 +9,8 @@
   var menuItems = Object.keys(items);
   if (options) {
     menuItems.splice(menuItems.indexOf(""),1);
-    if (options.back) { // handle 'options.back'
-      items["< Back"] = options.back;
+    if (options.back && !items["< Back"]) { // handle 'options.back'
+      items = Object.assign({"< Back":options.back},items);
       menuItems.unshift("< Back");
     }
   }
