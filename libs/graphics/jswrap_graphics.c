@@ -2448,7 +2448,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
           jsvAppendCharacter(currentLine, wordBreakCharacter);
           lineWidth += spaceWidth;
         }
-        jsvAppendStringVar(currentLine, str, (size_t)wordStartIdx, (size_t)(currentPos-(wordStartIdx+1)));
+        jsvAppendStringVar(currentLine, str, (size_t)wordStartIdx, currentPos-((size_t)wordStartIdx+1));
         lineWidth += wordWidth;
       } else { // doesn't fit on one line - put word on new line
         lineWidth = wordWidth;
@@ -2461,15 +2461,15 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
           int width = 0;
           currentLine = jsvNewFromEmptyString();
           JsvStringIterator wordIt;
-          jsvStringIteratorNew(&wordIt, str, wordStartIdx); // not UTF8 as wordStartIdx isn't UTF8 indexed
+          jsvStringIteratorNew(&wordIt, str, (size_t)wordStartIdx); // not UTF8 as wordStartIdx isn't UTF8 indexed
           while (jsvStringIteratorGetIndex(&wordIt) < currentPos) {
             int wordCh = jsvStringIteratorGetUTF8CharAndNext(&wordIt);
 #ifndef SAVE_ON_FLASH
             if (wordCh==0) { // it's an image, can't split it
-              jsvAppendStringVar(currentLine, str, (size_t)wordStartIdx, (size_t)(currentPos-(wordStartIdx+1)));
+              jsvAppendStringVar(currentLine, str, (size_t)wordStartIdx, currentPos-((size_t)wordStartIdx+1));
               lineWidth += wordWidth;
               wordWidth = 0;
-              wordStartIdx = currentPos-1;
+              wordStartIdx = (int)currentPos-1;
               break;
             }
 #endif
@@ -2479,7 +2479,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
               wordWidth -= w;
               lineWidth -= w;
               width += w;
-              wordStartIdx = jsvStringIteratorGetIndex(&wordIt);
+              wordStartIdx = (int)jsvStringIteratorGetIndex(&wordIt);
 #ifdef ESPR_UNICODE_SUPPORT
               jsvAppendUTF8Character(currentLine, wordCh);
 #else
@@ -2497,7 +2497,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
           jsvUnLock(currentLine);
         }
         // Add the remaining bit of word
-        currentLine = jsvNewWritableStringFromStringVar(str, (size_t)wordStartIdx, (size_t)(currentPos-(wordStartIdx+1)));
+        currentLine = jsvNewWritableStringFromStringVar(str, (size_t)wordStartIdx, currentPos-((size_t)wordStartIdx+1));
 #ifdef ESPR_UNICODE_SUPPORT
         if (jsvIsUTF8String(str) && !jsvIsUTF8String(currentLine))
           currentLine = jsvNewUTF8StringAndUnLock(currentLine);
@@ -2510,7 +2510,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         wordBreakCharacter = (char)ch;
       // we're now starting a new word
       wordWidth = 0;
-      wordStartIdx = currentPos;
+      wordStartIdx = (int)currentPos;
       wasNewLine = ch=='\n';
       canSplitAfter = ch==0; // can split after if there is an image next
       if (endOfText) break;
@@ -4273,8 +4273,8 @@ void jswrap_graphics_dump(JsVar *parent) {
   ]
 }
 */
-void jswrap_graphics_saveScreenshot(JsVar *parent, JsVar *fileNameVar) {
 #ifdef DICKENS
+void jswrap_graphics_saveScreenshot(JsVar *parent, JsVar *fileNameVar) {
   JsfFileName fileName = jsfNameFromString("screenshot.img");
   if (fileNameVar) fileName = jsfNameFromVar(fileNameVar);
 
@@ -4290,9 +4290,8 @@ void jswrap_graphics_saveScreenshot(JsVar *parent, JsVar *fileNameVar) {
     jsfWriteFile(fileName, gfxBufferString, JSFF_NONE, 3+i, 0);
     jsvUnLock(gfxBufferString);
   }
-#endif
 }
-
+#endif
 
 /*JSON{
   "type" : "method",
@@ -4655,3 +4654,122 @@ JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme) {
   return jsvLockAgain(parent);
 }
 
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "filter",
+  "#if" : "defined(BANGLEJS2) || defined(LINUX)",
+  "generate" : "jswrap_graphics_filter",
+  "params" : [
+    ["filter","JsVar","An array of filter params between -128 and 127 (2D arrays should be unwrapped)"],
+    ["options","JsVar","An object of options, see below"]
+  ],
+  "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
+  "return_object" : "Graphics"
+}
+Perform a filter on the current Graphics instance. Requires the Graphics
+instance to support readback (eg `getPixel` should work), and only uses
+8 bit values for buffer and filter.
+
+```
+g.filter([ // a gaussian filter
+    1, 4, 7, 4, 1,
+    4,16,26,16, 4,
+    7,26,41,26, 7,
+    4,16,26,16, 4,
+    1, 4, 7, 4, 1
+], { w:5, h:5, div:273 });
+```
+
+```
+{
+  w,h,    // filter width+height
+  div,    // divisor applied after filter
+  offset, // DC offset applied to filter before division (default 0)
+  max,    // maximum output value (default=max allowed by bpp)
+  filter, // undefined (replace), or "max" (use max(original,filtered))
+}
+```
+*/
+JsVar *jswrap_graphics_filter(JsVar *parent, JsVar *filter, JsVar *options) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  int filtW=0, filtH=0, div=1, dcoffset=0;
+  int maxValue = (int)((1UL<<gfx.data.bpp)-1);
+  bool filtMax = false;
+  JsVar *filtVar = 0;
+  jsvConfigObject configs[] = {
+    {"w", JSV_INTEGER, &filtW},
+    {"h", JSV_INTEGER, &filtH},
+    {"div", JSV_INTEGER, &div},
+    {"offset", JSV_INTEGER, &dcoffset},
+    {"max", JSV_INTEGER, &maxValue},
+    {"filter", JSV_STRING_0, &filtVar},
+  };
+  JSV_GET_AS_CHAR_ARRAY(filtPtr, filtLen, filter);
+  if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))
+      || !filtPtr) {
+    jsExceptionHere(JSET_ERROR, "Invalid options");
+    return 0;
+  }
+  if (filtVar) {
+    if (jsvIsStringEqual(filtVar,"max")) filtMax = true;
+    else {
+      jsExceptionHere(JSET_ERROR, "Unknown filter");
+      jsvUnLock(filtVar);
+      return 0;
+    }
+    jsvUnLock(filtVar);
+  }
+  if ((int)filtLen != filtW*filtH) {
+    jsExceptionHere(JSET_ERROR, "Filter length doesn't match w*h");
+    return 0;
+  }
+  int w = gfx.data.width, h = gfx.data.height;
+  int stride = w+filtW;
+  int lastLineIdx = stride*(filtH-1);
+  int filtOX = (filtW-1)>>1, filtOY = (filtH-1)>>1; // filter offsets
+  int filtX2 = filtW-1/*, filtY2 = filtH-1*/;
+  size_t bufLen = (size_t)(stride*filtH);
+  uint8_t *buf = (uint8_t*)alloca(bufLen);
+  if (!buf) {
+    jsExceptionHere(JSET_ERROR, "Can't allocate memory for filtering");
+    return 0;
+  }
+  memset(buf,0,bufLen);
+  // pre-fill top rows
+  for (int y=0;y<filtOY;y++) {
+    for (int x=0;x<w;x++)
+      buf[lastLineIdx+x+filtOX] = (uint8_t)graphicsGetPixel(&gfx,x,y);
+    memmove(buf, &buf[stride], (size_t)(stride*(filtH-1)));
+  }
+  // now run filter
+  for (int y=filtOY;y<h+filtOY;y++) {
+    // pre-fill column
+    for (int x=0;x<filtW-1;x++)
+      buf[lastLineIdx+x+filtOX] = (uint8_t)graphicsGetPixel(&gfx,x,y);
+    // now filter the rest
+    for (int x=filtW-1;x<w+filtX2;x++) {
+      buf[lastLineIdx+x+filtOX] = (uint8_t)graphicsGetPixel(&gfx,x,y);
+      int sum = dcoffset;
+      int fi = 0;
+      for (int fy=0;fy<filtH;fy++) {
+        int i = x + fy*stride - filtX2;
+        for (int fx=0;fx<filtW;fx++)
+          sum += filtPtr[fi++] * buf[i++];
+      }
+      int v = sum / div;
+      if (v<0) v=0;
+      if (v>maxValue) v=maxValue;
+      if (filtMax) { // if we're filtering output with maximum value
+        int p = (int)graphicsGetPixel(&gfx,x-filtX2,y-filtOY);
+        if (p>v) v = p;
+      }
+      graphicsSetPixel(&gfx,x-filtX2,y-filtOY,(unsigned int)v);
+    }
+    // shift buffer up
+    memmove(buf, &buf[stride], (size_t)(stride*(filtH-1)));
+  }
+
+
+  return jsvLockAgain(parent);
+}

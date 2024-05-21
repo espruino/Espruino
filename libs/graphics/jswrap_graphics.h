@@ -93,7 +93,7 @@ JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *tra
 JsVar *jswrap_graphics_floodFill(JsVar *parent, int x, int y, JsVar *col);
 JsVar *jswrap_graphics_theme();
 JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme);
-
+JsVar *jswrap_graphics_filter(JsVar *parent, JsVar *filter, JsVar *options);
 
 /// Info about an image to be used for rendering
 typedef struct {
