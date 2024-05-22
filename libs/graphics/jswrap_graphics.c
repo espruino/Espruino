@@ -340,11 +340,11 @@ NO_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
   int ih = (int)(0.5 + l->scale*(l->img.width*fabs(vsin) + l->img.height*fabs(vcos)));
   // if rotating, offset our start position from center
   if (l->center) {
-    l->x1 -= iw/2;
-    l->y1 -= ih/2;
+    l->x1 -= iw*128;
+    l->y1 -= ih*128;
   }
-  l->x2 = l->x1 + iw;
-  l->y2 = l->y1 + ih;
+  l->x2 = l->x1 + iw*256;
+  l->y2 = l->y1 + ih*256;
   // work out start position in the image
   int centerx = l->img.width*128;
   int centery = l->img.height*128;
@@ -360,10 +360,10 @@ NO_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
   }
 }
 NO_INLINE void _jswrap_drawImageLayerSetStart(GfxDrawImageLayer *l, int x, int y) {
-  int dx = x - l->x1;
-  int dy = y - l->y1;
-  l->px += l->sx*dx + l->sy*dy;
-  l->py += l->sx*dy - l->sy*dx;
+  int dx = x*256 - l->x1;
+  int dy = y*256 - l->y1;
+  l->px += (l->sx*dx + l->sy*dy) >> 8;
+  l->py += (l->sx*dy - l->sy*dx) >> 8;
 }
 NO_INLINE void _jswrap_drawImageLayerStartX(GfxDrawImageLayer *l) {
   l->qx = l->px;
@@ -3492,8 +3492,8 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     if (true) {
 #endif // GRAPHICS_FAST_PATHS
       GfxDrawImageLayer l;
-      l.x1 = xPos;
-      l.y1 = yPos;
+      l.x1 = xPos<<8;
+      l.y1 = yPos<<8;
       l.img = img;
       l.it = it;
       l.rotate = rotate;
@@ -3501,7 +3501,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
       l.center = centerImage;
       l.repeat = false;
       _jswrap_drawImageLayerInit(&l);
-      int x1=l.x1, y1=l.y1, x2=l.x2-1, y2=l.y2-1;
+      int x1=l.x1>>8, y1=l.y1>>8, x2=(l.x2>>8)-1, y2=(l.y2>>8)-1;
       graphicsSetModifiedAndClip(&gfx, &x1, &y1, &x2, &y2,false);
       _jswrap_drawImageLayerSetStart(&l, x1, y1);
       JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelFn(&gfx);
@@ -3595,8 +3595,8 @@ like Bangle.js. Maximum layer count right now is 4.
 
 ```
 layers = [ {
-  {x : int, // x start position
-   y : int, // y start position
+  {x : float, // x start position
+   y : float, // y start position
    image : string/object/Graphics,
    scale : float, // scale factor, default 1
    rotate : float, // angle in radians
@@ -3633,8 +3633,8 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
     if (jsvIsObject(layer)) {
       JsVar *image = jsvObjectGetChildIfExists(layer,"image");
       if (_jswrap_graphics_parseImage(&gfx, image, 0, &layers[i].img)) {
-        layers[i].x1 = jsvObjectGetIntegerChild(layer,"x");
-        layers[i].y1 = jsvObjectGetIntegerChild(layer,"y");
+        layers[i].x1 = (int)(jsvObjectGetFloatChild(layer,"x")*256);
+        layers[i].y1 = (int)(jsvObjectGetFloatChild(layer,"y")*256);
         // rotate, scale
         layers[i].scale = jsvObjectGetFloatChild(layer,"scale");
         if (!isfinite(layers[i].scale) || layers[i].scale<=0)
@@ -3646,10 +3646,10 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
         _jswrap_drawImageLayerInit(&layers[i]);
         // add the calculated bounds to our default bounds
         if (!jsvObjectGetBoolChild(layer,"nobounds")) {
-          if (layers[i].x1<x) x=layers[i].x1;
-          if (layers[i].y1<y) y=layers[i].y1;
-          if (layers[i].x2>x+width) width=layers[i].x2-x;
-          if (layers[i].y2>y+height) height=layers[i].y2-y;
+          if ((layers[i].x1>>8)<x) x=layers[i].x1>>8;
+          if ((layers[i].y1>>8)<y) y=layers[i].y1>>8;
+          if (((layers[i].x2+255)>>8)>x+width) width=((layers[i].x2+255)>>8)-x;
+          if (((layers[i].y2+255)>>8)>y+height) height=((layers[i].y2+255)>>8)-y;
         }
         // extra palette supplied
         JsVar *v = jsvObjectGetChildIfExists(layer,"palette");
