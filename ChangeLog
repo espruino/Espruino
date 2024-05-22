@@ -54,6 +54,7 @@
             Bangle.js1: Fix issue where going out of and back into a menu would cause 'Back' to be added twice (fix #2470)
             Bangle.js2: Added Graphics.filter (to allow gaussian/etc filters to be applied to graphics instances for borders/blur)
             Graphics.drawImages layer x/y can now be non-integer (smoother movement on scaled/rotated images)
+            Puck.js: Fix Puck.selfTest() regression
 
      2v21 : nRF52: free up 800b more flash by removing vector table padding
             Throw Exception when a Promise tries to resolve with another Promise (#2450)

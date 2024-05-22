@@ -1438,7 +1438,7 @@ If the self test fails, it'll set the Puck.js Bluetooth advertising name to
 JsVarFloat _jswrap_puck_selfTest_led(Pin pin) {
   jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLUP);
   nrf_delay_ms(1);
-  JsVarFloat v = jshPinAnalog(LED1_PININDEX);
+  JsVarFloat v = jshPinAnalog(pin);
   jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
   return v;
 }
