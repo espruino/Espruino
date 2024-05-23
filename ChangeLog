@@ -1,3 +1,5 @@
+          : Fix XON/OFF thresholds to be based off the correct buffer size
+         
      2v22 : Graphics: Ensure floodFill sets modified area correctly
             nRF52: Lower expected BLE XTAL accuracy to 50ppm (can improve BLE stability on some Bangle.js 2)
             Emulator: force stack alignment of 'data' variable when accessing ArrayBuffers (fix #2463)

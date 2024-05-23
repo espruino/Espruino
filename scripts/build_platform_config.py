@@ -41,7 +41,7 @@ if len(sys.argv)<3 :
 boardname = sys.argv[1]
 headerFilename = sys.argv[2]
 defines = sys.argv[3:]
-  
+
 print("HEADER_FILENAME "+headerFilename)
 print("BOARD "+boardname)
 # import the board def
@@ -379,9 +379,9 @@ codeOut("#define UTILTIMERTASK_TASKS ("+str(bufferSizeTimer)+") // Must be power
 codeOut("");
 
 codeOut("// When to send the message that the IO buffer is getting full")
-codeOut("#define IOBUFFER_XOFF ((TXBUFFERMASK)*"+str(xoff_thresh)+"/8)")
+codeOut("#define IOBUFFER_XOFF ((IOBUFFERMASK)*"+str(xoff_thresh)+"/8)")
 codeOut("// When to send the message that we can start receiving again")
-codeOut("#define IOBUFFER_XON ((TXBUFFERMASK)*"+str(xon_thresh)+"/8)")
+codeOut("#define IOBUFFER_XON ((IOBUFFERMASK)*"+str(xon_thresh)+"/8)")
 
 codeOut("");
 
@@ -526,7 +526,7 @@ if "QWIIC3" in board.devices:
 if "DRIVER0" in board.devices:
   codeOutDevicePins("DRIVER0", "DRIVER0")
 if "DRIVER1" in board.devices:
-  codeOutDevicePins("DRIVER1", "DRIVER1")  
+  codeOutDevicePins("DRIVER1", "DRIVER1")
 
 if "SPIFLASH" in board.devices:
   codeOut("#define SPIFLASH_PAGESIZE 4096")
@@ -568,7 +568,7 @@ if len(defines) > 0:
   codeOut("// is ignored and all these defines go on the command line and apply to every file")
   codeOut("// whether or not platform_config was included. However if you're viewing a file in")
   codeOut("// a code editor like VS Code it'll parse this and should then highlight the correct")
-  codeOut("// code based on your build")              
+  codeOut("// code based on your build")
   for define in defines:
     if not define.startswith("-D"):
       continue
