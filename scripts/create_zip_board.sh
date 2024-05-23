@@ -103,6 +103,10 @@ if [ "$BOARDNAME" == "PIXLJS" ]; then
   ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
   EXTRADEFS+=DFU_UPDATE_BUILD=1
 fi
+if [ "$BOARDNAME" == "JOLTJS" ]; then
+  ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
+  EXTRADEFS+=DFU_UPDATE_BUILD=1
+fi
 if [ "$BOARDNAME" == "BANGLEJS" ]; then
   ESP_BINARY_NAME=`basename $ESP_BINARY_NAME .hex`.zip
   EXTRADEFS+=DFU_UPDATE_BUILD=1
