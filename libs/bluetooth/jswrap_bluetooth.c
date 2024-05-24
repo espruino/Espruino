@@ -707,14 +707,20 @@ void jswrap_ble_eraseBonds() {
     "class" : "NRF",
     "name" : "getAddress",
     "generate" : "jswrap_ble_getAddress",
+    "params" : [
+      ["current", "JsVar", "If true, return the current address rather than the default"]
+    ],
     "return" : ["JsVar", "MAC address - a string of the form 'aa:bb:cc:dd:ee:ff'" ]
 }
-Get this device's default Bluetooth MAC address.
+Get this device's default or current Bluetooth MAC address.
 
 For Puck.js, the last 5 characters of this (e.g. `ee:ff`) are used in the
 device's advertised Bluetooth name.
 */
-JsVar *jswrap_ble_getAddress() {
+JsVar *jswrap_ble_getAddress(JsVar *current) {
+  if (jsvGetBool(current)) {
+    return jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS);
+  }
 #ifdef NRF5X
   uint32_t addr0 =  NRF_FICR->DEVICEADDR[0];
   uint32_t addr1 =  NRF_FICR->DEVICEADDR[1];
