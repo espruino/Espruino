@@ -41,8 +41,8 @@ An Object that handles conversion to and from the JSON data interchange format
   "generate" : "jswrap_json_stringify",
   "params" : [
     ["data","JsVar","The data to be converted to a JSON string"],
-    ["replacer","JsVar","This value is ignored"],
-    ["space","JsVar","The number of spaces to use for padding, a string, or null/undefined for no whitespace "]
+    ["replacer","JsVar","[optional] This value is ignored"],
+    ["space","JsVar","[optional] The number of spaces to use for padding, a string, or null/undefined for no whitespace "]
   ],
   "return" : ["JsVar","A JSON string"]
 }
