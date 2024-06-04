@@ -3679,7 +3679,7 @@ NRF.setServices({
 enabled) will automatically be set to require encryption, but otherwise it is
 open.
 
-The `privacy` parameter can be used to set this devices BLE privacy / random address settings.
+On Bangle.js 2, the `privacy` parameter can be used to set this device's BLE privacy / random address settings.
 
 The privacy feature provides a way to avoid being tracked over a period of time.
 This works by replacing the real BLE address with a random private address,
@@ -3695,9 +3695,9 @@ For example, the name or services it advertises may be unique enough.
 ```
 NRF.setSecurity({
   privacy: {
-    mode : string // The privacy mode that should be used.
-    addr_type : string // The type of address to use.
-    addr_cycle_s : number // How often the address should change, in seconds.
+    mode : "off"/"device_privacy"/"network_privacy" // The privacy mode that should be used.
+    addr_type : "random_private_resolvable"/"random_private_non_resolvable" // The type of address to use.
+    addr_cycle_s : int // How often the address should change, in seconds.
   }
 });
 // enabled with (ideally sensible) defaults of:
