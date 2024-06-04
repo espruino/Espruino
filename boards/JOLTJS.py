@@ -139,6 +139,7 @@ board = {
             'Q2.scl', 'Q2.sda', 'Q2.vcc', 'Q2.gnd', '','',#'D45', 'D44', 'D43', 'D36', # Q2
             'Q3.scl', 'Q3.sda', 'Q3.vcc', 'Q3.gnd',#'D38', 'D39', 'D42', 'D37', # Q3
    ],
+  'top2' : [ 'VCC', 'D1', 'D26', 'D47', 'D46', 'GND' ],
   'right' : ['NFC','NFC'],
   '_hide_not_on_connectors' : True,
   '_notes' : {
@@ -190,12 +191,17 @@ board["_css"] = """
     top: 599px;
     left: 125px;
 }
+#top2 {
+    top: 186px;
+    left: 476px;
+}
 #right {
     top: 536px;
     left: 714px;
 }
 
 .toppin { width: 13px; }
+.top2pin { width: 13px; }
 .leftpin { height: 17px; }
 .bottompin { width: 52px; }
 """;
