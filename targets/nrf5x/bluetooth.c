@@ -76,6 +76,9 @@ static pm_peer_id_t   m_whitelist_peers[BLE_GAP_WHITELIST_ADDR_MAX_COUNT];  /**<
 static uint32_t       m_whitelist_peer_cnt;                                 /**< Number of peers currently in the whitelist. */
 static bool           m_is_wl_changed;                                      /**< Indicates if the whitelist has been changed since last time it has been updated in the Peer Manager. */
 static volatile ble_gap_sec_params_t  m_sec_params;                         /**< Current security parameters. */
+#ifdef ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
+static pm_privacy_params_t m_privacy_params;                                /**< Current privacy parameters */
+#endif // ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
 // needed for peer_manager_init so we can smoothly upgrade from pre 1v92 firmwares
 #include "fds_internal_defs.h"
 // If we have peer manager we have central mode and NRF52
@@ -2185,6 +2188,12 @@ void jsble_update_security() {
     }
     uint32_t err_code =  sd_ble_opt_set(BLE_GAP_OPT_PASSKEY, &pin_option);
     jsble_check_error(err_code);
+#ifdef ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
+    // privacy / random address
+    JsVar *privacy = jsvObjectGetChildIfExists(options, "privacy");
+    jsble_setPrivacy(privacy);
+    jsvUnLock(privacy);
+#endif // ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
   }
   // If UART encryption or mitm protection status changed, we need to update flags and restart Bluetooth
   if (((bleStatus & BLE_ENCRYPT_UART) != 0) != encryptUart || ((bleStatus & BLE_SECURITY_MITM) != 0) != mitmProtect) {
@@ -2290,6 +2299,14 @@ static void peer_manager_init(bool erase_bonds) {
   }
 
   jsble_update_security(); // pm_sec_params_set
+
+#ifdef ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
+  memset(&m_privacy_params, 0, sizeof(pm_privacy_params_t));
+  m_privacy_params.privacy_mode = BLE_GAP_PRIVACY_MODE_OFF;
+  m_privacy_params.private_addr_type = BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE;
+  m_privacy_params.private_addr_cycle_s = BLE_GAP_DEFAULT_PRIVATE_ADDR_CYCLE_INTERVAL_S;
+  m_privacy_params.p_device_irk = NULL;
+#endif // ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
 
   err_code = pm_register(pm_evt_handler);
   APP_ERROR_CHECK(err_code);
@@ -2867,18 +2884,31 @@ void jsble_advertising_stop() {
                            NRF_RADIO_NOTIFICATION_DISTANCE_NONE);
    APP_ERROR_CHECK(err_code);
 
+#if PEER_MANAGER_ENABLED
+   peer_manager_init(false /*don't erase_bonds*/);
+#ifdef ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
+   err_code = pm_privacy_set(&m_privacy_params);
+   if (err_code) jsiConsolePrintf("pm_privacy_set failed: 0x%x\n", err_code);
+#endif // ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
+#endif // PEER_MANAGER_ENABLED
+
 #ifdef NRF52_SERIES
    // Set MAC address
    JsVar *v = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS);
    if (v) {
      ble_gap_addr_t p_addr;
      if (bleVarToAddr(v, &p_addr)) {
+#if PEER_MANAGER_ENABLED
+       err_code = pm_id_addr_set(&p_addr);
+       if (err_code) jsiConsolePrintf("pm_id_addr_set failed: 0x%x\n", err_code);
+#else
 #if NRF_SD_BLE_API_VERSION < 3
        err_code = sd_ble_gap_address_set(BLE_GAP_ADDR_CYCLE_MODE_NONE,&p_addr);
 #else
        err_code = sd_ble_gap_addr_set(&p_addr);
 #endif
        if (err_code) jsiConsolePrintf("sd_ble_gap_addr_set failed: 0x%x\n", err_code);
+#endif // PEER_MANAGER_ENABLED
      }
    }
    jsvUnLock(v);
@@ -2899,9 +2929,6 @@ void jsble_advertising_stop() {
  */
 #endif
 
-#if PEER_MANAGER_ENABLED
-   peer_manager_init(false /*don't erase_bonds*/);
-#endif
    gap_params_init();
    services_init();
    conn_params_init();
@@ -3387,6 +3414,9 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
     jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
     jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
     jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
+#ifdef ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
+    jsvObjectSetChildAndUnLock(result, "privacy", jsble_getPrivacy());
+#endif // ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
 #ifndef SAVE_ON_FLASH
     if (status.connected && conn_handle==m_peripheral_conn_handle)
       jsvObjectSetChildAndUnLock(result, "connected_addr", bleAddrToStr(m_peripheral_addr));
@@ -3712,6 +3742,44 @@ JsVar *jsble_resolveAddress(JsVar *address) {
   return 0;
 }
 #endif // PEER_MANAGER_ENABLED
+
+#if PEER_MANAGER_ENABLED && ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
+JsVar *jsble_getPrivacy() {
+  pm_privacy_params_t privacy;
+  memset(&privacy, 0, sizeof(pm_privacy_params_t));
+  ble_gap_irk_t irk;
+  memset(&irk, 0, sizeof(ble_gap_irk_t));
+  privacy.p_device_irk = &irk;
+  uint32_t err_code = pm_privacy_get(&privacy);
+  if (!jsble_check_error(err_code)) {
+    return blePrivacyToVar(&privacy);
+  }
+  return 0;
+}
+#endif // PEER_MANAGER_ENABLED && ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
+
+#if PEER_MANAGER_ENABLED && ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
+void jsble_setPrivacy(JsVar *options) {
+  if (!jsvIsObject(options) && !jsvIsBoolean(options) && !jsvIsNumeric(options) && !jsvIsUndefined(options)) {
+    jsExceptionHere(JSET_TYPEERROR, "privacy: Expecting an object, a bool, or undefined, got %j", options);
+  } else {
+    pm_privacy_params_t privacy;
+    if (!bleVarToPrivacy(options, &privacy)) {
+      jsExceptionHere(JSET_TYPEERROR, "privacy: Invalid or missing parameters, got %j", options);
+    } else {
+      // only update parameters if they are different
+      if (privacy.privacy_mode != m_privacy_params.privacy_mode ||
+          privacy.private_addr_type != m_privacy_params.private_addr_type ||
+          privacy.private_addr_cycle_s != m_privacy_params.private_addr_cycle_s) {
+        m_privacy_params = privacy;
+        // privacy settings can only be applied while not advertising, scanning or in a connection
+        // we only apply them when the softdevice (re)starts
+        bleStatus |= BLE_NEEDS_SOFTDEVICE_RESTART;
+      }
+    }
+  }
+}
+#endif // PEER_MANAGER_ENABLED && ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
 
 #endif // BLUETOOTH
 

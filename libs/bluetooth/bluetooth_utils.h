@@ -14,6 +14,9 @@
 
 #include "jsvar.h"
 #include "bluetooth.h"
+#if PEER_MANAGER_ENABLED
+#include "peer_manager_types.h"
+#endif
 
 #define BLE_SCAN_EVENT                  JS_EVENT_PREFIX"blescan"
 #define BLE_WRITE_EVENT                 JS_EVENT_PREFIX"blew"
@@ -69,6 +72,11 @@ const char *bleVarToUUID(ble_uuid_t *uuid, JsVar *v);
 
 /// Same as bleVarToUUID, but unlocks v
 const char *bleVarToUUIDAndUnLock(ble_uuid_t *uuid, JsVar *v);
+
+#if PEER_MANAGER_ENABLED && ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
+bool bleVarToPrivacy(JsVar *options, pm_privacy_params_t *privacy);
+JsVar *blePrivacyToVar(pm_privacy_params_t *privacy);
+#endif // PEER_MANAGER_ENABLED && ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
 
 /// Queue an event on the 'NRF' object. Also calls jshHadEvent()
 void bleQueueEventAndUnLock(const char *name, JsVar *data);
