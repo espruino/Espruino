@@ -51,6 +51,7 @@ info = {
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DEFINES += -DNRF_BOOTLOADER_NO_WRITE_PROTECT=1', # By default the bootloader protects flash. Avoid this (a patch for NRF_BOOTLOADER_NO_WRITE_PROTECT must be applied first)
      #'DEFINES += -DBUTTONPRESS_TO_REBOOT_BOOTLOADER', # not enabled so watchdog isn't started
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS',
      'BOOTLOADER_SETTINGS_FAMILY=NRF52840',
      'INCLUDE += -I$(ROOT)/libs/jolt.js',
      'WRAPPERSOURCES += libs/joltjs/jswrap_jolt.c libs/joltjs/jswrap_qwiic.c',
