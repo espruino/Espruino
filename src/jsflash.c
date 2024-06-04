@@ -662,10 +662,10 @@ char jsfStripDriveFromName(JsfFileName *name, bool explicitOnly){
     return drive;
   }
 #ifdef JSF_BANK2_START_ADDRESS
-  if (explicitOnly) return 0; // if explicitOnly==false, ensure *.js and .boot0 files go in C:
+  if (explicitOnly) return 0; // if explicitOnly==false, ensure *.js .boot0 .bootcde and library files (with no dots) go in C:
   int l = 0;
   while (name->c[l] && l<sizeof(JsfFileName)) l++;
-  if (strcmp(name,".boot0")==0 ||
+  if (strcmp(name,".boot0")==0 || strcmp(name,".bootcde")==0 || strchr(name,'.')==0 ||
       (name->c[l-3]=='.' && name->c[l-2]=='j' && name->c[l-1]=='s')) {
     return 'C';
   }
