@@ -18,16 +18,16 @@ DEFINES += -D__HEAP_SIZE=0
 ifeq ($(CHIP),NRF52840)
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52840.c
 SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52_7.2.0_softdevice.hex
-PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52840.S
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52840.o
 else  # NRF52832/3
 ifeq ($(CHIP),NRF52833)
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52833.c
 SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52_7.2.0_softdevice.hex
-PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52833.S
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52833.o
 else
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52.c
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_7.2.0_softdevice.hex
-PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.S
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.o
 endif
 endif
 else ifdef NRF_SDK15
@@ -40,11 +40,11 @@ NRF5X_SDK_PATH=targetlibs/nrf5x_15
 ifeq ($(CHIP),NRF52840)
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52840.c
 SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52_6.0.0_softdevice.hex
-PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52840.S
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52840.o
 else  # NRF52832
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52.c
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_6.0.0_softdevice.hex
-PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.S
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.o
 endif
 else ifdef NRF_SDK15_3
 # Use SDK15
@@ -58,12 +58,12 @@ NRF5X_SDK_PATH=targetlibs/nrf5x_15_3
 ifeq ($(CHIP),NRF52840)
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52840.c
 SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52_6.1.1_softdevice.hex
-PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52840.S
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52840.o
 else  # NRF52832
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52.c
 SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_6.1.1_softdevice.hex
 # SOFTDEVICE        = targetlibs/nrf5x_15/components/softdevice/s132/hex/s132_nrf52_6.0.0_softdevice.hex # force old SDK15 softdevice
-PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.S
+PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.o
 endif
 else # not SDK15/SDK17
 PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
