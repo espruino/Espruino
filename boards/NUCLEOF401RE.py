@@ -48,6 +48,7 @@ chip = {
   'package' : "LQFP64",
   'ram' : 96, # 0x0001 8000 long, from 0x2000 0000 to 0x2001 7FFF
   'flash' : 512, # 0x0008 0000 long, from 0x0800 0000 to 0x0807 FFFF
+  'flash_base' : 0x08000000, # default is 0, but 0x08000000 is needed to allow Nucleo mass storage STLink to accept firmware. Fails with ESPR_PACKED_SYMPTR
   'speed' : 84,
   'usart' : 6,
   'spi' : 4,

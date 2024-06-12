@@ -9,7 +9,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
 # ----------------------------------------------------------------------------------------
-# Reads board information from boards/BOARDNAME.py and uses it to generate 
+# Reads board information from boards/BOARDNAME.py and uses it to generate
 # a linker file
 # ----------------------------------------------------------------------------------------
 import subprocess;
@@ -75,6 +75,9 @@ FLASH_BASE = 0x00000000;
 RAM_SIZE = board.chip["ram"]*1024;
 FLASH_SIZE = board.chip["flash"]*1024;
 
+if "flash_base" in board.chip:
+  FLASH_BASE = board.chip["flash_base"]
+
 # Beware - on some devices (the STM32F4) the memory is divided into two non-continuous blocks
 if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1024:
   RAM_SIZE = 128*1024
@@ -83,8 +86,8 @@ if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1024:
 #   96k at 0x20000000
 #   32k at 0x10000000
 # Today, the 32k part won't be used. In the future, it can be
-# used for example for the stack. In this case, need to : 
-# _estack = 0x10008000; 
+# used for example for the stack. In this case, need to :
+# _estack = 0x10008000;
 # and add the RAM in MEMORY table.
 if board.chip["part"].startswith("STM32L476") and RAM_SIZE > 96*1024:
   RAM_SIZE = 96*1024
@@ -151,10 +154,10 @@ if not IS_USING_BOOTLOADER and not IS_BOOTLOADER and "place_text_section" in boa
 
 codeOut("""
     . = ALIGN(4);
-    *(.text)  
-    *(.text*) 
-    *(.rodata)  
-    *(.rodata*) 
+    *(.text)
+    *(.text*)
+    *(.rodata)
+    *(.rodata*)
 
     . = ALIGN(4);
     _etext = .;
