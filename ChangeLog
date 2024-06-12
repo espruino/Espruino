@@ -2,6 +2,7 @@
             Bangle.js2: Added BANGLE2_IFLASH target for firmware using internal flash for js files (currently only partially working)
             Storage: If using internal+external, automatically put .bootcde and any libs in internal (as well as .js and .boot0)
             Bangle.js2: Allow configuring device privacy to use random BLE addresses
+            Fix STM32 Nucleo regression from ESPR_PACKED_SYMPTR
          
      2v22 : Graphics: Ensure floodFill sets modified area correctly
             nRF52: Lower expected BLE XTAL accuracy to 50ppm (can improve BLE stability on some Bangle.js 2)

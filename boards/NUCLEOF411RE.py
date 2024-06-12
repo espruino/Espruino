@@ -63,7 +63,7 @@ chip = {
     'pages' : 1, # count of pages we're using to save RAM to Flash,
     'flash_available' : 384 # we use the last 128k page
   },
-  #'place_text_section' : 0x08010000, # note flash_available above # TODO USELESS
+  #'place_text_section' : 0x00010000, # note flash_available above # TODO USELESS
 };
 
 devices = {
