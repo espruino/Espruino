@@ -25,14 +25,15 @@ info = {
  'variables' : 5376, # (96-12)*1024/16-1
  'binary_name' : 'espruino_%v_nucleof401re.bin',
  'build' : {
-   'optimizeflags' : '-O3',
+   'optimizeflags' : '-Os',
    'libraries' : [
      'GRAPHICS',
-     'NEOPIXEL'
+     'NEOPIXEL',
+     'NET'
    ],
    'makefile' : [
-     'DEFINES+=-DSAVE_ON_FLASH_MATH', 
-     'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
+     #'DEFINES+=-DSAVE_ON_FLASH_MATH', 
+     #'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
      'WRAPPERSOURCES+=targets/nucleo/jswrap_nucleo.c',
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'DEFINES+=-DPIN_NAMES_DIRECT=1', # Package skips out some pins, so we can't assume each port starts from 0
