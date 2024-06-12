@@ -697,7 +697,7 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
   "params" : [
     ["function", "JsVar", "A Function or String to be executed"],
     ["pin", "pin", "The pin to watch"],
-    ["options", "JsVar","If a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true). Can be an object of the form `{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}` - see below for more information."]
+    ["options", "JsVar","If a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true). Can be an object of the form `{ repeat: true/false(default), edge:'rising'/'falling'/'both', debounce:10}` - see below for more information."]
   ],
   "return" : ["JsVar","An ID that can be passed to clearWatch"],
   "typescript" : "declare function setWatch(func: ((arg: { state: boolean, time: number, lastTime: number }) => void) | string, pin: Pin, options?: boolean | { repeat?: boolean, edge?: \"rising\" | \"falling\" | \"both\", debounce?: number, irq?: boolean, data?: Pin, hispeed?: boolean }): number;"
