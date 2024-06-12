@@ -656,12 +656,18 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
   jsiDumpSerialInitialisation(user_callback, user_data, "USB", humanReadableDump);
 #endif
   int i;
+#if ESPR_USART_COUNT>0
   for (i=0;i<ESPR_USART_COUNT;i++)
     jsiDumpSerialInitialisation(user_callback, user_data, jshGetDeviceString(EV_SERIAL1+i), humanReadableDump);
+#endif
+#if ESPR_SPI_COUNT>0
   for (i=0;i<ESPR_SPI_COUNT;i++)
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_SPI1+i));
+#endif
+#if ESPR_I2C_COUNT>0
   for (i=0;i<ESPR_I2C_COUNT;i++)
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_I2C1+i));
+#endif
   // pins
   Pin pin;
 
