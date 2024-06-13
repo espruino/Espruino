@@ -68,10 +68,9 @@ static rmtPulsePair neopixel_bits[2]= {
   {{PULSE_T1H,1,PULSE_T1L,0}}
 };
 
-#if ESP_IDF_VERSION_MAJOR>=4
-
 int neopixelConfiguredGPIO = -1;
 
+#if ESP_IDF_VERSION_MAJOR>=4
 /**
  * @brief Convert RGB data to RMT format.
  *
@@ -168,8 +167,10 @@ void neopixel_handleInterrupt(void *arg){
 void neopixel_init(int gpioNum){
 #if ESP_IDF_VERSION_MAJOR>=4
   if (neopixelConfiguredGPIO != gpioNum) {
-    if (neopixelConfiguredGPIO)
+    if (neopixelConfiguredGPIO) {
       rmt_driver_uninstall(RMTCHANNEL);
+      gpio_matrix_out(neopixelConfiguredGPIO,0,0,0);
+    }
     neopixelConfiguredGPIO = gpioNum;
     rmt_config_t config = RMT_DEFAULT_CONFIG_TX(gpioNum, RMTCHANNEL);
     // set counter clock to 40MHz
@@ -194,6 +195,13 @@ void neopixel_init(int gpioNum){
 //  PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[gpioNum], 2);
 //  gpio_matrix_out(gpioNum, RMT_SIG_OUT0_IDX + RMTCHANNEL, 0, 0);
 //  gpio_set_direction(gpioNum, GPIO_MODE_OUTPUT);
+  if (neopixelConfiguredGPIO != gpioNum) {
+    // detach last pin 
+    if (neopixelConfiguredGPIO)
+      gpio_matrix_out(neopixelConfiguredGPIO,0,0,0);
+    neopixelConfiguredGPIO = gpioNum;
+  }
+  //gpio_matrix_out(gpioNum, RMT_SIG_OUT0_IDX + RMTCHANNEL, 0, 0);
   rmt_set_pin((rmt_channel_t)RMTCHANNEL, RMT_MODE_TX, (gpio_num_t)gpioNum);
 
   neopixel_initRMTChannel(RMTCHANNEL);
