@@ -2412,7 +2412,7 @@ void jswrap_banglejs_setLCDOffset(int y) {
       "setLCDOverlay(img: any, x: number, y: number): void;",
       "setLCDOverlay(): void;",
       "setLCDOverlay(img: any, x: number, y: number, options: { id : string, remove: () => void }): void;",
-      "setLCDOverlay(img: any, options: { id : string }}): void;"
+      "setLCDOverlay(img: any, options: { id : string }): void;"
     ]
 }
 Overlay an image or graphics instance on top of the contents of the graphics buffer.
