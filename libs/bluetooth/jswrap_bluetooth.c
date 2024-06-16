@@ -719,7 +719,8 @@ device's advertised Bluetooth name.
 */
 JsVar *jswrap_ble_getAddress(JsVar *current) {
   if (jsvGetBool(current)) {
-    return jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS);
+    JsVar *addr = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS);
+    if (addr) return addr;
   }
 #ifdef NRF5X
   uint32_t addr0 =  NRF_FICR->DEVICEADDR[0];
