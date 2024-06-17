@@ -3956,7 +3956,7 @@ NO_INLINE void jswrap_banglejs_init() {
     h = (int)(unsigned char)jsvGetCharInString(img, 1);
     char addrStr[20];
 #ifndef EMULATED
-    JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
+    JsVar *addr = jswrap_ble_getAddress(false); // Write MAC address in bottom right
 #else
     JsVar *addr = jsvNewFromString("Emulated");
 #endif
@@ -3977,7 +3977,7 @@ NO_INLINE void jswrap_banglejs_init() {
       else y += h-15;
       char addrStr[20];
 #ifndef EMULATED
-      JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
+      JsVar *addr = jswrap_ble_getAddress(false); // Write MAC address in bottom right
 #else
       JsVar *addr = jsvNewFromString("Emulated");
 #endif

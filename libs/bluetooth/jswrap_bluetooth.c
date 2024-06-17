@@ -213,7 +213,7 @@ void jswrap_ble_init() {
 #if defined(USE_NFC) && defined(NFC_DEFAULT_URL)
     // By default Puck.js's NFC will send you to the PuckJS website
     // address is included so Web Bluetooth can connect to the correct one
-    JsVar *addr = jswrap_ble_getAddress();
+    JsVar *addr = jswrap_ble_getAddress(false);
     JsVar *uri = jsvVarPrintf(NFC_DEFAULT_URL"?a=%v", addr);
     jsvUnLock(addr);
     jswrap_nfc_URL(uri);
@@ -708,7 +708,7 @@ void jswrap_ble_eraseBonds() {
     "name" : "getAddress",
     "generate" : "jswrap_ble_getAddress",
     "params" : [
-      ["current", "JsVar", "If true, return the current address rather than the default"]
+      ["current", "bool", "If true, return the current address rather than the default"]
     ],
     "return" : ["JsVar", "MAC address - a string of the form 'aa:bb:cc:dd:ee:ff'" ]
 }
@@ -717,8 +717,8 @@ Get this device's default or current Bluetooth MAC address.
 For Puck.js, the last 5 characters of this (e.g. `ee:ff`) are used in the
 device's advertised Bluetooth name.
 */
-JsVar *jswrap_ble_getAddress(JsVar *current) {
-  if (jsvGetBool(current)) {
+JsVar *jswrap_ble_getAddress(bool current) {
+  if (current) {
     JsVar *addr = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_MAC_ADDRESS);
     if (addr) return addr;
   }
