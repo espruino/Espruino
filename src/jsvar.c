@@ -3287,8 +3287,8 @@ JsVar *jsvObjectSetOrRemoveChild(JsVar *obj, const char *name, JsVar *child) {
 
 /** Append all keys from the source object to the target object. Will ignore hidden/internal fields */
 void jsvObjectAppendAll(JsVar *target, JsVar *source) {
-  assert(jsvIsObject(target));
-  assert(jsvIsObject(source));
+  assert(jsvHasChildren(target));
+  assert(jsvHasChildren(source));
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, source);
   while (jsvObjectIteratorHasValue(&it)) {
