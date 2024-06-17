@@ -3741,9 +3741,11 @@ void jswrap_ble_setSecurity(JsVar *options) {
 /*TYPESCRIPT
 type NRFSecurityStatus = {
   advertising: boolean,
-  privacy?: false || {
-    mode: string,
-    addr_type: string,
+  privacy?: ShortBoolean | {
+    mode: "off"
+  } | {
+    mode: "device_privacy" | "network_privacy",
+    addr_type: "random_private_resolvable" | "random_private_non_resolvable",
     addr_cycle_s: number,
   },
 } & (
