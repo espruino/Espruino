@@ -483,8 +483,10 @@ bool _jswrap_jolt_selfTest(bool advertisePassOrFail) {
   jswrap_jolt_setDriverMode_(1,true);
   // test every pin on the motor driver one at a time
   for (int i=0;i<8;i++) {
-    for (int p=0;p<8;p++)
+    for (int p=0;p<8;p++) {
+      jshPinSetState(JSH_PORTH_OFFSET+p, JSHPINSTATE_GPIO_OUT);
       jshPinSetValue(JSH_PORTH_OFFSET+p, p == i);
+    }
     nrf_delay_ms(5);
     // we can only read H0/2/4/8
     for (int p=0;p<8;p+=2) {
@@ -537,6 +539,9 @@ bool _jswrap_jolt_selfTest(bool advertisePassOrFail) {
     jsiConsolePrintf("Error code %s\n",err);
   }
 
+  // ensure we put motor driver back to sleep
+  jswrap_jolt_hwinit();
+
   return ok;
 }
 bool jswrap_jolt_selfTest() {
@@ -560,14 +565,31 @@ void jswrap_jolt_hwinit() {
   driverMode[0] = JDM_AUTO;
   driverMode[1] = JDM_AUTO;
   // set all outputs to 0 by default
-  jshPinOutput(DRIVER0_PIN_D0, 0);
-  jshPinOutput(DRIVER0_PIN_D1, 0);
-  jshPinOutput(DRIVER0_PIN_D2, 0);
-  jshPinOutput(DRIVER0_PIN_D3, 0);
-  jshPinOutput(DRIVER1_PIN_D0, 0);
-  jshPinOutput(DRIVER1_PIN_D1, 0);
-  jshPinOutput(DRIVER1_PIN_D2, 0);
-  jshPinOutput(DRIVER1_PIN_D3, 0);
+  Pin driverPins[] = {
+    DRIVER0_PIN_D0,
+    DRIVER0_PIN_D1,
+    DRIVER0_PIN_D2,
+    DRIVER0_PIN_D3,
+    DRIVER1_PIN_D0,
+    DRIVER1_PIN_D1,
+    DRIVER1_PIN_D2,
+    DRIVER1_PIN_D3
+  };
+  for (int i=0;i<8;i++) {
+    Pin pin = driverPins[i];
+    jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+    jshSetPinStateIsManual(pin, false);
+  }
+  Pin analogPins[] = {
+    DRIVER0_PIN_D0_ANALOG,
+    DRIVER0_PIN_D2_ANALOG,
+    DRIVER1_PIN_D0_ANALOG,
+    DRIVER1_PIN_D2_ANALOG
+  };
+  for (int i=0;i<4;i++) {
+    Pin pin = analogPins[i];
+    jshPinSetState(pin, JSHPINSTATE_ADC_IN);
+  }
 }
 
 /*JSON{
@@ -575,7 +597,6 @@ void jswrap_jolt_hwinit() {
   "generate" : "jswrap_jolt_init"
 }*/
 void jswrap_jolt_init() {
-
   /* If the button is pressed during reset, perform a self test.
    * With bootloader this means apply power while holding button for >3 secs */
   bool firstStart = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrapjolt_init was called?

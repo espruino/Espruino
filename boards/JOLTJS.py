@@ -117,7 +117,9 @@ devices = {
     'pin_d0' : 'D17',
     'pin_d1' : 'D15',
     'pin_d2' : 'D13',
-    'pin_d3' : 'D14'
+    'pin_d3' : 'D14',
+    'pin_d0_analog' : 'D4',
+    'pin_d2_analog' : 'D5'
   },
   'DRIVER1' : {
     'pin_nsleep' : 'D23',
@@ -127,7 +129,9 @@ devices = {
     'pin_d0' : 'D22',
     'pin_d1' : 'D32',
     'pin_d2' : 'D25',
-    'pin_d3' : 'D34'
+    'pin_d3' : 'D34',
+    'pin_d0_analog' : 'D30',
+    'pin_d2_analog' : 'D28'       
   }
 };
 
