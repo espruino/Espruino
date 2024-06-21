@@ -319,7 +319,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     // initialise image layer
     GfxDrawImageLayer l;
     l.x1 = 0;
-    l.y1 = ovY;
+    l.y1 = ovY<<8;
     l.img = overlayImg;
     l.rotate = isRotated180 ? 3.141592 : 0;
     l.scale = 1;
