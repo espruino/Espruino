@@ -5,6 +5,7 @@
             Fix STM32 Nucleo regression from ESPR_PACKED_SYMPTR
             Fixed issue with static fields in classes if defined before the constructor (fix #2517)
             Jolt.js: ensure GPIO attached to outputs always default to input at startup
+            Graphics: Fix drawString centered multi-line alignment with UTF8 (fix #2519)
          
      2v22 : Graphics: Ensure floodFill sets modified area correctly
             nRF52: Lower expected BLE XTAL accuracy to 50ppm (can improve BLE stability on some Bangle.js 2)
