@@ -1101,7 +1101,7 @@ void jshSetSystemTime(JsSysTime time) {
 
 /// Convert a time in Milliseconds to one in ticks.
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-  return (JsSysTime) (ms * (SYSCLK_FREQ / 1000));
+  return (JsSysTime) (ms * (SYSCLK_FREQ / 1000.0));
 }
 
 /// Convert ticks to a time in Milliseconds.
