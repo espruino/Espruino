@@ -6,6 +6,7 @@
             Fixed issue with static fields in classes if defined before the constructor (fix #2517)
             Jolt.js: ensure GPIO attached to outputs always default to input at startup
             Graphics: Fix drawString centered multi-line alignment with UTF8 (fix #2519)
+            Fix 2v22 regression of overlays starting at nonzero offsets (#2520)
          
      2v22 : Graphics: Ensure floodFill sets modified area correctly
             nRF52: Lower expected BLE XTAL accuracy to 50ppm (can improve BLE stability on some Bangle.js 2)
