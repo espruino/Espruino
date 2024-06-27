@@ -4802,6 +4802,55 @@ JsVar *_jswrap_banglejs_i2cRd(JshI2CInfo *i2c, int i2cAddr, JsVarInt reg, JsVarI
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
+    "name" : "touchWr",
+    "generate" : "jswrap_banglejs_touchWr",
+    "params" : [
+      ["reg","int",""],
+      ["data","int",""]
+    ],
+    "ifdef" : "BANGLEJS"
+}
+Writes a register on the touch controller
+*/
+void jswrap_banglejs_touchWr(JsVarInt reg, JsVarInt data) {
+#ifdef TOUCH_I2C
+  _jswrap_banglejs_i2cWr(TOUCH_I2C, TOUCH_ADDR, reg, data);
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "touchRd",
+    "generate" : "jswrap_banglejs_touchRd",
+    "params" : [
+      ["reg","int",""],
+      ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
+    ],
+    "return" : ["JsVar",""],
+    "ifdef" : "BANGLEJS",
+    "typescript" : [
+      "touchRd(reg: number, cnt?: 0): number;",
+      "touchRd(reg: number, cnt: number): number[];"
+    ]
+}
+Reads a register from the touch controller
+**Note:** On Espruino 2v06 and before this function only returns a number (`cnt`
+is ignored).
+*/
+
+
+JsVar *jswrap_banglejs_touchRd(JsVarInt reg, JsVarInt cnt) {
+#ifdef TOUCH_I2C
+  return _jswrap_banglejs_i2cRd(TOUCH_I2C, TOUCH_ADDR, reg, cnt);
+#else
+  return 0;
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
     "name" : "accelWr",
     "generate" : "jswrap_banglejs_accelWr",
     "params" : [
