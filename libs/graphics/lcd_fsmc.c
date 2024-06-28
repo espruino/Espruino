@@ -47,6 +47,7 @@ static uint8_t LCD_Code;
 #define  HX8347A    12 /* 0x0047 */
 #define  LGDP4535   13 /* 0x4535 */
 #define  SSD2119    14 /* 3.5 LCD 0x9919 */
+#define  ILI9341    15  /* 0x41 */
 
 
 static inline void LCD_WR_CMD(unsigned int index,unsigned int val);
@@ -303,7 +304,9 @@ void LCD_init_hardware() {
 #endif
 
 #define LCD_REG              (*((volatile unsigned short *) 0x60000000)) /* RS = 0 */
-#define LCD_RAM              (*((volatile unsigned short *) 0x60020000)) /* RS = 1 */
+
+//#define LCD_RAM              (*((volatile unsigned short *) 0x60020000)) /* RS = 1 (D11 -> A16) */
+#define LCD_RAM              (*((volatile unsigned short *) 0x60080000)) /* RS = 1 (D13 -> A18) */
 
 
 static inline void LCD_WR_REG(unsigned int index) {
@@ -331,6 +334,7 @@ void LCD_init_hardware() {
   // that everything works great
 
   GPIO_InitTypeDef GPIO_InitStructure;
+  memset(&GPIO_InitStructure, 0, sizeof(GPIO_InitStructure));
 
 #ifdef STM32F4
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB|RCC_AHB1Periph_GPIOD|RCC_AHB1Periph_GPIOE|RCC_AHB1Periph_GPIOF|RCC_AHB1Periph_GPIOG, ENABLE);
@@ -346,18 +350,86 @@ void LCD_init_hardware() {
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 #else
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 #endif
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_4 | GPIO_Pin_5 |
                           GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_14 |
-                          GPIO_Pin_15 | GPIO_Pin_7 /*NE1*/ |  GPIO_Pin_11/*RS*/;
+                          GPIO_Pin_15 | GPIO_Pin_7 /*NE1*/ |
+                          GPIO_Pin_13/*RS*/;
+                          //PB GPIO_Pin_11/*RS*/;
   GPIO_Init(GPIOD, &GPIO_InitStructure);
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 |
                           GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 |
                           GPIO_Pin_15;
   GPIO_Init(GPIOE, &GPIO_InitStructure);
+
+#ifdef STM32F4
+	GPIO_PinAFConfig(GPIOD,GPIO_PinSource0,GPIO_AF_FSMC);//PD0,AF12
+	GPIO_PinAFConfig(GPIOD,GPIO_PinSource1,GPIO_AF_FSMC);//PD1,AF12
+	GPIO_PinAFConfig(GPIOD,GPIO_PinSource4,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOD,GPIO_PinSource5,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOD,GPIO_PinSource8,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOD,GPIO_PinSource9,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOD,GPIO_PinSource10,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOD,GPIO_PinSource14,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOD,GPIO_PinSource15,GPIO_AF_FSMC);//PD15,AF12
+
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource7,GPIO_AF_FSMC);//PE7,AF12
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource8,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource9,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource10,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource11,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource12,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource13,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource14,GPIO_AF_FSMC);
+	GPIO_PinAFConfig(GPIOE,GPIO_PinSource15,GPIO_AF_FSMC);//PE15,AF12
+
+	//PBGPIO_PinAFConfig(GPIOD,GPIO_PinSource11,GPIO_AF_FSMC);//PF12,AF12
+  GPIO_PinAFConfig(GPIOD,GPIO_PinSource13,GPIO_AF_FSMC);//PF12,AF12
+
+	FSMC_NORSRAMTimingInitTypeDef  readWriteTiming;
+	FSMC_NORSRAMTimingInitTypeDef  writeTiming;
+
+	readWriteTiming.FSMC_AddressSetupTime = 0XF;	 //��ַ����ʱ�䣨ADDSET��Ϊ16��HCLK 1/168M=6ns*16=96ns
+	readWriteTiming.FSMC_AddressHoldTime = 0x00;	 //��ַ����ʱ�䣨ADDHLD��ģʽAδ�õ�
+	readWriteTiming.FSMC_DataSetupTime = 60;			//���ݱ���ʱ��Ϊ60��HCLK	=6*60=360ns
+	readWriteTiming.FSMC_BusTurnAroundDuration = 0x00;
+	readWriteTiming.FSMC_CLKDivision = 0x00;
+	readWriteTiming.FSMC_DataLatency = 0x00;
+	readWriteTiming.FSMC_AccessMode = FSMC_AccessMode_A;	 //ģʽA
+
+
+	writeTiming.FSMC_AddressSetupTime =9;	      //��ַ����ʱ�䣨ADDSET��Ϊ9��HCLK =54ns
+	writeTiming.FSMC_AddressHoldTime = 0x00;	 //��ַ����ʱ�䣨A
+	writeTiming.FSMC_DataSetupTime = 8;		 //���ݱ���ʱ��Ϊ6ns*9��HCLK=54ns
+	writeTiming.FSMC_BusTurnAroundDuration = 0x00;
+	writeTiming.FSMC_CLKDivision = 0x00;
+	writeTiming.FSMC_DataLatency = 0x00;
+	writeTiming.FSMC_AccessMode = FSMC_AccessMode_A;	 //ģʽA
+
+  FSMC_NORSRAMInitTypeDef  FSMC_NORSRAMInitStructure;
+  FSMC_NORSRAMStructInit(&FSMC_NORSRAMInitStructure);
+	FSMC_NORSRAMInitStructure.FSMC_Bank = FSMC_Bank1_NORSRAM1;//  ��������ʹ��NE4 ��Ҳ�Ͷ�ӦBTCR[6],[7]��
+	FSMC_NORSRAMInitStructure.FSMC_DataAddressMux = FSMC_DataAddressMux_Disable; // ���������ݵ�ַ
+	FSMC_NORSRAMInitStructure.FSMC_MemoryType =FSMC_MemoryType_SRAM;// FSMC_MemoryType_SRAM;  //SRAM
+	FSMC_NORSRAMInitStructure.FSMC_MemoryDataWidth = FSMC_MemoryDataWidth_16b;//�洢�����ݿ���Ϊ16bit
+	FSMC_NORSRAMInitStructure.FSMC_BurstAccessMode =FSMC_BurstAccessMode_Disable;// FSMC_BurstAccessMode_Disable;
+	FSMC_NORSRAMInitStructure.FSMC_WaitSignalPolarity = FSMC_WaitSignalPolarity_Low;
+	FSMC_NORSRAMInitStructure.FSMC_AsynchronousWait=FSMC_AsynchronousWait_Disable;
+	FSMC_NORSRAMInitStructure.FSMC_WrapMode = FSMC_WrapMode_Disable;
+	FSMC_NORSRAMInitStructure.FSMC_WaitSignalActive = FSMC_WaitSignalActive_BeforeWaitState;
+	FSMC_NORSRAMInitStructure.FSMC_WriteOperation = FSMC_WriteOperation_Enable;	//  �洢��дʹ��
+	FSMC_NORSRAMInitStructure.FSMC_WaitSignal = FSMC_WaitSignal_Disable;
+	FSMC_NORSRAMInitStructure.FSMC_ExtendedMode = FSMC_ExtendedMode_Enable; // ��дʹ�ò�ͬ��ʱ��
+	FSMC_NORSRAMInitStructure.FSMC_WriteBurst = FSMC_WriteBurst_Disable;
+	FSMC_NORSRAMInitStructure.FSMC_ReadWriteTimingStruct = &readWriteTiming; //��дʱ��
+	FSMC_NORSRAMInitStructure.FSMC_WriteTimingStruct = &writeTiming;  //дʱ��
+
+	FSMC_NORSRAMInit(&FSMC_NORSRAMInitStructure);  //��ʼ��FSMC����
+#else
 
   FSMC_NORSRAMInitTypeDef  FSMC_NORSRAMInitStructure;
   FSMC_NORSRAMStructInit(&FSMC_NORSRAMInitStructure);
@@ -385,6 +457,9 @@ void LCD_init_hardware() {
   FSMC_NORSRAMInitStructure.FSMC_ReadWriteTimingStruct = &p;
   FSMC_NORSRAMInitStructure.FSMC_WriteTimingStruct = &p;
   FSMC_NORSRAMInit(&FSMC_NORSRAMInitStructure);
+#endif
+
+
 
   /* Enable FSMC Bank1_SRAM Bank */
   FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM1, ENABLE);
@@ -398,6 +473,13 @@ void LCD_init_hardware() {
 #ifdef LCD_RESET
   jshPinSetValue(LCD_RESET, 1); //RESET=1
 #endif
+  delay_ms(50);
+  LCD_REG = 0xD3; // we need this somehow - to flush things out?
+  jsiConsolePrintf("%d,",LCD_RAM);
+  jsiConsolePrintf("%d,",LCD_RAM);
+  jsiConsolePrintf("%d,",LCD_RAM);
+  jsiConsolePrintf("%d,",LCD_RAM);
+  jsiConsolePrintf("%d\n",LCD_RAM);
 }
 
 #endif // NOT ILI9325_BITBANG
@@ -407,16 +489,159 @@ static inline void LCD_WR_CMD(unsigned int index,unsigned int val) {
   LCD_WR_Data(val);
 }
 
+static inline void LCD_WR_CMD2(unsigned int index,unsigned int val1, unsigned int val2) {
+  LCD_WR_REG(index);
+  LCD_WR_Data(val1);
+  LCD_WR_Data(val2);
+}
+
+static inline void LCD_WR_CMD4(unsigned int index,unsigned int val1, unsigned int val2, unsigned int val3, unsigned int val4) {
+  LCD_WR_REG(index);
+  LCD_WR_Data(val1);
+  LCD_WR_Data(val2);
+  LCD_WR_Data(val3);
+  LCD_WR_Data(val4);
+}
+
 static inline unsigned int LCD_RD_CMD(unsigned int index) {
   LCD_WR_REG(index);
   return LCD_RD_Data();
 }
+
+// LEVEL 1 register control
+//#define  ILI_NOP             0x00       // No Operation - NOP
+#define   ILI_SWRESET         0x01       // Software Reset - SWRESET
+//#define  ILI_RDDIDIF         0x04       // Read Display Identification Information (odczytuje dummy byte + 3 bajty informacji)
+//#define  ILI_RDDST           0x09       // Read Display Status (odczytuje dummy byte + 4 bajty informacji)
+//#define  ILI_RDDPM           0x0A       // Read Display Power Mode (odczytuje dummy byte + 1 bajt informacji)
+//#define  ILI_RDDMADCTL       0x0B       // Read Display MADCTL (odczytuje dummy byte + 1 bajt informacji)
+//#define  ILI_RDDCOLMOD       0x0C       // Read Display Pixel Format (odczytuje dummy byte + 1 bajt informacji)
+//#define  ILI_RDDIM           0x0D       // Read Display Image Format (odczytuje dummy byte + 1 bajt informacji)
+//#define  ILI_RDDSM           0x0E       // Read Display Signal Mode (odczytuje dummy byte + 1 bajt informacji)
+//#define  ILI_RDDSDR          0x0F       // Read Display SELF-Diagnostic Result (odczytuje dummy byte + 1 bajt informacji)
+//#define  ILI_SLPIN           0x10       // Enter Sleep Mode
+#define   ILI_SLPOUT          0x11       // Sleep Out
+//#define  ILI_PTLON           0x12       // Partial Mode ON
+//#define  ILI_NORON           0x13       // Normal Display Mode ON
+//#define  ILI_DINVOFF         0x20       // Display Inversion OFF
+//#define  ILI_DINVON          0x21       // Display Inversion ON
+#define   ILI_GAMSET          0x26       // Gamma Set (1 parametr 8b)
+#define   ILI_DISPOFF         0x28       // Display OFF
+#define   ILI_DISPON          0x29       // Display ON
+#define   ILI_CASET           0x2A       // Column Address Set (4 parametry 8b: SC[15..8], SC[7..0], EC[15..8], EC[7..0])
+#define   ILI_PASET           0x2B       // Page (row) Address Set (4 parametry 8b: SC[15..8], SC[7..0], EC[15..8], EC[7..0])
+#define   ILI_RAMWR           0x2C       // Memory Write (n parametr體 18b, wywo硑wana bez parametr體 po CASET i PASET)
+//#define  ILI_RGBSET          0x2D       // Color Set (128 parametr體 8b, 32 dla R, 64 dla G i 32 dla B)
+//#define  ILI_RAMRD           0x2E       // Memory Read (n parametr體 18b)
+//#define  ILI_PLTAR           0x30       // Partial Area (4 parametry 8b: SR[15..8], SR[7..0], ER[15..8], ER[7..0])
+//#define  ILI_VSCRDEF         0x33       // Vertical Scrolling Definition (6 parametr體 8b)
+//#define  ILI_TEOFF           0x34       // Tearing Effect Line OFF
+//#define  ILI_TEON            0x35       // Tearing Effect Line ON (1 parametr 8b)
+#define   ILI_MADCTL          0x36       // Memory Access Control (1 parametr 8b)
+//#define  ILI_VSCRSADD        0x37       // Vertical Scrolling Start Address (2 parametry 8b)
+#define   ILI_IDMOFF          0x38       // Idle Mode OFF
+#define   ILI_IDMON           0x39       // Idle Mode ON
+#define   ILI_PIXSET          0x3A       // COLMOD: Pixel Format Set (1 parametr 8b)
+#define   ILI_RAMWRCont       0x3C       // Write Memory Continue (n parametr體 18b)
+//#define  ILI_RAMRDCont       0x3E       // Read Memory Continue (odczytuje dummy byte i n danych 18b)
+//#define  ILI_STS             0x44       // Set Tear Scanline (2 parametry 8b)
+//#define  ILI_GS              0x45       // Get Scanline (odczytuje dummy i 2 bajty informacji)
+//#define  ILI_WRDISBV         0x51       // Write Display Brightness (1 parametr 8b)
+//#define  ILI_RDDISBV         0x52       // Read Display Brightness (odczytuje dummy byte i 1 bajt informacji)
+//#define  ILI_WRCTRLD         0x53       // Write CTRL Display (1 parametr 8b)
+//#define  ILI_RDCTRLD         0x54       // Read CTRL Display (odczytuje dummy byte i 1 bajt informacji)
+//#define  ILI_WRCABC          0x55       // Write Content Adaptive Brightness Control (1 parametr 8b)
+//#define  ILI_RDCABC          0x56       // Read Content Adaptive Brightness Control (odczytuje dummy byte i 1 bajt informacji)
+//#define  ILI_WRCABCMB        0x5E       // Write CABC Minimum Brightness (1 parametr 8b)
+//#define  ILI_RDCABCMB        0x5F       // Read CABC Minimum Brightness (odczytuje dummy byte i 1 bajt informacji)
+//#define  ILI_RDID1           0xDA       // Read ID1 (odczytuje dummy byte i 1 bajt informacji)
+//#define  ILI_RDID2           0xDB       // Read ID2 (odczytuje dummy byte i 1 bajt informacji)
+//#define  ILI_RDID3           0xDC       // Read ID3 (odczytuje dummy byte i 1 bajt informacji)
+// LEVEL 2 register control
+//#define  ILI_IFMODE          0xB0       // RGB  Interface Signal Control (1 parametr 8b)
+#define   ILI_FRMCTR1         0xB1       // Frame Rate Control (In Normal Mode/Full Colors) (2 parametry 8b)
+//#define  ILI_FRMCTR2         0xB2       // Frame Rate Control (In Idle Mode/8 Colors) (2 parametry 8b)
+//#define  ILI_FRMCTR3         0xB3       // Frame Rate Control (In Partial Mode/Full Colors) (2 parametry 8b)
+//#define  ILI_INVTR           0xB4       // Display Inversion Control (1 parametr 8b)
+//#define  ILI_PRCTR           0xB5       // Blanking Porch Control (4 parametry 8b)
+#define   ILI_DISCTRL         0xB6       // Display Function Control (4 parametry 8b)
+//#define  ILI_ETMOD           0xB7       // Entry Mode Set (1 parametr 8b)
+//#define  ILI_BLCTRL1         0xB8       // Backlight Control 1 (1 parametr 8b)
+//#define  ILI_BLCTRL2         0xB9       // Backlight Control 2 (1 parametr 8b)
+//#define  ILI_BLCTRL3         0xBA       // Backlight Control 3 (1 parametr 8b)
+//#define  ILI_BLCTRL4         0xBB       // Backlight Control 4 (1 parametr 8b)
+//#define  ILI_BLCTRL5         0xBC       // Backlight Control 5 (1 parametr 8b)
+//#define  ILI_BLCTRL7         0xBE       // Backlight Control 7 (1 parametr 8b)
+//#define  ILI_BLCTRL8         0xBF       // Backlight Control 8 (1 parametr 8b)
+#define   ILI_PWCTRL1         0xC0       // Power Control 1 (1 parametr 8b)
+#define   ILI_PWCTRL2         0xC1       // Power Control 2 (1 parametr 8b)
+#define   ILI_VMCTRL1         0xC5       // VCOM Control 1 (2 parametry 8b)
+#define   ILI_VMCTRL2         0xC7       // VCOM Control 2 (1 parametr 8b)
+//#define  ILI_NVMWR           0xD0       // NV Memory Write (2 parametry 8b)
+//#define  ILI_NVMPKEY         0xD1       // NV Memory Protection Key (3 parametry 8b)
+//#define  ILI_RDNVM           0xD2       // NV Memory Status Read (odczyt dummy byte i 2 bajty informacji)
+//#define  ILI_RDID4           0xD3       // Read ID4 (odczytuje dummy byte i 3 bajty informacji)
+#define   ILI_PGAMCTRL        0xE0       // Positive Gamma Correction (15 parametr體 8b)
+#define   ILI_NGAMCTRL        0xE1       // Negative Gamma Correction (15 parametr體 8b)
+//#define  ILI_DGAMCTRL1       0xE2       // Digital Gamma Control 1 (16 parametr體 8b)
+//#define  ILI_DGAMCTRL2       0xE3       // Digital Gamma Control 2 (16 parametr體 8b)
+//#define  ILI_IFCTL           0xF6       // Interface Control (3 parametry 8b)
+// EXTEND register control
+#define   ILI_PCA             0xCB       // Power Control A (5 parametr體 8b)
+#define   ILI_PCB             0xCF       // Power Control B (3 parametry 8b)
+#define   ILI_DTCA_ic         0xE8       // Driver Timming Control A (3 parametry 8b) - for internal clock
+//#define  ILI_DTCA_ec         0xE9       // Driver Timming Control A (3 parametry 8b) - for external clock
+#define   ILI_DTCB            0xEA       // Driver Timming Control B (2 parametry 8b)
+#define   ILI_POSC            0xED       // Power On Sequence Control (4 parametry 8b)
+#define   ILI_E3G             0xF2       // Enable 3G (1 parametr 8b)
+#define   ILI_PRC             0xF7       // Pump Ratio Control (1 parametr 8b)
 
 void LCD_init_panel() {
   uint16_t DeviceCode;
   delay_ms(100);
   DeviceCode = LCD_RD_CMD(0x0000);
 
+  if (DeviceCode == 65) { // ILI9341
+    LCD_Code = ILI9341;
+    static const uint8_t init_tab[] = {
+      ILI_PCB, 3, 0x00, 0xC1, 0X30,  \
+      ILI_POSC, 4, 0x64, 0x03, 0X12, 0X81,  \
+      ILI_DTCA_ic, 3, 0x85, 0x10, 0x7A,  \
+      ILI_PCA, 5, 0x39, 0x2C, 0x00, 0x34, 0x02,  \
+      ILI_PRC,1, 0x20,  \
+      ILI_DTCB, 2, 0x00, 0x00,  \
+      ILI_PWCTRL1, 1, 0x1B,  \
+      ILI_PWCTRL2,1, 0x01,  \
+      ILI_VMCTRL1, 2, 0x30, 0x30,  \
+      ILI_VMCTRL2, 1, 0XB7,  \
+      ILI_MADCTL, 1, 0x48,  \
+      ILI_PIXSET, 1, 0x55,  \
+      ILI_FRMCTR1, 2, 0x00, 0x1A,  \
+      ILI_DISCTRL, 2, 0x0A, 0xA2,  \
+      ILI_E3G, 1, 0x00,  \
+      ILI_GAMSET, 1, 0x01,  \
+      ILI_PGAMCTRL, 15, 0x0F, 0x2A, 0x28, 0x08, 0x0E, 0x08, 0x54, 0XA9, 0x43, 0x0A, 0x0F, 0x00, 0x00, 0x00, 0x00,  \
+      ILI_NGAMCTRL, 15, 0x00, 0x15, 0x17, 0x07, 0x11, 0x06, 0x2B, 0x56, 0x3C, 0x05, 0x10, 0x0F, 0x3F, 0x3F, 0x0F,  \
+      ILI_PASET, 4, 0x00, 0x00, 0x01, 0x3f,  \
+      ILI_CASET, 4, 0x00, 0x00, 0x00, 0xef,  \
+      ILI_SLPOUT, 120,  \
+      ILI_DISPON, 0,  \
+      ILI_MADCTL, 1, 0xC9,  \
+      0
+    };
+    uint8_t *p = init_tab;
+    while (*p) {
+      LCD_WR_REG(*p);
+      p++;
+      int c = *p;
+      p++;
+      if (c>15) LCD_DELAY(c);
+      else while (c--) {
+        LCD_WR_Data(*p);
+        p++;
+      }
+    }
+  } else
   if (DeviceCode == 0x4532) { // For the 2.4" LCD boards
     LCD_Code = ILI9325;
     LCD_WR_CMD(0x0000,0x0001);
@@ -596,7 +821,7 @@ void LCD_init_panel() {
     LCD_WR_CMD(0x07,0x0173);
   }
 #ifndef SAVE_ON_FLASH
-  else if( DeviceCode == 0x9331 )
+  else if( DeviceCode == 0x9331  )
   {
     LCD_Code = ILI9331;
     LCD_WR_CMD(0x00E7, 0x1014);
@@ -1298,6 +1523,10 @@ static inline void lcdSetCursor(JsGraphics *gfx, unsigned short x, unsigned shor
           LCD_WR_CMD(0x0021, x );
 	      break;
 #ifndef SAVE_ON_FLASH
+     case ILI9341:
+          LCD_WR_CMD2(0x002A, y>>8,y&0xFF );
+          LCD_WR_CMD2(0x002B, x>>8,x&0xFF );
+	      break;
      case SSD1298: 	 /* 0x8999 */
      case SSD1289:   /* 0x8989 */
 	      LCD_WR_CMD(0x004e, y );
@@ -1332,6 +1561,10 @@ static inline void lcdSetWindow(JsGraphics *gfx, unsigned short x1, unsigned sho
         LCD_WR_CMD(0x53, x1);
         break;
 #ifndef SAVE_ON_FLASH
+     case ILI9341:
+          LCD_WR_CMD4(0x002A, y1>>8, y1&0xFF, y2>>8, y2&0xFF );
+          LCD_WR_CMD4(0x002B, x2>>8, x2&0xFF, x1>>8, x1&0xFF );
+	      break;
      case SSD1289:   /* 0x8989 */
         LCD_WR_CMD(0x44, y1 | (y2<<8));
         LCD_WR_CMD(0x45, x2);
@@ -1353,6 +1586,19 @@ static inline void lcdSetWindow(JsGraphics *gfx, unsigned short x1, unsigned sho
   }
 }
 
+static inline void lcdSetWrite() {
+  switch (LCD_Code) {
+     default:
+        LCD_WR_REG(0x22); // start data tx
+        break;
+#ifndef SAVE_ON_FLASH
+     case ILI9341:
+        LCD_WR_REG(0x2C); // start data tx
+      break;
+#endif
+  }
+}
+
 static inline void lcdSetFullWindow(JsGraphics *gfx) {
   lcdSetWindow(gfx,0,0,gfx->data.width-1,gfx->data.height-1);
 }
@@ -1363,13 +1609,13 @@ void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned 
   // finally!
   if (x1==x2) { // special case for single vertical line - no window needed
     lcdSetCursor(gfx,x2,y1);
-    LCD_WR_REG(0x22); // start data tx
+    lcdSetWrite();
     unsigned int i=0, l=(1+y2-y1);
     LCD_WR_Data_multi(col, l);
   } else {
     lcdSetWindow(gfx,x1,y1,x2,y2);
     lcdSetCursor(gfx,x2,y1);
-    LCD_WR_REG(0x22); // start data tx
+    lcdSetWrite();
     unsigned int i=0, l=(1+x2-x1)*(1+y2-y1);
     LCD_WR_Data_multi(col, l);
     lcdSetFullWindow(gfx);
@@ -1378,14 +1624,14 @@ void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned 
 
 unsigned int lcdGetPixel_FSMC(JsGraphics *gfx, int x, int y) {
   lcdSetCursor(gfx,x,y);
-  LCD_WR_REG(0x22); // start data tx
+  lcdSetWrite(); // ?
   return LCD_RD_Data();
 }
 
 
 void lcdSetPixel_FSMC(JsGraphics *gfx, int x, int y, unsigned int col) {
   lcdSetCursor(gfx,x,y);
-  LCD_WR_REG(34);
+  lcdSetWrite();
   LCD_WR_Data(col);
 }
 

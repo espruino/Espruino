@@ -935,6 +935,10 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetState(Pin pin, JshPinState state) {
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) {
+    if (state==JSHPINSTATE_GPIO_IN_PULLUP) state=JSHPINSTATE_GPIO_IN_PULLDOWN;
+    else if (state==JSHPINSTATE_GPIO_IN_PULLDOWN) state=JSHPINSTATE_GPIO_IN_PULLUP;
+  }
   // if this is about to mess up the neopixel output, so reset our var so we know to re-init
   if (pin == jshNeoPixelPin)
     jshNeoPixelPin = PIN_UNDEFINED;
@@ -1007,6 +1011,9 @@ JshPinState jshPinGetState(Pin pin) {
 #else
   int mode = (port->MODER >> (pinNumber*2)) & 3;
   int pupd = (port->PUPDR >> (pinNumber*2)) & 3;
+  bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
+  if (negated && (pupd==1)) pupd=2;
+  else if (negated && (pupd==2)) pupd=1;
   if (mode==0) { // input
     if (pupd==1) return JSHPINSTATE_GPIO_IN_PULLUP;
     if (pupd==2) return JSHPINSTATE_GPIO_IN_PULLDOWN;
@@ -1082,6 +1089,7 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
 #ifdef STM32API2
     if (value)
       GPIO_SetBits(stmPort(pin), stmPin(pin));
@@ -1110,7 +1118,17 @@ void jshPinSetValue(Pin pin, bool value) {
 }
 
 bool jshPinGetValue(Pin pin) {
-  return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
+  bool value = GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
+  return value;
+}
+
+static void DEBUG(const char *s) {
+  while (*s) {
+    USART_SendData(USART1, (uint16_t)*s);
+    jshDelayMicroseconds(10000);
+    s++;
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -1284,7 +1302,7 @@ void jshInit() {
 #ifdef USE_RTC
   jshResetRTCTimer();
 #endif
-
+  jshResetDevices();
   jshResetPeripherals();
 #ifdef LED1_PININDEX
   // turn led back on (status) as it would have just been turned off
@@ -1424,6 +1442,8 @@ void jshInit() {
   // now hardware is initialised, turn led off
   jshPinOutput(LED1_PININDEX, 0);
 #endif
+
+    DEBUG("DONE\n");
 }
 
 void jshReset() {
@@ -1891,6 +1911,11 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
       jsiConsolePrint("You can also use analogWrite(pin, val, {soft:true}) for Software PWM on this pin\n");
     return 0;
   }
+
+/* if negated... No need to invert when doing SW PWM
+  as the SW output is already negating it! */
+  if (pinInfo[pin].port & JSH_PIN_NEGATED)
+    value = 1-value;
 
   if (JSH_PINFUNCTION_IS_DAC(func)) {
 #if defined(ESPR_DAC_COUNT) && ESPR_DAC_COUNT>0

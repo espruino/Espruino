@@ -309,12 +309,12 @@ else:
   codeOut("")
 
 
-codeOut("#define FLASH_SAVED_CODE_START            "+str(flash_saved_code_start))
-codeOut("#define FLASH_SAVED_CODE_LENGTH           "+str(int(flash_page_size*flash_saved_code_pages)))
+codeOut("#define FLASH_SAVED_CODE_START            "+hex(flash_saved_code_start))
+codeOut("#define FLASH_SAVED_CODE_LENGTH           "+hex(int(flash_page_size*flash_saved_code_pages)))
 if flash_saved_code2_pages:
   codeOut("// Extra flash pages in external flash")
-  codeOut("#define FLASH_SAVED_CODE2_START            "+str(flash_saved_code2_start))
-  codeOut("#define FLASH_SAVED_CODE2_LENGTH           "+str(int(flash_page_size*flash_saved_code2_pages)))
+  codeOut("#define FLASH_SAVED_CODE2_START            "+hex(flash_saved_code2_start))
+  codeOut("#define FLASH_SAVED_CODE2_LENGTH           "+hex(int(flash_page_size*flash_saved_code2_pages)))
 codeOut("");
 
 codeOut("#define CLOCK_SPEED_MHZ                      "+str(board.chip["speed"]))
