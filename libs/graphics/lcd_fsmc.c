@@ -42,10 +42,10 @@ static uint8_t LCD_Code;
 #define  LGDP4531   7  /* 0x4531 */
 #define  SPFD5408B  8  /* 0x5408 */
 #define  R61505U    9  /* 0x1505 0x0505 */
-#define  HX8346A    10 /* 0x0046 */  
+#define  HX8346A    10 /* 0x0046 */
 #define  HX8347D    11 /* 0x0047 */
-#define  HX8347A    12 /* 0x0047 */	
-#define  LGDP4535   13 /* 0x4535 */  
+#define  HX8347A    12 /* 0x0047 */
+#define  LGDP4535   13 /* 0x4535 */
 #define  SSD2119    14 /* 3.5 LCD 0x9919 */
 
 
@@ -297,8 +297,9 @@ void LCD_init_hardware() {
 #if defined(HYSTM32_24)
   #define LCD_RESET (Pin)(JSH_PORTE_OFFSET + 1)
 #elif defined(HYSTM32_32)
+#elif defined(STM32F4LCD)
 #else
-  #error Unsupported board for ILI9325 LCD 
+  #error Unsupported board for ILI9325 LCD
 #endif
 
 #define LCD_REG              (*((volatile unsigned short *) 0x60000000)) /* RS = 0 */
@@ -331,14 +332,25 @@ void LCD_init_hardware() {
 
   GPIO_InitTypeDef GPIO_InitStructure;
 
+#ifdef STM32F4
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB|RCC_AHB1Periph_GPIOD|RCC_AHB1Periph_GPIOE|RCC_AHB1Periph_GPIOF|RCC_AHB1Periph_GPIOG, ENABLE);
+	RCC_AHB3PeriphClockCmd(RCC_AHB3Periph_FSMC,ENABLE);
+#else
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_FSMC, ENABLE); /* Enable the FSMC Clock */
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC |
                    RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOE , ENABLE);
+#endif
 
   /* Enable the FSMC pins for LCD control */
+#ifdef STM32F4
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+#else
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_4 | GPIO_Pin_5 | 
+#endif
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_4 | GPIO_Pin_5 |
                           GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_14 |
                           GPIO_Pin_15 | GPIO_Pin_7 /*NE1*/ |  GPIO_Pin_11/*RS*/;
   GPIO_Init(GPIOD, &GPIO_InitStructure);
@@ -1270,7 +1282,7 @@ void LCD_init_panel() {
       jsiConsolePrintf("Unknown LCD code %d %d\n", DeviceCode, DeviceCode2);
     }
   }
-#endif				
+#endif
   delay_ms(50);   /* delay 50 ms */
 
 }
@@ -1282,28 +1294,28 @@ static inline void lcdSetCursor(JsGraphics *gfx, unsigned short x, unsigned shor
   switch( LCD_Code )
   {
      default:		 /* 0x9320 0x9325 0x9328 0x9331 0x5408 0x1505 0x0505 0x7783 0x4531 0x4535 */
-          LCD_WR_CMD(0x0020, y );     
-          LCD_WR_CMD(0x0021, x );     
-	      break; 
+          LCD_WR_CMD(0x0020, y );
+          LCD_WR_CMD(0x0021, x );
+	      break;
 #ifndef SAVE_ON_FLASH
      case SSD1298: 	 /* 0x8999 */
      case SSD1289:   /* 0x8989 */
-	      LCD_WR_CMD(0x004e, y );      
+	      LCD_WR_CMD(0x004e, y );
           LCD_WR_CMD(0x004f, x );
-	      break;  
+	      break;
 
      case HX8346A: 	 /* 0x0046 */
      case HX8347A: 	 /* 0x0047 */
      case HX8347D: 	 /* 0x0047 */
-	      LCD_WR_CMD(0x02, y>>8 );                                                  
-	      LCD_WR_CMD(0x03, y );  
+	      LCD_WR_CMD(0x02, y>>8 );
+	      LCD_WR_CMD(0x03, y );
 
-	      LCD_WR_CMD(0x06, x>>8 );                           
-	      LCD_WR_CMD(0x07, x );    
-	
-	      break;     
+	      LCD_WR_CMD(0x06, x>>8 );
+	      LCD_WR_CMD(0x07, x );
+
+	      break;
      case SSD2119:	 /* 3.5 LCD 0x9919 */
-	      break; 
+	      break;
 #endif
   }
 }
@@ -1325,17 +1337,17 @@ static inline void lcdSetWindow(JsGraphics *gfx, unsigned short x1, unsigned sho
         LCD_WR_CMD(0x45, x2);
         LCD_WR_CMD(0x46, x1);
         break;
-     case HX8346A: 
-     case HX8347A: 
-     case HX8347D: 
+     case HX8346A:
+     case HX8347A:
+     case HX8347D:
         LCD_WR_CMD(0x02,y1>>8);
         LCD_WR_CMD(0x03,y1);
         LCD_WR_CMD(0x04,y2>>8);
         LCD_WR_CMD(0x05,y2);
         LCD_WR_CMD(0x06,x2>>8);
         LCD_WR_CMD(0x07,x2);
-        LCD_WR_CMD(0x08,x1>>8); 
-        LCD_WR_CMD(0x09,x1); 
+        LCD_WR_CMD(0x08,x1>>8);
+        LCD_WR_CMD(0x09,x1);
         break;
 #endif
   }

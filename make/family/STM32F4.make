@@ -42,6 +42,7 @@ targetlibs/stm32f4/lib/stm32f4xx_syscfg.c     \
 targetlibs/stm32f4/lib/stm32f4xx_tim.c        \
 targetlibs/stm32f4/lib/stm32f4xx_usart.c      \
 targetlibs/stm32f4/lib/stm32f4xx_wwdg.c       \
+targetlibs/stm32f4/lib/stm32f4xx_fsmc.c        \
 targetlibs/stm32f4/lib/system_stm32f4xx.c
 #targetlibs/stm32f4/lib/stm32f4xx_cryp_aes.c
 #targetlibs/stm32f4/lib/stm32f4xx_dcmi.c
@@ -56,7 +57,7 @@ targetlibs/stm32f4/lib/system_stm32f4xx.c
 #targetlibs/stm32f4/lib/stm32f4xx_ltdc.c
 #targetlibs/stm32f4/lib/stm32f4xx_rng.c
 #targetlibs/stm32f4/lib/stm32f4xx_sai.c
-#targetlibs/stm32f4/lib/stm324xx_fsmc.c
+
 
 ifdef USB
 include make/common/STM32_USB.make
