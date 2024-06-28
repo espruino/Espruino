@@ -4824,11 +4824,11 @@ void jswrap_banglejs_touchWr(JsVarInt reg, JsVarInt data) {
     "name" : "touchRd",
     "generate" : "jswrap_banglejs_touchRd",
     "params" : [
-      ["reg","int",""],
+      ["reg","int","Register number to read"],
       ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
-    "ifdef" : "BANGLEJS",
+    "ifdef" : "BANGLEJS2",
     "typescript" : [
       "touchRd(reg: number, cnt?: 0): number;",
       "touchRd(reg: number, cnt: number): number[];"
@@ -4854,10 +4854,10 @@ JsVar *jswrap_banglejs_touchRd(JsVarInt reg, JsVarInt cnt) {
     "name" : "accelWr",
     "generate" : "jswrap_banglejs_accelWr",
     "params" : [
-      ["reg","int",""],
-      ["data","int",""]
+      ["reg","int","Register number to write"],
+      ["data","int","An integer value to write to the register"]
     ],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS2"
 }
 Writes a register on the accelerometer
 */
