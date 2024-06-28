@@ -363,7 +363,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
       td.min = (int)((info.ftime>>5)&63);
       td.sec = (int)((info.ftime)&63);
       td.ms = 0;
-      setCorrectTimeZone(&td);  // TomWS: add adjustment for timezone offset introduced in date_from_milliseconds 
+      setCorrectTimeZone(&td);  // TomWS: add adjustment for timezone offset introduced in date_from_milliseconds
       jsvObjectSetChildAndUnLock(obj, "mtime", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
       return obj;
     }
@@ -432,3 +432,58 @@ bool jswrap_fs_mkdir(JsVar *path) {
   }
   return true;
 }
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "video",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_video",
+  "params" : [
+    ["path","JsVar","The path of the file to read"]
+  ]
+}
+Read all data from a file and return as a string.
+
+**Note:** The size of files you can load using this method is limited by the
+amount of available RAM. To read files a bit at a time, see the `File` class.
+*/
+void jswrap_fs_video(JsVar *path) {
+  volatile unsigned short *LCD_RAM = ((volatile unsigned short *) 0x60080000); /* RS = 1 (D13 -> A18) */
+  volatile unsigned short *LCD_REG = ((volatile unsigned short *) 0x60000000);
+
+  char pathStr[JS_DIR_BUF_SIZE] = "";
+  if (!jsfsGetPathString(pathStr, path)) return;
+
+  if (jsfsInit()) {
+    BYTE ff_mode = FA_READ | FA_OPEN_EXISTING;
+    FRESULT res;
+    File_Handle file;
+    const uint16_t buffer[2048];
+    if ((res=f_open(&file, pathStr, ff_mode)) == FR_OK) {
+      *LCD_REG = 0x2A;
+      *LCD_RAM = 0;
+      *LCD_RAM = 0;
+      *LCD_RAM = 0;
+      *LCD_RAM = 239;
+      *LCD_REG = 0x2B;
+      *LCD_RAM = 0;
+      *LCD_RAM = 0;
+      *LCD_RAM = 319>>8;
+      *LCD_RAM = 319&0xFF;
+      *LCD_REG = 0x2C;
+      size_t actual = 1;
+      while (actual && !jspIsInterrupted()) {
+        res = f_read(&file, (uint8_t*)buffer, sizeof(buffer), &actual);
+        jsiConsolePrintf("%d\n",actual);
+        for (size_t i=0;i<(actual>>1);i++) {
+          *LCD_RAM = buffer[i];
+        }
+      }
+      f_close(&file);
+    }
+  }
+}
+
+

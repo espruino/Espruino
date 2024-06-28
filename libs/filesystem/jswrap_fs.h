@@ -20,3 +20,4 @@ bool jswrap_fs_unlink(JsVar *path);
 JsVar *jswrap_fs_stat(JsVar *path);
 bool jswrap_fs_mkdir(JsVar *path);
 void jswrap_fs_sync();
+void jswrap_fs_video(JsVar *path);

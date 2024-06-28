@@ -17,7 +17,7 @@ import pinutils;
 info = {
  'name' : "STM32 F4 LCD board",
  'link' :  [ "https://www.aliexpress.com/item/1005006735000932.html" ], # https://github.com/wegi1/STM32F407VET6-BLACK-ILI9341-BENCHMARK/
- 'default_console' : "EV_SERIAL2", # FIXME: This was S2 because of pin conflict. Not sure if it's really an issue?
+  #https://stm32-base.org/assets/pdf/boards/original-schematic-STM32F407VET6-STM32_F4VE_V2.0.pdf
  'variables' : 5450,
  'binary_name' : 'espruino_%v_stm32f4lcd.bin',
  'default_console' : "EV_SERIAL1",
@@ -25,12 +25,12 @@ info = {
  'default_console_rx' : "A10",
  'default_console_baudrate' : "9600",
  'build' : {
-   'optimizeflags' : '-O3',
+   'optimizeflags' : '-Os',
    'libraries' : [
 #     'USB_HID',
      'GRAPHICS',
      'LCD_FSMC',
-#     'FILESYSTEM',
+     'FILESYSTEM',
 #     'FILESYSTEM_SDIO',
    ],
    'makefile' : [
@@ -44,6 +44,13 @@ info = {
    ]
   }
 };
+"""
+var spi = new SPI();
+spi.setup({mosi:D2, miso:C8, sck:C12,baud:10000000});
+E.connectSDCard(spi, C11 /*CS*/);
+//require("fs").readdir()
+require("fs").video("vid2.data")
+"""
 
 chip = {
   'part' : "STM32F407VET6",
@@ -82,7 +89,7 @@ devices = {
             'pin_d1' :  'C9',
             'pin_d2' :  'C10',
             'pin_d3' :  'C11',
-            'pin_clk' :  'C12' },
+            'pin_clk' : 'C12' },
   'TOUCHSCREEN' : {
             'pin_irq' : 'C5',
             'pin_cs' : 'B12',
