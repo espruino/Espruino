@@ -99,6 +99,7 @@
     Bangle.on("swipe", Bangle.swipeHandler);
   }
   if (options.btn) {
+    if (Bangle.btnWatches) Bangle.btnWatches.forEach(clearWatch);
     Bangle.btnWatches = [
       setWatch(function() { options.btn(1); }, BTN1, {repeat:1,edge:"falling"})
     ];
