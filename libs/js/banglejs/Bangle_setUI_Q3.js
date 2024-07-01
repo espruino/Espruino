@@ -85,28 +85,28 @@
       setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
     ];
   } else if (mode=="custom") {
-    if (options.clock) Bangle.CLOCK=1;
-    if (options.touch)
-      Bangle.touchHandler = options.touch;
-    if (options.drag) {
-      Bangle.dragHandler = options.drag;
-      Bangle.on("drag", Bangle.dragHandler);
-    }
-    if (options.swipe) {
-      Bangle.swipeHandler = options.swipe;
-      Bangle.on("swipe", Bangle.swipeHandler);
-    }
-    if (options.btn) {
-      Bangle.btnWatches = [
-        setWatch(function() { options.btn(1); }, BTN1, {repeat:1,edge:"falling"})
-      ];
-    } else if (options.clock) {
-      Bangle.btnWatches = [
-        setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
-      ];
-    }
   } else
     throw new Error("Unknown UI mode "+E.toJS(mode));
+  if (options.clock) Bangle.CLOCK=1;
+  if (options.touch)
+  Bangle.touchHandler = options.touch;
+  if (options.drag) {
+    Bangle.dragHandler = options.drag;
+    Bangle.on("drag", Bangle.dragHandler);
+  }
+  if (options.swipe) {
+    Bangle.swipeHandler = options.swipe;
+    Bangle.on("swipe", Bangle.swipeHandler);
+  }
+  if (options.btn) {
+    Bangle.btnWatches = [
+      setWatch(function() { options.btn(1); }, BTN1, {repeat:1,edge:"falling"})
+    ];
+  } else if (options.clock) {
+    Bangle.btnWatches = [
+      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
+    ];
+  }
   if (options.remove) // handler for removing the UI (intervals/etc)
     Bangle.uiRemove = options.remove;
   if (options.redraw) // handler for redrawing the UI
