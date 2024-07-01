@@ -3655,6 +3655,9 @@ NO_INLINE void jswrap_banglejs_hwinit() {
   jshPinOutput(TOUCH_PIN_RST, 0);
   jshDelayMicroseconds(1000);
   jshPinOutput(TOUCH_PIN_RST, 1);
+  // Ensure peripherals are forced off (GPIO can be open drain)
+  jswrap_banglejs_pwrHRM(false); // HRM off
+  jswrap_banglejs_pwrGPS(false); // GPS off
 
   // Check pressure sensor
   unsigned char buf[2];
