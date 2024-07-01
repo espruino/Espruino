@@ -136,13 +136,14 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* hpcd)
     GPIO_PinAFConfig(GPIOA,GPIO_PinSource12,GPIO_AF_OTG1_FS) ;
 
     /* Configure  VBUS Pin */
+#ifdef USB_VSENSE_PIN
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
     GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
     GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
-
+#endif
 
     NVIC_InitTypeDef NVIC_InitStructure;
     NVIC_InitStructure.NVIC_IRQChannel = OTG_FS_IRQn;

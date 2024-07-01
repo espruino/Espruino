@@ -475,11 +475,11 @@ void LCD_init_hardware() {
 #endif
   delay_ms(50);
   LCD_REG = 0xD3; // we need this somehow - to flush things out?
-  jsiConsolePrintf("%d,",LCD_RAM);
-  jsiConsolePrintf("%d,",LCD_RAM);
-  jsiConsolePrintf("%d,",LCD_RAM);
-  jsiConsolePrintf("%d,",LCD_RAM);
-  jsiConsolePrintf("%d\n",LCD_RAM);
+  NOT_USED(LCD_RAM);
+  NOT_USED(LCD_RAM);
+  NOT_USED(LCD_RAM);
+  NOT_USED(LCD_RAM);
+  NOT_USED(LCD_RAM);
 }
 
 #endif // NOT ILI9325_BITBANG

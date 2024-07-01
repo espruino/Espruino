@@ -46,7 +46,7 @@ else ifdef NUCLEO
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else
 	@echo ST-LINK flash
-	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)
+	sudo st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)
 endif
 
 serialflash: all

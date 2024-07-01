@@ -1,6 +1,6 @@
 // USED FOR SDIO-BASED SD CARDS
 /*
- * @author: ickle 
+ * @author: ickle
  * @source: http://www.61ic.com/code/archiver/?tid-27986.html
  */
 
@@ -15,13 +15,6 @@
 
 SD_CardInfo SDCardInfo2;
 
-/*--------------------------------------------------------------------------
-
-   Public Functions
-
----------------------------------------------------------------------------*/
-
-
 /*-----------------------------------------------------------------------*/
 /* Initialize Disk Drive                                                 */
 /*-----------------------------------------------------------------------*/
@@ -34,6 +27,8 @@ DSTATUS disk_initialize (
 
   //jsiConsolePrint("SD_Init\n");
   SD_Init();
+#ifndef STM32F4
+  // FIXME: Do we even need this in EspruoinoBoard? seems like SD_GetCardInfo especially just wastes time
   //jsiConsolePrint("SD_GetCardInfo\n");
   SD_GetCardInfo(&SDCardInfo2);
   //jsiConsolePrint("SD_SelectDeselect\n");
@@ -42,13 +37,13 @@ DSTATUS disk_initialize (
   SD_EnableWideBusOperation(SDIO_BusWide_4b);
   //jsiConsolePrint("SD_SetDeviceMode\n");
   SD_SetDeviceMode(SD_DMA_MODE);
+#endif
   //jsiConsolePrint("NVIC_Init\n");
   NVIC_InitStructure.NVIC_IRQChannel = SDIO_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
-
   //NAND_Init();
   return 0;
 }
@@ -83,8 +78,12 @@ DRESULT disk_read (
   Transfer_Length =  count * 512;
   Memory_Offset = sector * 512;
 
-  SD_ReadBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
+  if (count<=1)
+    SD_ReadBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
+  else
+    SD_ReadMultiBlocks(Memory_Offset, (uint32_t *)buff, Transfer_Length, count);
   //NAND_Read(Memory_Offset, (uint32_t *)buff, Transfer_Length);
+  //FIXME what about SD_ReadMultiBlocks when count>1 ?
 
   return RES_OK;
 }
@@ -107,7 +106,10 @@ DRESULT disk_write (
   Transfer_Length =  count * 512;
   Memory_Offset = sector * 512;
 
-  SD_WriteBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
+  if (count<=1)
+    SD_WriteBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
+  else
+    SD_WriteMultiBlocks(Memory_Offset, (uint32_t *)buff, Transfer_Length, count);
   //NAND_Write(Memory_Offset, (uint32_t *)buff, Transfer_Length);
 
   return RES_OK;
@@ -125,19 +127,13 @@ DRESULT disk_ioctl (
   )
 {
   DRESULT res = RES_OK;
-  uint32_t status = SD_NO_TRANSFER;
-  //uint32_t status = NAND_READY;
+    //uint32_t status = NAND_READY;
 
 
 
   switch (ctrl) {
   case CTRL_SYNC : /// Make sure that no pending write process
-    status = SD_GetTransferState();
-    if (status == SD_NO_TRANSFER)
-      //status = FSMC_NAND_GetStatus();
-      //if (status == NAND_READY)
-    {res = RES_OK;}
-    else{res = RES_ERROR;}
+    res = RES_OK;
     break;
 
   case GET_SECTOR_COUNT :   // Get number of sectors on the disk (DWORD)

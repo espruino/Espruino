@@ -476,7 +476,6 @@ void jswrap_fs_video(JsVar *path) {
       size_t actual = 1;
       while (actual && !jspIsInterrupted()) {
         res = f_read(&file, (uint8_t*)buffer, sizeof(buffer), &actual);
-        jsiConsolePrintf("%d\n",actual);
         for (size_t i=0;i<(actual>>1);i++) {
           *LCD_RAM = buffer[i];
         }

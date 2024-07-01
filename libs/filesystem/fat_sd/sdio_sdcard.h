@@ -1,11 +1,11 @@
 // USED FOR SDIO-BASED SD CARDS
 /**
   ******************************************************************************
-  * @file    SDIO/sdcard.h 
+  * @file    SDIO/sdcard.h
   * @author  MCD Application Team
   * @version V3.1.0
   * @date    06/19/2009
-  * @brief   This file contains all the functions prototypes for the SD Card 
+  * @brief   This file contains all the functions prototypes for the SD Card
   *          driver firmware library.
   ******************************************************************************
   * @copy
@@ -18,7 +18,7 @@
   * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
   *
   * <h2><center>&copy; COPYRIGHT 2009 STMicroelectronics</center></h2>
-  */ 
+  */
 
 /** @addtogroup STM32F10x_StdPeriph_Examples
   * @{
@@ -26,7 +26,7 @@
 
 /** @addtogroup SDIO_Example
   * @{
-  */ 
+  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __SDCARD_H
@@ -75,15 +75,15 @@ typedef enum
   SD_SDIO_UNKNOWN_FUNCTION           = (33),
 
   /* Standard error defines */
-  SD_INTERNAL_ERROR, 
+  SD_INTERNAL_ERROR,
   SD_NOT_CONFIGURED,
-  SD_REQUEST_PENDING, 
-  SD_REQUEST_NOT_APPLICABLE, 
-  SD_INVALID_PARAMETER,  
-  SD_UNSUPPORTED_FEATURE,  
-  SD_UNSUPPORTED_HW,  
-  SD_ERROR,  
-  SD_OK,  
+  SD_REQUEST_PENDING,
+  SD_REQUEST_NOT_APPLICABLE,
+  SD_INVALID_PARAMETER,
+  SD_UNSUPPORTED_FEATURE,
+  SD_UNSUPPORTED_HW,
+  SD_ERROR,
+  SD_OK,
 } SD_Error;
 
 /* SDIO Commands  Index */
@@ -160,11 +160,26 @@ typedef enum
 #define SDIO_SD_APP_CHANGE_SECURE_AREA           ((uint8_t)49) /* For SD Card only */
 #define SDIO_SD_APP_SECURE_WRITE_MKB             ((uint8_t)48) /* For SD Card only */
 
+#ifdef STM32F1
 typedef enum
 {
   SD_NO_TRANSFER  = 0,
   SD_TRANSFER_IN_PROGRESS
 } SDTransferState;
+#endif
+#ifdef STM32F4
+typedef enum
+{
+  SD_TRANSFER_OK  = 0,
+  SD_TRANSFER_BUSY = 1,
+  SD_TRANSFER_ERROR
+} SDTransferState;
+
+#define SD_PRESENT                                 ((uint8_t)0x01)
+#define SD_NOT_PRESENT                             ((uint8_t)0x00)
+uint8_t SD_Detect(void);
+#endif
+SDTransferState SD_GetTransferState(void);
 
 typedef struct
 {
@@ -267,7 +282,6 @@ SD_Error SD_ReadBlock(uint32_t addr, uint32_t *readbuff, uint16_t BlockSize);
 SD_Error SD_ReadMultiBlocks(uint32_t addr, uint32_t *readbuff, uint16_t BlockSize, uint32_t NumberOfBlocks);
 SD_Error SD_WriteBlock(uint32_t addr, uint32_t *writebuff, uint16_t BlockSize);
 SD_Error SD_WriteMultiBlocks(uint32_t addr, uint32_t *writebuff, uint16_t BlockSize, uint32_t NumberOfBlocks);
-SDTransferState SD_GetTransferState(void);
 SD_Error SD_StopTransfer(void);
 SD_Error SD_Erase(uint32_t startaddr, uint32_t endaddr);
 SD_Error SD_SendStatus(uint32_t *pcardstatus);
@@ -283,5 +297,5 @@ SD_Error SD_ProcessIRQSrc(void);
 /**
   * @}
   */
-  
+
 /******************* (C) COPYRIGHT 2009 STMicroelectronics *****END OF FILE****/

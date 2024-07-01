@@ -31,10 +31,11 @@ info = {
      'GRAPHICS',
      'LCD_FSMC',
      'FILESYSTEM',
-#     'FILESYSTEM_SDIO',
+     'FILESYSTEM_SDIO',
    ],
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',
+     'DEFINES+=-DUSE_RTC',
      'STLIB=STM32F407xx',
      '-DHSE_VALUE=9000000',
 #     'DEFINES+=-DFSMC_BITBANG',
@@ -45,11 +46,15 @@ info = {
   }
 };
 """
-var spi = new SPI();
-spi.setup({mosi:D2, miso:C8, sck:C12,baud:10000000});
-E.connectSDCard(spi, C11 /*CS*/);
+// For SW SPI
+//var spi = new SPI();
+//spi.setup({mosi:D2, miso:C8, sck:C12,baud:10000000});
+//E.connectSDCard(spi, C11 /*CS*/);
+
 //require("fs").readdir()
-require("fs").video("vid2.data")
+require("fs").video("vid.data")
+
+require("fs").writeFile("test","Hello World")
 """
 
 chip = {

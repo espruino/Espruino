@@ -390,9 +390,8 @@ libs/filesystem/fat_sd/option/unicode.c # for LFN support (see _USE_LFN in ff.h)
 
 ifeq ($(USE_FILESYSTEM_SDIO),1)
 DEFINES += -DUSE_FILESYSTEM_SDIO
-SOURCES += \
-libs/filesystem/fat_sd/sdio_diskio.c \
-libs/filesystem/fat_sd/sdio_sdcard.c
+SOURCES += libs/filesystem/fat_sd/sdio_diskio.c
+# sdio_sdcard_X.c is added in make/family/X.make
 else #USE_FILESYSTEM_SDIO
 ifdef USE_FLASHFS
 DEFINES += -DUSE_FLASHFS

@@ -1123,14 +1123,6 @@ bool jshPinGetValue(Pin pin) {
   return value;
 }
 
-static void DEBUG(const char *s) {
-  while (*s) {
-    USART_SendData(USART1, (uint16_t)*s);
-    jshDelayMicroseconds(10000);
-    s++;
-  }
-}
-
 // ----------------------------------------------------------------------------
 static void jshResetPeripherals() {
   // Set pin state to analog input - saves some power
@@ -1442,8 +1434,6 @@ void jshInit() {
   // now hardware is initialised, turn led off
   jshPinOutput(LED1_PININDEX, 0);
 #endif
-
-    DEBUG("DONE\n");
 }
 
 void jshReset() {
