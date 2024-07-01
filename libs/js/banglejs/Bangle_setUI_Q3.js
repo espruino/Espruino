@@ -52,7 +52,7 @@
     Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
     Bangle.btnWatches = [
-      setWatch(function() { b();cb(); }, BTN1, {repeat:1, edge:"falling"}),
+      setWatch(function() { b();cb(); }, BTN1, {repeat:1, edge:"rising"}),
     ];
   } else if (mode=="leftright") {
     var dx = 0;
@@ -68,12 +68,12 @@
     Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
     Bangle.btnWatches = [
-      setWatch(function() { b();cb(); }, BTN1, {repeat:1, edge:"falling"}),
+      setWatch(function() { b();cb(); }, BTN1, {repeat:1, edge:"rising"}),
     ];
   } else if (mode=="clock") {
     Bangle.CLOCK=1;
     Bangle.btnWatches = [
-      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
+      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"rising"})
     ];
   } else if (mode=="clockupdown") {
     Bangle.CLOCK=1;
@@ -82,7 +82,7 @@
       b();cb((e.y > 88) ? 1 : -1);
     };
     Bangle.btnWatches = [
-      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
+      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"rising"})
     ];
   } else if (mode=="custom") {
   } else
@@ -100,7 +100,7 @@
   }
   if (options.btn) {
     if (Bangle.btnWatches) Bangle.btnWatches.forEach(clearWatch);
-    var e = "falling";
+    var e = "rising";
     if ("object"==typeof options.btn) {
       e = options.btn.edge;
       options.btn = options.btn.fn;
@@ -110,7 +110,7 @@
     ];
   } else if (options.clock) {
     Bangle.btnWatches = [
-      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
+      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"rising"})
     ];
   }
   if (options.remove) // handler for removing the UI (intervals/etc)
@@ -139,7 +139,7 @@
     btnWatch = setWatch(function() {
       btnWatch = undefined;
       options.back();
-    }, BTN1, {edge:"falling"});
+    }, BTN1, {edge:"rising"});
     WIDGETS = Object.assign({back:{
       area:"tl", width:24,
       draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
