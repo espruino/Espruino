@@ -100,8 +100,13 @@
   }
   if (options.btn) {
     if (Bangle.btnWatches) Bangle.btnWatches.forEach(clearWatch);
+    var e = "falling";
+    if ("object"==typeof options.btn) {
+      e = options.btn.edge;
+      options.btn = options.btn.fn;
+    }
     Bangle.btnWatches = [
-      setWatch(function() { options.btn(1); }, BTN1, {repeat:1,edge:"falling"})
+      setWatch(function() { options.btn(1); }, BTN1, {repeat:1,edge:e})
     ];
   } else if (options.clock) {
     Bangle.btnWatches = [
