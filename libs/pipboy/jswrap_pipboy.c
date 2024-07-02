@@ -178,9 +178,10 @@ void jswrap_pb_videoFrame() {
     while (b < &videoBuffer[videoStreamBufferLen]) {
       // check if we need to refill our buffer
       if (videoStreamRemaining && (b+256 >= &videoBuffer[videoStreamBufferLen])) {
-        uint32_t currentPos = b-videoBuffer;
-        uint32_t leftInStream = videoStreamBufferLen - currentPos;
-        memmove(videoBuffer, b, leftInStream); // move data back
+        uint32_t amountToShift = (b-videoBuffer) & ~3; // aligned to the nearest word (STM32 f_read fails otherwise!)
+        uint32_t leftInStream = videoStreamBufferLen - amountToShift;
+        memmove(videoBuffer, &videoBuffer[amountToShift], leftInStream); // move data back
+        b -= amountToShift; // FIXME - this is broken
         videoStreamBufferLen = leftInStream;
         uint32_t bufferRemaining = sizeof(videoBuffer)-leftInStream;
         uint32_t len = videoStreamRemaining;
@@ -188,7 +189,6 @@ void jswrap_pb_videoFrame() {
         f_read(&videoFile, &videoBuffer[leftInStream],len, &actual);
         videoStreamRemaining -= len;
         videoStreamBufferLen += len;
-        b = &videoBuffer[0];
       }
       // ok, next RLE byte!
       uint8_t num = *(b++);
