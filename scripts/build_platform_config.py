@@ -108,7 +108,7 @@ else: # NOT LINUX
 
 flash_saved_code2_pages = 0
 if "saved_code" in board.chip:
-  flash_saved_code_start = board.chip["saved_code"]["address"]
+  flash_saved_code_start = hex(board.chip["saved_code"]["address"])
   flash_page_size = board.chip["saved_code"]["page_size"]
   flash_saved_code_pages = board.chip["saved_code"]["pages"]
   flash_available_for_code = board.chip["saved_code"]["flash_available"]*1024
@@ -309,7 +309,7 @@ else:
   codeOut("")
 
 
-codeOut("#define FLASH_SAVED_CODE_START            "+hex(flash_saved_code_start))
+codeOut("#define FLASH_SAVED_CODE_START            "+flash_saved_code_start)
 codeOut("#define FLASH_SAVED_CODE_LENGTH           "+hex(int(flash_page_size*flash_saved_code_pages)))
 if flash_saved_code2_pages:
   codeOut("// Extra flash pages in external flash")
