@@ -614,7 +614,7 @@ void LCD_init_panel() {
       ILI_PWCTRL2,1, 0x01,  \
       ILI_VMCTRL1, 2, 0x30, 0x30,  \
       ILI_VMCTRL2, 1, 0XB7,  \
-      ILI_MADCTL, 1, /*0x48*/0x18,  \
+      ILI_MADCTL, 1, 0x48,  \
       ILI_PIXSET, 1, 0x55,  \
       ILI_FRMCTR1, 2, 0x00, 0x1A,  \
       ILI_DISCTRL, 2, 0x0A, 0xA2,  \
@@ -626,7 +626,7 @@ void LCD_init_panel() {
       ILI_CASET, 4, 0x00, 0x00, 0x00, 0xef,  \
       ILI_SLPOUT, 120,  \
       ILI_DISPON, 0,  \
-      ILI_MADCTL, 1, 0xC9,  \
+      ILI_MADCTL, 1, 0x68,  \
       0
     };
     uint8_t *p = init_tab;
@@ -1514,8 +1514,9 @@ void LCD_init_panel() {
 
 
 static inline void lcdSetCursor(JsGraphics *gfx, unsigned short x, unsigned short y) {
-  x = (gfx->data.width-1)-x;
-
+  if (LCD_Code!=ILI9341) {
+    x = (gfx->data.width-1)-x;
+  }
   switch( LCD_Code )
   {
      default:		 /* 0x9320 0x9325 0x9328 0x9331 0x5408 0x1505 0x0505 0x7783 0x4531 0x4535 */
@@ -1524,8 +1525,8 @@ static inline void lcdSetCursor(JsGraphics *gfx, unsigned short x, unsigned shor
 	      break;
 #ifndef SAVE_ON_FLASH
      case ILI9341:
-          LCD_WR_CMD2(0x002A, y>>8,y&0xFF );
-          LCD_WR_CMD2(0x002B, x>>8,x&0xFF );
+          LCD_WR_CMD2(0x002A, x>>8,x&0xFF );
+          LCD_WR_CMD2(0x002B, y>>8,y&0xFF );
 	      break;
      case SSD1298: 	 /* 0x8999 */
      case SSD1289:   /* 0x8989 */
@@ -1551,8 +1552,10 @@ static inline void lcdSetCursor(JsGraphics *gfx, unsigned short x, unsigned shor
 
 static inline void lcdSetWindow(JsGraphics *gfx, unsigned short x1, unsigned short y1, unsigned short x2, unsigned short y2) {
   // x1>=x2  and y1>=y2
-  x2 = (gfx->data.width-1)-x2;
-  x1 = (gfx->data.width-1)-x1;
+  if (LCD_Code!=ILI9341) {
+    x2 = (gfx->data.width-1)-x2;
+    x1 = (gfx->data.width-1)-x1;
+  }
   switch (LCD_Code) {
      default:
         LCD_WR_CMD(0x50, y1);
@@ -1562,8 +1565,8 @@ static inline void lcdSetWindow(JsGraphics *gfx, unsigned short x1, unsigned sho
         break;
 #ifndef SAVE_ON_FLASH
      case ILI9341:
-          LCD_WR_CMD4(0x002A, y1>>8, y1&0xFF, y2>>8, y2&0xFF );
-          LCD_WR_CMD4(0x002B, x2>>8, x2&0xFF, x1>>8, x1&0xFF );
+          LCD_WR_CMD4(0x002A, x1>>8, x1&0xFF, x2>>8, x2&0xFF );
+          LCD_WR_CMD4(0x002B, y1>>8, y1&0xFF, y2>>8, y2&0xFF );
 	      break;
      case SSD1289:   /* 0x8989 */
         LCD_WR_CMD(0x44, y1 | (y2<<8));
@@ -1612,7 +1615,8 @@ void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned 
     LCD_WR_Data_multi(col, l);
   } else {
     lcdSetWindow(gfx,x1,y1,x2,y2);
-    lcdSetCursor(gfx,x2,y1);// FIXME - we don't need this?
+    if (LCD_Code!=ILI9341)
+      lcdSetCursor(gfx,x1,y1);// FIXME - we don't need this?
     lcdSetWrite();
     unsigned int i=0, l=(1+x2-x1)*(1+y2-y1);
     LCD_WR_Data_multi(col, l);
@@ -1648,12 +1652,12 @@ void lcdSetCallbacks_FSMC(JsGraphics *gfx) {
 }
 
 void lcdFSMC_blitStart(JsGraphics *gfx, int x, int y, int w, int h) {
-  lcdSetWindow(gfx, y, y, y+h-1, x+w-1);
+  lcdSetWindow(gfx, x, y, x+w-1, y+h-1);
   lcdSetWrite();
 }
 void lcdFSMC_setCursor(JsGraphics *gfx, int x, int y) {
   //lcdSetCursor(gfx,x,y);
-  lcdSetWindow(gfx,y,x,y,gfx->data.width-1);
+  lcdSetWindow(gfx,x,y,gfx->data.width-1,y);
   lcdSetWrite();
 }
 void lcdFSMC_blitPixel(unsigned int col) {
