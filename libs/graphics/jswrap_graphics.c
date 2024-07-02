@@ -538,19 +538,33 @@ void jswrap_graphics_init() {
   // sortorder is first because we don't want subsequent
   // _init to a) not have GFX and b) not get their theme
   // settings overwritten
-#ifdef USE_LCD_FSMC
+#ifdef ESPR_GRAPHICS_SELF_INIT
   JsVar *parent = jspNewObject("g", "Graphics");
   if (parent) {
     JsVar *parentObj = jsvSkipName(parent);
     jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, parentObj);
-    JsGraphics gfx;
-    gfx.data.type = JSGRAPHICSTYPE_FSMC;
-    graphicsStructInit(&gfx,320,240,16);
-    gfx.graphicsVar = parentObj;
-    lcdInit_FSMC(&gfx);
-    lcdSetCallbacks_FSMC(&gfx);
-    graphicsSplash(&gfx);
-    graphicsSetVarInitial(&gfx);
+    JsGraphics *gfx;
+#ifdef ESPR_GRAPHICS_INTERNAL
+    gfx = &graphicsInternal;
+#else
+    JsGraphics _gfx;
+    gfx = &gfx;
+#endif
+    graphicsStructInit(gfx,LCD_WIDTH,LCD_HEIGHT,LCD_BPP);
+    gfx->graphicsVar = parentObj;
+#if defined(LCD_CONTROLLER_SDL)
+    gfx->data.type = JSGRAPHICSTYPE_SDL;
+    lcdInit_SDL(gfx);
+    lcdSetCallbacks_SDL(gfx);
+#elif defined(LCD_CONTROLLER_FSMC)
+    gfx->data.type = JSGRAPHICSTYPE_FSMC;
+    lcdInit_FSMC(gfx);
+    lcdSetCallbacks_FSMC(gfx);
+#else
+   #error Unknown LCD type
+#endif
+    graphicsSplash(gfx);
+    graphicsSetVarInitial(gfx);
     jsvUnLock2(parentObj, parent);
   }
 #endif

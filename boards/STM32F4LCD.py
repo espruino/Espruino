@@ -18,7 +18,7 @@ info = {
  'name' : "STM32 F4 LCD board",
  'link' :  [ "https://www.aliexpress.com/item/1005006735000932.html" ], # https://github.com/wegi1/STM32F407VET6-BLACK-ILI9341-BENCHMARK/
   #https://stm32-base.org/assets/pdf/boards/original-schematic-STM32F407VET6-STM32_F4VE_V2.0.pdf
- 'variables' : 5450,
+ 'variables' : 2450,
  'binary_name' : 'espruino_%v_stm32f4lcd.bin',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "A9",
@@ -36,7 +36,7 @@ info = {
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'DEFINES+=-DUSE_RTC',
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS -DESPR_GRAPHICS_INTERNAL',
      'STLIB=STM32F407xx',
      '-DHSE_VALUE=9000000',
 #     'DEFINES+=-DFSMC_BITBANG',

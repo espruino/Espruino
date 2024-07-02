@@ -39,6 +39,20 @@ typedef struct {
   } PACKED_FLAGS  rcFrame;
 } PACKED_FLAGS AVIStreamHeader;
 
+typedef struct {
+  uint32_t biSize;
+  uint32_t  biWidth;
+  uint32_t  biHeight;
+  uint16_t  biPlanes;
+  uint16_t  biBitCount;
+  uint32_t biCompression;
+  uint32_t biSizeImage;
+  uint32_t  biXPelsPerMeter;
+  uint32_t  biYPelsPerMeter;
+  uint32_t biClrUsed;
+  uint32_t biClrImportant;
+} PACKED_FLAGS BITMAPINFOHEADER;
+
 bool is4CC(uint8_t *ptr, const char *fourcc) {
   return
     ptr[0]==fourcc[0] &&
@@ -95,21 +109,21 @@ void riffListShow(uint8_t *buf, int pad) {
   }
 }
 
-bool aviLoad(uint8_t *buf, int len) {
+bool aviLoad(uint8_t *buf, int len, AviInfo *result) {
   if (!is4CC(buf,"RIFF")) {
-    jsExceptionHere(JSET_ERROR, "Not RIFF\n");
+    jsExceptionHere(JSET_ERROR, "Not RIFF %c%c%c%c\n", buf[0],buf[1],buf[2],buf[3]);
     return 0;
   }
   if (!is4CC(&buf[8],"AVI ")) {
     jsExceptionHere(JSET_ERROR, "Not AVI\n");
     return 0;
   }
-  buf += 12; // skip RIFF+length+AVI tag
-  if (!is4CC(buf,"LIST") || !is4CC(&buf[8],"hdrl")) {
+  uint8_t *riffList = buf + 12; // skip RIFF+length+AVI tag
+  if (!is4CC(riffList,"LIST") || !is4CC(&riffList[8],"hdrl")) {
     jsExceptionHere(JSET_ERROR, "Not LIST hdrl\n");
     return 0;
   }
-  uint8_t *listPtr = buf;
+  uint8_t *listPtr = riffList;
   riffListShow(listPtr,0);
   MainAVIHeader *aviHeader = (MainAVIHeader*)riffGetIndex(listPtr, 0, "avih");
   if (!aviHeader) {
@@ -117,6 +131,9 @@ bool aviLoad(uint8_t *buf, int len) {
     return 0;
   }
   jsiConsolePrintf("AVI w=%d h=%d fps=%d\n",aviHeader->dwWidth, aviHeader->dwHeight, 1000000/aviHeader->dwMicroSecPerFrame);
+  result->width = aviHeader->dwWidth;
+  result->height = aviHeader->dwHeight;
+  result->usPerFrame = aviHeader->dwMicroSecPerFrame;
   for (int stream=0;stream<aviHeader->dwStreams;stream++) {
     uint8_t *streamListPtr = riffGetIndex(listPtr, 1+stream, "LIST")-8;
     if (!streamListPtr) {
@@ -128,14 +145,37 @@ bool aviLoad(uint8_t *buf, int len) {
       jsExceptionHere(JSET_ERROR, "No stream %d\n");
       return 0;
     }
-    char buf[10];
-    memcpy(buf,&streamHeader->fccType,4);
-    buf[4]=' ';
-    memcpy(&buf[5],&streamHeader->fccHandler,4);
-    buf[9]=0;
-    jsiConsolePrintf("Stream %d %s %d\n", stream, buf, streamHeader->dwStart);
+    char cc[10];
+    memcpy(cc,&streamHeader->fccType,4);
+    cc[4]=' ';
+    memcpy(&cc[5],&streamHeader->fccHandler,4);
+    cc[9]=0;
+    jsiConsolePrintf("Stream %d %s %d\n", stream, cc, streamHeader->dwStart);
     if (is4CC(&streamHeader->fccType,"vids")) {
+      BITMAPINFOHEADER *bmpHeader = (BITMAPINFOHEADER*)riffGetIndex(streamListPtr, 1, "strf");
+      if (!bmpHeader) {
+        jsExceptionHere(JSET_ERROR, "No BMPHEADER %d\n");
+        return 0;
+      }
+      jsiConsolePrintf("  - w=%d h=%d bpp=%d\n", bmpHeader->biWidth, bmpHeader->biHeight, bmpHeader->biBitCount);
+      // we're just assuming it's 8 bit, with palette
+      uint8_t *palette = (uint8_t*)bmpHeader + sizeof(BITMAPINFOHEADER);
+      for (int i=0;i<256;i++) { // RGBA format
+        int ri = palette[0], gi=palette[1], bi=palette[2];
+        result->palette[i] = (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
+        palette+=4;
+      }
     } else if (is4CC(&streamHeader->fccType,"auds")) {
     }
   }
+
+  //FIXME - super lazy way of finding 'movi'
+  for (int i=0;i<len-4;i++) {
+    if (is4CC(&buf[i],"movi")) {
+      result->videoOffset = i+4;
+      jsiConsolePrintf("Video offset %d \n", result->videoOffset);
+      return true;
+    }
+  }
+  return false;
 }

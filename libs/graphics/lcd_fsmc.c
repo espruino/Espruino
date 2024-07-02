@@ -1648,12 +1648,18 @@ void lcdSetCallbacks_FSMC(JsGraphics *gfx) {
 }
 
 void lcdFSMC_blitStart(JsGraphics *gfx, int x, int y, int w, int h) {
-  lcdSetWindow(gfx, x, y, x+w-1, y+h-1);
+  lcdSetWindow(gfx, y, y, y+h-1, x+w-1);
+  lcdSetWrite();
+}
+void lcdFSMC_setCursor(JsGraphics *gfx, int x, int y) {
+  //lcdSetCursor(gfx,x,y);
+  lcdSetWindow(gfx,y,x,y,gfx->data.width-1);
   lcdSetWrite();
 }
 void lcdFSMC_blitPixel(unsigned int col) {
   LCD_RAM = col;
 }
+
 void lcdFSMC_blitEnd() {
 }
 
