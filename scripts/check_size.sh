@@ -22,7 +22,9 @@ if [ "$#" -ne 1 ]; then
 fi
 
 FILE=$1
-if [[ ! -v GENDIR ]]; then 
+echo "Checking size of $FILE"
+# if [[ ! -v GENDIR ]]; then 
+if [[ -z $GENDIR ]]; then
   echo "GENDIR not set, assuming 'gen'";
   GENDIR=gen
 fi
