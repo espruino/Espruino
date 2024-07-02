@@ -30,7 +30,7 @@
 #endif
 #endif
 
-#if defined(LINUX) || defined(BANGLEJS)
+#if defined(LINUX) || defined(BANGLEJS) || defined(STM32F4LCD)
 #define GRAPHICS_FAST_PATHS // execute more optimised code when no rotation/etc
 #endif
 

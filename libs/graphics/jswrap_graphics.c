@@ -3402,6 +3402,14 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         (img.bpp==8 || img.bpp==1) && // image bpp is handled by fast path
         !img.isTransparent; // not transparent
 #endif
+#ifdef USE_LCD_FSMC // can we blit directly to the display?
+  bool isFSMC =
+        gfx.data.type==JSGRAPHICSTYPE_FSMC && // it's the display
+        (gfx.data.flags & JSGRAPHICSFLAGS_MAPPEDXY)==0 && // no messing with coordinates
+        gfx.data.bpp==16 && // normal BPP
+        (img.bpp==4) && // image bpp is handled by fast path
+        !img.isTransparent; // not transparent
+#endif
 
   if (scale==1 && rotate==0 && !centerImage) {
     // Standard 1:1 blitting
@@ -3411,10 +3419,9 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         (xPos+img.width)<=gfx.data.clipRect.x2+1 && (yPos+img.height)<=gfx.data.clipRect.y2+1) {
       if (img.bpp==1) lcdST7789_blit1Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
       else if (img.bpp==8) lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
-    } else {
-#else
-    {
+    } else
 #endif
+    {
       _jswrap_drawImageSimple(&gfx, xPos, yPos, &img, &it, false/*don't care about string iterator now*/);
     }
   } else {
@@ -3443,6 +3450,14 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         if (img.bpp==1) lcdST7789_blit1Bit(xPos, yPos, img.width, img.height, s, &it, img.palettePtr);
         else lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, s, &it, img.palettePtr);
       } else
+#endif
+#ifdef USE_LCD_FSMC // can we blit directly to the display?
+    if (isFSMC &&
+        s==2 &&
+        xPos>=gfx.data.clipRect.x1 && yPos>=gfx.data.clipRect.y1 && // check it's all on-screen
+        (xPos+img.width*s)<=gfx.data.clipRect.x2+1 && (yPos+img.height*s)<=gfx.data.clipRect.y2+1) {
+      if (img.bpp==4) lcdFSMC_blit4BitScale2(&gfx, xPos, yPos, img.width, img.height, &it, img.palettePtr);
+    } else
 #endif
       {
         int bits=0;

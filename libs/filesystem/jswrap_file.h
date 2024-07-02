@@ -64,6 +64,8 @@ typedef struct JsFile {
 
 // Called when stopping, to make sure all files are closed
 void jswrap_file_kill();
+bool jsfsInit();
+bool jsfsGetPathString(char *pathStr, JsVar *path);
 
 void jswrap_E_connectSDCard(JsVar *spi, Pin csPin);
 JsVar* jswrap_E_openFile(JsVar* path, JsVar* mode);
@@ -75,7 +77,5 @@ void jswrap_file_skip_or_seek(JsVar* parent, int length, bool is_skip);
 void jswrap_file_close(JsVar* parent);
 #ifdef USE_FLASHFS
 void jsfsReportError(const char *msg, FRESULT res);
-bool jsfsInit();
 int jswrap_E_flashFatFS(JsVar* options);
-
 #endif

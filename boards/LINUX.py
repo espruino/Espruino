@@ -36,6 +36,9 @@ info = {
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS',
      'DEFINES+=-DSPIFLASH_BASE=0 -DSPIFLASH_LENGTH=FLASH_SAVED_CODE_LENGTH', # For Testing Flash Strings
      'LINUX=1',
+     'INCLUDE += -I$(ROOT)/libs/pipboy',
+     'WRAPPERSOURCES += libs/pipboy/avi.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_pipboy.c'     
    ]
  }
 };

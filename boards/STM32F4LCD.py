@@ -36,26 +36,19 @@ info = {
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'DEFINES+=-DUSE_RTC',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS',
      'STLIB=STM32F407xx',
      '-DHSE_VALUE=9000000',
 #     'DEFINES+=-DFSMC_BITBANG',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o',
-     'TARGETSOURCES+=targetlibs/stm32f4/lib/stm32f4xx_fsmc.c'
+     'TARGETSOURCES+=targetlibs/stm32f4/lib/stm32f4xx_fsmc.c',
+     'INCLUDE += -I$(ROOT)/libs/pipboy',
+     'WRAPPERSOURCES += libs/pipboy/avi.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_pipboy.c',     
 #     'USE_DFU=1'
    ]
   }
 };
-"""
-// For SW SPI
-//var spi = new SPI();
-//spi.setup({mosi:D2, miso:C8, sck:C12,baud:10000000});
-//E.connectSDCard(spi, C11 /*CS*/);
-
-//require("fs").readdir()
-require("fs").video("vid.data")
-
-require("fs").writeFile("test","Hello World")
-"""
 
 chip = {
   'part' : "STM32F407VET6",

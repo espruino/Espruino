@@ -614,7 +614,7 @@ void LCD_init_panel() {
       ILI_PWCTRL2,1, 0x01,  \
       ILI_VMCTRL1, 2, 0x30, 0x30,  \
       ILI_VMCTRL2, 1, 0XB7,  \
-      ILI_MADCTL, 1, 0x48,  \
+      ILI_MADCTL, 1, /*0x48*/0x18,  \
       ILI_PIXSET, 1, 0x55,  \
       ILI_FRMCTR1, 2, 0x00, 0x1A,  \
       ILI_DISCTRL, 2, 0x0A, 0xA2,  \
@@ -1603,8 +1603,6 @@ static inline void lcdSetFullWindow(JsGraphics *gfx) {
   lcdSetWindow(gfx,0,0,gfx->data.width-1,gfx->data.height-1);
 }
 
-
-
 void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   // finally!
   if (x1==x2) { // special case for single vertical line - no window needed
@@ -1649,3 +1647,38 @@ void lcdSetCallbacks_FSMC(JsGraphics *gfx) {
   gfx->fillRect = lcdFillRect_FSMC;
 }
 
+void lcdFSMC_blitStart(JsGraphics *gfx, int x, int y, int w, int h) {
+  lcdSetWindow(gfx, x, y, x+w-1, y+h-1);
+  lcdSetWrite();
+}
+void lcdFSMC_blitPixel(unsigned int col) {
+  LCD_RAM = col;
+}
+void lcdFSMC_blitEnd() {
+}
+
+void lcdFSMC_blit4BitScale2(JsGraphics *gfx, int x, int y, int w, int h, JsvStringIterator *pixels, const uint16_t *palette) {
+  lcdFSMC_blitStart(gfx, x,y, w*2,h*2);
+  for (int y=0;y<h;y++) {
+    JsvStringIterator lastPixels;
+    jsvStringIteratorClone(&lastPixels, pixels);
+    for (int n=0;n<2;n++) { // line doubling
+      for (int x=0;x<w;x++) {
+        int bitData = x;//jsvStringIteratorGetCharAndNext(pixels);
+        uint16_t c = palette[(bitData>>4)&15];
+        lcdFSMC_blitPixel(c);
+        lcdFSMC_blitPixel(c);
+        c = palette[bitData&15];
+        lcdFSMC_blitPixel(c);
+        lcdFSMC_blitPixel(c);
+      }
+      // display the same row multiple times if needed
+      if (n<2) {
+        jsvStringIteratorFree(pixels);
+        jsvStringIteratorClone(pixels, &lastPixels);
+      }
+    }
+    jsvStringIteratorFree(&lastPixels);
+  }
+  lcdFSMC_blitEnd();
+}

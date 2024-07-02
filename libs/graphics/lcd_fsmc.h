@@ -12,6 +12,15 @@
  * ----------------------------------------------------------------------------
  */
 #include "graphics.h"
+#include "jsvariterator.h"
 
 void lcdInit_FSMC(JsGraphics *gfx);
 void lcdSetCallbacks_FSMC(JsGraphics *gfx);
+
+/// Starts a blit operation - call this, then blitPixel (a lot) then blitEnd. No bounds checking. Based on lcdST7789
+void lcdFSMC_blitStart(JsGraphics *gfx, int x, int y, int w, int h);
+void lcdFSMC_blitPixel(unsigned int col);
+void lcdFSMC_blitEnd();
+
+/// special case for sending a pixel-doubled 4 bit image
+void lcdFSMC_blit4BitScale2(JsGraphics *gfx, int x, int y, int w, int h, JsvStringIterator *pixels, const uint16_t *palette);
