@@ -2426,13 +2426,59 @@ int jswrap_espruino_getRTCPrescaler(bool calibrate) {
 #endif
 }
 
+/*TYPESCRIPT
+type PowerUsage = {
+    total: number,
+    device: {
+        CPU?: number,
+        UART?: number,
+        PWM?: number,
+        LED1?: number,
+        LED2?: number,
+        LED3?: number,
+
+        // bangle
+        LCD?: number,
+        LCD_backlight?: number,
+        LCD_touch?: number,
+        HRM?: number,
+        GPS?: number,
+        compass?: number,
+        baro?: number,
+
+        // nrf
+        BLE_periph?: number,
+        BLE_central?: number,
+        BLE_advertise?: number,
+        BLE_scan?: number,
+
+        // pixljs
+        //LCD?: number, // (see above)
+
+        // puck
+        mag?: number,
+        accel?: number,
+
+        // jolt
+        driver0?: number,
+        driver1?: number,
+        pin0_internal_resistance?: number,
+        pin2_internal_resistance?: number,
+        pin4_internal_resistance?: number,
+        pin6_internal_resistance?: number,
+    },
+};
+*/
+
 /*JSON{
   "type" : "staticmethod",
   "class" : "E",
   "name" : "getPowerUsage",
   "generate" : "jswrap_espruino_getPowerUsage",
-  "return" : ["JsVar","An object detailing power usage in microamps"]
+  "return" : ["JsVar","An object detailing power usage in microamps"],
+  "typescript" : "getPowerUsage(): PowerUsage;"
 }
+
 This function returns an object detailing the current **estimated** power usage
 of the Espruino device in microamps (uA). It is not intended to be a replacement
 for measuring actual power consumption, but can be useful for finding obvious power
