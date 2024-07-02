@@ -156,8 +156,7 @@ void lcdFSMC_blitEnd() {
 
 void jswrap_pb_videoFrame() {
   if (!videoLoaded) return;
-
-
+  JsSysTime tStart = jshGetSystemTime();
   //jsiConsolePrintf("Stream 0x%04x, %d\n", videoStreamId, videoStreamLen);
   videoStreamRemaining = 0;
   videoStreamBufferLen = videoStreamLen+8; // 8 bytes contains info for next stream
@@ -173,7 +172,6 @@ void jswrap_pb_videoFrame() {
       jswrap_pb_videoStop();
     }
   } else if (videoStreamId==AVI_STREAM_VIDEO) {
-    JsSysTime tStart = jshGetSystemTime();
     lcdFSMC_blitStart(&graphicsInternal, 0,0,videoInfo.width,videoInfo.height);
     int x=0, y=videoInfo.height--;
     uint8_t *b = videoBuffer;
