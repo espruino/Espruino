@@ -173,7 +173,7 @@ void jswrap_pb_videoFrame() {
     }
   } else if (videoStreamId==AVI_STREAM_VIDEO) {
     lcdFSMC_blitStart(&graphicsInternal, 0,0,videoInfo.width,videoInfo.height);
-    int x=0, y=videoInfo.height--;
+    int x=0, y=videoInfo.height-1;
     uint8_t *b = videoBuffer;
     while (b < &videoBuffer[videoStreamBufferLen]) {
       // check if we need to refill our buffer
