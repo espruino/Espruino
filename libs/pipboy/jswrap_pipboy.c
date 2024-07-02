@@ -157,6 +157,7 @@ void lcdFSMC_blitEnd() {
 void jswrap_pb_videoFrame() {
   if (!videoLoaded) return;
 
+
   //jsiConsolePrintf("Stream 0x%04x, %d\n", videoStreamId, videoStreamLen);
   videoStreamRemaining = 0;
   videoStreamBufferLen = videoStreamLen+8; // 8 bytes contains info for next stream
@@ -172,6 +173,7 @@ void jswrap_pb_videoFrame() {
       jswrap_pb_videoStop();
     }
   } else if (videoStreamId==AVI_STREAM_VIDEO) {
+    JsSysTime tStart = jshGetSystemTime();
     lcdFSMC_blitStart(&graphicsInternal, 0,0,videoInfo.width,videoInfo.height);
     int x=0, y=videoInfo.height--;
     uint8_t *b = videoBuffer;
@@ -181,7 +183,7 @@ void jswrap_pb_videoFrame() {
         uint32_t amountToShift = (b-videoBuffer) & ~3; // aligned to the nearest word (STM32 f_read fails otherwise!)
         uint32_t leftInStream = videoStreamBufferLen - amountToShift;
         memmove(videoBuffer, &videoBuffer[amountToShift], leftInStream); // move data back
-        b -= amountToShift; // FIXME - this is broken
+        b -= amountToShift;
         videoStreamBufferLen = leftInStream;
         uint32_t bufferRemaining = sizeof(videoBuffer)-leftInStream;
         uint32_t len = videoStreamRemaining;
@@ -223,6 +225,8 @@ void jswrap_pb_videoFrame() {
     lcdFSMC_blitEnd();
     videoNextFrameTime += videoFrameTime;
     //jswrap_pb_videoStop(); // first frame only
+    JsSysTime tEnd = jshGetSystemTime();
+    jsiConsolePrintf("%dms\n", (int)jshGetMillisecondsFromTime(tEnd-tStart));
   } else {
     // unknown stream - assume end and stop!
     jswrap_pb_videoStop();
@@ -230,6 +234,7 @@ void jswrap_pb_videoFrame() {
   // get IDs for next stream
   videoStreamId = *(uint16_t*)&videoBuffer[videoStreamBufferLen-6]; // +0 = '01'/'00' stream index?
   videoStreamLen = *(uint32_t*)&videoBuffer[videoStreamBufferLen-4]; // +0 = '01'/'00' stream index?
+
 }
 
 void graphicsInternalFlip() {
