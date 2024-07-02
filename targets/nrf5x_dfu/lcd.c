@@ -736,7 +736,7 @@ void lcd_flip() {
 
 void lcd_init() {
 #ifdef GPS_PIN_EN
-  jshPinOutput(GPS_PIN_EN,1); // GPS off
+  jshPinOutput(GPS_PIN_EN, 0); // GPS off
 #endif
 //  jshPinOutput(LCD_BL, LCD_BL_ON); // Don't turn the backlight on yet, otherwise it could show garbage - do it at the end of lcd_flip() instead
 #ifdef LCD_EN

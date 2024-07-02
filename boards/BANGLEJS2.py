@@ -146,7 +146,7 @@ devices = {
   'VIBRATE' : { 'pin' : 'D19' },
   'GPS' : {
             'device' : 'Casic URANUS',
-            'pin_en' : 'D29', # IO expander P0
+            'pin_en' : 'D29',
             'pin_rx' : 'D30',
             'pin_tx' : 'D31'
           },
