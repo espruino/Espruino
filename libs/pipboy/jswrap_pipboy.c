@@ -72,6 +72,25 @@ FRESULT f_read(File_Handle* fp, void* buff, uint32_t btr, size_t* br) {
     "class" : "Pip"
 }
 */
+/*JSON{
+  "type" : "event",
+  "class" : "Pip",
+  "name" : "videoStarted"
+}
+The video had ended
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "Pip",
+  "name" : "videoStopped"
+}
+The video had ended
+*/
+void jswrap_pb_sendEvent(const char *eventName) { // eg JS_EVENT_PREFIX"videoStarted"
+   JsVar *pip =jsvObjectGetChildIfExists(execInfo.root, "Pip");
+  if (pip)
+    jsiQueueObjectCallbacks(pip, eventName, NULL, 0);
+}
 
 /*JSON{
   "type" : "staticmethod",
@@ -113,7 +132,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
         f_lseek(&videoFile, videoInfo.videoOffset+8); // go back to start of video data
         videoFrameTime = jshGetTimeFromMilliseconds(videoInfo.usPerFrame/1000.0);
         videoNextFrameTime = jshGetSystemTime() + videoFrameTime;
-
+        jswrap_pb_sendEvent(JS_EVENT_PREFIX"videoStarted");
       } else {
         jsExceptionHere(JSET_ERROR, "Corrupt video\n");
         jswrap_pb_videoStop();
@@ -133,9 +152,10 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 */
 void jswrap_pb_videoStop() {
   if (videoLoaded) {
-      f_close(&videoFile);
-      videoLoaded = false;
-    }
+    f_close(&videoFile);
+    videoLoaded = false;
+    jswrap_pb_sendEvent(JS_EVENT_PREFIX"videoStopped");
+  }
 }
 
 #ifdef LINUX
