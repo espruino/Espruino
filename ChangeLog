@@ -2,6 +2,7 @@
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
             Fix for unexpected power draw on newest batch of Bangle.js devices
             Puck.js: skip CRT startup code to save ~300b
+            Fix memory leak when using Pin.getInfo on a pin with ADCs (and non-reporting of analogs)
 
      2v23 : Fix XON/OFF thresholds to be based off the correct buffer size
             Bangle.js2: Added BANGLE2_IFLASH target for firmware using internal flash for js files (currently only partially working)
