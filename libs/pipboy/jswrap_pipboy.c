@@ -35,9 +35,12 @@
 #include "avi.h"
 
 #define AUDIO_BUFFER_SIZE 5120
-#define VIDEO_BUFFER_SIZE 20480
+#define VIDEO_BUFFER_SIZE 16000
 
 uint8_t videoBuffer[VIDEO_BUFFER_SIZE] __attribute__ ((aligned (8)));
+// Can't go in 64k CCM RAM because no DMA is allowed to CCM!
+// Maybe if we modified DMA to read to a buffer first?
+
 int videoBufferLen;
 uint16_t videoStreamId;
 uint32_t videoStreamLen;        // length of current stream
@@ -58,6 +61,7 @@ void f_lseek(File_Handle *f, uint32_t offset) {
   fseek(*f, offset, SEEK_SET);
 }
 FRESULT f_read(File_Handle* fp, void* buff, uint32_t btr, size_t* br) {
+  assert((((size_t)buff)&7)==0);
   *br = fread(buff, 1, btr, *fp);
   return *br!=0;
 }
@@ -165,6 +169,7 @@ void jswrap_pb_videoFrame() {
     videoStreamBufferLen = sizeof(videoBuffer);
   }
   size_t actual = 0;
+  //jsiConsolePrintf("=========== FIRST READ %d (%d)\n", ((size_t)videoBuffer)&7, videoStreamBufferLen);
   f_read(&videoFile, videoBuffer,videoStreamBufferLen, &actual);
   if (videoStreamId==AVI_STREAM_AUDIO) {
     if (videoStreamRemaining) {
@@ -175,10 +180,44 @@ void jswrap_pb_videoFrame() {
     lcdFSMC_blitStart(&graphicsInternal, 0,0,videoInfo.width,videoInfo.height);
     int x=0, y=videoInfo.height-1;
     uint8_t *b = videoBuffer;
-    while (b < &videoBuffer[videoStreamBufferLen]) {
+    uint8_t *endBuffer = &videoBuffer[videoStreamBufferLen];
+    while (b < endBuffer) {
+      // Loop doing RLE until end *or* we have more data and no RLE command could use up more than we have left
+      uint8_t *nearlyEndOfBuffer = videoStreamRemaining ? &videoBuffer[videoStreamBufferLen-260] : endBuffer;
+      while (b < nearlyEndOfBuffer) {
+        // next RLE byte!
+        uint8_t num = *(b++);
+        if (num==0)  { // RLE code is 0 -> escape code for commands
+          uint8_t cmd = *(b++);
+          if (cmd==0) { // 0 = EOL
+            x=0;
+            y--;
+            lcdFSMC_setCursor(&graphicsInternal, x,y);
+          } else if (cmd==1) {
+            //jsiConsolePrintf("end of bitmap!\n");
+          } else if (cmd==2) { // 2 = DELTA
+            x += *(b++);
+            y -= *(b++);
+            lcdFSMC_setCursor(&graphicsInternal, x,y);
+          } else {
+            bool extraByte = cmd&1; // copy is padded
+            while (cmd--) {
+              lcdFSMC_blitPixel(videoInfo.palette[*(b++)]);
+              x++;
+            }
+            if (extraByte) b++; // trailing 0 if
+          }
+        } else { // just a run of pixels
+          uint8_t col = *(b++);
+          while (num--) {
+            lcdFSMC_blitPixel(videoInfo.palette[col]);
+            x++;
+          }
+        }
+      }
       // check if we need to refill our buffer
-      if (videoStreamRemaining && (b+256 >= &videoBuffer[videoStreamBufferLen])) {
-        uint32_t amountToShift = (b-videoBuffer) & ~3; // aligned to the nearest word (STM32 f_read fails otherwise!)
+      if (videoStreamRemaining) {
+        uint32_t amountToShift = (b-videoBuffer) & ~7; // aligned to the nearest word (STM32 f_read fails otherwise!)
         uint32_t leftInStream = videoStreamBufferLen - amountToShift;
         memmove(videoBuffer, &videoBuffer[amountToShift], leftInStream); // move data back
         b -= amountToShift;
@@ -186,38 +225,10 @@ void jswrap_pb_videoFrame() {
         uint32_t bufferRemaining = sizeof(videoBuffer)-leftInStream;
         uint32_t len = videoStreamRemaining;
         if (len>bufferRemaining) len=bufferRemaining;
-        f_read(&videoFile, &videoBuffer[leftInStream],len, &actual);
+        //jsiConsolePrintf("=========== READ %d (%d)\n", leftInStream, leftInStream&3);
+        f_read(&videoFile, &videoBuffer[leftInStream], len, &actual);
         videoStreamRemaining -= len;
         videoStreamBufferLen += len;
-      }
-      // ok, next RLE byte!
-      uint8_t num = *(b++);
-      if (num==0)  { // RLE code is 0 -> escape code for commands
-        uint8_t cmd = *(b++);
-        if (cmd==0) { // 0 = EOL
-          x=0;
-          y--;
-          lcdFSMC_setCursor(&graphicsInternal, x,y);
-        } else if (cmd==1) {
-          //jsiConsolePrintf("end of bitmap!\n");
-        } else if (cmd==2) { // 2 = DELTA
-          x += *(b++);
-          y -= *(b++);
-          lcdFSMC_setCursor(&graphicsInternal, x,y);
-        } else {
-          bool extraByte = cmd&1; // copy is padded
-          while (cmd--) {
-            lcdFSMC_blitPixel(videoInfo.palette[*(b++)]);
-            x++;
-          }
-          if (extraByte) b++; // trailing 0 if
-        }
-      } else { // just a run of pixels
-        uint8_t col = *(b++);
-        while (num--) {
-          lcdFSMC_blitPixel(videoInfo.palette[col]);
-          x++;
-        }
       }
     }
     lcdFSMC_blitEnd();
@@ -227,6 +238,7 @@ void jswrap_pb_videoFrame() {
     jsiConsolePrintf("%dms\n", (int)jshGetMillisecondsFromTime(tEnd-tStart));
   } else {
     // unknown stream - assume end and stop!
+    //jsiConsolePrintf("Unknown stream ID");
     jswrap_pb_videoStop();
   }
   // get IDs for next stream

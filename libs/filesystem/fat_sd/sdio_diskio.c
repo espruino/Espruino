@@ -65,6 +65,25 @@ DSTATUS disk_status (
 /* Read Sector(s)                                                        */
 /*-----------------------------------------------------------------------*/
 
+DRESULT disk_read_unaligned (
+  BYTE drv, /* Physical drive number (0) */
+  BYTE *buff, /* Pointer to the data buffer to store read data */
+  DWORD sector, /* Start sector number (LBA) */
+  UINT count /* Sector count */
+  )
+{
+  uint8_t alignedBuffer[512] __attribute__ ((aligned (8)));
+  uint32_t Memory_Offset;
+  Memory_Offset = sector * 512;
+  while (count--) {
+    SD_ReadBlock(Memory_Offset, (uint32_t *)alignedBuffer, 512);
+    memcpy(buff, alignedBuffer, 512);
+    Memory_Offset += 512;
+    buff += 512;
+  }
+  return RES_OK;
+}
+
 DRESULT disk_read (
   BYTE drv, /* Physical drive number (0) */
   BYTE *buff, /* Pointer to the data buffer to store read data */
@@ -77,7 +96,8 @@ DRESULT disk_read (
 
   Transfer_Length =  count * 512;
   Memory_Offset = sector * 512;
-
+  if ((size_t)buff&3) // unaligned read - must read to aligned buffer because of DMA
+    return disk_read_unaligned(drv, buff, sector, count);
   if (count<=1)
     SD_ReadBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
   else
@@ -105,7 +125,7 @@ DRESULT disk_write (
 
   Transfer_Length =  count * 512;
   Memory_Offset = sector * 512;
-
+  assert(((size_t)buff&3)==0);
   if (count<=1)
     SD_WriteBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
   else
