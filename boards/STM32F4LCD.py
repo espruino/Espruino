@@ -20,9 +20,9 @@ info = {
   #https://stm32-base.org/assets/pdf/boards/original-schematic-STM32F407VET6-STM32_F4VE_V2.0.pdf
  'variables' : 2450,
  'binary_name' : 'espruino_%v_stm32f4lcd.bin',
- 'default_console' : "EV_SERIAL1",
- 'default_console_tx' : "A9",
- 'default_console_rx' : "A10",
+ 'default_console' : "EV_SERIAL2",
+ 'default_console_tx' : "A2",
+ 'default_console_rx' : "A3",
  'default_console_baudrate' : "9600",
  'build' : {
    'optimizeflags' : '-Os',
@@ -120,7 +120,8 @@ devices = {
             # B1 = backlight
           },  
   # flash
-  'USB' : { 'pin_dm' : 'A11',
+  'USB' : { 'pin_vsense' :  'A9',
+            'pin_dm' : 'A11',
             'pin_dp' : 'A12' },
   
   'JTAG' : {
