@@ -34,8 +34,8 @@
 
 #include "avi.h"
 
-#define AUDIO_BUFFER_SIZE 5120
-#define VIDEO_BUFFER_SIZE 16000
+//#define AUDIO_BUFFER_SIZE 5120
+#define VIDEO_BUFFER_SIZE 40960
 
 uint8_t videoBuffer[VIDEO_BUFFER_SIZE] __attribute__ ((aligned (8)));
 // Can't go in 64k CCM RAM because no DMA is allowed to CCM!
