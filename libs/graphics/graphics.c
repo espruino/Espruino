@@ -14,7 +14,9 @@
 
 #include "graphics.h"
 #include "bitmap_font_4x6.h"
-
+#ifdef USE_FONT_6X8
+#include "bitmap_font_6x8.h"
+#endif
 
 #include "jsutils.h"
 #include "jsvar.h"
@@ -922,8 +924,13 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
 static void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str) {
   // no need to modify coordinates as setPixel does that
   while (*str) {
+#ifdef USE_FONT_6X8    
+    graphicsDrawChar6x8(gfx,x1,y1,*(str++),1,1,false);
+    x1 = (int)(x1 + 6);
+#else
     graphicsDrawChar4x6(gfx,x1,y1,*(str++),1,1,false);
     x1 = (int)(x1 + 4);
+#endif
   }
 }
 
@@ -931,8 +938,8 @@ static void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str)
 void graphicsSplash(JsGraphics *gfx) {
   graphicsClear(gfx);
   graphicsDrawString(gfx,0,0,"Espruino "JS_VERSION);
-  graphicsDrawString(gfx,0,6,"  Embedded JavaScript");
-  graphicsDrawString(gfx,0,12,"  www.espruino.com");
+  graphicsDrawString(gfx,0,8,"  Embedded JavaScript");
+  graphicsDrawString(gfx,0,16,"  www.espruino.com");
 }
 
 void graphicsIdle() {
