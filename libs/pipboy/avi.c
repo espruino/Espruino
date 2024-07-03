@@ -65,11 +65,13 @@ uint32_t getU32(uint8_t *buf) {
 }
 // find the entry in the list, or return 0. Returns the offset of the data (so -4=size)
 uint8_t *riffListFind(uint8_t *buf, const char *fourcc) {
-  assert(is4CC(buf, "LIST"));
+  // FIXME: these should all really be bounds-checked
+  assert(is4CC(buf, "LIST")||is4CC(buf, "RIFF"));
   uint32_t listEnd = getU32(&buf[4])+8;
   uint32_t offs=12;
   while (offs<listEnd) {
-    if (is4CC(&buf[offs], fourcc)) {
+    if ((is4CC(&buf[offs], "LIST") && is4CC(&buf[offs+8], fourcc)) ||
+        is4CC(&buf[offs], fourcc)) {
       return &buf[offs+8];
     }
     offs += (getU32(&buf[offs+4])+8+1) & ~1U; // round to nearest 2
@@ -77,7 +79,7 @@ uint8_t *riffListFind(uint8_t *buf, const char *fourcc) {
   return 0;
 }
 uint8_t *riffGetIndex(uint8_t *buf, int idx, const char *fourcc) {
-  assert(is4CC(buf, "LIST"));
+  assert(is4CC(buf, "LIST")||is4CC(buf, "RIFF"));
   uint32_t listEnd = getU32(&buf[4])+8;
   uint32_t offs=12;
   while (offs<listEnd) {
@@ -94,10 +96,10 @@ uint8_t *riffGetIndex(uint8_t *buf, int idx, const char *fourcc) {
   return 0;
 }
 void riffListShow(uint8_t *buf, int pad) {
-  assert(is4CC(buf, "LIST"));
+  assert(is4CC(buf, "LIST")||is4CC(buf, "RIFF"));
   for (int i=0;i<pad;i++) jsiConsolePrintf("  ");
-  jsiConsolePrintf("LIST %c%c%c%c\n", buf[8],buf[9],buf[10],buf[11]);
   uint32_t listEnd = getU32(&buf[4])+8;
+  jsiConsolePrintf("LIST %c%c%c%c (%db)\n", buf[8],buf[9],buf[10],buf[11],listEnd);
   uint32_t offs=12;
   while (offs<listEnd) {
     for (int i=0;i<pad;i++) jsiConsolePrintf("  ");
@@ -114,6 +116,28 @@ bool aviLoad(uint8_t *buf, int len, AviInfo *result) {
     jsExceptionHere(JSET_ERROR, "Not RIFF %c%c%c%c\n", buf[0],buf[1],buf[2],buf[3]);
     return 0;
   }
+  /*riffListShow(buf,0);
+
+  AVI read 40960 40960 RIFF
+LIST AVI  (1777854b)
+  LIST hdrl (9938b)
+  - avih
+      LIST strl (5352b)
+    - strh
+    - strf
+    - JUNK
+    - vprp
+      LIST strl (4242b)
+    - strh
+    - strf
+    - JUNK
+  - JUNK
+  LIST INFO (34b)
+  - ISFT
+- JUNK
+  LIST movi (1757446b)
+  */
+
   if (!is4CC(&buf[8],"AVI ")) {
     jsExceptionHere(JSET_ERROR, "Not AVI\n");
     return 0;
@@ -124,7 +148,8 @@ bool aviLoad(uint8_t *buf, int len, AviInfo *result) {
     return 0;
   }
   uint8_t *listPtr = riffList;
-  riffListShow(listPtr,0);
+  uint32_t listEnd = (listPtr-buf) + getU32(&listPtr[4])+8;
+  //riffListShow(listPtr,0);
   MainAVIHeader *aviHeader = (MainAVIHeader*)riffGetIndex(listPtr, 0, "avih");
   if (!aviHeader) {
     jsExceptionHere(JSET_ERROR, "No header found\n");
@@ -168,14 +193,12 @@ bool aviLoad(uint8_t *buf, int len, AviInfo *result) {
     } else if (is4CC(&streamHeader->fccType,"auds")) {
     }
   }
-
-  //FIXME - super lazy way of finding 'movi'
-  for (int i=0;i<len-4;i++) {
-    if (is4CC(&buf[i],"movi")) {
-      result->videoOffset = i+4;
-      jsiConsolePrintf("Video offset %d \n", result->videoOffset);
-      return true;
-    }
+  uint8_t *moviPtr = riffListFind(buf, "movi");
+  if (!moviPtr) {
+    jsExceptionHere(JSET_ERROR, "No 'movi' found\n");
+    return 0;
   }
-  return false;
+  result->videoOffset = moviPtr+4-buf;
+//  jsiConsolePrintf("Video offset %d \n", result->videoOffset);
+  return true;
 }
