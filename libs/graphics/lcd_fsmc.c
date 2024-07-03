@@ -1656,8 +1656,8 @@ void lcdFSMC_blitStart(JsGraphics *gfx, int x, int y, int w, int h) {
   lcdSetWrite();
 }
 void lcdFSMC_setCursor(JsGraphics *gfx, int x, int y) {
-  //lcdSetCursor(gfx,x,y);
-  lcdSetWindow(gfx,x,y,gfx->data.width-1,y);
+  lcdSetCursor(gfx,x,y);
+  //lcdSetWindow(gfx,x,y,gfx->data.width-1,y);
   lcdSetWrite();
 }
 void lcdFSMC_blitPixel(unsigned int col) {
@@ -1667,23 +1667,45 @@ void lcdFSMC_blitPixel(unsigned int col) {
 void lcdFSMC_blitEnd() {
 }
 
-void lcdFSMC_blit4BitScale2(JsGraphics *gfx, int x, int y, int w, int h, JsvStringIterator *pixels, const uint16_t *palette) {
-  lcdFSMC_blitStart(gfx, x,y, w*2,h*2);
+void lcdFSMC_blit4Bit(JsGraphics *gfx, int x, int y, int w, int h, int scale, JsvStringIterator *pixels, const uint16_t *palette) {
+  assert((w&1)==0); // only works on even image widths
+  int w2 = w>>1;
+  lcdFSMC_blitStart(gfx, x,y, w*scale,h*scale);
   for (int y=0;y<h;y++) {
     JsvStringIterator lastPixels;
     jsvStringIteratorClone(&lastPixels, pixels);
-    for (int n=0;n<2;n++) { // line doubling
-      for (int x=0;x<w;x++) {
-        int bitData = x;//jsvStringIteratorGetCharAndNext(pixels);
-        uint16_t c = palette[(bitData>>4)&15];
-        lcdFSMC_blitPixel(c);
-        lcdFSMC_blitPixel(c);
-        c = palette[bitData&15];
-        lcdFSMC_blitPixel(c);
-        lcdFSMC_blitPixel(c);
+    for (int n=1;n<=scale;n++) {
+      if (scale==1) {
+        for (int x=0;x<w2;x++) {
+          int bitData = jsvStringIteratorGetCharAndNext(pixels);
+          uint16_t c = palette[(bitData>>4)&15];
+          lcdFSMC_blitPixel(c);
+          c = palette[bitData&15];
+          lcdFSMC_blitPixel(c);
+        }
+      } else if (scale==2) {
+        for (int x=0;x<w2;x++) {
+          int bitData = jsvStringIteratorGetCharAndNext(pixels);
+          uint16_t c = palette[(bitData>>4)&15];
+          lcdFSMC_blitPixel(c);
+          lcdFSMC_blitPixel(c);
+          c = palette[bitData&15];
+          lcdFSMC_blitPixel(c);
+          lcdFSMC_blitPixel(c);
+        }
+      } else { // fallback for not 1/2 scale
+        for (int x=0;x<w2;x++) {
+          int bitData = jsvStringIteratorGetCharAndNext(pixels);
+          uint16_t c = palette[(bitData>>4)&15];
+          for (int s=0;s<scale;s++)
+            lcdFSMC_blitPixel(c);
+          c = palette[bitData&15];
+          for (int s=0;s<scale;s++)
+            lcdFSMC_blitPixel(c);
+        }
       }
       // display the same row multiple times if needed
-      if (n<2) {
+      if (n<scale) {
         jsvStringIteratorFree(pixels);
         jsvStringIteratorClone(pixels, &lastPixels);
       }
