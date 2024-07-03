@@ -50,6 +50,7 @@ uint32_t videoStreamBufferLen;  // length of stream in current buffer
 JsSysTime videoFrameTime;
 JsSysTime videoNextFrameTime;
 bool videoLoaded = false;
+bool debugInfo = false;
 File_Handle videoFile;
 AviInfo videoInfo;
 
@@ -105,6 +106,15 @@ void jswrap_pb_sendEvent(const char *eventName) { // eg JS_EVENT_PREFIX"videoSta
 */
 void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 
+  JsVar *v;
+  if (jsvIsObject(options)) {
+    v = jsvObjectGetChildIfExists(options, "debug");
+    if (v) {
+      if (jsvGetBoolAndUnLock(v)) debugInfo = true;
+      else debugInfo = false;
+    }  
+  }
+
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsfsGetPathString(pathStr, fn)) return;
 
@@ -125,8 +135,10 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
       videoLoaded = true;
       size_t actual = 0;
       res = f_read(&videoFile, (uint8_t*)videoBuffer, sizeof(videoBuffer), &actual);
-      jsiConsolePrintf("AVI read %d %d %c%c%c%c\n", sizeof(videoBuffer), actual, videoBuffer[0],videoBuffer[1],videoBuffer[2],videoBuffer[3]);
-      if (aviLoad(videoBuffer, actual, &videoInfo)) {
+      if (debugInfo) {
+        jsiConsolePrintf("AVI read %d %d %c%c%c%c\n", sizeof(videoBuffer), actual, videoBuffer[0],videoBuffer[1],videoBuffer[2],videoBuffer[3]);
+      }
+      if (aviLoad(videoBuffer, actual, &videoInfo, debugInfo)) {
         videoStreamId = *(uint16_t*)&videoBuffer[videoInfo.videoOffset+2]; // +0 = '01'/'00' stream index?
         videoStreamLen = *(uint32_t*)&videoBuffer[videoInfo.videoOffset+4]; // +0 = '01'/'00' stream index?
         f_lseek(&videoFile, videoInfo.videoOffset+8); // go back to start of video data
@@ -253,9 +265,11 @@ void jswrap_pb_videoFrame() {
     }
     lcdFSMC_blitEnd();
     videoNextFrameTime += videoFrameTime;
-    //jswrap_pb_videoStop(); // first frame only
-    JsSysTime tEnd = jshGetSystemTime();
-    jsiConsolePrintf("%dms\n", (int)jshGetMillisecondsFromTime(tEnd-tStart));
+    if (debugInfo) {
+      //jswrap_pb_videoStop(); // first frame only
+      JsSysTime tEnd = jshGetSystemTime();
+      jsiConsolePrintf("%dms\n", (int)jshGetMillisecondsFromTime(tEnd-tStart));
+    }
   } else {
     // unknown stream - assume end and stop!
     //jsiConsolePrintf("Unknown stream ID");

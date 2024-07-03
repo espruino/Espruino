@@ -111,7 +111,7 @@ void riffListShow(uint8_t *buf, int pad) {
   }
 }
 
-bool aviLoad(uint8_t *buf, int len, AviInfo *result) {
+bool aviLoad(uint8_t *buf, int len, AviInfo *result, bool debugInfo) {
   if (!is4CC(buf,"RIFF")) {
     jsExceptionHere(JSET_ERROR, "Not RIFF %c%c%c%c\n", buf[0],buf[1],buf[2],buf[3]);
     return 0;
@@ -155,7 +155,9 @@ LIST AVI  (1777854b)
     jsExceptionHere(JSET_ERROR, "No header found\n");
     return 0;
   }
-  jsiConsolePrintf("AVI w=%d h=%d fps=%d\n",aviHeader->dwWidth, aviHeader->dwHeight, 1000000/aviHeader->dwMicroSecPerFrame);
+  if (debugInfo) {
+    jsiConsolePrintf("AVI w=%d h=%d fps=%d\n",aviHeader->dwWidth, aviHeader->dwHeight, 1000000/aviHeader->dwMicroSecPerFrame);
+  }
   result->width = aviHeader->dwWidth;
   result->height = aviHeader->dwHeight;
   result->usPerFrame = aviHeader->dwMicroSecPerFrame;
@@ -175,14 +177,18 @@ LIST AVI  (1777854b)
     cc[4]=' ';
     memcpy(&cc[5],&streamHeader->fccHandler,4);
     cc[9]=0;
-    jsiConsolePrintf("Stream %d %s %d\n", stream, cc, streamHeader->dwStart);
+    if (debugInfo) {
+      jsiConsolePrintf("Stream %d %s %d\n", stream, cc, streamHeader->dwStart);
+    }
     if (is4CC(&streamHeader->fccType,"vids")) {
       BITMAPINFOHEADER *bmpHeader = (BITMAPINFOHEADER*)riffGetIndex(streamListPtr, 1, "strf");
       if (!bmpHeader) {
         jsExceptionHere(JSET_ERROR, "No BMPHEADER %d\n");
         return 0;
       }
-      jsiConsolePrintf("  - w=%d h=%d bpp=%d\n", bmpHeader->biWidth, bmpHeader->biHeight, bmpHeader->biBitCount);
+      if (debugInfo) {
+        jsiConsolePrintf("  - w=%d h=%d bpp=%d\n", bmpHeader->biWidth, bmpHeader->biHeight, bmpHeader->biBitCount);
+      }
       // we're just assuming it's 8 bit, with palette
       uint8_t *palette = (uint8_t*)bmpHeader + sizeof(BITMAPINFOHEADER);
       for (int i=0;i<256;i++) { // RGBA format
