@@ -45,8 +45,15 @@ else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else
-	@echo ST-LINK flash
-	sudo st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)
+	@echo "-- ST-Link flash";
+	@if sudo st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS); then \
+		echo "ST-Link flashed OK"; \
+	else \
+		echo "-- J-Link flash"; \
+		echo "loadfile ${PROJ_NAME}.bin 0x08000000\nexit" > JLinkCommands.txt; \
+		JLinkExe -device STM32F407VE -if SWD -speed 4000 -autoconnect 1 -CommandFile JLinkCommands.txt; \
+		rm JLinkCommands.txt; \
+	fi
 endif
 
 serialflash: all
