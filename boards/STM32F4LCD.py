@@ -51,7 +51,7 @@ info = {
 };
 
 chip = {
-  'part' : "STM32F407VET6",
+  'part' : "STM32F407VE",
   'family' : "STM32F4",
   'package' : "LQFP100",
   'ram' : 192,
