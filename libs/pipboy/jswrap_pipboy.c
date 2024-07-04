@@ -115,7 +115,7 @@ void jswrap_pb_sendEvent(const char *eventName) { // eg JS_EVENT_PREFIX"videoSta
   "generate" : "jswrap_pb_videoStart",
   "params" : [
       ["fn","JsVar","Filename"],
-      ["options","JsVar","[Optional] object `{x0:0, y0:0, debug:false}`"]
+      ["options","JsVar","[Optional] object `{x:0, y:0, debug:false}`"]
    ]
 }
 */
@@ -125,11 +125,11 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
   startY=0;
   JsVar *v;
   if (jsvIsObject(options)) {
-    v = jsvObjectGetChildIfExists(options, "x0");
+    v = jsvObjectGetChildIfExists(options, "x");
     if (v) {
       startX = jsvGetIntegerAndUnLock(v);
     }
-    v = jsvObjectGetChildIfExists(options, "y0");
+    v = jsvObjectGetChildIfExists(options, "y");
     if (v) {
       startY = jsvGetIntegerAndUnLock(v);
     }
