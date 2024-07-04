@@ -11,6 +11,19 @@
  * This file is designed to be parsed during the build process
  *
  * Contains JavaScript interface for Pipboy
+ * 
+ * FFMPEG example to convert "Atomic Command" intro animation (frames.avi) extracted from SWF file in Fallout Pip-Boy APK:
+ * - change colour to green 
+ * - crop 1289x937 to 1080x810 (to remove offset for phone screen)
+ * - re-encode as 320x240 RLE at 12fps
+ * ffmpeg -i frames.avi -filter_complex 'colorchannelmixer=0:0:0:0:0:1:0:0:0:0:0:0,crop=1080:810:0:0' -vcodec msrle -s 320x240 -r 12 intro-320x240-RLE-12fps.avi
+ *
+ * Convert the Pip-Boy bootup animation from Kilter:
+ * - crop 1920x1080 to 1440x1080 to remove offset
+ * - convert audio to 16kHz mono:
+ * - re-encode as 320x240 RLE at 12fps
+ * ffmpeg -i ND-PB_Bootup01-v01_Waudio.mp4 -ar 16000 -ac 1 -vf crop=1440:1080:0:0 -vcodec msrle -s 320x240 -r 12 bootup-320x240-RLE-12fps.avi
+ *
  * ----------------------------------------------------------------------------
  */
 /* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py */
@@ -51,6 +64,8 @@ JsSysTime videoFrameTime;
 JsSysTime videoNextFrameTime;
 bool videoLoaded = false;
 bool debugInfo = false;
+int startX=0;
+int startY=0;
 File_Handle videoFile;
 AviInfo videoInfo;
 
@@ -100,20 +115,31 @@ void jswrap_pb_sendEvent(const char *eventName) { // eg JS_EVENT_PREFIX"videoSta
   "generate" : "jswrap_pb_videoStart",
   "params" : [
       ["fn","JsVar","Filename"],
-      ["options","JsVar","Options"]
-  ]
+      ["options","JsVar","[Optional] object `{x0:0, y0:0, debug:false}`"]
+   ]
 }
 */
 void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 
+  startX=0; 
+  startY=0;
   JsVar *v;
   if (jsvIsObject(options)) {
+    v = jsvObjectGetChildIfExists(options, "x0");
+    if (v) {
+      startX = jsvGetIntegerAndUnLock(v);
+    }
+    v = jsvObjectGetChildIfExists(options, "y0");
+    if (v) {
+      startY = jsvGetIntegerAndUnLock(v);
+    }
     v = jsvObjectGetChildIfExists(options, "debug");
     if (v) {
       if (jsvGetBoolAndUnLock(v)) debugInfo = true;
       else debugInfo = false;
     }  
   }
+  jsiConsolePrintf("Playing video at x0=%d, y0=%d\n", startX, startY);
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsfsGetPathString(pathStr, fn)) return;
@@ -209,7 +235,7 @@ void jswrap_pb_videoFrame() {
       jswrap_pb_videoStop();
     }
   } else if (videoStreamId==AVI_STREAM_VIDEO) {
-    lcdFSMC_blitStart(&graphicsInternal, 0,0,videoInfo.width,videoInfo.height);
+    lcdFSMC_blitStart(&graphicsInternal, startX,startY,videoInfo.width,videoInfo.height);
     int x=0, y=videoInfo.height-1;
     uint8_t *b = videoBuffer;
     uint8_t *endBuffer = &videoBuffer[videoStreamBufferLen];
@@ -224,13 +250,13 @@ void jswrap_pb_videoFrame() {
           if (cmd==0) { // 0 = EOL
             x=0;
             y--;
-            lcdFSMC_setCursor(&graphicsInternal, x,y);
+            lcdFSMC_setCursor(&graphicsInternal, x+startX,y+startY);
           } else if (cmd==1) {
             //jsiConsolePrintf("end of bitmap!\n");
           } else if (cmd==2) { // 2 = DELTA
             x += *(b++);
             y -= *(b++);
-            lcdFSMC_setCursor(&graphicsInternal, x,y);
+            lcdFSMC_setCursor(&graphicsInternal, x+startX,y+startY);
           } else {
             bool extraByte = cmd&1; // copy is padded
             while (cmd--) {
