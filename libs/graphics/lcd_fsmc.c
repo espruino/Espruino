@@ -1608,11 +1608,19 @@ static inline void lcdSetFullWindow(JsGraphics *gfx) {
 
 void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   // finally!
+#ifdef LCD_ORIENTATION_LANDSCAPE
+  if (y1==y2) { // special case for single horizontal line (appears as vertical on landscape display) - no window needed
+    lcdSetCursor(gfx,x1,y1);
+    lcdSetWrite();
+    unsigned int i=0, l=(1+x2-x1);
+    LCD_WR_Data_multi(col, l);
+#else
   if (x1==x2) { // special case for single vertical line - no window needed
     lcdSetCursor(gfx,x2,y1);
     lcdSetWrite();
     unsigned int i=0, l=(1+y2-y1);
     LCD_WR_Data_multi(col, l);
+#endif
   } else {
     lcdSetWindow(gfx,x1,y1,x2,y2);
     if (LCD_Code!=ILI9341)
