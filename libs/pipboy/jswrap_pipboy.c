@@ -49,7 +49,7 @@
 
 #include "avi.h"
 
-#define AUDIO_BUFFER_SIZE 1200 // 16 bit 16kHz -> 1152
+#define AUDIO_BUFFER_SIZE 2200 // 16 bit 16kHz -> 1152
 #define VIDEO_BUFFER_SIZE 40960
 
 uint8_t videoBuffer[VIDEO_BUFFER_SIZE] __attribute__ ((aligned (8)));
@@ -117,7 +117,7 @@ void I2S_SetSampleRate(int hz) {
     {44100,271,2, 6,0},
     {48000,258,3, 3,1}
   };
-  RCC_PLLI2SCmd(DISABLE);
+ /* RCC_PLLI2SCmd(DISABLE);
   for(int i=0;i<prescalerCount;i++) {
     if(hz==prescalers[i][0]) {
       RCC_PLLI2SConfig((uint32_t)prescalers[i][1],(uint32_t)prescalers[i][2]);
@@ -131,7 +131,9 @@ void I2S_SetSampleRate(int hz) {
       return;
     }
   }
-  jsiConsolePrintf("Samplerate %d not supported\n");
+  jsiConsolePrintf("Samplerate %d not supported\n");*/
+  // FIXME use samplerate in I2S_Init
+  RCC_PLLI2SCmd(ENABLE);
 }
 
 void I2S_DMAInit(int sampleCount) {
@@ -142,7 +144,7 @@ void I2S_DMAInit(int sampleCount) {
   DMA_InitTypeDef  DMA_InitStructure;
   DMA_InitStructure.DMA_Channel = DMA_Channel_0;
   DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&SPI2->DR;
-  DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)i2sbuf[1];
+  DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)i2sbuf[0];
   DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
   DMA_InitStructure.DMA_BufferSize = sampleCount;
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
@@ -157,7 +159,7 @@ void I2S_DMAInit(int sampleCount) {
   DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
   DMA_Init(DMA1_Stream4, &DMA_InitStructure);
 
-  DMA_DoubleBufferModeConfig(DMA1_Stream4,(uint32_t)i2sbuf[2],DMA_Memory_0);
+  DMA_DoubleBufferModeConfig(DMA1_Stream4,(uint32_t)i2sbuf[1],DMA_Memory_0);
   DMA_DoubleBufferModeCmd(DMA1_Stream4,ENABLE);
 
   DMA_ITConfig(DMA1_Stream4,DMA_IT_TC,ENABLE);
@@ -221,7 +223,8 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
       else debugInfo = false;
     }
   }
-  jsiConsolePrintf("Playing video at x0=%d, y0=%d\n", startX, startY);
+  if (debugInfo)
+    jsiConsolePrintf("Playing video at x0=%d, y0=%d\n", startX, startY);
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsfsGetPathString(pathStr, fn)) return;
@@ -254,12 +257,14 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
         videoNextFrameTime = jshGetSystemTime() + videoFrameTime;
 #ifndef LINUX
         // Set up Audio
-        if (videoInfo.audioBufferSize) { // IF we have audio
+        if (videoInfo.audioBufferSize <= AUDIO_BUFFER_SIZE) { // IF we have audio
           I2S_SetSampleRate(videoInfo.audioSampleRate);
           I2S_DMAInit(videoInfo.audioBufferSize >> 1); // 16 bit
           i2splaybuf=0;
           i2ssavebuf=0;
           DMA_Cmd(DMA1_Stream4, ENABLE); // wait until first audio data??
+        } else if (videoInfo.audioBufferSize) {
+          jsiConsolePrintf("Audio strem too big (%db)\n", videoInfo.audioBufferSize);
         }
 #endif
         jswrap_pb_sendEvent(JS_EVENT_PREFIX"videoStarted");
@@ -314,7 +319,7 @@ void lcdFSMC_blitEnd() {
 void jswrap_pb_videoFrame() {
   if (!videoLoaded) return;
   JsSysTime tStart = jshGetSystemTime();
-  if (debugInfo) jsiConsolePrintf("Stream 0x%04x, %d\n", videoStreamId, videoStreamLen);
+  //if (debugInfo) jsiConsolePrintf("Stream 0x%04x, %d\n", videoStreamId, videoStreamLen);
   videoStreamRemaining = 0;
   videoStreamBufferLen = videoStreamLen+8; // 8 bytes contains info for next stream
   if (videoStreamLen > sizeof(videoBuffer)) {
@@ -336,7 +341,14 @@ void jswrap_pb_videoFrame() {
         jsiConsolePrintf("Audio stream too big for audioBuffer (%d)\n", l);
         l = AUDIO_BUFFER_SIZE;
       }
+
       memcpy(i2sbuf[i2ssavebuf], videoBuffer, videoStreamBufferLen);
+      /*uint16_t *b=i2sbuf[i2ssavebuf]; // signed vs. unsigned?
+      for (int i=0;i<videoStreamBufferLen-2;i+=2) {
+        *(b++) += 32768;
+      }*/
+
+      //if (debugInfo) jsiConsolePrintf("Audio in %d (%db)\n", i2ssavebuf, videoStreamBufferLen);
     }
   } else if (videoStreamId==AVI_STREAM_VIDEO) {
     lcdFSMC_blitStart(&graphicsInternal, startX,startY,videoInfo.width,videoInfo.height);
@@ -397,8 +409,8 @@ void jswrap_pb_videoFrame() {
     videoNextFrameTime += videoFrameTime;
     if (debugInfo) {
       //jswrap_pb_videoStop(); // first frame only
-      JsSysTime tEnd = jshGetSystemTime();
-      jsiConsolePrintf("%dms\n", (int)jshGetMillisecondsFromTime(tEnd-tStart));
+      //JsSysTime tEnd = jshGetSystemTime();
+      //jsiConsolePrintf("%dms\n", (int)jshGetMillisecondsFromTime(tEnd-tStart));
     }
   } else {
     // unknown stream - assume end and stop!
@@ -457,8 +469,8 @@ void jswrap_pb_init() {
   I2S_InitStructure.I2S_Mode=I2S_Mode_MasterTx;
   I2S_InitStructure.I2S_Standard=I2S_Standard_Phillips;
   I2S_InitStructure.I2S_DataFormat=I2S_DataFormat_16bextended;
-  I2S_InitStructure.I2S_MCLKOutput=I2S_MCLKOutput_Disable;
-  I2S_InitStructure.I2S_AudioFreq=I2S_AudioFreq_Default;
+  I2S_InitStructure.I2S_MCLKOutput=I2S_MCLKOutput_Enable;
+  I2S_InitStructure.I2S_AudioFreq=I2S_AudioFreq_16k;
   I2S_InitStructure.I2S_CPOL=I2S_CPOL_Low;
   I2S_Init(SPI2,&I2S_InitStructure);
 
@@ -466,7 +478,6 @@ void jswrap_pb_init() {
   I2S_Cmd(SPI2,ENABLE);
 
   NVIC_InitTypeDef   NVIC_InitStructure;
-
   NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream4_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
@@ -493,3 +504,80 @@ bool jswrap_pb_idle() {
     jswrap_pb_videoFrame();
   return busy;
 }
+
+/*
+AUDIO CODEC INITIALISATION CODE
+--------------------------------
+
+var es = I2C1;
+es.setup({sda:B9, scl:B8});
+function es8388_write_reg(r,d) {
+  es.writeTo(0x10, [r,d])
+}
+function es8388_read_reg(r) {
+ es.writeTo(0x10,r);
+ return es.readFrom(0x10,1)[0];
+}
+
+function es8388_adda_cfg(dacen, adcen){
+    var tempreg = 0;
+    tempreg |= ((!dacen) << 0);
+    tempreg |= ((!adcen) << 1);
+    tempreg |= ((!dacen) << 2);
+    tempreg |= ((!adcen) << 3);
+    es8388_write_reg(0x02, tempreg);
+}
+
+function es8388_output_cfg(o1en, o2en){
+    var tempreg = 0;
+    tempreg |= o1en * (3 << 4);
+    tempreg |= o2en * (3 << 2);
+    es8388_write_reg(0x04, tempreg);
+}
+
+function es8388_spkvol_set(volume){
+    if (volume > 33)
+        volume = 33;
+    es8388_write_reg(0x2E, volume); // 46 LOUT1 (33 = max)
+    es8388_write_reg(0x2F, volume); // 47 ROUT1
+    es8388_write_reg(0x30, volume); // 48 LOUT2 (33 = max)
+    es8388_write_reg(0x31, volume); // 49 ROUT2
+}
+
+
+// based on https://cdn.pcbartists.com/wp-content/uploads/2022/12/ES8388-user-guide-application-note.pdf
+// The sequence for Start up play back mode
+es8388_write_reg(0x08, 0x00); // slave mode
+es8388_write_reg(0x02, 0xF3); // power down DEM and STM
+es8388_write_reg(0x2B, 0x80); // Set same LRCK
+es8388_write_reg(0x00, 0x05); // FIXME Set Chip to Play&Record Mode
+es8388_write_reg(0x01, 0x40); // Power analog and IBIAS
+es8388_write_reg(0x04, 0x3C); // Power up DAC, Analog out
+//es8388_write_reg(0x17, 0b0001100); // GW: Set DAC SFI - I2S,16 bit
+es8388_write_reg(0x17, 0); // Set DAC SFI - I2S,24 bit
+//es8388_write_reg(0x18, 0x02); // Set MCLK/LRCK ratio (256)
+es8388_write_reg(0x18, 0b00110); // GW: Set MCLK/LRCK ratio (768) - default
+es8388_write_reg(0x1A, 0x00); // ADC volume 0db
+es8388_write_reg(0x1B, 0x00); // ADC volume 0db
+es8388_write_reg(0x1D, 0x20); // GW: DAC control - force MONO
+es8388_write_reg(0x19, 0x32); // Unmute DAC
+// Set mixer for DAC out
+es8388_write_reg(0x26, 0x00);
+es8388_write_reg(0x27, 0xB8); // LDAC to Lout
+es8388_write_reg(0x28, 0x38);
+es8388_write_reg(0x29, 0x38);
+es8388_write_reg(0x2A, 0xB8); // RDAC to Rout
+// Set volume
+var vol = 0x1E;// 0db
+es8388_write_reg(0x2E, vol);
+es8388_write_reg(0x2F, vol);
+es8388_write_reg(0x30, vol);
+es8388_write_reg(0x31, vol);
+es8388_write_reg(0x02, 0xAA); // power up DEM and STM
+// Doc above also has notes on suspend/etc
+
+
+Pip.videoStart("boot.avi")
+
+
+*/

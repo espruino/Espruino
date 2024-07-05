@@ -219,6 +219,9 @@ LIST AVI  (1777854b)
       }
       result->audioSampleRate = wavHeader->sampleRate;
       result->audioBufferSize = streamHeader->dwSuggestedBufferSize;
+      if (debugInfo) {
+        jsiConsolePrintf("  - %dhz mono 16b (%db buffer size)\n",  result->audioSampleRate, result->audioBufferSize);
+      }
     }
   }
   uint8_t *moviPtr = riffListFind(buf, "movi");
