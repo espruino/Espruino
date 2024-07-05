@@ -470,7 +470,7 @@ void jswrap_pb_init() {
   I2S_InitStructure.I2S_Standard=I2S_Standard_Phillips;
   I2S_InitStructure.I2S_DataFormat=I2S_DataFormat_16bextended;
   I2S_InitStructure.I2S_MCLKOutput=I2S_MCLKOutput_Enable;
-  I2S_InitStructure.I2S_AudioFreq=I2S_AudioFreq_16k;
+  I2S_InitStructure.I2S_AudioFreq=I2S_AudioFreq_8k; // because it's mono 16kHz but we're sending L+R
   I2S_InitStructure.I2S_CPOL=I2S_CPOL_Low;
   I2S_Init(SPI2,&I2S_InitStructure);
 

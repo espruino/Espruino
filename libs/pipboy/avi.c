@@ -204,7 +204,7 @@ LIST AVI  (1777854b)
       uint8_t *palette = (uint8_t*)bmpHeader + sizeof(BITMAPINFOHEADER);
       for (int i=0;i<256;i++) { // RGBA format
         int ri = palette[0], gi=palette[1], bi=palette[2];
-        result->palette[i] = (uint16_t)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
+        result->palette[i] = (uint16_t)((ri>>3) | (gi>>2)<<5 | (bi>>3)<<11);
         palette+=4;
       }
     } else if (is4CC(&streamHeader->fccType,"auds")) {
