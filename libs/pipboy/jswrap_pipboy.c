@@ -11,9 +11,9 @@
  * This file is designed to be parsed during the build process
  *
  * Contains JavaScript interface for Pipboy
- * 
+ *
  * FFMPEG example to convert "Atomic Command" intro animation (frames.avi) extracted from SWF file in Fallout Pip-Boy APK:
- * - change colour to green 
+ * - change colour to green
  * - crop 1289x937 to 1080x810 (to remove offset for phone screen)
  * - re-encode as 320x240 RLE at 12fps
  * ffmpeg -i frames.avi -filter_complex 'colorchannelmixer=0:0:0:0:0:1:0:0:0:0:0:0,crop=1080:810:0:0' -vcodec msrle -s 320x240 -r 12 intro-320x240-RLE-12fps.avi
@@ -42,12 +42,14 @@
 #include "jswrap_file.h"
 #include "graphics.h"
 #ifndef LINUX
+#include "stm32f4xx_spi.h"
+#include "stm32f4xx_dma.h"
 #include "lcd_fsmc.h"
 #endif
 
 #include "avi.h"
 
-//#define AUDIO_BUFFER_SIZE 5120
+#define AUDIO_BUFFER_SIZE 1200 // 16 bit 16kHz -> 1152
 #define VIDEO_BUFFER_SIZE 40960
 
 uint8_t videoBuffer[VIDEO_BUFFER_SIZE] __attribute__ ((aligned (8)));
@@ -59,6 +61,15 @@ uint16_t videoStreamId;
 uint32_t videoStreamLen;        // length of current stream
 uint32_t videoStreamRemaining;  // length left to read in current stream
 uint32_t videoStreamBufferLen;  // length of stream in current buffer
+
+uint8_t i2sbuf1[AUDIO_BUFFER_SIZE];
+uint8_t i2sbuf2[AUDIO_BUFFER_SIZE];
+uint8_t i2sbuf3[AUDIO_BUFFER_SIZE];
+uint8_t i2sbuf4[AUDIO_BUFFER_SIZE];
+
+volatile uint8_t i2splaybuf; // currently playing buffer number
+volatile uint8_t i2ssavebuf; // currently writing to buffer number
+uint8_t* i2sbuf[4]; // list of buffers
 
 JsSysTime videoFrameTime;
 JsSysTime videoNextFrameTime;
@@ -81,6 +92,77 @@ FRESULT f_read(File_Handle* fp, void* buff, uint32_t btr, size_t* br) {
   *br = fread(buff, 1, btr, *fp);
   return *br!=0;
 }
+#else // not LINUX
+
+void DMA1_Stream4_IRQHandler(void) {
+  if(DMA_GetITStatus(DMA1_Stream4, DMA_IT_TCIF4)==SET) {
+    DMA_ClearITPendingBit(DMA1_Stream4, DMA_IT_TCIF4);
+
+    i2splaybuf = (i2splaybuf+1) & 3;
+    if(DMA1_Stream4->CR&(1<<19))
+      DMA_MemoryTargetConfig(DMA1_Stream4,(uint32_t)i2sbuf[i2splaybuf], DMA_Memory_0);
+    else
+      DMA_MemoryTargetConfig(DMA1_Stream4,(uint32_t)i2sbuf[i2splaybuf], DMA_Memory_1);
+    }
+}
+
+void I2S_SetSampleRate(int hz) {
+  #define prescalerCount 7
+  const uint16_t prescalers[prescalerCount][5]={
+    {8000 ,256,5,12,1},
+    {11020,429,4,19,0},
+    {16000,213,2,13,0},
+    {22050,429,4, 9,1},
+    {32000,213,2, 6,1},
+    {44100,271,2, 6,0},
+    {48000,258,3, 3,1}
+  };
+  RCC_PLLI2SCmd(DISABLE);
+  for(int i=0;i<prescalerCount;i++) {
+    if(hz==prescalers[i][0]) {
+      RCC_PLLI2SConfig((uint32_t)prescalers[i][1],(uint32_t)prescalers[i][2]);
+      RCC->CR |= RCC_CR_PLLI2SON;
+      while((RCC->CR&RCC_CR_PLLI2SRDY)==0);
+      uint32_t i2spr;
+      i2spr = prescalers[i][3]<<0;    // I2S Linear prescaler
+      i2spr |= prescalers[i][4]<<8;   // Odd factor for the prescaler
+      i2spr |= SPI_I2SPR_MCKOE; // master clock out
+      SPI2->I2SPR=i2spr;
+      return;
+    }
+  }
+  jsiConsolePrintf("Samplerate %d not supported\n");
+}
+
+void I2S_DMAInit(int sampleCount) {
+  DMA_DeInit(DMA1_Stream4);
+  while (DMA_GetCmdStatus(DMA1_Stream4) != DISABLE){}
+
+  DMA_ClearITPendingBit(DMA1_Stream4,DMA_IT_FEIF4|DMA_IT_DMEIF4|DMA_IT_TEIF4|DMA_IT_HTIF4|DMA_IT_TCIF4);
+  DMA_InitTypeDef  DMA_InitStructure;
+  DMA_InitStructure.DMA_Channel = DMA_Channel_0;
+  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&SPI2->DR;
+  DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)i2sbuf[1];
+  DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
+  DMA_InitStructure.DMA_BufferSize = sampleCount;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
+  DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_1QuarterFull;
+  DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
+  DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+  DMA_Init(DMA1_Stream4, &DMA_InitStructure);
+
+  DMA_DoubleBufferModeConfig(DMA1_Stream4,(uint32_t)i2sbuf[2],DMA_Memory_0);
+  DMA_DoubleBufferModeCmd(DMA1_Stream4,ENABLE);
+
+  DMA_ITConfig(DMA1_Stream4,DMA_IT_TC,ENABLE);
+}
+
 #endif
 
 /*JSON{
@@ -121,7 +203,7 @@ void jswrap_pb_sendEvent(const char *eventName) { // eg JS_EVENT_PREFIX"videoSta
 */
 void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 
-  startX=0; 
+  startX=0;
   startY=0;
   JsVar *v;
   if (jsvIsObject(options)) {
@@ -137,7 +219,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
     if (v) {
       if (jsvGetBoolAndUnLock(v)) debugInfo = true;
       else debugInfo = false;
-    }  
+    }
   }
   jsiConsolePrintf("Playing video at x0=%d, y0=%d\n", startX, startY);
 
@@ -170,6 +252,16 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
         f_lseek(&videoFile, videoInfo.videoOffset+8); // go back to start of video data
         videoFrameTime = jshGetTimeFromMilliseconds(videoInfo.usPerFrame/1000.0);
         videoNextFrameTime = jshGetSystemTime() + videoFrameTime;
+#ifndef LINUX
+        // Set up Audio
+        if (videoInfo.audioBufferSize) { // IF we have audio
+          I2S_SetSampleRate(videoInfo.audioSampleRate);
+          I2S_DMAInit(videoInfo.audioBufferSize >> 1); // 16 bit
+          i2splaybuf=0;
+          i2ssavebuf=0;
+          DMA_Cmd(DMA1_Stream4, ENABLE); // wait until first audio data??
+        }
+#endif
         jswrap_pb_sendEvent(JS_EVENT_PREFIX"videoStarted");
       } else {
         jsExceptionHere(JSET_ERROR, "Corrupt video\n");
@@ -190,6 +282,9 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 */
 void jswrap_pb_videoStop() {
   if (videoLoaded) {
+#ifndef LINUX
+    DMA_Cmd(DMA1_Stream4, DISABLE); // Stop I2S
+#endif
     f_close(&videoFile);
     videoLoaded = false;
     jswrap_pb_sendEvent(JS_EVENT_PREFIX"videoStopped");
@@ -219,7 +314,7 @@ void lcdFSMC_blitEnd() {
 void jswrap_pb_videoFrame() {
   if (!videoLoaded) return;
   JsSysTime tStart = jshGetSystemTime();
-  //jsiConsolePrintf("Stream 0x%04x, %d\n", videoStreamId, videoStreamLen);
+  if (debugInfo) jsiConsolePrintf("Stream 0x%04x, %d\n", videoStreamId, videoStreamLen);
   videoStreamRemaining = 0;
   videoStreamBufferLen = videoStreamLen+8; // 8 bytes contains info for next stream
   if (videoStreamLen > sizeof(videoBuffer)) {
@@ -231,8 +326,17 @@ void jswrap_pb_videoFrame() {
   f_read(&videoFile, videoBuffer,videoStreamBufferLen, &actual);
   if (videoStreamId==AVI_STREAM_AUDIO) {
     if (videoStreamRemaining) {
-      jsiConsolePrintf("Audio stream too big");
+      jsiConsolePrintf("Audio stream too big for videoBuffer\n");
       jswrap_pb_videoStop();
+    } else {
+      i2ssavebuf = (i2ssavebuf+1) & 3;
+      // should we wait if we're overwriting a buffer we're reading from?
+      int l = videoStreamBufferLen;
+      if (l > AUDIO_BUFFER_SIZE) {
+        jsiConsolePrintf("Audio stream too big for audioBuffer (%d)\n", l);
+        l = AUDIO_BUFFER_SIZE;
+      }
+      memcpy(i2sbuf[i2ssavebuf], videoBuffer, videoStreamBufferLen);
     }
   } else if (videoStreamId==AVI_STREAM_VIDEO) {
     lcdFSMC_blitStart(&graphicsInternal, startX,startY,videoInfo.width,videoInfo.height);
@@ -315,7 +419,60 @@ void graphicsInternalFlip() {
   "generate" : "jswrap_pb_init"
 }*/
 void jswrap_pb_init() {
-  // TODO: Audio/other init
+  // Initialise audio
+  i2sbuf[0] = i2sbuf1;
+  i2sbuf[1] = i2sbuf2;
+  i2sbuf[2] = i2sbuf3;
+  i2sbuf[3] = i2sbuf4;
+#ifndef LINUX
+  I2S_InitTypeDef I2S_InitStructure;
+
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB|RCC_AHB1Periph_GPIOC, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
+  RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI2,ENABLE);
+  RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI2,DISABLE);
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
+
+  GPIO_InitTypeDef  GPIO_InitStructure;
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//100MHz
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3|GPIO_Pin_6;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//100MHz
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+  GPIO_PinAFConfig(GPIOB,GPIO_PinSource12,GPIO_AF_SPI2); // PB12,AF5  I2S_LRCK
+  GPIO_PinAFConfig(GPIOB,GPIO_PinSource13,GPIO_AF_SPI2); // PB13,AF5  I2S_SCLK
+  GPIO_PinAFConfig(GPIOC,GPIO_PinSource3,GPIO_AF_SPI2);   // PC3 ,AF5  I2S_DACDATA
+  GPIO_PinAFConfig(GPIOC,GPIO_PinSource6,GPIO_AF_SPI2);   // PC6 ,AF5  I2S_MCK
+  GPIO_PinAFConfig(GPIOC,GPIO_PinSource2,GPIO_AF_SPI3); // PC2 ,AF6  I2S_ADCDATA (AF6 apparently?)
+
+  I2S_InitStructure.I2S_Mode=I2S_Mode_MasterTx;
+  I2S_InitStructure.I2S_Standard=I2S_Standard_Phillips;
+  I2S_InitStructure.I2S_DataFormat=I2S_DataFormat_16bextended;
+  I2S_InitStructure.I2S_MCLKOutput=I2S_MCLKOutput_Disable;
+  I2S_InitStructure.I2S_AudioFreq=I2S_AudioFreq_Default;
+  I2S_InitStructure.I2S_CPOL=I2S_CPOL_Low;
+  I2S_Init(SPI2,&I2S_InitStructure);
+
+  SPI_I2S_DMACmd(SPI2,SPI_I2S_DMAReq_Tx,ENABLE);
+  I2S_Cmd(SPI2,ENABLE);
+
+  NVIC_InitTypeDef   NVIC_InitStructure;
+
+  NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream4_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+#endif
 }
 
 /*JSON{

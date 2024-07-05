@@ -12,7 +12,7 @@ typedef struct {
   uint32_t dwStreams;
   uint32_t dwSuggestedBufferSize;
   uint32_t dwWidth;
-  uint32_t dwHeight; // 480
+  uint32_t dwHeight;
   uint32_t dwReserved[4];
 } PACKED_FLAGS MainAVIHeader;
 
@@ -41,17 +41,26 @@ typedef struct {
 
 typedef struct {
   uint32_t biSize;
-  uint32_t  biWidth;
-  uint32_t  biHeight;
-  uint16_t  biPlanes;
-  uint16_t  biBitCount;
+  uint32_t biWidth;
+  uint32_t biHeight;
+  uint16_t biPlanes;
+  uint16_t biBitCount;
   uint32_t biCompression;
   uint32_t biSizeImage;
-  uint32_t  biXPelsPerMeter;
-  uint32_t  biYPelsPerMeter;
+  uint32_t biXPelsPerMeter;
+  uint32_t biYPelsPerMeter;
   uint32_t biClrUsed;
   uint32_t biClrImportant;
 } PACKED_FLAGS BITMAPINFOHEADER;
+
+typedef struct {
+   uint16_t formatTag;
+  uint16_t channels;
+  uint32_t sampleRate;
+  uint32_t baudRate;
+  uint16_t blockAlign;
+  uint16_t size;
+} PACKED_FLAGS WAVHEADER;
 
 bool is4CC(uint8_t *ptr, const char *fourcc) {
   return
@@ -149,7 +158,7 @@ LIST AVI  (1777854b)
   }
   uint8_t *listPtr = riffList;
   uint32_t listEnd = (listPtr-buf) + getU32(&listPtr[4])+8;
-  //riffListShow(listPtr,0);
+  if (debugInfo) riffListShow(listPtr,0);
   MainAVIHeader *aviHeader = (MainAVIHeader*)riffGetIndex(listPtr, 0, "avih");
   if (!aviHeader) {
     jsExceptionHere(JSET_ERROR, "No header found\n");
@@ -161,6 +170,8 @@ LIST AVI  (1777854b)
   result->width = aviHeader->dwWidth;
   result->height = aviHeader->dwHeight;
   result->usPerFrame = aviHeader->dwMicroSecPerFrame;
+  result->audioBufferSize = 0;
+  result->audioSampleRate = 0;
   for (int stream=0;stream<aviHeader->dwStreams;stream++) {
     uint8_t *streamListPtr = riffGetIndex(listPtr, 1+stream, "LIST")-8;
     if (!streamListPtr) {
@@ -197,6 +208,17 @@ LIST AVI  (1777854b)
         palette+=4;
       }
     } else if (is4CC(&streamHeader->fccType,"auds")) {
+      WAVHEADER *wavHeader = (WAVHEADER*)riffGetIndex(streamListPtr, 1, "strf");
+       if (!wavHeader) {
+        jsExceptionHere(JSET_ERROR, "No WAVHEADER %d\n");
+        return 0;
+      }
+      if (wavHeader->formatTag!=1 || wavHeader->channels!=1 || wavHeader->size!=16) {
+        jsExceptionHere(JSET_ERROR, "Not Mono 16 bit WAV (fmt=%d, channels=%d, size=%d)\n", wavHeader->formatTag, wavHeader->channels, wavHeader->size);
+        return 0;
+      }
+      result->audioSampleRate = wavHeader->sampleRate;
+      result->audioBufferSize = streamHeader->dwSuggestedBufferSize;
     }
   }
   uint8_t *moviPtr = riffListFind(buf, "movi");
@@ -204,6 +226,7 @@ LIST AVI  (1777854b)
     jsExceptionHere(JSET_ERROR, "No 'movi' found\n");
     return 0;
   }
+  // FIXME set result->audioBufferSize to size of first audio record
   result->videoOffset = moviPtr+4-buf;
 //  jsiConsolePrintf("Video offset %d \n", result->videoOffset);
   return true;

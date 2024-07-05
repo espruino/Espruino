@@ -5,6 +5,8 @@ typedef struct {
   int width, height, usPerFrame;
   int videoOffset;
   uint16_t palette[256];
+  int audioSampleRate;
+  int audioBufferSize;
 } AviInfo;
 
 #define AVI_STREAM_AUDIO 0x6277
