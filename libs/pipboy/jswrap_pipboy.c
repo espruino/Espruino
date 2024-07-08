@@ -20,9 +20,9 @@
  *
  * Convert the Pip-Boy bootup animation from Kilter:
  * - crop 1920x1080 to 1440x1080 to remove offset
- * - convert audio to 16kHz mono:
- * - re-encode as 320x240 RLE at 12fps
- * ffmpeg -i ND-PB_Bootup01-v01_Waudio.mp4 -ar 16000 -ac 1 -vf crop=1440:1080:0:0 -vcodec msrle -s 320x240 -r 12 bootup-320x240-RLE-12fps.avi
+ * - convert audio to 16kHz mono, 16-bit little-endian PCM
+ * - re-encode video as 320x240 RLE at 12fps
+ * ffmpeg -i ND-PB_Bootup01-v01_Waudio.mp4 -ar 16000 -ac 1 -acodec pcm_s16le -vf crop=1440:1080:0:0 -vcodec msrle -s 320x240 -r 12 bootup-320x240-RLE-12fps.avi
  *
  * ----------------------------------------------------------------------------
  */
@@ -50,6 +50,7 @@
 #include "avi.h"
 
 #define AUDIO_BUFFER_SIZE 2200 // 16 bit 16kHz -> 1152
+#define NUM_AUDIO_BUFFERS 4
 #define VIDEO_BUFFER_SIZE 40960
 
 uint8_t videoBuffer[VIDEO_BUFFER_SIZE] __attribute__ ((aligned (8)));
@@ -62,14 +63,9 @@ uint32_t videoStreamLen;        // length of current stream
 uint32_t videoStreamRemaining;  // length left to read in current stream
 uint32_t videoStreamBufferLen;  // length of stream in current buffer
 
-uint8_t i2sbuf1[AUDIO_BUFFER_SIZE];
-uint8_t i2sbuf2[AUDIO_BUFFER_SIZE];
-uint8_t i2sbuf3[AUDIO_BUFFER_SIZE];
-uint8_t i2sbuf4[AUDIO_BUFFER_SIZE];
-
-volatile uint8_t i2splaybuf; // currently playing buffer number
-volatile uint8_t i2ssavebuf; // currently writing to buffer number
-uint8_t* i2sbuf[4]; // list of buffers
+volatile int16_t i2splaybuf; // currently playing buffer number
+volatile int16_t i2ssavebuf; // currently writing to buffer number
+int16_t i2sbuf[NUM_AUDIO_BUFFERS][AUDIO_BUFFER_SIZE]; // Set of audio buffers
 
 JsSysTime videoFrameTime;
 JsSysTime videoNextFrameTime;
@@ -98,12 +94,18 @@ void DMA1_Stream4_IRQHandler(void) {
   if(DMA_GetITStatus(DMA1_Stream4, DMA_IT_TCIF4)==SET) {
     DMA_ClearITPendingBit(DMA1_Stream4, DMA_IT_TCIF4);
 
-    i2splaybuf = (i2splaybuf+1) & 3;
+    if (++i2splaybuf==NUM_AUDIO_BUFFERS) i2splaybuf = 0;
     if(DMA1_Stream4->CR&(1<<19))
       DMA_MemoryTargetConfig(DMA1_Stream4,(uint32_t)i2sbuf[i2splaybuf], DMA_Memory_0);
     else
       DMA_MemoryTargetConfig(DMA1_Stream4,(uint32_t)i2sbuf[i2splaybuf], DMA_Memory_1);
+
+    if (i2splaybuf==i2ssavebuf) {
+      // DMA_Cmd(DMA1_Stream4, DISABLE); // Stop the DMA - it'll get re-enabled when we refill the buffer
+      // if (debugInfo) jsiConsolePrintf("P%d ", i2splaybuf);
     }
+
+  }
 }
 
 void I2S_SetSampleRate(int hz) {
@@ -132,7 +134,7 @@ void I2S_SetSampleRate(int hz) {
     }
   }
   jsiConsolePrintf("Samplerate %d not supported\n");*/
-  // FIXME use samplerate in I2S_Init
+  // FIXME use samplerate in I2S_Init - not actually needed if all audio is 16kHz, as jswrap_pb_init() sets it up in the call to I2S_Init()
   RCC_PLLI2SCmd(ENABLE);
 }
 
@@ -146,7 +148,7 @@ void I2S_DMAInit(int sampleCount) {
   DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&SPI2->DR;
   DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)i2sbuf[0];
   DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
-  DMA_InitStructure.DMA_BufferSize = sampleCount;
+  DMA_InitStructure.DMA_BufferSize = (uint32_t)sampleCount;
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
   DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
@@ -249,27 +251,28 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
       if (debugInfo) {
         jsiConsolePrintf("AVI read %d %d %c%c%c%c\n", sizeof(videoBuffer), actual, videoBuffer[0],videoBuffer[1],videoBuffer[2],videoBuffer[3]);
       }
-      if (aviLoad(videoBuffer, actual, &videoInfo, debugInfo)) {
+      if (aviLoad(videoBuffer, (int)actual, &videoInfo, debugInfo)) {
         videoStreamId = *(uint16_t*)&videoBuffer[videoInfo.videoOffset+2]; // +0 = '01'/'00' stream index?
         videoStreamLen = *(uint32_t*)&videoBuffer[videoInfo.videoOffset+4]; // +0 = '01'/'00' stream index?
-        f_lseek(&videoFile, videoInfo.videoOffset+8); // go back to start of video data
+        f_lseek(&videoFile, (DWORD)(videoInfo.videoOffset+8)); // go back to start of video data
         videoFrameTime = jshGetTimeFromMilliseconds(videoInfo.usPerFrame/1000.0);
         videoNextFrameTime = jshGetSystemTime() + videoFrameTime;
 #ifndef LINUX
         // Set up Audio
         if (videoInfo.audioBufferSize <= AUDIO_BUFFER_SIZE) { // IF we have audio
           I2S_SetSampleRate(videoInfo.audioSampleRate);
-          I2S_DMAInit(videoInfo.audioBufferSize >> 1); // 16 bit
-          i2splaybuf=1;
+          I2S_DMAInit(videoInfo.audioBufferSize); // 16 bit
+          i2splaybuf=0;
           i2ssavebuf=0;
           // Clear audio buffers
-          for (int n=0; n<4; n++) {
-            uint8_t *b=i2sbuf[n];
+          for (int n=0; n<NUM_AUDIO_BUFFERS; n++) {
+            int16_t *b=i2sbuf[n];
             for (int i=0;i<AUDIO_BUFFER_SIZE;i++) {
-              *(b++) = 0x00;
+              *(b++) = 0x0000;
             }
           }
-          // DMA_Cmd(DMA1_Stream4, ENABLE); // wait until first audio data??
+          // wait until first audio data before enabling the I2S DMA
+          // DMA_Cmd(DMA1_Stream4, ENABLE); 
         } else if (videoInfo.audioBufferSize) {
           jsiConsolePrintf("Audio stream too big (%db)\n", videoInfo.audioBufferSize);
         }
@@ -341,23 +344,28 @@ void jswrap_pb_videoFrame() {
       jsiConsolePrintf("Audio stream too big for videoBuffer\n");
       jswrap_pb_videoStop();
     } else {
-      i2ssavebuf = (i2ssavebuf+1) & 3;
+      if (++i2ssavebuf==NUM_AUDIO_BUFFERS) i2ssavebuf = 0;
       // should we wait if we're overwriting a buffer we're reading from?
-      int l = videoStreamBufferLen;
+      if (i2splaybuf==i2ssavebuf) {
+        // if (debugInfo) jsiConsolePrintf("S%d ", i2ssavebuf);
+      }
+
+      uint32_t l = videoStreamLen;
       if (l > AUDIO_BUFFER_SIZE) {
         jsiConsolePrintf("Audio stream too big for audioBuffer (%d)\n", l);
         l = AUDIO_BUFFER_SIZE;
       }
-
-      memcpy(i2sbuf[i2ssavebuf], videoBuffer, l);
-      /*uint16_t *b=i2sbuf[i2ssavebuf]; // signed vs. unsigned?
-      for (int i=0;i<l-2;i+=2) {
-        *(b++) += 32768;
-      }*/
+      // memcpy(i2sbuf[i2ssavebuf], videoBuffer, l);  // Can't do a straight copy - we need to duplicate the data for stereo
+      int16_t *b=i2sbuf[i2ssavebuf];
+      int16_t *source=(int16_t *)videoBuffer;
+      for (uint32_t i=0;i<l;i+=2) {
+        *(b++) = *(source);
+        *(b++) = *(source++); // Make a second copy for the other stereo channel
+      }
 
       DMA_Cmd(DMA1_Stream4, ENABLE); // Start the DMA if it's not already running
 
-      //if (debugInfo) jsiConsolePrintf("Audio in %d (%db)\n", i2ssavebuf, videoStreamBufferLen);
+      // if (debugInfo) jsiConsolePrintf("Audio in %d out %d (%db)\n", i2ssavebuf, i2splaybuf, l);
     }
   } else if (videoStreamId==AVI_STREAM_VIDEO) {
     lcdFSMC_blitStart(&graphicsInternal, startX,startY,videoInfo.width,videoInfo.height);
@@ -400,7 +408,7 @@ void jswrap_pb_videoFrame() {
       }
       // check if we need to refill our buffer
       if (videoStreamRemaining) {
-        uint32_t amountToShift = (b-videoBuffer) & ~7; // aligned to the nearest word (STM32 f_read fails otherwise!)
+        uint32_t amountToShift = (uint32_t)(b-videoBuffer) & ~7ul; // aligned to the nearest word (STM32 f_read fails otherwise!)
         uint32_t leftInStream = videoStreamBufferLen - amountToShift;
         memmove(videoBuffer, &videoBuffer[amountToShift], leftInStream); // move data back
         b -= amountToShift;
@@ -441,10 +449,6 @@ void graphicsInternalFlip() {
 }*/
 void jswrap_pb_init() {
   // Initialise audio
-  i2sbuf[0] = i2sbuf1;
-  i2sbuf[1] = i2sbuf2;
-  i2sbuf[2] = i2sbuf3;
-  i2sbuf[3] = i2sbuf4;
 #ifndef LINUX
   I2S_InitTypeDef I2S_InitStructure;
 
@@ -479,7 +483,7 @@ void jswrap_pb_init() {
   I2S_InitStructure.I2S_Standard=I2S_Standard_Phillips;
   I2S_InitStructure.I2S_DataFormat=I2S_DataFormat_16bextended;
   I2S_InitStructure.I2S_MCLKOutput=I2S_MCLKOutput_Enable;
-  I2S_InitStructure.I2S_AudioFreq=I2S_AudioFreq_8k; // because it's mono 16kHz but we're sending L+R
+  I2S_InitStructure.I2S_AudioFreq=I2S_AudioFreq_16k;
   I2S_InitStructure.I2S_CPOL=I2S_CPOL_Low;
   I2S_Init(SPI2,&I2S_InitStructure);
 
@@ -573,8 +577,8 @@ function es8388_init() {
   es8388_write_reg(0x17, 0); // Set DAC SFI - I2S,24 bit
   es8388_write_reg(0x18, 0x02); // Set MCLK/LRCK ratio (256)
   //es8388_write_reg(0x18, 0b00110); // GW: Set MCLK/LRCK ratio (768) - default
-  es8388_write_reg(0x1A, 0x00); // ADC volume 0db
-  es8388_write_reg(0x1B, 0x00); // ADC volume 0db
+  es8388_write_reg(0x1A, 0x00); // ADC volume 0dB
+  es8388_write_reg(0x1B, 0x00); // ADC volume 0dB
   es8388_write_reg(0x1D, 0x20); // GW: DAC control - force MONO
   es8388_write_reg(0x19, 0x32); // Unmute DAC
   // Set mixer for DAC out
@@ -583,7 +587,7 @@ function es8388_init() {
   es8388_write_reg(0x28, 0x38);
   es8388_write_reg(0x29, 0x38);
   es8388_write_reg(0x2A, 0xB8); // RDAC to Rout (0xB8 = -15dB, 0x90 = 0dB)
-  es8388_spkvol_set(0x1E);      // Set volume: 0x1E = 0db
+  es8388_spkvol_set(0x1E);      // Set volume: 0x1E = 0dB
   es8388_write_reg(0x02, 0xAA); // power up DEM and STM
   // Doc above also has notes on suspend/etc
 }
