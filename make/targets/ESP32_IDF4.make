@@ -56,7 +56,7 @@ $(ESP_ZIP): $(PROJ_NAME).bin
 	$(Q)cp $(BINDIR)/build/partition_table/partition-table.bin $(PROJ_NAME)/partition-table.bin
 	$(Q)cp $(BINDIR)/build/bootloader/bootloader.bin $(PROJ_NAME)/bootloader.bin
 	$(Q)cp targets/esp32/README_flash_C3.txt $(PROJ_NAME)
-	$(Q)$(TAR) -zcf $(ESP_ZIP) $(PROJ_NAME) --transform='s/$(PROJ_NAME)\///g'
+	$(Q)$(TAR) -zcf $(ESP_ZIP) $(PROJ_NAME) --transform='s/$(BINDIR)\///g'
 	@echo "Created $(ESP_ZIP)"
 
 proj: $(ESP_ZIP)
