@@ -2052,7 +2052,17 @@ void jsiIdle() {
           // If we want to execute this watch right now...
           if (executeNow) {
             JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(eventTime)/1000);
-            if (jsiShouldExecuteWatch(watchPtr, pinIsHigh)) { // edge triggering
+            bool shouldExecute = jsiShouldExecuteWatch(watchPtr, pinIsHigh);
+            Pin dataPin = shouldExecute ? jshGetEventDataPin(eventType) : 0;
+#ifdef BANGLEJS
+            if (shouldExecute && !jshIsPinValid(dataPin) && (event.flags&EV_EXTI_DATA_PIN_HIGH)) {
+              /* This is a bodge for Bangle.js. We want to get events for any button press here so
+              we can keep our debounce state machine up to date, but for some button presses we
+              may not want to actually forward them to user-facing code. */
+              shouldExecute = false;
+            }
+#endif
+            if (shouldExecute) { // edge triggering
               JsVar *watchCallback = jsvObjectGetChildIfExists(watchPtr, "cb");
               bool watchRecurring = jsvObjectGetBoolChild(watchPtr,  "recur");
               JsVar *data = jsvNewObject();
@@ -2062,7 +2072,6 @@ void jsiIdle() {
                 // set both data.time, and watch.lastTime in one go
                 jsvObjectSetChild(data, "time", timePtr); // no unlock
                 jsvObjectSetChildAndUnLock(data, "pin", jsvNewFromPin(pin));
-                Pin dataPin = jshGetEventDataPin(eventType);
                 if (jshIsPinValid(dataPin))
                   jsvObjectSetChildAndUnLock(data, "data", jsvNewFromBool((event.flags&EV_EXTI_DATA_PIN_HIGH)!=0));
               }
