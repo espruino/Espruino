@@ -2027,7 +2027,7 @@ void jsiIdle() {
               JsSysTime timeoutTime = jsiLastIdleTime + (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChildIfExists(timeout, "time"));
               jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromLongInteger((JsSysTime)(eventTime - jsiLastIdleTime) + debounce)));
               jsvObjectSetChildAndUnLock(timeout, "state", jsvNewFromBool(pinIsHigh));
-              if (ignoreEvent || (eventTime > timeoutTime) && (pinIsHigh!=oldWatchState)) {
+              if (ignoreEvent || ((eventTime > timeoutTime) && (pinIsHigh!=oldWatchState))) {
                 // timeout should have fired, but we didn't get around to executing it!
                 // Do it now (with the old timeout time)
                 executeNow = !ignoreEvent;
