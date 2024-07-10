@@ -840,7 +840,6 @@ void jslGetNextToken() {
           lastToken=='{' ||
           lastToken=='}' ||
           lastToken=='(' ||
-          lastToken==')' ||
           lastToken==',' ||
           lastToken==';' ||
           lastToken==':') {
