@@ -9,7 +9,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * AVI file decode
+ * AVI/WAV file decode
  *
  * ---------------------------------------------------------------------------- */
 #ifndef __AVI_H
@@ -17,7 +17,7 @@
 
 typedef struct {
   int width, height, usPerFrame;
-  int videoOffset;
+  int streamOffset; // offset in the file of the start of data
   uint16_t palette[256];
   int audioSampleRate;
   int audioBufferSize;
@@ -27,5 +27,6 @@ typedef struct {
 #define AVI_STREAM_VIDEO 0x6364
 
 bool aviLoad(uint8_t *buf, int len, AviInfo *result, bool debugInfo);
+bool wavLoad(uint8_t *buf, int len, AviInfo *result, bool debugInfo);
 
 #endif

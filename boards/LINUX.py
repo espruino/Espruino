@@ -32,7 +32,7 @@ info = {
      'DEFINES+=-DSPIFLASH_BASE=0 -DSPIFLASH_LENGTH=FLASH_SAVED_CODE_LENGTH', # For Testing Flash Strings
      'LINUX=1',
      'INCLUDE += -I$(ROOT)/libs/pipboy',
-     'WRAPPERSOURCES += libs/pipboy/avi.c',
+     'WRAPPERSOURCES += libs/pipboy/avi.c libs/pipboy/stm32_i2s.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_pipboy.c'     
    ]
  }

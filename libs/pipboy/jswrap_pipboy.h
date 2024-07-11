@@ -16,6 +16,7 @@
 
 void jswrap_pb_videoStart(JsVar *fn, JsVar *options);
 void jswrap_pb_videoStop();
+void jswrap_pb_audioStart(JsVar *fn, JsVar *options);
 
 void jswrap_pb_init();
 void jswrap_pb_kill();

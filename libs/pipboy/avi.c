@@ -9,7 +9,7 @@
  *
  * ----------------------------------------------------------------------------
  *
- * AVI file decode
+ * AVI/WAV file decode
  *
  * ---------------------------------------------------------------------------- */
 #include "jsutils.h"
@@ -68,7 +68,7 @@ typedef struct {
 } PACKED_FLAGS BITMAPINFOHEADER;
 
 typedef struct {
-   uint16_t formatTag;
+  uint16_t formatTag;
   uint16_t channels;
   uint32_t sampleRate;
   uint32_t baudRate;
@@ -162,7 +162,7 @@ LIST AVI  (1777854b)
   */
 
   if (!is4CC(&buf[8],"AVI ")) {
-    jsExceptionHere(JSET_ERROR, "Not AVI\n");
+    jsExceptionHere(JSET_ERROR, "Not AVI file\n");
     return 0;
   }
   uint8_t *riffList = buf + 12; // skip RIFF+length+AVI tag
@@ -244,7 +244,56 @@ LIST AVI  (1777854b)
     return 0;
   }
   // FIXME set result->audioBufferSize to size of first audio record
-  result->videoOffset = moviPtr+4-buf;
+  result->streamOffset = moviPtr+4-buf;
 //  jsiConsolePrintf("Video offset %d \n", result->videoOffset);
+  return true;
+}
+
+bool wavLoad(uint8_t *buf, int len, AviInfo *result, bool debugInfo) {
+  result->width = 0;
+  result->height = 0;
+  result->usPerFrame = 0;
+  result->audioBufferSize = 0;
+  result->audioSampleRate = 0;
+
+  if (!is4CC(buf,"RIFF")) {
+    jsExceptionHere(JSET_ERROR, "Not RIFF %c%c%c%c\n", buf[0],buf[1],buf[2],buf[3]);
+    return 0;
+  }
+  //riffListShow(buf,0);
+/*
+LIST WAVE (61470b)
+- fmt
+  LIST INFO (34b)
+  - ISFT
+- data
+  */
+
+  if (!is4CC(&buf[8],"WAVE ")) {
+    jsExceptionHere(JSET_ERROR, "Not WAV file\n");
+    return 0;
+  }
+  uint8_t *riffFmt = buf + 12; // skip RIFF+length+WAVE tag
+  if (!is4CC(riffFmt,"fmt ")) {
+    jsExceptionHere(JSET_ERROR, "Expecting 'fmt' tag\n");
+    return 0;
+  }
+  uint8_t *listPtr = riffFmt;
+  WAVHEADER *wavHeader = (WAVHEADER*)(riffFmt+8);
+  if (wavHeader->formatTag!=1 || wavHeader->channels!=1 || wavHeader->size!=16) {
+    jsExceptionHere(JSET_ERROR, "Not Mono 16 bit WAV (fmt=%d, channels=%d, size=%d)\n", wavHeader->formatTag, wavHeader->channels, wavHeader->size);
+    return 0;
+  }
+  result->audioSampleRate = wavHeader->sampleRate;
+  result->audioBufferSize = 0;
+
+  uint8_t *dataStartPtr = riffListFind(buf, "data");
+  if (!dataStartPtr) {
+    jsExceptionHere(JSET_ERROR, "Data not found\n");
+    return 0;
+  }
+  //jsiConsolePrintf("Data 0x%08x\n", dataStartPtr-buf);
+
+  result->streamOffset = dataStartPtr-buf;
   return true;
 }

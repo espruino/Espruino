@@ -25,8 +25,13 @@
 #include "jsinteractive.h"
 #include "stm32_i2s.h"
 
-#ifdef LINUX
+#ifdef LINUX // stubs
 void STM32_I2S_Init() {};
+void STM32_I2S_Prepare(int audioFreq) {};
+int STM32_I2S_GetFreeSamples() { return I2S_RING_BUFFER_SIZE; }
+void STM32_I2S_AddSamples(int16_t *data, int count) {};
+void STM32_I2S_Start() {};
+void STM32_I2S_Stop() {};
 #else // not LINUX
 
 #include "stm32f4xx_spi.h"
@@ -46,20 +51,33 @@ int16_t *audioRingBuf = 0x10000000; // force in in CCM
 
 // Get how many samples are in the buffer
 int audioRingBufGetSamples() {
-  int s = audioRingIdxIn-audioRingIdxOut;
+  int s = audioRingIdxIn - audioRingIdxOut;
   if (s<0) s+=I2S_RING_BUFFER_SIZE;
   return s;
 }
 
 // Fill the DMA buffer, return false if it fails
 bool fillDMAFromRingBuffer() {
-  if (audioRingBufGetSamples()*2 < I2S_DMA_BUFFER_SIZE)
-    return false;
+  int samples = audioRingBufGetSamples();
+  if (!samples) return false; // no data to play at all!
+
   int16_t *dmaPtr = i2sDMAbuf[i2sDMAidx ? 0 : 1];
   int count = I2S_DMA_BUFFER_SIZE>>1; // Mono->stereo
+  int padding = 0;
+  if (count > samples) {
+    padding = count-samples;
+    count = samples; // not enough samples in our ring buffer
+  }
+  int16_t sample = 0;
+  // mono -> stereo
   while (count--) {
-    int16_t sample = audioRingBuf[audioRingIdxOut];
+    sample = audioRingBuf[audioRingIdxOut];
     audioRingIdxOut = (audioRingIdxOut+1) & (I2S_RING_BUFFER_SIZE-1);
+    *(dmaPtr++) = sample; // L
+    *(dmaPtr++) = sample; // R
+  }
+  // if we don't have enough samples, pad it out
+  while (padding--) {
     *(dmaPtr++) = sample; // L
     *(dmaPtr++) = sample; // R
   }
@@ -70,15 +88,15 @@ bool fillDMAFromRingBuffer() {
 void DMA1_Stream4_IRQHandler(void) {
   if(DMA_GetITStatus(DMA1_Stream4, DMA_IT_TCIF4)==SET) {
     DMA_ClearITPendingBit(DMA1_Stream4, DMA_IT_TCIF4);
-    jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
+    //jshPinOutput(LED1_PININDEX, LED1_ONSTATE); // debug
 
     i2sDMAidx = DMA_GetCurrentMemoryTarget(DMA1_Stream4);
     // if we can't fill the next buffer, stop playback
-    if (!fillDMAFromRingBuffer()) {
+    if (!fillDMAFromRingBuffer()) { // this takes around 0.1ms
       STM32_I2S_Stop();
     }
 
-    jshPinOutput(LED1_PININDEX, !LED1_ONSTATE);
+    //jshPinOutput(LED1_PININDEX, !LED1_ONSTATE); // debug
   }
 }
 
@@ -175,10 +193,15 @@ void STM32_I2S_Init() {
   NVIC_Init(&NVIC_InitStructure);
 }
 
+/// Return the amount of free samples available for STM32_I2S_AddSamples
+int STM32_I2S_GetFreeSamples() {
+  return I2S_RING_BUFFER_SIZE - audioRingBufGetSamples();
+}
+
 // Add samples to the ringbuffer
 void STM32_I2S_AddSamples(int16_t *data, int count) {
-  int timeout = 100000;
-  while (((I2S_RING_BUFFER_SIZE-audioRingBufGetSamples()) < count) && timeout--); // wait here for space
+  int timeout = 1000000;
+  while ((STM32_I2S_GetFreeSamples() < count+32) && --timeout); // wait here for space
 
   int c = count;
   while (c--) {

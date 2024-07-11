@@ -17,8 +17,9 @@
 
 #include "jsutils.h"
 
-#define I2S_DMA_BUFFER_SIZE 2048 // size of i2sDMAbuf (DMA direct to I2S)
-#define I2S_RING_BUFFER_SIZE 8192 // size of ringbuffer used for audio input
+#define I2S_DMA_BUFFER_SIZE 2048 // size of i2sDMAbuf (DMA direct to I2S) in u16
+// 16kHz sample rate, 2xu16 = ~16Hz IRQ rate
+#define I2S_RING_BUFFER_SIZE 16384 // size of ringbuffer used for audio input in u16
 
 typedef enum {
   STM32_I2S_STOPPED,
@@ -29,6 +30,8 @@ typedef enum {
 void STM32_I2S_Init();
 /// Prepare for start of playback
 void STM32_I2S_Prepare(int audioFreq);
+/// Return the amount of free samples available for STM32_I2S_AddSamples
+int STM32_I2S_GetFreeSamples();
 /// Add new Samples - playback will start when we have enough in buffer. count=# of samples (not bytes)
 void STM32_I2S_AddSamples(int16_t *data, int count);
 /// Start playback (ideally don't use this - just add samples and playback will start)
