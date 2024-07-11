@@ -55,7 +55,7 @@ int audioRingBufGetSamples() {
 bool fillDMAFromRingBuffer() {
   if (audioRingBufGetSamples()*2 < I2S_DMA_BUFFER_SIZE)
     return false;
-  int16_t *dmaPtr = i2sDMAbuf[i2sDMAidx];
+  int16_t *dmaPtr = i2sDMAbuf[i2sDMAidx ? 0 : 1];
   int count = I2S_DMA_BUFFER_SIZE>>1; // Mono->stereo
   while (count--) {
     int16_t sample = audioRingBuf[audioRingIdxOut];
@@ -72,7 +72,7 @@ void DMA1_Stream4_IRQHandler(void) {
     DMA_ClearITPendingBit(DMA1_Stream4, DMA_IT_TCIF4);
     jshPinOutput(LED1_PININDEX, LED1_ONSTATE);
 
-    i2sDMAidx = (DMA1_Stream4->CR&(1<<19)) ? 0 : 1;
+    i2sDMAidx = DMA_GetCurrentMemoryTarget(DMA1_Stream4);
     // if we can't fill the next buffer, stop playback
     if (!fillDMAFromRingBuffer()) {
       STM32_I2S_Stop();
@@ -88,12 +88,6 @@ void STM32_I2S_Prepare(int audioFreq) {
   DMA_ClearITPendingBit(DMA1_Stream4,DMA_IT_FEIF4|DMA_IT_DMEIF4|DMA_IT_TEIF4|DMA_IT_HTIF4|DMA_IT_TCIF4);
 
   RCC_PLLI2SCmd(ENABLE);
-
-  // setup relevant counters
-  i2sDMAidx = 0;
-  audioRingIdxIn = 0;
-  audioRingIdxOut = 0;
-  i2sStatus = STM32_I2S_STOPPED;
 
   DMA_InitTypeDef  DMA_InitStructure;
   DMA_InitStructure.DMA_Channel = DMA_Channel_0;
@@ -119,6 +113,13 @@ void STM32_I2S_Prepare(int audioFreq) {
   But between them DMA_Init and DMA_DoubleBufferModeConfig set the same registers
   */
   DMA_DoubleBufferModeCmd(DMA1_Stream4, ENABLE);
+
+  // setup relevant counters
+  i2sDMAidx = DMA_GetCurrentMemoryTarget(DMA1_Stream4);
+  audioRingIdxIn = 0;
+  audioRingIdxOut = 0;
+  i2sStatus = STM32_I2S_STOPPED;
+
   DMA_ITConfig(DMA1_Stream4, DMA_IT_TC, ENABLE);
 }
 
@@ -189,7 +190,10 @@ void STM32_I2S_AddSamples(int16_t *data, int count) {
   // start playback when we have enough
   if (i2sStatus == STM32_I2S_STOPPED && audioRingBufGetSamples()>I2S_DMA_BUFFER_SIZE*2) {
     // if audioRingBufGetSamples()>I2S_DMA_BUFFER_SIZE*2 we should have enough here to fill 4 buffers
-    fillDMAFromRingBuffer();
+    i2sDMAidx = !DMA_GetCurrentMemoryTarget(DMA1_Stream4);
+    fillDMAFromRingBuffer(); // fill the first buffer with what we're currently reading from!
+    i2sDMAidx = !i2sDMAidx;
+    fillDMAFromRingBuffer(); // fill the second buffer
     STM32_I2S_Start();
   }
 }
