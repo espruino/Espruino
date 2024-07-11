@@ -18,6 +18,9 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options);
 void jswrap_pb_videoStop();
 void jswrap_pb_audioStart(JsVar *fn, JsVar *options);
 
+void jswrap_pb_setVol(int volume);
+void jswrap_pb_setDACMode(JsVar *mode);
+
 void jswrap_pb_init();
 void jswrap_pb_kill();
 bool jswrap_pb_idle();

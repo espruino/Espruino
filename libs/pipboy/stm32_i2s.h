@@ -33,7 +33,7 @@ void STM32_I2S_Prepare(int audioFreq);
 /// Return the amount of free samples available for STM32_I2S_AddSamples
 int STM32_I2S_GetFreeSamples();
 /// Add new Samples - playback will start when we have enough in buffer. count=# of samples (not bytes)
-void STM32_I2S_AddSamples(int16_t *data, int count);
+void STM32_I2S_AddSamples(int16_t *data, unsigned int count);
 /// Start playback (ideally don't use this - just add samples and playback will start)
 void STM32_I2S_Start();
 /// Stop playback

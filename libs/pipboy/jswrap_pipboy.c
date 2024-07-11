@@ -75,6 +75,12 @@ int startX=0;
 int startY=0;
 AviInfo videoInfo;
 
+typedef enum {
+  DM_OFF,
+  DM_Output
+} DACMode;
+
+
 #ifdef LINUX // Linux -> FatFS hacks
 void f_close(File_Handle *f) {
   fclose(*f);
@@ -325,7 +331,7 @@ void jswrap_pb_videoFrame() {
       jsiConsolePrintf("Audio stream too big for streamBuffer\n");
       jswrap_pb_videoStop();
     } else {
-      STM32_I2S_AddSamples(streamBuffer, streamPacketLen>>1); // l is in bytes, not samples
+      STM32_I2S_AddSamples((int16_t*)streamBuffer, streamPacketLen>>1); // l is in bytes, not samples
     }
   } else if (streamPacketId==AVI_STREAM_VIDEO) {
     lcdFSMC_blitStart(&graphicsInternal, startX,startY,videoInfo.width,videoInfo.height);
@@ -419,16 +425,81 @@ void jswrap_pb_audioFrame() {
   //if (debugInfo) jsiConsolePrintf("A%d\n", actual);
   if (actual) {
     jswrap_pb_sendEvent(JS_EVENT_PREFIX"frame");
-    STM32_I2S_AddSamples(streamBuffer, actual>>1);
+    STM32_I2S_AddSamples((int16_t*)streamBuffer, actual>>1);
   } else {
     // jsiConsolePrintf("End of WAV\n");
     jswrap_pb_videoStopLetAudioRun(); // Stop parsing, let audio finish
   }
-
 }
 
 void graphicsInternalFlip() {
   // No offscreen buffer (yet), no need to flip
+}
+
+void es8388_write_reg(int r,int d) {
+  unsigned char data[2] = {(uint8_t)r,(uint8_t)d};
+  jshI2CWrite(EV_I2C1, 0x10, 2, data, true);
+}
+int es8388_read_reg(int r) {
+ unsigned char data[2] = {(uint8_t)r};
+ jshI2CWrite(EV_I2C1, 0x10, 1, data, true);
+ jshI2CRead(EV_I2C1, 0x10, 1, data, true);
+ return data[0];
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Pip",
+  "name" : "setVol",
+  "generate" : "jswrap_pb_setVol",
+  "params" : [
+      ["vol","int",""]
+   ]
+}
+*/
+void jswrap_pb_setVol(int volume) {
+  if (volume > 33) volume = 33;
+  if (volume < 0) volume = 0;
+  es8388_write_reg(0x2E, volume); // 46 LOUT1 (33 = max)
+  es8388_write_reg(0x2F, volume); // 47 ROUT1
+  es8388_write_reg(0x30, volume); // 48 LOUT2 (33 = max)
+  es8388_write_reg(0x31, volume); // 49 ROUT2
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Pip",
+  "name" : "setDACMode",
+  "generate" : "jswrap_pb_setDACMode",
+  "params" : [
+      ["mode","JsVar","Mode string - see below"]
+   ]
+}
+* 'off'/undefined -> off
+* 'out' -> output
+*/
+void jswrap_pb_setDACMode_(DACMode mode) {
+  if (mode == DM_OFF) {
+    es8388_write_reg(0x0F, 0x34); // ADC Mute
+    es8388_write_reg(0x19, 0x36); // DAC Mute
+    es8388_write_reg(0x02, 0xF3); // Power down DEM and STM
+    es8388_write_reg(0x03, 0xFC); // Power down ADC
+    es8388_write_reg(0x04, 0xC0); // Power down DAC L/ROUT
+  } else if (mode == DM_Output) {
+    es8388_write_reg(0x19, 0x32); // Unmute DAC
+    es8388_write_reg(0x04, 0x3C); // Power up DAC, Analog out
+    es8388_write_reg(0x02, 0xAA); // power up DEM and STM
+  } // TODO: passthru?
+  //es8388_write_reg(0x, 0x); //
+}
+void jswrap_pb_setDACMode(JsVar *mode) {
+  if (jsvIsUndefined(mode) || jsvIsStringEqual(mode, "off"))
+    jswrap_pb_setDACMode_(DM_OFF);
+  else if (jsvIsStringEqual(mode, "out"))
+    jswrap_pb_setDACMode_(DM_Output);
+  else {
+    jsExceptionHere(JSET_ERROR, "Unknown mode %q\n", mode);
+  }
 }
 
 /*JSON{
@@ -438,6 +509,42 @@ void graphicsInternalFlip() {
 void jswrap_pb_init() {
   // Initialise audio
   STM32_I2S_Init();
+  // Initialise dac
+  JshI2CInfo dacI2C;
+  jshI2CInitInfo(&dacI2C);
+  dacI2C.pinSCL = JSH_PORTB_COUNT+8;
+  dacI2C.pinSDA = JSH_PORTB_COUNT+9;
+  jshI2CSetup(EV_I2C1, &dacI2C);
+  jshDelayMicroseconds(1000);
+  es8388_write_reg(0x00, 0x80); // Reset the ES8388 control registers
+  jshDelayMicroseconds(100);
+  es8388_write_reg(0x00, 0x00);
+  jshDelayMicroseconds(1000);
+  // based on https://cdn.pcbartists.com/wp-content/uploads/2022/12/ES8388-user-guide-application-note.pdf
+  // The sequence for Start up play back mode
+  es8388_write_reg(0x08, 0x00); // slave mode
+  es8388_write_reg(0x02, 0xF3); // power down DEM and STM
+  es8388_write_reg(0x2B, 0x80); // Set same LRCK
+  es8388_write_reg(0x00, 0x05); // FIXME Set Chip to Play&Record Mode
+  es8388_write_reg(0x01, 0x40); // Power analog and IBIAS
+  es8388_write_reg(0x04, 0x3C); // Power up DAC, Analog out
+  //es8388_write_reg(0x17, 0b0001100); // GW: Set DAC SFI - I2S,16 bit
+  es8388_write_reg(0x17, 0); // Set DAC SFI - I2S,24 bit
+  es8388_write_reg(0x18, 0x02); // Set MCLK/LRCK ratio (256)
+  //es8388_write_reg(0x18, 0b00110); // GW: Set MCLK/LRCK ratio (768) - default
+  es8388_write_reg(0x1A, 0x00); // ADC volume 0dB
+  es8388_write_reg(0x1B, 0x00); // ADC volume 0dB
+  es8388_write_reg(0x1D, 0x20); // GW: DAC control - force MONO
+  es8388_write_reg(0x19, 0x32); // Unmute DAC
+  // Set mixer for DAC out
+  es8388_write_reg(0x26, 0x00);
+  es8388_write_reg(0x27, 0xB8); // LDAC to Lout (0xB8 = -15dB, 0x90 = 0dB)
+  es8388_write_reg(0x28, 0x38);
+  es8388_write_reg(0x29, 0x38);
+  es8388_write_reg(0x2A, 0xB8); // RDAC to Rout (0xB8 = -15dB, 0x90 = 0dB)
+  jswrap_pb_setVol(0x1E);      // Set volume: 0x1E = 0dB
+  es8388_write_reg(0x02, 0xAA); // power up DEM and STM
+  // Doc above also has notes on suspend/etc
 }
 
 /*JSON{
@@ -469,16 +576,6 @@ bool jswrap_pb_idle() {
 AUDIO CODEC INITIALISATION CODE
 --------------------------------
 
-var es = I2C1;
-es.setup({sda:B9, scl:B8});
-function es8388_write_reg(r,d) {
-  es.writeTo(0x10, [r,d]);
-}
-function es8388_read_reg(r) {
- es.writeTo(0x10,r);
- return es.readFrom(0x10,1)[0];
-}
-
 function es8388_adda_cfg(dacen, adcen){
   var tempreg = 0;
   tempreg |= ((!dacen) << 0);
@@ -495,53 +592,4 @@ function es8388_output_cfg(o1en, o2en){
   es8388_write_reg(0x04, tempreg);
 }
 
-function es8388_spkvol_set(volume){
-  if (volume > 33)
-      volume = 33;
-  es8388_write_reg(0x2E, volume); // 46 LOUT1 (33 = max)
-  es8388_write_reg(0x2F, volume); // 47 ROUT1
-  es8388_write_reg(0x30, volume); // 48 LOUT2 (33 = max)
-  es8388_write_reg(0x31, volume); // 49 ROUT2
-}
-
-function es8388_reset() {
-  console.log("Resetting ES8388");
-  es8388_write_reg(0x00, 0x80); // Reset the ES8388 control registers
-  es8388_write_reg(0x00, 0x00);
-}
-
-function es8388_init() {
-  console.log("Initialising ES8388");
-  // based on https://cdn.pcbartists.com/wp-content/uploads/2022/12/ES8388-user-guide-application-note.pdf
-  // The sequence for Start up play back mode
-  es8388_write_reg(0x08, 0x00); // slave mode
-  es8388_write_reg(0x02, 0xF3); // power down DEM and STM
-  es8388_write_reg(0x2B, 0x80); // Set same LRCK
-  es8388_write_reg(0x00, 0x05); // FIXME Set Chip to Play&Record Mode
-  es8388_write_reg(0x01, 0x40); // Power analog and IBIAS
-  es8388_write_reg(0x04, 0x3C); // Power up DAC, Analog out
-  //es8388_write_reg(0x17, 0b0001100); // GW: Set DAC SFI - I2S,16 bit
-  es8388_write_reg(0x17, 0); // Set DAC SFI - I2S,24 bit
-  es8388_write_reg(0x18, 0x02); // Set MCLK/LRCK ratio (256)
-  //es8388_write_reg(0x18, 0b00110); // GW: Set MCLK/LRCK ratio (768) - default
-  es8388_write_reg(0x1A, 0x00); // ADC volume 0dB
-  es8388_write_reg(0x1B, 0x00); // ADC volume 0dB
-  es8388_write_reg(0x1D, 0x20); // GW: DAC control - force MONO
-  es8388_write_reg(0x19, 0x32); // Unmute DAC
-  // Set mixer for DAC out
-  es8388_write_reg(0x26, 0x00);
-  es8388_write_reg(0x27, 0xB8); // LDAC to Lout (0xB8 = -15dB, 0x90 = 0dB)
-  es8388_write_reg(0x28, 0x38);
-  es8388_write_reg(0x29, 0x38);
-  es8388_write_reg(0x2A, 0xB8); // RDAC to Rout (0xB8 = -15dB, 0x90 = 0dB)
-  es8388_spkvol_set(0x1E);      // Set volume: 0x1E = 0dB
-  es8388_write_reg(0x02, 0xAA); // power up DEM and STM
-  // Doc above also has notes on suspend/etc
-}
-
-es8388_reset();
-setTimeout(_=>{
-  es8388_init();
-  Pip.videoStart("test-chirp.avi",{debug:1});
-}, 1000);
 */

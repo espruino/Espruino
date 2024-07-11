@@ -29,7 +29,7 @@
 void STM32_I2S_Init() {};
 void STM32_I2S_Prepare(int audioFreq) {};
 int STM32_I2S_GetFreeSamples() { return I2S_RING_BUFFER_SIZE; }
-void STM32_I2S_AddSamples(int16_t *data, int count) {};
+void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {};
 void STM32_I2S_Start() {};
 void STM32_I2S_Stop() {};
 #else // not LINUX
@@ -199,7 +199,7 @@ int STM32_I2S_GetFreeSamples() {
 }
 
 // Add samples to the ringbuffer
-void STM32_I2S_AddSamples(int16_t *data, int count) {
+void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {
   int timeout = 1000000;
   while ((STM32_I2S_GetFreeSamples() < count+32) && --timeout); // wait here for space
 
