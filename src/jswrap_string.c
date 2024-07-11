@@ -163,7 +163,7 @@ JsVar *jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
   "generate_full" : "jswrap_string_indexOf(parent, substring, fromIndex, false)",
   "params" : [
     ["substring","JsVar","The string to search for"],
-    ["fromIndex","JsVar","Index to search from"]
+    ["fromIndex","JsVar","[optional] Index to search from"]
   ],
   "return" : ["int32","The index of the string, or -1 if not found"]
 }
@@ -176,7 +176,7 @@ Return the index of substring in this string, or -1 if not found
   "generate_full" : "jswrap_string_indexOf(parent, substring, fromIndex, true)",
   "params" : [
     ["substring","JsVar","The string to search for"],
-    ["fromIndex","JsVar","Index to search from"]
+    ["fromIndex","JsVar","[optional] Index to search from"]
   ],
   "return" : ["int32","The index of the string, or -1 if not found"]
 }
@@ -461,7 +461,7 @@ JsVar *jswrap_string_replaceAll(JsVar *parent, JsVar *subStr, JsVar *newSubStr) 
   "generate" : "jswrap_string_substring",
   "params" : [
     ["start","int","The start character index (inclusive)"],
-    ["end","JsVar","The end character index (exclusive)"]
+    ["end","JsVar","[optional] The end character index (exclusive)"]
   ],
   "return" : ["JsVar","The part of this string between start and end"]
 }*/
@@ -484,7 +484,7 @@ JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   "generate" : "jswrap_string_substr",
   "params" : [
     ["start","int","The start character index"],
-    ["len","JsVar","The number of characters"]
+    ["len","JsVar","[optional] The number of characters"]
   ],
   "return" : ["JsVar","Part of this string from start for len characters"]
 }*/
@@ -798,7 +798,7 @@ JsVar *jswrap_string_concat(JsVar *parent, JsVar *args) {
   "generate" : "jswrap_string_startsWith",
   "params" : [
     ["searchString","JsVar","The string to search for"],
-    ["position","int","The start character index (or 0 if not defined)"]
+    ["position","int","[optional] The start character index (or 0 if not defined)"]
   ],
   "return" : ["bool","`true` if the given characters are found at the beginning of the string, otherwise, `false`."]
 }
@@ -822,7 +822,7 @@ bool jswrap_string_startsWith(JsVar *parent, JsVar *search, int position) {
   "generate" : "jswrap_string_endsWith",
   "params" : [
     ["searchString","JsVar","The string to search for"],
-    ["length","JsVar","The 'end' of the string - if left off the actual length of the string is used"]
+    ["length","JsVar","[optional] The 'end' of the string - if left off the actual length of the string is used"]
   ],
   "return" : ["bool","`true` if the given characters are found at the end of the string, otherwise, `false`."]
 }
@@ -848,7 +848,7 @@ bool jswrap_string_endsWith(JsVar *parent, JsVar *search, JsVar *length) {
   "generate_full" : "jswrap_string_indexOf(parent, substring, fromIndex, false)>=0",
   "params" : [
     ["substring","JsVar","The string to search for"],
-    ["fromIndex","JsVar","The start character index (or 0 if not defined)"]
+    ["fromIndex","JsVar","[optional] The start character index (or 0 if not defined)"]
   ],
   "return" : ["bool","`true` if the given characters are in the string, otherwise, `false`."]
 }
