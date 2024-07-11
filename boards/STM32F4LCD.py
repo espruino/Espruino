@@ -44,7 +44,7 @@ info = {
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o',
      'TARGETSOURCES+=targetlibs/stm32f4/lib/stm32f4xx_fsmc.c',
      'INCLUDE += -I$(ROOT)/libs/pipboy',
-     'WRAPPERSOURCES += libs/pipboy/avi.c',
+     'WRAPPERSOURCES += libs/pipboy/avi.c libs/pipboy/stm32_i2s.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_pipboy.c',     
 #     'USE_DFU=1'
    ]

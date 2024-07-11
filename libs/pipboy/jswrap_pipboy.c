@@ -41,18 +41,15 @@
 #include "jswrap_fs.h"
 #include "jswrap_file.h"
 #include "graphics.h"
+#include "stm32_i2s.h"
 #ifndef LINUX
-#include "stm32f4xx_spi.h"
-#include "stm32f4xx_dma.h"
+
 #include "lcd_fsmc.h"
 #endif
 
 #include "avi.h"
 
-#define AUDIO_BUFFER_SIZE 2200 // 16 bit 16kHz -> 1152
-#define NUM_AUDIO_BUFFERS 4
 #define VIDEO_BUFFER_SIZE 40960
-
 uint8_t videoBuffer[VIDEO_BUFFER_SIZE] __attribute__ ((aligned (8)));
 // Can't go in 64k CCM RAM because no DMA is allowed to CCM!
 // Maybe if we modified DMA to read to a buffer first?
@@ -63,9 +60,7 @@ uint32_t videoStreamLen;        // length of current stream
 uint32_t videoStreamRemaining;  // length left to read in current stream
 uint32_t videoStreamBufferLen;  // length of stream in current buffer
 
-volatile int16_t i2splaybuf; // currently playing buffer number
-volatile int16_t i2ssavebuf; // currently writing to buffer number
-int16_t i2sbuf[NUM_AUDIO_BUFFERS][AUDIO_BUFFER_SIZE]; // Set of audio buffers
+
 
 JsSysTime videoFrameTime;
 JsSysTime videoNextFrameTime;
@@ -90,82 +85,6 @@ FRESULT f_read(File_Handle* fp, void* buff, uint32_t btr, size_t* br) {
 }
 #else // not LINUX
 
-void DMA1_Stream4_IRQHandler(void) {
-  if(DMA_GetITStatus(DMA1_Stream4, DMA_IT_TCIF4)==SET) {
-    DMA_ClearITPendingBit(DMA1_Stream4, DMA_IT_TCIF4);
-
-    if (++i2splaybuf==NUM_AUDIO_BUFFERS) i2splaybuf = 0;
-    if(DMA1_Stream4->CR&(1<<19))
-      DMA_MemoryTargetConfig(DMA1_Stream4,(uint32_t)i2sbuf[i2splaybuf], DMA_Memory_0);
-    else
-      DMA_MemoryTargetConfig(DMA1_Stream4,(uint32_t)i2sbuf[i2splaybuf], DMA_Memory_1);
-
-    if (i2splaybuf==i2ssavebuf) {
-      // DMA_Cmd(DMA1_Stream4, DISABLE); // Stop the DMA - it'll get re-enabled when we refill the buffer
-      // if (debugInfo) jsiConsolePrintf("P%d ", i2splaybuf);
-    }
-
-  }
-}
-
-void I2S_SetSampleRate(int hz) {
-  #define prescalerCount 7
-  const uint16_t prescalers[prescalerCount][5]={
-    {8000 ,256,5,12,1},
-    {11020,429,4,19,0},
-    {16000,213,2,13,0},
-    {22050,429,4, 9,1},
-    {32000,213,2, 6,1},
-    {44100,271,2, 6,0},
-    {48000,258,3, 3,1}
-  };
- /* RCC_PLLI2SCmd(DISABLE);
-  for(int i=0;i<prescalerCount;i++) {
-    if(hz==prescalers[i][0]) {
-      RCC_PLLI2SConfig((uint32_t)prescalers[i][1],(uint32_t)prescalers[i][2]);
-      RCC->CR |= RCC_CR_PLLI2SON;
-      while((RCC->CR&RCC_CR_PLLI2SRDY)==0);
-      uint32_t i2spr;
-      i2spr = prescalers[i][3]<<0;    // I2S Linear prescaler
-      i2spr |= prescalers[i][4]<<8;   // Odd factor for the prescaler
-      i2spr |= SPI_I2SPR_MCKOE; // master clock out
-      SPI2->I2SPR=i2spr;
-      return;
-    }
-  }
-  jsiConsolePrintf("Samplerate %d not supported\n");*/
-  // FIXME use samplerate in I2S_Init - not actually needed if all audio is 16kHz, as jswrap_pb_init() sets it up in the call to I2S_Init()
-  RCC_PLLI2SCmd(ENABLE);
-}
-
-void I2S_DMAInit(int sampleCount) {
-  DMA_DeInit(DMA1_Stream4);
-  while (DMA_GetCmdStatus(DMA1_Stream4) != DISABLE){}
-
-  DMA_ClearITPendingBit(DMA1_Stream4,DMA_IT_FEIF4|DMA_IT_DMEIF4|DMA_IT_TEIF4|DMA_IT_HTIF4|DMA_IT_TCIF4);
-  DMA_InitTypeDef  DMA_InitStructure;
-  DMA_InitStructure.DMA_Channel = DMA_Channel_0;
-  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&SPI2->DR;
-  DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)i2sbuf[0];
-  DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
-  DMA_InitStructure.DMA_BufferSize = (uint32_t)sampleCount;
-  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
-  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
-  DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
-  DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_1QuarterFull;
-  DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
-  DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
-  DMA_Init(DMA1_Stream4, &DMA_InitStructure);
-
-  DMA_DoubleBufferModeConfig(DMA1_Stream4,(uint32_t)i2sbuf[1],DMA_Memory_0);
-  DMA_DoubleBufferModeCmd(DMA1_Stream4,ENABLE);
-
-  DMA_ITConfig(DMA1_Stream4,DMA_IT_TC,ENABLE);
-}
 
 #endif
 
@@ -259,20 +178,9 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
         videoNextFrameTime = jshGetSystemTime() + videoFrameTime;
 #ifndef LINUX
         // Set up Audio
-        if (videoInfo.audioBufferSize <= AUDIO_BUFFER_SIZE) { // IF we have audio
-          I2S_SetSampleRate(videoInfo.audioSampleRate);
-          I2S_DMAInit(videoInfo.audioBufferSize); // 16 bit
-          i2splaybuf=0;
-          i2ssavebuf=0;
-          // Clear audio buffers
-          for (int n=0; n<NUM_AUDIO_BUFFERS; n++) {
-            int16_t *b=i2sbuf[n];
-            for (int i=0;i<AUDIO_BUFFER_SIZE;i++) {
-              *(b++) = 0x0000;
-            }
-          }
-          // wait until first audio data before enabling the I2S DMA
-          // DMA_Cmd(DMA1_Stream4, ENABLE); 
+        if (videoInfo.audioBufferSize <= I2S_RING_BUFFER_SIZE*2) { // IF we have audio
+          STM32_I2S_Prepare(videoInfo.audioSampleRate);
+          // playback will start when the buffer is full enough
         } else if (videoInfo.audioBufferSize) {
           jsiConsolePrintf("Audio stream too big (%db)\n", videoInfo.audioBufferSize);
         }
@@ -297,9 +205,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 */
 void jswrap_pb_videoStop() {
   if (videoLoaded) {
-#ifndef LINUX
-    DMA_Cmd(DMA1_Stream4, DISABLE); // Stop I2S
-#endif
+    STM32_I2S_Stop(); // Stop audio (FIXME do we need/want this? might be better to stop when buffer is empty)
     f_close(&videoFile);
     videoLoaded = false;
     jswrap_pb_sendEvent(JS_EVENT_PREFIX"videoStopped");
@@ -344,28 +250,7 @@ void jswrap_pb_videoFrame() {
       jsiConsolePrintf("Audio stream too big for videoBuffer\n");
       jswrap_pb_videoStop();
     } else {
-      if (++i2ssavebuf==NUM_AUDIO_BUFFERS) i2ssavebuf = 0;
-      // should we wait if we're overwriting a buffer we're reading from?
-      if (i2splaybuf==i2ssavebuf) {
-        // if (debugInfo) jsiConsolePrintf("S%d ", i2ssavebuf);
-      }
-
-      uint32_t l = videoStreamLen;
-      if (l > AUDIO_BUFFER_SIZE) {
-        jsiConsolePrintf("Audio stream too big for audioBuffer (%d)\n", l);
-        l = AUDIO_BUFFER_SIZE;
-      }
-      // memcpy(i2sbuf[i2ssavebuf], videoBuffer, l);  // Can't do a straight copy - we need to duplicate the data for stereo
-      int16_t *b=i2sbuf[i2ssavebuf];
-      int16_t *source=(int16_t *)videoBuffer;
-      for (uint32_t i=0;i<l;i+=2) {
-        *(b++) = *(source);
-        *(b++) = *(source++); // Make a second copy for the other stereo channel
-      }
-
-      DMA_Cmd(DMA1_Stream4, ENABLE); // Start the DMA if it's not already running
-
-      // if (debugInfo) jsiConsolePrintf("Audio in %d out %d (%db)\n", i2ssavebuf, i2splaybuf, l);
+      STM32_I2S_AddSamples(videoBuffer, videoStreamLen>>1); // l is in bytes, not samples
     }
   } else if (videoStreamId==AVI_STREAM_VIDEO) {
     lcdFSMC_blitStart(&graphicsInternal, startX,startY,videoInfo.width,videoInfo.height);
@@ -423,7 +308,6 @@ void jswrap_pb_videoFrame() {
       }
     }
     lcdFSMC_blitEnd();
-    videoNextFrameTime += videoFrameTime;
     if (debugInfo) {
       //jswrap_pb_videoStop(); // first frame only
       //JsSysTime tEnd = jshGetSystemTime();
@@ -437,7 +321,11 @@ void jswrap_pb_videoFrame() {
   // get IDs for next stream
   videoStreamId = *(uint16_t*)&videoBuffer[videoStreamBufferLen-6]; // +0 = '01'/'00' stream index?
   videoStreamLen = *(uint32_t*)&videoBuffer[videoStreamBufferLen-4]; // +0 = '01'/'00' stream index?
-
+  if (videoStreamId==AVI_STREAM_VIDEO) {
+    // the next frame is a video frame, so ensure we parse it at the right time
+    // if the frame is audio we want to parse it ASAP
+    videoNextFrameTime += videoFrameTime;
+  }
 }
 
 void graphicsInternalFlip() {
@@ -449,54 +337,7 @@ void graphicsInternalFlip() {
 }*/
 void jswrap_pb_init() {
   // Initialise audio
-#ifndef LINUX
-  I2S_InitTypeDef I2S_InitStructure;
-
-  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB|RCC_AHB1Periph_GPIOC, ENABLE);
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
-  RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI2,ENABLE);
-  RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI2,DISABLE);
-  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
-
-  GPIO_InitTypeDef  GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//100MHz
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);
-
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3|GPIO_Pin_6;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//100MHz
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-  GPIO_PinAFConfig(GPIOB,GPIO_PinSource12,GPIO_AF_SPI2); // PB12,AF5  I2S_LRCK
-  GPIO_PinAFConfig(GPIOB,GPIO_PinSource13,GPIO_AF_SPI2); // PB13,AF5  I2S_SCLK
-  GPIO_PinAFConfig(GPIOC,GPIO_PinSource3,GPIO_AF_SPI2);   // PC3 ,AF5  I2S_DACDATA
-  GPIO_PinAFConfig(GPIOC,GPIO_PinSource6,GPIO_AF_SPI2);   // PC6 ,AF5  I2S_MCK
-  GPIO_PinAFConfig(GPIOC,GPIO_PinSource2,GPIO_AF_SPI3); // PC2 ,AF6  I2S_ADCDATA (AF6 apparently?)
-
-  I2S_InitStructure.I2S_Mode=I2S_Mode_MasterTx;
-  I2S_InitStructure.I2S_Standard=I2S_Standard_Phillips;
-  I2S_InitStructure.I2S_DataFormat=I2S_DataFormat_16bextended;
-  I2S_InitStructure.I2S_MCLKOutput=I2S_MCLKOutput_Enable;
-  I2S_InitStructure.I2S_AudioFreq=I2S_AudioFreq_16k;
-  I2S_InitStructure.I2S_CPOL=I2S_CPOL_Low;
-  I2S_Init(SPI2,&I2S_InitStructure);
-
-  SPI_I2S_DMACmd(SPI2,SPI_I2S_DMAReq_Tx,ENABLE);
-  I2S_Cmd(SPI2,ENABLE);
-
-  NVIC_InitTypeDef   NVIC_InitStructure;
-  NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream4_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
-#endif
+  STM32_I2S_Init();
 }
 
 /*JSON{
