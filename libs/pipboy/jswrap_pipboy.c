@@ -49,16 +49,16 @@
 
 #include "avi.h"
 
-#define VIDEO_BUFFER_SIZE 40960
-uint8_t videoBuffer[VIDEO_BUFFER_SIZE] __attribute__ ((aligned (8)));
+#define STREAM_BUFFER_SIZE 40960
+uint8_t streamBuffer[STREAM_BUFFER_SIZE] __attribute__ ((aligned (8)));
 // Can't go in 64k CCM RAM because no DMA is allowed to CCM!
 // Maybe if we modified DMA to read to a buffer first?
 
-int videoBufferLen;
-uint16_t videoStreamId;
-uint32_t videoStreamLen;        // length of current stream
-uint32_t videoStreamRemaining;  // length left to read in current stream
-uint32_t videoStreamBufferLen;  // length of stream in current buffer
+int streamBufferLen;
+uint16_t streamPacketId;
+uint32_t streamPacketLen;        // length of current stream
+uint32_t streamPacketRemaining;  // length left to read in current stream
+uint32_t streamPacketBufferLen;  // length of stream in current buffer
 
 
 
@@ -166,13 +166,13 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 
       videoLoaded = true;
       size_t actual = 0;
-      res = f_read(&videoFile, (uint8_t*)videoBuffer, sizeof(videoBuffer), &actual);
+      res = f_read(&videoFile, (uint8_t*)streamBuffer, sizeof(streamBuffer), &actual);
       if (debugInfo) {
-        jsiConsolePrintf("AVI read %d %d %c%c%c%c\n", sizeof(videoBuffer), actual, videoBuffer[0],videoBuffer[1],videoBuffer[2],videoBuffer[3]);
+        jsiConsolePrintf("AVI read %d %d %c%c%c%c\n", sizeof(streamBuffer), actual, streamBuffer[0],streamBuffer[1],streamBuffer[2],streamBuffer[3]);
       }
-      if (aviLoad(videoBuffer, (int)actual, &videoInfo, debugInfo)) {
-        videoStreamId = *(uint16_t*)&videoBuffer[videoInfo.videoOffset+2]; // +0 = '01'/'00' stream index?
-        videoStreamLen = *(uint32_t*)&videoBuffer[videoInfo.videoOffset+4]; // +0 = '01'/'00' stream index?
+      if (aviLoad(streamBuffer, (int)actual, &videoInfo, debugInfo)) {
+        streamPacketId = *(uint16_t*)&streamBuffer[videoInfo.videoOffset+2]; // +0 = '01'/'00' stream index?
+        streamPacketLen = *(uint32_t*)&streamBuffer[videoInfo.videoOffset+4]; // +0 = '01'/'00' stream index?
         f_lseek(&videoFile, (DWORD)(videoInfo.videoOffset+8)); // go back to start of video data
         videoFrameTime = jshGetTimeFromMilliseconds(videoInfo.usPerFrame/1000.0);
         videoNextFrameTime = jshGetSystemTime() + videoFrameTime;
@@ -235,31 +235,31 @@ void lcdFSMC_blitEnd() {
 void jswrap_pb_videoFrame() {
   if (!videoLoaded) return;
   JsSysTime tStart = jshGetSystemTime();
-  //if (debugInfo) jsiConsolePrintf("Stream 0x%04x, %d\n", videoStreamId, videoStreamLen);
-  videoStreamRemaining = 0;
-  videoStreamBufferLen = videoStreamLen+8; // 8 bytes contains info for next stream
-  if (videoStreamLen > sizeof(videoBuffer)) {
-    videoStreamRemaining = videoStreamBufferLen-sizeof(videoBuffer);
-    videoStreamBufferLen = sizeof(videoBuffer);
+  //if (debugInfo) jsiConsolePrintf("Stream 0x%04x, %d\n", streamPacketId, streamPacketLen);
+  streamPacketRemaining = 0;
+  streamPacketBufferLen = streamPacketLen+8; // 8 bytes contains info for next stream
+  if (streamPacketLen > sizeof(streamBuffer)) {
+    streamPacketRemaining = streamPacketBufferLen-sizeof(streamBuffer);
+    streamPacketBufferLen = sizeof(streamBuffer);
   }
   size_t actual = 0;
-  //jsiConsolePrintf("=========== FIRST READ %d (%d)\n", ((size_t)videoBuffer)&7, videoStreamBufferLen);
-  f_read(&videoFile, videoBuffer,videoStreamBufferLen, &actual);
-  if (videoStreamId==AVI_STREAM_AUDIO) {
-    if (videoStreamRemaining) {
-      jsiConsolePrintf("Audio stream too big for videoBuffer\n");
+  //jsiConsolePrintf("=========== FIRST READ %d (%d)\n", ((size_t)streamBuffer)&7, streamPacketBufferLen);
+  f_read(&videoFile, streamBuffer,streamPacketBufferLen, &actual);
+  if (streamPacketId==AVI_STREAM_AUDIO) {
+    if (streamPacketRemaining) {
+      jsiConsolePrintf("Audio stream too big for streamBuffer\n");
       jswrap_pb_videoStop();
     } else {
-      STM32_I2S_AddSamples(videoBuffer, videoStreamLen>>1); // l is in bytes, not samples
+      STM32_I2S_AddSamples(streamBuffer, streamPacketLen>>1); // l is in bytes, not samples
     }
-  } else if (videoStreamId==AVI_STREAM_VIDEO) {
+  } else if (streamPacketId==AVI_STREAM_VIDEO) {
     lcdFSMC_blitStart(&graphicsInternal, startX,startY,videoInfo.width,videoInfo.height);
     int x=0, y=videoInfo.height-1;
-    uint8_t *b = videoBuffer;
-    uint8_t *endBuffer = &videoBuffer[videoStreamBufferLen];
+    uint8_t *b = streamBuffer;
+    uint8_t *endBuffer = &streamBuffer[streamPacketBufferLen];
     while (b < endBuffer) {
       // Loop doing RLE until end *or* we have more data and no RLE command could use up more than we have left
-      uint8_t *nearlyEndOfBuffer = videoStreamRemaining ? &videoBuffer[videoStreamBufferLen-260] : endBuffer;
+      uint8_t *nearlyEndOfBuffer = streamPacketRemaining ? &streamBuffer[streamPacketBufferLen-260] : endBuffer;
       while (b < nearlyEndOfBuffer) {
         // next RLE byte!
         uint8_t num = *(b++);
@@ -292,19 +292,19 @@ void jswrap_pb_videoFrame() {
         }
       }
       // check if we need to refill our buffer
-      if (videoStreamRemaining) {
-        uint32_t amountToShift = (uint32_t)(b-videoBuffer) & ~7ul; // aligned to the nearest word (STM32 f_read fails otherwise!)
-        uint32_t leftInStream = videoStreamBufferLen - amountToShift;
-        memmove(videoBuffer, &videoBuffer[amountToShift], leftInStream); // move data back
+      if (streamPacketRemaining) {
+        uint32_t amountToShift = (uint32_t)(b-streamBuffer) & ~7ul; // aligned to the nearest word (STM32 f_read fails otherwise!)
+        uint32_t leftInStream = streamPacketBufferLen - amountToShift;
+        memmove(streamBuffer, &streamBuffer[amountToShift], leftInStream); // move data back
         b -= amountToShift;
-        videoStreamBufferLen = leftInStream;
-        uint32_t bufferRemaining = sizeof(videoBuffer)-leftInStream;
-        uint32_t len = videoStreamRemaining;
+        streamPacketBufferLen = leftInStream;
+        uint32_t bufferRemaining = sizeof(streamBuffer)-leftInStream;
+        uint32_t len = streamPacketRemaining;
         if (len>bufferRemaining) len=bufferRemaining;
         //jsiConsolePrintf("=========== READ %d (%d)\n", leftInStream, leftInStream&3);
-        f_read(&videoFile, &videoBuffer[leftInStream], len, &actual);
-        videoStreamRemaining -= len;
-        videoStreamBufferLen += len;
+        f_read(&videoFile, &streamBuffer[leftInStream], len, &actual);
+        streamPacketRemaining -= len;
+        streamPacketBufferLen += len;
       }
     }
     lcdFSMC_blitEnd();
@@ -319,9 +319,9 @@ void jswrap_pb_videoFrame() {
     jswrap_pb_videoStop();
   }
   // get IDs for next stream
-  videoStreamId = *(uint16_t*)&videoBuffer[videoStreamBufferLen-6]; // +0 = '01'/'00' stream index?
-  videoStreamLen = *(uint32_t*)&videoBuffer[videoStreamBufferLen-4]; // +0 = '01'/'00' stream index?
-  if (videoStreamId==AVI_STREAM_VIDEO) {
+  streamPacketId = *(uint16_t*)&streamBuffer[streamPacketBufferLen-6]; // +0 = '01'/'00' stream index?
+  streamPacketLen = *(uint32_t*)&streamBuffer[streamPacketBufferLen-4]; // +0 = '01'/'00' stream index?
+  if (streamPacketId==AVI_STREAM_VIDEO) {
     // the next frame is a video frame, so ensure we parse it at the right time
     // if the frame is audio we want to parse it ASAP
     videoNextFrameTime += videoFrameTime;
