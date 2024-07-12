@@ -145,4 +145,6 @@ def get_pins():
   pins = pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])
   pinutils.findpin(pins, "PA6", True)["functions"]["NEGATED"]=0; # LED1
   pinutils.findpin(pins, "PA7", True)["functions"]["NEGATED"]=0; # LED2
+  pinutils.findpin(pins, "PE4", True)["functions"]["NEGATED"]=0; # BTN2
+  pinutils.findpin(pins, "PE3", True)["functions"]["NEGATED"]=0; # BTN3
   return pins

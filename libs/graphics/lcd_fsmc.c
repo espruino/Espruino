@@ -1611,10 +1611,15 @@ void lcdFSMC_setPower(bool isOn) {
   jshPinOutput(LCD_BL, isOn);
   #endif
   if (LCD_Code == ILI9341) {
-    if (isOn)
+    if (isOn) {
+      LCD_WR_CMD(0x11, 0); // SLPOUT
+      jshDelayMicroseconds(20);
       LCD_WR_CMD(0x29, 0); // DISPON
-    else
+    } else {
       LCD_WR_CMD(0x28, 0); // DISPOFF
+      jshDelayMicroseconds(20);
+      LCD_WR_CMD(0x10, 0); // SLPIN
+    }
   }
 }
 
