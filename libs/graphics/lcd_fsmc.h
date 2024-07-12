@@ -23,5 +23,7 @@ void lcdFSMC_setCursor(JsGraphics *gfx, int x, int y);
 void lcdFSMC_blitPixel(unsigned int col);
 void lcdFSMC_blitEnd();
 
+void lcdFSMC_setPower(bool isOn);
+
 /// special case for sending a pixel-doubled 4 bit image, with even no of pixels
 void lcdFSMC_blit4Bit(JsGraphics *gfx, int x, int y, int w, int h, int scale, JsvStringIterator *pixels, const uint16_t *palette);

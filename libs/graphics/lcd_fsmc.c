@@ -1606,6 +1606,18 @@ static inline void lcdSetFullWindow(JsGraphics *gfx) {
   lcdSetWindow(gfx,0,0,gfx->data.width-1,gfx->data.height-1);
 }
 
+void lcdFSMC_setPower(bool isOn) {
+  #ifdef LCD_BL
+  jshPinOutput(LCD_BL, isOn);
+  #endif
+  if (LCD_Code == ILI9341) {
+    if (isOn)
+      LCD_WR_CMD(0x29, 0); // DISPON
+    else
+      LCD_WR_CMD(0x28, 0); // DISPOFF
+  }
+}
+
 void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   // finally!
 #ifdef LCD_ORIENTATION_LANDSCAPE

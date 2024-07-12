@@ -117,8 +117,8 @@ devices = {
             'pin_rs' : 'D13',
             'pin_rd' : 'D4',
             'pin_wr' : 'D5',
-            'pin_cs' : 'D7'
-            # B1 = backlight
+            'pin_cs' : 'D7',
+            'pin_bl' : 'B1' # backlight
           },  
   # flash
   'USB' : { 'pin_vsense' :  'A9',

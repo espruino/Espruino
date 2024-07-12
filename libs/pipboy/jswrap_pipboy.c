@@ -503,6 +503,20 @@ void jswrap_pb_setDACMode(JsVar *mode) {
 }
 
 /*JSON{
+  "type" : "staticmethod",
+  "class" : "Pip",
+  "name" : "setLCDPower",
+  "generate" : "jswrap_pb_setLCDPower",
+  "params" : [
+      ["isOn","bool",""]
+   ]
+}
+*/
+void jswrap_pb_setLCDPower(bool isOn) {
+  lcdFSMC_setPower(isOn);
+}
+
+/*JSON{
   "type" : "init",
   "generate" : "jswrap_pb_init"
 }*/
