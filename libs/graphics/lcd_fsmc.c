@@ -22,6 +22,7 @@
 
 const unsigned int DELAY_SHORT = 10;
 
+#define RGB_HALF(col) ((col>>1) & 0b0111101111101111) // Halve the RGB values
 
 void LCD_DELAY(__IO uint32_t nCount) {
   for(; nCount != 0; nCount--) ;//n++;
@@ -1643,8 +1644,16 @@ void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned 
     if (LCD_Code!=ILI9341)
       lcdSetCursor(gfx,x1,y1);// FIXME - we don't need this?
     lcdSetWrite();
-    unsigned int i=0, l=(1+x2-x1)*(1+y2-y1);
+#ifdef LCD_CRT_EFFECT  
+    unsigned int l=(1+x2-x1);
+    for (int y=y1;y<=y2;y++) {
+      LCD_WR_Data_multi((y%2==0)?col:RGB_HALF(col), l);
+    }
     LCD_WR_Data_multi(col, l);
+#else
+    unsigned int l=(1+x2-x1)*(1+y2-y1);
+    LCD_WR_Data_multi(col, l);
+#endif
     lcdSetFullWindow(gfx);
   }
 }
@@ -1659,7 +1668,12 @@ unsigned int lcdGetPixel_FSMC(JsGraphics *gfx, int x, int y) {
 void lcdSetPixel_FSMC(JsGraphics *gfx, int x, int y, unsigned int col) {
   lcdSetCursor(gfx,x,y);
   lcdSetWrite();
+#ifdef LCD_CRT_EFFECT  
+  // Apply a "CRT effect" by halving the brightness on every other line
+  LCD_WR_Data((y%2==0)?col:RGB_HALF(col));
+#else
   LCD_WR_Data(col);
+#endif
 }
 
 void lcdInit_FSMC(JsGraphics *gfx) {
@@ -1696,7 +1710,7 @@ void lcdFSMC_blit4Bit(JsGraphics *gfx, int x, int y, int w, int h, int scale, Js
   assert((w&1)==0); // only works on even image widths
   int w2 = w>>1;
   lcdFSMC_blitStart(gfx, x,y, w*scale,h*scale);
-  for (int y=0;y<h;y++) {
+  for (int row=y;row<y+h;row++) {
     JsvStringIterator lastPixels;
     jsvStringIteratorClone(&lastPixels, pixels);
     for (int n=1;n<=scale;n++) {
@@ -1704,17 +1718,29 @@ void lcdFSMC_blit4Bit(JsGraphics *gfx, int x, int y, int w, int h, int scale, Js
         for (int x=0;x<w2;x++) {
           int bitData = jsvStringIteratorGetCharAndNext(pixels);
           uint16_t c = palette[(bitData>>4)&15];
+#ifdef LCD_CRT_EFFECT
+          if (row%2==1) c=RGB_HALF(c);
+#endif
           lcdFSMC_blitPixel(c);
           c = palette[bitData&15];
+#ifdef LCD_CRT_EFFECT
+          if (row%2==1) c=RGB_HALF(c);
+#endif
           lcdFSMC_blitPixel(c);
         }
       } else if (scale==2) {
         for (int x=0;x<w2;x++) {
           int bitData = jsvStringIteratorGetCharAndNext(pixels);
           uint16_t c = palette[(bitData>>4)&15];
+#ifdef LCD_CRT_EFFECT
+          if ((row+n)%2==0) c=RGB_HALF(c);
+#endif
           lcdFSMC_blitPixel(c);
           lcdFSMC_blitPixel(c);
           c = palette[bitData&15];
+#ifdef LCD_CRT_EFFECT
+          if ((row+n)%2==0) c=RGB_HALF(c);
+#endif
           lcdFSMC_blitPixel(c);
           lcdFSMC_blitPixel(c);
         }
@@ -1722,9 +1748,15 @@ void lcdFSMC_blit4Bit(JsGraphics *gfx, int x, int y, int w, int h, int scale, Js
         for (int x=0;x<w2;x++) {
           int bitData = jsvStringIteratorGetCharAndNext(pixels);
           uint16_t c = palette[(bitData>>4)&15];
+#ifdef LCD_CRT_EFFECT
+          if ((row+n)%2==0) c=RGB_HALF(c);
+#endif
           for (int s=0;s<scale;s++)
             lcdFSMC_blitPixel(c);
           c = palette[bitData&15];
+#ifdef LCD_CRT_EFFECT
+          if ((row+n)%2==0) c=RGB_HALF(c);
+#endif
           for (int s=0;s<scale;s++)
             lcdFSMC_blitPixel(c);
         }
