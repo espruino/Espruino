@@ -3484,7 +3484,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     } else
 #endif
       {
-        jsiConsolePrintf("fallback2\n");
+        // jsiConsolePrintf("fallback2\n");
         int bits=0;
         int yp = yPos;
         for (y=0;y<img.height;y++) {
@@ -3531,7 +3531,7 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
 #else
     if (true) {
 #endif // GRAPHICS_FAST_PATHS
-jsiConsolePrintf("fallback\n");
+// jsiConsolePrintf("fallback\n");
       GfxDrawImageLayer l;
       l.x1 = xPos<<8;
       l.y1 = yPos<<8;
