@@ -23,6 +23,8 @@
 const unsigned int DELAY_SHORT = 10;
 
 #define RGB_HALF(col) ((col>>1) & 0b0111101111101111) // Halve the RGB values
+#define GPIO_PORT_FROM_PIN(pin) (GPIOA_BASE + 0x400*(pin>>4)) // Get the GPIO port from a pin number
+#define GPIO_BIT_FROM_PIN(pin) (1<<(pin&15)) // Get the GPIO pin bitmask from a pin number
 
 void LCD_DELAY(__IO uint32_t nCount) {
   for(; nCount != 0; nCount--) ;//n++;
@@ -358,14 +360,18 @@ void LCD_init_hardware() {
 #endif
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_4 | GPIO_Pin_5 |
                           GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_14 |
-                          GPIO_Pin_15 | GPIO_Pin_7 /*NE1*/ |
-                          GPIO_Pin_13/*RS*/;
-                          //PB GPIO_Pin_11/*RS*/;
+                          GPIO_Pin_15;
   GPIO_Init(GPIOD, &GPIO_InitStructure);
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7 | GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 |
                           GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 |
                           GPIO_Pin_15;
   GPIO_Init(GPIOE, &GPIO_InitStructure);
+
+  // Setup RS and CS (NE1) pins
+  GPIO_InitStructure.GPIO_Pin = GPIO_BIT_FROM_PIN(LCD_FSMC_RS);
+  GPIO_Init(GPIO_PORT_FROM_PIN(LCD_FSMC_RS), &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_Pin = GPIO_BIT_FROM_PIN(LCD_FSMC_CS);
+  GPIO_Init(GPIO_PORT_FROM_PIN(LCD_FSMC_CS), &GPIO_InitStructure);
 
 #ifdef STM32F4
 	GPIO_PinAFConfig(GPIOD,GPIO_PinSource0,GPIO_AF_FSMC);//PD0,AF12
@@ -388,48 +394,47 @@ void LCD_init_hardware() {
 	GPIO_PinAFConfig(GPIOE,GPIO_PinSource14,GPIO_AF_FSMC);
 	GPIO_PinAFConfig(GPIOE,GPIO_PinSource15,GPIO_AF_FSMC);//PE15,AF12
 
-	//PBGPIO_PinAFConfig(GPIOD,GPIO_PinSource11,GPIO_AF_FSMC);//PF12,AF12
-  GPIO_PinAFConfig(GPIOD,GPIO_PinSource13,GPIO_AF_FSMC);//PF12,AF12
+	GPIO_PinAFConfig(GPIO_PORT_FROM_PIN(LCD_FSMC_RS),LCD_FSMC_RS&0x0F,GPIO_AF_FSMC); // RS pin
 
 	FSMC_NORSRAMTimingInitTypeDef  readWriteTiming;
 	FSMC_NORSRAMTimingInitTypeDef  writeTiming;
 
-	readWriteTiming.FSMC_AddressSetupTime = 0XF;	 //��ַ����ʱ�䣨ADDSET��Ϊ16��HCLK 1/168M=6ns*16=96ns
-	readWriteTiming.FSMC_AddressHoldTime = 0x00;	 //��ַ����ʱ�䣨ADDHLD��ģʽAδ�õ�
-	readWriteTiming.FSMC_DataSetupTime = 60;			//���ݱ���ʱ��Ϊ60��HCLK	=6*60=360ns
+	readWriteTiming.FSMC_AddressSetupTime = 0XF;	 // Read address setup time (ADDSET) is 16 HCLKs (1/168 MHz) = 6ns*16 = 96ns
+	readWriteTiming.FSMC_AddressHoldTime = 0x00;	 // Address hold time (ADDHLD) is not used in Mode A
+	readWriteTiming.FSMC_DataSetupTime = 60;			 // Read data setup time is 60 HCLKs = 6ns*60 = 360ns
 	readWriteTiming.FSMC_BusTurnAroundDuration = 0x00;
 	readWriteTiming.FSMC_CLKDivision = 0x00;
 	readWriteTiming.FSMC_DataLatency = 0x00;
-	readWriteTiming.FSMC_AccessMode = FSMC_AccessMode_A;	 //ģʽA
+	readWriteTiming.FSMC_AccessMode = FSMC_AccessMode_A;	 // Mode A
 
 
-	writeTiming.FSMC_AddressSetupTime =9;	      //��ַ����ʱ�䣨ADDSET��Ϊ9��HCLK =54ns
-	writeTiming.FSMC_AddressHoldTime = 0x00;	 //��ַ����ʱ�䣨A
-	writeTiming.FSMC_DataSetupTime = 8;		 //���ݱ���ʱ��Ϊ6ns*9��HCLK=54ns
+	writeTiming.FSMC_AddressSetupTime =9;	      // Write address setup time (ADDSET) is 9 HCLKs = 54ns
+	writeTiming.FSMC_AddressHoldTime = 0x00;    // Address hold time (ADDHLD) is not used in Mode A
+	writeTiming.FSMC_DataSetupTime = 8;		      // Write data setup time is 9 HCLKs = 6ns*9 = 54ns
 	writeTiming.FSMC_BusTurnAroundDuration = 0x00;
 	writeTiming.FSMC_CLKDivision = 0x00;
 	writeTiming.FSMC_DataLatency = 0x00;
-	writeTiming.FSMC_AccessMode = FSMC_AccessMode_A;	 //ģʽA
+	writeTiming.FSMC_AccessMode = FSMC_AccessMode_A;	 // Mode A
 
   FSMC_NORSRAMInitTypeDef  FSMC_NORSRAMInitStructure;
   FSMC_NORSRAMStructInit(&FSMC_NORSRAMInitStructure);
-	FSMC_NORSRAMInitStructure.FSMC_Bank = FSMC_Bank1_NORSRAM1;//  ��������ʹ��NE4 ��Ҳ�Ͷ�ӦBTCR[6],[7]��
-	FSMC_NORSRAMInitStructure.FSMC_DataAddressMux = FSMC_DataAddressMux_Disable; // ���������ݵ�ַ
-	FSMC_NORSRAMInitStructure.FSMC_MemoryType =FSMC_MemoryType_SRAM;// FSMC_MemoryType_SRAM;  //SRAM
-	FSMC_NORSRAMInitStructure.FSMC_MemoryDataWidth = FSMC_MemoryDataWidth_16b;//�洢�����ݿ���Ϊ16bit
-	FSMC_NORSRAMInitStructure.FSMC_BurstAccessMode =FSMC_BurstAccessMode_Disable;// FSMC_BurstAccessMode_Disable;
+	FSMC_NORSRAMInitStructure.FSMC_Bank = FSMC_Bank1_NORSRAM1;  // Use NE4, which corresponds to BTCR[6],[7]
+	FSMC_NORSRAMInitStructure.FSMC_DataAddressMux = FSMC_DataAddressMux_Disable; // Do not reuse data addresses
+	FSMC_NORSRAMInitStructure.FSMC_MemoryType =FSMC_MemoryType_SRAM;
+	FSMC_NORSRAMInitStructure.FSMC_MemoryDataWidth = FSMC_MemoryDataWidth_16b; // 16-bit data width
+	FSMC_NORSRAMInitStructure.FSMC_BurstAccessMode =FSMC_BurstAccessMode_Disable;
 	FSMC_NORSRAMInitStructure.FSMC_WaitSignalPolarity = FSMC_WaitSignalPolarity_Low;
 	FSMC_NORSRAMInitStructure.FSMC_AsynchronousWait=FSMC_AsynchronousWait_Disable;
 	FSMC_NORSRAMInitStructure.FSMC_WrapMode = FSMC_WrapMode_Disable;
 	FSMC_NORSRAMInitStructure.FSMC_WaitSignalActive = FSMC_WaitSignalActive_BeforeWaitState;
-	FSMC_NORSRAMInitStructure.FSMC_WriteOperation = FSMC_WriteOperation_Enable;	//  �洢��дʹ��
+	FSMC_NORSRAMInitStructure.FSMC_WriteOperation = FSMC_WriteOperation_Enable;
 	FSMC_NORSRAMInitStructure.FSMC_WaitSignal = FSMC_WaitSignal_Disable;
-	FSMC_NORSRAMInitStructure.FSMC_ExtendedMode = FSMC_ExtendedMode_Enable; // ��дʹ�ò�ͬ��ʱ��
+	FSMC_NORSRAMInitStructure.FSMC_ExtendedMode = FSMC_ExtendedMode_Enable; // Use different timings for reading and writing
 	FSMC_NORSRAMInitStructure.FSMC_WriteBurst = FSMC_WriteBurst_Disable;
-	FSMC_NORSRAMInitStructure.FSMC_ReadWriteTimingStruct = &readWriteTiming; //��дʱ��
-	FSMC_NORSRAMInitStructure.FSMC_WriteTimingStruct = &writeTiming;  //дʱ��
+	FSMC_NORSRAMInitStructure.FSMC_ReadWriteTimingStruct = &readWriteTiming;
+	FSMC_NORSRAMInitStructure.FSMC_WriteTimingStruct = &writeTiming; 
 
-	FSMC_NORSRAMInit(&FSMC_NORSRAMInitStructure);  //��ʼ��FSMC����
+	FSMC_NORSRAMInit(&FSMC_NORSRAMInitStructure);  // Initialize FSMC with the FSMC_InitStruct that we just filled out
 #else
 
   FSMC_NORSRAMInitTypeDef  FSMC_NORSRAMInitStructure;
