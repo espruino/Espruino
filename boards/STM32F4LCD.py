@@ -38,6 +38,7 @@ info = {
      'DEFINES+=-DUSE_RTC',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS -DESPR_GRAPHICS_INTERNAL',
      'DEFINES+=-DLCD_ORIENTATION_LANDSCAPE -DLCD_CRT_EFFECT',
+     'DEFINES+=-DUSE_AUDIO_CODEC',
      'STLIB=STM32F407xx',
      '-DHSE_VALUE=9000000',
 #     'DEFINES+=-DFSMC_BITBANG',
@@ -120,7 +121,7 @@ devices = {
             'pin_rs' : 'D13',
             'pin_rd' : 'D4',
             'pin_wr' : 'D5',
-            'pin_cs' : 'D7',
+            'pin_cs' : 'D7', # CS / NE1
             'pin_bl' : 'B1' # backlight
           },  
   # flash

@@ -521,6 +521,7 @@ void jswrap_pb_setLCDPower(bool isOn) {
   "generate" : "jswrap_pb_init"
 }*/
 void jswrap_pb_init() {
+#ifdef USE_AUDIO_CODEC
   // Initialise audio
   STM32_I2S_Init();
   // Initialise dac
@@ -559,6 +560,9 @@ void jswrap_pb_init() {
   jswrap_pb_setVol(0x1E);      // Set volume: 0x1E = 0dB
   es8388_write_reg(0x02, 0xAA); // power up DEM and STM
   // Doc above also has notes on suspend/etc
+#else
+  jsiConsolePrintf("No audio codec - can be enabled by defining USE_AUDIO_CODEC");
+#endif
 }
 
 /*JSON{
