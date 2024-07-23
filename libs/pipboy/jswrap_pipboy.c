@@ -594,6 +594,126 @@ bool jswrap_pb_idle() {
 }
 
 /*
+RDA5807M RADIO IC FUNCTIONS
+- Using software I2C as I2C1 is already in use by the ES8388 codec
+- Note that the radio can't tune when VBAT is supplied via an ST-Link - it needs the LiPo battery
+
+var rd=new I2C();
+rd.setup({sda: B7, scl:B6});
+function rd_write_reg(r,d) {
+  rd.writeTo(0x22>>1, [r,(d>>8 & 0xFF),(d & 0xFF)]);
+}
+function rd_read_reg(r) {
+  rd.writeTo(0x22>>1, r);
+  let bytes = rd.readFrom(0x22>>1,2);
+  return (bytes[0]<<8 | bytes[1]);
+}
+
+function rd_init() {
+  Pip.setDACMode("out");
+  let id = rd_read_reg(0)>>8;
+  if (id == 0x58)
+    console.log(`RDA5807 ID: 0x${id.toString(16)} (as expected)`);
+  else
+    console.log(`Unexpected value reading RDA5807 ID: 0x${id.toString(16)}`);
+  rd_write_reg(0x02,0x0003); // 0x0001:enable,    0x0002:reset
+  rd_write_reg(0x02,0xF001); // 0x8000:output on, 0x4000:un-mute, 0x2000:mono, 0x1000:bass boost
+  rd_write_reg(0x03,0x0008); // 0x0008:worldwide band (76-108 MHz)
+  rd_write_reg(0x04,0x0600); // 0x0400:reserved,  0x0200:softmute
+  rd_write_reg(0x05,0x86AF); // 0x8000:int_mode,  0x0600:seek threshold 6/15, 0x00F:volume 15/15
+  rd_write_reg(0x06,0x8000); // 0x8000:reserved
+  rd_write_reg(0x07,0x5F1A); // 0x5C00:noise soft blend threshold, 0x0002:soft blend enable
+  rd.band=(rd_read_reg(0x03) & 0x000C)>>2;
+  switch (rd.band) {
+    case 0:
+      rd.start = 8700;
+      rd.end = 10800;
+      break;
+    case 1:
+      rd.start = 7600;
+      rd.end = 9100;
+      break;
+    case 2:
+      rd.start = 7600;
+      rd.end = 10800;
+      break;
+    case 3:
+      if ((rd_read_reg(0x07) >> 9) & 0x01) {
+        rd.start = 6500;
+        rd.end = 7600;
+      } else {
+        rd.start = 5000;
+        rd.end = 7600;
+      }
+  }
+  rd.space=rd_read_reg(0x03) & 0x0003;
+  switch (rd.space) {
+    case 0:
+      rd.chans_per_MHz = 10;
+      break;
+    case 1:
+      rd.chans_per_MHz = 5;
+      break;
+    case 2:
+      rd.chans_per_MHz = 20;
+      break;
+    case 3:
+      rd.chans_per_MHz = 40;
+      break;
+  }
+}
+
+function rd_seek(seekUp) {
+  let ctrlReg=rd_read_reg(0x02);
+  ctrlReg |= 0x0100; // Seek
+  if (seekUp) ctrlReg |= 0x0200; // SeekUp (0=down)
+  else ctrlReg &= ~0x0200;
+  rd_write_reg(0x02,ctrlReg);
+  console.log(`Seeking ${seekUp?"up":"down"}...`);
+  var i = setInterval(()=>{
+    let status=rd_read_reg(0x0A);
+    let chan=status&0x03FF;
+    let freq=chan*rd.chans_per_MHz+rd.start;
+    console.log(`- ch ${chan} (${freq/100} MHz) ${status&0x2000?"(failed)":(status&0x4000?"found":"")}`);
+    if (status&0x6000) clearInterval(i);
+  },400);
+}
+
+// rd_freq_set(f): tune to frequency in multiple of 10 kHz (e.g. 9930 for 99.3 MHz)
+function rd_freq_set(f) {
+  if (f<rd.start || f>rd.end) {
+    console.log(`Invalid frequency (${f}) - must be between ${rd.start} and ${rd.end}`);
+    return;
+  }
+  let chan=((f-rd.start)/rd.chans_per_MHz) & 0x03FF; 
+  console.log(`Band:${rd.band} (start:${rd.start}, end:${rd.end}), spacing:${1000/rd.chans_per_MHz} kHz, tuning to ${f/100} MHz (channel ${chan})`);
+  let chanReg=(chan<<6) | (rd.band<<2) | rd.space | 0x0010; // 0x0010:tune
+  rd_write_reg(0x03,chanReg);
+  rd_write_reg(0x03,chanReg); // Need to write it twice (?!)
+  var t = 0;
+  var i = setInterval(()=>{
+    let status=rd_read_reg(0x0A);
+    if (status&0x6000) {
+      console.log(`- set channel=${status&0x03FF} ${status&0x2000?"(failed)":"OK"}`);
+      clearInterval(i);
+    }
+    if (t++>10) {
+      console.log(`Giving up!`);
+      clearInterval(i);
+      rd_write_reg(0x03,chanReg & ~0x0010); // Stop tuning
+    }
+  },400);
+}
+
+Pip.setDACMode("off");
+rd_init();
+Pip.setDACMode("out");
+rd_freq_set(9800); // Tune to 98.0 MHz
+setWatch(()=>rd_seek(1),E1,{repeat:true,edge:"rising",debounce:25});
+setWatch(()=>rd_seek(0),E2,{repeat:true,edge:"rising",debounce:25});
+*/
+
+/*
 AUDIO CODEC INITIALISATION CODE
 --------------------------------
 
