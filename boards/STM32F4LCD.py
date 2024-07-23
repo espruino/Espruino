@@ -144,7 +144,7 @@ board["_css"] = """
 
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f40x.csv', 6, 9, 10)
-  pins = pinutils.scan_pin_af_file(pins, 'stm32f401_af.csv', 0, 1) # FIXME: for wrong device!
+  pins = pinutils.scan_pin_af_file(pins, 'stm32f405_af.csv', 0, 1) # F405 is close enough to the F407
 #  print(pinutils.findpin(pins, "PA9", True));
   pins = pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])
   pinutils.findpin(pins, "PA6", True)["functions"]["NEGATED"]=0; # LED1
