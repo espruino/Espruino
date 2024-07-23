@@ -71,7 +71,9 @@ void jsfsReportError(const char *msg, FRESULT res) {
 }
 
 bool jsfsInit() {
-
+#ifdef SD_POWER_PIN
+  jshPinOutput(SD_POWER_PIN, 1);
+#endif
 #ifndef LINUX
   if (!fat_initialised) {
 #ifndef USE_FLASHFS

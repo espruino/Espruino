@@ -446,6 +446,8 @@ if "LCD" in board.devices:
     codeOutDevicePins("LCD","LCD");
 
 if "SD" in board.devices:
+  if "pin_cd" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cd", "SD_DETECT_PIN")
+  if "pin_pwr" in board.devices["SD"]: codeOutDevicePin("SD", "pin_pwr", "SD_POWER_PIN")
   if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD
     if "pin_cs" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cs", "SD_CS_PIN")
     if "pin_di" in board.devices["SD"]: codeOutDevicePin("SD", "pin_di", "SD_DI_PIN")

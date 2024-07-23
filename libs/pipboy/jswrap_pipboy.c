@@ -521,6 +521,9 @@ void jswrap_pb_setLCDPower(bool isOn) {
   "generate" : "jswrap_pb_init"
 }*/
 void jswrap_pb_init() {
+#ifdef SD_POWER_PIN
+  jshPinOutput(SD_POWER_PIN, 1); // Power supply enable for the SD card is also used for the ES8388 audio codec
+#endif
 #ifdef USE_AUDIO_CODEC
   // Initialise audio
   STM32_I2S_Init();
