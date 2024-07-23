@@ -45,8 +45,8 @@ else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else
-	@echo "-- ST-Link flash";
-	@if sudo st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS); then \
+	@echo "-- ST-Link flash: reset the target, then immediately press any key to proceed";
+	@if read -n 1 -s && st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS); then \
 		echo "ST-Link flashed OK"; \
 	else \
 		echo "-- J-Link flash"; \
