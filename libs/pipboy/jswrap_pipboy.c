@@ -552,12 +552,12 @@ void jswrap_pb_init() {
   es8388_write_reg(0x1D, 0x20); // GW: DAC control - force MONO
   es8388_write_reg(0x19, 0x32); // Unmute DAC
   // Set mixer for DAC out
-  es8388_write_reg(0x26, 0x00);
-  es8388_write_reg(0x27, 0xB8); // LDAC to Lout (0xB8 = -15dB, 0x90 = 0dB)
+  es8388_write_reg(0x26, 0x09); // Select LIN2 + RIN2 for output mix
+  es8388_write_reg(0x27, 0xF0); // L mixer enable DAC + LIN signals, gain = -12dB
   es8388_write_reg(0x28, 0x38);
   es8388_write_reg(0x29, 0x38);
-  es8388_write_reg(0x2A, 0xB8); // RDAC to Rout (0xB8 = -15dB, 0x90 = 0dB)
-  jswrap_pb_setVol(0x1E);      // Set volume: 0x1E = 0dB
+  es8388_write_reg(0x2A, 0xF0); // R mixer enable DAC + RIN signals, gain = -12dB
+  jswrap_pb_setVol(0x1E);       // Set volume: 0x1E = 0dB
   es8388_write_reg(0x02, 0xAA); // power up DEM and STM
   // Doc above also has notes on suspend/etc
 #else
