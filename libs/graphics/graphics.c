@@ -937,9 +937,9 @@ static void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str)
 // Splash screen
 void graphicsSplash(JsGraphics *gfx) {
   graphicsClear(gfx);
-  graphicsDrawString(gfx,0,0,"Espruino "JS_VERSION);
-  graphicsDrawString(gfx,0,8,"  Embedded JavaScript");
-  graphicsDrawString(gfx,0,16,"  www.espruino.com");
+  graphicsDrawString(gfx,60,20,"Espruino "JS_VERSION);
+  graphicsDrawString(gfx,60,30,"@2024 Gordon Williams");
+  graphicsDrawString(gfx,60,40,"www.espruino.com");
 }
 
 void graphicsIdle() {
