@@ -14,4 +14,4 @@
 
 #include "jsvar.h"
 
-JsVar *jswrap_graphics_setFontMonofonto145();
+JsVar *jswrap_graphics_setFontMonofonto120();

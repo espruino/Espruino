@@ -47,9 +47,10 @@ info = {
      'INCLUDE += -I$(ROOT)/libs/pipboy',
      'WRAPPERSOURCES += libs/pipboy/avi.c libs/pipboy/stm32_i2s.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_pipboy.c',
-     'WRAPPERSOURCES += libs/graphics/jswrap_font_monofonto_145.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_monofonto_120.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_monofonto_23.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_monofonto_18.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_monofonto_16.c',
 #     'USE_DFU=1'
    ]
   }
