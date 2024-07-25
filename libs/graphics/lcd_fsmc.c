@@ -365,9 +365,13 @@ void LCD_init_hardware() {
 
 #define LCD_REG              (*((volatile unsigned short *) 0x60000000)) /* RS = 0 */
 
-//#define LCD_RAM              (*((volatile unsigned short *) 0x60020000)) /* RS = 1 (D11 -> A16) */
-#define LCD_RAM              (*((volatile unsigned short *) 0x60080000)) /* RS = 1 (D13 -> A18) */
-
+#if (LCD_FSMC_RS == 59) // D11
+  #define LCD_RAM              (*((volatile unsigned short *) 0x60020000)) /* RS = 1 (D11 -> A16) */
+#elif (LCD_FSMC_RS == 61) // D13
+  #define LCD_RAM              (*((volatile unsigned short *) 0x60080000)) /* RS = 1 (D13 -> A18) */
+#else
+  #error Unsupported LCD_FSMC_RS
+#endif
 
 static inline void LCD_WR_REG(unsigned int index) {
   LCD_REG = (uint16_t)index;
@@ -666,7 +670,7 @@ void LCD_init_panel() {
   uint16_t DeviceCode;
   uint8_t *p;
   DeviceCode = LCD_read_ID(0xD3, true);   // Read ID4 from register 0xD3 (which is where it's located for ILI9341, ST7796, ILI9806, etc.)
-  jsiConsolePrintf("LCD DeviceCode from 0xD3: 0x%04x\n", DeviceCode);
+  // jsiConsolePrintf("LCD DeviceCode from 0xD3: 0x%04x\n", DeviceCode);
   if (DeviceCode == 0x9341 || DeviceCode == 0x7796) {
 		// Reconfigure the FSMC write timing control register
 		FSMC_Bank1E->BWTR[6]&=~(0XF<<0); // Clear address setup time (ADDSET)
@@ -675,7 +679,7 @@ void LCD_init_panel() {
     FSMC_Bank1E->BWTR[6]|=4<<8;      // Set data setup time (DATASET) to 3 HCLKs = 18ns
 
     if (DeviceCode == 0x9341) { // ILI9341
-      jsiConsolePrintf("Configuring ILI9341\n");
+      // jsiConsolePrintf("Configuring ILI9341\n");
       LCD_Code = ILI9341;
       static const uint8_t init_tab[] = {
         ILI_PCB, 3, 0x00, 0xC1, 0X30,  \
@@ -705,7 +709,7 @@ void LCD_init_panel() {
       };
       p = init_tab;
     } else if (DeviceCode == 0x7796) { // ST7796
-      jsiConsolePrintf("Configuring ST7796\n");
+      // jsiConsolePrintf("Configuring ST7796\n");
       LCD_Code = ST7796;
       delay_ms(120);
       static const uint8_t init_tab[] = {
@@ -1664,7 +1668,7 @@ static inline void lcdSetWindow(JsGraphics *gfx, unsigned short x1, unsigned sho
     x2 = (gfx->data.width-1)-x2;
     x1 = (gfx->data.width-1)-x1;
   }
-  jsiConsolePrintf("SetWindow x1=%d y1=%d x2=%d y2=%d\n", x1, y1, x2, y2);
+  // jsiConsolePrintf("SetWindow x1=%d y1=%d x2=%d y2=%d\n", x1, y1, x2, y2);
   switch (LCD_Code) {
      default:
         LCD_WR_CMD(0x50, y1);
