@@ -95,6 +95,11 @@ devices = {
   'BTN9' : { 'pin' : 'B0', 'pinstate' : 'IN_PULLUP' }, # Clock encoder B
   'BTN10' : { 'pin' : 'A0', 'pinstate' : 'IN_PULLUP' }, # "Power" button
  
+  'BAT' : {
+            'pin_sense_en' : 'C4', 
+            'pin_voltage' : 'A6',
+            'pin_charging' : 'C5',
+          },
   'SD' :  { 'pin_cmd' :  'D2',
             'pin_d0' :  'C8',
             'pin_d1' :  'C9',
