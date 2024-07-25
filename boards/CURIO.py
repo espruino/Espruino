@@ -48,8 +48,8 @@
 
 import pinutils;
 info = {
- 'name'                     : "ESP32C3",
- 'espruino_page_link'       : 'ESP32',
+ 'name'                     : "CURIO",
+ 'espruino_page_link'       : 'Curio',
  'default_console'          : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
  'variables'                : 16383, # See note above 
@@ -75,6 +75,7 @@ info = {
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
      'ESP32_FLASH_MAX=1572864',
+#     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'\"Curio\"\'', # string passing in IDF4 makefile is broken
      'INCLUDE += -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/misc/jswrap_curio.c',       
      'WRAPPERSOURCES += libs/joltjs/jswrap_qwiic.c',
