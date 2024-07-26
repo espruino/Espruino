@@ -50,7 +50,7 @@
 #include "avi.h"
 
 #define STREAM_BUFFER_SIZE 40960
-uint8_t streamBuffer[STREAM_BUFFER_SIZE] __attribute__ ((aligned (8)));
+uint8_t streamBuffer[STREAM_BUFFER_SIZE+4] __attribute__ ((aligned (8))); // we add 4 to allow our unaligned fread hack to work
 // Can't go in 64k CCM RAM because no DMA is allowed to CCM!
 // Maybe if we modified DMA to read to a buffer first?
 
@@ -177,9 +177,9 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 
       streamType = ST_AVI;
       size_t actual = 0;
-      res = f_read(&streamFile, (uint8_t*)streamBuffer, sizeof(streamBuffer), &actual);
+      res = f_read(&streamFile, (uint8_t*)streamBuffer, STREAM_BUFFER_SIZE, &actual);
       if (debugInfo) {
-        jsiConsolePrintf("AVI read %d %d %c%c%c%c\n", sizeof(streamBuffer), actual, streamBuffer[0],streamBuffer[1],streamBuffer[2],streamBuffer[3]);
+        jsiConsolePrintf("AVI read %d %d %c%c%c%c\n", STREAM_BUFFER_SIZE, actual, streamBuffer[0],streamBuffer[1],streamBuffer[2],streamBuffer[3]);
       }
       if (aviLoad(streamBuffer, (int)actual, &videoInfo, debugInfo)) {
         streamPacketId = *(uint16_t*)&streamBuffer[videoInfo.streamOffset+2]; // +0 = '01'/'00' stream index?
@@ -319,9 +319,9 @@ void jswrap_pb_videoFrame() {
   //if (debugInfo) jsiConsolePrintf("Stream 0x%04x, %d\n", streamPacketId, streamPacketLen);
   streamPacketRemaining = 0;
   streamPacketBufferLen = streamPacketLen+8; // 8 bytes contains info for next stream
-  if (streamPacketLen > sizeof(streamBuffer)) {
-    streamPacketRemaining = streamPacketBufferLen-sizeof(streamBuffer);
-    streamPacketBufferLen = sizeof(streamBuffer);
+  if (streamPacketLen > STREAM_BUFFER_SIZE) {
+    streamPacketRemaining = streamPacketBufferLen-STREAM_BUFFER_SIZE;
+    streamPacketBufferLen = STREAM_BUFFER_SIZE;
   }
   size_t actual = 0;
   //jsiConsolePrintf("=========== FIRST READ %d (%d)\n", ((size_t)streamBuffer)&7, streamPacketBufferLen);
@@ -379,7 +379,7 @@ void jswrap_pb_videoFrame() {
         memmove(streamBuffer, &streamBuffer[amountToShift], leftInStream); // move data back
         b -= amountToShift;
         streamPacketBufferLen = leftInStream;
-        uint32_t bufferRemaining = sizeof(streamBuffer)-leftInStream;
+        uint32_t bufferRemaining = STREAM_BUFFER_SIZE-leftInStream;
         uint32_t len = streamPacketRemaining;
         if (len>bufferRemaining) len=bufferRemaining;
         //jsiConsolePrintf("=========== READ %d (%d)\n", leftInStream, leftInStream&3);
@@ -513,7 +513,9 @@ void jswrap_pb_setDACMode(JsVar *mode) {
 }
 */
 void jswrap_pb_setLCDPower(bool isOn) {
+#ifndef LINUX
   lcdFSMC_setPower(isOn);
+#endif
 }
 
 /*JSON{
@@ -685,7 +687,7 @@ function rd_freq_set(f) {
     console.log(`Invalid frequency (${f}) - must be between ${rd.start} and ${rd.end}`);
     return;
   }
-  let chan=((f-rd.start)/rd.chans_per_MHz) & 0x03FF; 
+  let chan=((f-rd.start)/rd.chans_per_MHz) & 0x03FF;
   console.log(`Band:${rd.band} (start:${rd.start}, end:${rd.end}), spacing:${1000/rd.chans_per_MHz} kHz, tuning to ${f/100} MHz (channel ${chan})`);
   let chanReg=(chan<<6) | (rd.band<<2) | rd.space | 0x0010; // 0x0010:tune
   rd_write_reg(0x03,chanReg);

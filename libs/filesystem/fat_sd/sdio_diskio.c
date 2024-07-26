@@ -65,6 +65,7 @@ DSTATUS disk_status (
 /* Read Sector(s)                                                        */
 /*-----------------------------------------------------------------------*/
 
+#ifndef ESPR_SDIO_FAST_UNALIGNED
 DRESULT disk_read_unaligned (
   BYTE drv, /* Physical drive number (0) */
   BYTE *buff, /* Pointer to the data buffer to store read data */
@@ -83,6 +84,7 @@ DRESULT disk_read_unaligned (
   }
   return RES_OK;
 }
+#endif
 
 DRESULT disk_read (
   BYTE drv, /* Physical drive number (0) */
@@ -96,14 +98,33 @@ DRESULT disk_read (
 
   Transfer_Length =  count * 512;
   Memory_Offset = sector * 512;
+
+#ifdef ESPR_SDIO_FAST_UNALIGNED
+/* ESPR_SDIO_FAST_UNALIGNED is a really nasty hack. STM32 can't DMA to unaligned
+addresses so what we do is we push the address forward to the next aligned point,
+then we memmove it back by the correct amount after DMA. THIS MEANS THAT ANY
+BUFFER WE F_READ INTO SHOULD BE 4 BYTES LONGER THAN THE MAX READ REQUEST
+*/
+  int misalignment = ((size_t)buff)&3;
+  BYTE *correctbuff = buff;
+  if (misalignment)
+    buff += 4-misalignment;
+#else
   if ((size_t)buff&3) // unaligned read - must read to aligned buffer because of DMA
     return disk_read_unaligned(drv, buff, sector, count);
+#endif
   if (count<=1)
     SD_ReadBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
   else
     SD_ReadMultiBlocks(Memory_Offset, (uint32_t *)buff, Transfer_Length, count);
-  //NAND_Read(Memory_Offset, (uint32_t *)buff, Transfer_Length);
   //FIXME what about SD_ReadMultiBlocks when count>1 ?
+
+#ifdef ESPR_SDIO_FAST_UNALIGNED
+  if (misalignment) {
+    // move data back to correct point
+    memmove(correctbuff, buff, Transfer_Length);
+  }
+#endif
 
   return RES_OK;
 }

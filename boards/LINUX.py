@@ -54,7 +54,7 @@ chip = {
 devices = {
   'USB' : {}, # to convince code that we have a USB port (it's used for the console ion Linux)
     'LCD' : {
-            'width' : 320, 'height' : 240, 'bpp' : 16, 'controller' : 'sdl'
+            'width' : 480, 'height' : 320, 'bpp' : 16, 'controller' : 'sdl'
             }
 };
 
