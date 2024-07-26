@@ -306,7 +306,10 @@ void lcdFSMC_setCursor(JsGraphics *gfx, int x, int y) {
   py=y;
 }
 void lcdFSMC_blitPixel(unsigned int col) {
-  graphicsSetPixel(&graphicsInternal, px+ox, py+oy, col);
+  if (py+oy>319 || px+ox>479) {
+    jsiConsolePrintf("OOB pixel %d,%d\n", px+ox, py+oy);
+  } else
+    graphicsSetPixel(&graphicsInternal, px+ox, py+oy, col);
   px++;
 }
 void lcdFSMC_blitEnd() {
@@ -352,6 +355,8 @@ void jswrap_pb_videoFrame() {
             lcdFSMC_setCursor(&graphicsInternal, x+startX,y+startY);
           } else if (cmd==1) {
             //jsiConsolePrintf("end of bitmap!\n");
+            b = endBuffer;
+            // but why is there data after the EOB opcode??
           } else if (cmd==2) { // 2 = DELTA
             x += *(b++);
             y -= *(b++);
