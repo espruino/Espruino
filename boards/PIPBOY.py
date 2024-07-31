@@ -22,7 +22,7 @@ info = {
  'default_console' : "EV_SERIAL3",
  'default_console_tx' : "B10",
  'default_console_rx' : "B11",
- 'default_console_baudrate' : "9600",
+ 'default_console_baudrate' : "115200",
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
