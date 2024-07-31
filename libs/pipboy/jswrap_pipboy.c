@@ -532,6 +532,8 @@ void jswrap_pb_setLCDPower(bool isOn) {
 Enter standby mode - can only be started by pressing the power button (PA0).
 */
 void jswrap_pb_off() {
+  jswrap_pb_setDACMode_(DM_OFF);
+  jswrap_pb_setLCDPower(0);
 #ifndef LINUX
 /*  In Standby mode, all I/O pins are high impedance except for:
  *          - Reset pad (still available)
