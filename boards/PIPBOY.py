@@ -40,6 +40,7 @@ info = {
      'DEFINES+=-DLCD_ORIENTATION_LANDSCAPE',
 #     'DEFINES+=-DLCD_CRT_EFFECT',
      'DEFINES+=-DUSE_AUDIO_CODEC',
+     'DEFINES+=-DESPR_DELAY_MULTIPLIER=28672', # don't work out what to use for jshDelayMicroseconds at boot, just hard-code it
      'STLIB=STM32F407xx',
      '-DHSE_VALUE=9000000',
 #     'DEFINES+=-DFSMC_BITBANG',

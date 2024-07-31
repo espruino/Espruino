@@ -926,7 +926,12 @@ bool jshIsInInterrupt() {
 }
 
 //int JSH_DELAY_OVERHEAD = 0;
+#ifdef ESPR_DELAY_MULTIPLIER
+#define  JSH_DELAY_MULTIPLIER ESPR_DELAY_MULTIPLIER
+#else
 int JSH_DELAY_MULTIPLIER = 1;
+#endif
+
 void jshDelayMicroseconds(int microsec) {
   int iter = (int)(((long long)microsec * (long long)JSH_DELAY_MULTIPLIER) >> 10);
 //  iter -= JSH_DELAY_OVERHEAD;
@@ -1381,6 +1386,7 @@ void jshInit() {
    for the RTC on the Espruino board hasn't settled down by this point
    (or it just may not be accurate enough).
    */
+#ifndef ESPR_DELAY_MULTIPLIER
 //  JSH_DELAY_OVERHEAD = 0;
   JSH_DELAY_MULTIPLIER = 1024;
   /* NOTE: we disable interrupts, so we can't spend longer than SYSTICK_RANGE in here
@@ -1413,6 +1419,13 @@ void jshInit() {
   JSH_DELAY_MULTIPLIER = (int)(1.024 * getSystemTimerFreq() * JSH_DELAY_MULTIPLIER / (tIter*1000));
 //  JSH_DELAY_OVERHEAD = (int)(tOverhead * JSH_DELAY_MULTIPLIER / tIter);
   jshInterruptOn();
+  //jsiConsolePrintf("JSH_DELAY_MULTIPLIER %d\n", JSH_DELAY_MULTIPLIER);
+#endif
+
+/*RCC_ClocksTypeDef clk;
+  RCC_GetClocksFreq(&clk);
+  jsiConsolePrintf("SYSCLK %d\n", clk.SYSCLK_Frequency);*/
+
 
   /* Enable Utility Timer Update interrupt. We'll enable the
    * utility timer when we need it. */
