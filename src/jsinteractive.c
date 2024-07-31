@@ -476,7 +476,6 @@ void jsiSoftInit(bool hasBeenReset) {
     jsFlags = jsvGetIntegerAndUnLock(flags);
     jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_JSFLAGS_NAME);
   }
-
   // Run wrapper initialisation stuff
   jswInit();
 
@@ -845,7 +844,6 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
   if (pwd)
     jsiStatus |= JSIS_PASSWORD_PROTECTED;
   jsvUnLock(pwd);
-
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit(!autoLoad);
 
@@ -882,7 +880,7 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
           " "JS_VERSION" (c) 2024 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
-#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS) && !defined(BANGLEJS_Q3) && !defined(BANGLEJS_F18) && !defined(JOLTJS) && !defined(EMSCRIPTEN)
+#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS) && !defined(BANGLEJS_Q3) && !defined(BANGLEJS_F18) && !defined(JOLTJS) && !defined(EMSCRIPTEN) && !defined(PIPBOY)
           "\n"
           "Espruino is Open Source. Our work is supported\n"
           "only by sales of official boards and donations:\n"
@@ -900,6 +898,7 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
       jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
   }
+
 
 #ifdef BANGLEJS // On Bangle.js if Storage is corrupt, show a recovery menu
   if (recoveryMode) // start recovery menu at end of init

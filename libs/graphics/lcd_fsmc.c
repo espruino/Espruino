@@ -393,6 +393,12 @@ static inline void LCD_WR_Data_multi(unsigned int val, unsigned int count) {
 
 
 void LCD_init_hardware() {
+
+#ifdef LCD_BL
+  jshPinSetState(LCD_BL, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(LCD_BL, 0); // BACKLIGHT=0 -> reduce flicker when initing the LCD. We turn it on after panel_init
+#endif
+
   delay_ms(100);
   // not sure why, but adding a delay here with the debugger means
   // that everything works great
@@ -494,7 +500,7 @@ void LCD_init_hardware() {
 	FSMC_NORSRAMInitStructure.FSMC_ExtendedMode = FSMC_ExtendedMode_Enable; // Use different timings for reading and writing
 	FSMC_NORSRAMInitStructure.FSMC_WriteBurst = FSMC_WriteBurst_Disable;
 	FSMC_NORSRAMInitStructure.FSMC_ReadWriteTimingStruct = &readWriteTiming;
-	FSMC_NORSRAMInitStructure.FSMC_WriteTimingStruct = &writeTiming; 
+	FSMC_NORSRAMInitStructure.FSMC_WriteTimingStruct = &writeTiming;
 
 	FSMC_NORSRAMInit(&FSMC_NORSRAMInitStructure);  // Initialize FSMC with the FSMC_InitStruct that we just filled out
 #else
@@ -711,9 +717,7 @@ void LCD_init_panel() {
     } else if (DeviceCode == 0x7796) { // ST7796
       // jsiConsolePrintf("Configuring ST7796\n");
       LCD_Code = ST7796;
-      delay_ms(120);
       static const uint8_t init_tab[] = {
-        ST7796_SLPOUT, 120, \
         ST7796_CSCON, 1, 0xC3, \
         ST7796_CSCON, 1, 0x96, \
         ST7796_MADCTL, 1, 0x28, \
@@ -731,7 +735,7 @@ void LCD_init_panel() {
         ST7796_SLPOUT, 120, \
         ST7796_DISPON, 0, \
         0
-      };    
+      };
       p = init_tab;
     }
     while (*p) {
@@ -747,8 +751,8 @@ void LCD_init_panel() {
     }
   } else {
     // Not ID4 from 0xD3, so try reading ID2 from register 0x00 (for ILI9320, ILI9325, ILI9331, SSD2119, SSD1298, R61505U, SPFD5408B, LGDP4531, HX8347D, ST7781, etc.)
-    DeviceCode = LCD_read_ID(0x00, false); 
-    
+    DeviceCode = LCD_read_ID(0x00, false);
+
     if (DeviceCode == 0x4532) { // For the 2.4" LCD boards
       LCD_Code = ILI9325;
       LCD_WR_CMD(0x0000,0x0001);
@@ -1722,15 +1726,18 @@ static inline void lcdSetFullWindow(JsGraphics *gfx) {
 }
 
 void lcdFSMC_setPower(bool isOn) {
-  #ifdef LCD_BL
-  jshPinOutput(LCD_BL, isOn);
-  #endif
   if (LCD_Code == ILI9341 || LCD_Code == ST7796) {
     if (isOn) {
       LCD_WR_CMD(0x11, 0); // SLPOUT
       jshDelayMicroseconds(20);
       LCD_WR_CMD(0x29, 0); // DISPON
+      #ifdef LCD_BL
+      jshPinOutput(LCD_BL, 1);
+      #endif
     } else {
+      #ifdef LCD_BL
+      jshPinOutput(LCD_BL, 0);
+      #endif
       LCD_WR_CMD(0x28, 0); // DISPOFF
       jshDelayMicroseconds(20);
       LCD_WR_CMD(0x10, 0); // SLPIN
@@ -1758,7 +1765,7 @@ void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned 
     if (LCD_Code!=ILI9341 && LCD_Code!=ST7796)
       lcdSetCursor(gfx,x1,y1);// FIXME - we don't need this?
     lcdSetWrite();
-#ifdef LCD_CRT_EFFECT  
+#ifdef LCD_CRT_EFFECT
     unsigned int l=(1+x2-x1);
     for (int y=y1;y<=y2;y++) {
       LCD_WR_Data_multi((y%2==0)?col:RGB_HALF(col), l);
@@ -1782,7 +1789,7 @@ unsigned int lcdGetPixel_FSMC(JsGraphics *gfx, int x, int y) {
 void lcdSetPixel_FSMC(JsGraphics *gfx, int x, int y, unsigned int col) {
   lcdSetCursor(gfx,x,y);
   lcdSetWrite();
-#ifdef LCD_CRT_EFFECT  
+#ifdef LCD_CRT_EFFECT
   // Apply a "CRT effect" by halving the brightness on every other line
   LCD_WR_Data((y%2==0)?col:RGB_HALF(col));
 #else
@@ -1792,6 +1799,7 @@ void lcdSetPixel_FSMC(JsGraphics *gfx, int x, int y, unsigned int col) {
 
 void lcdInit_FSMC(JsGraphics *gfx) {
   assert(gfx->data.bpp == 16);
+
 
   LCD_init_hardware();
   LCD_init_panel();
