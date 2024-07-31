@@ -34,7 +34,7 @@
 #include "jsinteractive.h"
 #include "jsdevices.h"
 #include "jshardware.h"
-#include "jsdevices.h"
+#include "jswrap_graphics.h"
 #include "jspin.h"
 #include "jsflags.h"
 #include "jshardware.h"
@@ -548,6 +548,62 @@ void jswrap_pb_off() {
 #endif
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Pip",
+  "name" : "blitImage",
+  "generate" : "jswrap_pb_blitImage",
+  "params" : [
+      ["img","JsVar",""],
+      ["x","int",""],
+      ["y","int",""],
+      ["scale","int",""]
+   ]
+}
+*/
+int scanlinePos = 0;
+void getPaletteForLine2bpp(int y, uint16_t *palette) {
+  int distfromScaline = y-scanlinePos;
+  if (distfromScaline<0) distfromScaline=-distfromScaline;
+  int brightness = 220 + ((distfromScaline>64)?0:(63-distfromScaline));
+  if (brightness>255) brightness=255;
+  if (y&1) brightness = brightness*3/4;
+  palette[3] = (brightness>>2)<<5;
+  brightness = (brightness*2)/3;
+  palette[2] = (brightness>>2)<<5;
+  brightness = brightness >> 1;
+  palette[1] = (brightness>>2)<<5;
+}
+void getPaletteForLine4bpp(int y, uint16_t *palette) {
+  int distfromScaline = y-scanlinePos;
+  if (distfromScaline<0) distfromScaline=-distfromScaline;
+  int brightness = 220 + ((distfromScaline>64)?0:(63-distfromScaline));
+  if (brightness>255) brightness=255;
+  if (y&1) brightness = brightness*3/4;
+  for (int i=1;i<16;i++) {
+    int b = (brightness*i)>>4;
+    palette[i] = (b>>2)<<5;
+  }
+}
+void jswrap_pb_blitImage(JsVar *image, int x, int y, int scale) {
+  // the highlighted area moves over time...
+  scanlinePos = ((long long)(jshGetMillisecondsFromTime(jshGetSystemTime())*(480/4000.0)) % 640LL) - 110;
+
+  JsGraphics *gfx = &graphicsInternal;
+  GfxDrawImageInfo img;
+  if (!_jswrap_graphics_parseImage(gfx, image, 0, &img))
+    return 0;
+  if (scale<1) scale=1;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, img.buffer, (size_t)img.bitmapOffset);
+  uint16_t palette[16];
+  memset(palette,0,sizeof(palette));
+  if (img.bpp==4) lcdFSMC_blit4Bit(&gfx, x, y, img.width, img.height, scale, &it, palette, getPaletteForLine4bpp);
+  else if (img.bpp==2) lcdFSMC_blit2Bit(&gfx, x, y, img.width, img.height, scale, &it, palette, getPaletteForLine2bpp);
+  else jsExceptionHere(JSET_ERROR, "Unsupported BPP");
+  jsvStringIteratorFree(&it);
+  _jswrap_graphics_freeImageInfo(&img);
+}
 
 /*JSON{
   "type" : "init",

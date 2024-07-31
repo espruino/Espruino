@@ -26,5 +26,6 @@ void lcdFSMC_blitEnd();
 void lcdFSMC_setPower(bool isOn);
 
 /// special case for sending a 4-bit or 2-bit image, with even no of pixels
-void lcdFSMC_blit4Bit(JsGraphics *gfx, int x, int y, int w, int h, int scale, JsvStringIterator *pixels, const uint16_t *palette);
-void lcdFSMC_blit2Bit(JsGraphics *gfx, int x, int y, int w, int h, int scale, JsvStringIterator *pixels, const uint16_t *palette);
+typedef void (*FsmcNewLineCallback)(int y, uint16_t *palette);
+void lcdFSMC_blit4Bit(JsGraphics *gfx, int x, int y, int w, int h, int scale, JsvStringIterator *pixels, uint16_t *palette, FsmcNewLineCallback callback);
+void lcdFSMC_blit2Bit(JsGraphics *gfx, int x, int y, int w, int h, int scale, JsvStringIterator *pixels, uint16_t *palette, FsmcNewLineCallback callback);
