@@ -563,7 +563,9 @@ void jswrap_graphics_init() {
 #else
    #error Unknown LCD type
 #endif
+#ifndef ESPR_GRAPHICS_NO_SPLASH
     graphicsSplash(gfx);
+#endif
     graphicsSetVarInitial(gfx);
     jsvUnLock2(parentObj, parent);
   }
