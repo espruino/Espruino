@@ -155,11 +155,12 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
       else debugInfo = false;
     }
   }
-  if (debugInfo)
-    jsiConsolePrintf("Playing video at x0=%d, y0=%d\n", startX, startY);
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsfsGetPathString(pathStr, fn)) return;
+  if (debugInfo) {
+    jsiConsolePrintf("Playing video %s at x0=%d, y0=%d\n", pathStr, startX, startY);
+  }
 
   if (jsfsInit()) {
     if (streamType) {
@@ -169,7 +170,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 
   FRESULT res;
 #ifdef LINUX
-  if ((streamFile = fopen(pathStr, "r"))) {
+    if ((streamFile = fopen(pathStr, "r"))) {
 #else
     BYTE ff_mode = FA_READ | FA_OPEN_EXISTING;
     if ((res=f_open(&streamFile, pathStr, ff_mode)) == FR_OK) {
@@ -201,9 +202,11 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
         jsExceptionHere(JSET_ERROR, "Corrupt video\n");
         jswrap_pb_videoStop();
       }
+    } else {
+      jsExceptionHere(JSET_ERROR, "Can't load file %s\n", pathStr);
     }
   } else {
-    jsExceptionHere(JSET_ERROR, "Can't load file\n");
+    jsExceptionHere(JSET_ERROR, "Failed to init SD card\n");
   }
 }
 
@@ -250,26 +253,32 @@ void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
       else debugInfo = false;
     }
   }
-  if (debugInfo)
-    jsiConsolePrintf("Playing audio\n");
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsfsGetPathString(pathStr, fn)) return;
 
   if (jsfsInit()) {
     if (streamType) {
+      if (debugInfo) {
+        jsiConsolePrintf("Closing existing stream\n");
+      }
       f_close(&streamFile);
       streamType = ST_NONE;
     }
 
-  FRESULT res;
+    if (debugInfo) {
+      jsiConsolePrintf("Opening audio file %s\n", pathStr);
+    }
+    FRESULT res;
 #ifdef LINUX
-  if ((streamFile = fopen(pathStr, "r"))) {
+    if ((streamFile = fopen(pathStr, "r"))) {
 #else
     BYTE ff_mode = FA_READ | FA_OPEN_EXISTING;
     if ((res=f_open(&streamFile, pathStr, ff_mode)) == FR_OK) {
 #endif
-
+      if (debugInfo) {
+        jsiConsolePrintf("Opened audio file OK - reading WAV header\n");
+      }
       streamType = ST_WAV;
       size_t actual = 0;
       const int WAVHEADER_MAX = 256;
@@ -278,17 +287,19 @@ void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
         jsiConsolePrintf("WAV read %d %d %c%c%c%c\n", WAVHEADER_MAX, actual, streamBuffer[0],streamBuffer[1],streamBuffer[2],streamBuffer[3]);
       }
       if (wavLoad(streamBuffer, (int)actual, &videoInfo, debugInfo)) {
-        f_lseek(&streamFile, (uint32_t)(videoInfo.streamOffset)); // go back to start of video data
+        f_lseek(&streamFile, (uint32_t)(videoInfo.streamOffset)); // go back to start of audio data
         STM32_I2S_Prepare(videoInfo.audioSampleRate);
         jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamStarted");
-        jsiConsolePrintf("Started...\n");
+        if (debugInfo) jsiConsolePrintf("Audio started...\n");
       } else {
         jsExceptionHere(JSET_ERROR, "Corrupt audio\n");
         jswrap_pb_videoStop();
       }
+    } else {
+      jsExceptionHere(JSET_ERROR, "Can't load file %s\n", pathStr);
     }
   } else {
-    jsExceptionHere(JSET_ERROR, "Can't load file\n");
+    jsExceptionHere(JSET_ERROR, "Failed to init SD card\n");
   }
 }
 
@@ -474,6 +485,71 @@ void jswrap_pb_setVol(int volume) {
 /*JSON{
   "type" : "staticmethod",
   "class" : "Pip",
+  "name" : "setDACPower",
+  "generate" : "jswrap_pb_setDACPower",
+  "params" : [
+      ["isOn","bool",""]
+   ]
+}
+Enable/disabled the DAC power supply (whih also powers the audio amp and SD card)
+*/
+void jswrap_pb_setDACPower(bool isOn) {
+  jshPinOutput(SD_POWER_PIN, isOn); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Pip",
+    "name" : "initDAC",
+    "generate" : "jswrap_pb_initDAC"
+}
+Initialise the ES8388 audio codec IC
+*/
+void jswrap_pb_initDAC() {
+  JshI2CInfo dacI2C;
+  jshI2CInitInfo(&dacI2C);
+  dacI2C.pinSCL = JSH_PORTB_COUNT+8;
+  dacI2C.pinSDA = JSH_PORTB_COUNT+9;
+  if (jshPinGetValue(SD_POWER_PIN)==0) {
+    jshPinOutput(SD_POWER_PIN, 1); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
+    jshDelayMicroseconds(5000);
+  }
+  jshI2CSetup(EV_I2C1, &dacI2C);
+  jshDelayMicroseconds(1000);
+  es8388_write_reg(0x00, 0x80); // Reset the ES8388 control registers
+  jshDelayMicroseconds(100);
+  es8388_write_reg(0x00, 0x00);
+  jshDelayMicroseconds(1000);
+  // based on https://cdn.pcbartists.com/wp-content/uploads/2022/12/ES8388-user-guide-application-note.pdf
+  // The sequence for Start up play back mode
+  es8388_write_reg(0x08, 0x00); // slave mode
+  es8388_write_reg(0x02, 0xF3); // power down DEM and STM
+  es8388_write_reg(0x2B, 0x80); // Set same LRCK
+  es8388_write_reg(0x00, 0x05); // FIXME Set Chip to Play&Record Mode
+  es8388_write_reg(0x01, 0x40); // Power analog and IBIAS
+  es8388_write_reg(0x04, 0x3C); // Power up DAC, Analog out
+  //es8388_write_reg(0x17, 0b0001100); // GW: Set DAC SFI - I2S,16 bit
+  es8388_write_reg(0x17, 0); // Set DAC SFI - I2S,24 bit
+  es8388_write_reg(0x18, 0x02); // Set MCLK/LRCK ratio (256)
+  //es8388_write_reg(0x18, 0b00110); // GW: Set MCLK/LRCK ratio (768) - default
+  es8388_write_reg(0x1A, 0x00); // ADC volume 0dB
+  es8388_write_reg(0x1B, 0x00); // ADC volume 0dB
+  es8388_write_reg(0x1D, 0x20); // GW: DAC control - force MONO
+  es8388_write_reg(0x19, 0x32); // Unmute DAC
+  // Set mixer for DAC out
+  es8388_write_reg(0x26, 0x09); // Select LIN2 + RIN2 for output mix
+  es8388_write_reg(0x27, 0xF0); // L mixer enable DAC + LIN signals, gain = -12dB
+  es8388_write_reg(0x28, 0x38);
+  es8388_write_reg(0x29, 0x38);
+  es8388_write_reg(0x2A, 0xF0); // R mixer enable DAC + RIN signals, gain = -12dB
+  jswrap_pb_setVol(0x1E);       // Set volume: 0x1E = 0dB
+  es8388_write_reg(0x02, 0xAA); // power up DEM and STM
+  // Doc above also has notes on suspend/etc}
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Pip",
   "name" : "setDACMode",
   "generate" : "jswrap_pb_setDACMode",
   "params" : [
@@ -485,12 +561,13 @@ void jswrap_pb_setVol(int volume) {
 */
 void jswrap_pb_setDACMode_(DACMode mode) {
   if (mode == DM_OFF) {
-    es8388_write_reg(0x0F, 0x34); // ADC Mute
+    es8388_write_reg(0x0F, 0x24); // ADC Mute
     es8388_write_reg(0x19, 0x36); // DAC Mute
     es8388_write_reg(0x02, 0xF3); // Power down DEM and STM
     es8388_write_reg(0x03, 0xFC); // Power down ADC
     es8388_write_reg(0x04, 0xC0); // Power down DAC L/ROUT
   } else if (mode == DM_Output) {
+    es8388_write_reg(0x0F, 0x20); // Unmute ADC
     es8388_write_reg(0x19, 0x32); // Unmute DAC
     es8388_write_reg(0x04, 0x3C); // Power up DAC, Analog out
     es8388_write_reg(0x02, 0xAA); // power up DEM and STM
@@ -532,7 +609,8 @@ void jswrap_pb_setLCDPower(bool isOn) {
 Enter standby mode - can only be started by pressing the power button (PA0).
 */
 void jswrap_pb_off() {
-  jswrap_pb_setDACMode_(DM_OFF);
+  // jswrap_pb_setDACMode_(DM_OFF); // No need to talk to the DAC - we're about to switch off its power
+  jshPinOutput(SD_POWER_PIN, 0);  // The DAC (and audio amp) runs from the same power supply as the SD card
   jswrap_pb_setLCDPower(0);
 #ifndef LINUX
 /*  In Standby mode, all I/O pins are high impedance except for:
@@ -617,51 +695,15 @@ void jswrap_pb_init() {
   JsVar *img = jsvNewNativeString((char*)&img_raw[0], sizeof(img_raw));
   JsVar *g = jsvNewObject(); // fake object for rendering
   graphicsInternal.data.fgColor = 63<<5;
+  jswrap_graphics_clear(g, 0);
   jswrap_graphics_drawImage(g, img, (LCD_WIDTH-200)/2, (LCD_HEIGHT-16)/2, NULL);
   graphicsInternal.data.fgColor = 65535;
   jsvUnLock2(img,g);
-#ifdef SD_POWER_PIN
-  jshPinOutput(SD_POWER_PIN, 1); // Power supply enable for the SD card is also used for the ES8388 audio codec
-#endif
 #ifdef USE_AUDIO_CODEC
   // Initialise audio
   STM32_I2S_Init();
   // Initialise dac
-  JshI2CInfo dacI2C;
-  jshI2CInitInfo(&dacI2C);
-  dacI2C.pinSCL = JSH_PORTB_COUNT+8;
-  dacI2C.pinSDA = JSH_PORTB_COUNT+9;
-  jshI2CSetup(EV_I2C1, &dacI2C);
-  jshDelayMicroseconds(1000);
-  es8388_write_reg(0x00, 0x80); // Reset the ES8388 control registers
-  jshDelayMicroseconds(100);
-  es8388_write_reg(0x00, 0x00);
-  jshDelayMicroseconds(1000);
-  // based on https://cdn.pcbartists.com/wp-content/uploads/2022/12/ES8388-user-guide-application-note.pdf
-  // The sequence for Start up play back mode
-  es8388_write_reg(0x08, 0x00); // slave mode
-  es8388_write_reg(0x02, 0xF3); // power down DEM and STM
-  es8388_write_reg(0x2B, 0x80); // Set same LRCK
-  es8388_write_reg(0x00, 0x05); // FIXME Set Chip to Play&Record Mode
-  es8388_write_reg(0x01, 0x40); // Power analog and IBIAS
-  es8388_write_reg(0x04, 0x3C); // Power up DAC, Analog out
-  //es8388_write_reg(0x17, 0b0001100); // GW: Set DAC SFI - I2S,16 bit
-  es8388_write_reg(0x17, 0); // Set DAC SFI - I2S,24 bit
-  es8388_write_reg(0x18, 0x02); // Set MCLK/LRCK ratio (256)
-  //es8388_write_reg(0x18, 0b00110); // GW: Set MCLK/LRCK ratio (768) - default
-  es8388_write_reg(0x1A, 0x00); // ADC volume 0dB
-  es8388_write_reg(0x1B, 0x00); // ADC volume 0dB
-  es8388_write_reg(0x1D, 0x20); // GW: DAC control - force MONO
-  es8388_write_reg(0x19, 0x32); // Unmute DAC
-  // Set mixer for DAC out
-  es8388_write_reg(0x26, 0x09); // Select LIN2 + RIN2 for output mix
-  es8388_write_reg(0x27, 0xF0); // L mixer enable DAC + LIN signals, gain = -12dB
-  es8388_write_reg(0x28, 0x38);
-  es8388_write_reg(0x29, 0x38);
-  es8388_write_reg(0x2A, 0xF0); // R mixer enable DAC + RIN signals, gain = -12dB
-  jswrap_pb_setVol(0x1E);       // Set volume: 0x1E = 0dB
-  es8388_write_reg(0x02, 0xAA); // power up DEM and STM
-  // Doc above also has notes on suspend/etc
+  jswrap_pb_initDAC();
 #else
   jsiConsolePrintf("No audio codec - can be enabled by defining USE_AUDIO_CODEC");
 #endif
