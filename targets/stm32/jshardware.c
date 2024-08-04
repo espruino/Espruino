@@ -2635,10 +2635,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
 #endif // USB
 
-#ifdef SD_POWER_PIN
-    jshPinOutput(SD_POWER_PIN, 0); // Turn off the power supply for the SD card (and the ES8388 audio codec)
-#endif
-
     if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
       unsigned int ticks = (unsigned int)(timeUntilWake/jshGetTimeForSecond()); // ensure we round down and leave a little time
 
