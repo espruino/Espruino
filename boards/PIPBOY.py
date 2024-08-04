@@ -86,7 +86,7 @@ devices = {
             'pin_2' : 'H1' },
   'OSC_RTC' : { 'pin_1' : 'C14',
                 'pin_2' : 'C15' },
-  'LED1' : { 'pin' : 'E4' }, # Red element of RGB LED
+  'LED1' : { 'pin' : 'E4', 'pinstate' : 'OUT_OPENDRAIN' }, # Red element of RGB LED - needs to be open-drain otherwise we can't turn it off completely
   'LED2' : { 'pin' : 'E5' }, # Green element of RGB LED
   'LED3' : { 'pin' : 'E6' }, # Blue element of RGB LED
   'LED4' : { 'pin' : 'E3' }, # Radio tuning indicator LED
