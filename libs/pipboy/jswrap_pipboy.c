@@ -494,6 +494,9 @@ void jswrap_pb_setVol(int volume) {
 Enable/disabled the DAC power supply (whih also powers the audio amp and SD card)
 */
 void jswrap_pb_setDACPower(bool isOn) {
+  if (!isOn) {
+    jswrap_E_unmountSD(); // Close all files and unmount the SD card
+  }
   jshPinOutput(SD_POWER_PIN, isOn); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
 }
 
@@ -609,6 +612,7 @@ void jswrap_pb_setLCDPower(bool isOn) {
 Enter standby mode - can only be started by pressing the power button (PA0).
 */
 void jswrap_pb_off() {
+  jswrap_E_unmountSD();
   // jswrap_pb_setDACMode_(DM_OFF); // No need to talk to the DAC - we're about to switch off its power
   jshPinOutput(SD_POWER_PIN, 0);  // The DAC (and audio amp) runs from the same power supply as the SD card
   jswrap_pb_setLCDPower(0);
