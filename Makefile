@@ -386,7 +386,7 @@ INCLUDE += -I$(ROOT)/libs/filesystem/fat_sd
 SOURCES += \
 libs/filesystem/fat_sd/fattime.c \
 libs/filesystem/fat_sd/ff.c \
-libs/filesystem/fat_sd/option/unicode.c # for LFN support (see _USE_LFN in ff.h)
+libs/filesystem/fat_sd/ffunicode.c # for LFN support (see FF_USE_LFN in ffconf.h)
 
 ifeq ($(USE_FILESYSTEM_SDIO),1)
 DEFINES += -DUSE_FILESYSTEM_SDIO

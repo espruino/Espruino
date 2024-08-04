@@ -1,0 +1,481 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta http-equiv="Content-Style-Type" content="text/css">
+<meta http-equiv="cache-control" content="no-cache">
+<link rel="start" title="Site Top" href="../../">
+<link rel="stylesheet" href="css_e.css" type="text/css" media="screen" title="ELM Default">
+<title>FatFs - Updates and Migration Notes</title>
+</head>
+<body style="max-width: none;">
+<h2>Updates and Migration Notes</h2>
+<table class="lst4">
+<tr><th>Revision</th><th>Updates</th><th>Migration Notes</th></tr>
+<tr>
+<td>R0.15<br>Nov 6, 2022</td>
+<td>
+Changed user provided synchronization functions in order to completely eliminate the platform dependency from FatFs code.<br>
+Fixed a potential error in <tt>f_mount</tt> when <tt>FF_FS_REENTRANT</tt>.<br>
+Fixed file lock control <tt>FF_FS_LOCK</tt> is not mutal excluded when <tt>FF_FS_REENTRANT && FF_VOLUMES &gt; 1</tt> is true.<br>
+Fixed <tt>f_mkfs</tt> creates broken exFAT volume when the size of volume is <tt>&gt;= 2^32</tt> sectors.<br>
+Fixed string functions cannot write the unicode characters not in BMP when <tt>FF_LFN_UNICODE == 2</tt> (UTF-8).<br>
+Fixed a compatibility issue in identification of GPT header.<br>
+</td>
+<td>
+User provided synchronization functions, <tt>ff_cre_syncobj</tt>, <tt>ff_del_syncobj</tt>, <tt>ff_req_grant</tt> and <tt>ff_rel_grant</tt>, needed when <tt>FF_FS_REENTRANT</tt> are replaced with <tt>ff_mutex_create</tt>, <tt>ff_mutex_delete</tt>, <tt>ff_mutex_take</tt> and <tt>ff_mutex_give</tt> respectively. For example, see <tt>ffsystem.c</tt>.<br>
+<tt>FF_SYNC_t</tt> is removed from the configuration options.<br>
+</td>
+</tr>
+<tr>
+<td>R0.14b<br>Apr 17, 2021</td>
+<td>
+Made FatFs uses standard library <tt>string.h</tt> for copy, compare and search instead of built-in string functions.<br>
+Added support for long long integer and floating point to <tt>f_printf</tt>. (<tt>FF_STRF_LLI</tt> and <tt>FF_STRF_FP</tt>)<br>
+Made path name parser ignores the terminating separator to allow <tt>"dir/"</tt>.<br>
+Improved the compatibility in Unix style path name feature.<br>
+Fixed the file gets dead-locked when <tt>f_open</tt> failed with certain conditions. (appeared at R0.12a)<br>
+Fixed <tt>f_mkfs</tt> can create wrong exFAT volume due to a timing dependent error. (appeared at R0.12)<br>
+Fixed code page 855 cannot be set by <tt>f_setcp</tt>. (appeared at R0.13)<br>
+Fixed some compiler warnings.<br>
+</td>
+<td>
+From this revision, FatFs depends on <tt>string.h</tt>.<br>
+</td>
+</tr>
+<tr>
+<td>R0.14a<br>Dec 05, 2020</td>
+<td>
+Limited number of recursive calls in <tt>f_findnext</tt> to prevent stack overflow.<br>
+Fixed old floppy disks formatted with MS-DOS 2.x and 3.x cannot be mounted.<br>
+Fixed some compiler warnings.<br>
+</td>
+<td>
+Number of wildcards in the matching pattern in <tt>f_findfirst</tt> is limited to 4.<br>
+</td>
+</tr>
+<tr>
+<td>R0.14<br>Oct 14, 2019</td>
+<td>
+Added support for 64-bit LBA and GUID partition table (<tt>FF_LBA64</tt>)<br>
+Changed some API functions, <tt>f_mkfs</tt> and <tt>f_fdisk</tt>.<br>
+Fixed <tt>f_open</tt> cannot find the file with file name in length of <tt>FF_MAX_LFN</tt> characters.<br>
+Fixed <tt>f_readdir</tt> cannot retrieve long file names in length of <tt>FF_MAX_LFN - 1</tt> characters.<br>
+Fixed <tt>f_readdir</tt> returns file names with wrong case conversion. (appeared at R0.12)<br>
+Fixed <tt>f_mkfs</tt> can fail to create exFAT volume in the second partition. (appeared at R0.12)<br>
+</td>
+<td>
+Usage of <tt>f_mkfs</tt> and <tt>f_fdisk</tt> is changed and some features are added to these functions.<br>
+</td>
+</tr>
+<tr>
+<td>R0.13c<br>Oct 14, 2018</td>
+<td>
+Supported <tt>stdint.h</tt> for C99 and later. (<tt>integer.h</tt> was included in <tt>ff.h</tt>)<br>
+Fixed reading a directory gets infinite loop when the last directory entry is not empty. (appeared at R0.12)<br>
+Fixed creating a sub-directory in the fragmented sub-directory on the exFAT volume collapses FAT chain of the parent directory. (appeared at R0.12)<br>
+Fixed <tt>f_getcwd</tt> cause output buffer overrun when the buffer has a valid drive number. (appeared at R0.13b)<br>
+</td>
+<td>
+From this revision, FatFs depends on <tt>stdint.h</tt> in C99 or later.<br>
+<tt>integer.h</tt> is removed.<br>
+</td>
+</tr>
+<tr>
+<td>R0.13b<br>Apr 07, 2018</td>
+<td>
+Added support for UTF-32 encoding on the API. (<tt>FF_LFN_UNICODE = 3</tt>)<br>
+Added support for Unix style volume prefix. (<tt>FF_STR_VOLUME_ID = 2</tt>)<br>
+Fixed accesing objects in the exFAT root directory beyond the cluster boundary can fail. (appeared at R0.12c)<br>
+Fixed <tt>f_setlabel</tt> does not reject some invalid characters. (appeared at R0.09b)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.13a<br>Oct 14, 2017</td>
+<td>
+Added support for UTF-8 encoding on the API. (<tt>FF_LFN_UNICODE = 2</tt>)<br>
+Added options for file name output buffer. (<tt>FF_LFN_BUF, FF_SFN_BUF</tt>)<br>
+Added dynamic memory allocation option for working buffer of <tt>f_mkfs</tt> and <tt>f_fdisk</tt>.<br>
+Fixed <tt>f_fdisk</tt> and <tt>f_mkfs</tt> create the partition table with wrong CHS parameters. (appeared at R0.09)<br>
+Fixed <tt>f_unlink</tt> can cause lost clusters at fragmented file on the exFAT volume. (appeared at R0.12c)<br>
+Fixed <tt>f_setlabel</tt> rejects some valid characters for exFAT volume. (appeared at R0.12)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.13<br>May 21, 2017</td>
+<td>
+Prefix of configuration item names are changed from <tt>"_"</tt> to <tt>"FF_"</tt>.<br>
+Added <tt>f_setcp</tt>, run-time code page configuration. (<tt>FF_CODE_PAGE = 0</tt>)<br>
+Improved cluster allocation time on stretch a deep buried cluster chain.<br>
+Improved processing time of <tt>f_mkdir</tt> with large cluster size by using <tt>FF_USE_LFN = 3</tt>.<br>
+Improved exFAT <tt>NoFatChain</tt> flag of the fragmented file to be set after it is truncated and got contiguous.<br>
+Fixed archive attribute is left not set when a file on the exFAT volume is renamed. (appeared at R0.12)<br>
+Fixed exFAT FAT entry can be collapsed when write or lseek operation to the existing file is done. (appeared at R0.12c)<br>
+Fixed creating a file can fail when a new cluster allocation to the exFAT directory occures. (appeared at R0.12c)<br>
+</td>
+<td>
+ASCII only configuration, <tt>FF_CODE_PAGE = 1</tt>, is removed. Use <tt>FF_CODE_PAGE = 437</tt> instead.<br>
+</td>
+</tr>
+<tr>
+<td>R0.12c<br>Mar 04, 2017</td>
+<td>
+Improved write throughput at the fragmented file on the exFAT volume.<br>
+Made memory usage for exFAT be able to be reduced as decreasing <tt>_MAX_LFN</tt>.<br>
+Fixed successive <tt>f_getfree</tt> can return wrong count on the FAT12/16 volume. (appeared at R0.12)<br>
+Fixed configuration option <tt>_VOLUMES</tt> cannot be set 10. (appeared at R0.10c)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.12b<br>Sep 4, 2016</td>
+<td>
+Made <tt>f_rename</tt> be able to rename objects with the same name but case.<br>
+Fixed an error in the case conversion teble of code page 866. (<tt>ff.c</tt>)<br>
+Fixed writing data is truncated at the file offset 4GiB on the exFAT volume. (appeared at R0.12)<br>
+Fixed creating a file in the root directory of exFAT volume can fail. (appeared at R0.12)<br>
+Fixed <tt>f_mkfs</tt> creating exFAT volume with too small cluster size can collapse unallocated memory. (appeared at R0.12a)<br>
+Fixed wrong object name can be returned when read directory at Unicode cfg. (appeared at R0.12)<br>
+Fixed large file allocation/removing on the exFAT volume collapses allocation bitmap. (appeared at R0.12)<br>
+Fixed some internal errors in <tt>f_expand</tt> and <tt>f_lseek.</tt> (appeared at R0.12)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.12a<br>Jul 10, 2016</td>
+<td>
+Added support for creating exFAT volume with some changes of <tt>f_mkfs</tt>.<br>
+Added a file open method <tt>FA_OPEN_APPEND</tt>.<br>
+<tt>f_forward</tt> is available regardless of <tt>_FS_TINY</tt>.<br>
+Fixed <tt>f_mkfs</tt> creates broken volume. (appeared at R0.12)<br>
+Fixed wrong memory read in <tt>create_name</tt>. (appeared at R0.12)<br>
+Fixed compilation fails at some configurations, <tt>_USE_FASTSEEK</tt> and <tt>_USE_FORWARD</tt>.<br>
+</td>
+<td>
+Usage of <tt>f_mkfs</tt> is changed.<br>
+</td>
+</tr>
+<tr>
+<td>R0.12<br>Apr 12, 2016</td>
+<td>
+Added support for exFAT file system. (<tt>_FS_EXFAT</tt>)<br>
+Added <tt>f_expand</tt>. (<tt>_USE_EXPAND</tt>)<br>
+Changed some members in <tt>FINFO</tt> and behavior of <tt>f_readdir</tt>.<br>
+Added a configuration option <tt>_USE_CHMOD</tt>.<br>
+Fixed errors in the case conversion teble of Unicode (<tt>cc*.c</tt>).<br>
+</td>
+<td>
+Usage and members of <tt>FINFO</tt> sructure used in <tt>f_readdir</tt> is changed.<br>
+Dot entries in the sub-directory are never appear in <tt>f_readdir</tt>.<br>
+<tt>".."</tt> does not work as path name in exFAT volume.<br>
+<tt>f_getcwd</tt> does not work in exFAT volume.</br>
+Many members in <tt>FIL</tt> and <tt>DIR</tt> structure are changed.<br>
+To use <tt>f_chmod</tt>, <tt>_USE_CHMOD</tt> needs to be set.<br>
+<tt>_WORD_ACCESS</tt> is removed from the configuration options.<br>
+</td>
+</tr>
+<tr>
+<td>R0.11a<br>Sep 5, 2015</td>
+<td>
+Fixed wrong media change can lead a deadlock at thread-safe configuration.<br>
+Added code page 771, 860, 861, 863, 864, 865 and 869. (<tt>_CODE_PAGE</tt>)<br>
+Fixed errors in the case conversion teble of code page 437 and 850 (<tt>ff.c</tt>).<br>
+Fixed errors in the case conversion teble of Unicode (<tt>cc*.c</tt>).<br>
+</td>
+<td>
+Removed some code pages actually not exist on the standard systems. (<tt>_CODE_PAGE</tt>)<br>
+</td>
+</tr>
+<tr>
+<td>R0.11<br>Feb 9, 2015</td>
+<td>
+Added <tt>f_findfirst</tt> and <tt>f_findnext.</tt> (<tt>_USE_FIND</tt>)<br>
+Fixed <tt>f_unlink</tt> does not remove cluster chain of the file. (appeared at R0.10c)<br>
+Fixed <tt>_FS_NORTC</tt> option does not work properly. (appeared at R0.10c)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.10c<br>Nov 9, 2014</td>
+<td>
+Added a configuration option for the platforms without RTC. (<tt>_FS_NORTC</tt>)<br>
+Fixed volume label created by Mac OS X cannot be retrieved with <tt>f_getlabel</tt>. (appeared at R0.09b)<br>
+Fixed a potential problem of FAT access that can appear on disk error.<br>
+Fixed null pointer dereference on attempting to delete the root direcotry. (appeared at R0.08)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.10b<br>May 19, 2014</td>
+<td>
+Fixed a hard error in the disk I/O layer can collapse the directory entry.<br>
+Fixed LFN entry is not deleted on delete/rename an object with its lossy converted SFN. (appeared at R0.07)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.10a<br>Jan 15, 2014</td>
+<td>
+Added arbitrary strings as drive number in the path name. (<tt>_STR_VOLUME_ID</tt>)<br>
+Added an option for minimum sector size. (<tt>_MIN_SS</tt>)<br>
+2nd argument of <tt>f_rename</tt> can have a drive number and it will be ignored.<br>
+Fixed <tt>f_mount</tt> with forced mount fails when drive number is larger than 0. (appeared at R0.10)<br>
+Fixed <tt>f_close</tt> invalidates the file object without volume lock.<br>
+Fixed volume lock is left acquired after return from <tt>f_closedir</tt>. (appeared at R0.10)<br>
+Fixed creation of a directory entry with LFN fails on too many SFN collisions. (appeared at R0.07)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.10<br>Oct 2, 2013</td>
+<td>
+Added an option for character encoding on the file. (<tt>_STRF_ENCODE</tt>)<br>
+Added f_closedir.<br>
+Added forced full FAT scan option for <tt>f_getfree</tt>. (<tt>_FS_NOFSINFO</tt>)<br>
+Added forced mount option with changes of <tt>f_mount</tt>.<br>
+Improved behavior of volume auto detection.<br>
+Improved write throughput of <tt>f_puts</tt> and <tt>f_printf</tt>.<br>
+Changed argument of <tt>f_chdrive,</tt> <tt>f_mkfs</tt>, <tt>disk_read</tt> and <tt>disk_write</tt>.<br>
+Fixed <tt>f_write</tt> can be truncated when the file size is close to 4 GB.<br>
+Fixed <tt>f_open</tt>, <tt>f_mkdir</tt> and <tt>f_setlabel</tt> can return incorrect result code on error.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.09b<br>Jan 24, 2013</td>
+<td>
+Added <tt>f_getlabel</tt> and <tt>f_setlabel</tt>. (<tt>_USE_LABEL</tt>)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.09a<br>Aug 27, 2012</td>
+<td>
+Fixed assertion failure due to OS/2 EA on FAT12/16 volume.<br>
+Changed file functions reject null object pointer to avoid crash.<br>
+Changed option name <tt>_FS_SHARE</tt> to <tt>_FS_LOCK</tt>.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.09<br>Sep 6, 2011</td>
+<td>
+<tt>f_mkfs</tt> supports multiple partition on a physical drive.<br>
+Added <tt>f_fdisk</tt>. (<tt>_MULTI_PARTITION = 2</tt>)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.08b<br>Jan 15, 2011</td>
+<td>
+Fast seek function is also applied to <tt>f_read</tt> and <tt>f_write</tt>.<br>
+<tt>f_lseek</tt> reports required table size on creating CLMP.<br>
+Extended format syntax of <tt>f_printf</tt>.<br>
+Ignores duplicated directory separators in given path names.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.08a<br>Aug 16, 2010</td>
+<td>
+Added <tt>f_getcwd</tt>. (<tt>_FS_RPATH = 2</tt>)<br>
+Added sector erase function. (<tt>_USE_ERASE</tt>)<br>
+Moved file lock semaphore table from fs object to the bss.<br>
+Fixed <tt>f_mkdir</tt> creates wrong directory on non-LFN cfg when the given name contains <tt>';'</tt>.<br>
+Fixed <tt>f_mkfs</tt> creates wrong FAT32 volume.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.08<br>May 15, 2010</td>
+<td>
+Added an option to <tt>_USE_LFN</tt><br>
+Added support of file lock. (<tt>_FS_SHARE</tt>)<br>
+Added fast seek function. (<tt>_USE_FASTSEEK</tt>)<br>
+Changed a type name on the API, <tt>XCHAR</tt> to <tt>TCHAR</tt>.<br>
+Changed member, <tt>fname</tt>, in the <tt>FILINFO</tt> on Unicode cfg.<br>
+String functions support UTF-8 encoding files on Unicode cfg.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.07e<br>Nov 3, 2009</td>
+<td>
+Separated out configuration options from <tt>ff.h</tt> to <tt>ffconf.h</tt>.<br>
+Added a configuration option, <tt>_LFN_UNICODE</tt>.<br>
+Fixed <tt>f_unlink</tt> fails to remove a sub-dir on <tt>_FS_RPATH</tt>.<br>
+Fixed name matching error on the 13 char boundary.<br>
+Changed <tt>f_readdir</tt> to return the SFN with always upper case on non-LFN cfg.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.07c<br>Jan 21, 2009</td>
+<td>
+Fixed <tt>f_unlink</tt> may return FR_OK on error.<br>
+Fixed wrong cache control in <tt>f_lseek</tt>.<br>
+Added support of relative path.<br>
+Added <tt>f_chdir</tt>.<br>
+Added <tt>f_chdrive</tt>.<br>
+Added proper case conversion to extended characters.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.07a<br>Apr 14, 2009</td>
+<td>
+Separated out OS dependent code on re-entrant configuration.<br>
+Added multiple sector size support.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.07<br>Apr 1, 2009</td>
+<td>
+Merged Tiny-FatFs into FatFs as a buffer configuration option.<br>
+Added support for long file extension.<br>
+Added multiple code page support.<br>
+Added re-entrancy for multitask operation.<br>
+Added auto cluster size selection to <tt>f_mkfs</tt>.<br>
+Added rewind option to <tt>f_readdir</tt>.<br>
+Changed result code of critical errors.<br>
+Renamed string functions to avoid name collision.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.06<br>Apr 1, 2008</td>
+<td>
+Added <tt>f_forward</tt>. (Tiny-FatFs)<br>
+Added string functions: <tt>f_gets</tt>, <tt>f_putc</tt>, <tt>f_puts</tt> and <tt>f_printf</tt>.<br>
+Improved performance of <tt>f_lseek</tt> on moving to the same or following cluster.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.05a<br>Feb 3, 2008</td>
+<td>
+Added <tt>f_truncate</tt>.<br>
+Added <tt>f_utime</tt>.<br>
+Fixed off by one error at FAT sub-type determination.<br>
+Fixed btr in <tt>f_read</tt> can be mistruncated.<br>
+Fixed cached sector is left not flushed when create and close without write.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.05<br>Aug 26, 2007</td>
+<td>
+Changed arguments of <tt>f_read</tt>, <tt>f_write</tt>.<br>
+Changed arguments of <tt>f_mkfs</tt>. (FatFs)<br>
+Fixed <tt>f_mkfs</tt> on FAT32 creates incorrect FSInfo. (FatFs)<br>
+Fixed <tt>f_mkdir</tt> on FAT32 creates broken directory. (FatFs)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.04b<br>May 5, 2007</td>
+<td>
+Added <tt>_USE_NTFLAG</tt> option.<br>
+Added support for FSInfo in FAT32 volume.<br>
+Fixed some problems corresponds to FAT32. (Tiny-FatFs)<br>
+Fixed DBCS name can result <tt>FR_INVALID_NAME</tt>.<br>
+Fixed short seek (<tt>&lt;= csize</tt>) collapses the file object.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.04a<br>Apr 1, 2007</td>
+<td>
+Supported multiple partitions on a plysical drive. (FatFs)<br>
+Added minimization level 3.<br>
+Added a capability of extending file size to <tt>f_lseek</tt>.<br>
+Fixed an endian sensitive code in <tt>f_mkfs</tt>. (FatFs)<br>
+Fixed a problem corresponds to FAT32 support. (Tiny-FatFs)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.04<br>Feb 4, 2007</td>
+<td>
+Supported multiple drive system. (FatFs)<br>
+Changed some APIs for multiple drive system.<br>
+Added <tt>f_mkfs</tt>. (FatFs)<br>
+Added <tt>_USE_FAT32</tt> option. (Tiny-FatFs)<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.03a<br>Dec 11, 2006</td>
+<td>
+Improved cluster scan algolithm to write files fast.<br>
+Fixed <tt>f_mkdir</tt> creates broken directory on FAT32.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.03<br>Sep 22, 2006</td>
+<td>
+Added <tt>f_rename</tt>.
+Changed option <tt>_FS_MINIMUM</tt> to <tt>_FS_MINIMIZE</tt>.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.02a<br>Jun 10, 2006</td>
+<td>
+Added a configuration option <tt>_FS_MINIMUM</tt>.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.02<br>Jun 01, 2006</td>
+<td>
+Added FAT12.<br>
+Removed unbuffered mode.<br>
+Fixed a problem on small (<tt>&lt;32M</tt>) patition.<br>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>R0.01<br>Apr 29, 2006</td>
+<td>
+First release.<br>
+</td>
+<td>
+</td>
+</tr>
+</table>
+</body>
+</html>

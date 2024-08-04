@@ -1,79 +1,76 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta http-equiv="Content-Style-Type" content="text/css">
 <link rel="up" title="FatFs" href="../00index_e.html">
+<link rel="alternate" hreflang="ja" title="Japanese" href="../ja/mkdir.html">
 <link rel="stylesheet" href="../css_e.css" type="text/css" media="screen" title="ELM Default">
 <title>FatFs - f_mkdir</title>
 </head>
 
 <body>
 
-<div class="para">
+<div class="para func">
 <h2>f_mkdir</h2>
 <p>The f_mkdir function creates a new directory.</p>
 <pre>
 FRESULT f_mkdir (
-  const char* <em>DirName</em> /* Pointer to the directory name */
+  const TCHAR* <span class="arg">path</span> <span class="c">/* [IN] Directory name */</span>
 );
 </pre>
 </div>
 
-<div class="para">
+<div class="para arg">
 <h4>Parameter</h4>
 <dl class="par">
-<dt>DirName</dt>
+<dt>path</dt>
 <dd>Pointer to the null-terminated string that specifies the <a href="filename.html">directory name</a> to create. </dd>
 </dl>
 </div>
 
 
-<div class="para">
+<div class="para ret">
 <h4>Return Value</h4>
-<dl class="ret">
-<dt>FR_OK (0)</dt>
-<dd>The function succeeded.</dd>
-<dt>FR_NO_PATH</dt>
-<dd>Could not find the path.</dd>
-<dt>FR_INVALID_NAME</dt>
-<dd>The path name is invalid.</dd>
-<dt>FR_INVALID_DRIVE</dt>
-<dd>The drive number is invalid.</dd>
-<dt>FR_DENIED</dt>
-<dd>The directory cannot be created due to directory table or disk is full.</dd>
-<dt>FR_EXIST</dt>
-<dd>A file or directory that has same name is already existing.</dd>
-<dt>FR_NOT_READY</dt>
-<dd>The disk drive cannot work due to no medium in the drive or any other reason.</dd>
-<dt>FR_WRITE_PROTECTED</dt>
-<dd>The medium is write protected.</dd>
-<dt>FR_DISK_ERR</dt>
-<dd>The function failed due to an error in the disk function.</dd>
-<dt>FR_INT_ERR</dt>
-<dd>The function failed due to a wrong FAT structure or an internal error.</dd>
-<dt>FR_NOT_ENABLED</dt>
-<dd>The logical drive has no work area.</dd>
-<dt>FR_NO_FILESYSTEM</dt>
-<dd>There is no valid FAT partition on the disk.</dd>
-</dl>
+<p>
+<a href="rc.html#ok">FR_OK</a>,
+<a href="rc.html#de">FR_DISK_ERR</a>,
+<a href="rc.html#ie">FR_INT_ERR</a>,
+<a href="rc.html#nr">FR_NOT_READY</a>,
+<a href="rc.html#np">FR_NO_PATH</a>,
+<a href="rc.html#in">FR_INVALID_NAME</a>,
+<a href="rc.html#dn">FR_DENIED</a>,
+<a href="rc.html#ex">FR_EXIST</a>,
+<a href="rc.html#wp">FR_WRITE_PROTECTED</a>,
+<a href="rc.html#id">FR_INVALID_DRIVE</a>,
+<a href="rc.html#ne">FR_NOT_ENABLED</a>,
+<a href="rc.html#ns">FR_NO_FILESYSTEM</a>,
+<a href="rc.html#tm">FR_TIMEOUT</a>,
+<a href="rc.html#nc">FR_NOT_ENOUGH_CORE</a>
+</p>
 </div>
 
 
-<div class="para">
+<div class="para desc">
 <h4>Description</h4>
-<p>The f_mkdir function creates a new directory. This function is not supported in read-only configuration and minimization level of &gt;= 1.</p>
+<p>This function creates a new directory. To remove a directory, use <a href="unlink.html"><tt>f_unlink</tt></a> function.</p>
 </div>
 
 
-<div class="para">
+<div class="para comp">
+<h4>QuickInfo</h4>
+<p>Available when <tt><a href="config.html#fs_readonly">FF_FS_READONLY</a> == 0</tt> and <tt><a href="config.html#fs_minimize">FF_FS_MINIMIZE</a> == 0</tt>.</p>
+</div>
+
+
+<div class="para use">
 <h4>Example</h4>
 <pre>
-    res = f_mkdir("sub1");
+    res = <em>f_mkdir</em>("sub1");
     if (res) die(res);
-    res = f_mkdir("sub1/sub2");
+    res = <em>f_mkdir</em>("sub1/sub2");
     if (res) die(res);
-    res = f_mkdir("sub1/sub2/sub3");
+    res = <em>f_mkdir</em>("sub1/sub2/sub3");
     if (res) die(res);
 </pre>
 </div>

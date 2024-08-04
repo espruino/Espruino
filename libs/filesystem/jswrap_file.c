@@ -332,7 +332,7 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
       if(fMode != FM_NONE && allocateJsFile(&file, fMode, FT_FILE)) {
 #ifndef LINUX
         if ((res=f_open(&file.data->handle, pathStr, ff_mode)) == FR_OK) {
-          if (append) f_lseek(&file.data->handle, file.data->handle.fsize); // move to end of file
+          if (append) f_lseek(&file.data->handle, file.data->handle.obj.objsize); // move to end of file
 #else
         file.data->handle = fopen(pathStr, modeStr);
         if (file.data->handle) {

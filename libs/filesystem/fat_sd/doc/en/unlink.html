@@ -1,69 +1,71 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta http-equiv="Content-Style-Type" content="text/css">
 <link rel="up" title="FatFs" href="../00index_e.html">
+<link rel="alternate" hreflang="ja" title="Japanese" href="../ja/unlink.html">
 <link rel="stylesheet" href="../css_e.css" type="text/css" media="screen" title="ELM Default">
 <title>FatFs - f_unlink</title>
 </head>
 
 <body>
 
-<div class="para">
+<div class="para func">
 <h2>f_unlink</h2>
-<p>The f_unlink removes file or directory.</p>
+<p>The f_unlink function removes a file or sub-directory from the volume.</p>
 <pre>
 FRESULT f_unlink (
-  const char* <em>FileName</em>  /* Pointer to the file or directory name */
+  const TCHAR* <span class="arg">path</span>  <span class="c">/* [IN] Object name */</span>
 );
 </pre>
 </div>
 
-<div class="para">
+<div class="para arg">
 <h4>Parameter</h4>
 <dl class="par">
-<dt>FileName</dt>
-<dd>Pointer to the null-terminated string that specifies a <a href="filename.html">file or directory</a> to be removed.</dd>
+<dt>path</dt>
+<dd>Pointer to a null-terminated string that specifies the <a href="filename.html">file or sub-directory</a> to be removed.</dd>
 </dl>
 </div>
 
 
-<div class="para">
+<div class="para ret">
 <h4>Return Values</h4>
-<dl class="ret">
-<dt>FR_OK (0)</dt>
-<dd>The function succeeded.</dd>
-<dt>FR_NO_FILE</dt>
-<dd>Could not find the file or directory.</dd>
-<dt>FR_NO_PATH</dt>
-<dd>Could not find the path.</dd>
-<dt>FR_INVALID_NAME</dt>
-<dd>The path name is invalid.</dd>
-<dt>FR_INVALID_DRIVE</dt>
-<dd>The drive number is invalid.</dd>
-<dt>FR_DENIED</dt>
-<dd>The function was denied due to either of following reasons:
-<ul><li>The file or directory has read-only attribute</li><li>The directory is not empty.</li></ul></dd>
-<dt>FR_NOT_READY</dt>
-<dd>The disk drive cannot work due to no medium in the drive or any other reason.</dd>
-<dt>FR_WRITE_PROTECTED</dt>
-<dd>The medium is write protected.</dd>
-<dt>FR_DISK_ERR</dt>
-<dd>The function failed due to an error in the disk function.</dd>
-<dt>FR_INT_ERR</dt>
-<dd>The function failed due to a wrong FAT structure or an internal error.</dd>
-<dt>FR_NOT_ENABLED</dt>
-<dd>The logical drive has no work area.</dd>
-<dt>FR_NO_FILESYSTEM</dt>
-<dd>There is no valid FAT partition on the disk.</dd>
-</dl>
+<p>
+<a href="rc.html#ok">FR_OK</a>,
+<a href="rc.html#de">FR_DISK_ERR</a>,
+<a href="rc.html#ie">FR_INT_ERR</a>,
+<a href="rc.html#nr">FR_NOT_READY</a>,
+<a href="rc.html#ok">FR_NO_FILE</a>,
+<a href="rc.html#np">FR_NO_PATH</a>,
+<a href="rc.html#in">FR_INVALID_NAME</a>,
+<a href="rc.html#dn">FR_DENIED</a>,
+<a href="rc.html#wp">FR_WRITE_PROTECTED</a>,
+<a href="rc.html#id">FR_INVALID_DRIVE</a>,
+<a href="rc.html#ne">FR_NOT_ENABLED</a>,
+<a href="rc.html#ns">FR_NO_FILESYSTEM</a>,
+<a href="rc.html#tm">FR_TIMEOUT</a>,
+<a href="rc.html#lo">FR_LOCKED</a>,
+<a href="rc.html#nc">FR_NOT_ENOUGH_CORE</a>
+</p>
 </div>
 
 
-<div class="para">
+<div class="para desc">
 <h4>Description</h4>
-<p>The f_unlink function removes a file or directory. In read-only configuration or minimization level is &gt;= 1, this function is not available.</p>
+<p>
+If condition of the object to be removed is applicable to the following terms, the function will be rejected.<ul>
+<li>The file/sub-directory must not have read-only attribute (<tt>AM_RDO</tt>), or the function will be rejected with <tt>FR_DENIED</tt>.</li>
+<li>The sub-directory must be empty and must not be current directory, or the function will be rejected with <tt>FR_DENIED</tt>.</li>
+<li>The file/sub-directory must not be opened, or the <em>FAT volume can be collapsed</em>. It will be rejected safely when <a href="appnote.html#dup">file lock function</a> is enabled.</li>
+</ul>
+</div>
+
+
+<div class="para comp">
+<h4>QuickInfo</h4>
+<p>Available when <tt><a href="config.html#fs_readonly">FF_FS_READONLY</a> == 0</tt> and <tt><a href="config.html#fs_minimize">FF_FS_MINIMIZE</a> == 0</tt>.</p>
 </div>
 
 

@@ -1,86 +1,86 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta http-equiv="Content-Style-Type" content="text/css">
 <link rel="up" title="FatFs" href="../00index_e.html">
+<link rel="alternate" hreflang="ja" title="Japanese" href="../ja/rename.html">
 <link rel="stylesheet" href="../css_e.css" type="text/css" media="screen" title="ELM Default">
 <title>FatFs - f_rename</title>
 </head>
 
 <body>
 
-<div class="para">
+<div class="para func">
 <h2>f_rename</h2>
-<p>Rename file or directory.</p>
+<p>The f_rename function renames and/or moves a file or sub-directory.</p>
 <pre>
 FRESULT f_rename (
-  const char* <em>OldName</em>, /* Pointer to old file/directory name */
-  const char* <em>NewName</em>  /* Pointer to new file/directory name */
+  const TCHAR* <span class="arg">old_name</span>, <span class="c">/* [IN] Old object name */</span>
+  const TCHAR* <span class="arg">new_name</span>  <span class="c">/* [IN] New object name */</span>
 );
 </pre>
 </div>
 
-<div class="para">
+<div class="para arg">
 <h4>Parameters</h4>
 <dl class="par">
-<dt>OldName</dt>
-<dd>Pointer to a null-terminated string specifies the old <a href="filename.html">file/directory name</a> to be renamed.</dd>
-<dt>NewName</dt>
-<dd>Pointer to a null-terminated string specifies the new file/directory name without drive number. Existing object nannot be specified.</dd>
+<dt>old_name</dt>
+<dd>Pointer to a null-terminated string that specifies the existing <a href="filename.html">file or sub-directory</a> to be renamed.</dd>
+<dt>new_name</dt>
+<dd>Pointer to a null-terminated string that specifies the new object name. A drive number may be specified in this string but it is ignored and assumed as the same drive of the <tt class="arg">old_name</tt>. Any object with this path name except <tt class="arg">old_name</tt> must not be exist, or the function fails with <tt>FR_EXIST</tt>.</dd>
 </dl>
 </div>
 
 
-<div class="para">
+<div class="para ret">
 <h4>Return Values</h4>
-<dl class="ret">
-<dt>FR_OK (0)</dt>
-<dd>The function succeeded.</dd>
-<dt>FR_NO_FILE</dt>
-<dd>Could not find the old name.</dd>
-<dt>FR_NO_PATH</dt>
-<dd>Could not find the path.</dd>
-<dt>FR_INVALID_NAME</dt>
-<dd>The file name is invalid.</dd>
-<dt>FR_INVALID_DRIVE</dt>
-<dd>The drive number is invalid.</dd>
-<dt>FR_NOT_READY</dt>
-<dd>The disk drive cannot work due to no medium in the drive or any other reason.</dd>
-<dt>FR_EXIST</dt>
-<dd>There is an object that have a name equal to new name.</dd>
-<dt>FR_DENIED</dt>
-<dd>The new name could not be created due to any reason.</dd>
-<dt>FR_WRITE_PROTECTED</dt>
-<dd>The medium is write protected.</dd>
-<dt>FR_DISK_ERR</dt>
-<dd>The function failed due to an error in the disk function.</dd>
-<dt>FR_INT_ERR</dt>
-<dd>The function failed due to a wrong FAT structure or an internal error.</dd>
-<dt>FR_NOT_ENABLED</dt>
-<dd>The logical drive has no work area.</dd>
-<dt>FR_NO_FILESYSTEM</dt>
-<dd>There is no valid FAT partition on the disk.</dd>
-</dl>
+<p>
+<a href="rc.html#ok">FR_OK</a>,
+<a href="rc.html#de">FR_DISK_ERR</a>,
+<a href="rc.html#ie">FR_INT_ERR</a>,
+<a href="rc.html#nr">FR_NOT_READY</a>,
+<a href="rc.html#ok">FR_NO_FILE</a>,
+<a href="rc.html#np">FR_NO_PATH</a>,
+<a href="rc.html#in">FR_INVALID_NAME</a>,
+<a href="rc.html#ex">FR_EXIST</a>,
+<a href="rc.html#wp">FR_WRITE_PROTECTED</a>,
+<a href="rc.html#id">FR_INVALID_DRIVE</a>,
+<a href="rc.html#ne">FR_NOT_ENABLED</a>,
+<a href="rc.html#ns">FR_NO_FILESYSTEM</a>,
+<a href="rc.html#tm">FR_TIMEOUT</a>,
+<a href="rc.html#lo">FR_LOCKED</a>,
+<a href="rc.html#nc">FR_NOT_ENOUGH_CORE</a>
+</p>
 </div>
 
 
-<div class="para">
+<div class="para desc">
 <h4>Description</h4>
-<p>Rename a file or directory and can move it to other directory. Logical drive number is determined by old name, new name must not contain logical drive number. This function is not supported in read-only configuration or minimization level of &gt;= 1.</p>
+<p>Renames a file or sub-directory and can also move it to other directory in the same volume. The object to be renamed must not be an open object, or <em>the FAT volume can be collapsed</em>. Such the wrong operation is rejected safely when <a href="appnote.html#dup">file lock function</a> is enabled.</p>
 </div>
 
 
-<div class="para">
+<div class="para comp">
+<h4>QuickInfo</h4>
+<p>Available when <tt><a href="config.html#fs_readonly">FF_FS_READONLY</a> == 0</tt> and <tt><a href="config.html#fs_minimize">FF_FS_MINIMIZE</a> == 0</tt>.</p>
+</div>
+
+
+<div class="para use">
 <h4>Example</h4>
 <pre>
-    // Rename a file or directory
-    f_rename("oldname.txt", "newname.txt");
+    <span class="c">/* Rename an object in the default drive */</span>
+    <em>f_rename</em>("oldname.txt", "newname.txt");
 
-    // Rename and move a file or directory to other directory simultaneously
-    f_rename("oldname.txt", "dir1/newname.txt");
+    <span class="c">/* Rename an object in the drive 2 */</span>
+    <em>f_rename</em>("2:oldname.txt", "newname.txt");
+
+    <span class="c">/* Rename an object and move it to another directory in the drive */</span>
+    <em>f_rename</em>("log.txt", "old/log0001.txt");
 </pre>
 </div>
+
 
 <p class="foot"><a href="../00index_e.html">Return</a></p>
 </body>

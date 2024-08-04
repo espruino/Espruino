@@ -1,33 +1,34 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html lang="en">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta http-equiv="Content-Style-Type" content="text/css">
 <link rel="up" title="FatFs" href="../00index_e.html">
+<link rel="alternate" hreflang="ja" title="Japanese" href="../ja/chmod.html">
 <link rel="stylesheet" href="../css_e.css" type="text/css" media="screen" title="ELM Default">
 <title>FatFs - f_chmod</title>
 </head>
 
 <body>
 
-<div class="para">
+<div class="para func">
 <h2>f_chmod</h2>
-<p>The f_chmod function changes the attribute of a file or directory.</p>
+<p>The f_chmod function changes the attribute of a file or sub-directory.</p>
 <pre>
 FRESULT f_chmod (
-  const char* <em>FileName</em>, /* Pointer to the file or directory */
-  BYTE <em>Attribute</em>,       /* Attribute flags */
-  BYTE <em>AttributeMask</em>    /* Attribute masks */
+  const TCHAR* <span class="arg">path</span>, <span class="c">/* [IN] Object name */</span>
+  BYTE <span class="arg">attr</span>,         <span class="c">/* [IN] Attribute flags */</span>
+  BYTE <span class="arg">mask</span>          <span class="c">/* [IN] Attribute masks */</span>
 );
 </pre>
 </div>
 
-<div class="para">
+<div class="para arg">
 <h4>Parameters</h4>
 <dl class="par">
-<dt>FileName</dt>
-<dd>Pointer to the null-terminated string that specifies a <a href="filename.html">file or directory</a> to be changed</dd>
-<dt>Attribute</dt>
+<dt>path</dt>
+<dd>Pointer to the null-terminated string that specifies an <a href="filename.html">object</a> to be changed</dd>
+<dt>attr</dt>
 <dd>Attribute flags to be set in one or more combination of the following flags. The specified flags are set and others are cleard.<br>
 <table class="lst">
 <tr><th>Attribute</th><th>Description</th></tr>
@@ -37,52 +38,49 @@ FRESULT f_chmod (
 <tr><td>AM_HID</td><td>Hidden</td></tr>
 </table>
 </dd>
-<dt>AttributeMask</dt>
-<dd>Attribute mask that specifies which attribute is changed. The specified aattributes are set or cleard.</dd>
+<dt>mask</dt>
+<dd>Attribute mask that specifies which attribute is changed. The specified attributes are set or cleard and others are left unchanged.</dd>
 </dl>
 </div>
 
 
-<div class="para">
+<div class="para ret">
 <h4>Return Values</h4>
-<dl class="ret">
-<dt>FR_OK (0)</dt>
-<dd>The function succeeded.</dd>
-<dt>FR_NO_FILE</dt>
-<dd>Could not find the file.</dd>
-<dt>FR_NO_PATH</dt>
-<dd>Could not find the path.</dd>
-<dt>FR_INVALID_NAME</dt>
-<dd>The file name is invalid.</dd>
-<dt>FR_INVALID_DRIVE</dt>
-<dd>The drive number is invalid.</dd>
-<dt>FR_NOT_READY</dt>
-<dd>The disk drive cannot work due to no medium in the drive or any other reason.</dd>
-<dt>FR_WRITE_PROTECTED</dt>
-<dd>The medium is write protected.</dd>
-<dt>FR_DISK_ERR</dt>
-<dd>The function failed due to an error in the disk function.</dd>
-<dt>FR_INT_ERR</dt>
-<dd>The function failed due to a wrong FAT structure or an internal error.</dd>
-<dt>FR_NOT_ENABLED</dt>
-<dd>The logical drive has no work area.</dd>
-<dt>FR_NO_FILESYSTEM</dt>
-<dd>There is no valid FAT partition on the disk.</dd>
-</dl>
+<p>
+<a href="rc.html#ok">FR_OK</a>,
+<a href="rc.html#de">FR_DISK_ERR</a>,
+<a href="rc.html#ie">FR_INT_ERR</a>,
+<a href="rc.html#nr">FR_NOT_READY</a>,
+<a href="rc.html#ok">FR_NO_FILE</a>,
+<a href="rc.html#np">FR_NO_PATH</a>,
+<a href="rc.html#in">FR_INVALID_NAME</a>,
+<a href="rc.html#wp">FR_WRITE_PROTECTED</a>,
+<a href="rc.html#id">FR_INVALID_DRIVE</a>,
+<a href="rc.html#ne">FR_NOT_ENABLED</a>,
+<a href="rc.html#ns">FR_NO_FILESYSTEM</a>,
+<a href="rc.html#tm">FR_TIMEOUT</a>,
+<a href="rc.html#nc">FR_NOT_ENOUGH_CORE</a>
+</p>
 </div>
 
 
-<div class="para">
+<div class="para desc">
 <h4>Description</h4>
-<p>The f_chmod function changes the attribute of a file or directory. This function is not available in read-only configuration and minimization level of &gt;=1.</p>
+<p>The <tt>f_chmod</tt> function changes the attribute of a file or sub-directory.</p>
 </div>
 
 
-<div class="para">
+<div class="para comp">
+<h4>QuickInfo</h4>
+<p>Available when <tt><a href="config.html#fs_readonly">FF_FS_READONLY</a> == 0</tt> and <tt><a href="config.html#use_chmod">FF_USE_CHMOD</a> == 1</tt>.</p>
+</div>
+
+
+<div class="para use">
 <h4>Example</h4>
 <pre>
-    // Set read-only flag, clear archive flag and others are retained.
-    f_chmod("file.txt", AR_RDO, AR_RDO | AR_ARC);
+    <span class="c">/* Set Read-only, clear Archive and others are left unchanged. */</span>
+    <em>f_chmod</em>("file.txt", AM_RDO, AM_RDO | AM_ARC);
 </pre>
 </div>
 
