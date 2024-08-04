@@ -1242,7 +1242,7 @@ void jshInit() {
 #endif
 #endif // ESPRUINOBOARD
   jshInitDevices();
-#ifdef LED1_PININDEX
+#if (defined(LED1_PININDEX) && !defined(PIPBOY))
   // turn led on (status)
   jshPinOutput(LED1_PININDEX, 1);
 #endif
@@ -1301,7 +1301,7 @@ void jshInit() {
 #endif
   jshResetDevices();
   jshResetPeripherals();
-#ifdef LED1_PININDEX
+#if (defined(LED1_PININDEX) && !defined(PIPBOY))
   // turn led back on (status) as it would have just been turned off
   jshPinOutput(LED1_PININDEX, 1);
 #endif
@@ -1443,7 +1443,7 @@ void jshInit() {
   }
 #endif
 
-#ifdef LED1_PININDEX
+#if (defined(LED1_PININDEX) && !defined(PIPBOY))
   // now hardware is initialised, turn led off
   jshPinOutput(LED1_PININDEX, 0);
 #endif
