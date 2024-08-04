@@ -72,7 +72,10 @@ void jsfsReportError(const char *msg, FRESULT res) {
 
 bool jsfsInit() {
 #ifdef SD_POWER_PIN
-  jshPinOutput(SD_POWER_PIN, 1);
+  if (jshPinGetValue(SD_POWER_PIN)==0) {
+    jshPinOutput(SD_POWER_PIN, 1);
+    jshDelayMicroseconds(5000);
+  }
 #endif
 #ifndef LINUX
   if (!fat_initialised) {
