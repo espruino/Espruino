@@ -539,7 +539,7 @@ void jswrap_pb_initDAC() {
   es8388_write_reg(0x1A, 0x00); // ADC volume 0dB
   es8388_write_reg(0x1B, 0x00); // ADC volume 0dB
   es8388_write_reg(0x1D, 0x20); // GW: DAC control - force MONO
-  es8388_write_reg(0x19, 0x32); // Unmute DAC
+  es8388_write_reg(0x19, 0x00); // Unmute DAC (no volume soft ramp, 0x32 uses ramp)
   // Set mixer for DAC out
   es8388_write_reg(0x26, 0x09); // Select LIN2 + RIN2 for output mix
   es8388_write_reg(0x27, 0xF0); // L mixer enable DAC + LIN signals, gain = -12dB
@@ -572,7 +572,7 @@ void jswrap_pb_setDACMode_(DACMode mode) {
     es8388_write_reg(0x04, 0xC0); // Power down DAC L/ROUT
   } else if (mode == DM_Output) {
     es8388_write_reg(0x0F, 0x20); // Unmute ADC
-    es8388_write_reg(0x19, 0x32); // Unmute DAC
+    es8388_write_reg(0x19, 0x00); // Unmute DAC (no volume soft ramp, 0x32 uses ramp)
     es8388_write_reg(0x04, 0x3C); // Power up DAC, Analog out
     es8388_write_reg(0x02, 0xAA); // power up DEM and STM
   } // TODO: passthru?
