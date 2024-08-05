@@ -444,6 +444,7 @@ void jswrap_pb_audioFrame() {
     STM32_I2S_AddSamples((int16_t*)streamBuffer, actual>>1);
   } else {
     // jsiConsolePrintf("End of WAV\n");
+    STM32_I2S_StreamEnded(); // ensure we start playing even if we didn't think we'd buffered enough yet
     jswrap_pb_videoStopLetAudioRun(); // Stop parsing, let audio finish
   }
 }
@@ -616,6 +617,7 @@ void jswrap_pb_off() {
   // jswrap_pb_setDACMode_(DM_OFF); // No need to talk to the DAC - we're about to switch off its power
   jshPinOutput(SD_POWER_PIN, 0);  // The DAC (and audio amp) runs from the same power supply as the SD card
   jswrap_pb_setLCDPower(0);
+  jswrap_pb_setDACPower(0);
 #ifndef LINUX
 /*  In Standby mode, all I/O pins are high impedance except for:
  *          - Reset pad (still available)

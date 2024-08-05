@@ -39,6 +39,8 @@ void STM32_I2S_Stop() {};
 
 volatile STM32_I2S_Status i2sStatus;
 
+STM32_I2S_Status STM32_I2S_GetStatus() { return i2sStatus; }
+
 volatile uint8_t i2sDMAidx; // index in i2sDMAbuf we're playing
 int16_t i2sDMAbuf[2][I2S_DMA_BUFFER_SIZE]; // Set of audio buffers
 
@@ -229,6 +231,13 @@ void STM32_I2S_Start() {
 void STM32_I2S_Stop() {
   i2sStatus = STM32_I2S_STOPPED;
   DMA_Cmd(DMA1_Stream4, DISABLE);
+}
+
+/// Input stream has ended - so no new data is coming. If we didn't have enough data in our buffer to start playing yet, start playing anyway
+void STM32_I2S_StreamEnded() {
+  if (STM32_I2S_GetStatus() == STM32_I2S_STOPPED) {
+    STM32_I2S_Start();
+  }
 }
 
 #endif

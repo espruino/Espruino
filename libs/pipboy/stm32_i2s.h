@@ -38,5 +38,9 @@ void STM32_I2S_AddSamples(int16_t *data, unsigned int count);
 void STM32_I2S_Start();
 /// Stop playback
 void STM32_I2S_Stop();
+/// Input stream has ended - so no new data is coming. If we didn't have enough data in our buffer to start playing yet, start playing anyway
+void STM32_I2S_StreamEnded();
+/// Get status
+STM32_I2S_Status STM32_I2S_GetStatus();
 
 #endif
