@@ -1833,11 +1833,11 @@ void lcdFSMC_blit4Bit(JsGraphics *gfx, int x, int y, int w, int h, int scale, Js
   assert((w&1)==0); // only works on even image widths
   int w2 = w>>1;
   lcdFSMC_blitStart(gfx, x,y, w*scale,h*scale);
-  for (int row=y;row<y+h;row++) {
+  for (int row=0;row<h;row++) {
     JsvStringIterator lastPixels;
     jsvStringIteratorClone(&lastPixels, pixels);
-    if(callback) callback(row, palette);
     for (int n=1;n<=scale;n++) {
+      if(callback) callback(y+row*scale+n, palette);
       if (scale==1) {
         for (int x=0;x<w2;x++) {
           int bitData = jsvStringIteratorGetCharAndNext(pixels);
@@ -1882,11 +1882,11 @@ void lcdFSMC_blit2Bit(JsGraphics *gfx, int x, int y, int w, int h, int scale, Js
   assert((w&3)==0); // only works on image widths that are a multiple of 4
   int w2 = w>>2;
   lcdFSMC_blitStart(gfx, x,y, w*scale,h*scale);
-  for (int row=y;row<y+h;row++) {
+  for (int row=0;row<h;row++) {
     JsvStringIterator lastPixels;
     jsvStringIteratorClone(&lastPixels, pixels);
-    if(callback) callback(row, palette);
     for (int n=1;n<=scale;n++) {
+      if(callback) callback(y+row*scale+n, palette);
       if (scale==1) {
         for (int x=0;x<w2;x++) {
           int bitData = jsvStringIteratorGetCharAndNext(pixels);
