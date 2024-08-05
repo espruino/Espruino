@@ -17,7 +17,7 @@ import pinutils;
 info = {
  'name' : "Fallout TV series Pip-Boy",
  'link' :  [ "https://www.thewandcompany.com/fallout-pip-boy" ],
- 'variables' : 2450,
+ 'variables' : 5000, # 5000 -> 65k for vars
  'binary_name' : 'espruino_%v_pipboy.bin',
  'default_console' : "EV_SERIAL3",
  'default_console_tx' : "B10",
@@ -31,6 +31,7 @@ info = {
      'LCD_FSMC',
      'FILESYSTEM',
      'FILESYSTEM_SDIO',
+     'JIT'
    ],
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',
@@ -90,16 +91,16 @@ devices = {
   'LED2' : { 'pin' : 'E5' }, # Green element of RGB LED
   'LED3' : { 'pin' : 'E6' }, # Blue element of RGB LED
   'LED4' : { 'pin' : 'E3' }, # Radio tuning indicator LED
-  'BTN1' : { 'pin' : 'A1', 'pinstate' : 'IN_PULLUP' }, # "Play" button
-  'BTN2' : { 'pin' : 'E1', 'pinstate' : 'IN_PULLUP' }, # "Up" button
-  'BTN3' : { 'pin' : 'E2', 'pinstate' : 'IN_PULLUP' }, # "Down" button
-  'BTN4' : { 'pin' : 'A2', 'pinstate' : 'IN_PULLUP' }, # "Flashlight" button
-  'BTN5' : { 'pin' : 'A9', 'pinstate' : 'IN_PULLUP' }, # Thumbwheel encoder A - PA9 for v0.3, PA10 for v0.5
-  'BTN6' : { 'pin' : 'A8', 'pinstate' : 'IN_PULLUP' }, # Thumbwheel encoder B
-  'BTN7' : { 'pin' : 'A3', 'pinstate' : 'IN_PULLUP' }, # Clock "select" button
-  'BTN8' : { 'pin' : 'B1', 'pinstate' : 'IN_PULLUP' }, # Clock encoder A
-  'BTN9' : { 'pin' : 'B0', 'pinstate' : 'IN_PULLUP' }, # Clock encoder B
-  'BTN10' : { 'pin' : 'A0', 'pinstate' : 'IN_PULLUP' }, # "Power" button
+  'BTN1' : { 'pin' : 'A1' }, # "Play" button
+  'BTN2' : { 'pin' : 'E1' }, # "Up" button
+  'BTN3' : { 'pin' : 'E2' }, # "Down" button
+  'BTN4' : { 'pin' : 'A2' }, # "Flashlight" button
+  'BTN5' : { 'pin' : 'A9' }, # Thumbwheel encoder A - PA9 for v0.3, PA10 for v0.5
+  'BTN6' : { 'pin' : 'A8' }, # Thumbwheel encoder B
+  'BTN7' : { 'pin' : 'A3' }, # Clock "select" button
+  'BTN8' : { 'pin' : 'B1' }, # Clock encoder A
+  'BTN9' : { 'pin' : 'B0' }, # Clock encoder B
+  'BTN10' : { 'pin' : 'A0' }, # "Power" button
  
   'BAT' : {
             'pin_sense_en' : 'C4', 
