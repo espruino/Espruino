@@ -41,11 +41,11 @@ volatile STM32_I2S_Status i2sStatus;
 
 STM32_I2S_Status STM32_I2S_GetStatus() { return i2sStatus; }
 
-volatile uint8_t i2sDMAidx; // index in i2sDMAbuf we're playing
+volatile uint8_t i2sDMAidx = 0; // index in i2sDMAbuf we're playing
 int16_t i2sDMAbuf[2][I2S_DMA_BUFFER_SIZE]; // Set of audio buffers
 
-volatile uint16_t audioRingIdxIn;  // index in audioRingBuf we're writing to
-volatile uint16_t audioRingIdxOut; // index in audioRingBuf we're reading from
+volatile uint16_t audioRingIdxIn = 0;  // index in audioRingBuf we're writing to
+volatile uint16_t audioRingIdxOut = 0; // index in audioRingBuf we're reading from
 /// ringbuffer for audio data we're outputting
 //int16_t audioRingBuf[I2S_RING_BUFFER_SIZE];
 int16_t *audioRingBuf = 0x10000000; // force in in CCM
@@ -139,6 +139,15 @@ void STM32_I2S_Prepare(int audioFreq) {
   audioRingIdxIn = 0;
   audioRingIdxOut = 0;
   i2sStatus = STM32_I2S_STOPPED;
+
+  // debugging - various beeps (we shouldn't hear them at all if it's working right!)
+/*  for (int i=0;i<I2S_DMA_BUFFER_SIZE;i++) {
+    i2sDMAbuf[0][i] = ((i&3)<2) ? -30000 : 30000;
+    i2sDMAbuf[1][i] = ((i&7)<4) ? -30000 : 30000;
+  }
+  for (int i=0;i<I2S_RING_BUFFER_SIZE;i++) {
+    audioRingBuf[i] = ((i&15)<8) ? -30000 : 30000;
+  }*/
 
   DMA_ITConfig(DMA1_Stream4, DMA_IT_TC, ENABLE);
 }
@@ -236,6 +245,10 @@ void STM32_I2S_Stop() {
 /// Input stream has ended - so no new data is coming. If we didn't have enough data in our buffer to start playing yet, start playing anyway
 void STM32_I2S_StreamEnded() {
   if (STM32_I2S_GetStatus() == STM32_I2S_STOPPED) {
+    i2sDMAidx = !DMA_GetCurrentMemoryTarget(DMA1_Stream4);
+    fillDMAFromRingBuffer();
+    i2sDMAidx = !i2sDMAidx;
+    fillDMAFromRingBuffer(); // fill the second buffer
     STM32_I2S_Start();
   }
 }
