@@ -48,12 +48,12 @@ volatile uint16_t audioRingIdxIn = 0;  // index in audioRingBuf we're writing to
 volatile uint16_t audioRingIdxOut = 0; // index in audioRingBuf we're reading from
 /// ringbuffer for audio data we're outputting
 //int16_t audioRingBuf[I2S_RING_BUFFER_SIZE];
-int16_t *audioRingBuf = 0x10000000; // force in in CCM
+int16_t *audioRingBuf = (int16_t*)0x10000000; // force in in CCM
 // FIXME ideally we use linker and __attribute__((section(".CCM_RAM"))) for this, but attempts so far have failed (it makes a massive binary!)
 
 // Get how many samples are in the buffer
 int audioRingBufGetSamples() {
-  int s = audioRingIdxIn - audioRingIdxOut;
+  int s = (int)audioRingIdxIn - (int)audioRingIdxOut;
   if (s<0) s+=I2S_RING_BUFFER_SIZE;
   return s;
 }
@@ -92,7 +92,7 @@ void DMA1_Stream4_IRQHandler(void) {
     DMA_ClearITPendingBit(DMA1_Stream4, DMA_IT_TCIF4);
     //jshPinOutput(LED1_PININDEX, LED1_ONSTATE); // debug
 
-    i2sDMAidx = DMA_GetCurrentMemoryTarget(DMA1_Stream4);
+    i2sDMAidx = (uint8_t)DMA_GetCurrentMemoryTarget(DMA1_Stream4);
     // if we can't fill the next buffer, stop playback
     if (!fillDMAFromRingBuffer()) { // this takes around 0.1ms
       STM32_I2S_Stop();
@@ -135,13 +135,13 @@ void STM32_I2S_Prepare(int audioFreq) {
   DMA_DoubleBufferModeCmd(DMA1_Stream4, ENABLE);
 
   // setup relevant counters
-  i2sDMAidx = DMA_GetCurrentMemoryTarget(DMA1_Stream4);
+  i2sDMAidx = (uint8_t)DMA_GetCurrentMemoryTarget(DMA1_Stream4);
   audioRingIdxIn = 0;
   audioRingIdxOut = 0;
   i2sStatus = STM32_I2S_STOPPED;
 
   // debugging - various beeps (we shouldn't hear them at all if it's working right!)
-/*  for (int i=0;i<I2S_DMA_BUFFER_SIZE;i++) {
+  /*for (int i=0;i<I2S_DMA_BUFFER_SIZE;i++) {
     i2sDMAbuf[0][i] = ((i&3)<2) ? -30000 : 30000;
     i2sDMAbuf[1][i] = ((i&7)<4) ? -30000 : 30000;
   }
@@ -214,7 +214,7 @@ void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {
   int timeout = 1000000;
   while ((STM32_I2S_GetFreeSamples() < count+32) && --timeout); // wait here for space
 
-  int c = count;
+  unsigned int c = count;
   while (c--) {
     audioRingBuf[audioRingIdxIn] = *(data++);
     audioRingIdxIn = (audioRingIdxIn+1) & (I2S_RING_BUFFER_SIZE-1);
