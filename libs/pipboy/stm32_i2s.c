@@ -19,8 +19,8 @@
 * In DMA1_Stream4_IRQHandler we fill the currently unused buffers (we have to pad mono->stereo for these)
   from the audioRingBuffer
 
-
 */
+
 
 #include "jsinteractive.h"
 #include "stm32_i2s.h"
@@ -42,13 +42,13 @@ volatile STM32_I2S_Status i2sStatus;
 STM32_I2S_Status STM32_I2S_GetStatus() { return i2sStatus; }
 
 volatile uint8_t i2sDMAidx = 0; // index in i2sDMAbuf we're playing
-int16_t i2sDMAbuf[2][I2S_DMA_BUFFER_SIZE]; // Set of audio buffers
+volatile int16_t i2sDMAbuf[2][I2S_DMA_BUFFER_SIZE] __attribute__ ((aligned (8))); // Set of audio buffers
 
 volatile uint16_t audioRingIdxIn = 0;  // index in audioRingBuf we're writing to
 volatile uint16_t audioRingIdxOut = 0; // index in audioRingBuf we're reading from
 /// ringbuffer for audio data we're outputting
 //int16_t audioRingBuf[I2S_RING_BUFFER_SIZE];
-int16_t *audioRingBuf = (int16_t*)0x10000000; // force in in CCM
+volatile int16_t *audioRingBuf = (int16_t*)0x10000000; // force in in CCM
 // FIXME ideally we use linker and __attribute__((section(".CCM_RAM"))) for this, but attempts so far have failed (it makes a massive binary!)
 
 // Get how many samples are in the buffer
@@ -63,14 +63,15 @@ bool fillDMAFromRingBuffer() {
   int samples = audioRingBufGetSamples();
   if (!samples) return false; // no data to play at all!
 
-  int16_t *dmaPtr = i2sDMAbuf[i2sDMAidx ? 0 : 1];
+  volatile int16_t *dmaPtr = i2sDMAbuf[i2sDMAidx ? 0 : 1];
   int count = I2S_DMA_BUFFER_SIZE>>1; // Mono->stereo
   int padding = 0;
   if (count > samples) {
     padding = count-samples;
     count = samples; // not enough samples in our ring buffer
   }
-  int16_t sample = 0;
+  static int16_t lastSample = 0;
+  int16_t sample = lastSample;
   // mono -> stereo
   while (count--) {
     sample = audioRingBuf[audioRingIdxOut];
@@ -83,6 +84,7 @@ bool fillDMAFromRingBuffer() {
     *(dmaPtr++) = sample; // L
     *(dmaPtr++) = sample; // R
   }
+  lastSample = sample;
   return true;
 }
 
@@ -119,10 +121,10 @@ void STM32_I2S_Prepare(int audioFreq) {
   DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
   DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
-  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
   DMA_InitStructure.DMA_Priority = DMA_Priority_High;
-  DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
-  DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_1QuarterFull;
+  DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable;
+  DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;
   DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
   DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
   DMA_Init(DMA1_Stream4, &DMA_InitStructure);
@@ -212,7 +214,7 @@ int STM32_I2S_GetFreeSamples() {
 // Add samples to the ringbuffer
 void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {
   int timeout = 1000000;
-  while ((STM32_I2S_GetFreeSamples() < count+32) && --timeout); // wait here for space
+  while ((STM32_I2S_GetFreeSamples() < (int)count+32) && --timeout); // wait here for space
 
   unsigned int c = count;
   while (c--) {
