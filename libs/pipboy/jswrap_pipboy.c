@@ -67,6 +67,7 @@ uint32_t streamPacketLen;        // length of current stream
 uint32_t streamPacketRemaining;  // length left to read in current stream
 uint32_t streamPacketBufferLen;  // length of stream in current buffer
 File_Handle streamFile; // The Video/Audio stream's file
+bool streamRepeats; // should this stream repeat?
 
 JsSysTime videoFrameTime;
 JsSysTime videoNextFrameTime;
@@ -130,7 +131,7 @@ void jswrap_pb_sendEvent(const char *eventName) { // eg JS_EVENT_PREFIX"streamSt
   "generate" : "jswrap_pb_videoStart",
   "params" : [
       ["fn","JsVar","Filename"],
-      ["options","JsVar","[Optional] object `{x:0, y:0, debug:false}`"]
+      ["options","JsVar","[Optional] object `{x:0, y:0, debug:false, repeat:false}`"]
    ]
 }
 */
@@ -139,6 +140,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
   startX=0;
   startY=0;
   debugInfo=false;
+  streamRepeats=false;
   JsVar *v;
   if (jsvIsObject(options)) {
     v = jsvObjectGetChildIfExists(options, "x");
@@ -154,6 +156,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
       if (jsvGetBoolAndUnLock(v)) debugInfo = true;
       else debugInfo = false;
     }
+    streamRepeats = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "repeat"));
   }
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
@@ -239,12 +242,13 @@ void jswrap_pb_videoStop() {
   "generate" : "jswrap_pb_audioStart",
   "params" : [
       ["fn","JsVar","Filename"],
-      ["options","JsVar","[Optional] object `{debug:false}`"]
+      ["options","JsVar","[Optional] object `{debug:false, repeat:false}`"]
    ]
 }
 */
 void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
   debugInfo=false;
+  streamRepeats=false;
   JsVar *v;
   if (jsvIsObject(options)) {
     v = jsvObjectGetChildIfExists(options, "debug");
@@ -252,6 +256,7 @@ void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
       if (jsvGetBoolAndUnLock(v)) debugInfo = true;
       else debugInfo = false;
     }
+    streamRepeats = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "repeat"));
   }
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
@@ -339,7 +344,7 @@ void jswrap_pb_videoFrame() {
   }
   size_t actual = 0;
   //jsiConsolePrintf("=========== FIRST READ %d (%d)\n", ((size_t)streamBuffer)&7, streamPacketBufferLen);
-  f_read(&streamFile, streamBuffer,streamPacketBufferLen, &actual);
+  f_read(&streamFile, streamBuffer, streamPacketBufferLen, &actual);
   if (streamPacketId==AVI_STREAM_AUDIO) {
     if (streamPacketRemaining) {
       jsiConsolePrintf("Audio stream too big for streamBuffer\n");
@@ -411,9 +416,17 @@ void jswrap_pb_videoFrame() {
       //jsiConsolePrintf("%dms\n", (int)jshGetMillisecondsFromTime(tEnd-tStart));
     }
   } else {
-    // unknown stream - assume end and stop!
-    //jsiConsolePrintf("Unknown stream ID");
-    jswrap_pb_videoStopLetAudioRun();
+    // unknown stream - assume end
+    if (streamRepeats) { // seek to beginning and load first stream ID+len
+      f_lseek(&streamFile, (uint32_t)(videoInfo.streamOffset)); // go back to start of video data
+      streamPacketBufferLen=8;
+      f_read(&streamFile, streamBuffer, streamPacketBufferLen, &actual);
+      streamPacketId = *(uint16_t*)&streamBuffer[2]; // +0 = '01'/'00' stream index?
+      streamPacketLen = *(uint32_t*)&streamBuffer[4]; // +0 = '01'/'00' stream index?
+    } else { // else stop
+      //jsiConsolePrintf("Unknown stream ID");
+      jswrap_pb_videoStopLetAudioRun();
+    }
   }
   // get IDs for next stream
   streamPacketId = *(uint16_t*)&streamBuffer[streamPacketBufferLen-6]; // +0 = '01'/'00' stream index?
@@ -440,8 +453,9 @@ void jswrap_pb_audioFrame() {
   f_read(&streamFile, streamBuffer, WAV_CHUNK_SIZE, &actual);
   //if (debugInfo) jsiConsolePrintf("A%d\n", actual);
   if (actual) {
-    jswrap_pb_sendEvent(JS_EVENT_PREFIX"frame");
     STM32_I2S_AddSamples((int16_t*)streamBuffer, actual>>1);
+  } else if (streamRepeats) {
+    f_lseek(&streamFile, (uint32_t)(videoInfo.streamOffset)); // go back to start of audio data
   } else {
     // jsiConsolePrintf("End of WAV\n");
     STM32_I2S_StreamEnded(); // ensure we start playing even if we didn't think we'd buffered enough yet
