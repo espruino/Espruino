@@ -23,7 +23,7 @@ void jswrap_pb_initDAC();
 void jswrap_pb_setDACPower(bool isOn);
 void jswrap_pb_setDACMode(JsVar *mode);
 void jswrap_pb_setLCDPower(bool isOn);
-void jswrap_pb_off();
+void jswrap_pb_off(int ticks);
 void jswrap_pb_blitImage(JsVar *image, int x, int y, JsVar *options);
 
 void jswrap_pb_init();

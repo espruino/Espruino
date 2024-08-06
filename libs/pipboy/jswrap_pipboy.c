@@ -622,17 +622,30 @@ void jswrap_pb_setLCDPower(bool isOn) {
     "type" : "staticmethod",
     "class" : "Pip",
     "name" : "off",
-    "generate" : "jswrap_pb_off"
+    "generate" : "jswrap_pb_off",
+    "params" : [
+      ["ticks","int","if specified, the seconds before we wake up"]
+   ]
 }
 Enter standby mode - can only be started by pressing the power button (PA0).
 */
-void jswrap_pb_off() {
+void jswrap_pb_off(int ticks) {
+  if (ticks<0) ticks=0;
   jswrap_E_unmountSD();
   // jswrap_pb_setDACMode_(DM_OFF); // No need to talk to the DAC - we're about to switch off its power
   jshPinOutput(SD_POWER_PIN, 0);  // The DAC (and audio amp) runs from the same power supply as the SD card
   jswrap_pb_setLCDPower(0);
   jswrap_pb_setDACPower(0);
 #ifndef LINUX
+  if (ticks) { // enable RTC
+    ticks--; // 0 based
+    if (ticks > 0x1FFFF) ticks = 0x1FFFF;
+    RTC_WakeUpClockConfig((ticks&0x10000) ? RTC_WakeUpClock_CK_SPRE_17bits : RTC_WakeUpClock_CK_SPRE_16bits);
+    RTC_SetWakeUpCounter(ticks&0xFFFF);
+    RTC_ITConfig(RTC_IT_WUT, ENABLE);
+    RTC_WakeUpCmd(ENABLE);
+    RTC_ClearFlag(RTC_FLAG_WUTF);
+  }
 /*  In Standby mode, all I/O pins are high impedance except for:
  *          - Reset pad (still available)
  *          - RTC_AF1 pin (PC13) if configured for tamper, time-stamp, RTC
