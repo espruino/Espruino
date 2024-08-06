@@ -624,7 +624,7 @@ void jswrap_pb_setLCDPower(bool isOn) {
     "name" : "off",
     "generate" : "jswrap_pb_off",
     "params" : [
-      ["ticks","int","if specified, the seconds before we wake up"]
+      ["secondsToWake","int","if specified, the seconds before we wake up (max 131072)"]
    ]
 }
 Enter standby mode - can only be started by pressing the power button (PA0).
