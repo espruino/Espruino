@@ -112,6 +112,7 @@ void STM32_I2S_Prepare(int audioFreq) {
   RCC_PLLI2SCmd(ENABLE);
 
   DMA_InitTypeDef  DMA_InitStructure;
+  DMA_StructInit(&DMA_InitStructure);
   DMA_InitStructure.DMA_Channel = DMA_Channel_0;
   DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&SPI2->DR;
   DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)i2sDMAbuf[0];
