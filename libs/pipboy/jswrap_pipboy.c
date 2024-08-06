@@ -655,7 +655,7 @@ void jswrap_pb_off() {
       ["img","JsVar",""],
       ["x","int",""],
       ["y","int",""],
-      ["scale","int",""]
+      ["options","JsVar","scale(int) or { scale:int, noScanEffect:bool }"]
    ]
 }
 */
@@ -683,15 +683,24 @@ void getPaletteForLine4bpp(int y, uint16_t *palette) {
     palette[i] = (uint16_t)(b>>2)<<5;
   }
 }
-void jswrap_pb_blitImage(JsVar *image, int x, int y, int scale) {
+void jswrap_pb_blitImage(JsVar *image, int x, int y, JsVar *options) {
+  int scale = 1;
+  bool noScanlineEffect = false;
+  if (jsvIsObject(options)) {
+    scale = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "scale"));
+    noScanlineEffect = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "noScanEffect"));
+  } else
+    scale = jsvGetInteger(options);
+  if (scale<1) scale=1;
   // the highlighted area moves over time...
-  scanlinePos = ((long long)(jshGetMillisecondsFromTime(jshGetSystemTime())*(480/4000.0)) % 640LL) - 110;
+  if (noScanlineEffect) scanlinePos = -100; // if off, just move scalines offscreen
+  else scanlinePos = ((long long)(jshGetMillisecondsFromTime(jshGetSystemTime())*(480/4000.0)) % 640LL) - 110;
 
   JsGraphics *gfx = &graphicsInternal;
   GfxDrawImageInfo img;
   if (!_jswrap_graphics_parseImage(gfx, image, 0, &img))
     return;
-  if (scale<1) scale=1;
+
   JsvStringIterator it;
   jsvStringIteratorNew(&it, img.buffer, (size_t)img.bitmapOffset);
   uint16_t palette[16];
