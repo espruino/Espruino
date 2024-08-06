@@ -222,8 +222,8 @@ void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {
 
   //jsiConsolePrintf("add %d %d %d %d\n", i2sDMAidx, i2sStatus, count, audioRingBufGetSamples());
   // start playback when we have enough
-  if (i2sStatus == STM32_I2S_STOPPED && audioRingBufGetSamples()>I2S_DMA_BUFFER_SIZE*2) {
-    // if audioRingBufGetSamples()>I2S_DMA_BUFFER_SIZE*2 we should have enough here to fill 4 buffers
+  if (i2sStatus == STM32_I2S_STOPPED && audioRingBufGetSamples()>I2S_DMA_BUFFER_SIZE*3) {
+    // if audioRingBufGetSamples()>I2S_DMA_BUFFER_SIZE*3 we should have enough here to fill 6 buffers
     i2sDMAidx = !DMA_GetCurrentMemoryTarget(DMA1_Stream4);
     fillDMAFromRingBuffer(); // fill the first buffer with what we're currently reading from!
     i2sDMAidx = !i2sDMAidx;
