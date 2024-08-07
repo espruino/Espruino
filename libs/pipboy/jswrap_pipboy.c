@@ -500,6 +500,38 @@ void jswrap_pb_setVol(int volume) {
 /*JSON{
   "type" : "staticmethod",
   "class" : "Pip",
+  "name" : "writeDACReg",
+  "generate" : "jswrap_pb_writeDACReg",
+  "params" : [
+      ["reg","int",""],
+      ["value","int",""]
+   ]
+}
+Writes a DAC register with a value
+*/
+void jswrap_pb_writeDACReg(int reg, int value) {
+  es8388_write_reg(reg & 0xFF, value & 0xFF); // DAC mute
+}
+
+/*JSON{
+    "type" : "staticmethod",
+  "class" : "Pip",
+  "name" : "readDACReg",
+  "generate" : "jswrap_pb_readDACReg",
+    "params" : [
+        ["reg","int",""]
+    ],
+    "return" : ["int","The current register value"]
+}
+Returns the current value of a DAC register
+*/
+int jswrap_pb_readDACReg(int reg) {
+  return es8388_read_reg(reg & 0xFF);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Pip",
   "name" : "setDACPower",
   "generate" : "jswrap_pb_setDACPower",
   "params" : [
@@ -550,8 +582,9 @@ void jswrap_pb_initDAC() {
   es8388_write_reg(0x17, 0); // Set DAC SFI - I2S,24 bit
   es8388_write_reg(0x18, 0x02); // Set MCLK/LRCK ratio (256)
   //es8388_write_reg(0x18, 0b00110); // GW: Set MCLK/LRCK ratio (768) - default
-  es8388_write_reg(0x1A, 0x00); // ADC volume 0dB
-  es8388_write_reg(0x1B, 0x00); // ADC volume 0dB
+  es8388_write_reg(0x1A, 0x00); // L DAC volume 0dB
+  es8388_write_reg(0x1B, 0x00); // R DAC volume 0dB
+  es8388_write_reg(0x1C, 0x08); // Enable digital click free power up and down
   es8388_write_reg(0x1D, 0x20); // GW: DAC control - force MONO
   es8388_write_reg(0x19, 0x00); // Unmute DAC (no volume soft ramp, 0x32 uses ramp)
   // Set mixer for DAC out
