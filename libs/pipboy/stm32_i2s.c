@@ -219,7 +219,8 @@ void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {
 
   unsigned int c = count;
   while (c--) {
-    audioRingBuf[audioRingIdxIn] = *(data++);
+    audioRingBuf[audioRingIdxIn] = *(data++)
+                                 + (audioRingIdxIn&1); // add 1 bit of noise to stop DAC from turning off!
     audioRingIdxIn = (audioRingIdxIn+1) & (I2S_RING_BUFFER_SIZE-1);
   }
 
