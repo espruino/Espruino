@@ -275,8 +275,13 @@ static JsVar *matchhere(char *regexp, JsvStringIterator *txtIt, matchInfo info) 
 The built-in class for handling Regular Expressions
 
 **Note:** Espruino's regular expression parser does not contain all the features
-present in a full ES6 JS engine. However it does contain support for the all the
-basics.
+present in a full ES6 JS engine. however some parts of the spec are not implemented:
+
+* [Assertions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Assertions) other than `^` and `$`
+* [Numeric quantifiers](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Quantifiers) (eg `x{3}`)
+
+There's a GitHub issue [concerning RegExp features here](https://github.com/espruino/Espruino/issues/1257)
+
 */
 
 /*JSON{

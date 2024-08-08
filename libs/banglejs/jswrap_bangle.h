@@ -53,6 +53,8 @@ JsVar *jswrap_banglejs_getPressure();
 JsVar *jswrap_banglejs_getHealthStatus();
 
 JsVar *jswrap_banglejs_dbg();
+void jswrap_banglejs_touchWr(JsVarInt reg, JsVarInt data);
+JsVar *jswrap_banglejs_touchRd(JsVarInt reg, JsVarInt cnt);
 void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data);
 JsVar *jswrap_banglejs_accelRd(JsVarInt reg, JsVarInt cnt);
 void jswrap_banglejs_barometerWr(JsVarInt reg, JsVarInt data);

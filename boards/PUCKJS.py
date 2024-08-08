@@ -52,8 +52,11 @@ info = {
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_puck_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://puck-js.com/go"\'',
      'DEFINES+=-DAPP_TIMER_OP_QUEUE_SIZE=3', # Puck.js magnetometer poll
+     'LDFLAGS += -nostartfiles',
+     'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
+     'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
      'INCLUDE += -I$(ROOT)/libs/puckjs',
      'WRAPPERSOURCES += libs/puckjs/jswrap_puck.c'
    ]

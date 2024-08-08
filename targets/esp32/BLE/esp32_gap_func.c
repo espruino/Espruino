@@ -285,15 +285,22 @@ esp_err_t bluetooth_setDeviceName(JsVar *deviceName){
 }
 
 void bluetooth_initDeviceName(){
-  char deviceName[14];
-  strcpy(deviceName,"Espruino 0123");
+  char deviceName[32];
+#if defined(BLUETOOTH_NAME_PREFIX)
+  #error "BLUETOOTH_NAME_PREFIX is broken for ESP32 (passed badly into Makefile)"
+#endif
+  strcpy(deviceName,"Espruino");
+  size_t len = strlen(deviceName);
+  // append last 2 bytes of MAC address to name
+  deviceName[len++] = ' ';
   uint8_t macnr[6];
   esp_efuse_mac_get_default(macnr);
-  deviceName[9] = itoch((macnr[4]>>4)&15);
-  deviceName[10] = itoch(macnr[4]&15);
-  deviceName[11] = itoch((macnr[5]>>4)&15);
-  deviceName[12] = itoch(macnr[5]&15);
-  deviceName[13] = '\0';
+  deviceName[len++] = itoch((macnr[4]>>4)&15);
+  deviceName[len++] = itoch(macnr[4]&15);
+  deviceName[len++] = itoch((macnr[5]>>4)&15);
+  deviceName[len++] = itoch(macnr[5]&15);
+  deviceName[len++] = 0;
+
   jsvObjectSetChild(execInfo.hiddenRoot, BLE_DEVICE_NAME,jsvNewFromString(deviceName));
 }
 

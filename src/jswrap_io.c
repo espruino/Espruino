@@ -697,7 +697,7 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
   "params" : [
     ["function", "JsVar", "A Function or String to be executed"],
     ["pin", "pin", "The pin to watch"],
-    ["options", "JsVar","If a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true). Can be an object of the form `{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}` - see below for more information."]
+    ["options", "JsVar","If a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true). Can be an object of the form `{ repeat: true/false(default), edge:'rising'/'falling'/'both', debounce:10}` - see below for more information."]
   ],
   "return" : ["JsVar","An ID that can be passed to clearWatch"],
   "typescript" : "declare function setWatch(func: ((arg: { state: boolean, time: number, lastTime: number }) => void) | string, pin: Pin, options?: boolean | { repeat?: boolean, edge?: \"rising\" | \"falling\" | \"both\", debounce?: number, irq?: boolean, data?: Pin, hispeed?: boolean }): number;"
@@ -721,7 +721,7 @@ information (all optional):
    // setting irq:true will call that function in the interrupt itself
    irq : false(default)
    // Advanced: If specified, the given pin will be read whenever the watch is called
-   // and the state will be included as a 'data' field in the callback
+   // and the state will be included as a 'data' field in the callback (`debounce:0` is required)
    data : pin
    // Advanced: On Nordic devices, a watch may be 'high' or 'low' accuracy. By default low
    // accuracy is used (which is better for power consumption), but this means that
@@ -740,7 +740,7 @@ The `function` callback is called with an argument, which is an object of type
    When using `edge:'rising'` or `edge:'falling'`, this is not the same as when
    the function was last called.
  * `data` is included if `data:pin` was specified in the options, and can be
-   used for reading in clocked data
+   used for reading in clocked data. It will only work if `debounce:0` is used
 
 For instance, if you want to measure the length of a positive pulse you could
 use `setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, {

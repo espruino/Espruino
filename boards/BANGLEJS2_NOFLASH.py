@@ -18,7 +18,7 @@ import pinutils;
 info = {
  'name' : "Bangle.js 2 (No external flash)", # Using SMA Q3
  # A build for Bangle.js 2 that uses only internal flash
- 'boardname' : "BANGLEJS", 
+ 'boardname' : "BANGLEJS2", 
  'link' :  [ "https://espruino.com/Bangle.js2" ],
  'espruino_page_link' : 'Bangle.js2',
  'default_console' : "EV_TERMINAL",
@@ -103,10 +103,10 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((246 - 100) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
+    'address' : ((246 - 90) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
     'page_size' : 4096,
-    'pages' : 100,
-    'flash_available' : 1024 - ((38 + 8 + 2 + 100)*4), # Softdevice uses 0x26=38 pages of flash, bootloader 8, FS 2, code 100. Each page is 4 kb.
+    'pages' : 90,
+    'flash_available' : 1024 - ((38 + 8 + 2 + 90)*4), # Softdevice uses 0x26=38 pages of flash, bootloader 8, FS 2, code 100. Each page is 4 kb.
   },
 };
 

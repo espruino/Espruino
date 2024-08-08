@@ -127,7 +127,7 @@ typedef enum {
   EV_SERIAL_STATUS_PARITY_ERR = EV_SERIAL_STATUS_FRAMING_ERR<<1,
   // ----------------------------------------- WATCH EVENTS
   EV_EXTI_IS_HIGH = EV_TYPE_MASK+1,           //< if the pin we're watching is high, the handler sets this
-  EV_EXTI_DATA_PIN_HIGH = EV_EXTI_IS_HIGH<<1  //< If a data pin was specified, its value is high
+  EV_EXTI_DATA_PIN_HIGH = EV_EXTI_IS_HIGH<<1  //< If a data pin was specified, its value is high. OR on Bangle.js it causes us not to call user code
 } PACKED_FLAGS IOEventFlags; // should be one byte
 
 #define DEVICE_SANITY_CHECK() if (EV_TYPE_MASK>63) jsError("DEVICE_SANITY_CHECK failed")

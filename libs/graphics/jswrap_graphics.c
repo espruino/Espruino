@@ -2654,7 +2654,7 @@ JsVar *jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y, bool 
 #ifndef SAVE_ON_FLASH
       // alignment for non-left aligned multi-line strings
       if (gfx.data.fontAlignX<2) // 0=center, 1=right, 2=undefined, 3=left
-        x = startx - (_jswrap_graphics_stringWidth(&gfx, str, (int)jsvStringIteratorGetIndex(&it)) * (gfx.data.fontAlignX+1)/2);
+        x = startx - (_jswrap_graphics_stringWidth(&gfx, str, (int)jsvConvertToUTF8Index(str, jsvStringIteratorGetIndex(&it))) * (gfx.data.fontAlignX+1)/2);
 #endif
       y += fontHeight;
       continue;

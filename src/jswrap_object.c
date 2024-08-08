@@ -607,8 +607,8 @@ will be ignored.
 
  */
 JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc) {
-  if (!jsvIsObject(parent)) {
-    jsExceptionHere(JSET_ERROR, "First argument must be Object, got %t", parent);
+  if (!jsvIsObject(parent) && !jsvIsFunction(parent) && !jsvIsArray(parent)) {
+    jsExceptionHere(JSET_ERROR, "First argument must be Object, Function or Array, got %t", parent);
     return 0;
   }
   if (!jsvIsObject(desc)) {
