@@ -202,6 +202,13 @@ void jshTransmit(
     return;
   }
 #endif
+#ifdef USE_SWDCON
+  if (device==EV_SWDCON) {
+    extern void swdconSendChar(char c);
+    swdconSendChar((char)data);
+    return;
+  }
+#endif
 #ifndef LINUX
 #ifdef USB
   if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected()) {
@@ -613,6 +620,9 @@ const char *jshGetDeviceString(
 #ifdef USE_TELNET
   case EV_TELNET: return "Telnet";
 #endif
+#ifdef USE_SWDCON
+  case EV_SWDCON: return "SWDCON";
+#endif
 #ifdef USE_TERMINAL
   case EV_TERMINAL: return "Terminal";
 #endif
@@ -686,6 +696,9 @@ IOEventFlags jshFromDeviceString(
 #endif
   }
   else if (device[0]=='S') {
+#ifdef USE_SWDCON
+     if (strcmp(&device[1], "WDCON")==0) return EV_SWDCON;
+#endif
 #if ESPR_USART_COUNT>0
   if (device[1]=='e' && device[2]=='r' && device[3]=='i' && device[4]=='a' && device[5]=='l' &&
       device[6]>='1' && (device[6]-'1')<ESPR_USART_COUNT &&
