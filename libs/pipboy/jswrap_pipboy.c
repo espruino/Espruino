@@ -120,8 +120,10 @@ The video had ended
 */
 void jswrap_pb_sendEvent(const char *eventName) { // eg JS_EVENT_PREFIX"streamStarted"
    JsVar *pip =jsvObjectGetChildIfExists(execInfo.root, "Pip");
-  if (pip)
+  if (pip) {
     jsiQueueObjectCallbacks(pip, eventName, NULL, 0);
+    jsvUnLock(pip);
+  }
 }
 
 /*JSON{
@@ -544,7 +546,9 @@ void jswrap_pb_setDACPower(bool isOn) {
   if (!isOn) {
     jswrap_E_unmountSD(); // Close all files and unmount the SD card
   }
+#ifndef LINUX
   jshPinOutput(SD_POWER_PIN, isOn); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
+#endif
 }
 
 /*JSON{
@@ -560,10 +564,12 @@ void jswrap_pb_initDAC() {
   jshI2CInitInfo(&dacI2C);
   dacI2C.pinSCL = JSH_PORTB_COUNT+8;
   dacI2C.pinSDA = JSH_PORTB_COUNT+9;
+#ifndef LINUX
   if (jshPinGetValue(SD_POWER_PIN)==0) {
     jshPinOutput(SD_POWER_PIN, 1); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
     jshDelayMicroseconds(5000);
   }
+#endif
   jshI2CSetup(EV_I2C1, &dacI2C);
   jshDelayMicroseconds(1000);
   es8388_write_reg(0x00, 0x80); // Reset the ES8388 control registers
@@ -666,7 +672,9 @@ void jswrap_pb_off(int ticks) {
   if (ticks<0) ticks=0;
   jswrap_E_unmountSD();
   // jswrap_pb_setDACMode_(DM_OFF); // No need to talk to the DAC - we're about to switch off its power
+#ifndef LINUX
   jshPinOutput(SD_POWER_PIN, 0);  // The DAC (and audio amp) runs from the same power supply as the SD card
+#endif
   jswrap_pb_setLCDPower(0);
   jswrap_pb_setDACPower(0);
 #ifndef LINUX
