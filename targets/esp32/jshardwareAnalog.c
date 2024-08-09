@@ -145,6 +145,11 @@ int readADC(Pin pin){
 #if ESP_IDF_VERSION_MAJOR>=4
 	  // ESP_IDF 4.x - int adc1_get_voltage(adc1_channel_t channel)    //Deprecated. Use adc1_get_raw() instead
 	  int value=adc1_get_raw(channel);
+#if CONFIG_IDF_TARGET_ESP32C3
+    // we need to call it twice to get a decent value on the C3 for some reason!
+    // https://forum.espruino.com/conversations/395499/?offset=100#17482163
+    value=adc1_get_raw(channel);
+#endif
 #else
 	  value = adc1_get_voltage(channel);
 #endif
