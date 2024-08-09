@@ -44,6 +44,9 @@ typedef enum {
 #ifdef USE_TELNET
   EV_TELNET,
 #endif
+#ifdef USE_SWDCON
+  EV_SWDCON, /// console over in memory buffer accessible via SWD
+#endif
 #ifdef USE_TERMINAL
   EV_TERMINAL, // Built-in VT100 terminal
 #endif

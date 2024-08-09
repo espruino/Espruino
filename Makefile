@@ -456,6 +456,12 @@ ifeq ($(USE_TERMINAL),1)
   WRAPPERSOURCES += libs/graphics/jswrap_terminal.c
 endif
 
+ifeq ($(USE_SWDCON),1)
+  DEFINES += -DUSE_SWDCON
+  WRAPPERSOURCES += libs/swdcon/jswrap_swdcon.c
+# directly included so not needed SOURCES += libs/swdcon/SEGGER_RTT_custom.c
+endif
+
 endif
 
 ifeq ($(USE_USB_HID),1)
