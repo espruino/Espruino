@@ -1,6 +1,8 @@
 /*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
+ * Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -59,7 +61,7 @@ static uint8_t      srvMode = MODE_OFF;    ///< current mode
   "ifdef" : "USE_SWDCON"
 }
 In memory serial I/O device accessible via SWD debugger.
-uses SEGGER RTT so it can be used with openocd and other SEGGER compatible tools.   
+Uses SEGGER RTT so it can be used with openocd and other SEGGER compatible tools.   
 */
 
 
@@ -102,35 +104,39 @@ bool jswrap_swdcon_idle(void) {
   bool active = false;
   active |= swdconRecv();
    // prevent sleep if SWD console is active, we probably have power attached anyway
+  active |= (jsiGetConsoleDevice() == EV_SWDCON);
    // sleeping would work if SWD debugger would trigger interrupt after sending data (it does not)
    // however it is possible to trigger interrupt in our own SWD RTT host in future
    // e.g. triggering TIMER1 interrupt vie writing STIR register wakes nrf52 espruino device
-  active |= (jsiGetConsoleDevice() == EV_SWDCON);
   return active;  
 }
 
 //===== Internal functions
-bool wasForced=false;
-IOEventFlags oldConsole = EV_NONE;
+#ifdef BANGLEJS
 // on Bangle 2 looks like console is always forced to something (bluetooth or null)
 // setting to non-programmable forces console to null in .boot0
 // allow to override this case
-#define shouldOverride (console == EV_NONE)
+#define OVERRIDE_CONDITION (console == EV_NONE)
+bool wasForced=false;
+IOEventFlags oldConsole = EV_NONE;
+#endif
 
 bool swdconActivate() {
-  // if the console is not already us, then change it
+  // if current console is not already us, then change it
   IOEventFlags console = jsiGetConsoleDevice();
   if (console != EV_SWDCON) {
     if (!jsiIsConsoleDeviceForced()) {
       jsiSetConsoleDevice(EV_SWDCON, false);
       //jshHadEvent();
+#ifdef OVERRIDE_CONDITION
       wasForced=false;
     } else {
-      if (shouldOverride){
+      if (OVERRIDE_CONDITION){
         wasForced=true;
         oldConsole=console;
         jsiSetConsoleDevice(EV_SWDCON, true);
       }
+#endif      
     }
   }
   return true;
@@ -141,10 +147,13 @@ void swdconRelease() {
   IOEventFlags console = jsiGetConsoleDevice();
   // only switch away if the current console is us
   if (console == EV_SWDCON){
+#ifdef OVERRIDE_CONDITION
     if (wasForced){
-      jsiSetConsoleDevice(oldConsole, true); // restore previos forced one back
+      jsiSetConsoleDevice(oldConsole, true); // restore previous forced one back
       wasForced=false;
-    } else {
+    } else
+#endif
+    {
       jsiSetConsoleDevice(jsiGetPreferredConsoleDevice(), false);
     }
   }
