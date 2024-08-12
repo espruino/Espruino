@@ -26,6 +26,8 @@ void jswrap_pb_writeDACReg(int reg, int value);
 int jswrap_pb_readDACReg(int reg);
 void jswrap_pb_setLCDPower(bool isOn);
 void jswrap_pb_off();
+void jswrap_pb_sleep();
+void jswrap_pb_wake();
 void jswrap_pb_blitImage(JsVar *image, int x, int y, JsVar *options);
 
 void jswrap_pb_init();

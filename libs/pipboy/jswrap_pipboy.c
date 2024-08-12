@@ -35,6 +35,7 @@
 #include "jsdevices.h"
 #include "jshardware.h"
 #include "jswrap_graphics.h"
+#include "jswrap_interactive.h"
 #include "jspin.h"
 #include "jsflags.h"
 #include "jshardware.h"
@@ -566,7 +567,7 @@ void jswrap_pb_initDAC() {
   dacI2C.pinSDA = JSH_PORTB_COUNT+9;
 #ifndef LINUX
   if (jshPinGetValue(SD_POWER_PIN)==0) {
-    jshPinOutput(SD_POWER_PIN, 1); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
+    jswrap_pb_setDACPower(1); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
     jshDelayMicroseconds(5000);
   }
 #endif
@@ -657,6 +658,15 @@ void jswrap_pb_setLCDPower(bool isOn) {
 #endif
 }
 
+
+static void jswrap_pb_periph_off() {
+  jshPinOutput(BAT_PIN_SENSE_EN, 1); // disable C4 - pot/etc
+  jswrap_pb_setDACMode_(DM_OFF); // No need to talk to the DAC - we're about to switch off its power (but doing this does help - GW!)
+  jswrap_pb_setLCDPower(0);
+  jswrap_pb_setDACPower(0); // The DAC (and audio amp) runs from the same power supply as the SD card (also calls jswrap_E_unmountSD)
+  STM32_I2S_Kill();
+}
+
 /*JSON{
     "type" : "staticmethod",
     "class" : "Pip",
@@ -666,13 +676,7 @@ void jswrap_pb_setLCDPower(bool isOn) {
 Enter standby mode - can only be started by pressing the power button (PA0).
 */
 void jswrap_pb_off() {
-  jswrap_E_unmountSD();
-  // jswrap_pb_setDACMode_(DM_OFF); // No need to talk to the DAC - we're about to switch off its power
-#ifndef LINUX
-  jshPinOutput(SD_POWER_PIN, 0);  // The DAC (and audio amp) runs from the same power supply as the SD card
-#endif
-  jswrap_pb_setLCDPower(0);
-  jswrap_pb_setDACPower(0);
+  jswrap_pb_periph_off();
 #ifndef LINUX
 /*  In Standby mode, all I/O pins are high impedance except for:
  *          - Reset pad (still available)
@@ -685,6 +689,39 @@ void jswrap_pb_off() {
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented");
 #endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Pip",
+    "name" : "sleep",
+    "generate" : "jswrap_pb_sleep"
+}
+Enter sleep mode - JS is still executed
+*/
+void jswrap_pb_sleep() {
+  jswrap_pb_periph_off();
+  //jshUSARTUnSetup(DEFAULT_CONSOLE_DEVICE);
+  //jshPinSetState(DEFAULT_CONSOLE_TX_PIN, JSHPINSTATE_ADC_IN);
+  //jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_ADC_IN);
+  jswrap_interface_setDeepSleep(1);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Pip",
+    "name" : "wake",
+    "generate" : "jswrap_pb_wake"
+}
+Wake up the pipboy
+*/
+void jswrap_pb_wake() {
+  jswrap_interface_setDeepSleep(0);
+  jshReset(); // reset USART
+  jshPinOutput(BAT_PIN_SENSE_EN, 0); // enable C4 - pot/etc
+  jswrap_pb_setLCDPower(1);
+  jswrap_pb_initDAC(); // The DAC (and audio amp) runs from the same power supply as the SD card (also calls jswrap_E_unmountSD)
+  STM32_I2S_Init();
 }
 
 /*JSON{

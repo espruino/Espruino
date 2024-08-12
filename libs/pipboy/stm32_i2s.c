@@ -27,6 +27,7 @@
 
 #ifdef LINUX // stubs
 void STM32_I2S_Init() {};
+void STM32_I2S_Kill() {};
 void STM32_I2S_Prepare(int audioFreq) {};
 int STM32_I2S_GetFreeSamples() { return I2S_RING_BUFFER_SIZE; }
 void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {};
@@ -206,6 +207,15 @@ void STM32_I2S_Init() {
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
+}
+
+void STM32_I2S_Kill() {
+
+  I2S_Cmd(SPI2,DISABLE);
+  DMA_ITConfig(DMA1_Stream4, DMA_IT_TC, DISABLE);
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, DISABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, DISABLE);
+  RCC_PLLI2SCmd(DISABLE);
 }
 
 /// Return the amount of free samples available for STM32_I2S_AddSamples

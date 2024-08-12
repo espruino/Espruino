@@ -2240,6 +2240,19 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   // Enable USART
   USART_Cmd(USARTx, ENABLE);
 }
+
+void jshUSARTUnSetup(IOEventFlags device) {
+  if (!DEVICE_IS_USART(device))
+    return;
+  JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
+  if (funcType==0) return; // not a proper serial port, ignore it
+  USART_TypeDef *USARTx = (USART_TypeDef *)setDeviceClockCmd(funcType, ENABLE);
+  if (!USARTx) return;
+  USART_ITConfig(USARTx, USART_IT_RXNE, DISABLE);
+  USART_Cmd(USARTx, ENABLE);
+  setDeviceClockCmd(funcType, DISABLE);
+}
+
 #endif
 
 /** Kick a device into action (if required). For instance we may need

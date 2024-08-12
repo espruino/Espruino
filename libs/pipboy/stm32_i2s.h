@@ -29,6 +29,8 @@ typedef enum {
 
 /// Initialise the I2S peripheral and IO (do this at startup)
 void STM32_I2S_Init();
+/// Stop the I2S peripheral so we can sleep ok
+void STM32_I2S_Kill();
 /// Prepare for start of playback
 void STM32_I2S_Prepare(int audioFreq);
 /// Return the amount of free samples available for STM32_I2S_AddSamples
