@@ -1787,7 +1787,10 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
       /* If it's a rising edge *or* it's within our debounce
        * period, reset the debounce timer and ignore it */
       lcdWakeButtonTime = t + jshGetTimeFromMilliseconds(100);
-      return;
+      /* We signal that we don't want to execute any user code by setting this
+      flag - it still allows the debounce state machine to be updated in jsinteractive
+      but tells a Bangle.js-specific ifdef to not call user code. */
+      flags |= EV_EXTI_DATA_PIN_HIGH;
     } else {
       /* if the next event is a 'down', > 100ms after the last event, we propogate it
        and subsequent events */
@@ -6057,7 +6060,7 @@ For example to display a list of numbers:
 E.showScroller({
   h : 40, c : 8,
   draw : (idx, r) => {
-    g.setBgColor((idx&1)?"#666":"#999").clearRect(r.x,r.y,r.x+r.w-1,r.y+r.h-1);
+    g.setBgColor((idx&1)?"#666":"#CCC").clearRect(r.x,r.y,r.x+r.w-1,r.y+r.h-1);
     g.setFont("6x8:2").drawString("Item Number\n"+idx,r.x+10,r.y+4);
   },
   select : (idx) => console.log("You selected ", idx)

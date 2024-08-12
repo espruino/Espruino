@@ -289,9 +289,9 @@ bool _jswrap_graphics_parseImage(JsGraphics *gfx, JsVar *image, size_t imageOffs
 }
 
 bool _jswrap_drawImageLayerGetPixel(GfxDrawImageLayer *l, uint32_t *result) {
-  int qx = l->qx+127;
-  int qy = l->qy+127;
-  if (qx>=0 && qy>=0 && qx<l->mx && qy<l->my) {
+  int qx = l->qx;
+  int qy = l->qy;
+  if (qx>=0 && qy>=0 && (qx&~255)<l->mx && (qy&~255)<l->my) {
     unsigned int colData = 0;
     int imagex = qx>>8;
     int imagey = qy>>8;
@@ -333,8 +333,8 @@ NO_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
   // step values for blitting rotated image
   double vcos = jswrap_math_cos(l->rotate);
   double vsin = jswrap_math_sin(l->rotate);
-  l->sx = (int)((vcos/l->scale)*256 + 0.5);
-  l->sy = (int)((vsin/l->scale)*256 + 0.5);
+  l->sx = (int)((vcos/l->scale)*256);
+  l->sy = (int)((vsin/l->scale)*256);
   // work out actual image width and height
   int iw = (int)(0.5 + l->scale*(l->img.width*fabs(vcos) + l->img.height*fabs(vsin)));
   int ih = (int)(0.5 + l->scale*(l->img.width*fabs(vsin) + l->img.height*fabs(vcos)));
@@ -346,10 +346,10 @@ NO_INLINE void _jswrap_drawImageLayerInit(GfxDrawImageLayer *l) {
   l->x2 = l->x1 + iw*256;
   l->y2 = l->y1 + ih*256;
   // work out start position in the image
-  int centerx = l->img.width*128;
-  int centery = l->img.height*128;
-  l->px = centerx - (1 + (l->sx*iw) + (l->sy*ih)) / 2;
-  l->py = centery - (1 + (l->sx*ih) - (l->sy*iw)) / 2;
+  int centerx = (l->img.width)*128; // *256 / 2
+  int centery = (l->img.height)*128;
+  l->px = centerx - ((1 + (l->sx*iw) + (l->sy*ih)) / 2);
+  l->py = centery - ((1 + (l->sx*ih) - (l->sy*iw)) / 2);
   // handle repetition
   if (l->repeat) {
     // for the range we're in, it's quicker/easier than modulo

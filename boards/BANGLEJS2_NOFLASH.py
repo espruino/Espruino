@@ -18,7 +18,7 @@ import pinutils;
 info = {
  'name' : "Bangle.js 2 (No external flash)", # Using SMA Q3
  # A build for Bangle.js 2 that uses only internal flash
- 'boardname' : "BANGLEJS", 
+ 'boardname' : "BANGLEJS2", 
  'link' :  [ "https://espruino.com/Bangle.js2" ],
  'espruino_page_link' : 'Bangle.js2',
  'default_console' : "EV_TERMINAL",

@@ -16,13 +16,15 @@ $(info $(shell BOARD=$(BOARD) RELEASE=1 BOOTLOADER=1 make))
 $(info RUNNING MAKE CLEAN)
 $(info $(shell BOARD=$(BOARD) RELEASE=1 make clean))
 $(info *************************************************************)
-$(info BOOTLOADER BUILD COMPLETE)  
+$(info BOOTLOADER BUILD COMPLETE)
 $(info *************************************************************)
-endif 
+endif
 endif
 endif
 endif #BOOTLOADER
 endif #USE_BOOTLOADER
+else #DFU_UPDATE_BUILD
+DEFINES += -DDFU_UPDATE_BUILD
 endif #DFU_UPDATE_BUILD
 
 # Just try and get rid of the compile warnings.
@@ -36,10 +38,10 @@ INCLUDE += -I$(NRF5X_SDK_PATH)
 
 # This is where the common linker for both nRF51 & nRF52 is stored.
 ifdef NRF5X_SDK_11
-LDFLAGS += -L$(NRF5X_SDK_PATH)/nrf5x_linkers 
+LDFLAGS += -L$(NRF5X_SDK_PATH)/nrf5x_linkers
 endif
 ifdef NRF5X_SDK_12
-LDFLAGS += -L$(NRF5X_SDK_PATH)/nrf5x_linkers 
+LDFLAGS += -L$(NRF5X_SDK_PATH)/nrf5x_linkers
 endif
 ifdef NRF5X_SDK_14
 LDFLAGS += -L$(NRF5X_SDK_PATH)/components/toolchain/gcc
@@ -63,11 +65,11 @@ ifdef BOOTLOADER
     targets/nrf5x_dfu/dfu_public_key.c \
     targets/nrf5x_dfu/lcd.c \
     targets/nrf5x_dfu/main.c \
-    targets/nrf5x_dfu/flash.c 
+    targets/nrf5x_dfu/flash.c
 ifdef NRF5X_SDK_12
   SOURCES += \
     targets/nrf5x_dfu/sdk12/dfu-cc.pb.c \
-    targets/nrf5x_dfu/sdk12/dfu_req_handling.c 
+    targets/nrf5x_dfu/sdk12/dfu_req_handling.c
 endif
 else # no BOOTLOADER
   DEFINES += -DUSE_APP_CONFIG
@@ -204,13 +206,13 @@ endif
 
 ifneq (,$(findstring I2C_SLAVE,$(DEFINES)))
 INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twis_slave
-TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/twis_slave/nrf_drv_twis.c 
+TARGETSOURCES += $(NRF5X_SDK_PATH)/components/drivers_nrf/twis_slave/nrf_drv_twis.c
 endif
 
 ifndef NRF5X_SDK_17
 ifndef NRF5X_SDK_15_3
 TARGETSOURCES += \
-$(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_mutex.c 
+$(NRF5X_SDK_PATH)/components/ble/peer_manager/pm_mutex.c
 endif
 endif
 TARGETSOURCES += \
@@ -235,7 +237,7 @@ $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c \
 $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c \
 $(NRF5X_SDK_PATH)/components/libraries/util/sdk_mapped_flags.c \
 $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
-$(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c 
+$(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
 
 ifdef NRF5X_SDK_11
 TARGETSOURCES += \
@@ -247,7 +249,7 @@ TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
 $(NRF5X_SDK_PATH)/components/libraries/fstorage/fstorage.c \
 $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
-$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c 
+$(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c
 else
 TARGETSOURCES += \
 $(NRF5X_SDK_PATH)/components/softdevice/common/nrf_sdh.c \
@@ -296,7 +298,7 @@ ifdef NRF5X_SDK_12
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/ecc/ecc.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/hci/hci_mem_pool.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c
-  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c 
+  TARGETSOURCES += $(NRF5X_SDK_PATH)/components/libraries/queue/nrf_queue.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c
   TARGETSOURCES += $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c
@@ -459,7 +461,7 @@ endif
   $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_dfu_timers.c \
   $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_fw_activation.c \
   $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_info.c \
-  $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_wdt.c 
+  $(NRF5X_SDK_PATH)/components/libraries/bootloader/nrf_bootloader_wdt.c
 endif
 endif # BOOTLOADER
 ifndef BOOTLOADER_SETTINGS_FAMILY
@@ -484,7 +486,7 @@ TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_attr_parser.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/ancs_tx_buffer.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_ancs_c/nrf_ble_ancs_c.c \
-  $(NRF5X_SDK_PATH)/components/ble/ble_db_discovery/ble_db_discovery.c 
+  $(NRF5X_SDK_PATH)/components/ble/ble_db_discovery/ble_db_discovery.c
 endif # ESPR_BLUETOOTH_ANCS
 endif
 
@@ -531,7 +533,7 @@ ifdef NRF5X_SDK_11 # SDK11 requires non-secure DFU that the adafruit tools suppo
 	@echo Creating DFU ZIP
 	# adafruit-nrfutil dfu genpkg --help
 	@cp $(PROJ_NAME).app_hex $(PROJ_NAME)_app.hex
-	adafruit-nrfutil dfu genpkg --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) $(PROJ_NAME).zip 
+	adafruit-nrfutil dfu genpkg --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) $(PROJ_NAME).zip
 	@rm $(PROJ_NAME)_app.hex
 else
 	@echo Creating DFU ZIP
@@ -540,7 +542,7 @@ else
 ifdef BOOTLOADER
 	nrfutil pkg generate $(PROJ_NAME).zip --bootloader $(PROJ_NAME)_app.hex --bootloader-version 0xff --hw-version 52 --sd-req 0x8C,0x91 --key-file $(DFU_PRIVATE_KEY)
 else
-	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)  
+	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
 endif
 	@rm $(PROJ_NAME)_app.hex
 endif

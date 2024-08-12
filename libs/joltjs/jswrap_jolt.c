@@ -599,8 +599,14 @@ void jswrap_jolt_hwinit() {
 void jswrap_jolt_init() {
   /* If the button is pressed during reset, perform a self test.
    * With bootloader this means apply power while holding button for >3 secs */
-  bool firstStart = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrapjolt_init was called?
+  bool firstStart = jsiStatus & JSIS_FIRST_BOOT; // is this the first time jswrap_jolt_init was called?
+  /** If we're NOT doing a DFU update build (eg we're making a full a hex file)
+  then ensure that the firmware keeps doing a self test until it passes (eg it'll
+  output 5 red flashes for fail or 5 green for pass). If we're a firmware update
+  package don't do that as the device might be connected to something which will
+  make the test keep failing.  */
   bool firstRunAfterFlash = false;
+#ifndef DFU_UPDATE_BUILD
   uint32_t firstStartFlagAddr = FLASH_SAVED_CODE_START-4;
   if (firstStart) {
     // check the 4 bytes *right before* our saved code. If these are 0xFFFFFFFF
@@ -611,12 +617,14 @@ void jswrap_jolt_init() {
       firstRunAfterFlash = true;
     }
   }
+#endif
 
   if (firstStart && (jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE || firstRunAfterFlash)) {
     // don't do it during a software reset - only first hardware reset
     // if we're doing our first run after being flashed with new firmware, we set the advertising name
     // up to say PASS or FAIL, to work with the factory test process.
     bool result = _jswrap_jolt_selfTest(firstRunAfterFlash);
+#ifndef DFU_UPDATE_BUILD
     // if we passed, set the flag in flash so we don't self-test again
     if (firstRunAfterFlash && result) {
       uint32_t buf = 0;
@@ -625,6 +633,7 @@ void jswrap_jolt_init() {
       jshFlashWrite(&buf, firstStartFlagAddr, 4);
       jsfSetFlag(JSF_UNSAFE_FLASH, oldFlashStatus);
     }
+#endif
     // green if good, red if bad
     Pin indicator = result ? LED2_PININDEX : LED1_PININDEX;
     int i;

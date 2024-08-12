@@ -125,8 +125,8 @@ void IRAM_ATTR gpio_intr_handler(void* arg){
 #ifndef CONFIG_IDF_TARGET_ESP32C3
   SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, gpio_intr_status_h); //Clear intr for gpio32-39
 #endif
+
   do {
-    g_pinState[gpio_num] = 0;
     if(gpio_num < 32) {
       if(gpio_intr_status & BIT(gpio_num)) { //gpio0-gpio31
          exti = pinToEV_EXTI(gpio_num);
@@ -140,7 +140,7 @@ void IRAM_ATTR gpio_intr_handler(void* arg){
       }
 #endif
     }
-  } while(++gpio_num < GPIO_PIN_COUNT);
+  } while(++gpio_num < JSH_PIN_COUNT);
 }
 
 void jshPinSetStateRange( Pin start, Pin end, JshPinState state ) {
@@ -226,11 +226,11 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 }
 
 void jshInterruptOff() {
-  taskDISABLE_INTERRUPTS();
+  //taskDISABLE_INTERRUPTS();
 }
 
 void jshInterruptOn()  {
-  taskENABLE_INTERRUPTS();
+  //taskENABLE_INTERRUPTS();
 }
 
 /// Are we currently in an interrupt?
@@ -496,23 +496,23 @@ bool jshCanWatch(
  * \return The event flag for this pin.
  */
 IOEventFlags jshPinWatch(
-    Pin pin,          //!< The pin to be watched.
-    bool shouldWatch, //!< True for watching and false for unwatching.
-    JshPinWatchFlags flags
-  ) {
-      gpio_num_t gpioNum = pinToESP32Pin(pin);
-      if(shouldWatch){
-        gpio_set_intr_type(gpioNum,GPIO_INTR_ANYEDGE);             //set posedge interrupt
-        gpio_set_direction(gpioNum,GPIO_MODE_INPUT);               //set as input
-        gpio_set_pull_mode(gpioNum,GPIO_PULLUP_ONLY);              //enable pull-up mode
-        gpio_intr_enable(gpioNum);                                 //enable interrupt
-      }
-      else{
-        if(gpio_intr_disable(gpioNum) == ESP_ERR_INVALID_ARG){     //disable interrupt
-            jsError("*** jshPinWatch error");
-        }
-      }
-      return pin;
+      Pin pin,          //!< The pin to be watched.
+      bool shouldWatch, //!< True for watching and false for unwatching.
+      JshPinWatchFlags flags
+    ) {
+  gpio_num_t gpioNum = pinToESP32Pin(pin);
+  if(shouldWatch){
+    gpio_set_intr_type(gpioNum,GPIO_INTR_ANYEDGE);             //set posedge interrupt
+    gpio_set_direction(gpioNum,GPIO_MODE_INPUT);               //set as input
+    gpio_set_pull_mode(gpioNum,GPIO_PULLUP_ONLY);              //enable pull-up mode
+    gpio_intr_enable(gpioNum);                                 //enable interrupt
+    return pinToEV_EXTI(gpioNum);
+  } else{
+    if(gpio_intr_disable(gpioNum) == ESP_ERR_INVALID_ARG){     //disable interrupt
+        jsError("*** jshPinWatch error");
+    }
+  }
+  return EV_NONE;
 }
 
 
