@@ -74,11 +74,11 @@ chip = {
   'i2c' : 3,
   'adc' : 3,
   'dac' : 2,
-  'saved_code' : {
-    'address' : 0x08080000,
-    'page_size' : 65536, # size of pages
+  'saved_code' : { # last page
+    'address' : 0x08060000,
+    'page_size' : 131072, # size of pages
     'pages' : 1, # number of pages we're using
-    'flash_available' : 512 # Saved code is after binary
+    'flash_available' : 384 # Saved code is after binary
   },
 };
 
