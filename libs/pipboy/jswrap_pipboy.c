@@ -742,9 +742,11 @@ void jswrap_pb_wake() {
       ["img","JsVar",""],
       ["x","int",""],
       ["y","int",""],
-      ["options","JsVar","scale(int) or { scale:int, noScanEffect:bool }"]
+      ["options","JsVar","scale(int) or { scale:int, noScanEffect:bool, height:int }"]
    ]
 }
+
+If `height` isn't specified the image height is used, otherwise only part of the image can be rendered.
 */
 int scanlinePos = 0;
 void getPaletteForLine2bpp(int y, uint16_t *palette) {
@@ -771,11 +773,12 @@ void getPaletteForLine4bpp(int y, uint16_t *palette) {
   }
 }
 void jswrap_pb_blitImage(JsVar *image, int x, int y, JsVar *options) {
-  int scale = 1;
+  int scale = 1, height = 0;
   bool noScanlineEffect = false;
   if (jsvIsObject(options)) {
     scale = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "scale"));
     noScanlineEffect = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "noScanEffect"));
+    height = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(options, "height"));
   } else
     scale = jsvGetInteger(options);
   if (scale<1) scale=1;
@@ -787,14 +790,14 @@ void jswrap_pb_blitImage(JsVar *image, int x, int y, JsVar *options) {
   GfxDrawImageInfo img;
   if (!_jswrap_graphics_parseImage(gfx, image, 0, &img))
     return;
-
+  if (height<=0 || height>img.height) height=img.height;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, img.buffer, (size_t)img.bitmapOffset);
   uint16_t palette[16];
   memset(palette,0,sizeof(palette));
 #ifndef LINUX
-  if (img.bpp==4) lcdFSMC_blit4Bit(gfx, x, y, img.width, img.height, scale, &it, palette, getPaletteForLine4bpp);
-  else if (img.bpp==2) lcdFSMC_blit2Bit(gfx, x, y, img.width, img.height, scale, &it, palette, getPaletteForLine2bpp);
+  if (img.bpp==4) lcdFSMC_blit4Bit(gfx, x, y, img.width, height, scale, &it, palette, getPaletteForLine4bpp);
+  else if (img.bpp==2) lcdFSMC_blit2Bit(gfx, x, y, img.width, height, scale, &it, palette, getPaletteForLine2bpp);
   else jsExceptionHere(JSET_ERROR, "Unsupported BPP");
 #endif
   jsvStringIteratorFree(&it);
