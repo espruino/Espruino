@@ -1160,6 +1160,7 @@ static void jshResetPeripherals() {
 #ifdef DEFAULT_CONSOLE_BAUDRATE
     inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
 #endif
+    inf.xOnXOff = true;
     jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
   }
 }
@@ -2244,6 +2245,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 void jshUSARTUnSetup(IOEventFlags device) {
   if (!DEVICE_IS_USART(device))
     return;
+  jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
   JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
   if (funcType==0) return; // not a proper serial port, ignore it
   USART_TypeDef *USARTx = (USART_TypeDef *)setDeviceClockCmd(funcType, ENABLE);

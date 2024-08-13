@@ -371,6 +371,10 @@ if 'util_timer_tasks' in board.info:
 
 if 'io_buffer_size' in board.info:
   bufferSizeIO = board.info['io_buffer_size']
+if 'xoff_thresh' in board.info:
+  xoff_thresh = board.info['xoff_thresh']
+if 'xon_thresh' in board.info:
+  xon_thresh = board.info['xon_thresh']
 
 codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 65535) amount of items in event buffer - events take 5 bytes each")
 codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255) amount of items in the transmit buffer - 2 bytes each")

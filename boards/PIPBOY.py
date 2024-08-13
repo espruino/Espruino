@@ -23,6 +23,9 @@ info = {
  'default_console_tx' : "B10",
  'default_console_rx' : "B11",
  'default_console_baudrate' : "115200",
+ 'io_buffer_size' : 512,
+ 'xoff_thresh' : 3,
+ 'xon_thresh' : 2,
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
