@@ -110,7 +110,7 @@ FRESULT f_read(File_Handle* fp, void* buff, uint32_t btr, size_t* br) {
   "class" : "Pip",
   "name" : "streamStarted"
 }
-The video had ended
+The video had started
 */
 /*JSON{
   "type" : "event",
@@ -118,6 +118,13 @@ The video had ended
   "name" : "streamStopped"
 }
 The video had ended
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "Pip",
+  "name" : "streamLooped"
+}
+The video had looped
 */
 void jswrap_pb_sendEvent(const char *eventName) { // eg JS_EVENT_PREFIX"streamStarted"
    JsVar *pip =jsvObjectGetChildIfExists(execInfo.root, "Pip");
@@ -426,6 +433,7 @@ void jswrap_pb_videoFrame() {
       f_read(&streamFile, streamBuffer, streamPacketBufferLen, &actual);
       streamPacketId = *(uint16_t*)&streamBuffer[2]; // +0 = '01'/'00' stream index?
       streamPacketLen = *(uint32_t*)&streamBuffer[4]; // +0 = '01'/'00' stream index?
+      jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamLooped");
     } else { // else stop
       //jsiConsolePrintf("Unknown stream ID");
       jswrap_pb_videoStopLetAudioRun();
@@ -459,6 +467,7 @@ void jswrap_pb_audioFrame() {
     STM32_I2S_AddSamples((int16_t*)streamBuffer, actual>>1);
   } else if (streamRepeats) {
     f_lseek(&streamFile, (uint32_t)(videoInfo.streamOffset)); // go back to start of audio data
+    jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamLooped");
   } else {
     // jsiConsolePrintf("End of WAV\n");
     STM32_I2S_StreamEnded(); // ensure we start playing even if we didn't think we'd buffered enough yet
