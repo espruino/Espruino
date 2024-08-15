@@ -19,6 +19,7 @@ void jswrap_pb_videoStop();
 void jswrap_pb_audioStart(JsVar *fn, JsVar *options);
 JsVar *jswrap_pb_audioRead(JsVar *fn);
 JsVar *jswrap_pb_audioBuiltin(JsVar *id);
+int jswrap_pb_audioGetFree();
 void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options);
 
 void jswrap_pb_setVol(int volume);
