@@ -39,7 +39,7 @@ void STM32_I2S_StreamEnded() {};
 #include "stm32f4xx_spi.h"
 #include "stm32f4xx_dma.h"
 
-volatile STM32_I2S_Status i2sStatus;
+volatile STM32_I2S_Status i2sStatus = STM32_I2S_STOPPED;
 
 STM32_I2S_Status STM32_I2S_GetStatus() { return i2sStatus; }
 
@@ -107,6 +107,8 @@ void DMA1_Stream4_IRQHandler(void) {
 }
 
 void STM32_I2S_Prepare(int audioFreq) {
+  if (i2sStatus == STM32_I2S_PLAYING) return; // if we're started then it's all ok!
+
   DMA_DeInit(DMA1_Stream4);
   while (DMA_GetCmdStatus(DMA1_Stream4) != DISABLE){}
   DMA_ClearITPendingBit(DMA1_Stream4,DMA_IT_FEIF4|DMA_IT_DMEIF4|DMA_IT_TEIF4|DMA_IT_HTIF4|DMA_IT_TCIF4);
