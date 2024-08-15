@@ -338,7 +338,7 @@ void LCD_init_hardware() {
 
 #ifdef LCD_BL
   jshPinSetState(LCD_BL, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(LCD_BL, 1); // BACKLIGHT=1
+  jshPinSetValue(LCD_BL, 0); // BACKLIGHT=off -> reduce flicker when initing the LCD. We turn it on after panel_init
 #endif
 
   // Toggle LCD reset pin
@@ -397,7 +397,7 @@ void LCD_init_hardware() {
 
 #ifdef LCD_BL
   jshPinSetState(LCD_BL, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(LCD_BL, 0); // BACKLIGHT=0 -> reduce flicker when initing the LCD. We turn it on after panel_init
+  jshPinSetValue(LCD_BL, 0); // BACKLIGHT=off -> reduce flicker when initing the LCD. We turn it on after panel_init
 #endif
 
   delay_ms(100);
@@ -1622,10 +1622,6 @@ void LCD_init_panel() {
   }
 #endif
   delay_ms(50);   /* delay 50 ms */
-#ifdef LCD_BL
-  jshPinSetState(LCD_BL, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(LCD_BL, 1); // BACKLIGHT=1
-#endif
 }
 
 
@@ -1732,9 +1728,7 @@ void lcdFSMC_setPower(bool isOn) {
       LCD_WR_CMD(0x11, 0); // SLPOUT
       jshDelayMicroseconds(20);
       LCD_WR_CMD(0x29, 0); // DISPON
-      #ifdef LCD_BL
-      jshPinOutput(LCD_BL, 1);
-      #endif
+      // don't turn backlight on right away to save on flicker
     } else {
       #ifdef LCD_BL
       jshPinOutput(LCD_BL, 0);

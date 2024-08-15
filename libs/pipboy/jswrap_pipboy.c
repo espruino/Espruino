@@ -666,6 +666,9 @@ void jswrap_pb_setLCDPower(bool isOn) {
   lcdFSMC_setPower(isOn);
 #endif
 }
+void jswrap_pb_setLCDBacklightOn() {
+  jshPinOutput(LCD_BL, 1);
+}
 
 
 static void jswrap_pb_periph_off() {
@@ -816,6 +819,8 @@ void jswrap_pb_init() {
   graphicsInternal.data.fgColor = 63<<5;
   jswrap_graphics_clear(g, 0);
   jswrap_graphics_drawImage(g, img, (LCD_WIDTH-200)/2, (LCD_HEIGHT-16)/2, NULL);
+  graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
+  jswrap_graphics_drawCString(g, (LCD_WIDTH)/2, (LCD_HEIGHT+16)/2, JS_VERSION);
   graphicsInternal.data.fgColor = 65535;
   jsvUnLock2(img,g);
 #ifdef USE_AUDIO_CODEC
@@ -826,6 +831,8 @@ void jswrap_pb_init() {
 #else
   jsiConsolePrintf("No audio codec - can be enabled by defining USE_AUDIO_CODEC");
 #endif
+
+  jsvUnLock(jsiSetTimeout(jswrap_pb_setLCDBacklightOn, 100)); // turn backlight on after a delay by default
 }
 
 /*JSON{
