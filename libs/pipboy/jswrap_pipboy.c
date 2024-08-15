@@ -558,6 +558,11 @@ void jswrap_pb_setDACPower(bool isOn) {
   }
 #ifndef LINUX
   jshPinOutput(SD_POWER_PIN, isOn); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
+  // make SD card pins open circuit to avoid parasitic power
+  jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_ADC_IN);
+  jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_ADC_IN);
+  jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_ADC_IN);
+  jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_ADC_IN);
 #endif
 }
 
@@ -713,9 +718,9 @@ Enter sleep mode - JS is still executed
 */
 void jswrap_pb_sleep() {
   jswrap_pb_periph_off();
-  //jshUSARTUnSetup(DEFAULT_CONSOLE_DEVICE);
-  //jshPinSetState(DEFAULT_CONSOLE_TX_PIN, JSHPINSTATE_ADC_IN);
-  //jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_ADC_IN);
+  jshUSARTUnSetup(DEFAULT_CONSOLE_DEVICE);
+  jshPinSetState(DEFAULT_CONSOLE_TX_PIN, JSHPINSTATE_ADC_IN);
+  jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_ADC_IN);
   jswrap_interface_setDeepSleep(1);
 }
 
