@@ -1483,7 +1483,7 @@ unsigned int jswrap_graphics_toColor(JsVar *parent, JsVar *r, JsVar *g, JsVar *b
 #endif
   } else {
     // just rgb
-    color = (unsigned int)jsvGetInteger(r);
+    color = ((unsigned int)jsvGetInteger(r)) & ((1UL<<gfx.data.bpp)-1);
   }
   return color;
 }
