@@ -5,15 +5,23 @@ CMAKEFILE = $(BINDIR)/main/CMakeLists.txt
 INCLUDE_WITHOUT_GEN = $(subst -Igen,,$(INCLUDE)) -I$(ROOT)/gen
 
 ifeq ($(CHIP),ESP32C3)
-SDKCONFIG = sdkconfig_c3
-PORT ?= /dev/ttyACM0
+	SDKCONFIG = sdkconfig_c3
+	FMW_BIN_NAME = espruino-esp32c3
+	PORT ?= /dev/ttyACM0
 else 
-ifeq ($(CHIP),ESP32)
-SDKCONFIG = sdkconfig
-PORT ?= /dev/ttyUSB0
-else 
-$(error Unknown ESP32 chip)
-endif
+	ifeq ($(CHIP),ESP32)
+		SDKCONFIG = sdkconfig
+		FMW_BIN_NAME = espruino-esp32
+		PORT ?= /dev/ttyUSB0
+	else
+		ifeq ($(CHIP),ESP32S3)
+			SDKCONFIG = sdkconfig_s3
+			FMW_BIN_NAME = espruino-esp32s3
+			PORT ?= /dev/ttyUSB0
+		else
+			$(error Unknown ESP32 chip)
+		endif
+	endif
 endif
 
 $(CMAKEFILE):
@@ -52,10 +60,12 @@ $(PROJ_NAME).bin: $(CMAKEFILE) $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h $(PININF
 $(ESP_ZIP): $(PROJ_NAME).bin
 	$(Q)rm -rf $(PROJ_NAME)
 	$(Q)mkdir -p $(PROJ_NAME)
-	$(Q)cp $(PROJ_NAME).bin $(PROJ_NAME)/espruino-esp32c3.bin
+	$(Q)cp $(PROJ_NAME).bin $(PROJ_NAME)/$(FMW_BIN_NAME).bin
 	$(Q)cp $(BINDIR)/build/partition_table/partition-table.bin $(PROJ_NAME)/partition-table.bin
 	$(Q)cp $(BINDIR)/build/bootloader/bootloader.bin $(PROJ_NAME)/bootloader.bin
+	$(Q)cp targets/esp32/README_flash.txt $(PROJ_NAME)
 	$(Q)cp targets/esp32/README_flash_C3.txt $(PROJ_NAME)
+	$(Q)cp targets/esp32/README_flash_S3.txt $(PROJ_NAME)
 	$(Q)$(TAR) -zcf $(ESP_ZIP) $(PROJ_NAME) --transform='s/$(BINDIR)\///g'
 	@echo "Created $(ESP_ZIP)"
 
