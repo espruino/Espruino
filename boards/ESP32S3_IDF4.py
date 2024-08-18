@@ -64,10 +64,10 @@ info = {
      'CRYPTO','SHA256','SHA512',
      'TLS',
      'TELNET',
-#     'NEOPIXEL',
+     'NEOPIXEL',
      'FILESYSTEM',
 #     'FLASHFS',
-#     'BLUETOOTH'	 
+     'BLUETOOTH'	 
    ],
    'makefile' : [
      'DEFINES+=-DESP_PLATFORM -DESP32=1',
