@@ -62,7 +62,11 @@
 #ifndef USB_PRODUCT_ID
   #define USB_PRODUCT_ID     22336
 #endif
-#define USBD_PRODUCT_STRING_FS     "STM32 Virtual ComPort"
+#ifdef PIPBOY
+  #define USBD_PRODUCT_STRING_FS     "The Wand Company Pip-Boy"
+#else
+  #define USBD_PRODUCT_STRING_FS     "STM32 Virtual ComPort"
+#endif
 #define USBD_SERIALNUMBER_STRING_FS     "00000000001A"
 #define USBD_CONFIGURATION_STRING_FS     "CDC Config"
 #define USBD_INTERFACE_STRING_FS     "CDC Interface"

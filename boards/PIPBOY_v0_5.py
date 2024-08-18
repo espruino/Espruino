@@ -16,6 +16,7 @@
 import pinutils;
 info = {
  'name' : "Fallout TV series Pip-Boy",
+ 'boardname' : "PIPBOY",
  'link' :  [ "https://www.thewandcompany.com/fallout-pip-boy" ],
  'variables' : 5000, # 5000 -> 65k for vars
  'binary_name' : 'espruino_%v_pipboy.bin',
@@ -37,7 +38,6 @@ info = {
      'JIT'
    ],
    'makefile' : [
-     'DEFINES+=-DPIPBOY',
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'DEFINES+=-DUSE_RTC',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS -DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_NO_SPLASH',
