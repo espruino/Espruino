@@ -151,7 +151,7 @@ devices = {
             'size' : 4096*64, 
             'memmap_base' : 0x60000000 # map into the address space (in software) - FIXME: what should this address be?
           },
-  'USB' : { 'pin_vsense' :  'A9', # PA5 for v0.3, PA9 for v0.5
+  'USB' : { 'pin_vsense' :  'A5', # PA5 for v0.3, PA9 for v0.5 (which should be connected but doesn't seem to work)
             'pin_dm' : 'A11',
             'pin_dp' : 'A12' },
   
