@@ -827,11 +827,11 @@ void jswrap_pb_initDAC() {
   es8388_write_reg(0x19, 0x00); // Unmute DAC (no volume soft ramp, 0x32 uses ramp)
   // Set mixer for DAC out
   es8388_write_reg(0x26, 0x09); // Select LIN2 + RIN2 for output mix
-  es8388_write_reg(0x27, 0xC8); // L mixer enable DAC + LIN signals, gain = +3dB
+  es8388_write_reg(0x27, 0xC0); // L mixer enable DAC + LIN signals, gain = +6dB
   es8388_write_reg(0x28, 0x38);
   es8388_write_reg(0x29, 0x38);
-  es8388_write_reg(0x2A, 0xC8); // R mixer enable DAC + RIN signals, gain = +3dB
-  jswrap_pb_setVol(0x1E);       // Set volume: 0x1E = 0dB
+  es8388_write_reg(0x2A, 0xC0); // R mixer enable DAC + RIN signals, gain = +6dB
+  jswrap_pb_setVol(33);         // Set volume: 0x1E = 0dB
   es8388_write_reg(0x02, 0xAA); // power up DEM and STM
   // Doc above also has notes on suspend/etc}
 }
