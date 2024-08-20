@@ -103,54 +103,61 @@ void jswrap_swdcon_kill(void) {
   "generate" : "jswrap_swdcon_idle"
 }
 */
+#define SWDCON_IDLE_RESET_THRESHOLD 16    
+#define SWDCON_POLL_FAST_MS 50
+#define SWDCON_POLL_SLOW_MS 500
+// slow down polling when idle
+#define SWDCON_POLL_TIMEOUT_SLOW 200 // 10s = 50*200ms
+// disable polling when it is slow and console is not active
+#define SWDCON_POLL_TIMEOUT_OFF 40 // 20s = 500*40ms
 
 bool jswrap_swdcon_idle(void) {
 
   if (flags.srvMode == MODE_OFF) {
     return false;
   }
-
-  if (SEGGER_RTT_HasKey()){
-    swdconActivate();
-    if (!flags.timerRunning){
-      swdconEnablePolling(50);
+  bool active = false;
+  if (flags.timerRunning == false){
+    if (SEGGER_RTT_HasKey()){
+      // activate console on first key press received
+      swdconActivate();
+    }
+    // start polling if console is active
+    if (jsiGetConsoleDevice() == EV_SWDCON){
+      flags.timerSlow = false;
+      timerIdleCounter = 0;
+      swdconEnablePolling(SWDCON_POLL_FAST_MS);
+    } else {
+      // no polling in timer so do it here instead
+      active |= swdconRecv();
+      active |= swdconSend();
     }
   } else {
-    if (flags.timerRunning){
-      if (timerIdleCounter < 10 && flags.timerSlow){
-        // restart timer in fast mode
-        swdconDisablePolling();
-        flags.timerSlow=false;
-        swdconEnablePolling(50);
-        timerIdleCounter = 0;
-
-      }
-      if (timerIdleCounter > 200 && !flags.timerSlow){
-        // slow down timer if idle for too long (>10 sec = 50*200ms)
-        swdconDisablePolling();
-        swdconEnablePolling(500);
-        flags.timerSlow = true;
-        timerIdleCounter = 10;
-      }
-      // stop polling if idle for 10min=500*1200ms
-      if (timerIdleCounter > 1200 && flags.timerSlow){
-        swdconDisablePolling();
-        flags.timerSlow=false;
-        timerIdleCounter = 0;
-      }
+    // timer already running so check idle state 
+    if (timerIdleCounter < SWDCON_IDLE_RESET_THRESHOLD && flags.timerSlow){
+      // restart timer in fast mode if we are not idle
+      // threshold is there just to not miss it if timer is faster than idle loop
+      swdconDisablePolling();
+      flags.timerSlow=false;
+      timerIdleCounter = 0;
+      swdconEnablePolling(SWDCON_POLL_FAST_MS);
     }
-  }
-
-  bool active = false;
-  if (!flags.timerRunning){
-    // no polling in timer, do it here instead
-    active |= swdconRecv();
-    active |= swdconSend();
-    // prevent sleep if SWD console is active, we probably have power attached anyway
-    // sleeping would work if SWD debugger would trigger interrupt after sending data (it does not)
-    // however it is possible to trigger interrupt in our own SWD RTT host in future
-    // e.g. triggering TIMER1 interrupt vie writing STIR register wakes nrf52 espruino device
-    active |= (jsiGetConsoleDevice() == EV_SWDCON);
+    if (timerIdleCounter > SWDCON_POLL_TIMEOUT_SLOW && !flags.timerSlow){
+      // slow down timer if idle for too long
+      swdconDisablePolling();
+      flags.timerSlow = true;
+      timerIdleCounter = SWDCON_IDLE_RESET_THRESHOLD; // set higher than test above
+      swdconEnablePolling(SWDCON_POLL_SLOW_MS);
+    }
+    if (timerIdleCounter > (SWDCON_POLL_TIMEOUT_OFF+SWDCON_IDLE_RESET_THRESHOLD)
+        && flags.timerSlow
+        && jsiGetConsoleDevice() != EV_SWDCON){
+      // polling is needed for ctrl+c to break busy loops
+      // stop polling if idle and our console is not active
+      swdconDisablePolling();
+      flags.timerSlow=false;
+      timerIdleCounter = 0;
+    }
   }
   return active;  
 }
@@ -219,12 +226,12 @@ void swdconRelease() {
   }
 }
 
-// handle full Espruino transmit buffer
+// handle Espruino transmit buffer being full
 void swdconBusyIdle(int loopCount){
   if (flags.srvMode == MODE_OFF) return;
   if (flags.timerRunning || SEGGER_RTT_GetAvailWriteSpace(0)==0){
     // we can't send to host here
-    if (loopCount>10000){
+    if (loopCount > WAIT_UNTIL_N_CYCLES){
       // if it takes too long and nobody is reading then give up and try to switch away
       jshTransmitClearDevice(EV_SWDCON);
       jsiStatus |= JSIS_ECHO_OFF_FOR_LINE; // we are full, no space for "<-" when switching
