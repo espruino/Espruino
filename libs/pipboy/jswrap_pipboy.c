@@ -775,11 +775,21 @@ void jswrap_pb_setDACPower(bool isOn) {
   }
 #ifndef LINUX
   jshPinOutput(SD_POWER_PIN, isOn); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
-  // make SD card pins open circuit to avoid parasitic power
-  jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_ADC_IN);
-  jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_ADC_IN);
-  jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_ADC_IN);
-  jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_ADC_IN);
+  // Make SD card pins open circuit to avoid parasitic power
+  // *** FIXME – how best to do this?
+
+  /*** FIXME *** We should actually put the SPI flash chip into "power down" mode
+   * ...but for now, just set the SPI flash pins to pulled-up inputs, to ensure that the CS pin isn't left low.
+   * 
+   * NOTE that this won't work in STANDBY mode, as the pins go high-impedance (and there's currently no external pullups).
+   * 
+   * However, this doesn't actually work in STOP mode either 
+   * – something else seems to be changing the state of (at least) the CS pin when we go into sleep.
+   */
+  jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_IN_PULLUP);
 #endif
 }
 
