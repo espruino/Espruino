@@ -170,7 +170,7 @@ void neopixel_init(int gpioNum){
     if (neopixelConfiguredGPIO) {
       rmt_driver_uninstall(RMTCHANNEL);
       if (neopixelConfiguredGPIO != -1) {
-        gpio_matrix_out(neopixelConfiguredGPIO,0,0,0);
+        gpio_matrix_out(neopixelConfiguredGPIO,SIG_GPIO_OUT_IDX,0,0);
       }
     }
     neopixelConfiguredGPIO = gpioNum;
@@ -200,7 +200,7 @@ void neopixel_init(int gpioNum){
   if (neopixelConfiguredGPIO != gpioNum) {
     // detach last pin 
     if (neopixelConfiguredGPIO != -1) {
-      gpio_matrix_out(neopixelConfiguredGPIO,0,0,0);
+      gpio_matrix_out(neopixelConfiguredGPIO,SIG_GPIO_OUT_IDX,0,0);
     }
     neopixelConfiguredGPIO = gpioNum;
   }
