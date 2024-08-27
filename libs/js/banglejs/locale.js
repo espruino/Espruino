@@ -47,6 +47,6 @@ exports = { name : "system", currencySym:"£",
   distance : (m,dp) => (m<1000)?round(m,dp)+"m":round(m/1000,dp)+"km", // meters to "123m" or "1.2km" depending on size
   speed : (s,dp) => round(s/1.60934,dp)+"mph",// kph to "123mph"
   temp : (t,dp) => round(t,dp)+"'C", // degrees C to degrees C
-  meridian: d => is12Hours() ? (d.getHours() <= 12) ? "am":"pm" : "", // Date to am/pm
+  meridian: (d,force) => (force||is12Hours()) ? (d.getHours() <= 12) ? "am":"pm" : "", // Date to am/pm
   is12Hours,
 };
