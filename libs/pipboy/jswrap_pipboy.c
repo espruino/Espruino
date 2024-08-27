@@ -44,7 +44,7 @@
 #include "graphics.h"
 #include "stm32_i2s.h"
 #ifndef LINUX
-
+#include "stm32f4xx_sdio.h"
 #include "lcd_fsmc.h"
 #endif
 
@@ -772,6 +772,15 @@ Enable/disabled the DAC power supply (whih also powers the audio amp and SD card
 void jswrap_pb_setDACPower(bool isOn) {
   if (!isOn) {
     jswrap_E_unmountSD(); // Close all files and unmount the SD card
+#ifndef LINUX
+    SDIO_DeInit(); // Properly shut down the SD interface
+    jshPinSetState(SD_CLK_PIN, JSHPINSTATE_GPIO_IN);
+    jshPinSetState(SD_CMD_PIN, JSHPINSTATE_GPIO_IN);
+    jshPinSetState(SD_D0_PIN, JSHPINSTATE_GPIO_IN);
+    jshPinSetState(SD_D1_PIN, JSHPINSTATE_GPIO_IN);
+    jshPinSetState(SD_D2_PIN, JSHPINSTATE_GPIO_IN);
+    jshPinSetState(SD_D3_PIN, JSHPINSTATE_GPIO_IN);
+#endif
   }
 #ifndef LINUX
   jshPinOutput(SD_POWER_PIN, isOn); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
@@ -780,10 +789,10 @@ void jswrap_pb_setDACPower(bool isOn) {
 
   /*** FIXME *** We should actually put the SPI flash chip into "power down" mode
    * ...but for now, just set the SPI flash pins to pulled-up inputs, to ensure that the CS pin isn't left low.
-   * 
+   *
    * NOTE that this won't work in STANDBY mode, as the pins go high-impedance (and there's currently no external pullups).
-   * 
-   * However, this doesn't actually work in STOP mode either 
+   *
+   * However, this doesn't actually work in STOP mode either
    * – something else seems to be changing the state of (at least) the CS pin when we go into sleep.
    */
   jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_IN_PULLUP);

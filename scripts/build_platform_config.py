@@ -452,18 +452,24 @@ if "LCD" in board.devices:
 if "SD" in board.devices:
   if "pin_cd" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cd", "SD_DETECT_PIN")
   if "pin_pwr" in board.devices["SD"]: codeOutDevicePin("SD", "pin_pwr", "SD_POWER_PIN")
-  if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD
-    if "pin_cs" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cs", "SD_CS_PIN")
-    if "pin_di" in board.devices["SD"]: codeOutDevicePin("SD", "pin_di", "SD_DI_PIN")
-    if "pin_do" in board.devices["SD"]: codeOutDevicePin("SD", "pin_do", "SD_DO_PIN")
-    if "pin_clk" in board.devices["SD"]:
-      codeOutDevicePin("SD", "pin_clk", "SD_CLK_PIN")
+  if "pin_cs" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cs", "SD_CS_PIN")
+  if "pin_di" in board.devices["SD"]: codeOutDevicePin("SD", "pin_di", "SD_DI_PIN")
+  if "pin_do" in board.devices["SD"]: codeOutDevicePin("SD", "pin_do", "SD_DO_PIN")
+  if "pin_clk" in board.devices["SD"]:
+    codeOutDevicePin("SD", "pin_clk", "SD_CLK_PIN")
+    if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD
       sdClkPin = pinutils.findpin(pins, "P"+board.devices["SD"]["pin_clk"], False)
       spiNum = 0
       for func in sdClkPin["functions"]:
         if func[:3]=="SPI": spiNum = int(func[3])
       if spiNum==0: die("No SPI peripheral found for SD card's CLK pin")
       codeOut("#define SD_SPI EV_SPI"+str(spiNum))
+  # SDIO
+  if "pin_d0" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d0", "SD_D0_PIN")
+  if "pin_d1" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d1", "SD_D1_PIN")
+  if "pin_d2" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d2", "SD_D2_PIN")
+  if "pin_d3" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d3", "SD_D3_PIN")
+  if "pin_cmd" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cmd", "SD_CMD_PIN")        
 
 if "IR" in board.devices:
   codeOutDevicePin("IR", "pin_anode", "IR_ANODE_PIN")
