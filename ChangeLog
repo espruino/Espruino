@@ -1,7 +1,25 @@
-          : Fix XON/OFF thresholds to be based off the correct buffer size
+     2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
+            Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
+            Fix for unexpected power draw on newest batch of Bangle.js devices
+            Puck.js: skip CRT startup code to save ~300b
+            Fix memory leak when using Pin.getInfo on a pin with ADCs (and non-reporting of analogs)
+            Puck.js/Jolt.js: Ensure that firmware update ZIPs *do not* perform a self test at boot until they pass (only hex files that are used at the factory do)
+            Bangle.js2: If tapping at the bottom of the screen on a menu that is <12px onscreen, choose the menu item above (#3476)
+            Bangle.js: Ensure that the first button press event after a reboot is propagated to setWatch
+            Fix lexing of regex at the start of a if/loop (#2529)
+            ESP32: remove interrupt on/off code as it just causes a crash
+            ESP32: jshPinWatch now returns correct value (event ID vs pin number)
+
+     2v23 : Fix XON/OFF thresholds to be based off the correct buffer size
             Bangle.js2: Added BANGLE2_IFLASH target for firmware using internal flash for js files (currently only partially working)
             Storage: If using internal+external, automatically put .bootcde and any libs in internal (as well as .js and .boot0)
             Bangle.js2: Allow configuring device privacy to use random BLE addresses
+            Fix STM32 Nucleo regression from ESPR_PACKED_SYMPTR
+            Fixed issue with static fields in classes if defined before the constructor (fix #2517)
+            Jolt.js: ensure GPIO attached to outputs always default to input at startup
+            Graphics: Fix drawString centered multi-line alignment with UTF8 (fix #2519)
+            Bangle.js2: Fix 2v22 regression of overlays starting at nonzero offsets (#2520)
+            nRF52: Fix 2v22 regression that caused timekeeping to be off by ~500ppm
          
      2v22 : Graphics: Ensure floodFill sets modified area correctly
             nRF52: Lower expected BLE XTAL accuracy to 50ppm (can improve BLE stability on some Bangle.js 2)

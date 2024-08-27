@@ -1691,21 +1691,22 @@ NO_INLINE JsVar *jspeExpressionOrArrowFunction() {
 
 /// Parse an ES6 class, expects LEX_R_CLASS already parsed
 NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
-  JsVar *classFunction = 0;
-  JsVar *classPrototype = 0;
-  JsVar *classInternalName = 0;
+  JsVar *classFunction = 0;     // The class itself that we're adding to
+  JsVar *classPrototype = 0;    // The prototype of the class
+  JsVar *classStaticFields = 0; // All the static fields that should be in classFunction (need to add these after because of jswrap_function_replaceWith)
 
   bool actuallyCreateClass = JSP_SHOULD_EXECUTE;
   if (actuallyCreateClass) {
     classFunction = jsvNewWithFlags(JSV_FUNCTION);
+    classStaticFields = jsvNewObject();
     JsVar *scopeVar = jspeiGetScopesAsVar();
     if (scopeVar)
       jsvAddNamedChildAndUnLock(classFunction, scopeVar, JSPARSE_FUNCTION_SCOPE_NAME);
   }
 
   if (parseNamedClass && lex->tk==LEX_ID) {
-    if (classFunction)
-      classInternalName = jslGetTokenValueAsVar();
+    if (classStaticFields)
+      jsvObjectSetChildAndUnLock(classStaticFields, JSPARSE_FUNCTION_NAME_NAME, jslGetTokenValueAsVar());
     JSP_ASSERT_MATCH(LEX_ID);
   }
   if (classFunction) {
@@ -1722,7 +1723,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
       extendsFromName = jspGetNamedVariable(jslGetTokenValueAsString());
       extendsFrom = jsvSkipName(extendsFromName);
     }
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(extendsFrom,classFunction,classInternalName,classPrototype),0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(extendsFrom,classFunction,classStaticFields,classPrototype),0);
     if (classPrototype) {
       if (jsvIsFunction(extendsFrom)) {
         JsVar *extendsFromProto = jsvObjectGetChildIfExists(extendsFrom, JSPARSE_PROTOTYPE_VAR);
@@ -1740,7 +1741,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
     }
     jsvUnLock2(extendsFrom, extendsFromName);
   }
-  JSP_MATCH_WITH_CLEANUP_AND_RETURN('{',jsvUnLock3(classFunction,classInternalName,classPrototype),0);
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN('{',jsvUnLock3(classFunction,classStaticFields,classPrototype),0);
 
   while ((lex->tk==LEX_ID || lex->tk==LEX_R_STATIC) && !jspIsInterrupted()) {
     bool isStatic = lex->tk==LEX_R_STATIC;
@@ -1748,7 +1749,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
 
     JsVar *funcName = jslGetTokenValueAsVar();
     bool isConstructor = jsvIsStringEqual(funcName, "constructor");
-    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(funcName,classFunction,classInternalName,classPrototype),0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID,jsvUnLock4(funcName,classFunction,classStaticFields,classPrototype),0);
     bool isGetter = false, isSetter = false;
 #ifndef ESPR_NO_GET_SET
     if (lex->tk==LEX_ID) {
@@ -1761,7 +1762,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
       }
     }
 #endif
-    JsVar *obj = isStatic ? classFunction : classPrototype;
+    JsVar *obj = isStatic ? classStaticFields : classPrototype;
     if (obj) {
       if (isGetter || isSetter || isConstructor || lex->tk=='(') { // function
         JsVar *method = jspeFunctionDefinition(false);
@@ -1776,7 +1777,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
         }
         jsvUnLock(method);
       } else { // value
-        JSP_MATCH_WITH_CLEANUP_AND_RETURN('=',jsvUnLock4(funcName,classFunction,classInternalName,classPrototype),0);
+        JSP_MATCH_WITH_CLEANUP_AND_RETURN('=',jsvUnLock4(funcName,classFunction,classStaticFields,classPrototype),0);
         JsVar *value = jsvSkipNameAndUnLock(jspeAssignmentExpression());
         jsvObjectSetChildVar(obj, funcName, value);
         jsvUnLock(value);
@@ -1786,9 +1787,9 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
     jsvUnLock(funcName);
   }
   jsvUnLock(classPrototype);
-  // If we had a name, add it to the end (or it gets confused with the constructor arguments)
-  if (classInternalName)
-    jsvObjectSetChildAndUnLock(classFunction, JSPARSE_FUNCTION_NAME_NAME, classInternalName);
+  // Now add static fields - we have to do this here because jswrap_function_replaceWith will remove them otherwise!
+  jsvObjectAppendAll(classFunction, classStaticFields);
+  jsvUnLock(classStaticFields);
 
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('}',jsvUnLock(classFunction),0);
   return classFunction;

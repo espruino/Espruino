@@ -17,6 +17,8 @@ function test(a, b) {
   console.log("Test "+tests+" failed - ",a,"vs",b);
 }
 
+print("0.5=",(1)/2); // test for parsing something that isn't a regexp
+
 testreg(new RegExp("a").exec("bc"), null);
 testreg(/a/.exec("abcdef"),"a",0);
 testreg(/a/.exec("bcdaef"),"a",3);

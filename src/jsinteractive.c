@@ -656,12 +656,18 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
   jsiDumpSerialInitialisation(user_callback, user_data, "USB", humanReadableDump);
 #endif
   int i;
+#if ESPR_USART_COUNT>0
   for (i=0;i<ESPR_USART_COUNT;i++)
     jsiDumpSerialInitialisation(user_callback, user_data, jshGetDeviceString(EV_SERIAL1+i), humanReadableDump);
+#endif
+#if ESPR_SPI_COUNT>0
   for (i=0;i<ESPR_SPI_COUNT;i++)
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_SPI1+i));
+#endif
+#if ESPR_I2C_COUNT>0
   for (i=0;i<ESPR_I2C_COUNT;i++)
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_I2C1+i));
+#endif
   // pins
   Pin pin;
 
@@ -2000,11 +2006,19 @@ void jsiIdle() {
 
           // Now actually process the event
           bool pinIsHigh = (event.flags&EV_EXTI_IS_HIGH)!=0;
+          bool ignoreEvent = false;
+#ifdef BANGLEJS
+          /* This is a bodge for Bangle.js. We want to get events for any button press here so
+          we can keep our debounce state machine up to date, but for some button presses we
+          may not want to actually forward them to user-facing code. */
+          ignoreEvent = (event.flags&EV_EXTI_DATA_PIN_HIGH)!=0;
+#endif
 
           bool executeNow = false;
           JsVarInt debounce = jsvObjectGetIntegerChild(watchPtr, "debounce");
           if (debounce<=0) {
-            executeNow = true;
+            executeNow = !ignoreEvent;
+            jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(pinIsHigh)); // set the state anyway
           } else { // Debouncing - use timeouts to ensure we only fire at the right time
             // store the current state of the pin
             bool oldWatchState = jsvObjectGetBoolChild(watchPtr, "state");
@@ -2013,10 +2027,10 @@ void jsiIdle() {
               JsSysTime timeoutTime = jsiLastIdleTime + (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChildIfExists(timeout, "time"));
               jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromLongInteger((JsSysTime)(eventTime - jsiLastIdleTime) + debounce)));
               jsvObjectSetChildAndUnLock(timeout, "state", jsvNewFromBool(pinIsHigh));
-              if (eventTime > timeoutTime && pinIsHigh!=oldWatchState) {
+              if (ignoreEvent || ((eventTime > timeoutTime) && (pinIsHigh!=oldWatchState))) {
                 // timeout should have fired, but we didn't get around to executing it!
                 // Do it now (with the old timeout time)
-                executeNow = true;
+                executeNow = !ignoreEvent;
                 eventTime = timeoutTime - debounce;
                 jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(pinIsHigh));
                 // Remove the timeout
@@ -2025,7 +2039,7 @@ void jsiIdle() {
                 jsvUnLock(idArr);
                 jsvObjectRemoveChild(watchPtr, "timeout");
               }
-            } else if (pinIsHigh!=oldWatchState) { // else create a new timeout
+            } else if (!ignoreEvent && pinIsHigh!=oldWatchState) { // else create a new timeout
               timeout = jsvNewObject();
               if (timeout) {
                 jsvObjectSetChild(timeout, "watch", watchPtr); // no unlock
@@ -2039,6 +2053,8 @@ void jsiIdle() {
                 // Add to our watch
                 jsvObjectSetChild(watchPtr, "timeout", timeout); // no unlock
               }
+            } else if (ignoreEvent) {
+              jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(pinIsHigh));
             }
             jsvUnLock(timeout);
           }

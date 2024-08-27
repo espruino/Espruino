@@ -15,7 +15,7 @@
  */
 #include "jsvariterator.h"
 #include "jsinteractive.h"
-
+#include "jstimer.h"
 #ifdef NRF5X
 #include "app_util_platform.h"
 #endif
@@ -40,19 +40,32 @@
 //#include "SEGGER_RTT_Conf.h"
 #include "SEGGER_RTT_custom.c"
 
+// Forward function declarations
+bool swdconActivate();
+void swdconRelease();
+bool swdconRecv();
+bool swdconSend();
+void swdconUtilTimerTask(JsSysTime time, void* userdata);
+void swdconEnablePolling(int interval);
+void swdconDisablePolling();
+
+// console data structures
+
 // possibly dynamically allocated from variables?
 static char swdconUpBuffer[BUFFER_SIZE_UP];
 static char swdconDownBuffer[BUFFER_SIZE_DOWN];
 const char swdconBufferName[] ="SWDCON"; // visible in "rtt channels" openocd command, SEGGER default for channel 0 is "Terminal"
-// Forward function declarations
-
-
-// console data structures
 
 #define MODE_OFF 0    // console is off
 #define MODE_ON  1    // console is on
 
-static uint8_t      srvMode = MODE_OFF;    ///< current mode 
+static struct {
+  uint8_t srvMode:1;
+  bool timerRunning:1;
+  bool timerSlow:1;
+} flags;
+
+uint32_t timerIdleCounter=0;
 
 /*JSON{
   "type" : "object",
@@ -72,9 +85,9 @@ Uses SEGGER RTT so it can be used with openocd and other SEGGER compatible tools
 */
 void jswrap_swdcon_init(void) {
   SEGGER_RTT_Init();
-  SEGGER_RTT_ConfigDownBuffer(0, swdconBufferName, swdconDownBuffer, sizeof(swdconDownBuffer), SEGGER_RTT_MODE_DEFAULT);
+  SEGGER_RTT_ConfigDownBuffer(0, swdconBufferName, swdconDownBuffer, sizeof(swdconDownBuffer), SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL);
   SEGGER_RTT_ConfigUpBuffer(0, swdconBufferName, swdconUpBuffer, sizeof(swdconUpBuffer), SEGGER_RTT_MODE_DEFAULT);
-  srvMode = MODE_ON; // hardcoded for now
+  flags.srvMode = MODE_ON; // hardcoded for now
 }
 
 /*JSON{
@@ -83,7 +96,8 @@ void jswrap_swdcon_init(void) {
 }
 */
 void jswrap_swdcon_kill(void) {
-  srvMode = MODE_OFF;
+  flags.srvMode = MODE_OFF;
+  swdconDisablePolling();
 }
 
 /*JSON{
@@ -91,26 +105,89 @@ void jswrap_swdcon_kill(void) {
   "generate" : "jswrap_swdcon_idle"
 }
 */
-bool swdconActivate();
-bool swdconRecv();
+#define SWDCON_IDLE_RESET_THRESHOLD 16    
+#define SWDCON_POLL_FAST_MS 50
+#define SWDCON_POLL_SLOW_MS 500
+// slow down polling when idle
+#define SWDCON_POLL_TIMEOUT_SLOW 200 // 10s = 50*200ms
+// disable polling when it is slow and console is not active
+#define SWDCON_POLL_TIMEOUT_OFF 40 // 20s = 500*40ms
 
 bool jswrap_swdcon_idle(void) {
 
-  if (srvMode == MODE_OFF) {
+  if (flags.srvMode == MODE_OFF) {
     return false;
   }
-
-  if (SEGGER_RTT_HasKey()) swdconActivate();
   bool active = false;
-  active |= swdconRecv();
-   // prevent sleep if SWD console is active, we probably have power attached anyway
-  active |= (jsiGetConsoleDevice() == EV_SWDCON);
-   // sleeping would work if SWD debugger would trigger interrupt after sending data (it does not)
-   // however it is possible to trigger interrupt in our own SWD RTT host in future
-   // e.g. triggering TIMER1 interrupt vie writing STIR register wakes nrf52 espruino device
+  if (flags.timerRunning == false){
+    if (SEGGER_RTT_HasKey()){
+      // activate console on first key press received
+      swdconActivate();
+    }
+    // start polling if console is active
+    if (jsiGetConsoleDevice() == EV_SWDCON){
+      flags.timerSlow = false;
+      timerIdleCounter = 0;
+      swdconEnablePolling(SWDCON_POLL_FAST_MS);
+    } else {
+      // no polling in timer so do it here instead
+      active |= swdconRecv();
+      active |= swdconSend();
+    }
+  } else {
+    // timer already running so check idle state 
+    if (timerIdleCounter < SWDCON_IDLE_RESET_THRESHOLD && flags.timerSlow){
+      // restart timer in fast mode if we are not idle
+      // threshold is there just to not miss it if timer is faster than idle loop
+      swdconDisablePolling();
+      flags.timerSlow=false;
+      timerIdleCounter = 0;
+      swdconEnablePolling(SWDCON_POLL_FAST_MS);
+    }
+    if (timerIdleCounter > SWDCON_POLL_TIMEOUT_SLOW && !flags.timerSlow){
+      // slow down timer if idle for too long
+      swdconDisablePolling();
+      flags.timerSlow = true;
+      timerIdleCounter = SWDCON_IDLE_RESET_THRESHOLD; // set higher than test above
+      swdconEnablePolling(SWDCON_POLL_SLOW_MS);
+    }
+    if (timerIdleCounter > (SWDCON_POLL_TIMEOUT_OFF+SWDCON_IDLE_RESET_THRESHOLD)
+        && flags.timerSlow
+        && jsiGetConsoleDevice() != EV_SWDCON){
+      // polling is needed for ctrl+c to break busy loops
+      // stop polling if idle and our console is not active
+      swdconDisablePolling();
+      flags.timerSlow=false;
+      timerIdleCounter = 0;
+    }
+  }
   return active;  
 }
+void swdconUtilTimerTask(JsSysTime time, void* userdata){
+//  if (jsiGetConsoleDevice() != EV_SWDCON)
+//    return;
+  bool active = false;
+  active |= swdconRecv();
+  active |= swdconSend();
+  if (active)
+    timerIdleCounter=0;
+  else
+    timerIdleCounter++;
+}
 
+void swdconEnablePolling(int interval){
+  if (!flags.timerRunning){
+    JsSysTime t = jshGetTimeFromMilliseconds(interval);
+    flags.timerRunning = jstExecuteFn(&swdconUtilTimerTask,NULL,t,t,NULL);
+  }
+}
+
+void swdconDisablePolling(){
+  if (flags.timerRunning){
+    jstStopExecuteFn(&swdconUtilTimerTask,NULL);
+    flags.timerRunning = false;
+  }
+}
 //===== Internal functions
 #ifdef BANGLEJS
 // on Bangle 2 looks like console is always forced to something (bluetooth or null)
@@ -141,7 +218,6 @@ bool swdconActivate() {
   }
   return true;
 }
-
 // Close the connection and release the console device
 void swdconRelease() {
   IOEventFlags console = jsiGetConsoleDevice();
@@ -159,25 +235,36 @@ void swdconRelease() {
   }
 }
 
-void swdconSendChar(char ch) {
-  if (srvMode == MODE_OFF) return;
-  int timeout = WAIT_UNTIL_N_CYCLES;
-  while (SEGGER_RTT_GetAvailWriteSpace(0)==0){
-    // same handling as in jshTransmit
-    if (jshIsInInterrupt()) {
-      // if we're printing from an IRQ, don't wait - it's unlikely TX will ever finish
-      jsErrorFlags |= JSERR_BUFFER_FULL;
-      return;
-    }
-    jshBusyIdle();
-    if (--timeout == 0) {
-      // try to switch away if buffer is full and nobody is reading
+// handle Espruino transmit buffer being full
+void swdconBusyIdle(int loopCount){
+  if (flags.srvMode == MODE_OFF) return;
+  if (flags.timerRunning || SEGGER_RTT_GetAvailWriteSpace(0)==0){
+    // we can't send to host here
+    if (loopCount > WAIT_UNTIL_N_CYCLES){
+      // if it takes too long and nobody is reading then give up and try to switch away
+      jshTransmitClearDevice(EV_SWDCON);
       jsiStatus |= JSIS_ECHO_OFF_FOR_LINE; // we are full, no space for "<-" when switching
       swdconRelease();
-      return;
+      jsErrorFlags |= JSERR_BUFFER_FULL;
     }
-  } 
-  SEGGER_RTT_PutChar(0,ch);
+    return;
+  }
+  // ok, we can try to send data to RTT host now
+  int ch = jshGetCharToTransmit(EV_SWDCON);
+  if (ch < 0) return;
+  SEGGER_RTT_PutChar(0,(char)ch);
+}
+
+bool swdconSend(){
+  bool gotChar=false;
+  while (SEGGER_RTT_GetAvailWriteSpace(0)>0){
+    int ch = jshGetCharToTransmit(EV_SWDCON);
+    if (ch<0)
+      break;
+    SEGGER_RTT_PutChar(0,(char)ch);
+    gotChar=true;
+  }
+  return gotChar;
 }
 
 bool swdconRecv() {

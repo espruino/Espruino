@@ -25,14 +25,15 @@ info = {
  'variables' : 5376, # (96-12)*1024/16-1
  'binary_name' : 'espruino_%v_nucleof401re.bin',
  'build' : {
-   'optimizeflags' : '-O3',
+   'optimizeflags' : '-Os',
    'libraries' : [
      'GRAPHICS',
-     'NEOPIXEL'
+     'NEOPIXEL',
+     'NET'
    ],
    'makefile' : [
-     'DEFINES+=-DSAVE_ON_FLASH_MATH', 
-     'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
+     #'DEFINES+=-DSAVE_ON_FLASH_MATH', 
+     #'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
      'WRAPPERSOURCES+=targets/nucleo/jswrap_nucleo.c',
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'DEFINES+=-DPIN_NAMES_DIRECT=1', # Package skips out some pins, so we can't assume each port starts from 0
@@ -47,6 +48,7 @@ chip = {
   'package' : "LQFP64",
   'ram' : 96, # 0x0001 8000 long, from 0x2000 0000 to 0x2001 7FFF
   'flash' : 512, # 0x0008 0000 long, from 0x0800 0000 to 0x0807 FFFF
+  'flash_base' : 0x08000000, # default is 0, but 0x08000000 is needed to allow Nucleo mass storage STLink to accept firmware. Fails with ESPR_PACKED_SYMPTR
   'speed' : 84,
   'usart' : 6,
   'spi' : 4,
@@ -63,7 +65,7 @@ chip = {
     'pages' : 1, # count of pages we're using to save RAM to Flash,
     'flash_available' : 384 # we use the last 128k page
   },
-  #'place_text_section' : 0x08010000, # note flash_available above # TODO USELESS
+  #'place_text_section' : 0x00010000, # note flash_available above # TODO USELESS
 };
 
 devices = {

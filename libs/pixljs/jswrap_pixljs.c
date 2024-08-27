@@ -444,7 +444,7 @@ void jswrap_pixljs_init() {
     }
     jswrap_graphics_drawCString(&gfx,28,39,JS_VERSION);
     // Write MAC address in bottom right
-    JsVar *addr = jswrap_ble_getAddress();
+    JsVar *addr = jswrap_ble_getAddress(false);
     char buf[20];
     jsvGetString(addr, buf, sizeof(buf));
     jsvUnLock(addr);

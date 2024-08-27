@@ -202,13 +202,6 @@ void jshTransmit(
     return;
   }
 #endif
-#ifdef USE_SWDCON
-  if (device==EV_SWDCON) {
-    extern void swdconSendChar(char c);
-    swdconSendChar((char)data);
-    return;
-  }
-#endif
 #ifndef LINUX
 #ifdef USB
   if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected()) {
@@ -239,6 +232,7 @@ void jshTransmit(
   if (txHeadNext==txTail) {
     jsiSetBusy(BUSY_TRANSMIT, true);
     bool wasConsoleLimbo = device==EV_LIMBO && jsiGetConsoleDevice()==EV_LIMBO;
+    int loopCount=0;
     while (txHeadNext==txTail) {
       // wait for send to finish as buffer is about to overflow
       if (jshIsInInterrupt()) {
@@ -247,6 +241,11 @@ void jshTransmit(
         return;
       }
       jshBusyIdle();
+#ifdef USE_SWDCON
+      loopCount++;
+      extern bool swdconBusyIdle(int);
+      if (device == EV_SWDCON) swdconBusyIdle(loopCount);
+#endif
 #ifdef USB
       // just in case USB was unplugged while we were waiting!
       if (!jshIsUSBSERIALConnected()) jshTransmitClearDevice(EV_USBSERIAL);

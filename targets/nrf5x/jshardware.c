@@ -1101,7 +1101,7 @@ void jshSetSystemTime(JsSysTime time) {
 
 /// Convert a time in Milliseconds to one in ticks.
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-  return (JsSysTime) (ms * (SYSCLK_FREQ / 1000));
+  return (JsSysTime) (ms * (SYSCLK_FREQ / 1000.0));
 }
 
 /// Convert ticks to a time in Milliseconds.
@@ -2897,9 +2897,11 @@ void jsvGetProcessorPowerUsage(JsVar *devices) {
   jsvObjectSetChildAndUnLock(devices, "CPU", jsvNewFromInteger(3 + ((4000 * 273152) / sysTickTime)));
   // check UART - draws about 1mA when on
   bool uartOn = false;
+#if ESPR_USART_COUNT>0
   for (int i=0;i<ESPR_USART_COUNT;i++)
     if (uart[i].isInitialised)
       uartOn = true;
+#endif
   if (uartOn)
     jsvObjectSetChildAndUnLock(devices, "UART", jsvNewFromInteger(1000));
   // check if PWM is being used

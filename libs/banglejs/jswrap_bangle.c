@@ -1787,7 +1787,10 @@ void btnHandlerCommon(int button, bool state, IOEventFlags flags) {
       /* If it's a rising edge *or* it's within our debounce
        * period, reset the debounce timer and ignore it */
       lcdWakeButtonTime = t + jshGetTimeFromMilliseconds(100);
-      return;
+      /* We signal that we don't want to execute any user code by setting this
+      flag - it still allows the debounce state machine to be updated in jsinteractive
+      but tells a Bangle.js-specific ifdef to not call user code. */
+      flags |= EV_EXTI_DATA_PIN_HIGH;
     } else {
       /* if the next event is a 'down', > 100ms after the last event, we propogate it
        and subsequent events */
@@ -2412,7 +2415,7 @@ void jswrap_banglejs_setLCDOffset(int y) {
       "setLCDOverlay(img: any, x: number, y: number): void;",
       "setLCDOverlay(): void;",
       "setLCDOverlay(img: any, x: number, y: number, options: { id : string, remove: () => void }): void;",
-      "setLCDOverlay(img: any, options: { id : string }}): void;"
+      "setLCDOverlay(img: any, options: { id : string }): void;"
     ]
 }
 Overlay an image or graphics instance on top of the contents of the graphics buffer.
@@ -3655,6 +3658,9 @@ NO_INLINE void jswrap_banglejs_hwinit() {
   jshPinOutput(TOUCH_PIN_RST, 0);
   jshDelayMicroseconds(1000);
   jshPinOutput(TOUCH_PIN_RST, 1);
+  // Ensure peripherals are forced off (GPIO can be open drain)
+  jswrap_banglejs_pwrHRM(false); // HRM off
+  jswrap_banglejs_pwrGPS(false); // GPS off
 
   // Check pressure sensor
   unsigned char buf[2];
@@ -3956,7 +3962,7 @@ NO_INLINE void jswrap_banglejs_init() {
     h = (int)(unsigned char)jsvGetCharInString(img, 1);
     char addrStr[20];
 #ifndef EMULATED
-    JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
+    JsVar *addr = jswrap_ble_getAddress(false); // Write MAC address in bottom right
 #else
     JsVar *addr = jsvNewFromString("Emulated");
 #endif
@@ -3977,7 +3983,7 @@ NO_INLINE void jswrap_banglejs_init() {
       else y += h-15;
       char addrStr[20];
 #ifndef EMULATED
-      JsVar *addr = jswrap_ble_getAddress(); // Write MAC address in bottom right
+      JsVar *addr = jswrap_ble_getAddress(false); // Write MAC address in bottom right
 #else
       JsVar *addr = jsvNewFromString("Emulated");
 #endif
@@ -4802,13 +4808,62 @@ JsVar *_jswrap_banglejs_i2cRd(JshI2CInfo *i2c, int i2cAddr, JsVarInt reg, JsVarI
 /*JSON{
     "type" : "staticmethod",
     "class" : "Bangle",
-    "name" : "accelWr",
-    "generate" : "jswrap_banglejs_accelWr",
+    "name" : "touchWr",
+    "generate" : "jswrap_banglejs_touchWr",
     "params" : [
       ["reg","int",""],
       ["data","int",""]
     ],
     "ifdef" : "BANGLEJS"
+}
+Writes a register on the touch controller
+*/
+void jswrap_banglejs_touchWr(JsVarInt reg, JsVarInt data) {
+#ifdef TOUCH_I2C
+  _jswrap_banglejs_i2cWr(TOUCH_I2C, TOUCH_ADDR, reg, data);
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "touchRd",
+    "generate" : "jswrap_banglejs_touchRd",
+    "params" : [
+      ["reg","int","Register number to read"],
+      ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
+    ],
+    "return" : ["JsVar",""],
+    "ifdef" : "BANGLEJS2",
+    "typescript" : [
+      "touchRd(reg: number, cnt?: 0): number;",
+      "touchRd(reg: number, cnt: number): number[];"
+    ]
+}
+Reads a register from the touch controller
+**Note:** On Espruino 2v06 and before this function only returns a number (`cnt`
+is ignored).
+*/
+
+
+JsVar *jswrap_banglejs_touchRd(JsVarInt reg, JsVarInt cnt) {
+#ifdef TOUCH_I2C
+  return _jswrap_banglejs_i2cRd(TOUCH_I2C, TOUCH_ADDR, reg, cnt);
+#else
+  return 0;
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "accelWr",
+    "generate" : "jswrap_banglejs_accelWr",
+    "params" : [
+      ["reg","int","Register number to write"],
+      ["data","int","An integer value to write to the register"]
+    ],
+    "ifdef" : "BANGLEJS2"
 }
 Writes a register on the accelerometer
 */
@@ -6005,7 +6060,7 @@ For example to display a list of numbers:
 E.showScroller({
   h : 40, c : 8,
   draw : (idx, r) => {
-    g.setBgColor((idx&1)?"#666":"#999").clearRect(r.x,r.y,r.x+r.w-1,r.y+r.h-1);
+    g.setBgColor((idx&1)?"#666":"#CCC").clearRect(r.x,r.y,r.x+r.w-1,r.y+r.h-1);
     g.setFont("6x8:2").drawString("Item Number\n"+idx,r.x+10,r.y+4);
   },
   select : (idx) => console.log("You selected ", idx)

@@ -52,7 +52,7 @@
     require('Storage').writeJSON('welcome.json', {welcomed: false});
     Bangle.setPollInterval(800); // force low power accelerometer mode
     setTimeout(function() {
-      Bangle.softOff();
+      Bangle.off();
     }, 60*60*1000); // 1 hour
   });
 })

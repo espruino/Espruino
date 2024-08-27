@@ -38,7 +38,7 @@ info = {
      'CRYPTO','SHA256','SHA512',
      'LCD_MEMLCD',
      'TENSORFLOW',
-#     'SWDCON', RTT console over SWD
+     'SWDCON', # RTT console over SWD
      'JIT' # JIT compiler enabled
    ],
    'makefile' : [
@@ -147,7 +147,7 @@ devices = {
   'VIBRATE' : { 'pin' : 'D19' },
   'GPS' : {
             'device' : 'Casic URANUS',
-            'pin_en' : 'D29', # IO expander P0
+            'pin_en' : 'D29',
             'pin_rx' : 'D30',
             'pin_tx' : 'D31'
           },
