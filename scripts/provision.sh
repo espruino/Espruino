@@ -118,8 +118,8 @@ if [ "$PROVISION_ESP32_IDF4" = "1" ]; then
         echo installing esp-idf folder
         mkdir esp-idf-4
         cd esp-idf-4
-        git clone -b v4.4.7 --recursive https://github.com/espressif/esp-idf.git
-        esp-idf/install.sh
+        git clone -b v4.4.8 --recursive https://github.com/espressif/esp-idf.git
+        esp-idf/install.sh			# RIC if not specifying the target, it installs all of them for now, selected targets are: esp32c3, esp32, esp32s2, esp32h2, esp32s3
         cd ..
     fi
     source esp-idf-4/esp-idf/export.sh
