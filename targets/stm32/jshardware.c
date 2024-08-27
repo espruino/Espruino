@@ -2061,8 +2061,12 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
 bool jshGetWatchedPinState(IOEventFlags device) {
   int exti = IOEVENTFLAGS_GETTYPE(device) - EV_EXTI0;
   Pin pin = watchedPins[exti];
-  if (jshIsPinValid(pin))
-    return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin));
+  if (jshIsPinValid(pin)) {
+    bool v = GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin));
+    if (pinInfo[pin].port & JSH_PIN_NEGATED)
+      v = !v;
+    return v;
+  }
   return false;
 }
 
