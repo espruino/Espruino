@@ -38,6 +38,11 @@ DSTATUS disk_initialize (
   //jsiConsolePrint("SD_SetDeviceMode\n");
   SD_SetDeviceMode(SD_DMA_MODE);
 #endif
+/*  jsiConsolePrintf("CardComdClasses %d\n", SDCardInfo2.SD_csd.CardComdClasses);
+  jsiConsolePrintf("RdBlockLen %d\n", SDCardInfo2.SD_csd.RdBlockLen);
+  jsiConsolePrintf("RdBlockMisalign %d\n", SDCardInfo2.SD_csd.RdBlockMisalign);
+  jsiConsolePrintf("CardType %d\n", SDCardInfo2.CardType);*/
+
   //jsiConsolePrint("NVIC_Init\n");
   NVIC_InitStructure.NVIC_IRQChannel = SDIO_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
@@ -116,8 +121,7 @@ BUFFER WE F_READ INTO SHOULD BE 4 BYTES LONGER THAN THE MAX READ REQUEST
   if (count<=1)
     SD_ReadBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
   else
-    SD_ReadMultiBlocks(Memory_Offset, (uint32_t *)buff, Transfer_Length, count);
-  //FIXME what about SD_ReadMultiBlocks when count>1 ?
+    SD_ReadMultiBlocks(Memory_Offset, (uint32_t *)buff, 512, count);
 
 #ifdef ESPR_SDIO_FAST_UNALIGNED
   if (misalignment) {
