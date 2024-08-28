@@ -1116,7 +1116,7 @@ void jswrap_pb_init() {
 "  let size = stat&&stat.size;"
 "  let f = E.openFile(FILE,'r');"
 "  if (size && f) {"
-"    g.clear(1).setFontMonofonto28().setFontAlign(0,0).setColor('#0f0').drawString('Upgrading...',240,160);"
+"    g.clear(1).setFontMonofonto23().setFontAlign(0,0).setColor('#0f0').drawString('Upgrading...',240,160);"
 "    let s = require('Storage');"
 "    s.eraseAll();"
 "    let d = f.read(4096), o=0;"
@@ -1141,11 +1141,10 @@ void jswrap_pb_init() {
    else if (res == 12) msg = jsvNewFromString("NO SD CARD!");
    else msg = jsvVarPrintf("SD CARD ERROR %d", res);
    g = jsvNewObject(); // fake object for rendering
-   graphicsInternal.data.fgColor = 31<<11; // red
-   graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+2;
+   graphicsInternal.data.fgColor = 63<<5; // green
+   graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
    graphicsInternal.data.fontAlignX = 0;
    jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), (LCD_HEIGHT+48)/2, 0));
-   graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
    graphicsInternal.data.fgColor = 65535;
    graphicsInternal.data.fontAlignX = -1;
    jsvUnLock2(msg,g);
