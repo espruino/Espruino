@@ -41,7 +41,7 @@ if boardname=="":
   print("ERROR, USAGE: build_board_json.py -Ddefine=1 -BBOARD_NAME")
   print("")
   print("It's much easier to run this from the Makefile with:")
-  print("   BOARDNAME=1 make boardjson")
+  print("   BOARD=BOARDNAME make boardjson")
   exit(1)
 
 print("Script location "+scriptdir)
