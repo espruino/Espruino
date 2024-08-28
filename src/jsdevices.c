@@ -232,7 +232,9 @@ void jshTransmit(
   if (txHeadNext==txTail) {
     jsiSetBusy(BUSY_TRANSMIT, true);
     bool wasConsoleLimbo = device==EV_LIMBO && jsiGetConsoleDevice()==EV_LIMBO;
-    int loopCount=0;
+#ifdef USE_SWDCON
+    int loopCount=0; // for recovery inside swdconBusyIdle
+#endif
     while (txHeadNext==txTail) {
       // wait for send to finish as buffer is about to overflow
       if (jshIsInInterrupt()) {
