@@ -778,31 +778,26 @@ void jswrap_pb_setDACPower(bool isOn) {
     jswrap_E_unmountSD(); // Close all files and unmount the SD card
 #ifndef LINUX
     SDIO_DeInit(); // Properly shut down the SD interface
-    jshPinSetState(SD_CLK_PIN, JSHPINSTATE_GPIO_IN);
-    jshPinSetState(SD_CMD_PIN, JSHPINSTATE_GPIO_IN);
-    jshPinSetState(SD_D0_PIN, JSHPINSTATE_GPIO_IN);
-    jshPinSetState(SD_D1_PIN, JSHPINSTATE_GPIO_IN);
-    jshPinSetState(SD_D2_PIN, JSHPINSTATE_GPIO_IN);
-    jshPinSetState(SD_D3_PIN, JSHPINSTATE_GPIO_IN);
+    jshPinSetState(SD_CLK_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+    jshPinSetState(SD_CMD_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+    jshPinSetState(SD_D0_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+    jshPinSetState(SD_D1_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+    jshPinSetState(SD_D2_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+    jshPinSetState(SD_D3_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+    jshPinSetState(SD_DETECT_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+    /*** FIXME *** We should actually put the SPI flash chip into "power down" mode
+     * ...but for now, just set the SPI flash pins to pulled-up inputs, to ensure that the CS pin isn't left low.
+     *
+     * NOTE that this won't work in STANDBY mode, as the pins go high-impedance (and there's currently no external pullups).
+     */
+    jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_IN_PULLUP);
+    jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN_PULLUP);
+    jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_IN_PULLUP);
+    jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_IN_PULLUP);
 #endif
   }
 #ifndef LINUX
   jshPinOutput(SD_POWER_PIN, isOn); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
-  // Make SD card pins open circuit to avoid parasitic power
-  // *** FIXME – how best to do this?
-
-  /*** FIXME *** We should actually put the SPI flash chip into "power down" mode
-   * ...but for now, just set the SPI flash pins to pulled-up inputs, to ensure that the CS pin isn't left low.
-   *
-   * NOTE that this won't work in STANDBY mode, as the pins go high-impedance (and there's currently no external pullups).
-   *
-   * However, this doesn't actually work in STOP mode either
-   * – something else seems to be changing the state of (at least) the CS pin when we go into sleep.
-   */
-  jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_IN_PULLUP);
-  jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN_PULLUP);
-  jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_IN_PULLUP);
-  jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_IN_PULLUP);
 #endif
 }
 
