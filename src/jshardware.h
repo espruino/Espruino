@@ -350,6 +350,9 @@ void jshI2CInitInfo(JshI2CInfo *inf); // jshardware_common.c
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf);
 
+/** Tear down a I2C device - there's a weak version of this so it doesn't have to be implemented */
+void jshI2CUnSetup(IOEventFlags device);
+
 /** Write a number of btes to the I2C device. Addresses are 7 bit - that is, between 0 and 0x7F.
  *  sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop);
