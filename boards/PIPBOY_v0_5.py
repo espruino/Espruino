@@ -18,7 +18,7 @@ info = {
  'name' : "Fallout TV series Pip-Boy",
  'boardname' : "PIPBOY",
  'link' :  [ "https://www.thewandcompany.com/fallout-pip-boy" ],
- 'variables' : 5000, # 5000 -> 65k for vars
+ 'variables' : 5000, # 5000 -> 65k for vars (we have 128k main memory, but 40k is the stream buffer)
  'binary_name' : 'espruino_%v_pipboy.bin',
  'default_console' : "EV_SERIAL3",
  'default_console_tx' : "B10",

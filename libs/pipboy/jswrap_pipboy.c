@@ -50,6 +50,9 @@
 
 #include "avi.h"
 
+#define DAC_SCL_PIN (JSH_PORTB_COUNT+8)
+#define DAC_SDA_PIN (JSH_PORTB_COUNT+9)
+
 #define STREAM_BUFFER_SIZE 40960
 uint8_t streamBuffer[STREAM_BUFFER_SIZE+4] __attribute__ ((aligned (8))); // we add 4 to allow our unaligned fread hack to work
 // Can't go in 64k CCM RAM because no DMA is allowed to CCM!
@@ -813,8 +816,8 @@ Initialise the ES8388 audio codec IC
 void jswrap_pb_initDAC() {
   JshI2CInfo dacI2C;
   jshI2CInitInfo(&dacI2C);
-  dacI2C.pinSCL = JSH_PORTB_COUNT+8;
-  dacI2C.pinSDA = JSH_PORTB_COUNT+9;
+  dacI2C.pinSCL = DAC_SCL_PIN;
+  dacI2C.pinSDA = DAC_SDA_PIN;
 #ifndef LINUX
   if (jshPinGetValue(SD_POWER_PIN)==0) {
     jswrap_pb_setDACPower(1); // Power supply enable for the SD card is also used for the ES8388 audio codec (and audio amp)
@@ -921,6 +924,9 @@ static void jswrap_pb_periph_off() {
   jswrap_pb_setDACMode_(DM_OFF); // No need to talk to the DAC - we're about to switch off its power (but doing this does help - GW!)
   jswrap_pb_setLCDPower(0);
   jswrap_pb_setDACPower(0); // The DAC (and audio amp) runs from the same power supply as the SD card (also calls jswrap_E_unmountSD)
+  jshI2CUnSetup(EV_I2C1); // disable I2C
+  jshPinSetState(DAC_SCL_PIN, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(DAC_SDA_PIN, JSHPINSTATE_GPIO_IN);
   STM32_I2S_Kill();
 }
 
@@ -959,6 +965,7 @@ Enter sleep mode - JS is still executed
 void jswrap_pb_sleep() {
   jswrap_pb_periph_off();
 #ifndef LINUX
+  jshTransmitFlushDevice(DEFAULT_CONSOLE_DEVICE);
   jshUSARTUnSetup(DEFAULT_CONSOLE_DEVICE);
   jshPinSetState(DEFAULT_CONSOLE_TX_PIN, JSHPINSTATE_ADC_IN);
   jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_ADC_IN);
