@@ -339,7 +339,7 @@ Read the given WAV file into RAM
 */
 JsVar *jswrap_pb_audioRead(JsVar *fn) {
   char pathStr[JS_DIR_BUF_SIZE] = "";
-  if (!jsfsGetPathString(pathStr, fn)) return;
+  if (!jsfsGetPathString(pathStr, fn)) return 0;
 
   if (jsfsInit()) {
     FRESULT res;
@@ -359,7 +359,7 @@ JsVar *jswrap_pb_audioRead(JsVar *fn) {
       res = f_read(&streamFile, (uint8_t*)buf, WAVHEADER_MAX, &actual);
       if (wavLoad(buf, (int)actual, &wavInfo, debugInfo)) {
         f_lseek(&streamFile, (uint32_t)(wavInfo.streamOffset)); // go back to start of audio data
-        uint32_t len = f_size(&streamFile) - wavInfo.streamOffset;
+        uint32_t len = f_size(&streamFile) - (uint32_t)wavInfo.streamOffset;
         JsVar *buffer = jsvNewFlatStringOfLength(len);
         if (!buffer) {
           jsExceptionHere(JSET_ERROR, "Couldn't allocate flat string of size %d\n", len);
@@ -376,6 +376,7 @@ JsVar *jswrap_pb_audioRead(JsVar *fn) {
   } else {
     jsExceptionHere(JSET_ERROR, "Failed to init SD card\n");
   }
+  return 0;
 }
 
 
@@ -523,9 +524,9 @@ static void _jswrap_pb_audioStartVar_cb(unsigned char *data, unsigned int len, v
 void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
   debugInfo=false;
   streamRepeats=false;
-  JsVar *v;
+  /*JsVar *v;
   if (jsvIsObject(options)) {
-  }
+  }*/
   if (streamType) {
     if (debugInfo) {
       jsiConsolePrintf("Closing existing stream\n");
@@ -1092,6 +1093,63 @@ void jswrap_pb_init() {
 #endif
 
   jsvUnLock(jsiSetTimeout(jswrap_pb_setLCDBacklightOn, 100)); // turn backlight on after a delay by default
+
+  File_Handle f;
+  BYTE ff_mode = FA_READ | FA_OPEN_EXISTING;
+  FRESULT res = FR_NOT_ENABLED;
+  if (jsfsInit()) {
+    // If we've initialised FS, look for a VERSION file
+    if ((res=f_open(&f, "VERSION", ff_mode)) == FR_OK) {
+      // if it exists read it and write it to a global VERSION
+      char version[10];
+      UINT sz=0;
+      f_read(&f, version, sizeof(version), &sz);
+      f_close(&f);
+      version[sz]=0;
+      jsvObjectSetChildAndUnLock(execInfo.root, "VERSION", jsvNewFromString(version));
+      // Now run some JS code which will check if what's in Storage is that file, and if not will update it
+      jsvUnLock(jspEvaluate(
+"if (require('Storage').read('VERSION')!==VERSION) {"
+"  B15.set();" // display on
+"  const FILE = 'FW.JS';"
+"  let stat = require('fs').statSync(FILE);"
+"  let size = stat&&stat.size;"
+"  let f = E.openFile(FILE,'r');"
+"  if (size && f) {"
+"    g.clear(1).setFontMonofonto28().setFontAlign(0,0).setColor('#0f0').drawString('Upgrading...',240,160);"
+"    let s = require('Storage');"
+"    s.eraseAll();"
+"    let d = f.read(4096), o=0;"
+"    s.write('.bootcde',d,o,size);"
+"    while (d) {"
+"      o += d.length;"
+"      d = f.read(4096);"
+"      if (d) s.write('.bootcde',d,o);"
+"    }"
+"    s.write('VERSION',VERSION);"
+"    g.clear();"
+"    setTimeout(load,100);"
+"  } else {"
+"    console.log('Cannot read FW.JS');"
+"  }"
+"}", true/*static*/));
+    }
+  }
+  if (res) {
+   JsVar *msg;
+   if (res == FR_NO_FILE) msg = jsvNewFromString("NO VERSION FILE!");
+   else if (res == 12) msg = jsvNewFromString("NO SD CARD!");
+   else msg = jsvVarPrintf("SD CARD ERROR %d", res);
+   g = jsvNewObject(); // fake object for rendering
+   graphicsInternal.data.fgColor = 31<<11; // red
+   graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+2;
+   graphicsInternal.data.fontAlignX = 0;
+   jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), (LCD_HEIGHT+48)/2, 0));
+   graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
+   graphicsInternal.data.fgColor = 65535;
+   graphicsInternal.data.fontAlignX = -1;
+   jsvUnLock2(msg,g);
+  }
 }
 
 /*JSON{
