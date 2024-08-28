@@ -2391,7 +2391,6 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   jshSetDeviceInitialised(device, true);
   JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
 
-  enum {pinSCL, pinSDA };
   Pin pins[2] = { inf->pinSCL, inf->pinSDA };
   JshPinFunction functions[2] = { JSH_I2C_SCL, JSH_I2C_SDA };
   I2C_TypeDef *I2Cx = (I2C_TypeDef *)checkPinsForDevice(funcType, 2, pins, functions);
@@ -2415,6 +2414,16 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 
   I2C_Init(I2Cx, &I2C_InitStructure);
   I2C_Cmd(I2Cx, ENABLE);
+}
+
+void jshI2CUnSetup(IOEventFlags device) {
+  JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
+  I2C_TypeDef *I2Cx = (I2C_TypeDef *)setDeviceClockCmd(funcType, ENABLE);
+  if (!I2Cx) return;
+
+  I2C_Cmd(I2Cx, DISABLE);
+  I2C_DeInit(I2Cx);
+  jshSetDeviceInitialised(device, false);
 }
 
 #if !defined(STM32F3)

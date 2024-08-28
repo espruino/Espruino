@@ -130,6 +130,11 @@ __attribute__((weak)) void jshUSARTUnSetup(IOEventFlags device) {
   // placeholder - not all platforms implement this
 }
 
+__attribute__((weak)) void jshI2CUnSetup(IOEventFlags device) {
+  NOT_USED(device);
+  // placeholder - not all platforms implement this
+}
+
 /// Erase the flash pages containing the address.
 __attribute__((weak)) bool jshFlashErasePages(uint32_t startAddr, uint32_t byteLength) {
   uint32_t endAddr = startAddr + byteLength;
