@@ -238,6 +238,28 @@ void  lcdFillRect_ArrayBuffer_flat(struct JsGraphics *gfx, int x1, int y1, int x
     lcdSetPixels_ArrayBuffer_flat(gfx, x1, y, 1+x2-x1, col);
 }
 
+void lcdScroll_ArrayBuffer_flat(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
+  // try and scroll quicker
+  if (x1==0 && x2==(gfx->data.width-1) && xdir==0 && !(gfx->data.flags & JSGRAPHICSFLAGS_NONLINEAR)) { // can only do full width because we use memmove
+    // TODO: for some cases we could cope with scrolling in X too (xdir!=0)
+    int ylen = (y2+1-y1) - abs(ydir);
+    int pixelCount = (x2+1-x1) * ylen;
+    int ysrc = y1 + ((ydir<0) ? -ydir : 0);
+    int ydst = y1 + ((ydir>0) ? ydir : 0);
+    unsigned int idxsrc = lcdGetPixelIndex_ArrayBuffer(gfx,x1,ysrc,pixelCount);
+    unsigned int idxdst = lcdGetPixelIndex_ArrayBuffer(gfx,x1,ydst,pixelCount);
+    unsigned int bitCount = (unsigned)(pixelCount * gfx->data.bpp);
+
+    if ((idxsrc&7)==0 && (idxdst&7)==0 && (bitCount&7)==0) { // if all aligned
+      unsigned char *ptr = (unsigned char*)gfx->backendData;
+      memmove(&ptr[idxdst>>3], &ptr[idxsrc>>3], bitCount>>3);
+      return;
+    }
+  }
+  // if we can't, fallback to slow scrolling
+  return graphicsFallbackScroll(gfx, xdir, ydir, x1, y1, x2, y2);
+}
+
 #ifdef GRAPHICS_FAST_PATHS
 void lcdSetPixel_ArrayBuffer_flat1(JsGraphics *gfx, int x, int y, unsigned int col) {
   int p = x + y*gfx->data.width;
@@ -331,6 +353,7 @@ void lcdSetCallbacks_ArrayBuffer(JsGraphics *gfx) {
       gfx->setPixel = lcdSetPixel_ArrayBuffer_flat;
       gfx->getPixel = lcdGetPixel_ArrayBuffer_flat;
       gfx->fillRect = lcdFillRect_ArrayBuffer_flat;
+      gfx->scroll = lcdScroll_ArrayBuffer_flat;
     }
 #else
   if (false) {
