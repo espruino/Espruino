@@ -23,14 +23,32 @@ to openocd interactive console via `telnet localhost 4444` (Or you can use e.g. 
 
 `rtt server start 2222 0 "\377\375\042\377\373\001"` - newer OpenOCD versions can send initial string to telnet client, this switches it to raw mode but adds some extra initial garbage also to espruino console as telnet client sends some stuff back, more info https://stackoverflow.com/questions/273261/force-telnet-client-into-character-mode
 
-To connect to console use another telnet connection - `telnet localhost 2222`
+To connect to console you may use another telnet connection - `telnet localhost 2222`
 By default telnet is in line mode if there is no rtt server inital string. For espruino console we need raw character mode, 
 type ctrl+],Enter and then type `mode char` to switch to raw mode 
 or you can use netcat https://unix.stackexchange.com/questions/767170/using-telnet-command-without-protocol-negotiation
 
 Now press ctrl+c to clear espruino console and/or press enter few times to see some initial errors from telnet garbage
 
-If the device is in deep sleep you need to wake it up to notice the input and switch console - e.g. press button on Bangle watch
+If the device is in deep sleep and nothing happens after text entry you need to wake it up to notice the input and switch console - see Known issues below.
+
+## EspruinoTools
+
+When the openocd rtt server is running on TCP port you can also use the `espruino` command line tool available from https://github.com/espruino/EspruinoTools  like this:
+
+```
+espruino --ide 8080 --port tcp://127.0.0.1:2222
+```
+Then the interactive console is available and you can also use Web IDE from web browser on http://localhost:8080
+```
+Espruino Command-line Tool 0.1.47
+-----------------------------------
+
+Connecting to 'tcp://127.0.0.1:2222'
+Connected
+Web IDE is now available on http://localhost:8080
+>
+```
 
 ## OpenOCD stop
 
