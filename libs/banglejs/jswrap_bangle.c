@@ -5300,7 +5300,7 @@ JsVar *jswrap_banglejs_project(JsVar *latlong) {
   double lon = jsvObjectGetFloatChild(latlong,"lon");
   if (lat > latMax) lat=latMax;
   if (lat < -latMax) lat=-latMax;
-  double s = sin(lat * degToRad);
+  double s = jswrap_math_sin(lat * degToRad);
   JsVar *o = jsvNewObject();
   if (o) {
     jsvObjectSetChildAndUnLock(o,"x", jsvNewFromFloat(R * lon * degToRad));
