@@ -1071,8 +1071,8 @@ void jswrap_pb_init() {
   JsVar *img = jsvNewNativeString((char*)&img_raw[0], sizeof(img_raw));
   JsVar *g = jsvNewObject(); // fake object for rendering
   graphicsInternal.data.fgColor = 63<<5;
-  jswrap_graphics_clear(g, 0);
-  jswrap_graphics_drawImage(g, img, (LCD_WIDTH-200)/2, (LCD_HEIGHT-16)/2, NULL);
+  jsvUnLock(jswrap_graphics_clear(g, 0));
+  jsvUnLock(jswrap_graphics_drawImage(g, img, (LCD_WIDTH-200)/2, (LCD_HEIGHT-16)/2, NULL));
   graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
   graphicsInternal.data.fontAlignX = 1;
   JsVar *s = jsvNewFromString(JS_VERSION);
