@@ -35,12 +35,14 @@ If the device is in deep sleep you need to wake it up to notice the input and sw
 ## OpenOCD stop
 
 `rtt stop` - stop polling data, do this also before flashing new version of espruino (server can stay running but rttt stop, setup and start is needed to run  after firmware update)
+
 `rtt server stop 2222` - optional
+
 `nrf52.dap dpreg 4 0 ; shutdown` - with cmsis-dap this powers down nrf52 debug hardware (`dap dpreg 4 0`) and disconnects, if you would just close openocd and nrf5x stays in debug mode it drains battery and needs reboot to clear this state
 
 ## Known issues
 
-- clipboard paste drops data when buffer is full, this is openocd issue - it only writes first part that fits into buffer and does not retry or wait for data to go out, quick fix in branch here https://github.com/fanoush/openocd/tree/f-rtt-server-write-retry with windows build here https://github.com/fanoush/openocd/releases/tag/latest
+- clipboard paste drops data when buffer is full, this is openocd issue - it only writes first part that fits into buffer and does not retry or wait for data to go out, quick fix in branch here https://github.com/fanoush/openocd/tree/f-rtt-server-write-retry with Windows build available here https://github.com/fanoush/openocd/releases/tag/latest
 
 - if device is in deep sleep it needs to be woken up to activate the console - press button, press enter in old console, for nrf52 also triggering TIMER1_IRQn interrupt via STIR register write in openocd works `mww 0xE000EF00 9`
 
@@ -48,5 +50,5 @@ If the device is in deep sleep you need to wake it up to notice the input and sw
 
 - disable/enable and allocate buffers for SDWCON dynamically at runtime
 
-- our own SWD RTT host code instead of openocd/telnet - espruino device can redirect its serial/usb/bluetooth console to another device via 2 GPIOs
+- our own SWD RTT host code instead of openocd/telnet, then any Espruino device could redirect its serial/usb/bluetooth console to SWDCON of another device, which would allow WebIDE to be used easily with target device (so e.g. Bangle.js 2 with dead bluetooth could be used with App Loader over cable)
 
