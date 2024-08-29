@@ -879,7 +879,11 @@ void jswrap_wifi_connect(
       break;
     case WIFI_MODE_APSTA:
     case WIFI_MODE_AP:
+#if CONFIG_IDF_TARGET_ESP32C3
+      mode = WIFI_MODE_STA; // C3 doesn't like AP and station at once
+#else
       mode = WIFI_MODE_APSTA;
+#endif
       break;
     default:
       jsError( "jswrap_wifi_connect: Unexpected mode type: %d", mode);
@@ -1108,7 +1112,9 @@ void jswrap_wifi_startAP(
 
   wifi_mode_t mode;
   err = esp_wifi_get_mode(&mode);
-
+#if CONFIG_IDF_TARGET_ESP32C3
+  if (mode == WIFI_MODE_STA) mode = WIFI_MODE_NULL; // C3 doesn't like AP and station at once
+#endif
   err = esp_wifi_set_mode( mode | WIFI_MODE_AP);
   if (err != ESP_OK) {
     jsError( "jswrap_wifi_startAP: esp_wifi_set_mode: %d(%s)", err,wifiErrorToString(err));
