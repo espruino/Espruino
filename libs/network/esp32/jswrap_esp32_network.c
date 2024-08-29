@@ -758,7 +758,7 @@ void jswrap_wifi_disconnect(JsVar *jsCallback) {
   // turn off auto-connect
 #if !(ESP_IDF_VERSION_MAJOR>=4)
   esp_wifi_set_auto_connect(false);
-#endif  
+#endif
   s_retry_num = 0; // flag so we don't attempt to reconnect
   err = esp_wifi_disconnect();
   if (err != ESP_OK) {
@@ -820,8 +820,7 @@ void jswrap_wifi_connect(
 
   // Create SSID string
   char ssid[33];
-  size_t len = jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
-  ssid[len]='\0';
+  jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
 
   // Make sure jsOptions is NULL or an object
   if (jsOptions != NULL && !jsvIsObject(jsOptions)) {
@@ -856,14 +855,13 @@ void jswrap_wifi_connect(
       return;
     }
     if (jsPassword != NULL) {
-      size_t len = jsvGetString(jsPassword, password, sizeof(password)-1);
-      password[len]='\0';
+      jsvGetString(jsPassword, password, sizeof(password)-1);
     } else {
       password[0] = '\0';
     }
     jsvUnLock(jsPassword);
   } // End of we had options
-  jsDebug(DBG_INFO, "jswrap_wifi_connect: SSID, password, Callback done\n");
+  jsDebug(DBG_INFO, "jswrap_wifi_connect: SSID '%s', password '%s', Callback done\n", ssid, password);
 
   // At this point, we have the ssid in "ssid" and the password in "password".
   // Perform an esp_wifi_set_mode
@@ -902,10 +900,10 @@ void jswrap_wifi_connect(
   memcpy(staConfig.sta.ssid, ssid, sizeof(staConfig.sta.ssid));
   memcpy(staConfig.sta.password, password, sizeof(staConfig.sta.password));
   staConfig.sta.bssid_set = false;
-#if !(ESP_IDF_VERSION_MAJOR>=4)  
+#if !(ESP_IDF_VERSION_MAJOR>=4)
   esp_wifi_set_auto_connect(true);
-  jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_set_autoconnect done\n");  
-#endif  
+  jsDebug(DBG_INFO, "jswrap_wifi_connect: esp_wifi_set_autoconnect done\n");
+#endif
 
   err = esp_wifi_set_config(ESP_IF_WIFI_STA,  &staConfig);
   if (err != ESP_OK) {
@@ -1059,8 +1057,7 @@ void jswrap_wifi_startAP(
         jsvUnLock(jsPassword);
         return;
       }
-      size_t len = jsvGetString(jsPassword, (char *)apConfig.password, sizeof(apConfig.password)-1);
-      apConfig.password[len] = '\0';
+      jsvGetString(jsPassword, (char *)apConfig.password, sizeof(apConfig.password)-1);
     }
 
     // Handle the authMode
@@ -1158,17 +1155,17 @@ JsVar *jswrap_wifi_getStatus(JsVar *jsCallback) {
   char *psTypeStr;
   switch(psType) {
 #if ESP_IDF_VERSION_MAJOR>=4
-  case WIFI_PS_MIN_MODEM:	
+  case WIFI_PS_MIN_MODEM:
     psTypeStr = "min_modem";
     break;
-  case WIFI_PS_MAX_MODEM:	
+  case WIFI_PS_MAX_MODEM:
     psTypeStr = "max_modem";
     break;
 #else
   case WIFI_PS_MODEM:
     psTypeStr = "modem";
-    break;    
-#endif    
+    break;
+#endif
   case WIFI_PS_NONE:
     psTypeStr = "none";
     break;
@@ -1266,7 +1263,7 @@ void jswrap_wifi_setConfig(JsVar *jsSettings) {
 #if !(ESP_IDF_VERSION_MAJOR>=4)
     } else if (jsvIsStringEqual(jsPowerSave, "ps-poll")) {
       esp_wifi_set_ps(WIFI_PS_MODEM);
-#endif      
+#endif
     } else if (jsvIsStringEqual(jsPowerSave, "min")) {
       esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
     } else if (jsvIsStringEqual(jsPowerSave, "max")) {
@@ -1417,6 +1414,10 @@ void jswrap_wifi_save(JsVar *what) {
 
 void jswrap_wifi_restore(void) {
   jsDebug(DBG_INFO, "jswrap_wifi_restore\n");
+
+#if CONFIG_IDF_TARGET_ESP32C3
+  esp_wifi_set_max_tx_power(34); // 8.5dBm
+#endif
 
   JsVar *name = jsvNewFromString(WIFI_CONFIG_STORAGE_NAME);
   JsVar *o = jswrap_storage_readJSON(name, true);
@@ -1637,8 +1638,7 @@ void jswrap_wifi_ping(
   ip4_addr_t ip;
   if (jsvIsString(ipAddr)) {
     char ipString[20];
-    int len = jsvGetString(ipAddr, ipString, sizeof(ipString)-1);
-    ipString[len] = '\0';
+    jsvGetString(ipAddr, ipString, sizeof(ipString)-1);
     ip.addr = networkParseIPAddress(ipString);
     if (ip.addr == 0) {
         jsExceptionHere(JSET_ERROR, "Not a valid IP address");

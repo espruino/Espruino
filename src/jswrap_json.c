@@ -70,8 +70,7 @@ JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space) {
       whitespace[s] = 0;
       while (s) whitespace[--s]=' ';
     } else {
-      size_t l = jsvGetString(space, whitespace, sizeof(whitespace)-1);
-      whitespace[l]=0; // add trailing 0
+      jsvGetString(space, whitespace, sizeof(whitespace)-1);
     }
     if (strlen(whitespace)) flags |= JSON_ALL_NEWLINES|JSON_PRETTY;
     jsfGetJSONWhitespace(v, result, flags, whitespace);

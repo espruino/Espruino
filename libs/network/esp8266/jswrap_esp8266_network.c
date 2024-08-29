@@ -307,8 +307,7 @@ void jswrap_wifi_connect(
     jsExceptionHere(JSET_ERROR, "No SSID provided");
     return;
   } else {
-    int len = jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
-    ssid[len]='\0';
+    jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
     os_strncpy((char *)stationConfig.ssid, ssid, 32);
   }
 
@@ -345,8 +344,7 @@ void jswrap_wifi_connect(
         return;
       }
       if (jsPassword != NULL) {
-        int len = jsvGetString(jsPassword, password, sizeof(password)-1);
-        password[len]='\0';
+        jsvGetString(jsPassword, password, sizeof(password)-1);
       } else {
         password[0] = '\0';
       }
@@ -358,8 +356,7 @@ void jswrap_wifi_connect(
       JsVar *jsBssid= jsvObjectGetChildIfExists(jsOptions, "bssid");
       if (jsBssid != NULL && jsvIsString(jsBssid)) {
         char macAddrString[6 * 3 + 1 ];
-        int len = jsvGetString(jsBssid, macAddrString, sizeof(macAddrString)-1);
-        macAddrString[len] ='\0';
+        jsvGetString(jsBssid, macAddrString, sizeof(macAddrString)-1);
         DBGV("bssid %s, len: %d\n",macAddrString,len);
         bool isMAC = networkParseMACAddress((unsigned char*) stationConfig.bssid, (char *) macAddrString);
         if ( isMAC ) {
@@ -407,8 +404,7 @@ void jswrap_wifi_connect(
           count = 1;
           JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 0);
           char buffer[50];
-          size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
-          buffer[size] = '\0';
+          jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
           jsvUnLock(jsCurrentDNSServer);
           dnsAddresses[0].addr = networkParseIPAddress(buffer);
         }
@@ -417,8 +413,7 @@ void jswrap_wifi_connect(
           count = 2;
           JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 1);
           char buffer[50];
-          size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
-          buffer[size] = '\0';
+          jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
           jsvUnLock(jsCurrentDNSServer);
           dnsAddresses[1].addr = networkParseIPAddress(buffer);
         }
@@ -579,8 +574,7 @@ void jswrap_wifi_startAP(
           jsvUnLock(jsPassword);
           return;
         }
-        int len = jsvGetString(jsPassword, (char *)softApConfig.password, sizeof(softApConfig.password)-1);
-        softApConfig.password[len] = '\0';
+        jsvGetString(jsPassword, (char *)softApConfig.password, sizeof(softApConfig.password)-1);
       }
     }
     jsvUnLock(jsPassword);
@@ -1296,8 +1290,7 @@ void jswrap_wifi_ping(
   // representation.
   if (jsvIsString(ipAddr)) {
     char ipString[20];
-    int len = jsvGetString(ipAddr, ipString, sizeof(ipString)-1);
-    ipString[len] = '\0';
+    jsvGetString(ipAddr, ipString, sizeof(ipString)-1);
     pingOpt.ip = networkParseIPAddress(ipString);
     if (pingOpt.ip == 0) {
         jsExceptionHere(JSET_ERROR, "Not a valid IP address");
