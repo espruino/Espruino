@@ -87,6 +87,8 @@ typedef enum {
 
 
 #ifdef LINUX // Linux -> FatFS hacks
+#define FR_NO_FILE 4
+#define FR_NOT_ENABLED 12
 void f_close(File_Handle *f) {
   fclose(*f);
 }
@@ -1087,16 +1089,19 @@ void jswrap_pb_init() {
   jsiConsolePrintf("No audio codec - can be enabled by defining USE_AUDIO_CODEC");
 #endif
   // force SPI flash pin state anyway
+#ifndef LINUX
   jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_IN_PULLUP);
+#endif
   // turn backlight on after a delay by default
   jsvUnLock(jsiSetTimeout(jswrap_pb_setLCDBacklightOn, 100));
 
+  FRESULT res = FR_NOT_ENABLED;
+#ifndef LINUX
   File_Handle f;
   BYTE ff_mode = FA_READ | FA_OPEN_EXISTING;
-  FRESULT res = FR_NOT_ENABLED;
   if (jsfsInit()) {
     // If we've initialised FS, look for a VERSION file
     if ((res=f_open(&f, "VERSION", ff_mode)) == FR_OK) {
@@ -1135,6 +1140,7 @@ void jswrap_pb_init() {
 "}", true/*static*/));
     }
   }
+#endif
   if (res) {
    JsVar *msg;
    if (res == FR_NO_FILE) msg = jsvNewFromString("NO VERSION FILE!");
