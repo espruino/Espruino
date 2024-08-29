@@ -1086,8 +1086,13 @@ void jswrap_pb_init() {
 #else
   jsiConsolePrintf("No audio codec - can be enabled by defining USE_AUDIO_CODEC");
 #endif
-
-  jsvUnLock(jsiSetTimeout(jswrap_pb_setLCDBacklightOn, 100)); // turn backlight on after a delay by default
+  // force SPI flash pin state anyway
+  jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_IN_PULLUP);
+  // turn backlight on after a delay by default
+  jsvUnLock(jsiSetTimeout(jswrap_pb_setLCDBacklightOn, 100));
 
   File_Handle f;
   BYTE ff_mode = FA_READ | FA_OPEN_EXISTING;
