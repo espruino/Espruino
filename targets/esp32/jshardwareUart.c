@@ -87,11 +87,13 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
 
 void initConsole(){
 #ifdef CONFIG_IDF_TARGET_ESP32C3
+  #ifdef USB_CDC
   /* Configure USB-CDC */
   usb_serial_jtag_driver_config_t usb_serial_config = {.tx_buffer_size = 128,
                                                        .rx_buffer_size = 128};
 
   ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb_serial_config));
+  #endif
 #endif
 
   uart_config_t uart_config = {
@@ -117,7 +119,11 @@ void consoleToEspruino(){
   ticksToWait = 50 / portTICK_RATE_MS;
 #endif
 #ifdef CONFIG_IDF_TARGET_ESP32C3
+  #ifdef USB_CDC
   int len = usb_serial_jtag_read_bytes(rxbuf, sizeof(rxbuf), ticksToWait);
+  #else
+  int len = uart_read_bytes(uart_console, rxbuf, sizeof(rxbuf), ticksToWait);  // Read data from UART
+  #endif
 #else
   int len = uart_read_bytes(uart_console, rxbuf, sizeof(rxbuf), ticksToWait);  // Read data from UART
 #endif
