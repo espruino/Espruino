@@ -98,7 +98,7 @@ devices = {
   'BTN2' : { 'pin' : 'E1' }, # "Up" button
   'BTN3' : { 'pin' : 'E2' }, # "Down" button
   'BTN4' : { 'pin' : 'A2' }, # "Flashlight" button
-  'BTN5' : { 'pin' : 'A9' }, # Thumbwheel encoder A - PA9 for v0.3, PA10 for v0.5
+  'BTN5' : { 'pin' : 'A10' }, # Thumbwheel encoder A - PA9 for v0.3, PA10 for v0.5 and later
   'BTN6' : { 'pin' : 'A8' }, # Thumbwheel encoder B
   'BTN7' : { 'pin' : 'A3' }, # Clock "select" button
   'BTN8' : { 'pin' : 'B1' }, # Clock encoder A
@@ -116,7 +116,7 @@ devices = {
             'pin_d2' :  'C10',
             'pin_d3' :  'C11',
             'pin_clk' : 'C12',
-            'pin_cd' :  'A15', # SD card detect switch - doesn't seem to work on hardware v0.3
+            'pin_cd' :  'A15', # SD card detect switch - doesn't work on hardware v0.3
             'pin_pwr' : 'D3'}, # SD card power supply enable (also switches power to the ES8388 audio codec)
   'LCD' : {
             'width' : 480, 'height' : 320, 'bpp' : 16, 'controller' : 'fsmc',
@@ -140,7 +140,8 @@ devices = {
             'pin_rd' : 'D4',
             'pin_wr' : 'D5',
             'pin_cs' : 'D7', # CS / NE1
-            'pin_bl' : 'B15' # backlight
+            'pin_bl' : 'B15', # backlight
+            'pin_tearing' : 'D12' # tearing effect output from LCD controller - planned for PCB v0.7 
           },  
   'SPIFLASH' : {
             'pin_cs' : 'B14',
@@ -150,7 +151,7 @@ devices = {
             'size' : 4096*64, 
             'memmap_base' : 0x60000000 # map into the address space (in software) - FIXME: what should this address be?
           },
-  'USB' : { 'pin_vsense' :  'A5', # PA5 for v0.3, PA9 for v0.5
+  'USB' : { 'pin_vsense' : 'A9', # PA5 for v0.3, PA9 for v0.5 and later
             'pin_dm' : 'A11',
             'pin_dp' : 'A12' },
   
@@ -178,7 +179,7 @@ def get_pins():
   pinutils.findpin(pins, "PE1", True)["functions"]["NEGATED"]=0; # BTN2
   pinutils.findpin(pins, "PE2", True)["functions"]["NEGATED"]=0; # BTN3
   pinutils.findpin(pins, "PA2", True)["functions"]["NEGATED"]=0; # BTN4
-  pinutils.findpin(pins, "PA9", True)["functions"]["NEGATED"]=0; # BTN5
+  pinutils.findpin(pins, "PA10", True)["functions"]["NEGATED"]=0; # BTN5 - PA9 for v0.3, PA10 for v0.5 and later
   pinutils.findpin(pins, "PA8", True)["functions"]["NEGATED"]=0; # BTN6
   pinutils.findpin(pins, "PA3", True)["functions"]["NEGATED"]=0; # BTN7
   pinutils.findpin(pins, "PB1", True)["functions"]["NEGATED"]=0; # BTN8
