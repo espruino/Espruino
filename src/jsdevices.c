@@ -95,6 +95,10 @@ void jshInitDevices() {
   assert(EV_USBSERIAL>=EV_SERIAL_DEVICE_STATE_START);
   jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_FLOW_CONTROL_XON_XOFF;
 #endif
+#ifdef USE_SWDCON
+  assert(EV_SWDCON>=EV_SERIAL_DEVICE_STATE_START);
+  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_SWDCON)] = SDS_FLOW_CONTROL_XON_XOFF;
+#endif
 #ifdef BLUETOOTH
   jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)] = SDS_FLOW_CONTROL_XON_XOFF;
 #endif
@@ -112,6 +116,9 @@ void jshResetDevices() {
   for (int i=0;i<JSHSERIALDEVICESTATUSES;i++) {
 #ifdef USB
     if (i==TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)) break; // don't update USB status
+#endif
+#ifdef USE_SWDCON
+    if (i==TO_SERIAL_DEVICE_STATE(EV_SWDCON)) break; // don't update SWDCON status
 #endif
 #ifdef BLUETOOTH
     if (i==TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)) break; // don't update Bluetooth status

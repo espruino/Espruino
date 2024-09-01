@@ -44,14 +44,14 @@ typedef enum {
 #ifdef USE_TELNET
   EV_TELNET,
 #endif
-#ifdef USE_SWDCON
-  EV_SWDCON, /// console over in memory buffer accessible via SWD
-#endif
 #ifdef USE_TERMINAL
   EV_TERMINAL, // Built-in VT100 terminal
 #endif
   EV_SERIAL_DEVICE_STATE_START, // The point at which we start storing device state (jshSerialDevice*)
   _EV_SERIAL_DEVICE_STATE_START_MINUS_ONE=EV_SERIAL_DEVICE_STATE_START-1, // means that the next enum should==EV_SERIAL_DEVICE_STATE_START
+#ifdef USE_SWDCON
+  EV_SWDCON, /// console over in memory buffer accessible via SWD
+#endif
 #ifdef USB
   EV_USBSERIAL, ///< USB CDC Serial Data
 #endif
