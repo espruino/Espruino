@@ -590,11 +590,13 @@ int jshGetEventsUsed() {
   return spaceUsed;
 }
 
+int jshGetIOCharEventsFree() {
+  int spaceLeft = IOBUFFERMASK+1-jshGetEventsUsed();
+  return spaceLeft*IOEVENT_MAXCHARS-4; // be sensible - leave a little spare
+}
+
 bool jshHasEventSpaceForChars(int n) {
-  int spacesNeeded = 4 + (n/IOEVENT_MAXCHARS); // be sensible - leave a little spare
-  int spaceUsed = jshGetEventsUsed();
-  int spaceLeft = IOBUFFERMASK+1-spaceUsed;
-  return spaceLeft > spacesNeeded;
+  return jshGetIOCharEventsFree() > n;
 }
 
 // ----------------------------------------------------------------------------

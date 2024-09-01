@@ -208,6 +208,8 @@ int jshGetEventsUsed();
 
 /// Do we have enough space for N characters?
 bool jshHasEventSpaceForChars(int n);
+/// How many characters can we write?
+int jshGetIOCharEventsFree();
 
 const char *jshGetDeviceString(IOEventFlags device);
 IOEventFlags jshFromDeviceString(const char *device);

@@ -242,9 +242,11 @@ bool swdconSend(){
 
 bool swdconRecv() {
   bool gotChar=false;
-  char c;
-  while(SEGGER_RTT_Read(0, &c, 1) > 0){
-    jshPushIOCharEvent(EV_SWDCON, c);
+  char buff[BUFFER_SIZE_DOWN];
+  int len, limit=jshGetIOCharEventsFree();
+  while(limit > 0 && (len = SEGGER_RTT_Read(0, buff, MIN(limit,sizeof(buff)))) > 0){
+    jshPushIOCharEvents(EV_SWDCON, buff, len);
+    limit -= len;
     gotChar=true;
   }
   if (gotChar) jshHadEvent();
