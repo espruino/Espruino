@@ -425,7 +425,7 @@ JshPinState jshVirtualPinGetState(Pin pin);
 #if defined(STM32F401xx) || defined(STM32F411xx)
 #define WAIT_UNTIL_N_CYCLES 2000000
 #elif defined(STM32F4)
-#define WAIT_UNTIL_N_CYCLES 5000000
+#define WAIT_UNTIL_N_CYCLES 2000000 // Was 5000000
 #else
 #define WAIT_UNTIL_N_CYCLES 2000000
 #endif
