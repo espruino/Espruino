@@ -712,6 +712,14 @@ int es8388_read_reg(int r) {
  jshI2CRead(EV_I2C1, 0x10, 1, data, true);
  return data[0];
 }
+void es8388_check_err() {
+  if (jspHasError()) {
+    jsiConsolePrintf("ES8388 I2C Error\n");
+    execInfo.execute &= (JsExecFlags)~EXEC_ERROR_MASK;
+    jsvUnLock(jspGetException());
+  }
+}
+
 
 /*JSON{
   "type" : "staticmethod",
@@ -730,6 +738,7 @@ void jswrap_pb_setVol(int volume) {
   es8388_write_reg(0x2F, volume); // 47 ROUT1
   es8388_write_reg(0x30, volume); // 48 LOUT2 (33 = max)
   es8388_write_reg(0x31, volume); // 49 ROUT2
+  es8388_check_err();
 }
 
 /*JSON{
@@ -746,6 +755,7 @@ Writes a DAC register with a value
 */
 void jswrap_pb_writeDACReg(int reg, int value) {
   es8388_write_reg(reg & 0xFF, value & 0xFF); // DAC mute
+  es8388_check_err();
 }
 
 /*JSON{
@@ -761,7 +771,9 @@ void jswrap_pb_writeDACReg(int reg, int value) {
 Returns the current value of a DAC register
 */
 int jswrap_pb_readDACReg(int reg) {
-  return es8388_read_reg(reg & 0xFF);
+  int v =  es8388_read_reg(reg & 0xFF);
+  es8388_check_err();
+  return v;
 }
 
 /*JSON{
@@ -854,6 +866,7 @@ void jswrap_pb_initDAC() {
   jswrap_pb_setVol(33);         // Set volume: 0x1E = 0dB
   es8388_write_reg(0x02, 0xAA); // power up DEM and STM
   // Doc above also has notes on suspend/etc}
+  es8388_check_err();
 }
 
 /*JSON{
@@ -882,6 +895,8 @@ void jswrap_pb_setDACMode_(DACMode mode) {
     es8388_write_reg(0x02, 0xAA); // power up DEM and STM
   } // TODO: passthru?
   //es8388_write_reg(0x, 0x); //
+  es8388_check_err();
+
 }
 void jswrap_pb_setDACMode(JsVar *mode) {
   if (jsvIsUndefined(mode) || jsvIsStringEqual(mode, "off"))
@@ -983,6 +998,7 @@ void jswrap_pb_wake() {
   jswrap_interface_setDeepSleep(0);
   jshReset(); // reset USART
 #ifndef LINUX
+  jshPinSetState(BAT_PIN_SENSE_EN, JSHPINSTATE_GPIO_OUT_OPENDRAIN); // jshReset could mess this up
   jshPinOutput(BAT_PIN_SENSE_EN, 0); // enable C4 - pot/etc
 #endif
   jswrap_pb_setLCDPower(1);
