@@ -378,6 +378,62 @@ JsVar *jswrap_fs_stat(JsVar *path) {
   return 0;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "getFree",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_getfree",
+  "params" : [
+    ["path","JsVar","The path specifying the logical drive"]
+  ],
+  "return" : ["JsVar","An object describing the drive, or undefined on failure"]
+}
+Get the number of free sectors on the volume. This returns an object with the following
+fields:
+
+freeSectors: the number of free sectors
+totalSectors: the total number of sectors on the volume
+sectorSize: the number of bytes per sector
+clusterSize: the number of sectors per cluster
+*/
+JsVar *jswrap_fs_getfree(JsVar *path) {
+  char pathStr[JS_DIR_BUF_SIZE] = "";
+  if (!jsvIsUndefined(path))
+    if (!jsfsGetPathString(pathStr, path)) return 0;
+
+#ifndef LINUX
+  FRESULT res = 0;
+  if (jsfsInit()) {
+    FATFS *fs;
+    DWORD fre_clust, fre_sect, tot_sect, sect_size;
+    // Get volume information and free clusters
+    res = f_getfree(pathStr, &fre_clust, &fs);
+    if (res==0 /*ok*/) {
+      JsVar *obj = jsvNewObject();
+      if (!obj) return 0;
+      // Get total sectors and free sectors
+      tot_sect = (fs->n_fatent - 2) * fs->csize;
+      fre_sect = fre_clust * fs->csize;
+#if FF_MAX_SS != FF_MIN_SS
+      sect_size = fs->ssize;
+#else
+      sect_size = FF_MIN_SS;
+#endif
+      jsvObjectSetChildAndUnLock(obj, "freeSectors", jsvNewFromInteger((JsVarInt)fre_sect));
+      jsvObjectSetChildAndUnLock(obj, "totalSectors", jsvNewFromInteger((JsVarInt)tot_sect));
+      jsvObjectSetChildAndUnLock(obj, "sectorSize", jsvNewFromInteger((JsVarInt)sect_size));
+      jsvObjectSetChildAndUnLock(obj, "clusterSize", jsvNewFromInteger((JsVarInt)fs->csize));
+      return obj;
+    }
+  }
+#else
+  // @TODO: Implement something for Linux...?
+#endif
+
+  return 0;
+}
+
   /*JSON{
   "type" : "staticmethod",
   "class" : "fs",
