@@ -4,6 +4,7 @@
             ESP32C3: don't allow AP *AND* STA mode at the same time - solves issues when just calling 'wifi.connect' at boot
             Emulator: ensure we include CallFunction stubs for Promises (fix regression after Promise refactor)
             Pin.getInfo() now returns 'output' and 'mode' values, allowing the state of the output register to be queried
+            E.sendUSBHID now returns false if USB disconnected
 
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)

@@ -2304,6 +2304,7 @@ void jswrap_espruino_setUSBHID(JsVar *arr) {
 }
  */
 bool jswrap_espruino_sendUSBHID(JsVar *arr) {
+  if (!USB_IsConnected()) return false;
   unsigned char data[HID_DATA_IN_PACKET_SIZE];
   unsigned int l = jsvIterateCallbackToBytes(arr, data, HID_DATA_IN_PACKET_SIZE);
   if (l>HID_DATA_IN_PACKET_SIZE) return 0;
