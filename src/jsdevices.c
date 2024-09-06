@@ -328,7 +328,7 @@ void jshTransmitFlush() {
   jsiSetBusy(BUSY_TRANSMIT, false);
 }
 
-/// Wait for all data in the transmit queue to be written for a specific device
+/// Wait for all data in the transmit queue to be written for a specific device - this can hang if the device isn't being emptied!
 void jshTransmitFlushDevice(IOEventFlags device) {
   jsiSetBusy(BUSY_TRANSMIT, true);
   bool deviceHasData = false;

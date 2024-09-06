@@ -976,9 +976,12 @@ void jswrap_pb_off() {
 Enter sleep mode - JS is still executed
 */
 void jswrap_pb_sleep() {
+  if (jsfGetFlag(JSF_DEEP_SLEEP)) {
+    jsExceptionHere(JSET_ERROR, "Already sleeping");
+  }
   jswrap_pb_periph_off();
 #ifndef LINUX
-  jshTransmitFlushDevice(DEFAULT_CONSOLE_DEVICE);
+  jshTransmitClearDevice(DEFAULT_CONSOLE_DEVICE); // let's just remove any waiting characters for now
   jshUSARTUnSetup(DEFAULT_CONSOLE_DEVICE);
   jshPinSetState(DEFAULT_CONSOLE_TX_PIN, JSHPINSTATE_ADC_IN);
   jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_ADC_IN);
@@ -995,8 +998,12 @@ void jswrap_pb_sleep() {
 Wake up the pipboy
 */
 void jswrap_pb_wake() {
+  if (!jsfGetFlag(JSF_DEEP_SLEEP)) {
+    jsExceptionHere(JSET_ERROR, "Already awake");
+  }
   jswrap_interface_setDeepSleep(0);
   jshReset(); // reset USART
+  jshUSARTKick(DEFAULT_CONSOLE_DEVICE); // re-enable UART TX if we have data
 #ifndef LINUX
   jshPinSetState(BAT_PIN_SENSE_EN, JSHPINSTATE_GPIO_OUT_OPENDRAIN); // jshReset could mess this up
   jshPinOutput(BAT_PIN_SENSE_EN, 0); // enable C4 - pot/etc

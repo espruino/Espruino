@@ -2249,12 +2249,14 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 void jshUSARTUnSetup(IOEventFlags device) {
   if (!DEVICE_IS_USART(device))
     return;
+  jshSetDeviceInitialised(device, false);
   jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
   JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
   if (funcType==0) return; // not a proper serial port, ignore it
   USART_TypeDef *USARTx = (USART_TypeDef *)setDeviceClockCmd(funcType, ENABLE);
   if (!USARTx) return;
   USART_ITConfig(USARTx, USART_IT_RXNE, DISABLE);
+  USART_ITConfig(USARTx, USART_IT_TXE, DISABLE);
   USART_Cmd(USARTx, ENABLE);
   setDeviceClockCmd(funcType, DISABLE);
 }
