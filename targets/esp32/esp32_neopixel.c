@@ -151,17 +151,42 @@ void neopixel_copy(){
   neopixel_pos += len;
   return;
 }
-void neopixel_handleInterrupt(void *arg){
-  portBASE_TYPE taskAwoken = 0;
-  if (RMT.int_st.ch0_tx_thr_event) {
-    neopixel_copy();
-    RMT.int_clr.ch0_tx_thr_event = 1;
-  }
-  else if (RMT.int_st.ch0_tx_end && neopixel_sem) {
-    xSemaphoreGiveFromISR(neopixel_sem, &taskAwoken);
-    RMT.int_clr.ch0_tx_end = 1;
-  }
-  return;
+
+void neopixel_handleInterrupt(void *arg)
+{
+	// FYI RMT is -> extern rmt_dev_t RMT;
+	
+	portBASE_TYPE taskAwoken = 0;
+	
+#if CONFIG_IDF_TARGET_ESP32S3	
+	
+	if (RMT.int_st.ch0_tx_thr_event_int_st)
+		{
+		neopixel_copy();
+		RMT.int_clr.ch0_tx_thr_event_int_clr = 1;
+		}
+	else if (RMT.int_st.ch0_tx_end_int_st && neopixel_sem)
+		{
+		xSemaphoreGiveFromISR(neopixel_sem, &taskAwoken);
+		RMT.int_clr.ch0_tx_end_int_clr = 1;
+		}
+	
+#else
+	
+	if (RMT.int_st.ch0_tx_thr_event)
+		{
+		neopixel_copy();
+		RMT.int_clr.ch0_tx_thr_event = 1;
+		}
+	else if (RMT.int_st.ch0_tx_end && neopixel_sem)
+		{
+		xSemaphoreGiveFromISR(neopixel_sem, &taskAwoken);
+		RMT.int_clr.ch0_tx_end = 1;
+		}
+		
+#endif
+	
+	return;
 }
 
 void neopixel_init(int gpioNum){
@@ -170,7 +195,7 @@ void neopixel_init(int gpioNum){
     if (neopixelConfiguredGPIO) {
       rmt_driver_uninstall(RMTCHANNEL);
       if (neopixelConfiguredGPIO != -1) {
-        gpio_matrix_out(neopixelConfiguredGPIO,0,0,0);
+        gpio_matrix_out(neopixelConfiguredGPIO,SIG_GPIO_OUT_IDX,0,0);
       }
     }
     neopixelConfiguredGPIO = gpioNum;
@@ -200,7 +225,7 @@ void neopixel_init(int gpioNum){
   if (neopixelConfiguredGPIO != gpioNum) {
     // detach last pin 
     if (neopixelConfiguredGPIO != -1) {
-      gpio_matrix_out(neopixelConfiguredGPIO,0,0,0);
+      gpio_matrix_out(neopixelConfiguredGPIO,SIG_GPIO_OUT_IDX,0,0);
     }
     neopixelConfiguredGPIO = gpioNum;
   }

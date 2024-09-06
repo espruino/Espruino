@@ -153,7 +153,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 
 These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
 
-* `SAVE_ON_FLASH_MATH` - Remove some less-used Maths functions that use a bunch of Flash memory
+* `SAVE_ON_FLASH_MATH` - Replace some Maths functions that use a bunch of Flash memory (sin/atan/atan2/fft) with slower, smaller versions
 * `ESPR_NO_GET_SET` - No Getter/setter functionality
 * `ESPR_NO_OBJECT_METHODS` - No methods in objects like `{method() { ... }}`
 * `ESPR_NO_PROPERTY_SHORTHAND` - No property shorthand in objects like `{a}`

@@ -1483,8 +1483,8 @@ JsVar *jsvGetValueOf(JsVar *v) {
   return v;
 }
 
-/** Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
-If the buffer length is exceeded, the returned value will == len */
+/** Save this var as a string to the given buffer with a null terminator, and return how long it was (excluding terminating 0)
+If the buffer length is exceeded, string it cropped and terminating 0 is still added */
 size_t jsvGetString(const JsVar *v, char *str, size_t len) {
   assert(len>0);
   const char *s = jsvGetConstString(v);
@@ -1528,6 +1528,8 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
     if (stringVar) {
       size_t l = jsvGetStringChars(stringVar, 0, str, len); // call again - but this time with converted var
       jsvUnLock(stringVar);
+      if (l>=len) l=len-1;
+      str[l] = 0;
       return l;
     } else {
       str[0] = 0;

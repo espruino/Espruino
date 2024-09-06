@@ -14,7 +14,7 @@
 # ----------------------------------------------------------------------------------------
 
 # ###########################################################
-# #      THIS IS BETA - C3/IDF4 SUPPORT IS NOT READY YET       #
+# #      THIS IS BETA - IDF4 SUPPORT IS NOT READY YET       #
 # ###########################################################
 
 # A Note about the 'variables' parameter on ESP32 Builds
@@ -48,13 +48,13 @@
 
 import pinutils;
 info = {
- 'name'                     : "ESP32C3",
+ 'name'                     : "ESP32S3",
  'espruino_page_link'       : 'ESP32',
  'default_console'          : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
  'variables'                : 16383, # See note above 
  'io_buffer_size'           : 1024, # How big is the input buffer (in 4 byte words). Default is 256, but this makes us less likely to drop data
- 'binary_name'              : 'espruino_%v_esp32c3.bin',
+ 'binary_name'              : 'espruino_%v_esp32s3.bin',
  'build' : {
    'optimizeflags' : '-Og',
    'libraries' : [
@@ -63,33 +63,32 @@ info = {
      'GRAPHICS',
      'CRYPTO','SHA256','SHA512',
      'TLS',
-#     'TELNET',
-#     'FILESYSTEM',
+     'TELNET',
+     'NEOPIXEL',
+     'FILESYSTEM',
 #     'FLASHFS',
-     'BLUETOOTH',
-     'NEOPIXEL'     
+     'BLUETOOTH'	 
    ],
    'makefile' : [
      'DEFINES+=-DESP_PLATFORM -DESP32=1',
      'DEFINES+=-DESP_STACK_SIZE=25000',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
-     'DEFINES+=-DUSB_CDC',      # Disable USB_CDC if board has uart interface      
      'ESP32_FLASH_MAX=1572864'
    ]
  }
 };
 
 chip = {
-  'part'    : "ESP32C3",
+  'part'    : "ESP32S3",
   'family'  : "ESP32_IDF4",
   'package' : "",
-  'ram'     : 400,
+  'ram'     : 512,
   'flash'   : 0,
-  'speed'   : 160,
-  'usart'   : 2,
-  'spi'     : 1,
-  'i2c'     : 1,
+  'speed'   : 240,
+  'usart'   : 3,
+  'spi'     : 2,
+  'i2c'     : 2,
   'adc'     : 2,
   'dac'     : 0,
   'saved_code' : {
@@ -118,7 +117,7 @@ board_esp32["_css"] = """
   height: 435px;
   left: 50px;
   top: 170px;
-  background-image: url(img/ESP32C3.jpg);
+  background-image: url(img/ESP32.jpg);
 }
 #boardcontainer {
   height: 700px;
@@ -146,23 +145,9 @@ board_esp32["_css"] = """
 boards = [ board_esp32 ];
 
 def get_pins():
-  pins = pinutils.generate_pins(0,21) # 22 General Purpose I/O Pins.
-
-  pinutils.findpin(pins, "PD0", True)["functions"]["ADC1_IN0"]=0;
-  pinutils.findpin(pins, "PD1", True)["functions"]["ADC1_IN1"]=0;
-  pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN2"]=0;
-  pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN3"]=0;
-  pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN4"]=0;
-  # pinutils.findpin(pins, "PD5", True)["functions"]["ADC2_IN0"]=0;  
-  # On supermini D8 is (inverted) LED
-  # On supermini D9 is (inverted) Button
-  # D12-D17 are SPI (internal SPI) - not sure they should even be exposed??
+  pins = pinutils.generate_pins(0,39) # 40 General Purpose I/O Pins.
   
-  #18/19 are USB
-  pinutils.findpin(pins, "PD20", True)["functions"]["USART0_RX"]=0;
-  pinutils.findpin(pins, "PD21", True)["functions"]["USART0_TX"]=0;  
-
   # everything is non-5v tolerant
-  for pin in pins:
-    pin["functions"]["3.3"]=0;
+  #for pin in pins:
+  #  pin["functions"]["3.3"]=0;
   return pins

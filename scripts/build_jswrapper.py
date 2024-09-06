@@ -768,6 +768,41 @@ for lib in jsmodules:
 codeOut('  return "'+','.join(librarynames)+'";')
 codeOut('}')
 
+def writeCallFunctionHackEntry(argSpecs, jsondata):
+  argSpec = getArgumentSpecifier(jsondata)
+  if not argSpec in argSpecs:
+    argSpecs.append(argSpec)
+    params = getParams(jsondata)
+    result = getResult(jsondata);
+    pTypes = []
+    pValues = []
+    if hasThis(jsondata):
+      pTypes.append("JsVar*")
+      pValues.append("thisParam")
+    cmd = "";
+    cmdstart = "";
+    cmdend = "";
+    n = 0
+    for param in params:
+      pTypes.append(toCType(param[1]));
+      if param[1]=="JsVarArray":
+        cmdstart =  "      JsVar *argArray = (paramCount>"+str(n)+")?jsvNewArray(&paramData["+str(n)+"],paramCount-"+str(n)+"):jsvNewEmptyArray();\n";
+        pValues.append("argArray");
+        cmdend = "      jsvUnLock(argArray);\n\n";
+      else:
+        pValues.append(toCUnbox(param[1])+"((paramCount>"+str(n)+")?paramData["+str(n)+"]:0)");
+      n = n+1
+
+    codeOut("    case "+argSpec+": {");
+    codeOut("      JsVar *result = 0;");
+    if cmdstart:  codeOut(cmdstart);
+    cmd = "(("+toCType(result[0])+"(*)("+",".join(pTypes)+"))function)("+",".join(pValues)+")";
+    if result[0]: codeOut("      result = "+toCBox(result[0])+"("+cmd+");");
+    else: codeOut("      "+cmd+";");
+    if cmdend:  codeOut(cmdend);
+    codeOut("      return result;");
+    codeOut("    }");
+
 if "USE_CALLFUNCTION_HACK" in board.defines:
   codeOut('// on Emscripten and i386 we cant easily hack around function calls with floats/etc, plus we have enough')
   codeOut('// resources, so just brute-force by handling every call pattern we use in a switch')
@@ -776,41 +811,18 @@ if "USE_CALLFUNCTION_HACK" in board.defines:
   #for argSpec in argSpecs:
   #  codeOut('  case '+argSpec+":")
   argSpecs = []
+  # Ensure we force-add any entries we need
+  writeCallFunctionHackEntry(argSpecs, {'type': 'function', 'name': 'X', 'generate': 'X', 'params': []}) # jswrap_io 
+  writeCallFunctionHackEntry(argSpecs, {'type': 'method', 'class': 'X', 'name': 'X', 'generate': 'X', 'params': [['1', 'JsVar', '']]}) # jswrap_promise
+  writeCallFunctionHackEntry(argSpecs, {'type': 'method', 'class': 'X', 'name': 'X', 'generate': 'X', 'params': [['1', 'JsVar', ''],['2', 'JsVar', '']]}) # jswrap_promise
+  writeCallFunctionHackEntry(argSpecs, {'type': 'method', 'class': 'X', 'name': 'X', 'generate': 'X', 'params': [['1', 'JsVar', ''],['2', 'JsVar', ''],['3', 'JsVar', '']]}) # jswrap_promise
+  writeCallFunctionHackEntry(argSpecs, {'type': 'method', 'class': 'X', 'name': 'X', 'generate': 'X', 'params': [['1', 'bool', '']]}) # jswrap_pixljs/banglejs
+  writeCallFunctionHackEntry(argSpecs, {'type': 'function', 'name': 'X', 'generate': 'X', 'params': [['1', 'int', ''],['1', 'int', '']], 'return': ['JsVar','']}) # jswrap_banglejs
+  writeCallFunctionHackEntry(argSpecs, {'type': 'function', 'name': 'X', 'generate': 'X', 'params': [['1', 'float', ''],['1', 'float', '']], 'return': ['float','']}) # jswrap_banglejs
+  writeCallFunctionHackEntry(argSpecs, {'type': 'function', 'name': 'X', 'generate': 'X', 'params': [['1', 'int', ''],['1', 'int', '']], 'return': ['int','']}) # jswrap_arraybuffer
   for jsondata in jsondatas:
-    if "generate" in jsondata:
-      argSpec = getArgumentSpecifier(jsondata)
-      if not argSpec in argSpecs:
-        argSpecs.append(argSpec)
-        params = getParams(jsondata)
-        result = getResult(jsondata);
-        pTypes = []
-        pValues = []
-        if hasThis(jsondata):
-          pTypes.append("JsVar*")
-          pValues.append("thisParam")
-        cmd = "";
-        cmdstart = "";
-        cmdend = "";
-        n = 0
-        for param in params:
-          pTypes.append(toCType(param[1]));
-          if param[1]=="JsVarArray":
-            cmdstart =  "      JsVar *argArray = (paramCount>"+str(n)+")?jsvNewArray(&paramData["+str(n)+"],paramCount-"+str(n)+"):jsvNewEmptyArray();\n";
-            pValues.append("argArray");
-            cmdend = "      jsvUnLock(argArray);\n\n";
-          else:
-            pValues.append(toCUnbox(param[1])+"((paramCount>"+str(n)+")?paramData["+str(n)+"]:0)");
-          n = n+1
-
-        codeOut("    case "+argSpec+": {");
-        codeOut("      JsVar *result = 0;");
-        if cmdstart:  codeOut(cmdstart);
-        cmd = "(("+toCType(result[0])+"(*)("+",".join(pTypes)+"))function)("+",".join(pValues)+")";
-        if result[0]: codeOut("      result = "+toCBox(result[0])+"("+cmd+");");
-        else: codeOut("      "+cmd+";");
-        if cmdend:  codeOut(cmdend);
-        codeOut("      return result;");
-        codeOut("    }");
+    if "generate" in jsondata:      
+        writeCallFunctionHackEntry(argSpecs, jsondata)
   #((uint32_t (*)(size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3]);
   codeOut('  default: jsExceptionHere(JSET_ERROR,"Unknown argspec %d",argumentSpecifier);')
   codeOut('  }')
