@@ -475,3 +475,22 @@ JsVar *jshGetDeviceObjectFor(JshPinFunction deviceMin, JshPinFunction deviceMax,
   if (devVar) return devVar;
   return jswFindBuiltInFunction(0, devName);
 }
+
+JsVar *jshGetPinStateString(JshPinState state) {
+  JshPinState m = state&JSHPINSTATE_MASK;
+  const char *text = 0;
+  switch (m) {
+  case JSHPINSTATE_ADC_IN :             text = "analog"; break;
+  case JSHPINSTATE_GPIO_IN :            text = "input"; break;
+  case JSHPINSTATE_GPIO_IN_PULLUP :     text = "input_pullup"; break;
+  case JSHPINSTATE_GPIO_IN_PULLDOWN :   text = "input_pulldown"; break;
+  case JSHPINSTATE_GPIO_OUT :           text = "output"; break;
+  case JSHPINSTATE_GPIO_OUT_OPENDRAIN : text = "opendrain"; break;
+  case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP : text = "opendrain_pullup"; break;
+  case JSHPINSTATE_AF_OUT :             text = "af_output"; break;
+  case JSHPINSTATE_AF_OUT_OPENDRAIN :   text = "af_opendrain"; break;
+  default: break;
+  }
+  if (text) return jsvNewFromString(text);
+  return 0;
+}

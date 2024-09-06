@@ -18,6 +18,7 @@
 #include "jswrap_arraybuffer.h" // for jswrap_io_peek
 #include "jswrapper.h" // for JSWAT_VOID
 #include "jstimer.h" // for digitalPulse
+#include "jspin.h"
 
 #ifdef ESP32
 #include "freertos/FreeRTOS.h"
@@ -518,22 +519,7 @@ JsVar *jswrap_io_getPinMode(Pin pin) {
     jsExceptionHere(JSET_ERROR, "Invalid pin");
     return 0;
   }
-  JshPinState m = jshPinGetState(pin)&JSHPINSTATE_MASK;
-  const char *text = 0;
-  switch (m) {
-  case JSHPINSTATE_ADC_IN :             text = "analog"; break;
-  case JSHPINSTATE_GPIO_IN :            text = "input"; break;
-  case JSHPINSTATE_GPIO_IN_PULLUP :     text = "input_pullup"; break;
-  case JSHPINSTATE_GPIO_IN_PULLDOWN :   text = "input_pulldown"; break;
-  case JSHPINSTATE_GPIO_OUT :           text = "output"; break;
-  case JSHPINSTATE_GPIO_OUT_OPENDRAIN : text = "opendrain"; break;
-  case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP : text = "opendrain_pullup"; break;
-  case JSHPINSTATE_AF_OUT :             text = "af_output"; break;
-  case JSHPINSTATE_AF_OUT_OPENDRAIN :   text = "af_opendrain"; break;
-  default: break;
-  }
-  if (text) return jsvNewFromString(text);
-  return 0;
+  return jshGetPinStateString(jshPinGetState(pin));
 }
 
 
