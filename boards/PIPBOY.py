@@ -29,7 +29,7 @@ info = {
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
-#     'USB_HID',
+     'USB_HID',
      'GRAPHICS',
      'LCD_FSMC',
      'FILESYSTEM',
