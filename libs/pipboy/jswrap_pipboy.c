@@ -732,6 +732,10 @@ void es8388_check_err() {
 }
 */
 void jswrap_pb_setVol(int volume) {
+  if (jshPinGetValue(SD_POWER_PIN)==0) {
+    jsExceptionHere(JSET_ERROR, "Can't change volume when DAC is powered off");
+    return;
+  }
   if (volume > 33) volume = 33;
   if (volume < 0) volume = 0;
   es8388_write_reg(0x2E, volume); // 46 LOUT1 (33 = max)
@@ -754,6 +758,10 @@ void jswrap_pb_setVol(int volume) {
 Writes a DAC register with a value
 */
 void jswrap_pb_writeDACReg(int reg, int value) {
+  if (jshPinGetValue(SD_POWER_PIN)==0) {
+    jsExceptionHere(JSET_ERROR, "Can't write DAC register when it is powered off");
+    return;
+  }
   es8388_write_reg(reg & 0xFF, value & 0xFF); // DAC mute
   es8388_check_err();
 }
@@ -771,6 +779,10 @@ void jswrap_pb_writeDACReg(int reg, int value) {
 Returns the current value of a DAC register
 */
 int jswrap_pb_readDACReg(int reg) {
+  if (jshPinGetValue(SD_POWER_PIN)==0) {
+    jsExceptionHere(JSET_ERROR, "Can't read DAC register when it is powered off");
+    return;
+  }
   int v =  es8388_read_reg(reg & 0xFF);
   es8388_check_err();
   return v;
@@ -785,7 +797,7 @@ int jswrap_pb_readDACReg(int reg) {
       ["isOn","bool",""]
    ]
 }
-Enable/disabled the DAC power supply (whih also powers the audio amp and SD card)
+Enable/disabled the DAC power supply (which also powers the audio amp and SD card)
 */
 void jswrap_pb_setDACPower(bool isOn) {
   if (!isOn) {
@@ -882,6 +894,10 @@ void jswrap_pb_initDAC() {
 * 'out' -> output
 */
 void jswrap_pb_setDACMode_(DACMode mode) {
+  if (jshPinGetValue(SD_POWER_PIN)==0) {
+    jsExceptionHere(JSET_ERROR, "Can't set DAC mode when it is powered off");
+    return;
+  }
   if (mode == DM_OFF) {
     es8388_write_reg(0x0F, 0x24); // ADC Mute
     es8388_write_reg(0x19, 0x36); // DAC Mute
