@@ -202,6 +202,67 @@ typedef enum {
   (((F)&JSH_MASK_TYPE)>=JSH_SPI1) && \
   (((F)&JSH_MASK_TYPE)<=JSH_SPIMAX))
 
+/// Control of the pin mux, i.e. assign functions to pins
+typedef enum {
+  JSHPINSTATE_UNDEFINED,            ///< Used when getting the pin state, if we have no idea what it is.
+  JSHPINSTATE_GPIO_OUT,             ///< GPIO pin as totem pole output
+  JSHPINSTATE_GPIO_OUT_OPENDRAIN,   ///< GPIO pin as open-collector/open-drain output WITHOUT PULLUP
+  JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP, ///< GPIO pin as open-collector/open-drain output WITH PULLUP
+  JSHPINSTATE_GPIO_IN,              ///< GPIO pin as input (also tri-stated output)
+  JSHPINSTATE_GPIO_IN_PULLUP,       ///< GPIO pin input with internal pull-up
+  JSHPINSTATE_GPIO_IN_PULLDOWN,     ///< GPIO pin input with internal pull-down
+  JSHPINSTATE_ADC_IN,               ///< Analog input
+  JSHPINSTATE_AF_OUT,               ///< Alternate function (pin is connected to a peripheral, not a simple GPIO register). May not make sense on some MCUs.
+  JSHPINSTATE_AF_OUT_OPENDRAIN,     ///< Alternate function open drain, with pullup (pin is connected to a peripheral, not a simple GPIO register). May not make sense on some MCUs.
+  JSHPINSTATE_USART_IN,             ///< Uart RX input (FIXME - JSHPINSTATE_AF_IN_PULLUP - but doesn't exist)
+  JSHPINSTATE_USART_OUT,            ///< Uart TX output (FIXME - probably JSHPINSTATE_AF_OUT)
+  JSHPINSTATE_DAC_OUT,              ///< Analog output (if available)
+  JSHPINSTATE_I2C,                  ///< I2C output (FIXME - probably JSHPINSTATE_AF_OUT_OPENDRAIN)
+  JSHPINSTATE_MASK = NEXT_POWER_2(JSHPINSTATE_I2C)-1,  ///< bitmask to cover the enum
+
+  /** Used by jshPinGetState to append information about whether the pin's output
+   * is set to 1 or not. */
+  JSHPINSTATE_PIN_IS_ON = JSHPINSTATE_MASK+1,
+} PACKED_FLAGS JshPinState;
+
+/// Should a pin of this state be an output (inc open drain)
+#define JSHPINSTATE_IS_OUTPUT(state) ( \
+             (state)==JSHPINSTATE_GPIO_OUT ||               \
+             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||     \
+             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
+             (state)==JSHPINSTATE_AF_OUT ||                 \
+             (state)==JSHPINSTATE_AF_OUT_OPENDRAIN ||       \
+             (state)==JSHPINSTATE_USART_OUT ||              \
+             (state)==JSHPINSTATE_DAC_OUT ||                \
+             (state)==JSHPINSTATE_I2C ||                    \
+0)
+/// Should a pin of this state be Open Drain?
+#define JSHPINSTATE_IS_OPENDRAIN(state) ( \
+             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||     \
+             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
+             (state)==JSHPINSTATE_AF_OUT_OPENDRAIN ||       \
+             (state)==JSHPINSTATE_I2C              ||       \
+0)
+/// Should a pin of this state be connected to an internal peripheral?
+#define JSHPINSTATE_IS_AF(state) ( \
+            (state)==JSHPINSTATE_AF_OUT ||                  \
+            (state)==JSHPINSTATE_AF_OUT_OPENDRAIN ||        \
+            (state)==JSHPINSTATE_USART_IN ||                \
+            (state)==JSHPINSTATE_USART_OUT ||               \
+            (state)==JSHPINSTATE_I2C ||                     \
+0)
+/// Should a pin of this state have an internal pullup?
+#define JSHPINSTATE_IS_PULLUP(state) ( \
+            (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP || \
+            (state)==JSHPINSTATE_GPIO_IN_PULLUP ||          \
+            (state)==JSHPINSTATE_USART_IN ||                \
+            (state)==JSHPINSTATE_I2C ||                     \
+0)
+/// Should a pin of this state have an internal pulldown?
+#define JSHPINSTATE_IS_PULLDOWN(state) ( \
+            (state)==JSHPINSTATE_GPIO_IN_PULLDOWN ||        \
+0)
+
 bool jshIsPinValid(Pin pin); ///< is the specific pin actually valid?
 
 /// Given a string, convert it to a pin ID (or -1 if it doesn't exist)
@@ -264,5 +325,8 @@ JshPinFunction jshGetDeviceFor(JshPinFunction deviceMin, JshPinFunction deviceMa
 
 /** Like jshGetDeviceFor, but returns an actual Object (eg. SPI) if one can be found. */
 JsVar *jshGetDeviceObjectFor(JshPinFunction deviceMin, JshPinFunction deviceMax, Pin pin);
+
+/// Convert a JshPinState value to a string
+JsVar *jshGetPinStateString(JshPinState state);
 
 #endif //JSPIN_H_
