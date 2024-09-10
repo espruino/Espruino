@@ -4,7 +4,7 @@ This is Espruino console over [Segger RTT](https://wiki.segger.com/RTT) technolo
 
 The console can be used via Segger RTT Viewer (if you use J-Link debugger probe) or it can be also used with OpenOCD with any debugger probe like e.g. cheap CMSIS-DAP dongle.
 
-Another way istead of running OpenOCD  is dapjs over WebUSB supported in Chrome browser.
+Another way instead of running OpenOCD is dapjs over WebUSB supported in Chrome browser.
 
 In future the console can be also used with any Espruino device with 2 free GPIOs acting as serial to SWD/RTT bridge.
 
@@ -16,7 +16,7 @@ There is a project that allows using CMSIS-DAP debug probe directly from web bro
 
  Best is to enable character mode, then connect to your probe via 'start RTT', then press enter and then click the 'trigger IRQ' button and you should get console output - see also Known issues below.
 
- Unfortunately only newer CMSIS-DAP probes that support V2 protocol work over WebUSB in browser, older v1 probes that work over HID protocol do not work. If you probe is not working the easiest is to get Raspberry Pico or any other RP2040 board and flash it with debugprobe firmware https://github.com/raspberrypi/debugprobe which does support V2 protocol
+ Unfortunately only newer CMSIS-DAP probes that support V2 protocol work over WebUSB in browser, older v1 probes that work over HID protocol do not work. If your probe is not working the easiest is to get Raspberry Pico or any other RP2040 board and flash it with debugprobe firmware https://github.com/raspberrypi/debugprobe which does support V2 protocol
 
 ## OpenOCD
 
@@ -30,7 +30,7 @@ to openocd interactive console via `telnet localhost 4444` (Or you can use e.g. 
 
 `rtt start` - should search and find the buffer
 
-`rtt polling_interval 30` - optional, make console I/O faster (try e.g. E.dumpVariables() with default value)
+`rtt polling_interval 30` - optional, make console I/O faster (try to run e.g. `E.dumpVariables()` with default value)
 
 `rtt server start 9090 0` - start telnet server on port 9090 for channel 0 = SWDCON, use any free port number you wish, 9090 is typical for RTT channel 0
 
@@ -72,7 +72,7 @@ or you can use netcat https://unix.stackexchange.com/questions/767170/using-teln
 
 Now press ctrl+c to clear espruino console and/or press enter few times to see some initial errors from telnet garbage
 
-`rtt server start 9090 0 "\377\375\042\377\373\001"` - newer OpenOCD versions can send initial string to telnet client, this switches it to raw mode automatically but adds some extra initial garbage also to espruino console as telnet client sends some stuff back, more info https://stackoverflow.com/questions/273261/force-telnet-client-into-character-mode
+`rtt server start 9090 0 "\377\375\042\377\373\001"` - newer OpenOCD versions can send initial string to telnet client, this switches it to raw mode automatically but adds some extra initial garbage also to Espruino console as telnet client sends some stuff back, more info https://stackoverflow.com/questions/273261/force-telnet-client-into-character-mode
 
 
 ## OpenOCD stop
@@ -91,7 +91,7 @@ Now press ctrl+c to clear espruino console and/or press enter few times to see s
 
 ## TODO
 
-- disable/enable and allocate buffers for SDWCON dynamically at runtime
+- disable/enable and allocate buffers for SWDCON dynamically at runtime
 
 - our own SWD RTT host code instead of openocd/telnet, then any Espruino device could redirect its serial/usb/bluetooth console to SWDCON of another device, which would allow WebIDE to be used easily with target device (so e.g. Bangle.js 2 with dead bluetooth could be used with App Loader over cable)
 
