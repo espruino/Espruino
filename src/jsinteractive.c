@@ -140,16 +140,14 @@ static NO_INLINE void jsiInputLineCursorMoved() {
 }
 
 /// Called to append to the input line
-static NO_INLINE void jsiAppendToInputLine(const char *str) {
+static NO_INLINE void jsiAppendToInputLine(char ch) {
   // recreate string iterator if needed
   if (!inputLineIterator.var) {
     jsvStringIteratorNew(&inputLineIterator, inputLine, 0);
     jsvStringIteratorGotoEnd(&inputLineIterator);
   }
-  while (*str) {
-    jsvStringIteratorAppend(&inputLineIterator, *(str++));
-    inputLineLength++;
-  }
+  jsvStringIteratorAppend(&inputLineIterator, ch);
+  inputLineLength++;
 }
 
 /// If Espruino could choose right now, what would be the best console device to use?
@@ -1157,7 +1155,7 @@ void jsiHandleEnd() {
   size_t l = jsvGetStringLength(inputLine);
   while (inputCursorPos<l && jsvGetCharInString(inputLine,inputCursorPos)!='\n') {
     if (jsiShowInputLine())
-      jsiConsolePrintChar(jsvGetCharInString(inputLine,inputCursorPos));
+      jsiConsolePrintChar((char)jsvGetCharInString(inputLine,inputCursorPos));
     inputCursorPos++;
   }
 }
@@ -1195,7 +1193,7 @@ void jsiHandleMoveUpDown(int direction) {
 bool jsiAtEndOfInputLine() {
   size_t i = inputCursorPos, l = jsvGetStringLength(inputLine);
   while (i < l) {
-    if (!isWhitespace(jsvGetCharInString(inputLine, i)))
+    if (!isWhitespace((char)jsvGetCharInString(inputLine, i)))
       return false;
     i++;
   }
@@ -1281,7 +1279,9 @@ void jsiAppendStringToInputLine(const char *strToAppend) {
     inputLineLength = (int)jsvGetStringLength(inputLine);
 
   if ((int)inputCursorPos>=inputLineLength) { // append to the end
-    jsiAppendToInputLine(strToAppend);
+    const char *ch = strToAppend;
+    while (*ch)
+      jsiAppendToInputLine(*(ch++));
   } else { // add in halfway through
     JsVar *v = jsvNewFromEmptyString();
     if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
@@ -1492,7 +1492,7 @@ void jsiHandleNewLine(bool execute) {
       // without executing
       if (jsiShowInputLine()) jsiConsolePrint("\n:");
       jsiIsAboutToEditInputLine();
-      jsiAppendToInputLine("\n");
+      jsiAppendToInputLine('\n');
       inputCursorPos++;
     }
   } else { // new line - but not at end of line!
@@ -1559,13 +1559,8 @@ void jsiHandleChar(char ch) {
         inputLineRemoved = true;
         jsiConsoleReturnInputLine();
       }
-    } else {
-      char str[2];
-      str[0] = ch;
-      str[1] = 0;
-      if (jsvGetStringLength(inputLine)<20)
-        jsiAppendToInputLine(str);
-    }
+    } else if (jsvGetStringLength(inputLine)<20)
+      jsiAppendToInputLine(ch);
     return;
   }
 
@@ -1656,7 +1651,7 @@ void jsiHandleChar(char ch) {
     jsiStatus  |= JSIS_ECHO_OFF_FOR_LINE;
   } else {
     inputState = IS_NONE;
-    if (ch == 0x08 || ch == 0x7F /*delete*/) {
+    if (ch == 8 || ch == 0x7F /*delete*/) {
       jsiHandleDelete(true /*backspace*/);
     } else if (ch == '\n' && inputState == IS_HAD_R) {
       inputState = IS_NONE; //  ignore \ r\n - we already handled it all on \r
