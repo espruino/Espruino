@@ -64,6 +64,8 @@ bool jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsig
 
 /// Create a timeout in JS to execute the given native function (outside of an IRQ). Returns the index
 JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds);
+/// Clear a timeout in JS given the index returned by jsiSetTimeout
+JsVar *jsiClearTimeout(JsVar *timeout);
 
 IOEventFlags jsiGetDeviceFromClass(JsVar *deviceClass);
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device);

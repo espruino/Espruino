@@ -1811,6 +1811,13 @@ JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds) {
   return idx;
 }
 
+/// Clear a timeout in JS given the index returned by jsiSetTimeout
+JsVar *jsiClearTimeout(JsVar *timeout) {
+   JsVar *idVarArr = jsvNewArray(&timeout, 1);
+  jswrap_interface_clearTimeout(idVarArr);
+  jsvUnLock(idVarArr);
+}
+
 bool jsiHasTimers() {
   if (!timerArray) return false;
   JsVar *timerArrayPtr = jsvLock(timerArray);
@@ -2029,9 +2036,7 @@ void jsiIdle() {
                 eventTime = timeoutTime - debounce;
                 jsvObjectSetChildAndUnLock(watchPtr, "state", jsvNewFromBool(pinIsHigh));
                 // Remove the timeout
-                JsVar *idArr = jsvNewArray(&timeout, 1);
-                jswrap_interface_clearTimeout(idArr);
-                jsvUnLock(idArr);
+                jsiClearTimeout(timeout);
                 jsvObjectRemoveChild(watchPtr, "timeout");
               }
             } else if (!ignoreEvent && pinIsHigh!=oldWatchState) { // else create a new timeout

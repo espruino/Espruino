@@ -3383,9 +3383,7 @@ void jswrap_ble_requestDevice_scan(JsVar *device) {
     return;
   // We know the device matches because setScan would have checked for us
   jswrap_ble_setScan(0,0); // stop scanning
-  JsVar *argArr = jsvNewArray(&bleTaskInfo, 1);
-  jswrap_interface_clearTimeout(argArr /*the timeout*/); // cancel the timeout
-  jsvUnLock(argArr);
+  jsiClearTimeout(bleTaskInfo /*the timeout*/); // cancel the timeout
   bleCompleteTaskSuccess(BLETASK_REQUEST_DEVICE, device);
 }
 #endif
