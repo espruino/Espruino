@@ -3434,8 +3434,8 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
     if (isST7789 &&
         xPos>=gfx.data.clipRect.x1 && yPos>=gfx.data.clipRect.y1 && // check it's all on-screen
         (xPos+img.width)<=gfx.data.clipRect.x2+1 && (yPos+img.height)<=gfx.data.clipRect.y2+1) {
-      if (img.bpp==1) lcdST7789_blit1Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr, NULL);
-      else if (img.bpp==8) lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr, NULL);
+      if (img.bpp==1) lcdST7789_blit1Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
+      else if (img.bpp==8) lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
     } else
 #endif
 #ifdef USE_LCD_FSMC // can we blit directly to the display?
