@@ -1147,6 +1147,8 @@ void jsiIsAboutToEditInputLine() {
       }
     }
   }
+  // Update the length
+  inputLineLength = (int)jsvGetStringLength(inputLine);
 }
 
 void jsiHandleDelete(bool isBackspace) {
@@ -1577,6 +1579,7 @@ void jsiPacketFileEnd() {
 
 void jsiPacketExit() {
   inputState = IPS_NONE;
+  inputPacketLength = 0;
   // cancel timeout
   // cancel timeout
   JsVar *timeout = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "PK_TIMEOUT");
