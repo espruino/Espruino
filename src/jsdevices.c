@@ -187,6 +187,8 @@ void jshTransmit(
     jshPushIOCharEvent(device==EV_LOOPBACKB ? EV_LOOPBACKA : EV_LOOPBACKB, (char)data);
     return;
   }
+  //if (device==EV_USBSERIAL)
+  //  jshTransmitPrintf(DEFAULT_CONSOLE_DEVICE, "=> %d\n", data);
 #ifdef USE_TELNET
   if (device == EV_TELNET) {
     // gross hack to avoid deadlocking on the network here
@@ -437,7 +439,7 @@ static bool jshPushIOCharEventAppend(IOEventFlags channel, char charData) {
 /// Try and handle events in the IRQ itself. true if handled and shouldn't go in queue
 static bool jshPushIOCharEventHandler(IOEventFlags channel, char charData) {
   // Check for a CTRL+C
-  if (charData==3 && channel==jsiGetConsoleDevice()) {
+  if (charData==3 && channel==jsiGetConsoleDevice() && !jsiIsConsoleBinary()) {
     jsiCtrlC(); // Ctrl-C - force interrupt of execution
     return true;
   }

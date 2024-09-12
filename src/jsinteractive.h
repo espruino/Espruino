@@ -45,7 +45,10 @@ bool jsiFreeMoreMemory();
 bool jsiHasTimers(); // are there timers still left to run?
 bool jsiIsWatchingPin(Pin pin); // are there any watches for the given pin?
 
-void jsiCtrlC(); // Ctrl-C - force interrupt of execution
+/// Are we in a state where we should forward all chars (including Ctrl-C) to the console?
+bool jsiIsConsoleBinary();
+/// Ctrl-C - force interrupt of execution
+void jsiCtrlC();
 
 /// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
 void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount);
@@ -65,7 +68,7 @@ bool jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsig
 /// Create a timeout in JS to execute the given native function (outside of an IRQ). Returns the index
 JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds);
 /// Clear a timeout in JS given the index returned by jsiSetTimeout
-JsVar *jsiClearTimeout(JsVar *timeout);
+void jsiClearTimeout(JsVar *timeout);
 
 IOEventFlags jsiGetDeviceFromClass(JsVar *deviceClass);
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device);
