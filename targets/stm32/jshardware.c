@@ -65,6 +65,9 @@ unsigned short jshRTCPrescalerReciprocal; // (JSSYSTIME_SECOND << RTC_PRESCALER_
 #define JSSYSTIME_SECOND_SHIFT 20
 #define JSSYSTIME_SECOND (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
 
+#define RTC_BKP_DR0_NULL 0
+#define RTC_BKP_DR0_TURN_OFF 0x57A4DEAD
+
 JsSysTime jshGetRTCSystemTime();
 #else
 #define jshGetRTCSystemTime jshGetSystemTime
@@ -1168,7 +1171,24 @@ static void jshResetPeripherals() {
   }
 }
 
+void jshTurnOff() {
+  RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_TURN_OFF); // ensure that if we wake up
+  PWR_WakeUpPinCmd(ENABLE);
+  PWR_EnterSTANDBYMode();
+}
+
 void jshInit() {
+  /* If we turn off but the WDT is on, it'll just reset us and turn us back on. In that case
+  we detect that (with RTC_BKP_DR0_TURN_OFF written into RTC_BKP_DR0) and turn ourselves back off quickly */
+  if (RTC_ReadBackupRegister(RTC_BKP_DR0)==RTC_BKP_DR0_TURN_OFF) {
+    PWR_BackupAccessCmd(ENABLE);
+    RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_NULL);
+    if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST)) {
+      PWR_WakeUpPinCmd(ENABLE);
+      PWR_EnterSTANDBYMode();
+    }
+  }
+
   int i;
   // reset some vars
   for (i=0;i<16;i++)

@@ -970,14 +970,14 @@ Enter standby mode - can only be started by pressing the power button (PA0).
 void jswrap_pb_off() {
   jswrap_pb_periph_off();
 #ifndef LINUX
+  void jshTurnOff();
 /*  In Standby mode, all I/O pins are high impedance except for:
  *          - Reset pad (still available)
  *          - RTC_AF1 pin (PC13) if configured for tamper, time-stamp, RTC
  *            Alarm out, or RTC clock calibration out.
  *          - RTC_AF2 pin (PI8) if configured for tamper or time-stamp.
  *          - WKUP pin 1 (PA0) if enabled. */
-  PWR_WakeUpPinCmd(ENABLE);
-  PWR_EnterSTANDBYMode();
+  jshTurnOff();
 #else
   jsExceptionHere(JSET_ERROR, ".off not implemented");
 #endif
