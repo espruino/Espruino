@@ -2623,7 +2623,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
 #ifdef USB
-      !jshIsUSBSERIALConnected() &&
+      !USB_IsConnected() &&
       jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
 #endif
       ticksSinceStart>RTC_INITIALISE_TICKS && // Don't sleep until RTC has initialised
