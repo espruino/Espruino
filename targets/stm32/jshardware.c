@@ -57,7 +57,10 @@
 unsigned short jshRTCPrescaler;
 unsigned short jshRTCPrescalerReciprocal; // (JSSYSTIME_SECOND << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler;
 #define RTC_PRESCALER_RECIPROCAL_SHIFT 10
-#define RTC_INITIALISE_TICKS 8 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
+#ifndef ESPR_RTC_INITIALISE_TICKS
+#define ESPR_RTC_INITIALISE_TICKS 10 // SysTicks before we initialise the RTC - we need to wait until ~2s the LSE starts up properly. At 84Mhz 2s=~10 ticks
+#endif
+
 #define JSSYSTIME_EXTRA_BITS 8 // extra bits we shove on under the RTC (we try and get these from SysTick)
 #define JSSYSTIME_SECOND_SHIFT 20
 #define JSSYSTIME_SECOND (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
@@ -814,7 +817,7 @@ void jshDoSysTick() {
     jshUSBReceiveLastActive++;
 #endif
 #ifdef USE_RTC
-  if (ticksSinceStart==RTC_INITIALISE_TICKS) {
+  if (ticksSinceStart==ESPR_RTC_INITIALISE_TICKS) {
     // Use LSI if the LSE hasn't stabilised
     bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
     bool wasUsingLSI = !jshIsRTCUsingLSE();
@@ -863,7 +866,7 @@ void jshDoSysTick() {
   }
 
   JsSysTime time = jshGetRTCSystemTime();
-  if (!hasSystemSlept && ticksSinceStart>RTC_INITIALISE_TICKS) {
+  if (!hasSystemSlept && ticksSinceStart>ESPR_RTC_INITIALISE_TICKS) {
     /* Ok - slightly crazy stuff here. So the normal jshGetSystemTime is now
      * working off of the SysTick again to get the accuracy. But this means
      * that we can't just change lastSysTickTime to the current time, because
@@ -1583,7 +1586,7 @@ JsSysTime jshGetRTCSystemTime() {
 
 JsSysTime jshGetSystemTime() {
 #ifdef USE_RTC
-  if (ticksSinceStart<=RTC_INITIALISE_TICKS)
+  if (ticksSinceStart<=ESPR_RTC_INITIALISE_TICKS)
     return jshGetRTCSystemTime(); // Clock hasn't stabilised yet, just use whatever RTC value we currently have
   if (hasSystemSlept) {
     // reset SysTick counter. This will hopefully cause it
@@ -2626,7 +2629,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
       !USB_IsConnected() &&
       jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
 #endif
-      ticksSinceStart>RTC_INITIALISE_TICKS && // Don't sleep until RTC has initialised
+      ticksSinceStart>ESPR_RTC_INITIALISE_TICKS && // Don't sleep until RTC has initialised
       true
       ) {
     jsiSetSleep(JSI_SLEEP_DEEP);
