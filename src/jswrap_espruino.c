@@ -1281,6 +1281,35 @@ int jswrap_espruino_setClock(JsVar *options) {
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
+  "name" : "getClock",
+  "generate" : "jswrap_espruino_getClock",
+  "return" : ["JsVar","An object containing information about the current clock"]
+}
+On boards other than STM32 this currently just returns `undefined`
+
+### STM32
+
+See `E.setClock` for more information.
+
+Returns:
+
+```
+{
+  sysclk, hclk, pclk1, pclk2,  // various clocks in Hz
+  M, N, P, Q, PCLK1, PCLK2     // STM32F4: currently set divisors
+  RTCCLKSource : "LSI/LSE/HSE_Div#" // STM32F4 source for RTC clock
+}
+```
+*/
+JsVar *jswrap_espruino_getClock() {
+  return jshGetSystemClock();
+}
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
   "name" : "setConsole",
   "generate" : "jswrap_espruino_setConsole",
   "params" : [

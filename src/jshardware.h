@@ -394,6 +394,10 @@ unsigned int jshGetRandomNumber();
  * to match what gets implemented here. The return value is the clock
  * speed in Hz though. */
 unsigned int jshSetSystemClock(JsVar *options);
+/** Get processor clock info. What's returned is platform
+ * specific - you should update the docs for jswrap_espruino_getClock
+ * to match what gets implemented here */
+JsVar *jshGetSystemClock();
 
 /* Adds the estimated power usage of the microcontroller in uA to the 'devices' object. The CPU should be called 'CPU' */
 void jsvGetProcessorPowerUsage(JsVar *devices);
