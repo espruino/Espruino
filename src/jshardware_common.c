@@ -167,6 +167,10 @@ void jshKickSoftWatchDog() {
 }
 
 /* Returns the estimated power usage of the microcontroller */
-__attribute__((weak))void jsvGetProcessorPowerUsage(JsVar *devices) {
+__attribute__((weak)) void jsvGetProcessorPowerUsage(JsVar *devices) {
   // not implemented by default
+}
+
+__attribute__((weak)) JsVar *jshGetSystemClock() {
+  return 0;
 }

@@ -3046,7 +3046,7 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 // Just pass data through, since we can access flash at the same address we wrote it
 size_t jshFlashGetMemMapAddress(size_t ptr) { return ptr; }
 
-int jshSetSystemClockPClk(JsVar *options, const char *clkName) {
+static int _jshToPClkDivisor(JsVar *options, const char *clkName) {
   JsVar *v = jsvObjectGetChildIfExists(options, clkName);
   JsVarInt i = jsvGetIntegerAndUnLock(v);
   if (i==1) return RCC_HCLK_Div1;
@@ -3059,6 +3059,15 @@ int jshSetSystemClockPClk(JsVar *options, const char *clkName) {
     return -2;
   }
   return -1;
+}
+
+static int _jshFromPClkDivisor(int div) {
+  if (div==RCC_HCLK_Div1) return 1;
+  if (div==RCC_HCLK_Div2) return 2;
+  if (div==RCC_HCLK_Div4) return 4;
+  if (div==RCC_HCLK_Div8) return 8;
+  if (div==RCC_HCLK_Div16) return 16;
+  return 0;
 }
 
 unsigned int jshSetSystemClock(JsVar *options) {
@@ -3093,9 +3102,9 @@ unsigned int jshSetSystemClock(JsVar *options) {
       return 0;
     }
   }
-  int pclk1 = jshSetSystemClockPClk(options, "PCLK1");
+  int pclk1 = _jshToPClkDivisor(options, "PCLK1");
   if (pclk1<-1) return 0;
-  int pclk2 = jshSetSystemClockPClk(options, "PCLK2");
+  int pclk2 = _jshToPClkDivisor(options, "PCLK2");
   if (pclk2<-1) return 0;
 
   // Run off external clock - 8Mhz - while we configure everything
@@ -3120,6 +3129,40 @@ unsigned int jshSetSystemClock(JsVar *options) {
 #else
   return 0;
 #endif
+}
+
+JsVar *jshGetSystemClock() {
+  JsVar *o = jsvNewObject();
+  if (!o) return 0;
+  RCC_ClocksTypeDef rcc;
+  RCC_GetClocksFreq(&rcc);
+  jsvObjectSetChildAndUnLock(o,"sysclk",jsvNewFromInteger((int)rcc.SYSCLK_Frequency));
+  jsvObjectSetChildAndUnLock(o,"hclk",jsvNewFromInteger((int)rcc.HCLK_Frequency));
+  jsvObjectSetChildAndUnLock(o,"pclk1",jsvNewFromInteger((int)rcc.PCLK1_Frequency));
+  jsvObjectSetChildAndUnLock(o,"pclk2",jsvNewFromInteger((int)rcc.PCLK2_Frequency));
+#ifdef STM32F4
+  // see RCC_PLLConfig - no function to read to do by hand
+  jsvObjectSetChildAndUnLock(o,"M",jsvNewFromInteger(RCC->PLLCFGR & RCC_PLLCFGR_PLLM));
+  jsvObjectSetChildAndUnLock(o,"N",jsvNewFromInteger((RCC->PLLCFGR & RCC_PLLCFGR_PLLN) >> 6));
+  jsvObjectSetChildAndUnLock(o,"P",jsvNewFromInteger((((int)(RCC->PLLCFGR & RCC_PLLCFGR_PLLP) >>16) + 1 ) *2));
+  jsvObjectSetChildAndUnLock(o,"Q",jsvNewFromInteger((RCC->PLLCFGR & RCC_PLLCFGR_PLLQ) >>24));
+  jsvObjectSetChildAndUnLock(o,"PCLK1",jsvNewFromInteger(_jshFromPClkDivisor(RCC->CFGR&RCC_CFGR_PPRE1)));
+  jsvObjectSetChildAndUnLock(o,"PCLK2",jsvNewFromInteger(_jshFromPClkDivisor((RCC->CFGR&RCC_CFGR_PPRE2)>>3)));
+  const char *rtcsrc = "?";
+  int rtcreg = RCC->BDCR & 0x00FF0300;
+  if (rtcreg==RCC_RTCCLKSource_LSE) rtcsrc="LSE";
+  else if (rtcreg==RCC_RTCCLKSource_LSI) rtcsrc="LSI";
+  else if ((rtcreg&0x00000300) == 0x00000300) rtcsrc="HSE_Div%d";
+  jsvObjectSetChildAndUnLock(o,"RTCCLKSource",jsvVarPrintf(rtcsrc, rtcreg>>16));
+#else
+  jsvObjectSetChildAndUnLock(o,"sysclk",jsvNewFromInteger(SystemCoreClock));
+#endif
+  jsvObjectSetChildAndUnLock(o,"LSIRDY",jsvNewFromBool(RCC_GetFlagStatus(RCC_FLAG_LSIRDY)));
+  jsvObjectSetChildAndUnLock(o,"LSERDY",jsvNewFromBool(RCC_GetFlagStatus(RCC_FLAG_LSERDY)));
+  jsvObjectSetChildAndUnLock(o,"LSION",jsvNewFromBool(RCC->CSR&RCC_CSR_LSION));
+  jsvObjectSetChildAndUnLock(o,"LSEON",jsvNewFromBool(RCC->BDCR&RCC_BDCR_LSEON));
+
+  return o;
 }
 
 /// Perform a proper hard-reboot of the device
