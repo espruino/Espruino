@@ -71,17 +71,17 @@ typedef enum {
 typedef enum {
   PT_SIZE_MASK = 0x1FFF,
   PT_TYPE_MASK = 0xE000,
-  PT_TYPE_RESPONSE = 0x0000,
+  PT_TYPE_RESPONSE = 0x0000, // Response to an EVAL packet
   PT_TYPE_EVAL = 0x2000,  // execute and return the result as RESPONSE packet
   PT_TYPE_EVENT = 0x4000, // parse as JSON and create `E.on('packet', ...)` event
-  PT_TYPE_FILE_SEND = 0x6000, // called before 'DATA', with {fn:"filename",s:123}
-  PT_TYPE_DATA = 0x8000,
+  PT_TYPE_FILE_SEND = 0x6000, // called before DATA, with {fn:"filename",s:123}
+  PT_TYPE_DATA = 0x8000, // Sent after FILE_SEND with blocks of data for the file
 } PACKED_FLAGS PacketLengthFlags;
 /* Packets work as follows - introduced 2v25
 
 DLE[16],SOH[1],TYPE|LENHI,LENLO,DATA...
 
-If received or timed out, will reply with an ACK[6] or NAK[21]
+If received or timed out (after 1s), will reply with an ACK[6] or NAK[21]
 
 // Eval
 Espruino.Core.Serial.write("\x10\x01\x20\x14print('Hello World')")
@@ -1698,7 +1698,7 @@ void jsiHandleChar(char ch) {
   // special stuff
   // 1 - SOH, packet transfer start if preceeded by DLE, or Ctrl-A clear line
   // 4 - Ctrl-d - backwards delete
-  // 5 - Ctrl-e - end of line
+  // 5 - Ctrl-e - end of line (or on a new line, ENQ(enquiry) outputs `Espruino 2v25 JOLTJS\n` or similar
   // 16 - DLE - echo off if at beginning of line
   // 21 - Ctrl-u - delete line
   // 23 - Ctrl-w - delete word (currently just does the same as Ctrl-u)
@@ -1769,7 +1769,10 @@ void jsiHandleChar(char ch) {
   } else if (ch == 4) { // Ctrl-d
     jsiHandleDelete(false/*not backspace*/);
   } else if (ch == 5) { // Ctrl-e
-    jsiHandleEnd();
+    if (jsvGetStringLength(inputLine)==0)
+      jsiConsolePrintf("Espruino %s %s\n",JS_VERSION,PC_BOARD_ID); // 5=ENQ - if sent on empty line and Espruino new enough, we transmit what we are
+    else
+      jsiHandleEnd();
   } else if (ch==16) {
     /* DLE - Data Link Escape
     Espruino uses DLE on the start of a line to signal that just the line in
