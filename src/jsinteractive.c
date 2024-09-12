@@ -26,6 +26,10 @@
 #include "jswrap_interactive.h" // jswrap_interactive_setTimeout
 #include "jswrap_object.h" // jswrap_object_keys_or_property_names
 #include "jsnative.h" // jsnSanityTest
+#include "jswrap_storage.h" // for Packet Transfer IO
+#ifdef USE_FILESYSTEM
+#include "jswrap_file.h" // for Packet Transfer IO
+#endif
 #ifdef BLUETOOTH
 #include "bluetooth.h"
 #include "jswrap_bluetooth.h"
@@ -51,13 +55,54 @@ extern void jshSoftInit(void);
 
 // ----------------------------------------------------------------------------
 typedef enum {
-  IS_NONE,
-  IS_HAD_R,
-  IS_HAD_27,
-  IS_HAD_27_79,
-  IS_HAD_27_91,
-  IS_HAD_27_91_NUMBER, ///< Esc [ then 0-9
+  IPS_NONE,
+  IPS_HAD_R,
+  IPS_PACKET_TRANSFER_BYTE0,  // We're in the process of receiving a binary packet of data (expecting b0 - length hi)
+  IPS_PACKET_TRANSFER_BYTE1,  // We're in the process of receiving a binary packet of data (expecting b1 - length lo)
+  IPS_PACKET_TRANSFER_DATA,  // We're in the process of receiving a binary packet of data (expecting data)
+  IPS_HAD_DLE,     // char code 16 - if we get DLE[16],SOH[1] we start processing the packet
+  IPS_HAD_27,      // escape
+  IPS_HAD_27_79,
+  IPS_HAD_27_91,
+  IPS_HAD_27_91_NUMBER, ///< Esc [ then 0-9
 } PACKED_FLAGS InputState;
+#define IS_PACKET_TRANSFER(state) ((state>=IPS_PACKET_TRANSFER_BYTE0) && (state<=IPS_PACKET_TRANSFER_DATA))
+
+typedef enum {
+  PT_SIZE_MASK = 0x1FFF,
+  PT_TYPE_MASK = 0xE000,
+  PT_TYPE_RESPONSE = 0x0000,
+  PT_TYPE_EVAL = 0x2000,  // execute and return the result as RESPONSE packet
+  PT_TYPE_EVENT = 0x4000, // parse as JSON and create `E.on('packet', ...)` event
+  PT_TYPE_FILE_SEND = 0x6000, // called before 'DATA', with {fn:"filename",s:123}
+  PT_TYPE_DATA = 0x8000,
+} PACKED_FLAGS PacketLengthFlags;
+/* Packets work as follows - introduced 2v25
+
+DLE[16],SOH[1],TYPE|LENHI,LENLO,DATA...
+
+If received or timed out, will reply with an ACK[6] or NAK[21]
+
+// Eval
+Espruino.Core.Serial.write("\x10\x01\x20\x14print('Hello World')")
+// Event
+Espruino.Core.Serial.write("E.on('packet',d=>print('packet', d));\n") // on Espruino
+Espruino.Core.Serial.write("\x10\x01\x40\x0F{hello:'world'}")
+// File send
+Espruino.Core.Serial.write("\x10\x01\x60\x10{fn:'test',s:11}")
+Espruino.Core.Serial.write("\x10\x01\x80\x05hello")
+Espruino.Core.Serial.write("\x10\x01\x80\x06 world")
+// File send to FAT
+Espruino.Core.Serial.write("\x10\x01\x60\x1c{fn:'test.txt',fs:true,s:11}")
+Espruino.Core.Serial.write("\x10\x01\x80\x0Bhello world")
+
+
+*/
+
+#define ASCII_ACK (6)
+#define ASCII_NAK (21)
+#define ASCII_DLE (16)
+#define ASCII_SOH (1)
 
 JsVar *events = 0; // Array of events to execute
 JsVarRef timerArray = 0; // Linked List of timers to check and run
@@ -80,6 +125,7 @@ int inputLineLength = -1;
 bool inputLineRemoved = false;
 size_t inputCursorPos = 0; ///< The position of the cursor in the input line
 InputState inputState = 0; ///< state for dealing with cursor keys
+uint16_t inputPacketLength; ///< When receiving an input packet, the length of it
 uint16_t inputStateNumber; ///< Number from when `Esc [ 1234` is sent - for storing line number
 uint16_t jsiLineNumberOffset; ///< When we execute code, this is the 'offset' we apply to line numbers in error/debug
 bool hasUsedHistory = false; ///< Used to speed up - if we were cycling through history and then edit, we need to copy the string
@@ -145,6 +191,7 @@ static NO_INLINE void jsiAppendToInputLine(char ch) {
   if (!inputLineIterator.var) {
     jsvStringIteratorNew(&inputLineIterator, inputLine, 0);
     jsvStringIteratorGotoEnd(&inputLineIterator);
+    inputLineLength = (int)jsvGetStringLength(inputLine); // or get this from inputLineIterator?
   }
   jsvStringIteratorAppend(&inputLineIterator, ch);
   inputLineLength++;
@@ -1276,9 +1323,6 @@ void jsiAppendStringToInputLine(const char *strToAppend) {
   size_t strSize = 1;
   while (strToAppend[strSize]) strSize++;
 
-  if (inputLineLength < 0)
-    inputLineLength = (int)jsvGetStringLength(inputLine);
-
   if ((int)inputCursorPos>=inputLineLength) { // append to the end
     const char *ch = strToAppend;
     while (*ch)
@@ -1514,14 +1558,147 @@ void jsiHandleNewLine(bool execute) {
   }
 }
 
+void jsiPacketFileEnd() {
+#ifdef USE_FILESYSTEM
+   JsVar *r = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "PK_FILE");
+   if (r) {
+    JsVar *f = jsvObjectGetChildIfExists(r, "file");
+    if (f) {
+      jswrap_file_close(f);
+      jsvUnLock(f);
+    }
+    // no need to remove this - we're removing the whole thing below
+    jsvUnLock(r);
+  }
+#endif
+  // remove stored data
+  jsvObjectRemoveChild(execInfo.hiddenRoot, "PK_FILE");
+}
+
+void jsiPacketExit() {
+  inputState = IPS_NONE;
+  // cancel timeout
+  // cancel timeout
+  JsVar *timeout = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "PK_TIMEOUT");
+  if (timeout) {
+    jsiClearTimeout(timeout);
+    jsvUnLock(timeout);
+  }
+  jsvObjectRemoveChild(execInfo.hiddenRoot, "PK_TIMEOUT");
+  // restore input line
+  jsiInputLineCursorMoved(); // unlock iterator
+  jsvUnLock(inputLine);
+  inputLine = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "PK_IL");
+  jsvObjectRemoveChild(execInfo.hiddenRoot, "PK_IL");
+}
+
+// Called 1s after SOH if Packet not complete
+void jsiPacketTimeoutHandler() {
+  jsiConsolePrintChar(ASCII_NAK);
+  //jshTransmitPrintf(DEFAULT_CONSOLE_DEVICE, "Packet Timeout\n");
+  jsiPacketExit();
+}
+
+void jsiPacketStart() {
+  inputState = IPS_PACKET_TRANSFER_BYTE0;
+  jsiInputLineCursorMoved(); // unlock iterator
+  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "PK_IL", inputLine); // back up old inputline
+  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "PK_TIMEOUT", jsiSetTimeout(jsiPacketTimeoutHandler, 1000));
+  inputLine = jsvNewFromEmptyString();
+}
+
+void jsiPacketReply(JsVar *data) { // data should be a string
+  uint16_t len = PT_TYPE_RESPONSE | (uint16_t)jsvGetStringLength(data); // assume not more than 0x1FFF chars
+  jsiConsolePrintChar(ASCII_DLE);
+  jsiConsolePrintChar(ASCII_SOH);
+  jsiConsolePrintChar((char)(len>>8));
+  jsiConsolePrintChar((char)(len&255));
+  jsiConsolePrintStringVar(data);
+}
+
+// Called when all data we need is in inputLine, inputPacketLength contains length and flags
+void jsiPacketProcess() {
+  PacketLengthFlags packetType = inputPacketLength & PT_TYPE_MASK;
+  inputPacketLength &= PT_SIZE_MASK;
+  if (packetType == PT_TYPE_EVAL) {
+    JsVar *result = jspEvaluateExpressionVar(inputLine);
+    if (jspHasError()) {
+      jsiConsolePrintChar(ASCII_NAK);
+      jsiCheckErrors();
+    } else {
+      jsiConsolePrintChar(ASCII_ACK);
+      JsVar *v = jswrap_espruino_toJS(result);
+      jsiPacketReply(v);
+      jsvUnLock(v);
+    }
+    jsvUnLock(result);
+  } else if (packetType == PT_TYPE_EVENT) {
+    JsVar *r = jswrap_json_parse_liberal(inputLine, true/*no exceptions*/);
+    bool ok = jsvIsObject(r);
+    if (ok)
+      ok = jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"packet", 1, &r);
+    jsvUnLock(r);
+    jsiConsolePrintChar(ok ? ASCII_ACK : ASCII_NAK);
+  } else if (packetType == PT_TYPE_FILE_SEND) {
+    JsVar *r = jswrap_json_parse_liberal(inputLine, true/*no exceptions*/);
+    bool ok = jsvIsObject(r);
+    if (ok) {
+      JsVar *fn = jsvObjectGetChildIfExists(r,"fn");
+      ok = jsvIsString(fn);
+      if (ok)
+        ok = jsvObjectGetIntegerChild(r, "s") == 0;
+#ifdef USE_FILESYSTEM
+      if (ok && jsvObjectGetBoolChild(r,"fs")) {
+        JsVar *fMode = jsvNewFromString("w");
+        JsVar *f = jswrap_E_openFile(fn, fMode);
+        jsiConsolePrintf("File open %j -> %j", fn, f);
+        if (f) jsvObjectSetChild(r, "file", f);
+        else ok = false;
+        jsvUnLock2(fMode,f);
+      }
+#endif
+      jsvUnLock(fn);
+    }
+    if (ok) {
+      jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "PK_FILE", r);
+    }
+    jsvUnLock(r);
+    jsiConsolePrintChar(ok ? ASCII_ACK : ASCII_NAK);
+  } else if (packetType == PT_TYPE_DATA) {
+    JsVar *r = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "PK_FILE"); // file info
+    JsVar *fn = jsvObjectGetChildIfExists(r, "fn"); // filename
+    int size = jsvObjectGetIntegerChild(r, "s"); // size
+    int offset = jsvObjectGetIntegerChild(r, "offs"); // offset
+    bool ok;
+#ifdef USE_FILESYSTEM
+    if (jsvObjectGetBoolChild(r,"fs")) { // if fs is set, try and write to the file in FAT filesystem
+      JsVar *f = jsvObjectGetChildIfExists(r, "file");
+      ok = jswrap_file_write(f, inputLine) == inputPacketLength;
+      jsvUnLock(f);
+    } else
+#endif
+    ok = jsfWriteFile(jsfNameFromVar(fn), inputLine, JSFF_NONE, offset, size);
+    offset += inputPacketLength;
+    jsvObjectSetChildAndUnLock(r, "offs", jsvNewFromInteger(offset));
+    if (offset >= size) jsiPacketFileEnd(); // end file send
+    jsvUnLock2(fn,r);
+    jsiConsolePrintChar(ok ? ASCII_ACK : ASCII_NAK);
+  } else
+    jsiConsolePrintChar(ASCII_NAK);
+  // exit packet mode
+  jsiPacketExit();
+}
+
+
 
 void jsiHandleChar(char ch) {
   //jsiConsolePrintf("[%d:%d]\n", inputState, ch);
   //
   // special stuff
-  // 1 - Ctrl-a - beginning of line
+  // 1 - SOH, packet transfer start if preceeded by DLE, or Ctrl-A clear line
   // 4 - Ctrl-d - backwards delete
   // 5 - Ctrl-e - end of line
+  // 16 - DLE - echo off if at beginning of line
   // 21 - Ctrl-u - delete line
   // 23 - Ctrl-w - delete word (currently just does the same as Ctrl-u)
   //
@@ -1565,29 +1742,51 @@ void jsiHandleChar(char ch) {
     return;
   }
 
-  if (ch == 0) {
-    inputState = IS_NONE; // ignore 0 - it's scary
-  } else if (ch == 1) { // Ctrl-a
-    jsiHandleHome();
+  if (inputState == IPS_PACKET_TRANSFER_BYTE0) {
+    inputPacketLength = ((uint8_t)ch) << 8;
+    inputState = IPS_PACKET_TRANSFER_BYTE1;
+  } else if (inputState == IPS_PACKET_TRANSFER_BYTE1) {
+    inputPacketLength |= (uint8_t)ch;
+    if ((inputPacketLength & PT_SIZE_MASK)==0)
+      jsiPacketProcess();
+    else
+      inputState = IPS_PACKET_TRANSFER_DATA;
+  } else if (inputState == IPS_PACKET_TRANSFER_DATA) {
+    jsiAppendToInputLine(ch);
+    if (inputLineLength >= (inputPacketLength & PT_SIZE_MASK))
+      jsiPacketProcess();
+  } else if (ch == 0) {
+    inputState = IPS_NONE; // ignore 0 - it's scary
+  } else if (ch == 1) { // SOH / Ctrl-A go home
+    if (inputState == IPS_HAD_DLE)
+      jsiPacketStart();
+    else jsiHandleHome(); // or treat as DLE
     // Ctrl-C (char code 3) gets handled in an IRQ
   } else if (ch == 4) { // Ctrl-d
     jsiHandleDelete(false/*not backspace*/);
   } else if (ch == 5) { // Ctrl-e
     jsiHandleEnd();
+  } else if (ch==16) {
+    /* DLE - Data Link Escape
+    Espruino uses DLE on the start of a line to signal that just the line in
+    question should be executed without echo */
+    if (jsvGetStringLength(inputLine)==0)
+      jsiStatus  |= JSIS_ECHO_OFF_FOR_LINE;
+    inputState = IPS_HAD_DLE;
   } else if (ch == 21 || ch == 23) { // Ctrl-u or Ctrl-w
     jsiClearInputLine(true);
   } else if (ch == 27) {
-    inputState = IS_HAD_27;
-  } else if (inputState==IS_HAD_27) {
-    inputState = IS_NONE;
+    inputState = IPS_HAD_27;
+  } else if (inputState==IPS_HAD_27) {
+    inputState = IPS_NONE;
     if (ch == 79)
-      inputState = IS_HAD_27_79;
+      inputState = IPS_HAD_27_79;
     else if (ch == 91)
-      inputState = IS_HAD_27_91;
+      inputState = IPS_HAD_27_91;
     else if (ch == 10)
       jsiHandleNewLine(false);
-  } else if (inputState==IS_HAD_27_79) { // Numpad
-    inputState = IS_NONE;
+  } else if (inputState==IPS_HAD_27_79) { // Numpad
+    inputState = IPS_NONE;
     if (ch == 70) jsiHandleEnd();
     else if (ch == 72) jsiHandleHome();
     else if (ch == 111) jsiHandleChar('/');
@@ -1595,11 +1794,11 @@ void jsiHandleChar(char ch) {
     else if (ch == 109) jsiHandleChar('-');
     else if (ch == 107) jsiHandleChar('+');
     else if (ch == 77) jsiHandleChar('\r');
-  } else if (inputState==IS_HAD_27_91) {
-    inputState = IS_NONE;
+  } else if (inputState==IPS_HAD_27_91) {
+    inputState = IPS_NONE;
     if (ch>='0' && ch<='9') {
       inputStateNumber = (uint16_t)(ch-'0');
-      inputState = IS_HAD_27_91_NUMBER;
+      inputState = IPS_HAD_27_91_NUMBER;
     } else if (ch==68) { // left
       if (inputCursorPos>0 && jsvGetCharInString(inputLine,inputCursorPos-1)!='\n') {
         inputCursorPos--;
@@ -1629,7 +1828,7 @@ void jsiHandleChar(char ch) {
     } else if (ch == 70) jsiHandleEnd();
     else if (ch == 72) jsiHandleHome();
     //else jsiConsolePrintf("[%d:%d]\n", inputState, ch); // debugging unknown escape sequence
-  } else if (inputState==IS_HAD_27_91_NUMBER) {
+  } else if (inputState==IPS_HAD_27_91_NUMBER) {
     if (ch>='0' && ch<='9') {
       inputStateNumber = (uint16_t)(10*inputStateNumber + ch - '0');
     } else {
@@ -1643,21 +1842,18 @@ void jsiHandleChar(char ch) {
         else if (inputStateNumber==5) jsiHandlePageUpDown(0); // Page Up
         else if (inputStateNumber==6) jsiHandlePageUpDown(1); // Page Down
       }
-      inputState = IS_NONE;
+      inputState = IPS_NONE;
     }
-  } else if (ch==16 && jsvGetStringLength(inputLine)==0) {
-    /* DLE - Data Link Escape
-    Espruino uses DLE on the start of a line to signal that just the line in
-    question should be executed without echo */
-    jsiStatus  |= JSIS_ECHO_OFF_FOR_LINE;
   } else {
-    inputState = IS_NONE;
+    if (inputState == IPS_HAD_DLE && inputLineLength>0)
+      jsiAppendToInputLine(16); // handle case where we got DLE on its own - pass it through (needed as Gadgetbridge still sends DLE)
+    inputState = IPS_NONE;
     if (ch == 8 || ch == 0x7F /*delete*/) {
       jsiHandleDelete(true /*backspace*/);
-    } else if (ch == '\n' && inputState == IS_HAD_R) {
-      inputState = IS_NONE; //  ignore \ r\n - we already handled it all on \r
+    } else if (ch == '\n' && inputState == IPS_HAD_R) {
+      inputState = IPS_NONE; //  ignore \ r\n - we already handled it all on \r
     } else if (ch == '\r' || ch == '\n') {
-      if (ch == '\r') inputState = IS_HAD_R;
+      if (ch == '\r') inputState = IPS_HAD_R;
       jsiHandleNewLine(true);
 #ifdef USE_TAB_COMPLETE
     } else if (ch=='\t' && jsiEcho()) {
@@ -1812,7 +2008,7 @@ JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds) {
 }
 
 /// Clear a timeout in JS given the index returned by jsiSetTimeout
-JsVar *jsiClearTimeout(JsVar *timeout) {
+void jsiClearTimeout(JsVar *timeout) {
    JsVar *idVarArr = jsvNewArray(&timeout, 1);
   jswrap_interface_clearTimeout(idVarArr);
   jsvUnLock(idVarArr);
@@ -1860,6 +2056,11 @@ void jsiCtrlC() {
     return;
   // Force a break...
   execInfo.execute |= EXEC_CTRL_C;
+}
+
+/// Are we in a state where we should forward all chars (including Ctrl-C) to the console?
+bool jsiIsConsoleBinary() {
+  return IS_PACKET_TRANSFER(inputState);
 }
 
 /** Grab as many characters as possible from the event queue for the given event
