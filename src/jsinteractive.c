@@ -1645,12 +1645,11 @@ void jsiPacketProcess() {
       JsVar *fn = jsvObjectGetChildIfExists(r,"fn");
       ok = jsvIsString(fn);
       if (ok)
-        ok = jsvObjectGetIntegerChild(r, "s") == 0;
+        ok = jsvObjectGetIntegerChild(r, "s") != 0;
 #ifdef USE_FILESYSTEM
       if (ok && jsvObjectGetBoolChild(r,"fs")) {
         JsVar *fMode = jsvNewFromString("w");
         JsVar *f = jswrap_E_openFile(fn, fMode);
-        jsiConsolePrintf("File open %j -> %j", fn, f);
         if (f) jsvObjectSetChild(r, "file", f);
         else ok = false;
         jsvUnLock2(fMode,f);
@@ -1665,21 +1664,24 @@ void jsiPacketProcess() {
     jsiConsolePrintChar(ok ? ASCII_ACK : ASCII_NAK);
   } else if (packetType == PT_TYPE_DATA) {
     JsVar *r = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "PK_FILE"); // file info
-    JsVar *fn = jsvObjectGetChildIfExists(r, "fn"); // filename
-    int size = jsvObjectGetIntegerChild(r, "s"); // size
-    int offset = jsvObjectGetIntegerChild(r, "offs"); // offset
+    JsVar *fn = jsvObjectGetChildIfExists(r, "fn"); // filename (ok to do this if r==0)
     bool ok;
+    if (r && fn) {
+      int size = jsvObjectGetIntegerChild(r, "s"); // size
+      int offset = jsvObjectGetIntegerChild(r, "offs"); // offset
 #ifdef USE_FILESYSTEM
-    if (jsvObjectGetBoolChild(r,"fs")) { // if fs is set, try and write to the file in FAT filesystem
-      JsVar *f = jsvObjectGetChildIfExists(r, "file");
-      ok = jswrap_file_write(f, inputLine) == inputPacketLength;
-      jsvUnLock(f);
-    } else
+      if (jsvObjectGetBoolChild(r,"fs")) { // if fs is set, try and write to the file in FAT filesystem
+        JsVar *f = jsvObjectGetChildIfExists(r, "file");
+        ok = jswrap_file_write(f, inputLine) == inputPacketLength;
+        jsvUnLock(f);
+      } else
 #endif
-    ok = jsfWriteFile(jsfNameFromVar(fn), inputLine, JSFF_NONE, offset, size);
-    offset += inputPacketLength;
-    jsvObjectSetChildAndUnLock(r, "offs", jsvNewFromInteger(offset));
-    if (offset >= size) jsiPacketFileEnd(); // end file send
+      ok = jsfWriteFile(jsfNameFromVar(fn), inputLine, JSFF_NONE, offset, size);
+      offset += inputPacketLength;
+      jsvObjectSetChildAndUnLock(r, "offs", jsvNewFromInteger(offset));
+      if (offset >= size) jsiPacketFileEnd(); // end file send
+    } else
+      ok = false; // no file set up
     jsvUnLock2(fn,r);
     jsiConsolePrintChar(ok ? ASCII_ACK : ASCII_NAK);
   } else
@@ -1742,6 +1744,9 @@ void jsiHandleChar(char ch) {
   }
 
   if (inputState == IPS_PACKET_TRANSFER_BYTE0) {
+    if (jsvGetStringLength(inputLine)==0)
+      jsiStatus &= ~JSIS_ECHO_OFF_FOR_LINE; // turn on echo (because it'd have been turned off by DLE on an empty line)
+    inputState = IPS_HAD_DLE;
     inputPacketLength = ((uint8_t)ch) << 8;
     inputState = IPS_PACKET_TRANSFER_BYTE1;
   } else if (inputState == IPS_PACKET_TRANSFER_BYTE1) {
@@ -1770,7 +1775,7 @@ void jsiHandleChar(char ch) {
     Espruino uses DLE on the start of a line to signal that just the line in
     question should be executed without echo */
     if (jsvGetStringLength(inputLine)==0)
-      jsiStatus  |= JSIS_ECHO_OFF_FOR_LINE;
+      jsiStatus |= JSIS_ECHO_OFF_FOR_LINE;
     inputState = IPS_HAD_DLE;
   } else if (ch == 21 || ch == 23) { // Ctrl-u or Ctrl-w
     jsiClearInputLine(true);
