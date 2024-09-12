@@ -160,12 +160,8 @@ created with `require("Storage").open(filename, ...)`
 JsVar *jswrap_storage_readJSON(JsVar *name, bool noExceptions) {
   JsVar *v = jsfReadFile(jsfNameFromVar(name),0,0);
   if (!v) return 0;
-  JsVar *r = jswrap_json_parse_ext(v, JSON_DROP_QUOTES);
+  JsVar *r = jswrap_json_parse_liberal(v, noExceptions);
   jsvUnLock(v);
-  if (noExceptions) {
-    jsvUnLock(jspGetException());
-    execInfo.execute &= (JsExecFlags)~EXEC_EXCEPTION;
-  }
   return r;
 }
 

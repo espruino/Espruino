@@ -39,6 +39,8 @@ typedef enum {
 
 JsVar *jswrap_json_stringify(JsVar *v, JsVar *replacer, JsVar *space);
 JsVar *jswrap_json_parse_ext(JsVar *v, JSONFlags flags);
+/// Parse whatever we can (even if not 100% JSON). If noExceptions, we don't set any exceptions on error, just return 0
+JsVar *jswrap_json_parse_liberal(JsVar *v, bool noExceptions);
 JsVar *jswrap_json_parse(JsVar *v);
 
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */
