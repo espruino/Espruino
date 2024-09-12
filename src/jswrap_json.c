@@ -179,9 +179,6 @@ JsVar *jswrap_json_parse_internal(JSONFlags flags) {
   "return" : ["JsVar","The JavaScript object created by parsing the data string"]
 }
 Parse the given JSON string into a JavaScript object
-
-NOTE: This implementation uses eval() internally, and as such it is unsafe as it
-can allow arbitrary JS commands to be executed.
  */
 JsVar *jswrap_json_parse_ext(JsVar *v, JSONFlags flags) {
   JsLex lex;
@@ -196,6 +193,15 @@ JsVar *jswrap_json_parse_ext(JsVar *v, JSONFlags flags) {
 }
 JsVar *jswrap_json_parse(JsVar *v) {
   return jswrap_json_parse_ext(v, 0);
+}
+
+JsVar *jswrap_json_parse_liberal(JsVar *v, bool noExceptions) {
+  JsVar *res = jswrap_json_parse_ext(v, JSON_DROP_QUOTES);
+  if (noExceptions) {
+    jsvUnLock(jspGetException());
+    execInfo.execute &= (JsExecFlags)~EXEC_EXCEPTION;
+  }
+  return res;
 }
 
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */
