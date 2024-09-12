@@ -45,7 +45,7 @@ info = {
 #     'DEFINES+=-DLCD_CRT_EFFECT',
      'DEFINES+=-DUSE_AUDIO_CODEC',
      'DEFINES+=-DESPR_DELAY_MULTIPLIER=28672', # don't work out what to use for jshDelayMicroseconds at boot, just hard-code it
-     'DEFINES+=-DESPR_RTC_INITIALISE_TICKS=21', # 168Mhz so we need to wait more ticks for the RTC to init
+     'DEFINES+=-DESPR_RTC_INITIALISE_TICKS=30', # 168Mhz so we need to wait more ticks for the RTC to init (21->2s doesn't seem to be enough - this is nearer 3s!)
      'STLIB=STM32F407xx',
      '-DHSE_VALUE=9000000',
 #     'DEFINES+=-DFSMC_BITBANG',
