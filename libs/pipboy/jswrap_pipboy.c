@@ -1111,11 +1111,11 @@ void jswrap_pb_init() {
   JsVar *g = jsvNewObject(); // fake object for rendering
   graphicsInternal.data.fgColor = 63<<5;
   jsvUnLock(jswrap_graphics_clear(g, 0));
-  jsvUnLock(jswrap_graphics_drawImage(g, img, (LCD_WIDTH-200)/2, (LCD_HEIGHT-16)/2, NULL));
+  jsvUnLock(jswrap_graphics_drawImage(g, img, (LCD_WIDTH-200)/2, LCD_HEIGHT/2-16, NULL));
   graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
   graphicsInternal.data.fontAlignX = 1;
   JsVar *s = jsvNewFromString(JS_VERSION);
-  jsvUnLock2(jswrap_graphics_drawString(g, s, (LCD_WIDTH/2) + 64, (LCD_HEIGHT+16)/2, 0), s);
+  jsvUnLock2(jswrap_graphics_drawString(g, s, (LCD_WIDTH/2) + 64, LCD_HEIGHT/2, 0), s);
   graphicsInternal.data.fgColor = 65535;
   graphicsInternal.data.fontAlignX = -1;
   jsvUnLock2(img,g);
@@ -1181,18 +1181,29 @@ void jswrap_pb_init() {
   }
 #endif
   if (res) {
-   JsVar *msg;
-   if (res == FR_NO_FILE) msg = jsvNewFromString("NO VERSION FILE!");
-   else if (res == 12) msg = jsvNewFromString("NO SD CARD!");
-   else msg = jsvVarPrintf("SD CARD ERROR %d", res);
-   g = jsvNewObject(); // fake object for rendering
-   graphicsInternal.data.fgColor = 63<<5; // green
-   graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
-   graphicsInternal.data.fontAlignX = 0;
-   jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), (LCD_HEIGHT+48)/2, 0));
-   graphicsInternal.data.fgColor = 65535;
-   graphicsInternal.data.fontAlignX = -1;
-   jsvUnLock2(msg,g);
+    JsVar *msg;
+    if (res == FR_NO_FILE) msg = jsvNewFromString("NO VERSION FILE");
+    else if (res == 12) msg = jsvNewFromString("NO SD CARD");
+    else msg = jsvVarPrintf("SD CARD ERROR %d", res);
+    g = jsvNewObject(); // fake object for rendering
+    graphicsInternal.data.fgColor = 63<<5; // green
+    graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
+    graphicsInternal.data.fontAlignX = 0;
+    jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+14, 0));
+    // 25x25 pixel QR code for https://thewand.co/pip-boy
+    const unsigned char qr_raw[] = { 25, 25, 1, 254, 242, 63, 193, 7, 80, 110, 173, 43, 183, 71, 133, 219, 160, 34, 236, 21, 177, 7, 250, 170, 254, 0, 87, 0, 163, 64, 146, 186, 253, 154, 239, 143, 247, 190, 49, 18, 141, 125, 154, 9, 135, 45, 143, 169, 222, 154, 113, 7, 184, 239, 64, 249, 0, 77, 68, 127, 173, 170, 48, 79, 49, 27, 164, 191, 149, 208, 234, 90, 235, 118, 119, 4, 165, 176, 254, 248, 132, 128 };
+    JsVar *qr_img = jsvNewNativeString((char*)&qr_raw[0], sizeof(qr_raw));
+    JsVar *options = jsvNewObject();
+    if (options) {
+      jsvObjectSetChild(options, "scale", jsvNewFromInteger(3));
+      jsvUnLock(jswrap_graphics_drawImage(g, qr_img, (LCD_WIDTH-76)/2, LCD_HEIGHT/2+25, options));
+      jsvUnLock2(qr_img,options);
+    }
+    msg = jsvNewFromString("thewand.co/pip-boy");
+    jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+105, 0));
+    graphicsInternal.data.fgColor = 65535;
+    graphicsInternal.data.fontAlignX = -1;
+    jsvUnLock2(msg,g);
   }
 }
 
