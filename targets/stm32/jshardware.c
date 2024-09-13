@@ -733,7 +733,11 @@ static bool jshIsRTCAlreadySetup(bool andRunning) {
   if (jshIsRTCUsingLSE())
     return RCC_GetFlagStatus(RCC_FLAG_LSERDY) == SET;
   else
+#ifdef ESPR_RTC_ALWAYS_TRY_LSE
+    return false;
+#else
     return RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == SET;
+#endif
 }
 
 
