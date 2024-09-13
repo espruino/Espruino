@@ -1100,6 +1100,44 @@ void jswrap_pb_blitImage(JsVar *image, int x, int y, JsVar *options) {
   _jswrap_graphics_freeImageInfo(&img);
 }
 
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Pip",
+  "name" : "getAudioWaveform",
+  "generate" : "jswrap_pb_getAudioWaveform",
+  "params" : [
+      ["dst","JsVar",""],
+      ["y1","int",""],
+      ["y2","int",""]
+   ]
+}
+This copies the contents of the current I2S audio buffer out to an array
+that can be rendered to the screen with drawPoly.
+
+Because the array is meant to be `x,y,x,y,x,y` only the second elements are
+touched.
+*/
+void jswrap_pb_getAudioWaveform(JsVar *dst, int y1, int y2) {
+  if (!jsvIsArrayBuffer(dst)) {
+    jsExceptionHere(JSET_TYPEERROR,"ArrayBuffer expected for 1st arg");
+    return;
+  }
+  int ymid = (y1+y2)/2;
+  int16_t *samples = (int16_t*)STM32_I2S_GetSampleBufferPtr();
+  int len = jsvGetLength(dst)>>1; // length/2
+  JsvArrayBufferIterator it;
+  jsvArrayBufferIteratorNew(&it, dst, 1);
+  for (int i=0;i<len;i++) {
+    int y = ymid + (*samples * (y2-y1) / 32768);
+    jsvArrayBufferIteratorSetIntegerValue(&it, y);
+    jsvArrayBufferIteratorNext(&it);
+    jsvArrayBufferIteratorNext(&it);
+    samples += 16; // since we output stereo, 2 samples are always the same so skip an even no.
+  }
+  jsvArrayBufferIteratorFree(&it);
+}
+
 /*JSON{
   "type" : "init",
   "generate" : "jswrap_pb_init"

@@ -45,5 +45,7 @@ void STM32_I2S_Stop();
 void STM32_I2S_StreamEnded();
 /// Get status
 STM32_I2S_Status STM32_I2S_GetStatus();
+/// Get a pointer to the pending buffer of samples (least likely to be overwritten!)
+uint16_t *STM32_I2S_GetSampleBufferPtr();
 
 #endif

@@ -33,6 +33,7 @@ void jswrap_pb_off();
 void jswrap_pb_sleep();
 void jswrap_pb_wake();
 void jswrap_pb_blitImage(JsVar *image, int x, int y, JsVar *options);
+void jswrap_pb_getAudioWaveform(JsVar *dst, int y1, int y2);
 
 void jswrap_pb_init();
 void jswrap_pb_kill();

@@ -285,4 +285,9 @@ void STM32_I2S_StreamEnded() {
   }
 }
 
+/// Get a pointer to the pending buffer of samples (least likely to be overwritten!)
+uint16_t *STM32_I2S_GetSampleBufferPtr() {
+  return &i2sDMAbuf[i2sDMAidx];
+}
+
 #endif
