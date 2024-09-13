@@ -1701,6 +1701,7 @@ void jsiHandleChar(char ch) {
   //
   // special stuff
   // 1 - SOH, packet transfer start if preceeded by DLE, or Ctrl-A clear line
+  // 3 - Ctrl-c - ignored (we handle this in IRQ and set EXEC_CTRL_C)
   // 4 - Ctrl-d - backwards delete
   // 5 - Ctrl-e - end of line (or on a new line, ENQ(enquiry) outputs `Espruino 2v25 JOLTJS\n` or similar
   // 16 - DLE - echo off if at beginning of line
@@ -1760,6 +1761,8 @@ void jsiHandleChar(char ch) {
     else
       inputState = IPS_PACKET_TRANSFER_DATA;
   } else if (inputState == IPS_PACKET_TRANSFER_DATA) {
+    if (ch==3)
+      execInfo.execute &= ~EXEC_CTRL_C; // if we got Ctrl-C, ignore it
     jsiAppendToInputLine(ch);
     if (inputLineLength >= (inputPacketLength & PT_SIZE_MASK))
       jsiPacketProcess();
@@ -1769,7 +1772,8 @@ void jsiHandleChar(char ch) {
     if (inputState == IPS_HAD_DLE)
       jsiPacketStart();
     else jsiHandleHome(); // or treat as DLE
-    // Ctrl-C (char code 3) gets handled in an IRQ
+  } else if (ch == 3) { // Ctrl-c
+    // Ctrl-C (char code 3) gets handled in an IRQ but we just ignore it here
   } else if (ch == 4) { // Ctrl-d
     jsiHandleDelete(false/*not backspace*/);
   } else if (ch == 5) { // Ctrl-e
@@ -2570,8 +2574,8 @@ bool jsiLoop() {
   // check for and report errors
   jsiCheckErrors();
 
-  // If Ctrl-C was pressed, clear the line
-  if (execInfo.execute & EXEC_CTRL_C_MASK) {
+  // If Ctrl-C was pressed, clear the line (unless doing packet transfer)
+  if ((execInfo.execute & EXEC_CTRL_C_MASK) && !IS_PACKET_TRANSFER(inputState)) {
     execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_CTRL_C_MASK;
     if (jsvIsEmptyString(inputLine)) {
 #ifndef EMBEDDED

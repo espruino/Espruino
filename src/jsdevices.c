@@ -439,9 +439,8 @@ static bool jshPushIOCharEventAppend(IOEventFlags channel, char charData) {
 /// Try and handle events in the IRQ itself. true if handled and shouldn't go in queue
 static bool jshPushIOCharEventHandler(IOEventFlags channel, char charData) {
   // Check for a CTRL+C
-  if (charData==3 && channel==jsiGetConsoleDevice() && !jsiIsConsoleBinary()) {
+  if (charData==3 && channel==jsiGetConsoleDevice()) {
     jsiCtrlC(); // Ctrl-C - force interrupt of execution
-    return true;
   }
   return jswOnCharEvent(channel, charData);
 }
