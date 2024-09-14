@@ -12,18 +12,6 @@
  *
  * Contains JavaScript interface for Pipboy
  *
- * FFMPEG example to convert "Atomic Command" intro animation (frames.avi) extracted from SWF file in Fallout Pip-Boy APK:
- * - change colour to green
- * - crop 1289x937 to 1080x810 (to remove offset for phone screen)
- * - re-encode as 320x240 RLE at 12fps
- * ffmpeg -i frames.avi -filter_complex 'colorchannelmixer=0:0:0:0:0:1:0:0:0:0:0:0,crop=1080:810:0:0' -vcodec msrle -s 320x240 -r 12 intro-320x240-RLE-12fps.avi
- *
- * Convert the Pip-Boy bootup animation from Kilter:
- * - crop 1920x1080 to 1440x1080 to remove offset
- * - convert audio to 16kHz mono, 16-bit little-endian PCM
- * - re-encode video as 320x240 RLE at 12fps
- * ffmpeg -i ND-PB_Bootup01-v01_Waudio.mp4 -ar 16000 -ac 1 -acodec pcm_s16le -vf crop=1440:1080:0:0 -vcodec msrle -s 320x240 -r 12 bootup-320x240-RLE-12fps.avi
- *
  * ----------------------------------------------------------------------------
  */
 /* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py */
@@ -1273,7 +1261,6 @@ bool jswrap_pb_idle() {
 /*
 RDA5807M RADIO IC FUNCTIONS
 - Using software I2C as I2C1 is already in use by the ES8388 codec
-- Note that the radio can't tune when VBAT is supplied via an ST-Link - it needs the LiPo battery
 
 var rd=new I2C();
 rd.setup({sda: B7, scl:B6});
