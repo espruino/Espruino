@@ -1374,6 +1374,7 @@ JsVar *jsfGetBootCodeFromFlash(bool isReset) {
 
 bool jsfLoadBootCodeFromFlash(bool isReset) {
   // Load code in .bootFirst at first boot UNLESS BTN1 IS HELD DOWN (BTN3 for Dickens)
+#ifndef ESPR_NO_BOOT_JS
 #ifndef SAVE_ON_FLASH
 #if defined(BANGLEJS)
 #if defined(DICKENS)
@@ -1413,6 +1414,9 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
   if (!code) return false;
   jsvUnLock2(jspEvaluateVar(code,0,0), code);
   return true;
+#else
+  return false;
+#endif
 }
 
 bool jsfFlashContainsCode() {

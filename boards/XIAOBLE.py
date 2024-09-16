@@ -51,6 +51,7 @@ info = {
             "DEFINES += -DBLUETOOTH_NAME_PREFIX='\"XIAOBLE\"'",
             "DEFINES += -DSPIFLASH_READ2X",  # Read SPI flash at 2x speed using MISO and MOSI for IO
             "DEFINES += -DESPR_UNICODE_SUPPORT=1",
+            # "DEFINES += -DESPR_NO_BOOT_JS", # Skip boot js; allows recovering from .boot0 containing bad stuff
             "DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131",  # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
             # 'DEFINES += -DPIN_NAMES_DIRECT=1', # Package skips out some pins, so we can't assume each port starts from 0
             "LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2ec0",  # set RAM base to match MTU
