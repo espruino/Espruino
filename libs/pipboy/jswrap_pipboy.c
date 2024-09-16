@@ -769,7 +769,7 @@ Returns the current value of a DAC register
 int jswrap_pb_readDACReg(int reg) {
   if (jshPinGetValue(SD_POWER_PIN)==0) {
     jsExceptionHere(JSET_ERROR, "Can't read DAC register when it is powered off");
-    return;
+    return 0;
   }
   int v =  es8388_read_reg(reg & 0xFF);
   es8388_check_err();

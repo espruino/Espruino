@@ -1290,7 +1290,7 @@ void jshInit() {
   // enable low speed internal oscillator (reset always kills this, and we might need it)
   RCC_LSICmd(ENABLE);
   // If RTC is already setup, just leave it alone!
-  if (!jshIsRTCAlreadySetup(false)) {
+  if (!jshIsRTCAlreadySetup(true)) {
     // Reset backup domain - allows us to set the RTC clock source
     RCC_BackupResetCmd(ENABLE);
     RCC_BackupResetCmd(DISABLE);
