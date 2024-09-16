@@ -1223,8 +1223,8 @@ void jswrap_pb_init() {
     if (options) {
       jsvObjectSetChild(options, "scale", jsvNewFromInteger(3));
       jsvUnLock(jswrap_graphics_drawImage(g, qr_img, (LCD_WIDTH-76)/2, LCD_HEIGHT/2+25, options));
-      jsvUnLock2(qr_img,options);
     }
+    jsvUnLock3(msg,qr_img,options);
     msg = jsvNewFromString("thewand.co/pip-boy");
     jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+105, 0));
     graphicsInternal.data.fgColor = 65535;
