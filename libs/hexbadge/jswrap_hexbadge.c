@@ -280,7 +280,7 @@ void jswrap_badge_init() {
   gfx.data.type = JSGRAPHICSTYPE_ARRAYBUFFER;
   gfx.data.flags = JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE | JSGRAPHICSFLAGS_INVERT_X;
   gfx.graphicsVar = graphics;
-  lcdInit_ArrayBuffer(&gfx);
+  lcdInit_ArrayBuffer(&gfx, NULL);
   graphicsSetVarInitial(&gfx);
   jsvObjectSetChild(execInfo.root,"g",graphics);
   // Set initial image
