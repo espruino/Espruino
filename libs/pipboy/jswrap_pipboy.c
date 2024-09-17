@@ -1198,7 +1198,7 @@ void jswrap_pb_init() {
 "    }"
 "    s.write('VERSION',VERSION);"
 "    g.clear();"
-"    setTimeout(load,100);"
+"    E.reboot();"
 "  } else {"
 "    console.log('Cannot read FW.JS');"
 "  }"
