@@ -364,7 +364,7 @@ void jswrap_pixljs_init() {
   gfx.data.type = JSGRAPHICSTYPE_ARRAYBUFFER;
   gfx.data.flags = JSGRAPHICSFLAGS_ARRAYBUFFER_MSB;
   gfx.graphicsVar = graphics;
-  lcdInit_ArrayBuffer(&gfx);
+  lcdInit_ArrayBuffer(&gfx, NULL);
   graphicsSetVarInitial(&gfx);
   jsvObjectSetChild(execInfo.root, "g", graphics);
   jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, graphics);

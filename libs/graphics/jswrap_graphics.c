@@ -603,7 +603,8 @@ static bool isValidBPP(int bpp) {
       "`vertical_byte` = whether to align bits in a byte vertically or not",
       "`msb` = when bits<8, store pixels most significant bit first, when bits>8, store most significant byte first",
       "`interleavex` = Pixels 0,2,4,etc are from the top half of the image, 1,3,5,etc from the bottom half. Used for P3 LED panels.",
-      "`color_order` = re-orders the colour values that are supplied via setColor"
+      "`color_order` = re-orders the colour values that are supplied via setColor",
+      "`buffer` = if specified, createArrayBuffer won't create a new buffer but will use the given one"
     ]]
   ],
   "return" : ["JsVar","The new Graphics object"],
@@ -632,6 +633,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   gfx.data.flags = JSGRAPHICSFLAGS_NONE;
   gfx.graphicsVar = parent;
 
+  JsVar *optionalBuffer = 0;
   if (jsvIsObject(options)) {
     if (jsvObjectGetBoolChild(options, "zigzag"))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG);
@@ -668,9 +670,16 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
         jsWarn("color_order must be 3 characters");
       jsvUnLock(colorv);
     }
+    optionalBuffer = jsvObjectGetChildIfExists(options, "buffer");
+    if (optionalBuffer && !jsvIsArrayBuffer(optionalBuffer)) {
+      jsExceptionHere(JSET_ERROR, "'buffer' should be ArrayBuffer, got %t", optionalBuffer);
+      jsvUnLock(optionalBuffer);
+      return 0;
+    }
   }
 
-  lcdInit_ArrayBuffer(&gfx);
+  lcdInit_ArrayBuffer(&gfx, optionalBuffer);
+  jsvUnLock(optionalBuffer);
   graphicsSetVarInitial(&gfx);
   return parent;
 }

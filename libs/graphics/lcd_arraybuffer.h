@@ -13,7 +13,7 @@
  */
 #include "graphics.h"
 
-void lcdInit_ArrayBuffer(JsGraphics *gfx);
+void lcdInit_ArrayBuffer(JsGraphics *gfx, JsVar *optionalBuffer);
 void lcdSetCallbacks_ArrayBuffer(JsGraphics *gfx);
 
 // these use gfx->backendData as a pointer to data. They're exported so lcd_st7789_8bit can use them for fast offscreen rendering
