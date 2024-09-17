@@ -1142,9 +1142,7 @@ void jswrap_pb_init() {
   graphicsInternal.data.fontAlignX = 1;
   JsVar *s = jsvNewFromString(JS_VERSION);
   jsvUnLock2(jswrap_graphics_drawString(g, s, (LCD_WIDTH/2) + 64, LCD_HEIGHT/2, 0), s);
-  graphicsInternal.data.fgColor = 65535;
-  graphicsInternal.data.fontAlignX = -1;
-  jsvUnLock2(img,g);
+  jsvUnLock(img);
 #ifdef USE_AUDIO_CODEC
   // Initialise audio
   STM32_I2S_Init();
@@ -1177,6 +1175,8 @@ void jswrap_pb_init() {
       f_close(&f);
       version[sz]=0;
       jsvObjectSetChildAndUnLock(execInfo.root, "VERSION", jsvNewFromString(version));
+       JsVar *s = jsvVarPrintf("FW %s", version);
+      jsvUnLock2(jswrap_graphics_drawString(g, s, (LCD_WIDTH/2) + 64, 10+LCD_HEIGHT/2, 0), s);
       // Now run some JS code which will check if what's in Storage is that file, and if not will update it
       jsvUnLock(jspEvaluate(
 "if (require('Storage').read('VERSION')!==VERSION) {"
@@ -1205,13 +1205,13 @@ void jswrap_pb_init() {
 "}", true/*static*/));
     }
   }
+
 #endif
   if (res) {
     JsVar *msg;
     if (res == FR_NO_FILE) msg = jsvNewFromString("NO VERSION FILE");
     else if (res == 12) msg = jsvNewFromString("NO SD CARD");
     else msg = jsvVarPrintf("SD CARD ERROR %d", res);
-    g = jsvNewObject(); // fake object for rendering
     graphicsInternal.data.fgColor = 63<<5; // green
     graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
     graphicsInternal.data.fontAlignX = 0;
@@ -1227,10 +1227,12 @@ void jswrap_pb_init() {
     jsvUnLock3(msg,qr_img,options);
     msg = jsvNewFromString("thewand.co/pip-boy");
     jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+105, 0));
-    graphicsInternal.data.fgColor = 65535;
-    graphicsInternal.data.fontAlignX = -1;
-    jsvUnLock2(msg,g);
+    jsvUnLock(msg);
   }
+  // clear up graphics
+  graphicsInternal.data.fgColor = 65535;
+  graphicsInternal.data.fontAlignX = -1;
+  jsvUnLock(g);
 }
 
 /*JSON{
