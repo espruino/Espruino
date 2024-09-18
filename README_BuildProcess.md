@@ -143,6 +143,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `SPIFLASH_SLEEP_CMD` - Set if SPI flash needs to be explicitly slept and woken up
 * `SPIFLASH_READ2X` - Enable 2x speed reads of external flash (using MOSI+MOSI as inputs)
 * `ESPR_JSVAR_FLASH_BUFFER_SIZE=32` - The buffer size in bytes we use when executing/iterating over data in external flash memory (default 16). Should be set based on benchmarks.
+* `ESPR_FS_LARGE_WRITE_BUFFER` - When using FS library, should we allocate a 1kb buffer on the stack for writes? It can be ~3x faster but then allocating 1k can be dangerous without checking
 * `ESPR_PBF_FONTS` - Enable support for loading and displaying Pebble-style PBF font files with `g.setFontPBF`
 * `ESPR_BLUETOOTH_ANCS` - Enable Apple ANCS(notification), AMS and CTS support
 * `ESPR_NO_SOFTWARE_SERIAL` - don't build in software serial support

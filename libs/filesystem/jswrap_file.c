@@ -422,7 +422,14 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
       if(file.data->mode == FM_WRITE || file.data->mode == FM_READ_WRITE) {
         JsvIterator it;
         jsvIteratorNew(&it, buffer, JSIF_EVERY_ARRAY_ELEMENT);
+#ifdef ESPR_FS_LARGE_WRITE_BUFFER
+        // writes are substantially faster with 1024b but we can't safely allocate 1k on the stack unless we're sure we have a big stack
+        // 32..512 -> 90k/sec
+        // 1024+ -> 270k/sec (increasing past 1024 doesn't seem to help)
+        char buf[1024];
+#else
         char buf[32];
+#endif
 
         while (jsvIteratorHasElement(&it)) {
           // pull in a buffer's worth of data

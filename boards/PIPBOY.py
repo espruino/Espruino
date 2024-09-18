@@ -47,6 +47,7 @@ info = {
      'DEFINES+=-DESPR_DELAY_MULTIPLIER=28672', # don't work out what to use for jshDelayMicroseconds at boot, just hard-code it
      'DEFINES+=-DESPR_RTC_INITIALISE_TICKS=30', # 168Mhz so we need to wait more ticks for the RTC to init (21->2s doesn't seem to be enough - this is nearer 3s!)
      'DEFINES+=-DESPR_RTC_ALWAYS_TRY_LSE', # If we boot and RTC is initialised but using LSI, try again at starting LSE
+     'DEFINES+=-DESPR_FS_LARGE_WRITE_BUFFER', # speeds up SD card writes ~3x
      'STLIB=STM32F407xx',
      '-DHSE_VALUE=9000000',
 #     'DEFINES+=-DFSMC_BITBANG',
