@@ -45,8 +45,6 @@ bool jsiFreeMoreMemory();
 bool jsiHasTimers(); // are there timers still left to run?
 bool jsiIsWatchingPin(Pin pin); // are there any watches for the given pin?
 
-/// Are we in a state where we should forward all chars (including Ctrl-C) to the console?
-bool jsiIsConsoleBinary();
 /// Ctrl-C - force interrupt of execution
 void jsiCtrlC();
 

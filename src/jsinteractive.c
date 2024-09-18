@@ -2065,16 +2065,11 @@ bool jsiIsWatchingPin(Pin pin) {
 }
 
 void jsiCtrlC() {
-  // If password protected, don't let Ctrl-C break out of running code!
-  if (jsiPasswordProtected())
+  // If password protected or currently uploading a packet, don't let Ctrl-C break out of running code!
+  if (jsiPasswordProtected() || IS_PACKET_TRANSFER(inputState))
     return;
   // Force a break...
   execInfo.execute |= EXEC_CTRL_C;
-}
-
-/// Are we in a state where we should forward all chars (including Ctrl-C) to the console?
-bool jsiIsConsoleBinary() {
-  return IS_PACKET_TRANSFER(inputState);
 }
 
 /** Grab as many characters as possible from the event queue for the given event
