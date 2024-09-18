@@ -34,6 +34,7 @@ void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {};
 void STM32_I2S_Start() {};
 void STM32_I2S_Stop() {};
 void STM32_I2S_StreamEnded() {};
+uint16_t *STM32_I2S_GetSampleBufferPtr() { return 0; }
 #else // not LINUX
 
 #include "stm32f4xx_spi.h"

@@ -720,6 +720,7 @@ void es8388_check_err() {
 }
 */
 void jswrap_pb_setVol(int volume) {
+#ifndef LINUX
   if (jshPinGetValue(SD_POWER_PIN)==0) {
     jsExceptionHere(JSET_ERROR, "Can't change volume when DAC is powered off");
     return;
@@ -731,6 +732,7 @@ void jswrap_pb_setVol(int volume) {
   es8388_write_reg(0x30, volume); // 48 LOUT2 (33 = max)
   es8388_write_reg(0x31, volume); // 49 ROUT2
   es8388_check_err();
+#endif
 }
 
 /*JSON{
@@ -746,12 +748,14 @@ void jswrap_pb_setVol(int volume) {
 Writes a DAC register with a value
 */
 void jswrap_pb_writeDACReg(int reg, int value) {
+#ifndef LINUX
   if (jshPinGetValue(SD_POWER_PIN)==0) {
     jsExceptionHere(JSET_ERROR, "Can't write DAC register when it is powered off");
     return;
   }
   es8388_write_reg(reg & 0xFF, value & 0xFF); // DAC mute
   es8388_check_err();
+#endif
 }
 
 /*JSON{
@@ -767,6 +771,7 @@ void jswrap_pb_writeDACReg(int reg, int value) {
 Returns the current value of a DAC register
 */
 int jswrap_pb_readDACReg(int reg) {
+#ifndef LINUX
   if (jshPinGetValue(SD_POWER_PIN)==0) {
     jsExceptionHere(JSET_ERROR, "Can't read DAC register when it is powered off");
     return 0;
@@ -774,6 +779,9 @@ int jswrap_pb_readDACReg(int reg) {
   int v =  es8388_read_reg(reg & 0xFF);
   es8388_check_err();
   return v;
+#else
+  return -1;
+#endif
 }
 
 /*JSON{
@@ -882,6 +890,7 @@ void jswrap_pb_initDAC() {
 * 'out' -> output
 */
 void jswrap_pb_setDACMode_(DACMode mode) {
+#ifndef LINUX
   if (jshPinGetValue(SD_POWER_PIN)==0) {
     jsExceptionHere(JSET_ERROR, "Can't set DAC mode when it is powered off");
     return;
@@ -900,7 +909,7 @@ void jswrap_pb_setDACMode_(DACMode mode) {
   } // TODO: passthru?
   //es8388_write_reg(0x, 0x); //
   es8388_check_err();
-
+#endif
 }
 void jswrap_pb_setDACMode(JsVar *mode) {
   if (jsvIsUndefined(mode) || jsvIsStringEqual(mode, "off"))
