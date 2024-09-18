@@ -93,7 +93,7 @@ void jshInitDevices() {
   // we don't reset it for every call to reset()
 #ifdef USB
   assert(EV_USBSERIAL>=EV_SERIAL_DEVICE_STATE_START);
-  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_FLOW_CONTROL_XON_XOFF;
+  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_NONE; // USB serial should have its own flow control
 #endif
 #ifdef BLUETOOTH
   jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)] = SDS_FLOW_CONTROL_XON_XOFF;
