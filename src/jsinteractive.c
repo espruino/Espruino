@@ -1148,7 +1148,8 @@ void jsiIsAboutToEditInputLine() {
     }
   }
   // Update the length
-  inputLineLength = (int)jsvGetStringLength(inputLine);
+  if (inputLineLength<0)
+    inputLineLength = (int)jsvGetStringLength(inputLine);
 }
 
 void jsiHandleDelete(bool isBackspace) {
