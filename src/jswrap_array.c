@@ -146,7 +146,8 @@ bool jswrap_array_includes(JsVar *arr, JsVar *value, JsVarInt startIdx) {
   bool isNaN = jsvIsFloat(value) && isnan(jsvGetFloat(value));
   if (!jsvIsIterable(arr)) return 0;
   JsvIterator it;
-  jsvIteratorNew(&it, arr, JSIF_DEFINED_ARRAY_ElEMENTS);
+  // if we're searching for 'undefined' we must include every value, because 'new Array(3)' has no values yet, but .includes(undefined) should be true
+  jsvIteratorNew(&it, arr, jsvIsUndefined(value) ? JSIF_EVERY_ARRAY_ELEMENT : JSIF_DEFINED_ARRAY_ElEMENTS);
   while (jsvIteratorHasElement(&it)) {
     JsVar *childIndex = jsvIteratorGetKey(&it);
     if (jsvIsInt(childIndex) && jsvGetInteger(childIndex)>=startIdx) {
