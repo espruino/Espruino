@@ -60,10 +60,10 @@
 #define USBD_LANGID_STRING     1033
 #define USBD_MANUFACTURER_STRING     "The Wand Company"
 #ifndef USB_PRODUCT_ID
-  #define USB_PRODUCT_ID   0xA4DF // 0xA4DF is the PID assigned by ST for the Tricorder.  Currently awaiting a custom PID for the Pip-Boy. (ST's standard PID is 0x5740 / 22336 decimal)
+  #define USB_PRODUCT_ID   0xA4F1 // 0xA4F1 assigned by ST for the Pip-Boy (0xA4DF = Tricorder; ST's standard PID is 0x5740 / 22336 decimal)
 #endif
 #ifdef PIPBOY
-  #define USBD_PRODUCT_STRING_FS     "Vault-Tec Pip-Boy"
+  #define USBD_PRODUCT_STRING_FS     "Pip-Boy"
 #else
   #define USBD_PRODUCT_STRING_FS     "Virtual ComPort"
 #endif
