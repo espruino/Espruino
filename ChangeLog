@@ -7,6 +7,14 @@
             E.sendUSBHID now returns false if USB disconnected
             (new Array(3)).includes(undefined) fix
             USB: Disable software flow control as USB itself handles flow control
+            Graphics.createArrayBuffer can now be given an ArrayBuffer on initialisation (so it doesn't always try and allocate one)
+            Added packet transfer protocol for reliable code/file uploads - see README_Protocol.md
+            STM32F4: shorter timeout used for I2C/etc
+            STM32: add E.getClock() for retrieving more info on system clocks
+            Graphics: g.setColor(-1) now sets color to 0xFFFF (previously it would break antialiasing)
+            Added I2C.unsetup function
+            STM32: Stay away when USB is connected, even if no app is reading
+
 
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
