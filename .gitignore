@@ -27,6 +27,7 @@ node_modules
 /xtensa-lx106-elf
 /app
 /esp-idf
+/esp-idf-4
 xtensa-esp32-elf
 gcc-arm-none-eabi*
 arm-gnu-toolchain*
