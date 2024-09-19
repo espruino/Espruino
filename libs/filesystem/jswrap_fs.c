@@ -415,6 +415,10 @@ JsVar *jswrap_fs_getfree(JsVar *path) {
       // Get total sectors and free sectors
       tot_sect = (fs->n_fatent - 2) * fs->csize;
       fre_sect = fre_clust * fs->csize;
+#ifndef FF_MAX_SS // compat with older fatfs
+#define FF_MAX_SS _MAX_SS
+#define FF_MIN_SS _MIN_SS
+#endif
 #if FF_MAX_SS != FF_MIN_SS
       sect_size = fs->ssize;
 #else
