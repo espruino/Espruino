@@ -423,10 +423,8 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
         JsvIterator it;
         jsvIteratorNew(&it, buffer, JSIF_EVERY_ARRAY_ELEMENT);
 #ifdef ESPR_FS_LARGE_WRITE_BUFFER
-        // writes are substantially faster with 1024b but we can't safely allocate 1k on the stack unless we're sure we have a big stack
-        // 32..512 -> 90k/sec
-        // 1024+ -> 270k/sec (increasing past 1024 doesn't seem to help)
-        char buf[1024];
+        // writes are faster with sector-size buffers but we can't always safely allocate 512b on the stack unless we're sure we have a big stack
+        char buf[512];
 #else
         char buf[32];
 #endif
