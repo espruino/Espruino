@@ -35,6 +35,7 @@ info = {
      'FLASH_4MB=1',
      'ESP_FLASH_MAX=831488',
      'FLASH_BAUD=460800',
+     'BLACKLIST=boards/ESP8266.blocklist', # force some stuff to be removed to save space
      'USE_DEBUGGER=0', # We can't use debugger as RTOS needs jsiIdle to keep exiting
     ]
  }
