@@ -267,6 +267,7 @@ double jswrap_math_mod(double x, double y) {
 
   if (!isfinite(x) || isnan(y) || y==0)
     return NAN;
+  if (y==INFINITY)  return x;
 
   if (0 > c) {
     x = -x;
