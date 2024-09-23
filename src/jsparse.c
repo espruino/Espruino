@@ -2036,12 +2036,11 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
   while (precedence && precedence>lastPrecedence) {
     int op = lex->tk;
     JSP_ASSERT_MATCH(op);
-
+    JsVar *av = jsvSkipNameAndUnLock(a);
     // if we have short-circuit ops, then if we know the outcome
     // we don't bother to execute the other op. Even if not
     // we need to tell mathsOp it's an & or |
     if (op==LEX_ANDAND || op==LEX_OROR) {
-      JsVar *av = jsvSkipNameAndUnLock(a);
       bool aValue = jsvGetBool(av);
       if ((!aValue && op==LEX_ANDAND) ||
           (aValue && op==LEX_OROR)) {
@@ -2057,13 +2056,12 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
         a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       }
     } else if (op==LEX_NULLISH){
-      JsVar* value = jsvSkipNameAndUnLock(a);
-      if (jsvIsNullish(value)) {
+      if (jsvIsNullish(av)) {
         // use second argument (B)
-        if (!jsvIsUndefined(value)) jsvUnLock(value);
+        if (!jsvIsUndefined(av)) jsvUnLock(av);
         a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       } else {
-        a = value;
+        a = av;
         // use first argument (A)
         JSP_SAVE_EXECUTE();
         jspSetNoExecute();
@@ -2073,13 +2071,13 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
       JsVar *b = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       if (JSP_SHOULD_EXECUTE) {
         if (op==LEX_R_IN) {
-          JsVar *av = jsvSkipName(a); // needle
+          // av = needle
           JsVar *bv = jsvSkipName(b); // haystack
           if (jsvHasChildren(bv)) { // search keys, NOT values
             av = jsvAsArrayIndexAndUnLock(av);
             JsVar *varFound = jspGetVarNamedField( bv, av, true);
-            jsvUnLock2(a,varFound);
             a = jsvNewFromBool(varFound!=0);
+            jsvUnLock(varFound);
           } else { // else maybe it's a fake object...
             const JswSymList *syms = jswGetSymbolListForObjectProto(bv);
             if (syms) {
@@ -2088,7 +2086,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
               if (jsvGetString(av, nameBuf, sizeof(nameBuf)) < sizeof(nameBuf))
                 varFound = jswBinarySearch(syms, bv, nameBuf);
               bool found = varFound!=0;
-              jsvUnLock2(a, varFound);
+              jsvUnLock(varFound);
               if (!found && jsvIsArrayBuffer(bv)) {
                 JsVarFloat f = jsvGetFloat(av); // if not a number this will be NaN, f==floor(f) fails
                 if (f==floor(f) && f>=0 && f<jsvGetArrayBufferLength(bv))
@@ -2097,14 +2095,12 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
               a = jsvNewFromBool(found);
             } else { // not built-in, just assume we can't do it
               jsExceptionHere(JSET_ERROR, "Can't use 'in' operator to search a %t", bv);
-              jsvUnLock(a);
               a = 0;
             }
           }
           jsvUnLock2(av, bv);
         } else if (op==LEX_R_INSTANCEOF) {
           bool inst = false;
-          JsVar *av = jsvSkipName(a);
           JsVar *bv = jsvSkipName(b);
           if (!jsvIsFunction(bv)) {
             jsExceptionHere(JSET_ERROR, "Expecting function on RHS, got %t", bv);
@@ -2133,11 +2129,15 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
                 inst = true;
             }
           }
-          jsvUnLock3(av, bv, a);
+          jsvUnLock2(av, bv);
           a = jsvNewFromBool(inst);
         } else {  // --------------------------------------------- NORMAL
-          JsVar *res = jsvMathsOpSkipNames(a, b, op);
-          jsvUnLock(a); a = res;
+          JsVar *pb = jsvSkipName(b);
+          JsVar *bv = jsvGetValueOf(pb);
+          jsvUnLock(pb);
+          JsVar *res = jsvMathsOp(av,bv,op);
+          jsvUnLock2(av,bv);
+          a = res;
         }
       }
       jsvUnLock(b);

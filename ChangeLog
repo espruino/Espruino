@@ -17,6 +17,7 @@
             Remove Ctrl-A/D/E/U/W code handling to free up flash space (the IDE/or VT100 terminals all use escape codes)
             Ensure that 1%0.0===NaN (fix #2556)
             Ensure Number("1A")==NaN, previously we just parsed the digits we could (fix #2555)
+            First argument of operators is now dereferenced before parsing second argument (fix #2547)
 
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
