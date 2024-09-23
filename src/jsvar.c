@@ -2249,7 +2249,9 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
       if (buf[0]==0) return 0; // empty string -> 0
       if (!strcmp(buf,"Infinity")) return INFINITY;
       if (!strcmp(buf,"-Infinity")) return -INFINITY;
-      return stringToFloat(buf);
+      const char *endOfNumber = 0;
+      JsVarFloat v = stringToFloatWithRadix(buf,0,&endOfNumber);
+      if (*endOfNumber==0) return v; // only return the value if there wasn't something after it in the string
     }
   }
   return NAN;
@@ -2272,7 +2274,7 @@ JsVar *jsvAsNumber(JsVar *var) {
     if (jsvGetString(var, buf, sizeof(buf))==sizeof(buf)) {
       jsExceptionHere(JSET_ERROR, "String too big to convert to number");
       return jsvNewFromFloat(NAN);
-    } else
+    } else // jsvIsStringNumericInt=true so we're sure this'll be successful
       return jsvNewFromLongInteger(stringToInt(buf));
   }
   // Else just try and get a float
