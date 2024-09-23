@@ -502,6 +502,9 @@ JsVar *jswrap_array_every(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 Execute `previousValue=initialValue` and then `previousValue =
 callback(previousValue, currentValue, index, array)` for each element in the
 array, and finally return previousValue.
+
+**Note:** If you add elements to the array you're iterating over while you're iterating,
+you will iterate over those events too, creating an endless loop. For example: `a=[1,2,3];a.reduce(() => a.push(0), 0);`
  */
 JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
   if (!jsvIsIterable(parent)) {
