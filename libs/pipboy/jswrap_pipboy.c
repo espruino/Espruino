@@ -513,17 +513,17 @@ static void _jswrap_pb_audioStartVar_cb(unsigned char *data, unsigned int len, v
 }
 void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
   debugInfo=false;
-  streamRepeats=false;
+  // streamRepeats=false; // There might be a silent looping video playing 
   /*JsVar *v;
   if (jsvIsObject(options)) {
   }*/
-  if (streamType) {
-    if (debugInfo) {
-      jsiConsolePrintf("Closing existing stream\n");
-    }
-    f_close(&streamFile);
-    streamType = ST_NONE;
-  }
+  // if (streamType) {
+  //   if (debugInfo) {
+  //     jsiConsolePrintf("Closing existing stream\n");
+  //   }
+  //   f_close(&streamFile);
+  //   streamType = ST_NONE;
+  // }
   STM32_I2S_Prepare(videoInfo.audioSampleRate);
   jsvIterateBufferCallback(wav, _jswrap_pb_audioStartVar_cb, NULL);
   STM32_I2S_StreamEnded(); // ensure we start playing even if there wasn't enough data
