@@ -352,6 +352,9 @@ static JsVar *_jswrap_array_iterate_with_callback(
 }
 Return an array which is made from the following: ```A.map(function) =
 [function(A[0]), function(A[1]), ...]```
+
+**Note:** Do not modify the array you're iterating over from inside the callback (`a.map(()=>a.push(0))`).
+It will cause non-spec-compliant behaviour.
  */
 JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   return _jswrap_array_iterate_with_callback(parent, funcVar, thisVar, RETURN_ARRAY, false, false);
@@ -369,6 +372,9 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   "typescript" : "forEach(callbackfn: (value: T, index: number, array: T[]) => void, thisArg?: any): void;"
 }
 Executes a provided function once per array element.
+
+**Note:** Do not modify the array you're iterating over from inside the callback (`a.forEach(()=>a.push(0))`).
+It will cause non-spec-compliant behaviour.
  */
 void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   _jswrap_array_iterate_with_callback(parent, funcVar, thisVar, RETURN_BOOL, false, false);
@@ -391,6 +397,9 @@ void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 }
 Return an array which contains only those elements for which the callback
 function returns 'true'
+
+**Note:** Do not modify the array you're iterating over from inside the callback (`a.filter(()=>a.push(0))`).
+It will cause non-spec-compliant behaviour.
  */
 JsVar *jswrap_array_filter(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   return _jswrap_array_iterate_with_callback(parent, funcVar, thisVar, RETURN_ARRAY, true, true);
@@ -418,6 +427,9 @@ doesn't returns `true` for any element.
 ["Hello","There","World"].find(a=>a[0]=="T")
 // returns "There"
 ```
+
+**Note:** Do not modify the array you're iterating over from inside the callback (`a.find(()=>a.push(0))`).
+It will cause non-spec-compliant behaviour.
  */
 JsVar *jswrap_array_find(JsVar *parent, JsVar *funcVar) {
   return _jswrap_array_iterate_with_callback(parent, funcVar, 0, RETURN_ARRAY_ELEMENT, true, true);
@@ -442,6 +454,9 @@ doesn't returns `true` for any element.
 ["Hello","There","World"].findIndex(a=>a[0]=="T")
 // returns 1
 ```
+
+**Note:** Do not modify the array you're iterating over from inside the callback (`a.findIndex(()=>a.push(0))`).
+It will cause non-spec-compliant behaviour.
  */
 JsVar *jswrap_array_findIndex(JsVar *parent, JsVar *funcVar) {
   JsVar *v = _jswrap_array_iterate_with_callback(parent, funcVar, 0, RETURN_ARRAY_INDEX, true, true);
@@ -463,6 +478,9 @@ JsVar *jswrap_array_findIndex(JsVar *parent, JsVar *funcVar) {
 }
 Return 'true' if the callback returns 'true' for any of the elements in the
 array
+
+**Note:** Do not modify the array you're iterating over from inside the callback (`a.some(()=>a.push(0))`).
+It will cause non-spec-compliant behaviour.
  */
 JsVar *jswrap_array_some(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   return _jswrap_array_iterate_with_callback(parent, funcVar, thisVar, RETURN_BOOL, true, false);
@@ -481,6 +499,9 @@ JsVar *jswrap_array_some(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   "typescript" : "every(predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean;"
 }
 Return 'true' if the callback returns 'true' for every element in the array
+
+**Note:** Do not modify the array you're iterating over from inside the callback (`a.every(()=>a.push(0))`).
+It will cause non-spec-compliant behaviour.
  */
 JsVar *jswrap_array_every(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   return _jswrap_array_iterate_with_callback(parent, funcVar, thisVar, RETURN_BOOL, true, true);
@@ -502,6 +523,9 @@ JsVar *jswrap_array_every(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 Execute `previousValue=initialValue` and then `previousValue =
 callback(previousValue, currentValue, index, array)` for each element in the
 array, and finally return previousValue.
+
+**Note:** Do not modify the array you're iterating over from inside the callback (`a.reduce(()=>a.push(0))`).
+It will cause non-spec-compliant behaviour.
  */
 JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
   if (!jsvIsIterable(parent)) {
@@ -875,6 +899,9 @@ NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compar
   "typescript" : "sort(compareFn?: (a: T, b: T) => number): T[];"
 }
 Do an in-place quicksort of the array
+
+**Note:** Do not modify the array you're iterating over from inside the callback (`a.sort(()=>a.push(0))`).
+It will cause non-spec-compliant behaviour.
  */
 JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
   if (!jsvIsUndefined(compareFn) && !jsvIsFunction(compareFn)) {

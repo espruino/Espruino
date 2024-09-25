@@ -7,6 +7,18 @@
             E.sendUSBHID now returns false if USB disconnected
             (new Array(3)).includes(undefined) fix
             USB: Disable software flow control as USB itself handles flow control
+            Graphics.createArrayBuffer can now be given an ArrayBuffer on initialisation (so it doesn't always try and allocate one)
+            Added packet transfer protocol for reliable code/file uploads - see README_Protocol.md
+            STM32F4: shorter timeout used for I2C/etc
+            STM32: add E.getClock() for retrieving more info on system clocks
+            Graphics: g.setColor(-1) now sets color to 0xFFFF (previously it would break antialiasing)
+            Added I2C.unsetup function
+            STM32: Stay away when USB is connected, even if no app is reading
+            Remove Ctrl-A/D/E/U/W code handling to free up flash space (the IDE/or VT100 terminals all use escape codes)
+            Ensure that 1%0.0===NaN (fix #2556)
+            Ensure Number("1A")==NaN, previously we just parsed the digits we could (fix #2555)
+            First argument of operators is now dereferenced before parsing second argument (fix #2547)
+            Ensure x%Infinity===x (fix #2542)
 
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)

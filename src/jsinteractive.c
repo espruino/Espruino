@@ -1700,13 +1700,10 @@ void jsiHandleChar(char ch) {
   //jsiConsolePrintf("[%d:%d]\n", inputState, ch);
   //
   // special stuff
-  // 1 - SOH, packet transfer start if preceeded by DLE, or Ctrl-A clear line
+  // 1 - SOH, packet transfer start if preceeded by DLE
   // 3 - Ctrl-c - ignored (we handle this in IRQ and set EXEC_CTRL_C)
-  // 4 - Ctrl-d - backwards delete
-  // 5 - Ctrl-e - end of line (or on a new line, ENQ(enquiry) outputs `Espruino 2v25 JOLTJS\n` or similar
+  // 5 - Ctrl-e -  on a new line, ENQ(enquiry) outputs `Espruino 2v25 JOLTJS\n` or similar
   // 16 - DLE - echo off if at beginning of line
-  // 21 - Ctrl-u - delete line
-  // 23 - Ctrl-w - delete word (currently just does the same as Ctrl-u)
   //
   // 27 then 91 then 68 ('D') - left
   // 27 then 91 then 67 ('C') - right
@@ -1723,7 +1720,6 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 52 ('4') then 126 - numpad end
   // 27 then 91 then 53 ('5') then 126 - pgup
   // 27 then 91 then 54 ('6') then 126 - pgdn
-
   // 27 then 79 then 70 - home
   // 27 then 79 then 72 - end
   // 27 then 10 - alt enter
@@ -1768,19 +1764,14 @@ void jsiHandleChar(char ch) {
       jsiPacketProcess();
   } else if (ch == 0) {
     inputState = IPS_NONE; // ignore 0 - it's scary
-  } else if (ch == 1) { // SOH / Ctrl-A go home
+  } else if (ch == 1) { // SOH
     if (inputState == IPS_HAD_DLE)
       jsiPacketStart();
-    else jsiHandleHome(); // or treat as DLE
   } else if (ch == 3) { // Ctrl-c
     // Ctrl-C (char code 3) gets handled in an IRQ but we just ignore it here
-  } else if (ch == 4) { // Ctrl-d
-    jsiHandleDelete(false/*not backspace*/);
   } else if (ch == 5) { // Ctrl-e
     if (jsvGetStringLength(inputLine)==0)
       jsiConsolePrintf("Espruino %s %s\n",JS_VERSION,PC_BOARD_ID); // 5=ENQ - if sent on empty line and Espruino new enough, we transmit what we are
-    else
-      jsiHandleEnd();
   } else if (ch==16) {
     /* DLE - Data Link Escape
     Espruino uses DLE on the start of a line to signal that just the line in
@@ -1788,8 +1779,6 @@ void jsiHandleChar(char ch) {
     if (jsvGetStringLength(inputLine)==0)
       jsiStatus |= JSIS_ECHO_OFF_FOR_LINE;
     inputState = IPS_HAD_DLE;
-  } else if (ch == 21 || ch == 23) { // Ctrl-u or Ctrl-w
-    jsiClearInputLine(true);
   } else if (ch == 27) {
     inputState = IPS_HAD_27;
   } else if (inputState==IPS_HAD_27) {

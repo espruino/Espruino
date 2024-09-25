@@ -429,6 +429,8 @@ JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
   return conv;
 }
 
+
+#ifndef ESP8266 // ESP8266 seems unable to leave this out of the firmware, even with gc-sections/flto!
 #if defined(SAVE_ON_FLASH_MATH) || defined(BANGLEJS)
 #define FFTDATATYPE double
 #else
@@ -608,6 +610,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
     _jswrap_espruino_FFT_setData(arrImag, vImag, 0, pow2);
 }
 
+#endif //!ESP8266
 /*JSON{
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
