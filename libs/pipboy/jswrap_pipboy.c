@@ -1136,6 +1136,18 @@ void jswrap_pb_getAudioWaveform(JsVar *dst, int y1, int y2) {
 }
 
 /*JSON{
+  "type" : "staticmethod",
+  "class" : "Pip",
+  "name" : "audioIsPlaying",
+  "generate" : "jswrap_pb_audioIsPlaying",
+  "return" : ["bool","True if audio is currently playing"]
+}
+*/
+bool jswrap_pb_audioIsPlaying() {
+  return (STM32_I2S_GetStatus() == STM32_I2S_PLAYING);
+}
+
+/*JSON{
   "type" : "init",
   "generate" : "jswrap_pb_init"
 }*/
