@@ -1278,7 +1278,7 @@ void jswrap_pb_init() {
   if (res) {
     JsVar *msg;
     if (res == FR_NO_FILE) msg = jsvNewFromString("NO VERSION FILE");
-    else if (res == 12) msg = jsvNewFromString("NO SD CARD");
+    else if (res == FR_NOT_ENABLED) msg = jsvNewFromString("NO SD CARD");
     else msg = jsvVarPrintf("SD CARD ERROR %d", res);
     graphicsInternal.data.fgColor = 63<<5; // green
     graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
