@@ -405,6 +405,11 @@ void jsvGetProcessorPowerUsage(JsVar *devices);
 /// Perform a proper hard-reboot of the device
 void jshReboot();
 
+#ifdef STM32F4
+/// Reboot into DFU mode
+void jshRebootToDFU();
+#endif
+
 #if JSH_PORTV_COUNT>0
 /// handler for virtual ports (eg. pins on an IO Expander). This should be defined for each type of board used
 void jshVirtualPinInitialise();
