@@ -209,14 +209,14 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 #endif
         jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamStarted");
       } else {
-        jsExceptionHere(JSET_ERROR, "Corrupt video\n");
+        jsExceptionHere(JSET_ERROR, "Corrupt video");
         jswrap_pb_videoStop();
       }
     } else {
-      jsExceptionHere(JSET_ERROR, "Can't load file %s\n", pathStr);
+      jsExceptionHere(JSET_ERROR, "Can't load file %s", pathStr);
     }
   } else {
-    jsExceptionHere(JSET_ERROR, "Failed to init SD card\n");
+    jsExceptionHere(JSET_ERROR, "Failed to init SD card");
   }
 }
 
@@ -304,14 +304,14 @@ void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
         jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamStarted");
         if (debugInfo) jsiConsolePrintf("Audio started...\n");
       } else {
-        jsExceptionHere(JSET_ERROR, "Corrupt audio\n");
+        jsExceptionHere(JSET_ERROR, "Corrupt audio");
         jswrap_pb_videoStop();
       }
     } else {
-      jsExceptionHere(JSET_ERROR, "Can't load file %s\n", pathStr);
+      jsExceptionHere(JSET_ERROR, "Can't load file %s", pathStr);
     }
   } else {
-    jsExceptionHere(JSET_ERROR, "Failed to init SD card\n");
+    jsExceptionHere(JSET_ERROR, "Failed to init SD card");
   }
 }
 
@@ -352,19 +352,19 @@ JsVar *jswrap_pb_audioRead(JsVar *fn) {
         uint32_t len = f_size(&streamFile) - (uint32_t)wavInfo.streamOffset;
         JsVar *buffer = jsvNewFlatStringOfLength(len);
         if (!buffer) {
-          jsExceptionHere(JSET_ERROR, "Couldn't allocate flat string of size %d\n", len);
+          jsExceptionHere(JSET_ERROR, "Couldn't allocate flat string of size %d", len);
           return 0;
         }
         f_read(&streamFile, jsvGetFlatStringPointer(buffer), len, &actual);
         return buffer;
       } else {
-        jsExceptionHere(JSET_ERROR, "Corrupt audio\n");
+        jsExceptionHere(JSET_ERROR, "Corrupt audio");
       }
     } else {
-      jsExceptionHere(JSET_ERROR, "Can't load file %s\n", pathStr);
+      jsExceptionHere(JSET_ERROR, "Can't load file %s", pathStr);
     }
   } else {
-    jsExceptionHere(JSET_ERROR, "Failed to init SD card\n");
+    jsExceptionHere(JSET_ERROR, "Failed to init SD card");
   }
   return 0;
 }
