@@ -521,6 +521,7 @@ void jsiSoftInit(bool hasBeenReset) {
     jsFlags = jsvGetIntegerAndUnLock(flags);
     jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_JSFLAGS_NAME);
   }
+
   // Run wrapper initialisation stuff
   jswInit();
 
@@ -889,6 +890,7 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
   if (pwd)
     jsiStatus |= JSIS_PASSWORD_PROTECTED;
   jsvUnLock(pwd);
+
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit(!autoLoad);
 
@@ -943,7 +945,6 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
       jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
   }
-
 
 #ifdef BANGLEJS // On Bangle.js if Storage is corrupt, show a recovery menu
   if (recoveryMode) // start recovery menu at end of init

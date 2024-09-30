@@ -154,7 +154,7 @@ DRESULT disk_write (
   if (count<=1)
     SD_WriteBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
   else
-    SD_WriteMultiBlocks(Memory_Offset, (uint32_t *)buff, Transfer_Length, count);
+    SD_WriteMultiBlocks(Memory_Offset, (uint32_t *)buff, 512, count);
   //NAND_Write(Memory_Offset, (uint32_t *)buff, Transfer_Length);
 
   return RES_OK;
