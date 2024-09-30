@@ -58,14 +58,18 @@
   */ 
 #define USBD_VID     0x0483 // STMicroelectronics VID (1155 decimal)
 #define USBD_LANGID_STRING     1033
-#define USBD_MANUFACTURER_STRING     "The Wand Company"
-#ifndef USB_PRODUCT_ID
-  #define USB_PRODUCT_ID   0xA4F1 // 0xA4F1 assigned by ST for the Pip-Boy (0xA4DF = Tricorder; ST's standard PID is 0x5740 / 22336 decimal)
-#endif
 #ifdef PIPBOY
   #define USBD_PRODUCT_STRING_FS     "Pip-Boy"
+  #define USBD_MANUFACTURER_STRING   "The Wand Company"
+  #ifndef USB_PRODUCT_ID
+    #define USB_PRODUCT_ID   0xA4F1 // 0xA4F1 assigned by ST for the Pip-Boy (0xA4DF = Tricorder)
+  #endif
 #else
   #define USBD_PRODUCT_STRING_FS     "Virtual ComPort"
+  #define USBD_MANUFACTURER_STRING   "Espruino"
+  #ifndef USB_PRODUCT_ID
+    #define USB_PRODUCT_ID   0x5740 // ST's standard PID is 0x5740 / 22336 decimal
+  #endif
 #endif
 #define USBD_SERIALNUMBER_STRING_FS     "00000000001A"
 #define USBD_CONFIGURATION_STRING_FS     "CDC Config"

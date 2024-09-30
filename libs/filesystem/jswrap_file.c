@@ -104,8 +104,10 @@ bool jsfsInit() {
     FRESULT res;
 
     if ((res = f_mount(&jsfsFAT, "", 1)) != FR_OK) {
-       jsfsReportError("Unable to mount media", res);
-       return false;
+#ifndef PIPBOY  // Don't throw an error for the Pip-Boy - just return false
+      jsfsReportError("Unable to mount media", res);
+#endif
+      return false;
     }
     fat_initialised = true;
   }
