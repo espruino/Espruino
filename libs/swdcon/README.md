@@ -36,9 +36,9 @@ to openocd interactive console via `telnet localhost 4444` (Or you can use e.g. 
 
 You can also run all commands directly when starting OpenOCD
 
-`openocd -d2  -f interface/cmsis-dap.cfg  -f target/nrf52.cfg -c "adapter speed 8000000" -c "init" -c "rtt setup 0x20000000 262144" -c "rtt start ; rtt server start 9090 0" -c "rtt polling_interval 30"`
+`openocd -d2  -f interface/cmsis-dap.cfg  -f target/nrf52.cfg -c "adapter speed 8000" -c "init" -c "rtt setup 0x20000000 262144" -c "rtt start ; rtt server start 9090 0" -c "rtt polling_interval 30"`
 
-Many good probes including RP2040 debugprobe support higher adapter speeds, for nrf52 chips maximum supported is 8MHz, if you have issues skip `-c "adapter speed 8000000"` or go lower to 4 or 2 MHz
+Many good probes including RP2040 debugprobe support higher adapter speeds, for nrf52 chips maximum supported is 8MHz, if you have issues skip `-c "adapter speed 8000"` or go lower to 4 or 2 MHz
 
 
 ## EspruinoTools
