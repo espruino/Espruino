@@ -1613,8 +1613,15 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             }
           }
         }
-
-        jsble_queue_pending(BLEP_TASK_DISCOVER_CCCD, cccd_handle);
+        if (!cccd_handle && bleFinalHandle) { // if we didn't find the CCCD and bleFinalHandle is set, try that too
+          ble_gattc_handle_range_t range;
+          range.start_handle = bleFinalHandle;
+          range.end_handle = bleFinalHandle;
+          bleFinalHandle = 0;
+          // This causes a BLE_GATTC_EVT_DESC_DISC_RSP to be received again when we get the response
+          sd_ble_gattc_descriptors_discover(p_ble_evt->evt.gattc_evt.conn_handle, &range);
+        } else
+          jsble_queue_pending(BLEP_TASK_DISCOVER_CCCD, cccd_handle);
       } break;
 
       case BLE_GATTC_EVT_READ_RSP: if (bleInTask(BLETASK_CHARACTERISTIC_READ)) { // ignore read responses if not in a READ task (ANCS/AMS/CTS/etc can create READ_RSP events)
@@ -3616,10 +3623,19 @@ void jsble_central_characteristicDescDiscover(uint16_t central_conn_handle, JsVa
 
   // start discovery for our single handle only
   uint16_t handle_value = (uint16_t)jsvObjectGetIntegerChild(characteristic, "handle_value");
-
+  uint16_t handle_decl = (uint16_t)jsvObjectGetIntegerChild(characteristic, "handle_decl");
+  if (handle_decl==0) handle_decl=handle_value;
+  // Work out before/after (we just assume decl is next to value)
+  uint16_t handle_next = MAX(handle_value,handle_decl)+1;
+  uint16_t handle_prev = MIN(handle_value,handle_decl)-1;
+  // First, check the handle immediately after (this seems to be the default)
   ble_gattc_handle_range_t range;
-  range.start_handle = handle_value+1;
-  range.end_handle = handle_value+1;
+  range.start_handle = handle_next;
+  range.end_handle = handle_next;
+  // in BLE_GATTC_EVT_DESC_DISC_RSP we check bleFinalHandle if we didn't find the handle above.
+  // Specifically in Adafruit Bluefruit the CCCD ends up *before* the characteristic
+  // and not after, so we'll try that one too just in case.
+  bleFinalHandle = handle_prev;
 
   uint32_t              err_code;
   // This causes a BLE_GATTC_EVT_DESC_DISC_RSP to be received when we get the response
