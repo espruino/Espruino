@@ -20,7 +20,7 @@
             First argument of operators is now dereferenced before parsing second argument (fix #2547)
             Ensure x%Infinity===x (fix #2542)
             Bangle.js: Remove meridian from default locale.time function (to match 'Languages' app)
-            nRF5x: When finding the CCCD for a Bluetooth Characteristic, now check before as well as after (fix Bluefruit NUS TX)
+            nRF5x: When finding the CCCD for a Bluetooth Characteristic, now check at +2 as well as +1 (fix Bluefruit NUS TX)
 
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)

@@ -3624,18 +3624,16 @@ void jsble_central_characteristicDescDiscover(uint16_t central_conn_handle, JsVa
   // start discovery for our single handle only
   uint16_t handle_value = (uint16_t)jsvObjectGetIntegerChild(characteristic, "handle_value");
   uint16_t handle_decl = (uint16_t)jsvObjectGetIntegerChild(characteristic, "handle_decl");
-  if (handle_decl==0) handle_decl=handle_value;
-  // Work out before/after (we just assume decl is next to value)
+  // Work out next handle (we just assume decl is next to value)
   uint16_t handle_next = MAX(handle_value,handle_decl)+1;
-  uint16_t handle_prev = MIN(handle_value,handle_decl)-1;
   // First, check the handle immediately after (this seems to be the default)
   ble_gattc_handle_range_t range;
   range.start_handle = handle_next;
   range.end_handle = handle_next;
   // in BLE_GATTC_EVT_DESC_DISC_RSP we check bleFinalHandle if we didn't find the handle above.
-  // Specifically in Adafruit Bluefruit the CCCD ends up *before* the characteristic
-  // and not after, so we'll try that one too just in case.
-  bleFinalHandle = handle_prev;
+  // Specifically in Adafruit Bluefruit the CCCD ends up at characteristic+2, not +1
+  // so try that one too just in case.
+  bleFinalHandle = handle_next+1;
 
   uint32_t              err_code;
   // This causes a BLE_GATTC_EVT_DESC_DISC_RSP to be received when we get the response
