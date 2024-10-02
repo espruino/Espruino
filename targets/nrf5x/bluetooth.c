@@ -3622,6 +3622,7 @@ void jsble_central_characteristicDescDiscover(uint16_t central_conn_handle, JsVa
   range.end_handle = handle_value+1;
 
   uint32_t              err_code;
+  // This causes a BLE_GATTC_EVT_DESC_DISC_RSP to be received when we get the response
   err_code = sd_ble_gattc_descriptors_discover(central_conn_handle, &range);
   JsVar *errStr = jsble_get_error_string(err_code);
   if (errStr) {

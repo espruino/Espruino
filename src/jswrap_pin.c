@@ -139,7 +139,7 @@ void jswrap_pin_write(
   "generate" : "jswrap_pin_writeAtTime",
   "params" : [
     ["value", "bool", "Whether to set output high (true/1) or low (false/0)"],
-    ["time", "float", "Time at which to write"]
+    ["time", "float", "Time at which to write (in seconds)"]
   ]
 }
 Sets the output state of the pin to the parameter given at the specified time.
