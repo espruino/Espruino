@@ -1849,8 +1849,6 @@ void jsiHandleChar(char ch) {
       inputState = IPS_NONE;
     }
   } else {
-    if (inputState == IPS_HAD_DLE && inputLineLength>0)
-      jsiAppendToInputLine(16); // handle case where we got DLE on its own - pass it through (needed as Gadgetbridge still sends DLE)
     inputState = IPS_NONE;
     if (ch == 8 || ch == 0x7F /*delete*/) {
       jsiHandleDelete(true /*backspace*/);
