@@ -22,6 +22,7 @@
             Bangle.js: Remove meridian from default locale.time function (to match 'Languages' app)
             nRF5x: When finding the CCCD for a Bluetooth Characteristic, now check at +2 as well as +1 (fix Bluefruit NUS TX)
             Jolt.js: Increase Storage area from 40kb to 400kb
+            nRF5x: Don't add BLE UART write events into the input buffer
 
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
