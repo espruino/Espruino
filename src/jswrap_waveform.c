@@ -32,6 +32,24 @@
 This class handles waveforms. In Espruino, a Waveform is a set of data that you
 want to input or output.
  */
+/*JSON{
+  "type" : "event",
+  "class" : "Waveform",
+  "name" : "finish",
+  "params" : [["buffer","JsVar","the last played buffer"]],
+  "ifdef" : "BANGLEJS"
+}
+Event emitted when playback has finished
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Waveform",
+  "name" : "buffer",
+  "params" : [["buffer","JsVar","the last played buffer (which now needs to be filled ready for playback)"]],
+  "ifdef" : "BANGLEJS"
+}
+When in double-buffered mode, this event is emitted when the `Waveform` class swaps to playing a new buffer - so you should then fill this current buffer up with new data.
+ */
 
 static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber, bool *is16Bit) {
   JsVar *buffer = jsvObjectGetChildIfExists(waveform, (bufferNumber==0)?"buffer":"buffer2");

@@ -1748,7 +1748,6 @@ void jsiHandleChar(char ch) {
   if (inputState == IPS_PACKET_TRANSFER_BYTE0) {
     if (jsvGetStringLength(inputLine)==0)
       jsiStatus &= ~JSIS_ECHO_OFF_FOR_LINE; // turn on echo (because it'd have been turned off by DLE on an empty line)
-    inputState = IPS_HAD_DLE;
     inputPacketLength = ((uint8_t)ch) << 8;
     inputState = IPS_PACKET_TRANSFER_BYTE1;
   } else if (inputState == IPS_PACKET_TRANSFER_BYTE1) {
