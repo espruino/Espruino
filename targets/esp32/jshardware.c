@@ -29,9 +29,10 @@
 #include "jshardware.h"
 #include "jshardwareUart.h"
 #include "jshardwareAnalog.h"
-#include "jshardwareTimer.h"
 #include "jshardwarePWM.h"
 #include "jshardwarePulse.h"
+#include "rtosutil.h"
+#include "driver/timer.h"
 
 #ifdef BLUETOOTH
 #include "BLE/esp32_gap_func.h"
@@ -637,17 +638,17 @@ void jshSetSystemTime(JsSysTime newTime) {
 }
 
 void jshUtilTimerDisable() {
-  disableTimer(0);
+  timer_disable_intr(TIMER_GROUP_0, 0);
 }
 
 void jshUtilTimerStart(JsSysTime period) {
   if(period <= 30){period = 30;}
-  startTimer(0,(uint64_t) period);
+  timer_Start(0, period);
 }
 
 void jshUtilTimerReschedule(JsSysTime period) {
   if(period <= 30){period = 30;}
-  rescheduleTimer(0,(uint64_t) period);
+  timer_Reschedule(0,(uint64_t)period);
 }
 
 //===== Miscellaneous =====
