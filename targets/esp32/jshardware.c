@@ -638,6 +638,7 @@ void jshSetSystemTime(JsSysTime newTime) {
 }
 
 void jshUtilTimerDisable() {
+  timer_pause(TIMER_GROUP_0, 0);
   timer_disable_intr(TIMER_GROUP_0, 0);
 }
 

@@ -172,7 +172,7 @@ void taskWaitNotify(){
 	#define TIMER_TX_UPDATE(TIMER_N) TIMERG0.hw_timer[TIMER_N].update.tn_update = 1
 	#define TIMER_ALARM_EN(TIMER_N) TIMERG0.hw_timer[TIMER_N].config.tn_alarm_en = 1;
 	#define TIMER_0_INT_CLR() TIMERG0.int_clr_timers.t0_int_clr = 1
-	#define TIMER_1_INT_CLR() TIMERG0.int_clr_timers.t1_int_clr = 1	
+	#define TIMER_1_INT_CLR() TIMERG0.int_clr_timers.t1_int_clr = 1
 #else
 	#define TIMER_FINE_ADJ   (1.4*(TIMER_BASE_CLK / TIMER_DIVIDER)/1000000) /*!< used to compensate alarm value */
 	#define TIMER_TX_UPDATE(TIMER_N) TIMERG0.hw_timer[TIMER_N].update = 1
@@ -260,6 +260,7 @@ int timer_Init(char *timerName,int group,int index,int isr_idx){
 }
 void timer_Start(int idx,uint64_t duration){
   timer_enable_intr(ESP32Timers[idx].group, ESP32Timers[idx].index);
+  if (duration < TIMER_FINE_ADJ+1) duration = TIMER_FINE_ADJ+1; // ensure we never have a negative duration!
   timer_set_alarm_value(ESP32Timers[idx].group, ESP32Timers[idx].index, duration - TIMER_FINE_ADJ);
 #if CONFIG_IDF_TARGET_ESP32
   TIMER_ALARM_EN(idx);
@@ -273,6 +274,7 @@ void timer_Start(int idx,uint64_t duration){
   timer_start(ESP32Timers[idx].group, ESP32Timers[idx].index);
 }
 void timer_Reschedule(int idx,uint64_t duration){
+  if (duration < TIMER_FINE_ADJ+1) duration = TIMER_FINE_ADJ+1; // ensure we never have a negative duration!
   timer_set_alarm_value(ESP32Timers[idx].group, ESP32Timers[idx].index, duration - TIMER_FINE_ADJ);
 #if CONFIG_IDF_TARGET_ESP32
     TIMER_ALARM_EN(idx);
