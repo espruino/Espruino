@@ -803,7 +803,9 @@ JsVar *jswrap_interface_setWatch(
       return 0;
     }
     isIRQ = jsvObjectGetBoolChild(repeatOrObject, "irq");
+#ifdef NRF5X
     isHighSpeed = jsvObjectGetBoolChild(repeatOrObject, "hispeed");
+#endif
     dataPin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(repeatOrObject, "data"));
   } else
     repeat = jsvGetBool(repeatOrObject);
