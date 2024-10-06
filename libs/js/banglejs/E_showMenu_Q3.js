@@ -133,19 +133,19 @@
         l = g.setFont("6x15").wrapString(title,r.w-pad);
       g.setFontAlign(-1,0).drawString(l.join("\n"), r.x+12, r.y+H/2);
     },
-    select : function(idx) {
+    select : function(idx, touch) {
       if (idx<0) return back&&back(); // title
       var item = menu[keys[idx]];
       Bangle.buzz(20);
-      if ("function" == typeof item) item();
+      if ("function" == typeof item) item(touch);
       else if ("object" == typeof item) {
-        // if a bool, just toggle it
         if ("number" == typeof item.value) {
           showSubMenu(item, keys[idx]);
         } else {
+          // if a bool, just toggle it
           if ("boolean"==typeof item.value)
             item.value=!item.value;
-          if (item.onchange) item.onchange(item.value);
+          if (item.onchange) item.onchange(item.value, touch);
           if (l.scroller.isActive()) l.scroller.drawItem(idx);
         }
       }
