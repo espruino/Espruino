@@ -38,11 +38,11 @@
           g.setColor(g.theme.fg2).setFont("12x20").setFontAlign(-1,0).drawString((item.format) ? item.format(v,1) : v, r.x+12, r.y+H/2);
           g.drawImage(/* 20x20 */atob(v==item.value?"FBSBAAH4AH/gHgeDgBww8MY/xmf+bH/jz/88//PP/zz/88f+Nn/mY/xjDww4AcHgeAf+AB+A":"FBSBAAH4AH/gHgeDgBwwAMYABmAAbAADwAA8AAPAADwAA8AANgAGYABjAAw4AcHgeAf+AB+A"), r.x+r.w-32, r.y+H/2-10);
         },
-        select : function(idx) {
+        select : function(idx, touch) {
           if (idx<0) return; // TITLE
           Bangle.buzz(20);
           item.value = item.min + idx*step;
-          if (item.onchange) item.onchange(item.value);
+          if (item.onchange) item.onchange(item.value, touch);
           scr.scroll = l.scroller.scroll; // set scroll to prev position
           show(); // redraw original menu
         }
@@ -133,11 +133,11 @@
         l = g.setFont("6x15").wrapString(title,r.w-pad);
       g.setFontAlign(-1,0).drawString(l.join("\n"), r.x+12, r.y+H/2);
     },
-    select : function(idx) {
+    select : function(idx, touch) {
       if (idx<0) return back&&back(); // title
       var item = menu[keys[idx]];
       Bangle.buzz(20);
-      if ("function" == typeof item) item(l);
+      if ("function" == typeof item) item(l, touch);
       else if ("object" == typeof item) {
         // if a bool, just toggle it
         if ("number" == typeof item.value) {
@@ -145,7 +145,7 @@
         } else {
           if ("boolean"==typeof item.value)
             item.value=!item.value;
-          if (item.onchange) item.onchange(item.value);
+          if (item.onchange) item.onchange(item.value, touch);
           if (l.scroller.isActive()) l.scroller.drawItem(idx);
         }
       }

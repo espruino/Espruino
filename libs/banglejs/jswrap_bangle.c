@@ -5904,6 +5904,8 @@ On Bangle.js there are a few additions over the standard `graphical_menu`:
     menu is removed
   * (Bangle.js 2) `scroll : int` - an integer specifying how much the initial
     menu should be scrolled by
+  * `onchange : function(value, touch) {}` - on Bangle.js 2 this function can
+    consider ~how~ the entry was touched. See `E.showScroller` for more info.
 * The object returned by `E.showMenu` contains:
   * (Bangle.js 2) `scroller` - the object returned by `E.showScroller` -
     `scroller.scroll` returns the amount the menu is currently scrolled by
@@ -6046,6 +6048,7 @@ Supply an object containing:
   draw : function(idx, rect) { ... }
   // a function to call when the item is selected, touch parameter is only relevant
   // for Bangle.js 2 and contains the coordinates touched inside the selected item
+  // as well as the type of the touch - see `Bangle.touch`.
   select : function(idx, touch) { ... }
   // optional function to be called when 'back' is tapped
   back : function() { ...}
