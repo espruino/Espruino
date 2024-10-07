@@ -73,7 +73,7 @@ Bangle.setUI({
     var i = YtoIdx(e.y);
     let yAbs = (e.y + rScroll - R.y);
     let yInElement = yAbs - i*options.h;
-    print("     ",idxToY(i));
+    //print("     ",idxToY(i));
     if (e.y>163 && idxToY(i)>163) { // 12px from bottom
       /* If the bottom-most item is only just showing and we
       tap on it, choose the one above instead */
@@ -81,7 +81,7 @@ Bangle.setUI({
       yInElement=options.h-1;
     }
     if ((menuScrollMin<0 || i>=0) && i<options.c){
-      console.log("Press ",e.y,i,yInElement);
+      //console.log("Press ",e.y,i,yInElement);
       options.select(i, {x:e.x, y:yInElement});
     }
   }
