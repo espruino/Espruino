@@ -24,11 +24,12 @@
             Jolt.js: Increase Storage area from 40kb to 400kb
             nRF5x: Don't add BLE UART write events into the input buffer
             ESP32: Timers are now turned off when requested - digitalPulse/soft pwm/writeAtTime more accurate
-            Bangle.js: Remove debug log messages from E.showScroller
+            Bangle.js2: Remove debug log messages from E.showScroller
             STM32F4: Update stm32f4xx_ll_usb to fix over-buffered USB CDC tx after being woken from deep sleep
             Waveform: Add 'npin' option to allow +/- output on two pins
             Waveform: Add ability to play directly from Storage
             Puck.js: Remove networking support from default build, add PUCKJS_NETWORK -> espruino_2vxx_puckjs_network.zip builds for those that need it
+            Bangle.js2: Pass the modified touch event on through both E.showScroller and E.showMenu (to enable more complex interaction with menus).
 
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)

@@ -82,7 +82,7 @@ Bangle.setUI({
     }
     if ((menuScrollMin<0 || i>=0) && i<options.c){
       //console.log("Press ",e.y,i,yInElement);
-      options.select(i, {x:e.x, y:yInElement});
+      options.select(i, {x:e.x, y:yInElement, type:e.type});
     }
   }
 });
