@@ -139,13 +139,13 @@
       Bangle.buzz(20);
       if ("function" == typeof item) item(l, touch);
       else if ("object" == typeof item) {
-        // if a bool, just toggle it
         if ("number" == typeof item.value) {
           showSubMenu(item, keys[idx]);
         } else {
+          // if a bool, just toggle it
           if ("boolean"==typeof item.value)
             item.value=!item.value;
-          if (item.onchange) item.onchange(item.value, touch);
+          if (item.onchange) item.onchange(item.value, l, touch);
           if (l.scroller.isActive()) l.scroller.drawItem(idx);
         }
       }
