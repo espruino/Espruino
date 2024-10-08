@@ -38,11 +38,11 @@
           g.setColor(g.theme.fg2).setFont("12x20").setFontAlign(-1,0).drawString((item.format) ? item.format(v,1) : v, r.x+12, r.y+H/2);
           g.drawImage(/* 20x20 */atob(v==item.value?"FBSBAAH4AH/gHgeDgBww8MY/xmf+bH/jz/88//PP/zz/88f+Nn/mY/xjDww4AcHgeAf+AB+A":"FBSBAAH4AH/gHgeDgBwwAMYABmAAbAADwAA8AAPAADwAA8AANgAGYABjAAw4AcHgeAf+AB+A"), r.x+r.w-32, r.y+H/2-10);
         },
-        select : function(idx, touch) {
+        select : function(idx) {
           if (idx<0) return; // TITLE
           Bangle.buzz(20);
           item.value = item.min + idx*step;
-          if (item.onchange) item.onchange(item.value, touch);
+          if (item.onchange) item.onchange(item.value);
           scr.scroll = l.scroller.scroll; // set scroll to prev position
           show(); // redraw original menu
         }
