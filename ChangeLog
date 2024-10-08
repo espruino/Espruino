@@ -28,6 +28,7 @@
             STM32F4: Update stm32f4xx_ll_usb to fix over-buffered USB CDC tx after being woken from deep sleep
             Waveform: Add 'npin' option to allow +/- output on two pins
             Waveform: Add ability to play directly from Storage
+            Puck.js: Remove networking support from default build, add PUCKJS_NETWORK -> espruino_2vxx_puckjs_network.zip builds for those that need it
 
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)

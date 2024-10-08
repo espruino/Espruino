@@ -17,6 +17,9 @@ import pinutils;
 
 info = {
  'name' : "Puck.js",
+ # See:
+ # PUCKJS_MINIMAL - features removed to give maximum flash storage area
+ # PUCKJS_NETWORK - networking features added (as of 2v25 networking is removed from Puck.js by default)
  'link' :  [ "https://espruino.com/Puck.js" ],
  'espruino_page_link' : 'Puck.js',
  'default_console' : "EV_SERIAL1",
@@ -30,7 +33,7 @@ info = {
    'optimizeflags' : '-Os',
    'libraries' : [
      'BLUETOOTH',
-     'NET',
+     #'NET',
      'GRAPHICS',
      'CRYPTO','SHA256',#'SHA512',
      'AES',

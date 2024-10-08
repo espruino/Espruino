@@ -41,13 +41,17 @@ espruino_#v##_wifi.bin
      We'd strongly suggest that you use the Web IDE to flash this.
 
 espruino_#v##_puckjs.zip
-   - The firmware image for Espruino Puck.js Devices
+   - The firmware image for Espruino Puck.js Devices (no networking)
      See http://www.espruino.com/Puck.js#firmware-updates for more information
      
 espruino_#v##_puckjs_minimal.zip
    - The firmware image for Espruino Puck.js Devices
        Networking, graphics and crypto are removed which frees up roughly 60kB extra 
        Flash memory which can be used for Storage, bringing the total to 98kB.
+     See http://www.espruino.com/Puck.js#firmware-updates for more information     
+     
+espruino_#v##_puckjs_network.zip
+   - The firmware image for Espruino Puck.js Devices (with networking, but not JIT or Graphics)
      See http://www.espruino.com/Puck.js#firmware-updates for more information     
 
 espruino_#v##_pixljs.zip
