@@ -40,7 +40,7 @@ volatile int utilTimerOffset;
 static void jstUtilTimerSetupBuffer(UtilTimerTask *task) {
   task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.currentBuffer);
   if (jsvIsFlatString(task->data.buffer.var)) {
-    task->data.buffer.charIdx = sizeof(JsVar);
+    task->data.buffer.charIdx = sizeof(JsVar); // point to the start of the flat string (after the current var)
     task->data.buffer.endIdx =  (unsigned short)(sizeof(JsVar) + jsvGetCharactersInVar(task->data.buffer.var));
   } else {
     task->data.buffer.charIdx = 0;
@@ -80,6 +80,8 @@ static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
 }
 
 static inline unsigned char *jstUtilTimerInterruptHandlerByte(UtilTimerTask *task) {
+  if (jsvIsNativeString(task->data.buffer.var))
+    return &((unsigned char*)task->data.buffer.var->varData.nativeStr.ptr)[task->data.buffer.charIdx];
   return (unsigned char*)&task->data.buffer.var->varData.str[task->data.buffer.charIdx];
 }
 #endif

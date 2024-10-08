@@ -159,8 +159,8 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_waveform_constructor",
   "params" : [
-    ["samples","int32","The number of samples"],
-    ["options","JsVar","Optional options struct `{ doubleBuffer:bool, bits : 8/16 }` (see below)"]
+    ["samples","JsVar","The number of samples to allocate as an integer, *or* an arraybuffer (2v25+) containing the samples"],
+    ["options","JsVar","[optional] options struct `{ doubleBuffer:bool, bits : 8/16 }` (see below)"]
   ],
   "return" : ["JsVar","An Waveform object"]
 }
@@ -172,18 +172,46 @@ Options can contain:
 
 ```JS
 {
-  doubleBuffer : bool // whether to allocate two buffers or not (default false)
-  bits : 8/16         // the amount of bits to use (default 8).
+  doubleBuffer : bool   // whether to allocate two buffers or not (default false)
+  bits         : 8/16   // the amount of bits to use (default 8).
+}
 ```
 
 When double-buffered, a 'buffer' event will be emitted each time a buffer is
 finished with (the argument is that buffer). When the recording stops, a
 'finish' event will be emitted (with the first argument as the buffer).
 
+```JS
+// Output a sine wave
+var w = new Waveform(1000);
+for (var i=0;i<1000;i++) w.buffer[i]=128+120*Math.sin(i/2);
+analogWrite(H0, 0.5, {freq:80000}); // set up H0 to output an analog value by PWM
+w.on("finish", () => print("Done!"))
+w.startOutput(H0,8000); // start playback
+
+// On 2v25, from Storage
+var f = require("Storage").read("sound.pcm");
+var w = new Waveform(E.toArrayBuffer(f));
+w.on("finish", () => print("Done!"))
+w.startOutput(H0,8000); // start playback
+```
+
+See https://www.espruino.com/Waveform for more examples.
  */
-JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
-  if (samples<=0) {
-    jsExceptionHere(JSET_ERROR, "Samples must be greater than 0");
+JsVar *jswrap_waveform_constructor(JsVar *_samples, JsVar *options) {
+  int samples = 0;
+  JsVar *arrayBuffer = NULL;
+  if (jsvIsIntegerish(_samples)) {
+    samples = jsvGetInteger(_samples);
+    if (samples<=0) {
+      jsExceptionHere(JSET_ERROR, "Samples must be greater than 0");
+      return 0;
+    }
+  } else if (jsvIsArrayBuffer(_samples)) {
+    arrayBuffer = jsvLockAgain(_samples);
+    samples = jsvGetLength(arrayBuffer);
+  } else {
+    jsExceptionHere(JSET_ERROR, "'samples' should be a integer or ArrayBuffer");
     return 0;
   }
 
@@ -197,17 +225,15 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
       jsExceptionHere(JSET_ERROR, "Invalid number of bits");
       return 0;
     } else if (bits==16) use16bit = true;
-
   } else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
   }
 
   JsVarDataArrayBufferViewType bufferType = use16bit ? ARRAYBUFFERVIEW_UINT16 : ARRAYBUFFERVIEW_UINT8;
-  JsVar *arrayBuffer = jsvNewTypedArray(bufferType, samples);
+  if (!arrayBuffer) arrayBuffer = jsvNewTypedArray(bufferType, samples);
   JsVar *arrayBuffer2 = 0;
   if (doubleBuffer) arrayBuffer2 = jsvNewTypedArray(bufferType, samples);
   JsVar *waveform = jspNewObject(0, "Waveform");
-
 
   if (!waveform || !arrayBuffer || (doubleBuffer && !arrayBuffer2)) {
     jsvUnLock3(waveform,arrayBuffer,arrayBuffer2); // out of memory
@@ -317,7 +343,7 @@ void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVa
   "params" : [
     ["output","pin","The pin to output on"],
     ["freq","float","The frequency to output each sample at"],
-    ["options","JsVar","Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"]
+    ["options","JsVar","[optional] options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"]
   ]
 }
 Will start inputting the waveform on the given pin that supports analog. If not
