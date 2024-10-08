@@ -149,7 +149,7 @@ void jstUtilTimerInterruptHandler() {
         int t = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
         while (t!=utilTimerTasksHead) {
           if (UET_IS_BUFFER_WRITE_EVENT(utilTimerTasks[t].type) &&
-              utilTimerTasks[t].data.buffer.pinFunction == task->data.buffer.pinFunction)
+              utilTimerTasks[t].data.buffer.pin == task->data.buffer.pin)
             sum += ((int)(unsigned int)utilTimerTasks[t].data.buffer.currentValue) - 32768;
           t = (t+1) & (UTILTIMERTASK_TASKS-1);
         }
@@ -157,10 +157,16 @@ void jstUtilTimerInterruptHandler() {
         if (sum<0) sum = 0;
         if (sum>65535) sum = 65535;
         // and output...
-        jshSetOutputValue(task->data.buffer.pinFunction, sum);
+        if (task->data.buffer.npin == PIN_UNDEFINED) {
+          jshSetOutputValue(jshGetCurrentPinFunction(task->data.buffer.pin), sum);
+        } else {
+          sum -= 32768;
+          jshSetOutputValue(jshGetCurrentPinFunction(task->data.buffer.pin), (sum>0) ? sum*2 : 0);
+          jshSetOutputValue(jshGetCurrentPinFunction(task->data.buffer.npin), (sum<0) ? -sum*2 : 0);
+        }
         break;
       }
-#endif
+#endif // SAVE_ON_FLASH
 #ifdef ESPR_USE_STEPPER_TIMER
       case UET_STEP: {
         if (task->data.step.steps > 0) {
@@ -181,7 +187,7 @@ void jstUtilTimerInterruptHandler() {
         }
         break;
       }
-#endif
+#endif // ESPR_USE_STEPPER_TIMER
       case UET_WAKEUP: // we've already done our job by waking the device up
       default: break;
       }
@@ -577,7 +583,7 @@ void jstClearWakeUp() {
 
 #ifndef SAVE_ON_FLASH
 
-bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type) {
+bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, Pin npin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type) {
   assert(jsvIsString(currentData));
   assert(jsvIsUndefined(nextData) || jsvIsString(nextData));
   if (!jshIsPinValid(pin)) return false;
@@ -586,8 +592,8 @@ bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *curre
   task.time = (int)(startTime + period);
   task.type = type;
   if (UET_IS_BUFFER_WRITE_EVENT(type)) {
-    task.data.buffer.pinFunction = jshGetCurrentPinFunction(pin);
-    if (!task.data.buffer.pinFunction) return false; // no pin function found...
+    task.data.buffer.pin = pin;
+    task.data.buffer.npin = npin;
   } else if (UET_IS_BUFFER_READ_EVENT(type)) {
 #ifndef LINUX
     if (pinInfo[pin].analog == JSH_ANALOG_NONE) return false; // no analog...

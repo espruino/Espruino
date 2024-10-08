@@ -160,7 +160,7 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
   "generate" : "jswrap_waveform_constructor",
   "params" : [
     ["samples","int32","The number of samples"],
-    ["options","JsVar","Optional options struct `{doubleBuffer:bool, bits : 8/16}` where: `doubleBuffer` is whether to allocate two buffers or not (default false), and bits is the amount of bits to use (default 8)."]
+    ["options","JsVar","Optional options struct `{ doubleBuffer:bool, bits : 8/16 }` (see below)"]
   ],
   "return" : ["JsVar","An Waveform object"]
 }
@@ -168,9 +168,18 @@ Create a waveform class. This allows high speed input and output of waveforms.
 It has an internal variable called `buffer` (as well as `buffer2` when
 double-buffered - see `options` below) which contains the data to input/output.
 
+Options can contain:
+
+```JS
+{
+  doubleBuffer : bool // whether to allocate two buffers or not (default false)
+  bits : 8/16         // the amount of bits to use (default 8).
+```
+
 When double-buffered, a 'buffer' event will be emitted each time a buffer is
 finished with (the argument is that buffer). When the recording stops, a
 'finish' event will be emitted (with the first argument as the buffer).
+
  */
 JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
   if (samples<=0) {
@@ -227,11 +236,13 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
 
   JsSysTime startTime = 0;
   bool repeat = false;
+  Pin npin = PIN_UNDEFINED;
   if (jsvIsObject(options)) {
     JsVarFloat t = jsvObjectGetFloatChild(options, "time");
     if (isfinite(t) && t>0)
       startTime = jshGetTimeFromMilliseconds(t*1000) - jshGetSystemTime();
     repeat = jsvObjectGetBoolChild(options, "repeat");
+    npin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(options, "npin"));
   } else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
   }
@@ -250,7 +261,7 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
 
 
   // And finally set it up
-  if (!jstStartSignal(startTime, jshGetTimeFromMilliseconds(1000.0 / freq), pin, buffer, repeat?(buffer2?buffer2:buffer):0, eventType))
+  if (!jstStartSignal(startTime, jshGetTimeFromMilliseconds(1000.0 / freq), pin, npin, buffer, repeat?(buffer2?buffer2:buffer):0, eventType))
     jsWarn("Unable to schedule a timer");
   jsvUnLock2(buffer,buffer2);
 
@@ -273,13 +284,26 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
   "params" : [
     ["output","pin","The pin to output on"],
     ["freq","float","The frequency to output each sample at"],
-    ["options","JsVar","Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"]
+    ["options","JsVar","[optional] options struct `{time:float, repeat:bool, npin:Pin}` (see below)"]
   ]
 }
 Will start outputting the waveform on the given pin - the pin must have
 previously been initialised with analogWrite. If not repeating, it'll emit a
 `finish` event when it is done.
- */
+
+```
+{
+  time : float,        // the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate)
+  repeat : bool,       // whether to repeat the given sample
+  npin : Pin,          // If specified, the waveform is output across two pins (see below)
+}
+```
+
+Using `npin` allows you to split the Waveform output between two pins and hence avoid
+any DC bias (or need to capacitor), for instance you could attach a speaker to `H0` and
+`H1` on Jolt.js. When the value in the waveform was at 50% both outputs would be 0,
+below 50% the signal would be on `npin` with `pin` as 0, and above 50% it would be on `pin` with `npin` as 0.
+*/
 void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options) {
   jswrap_waveform_start(waveform, pin, freq, options, true/*write*/);
 }
