@@ -1,4 +1,4 @@
-g = Graphics.createArrayBuffer(128,64,1);
+g = Graphics.createArrayBuffer(128,64,1,{msb:false});
 g.drawString("Hello");
 var before = g.buffer.toString(); 
 g.scroll(0,5);

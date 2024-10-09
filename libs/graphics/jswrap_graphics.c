@@ -601,7 +601,7 @@ static bool isValidBPP(int bpp) {
       "An object of other options. `{ zigzag : true/false(default), vertical_byte : true/false(default), msb : true/false(default), color_order: 'rgb'(default),'bgr',etc }`",
       "`zigzag` = whether to alternate the direction of scanlines for rows",
       "`vertical_byte` = whether to align bits in a byte vertically or not",
-      "`msb` = when bits<8, store pixels most significant bit first, when bits>8, store most significant byte first",
+      "`msb` = when bits<8, store pixels most significant bit first, when bits>8, store most significant byte first (as of 2v25, msb:true is default)",
       "`interleavex` = Pixels 0,2,4,etc are from the top half of the image, 1,3,5,etc from the bottom half. Used for P3 LED panels.",
       "`color_order` = re-orders the colour values that are supplied via setColor",
       "`buffer` = if specified, createArrayBuffer won't create a new buffer but will use the given one"
@@ -630,15 +630,18 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   JsGraphics gfx;
   gfx.data.type = JSGRAPHICSTYPE_ARRAYBUFFER;
   graphicsStructInit(&gfx,width,height,bpp);
-  gfx.data.flags = JSGRAPHICSFLAGS_NONE;
+  gfx.data.flags = JSGRAPHICSFLAGS_ARRAYBUFFER_MSB;
   gfx.graphicsVar = parent;
 
   JsVar *optionalBuffer = 0;
   if (jsvIsObject(options)) {
+    JsVar *v;
     if (jsvObjectGetBoolChild(options, "zigzag"))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG);
-    if (jsvObjectGetBoolChild(options, "msb"))
-      gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_MSB);
+    if ((v = jsvObjectGetChildIfExists(options, "msb"))) {
+      if (!jsvGetBoolAndUnLock(v))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags & ~JSGRAPHICSFLAGS_ARRAYBUFFER_MSB);
+    }
     if (jsvObjectGetBoolChild(options, "interleavex"))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_INTERLEAVEX);
     if (jsvObjectGetBoolChild(options, "vertical_byte")) {

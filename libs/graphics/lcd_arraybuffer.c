@@ -16,6 +16,7 @@
 #include "lcd_arraybuffer.h"
 #include "jsvar.h"
 #include "jsvariterator.h"
+#include "jsinteractive.h"
 
 #ifndef SAVE_ON_FLASH
 #ifndef ESPRUINOBOARD
@@ -261,31 +262,149 @@ void lcdScroll_ArrayBuffer_flat(JsGraphics *gfx, int xdir, int ydir, int x1, int
 }
 
 #ifdef GRAPHICS_FAST_PATHS
+// 1 bit
 void lcdSetPixel_ArrayBuffer_flat1(JsGraphics *gfx, int x, int y, unsigned int col) {
   int p = x + y*gfx->data.width;
-  if (col) ((uint8_t*)gfx->backendData)[p>>3] |= (uint8_t)(0x80 >> (p&7));
-  else ((uint8_t*)gfx->backendData)[p>>3] &= (uint8_t)(0xFF7F >> (p&7));
+  uint8_t *byte = &((uint8_t*)gfx->backendData)[p>>3];
+  if (col) *byte |= (uint8_t)(0x80 >> (p&7));
+  else *byte &= (uint8_t)(0xFF7F >> (p&7));
 }
-
+unsigned int lcdGetPixel_ArrayBuffer_flat1(struct JsGraphics *gfx, int x, int y) {
+  int p = x + y*gfx->data.width;
+  uint8_t byte = ((uint8_t*)gfx->backendData)[p>>3];
+  return (byte >> (7-(p&7))) & 1;
+}
 void lcdFillRect_ArrayBuffer_flat1(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  if (x2-x1 < 8) return lcdFillRect_ArrayBuffer_flat(gfx,x1,y2,x2,y2,col); // not worth trying to work around this
+  uint8_t *pixels = (uint8_t *)gfx->backendData;
+  // build up 8 pixels in 1 byte for fast writes
+  col &= 1;
+  uint8_t colByte = (uint8_t)col | (uint8_t)(col<<1);
+  colByte |= colByte<<2;
+  colByte |= colByte<<4;
+  // do each row separately
   for (int y=y1;y<=y2;y++) {
-    int p = x1 + y*gfx->data.width;
-    for (int x=x1;x<=x2;x++) {
-      if (col) ((uint8_t*)gfx->backendData)[p>>3] |= (uint8_t)(0x80 >> (p&7));
-      else ((uint8_t*)gfx->backendData)[p>>3] &= (uint8_t)(0xFF7F >> (p&7));
-      p++;
+    int py = y*gfx->data.width;
+    int p = x1 + py; // pixel index (not bit)
+    int p2 = x2 + py; // pixel index (not bit)
+    uint8_t *byte = &pixels[p>>2];
+    // start off unaligned
+    if (p&7) {
+      int amt = (8-(p&3));
+      int mask = ~(0xFF << amt);
+      *byte = (*byte & ~mask) | (colByte & mask);
+      byte++;
+      p = (p&~7)+8;
+    }
+    // now we're aligned, just write bytes
+    while (p+7<=p2) {
+      *(byte++) = colByte;
+      p+=8;
+    }
+    // finish off unaligned
+    if (p<=p2) {
+      int amt = 1+p2-p;
+      int mask = ~(0xFF >> amt);
+      *byte = (*byte & ~mask) | (colByte & mask);
     }
   }
 }
-
+// 2 bit
+void lcdSetPixel_ArrayBuffer_flat2(JsGraphics *gfx, int x, int y, unsigned int col) {
+  int p = (x + y*gfx->data.width); // pixel index (not bit)
+  int b = (p&3) << 1; // bit
+  uint8_t *byte = &((uint8_t*)gfx->backendData)[p>>2];
+  *byte = (*byte & (0xFF3F>>b)) | ((col&3)<<(6-b));
+}
+unsigned int lcdGetPixel_ArrayBuffer_flat2(struct JsGraphics *gfx, int x, int y) {
+  int p = x + y*gfx->data.width;  // pixel index (not bit)
+  int b = (p&3) << 1; // bit
+  uint8_t *byte = &((uint8_t*)gfx->backendData)[p>>2];
+  return (*byte >> (6-b)) & 3;
+}
+void lcdFillRect_ArrayBuffer_flat2(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  if (x2-x1 < 4) return lcdFillRect_ArrayBuffer_flat(gfx,x1,y2,x2,y2,col); // not worth trying to work around this
+  uint8_t *pixels = (uint8_t *)gfx->backendData;
+  // build up 4 pixels in 1 byte for fast writes
+  col &= 3;
+  uint8_t colByte = (uint8_t)col | (uint8_t)(col<<2);
+  colByte |= colByte<<4;
+  // do each row separately
+  for (int y=y1;y<=y2;y++) {
+    int py = y*gfx->data.width;
+    int p = x1 + py; // pixel index (not bit)
+    int p2 = x2 + py; // pixel index (not bit)
+    uint8_t *byte = &pixels[p>>2];
+    // start off unaligned
+    if (p&3) {
+      int amt = (4-(p&3));
+      int mask = ~(0xFF << (amt<<1));
+      *byte = (*byte & ~mask) | (colByte & mask);
+      byte++;
+      p = (p&~3)+4;
+    }
+    // now we're aligned, just write bytes
+    while (p+3<=p2) {
+      *(byte++) = colByte;
+      p+=4;
+    }
+    // finish off unaligned
+    if (p<=p2) {
+      int amt = 1+p2-p;
+      int mask = ~(0xFF >> (amt<<1));
+      *byte = (*byte & ~mask) | (colByte & mask);
+    }
+  }
+}
+// 4 bit
+void lcdSetPixel_ArrayBuffer_flat4(JsGraphics *gfx, int x, int y, unsigned int col) {
+  int p = (x + y*gfx->data.width); // pixel index (not bit)
+  int b = (p&1) << 2; // bit
+  uint8_t *byte = &((uint8_t*)gfx->backendData)[p>>1];
+  *byte = (*byte & (0xFF0F>>b)) | ((col&15)<<(4-b));
+}
+unsigned int lcdGetPixel_ArrayBuffer_flat4(struct JsGraphics *gfx, int x, int y) {
+  int p = x + y*gfx->data.width;  // pixel index (not bit)
+  int b = (p&1) << 2; // bit
+  uint8_t *byte = &((uint8_t*)gfx->backendData)[p>>1];
+  return (*byte >> (4-b)) & 15;
+}
+void lcdFillRect_ArrayBuffer_flat4(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  if (x2-x1 < 2) return lcdFillRect_ArrayBuffer_flat(gfx,x1,y2,x2,y2,col); // not worth trying to work around this
+  uint8_t *pixels = (uint8_t *)gfx->backendData;
+  // build up 4 pixels in 1 byte for fast writes
+  col &= 15;
+  uint8_t colByte = (uint8_t)col | (uint8_t)(col<<4);
+  // do each row separately
+  for (int y=y1;y<=y2;y++) {
+    int py = y*gfx->data.width;
+    int p = x1 + py; // pixel index (not bit)
+    int p2 = x2 + py; // pixel index (not bit)
+    uint8_t *byte = &pixels[p>>1];
+    // start off unaligned
+    if (p&1) {
+      *byte = (*byte & 0xF0) | col;
+      byte++;
+      p++;
+    }
+    // now we're aligned, just write bytes
+    while (p+1<=p2) {
+      *(byte++) = colByte;
+      p+=2;
+    }
+    // finish off unaligned
+    if (p<=p2) {
+      *byte = (*byte & 0x0F) | (col<<4);
+    }
+  }
+}
+// 8 bit
 void lcdSetPixel_ArrayBuffer_flat8(JsGraphics *gfx, int x, int y, unsigned int col) {
   ((uint8_t*)gfx->backendData)[x + y*gfx->data.width] = (uint8_t)col;
 }
-
 unsigned int lcdGetPixel_ArrayBuffer_flat8(struct JsGraphics *gfx, int x, int y) {
   return ((uint8_t*)gfx->backendData)[x + y*gfx->data.width];
 }
-
 void lcdFillRect_ArrayBuffer_flat8(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   for (int y=y1;y<=y2;y++) {
     uint8_t *p = &((uint8_t*)gfx->backendData)[x1 + y*gfx->data.width];
@@ -341,8 +460,22 @@ void lcdSetCallbacks_ArrayBuffer(JsGraphics *gfx) {
         !(gfx->data.flags & JSGRAPHICSFLAGS_NONLINEAR)
         ) { // super fast path for 1 bit
       gfx->setPixel = lcdSetPixel_ArrayBuffer_flat1;
-      gfx->getPixel = lcdGetPixel_ArrayBuffer_flat;
+      gfx->getPixel = lcdGetPixel_ArrayBuffer_flat1;
       gfx->fillRect = lcdFillRect_ArrayBuffer_flat1;
+    } else if (gfx->data.bpp==2 &&
+        (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) &&
+        !(gfx->data.flags & JSGRAPHICSFLAGS_NONLINEAR)
+        ) { // super fast path for 1 bit
+      gfx->setPixel = lcdSetPixel_ArrayBuffer_flat2;
+      gfx->getPixel = lcdGetPixel_ArrayBuffer_flat2;
+      gfx->fillRect = lcdFillRect_ArrayBuffer_flat2;
+    } else if (gfx->data.bpp==4 &&
+        (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) &&
+        !(gfx->data.flags & JSGRAPHICSFLAGS_NONLINEAR)
+        ) { // super fast path for 1 bit
+      gfx->setPixel = lcdSetPixel_ArrayBuffer_flat4;
+      gfx->getPixel = lcdGetPixel_ArrayBuffer_flat4;
+      gfx->fillRect = lcdFillRect_ArrayBuffer_flat4;
     } else if (gfx->data.bpp==8 &&
                !(gfx->data.flags & JSGRAPHICSFLAGS_NONLINEAR)
         ) { // super fast path for 8 bits
