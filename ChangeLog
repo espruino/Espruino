@@ -35,6 +35,7 @@
             Add Math.randInt: not in spec, but very useful for embedded
             Fix debugging of switch statements (fix #2562)
             Network: enable parsing of 'https' URL and TLS flag even even TLS not built in (#2410)
+            removeListener while executing events no longer stops subsequent listeners from executing (#2151)
 
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)

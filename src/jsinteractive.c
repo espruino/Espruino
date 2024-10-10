@@ -1949,9 +1949,9 @@ static NO_INLINE bool jsiExecuteEventCallbackInner(JsVar *thisVar, JsVar *callba
     jsvObjectIteratorNew(&it, callbackNoNames);
     while (ok && jsvObjectIteratorHasValue(&it) && !(jsiStatus & JSIS_EVENTEMITTER_STOP)) {
       JsVar *child = jsvObjectIteratorGetValue(&it); // name already skipped
+      jsvObjectIteratorNext(&it);
       ok &= jsiExecuteEventCallbackInner(thisVar, child, argCount, argPtr);
       jsvUnLock(child);
-      jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
   } else if (jsvIsFunction(callbackNoNames)) {
