@@ -397,7 +397,6 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
     jsError("Expecting Options to be an Object but it was %t", options);
     return 0;
   }
-#ifdef USE_TLS
   if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
     JsVar *protocol = jsvObjectGetChildIfExists(options, "protocol");
     if (protocol && jsvIsStringEqual(protocol, "https:")) {
@@ -405,7 +404,6 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
     }
     jsvUnLock(protocol);
   }
-#endif
 
   // Make sure we have a function as callback, or nothing (which is OK too)
   if (!jsvIsUndefined(callback) && !jsvIsFunction(callback)) {
