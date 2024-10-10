@@ -343,9 +343,28 @@ double jswrap_math_pow(double x, double y) {
   "type" : "staticmethod",
   "class" : "Math",
   "name" : "random",
-  "generate_full" : "(JsVarFloat)rand() / (JsVarFloat)RAND_MAX",
-  "return" : ["float","A random number between 0 and 1"]
+  "generate_full" : "(JsVarFloat)rand() / (JsVarFloat)((unsigned)RAND_MAX+1)",
+  "return" : ["float","A random number X, where `0 <= X < 1`"]
 }*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Math",
+  "name" : "randInt",
+  "params" : [
+    ["range","int","How big a random number do we want"]
+  ],
+  "generate_full" : "(range>0) ? (rand() % range) : rand()",
+  "return" : ["int","A random integer X, where `0 <= X < range`"]
+}
+(Added in 2v25) Returns a random integer value, `>=0`, less than `range`.
+
+This is created using `modulo` of a 31 bit integer, so as `val` gets larger (24+ bits)
+the values produced will be less randomly distributed, and no values above `0x7FFFFFFF` will ever be returned.
+
+If `val==undefined` or `val<=0` the original 32 bit random number will be returned as-is.
+
+**Note:** this is not part of the JS spec, but is included in Espruino as it makes a lot of sense on embedded targets
+*/
 /*JSON{
   "type" : "staticmethod",
   "class" : "Math",

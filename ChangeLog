@@ -31,6 +31,8 @@
             Puck.js: Remove networking support from default build, add PUCKJS_NETWORK -> espruino_2vxx_puckjs_network.zip builds for those that need it
             Bangle.js: Added fastpaths for 2 and 4 bit arraybuffers, and massively improve 1 bit fills
             Graphic.createArrayBuffer msb now defaults to true as it's rare to ever need msb:false
+            Ensure Math.random() can never be `1` as per spec (was unlikely before, but possible)
+            Add Math.randInt: not in spec, but very useful for embedded
 
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
