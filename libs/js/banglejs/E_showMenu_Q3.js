@@ -137,7 +137,7 @@
       if (idx<0) return back&&back(); // title
       var item = menu[keys[idx]];
       Bangle.buzz(20);
-      if ("function" == typeof item) item(l);
+      if ("function" == typeof item) item();
       else if ("object" == typeof item) {
         // if a bool, just toggle it
         if ("number" == typeof item.value) {
