@@ -1995,6 +1995,7 @@ NO_INLINE JsVar *jspeUnaryExpression() {
 
 // Get the precedence of a BinaryExpression - or return 0 if not one
 unsigned int jspeGetBinaryExpressionPrecedence(int op) {
+  // OPT: 184 bytes for this - ordering doesn't help. 2x 4 bit tables for chars and tokens should be faster and smaller
   switch (op) {
   case LEX_NULLISH:
   case LEX_OROR: return 1; break;
