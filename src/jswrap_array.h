@@ -27,6 +27,8 @@ JsVar *jswrap_array_shift(JsVar *parent);
 JsVarInt jswrap_array_unshift(JsVar *parent, JsVar *elements);
 JsVar *jswrap_array_slice(JsVar *parent, JsVarInt start, JsVar *endVar);
 JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsVar *elements);
+/// jswrap_array_splice but howMany is an int
+JsVar *jswrap_array_splice_i(JsVar *parent, JsVarInt index, JsVarInt howMany, JsVar *elements);
 void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar);
 JsVar *jswrap_array_filter(JsVar *parent, JsVar *funcVar, JsVar *thisVar);
 JsVar *jswrap_array_find(JsVar *parent, JsVar *funcVar);
