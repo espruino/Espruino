@@ -19,6 +19,7 @@
 #include "jswrapper.h"
 #include "jswrap_stream.h"
 #include "jswrap_functions.h"
+#include "jswrap_array.h" // for splice
 #ifdef __MINGW32__
 #include "malloc.h" // needed for alloca
 #endif//__MINGW32__
@@ -889,23 +890,22 @@ void jswrap_object_on_X(JsVar *parent, JsVar *event, JsVar *listener, bool addFi
   JsVar *eventList = jsvFindChildFromVar(parent, eventName, true);
   jsvUnLock(eventName);
   JsVar *eventListeners = jsvSkipName(eventList);
+  // if no array, add it
   if (jsvIsUndefined(eventListeners)) {
-    // just add the one handler on its own
-    jsvSetValueOfName(eventList, listener);
-  } else {
-    // we already have an array and we just add to it
-    // OR it's not an array but we need to make it an array
-    JsVar *arr = jsvNewEmptyArray();
-    if (addFirst) jsvArrayPush(arr, listener);
-    if (jsvIsArray(eventListeners))
-      jsvArrayPushAll(arr, eventListeners, false);
-    else
-      jsvArrayPush(arr, eventListeners);
-    if (!addFirst) jsvArrayPush(arr, listener);
-    jsvSetValueOfName(eventList, arr);
-    jsvUnLock(arr);
+    eventListeners = jsvNewEmptyArray();
+    jsvSetValueOfName(eventList, eventListeners);
   }
-  jsvUnLock2(eventListeners, eventList);
+  jsvUnLock(eventList);
+  if (!eventListeners) return; // out of memory
+  // now have an array and we just add to it
+  if (addFirst) { // add it first?
+    JsVar *elements = jsvNewArray(&listener, 1);
+    jswrap_array_unshift(eventListeners, elements);
+    jsvUnLock(elements);
+  } else { // or add it at the end
+    jsvArrayPush(eventListeners, listener);
+  }
+  jsvUnLock(eventListeners);
   /* Special case if we're a data listener and data has already arrived then
    * we queue an event immediately. */
   if (jsvIsStringEqual(event, "data")) {
@@ -1033,16 +1033,12 @@ void jswrap_object_removeListener(JsVar *parent, JsVar *event, JsVar *callback) 
     jsvUnLock(eventName);
     JsVar *eventList = jsvSkipName(eventListName);
     if (eventList) {
-      if (eventList == callback) {
-        // there's no array, it was a single item
-        jsvRemoveChild(parent, eventListName);
-      } else if (jsvIsArray(eventList)) {
+      if (jsvIsArray(eventList)) {
         // it's an array, search for the index
         JsVar *idx = jsvGetIndexOf(eventList, callback, true);
-        if (idx) {
+        if (idx)
           jsvRemoveChildAndUnLock(eventList, idx);
-        }
-      }
+      } // otherwise something is wrong, but lets just ignore it
       jsvUnLock(eventList);
     }
     jsvUnLock(eventListName);
