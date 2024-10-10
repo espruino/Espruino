@@ -16,10 +16,10 @@
 import pinutils;
 
 info = {
- 'name' : "Puck.js Minimal",
-  # This is a build for Puck.js that has networking, graphics and crypto removed
-  # It frees up roughly 60kB extra Flash memory which can be used for Storage,
-  # bringing the total to 98kB.
+ 'name' : "Puck.js Networking",
+  # This is a build for Puck.js that has networking added
+  # but JIT and Graphics functionality removed
+  # (As of 2v25 Puck.js networking is removed by default)
  'boardname' : "PUCKJS",
  'link' :  [ "https://espruino.com/Puck.js" ],
  'espruino_page_link' : 'Puck.js',
@@ -29,13 +29,20 @@ info = {
  'default_console_baudrate' : "9600",
  'variables' : 2630, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_puckjs_minimal.hex',
+ 'binary_name' : 'espruino_%v_puckjs_network.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
      'BLUETOOTH',
+     'NET',
+     #'GRAPHICS',
+     'CRYPTO','SHA256',#'SHA512',
+     'AES',
      'NFC',
-     'NEOPIXEL'
+     'NEOPIXEL',
+     #'JIT'
+     #'FILESYSTEM'
+     #'TLS'
    ],
    'makefile' : [
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
@@ -73,10 +80,10 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((118 - 24) * 4096), # Bootloader takes pages 120-127, FS takes 118-119
+    'address' : ((118 - 10) * 4096), # Bootloader takes pages 120-127, FS takes 118-119
     'page_size' : 4096,
-    'pages' : 24, # 96kB
-    'flash_available' : 512 - ((31 + 8 + 2 + 24)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 24. Each page is 4 kb.
+    'pages' : 10,
+    'flash_available' : 512 - ((31 + 8 + 2 + 10)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
   },
 };
 

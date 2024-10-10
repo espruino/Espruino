@@ -557,7 +557,6 @@ endif
   targets/esp32/jshardwareAnalog.c \
   targets/esp32/jshardwarePWM.c \
   targets/esp32/rtosutil.c \
-  targets/esp32/jshardwareTimer.c \
   targets/esp32/jshardwarePulse.c
   ifdef RTOS
    DEFINES += -DRTOS

@@ -494,14 +494,14 @@ void jsvStringIteratorAppendString(JsvStringIterator *it, JsVar *str, size_t sta
 // --------------------------------------------------------------------------------------------
 
 void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
-  assert(jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj) || jsvIsGetterOrSetter(obj));
-  it->var = jsvLockSafe(jsvGetFirstChild(obj));
+  assert(!obj || jsvHasChildren(obj));
+  it->var = jsvHasChildren(obj) ? jsvLockSafe(jsvGetFirstChild(obj)) : 0;
 }
 
 /// Clone the iterator
 void jsvObjectIteratorClone(JsvObjectIterator *dstit, JsvObjectIterator *it) {
   *dstit = *it;
-  if (dstit->var) jsvLockAgain(dstit->var);
+  jsvLockAgainSafe(dstit->var);
 }
 
 /// Move to next item

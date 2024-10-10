@@ -24,6 +24,7 @@ info = {
 # 'default_console_rx' : "D8",
 # 'default_console_baudrate' : "9600",
  'variables' : 12000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'io_buffer_size' : 512, # How big is the input buffer (in 4 byte words). Default on nRF52 is 256 
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_joltjs.hex',
  'build' : {
@@ -74,10 +75,10 @@ chip = {
   'adc' : 1,
   'dac' : 0,
   'saved_code' : {
-    'address' : ((246 - 10) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
+    'address' : ((246 - 100) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
     'page_size' : 4096,
-    'pages' : 10,
-    'flash_available' : 1024 - ((31 + 8 + 2 + 10)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 10. Each page is 4 kb.
+    'pages' : 100,
+    'flash_available' : 1024 - ((31 + 8 + 2 + 100)*4) # Softdevice uses 31 pages of flash, bootloader 8, FS 2, code 100. Each page is 4 kb.
   },
 };
 

@@ -13,7 +13,6 @@
 #include "jstimer.h"
 #include "jshardwareUart.h"
 #include "jshardwareAnalog.h"
-#include "jshardwareTimer.h"
 #include "jshardwarePWM.h"
 #include "jshardwarePulse.h"
 #include "jshardwareSpi.h"

@@ -32,6 +32,24 @@
 This class handles waveforms. In Espruino, a Waveform is a set of data that you
 want to input or output.
  */
+/*JSON{
+  "type" : "event",
+  "class" : "Waveform",
+  "name" : "finish",
+  "params" : [["buffer","JsVar","the last played buffer"]],
+  "ifdef" : "BANGLEJS"
+}
+Event emitted when playback has finished
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "Waveform",
+  "name" : "buffer",
+  "params" : [["buffer","JsVar","the last played buffer (which now needs to be filled ready for playback)"]],
+  "ifdef" : "BANGLEJS"
+}
+When in double-buffered mode, this event is emitted when the `Waveform` class swaps to playing a new buffer - so you should then fill this current buffer up with new data.
+ */
 
 static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber, bool *is16Bit) {
   JsVar *buffer = jsvObjectGetChildIfExists(waveform, (bufferNumber==0)?"buffer":"buffer2");
@@ -141,8 +159,8 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_waveform_constructor",
   "params" : [
-    ["samples","int32","The number of samples"],
-    ["options","JsVar","Optional options struct `{doubleBuffer:bool, bits : 8/16}` where: `doubleBuffer` is whether to allocate two buffers or not (default false), and bits is the amount of bits to use (default 8)."]
+    ["samples","JsVar","The number of samples to allocate as an integer, *or* an arraybuffer (2v25+) containing the samples"],
+    ["options","JsVar","[optional] options struct `{ doubleBuffer:bool, bits : 8/16 }` (see below)"]
   ],
   "return" : ["JsVar","An Waveform object"]
 }
@@ -150,13 +168,50 @@ Create a waveform class. This allows high speed input and output of waveforms.
 It has an internal variable called `buffer` (as well as `buffer2` when
 double-buffered - see `options` below) which contains the data to input/output.
 
+Options can contain:
+
+```JS
+{
+  doubleBuffer : bool   // whether to allocate two buffers or not (default false)
+  bits         : 8/16   // the amount of bits to use (default 8).
+}
+```
+
 When double-buffered, a 'buffer' event will be emitted each time a buffer is
 finished with (the argument is that buffer). When the recording stops, a
 'finish' event will be emitted (with the first argument as the buffer).
+
+```JS
+// Output a sine wave
+var w = new Waveform(1000);
+for (var i=0;i<1000;i++) w.buffer[i]=128+120*Math.sin(i/2);
+analogWrite(H0, 0.5, {freq:80000}); // set up H0 to output an analog value by PWM
+w.on("finish", () => print("Done!"))
+w.startOutput(H0,8000); // start playback
+
+// On 2v25, from Storage
+var f = require("Storage").read("sound.pcm");
+var w = new Waveform(E.toArrayBuffer(f));
+w.on("finish", () => print("Done!"))
+w.startOutput(H0,8000); // start playback
+```
+
+See https://www.espruino.com/Waveform for more examples.
  */
-JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
-  if (samples<=0) {
-    jsExceptionHere(JSET_ERROR, "Samples must be greater than 0");
+JsVar *jswrap_waveform_constructor(JsVar *_samples, JsVar *options) {
+  int samples = 0;
+  JsVar *arrayBuffer = NULL;
+  if (jsvIsIntegerish(_samples)) {
+    samples = jsvGetInteger(_samples);
+    if (samples<=0) {
+      jsExceptionHere(JSET_ERROR, "Samples must be greater than 0");
+      return 0;
+    }
+  } else if (jsvIsArrayBuffer(_samples)) {
+    arrayBuffer = jsvLockAgain(_samples);
+    samples = jsvGetLength(arrayBuffer);
+  } else {
+    jsExceptionHere(JSET_ERROR, "'samples' should be a integer or ArrayBuffer");
     return 0;
   }
 
@@ -170,17 +225,15 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
       jsExceptionHere(JSET_ERROR, "Invalid number of bits");
       return 0;
     } else if (bits==16) use16bit = true;
-
   } else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
   }
 
   JsVarDataArrayBufferViewType bufferType = use16bit ? ARRAYBUFFERVIEW_UINT16 : ARRAYBUFFERVIEW_UINT8;
-  JsVar *arrayBuffer = jsvNewTypedArray(bufferType, samples);
+  if (!arrayBuffer) arrayBuffer = jsvNewTypedArray(bufferType, samples);
   JsVar *arrayBuffer2 = 0;
   if (doubleBuffer) arrayBuffer2 = jsvNewTypedArray(bufferType, samples);
   JsVar *waveform = jspNewObject(0, "Waveform");
-
 
   if (!waveform || !arrayBuffer || (doubleBuffer && !arrayBuffer2)) {
     jsvUnLock3(waveform,arrayBuffer,arrayBuffer2); // out of memory
@@ -209,11 +262,13 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
 
   JsSysTime startTime = 0;
   bool repeat = false;
+  Pin npin = PIN_UNDEFINED;
   if (jsvIsObject(options)) {
     JsVarFloat t = jsvObjectGetFloatChild(options, "time");
     if (isfinite(t) && t>0)
       startTime = jshGetTimeFromMilliseconds(t*1000) - jshGetSystemTime();
     repeat = jsvObjectGetBoolChild(options, "repeat");
+    npin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(options, "npin"));
   } else if (!jsvIsUndefined(options)) {
     jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
   }
@@ -232,7 +287,7 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
 
 
   // And finally set it up
-  if (!jstStartSignal(startTime, jshGetTimeFromMilliseconds(1000.0 / freq), pin, buffer, repeat?(buffer2?buffer2:buffer):0, eventType))
+  if (!jstStartSignal(startTime, jshGetTimeFromMilliseconds(1000.0 / freq), pin, npin, buffer, repeat?(buffer2?buffer2:buffer):0, eventType))
     jsWarn("Unable to schedule a timer");
   jsvUnLock2(buffer,buffer2);
 
@@ -255,13 +310,26 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
   "params" : [
     ["output","pin","The pin to output on"],
     ["freq","float","The frequency to output each sample at"],
-    ["options","JsVar","Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"]
+    ["options","JsVar","[optional] options struct `{time:float, repeat:bool, npin:Pin}` (see below)"]
   ]
 }
 Will start outputting the waveform on the given pin - the pin must have
 previously been initialised with analogWrite. If not repeating, it'll emit a
 `finish` event when it is done.
- */
+
+```
+{
+  time : float,        // the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate)
+  repeat : bool,       // whether to repeat the given sample
+  npin : Pin,          // If specified, the waveform is output across two pins (see below)
+}
+```
+
+Using `npin` allows you to split the Waveform output between two pins and hence avoid
+any DC bias (or need to capacitor), for instance you could attach a speaker to `H0` and
+`H1` on Jolt.js. When the value in the waveform was at 50% both outputs would be 0,
+below 50% the signal would be on `npin` with `pin` as 0, and above 50% it would be on `pin` with `npin` as 0.
+*/
 void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options) {
   jswrap_waveform_start(waveform, pin, freq, options, true/*write*/);
 }
@@ -275,7 +343,7 @@ void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVa
   "params" : [
     ["output","pin","The pin to output on"],
     ["freq","float","The frequency to output each sample at"],
-    ["options","JsVar","Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"]
+    ["options","JsVar","[optional] options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"]
   ]
 }
 Will start inputting the waveform on the given pin that supports analog. If not
