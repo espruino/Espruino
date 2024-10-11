@@ -103,12 +103,12 @@ function getDocumentation(object) {
  * @param {string} type - The basic type.
  * @returns {string} The TypeScript type.
  */
-function getBasicType(type) {
+function getBasicType(type, isParam) {
   if (!type) return "any";
   if (["int", "float", "int32"].includes(type)) return "number";
   if (type == "pin") return "Pin";
   if (type == "String") return "string";
-  if (type == "bool") return "boolean";
+  if (type == "bool") return isParam ? "ShortBoolean" : "boolean";
   if (type == "JsVarArray") return "any";
   if (type == "JsVar") return "any";
   if (type == "Array") return "any[]";
@@ -138,7 +138,7 @@ function getArguments(method) {
         param[0] +
         (optional ? "?" : "") +
         ": " +
-        getBasicType(param[1]) +
+        getBasicType(param[1], 1) +
         (rest ? "[]" : "")
       );
     });
