@@ -518,7 +518,7 @@ JsVar *jswrap_array_every(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
     ["initialValue","JsVar","if specified, the initial value to pass to the function"]
   ],
   "return" : ["JsVar","The value returned by the last function called"],
-  "typescript" : "reduce(callback: (previousValue: T, currentValue: T, currentIndex: number, array: T[]) => T, initialValue?: T): T;"
+  "typescript" : "reduce<O>(callback: (previousValue: O, currentValue: T, currentIndex: number, array: T[]) => O, initialValue?: O): O;"
 }
 Execute `previousValue=initialValue` and then `previousValue =
 callback(previousValue, currentValue, index, array)` for each element in the
