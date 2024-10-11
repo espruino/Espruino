@@ -587,6 +587,7 @@ JshI2CInfo i2cHRM;
 #define PRESSURE_I2C &i2cPressure
 #define HRM_I2C &i2cHRM
 #define GPS_UART EV_SERIAL1
+#define GPS_CASIC 1 // handle decoding of 'CASIC' packets from the GPS
 #define HEARTRATE 1
 
 bool pressureBMP280Enabled = false;
@@ -4658,7 +4659,7 @@ bool jswrap_banglejs_idle() {
 bool jswrap_banglejs_gps_character(char ch) {
 #ifdef GPS_PIN_RX
   // if too many chars, roll over since it's probably because we skipped a newline
-  // or messed the message length
+  // or messed up the message length
   if (gpsLineLength >= sizeof(gpsLine)) {
 #ifdef GPS_UBLOX
     if (inComingUbloxProtocol == UBLOX_PROTOCOL_UBX &&
@@ -4689,6 +4690,21 @@ bool jswrap_banglejs_gps_character(char ch) {
   }
 #endif // GPS_UBLOX
   gpsLine[gpsLineLength++] = ch;
+#ifdef GPS_CASIC
+  if (gpsLineLength>2 && gpsLine[0]==0xBA && gpsLine[1]==0xCE) {
+    if (gpsLineLength<4) return true; // not enough data for length
+    int len = gpsLine[2] | (gpsLine[3] << 8);
+    // 4 class, 5 = msg
+    // 4 byte checksum on end
+    if (gpsLineLength>=len+10) { // packet end!
+      memcpy(gpsLastLine, gpsLine, gpsLineLength);
+      gpsLastLineLength = gpsLineLength;
+      bangleTasks |= JSBT_GPS_DATA_LINE;
+      gpsClearLine();
+    }
+    return true;
+  }
+#endif
   if (
 #ifdef GPS_UBLOX
       inComingUbloxProtocol == UBLOX_PROTOCOL_NMEA &&
@@ -4707,8 +4723,20 @@ bool jswrap_banglejs_gps_character(char ch) {
     if (gpsLineLength > 2 && gpsLineLength <= NMEA_MAX_SIZE && gpsLine[gpsLineLength - 2] =='\r') {
       gpsLine[gpsLineLength - 2] = 0; // just overwriting \r\n
       gpsLine[gpsLineLength - 1] = 0;
-      if (nmea_decode(&gpsFix, (char *)gpsLine))
+      if (nmea_decode(&gpsFix, (char *)gpsLine)) {
         bangleTasks |= JSBT_GPS_DATA;
+#ifdef BANGLEJS_Q3
+        if (gpsFix.packetCount == 1) { // first packet
+          // https://github.com/espruino/Espruino/issues/2354 - on newer Bangle.js, speed/time may not be reported
+          // as there's no RMC packet by default. If we detect this in 1st packet send a command to fix it
+          if ((gpsFix.packetsParsed & NMEA_RMC)==0) {
+            jshTransmitPrintf(GPS_UART,"$PCAS03,1,0,0,1,1,0,0,0*03\r\n");
+          }
+        }
+#endif
+        // reset what packets we think we got
+        gpsFix.packetsParsed = NMEA_NONE;
+      }
       if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
         // we were already waiting to post data, so lets not overwrite it
         bangleTasks |= JSBT_GPS_DATA_OVERFLOW;
