@@ -1,0 +1,210 @@
+--- SEGGER_RTT.h	2024-08-28 15:41:15.273606346 +0200
++++ SEGGER_RTT_custom.h	2024-08-08 17:02:06.286067463 +0200
+@@ -53,7 +53,9 @@
+ #ifndef SEGGER_RTT_H
+ #define SEGGER_RTT_H
+ 
++#ifndef CUSTOM_RTT
+ #include "SEGGER_RTT_Conf.h"
++#endif
+ 
+ /*********************************************************************
+ *
+@@ -413,6 +415,7 @@
+ 
+ #define      SEGGER_RTT_HASDATA_UP(n)    (((SEGGER_RTT_BUFFER_UP*)((uintptr_t)&_SEGGER_RTT.aUp[n] + SEGGER_RTT_UNCACHED_OFF))->WrOff - ((SEGGER_RTT_BUFFER_UP*)((uintptr_t)&_SEGGER_RTT.aUp[n] + SEGGER_RTT_UNCACHED_OFF))->RdOff)   // Access uncached to make sure we see changes made by the J-Link side and all of our changes go into HW directly
+ 
++#ifndef CUSTOM_RTT
+ /*********************************************************************
+ *
+ *       RTT "Terminal" API functions
+@@ -430,7 +433,7 @@
+ */
+ int SEGGER_RTT_printf(unsigned BufferIndex, const char * sFormat, ...);
+ int SEGGER_RTT_vprintf(unsigned BufferIndex, const char * sFormat, va_list * pParamList);
+-
++#endif // CUSTOM_RTT
+ #ifdef __cplusplus
+   }
+ #endif
+--- SEGGER_RTT.c	2024-08-28 15:41:12.163607554 +0200
++++ SEGGER_RTT_custom.c	2024-08-08 17:02:06.286067463 +0200
+@@ -1,3 +1,18 @@
++/*
++ customized and cut down (=#ifdef-ed out) minimal version of SEGGER RTT 	
++ Version V7.94a (2023-12-06)
++ https://github.com/adfernandes/segger-rtt/tree/0022265202e4f6e7a44cf0e15e447d75b573c371
++
++ - no default allocation of channel 0 with name "Terminal"
++ - customizable "SEGGER RTT" header in memory (to possibly coexist with full version)
++ - removed some Terminal static deslarations + related Terminal methods
++ - INIT() macro used in most calls is empty, now needs SEGGER_RTT_Init() to work
++ - no extra _Conf.h header included
++*/
++#define CUSTOM_RTT // used for ifdefs with changes
++#ifndef CUSTOM_RTT_HEADER_BACKWARDS
++#define CUSTOM_RTT_HEADER_BACKWARDS "TTR REGGES"
++#endif
+ /*********************************************************************
+ *                    SEGGER Microcontroller GmbH                     *
+ *                        The Embedded Experts                        *
+@@ -68,9 +83,11 @@
+ 
+ ----------------------------------------------------------------------
+ */
+-
++#ifdef CUSTOM_RTT
++#include "SEGGER_RTT_custom.h"
++#else
+ #include "SEGGER_RTT.h"
+-
++#endif
+ #include <string.h>                 // for memcpy
+ 
+ /*********************************************************************
+@@ -244,7 +261,10 @@
+ **********************************************************************
+ */
+ 
++#ifndef CUSTOM_RTT
+ static const unsigned char _aTerminalId[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
++#endif
++
+ 
+ /*********************************************************************
+ *
+@@ -259,11 +279,22 @@
+ #if SEGGER_RTT_CPU_CACHE_LINE_SIZE
+   #if ((defined __GNUC__) || (defined __clang__))
+     SEGGER_RTT_CB _SEGGER_RTT                                                             __attribute__ ((aligned (SEGGER_RTT_CPU_CACHE_LINE_SIZE)));
+-    static char   _acUpBuffer  [SEGGER_RTT__ROUND_UP_2_CACHE_LINE_SIZE(BUFFER_SIZE_UP)]   __attribute__ ((aligned (SEGGER_RTT_CPU_CACHE_LINE_SIZE)));
+-    static char   _acDownBuffer[SEGGER_RTT__ROUND_UP_2_CACHE_LINE_SIZE(BUFFER_SIZE_DOWN)] __attribute__ ((aligned (SEGGER_RTT_CPU_CACHE_LINE_SIZE)));
+   #elif (defined __ICCARM__)
+     #pragma data_alignment=SEGGER_RTT_CPU_CACHE_LINE_SIZE
+     SEGGER_RTT_CB _SEGGER_RTT;
++  #else
++    #error "Don't know how to place _SEGGER_RTT, _acUpBuffer, _acDownBuffer cache-line aligned"
++  #endif
++#else
++  SEGGER_RTT_PUT_CB_SECTION(SEGGER_RTT_CB_ALIGN(SEGGER_RTT_CB _SEGGER_RTT));
++#endif
++
++#ifndef CUSTOM_RTT
++#if SEGGER_RTT_CPU_CACHE_LINE_SIZE
++  #if ((defined __GNUC__) || (defined __clang__))
++    static char   _acUpBuffer  [SEGGER_RTT__ROUND_UP_2_CACHE_LINE_SIZE(BUFFER_SIZE_UP)]   __attribute__ ((aligned (SEGGER_RTT_CPU_CACHE_LINE_SIZE)));
++    static char   _acDownBuffer[SEGGER_RTT__ROUND_UP_2_CACHE_LINE_SIZE(BUFFER_SIZE_DOWN)] __attribute__ ((aligned (SEGGER_RTT_CPU_CACHE_LINE_SIZE)));
++  #elif (defined __ICCARM__)
+     #pragma data_alignment=SEGGER_RTT_CPU_CACHE_LINE_SIZE
+     static char   _acUpBuffer  [SEGGER_RTT__ROUND_UP_2_CACHE_LINE_SIZE(BUFFER_SIZE_UP)];
+     #pragma data_alignment=SEGGER_RTT_CPU_CACHE_LINE_SIZE
+@@ -272,13 +303,12 @@
+     #error "Don't know how to place _SEGGER_RTT, _acUpBuffer, _acDownBuffer cache-line aligned"
+   #endif
+ #else
+-  SEGGER_RTT_PUT_CB_SECTION(SEGGER_RTT_CB_ALIGN(SEGGER_RTT_CB _SEGGER_RTT));
+   SEGGER_RTT_PUT_BUFFER_SECTION(SEGGER_RTT_BUFFER_ALIGN(static char _acUpBuffer  [BUFFER_SIZE_UP]));
+   SEGGER_RTT_PUT_BUFFER_SECTION(SEGGER_RTT_BUFFER_ALIGN(static char _acDownBuffer[BUFFER_SIZE_DOWN]));
+ #endif
+ 
+ static unsigned char _ActiveTerminal;
+-
++#endif
+ /*********************************************************************
+ *
+ *       Static functions
+@@ -297,6 +327,9 @@
+ *    (1) May only be called via INIT() to avoid overriding settings.
+ *        The only exception is SEGGER_RTT_Init(), to make an intentional override possible.
+ */
++#ifdef CUSTOM_RTT
++#define INIT()
++#else
+   #define INIT()                                                                             \
+     do {                                                                                     \
+       volatile SEGGER_RTT_CB* pRTTCBInit;                                                    \
+@@ -305,10 +338,11 @@
+         _DoInit();                                                                           \
+       }                                                                                      \
+     } while (0)
++#endif
+ 
+ static void _DoInit(void) {
+   volatile SEGGER_RTT_CB* p;   // Volatile to make sure that compiler cannot change the order of accesses to the control block
+-  static const char _aInitStr[] = "\0\0\0\0\0\0TTR REGGES";  // Init complete ID string to make sure that things also work if RTT is linked to a no-init memory area
++  static const char _aInitStr[] = "\0\0\0\0\0\0"CUSTOM_RTT_HEADER_BACKWARDS;  // Init complete ID string to make sure that things also work if RTT is linked to a no-init memory area
+   unsigned i;
+   //
+   // Initialize control block
+@@ -317,6 +351,7 @@
+   memset((SEGGER_RTT_CB*)p, 0, sizeof(_SEGGER_RTT));         // Make sure that the RTT CB is always zero initialized.
+   p->MaxNumUpBuffers    = SEGGER_RTT_MAX_NUM_UP_BUFFERS;
+   p->MaxNumDownBuffers  = SEGGER_RTT_MAX_NUM_DOWN_BUFFERS;
++#ifndef CUSTOM_RTT
+   //
+   // Initialize up buffer 0
+   //
+@@ -335,6 +370,7 @@
+   p->aDown[0].RdOff         = 0u;
+   p->aDown[0].WrOff         = 0u;
+   p->aDown[0].Flags         = SEGGER_RTT_MODE_DEFAULT;
++#endif
+   //
+   // Finish initialization of the control block.
+   // Copy Id string backwards to make sure that "SEGGER RTT" is not found in initializer memory (usually flash),
+@@ -483,6 +519,7 @@
+   }
+ }
+ 
++#ifndef CUSTOM_RTT
+ /*********************************************************************
+ *
+ *       _PostTerminalSwitch()
+@@ -503,6 +540,7 @@
+   ac[1] = _aTerminalId[TerminalId];  // Caller made already sure that TerminalId does not exceed our terminal limit
+   _WriteBlocking(pRing, (const char*)ac, 2u);
+ }
++#endif
+ 
+ /*********************************************************************
+ *
+@@ -1672,7 +1710,11 @@
+   if (BufferIndex < SEGGER_RTT_MAX_NUM_UP_BUFFERS) {
+     SEGGER_RTT_LOCK();
+     pUp = &pRTTCB->aUp[BufferIndex];
++#ifdef CUSTOM_RTT
++    if (1) {
++#else
+     if (BufferIndex) {
++#endif      
+       pUp->sName        = sName;
+       pUp->pBuffer      = (char*)pBuffer;
+       pUp->SizeOfBuffer = BufferSize;
+@@ -1724,7 +1766,11 @@
+   if (BufferIndex < SEGGER_RTT_MAX_NUM_DOWN_BUFFERS) {
+     SEGGER_RTT_LOCK();
+     pDown = &pRTTCB->aDown[BufferIndex];
++#ifdef CUSTOM_RTT
++    if (1) {
++#else
+     if (BufferIndex) {
++#endif      
+       pDown->sName        = sName;
+       pDown->pBuffer      = (char*)pBuffer;
+       pDown->SizeOfBuffer = BufferSize;
+@@ -1896,6 +1942,7 @@
+   _DoInit();
+ }
+ 
++#ifndef CUSTOM_RTT
+ /*********************************************************************
+ *
+ *       SEGGER_RTT_SetTerminal
+@@ -2036,6 +2083,7 @@
+   }
+   return Status;
+ }
++#endif // CUSTOM_RTT
+ 
+ /*********************************************************************
+ *

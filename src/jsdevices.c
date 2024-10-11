@@ -95,6 +95,10 @@ void jshInitDevices() {
   assert(EV_USBSERIAL>=EV_SERIAL_DEVICE_STATE_START);
   jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_NONE; // USB serial should have its own flow control
 #endif
+#ifdef USE_SWDCON
+  assert(EV_SWDCON>=EV_SERIAL_DEVICE_STATE_START);
+  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_SWDCON)] = SDS_FLOW_CONTROL_XON_XOFF;
+#endif
 #ifdef BLUETOOTH
   jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)] = SDS_FLOW_CONTROL_XON_XOFF;
 #endif
@@ -112,6 +116,9 @@ void jshResetDevices() {
   for (int i=0;i<JSHSERIALDEVICESTATUSES;i++) {
 #ifdef USB
     if (i==TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)) break; // don't update USB status
+#endif
+#ifdef USE_SWDCON
+    if (i==TO_SERIAL_DEVICE_STATE(EV_SWDCON)) break; // don't update SWDCON status
 #endif
 #ifdef BLUETOOTH
     if (i==TO_SERIAL_DEVICE_STATE(EV_BLUETOOTH)) break; // don't update Bluetooth status
@@ -234,6 +241,9 @@ void jshTransmit(
   if (txHeadNext==txTail) {
     jsiSetBusy(BUSY_TRANSMIT, true);
     bool wasConsoleLimbo = device==EV_LIMBO && jsiGetConsoleDevice()==EV_LIMBO;
+#ifdef USE_SWDCON
+    int loopCount=0; // for recovery inside swdconBusyIdle
+#endif
     while (txHeadNext==txTail) {
       // wait for send to finish as buffer is about to overflow
       if (jshIsInInterrupt()) {
@@ -242,6 +252,11 @@ void jshTransmit(
         return;
       }
       jshBusyIdle();
+#ifdef USE_SWDCON
+      loopCount++;
+      extern bool swdconBusyIdle(int);
+      if (device == EV_SWDCON) swdconBusyIdle(loopCount);
+#endif
 #ifdef USB
       // just in case USB was unplugged while we were waiting!
       if (!jshIsUSBSERIALConnected()) jshTransmitClearDevice(EV_USBSERIAL);
@@ -583,11 +598,13 @@ int jshGetEventsUsed() {
   return spaceUsed;
 }
 
+int jshGetIOCharEventsFree() {
+  int spaceLeft = IOBUFFERMASK+1-jshGetEventsUsed();
+  return spaceLeft*IOEVENT_MAXCHARS-4; // be sensible - leave a little spare
+}
+
 bool jshHasEventSpaceForChars(int n) {
-  int spacesNeeded = 4 + (n/IOEVENT_MAXCHARS); // be sensible - leave a little spare
-  int spaceUsed = jshGetEventsUsed();
-  int spaceLeft = IOBUFFERMASK+1-spaceUsed;
-  return spaceLeft > spacesNeeded;
+  return jshGetIOCharEventsFree() > n;
 }
 
 // ----------------------------------------------------------------------------
@@ -613,6 +630,9 @@ const char *jshGetDeviceString(
 #endif
 #ifdef USE_TELNET
   case EV_TELNET: return "Telnet";
+#endif
+#ifdef USE_SWDCON
+  case EV_SWDCON: return "SWDCON";
 #endif
 #ifdef USE_TERMINAL
   case EV_TERMINAL: return "Terminal";
@@ -687,6 +707,9 @@ IOEventFlags jshFromDeviceString(
 #endif
   }
   else if (device[0]=='S') {
+#ifdef USE_SWDCON
+     if (strcmp(&device[1], "WDCON")==0) return EV_SWDCON;
+#endif
 #if ESPR_USART_COUNT>0
   if (device[1]=='e' && device[2]=='r' && device[3]=='i' && device[4]=='a' && device[5]=='l' &&
       device[6]>='1' && (device[6]-'1')<ESPR_USART_COUNT &&
