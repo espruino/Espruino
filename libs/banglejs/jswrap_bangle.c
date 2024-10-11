@@ -4707,8 +4707,20 @@ bool jswrap_banglejs_gps_character(char ch) {
     if (gpsLineLength > 2 && gpsLineLength <= NMEA_MAX_SIZE && gpsLine[gpsLineLength - 2] =='\r') {
       gpsLine[gpsLineLength - 2] = 0; // just overwriting \r\n
       gpsLine[gpsLineLength - 1] = 0;
-      if (nmea_decode(&gpsFix, (char *)gpsLine))
+      if (nmea_decode(&gpsFix, (char *)gpsLine)) {
         bangleTasks |= JSBT_GPS_DATA;
+#ifdef BANGLEJS_Q3
+        if (gpsFix.packetCount == 1) { // first packet
+          // https://github.com/espruino/Espruino/issues/2354 - on newer Bangle.js, speed/time may not be reported
+          // as there's no RMC packet by default. If we detect this in 1st packet send a command to fix it
+          if ((gpsFix.packetsParsed & NMEA_RMC)==0) {
+            jshTransmitPrintf(GPS_UART,"$PCAS03,1,0,0,1,1,0,0,0*03\r\n");
+          }
+        }
+#endif
+        // reset what packets we think we got
+        gpsFix.packetsParsed = NMEA_NONE;
+      }
       if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
         // we were already waiting to post data, so lets not overwrite it
         bangleTasks |= JSBT_GPS_DATA_OVERFLOW;
