@@ -967,13 +967,15 @@ typedef enum {
   JSBF_LOCKED        = 1<<18,
   JSBF_HRM_INSTANT_LISTENER = 1<<19,
   JSBF_LCD_DBL_REFRESH = 1<<20, ///< On Bangle.js 2, toggle extcomin twice for each poll interval (avoids screen 'flashing' behaviour off axis)
+  JSBF_MANUAL_WATCHDOG = 1<<21, ///< If set, we don't kick the WDT from the interrupt, so users can call it from their JS to ensure JS always stays running
 #ifdef BANGLEJS_Q3
   /** On some Bangle.js 2, BTN1 (which is used for reloading apps) gets a low resistance across it
   (possibly due to water damage) and the internal resistor can no longer overcome that resistance
   so the button appears stuck on. With this fix we force the button pin low just before reading to try
   and overcome that resistance, and we also disable the button watch interrupt. */
-  JSBF_BTN_LOW_RESISTANCE_FIX = 1<<21,
+  JSBF_BTN_LOW_RESISTANCE_FIX = 1<<22,
 #endif
+
 
   JSBF_DEFAULT = ///< default at power-on
       JSBF_WAKEON_TWIST|
@@ -1229,7 +1231,8 @@ void peripheralPollHandler() {
 #endif
 
   // Handle watchdog
-  if (!(jshPinGetValue(BTN1_PININDEX)
+  if (!(bangleFlags&JSBF_MANUAL_WATCHDOG) &&
+      !(jshPinGetValue(BTN1_PININDEX)
 #ifdef BTN2_PININDEX
        && jshPinGetValue(BTN2_PININDEX)
 #endif
@@ -2656,6 +2659,9 @@ before reading and disabling the hardware watch on BTN1).
   off
 * `btnLoadTimeout` how many milliseconds does the home button have to be pressed
 for before the clock is reloaded? 1500ms default, or 0 means never.
+* `manualWatchdog` if set, this disables automatic kicking of the watchdog timer
+from the interrupt (when the button isn't held). You will then have to manually
+call `E.kickWatchdog()` from your code or the watch will reset after ~5 seconds.
 * `hrmPollInterval` set the requested poll interval (in milliseconds) for the
   heart rate monitor. On Bangle.js 2 only 10,20,40,80,160,200 ms are supported,
   and polling rate may not be exact. The algorithm's filtering is tuned for
@@ -2685,6 +2691,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
   bool wakeOnDoubleTap = bangleFlags&JSBF_WAKEON_DBLTAP;
   bool wakeOnTwist = bangleFlags&JSBF_WAKEON_TWIST;
   bool powerSave = bangleFlags&JSBF_POWER_SAVE;
+  bool manualWatchdog = bangleFlags&JSBF_MANUAL_WATCHDOG;
 #ifdef BANGLEJS_Q3
   bool lowResistanceFix = bangleFlags&JSBF_BTN_LOW_RESISTANCE_FIX;
 #endif
@@ -2739,6 +2746,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
       {"wakeOnDoubleTap", JSV_BOOLEAN, &wakeOnDoubleTap},
       {"wakeOnTwist", JSV_BOOLEAN, &wakeOnTwist},
       {"powerSave", JSV_BOOLEAN, &powerSave},
+      {"manualWatchdog", JSV_BOOLEAN, &manualWatchdog},
 #ifdef BANGLEJS_Q3
       {"lowResistanceFix", JSV_BOOLEAN, &lowResistanceFix},
 #endif
@@ -2769,6 +2777,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
     bangleFlags = (bangleFlags&~JSBF_WAKEON_DBLTAP) | (wakeOnDoubleTap?JSBF_WAKEON_DBLTAP:0);
     bangleFlags = (bangleFlags&~JSBF_WAKEON_TWIST) | (wakeOnTwist?JSBF_WAKEON_TWIST:0);
     bangleFlags = (bangleFlags&~JSBF_POWER_SAVE) | (powerSave?JSBF_POWER_SAVE:0);
+    bangleFlags = (bangleFlags&~JSBF_MANUAL_WATCHDOG) | (manualWatchdog?JSBF_MANUAL_WATCHDOG:0);
 #ifdef BANGLEJS_Q3
     bangleFlags = (bangleFlags&~JSBF_BTN_LOW_RESISTANCE_FIX) | (lowResistanceFix?JSBF_BTN_LOW_RESISTANCE_FIX:0);
 #endif
