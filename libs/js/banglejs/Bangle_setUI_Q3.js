@@ -39,6 +39,7 @@
     try{Bangle.buzz(30);}catch(e){}
   }
   if (mode=="updown") {
+    if (options.drag) throw new Error("Custom drag handler not supported in mode updown!")
     var dy = 0;
     Bangle.dragHandler = e=>{
       dy += e.dy;
@@ -52,9 +53,10 @@
     Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
     Bangle.btnWatches = [
-      setWatch(function() { b();cb(); }, BTN1, {repeat:1, edge:"falling"}),
+      setWatch(function() { b();cb(); }, BTN1, {repeat:1, edge:"rising"}),
     ];
   } else if (mode=="leftright") {
+    if (options.drag) throw new Error("Custom drag handler not supported in mode leftright!")
     var dx = 0;
     Bangle.dragHandler = e=>{
       dx += e.dx;
@@ -68,12 +70,12 @@
     Bangle.on('drag',Bangle.dragHandler);
     Bangle.touchHandler = d => {b();cb();};
     Bangle.btnWatches = [
-      setWatch(function() { b();cb(); }, BTN1, {repeat:1, edge:"falling"}),
+      setWatch(function() { b();cb(); }, BTN1, {repeat:1, edge:"rising"}),
     ];
   } else if (mode=="clock") {
     Bangle.CLOCK=1;
     Bangle.btnWatches = [
-      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
+      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"rising"})
     ];
   } else if (mode=="clockupdown") {
     Bangle.CLOCK=1;
@@ -82,31 +84,30 @@
       b();cb((e.y > 88) ? 1 : -1);
     };
     Bangle.btnWatches = [
-      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
+      setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"rising"})
     ];
   } else if (mode=="custom") {
-    if (options.clock) Bangle.CLOCK=1;
-    if (options.touch)
-      Bangle.touchHandler = options.touch;
-    if (options.drag) {
-      Bangle.dragHandler = options.drag;
-      Bangle.on("drag", Bangle.dragHandler);
-    }
-    if (options.swipe) {
-      Bangle.swipeHandler = options.swipe;
-      Bangle.on("swipe", Bangle.swipeHandler);
-    }
-    if (options.btn) {
+    if (options.clock) {
       Bangle.btnWatches = [
-        setWatch(function() { options.btn(1); }, BTN1, {repeat:1,edge:"falling"})
-      ];
-    } else if (options.clock) {
-      Bangle.btnWatches = [
-        setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"falling"})
+        setWatch(Bangle.showLauncher, BTN1, {repeat:1,edge:"rising"})
       ];
     }
   } else
     throw new Error("Unknown UI mode "+E.toJS(mode));
+  if (options.clock) Bangle.CLOCK=1;
+  if (options.touch)
+  Bangle.touchHandler = options.touch;
+  if (options.drag) {
+    Bangle.dragHandler = options.drag;
+    Bangle.on("drag", Bangle.dragHandler);
+  }
+  if (options.swipe) {
+    Bangle.swipeHandler = options.swipe;
+    Bangle.on("swipe", Bangle.swipeHandler);
+  }
+  if ((options.btn || options.btnRelease) && !Bangle.btnWatches) Bangle.btnWatches = [];
+  if (options.btn) Bangle.btnWatches.push(setWatch(options.btn.bind(options), BTN1, {repeat:1,edge:"rising"}))
+  if (options.btnRelease) Bangle.btnWatches.push(setWatch(options.btnRelease.bind(options), BTN1, {repeat:1,edge:"falling"}))
   if (options.remove) // handler for removing the UI (intervals/etc)
     Bangle.uiRemove = options.remove;
   if (options.redraw) // handler for redrawing the UI
@@ -133,7 +134,7 @@
     btnWatch = setWatch(function() {
       btnWatch = undefined;
       options.back();
-    }, BTN1, {edge:"falling"});
+    }, BTN1, {edge:"rising"});
     WIDGETS = Object.assign({back:{
       area:"tl", width:24,
       draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
