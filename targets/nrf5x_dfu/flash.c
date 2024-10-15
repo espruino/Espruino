@@ -264,48 +264,54 @@ void flashDoUpdate(FlashHeader header, uint32_t headerAddr) {
 
   __disable_irq(); // No IRQs - if we're updating bootloader it could really screw us up!
 
-  int percent = 0;
-  // Erase
-  size = header.size;
-  addr = header.address;
-  while (size>0) {
-    intFlashErase(addr);
-    addr += 4096;
-    size -= 4096;
-    percent = (addr-header.address)*120/header.size;
-    if (percent>120) percent=120;
-    xlcd_rect(60,182,60+percent,188,true);
+  while (true) {
+    int percent = 0;
+    // Erase
+    size = header.size;
+    addr = header.address;
+    while (size>0) {
+      intFlashErase(addr);
+      addr += 4096;
+      size -= 4096;
+      percent = (addr-header.address)*120/header.size;
+      if (percent>120) percent=120;
+      xlcd_rect(60,182,60+percent,188,true);
+      NRF_WDT->RR[0] = 0x6E524635; // kick watchdog
+    }
+    // Write
+    size = header.size;
+    int inaddr = headerAddr + sizeof(FlashHeader);
+    int outaddr = header.address;
+    while (size>0) {
+      unsigned int l = size;
+      if (l>sizeof(buf)) l=sizeof(buf);
+      spiFlashReadAddr(buf, inaddr, l);
+      intFlashWrite(outaddr, buf, l);
+      inaddr += l;
+      outaddr += l;
+      size -= l;
+      percent = (outaddr-header.address)*120/header.size;
+      if (percent>120) percent=120;
+      xlcd_rect(60,192,60+percent,198,true);
+      NRF_WDT->RR[0] = 0x6E524635; // kick watchdog
+    }
+    // clear progress bar
+    xlcd_rect(60,180,180,200,false);
+    // re-read all data to try and clear any caches (CRC does this anyway!)
+    lcd_println("CRC CHECK");
+    uint32_t crc = 0;
+    crc = crc32_compute(header.address, header.size, &crc);
     NRF_WDT->RR[0] = 0x6E524635; // kick watchdog
+    if (crc != header.CRC) {
+      // if CRC failed, redo!
+      lcd_println("CRC FAIL! RETRY");
+    } else {
+      // otherwise we're done!
+      lcd_println("CRC OK");
+      while (true) NVIC_SystemReset(); // reset
+    }
   }
-  // Write
-  size = header.size;
-  int inaddr = headerAddr + sizeof(FlashHeader);
-  int outaddr = header.address;
-  while (size>0) {
-    unsigned int l = size;
-    if (l>sizeof(buf)) l=sizeof(buf);
-    spiFlashReadAddr(buf, inaddr, l);
-    intFlashWrite(outaddr, buf, l);
-    inaddr += l;
-    outaddr += l;
-    size -= l;
-    percent = (outaddr-header.address)*120/header.size;
-    if (percent>120) percent=120;
-    xlcd_rect(60,192,60+percent,198,true);
-    NRF_WDT->RR[0] = 0x6E524635; // kick watchdog
-  }
-  // clear progress bar
-  xlcd_rect(60,180,180,200,false);
-  // re-read all data just to try and clear any caches
-  size = header.size;
-  outaddr = header.address;
-  volatile int v;
-  while (size--) {
-    v = *(char*)outaddr;
-    outaddr++;
-  }
-  // done!
-  while (true) NVIC_SystemReset(); // reset!
+
 }
 
 /// Return the size in bytes of a file based on the header
