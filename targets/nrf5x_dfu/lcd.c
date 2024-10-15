@@ -501,9 +501,6 @@ void lcd_send_data(uint8_t cmd) {
 }
 
 void lcd_init() {
-  nrf_gpio_cfg_input(I2C_SDA, NRF_GPIO_PIN_PULLUP);
-  nrf_gpio_cfg_input(I2C_SCL, NRF_GPIO_PIN_PULLUP);
-
   jshPinOutput(LCD_PIN_CS,1);
   jshPinOutput(LCD_PIN_DC,1);
   jshPinOutput(LCD_PIN_SCK,1);
@@ -735,16 +732,12 @@ void lcd_flip() {
 }
 
 void lcd_init() {
-#ifdef GPS_PIN_EN
-  jshPinOutput(GPS_PIN_EN, 0); // GPS off
-#endif
 //  jshPinOutput(LCD_BL, LCD_BL_ON); // Don't turn the backlight on yet, otherwise it could show garbage - do it at the end of lcd_flip() instead
 #ifdef LCD_EN
   jshPinOutput(LCD_EN,1); // enable on
 #endif
   // LCD Init 1
   jshPinOutput(LCD_SPI_CS,1);
-
   jshPinOutput(LCD_SPI_DC,1);
   jshPinOutput(LCD_SPI_SCK,1);
   jshPinOutput(LCD_SPI_MOSI,1);
@@ -817,7 +810,8 @@ void lcd_init() {
   jshPinOutput(LCD_SPI_MOSI,1);
   jshPinOutput(LCD_DISP,1);
   jshPinOutput(LCD_EXTCOMIN,1);
-  jshPinOutput(LCD_BL, LCD_BL_ON); // backlight on
+  // don't turn backlight on - let's save power
+  //jshPinOutput(LCD_BL, LCD_BL_ON); // backlight on
   jshDelayMicroseconds(10000);
   // force LCD to clear itself
   lcd_clear();
@@ -868,7 +862,6 @@ void lcd_print(char *ch) {
     } else lcdx += 4;
     ch++;
   }
-  lcd_flip();
 }
 void lcd_print_hex(unsigned int v) {
  char buf[11] = "0x";
@@ -882,6 +875,7 @@ void lcd_print_hex(unsigned int v) {
 void lcd_println(char *ch) {
   lcd_print(ch);
   lcd_print("\r\n");
+  lcd_flip();
 }
 void lcd_clear() {
   memset(lcd_data,0,sizeof(lcd_data));
@@ -901,4 +895,5 @@ void lcd_kill() {}
 void lcd_clear() {}; // clear screen
 void lcd_print(char *ch) {}
 void lcd_println(char *ch) {}
+void lcd_flip() {}
 #endif

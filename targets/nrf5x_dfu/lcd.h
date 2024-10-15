@@ -36,8 +36,6 @@
 #define LCD_DATA_WIDTH 120 // pixel doubled
 #define LCD_DATA_HEIGHT 120 // pixel doubled
 //#define LCD_STORE_MODIFIED // removed just to try and scrape a few extra bytes!
-#define I2C_SDA 15
-#define I2C_SCL 14
 #define LCD_START_Y 16
 #endif
 #ifdef LCD_CONTROLLER_LPM013M126
@@ -69,8 +67,9 @@
 void lcd_init();
 void lcd_kill();
 void lcd_clear();
-void lcd_print(char *ch);
-void lcd_print_hex(unsigned int v); // just for debugging - print a number
-void lcd_println(char *ch);
+void lcd_print(char *ch); // prints text, doesn't flip
+void lcd_print_hex(unsigned int v); // just for debugging - print a number, doesn't flip
+void lcd_println(char *ch); // prints a line and flips screen
+void lcd_flip();
 
 
