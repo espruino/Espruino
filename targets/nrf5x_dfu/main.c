@@ -159,7 +159,7 @@ bool dfu_enter_check(void) {
 #if defined(BUTTONPRESS_TO_REBOOT_BOOTLOADER) && defined(BTN2_PININDEX)
       lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\nBTN1 + BTN2 TURN OFF\r\n\r\n<                   >\r");
 #else
-      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                   >\r");
+      lcd_print("RELEASE BTN FOR DFU\r\nHOLD BTN TO BOOT\r\n\r\n<                   >\r");
 #endif
       lcd_flip();
 #ifdef BTN1_PININDEX
@@ -198,7 +198,7 @@ bool dfu_enter_check(void) {
       } else {
         lcd_clear();
         print_fw_version();
-        lcd_println("DFU START");
+        lcd_println("DFU STARTED");
       }
       set_led_state(true, true);
     }
@@ -279,7 +279,11 @@ void dfu_evt_init() {
       NULL); // context
 #endif
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+#ifdef BTN2_PININDEX
   lcd_println("BTN1 = REBOOT");
+#else
+  lcd_println("\nHOLD BTN TO REBOOT");
+#endif
 #endif
 }
 
@@ -352,7 +356,7 @@ int main(void)
 
 #ifdef BANGLEJS_Q3
     lcd_init();
-    lcd_println("\n  HOLD BUTTON\r\n  TO TURN ON");
+    lcd_println("\n  HOLD BUTTON 2 SEC\r\n  TO TURN ON");
 #endif
 
     // Did we just power on? If not (we watchdog/softreset) RESETREAS will be nonzero
