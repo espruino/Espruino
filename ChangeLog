@@ -46,6 +46,8 @@
             Bangle.js2: DFU update from flash now retries if CRC doesn't match
             Bangle.js2: Bootloader now shows 'Hold button to turn on' to avoid users assuming it is dead when it's not
             Bangle.js2: Bootloader now 'Hold BTN to reboot' not 'BTN1 = REBOOT'/etc
+            ESP32C3: don't kick connected BLE devices off if reset() is called
+            ESP32C3: disable warnings about "BT_BTM: BTM_GetSecurityFlags false"
             
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
