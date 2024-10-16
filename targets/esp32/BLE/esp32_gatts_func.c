@@ -232,11 +232,10 @@ static void gatts_disconnect_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
 }
 void gatts_reg_app(){
   esp_err_t r;
-  if(ble_service_pos < ble_service_cnt){
+  if(ble_service_pos < ble_service_cnt) {
     r = esp_ble_gatts_app_register(ble_service_pos);
     if(r) jsWarn("app_register error:%d\n",r);
-  }
-  else{
+  } else {
     bluetooth_gap_startAdvertising(true);
     jshSetDeviceInitialised(EV_BLUETOOTH, true);
   }
@@ -649,6 +648,10 @@ void gatts_set_services(JsVar *data){
   jsvUnLock(options);
 }
 void gatts_reset(bool removeValues){
+  if (!removeValues && gatts_if_connected()) {
+    jsWarn("Not removing services for reset() as connected");
+    return;
+  }
   esp_err_t r;
   _removeValues = removeValues;
   if(ble_service_cnt > 0){
