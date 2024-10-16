@@ -19,7 +19,7 @@
 
 # A Note about the 'variables' parameter on ESP32 Builds
 # ------------------------------------------------------
-# 
+#
 # For the ESP32 build, the number of JsVars is governed by two factors:
 #     * Available memory
 #     * Maximum number of JsVars for the used JsVar format
@@ -52,7 +52,7 @@ info = {
  'espruino_page_link'       : 'Curio',
  'default_console'          : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
- 'variables'                : 16383, # See note above 
+ 'variables'                : 16383, # See note above
  'io_buffer_size'           : 1024, # How big is the input buffer (in 4 byte words). Default is 256, but this makes us less likely to drop data
  'binary_name'              : 'espruino_%v_curio.bin',
  'build' : {
@@ -67,17 +67,18 @@ info = {
 #     'FILESYSTEM',
 #     'FLASHFS',
      'BLUETOOTH',
-     'NEOPIXEL'     
+     'NEOPIXEL'
    ],
    'makefile' : [
      'DEFINES+=-DESP_PLATFORM -DESP32=1',
      'DEFINES+=-DESP_STACK_SIZE=25000',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
+     'DEFINES+=-DUSB_CDC', # Because now we have to explicitly request it
      'ESP32_FLASH_MAX=1572864',
 #     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'\"Curio\"\'', # string passing in IDF4 makefile is broken
      'INCLUDE += -I$(ROOT)/libs/misc',
-     'WRAPPERSOURCES += libs/misc/jswrap_curio.c',       
+     'WRAPPERSOURCES += libs/misc/jswrap_curio.c',
      'WRAPPERSOURCES += libs/joltjs/jswrap_qwiic.c',
    ]
  }
@@ -156,13 +157,13 @@ def get_pins():
   pinutils.findpin(pins, "PD2", True)["functions"]["ADC1_IN2"]=0;
   pinutils.findpin(pins, "PD3", True)["functions"]["ADC1_IN3"]=0;
   pinutils.findpin(pins, "PD4", True)["functions"]["ADC1_IN4"]=0;
-  # pinutils.findpin(pins, "PD5", True)["functions"]["ADC2_IN0"]=0;  
+  # pinutils.findpin(pins, "PD5", True)["functions"]["ADC2_IN0"]=0;
 #  pinutils.findpin(pins, "PD8", True)["functions"]["NEGATED"]=0; # LED negated - but ESP32 port ignores negation
   # D12-D17 are SPI (internal SPI) - not sure they should even be exposed??
-  
+
   #18/19 are USB
   pinutils.findpin(pins, "PD20", True)["functions"]["USART0_RX"]=0;
-  pinutils.findpin(pins, "PD21", True)["functions"]["USART0_TX"]=0;  
+  pinutils.findpin(pins, "PD21", True)["functions"]["USART0_TX"]=0;
 
   # everything is non-5v tolerant
   for pin in pins:
