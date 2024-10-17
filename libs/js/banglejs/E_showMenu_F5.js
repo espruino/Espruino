@@ -106,7 +106,7 @@
     },
     select : function() {
       var item = items[menuItems[options.selected]];
-      if ("function" == typeof item) item(l);
+      if ("function" == typeof item) item();
       else if ("object" == typeof item) {
         // if a number, go into 'edit mode'
         if ("number" == typeof item.value)

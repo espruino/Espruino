@@ -587,6 +587,7 @@ JshI2CInfo i2cHRM;
 #define PRESSURE_I2C &i2cPressure
 #define HRM_I2C &i2cHRM
 #define GPS_UART EV_SERIAL1
+#define GPS_CASIC 1 // handle decoding of 'CASIC' packets from the GPS
 #define HEARTRATE 1
 
 bool pressureBMP280Enabled = false;
@@ -966,13 +967,15 @@ typedef enum {
   JSBF_LOCKED        = 1<<18,
   JSBF_HRM_INSTANT_LISTENER = 1<<19,
   JSBF_LCD_DBL_REFRESH = 1<<20, ///< On Bangle.js 2, toggle extcomin twice for each poll interval (avoids screen 'flashing' behaviour off axis)
+  JSBF_MANUAL_WATCHDOG = 1<<21, ///< If set, we don't kick the WDT from the interrupt, so users can call it from their JS to ensure JS always stays running
 #ifdef BANGLEJS_Q3
   /** On some Bangle.js 2, BTN1 (which is used for reloading apps) gets a low resistance across it
   (possibly due to water damage) and the internal resistor can no longer overcome that resistance
   so the button appears stuck on. With this fix we force the button pin low just before reading to try
   and overcome that resistance, and we also disable the button watch interrupt. */
-  JSBF_BTN_LOW_RESISTANCE_FIX = 1<<21,
+  JSBF_BTN_LOW_RESISTANCE_FIX = 1<<22,
 #endif
+
 
   JSBF_DEFAULT = ///< default at power-on
       JSBF_WAKEON_TWIST|
@@ -1228,7 +1231,8 @@ void peripheralPollHandler() {
 #endif
 
   // Handle watchdog
-  if (!(jshPinGetValue(BTN1_PININDEX)
+  if (!(bangleFlags&JSBF_MANUAL_WATCHDOG) &&
+      !(jshPinGetValue(BTN1_PININDEX)
 #ifdef BTN2_PININDEX
        && jshPinGetValue(BTN2_PININDEX)
 #endif
@@ -2655,6 +2659,9 @@ before reading and disabling the hardware watch on BTN1).
   off
 * `btnLoadTimeout` how many milliseconds does the home button have to be pressed
 for before the clock is reloaded? 1500ms default, or 0 means never.
+* `manualWatchdog` if set, this disables automatic kicking of the watchdog timer
+from the interrupt (when the button isn't held). You will then have to manually
+call `E.kickWatchdog()` from your code or the watch will reset after ~5 seconds.
 * `hrmPollInterval` set the requested poll interval (in milliseconds) for the
   heart rate monitor. On Bangle.js 2 only 10,20,40,80,160,200 ms are supported,
   and polling rate may not be exact. The algorithm's filtering is tuned for
@@ -2684,6 +2691,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
   bool wakeOnDoubleTap = bangleFlags&JSBF_WAKEON_DBLTAP;
   bool wakeOnTwist = bangleFlags&JSBF_WAKEON_TWIST;
   bool powerSave = bangleFlags&JSBF_POWER_SAVE;
+  bool manualWatchdog = bangleFlags&JSBF_MANUAL_WATCHDOG;
 #ifdef BANGLEJS_Q3
   bool lowResistanceFix = bangleFlags&JSBF_BTN_LOW_RESISTANCE_FIX;
 #endif
@@ -2738,6 +2746,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
       {"wakeOnDoubleTap", JSV_BOOLEAN, &wakeOnDoubleTap},
       {"wakeOnTwist", JSV_BOOLEAN, &wakeOnTwist},
       {"powerSave", JSV_BOOLEAN, &powerSave},
+      {"manualWatchdog", JSV_BOOLEAN, &manualWatchdog},
 #ifdef BANGLEJS_Q3
       {"lowResistanceFix", JSV_BOOLEAN, &lowResistanceFix},
 #endif
@@ -2768,6 +2777,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
     bangleFlags = (bangleFlags&~JSBF_WAKEON_DBLTAP) | (wakeOnDoubleTap?JSBF_WAKEON_DBLTAP:0);
     bangleFlags = (bangleFlags&~JSBF_WAKEON_TWIST) | (wakeOnTwist?JSBF_WAKEON_TWIST:0);
     bangleFlags = (bangleFlags&~JSBF_POWER_SAVE) | (powerSave?JSBF_POWER_SAVE:0);
+    bangleFlags = (bangleFlags&~JSBF_MANUAL_WATCHDOG) | (manualWatchdog?JSBF_MANUAL_WATCHDOG:0);
 #ifdef BANGLEJS_Q3
     bangleFlags = (bangleFlags&~JSBF_BTN_LOW_RESISTANCE_FIX) | (lowResistanceFix?JSBF_BTN_LOW_RESISTANCE_FIX:0);
 #endif
@@ -4658,7 +4668,7 @@ bool jswrap_banglejs_idle() {
 bool jswrap_banglejs_gps_character(char ch) {
 #ifdef GPS_PIN_RX
   // if too many chars, roll over since it's probably because we skipped a newline
-  // or messed the message length
+  // or messed up the message length
   if (gpsLineLength >= sizeof(gpsLine)) {
 #ifdef GPS_UBLOX
     if (inComingUbloxProtocol == UBLOX_PROTOCOL_UBX &&
@@ -4689,6 +4699,21 @@ bool jswrap_banglejs_gps_character(char ch) {
   }
 #endif // GPS_UBLOX
   gpsLine[gpsLineLength++] = ch;
+#ifdef GPS_CASIC
+  if (gpsLineLength>2 && gpsLine[0]==0xBA && gpsLine[1]==0xCE) {
+    if (gpsLineLength<4) return true; // not enough data for length
+    int len = gpsLine[2] | (gpsLine[3] << 8);
+    // 4 class, 5 = msg
+    // 4 byte checksum on end
+    if (gpsLineLength>=len+10) { // packet end!
+      memcpy(gpsLastLine, gpsLine, gpsLineLength);
+      gpsLastLineLength = gpsLineLength;
+      bangleTasks |= JSBT_GPS_DATA_LINE;
+      gpsClearLine();
+    }
+    return true;
+  }
+#endif
   if (
 #ifdef GPS_UBLOX
       inComingUbloxProtocol == UBLOX_PROTOCOL_NMEA &&
@@ -4707,8 +4732,20 @@ bool jswrap_banglejs_gps_character(char ch) {
     if (gpsLineLength > 2 && gpsLineLength <= NMEA_MAX_SIZE && gpsLine[gpsLineLength - 2] =='\r') {
       gpsLine[gpsLineLength - 2] = 0; // just overwriting \r\n
       gpsLine[gpsLineLength - 1] = 0;
-      if (nmea_decode(&gpsFix, (char *)gpsLine))
+      if (nmea_decode(&gpsFix, (char *)gpsLine)) {
         bangleTasks |= JSBT_GPS_DATA;
+#ifdef BANGLEJS_Q3
+        if (gpsFix.packetCount == 1) { // first packet
+          // https://github.com/espruino/Espruino/issues/2354 - on newer Bangle.js, speed/time may not be reported
+          // as there's no RMC packet by default. If we detect this in 1st packet send a command to fix it
+          if ((gpsFix.packetsParsed & NMEA_RMC)==0) {
+            jshTransmitPrintf(GPS_UART,"$PCAS03,1,0,0,1,1,0,0,0*03\r\n");
+          }
+        }
+#endif
+        // reset what packets we think we got
+        gpsFix.packetsParsed = NMEA_NONE;
+      }
       if (bangleTasks & (JSBT_GPS_DATA_PARTIAL|JSBT_GPS_DATA_LINE)) {
         // we were already waiting to post data, so lets not overwrite it
         bangleTasks |= JSBT_GPS_DATA_OVERFLOW;
@@ -5904,6 +5941,10 @@ On Bangle.js there are a few additions over the standard `graphical_menu`:
     menu is removed
   * (Bangle.js 2) `scroll : int` - an integer specifying how much the initial
     menu should be scrolled by
+* (Bangle.js 2) The mapped functions can consider the touch event that interacted with the entry:
+  `"Entry" : function(touch) { ... }`
+  * This is also true of `onchange` mapped functions in entry objects:
+    `onchange : (value, touch) => { ... }`
 * The object returned by `E.showMenu` contains:
   * (Bangle.js 2) `scroller` - the object returned by `E.showScroller` -
     `scroller.scroll` returns the amount the menu is currently scrolled by
@@ -6046,6 +6087,7 @@ Supply an object containing:
   draw : function(idx, rect) { ... }
   // a function to call when the item is selected, touch parameter is only relevant
   // for Bangle.js 2 and contains the coordinates touched inside the selected item
+  // as well as the type of the touch - see `Bangle.touch`.
   select : function(idx, touch) { ... }
   // optional function to be called when 'back' is tapped
   back : function() { ...}

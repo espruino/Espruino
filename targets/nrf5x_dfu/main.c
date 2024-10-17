@@ -79,7 +79,7 @@ void turn_off() {
   lcd_kill();
 #if defined(SPIFLASH_SLEEP_CMD) && defined(ESPR_BOOTLOADER_SPIFLASH)
   flashPowerDown();  // Put the SPI Flash into deep power-down
-#endif  
+#endif
 #if defined(VIBRATE_PIN) && !defined(DICKENS)
   jshPinOutput(VIBRATE_PIN,1); // vibrate whilst waiting for button release
 #endif
@@ -159,8 +159,9 @@ bool dfu_enter_check(void) {
 #if defined(BUTTONPRESS_TO_REBOOT_BOOTLOADER) && defined(BTN2_PININDEX)
       lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\nBTN1 + BTN2 TURN OFF\r\n\r\n<                   >\r");
 #else
-      lcd_print("RELEASE BTN1 FOR DFU\r\nBTN1 TO BOOT\r\n\r\n<                   >\r");
+      lcd_print("RELEASE BTN FOR DFU\r\nHOLD BTN TO BOOT\r\n\r\n<                   >\r");
 #endif
+      lcd_flip();
 #ifdef BTN1_PININDEX
       int count = 20;
 #ifdef BANGLEJS_F18
@@ -168,13 +169,17 @@ bool dfu_enter_check(void) {
         // the screen update takes long enough that
         // we don't need a delay
         lcd_print("=");
+        lcd_flip();
       }
 #else
       count *= 128;
       while (get_btn1_state() && count) {
         nrf_delay_us(999);
         set_led_state((count&3)==0, false);
-        if ((count&127)==0) lcd_print("=");
+        if ((count&127)==0) {
+          lcd_print("=");
+          lcd_flip();
+        }
         count--;
       }
 #endif
@@ -193,7 +198,7 @@ bool dfu_enter_check(void) {
       } else {
         lcd_clear();
         print_fw_version();
-        lcd_println("DFU START");
+        lcd_println("DFU STARTED");
       }
       set_led_state(true, true);
     }
@@ -274,7 +279,11 @@ void dfu_evt_init() {
       NULL); // context
 #endif
 #ifdef BUTTONPRESS_TO_REBOOT_BOOTLOADER
+#ifdef BTN2_PININDEX
   lcd_println("BTN1 = REBOOT");
+#else
+  lcd_println("\nHOLD BTN TO REBOOT");
+#endif
 #endif
 }
 
@@ -344,6 +353,11 @@ int main(void)
     NRF_LOG_INFO("Inside main\r\n");
 
     hardware_init();
+
+#ifdef BANGLEJS_Q3
+    lcd_init();
+    lcd_println("\n  HOLD BUTTON 2 SEC\r\n  TO TURN ON");
+#endif
 
     // Did we just power on? If not (we watchdog/softreset) RESETREAS will be nonzero
 
