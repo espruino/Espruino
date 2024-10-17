@@ -275,7 +275,7 @@ unsigned int lcdGetPixel_ArrayBuffer_flat1(struct JsGraphics *gfx, int x, int y)
   return (byte >> (7-(p&7))) & 1;
 }
 void lcdFillRect_ArrayBuffer_flat1(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
-  if (x2-x1 < 8) return lcdFillRect_ArrayBuffer_flat(gfx,x1,y2,x2,y2,col); // not worth trying to work around this
+  if (x2-x1 < 8) return lcdFillRect_ArrayBuffer_flat(gfx,x1,y1,x2,y2,col); // not worth trying to work around this
   uint8_t *pixels = (uint8_t *)gfx->backendData;
   // build up 8 pixels in 1 byte for fast writes
   col &= 1;
@@ -287,10 +287,10 @@ void lcdFillRect_ArrayBuffer_flat1(JsGraphics *gfx, int x1, int y1, int x2, int 
     int py = y*gfx->data.width;
     int p = x1 + py; // pixel index (not bit)
     int p2 = x2 + py; // pixel index (not bit)
-    uint8_t *byte = &pixels[p>>2];
+    uint8_t *byte = &pixels[p>>3];
     // start off unaligned
     if (p&7) {
-      int amt = (8-(p&3));
+      int amt = (8-(p&7));
       int mask = ~(0xFF << amt);
       *byte = (*byte & ~mask) | (colByte & mask);
       byte++;
@@ -323,7 +323,7 @@ unsigned int lcdGetPixel_ArrayBuffer_flat2(struct JsGraphics *gfx, int x, int y)
   return (*byte >> (6-b)) & 3;
 }
 void lcdFillRect_ArrayBuffer_flat2(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
-  if (x2-x1 < 4) return lcdFillRect_ArrayBuffer_flat(gfx,x1,y2,x2,y2,col); // not worth trying to work around this
+  if (x2-x1 < 4) return lcdFillRect_ArrayBuffer_flat(gfx,x1,y1,x2,y2,col); // not worth trying to work around this
   uint8_t *pixels = (uint8_t *)gfx->backendData;
   // build up 4 pixels in 1 byte for fast writes
   col &= 3;
@@ -370,7 +370,7 @@ unsigned int lcdGetPixel_ArrayBuffer_flat4(struct JsGraphics *gfx, int x, int y)
   return (*byte >> (4-b)) & 15;
 }
 void lcdFillRect_ArrayBuffer_flat4(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
-  if (x2-x1 < 2) return lcdFillRect_ArrayBuffer_flat(gfx,x1,y2,x2,y2,col); // not worth trying to work around this
+  if (x2-x1 < 2) return lcdFillRect_ArrayBuffer_flat(gfx,x1,y1,x2,y2,col); // not worth trying to work around this
   uint8_t *pixels = (uint8_t *)gfx->backendData;
   // build up 4 pixels in 1 byte for fast writes
   col &= 15;
