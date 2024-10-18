@@ -1748,7 +1748,6 @@ void jsiHandleChar(char ch) {
   if (inputState == IPS_PACKET_TRANSFER_BYTE0) {
     if (jsvGetStringLength(inputLine)==0)
       jsiStatus &= ~JSIS_ECHO_OFF_FOR_LINE; // turn on echo (because it'd have been turned off by DLE on an empty line)
-    inputState = IPS_HAD_DLE;
     inputPacketLength = ((uint8_t)ch) << 8;
     inputState = IPS_PACKET_TRANSFER_BYTE1;
   } else if (inputState == IPS_PACKET_TRANSFER_BYTE1) {
@@ -1850,8 +1849,6 @@ void jsiHandleChar(char ch) {
       inputState = IPS_NONE;
     }
   } else {
-    if (inputState == IPS_HAD_DLE && inputLineLength>0)
-      jsiAppendToInputLine(16); // handle case where we got DLE on its own - pass it through (needed as Gadgetbridge still sends DLE)
     inputState = IPS_NONE;
     if (ch == 8 || ch == 0x7F /*delete*/) {
       jsiHandleDelete(true /*backspace*/);
@@ -1952,9 +1949,9 @@ static NO_INLINE bool jsiExecuteEventCallbackInner(JsVar *thisVar, JsVar *callba
     jsvObjectIteratorNew(&it, callbackNoNames);
     while (ok && jsvObjectIteratorHasValue(&it) && !(jsiStatus & JSIS_EVENTEMITTER_STOP)) {
       JsVar *child = jsvObjectIteratorGetValue(&it); // name already skipped
+      jsvObjectIteratorNext(&it);
       ok &= jsiExecuteEventCallbackInner(thisVar, child, argCount, argPtr);
       jsvUnLock(child);
-      jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
   } else if (jsvIsFunction(callbackNoNames)) {

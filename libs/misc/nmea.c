@@ -51,6 +51,7 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
   if (nmea[0]=='$' && nmea[1]=='G') {
     if (nmea[3]=='R' && nmea[4]=='M' && nmea[5]=='C') {
       // $GNRMC,161945.00,A,5139.11397,N,00116.07202,W,1.530,,190919,,,A*7E
+      gpsFix->packetsParsed |= NMEA_RMC;
       nmea = nmea_next_comma(nmea)+1;
       nextComma = nmea_next_comma(nmea);
       // time
@@ -87,6 +88,7 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
     }
     if (nmea[3]=='G' && nmea[4]=='G' && nmea[5]=='A') {
       // $GNGGA,161945.00,5139.11397,N,00116.07202,W,1,06,1.29,71.1,M,47.0,M,,*64
+      gpsFix->packetsParsed |= NMEA_GGA;
       nmea = nmea_next_comma(nmea)+1;
       nextComma = nmea_next_comma(nmea);
       // time
@@ -118,6 +120,7 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
     }
     if (nmea[3]=='G' && nmea[4]=='S' && nmea[5]=='V') {
       // loads of cool data about what satellites we have and signal strength...
+      gpsFix->packetsParsed |= NMEA_GSV;
       thisIsGSV = true;
     }
   }
@@ -159,13 +162,17 @@ bool nmea_decode(NMEAFixInfo *gpsFix, const char *nmeaLine) {
     // Complete set of data received
     createGPSEvent = true;
   }
-  if (gpsFix->lastWasGGA && thisIsGGA) { // We got two GGAs - we can do this if 
+  if (gpsFix->lastWasGGA && thisIsGGA) { // We got two GGAs - we can do this if
     // Complete set of data received
     createGPSEvent = true;
   }
   // update info we had last
   gpsFix->lastWasGSV = thisIsGSV;
   gpsFix->lastWasGGA = thisIsGGA;
+  if (createGPSEvent) {
+    if (gpsFix->packetCount < 255)
+      gpsFix->packetCount++;
+  }
   return createGPSEvent;
 }
 

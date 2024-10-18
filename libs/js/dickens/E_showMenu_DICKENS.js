@@ -76,7 +76,7 @@
       var item = items[menuItems[options.selected]];
       if ("function" == typeof item) {
         Bangle.setUI(); // clear Bangle.btnWatches
-        item(l);
+        item();
       }
       else if ("object" == typeof item) {
         // if a number, go into 'edit mode'

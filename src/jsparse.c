@@ -1782,6 +1782,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
         jsvUnLock(value);
       }
     }
+    while (lex->tk==';') JSP_ASSERT_MATCH(';');
 
     jsvUnLock(funcName);
   }
@@ -1995,6 +1996,7 @@ NO_INLINE JsVar *jspeUnaryExpression() {
 
 // Get the precedence of a BinaryExpression - or return 0 if not one
 unsigned int jspeGetBinaryExpressionPrecedence(int op) {
+  // OPT: 184 bytes for this - ordering doesn't help. 2x 4 bit tables for chars and tokens should be faster and smaller
   switch (op) {
   case LEX_NULLISH:
   case LEX_OROR: return 1; break;
@@ -2480,7 +2482,7 @@ NO_INLINE JsVar *jspeStatementSwitch() {
   JSP_ASSERT_MATCH(LEX_R_SWITCH);
   JSP_MATCH('(');
   JsVar *switchOn = jspeExpression();
-  JsExecFlags preservedExecState = execInfo.execute&EXEC_IN_LOOP;
+  JsExecFlags preservedExecState = execInfo.execute&(EXEC_IN_LOOP|EXEC_DEBUGGER_MASK);
   JSP_SAVE_EXECUTE();
   bool execute = JSP_SHOULD_EXECUTE;
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(switchOn), 0);
@@ -2495,6 +2497,11 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     if (execute) execInfo.execute=EXEC_YES|EXEC_IN_SWITCH|preservedExecState;
     // we do the match after setting execute so that we're definitely allocating a string (we don't if we're not executing)
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_CASE, jsvUnLock(switchOn), 0);
+    #ifdef USE_DEBUGGER
+    if ((execInfo.execute&EXEC_DEBUGGER_NEXT_LINE) && JSP_SHOULD_EXECUTE) {
+      jsiDebuggerLoop();
+    }
+    #endif
     JsVar *test = jspeAssignmentExpression();
     execInfo.execute = oldFlags|EXEC_IN_SWITCH;
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock2(switchOn, test), 0);

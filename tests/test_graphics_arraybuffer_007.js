@@ -1,5 +1,5 @@
 // ArrayBuffer 2 bit - https://github.com/espruino/Espruino/issues/301
-var LCD = Graphics.createArrayBuffer(8,8,2);
+var LCD = Graphics.createArrayBuffer(8,8,2,{msb:false});
 
 LCD.setColor(0);
 LCD.fillRect(0,1,1,6);

@@ -518,7 +518,7 @@ JsVar *jswrap_array_every(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
     ["initialValue","JsVar","if specified, the initial value to pass to the function"]
   ],
   "return" : ["JsVar","The value returned by the last function called"],
-  "typescript" : "reduce(callback: (previousValue: T, currentValue: T, currentIndex: number, array: T[]) => T, initialValue?: T): T;"
+  "typescript" : "reduce<O>(callback: (previousValue: O, currentValue: T, currentIndex: number, array: T[]) => O, initialValue?: O): O;"
 }
 Execute `previousValue=initialValue` and then `previousValue =
 callback(previousValue, currentValue, index, array)` for each element in the
@@ -662,6 +662,13 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
 
   return result;
 }
+/// jswrap_array_splice but howMany is an int
+JsVar *jswrap_array_splice_i(JsVar *parent, JsVarInt index, JsVarInt howMany, JsVar *elements) {
+  JsVar *howManyVar = jsvNewFromInteger(howMany);
+  JsVar *arr = jswrap_array_splice(parent, index, howManyVar, elements);
+  jsvUnLock(howManyVar);
+  return arr;
+}
 
 /*JSON{
   "type" : "method",
@@ -681,10 +688,7 @@ This is the opposite of `[1,2,3].pop()`, which takes an element off the end.
  */
 JsVar *jswrap_array_shift(JsVar *parent) {
   // just use splice, as this does all the hard work for us
-  JsVar *nRemove = jsvNewFromInteger(1);
-  JsVar *elements = jsvNewEmptyArray();
-  JsVar *arr = jswrap_array_splice(parent, 0, nRemove, elements);
-  jsvUnLock2(elements, nRemove);
+  JsVar *arr = jswrap_array_splice_i(parent, 0, 1, NULL);
   // unpack element from the array
   JsVar *el = 0;
   if (jsvIsArray(arr))
@@ -712,8 +716,7 @@ the end.
  */
 JsVarInt jswrap_array_unshift(JsVar *parent, JsVar *elements) {
   // just use splice, as this does all the hard work for us
-  JsVar *nRemove = jsvNewFromInteger(0);
-  jsvUnLock2(jswrap_array_splice(parent, 0, nRemove, elements), nRemove);
+  jsvUnLock(jswrap_array_splice_i(parent, 0, 0, elements));
   // return new length
   return jsvGetLength(parent);
 }

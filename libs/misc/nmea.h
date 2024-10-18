@@ -14,7 +14,16 @@
 
 #include "jsvar.h"
 
+typedef enum {
+  NMEA_NONE = 0,
+  NMEA_RMC = 1,
+  NMEA_GGA = 2,
+  NMEA_GSV = 4,
+} NMEAFixPackets;
+
 typedef struct {
+  NMEAFixPackets packetsParsed; // which types of packet have been received?
+  uint8_t packetCount; // number of packets received
   double lat,lon,alt;
   double speed; // speed in km/h
   double course; // angle of travel in degrees

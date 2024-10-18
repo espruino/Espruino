@@ -225,7 +225,10 @@ uint32_t jsble_set_rssi_scan(bool enabled){
 void jsble_set_services(JsVar *data){
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
     return; // ESP32.enableBLE(false)
-
+  if (jsble_has_peripheral_connection()) {
+    jsWarn("Skip jsble_set_services as connected");
+    return;
+  }
   gatts_set_services(data);
 }
 

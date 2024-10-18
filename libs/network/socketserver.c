@@ -1048,11 +1048,9 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
     return;
   }
 
-#ifdef USE_TLS
   if (socketType & ST_TLS) {
     if (port==0) port = 443;
   }
-#endif
   if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
     if (port==0) port = 80;
   }

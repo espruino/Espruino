@@ -35,6 +35,11 @@
 #define NRF_GPIO_PIN_CNF(PIN,value) NRF_P0->PIN_CNF[PIN]=value;
 #endif
 
+#ifdef BANGLEJS_F18
+#define I2C_SDA 15
+#define I2C_SCL 14
+#endif
+
 // Using a macro means we hard-code values from pinInfo, and can ditch the pinInfo array
 #define jshPinSetValue(PIN,value) \
   nrf_gpio_pin_write((uint32_t)pinInfo[PIN].pin, value ^ ((pinInfo[PIN].port&JSH_PIN_NEGATED)!=0))
@@ -93,6 +98,10 @@ static void print_fw_version(void) {
 }
 
 static void hardware_init(void) {
+#ifdef I2C_SDA
+  nrf_gpio_cfg_input(I2C_SDA, NRF_GPIO_PIN_PULLUP);
+  nrf_gpio_cfg_input(I2C_SCL, NRF_GPIO_PIN_PULLUP);
+#endif
 #if defined(PIXLJS)
   // LED1 is backlight - don't use it, but ensure it's off
   jshPinOutput(LED1_PININDEX, 0);
@@ -102,7 +111,7 @@ static void hardware_init(void) {
   NRF_GPIO_PIN_CNF(BTN1_PININDEX,0x0000000c);     // BTN1 input (with pullup)
   NRF_GPIO_PIN_CNF(BTN2_PININDEX,0x0000000c);     // BTN2 input (with pullup)
   jshPinOutput(LCD_BL, !LCD_BL_ON);               // backlight off
-//  NRF_P1->OUT=0x00000001; // Backlight output high (for off) 
+//  NRF_P1->OUT=0x00000001; // Backlight output high (for off)
 #ifdef BAT_PIN_CHARGING
   NRF_GPIO_PIN_CNF(BAT_PIN_CHARGING,0x0000000c);     // Charge input (with pullup)
 #endif
@@ -131,6 +140,10 @@ static void hardware_init(void) {
 #ifdef VIBRATE_PIN
   jshPinOutput(VIBRATE_PIN,0); // vibrate off
 #endif
-
-
+#ifdef GPS_PIN_EN
+  jshPinOutput(GPS_PIN_EN, 0); // GPS off
+#endif
+#ifdef HEARTRATE_PIN_EN
+  jshPinOutput(HEARTRATE_PIN_EN, 0); // HRM off
+#endif
 }

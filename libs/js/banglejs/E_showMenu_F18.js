@@ -142,7 +142,7 @@
           item.onchange(item.value);
           l.draw(options.selected, options.selected);
         }
-      } else if ("function" == typeof item) item(l);
+      } else if ("function" == typeof item) item();
       else if ("object" == typeof item) {
         // if a number, go into 'edit mode'
         if ("number" == typeof item.value) {

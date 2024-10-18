@@ -137,6 +137,8 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_PBF_FONTS` - Enable support for loading and displaying Pebble-style PBF font files with `g.setFontPBF`
 * `ESPR_BLUETOOTH_ANCS` - Enable Apple ANCS(notification), AMS and CTS support
 * `ESPR_USE_STEPPER_TIMER` - add builtin `Stepper` class to handle higher speed stepper handling
+* `USB_CDC` - without this on ESP32C3, USB CDC will not be used for outputting the console
+
 
 There are some specifically that are useful for cutting a few bytes out of the build:
 

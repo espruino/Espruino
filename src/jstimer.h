@@ -53,12 +53,12 @@ typedef enum {
   ((T)==UET_WRITE_SHORT))
 #endif
 
-#define UTILTIMERTASK_PIN_COUNT (4)
+#define UTILTIMERTASK_PIN_COUNT (8)
 
 typedef struct UtilTimerTaskSet {
   Pin pins[UTILTIMERTASK_PIN_COUNT]; ///< pins to set (must be in same location as UtilTimerTaskStep.pins)
   uint8_t value; ///< value to set pins to
-} PACKED_FLAGS UtilTimerTaskSet;
+} PACKED_FLAGS UtilTimerTaskSet; // 9 bytes
 
 /** Task to write to a specific pin function - eg. a DAC or Timer or to read from an Analog
  * To send once, set var=buffer1, currentBuffer==nextBuffer==0
@@ -72,26 +72,24 @@ typedef struct UtilTimerTaskBuffer {
   unsigned short currentValue; ///< current value being written (for writes)
   unsigned short charIdx; ///< Index of character in variable
   unsigned short endIdx; ///< Final index before we skip to the next var
-  union {
-    JshPinFunction pinFunction; ///< Pin function to write to
-    Pin pin; ///< Pin to read from
-  };
-} PACKED_FLAGS UtilTimerTaskBuffer;
+  Pin pin; ///< Pin to read from/write to
+  Pin npin; ///< If we're doing 2 pin output, the pin to write the negated value to
+} PACKED_FLAGS UtilTimerTaskBuffer; // ~16 bytes
 
 typedef void (*UtilTimerTaskExecFn)(JsSysTime time, void* userdata);
 
 typedef struct UtilTimerTaskExec {
   UtilTimerTaskExecFn fn;
   void *userdata;
-} PACKED_FLAGS UtilTimerTaskExec;
+} PACKED_FLAGS UtilTimerTaskExec; // ~8 bytes
 
 #ifdef ESPR_USE_STEPPER_TIMER
 typedef struct UtilTimerTaskStep {
-  Pin pins[UTILTIMERTASK_PIN_COUNT];  //< the 4 pins for the stepper motor (must be in same location as UtilTimerTaskSet.pins)
+  Pin pins[4];  //< the 4 pins for the stepper motor (must be in same location as UtilTimerTaskSet.pins)
   int16_t steps;           //< How many steps? When this reaches 0 the timer task is removed
   uint8_t pIndex;          //< Index in 8 entry pattern array
   uint8_t pattern[4];      //< step pattern (2 patterns per array element)
-} PACKED_FLAGS UtilTimerTaskStep;
+} PACKED_FLAGS UtilTimerTaskStep; // 11 bytes
 #endif
 
 typedef union UtilTimerTaskData {
@@ -101,7 +99,7 @@ typedef union UtilTimerTaskData {
 #ifdef ESPR_USE_STEPPER_TIMER
   UtilTimerTaskStep step;
 #endif
-} UtilTimerTaskData;
+} UtilTimerTaskData; // max of the others = ~16 bytes
 
 typedef struct UtilTimerTask {
   int time; // time in future (not system time) at which to set pins (JshSysTime scaling, cropped to 32 bits)
@@ -151,8 +149,8 @@ bool jstSetWakeUp(JsSysTime period);
  * before the wakeup event */
 void jstClearWakeUp();
 
-/// Start writing a string out at the given period between samples. 'time' is the time relative to the current time (0 = now)
-bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type);
+/// Start writing a string out at the given period between samples. 'time' is the time relative to the current time (0 = now). pin_neg is optional pin for writing opposite of signal to
+bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, Pin npin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type);
 
 /// Remove the task that uses the buffer 'var'
 bool jstStopBufferTimerTask(JsVar *var);
