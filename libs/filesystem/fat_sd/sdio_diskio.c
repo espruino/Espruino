@@ -28,7 +28,7 @@ DSTATUS disk_initialize (
   //jsiConsolePrint("SD_Init\n");
   SD_Init();
 #ifndef STM32F4
-  // FIXME: Do we even need this in EspruoinoBoard? seems like SD_GetCardInfo especially just wastes time
+  // FIXME: Do we even need this in EspruinoBoard? seems like SD_GetCardInfo especially just wastes time
   //jsiConsolePrint("SD_GetCardInfo\n");
   SD_GetCardInfo(&SDCardInfo2);
   //jsiConsolePrint("SD_SelectDeselect\n");
@@ -38,10 +38,6 @@ DSTATUS disk_initialize (
   //jsiConsolePrint("SD_SetDeviceMode\n");
   SD_SetDeviceMode(SD_DMA_MODE);
 #endif
-/*  jsiConsolePrintf("CardComdClasses %d\n", SDCardInfo2.SD_csd.CardComdClasses);
-  jsiConsolePrintf("RdBlockLen %d\n", SDCardInfo2.SD_csd.RdBlockLen);
-  jsiConsolePrintf("RdBlockMisalign %d\n", SDCardInfo2.SD_csd.RdBlockMisalign);
-  jsiConsolePrintf("CardType %d\n", SDCardInfo2.CardType);*/
 
   //jsiConsolePrint("NVIC_Init\n");
   NVIC_InitStructure.NVIC_IRQChannel = SDIO_IRQn;
