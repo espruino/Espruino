@@ -15,27 +15,26 @@
 
 import pinutils;
 info = {
- 'name' : "Normal Linux Compile",
+ 'name' : "Pipboy Linux Debug Compilation",
  'default_console' : "EV_USBSERIAL",
- 'variables' :  0, # 0 = resizable variables, rather than fixed
- 'binary_name' : 'espruino',
+ 'variables' :  5000, # 0 = resizable variables, rather than fixed
+ 'binary_name' : 'espruino_pb',
  'build' : {
    'libraries' : [
-     'NET',
-     'TENSORFLOW',
-     'GRAPHICS',
-     'FILESYSTEM',
-     'CRYPTO','SHA256','SHA512',
-     'TLS',
-     'TELNET',
+     'GRAPHICS','LCD_SDL',
+     'FILESYSTEM'
    ],
    'makefile' : [
 #     'DEFINES+=-DFLASH_64BITS_ALIGNMENT=1', # For testing 64 bit flash writes
 #     'CFLAGS+=-m32', 'LDFLAGS+=-m32', 'DEFINES+=-DUSE_CALLFUNCTION_HACK', # For testing 32 bit builds
+     'DEFINES+=-DLINUX -DEMULATED',
      'DEFINES+=-DESPR_UNICODE_SUPPORT=1',
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS -DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_SELF_INIT',
      'DEFINES+=-DSPIFLASH_BASE=0 -DSPIFLASH_LENGTH=FLASH_SAVED_CODE_LENGTH', # For Testing Flash Strings
      'LINUX=1',
+     'INCLUDE += -I$(ROOT)/libs/pipboy',
+     'WRAPPERSOURCES += libs/pipboy/avi.c libs/pipboy/stm32_i2s.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_pipboy.c'     
    ]
  }
 };
@@ -50,11 +49,14 @@ chip = {
   'spi' : 3,
   'i2c' : 3,
   'adc' : 0,
-  'dac' : 0,
+  'dac' : 0
 };
 
 devices = {
-  'USB' : {} # to convince code that we have a USB port (it's used for the console ion Linux)
+  'USB' : {}, # to convince code that we have a USB port (it's used for the console ion Linux)
+    'LCD' : {
+            'width' : 480, 'height' : 320, 'bpp' : 16, 'controller' : 'sdl'
+            }
 };
 
 def get_pins():

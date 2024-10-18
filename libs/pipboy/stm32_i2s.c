@@ -35,6 +35,7 @@ void STM32_I2S_Start() {};
 void STM32_I2S_Stop() {};
 void STM32_I2S_StreamEnded() {};
 uint16_t *STM32_I2S_GetSampleBufferPtr() { return 0; }
+STM32_I2S_Status STM32_I2S_GetStatus() { return STM32_I2S_STOPPED; }
 #else // not LINUX
 
 #include "stm32f4xx_spi.h"
