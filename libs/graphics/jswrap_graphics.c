@@ -2863,7 +2863,7 @@ JsVar *jswrap_graphics_getVectorFontPolys(JsGraphics *gfx, JsVar *str, JsVar *op
   "type" : "method",
   "class" : "Graphics",
   "name" : "drawLineString",
-  "#if" : "defined(DICKENS)", no_docs":1,
+  "#if" : "defined(DICKENS)", "no_docs":1,
   "generate" : "jswrap_graphics_drawLineString",
   "params" : [
     ["str","JsVar","The string"],
@@ -4278,7 +4278,7 @@ void jswrap_graphics_dump(JsVar *parent) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "saveScreenshot",
-  "#if" : "defined(DICKENS)", no_docs":1,
+  "#if" : "defined(DICKENS)", "no_docs":1,
   "generate" : "jswrap_graphics_saveScreenshot",
   "params" : [
     ["filename","JsVar","If supplied, a file to save, otherwise 'screenshot.img'"]
