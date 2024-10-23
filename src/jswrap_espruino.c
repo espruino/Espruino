@@ -281,6 +281,10 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature, JsVar *data) 
   JsVar *fn = jsvNewNativeFunction((void *)(size_t)addr, (unsigned short)argTypes);
   if (data) {
     JsVar *flat = jsvAsFlatString(data);
+    if (!flat) { // can't get a flat string!
+      jsvUnLock(fn);
+      return 0;
+    }
     jsvAddNamedChildAndUnLock(fn, flat, JSPARSE_FUNCTION_CODE_NAME);
   }
   return fn;

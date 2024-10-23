@@ -1782,6 +1782,7 @@ NO_INLINE JsVar *jspeClassDefinition(bool parseNamedClass) {
         jsvUnLock(value);
       }
     }
+    while (lex->tk==';') JSP_ASSERT_MATCH(';');
 
     jsvUnLock(funcName);
   }

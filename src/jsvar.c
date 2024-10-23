@@ -1632,21 +1632,9 @@ JsVar *jsvAsStringAndUnLock(JsVar *var) {
 JsVar *jsvAsFlatString(JsVar *var) {
   if (jsvIsFlatString(var)) return jsvLockAgain(var);
   JsVar *str = jsvAsString(var);
-  size_t len = jsvGetStringLength(str);
-  JsVar *flat = jsvNewFlatStringOfLength((unsigned int)len);
-  if (flat) {
-    JsvStringIterator src;
-    JsvStringIterator dst;
-    jsvStringIteratorNew(&src, str, 0);
-    jsvStringIteratorNew(&dst, flat, 0);
-    while (len--) {
-      jsvStringIteratorSetCharAndNext(&dst, jsvStringIteratorGetCharAndNext(&src));
-    }
-    jsvStringIteratorFree(&src);
-    jsvStringIteratorFree(&dst);
-  }
+  JsVar *fs = jsvNewFlatStringFromStringVar(str, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
   jsvUnLock(str);
-  return flat;
+  return fs;
 }
 
 /** Given a JsVar meant to be an index to an array, convert it to
@@ -1943,7 +1931,29 @@ void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxL
   jsvStringIteratorFree(&dst);
 }
 
-/** Create a new String from a substring in RAM. It is always writable. jsvNewFromStringVar can reference a non-writable string.
+/** Create a new flat string from the given var with the given index and length */
+JsVar *jsvNewFlatStringFromStringVar(JsVar *var, size_t stridx, size_t maxLength) {
+  assert(jsvIsString(var));
+  size_t len = jsvGetStringLength(var);
+  if (stridx>len) len=0;
+  else len -= stridx;
+  if (len > maxLength) len = maxLength;
+  JsVar *flat = jsvNewFlatStringOfLength((unsigned int)len);
+  if (flat) {
+    JsvStringIterator src;
+    JsvStringIterator dst;
+    jsvStringIteratorNew(&src, var, stridx);
+    jsvStringIteratorNew(&dst, flat, 0);
+    while (len--) {
+      jsvStringIteratorSetCharAndNext(&dst, jsvStringIteratorGetCharAndNext(&src));
+    }
+    jsvStringIteratorFree(&src);
+    jsvStringIteratorFree(&dst);
+  }
+  return flat;
+}
+
+/** Create a new (non-flat) String from a substring in RAM. It is always writable and appendable. jsvNewFromStringVar can reference a non-writable string.
 The Argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH) */
 JsVar *jsvNewWritableStringFromStringVar(const JsVar *str, size_t stridx, size_t maxLength) {
   JsVar *var = jsvNewFromEmptyString();
@@ -1958,6 +1968,7 @@ JsVar *jsvNewWritableStringFromStringVar(const JsVar *str, size_t stridx, size_t
 /** Create a new variable from a substring. If a Native or Flash String, the memory area will be referenced (so the new string may not be writable)
 The Argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH) */
 JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength) {
+  assert(jsvIsString(str));
   if (jsvIsNativeString(str) || jsvIsFlashString(str)) {
     // if it's a flash string, just change the pointer (but we must check length)
     size_t l = jsvGetStringLength(str);
@@ -1967,6 +1978,18 @@ JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength) {
     res->varData.nativeStr.ptr = str->varData.nativeStr.ptr + stridx;
     res->varData.nativeStr.len = (JsVarDataNativeStrLength)maxLength;
     return res;
+  }
+  if (jsvIsFlatString(str)) {
+    // work out how long we really want it...
+    size_t length = jsvGetCharactersInVar(str);
+    if (stridx >= length) length = 0;
+    else length -= stridx;
+    if (length > maxLength) length = maxLength;
+    // if it's long enough to make sense, create a flat string instead
+    if (length > JSV_FLAT_STRING_BREAK_EVEN) {
+      JsVar *var = jsvNewFlatStringFromStringVar(str, stridx, length);
+      if (var) return var;
+    }
   }
   return jsvNewWritableStringFromStringVar(str, stridx, maxLength);
 }
