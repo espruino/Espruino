@@ -18,7 +18,9 @@
 
 #ifdef BANGLEJS
 #define ESPR_NO_VARIMAGE // don't allow saving an image of current state to flash - no use on Bangle.js
+#if FLASH_SAVED_CODE_START > 1000000 // saved code is in external flash (eg it's not a NOFLASH build)
 #define ESPR_STORAGE_FILENAME_TABLE // on non-Bangle.js boards without external flash this doesn't make much sense
+#endif
 #endif
 
 #ifdef LINUX // for testing...
