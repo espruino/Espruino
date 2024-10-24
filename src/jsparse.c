@@ -2273,7 +2273,7 @@ NO_INLINE void jspeSkipBlock() {
   int brackets = 1;
   // set execFlags to no, which means we won't try and parse strings into vars
   JsExecFlags oldExec = execInfo.execute;
-  execInfo.execute = (JsExecFlags)(execInfo.execute & ~EXEC_RUN_MASK) | EXEC_NO;
+  execInfo.execute = (JsExecFlags)(execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) | EXEC_NO;
   // just run over every token
   while (lex->tk && brackets) {
     if (lex->tk == '{') brackets++;
@@ -2552,9 +2552,9 @@ NO_INLINE JsVar *jspeStatementSwitch() {
 // Check whether we received a break/continue while parsing previously. Return true if we had a 'break'
 static NO_INLINE bool jspeCheckBreakContinue() {
   if (execInfo.execute & EXEC_CONTINUE)
-    execInfo.execute = (execInfo.execute & ~EXEC_RUN_MASK) | EXEC_YES;
+    execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) | EXEC_YES;
   else if (execInfo.execute & EXEC_BREAK) {
-    execInfo.execute = (execInfo.execute & ~EXEC_RUN_MASK) | EXEC_YES;
+    execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) | EXEC_YES;
     return true;
   }
   return false;
