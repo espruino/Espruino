@@ -51,6 +51,7 @@
             Handle semicolons between field declarations in classes
             Ensure that pretokenised Strings are loaded as Flat Strings when executed from a String in RAM
             E.nativeCall also checks to see if getting data as a flat string failed (could have caused segfault)
+            Fix for regression after #2547 fix (left hand operand of maths with a valueOf method)
             
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
