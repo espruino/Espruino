@@ -3341,21 +3341,15 @@ JsVar *jspEvaluate(const char *str, bool stringIsStatic) {
   return v;
 }
 
-JsVar *jspExecuteJSFunction(const char *jsCode, JsVar *thisArg, int argCount, JsVar **argPtr) {
-  JsVar *fn = jspEvaluate(jsCode,true);
-  JsVar *result = jspExecuteFunction(fn,thisArg,argCount,argPtr);
-  jsvUnLock(fn);
-  return result;
-}
-
-JsVar *jspExecuteJSFunctionCode(const char *argNames, const char *jsCode, int jsCodeLen, JsVar *thisArg, int argCount, JsVar **argPtr) {
+JsVar *jspExecuteJSFunctionCode(const char *argNames, const char *jsCode, size_t jsCodeLen, JsVar *thisArg, int argCount, JsVar **argPtr) {
   if (jsCodeLen==0) jsCodeLen = strlen(jsCode);
   JsVar *fn = jsvNewWithFlags(JSV_FUNCTION);
   if (!fn) return 0;
   // split `argNames` up and add each name
   if (argNames && *argNames) {
-    char name[10], nameLen;
-    name[0] = 0xFF;
+    char name[10];
+    int nameLen;
+    name[0] = (char)0xFF;
     while (*argNames) {
       const char *argEnd = argNames;
       nameLen = 1;
