@@ -23,6 +23,7 @@ wget https://www.espruino.com/modules/SHT3C.min.js  -O SHT3C.min.js
 #wget https://www.espruino.com/modules/PCA9685.min.js  -O PCA9685.min.js
 #wget https://www.espruino.com/modules/Smartibot.min.js  -O Smartibot.min.js
 wget https://www.espruino.com/modules/EspruinoWiFi.min.js -O espruino_wifi/Wifi.min.js
+wget https://banglejs.com/apps/modules/Layout.js -O banglejs/Layout.js
 
 # Other libs
 node ../../../EspruinoDocs/bin/minify.js --pretokenise nordic/Thingy.js nordic/Thingy.min.js
@@ -54,6 +55,7 @@ node ../../../EspruinoDocs/bin/minify.js --pretokenise banglejs/Bangle_showRecov
 node ../../../EspruinoDocs/bin/minify.js --pretokenise banglejs/Bangle_showRecoveryMenu.js banglejs/Bangle_showRecoveryMenu.min.js
 node ../../../EspruinoDocs/bin/minify.js --pretokenise banglejs/Bangle_showTestScreen.js banglejs/Bangle_showTestScreen.min.js
 node ../../../EspruinoDocs/bin/minify.js --pretokenise banglejs/locale.js banglejs/locale.min.js
+node ../../../EspruinoDocs/bin/minify.js --pretokenise banglejs/Layout.js banglejs/Layout.min.js
 
 node ../../../EspruinoDocs/bin/minify.js --pretokenise dickens/Bangle_setUI_DICKENS.js dickens/Bangle_setUI_DICKENS.min.js
 node ../../../EspruinoDocs/bin/minify.js --pretokenise dickens/Bangle_drawWidgets_DICKENS.js dickens/Bangle_drawWidgets_DICKENS.min.js

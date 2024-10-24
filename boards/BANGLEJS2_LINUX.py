@@ -55,6 +55,7 @@ info = {
      'SOURCES += libs/banglejs/banglejs2_storage_default.c',
      'DEFINES += -DESPR_STORAGE_INTITIAL_CONTENTS=1', #
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
+     'JSMODULESOURCES += libs/js/banglejs/Layout.min.js',
    ]
  }
 };

@@ -65,6 +65,8 @@
             ESP32: jshPinWatch now returns correct value (event ID vs pin number)
             JS in the binary now uses jspExecuteJSFunctionCode which helps to skip a parsing step
             JS modules that are included are now pretokenised
+            Bangle.js2: Now using pre-minified showRecoveryMenu and showTestScreen
+            Bangle.js2: Including Layout module in internal flash
 
 
      2v23 : Fix XON/OFF thresholds to be based off the correct buffer size
