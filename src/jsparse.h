@@ -72,6 +72,9 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset);
 JsVar *jspEvaluate(const char *str, bool stringIsStatic);
 /// Execute a JS function with the given arguments. usage: jspExecuteJSFunction("(function() { print('hi'); })",0,0,0)
 JsVar *jspExecuteJSFunction(const char *jsCode, JsVar *thisArg, int argCount, JsVar **argPtr);
+/**  Execute JS function code with the given arguments. usage: jspExecuteJSFunctionCode("a,b","print('hi',a,b);",0, NULL, 2,&arrayOfJsVar)
+jsCodeLen is supplied so we can reference code that contains 0  */
+JsVar *jspExecuteJSFunctionCode(const char *argNames, const char *jsCode, int jsCodeLen, JsVar *thisArg, int argCount, JsVar **argPtr);
 /// Execute a function with the given arguments
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
 

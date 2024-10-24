@@ -2191,7 +2191,7 @@ JsVar *jswrap_espruino_memoryMap(JsVar *baseAddress, JsVar *registers) {
   /* Do this in JS - it's safer and more readable, and doesn't
    * have to be super fast. */
   JsVar *args[2] = {baseAddress, registers};
-  return jspExecuteJSFunction("(function(base,j) {"
+  return jspExecuteJSFunctionCode("base,j",
     "var o={},addr;"
     "for (var reg in j) {"
       "addr=base+j[reg];"
@@ -2201,7 +2201,7 @@ JsVar *jswrap_espruino_memoryMap(JsVar *baseAddress, JsVar *registers) {
       "});"
     "}"
     "return o;"
-  "})",0,2,args);
+  ,0,NULL,2,args);
 }
 
 /*JSON{

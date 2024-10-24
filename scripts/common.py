@@ -526,3 +526,19 @@ def get_espruino_binary_address(board):
 
 def get_board_binary_name(board):
         return board.info["binary_name"].replace("%v", get_version());
+
+# Quote a normal string such that C can read it
+def as_c_string(s):
+        #We can't do this because amazingly "\xabc" in C is NOT "\xab"+"c"
+        #return re.sub(r"\\u00([0-9a-fA-F]{2})", r"\\x\1", json.dumps(s));
+        r = '"';
+        for i in range(len(s)):
+            ch = ord(s[i])
+            if ch == 34: # quote
+              r = r + '\\"'
+            elif (ch>=32) and (ch<128):
+              r = r + s[i]
+            else:
+              r = r + "\\"+oct(ch)[2:].zfill(3)
+        return r + '"';
+

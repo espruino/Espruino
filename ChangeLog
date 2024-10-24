@@ -63,6 +63,9 @@
             Fix lexing of regex at the start of a if/loop (#2529)
             ESP32: remove interrupt on/off code as it just causes a crash
             ESP32: jshPinWatch now returns correct value (event ID vs pin number)
+            JS in the binary now uses jspExecuteJSFunctionCode which helps to skip a parsing step
+            JS modules that are included are now pretokenised
+
 
      2v23 : Fix XON/OFF thresholds to be based off the correct buffer size
             Bangle.js2: Added BANGLE2_IFLASH target for firmware using internal flash for js files (currently only partially working)

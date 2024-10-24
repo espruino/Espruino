@@ -258,7 +258,7 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
   JsVar *arr = pipeGetArray(true);
   if (pipe && arr) {// out of memory?
     if (jsvIsString(source)) { // Single-line 'StringStream' object to add ability to stream from Strings
-      JsVar *stream = jspExecuteJSFunction("(function(s){var p=0;return{read:function(l){return s.substring(p,p+=l)||undefined;}}})",NULL,1,&source);
+      JsVar *stream = jspExecuteJSFunctionCode("s","var p=0;return{read:function(l){return s.substring(p,p+=l)||undefined;}}",0,NULL,1,&source);
       jsvUnLock(source);
       source = stream;
     }
