@@ -270,7 +270,7 @@ Performs a SHA512 hash and returns the result as a 64 byte ArrayBuffer
     ["salt","JsVar","Salt for turning passphrase into a key"],
     ["options","JsVar","Object of Options, `{ keySize: 8 (in 32 bit words), iterations: 10, hasher: 'SHA1'/'SHA224'/'SHA256'/'SHA384'/'SHA512' }`"]
   ],
-  "return" : ["JsVar","Returns an ArrayBuffer"],
+  "return" : ["JsVar","Returns an `ArrayBuffer`"],
   "return_object" : "ArrayBuffer",
   "ifdef" : "USE_TLS"
 }
@@ -454,10 +454,10 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   "generate" : "jswrap_crypto_AES_encrypt",
   "params" : [
     ["passphrase","JsVar","Message to encrypt"],
-    ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
+    ["key","JsVar","Key to encrypt message - must be an `ArrayBuffer` of 128, 192, or 256 BITS"],
     ["options","JsVar","[optional] An object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
   ],
-  "return" : ["JsVar","Returns an ArrayBuffer"],
+  "return" : ["JsVar","Returns an `ArrayBuffer`"],
   "return_object" : "ArrayBuffer",
   "ifdef" : "USE_AES"
 }
@@ -473,10 +473,10 @@ JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
   "generate" : "jswrap_crypto_AES_decrypt",
   "params" : [
     ["passphrase","JsVar","Message to decrypt"],
-    ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
+    ["key","JsVar","Key to encrypt message - must be an `ArrayBuffer` of 128, 192, or 256 BITS"],
     ["options","JsVar","[optional] An object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
   ],
-  "return" : ["JsVar","Returns an ArrayBuffer"],
+  "return" : ["JsVar","Returns an `ArrayBuffer`"],
   "return_object" : "ArrayBuffer",
   "ifdef" : "USE_AES"
 }

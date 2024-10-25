@@ -836,7 +836,7 @@ require("http").createServer(onPageRequest).listen(80);
   "name" : "toArrayBuffer",
   "generate" : "jswrap_espruino_toArrayBuffer",
   "params" : [
-    ["str","JsVar","The string to convert to an ArrayBuffer"]
+    ["str","JsVar","The string to convert to an `ArrayBuffer`"]
   ],
   "return" : ["JsVar","An ArrayBuffer that uses the given string"],
   "return_object" : "ArrayBufferView",
@@ -1086,13 +1086,13 @@ type Uint8ArrayResolvable =
   "name" : "toUint8Array",
   "generate" : "jswrap_espruino_toUint8Array",
   "params" : [
-    ["args","JsVarArray","The arguments to convert to a Uint8Array"]
+    ["args","JsVarArray","The arguments to convert to a `Uint8Array`"]
   ],
   "return" : ["JsVar","A Uint8Array"],
   "return_object" : "Uint8Array",
   "typescript" : "toUint8Array(...args: Uint8ArrayResolvable[]): Uint8Array;"
 }
-This creates a Uint8Array from the given arguments. These are handled as
+This creates a `Uint8Array` from the given arguments. These are handled as
 follows:
 
  * `Number` -> read as an integer, using the lowest 8 bits
