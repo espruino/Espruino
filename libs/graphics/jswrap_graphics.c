@@ -1341,7 +1341,7 @@ JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_toColor",
   "params" : [
-    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#rrggbb' or `'#rgb'`"],
+    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#rrggbb'` or `'#rgb'`"],
     ["g","JsVar","Green (between 0 and 1)"],
     ["b","JsVar","Blue (between 0 and 1)"]
   ],

@@ -303,7 +303,7 @@ for className in sorted(classes, key=lambda s: s.lower()):
 html("  </ul>")
 html('  </div><!-- Contents -->')
 
-html("  <a class=\"blush\" name=\"top\"\>");
+html("  <a class=\"blush\" name=\"top\">");
 #html("  <h2>Detail</h2>")
 lastClass = "XXX"
 for jsondata in detail:
@@ -393,16 +393,16 @@ for jsondata in detail:
     if "#if" in jsondata:
       d = jsondata["#if"];
       dprefix = "This is only available in ";
-      if re.match('^!defined\((.+?)\) && !defined\((.+?)\)$', d):
+      if re.match(r'^!defined\((.+?)\) && !defined\((.+?)\)$', d):
         dprefix = "This is not available in ";
-        d = re.sub('^!defined\((.+?)\) && !defined\((.+?)\)$', "defined(\\1) or defined(\\2)", d)
-      if re.match('^!defined\((.+?)\)$', d):
+        d = re.sub(r'^!defined\((.+?)\) && !defined\((.+?)\)$', r"defined(\\1) or defined(\\2)", d)
+      if re.match(r'^!defined\((.+?)\)$', d):
         dprefix = "This is not available in ";
-        d = re.sub('^!defined\((.+?)\)$', "defined(\\1)", d)
-      d = re.sub('!defined\(', "not defined(", d)
+        d = re.sub(r'^!defined\((.+?)\)$', r"defined(\\1)", d)
+      d = re.sub(r'!defined\(', r"not defined(", d)
       d = d.replace("||", " and ").replace("&&", " with ")
-      d = re.sub('defined\((.+?)\)', replace_with_ifdef_description, d)
-      d = re.sub('(.*)_COUNT>=(.*)', "devices with more than \\2 \\1 peripherals", d)
+      d = re.sub(r'defined\((.+?)\)', replace_with_ifdef_description, d)
+      d = re.sub(r'(.*)_COUNT>=(.*)', r"devices with more than \\2 \\1 peripherals", d)
       desc.append("\n\n**Note:** "+dprefix+d);
     html_description(desc, jsondata["name"])
 
