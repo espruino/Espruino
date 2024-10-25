@@ -421,7 +421,7 @@ def is_property(jsondata):
   return jsondata["type"]=="property" or jsondata["type"]=="staticproperty" or jsondata["type"]=="variable"
 
 def is_function(jsondata):
-  return jsondata["type"]=="function" or jsondata["type"]=="method"
+  return jsondata["type"]=="method" or jsondata["type"]=="staticmethod" or jsondata["type"]=="function"
 
 def get_prefix_name(jsondata):
   if jsondata["type"]=="event": return "event"

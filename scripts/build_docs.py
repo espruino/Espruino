@@ -84,9 +84,12 @@ def htmlify(d,current):
   end = d.find("</code>", idx)
   while idx>=0 and end>idx:
     codeBlock = d[idx+6:end]
-    # search for known links in code
-    if codeBlock[-2:]=="()" and codeBlock[:-2] in links:
-      codeBlock = "<a href=\"#"+links[codeBlock[:-2]]+"\">"+codeBlock+"</a>";
+    # search for known links in code (any function call regardless of param names)
+    m = re.match(r"^([A-Za-z0-9.]+)\([A-Za-z0-9,\.]*\)$", codeBlock)
+    if m:
+      link = m.groups()[0]
+      if link+"()" in links: # 'and link!=current' would stop a function linking to itself
+        codeBlock = "<a href=\"#"+links[link+"()"]+"\">"+codeBlock+"</a>";
     elif codeBlock in links:
       codeBlock = "<a href=\"#"+links[codeBlock]+"\">"+codeBlock+"</a>";
     # ensure multi-line code is handled correctly
@@ -281,8 +284,10 @@ links = {}
 def add_link(jsondata):
   if not "no_create_links" in jsondata:
     link = get_prefixed_name(jsondata);
-    if link!="global":
-      links[link] = get_link(jsondata)
+    url = get_link(jsondata)
+    links[link] = url
+    if common.is_function(jsondata):
+      links[link+"()"] = url
 jsondatas = sorted(jsondatas, key=lambda s: common.get_name_or_space(s).lower())
 
 html('  <div id="contents">')
