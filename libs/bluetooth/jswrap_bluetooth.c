@@ -429,7 +429,7 @@ for when Espruino is connecting *to* another device (central mode).
   "class" : "NRF",
   "name" : "security",
   "params" : [
-    ["status","JsVar","An object containing `{auth_status,bonded,lv4,kdist_own,kdist_peer}"]
+    ["status","JsVar","An object containing `{auth_status,bonded,lv4,kdist_own,kdist_peer}`"]
   ]
 }
 Contains updates on the security of the current Bluetooth link.
