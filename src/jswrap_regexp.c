@@ -317,6 +317,35 @@ JsVar *jswrap_regexp_constructor(JsVar *str, JsVar *flags) {
       jsvObjectSetChild(r, "flags", flags);
   }
   jsvObjectSetChildAndUnLock(r, "lastIndex", jsvNewFromInteger(0));
+#ifndef ESPR_NO_REGEX_OPTIMISE
+  /* Quick shortcut - if we were using regex just to find the end of a string (eg just
+  normal chars and then $ at the end), do it with a single string compare which is faster.
+  We save `endsWith` here and then check in jswrap_regexp_exec */
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it,str,0);
+  char ch = 0;
+  bool noControlChars = true;
+  char buf[32];
+  size_t bufc = 0;
+  while (jsvStringIteratorHasChar(&it)) {
+    bool wasSlash = ch=='\\';
+    if (ch && strchr(".[]()|^*+$",ch)) noControlChars = false;
+    ch = jsvStringIteratorGetCharAndNext(&it);
+    if (wasSlash) {
+      if (!strchr(".\\",ch)) {
+        noControlChars = false;
+        ch = 0;
+      }
+    }
+    if (ch && (wasSlash || ch!='\\') && bufc<sizeof(buf)) buf[bufc++]=ch;
+    if (wasSlash) ch = 0;
+  }
+  jsvStringIteratorFree(&it);
+  if (ch=='$' && noControlChars && bufc<sizeof(buf)) {
+    bufc--; // remove '$'
+    jsvObjectSetChildAndUnLock(r, "endsWith", jsvNewStringOfLength((unsigned int)bufc,buf));
+  }
+#endif
   return r;
 }
 
@@ -359,6 +388,24 @@ Or with groups `/W(o)rld/.exec("Hello World")` returns:
 JsVar *jswrap_regexp_exec(JsVar *parent, JsVar *arg) {
   JsVar *str = jsvAsString(arg);
   JsVarInt lastIndex = jsvObjectGetIntegerChild(parent, "lastIndex");
+#ifndef ESPR_NO_REGEX_OPTIMISE
+  /* Quick shortcut - if we were using regex just to find the end of a string,
+  do it with a single string compare which is faster */
+  JsVar *endsWith = jsvObjectGetChildIfExists(parent, "endsWith");
+  if (endsWith) {
+    int idx = (int)jsvGetStringLength(arg) - (int)jsvGetStringLength(endsWith);
+    if ((lastIndex <= idx) && jsvCompareString(arg, endsWith, (size_t)idx,0,true)==0) {
+      JsVar *rmatch = jsvNewEmptyArray();
+      jsvSetArrayItem(rmatch, 0, endsWith);
+      jsvObjectSetChildAndUnLock(rmatch, "index", jsvNewFromInteger(idx));
+      jsvObjectSetChildAndUnLock(rmatch, "input", str);
+      jsvUnLock(endsWith);
+      return rmatch;
+    }
+    jsvUnLock(endsWith);
+  }
+#endif
+  // Otherwise do proper regex
   JsVar *regex = jsvObjectGetChildIfExists(parent, "source");
   if (!jsvIsString(regex) || lastIndex>(JsVarInt)jsvGetStringLength(str)) {
     jsvUnLock2(str,regex);
