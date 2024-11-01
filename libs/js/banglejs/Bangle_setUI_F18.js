@@ -69,7 +69,7 @@
       Bangle.swipeHandler = options.swipe;
       Bangle.on("swipe", Bangle.swipeHandler);
     }
-    if (options.btn) {
+    if (options.btn || options.btnRelease) {
       Bangle.btnWatches = [
         setWatch(function() { options.btn(1); }, BTN1, {repeat:1,edge:"falling"}),
         setWatch(function() { options.btn(2); }, BTN2, {repeat:1,edge:"falling"}),
