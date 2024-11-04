@@ -429,7 +429,7 @@ for when Espruino is connecting *to* another device (central mode).
   "class" : "NRF",
   "name" : "security",
   "params" : [
-    ["status","JsVar","An object containing `{auth_status,bonded,lv4,kdist_own,kdist_peer}"]
+    ["status","JsVar","An object containing `{auth_status,bonded,lv4,kdist_own,kdist_peer}`"]
   ]
 }
 Contains updates on the security of the current Bluetooth link.
@@ -2372,7 +2372,7 @@ void jswrap_ble_setTxPower(JsVarInt pwr) {
 }
 
 **THIS IS DEPRECATED** - please use `NRF.setConnectionInterval` for peripheral
-and `NRF.connect(addr, options)`/`BluetoothRemoteGATTServer.connect(options)`
+and `NRF.connect(address, options)`/`BluetoothRemoteGATTServer.connect(options)`
 for central connections.
 
 This sets the connection parameters - these affect the transfer speed and power
@@ -3831,7 +3831,7 @@ JsVar *jswrap_ble_startBonding(bool forceRePair) {
   "ifdef" : "NRF52_SERIES"
 }
 A Web Bluetooth-style device - you can request one using
-`NRF.requestDevice(address)`
+`NRF.requestDevice(options)`
 
 For example:
 

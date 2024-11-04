@@ -680,10 +680,10 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
     ["address","JsVar","The 7 bit address of the device to request bytes from, or an object of the form `{address:12, stop:false}` to send this data without a STOP signal."],
     ["quantity","int32","The number of bytes to request"]
   ],
-  "return" : ["JsVar","The data that was returned - as a Uint8Array"],
+  "return" : ["JsVar","The data that was returned - as a `Uint8Array`"],
   "return_object" : "Uint8Array"
 }
-Request bytes from the given slave device, and return them as a Uint8Array
+Request bytes from the given slave device, and return them as a `Uint8Array`
 (packed array of bytes). This is like using Arduino Wire's requestFrom,
 available and read functions. Sends a STOP unless `{address:X, stop:false}` is used.
  */
@@ -745,10 +745,10 @@ JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
     ["reg","int","The register on the device to read bytes from"],
     ["quantity","int","The number of bytes to request"]
   ],
-  "return" : ["JsVar","The data that was returned - as a Uint8Array"],
+  "return" : ["JsVar","The data that was returned - as a `Uint8Array`"],
   "return_object" : "Uint8Array"
 }
-Request bytes from a register on the given I2C slave device, and return them as a Uint8Array
+Request bytes from a register on the given I2C slave device, and return them as a `Uint8Array`
 (packed array of bytes).
 
 This is the same as calling `I2C.writeTo` and `I2C.readFrom`:

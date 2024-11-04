@@ -814,17 +814,13 @@ For instance:
 E.pipe("This is a really big String",
        {write: print},
        {chunkSize:1, complete:()=>print("Finished!")});
-
 // Pipe the numbers 1 to 100 to a StorageFile in Storage
 E.pipe({ n:0, read : function() { if (this.n<100) return (this.n++)+"\n"; }},
        require("Storage").open("testfile","w"));
-
 // Pipe a StorageFile straight to the Bluetooth UART
 E.pipe(require("Storage").open("testfile","r"), Bluetooth);
-
 // Pipe a normal file in Storage (not StorageFile) straight to the Bluetooth UART
 E.pipe(require("Storage").read("blob.txt"), Bluetooth);
-
 // Pipe a normal file in Storage as a response to an HTTP request
 function onPageRequest(req, res) {
   res.writeHead(200, {'Content-Type': 'text/plain'});
@@ -840,7 +836,7 @@ require("http").createServer(onPageRequest).listen(80);
   "name" : "toArrayBuffer",
   "generate" : "jswrap_espruino_toArrayBuffer",
   "params" : [
-    ["str","JsVar","The string to convert to an ArrayBuffer"]
+    ["str","JsVar","The string to convert to an `ArrayBuffer`"]
   ],
   "return" : ["JsVar","An ArrayBuffer that uses the given string"],
   "return_object" : "ArrayBufferView",
@@ -930,12 +926,18 @@ flat string of the same length, the backing string will be returned without
 doing a copy or other allocation. The same applies if there's a single argument
 which is itself a flat string.
 
-```JS
+```
 E.toString(0,1,2,"Hi",3)
 "\0\1\2Hi\3"
+```
+
+```
 E.toString(1,2,{data:[3,4], count:4},5,6)
 "\1\2\3\4\3\4\3\4\3\4\5\6"
->E.toString(1,2,{callback : () => "Hello World"},5,6)
+```
+
+```
+E.toString(1,2,{callback : () => "Hello World"},5,6)
 ="\1\2Hello World\5\6"
 ```
 
@@ -944,7 +946,6 @@ or would return `undefined` if one couldn't be allocated. Now, it will return
 a normal (fragmented) String if a contiguous chunk of memory cannot be allocated.
 You can still check if the returned value is a Flat string using `E.getAddressOf(str, true)!=0`,
 or can use `E.toFlatString` instead.
-
  */
 JsVar *jswrap_espruino_toString(JsVar *args) {
   return jswrap_espruino_toStringX(args, false);
@@ -1085,13 +1086,13 @@ type Uint8ArrayResolvable =
   "name" : "toUint8Array",
   "generate" : "jswrap_espruino_toUint8Array",
   "params" : [
-    ["args","JsVarArray","The arguments to convert to a Uint8Array"]
+    ["args","JsVarArray","The arguments to convert to a `Uint8Array`"]
   ],
   "return" : ["JsVar","A Uint8Array"],
   "return_object" : "Uint8Array",
   "typescript" : "toUint8Array(...args: Uint8ArrayResolvable[]): Uint8Array;"
 }
-This creates a Uint8Array from the given arguments. These are handled as
+This creates a `Uint8Array` from the given arguments. These are handled as
 follows:
 
  * `Number` -> read as an integer, using the lowest 8 bits

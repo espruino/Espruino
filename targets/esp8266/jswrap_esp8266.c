@@ -227,10 +227,9 @@ following fields:
 * `cpuFrequency` - CPU operating frequency in Mhz.
 * `freeHeap` - Amount of free heap in bytes.
 * `maxCon` - Maximum number of concurrent connections.
-* `flashMap` - Configured flash size&map: '512KB:256/256' .. '4MB:512/512'
+* `flashMap` - Configured flash size&map: '512KB:256/256' .. `'4MB:512/512'`
 * `flashKB` - Configured flash size in KB as integer
-* `flashChip` - Type of flash chip as string with manufacturer & chip, ex: '0xEF
-  0x4016`
+* `flashChip` - Type of flash chip as string with manufacturer & chip, ex: `'0xEF 0x4016'`
 
 */
 JsVar *jswrap_ESP8266_getState() {

@@ -61,6 +61,7 @@ info = {
      'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol     
      'DEFINES+=-DESPR_LIMIT_DATE_RANGE', # limits the acceptable range for Date years (saves a few hundred bytes)
      'DEFINES+=-DESPR_NO_BLUETOOTH_MESSAGES', # don't include text versions of Bluetooth error messages (just the error number)
+     'DEFINES+=-DESPR_NO_REGEX_OPTIMISE', # save some storage space
      'INCLUDE += -I$(ROOT)/libs/pixljs',
      'WRAPPERSOURCES += libs/pixljs/jswrap_pixljs.c',
      'JSMODULESOURCES += libs/js/graphical_menu.min.js'

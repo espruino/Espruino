@@ -31,6 +31,7 @@ info = {
    ],
    'makefile' : [
      'DEFINES+=-DSAVE_ON_FLASH_MATH', 
+     'DEFINES+=-DESPR_NO_REGEX_OPTIMISE', # save some storage space
      'BLACKLIST=boards/ESP8266.blocklist', # force some stuff to be removed to save space
      'USE_DEBUGGER=0', # We can't use debugger as RTOS needs jsiIdle to keep exiting     
    ]

@@ -117,7 +117,9 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `DUMP_IGNORE_VARIABLES="...\0"` - string containing zero-terminated list of global variable names to ignore when `dump()` is called. Must be explicityly zero-terminated so there are 2 trailing 0s
 * `FSMC_BITBANG` - if using a built-in FSMC Graphics LCD, don't use the hardware but instead do it in software
 * `FLASH_64BITS_ALIGNMENT=1` -  For testing 64 bit flash writes on linux
-* `JSMODULESOURCES+=libs/.../foo.min.js` - include the given JS file as a module that can be used via `require("foo")`
+* `JSMODULESOURCES+=libs/js/.../foo.min.js` - include the given JS file as a module that can be used via `require("foo")`
+  * `JSMODULESOURCES+=ModuleName:libs/js/.../module.min.js` - include as a module used with `require("ModuleName")`
+  * `JSMODULESOURCES+=_:libs/js/.../boot.min.js` - include as a file that's run at boot time
 * `JSVAR_MALLOC` - Allocate space for variables at jsvInit time, rather than statically
 * `JSVAR_FORCE_16_BYTE` - Force 16 byte JsVars (rather than packing bits to get JsVar size down to the minimum possible)
 * `USE_FONT_6X8=1` - Also include in a 6x8 fixed width bitmap font
@@ -155,6 +157,7 @@ There are some specifically that are useful for cutting a few bytes out of the b
 * `ESPR_NO_SOFTWARE_I2C` - don't build in software I2C support
 * `ESPR_NO_BLUETOOTH_MESSAGES` - don't include text versions of Bluetooth error messages (just the error number)
 * `ESPR_LIMIT_DATE_RANGE` - limits the acceptable range for Date years (saves a few hundred bytes)
+* `ESPR_NO_REGEX_OPTIMISE` - strips out some speed optimisations from the regex library
 
 These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
 

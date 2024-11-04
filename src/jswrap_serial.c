@@ -443,7 +443,7 @@ Print a string to the serial port - without a line feed
 Print a line to the serial port with a newline (`\r\n`) at the end of it.
 
  **Note:** This function converts data to a string first, e.g.
- `Serial.print([1,2,3])` is equivalent to `Serial.print("1,2,3"). If you'd like
+ `Serial.print([1,2,3])` is equivalent to `Serial.print("1,2,3")`. If you'd like
  to write raw bytes, use `Serial.write`.
  */
 void jswrap_serial_print(JsVar *parent, JsVar *str) {
