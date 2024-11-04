@@ -3343,6 +3343,36 @@ JsVar *jspExecuteJSFunction(const char *jsCode, JsVar *thisArg, int argCount, Js
   return result;
 }
 
+JsVar *jspExecuteJSFunctionCode(const char *argNames, const char *jsCode, int jsCodeLen, JsVar *thisArg, int argCount, JsVar **argPtr) {
+  if (jsCodeLen==0) jsCodeLen = strlen(jsCode);
+  JsVar *fn = jsvNewWithFlags(JSV_FUNCTION);
+  if (!fn) return 0;
+  // split `argNames` up and add each name
+  if (argNames && *argNames) {
+    char name[10], nameLen;
+    name[0] = 0xFF;
+    while (*argNames) {
+      const char *argEnd = argNames;
+      nameLen = 1;
+      while (*argEnd && *argEnd!=',') {
+        name[nameLen++] = *argEnd;
+        argEnd++;
+      }
+      name[nameLen]=0;
+      JsVar *paramName = jsvNewNameFromString(name);
+      jsvAddFunctionParameter(fn, paramName, 0);
+      // paramName is unlocked by jsvAddFunctionParameter
+      argNames = (*argEnd)?argEnd+1:argEnd;
+    }
+  }
+  // add the function code
+  jsvObjectSetChildAndUnLock(fn, JSPARSE_FUNCTION_CODE_NAME, jsvNewNativeString((char*)jsCode, jsCodeLen));
+  // execute!
+  JsVar *result = jspExecuteFunction(fn,thisArg,argCount,argPtr);
+  jsvUnLock(fn);
+  return result;
+}
+
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr) {
   JsExecInfo oldExecInfo = execInfo;
   execInfo.scopesVar = 0;

@@ -57,7 +57,8 @@ for i in range(1,len(sys.argv)):
       modulename = arg.rsplit('/',1)[1][:-3]
       if modulename[-4:]==".min": modulename=modulename[:-4]
     print("Loading JS module: "+arg+" -> "+modulename)
-    jscode = open(arg, "r").read()
+    # Can't open(...encoding='latin-1') here because Python will still replace line endings!
+    jscode = open(arg, "rb").read().decode(encoding='latin-1').strip()
     if modulename=="_":
       jsbootcode = jscode
     else:
@@ -75,7 +76,7 @@ def codeOut(s):
   wrapperFile.write(s+"\n");
 
 def FATAL_ERROR(s):
-  sys.stderr.write("ERROR: "+s)
+  sys.stderr.write("ERROR: "+s+"\n")
   exit(1)
 
 # ------------------------------------------------------------------------------------------------------
@@ -372,9 +373,22 @@ for jsondata in jsondatas:
       s.append(toCType(param[1])+" "+param[0]);
 
     js = "";
-    with open(basedir+jsondata["generate_js"], 'r') as file:
-      js = file.read().strip()
-    statement = "jspExecuteJSFunction("+json.dumps(js)
+    # Can't open(...encoding='latin-1') here because Python will still replace line endings!
+    js = open(basedir+jsondata["generate_js"], 'rb').read().decode(encoding='latin-1').strip()
+    if not js.endswith("})"):
+      print(common.as_c_string(js)+"\n")
+      FATAL_ERROR("generate_js function doesn't end in })")
+  
+    fnMatch = re.match(r"^\((function|\252)\(([^\)]*)\)", js);
+    
+    if fnMatch:
+      fnKeyword, fnArgs = fnMatch.groups()
+      fnCode = js[len(fnKeyword)+len(fnArgs)+4:-2]
+      statement = "jspExecuteJSFunctionCode("+common.as_c_string(fnArgs)+", "+common.as_c_string(fnCode)+", "+str(len(fnCode))
+    else:
+      print(common.as_c_string(js)+"\n")
+      FATAL_ERROR("generate_js function not in the correct format")
+    
     if hasThis(jsondata): statement = statement + ", parent"
     else: statement = statement + ", NULL"
 
@@ -713,7 +727,7 @@ codeOut('')
 codeOut("/** Tasks to run on Initialisation (eg boot/load/reset/after save/etc) */")
 codeOut('void jswInit() {')
 if jsbootcode!=False:
-  codeOut('  jsvUnLock(jspEvaluate('+json.dumps(jsbootcode)+', true/*static*/));')
+  codeOut('  jsvUnLock(jspEvaluate('+common.as_c_string(jsbootcode)+', true/*static*/));')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="init":
     codeOut("  "+jsondata["generate"]+"();")
@@ -752,7 +766,7 @@ codeOut("/** If we have a built-in module with the given name, return the module
 codeOut('const char *jswGetBuiltInJSLibrary(const char *name) {')
 codeOut('  NOT_USED(name);')
 for modulename in jsmodules:
-  codeOut("  if (!strcmp(name,\""+modulename+"\")) return "+json.dumps(jsmodules[modulename])+";")
+  codeOut("  if (!strcmp(name,\""+modulename+"\")) return "+common.as_c_string(jsmodules[modulename])+";")
 codeOut('  return 0;')
 codeOut('}')
 
