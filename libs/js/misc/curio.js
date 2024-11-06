@@ -46,9 +46,11 @@ Motor.prototype.setSpeed = function(speed) {
   } else {
     if (speed>0) {
       this.pwm = this.M1;
+      this.M2.reset();
       this.direction = 1;
     } else  if (speed<0) {
       this.pwm = this.M2;
+      this.M1.reset();
       this.direction = -1;
     }
     this.duty = 1;
