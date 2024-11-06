@@ -40,6 +40,8 @@
 
 #define DAC_SCL_PIN (JSH_PORTB_COUNT+8)
 #define DAC_SDA_PIN (JSH_PORTB_COUNT+9)
+#define RADIO_SCL_PIN (JSH_PORTB_COUNT+6)
+#define RADIO_SDA_PIN (JSH_PORTB_COUNT+7)
 
 #define STREAM_BUFFER_SIZE 40960
 uint8_t streamBuffer[STREAM_BUFFER_SIZE+4] __attribute__ ((aligned (8))); // we add 4 to allow our unaligned fread hack to work
@@ -1000,6 +1002,9 @@ static void jswrap_pb_periph_off() {
   jshI2CUnSetup(EV_I2C1); // disable I2C
   jshPinSetState(DAC_SCL_PIN, JSHPINSTATE_GPIO_IN);
   jshPinSetState(DAC_SDA_PIN, JSHPINSTATE_GPIO_IN);
+  jshPinSetState(RADIO_SCL_PIN, JSHPINSTATE_ADC_IN);
+  jshPinSetState(RADIO_SDA_PIN, JSHPINSTATE_ADC_IN);
+  jshPinSetState(LCD_TEARING, JSHPINSTATE_ADC_IN);
   STM32_I2S_Kill();
 }
 
