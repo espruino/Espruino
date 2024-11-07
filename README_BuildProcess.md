@@ -138,6 +138,10 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_BLUETOOTH_ANCS` - Enable Apple ANCS(notification), AMS and CTS support
 * `ESPR_USE_STEPPER_TIMER` - add builtin `Stepper` class to handle higher speed stepper handling
 * `USB_CDC` - without this on ESP32C3, USB CDC will not be used for outputting the console
+* `ESPR_RTC_INITIALISE_TICKS` - STM32: how many systicks do we wait for the LSE to initialise. Usually 2s, so the default of 10 is fine for 84Mhz. Higher clocks need higher values here
+* `ESPR_RTC_ALWAYS_TRY_LSE` - STM32: If we boot and RTC is initialised but using LSI, try again at starting LSE
+* `ESPR_DELAY_MULTIPLIER` - STM32: At boot Espruino works out how many iterations are needed to produce a set time period of delay. You can hard-code this for a faster boot
+* `ESPR_MIN_WFI_TIME_MS` - STM32: default 0.1ms, but if set, Espruino won't enter __WFI sleep unless the next setInterval is more than this number of milliseconds away
 
 
 There are some specifically that are useful for cutting a few bytes out of the build:
@@ -156,9 +160,7 @@ There are some specifically that are useful for cutting a few bytes out of the b
 * `ESPR_NO_SOFTWARE_I2C` - don't build in software I2C support
 * `ESPR_NO_BLUETOOTH_MESSAGES` - don't include text versions of Bluetooth error messages (just the error number)
 * `ESPR_LIMIT_DATE_RANGE` - limits the acceptable range for Date years (saves a few hundred bytes)
-* `ESPR_RTC_INITIALISE_TICKS` - STM32: how many systicks do we wait for the LSE to initialise. Usually 2s, so the default of 10 is fine for 84Mhz. Higher clocks need higher values here
-* `ESPR_RTC_ALWAYS_TRY_LSE` - STM32: If we boot and RTC is initialised but using LSI, try again at starting LSE
-* `ESPR_DELAY_MULTIPLIER` - STM32: At boot Espruino works out how many iterations are needed to produce a set time period of delay. You can hard-code this for a faster boot
+
 
 These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
 
