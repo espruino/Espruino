@@ -106,9 +106,11 @@
       area:"tl", width:24,
       draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
       remove:(noclear)=>{
+        var w = WIDGETS.back;
+        if (w.area!="tl") noclear=true; // area="" is set by widget_utils.hide, so avoid drawing
         if (btnWatch) clearWatch(btnWatch);
         Bangle.removeListener("touch", touchHandler);
-        if (!noclear) g.reset().clearRect({x:WIDGETS.back.x, y:WIDGETS.back.y, w:24,h:24});
+        if (!noclear) g.reset().clearRect({x:w.x, y:w.y, w:24,h:24});
         delete WIDGETS.back;
         if (!noclear) Bangle.drawWidgets();
       }

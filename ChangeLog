@@ -54,6 +54,7 @@
             Fix for regression after #2547 fix (left hand operand of maths with a valueOf method)
             X.on now allocates a new array for each new handler added, stops new handlers being called for the event that's currently being handled (#2559)
             RegExp: add optimisation for RegExp that is simply checking if a string ends with something
+            Bangle.js: .setUI now only clears back widget if it hasn't been hidden by widget_utils
 
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
