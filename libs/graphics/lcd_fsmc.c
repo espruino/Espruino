@@ -418,7 +418,7 @@ void LCD_init_hardware() {
 
   /* Enable the FSMC pins for LCD control */
 #ifdef STM32F4
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Low_Speed; // ST datasheet says "Low Speed" is OK at 8 MHz if VDD>2.7V and pin load capacitance < 10pF
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
