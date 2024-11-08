@@ -49,6 +49,8 @@ info = {
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"MDBT42Q"\'',
      'DEFINES+=-DNEOPIXEL_SCK_PIN=23 -DNEOPIXEL_LRCK_PIN=13', # see https://github.com/espruino/Espruino/issues/2071
      'DEFINES += -DESPR_USE_STEPPER_TIMER=1', # Build in the code for stepping using the timer
+     'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol     
+     'DEFINES+=-DESPR_NO_REGEX_OPTIMISE', # save some storage space
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91'
    ]

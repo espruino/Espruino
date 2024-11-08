@@ -143,7 +143,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 
 There are some specifically that are useful for cutting a few bytes out of the build:
 
-* `SAVE_ON_FLASH` - Remove some features (like any ES6 support) to target devices with ~128kB Flash
+* `SAVE_ON_FLASH` - Remove some features (like any ES6 support) to target devices with ~128kB Flash (see next list)
 * `SAVE_ON_FLASH_EXTREME` - Pull out as many features as possible to target devices with ~128kB Flash that also want things like Filesystem support
 * `ESPR_PACKED_SYMPTR` - Packs string offsets of builtin symbols into their function pointers in JswSymPtr, saves 2 bytes per symbol
 * `JSVAR_FORCE_NO_INLINE` - Opposite of `JSVAR_FORCE_INLINE`. Force getter/setter functions not to be inlined. Saves ~2% code size. Ideally just leave it up to the compiler

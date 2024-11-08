@@ -561,7 +561,7 @@ NRF.requestDevice(...).then(function(device) {
   "type" : "event",
   "class" : "BluetoothRemoteGATTCharacteristic",
   "name" : "characteristicvaluechanged",
-  "ifdef" : "BLUETOOTH"
+  "#if" : "defined(NRF52_SERIES) || defined(ESP32)"
 }
 Called when a characteristic's value changes, *after*
 `BluetoothRemoteGATTCharacteristic.startNotifications` has been called.
@@ -4514,7 +4514,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteris
     "generate" : "jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications",
     "return" : ["JsVar", "A `Promise` that is resolved (or rejected) with data when notifications have been added" ],
     "return_object" : "Promise",
-    "ifdef" : "BLUETOOTH"
+    "#if" : "defined(NRF52_SERIES) || defined(ESP32)"
 }
 Starts notifications - whenever this characteristic's value changes, a
 `characteristicvaluechanged` event is fired and `characteristic.value` will then
