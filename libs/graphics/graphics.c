@@ -645,14 +645,14 @@ void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
 
   int xl = x2-x1;
   int yl = y2-y1;
-  if (xl<0) xl=-xl; else if (xl==0) xl=1;
-  if (yl<0) yl=-yl; else if (yl==0) yl=1;
+  if (xl<0) xl=-xl;
+  if (yl<0) yl=-yl;
   if (xl > yl) { // longer in X - scan in X
     if (x1>x2) {
       int t;
       t = x1; x1 = x2; x2 = t;
       t = y1; y1 = y2; y2 = t;
-    }
+    } else if (xl==0) xl=1;
     int pos = (y1<<8) + 128; // rounding!
     int step = ((y2-y1)<<8) / xl;
     int x;
@@ -665,7 +665,7 @@ void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
       int t;
       t = x1; x1 = x2; x2 = t;
       t = y1; y1 = y2; y2 = t;
-    }
+    } else if (yl==0) yl=1;
     int pos = (x1<<8) + 128; // rounding!
     int step = ((x2-x1)<<8) / yl;
     int y;

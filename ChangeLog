@@ -56,6 +56,7 @@
             RegExp: add optimisation for RegExp that is simply checking if a string ends with something
             Bangle.js: .setUI now only clears back widget if it hasn't been hidden by widget_utils
             Fix UtilTimer timings when new task added infront of existing tasks (fix #2575)
+            Graphics: Fix issue where drawLine for 2px horizontal lines only drew a 1px dot
             
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
