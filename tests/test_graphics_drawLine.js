@@ -27,11 +27,17 @@ g.setColor(9).setBgColor(0);
 g.drawLine(1,1,14,8);
 g.drawLineAA(1,1+4,14,8+4);
 
+g.setColor(1);
+g.drawLine(10,0,10,0);
+g.drawLine(10,1,11,1);
+g.drawLine(10,2,12,2);
+g.drawLine(10,3,13,3);
+
 SHOULD_BE(`
-                
- @              
-  @@            
-    @@          
+          .     
+ @        ..    
+  @@      ...   
+    @@    ....  
       @@        
  @=     @@      
   +%=     @@    
