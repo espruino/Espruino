@@ -283,7 +283,6 @@ bool utilTimerInsertTask(UtilTimerTask *task, uint32_t *timerOffset) {
 
   // How long was it since the timer was last scheduled? Update existing tasks #2575
   uint32_t timePassed = jshGetSystemTime() - utilTimerSetTime;
-  utilTimerOffset += timePassed;
   // find out where to insert
   unsigned char insertPos = utilTimerTasksTail;
   while (insertPos != utilTimerTasksHead && utilTimerTasks[insertPos].time < (task->time+timePassed))
