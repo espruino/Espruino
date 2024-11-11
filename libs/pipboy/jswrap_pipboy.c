@@ -562,7 +562,7 @@ static void _jswrap_pb_audioStartVar_cb(unsigned char *data, unsigned int len, v
 }
 void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
   debugInfo=false;
-  // streamRepeats=false; // There might be a silent looping video playing 
+  // streamRepeats=false; // There might be a silent looping video playing
   /*JsVar *v;
   if (jsvIsObject(options)) {
   }*/
@@ -1198,6 +1198,21 @@ void jswrap_pb_getAudioWaveform(JsVar *dst, int y1, int y2) {
 bool jswrap_pb_audioIsPlaying() {
   return (STM32_I2S_GetStatus() == STM32_I2S_PLAYING);
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Pip",
+  "name" : "streamPlaying",
+  "generate" : "jswrap_pb_streamPlaying",
+  "return" : ["JsVar", "Returns `'video'` if a video is playing, or `'audio'` if audio is playing, `undefined` otherwise."]
+}
+*/
+JsVar *jswrap_pb_streamPlaying() {
+  if (streamType == ST_AVI) return jsvNewFromString("video");
+  if (streamType == ST_WAV) return jsvNewFromString("audio");
+  return 0;
+}
+
 
 /*JSON{
   "type" : "init",
