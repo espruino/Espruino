@@ -59,6 +59,7 @@ info = {
      'WRAPPERSOURCES += libs/pipboy/jswrap_pipboy.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_120.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_96.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_36.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_28.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_23.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_18.c',
