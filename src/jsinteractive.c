@@ -2153,6 +2153,20 @@ void jsiIdle() {
       }
       jsvUnLock(usartClass);
 #endif
+    } else if (eventType == EV_CUSTOM) {
+      // TODO: maybe we should handle this with jswrapper.c?
+#if defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)
+  // see jshSetComparator / E.setComparator
+  int type = event.data.time & EVC_TYPE_MASK;
+  if (type == EVC_LPCOMP) {
+    JsVar *arg = jsvNewFromInteger((event.data.time & EVC_DATA_LPCOMP_UP) ? 1 : -1);
+    jsiExecuteEventCallbackOn("E",JS_EVENT_PREFIX"comparator",1,&arg);
+    jsvUnLock(arg);
+  }
+#endif
+#ifdef NRF52_SERIES
+      jsiConsolePrintf("EV_CUSTOM %d\n", event.data.time);
+#endif
 #ifdef BLUETOOTH
     } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
       maxEvents -= jsble_exec_pending(&event);

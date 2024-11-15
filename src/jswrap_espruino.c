@@ -615,6 +615,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
 }
 
 #endif //!ESP8266
+
 /*JSON{
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
@@ -681,6 +682,40 @@ Espruino boards).
  */
 void jswrap_espruino_kickWatchdog() {
   jshKickWatchDog();
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
+  "class" : "E",
+  "name" : "setComparator",
+  "generate" : "jswrap_espruino_setComparator",
+  "params" : [
+    ["pin","pin","The `Pin` to enable the comparator on"],
+    ["level","float","The level to trigger on, or `undefined` to disable. (see below for [Jolt.js](https://www.espruino.com/Jolt.js))"]
+  ]
+}
+(Added 2v25) Enable the nRF52 chip's `LPCOMP` hardware. When enabled, it creates an `E.on("comparator", ...)`
+event whenever the pin supplied rises or falls past the setpoint given.
+
+```JS
+E.setComparator(D28, 8/16); // compare with VDD/2
+E.on("comparator", e => {
+  print(e); // 1 for up, or -1 for down
+});
+```
+
+**Note:** There is just one LPCOMP, so you can only enable the comparator on one pin.
+
+**On [Jolt.js](https://www.espruino.com/Jolt.js):** when using `E.setComparator` on the analog pins on the
+Terminal block (`H0`/`H2`/`H4`/`H8`), the `level` you give needs to be in volts. Because the comparator only
+works in 16 steps, you can only detect multiples of 1.37v (1.37/2.74/4.11/etc)
+
+ */
+void jswrap_espruino_setComparator(Pin pin, JsVarFloat level) {
+#if defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)
+  jshSetComparator(pin, level);
+#endif
 }
 
 /// Return an array of errors based on the current flags

@@ -374,6 +374,8 @@ void jshClearUSBIdleTimeout();
 #if defined(NRF51_SERIES) || defined(NRF52_SERIES)
 /// Called when we have had an event that means we should execute JS
 extern void jshHadEvent();
+/// Enable/disable(if level==NAN) the LPCOMP comparator
+bool jshSetComparator(Pin pin, JsVarFloat level);
 #else
 #define jshHadEvent() /* We should ensure we exit idle mode */
 #endif

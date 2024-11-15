@@ -30,6 +30,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse);
 
 void jswrap_espruino_enableWatchdog(JsVarFloat time, JsVar *isAuto);
 void jswrap_espruino_kickWatchdog();
+void jswrap_espruino_setComparator(Pin pin, JsVarFloat level);
 /// Return an array of errors based on the current flags
 JsVar *jswrap_espruino_getErrorFlagArray(JsErrorFlags flags);
 JsVar *jswrap_espruino_getErrorFlags();
