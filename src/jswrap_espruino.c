@@ -685,6 +685,17 @@ void jswrap_espruino_kickWatchdog() {
 }
 
 /*JSON{
+  "type" : "event",
+  "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
+  "class" : "E",
+  "name" : "comparator",
+  "params" : [
+    ["dir","int","The direction of the pin's state change"]
+  ]
+}
+Called when a bit rises or falls above a set level. See `E.setComparator` for setup.
+*/
+/*JSON{
   "type" : "staticmethod",
   "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
   "class" : "E",
@@ -696,7 +707,7 @@ void jswrap_espruino_kickWatchdog() {
   ]
 }
 (Added 2v25) Enable the nRF52 chip's `LPCOMP` hardware. When enabled, it creates an `E.on("comparator", ...)`
-event whenever the pin supplied rises or falls past the setpoint given.
+event whenever the pin supplied rises or falls past the setpoint given (with 50mv hysteresis).
 
 ```JS
 E.setComparator(D28, 8/16); // compare with VDD/2
