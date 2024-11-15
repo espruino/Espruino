@@ -472,22 +472,6 @@ void jswrap_pixljs_init() {
   jsvUnLock2(graphics,img);
 }
 
-/*JSON{
-  "type" : "kill",
-  "generate" : "jswrap_pixljs_kill"
-}*/
-void jswrap_pixljs_kill() {
-
-}
-
-/*JSON{
-  "type" : "idle",
-  "generate" : "jswrap_pixljs_idle"
-}*/
-bool jswrap_pixljs_idle() {
-  return false;
-}
-
 
 /*JSON{
     "type" : "staticmethod",

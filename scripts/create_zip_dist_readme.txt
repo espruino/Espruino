@@ -58,6 +58,10 @@ espruino_#v##_pixljs.zip
    - The firmware image for Espruino Pixl.js Devices
      See http://www.espruino.com/Pixl.js#firmware-updates for more information
 
+espruino_#v##_pixljs_wiznet.zip
+   - The firmware image for Espruino Pixl.js Devices (with support for WIZnet W5100 Ethernet)
+     See http://www.espruino.com/Pixl.js#firmware-updates for more information
+
 espruino_#v##_banglejs.zip
    - The firmware image for Espruino Bangle.js 1 Devices
      See http://www.espruino.com/Bangle.js#firmware-updates for more information
