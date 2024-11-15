@@ -26,5 +26,6 @@ void jswrap_serial_println(JsVar *parent, JsVar *str);
 void jswrap_serial_write(JsVar *parent, JsVar *data);
 void jswrap_serial_inject(JsVar *parent, JsVar *args);
 void jswrap_serial_flush(JsVar *parent);
+bool jswrap_serial_isConnected(JsVar *parent);
 
 #endif // JSWRAP_SERIAL_H_

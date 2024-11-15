@@ -17,6 +17,12 @@
 #include "jsdevices.h"
 #include "jsinteractive.h"
 #include "jsserial.h"
+#ifdef USE_TELNET
+#include "jswrap_telnet.h"
+#endif
+#ifdef BLUETOOTH
+#include "jswrap_bluetooth.h"
+#endif
 
 /*JSON{
   "type" : "class",
@@ -556,4 +562,37 @@ void jswrap_serial_flush(JsVar *parent) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (device == EV_NONE) return;
   jshTransmitFlushDevice(device);
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Serial",
+  "name" : "isConnected",
+  "generate" : "jswrap_serial_isConnected",
+  "return" : ["bool","`true` if connected/initialised, false otherwise"]
+}
+(Added 2v25) Is the given Serial device connected?
+
+* USB/Bluetooth/Telnet/etc: Is this connected?
+* Serial1/etc: Has the device been initialised?
+* LoopbackA/LoopbackB/Terminal: always return true
+ */
+bool jswrap_serial_isConnected(JsVar *parent) {
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (device==EV_LOOPBACKA || device==EV_LOOPBACKB) return true;
+#ifdef USE_TERMINAL
+  if (device == EV_TERMINAL) return true;
+#endif
+#ifdef USE_TELNET
+  if (device == EV_TELNET) return jswrap_telnet_isConnected();
+#endif
+#ifdef USB
+  if (device == EV_USBSERIAL) return jshIsUSBSERIALConnected();
+#endif
+#ifdef BLUETOOTH
+  if (device == EV_BLUETOOTH) return jsble_has_peripheral_connection();
+#endif
+  if (DEVICE_IS_USART(device))
+    return jshIsDeviceInitialised(device);
+  return false;
 }
