@@ -867,19 +867,6 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
   }
 }
 
-/// Draw a simple 1bpp image in foreground colour
-void graphicsDrawImage1bpp(JsGraphics *gfx, int x1, int y1, int width, int height, const unsigned char *pixelData) {
-  int pixel = 256|*(pixelData++);
-  int x,y;
-  for (y=y1;y<y1+height;y++) {
-    for (x=x1;x<x1+width;x++) {
-      if (pixel&128) graphicsSetPixelDevice(gfx, x, y, gfx->data.fgColor);
-      pixel = pixel<<1;
-      if (pixel&65536) pixel = 256|*(pixelData++);
-    }
-  }
-}
-
 /// Scroll the graphics device (in user coords). X>0 = to right, Y >0 = down
 void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
   // Ensure we flip coordinate system if needed
