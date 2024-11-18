@@ -24,11 +24,6 @@ volatile unsigned char utilTimerTasksTail = 0;
 
 /// Is the utility timer actually running?
 volatile bool utilTimerOn = false;
-
-unsigned int utilTimerBit;
-bool utilTimerInIRQ = false;
-unsigned int utilTimerData;
-uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReload1L;
 /// When we rescheduled the timer, how far in the future were we meant to get called (in system time)?
 int utilTimerPeriod;
 /// The system time at which the util timer's period was last set
@@ -92,7 +87,6 @@ void jstUtilTimerInterruptHandler() {
   /* Note: we're using 32 bit times here, even though the real time counter is 64 bit. We
    * just make sure nothing is scheduled that far in the future */
   if (utilTimerOn) {
-    utilTimerInIRQ = true;
     // TODO: Keep UtilTimer running and then use the value from it
     // to estimate how long utilTimerPeriod really was
     // Subtract utilTimerPeriod from all timers' time
@@ -231,7 +225,6 @@ void jstUtilTimerInterruptHandler() {
       utilTimerOn = false;
       jshUtilTimerDisable();
     }
-    utilTimerInIRQ = false;
   } else {
     // Nothing left to do - disable the timer
     jshUtilTimerDisable();
@@ -275,7 +268,7 @@ void  jstRestartUtilTimer() {
 bool utilTimerInsertTask(UtilTimerTask *task, uint32_t *timerOffset) {
   // check if queue is full or not
   if (utilTimerIsFull()) return false;
-  if (!utilTimerInIRQ) jshInterruptOff();
+  jshInterruptOff();
 
   // See above - keep times in sync
   if (timerOffset)
@@ -319,7 +312,7 @@ bool utilTimerInsertTask(UtilTimerTask *task, uint32_t *timerOffset) {
     utilTimerOn = true;
     jstRestartUtilTimer();
   }
-  if (!utilTimerInIRQ) jshInterruptOn();
+  jshInterruptOn();
   return true;
 }
 
