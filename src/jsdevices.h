@@ -134,7 +134,7 @@ typedef enum {
 typedef enum {
   EVC_NONE,
 #ifdef NRF52_SERIES
-  EVC_LPCOMP,
+  EVC_LPCOMP, // jswrap_espruino: E.setComparator / E.on("comparator" event
 #endif
   EVC_TYPE_MASK = 255,
   EVC_DATA_LPCOMP_UP = 256
