@@ -53,13 +53,14 @@ info = {
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Pixl.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_pixljs_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://www.espruino.com/ide"\'',
+     'LDFLAGS += -nostartfiles', 'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main', # Save ~300b by not including CRT startup code
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DNEOPIXEL_SCK_PIN=14 -DNEOPIXEL_LRCK_PIN=15', # see https://github.com/espruino/Espruino/issues/2071
      'DEFINES += -DESPR_USE_STEPPER_TIMER=1', # Build in the code for stepping using the timer
      'DEFINES+=-DSAVE_ON_FLASH_MATH',
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
-     'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol     
+     'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
      'DEFINES+=-DESPR_LIMIT_DATE_RANGE', # limits the acceptable range for Date years (saves a few hundred bytes)
      'DEFINES+=-DESPR_NO_BLUETOOTH_MESSAGES', # don't include text versions of Bluetooth error messages (just the error number)
      'DEFINES+=-DESPR_NO_REGEX_OPTIMISE', # save some storage space

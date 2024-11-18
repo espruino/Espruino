@@ -40,8 +40,7 @@ info = {
      'DEFINES+=-DESPR_NO_DAYLIGHT_SAVING',
      'DEFINES+=-DJSVAR_FORCE_NO_INLINE=1',
      'CFLAGS += -ffreestanding', # needed for SAVE_ON_FLASH_EXTREME (jswrap_math, __aeabi_dsub)
-     'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main',
-     'LDFLAGS += -nostartfiles',
+     'LDFLAGS += -nostartfiles', 'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main', # Save ~300b by not including CRT startup code
      'BLACKLIST=boards/MICROBIT1.blocklist', # force some stuff to be removed to save space
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DMICROBIT', # enable microbit-specific stuff
@@ -50,7 +49,7 @@ info = {
      'USE_DEBUGGER=0', # Removed  due to firmware size issues
      'INCLUDE += -I$(ROOT)/libs/microbit',
      'WRAPPERSOURCES += libs/microbit/jswrap_microbit.c',
-     
+
    ]
  }
 };

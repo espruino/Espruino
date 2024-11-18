@@ -158,6 +158,7 @@ There are some specifically that are useful for cutting a few bytes out of the b
 * `ESPR_NO_BLUETOOTH_MESSAGES` - don't include text versions of Bluetooth error messages (just the error number)
 * `ESPR_LIMIT_DATE_RANGE` - limits the acceptable range for Date years (saves a few hundred bytes)
 * `ESPR_NO_REGEX_OPTIMISE` - strips out some speed optimisations from the regex library
+* On nRF52, `'LDFLAGS += -nostartfiles', 'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main',` can save ~300b by not including CRT startup code
 
 These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
 
