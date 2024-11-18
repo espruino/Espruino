@@ -705,12 +705,14 @@ Called when a bit rises or falls above a set level. See `E.setComparator` for se
 }
 */
 void jswrap_espruino_setComparator_eventHandler(IOEvent *event) {
+#if defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)
   // see jshSetComparator / E.setComparator
   if ((event->data.time & EVC_TYPE_MASK) == EVC_LPCOMP) {
     JsVar *arg = jsvNewFromInteger((event->data.time & EVC_DATA_LPCOMP_UP) ? 1 : -1);
     jsiExecuteEventCallbackOn("E",JS_EVENT_PREFIX"comparator",1,&arg);
     jsvUnLock(arg);
   }
+#endif
 }
 /*JSON{
   "type" : "staticmethod",
