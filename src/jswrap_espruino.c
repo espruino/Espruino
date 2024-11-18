@@ -684,6 +684,9 @@ void jswrap_espruino_kickWatchdog() {
   jshKickWatchDog();
 }
 
+
+
+
 /*JSON{
   "type" : "event",
   "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
@@ -695,6 +698,20 @@ void jswrap_espruino_kickWatchdog() {
 }
 Called when a bit rises or falls above a set level. See `E.setComparator` for setup.
 */
+/*JSON{
+  "type" : "EV_CUSTOM",
+  "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
+  "generate" : "jswrap_espruino_setComparator_eventHandler"
+}
+*/
+void jswrap_espruino_setComparator_eventHandler(IOEvent *event) {
+  // see jshSetComparator / E.setComparator
+  if ((event->data.time & EVC_TYPE_MASK) == EVC_LPCOMP) {
+    JsVar *arg = jsvNewFromInteger((event->data.time & EVC_DATA_LPCOMP_UP) ? 1 : -1);
+    jsiExecuteEventCallbackOn("E",JS_EVENT_PREFIX"comparator",1,&arg);
+    jsvUnLock(arg);
+  }
+}
 /*JSON{
   "type" : "staticmethod",
   "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
