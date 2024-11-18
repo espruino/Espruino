@@ -677,12 +677,10 @@ void jstDumpUtilityTimers() {
     hadTimers = true;
 
     UtilTimerTask task = uTimerTasks[t];
-    jsiConsolePrintf("%08d us", (int)(1000*jshGetMillisecondsFromTime(task.time)));
-    jsiConsolePrintf(", repeat %08d us", (int)(1000*jshGetMillisecondsFromTime(task.repeatInterval)));
-    jsiConsolePrintf(" : ");
+    jsiConsolePrintf("%08d us, repeat %08d us : ", (int)(1000*jshGetMillisecondsFromTime(task.time)), (int)(1000*jshGetMillisecondsFromTime(task.repeatInterval)));
 
     switch (task.type) {
-    case UET_WAKEUP : jsiConsolePrintf("WAKEUP\n"); break;
+    case UET_WAKEUP : jsiConsolePrintf("WKUP\n"); break;
     case UET_SET : jsiConsolePrintf("SET ");
     for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
       if (task.data.set.pins[i] != PIN_UNDEFINED)
@@ -690,13 +688,13 @@ void jstDumpUtilityTimers() {
     jsiConsolePrintf("\n");
     break;
 #ifndef SAVE_ON_FLASH
-    case UET_WRITE_BYTE : jsiConsolePrintf("WRITE_BYTE\n"); break;
-    case UET_READ_BYTE : jsiConsolePrintf("READ_BYTE\n"); break;
-    case UET_WRITE_SHORT : jsiConsolePrintf("WRITE_SHORT\n"); break;
-    case UET_READ_SHORT : jsiConsolePrintf("READ_SHORT\n"); break;
+    case UET_WRITE_BYTE : jsiConsolePrintf("WR8\n"); break;
+    case UET_READ_BYTE : jsiConsolePrintf("RD8\n"); break;
+    case UET_WRITE_SHORT : jsiConsolePrintf("WR16\n"); break;
+    case UET_READ_SHORT : jsiConsolePrintf("RD16\n"); break;
 #endif
-    case UET_EXECUTE : jsiConsolePrintf("EXECUTE %x(%x)\n", task.data.execute.fn, task.data.execute.userdata); break;
-    default : jsiConsolePrintf("Unknown type %d\n", task.type); break;
+    case UET_EXECUTE : jsiConsolePrintf("EXEC %x(%x)\n", task.data.execute.fn, task.data.execute.userdata); break;
+    default : jsiConsolePrintf("?[%d]\n", task.type); break;
     }
 
     t = (t+1) & (UTILTIMERTASK_TASKS-1);
