@@ -115,7 +115,7 @@ BUFFER WE F_READ INTO SHOULD BE 4 BYTES LONGER THAN THE MAX READ REQUEST
     return disk_read_unaligned(drv, buff, sector, count);
 #endif
   if (count<=1)
-  SD_ReadBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
+    SD_ReadBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
   else
     SD_ReadMultiBlocks(Memory_Offset, (uint32_t *)buff, 512, count);
 
@@ -148,7 +148,7 @@ DRESULT disk_write (
   Memory_Offset = sector * 512;
   assert(((size_t)buff&3)==0);
   if (count<=1)
-  SD_WriteBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
+    SD_WriteBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
   else
     SD_WriteMultiBlocks(Memory_Offset, (uint32_t *)buff, 512, count);
   //NAND_Write(Memory_Offset, (uint32_t *)buff, Transfer_Length);
@@ -169,8 +169,6 @@ DRESULT disk_ioctl (
 {
   DRESULT res = RES_OK;
   //uint32_t status = NAND_READY;
-
-
 
   switch (ctrl) {
   case CTRL_SYNC : /// Make sure that no pending write process
