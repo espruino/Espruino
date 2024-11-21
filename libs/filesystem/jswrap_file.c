@@ -71,7 +71,12 @@ void jsfsReportError(const char *msg, FRESULT res) {
 }
 
 bool jsfsInit() {
-
+#ifdef SD_POWER_PIN
+  if (jshPinGetValue(SD_POWER_PIN)==0) {
+    jshPinOutput(SD_POWER_PIN, 1);
+    jshDelayMicroseconds(5000);
+  }
+#endif
 #ifndef LINUX
   if (!fat_initialised) {
 #ifndef USE_FLASHFS
@@ -99,7 +104,9 @@ bool jsfsInit() {
     FRESULT res;
 
     if ((res = f_mount(&jsfsFAT, "", 1)) != FR_OK) {
+#ifndef PIPBOY  // Don't throw an error for the Pip-Boy - just return false
        jsfsReportError("Unable to mount media", res);
+#endif
        return false;
     }
     fat_initialised = true;
@@ -417,7 +424,12 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
       if(file.data->mode == FM_WRITE || file.data->mode == FM_READ_WRITE) {
         JsvIterator it;
         jsvIteratorNew(&it, buffer, JSIF_EVERY_ARRAY_ELEMENT);
+#ifdef ESPR_FS_LARGE_WRITE_BUFFER
+        // writes are faster with sector-size buffers but we can't always safely allocate 512b on the stack unless we're sure we have a big stack
+        char buf[512];
+#else
         char buf[32];
+#endif
 
         while (jsvIteratorHasElement(&it)) {
           // pull in a buffer's worth of data

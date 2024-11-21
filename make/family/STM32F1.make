@@ -33,3 +33,6 @@ targetlibs/stm32f1/lib/system_stm32f10x.c
 ifdef USB
 include make/common/STM32_LEGACY_USB.make
 endif
+ifeq ($(USE_FILESYSTEM_SDIO),1)
+SOURCES += targets/stm32/sdio_sdcard_stm32f1.c
+endif

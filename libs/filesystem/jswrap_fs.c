@@ -51,10 +51,7 @@ and for examples on wiring up an SD card if your device doesn't come with one.
 *must* call `E.unmountSD()` or you may cause damage to the card.
 */
 
-#ifndef LINUX
-#define JS_DIR_BUF_SIZE 64
-#else
-#define JS_DIR_BUF_SIZE 256
+#ifdef LINUX
 #define FR_OK (0)
 #endif
 
@@ -69,8 +66,6 @@ and for examples on wiring up an SD card if your device doesn't come with one.
 #endif
 
 // from jswrap_file
-bool jsfsGetPathString(char *pathStr, JsVar *path);
-extern bool jsfsInit();
 extern void jsfsReportError(const char *msg, FRESULT res);
 
 /*JSON{

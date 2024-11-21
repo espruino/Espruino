@@ -135,6 +135,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `SPIFLASH_SLEEP_CMD` - Set if SPI flash needs to be explicitly slept and woken up
 * `SPIFLASH_READ2X` - Enable 2x speed reads of external flash (using MOSI+MOSI as inputs)
 * `ESPR_JSVAR_FLASH_BUFFER_SIZE=32` - The buffer size in bytes we use when executing/iterating over data in external flash memory (default 16). Should be set based on benchmarks.
+* `ESPR_FS_LARGE_WRITE_BUFFER` - When using FS library, should we allocate a 1kb buffer on the stack for writes? It can be ~3x faster but then allocating 1k can be dangerous without checking
 * `ESPR_PBF_FONTS` - Enable support for loading and displaying Pebble-style PBF font files with `g.setFontPBF`
 * `ESPR_BLUETOOTH_ANCS` - Enable Apple ANCS(notification), AMS and CTS support
 * `ESPR_USE_STEPPER_TIMER` - add builtin `Stepper` class to handle higher speed stepper handling
@@ -159,6 +160,7 @@ There are some specifically that are useful for cutting a few bytes out of the b
 * `ESPR_LIMIT_DATE_RANGE` - limits the acceptable range for Date years (saves a few hundred bytes)
 * `ESPR_NO_REGEX_OPTIMISE` - strips out some speed optimisations from the regex library
 * On nRF52, `'LDFLAGS += -nostartfiles', 'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main',` can save ~300b by not including CRT startup code
+
 
 These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
 

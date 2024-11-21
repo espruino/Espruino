@@ -108,7 +108,7 @@ else: # NOT LINUX
 
 flash_saved_code2_pages = 0
 if "saved_code" in board.chip:
-  flash_saved_code_start = board.chip["saved_code"]["address"]
+  flash_saved_code_start = hex(board.chip["saved_code"]["address"])
   flash_page_size = board.chip["saved_code"]["page_size"]
   flash_saved_code_pages = board.chip["saved_code"]["pages"]
   flash_available_for_code = board.chip["saved_code"]["flash_available"]*1024
@@ -309,12 +309,12 @@ else:
   codeOut("")
 
 
-codeOut("#define FLASH_SAVED_CODE_START            "+str(flash_saved_code_start))
-codeOut("#define FLASH_SAVED_CODE_LENGTH           "+str(int(flash_page_size*flash_saved_code_pages)))
+codeOut("#define FLASH_SAVED_CODE_START            "+flash_saved_code_start)
+codeOut("#define FLASH_SAVED_CODE_LENGTH           "+hex(int(flash_page_size*flash_saved_code_pages)))
 if flash_saved_code2_pages:
   codeOut("// Extra flash pages in external flash")
-  codeOut("#define FLASH_SAVED_CODE2_START            "+str(flash_saved_code2_start))
-  codeOut("#define FLASH_SAVED_CODE2_LENGTH           "+str(int(flash_page_size*flash_saved_code2_pages)))
+  codeOut("#define FLASH_SAVED_CODE2_START            "+hex(flash_saved_code2_start))
+  codeOut("#define FLASH_SAVED_CODE2_LENGTH           "+hex(int(flash_page_size*flash_saved_code2_pages)))
 codeOut("");
 
 codeOut("#define CLOCK_SPEED_MHZ                      "+str(board.chip["speed"]))
@@ -371,6 +371,10 @@ if 'util_timer_tasks' in board.info:
 
 if 'io_buffer_size' in board.info:
   bufferSizeIO = board.info['io_buffer_size']
+if 'xoff_thresh' in board.info:
+  xoff_thresh = board.info['xoff_thresh']
+if 'xon_thresh' in board.info:
+  xon_thresh = board.info['xon_thresh']
 
 codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 65535) amount of items in event buffer - events take 5 bytes each")
 codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255) amount of items in the transmit buffer - 2 bytes each")
@@ -446,18 +450,26 @@ if "LCD" in board.devices:
     codeOutDevicePins("LCD","LCD");
 
 if "SD" in board.devices:
-  if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD
-    if "pin_cs" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cs", "SD_CS_PIN")
-    if "pin_di" in board.devices["SD"]: codeOutDevicePin("SD", "pin_di", "SD_DI_PIN")
-    if "pin_do" in board.devices["SD"]: codeOutDevicePin("SD", "pin_do", "SD_DO_PIN")
-    if "pin_clk" in board.devices["SD"]:
-      codeOutDevicePin("SD", "pin_clk", "SD_CLK_PIN")
+  if "pin_cd" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cd", "SD_DETECT_PIN")
+  if "pin_pwr" in board.devices["SD"]: codeOutDevicePin("SD", "pin_pwr", "SD_POWER_PIN")
+  if "pin_cs" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cs", "SD_CS_PIN")
+  if "pin_di" in board.devices["SD"]: codeOutDevicePin("SD", "pin_di", "SD_DI_PIN")
+  if "pin_do" in board.devices["SD"]: codeOutDevicePin("SD", "pin_do", "SD_DO_PIN")
+  if "pin_clk" in board.devices["SD"]:
+    codeOutDevicePin("SD", "pin_clk", "SD_CLK_PIN")
+    if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD
       sdClkPin = pinutils.findpin(pins, "P"+board.devices["SD"]["pin_clk"], False)
       spiNum = 0
       for func in sdClkPin["functions"]:
         if func[:3]=="SPI": spiNum = int(func[3])
       if spiNum==0: die("No SPI peripheral found for SD card's CLK pin")
       codeOut("#define SD_SPI EV_SPI"+str(spiNum))
+  # SDIO
+  if "pin_d0" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d0", "SD_D0_PIN")
+  if "pin_d1" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d1", "SD_D1_PIN")
+  if "pin_d2" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d2", "SD_D2_PIN")
+  if "pin_d3" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d3", "SD_D3_PIN")
+  if "pin_cmd" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cmd", "SD_CMD_PIN")        
 
 if "IR" in board.devices:
   codeOutDevicePin("IR", "pin_anode", "IR_ANODE_PIN")
@@ -531,7 +543,8 @@ if "DRIVER1" in board.devices:
 if "SPIFLASH" in board.devices:
   codeOut("#define SPIFLASH_PAGESIZE 4096")
   codeOut("#define SPIFLASH_LENGTH "+str(board.devices["SPIFLASH"]["size"]))
-  codeOut("#define SPIFLASH_BASE "+str(board.devices["SPIFLASH"]["memmap_base"])+"UL")
+  if "memmap_base" in board.devices["SPIFLASH"]:
+    codeOut("#define SPIFLASH_BASE "+str(board.devices["SPIFLASH"]["memmap_base"])+"UL")
   codeOutDevicePins("SPIFLASH", "SPIFLASH")
 
 for device in pinutils.OTHER_DEVICES:

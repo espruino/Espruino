@@ -91,7 +91,7 @@ DEVICES = {
  "TEMP":"TEMP",
 };
 
-for i in range(0,7):
+for i in range(0,10):
  DEVICES["LED"+str(i)]="LED"+str(i)
  DEVICES["BTN"+str(i)]="BTN"+str(i)
  DEVICES["POT"+str(i)]="POT"+str(i)
@@ -118,8 +118,8 @@ URLS = {
 
 # LED/Button devices
 SIMPLE_DEVICES = [
- "LED1","LED2","LED3","LED4","LED5","LED6","LED7","LED8",
- "BTN1","BTN2","BTN3","BTN4","BTN5","BTN6","BTN7","BTN8" ];
+ "LED1","LED2","LED3","LED4","LED5","LED6","LED7","LED8","LED9","LED10",
+ "BTN1","BTN2","BTN3","BTN4","BTN5","BTN6","BTN7","BTN8","BTN9","BTN10", ];
 
 # Devices with pins that we should leave alone at reset time
 OTHER_DEVICES = [
