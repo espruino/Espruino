@@ -39,6 +39,7 @@ info = {
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'DEFINES+=-DUSE_RTC',
+    #'DEFINES+=-DESPR_MIN_WFI_TIME_MS=200', # delays when we enter __WFI sleep - but we don't need this after #2575
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS -DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_NO_SPLASH',
      'DEFINES+=-DESPR_SDIO_FAST_UNALIGNED',  # see sdio_diskio.c - this is a nasty hack to increase unaligned read speed
      'DEFINES+=-DLCD_ORIENTATION_LANDSCAPE',
@@ -58,6 +59,7 @@ info = {
      'WRAPPERSOURCES += libs/pipboy/jswrap_pipboy.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_120.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_96.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_36.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_28.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_23.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_18.c',
@@ -152,7 +154,8 @@ devices = {
             'pin_mosi' : 'B5', 
             'pin_miso' : 'B4',
             'size' : 4096*64, 
-            'memmap_base' : 0x60000000 # map into the address space (in software) - FIXME: what should this address be?
+#           Don't enable the memory mapping - STM32 doesn't do this, but it does cause extra stuff to be added to jsvariterator which can slow it down
+#           'memmap_base' : 0x60000000 # map into the address space (in software) - FIXME: what should this address be?
           },
   'USB' : { 'pin_vsense' : 'A9', # PA5 for v0.3, PA9 for v0.5 and later
             'pin_dm' : 'A11',

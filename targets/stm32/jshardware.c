@@ -44,6 +44,10 @@
 #define USE_RTC
 #endif
 
+#ifndef ESPR_MIN_WFI_TIME_MS
+#define ESPR_MIN_WFI_TIME_MS 0.1
+#endif
+
 #define IRQ_PRIOR_SPI 1 // we want to be very sure of not losing SPI (this is handled quickly too)
 #define IRQ_PRIOR_SYSTICK 2
 #define IRQ_PRIOR_USART 6 // a little higher so we don't get lockups of something tries to print
@@ -2825,7 +2829,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jsiSetSleep(JSI_SLEEP_AWAKE);
   } else
 #endif
-  if (timeUntilWake > jshGetTimeFromMilliseconds(0.1)) {
+  if (timeUntilWake > jshGetTimeFromMilliseconds(ESPR_MIN_WFI_TIME_MS)) {
     /* don't bother sleeping if the time period is so low we
      * might miss the timer */
     JsSysTime sysTickTime;
@@ -2841,6 +2845,10 @@ bool jshSleep(JsSysTime timeUntilWake) {
     }
 
     jsiSetSleep(JSI_SLEEP_ASLEEP);
+#ifdef USE_RTC
+    // set flag in case there happens to be a SysTick
+    hasSystemSlept = true;
+#endif
     __WFI(); // Wait for Interrupt
     jsiSetSleep(JSI_SLEEP_AWAKE);
 

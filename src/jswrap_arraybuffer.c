@@ -286,8 +286,8 @@ The length, in bytes, of the `ArrayBuffer`
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
-    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
-    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an `ArrayBuffer`)"],
+    ["length","int","The length (ONLY IF the first argument was an `ArrayBuffer`)"]
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
@@ -309,8 +309,8 @@ rather than referenced.
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8|ARRAYBUFFERVIEW_CLAMPED, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
-    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
-    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an `ArrayBuffer`)"],
+    ["length","int","The length (ONLY IF the first argument was an `ArrayBuffer`)"]
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
@@ -335,8 +335,8 @@ e.g. after `a[0]=12345;`, `a[0]==255`.
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT8, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
-    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
-    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an `ArrayBuffer`)"],
+    ["length","int","The length (ONLY IF the first argument was an `ArrayBuffer`)"]
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
@@ -358,8 +358,8 @@ rather than referenced.
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT16, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
-    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
-    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an `ArrayBuffer`)"],
+    ["length","int","The length (ONLY IF the first argument was an `ArrayBuffer`)"]
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
@@ -381,8 +381,8 @@ rather than referenced.
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT16, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
-    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
-    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an `ArrayBuffer`)"],
+    ["length","int","The length (ONLY IF the first argument was an `ArrayBuffer`)"]
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
@@ -405,8 +405,8 @@ rather than referenced.
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT24, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
-    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
-    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an `ArrayBuffer`)"],
+    ["length","int","The length (ONLY IF the first argument was an `ArrayBuffer`)"]
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
@@ -428,8 +428,8 @@ rather than referenced.
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT32, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
-    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
-    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an `ArrayBuffer`)"],
+    ["length","int","The length (ONLY IF the first argument was an `ArrayBuffer`)"]
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
@@ -451,8 +451,8 @@ rather than referenced.
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT32, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
-    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
-    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an `ArrayBuffer`)"],
+    ["length","int","The length (ONLY IF the first argument was an `ArrayBuffer`)"]
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
@@ -474,8 +474,8 @@ rather than referenced.
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_FLOAT32, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
-    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
-    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an `ArrayBuffer`)"],
+    ["length","int","The length (ONLY IF the first argument was an `ArrayBuffer`)"]
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",
@@ -497,8 +497,8 @@ rather than referenced.
   "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_FLOAT64, arr, byteOffset, length)",
   "params" : [
     ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
-    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer). Maximum 65535. "],
-    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an `ArrayBuffer`). Maximum 65535. "],
+    ["length","int","The length (ONLY IF the first argument was an `ArrayBuffer`)"]
   ],
   "return" : ["JsVar","A typed array"],
   "return_object" : "ArrayBufferView",

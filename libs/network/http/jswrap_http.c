@@ -410,8 +410,7 @@ require("http").get("http://pur3.co.uk/hello.txt", function(res) {
 });
 ```
 
-See `http.request()` and [the Internet page](/Internet) and ` for more usage
-examples.
+See `http.request()` and [the Internet page](/Internet) for more usage examples.
 */
 JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   JsNetwork net;

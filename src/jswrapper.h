@@ -149,11 +149,14 @@ void jswInit();
 /** Tasks to run on Deinitialisation */
 void jswKill();
 
-/** When called with an Object, fields are added for each device that is used with estimated power usage in uA */
+/** When called with an Object, fields are added for each device that is used with estimated power usage in uA (type:'powerusage' in JSON)  */
 void jswGetPowerUsage(JsVar *devices);
 
-/** Tasks to run when a character is received on a certain event channel. True if handled and shouldn't go to IRQ */
+/** Tasks to run when a character is received on a certain event channel. True if handled and shouldn't go to IRQ (type:'EV_SERIAL1/etc' in JSON)  */
 bool jswOnCharEvent(IOEventFlags channel, char charData);
+
+/** When we receive EV_CUSTOM, this is called so any library (eg Waveform) can hook onto it (type:'EV_CUSTOM' in JSON) */
+void jswOnCustomEvent(IOEvent *event);
 
 /** If we get this in 'require', do we have the object for this
   inside the interpreter already? If so, return the native function

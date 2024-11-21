@@ -59,15 +59,15 @@ If you'd like a way to perform compression/decompression on desktop, check out h
   "params" : [
     ["data","JsVar","The data to compress"]
   ],
-  "return" : ["JsVar","Returns the result as an ArrayBuffer"],
+  "return" : ["JsVar","Returns the result as an `ArrayBuffer`"],
   "return_object" : "ArrayBuffer",
   "ifndef" : "SAVE_ON_FLASH"
 }
-Compress the data supplied as input, and return heatshrink encoded data as an ArrayBuffer.
+Compress the data supplied as input, and return heatshrink encoded data as an `ArrayBuffer`.
 
 No type information is stored, and the `data` argument is treated as an array of bytes
 (whether it is a `String`/`Uint8Array` or even `Uint16Array`), so the result of
-decompressing any compressed data will always be an ArrayBuffer.
+decompressing any compressed data will always be an `ArrayBuffer`.
 
 If you'd like a way to perform compression/decompression on desktop, check out https://github.com/espruino/EspruinoWebTools#heatshrinkjs
 */

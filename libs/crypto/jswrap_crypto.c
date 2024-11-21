@@ -148,7 +148,7 @@ JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
 #ifdef USE_SHA1_JS
   if (shaNum==1) {
     // (c) 2016 Rhys Williams, @jumjum. https://github.com/espruino/EspruinoDocs/blob/master/modules/crypto.js
-    return jspExecuteJSFunction("(function(b){function n(a){for(d=3;0<=d;d--)g.push(a>>8*d&255)}var d,a;b=E.toString(b)+'\\x80';var v=new Int32Array([1518500249,1859775393,2400959708,3395469782]);var k=Math.ceil((b.length/4+2)/16);var g=Array(k);b=E.toUint8Array(b);for(d=0;d<k;d++){var f=d<<6;var e=new Int32Array(16);for(a=0;16>a;a++){var c=f+(a<<2);e[a]=b[c]<<24|b[c+1]<<16|b[c+2]<<8|b[c+3]}g[d]=e}g[k-1][14]=8*(b.length-1)/Math.pow(2,32);g[k-1][14]=Math.floor(g[k-1][14]);g[k-1][15]=8*(b.length-1)&4294967295;b=1732584193;var p=4023233417;var q=2562383102;var r=271733878;var t=3285377520;var l=new Int32Array(80);for(d=0;d<k;d++){for(a=0;16>a;a++)l[a]=g[d][a];for(a=16;80>a;a++)f=l[a-3]^l[a-8]^l[a-14]^l[a-16],l[a]=f<<1|f>>>31;f=b;c=p;e=q;var h=r;var u=t;for(a=0;80>a;a++){var m=Math.floor(a/20);var w=f<<5|f>>>27;var x=0===m?c&e^~c&h:1===m?c^e^h:2===m?c&e^c&h^e&h:c^e^h;m=w+x+u+v[m]+l[a]&4294967295;u=h;h=e;e=c<<30|c>>>2;c=f;f=m}b=b+f&4294967295;p=p+c&4294967295;q=q+e&4294967295;r=r+h&4294967295;t=t+u&4294967295}g=[];n(b);n(p);n(q);n(r);n(t);return E.toUint8Array(g).buffer})",0,1,&message);
+    return jspExecuteJSFunctionCode("b","function n(a){for(d=3;0<=d;d--)g.push(a>>8*d&255)}var d,a;b=E.toString(b)+'\\x80';var v=new Int32Array([1518500249,1859775393,2400959708,3395469782]);var k=Math.ceil((b.length/4+2)/16);var g=Array(k);b=E.toUint8Array(b);for(d=0;d<k;d++){var f=d<<6;var e=new Int32Array(16);for(a=0;16>a;a++){var c=f+(a<<2);e[a]=b[c]<<24|b[c+1]<<16|b[c+2]<<8|b[c+3]}g[d]=e}g[k-1][14]=8*(b.length-1)/Math.pow(2,32);g[k-1][14]=Math.floor(g[k-1][14]);g[k-1][15]=8*(b.length-1)&4294967295;b=1732584193;var p=4023233417;var q=2562383102;var r=271733878;var t=3285377520;var l=new Int32Array(80);for(d=0;d<k;d++){for(a=0;16>a;a++)l[a]=g[d][a];for(a=16;80>a;a++)f=l[a-3]^l[a-8]^l[a-14]^l[a-16],l[a]=f<<1|f>>>31;f=b;c=p;e=q;var h=r;var u=t;for(a=0;80>a;a++){var m=Math.floor(a/20);var w=f<<5|f>>>27;var x=0===m?c&e^~c&h:1===m?c^e^h:2===m?c&e^c&h^e&h:c^e^h;m=w+x+u+v[m]+l[a]&4294967295;u=h;h=e;e=c<<30|c>>>2;c=f;f=m}b=b+f&4294967295;p=p+c&4294967295;q=q+e&4294967295;r=r+h&4294967295;t=t+u&4294967295}g=[];n(b);n(p);n(q);n(r);n(t);return E.toUint8Array(g).buffer",0,1,&message);
   }
 #endif
 
@@ -270,7 +270,7 @@ Performs a SHA512 hash and returns the result as a 64 byte ArrayBuffer
     ["salt","JsVar","Salt for turning passphrase into a key"],
     ["options","JsVar","Object of Options, `{ keySize: 8 (in 32 bit words), iterations: 10, hasher: 'SHA1'/'SHA224'/'SHA256'/'SHA384'/'SHA512' }`"]
   ],
-  "return" : ["JsVar","Returns an ArrayBuffer"],
+  "return" : ["JsVar","Returns an `ArrayBuffer`"],
   "return_object" : "ArrayBuffer",
   "ifdef" : "USE_TLS"
 }
@@ -454,10 +454,10 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   "generate" : "jswrap_crypto_AES_encrypt",
   "params" : [
     ["passphrase","JsVar","Message to encrypt"],
-    ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
+    ["key","JsVar","Key to encrypt message - must be an `ArrayBuffer` of 128, 192, or 256 BITS"],
     ["options","JsVar","[optional] An object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
   ],
-  "return" : ["JsVar","Returns an ArrayBuffer"],
+  "return" : ["JsVar","Returns an `ArrayBuffer`"],
   "return_object" : "ArrayBuffer",
   "ifdef" : "USE_AES"
 }
@@ -473,10 +473,10 @@ JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
   "generate" : "jswrap_crypto_AES_decrypt",
   "params" : [
     ["passphrase","JsVar","Message to decrypt"],
-    ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
+    ["key","JsVar","Key to encrypt message - must be an `ArrayBuffer` of 128, 192, or 256 BITS"],
     ["options","JsVar","[optional] An object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
   ],
-  "return" : ["JsVar","Returns an ArrayBuffer"],
+  "return" : ["JsVar","Returns an `ArrayBuffer`"],
   "return_object" : "ArrayBuffer",
   "ifdef" : "USE_AES"
 }

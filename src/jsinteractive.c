@@ -2153,6 +2153,8 @@ void jsiIdle() {
       }
       jsvUnLock(usartClass);
 #endif
+    } else if (eventType == EV_CUSTOM) {
+      jswOnCustomEvent(&event);
 #ifdef BLUETOOTH
     } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
       maxEvents -= jsble_exec_pending(&event);

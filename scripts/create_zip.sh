@@ -33,33 +33,36 @@ rm -f bootloader_espruino_$VERSION* espruino_$VERSION*
 #rm -rf esp-idf
 #rm -rf app
 #rm -rf xtensa-esp32-elf
+
+# create docs before ESP32 provisioning creates a venv for python which then ensures markdown2 isn't installed
+echo Creating Documentation
+scripts/build_docs.py || { echo 'Build failed' ; exit 1; }
+mv $ESPRUINODIR/functions.html $ZIPDIR/functions.html
+
 # Install everything
 source scripts/provision.sh ALL
-
-
 
 echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 # The following have been removed because it's too hard to keep the build going:
 # STM32F3DISCOVERY OLIMEXINO_STM32 HYSTM32_32 HYSTM32_28 HYSTM32_24 RAK8211 RAK8212 RUUVITAG THINGY52 RASPBERRYPI RAK5010
-# 
-for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_AT ESPRUINO_1V3_WIZ PICO_1V3 PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINOWIFI PUCKJS PUCKJS_MINIMAL PUCKJS_NETWORK PIXLJS JOLTJS BANGLEJS BANGLEJS2 MDBT42Q NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F4DISCOVERY STM32L496GDISCOVERY MICROBIT1 MICROBIT2 ESP8266_BOARD ESP8266_4MB ESP32 SMARTIBOT
+ 
+for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_AT ESPRUINO_1V3_WIZ PICO_1V3 PICO_1V3_CC3000 PICO_1V3_WIZ ESPRUINOWIFI PUCKJS PUCKJS_MINIMAL PUCKJS_NETWORK PIXLJS PIXLJS_WIZ JOLTJS BANGLEJS BANGLEJS2 MDBT42Q NUCLEOF401RE NUCLEOF411RE STM32VLDISCOVERY STM32F4DISCOVERY STM32L496GDISCOVERY MICROBIT1 MICROBIT2 ESP8266_BOARD ESP8266_4MB ESP32 SMARTIBOT
 do
   scripts/create_zip_board.sh $BOARDNAME
 done
 
-
-
 cd $ESPRUINODIR
 
+echo Copying README
 sed 's/$/\r/' $ESPRUINODIR/scripts/create_zip_dist_readme.txt | sed "s/#v##/$VERSION/" > $ZIPDIR/readme.txt
+cp $ESPRUINODIR/scripts/create_zip_dist_licences.txt $ZIPDIR/licences.txt
+echo Copying ChangeLog
 bash scripts/extract_changelog.sh | sed 's/$/\r/' > $ZIPDIR/changelog.txt
 #bash scripts/extract_todo.sh  >  $ZIPDIR/todo.txt
-scripts/build_docs.py  || { echo 'Build failed' ; exit 1; }
-mv $ESPRUINODIR/functions.html $ZIPDIR/functions.html
-cp $ESPRUINODIR/scripts/create_zip_dist_licences.txt $ZIPDIR/licences.txt
 
+echo Compressing...
 rm -f $ZIPFILE
 cd zipcontents
 echo zip -r $ZIPFILE *

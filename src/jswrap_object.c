@@ -890,22 +890,22 @@ void jswrap_object_on_X(JsVar *parent, JsVar *event, JsVar *listener, bool addFi
   JsVar *eventList = jsvFindChildFromVar(parent, eventName, true);
   jsvUnLock(eventName);
   JsVar *eventListeners = jsvSkipName(eventList);
-  // if no array, add it
-  if (jsvIsUndefined(eventListeners)) {
-    eventListeners = jsvNewEmptyArray();
-    jsvSetValueOfName(eventList, eventListeners);
-  }
-  jsvUnLock(eventList);
-  if (!eventListeners) return; // out of memory
-  // now have an array and we just add to it
+  /* create a *new* array with the items in the right order. We do this
+  so that if we're adding a handler to an while we're in a handler that's
+  executing that event, the handler we just added doesn't get called. */
+  JsVar *newEventListeners = 0;
   if (addFirst) { // add it first?
-    JsVar *elements = jsvNewArray(&listener, 1);
-    jswrap_array_unshift(eventListeners, elements);
-    jsvUnLock(elements);
+    newEventListeners = jsvNewArray(&listener, 1);
+    if (eventListeners) jsvArrayPushAll(newEventListeners, eventListeners, false);
   } else { // or add it at the end
-    jsvArrayPush(eventListeners, listener);
+    newEventListeners = jsvNewEmptyArray();
+    if (eventListeners) jsvArrayPushAll(newEventListeners, eventListeners, false);
+    jsvArrayPush(newEventListeners, listener);
   }
   jsvUnLock(eventListeners);
+  eventListeners = newEventListeners;
+  jsvSetValueOfName(eventList, eventListeners);
+  jsvUnLock2(eventList, eventListeners);
   /* Special case if we're a data listener and data has already arrived then
    * we queue an event immediately. */
   if (jsvIsStringEqual(event, "data")) {

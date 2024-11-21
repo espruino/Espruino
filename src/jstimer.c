@@ -24,13 +24,10 @@ volatile unsigned char utilTimerTasksTail = 0;
 
 /// Is the utility timer actually running?
 volatile bool utilTimerOn = false;
-
-unsigned int utilTimerBit;
-bool utilTimerInIRQ = false;
-unsigned int utilTimerData;
-uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReload1L;
 /// When we rescheduled the timer, how far in the future were we meant to get called (in system time)?
 int utilTimerPeriod;
+/// The system time at which the util timer's period was last set
+JsSysTime utilTimerSetTime;
 /// Incremented with utilTimerPeriod - used when we're adding multiple items and we want them all relative to each other
 volatile int utilTimerOffset;
 
@@ -90,7 +87,6 @@ void jstUtilTimerInterruptHandler() {
   /* Note: we're using 32 bit times here, even though the real time counter is 64 bit. We
    * just make sure nothing is scheduled that far in the future */
   if (utilTimerOn) {
-    utilTimerInIRQ = true;
     // TODO: Keep UtilTimer running and then use the value from it
     // to estimate how long utilTimerPeriod really was
     // Subtract utilTimerPeriod from all timers' time
@@ -222,13 +218,13 @@ void jstUtilTimerInterruptHandler() {
     // re-schedule the timer if there is something left to do
     if (utilTimerTasksTail != utilTimerTasksHead) {
       utilTimerPeriod = utilTimerTasks[utilTimerTasksTail].time;
+      utilTimerSetTime = jshGetSystemTime();
       if (utilTimerPeriod<0) utilTimerPeriod=0;
       jshUtilTimerReschedule(utilTimerPeriod);
     } else {
       utilTimerOn = false;
       jshUtilTimerDisable();
     }
-    utilTimerInIRQ = false;
   } else {
     // Nothing left to do - disable the timer
     jshUtilTimerDisable();
@@ -259,6 +255,7 @@ static bool utilTimerIsFull() {
 need to be called by anything outside jstimer.c */
 void  jstRestartUtilTimer() {
   utilTimerPeriod = utilTimerTasks[utilTimerTasksTail].time;
+  utilTimerSetTime = jshGetSystemTime();
   if (utilTimerPeriod<0) utilTimerPeriod=0;
   jshUtilTimerStart(utilTimerPeriod);
 }
@@ -271,15 +268,17 @@ void  jstRestartUtilTimer() {
 bool utilTimerInsertTask(UtilTimerTask *task, uint32_t *timerOffset) {
   // check if queue is full or not
   if (utilTimerIsFull()) return false;
-  if (!utilTimerInIRQ) jshInterruptOff();
+  jshInterruptOff();
 
   // See above - keep times in sync
   if (timerOffset)
     task->time += (int)*timerOffset - (int)utilTimerOffset;
 
+  // How long was it since the timer was last scheduled? Update existing tasks #2575
+  uint32_t timePassed = jshGetSystemTime() - utilTimerSetTime;
   // find out where to insert
   unsigned char insertPos = utilTimerTasksTail;
-  while (insertPos != utilTimerTasksHead && utilTimerTasks[insertPos].time < task->time)
+  while (insertPos != utilTimerTasksHead && utilTimerTasks[insertPos].time < (task->time+timePassed))
     insertPos = (insertPos+1) & (UTILTIMERTASK_TASKS-1);
   bool haveChangedTimer = insertPos==utilTimerTasksTail;
   //jsiConsolePrintf("Insert at %d, Tail is %d\n",insertPos,utilTimerTasksTail);
@@ -290,17 +289,30 @@ bool utilTimerInsertTask(UtilTimerTask *task, uint32_t *timerOffset) {
     utilTimerTasks[i] = utilTimerTasks[next];
     i = next;
   }
-  // add new item
-  utilTimerTasks[insertPos] = *task;
   // increase task list size
   utilTimerTasksHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
+  // update timings (#2575)
+  if (haveChangedTimer) { // timer will change - update all tasks
+    i = utilTimerTasksTail;
+    while (i != utilTimerTasksHead) {
+      if (utilTimerTasks[i].time > timePassed)
+        utilTimerTasks[i].time -= timePassed;
+      else
+        utilTimerTasks[i].time = 0;
+      i = (i+1) & (UTILTIMERTASK_TASKS-1);
+    }
+  } else // timer hasn't changed, we have to update our task's time
+    task->time += timePassed;
+  // add new item
+  utilTimerTasks[insertPos] = *task;
+
   //jsiConsolePrint("Head is %d\n", utilTimerTasksHead);
   // now set up timer if not already set up...
   if (!utilTimerOn || haveChangedTimer) {
     utilTimerOn = true;
     jstRestartUtilTimer();
   }
-  if (!utilTimerInIRQ) jshInterruptOn();
+  jshInterruptOn();
   return true;
 }
 
@@ -639,6 +651,7 @@ void jstReset() {
   utilTimerTasksTail = utilTimerTasksHead = 0;
   utilTimerOffset = 0;
   utilTimerPeriod = 0;
+  utilTimerSetTime = jshGetSystemTime();
 }
 
 /** when system time is changed, also change the time in the timers.
@@ -664,12 +677,10 @@ void jstDumpUtilityTimers() {
     hadTimers = true;
 
     UtilTimerTask task = uTimerTasks[t];
-    jsiConsolePrintf("%08d us", (int)(1000*jshGetMillisecondsFromTime(task.time)));
-    jsiConsolePrintf(", repeat %08d us", (int)(1000*jshGetMillisecondsFromTime(task.repeatInterval)));
-    jsiConsolePrintf(" : ");
+    jsiConsolePrintf("%08d us, repeat %08d us : ", (int)(1000*jshGetMillisecondsFromTime(task.time)), (int)(1000*jshGetMillisecondsFromTime(task.repeatInterval)));
 
     switch (task.type) {
-    case UET_WAKEUP : jsiConsolePrintf("WAKEUP\n"); break;
+    case UET_WAKEUP : jsiConsolePrintf("WKUP\n"); break;
     case UET_SET : jsiConsolePrintf("SET ");
     for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
       if (task.data.set.pins[i] != PIN_UNDEFINED)
@@ -677,13 +688,13 @@ void jstDumpUtilityTimers() {
     jsiConsolePrintf("\n");
     break;
 #ifndef SAVE_ON_FLASH
-    case UET_WRITE_BYTE : jsiConsolePrintf("WRITE_BYTE\n"); break;
-    case UET_READ_BYTE : jsiConsolePrintf("READ_BYTE\n"); break;
-    case UET_WRITE_SHORT : jsiConsolePrintf("WRITE_SHORT\n"); break;
-    case UET_READ_SHORT : jsiConsolePrintf("READ_SHORT\n"); break;
+    case UET_WRITE_BYTE : jsiConsolePrintf("WR8\n"); break;
+    case UET_READ_BYTE : jsiConsolePrintf("RD8\n"); break;
+    case UET_WRITE_SHORT : jsiConsolePrintf("WR16\n"); break;
+    case UET_READ_SHORT : jsiConsolePrintf("RD16\n"); break;
 #endif
-    case UET_EXECUTE : jsiConsolePrintf("EXECUTE %x(%x)\n", task.data.execute.fn, task.data.execute.userdata); break;
-    default : jsiConsolePrintf("Unknown type %d\n", task.type); break;
+    case UET_EXECUTE : jsiConsolePrintf("EXEC %x(%x)\n", task.data.execute.fn, task.data.execute.userdata); break;
+    default : jsiConsolePrintf("?[%d]\n", task.type); break;
     }
 
     t = (t+1) & (UTILTIMERTASK_TASKS-1);

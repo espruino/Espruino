@@ -50,14 +50,13 @@ info = {
      'DEFINES+=-DESPR_DCDC_ENABLE', # Ensure DCDC converter is enabled
      'DEFINES += -DNEOPIXEL_SCK_PIN=22 -DNEOPIXEL_LRCK_PIN=16', # SCK pin needs defining as something unused for neopixel (HW errata means they can't be disabled) see https://github.com/espruino/Espruino/issues/2071
      'DEFINES += -DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
-     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once     
+     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3290', # set RAM base to match MTU=53 + CENTRAL_LINK_COUNT=2
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Puck.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_puck_getBattery',
      'DEFINES+=-DNFC_DEFAULT_URL=\'"https://puck-js.com/go"\'',
      'DEFINES+=-DAPP_TIMER_OP_QUEUE_SIZE=3', # Puck.js magnetometer poll
-     'LDFLAGS += -nostartfiles',
-     'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main',
+     'LDFLAGS += -nostartfiles', 'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main', # Save ~300b by not including CRT startup code
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',
      'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
@@ -129,9 +128,9 @@ board_v1 = {
   'right' : [ 'GND', '3V', 'D2', 'D1' ],
   'left2' : [ 'D6','D7','D8','D11','D13','D14','D16','D23','D24','D27' ],
   'right2' : [ 'D15' ],
-  '_title' : "Puck.js 1",    
-  '_class' : "board_v1",    
-  '_hide_not_on_connectors' : True,    
+  '_title' : "Puck.js 1",
+  '_class' : "board_v1",
+  '_hide_not_on_connectors' : True,
   '_notes' : {
     'D11' : "Capacitive sense. D12 is connected to this pin via a 1 MOhm resistor",
     'D28' : "If pulled up to 1 on startup, D28 and D29 become Serial1",
@@ -183,8 +182,8 @@ board_v2 = {
   'bottom' : [ 'D28', 'D29', 'D30', 'D31'],
   'right' : [ 'GND', '3V', 'D2', 'D1' ],
   'left2' : [ 'D11','D23','D24','D26' ],
-  '_title' : "Puck.js 2",      
-  '_class' : "board_v2",  
+  '_title' : "Puck.js 2",
+  '_class' : "board_v2",
   '_notes' : {
     'D11' : "Capacitive sense. D12 is connected to this pin via a 1 MOhm resistor",
     'D26' : "This is connected via a FET. If D26=1, this pin is shorted to GND, if D26=0 the pin is floating",
@@ -223,11 +222,11 @@ board_v2 = {
 board_lite = {
   'bottom' : [ 'D28', 'D29', 'D30', 'D31'],
   'right' : [ 'GND', '3V', 'D2', 'D1' ],
-  '_title' : "Puck.js Lite",    
-  '_class' : "board_lite",    
-  '_hide_not_on_connectors' : True,  
+  '_title' : "Puck.js Lite",
+  '_class' : "board_lite",
+  '_hide_not_on_connectors' : True,
   '_notes' : {
-    'D21' : "Marked RST. This is usable IO by default, but is also the nRF52 reset pin.",  
+    'D21' : "Marked RST. This is usable IO by default, but is also the nRF52 reset pin.",
     'D28' : "If pulled up to 1 on startup, D28 and D29 become Serial1",
   },
   "_css" : """

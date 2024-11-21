@@ -538,7 +538,7 @@ void jswrap_dgram_socket_send(JsVar *parent, JsVar *buffer, JsVar *offset, JsVar
   ]
 }
 The 'message' event is called when a datagram message is received. If a handler
-is defined with `X.on('message', function(msg) { ... })` then it will be called`
+is defined with `X.on('message', function(msg) { ... })` then it will be called
 */
 
 /*JSON{
@@ -662,7 +662,7 @@ You can also:
 * Just specify the filename (<=100 characters) and it will be loaded and parsed
   if you have an SD card connected. For instance `options.key = "key.pem";`
 * Specify a function, which will be called to retrieve the data. For instance
-  `options.key = function() { eeprom.load_my_info(); };
+  `options.key = function() { eeprom.load_my_info(); };`
 
 For more information about generating and using certificates, see:
 

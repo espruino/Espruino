@@ -18,7 +18,5 @@ void jswrap_pixljs_setContrast(JsVarFloat c);
 void jswrap_pixljs_setLCDPower(bool isOn);
 
 void jswrap_pixljs_init();
-void jswrap_pixljs_kill();
-bool jswrap_pixljs_idle();
 JsVarInt jswrap_pixljs_getBattery();
 void jswrap_pixljs_powerusage(JsVar *devices);

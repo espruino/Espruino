@@ -57,7 +57,8 @@ for i in range(1,len(sys.argv)):
       modulename = arg.rsplit('/',1)[1][:-3]
       if modulename[-4:]==".min": modulename=modulename[:-4]
     print("Loading JS module: "+arg+" -> "+modulename)
-    jscode = open(arg, "r").read()
+    # Can't open(...encoding='latin-1') here because Python will still replace line endings!
+    jscode = open(arg, "rb").read().decode(encoding='latin-1').strip()
     if modulename=="_":
       jsbootcode = jscode
     else:
@@ -75,7 +76,7 @@ def codeOut(s):
   wrapperFile.write(s+"\n");
 
 def FATAL_ERROR(s):
-  sys.stderr.write("ERROR: "+s)
+  sys.stderr.write("ERROR: "+s+"\n")
   exit(1)
 
 # ------------------------------------------------------------------------------------------------------
@@ -372,9 +373,22 @@ for jsondata in jsondatas:
       s.append(toCType(param[1])+" "+param[0]);
 
     js = "";
-    with open(basedir+jsondata["generate_js"], 'r') as file:
-      js = file.read().strip()
-    statement = "jspExecuteJSFunction("+json.dumps(js)
+    # Can't open(...encoding='latin-1') here because Python will still replace line endings!
+    js = open(basedir+jsondata["generate_js"], 'rb').read().decode(encoding='latin-1').strip()
+    if not js.endswith("})"):
+      print(common.as_c_string(js)+"\n")
+      FATAL_ERROR("generate_js function doesn't end in })")
+
+    fnMatch = re.match(r"^\((function|\252)\(([^\)]*)\)", js);
+
+    if fnMatch:
+      fnKeyword, fnArgs = fnMatch.groups()
+      fnCode = js[len(fnKeyword)+len(fnArgs)+4:-2]
+      statement = "jspExecuteJSFunctionCode("+common.as_c_string(fnArgs)+", "+common.as_c_string(fnCode)+", "+str(len(fnCode))
+    else:
+      print(common.as_c_string(js)+"\n")
+      FATAL_ERROR("generate_js function not in the correct format")
+
     if hasThis(jsondata): statement = statement + ", parent"
     else: statement = statement + ", NULL"
 
@@ -713,7 +727,7 @@ codeOut('')
 codeOut("/** Tasks to run on Initialisation (eg boot/load/reset/after save/etc) */")
 codeOut('void jswInit() {')
 if jsbootcode!=False:
-  codeOut('  jsvUnLock(jspEvaluate('+json.dumps(jsbootcode)+', true/*static*/));')
+  codeOut('  jsvUnLock(jspEvaluate('+common.as_c_string(jsbootcode)+', true/*static*/));')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="init":
     codeOut("  "+jsondata["generate"]+"();")
@@ -729,30 +743,49 @@ for jsondata in jsondatas:
     codeOut("  "+jsondata["generate"]+"();")
 codeOut('}')
 
-codeOut("/** When called with an Object, fields are added for each device that is used with estimated power usage in uA */")
+codeOut('')
+codeOut('')
+
+codeOut("/** When called with an Object, fields are added for each device that is used with estimated power usage in uA (type:'powerusage' in JSON) */")
 codeOut('void jswGetPowerUsage(JsVar *devices) {')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="powerusage":
     codeOut("  "+jsondata["generate"]+"(devices);")
 codeOut('}')
 
+codeOut('')
+codeOut('')
 
-
-codeOut("/** Tasks to run when a character event is received */")
+codeOut("/** Tasks to run when a character is received on a certain event channel. True if handled and shouldn't go to IRQ (type:'EV_SERIAL1/etc' in JSON) */")
 codeOut('bool jswOnCharEvent(IOEventFlags channel, char charData) {')
 codeOut('  NOT_USED(channel);')
 codeOut('  NOT_USED(charData);')
 for jsondata in jsondatas:
-  if "type" in jsondata and jsondata["type"].startswith("EV_"):
+  if "type" in jsondata and jsondata["type"]!="EV_CUSTOM" and jsondata["type"].startswith("EV_"):
     codeOut("  if (channel=="+jsondata["type"]+") return "+jsondata["generate"]+"(charData);")
 codeOut('  return false;')
 codeOut('}')
+
+codeOut("/** When we receive EV_CUSTOM, this is called so any library (eg Waveform) can hook onto it (type:'EV_CUSTOM' in JSON) */")
+codeOut('void jswOnCustomEvent(IOEvent *event) {')
+codeOut('  NOT_USED(event);')
+for jsondata in jsondatas:
+  if "type" in jsondata and jsondata["type"]=="EV_CUSTOM":
+    codeOut("  "+jsondata["generate"]+"(event);")
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+
+codeOut('')
+codeOut('')
 
 codeOut("/** If we have a built-in module with the given name, return the module's contents - or 0 */")
 codeOut('const char *jswGetBuiltInJSLibrary(const char *name) {')
 codeOut('  NOT_USED(name);')
 for modulename in jsmodules:
-  codeOut("  if (!strcmp(name,\""+modulename+"\")) return "+json.dumps(jsmodules[modulename])+";")
+  codeOut("  if (!strcmp(name,\""+modulename+"\")) return "+common.as_c_string(jsmodules[modulename])+";")
 codeOut('  return 0;')
 codeOut('}')
 
@@ -812,7 +845,7 @@ if "USE_CALLFUNCTION_HACK" in board.defines:
   #  codeOut('  case '+argSpec+":")
   argSpecs = []
   # Ensure we force-add any entries we need
-  writeCallFunctionHackEntry(argSpecs, {'type': 'function', 'name': 'X', 'generate': 'X', 'params': []}) # jswrap_io 
+  writeCallFunctionHackEntry(argSpecs, {'type': 'function', 'name': 'X', 'generate': 'X', 'params': []}) # jswrap_io
   writeCallFunctionHackEntry(argSpecs, {'type': 'method', 'class': 'X', 'name': 'X', 'generate': 'X', 'params': [['1', 'JsVar', '']]}) # jswrap_promise
   writeCallFunctionHackEntry(argSpecs, {'type': 'method', 'class': 'X', 'name': 'X', 'generate': 'X', 'params': [['1', 'JsVar', ''],['2', 'JsVar', '']]}) # jswrap_promise
   writeCallFunctionHackEntry(argSpecs, {'type': 'method', 'class': 'X', 'name': 'X', 'generate': 'X', 'params': [['1', 'JsVar', ''],['2', 'JsVar', ''],['3', 'JsVar', '']]}) # jswrap_promise
@@ -821,7 +854,7 @@ if "USE_CALLFUNCTION_HACK" in board.defines:
   writeCallFunctionHackEntry(argSpecs, {'type': 'function', 'name': 'X', 'generate': 'X', 'params': [['1', 'float', ''],['1', 'float', '']], 'return': ['float','']}) # jswrap_banglejs + jswrap_arraybuffer
   writeCallFunctionHackEntry(argSpecs, {'type': 'function', 'name': 'X', 'generate': 'X', 'params': [['1', 'int', ''],['1', 'int', '']], 'return': ['int','']}) # jswrap_arraybuffer
   for jsondata in jsondatas:
-    if "generate" in jsondata:      
+    if "generate" in jsondata:
         writeCallFunctionHackEntry(argSpecs, jsondata)
   #((uint32_t (*)(size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3]);
   codeOut('  default: jsExceptionHere(JSET_ERROR,"Unknown argspec %d",argumentSpecifier);')

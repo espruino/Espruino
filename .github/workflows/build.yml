@@ -74,7 +74,7 @@ jobs:
     strategy:
       # devices to build for
       matrix:
-        board: [PUCKJS, PIXLJS, JOLTJS, MDBT42Q, BANGLEJS, BANGLEJS2, PUCKJS_MINIMAL, PUCKJS_NETWORK]
+        board: [PUCKJS, PIXLJS, JOLTJS, MDBT42Q, BANGLEJS, BANGLEJS2, PUCKJS_MINIMAL, PUCKJS_NETWORK, PIXLJS_WIZ]
       # try and build for all devices even if one fails
       fail-fast: false 
     steps:

@@ -188,7 +188,9 @@ for (var i=0;i<1000;i++) w.buffer[i]=128+120*Math.sin(i/2);
 analogWrite(H0, 0.5, {freq:80000}); // set up H0 to output an analog value by PWM
 w.on("finish", () => print("Done!"))
 w.startOutput(H0,8000); // start playback
+```
 
+```JS
 // On 2v25, from Storage
 var f = require("Storage").read("sound.pcm");
 var w = new Waveform(E.toArrayBuffer(f));
