@@ -3007,6 +3007,9 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 
 // Kick the watchdog
 void jshKickWatchDog() {
+#ifdef ESPR_DISABLE_KICKWATCHDOG_PIN // if this pin is asserted, don't kick the watchdog
+  if (jshPinGetValue(ESPR_DISABLE_KICKWATCHDOG_PIN)) return;
+#endif
   IWDG_ReloadCounter();
 }
 
