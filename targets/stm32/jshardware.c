@@ -44,6 +44,10 @@
 #define USE_RTC
 #endif
 
+#ifndef ESPR_MIN_WFI_TIME_MS
+#define ESPR_MIN_WFI_TIME_MS 0.1
+#endif
+
 #define IRQ_PRIOR_SPI 1 // we want to be very sure of not losing SPI (this is handled quickly too)
 #define IRQ_PRIOR_SYSTICK 2
 #define IRQ_PRIOR_USART 6 // a little higher so we don't get lockups of something tries to print
@@ -57,7 +61,10 @@
 unsigned short jshRTCPrescaler;
 unsigned short jshRTCPrescalerReciprocal; // (JSSYSTIME_SECOND << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler;
 #define RTC_PRESCALER_RECIPROCAL_SHIFT 10
-#define RTC_INITIALISE_TICKS 8 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
+#ifndef ESPR_RTC_INITIALISE_TICKS
+#define ESPR_RTC_INITIALISE_TICKS 10 // SysTicks before we initialise the RTC - we need to wait until ~2s the LSE starts up properly. At 84Mhz 2s=~10 ticks
+#endif
+
 #define JSSYSTIME_EXTRA_BITS 8 // extra bits we shove on under the RTC (we try and get these from SysTick)
 #define JSSYSTIME_SECOND_SHIFT 20
 #define JSSYSTIME_SECOND (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
@@ -727,7 +734,11 @@ static bool jshIsRTCAlreadySetup(bool andRunning) {
   if (jshIsRTCUsingLSE())
     return RCC_GetFlagStatus(RCC_FLAG_LSERDY) == SET;
   else
+#ifdef ESPR_RTC_ALWAYS_TRY_LSE
+    return false;
+#else
     return RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == SET;
+#endif
 }
 
 
@@ -814,7 +825,7 @@ void jshDoSysTick() {
     jshUSBReceiveLastActive++;
 #endif
 #ifdef USE_RTC
-  if (ticksSinceStart==RTC_INITIALISE_TICKS) {
+  if (ticksSinceStart==ESPR_RTC_INITIALISE_TICKS) {
     // Use LSI if the LSE hasn't stabilised
     bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
     bool wasUsingLSI = !jshIsRTCUsingLSE();
@@ -863,7 +874,7 @@ void jshDoSysTick() {
   }
 
   JsSysTime time = jshGetRTCSystemTime();
-  if (!hasSystemSlept && ticksSinceStart>RTC_INITIALISE_TICKS) {
+  if (!hasSystemSlept && ticksSinceStart>ESPR_RTC_INITIALISE_TICKS) {
     /* Ok - slightly crazy stuff here. So the normal jshGetSystemTime is now
      * working off of the SysTick again to get the accuracy. But this means
      * that we can't just change lastSysTickTime to the current time, because
@@ -926,7 +937,12 @@ bool jshIsInInterrupt() {
 }
 
 //int JSH_DELAY_OVERHEAD = 0;
+#ifdef ESPR_DELAY_MULTIPLIER
+#define  JSH_DELAY_MULTIPLIER ESPR_DELAY_MULTIPLIER
+#else
 int JSH_DELAY_MULTIPLIER = 1;
+#endif
+
 void jshDelayMicroseconds(int microsec) {
   int iter = (int)(((long long)microsec * (long long)JSH_DELAY_MULTIPLIER) >> 10);
 //  iter -= JSH_DELAY_OVERHEAD;
@@ -935,6 +951,10 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 void jshPinSetState(Pin pin, JshPinState state) {
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) {
+    if (state==JSHPINSTATE_GPIO_IN_PULLUP) state=JSHPINSTATE_GPIO_IN_PULLDOWN;
+    else if (state==JSHPINSTATE_GPIO_IN_PULLDOWN) state=JSHPINSTATE_GPIO_IN_PULLUP;
+  }
   // if this is about to mess up the neopixel output, so reset our var so we know to re-init
   if (pin == jshNeoPixelPin)
     jshNeoPixelPin = PIN_UNDEFINED;
@@ -1007,6 +1027,9 @@ JshPinState jshPinGetState(Pin pin) {
 #else
   int mode = (port->MODER >> (pinNumber*2)) & 3;
   int pupd = (port->PUPDR >> (pinNumber*2)) & 3;
+  bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
+  if (negated && (pupd==1)) pupd=2;
+  else if (negated && (pupd==2)) pupd=1;
   if (mode==0) { // input
     if (pupd==1) return JSHPINSTATE_GPIO_IN_PULLUP;
     if (pupd==2) return JSHPINSTATE_GPIO_IN_PULLDOWN;
@@ -1082,6 +1105,7 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
 }
 
 void jshPinSetValue(Pin pin, bool value) {
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
 #ifdef STM32API2
     if (value)
       GPIO_SetBits(stmPort(pin), stmPin(pin));
@@ -1110,7 +1134,9 @@ void jshPinSetValue(Pin pin, bool value) {
 }
 
 bool jshPinGetValue(Pin pin) {
-  return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
+  bool value = GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
+  return value;
 }
 
 // ----------------------------------------------------------------------------
@@ -1145,6 +1171,7 @@ static void jshResetPeripherals() {
 #ifdef DEFAULT_CONSOLE_BAUDRATE
     inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
 #endif
+    inf.xOnXOff = true;
     jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
   }
 }
@@ -1247,7 +1274,7 @@ void jshInit() {
   // enable low speed internal oscillator (reset always kills this, and we might need it)
   RCC_LSICmd(ENABLE);
   // If RTC is already setup, just leave it alone!
-  if (!jshIsRTCAlreadySetup(false)) {
+  if (!jshIsRTCAlreadySetup(true)) {
     // Reset backup domain - allows us to set the RTC clock source
     RCC_BackupResetCmd(ENABLE);
     RCC_BackupResetCmd(DISABLE);
@@ -1284,7 +1311,7 @@ void jshInit() {
 #ifdef USE_RTC
   jshResetRTCTimer();
 #endif
-
+  jshResetDevices();
   jshResetPeripherals();
 #ifdef LED1_PININDEX
   // turn led back on (status) as it would have just been turned off
@@ -1371,6 +1398,7 @@ void jshInit() {
    for the RTC on the Espruino board hasn't settled down by this point
    (or it just may not be accurate enough).
    */
+#ifndef ESPR_DELAY_MULTIPLIER
 //  JSH_DELAY_OVERHEAD = 0;
   JSH_DELAY_MULTIPLIER = 1024;
   /* NOTE: we disable interrupts, so we can't spend longer than SYSTICK_RANGE in here
@@ -1403,6 +1431,13 @@ void jshInit() {
   JSH_DELAY_MULTIPLIER = (int)(1.024 * getSystemTimerFreq() * JSH_DELAY_MULTIPLIER / (tIter*1000));
 //  JSH_DELAY_OVERHEAD = (int)(tOverhead * JSH_DELAY_MULTIPLIER / tIter);
   jshInterruptOn();
+  //jsiConsolePrintf("JSH_DELAY_MULTIPLIER %d\n", JSH_DELAY_MULTIPLIER);
+#endif
+
+/*RCC_ClocksTypeDef clk;
+  RCC_GetClocksFreq(&clk);
+  jsiConsolePrintf("SYSCLK %d\n", clk.SYSCLK_Frequency);*/
+
 
   /* Enable Utility Timer Update interrupt. We'll enable the
    * utility timer when we need it. */
@@ -1559,7 +1594,7 @@ JsSysTime jshGetRTCSystemTime() {
 
 JsSysTime jshGetSystemTime() {
 #ifdef USE_RTC
-  if (ticksSinceStart<=RTC_INITIALISE_TICKS)
+  if (ticksSinceStart<=ESPR_RTC_INITIALISE_TICKS)
     return jshGetRTCSystemTime(); // Clock hasn't stabilised yet, just use whatever RTC value we currently have
   if (hasSystemSlept) {
     // reset SysTick counter. This will hopefully cause it
@@ -1892,6 +1927,11 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
     return 0;
   }
 
+/* if negated... No need to invert when doing SW PWM
+  as the SW output is already negating it! */
+  if (pinInfo[pin].port & JSH_PIN_NEGATED)
+    value = 1-value;
+
   if (JSH_PINFUNCTION_IS_DAC(func)) {
 #if defined(ESPR_DAC_COUNT) && ESPR_DAC_COUNT>0
     // Special case for DAC output
@@ -2032,8 +2072,12 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch, JshPinWatchFlags flags) {
 bool jshGetWatchedPinState(IOEventFlags device) {
   int exti = IOEVENTFLAGS_GETTYPE(device) - EV_EXTI0;
   Pin pin = watchedPins[exti];
-  if (jshIsPinValid(pin))
-    return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin));
+  if (jshIsPinValid(pin)) {
+    bool v = GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin));
+    if (pinInfo[pin].port & JSH_PIN_NEGATED)
+      v = !v;
+    return v;
+  }
   return false;
 }
 
@@ -2212,6 +2256,22 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   // Enable USART
   USART_Cmd(USARTx, ENABLE);
 }
+
+void jshUSARTUnSetup(IOEventFlags device) {
+  if (!DEVICE_IS_USART(device))
+    return;
+  jshSetDeviceInitialised(device, false);
+  jshSetFlowControlEnabled(device, false, PIN_UNDEFINED);
+  JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
+  if (funcType==0) return; // not a proper serial port, ignore it
+  USART_TypeDef *USARTx = (USART_TypeDef *)setDeviceClockCmd(funcType, ENABLE);
+  if (!USARTx) return;
+  USART_ITConfig(USARTx, USART_IT_RXNE, DISABLE);
+  USART_ITConfig(USARTx, USART_IT_TXE, DISABLE);
+  USART_Cmd(USARTx, ENABLE);
+  setDeviceClockCmd(funcType, DISABLE);
+}
+
 #endif
 
 /** Kick a device into action (if required). For instance we may need
@@ -2577,7 +2637,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
       !USB_IsConnected() &&
       jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
 #endif
-      ticksSinceStart>RTC_INITIALISE_TICKS && // Don't sleep until RTC has initialised
+      ticksSinceStart>ESPR_RTC_INITIALISE_TICKS && // Don't sleep until RTC has initialised
       true
       ) {
     jsiSetSleep(JSI_SLEEP_DEEP);
@@ -2699,7 +2759,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jsiSetSleep(JSI_SLEEP_AWAKE);
   } else
 #endif
-  if (timeUntilWake > jshGetTimeFromMilliseconds(0.1)) {
+  if (timeUntilWake > jshGetTimeFromMilliseconds(ESPR_MIN_WFI_TIME_MS)) {
     /* don't bother sleeping if the time period is so low we
      * might miss the timer */
     JsSysTime sysTickTime;
@@ -2715,6 +2775,10 @@ bool jshSleep(JsSysTime timeUntilWake) {
     }
 
     jsiSetSleep(JSI_SLEEP_ASLEEP);
+#ifdef USE_RTC
+    // set flag in case there happens to be a SysTick
+    hasSystemSlept = true;
+#endif
     __WFI(); // Wait for Interrupt
     jsiSetSleep(JSI_SLEEP_AWAKE);
 

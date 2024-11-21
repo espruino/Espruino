@@ -56,7 +56,7 @@
 /** @defgroup USBD_DESC_Private_Defines
   * @{
   */ 
-#define USBD_VID     1155
+#define USBD_VID     0x0483 // STMicroelectronics VID (1155 decimal)
 #define USBD_LANGID_STRING     1033
 #define USBD_MANUFACTURER_STRING     "STMicroelectronics"
 #ifndef USB_PRODUCT_ID
