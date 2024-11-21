@@ -1133,6 +1133,7 @@ void jsiChangeToHistory(bool previous) {
   }
 }
 
+/// Called before the inputLine is modified, even if we're just adding on the end of it
 void jsiIsAboutToEditInputLine() {
   // we probably plan to do something with the line now - check it wasn't in history
   // and if it was, duplicate it

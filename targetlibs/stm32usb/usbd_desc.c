@@ -58,11 +58,15 @@
   */ 
 #define USBD_VID     0x0483 // STMicroelectronics VID (1155 decimal)
 #define USBD_LANGID_STRING     1033
+#ifndef USBD_MANUFACTURER_STRING
 #define USBD_MANUFACTURER_STRING     "STMicroelectronics"
-#ifndef USB_PRODUCT_ID
-  #define USB_PRODUCT_ID     22336
 #endif
+#ifndef USB_PRODUCT_ID
+#define USB_PRODUCT_ID   0x5740 // ST's standard PID is 0x5740 / 22336 decimal
+#endif
+#ifndef USBD_PRODUCT_STRING_FS
 #define USBD_PRODUCT_STRING_FS     "STM32 Virtual ComPort"
+#endif
 #define USBD_SERIALNUMBER_STRING_FS     "00000000001A"
 #define USBD_CONFIGURATION_STRING_FS     "CDC Config"
 #define USBD_INTERFACE_STRING_FS     "CDC Interface"

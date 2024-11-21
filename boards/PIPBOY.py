@@ -64,7 +64,10 @@ info = {
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_28.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_23.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_18.c',
-     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_16.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_16.c',    
+     'DEFINES+=-DUSBD_MANUFACTURER_STRING=\'"The Wand Company"\'',
+     'DEFINES+=-DUSBD_PRODUCT_STRING_FS=\'"Pip-Boy"\'',
+     'DEFINES+=-DUSB_PRODUCT_ID=0xA4F1', # 0xA4F1 assigned by ST for the Pip-Boy (0xA4DF = Tricorder)
 #     'USE_DFU=1'
    ]
   }
