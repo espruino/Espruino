@@ -45,6 +45,7 @@ info = {
      #'TLS'
    ],
    'makefile' : [
+     'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      # 'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # reset isn't being used, so let's just have an extra IO (needed for Puck.js V2)
      'DEFINES+=-DESPR_DCDC_ENABLE', # Ensure DCDC converter is enabled

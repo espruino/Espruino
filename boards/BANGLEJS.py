@@ -34,6 +34,7 @@ info = {
      'JIT'
    ],
    'makefile' : [
+     'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
      'BLACKLIST=boards/BANGLEJS.blocklist', # force some stuff to be removed to save space
      'DEFINES += -DESPR_HWVERSION=1',
      'DEFINES += -DBANGLEJS_F18',

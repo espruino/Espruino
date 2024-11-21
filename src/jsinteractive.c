@@ -927,7 +927,7 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
           " "JS_VERSION" (c) 2024 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
-#if !defined(PICO) && !defined(ESPRUINOBOARD) && !defined(ESPRUINOWIFI) && !defined(PUCKJS) && !defined(PIXLJS) && !defined(BANGLEJS_Q3) && !defined(BANGLEJS_F18) && !defined(JOLTJS) && !defined(EMSCRIPTEN)
+#if !defined(ESPR_OFFICIAL_BOARD)
           "\n"
           "Espruino is Open Source. Our work is supported\n"
           "only by sales of official boards and donations:\n"

@@ -41,6 +41,7 @@ info = {
      'JIT'
    ],
    'makefile' : [
+     'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
      'DEFINES+=-DUSE_USB_OTG_FS=1 -DESPRUINOWIFI',
      'DEFINES+=-DPIN_NAMES_DIRECT=1', # Package skips out some pins, so we can't assume each port starts from 0
      'WIZNET=1', # Add support for W5500 by default (not CC3000)
