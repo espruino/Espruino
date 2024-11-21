@@ -73,6 +73,7 @@ JsVar *jswrap_espruino_memoryMap(JsVar *baseAddress, JsVar *registers);
 void jswrap_espruino_asm(JsVar *callspec, JsVar *args);
 void jswrap_espruino_compiledC(JsVar *code);
 void jswrap_espruino_reboot();
+void jswrap_espruino_rebootToDFU();
 
 void jswrap_espruino_setUSBHID(JsVar *arr);
 bool jswrap_espruino_sendUSBHID(JsVar *arr);

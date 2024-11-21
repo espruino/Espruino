@@ -2348,6 +2348,30 @@ void jswrap_espruino_reboot() {
 #endif
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "ifdef" : "STM32F4",
+  "class" : "E",
+  "name" : "rebootToDFU",
+  "generate" : "jswrap_espruino_rebootToDFU"
+}
+Forces a hard reboot of the microcontroller into the ST DFU mode
+
+**Note:** The device will stay in DFU mode until it is power-cycled or reset
+*/
+void jswrap_espruino_rebootToDFU() {
+#ifdef STM32F4
+  // ensure `E.on('kill',...` gets called and everything is torn down correctly
+  jsiKill();
+  jsvKill();
+  jshKill();
+
+  jshRebootToDFU();
+#else // EMULATED
+  // if emulated, just call reset() to avoid a crash
+  jswrap_interface_reset(false);
+#endif
+}
 
 // ----------------------------------------- USB Specific Stuff
 
