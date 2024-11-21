@@ -68,14 +68,15 @@ unsigned short jshRTCPrescalerReciprocal; // (JSSYSTIME_SECOND << RTC_PRESCALER_
 #define JSSYSTIME_EXTRA_BITS 8 // extra bits we shove on under the RTC (we try and get these from SysTick)
 #define JSSYSTIME_SECOND_SHIFT 20
 #define JSSYSTIME_SECOND (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
-
-#define RTC_BKP_DR0_NULL 0
-#define RTC_BKP_DR0_TURN_OFF 0x57A4DEAD
-#define RTC_BKP_DR0_BOOT_DFU 0xB00710AD
-
 JsSysTime jshGetRTCSystemTime();
 #else
 #define jshGetRTCSystemTime jshGetSystemTime
+#endif
+
+#ifdef STM32F4
+#define RTC_BKP_DR0_NULL 0
+#define RTC_BKP_DR0_TURN_OFF 0x57A4DEAD
+#define RTC_BKP_DR0_BOOT_DFU 0xB00710AD
 #endif
 
 static JsSysTime jshGetTimeForSecond();
@@ -1180,6 +1181,7 @@ static void jshResetPeripherals() {
   }
 }
 
+#ifdef STM32F4
 // Jump to the DFU bootloader - this will (probably) only work when called at the start of jshInit(), via jshRebootToDFU()
 void jshJumpToDFU(void) {
 	void (*SysMemBootJump)(void);
@@ -1192,7 +1194,7 @@ void jshJumpToDFU(void) {
   // Disable RCC and set it to default settings
 #ifdef USE_HAL_DRIVER
 	HAL_RCC_DeInit();
-  HAL_DeInit(); 
+  HAL_DeInit();
 #endif
 #ifdef USE_STDPERIPH_DRIVER
 	RCC_DeInit();
@@ -1207,7 +1209,7 @@ void jshJumpToDFU(void) {
 #endif
 #ifdef STM32F0
     SYSCFG->CFGR1 = 0x01;
-#endif	
+#endif
   // Set jump memory location for system memory - use address with 4 bytes offset which specifies jump location where program starts
 	SysMemBootJump = (void (*)(void)) (*((uint32_t *)(bootloaderAddress + 4)));
   // Set main stack pointer
@@ -1228,8 +1230,10 @@ void jshTurnOff() {
   PWR_WakeUpPinCmd(ENABLE);
   PWR_EnterSTANDBYMode();
 }
+#endif
 
 void jshInit() {
+#ifdef STM32F4
   /* If we turn off but the WDT is on, it'll just reset us and turn us back on. In that case
   we detect that (with RTC_BKP_DR0_TURN_OFF written into RTC_BKP_DR0) and turn ourselves back off quickly */
   if (RTC_ReadBackupRegister(RTC_BKP_DR0)==RTC_BKP_DR0_TURN_OFF) {
@@ -1246,6 +1250,7 @@ void jshInit() {
     RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_NULL);
     jshJumpToDFU();
   }
+#endif
 
   int i;
   // reset some vars

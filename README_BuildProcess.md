@@ -144,6 +144,8 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_RTC_ALWAYS_TRY_LSE` - STM32: If we boot and RTC is initialised but using LSI, try again at starting LSE
 * `ESPR_DELAY_MULTIPLIER` - STM32: At boot Espruino works out how many iterations are needed to produce a set time period of delay. You can hard-code this for a faster boot
 * `ESPR_MIN_WFI_TIME_MS` - STM32: default 0.1ms, but if set, Espruino won't enter __WFI sleep unless the next setInterval is more than this number of milliseconds away
+* `ESPR_GRAPHICS_SELF_INIT` - Should the Graphics library instantiate itself with its own `g` instance?
+* `ESPR_LCD_MANUAL_BACKLIGHT` - STM32/FSMC: Don't turn the backlight on and leave code to do this manually
 
 
 There are some specifically that are useful for cutting a few bytes out of the build:

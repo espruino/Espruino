@@ -40,15 +40,16 @@ info = {
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'DEFINES+=-DUSE_RTC',
     #'DEFINES+=-DESPR_MIN_WFI_TIME_MS=200', # delays when we enter __WFI sleep - but we don't need this after #2575
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS -DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_NO_SPLASH',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS -DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_SELF_INIT -DESPR_GRAPHICS_NO_SPLASH -DGRAPHICS_FAST_PATHS',
      'DEFINES+=-DESPR_SDIO_FAST_UNALIGNED',  # see sdio_diskio.c - this is a nasty hack to increase unaligned read speed
      'DEFINES+=-DLCD_ORIENTATION_LANDSCAPE',
-#     'DEFINES+=-DLCD_CRT_EFFECT',
      'DEFINES+=-DUSE_AUDIO_CODEC',
      'DEFINES+=-DESPR_DELAY_MULTIPLIER=28672', # don't work out what to use for jshDelayMicroseconds at boot, just hard-code it
      'DEFINES+=-DESPR_RTC_INITIALISE_TICKS=30', # 168Mhz so we need to wait more ticks for the RTC to init (21->2s doesn't seem to be enough - this is nearer 3s!)
      'DEFINES+=-DESPR_RTC_ALWAYS_TRY_LSE', # If we boot and RTC is initialised but using LSI, try again at starting LSE
      'DEFINES+=-DESPR_FS_LARGE_WRITE_BUFFER', # speeds up SD card writes ~3x
+     'DEFINES+=-DESPR_LCD_MANUAL_BACKLIGHT', # Pipboy handles LCD backlight on/off so we can reduce flicker
+     'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
      'STLIB=STM32F407xx',
      '-DHSE_VALUE=9000000',
 #     'DEFINES+=-DFSMC_BITBANG',
@@ -109,9 +110,9 @@ devices = {
   'BTN8' : { 'pin' : 'B1' }, # Clock encoder A
   'BTN9' : { 'pin' : 'B0' }, # Clock encoder B
   'BTN10' : { 'pin' : 'A0' }, # "Power" button
- 
+
   'BAT' : {
-            'pin_sense_en' : 'C4', 
+            'pin_sense_en' : 'C4',
             'pin_voltage' : 'A6',
             'pin_charging' : 'C5',
           },
@@ -146,21 +147,20 @@ devices = {
             'pin_wr' : 'D5',
             'pin_cs' : 'D7', # CS / NE1
             'pin_bl' : 'B15', # backlight
-            'pin_tearing' : 'D12' # tearing effect output from LCD controller - planned for PCB v0.7 
-          },  
+            'pin_tearing' : 'D12' # tearing effect output from LCD controller - planned for PCB v0.7
+          },
   'SPIFLASH' : {
             'pin_cs' : 'B14',
             'pin_sck' : 'B3',
-            'pin_mosi' : 'B5', 
+            'pin_mosi' : 'B5',
             'pin_miso' : 'B4',
-            'size' : 4096*64, 
+            'size' : 4096*64,
 #           Don't enable the memory mapping - STM32 doesn't do this, but it does cause extra stuff to be added to jsvariterator which can slow it down
 #           'memmap_base' : 0x60000000 # map into the address space (in software) - FIXME: what should this address be?
           },
   'USB' : { 'pin_vsense' : 'A9', # PA5 for v0.3, PA9 for v0.5 and later
             'pin_dm' : 'A11',
             'pin_dp' : 'A12' },
-  
   'JTAG' : {
         'pin_MS' : 'A13',
         'pin_CK' : 'A14',

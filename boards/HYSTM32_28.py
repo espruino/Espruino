@@ -31,6 +31,7 @@ info = {
       'DEFINES+=-DSAVE_ON_FLASH_EXTREME',
       'STLIB=STM32F10X_MD',
       'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o',
+      'DEFINES+=-DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_SELF_INIT', # ensure graphics instantiates itself
       'DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes'
     ]
   }

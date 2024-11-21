@@ -41,6 +41,7 @@ info = {
      'FILESYSTEM'
    ],
    'makefile' : [
+     'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
      'DEFINES+=-DESPRUINO_1V3',
      'DEFINES+=-DSAVE_ON_FLASH_MATH', 
      'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
