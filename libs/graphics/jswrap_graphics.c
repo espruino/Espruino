@@ -498,10 +498,10 @@ force a full update of the screen.
   "type" : "property",
   "class" : "Graphics",
   "name" : "buffer",
-  "return" : ["JsVar","An ArrayBuffer (or not defined on Graphics instances not created with `Graphics.createArrayBuffer`)"],
+  "return" : ["JsVar","An ArrayBuffer (or not defined on `Graphics` instances not created with `Graphics.createArrayBuffer`)"],
   "typescript" : "buffer: IsBuffer extends true ? ArrayBuffer : undefined"
 }
-On Graphics instances with an offscreen buffer, this is an `ArrayBuffer` that
+On `Graphics` instances with an offscreen buffer, this is an `ArrayBuffer` that
 provides access to the underlying pixel data.
 
 ```
@@ -623,12 +623,12 @@ static bool isValidBPP(int bpp) {
       "`buffer` = if specified, createArrayBuffer won't create a new buffer but will use the given one"
     ]]
   ],
-  "return" : ["JsVar","The new Graphics object"],
+  "return" : ["JsVar","The new `Graphics` object"],
   "return_object" : "Graphics",
   "typescript" : "createArrayBuffer(width: number, height: number, bpp: number, options?: { zigzag?: boolean, vertical_byte?: boolean, msb?: boolean, color_order?: \"rgb\" | \"rbg\" | \"brg\" | \"bgr\" | \"grb\" | \"gbr\" }): Graphics<true>;"
 }
-Create a Graphics object that renders to an Array Buffer. This will have a field
-called 'buffer' that can get used to get at the buffer itself
+Create a `Graphics` object that renders to an `ArrayBuffer`. This will have a field
+called `'buffer'` that can get used to get at the buffer itself
 */
 JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *options) {
   if (width<=0 || height<=0 || width>32767 || height>32767) {
@@ -715,11 +715,11 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
     ["bpp","int32","Number of bits per pixel"],
     ["callback","JsVar","A function of the form ```function(x,y,col)``` that is called whenever a pixel needs to be drawn, or an object with: ```{setPixel:function(x,y,col),fillRect:function(x1,y1,x2,y2,col)}```. All arguments are already bounds checked."]
   ],
-  "return" : ["JsVar","The new Graphics object"],
+  "return" : ["JsVar","The new `Graphics` object"],
   "return_object" : "Graphics",
   "typescript" : "createCallback(width: number, height: number, bpp: number, callback: ((x: number, y: number, col: number) => void) | { setPixel: (x: number, y: number, col: number) => void; fillRect: (x1: number, y1: number, x2: number, y2: number, col: number) => void }): Graphics<false>;"
 }
-Create a Graphics object that renders by calling a JavaScript callback function
+Create a `Graphics` object that renders by calling a JavaScript callback function
 to draw pixels
 */
 JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *callback) {
@@ -775,10 +775,10 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
     ["height","int32","Pixels high"],
     ["bpp","int32","Bits per pixel (8,16,24 or 32 supported)"]
   ],
-  "return" : ["JsVar","The new Graphics object"],
+  "return" : ["JsVar","The new `Graphics` object"],
   "return_object" : "Graphics"
 }
-Create a Graphics object that renders to SDL window (Linux-based devices only)
+Create a `Graphics` object that renders to SDL window (Linux-based devices only)
 */
 JsVar *jswrap_graphics_createSDL(int width, int height, int bpp) {
   if (width<=0 || height<=0 || width>32767 || height>32767) {
@@ -921,18 +921,18 @@ JsVar *jswrap_graphics_createImage(JsVar *data) {
   "class" : "Graphics",
   "name" : "getWidth",
   "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, false)",
-  "return" : ["int","The width of this Graphics instance"]
+  "return" : ["int","The width of this `Graphics` instance"]
 }
-The width of this Graphics instance
+The width of this `Graphics` instance
 */
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
   "name" : "getHeight",
   "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, true)",
-  "return" : ["int","The height of this Graphics instance"]
+  "return" : ["int","The height of this `Graphics` instance"]
 }
-The height of this Graphics instance
+The height of this `Graphics` instance
 */
 int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -943,9 +943,9 @@ int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
   "class" : "Graphics",
   "name" : "getBPP",
   "generate" : "jswrap_graphics_getBPP",
-  "return" : ["int","The bits per pixel of this Graphics instance"]
+  "return" : ["int","The bits per pixel of this `Graphics` instance"]
 }
-The number of bits per pixel of this Graphics instance
+The number of bits per pixel of this `Graphics` instance
 
 **Note:** Bangle.js 2 behaves a little differently here. The display is 3 bit,
 so `getBPP` returns 3 and `asBMP`/`asImage`/etc return 3 bit images. However in
@@ -1357,7 +1357,7 @@ JsVar *jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_toColor",
   "params" : [
-    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#rrggbb' or `'#rgb'`"],
+    ["r","JsVar","Red (between 0 and 1) **OR** an integer representing the color in the current bit depth and color order **OR** a hexidecimal color string of the form `'#rrggbb'` or `'#rgb'`"],
     ["g","JsVar","Green (between 0 and 1)"],
     ["b","JsVar","Blue (between 0 and 1)"]
   ],
@@ -3344,8 +3344,8 @@ Image can be:
 * A String where the the first few bytes are:
   `width,height,bpp,[transparent,]image_bytes...`. If a transparent colour is
   specified the top bit of `bpp` should be set.
-* An ArrayBuffer Graphics object (if `bpp<8`, `msb:true` must be set) - this is
-  disabled on devices without much flash memory available. If a Graphics object
+* An ArrayBuffer `Graphics` object (if `bpp<8`, `msb:true` must be set) - this is
+  disabled on devices without much flash memory available. If a `Graphics` object
   is supplied, it can also contain transparent/palette fields as if it were
   an image.
 
@@ -3811,7 +3811,7 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
     "asImage(type: \"string\"): string;"
   ]
 }
-Return this Graphics object as an Image that can be used with
+Return this `Graphics` object as an Image that can be used with
 `Graphics.drawImage`. Check out [the Graphics reference
 page](http://www.espruino.com/Graphics#images-bitmaps) for more information on
 images.
@@ -3821,7 +3821,7 @@ Will return undefined if data can't be allocated for the image.
 The image data itself will be referenced rather than copied if:
 
 * An image `object` was requested (not `string`)
-* The Graphics instance was created with `Graphics.createArrayBuffer`
+* The `Graphics` instance was created with `Graphics.createArrayBuffer`
 * Is 8 bpp *OR* the `{msb:true}` option was given
 * No other format options (zigzag/etc) were given
 
@@ -4123,7 +4123,7 @@ JsVar *jswrap_graphics_blit(JsVar *parent, JsVar *options) {
   "return" : ["JsVar","A String representing the Graphics as a Windows BMP file (or 'undefined' if not possible)"],
   "typescript" : "asBMP(): string;"
 }
-Create a Windows BMP file from this Graphics instance, and return it as a
+Create a Windows BMP file from this `Graphics` instance, and return it as a
 String.
 */
 JsVar *jswrap_graphics_asBMP_X(JsVar *parent, bool printBase64) {
@@ -4306,10 +4306,10 @@ inline automatically.
 
 This is identical to `console.log(g.asURL())` - it is just a convenient function
 for easy debugging and producing screenshots of what is currently in the
-Graphics instance.
+`Graphics` instance.
 
-**Note:** This may not work on some bit depths of Graphics instances. It will
-also not work for the main Graphics instance of Bangle.js 1 as the graphics on
+**Note:** This may not work on some bit depths of `Graphics` instances. It will
+also not work for the main `Graphics` instance of Bangle.js 1 as the graphics on
 Bangle.js 1 are stored in write-only memory.
 */
 void jswrap_graphics_dump(JsVar *parent) {
@@ -4521,9 +4521,9 @@ JsVar *jswrap_graphics_transformVertices(JsVar *parent, JsVar *verts, JsVar *tra
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-Flood fills the given Graphics instance out from a particular point.
+Flood fills the given `Graphics` instance out from a particular point.
 
-**Note:** This only works on Graphics instances that support readback with `getPixel`. It
+**Note:** This only works on `Graphics` instances that support readback with `getPixel`. It
 is also not capable of filling over dithered patterns (eg non-solid colours on Bangle.js 2)
 */
 static bool _jswrap_graphics_floodFill_inside(JsGraphics *gfx, int x, int y, unsigned int col) {
@@ -4619,7 +4619,7 @@ Returns an object of the form:
 ```
 
 These values can then be passed to `g.setColor`/`g.setBgColor` for example
-`g.setColor(g.theme.fg2)`. When the Graphics instance is reset, the background
+`g.setColor(g.theme.fg2)`. When the `Graphics` instance is reset, the background
 color is automatically set to `g.theme.bg` and foreground is set to
 `g.theme.fg`.
 
@@ -4722,8 +4722,8 @@ JsVar *jswrap_graphics_setTheme(JsVar *parent, JsVar *theme) {
   "return" : ["JsVar","The instance of Graphics this was called on, to allow call chaining"],
   "return_object" : "Graphics"
 }
-Perform a filter on the current Graphics instance. Requires the Graphics
-instance to support readback (eg `getPixel` should work), and only uses
+Perform a filter on the current `Graphics` instance. Requires the Graphics
+instance to support readback (eg `.getPixel` should work), and only uses
 8 bit values for buffer and filter.
 
 ```

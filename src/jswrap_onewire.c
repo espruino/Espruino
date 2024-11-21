@@ -317,7 +317,7 @@ void jswrap_onewire_write(JsVar *parent, JsVar *data, bool leavePowerOn) {
   "name" : "read",
   "generate" : "jswrap_onewire_read",
   "params" : [["count","JsVar","[optional] The amount of bytes to read"]],
-  "return" : ["JsVar","The byte that was read, or a Uint8Array if count was specified and >=0"]
+  "return" : ["JsVar","The byte that was read, or a `Uint8Array` if count was specified and >=0"]
 }
 Read a byte
  */

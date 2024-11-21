@@ -52,6 +52,7 @@ info = {
      'SOURCES += libs/misc/stepcount.c',
      'SOURCES += libs/misc/heartrate.c',
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
+     'JSMODULESOURCES += libs/js/banglejs/Layout.min.js',
      'SOURCES += libs/banglejs/banglejs2_storage_default.c',
      'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1',
    ]

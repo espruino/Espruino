@@ -25,4 +25,8 @@ void jswrap_telnet_kill(void);
 // was done.
 bool jswrap_telnet_idle(void);
 
+/* Is something connected to Telnet? */
+bool jswrap_telnet_isConnected();
+
+
 #endif

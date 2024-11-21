@@ -371,7 +371,7 @@ void jswrap_pixljs_init() {
   graphicsGetFromVar(&gfx, graphics);
   // Set initial image
   const unsigned char PIXLJS_IMG[] = {
-        251, 239, 135, 192, 0, 0, 31, 0, 0, 0, 125, 247, 195, 224, 0, 0, 15, 128, 0,
+        81,34,1, 251, 239, 135, 192, 0, 0, 31, 0, 0, 0, 125, 247, 195, 224, 0, 0, 15, 128, 0,
         0, 62, 251, 225, 240, 0, 0, 7, 192, 0, 0, 31, 125, 240, 248, 0, 0, 3, 224, 0,
         0, 15, 190, 248, 124, 0, 0, 1, 240, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3,
         224, 62, 0, 15, 128, 248, 124, 0, 0, 1, 240, 31, 0, 7, 192, 124, 62, 0, 0, 0,
@@ -389,6 +389,7 @@ void jswrap_pixljs_init() {
         0, 0, 0, 0, 0, 0, 0, 0, 1, 224, 0, 0, 0, 0, 0, 0, 0, 0, 7, 224, 0, 0, 0, 0, 0,
         0, 0, 0, 3, 240, 0, 0, 0, 0, 0, 0, 0, 0, 1, 240, 0, 63
   };
+  JsVar *img = jsvNewNativeString((char*)PIXLJS_IMG, sizeof(PIXLJS_IMG));
 
   // Create 'flip' fn
   JsVar *fn;
@@ -435,12 +436,12 @@ void jswrap_pixljs_init() {
       for (int i=128;i>24;i-=4) {
         lcd_flip_gfx(&gfx);
         graphicsClear(&gfx);
-        graphicsDrawImage1bpp(&gfx,i,15,81,34,PIXLJS_IMG);
+        jswrap_graphics_drawImage(graphics, img, i, 15, NULL);
       }
     } else {
       // if a standard reset, just display logo
       graphicsClear(&gfx);
-      graphicsDrawImage1bpp(&gfx,24,15,81,34,PIXLJS_IMG);
+      jswrap_graphics_drawImage(graphics, img, 24, 15, NULL);
     }
     jswrap_graphics_drawCString(&gfx,28,39,JS_VERSION);
     // Write MAC address in bottom right
@@ -468,23 +469,7 @@ void jswrap_pixljs_init() {
   graphicsSetVar(&gfx);
 
   firstStart = false;
-  jsvUnLock(graphics);
-}
-
-/*JSON{
-  "type" : "kill",
-  "generate" : "jswrap_pixljs_kill"
-}*/
-void jswrap_pixljs_kill() {
-
-}
-
-/*JSON{
-  "type" : "idle",
-  "generate" : "jswrap_pixljs_idle"
-}*/
-bool jswrap_pixljs_idle() {
-  return false;
+  jsvUnLock2(graphics,img);
 }
 
 
@@ -570,7 +555,16 @@ type MenuInstance = {
   draw: () => void;
   move: (n: number) => void;
   select: () => void;
+  scroller?: MenuScroller; // BangleJS 2
 };
+
+/**
+ * Menu scroller.
+ *\/
+type MenuScroller = {
+  scroll: number;
+};
+
 */
 
 /*JSON{

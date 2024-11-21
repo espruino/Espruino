@@ -615,6 +615,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
 }
 
 #endif //!ESP8266
+
 /*JSON{
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
@@ -681,6 +682,70 @@ Espruino boards).
  */
 void jswrap_espruino_kickWatchdog() {
   jshKickWatchDog();
+}
+
+
+
+
+/*JSON{
+  "type" : "event",
+  "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
+  "class" : "E",
+  "name" : "comparator",
+  "params" : [
+    ["dir","int","The direction of the pin's state change"]
+  ]
+}
+Called when a bit rises or falls above a set level. See `E.setComparator` for setup.
+*/
+/*JSON{
+  "type" : "EV_CUSTOM",
+  "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
+  "generate" : "jswrap_espruino_setComparator_eventHandler"
+}
+*/
+void jswrap_espruino_setComparator_eventHandler(IOEvent *event) {
+#if defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)
+  // see jshSetComparator / E.setComparator
+  if ((event->data.time & EVC_TYPE_MASK) == EVC_LPCOMP) {
+    JsVar *arg = jsvNewFromInteger((event->data.time & EVC_DATA_LPCOMP_UP) ? 1 : -1);
+    jsiExecuteEventCallbackOn("E",JS_EVENT_PREFIX"comparator",1,&arg);
+    jsvUnLock(arg);
+  }
+#endif
+}
+/*JSON{
+  "type" : "staticmethod",
+  "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
+  "class" : "E",
+  "name" : "setComparator",
+  "generate" : "jswrap_espruino_setComparator",
+  "params" : [
+    ["pin","pin","The `Pin` to enable the comparator on"],
+    ["level","float","The level to trigger on, or `undefined` to disable. (see below for [Jolt.js](https://www.espruino.com/Jolt.js))"]
+  ]
+}
+(Added 2v25) Enable the nRF52 chip's `LPCOMP` hardware. When enabled, it creates an `E.on("comparator", ...)`
+event whenever the pin supplied rises or falls past the setpoint given (with 50mv hysteresis).
+
+```JS
+E.setComparator(D28, 8/16); // compare with VDD/2
+E.on("comparator", e => {
+  print(e); // 1 for up, or -1 for down
+});
+```
+
+**Note:** There is just one LPCOMP, so you can only enable the comparator on one pin.
+
+**On [Jolt.js](https://www.espruino.com/Jolt.js):** when using `E.setComparator` on the analog pins on the
+Terminal block (`H0`/`H2`/`H4`/`H8`), the `level` you give needs to be in volts. Because the comparator only
+works in 16 steps, you can only detect multiples of 1.37v (1.37/2.74/4.11/etc)
+
+ */
+void jswrap_espruino_setComparator(Pin pin, JsVarFloat level) {
+#if defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)
+  jshSetComparator(pin, level);
+#endif
 }
 
 /// Return an array of errors based on the current flags
@@ -814,17 +879,13 @@ For instance:
 E.pipe("This is a really big String",
        {write: print},
        {chunkSize:1, complete:()=>print("Finished!")});
-
 // Pipe the numbers 1 to 100 to a StorageFile in Storage
 E.pipe({ n:0, read : function() { if (this.n<100) return (this.n++)+"\n"; }},
        require("Storage").open("testfile","w"));
-
 // Pipe a StorageFile straight to the Bluetooth UART
 E.pipe(require("Storage").open("testfile","r"), Bluetooth);
-
 // Pipe a normal file in Storage (not StorageFile) straight to the Bluetooth UART
 E.pipe(require("Storage").read("blob.txt"), Bluetooth);
-
 // Pipe a normal file in Storage as a response to an HTTP request
 function onPageRequest(req, res) {
   res.writeHead(200, {'Content-Type': 'text/plain'});
@@ -840,7 +901,7 @@ require("http").createServer(onPageRequest).listen(80);
   "name" : "toArrayBuffer",
   "generate" : "jswrap_espruino_toArrayBuffer",
   "params" : [
-    ["str","JsVar","The string to convert to an ArrayBuffer"]
+    ["str","JsVar","The string to convert to an `ArrayBuffer`"]
   ],
   "return" : ["JsVar","An ArrayBuffer that uses the given string"],
   "return_object" : "ArrayBufferView",
@@ -930,12 +991,18 @@ flat string of the same length, the backing string will be returned without
 doing a copy or other allocation. The same applies if there's a single argument
 which is itself a flat string.
 
-```JS
+```
 E.toString(0,1,2,"Hi",3)
 "\0\1\2Hi\3"
+```
+
+```
 E.toString(1,2,{data:[3,4], count:4},5,6)
 "\1\2\3\4\3\4\3\4\3\4\5\6"
->E.toString(1,2,{callback : () => "Hello World"},5,6)
+```
+
+```
+E.toString(1,2,{callback : () => "Hello World"},5,6)
 ="\1\2Hello World\5\6"
 ```
 
@@ -944,7 +1011,6 @@ or would return `undefined` if one couldn't be allocated. Now, it will return
 a normal (fragmented) String if a contiguous chunk of memory cannot be allocated.
 You can still check if the returned value is a Flat string using `E.getAddressOf(str, true)!=0`,
 or can use `E.toFlatString` instead.
-
  */
 JsVar *jswrap_espruino_toString(JsVar *args) {
   return jswrap_espruino_toStringX(args, false);
@@ -1085,13 +1151,13 @@ type Uint8ArrayResolvable =
   "name" : "toUint8Array",
   "generate" : "jswrap_espruino_toUint8Array",
   "params" : [
-    ["args","JsVarArray","The arguments to convert to a Uint8Array"]
+    ["args","JsVarArray","The arguments to convert to a `Uint8Array`"]
   ],
   "return" : ["JsVar","A Uint8Array"],
   "return_object" : "Uint8Array",
   "typescript" : "toUint8Array(...args: Uint8ArrayResolvable[]): Uint8Array;"
 }
-This creates a Uint8Array from the given arguments. These are handled as
+This creates a `Uint8Array` from the given arguments. These are handled as
 follows:
 
  * `Number` -> read as an integer, using the lowest 8 bits
@@ -2191,7 +2257,7 @@ JsVar *jswrap_espruino_memoryMap(JsVar *baseAddress, JsVar *registers) {
   /* Do this in JS - it's safer and more readable, and doesn't
    * have to be super fast. */
   JsVar *args[2] = {baseAddress, registers};
-  return jspExecuteJSFunction("(function(base,j) {"
+  return jspExecuteJSFunctionCode("base,j",
     "var o={},addr;"
     "for (var reg in j) {"
       "addr=base+j[reg];"
@@ -2201,7 +2267,7 @@ JsVar *jswrap_espruino_memoryMap(JsVar *baseAddress, JsVar *registers) {
       "});"
     "}"
     "return o;"
-  "})",0,2,args);
+  ,0,NULL,2,args);
 }
 
 /*JSON{

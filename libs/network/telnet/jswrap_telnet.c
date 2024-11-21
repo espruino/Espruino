@@ -62,6 +62,8 @@ typedef struct {
   uint16_t     txBufLen;         ///< number of chars in tx buffer
 } TelnetServer;
 
+/// Set if Telnet overflow
+static bool ovf;
 static TelnetServer tnSrv;        ///< the telnet server, only one right now
 static uint8_t      tnSrvMode;    ///< current mode for the telnet server
 
@@ -174,6 +176,11 @@ bool jswrap_telnet_idle(void) {
   return active;
 }
 
+/* Is something connected to Telnet? */
+bool jswrap_telnet_isConnected() {
+  return tnSrv.cliSock>0;
+}
+
 //===== Internal functions
 
 // Start the listening socket for the telnet console server.
@@ -257,8 +264,6 @@ bool telnetSendBuf(JsNetwork *net) {
   }
   return sent != 0;
 }
-
-static bool ovf;
 
 void telnetSendChar(char ch) {
   if (tnSrv.sock == 0 || tnSrv.cliSock == 0) return;

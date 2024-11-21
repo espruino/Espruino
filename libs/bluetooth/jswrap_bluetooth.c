@@ -429,7 +429,7 @@ for when Espruino is connecting *to* another device (central mode).
   "class" : "NRF",
   "name" : "security",
   "params" : [
-    ["status","JsVar","An object containing `{auth_status,bonded,lv4,kdist_own,kdist_peer}"]
+    ["status","JsVar","An object containing `{auth_status,bonded,lv4,kdist_own,kdist_peer}`"]
   ]
 }
 Contains updates on the security of the current Bluetooth link.
@@ -561,7 +561,7 @@ NRF.requestDevice(...).then(function(device) {
   "type" : "event",
   "class" : "BluetoothRemoteGATTCharacteristic",
   "name" : "characteristicvaluechanged",
-  "ifdef" : "BLUETOOTH"
+  "#if" : "defined(NRF52_SERIES) || defined(ESP32)"
 }
 Called when a characteristic's value changes, *after*
 `BluetoothRemoteGATTCharacteristic.startNotifications` has been called.
@@ -2372,7 +2372,7 @@ void jswrap_ble_setTxPower(JsVarInt pwr) {
 }
 
 **THIS IS DEPRECATED** - please use `NRF.setConnectionInterval` for peripheral
-and `NRF.connect(addr, options)`/`BluetoothRemoteGATTServer.connect(options)`
+and `NRF.connect(address, options)`/`BluetoothRemoteGATTServer.connect(options)`
 for central connections.
 
 This sets the connection parameters - these affect the transfer speed and power
@@ -3831,7 +3831,7 @@ JsVar *jswrap_ble_startBonding(bool forceRePair) {
   "ifdef" : "NRF52_SERIES"
 }
 A Web Bluetooth-style device - you can request one using
-`NRF.requestDevice(address)`
+`NRF.requestDevice(options)`
 
 For example:
 
@@ -4514,7 +4514,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteris
     "generate" : "jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications",
     "return" : ["JsVar", "A `Promise` that is resolved (or rejected) with data when notifications have been added" ],
     "return_object" : "Promise",
-    "ifdef" : "BLUETOOTH"
+    "#if" : "defined(NRF52_SERIES) || defined(ESP32)"
 }
 Starts notifications - whenever this characteristic's value changes, a
 `characteristicvaluechanged` event is fired and `characteristic.value` will then

@@ -16,8 +16,9 @@
 import pinutils;
 
 info = {
- 'name' : "Pixl.js",
+ 'name' : "Pixl.js with WIZnet W5100 Ethernet support",
  'link' :  [ "https://espruino.com/Pixl.js" ],
+ 'boardname' : "PIXLJS",
  'espruino_page_link' : 'Pixl.js',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D1",
@@ -25,7 +26,7 @@ info = {
  'default_console_baudrate' : "9600",
  'variables' : 2950, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_pixljs.hex',
+ 'binary_name' : 'espruino_%v_pixljs_wiznet.hex',
  'build' : {
    'optimizeflags' : '-Os',
    'libraries' : [
@@ -39,11 +40,11 @@ info = {
      #'SHA256',
      #'AES',
      'FILESYSTEM',
-     'JIT',
+     #'JIT',
      'TERMINAL'
    ],
    'makefile' : [
-     #'WIZNET=1','W5100=1', # Add WIZnet support - W5100 is the most common Arduino shield
+     'WIZNET=1','W5100=1', # Add WIZnet support - W5100 is the most common Arduino shield
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
 #     'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23

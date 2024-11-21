@@ -68,8 +68,9 @@ if "check_output" not in dir( subprocess ):
 #                      // hwinit = function to run on Hardware Initialisation (called once at boot time, after jshInit, before jsvInit/etc)
 #                      // init = function to run on Initialisation (eg boot/load/reset/after save/etc)
 #                      // kill = function to run on Deinitialisation (eg before save/reset/etc)
-#                      // EV_xxx = Something to be called with a character in an IRQ when it is received (eg. EV_SERIAL1)
-#                      // powerusage = fn(JsVar*) called with an object, and should insert fields for deviec names and estimated power usage in uA
+#                      // EV_CUSTOM = Called whenever an event of type EV_CUSTOM is received (jswOnCustomEvent(event))
+#                      // EV_xxx = Something to be called with a character in an IRQ when it is received (eg. EV_SERIAL1) (jswOnCharEvent)
+#                      // powerusage = fn(JsVar*) called with an object, and should insert fields for deviec names and estimated power usage in uA (jswGetPowerUsage)
 #         "class" : "Double", "name" : "doubleToIntBits",
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
 #         "generate_full|generate|wrap" : "*(JsVarInt*)&x", // if generate=false, it'll only be used for docs
@@ -421,7 +422,7 @@ def is_property(jsondata):
   return jsondata["type"]=="property" or jsondata["type"]=="staticproperty" or jsondata["type"]=="variable"
 
 def is_function(jsondata):
-  return jsondata["type"]=="function" or jsondata["type"]=="method"
+  return jsondata["type"]=="method" or jsondata["type"]=="staticmethod" or jsondata["type"]=="function"
 
 def get_prefix_name(jsondata):
   if jsondata["type"]=="event": return "event"
@@ -526,3 +527,19 @@ def get_espruino_binary_address(board):
 
 def get_board_binary_name(board):
         return board.info["binary_name"].replace("%v", get_version());
+
+# Quote a normal string such that C can read it
+def as_c_string(s):
+        #We can't do this because amazingly "\xabc" in C is NOT "\xab"+"c"
+        #return re.sub(r"\\u00([0-9a-fA-F]{2})", r"\\x\1", json.dumps(s));
+        r = '"';
+        for i in range(len(s)):
+            ch = ord(s[i])
+            if ch == 34: # quote
+              r = r + '\\"'
+            elif (ch>=32) and (ch<128):
+              r = r + s[i]
+            else:
+              r = r + "\\"+oct(ch)[2:].zfill(3)
+        return r + '"';
+

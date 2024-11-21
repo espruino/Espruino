@@ -80,6 +80,7 @@ info = {
      'INCLUDE += -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/misc/jswrap_curio.c',
      'WRAPPERSOURCES += libs/joltjs/jswrap_qwiic.c',
+     'JSMODULESOURCES += _:libs/js/misc/curio.js'
    ]
  }
 };

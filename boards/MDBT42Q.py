@@ -18,7 +18,7 @@ import pinutils;
 info = {
  'name' : "MDBT42Q Module",
  'link' :  [ "https://espruino.com/MDBT42Q" ],
- 'espruino_page_link' : 'MDBT42Q', 
+ 'espruino_page_link' : 'MDBT42Q',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "D6",
  'default_console_rx' : "D8",
@@ -37,18 +37,21 @@ info = {
      'NFC',
      'NEOPIXEL',
      'FILESYSTEM',
-     'JIT'     
+     'JIT'
      #'TLS'
    ],
    'makefile' : [
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
      'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
-     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once     
+     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
      'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3290', # set RAM base to match MTU=53 + CENTRAL_LINK_COUNT=2
+     'LDFLAGS += -nostartfiles', 'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main', # Save ~300b by not including CRT startup code
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"MDBT42Q"\'',
      'DEFINES+=-DNEOPIXEL_SCK_PIN=23 -DNEOPIXEL_LRCK_PIN=13', # see https://github.com/espruino/Espruino/issues/2071
      'DEFINES += -DESPR_USE_STEPPER_TIMER=1', # Build in the code for stepping using the timer
+     'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
+     'DEFINES+=-DESPR_NO_REGEX_OPTIMISE', # save some storage space
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91'
    ]
@@ -89,7 +92,7 @@ board_module = {
   'right2' : [ 'D24', '', 'D23'],
   'right' : [ 'GND','D22','SWDIO','SWDCLK','D21','D20','D19','D18','D17','D16','D15','D14','D13','D12','D11' ],
   'bottom' : [ 'GND','D0','D1','D2','D3','D4','D5','D6','D7','D8','D9','D10','GND' ],
-  '_title' : "MDBT42Q module",        
+  '_title' : "MDBT42Q module",
   '_notes' : {
     'D21' : "Also NRST if configured",
     'D13' : "This is used as LRCK when driving Neopixels, and will output a signal when 'require('neopixel').write' is called",
@@ -134,13 +137,13 @@ board_breakout = {
   'left' : [ 'D25','D26','D27','D28','D29','D30','D31','D3','D4','D5','D11' ],
   'right' : [ 'D22','D20','D19','D18','D17','D16','D15','D14','3.3','Vin','GND'],
   'bottom' : [ 'D6','D8','D7','Vin','GND' ],
-  'top' : [ 'D9','D10' ],   
+  'top' : [ 'D9','D10' ],
   '_hide_not_on_connectors' : True,
-  '_title' : "MDBT42Q breakout board",      
+  '_title' : "MDBT42Q breakout board",
   '_class' : "board_breakout",
   '_notes' : {
     'D8' : "Serial Console RX when Bluetooth disconnected",
-    'D6' : "Serial Console TX when Bluetooth disconnected",    
+    'D6' : "Serial Console TX when Bluetooth disconnected",
   },
   '_css' : """
 #board {

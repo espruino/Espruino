@@ -4537,14 +4537,14 @@ bool jswrap_banglejs_idle() {
             JsVar *arr = jswrap_array_slice(v,0,0); // clone, so it's not referencing all of Tensorflow!
             jsvUnLock2(v,tf);
             //jsiConsolePrintf("TF queue\n");
-            JsVar *gesture = jspExecuteJSFunction("(function(a) {"
+            JsVar *gesture = jspExecuteJSFunctionCode("a",
               "var m=0,g;"
               "for (var i in a) if (a[i]>m) { m=a[i];g=i; }"
               "if (g!==undefined) {"
                 "var n=require('Storage').read('.tfnames');"
                 "if (n) g=n.split(',')[g];"
               "}"
-            "return g;})",NULL,1,&arr);
+            "return g;",0,NULL,1,&arr);
             JsVar *args[2] = {gesture,arr};
             jsiQueueObjectCallbacks(bangle, JS_EVENT_PREFIX"aiGesture", args, 2);
             jsvUnLock2(gesture,arr);
@@ -5815,7 +5815,7 @@ Load the Bangle.js clock - this has the same effect as calling `Bangle.load()`.
     "type" : "staticmethod",
     "class" : "Bangle",
     "name" : "showRecoveryMenu",
-    "generate_js" : "libs/js/banglejs/Bangle_showRecoveryMenu.js",
+    "generate_js" : "libs/js/banglejs/Bangle_showRecoveryMenu.min.js",
     "ifdef" : "BANGLEJS"
 }
 Show a 'recovery' menu that allows you to perform certain tasks on your Bangle.
@@ -5833,7 +5833,7 @@ You can also enter this menu by restarting your Bangle while holding down the bu
     "type" : "staticmethod",
     "class" : "Bangle",
     "name" : "showTestScreen",
-    "generate_js" : "libs/js/banglejs/Bangle_showTestScreen.js",
+    "generate_js" : "libs/js/banglejs/Bangle_showTestScreen.min.js",
     "ifdef" : "BANGLEJS2"
 }
 (2v20 and later) Show a test screen that lights green when each sensor on the Bangle

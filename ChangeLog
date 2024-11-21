@@ -51,8 +51,16 @@
             Handle semicolons between field declarations in classes
             Ensure that pretokenised Strings are loaded as Flat Strings when executed from a String in RAM
             E.nativeCall also checks to see if getting data as a flat string failed (could have caused segfault)
+            Fix for regression after #2547 fix (left hand operand of maths with a valueOf method)
+            X.on now allocates a new array for each new handler added, stops new handlers being called for the event that's currently being handled (#2559)
+            RegExp: add optimisation for RegExp that is simply checking if a string ends with something
+            Bangle.js: .setUI now only clears back widget if it hasn't been hidden by widget_utils
             Fix UtilTimer timings when new task added infront of existing tasks (fix #2575)
             Graphics: Fix issue where drawLine for 2px horizontal lines only drew a 1px dot
+            nRF52: Add E.setComparator to enable interrupts from LPCOMP
+            Add Serial.isConnected to check if Bluetooth/USB/etc actually connected
+            Pixl.js: Remove Wiznet W5100 support from default build (there's now a espruino_#v##_pixljs_wiznet.zip without JIT enabled) to ensure we have enough flash to continue builds
+            Enable nostartfiles optimisation for Pixl,MDBT42 and nRF52DK
             
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
@@ -65,6 +73,10 @@
             Fix lexing of regex at the start of a if/loop (#2529)
             ESP32: remove interrupt on/off code as it just causes a crash
             ESP32: jshPinWatch now returns correct value (event ID vs pin number)
+            JS in the binary now uses jspExecuteJSFunctionCode which helps to skip a parsing step
+            JS modules that are included are now pretokenised
+            Bangle.js2: Now using pre-minified showRecoveryMenu and showTestScreen
+            Bangle.js2: Including Layout module in internal flash
 
      2v23 : Fix XON/OFF thresholds to be based off the correct buffer size
             Bangle.js2: Added BANGLE2_IFLASH target for firmware using internal flash for js files (currently only partially working)

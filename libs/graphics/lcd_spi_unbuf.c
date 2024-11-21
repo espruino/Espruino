@@ -1,14 +1,14 @@
 /*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
- * Copyright (C) 2020 Gordon Williams <gw@pur3.co.uk>, atc1441, MaBecker, Jeffmer          
+ * Copyright (C) 2020 Gordon Williams <gw@pur3.co.uk>, atc1441, MaBecker, Jeffmer
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Graphics Backend for drawing to SPI displays in unbuffered mode 
+ * Graphics Backend for drawing to SPI displays in unbuffered mode
  * ----------------------------------------------------------------------------
  */
 
@@ -36,14 +36,14 @@ static uint16_t _chunk_buffer[LCD_SPI_UNBUF_LEN];
 static int _chunk_index = 0;
 IOEventFlags _device;
 
-static void spi_cmd(const uint8_t cmd) 
+static void spi_cmd(const uint8_t cmd)
 {
   jshPinSetValue(_pin_dc, 0);
   jshSPISend(_device, cmd);
   jshPinSetValue(_pin_dc, 1);
 }
 
-static inline void spi_data(const uint8_t *data, int len) 
+static inline void spi_data(const uint8_t *data, int len)
 {
   jshSPISendMany(_device, data, NULL, len, NULL);
 }
@@ -89,8 +89,8 @@ bool jsspiPopulateOptionsInfo( JshLCD_SPI_UNBUFInfo *inf, JsVar *options){
     {"height", JSV_INTEGER , &inf->height},
     {"colstart", JSV_INTEGER , &inf->colstart},
     {"rowstart", JSV_INTEGER , &inf->rowstart},
-  };  
-  
+  };
+
   return jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))
           && inf->pinDC != PIN_UNDEFINED;
 }
@@ -113,14 +113,14 @@ bool jswrap_lcd_spi_unbuf_idle() {
     ["device","JsVar","The used SPI device"],
     ["options","JsVar","An Object containing extra information"]
   ],
-  "return" : ["JsVar","The new Graphics object"],
+  "return" : ["JsVar","The new `Graphics` object"],
   "return_object" : "Graphics"
 }*/
-JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options) { 
+JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options) {
   JsVar *parent = jspNewObject(0, "Graphics");
   if (!parent) {
     jsExceptionHere(JSET_ERROR,"creating new object Graphics");
-    return NULL;  
+    return NULL;
   }
 
   JshLCD_SPI_UNBUFInfo inf;
@@ -136,7 +136,7 @@ JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options) {
   _rowstart = inf.rowstart;
   _device = jsiGetDeviceFromClass(device);
 
-  if (!DEVICE_IS_SPI(_device)) { 
+  if (!DEVICE_IS_SPI(_device)) {
     jsExceptionHere(JSET_ERROR,"Software SPI is not supported for now");
     jsvUnLock(parent);
     return NULL;
@@ -146,15 +146,15 @@ JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options) {
   graphicsStructInit(&gfx,inf.width,inf.height,16);
   gfx.data.type = JSGRAPHICSTYPE_LCD_SPI_UNBUF;
   gfx.graphicsVar = parent;
-  
+
   jshPinOutput(_pin_dc, 1);
   jshPinSetValue(_pin_dc, 1);
 
   jshPinOutput(_pin_cs, 1);
   jshPinSetValue(_pin_cs, 1);
-  
+
   lcd_spi_unbuf_setCallbacks(&gfx);
-  graphicsSetVarInitial(&gfx); 
+  graphicsSetVarInitial(&gfx);
 
   // Create 'flip' fn
   JsVar *fn;
@@ -187,29 +187,29 @@ void disp_spi_transfer_addrwin(int x1, int y1, int x2, int y2) {
 }
 
 void lcd_spi_unbuf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
-  uint16_t color =   (col>>8) | (col<<8); 
+  uint16_t color =   (col>>8) | (col<<8);
   if (x!=_lastx+1 || y!=_lasty) {
     jshPinSetValue(_pin_cs, 0);
-    disp_spi_transfer_addrwin(x, y, gfx->data.width, y+1);  
-    jshPinSetValue(_pin_cs, 1); //will never flush after 
+    disp_spi_transfer_addrwin(x, y, gfx->data.width, y+1);
+    jshPinSetValue(_pin_cs, 1); //will never flush after
     _put_pixel(color);
     _lastx = x;
     _lasty = y;
   } else {
-    _lastx++; 
+    _lastx++;
     if (willFlush()){
       jshPinSetValue(_pin_cs, 0);
       _put_pixel(color);
       jshPinSetValue(_pin_cs, 1);
     } else {
       _put_pixel(color);
-    } 
+    }
   }
 }
 
 void lcd_spi_unbuf_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
-  int pixels = (1+x2-x1)*(1+y2-y1); 
-  uint16_t color =   (col>>8) | (col<<8); 
+  int pixels = (1+x2-x1)*(1+y2-y1);
+  uint16_t color =   (col>>8) | (col<<8);
   jshPinSetValue(_pin_cs, 0);
   disp_spi_transfer_addrwin(x1, y1, x2, y2);
   for (int i=0; i<pixels; i++) _put_pixel(color);

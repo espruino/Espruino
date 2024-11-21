@@ -37,6 +37,7 @@ typedef enum {
   EV_NONE,
   EV_EXTI0,  ///< External Interrupt
   EV_EXTI_MAX = EV_EXTI0 + ESPR_EXTI_COUNT - 1,
+  EV_CUSTOM, ///< Custom event (See IOCustomEventFlags)
   EV_SERIAL_START,
   EV_LOOPBACKA = EV_SERIAL_START,
   EV_LOOPBACKB,
@@ -129,6 +130,15 @@ typedef enum {
 
 #define DEVICE_SANITY_CHECK() if (EV_TYPE_MASK>63) jsError("DEVICE_SANITY_CHECK failed")
 
+/** Event types for EV_CUSTOM */
+typedef enum {
+  EVC_NONE,
+#ifdef NRF52_SERIES
+  EVC_LPCOMP, // jswrap_espruino: E.setComparator / E.on("comparator" event
+#endif
+  EVC_TYPE_MASK = 255,
+  EVC_DATA_LPCOMP_UP = 256
+} PACKED_FLAGS IOCustomEventFlags;
 
 /// True is the device is a serial device (could be a USART, Bluetooth, USB, etc)
 #define DEVICE_IS_SERIAL(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))

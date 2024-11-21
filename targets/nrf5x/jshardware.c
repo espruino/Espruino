@@ -100,6 +100,10 @@ void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info) {
 #include "jswrap_microbit.h"
 #endif
 
+#if defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)
+#include "nrf_lpcomp.h"
+#endif
+
 #ifndef SAVE_ON_FLASH
 // Enable 7 bit UART (this must be done in software)
 #define ESPR_UART_7BIT 1
@@ -2912,3 +2916,77 @@ void jsvGetProcessorPowerUsage(JsVar *devices) {
   if (pwmOn)
     jsvObjectSetChildAndUnLock(devices, "PWM", jsvNewFromInteger(200));
 }
+
+
+#if defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)
+
+
+void COMP_LPCOMP_IRQHandler() {
+  if (nrf_lpcomp_event_check(NRF_LPCOMP_EVENT_UP) && nrf_lpcomp_int_enable_check(LPCOMP_INTENSET_UP_Msk)) {
+    nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_UP);
+    jshPushIOEvent(EV_CUSTOM, EVC_LPCOMP | EVC_DATA_LPCOMP_UP);
+    jshHadEvent();
+  }
+  if (nrf_lpcomp_event_check(NRF_LPCOMP_EVENT_DOWN) && nrf_lpcomp_int_enable_check(LPCOMP_INTENSET_DOWN_Msk)) {
+    nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_DOWN);
+    jshPushIOEvent(EV_CUSTOM, EVC_LPCOMP);
+    jshHadEvent();
+  }
+}
+
+/// Enable/disable(if level==NAN) the LPCOMP comparator
+bool jshSetComparator(Pin pin, JsVarFloat level) {
+  if (!isfinite(level)) {
+    NVIC_DisableIRQ(LPCOMP_IRQn);
+    nrf_lpcomp_disable();
+    nrf_lpcomp_task_trigger(NRF_LPCOMP_TASK_STOP);
+    return true;
+  }
+  if (!jshIsPinValid(pin) || pinInfo[pin].analog==JSH_ANALOG_NONE) {
+    jsExceptionHere(JSET_ERROR, "Pin for LPCOMP must be an analog pin");
+    return false;
+  }
+
+#ifdef JOLTJS
+  // Bit of a hack for Jolt.js where we have a 39k + 220k potential divider
+  // Multiply up so we return the actual voltage -> 3.3*(220+39)/39 = 21.915
+  if ((pinInfo[pin].port & JSH_PORT_MASK)==JSH_PORTH)
+    level = level / 21.915;
+#endif
+  int ilevel = (int)((level*16)+0.5);
+  if (ilevel<1) ilevel=1;
+  if (ilevel>15) ilevel=15;
+  // allow LPCOMP_REFSEL_REFSEL_ARef?
+  const nrf_lpcomp_ref_t refs[] = {0,
+    LPCOMP_REFSEL_REFSEL_Ref1_16Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref1_8Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref3_16Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref2_8Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref5_16Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref3_8Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref7_16Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref4_8Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref9_16Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref5_8Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref11_16Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref6_8Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref13_16Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref7_8Vdd,
+    LPCOMP_REFSEL_REFSEL_Ref15_16Vdd
+  };
+  nrf_lpcomp_config_t config;
+  config.reference = refs[ilevel];
+  config.detection = NRF_LPCOMP_DETECT_CROSS;
+  config.hyst = NRF_LPCOMP_HYST_50mV;
+  nrf_lpcomp_configure(&config);
+  nrf_lpcomp_input_select(pinInfo[pin].analog & JSH_MASK_ANALOG_CH);
+  nrf_lpcomp_int_enable(LPCOMP_INTENSET_UP_Msk|LPCOMP_INTENSET_DOWN_Msk);
+  nrf_lpcomp_shorts_enable(NRF_LPCOMP_SHORT_READY_SAMPLE_MASK);
+  NVIC_SetPriority(LPCOMP_IRQn, 3); // low - don't mess with BLE
+  NVIC_ClearPendingIRQ(LPCOMP_IRQn);
+  NVIC_EnableIRQ(LPCOMP_IRQn);
+  nrf_lpcomp_enable();
+  nrf_lpcomp_task_trigger(NRF_LPCOMP_TASK_START);
+  return true;
+}
+#endif
