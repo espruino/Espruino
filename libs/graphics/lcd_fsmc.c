@@ -23,7 +23,6 @@
 
 const unsigned int DELAY_SHORT = 10;
 
-#define RGB_HALF(col) ((col>>1) & 0b0111101111101111) // Halve the RGB values
 #define GPIO_PORT_FROM_PIN(pin) (GPIOA_BASE + 0x400*(pin>>4)) // Get the GPIO port from a pin number
 #define GPIO_BIT_FROM_PIN(pin) (1<<(pin&15)) // Get the GPIO pin bitmask from a pin number
 
@@ -338,7 +337,7 @@ void LCD_init_hardware() {
 
 #ifdef LCD_BL
   jshPinSetState(LCD_BL, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(LCD_BL, 0); // BACKLIGHT=off -> reduce flicker when initing the LCD. We turn it on after panel_init
+  jshPinSetValue(LCD_BL, 0); // BACKLIGHT=off -> reduce flicker when initing the LCD. We turn it on after LCD_init_panel
 #endif
 
   // Toggle LCD reset pin
@@ -394,10 +393,9 @@ static inline void LCD_WR_Data_multi(unsigned int val, unsigned int count) {
 
 
 void LCD_init_hardware() {
-
 #ifdef LCD_BL
   jshPinSetState(LCD_BL, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(LCD_BL, 0); // BACKLIGHT=off -> reduce flicker when initing the LCD. We turn it on after panel_init
+  jshPinSetValue(LCD_BL, 0); // BACKLIGHT=off -> reduce flicker when initing the LCD. We turn it on after LCD_init_panel
 #endif
 
   delay_ms(100);
@@ -1622,6 +1620,9 @@ void LCD_init_panel() {
   }
 #endif
   delay_ms(50);   /* delay 50 ms */
+  #if defined(LCD_BL) && !defined(ESPR_LCD_MANUAL_BACKLIGHT)
+  jshPinOutput(LCD_BL, 1);
+  #endif
 }
 
 
@@ -1729,6 +1730,9 @@ void lcdFSMC_setPower(bool isOn) {
       jshDelayMicroseconds(20);
       LCD_WR_CMD(0x29, 0); // DISPON
       // don't turn backlight on right away to save on flicker
+      #if defined(LCD_BL) && !defined(ESPR_LCD_MANUAL_BACKLIGHT)
+      jshPinOutput(LCD_BL, 1);
+      #endif
     } else {
       #ifdef LCD_BL
       jshPinOutput(LCD_BL, 0);
@@ -1760,16 +1764,8 @@ void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned 
     if (LCD_Code!=ILI9341 && LCD_Code!=ST7796)
       lcdSetCursor(gfx,x1,y1);// FIXME - we don't need this?
     lcdSetWrite();
-#ifdef LCD_CRT_EFFECT
-    unsigned int l=(1+x2-x1);
-    for (int y=y1;y<=y2;y++) {
-      LCD_WR_Data_multi((y%2==0)?col:RGB_HALF(col), l);
-    }
-    LCD_WR_Data_multi(col, l);
-#else
     unsigned int l=(1+x2-x1)*(1+y2-y1);
     LCD_WR_Data_multi(col, l);
-#endif
     lcdSetFullWindow(gfx);
   }
 }
@@ -1784,12 +1780,7 @@ unsigned int lcdGetPixel_FSMC(JsGraphics *gfx, int x, int y) {
 void lcdSetPixel_FSMC(JsGraphics *gfx, int x, int y, unsigned int col) {
   lcdSetCursor(gfx,x,y);
   lcdSetWrite();
-#ifdef LCD_CRT_EFFECT
-  // Apply a "CRT effect" by halving the brightness on every other line
-  LCD_WR_Data((y%2==0)?col:RGB_HALF(col));
-#else
   LCD_WR_Data(col);
-#endif
 }
 
 void lcdInit_FSMC(JsGraphics *gfx) {

@@ -43,6 +43,7 @@ info = {
      'TERMINAL'
    ],
    'makefile' : [
+     'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
      #'WIZNET=1','W5100=1', # Add WIZnet support - W5100 is the most common Arduino shield
      'DEFINES+=-DHAL_NFC_ENGINEERING_BC_FTPAN_WORKAROUND=1', # Looks like proper production nRF52s had this issue
 #     'DEFINES+=-DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work

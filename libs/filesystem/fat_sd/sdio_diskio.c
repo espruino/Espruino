@@ -168,9 +168,7 @@ DRESULT disk_ioctl (
   )
 {
   DRESULT res = RES_OK;
-    //uint32_t status = NAND_READY;
-
-
+  //uint32_t status = NAND_READY;
 
   switch (ctrl) {
   case CTRL_SYNC : /// Make sure that no pending write process

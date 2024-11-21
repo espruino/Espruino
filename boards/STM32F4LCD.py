@@ -36,9 +36,9 @@ info = {
    'makefile' : [
      'DEFINES+=-DUSE_USB_OTG_FS=1',
      'DEFINES+=-DUSE_RTC',
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS -DESPR_GRAPHICS_INTERNAL',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS -DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_SELF_INIT',
      'DEFINES+=-DESPR_SDIO_FAST_UNALIGNED',  # see sdio_diskio.c - this is a nasty hack to increase unaligned read speed
-     'DEFINES+=-DLCD_ORIENTATION_LANDSCAPE -DLCD_CRT_EFFECT',
+     'DEFINES+=-DLCD_ORIENTATION_LANDSCAPE',
      'DEFINES+=-DUSE_AUDIO_CODEC',
      'STLIB=STM32F407xx',
      '-DHSE_VALUE=9000000',
@@ -79,9 +79,9 @@ devices = {
   'LED1' : { 'pin' : 'A6' },
   'LED2' : { 'pin' : 'A7' },
   'BTN1' : { 'pin' : 'A0', 'pinstate' : 'IN_PULLDOWN' },
-  'BTN2' : { 'pin' : 'E4', 'pinstate' : 'IN_PULLDOWN' },  
-  'BTN3' : { 'pin' : 'E3', 'pinstate' : 'IN_PULLDOWN' },  
-  
+  'BTN2' : { 'pin' : 'E4', 'pinstate' : 'IN_PULLDOWN' },
+  'BTN3' : { 'pin' : 'E3', 'pinstate' : 'IN_PULLDOWN' },
+
   'SD' :  { 'pin_cmd' :  'D2',
             'pin_d0' :  'C8',
             'pin_d1' :  'C9',
@@ -118,12 +118,12 @@ devices = {
             'pin_wr' : 'D5',
             'pin_cs' : 'D7', # CS / NE1
             'pin_bl' : 'B1' # backlight
-          },  
+          },
   # flash
   'USB' : { 'pin_vsense' :  'A9',
             'pin_dm' : 'A11',
             'pin_dp' : 'A12' },
-  
+
   'JTAG' : {
         'pin_MS' : 'A13',
         'pin_CK' : 'A14',
