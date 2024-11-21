@@ -146,6 +146,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_MIN_WFI_TIME_MS` - STM32: default 0.1ms, but if set, Espruino won't enter __WFI sleep unless the next setInterval is more than this number of milliseconds away
 * `ESPR_GRAPHICS_SELF_INIT` - Should the Graphics library instantiate itself with its own `g` instance?
 * `ESPR_LCD_MANUAL_BACKLIGHT` - STM32/FSMC: Don't turn the backlight on and leave code to do this manually
+* `ESPR_DISABLE_KICKWATCHDOG_PIN=BTN1_PININDEX` - If this pin is 1, skip kickWatchdog calls (which would eventually force a reboot if WDT enabled)
 
 
 There are some specifically that are useful for cutting a few bytes out of the build:
