@@ -69,6 +69,10 @@ unsigned short jshRTCPrescalerReciprocal; // (JSSYSTIME_SECOND << RTC_PRESCALER_
 #define JSSYSTIME_SECOND_SHIFT 20
 #define JSSYSTIME_SECOND (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
 
+#define RTC_BKP_DR0_NULL 0
+#define RTC_BKP_DR0_TURN_OFF 0x57A4DEAD
+#define RTC_BKP_DR0_BOOT_DFU 0xB00710AD
+
 JsSysTime jshGetRTCSystemTime();
 #else
 #define jshGetRTCSystemTime jshGetSystemTime
@@ -1176,7 +1180,73 @@ static void jshResetPeripherals() {
   }
 }
 
+// Jump to the DFU bootloader - this will (probably) only work when called at the start of jshInit(), via jshRebootToDFU()
+void jshJumpToDFU(void) {
+	void (*SysMemBootJump)(void);
+  // Set system memory address for bootloader
+#ifdef STM32F4
+  volatile uint32_t bootloaderAddress = 0x1FFF0000;
+#else
+  #error "DFU bootloader address not defined for this device - check ST app note AN2606"
+#endif
+  // Disable RCC and set it to default settings
+#ifdef USE_HAL_DRIVER
+	HAL_RCC_DeInit();
+  HAL_DeInit(); 
+#endif
+#ifdef USE_STDPERIPH_DRIVER
+	RCC_DeInit();
+#endif
+  // Disable systick timer and reset it to default values
+	SysTick->CTRL = 0;
+	SysTick->LOAD = 0;
+	SysTick->VAL = 0;
+  // Remap system memory to address 0x0000 0000 in address space
+#ifdef STM32F4
+    SYSCFG->MEMRMP = 0x01;
+#endif
+#ifdef STM32F0
+    SYSCFG->CFGR1 = 0x01;
+#endif	
+  // Set jump memory location for system memory - use address with 4 bytes offset which specifies jump location where program starts
+	SysMemBootJump = (void (*)(void)) (*((uint32_t *)(bootloaderAddress + 4)));
+  // Set main stack pointer
+  __set_MSP(*(uint32_t *)bootloaderAddress);
+  // Actually call our function to jump to set location - this will start system memory execution
+	SysMemBootJump();
+}
+
+/// Reboot into DFU mode
+void jshRebootToDFU() {
+  PWR_BackupAccessCmd(ENABLE);
+  RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_BOOT_DFU); // Write a magic number to the backup register
+  jshReboot();
+}
+
+void jshTurnOff() {
+  RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_TURN_OFF); // ensure that if we wake up
+  PWR_WakeUpPinCmd(ENABLE);
+  PWR_EnterSTANDBYMode();
+}
+
 void jshInit() {
+  /* If we turn off but the WDT is on, it'll just reset us and turn us back on. In that case
+  we detect that (with RTC_BKP_DR0_TURN_OFF written into RTC_BKP_DR0) and turn ourselves back off quickly */
+  if (RTC_ReadBackupRegister(RTC_BKP_DR0)==RTC_BKP_DR0_TURN_OFF) {
+    PWR_BackupAccessCmd(ENABLE);
+    RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_NULL);
+    if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST)) {
+      PWR_WakeUpPinCmd(ENABLE);
+      PWR_EnterSTANDBYMode();
+    }
+  }
+  // Are we trying to reboot into the bootloader?
+  if (RTC_ReadBackupRegister(RTC_BKP_DR0)==RTC_BKP_DR0_BOOT_DFU) {
+    PWR_BackupAccessCmd(ENABLE);
+    RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_NULL);
+    jshJumpToDFU();
+  }
+
   int i;
   // reset some vars
   for (i=0;i<16;i++)
@@ -1254,7 +1324,7 @@ void jshInit() {
 #endif
 #endif // ESPRUINOBOARD
   jshInitDevices();
-#ifdef LED1_PININDEX
+#if (defined(LED1_PININDEX) && !defined(PIPBOY))
   // turn led on (status)
   jshPinOutput(LED1_PININDEX, 1);
 #endif
@@ -1313,7 +1383,7 @@ void jshInit() {
 #endif
   jshResetDevices();
   jshResetPeripherals();
-#ifdef LED1_PININDEX
+#if (defined(LED1_PININDEX) && !defined(PIPBOY))
   // turn led back on (status) as it would have just been turned off
   jshPinOutput(LED1_PININDEX, 1);
 #endif
@@ -1455,7 +1525,7 @@ void jshInit() {
   }
 #endif
 
-#ifdef LED1_PININDEX
+#if (defined(LED1_PININDEX) && !defined(PIPBOY))
   // now hardware is initialised, turn led off
   jshPinOutput(LED1_PININDEX, 0);
 #endif
