@@ -426,7 +426,7 @@ ifeq ($(USE_LCD_SDL),1)
 endif
 
 ifdef USE_LCD_FSMC
-  DEFINES += -DUSE_LCD_FSMC
+  DEFINES += -DUSE_LCD_FSMC -DESPR_GRAPHICS_SELF_INIT
   SOURCES += libs/graphics/lcd_fsmc.c
 endif
 

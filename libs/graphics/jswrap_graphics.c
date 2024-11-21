@@ -538,19 +538,35 @@ void jswrap_graphics_init() {
   // sortorder is first because we don't want subsequent
   // _init to a) not have GFX and b) not get their theme
   // settings overwritten
-#ifdef USE_LCD_FSMC
+#ifdef ESPR_GRAPHICS_SELF_INIT
   JsVar *parent = jspNewObject("g", "Graphics");
   if (parent) {
     JsVar *parentObj = jsvSkipName(parent);
     jsvObjectSetChild(execInfo.hiddenRoot, JS_GRAPHICS_VAR, parentObj);
-    JsGraphics gfx;
-    gfx.data.type = JSGRAPHICSTYPE_FSMC;
-    graphicsStructInit(&gfx,320,240,16);
-    gfx.graphicsVar = parentObj;
-    lcdInit_FSMC(&gfx);
-    lcdSetCallbacks_FSMC(&gfx);
-    graphicsSplash(&gfx);
-    graphicsSetVarInitial(&gfx);
+    JsGraphics *gfx;
+#ifdef ESPR_GRAPHICS_INTERNAL
+    gfx = &graphicsInternal;
+#else
+    JsGraphics _gfx;
+    gfx = &gfx;
+#endif
+    graphicsStructInit(gfx,LCD_WIDTH,LCD_HEIGHT,LCD_BPP);
+    gfx->graphicsVar = parentObj;
+#if defined(LCD_CONTROLLER_SDL)
+    gfx->data.type = JSGRAPHICSTYPE_SDL;
+    lcdInit_SDL(gfx);
+    lcdSetCallbacks_SDL(gfx);
+#elif defined(LCD_CONTROLLER_FSMC)
+    gfx->data.type = JSGRAPHICSTYPE_FSMC;
+    lcdInit_FSMC(gfx);
+    lcdSetCallbacks_FSMC(gfx);
+#else
+   #error Unknown LCD type
+#endif
+#ifndef ESPR_GRAPHICS_NO_SPLASH
+    graphicsSplash(gfx);
+#endif
+    graphicsSetVarInitial(gfx);
     jsvUnLock2(parentObj, parent);
   }
 #endif
@@ -3414,6 +3430,15 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         (img.bpp==8 || img.bpp==1) && // image bpp is handled by fast path
         !img.isTransparent; // not transparent
 #endif
+#ifdef USE_LCD_FSMC // can we blit directly to the display?
+  bool isFSMC =
+        gfx.data.type==JSGRAPHICSTYPE_FSMC && // it's the display
+        (gfx.data.flags & JSGRAPHICSFLAGS_MAPPEDXY)==0 && // no messing with coordinates
+        gfx.data.bpp==16 && // normal BPP
+        ((img.bpp==4 && (img.width&1)==0) || // 4 BPP with even image width
+        (img.bpp==2 && (img.width&3)==0)) && // ...or 2 BPP with multiple of 4 image width
+        !img.isTransparent; // not transparent
+#endif
 
   if (scale==1 && rotate==0 && !centerImage) {
     // Standard 1:1 blitting
@@ -3423,10 +3448,17 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         (xPos+img.width)<=gfx.data.clipRect.x2+1 && (yPos+img.height)<=gfx.data.clipRect.y2+1) {
       if (img.bpp==1) lcdST7789_blit1Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
       else if (img.bpp==8) lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, 1, &it, img.palettePtr);
-    } else {
-#else
-    {
+    } else
 #endif
+#ifdef USE_LCD_FSMC // can we blit directly to the display?
+    if (isFSMC &&
+        xPos>=gfx.data.clipRect.x1 && yPos>=gfx.data.clipRect.y1 && // check it's all on-screen
+        (xPos+img.width)<=gfx.data.clipRect.x2+1 && (yPos+img.height)<=gfx.data.clipRect.y2+1) {
+      if (img.bpp==4) lcdFSMC_blit4Bit(&gfx, xPos, yPos, img.width, img.height, 1, &it, img.palettePtr, NULL);
+      else if (img.bpp==2) lcdFSMC_blit2Bit(&gfx, xPos, yPos, img.width, img.height, 1, &it, img.palettePtr, NULL);
+    } else
+#endif
+    {
       _jswrap_drawImageSimple(&gfx, xPos, yPos, &img, &it, false/*don't care about string iterator now*/);
     }
   } else {
@@ -3456,7 +3488,17 @@ JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos
         else lcdST7789_blit8Bit(xPos, yPos, img.width, img.height, s, &it, img.palettePtr);
       } else
 #endif
+#ifdef USE_LCD_FSMC // can we blit directly to the display?
+    if (isFSMC &&
+        s>=1 &&
+        xPos>=gfx.data.clipRect.x1 && yPos>=gfx.data.clipRect.y1 && // check it's all on-screen
+        (xPos+img.width*s)<=gfx.data.clipRect.x2+1 && (yPos+img.height*s)<=gfx.data.clipRect.y2+1) {
+      if (img.bpp==4) lcdFSMC_blit4Bit(&gfx, xPos, yPos, img.width, img.height, s, &it, img.palettePtr, NULL);
+      else if (img.bpp==2) lcdFSMC_blit2Bit(&gfx, xPos, yPos, img.width, img.height, s, &it, img.palettePtr, NULL);
+    } else
+#endif
       {
+        // jsiConsolePrintf("fallback2\n");
         int bits=0;
         int yp = yPos;
         for (y=0;y<img.height;y++) {

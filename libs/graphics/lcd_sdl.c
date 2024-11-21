@@ -74,13 +74,19 @@ void lcdSetPixel_SDL(JsGraphics *gfx, int x, int y, unsigned int col) {
   needsFlip = true;
 }
 
+void  lcdFillRect_SDL(struct JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
+  int x,y;
+  for (y=y1;y<=y2;y++)
+    for (x=x1;x<=x2;x++)
+      lcdSetPixel_SDL(gfx, x, y, col);
+}
+
 void lcdInit_SDL(JsGraphics *gfx) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0 ) {
     jsExceptionHere(JSET_ERROR, "SDL_Init failed");
     exit(1);
   }
-  if (!(screen = SDL_SetVideoMode(gfx->data.width, gfx->data.height, 32, SDL_SWSURFACE)))
-  {
+  if (!(screen = SDL_SetVideoMode(gfx->data.width, gfx->data.height, 32, SDL_SWSURFACE))) {
     jsExceptionHere(JSET_ERROR, "SDL_SetVideoMode failed");
     SDL_Quit();
     exit(1);
@@ -97,5 +103,6 @@ void lcdIdle_SDL() {
 void lcdSetCallbacks_SDL(JsGraphics *gfx) {
   gfx->setPixel = lcdSetPixel_SDL;
   gfx->getPixel = lcdGetPixel_SDL;
+  gfx->fillRect = lcdFillRect_SDL;
   // FIXME: idle callback would be a great idea to save lock/unlock
 }
