@@ -21,6 +21,9 @@
 #ifdef USE_AES
 #include "mbedtls/aes.h"
 #endif
+#ifdef USE_AES_CCM
+#include "mbedtls/ccm.h"
+#endif
 #ifndef USE_SHA1_JS
 #include "mbedtls/sha1.h"
 #endif
@@ -92,6 +95,9 @@ const char *jswrap_crypto_error_to_str(int err) {
     case MBEDTLS_ERR_MD_BAD_INPUT_DATA: return "Bad input data";
 #ifdef USE_AES
     case MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH: return "Invalid input length";
+#endif
+#ifdef USE_AES_CCM
+    case MBEDTLS_ERR_CCM_AUTH_FAILED: return "Authenticated decryption failed";
 #endif
   }
   return 0;
@@ -483,5 +489,133 @@ JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
 */
 JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key, JsVar *options) {
   return jswrap_crypto_AEScrypt(message, key, options, false);
+}
+#endif
+
+#ifdef USE_AES_CCM
+// if encrypting, tagArg is tag length
+// if decrypting, tagArg is tag that came with the message
+JsVar *jswrap_crypto_AES_ccmCrypt(JsVar *message, JsVar *key, JsVar *iv, JsVar *tagArg, bool encrypt) {
+  unsigned char ivVal[13];
+  memset(ivVal, 0, sizeof(ivVal));
+  int ivLenVal = 0;
+  if (jsvIsArray(iv) || jsvIsArrayBuffer(iv)){
+    jsvIterateCallbackToBytes(iv, ivVal, sizeof(ivVal));
+    ivLenVal = jsvGetLength(iv);
+    if (ivLenVal < 2 || ivLenVal > sizeof(ivVal)) {
+      jswrap_crypto_error(MBEDTLS_ERR_MD_BAD_INPUT_DATA);
+      return NULL;
+    }
+  } else {
+    jswrap_crypto_error(MBEDTLS_ERR_MD_BAD_INPUT_DATA);
+    return NULL;
+  }
+
+  JSV_GET_AS_CHAR_ARRAY(messagePtr, messageLen, message);
+  if (!messagePtr) return NULL;
+
+  JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, key);
+  if (!keyPtr) return NULL;
+
+  char *outMessagePtr = NULL;
+  JsVar *outVar = jsvNewArrayBufferWithPtr(messageLen, &outMessagePtr);
+  if (!outMessagePtr) return NULL;
+
+  int err = 0;
+  mbedtls_ccm_context ctx;
+  mbedtls_ccm_init(&ctx);
+  err = mbedtls_ccm_setkey(&ctx, MBEDTLS_CIPHER_ID_AES, (unsigned char*)keyPtr, (unsigned int)keyLen*8);
+  if (err == 0) {
+    if (encrypt) {
+      // encrypt and generate tag
+      int tagLenVal = 0;
+      if (jsvIsNumeric(tagArg)) {
+        tagLenVal = jsvGetInteger(tagArg);
+      } else {
+        err = MBEDTLS_ERR_MD_BAD_INPUT_DATA;
+      }
+      if (err == 0) {
+        if (tagLenVal < 4 || tagLenVal > 16 || tagLenVal % 2 != 0) {
+          // invalid tag length; must be one of 4, 6, 8, 10, 12, 14 or 16
+          err = MBEDTLS_ERR_MD_BAD_INPUT_DATA;
+        }
+      }
+      if (err == 0) {
+        unsigned char tag[tagLenVal];
+        memset(tag, 0, sizeof(tag));
+        err = mbedtls_ccm_encrypt_and_tag(&ctx, messageLen, ivVal, ivLenVal, NULL, 0, (unsigned char*)messagePtr, (unsigned char*)outMessagePtr, tag, sizeof(tag));
+        if (err == 0) {
+          JsVar *outMessageVar = outVar;
+          outVar = jsvNewObject();
+          jsvObjectSetChildAndUnLock(outVar, "data", outMessageVar);
+          jsvObjectSetChildAndUnLock(outVar, "tag", jsvNewArrayBufferWithData(tagLenVal, tag));
+        }
+      }
+    } else {
+      // decrypt and check tag
+      JSV_GET_AS_CHAR_ARRAY(tagPtr, tagLen, tagArg);
+      if (!tagPtr) {
+        err = MBEDTLS_ERR_MD_BAD_INPUT_DATA;
+      }
+      if (err == 0) {
+        err = mbedtls_ccm_auth_decrypt(&ctx, messageLen, ivVal, ivLenVal, NULL, 0, (unsigned char*)messagePtr, (unsigned char*)outMessagePtr, (unsigned char*)tagPtr, tagLen);
+      }
+    }
+  }
+  mbedtls_ccm_free(&ctx);
+
+  if (err == 0) {
+    return outVar;
+  } else {
+    jswrap_crypto_error(err);
+    jsvUnLock(outVar);
+    return NULL;
+  }
+}
+
+/*TYPESCRIPT
+type AES_CCM_EncryptResult = {
+  data: ArrayBuffer,
+  tag: ArrayBuffer,
+};
+*/
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "AES",
+  "name" : "ccmEncrypt",
+  "generate" : "jswrap_crypto_AES_ccmEncrypt",
+  "params" : [
+    ["message","JsVar","Message to encrypt"],
+    ["key","JsVar","Key to encrypt message - must be an `ArrayBuffer` of 128, 192, or 256 BITS"],
+    ["iv","JsVar","nonce (initialization vector) - must be an `ArrayBuffer` of 2 to 13 bytes"],
+    ["tagLen","JsVar","Length of tag to generate in bytes - must be one of 4, 6, 8, 10, 12, 14 or 16"]
+  ],
+  "return" : ["JsVar","An object"],
+  "return_object" : "AES_CCM_EncryptResult",
+  "ifdef" : "USE_AES_CCM"
+}
+*/
+JsVar *jswrap_crypto_AES_ccmEncrypt(JsVar *message, JsVar *key, JsVar *iv, JsVar *tagLen) {
+  return jswrap_crypto_AES_ccmCrypt(message, key, iv, tagLen, true);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "AES",
+  "name" : "ccmDecrypt",
+  "generate" : "jswrap_crypto_AES_ccmDecrypt",
+  "params" : [
+    ["message","JsVar","Message to decrypt"],
+    ["key","JsVar","Key to decrypt message - must be an `ArrayBuffer` of 128, 192, or 256 BITS"],
+    ["iv","JsVar","Nonce (initialization vector) - must be an `ArrayBuffer` of 2 to 13 bytes"],
+    ["tag","JsVar","Tag that came with the message - must be an `ArrayBuffer`"]
+  ],
+  "return" : ["JsVar","Decrypted message, or null on error (for example if the tag doesn't match)"],
+  "ifdef" : "USE_AES_CCM"
+}
+*/
+JsVar *jswrap_crypto_AES_ccmDecrypt(JsVar *message, JsVar *key, JsVar *iv, JsVar *tag) {
+  return jswrap_crypto_AES_ccmCrypt(message, key, iv, tag, false);
 }
 #endif

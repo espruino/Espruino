@@ -23,3 +23,7 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options);
 JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options);
 JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key, JsVar *options);
 #endif
+#ifdef USE_AES_CCM
+JsVar *jswrap_crypto_AES_ccmEncrypt(JsVar *message, JsVar *key, JsVar *iv, JsVar *tagLen);
+JsVar *jswrap_crypto_AES_ccmDecrypt(JsVar *message, JsVar *key, JsVar *iv, JsVar *tag);
+#endif
