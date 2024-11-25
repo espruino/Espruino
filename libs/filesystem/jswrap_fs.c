@@ -484,5 +484,36 @@ bool jswrap_fs_mkdir(JsVar *path) {
   return true;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "mkfs",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_mkfs",
+  "return" : ["bool","True on success, or false on failure"]
+}
+Reformat the connected media to a FAT filesystem
+*/
+bool jswrap_fs_mkfs() {
+#ifndef LINUX
+  FRESULT res = 0;
+  // ensure hardware inited. Ignore return value as we're formatting
+  jsfsInit();
+  // de-init software (but not hardware - we need to ensure open files are closed)
+  jswrap_file_kill_sw();
+  // Reformat
+  uint8_t workBuffer[FF_MAX_SS];
+  res = f_mkfs("", NULL, workBuffer, sizeof(workBuffer));
+  if (res) {
+    jsfsReportError("mkfs error", res);
+    return false;
+  }
+  return jsfsInit();
+#else
+  jsExceptionHere("fs.mkfs not implemented on Linux");
+  return false;
+#endif
 
+
+}
 
