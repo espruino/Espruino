@@ -174,25 +174,25 @@ void STM32_I2S_Init() {
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
 
   GPIO_InitTypeDef  GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13;
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13; // PB12=LRCK, PB13=SCLK
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//100MHz
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Low_Speed; // SCLK runs at 1.04 MHz - ST datasheet says "Low Speed" is OK at 8 MHz if VDD>2.7V and pin load capacitance < 10pF
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
   GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3 | GPIO_Pin_6;
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3 | GPIO_Pin_6; // PC2=ASDOUT (ouput from IC, so should not be set as STM32 output), PC3=DSDIN, PC6=MCLK
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//100MHz
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Low_Speed; // MCLK runs at 4.16 MHz - ST datasheet says "Low Speed" is OK at 8 MHz if VDD>2.7V and pin load capacitance < 10pF
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
   GPIO_Init(GPIOC, &GPIO_InitStructure);
 
   GPIO_PinAFConfig(GPIOB,GPIO_PinSource12,GPIO_AF_SPI2); // PB12,AF5  I2S_LRCK
   GPIO_PinAFConfig(GPIOB,GPIO_PinSource13,GPIO_AF_SPI2); // PB13,AF5  I2S_SCLK
-  GPIO_PinAFConfig(GPIOC,GPIO_PinSource3,GPIO_AF_SPI2);   // PC3 ,AF5  I2S_DACDATA
-  GPIO_PinAFConfig(GPIOC,GPIO_PinSource6,GPIO_AF_SPI2);   // PC6 ,AF5  I2S_MCK
-  GPIO_PinAFConfig(GPIOC,GPIO_PinSource2,GPIO_AF_SPI3); // PC2 ,AF6  I2S_ADCDATA (AF6 apparently?)
+  GPIO_PinAFConfig(GPIOC,GPIO_PinSource3,GPIO_AF_SPI2);  // PC3 ,AF5  I2S_DACDATA
+  GPIO_PinAFConfig(GPIOC,GPIO_PinSource6,GPIO_AF_SPI2);  // PC6 ,AF5  I2S_MCK
+  GPIO_PinAFConfig(GPIOC,GPIO_PinSource2,GPIO_AF_SPI3);  // PC2 ,AF6  I2S_ADCDATA (AF6 apparently?) - RB 2024-11-25: we're not using this, so should we remove it?
 
   I2S_InitStructure.I2S_Mode=I2S_Mode_MasterTx;
   I2S_InitStructure.I2S_Standard=I2S_Standard_Phillips;
