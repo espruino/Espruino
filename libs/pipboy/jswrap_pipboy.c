@@ -1269,8 +1269,8 @@ void jswrap_pb_init() {
        JsVar *s = jsvVarPrintf("FW %s", version);
       jsvUnLock2(jswrap_graphics_drawString(g, s, (LCD_WIDTH/2) + 64, 10+LCD_HEIGHT/2, 0), s);
       // Now run some JS code which will check if what's in Storage is that file, and if not will update it
-      jsvUnLock(jspEvaluate(
-"if (require('Storage').read('VERSION')!==VERSION) {"
+      jsvUnLock(jspEvaluate( // We can also force an update by holding power+volume up
+"if (require('Storage').read('VERSION')!==VERSION || (BTN2.read()&&BTN10.read())) {"
 "  B15.set();" // display on
 "  const FILE = 'FW.JS';"
 "  let stat = require('fs').statSync(FILE);"
