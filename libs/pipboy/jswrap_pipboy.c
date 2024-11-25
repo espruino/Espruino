@@ -380,7 +380,7 @@ JsVar *jswrap_pb_audioRead(JsVar *fn) {
   "name" : "audioBuiltin",
   "generate" : "jswrap_pb_audioBuiltin",
   "params" : [
-      ["id","JsVar","OK/NEXT/COLUMN"]
+      ["id","JsVar","OK/OK2/PREV/NEXT/COLUMN/CLICK"]
    ],
    "return" : ["JsVar","The sound as a native string"]
 }
@@ -850,7 +850,7 @@ void jswrap_pb_setDACPower(bool isOn) {
     jswrap_E_unmountSD(); // Close all files and unmount the SD card
 #ifndef LINUX
     SDIO_DeInit(); // Properly shut down the SD interface
-    jshPinSetState(SD_CLK_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+    jshPinSetState(SD_CLK_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN); // SD card pins have external pullup resistors to 3V3D_M, which is turned off when the SD_POWER_PIN is low, so we should pull them down to help discharge 3V3D_M
     jshPinSetState(SD_CMD_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
     jshPinSetState(SD_D0_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
     jshPinSetState(SD_D1_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
@@ -860,9 +860,9 @@ void jswrap_pb_setDACPower(bool isOn) {
     /*** FIXME *** We should actually put the SPI flash chip into "power down" mode
      * ...but for now, just set the SPI flash pins to pulled-up inputs, to ensure that the CS pin isn't left low.
      *
-     * NOTE that this won't work in STANDBY mode, as the pins go high-impedance (and there's currently no external pullups).
+     * NOTE that this won't work in STANDBY mode for PCB v0.6 (or earlier), as the pins go high-impedance (and there's currently no external pullups).
      */
-    jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_IN_PULLUP);
+    jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_IN_PULLUP); // From PCB v0.7, SPI flash pins now have external pullup resistors to 3V3D
     jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN_PULLUP);
     jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_IN_PULLUP);
     jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_IN_PULLUP);
