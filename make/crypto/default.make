@@ -50,3 +50,14 @@ libs/crypto/mbedtls/library/md_wrap.c \
 libs/crypto/mbedtls/library/oid.c \
 libs/crypto/mbedtls/library/pkcs5.c
 endif
+ifdef USE_AES_CCM
+  DEFINES += -DUSE_AES_CCM
+  SOURCES += \
+libs/crypto/mbedtls/library/ccm.c
+ifndef USE_AES
+SOURCES += \
+libs/crypto/mbedtls/library/aes.c \
+libs/crypto/mbedtls/library/cipher.c \
+libs/crypto/mbedtls/library/cipher_wrap.c
+endif
+endif

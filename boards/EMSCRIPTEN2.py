@@ -28,6 +28,7 @@ info = {
      'LCD_MEMLCD',
 #     'FILESYSTEM',
      'CRYPTO','SHA256','SHA512',
+     'AES_CCM',
 #     'TLS',
 #     'TELNET',
    ],

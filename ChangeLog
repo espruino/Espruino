@@ -62,6 +62,7 @@
             Pixl.js: Remove Wiznet W5100 support from default build (there's now a espruino_#v##_pixljs_wiznet.zip without JIT enabled) to ensure we have enough flash to continue builds
             Enable nostartfiles optimisation for Pixl,MDBT42 and nRF52DK
             STM32F4: Add SDIO support
+            Crypto: Add support for AES CCM
             
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
