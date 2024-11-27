@@ -15,6 +15,9 @@
 #include "jsinteractive.h"
 #include "platform_config.h"
 
+/// set if we've had an event we need to deal with
+volatile bool jshHadEventDuringSleep = false;
+
 void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->baudRate = DEFAULT_BAUD_RATE;
   inf->pinRX    = PIN_UNDEFINED;
@@ -164,6 +167,11 @@ void jshKickSoftWatchDog() {
   if (execInfo.execute & EXEC_CTRL_C_WAIT) {
     execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_CTRL_C;
   }
+}
+
+/// Called when we have had an event that means we should execute JS
+void jshHadEvent() {
+  jshHadEventDuringSleep = true;
 }
 
 /* Returns the estimated power usage of the microcontroller */
