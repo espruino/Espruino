@@ -2740,10 +2740,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
 
   do { // we loop here so we can half-wake to kick the WDT without incurring wait for USB
     JsSysTime timeToSleep = timeUntilWake;
+    // Don't sleep so long the WDT goes off!
     if (isAutoWDT && timeToSleep>watchdogSleepMax)
       timeToSleep = watchdogSleepMax;
-    if (timeUntilWake==JSSYSTIME_MAX) timeUntilWake = 0; // if we're just waiting for as long as possible
-    else timeUntilWake -= timeToSleep;
+    // if JSSYSTIME_MAX we just sleep as long as possible unless woken by something else
+    if (timeUntilWake!=JSSYSTIME_MAX)
+      timeUntilWake -= timeToSleep;
     if (isAutoWDT) jshKickWatchDog();
     /* Add EXTI for Serial port */
     //jshPinWatch(JSH_PORTA_OFFSET+10, true);
@@ -2877,6 +2879,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
     __WFI(); // Wait for Interrupt
     jsiSetSleep(JSI_SLEEP_AWAKE);
+    jshHadEventDuringSleep = false;
 
     /* We may have woken up before the wakeup event. If so
     then make sure we clear the event */

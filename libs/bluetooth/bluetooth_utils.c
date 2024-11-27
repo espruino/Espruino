@@ -394,14 +394,12 @@ void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t l
   // Push the actual event
   JsSysTime d = (JsSysTime)((data<<8)|blep);
   jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
-  jshHadEvent();
 }
 
 /// Add a new bluetooth event to the queue with 16 bits of data
 void jsble_queue_pending(BLEPending blep, uint16_t data) {
   JsSysTime d = (JsSysTime)((data<<8)|blep);
   jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
-  jshHadEvent();
 }
 
 /* Handler for common event types (between nRF52/ESP32). Called first

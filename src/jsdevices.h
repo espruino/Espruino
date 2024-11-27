@@ -195,9 +195,10 @@ typedef struct IOEvent {
 
 /// Push an IO event into the ioBuffer (designed to be called from IRQ)
 void jshPushEvent(IOEvent *evt);
-// Push an 'IO' even
+/// Add this IO event to the IO event queue. Calls jshHadEvent();
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time);
-void jshPushIOWatchEvent(IOEventFlags channel); // push an even when a pin changes state
+/// Signal an IO watch event as having happened. Calls jshHadEvent();
+void jshPushIOWatchEvent(IOEventFlags channel);
 /// Push a single character event (for example USART RX)
 void jshPushIOCharEvent(IOEventFlags channel, char charData);
 /// Push many character events at once (for example USB RX)
