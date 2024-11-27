@@ -2360,7 +2360,7 @@ Forces a hard reboot of the microcontroller into the ST DFU mode
 **Note:** The device will stay in DFU mode until it is power-cycled or reset
 */
 void jswrap_espruino_rebootToDFU() {
-#ifndef EMULATED
+#ifdef STM32F4
   // ensure `E.on('kill',...` gets called and everything is torn down correctly
   jsiKill();
   jsvKill();
