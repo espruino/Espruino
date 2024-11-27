@@ -142,6 +142,7 @@ void EP3_OUT_Callback(void)
   NAKed till the end of the USART Xfer */
 
   jshPushIOCharEvents(EV_USBSERIAL, USB_Rx_Buffer, USB_Rx_Cnt);
+  jshHadEvent();
 
   /* Enable the receive of data on EP3 */
   SetEPRxStatus(ENDP3, jshHasEventSpaceForChars(VIRTUAL_COM_PORT_DATA_SIZE) ? EP_RX_VALID : EP_RX_NAK);

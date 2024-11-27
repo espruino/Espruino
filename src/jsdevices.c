@@ -477,7 +477,7 @@ void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count) {
   for (i=0;i<count;i++) jshPushIOCharEvent(channel, data[i]);
 }
 
-/* Signal an IO watch event as having happened.
+/* Signal an IO watch event as having happened. Calls jshHadEvent();
 On the esp8266 we need this to be loaded into static RAM because it can run at interrupt time */
 void CALLED_FROM_INTERRUPT jshPushIOWatchEvent(
     IOEventFlags channel //!< The channel on which the IO watch event has happened.
@@ -514,7 +514,7 @@ void CALLED_FROM_INTERRUPT jshPushIOWatchEvent(
   jshPushIOEvent(channel, time);
 }
 
-/// Add this IO event to the IO event queue.
+/// Add this IO event to the IO event queue. Calls jshHadEvent();
 void CALLED_FROM_INTERRUPT jshPushIOEvent(
     IOEventFlags channel, //!< The event to add to the queue.
     JsSysTime time        //!< The time that the event is thought to have happened.
@@ -523,6 +523,7 @@ void CALLED_FROM_INTERRUPT jshPushIOEvent(
   evt.flags = channel;
   evt.data.time = (unsigned int)time;
   jshPushEvent(&evt);
+  jshHadEvent();
 }
 
 // returns true on success
