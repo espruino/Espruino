@@ -121,7 +121,7 @@ typedef enum {
   BUSY_INTERACTIVE = 1,
   BUSY_TRANSMIT    = 2,
   // ???           = 4
-} JsiBusyDevice;
+} PACKED_FLAGS JsiBusyDevice;
 /// Shows a busy indicator, if one is set up
 void jsiSetBusy(JsiBusyDevice device, bool isBusy);
 
@@ -130,7 +130,7 @@ typedef enum {
   JSI_SLEEP_AWAKE  = 0,
   JSI_SLEEP_ASLEEP = 1,
   JSI_SLEEP_DEEP   = 2,
-} JsiSleepType;
+} PACKED_FLAGS JsiSleepType;
 
 /// Shows a sleep indicator, if one is set up
 void jsiSetSleep(JsiSleepType isSleep);
