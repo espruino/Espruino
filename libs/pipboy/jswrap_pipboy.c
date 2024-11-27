@@ -1005,7 +1005,7 @@ static void jswrap_pb_periph_off() {
   jshPinSetState(DAC_SDA_PIN, JSHPINSTATE_GPIO_IN);
   jshPinSetState(RADIO_SCL_PIN, JSHPINSTATE_ADC_IN);
   jshPinSetState(RADIO_SDA_PIN, JSHPINSTATE_ADC_IN);
-  jshPinSetState(LCD_TEARING, JSHPINSTATE_ADC_IN);
+  jshPinSetState(LCD_TEARING, JSHPINSTATE_GPIO_IN_PULLDOWN);
   STM32_I2S_Kill();
 }
 
@@ -1049,8 +1049,8 @@ void jswrap_pb_sleep() {
 #ifndef LINUX
   jshTransmitClearDevice(DEFAULT_CONSOLE_DEVICE); // let's just remove any waiting characters for now
   jshUSARTUnSetup(DEFAULT_CONSOLE_DEVICE);
-  jshPinSetState(DEFAULT_CONSOLE_TX_PIN, JSHPINSTATE_ADC_IN);
-  jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_ADC_IN);
+  jshPinSetState(DEFAULT_CONSOLE_TX_PIN, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN_PULLUP);
 #endif
   jswrap_interface_setDeepSleep(1);
 }
@@ -1248,6 +1248,11 @@ void jswrap_pb_init() {
   jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_IN_PULLUP);
+
+  jshPinOutput(JSH_PORTC_OFFSET+7, 0); // PC7 unused
+  jshPinOutput(JSH_PORTC_OFFSET+13, 0); // PC13 unused, right next to clock so tie low
+  jshPinOutput(JSH_PORTD_OFFSET+6, 0); // PD6 unused
+  jshPinOutput(JSH_PORTD_OFFSET+13, 0); // PD13 unused
 #endif
   // turn backlight on after a delay by default
   jsvUnLock(jsiSetTimeout(jswrap_pb_setLCDBacklightOn, 100));
