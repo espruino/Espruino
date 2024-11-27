@@ -309,7 +309,6 @@ static uint8_t pwmClocks[PWM_COUNTERS];
 
 /// For flash - whether it is busy or not...
 volatile bool flashIsBusy = false;
-volatile bool hadEvent = false; // set if we've had an event we need to deal with
 unsigned int ticksSinceStart = 0;
 
 #if GPIO_COUNT>1
@@ -625,12 +624,6 @@ const nrf_drv_twis_t *jshGetTWIS(IOEventFlags device) {
   return 0;
 }
 #endif
-
-
-/// Called when we have had an event that means we should execute JS
-void jshHadEvent() {
-  hadEvent = true;
-}
 
 void TIMER1_IRQHandler(void) {
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
@@ -2746,7 +2739,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
   }
   jsiSetSleep(JSI_SLEEP_ASLEEP);
-  while (!hadEvent) {
+  while (!jshHadEventDuringSleep) {
 #ifdef NRF52_SERIES
     /*
      * Clear FPU exceptions.
@@ -2765,7 +2758,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     while (app_usbd_event_queue_process()); /* Nothing to do */
     #endif
   }
-  hadEvent = false;
+  jshHadEventDuringSleep = false;
   jsiSetSleep(JSI_SLEEP_AWAKE);
 #ifdef BLUETOOTH
   // we don't care about the return codes...
