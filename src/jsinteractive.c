@@ -1818,6 +1818,9 @@ void jsiHandleChar(char ch) {
     return;
   }
 
+  if (ch==3 && IS_PACKET_TRANSFER(inputState))
+      execInfo.execute &= ~EXEC_CTRL_C_MASK; // if we got Ctrl-C, ignore it
+
   if (inputState == IPS_PACKET_TRANSFER_BYTE0) {
     if (jsvGetStringLength(inputLine)==0)
       jsiStatus &= ~JSIS_ECHO_OFF_FOR_LINE; // turn on echo (because it'd have been turned off by DLE on an empty line)
@@ -1830,8 +1833,6 @@ void jsiHandleChar(char ch) {
     else
       inputState = IPS_PACKET_TRANSFER_DATA;
   } else if (inputState == IPS_PACKET_TRANSFER_DATA) {
-    if (ch==3)
-      execInfo.execute &= ~EXEC_CTRL_C; // if we got Ctrl-C, ignore it
     jsiAppendToInputLine(ch);
     if (inputLineLength >= (inputPacketLength & PT_SIZE_MASK))
       jsiPacketProcess();
