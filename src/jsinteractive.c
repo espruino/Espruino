@@ -1789,7 +1789,7 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 48-57 (numeric digits) then 'd' - set line number, used for that
   //                              inputLine and put into any declared functions
   // 27 then 91 then 49 ('1') then 126 - numpad home
-  // 27 then 91 then 50 ('2') then 75 - Erases the entire current line.
+  // 27 then 91 then 50 ('2') then 72  - Erases the entire current line.
   // 27 then 91 then 51 ('3') then 126 - backwards delete
   // 27 then 91 then 52 ('4') then 126 - numpad end
   // 27 then 91 then 53 ('5') then 126 - pgup
@@ -1911,7 +1911,7 @@ void jsiHandleChar(char ch) {
       inputStateNumber = (uint16_t)(10*inputStateNumber + ch - '0');
     } else {
       if (ch=='d') jsiLineNumberOffset = inputStateNumber;
-      else if (ch=='H' /* 75 */) {
+      else if (ch=='H' /* 72 */) {
         if (inputStateNumber==2) jsiClearInputLine(true); // Erase current line
       } else if (ch==126) {
         if (inputStateNumber==1) jsiHandleHome(); // Numpad Home
