@@ -510,7 +510,7 @@ bool jswrap_fs_mkfs() {
   }
   return jsfsInit();
 #else
-  jsExceptionHere("fs.mkfs not implemented on Linux");
+  jsExceptionHere(JSET_ERROR, "fs.mkfs not implemented on Linux");
   return false;
 #endif
 
