@@ -401,7 +401,7 @@ JsVar *jswrap_pb_audioRead(JsVar *fn) {
   "name" : "audioBuiltin",
   "generate" : "jswrap_pb_audioBuiltin",
   "params" : [
-      ["id","JsVar","OK/NEXT/COLUMN"]
+      ["id","JsVar","OK/OK2/PREV/NEXT/COLUMN/CLICK"]
    ],
    "return" : ["JsVar","The sound as a native string"]
 }
@@ -871,7 +871,7 @@ void jswrap_pb_setDACPower(bool isOn) {
     jswrap_E_unmountSD(); // Close all files and unmount the SD card
 #ifndef LINUX
     SDIO_DeInit(); // Properly shut down the SD interface
-    jshPinSetState(SD_CLK_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
+    jshPinSetState(SD_CLK_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN); // SD card pins have external pullup resistors to 3V3D_M, which is turned off when the SD_POWER_PIN is low, so we should pull them down to help discharge 3V3D_M
     jshPinSetState(SD_CMD_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
     jshPinSetState(SD_D0_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
     jshPinSetState(SD_D1_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
@@ -881,9 +881,9 @@ void jswrap_pb_setDACPower(bool isOn) {
     /*** FIXME *** We should actually put the SPI flash chip into "power down" mode
      * ...but for now, just set the SPI flash pins to pulled-up inputs, to ensure that the CS pin isn't left low.
      *
-     * NOTE that this won't work in STANDBY mode, as the pins go high-impedance (and there's currently no external pullups).
+     * NOTE that this won't work in STANDBY mode for PCB v0.6 (or earlier), as the pins go high-impedance (and there's currently no external pullups).
      */
-    jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_IN_PULLUP);
+    jshPinSetState(SPIFLASH_PIN_MOSI, JSHPINSTATE_GPIO_IN_PULLUP); // From PCB v0.7, SPI flash pins now have external pullup resistors to 3V3D
     jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN_PULLUP);
     jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_IN_PULLUP);
     jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_IN_PULLUP);
@@ -1026,7 +1026,7 @@ static void jswrap_pb_periph_off() {
   jshPinSetState(DAC_SDA_PIN, JSHPINSTATE_GPIO_IN);
   jshPinSetState(RADIO_SCL_PIN, JSHPINSTATE_ADC_IN);
   jshPinSetState(RADIO_SDA_PIN, JSHPINSTATE_ADC_IN);
-  jshPinSetState(LCD_TEARING, JSHPINSTATE_ADC_IN);
+  jshPinSetState(LCD_TEARING, JSHPINSTATE_GPIO_IN_PULLDOWN);
   STM32_I2S_Kill();
 }
 
@@ -1070,8 +1070,8 @@ void jswrap_pb_sleep() {
 #ifndef LINUX
   jshTransmitClearDevice(DEFAULT_CONSOLE_DEVICE); // let's just remove any waiting characters for now
   jshUSARTUnSetup(DEFAULT_CONSOLE_DEVICE);
-  jshPinSetState(DEFAULT_CONSOLE_TX_PIN, JSHPINSTATE_ADC_IN);
-  jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_ADC_IN);
+  jshPinSetState(DEFAULT_CONSOLE_TX_PIN, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(DEFAULT_CONSOLE_RX_PIN, JSHPINSTATE_GPIO_IN_PULLUP);
 #endif
   jswrap_interface_setDeepSleep(1);
 }
@@ -1352,6 +1352,11 @@ void jswrap_pb_init() {
   jshPinSetState(SPIFLASH_PIN_MISO, JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetState(SPIFLASH_PIN_SCK, JSHPINSTATE_GPIO_IN_PULLUP);
   jshPinSetState(SPIFLASH_PIN_CS, JSHPINSTATE_GPIO_IN_PULLUP);
+
+  jshPinOutput(JSH_PORTC_OFFSET+7, 0); // PC7 unused
+  jshPinOutput(JSH_PORTC_OFFSET+13, 0); // PC13 unused, right next to clock so tie low
+  jshPinOutput(JSH_PORTD_OFFSET+6, 0); // PD6 unused
+  jshPinOutput(JSH_PORTD_OFFSET+13, 0); // PD13 unused
 #endif
   // turn backlight on after a delay by default
   jsvUnLock(jsiSetTimeout(jswrap_pb_setLCDBacklightOn, 100));
@@ -1373,8 +1378,8 @@ void jswrap_pb_init() {
        JsVar *s = jsvVarPrintf("FW %s", version);
       jsvUnLock2(jswrap_graphics_drawString(g, s, (LCD_WIDTH/2) + 64, 10+LCD_HEIGHT/2, 0), s);
       // Now run some JS code which will check if what's in Storage is that file, and if not will update it
-      jsvUnLock(jspEvaluate(
-"if (require('Storage').read('VERSION')!==VERSION) {"
+      jsvUnLock(jspEvaluate( // We can also force an update by holding power+volume up
+"if (require('Storage').read('VERSION')!==VERSION || (BTN2.read()&&BTN10.read())) {"
 "  B15.set();" // display on
 "  const FILE = 'FW.JS';"
 "  let stat = require('fs').statSync(FILE);"
