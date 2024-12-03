@@ -47,6 +47,7 @@ Class containing utility functions for
     "type" : "staticmethod",
     "class" : "Pixl",
     "name" : "getBatteryPercentage",
+    "deprecated" : true,
     "generate" : "jswrap_espruino_getBattery",
     "return" : ["int", "A percentage between 0 and 100" ]
 }

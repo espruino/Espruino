@@ -1349,6 +1349,7 @@ JsVarFloat jswrap_puck_light() {
     "class" : "Puck",
     "ifdef" : "PUCKJS",
     "name" : "getBatteryPercentage",
+    "deprecated" : true,
     "generate" : "jswrap_espruino_getBattery",
     "return" : ["int", "A percentage between 0 and 100" ]
 }

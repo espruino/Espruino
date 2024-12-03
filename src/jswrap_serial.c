@@ -104,6 +104,7 @@ Espruino boards)
   "type" : "staticmethod",
   "class" : "Serial",
   "name" : "find",
+  "deprecated" : true,
   "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jshGetDeviceObjectFor(JSH_USART1, JSH_USARTMAX, pin)",
   "params" : [
