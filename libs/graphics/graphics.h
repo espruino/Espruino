@@ -201,6 +201,8 @@ void graphicsSetModified(JsGraphics *gfx, int x1, int y1, int x2, int y2);
 JsGraphicsSetPixelFn graphicsGetSetPixelFn(JsGraphics *gfx);
 /// Get a setPixel function and set modified area (assuming no clipping) (inclusive of x2,y2) - if all is ok it can choose a faster draw function
 JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int y1, int x2, int y2, bool coordsRotatedAlready);
+/// Merge one color into another based RGB565(amt is 0..256)
+uint16_t graphicsBlendColorRGB565(uint16_t fg, uint16_t bg, int iamt);
 /// Merge one color into another based on current bit depth (amt is 0..256)
 uint32_t graphicsBlendColor(JsGraphics *gfx, unsigned int fg, unsigned int bg, int iamt);
 /// Merge one color into another based on current bit depth (amt is 0..256)

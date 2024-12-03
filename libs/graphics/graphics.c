@@ -366,6 +366,20 @@ JsGraphicsSetPixelFn graphicsGetSetPixelUnclippedFn(JsGraphics *gfx, int x1, int
     return gfx->setPixel; // fast
 }
 
+/// Merge one color into another based RGB565(amt is 0..256)
+uint16_t graphicsBlendColorRGB565(uint16_t f, uint16_t b, int amt) {
+  unsigned int br = (b>>11)&0x1F;
+  unsigned int bg = (b>>5)&0x3F;
+  unsigned int bb = b&0x1F;
+  unsigned int fr = (f>>11)&0x1F;
+  unsigned int fg = (f>>5)&0x3F;
+  unsigned int fb = f&0x1F;
+  unsigned int ri = (br*(256-amt) + fr*amt) >> 8;
+  unsigned int gi = (bg*(256-amt) + fg*amt) >> 8;
+  unsigned int bi = (bb*(256-amt) + fb*amt) >> 8;
+  return (bi | gi<<5 | ri<<11);
+}
+
 /// Merge one color into another based on current bit depth (amt is 0..256)
 uint32_t graphicsBlendColor(JsGraphics *gfx, unsigned int fg, unsigned int bg, int iamt) {
   unsigned int amt = (iamt>0) ? (unsigned)iamt : 0;
@@ -374,18 +388,7 @@ uint32_t graphicsBlendColor(JsGraphics *gfx, unsigned int fg, unsigned int bg, i
     // TODO: if our graphics instance is paletted this isn't correct!
     return (bg*(256-amt) + fg*amt + 127) >> 8;
   } else if (gfx->data.bpp==16) { // Blend from bg to fg
-    unsigned int b = bg;
-    unsigned int br = (b>>11)&0x1F;
-    unsigned int bg = (b>>5)&0x3F;
-    unsigned int bb = b&0x1F;
-    unsigned int f = fg;
-    unsigned int fr = (f>>11)&0x1F;
-    unsigned int fg = (f>>5)&0x3F;
-    unsigned int fb = f&0x1F;
-    unsigned int ri = (br*(256-amt) + fr*amt) >> 8;
-    unsigned int gi = (bg*(256-amt) + fg*amt) >> 8;
-    unsigned int bi = (bb*(256-amt) + fb*amt) >> 8;
-    return (bi | gi<<5 | ri<<11);
+    return graphicsBlendColorRGB565(fg,bg,iamt);
 #ifdef ESPR_GRAPHICS_12BIT
   } else if (gfx->data.bpp==12) { // Blend from bg to fg
     unsigned int b = bg;
@@ -911,7 +914,7 @@ void graphicsScroll(JsGraphics *gfx, int xdir, int ydir) {
 static void graphicsDrawString(JsGraphics *gfx, int x1, int y1, const char *str) {
   // no need to modify coordinates as setPixel does that
   while (*str) {
-#ifdef USE_FONT_6X8    
+#ifdef USE_FONT_6X8
     graphicsDrawChar6x8(gfx,x1,y1,*(str++),1,1,false);
     x1 = (int)(x1 + 6);
 #else
