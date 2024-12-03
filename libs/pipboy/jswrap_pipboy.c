@@ -49,6 +49,14 @@ uint8_t streamBuffer[STREAM_BUFFER_SIZE+4] __attribute__ ((aligned (8))); // we 
 // Can't go in 64k CCM RAM because no DMA is allowed to CCM!
 // Maybe if we modified DMA to read to a buffer first?
 
+/** Palette for scanlines
+0: even (bright line)
+1: odd (dark line)
+0: even scan effect
+1: odd scan effect
+ */
+uint16_t palette[4][16];
+
 typedef enum {
   ST_NONE,
   ST_AVI,
@@ -201,6 +209,19 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
         f_lseek(&streamFile, (uint32_t)(videoInfo.streamOffset+8)); // go back to start of video data
         videoFrameTime = jshGetTimeFromMilliseconds(videoInfo.usPerFrame/1000.0);
         videoNextFrameTime = jshGetSystemTime() + videoFrameTime;
+        // set palette
+        for (int i=0;i<256;i++) {
+          uint16_t c = videoInfo.palette[i];
+          uint16_t br = (c>>11)&0x1F;
+          uint16_t bg = (c>>6)&0x1F;
+          uint16_t bb = c&0x1F;
+          uint16_t lum = br; // lum = 0..31
+          if (bg>lum) lum=bg;
+          if (bb>lum) lum=bb;
+          // We use the non-scan-effect palette here (not idx 2) as it's too bright otherwise
+          videoInfo.palette[i] = palette[0][lum>>1]; // Should blend so we don't lose 1 bit accuracy?
+        }
+
 #ifndef LINUX
         // Set up Audio
         if (videoInfo.audioBufferSize <= I2S_RING_BUFFER_SIZE*2) { // IF we have audio
@@ -1095,27 +1116,36 @@ void jswrap_pb_wake() {
 If `height` isn't specified the image height is used, otherwise only part of the image can be rendered.
 */
 int scanlinePos = 0;
-void getPaletteForLine2bpp(int y, uint16_t *palette) {
+void getPaletteForLine2bpp(int y, uint16_t *pal) {
   int distfromScaline = y-scanlinePos;
   if (distfromScaline<0) distfromScaline=-distfromScaline;
-  int brightness = 220 + ((distfromScaline>64)?0:(63-distfromScaline));
-  if (brightness>255) brightness=255;
- if (y&1) brightness = (brightness*3) >> 2;
-  palette[3] = (uint16_t)(brightness>>2)<<5;
-  brightness = (brightness*2)/3;
-  palette[2] = (uint16_t)(brightness>>2)<<5;
-  brightness = brightness >> 1;
-  palette[1] = (uint16_t)(brightness>>2)<<5;
+  int n = y&1;
+  if (distfromScaline>64) {
+    // no overscan effect - too far away
+    pal[0] = palette[n][0];
+    pal[1] = palette[n][5];
+    pal[2] = palette[n][10];
+    pal[3] = palette[n][15];
+  } else {
+    int a = distfromScaline<<2; // 0..255
+    pal[0] = graphicsBlendColorRGB565(palette[n][0],palette[n+2][0],a);
+    pal[1] = graphicsBlendColorRGB565(palette[n][5],palette[n+2][5],a);
+    pal[2] = graphicsBlendColorRGB565(palette[n][10],palette[n+2][10],a);
+    pal[3] = graphicsBlendColorRGB565(palette[n][15],palette[n+2][15],a);
+  }
 }
-void getPaletteForLine4bpp(int y, uint16_t *palette) {
+void getPaletteForLine4bpp(int y, uint16_t *pal) {
   int distfromScaline = y-scanlinePos;
   if (distfromScaline<0) distfromScaline=-distfromScaline;
-  int brightness = 220 + ((distfromScaline>64)?0:(63-distfromScaline));
-  if (brightness>255) brightness=255;
-  if (y&1) brightness = (brightness*3) >> 2;
-  for (int i=1;i<16;i++) {
-    int b = (brightness*i)>>4;
-    palette[i] = (uint16_t)(b>>2)<<5;
+  int n = y&1;
+  if (distfromScaline>64) {
+    // no overscan effect - too far away
+    for (int i=0;i<16;i++)
+      pal[i] = palette[n][i];
+  } else {
+    int a = distfromScaline<<2; // 0..255
+    for (int i=0;i<16;i++)
+      pal[i] = graphicsBlendColorRGB565(palette[n][i],palette[n+2][i],a);
   }
 }
 void jswrap_pb_blitImage(JsVar *image, int x, int y, JsVar *options) {
@@ -1214,6 +1244,39 @@ JsVar *jswrap_pb_streamPlaying() {
   return 0;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Pip",
+  "name" : "setPalette",
+  "generate" : "jswrap_pb_setPalette",
+  "params" : [
+      ["palette","JsVar","A 4 element array of 16 element arrays"]
+   ]
+}
+Set the colour palette used for rendering everything on PipBoy
+*/
+void jswrap_pb_setPalette(JsVar *pal) {
+  if (!jsvIsArray(pal)) {
+    jsExceptionHere(JSET_ERROR, "Expecting array of arrays");
+    return;
+  }
+  for (int i=0;i<4;i++) {
+    JsVar *a = jsvGetArrayItem(pal, i);
+    if (!jsvIsIterable(a)) {
+      jsExceptionHere(JSET_ERROR, "Expecting array of arrays, pal[%d] is %t", i, a);
+      jsvUnLock(a);
+      return;
+    }
+    JsvIterator it;
+    jsvIteratorNew(&it, a, JSIF_EVERY_ARRAY_ELEMENT);
+    for (int c=0;c<16;c++) {
+      palette[i][c] = (uint16_t)jsvIteratorGetIntegerValue(&it);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+    jsvUnLock(a);
+  }
+}
 
 /*JSON{
   "type" : "init",
@@ -1222,11 +1285,21 @@ JsVar *jswrap_pb_streamPlaying() {
 void jswrap_pb_init() {
   // Enable watchdog
   jswrap_espruino_enableWatchdog(15, NULL); // init watchdog, auto mode
+  // Set up colour palette
+  for (uint16_t i=0;i<16;i++) {
+    // normally we're a bit more dim
+    uint16_t b = (i*220) >> 6; // 0..63
+    palette[0][i] = b << 5; // even
+    palette[1][i] = ((b*3)>>2) << 5; // odd
+    // overscan - full range
+    palette[2][i] = i << 7;
+    palette[3][i] = (i*3) << 5;
+  }
   // splash screen
   const unsigned char img_raw[] = {199, 17, 2, 0, 0, 31, 255, 255, 255, 255, 255, 255, 160, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 255, 255, 255, 255, 255, 255, 233, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 240, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 47, 255, 255, 255, 255, 255, 255, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 91, 255, 213, 85, 85, 111, 255, 192, 11, 255, 224, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 255, 249, 85, 85, 85, 255, 252, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 191, 253, 0, 0, 0, 191, 253, 0, 127, 255, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 255, 128, 0, 0, 7, 255, 208, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 255, 224, 0, 0, 7, 255, 224, 127, 255, 224, 2, 255, 255, 255, 255, 255, 233, 0, 0, 0, 0, 0, 0, 0, 0, 255, 248, 0, 0, 0, 63, 254, 0, 107, 255, 255, 255, 232, 0, 191, 255, 255, 224, 127, 255, 255, 248, 0, 0, 63, 255, 255, 255, 255, 255, 254, 7, 255, 255, 192, 47, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 15, 255, 255, 255, 255, 255, 255, 224, 127, 255, 255, 255, 255, 253, 91, 255, 255, 255, 131, 255, 255, 255, 224, 0, 3, 255, 255, 255, 255, 255, 255, 224, 26, 255, 252, 0, 107, 255, 250, 170, 170, 255, 248, 0, 170, 170, 170, 170, 168, 0, 191, 255, 255, 255, 255, 255, 248, 7, 255, 250, 170, 171, 255, 255, 255, 255, 255, 252, 47, 255, 255, 254, 0, 0, 47, 255, 191, 255, 255, 234, 80, 0, 7, 255, 192, 0, 47, 255, 0, 0, 11, 255, 192, 11, 255, 255, 255, 255, 224, 11, 255, 234, 170, 170, 171, 255, 240, 63, 253, 0, 0, 31, 255, 255, 253, 191, 255, 0, 127, 255, 208, 0, 0, 2, 255, 244, 0, 0, 0, 0, 0, 0, 127, 253, 0, 1, 255, 244, 0, 0, 191, 252, 0, 21, 85, 85, 85, 85, 0, 127, 254, 0, 0, 0, 31, 255, 67, 255, 224, 0, 0, 255, 245, 85, 64, 255, 253, 31, 255, 244, 0, 0, 0, 31, 255, 128, 0, 0, 0, 0, 0, 3, 255, 208, 0, 31, 255, 64, 0, 7, 255, 208, 0, 0, 0, 0, 0, 0, 7, 255, 224, 0, 0, 0, 255, 248, 47, 255, 0, 0, 15, 255, 128, 0, 1, 255, 255, 255, 248, 0, 0, 0, 85, 255, 248, 0, 0, 0, 0, 0, 0, 127, 254, 81, 20, 255, 249, 64, 5, 127, 255, 213, 64, 0, 0, 0, 0, 17, 127, 255, 64, 0, 5, 95, 255, 130, 255, 245, 85, 85, 255, 248, 0, 0, 2, 255, 255, 254, 0, 0, 0, 15, 255, 255, 192, 0, 0, 0, 0, 1, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 64, 0, 0, 0, 3, 255, 255, 255, 255, 255, 255, 255, 248, 15, 255, 255, 255, 255, 255, 128, 0, 0, 3, 255, 255, 128, 0, 0, 0, 127, 255, 252, 0, 0, 0, 0, 0, 11, 255, 255, 255, 255, 255, 255, 255, 255, 255, 250, 255, 224, 0, 0, 0, 0, 31, 255, 255, 255, 255, 255, 255, 249, 0, 11, 255, 255, 255, 255, 144, 0, 0, 0, 127, 255, 208, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 255, 192, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 47, 255, 244, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 47, 255, 253, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 255, 253, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 255, 255, 208, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 255, 254, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 170, 128, 0, 0, 0, 0, 0, 0};
   JsVar *img = jsvNewNativeString((char*)&img_raw[0], sizeof(img_raw));
   JsVar *g = jsvNewObject(); // fake object for rendering
-  graphicsInternal.data.fgColor = 63<<5;
+  graphicsInternal.data.fgColor = palette[0][15];
   jsvUnLock(jswrap_graphics_clear(g, 0));
   jsvUnLock(jswrap_graphics_drawImage(g, img, (LCD_WIDTH-200)/2, LCD_HEIGHT/2-16, NULL));
   graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
@@ -1303,7 +1376,7 @@ void jswrap_pb_init() {
     if (res == FR_NO_FILE) msg = jsvNewFromString("NO VERSION FILE");
     else if (res == FR_NOT_ENABLED) msg = jsvNewFromString("NO SD CARD");
     else msg = jsvVarPrintf("SD CARD ERROR %d", res);
-    graphicsInternal.data.fgColor = 63<<5; // green
+    graphicsInternal.data.fgColor = palette[0][15]; // green
     graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
     graphicsInternal.data.fontAlignX = 0;
     jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+14, 0));
