@@ -1254,6 +1254,25 @@ JsVar *jswrap_pb_streamPlaying() {
    ]
 }
 Set the colour palette used for rendering everything on PipBoy
+
+eg:
+
+```
+var pal = [
+  new Uint16Array(16),
+  new Uint16Array(16),
+  new Uint16Array(16),
+  new Uint16Array(16)
+];
+// Orangey
+for (var i=0;i<16;i++) {
+  pal[0][i] = g.toColor(i/15,i/30,0); // 0: even (bright line)
+  pal[1][i] = g.toColor(i/30,i/60,0); // 1: odd (dark line)
+  pal[2][i] = g.toColor(i/10,i/20,0); // 0: even scan effect
+  pal[3][i] = g.toColor(i/20,i/40,0); // 1: odd scan effect
+}
+Pip.setPalette(pal);
+```
 */
 void jswrap_pb_setPalette(JsVar *pal) {
   if (!jsvIsArray(pal)) {
