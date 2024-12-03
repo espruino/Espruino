@@ -605,7 +605,7 @@ returns.
   "class"    : "Wifi",
   "name"     : "setIP",
   "generate" : "jswrap_wifi_setIP",
-  "#if" : "defined(ESP8266) || defined(ESPRUINOWIFI)",
+  "#if" : "defined(ESP8266) || defined(ESPRUINOWIFI) || defined(ESP32)",
   "params"   : [
     ["settings", "JsVar", "Configuration settings"],
     ["callback", "JsVar", "A `callback(err)` function to invoke when ip is set. `err==null` on success, or a string on failure."]
@@ -623,7 +623,7 @@ The `settings` object must contain the following properties.
   "type"     : "staticmethod",
   "class"    : "Wifi",
   "name"     : "setAPIP",
-  "#if"    : "defined(ESPRUINOWIFI) || defined(ESP8266)",
+  "#if"    : "defined(ESPRUINOWIFI) || defined(ESP8266) || defined(ESP32)",
   "generate" : "jswrap_wifi_setAPIP",
   "params"   : [
     ["settings", "JsVar", "Configuration settings"],
