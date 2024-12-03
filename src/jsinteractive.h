@@ -142,7 +142,9 @@ void jsiSetSleep(JsiSleepType isSleep);
 #define DEVICE_OPTIONS_NAME "_options"
 #define INIT_CALLBACK_NAME JS_EVENT_PREFIX"init" ///< Callback for `E.on('init'`
 #define KILL_CALLBACK_NAME JS_EVENT_PREFIX"kill" ///< Callback for `E.on('kill'`
+#ifndef ESPR_NO_PASSWORD
 #define PASSWORD_VARIABLE_NAME "pwd"
+#endif
 
 typedef enum {
   JSIS_NONE,
@@ -159,7 +161,7 @@ typedef enum {
   JSIS_TODO_MASK = JSIS_TODO_FLASH_SAVE|JSIS_TODO_FLASH_LOAD|JSIS_TODO_RESET,
   JSIS_CONSOLE_FORCED     = 1<<8, ///< see jsiSetConsoleDevice
   JSIS_WATCHDOG_AUTO      = 1<<9, ///< Automatically kick the watchdog timer on idle
-  JSIS_PASSWORD_PROTECTED = 1<<10, ///< Password protected
+  JSIS_PASSWORD_PROTECTED = 1<<10, ///< Password protected (only ifndef ESPR_NO_PASSWORD)
   JSIS_COMPLETELY_RESET   = 1<<11, ///< Has the board powered on *having not loaded anything from flash*
   JSIS_FIRST_BOOT         = 1<<12, ///< Is this the first time we started, or has load/reset/etc been called?
 

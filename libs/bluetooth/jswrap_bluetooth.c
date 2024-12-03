@@ -2365,6 +2365,7 @@ void jswrap_ble_setTxPower(JsVarInt pwr) {
     "type" : "staticmethod",
     "class" : "NRF",
     "name" : "setLowPowerConnection",
+    "deprecated" : true,
     "generate" : "jswrap_ble_setLowPowerConnection",
     "params" : [
       ["lowPower","bool","Whether the connection is low power or not"]

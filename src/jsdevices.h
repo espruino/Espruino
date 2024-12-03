@@ -37,7 +37,6 @@ typedef enum {
   EV_NONE,
   EV_EXTI0,  ///< External Interrupt
   EV_EXTI_MAX = EV_EXTI0 + ESPR_EXTI_COUNT - 1,
-  EV_CUSTOM, ///< Custom event (See IOCustomEventFlags)
   EV_SERIAL_START,
   EV_LOOPBACKA = EV_SERIAL_START,
   EV_LOOPBACKB,
@@ -86,6 +85,7 @@ typedef enum {
   EV_BLUETOOTH_PENDING,      // Tasks that came from the Bluetooth Stack in an IRQ
   EV_BLUETOOTH_PENDING_DATA, // Data for pending tasks - this comes after the EV_BLUETOOTH_PENDING task itself
 #endif
+  EV_CUSTOM, ///< Custom event (See IOCustomEventFlags)
 #ifdef BANGLEJS
   EV_BANGLEJS,               // sent whenever Bangle.js-specific data needs to be queued
 #endif
