@@ -1274,6 +1274,16 @@ for (var i=0;i<16;i++) {
 Pip.setPalette(pal);
 ```
 */
+static void jswrap_pb_updateTheme() {
+  graphicsTheme.fg = (JsGraphicsThemeColor)palette[0][15];
+  graphicsTheme.bg = (JsGraphicsThemeColor)palette[0][0];
+  graphicsTheme.fg2 = (JsGraphicsThemeColor)palette[2][15];
+  graphicsTheme.bg2 = (JsGraphicsThemeColor)palette[2][0];
+  graphicsTheme.fgH = (JsGraphicsThemeColor)palette[0][0];
+  graphicsTheme.bgH = (JsGraphicsThemeColor)palette[0][15];
+  graphicsTheme.dark = graphicsTheme.bg;
+}
+
 void jswrap_pb_setPalette(JsVar *pal) {
   if (!jsvIsArray(pal)) {
     jsExceptionHere(JSET_ERROR, "Expecting array of arrays");
@@ -1295,6 +1305,7 @@ void jswrap_pb_setPalette(JsVar *pal) {
     jsvIteratorFree(&it);
     jsvUnLock(a);
   }
+  jswrap_pb_updateTheme();
 }
 
 /*JSON{
@@ -1314,12 +1325,13 @@ void jswrap_pb_init() {
     palette[2][i] = i << 7;
     palette[3][i] = (i*3) << 5;
   }
+  jswrap_pb_updateTheme();
   // splash screen
   const unsigned char img_raw[] = {199, 17, 2, 0, 0, 31, 255, 255, 255, 255, 255, 255, 160, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 255, 255, 255, 255, 255, 255, 233, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255, 240, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 47, 255, 255, 255, 255, 255, 255, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 91, 255, 213, 85, 85, 111, 255, 192, 11, 255, 224, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 86, 255, 249, 85, 85, 85, 255, 252, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 191, 253, 0, 0, 0, 191, 253, 0, 127, 255, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 255, 128, 0, 0, 7, 255, 208, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 255, 224, 0, 0, 7, 255, 224, 127, 255, 224, 2, 255, 255, 255, 255, 255, 233, 0, 0, 0, 0, 0, 0, 0, 0, 255, 248, 0, 0, 0, 63, 254, 0, 107, 255, 255, 255, 232, 0, 191, 255, 255, 224, 127, 255, 255, 248, 0, 0, 63, 255, 255, 255, 255, 255, 254, 7, 255, 255, 192, 47, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 15, 255, 255, 255, 255, 255, 255, 224, 127, 255, 255, 255, 255, 253, 91, 255, 255, 255, 131, 255, 255, 255, 224, 0, 3, 255, 255, 255, 255, 255, 255, 224, 26, 255, 252, 0, 107, 255, 250, 170, 170, 255, 248, 0, 170, 170, 170, 170, 168, 0, 191, 255, 255, 255, 255, 255, 248, 7, 255, 250, 170, 171, 255, 255, 255, 255, 255, 252, 47, 255, 255, 254, 0, 0, 47, 255, 191, 255, 255, 234, 80, 0, 7, 255, 192, 0, 47, 255, 0, 0, 11, 255, 192, 11, 255, 255, 255, 255, 224, 11, 255, 234, 170, 170, 171, 255, 240, 63, 253, 0, 0, 31, 255, 255, 253, 191, 255, 0, 127, 255, 208, 0, 0, 2, 255, 244, 0, 0, 0, 0, 0, 0, 127, 253, 0, 1, 255, 244, 0, 0, 191, 252, 0, 21, 85, 85, 85, 85, 0, 127, 254, 0, 0, 0, 31, 255, 67, 255, 224, 0, 0, 255, 245, 85, 64, 255, 253, 31, 255, 244, 0, 0, 0, 31, 255, 128, 0, 0, 0, 0, 0, 3, 255, 208, 0, 31, 255, 64, 0, 7, 255, 208, 0, 0, 0, 0, 0, 0, 7, 255, 224, 0, 0, 0, 255, 248, 47, 255, 0, 0, 15, 255, 128, 0, 1, 255, 255, 255, 248, 0, 0, 0, 85, 255, 248, 0, 0, 0, 0, 0, 0, 127, 254, 81, 20, 255, 249, 64, 5, 127, 255, 213, 64, 0, 0, 0, 0, 17, 127, 255, 64, 0, 5, 95, 255, 130, 255, 245, 85, 85, 255, 248, 0, 0, 2, 255, 255, 254, 0, 0, 0, 15, 255, 255, 192, 0, 0, 0, 0, 1, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 64, 0, 0, 0, 3, 255, 255, 255, 255, 255, 255, 255, 248, 15, 255, 255, 255, 255, 255, 128, 0, 0, 3, 255, 255, 128, 0, 0, 0, 127, 255, 252, 0, 0, 0, 0, 0, 11, 255, 255, 255, 255, 255, 255, 255, 255, 255, 250, 255, 224, 0, 0, 0, 0, 31, 255, 255, 255, 255, 255, 255, 249, 0, 11, 255, 255, 255, 255, 144, 0, 0, 0, 127, 255, 208, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 255, 192, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 47, 255, 244, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 47, 255, 253, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 255, 253, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 255, 255, 208, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 255, 254, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 170, 128, 0, 0, 0, 0, 0, 0};
   JsVar *img = jsvNewNativeString((char*)&img_raw[0], sizeof(img_raw));
   JsVar *g = jsvNewObject(); // fake object for rendering
-  graphicsInternal.data.fgColor = palette[0][15];
-  jsvUnLock(jswrap_graphics_clear(g, 0));
+  jsvUnLock(jswrap_graphics_clear(g, 1));
+  graphicsInternal.data.fgColor = graphicsTheme.fg;
   jsvUnLock(jswrap_graphics_drawImage(g, img, (LCD_WIDTH-200)/2, LCD_HEIGHT/2-16, NULL));
   graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
   graphicsInternal.data.fontAlignX = 1;
@@ -1395,7 +1407,7 @@ void jswrap_pb_init() {
     if (res == FR_NO_FILE) msg = jsvNewFromString("NO VERSION FILE");
     else if (res == FR_NOT_ENABLED) msg = jsvNewFromString("NO SD CARD");
     else msg = jsvVarPrintf("SD CARD ERROR %d", res);
-    graphicsInternal.data.fgColor = palette[0][15]; // green
+    graphicsInternal.data.fgColor = graphicsTheme.fg; // green
     graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
     graphicsInternal.data.fontAlignX = 0;
     jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+14, 0));
@@ -1413,7 +1425,7 @@ void jswrap_pb_init() {
     jsvUnLock(msg);
   }
   // clear up graphics
-  graphicsInternal.data.fgColor = 65535;
+  graphicsInternal.data.fgColor = graphicsTheme.fg;
   graphicsInternal.data.fontAlignX = -1;
   jsvUnLock(g);
 }
