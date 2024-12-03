@@ -73,6 +73,7 @@ JsVar *jswrap_spi_constructor() {
   "type" : "staticmethod",
   "class" : "SPI",
   "name" : "find",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jshGetDeviceObjectFor(JSH_SPI1, JSH_SPIMAX, pin)",
   "params" : [
     ["pin","pin","A pin to search with"]
@@ -532,6 +533,7 @@ JsVar *jswrap_i2c_constructor() {
   "type" : "staticmethod",
   "class" : "I2C",
   "name" : "find",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "jshGetDeviceObjectFor(JSH_I2C1, JSH_I2CMAX, pin)",
   "params" : [
     ["pin","pin","A pin to search with"]

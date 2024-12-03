@@ -170,7 +170,11 @@ NO_INLINE bool jsiEcho() {
 }
 
 NO_INLINE bool jsiPasswordProtected() {
+#ifndef ESPR_NO_PASSWORD
   return ((jsiStatus&JSIS_PASSWORD_PROTECTED)!=0);
+#else
+  return 0;
+#endif
 }
 
 static bool jsiShowInputLine() {
@@ -892,11 +896,13 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
     jspSoftInit();
   }
 
+#ifndef ESPR_NO_PASSWORD
   // If a password was set, apply the lock
   JsVar *pwd = jsvObjectGetChildIfExists(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME);
   if (pwd)
     jsiStatus |= JSIS_PASSWORD_PROTECTED;
   jsvUnLock(pwd);
+#endif
 
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit(!autoLoad);
@@ -1800,6 +1806,7 @@ void jsiHandleChar(char ch) {
   // 27 then 79 then 72 - end
   // 27 then 10 - alt enter
 
+#ifndef ESPR_NO_PASSWORD
   if (jsiPasswordProtected()) {
     if (ch=='\r' || ch==10) {
       JsVar *pwd = jsvObjectGetChildIfExists(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME);
@@ -1819,6 +1826,7 @@ void jsiHandleChar(char ch) {
       jsiAppendToInputLine(ch);
     return;
   }
+#endif
 
   if (ch==3 && IS_PACKET_TRANSFER(inputState))
       execInfo.execute &= ~EXEC_CTRL_C_MASK; // if we got Ctrl-C, ignore it

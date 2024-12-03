@@ -144,6 +144,7 @@ JsVar *jswrap_number_toFixed(JsVar *parent, int decimals) {
 /*JSON{
   "type" : "variable",
   "name" : "HIGH",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "1",
   "return" : ["int32","Logic 1 for Arduino compatibility - this is the same as just typing `1`"],
   "typescript" : "declare const HIGH: true;"
@@ -152,6 +153,7 @@ JsVar *jswrap_number_toFixed(JsVar *parent, int decimals) {
 /*JSON{
   "type" : "variable",
   "name" : "LOW",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "0",
   "return" : ["int32","Logic 0 for Arduino compatibility - this is the same as just typing `0`"],
   "typescript" : "declare const LOW: false;"
