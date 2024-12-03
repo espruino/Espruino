@@ -92,9 +92,6 @@ static bool g_isStaConnected = false;
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", jsOPT)
 
-// Global data structure for setIP and setAPIP
-tcpip_adapter_ip_info_t info;
-
 //===== mDNS
 static bool mdns_started = 0;
 
@@ -1782,9 +1779,8 @@ void jswrap_wifi_getHostByName(
 static void setIP(JsVar *jsSettings, JsVar *jsCallback, int interface) {
   char ipTmp[20];
   int len = 0;
-  // bool rc = false;
   esp_err_t err;
-
+  tcpip_adapter_ip_info_t info;
   memset( &info, 0, sizeof(info) );
 
 // first check parameter
