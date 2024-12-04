@@ -41,6 +41,10 @@ void jslCharPosClone(JslCharPos *dstpos, JslCharPos *pos) {
   dstpos->currCh = pos->currCh;
 }
 
+void jslCharPosClear(JslCharPos *pos) {
+  pos->it.var = 0;
+}
+
 void jslCharPosFromLex(JslCharPos *dstpos) {
   jsvStringIteratorClone(&dstpos->it, &lex->it);
   dstpos->currCh = lex->currCh;

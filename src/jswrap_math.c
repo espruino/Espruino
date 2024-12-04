@@ -101,6 +101,7 @@ This is a standard JavaScript class that contains useful Maths routines
   "type" : "staticproperty",
   "class" : "Math",
   "name" : "LN2",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "0.6931471805599453",
   "return" : ["float","The natural logarithm of 2 - 0.6931471805599453"]
 }*/
@@ -108,6 +109,7 @@ This is a standard JavaScript class that contains useful Maths routines
   "type" : "staticproperty",
   "class" : "Math",
   "name" : "LN10",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "2.302585092994046",
   "return" : ["float","The natural logarithm of 10 - 2.302585092994046"]
 }*/
@@ -115,6 +117,7 @@ This is a standard JavaScript class that contains useful Maths routines
   "type" : "staticproperty",
   "class" : "Math",
   "name" : "LOG2E",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "1.4426950408889634",
   "return" : ["float","The base 2 logarithm of e - 1.4426950408889634"]
 }*/
@@ -122,6 +125,7 @@ This is a standard JavaScript class that contains useful Maths routines
   "type" : "staticproperty",
   "class" : "Math",
   "name" : "LOG10E",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "0.4342944819032518",
   "return" : ["float","The base 10 logarithm of e - 0.4342944819032518"]
 }*/
@@ -129,6 +133,7 @@ This is a standard JavaScript class that contains useful Maths routines
   "type" : "staticproperty",
   "class" : "Math",
   "name" : "SQRT2",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "1.4142135623730951",
   "return" : ["float","The square root of 2 - 1.4142135623730951"]
 }*/
@@ -136,6 +141,7 @@ This is a standard JavaScript class that contains useful Maths routines
   "type" : "staticproperty",
   "class" : "Math",
   "name" : "SQRT1_2",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate_full" : "0.7071067811865476",
   "return" : ["float","The square root of 1/2 - 0.7071067811865476"]
 }*/

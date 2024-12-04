@@ -1270,6 +1270,7 @@ void jswrap_ESP8266_wifi_soft_init() {
   "class"    : "ESP8266",
   "ifdef"    : "ESP8266",
   "name"     : "ping",
+  "deprecated" : true,
   "generate" : "jswrap_wifi_ping",
   "params"   : [
     ["ipAddr", "JsVar", "A string representation of an IP address."],

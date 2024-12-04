@@ -47,6 +47,7 @@ Class containing utility functions for
     "type" : "staticmethod",
     "class" : "Pixl",
     "name" : "getBatteryPercentage",
+    "deprecated" : true,
     "generate" : "jswrap_espruino_getBattery",
     "return" : ["int", "A percentage between 0 and 100" ]
 }
@@ -519,6 +520,7 @@ type MenuNumberItem = {
 type MenuOptions = {
   title?: string;
   back?: () => void;
+  remove?: () => void;
   selected?: number;
   fontHeight?: number;
   scroll?: number;

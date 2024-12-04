@@ -2567,7 +2567,6 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   JslCharPos whileCondStart;
   // We do repetition by pulling out the string representing our statement
   // there's definitely some opportunity for optimisation here
-
   bool wasInLoop = (execInfo.execute&EXEC_IN_LOOP)!=0;
   JslCharPos whileBodyStart;
   if (isWhile) { // while loop
@@ -2579,15 +2578,18 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
     jsvUnLock(cond);
     jslCharPosFromLex(&whileBodyStart);
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jslCharPosFree(&whileBodyStart);jslCharPosFree(&whileCondStart);,0);
-  } else {
+  } else { // do loop
     jslCharPosFromLex(&whileBodyStart);
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_DO, jslCharPosFree(&whileBodyStart);,0);
+    jslCharPosClear(&whileCondStart);
   }
   JSP_SAVE_EXECUTE();
   // actually try and execute first bit of while loop (we'll do the rest in the actual loop later)
   if (!loopCond) jspSetNoExecute();
   execInfo.execute |= EXEC_IN_LOOP;
+  bool needSemiColon = (!isWhile) && lex->tk!='{';
   jsvUnLock(jspeBlockOrStatement());
+  if (needSemiColon) JSP_MATCH_WITH_CLEANUP_AND_RETURN(';',jslCharPosFree(&whileBodyStart);jslCharPosFree(&whileCondStart);,0); // do statement; while(a--);
   if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
 
   hasHadBreak |= jspeCheckBreakContinue();

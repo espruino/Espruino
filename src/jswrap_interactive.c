@@ -347,6 +347,7 @@ void jswrap_interactive_setTime(JsVarFloat time) {
 /*JSON{
   "type" : "function",
   "name" : "getSerial",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_interface_getSerial",
   "return" : ["JsVar","The board's serial number"]
 }
