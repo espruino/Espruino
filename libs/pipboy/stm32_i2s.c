@@ -244,10 +244,13 @@ int STM32_I2S_GetFreeSamples() {
 
 // Add samples to the ringbuffer
 void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {
-  int timeout = 1000000;
-  while ((STM32_I2S_GetFreeSamples() < (int)count+32) && --timeout); // wait here for space
-
+  // Try and fill until ringbuffer is full
+  unsigned int freeSamples = STM32_I2S_GetFreeSamples();
   unsigned int c = count;
+  if (c > freeSamples) {
+    c = freeSamples;
+    count -= freeSamples;
+  } else count = 0;
   while (c--) {
     audioRingBuf[audioRingIdxIn] = *(data++)
                                  + (audioRingIdxIn&1); // add 1 bit of noise to stop DAC from turning off!
@@ -255,14 +258,29 @@ void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {
   }
 
   //jsiConsolePrintf("add %d %d %d %d\n", i2sDMAidx, i2sStatus, count, audioRingBufGetSamples());
-  // start playback when we have enough
-  if (i2sStatus == STM32_I2S_STOPPED && audioRingBufGetSamples()>I2S_DMA_BUFFER_SIZE*3) {
+  // start playback if we have enough
+  if (i2sStatus == STM32_I2S_STOPPED && audioRingBufGetSamples()>=I2S_DMA_BUFFER_SIZE*3) {
     // if audioRingBufGetSamples()>I2S_DMA_BUFFER_SIZE*3 we should have enough here to fill 6 buffers
     i2sDMAidx = !DMA_GetCurrentMemoryTarget(DMA1_Stream4);
     fillDMAFromRingBuffer(); // fill the first buffer with what we're currently reading from!
     i2sDMAidx = !i2sDMAidx;
     fillDMAFromRingBuffer(); // fill the second buffer
     STM32_I2S_Start();
+  }
+
+  if (!count) return;
+  // otherwise we still have more to put in - try and wait a bit
+  if (STM32_I2S_GetFreeSamples() < (int)count) {
+    // wait until we have space
+    int timeout = 1000000;
+    while ((STM32_I2S_GetFreeSamples() < (int)count) && --timeout); // wait here for space
+  }
+  // now attempt to put in the rest but drop any we don't have space for
+  c = count;
+  while (c-- && STM32_I2S_GetFreeSamples()) {
+    audioRingBuf[audioRingIdxIn] = *(data++)
+                                 + (audioRingIdxIn&1); // add 1 bit of noise to stop DAC from turning off!
+    audioRingIdxIn = (audioRingIdxIn+1) & (I2S_RING_BUFFER_SIZE-1);
   }
 }
 
