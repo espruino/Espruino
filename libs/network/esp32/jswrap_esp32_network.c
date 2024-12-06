@@ -92,7 +92,6 @@ static bool g_isStaConnected = false;
 #define EXPECT_CB_EXCEPTION(jsCB)   jsExceptionHere(JSET_ERROR, "Expecting callback function but got %v", jsCB)
 #define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, "Expecting Object, got %t", jsOPT)
 
-
 //===== mDNS
 static bool mdns_started = 0;
 
@@ -1774,4 +1773,100 @@ void jswrap_wifi_getHostByName(
     jsDebug(DBG_INFO, "Error: %d from dns_gethostbyname\n", err);
     dnsFoundCallback(hostname, NULL, NULL);
   }
+}
+
+// worker for jswrap_wifi_setIP and jswrap_wifi_setAPIP
+static void setIP(JsVar *jsSettings, JsVar *jsCallback, int interface) {
+  char ipTmp[20];
+  int len = 0;
+  esp_err_t err;
+  tcpip_adapter_ip_info_t info;
+  memset( &info, 0, sizeof(info) );
+
+// first check parameter
+  if (!jsvIsObject(jsSettings)) {
+    EXPECT_OPT_EXCEPTION(jsSettings);
+    return;
+  }
+
+// get,check and store ip
+  JsVar *jsIP = jsvObjectGetChildIfExists(jsSettings, "ip");
+  if (jsIP != NULL && !jsvIsString(jsIP)) {
+      EXPECT_OPT_EXCEPTION(jsIP);
+      jsvUnLock(jsIP);
+      return;
+  }
+  jsvGetString(jsIP, ipTmp, sizeof(ipTmp)-1);
+  info.ip.addr = networkParseIPAddress(ipTmp);
+  if ( info.ip.addr  == 0) {
+    jsExceptionHere(JSET_ERROR, "Not a valid IP address");
+    jsvUnLock(jsIP);
+    return;
+  }
+  jsvUnLock(jsIP);
+
+// get, check and store gw
+  JsVar *jsGW = jsvObjectGetChildIfExists(jsSettings, "gw");
+  if (jsGW != NULL && !jsvIsString(jsGW)) {
+      EXPECT_OPT_EXCEPTION(jsGW);
+      jsvUnLock(jsGW);
+      return ;
+  }
+  jsvGetString(jsGW, ipTmp, sizeof(ipTmp)-1);
+  info.gw.addr = networkParseIPAddress(ipTmp);
+  if (info.gw.addr == 0) {
+    jsExceptionHere(JSET_ERROR, "Not a valid Gateway address");
+    jsvUnLock(jsGW);
+    return;
+  }
+  jsvUnLock(jsGW);
+
+// netmask setting
+  JsVar *jsNM = jsvObjectGetChildIfExists(jsSettings, "netmask");
+  if (jsNM != NULL && !jsvIsString(jsNM)) {
+      EXPECT_OPT_EXCEPTION(jsNM);
+      jsvUnLock(jsNM);
+      return;
+  }
+  jsvGetString(jsNM, ipTmp, sizeof(ipTmp)-1);
+  info.netmask.addr = networkParseIPAddress(ipTmp);
+  if (info.netmask.addr == 0) {
+    jsExceptionHere(JSET_ERROR, "Not a valid Netmask");
+    jsvUnLock(jsNM);
+    return;
+  }
+  jsvUnLock(jsNM);
+// set IP for station
+  if (interface == WIFI_IF_STA) {
+    tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_STA);
+    err = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA, &info);
+  }
+// set IP for access point
+  else {
+    tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP);
+    err = tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_AP, &info);
+    tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP);
+  }
+// Schedule callback
+  if (jsvIsFunction(jsCallback)) {
+    JsVar *params[1];
+    params[0] = err ? jsvNewWithFlags(JSV_NULL) : jsvNewFromString("Failure");
+    jsiQueueEvents(NULL, jsCallback, params, 1);
+    jsvUnLock(params[0]);
+  }
+  else {
+    jsExceptionHere(JSET_ERROR, "Callback is not a function");
+  }
+  return ;
+};
+
+
+void jswrap_wifi_setIP(JsVar *jsSettings, JsVar *jsCallback) {
+  setIP(jsSettings, jsCallback, WIFI_IF_STA);
+  return ;
+}
+
+void jswrap_wifi_setAPIP(JsVar *jsSettings, JsVar *jsCallback) {
+  setIP(jsSettings, jsCallback, WIFI_IF_AP);
+  return ;
 }
