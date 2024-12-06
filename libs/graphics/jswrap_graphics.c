@@ -2542,7 +2542,10 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
       wasNewLine = ch=='\n';
       canSplitAfter = ch==0; // can split after if there is an image next
       if (endOfText) break;
-      if (ch!=0) continue; // allow us to handle images next
+      if (ch!=0) {
+        if (!jsvStringIteratorHasChar(&it)) endOfText=true; // handle sometimes missed final char: #2572
+        continue; // allow us to handle images next
+      }
     }
     canSplitAfter = false;
 #ifndef SAVE_ON_FLASH
