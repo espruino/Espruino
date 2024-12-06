@@ -1332,9 +1332,8 @@ void jsiCheckErrors() {
   }
 }
 
-
-void jsiAppendStringToInputLine(const char *strToAppend) {
-  // Add the string to our input line
+/// Add the given string to our input line
+static void jsiAppendStringToInputLine(const char *strToAppend) {
   jsiIsAboutToEditInputLine();
 
   size_t strSize = 1;

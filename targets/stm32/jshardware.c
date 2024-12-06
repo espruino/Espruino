@@ -1554,7 +1554,7 @@ void jshIdle() {
   if (wasUSBConnected != USBConnected) {
     wasUSBConnected = USBConnected;
     if (USBConnected)
-      jshClearUSBIdleTimeout();
+      jshUSBReceiveLastActive = JSH_USB_MAX_INACTIVITY_TICKS; // set to max so we're not connected until the first data request
     if (USBConnected && jsiGetConsoleDevice()!=EV_LIMBO) {
       if (!jsiIsConsoleDeviceForced())
         jsiSetConsoleDevice(EV_USBSERIAL, false);
