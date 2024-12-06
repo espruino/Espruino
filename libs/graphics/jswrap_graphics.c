@@ -4261,8 +4261,6 @@ JsVar *jswrap_graphics_asBMP_X(JsVar *parent, bool printBase64) {
     } else { // <= 1 pixel per byte
       for (int x=0;x<width;x++) {
         unsigned int c = graphicsGetPixel(&gfx, x, y);
-        if (bpp==16) // 16 bit BMP is RGB555, not RGB565
-          c = (c&31) | ((c>>1)&~31U);
         for (int j=0;j<bpp;j+=8) {
           imgPtr[idx++] = (unsigned char)(c);
           bytesWritten++;
