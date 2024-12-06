@@ -1772,7 +1772,8 @@ void lcdFillRect_FSMC(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned 
 
 unsigned int lcdGetPixel_FSMC(JsGraphics *gfx, int x, int y) {
   lcdSetCursor(gfx,x,y);
-  lcdSetWrite(); // ?
+  LCD_WR_REG(0x2E); // start read
+  LCD_RD_Data(); // dummy read
   return LCD_RD_Data();
 }
 
