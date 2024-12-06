@@ -146,6 +146,7 @@ DRESULT disk_write (
 
   Transfer_Length =  count * 512;
   Memory_Offset = sector * 512;
+
   assert(((size_t)buff&3)==0);
   if (count<=1)
     SD_WriteBlock(Memory_Offset, (uint32_t *)buff, Transfer_Length);
@@ -175,10 +176,12 @@ DRESULT disk_ioctl (
     res = RES_OK;
     break;
 
-  case GET_SECTOR_COUNT :   // Get number of sectors on the disk (DWORD)
-    *(DWORD*)buff = 131072; // 4*1024*32 = 131072
+  case GET_SECTOR_COUNT : {  // Get number of sectors on the disk (DWORD)
+    SD_CardInfo SDCardInfo;
+    SD_GetCardInfo(&SDCardInfo);
+    *(DWORD*)buff = SDCardInfo.CardCapacity>>9;
     res = RES_OK;
-    break;
+  } break;
 
   case GET_SECTOR_SIZE :   // Get R/W sector size (WORD)
     *(WORD*)buff = 512;

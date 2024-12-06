@@ -107,7 +107,7 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
   if (!pathStr[0]) strcpy(pathStr, "."); // deal with empty readdir
 #endif
 
-  FRESULT res = 0;
+  FRESULT res = 0; // leave readdir to return 'undefined' on PipBoy if jsfsInit fails (on other devices it'll throw an exception anyway)
   if (jsfsInit()) {
 #ifndef LINUX
     DIR dirs;
@@ -299,7 +299,7 @@ bool jswrap_fs_unlink(JsVar *path) {
     if (!jsfsGetPathString(pathStr, path)) return 0;
 
 #ifndef LINUX
-  FRESULT res = 0;
+  FRESULT res = FR_DISK_ERR;
   if (jsfsInit()) {
     res = f_unlink(pathStr);
   }
@@ -337,7 +337,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
     if (!jsfsGetPathString(pathStr, path)) return 0;
 
 #ifndef LINUX
-  FRESULT res = 0;
+  FRESULT res = FR_DISK_ERR;
   if (jsfsInit()) {
     FILINFO info;
     memset(&info,0,sizeof(info));
@@ -403,7 +403,7 @@ JsVar *jswrap_fs_getfree(JsVar *path) {
     if (!jsfsGetPathString(pathStr, path)) return 0;
 
 #ifndef LINUX
-  FRESULT res = 0;
+  FRESULT res = FR_DISK_ERR;
   if (jsfsInit()) {
     FATFS *fs;
     DWORD fre_clust, fre_sect, tot_sect, sect_size;
@@ -473,7 +473,7 @@ bool jswrap_fs_mkdir(JsVar *path) {
     if (!jsfsGetPathString(pathStr, path)) return 0;
 
 #ifndef LINUX
-  FRESULT res = 0;
+  FRESULT res = FR_DISK_ERR;
   if (jsfsInit()) {
     res = f_mkdir(pathStr);
   }
@@ -488,5 +488,36 @@ bool jswrap_fs_mkdir(JsVar *path) {
   return true;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "mkfs",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_mkfs",
+  "return" : ["bool","True on success, or false on failure"]
+}
+Reformat the connected media to a FAT filesystem
+*/
+bool jswrap_fs_mkfs() {
+#ifndef LINUX
+  FRESULT res = FR_DISK_ERR;
+  // ensure hardware inited. Ignore return value as we're formatting
+  jsfsInit();
+  // de-init software (but not hardware - we need to ensure open files are closed)
+  jswrap_file_kill_sw();
+  // Reformat
+  uint8_t workBuffer[FF_MAX_SS];
+  res = f_mkfs("", NULL, workBuffer, sizeof(workBuffer));
+  if (res) {
+    jsfsReportError("mkfs error", res);
+    return false;
+  }
+  return jsfsInit();
+#else
+  jsExceptionHere(JSET_ERROR, "fs.mkfs not implemented on Linux");
+  return false;
+#endif
 
+
+}
 

@@ -1720,7 +1720,7 @@ It is recommended that you use `Graphics.setFont("4x6")` for more flexibility.
   "type" : "method",
   "class" : "Graphics",
   "name" : "setFontVector",
-  "ifndef" : "SAVE_ON_FLASH",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(NO_VECTOR_FONT)",
   "generate_full" : "jswrap_graphics_setFontSizeX(parent, size, true)",
   "params" : [
     ["size","int32","The height of the font, as an integer"]
@@ -2542,7 +2542,10 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
       wasNewLine = ch=='\n';
       canSplitAfter = ch==0; // can split after if there is an image next
       if (endOfText) break;
-      if (ch!=0) continue; // allow us to handle images next
+      if (ch!=0) {
+        if (!jsvStringIteratorHasChar(&it)) endOfText=true; // handle sometimes missed final char: #2572
+        continue; // allow us to handle images next
+      }
     }
     canSplitAfter = false;
 #ifndef SAVE_ON_FLASH
@@ -2807,7 +2810,7 @@ void jswrap_graphics_drawCString(JsGraphics *gfx, int x, int y, char *str) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "getVectorFontPolys",
-  "#if" : "!defined(SAVE_ON_FLASH) || !defined(NO_VECTOR_FONT)",
+  "#if" : "!defined(SAVE_ON_FLASH) && !defined(NO_VECTOR_FONT)",
   "generate" : "jswrap_graphics_getVectorFontPolys",
   "params" : [
     ["str","JsVar","The string"],

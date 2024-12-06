@@ -2072,6 +2072,7 @@ JsVar *jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri, 
   "type" : "staticmethod",
   "class" : "E",
   "name" : "setPassword",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_espruino_setPassword",
   "params" : [
     ["password","JsVar","The password - max 20 chars"]
@@ -2093,25 +2094,30 @@ from unknown sources) or read the device's firmware then they may be able to
 obtain it.
  */
 void jswrap_espruino_setPassword(JsVar *pwd) {
+#ifndef ESPR_NO_PASSWORD
   if (pwd)
     pwd = jsvAsString(pwd);
   jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME, pwd));
+#endif
 }
 
 /*JSON{
   "type" : "staticmethod",
   "class" : "E",
   "name" : "lockConsole",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_espruino_lockConsole"
 }
 If a password has been set with `E.setPassword()`, this will lock the console so
 the password needs to be entered to unlock it.
 */
 void jswrap_espruino_lockConsole() {
+#ifndef ESPR_NO_PASSWORD
   JsVar *pwd = jsvObjectGetChildIfExists(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME);
   if (pwd)
     jsiStatus |= JSIS_PASSWORD_PROTECTED;
   jsvUnLock(pwd);
+#endif
 }
 
 /*JSON{
@@ -2601,6 +2607,7 @@ type PowerUsage = {
   "type" : "staticmethod",
   "class" : "E",
   "name" : "getPowerUsage",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_espruino_getPowerUsage",
   "return" : ["JsVar","An object detailing power usage in microamps"],
   "typescript" : "getPowerUsage(): PowerUsage;"

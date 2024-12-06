@@ -49,6 +49,7 @@ info = {
      'DEFINES+=-DESPR_RTC_ALWAYS_TRY_LSE', # If we boot and RTC is initialised but using LSI, try again at starting LSE
      'DEFINES+=-DESPR_FS_LARGE_WRITE_BUFFER', # speeds up SD card writes ~3x
      'DEFINES+=-DESPR_LCD_MANUAL_BACKLIGHT', # Pipboy handles LCD backlight on/off so we can reduce flicker
+     'DEFINES+=-DESPR_DISABLE_KICKWATCHDOG_PIN=BTN10_PININDEX', # If the power button is held, don't kick watchdog so we reboot
      'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
      'STLIB=STM32F407xx',
      '-DHSE_VALUE=9000000',
@@ -64,7 +65,10 @@ info = {
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_28.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_23.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_18.c',
-     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_16.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_16.c',    
+     'DEFINES+=-DUSBD_MANUFACTURER_STRING=\'"The Wand Company"\'',
+     'DEFINES+=-DUSBD_PRODUCT_STRING_FS=\'"Pip-Boy"\'',
+     'DEFINES+=-DUSB_PRODUCT_ID=0xA4F1', # 0xA4F1 assigned by ST for the Pip-Boy (0xA4DF = Tricorder)
 #     'USE_DFU=1'
    ]
   }

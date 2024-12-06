@@ -137,6 +137,7 @@ typedef struct JslCharPos {
 
 void jslCharPosFree(JslCharPos *pos);
 void jslCharPosClone(JslCharPos *dstpos, JslCharPos *pos);
+void jslCharPosClear(JslCharPos *pos); ///< clear charpos (if was an undefined value)
 void jslCharPosFromLex(JslCharPos *dstpos);
 void jslCharPosNew(JslCharPos *dstpos, JsVar *src, size_t tokenStart);
 

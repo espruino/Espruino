@@ -85,6 +85,11 @@ g.clear().setFont("4x6:2");
 lines = g.wrapString("Hello there lots of text here", 64);
 SHOULD_BE(lines, ["Hello","there","lots of","text","here"]);
 
+// char at end missing: https://github.com/espruino/Espruino/issues/2572
+g.clear().setFont("4x6");
+lines = g.wrapString('test.a', 100);
+SHOULD_BE(lines, ["test.a"]);
+
 // wrap string correctly when an image is inline
 var g = Graphics.createArrayBuffer(32,16,8);
 g.clear().setFont("4x6");

@@ -192,6 +192,7 @@ int jswrap_badge_capSense(int corner) {
     "type" : "staticmethod",
     "class" : "Badge",
     "name" : "getBatteryPercentage",
+    "deprecated" : true,
     "generate" : "jswrap_badge_getBatteryPercentage",
     "return" : ["int", "A percentage between 0 and 100" ]
 }

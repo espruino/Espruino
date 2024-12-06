@@ -62,6 +62,8 @@ typedef struct JsFile {
   JsFileData *data;
 } PACKED_FLAGS JsFile;
 
+/// Uninit all software-related SD card stuff - but don't de-init hardware
+void jswrap_file_kill_sw();
 // Called when stopping, to make sure all files are closed
 void jswrap_file_kill();
 bool jsfsInit();

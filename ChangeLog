@@ -62,6 +62,12 @@
             Pixl.js: Remove Wiznet W5100 support from default build (there's now a espruino_#v##_pixljs_wiznet.zip without JIT enabled) to ensure we have enough flash to continue builds
             Enable nostartfiles optimisation for Pixl,MDBT42 and nRF52DK
             STM32F4: Add SDIO support
+            STM32: Ensure we kick the WDT if auto kicking is enabled and in deep sleep (avoids having to to it manually and wait 30ms for USB to wake up/shut down)
+            Allow a 'file receive' packet which can request Espruino sends a file as binary packets (also fix files not being closed if transmission fails)
+            Fix parsing of semicolons in DO with a statement: `do print(a);while(a--);`
+            In SAVE_ON_FLASH builds (Microbit 1) remove getSerial, Math.LN*/LOG*SQRT* constants, passwords, Serial/I2C/SPI.find, Date.toUTCString
+            ESP32: add setIP and setAPIP 
+            Graphics.wrapString fix issue with missing final char if immediately after a '.' or other char we can split after (#2572)
             
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)

@@ -71,7 +71,9 @@ if "check_output" not in dir( subprocess ):
 #                      // EV_CUSTOM = Called whenever an event of type EV_CUSTOM is received (jswOnCustomEvent(event))
 #                      // EV_xxx = Something to be called with a character in an IRQ when it is received (eg. EV_SERIAL1) (jswOnCharEvent)
 #                      // powerusage = fn(JsVar*) called with an object, and should insert fields for deviec names and estimated power usage in uA (jswGetPowerUsage)
-#         "class" : "Double", "name" : "doubleToIntBits",
+#         "class" : "Double", 
+#         "name" : "doubleToIntBits",
+#         "deprecated" : "2v24", // mark that this may be removed in the future (version=when it was deprecated). Adds a comment to description
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
 #         "generate_full|generate|wrap" : "*(JsVarInt*)&x", // if generate=false, it'll only be used for docs
 #         "generate_js" : "full/file/path.js", // you can supply a JS file instead of 'generate' above. Should be of the form '(function(args) { ... })'
@@ -206,10 +208,14 @@ def get_jsondata(is_for_document, parseArgs = True, boardObject = False):
         try:
           jsondata = json.loads(jsonstring)
           if len(description): jsondata["description"] = description;
+          else: jsondata["description"] = ""
           jsondata["filename"] = jswrap
           if jswrap[-2:]==".c":
             jsondata["include"] = jswrap[:-2]+".h"
           jsondata["githublink"] = "https://github.com/espruino/Espruino/blob/"+githash+"/"+jswrap+"#L"+str(linenumber)
+
+          if "deprecated" in jsondata and not "deprecated" in jsondata["description"].lower():
+            jsondata["description"] = "**DEPRECATED** - this will be removed in subsequent versions of Espruino\n\n" + jsondata["description"];
 
           dropped_prefix = "Dropped "
           if "name" in jsondata: dropped_prefix += jsondata["name"]+" "

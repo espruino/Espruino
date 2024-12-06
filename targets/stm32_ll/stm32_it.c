@@ -272,6 +272,7 @@ static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
     if (jshIsSerial7Bit(device)) ch &= 0x7F;
     /* Put it in our queue */
     jshPushIOCharEvent(device, ch);
+    jshHadEvent();
   }
   /* If overrun condition occurs, clear the ORE flag and recover communication */
   if (LL_USART_IsActiveFlag_ORE(USART) != RESET)

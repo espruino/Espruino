@@ -235,7 +235,7 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
           /*Get amount of data transfered*/
           size_t size = app_usbd_cdc_acm_rx_size(p_cdc_acm);
           jshPushIOCharEvents(EV_USBSERIAL,  m_rx_buffer, size);
-
+          jshHadEvent();
 
           /*Setup next transfer*/
           ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
@@ -309,7 +309,6 @@ static uint8_t pwmClocks[PWM_COUNTERS];
 
 /// For flash - whether it is busy or not...
 volatile bool flashIsBusy = false;
-volatile bool hadEvent = false; // set if we've had an event we need to deal with
 unsigned int ticksSinceStart = 0;
 
 #if GPIO_COUNT>1
@@ -625,12 +624,6 @@ const nrf_drv_twis_t *jshGetTWIS(IOEventFlags device) {
   return 0;
 }
 #endif
-
-
-/// Called when we have had an event that means we should execute JS
-void jshHadEvent() {
-  hadEvent = true;
-}
 
 void TIMER1_IRQHandler(void) {
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
@@ -1678,7 +1671,6 @@ static void jsvPinWatchHandler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t a
     lastHandledPinState = !lastHandledPinState;
   IOEventFlags evt = jshGetEventFlagsForWatchedPin(pin);
   jshPushIOWatchEvent(evt);
-  jshHadEvent();
 }
 
 
@@ -1749,6 +1741,9 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 }
 
 void jshKickWatchDog() {
+#ifdef ESPR_DISABLE_KICKWATCHDOG_PIN // if this pin is asserted, don't kick the watchdog
+  if (jshPinGetValue(ESPR_DISABLE_KICKWATCHDOG_PIN)) return;
+#endif
   NRF_WDT->RR[0] = 0x6E524635;
 }
 
@@ -2209,7 +2204,6 @@ static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
         break;
     case TWIS_EVT_READ_DONE:
         jshPushIOEvent(EV_I2C1, twisAddr|0x80|(p_event->data.tx_amount<<8)); // send event to indicate a read
-        jshHadEvent();
         twisAddr += p_event->data.tx_amount;
         break;
     case TWIS_EVT_WRITE_REQ:
@@ -2221,7 +2215,6 @@ static void twis_event_handler(nrf_drv_twis_evt_t const * const p_event)
           twisAddr = twisRxBuf[0];
           if (p_event->data.rx_amount>1) {
             jshPushIOEvent(EV_I2C1, twisAddr|((p_event->data.rx_amount-1)<<8)); // send event to indicate a write
-            jshHadEvent();
             JsVar *i2c = jsvObjectGetChildIfExists(execInfo.root,"I2C1");
             if (i2c) {
               JsVar *buf = jsvObjectGetChildIfExists(i2c,"buffer");
@@ -2743,7 +2736,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
   }
   jsiSetSleep(JSI_SLEEP_ASLEEP);
-  while (!hadEvent) {
+  while (!jshHadEventDuringSleep) {
 #ifdef NRF52_SERIES
     /*
      * Clear FPU exceptions.
@@ -2762,7 +2755,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     while (app_usbd_event_queue_process()); /* Nothing to do */
     #endif
   }
-  hadEvent = false;
+  jshHadEventDuringSleep = false;
   jsiSetSleep(JSI_SLEEP_AWAKE);
 #ifdef BLUETOOTH
   // we don't care about the return codes...
@@ -2925,12 +2918,10 @@ void COMP_LPCOMP_IRQHandler() {
   if (nrf_lpcomp_event_check(NRF_LPCOMP_EVENT_UP) && nrf_lpcomp_int_enable_check(LPCOMP_INTENSET_UP_Msk)) {
     nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_UP);
     jshPushIOEvent(EV_CUSTOM, EVC_LPCOMP | EVC_DATA_LPCOMP_UP);
-    jshHadEvent();
   }
   if (nrf_lpcomp_event_check(NRF_LPCOMP_EVENT_DOWN) && nrf_lpcomp_int_enable_check(LPCOMP_INTENSET_DOWN_Msk)) {
     nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_DOWN);
     jshPushIOEvent(EV_CUSTOM, EVC_LPCOMP);
-    jshHadEvent();
   }
 }
 

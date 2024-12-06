@@ -36,6 +36,7 @@ void jswrap_pb_blitImage(JsVar *image, int x, int y, JsVar *options);
 void jswrap_pb_getAudioWaveform(JsVar *dst, int y1, int y2);
 bool jswrap_pb_audioIsPlaying();
 JsVar *jswrap_pb_streamPlaying();
+void jswrap_pb_setPalette(JsVar *pal);
 
 void jswrap_pb_init();
 void jswrap_pb_kill();
