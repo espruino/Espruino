@@ -3411,6 +3411,9 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
   if (conn_handle == m_peripheral_conn_handle) {
     jsvObjectSetChildAndUnLock(result, "connectionInterval", jsvNewFromInteger(blePeriphConnectionInterval));
   }
+#ifdef ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
+  jsvObjectSetChildAndUnLock(result, "privacy", jsble_getPrivacy());
+#endif // ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
   if (conn_handle == BLE_CONN_HANDLE_INVALID) {
     jsvObjectSetChildAndUnLock(result, "connected", jsvNewFromBool(false));
     return result;
@@ -3422,9 +3425,6 @@ JsVar *jsble_get_security_status(uint16_t conn_handle) {
     jsvObjectSetChildAndUnLock(result, "encrypted", jsvNewFromBool(status.encrypted));
     jsvObjectSetChildAndUnLock(result, "mitm_protected", jsvNewFromBool(status.mitm_protected));
     jsvObjectSetChildAndUnLock(result, "bonded", jsvNewFromBool(status.bonded));
-#ifdef ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
-    jsvObjectSetChildAndUnLock(result, "privacy", jsble_getPrivacy());
-#endif // ESPR_BLE_PRIVATE_ADDRESS_SUPPORT
 #ifndef SAVE_ON_FLASH
     if (status.connected && conn_handle==m_peripheral_conn_handle)
       jsvObjectSetChildAndUnLock(result, "connected_addr", bleAddrToStr(m_peripheral_addr));
