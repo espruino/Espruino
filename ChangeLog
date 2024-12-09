@@ -69,6 +69,7 @@
             ESP32: add setIP and setAPIP 
             Graphics.wrapString fix issue with missing final char if immediately after a '.' or other char we can split after (#2572)
             Graphics: g.dump/asBMP can now output 16 bit images
+            Crypto: Add support for AES CCM
             
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)
