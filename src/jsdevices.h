@@ -55,6 +55,9 @@ typedef enum {
 #ifdef BLUETOOTH
   EV_BLUETOOTH, ///< Bluetooth LE
 #endif
+#ifdef USE_SWDCON
+  EV_SWDCON, /// console over in memory buffer accessible via SWD
+#endif
 #if ESPR_USART_COUNT>=1
   EV_SERIAL1, // Used for IO for UARTS
 #endif
@@ -216,6 +219,8 @@ int jshGetEventsUsed();
 
 /// Do we have enough space for N characters?
 bool jshHasEventSpaceForChars(int n);
+/// How many characters can we write?
+int jshGetIOCharEventsFree();
 
 const char *jshGetDeviceString(IOEventFlags device);
 IOEventFlags jshFromDeviceString(const char *device);

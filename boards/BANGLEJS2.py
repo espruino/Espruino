@@ -39,6 +39,7 @@ info = {
      'AES_CCM',
      'LCD_MEMLCD',
      'TENSORFLOW',
+     'SWDCON', # RTT console over SWD
      'JIT' # JIT compiler enabled
    ],
    'makefile' : [
