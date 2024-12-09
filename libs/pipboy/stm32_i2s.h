@@ -19,8 +19,14 @@
 
 #define I2S_DMA_BUFFER_SIZE 2048 // size of i2sDMAbuf (DMA direct to I2S) in u16
 // 16kHz sample rate, 2xu16 = ~16Hz IRQ rate
-#define I2S_RING_BUFFER_SIZE 16384 // size of ringbuffer used for audio input in u16
+#define I2S_RING_BUFFER_SIZE 8192 // size of ringbuffer used for audio input in u16
 // 8192 seems fine to use - still enough for 8 DMA packets worth/0.5sec...
+
+/* jswrap_pb_audioFrame sends data in 2048 byte chunks and STM32_I2S_AddSamples
+starts playback at 3*I2S_DMA_BUFFER_SIZE. So I2S_RING_BUFFER_SIZE=8192
+is the least we can use, since any less and 3*I2S_DMA_BUFFER_SIZE would be
+big enough that the next sample from jswrap_pb_audioFrame would fill the buffer */
+
 
 typedef enum {
   STM32_I2S_STOPPED,

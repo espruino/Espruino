@@ -179,6 +179,7 @@ These are set automatically when `SAVE_ON_FLASH` is set (see `jsutils.h`)
 * `ESPR_NO_LET_SCOPING` - don't create scopes for `let` (treat it like `var`, which was the 2v13 and earlier behaviour)
 * `ESPR_NO_PROMISES` - Don't include promise-handling functions
 * `ESPR_NO_PRETOKENISE` - Don't include code to pretokenise functions marked with `"ram"` - code pretokenised in the IDE can still be executed
+* `ESPR_NO_PASSWORD` - Disable password protection on the console (E.setPassword/E.lockConsole)
 
 
 ### chip

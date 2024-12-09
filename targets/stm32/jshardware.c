@@ -81,6 +81,9 @@ JsSysTime jshGetRTCSystemTime();
 
 static JsSysTime jshGetTimeForSecond();
 
+/// Max time we can sleep in JsSysTime units for the watchdog timer - we need this so we don't get rebooted it auto kicking is enabled
+uint32_t watchdogSleepMax;
+
 // The amount of systicks for one second depends on the clock speed
 #define SYSTICKS_FOR_ONE_SECOND (1+(CLOCK_SPEED_MHZ*1000000/SYSTICK_RANGE))
 
@@ -1551,7 +1554,7 @@ void jshIdle() {
   if (wasUSBConnected != USBConnected) {
     wasUSBConnected = USBConnected;
     if (USBConnected)
-      jshClearUSBIdleTimeout();
+      jshUSBReceiveLastActive = JSH_USB_MAX_INACTIVITY_TICKS; // set to max so we're not connected until the first data request
     if (USBConnected && jsiGetConsoleDevice()!=EV_LIMBO) {
       if (!jsiIsConsoleDeviceForced())
         jsiSetConsoleDevice(EV_USBSERIAL, false);
@@ -2692,6 +2695,8 @@ void jshClearUSBIdleTimeout() {
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
+  bool isAutoWDT = jsiStatus & JSIS_WATCHDOG_AUTO;
+
 #ifdef USE_RTC
   /* TODO:
        Check jsiGetConsoleDevice to make sure we don't have to wake on USART (we can't do this fast enough)
@@ -2706,7 +2711,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #else
       (timeUntilWake > (jshGetTimeForSecond()*16*2/jshRTCPrescaler)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake in time
 #endif
-      !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
+      !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop so we can't sleep
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
 #ifdef USB
       !USB_IsConnected() &&
@@ -2729,93 +2734,106 @@ bool jshSleep(JsSysTime timeUntilWake) {
     ADC_Cmd(ADC4, DISABLE); // ADC off
 #endif
 #ifdef USB
-    jshSetUSBPower(false);
+    jshSetUSBPower(false); // WARNING: takes 25ms
+    bool wokenByUSB = false;
 #endif // USB
 
+  do { // we loop here so we can half-wake to kick the WDT without incurring wait for USB
+    JsSysTime timeToSleep = timeUntilWake;
+    // Don't sleep so long the WDT goes off!
+    if (isAutoWDT && timeToSleep>watchdogSleepMax)
+      timeToSleep = watchdogSleepMax;
+    // if JSSYSTIME_MAX we just sleep as long as possible unless woken by something else
+    if (timeUntilWake!=JSSYSTIME_MAX)
+      timeUntilWake -= timeToSleep;
+    if (isAutoWDT) jshKickWatchDog();
     /* Add EXTI for Serial port */
     //jshPinWatch(JSH_PORTA_OFFSET+10, true);
     /* add exti for USB */
 #ifdef USB
 #ifdef STM32F1
-    // USB has 15k pull-down resistors (and STM32 has 40k pull up)
-    Pin usbPin = JSH_PORTA_OFFSET+11;
-    jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN_PULLUP);
-    Pin oldWatch = watchedPins[pinInfo[usbPin].pin];
-    jshPinWatch(usbPin, true, JSPW_NONE);
+      // USB has 15k pull-down resistors (and STM32 has 40k pull up)
+      Pin usbPin = JSH_PORTA_OFFSET+11;
+      jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN_PULLUP);
+      Pin oldWatch = watchedPins[pinInfo[usbPin].pin];
+      jshPinWatch(usbPin, true, JSPW_NONE);
 #endif
 #ifdef USB_VSENSE_PIN
-    // USB_VSENSE_PIN is connected to USB 5v (and pulled down by a 100k resistor)
-    // ... so wake up if it goes high
-    Pin oldWatch = watchedPins[pinInfo[USB_VSENSE_PIN].pin];
-    jshPinWatch(USB_VSENSE_PIN, true, JSPW_NONE);
+      // USB_VSENSE_PIN is connected to USB 5v (and pulled down by a 100k resistor)
+      // ... so wake up if it goes high
+      Pin oldWatch = watchedPins[pinInfo[USB_VSENSE_PIN].pin];
+      jshPinWatch(USB_VSENSE_PIN, true, JSPW_NONE);
 #endif
 #endif // USB
 
-    if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
-      unsigned int ticks = (unsigned int)(timeUntilWake/jshGetTimeForSecond()); // ensure we round down and leave a little time
+      if (timeToSleep!=JSSYSTIME_MAX) { // set alarm
+        unsigned int ticks = (unsigned int)(timeToSleep/jshGetTimeForSecond()); // ensure we round down and leave a little time
 
 #ifdef STM32F1
-      /* If we're going asleep for more than a few seconds,
-       * add one second to the sleep time so that when we
-       * wake up, we execute our timer immediately (even if it is a bit late)
-       * and don't waste power in shallow sleep. This is documented in setInterval */
-      if (ticks>3) ticks++; // sleep longer than we need
+        /* If we're going asleep for more than a few seconds,
+        * add one second to the sleep time so that when we
+        * wake up, we execute our timer immediately (even if it is a bit late)
+        * and don't waste power in shallow sleep. This is documented in setInterval */
+        if (ticks>3) ticks++; // sleep longer than we need
 
-      RTC_SetAlarm(RTC_GetCounter() + ticks);
-      RTC_ITConfig(RTC_IT_ALR, ENABLE);
-      //RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
-      RTC_WaitForLastTask();
+        RTC_SetAlarm(RTC_GetCounter() + ticks);
+        RTC_ITConfig(RTC_IT_ALR, ENABLE);
+        //RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
+        RTC_WaitForLastTask();
 #else // If available, just use the WakeUp counter
-      if (ticks < ((65536*16) / jshRTCPrescaler)) {
-        // if the delay is small enough, clock the WakeUp counter faster so we can sleep more accurately
-        RTC_WakeUpClockConfig(RTC_WakeUpClock_RTCCLK_Div16);
-        ticks = (unsigned int)((timeUntilWake*jshRTCPrescaler) / (jshGetTimeForSecond()*16));
-      } else { // wakeup in seconds
-        RTC_WakeUpClockConfig(RTC_WakeUpClock_CK_SPRE_16bits);
-        if (ticks > 65535) ticks = 65535;
+        if (ticks < ((65536*16) / jshRTCPrescaler)) {
+          // if the delay is small enough, clock the WakeUp counter faster so we can sleep more accurately
+          RTC_WakeUpClockConfig(RTC_WakeUpClock_RTCCLK_Div16);
+          ticks = (unsigned int)((timeToSleep*jshRTCPrescaler) / (jshGetTimeForSecond()*16));
+        } else { // wakeup in seconds
+          RTC_WakeUpClockConfig(RTC_WakeUpClock_CK_SPRE_16bits);
+          if (ticks > 65535) ticks = 65535;
+        }
+        RTC_SetWakeUpCounter(ticks - 1); // 0 based
+        RTC_ITConfig(RTC_IT_WUT, ENABLE);
+        RTC_WakeUpCmd(ENABLE);
+        RTC_ClearFlag(RTC_FLAG_WUTF);
+#endif
       }
-      RTC_SetWakeUpCounter(ticks - 1); // 0 based
-      RTC_ITConfig(RTC_IT_WUT, ENABLE);
-      RTC_WakeUpCmd(ENABLE);
-      RTC_ClearFlag(RTC_FLAG_WUTF);
-#endif
-    }
-    // set flag in case there happens to be a SysTick
-    hasSystemSlept = true;
-    // -----------------------------------------------
+      // set flag in case there happens to be a SysTick
+      hasSystemSlept = true;
+      // -----------------------------------------------
 #ifdef STM32F4
-    /* FLASH Deep Power Down Mode enabled */
-    PWR_FlashPowerDownCmd(ENABLE);
+      /* FLASH Deep Power Down Mode enabled */
+      PWR_FlashPowerDownCmd(ENABLE);
 #endif
-    /* Request to enter STOP mode with regulator in low power mode*/
-    PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
-    // -----------------------------------------------
-    if (timeUntilWake!=JSSYSTIME_MAX) { // disable alarm
+      /* Request to enter STOP mode with regulator in low power mode*/
+      PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
+      // -----------------------------------------------
+      if (timeToSleep!=JSSYSTIME_MAX) { // disable alarm
 #ifdef STM32F1
-      RTC_ITConfig(RTC_IT_ALR, DISABLE);
-      //RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
+        RTC_ITConfig(RTC_IT_ALR, DISABLE);
+        //RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
 #else
-      RTC_ITConfig(RTC_IT_WUT, DISABLE);
-      RTC_WakeUpCmd(DISABLE);
+        RTC_ITConfig(RTC_IT_WUT, DISABLE);
+        RTC_WakeUpCmd(DISABLE);
 #endif
-    }
+      }
 #ifdef USB
-    bool wokenByUSB = false;
+      wokenByUSB = false;
 #ifdef STM32F1
-    wokenByUSB = jshPinGetValue(usbPin)==0;
-    // remove watches on pins
-    jshPinWatch(usbPin, false, JSPW_NONE);
-    if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true, JSPW_NONE);
-    jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN);
+      wokenByUSB = jshPinGetValue(usbPin)==0;
+      // remove watches on pins
+      jshPinWatch(usbPin, false, JSPW_NONE);
+      if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true, JSPW_NONE);
+      jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN);
 #endif
 #ifdef USB_VSENSE_PIN
-    // remove watch and restore old watch if there was one
-    // setting that we've woken lets the board stay awake
-    // until a USB connection can be established
-    if (jshPinGetValue(USB_VSENSE_PIN)) wokenByUSB=true;
-    jshPinWatch(USB_VSENSE_PIN, false, JSPW_NONE);
-    if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true, JSPW_NONE);
+      // remove watch and restore old watch if there was one
+      // setting that we've woken lets the board stay awake
+      // until a USB connection can be established
+      if (jshPinGetValue(USB_VSENSE_PIN)) wokenByUSB=true;
+      jshPinWatch(USB_VSENSE_PIN, false, JSPW_NONE);
+      if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true, JSPW_NONE);
 #endif
+    } while (timeUntilWake>0 && !wokenByUSB && !jshHadEventDuringSleep);
+    jshHadEventDuringSleep = false;
+    if (isAutoWDT) jshKickWatchDog();
 #endif
     // recover oscillator
     RCC_HSEConfig(RCC_HSE_ON);
@@ -2827,7 +2845,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     }
     RTC_WaitForSynchro(); // make sure any RTC reads will be done
 #ifdef USB
-    jshSetUSBPower(true);
+    jshSetUSBPower(true); // WARNING: takes 3ms
     if (wokenByUSB)
       jshLastWokenByUSB = jshGetRTCSystemTime();
 #endif
@@ -2837,6 +2855,11 @@ bool jshSleep(JsSysTime timeUntilWake) {
   if (timeUntilWake > jshGetTimeFromMilliseconds(ESPR_MIN_WFI_TIME_MS)) {
     /* don't bother sleeping if the time period is so low we
      * might miss the timer */
+
+    // Dont' sleep too long if auto WDT enabled (we'll kick when we go around idle loop)
+    if (isAutoWDT && timeUntilWake > watchdogSleepMax)
+      timeUntilWake = watchdogSleepMax;
+
     JsSysTime sysTickTime;
 #ifdef USE_RTC
     sysTickTime = expectedSysTickTime*5/4;
@@ -2856,6 +2879,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
     __WFI(); // Wait for Interrupt
     jsiSetSleep(JSI_SLEEP_AWAKE);
+    jshHadEventDuringSleep = false;
 
     /* We may have woken up before the wakeup event. If so
     then make sure we clear the event */
@@ -3003,6 +3027,9 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 
     /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
     IWDG_Enable();
+
+    // save timeout so when we sleep we don't sleep so long we get rebooted (use wdt time / 2)
+    watchdogSleepMax = (uint32_t)jshGetTimeFromMilliseconds(timeout*1000 / 2);
 }
 
 // Kick the watchdog

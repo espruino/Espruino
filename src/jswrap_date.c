@@ -736,6 +736,7 @@ JsVar *jswrap_date_toString(JsVar *parent) {
   "type" : "method",
   "class" : "Date",
   "name" : "toUTCString",
+  "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_date_toUTCString",
   "return" : ["JsVar","A String"],
   "typescript" : "toUTCString(): string;"

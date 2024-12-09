@@ -633,6 +633,7 @@ static uint8_t  USBD_CDC_HID_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
   if (handle) {
     // Process data
     jshPushIOCharEvents(EV_USBSERIAL, (char*)handle->cdcRX, rxLength);
+    jshHadEvent();
 
     // Set CDC_READ_WAIT_EMPTY flag - we'll re-enable USB RX using
     // USBD_LL_PrepareReceive ONLY when we have enough space

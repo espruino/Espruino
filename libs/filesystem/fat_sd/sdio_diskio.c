@@ -1,6 +1,6 @@
 // USED FOR SDIO-BASED SD CARDS
 /*
- * @author: ickle 
+ * @author: ickle
  * @source: http://www.61ic.com/code/archiver/?tid-27986.html
  */
 
@@ -175,10 +175,12 @@ DRESULT disk_ioctl (
     res = RES_OK;
     break;
 
-  case GET_SECTOR_COUNT :   // Get number of sectors on the disk (DWORD)
-    *(DWORD*)buff = 131072; // 4*1024*32 = 131072
+  case GET_SECTOR_COUNT : {  // Get number of sectors on the disk (DWORD)
+    SD_CardInfo SDCardInfo;
+    SD_GetCardInfo(&SDCardInfo);
+    *(DWORD*)buff = SDCardInfo.CardCapacity>>9;
     res = RES_OK;
-    break;
+  } break;
 
   case GET_SECTOR_SIZE :   // Get R/W sector size (WORD)
     *(WORD*)buff = 512;

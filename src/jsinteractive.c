@@ -76,6 +76,7 @@ typedef enum {
   PT_TYPE_EVENT = 0x4000, // parse as JSON and create `E.on('packet', ...)` event
   PT_TYPE_FILE_SEND = 0x6000, // called before DATA, with {fn:"filename",s:123}
   PT_TYPE_DATA = 0x8000, // Sent after FILE_SEND with blocks of data for the file
+  PT_TYPE_FILE_RECV = 0xA000 // receive a file - returns a series of PT_TYPE_DATA packets, with a final zero length packet to end
 } PACKED_FLAGS PacketLengthFlags;
 /* Packets work as follows - introduced 2v25
 
@@ -137,6 +138,9 @@ JsErrorFlags lastJsErrorFlags = 0; ///< Compare with jsErrorFlags in order to re
 void jsiDebuggerLine(JsVar *line);
 #endif
 void jsiCheckErrors();
+
+static void jsiPacketFileEnd();
+static void jsiPacketExit();
 // ----------------------------------------------------------------------------
 
 /**
@@ -166,7 +170,11 @@ NO_INLINE bool jsiEcho() {
 }
 
 NO_INLINE bool jsiPasswordProtected() {
+#ifndef ESPR_NO_PASSWORD
   return ((jsiStatus&JSIS_PASSWORD_PROTECTED)!=0);
+#else
+  return 0;
+#endif
 }
 
 static bool jsiShowInputLine() {
@@ -773,6 +781,9 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
 // Used when shutting down before flashing
 // 'release' anything we are using, but ensure that it doesn't get freed
 void jsiSoftKill() {
+  // Close any open file transfers
+  jsiPacketFileEnd();
+  jsiPacketExit();
   // Execute `kill` events on `E`
   jsiExecuteEventCallbackOn("E", KILL_CALLBACK_NAME, 0, 0);
   jsiCheckErrors();
@@ -885,11 +896,13 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
     jspSoftInit();
   }
 
+#ifndef ESPR_NO_PASSWORD
   // If a password was set, apply the lock
   JsVar *pwd = jsvObjectGetChildIfExists(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME);
   if (pwd)
     jsiStatus |= JSIS_PASSWORD_PROTECTED;
   jsvUnLock(pwd);
+#endif
 
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit(!autoLoad);
@@ -1319,9 +1332,8 @@ void jsiCheckErrors() {
   }
 }
 
-
-void jsiAppendStringToInputLine(const char *strToAppend) {
-  // Add the string to our input line
+/// Add the given string to our input line
+static void jsiAppendStringToInputLine(const char *strToAppend) {
   jsiIsAboutToEditInputLine();
 
   size_t strSize = 1;
@@ -1562,7 +1574,28 @@ void jsiHandleNewLine(bool execute) {
   }
 }
 
-void jsiPacketFileEnd() {
+/// Called 10s after PT_TYPE_FILE_SEND if no packets received
+static void jsiPacketFileTimeoutHandler() {
+  jsiPacketFileEnd();
+}
+
+/// Clear and optionally create a new timeout for file reception errors
+static void jsiPacketFileSetTimeout(bool createNew) {
+  // cancel timeout
+  JsVar *timeout = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "PK_FTIMEOUT");
+  if (timeout) {
+    jsiClearTimeout(timeout);
+    jsvUnLock(timeout);
+  }
+  // add new if needed
+  if (createNew)
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "PK_FTIMEOUT", jsiSetTimeout(jsiPacketFileTimeoutHandler, 10000));
+  else
+    jsvObjectRemoveChild(execInfo.hiddenRoot, "PK_FTIMEOUT");
+}
+
+/// Called when file transmission has finished (or when there's a timeout)
+static void jsiPacketFileEnd() {
 #ifdef USE_FILESYSTEM
    JsVar *r = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "PK_FILE");
    if (r) {
@@ -1577,12 +1610,14 @@ void jsiPacketFileEnd() {
 #endif
   // remove stored data
   jsvObjectRemoveChild(execInfo.hiddenRoot, "PK_FILE");
+  // cancel timeout
+  jsiPacketFileSetTimeout(false);
 }
 
-void jsiPacketExit() {
+/// Called when packet reception is finished (or times out)
+static void jsiPacketExit() {
   inputState = IPS_NONE;
   inputPacketLength = 0;
-  // cancel timeout
   // cancel timeout
   JsVar *timeout = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "PK_TIMEOUT");
   if (timeout) {
@@ -1597,14 +1632,15 @@ void jsiPacketExit() {
   jsvObjectRemoveChild(execInfo.hiddenRoot, "PK_IL");
 }
 
-// Called 1s after SOH if Packet not complete
-void jsiPacketTimeoutHandler() {
+/// Called 1s after SOH if Packet not complete
+static void jsiPacketTimeoutHandler() {
   jsiConsolePrintChar(ASCII_NAK);
   //jshTransmitPrintf(DEFAULT_CONSOLE_DEVICE, "Packet Timeout\n");
   jsiPacketExit();
 }
 
-void jsiPacketStart() {
+/// Called when packet reception starts - allocates data and adds a timeout
+static void jsiPacketStart() {
   inputState = IPS_PACKET_TRANSFER_BYTE0;
   jsiInputLineCursorMoved(); // unlock iterator
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "PK_IL", inputLine); // back up old inputline
@@ -1612,17 +1648,18 @@ void jsiPacketStart() {
   inputLine = jsvNewFromEmptyString();
 }
 
-void jsiPacketReply(JsVar *data) { // data should be a string
-  uint16_t len = PT_TYPE_RESPONSE | (uint16_t)jsvGetStringLength(data); // assume not more than 0x1FFF chars
+/// Called to send a response packet
+static void jsiPacketReply(PacketLengthFlags type, JsVar *data) { // data should be a string
+  uint16_t len = type | (uint16_t)jsvGetStringLength(data); // assume not more than 0x1FFF chars
   jsiConsolePrintChar(ASCII_DLE);
   jsiConsolePrintChar(ASCII_SOH);
   jsiConsolePrintChar((char)(len>>8));
   jsiConsolePrintChar((char)(len&255));
-  jsiConsolePrintStringVar(data);
+  if (data) jsiConsolePrintStringVar(data);
 }
 
 // Called when all data we need is in inputLine, inputPacketLength contains length and flags
-void jsiPacketProcess() {
+static void jsiPacketProcess() {
   PacketLengthFlags packetType = inputPacketLength & PT_TYPE_MASK;
   inputPacketLength &= PT_SIZE_MASK;
   if (packetType == PT_TYPE_EVAL) {
@@ -1633,7 +1670,7 @@ void jsiPacketProcess() {
     } else {
       jsiConsolePrintChar(ASCII_ACK);
       JsVar *v = jswrap_espruino_toJS(result);
-      jsiPacketReply(v);
+      jsiPacketReply(PT_TYPE_RESPONSE, v);
       jsvUnLock(v);
     }
     jsvUnLock(result);
@@ -1644,7 +1681,47 @@ void jsiPacketProcess() {
       ok = jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"packet", 1, &r);
     jsvUnLock(r);
     jsiConsolePrintChar(ok ? ASCII_ACK : ASCII_NAK);
+  } else if (packetType == PT_TYPE_FILE_RECV) {
+    JsVar *r = jswrap_json_parse_liberal(inputLine, true/*no exceptions*/);
+    bool ok = jsvIsObject(r);
+    if (ok) {
+      JsVar *fn = jsvObjectGetChildIfExists(r,"fn");
+      ok = jsvIsString(fn);
+#ifdef USE_FILESYSTEM
+      if (ok && jsvObjectGetBoolChild(r,"fs")) { // it's a FS file - load and send packets
+        JsVar *fMode = jsvNewFromString("r");
+        JsVar *f = jswrap_E_openFile(fn, fMode);
+        if (f) {
+          jsiConsolePrintChar(ASCII_ACK);
+          JsVar *d = jswrap_file_read(f, 1024);
+          while (d) {
+            jsiPacketReply(PT_TYPE_DATA, d);
+            jsvUnLock(d);
+            d = jswrap_file_read(f, 1024);
+          }
+          jswrap_file_close(f);
+        } else ok = false;
+        jsvUnLock2(fMode,f);
+      } else
+#endif
+      { // it's a file in Storage, load
+         JsVar *f = jswrap_storage_read(fn, 0, 0);
+         if (f) {
+          jsiConsolePrintChar(ASCII_ACK);
+          size_t len = jsvGetStringLength(f);
+          for (size_t i=0;i<len;i+=1024) {
+            JsVar *d = jsvNewFromStringVar(f, i, 1024);
+            jsiPacketReply(PT_TYPE_DATA, d);
+            jsvUnLock(d);
+          }
+         } else ok = false;
+      }
+      jsvUnLock(fn);
+      if (ok) jsiPacketReply(PT_TYPE_DATA, NULL);
+    }
+    if (!ok) jsiConsolePrintChar(ASCII_NAK); // if ok we'll ack before sending
   } else if (packetType == PT_TYPE_FILE_SEND) {
+    jsiPacketFileEnd(); // remove any existing file
     JsVar *r = jswrap_json_parse_liberal(inputLine, true/*no exceptions*/);
     bool ok = jsvIsObject(r);
     if (ok) {
@@ -1665,6 +1742,7 @@ void jsiPacketProcess() {
     }
     if (ok) {
       jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "PK_FILE", r);
+      jsiPacketFileSetTimeout(true); // add timeout to close file
     }
     jsvUnLock(r);
     jsiConsolePrintChar(ok ? ASCII_ACK : ASCII_NAK);
@@ -1690,6 +1768,7 @@ void jsiPacketProcess() {
       ok = false; // no file set up
     jsvUnLock2(fn,r);
     jsiConsolePrintChar(ok ? ASCII_ACK : ASCII_NAK);
+    jsiPacketFileSetTimeout(true); // reschedule timeout to close file
   } else
     jsiConsolePrintChar(ASCII_NAK);
   // exit packet mode
@@ -1717,7 +1796,7 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 48-57 (numeric digits) then 'd' - set line number, used for that
   //                              inputLine and put into any declared functions
   // 27 then 91 then 49 ('1') then 126 - numpad home
-  // 27 then 91 then 50 ('2') then 75 - Erases the entire current line.
+  // 27 then 91 then 50 ('2') then 72  - Erases the entire current line.
   // 27 then 91 then 51 ('3') then 126 - backwards delete
   // 27 then 91 then 52 ('4') then 126 - numpad end
   // 27 then 91 then 53 ('5') then 126 - pgup
@@ -1726,6 +1805,7 @@ void jsiHandleChar(char ch) {
   // 27 then 79 then 72 - end
   // 27 then 10 - alt enter
 
+#ifndef ESPR_NO_PASSWORD
   if (jsiPasswordProtected()) {
     if (ch=='\r' || ch==10) {
       JsVar *pwd = jsvObjectGetChildIfExists(execInfo.hiddenRoot, PASSWORD_VARIABLE_NAME);
@@ -1745,6 +1825,10 @@ void jsiHandleChar(char ch) {
       jsiAppendToInputLine(ch);
     return;
   }
+#endif
+
+  if (ch==3 && IS_PACKET_TRANSFER(inputState))
+      execInfo.execute &= ~EXEC_CTRL_C_MASK; // if we got Ctrl-C, ignore it
 
   if (inputState == IPS_PACKET_TRANSFER_BYTE0) {
     if (jsvGetStringLength(inputLine)==0)
@@ -1758,8 +1842,6 @@ void jsiHandleChar(char ch) {
     else
       inputState = IPS_PACKET_TRANSFER_DATA;
   } else if (inputState == IPS_PACKET_TRANSFER_DATA) {
-    if (ch==3)
-      execInfo.execute &= ~EXEC_CTRL_C; // if we got Ctrl-C, ignore it
     jsiAppendToInputLine(ch);
     if (inputLineLength >= (inputPacketLength & PT_SIZE_MASK))
       jsiPacketProcess();
@@ -1838,7 +1920,7 @@ void jsiHandleChar(char ch) {
       inputStateNumber = (uint16_t)(10*inputStateNumber + ch - '0');
     } else {
       if (ch=='d') jsiLineNumberOffset = inputStateNumber;
-      else if (ch=='H' /* 75 */) {
+      else if (ch=='H' /* 72 */) {
         if (inputStateNumber==2) jsiClearInputLine(true); // Erase current line
       } else if (ch==126) {
         if (inputStateNumber==1) jsiHandleHome(); // Numpad Home
