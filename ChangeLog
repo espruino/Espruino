@@ -1,4 +1,6 @@
-          : ESP32C3: Get analogRead working correctly
+          : 
+
+     2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)
             Bangle.js1: Switch to space-optimised sin/atan/atan2 to save enough space to continue building
             ESP32C3: don't allow AP *AND* STA mode at the same time - solves issues when just calling 'wifi.connect' at boot
