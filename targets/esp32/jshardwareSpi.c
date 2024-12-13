@@ -62,12 +62,12 @@ void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
 
 /*
 https://hackadaycom.files.wordpress.com/2016/10/esp32_pinmap.png
-HSPI  2 //SPI bus normally mapped to pins 12 - 15, but can be matrixed to any pins
+SPI1 -> HSPI  2 //SPI bus normally mapped to pins 12 - 15, but can be matrixed to any pins
 15  HSPI SS
 14  HSPI SCK
 12  HSPI MISO
 13  HSPI MOSI
-VSPI  3 //SPI bus normally attached to pin:
+SPI2 -> VSPI  3 //SPI bus normally attached to pin:
 5   VSPI SS
 18  VSPI SCK
 19  VSPI MISO

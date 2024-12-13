@@ -17,6 +17,7 @@
   "class" : "lcd_spi_unbuf"
 }*/
 
+#include "lcd_spilcd_info.h"
 #include "lcd_spi_unbuf.h"
 #include "jsutils.h"
 #include "jsinteractive.h"
@@ -61,6 +62,20 @@ static inline bool willFlush(){
 static inline _put_pixel( uint16_t c) {
   _chunk_buffer[_chunk_index++] = c;
   if (_chunk_index==LCD_SPI_UNBUF_LEN) flush_chunk_buffer();
+}
+
+void lcdSendInitCmd_SPILCD() {
+  // Send initialization commands to ST7735
+  const unsigned char *cmd = SPILCD_INIT_CODE;
+  while(cmd[CMDINDEX_DATALEN]!=255) {
+    jshPinSetValue(_pin_cs, 0);
+    spi_cmd(cmd[CMDINDEX_CMD]);
+    if (cmd[CMDINDEX_DATALEN]) spi_data(&cmd[3], cmd[CMDINDEX_DATALEN]);
+    if (cmd[CMDINDEX_DELAY])
+      jshDelayMicroseconds(1000*cmd[CMDINDEX_DELAY]);
+    jshPinSetValue(_pin_cs, 1);
+    cmd += 3 + cmd[CMDINDEX_DATALEN];
+  }
 }
 
  /// flush chunk buffer to screen
@@ -163,6 +178,45 @@ JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options) {
 
   return parent;
 }
+
+#ifdef LCD_SPI_DEVICE
+void lcd_spi_unbuf_init(JsGraphics *gfx) {
+  gfx->data.width = LCD_WIDTH;
+  gfx->data.height = LCD_HEIGHT;
+  gfx->data.bpp = LCD_BPP;
+
+  _pin_mosi = LCD_SPI_MOSI;
+  _pin_clk = LCD_SPI_SCK;
+  _pin_cs = LCD_SPI_CS;
+  _pin_dc = LCD_SPI_DC;
+  _device = LCD_SPI_DEVICE;
+  _colstart = 0;
+  _rowstart = 0;
+
+#ifdef LCD_BL
+  jshPinOutput(LCD_BL, 1);
+#endif
+#ifdef LCD_EN
+  jshPinOutput(LCD_EN, 1);
+#endif
+  jshPinOutput(_pin_dc, 1);
+  jshPinOutput(_pin_cs, 1);
+
+  JshSPIInfo inf;
+  jshSPIInitInfo(&inf);
+#ifndef LCD_SPI_BITRATE
+#define LCD_SPI_BITRATE 8000000
+#endif
+  inf.baudRate = LCD_SPI_BITRATE;
+  inf.pinMOSI = LCD_SPI_MOSI;
+#ifdef LCD_SPI_MISO
+  inf.pinMISO = LCD_SPI_MISO;
+#endif
+  inf.pinSCK = LCD_SPI_SCK;
+  jshSPISetup(_device, &inf);
+  lcdSendInitCmd_SPILCD();
+}
+#endif
 
 void disp_spi_transfer_addrwin(int x1, int y1, int x2, int y2) {
   unsigned char wd[4];
