@@ -59,8 +59,9 @@ done
 source scripts/provision.sh ESP8266_4MB
 source scripts/provision.sh ESP32
 source scripts/provision.sh ESP32C3_IDF4
+source scripts/provision.sh ESP32S3_IDF4
  
-for BOARDNAME in ESP8266_BOARD ESP8266_4MB ESP32 
+for BOARDNAME in ESP8266_BOARD ESP8266_4MB ESP32 ESP32C3_IDF4 ESP32S3_IDF4
 do
   scripts/create_zip_board.sh $BOARDNAME
 done
