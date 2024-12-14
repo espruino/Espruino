@@ -485,8 +485,9 @@ void jshKickWatchDog() {
  */
 bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
   gpio_num_t gpioNum = pinToESP32Pin((Pin)(eventFlag-EV_EXTI0));
-  bool level = gpio_get_level(gpioNum);
-  return level;
+  bool value = gpio_get_level(gpioNum);
+  if (pinInfo[gpioNum].port & JSH_PIN_NEGATED) value=!value;
+  return value;
 }
 
 

@@ -98,7 +98,7 @@ chip = {
 };
 devices = {
   'LED1' : { 'pin' : 'D2' },
-  'BTN1' : { 'pin' : 'D0', "inverted":1, 'pinstate' : 'IN_PULLUP' }
+  'BTN1' : { 'pin' : 'D0' }
 };
 
 # left-right, or top-bottom order
@@ -182,7 +182,7 @@ def get_pins():
   pinutils.findpin(pins, "PD25", True)["functions"]["DAC_OUT1"]=0;
   pinutils.findpin(pins, "PD26", True)["functions"]["DAC_OUT2"]=0;
 
-  pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
+  pinutils.findpin(pins, "PD0", True)["functions"]["NEGATED"]=0; # BTN1 negate
 
   pinutils.findpin(pins, "PD10", True)["functions"]["USART0_TX"]=0;
   pinutils.findpin(pins, "PD16", True)["functions"]["USART2_RX"]=0;
