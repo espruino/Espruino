@@ -59,7 +59,7 @@ static inline bool willFlush(){
   return _chunk_index == LCD_SPI_UNBUF_LEN - 1;
 }
 
-static inline _put_pixel( uint16_t c) {
+static inline void _put_pixel( uint16_t c) {
   _chunk_buffer[_chunk_index++] = c;
   if (_chunk_index==LCD_SPI_UNBUF_LEN) flush_chunk_buffer();
 }
@@ -223,29 +223,29 @@ void lcd_spi_unbuf_init(JsGraphics *gfx) {
 #endif
 
 void disp_spi_transfer_addrwin(int x1, int y1, int x2, int y2) {
-  unsigned char wd[4];
+  uint8_t wd[4];
   flush_chunk_buffer();
   x1 += _colstart;
   y1 += _rowstart;
   x2 += _colstart;
   y2 += _rowstart;
   spi_cmd(0x2A);
-  wd[0] = x1>>8;
-  wd[1] = x1 & 0xFF;
-  wd[2] = x2>>8;
-  wd[3] = x2 & 0xFF;
+  wd[0] = (uint8_t)(x1>>8);
+  wd[1] = (uint8_t)(x1 & 0xFF);
+  wd[2] = (uint8_t)(x2>>8);
+  wd[3] = (uint8_t)(x2 & 0xFF);
   spi_data((uint8_t *)&wd, 4);
   spi_cmd(0x2B);
-  wd[0] = y1>>8;
-  wd[1] = y1 & 0xFF;
-  wd[2] = y2>>8;
-  wd[3] = y2 & 0xFF;
+  wd[0] = (uint8_t)(y1>>8);
+  wd[1] = (uint8_t)(y1 & 0xFF);
+  wd[2] = (uint8_t)(y2>>8);
+  wd[3] = (uint8_t)(y2 & 0xFF);
   spi_data((uint8_t *)&wd, 4);
   spi_cmd(0x2C);
 }
 
 void lcd_spi_unbuf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
-  uint16_t color = (col>>8) | (col<<8);
+  uint16_t color = (uint16_t)((col>>8) | (col<<8)); // endianness
   if (x!=_lastx+1 || y!=_lasty) {
     jshPinSetValue(_pin_cs, 0);
     disp_spi_transfer_addrwin(x, y, gfx->data.width, y+1);
@@ -267,7 +267,7 @@ void lcd_spi_unbuf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
 
 void lcd_spi_unbuf_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, unsigned int col) {
   int pixels = (1+x2-x1)*(1+y2-y1);
-  uint16_t color =   (col>>8) | (col<<8);
+  uint16_t color = (uint16_t)((col>>8) | (col<<8)); // endianness
   jshPinSetValue(_pin_cs, 0);
   disp_spi_transfer_addrwin(x1, y1, x2, y2);
   for (int i=0; i<pixels; i++) _put_pixel(color);
@@ -278,6 +278,13 @@ void lcd_spi_unbuf_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, uns
 
 void lcd_spi_unbuf_scroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
   // don't even try scrolling at the moment - we could maybe adjust display registers but then we have to adjust x/y of any subsequent writes
+  NOT_USED(gfx);
+  NOT_USED(xdir);
+  NOT_USED(ydir);
+  NOT_USED(x1);
+  NOT_USED(y1);
+  NOT_USED(x2);
+  NOT_USED(y2);
 }
 
 void lcd_spi_unbuf_setCallbacks(JsGraphics *gfx) {
