@@ -116,7 +116,7 @@ void jshSPISetup(
     mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 13;
   }
   else {
-     dma_chan = 2;
+    dma_chan = 2;
     sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 5;
     miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 19;
     mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 23;
@@ -139,9 +139,9 @@ void jshSPISetup(
         .queue_size=7,      //We want to be able to queue 7 transactions at a time
     .flags=flags
     };
-  if(SPIChannels[channelPnt].spi){
-  SPIChannelReset(channelPnt);
-  jsWarn("spi was already in use, removed old assignment");
+  if(SPIChannels[channelPnt].spi) {
+    SPIChannelReset(channelPnt);
+    jsWarn("spi was already in use, removed old assignment");
   }
   esp_err_t ret=spi_bus_initialize(SPIChannels[channelPnt].HOST, &buscfg, dma_chan);
   assert(ret==ESP_OK);
@@ -189,20 +189,19 @@ bool jshSPISendMany(IOEventFlags device, unsigned char *tx, unsigned char *rx, s
       return true;
     }
   jshSPIWait(device);
-    int channelPnt = getSPIChannelPnt(device);
+  int channelPnt = getSPIChannelPnt(device);
   esp_err_t ret;
-    memset(&spi_trans, 0, sizeof(spi_trans));
-    spi_trans.length=count*8;
-    spi_trans.tx_buffer=tx;
-    spi_trans.rx_buffer=rx;
+  memset(&spi_trans, 0, sizeof(spi_trans));
+  spi_trans.length=count*8;
+  spi_trans.tx_buffer=tx;
+  spi_trans.rx_buffer=rx;
   spi_Sending = true;
-    ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, rx?0:portMAX_DELAY);
-
+  ret=spi_device_queue_trans(SPIChannels[channelPnt].spi, &spi_trans, rx?0:portMAX_DELAY);
   if (ret != ESP_OK) {
     spi_Sending = false;
-      jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d", ret);
-      return false;
-    }
+    jsExceptionHere(JSET_INTERNALERROR, "SPI Send Error %d", ret);
+    return false;
+  }
   jshSPIWait(device);
   if(callback)callback();
   return true;

@@ -25,10 +25,10 @@
 #include "jswrap_graphics.h"
 #include "jshardware.h"
 
-static int _pin_mosi;
-static int _pin_clk;
-static int _pin_cs;
-static int _pin_dc;
+static Pin _pin_mosi;
+static Pin _pin_clk;
+static Pin _pin_cs;
+static Pin _pin_dc;
 static int _colstart;
 static int _rowstart;
 static int _lastx=-1;
@@ -79,11 +79,15 @@ void lcdSendInitCmd_SPILCD() {
 }
 
  /// flush chunk buffer to screen
-void lcd_flip(JsVar *parent) {
+void lcd_flip() {
   if(_chunk_index == 0) return;
   jshPinSetValue(_pin_cs, 0);
   flush_chunk_buffer();
   jshPinSetValue(_pin_cs, 1);
+}
+
+void graphicsInternalFlip() {
+  lcd_flip();
 }
 
 void jshLCD_SPI_UNBUFInitInfo(JshLCD_SPI_UNBUFInfo *inf) {
@@ -115,7 +119,7 @@ bool jsspiPopulateOptionsInfo( JshLCD_SPI_UNBUFInfo *inf, JsVar *options){
   "generate" : "jswrap_lcd_spi_unbuf_idle"
 }*/
 bool jswrap_lcd_spi_unbuf_idle() {
-    lcd_flip(NULL);
+    lcd_flip();
     return false;
 }
 
@@ -173,7 +177,7 @@ JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options) {
 
   // Create 'flip' fn
   JsVar *fn;
-  fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG);
+  fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID);
   jsvObjectSetChildAndUnLock(parent,"flip",fn);
 
   return parent;
@@ -241,7 +245,7 @@ void disp_spi_transfer_addrwin(int x1, int y1, int x2, int y2) {
 }
 
 void lcd_spi_unbuf_setPixel(JsGraphics *gfx, int x, int y, unsigned int col) {
-  uint16_t color =   (col>>8) | (col<<8);
+  uint16_t color = (col>>8) | (col<<8);
   if (x!=_lastx+1 || y!=_lasty) {
     jshPinSetValue(_pin_cs, 0);
     disp_spi_transfer_addrwin(x, y, gfx->data.width, y+1);
@@ -272,7 +276,12 @@ void lcd_spi_unbuf_fillRect(JsGraphics *gfx, int x1, int y1, int x2, int y2, uns
   _lasty=-1;
 }
 
+void lcd_spi_unbuf_scroll(JsGraphics *gfx, int xdir, int ydir, int x1, int y1, int x2, int y2) {
+  // don't even try scrolling at the moment - we could maybe adjust display registers but then we have to adjust x/y of any subsequent writes
+}
+
 void lcd_spi_unbuf_setCallbacks(JsGraphics *gfx) {
   gfx->setPixel = lcd_spi_unbuf_setPixel;
   gfx->fillRect = lcd_spi_unbuf_fillRect;
+  gfx->scroll = lcd_spi_unbuf_scroll;
 }

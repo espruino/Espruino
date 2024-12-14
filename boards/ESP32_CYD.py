@@ -62,6 +62,7 @@ info = {
      'CRYPTO','SHA256','SHA512',
      'TLS',
      'TELNET',
+     'TERMINAL',
 #     'NEOPIXEL',
      'FILESYSTEM',
      'BLUETOOTH',
@@ -72,7 +73,8 @@ info = {
      'DEFINES+=-DESP_STACK_SIZE=25000',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_SELF_INIT', # ensure graphics instantiates itself
-     'DEFINES+=-DUSE_FONT_6X8 -DSPISENDMANY_BUFFER_SIZE=1600',
+     'DEFINES+=-DUSE_FONT_6X8 -DSPISENDMANY_BUFFER_SIZE=1600 -DLCD_SPI_BITRATE=32000000 -DESPR_TERMNINAL_NO_SCROLL',
+     'WRAPPERSOURCES += libs/misc/jswrap_esp32_cyd.c libs/misc/jswrap_qwiic.c',
      'ESP32_FLASH_MAX=1572864'
    ]
  }
@@ -99,10 +101,10 @@ chip = {
 };
 devices = {
 #https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/blob/main/PINS.md
-  'LED1' : { 'pin' : 'D4' }, # FIXME swap polarity of LEDs
+  'LED1' : { 'pin' : 'D4' },
   'LED2' : { 'pin' : 'D16' },
   'LED3' : { 'pin' : 'D17' },
-  'BTN1' : { 'pin' : 'D0', "inverted":1, 'pinstate' : 'IN_PULLUP' }, # FIXME swap polarity of button
+  'BTN1' : { 'pin' : 'D0' },
   'SD' :  { 'pin_cs' :  'D5', 
             'pin_di' :  'D23',
             'pin_do' :  'D19',
@@ -216,7 +218,10 @@ def get_pins():
   pinutils.findpin(pins, "PD25", True)["functions"]["DAC_OUT1"]=0;
   pinutils.findpin(pins, "PD26", True)["functions"]["DAC_OUT2"]=0;
 
-  pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
+  pinutils.findpin(pins, "PD4", True)["functions"]["NEGATED"]=0; # LED
+  pinutils.findpin(pins, "PD16", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD17", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD0", True)["functions"]["NEGATED"]=0; # BTN1
 
   pinutils.findpin(pins, "PD10", True)["functions"]["USART0_TX"]=0;
   pinutils.findpin(pins, "PD16", True)["functions"]["USART2_RX"]=0;
