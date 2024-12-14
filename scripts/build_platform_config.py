@@ -527,7 +527,8 @@ if "PRESSURE" in board.devices:
 
 if "TOUCH" in board.devices:
   codeOut("#define TOUCH_DEVICE \""+board.devices["TOUCH"]["device"].upper()+"\"")
-  codeOut("#define TOUCH_ADDR "+str(board.devices["TOUCH"]["addr"]))
+  if "addr" in board.devices["TOUCH"]:
+    codeOut("#define TOUCH_ADDR "+str(board.devices["TOUCH"]["addr"]))
   codeOutDevicePins("TOUCH", "TOUCH")
 
 if "QWIIC0" in board.devices:

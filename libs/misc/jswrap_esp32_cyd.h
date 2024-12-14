@@ -18,3 +18,4 @@ JsVar *jswrap_cyd_cn1();
 JsVar *jswrap_cyd_p1();
 JsVar *jswrap_cyd_p3();
 void jswrap_cyd_init();
+bool jswrap_cyd_idle();

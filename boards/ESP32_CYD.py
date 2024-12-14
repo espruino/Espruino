@@ -13,6 +13,12 @@
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
 
+# ESP32 CYD LCD DISPLAY
+# * Graphics initialised as 'g'
+# * E.on("touch", e => ...x,y,b ) for tocuh events
+# * CN1/P1/P3 for connectors
+# * SPK for speaker (analog)
+# * FAT Filesystem vioa require("fs")
 
 
 # A Note about the 'variables' parameter on ESP32 Builds
@@ -73,7 +79,7 @@ info = {
      'DEFINES+=-DESP_STACK_SIZE=25000',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_SELF_INIT', # ensure graphics instantiates itself
-     'DEFINES+=-DUSE_FONT_6X8 -DSPISENDMANY_BUFFER_SIZE=1600 -DLCD_SPI_BITRATE=32000000 -DESPR_TERMNINAL_NO_SCROLL',
+     'DEFINES+=-DUSE_FONT_6X8 -DSPISENDMANY_BUFFER_SIZE=1600 -DLCD_SPI_BITRATE=55000000 -DESPR_TERMNINAL_NO_SCROLL',
      'WRAPPERSOURCES += libs/misc/jswrap_esp32_cyd.c libs/misc/jswrap_qwiic.c',
      'ESP32_FLASH_MAX=1572864'
    ]
@@ -122,7 +128,8 @@ devices = {
     'pin_scl' : 'D22',
     'pin_vcc' : 'D21',
   },
-  'TOUCHSCREEN' : { # XPT2046
+  'TOUCH' : { 
+            'device' : 'XPT2046',
             'pin_irq' : 'D36',
             'pin_cs' : 'D33',
             'pin_sck' : 'D25',
