@@ -105,7 +105,12 @@ void terminalScroll() {
 #else
     gfx.data.bgColor = 0;
 #endif
+#ifdef ESPR_TERMNINAL_NO_SCROLL
+    terminalY = 0;
+    graphicsClear(&gfx);
+#else
     graphicsScroll(&gfx, 0, -TERMINAL_CHAR_H); // always fill background in black
+#endif
     gfx.data.bgColor = cb;
     terminalSetGFX(&gfx); // save
     // if we're not in an IRQ, flip this now
@@ -205,7 +210,11 @@ void terminalSendChar(char chn) {
 void jswrap_terminal_init() {
   terminalControlCharsReset();
   terminalX = 0;
+#ifdef ESPR_TERMNINAL_NO_SCROLL
+  terminalY = 0;
+#else
   terminalY = (unsigned char)(TERMINAL_HEIGHT-1);
+#endif
 }
 
 /*JSON{
