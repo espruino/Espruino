@@ -189,7 +189,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
       streamType = ST_NONE;
     }
 
-  FRESULT res;
+    FRESULT res;
 #ifdef LINUX
     if ((streamFile = fopen(pathStr, "r"))) {
 #else
