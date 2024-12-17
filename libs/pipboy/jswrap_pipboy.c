@@ -1383,8 +1383,8 @@ void jswrap_pb_init() {
 "  B15.set();" // display on
 "  const FILE = 'FW.JS';"
 "  let stat = require('fs').statSync(FILE);"
-"  let size = stat&&stat.size;"
-"  let f = E.openFile(FILE,'r');"
+"  let size = stat&&stat.size, f;"
+"  try { f = E.openFile(FILE,'r'); } catch (e) {}"
 "  if (size && f) {"
 "    let d = f.read(4096), o=0;"
 "    g.clear(1).setFontMonofonto23().setFontAlign(0,0).setColor('#0f0').drawString('Upgrading...',240,160);"
@@ -1407,26 +1407,32 @@ void jswrap_pb_init() {
   }
 
 #endif
-  if (res) {
+  bool hasBootCode = jsfFindFile(jsfNameFromString(".bootcde"), NULL) ;
+  if (res || !hasBootCode) {
     JsVar *msg;
     if (res == FR_NO_FILE) msg = jsvNewFromString("NO VERSION FILE");
     else if (res == FR_NOT_ENABLED) msg = jsvNewFromString("NO SD CARD");
-    else msg = jsvVarPrintf("SD CARD ERROR %d", res);
+    else {
+      if (!hasBootCode)
+        msg = jsvNewFromString("NO JS FIRMWARE");
+      else
+        msg = jsvVarPrintf("SD CARD ERROR %d", res);
+    }
     graphicsInternal.data.fgColor = graphicsTheme.fg; // green
     graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
     graphicsInternal.data.fontAlignX = 0;
-    jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+14, 0));
+    jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+20, 0));
     // 25x25 pixel QR code for https://thewand.co/pip-boy
     const unsigned char qr_raw[] = { 25, 25, 1, 254, 242, 63, 193, 7, 80, 110, 173, 43, 183, 71, 133, 219, 160, 34, 236, 21, 177, 7, 250, 170, 254, 0, 87, 0, 163, 64, 146, 186, 253, 154, 239, 143, 247, 190, 49, 18, 141, 125, 154, 9, 135, 45, 143, 169, 222, 154, 113, 7, 184, 239, 64, 249, 0, 77, 68, 127, 173, 170, 48, 79, 49, 27, 164, 191, 149, 208, 234, 90, 235, 118, 119, 4, 165, 176, 254, 248, 132, 128 };
     JsVar *qr_img = jsvNewNativeString((char*)&qr_raw[0], sizeof(qr_raw));
     JsVar *options = jsvNewObject();
     if (options) {
       jsvObjectSetChild(options, "scale", jsvNewFromInteger(3));
-      jsvUnLock(jswrap_graphics_drawImage(g, qr_img, (LCD_WIDTH-76)/2, LCD_HEIGHT/2+25, options));
+      jsvUnLock(jswrap_graphics_drawImage(g, qr_img, (LCD_WIDTH-76)/2, LCD_HEIGHT/2+31, options));
     }
     jsvUnLock3(msg,qr_img,options);
     msg = jsvNewFromString("thewand.co/pip-boy");
-    jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+105, 0));
+    jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+111, 0));
     jsvUnLock(msg);
   }
   // clear up graphics
