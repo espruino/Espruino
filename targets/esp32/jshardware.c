@@ -680,8 +680,13 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 
 // the esp32 temperature sensor - undocumented library function call. Unsure of values returned.
 JsVarFloat jshReadTemperature() {
+#if CONFIG_IDF_TARGET_ESP32
+  extern uint8_t temprature_sens_read();
+  return temprature_sens_read();
+#else
   jsError(">> jshReadTemperature Not implemented");
   return NAN;
+#endif
 }
 
 // the esp8266 can read the VRef but then there's no analog input, so we don't support this
