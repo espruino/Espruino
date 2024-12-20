@@ -1,4 +1,4 @@
-          : 
+          : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

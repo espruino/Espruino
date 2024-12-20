@@ -628,7 +628,6 @@ const nrf_drv_twis_t *jshGetTWIS(IOEventFlags device) {
 void TIMER1_IRQHandler(void) {
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
   nrf_timer_event_clear(NRF_TIMER1, NRF_TIMER_EVENT_COMPARE0);
-  jshHadEvent();
   jstUtilTimerInterruptHandler();
 }
 
