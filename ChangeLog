@@ -1,4 +1,5 @@
           : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
+            Add support for decoding the Quite Ok Audio Format (QOA)
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

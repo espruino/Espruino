@@ -685,6 +685,11 @@ ifeq ($(USE_JIT),1)
   SOURCES += src/jsjit.c src/jsjitc.c
 endif
 
+ifeq ($(USE_QOA),1)
+  INCLUDE += -I$(ROOT)/libs/audio/qoa
+  WRAPPERSOURCES += libs/audio/qoa/jswrap_qoa.c
+  SOURCES += libs/audio/qoa/qoa.c
+endif
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 
