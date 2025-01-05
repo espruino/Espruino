@@ -29,6 +29,7 @@ info = {
      'AES_CCM',
      'TLS',
      'TELNET',
+     'QOA',
    ],
    'makefile' : [
 #     'DEFINES+=-DFLASH_64BITS_ALIGNMENT=1', # For testing 64 bit flash writes
