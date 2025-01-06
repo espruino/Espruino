@@ -148,6 +148,11 @@ boards = [ board_esp32 ];
 def get_pins():
   pins = pinutils.generate_pins(0,39) # 40 General Purpose I/O Pins.
   
+
+  pinutils.findpin(pins, "PD11", True)["functions"]["I2C1_SCL"]=0;
+  pinutils.findpin(pins, "PD10", True)["functions"]["I2C1_SDA"]=0;
+  # SPI1_SCLK/etc?
+
   # everything is non-5v tolerant
   #for pin in pins:
   #  pin["functions"]["3.3"]=0;

@@ -158,9 +158,14 @@ def get_pins():
   # On supermini D9 is (inverted) Button
   # D12-D17 are SPI (internal SPI) - not sure they should even be exposed??
   
-  #18/19 are USB
-  pinutils.findpin(pins, "PD20", True)["functions"]["USART0_RX"]=0;
-  pinutils.findpin(pins, "PD21", True)["functions"]["USART0_TX"]=0;  
+  pinutils.findpin(pins, "PD18", True)["functions"]["USB"]=0; # D-
+  pinutils.findpin(pins, "PD19", True)["functions"]["USB"]=0; # D+
+  pinutils.findpin(pins, "PD20", True)["functions"]["USART1_RX"]=0;
+  pinutils.findpin(pins, "PD21", True)["functions"]["USART1_TX"]=0;
+  pinutils.findpin(pins, "PD9", True)["functions"]["I2C1_SCL"]=0;
+  pinutils.findpin(pins, "PD8", True)["functions"]["I2C1_SDA"]=0;
+  # SPI1_SCLK/etc?
+ 
 
   # everything is non-5v tolerant
   for pin in pins:

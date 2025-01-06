@@ -117,7 +117,7 @@ void jshSPISetup(
   }
   else {
     dma_chan = 2;
-    sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 5;
+    sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 18;
     miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 19;
     mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 23;
   }

@@ -184,10 +184,19 @@ def get_pins():
 
   pinutils.findpin(pins, "PD0", True)["functions"]["NEGATED"]=0; # BTN1 negate
 
-  pinutils.findpin(pins, "PD10", True)["functions"]["USART0_TX"]=0;
-  pinutils.findpin(pins, "PD16", True)["functions"]["USART2_RX"]=0;
-  pinutils.findpin(pins, "PD17", True)["functions"]["USART2_TX"]=0;
-  pinutils.findpin(pins, "PD32", True)["functions"]["USART0_RX"]=0;
+  pinutils.findpin(pins, "PD10", True)["functions"]["USART1_TX"]=0; # doesn't match jshardwareUart?
+  pinutils.findpin(pins, "PD32", True)["functions"]["USART1_RX"]=0; # doesn't match jshardwareUart?
+  pinutils.findpin(pins, "PD16", True)["functions"]["USART3_RX"]=0;
+  pinutils.findpin(pins, "PD17", True)["functions"]["USART3_TX"]=0; 
+
+  pinutils.findpin(pins, "PD21", True)["functions"]["I2C1_SCL"]=0;
+  pinutils.findpin(pins, "PD22", True)["functions"]["I2C1_SDA"]=0;
+  pinutils.findpin(pins, "PD14", True)["functions"]["SPI1_SCLK"]=0;
+  pinutils.findpin(pins, "PD12", True)["functions"]["SPI1_MISO"]=0;
+  pinutils.findpin(pins, "PD13", True)["functions"]["SPI1_MOSI"]=0;
+  pinutils.findpin(pins, "PD18", True)["functions"]["SPI2_SCLK"]=0;
+  pinutils.findpin(pins, "PD19", True)["functions"]["SPI2_MISO"]=0;
+  pinutils.findpin(pins, "PD23", True)["functions"]["SPI2_MOSI"]=0;
 
   # everything is non-5v tolerant
   #for pin in pins:
