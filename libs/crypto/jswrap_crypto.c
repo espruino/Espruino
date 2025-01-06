@@ -587,14 +587,33 @@ type AES_CCM_EncryptResult = {
   "generate" : "jswrap_crypto_AES_ccmEncrypt",
   "params" : [
     ["message","JsVar","Message to encrypt"],
-    ["key","JsVar","Key to encrypt message - must be an `ArrayBuffer` of 128, 192, or 256 BITS"],
-    ["iv","JsVar","nonce (initialization vector) - must be an `ArrayBuffer` of 2 to 13 bytes"],
+    ["key","JsVar","Key to encrypt message - an `ArrayBuffer` of 128 BITS"],
+    ["iv","JsVar","nonce (initialization vector) - an `ArrayBuffer` of 7 to 13 bytes"],
     ["tagLen","JsVar","Length of tag to generate in bytes - must be one of 4, 6, 8, 10, 12, 14 or 16"]
   ],
   "return" : ["JsVar","An object"],
   "return_object" : "AES_CCM_EncryptResult",
   "ifdef" : "USE_AES_CCM"
 }
+Encrypt a message with a key using AES in CCM authenticated encryption mode.
+
+This returns an object with the encrypted data and a generated tag for message authentication.
+
+Usage example:
+```
+let message = "Hello World!";
+let key = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff];
+let nonce = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66];
+let tagLength = 4;
+let result = AES.ccmEncrypt(message, key, nonce, tagLength);
+```
+The `result` object should now have a `data` and `tag` attribute; both are needed for decrypting and verifying the message:
+```
+{
+  data: [206, 98, 239, 219, 146, 157, 59, 123, 102, 92, 118, 209],
+  tag: [230, 153, 191, 142]
+}
+```
 */
 JsVar *jswrap_crypto_AES_ccmEncrypt(JsVar *message, JsVar *key, JsVar *iv, JsVar *tagLen) {
   return jswrap_crypto_AES_ccmCrypt(message, key, iv, tagLen, true);
@@ -607,13 +626,26 @@ JsVar *jswrap_crypto_AES_ccmEncrypt(JsVar *message, JsVar *key, JsVar *iv, JsVar
   "generate" : "jswrap_crypto_AES_ccmDecrypt",
   "params" : [
     ["message","JsVar","Message to decrypt"],
-    ["key","JsVar","Key to decrypt message - must be an `ArrayBuffer` of 128, 192, or 256 BITS"],
-    ["iv","JsVar","Nonce (initialization vector) - must be an `ArrayBuffer` of 2 to 13 bytes"],
-    ["tag","JsVar","Tag that came with the message - must be an `ArrayBuffer`"]
+    ["key","JsVar","Key to decrypt message - an `ArrayBuffer` of 128 BITS"],
+    ["iv","JsVar","Nonce (initialization vector) - an `ArrayBuffer` of 7 to 13 bytes"],
+    ["tag","JsVar","Tag that came with the message - an `ArrayBuffer`"]
   ],
   "return" : ["JsVar","Decrypted message, or null on error (for example if the tag doesn't match)"],
   "ifdef" : "USE_AES_CCM"
 }
+Decrypt and authenticate an AES CCM encrypted message with an associated tag.
+
+Usage example:
+```
+let message = "Hello World!";
+let key = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff];
+let nonce = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66];
+let tagLength = 4;
+let result = AES.ccmEncrypt(message, key, nonce, tagLength);
+let decrypted = AES.ccmDecrypt(result.data, key, nonce, result.tag);
+let decryptedMessage = String.fromCharCode.apply(null, decrypted);
+```
+The `decryptedMessage` variable should now contain "Hello World!".
 */
 JsVar *jswrap_crypto_AES_ccmDecrypt(JsVar *message, JsVar *key, JsVar *iv, JsVar *tag) {
   return jswrap_crypto_AES_ccmCrypt(message, key, iv, tag, false);
