@@ -2887,6 +2887,14 @@ void jshReboot() {
   NVIC_SystemReset();
 }
 
+#ifdef ESPR_HAS_BOOTLOADER_UF2
+void jshRebootToDFU() {
+  enum { DFU_MAGIC_UF2_RESET = 0x57 };
+  nrf_power_gpregret_set(DFU_MAGIC_UF2_RESET);
+  NVIC_SystemReset();
+}
+#endif
+
 /* Adds the estimated power usage of the microcontroller in uA to the 'devices' object. The CPU should be called 'CPU' */
 void jsvGetProcessorPowerUsage(JsVar *devices) {
   // draws 4mA flat out, 3uA nothing otherwise
