@@ -84,8 +84,8 @@ int getI2cFromDevice( IOEventFlags device  ) {
   }
 }
 
-/** Set-up I2C master for ESP32, default pins are SCL:21, SDA:22. Only device I2C1 is supported
- *  and only master mode. */
+/** Set-up I2C master for ESP32, default pins are target dependent, defined in board.py file 
+ *  Only device I2C1 is supported and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   int i2c_master_port = getI2cFromDevice(device);
   if (i2c_master_port == -1) {
@@ -93,37 +93,44 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
     return;
   }
   if(jshIsDeviceInitialised(device)){
-  i2c_driver_delete(i2c_master_port);
+    i2c_driver_delete(i2c_master_port);
   }
-  Pin scl;
-  Pin sda;
-  if ( i2c_master_port == I2C_NUM_0 ) {
-    scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 21;
-    sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 22;
-  }
+
+  if (!jshIsPinValid(info->pinSCL)) info->pinSCL = jshFindPinForFunction(device, JSH_I2C_SCL);
+  if (!jshIsPinValid(info->pinSDA)) info->pinSDA = jshFindPinForFunction(device, JSH_I2C_SDA);
+  jsDebug(DBG_INFO, "jshI2CSetup: I2C pins default or provided as , sda: %d scl: %d \n", info->pinSDA, info->pinSCL);
+    
+  
 #if ESPR_I2C_COUNT>1
-  // Unsure on what to default these pins to?
+  // I2C2 not currently implemented.
   if ( i2c_master_port == I2C_NUM_1 ) {
-    scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 16;
-    sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 17;
+    scl = info->pinSCL != PIN_UNDEFINED ? info->pinSCL : 26;
+    sda = info->pinSDA != PIN_UNDEFINED ? info->pinSDA : 25;
   }
 #endif
 
   i2c_config_t conf;
   conf.mode = I2C_MODE_MASTER;
-  conf.sda_io_num = pinToESP32Pin(sda);
+  conf.sda_io_num = pinToESP32Pin(info->pinSDA);
   conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-  conf.scl_io_num = pinToESP32Pin(scl);
+  conf.scl_io_num = pinToESP32Pin(info->pinSCL);
   conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
   conf.master.clk_speed = info->bitrate;
+  
+  #if defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_IDF_TARGET_ESP32S3)     // added to resolve issue #2589 
+    conf.clk_flags = 0;     // will always select 2MZ XTAL clock - Although speed set as in conf.master.clk_speed
+    // conf.clk_flags = 1;  // or set driver to ignore XTAL clock and use 1MHz RTC clock (better for low power?)
+    // ref https://docs.espressif.com/projects/esp-idf/en/v4.4/esp32s3/api-reference/peripherals/i2c.html#source-clock-configuration
+  #endif
+                    
   esp_err_t err=i2c_param_config(i2c_master_port, &conf);
   if ( err == ESP_ERR_INVALID_ARG ) {
     jsExceptionHere(JSET_ERROR,"jshI2CSetup: Invalid arguments");
-  return;
+    return;
   }
   err=i2c_driver_install(i2c_master_port, conf.mode, 0, 0, 0);
   if ( err == ESP_OK ) {
-    jsDebug(DBG_INFO, "jshI2CSetup: driver installed, sda: %d scl: %d freq: %d, \n", sda, scl, info->bitrate);
+    jsDebug(DBG_INFO, "jshI2CSetup: driver installed with, sda: %d scl: %d freq: %d, \n", info->pinSDA, info->pinSCL, conf.master.clk_speed);
     jshSetDeviceInitialised(device, true);
   } else {
     checkError("jshI2CSetup",err);
