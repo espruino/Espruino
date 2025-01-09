@@ -1,4 +1,5 @@
           : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
+            Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)
