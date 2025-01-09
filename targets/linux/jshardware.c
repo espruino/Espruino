@@ -252,7 +252,7 @@ int getch()
 pthread_t inputThread;
 bool isInitialised;
 
-void jshInputThread() {
+void *jshInputThread() {
   while (isInitialised) {
     bool shortSleep = false;
     /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
