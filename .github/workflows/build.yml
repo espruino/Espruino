@@ -49,7 +49,7 @@ jobs:
     - name: make ${{ matrix.board }}
       env:
         TRAVIS: 1
-        RELEASE: 1
+        DEBUG: 1
         BOARD: ${{ matrix.board }} 
         UPLOADTOKEN: ${{ secrets.UPLOADTOKEN }}  
       run: |
