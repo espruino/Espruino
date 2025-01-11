@@ -19,10 +19,30 @@
 #include "jswrapper.h" // for JSWAT_VOID
 #include "jstimer.h" // for digitalPulse
 #include "jspin.h"
+#include <stdio.h>
 
 #ifdef ESP32
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#endif
+
+#ifdef USE_LCD_SDL
+#include <SDL/SDL.h>
+
+static unsigned int SDL_Backdoor(int x) {
+  static SDL_Event event;
+  switch (x) {
+  case 0: return SDL_PollEvent(&event);
+  case 1: return event.type;
+  case 2: return (int) event.key.keysym.scancode;
+  case 3: return (int) event.button.button;
+  case 4: return (int) event.button.state;
+  case 5: return (int) event.button.x;
+  case 6: return (int) event.button.y;
+  }
+  printf("Bad backdoor call %d\n", x); fflush(stdout);
+  return -1;
+}
 #endif
 
 /*JSON{
@@ -109,7 +129,6 @@ Read 32 bits of memory at the given location - DANGEROUS!
 }
 Write 32 bits of memory at the given location - VERY DANGEROUS!
  */
-
 uint32_t _jswrap_io_peek(size_t addr, int wordSize) {
   if (wordSize==1) return READ_FLASH_UINT8((char*)addr);
   if (wordSize==2) {
@@ -120,6 +139,13 @@ uint32_t _jswrap_io_peek(size_t addr, int wordSize) {
 }
 
 JsVar *jswrap_io_peek(JsVarInt addr, JsVarInt count, int wordSize) {
+#ifdef USE_LCD_SDL
+	/* HERE */
+	if (wordSize != 1) return ~0;
+	uint32_t ret = SDL_Backdoor(addr);
+	//printf("io_peek %x %x -> %x\n", addr, wordSize, ret);  fflush(stdout);
+	return jsvNewFromLongInteger(ret);
+#endif
   // hack for ESP8266/ESP32 where the address can be different
   size_t mappedAddr = jshFlashGetMemMapAddress((size_t)addr);
   if (count<=1) {
@@ -144,6 +170,11 @@ JsVar *jswrap_io_peek(JsVarInt addr, JsVarInt count, int wordSize) {
 }
 
 void _jswrap_io_poke(JsVarInt addr, uint32_t data, int wordSize) {
+	/* HERE */
+  printf("io_poke %x %x %x\n", addr, data, wordSize);
+  fflush(stdout);
+  return 1337;
+	
   if (wordSize==1) (*(unsigned char*)(size_t)addr) = (unsigned char)data;
   else if (wordSize==2) (*(unsigned short*)(size_t)addr) = (unsigned short)data;
   else if (wordSize==4) (*(unsigned int*)(size_t)addr) = (unsigned int)data;
