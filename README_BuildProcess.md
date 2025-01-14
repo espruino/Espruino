@@ -148,6 +148,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_LCD_MANUAL_BACKLIGHT` - STM32/FSMC: Don't turn the backlight on and leave code to do this manually
 * `ESPR_DISABLE_KICKWATCHDOG_PIN=BTN1_PININDEX` - If this pin is 1, skip kickWatchdog calls (which would eventually force a reboot if WDT enabled)
 * `ESPR_TERMNINAL_NO_SCROLL` - disable scrolling in the onscreen terminal (once we get to the end, we just clear the screen and start at the top)
+* `ESPR_HAS_BOOTLOADER_UF2` - nRF5x: Allow entering UF2 bootloader mode by calling E.rebootToDFU()
 
 
 There are some specifically that are useful for cutting a few bytes out of the build:
