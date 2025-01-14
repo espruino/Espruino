@@ -55,6 +55,7 @@ info = {
             # 'DEFINES += -DPIN_NAMES_DIRECT=1', # Package skips out some pins, so we can't assume each port starts from 0
             "LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x2ec0",  # set RAM base to match MTU
             'DEFINES += -DESPR_BLE_PRIVATE_ADDRESS_SUPPORT',
+            'DEFINES += -DESPR_HAS_BOOTLOADER_UF2',
             'NRF_SDK15=1',
         ],
     },
