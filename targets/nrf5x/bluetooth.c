@@ -2636,10 +2636,14 @@ static void ble_stack_init() {
     NRF_SDH_SOC_OBSERVER(m_soc_observer, APP_SOC_OBSERVER_PRIO, soc_evt_handler, NULL);
 #endif
 
-#if defined(PUCKJS) || defined(RUUVITAG) || defined(ESPR_DCDC_ENABLE)
-    // can only be enabled if we're sure we have a DC-DC
-    err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
-    APP_ERROR_CHECK(err_code);
+#if defined(ESPR_DCDC_ENABLE)
+    if (!(NRF_POWER->RESETREAS & POWER_RESETREAS_LOCKUP_Msk)) {
+      /* If we previously booted and got a LOCKUP reset, this could well be due to a DCDC
+      converter issue, so don't enable DCDC if that's the case. */
+      // can only be enabled if we're sure we have a DC-DC
+      err_code = sd_power_dcdc_mode_set(NRF_POWER_DCDC_ENABLE);
+      APP_ERROR_CHECK(err_code);
+    }
 #endif
 #if defined(ESPR_DCDC_HV_ENABLE)
     err_code = sd_power_dcdc0_mode_set(NRF_POWER_DCDC_ENABLE);
