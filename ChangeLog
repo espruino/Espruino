@@ -2,6 +2,7 @@
             Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)
             Fix escaping of `\r` in built-in modules, fixed regression that stopped Espruino WiFi 2v25 from connecting to Wifi
             BLE: always return privacy info from NRF.getSecurityStatus(), regardless of connection state
+            Linux SDL build: mouse events now create `E.on("touch"` events like on CYD
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)
