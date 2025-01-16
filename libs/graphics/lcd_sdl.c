@@ -97,9 +97,10 @@ void lcdInit_SDL(JsGraphics *gfx) {
 }
 
 void lcdIdle_SDL() {
+  static bool down;
+  extern void nativeQuit();
   SDL_Event event;
   bool sendEvent = false;
-  static bool down;
 
   if (needsFlip) {
     needsFlip = false;
@@ -108,6 +109,9 @@ void lcdIdle_SDL() {
 
   if (SDL_PollEvent(&event)) {
     switch (event.type) {
+      case SDL_QUIT:
+        nativeQuit();
+        break;
       case SDL_MOUSEMOTION:
 	if (down) {
 	  sendEvent = true;
