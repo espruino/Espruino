@@ -624,6 +624,8 @@ outputs.
   "return" : ["JsVar", "An Object `{x,y,z}` of magnetometer readings as integers" ]
 }
 Turn on the magnetometer, take a single reading, and then turn it off again.
+If the magnetometer is already on (with `Puck.magOn()`) then the last reading
+is returned.
 
 An object of the form `{x,y,z}` is returned containing magnetometer readings.
 Due to residual magnetism in the Puck and magnetometer itself, with no magnetic
@@ -652,14 +654,8 @@ JsVar *jswrap_puck_mag() {
   if (!mag_enabled) {
     mag_on(0, true /*instant*/); // takes a reading right away
     mag_off();
-  } else if (puckVersion == PUCKJS_2V1) { // MMC5603NJ
-    // magnetometer is on, but let's poll it quickly
-    // to see if we have any new data
-    unsigned char buf[1];
-    mag_rd(0x18, buf, 1); // Status
-    if (buf[0]&0x40) // check for Meas_m_done
-      mag_read();
-  }
+  } // else magnetometer is on, just return the last reading
+
   return to_xyz(mag_reading, 1);
 }
 

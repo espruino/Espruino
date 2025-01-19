@@ -57,7 +57,7 @@ jobs:
         make
         ./scripts/ci_upload.sh
     - name: Upload ${{ matrix.board }} build artifact
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v4.6.0
       with:
         name: ${{ matrix.board }}
         path: |
@@ -93,7 +93,7 @@ jobs:
         make
         ./scripts/ci_upload.sh       
     - name: Upload ${{ matrix.board }} build artifact
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v4.6.0
       with:
         name: ${{ matrix.board }}
         path: |
@@ -128,7 +128,7 @@ jobs:
         make
         ./scripts/ci_upload.sh 
     - name: Upload ${{ matrix.board }} build artifact
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v4.6.0
       with:
         name: ${{ matrix.board }}
         path: |
@@ -162,7 +162,7 @@ jobs:
         make
         ./scripts/ci_upload.sh
     - name: Upload ${{ matrix.board }} build artifact
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v4.6.0
       with:
         name: ${{ matrix.board }}
         path: |

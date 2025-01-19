@@ -34,7 +34,12 @@
       var av = analogRead(D3), v=av*13.359;
       chg |= Bangle.isCharging();
       if (av>mv) cup=1;
-      draw(8,'Chg',v.toFixed(2)+"v "+(Bangle.isCharging()?"charge":"discharge"),chg&&cup&&(v>2)&&(v<4.4));
+      var ok = chg&&cup&&(v>2)&&(v<4.4), msg = v.toFixed(2)+"v "+(Bangle.isCharging()?"charge":"discharge");
+      if (!peek32(0x40000578)) { // DCDCEN
+        msg = "NO DCDC";
+        ok = false;
+      }
+      draw(8,'Chg',msg,ok);
     },500);
   },1000);
   Bangle.on('swipe', e => {
