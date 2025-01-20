@@ -738,7 +738,7 @@ E.on("comparator", e => {
 **Note:** There is just one LPCOMP, so you can only enable the comparator on one pin.
 
 **On [Jolt.js](https://www.espruino.com/Jolt.js):** when using `E.setComparator` on the analog pins on the
-Terminal block (`H0`/`H2`/`H4`/`H8`), the `level` you give needs to be in volts. Because the comparator only
+Terminal block (`H0`/`H2`/`H4`/`H6`), the `level` you give needs to be in volts. Because the comparator only
 works in 16 steps, you can only detect multiples of 1.37v (1.37/2.74/4.11/etc)
 
  */
