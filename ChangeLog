@@ -6,6 +6,7 @@
             nRF52: Bootloader now doesn't reset RESETREAS
             nRF52: If we reboot because of LOCKUP, don't enable DCDC converter
             Bangle.js2: Test screen now fails if no DCDC enabled
+            Bangle.js: Ensure fake LED1/LED2 remember state
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)
