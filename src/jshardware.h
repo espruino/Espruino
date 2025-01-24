@@ -408,8 +408,9 @@ void jsvGetProcessorPowerUsage(JsVar *devices);
 /// Perform a proper hard-reboot of the device
 void jshReboot();
 
-#ifdef STM32F4
+#if defined(STM32F4) || defined(ESPR_HAS_BOOTLOADER_UF2)
 /// Reboot into DFU mode
+/// If the device has an UF2 bootloader, the device will reappear as a USB drive.
 void jshRebootToDFU();
 #endif
 
