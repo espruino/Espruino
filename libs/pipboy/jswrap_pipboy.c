@@ -391,11 +391,12 @@ JsVar *jswrap_pb_audioRead(JsVar *fn) {
 
   if (jsfsInit()) {
     FRESULT res;
+    File_Handle file;
 #ifdef LINUX
-    if ((audioFile = fopen(pathStr, "r"))) {
+    if ((file = fopen(pathStr, "r"))) {
 #else
     BYTE ff_mode = FA_READ | FA_OPEN_EXISTING;
-    if ((res=f_open(&audioFile, pathStr, ff_mode)) == FR_OK) {
+    if ((res=f_open(&file, pathStr, ff_mode)) == FR_OK) {
 #endif
       if (debugInfo) {
         jsiConsolePrintf("Opened audio file OK - reading WAV header\n");
@@ -404,20 +405,21 @@ JsVar *jswrap_pb_audioRead(JsVar *fn) {
       const int WAVHEADER_MAX = 256;
       uint8_t buf[256];
       AviInfo wavInfo;
-      res = f_read(&audioFile, (uint8_t*)buf, WAVHEADER_MAX, &actual);
+      res = f_read(&file, (uint8_t*)buf, WAVHEADER_MAX, &actual);
       if (wavLoad(buf, (int)actual, &wavInfo, debugInfo)) {
-        f_lseek(&audioFile, (uint32_t)(wavInfo.streamOffset)); // go back to start of audio data
-        uint32_t len = f_size(&audioFile) - (uint32_t)wavInfo.streamOffset;
+        f_lseek(&file, (uint32_t)(wavInfo.streamOffset)); // go back to start of audio data
+        uint32_t len = f_size(&file) - (uint32_t)wavInfo.streamOffset;
         JsVar *buffer = jsvNewFlatStringOfLength(len);
         if (!buffer) {
           jsExceptionHere(JSET_ERROR, "Couldn't allocate flat string of size %d", len);
           return 0;
         }
-        f_read(&audioFile, jsvGetFlatStringPointer(buffer), len, &actual);
+        f_read(&file, jsvGetFlatStringPointer(buffer), len, &actual);
         return buffer;
       } else {
         jsExceptionHere(JSET_ERROR, "Corrupt audio");
       }
+      f_close(&file);
     } else {
       jsExceptionHere(JSET_ERROR, "Can't load file %s", pathStr);
     }
@@ -605,23 +607,27 @@ int jswrap_pb_audioGetFree() {
   "generate" : "jswrap_pb_audioStartVar",
   "params" : [
       ["wav","JsVar","Raw 16 bit sound data"],
-      ["options","JsVar","[Optional] object"]
+      ["options","JsVar","[Optional] object {overlap:bool}"]
    ]
 }
 Play audio straight from a variable of raw WAV data - this adds everything to the buffer at once so blocks
 
-
+If `overlap:true` is set the waveform will be added to what's already in the audio ringbuffer,
+allowing multiple sounds to be played at the same time.
 */
 static void _jswrap_pb_audioStartVar_cb(unsigned char *data, unsigned int len, void *callbackData) {
   if (len&1) jsiConsolePrintf("Oops. non-even byte count!");
-  STM32_I2S_AddSamples((int16_t*)data, len>>1);
+  bool overlap = *(bool*)callbackData;
+  STM32_I2S_AddSamples((int16_t*)data, len>>1, overlap);
 }
 void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
   debugInfo=false;
   // audioRepeats=false; // There might be a silent looping video playing
-  /*JsVar *v;
+  bool overlap=false;
+  JsVar *v;
   if (jsvIsObject(options)) {
-  }*/
+    overlap = jsvObjectGetBoolChild(options, "overlap");
+  }
   // if (audioStream) {
   //   if (debugInfo) {
   //     jsiConsolePrintf("Closing existing stream\n");
@@ -630,7 +636,9 @@ void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
   //   audioStream = false;
   // }
   STM32_I2S_Prepare(audioInfo.audioSampleRate);
-  jsvIterateBufferCallback(wav, _jswrap_pb_audioStartVar_cb, NULL);
+  size_t wavLen;
+  if (!jsvGetDataPointer(wav, &wavLen)) overlap=false; // only overlap if we know jsvIterateBufferCallback will call _jswrap_pb_audioStartVar_cb *once*
+  jsvIterateBufferCallback(wav, _jswrap_pb_audioStartVar_cb, &overlap);
   STM32_I2S_StreamEnded(); // ensure we start playing even if there wasn't enough data
 }
 
@@ -676,7 +684,7 @@ void jswrap_pb_videoFrame() {
       jsiConsolePrintf("Audio stream too big for streamBuffer\n");
       jswrap_pb_videoStop();
     } else {
-      STM32_I2S_AddSamples((int16_t*)streamBuffer, streamPacketLen>>1); // l is in bytes, not samples
+      STM32_I2S_AddSamples((int16_t*)streamBuffer, streamPacketLen>>1, false); // l is in bytes, not samples
     }
   } else if (streamPacketId==AVI_STREAM_VIDEO) {
     lcdFSMC_blitStart(&graphicsInternal, startX,startY,videoInfo.width,videoInfo.height);
@@ -780,7 +788,7 @@ void jswrap_pb_audioFrame() {
   f_read(&audioFile, streamBuffer, WAV_CHUNK_SIZE, &actual);
   //if (debugInfo) jsiConsolePrintf("A%d\n", actual);
   if (actual) {
-    STM32_I2S_AddSamples((int16_t*)streamBuffer, actual>>1);
+    STM32_I2S_AddSamples((int16_t*)streamBuffer, actual>>1, false);
   } else if (audioRepeats) {
     f_lseek(&audioFile, (uint32_t)(audioInfo.streamOffset)); // go back to start of audio data
     jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamLooped");

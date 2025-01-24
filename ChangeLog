@@ -10,7 +10,8 @@
             Ensure E.setComparator is added to the build for nRF52
             Bangle.js2: Update test to use accelerometer to test vibration motor
             STM32: Revert hasSystemSlept=true before _WFI that caused jsTimer to get corrupted
-            Pipboy: allow audio files to be played at the same time as (silent) video            
+            Pipboy: allow audio files to be played at the same time as (silent) video. add audioStopped/videoStopped events and audioStop method
+            Pipboy: Pip.audioStartVar(wav,{overlap:true}) can now play sounds over the top of other sounds. audioRead now doesn't stop audio playback
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

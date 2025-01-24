@@ -46,8 +46,8 @@ void STM32_I2S_Kill();
 void STM32_I2S_Prepare(int audioFreq);
 /// Return the amount of free samples available for STM32_I2S_AddSamples
 int STM32_I2S_GetFreeSamples();
-/// Add new Samples - playback will start when we have enough in buffer. count=# of samples (not bytes)
-void STM32_I2S_AddSamples(int16_t *data, unsigned int count);
+/// Add new Samples - playback will start when we have enough in buffer. count=# of samples (not bytes). If overlap=true, we try and add the sample data to what we have already
+void STM32_I2S_AddSamples(int16_t *data, unsigned int count, bool overlap);
 /// Start playback (ideally don't use this - just add samples and playback will start)
 void STM32_I2S_Start();
 /// Stop playback

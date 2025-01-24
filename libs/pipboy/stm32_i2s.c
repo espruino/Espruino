@@ -30,7 +30,7 @@ void STM32_I2S_Init() {};
 void STM32_I2S_Kill() {};
 void STM32_I2S_Prepare(int audioFreq) {};
 int STM32_I2S_GetFreeSamples() { return I2S_RING_BUFFER_SIZE; }
-void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {};
+void STM32_I2S_AddSamples(int16_t *data, unsigned int count, bool overlap) {};
 void STM32_I2S_Start() {};
 void STM32_I2S_Stop() {};
 void STM32_I2S_StreamEnded() {};
@@ -242,8 +242,22 @@ int STM32_I2S_GetFreeSamples() {
   return I2S_RING_BUFFER_SIZE - audioRingBufGetSamples();
 }
 
-// Add samples to the ringbuffer
-void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {
+// Add new Samples - playback will start when we have enough in buffer. count=# of samples (not bytes). If overlap=true, we try and add the sample data to what we have already
+void STM32_I2S_AddSamples(int16_t *data, unsigned int count, bool overlap) {
+  if (overlap) {
+    jshInterruptOff(); // IRQ off to ensure DMA won't drag in a new sound
+    uint16_t audioRingIdx = audioRingIdxOut; // start from where we'd next be reading...
+    while (count && audioRingIdx!=audioRingIdxIn) {
+      int v = (int)*(data++) + (int)audioRingBuf[audioRingIdx];
+      if (v<-32768) v=-32768; // clip
+      if (v>32767) v=32767;
+      audioRingBuf[audioRingIdx] = v;
+      count--;
+      audioRingIdx = (audioRingIdx+1) & (I2S_RING_BUFFER_SIZE-1);
+    }
+    jshInterruptOn();
+  }
+
   // Try and fill until ringbuffer is full
   unsigned int freeSamples = STM32_I2S_GetFreeSamples();
   unsigned int c = count;
