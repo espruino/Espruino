@@ -1382,6 +1382,9 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
   if (!(jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE))
 #endif
 #endif
+#if defined(XIAOBLE)
+  if (!(jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE))
+#endif
   if (jsiStatus & JSIS_FIRST_BOOT) {
     JsVar *code = jsfReadFile(jsfNameFromString(".bootPowerOn"),0,0);
     if (code)
@@ -1398,6 +1401,10 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
   if (!(jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE &&
        (jsiStatus & JSIS_FIRST_BOOT)))
 #endif
+#endif
+#if defined(XIAOBLE)
+  if (!(jshPinGetValue(BTN1_PININDEX)==BTN1_ONSTATE &&
+     (jsiStatus & JSIS_FIRST_BOOT)))
 #endif
   {
     char filename[7] = ".bootX";
