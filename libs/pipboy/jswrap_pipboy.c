@@ -75,7 +75,7 @@ bool debugInfo = false;
 int startX=0;
 int startY=0;
 AviInfo videoInfo;
-AviInfo audioInfo;
+WavInfo audioInfo;
 
 typedef enum {
   DM_OFF,
@@ -363,7 +363,7 @@ void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
         if (debugInfo) jsiConsolePrintf("Audio started...\n");
       } else {
         jsExceptionHere(JSET_ERROR, "Corrupt audio");
-        jswrap_pb_videoStop();
+        jswrap_pb_audioStop();
       }
     } else {
       jsExceptionHere(JSET_ERROR, "Can't load file %s", pathStr);
@@ -404,7 +404,7 @@ JsVar *jswrap_pb_audioRead(JsVar *fn) {
       size_t actual = 0;
       const int WAVHEADER_MAX = 256;
       uint8_t buf[256];
-      AviInfo wavInfo;
+      WavInfo wavInfo;
       res = f_read(&file, (uint8_t*)buf, WAVHEADER_MAX, &actual);
       if (wavLoad(buf, (int)actual, &wavInfo, debugInfo)) {
         f_lseek(&file, (uint32_t)(wavInfo.streamOffset)); // go back to start of audio data
@@ -624,7 +624,6 @@ void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
   debugInfo=false;
   // audioRepeats=false; // There might be a silent looping video playing
   bool overlap=false;
-  JsVar *v;
   if (jsvIsObject(options)) {
     overlap = jsvObjectGetBoolChild(options, "overlap");
   }
@@ -775,8 +774,15 @@ void jswrap_pb_videoFrame() {
 
 void jswrap_pb_audioFrame() {
   if (!audioStream) return;
-  const int WAV_CHUNK_SIZE = 4096; // how much do we want to read in one chunk?
-  int WAV_SAMPLES = WAV_CHUNK_SIZE>>1;
+  int WAV_CHUNK_SIZE = 4096; // how many bytes do we want to read in one chunk?
+  int WAV_SAMPLES; // how many samples do we get?
+  if (audioInfo.formatTag == WAVFMT_IMA_ADPCM) {
+    int blocks = 2048 / audioInfo.blockAlign;
+    WAV_CHUNK_SIZE = blocks * audioInfo.blockAlign; // ensure we meet the alignment required
+    WAV_SAMPLES = blocks * (audioInfo.blockAlign-4) * 2; // 4 bytes per block to set initial state, but 2 samples per byte after that
+  } else { // otherwise normal 16 bit WAV
+    WAV_SAMPLES = WAV_CHUNK_SIZE>>1;
+  }
 
   int freeSamples = STM32_I2S_GetFreeSamples();
   //if (debugInfo) jsiConsolePrintf("%d free\n", freeSamples);
@@ -788,7 +794,13 @@ void jswrap_pb_audioFrame() {
   f_read(&audioFile, streamBuffer, WAV_CHUNK_SIZE, &actual);
   //if (debugInfo) jsiConsolePrintf("A%d\n", actual);
   if (actual) {
-    STM32_I2S_AddSamples((int16_t*)streamBuffer, actual>>1, false);
+    if (audioInfo.formatTag == WAVFMT_IMA_ADPCM) {
+      int16_t *decodedBuffer = (int16_t*)&streamBuffer[WAV_CHUNK_SIZE]; // just put decoded data at the end of the data we read into the stream buffer
+      int samples = wavIMADecode(&audioInfo, streamBuffer, decodedBuffer, actual);
+      STM32_I2S_AddSamples((int16_t*)decodedBuffer, samples, false);
+    } else {
+      STM32_I2S_AddSamples((int16_t*)streamBuffer, actual>>1, false);
+    }
   } else if (audioRepeats) {
     f_lseek(&audioFile, (uint32_t)(audioInfo.streamOffset)); // go back to start of audio data
     jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamLooped");

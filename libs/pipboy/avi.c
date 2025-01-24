@@ -76,6 +76,7 @@ typedef struct {
   uint16_t size;
 } PACKED_FLAGS WAVHEADER;
 
+
 bool is4CC(uint8_t *ptr, const char *fourcc) {
   return
     ptr[0]==fourcc[0] &&
@@ -249,12 +250,11 @@ LIST AVI  (1777854b)
   return true;
 }
 
-bool wavLoad(uint8_t *buf, int len, AviInfo *result, bool debugInfo) {
-  result->width = 0;
-  result->height = 0;
-  result->usPerFrame = 0;
-  result->audioBufferSize = 0;
+bool wavLoad(uint8_t *buf, int len, WavInfo *result, bool debugInfo) {
+  result->formatTag = 0;
   result->audioSampleRate = 0;
+  result->blockAlign = 0;
+
 
   if (!is4CC(buf,"RIFF")) {
     jsExceptionHere(JSET_ERROR, "Not RIFF %c%c%c%c\n", buf[0],buf[1],buf[2],buf[3]);
@@ -280,12 +280,16 @@ LIST WAVE (61470b)
   }
   uint8_t *listPtr = riffFmt;
   WAVHEADER *wavHeader = (WAVHEADER*)(riffFmt+8);
-  if (wavHeader->formatTag!=1 || wavHeader->channels!=1 || wavHeader->size!=16) {
-    jsExceptionHere(JSET_ERROR, "Not Mono 16 bit WAV (fmt=%d, channels=%d, size=%d)\n", wavHeader->formatTag, wavHeader->channels, wavHeader->size);
+  if (wavHeader->channels!=1 || !(
+      (wavHeader->formatTag==WAVFMT_RAW && wavHeader->size==16) ||
+      (wavHeader->formatTag==WAVFMT_IMA_ADPCM && wavHeader->size==4))) {
+    jsExceptionHere(JSET_ERROR, "Not Mono 16 bit RAW/IMA WAV (fmt=%d, channels=%d, size=%d)\n", wavHeader->formatTag, wavHeader->channels, wavHeader->size);
     return 0;
   }
+  result->sampleSize = wavHeader->size;
+  result->formatTag = wavHeader->formatTag;
   result->audioSampleRate = wavHeader->sampleRate;
-  result->audioBufferSize = 0;
+  result->blockAlign = wavHeader->blockAlign;
 
   uint8_t *dataStartPtr = riffListFind(buf, "data");
   if (!dataStartPtr) {
@@ -296,4 +300,73 @@ LIST WAVE (61470b)
 
   result->streamOffset = dataStartPtr-buf;
   return true;
+}
+
+bool wavNeedsDecode(WavInfo *wavInfo) {
+  return !(wavInfo->formatTag==WAVFMT_RAW && wavInfo->sampleSize==16);
+}
+
+int8_t ima_index_table[8] = {
+  -1, -1, -1, -1, 2, 4, 6, 8
+};
+
+static const int ima_step_table[89] = {
+	7, 8, 9, 10, 11, 12, 13, 14, 16, 17,
+	19, 21, 23, 25, 28, 31, 34, 37, 41, 45,
+	50, 55, 60, 66, 73, 80, 88, 97, 107, 118,
+	130, 143, 157, 173, 190, 209, 230, 253, 279, 307,
+	337, 371, 408, 449, 494, 544, 598, 658, 724, 796,
+	876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066,
+	2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358,
+	5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899,
+	15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767
+};
+
+typedef struct {
+  int step_index;
+  int predictor;
+  int current;
+} WavIMAState;
+
+int16_t wavIMADecodeNibble(uint8_t nibble, WavIMAState *state) {
+  int step = ima_step_table[state->step_index];
+  int diff = step>>3;
+  if( nibble&0x04 ) diff += step;
+  if( nibble&0x02 ) diff += step>>1;
+  if( nibble&0x01 ) diff += step>>2;
+  if( nibble&0x08 ) {
+    state->current -= diff;
+    if (state->current<-32768) state->current=-32768;
+  } else {
+    state->current += diff;
+    if (state->current>32767) state->current=32767;
+  }
+  state->step_index += ima_index_table[nibble&7];
+  if (state->step_index < 0) state->step_index = 0;
+  if (state->step_index > 88) state->step_index = 88;
+  return state->current;
+}
+
+
+
+// decode IMA-encoded data, return number of samples created
+int wavIMADecode(WavInfo *wavInfo, uint8_t *bufin, int16_t *bufout, int len) {
+  WavIMAState state;
+  int outputSamples = 0;
+  while (len > wavInfo->blockAlign) {
+    state.predictor = *(bufin++);
+    state.predictor |= *(bufin++)<<8;
+    state.step_index = *(bufin++);
+    state.current = 0;
+    bufin++; // unused/reserved byte
+
+    for (int i=4;i<wavInfo->blockAlign;i++) {
+      uint8_t d = *(bufin++);
+      *(bufout++) = wavIMADecodeNibble(d&15, &state);
+      *(bufout++) = wavIMADecodeNibble(d>>4, &state);
+      outputSamples += 2;
+    }
+    len -= wavInfo->blockAlign;
+  }
+  return outputSamples;
 }
