@@ -56,7 +56,7 @@ info = {
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS',
      'BOOTLOADER_SETTINGS_FAMILY=NRF52840',
      'INCLUDE += -I$(ROOT)/libs/jolt.js',
-     'WRAPPERSOURCES += libs/joltjs/jswrap_jolt.c libs/joltjs/jswrap_qwiic.c',
+     'WRAPPERSOURCES += libs/joltjs/jswrap_jolt.c libs/misc/jswrap_qwiic.c',
      'NRF_SDK15=1',
    ]
  }

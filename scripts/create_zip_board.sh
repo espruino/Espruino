@@ -88,6 +88,16 @@ fi
 if [ "$BOARDNAME" == "PICO_1V3" ]; then
   BOARDNAME=PICO_R1_3
 fi
+if [ "$BOARDNAME" == "ESP32C3_IDF4" ] || [ "$BOARDNAME" == "ESP32S3_IDF4" ]; then
+  echo "WARNING!!! ESP32C3/S3 can't work with custom build dirs for some reason"
+  EXTRADEFS="" # ignore custom build dirs
+  rm -rf $BINDIR
+  rm -rf $OBJDIR
+  rm -rf $GENDIR
+  BINDIR=bin
+  OBJDIR=obj
+  GENDIR=gen
+fi
 
 # actually build
 ESP_BINARY_NAME=`python scripts/get_board_info.py $BOARDNAME "common.get_board_binary_name(board)"`
@@ -174,7 +184,7 @@ elif [ "$BOARDNAME" == "ESP8266_4MB" ]; then
 else
   echo Copying ${BINDIR}/${ESP_BINARY_NAME} to $ZIPDIR/$NEW_BINARY_NAME
   cp ${BINDIR}/${ESP_BINARY_NAME} $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 255; }
-  if [ "$BOARDNAME" == "ESP32" ]; then
+  if [[ "$BOARDNAME" =~ ^ESP32.* ]]; then
     tar -C $ZIPDIR -xzf  ${BINDIR}/`basename $ESP_BINARY_NAME .bin`.tgz || { echo "Build of 'BOARD=$BOARDNAME make' failed" ; exit 255; }
   fi
 fi
@@ -184,7 +194,13 @@ if [ -n "$ESP_BINARY2_NAME" ]; then
 fi
 
 rm $LOGFILE
-rm -rf $BINDIR
-rm -rf $OBJDIR
-rm -rf $GENDIR
+if [ "$BINDIR" != "bin" ] ; then
+  rm -rf $BINDIR
+fi
+if [ "$OBJDIR" != "obj" ] ; then
+  rm -rf $OBJDIR
+fi
+if [ "$GENDIR" != "gen" ] ; then
+  rm -rf $GENDIR
+fi
 

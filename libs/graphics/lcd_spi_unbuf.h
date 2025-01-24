@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Graphics Backend for drawing to SPI displays in unbuffered mode 
+ * Graphics Backend for drawing to SPI displays in unbuffered mode
  * ----------------------------------------------------------------------------
  */
 
@@ -26,6 +26,8 @@ typedef struct {
   int colstart;             //!< Aditional starting address some pixels dont begin at 0
   int rowstart;             //!< Aditional starting address some pixels dont begin at 0
 } JshLCD_SPI_UNBUFInfo;
+
+void lcd_spi_unbuf_init(JsGraphics *gfx);
 
 bool jswrap_lcd_spi_unbuf_idle();
 JsVar *jswrap_lcd_spi_unbuf_connect(JsVar *device, JsVar *options);

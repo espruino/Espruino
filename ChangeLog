@@ -1,4 +1,16 @@
-          : ESP32C3: Get analogRead working correctly
+          : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
+            Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)
+            Fix escaping of `\r` in built-in modules, fixed regression that stopped Espruino WiFi 2v25 from connecting to Wifi
+            BLE: always return privacy info from NRF.getSecurityStatus(), regardless of connection state
+            Linux SDL build: mouse events now create `E.on("touch"` events like on CYD
+            nRF52: Bootloader now doesn't reset RESETREAS
+            nRF52: If we reboot because of LOCKUP, don't enable DCDC converter
+            Bangle.js2: Test screen now fails if no DCDC enabled
+            Bangle.js: Ensure fake LED1/LED2 remember state
+            Ensure E.setComparator is added to the build for nRF52
+            Bangle.js2: Update test to use accelerometer to test vibration motor
+
+     2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)
             Bangle.js1: Switch to space-optimised sin/atan/atan2 to save enough space to continue building
             ESP32C3: don't allow AP *AND* STA mode at the same time - solves issues when just calling 'wifi.connect' at boot
@@ -69,6 +81,8 @@
             ESP32: add setIP and setAPIP 
             Graphics.wrapString fix issue with missing final char if immediately after a '.' or other char we can split after (#2572)
             Graphics: g.dump/asBMP can now output 16 bit images
+            Crypto: Add support for AES CCM (enabled on Bangle.js 2) 
+            Add Serial over SWD vis RTT (enabled on Bangle.js 2)
             
      2v24 : Bangle.js2: Add 'Bangle.touchRd()', 'Bangle.touchWr()'
             Bangle.js2: After Bangle.showTestScreen, put Bangle.js into a hard off state (not soft off)

@@ -29,6 +29,9 @@
 #ifdef USE_LCD_ST7789_8BIT
 #include "lcd_st7789_8bit.h"
 #endif
+#ifdef USE_LCD_SPI_UNBUF
+#include "lcd_spi_unbuf.h"
+#endif
 
 #include "jswrap_functions.h" // for asURL
 #include "jswrap_object.h" // for getFonts
@@ -560,6 +563,10 @@ void jswrap_graphics_init() {
     gfx->data.type = JSGRAPHICSTYPE_FSMC;
     lcdInit_FSMC(gfx);
     lcdSetCallbacks_FSMC(gfx);
+#elif defined(USE_LCD_SPI_UNBUF)
+    gfx->data.type = JSGRAPHICSTYPE_LCD_SPI_UNBUF;
+    lcd_spi_unbuf_init(gfx);
+    lcd_spi_unbuf_setCallbacks(gfx);
 #else
    #error Unknown LCD type
 #endif

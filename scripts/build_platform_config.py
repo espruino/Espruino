@@ -430,19 +430,22 @@ if "LCD" in board.devices:
     if "pin_reset" in board.devices["LCD"]:
       codeOutDevicePin("LCD", "pin_reset", "LCD_RESET")
   if board.devices["LCD"]["controller"]=="ssd1306" or board.devices["LCD"]["controller"]=="st7567" or board.devices["LCD"]["controller"]=="st7789v" or board.devices["LCD"]["controller"]=="st7735" or board.devices["LCD"]["controller"]=="gc9a01":
-    codeOutDevicePin("LCD", "pin_mosi", "LCD_SPI_MOSI")
-    codeOutDevicePin("LCD", "pin_sck", "LCD_SPI_SCK")
-    codeOutDevicePin("LCD", "pin_cs", "LCD_SPI_CS")
-    codeOutDevicePin("LCD", "pin_dc", "LCD_SPI_DC")
     codeOutDevicePin("LCD", "pin_rst", "LCD_SPI_RST")
   if board.devices["LCD"]["controller"]=="LPM013M126":
-    codeOutDevicePin("LCD", "pin_mosi", "LCD_SPI_MOSI")
-    codeOutDevicePin("LCD", "pin_sck", "LCD_SPI_SCK")
-    codeOutDevicePin("LCD", "pin_cs", "LCD_SPI_CS")
     codeOutDevicePin("LCD", "pin_disp", "LCD_DISP")
     codeOutDevicePin("LCD", "pin_extcomin", "LCD_EXTCOMIN")
+  if "pin_cs" in board.devices["LCD"]:
+    codeOutDevicePin("LCD", "pin_cs", "LCD_SPI_CS")
+  if "pin_mosi" in board.devices["LCD"]:
+    codeOutDevicePin("LCD", "pin_mosi", "LCD_SPI_MOSI")
   if "pin_miso" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_miso", "LCD_SPI_MISO")
+  if "pin_sck" in board.devices["LCD"]:
+    codeOutDevicePin("LCD", "pin_sck", "LCD_SPI_SCK")
+  if "pin_dc" in board.devices["LCD"]:
+    codeOutDevicePin("LCD", "pin_dc", "LCD_SPI_DC")
+  if "spi_device" in board.devices["LCD"]:
+    codeOut("#define LCD_SPI_DEVICE "+board.devices["LCD"]["spi_device"])
   if "pin_tearing" in board.devices["LCD"]:
     codeOutDevicePin("LCD", "pin_tearing", "LCD_TEARING")
 
@@ -453,8 +456,8 @@ if "SD" in board.devices:
   if "pin_cd" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cd", "SD_DETECT_PIN")
   if "pin_pwr" in board.devices["SD"]: codeOutDevicePin("SD", "pin_pwr", "SD_POWER_PIN")
   if "pin_cs" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cs", "SD_CS_PIN")
-  if "pin_di" in board.devices["SD"]: codeOutDevicePin("SD", "pin_di", "SD_DI_PIN")
-  if "pin_do" in board.devices["SD"]: codeOutDevicePin("SD", "pin_do", "SD_DO_PIN")
+  if "pin_di" in board.devices["SD"]: codeOutDevicePin("SD", "pin_di", "SD_DI_PIN") # MOSI
+  if "pin_do" in board.devices["SD"]: codeOutDevicePin("SD", "pin_do", "SD_DO_PIN") # MISO
   if "pin_clk" in board.devices["SD"]:
     codeOutDevicePin("SD", "pin_clk", "SD_CLK_PIN")
     if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD
@@ -469,7 +472,7 @@ if "SD" in board.devices:
   if "pin_d1" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d1", "SD_D1_PIN")
   if "pin_d2" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d2", "SD_D2_PIN")
   if "pin_d3" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d3", "SD_D3_PIN")
-  if "pin_cmd" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cmd", "SD_CMD_PIN")        
+  if "pin_cmd" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cmd", "SD_CMD_PIN")
 
 if "IR" in board.devices:
   codeOutDevicePin("IR", "pin_anode", "IR_ANODE_PIN")
@@ -524,7 +527,8 @@ if "PRESSURE" in board.devices:
 
 if "TOUCH" in board.devices:
   codeOut("#define TOUCH_DEVICE \""+board.devices["TOUCH"]["device"].upper()+"\"")
-  codeOut("#define TOUCH_ADDR "+str(board.devices["TOUCH"]["addr"]))
+  if "addr" in board.devices["TOUCH"]:
+    codeOut("#define TOUCH_ADDR "+str(board.devices["TOUCH"]["addr"]))
   codeOutDevicePins("TOUCH", "TOUCH")
 
 if "QWIIC0" in board.devices:

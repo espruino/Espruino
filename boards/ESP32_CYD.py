@@ -13,9 +13,13 @@
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
 
-# ###########################################################
-# #      THIS IS BETA - IDF4 SUPPORT IS NOT READY YET       #
-# ###########################################################
+# ESP32 CYD LCD DISPLAY
+# * Graphics initialised as 'g'
+# * E.on("touch", e => ...x,y,b ) for tocuh events
+# * CN1/P1/P3 for connectors
+# * SPK for speaker (analog)
+# * FAT Filesystem vioa require("fs")
+
 
 # A Note about the 'variables' parameter on ESP32 Builds
 # ------------------------------------------------------
@@ -48,32 +52,35 @@
 
 import pinutils;
 info = {
- 'name'                     : "ESP32",
+ 'name'                     : "ESP32_CYD",
  'espruino_page_link'       : 'ESP32',
  'default_console'          : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
  'variables'                : 16383, # See note above 
  'io_buffer_size'           : 1024, # How big is the input buffer (in 4 byte words). Default is 256, but this makes us less likely to drop data
- 'binary_name'              : 'espruino_%v_esp32.bin',
+ 'binary_name'              : 'espruino_%v_esp32_cyd.bin',
  'build' : {
    'optimizeflags' : '-Og',
    'libraries' : [
      'ESP32',
      'NET',
      'GRAPHICS',
-#     'CRYPTO','SHA256','SHA512',
-#     'TLS',
-#     'TELNET',
-     'NEOPIXEL',
-#     'FILESYSTEM',
-#     'FLASHFS',
-     'BLUETOOTH'	 
+     'CRYPTO','SHA256','SHA512',
+     'TLS',
+     'TELNET',
+     'TERMINAL',
+#     'NEOPIXEL',
+     'FILESYSTEM',
+     'BLUETOOTH',
+     'LCD_SPI_UNBUF'
    ],
    'makefile' : [
      'DEFINES+=-DESP_PLATFORM -DESP32=1',
      'DEFINES+=-DESP_STACK_SIZE=25000',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
-     'DEFINES+=-DUSE_FONT_6X8',
+     'DEFINES+=-DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_SELF_INIT', # ensure graphics instantiates itself
+     'DEFINES+=-DUSE_FONT_6X8 -DSPISENDMANY_BUFFER_SIZE=1600 -DLCD_SPI_BITRATE=55000000 -DESPR_TERMNINAL_NO_SCROLL',
+     'WRAPPERSOURCES += libs/misc/jswrap_esp32_cyd.c libs/misc/jswrap_qwiic.c',
      'ESP32_FLASH_MAX=1572864'
    ]
  }
@@ -81,7 +88,7 @@ info = {
 
 chip = {
   'part'    : "ESP32",
-  'family'  : "ESP32_IDF4",
+  'family'  : "ESP32",
   'package' : "",
   'ram'     : 512,
   'flash'   : 0,
@@ -99,25 +106,59 @@ chip = {
   },
 };
 devices = {
-  'LED1' : { 'pin' : 'D2' },
-  'BTN1' : { 'pin' : 'D0', "inverted":1, 'pinstate' : 'IN_PULLUP' }
+#https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/blob/main/PINS.md
+  'LED1' : { 'pin' : 'D4' },
+  'LED2' : { 'pin' : 'D16' },
+  'LED3' : { 'pin' : 'D17' },
+  'BTN1' : { 'pin' : 'D0' },
+  'SD' :  { 'pin_cs' :  'D5', 
+            'pin_di' :  'D23',
+            'pin_do' :  'D19',
+            'pin_clk' : 'D18' },
+  'QWIIC0' : { # CN1
+    'pin_sda' : 'D22',
+    'pin_scl' : 'D27'
+  },
+  'QWIIC1' : { # P1
+    'pin_sda' : 'D1',
+    'pin_scl' : 'D3'
+  },
+  'QWIIC3' : { # P3
+    'pin_sda' : 'D35',
+    'pin_scl' : 'D22',
+    'pin_vcc' : 'D21',
+  },
+  'TOUCH' : { 
+            'device' : 'XPT2046',
+            'pin_irq' : 'D36',
+            'pin_cs' : 'D33',
+            'pin_sck' : 'D25',
+            'pin_miso' : 'D39',
+            'pin_mosi' : 'D32'
+          },
+  'LCD' : {
+            'width' : 320, 'height' : 240, 'bpp' : 16, 'controller' : 'ili9341',
+            'pin_dc' : 'D2',
+            'pin_cs' : 'D15',
+            'pin_sck' : 'D14',
+            'pin_mosi' : 'D13',
+            'pin_miso' : 'D12',
+            'pin_bl' : 'D21', # backlight pwm
+            'spi_device' : 'EV_SPI1'
+          },
+  # LCD on pin 34
 };
 
 # left-right, or top-bottom order
 board_esp32 = {
-   'top' : ['GND','D23','D22','D1','D3','D21','D20','D19','D18','D5','D17','D16','D4','D0'],
-   'bottom' : ['D12','D14','D27','D26','D25','D33','D32','D35','D34','D39','D36','EN','3V3','GND'],
-   'right' : [ 'GND','D13','D9','D10','D11','D6','D7','D8','D15','D2']
 };
-board_esp32["bottom"].reverse()
-board_esp32["right"].reverse()
 board_esp32["_css"] = """
 #board {
   width:  600px;
   height: 435px;
   left: 50px;
   top: 170px;
-  background-image: url(img/ESP32.jpg);
+  background-image: url(img/ESP32_CYD.jpg);
 }
 #boardcontainer {
   height: 700px;
@@ -172,20 +213,22 @@ def get_pins():
   pinutils.findpin(pins, "PD35", True)["functions"]["ADC1_IN7"]=0;
 
 #ADC2 not supported yet, waiting for driver from espressif
-  pinutils.findpin(pins, "PD4", True)["functions"]["ADC2_IN0"]=0;
-  pinutils.findpin(pins, "PD0", True)["functions"]["ADC2_IN1"]=0;
-  pinutils.findpin(pins, "PD2", True)["functions"]["ADC2_IN2"]=0;
-  pinutils.findpin(pins, "PD15", True)["functions"]["ADC2_IN3"]=0;
-  pinutils.findpin(pins, "PD13", True)["functions"]["ADC2_IN4"]=0;
-  pinutils.findpin(pins, "PD12", True)["functions"]["ADC2_IN5"]=0;
-  pinutils.findpin(pins, "PD14", True)["functions"]["ADC2_IN6"]=0;
-  pinutils.findpin(pins, "PD27", True)["functions"]["ADC2_IN7"]=0;
+#  pinutils.findpin(pins, "PD4", True)["functions"]["ADC2_IN0"]=0;
+#  pinutils.findpin(pins, "PD0", True)["functions"]["ADC2_IN1"]=0;
+#  pinutils.findpin(pins, "PD2", True)["functions"]["ADC2_IN2"]=0;
+#  pinutils.findpin(pins, "PD15", True)["functions"]["ADC2_IN3"]=0;
+#  pinutils.findpin(pins, "PD13", True)["functions"]["ADC2_IN4"]=0;
+#  pinutils.findpin(pins, "PD12", True)["functions"]["ADC2_IN5"]=0;
+#  pinutils.findpin(pins, "PD14", True)["functions"]["ADC2_IN6"]=0;
+#  pinutils.findpin(pins, "PD27", True)["functions"]["ADC2_IN7"]=0;
 
   pinutils.findpin(pins, "PD25", True)["functions"]["DAC_OUT1"]=0;
-
   pinutils.findpin(pins, "PD26", True)["functions"]["DAC_OUT2"]=0;
 
-  pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
+  pinutils.findpin(pins, "PD4", True)["functions"]["NEGATED"]=0; # LED
+  pinutils.findpin(pins, "PD16", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD17", True)["functions"]["NEGATED"]=0;
+  pinutils.findpin(pins, "PD0", True)["functions"]["NEGATED"]=0; # BTN1
 
   pinutils.findpin(pins, "PD10", True)["functions"]["USART1_TX"]=0; # doesn't match jshardwareUart?
   pinutils.findpin(pins, "PD32", True)["functions"]["USART1_RX"]=0; # doesn't match jshardwareUart?
@@ -200,6 +243,7 @@ def get_pins():
   pinutils.findpin(pins, "PD18", True)["functions"]["SPI2_SCLK"]=0;
   pinutils.findpin(pins, "PD19", True)["functions"]["SPI2_MISO"]=0;
   pinutils.findpin(pins, "PD23", True)["functions"]["SPI2_MOSI"]=0;
+
 
   # everything is non-5v tolerant
   #for pin in pins:

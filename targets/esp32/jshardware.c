@@ -297,6 +297,7 @@ void jshPinSetState(
   }
   gpio_mode_t mode;
   gpio_pull_mode_t pull_mode=GPIO_FLOATING;
+  bool negated = pinInfo[pin].port & JSH_PIN_NEGATED;
   switch(state) {
   case JSHPINSTATE_GPIO_OUT:
     mode = GPIO_MODE_INPUT_OUTPUT;
@@ -306,18 +307,20 @@ void jshPinSetState(
     break;
   case JSHPINSTATE_GPIO_IN_PULLUP:
     mode = GPIO_MODE_INPUT;
-    pull_mode=GPIO_PULLUP_ONLY;
+    pull_mode= negated ? GPIO_PULLDOWN_ONLY : GPIO_PULLUP_ONLY;
     break;
   case JSHPINSTATE_GPIO_IN_PULLDOWN:
     mode = GPIO_MODE_INPUT;
-    pull_mode=GPIO_PULLDOWN_ONLY;
+    pull_mode= negated ? GPIO_PULLUP_ONLY : GPIO_PULLDOWN_ONLY;
     break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
     mode = GPIO_MODE_INPUT_OUTPUT_OD;
+    if (negated) jsError( "jshPinSetState: can't do Open Drain on negated pin");
     break;
-  case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP:
+  case JSHPINSTATE_GPIO_OUT_OPENDRAIN_PULLUP: // not possible if negated
     mode = GPIO_MODE_INPUT_OUTPUT_OD;
-    pull_mode=GPIO_PULLUP_ONLY;
+    pull_mode= GPIO_PULLUP_ONLY;
+    if (negated) jsError( "jshPinSetState: can't do Open Drain on negated pin");
     break;
   default:
     jsError( "jshPinSetState: Unexpected state: %d", state);
@@ -361,6 +364,7 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
   gpio_num_t gpioNum = pinToESP32Pin(pin);
 #if ESP_IDF_VERSION_MAJOR>=5
   gpio_iomux_out(gpioNum,SIG_GPIO_OUT_IDX,0);  // reset pin to be GPIO in case it was used as rmt or something else
@@ -379,22 +383,27 @@ bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
   gpio_num_t gpioNum = pinToESP32Pin(pin);
-  bool level = gpio_get_level(gpioNum);
-  return level;
+  bool value = gpio_get_level(gpioNum);
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) value=!value;
+  return value;
 }
 
 
 JsVarFloat jshPinAnalog(Pin pin) {
   if (pinInfo[pin].analog == JSH_ANALOG_NONE)
     return NAN;
-  return (JsVarFloat) readADC(pin) / 4096;
+  JsVarFloat v = (JsVarFloat) readADC(pin) / 4096;
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) v=1-v;
+  return v;
 }
 
 
 int jshPinAnalogFast(Pin pin) {
   if (pinInfo[pin].analog == JSH_ANALOG_NONE)
     return 0;
-  return readADC(pin) << 4;
+  int v = readADC(pin) << 4;
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) v=65535-v;
+  return v;
 }
 
 
@@ -406,6 +415,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin,
     JsVarFloat freq,
     JshAnalogOutputFlags flags) { // if freq<=0, the default is used
   UNUSED(flags);
+  if (pinInfo[pin].port & JSH_PIN_NEGATED) value=1-value;
   if (value<0) value=0;
   if (value>1) value=1;
   if (!isfinite(freq)) freq=0;
@@ -475,8 +485,9 @@ void jshKickWatchDog() {
  */
 bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
   gpio_num_t gpioNum = pinToESP32Pin((Pin)(eventFlag-EV_EXTI0));
-  bool level = gpio_get_level(gpioNum);
-  return level;
+  bool value = gpio_get_level(gpioNum);
+  if (pinInfo[gpioNum].port & JSH_PIN_NEGATED) value=!value;
+  return value;
 }
 
 
@@ -669,8 +680,13 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 
 // the esp32 temperature sensor - undocumented library function call. Unsure of values returned.
 JsVarFloat jshReadTemperature() {
+#if CONFIG_IDF_TARGET_ESP32
+  extern uint8_t temprature_sens_read();
+  return temprature_sens_read();
+#else
   jsError(">> jshReadTemperature Not implemented");
   return NAN;
+#endif
 }
 
 // the esp8266 can read the VRef but then there's no analog input, so we don't support this

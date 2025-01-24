@@ -29,7 +29,7 @@ Builtin.prototype.getURL = function() {
     anchor = this.class;
   else if ("class" in this)
     anchor = "l_"+this.class+"_"+this.name;
-  else 
+  else
     anchor = "l__global_"+this.name;
   return "http://www.espruino.com/Reference#"+anchor;
 };
@@ -44,12 +44,12 @@ function getBasicTernType(t) {
 }
 
 /// Get full Tern type - for tern.js json format
-Builtin.prototype.getTernType = function() { 
+Builtin.prototype.getTernType = function() {
   if (["class","library"].indexOf(this.type)>=0) {
     return "fn()";
   } else if (["function","method","staticmethod","constructor"].indexOf(this.type)>=0) {
     // it's a function
-    var args = [];     
+    var args = [];
     if ("params" in this)
       args = this.params.map(function (p) {
         if (p[0]=="pin" && p[1]=="JsVar")
@@ -59,8 +59,8 @@ Builtin.prototype.getTernType = function() {
     var ret = "";
     if ("return_object" in this)
       ret = " -> +"+this.return_object
-    else if ("return" in this) 
-      ret = " -> "+getBasicTernType(this.return[0]); 
+    else if ("return" in this)
+      ret = " -> "+getBasicTernType(this.return[0]);
     return "fn("+args.join("\, ")+")"+ret;
   } else {
     return getBasicTernType(this.return[0]);
@@ -78,6 +78,9 @@ exports.getWrapperFiles = function (callback) {
 /// Extract the /*JSON ... */ comments from a file and parse them
 exports.readWrapperFile = function(filename) {
   var contents = fs.readFileSync(filename).toString();
+  if (contents.includes("DO_NOT_INCLUDE_IN_DOCS")) {
+    return [[],[]]; // don't include jswrap files with the no-docs marker in them
+  }
   var builtins = [];
   var types = [];
   var comments = contents.match( /\/\*JSON(?:(?!\*\/).|[\n\r])*\*\//g );

@@ -71,7 +71,7 @@ if "check_output" not in dir( subprocess ):
 #                      // EV_CUSTOM = Called whenever an event of type EV_CUSTOM is received (jswOnCustomEvent(event))
 #                      // EV_xxx = Something to be called with a character in an IRQ when it is received (eg. EV_SERIAL1) (jswOnCharEvent)
 #                      // powerusage = fn(JsVar*) called with an object, and should insert fields for deviec names and estimated power usage in uA (jswGetPowerUsage)
-#         "class" : "Double", 
+#         "class" : "Double",
 #         "name" : "doubleToIntBits",
 #         "deprecated" : "2v24", // mark that this may be removed in the future (version=when it was deprecated). Adds a comment to description
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
@@ -543,6 +543,8 @@ def as_c_string(s):
             ch = ord(s[i])
             if ch == 34: # quote
               r = r + '\\"'
+            elif ch == 92: # slash -> double-escape
+              r = r + '\\\\'
             elif (ch>=32) and (ch<128):
               r = r + s[i]
             else:
