@@ -17,6 +17,7 @@
 void jswrap_pb_videoStart(JsVar *fn, JsVar *options);
 void jswrap_pb_videoStop();
 void jswrap_pb_audioStart(JsVar *fn, JsVar *options);
+void jswrap_pb_audioStop();
 JsVar *jswrap_pb_audioRead(JsVar *fn);
 JsVar *jswrap_pb_audioBuiltin(JsVar *id);
 int jswrap_pb_audioGetFree();
