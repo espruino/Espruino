@@ -24,6 +24,11 @@ make clean && BOARD=XIAOBLE RELEASE=1 make
 # The board should automatically disconnect after copying is finished, and reboot into Espruino,
 # which turns on the red led for a short time after starting up.
 
+# If you accidentally put some stuff in .boot0 that prevents you from interacting with Espruino:
+# Pull pin D1 to 3.3 V / high (important: make sure you use 3.3 V; higher voltages may cause damage) and reset the board,
+# by either pressing the reset button or cutting the power and powering it up again.
+# This behaviour is archived by configuring pin D1 as BTN1.
+
 import pinutils
 info = {
     "name": "Seeed Xiao BLE",
@@ -87,6 +92,7 @@ devices = {
     "LED1": {"pin": "D11"},
     "LED2": {"pin": "D13"},
     "LED3": {"pin": "D12"},
+    "BTN1": {"pin": "D1", "pinstate" : "IN_PULLDOWN"},
     "BAT": {
         "pin_charging": "D23",
         "pin_voltage": "D32",
