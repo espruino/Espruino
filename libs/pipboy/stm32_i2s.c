@@ -108,12 +108,30 @@ void DMA1_Stream4_IRQHandler(void) {
   }
 }
 
+void STM32_I2S_InitFreq(int audioFreq) {
+  I2S_InitTypeDef I2S_InitStructure;
+
+  I2S_InitStructure.I2S_Mode=I2S_Mode_MasterTx;
+  I2S_InitStructure.I2S_Standard=I2S_Standard_Phillips;
+  I2S_InitStructure.I2S_DataFormat=I2S_DataFormat_16bextended;
+  I2S_InitStructure.I2S_MCLKOutput=I2S_MCLKOutput_Enable;
+  I2S_InitStructure.I2S_AudioFreq=(uint32_t)audioFreq;
+  I2S_InitStructure.I2S_CPOL=I2S_CPOL_Low;
+  SPI_I2S_DeInit(SPI2);
+  I2S_Init(SPI2,&I2S_InitStructure);
+
+  SPI_I2S_DMACmd(SPI2,SPI_I2S_DMAReq_Tx,ENABLE);
+  I2S_Cmd(SPI2,ENABLE);
+}
+
 void STM32_I2S_Prepare(int audioFreq) {
   if (i2sStatus == STM32_I2S_PLAYING) return; // if we're started then it's all ok!
 
   DMA_DeInit(DMA1_Stream4);
   while (DMA_GetCmdStatus(DMA1_Stream4) != DISABLE){}
   DMA_ClearITPendingBit(DMA1_Stream4,DMA_IT_FEIF4|DMA_IT_DMEIF4|DMA_IT_TEIF4|DMA_IT_HTIF4|DMA_IT_TCIF4);
+
+  STM32_I2S_InitFreq(audioFreq);
 
   RCC_PLLI2SCmd(ENABLE);
 
@@ -165,8 +183,6 @@ void STM32_I2S_Prepare(int audioFreq) {
 void STM32_I2S_Init() {
   i2sStatus = STM32_I2S_STOPPED;
 
-  I2S_InitTypeDef I2S_InitStructure;
-
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB|RCC_AHB1Periph_GPIOC, ENABLE);
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
   RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI2,ENABLE);
@@ -194,16 +210,7 @@ void STM32_I2S_Init() {
   GPIO_PinAFConfig(GPIOC,GPIO_PinSource6,GPIO_AF_SPI2);  // PC6 ,AF5  I2S_MCK
   GPIO_PinAFConfig(GPIOC,GPIO_PinSource2,GPIO_AF_SPI3);  // PC2 ,AF6  I2S_ADCDATA (AF6 apparently?) - RB 2024-11-25: we're not using this, so should we remove it?
 
-  I2S_InitStructure.I2S_Mode=I2S_Mode_MasterTx;
-  I2S_InitStructure.I2S_Standard=I2S_Standard_Phillips;
-  I2S_InitStructure.I2S_DataFormat=I2S_DataFormat_16bextended;
-  I2S_InitStructure.I2S_MCLKOutput=I2S_MCLKOutput_Enable;
-  I2S_InitStructure.I2S_AudioFreq=I2S_AudioFreq_16k;
-  I2S_InitStructure.I2S_CPOL=I2S_CPOL_Low;
-  I2S_Init(SPI2,&I2S_InitStructure);
-
-  SPI_I2S_DMACmd(SPI2,SPI_I2S_DMAReq_Tx,ENABLE);
-  I2S_Cmd(SPI2,ENABLE);
+  STM32_I2S_InitFreq(I2S_AudioFreq_16k);
 
   NVIC_InitTypeDef   NVIC_InitStructure;
   NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream4_IRQn;

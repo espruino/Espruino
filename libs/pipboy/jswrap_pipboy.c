@@ -671,10 +671,10 @@ void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
       }
       jsvUnLock(v);
     }
-    int blockAlign = jsvObjectGetChildIfExists(options, "blockAlign");
+    int blockAlign = jsvObjectGetIntegerChild(options, "blockAlign");
     if (blockAlign>0) cbdata.wavInfo.blockAlign = blockAlign;
-    int sampleRate = jsvObjectGetChildIfExists(options, "sampleRate");
-    if (sampleRate>0)cbdata.wavInfo.audioSampleRate = sampleRate;
+    int sampleRate = jsvObjectGetIntegerChild(options, "sampleRate");
+    if (sampleRate>0) cbdata.wavInfo.audioSampleRate = sampleRate;
   }
   // if (audioStream) {
   //   if (debugInfo) {
