@@ -774,29 +774,21 @@ void jswrap_pb_videoFrame() {
 
 void jswrap_pb_audioFrame() {
   if (!audioStream) return;
-  int WAV_CHUNK_SIZE = 4096; // how many bytes do we want to read in one chunk?
-  int WAV_SAMPLES; // how many samples do we get?
-  if (audioInfo.formatTag == WAVFMT_IMA_ADPCM) {
-    int blocks = 2048 / audioInfo.blockAlign;
-    WAV_CHUNK_SIZE = blocks * audioInfo.blockAlign; // ensure we meet the alignment required
-    WAV_SAMPLES = blocks * (audioInfo.blockAlign-4) * 2; // 4 bytes per block to set initial state, but 2 samples per byte after that
-  } else { // otherwise normal 16 bit WAV
-    WAV_SAMPLES = WAV_CHUNK_SIZE>>1;
-  }
-
+  int wavSamples;
+  int wavChunkSize = wavGetReadLength(&audioInfo, &wavSamples);
   int freeSamples = STM32_I2S_GetFreeSamples();
   //if (debugInfo) jsiConsolePrintf("%d free\n", freeSamples);
-  if (freeSamples <= WAV_SAMPLES)
+  if (freeSamples <= wavSamples)
     return; // if there's not space yet, don't do anything
 
   size_t actual = 0;
 
-  f_read(&audioFile, streamBuffer, WAV_CHUNK_SIZE, &actual);
+  f_read(&audioFile, streamBuffer, wavChunkSize, &actual);
   //if (debugInfo) jsiConsolePrintf("A%d\n", actual);
   if (actual) {
-    if (audioInfo.formatTag == WAVFMT_IMA_ADPCM) {
-      int16_t *decodedBuffer = (int16_t*)&streamBuffer[WAV_CHUNK_SIZE]; // just put decoded data at the end of the data we read into the stream buffer
-      int samples = wavIMADecode(&audioInfo, streamBuffer, decodedBuffer, actual);
+    if (wavNeedsDecode(&audioInfo)) {
+      int16_t *decodedBuffer = (int16_t*)&streamBuffer[wavChunkSize]; // just put decoded data at the end of the data we read into the stream buffer
+      int samples = wavDecode(&audioInfo, streamBuffer, decodedBuffer, actual);
       STM32_I2S_AddSamples((int16_t*)decodedBuffer, samples, false);
     } else {
       STM32_I2S_AddSamples((int16_t*)streamBuffer, actual>>1, false);
