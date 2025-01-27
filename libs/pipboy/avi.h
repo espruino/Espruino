@@ -41,10 +41,12 @@ bool wavLoad(uint8_t *buf, int len, WavInfo *result, bool debugInfo);
 
 
 /// How much data should we read for the WAV file one one block?
-int wavGetReadLength(WavInfo *wavInfo, int *samples);
+unsigned int wavGetReadLength(WavInfo *wavInfo);
+/// How many samples are in X bytes of this wave data?
+unsigned int wavGetSamples(WavInfo *wavInfo, unsigned int byteLength);
 /// Do we have to decode the wave data or can it be used direct?
 bool wavNeedsDecode(WavInfo *wavInfo);
 // decode IMA-encoded data, return number of samples created
-int wavDecode(WavInfo *wavInfo, uint8_t *bufin, int16_t *bufout, int len);
+int wavDecode(WavInfo *wavInfo, uint8_t *bufin, int16_t *bufout, unsigned int len);
 
 #endif

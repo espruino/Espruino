@@ -379,13 +379,14 @@ void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
   "name" : "audioRead",
   "generate" : "jswrap_pb_audioRead",
   "params" : [
-      ["fn","JsVar","Filename"]
+      ["fn","JsVar","Filename"],
+      ["returnOptions","JsVar","If an object is supplied, it'll be filled with `encoding` and `blockAlign` fields ready for `Pip.audioStartVar`"]
    ],
    "return" : ["JsVar","The raw sound data as a flat string"]
 }
 Read the given WAV file into RAM
 */
-JsVar *jswrap_pb_audioRead(JsVar *fn) {
+JsVar *jswrap_pb_audioRead(JsVar *fn, JsVar *returnOptions) {
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsfsGetPathString(pathStr, fn)) return 0;
 
@@ -407,6 +408,16 @@ JsVar *jswrap_pb_audioRead(JsVar *fn) {
       WavInfo wavInfo;
       res = f_read(&file, (uint8_t*)buf, WAVHEADER_MAX, &actual);
       if (wavLoad(buf, (int)actual, &wavInfo, debugInfo)) {
+        if (jsvIsObject(returnOptions)) {
+          if (wavInfo.audioSampleRate!=16000)
+            jsvObjectSetChildAndUnLock(returnOptions, "sampleRate", jsvNewFromInteger(wavInfo.audioSampleRate));
+          if (wavInfo.formatTag == WAVFMT_RAW)
+            jsvObjectSetChildAndUnLock(returnOptions, "encoding", jsvNewFromInteger(wavInfo.sampleSize));
+          else if (wavInfo.formatTag == WAVFMT_IMA_ADPCM) {
+            jsvObjectSetChildAndUnLock(returnOptions, "encoding", jsvNewFromString("adpcm"));
+            jsvObjectSetChildAndUnLock(returnOptions, "blockAlign", jsvNewFromInteger(wavInfo.blockAlign));
+          }
+        }
         f_lseek(&file, (uint32_t)(wavInfo.streamOffset)); // go back to start of audio data
         uint32_t len = f_size(&file) - (uint32_t)wavInfo.streamOffset;
         JsVar *buffer = jsvNewFlatStringOfLength(len);
@@ -606,26 +617,58 @@ int jswrap_pb_audioGetFree() {
   "name" : "audioStartVar",
   "generate" : "jswrap_pb_audioStartVar",
   "params" : [
-      ["wav","JsVar","Raw 16 bit sound data"],
-      ["options","JsVar","[Optional] object {overlap:bool}"]
+      ["wav","JsVar","Raw sound data (16 bit by default)"],
+      ["options","JsVar","[Optional] object {overlap:bool, encoding:16(default)/8/'adpcm',blockAlign:512,sampleRate:16000}"]
    ]
 }
 Play audio straight from a variable of raw WAV data - this adds everything to the buffer at once so blocks
 
 If `overlap:true` is set the waveform will be added to what's already in the audio ringbuffer,
 allowing multiple sounds to be played at the same time.
+
+If `encoding:"adpcm"` you may need to specify a `blockAlign` value
 */
+typedef struct {
+  bool overlap;
+  WavInfo wavInfo;
+} _jswrap_pb_audioStartVar_cbdata;
+
 static void _jswrap_pb_audioStartVar_cb(unsigned char *data, unsigned int len, void *callbackData) {
-  if (len&1) jsiConsolePrintf("Oops. non-even byte count!");
-  bool overlap = *(bool*)callbackData;
-  STM32_I2S_AddSamples((int16_t*)data, len>>1, overlap);
+  _jswrap_pb_audioStartVar_cbdata *cbdata = (_jswrap_pb_audioStartVar_cbdata*)callbackData;
+  if (wavNeedsDecode(&cbdata->wavInfo)) {
+    unsigned int wavSamples = wavGetSamples(&cbdata->wavInfo, len);
+    wavSamples = wavDecode(&cbdata->wavInfo, (uint8_t*)data, (int16_t*)streamBuffer, len);
+    STM32_I2S_AddSamples((int16_t*)streamBuffer, wavSamples, cbdata->overlap);
+  } else {
+    STM32_I2S_AddSamples((int16_t*)data, len>>1, cbdata->overlap);
+  }
 }
+
 void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
   debugInfo=false;
-  // audioRepeats=false; // There might be a silent looping video playing
-  bool overlap=false;
+  _jswrap_pb_audioStartVar_cbdata cbdata;
+  cbdata.overlap=false;
+  cbdata.wavInfo.audioSampleRate = 16000;
+  cbdata.wavInfo.blockAlign = 512;
+  cbdata.wavInfo.formatTag = WAVFMT_RAW;
+  cbdata.wavInfo.sampleSize = 16;
+  cbdata.wavInfo.streamOffset = 0;
   if (jsvIsObject(options)) {
-    overlap = jsvObjectGetBoolChild(options, "overlap");
+    cbdata.overlap = jsvObjectGetBoolChild(options, "overlap");
+    JsVar *v = jsvObjectGetChildIfExists(options, "encoding");
+    if (v) {
+      if (jsvGetInteger(v)==16) { } // default
+      else if (jsvGetInteger(v)==8) { cbdata.wavInfo.sampleSize = 8; } // default
+      else if (jsvIsStringEqual(v, "adpcm")) {
+        cbdata.wavInfo.formatTag = WAVFMT_IMA_ADPCM;
+        cbdata.wavInfo.sampleSize = 4;
+      }
+      jsvUnLock(v);
+    }
+    int blockAlign = jsvObjectGetChildIfExists(options, "blockAlign");
+    if (blockAlign>0) cbdata.wavInfo.blockAlign = blockAlign;
+    int sampleRate = jsvObjectGetChildIfExists(options, "sampleRate");
+    if (sampleRate>0)cbdata.wavInfo.audioSampleRate = sampleRate;
   }
   // if (audioStream) {
   //   if (debugInfo) {
@@ -634,10 +677,10 @@ void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
   //   f_close(&audioFile);
   //   audioStream = false;
   // }
-  STM32_I2S_Prepare(audioInfo.audioSampleRate);
+  STM32_I2S_Prepare(cbdata.wavInfo.audioSampleRate);
   size_t wavLen;
-  if (!jsvGetDataPointer(wav, &wavLen)) overlap=false; // only overlap if we know jsvIterateBufferCallback will call _jswrap_pb_audioStartVar_cb *once*
-  jsvIterateBufferCallback(wav, _jswrap_pb_audioStartVar_cb, &overlap);
+  if (!jsvGetDataPointer(wav, &wavLen)) cbdata.overlap=false; // only overlap if we know jsvIterateBufferCallback will call _jswrap_pb_audioStartVar_cb *once*
+  jsvIterateBufferCallback(wav, _jswrap_pb_audioStartVar_cb, &cbdata);
   STM32_I2S_StreamEnded(); // ensure we start playing even if there wasn't enough data
 }
 
@@ -774,8 +817,8 @@ void jswrap_pb_videoFrame() {
 
 void jswrap_pb_audioFrame() {
   if (!audioStream) return;
-  int wavSamples;
-  int wavChunkSize = wavGetReadLength(&audioInfo, &wavSamples);
+  unsigned int wavChunkSize = wavGetReadLength(&audioInfo);
+  unsigned int wavSamples = wavGetSamples(&audioInfo, wavChunkSize);
   int freeSamples = STM32_I2S_GetFreeSamples();
   //if (debugInfo) jsiConsolePrintf("%d free\n", freeSamples);
   if (freeSamples <= wavSamples)

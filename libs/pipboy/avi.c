@@ -250,10 +250,10 @@ LIST AVI  (1777854b)
   return true;
 }
 
-bool wavLoad(uint8_t *buf, int len, WavInfo *result, bool debugInfo) {
-  result->formatTag = 0;
-  result->audioSampleRate = 0;
-  result->blockAlign = 0;
+bool wavLoad(uint8_t *buf, int len, WavInfo *wavInfo, bool debugInfo) {
+  wavInfo->formatTag = 0;
+  wavInfo->audioSampleRate = 0;
+  wavInfo->blockAlign = 0;
 
 
   if (!is4CC(buf,"RIFF")) {
@@ -280,17 +280,18 @@ LIST WAVE (61470b)
   }
   uint8_t *listPtr = riffFmt;
   WAVHEADER *wavHeader = (WAVHEADER*)(riffFmt+8);
+  wavInfo->sampleSize = wavHeader->size;
+  wavInfo->formatTag = wavHeader->formatTag;
+  wavInfo->audioSampleRate = wavHeader->sampleRate;
+  wavInfo->blockAlign = wavHeader->blockAlign;
+
   if (wavHeader->channels!=1 || !(
-      (wavHeader->formatTag==WAVFMT_RAW && wavHeader->size==8) ||
-      (wavHeader->formatTag==WAVFMT_RAW && wavHeader->size==16) ||
-      (wavHeader->formatTag==WAVFMT_IMA_ADPCM && wavHeader->size==4))) {
+      (wavInfo->formatTag==WAVFMT_RAW && wavInfo->sampleSize==8) ||
+      (wavInfo->formatTag==WAVFMT_RAW && wavInfo->sampleSize==16) ||
+      (wavInfo->formatTag==WAVFMT_IMA_ADPCM && wavInfo->sampleSize==4))) {
     jsExceptionHere(JSET_ERROR, "Not Mono 8/16 bit RAW or IMA ADPCM WAV (fmt=%d, channels=%d, size=%d)\n", wavHeader->formatTag, wavHeader->channels, wavHeader->size);
     return 0;
   }
-  result->sampleSize = wavHeader->size;
-  result->formatTag = wavHeader->formatTag;
-  result->audioSampleRate = wavHeader->sampleRate;
-  result->blockAlign = wavHeader->blockAlign;
 
   uint8_t *dataStartPtr = riffListFind(buf, "data");
   if (!dataStartPtr) {
@@ -299,7 +300,7 @@ LIST WAVE (61470b)
   }
   //jsiConsolePrintf("Data 0x%08x\n", dataStartPtr-buf);
 
-  result->streamOffset = dataStartPtr-buf;
+  wavInfo->streamOffset = dataStartPtr-buf;
   return true;
 }
 
@@ -307,20 +308,28 @@ bool wavNeedsDecode(WavInfo *wavInfo) {
   return !(wavInfo->formatTag==WAVFMT_RAW && wavInfo->sampleSize==16);
 }
 
-int wavGetReadLength(WavInfo *wavInfo, int *samples) {
+unsigned int wavGetReadLength(WavInfo *wavInfo) {
   int chunkSize; // how many bytes do we want to read in one chunk?
-  int wavSamples; // how many samples do we get?
   if (wavInfo->formatTag == WAVFMT_IMA_ADPCM) {
     int blocks = 2048 / wavInfo->blockAlign;
     chunkSize = blocks * wavInfo->blockAlign; // ensure we meet the alignment required
-    wavSamples = blocks * (1 + ((wavInfo->blockAlign-4) * 2)); // 4 bytes per block to set initial state + 1 sample, then 2 samples per byte after that
   } else { // otherwise normal 16 bit WAV
     chunkSize  = (wavInfo->sampleSize == 16) ? 4096 : 2048; // if 8 bit, don't load too much
-    if (wavInfo->sampleSize == 16) wavSamples = chunkSize>>1;
-    else wavSamples = chunkSize; // 8 bit
   }
-  if (samples) *samples = wavSamples;
   return chunkSize;
+}
+
+unsigned int wavGetSamples(WavInfo *wavInfo, unsigned int byteLength) {
+  if (wavInfo->formatTag == WAVFMT_IMA_ADPCM) {
+    int blocks = byteLength / wavInfo->blockAlign;
+    int extraBlock = byteLength - (blocks*wavInfo->blockAlign);
+    int samples = blocks * (1 + ((wavInfo->blockAlign-4) * 2)); // 4 bytes per block to set initial state + 1 sample, then 2 samples per byte after that
+    if (extraBlock) samples += 1 + ((extraBlock-4) * 2); // maybe there is a last smaller block that's not block aligned?
+    return samples;
+  } else { // otherwise normal 16 bit WAV
+    if (wavInfo->sampleSize == 16) return byteLength>>1;
+    else return byteLength; // 8 bit
+  }
 }
 
 int8_t adpcm_index_table[8] = {
@@ -340,24 +349,26 @@ static const uint16_t adpcm_step_table[89] = {
 };
 
 // decode IMA-encoded data, return number of samples created
-int wavDecode(WavInfo *wavInfo, uint8_t *bufin, int16_t *bufout, int len) {
-  if (wavInfo->formatTag==WAVFMT_IMA_ADPCM) { // ADPCM
+int wavDecode(WavInfo *wavInfo, uint8_t *bufin, int16_t *bufout, unsigned int len) {
+  if (wavInfo->formatTag == WAVFMT_IMA_ADPCM) { // ADPCM
     if (len < 4)
       return 0;
 
     int samples = 0;
-    while (len >= wavInfo->blockAlign) {
+    while (len>4) {
       // start of block -> initial value
       int32_t value = *(bufout++) = (int16_t) (bufin[0] | (bufin[1] << 8));
       // set up index
       int8_t index = bufin[2];
-      if (index < 0 || index > 88 || bufin[3])
-        return 0;
+      if (index < 0) index=0;
+      if (index > 88) index=88;
+      // could error here, but lets soldier on
 
-      len -= wavInfo->blockAlign;
+      unsigned int blockLen = (len > wavInfo->blockAlign) ? wavInfo->blockAlign : len;
+      len -= blockLen;
       bufin += 4;
 
-      int chunks = (wavInfo->blockAlign >> 2) - 1;
+      int chunks = (blockLen >> 2) - 1;
       samples += 1 + (chunks * 8);
 
       while (chunks--) {
@@ -369,9 +380,9 @@ int wavDecode(WavInfo *wavInfo, uint8_t *bufin, int16_t *bufout, int len) {
           if (*bufin & 2) delta += (step >> 1);
           if (*bufin & 4) delta += step;
           if (*bufin & 8)
-              value -= delta;
+            value -= delta;
           else
-              value += delta;
+            value += delta;
 
           index += adpcm_index_table[*bufin & 0x7];
           if (index < 0) index = 0;
@@ -387,9 +398,9 @@ int wavDecode(WavInfo *wavInfo, uint8_t *bufin, int16_t *bufout, int len) {
           if (*bufin & 0x20) delta += (step >> 1);
           if (*bufin & 0x40) delta += step;
           if (*bufin & 0x80)
-              value -= delta;
+            value -= delta;
           else
-              value += delta;
+            value += delta;
 
           index += adpcm_index_table[(*bufin >> 4) & 0x7];
           if (index < 0) index = 0;
@@ -407,11 +418,10 @@ int wavDecode(WavInfo *wavInfo, uint8_t *bufin, int16_t *bufout, int len) {
       // 8 bit wav data is unsigned
       uint16_t v = (uint16_t)(uint8_t)*(bufin++);
       v = (v<<8) | v;
-      *(bufout++) = v - 32768;
+      *(bufout++) = (int16_t)(v - 32768);
     }
     return len;
   } else {
-    // TODO: handle 8 bit raw?
     assert(0);
     return 0;
   }
