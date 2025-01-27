@@ -626,7 +626,13 @@ Play audio straight from a variable of raw WAV data - this adds everything to th
 If `overlap:true` is set the waveform will be added to what's already in the audio ringbuffer,
 allowing multiple sounds to be played at the same time.
 
-If `encoding:"adpcm"` you may need to specify a `blockAlign` value
+If `encoding:"adpcm"` you may need to specify a `blockAlign` value, but you can populate this with `Pip.audioRead`:
+
+```
+var rawInfo = {};
+var raw = Pip.audioRead("TEST.wav", rawInfo);
+Pip.audioStartVar(raw, rawInfo);
+```
 */
 typedef struct {
   bool overlap;
