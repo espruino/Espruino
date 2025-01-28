@@ -188,12 +188,15 @@ def get_pins():
   pinutils.findpin(pins, "PD32", True)["functions"]["USART1_RX"]=0; # doesn't match jshardwareUart?
   pinutils.findpin(pins, "PD16", True)["functions"]["USART3_RX"]=0;
   pinutils.findpin(pins, "PD17", True)["functions"]["USART3_TX"]=0; 
+  
   pinutils.findpin(pins, "PD16", True)["functions"]["I2C2_SCL"]=1;  # added for issue #2589 fix
   pinutils.findpin(pins, "PD17", True)["functions"]["I2C2_SDA"]=1;  # added for issue #2589 fix
-
   pinutils.findpin(pins, "PD22", True)["functions"]["I2C1_SCL"]=0; # SCL moved from P21 for issue #2589
   pinutils.findpin(pins, "PD21", True)["functions"]["I2C1_SDA"]=0; # SDA moved from P22 for issue #2589
-  pinutils.findpin(pins, "PD14", True)["functions"]["SPI1_SCLK"]=0;
+
+# These SPI Pin defs used in jshSPISetup as of issue #2601
+# see esp-idf-4 /components/soc/esp32/include/soc/spi_pins.h
+  pinutils.findpin(pins, "PD14", True)["functions"]["SPI1_SCLK"]=0; 
   pinutils.findpin(pins, "PD12", True)["functions"]["SPI1_MISO"]=0;
   pinutils.findpin(pins, "PD13", True)["functions"]["SPI1_MOSI"]=0;
   pinutils.findpin(pins, "PD18", True)["functions"]["SPI2_SCLK"]=0;
