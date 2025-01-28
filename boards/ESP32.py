@@ -196,10 +196,10 @@ def get_pins():
 
 # These SPI Pin defs used in jshSPISetup as of issue #2601
 # see esp-idf-4 /components/soc/esp32/include/soc/spi_pins.h
-  pinutils.findpin(pins, "PD14", True)["functions"]["SPI1_SCLK"]=0; 
+  pinutils.findpin(pins, "PD14", True)["functions"]["SPI1_SCL"]=0; 
   pinutils.findpin(pins, "PD12", True)["functions"]["SPI1_MISO"]=0;
   pinutils.findpin(pins, "PD13", True)["functions"]["SPI1_MOSI"]=0;
-  pinutils.findpin(pins, "PD18", True)["functions"]["SPI2_SCLK"]=0;
+  pinutils.findpin(pins, "PD18", True)["functions"]["SPI2_SCL"]=0;
   pinutils.findpin(pins, "PD19", True)["functions"]["SPI2_MISO"]=0;
   pinutils.findpin(pins, "PD23", True)["functions"]["SPI2_MOSI"]=0;
 
