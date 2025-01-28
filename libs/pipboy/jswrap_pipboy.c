@@ -237,7 +237,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 #ifndef LINUX
         // Set up Audio
         if (videoInfo.audioBufferSize <= I2S_RING_BUFFER_SIZE*2) { // IF we have audio
-          STM32_I2S_Prepare(videoInfo.audioSampleRate);
+          STM32_I2S_Prepare(videoInfo.audio.sampleRate);
           // playback will start when the buffer is full enough
         } else if (videoInfo.audioBufferSize) {
           jsiConsolePrintf("Audio stream too big (%db)\n", videoInfo.audioBufferSize);
@@ -358,7 +358,7 @@ void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
       }
       if (wavLoad(streamBuffer, (int)actual, &audioInfo, debugInfo)) {
         f_lseek(&audioFile, (uint32_t)(audioInfo.streamOffset)); // go back to start of audio data
-        STM32_I2S_Prepare(audioInfo.audioSampleRate);
+        STM32_I2S_Prepare(audioInfo.sampleRate);
         jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamStarted");
         if (debugInfo) jsiConsolePrintf("Audio started...\n");
       } else {
@@ -409,8 +409,8 @@ JsVar *jswrap_pb_audioRead(JsVar *fn, JsVar *returnOptions) {
       res = f_read(&file, (uint8_t*)buf, WAVHEADER_MAX, &actual);
       if (wavLoad(buf, (int)actual, &wavInfo, debugInfo)) {
         if (jsvIsObject(returnOptions)) {
-          if (wavInfo.audioSampleRate!=16000)
-            jsvObjectSetChildAndUnLock(returnOptions, "sampleRate", jsvNewFromInteger(wavInfo.audioSampleRate));
+          if (wavInfo.sampleRate!=16000)
+            jsvObjectSetChildAndUnLock(returnOptions, "sampleRate", jsvNewFromInteger(wavInfo.sampleRate));
           if (wavInfo.formatTag == WAVFMT_RAW)
             jsvObjectSetChildAndUnLock(returnOptions, "encoding", jsvNewFromInteger(wavInfo.sampleSize));
           else if (wavInfo.formatTag == WAVFMT_IMA_ADPCM) {
@@ -654,7 +654,7 @@ void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
   debugInfo=false;
   _jswrap_pb_audioStartVar_cbdata cbdata;
   cbdata.overlap=false;
-  cbdata.wavInfo.audioSampleRate = 16000;
+  cbdata.wavInfo.sampleRate = 16000;
   cbdata.wavInfo.blockAlign = 512;
   cbdata.wavInfo.formatTag = WAVFMT_RAW;
   cbdata.wavInfo.sampleSize = 16;
@@ -674,7 +674,7 @@ void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
     int blockAlign = jsvObjectGetIntegerChild(options, "blockAlign");
     if (blockAlign>0) cbdata.wavInfo.blockAlign = blockAlign;
     int sampleRate = jsvObjectGetIntegerChild(options, "sampleRate");
-    if (sampleRate>0) cbdata.wavInfo.audioSampleRate = sampleRate;
+    if (sampleRate>0) cbdata.wavInfo.sampleRate = sampleRate;
   }
   // if (audioStream) {
   //   if (debugInfo) {
@@ -683,7 +683,7 @@ void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
   //   f_close(&audioFile);
   //   audioStream = false;
   // }
-  STM32_I2S_Prepare(cbdata.wavInfo.audioSampleRate);
+  STM32_I2S_Prepare(cbdata.wavInfo.sampleRate);
   size_t wavLen;
   if (!jsvGetDataPointer(wav, &wavLen)) cbdata.overlap=false; // only overlap if we know jsvIterateBufferCallback will call _jswrap_pb_audioStartVar_cb *once*
   jsvIterateBufferCallback(wav, _jswrap_pb_audioStartVar_cb, &cbdata);
@@ -732,7 +732,18 @@ void jswrap_pb_videoFrame() {
       jsiConsolePrintf("Audio stream too big for streamBuffer\n");
       jswrap_pb_videoStop();
     } else {
-      STM32_I2S_AddSamples((int16_t*)streamBuffer, streamPacketLen>>1, false); // l is in bytes, not samples
+      if (wavNeedsDecode(&videoInfo.audio)) {
+        int spaceNeeded = wavGetSamples(&videoInfo.audio, streamPacketLen)*2;
+        if (spaceNeeded+streamPacketBufferLen > STREAM_BUFFER_SIZE) {
+          jsiConsolePrintf("Encoded Audio stream too big for streamBuffer\n");
+        } else {
+          int16_t *decodedBuffer = (int16_t*)&streamBuffer[streamPacketBufferLen]; // just put decoded data at the end of the data we read into the stream buffer
+          int samples = wavDecode(&videoInfo.audio, streamBuffer, decodedBuffer, streamPacketLen);
+          STM32_I2S_AddSamples((int16_t*)decodedBuffer, samples, false);
+        }
+      } else {
+        STM32_I2S_AddSamples((int16_t*)streamBuffer, streamPacketLen>>1, false);
+      }
     }
   } else if (streamPacketId==AVI_STREAM_VIDEO) {
     lcdFSMC_blitStart(&graphicsInternal, startX,startY,videoInfo.width,videoInfo.height);

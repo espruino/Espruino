@@ -135,6 +135,24 @@ void riffListShow(uint8_t *buf, int pad) {
   }
 }
 
+static bool wavParseHeader(WavInfo *wavInfo, WAVHEADER *wavHeader) {
+  wavInfo->sampleSize = wavHeader->size;
+  wavInfo->formatTag = wavHeader->formatTag;
+  wavInfo->sampleRate = wavHeader->sampleRate;
+  wavInfo->blockAlign = wavHeader->blockAlign;
+  wavInfo->streamOffset = 0;
+
+  if (wavHeader->channels!=1 || !(
+      (wavInfo->formatTag==WAVFMT_RAW && wavInfo->sampleSize==8) ||
+      (wavInfo->formatTag==WAVFMT_RAW && wavInfo->sampleSize==16) ||
+      (wavInfo->formatTag==WAVFMT_IMA_ADPCM && wavInfo->sampleSize==4))) {
+    jsExceptionHere(JSET_ERROR, "Not Mono 8/16 bit RAW or IMA ADPCM WAV (fmt=%d, channels=%d, size=%d)\n", wavHeader->formatTag, wavHeader->channels, wavHeader->size);
+    return 0;
+  }
+
+  return true;
+}
+
 bool aviLoad(uint8_t *buf, int len, AviInfo *result, bool debugInfo) {
   if (!is4CC(buf,"RIFF")) {
     jsExceptionHere(JSET_ERROR, "Not RIFF %c%c%c%c\n", buf[0],buf[1],buf[2],buf[3]);
@@ -186,7 +204,7 @@ LIST AVI  (1777854b)
   result->height = aviHeader->dwHeight;
   result->usPerFrame = aviHeader->dwMicroSecPerFrame;
   result->audioBufferSize = 0;
-  result->audioSampleRate = 0;
+  result->audio.sampleRate = 0;
   for (int stream=0;stream<aviHeader->dwStreams;stream++) {
     uint8_t *streamListPtr = riffGetIndex(listPtr, 1+stream, "LIST")-8;
     if (!streamListPtr) {
@@ -224,18 +242,11 @@ LIST AVI  (1777854b)
       }
     } else if (is4CC(&streamHeader->fccType,"auds")) {
       WAVHEADER *wavHeader = (WAVHEADER*)riffGetIndex(streamListPtr, 1, "strf");
-       if (!wavHeader) {
-        jsExceptionHere(JSET_ERROR, "No WAVHEADER %d\n");
-        return 0;
-      }
-      if (wavHeader->formatTag!=1 || wavHeader->channels!=1 || wavHeader->size!=16) {
-        jsExceptionHere(JSET_ERROR, "Not Mono 16 bit WAV (fmt=%d, channels=%d, size=%d)\n", wavHeader->formatTag, wavHeader->channels, wavHeader->size);
-        return 0;
-      }
-      result->audioSampleRate = wavHeader->sampleRate;
+      if (!wavParseHeader(&result->audio, wavHeader))
+        return 0; // unsupported format
       result->audioBufferSize = streamHeader->dwSuggestedBufferSize;
       if (debugInfo) {
-        jsiConsolePrintf("  - %dhz mono 16b (%db buffer size)\n",  result->audioSampleRate, result->audioBufferSize);
+        jsiConsolePrintf("  - %dhz mono %db (%db buffer size)\n",  result->audio.sampleRate, result->audio.sampleSize, result->audioBufferSize);
       }
     }
   }
@@ -251,11 +262,6 @@ LIST AVI  (1777854b)
 }
 
 bool wavLoad(uint8_t *buf, int len, WavInfo *wavInfo, bool debugInfo) {
-  wavInfo->formatTag = 0;
-  wavInfo->audioSampleRate = 0;
-  wavInfo->blockAlign = 0;
-
-
   if (!is4CC(buf,"RIFF")) {
     jsExceptionHere(JSET_ERROR, "Not RIFF %c%c%c%c\n", buf[0],buf[1],buf[2],buf[3]);
     return 0;
@@ -278,20 +284,9 @@ LIST WAVE (61470b)
     jsExceptionHere(JSET_ERROR, "Expecting 'fmt' tag\n");
     return 0;
   }
-  uint8_t *listPtr = riffFmt;
   WAVHEADER *wavHeader = (WAVHEADER*)(riffFmt+8);
-  wavInfo->sampleSize = wavHeader->size;
-  wavInfo->formatTag = wavHeader->formatTag;
-  wavInfo->audioSampleRate = wavHeader->sampleRate;
-  wavInfo->blockAlign = wavHeader->blockAlign;
-
-  if (wavHeader->channels!=1 || !(
-      (wavInfo->formatTag==WAVFMT_RAW && wavInfo->sampleSize==8) ||
-      (wavInfo->formatTag==WAVFMT_RAW && wavInfo->sampleSize==16) ||
-      (wavInfo->formatTag==WAVFMT_IMA_ADPCM && wavInfo->sampleSize==4))) {
-    jsExceptionHere(JSET_ERROR, "Not Mono 8/16 bit RAW or IMA ADPCM WAV (fmt=%d, channels=%d, size=%d)\n", wavHeader->formatTag, wavHeader->channels, wavHeader->size);
-    return 0;
-  }
+  if (!wavParseHeader(wavInfo, wavHeader))
+    return 0; // unsupported format
 
   uint8_t *dataStartPtr = riffListFind(buf, "data");
   if (!dataStartPtr) {

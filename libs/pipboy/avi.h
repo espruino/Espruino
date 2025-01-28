@@ -16,19 +16,20 @@
 #define __AVI_H
 
 typedef struct {
-  int width, height, usPerFrame;
-  int streamOffset; // offset in the file of the start of data
-  uint16_t palette[256];
-  int audioSampleRate;
-  int audioBufferSize;
-} AviInfo;
-typedef struct {
   int streamOffset; // offset in the file of the start of data
   int sampleSize; // 16=16 bit, or 4 for ADPCM
-  int audioSampleRate;
+  int sampleRate;
   int blockAlign; // for ADPCM, blocks we pass to decoder should be a multiple of this size
   uint16_t formatTag;
 } WavInfo;
+
+typedef struct {
+  int width, height, usPerFrame;
+  int streamOffset; // offset in the file of the start of data
+  uint16_t palette[256];
+  WavInfo audio;
+  int audioBufferSize;
+} AviInfo;
 
 const uint16_t WAVFMT_RAW = 1;
 const uint16_t WAVFMT_IMA_ADPCM = 0x11; // https://wiki.multimedia.cx/index.php/Microsoft_IMA_ADPCM
