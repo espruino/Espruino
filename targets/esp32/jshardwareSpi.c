@@ -112,7 +112,7 @@ void jshSPISetup(
                           funcTypeStr, sizeof(funcTypeStr));
     jsDebug(DBG_INFO,
             "jshSPISetup: for host: %d, SPI pins on device: %s, identified as "
-            "SCK: %d, MISO: %d, MISI: %d\n",
+            "SCK: %d, MISO: %d, MOSI: %d\n",
             SPIChannels[channelPnt].HOST, funcTypeStr, inf->pinSCK, inf->pinMISO,
             inf->pinMOSI);
   #endif
