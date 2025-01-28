@@ -527,6 +527,9 @@ $(PROJ_NAME).hex: $(PROJ_NAME).app_hex
 	python scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).app_hex -o $(PROJ_NAME).hex
  endif # USE_BOOTLOADER
 
+$(PROJ_NAME).uf2: $(PROJ_NAME).hex
+	@echo Creating UF2
+	python3 scripts/uf2/uf2conv.py $(PROJ_NAME).hex -c -f $(CHIP) -o $(PROJ_NAME).uf2
 
 $(PROJ_NAME).zip: $(PROJ_NAME).app_hex
 ifdef NRF5X_SDK_11 # SDK11 requires non-secure DFU that the adafruit tools support
@@ -561,11 +564,10 @@ partflash: all
 
 ifdef DFU_UPDATE_BUILD_WITH_HEX
 proj: $(PROJ_NAME).hex $(PROJ_NAME).zip
-else
-ifdef DFU_UPDATE_BUILD
+else ifdef DFU_UPDATE_BUILD
 proj: $(PROJ_NAME).zip
+else ifdef CREATE_UF2
+proj: $(PROJ_NAME).uf2
 else
 proj: $(PROJ_NAME).hex
 endif
-endif
-

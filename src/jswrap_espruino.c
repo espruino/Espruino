@@ -2356,17 +2356,21 @@ void jswrap_espruino_reboot() {
 
 /*JSON{
   "type" : "staticmethod",
-  "ifdef" : "STM32F4",
+  "#if" : "defined(STM32F4) || defined(ESPR_HAS_BOOTLOADER_UF2)",
   "class" : "E",
   "name" : "rebootToDFU",
   "generate" : "jswrap_espruino_rebootToDFU"
 }
-Forces a hard reboot of the microcontroller into the ST DFU mode
+Forces a hard reboot of the microcontroller into DFU mode.
 
-**Note:** The device will stay in DFU mode until it is power-cycled or reset
+If this is an ST device, this will be the ST DFU mode.
+
+If this device has an UF2 bootloader, it will reappear as a USB drive, onto which you can copy new firmware.
+
+**Note:** The device will stay in DFU mode until it is power-cycled or reset.
 */
 void jswrap_espruino_rebootToDFU() {
-#ifdef STM32F4
+#if defined(STM32F4) || defined(ESPR_HAS_BOOTLOADER_UF2)
   // ensure `E.on('kill',...` gets called and everything is torn down correctly
   jsiKill();
   jsvKill();

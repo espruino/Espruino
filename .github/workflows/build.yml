@@ -39,7 +39,7 @@ jobs:
     strategy:
       # devices to build for
       matrix:
-        board: [LINUX, ESP32, ESP8266_BOARD, ESP8266_4MB, MICROBIT1, MICROBIT2, ESP32C3_IDF4]
+        board: [LINUX, ESP32, ESP8266_BOARD, ESP8266_4MB, MICROBIT1, MICROBIT2, ESP32C3_IDF4, XIAOBLE]
       # try and build for all devices even if one fails
       fail-fast: false 
     steps:
@@ -62,6 +62,7 @@ jobs:
         name: ${{ matrix.board }}
         path: |
           bin/*.bin
+          bin/*.uf2
           bin/*.hex
           bin/*.tgz
           bin/*.zip

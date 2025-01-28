@@ -891,6 +891,8 @@ clean:
 	$(Q)rm -f $(PROJ_NAME).bin
 	$(Q)rm -f $(PROJ_NAME).srec
 	$(Q)rm -f $(PROJ_NAME).lst
+	$(Q)rm -f $(PROJ_NAME).app_hex
+	$(Q)rm -f $(PROJ_NAME).uf2
 	$(Q)rm -f $(BINDIR)/espruino_embedded.h
 	$(Q)rm -f $(BINDIR)/espruino_embedded.c
 	$(Q)rm -f $(BINDIR)/jstypes.h

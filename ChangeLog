@@ -9,6 +9,9 @@
             Bangle.js: Ensure fake LED1/LED2 remember state
             Ensure E.setComparator is added to the build for nRF52
             Bangle.js2: Update test to use accelerometer to test vibration motor
+            Build: Allow creating UF2 images
+            XiaoBLE: Add board: Seeed XIAO BLE
+            nRF5x: Allow entering UF2 bootloader mode by calling E.rebootToDFU() (on boards that have such a bootloader)
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

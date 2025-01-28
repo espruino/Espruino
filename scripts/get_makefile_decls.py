@@ -53,6 +53,9 @@ if binaryName.find('.bin')>=0:
     binaryName = binaryName[:binaryName.find('.bin')]
 if binaryName.find('.hex')>=0:
     binaryName = binaryName[:binaryName.find('.hex')]
+if binaryName.find('.uf2')>=0:
+    binaryName = binaryName[:binaryName.find('.uf2')]
+    print("CREATE_UF2=1")
 print("PROJ_NAME=$(BINDIR)/"+binaryName)
 
 if board.chip["family"]!="LINUX":
