@@ -689,7 +689,7 @@ void jswrap_espruino_kickWatchdog() {
 
 /*JSON{
   "type" : "event",
-  "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
+  "#if" : "defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)",
   "class" : "E",
   "name" : "comparator",
   "params" : [
@@ -700,7 +700,7 @@ Called when a bit rises or falls above a set level. See `E.setComparator` for se
 */
 /*JSON{
   "type" : "EV_CUSTOM",
-  "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
+  "#if" : "defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)",
   "generate" : "jswrap_espruino_setComparator_eventHandler"
 }
 */
@@ -716,7 +716,7 @@ void jswrap_espruino_setComparator_eventHandler(IOEvent *event) {
 }
 /*JSON{
   "type" : "staticmethod",
-  "#if" : "defined(NRF52) && !defined(SAVE_ON_FLASH)",
+  "#if" : "defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)",
   "class" : "E",
   "name" : "setComparator",
   "generate" : "jswrap_espruino_setComparator",
@@ -738,7 +738,7 @@ E.on("comparator", e => {
 **Note:** There is just one LPCOMP, so you can only enable the comparator on one pin.
 
 **On [Jolt.js](https://www.espruino.com/Jolt.js):** when using `E.setComparator` on the analog pins on the
-Terminal block (`H0`/`H2`/`H4`/`H8`), the `level` you give needs to be in volts. Because the comparator only
+Terminal block (`H0`/`H2`/`H4`/`H6`), the `level` you give needs to be in volts. Because the comparator only
 works in 16 steps, you can only detect multiples of 1.37v (1.37/2.74/4.11/etc)
 
  */
@@ -2356,17 +2356,21 @@ void jswrap_espruino_reboot() {
 
 /*JSON{
   "type" : "staticmethod",
-  "ifdef" : "STM32F4",
+  "#if" : "defined(STM32F4) || defined(ESPR_HAS_BOOTLOADER_UF2)",
   "class" : "E",
   "name" : "rebootToDFU",
   "generate" : "jswrap_espruino_rebootToDFU"
 }
-Forces a hard reboot of the microcontroller into the ST DFU mode
+Forces a hard reboot of the microcontroller into DFU mode.
 
-**Note:** The device will stay in DFU mode until it is power-cycled or reset
+If this is an ST device, this will be the ST DFU mode.
+
+If this device has an UF2 bootloader, it will reappear as a USB drive, onto which you can copy new firmware.
+
+**Note:** The device will stay in DFU mode until it is power-cycled or reset.
 */
 void jswrap_espruino_rebootToDFU() {
-#ifdef STM32F4
+#if defined(STM32F4) || defined(ESPR_HAS_BOOTLOADER_UF2)
   // ensure `E.on('kill',...` gets called and everything is torn down correctly
   jsiKill();
   jsvKill();
