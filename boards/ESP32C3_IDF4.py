@@ -167,8 +167,6 @@ def get_pins():
  
   # SPI added for issue #2601 
   # See esp-idf-4 /components/soc/esp32c3/include/soc/soc_caps.h
-  https://github.com/espressif/esp-idf/blob/master/components/soc/esp32c3/include/soc/spi_pins.h
-  # pinutils.findpin(pins, "PD10", True)["functions"]["SPI1_NSS"]=0;
   pinutils.findpin(pins, "PD6", True)["functions"]["SPI1_SCK"]=0;
   pinutils.findpin(pins, "PD2", True)["functions"]["SPI1_MISO"]=0;
   pinutils.findpin(pins, "PD7", True)["functions"]["SPI1_MOSI"]=0;
