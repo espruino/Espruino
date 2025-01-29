@@ -161,10 +161,21 @@ def get_pins():
   # pinutils.findpin(pins, "PD5", True)["functions"]["ADC2_IN0"]=0;
 #  pinutils.findpin(pins, "PD8", True)["functions"]["NEGATED"]=0; # LED negated - but ESP32 port ignores negation
   # D12-D17 are SPI (internal SPI) - not sure they should even be exposed??
+  
+  pinutils.findpin(pins, "PD18", True)["functions"]["USB"]=0; # D-
+  pinutils.findpin(pins, "PD19", True)["functions"]["USB"]=0; # D+
+  pinutils.findpin(pins, "PD20", True)["functions"]["USART1_RX"]=0;
+  pinutils.findpin(pins, "PD21", True)["functions"]["USART1_TX"]=0;
+  pinutils.findpin(pins, "PD9", True)["functions"]["I2C1_SCL"]=0; # added for issue #2589 fix
+  pinutils.findpin(pins, "PD8", True)["functions"]["I2C1_SDA"]=0; # added for issue #2589 fix
+ 
+  # SPI added for issue #2601 
+  # See esp-idf-4 /components/soc/esp32c3/include/soc/soc_caps.h
+  pinutils.findpin(pins, "PD6", True)["functions"]["SPI1_SCK"]=0;
+  pinutils.findpin(pins, "PD2", True)["functions"]["SPI1_MISO"]=0;
+  pinutils.findpin(pins, "PD7", True)["functions"]["SPI1_MOSI"]=0;
 
-  #18/19 are USB
-  pinutils.findpin(pins, "PD20", True)["functions"]["USART0_RX"]=0;
-  pinutils.findpin(pins, "PD21", True)["functions"]["USART0_TX"]=0;
+ 
 
   # everything is non-5v tolerant
   for pin in pins:

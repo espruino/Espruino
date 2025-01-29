@@ -100,7 +100,7 @@ chip = {
 };
 devices = {
   'LED1' : { 'pin' : 'D2' },
-  'BTN1' : { 'pin' : 'D0', "inverted":1, 'pinstate' : 'IN_PULLUP' }
+  'BTN1' : { 'pin' : 'D0' }
 };
 
 # left-right, or top-bottom order
@@ -182,22 +182,26 @@ def get_pins():
   pinutils.findpin(pins, "PD27", True)["functions"]["ADC2_IN7"]=0;
 
   pinutils.findpin(pins, "PD25", True)["functions"]["DAC_OUT1"]=0;
-
   pinutils.findpin(pins, "PD26", True)["functions"]["DAC_OUT2"]=0;
 
-  pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
+  pinutils.findpin(pins, "PD0", True)["functions"]["NEGATED"]=0; # BTN1 negate
 
   pinutils.findpin(pins, "PD10", True)["functions"]["USART1_TX"]=0; # doesn't match jshardwareUart?
   pinutils.findpin(pins, "PD32", True)["functions"]["USART1_RX"]=0; # doesn't match jshardwareUart?
   pinutils.findpin(pins, "PD16", True)["functions"]["USART3_RX"]=0;
   pinutils.findpin(pins, "PD17", True)["functions"]["USART3_TX"]=0; 
+  
+  pinutils.findpin(pins, "PD16", True)["functions"]["I2C2_SCL"]=1;  # added for issue #2589 fix
+  pinutils.findpin(pins, "PD17", True)["functions"]["I2C2_SDA"]=1;  # added for issue #2589 fix
+  pinutils.findpin(pins, "PD22", True)["functions"]["I2C1_SCL"]=0; # SCL moved from P21 for issue #2589
+  pinutils.findpin(pins, "PD21", True)["functions"]["I2C1_SDA"]=0; # SDA moved from P22 for issue #2589
 
-  pinutils.findpin(pins, "PD21", True)["functions"]["I2C1_SCL"]=0;
-  pinutils.findpin(pins, "PD22", True)["functions"]["I2C1_SDA"]=0;
-  pinutils.findpin(pins, "PD14", True)["functions"]["SPI1_SCLK"]=0;
+# These SPI Pin defs used in jshSPISetup as of issue #2601
+# see esp-idf-4 /components/soc/esp32/include/soc/spi_pins.h
+  pinutils.findpin(pins, "PD14", True)["functions"]["SPI1_SCK"]=0; 
   pinutils.findpin(pins, "PD12", True)["functions"]["SPI1_MISO"]=0;
   pinutils.findpin(pins, "PD13", True)["functions"]["SPI1_MOSI"]=0;
-  pinutils.findpin(pins, "PD18", True)["functions"]["SPI2_SCLK"]=0;
+  pinutils.findpin(pins, "PD18", True)["functions"]["SPI2_SCK"]=0;
   pinutils.findpin(pins, "PD19", True)["functions"]["SPI2_MISO"]=0;
   pinutils.findpin(pins, "PD23", True)["functions"]["SPI2_MOSI"]=0;
 
