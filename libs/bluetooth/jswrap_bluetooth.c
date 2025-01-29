@@ -3312,7 +3312,7 @@ The following filter types are implemented:
 * `namePrefix` - starting characters of device name
 * `id` - exact device address (`id:"e9:53:86:09:89:99 random"`) (this is
   Espruino-specific, and is not part of the Web Bluetooth spec)
-* `serviceData` - an object containing service characteristics which must all
+* `serviceData` - an object containing **lowercase** service characteristics which must all
   match (`serviceData:{"1809":{}}`). Matching of actual service data is not
   supported yet.
 * `manufacturerData` - an object containing manufacturer UUIDs which must all
