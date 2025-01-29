@@ -162,9 +162,15 @@ def get_pins():
   pinutils.findpin(pins, "PD19", True)["functions"]["USB"]=0; # D+
   pinutils.findpin(pins, "PD20", True)["functions"]["USART1_RX"]=0;
   pinutils.findpin(pins, "PD21", True)["functions"]["USART1_TX"]=0;
-  pinutils.findpin(pins, "PD9", True)["functions"]["I2C1_SCL"]=0;
-  pinutils.findpin(pins, "PD8", True)["functions"]["I2C1_SDA"]=0;
-  # SPI1_SCLK/etc?
+  pinutils.findpin(pins, "PD9", True)["functions"]["I2C1_SCL"]=0; # added for issue #2589 fix
+  pinutils.findpin(pins, "PD8", True)["functions"]["I2C1_SDA"]=0; # added for issue #2589 fix
+ 
+  # SPI added for issue #2601 
+  # See esp-idf-4 /components/soc/esp32c3/include/soc/soc_caps.h
+  pinutils.findpin(pins, "PD6", True)["functions"]["SPI1_SCK"]=0;
+  pinutils.findpin(pins, "PD2", True)["functions"]["SPI1_MISO"]=0;
+  pinutils.findpin(pins, "PD7", True)["functions"]["SPI1_MOSI"]=0;
+
  
 
   # everything is non-5v tolerant

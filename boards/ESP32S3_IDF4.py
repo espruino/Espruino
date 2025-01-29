@@ -146,12 +146,25 @@ board_esp32["_css"] = """
 boards = [ board_esp32 ];
 
 def get_pins():
-  pins = pinutils.generate_pins(0,39) # 40 General Purpose I/O Pins.
+  # Todo review as ESP32-S3 has there are 45 Physical GPIO pins Numbered 0->21 and 26->48
+  # see https://www.espressif.com/sites/default/files/documentation/esp32-s3_technical_reference_manual_en.pdf
+  pins = pinutils.generate_pins(0,39)  # 40 General Purpose I/O Pins.
   
+  # I2C added for issue #2589 - all decided by user (not defined in specs)
+  pinutils.findpin(pins, "PD8", True)["functions"]["I2C1_SDA"]=0; 
+  pinutils.findpin(pins, "PD9", True)["functions"]["I2C1_SCL"]=0; 
+  pinutils.findpin(pins, "PD18", True)["functions"]["I2C2_SDA"]=0; 
+  pinutils.findpin(pins, "PD19", True)["functions"]["I2C2_SCL"]=0; 
 
-  pinutils.findpin(pins, "PD11", True)["functions"]["I2C1_SCL"]=0;
-  pinutils.findpin(pins, "PD10", True)["functions"]["I2C1_SDA"]=0;
-  # SPI1_SCLK/etc?
+  # SPI added for issue #2601 
+  #  - for SPI1 use pins that will bypass GPIO matrix (So Quicker) see esp-idf-4 /components/soc/esp32s3/include/soc/spi_pins.h
+  pinutils.findpin(pins, "PD12", True)["functions"]["SPI1_SCK"]=0;
+  pinutils.findpin(pins, "PD13", True)["functions"]["SPI1_MISO"]=0;
+  pinutils.findpin(pins, "PD11", True)["functions"]["SPI1_MOSI"]=0;
+  #  - SPI2 is decided by user
+  pinutils.findpin(pins, "PD4", True)["functions"]["SPI2_SCK"]=0;
+  pinutils.findpin(pins, "PD6", True)["functions"]["SPI2_MISO"]=0;
+  pinutils.findpin(pins, "PD7", True)["functions"]["SPI2_MOSI"]=0;
 
   # everything is non-5v tolerant
   #for pin in pins:

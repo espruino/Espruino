@@ -9,9 +9,22 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * This file is designed to be parsed during the build process
- *
- * Contains ESP32 board specific functions.
+ * Contains ESP32 board specific functions to Support SPI Peripherials
+ * 
+ * Espruino models a given SPI peripherial interface in the SPIChannels[channelPnt] struct.
+ *   With elements for each identified Espruino SPI Device.
+ * 
+ * The jshSPISetup() function:
+ *  Initialises a target SPI Bus to an ESP32 'peripherial Host' (Espruino Device SPI1 or SPI2)
+ *   - Assigns Pins etc via struct spi_bus_config_t
+ *   - Stores the IDF host ID against an Espruino SPIChannel in SPIChannels[channelPnt].HOST 
+ *  and registers an 'ESP32 Device' attached to the bus 
+ *   - configures timing etc via struct dev_config
+ *   - assigns handle (via pointer SPIChannels[channelPnt].spi) for sendingtransactions to device 
+ * 
+ * Note this SPIChannels[] model combines the one to many ESP32 Host/Bus and Device concepts into one Espruino Channel.
+ * However Espruino channels do not include Bus CS pins (a descriminating element of an ESP32 Bus vs device)
+ * Espruino identifies the CS pin from individual JS SPI.send commands and sets/clears it a higher level in jswrap_spi_send
  * ----------------------------------------------------------------------------
  */
 
@@ -19,13 +32,14 @@
 #include "jshardware.h"
 #include "driver/gpio.h"
 #include "jshardwareSpi.h"
+#include "jsinteractive.h"
 
 #define UNUSED(x) (void)(x)
 
-#if ESP_IDF_VERSION_MAJOR>=5 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3
-  #define SPICHANNEL0_HOST SPI2_HOST
+#if ESP_IDF_VERSION_MAJOR >= 4     // Modified for issue #2601
+#define SPICHANNEL0_HOST SPI2_HOST // SPI1_host internal use only
   #define SPICHANNEL1_HOST SPI3_HOST
-#else
+#else // allow original ESP32 build in IDF V3
   #define SPICHANNEL0_HOST HSPI_HOST
   #define SPICHANNEL1_HOST VSPI_HOST
 #endif
@@ -51,6 +65,8 @@ void SPIChannelReset(int channelPnt){
   SPIChannels[channelPnt].spi = NULL;
   SPIChannels[channelPnt].spi_read = false;
   SPIChannels[channelPnt].g_lastSPIRead = (uint32_t)-1;
+  jsDebug(DBG_INFO, "SPIChannelReset: for channel:%d,  assigned to host device %d\n",
+          channelPnt, SPIChannels[channelPnt].HOST);
 }
 void SPIReset(){
   int i;
@@ -60,75 +76,53 @@ void SPIReset(){
 }
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit);
 
-/*
-https://hackadaycom.files.wordpress.com/2016/10/esp32_pinmap.png
-SPI1 -> HSPI  2 //SPI bus normally mapped to pins 12 - 15, but can be matrixed to any pins
-15  HSPI SS
-14  HSPI SCK
-12  HSPI MISO
-13  HSPI MOSI
-SPI2 -> VSPI  3 //SPI bus normally attached to pin:
-5   VSPI SS
-18  VSPI SCK
-19  VSPI MISO
-23  VSPI MOSI
-
-Does not correspond to:
-https://github.com/espressif/esp-idf/blob/master/examples/26_spi_master/main/spi_master.c#L34
-
-#define PIN_NUM_MISO 25
-#define PIN_NUM_MOSI 23
-#define PIN_NUM_CLK  19
-#define PIN_NUM_CS   22
-
-#define PIN_NUM_DC   21
-#define PIN_NUM_RST  18
-#define PIN_NUM_BCKL 5
-
-To do:
-implement inf->spiMSB
-Test with ILI9341 works, but could be faster.
-Espruino supports sendig byte by byte, no mass sending is supported.
-*/
-
+/*  Original Notes by @wilberforce removed (descrepencies now clarified) at fix
+ * for issue #2601 - See previous versions)
+ */
 
 volatile spi_transaction_t spi_trans;
 volatile bool spi_Sending = false;
 
-/**
- * Initialize the hardware SPI device.
- * On the ESP32, hardware SPI is implemented via a set of default pins defined
- * as follows:
- *
- *
- */
 void jshSPISetup(
     IOEventFlags device, //!< The identity of the SPI device being initialized.
     JshSPIInfo *inf      //!< Flags for the SPI device.
 ) {
   int channelPnt = getSPIChannelPnt(device);
-  int dma_chan = 0;
-  Pin sck, miso, mosi;
-  if(SPIChannels[channelPnt].HOST == SPICHANNEL0_HOST){
-    dma_chan = 1;
-    sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 14;
-    miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 12;
-    mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 13;
-  }
-  else {
-    dma_chan = 2;
-    sck = inf->pinSCK != PIN_UNDEFINED ? inf->pinSCK : 18;
-    miso = inf->pinMISO != PIN_UNDEFINED ? inf->pinMISO : 19;
-    mosi = inf->pinMOSI != PIN_UNDEFINED ? inf->pinMOSI : 23;
-  }
 
-  spi_bus_config_t buscfg={
-        .miso_io_num=miso,
-        .mosi_io_num=mosi,
-        .sclk_io_num=sck,
-        .quadwp_io_num=-1,
-        .quadhd_io_num=-1
-    };
+  // Modified for issue #2601 - Start
+  int dma_chan = 0;
+  #if ESP_IDF_VERSION_MAJOR >= 4
+    dma_chan = SPI_DMA_CH_AUTO;
+  #else
+    dma_chan = (SPIChannels[channelPnt].HOST == SPICHANNEL0_HOST) ? 1 : 2;
+  #endif
+
+  // Default pins as set in board.py 
+  JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
+  if (!jshIsPinValid(inf->pinSCK))
+    inf->pinSCK = jshFindPinForFunction(funcType, JSH_SPI_SCK);
+  if (!jshIsPinValid(inf->pinMISO))
+    inf->pinMISO = jshFindPinForFunction(funcType, JSH_SPI_MISO);
+  if (!jshIsPinValid(inf->pinMOSI))
+    inf->pinMOSI = jshFindPinForFunction(funcType, JSH_SPI_MOSI);
+
+  #ifdef DEBUG
+    char funcTypeStr[50];
+    jshPinFunctionToString(funcType, JSPFTS_DEVICE | JSPFTS_DEVICE_NUMBER,
+                          funcTypeStr, sizeof(funcTypeStr));
+    jsDebug(DBG_INFO,
+            "jshSPISetup: for host: %d, SPI pins on device: %s, identified as "
+            "SCK: %d, MISO: %d, MOSI: %d\n",
+            SPIChannels[channelPnt].HOST, funcTypeStr, inf->pinSCK, inf->pinMISO,
+            inf->pinMOSI);
+  #endif
+  
+  spi_bus_config_t buscfg = {.miso_io_num = inf->pinMISO,
+                             .mosi_io_num = inf->pinMOSI,
+                             .sclk_io_num = inf->pinSCK,
+  // Modified for issue #2601 - End
+                             .quadwp_io_num = -1,
+                             .quadhd_io_num = -1};
   // SPI_DEVICE_BIT_LSBFIRST  - test inf->spiMSB need to look at what values...
   uint32_t flags = 0;
 
