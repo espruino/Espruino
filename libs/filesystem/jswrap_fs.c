@@ -382,7 +382,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
   "type" : "staticmethod",
   "class" : "fs",
   "name" : "getFree",
-  "ifndef" : "SAVE_ON_FLASH",
+  "ifdef" : "ESPR_FS_GETFREE",
   "generate" : "jswrap_fs_getfree",
   "params" : [
     ["path","JsVar","The path specifying the logical drive"]
@@ -492,7 +492,7 @@ bool jswrap_fs_mkdir(JsVar *path) {
   "type" : "staticmethod",
   "class" : "fs",
   "name" : "mkfs",
-  "ifndef" : "SAVE_ON_FLASH",
+  "ifdef" : "ESPR_FS_MKFS",
   "generate" : "jswrap_fs_mkfs",
   "return" : ["bool","True on success, or false on failure"]
 }

@@ -150,6 +150,8 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_TERMNINAL_NO_SCROLL` - disable scrolling in the onscreen terminal (once we get to the end, we just clear the screen and start at the top)
 * `ESPR_HAS_BOOTLOADER_UF2` - nRF5x: Allow entering UF2 bootloader mode by calling E.rebootToDFU()
 * `ESPR_BLE_PRIVATE_ADDRESS_SUPPORT` - NRF52: Enable support for using a random private BLE address, that automatically changes at a set interval. See the `privacy` option that can be passed to `NRF.setSecurity()`.
+* `ESPR_FS_MKFS` - Add support for require("fs").mkfs for formatting disks
+* `ESPR_FS_GETFREE` - Add support for require("fs").getFree in the filesystem library
 
 
 There are some specifically that are useful for cutting a few bytes out of the build:

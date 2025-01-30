@@ -43,6 +43,7 @@ info = {
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS -DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_SELF_INIT -DESPR_GRAPHICS_NO_SPLASH -DGRAPHICS_FAST_PATHS',
      'DEFINES+=-DESPR_SDIO_FAST_UNALIGNED',  # see sdio_diskio.c - this is a nasty hack to increase unaligned read speed
      'DEFINES+=-DLCD_ORIENTATION_LANDSCAPE',
+     'DEFINES+=-DESPR_FS_MKFS -DESPR_FS_GETFREE',
      'DEFINES+=-DUSE_AUDIO_CODEC',
      'DEFINES+=-DESPR_DELAY_MULTIPLIER=28672', # don't work out what to use for jshDelayMicroseconds at boot, just hard-code it
      'DEFINES+=-DESPR_RTC_INITIALISE_TICKS=30', # 168Mhz so we need to wait more ticks for the RTC to init (21->2s doesn't seem to be enough - this is nearer 3s!)
