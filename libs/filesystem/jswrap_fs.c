@@ -507,7 +507,11 @@ bool jswrap_fs_mkfs() {
   jswrap_file_kill_sw();
   // Reformat
   uint8_t workBuffer[FF_MAX_SS];
+  #if  _FATFS==80376
+  res = f_mkfs("", 0, 0); // R0.10 args format (FDISK format, auto alloc size)
+  #else
   res = f_mkfs("", NULL, workBuffer, sizeof(workBuffer));
+  #endif
   if (res) {
     jsfsReportError("mkfs error", res);
     return false;
