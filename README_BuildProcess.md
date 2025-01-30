@@ -149,6 +149,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_DISABLE_KICKWATCHDOG_PIN=BTN1_PININDEX` - If this pin is 1, skip kickWatchdog calls (which would eventually force a reboot if WDT enabled)
 * `ESPR_TERMNINAL_NO_SCROLL` - disable scrolling in the onscreen terminal (once we get to the end, we just clear the screen and start at the top)
 * `ESPR_HAS_BOOTLOADER_UF2` - nRF5x: Allow entering UF2 bootloader mode by calling E.rebootToDFU()
+* `ESPR_BLE_PRIVATE_ADDRESS_SUPPORT` - NRF52: Enable support for using a random private BLE address, that automatically changes at a set interval. See the `privacy` option that can be passed to `NRF.setSecurity()`.
 
 
 There are some specifically that are useful for cutting a few bytes out of the build:
