@@ -437,7 +437,7 @@ void lcdScroll_ArrayBuffer_flat8(JsGraphics *gfx, int xdir, int ydir, int x1, in
 void lcdInit_ArrayBuffer(JsGraphics *gfx, JsVar *optionalBuffer) {
   // create buffer
   if (optionalBuffer) {
-    jsvAddNamedChild(gfx->graphicsVar, optionalBuffer, "buffer");
+    jsvUnLock(jsvAddNamedChild(gfx->graphicsVar, optionalBuffer, "buffer"));
   } else {
     JsVar *buf = jswrap_arraybuffer_constructor((int)graphicsGetMemoryRequired(gfx));
     jsvAddNamedChildAndUnLock(gfx->graphicsVar, buf, "buffer");

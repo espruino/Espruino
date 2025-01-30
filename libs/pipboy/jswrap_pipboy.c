@@ -57,20 +57,17 @@ uint8_t streamBuffer[STREAM_BUFFER_SIZE+4] __attribute__ ((aligned (8))); // we 
  */
 uint16_t palette[4][16];
 
-typedef enum {
-  ST_NONE,
-  ST_AVI,
-  ST_WAV
-} StreamType;
-
-StreamType streamType = ST_NONE;
+bool videoStream = false;
+bool audioStream = false;
 int streamBufferLen;
 uint16_t streamPacketId;
 uint32_t streamPacketLen;        // length of current stream
 uint32_t streamPacketRemaining;  // length left to read in current stream
 uint32_t streamPacketBufferLen;  // length of stream in current buffer
-File_Handle streamFile; // The Video/Audio stream's file
-bool streamRepeats; // should this stream repeat?
+File_Handle videoFile; // The Video/Audio stream's file
+File_Handle audioFile; // The Video/Audio stream's file
+bool videoRepeats; // should this stream repeat?
+bool audioRepeats; // should this stream repeat?
 
 JsSysTime videoFrameTime;
 JsSysTime videoNextFrameTime;
@@ -78,6 +75,7 @@ bool debugInfo = false;
 int startX=0;
 int startY=0;
 AviInfo videoInfo;
+WavInfo audioInfo;
 
 typedef enum {
   DM_OFF,
@@ -130,6 +128,20 @@ The video had ended
 /*JSON{
   "type" : "event",
   "class" : "Pip",
+  "name" : "audioStopped"
+}
+The audio had ended
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "Pip",
+  "name" : "videoStopped"
+}
+The video had ended
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "Pip",
   "name" : "streamLooped"
 }
 The video had looped
@@ -158,7 +170,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
   startX=0;
   startY=0;
   debugInfo=false;
-  streamRepeats=false;
+  videoRepeats=false;
   JsVar *v;
   if (jsvIsObject(options)) {
     v = jsvObjectGetChildIfExists(options, "x");
@@ -174,7 +186,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
       if (jsvGetBoolAndUnLock(v)) debugInfo = true;
       else debugInfo = false;
     }
-    streamRepeats = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "repeat"));
+    videoRepeats = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "repeat"));
   }
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
@@ -184,29 +196,29 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
   }
 
   if (jsfsInit()) {
-    if (streamType) {
-      f_close(&streamFile);
-      streamType = ST_NONE;
+    if (videoStream) {
+      f_close(&videoFile);
+      videoStream = false;
     }
 
-  FRESULT res;
+    FRESULT res;
 #ifdef LINUX
-    if ((streamFile = fopen(pathStr, "r"))) {
+    if ((videoFile = fopen(pathStr, "r"))) {
 #else
     BYTE ff_mode = FA_READ | FA_OPEN_EXISTING;
-    if ((res=f_open(&streamFile, pathStr, ff_mode)) == FR_OK) {
+    if ((res=f_open(&videoFile, pathStr, ff_mode)) == FR_OK) {
 #endif
 
-      streamType = ST_AVI;
+      videoStream = true;
       size_t actual = 0;
-      res = f_read(&streamFile, (uint8_t*)streamBuffer, STREAM_BUFFER_SIZE, &actual);
+      res = f_read(&videoFile, (uint8_t*)streamBuffer, STREAM_BUFFER_SIZE, &actual);
       if (debugInfo) {
         jsiConsolePrintf("AVI read %d %d %c%c%c%c\n", STREAM_BUFFER_SIZE, actual, streamBuffer[0],streamBuffer[1],streamBuffer[2],streamBuffer[3]);
       }
       if (aviLoad(streamBuffer, (int)actual, &videoInfo, debugInfo)) {
         streamPacketId = *(uint16_t*)&streamBuffer[videoInfo.streamOffset+2]; // +0 = '01'/'00' stream index?
         streamPacketLen = *(uint32_t*)&streamBuffer[videoInfo.streamOffset+4]; // +0 = '01'/'00' stream index?
-        f_lseek(&streamFile, (uint32_t)(videoInfo.streamOffset+8)); // go back to start of video data
+        f_lseek(&videoFile, (uint32_t)(videoInfo.streamOffset+8)); // go back to start of video data
         videoFrameTime = jshGetTimeFromMilliseconds(videoInfo.usPerFrame/1000.0);
         videoNextFrameTime = jshGetSystemTime() + videoFrameTime;
         // set palette
@@ -225,7 +237,7 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 #ifndef LINUX
         // Set up Audio
         if (videoInfo.audioBufferSize <= I2S_RING_BUFFER_SIZE*2) { // IF we have audio
-          STM32_I2S_Prepare(videoInfo.audioSampleRate);
+          STM32_I2S_Prepare(videoInfo.audio.sampleRate);
           // playback will start when the buffer is full enough
         } else if (videoInfo.audioBufferSize) {
           jsiConsolePrintf("Audio stream too big (%db)\n", videoInfo.audioBufferSize);
@@ -252,19 +264,41 @@ void jswrap_pb_videoStart(JsVar *fn, JsVar *options) {
 }
 */
 void jswrap_pb_videoStopLetAudioRun() {
-  if (streamType) {
-    f_close(&streamFile);
-    streamType = ST_NONE;
+  if (videoStream) {
+    f_close(&videoFile);
+    videoStream = false;
     jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamStopped");
+    jswrap_pb_sendEvent(JS_EVENT_PREFIX"videoStopped");
   }
 }
 void jswrap_pb_videoStop() {
-  if (streamType) {
+  if (videoStream && videoInfo.audioBufferSize) {
     STM32_I2S_Stop(); // Stop audio immediately
   }
   jswrap_pb_videoStopLetAudioRun();
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Pip",
+  "name" : "audioStop",
+  "generate" : "jswrap_pb_audioStop"
+}
+*/
+void jswrap_pb_audioStopLetRun() {
+  if (audioStream) {
+    f_close(&audioFile);
+    audioStream = false;
+    jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamStopped");
+    jswrap_pb_sendEvent(JS_EVENT_PREFIX"audioStopped");
+  }
+}
+void jswrap_pb_audioStop() {
+  if (audioStream) {
+    STM32_I2S_Stop(); // Stop audio immediately
+  }
+  jswrap_pb_audioStopLetRun();
+}
 
 /*JSON{
   "type" : "staticmethod",
@@ -279,7 +313,7 @@ void jswrap_pb_videoStop() {
 */
 void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
   debugInfo=false;
-  streamRepeats=false;
+  audioRepeats=false;
   JsVar *v;
   if (jsvIsObject(options)) {
     v = jsvObjectGetChildIfExists(options, "debug");
@@ -287,19 +321,19 @@ void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
       if (jsvGetBoolAndUnLock(v)) debugInfo = true;
       else debugInfo = false;
     }
-    streamRepeats = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "repeat"));
+    audioRepeats = jsvGetBoolAndUnLock(jsvObjectGetChildIfExists(options, "repeat"));
   }
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsfsGetPathString(pathStr, fn)) return;
 
   if (jsfsInit()) {
-    if (streamType) {
+    if (audioStream) {
       if (debugInfo) {
         jsiConsolePrintf("Closing existing stream\n");
       }
-      f_close(&streamFile);
-      streamType = ST_NONE;
+      f_close(&audioFile);
+      audioStream = false;
     }
 
     if (debugInfo) {
@@ -307,29 +341,29 @@ void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
     }
     FRESULT res;
 #ifdef LINUX
-    if ((streamFile = fopen(pathStr, "r"))) {
+    if ((audioFile = fopen(pathStr, "r"))) {
 #else
     BYTE ff_mode = FA_READ | FA_OPEN_EXISTING;
-    if ((res=f_open(&streamFile, pathStr, ff_mode)) == FR_OK) {
+    if ((res=f_open(&audioFile, pathStr, ff_mode)) == FR_OK) {
 #endif
       if (debugInfo) {
         jsiConsolePrintf("Opened audio file OK - reading WAV header\n");
       }
-      streamType = ST_WAV;
+      audioStream = true;
       size_t actual = 0;
       const int WAVHEADER_MAX = 256;
-      res = f_read(&streamFile, (uint8_t*)streamBuffer, WAVHEADER_MAX, &actual);
+      res = f_read(&audioFile, (uint8_t*)streamBuffer, WAVHEADER_MAX, &actual);
       if (debugInfo) {
         jsiConsolePrintf("WAV read %d %d %c%c%c%c\n", WAVHEADER_MAX, actual, streamBuffer[0],streamBuffer[1],streamBuffer[2],streamBuffer[3]);
       }
-      if (wavLoad(streamBuffer, (int)actual, &videoInfo, debugInfo)) {
-        f_lseek(&streamFile, (uint32_t)(videoInfo.streamOffset)); // go back to start of audio data
-        STM32_I2S_Prepare(videoInfo.audioSampleRate);
+      if (wavLoad(streamBuffer, (int)actual, &audioInfo, debugInfo)) {
+        f_lseek(&audioFile, (uint32_t)(audioInfo.streamOffset)); // go back to start of audio data
+        STM32_I2S_Prepare(audioInfo.sampleRate);
         jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamStarted");
         if (debugInfo) jsiConsolePrintf("Audio started...\n");
       } else {
         jsExceptionHere(JSET_ERROR, "Corrupt audio");
-        jswrap_pb_videoStop();
+        jswrap_pb_audioStop();
       }
     } else {
       jsExceptionHere(JSET_ERROR, "Can't load file %s", pathStr);
@@ -345,23 +379,25 @@ void jswrap_pb_audioStart(JsVar *fn, JsVar *options) {
   "name" : "audioRead",
   "generate" : "jswrap_pb_audioRead",
   "params" : [
-      ["fn","JsVar","Filename"]
+      ["fn","JsVar","Filename"],
+      ["returnOptions","JsVar","If an object is supplied, it'll be filled with `encoding` and `blockAlign` fields ready for `Pip.audioStartVar`"]
    ],
    "return" : ["JsVar","The raw sound data as a flat string"]
 }
 Read the given WAV file into RAM
 */
-JsVar *jswrap_pb_audioRead(JsVar *fn) {
+JsVar *jswrap_pb_audioRead(JsVar *fn, JsVar *returnOptions) {
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsfsGetPathString(pathStr, fn)) return 0;
 
   if (jsfsInit()) {
     FRESULT res;
+    File_Handle file;
 #ifdef LINUX
-    if ((streamFile = fopen(pathStr, "r"))) {
+    if ((file = fopen(pathStr, "r"))) {
 #else
     BYTE ff_mode = FA_READ | FA_OPEN_EXISTING;
-    if ((res=f_open(&streamFile, pathStr, ff_mode)) == FR_OK) {
+    if ((res=f_open(&file, pathStr, ff_mode)) == FR_OK) {
 #endif
       if (debugInfo) {
         jsiConsolePrintf("Opened audio file OK - reading WAV header\n");
@@ -369,21 +405,32 @@ JsVar *jswrap_pb_audioRead(JsVar *fn) {
       size_t actual = 0;
       const int WAVHEADER_MAX = 256;
       uint8_t buf[256];
-      AviInfo wavInfo;
-      res = f_read(&streamFile, (uint8_t*)buf, WAVHEADER_MAX, &actual);
+      WavInfo wavInfo;
+      res = f_read(&file, (uint8_t*)buf, WAVHEADER_MAX, &actual);
       if (wavLoad(buf, (int)actual, &wavInfo, debugInfo)) {
-        f_lseek(&streamFile, (uint32_t)(wavInfo.streamOffset)); // go back to start of audio data
-        uint32_t len = f_size(&streamFile) - (uint32_t)wavInfo.streamOffset;
+        if (jsvIsObject(returnOptions)) {
+          if (wavInfo.sampleRate!=16000)
+            jsvObjectSetChildAndUnLock(returnOptions, "sampleRate", jsvNewFromInteger(wavInfo.sampleRate));
+          if (wavInfo.formatTag == WAVFMT_RAW)
+            jsvObjectSetChildAndUnLock(returnOptions, "encoding", jsvNewFromInteger(wavInfo.sampleSize));
+          else if (wavInfo.formatTag == WAVFMT_IMA_ADPCM) {
+            jsvObjectSetChildAndUnLock(returnOptions, "encoding", jsvNewFromString("adpcm"));
+            jsvObjectSetChildAndUnLock(returnOptions, "blockAlign", jsvNewFromInteger(wavInfo.blockAlign));
+          }
+        }
+        f_lseek(&file, (uint32_t)(wavInfo.streamOffset)); // go back to start of audio data
+        uint32_t len = f_size(&file) - (uint32_t)wavInfo.streamOffset;
         JsVar *buffer = jsvNewFlatStringOfLength(len);
         if (!buffer) {
           jsExceptionHere(JSET_ERROR, "Couldn't allocate flat string of size %d", len);
           return 0;
         }
-        f_read(&streamFile, jsvGetFlatStringPointer(buffer), len, &actual);
+        f_read(&file, jsvGetFlatStringPointer(buffer), len, &actual);
         return buffer;
       } else {
         jsExceptionHere(JSET_ERROR, "Corrupt audio");
       }
+      f_close(&file);
     } else {
       jsExceptionHere(JSET_ERROR, "Can't load file %s", pathStr);
     }
@@ -570,33 +617,76 @@ int jswrap_pb_audioGetFree() {
   "name" : "audioStartVar",
   "generate" : "jswrap_pb_audioStartVar",
   "params" : [
-      ["wav","JsVar","Raw 16 bit sound data"],
-      ["options","JsVar","[Optional] object"]
+      ["wav","JsVar","Raw sound data (16 bit by default)"],
+      ["options","JsVar","[Optional] object {overlap:bool, encoding:16(default)/8/'adpcm',blockAlign:512,sampleRate:16000}"]
    ]
 }
 Play audio straight from a variable of raw WAV data - this adds everything to the buffer at once so blocks
 
+If `overlap:true` is set the waveform will be added to what's already in the audio ringbuffer,
+allowing multiple sounds to be played at the same time.
 
+If `encoding:"adpcm"` you may need to specify a `blockAlign` value, but you can populate this with `Pip.audioRead`:
+
+```
+var rawInfo = {};
+var raw = Pip.audioRead("TEST.wav", rawInfo);
+Pip.audioStartVar(raw, rawInfo);
+```
 */
+typedef struct {
+  bool overlap;
+  WavInfo wavInfo;
+} _jswrap_pb_audioStartVar_cbdata;
+
 static void _jswrap_pb_audioStartVar_cb(unsigned char *data, unsigned int len, void *callbackData) {
-  if (len&1) jsiConsolePrintf("Oops. non-even byte count!");
-  STM32_I2S_AddSamples((int16_t*)data, len>>1);
+  _jswrap_pb_audioStartVar_cbdata *cbdata = (_jswrap_pb_audioStartVar_cbdata*)callbackData;
+  if (wavNeedsDecode(&cbdata->wavInfo)) {
+    unsigned int wavSamples = wavGetSamples(&cbdata->wavInfo, len);
+    wavSamples = wavDecode(&cbdata->wavInfo, (uint8_t*)data, (int16_t*)streamBuffer, len);
+    STM32_I2S_AddSamples((int16_t*)streamBuffer, wavSamples, cbdata->overlap);
+  } else {
+    STM32_I2S_AddSamples((int16_t*)data, len>>1, cbdata->overlap);
+  }
 }
+
 void jswrap_pb_audioStartVar(JsVar *wav, JsVar *options) {
   debugInfo=false;
-  // streamRepeats=false; // There might be a silent looping video playing
-  /*JsVar *v;
+  _jswrap_pb_audioStartVar_cbdata cbdata;
+  cbdata.overlap=false;
+  cbdata.wavInfo.sampleRate = 16000;
+  cbdata.wavInfo.blockAlign = 512;
+  cbdata.wavInfo.formatTag = WAVFMT_RAW;
+  cbdata.wavInfo.sampleSize = 16;
+  cbdata.wavInfo.streamOffset = 0;
   if (jsvIsObject(options)) {
-  }*/
-  // if (streamType) {
+    cbdata.overlap = jsvObjectGetBoolChild(options, "overlap");
+    JsVar *v = jsvObjectGetChildIfExists(options, "encoding");
+    if (v) {
+      if (jsvGetInteger(v)==16) { } // default
+      else if (jsvGetInteger(v)==8) { cbdata.wavInfo.sampleSize = 8; } // default
+      else if (jsvIsStringEqual(v, "adpcm")) {
+        cbdata.wavInfo.formatTag = WAVFMT_IMA_ADPCM;
+        cbdata.wavInfo.sampleSize = 4;
+      }
+      jsvUnLock(v);
+    }
+    int blockAlign = jsvObjectGetIntegerChild(options, "blockAlign");
+    if (blockAlign>0) cbdata.wavInfo.blockAlign = blockAlign;
+    int sampleRate = jsvObjectGetIntegerChild(options, "sampleRate");
+    if (sampleRate>0) cbdata.wavInfo.sampleRate = sampleRate;
+  }
+  // if (audioStream) {
   //   if (debugInfo) {
   //     jsiConsolePrintf("Closing existing stream\n");
   //   }
-  //   f_close(&streamFile);
-  //   streamType = ST_NONE;
+  //   f_close(&audioFile);
+  //   audioStream = false;
   // }
-  STM32_I2S_Prepare(videoInfo.audioSampleRate);
-  jsvIterateBufferCallback(wav, _jswrap_pb_audioStartVar_cb, NULL);
+  STM32_I2S_Prepare(cbdata.wavInfo.sampleRate);
+  size_t wavLen;
+  if (!jsvGetDataPointer(wav, &wavLen)) cbdata.overlap=false; // only overlap if we know jsvIterateBufferCallback will call _jswrap_pb_audioStartVar_cb *once*
+  jsvIterateBufferCallback(wav, _jswrap_pb_audioStartVar_cb, &cbdata);
   STM32_I2S_StreamEnded(); // ensure we start playing even if there wasn't enough data
 }
 
@@ -625,7 +715,7 @@ void lcdFSMC_blitEnd() {
 #endif
 
 void jswrap_pb_videoFrame() {
-  if (streamType != ST_AVI) return;
+  if (!videoStream) return;
   //JsSysTime tStart = jshGetSystemTime();
   //if (debugInfo) jsiConsolePrintf("Stream 0x%04x, %d\n", streamPacketId, streamPacketLen);
   streamPacketRemaining = 0;
@@ -636,13 +726,24 @@ void jswrap_pb_videoFrame() {
   }
   size_t actual = 0;
   //jsiConsolePrintf("=========== FIRST READ %d (%d)\n", ((size_t)streamBuffer)&7, streamPacketBufferLen);
-  f_read(&streamFile, streamBuffer, streamPacketBufferLen, &actual);
+  f_read(&videoFile, streamBuffer, streamPacketBufferLen, &actual);
   if (streamPacketId==AVI_STREAM_AUDIO) {
     if (streamPacketRemaining) {
       jsiConsolePrintf("Audio stream too big for streamBuffer\n");
       jswrap_pb_videoStop();
     } else {
-      STM32_I2S_AddSamples((int16_t*)streamBuffer, streamPacketLen>>1); // l is in bytes, not samples
+      if (wavNeedsDecode(&videoInfo.audio)) {
+        int spaceNeeded = wavGetSamples(&videoInfo.audio, streamPacketLen)*2;
+        if (spaceNeeded+streamPacketBufferLen > STREAM_BUFFER_SIZE) {
+          jsiConsolePrintf("Encoded Audio stream too big for streamBuffer\n");
+        } else {
+          int16_t *decodedBuffer = (int16_t*)&streamBuffer[streamPacketBufferLen]; // just put decoded data at the end of the data we read into the stream buffer
+          int samples = wavDecode(&videoInfo.audio, streamBuffer, decodedBuffer, streamPacketLen);
+          STM32_I2S_AddSamples((int16_t*)decodedBuffer, samples, false);
+        }
+      } else {
+        STM32_I2S_AddSamples((int16_t*)streamBuffer, streamPacketLen>>1, false);
+      }
     }
   } else if (streamPacketId==AVI_STREAM_VIDEO) {
     lcdFSMC_blitStart(&graphicsInternal, startX,startY,videoInfo.width,videoInfo.height);
@@ -696,7 +797,7 @@ void jswrap_pb_videoFrame() {
         uint32_t len = streamPacketRemaining;
         if (len>bufferRemaining) len=bufferRemaining;
         //jsiConsolePrintf("=========== READ %d (%d)\n", leftInStream, leftInStream&3);
-        f_read(&streamFile, &streamBuffer[leftInStream], len, &actual);
+        f_read(&videoFile, &streamBuffer[leftInStream], len, &actual);
         streamPacketRemaining -= len;
         streamPacketBufferLen += len;
       }
@@ -709,10 +810,10 @@ void jswrap_pb_videoFrame() {
     }
   } else {
     // unknown stream - assume end
-    if (streamRepeats) { // seek to beginning and load first stream ID+len
-      f_lseek(&streamFile, (uint32_t)(videoInfo.streamOffset)); // go back to start of video data
+    if (videoRepeats) { // seek to beginning and load first stream ID+len
+      f_lseek(&videoFile, (uint32_t)(videoInfo.streamOffset)); // go back to start of video data
       streamPacketBufferLen=8;
-      f_read(&streamFile, streamBuffer, streamPacketBufferLen, &actual);
+      f_read(&videoFile, streamBuffer, streamPacketBufferLen, &actual);
       streamPacketId = *(uint16_t*)&streamBuffer[2]; // +0 = '01'/'00' stream index?
       streamPacketLen = *(uint32_t*)&streamBuffer[4]; // +0 = '01'/'00' stream index?
       jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamLooped");
@@ -732,28 +833,33 @@ void jswrap_pb_videoFrame() {
 }
 
 void jswrap_pb_audioFrame() {
-  if (streamType != ST_WAV) return;
-  const int WAV_CHUNK_SIZE = 4096; // how much do we want to read in one chunk?
-  int WAV_SAMPLES = WAV_CHUNK_SIZE>>1;
-
+  if (!audioStream) return;
+  unsigned int wavChunkSize = wavGetReadLength(&audioInfo);
+  unsigned int wavSamples = wavGetSamples(&audioInfo, wavChunkSize);
   int freeSamples = STM32_I2S_GetFreeSamples();
   //if (debugInfo) jsiConsolePrintf("%d free\n", freeSamples);
-  if (freeSamples <= WAV_SAMPLES)
+  if (freeSamples <= wavSamples)
     return; // if there's not space yet, don't do anything
 
   size_t actual = 0;
 
-  f_read(&streamFile, streamBuffer, WAV_CHUNK_SIZE, &actual);
+  f_read(&audioFile, streamBuffer, wavChunkSize, &actual);
   //if (debugInfo) jsiConsolePrintf("A%d\n", actual);
   if (actual) {
-    STM32_I2S_AddSamples((int16_t*)streamBuffer, actual>>1);
-  } else if (streamRepeats) {
-    f_lseek(&streamFile, (uint32_t)(videoInfo.streamOffset)); // go back to start of audio data
+    if (wavNeedsDecode(&audioInfo)) {
+      int16_t *decodedBuffer = (int16_t*)&streamBuffer[wavChunkSize]; // just put decoded data at the end of the data we read into the stream buffer
+      int samples = wavDecode(&audioInfo, streamBuffer, decodedBuffer, actual);
+      STM32_I2S_AddSamples((int16_t*)decodedBuffer, samples, false);
+    } else {
+      STM32_I2S_AddSamples((int16_t*)streamBuffer, actual>>1, false);
+    }
+  } else if (audioRepeats) {
+    f_lseek(&audioFile, (uint32_t)(audioInfo.streamOffset)); // go back to start of audio data
     jswrap_pb_sendEvent(JS_EVENT_PREFIX"streamLooped");
   } else {
     // jsiConsolePrintf("End of WAV\n");
     STM32_I2S_StreamEnded(); // ensure we start playing even if we didn't think we'd buffered enough yet
-    jswrap_pb_videoStopLetAudioRun(); // Stop parsing, let audio finish
+    jswrap_pb_audioStopLetRun(); // Stop parsing, let audio finish
   }
 }
 
@@ -1235,12 +1341,12 @@ bool jswrap_pb_audioIsPlaying() {
   "class" : "Pip",
   "name" : "streamPlaying",
   "generate" : "jswrap_pb_streamPlaying",
-  "return" : ["JsVar", "Returns `'video'` if a video is playing, or `'audio'` if audio is playing, `undefined` otherwise."]
+  "return" : ["JsVar", "Returns `'video'` if a video is playing, or `'audio'` if audio is playing, `'both'` for both, or `undefined` otherwise."]
 }
 */
 JsVar *jswrap_pb_streamPlaying() {
-  if (streamType == ST_AVI) return jsvNewFromString("video");
-  if (streamType == ST_WAV) return jsvNewFromString("audio");
+  if (videoStream) return jsvNewFromString(audioStream ? "both" : "video");
+  if (audioStream) return jsvNewFromString("audio");
   return 0;
 }
 
@@ -1383,8 +1489,8 @@ void jswrap_pb_init() {
 "  B15.set();" // display on
 "  const FILE = 'FW.JS';"
 "  let stat = require('fs').statSync(FILE);"
-"  let size = stat&&stat.size;"
-"  let f = E.openFile(FILE,'r');"
+"  let size = stat&&stat.size, f;"
+"  try { f = E.openFile(FILE,'r'); } catch (e) {}"
 "  if (size && f) {"
 "    let d = f.read(4096), o=0;"
 "    g.clear(1).setFontMonofonto23().setFontAlign(0,0).setColor('#0f0').drawString('Upgrading...',240,160);"
@@ -1407,26 +1513,32 @@ void jswrap_pb_init() {
   }
 
 #endif
-  if (res) {
+  bool hasBootCode = jsfFindFile(jsfNameFromString(".bootcde"), NULL) ;
+  if (res || !hasBootCode) {
     JsVar *msg;
     if (res == FR_NO_FILE) msg = jsvNewFromString("NO VERSION FILE");
     else if (res == FR_NOT_ENABLED) msg = jsvNewFromString("NO SD CARD");
-    else msg = jsvVarPrintf("SD CARD ERROR %d", res);
+    else {
+      if (!hasBootCode)
+        msg = jsvNewFromString("NO JS FIRMWARE");
+      else
+        msg = jsvVarPrintf("SD CARD ERROR %d", res);
+    }
     graphicsInternal.data.fgColor = graphicsTheme.fg; // green
     graphicsInternal.data.fontSize = JSGRAPHICS_FONTSIZE_6X8+1;
     graphicsInternal.data.fontAlignX = 0;
-    jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+14, 0));
+    jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+20, 0));
     // 25x25 pixel QR code for https://thewand.co/pip-boy
     const unsigned char qr_raw[] = { 25, 25, 1, 254, 242, 63, 193, 7, 80, 110, 173, 43, 183, 71, 133, 219, 160, 34, 236, 21, 177, 7, 250, 170, 254, 0, 87, 0, 163, 64, 146, 186, 253, 154, 239, 143, 247, 190, 49, 18, 141, 125, 154, 9, 135, 45, 143, 169, 222, 154, 113, 7, 184, 239, 64, 249, 0, 77, 68, 127, 173, 170, 48, 79, 49, 27, 164, 191, 149, 208, 234, 90, 235, 118, 119, 4, 165, 176, 254, 248, 132, 128 };
     JsVar *qr_img = jsvNewNativeString((char*)&qr_raw[0], sizeof(qr_raw));
     JsVar *options = jsvNewObject();
     if (options) {
       jsvObjectSetChild(options, "scale", jsvNewFromInteger(3));
-      jsvUnLock(jswrap_graphics_drawImage(g, qr_img, (LCD_WIDTH-76)/2, LCD_HEIGHT/2+25, options));
+      jsvUnLock(jswrap_graphics_drawImage(g, qr_img, (LCD_WIDTH-76)/2, LCD_HEIGHT/2+31, options));
     }
     jsvUnLock3(msg,qr_img,options);
     msg = jsvNewFromString("thewand.co/pip-boy");
-    jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+105, 0));
+    jsvUnLock(jswrap_graphics_drawString(g, msg, (LCD_WIDTH/2), LCD_HEIGHT/2+111, 0));
     jsvUnLock(msg);
   }
   // clear up graphics
@@ -1448,12 +1560,13 @@ void jswrap_pb_kill() {
   "generate" : "jswrap_pb_idle"
 }*/
 bool jswrap_pb_idle() {
-  bool busy = streamType!=ST_NONE;
-  if (streamType==ST_AVI) {
+  bool busy = false;
+  if (videoStream) {
     busy = true;
     if (jshGetSystemTime() >= videoNextFrameTime)
       jswrap_pb_videoFrame();
-  } else if (streamType==ST_WAV) {
+  }
+  if (audioStream) {
     busy = true;
     jswrap_pb_audioFrame();
   }

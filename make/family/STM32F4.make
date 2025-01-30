@@ -66,3 +66,4 @@ ifeq ($(USE_FILESYSTEM_SDIO),1)
 SOURCES += targets/stm32/sdio_sdcard_stm32f4.c
 SOURCES += targets/stm32/sdio_sdcard_stm32f4_ll.c
 endif
+

@@ -13,6 +13,9 @@
             XiaoBLE: Add board: Seeed XIAO BLE
             nRF5x: Allow entering UF2 bootloader mode by calling E.rebootToDFU() (on boards that have such a bootloader)
             Graphics: Graphics.asImage() can now take x/y/w/h options to make only part of the graphics into an image
+            STM32: Revert hasSystemSlept=true before _WFI that caused jsTimer to get corrupted
+            Pipboy: allow audio files to be played at the same time as (silent) video. add audioStopped/videoStopped events and audioStop method
+            Pipboy: Pip.audioStartVar(wav,{overlap:true}) can now play sounds over the top of other sounds. audioRead now doesn't stop audio playback
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

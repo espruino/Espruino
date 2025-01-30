@@ -103,7 +103,7 @@ bool jsfsInit() {
 #endif // USE_FLASHFS
     FRESULT res;
 
-    if ((res = f_mount(&jsfsFAT, "", 1)) != FR_OK) {
+    if ((res = f_mount(&jsfsFAT, "", 1/*immediate mount*/)) != FR_OK) {
 #ifndef PIPBOY  // Don't throw an error for the Pip-Boy - just return false
       jsfsReportError("Unable to mount media", res);
 #endif
@@ -204,11 +204,8 @@ static bool fileGetFromVar(JsFile *file, JsVar *parent) {
   return ret;
 }
 
-/*JSON{
-  "type" : "kill",
-  "generate" : "jswrap_file_kill"
-}*/
-void jswrap_file_kill() {
+/// Uninit all software-related SD card stuff - but don't de-init hardware
+void jswrap_file_kill_sw() {
   JsVar *arr = fsGetArray(false);
   if (arr) {
     JsvObjectIterator it;
@@ -230,6 +227,14 @@ void jswrap_file_kill() {
     f_mount(0, 0, 0);
   }
 #endif
+}
+
+/*JSON{
+  "type" : "kill",
+  "generate" : "jswrap_file_kill"
+}*/
+void jswrap_file_kill() {
+  jswrap_file_kill_sw();
 #ifdef SD_CARD_ANYWHERE
   sdSPISetup(0, PIN_UNDEFINED);
 #endif
@@ -669,7 +674,7 @@ int jswrap_E_flashFatFS(JsVar* options) {
   uint8_t init=flashFatFsInit(addr, sectors);
   if (init) {
     if ( format ) {
-      uint8_t res = f_mount(&jsfsFAT, "", 0);
+      uint8_t res = f_mount(&jsfsFAT, "", 0/*delayed mount?*/);
       jsDebug(DBG_INFO,"Formatting Flash\n");
       res = f_mkfs("", 1, 0);  // Super Floppy format, using all space (not partition table)
       if (res != FR_OK) {

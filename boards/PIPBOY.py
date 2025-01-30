@@ -165,7 +165,6 @@ devices = {
   'USB' : { 'pin_vsense' : 'A9', # PA5 for v0.3, PA9 for v0.5 and later
             'pin_dm' : 'A11',
             'pin_dp' : 'A12' },
-
   'JTAG' : {
         'pin_MS' : 'A13',
         'pin_CK' : 'A14',
