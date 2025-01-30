@@ -19,8 +19,13 @@
 
 #define I2S_DMA_BUFFER_SIZE 2048 // size of i2sDMAbuf (DMA direct to I2S) in u16
 // 16kHz sample rate, 2xu16 = ~16Hz IRQ rate
-#define I2S_RING_BUFFER_SIZE 8192 // size of ringbuffer used for audio input in u16
-// 8192 seems fine to use - still enough for 8 DMA packets worth/0.5sec...
+#define I2S_RING_BUFFER_SIZE 16384 // size of ringbuffer used for audio input in u16
+// 8192 seems fine to use - still enough for 8 DMA packets worth/0.5sec... but can cause the wake-up sound to be truncated if immediately followed by a video
+
+/* jswrap_pb_audioFrame sends data in 2048 byte chunks and STM32_I2S_AddSamples
+starts playback at 3*I2S_DMA_BUFFER_SIZE. So I2S_RING_BUFFER_SIZE=8192
+is the least we can use, since any less and 3*I2S_DMA_BUFFER_SIZE would be
+big enough that the next sample from jswrap_pb_audioFrame would fill the buffer */
 
 /* jswrap_pb_audioFrame sends data in 2048 byte chunks and STM32_I2S_AddSamples
 starts playback at 3*I2S_DMA_BUFFER_SIZE. So I2S_RING_BUFFER_SIZE=8192
@@ -41,8 +46,8 @@ void STM32_I2S_Kill();
 void STM32_I2S_Prepare(int audioFreq);
 /// Return the amount of free samples available for STM32_I2S_AddSamples
 int STM32_I2S_GetFreeSamples();
-/// Add new Samples - playback will start when we have enough in buffer. count=# of samples (not bytes)
-void STM32_I2S_AddSamples(int16_t *data, unsigned int count);
+/// Add new Samples - playback will start when we have enough in buffer. count=# of samples (not bytes). If overlap=true, we try and add the sample data to what we have already
+void STM32_I2S_AddSamples(int16_t *data, unsigned int count, bool overlap);
 /// Start playback (ideally don't use this - just add samples and playback will start)
 void STM32_I2S_Start();
 /// Stop playback

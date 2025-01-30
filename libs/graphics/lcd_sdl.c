@@ -14,6 +14,8 @@
 
 #include "platform_config.h"
 #include "jsutils.h"
+#include "jsparse.h"
+#include "jsinteractive.h"
 #include "lcd_sdl.h"
 #include <SDL/SDL.h>
 
@@ -91,12 +93,48 @@ void lcdInit_SDL(JsGraphics *gfx) {
     SDL_Quit();
     exit(1);
   }
+  SDL_WM_SetCaption("Espruino", NULL);
 }
 
 void lcdIdle_SDL() {
+  static bool down;
+  extern void nativeQuit();
+  SDL_Event event;
+  bool sendEvent = false;
+
   if (needsFlip) {
     needsFlip = false;
     SDL_Flip(screen);
+  }
+
+  if (SDL_PollEvent(&event)) {
+    switch (event.type) {
+      case SDL_QUIT:
+        nativeQuit();
+        break;
+      case SDL_MOUSEMOTION:
+	if (down) {
+	  sendEvent = true;
+	}
+        break;
+      case SDL_MOUSEBUTTONDOWN:
+      case SDL_MOUSEBUTTONUP:
+        down = event.type == SDL_MOUSEBUTTONDOWN;
+        sendEvent = true;
+	break;
+    }
+  }
+
+  if (sendEvent) {
+    JsVar *E = jsvObjectGetChildIfExists(execInfo.root, "E");
+    if (E) {
+      JsVar *o = jsvNewObject();
+      jsvObjectSetChildAndUnLock(o,"x", jsvNewFromInteger(event.button.x));
+      jsvObjectSetChildAndUnLock(o,"y", jsvNewFromInteger(event.button.y));
+      jsvObjectSetChildAndUnLock(o,"b", jsvNewFromInteger(down?1:0));
+      jsiQueueObjectCallbacks(E, JS_EVENT_PREFIX"touch", &o, 1);
+      jsvUnLock2(E,o);
+    }
   }
 }
 

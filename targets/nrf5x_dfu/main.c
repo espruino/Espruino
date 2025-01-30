@@ -396,8 +396,6 @@ int main(void)
       } else {
         // DICKENS: Enter bootloader only if BTN2 held as well
         if (!get_btn2_state()) {
-          // Clear reset reason flags
-          NRF_POWER->RESETREAS = 0xFFFFFFFF;
 #ifdef ESPR_BOOTLOADER_SPIFLASH
           lcd_init();
 #ifndef DICKENS
@@ -427,8 +425,6 @@ int main(void)
       while (*reasons) reasons++;
       reasons++;
     }
-    // Clear reset reason flags
-    NRF_POWER->RESETREAS = 0xFFFFFFFF;
     print_fw_version();
 #ifdef ESPR_BOOTLOADER_SPIFLASH
     if (!get_btn1_state()) flashCheckAndRun();

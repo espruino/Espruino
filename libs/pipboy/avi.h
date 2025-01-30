@@ -16,17 +16,38 @@
 #define __AVI_H
 
 typedef struct {
+  int streamOffset; // offset in the file of the start of data
+  int sampleSize; // 16=16 bit, or 4 for ADPCM
+  int sampleRate;
+  int blockAlign; // for ADPCM, blocks we pass to decoder should be a multiple of this size
+  uint16_t formatTag;
+} WavInfo;
+
+typedef struct {
   int width, height, usPerFrame;
   int streamOffset; // offset in the file of the start of data
   uint16_t palette[256];
-  int audioSampleRate;
+  WavInfo audio;
   int audioBufferSize;
 } AviInfo;
+
+const uint16_t WAVFMT_RAW = 1;
+const uint16_t WAVFMT_IMA_ADPCM = 0x11; // https://wiki.multimedia.cx/index.php/Microsoft_IMA_ADPCM
 
 #define AVI_STREAM_AUDIO 0x6277
 #define AVI_STREAM_VIDEO 0x6364
 
 bool aviLoad(uint8_t *buf, int len, AviInfo *result, bool debugInfo);
-bool wavLoad(uint8_t *buf, int len, AviInfo *result, bool debugInfo);
+bool wavLoad(uint8_t *buf, int len, WavInfo *result, bool debugInfo);
+
+
+/// How much data should we read for the WAV file one one block?
+unsigned int wavGetReadLength(WavInfo *wavInfo);
+/// How many samples are in X bytes of this wave data?
+unsigned int wavGetSamples(WavInfo *wavInfo, unsigned int byteLength);
+/// Do we have to decode the wave data or can it be used direct?
+bool wavNeedsDecode(WavInfo *wavInfo);
+// decode IMA-encoded data, return number of samples created
+int wavDecode(WavInfo *wavInfo, uint8_t *bufin, int16_t *bufout, unsigned int len);
 
 #endif

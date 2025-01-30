@@ -29,6 +29,9 @@
 #ifdef USE_LCD_ST7789_8BIT
 #include "lcd_st7789_8bit.h"
 #endif
+#ifdef USE_LCD_SPI_UNBUF
+#include "lcd_spi_unbuf.h"
+#endif
 
 #include "jswrap_functions.h" // for asURL
 #include "jswrap_object.h" // for getFonts
@@ -560,6 +563,10 @@ void jswrap_graphics_init() {
     gfx->data.type = JSGRAPHICSTYPE_FSMC;
     lcdInit_FSMC(gfx);
     lcdSetCallbacks_FSMC(gfx);
+#elif defined(USE_LCD_SPI_UNBUF)
+    gfx->data.type = JSGRAPHICSTYPE_LCD_SPI_UNBUF;
+    lcd_spi_unbuf_init(gfx);
+    lcd_spi_unbuf_setCallbacks(gfx);
 #else
    #error Unknown LCD type
 #endif
@@ -4146,64 +4153,93 @@ JsVar *jswrap_graphics_asBMP_X(JsVar *parent, bool printBase64) {
   int rowstride = (((width*bpp)+31) >> 5) << 2; // padded to 32 bits
   // palette length (byte size is 3x this)
   int paletteEntries = hasPalette?(1<<bpp):0;
-  int headerLen = 14 + 12 + paletteEntries*3;
+  int headerLen;
+  if (bpp==16) { // Chrome doesn't like 16 bit BMPs in the other format
+    headerLen = 14 + 56;
+  } else {
+    headerLen = 14 + 12 + paletteEntries*3;
+  }
   int fileSize = headerLen + height*rowstride;
   // if printing base64 we only need enough memory for header + one row
   int imgDataLen = printBase64 ? (headerLen + rowstride) : fileSize;
   JsVar *imgData = jsvNewFlatStringOfLength((unsigned)imgDataLen);
   if (!imgData) return 0; // not enough memory
   unsigned char *imgPtr = (unsigned char *)jsvGetFlatStringPointer(imgData);
+  if (!imgPtr) return 0; // just in case
   imgPtr[0]=66; //B
   imgPtr[1]=77; //M
   imgPtr[2]=(unsigned char)fileSize;
-  imgPtr[3]=(unsigned char)(fileSize>>8);  // plus 2 more bytes for size
-  imgPtr[10]=(unsigned char)headerLen;
-  // maybe we want the InfoHeader, not BITMAPCOREHEADER (http://www.ece.ualberta.ca/~elliott/ee552/studentAppNotes/2003_w/misc/bmp_file_format/bmp_file_format.htm)
-  // Chrome doesn't like 16 bit BMPs in this format
-  // BITMAPCOREHEADER
-  imgPtr[14]=12; // sizeof(BITMAPCOREHEADER)
+  imgPtr[3]=(unsigned char)(fileSize>>8);
+  imgPtr[4]=(unsigned char)(fileSize>>16);
+  imgPtr[5]=(unsigned char)(fileSize>>24);
+  imgPtr[10]=(unsigned char)headerLen; // data offset
+  // size in here
   imgPtr[18]=(unsigned char)width;
   imgPtr[19]=(unsigned char)(width>>8);
-  imgPtr[20]=(unsigned char)height;
-  imgPtr[21]=(unsigned char)(height>>8);
-  imgPtr[22]=1; // color planes, should be 1
-  imgPtr[24]=(unsigned char)bpp; // bpp
-  if (hasPalette) {
-    // palette starts at 26
-    if (bpp==1) {
-      // first is white(?)
-      imgPtr[26]=255;
-      imgPtr[27]=255;
-      imgPtr[28]=255;
-    } else {
-      if (realBPP==3) {
-        for (int i=0;i<paletteEntries;i++) {
-          imgPtr[26 + (i*3)] = (i&1) ? 255 : 0;
-          imgPtr[27 + (i*3)] = (i&2) ? 255 : 0;
-          imgPtr[28 + (i*3)] = (i&4) ? 255 : 0;
-        }
-#if defined(GRAPHICS_PALETTED_IMAGES)
-      } else if (realBPP==4) {
-        for (int i=0;i<16;i++) {
-          int p = PALETTE_4BIT[i];
-          imgPtr[26 + (i*3)] = (unsigned char)((p<<3)&0xF8);
-          imgPtr[27 + (i*3)] = (unsigned char)((p>>3)&0xFC);
-          imgPtr[28 + (i*3)] = (unsigned char)((p>>8)&0xF8);
-        }
-      } else if (realBPP==8) {
-        for (int i=0;i<255;i++) {
-          int p = PALETTE_8BIT[i];
-          imgPtr[26 + (i*3)] = (unsigned char)((p<<3)&0xF8);
-          imgPtr[27 + (i*3)] = (unsigned char)((p>>3)&0xFC);
-          imgPtr[28 + (i*3)] = (unsigned char)((p>>8)&0xF8);
-        }
-#endif
-      } else { // otherwise default to greyscale
-        for (int i=0;i<(1<<realBPP);i++) {
-          unsigned char c = (unsigned char)(255 * i / (1<<realBPP));
-          imgPtr[26 + (i*3)] = c;
-          imgPtr[27 + (i*3)] = c;
-          imgPtr[28 + (i*3)] = c;
+  if (bpp==16) { // Chrome doesn't like 16 bit BMPs in the other format
+    // BITMAPINFOHEADER
+    const int h = 14; // initial header len
+    imgPtr[h+0]=56; // sizeof(BITMAPV3INFOHEADER)
+    imgPtr[h+8]=(unsigned char)height;
+    imgPtr[h+9]=(unsigned char)(height>>8);
+    imgPtr[h+12]=1; // planes
+    imgPtr[h+14]=16; // bits
+    imgPtr[h+16]=3; // compression BI_BITFIELDS
+    uint32_t size = height*rowstride;
+    imgPtr[h+20]=(unsigned char)(size);
+    imgPtr[h+21]=(unsigned char)(size>>8);
+    imgPtr[h+22]=(unsigned char)(size>>16);
+    imgPtr[h+23]=(unsigned char)(size>>24);
+    //imgPtr[h+40]=0x00;//R
+    imgPtr[h+41]=0xF8;
+    imgPtr[h+44]=0xE0;//G
+    imgPtr[h+45]=0x07;
+    imgPtr[h+48]=0x1F;//B
+    //imgPtr[h+49]=0x00;
+  } else {
+    // BITMAPCOREHEADER
+    imgPtr[14]=12; // sizeof(BITMAPCOREHEADER)
+    imgPtr[20]=(unsigned char)height;
+    imgPtr[21]=(unsigned char)(height>>8);
+    imgPtr[22]=1; // color planes, should be 1
+    imgPtr[24]=(unsigned char)bpp; // bpp
+    if (hasPalette) {
+      // palette starts at 26
+      if (bpp==1) {
+        // first is white(?)
+        imgPtr[26]=255;
+        imgPtr[27]=255;
+        imgPtr[28]=255;
+      } else {
+        if (realBPP==3) {
+          for (int i=0;i<paletteEntries;i++) {
+            imgPtr[26 + (i*3)] = (i&1) ? 255 : 0;
+            imgPtr[27 + (i*3)] = (i&2) ? 255 : 0;
+            imgPtr[28 + (i*3)] = (i&4) ? 255 : 0;
+          }
+  #if defined(GRAPHICS_PALETTED_IMAGES)
+        } else if (realBPP==4) {
+          for (int i=0;i<16;i++) {
+            int p = PALETTE_4BIT[i];
+            imgPtr[26 + (i*3)] = (unsigned char)((p<<3)&0xF8);
+            imgPtr[27 + (i*3)] = (unsigned char)((p>>3)&0xFC);
+            imgPtr[28 + (i*3)] = (unsigned char)((p>>8)&0xF8);
+          }
+        } else if (realBPP==8) {
+          for (int i=0;i<255;i++) {
+            int p = PALETTE_8BIT[i];
+            imgPtr[26 + (i*3)] = (unsigned char)((p<<3)&0xF8);
+            imgPtr[27 + (i*3)] = (unsigned char)((p>>3)&0xFC);
+            imgPtr[28 + (i*3)] = (unsigned char)((p>>8)&0xF8);
+          }
+  #endif
+        } else { // otherwise default to greyscale
+          for (int i=0;i<(1<<realBPP);i++) {
+            unsigned char c = (unsigned char)(255 * i / (1<<realBPP));
+            imgPtr[26 + (i*3)] = c;
+            imgPtr[27 + (i*3)] = c;
+            imgPtr[28 + (i*3)] = c;
+          }
         }
       }
     }
@@ -4232,8 +4268,6 @@ JsVar *jswrap_graphics_asBMP_X(JsVar *parent, bool printBase64) {
     } else { // <= 1 pixel per byte
       for (int x=0;x<width;x++) {
         unsigned int c = graphicsGetPixel(&gfx, x, y);
-        if (bpp==16) // 16 bit BMP is RGB555, not RGB565
-          c = (c&31) | ((c>>1)&~31U);
         for (int j=0;j<bpp;j+=8) {
           imgPtr[idx++] = (unsigned char)(c);
           bytesWritten++;
@@ -4246,6 +4280,7 @@ JsVar *jswrap_graphics_asBMP_X(JsVar *parent, bool printBase64) {
       idx += rowstride-bytesWritten;
     // if printing to console, we're going to print everything as long as we have a multiple of 3 (or we're at the end)
     if (printBase64 && idx>2) {
+      jshKickWatchDog(); // uploading can take a while
       bool isLastRow = y==0;
       int count = isLastRow ? idx : (idx-(idx%3));
       JsVar *view = jsvNewArrayBufferFromString(imgData, (unsigned int)count); // create an arraybuffer - this means we can pass to btoa with zero allocations

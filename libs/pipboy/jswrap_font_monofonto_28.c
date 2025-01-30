@@ -13,7 +13,7 @@
  * Contains Custom Fonts
  * ----------------------------------------------------------------------------
  */
-
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py */
 #include "jswrap_font_monofonto_28.h"
 #include "jswrap_graphics.h"
 

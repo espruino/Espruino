@@ -46,25 +46,18 @@ void jswrap_hello_world() {
 
 You can add more files here if you need. It's up to you!
 
-## Modify the `Makefile`
+## Ensure they are built in
 
-Find the text
-``` 
-# ---------------------------------------------------------------------------------
-# When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
-# TODO: Load more of this out of the BOARDNAME.py files if at all possible (see next section)
-# --------------------------------------------------------------------------------- 
+In the `BOARD.py` file you're targeting in the `boards` folder, add the following lines to `info.build.makefile`
+
+
 ```
-and add those two lines just before it
-
-```make
-INCLUDE += -I$(ROOT)/libs/hello
-WRAPPERSOURCES += libs/hello/jswrap_hello.c #you can add more files here if your library depend on them
+'INCLUDE += -I$(ROOT)/libs/hello',
+'WRAPPERSOURCES += libs/hello/jswrap_hello.c', #you can add more files here if your library depend on them
 ```
 
-If you want to make a pull request for your new library you'll need to make a `ifdef` guard for it, 
-and specify which platforms should have access to your library.
-To see it in action, follow the `USE_TRIGGER` definition.
+For instance to build for a 'local' build that'll run on your PC you can add the lines to `boards/LINUX.py`
+
 
 ## Compile and test!
 

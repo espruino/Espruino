@@ -16,7 +16,7 @@
 
 #include "jswrap_font_monofonto_120.h"
 #include "jswrap_graphics.h"
-
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py */
 // Monofonto (digits and colon only, for clock display) at 2bpp. Nominal height: 145px, cap height: 120px, total height = 120px
 
 // Fixed width: 73px

@@ -42,4 +42,7 @@ PT_TYPE_EVAL = 0x2000,  // execute and return the result as RESPONSE packet
 PT_TYPE_EVENT = 0x4000, // parse as JSON and create `E.on('packet', ...)` event
 PT_TYPE_FILE_SEND = 0x6000, // called before DATA, with {fn:"filename",s:123}
 PT_TYPE_DATA = 0x8000, // Sent after FILE_SEND with blocks of data for the file
+PT_TYPE_FILE_RECV = 0xA000 // receive a file - returns a series of PT_TYPE_DATA packets, with a final zero length packet to end
 ```
+
+There is currently an implementation of this in https://github.com/espruino/EspruinoWebTools/blob/master/uart.js

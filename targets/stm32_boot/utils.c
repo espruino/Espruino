@@ -124,6 +124,8 @@ void jshDelayMicroseconds(int c) {
 void jshClearUSBIdleTimeout() {
 }
 
+void jshHadEvent() {}
+
 int _getc() {
   if (rxHead == rxTail) return -1;
   unsigned char d = (unsigned char)rxBuffer[rxTail];

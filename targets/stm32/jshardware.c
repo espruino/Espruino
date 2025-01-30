@@ -2873,10 +2873,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
     }
 
     jsiSetSleep(JSI_SLEEP_ASLEEP);
-#ifdef USE_RTC
-    // set flag in case there happens to be a SysTick
-    hasSystemSlept = true;
-#endif
     __WFI(); // Wait for Interrupt
     jsiSetSleep(JSI_SLEEP_AWAKE);
     jshHadEventDuringSleep = false;

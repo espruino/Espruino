@@ -30,7 +30,7 @@ void STM32_I2S_Init() {};
 void STM32_I2S_Kill() {};
 void STM32_I2S_Prepare(int audioFreq) {};
 int STM32_I2S_GetFreeSamples() { return I2S_RING_BUFFER_SIZE; }
-void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {};
+void STM32_I2S_AddSamples(int16_t *data, unsigned int count, bool overlap) {};
 void STM32_I2S_Start() {};
 void STM32_I2S_Stop() {};
 void STM32_I2S_StreamEnded() {};
@@ -108,12 +108,30 @@ void DMA1_Stream4_IRQHandler(void) {
   }
 }
 
+void STM32_I2S_InitFreq(int audioFreq) {
+  I2S_InitTypeDef I2S_InitStructure;
+
+  I2S_InitStructure.I2S_Mode=I2S_Mode_MasterTx;
+  I2S_InitStructure.I2S_Standard=I2S_Standard_Phillips;
+  I2S_InitStructure.I2S_DataFormat=I2S_DataFormat_16bextended;
+  I2S_InitStructure.I2S_MCLKOutput=I2S_MCLKOutput_Enable;
+  I2S_InitStructure.I2S_AudioFreq=(uint32_t)audioFreq;
+  I2S_InitStructure.I2S_CPOL=I2S_CPOL_Low;
+  SPI_I2S_DeInit(SPI2);
+  I2S_Init(SPI2,&I2S_InitStructure);
+
+  SPI_I2S_DMACmd(SPI2,SPI_I2S_DMAReq_Tx,ENABLE);
+  I2S_Cmd(SPI2,ENABLE);
+}
+
 void STM32_I2S_Prepare(int audioFreq) {
   if (i2sStatus == STM32_I2S_PLAYING) return; // if we're started then it's all ok!
 
   DMA_DeInit(DMA1_Stream4);
   while (DMA_GetCmdStatus(DMA1_Stream4) != DISABLE){}
   DMA_ClearITPendingBit(DMA1_Stream4,DMA_IT_FEIF4|DMA_IT_DMEIF4|DMA_IT_TEIF4|DMA_IT_HTIF4|DMA_IT_TCIF4);
+
+  STM32_I2S_InitFreq(audioFreq);
 
   RCC_PLLI2SCmd(ENABLE);
 
@@ -165,8 +183,6 @@ void STM32_I2S_Prepare(int audioFreq) {
 void STM32_I2S_Init() {
   i2sStatus = STM32_I2S_STOPPED;
 
-  I2S_InitTypeDef I2S_InitStructure;
-
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB|RCC_AHB1Periph_GPIOC, ENABLE);
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
   RCC_APB1PeriphResetCmd(RCC_APB1Periph_SPI2,ENABLE);
@@ -194,16 +210,7 @@ void STM32_I2S_Init() {
   GPIO_PinAFConfig(GPIOC,GPIO_PinSource6,GPIO_AF_SPI2);  // PC6 ,AF5  I2S_MCK
   GPIO_PinAFConfig(GPIOC,GPIO_PinSource2,GPIO_AF_SPI3);  // PC2 ,AF6  I2S_ADCDATA (AF6 apparently?) - RB 2024-11-25: we're not using this, so should we remove it?
 
-  I2S_InitStructure.I2S_Mode=I2S_Mode_MasterTx;
-  I2S_InitStructure.I2S_Standard=I2S_Standard_Phillips;
-  I2S_InitStructure.I2S_DataFormat=I2S_DataFormat_16bextended;
-  I2S_InitStructure.I2S_MCLKOutput=I2S_MCLKOutput_Enable;
-  I2S_InitStructure.I2S_AudioFreq=I2S_AudioFreq_16k;
-  I2S_InitStructure.I2S_CPOL=I2S_CPOL_Low;
-  I2S_Init(SPI2,&I2S_InitStructure);
-
-  SPI_I2S_DMACmd(SPI2,SPI_I2S_DMAReq_Tx,ENABLE);
-  I2S_Cmd(SPI2,ENABLE);
+  STM32_I2S_InitFreq(I2S_AudioFreq_16k);
 
   NVIC_InitTypeDef   NVIC_InitStructure;
   NVIC_InitStructure.NVIC_IRQChannel = DMA1_Stream4_IRQn;
@@ -242,8 +249,22 @@ int STM32_I2S_GetFreeSamples() {
   return I2S_RING_BUFFER_SIZE - audioRingBufGetSamples();
 }
 
-// Add samples to the ringbuffer
-void STM32_I2S_AddSamples(int16_t *data, unsigned int count) {
+// Add new Samples - playback will start when we have enough in buffer. count=# of samples (not bytes). If overlap=true, we try and add the sample data to what we have already
+void STM32_I2S_AddSamples(int16_t *data, unsigned int count, bool overlap) {
+  if (overlap) {
+    jshInterruptOff(); // IRQ off to ensure DMA won't drag in a new sound
+    uint16_t audioRingIdx = audioRingIdxOut; // start from where we'd next be reading...
+    while (count && audioRingIdx!=audioRingIdxIn) {
+      int v = (int)*(data++) + (int)audioRingBuf[audioRingIdx];
+      if (v<-32768) v=-32768; // clip
+      if (v>32767) v=32767;
+      audioRingBuf[audioRingIdx] = v;
+      count--;
+      audioRingIdx = (audioRingIdx+1) & (I2S_RING_BUFFER_SIZE-1);
+    }
+    jshInterruptOn();
+  }
+
   // Try and fill until ringbuffer is full
   unsigned int freeSamples = STM32_I2S_GetFreeSamples();
   unsigned int c = count;
