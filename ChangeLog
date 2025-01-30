@@ -12,6 +12,7 @@
             Build: Allow creating UF2 images
             XiaoBLE: Add board: Seeed XIAO BLE
             nRF5x: Allow entering UF2 bootloader mode by calling E.rebootToDFU() (on boards that have such a bootloader)
+            Graphics: Graphics.asImage() can now take x/y/w/h options to make only part of the graphics into an image
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

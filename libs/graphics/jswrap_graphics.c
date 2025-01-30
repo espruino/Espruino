@@ -3812,12 +3812,14 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_graphics_asImage",
   "params" : [
-    ["type","JsVar","The type of image to return. Either `object`/undefined to return an image object, or `string` to return an image string"]
+    ["options","JsVar","The type of image to return as a string, or an object `{x,y,w,h,type}` (see below)"]
   ],
   "return" : ["JsVar","An Image that can be used with `Graphics.drawImage`"],
   "typescript" : [
     "asImage(type?: \"object\"): ImageObject;",
-    "asImage(type: \"string\"): string;"
+    "asImage(type: \"string\"): string;",
+    "asImage(layers: { type?: \"object\", x?: number, y?: number, w?: number, h?: number): ImageObject;",
+    "asImage(layers: { type: \"string\", x?: number, y?: number, w?: number, h?: number): string;"
   ]
 }
 Return this `Graphics` object as an Image that can be used with
@@ -3827,9 +3829,16 @@ images.
 
 Will return undefined if data can't be allocated for the image.
 
+`options` can be either:
+
+* `undefined` or `"object"` - return an image object
+* `string` - return the image as a string
+* (in 2v26 onwards) `{type:undefined/"object"/"string", x,y,w,h}` - Return only a part of the image as an object/string.
+
 The image data itself will be referenced rather than copied if:
 
 * An image `object` was requested (not `string`)
+* `x`/`y` are 0 and `w`/`h` are the graphics's height
 * The `Graphics` instance was created with `Graphics.createArrayBuffer`
 * Is 8 bpp *OR* the `{msb:true}` option was given
 * No other format options (zigzag/etc) were given
@@ -3847,19 +3856,34 @@ gfx.drawString("X",0,0);
 var im = gfx.asImage("string");
 ```
 */
-JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
+JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *options) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   bool isObject;
+  int gw = jswrap_graphics_getWidthOrHeight(parent,false);
+  int gh = jswrap_graphics_getWidthOrHeight(parent,true);
+  int ox = 0, oy = 0; // image offset
+  int w = gw, h = gh; // image offset
+  JsVar *imgType;
+  if (jsvIsObject(options)) {
+    imgType = jsvObjectGetChildIfExists(options, "type");
+    ox = jsvObjectGetIntegerChild(options, "x"); // default 0
+    oy = jsvObjectGetIntegerChild(options, "y"); // default 0
+    int i = jsvObjectGetIntegerChild(options, "w");
+    if (i) w = i;
+    i = jsvObjectGetIntegerChild(options, "h");
+    if (i) h = i;
+  } else imgType = jsvLockAgainSafe(options);
   if (jsvIsUndefined(imgType) || jsvIsStringEqual(imgType,"object"))
     isObject = true;
   else if (jsvIsStringEqual(imgType,"string")) {
     isObject = false;
   } else {
     jsExceptionHere(JSET_ERROR, "Unknown image type %j", imgType);
+    jsvUnLock(imgType);
     return 0;
   }
-  int w = jswrap_graphics_getWidthOrHeight(parent,false);
-  int h = jswrap_graphics_getWidthOrHeight(parent,true);
+  jsvUnLock(imgType);
+
   int bpp = gfx.data.bpp;
   int colorCount = (1<<bpp);
 #ifdef LCD_CONTROLLER_LPM013M126
@@ -3887,6 +3911,7 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
     /* IF we have an arraybuffer of the right form then
     we can return the original buffer directly */
     if (gfx.data.type == JSGRAPHICSTYPE_ARRAYBUFFER &&
+        (ox==0) && (oy==0) && (w==gw) && (h==gh) &&
         (bpp==8 || // 8 bit data is fine
         ((gfx.data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) && // must be MSB first
           !(gfx.data.flags & JSGRAPHICSFLAGS_NONLINEAR)))) { // must be in-order
@@ -3939,7 +3964,7 @@ JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType) {
     }
   }
   while (jsvStringIteratorHasChar(&it)) {
-    unsigned int pixel = graphicsGetPixel(&gfx, x, y);
+    unsigned int pixel = graphicsGetPixel(&gfx, x+ox, y+oy);
 #ifdef LCD_CONTROLLER_LPM013M126
     if (gfx.data.type==JSGRAPHICSTYPE_MEMLCD)
       pixel = GRAPHICS_COL_16_TO_3(pixel);

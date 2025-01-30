@@ -80,7 +80,7 @@ JsVar *jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect);
 JsVar *jswrap_graphics_imageMetrics(JsVar *parent, JsVar *var);
 JsVar *jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos, JsVar *options);
 JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *options);
-JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *imgType);
+JsVar *jswrap_graphics_asImage(JsVar *parent, JsVar *options);
 JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset);
 JsVar *jswrap_graphics_scroll(JsVar *parent, int x, int y);
 JsVar *jswrap_graphics_blit(JsVar *parent, JsVar *options);
