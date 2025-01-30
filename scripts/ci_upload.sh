@@ -22,5 +22,5 @@ fi
 
 if [[ -n \"$UPLOADTOKEN\" ]]; then 
   cd bin
-  ls -d  *.bin *.hex *.tgz *.zip  2> /dev/null | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$COMMIT&branch=$BRANCH&token=$UPLOADTOKEN"; 
+  ls -d  *.bin *.hex *.uf2 *.tgz *.zip  2> /dev/null | xargs -I {} curl -v -F "binary=@{}" "https://www.espruino.com/travis_upload.php?commit=$COMMIT&branch=$BRANCH&token=$UPLOADTOKEN";
 fi
