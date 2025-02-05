@@ -1,0 +1,13 @@
+--- targetlibs/nrf5x_15x/components/drivers_nrf/usbd/nrf_drv_usbd.c	2018-03-22 14:25:07.000000000 +0000
++++ targetlibs/nrf5x_15/components/drivers_nrf/usbd/nrf_drv_usbd.c	2025-02-05 13:57:15.373050958 +0000
+@@ -1751,8 +1751,10 @@
+     /* Enable the peripheral */
+     nrf_usbd_enable();
+     /* Waiting for peripheral to enable, this should take a few us */
++    int timeout = 10000;
+     while (0 == (NRF_USBD_EVENTCAUSE_READY_MASK & nrf_usbd_eventcause_get()))
+     {
++        if ((timeout--) < 0) break; // GW: Nordic's library can get stuck here, waiting forever when USB is plugged in!
+         /* Empty loop */
+     }
+     nrf_usbd_eventcause_clear(NRF_USBD_EVENTCAUSE_READY_MASK);
