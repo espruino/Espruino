@@ -2342,6 +2342,11 @@ Espruino (resetting the interpreter and pin states, but not all the hardware)
 */
 void jswrap_espruino_reboot() {
 #ifndef EMULATED
+#ifndef ESPR_NO_LET_SCOPING
+  execInfo.baseScope=execInfo.root; // force this so asserts in jspSoftKill don't fail.
+  // We were executing so baseScope could be set, but we don't care because we're rebooting
+#endif
+
   // ensure `E.on('kill',...` gets called and everything is torn down correctly
   jsiKill();
   jsvKill();

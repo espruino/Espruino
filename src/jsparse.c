@@ -3413,7 +3413,7 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
 
   JsExecInfo oldExecInfo = execInfo;
 #ifndef ESPR_NO_LET_SCOPING
-  execInfo.baseScope = scopeExports;
+  execInfo.baseScope = scopeExports; // this gets replaces after with execInfo = oldExecInfo
   execInfo.blockScope = 0;
   execInfo.blockCount = 0;
 #endif
