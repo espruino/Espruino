@@ -45,6 +45,18 @@
 # available memory. Using too small a JsVar format will under utilise
 # available memory.
 
+# MakeFile identifier ESP_FORCE_NO_USB_SERIAL_JTAG  
+# --------------------------------------------------------------
+# The 'makefile' list in the 'info' dictionary below can define ESP_FORCE_NO_USB_SERIAL_JTAG using 'DEFINES+=-ESP_FORCE_NO_USB_SERIAL_JTAG'
+# where necessary.  
+# When defined ESP_FORCE_NO_USB_SERIAL_JTAG overrides the default console driver assignment in the Espruino build for the ESP32-C3.
+#  When NOT defined, By default the Espruino console will use the USB port with usb_serial_jtag_driver.  
+#  This will support the case where the USB connector on the board is wired directly to the D+ and D- pins on the ESP32-C3.
+#  Alternatively in the case where the USB is wired to an ESP32-C3's UART RX and TX pins (usually via a USB to UART conversion chip),
+#    ESP_FORCE_NO_USB_SERIAL_JTAG should be defined to set the console for UART operation.
+# This method is introduced for fix to issue #2609 and replaces the previous method using the 'USB_CDC' identifier.
+
+
 
 import pinutils;
 info = {
@@ -73,7 +85,7 @@ info = {
      'DEFINES+=-DESP_STACK_SIZE=25000',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
-     'DEFINES+=-DUSB_CDC',      # Comment out to disable USB_CDC if board has uart interface
+     # 'DEFINES+=-ESP_FORCE_NO_USB_SERIAL_JTAG' # See note above
      'ESP32_FLASH_MAX=1572864'
    ]
  }
