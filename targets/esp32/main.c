@@ -19,6 +19,8 @@
 #include "jshardwareESP32.h"
 #include "jswrap_wifi.h" // jswrap_wifi_restore
 #include "jswrapper.h"
+#include "sdkconfig.h"
+
 
 #ifdef BLUETOOTH
 #include "libs/bluetooth/bluetooth.h"
@@ -38,6 +40,7 @@
 #include "jsvar.h"
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 extern void *espruino_stackHighPtr;  //Name spaced because this has to be a global variable.
                                      //Used in jsuGetFreeStack().
 #ifdef CONFIG_IDF_TARGET_ESP32C3
@@ -52,16 +55,31 @@ extern void *espruino_stackHighPtr;  //Name spaced because this has to be a glob
                                      //Used in jsuGetFreeStack().
 #if defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG) && !defined(ESP_FORCE_NO_USB_SERIAL_JTAG)
 >>>>>>> 105f390ac (fixes for #2609 - tidy up for testing)
+=======
+#if defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG) && !defined(ESP_FORCE_NO_USB_SERIAL)
+  #pragma message ("USB Serial JTAG console is enabled")
+#else
+  #pragma message ("Using UART console")
+#endif
+
+extern void *espruino_stackHighPtr;  //Name spaced because this has to be a global variable.
+                                     //Used in jsuGetFreeStack().
+#if defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG) && !defined(ESP_FORCE_NO_USB_SERIAL)
+>>>>>>> 14141f4c7 (Fixes for #2609 - Initial testing)
 #include "hal/usb_serial_jtag_ll.h"
 volatile bool usbUARTIsNotFlushed;
 #endif
 
 void esp32USBUARTWasUsed() {
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef CONFIG_IDF_TARGET_ESP32C3
 =======
 #if defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG) && !defined(ESP_FORCE_NO_USB_SERIAL_JTAG)
 >>>>>>> 105f390ac (fixes for #2609 - tidy up for testing)
+=======
+#if defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG) && !defined(ESP_FORCE_NO_USB_SERIAL)
+>>>>>>> 14141f4c7 (Fixes for #2609 - Initial testing)
   usbUARTIsNotFlushed = true;
 #endif
 }
@@ -74,10 +92,14 @@ static void uartTask(void *data) {
     consoleToEspruino();
     serialToEspruino();
 <<<<<<< HEAD
+<<<<<<< HEAD
 #ifdef CONFIG_IDF_TARGET_ESP32C3
 =======
 #if defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG) && !defined(ESP_FORCE_NO_USB_SERIAL_JTAG)
 >>>>>>> 105f390ac (fixes for #2609 - tidy up for testing)
+=======
+#if defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG) && !defined(ESP_FORCE_NO_USB_SERIAL)
+>>>>>>> 14141f4c7 (Fixes for #2609 - Initial testing)
     /* The USB CDC UART on the C3 only writes the data to USB after a newline.
     We don't want that, so we call flush in this uart task if any data has been sent. */
     if (usbUARTIsNotFlushed) {
