@@ -67,15 +67,17 @@ fi
 echo Provision BOARDNAME = $BOARDNAME
 echo Provision FAMILY = $FAMILY
 
+if pip --version 2>/dev/null; then
+  echo Python/pip installed
+else
+  echo Installing python/pip
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python3-pip
+fi
+echo Python version `python --version`
+
 if [ "$PROVISION_ESP32" = "1" ]; then
     echo ===== ESP32
     # needed for esptool for merging binaries
-    if pip --version 2>/dev/null; then
-      echo python/pip installed
-    else
-      echo Installing python/pip pyserial
-      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python3-pip
-    fi
     if pip list 2>/dev/null | grep pyserial >/dev/null; then
       echo pyserial installed;
     else
@@ -163,16 +165,28 @@ fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_NRF52" = "1" ]; then
     echo ===== NRF52
-    if ! type pip 2> /dev/null > /dev/null; then
-      echo Installing python and pip
-      sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python-pip
-    fi
     if ! type nrfutil 2> /dev/null > /dev/null; then
-      echo Installing nrfutil
-      sudo pip install --ignore-installed nrfutil protobuf==3.17.3
+      #echo Installing nrfutil
+      #sudo pip install --ignore-installed nrfutil nrfutil
       # --ignore-installed is used because pip 10 fails because PyYAML was already installed by the system
-      # protobuf-3.17.3 is required because it seems protobuf-3.18 which auto-installs as of ~15 sept 2021 is incompatible with Python 2.7
-      # -q can be used to silence the above
+
+      # we need pipx and python 3.8 to allow us to run nrfutil under a python that's not the current version
+      if pipx --version 2>/dev/null; then
+        echo pipx installed
+      else
+        echo Installing pipx 
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y pipx
+      fi
+      # we need python3.8 for nrfutil
+      if python3.8 --version 2>/dev/null; then
+        echo Python 3.8 installed
+      else
+        echo Installing python3.8 
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python3.8
+      fi
+      # Because nrfutil doesn't support the latest version of python! Yay!
+      echo Installing nrfutil
+      sudo pipx install nrfutil --python `which python3.8`
     fi
     ARM=1
 

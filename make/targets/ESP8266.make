@@ -38,7 +38,7 @@ endif
 
 LD_RENAME    = --rename-section .text=.irom.text --rename-section .literal=.irom.literal
 ESP_COMBINED = $(PROJ_NAME)_combined_$(ESP_COMBINED_SIZE).bin
-APPGEN_TOOL  = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
+APPGEN_TOOL  = targets/esp8266/gen_appbin_python3.py
 BOOTLOADER   = $(ESP8266_SDK_ROOT)/bin/boot_v1.6.bin
 BLANK        = $(ESP8266_SDK_ROOT)/bin/blank.bin
 INIT_DATA    = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
@@ -83,7 +83,7 @@ $(USER1_BIN): $(USER1_ELF)
 	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER1_ELF) eagle.app.v6.rodata.bin
 	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER1_ELF) eagle.app.v6.irom0text.bin
 	@ls -ls eagle*bin
-	$(Q)COMPILE=gcc python2.7 $(APPGEN_TOOL) $(USER1_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 0 >/dev/null
+	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER1_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 0 >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 	@echo "** user1.bin uses $$( stat $(STAT_FLAGS) $@) bytes of" $(ESP_FLASH_MAX) "available"
@@ -97,7 +97,7 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER2_ELF) eagle.app.v6.data.bin
 	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER2_ELF) eagle.app.v6.rodata.bin
 	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER2_ELF) eagle.app.v6.irom0text.bin
-	$(Q)COMPILE=gcc python2.7 $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 1 >/dev/null
+	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 1 >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 
