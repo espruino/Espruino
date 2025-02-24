@@ -233,7 +233,7 @@ void jswrap_pin_pulse(JsVar *parent, bool value, JsVar *times) {
   "class"    : "Pin",
   "name" : "analog",
   "generate" : "jswrap_pin_analog",
-  "return" : ["float","The analog Value of the Pin between 0 and 1"]
+  "return" : ["float","The analog value of the `Pin` between 0(GND) and 1(VCC)"]
 }
 (Added in 2v20) Get the analogue value of the given pin. See `analogRead` for more information.
  */

@@ -172,9 +172,13 @@ void jswrap_io_poke(JsVarInt addr, JsVar *data, int wordSize) {
   "params" : [
     ["pin","pin",["The pin to use","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `ADC` markers."]]
   ],
-  "return" : ["float","The Analog Value of the Pin between 0(GND) and 1(VCC). See below."]
+  "return" : ["float","The analog value of the `Pin` between 0(GND) and 1(VCC). See below."]
 }
 Get the analogue value of the given pin.
+
+* The value is normally greater than or equal to 0, however in some cases nRF52-based boards can produce values
+less than 0 when the ADC voltage is slightly less than the chip's internal GND.
+* The value returned will always be *less* than 1, even when the ADC reads full range. For example a 12 bit ADC may return 4095 as a full-range value, but this is divided by 4096 to produce `analogRead`'s output value.
 
 This is different to Arduino which only returns an integer between 0 and 1023
 

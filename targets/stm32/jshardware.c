@@ -1900,7 +1900,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
   if (!jshGetPinStateIsManual(pin))
     jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 
-  return jshAnalogRead(pinInfo[pin].analog, false) / (JsVarFloat)65535;
+  return jshAnalogRead(pinInfo[pin].analog, false) / (JsVarFloat)65536;
 }
 
 /// Returns a quickly-read analog value in the range 0-65535
