@@ -170,7 +170,7 @@ double-buffered - see `options` below) which contains the data to input/output.
 
 Options can contain:
 
-```JS
+```
 {
   doubleBuffer : bool   // whether to allocate two buffers or not (default false)
   bits         : 8/16   // the amount of bits to use (default 8).
@@ -181,7 +181,7 @@ When double-buffered, a 'buffer' event will be emitted each time a buffer is
 finished with (the argument is that buffer). When the recording stops, a
 'finish' event will be emitted (with the first argument as the buffer).
 
-```JS
+```
 // Output a sine wave
 var w = new Waveform(1000);
 for (var i=0;i<1000;i++) w.buffer[i]=128+120*Math.sin(i/2);
@@ -190,7 +190,7 @@ w.on("finish", () => print("Done!"))
 w.startOutput(H0,8000); // start playback
 ```
 
-```JS
+```
 // On 2v25, from Storage
 var f = require("Storage").read("sound.pcm");
 var w = new Waveform(E.toArrayBuffer(f));

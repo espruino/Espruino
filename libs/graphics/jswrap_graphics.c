@@ -2391,7 +2391,7 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
 }
 Return the width and height in pixels of a string of text in the current font. The object returned contains:
 
-```JS
+```
 {
   width,              // Width of the string in pixels
   height,             // Height of the string in pixels

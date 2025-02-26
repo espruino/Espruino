@@ -709,7 +709,7 @@ Check out [the Puck.js page on the
 magnetometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
 information.
 
-```JS
+```
 Puck.magOn(10); // 10 Hz
 Puck.on('mag', function(e) {
   print(e);
@@ -731,7 +731,7 @@ Called after `Puck.accelOn()` every time accelerometer data is sampled. There is
 one argument which is an object of the form `{acc:{x,y,z}, gyro:{x,y,z}}`
 containing the data.
 
-```JS
+```
 Puck.accelOn(12.5); // default 12.5Hz
 Puck.on('accel', function(e) {
   print(e);
