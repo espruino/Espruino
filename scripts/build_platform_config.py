@@ -341,21 +341,21 @@ xoff_thresh = 6 # how full (out of 8) is buffer when we sent the XOFF flow contr
 xon_thresh = 3 # how full (out of 8) is buffer when we sent the XON flow control char to say 'go'
 
 if LINUX:
-  bufferSizeIO = 256
+  bufferSizeIO = 1024
   bufferSizeTX = 256
   bufferSizeTimer = 16
 elif EMSCRIPTEN:
-  bufferSizeIO = 256
+  bufferSizeIO = 1024
   bufferSizeTX = 256
   bufferSizeTimer = 16
 else:
   # IO buffer - for received chars, setWatch, etc
-  bufferSizeIO = 64
-  if board.chip["ram"]>=20: bufferSizeIO = 128
-  if board.chip["ram"]>=96: bufferSizeIO = 256
+  bufferSizeIO = 256
+  if board.chip["ram"]>=20: bufferSizeIO = 512
+  if board.chip["ram"]>=96: bufferSizeIO = 1024
   # NRF52 needs this as Bluetooth traffic is funnelled through the buffer
   if board.chip["family"]=="NRF52":
-    bufferSizeIO = 256
+    bufferSizeIO = 1024
     # we often use increased MTUs and even with a big buffer these mean we need to leave
     # a lot of space when we send XOFF (due to delay in response from sender)
     xoff_thresh = 3
@@ -376,8 +376,8 @@ if 'xoff_thresh' in board.info:
 if 'xon_thresh' in board.info:
   xon_thresh = board.info['xon_thresh']
 
-codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 65535) amount of items in event buffer - events take 5 bytes each")
-codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255) amount of items in the transmit buffer - 2 bytes each")
+codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 65535, 2^n-1) amount of items in event buffer - each event uses 2+dataLen bytes")
+codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255, 2^n-1) amount of items in the transmit buffer - 2 bytes each")
 codeOut("#define UTILTIMERTASK_TASKS ("+str(bufferSizeTimer)+") // Must be power of 2 - and max 256")
 
 codeOut("");

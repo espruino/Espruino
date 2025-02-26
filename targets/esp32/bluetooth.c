@@ -73,33 +73,17 @@ JsVar *jsble_get_error_string(uint32_t err_code) {
   return jsvVarPrintf("ERR 0x%x", err_code);
 }
 
-/// Executes a pending BLE event - returns the number of events Handled
-int jsble_exec_pending(IOEvent *event) {
-  int eventsHandled = 1;
-  // if we got event data, unpack it first into a buffer
-#if NRF_BLE_MAX_MTU_SIZE>64
-  unsigned char buffer[NRF_BLE_MAX_MTU_SIZE];
-#else
-  unsigned char buffer[64];
-#endif
-  assert(sizeof(buffer) >= sizeof(BLEAdvReportData));
-  size_t bufferLen = 0;
-  while (IOEVENTFLAGS_GETTYPE(event->flags) == EV_BLUETOOTH_PENDING_DATA) {
-    int i, chars = IOEVENTFLAGS_GETCHARS(event->flags);
-    for (i=0;i<chars;i++) {
-      assert(bufferLen < sizeof(buffer));
-      if (bufferLen < sizeof(buffer))
-        buffer[bufferLen++] = event->data.chars[i];
-    }
-
-    jshPopIOEvent(event);
-    eventsHandled++;
-  }
-  assert(IOEVENTFLAGS_GETTYPE(event->flags) == EV_BLUETOOTH_PENDING);
-
+/// Executes a pending BLE event - returns the number of event bytes handled. sizeof(buffer)==IOEVENT_MAX_LEN
+int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
+  assert(IOEVENT_MAX_LEN >= sizeof(BLEAdvReportData));
+  int eventBytesHandled = 2+bufferLen;
   // Now handle the actual event
-  BLEPending blep = (BLEPending)(event->data.time&255);
-  uint16_t data = (uint16_t)(event->data.time>>8);
+  if (bufferLen<3) return;
+  BLEPending blep = (BLEPending)buffer[0];
+  uint16_t data = (uint16_t)(buffer[1] | (buffer[2]<<8));
+  // skip first 3 bytes
+  buffer += 3;
+  bufferLen -= 3;
   /* jsble_exec_pending_common handles 'common' events between nRF52/ESP32, then
    * we handle nRF52-specific events below */
   if (!jsble_exec_pending_common(blep, data, buffer, bufferLen)) switch (blep) {
@@ -107,7 +91,7 @@ int jsble_exec_pending(IOEvent *event) {
    default:
      jsWarn("jsble_exec_pending: Unknown enum type %d",(int)blep);
   }
-  return eventsHandled;
+  return eventBytesHandled;
 }
 
 void jsble_restart_softdevice(JsVar *jsFunction){

@@ -18,7 +18,7 @@ import pinutils;
 info = {
  'name' : "Bangle.js 2 (No external flash)", # Using SMA Q3
  # A build for Bangle.js 2 that uses only internal flash
- 'boardname' : "BANGLEJS2", 
+ 'boardname' : "BANGLEJS2",
  'link' :  [ "https://espruino.com/Bangle.js2" ],
  'espruino_page_link' : 'Bangle.js2',
  'default_console' : "EV_TERMINAL",
@@ -28,7 +28,7 @@ info = {
 # 'default_console_baudrate' : "9600",
  'variables' : 12000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
                       # Currently leaves around 38k of free stack - *loads* more than we need
- 'io_buffer_size' : 512, # How big is the input buffer (in 4 byte words). Default on nRF52 is 256
+ 'io_buffer_size' : 2048, # How big is the input buffer (in bytes). Default on nRF52 is 1024
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_banglejs2_noflash.hex',
  'build' : {
@@ -54,8 +54,8 @@ info = {
      'DEFINES += -DESPR_DCDC_ENABLE=1', # Use DC/DC converter
      'ESPR_BLUETOOTH_ANCS=1', # Enable ANCS (Apple notifications) support
      'DEFINES += -DSPIFLASH_SLEEP_CMD', # SPI flash needs to be explicitly slept and woken up
-     'DEFINES += -DSPIFLASH_READ2X', # Read SPI flash at 2x speed using MISO and MOSI for IO     
-     'DEFINES += -DESPR_JSVAR_FLASH_BUFFER_SIZE=32', # The buffer size we use when executing/iterating over data in flash memory (default 16). Should be set based on benchmarks.     
+     'DEFINES += -DSPIFLASH_READ2X', # Read SPI flash at 2x speed using MISO and MOSI for IO
+     'DEFINES += -DESPR_JSVAR_FLASH_BUFFER_SIZE=32', # The buffer size we use when executing/iterating over data in flash memory (default 16). Should be set based on benchmarks.
      'DEFINES += -DAPP_TIMER_OP_QUEUE_SIZE=6', # Bangle.js accelerometer poll handler needs something else in queue size
      'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'"Bangle.js"\'',
      'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
@@ -124,7 +124,7 @@ devices = {
   'BTN1' : { 'pin' : 'D17', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
   'LED1' : { 'pin' : 'D8', 'novariable':True }, # Backlight flash for low level debug - but in code we just use 'fake' LEDs
   'LCD' : {
-            'width' : 176, 'height' : 176, 
+            'width' : 176, 'height' : 176,
             'bpp' : 3, # LCD is native 3 bit (fastest transfers), but 4 is faster for drawing and slow to transfer
             'controller' : 'LPM013M126', # LPM013M126C
             'pin_cs' : 'D5',
@@ -145,7 +145,7 @@ devices = {
   'GPS' : {
             'device' : 'Casic URANUS',
             'pin_en' : 'D29',
-            'pin_rx' : 'D30', 
+            'pin_rx' : 'D30',
             'pin_tx' : 'D31'
           },
   'BAT' : {
@@ -153,10 +153,10 @@ devices = {
             'pin_voltage' : 'D3'
           },
   'HEARTRATE' : {
-            'device' : 'VC31', 'addr' : 0x33,            
-            'pin_sda' : 'D24', 
-            'pin_scl' : 'D32', 
-            'pin_en' : 'D21', 
+            'device' : 'VC31', 'addr' : 0x33,
+            'pin_sda' : 'D24',
+            'pin_scl' : 'D32',
+            'pin_en' : 'D21',
             'pin_int' : 'D22'
           },
   'ACCEL' : {
@@ -165,7 +165,7 @@ devices = {
             'pin_scl' : 'D37'
           },
   'MAG' : { # Magnetometer/compass
-            'device' : 'UNKNOWN_0C', 
+            'device' : 'UNKNOWN_0C',
             'addr' : 0x0C,
             'pin_sda' : 'D44',
             'pin_scl' : 'D45'
@@ -174,7 +174,7 @@ devices = {
             'device' : 'BMP280', # v2.1 uses Goertek SPL06-001 - we handle both
             'addr' : 0x76, # both versions use the same address
             'pin_sda' : 'D47',
-            'pin_scl' : 'D2'            
+            'pin_scl' : 'D2'
   },
   'SPIFLASH' : {
             'pin_cs' : 'D14',

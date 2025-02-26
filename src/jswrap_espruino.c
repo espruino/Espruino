@@ -704,11 +704,12 @@ Called when a bit rises or falls above a set level. See `E.setComparator` for se
   "generate" : "jswrap_espruino_setComparator_eventHandler"
 }
 */
-void jswrap_espruino_setComparator_eventHandler(IOEvent *event) {
+void jswrap_espruino_setComparator_eventHandler(IOEventFlags eventFlags, uint8_t *data, int *length) {
 #if defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)
   // see jshSetComparator / E.setComparator
-  if ((event->data.time & EVC_TYPE_MASK) == EVC_LPCOMP) {
-    JsVar *arg = jsvNewFromInteger((event->data.time & EVC_DATA_LPCOMP_UP) ? 1 : -1);
+  IOCustomEventFlags customFlags = *(IOCustomEventFlags*)data;
+  if ((customFlags & EVC_TYPE_MASK) == EVC_LPCOMP) {
+    JsVar *arg = jsvNewFromInteger((customFlags & EVC_DATA_LPCOMP_UP) ? 1 : -1);
     jsiExecuteEventCallbackOn("E",JS_EVENT_PREFIX"comparator",1,&arg);
     jsvUnLock(arg);
   }
@@ -728,7 +729,7 @@ void jswrap_espruino_setComparator_eventHandler(IOEvent *event) {
 (Added 2v25) Enable the nRF52 chip's `LPCOMP` hardware. When enabled, it creates an `E.on("comparator", ...)`
 event whenever the pin supplied rises or falls past the setpoint given (with 50mv hysteresis).
 
-```JS
+```
 E.setComparator(D28, 8/16); // compare with VDD/2
 E.on("comparator", e => {
   print(e); // 1 for up, or -1 for down

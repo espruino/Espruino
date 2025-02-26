@@ -501,14 +501,14 @@ Serial1.inject('Hello World');
 This is most useful if you wish to send characters to Espruino's REPL (console)
 while it is on another device.
  */
-static void _jswrap_serial_inject_cb(int data, void *userData) {
-  IOEventFlags device = *(IOEventFlags*)userData;
-  jshPushIOCharEvent(device, (char)data);
+static void _jswrap_serial_inject_cb(unsigned char *data, unsigned int len, void *callbackData) {
+  IOEventFlags device = *(IOEventFlags*)callbackData;
+  jshPushIOCharEvents(device, (char*)data, len);
 }
 void jswrap_serial_inject(JsVar *parent, JsVar *args) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_SERIAL(device)) return;
-  jsvIterateCallback(args, _jswrap_serial_inject_cb, (void*)&device);
+  jsvIterateBufferCallback(args, _jswrap_serial_inject_cb, (void*)&device);
 }
 
 /*JSON{

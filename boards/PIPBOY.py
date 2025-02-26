@@ -23,7 +23,7 @@ info = {
  'default_console_tx' : "B10",
  'default_console_rx' : "B11",
  'default_console_baudrate' : "115200",
- 'io_buffer_size' : 512,
+ 'io_buffer_size' : 2048, # How big is the input buffer (in bytes). Default on nRF52 is 1024
  'xoff_thresh' : 3,
  'xon_thresh' : 2,
  'build' : {
@@ -66,7 +66,7 @@ info = {
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_28.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_23.c',
      'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_18.c',
-     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_16.c',    
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_16.c',
      'DEFINES+=-DUSBD_MANUFACTURER_STRING=\'"The Wand Company"\'',
      'DEFINES+=-DUSBD_PRODUCT_STRING_FS=\'"Pip-Boy"\'',
      'DEFINES+=-DUSB_PRODUCT_ID=0xA4F1', # 0xA4F1 assigned by ST for the Pip-Boy (0xA4DF = Tricorder)

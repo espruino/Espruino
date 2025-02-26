@@ -38,8 +38,8 @@ import pinutils;
 # o  D14    VCC
 #    D15    D17
 #    D2     D19
-#    GND    D18      
-# 
+#    GND    D18
+#
 
 # unfitted header (assuming same dir as Button flex header)
 #     VCC D10
@@ -61,7 +61,7 @@ info = {
  'espruino_page_link' : '',
  'default_console' : "EV_BLUETOOTH",
  'variables' : 5000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
- 'io_buffer_size' : 512, 
+ 'io_buffer_size' : 2048, # How big is the input buffer (in bytes). Default on nRF52 is 1024
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_dickens.hex',
  'build' : {
@@ -163,16 +163,16 @@ devices = {
             'pin_sck' : 'D12',
             'pin_mosi' : 'D5',
             'pin_miso' : 'D27',
-            'pin_en' : 'D43', 
+            'pin_en' : 'D43',
             'pin_bl' : 'D33', # Also enables the power supply for the vibration motor
             'bitrate' : 32000000
           },
   'BAT' : {
-            'pin_charging' : 'D13', 
+            'pin_charging' : 'D13',
             'pin_voltage' : 'D4'
           },
   'MAG' : { # Magnetometer/compass
-           'device' : 'GMC303', 
+           'device' : 'GMC303',
            'addr' : 0x0C,
            'pin_sda' : 'D9',
            'pin_scl' : 'D10'
@@ -196,7 +196,7 @@ devices = {
             'pin_miso' : 'D23', # D1
             'pin_wp' : 'D21', # D2
             'pin_rst' : 'D24', # D3
-            'size' : 4096*1024, 
+            'size' : 4096*1024,
             'memmap_base' : 0x60000000 # map into the address space (in software)
           }
 };
@@ -224,7 +224,7 @@ def get_pins():
   pinutils.findpin(pins, "PD46", True)["functions"]["NEGATED"]=0; # ok
   pinutils.findpin(pins, "PD42", True)["functions"]["NEGATED"]=0; # ok
   pinutils.findpin(pins, "PD28", True)["functions"]["NEGATED"]=0; # ok
-  
+
 
   # everything is non-5v tlerant
   for pin in pins:

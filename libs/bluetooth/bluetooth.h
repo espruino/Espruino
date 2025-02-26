@@ -239,8 +239,8 @@ bool jsble_kill();
 /// Checks for error and reports an exception string if there was one, else 0 if no error
 JsVar *jsble_get_error_string(uint32_t err_code);
 
-/** Execute a task that was added by jsble_queue_pending - this is done outside of IRQ land. Returns number of events handled */
-int jsble_exec_pending(IOEvent *event);
+/** Execute a task that was added by jsble_queue_pending - this is done outside of IRQ land. Returns number of event bytes handled */
+int jsble_exec_pending(uint8_t *data, int dataLen);
 
 /** Stop and restart the softdevice so that we can update the services in it -
  * both user-defined as well as UART/HID. If jsFunction is a function it is

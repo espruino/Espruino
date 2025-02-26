@@ -185,13 +185,10 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
 
 /** Actually handle a trigger event, and do stuff if it is for us */
 bool trigHandleEXTI(IOEventFlags channel, JsSysTime time) {
-  IOEvent event;
-  event.flags = channel;
-
-  if (mainTrigger.sensorPin!=PIN_UNDEFINED && jshIsEventForPin(&event, mainTrigger.sensorPin)) {
+  if (mainTrigger.sensorPin!=PIN_UNDEFINED && jshIsEventForPin(channel, mainTrigger.sensorPin)) {
   //  jshPinOutput(JSH_PORTB_OFFSET + 4, event.flags & EV_EXTI_IS_HIGH);
 
-    if (!(event.flags & EV_EXTI_IS_HIGH)) // we only care about falling edges
+    if (!(channel & EV_EXTI_IS_HIGH)) // we only care about falling edges
       trigOnTimingPulse(&mainTrigger, time);
     return true; // return true anyway, so stop this being added to our event queue
   }

@@ -24,7 +24,7 @@ info = {
 # 'default_console_rx' : "D8",
 # 'default_console_baudrate' : "9600",
  'variables' : 12000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
- 'io_buffer_size' : 512, # How big is the input buffer (in 4 byte words). Default on nRF52 is 256 
+ 'io_buffer_size' : 2048, # How big is the input buffer (in bytes). Default on nRF52 is 1024
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_joltjs.hex',
  'build' : {
@@ -133,7 +133,7 @@ devices = {
     'pin_d2' : 'D25',
     'pin_d3' : 'D34',
     'pin_d0_analog' : 'D30',
-    'pin_d2_analog' : 'D28'       
+    'pin_d2_analog' : 'D28'
   }
 };
 
@@ -162,18 +162,18 @@ board = {
     'Q1.fet' : "INVERTED. Connected to 500mA FET. When 1, GND on Q1 is pulled low. When 0, GND on Q1 is open circuit",
   },
   '_pinfunctions' : {
-    'Q0.scl' : ["ADC1_IN5","3.3"], 
+    'Q0.scl' : ["ADC1_IN5","3.3"],
     'Q0.sda' : ["ADC1_IN1","3.3"],
     'Q1.scl' : ["ADC1_IN7","3.3"],
     'Q1.sda' : ["ADC1_IN0","3.3"],
-    'Q2.scl' : ["3.3"], 
+    'Q2.scl' : ["3.3"],
     'Q2.sda' : ["3.3"],
     'Q2.vcc' : ["3.3"],
     'Q2.gnd' : ["3.3"],
-    'Q3.scl' : ["3.3"], 
+    'Q3.scl' : ["3.3"],
     'Q3.sda' : ["3.3"],
     'Q3.vcc' : ["3.3"],
-    'Q3.gnd' : ["3.3"],    
+    'Q3.gnd' : ["3.3"],
     'VCC' : ["3.3"]
   }
 };

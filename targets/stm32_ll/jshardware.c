@@ -1568,8 +1568,8 @@ void jshKickWatchDog(void){
 
 
 /// Given an event, check the EXTI flags and see if it was for the given pin
-bool jshIsEventForPin(IOEvent *event, Pin pin){
-  return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(pin);
+bool jshIsEventForPin(IOEventFlags eventFlags, Pin pin){
+  return IOEVENTFLAGS_GETTYPE(eventFlags) == pinToEVEXTI(pin);
 }
 
 

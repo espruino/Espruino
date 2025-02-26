@@ -86,7 +86,6 @@ typedef enum {
 #endif
 #ifdef BLUETOOTH
   EV_BLUETOOTH_PENDING,      // Tasks that came from the Bluetooth Stack in an IRQ
-  EV_BLUETOOTH_PENDING_DATA, // Data for pending tasks - this comes after the EV_BLUETOOTH_PENDING task itself
 #endif
   EV_CUSTOM, ///< Custom event (See IOCustomEventFlags)
 #ifdef BANGLEJS
@@ -119,10 +118,6 @@ typedef enum {
   EV_DEVICE_MAX,
   // EV_DEVICE_MAX should not be >64 - see DEVICE_INITIALISED_FLAGS
   EV_TYPE_MASK = NEXT_POWER_2(EV_DEVICE_MAX) - 1,
-  // ----------------------------------------- CHARACTERS RECEIVED
-  EV_CHARS_ONE = EV_TYPE_MASK+1,
-  EV_CHARS_SHIFT = GET_BIT_NUMBER(EV_CHARS_ONE),
-  EV_CHARS_MASK = 3 * EV_CHARS_ONE, // see IOEVENT_MAXCHARS
   // ----------------------------------------- SERIAL STATUS
   EV_SERIAL_STATUS_FRAMING_ERR = EV_TYPE_MASK+1,
   EV_SERIAL_STATUS_PARITY_ERR = EV_SERIAL_STATUS_FRAMING_ERR<<1,
@@ -178,37 +173,31 @@ typedef enum {
 #endif
 
 #define IOEVENTFLAGS_GETTYPE(X) ((X)&EV_TYPE_MASK)
-#define IOEVENTFLAGS_GETCHARS(X) ((((X)&EV_CHARS_MASK)>>EV_CHARS_SHIFT)+1)
-#define IOEVENTFLAGS_SETCHARS(X,CHARS) ((X)=(((X)&(IOEventFlags)~EV_CHARS_MASK) | (((CHARS)-1)<<EV_CHARS_SHIFT)))
-#define IOEVENT_MAXCHARS 4 // See EV_CHARS_MASK
 
-typedef union {
-  unsigned int time; ///< BOTTOM 32 BITS of time the event occurred
-  char chars[IOEVENT_MAXCHARS]; ///< Characters received
-} PACKED_FLAGS IOEventData;
-
-// IO Events - these happen when a pin changes
-typedef struct IOEvent {
-  IOEventFlags flags; //!< Where this came from, and # of chars in it
-  IOEventData data;
-} PACKED_FLAGS IOEvent;
-
+// maximum length for an event. BLE is the biggest event we have so deal with that if we need to
+#if NRF_BLE_MAX_MTU_SIZE>61
+#define IOEVENT_MAX_LEN (NRF_BLE_MAX_MTU_SIZE+3)
+#else
+#define IOEVENT_MAX_LEN 64
+#endif
 
 #include "jspin.h"
 
-/// Push an IO event into the ioBuffer (designed to be called from IRQ)
-void jshPushEvent(IOEvent *evt);
+/// Push an IO event (max IOEVENT_MAX_LEN) into the ioBuffer (designed to be called from IRQ), returns true on success, Calls jshHadEvent();
+bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, int length);
 /// Add this IO event to the IO event queue. Calls jshHadEvent();
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time);
 /// Signal an IO watch event as having happened. Calls jshHadEvent();
 void jshPushIOWatchEvent(IOEventFlags channel);
 /// Push a single character event (for example USART RX)
-void jshPushIOCharEvent(IOEventFlags channel, char charData);
+void jshPushIOCharEvent(IOEventFlags channel, char ch);
 /// Push many character events at once (for example USB RX)
 void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count);
 
-bool jshPopIOEvent(IOEvent *result); ///< returns true on success
-bool jshPopIOEventOfType(IOEventFlags eventType, IOEvent *result); ///< returns true on success
+/// pop an IO event, returns EV_NONE on failure. data must be IOEVENT_MAX_LEN bytes
+IOEventFlags jshPopIOEvent(uint8_t *data, int *length);
+// pop an IO event of type eventType, returns true on success. data must be IOEVENT_MAX_LEN bytes
+IOEventFlags jshPopIOEventOfType(IOEventFlags eventType, uint8_t *data, int *length);
 /// Do we have any events pending? Will jshPopIOEvent return true?
 bool jshHasEvents();
 /// Check if the top event is for the given device

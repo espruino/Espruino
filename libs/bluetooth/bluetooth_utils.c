@@ -374,32 +374,30 @@ uint16_t bleGetGATTHandle(ble_uuid_t char_uuid) {
 
 /// Add a new bluetooth event to the queue with a buffer of data
 void jsble_queue_pending_buf(BLEPending blep, uint16_t data, char *ptr, size_t len) {
+  assert(ptr);
+  assert(len+3 < IOEVENT_MAX_LEN);
+  if (len+3 > IOEVENT_MAX_LEN)
+    len = IOEVENT_MAX_LEN-3;
   // check to ensure we have space for the data we're adding
-  if (!jshHasEventSpaceForChars(len+IOEVENT_MAXCHARS)) {
+  if (!jshHasEventSpaceForChars(len+3)) {
     jsErrorFlags |= JSERR_RX_FIFO_FULL;
     return;
   }
-  // Push the data for the event first
-  while (len) {
-    int evtLen = len;
-    if (evtLen > IOEVENT_MAXCHARS) evtLen=IOEVENT_MAXCHARS;
-    IOEvent evt;
-    evt.flags = EV_BLUETOOTH_PENDING_DATA;
-    IOEVENTFLAGS_SETCHARS(evt.flags, evtLen);
-    memcpy(evt.data.chars, ptr, evtLen);
-    jshPushEvent(&evt);
-    ptr += evtLen;
-    len -= evtLen;
-  }
-  // Push the actual event
-  JsSysTime d = (JsSysTime)((data<<8)|blep);
-  jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
+  uint8_t buf[IOEVENT_MAX_LEN];
+  buf[0] = blep;
+  buf[1] = data;
+  buf[2] = data>>8;
+  memcpy(&buf[3], ptr, len);
+  jshPushEvent(EV_BLUETOOTH_PENDING, buf, len+3);
 }
 
 /// Add a new bluetooth event to the queue with 16 bits of data
 void jsble_queue_pending(BLEPending blep, uint16_t data) {
-  JsSysTime d = (JsSysTime)((data<<8)|blep);
-  jshPushIOEvent(EV_BLUETOOTH_PENDING, d);
+  uint8_t buf[3];
+  buf[0] = blep;
+  buf[1] = data;
+  buf[2] = data>>8;
+  jshPushEvent(EV_BLUETOOTH_PENDING, buf, sizeof(buf));
 }
 
 /* Handler for common event types (between nRF52/ESP32). Called first
@@ -417,7 +415,9 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
     BLEAdvReportData *p_adv = (BLEAdvReportData *)buffer;
     size_t len = sizeof(BLEAdvReportData) + p_adv->dlen - BLE_GAP_ADV_MAX_SIZE;
     if (bufferLen != len) {
-      jsiConsolePrintf("%d %d %d\n", bufferLen,len,p_adv->dlen);
+#ifndef RELEASE
+      jsiConsolePrintf("BLEP_ADV %d %d %d\n", bufferLen,len,p_adv->dlen);
+#endif
       assert(0);
       break;
     }

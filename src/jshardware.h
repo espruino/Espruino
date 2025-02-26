@@ -171,7 +171,7 @@ void jshKickSoftWatchDog();
 bool jshGetWatchedPinState(IOEventFlags device);
 
 /// Given an event, check the EXTI flags and see if it was for the given pin
-bool jshIsEventForPin(IOEvent *event, Pin pin);
+bool jshIsEventForPin(IOEventFlags eventFlags, Pin pin);
 
 /** Is the given device initialised?
  * eg. has jshUSARTSetup/jshI2CSetup/jshSPISetup been called previously? */

@@ -6401,10 +6401,10 @@ JsVar *jswrap_banglejs_appRect() {
 
 
 /// Called from jsinteractive when an event is parsed from the event queue for Bangle.js (executed outside IRQ)
-void jsbangle_exec_pending(IOEvent *evt) {
-  assert(evt->flags & EV_BANGLEJS);
-  uint16_t value = ((uint8_t)evt->data.chars[1])<<8 | (uint8_t)evt->data.chars[2];
-  switch ((JsBangleEvent)evt->data.chars[0]) {
+void jsbangle_exec_pending(uint8_t *data, int dataLen) {
+  JsBangleEvent evt = (JsBangleEvent)data[0];
+  uint16_t value = data[1] | (data[2]<<8);
+  switch (evt) {
     case JSBE_HRM_ENV: {
       JsVar *bangle = jsvObjectGetChildIfExists(execInfo.root, "Bangle");
       if (bangle) {
@@ -6420,12 +6420,11 @@ void jsbangle_exec_pending(IOEvent *evt) {
 
 /// Called from jsinteractive when an event is parsed from the event queue for Bangle.js
 void jsbangle_push_event(JsBangleEvent type, uint16_t value) {
-  IOEvent evt;
-  evt.flags = EV_BANGLEJS;
-  evt.data.chars[0] = type;
-  evt.data.chars[1] = (char)((value>>8) & 0xFF);
-  evt.data.chars[2] = (char)(value & 0xFF);
-  jshPushEvent(&evt);
+  uint8_t buf[3];
+  buf[0] = type;
+  buf[1] = (uint8_t)value;
+  buf[2] = value>>8;
+  jshPushEvent(EV_BANGLEJS, buf, sizeof(buf));
 }
 
 /*JSON{

@@ -741,10 +741,10 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
  * \return True if the event is associated with the pin and false otherwise.
  */
 bool jshIsEventForPin(
-    IOEvent *event, //!< The event that has been detected.
+    IOEventFlags eventFlags, //!< The event that has been detected.
     Pin pin         //!< The identity of a pin.
   ) {
-  return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEV_EXTI(pin);
+  return IOEVENTFLAGS_GETTYPE(eventFlags) == pinToEV_EXTI(pin);
 }
 
 //===== USART and Serial =====

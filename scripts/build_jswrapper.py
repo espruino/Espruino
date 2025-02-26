@@ -758,20 +758,28 @@ codeOut('')
 
 codeOut("/** Tasks to run when a character is received on a certain event channel. True if handled and shouldn't go to IRQ (type:'EV_SERIAL1/etc' in JSON) */")
 codeOut('bool jswOnCharEvent(IOEventFlags channel, char charData) {')
-codeOut('  NOT_USED(channel);')
-codeOut('  NOT_USED(charData);')
+used = False
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]!="EV_CUSTOM" and jsondata["type"].startswith("EV_"):
     codeOut("  if (channel=="+jsondata["type"]+") return "+jsondata["generate"]+"(charData);")
+    used = True
+if not used:
+  codeOut('  NOT_USED(channel);')
+  codeOut('  NOT_USED(charData);')
 codeOut('  return false;')
 codeOut('}')
 
 codeOut("/** When we receive EV_CUSTOM, this is called so any library (eg Waveform) can hook onto it (type:'EV_CUSTOM' in JSON) */")
-codeOut('void jswOnCustomEvent(IOEvent *event) {')
-codeOut('  NOT_USED(event);')
+codeOut('void jswOnCustomEvent(IOEventFlags eventFlags, uint8_t *data, int dataLen) {')
+used = False
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="EV_CUSTOM":
-    codeOut("  "+jsondata["generate"]+"(event);")
+    codeOut("  "+jsondata["generate"]+"(eventFlags, data, dataLen);")
+    used = True
+if not used:
+  codeOut('  NOT_USED(eventFlags);')
+  codeOut('  NOT_USED(data);')
+  codeOut('  NOT_USED(dataLen);')
 codeOut('}')
 
 codeOut('')
@@ -783,9 +791,12 @@ codeOut('')
 
 codeOut("/** If we have a built-in module with the given name, return the module's contents - or 0 */")
 codeOut('const char *jswGetBuiltInJSLibrary(const char *name) {')
-codeOut('  NOT_USED(name);')
+used = False
 for modulename in jsmodules:
   codeOut("  if (!strcmp(name,\""+modulename+"\")) return "+common.as_c_string(jsmodules[modulename])+";")
+  used = True
+if not used:
+  codeOut('  NOT_USED(name);')
 codeOut('  return 0;')
 codeOut('}')
 

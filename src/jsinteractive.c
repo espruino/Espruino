@@ -1777,7 +1777,7 @@ static void jsiPacketProcess() {
 
 
 
-void jsiHandleChar(char ch) {
+static void jsiHandleConsoleChar(char ch) {
   //jsiConsolePrintf("[%d:%d]\n", inputState, ch);
   //
   // special stuff
@@ -1876,11 +1876,11 @@ void jsiHandleChar(char ch) {
     inputState = IPS_NONE;
     if (ch == 70) jsiHandleEnd();
     else if (ch == 72) jsiHandleHome();
-    else if (ch == 111) jsiHandleChar('/');
-    else if (ch == 106) jsiHandleChar('*');
-    else if (ch == 109) jsiHandleChar('-');
-    else if (ch == 107) jsiHandleChar('+');
-    else if (ch == 77) jsiHandleChar('\r');
+    else if (ch == 111) jsiHandleConsoleChar('/');
+    else if (ch == 106) jsiHandleConsoleChar('*');
+    else if (ch == 109) jsiHandleConsoleChar('-');
+    else if (ch == 107) jsiHandleConsoleChar('+');
+    else if (ch == 77) jsiHandleConsoleChar('\r');
   } else if (inputState==IPS_HAD_27_91) {
     inputState = IPS_NONE;
     if (ch>='0' && ch<='9') {
@@ -2143,54 +2143,29 @@ void jsiCtrlC() {
   execInfo.execute |= EXEC_CTRL_C;
 }
 
-/** Grab as many characters as possible from the event queue for the given event
-   and return a JsVar containing them. 'eventsHandled' is set to the number of
-   extra events (not characters) is returned */
-static JsVar *jsiExtractIOEventData(IOEvent *event, int *eventsHandled) {
-  assert(eventsHandled);
-  *eventsHandled = 0;
-
-  JsVar *stringData = jsvNewFromEmptyString();
-  if (stringData) {
-    JsvStringIterator it;
-    jsvStringIteratorNew(&it, stringData, 0);
-
-    int i, chars = IOEVENTFLAGS_GETCHARS(event->flags);
-    while (chars) {
-      for (i=0;i<chars;i++) {
-        jsvStringIteratorAppend(&it, event->data.chars[i]);
-      }
-      // look down the stack and see if there is more data
-      if (jshIsTopEvent(IOEVENTFLAGS_GETTYPE(event->flags))) {
-        jshPopIOEvent(event);
-        (*eventsHandled)++;
-        chars = IOEVENTFLAGS_GETCHARS(event->flags);
-      } else
-        chars = 0;
-    }
-    jsvStringIteratorFree(&it);
-  }
-  return stringData;
-}
-
 /** Take an event for a UART and handle the characters we're getting, potentially
  * grabbing more characters as well if it's easy. If more character events are
  * grabbed, the number of extra events (not characters) is returned */
-int jsiHandleIOEventForSerial(JsVar *usartClass, IOEvent *event) {
-  int eventsHandled = 0;
-  JsVar *stringData = jsiExtractIOEventData(event,  &eventsHandled);
+int jsiHandleIOEventForSerial(JsVar *usartClass, IOEventFlags eventFlags, uint8_t *data, int length) {
+  int eventsHandled = length+2;
+  JsVar *stringData = length ? jsvNewStringOfLength(length, (char*)data) : NULL;
   if (stringData) {
+    while (jshIsTopEvent(IOEVENTFLAGS_GETTYPE(eventFlags))) {
+      jshPopIOEvent(data, &length); // we know data/length are big enough
+      eventsHandled += length+2;
+      jsvAppendStringBuf(stringData, (char*)data, length);
+      // don't use an iterator for appending as we just assume we're probably not handling *that* much data this way - normally it'll come in big chunks
+    }
     // Now run the handler
     jswrap_stream_pushData(usartClass, stringData, true);
     jsvUnLock(stringData);
   }
-  return eventsHandled;
+  return length+2;
 }
 
-void jsiHandleIOEventForConsole(IOEvent *event) {
-  int i, c = IOEVENTFLAGS_GETCHARS(event->flags);
+void jsiHandleIOEventForConsole(uint8_t *eventData, int eventLen) {
   jsiSetBusy(BUSY_INTERACTIVE, true);
-  for (i=0;i<c;i++) jsiHandleChar(event->data.chars[i]);
+  for (int i=0;i<eventLen;i++) jsiHandleConsoleChar(eventData[i]);
   jsiSetBusy(BUSY_INTERACTIVE, false);
 }
 
@@ -2201,58 +2176,61 @@ void jsiIdle() {
 
   // Handle hardware-related idle stuff (like checking for pin events)
   bool wasBusy = false;
-  IOEvent event;
+  IOEventFlags eventFlags;
+  uint8_t eventData[IOEVENT_MAX_LEN];
+  int eventLen;
   // ensure we can't get totally swamped by having more events than we can process.
   // Just process what was in the event queue at the start
   int maxEvents = jshGetEventsUsed();
 
-  while ((maxEvents--)>0 && jshPopIOEvent(&event)) {
+  while ((maxEvents--)>0 && ((eventFlags=jshPopIOEvent(eventData, &eventLen))!=EV_NONE)) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     wasBusy = true;
 
-    IOEventFlags eventType = IOEVENTFLAGS_GETTYPE(event.flags);
+    IOEventFlags eventType = IOEVENTFLAGS_GETTYPE(eventFlags);
 
     loopsIdling = 0; // because we're not idling
     if (eventType == consoleDevice) {
-      jsiHandleIOEventForConsole(&event);
+      jsiHandleIOEventForConsole(eventData, eventLen);
       /** don't allow us to read data when the device is our
        console device. It slows us down and just causes pain. */
     } else if (DEVICE_IS_SERIAL(eventType)) {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(eventType));
       if (jsvIsObject(usartClass)) {
-        maxEvents -= jsiHandleIOEventForSerial(usartClass, &event);
+        maxEvents -= jsiHandleIOEventForSerial(usartClass, eventFlags, eventData, eventLen);
       }
       jsvUnLock(usartClass);
 #if ESPR_USART_COUNT>0
     } else if (DEVICE_IS_USART_STATUS(eventType)) {
       // ------------------------------------------------------------------------ SERIAL STATUS CALLBACK
-      JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(event.flags))));
+      JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(eventFlags))));
       if (jsvIsObject(usartClass)) {
-        if (event.flags & EV_SERIAL_STATUS_FRAMING_ERR)
+        if (eventFlags & EV_SERIAL_STATUS_FRAMING_ERR)
           jsiExecuteEventCallbackName(usartClass, JS_EVENT_PREFIX"framing", 0, 0);
-        if (event.flags & EV_SERIAL_STATUS_PARITY_ERR)
+        if (eventFlags & EV_SERIAL_STATUS_PARITY_ERR)
           jsiExecuteEventCallbackName(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
       }
       jsvUnLock(usartClass);
 #endif
     } else if (eventType == EV_CUSTOM) {
-      jswOnCustomEvent(&event);
+      jswOnCustomEvent(eventFlags, eventData, eventLen);
 #ifdef BLUETOOTH
-    } else if ((eventType == EV_BLUETOOTH_PENDING) || (eventType == EV_BLUETOOTH_PENDING_DATA)) {
-      maxEvents -= jsble_exec_pending(&event);
+    } else if (eventType == EV_BLUETOOTH_PENDING) {
+      maxEvents -= jsble_exec_pending(eventData, eventLen);
 #endif
 #ifdef BANGLEJS
     } else if (eventType == EV_BANGLEJS) {
-      jsbangle_exec_pending(&event);
+      jsbangle_exec_pending(eventData, eventLen);
 #endif
 #ifdef I2C_SLAVE
     } else if (DEVICE_IS_I2C(eventType)) {
       // ------------------------------------------------------------------------ I2C CALLBACK
       JsVar *i2cClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(eventType));
       if (jsvIsObject(i2cClass)) {
-        uint8_t addr = event.data.time&0xff;
-        int len = event.data.time>>8;
+        uint32_t eventU32 = *(uint32_t*)eventData;
+        uint8_t addr = eventU32&0xff;
+        int len = eventU32>>8;
         JsVar *obj = jsvNewObject();
         if (obj) {
           jsvObjectSetChildAndUnLock(obj, "addr", jsvNewFromInteger(addr&0x7F));
@@ -2274,7 +2252,7 @@ void jsiIdle() {
         JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
         Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(watchPtr, "pin"));
 
-        if (jshIsEventForPin(&event, pin)) {
+        if (jshIsEventForPin(eventFlags, pin)) {
           /** Work out event time. Events time is only stored in 32 bits, so we need to
            * use the correct 'high' 32 bits from the current time.
            *
@@ -2284,19 +2262,20 @@ void jsiIdle() {
            * from the current time.
            */
           JsSysTime time = jshGetSystemTime();
-          if (((unsigned int)time) < (unsigned int)event.data.time)
+          uint32_t eventTime32 = *(uint32_t*)eventData;
+          if (((uint32_t)time) < eventTime32)
             time = time - 0x100000000LL;
           // finally, mask in the event's time
-          JsSysTime eventTime = (time & ~0xFFFFFFFFLL) | (JsSysTime)event.data.time;
+          JsSysTime eventTime = (time & ~0xFFFFFFFFLL) | (JsSysTime)eventTime32;
 
           // Now actually process the event
-          bool pinIsHigh = (event.flags&EV_EXTI_IS_HIGH)!=0;
+          bool pinIsHigh = (eventFlags&EV_EXTI_IS_HIGH)!=0;
           bool ignoreEvent = false;
 #ifdef BANGLEJS
           /* This is a bodge for Bangle.js. We want to get events for any button press here so
           we can keep our debounce state machine up to date, but for some button presses we
           may not want to actually forward them to user-facing code. */
-          ignoreEvent = (event.flags&EV_EXTI_DATA_PIN_HIGH)!=0;
+          ignoreEvent = (eventFlags&EV_EXTI_DATA_PIN_HIGH)!=0;
 #endif
 
           bool executeNow = false;
@@ -2357,7 +2336,7 @@ void jsiIdle() {
                 jsvObjectSetChildAndUnLock(data, "pin", jsvNewFromPin(pin));
                 Pin dataPin = jshGetEventDataPin(eventType);
                 if (jshIsPinValid(dataPin))
-                  jsvObjectSetChildAndUnLock(data, "data", jsvNewFromBool((event.flags&EV_EXTI_DATA_PIN_HIGH)!=0));
+                  jsvObjectSetChildAndUnLock(data, "data", jsvNewFromBool((eventFlags&EV_EXTI_DATA_PIN_HIGH)!=0));
               }
               if (!jsiExecuteEventCallback(0, watchCallback, 1, &data) && watchRecurring) {
                 jsError("Ctrl-C while processing watch - removing it.");
@@ -2841,20 +2820,22 @@ void jsiDebuggerLoop() {
     jsiConsoleReturnInputLine();
     // idle stuff for hardware
     jshIdle();
-    // Idle just for debug (much stuff removed) -------------------------------
-    IOEvent event;
     // If we have too many events (> half full) drain the queue
+    uint8_t eventData[IOEVENT_MAX_LEN];
+    int eventLen;
     while (jshGetEventsUsed()>IOBUFFERMASK*1/2 &&
            !(jsiStatus & JSIS_EXIT_DEBUGGER) &&
            !(execInfo.execute & EXEC_CTRL_C_MASK)) {
-      if (jshPopIOEvent(&event) && IOEVENTFLAGS_GETTYPE(event.flags)==consoleDevice)
-        jsiHandleIOEventForConsole(&event);
+      if (IOEVENTFLAGS_GETTYPE(jshPopIOEvent(eventData, &eventLen)) == consoleDevice)
+        jsiHandleIOEventForConsole(eventData, eventLen);
+      else
+        jsErrorFlags |= JSERR_RX_FIFO_FULL;
     }
     // otherwise grab the remaining console events
-    while (jshPopIOEventOfType(consoleDevice, &event) &&
+    while (jshPopIOEventOfType(consoleDevice, eventData, &eventLen)!=EV_NONE &&
            !(jsiStatus & JSIS_EXIT_DEBUGGER) &&
            !(execInfo.execute & EXEC_CTRL_C_MASK)) {
-      jsiHandleIOEventForConsole(&event);
+      jsiHandleIOEventForConsole(eventData, eventLen);
     }
     // -----------------------------------------------------------------------
   }

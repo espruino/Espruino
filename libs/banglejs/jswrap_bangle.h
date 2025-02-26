@@ -101,7 +101,7 @@ typedef enum {
 } JsBangleEvent;
 
 /// Called from jsinteractive when an event is parsed from the event queue for Bangle.js (executed outside IRQ)
-void jsbangle_exec_pending(IOEvent *event);
+void jsbangle_exec_pending(uint8_t *data, int dataLen);
 /// queue an event for Bangle.js (usually called from inside an IRQ)
 void jsbangle_push_event(JsBangleEvent type, uint16_t value);
 

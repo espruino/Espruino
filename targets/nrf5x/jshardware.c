@@ -1751,8 +1751,8 @@ bool jshGetWatchedPinState(IOEventFlags device) {
   return lastHandledPinState;
 }
 
-bool jshIsEventForPin(IOEvent *event, Pin pin) {
-  return IOEVENTFLAGS_GETTYPE(event->flags) == jshGetEventFlagsForWatchedPin((uint32_t)pinInfo[pin].pin);
+bool jshIsEventForPin(IOEventFlags eventFlags, Pin pin) {
+  return IOEVENTFLAGS_GETTYPE(eventFlags) == jshGetEventFlagsForWatchedPin((uint32_t)pinInfo[pin].pin);
 }
 
 /** Is the given device initialised? */
@@ -2924,11 +2924,13 @@ void jsvGetProcessorPowerUsage(JsVar *devices) {
 void COMP_LPCOMP_IRQHandler() {
   if (nrf_lpcomp_event_check(NRF_LPCOMP_EVENT_UP) && nrf_lpcomp_int_enable_check(LPCOMP_INTENSET_UP_Msk)) {
     nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_UP);
-    jshPushIOEvent(EV_CUSTOM, EVC_LPCOMP | EVC_DATA_LPCOMP_UP);
+    IOCustomEventFlags customFlags = EVC_LPCOMP | EVC_DATA_LPCOMP_UP;
+    jshPushEvent(EV_CUSTOM, &customFlags, sizeof(customFlags));
   }
   if (nrf_lpcomp_event_check(NRF_LPCOMP_EVENT_DOWN) && nrf_lpcomp_int_enable_check(LPCOMP_INTENSET_DOWN_Msk)) {
     nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_DOWN);
-    jshPushIOEvent(EV_CUSTOM, EVC_LPCOMP);
+    IOCustomEventFlags customFlags = EVC_LPCOMP;
+    jshPushEvent(EV_CUSTOM, &customFlags, sizeof(customFlags));
   }
 }
 

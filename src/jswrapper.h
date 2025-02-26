@@ -156,7 +156,7 @@ void jswGetPowerUsage(JsVar *devices);
 bool jswOnCharEvent(IOEventFlags channel, char charData);
 
 /** When we receive EV_CUSTOM, this is called so any library (eg Waveform) can hook onto it (type:'EV_CUSTOM' in JSON) */
-void jswOnCustomEvent(IOEvent *event);
+void jswOnCustomEvent(IOEventFlags eventFlags, uint8_t *data, int dataLen);
 
 /** If we get this in 'require', do we have the object for this
   inside the interpreter already? If so, return the native function
