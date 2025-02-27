@@ -34,7 +34,7 @@ JsVar *jswrap_global() {
 }
 A reference to the global scope, where everything is defined.
 
-`global` is used in Node.js. Consider using the identical `globalThis` as it was introduced in the ECMAScript spec.
+`global` is used in Node.js. Later on the ECMAScript spec introduced `globalThis` which is available in-browser too.
 */
 /*JSON{
   "type" : "variable",
