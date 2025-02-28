@@ -26,7 +26,7 @@ info = {
      'NET',
      'TELNET',
      #'GRAPHICS',
-     'CRYPTO',
+     'CRYPTO','SHA1_JS', # use JS SHA1 to save space
      'NEOPIXEL',
    ],
    'makefile' : [
