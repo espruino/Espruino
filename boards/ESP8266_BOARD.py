@@ -26,7 +26,7 @@ info = {
      'NET',
      'TELNET',
      #'GRAPHICS',
-     'CRYPTO','SHA1_JS', # use JS SHA1 to save space
+     # 'CRYPTO', # just provides SHA1, but is now too big for 512k ESP8266 build
      'NEOPIXEL',
    ],
    'makefile' : [
