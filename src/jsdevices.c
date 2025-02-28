@@ -437,7 +437,7 @@ void CALLED_FROM_INTERRUPT jshIOEventOverflowed() {
 }
 
 /// Push an IO event (max IOEVENT_MAX_LEN) into the ioBuffer (designed to be called from IRQ), returns true on success, Calls jshHadEvent();
-bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, int length) {
+bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, unsigned int length) {
   assert(length<IOEVENT_MAX_LEN);
   if (length>IOEVENT_MAX_LEN) length=IOEVENT_MAX_LEN;
   /* We're disabling IRQs for this bit because it's actually quite likely for
@@ -445,17 +445,17 @@ bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, int len
    * things up if one IRQ interrupts another. */
   jshInterruptOff();
   int available = IOBUFFERMASK+1-jshGetEventsUsed();
-  if (available < length+2) {
+  if (available < (int)length+2) {
     jshInterruptOn();
     jshIOEventOverflowed();
     return false; // queue full - dump this event!
   }
   IOBufferIdx idx = ioHead;
-  ioBuffer[idx] = length;
+  ioBuffer[idx] = (uint8_t)length;
   idx = (idx+1) & IOBUFFERMASK;
   ioBuffer[idx] = evt;
   idx = (idx+1) & IOBUFFERMASK;
-  for (int i=0;i<length;i++) {
+  for (unsigned int i=0;i<length;i++) {
     ioBuffer[idx] = data[i];
     idx = (idx+1) & IOBUFFERMASK;
   }
@@ -489,15 +489,15 @@ void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count) {
      ioBuffer[ioLastHead]+count < IOEVENT_MAX_LEN // we have space in this event!
      ) {
     // increase event count
-    ioBuffer[ioLastHead] += count;
+    ioBuffer[ioLastHead] += (uint8_t)count;
     // copy data
-    for (int i=0;i<count;i++) {
-      ioBuffer[ioHead] = data[i];
+    for (uint32_t i=0;i<count;i++) {
+      ioBuffer[ioHead] = (uint8_t)data[i];
       ioHead = (ioHead+1) & IOBUFFERMASK;
     }
   } else {
     // Push the event
-    jshPushEvent(channel, data, count);
+    jshPushEvent(channel, (uint8_t*)data, count);
   }
   // Set flow control (as we've just filled the buffer up more)
   if (DEVICE_HAS_DEVICE_STATE(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
@@ -552,21 +552,21 @@ void CALLED_FROM_INTERRUPT jshPushIOEvent(
     JsSysTime time        //!< The time that the event is thought to have happened.
   ) {
   uint32_t t = (uint32_t)time;
-  jshPushEvent(channel, &t, 4);
+  jshPushEvent(channel, (uint8_t*)&t, 4);
 }
 
 // pop an IO event, returns EV_NONE on failure
-IOEventFlags jshPopIOEvent(uint8_t *data, int *length) {
+IOEventFlags jshPopIOEvent(uint8_t *data, unsigned int *length) {
   if (ioHead==ioTail) return EV_NONE;
   if (ioLastHead==ioTail) ioLastHead = ioHead; // if we're processing last head now, reset it
   IOBufferIdx idx = ioTail;
-  int len = (int)(uint32_t)ioBuffer[idx];
+  unsigned int len = (unsigned int)ioBuffer[idx];
   idx = (IOBufferIdx)((idx+1) & IOBUFFERMASK);
   IOEventFlags evt = (IOEventFlags)ioBuffer[idx];
   idx = (IOBufferIdx)((idx+1) & IOBUFFERMASK);
   // pull out data
   if (length) *length=len;
-  for (int i=0;i<len;i++) {
+  for (unsigned int i=0;i<len;i++) {
     if (data) data[i] = ioBuffer[idx];
     idx = (IOBufferIdx)((idx+1) & IOBUFFERMASK);
   }
@@ -575,12 +575,12 @@ IOEventFlags jshPopIOEvent(uint8_t *data, int *length) {
 }
 
 // pop an IO event of type eventType, returns true on success
-IOEventFlags jshPopIOEventOfType(IOEventFlags eventType, uint8_t *data, int *length) {
+IOEventFlags jshPopIOEventOfType(IOEventFlags eventType, uint8_t *data, unsigned int *length) {
   IOBufferIdx i = ioTail;
   while (ioHead!=i) {
-    uint32_t len = (uint32_t)ioBuffer[ioTail];
+    uint32_t len = (uint32_t)ioBuffer[i];
     IOBufferIdx j = (IOBufferIdx)((i+1) & IOBUFFERMASK);
-    IOEventFlags evt = (IOEventFlags)ioBuffer[ioTail];
+    IOEventFlags evt = (IOEventFlags)ioBuffer[j];
     if (IOEVENTFLAGS_GETTYPE(evt) == eventType) {
       j = (IOBufferIdx)((j+1) & IOBUFFERMASK);
       /* We need IRQ off for this, because if we get data it's possible
@@ -589,19 +589,23 @@ IOEventFlags jshPopIOEventOfType(IOEventFlags eventType, uint8_t *data, int *len
       jshInterruptOff();
       // copy out data
       if (length) *length=len;
-      for (int i=0;i<len;i++) {
-        if (data) data[i] = ioBuffer[j];
+      for (uint32_t n=0;n<len;n++) {
+        if (data) data[n] = ioBuffer[j];
         j = (IOBufferIdx)((j+1) & IOBUFFERMASK);
       }
-      // work back and shift all items in queue
-      IOBufferIdx n = (IOBufferIdx)((i+IOBUFFERMASK+1-len) & IOBUFFERMASK);
-      while (n!=ioTail) {
-        ioBuffer[i] = ioBuffer[n];
-        i = n;
-        n = (IOBufferIdx)((n+IOBUFFERMASK) & IOBUFFERMASK);
+      // work backwards and shift all items in queue down
+      IOBufferIdx dst = (IOBufferIdx)((i+len+1) & IOBUFFERMASK); // to: last element of this event
+      IOBufferIdx src = (IOBufferIdx)((i+IOBUFFERMASK) & IOBUFFERMASK); // from: item before current
+      while (true) {
+        ioBuffer[dst] = ioBuffer[src];
+        if (src==ioTail)
+          break;
+        // move backwards
+        src = (IOBufferIdx)((src+IOBUFFERMASK) & IOBUFFERMASK);
+        dst = (IOBufferIdx)((dst+IOBUFFERMASK) & IOBUFFERMASK);
       }
       // finally update the tail pointer, and return
-      ioTail = (IOBufferIdx)((ioTail+IOBUFFERMASK+1-len) & IOBUFFERMASK);
+      ioTail = dst;
       ioLastHead = ioHead; // reset last head - if we're removing stuff in the middle it's easier not to optimise!
       jshInterruptOn();
       return evt;

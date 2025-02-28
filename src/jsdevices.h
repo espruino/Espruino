@@ -184,7 +184,7 @@ typedef enum {
 #include "jspin.h"
 
 /// Push an IO event (max IOEVENT_MAX_LEN) into the ioBuffer (designed to be called from IRQ), returns true on success, Calls jshHadEvent();
-bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, int length);
+bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, unsigned int length);
 /// Add this IO event to the IO event queue. Calls jshHadEvent();
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time);
 /// Signal an IO watch event as having happened. Calls jshHadEvent();
@@ -195,9 +195,9 @@ void jshPushIOCharEvent(IOEventFlags channel, char ch);
 void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count);
 
 /// pop an IO event, returns EV_NONE on failure. data must be IOEVENT_MAX_LEN bytes
-IOEventFlags jshPopIOEvent(uint8_t *data, int *length);
+IOEventFlags jshPopIOEvent(uint8_t *data, unsigned int *length);
 // pop an IO event of type eventType, returns true on success. data must be IOEVENT_MAX_LEN bytes
-IOEventFlags jshPopIOEventOfType(IOEventFlags eventType, uint8_t *data, int *length);
+IOEventFlags jshPopIOEventOfType(IOEventFlags eventType, uint8_t *data, unsigned int *length);
 /// Do we have any events pending? Will jshPopIOEvent return true?
 bool jshHasEvents();
 /// Check if the top event is for the given device
