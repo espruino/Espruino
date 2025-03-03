@@ -18,6 +18,7 @@
             Pipboy: Pip.audioStartVar(wav,{overlap:true}) can now play sounds over the top of other sounds. audioRead now doesn't stop audio playback
             STM32: Ensure proper distribution of analogRead values (now `0<=analogRead()<1` as on other boards) and add docs (fix #2612)
             Change ioBuffer FIFO from 4 byte blocks to variable length blocks. Far more efficient for USB/BLE/other block data
+            STM32: Fix spi.write usage on same port that SD card is used with (fix #2613)
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)
