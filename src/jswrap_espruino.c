@@ -704,7 +704,7 @@ Called when a bit rises or falls above a set level. See `E.setComparator` for se
   "generate" : "jswrap_espruino_setComparator_eventHandler"
 }
 */
-void jswrap_espruino_setComparator_eventHandler(IOEventFlags eventFlags, uint8_t *data, int *length) {
+void jswrap_espruino_setComparator_eventHandler(IOEventFlags eventFlags, uint8_t *data, int length) {
 #if defined(NRF52_SERIES) && !defined(SAVE_ON_FLASH)
   // see jshSetComparator / E.setComparator
   IOCustomEventFlags customFlags = *(IOCustomEventFlags*)data;
