@@ -30,12 +30,14 @@
         remove: options.remove,
         scrollMin : -24, scroll : -24, // title is 24px, rendered at -1
         draw : (idx, r) => {
-          if (idx<0) // TITLE
-            return g.setFont("12x20").setFontAlign(-1,0).drawString(
-          menuIcon+" "+title, r.x+12, r.y+H-12);
+          if (idx<0) {// TITLE
+            var titleText = g.findFont(menuIcon+" "+title, {w:g.getWidth()-2,h:24,max:24});
+            return g.setFontAlign(-1,0).drawString(titleText.text, r.x+12, r.y+H-12);
+          }
           g.setColor(g.theme.bg2).fillRect({x:r.x+4,y:r.y+2,w:r.w-8, h:r.h-4, r:5});
-          var v = idx*step + item.min;
-          g.setColor(g.theme.fg2).setFont("12x20").setFontAlign(-1,0).drawString((item.format) ? item.format(v,1) : v, r.x+12, r.y+H/2);
+          var v = idx*step + item.min, txt = item.format ? item.format(v,1) : v;
+          var itemText = g.findFont(txt, {w:r.w,h:r.h,wrap:1,trim:1});
+          g.setColor(g.theme.fg2).setFontAlign(-1,0).drawString(itemText.text, r.x+12, r.y+H/2);
           g.drawImage(/* 20x20 */atob(v==item.value?"FBSBAAH4AH/gHgeDgBww8MY/xmf+bH/jz/88//PP/zz/88f+Nn/mY/xjDww4AcHgeAf+AB+A":"FBSBAAH4AH/gHgeDgBwwAMYABmAAbAADwAA8AAPAADwAA8AANgAGYABjAAw4AcHgeAf+AB+A"), r.x+r.w-32, r.y+H/2-10);
         },
         select : function(idx) {
@@ -109,29 +111,26 @@
     back : back,
     remove : options.remove,
     draw : (idx, r) => {
-      if (idx<0) // TITLE
-        return g.setColor(g.theme.fg).setFont("12x20").setFontAlign(-1,0).drawString(
-          menuIcon+" "+options.title, r.x+12, r.y+H-12);
-      g.setColor(g.theme.bg2).fillRect({x:r.x+4, y:r.y+2, w:r.w-8, h:r.h-4, r:5});
-      g.setColor(g.theme.fg2).setFont("12x20");
-      var pad = 24;
+      g.setFontAlign(-1,0);
+      if (idx<0) { // TITLE
+        var title = g.findFont(menuIcon+" "+options.title, {w:r.w,h:24,max:24});
+        return g.drawString(title.text, r.x+12, r.y+H-10);
+      }
+      g.setColor(g.theme.bg2).fillRect({x:r.x+4, y:r.y+2, w:r.w-8, h:r.h-4, r:5}).setColor(g.theme.fg2);
+      var pad = 16;
       var item = menu[keys[idx]];
       if ("object" == typeof item) {
         var v = item.value;
         if (item.format) v=item.format(v);
-        if (g.stringMetrics(v).width > r.w/2) // bodge for broken wrapString with image
-          v = g.wrapString(v,r.w/2).join("\n");
-        g.setFontAlign(1,0).drawString(v,r.x+r.w-8,r.y+H/2);
-        pad += g.stringWidth(v);
+        var val = g.findFont(v, {w:r.w/2,h:r.h,wrap:1,trim:1});
+        g.setFontAlign(1,0).drawString(val.text,r.x+r.w-8,r.y+H/2);
+        pad += g.stringWidth(val.text);
       } else if ("function" == typeof item) {
         g.drawImage(/* 9x18 */atob("CRKBAGA4Hg8DwPB4HgcDg8PB4eHg8HAwAA=="), r.x+r.w-21, r.y+H/2-9);
         pad += 16;
       }
-      var title = (item&&item.title)??keys[idx];
-      var l = g.wrapString(title,r.w-pad);
-      if (l.length>1)
-        l = g.setFont("6x15").wrapString(title,r.w-pad);
-      g.setFontAlign(-1,0).drawString(l.join("\n"), r.x+12, r.y+H/2);
+      var itemText = g.findFont((item&&item.title)??keys[idx], {w:r.w-pad,h:r.h,wrap:1,trim:1});
+      g.setFontAlign(-1,0).drawString(itemText.text, r.x+8, 1+r.y+H/2);
     },
     select : function(idx, touch) {
       if (idx<0) return back&&back(); // title

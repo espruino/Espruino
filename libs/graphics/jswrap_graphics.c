@@ -2648,13 +2648,13 @@ JsVar *jswrap_graphics_setFont4x6(JsVar *parent, int scale) {
 
 
 JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
-  if (!jsvIsString(text)) return 0;
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   int width = gfx.data.width, height = gfx.data.height;
   int minHeight = 4, maxHeight = 100;
   bool wrap = false, trim = false;
   JsVar *result = jsvNewObject();
-  if (!result) return 0;
+  text = jsvAsString(text);
+  if (!result || !text) return 0;
 
   jsvConfigObject configs[] = {
           {"w", JSV_INTEGER, &width},
@@ -2665,6 +2665,7 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
           {"trim", JSV_BOOLEAN, &trim},
   };
   if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    jsvUnLock2(result, text);
     return 0;
   }
 
@@ -2724,7 +2725,7 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
     _jswrap_graphics_stringMetrics(&gfx, finalText, -1, &stringMetrics); // work out string size again
   }
   // TODO: trim width if not wrapping?
-  jsvUnLock2(newline, finalLines);
+  jsvUnLock3(text, newline, finalLines);
   jsvObjectSetChildAndUnLock(result, "text", finalText);
   jsvObjectSetChildAndUnLock(result, "font", jsvNewFromString(fontName));
   jsvObjectSetChildAndUnLock(result, "w", jsvNewFromInteger(stringMetrics.stringWidth));
