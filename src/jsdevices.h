@@ -175,10 +175,10 @@ typedef enum {
 #define IOEVENTFLAGS_GETTYPE(X) ((X)&EV_TYPE_MASK)
 
 // maximum length for an event. BLE is the biggest event we have so deal with that if we need to
-#if NRF_BLE_MAX_MTU_SIZE>61
-#define IOEVENT_MAX_LEN (NRF_BLE_MAX_MTU_SIZE+3)
-#else
 #define IOEVENT_MAX_LEN 64
+#if defined(NRF_SDH_BLE_GATT_MAX_MTU_SIZE) && NRF_SDH_BLE_GATT_MAX_MTU_SIZE+3>IOEVENT_MAX_LEN
+#undef IOEVENT_MAX_LEN
+#define IOEVENT_MAX_LEN (NRF_SDH_BLE_GATT_MAX_MTU_SIZE+3)
 #endif
 
 #include "jspin.h"

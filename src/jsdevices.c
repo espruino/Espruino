@@ -439,7 +439,12 @@ void CALLED_FROM_INTERRUPT jshIOEventOverflowed() {
 /// Push an IO event (max IOEVENT_MAX_LEN) into the ioBuffer (designed to be called from IRQ), returns true on success, Calls jshHadEvent();
 bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, unsigned int length) {
   assert(length<IOEVENT_MAX_LEN);
-  if (length>IOEVENT_MAX_LEN) length=IOEVENT_MAX_LEN;
+  if (length>IOEVENT_MAX_LEN) {
+#ifndef RELEASE
+    jsiConsolePrintf("%d>IOEVENT_MAX_LEN\n", length);
+#endif
+    length=IOEVENT_MAX_LEN;
+  }
   /* We're disabling IRQs for this bit because it's actually quite likely for
    * USB and USART data to be coming in at the same time, and it can trip
    * things up if one IRQ interrupts another. */
@@ -496,8 +501,13 @@ void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count) {
       ioHead = (ioHead+1) & IOBUFFERMASK;
     }
   } else {
-    // Push the event
-    jshPushEvent(channel, (uint8_t*)data, count);
+    // Push the event (split into IOEVENT_MAX_LEN chunks just in case)
+    while (count) {
+      unsigned int c = (count > IOEVENT_MAX_LEN) ? IOEVENT_MAX_LEN : count;
+      jshPushEvent(channel, (uint8_t*)data, c);
+      count -= c;
+      data += c;
+    }
   }
   // Set flow control (as we've just filled the buffer up more)
   if (DEVICE_HAS_DEVICE_STATE(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
