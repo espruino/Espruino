@@ -267,7 +267,7 @@ def get_jsondata(is_for_document, parseArgs = True, boardObject = False):
             if len(targetjsondata) > 0:
               targetjsondata = targetjsondata[0]
               for key in jsondata:
-                if not key in ["type","class","name","patch"]:
+                if not key in ["type","class","name","patch","description"]:
                   print("Copying "+key+" --- "+jsondata[key])
                   targetjsondata[key] = jsondata[key]
             drop = True
