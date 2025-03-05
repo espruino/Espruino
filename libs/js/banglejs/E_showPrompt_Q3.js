@@ -1,70 +1,61 @@
-(function(msg,options) {
+(function(message,options) {
   if (!options) options={};
   if (!options.buttons)
     options.buttons = {"Yes":true,"No":false};
   var btns = Object.keys(options.buttons);
   var btnPos;
   function draw(highlightedButton) {
-    g.reset().setFont("6x8:2").setFontAlign(0,-1);
-    var Y = Bangle.appRect.y;
-    var W = g.getWidth(), H = g.getHeight()-Y, FH=g.getFontHeight();
-    var titleLines = g.wrapString(options.title, W-2);
-    var msgLines = g.wrapString(msg||"", W-2);
-    var y = Y + (H + (titleLines.length - msgLines.length)*FH )/2 - 24;
+    g.reset().setFontAlign(0,0);
+    var R = Bangle.appRect, Y = R.y, W = R.w;
+    var title = g.findFont(options.title||"", {w:W-2,wrap:1,max:24});
+    if (title.text)
+      g.setColor(g.theme.fgH).setBgColor(g.theme.bgH).
+        clearRect(0,Y,W-1,Y+4+title.h).
+        drawString(title.text,W/2,Y+4+title.h/2);
+    Y += title.h+4;
+    var BX = Math.min(2,btns.length),
+        BY = Math.ceil(btns.length / BX),
+        BW = W/BX, BH = 40;
+    var H = R.y2-(Y + BY*BH);
     if (options.img) {
       var im = g.imageMetrics(options.img);
-      g.drawImage(options.img,(W-im.width)/2,y - im.height/2);
-      y += 4+im.height/2;
+      g.drawImage(options.img,(W-im.width)/2, Y + 6);
+      H -= im.height;
+      Y += im.height;
     }
-    if (titleLines)
-      g.setColor(g.theme.fgH).setBgColor(g.theme.bgH).
-        clearRect(0,Y,W-1,Y+4+titleLines.length*FH).
-        drawString(titleLines.join("\n"),W/2,Y+2);
+    var msg = g.findFont(message, {w:W-2,h:H,wrap:1,trim:1,min:16});
     g.setColor(g.theme.fg).setBgColor(g.theme.bg).
-      drawString(msgLines.join("\n"),W/2,y);
-    y += msgLines.length*FH+32;
-
-    var buttonWidths = 0;
-    var buttonPadding = 24;
-    g.setFontAlign(0,0);
-    btns.forEach(btn=>buttonWidths += buttonPadding+g.stringWidth(btn));
-    if (buttonWidths>W) { // if they don't fit, use smaller font
-      g.setFont("6x8");
-      buttonWidths = 0;
-      btns.forEach(btn=>buttonWidths += buttonPadding+g.stringWidth(btn));
-    }
-    var x = (W-buttonWidths)/2;
+      drawString(msg.text,W/2,Y+H/2);
     btnPos = [];
     btns.forEach((btn,idx)=>{
-      var w = g.stringWidth(btn);
-      x += (buttonPadding+w)/2;
-      var bw = 6+w/2;
-      var poly = [x-bw,y-16,
-                  x+bw,y-16,
-                  x+bw+4,y-12,
-                  x+bw+4,y+12,
-                  x+bw,y+16,
-                  x-bw,y+16,
-                  x-bw-4,y+12,
-                  x-bw-4,y-12,
-                  x-bw,y-16];
-      btnPos.push({x1:x-bw-buttonPadding/2, x2:x+bw+buttonPadding/2,
-                   y1:y-30, y2:y+30,
+      var x = (idx&1)*BW + 2, y = R.y2-(BY-(idx>>1))*BH - 2,
+          bw = BW-5, poly = [x+4,y,
+                  x+bw-4,y,
+                  x+bw,y+4,
+                  x+bw,y+BH-4,
+                  x+bw-4,y+BH,
+                  x+4,y+BH,
+                  x,y+BH-4,
+                  x,y+4,
+                  x+4,y];
+      btnPos.push({x1:x-2, x2:x+bw,
+                   y1:y, y2:y+BH+2,
                    poly: poly});
+      var btnText = g.findFont(btn, {w:bw-4,h:BH-4,wrap:1});
       g.setColor(idx===highlightedButton ? g.theme.bgH : g.theme.bg2).fillPoly(poly).
-        setColor(idx===highlightedButton ? g.theme.fgH : g.theme.fg2).drawPoly(poly).drawString(btn,x,y+1);
-      x += (buttonPadding+w)/2;
+        setColor(idx===highlightedButton ? g.theme.fgH : g.theme.fg2).drawPoly(poly).drawString(btnText.text,x+bw/2,y+BH/2);
+      if (idx&1) y+=BH;
     });
     Bangle.setLCDPower(1); // ensure screen is on
   }
   g.reset().clearRect(Bangle.appRect); // clear screen
-  if (!msg) {
+  if (!message) {
     Bangle.setUI(); // remove watches
     return Promise.resolve();
   }
   draw();
   return new Promise(resolve=>{
-    Bangle.setUI({mode:"custom", remove: options.remove, redraw: draw, back:options.back, touch:(_,e)=>{
+    var ui = {mode:"custom", remove: options.remove, redraw: draw, back:options.back, touch:(_,e)=>{
       btnPos.forEach((b,i)=>{
         if (e.x > b.x1 && e.x < b.x2 &&
             e.y > b.y1 && e.y < b.y2) {
@@ -74,6 +65,13 @@
           resolve(options.buttons[btns[i]]);
         }
       });
-    }});
+    }};
+    if (btns.length==1 && !options.back) ui.btn = () => {
+      draw(0); // highlighted button
+      g.flip(); // write to screen
+      E.showPrompt(); // remove
+      resolve(options.buttons[btns[0]]);
+    };
+    Bangle.setUI(ui);
   });
 })

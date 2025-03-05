@@ -58,6 +58,7 @@ JsVar *jswrap_graphics_setClipRect(JsVar *parent, int x1, int y1, int x2, int y2
 JsVar *jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool isVectorFont);
 JsVar *jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height);
 JsVar *jswrap_graphics_setFontPBF(JsVar *parent, JsVar *file, int scale);
+JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options);
 JsVar *jswrap_graphics_setFontAlign(JsVar *parent, int x, int y, int r);
 JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *name, int size);
 JsVar *jswrap_graphics_getFont(JsVar *parent);

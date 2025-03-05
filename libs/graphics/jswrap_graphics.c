@@ -15,6 +15,8 @@
  */
 #include "jswrap_graphics.h"
 #include "jswrap_math.h" // for jswrap_math_cos/sin
+#include "jswrap_string.h" // for jswrap_string_split
+#include "jswrap_array.h" // for jswrap_array_join
 #include "jsutils.h"
 #include "jsinteractive.h"
 
@@ -50,7 +52,11 @@
 #ifdef ESPR_LINE_FONTS
 #include "line_font.h"
 #endif
-
+#ifdef BANGLEJS2
+#include "jswrap_font_15.h"
+#include "jswrap_font_19.h"
+#include "jswrap_font_22.h"
+#endif
 
 #ifdef GRAPHICS_PALETTED_IMAGES
 #if defined(ESPR_GRAPHICS_12BIT)
@@ -2297,7 +2303,7 @@ int jswrap_graphics_getFontHeight(JsVar *parent) {
 
 typedef struct {
   int stringWidth;     // width in pixels
-  int stringHeight;    // height in pixels
+  int stringHeight, lineHeight;    // height in pixels
   bool unrenderableChars; // are any chars in this not renderable in the current font?
 #ifndef SAVE_ON_FLASH
   int imageCount;      // how many inline images are in this string?
@@ -2308,11 +2314,13 @@ typedef struct {
 /** Work out the width and height of a bit of text. If 'lineStartIndex' is -1 the whole string is used
  * otherwise *just* the line of text starting at that char index is used */
 void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIndex, StringMetricsResult *result) {
+  assert(result);
   JsGraphicsFontInfo info;
   _jswrap_graphics_getFontInfo(gfx, &info);
   memset(result, 0, sizeof(StringMetricsResult));
 
   int fontHeight = _jswrap_graphics_getFontHeightInternal(gfx, &info);
+  result->lineHeight = fontHeight;
   JsVar *str = jsvAsString(var);
   JsvStringIterator it;
   jsvStringIteratorNewUTF8(&it, str, (size_t)((lineStartIndex<0)?0:lineStartIndex));
@@ -2584,6 +2592,148 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   _jswrap_graphics_freeFontInfo(&info);
   return lines;
 }
+
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "findFont",
+  "ifdef" : "BANGLEJS2",
+  "generate" : "jswrap_graphics_findFont",
+  "params" : [
+    ["text","JsVar","The text to render"],
+    ["options","JsVar","Options for finding the required font"]
+  ],
+  "return" : ["JsVar","An object containing info about the font"]
+}
+Works out which font to use, and sets the current font to it.
+
+Usage:
+
+```
+g.findFont("Hello World", {
+  w : 100,    // optional: width available (default = screen width)
+  h : 100,    // optional: height available (default = screen height)
+  min : 10,   // optional: min font height
+  max : 30,   // optional: max font height
+  wrap : true // optional: allow word wrap?
+  trim : true // optional: trim to the specified height, add '...'
+});
+```
+
+Returns:
+
+```
+{
+  text : "Hello\nWorld"
+  font : "..."
+}
+```
+*/
+
+
+#ifdef BANGLEJS2
+typedef struct {
+  const char *name;
+  uint8_t height;
+  JsVar*(*setFont)(JsVar *parent, int scale);
+} JswFindFontFont;
+
+JsVar *jswrap_graphics_setFont6x8(JsVar *parent, int scale) {
+  return jswrap_graphics_setFontSizeX(parent, 1+JSGRAPHICS_FONTSIZE_6X8, false);
+}
+JsVar *jswrap_graphics_setFont4x6(JsVar *parent, int scale) {
+  return jswrap_graphics_setFontSizeX(parent, 1+JSGRAPHICS_FONTSIZE_4X6, false);
+}
+
+
+JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
+  if (!jsvIsString(text)) return 0;
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  int width = gfx.data.width, height = gfx.data.height;
+  int minHeight = 4, maxHeight = 100;
+  bool wrap = false, trim = false;
+  JsVar *result = jsvNewObject();
+  if (!result) return 0;
+
+  jsvConfigObject configs[] = {
+          {"w", JSV_INTEGER, &width},
+          {"h", JSV_INTEGER, &height},
+          {"min", JSV_INTEGER, &minHeight},
+          {"max", JSV_INTEGER, &maxHeight},
+          {"wrap", JSV_BOOLEAN, &wrap},
+          {"trim", JSV_BOOLEAN, &trim},
+  };
+  if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    return 0;
+  }
+
+  const int FONTS = 5;
+  JswFindFontFont FONT[5] = {
+    {"22", 22, jswrap_graphics_setFont22},
+    {"19", 19, jswrap_graphics_setFont19},
+    {"15", 15, jswrap_graphics_setFont15},
+    {"6x8", 8, jswrap_graphics_setFont6x8},
+    {"4x6", 6, jswrap_graphics_setFont4x6}
+  };
+  int fontIdx = 0;
+  // check max font size
+  while (fontIdx<FONTS-1 && FONT[fontIdx].height>maxHeight)
+    fontIdx++;
+  // Run through fonts, big->small, to find one that fits
+  StringMetricsResult stringMetrics;
+  JsVar *finalText = jsvLockAgain(text);
+  JsVar *finalLines = NULL;
+  JsVar *newline = jsvNewFromString("\n");
+  while (fontIdx<FONTS-1) {
+    jsvUnLock(FONT[fontIdx].setFont(parent,1));
+    graphicsGetFromVar(&gfx, parent);
+    if (wrap) {
+      jsvUnLock2(finalText, finalLines);
+      finalLines= jswrap_graphics_wrapString(parent, text, width);
+      finalText = jsvArrayJoin(finalLines,newline,true);
+      _jswrap_graphics_stringMetrics(&gfx, finalText, -1, &stringMetrics);
+    } else
+      _jswrap_graphics_stringMetrics(&gfx, text, -1, &stringMetrics);
+    if (((stringMetrics.stringWidth <= width) && (stringMetrics.stringHeight <= height)) || // all good!
+        fontIdx==FONTS-1 || // no more fonts
+        FONT[fontIdx+1].height<minHeight // next font is too small
+        ) break;
+    fontIdx++;
+  }
+  const char *fontName = FONT[fontIdx].name;
+  // if there were unrenderable characters, use the international font instead if we have one
+  if (stringMetrics.unrenderableChars) {
+    JsVar *intlFont = jspGetNamedField(parent, "setFontIntl", false);
+    if (intlFont) {
+      fontName = "Intl";
+      jsvUnLock(jspExecuteFunction(intlFont, parent, 0, NULL));
+      graphicsGetFromVar(&gfx, parent);
+      _jswrap_graphics_stringMetrics(&gfx, text, -1, &stringMetrics);
+    }
+  }
+  if (trim && stringMetrics.stringHeight > height) { // do we have to trim these lines to length?
+    JsVar *lines = jsvNewFromInteger(height / stringMetrics.lineHeight);
+    if (!finalLines)
+      finalLines = jswrap_string_split(finalText, newline);
+    JsVar *croppedArr = jswrap_array_slice(finalLines, 0, lines);
+    jsvUnLock2(finalText, lines);
+    finalText = jsvArrayJoin(croppedArr,newline,true);
+    jsvUnLock(croppedArr);
+    jsvAppendString(finalText, "..."); // Add ... to the end (TODO: check if room?)
+    _jswrap_graphics_stringMetrics(&gfx, finalText, -1, &stringMetrics); // work out string size again
+  }
+  // TODO: trim width if not wrapping?
+  jsvUnLock2(newline, finalLines);
+  jsvObjectSetChildAndUnLock(result, "text", finalText);
+  jsvObjectSetChildAndUnLock(result, "font", jsvNewFromString(fontName));
+  jsvObjectSetChildAndUnLock(result, "w", jsvNewFromInteger(stringMetrics.stringWidth));
+  jsvObjectSetChildAndUnLock(result, "h", jsvNewFromInteger(stringMetrics.stringHeight));
+
+  return result;
+}
+#endif
+
 
 /*JSON{
   "type" : "method",
