@@ -53,10 +53,10 @@
 #include "line_font.h"
 #endif
 #ifdef BANGLEJS2
-#include "jswrap_font_15.h"
-#include "jswrap_font_19.h"
+#include "jswrap_font_14.h"
+#include "jswrap_font_17.h"
 #include "jswrap_font_22.h"
-#include "jswrap_font_30.h"
+#include "jswrap_font_28.h"
 #endif
 
 #ifdef GRAPHICS_PALETTED_IMAGES
@@ -2673,10 +2673,10 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
   const int FONTS = 5;
   JswFindFontFont FONT[5] = {
 #ifdef BANGLEJS2
-    {"30", 30, 1, jswrap_graphics_setFont30},
+    {"28", 28, 1, jswrap_graphics_setFont28},
     {"22", 22, 1, jswrap_graphics_setFont22},
-    {"19", 19, 1, jswrap_graphics_setFont19},
-    {"15", 15, 1, jswrap_graphics_setFont15},
+    {"17", 17, 1, jswrap_graphics_setFont17},
+    {"14", 14, 1, jswrap_graphics_setFont14},
     {"6x8", 8, 1, jswrap_graphics_setFont6x8},
     {"4x6", 6, 1, jswrap_graphics_setFont4x6}
 #else  // BANGLEJS1

@@ -32,10 +32,10 @@ The vector font is stored in `fontmap_13x19.svg` and is decoded with `build_vect
 These fonts are used by Bangle.js 2. These are turned into Espruino files (embedded `pbf` fonts) with the following commands:
 
 ```
-node ~/workspace/EspruinoWebTools/cli/fontconverter.js renaissance_28.pbff --range All --height 22 --shiftUp 10 --nudge --debug --spaceWidth 4 --opbfc 22
-node ~/workspace/EspruinoWebTools/cli/fontconverter.js renaissance_24_bold.pbff --range All --height 19 --shiftUp 8 --nudge --debug --spaceWidth 3 --opbfc 19
-node ~/workspace/EspruinoWebTools/cli/fontconverter.js renaissance_18_bold.pbff --range All --height 15 --shiftUp 7 --nudge --debug --spaceWidth 3 --opbfc 15
-node ~/workspace/EspruinoWebTools/cli/fontconverter.js renaissance_18_doubled.pbff --range All --height 30 --spaceWidth 6 --opbfc 30
+node ~/workspace/EspruinoWebTools/cli/fontconverter.js renaissance_28.pbff --range All --height 22 --shiftUp 10 --nudge --debug --spaceWidth 4 --opbfc 22 --test "Hello World"
+node ~/workspace/EspruinoWebTools/cli/fontconverter.js renaissance_24_bold.pbff --range All --height 17 --shiftUp 10 --nudge --debug --spaceWidth 3 --opbfc 17 --test "Hello World"
+node ~/workspace/EspruinoWebTools/cli/fontconverter.js renaissance_18_bold.pbff --range All --height 14 --shiftUp 7 --nudge --debug --spaceWidth 3 --opbfc 14 --test "Hello World"
+node ~/workspace/EspruinoWebTools/cli/fontconverter.js renaissance_18_doubled.pbff --range All --height 28 --spaceWidth 6 --opbfc 28 --test "Hello World"
 ```
 
 `renaissance_18_doubled.pbff` was originally created with:
