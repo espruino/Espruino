@@ -56,6 +56,7 @@
 #include "jswrap_font_15.h"
 #include "jswrap_font_19.h"
 #include "jswrap_font_22.h"
+#include "jswrap_font_30.h"
 #endif
 
 #ifdef GRAPHICS_PALETTED_IMAGES
@@ -2598,7 +2599,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   "type" : "method",
   "class" : "Graphics",
   "name" : "findFont",
-  "ifdef" : "BANGLEJS2",
+  "ifdef" : "BANGLEJS",
   "generate" : "jswrap_graphics_findFont",
   "params" : [
     ["text","JsVar","The text to render"],
@@ -2632,10 +2633,10 @@ Returns:
 */
 
 
-#ifdef BANGLEJS2
+#ifdef BANGLEJS
 typedef struct {
   const char *name;
-  uint8_t height;
+  uint8_t height, scale;
   JsVar*(*setFont)(JsVar *parent, int scale);
 } JswFindFontFont;
 
@@ -2671,11 +2672,19 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
 
   const int FONTS = 5;
   JswFindFontFont FONT[5] = {
-    {"22", 22, jswrap_graphics_setFont22},
-    {"19", 19, jswrap_graphics_setFont19},
-    {"15", 15, jswrap_graphics_setFont15},
-    {"6x8", 8, jswrap_graphics_setFont6x8},
-    {"4x6", 6, jswrap_graphics_setFont4x6}
+#ifdef BANGLEJS2
+    {"30", 30, 1, jswrap_graphics_setFont30},
+    {"22", 22, 1, jswrap_graphics_setFont22},
+    {"19", 19, 1, jswrap_graphics_setFont19},
+    {"15", 15, 1, jswrap_graphics_setFont15},
+    {"6x8", 8, 1, jswrap_graphics_setFont6x8},
+    {"4x6", 6, 1, jswrap_graphics_setFont4x6}
+#else  // BANGLEJS1
+    {"6x8:3", 24, 3, jswrap_graphics_setFont6x8},
+    {"6x8:2", 16, 2, jswrap_graphics_setFont6x8},
+    {"6x8", 8, 1, jswrap_graphics_setFont6x8},
+    {"4x6", 6, 1, jswrap_graphics_setFont4x6}
+#endif
   };
   int fontIdx = 0;
   // check max font size
@@ -2687,7 +2696,7 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
   JsVar *finalLines = NULL;
   JsVar *newline = jsvNewFromString("\n");
   while (fontIdx<FONTS-1) {
-    jsvUnLock(FONT[fontIdx].setFont(parent,1));
+    jsvUnLock(FONT[fontIdx].setFont(parent, FONT[fontIdx].scale));
     graphicsGetFromVar(&gfx, parent);
     if (wrap) {
       jsvUnLock2(finalText, finalLines);

@@ -69,9 +69,10 @@ info = {
      'DEFINES += -DESPR_NO_LINE_NUMBERS=1', # we execute mainly from flash, so line numbers can be worked out
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
-     'WRAPPERSOURCES += libs/banglejs/jswrap_font_15.c',
-     'WRAPPERSOURCES += libs/banglejs/jswrap_font_19.c',
-     'WRAPPERSOURCES += libs/banglejs/jswrap_font_22.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_15.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_19.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_22.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_30.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_6x15.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_12x20.c',
      'SOURCES += libs/misc/nmea.c',
