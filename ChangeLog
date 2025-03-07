@@ -21,6 +21,7 @@
             STM32: Fix spi.write usage on same port that SD card is used with (fix #2613)
             Bangle.js2: Added new Renaissance fonts and g.findFont function for selecting the best font
             Bangle.js2: Fix issue when an onchange callback from E.showMenu submenu changes the menu immediately
+            Bangle.js: Added 'bpmMin/bpmMax' and 'activity' to 'health' event and 'Bangle.getHealthStatus'
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

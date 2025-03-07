@@ -920,6 +920,16 @@ TouchGestureType touchGesture; /// is JSBT_SWIPE is set, what happened?
 
 /// How often should we fire 'health' events?
 #define HEALTH_INTERVAL 600000 // 10 minutes (600 seconds)
+/// What is the current activity. In order of priority
+typedef enum {
+  HSA_UNKNOWN,
+  HSA_NOT_WORN,
+  HSA_WALKING,
+  HSA_EXERCISE,
+} PACKED_FLAGS HealthStateActivity;
+/// Strings for HealthStateActivity, matching https://codeberg.org/Freeyourgadget/Gadgetbridge/src/branch/master/app/src/main/java/nodomain/freeyourgadget/gadgetbridge/model/ActivityKind.java
+#define HSA_STRINGS "UNKNOWN","NOT_WORN","WALKING","EXERCISE"
+#define HSA_STRINGS_LEN 4
 /// Struct with currently tracked health info
 typedef struct {
   uint8_t index; ///< time_in_ms / HEALTH_INTERVAL - we fire a new Health event when this changes
@@ -927,8 +937,11 @@ typedef struct {
   uint16_t movementSamples; ///< Number of samples added to movement
   uint16_t stepCount; ///< steps during current period
   uint16_t bpm10;  ///< beats per minute (x10)
+  uint16_t bpm10min, bpm10max;  ///< beats per minute min and max (x10)
   uint8_t bpmConfidence; ///< confidence of current BPM figure
-} HealthState;
+  uint16_t sportActivityTime; ///< Time in msec spent doing high acceleration activity
+  HealthStateActivity activity; ///< what's the current activity
+} PACKED_FLAGS HealthState;
 /// Currently tracked health info during this period
 HealthState healthCurrent;
 /// Health info during the last period, used when firing a health event
@@ -1541,15 +1554,27 @@ void peripheralPollHandler() {
 #ifdef HEARTRATE_VC31_BINARY
     // Activity detection
     hrmSportActivity = ((hrmSportActivity*63)+MIN(accDiff,4096))>>6; // running average
-    if (hrmSportTimer < TIMER_MAX) {
+    if (hrmSportTimer < TIMER_MAX)
       hrmSportTimer += pollInterval;
-    }
-    if (hrmSportActivity > HRM_SPORT_ACTIVITY_THRESHOLD) // if enough movement, zero timer (enter sport mode)
+    if (hrmSportActivity > HRM_SPORT_ACTIVITY_THRESHOLD) { // if enough movement, zero timer (enter sport mode)
       hrmSportTimer = 0;
+      if (healthCurrent.sportActivityTime < TIMER_MAX)
+        healthCurrent.sportActivityTime += pollInterval;
+      // If we've been very active for over 30 seconds in our 10 minute slot, assume we're doing sport
+      if (healthCurrent.sportActivityTime > 30000) { // remember it can't be more than TIMER_MAX(60k)
+        if (healthCurrent.activity < HSA_EXERCISE)
+          healthCurrent.activity = HSA_EXERCISE;
+      }
+    }
     if (hrmSportMode>=0) // if HRM sport mode is forced, just use that
       hrmInfo.sportMode = hrmSportMode;
-    else  // else set to running mode if we've had enough activity recently
-      hrmInfo.sportMode = (hrmSportTimer < HRM_SPORT_ACTIVITY_TIMEOUT) ? SPORT_TYPE_RUNNING : SPORT_TYPE_NORMAL;
+    else { // else set to running mode if we've had enough activity recently
+      if (hrmSportTimer < HRM_SPORT_ACTIVITY_TIMEOUT) {
+        hrmInfo.sportMode =  SPORT_TYPE_RUNNING;
+      } else {
+        hrmInfo.sportMode =  SPORT_TYPE_NORMAL;
+      }
+    }
 #endif
     // Power saving
     if (bangleFlags & JSBF_POWER_SAVE) {
@@ -1612,6 +1637,8 @@ void peripheralPollHandler() {
         stepCounter += newSteps;
         healthCurrent.stepCount += newSteps;
         healthDaily.stepCount += newSteps;
+        if (healthCurrent.stepCount > 200 &&  healthCurrent.activity<HSA_WALKING) // if 200 steps in this 10 minute chunk, assume walking
+          healthCurrent.activity = HSA_WALKING;
         bangleTasks |= JSBT_STEP_EVENT;
         jshHadEvent();
       }
@@ -1681,8 +1708,15 @@ void peripheralPollHandler() {
   // Did we enter a new 10 minute interval?
   JsVarFloat msecs = jshGetMillisecondsFromTime(time);
   uint8_t healthIndex = (uint8_t)(msecs/HEALTH_INTERVAL);
-  if (healthIndex != healthCurrent.index) {
-    // we did - fire 'Bangle.health' event
+  if (healthIndex != healthCurrent.index) { // we did
+    // quick check - if we don't know what's happening and the Bangle isn't moving, assume it's not worn
+    if (healthCurrent.activity == HSA_UNKNOWN) {
+      uint32_t movement = healthCurrent.movement / healthCurrent.movementSamples;
+      if (movement < 120) healthCurrent.activity = HSA_NOT_WORN;
+    }
+    if (healthDaily.activity < healthCurrent.activity)
+      healthDaily.activity = healthCurrent.activity;
+    // now fire 'Bangle.health' event and reset the current health status
     healthLast = healthCurrent;
     healthStateClear(&healthCurrent);
     healthCurrent.index = healthIndex;
@@ -1727,8 +1761,20 @@ static void hrmHandler(int ppgValue) {
       healthDaily.bpmConfidence = hrmInfo.confidence;
       healthDaily.bpm10 = hrmInfo.bpm10;
     }
+    if (hrmInfo.confidence >= 90) {
+      if (hrmInfo.bpm10 < healthCurrent.bpm10min) healthCurrent.bpm10min = hrmInfo.bpm10;
+      if (hrmInfo.bpm10 < healthDaily.bpm10min) healthDaily.bpm10min = hrmInfo.bpm10;
+      if (hrmInfo.bpm10 > healthCurrent.bpm10max) healthCurrent.bpm10max = hrmInfo.bpm10;
+      if (hrmInfo.bpm10 > healthDaily.bpm10max) healthDaily.bpm10max = hrmInfo.bpm10;
+    }
     jshHadEvent();
   }
+#ifdef HEARTRATE_VC31_BINARY
+  if (!hrmInfo.isWorn) {
+    if (healthCurrent.activity == HSA_UNKNOWN)
+      healthCurrent.activity = HSA_NOT_WORN;
+  }
+#endif
   if (bangleFlags & JSBF_HRM_INSTANT_LISTENER) {
     // what if we already have HRM data that was queued - eg if working with FIFO?
     /*if (bangleTasks & JSBT_HRM_INSTANT_DATA)
@@ -3529,6 +3575,8 @@ JsVar *jswrap_banglejs_getAccel() {
 * `steps` is the number of steps during this period
 * `bpm` the best BPM reading from HRM sensor during this period
 * `bpmConfidence` best BPM confidence (0-100%) during this period
+* `bpmMin`/`bpmMax` (2v26+) the minimum/maximum BPM reading from HRM sensor during this period (where confidence is over 90)
+* `activity` (2v26+) the currently assumed activity, one of "UNKNOWN","NOT_WORN","WALKING","EXERCISE"
 
 */
 static JsVar *_jswrap_banglejs_getHealthStatusObject(HealthState *health) {
@@ -3540,7 +3588,12 @@ static JsVar *_jswrap_banglejs_getHealthStatusObject(HealthState *health) {
 #ifdef HEARTRATE
     jsvObjectSetChildAndUnLock(o,"bpm",jsvNewFromFloat(health->bpm10 / 10.0));
     jsvObjectSetChildAndUnLock(o,"bpmConfidence",jsvNewFromInteger(health->bpmConfidence));
+    jsvObjectSetChildAndUnLock(o,"bpmMin",jsvNewFromFloat(health->bpm10min / 10.0));
+    jsvObjectSetChildAndUnLock(o,"bpmMax",jsvNewFromFloat(health->bpm10max / 10.0));
 #endif
+   const char *ACT_STRINGS[HSA_STRINGS_LEN] = { HSA_STRINGS };
+   if (health->activity < HSA_STRINGS_LEN)
+     jsvObjectSetChildAndUnLock(o,"activity",jsvNewFromString(ACT_STRINGS[health->activity]));
   }
   return o;
 }
