@@ -24,7 +24,7 @@
     if (!item.noList && item.min!==undefined && item.max!==undefined &&
         ((item.max-item.min)/step)<20) {
       // show scrolling menu of options
-      E.showScroller({
+      var scroller = E.showScroller({
         h : H, c : (item.max+step-item.min)/step,
         back: show, // redraw original menu
         remove: options.remove,
@@ -45,8 +45,10 @@
           Bangle.buzz(20);
           item.value = item.min + idx*step;
           if (item.onchange) item.onchange(item.value);
-          scr.scroll = l.scroller.scroll; // set scroll to prev position
-          show(); // redraw original menu
+          if (scroller.isActive()) { // onchange may have changed menu!
+            scr.scroll = l.scroller.scroll; // set scroll to prev position
+            show(); // redraw original menu
+          }
         }
       });
     } else {
@@ -72,8 +74,10 @@
         } else { // actually selected
           item.value = v;
           if (item.onchange) item.onchange(item.value);
-          scr.scroll = l.scroller.scroll; // set scroll to prev position
-          show(); // redraw original menu
+          if (Bangle.uiRedraw == draw) { // onchange may have changed menu!
+            scr.scroll = l.scroller.scroll; // set scroll to prev position
+            show(); // redraw original menu
+          }
         }
       }
       draw();
@@ -123,14 +127,14 @@
         var v = item.value;
         if (item.format) v=item.format(v);
         var val = g.findFont(v, {w:r.w/2,h:r.h,wrap:1,trim:1});
-        g.setFontAlign(1,0).drawString(val.text,r.x+r.w-8,r.y+H/2);
+        g.setFontAlign(1,0).drawString(val.text,r.x+r.w-8,2+r.y+H/2);
         pad += g.stringWidth(val.text);
       } else if ("function" == typeof item) {
         g.drawImage(/* 9x18 */atob("CRKBAGA4Hg8DwPB4HgcDg8PB4eHg8HAwAA=="), r.x+r.w-21, r.y+H/2-9);
         pad += 16;
       }
       var itemText = g.findFont((item&&item.title)??keys[idx], {w:r.w-pad,h:r.h,wrap:1,trim:1});
-      g.setFontAlign(-1,0).drawString(itemText.text, r.x+8, 1+r.y+H/2);
+      g.setFontAlign(-1,0).drawString(itemText.text, r.x+8, 2+r.y+H/2);
     },
     select : function(idx, touch) {
       if (idx<0) return back&&back(); // title

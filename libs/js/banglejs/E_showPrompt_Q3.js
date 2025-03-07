@@ -3,6 +3,7 @@
   if (!options.buttons)
     options.buttons = {"Yes":true,"No":false};
   var btns = Object.keys(options.buttons);
+  if (btns.length>6) throw new Error(">6 buttons");
   var btnPos;
   function draw(highlightedButton) {
     g.reset().setFontAlign(0,0);
@@ -13,9 +14,9 @@
         clearRect(0,Y,W-1,Y+4+title.h).
         drawString(title.text,W/2,Y+4+title.h/2);
     Y += title.h+4;
-    var BX = Math.min(2,btns.length),
+    var BX = 0|"0123233"[btns.length],
         BY = Math.ceil(btns.length / BX),
-        BW = W/BX, BH = 40;
+        BW = (W-1)/BX, BH = (BY>1 || options.img)?40:50;
     var H = R.y2-(Y + BY*BH);
     if (options.img) {
       var im = g.imageMetrics(options.img);
@@ -28,22 +29,21 @@
       drawString(msg.text,W/2,Y+H/2);
     btnPos = [];
     btns.forEach((btn,idx)=>{
-      var x = (idx&1)*BW + 2, y = R.y2-(BY-(idx>>1))*BH - 2,
-          bw = BW-5, poly = [x+4,y,
+      var ix=idx%BX,iy=0|(idx/BX),x = ix*BW + 2, y = R.y2-(BY-iy)*BH + 1,
+          bw = BW-4, bh = BH-2, poly = [x+4,y,
                   x+bw-4,y,
                   x+bw,y+4,
-                  x+bw,y+BH-4,
-                  x+bw-4,y+BH,
-                  x+4,y+BH,
-                  x,y+BH-4,
+                  x+bw,y+bh-4,
+                  x+bw-4,y+bh,
+                  x+4,y+bh,
+                  x,y+bh-4,
                   x,y+4,
                   x+4,y];
-      btnPos.push({x1:x-2, x2:x+bw,
-                   y1:y, y2:y+BH+2,
-                   poly: poly});
+      btnPos.push({x1:x-2, x2:x+BW-2,
+                   y1:y, y2:y+BH});
       var btnText = g.findFont(btn, {w:bw-4,h:BH-4,wrap:1});
       g.setColor(idx===highlightedButton ? g.theme.bgH : g.theme.bg2).fillPoly(poly).
-        setColor(idx===highlightedButton ? g.theme.fgH : g.theme.fg2).drawPoly(poly).drawString(btnText.text,x+bw/2,y+BH/2);
+        setColor(idx===highlightedButton ? g.theme.fgH : g.theme.fg2).drawPoly(poly).drawString(btnText.text,x+bw/2,y+2+BH/2);
       if (idx&1) y+=BH;
     });
     Bangle.setLCDPower(1); // ensure screen is on
@@ -57,8 +57,9 @@
   return new Promise(resolve=>{
     var ui = {mode:"custom", remove: options.remove, redraw: draw, back:options.back, touch:(_,e)=>{
       btnPos.forEach((b,i)=>{
-        if (e.x > b.x1 && e.x < b.x2 &&
-            e.y > b.y1 && e.y < b.y2) {
+        if (e.x >= b.x1 && e.x <= b.x2 &&
+            e.y >= b.y1 && e.y <= b.y2 && !e.hit) {
+          e.hit = true; // ensure we don't call twice if the buttons overlap
           draw(i); // highlighted button
           g.flip(); // write to screen
           E.showPrompt(); // remove
