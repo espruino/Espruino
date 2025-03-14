@@ -166,6 +166,11 @@ def get_pins():
   pinutils.findpin(pins, "PD6", True)["functions"]["SPI2_MISO"]=0;
   pinutils.findpin(pins, "PD7", True)["functions"]["SPI2_MOSI"]=0;
 
+  pinutils.findpin(pins, "PD43", True)["functions"]["USART1_TX"]=0; 
+  pinutils.findpin(pins, "PD44", True)["functions"]["USART1_RX"]=0; 
+  pinutils.findpin(pins, "PD17", True)["functions"]["USART2_TX"]=0; 
+  pinutils.findpin(pins, "PD18", True)["functions"]["USART2_RX"]=0; 
+
   # everything is non-5v tolerant
   #for pin in pins:
   #  pin["functions"]["3.3"]=0;

@@ -184,8 +184,10 @@ def get_pins():
 
   pinutils.findpin(pins, "PD0", True)["functions"]["NEGATED"]=0; # BTN1 negate
 
-  pinutils.findpin(pins, "PD10", True)["functions"]["USART1_TX"]=0; # doesn't match jshardwareUart?
-  pinutils.findpin(pins, "PD32", True)["functions"]["USART1_RX"]=0; # doesn't match jshardwareUart?
+  pinutils.findpin(pins, "PD1", True)["functions"]["USART1_TX"]=0; 
+  pinutils.findpin(pins, "PD3", True)["functions"]["USART1_RX"]=0; 
+  pinutils.findpin(pins, "PD4", True)["functions"]["USART2_TX"]=0; # default is 10 but can't use this as it's on SPI flash - match what jshardwareUart used
+  pinutils.findpin(pins, "PD5", True)["functions"]["USART2_RX"]=0; # default is 9 but can't use this as it's on SPI flash
   pinutils.findpin(pins, "PD16", True)["functions"]["USART3_RX"]=0;
   pinutils.findpin(pins, "PD17", True)["functions"]["USART3_TX"]=0;
 
