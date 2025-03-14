@@ -4930,9 +4930,12 @@ void jswrap_banglejs_touchWr(JsVarInt reg, JsVarInt data) {
       "touchRd(reg: number, cnt: number): number[];"
     ]
 }
-Reads a register from the touch controller
-**Note:** On Espruino 2v06 and before this function only returns a number (`cnt`
-is ignored).
+Reads a register from the touch controller. See https://github.com/espruino/Espruino/issues/2146#issuecomment-2554296721 for a list
+of registers.
+
+For example `print(Bangle.touchRd(0xa7).toString(16))` returns the `ChipID` register, which is 0xB4 (CST816S) on older Bangles or 0xB6 (CST816D) on newer ones.
+
+**Note:** On Espruino 2v06 and before this function only returns a number (`cnt` is ignored).
 */
 
 
