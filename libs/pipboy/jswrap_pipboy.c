@@ -1132,7 +1132,9 @@ static void jswrap_pb_periph_off() {
   jshPinSetState(DAC_SDA_PIN, JSHPINSTATE_GPIO_IN);
   jshPinSetState(RADIO_SCL_PIN, JSHPINSTATE_ADC_IN);
   jshPinSetState(RADIO_SDA_PIN, JSHPINSTATE_ADC_IN);
+#ifdef LCD_TEARING
   jshPinSetState(LCD_TEARING, JSHPINSTATE_GPIO_IN_PULLDOWN);
+#endif
   STM32_I2S_Kill();
 }
 
