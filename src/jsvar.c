@@ -812,8 +812,8 @@ JsVarRef jsvGetRef(JsVar *var) {
 JsVar *jsvLock(JsVarRef ref) {
   JsVar *var = jsvGetAddressOf(ref);
   //var->locks++;
-  assert(jsvGetLocks(var) < JSV_LOCK_MAX);
-  var->flags += JSV_LOCK_ONE;
+  if ((var->flags & JSV_LOCK_MASK)!=JSV_LOCK_MASK) // if we hit the max amount of locks, don't exceed it (see https://github.com/espruino/Espruino/issues/2616)
+    var->flags += JSV_LOCK_ONE;
 #ifdef DEBUG
   if (jsvGetLocks(var)==0) {
     jsError("Too many locks to Variable!");
@@ -832,8 +832,8 @@ JsVar *jsvLockSafe(JsVarRef ref) {
 /// Lock this pointer and return a pointer - UNSAFE for null pointer
 JsVar *jsvLockAgain(JsVar *var) {
   assert(var);
-  assert(jsvGetLocks(var) < JSV_LOCK_MAX);
-  var->flags += JSV_LOCK_ONE;
+  if ((var->flags & JSV_LOCK_MASK)!=JSV_LOCK_MASK) // if we hit the max amount of locks, don't exceed it (see https://github.com/espruino/Espruino/issues/2616)
+    var->flags += JSV_LOCK_ONE;
   return var;
 }
 
@@ -865,6 +865,7 @@ static ALWAYS_INLINE void jsvUnLockInline(JsVar *var) {
   /* Reduce lock count. Since ->flags is volatile
    * it helps to explicitly save it to a var to avoid a
    * load-store-load */
+  if ((var->flags & JSV_LOCK_MASK)==JSV_LOCK_MASK) return; // if we had the max number of locks, don't unlock as we probably didn't lock enough (see https://github.com/espruino/Espruino/issues/2616)
   JsVarFlags f = var->flags -= JSV_LOCK_ONE;
   // Now see if we can properly free the data
   // Note: we check locks first as they are already in a register
