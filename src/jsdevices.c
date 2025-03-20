@@ -438,7 +438,7 @@ void CALLED_FROM_INTERRUPT jshIOEventOverflowed() {
 
 /// Push an IO event (max IOEVENT_MAX_LEN) into the ioBuffer (designed to be called from IRQ), returns true on success, Calls jshHadEvent();
 bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, unsigned int length) {
-  assert(length<IOEVENT_MAX_LEN);
+  assert(length<=IOEVENT_MAX_LEN);
   if (length>IOEVENT_MAX_LEN) {
 #ifndef RELEASE
     jsiConsolePrintf("%d>IOEVENT_MAX_LEN\n", length);
