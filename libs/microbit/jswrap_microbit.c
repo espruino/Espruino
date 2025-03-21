@@ -154,7 +154,9 @@ void jswrap_microbit_init() {
 #endif
   i2cInfo.pinSCL = INTERNAL_I2C_SCL_PIN;
   i2cInfo.pinSDA = INTERNAL_I2C_SDA_PIN;
+#ifndef MICROBIT2
   jshI2CSetup(EV_I2C1, &i2cInfo);
+#endif
 
   unsigned char d[2];
 #ifndef MICROBIT2
