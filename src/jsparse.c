@@ -839,6 +839,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             JsLex newLex;
             JsLex *oldLex = jslSetLex(&newLex);
             jslInit(functionCode);
+            jsvUnLock(functionCode); // unlock function code here to reduce amount of locks needed during recursion
+            functionCode = 0;
 #ifndef ESPR_NO_LINE_NUMBERS
             newLex.lineNumberOffset = functionLineNumber;
 #endif
