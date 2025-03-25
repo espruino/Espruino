@@ -25,6 +25,7 @@
             Fix potential overflow of locks - favour small memory leak over accidental free if this ever happens (fix #2616)
             micro:bit2: Ensure we don't initialise the I2C1 peripheral (we use software I2C internally)
             Unlock functionCode early in function execution to reduce locks needed during recursion (#2616)
+            Improve timer scheduling accuracy
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)
