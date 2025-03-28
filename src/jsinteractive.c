@@ -937,7 +937,7 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
           "|  __|_ -| . |  _| | | |   | . |\n"
           "|____|___|  _|_| |___|_|_|_|___|\n"
           "         |_| espruino.com\n"
-          " "JS_VERSION" (c) 2024 G.Williams\n"
+          " "JS_VERSION" (c) 2025 G.Williams\n"
         // Point out about donations - but don't bug people
         // who bought boards that helped Espruino
 #if !defined(ESPR_OFFICIAL_BOARD)
