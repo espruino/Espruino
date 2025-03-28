@@ -338,7 +338,9 @@ size_t jshFlashGetMemMapAddress(size_t ptr);
 
 /// Start the timer and get it to interrupt once after 'period' (i.e. it should not auto-reload)
 void jshUtilTimerStart(JsSysTime period);
-/// Reschedule the timer (it should already be running) to interrupt after 'period'
+/** Reschedule the timer (it should already be running) to interrupt after 'period'.
+With the timer running this should ideally set the time period from the last time the
+timer triggered (so as to factor out any execution delay in jstUtilTimerInterruptHandler).  */
 void jshUtilTimerReschedule(JsSysTime period);
 /// Stop the timer
 void jshUtilTimerDisable();

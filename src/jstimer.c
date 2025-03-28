@@ -87,9 +87,10 @@ void jstUtilTimerInterruptHandler() {
   /* Note: we're using 32 bit times here, even though the real time counter is 64 bit. We
    * just make sure nothing is scheduled that far in the future */
   if (utilTimerOn) {
-    // TODO: Keep UtilTimer running and then use the value from it
-    // to estimate how long utilTimerPeriod really was
-    // Subtract utilTimerPeriod from all timers' time
+    utilTimerSetTime = jshGetSystemTime();
+    /* We keep UtilTimer running and then jshUtilTimerReschedule reschedules
+    based on the time from when this IRQ was triggered, *not* from the
+    current time. */
     int t = utilTimerTasksTail;
     while (t!=utilTimerTasksHead) {
       utilTimerTasks[t].time -= utilTimerPeriod;
@@ -218,7 +219,6 @@ void jstUtilTimerInterruptHandler() {
     // re-schedule the timer if there is something left to do
     if (utilTimerTasksTail != utilTimerTasksHead) {
       utilTimerPeriod = utilTimerTasks[utilTimerTasksTail].time;
-      utilTimerSetTime = jshGetSystemTime();
       if (utilTimerPeriod<0) utilTimerPeriod=0;
       jshUtilTimerReschedule(utilTimerPeriod);
     } else {

@@ -626,7 +626,6 @@ const nrf_drv_twis_t *jshGetTWIS(IOEventFlags device) {
 #endif
 
 void TIMER1_IRQHandler(void) {
-  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
   nrf_timer_event_clear(NRF_TIMER1, NRF_TIMER_EVENT_COMPARE0);
   jstUtilTimerInterruptHandler();
 }
@@ -2776,10 +2775,35 @@ void jshUtilTimerReschedule(JsSysTime period) {
     period = NRF_TIMER_MAX;
   }
   //jsiConsolePrintf("Sleep for %d %d -> %d\n", (uint32_t)(t>>32), (uint32_t)(t), (uint32_t)(period));
-  if (utilTimerActive) nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
-  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
-  nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
-  if (utilTimerActive) nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
+
+  /* Setting the timer is complicated because the compare register only compares for equality,
+  so if we set the compare register even 1 less than the current timer it won't fire for 2^32 microsec
+
+  That would be fine but we're not ever allowed to totally disable interrupts so we have to check *after*
+  we set it just to make sure it hasn't overflowed and if so to redo it.
+  */
+  if (utilTimerActive) { // Reschedule an active timer...
+    // Find out what our last trigger time was
+    uint32_t lastCC = nrf_timer_cc_read(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0);
+    // schedule timer to trigger at the last time we triggered PLUS our period
+    uint32_t thisCC = lastCC + period;
+    bool needsReschedule;
+    do {
+      // set up the timer
+      nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)thisCC);
+      needsReschedule = false;
+      // Check that the timer hasn't already passed this value? Reschedule it 2us in the future
+      NRF_TIMER1->TASKS_CAPTURE[1] = 1; // get current timer value
+      uint32_t current = NRF_TIMER1->CC[1];
+      if (((int32_t)thisCC - (int32_t)current) < 2) { // it it's closer than 2us (or has already passed!)
+        thisCC = current+2; // reschedule into the future
+        needsReschedule = true;
+      }
+    } while (needsReschedule);
+  } else {
+    // timer is off, it'll be cleared to literally just set the period
+    nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
+  }
 }
 
 /// Start the timer and get it to interrupt after 'period'
@@ -2787,6 +2811,7 @@ void jshUtilTimerStart(JsSysTime period) {
   jshUtilTimerReschedule(period);
   if (!utilTimerActive) {
     utilTimerActive = true;
+    nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
     nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
   }
 }
