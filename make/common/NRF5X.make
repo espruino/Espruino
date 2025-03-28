@@ -551,7 +551,7 @@ endif
 endif
 
 flash: all
-ifeq ($(BOARD),MICROBIT)
+ifeq ($(BOARD),MICROBIT1)
 	if [ -d "/media/$(USER)/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/$(USER)/MICROBIT;sync; fi
 	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/MICROBIT;sync; fi
 else
