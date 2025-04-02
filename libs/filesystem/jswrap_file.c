@@ -19,7 +19,7 @@
 
 #define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSd" // the data in each file
 #define JS_FS_OPEN_FILES_NAME "FSopen" // the list of open files
-#if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO) && !defined(USE_FLASHFS)
+#if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO)
 #define SD_CARD_ANYWHERE
 #endif
 
@@ -32,10 +32,6 @@ bool fat_initialised = false;
 #ifdef SD_CARD_ANYWHERE
 void sdSPISetup(JsVar *spi, Pin csPin);
 bool isSdSPISetup();
-#endif
-
-#ifdef USE_FLASHFS
-#include "flash_diskio.h"
 #endif
 
 // 'path' must be of JS_DIR_BUF_SIZE
@@ -79,7 +75,6 @@ bool jsfsInit() {
 #endif
 #ifndef LINUX
   if (!fat_initialised) {
-#ifndef USE_FLASHFS
 #ifdef SD_CARD_ANYWHERE
     if (!isSdSPISetup()) {
 #ifdef SD_SPI
@@ -100,7 +95,6 @@ bool jsfsInit() {
 #endif // SD_SPI
     }
 #endif // SD_CARD_ANYWHER
-#endif // USE_FLASHFS
     FRESULT res;
 
     if ((res = f_mount(&jsfsFAT, "", 1/*immediate mount*/)) != FR_OK) {
@@ -609,81 +603,3 @@ void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
 Pipe this file to a stream (an object with a 'write' method)
 */
 
-#ifdef USE_FLASHFS
-
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "E",
-  "name" : "flashFatFS",
-  "generate" : "jswrap_E_flashFatFS",
-  "ifdef" : "USE_FLASHFS",
-   "params" : [
-    ["options","JsVar",["[optional] An object `{ addr : int=0x300000, sectors : int=256, format : bool=false }`","addr : start address in flash","sectors: number of sectors to use","format:  Format the media"]]
-  ],
-  "return" : ["bool","True on success, or false on failure"]
-}
-Change the parameters used for the flash filesystem. The default address is the
-last 1Mb of 4Mb Flash, 0x300000, with total size of 1Mb.
-
-Before first use the media needs to be formatted.
-
-```
-fs=require("fs");
-try {
-  fs.readdirSync();
- } catch (e) { //'Uncaught Error: Unable to mount media : NO_FILESYSTEM'
-  console.log('Formatting FS - only need to do once');
-  E.flashFatFS({ format: true });
-}
-fs.writeFileSync("bang.txt", "This is the way the world ends\nnot with a bang but a whimper.\n");
-fs.readdirSync();
-```
-
-This will create a drive of 100 * 4096 bytes at 0x300000. Be careful with the
-selection of flash addresses as you can overwrite firmware! You only need to
-format once, as each will erase the content.
-
-`E.flashFatFS({ addr:0x300000,sectors:100,format:true });`
-*/
-
-int jswrap_E_flashFatFS(JsVar* options) {
-  uint32_t addr = FS_FLASH_BASE;
-  uint16_t sectors = FS_SECTOR_COUNT;
-  uint8_t format = 0;
-  if (jsvIsObject(options)) {
-    JsVar *a = jsvObjectGetChildIfExists(options, "addr");
-    if (a) {
-      if (jsvIsNumeric(a) && jsvGetInteger(a)>0x100000)
-        addr = (uint32_t)jsvGetInteger(a);
-    }
-    JsVar *s = jsvObjectGetChildIfExists(options, "sectors");
-    if (s) {
-      if (jsvIsNumeric(s) && jsvGetInteger(s)>0)
-        sectors = (uint16_t)jsvGetInteger(s);
-    }
-    JsVar *f = jsvObjectGetChildIfExists(options, "format");
-    if (f) {
-      if (jsvIsBoolean(f))
-        format = jsvGetBool(f);
-    }
-  }
-  else if (!jsvIsUndefined(options)) {
-    jsExceptionHere(JSET_TYPEERROR, "'options' must be an object, or undefined");
-  }
-
-  uint8_t init=flashFatFsInit(addr, sectors);
-  if (init) {
-    if ( format ) {
-      uint8_t res = f_mount(&jsfsFAT, "", 0/*delayed mount?*/);
-      jsDebug(DBG_INFO,"Formatting Flash\n");
-      res = f_mkfs("", 1, 0);  // Super Floppy format, using all space (not partition table)
-      if (res != FR_OK) {
-        jsExceptionHere(JSET_INTERNALERROR, "Flash Formatting error:",res);
-        return false;
-     }
-   }
-  }
-  jsfsInit();
-  return true;
-}
-#endif

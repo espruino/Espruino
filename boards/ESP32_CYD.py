@@ -101,7 +101,7 @@ chip = {
   'saved_code' : {
     'address' : 0x320000,
     'page_size' : 4096,
-    'pages' : 64,
+    'pages' : 224, # 896kb - see partitions_espruino.csv
     'flash_available' : 1344, # firmware can be up to this size - see partitions_espruino.csv
   },
 };

@@ -112,8 +112,8 @@ static void espruinoTask(void *data) {
   }
 }
 
-// memory mapped address of js_code partition in flash.
-char* romdata_jscode=0;
+/// memory mapped address of 'storage' partition in flash - for require("Storage") lib
+char* romdata_storage=0;
 
 /**
  * The main entry point into Espruino on an ESP32.
@@ -139,15 +139,15 @@ int app_main(void)
   timers_Init();
   timer_Init("EspruinoTimer",0,0,0);
 
-  // Map the js_code partition into memory so can be accessed by E.setBootCode("")
+  // Map the storage partition into memory so can be accessed by the Storage library
   const esp_partition_t* part;
   spi_flash_mmap_handle_t hrom;
-  esp_partition_iterator_t it = esp_partition_find(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "js_code");
-  if (it==0) jsError("Couldn't find js_code partition - update with partition_espruino.bin\n");
+  esp_partition_iterator_t it = esp_partition_find(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, "storage");
+  if (it==0) jsError("Couldn't find 'storage'' partition - update with partition_espruino.bin\n");
   else {
     const esp_partition_t *p = esp_partition_get(it);
-    err=esp_partition_mmap(p, 0, p->size, SPI_FLASH_MMAP_DATA, (const void**)&romdata_jscode, &hrom);
-    if (err!=ESP_OK) jsError("Couldn't map js_code!\n");
+    err=esp_partition_mmap(p, 0, p->size, SPI_FLASH_MMAP_DATA, (const void**)&romdata_storage, &hrom);
+    if (err!=ESP_OK) jsError("Couldn't map 'storage'!\n");
     // The mapping in hrom is never released - as js code can be called at anytime
   }
   esp_partition_iterator_release(it);

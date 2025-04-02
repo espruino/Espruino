@@ -172,11 +172,7 @@
 
 
 #define	_MIN_SS		512
-#ifdef USE_FLASHFS
-#define	_MAX_SS		4096
-#else
 #define	_MAX_SS		512
-#endif
 /* These options configure the range of sector size to be supported. (512, 1024,
 /  2048 or 4096) Always set both 512 for most systems, all type of memory cards and
 /  harddisk. But a larger value may be required for on-board flash memory and some
@@ -219,7 +215,7 @@
 /  defined by _NORTC_MON, _NORTC_MDAY and _NORTC_YEAR.
 /  When timestamp feature is enabled (_FS_NORTC	== 0), get_fattime() function need
 /  to be added to the project to read current time from RTC. _NORTC_MON,
-/  _NORTC_MDAY and _NORTC_YEAR have no effect. 
+/  _NORTC_MDAY and _NORTC_YEAR have no effect.
 /  These options have no effect at read-only configuration (_FS_READONLY == 1). */
 #else
 #define _FS_NORTC 0

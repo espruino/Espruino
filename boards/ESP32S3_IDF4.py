@@ -66,7 +66,6 @@ info = {
      'TELNET',
      'NEOPIXEL',
      'FILESYSTEM',
-#     'FLASHFS',
      'BLUETOOTH'
    ],
    'makefile' : [
@@ -95,7 +94,7 @@ chip = {
   'saved_code' : {
     'address' : 0x320000,
     'page_size' : 4096,
-    'pages' : 64,
+    'pages' : 224, # 896kb - see partitions_espruino.csv
     'flash_available' : 1344, # firmware can be up to this size - see partitions_espruino.csv
   },
 };
@@ -167,10 +166,10 @@ def get_pins():
   pinutils.findpin(pins, "PD6", True)["functions"]["SPI2_MISO"]=0;
   pinutils.findpin(pins, "PD7", True)["functions"]["SPI2_MOSI"]=0;
 
-  pinutils.findpin(pins, "PD43", True)["functions"]["USART1_TX"]=0; 
-  pinutils.findpin(pins, "PD44", True)["functions"]["USART1_RX"]=0; 
-  pinutils.findpin(pins, "PD17", True)["functions"]["USART2_TX"]=0; 
-  pinutils.findpin(pins, "PD18", True)["functions"]["USART2_RX"]=0; 
+  pinutils.findpin(pins, "PD43", True)["functions"]["USART1_TX"]=0;
+  pinutils.findpin(pins, "PD44", True)["functions"]["USART1_RX"]=0;
+  pinutils.findpin(pins, "PD17", True)["functions"]["USART2_TX"]=0;
+  pinutils.findpin(pins, "PD18", True)["functions"]["USART2_RX"]=0;
 
   # everything is non-5v tolerant
   #for pin in pins:

@@ -473,7 +473,6 @@ def get_ifdef_description(d):
   if d=="USE_SHA256": return "devices that support SHA256 (Espruino Pico, Espruino WiFi, Espruino BLE devices or Linux)"
   if d=="USE_SHA512": return "devices that support SHA512 (Espruino Pico, Espruino WiFi, Espruino BLE devices or Linux)"
   if d=="USE_CRYPTO": return "devices that support Crypto Functionality (Espruino Pico, Original, Espruino WiFi, Espruino BLE devices, Linux or ESP8266)"
-  if d=="USE_FLASHFS": return "devices with filesystem in Flash support enabled (ESP32 only)"
   if d=="USE_TERMINAL": return "devices with VT100 terminal emulation enabled (Pixl.js only)"
   if d=="USE_TELNET": return "devices with Telnet enabled (Linux, ESP8266 and ESP32)"
   if d=="USE_WIZNET": return "builds with support for WIZnet Ethernet modules built in"

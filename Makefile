@@ -393,14 +393,8 @@ DEFINES += -DUSE_FILESYSTEM_SDIO
 SOURCES += libs/filesystem/fat_sd/sdio_diskio.c
 # sdio_sdcard_X.c is added in make/family/X.make
 else #USE_FILESYSTEM_SDIO
-ifdef USE_FLASHFS
-DEFINES += -DUSE_FLASHFS
-SOURCES += \
-libs/filesystem/fat_sd/flash_diskio.c
-else
 SOURCES += \
 libs/filesystem/fat_sd/spi_diskio.c
-endif #USE_FLASHFS
 endif #USE_FILESYSTEM_SDIO
 endif #!LINUX
 endif #USE_FILESYSTEM
