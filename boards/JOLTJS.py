@@ -35,7 +35,8 @@ info = {
      'GRAPHICS',
 #     'NFC',
      'NEOPIXEL',
-     'JIT' # JIT compiler enabled
+     'JIT', # JIT compiler enabled
+     'I2S'
    ],
    'makefile' : [
      'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
