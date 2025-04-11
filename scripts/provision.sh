@@ -48,24 +48,24 @@ if [ "$BOARDNAME" = "ALL" ]; then
   PROVISION_EMSCRIPTEN=1
   PROVISION_EMSCRIPTEN2=1
 else
-  FAMILY=`scripts/get_board_info.py $BOARDNAME 'board.chip["family"]'`
+  FAMILY=$(scripts/get_board_info.py "$BOARDNAME" 'board.chip["family"]')
   if [ "$FAMILY" = "" ]; then
     echo "UNKNOWN BOARD ($BOARDNAME)"
     return 1
   fi
-  export PROVISION_$FAMILY=1
-  export PROVISION_$BOARDNAME=1
-  if python scripts/get_makefile_decls.py $BOARDNAME | grep NRF_SDK17; then
+  export PROVISION_"$FAMILY"=1
+  export PROVISION_"$BOARDNAME"=1
+  if python scripts/get_makefile_decls.py "$BOARDNAME" | grep NRF_SDK17; then
     PROVISION_NRF_SDK17=1
   fi
-  if python scripts/get_makefile_decls.py $BOARDNAME | grep NRF_SDK15_3; then
+  if python scripts/get_makefile_decls.py "$BOARDNAME" | grep NRF_SDK15_3; then
     PROVISION_NRF_SDK15_3=1
-  elif python scripts/get_makefile_decls.py $BOARDNAME | grep NRF_SDK15; then
+  elif python scripts/get_makefile_decls.py "$BOARDNAME" | grep NRF_SDK15; then
     PROVISION_NRF_SDK15=1
   fi
 fi
-echo Provision BOARDNAME = $BOARDNAME
-echo Provision FAMILY = $FAMILY
+echo Provision BOARDNAME = "$BOARDNAME"
+echo Provision FAMILY = "$FAMILY"
 
 if pip --version 2>/dev/null; then
   echo Python/pip installed
@@ -73,10 +73,10 @@ else
   echo Installing python/pip
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python python3-pip
 fi
-echo Python version `python --version`
+echo Python version "$(python --version)"
 
 if [ "$PROVISION_ESP32" = "1" ]; then
-    echo ===== ESP32
+    echo "===== ESP32"
     # needed for esptool for merging binaries
     if pip list 2>/dev/null | grep pyserial >/dev/null; then
       echo pyserial installed;
@@ -104,22 +104,22 @@ if [ "$PROVISION_ESP32" = "1" ]; then
            echo "Folder found"
         fi
     fi
-    echo ESP_IDF_PATH=`pwd`/esp-idf
-    echo ESP_APP_TEMPLATE_PATH=`pwd`/app
-    echo "PATH=\$PATH:`pwd`/xtensa-esp32-elf/bin/"
-    export ESP_IDF_PATH=`pwd`/esp-idf
-    export ESP_APP_TEMPLATE_PATH=`pwd`/app
-    export PATH=$PATH:`pwd`/xtensa-esp32-elf/bin/
-    echo GCC is $(which xtensa-esp32-elf-gcc)
+    echo "ESP_IDF_PATH=$(pwd)/esp-idf"
+    echo "ESP_APP_TEMPLATE_PATH=$(pwd)/app"
+    echo "PATH=\$PATH:$(pwd)/xtensa-esp32-elf/bin/"
+    export ESP_IDF_PATH=$(pwd)/esp-idf
+    export ESP_APP_TEMPLATE_PATH=$(pwd)/app
+    export PATH=$PATH:$(pwd)/xtensa-esp32-elf/bin/
+    echo GCC is "$(which xtensa-esp32-elf-gcc)"
 fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_ESP32_IDF4" = "1" ]; then
-    echo ===== ESP32 IDF4
+    echo "===== ESP32 IDF4"
     # SDK
     if [ ! -d "esp-idf-4" ]; then
         echo installing esp-idf folder
         mkdir esp-idf-4
-        cd esp-idf-4
+        cd esp-idf-4 || exit
         git clone -b v4.4.8 --recursive https://github.com/espressif/esp-idf.git
         esp-idf/install.sh			# RIC if not specifying the target, it installs all of them for now, selected targets are: esp32c3, esp32, esp32s2, esp32h2, esp32s3
         cd ..
@@ -128,7 +128,7 @@ if [ "$PROVISION_ESP32_IDF4" = "1" ]; then
 fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_ESP8266" = "1" ]; then
-    echo ===== ESP8266
+    echo "===== ESP8266"
     if [ ! -d "ESP8266_NONOS_SDK-2.2.1" ]; then
         echo ESP8266_NONOS_SDK-2.2.1
         curl -Ls https://github.com/espruino/EspruinoBuildTools/raw/master/esp8266/ESP8266_NONOS_SDK-2.2.1.tar.gz | tar xfz - --no-same-owner
@@ -142,21 +142,21 @@ if [ "$PROVISION_ESP8266" = "1" ]; then
         fi
 
     fi
-    export ESP8266_SDK_ROOT=`pwd`/ESP8266_NONOS_SDK-2.2.1
-    export PATH=$PATH:`pwd`/xtensa-lx106-elf/bin/
-    echo GCC is $(which xtensa-lx106-elf-gcc)
+    export ESP8266_SDK_ROOT=$(pwd)/ESP8266_NONOS_SDK-2.2.1
+    export PATH=$PATH:$(pwd)/xtensa-lx106-elf/bin/
+    echo GCC is "$(which xtensa-lx106-elf-gcc)"
 fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_LINUX" = "1" ]; then
-    echo ===== LINUX
+    echo "===== LINUX"
 fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_RASPBERRYPI" = "1" ]; then
-    echo ===== RASPBERRYPI
+    echo "===== RASPBERRYPI"
     if [ ! -d "targetlibs/raspberrypi" ]; then
         echo Installing Raspberry pi tools
         mkdir targetlibs/raspberrypi
-        cd targetlibs/raspberrypi
+        cd targetlibs/raspberrypi || exit
         git clone --depth=1 https://github.com/raspberrypi/tools
         # wiringpi?
         cd ../..
@@ -164,7 +164,7 @@ if [ "$PROVISION_RASPBERRYPI" = "1" ]; then
 fi
 #--------------------------------------------------------------------------------
 if [ "$PROVISION_NRF52" = "1" ]; then
-    echo ===== NRF52
+    echo "===== NRF52"
     if ! type nrfutil 2> /dev/null > /dev/null; then
       #echo Installing nrfutil
       #sudo pip install --ignore-installed nrfutil nrfutil
@@ -186,7 +186,7 @@ if [ "$PROVISION_NRF52" = "1" ]; then
       fi
       # Because nrfutil doesn't support the latest version of python! Yay!
       echo Installing nrfutil
-      sudo pipx install nrfutil --python `which python3.8`
+      sudo pipx install nrfutil --python "$(which python3.8)"
     fi
     ARM=1
 
@@ -205,9 +205,9 @@ if [ "$PROVISION_NRF_SDK15" = "1" ]; then
         rm -rf nRF5_SDK_15.0.0_a53641a/external
         cp -r nRF5_SDK_15.0.0_a53641a/* targetlibs/nrf5x_15
         rm -rf nRF5_SDK_15.0.0_a53641a.zip nRF5_SDK_15.0.0_a53641a
-        echo ======================================================
+        echo "======================================================"
         echo "FIXME - SDK15 NFC patches don't apply cleanly"
-        echo ======================================================
+        echo "======================================================"
         cat targetlibs/nrf5x_15/patches/* | patch -p1 || true
     fi
 fi
@@ -221,9 +221,9 @@ if [ "$PROVISION_NRF_SDK15_3" = "1" ]; then
         rm -rf nRF5_SDK_15.3.0_59ac345/external
         cp -r nRF5_SDK_15.3.0_59ac345/* targetlibs/nrf5x_15_3
         rm -rf nRF5_SDK_15.3.0_59ac345.zip nRF5_SDK_15.3.0_59ac345
-        echo ======================================================
+        echo "======================================================"
         echo "FIXME - SDK15 NFC patches don't apply cleanly"
-        echo ======================================================
+        echo "======================================================"
         cat targetlibs/nrf5x_15_3/patches/* | patch -p1 || true
     fi
 fi
@@ -237,7 +237,7 @@ if [ "$PROVISION_NRF_SDK17" = "1" ]; then
         rm -rf nRF5_SDK_17.0.2_d674dde/external
         cp -r nRF5_SDK_17.0.2_d674dde/* targetlibs/nrf5x_17
         rm -rf nRF5_SDK_17.zip nRF5_SDK_17.0.2_d674dde
-        echo ======================================================
+        echo "======================================================"
         cat targetlibs/nrf5x_17/patches/* | patch -p1
     fi
 fi
@@ -270,7 +270,7 @@ fi
 
 if [ "$ARM" = "1" ]; then
     # defaulting to ARM
-    echo ===== ARM
+    echo "===== ARM"
     EXPECTEDARMGCCVERSION="13.2.1"
     EXPECTEDARMGCCFILENAME="arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi"
     if type arm-none-eabi-gcc 2> /dev/null > /dev/null; then
@@ -303,7 +303,7 @@ if [ "$ARM" = "1" ]; then
         else
             echo "Folder found"
         fi
-	      export PATH=$PATH:`pwd`/$EXPECTEDARMGCCFILENAME/bin
+	      export PATH=$PATH:$(pwd)/$EXPECTEDARMGCCFILENAME/bin
     fi
 fi
 
@@ -311,11 +311,11 @@ fi
 EMSCRIPTEN_VERSION="3.1.54"
 
 if [ "$PROVISION_EMSCRIPTEN" = "1" ] || [ "$PROVISION_EMSCRIPTEN2" = "1" ]; then
-    echo ===== EMULATOR
+    echo "===== EMULATOR"
     echo Installing Emscripten $EMSCRIPTEN_VERSION
     if [ ! -d "targetlibs/emscripten/emsdk" ]; then
         mkdir targetlibs/emscripten
-        cd targetlibs/emscripten
+        cd targetlibs/emscripten || exit
         git clone --depth=1 https://github.com/emscripten-core/emsdk
         cd ../..
     fi
