@@ -706,13 +706,18 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
   uint32_t freeAddr = 0;
   while (!freeAddr) {
     addr = bankStartAddress;
+    uint32_t freeSpace = 0, trashSpace = 0;
     freeAddr = 0;
     // Find a hole that's big enough for our file
     do {
       if (jsfGetFileHeader(addr, &header, false)) do {
+        if (header.name.firstChars==0) // is deleted?
+          trashSpace += jsfGetFileSize(&header); // count how much space is in compacted files
       } while (jsfGetNextFileHeader(&addr, &header, GNFH_GET_EMPTY));
       // If not enough space, skip to next page
-      if (jsfGetSpaceLeftInPage(addr)<requiredSize) {
+      uint32_t spaceInPage = jsfGetSpaceLeftInPage(addr);
+      freeSpace += spaceInPage;
+      if (spaceInPage<requiredSize) {
         addr = jsfGetAddressOfNextPage(addr);
       } else { // if enough space, we can write a file!
         freeAddr = addr;
@@ -720,8 +725,9 @@ static uint32_t jsfCreateFile(JsfFileName name, uint32_t size, JsfFileFlags flag
     } while (addr && !freeAddr);
     // If we don't have space, compact
     if (!freeAddr) {
-      // check this for sanity - in future we might compact forward into other pages, and don't compact if so
-      if (!compacted) {
+      //jsiConsolePrintf("%d Free, %d Trash -> need %d\n", freeSpace, trashSpace, requiredSize);
+      if (!compacted && (requiredSize < (freeSpace+trashSpace))) {
+        // only try and compact if we're sure there would be enough space - it's better to fail fast!
         compacted = true;
         if (!jsfCompact(true)) {
           jsDebug(DBG_INFO,"CreateFile - Compact failed\n");
