@@ -1644,7 +1644,7 @@ static void jsiPacketStart() {
   inputState = IPS_PACKET_TRANSFER_BYTE0;
   jsiInputLineCursorMoved(); // unlock iterator
   jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "PK_IL", inputLine); // back up old inputline
-  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "PK_TIMEOUT", jsiSetTimeout(jsiPacketTimeoutHandler, 1000));
+  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "PK_TIMEOUT", jsiSetTimeout(jsiPacketTimeoutHandler, 2000));
   inputLine = jsvNewFromEmptyString();
 }
 

@@ -56,6 +56,11 @@ Following transmission of a packet (or after timeout of 1 second), there will be
 | `ACK`  | 6               | Acknowledged successful receipt.        |
 | `NACK` | 21              | Negative acknowledgement, unsuccessful. |
 
+### Timeouts
+
+* If a single packet takes more than 2 sec to transmit (1 sec on 2v25) Espruino will send `NAK` and will return to normal REPL mode.
+* If there's more than a 10 sec gap between DATA transfers for a file, Espruino will automatically close the transfer and the file. Subsequent DATA packets will be `NAK`ed as no file is open.
+
 ### Example
 
 As an example, to create a file named `hello.txt` with the content `Hello World`, the packet is constructed as follows:
