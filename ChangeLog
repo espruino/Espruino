@@ -30,6 +30,7 @@
             ESP32: Remove FlashFS, adjust partitions to increase available Storage from 256kB to 896kB
             Storage: Don't attempt to compact if it's obvious that we don't have space for the file even when compacted
             Increase Packet timeout from 1 to 5 sec (increase reliability over slow Bluetooth LE connections)
+            Bangle.js: fix .setUI back button stopped being drawn in the leftmost position after recent changes.
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)
