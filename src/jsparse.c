@@ -2043,8 +2043,11 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
     // We need to work out the value before we parse later args in case they have side-effects, see #2547
     if (JSP_SHOULD_EXECUTE) {
       JsVar *an = jsvSkipNameAndUnLock(a);
-      a = jsvGetValueOf(an);
-      jsvUnLock(an);
+      if (op!=LEX_R_INSTANCEOF) { // instanceof doesn't want the value!
+        a = jsvGetValueOf(an);
+        jsvUnLock(an);
+      } else
+        a = an;
     }
     // if we have short-circuit ops, then if we know the outcome
     // we don't bother to execute the other op. Even if not
