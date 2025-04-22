@@ -110,7 +110,7 @@
       };
       Bangle.prependListener("touch", touchHandler);
       // add widget - 'remove' function will remove the widgets
-      WIDGETS = Object.assign({back:{
+      WIDGETS = Object.assign({back:{ // Object.assign({back..}) ensures this is always the FIRST widget
         area:"tl", width:24,
         draw:e=>g.reset().setColor("#f00").drawImage(atob("GBiBAAAYAAH/gAf/4A//8B//+D///D///H/P/n+H/n8P/n4f/vwAP/wAP34f/n8P/n+H/n/P/j///D///B//+A//8Af/4AH/gAAYAA=="),e.x,e.y),
         remove:function(noclear){
