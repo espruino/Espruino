@@ -92,7 +92,7 @@ Main supported platforms are:
 * nRF52
 * nRF51
 * ESP8266
-* ESP32
+* ESP32, ESP32-S3, ESP32-C3
 * Linux
 
 Espruino has been ported to other boards and platforms (such as EFM32 and SAMD), but these have a habit of being contributed and then never maintained. All boards that this has happened to reside in the [UNMAINTAINED_BOARDS](https://github.com/espruino/Espruino/tree/UNMAINTAINED_BOARDS) branch.
