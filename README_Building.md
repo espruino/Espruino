@@ -321,7 +321,6 @@ make clean && make $*
 ### for esp32
 On 64 bit linux:
 
-#### ESP32 Series
 ```
 git clone https://github.com/espruino/Espruino.git
 cd Espruino
@@ -329,21 +328,8 @@ source scripts/provision.sh ESP32
 make clean && BOARD=ESP32 make
 ```
 
-#### ESP32-S3 Series
-```
-git clone https://github.com/espruino/Espruino.git
-cd Espruino
-source scripts/provision.sh ESP32S3_IDF4
-make clean && BOARD=ESP32S3_IDF4 make
-```
-
-#### ESP32-C3 Series
-```
-git clone https://github.com/espruino/Espruino.git
-cd Espruino
-source scripts/provision.sh ESP32C3_IDF4
-make clean && BOARD=ESP32C3_IDF4 make
-```
+If you have a different flavour of this chip, like the esp32-s3, you can replace `ESP32` with `ESP32S3_IDF4` in the previous commands.
+You can see a list of all the supported esp32 series in the `boards` folder.
 
 If you are on a different platform such as the Mac, you will need to install the toolchain and esp-idf for your platform, see
 http://esp-idf.readthedocs.io/en/latest/macos-setup.html
