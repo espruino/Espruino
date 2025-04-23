@@ -192,11 +192,10 @@ JsfFileFlags jsfGetFileFlags(JsfFileHeader *header) {
 type of file like FILENAME_TABLE that shouldn't be listed
 or kept when compacting */
 static bool jsfIsRealFile(JsfFileHeader *header) {
+  JsfFileFlags flags = jsfGetFileFlags(header);
   return (header->name.firstChars != 0) // if not replaced
-#ifdef ESPR_STORAGE_FILENAME_TABLE
-         && !(jsfGetFileFlags(header) & JSFF_FILENAME_TABLE)
-#endif
-         ;
+         && (flags==JSFF_NONE || flags==JSFF_STORAGEFILE || flags==JSFF_COMPRESSED); // other combinations are not allowed -> ignore this file
+        // JSFF_FILENAME_TABLE is intentionally ignored so we don't copy it
 }
 
 
