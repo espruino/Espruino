@@ -33,6 +33,7 @@
             Bangle.js: fix .setUI back button stopped being drawn in the leftmost position after recent changes.
             Fix 2v25 regression where `(new Date() instanceof Date) == false` (instanceof on objects that contain a `valueOf` method)
             Storage: Ensure compaction removes any files with invalid file types
+            Puck.js: v2.2 compatibility
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

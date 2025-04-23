@@ -1490,7 +1490,7 @@ bool _jswrap_puck_selfTest(bool advertisePassOrFail) {
     }
   }
 
-  if (PUCKJS_HAS_IR) {
+  if (PUCKJS_HAS_IR && !PUCKJS_HAS_IR_FET) {
     jshPinSetState(IR_ANODE_PIN, JSHPINSTATE_GPIO_IN_PULLDOWN);
     jshPinSetState(IR_CATHODE_PIN, JSHPINSTATE_GPIO_OUT);
     jshPinSetValue(IR_CATHODE_PIN, 1);
@@ -1704,9 +1704,10 @@ void jswrap_puck_init() {
     } else {
       // Is it 2v1?
       puckVersion = PUCKJS_2V1; // set version so we use the correct I2C address
+      buf[0]=255;
       mag_rd(0x39, buf, 1); // MMC5603NJ WHO_AM_I
       //jsiConsolePrintf("MMC5603NJ %d\n", buf[0]);
-      if (buf[0] == 16) {
+      if (buf[0] == 16 || buf[0] == 0) {
         puckVersion = PUCKJS_2V1;
       } else {
         //jsiConsolePrintf("No magnetometer\n");
