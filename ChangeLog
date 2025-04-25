@@ -35,6 +35,7 @@
             Storage: Ensure compaction removes any files with invalid file types
             Puck.js: v2.2 compatibility
             Graphics: stringMetrics (and so findFont) now doesn't set unrenderableChars for strings with a '\n' character
+            Bangle.js2: showPrompt better alignment of text if no title, and add buttonHeight option
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

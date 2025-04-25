@@ -9,14 +9,15 @@
     g.reset().setFontAlign(0,0);
     var R = Bangle.appRect, Y = R.y, W = R.w;
     var title = g.findFont(options.title||"", {w:W-2,wrap:1,max:24});
-    if (title.text)
+    if (title.text) {
       g.setColor(g.theme.fgH).setBgColor(g.theme.bgH).
         clearRect(0,Y,W-1,Y+4+title.h).
         drawString(title.text,W/2,Y+4+title.h/2);
-    Y += title.h+4;
+      Y += title.h+4;
+    } else Y+=4;
     var BX = 0|"0123233"[btns.length],
         BY = Math.ceil(btns.length / BX),
-        BW = (W-1)/BX, BH = (BY>1 || options.img)?40:50;
+        BW = (W-1)/BX, BH = options.buttonHeight || ((BY>1 || options.img)?40:50);
     var H = R.y2-(Y + BY*BH);
     if (options.img) {
       var im = g.imageMetrics(options.img);
