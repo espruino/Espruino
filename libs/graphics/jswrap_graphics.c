@@ -2336,7 +2336,7 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
       width = 0;
       height += fontHeight;
       if (lineStartIndex>=0) break; // only do one line
-    }
+    } else
 #ifndef SAVE_ON_FLASH
     if (ch==0) { // If images are described in-line in the string, render them
       result->imageCount++;
@@ -2350,12 +2350,13 @@ void _jswrap_graphics_stringMetrics(JsGraphics *gfx, JsVar *var, int lineStartIn
         if (img.height > result->maxImageHeight)
           result->maxImageHeight = img.height;
       }
-      continue;
-    }
+    } else
 #endif
-    int w = _jswrap_graphics_getCharWidth(&info, ch);
-    width += w;
-    if (w==0) result->unrenderableChars = true; // assume width=0 means char not found
+    {
+      int w = _jswrap_graphics_getCharWidth(&info, ch);
+      width += w;
+      if (w==0) result->unrenderableChars = true; // assume width=0 means char not found
+    }
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(str);

@@ -34,6 +34,7 @@
             Fix 2v25 regression where `(new Date() instanceof Date) == false` (instanceof on objects that contain a `valueOf` method)
             Storage: Ensure compaction removes any files with invalid file types
             Puck.js: v2.2 compatibility
+            Graphics: stringMetrics (and so findFont) now doesn't set unrenderableChars for strings with a '\n' character
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)
