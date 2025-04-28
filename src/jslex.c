@@ -338,6 +338,7 @@ static void jslLexString() {
   jslGetNextCh();
   char lastCh = delim;
   int nesting = 0;
+  bool tempatedStringHasTemplate = false; // sometimes we get templated strings without a template - we can treat these as normal strings
 #ifdef ESPR_UNICODE_SUPPORT
   bool hadCharsInUTF8Range = false;
   int high_surrogate = 0;
@@ -346,8 +347,10 @@ static void jslLexString() {
   while (lex->currCh && (lex->currCh!=delim || nesting)) {
     // in template literals, cope with a literal inside another: `${`Hello`}`
     if (delim=='`') {
-      if ((lastCh=='$' || nesting) && lex->currCh=='{') nesting++;
-      if (nesting && lex->currCh=='}') nesting--;
+      if ((lastCh=='$' || nesting) && lex->currCh=='{') {
+        nesting++;
+        tempatedStringHasTemplate = true;
+      } else if (nesting && lex->currCh=='}') nesting--;
     }
     if (lex->currCh == '\\') {
       jslGetNextCh();
@@ -497,7 +500,7 @@ static void jslLexString() {
 #endif  // ESPR_UNICODE_SUPPORT
   }
   jsvStringIteratorFree(&it);
-  if (delim=='`')
+  if (delim=='`' && tempatedStringHasTemplate)
     lex->tk = LEX_TEMPLATE_LITERAL;
   else lex->tk = LEX_STR;
   // unfinished strings
