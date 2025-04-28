@@ -36,6 +36,7 @@
             Puck.js: v2.2 compatibility
             Graphics: stringMetrics (and so findFont) now doesn't set unrenderableChars for strings with a '\n' character
             Bangle.js2: showPrompt better alignment of text if no title, and add buttonHeight option
+            nRF52: Move SDK15 builds from 6.0.0 to binary-compatible 6.1.1 softdevice (Jolt.js/Bangle.js 2)
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

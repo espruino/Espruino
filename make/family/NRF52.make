@@ -39,11 +39,11 @@ DEFINES += -D__HEAP_SIZE=0
 NRF5X_SDK_PATH=targetlibs/nrf5x_15
 ifeq ($(CHIP),NRF52840)
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52840.c
-SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52_6.0.0_softdevice.hex
+SOFTDEVICE      = $(SOFTDEVICE_PATH)/hex/s140_nrf52_6.1.1_softdevice.hex
 PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52840.o
 else  # NRF52832
 TARGETSOURCES += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/system_nrf52.c
-SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_6.0.0_softdevice.hex
+SOFTDEVICE        = $(SOFTDEVICE_PATH)/hex/s132_nrf52_6.1.1_softdevice.hex
 PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/modules/nrfx/mdk/gcc_startup_nrf52.o
 endif
 else ifdef NRF_SDK15_3
