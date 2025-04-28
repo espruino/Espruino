@@ -484,7 +484,8 @@ Bangle.js 1 is only capable of detecting left/right swipes as it only contains a
 2 zone touchscreen.
 */
 /*TYPESCRIPT
-type TouchCallback = (button: number, xy?: { x: number, y: number }) => void;
+type TouchCallbackXY = { x: number, y: number, type: 0 | 2 };
+type TouchCallback = (button?: number, xy?: TouchCallbackXY) => void;
 */
 /*JSON{
   "type" : "event",
