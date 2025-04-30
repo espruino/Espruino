@@ -3979,8 +3979,8 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
   "typescript" : [
     "asImage(type?: \"object\"): ImageObject;",
     "asImage(type: \"string\"): string;",
-    "asImage(layers: { type?: \"object\", x?: number, y?: number, w?: number, h?: number): ImageObject;",
-    "asImage(layers: { type: \"string\", x?: number, y?: number, w?: number, h?: number): string;"
+    "asImage(layers: { type?: \"object\", x?: number, y?: number, w?: number, h?: number }): ImageObject;",
+    "asImage(layers: { type: \"string\", x?: number, y?: number, w?: number, h?: number }): string;"
   ]
 }
 Return this `Graphics` object as an Image that can be used with
