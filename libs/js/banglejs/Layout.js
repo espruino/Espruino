@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Bangle.js contributors. See the file LICENSE for copying permission. */
+/* Copyright (c) 2024 Bangle.js contributors. See the file LICENSE for copying permission. */
 
 // See Layout.md for documentation
 
@@ -8,7 +8,6 @@
    * run: ../EspruinoDocs/bin/minify.js modules/Layout.js modules/Layout.min.js
 
 */
-
 
 function Layout(layout, options) {
   this._l = this.l = layout;
@@ -127,7 +126,7 @@ Layout.prototype.setUI = function() {
     Bangle.touchHandler = (_,e)=>touchHandler(this._l,e);
     Bangle.on('touch',Bangle.touchHandler);
   }
-}
+};
 
 function prepareLazyRender(l, rectsToClear, drawList, rects, parentBg) {
   var bgCol = l.bgCol == null ? parentBg : g.toColor(l.bgCol);
@@ -190,7 +189,7 @@ Layout.prototype.render = function (l) {
       btnborder = l.btnBorderCol!==undefined?l.btnBorderCol:gfx.theme.fg2,
       btnface = l.btnFaceCol!==undefined?l.btnFaceCol:gfx.theme.bg2;
     if(l.selected){
-      btnface = gfx.theme.bgH, btnborder = gfx.theme.fgH;
+      btnface = gfx.theme.bgH; btnborder = gfx.theme.fgH;
     }
     gfx.setColor(btnface).fillPoly(poly).setColor(btnborder).drawPoly(poly);
     if (l.col!==undefined) gfx.setColor(l.col);
@@ -208,10 +207,10 @@ Layout.prototype.render = function (l) {
       l.y + l.h/2,
       {scale: l.scale||undefined, rotate: Math.PI*0.5*(l.r||0)}
     );
-  }, "custom":function(l){"ram"; l.render(l);
+  }, "custom":function(l){ "ram"; l.render(l);
   }, "h":function(l) { "ram"; l.c.forEach(render);
-  }, "v":function(l) { "ram"; l.c.forEach(render); }
-  };
+  }, "v":function(l) { "ram"; l.c.forEach(render);
+  }};
 
   if (this.lazy) {
     // we have to use 'var' here not 'let', otherwise the minifier
@@ -232,22 +231,22 @@ Layout.prototype.render = function (l) {
 
 Layout.prototype.forgetLazyState = function () {
   this.rects = {};
-}
+};
 
 Layout.prototype.layout = function (l) {
   // l = current layout element
-  var cb = {
+  var floor = Math.floor, cb = {
     "h" : function(l) {"ram";
-      var acc_w = l.x + (0|l.pad);
-      var accfillx = 0;
-      var fillx = l.c && l.c.reduce((a,l)=>a+(0|l.fillx),0);
+      var acc_w = l.x + (0|l.pad),
+          accfillx = 0,
+          fillx = l.c && l.c.reduce((a,l)=>a+(0|l.fillx),0);
       if (!fillx) { acc_w += (l.w-l._w)>>1; fillx=1; }
       var x = acc_w;
       l.c.forEach(c => {
         c.x = 0|x;
         acc_w += c._w;
         accfillx += 0|c.fillx;
-        x = acc_w + Math.floor(accfillx*(l.w-l._w)/fillx);
+        x = acc_w + floor(accfillx*(l.w-l._w)/fillx);
         c.w = 0|(x - c.x);
         c.h = 0|(c.filly ? l.h - (l.pad<<1) : c._h);
         c.y = 0|(l.y + (0|l.pad) + ((1+(0|c.valign))*(l.h-(l.pad<<1)-c.h)>>1));
@@ -255,16 +254,16 @@ Layout.prototype.layout = function (l) {
       });
     },
     "v" : function(l) {"ram";
-      var acc_h = l.y + (0|l.pad);
-      var accfilly = 0;
-      var filly = l.c && l.c.reduce((a,l)=>a+(0|l.filly),0);
+      var acc_h = l.y + (0|l.pad),
+          accfilly = 0,
+          filly = l.c && l.c.reduce((a,l)=>a+(0|l.filly),0);
       if (!filly) { acc_h += (l.h-l._h)>>1; filly=1; }
       var y = acc_h;
       l.c.forEach(c => {
         c.y = 0|y;
         acc_h += c._h;
         accfilly += 0|c.filly;
-        y = acc_h + Math.floor(accfilly*(l.h-l._h)/filly);
+        y = acc_h + floor(accfilly*(l.h-l._h)/filly);
         c.h = 0|(y - c.y);
         c.w = 0|(c.fillx ? l.w - (l.pad<<1) : c._w);
         c.x = 0|(l.x + (0|l.pad) + ((1+(0|c.halign))*(l.w-(l.pad<<1)-c.w)>>1));
@@ -274,6 +273,7 @@ Layout.prototype.layout = function (l) {
   };
   if (cb[l.type]) cb[l.type](l);
 };
+
 Layout.prototype.debug = function(l,c) {
   if (!l) l = this._l;
   c=c||1;
@@ -283,31 +283,32 @@ Layout.prototype.debug = function(l,c) {
   c++;
   if (l.c) l.c.forEach(n => this.debug(n,c));
 };
+
 Layout.prototype.update = function() {
   delete this.updateNeeded;
-  var gfx=g; // define locally, because this is faster
+  var gfx=g, max=Math.max, rnd=Math.round; // define locally, because this is faster
   // update sizes
   function updateMin(l) {"ram";
     cb[l.type](l);
     if (l.r&1) { // rotation
       var t = l._w;l._w=l._h;l._h=t;
     }
-    l._w = Math.max(l._w + (l.pad<<1), 0|l.width);
-    l._h = Math.max(l._h + (l.pad<<1), 0|l.height);
+    l._w = max(l._w + (l.pad<<1), 0|l.width);
+    l._h = max(l._h + (l.pad<<1), 0|l.height);
   }
   var cb = {
     "txt" : function(l) {"ram";
       if (l.font.endsWith("%"))
-        l.font = "Vector"+Math.round(gfx.getHeight()*l.font.slice(0,-1)/100);
+        l.font = "Vector"+rnd(gfx.getHeight()*l.font.slice(0,-1)/100);
       if (l.wrap) {
         l._h = l._w = 0;
       } else {
-        var m = g.setFont(l.font).stringMetrics(l.label);
+        var m = gfx.setFont(l.font).stringMetrics(l.label);
         l._w = m.width; l._h = m.height;
       }
     }, "btn": function(l) {"ram";
       if (l.font && l.font.endsWith("%"))
-        l.font = "Vector"+Math.round(gfx.getHeight()*l.font.slice(0,-1)/100);
+        l.font = "Vector"+rnd(gfx.getHeight()*l.font.slice(0,-1)/100);
       var m = l.src?gfx.imageMetrics("function"==typeof l.src?l.src():l.src):gfx.setFont(l.font||"6x8:2").stringMetrics(l.label);
       l._h = 16 + m.height;
       l._w = 20 + m.width;
@@ -325,19 +326,18 @@ Layout.prototype.update = function() {
       l._h = 0;
     }, "h": function(l) {"ram";
       l.c.forEach(updateMin);
-      l._h = l.c.reduce((a,b)=>Math.max(a,b._h),0);
+      l._h = l.c.reduce((a,b)=>max(a,b._h),0);
       l._w = l.c.reduce((a,b)=>a+b._w,0);
       if (l.fillx == null && l.c.some(c=>c.fillx)) l.fillx = 1;
       if (l.filly == null && l.c.some(c=>c.filly)) l.filly = 1;
     }, "v": function(l) {"ram";
       l.c.forEach(updateMin);
       l._h = l.c.reduce((a,b)=>a+b._h,0);
-      l._w = l.c.reduce((a,b)=>Math.max(a,b._w),0);
+      l._w = l.c.reduce((a,b)=>max(a,b._w),0);
       if (l.fillx == null && l.c.some(c=>c.fillx)) l.fillx = 1;
       if (l.filly == null && l.c.some(c=>c.filly)) l.filly = 1;
     }
   };
-
   var l = this._l;
   updateMin(l);
   delete cb;
