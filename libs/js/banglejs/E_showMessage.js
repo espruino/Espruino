@@ -17,9 +17,11 @@
     H -= im.height;
     Y += im.height;
   }
-  var msg = g.findFont(message, {w:W-2,h:H,wrap:1,trim:1,min:16});
-  g.setColor(g.theme.fg).setBgColor(g.theme.bg).
-    drawString(msg.text,W/2,Y+H/2);
+  if (message !== undefined) {
+    var msg = g.findFont(message, {w:W-2,h:H,wrap:1,trim:1,min:16});
+    g.setColor(g.theme.fg).setBgColor(g.theme.bg).
+      drawString(msg.text,W/2,Y+H/2);
+  }
   g.flip(); // force immediate show of message
   Bangle.setLCDPower(1); // ensure screen is on
 })
