@@ -3472,7 +3472,11 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
   ble_gap_scan_params_t     m_scan_param;
   memset(&m_scan_param, 0, sizeof(m_scan_param));
   m_scan_param.active       = 1;            // Active scanning set.
+  #if NRF_SD_BLE_API_VERSION>5 // the resolution depends on which API version!
   m_scan_param.timeout      = MSEC_TO_UNITS(4000, UNIT_10_MS);   // 4 second timeout (in 10ms units)
+  #else
+  m_scan_param.timeout      = 4;   // 4 second timeout
+  #endif
   jsble_set_scan_params(&m_scan_param, options);
 
   ble_gap_conn_params_t   gap_conn_params;
