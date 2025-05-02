@@ -39,6 +39,7 @@
             nRF52: Move SDK15 builds from 6.0.0 to binary-compatible 6.1.1 softdevice (Jolt.js/Bangle.js 2)
             Templated strings without Templates now treated as normal strings (fix #2577)
             Add pretokenisation of 8/16 bit ints (fix #2563)
+            nRF5x: Fix BLE connection timeout (was 40ms, not 4s) for more reliable outgoing connections
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

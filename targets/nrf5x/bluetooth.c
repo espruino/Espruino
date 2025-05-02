@@ -3457,12 +3457,13 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
   memset(&m_scan_param, 0, sizeof(m_scan_param));
   m_scan_param.active       = 1;            // Active scanning set.
   m_scan_param.interval     = MSEC_TO_UNITS(100, UNIT_0_625_MS); // Scan interval.
-  m_scan_param.window       = MSEC_TO_UNITS(90, UNIT_0_625_MS); // Scan window.
-  m_scan_param.timeout      = 4;            // 4 second timeout.
+  m_scan_param.window       = MSEC_TO_UNITS(90, UNIT_0_625_MS);  // Scan window.
+  m_scan_param.timeout      = MSEC_TO_UNITS(4000, UNIT_10_MS);   // 4 second timeout (in 10ms units)
 #if NRF_SD_BLE_API_VERSION>5
   // It seems we could force connect on coded phy with:
   // m_scan_param.extended = 1;
-  // m_scan_param.scan_phys = BLE_GAP_PHY_CODED; BLE_GAP_PHYS_SUPPORTED results in INVALID_PARAM
+  // m_scan_param.scan_phys = BLE_GAP_PHY_CODED|BLE_GAP_PHY_1MBPS; BLE_GAP_PHYS_SUPPORTED results in INVALID_PARAM
+  // m_scan_param.interval = m_scan_param.window*2;
 #endif
 
   ble_gap_conn_params_t   gap_conn_params;
