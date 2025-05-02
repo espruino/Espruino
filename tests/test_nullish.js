@@ -27,5 +27,5 @@ result &= (e ?? c);
 E.setFlags({pretokenise:1})
 function a(a) { return  a??5 }
 print (a.toString());
-result &= a.toString() == "function (a) {return a ?? 5}";
+result &= a.toString() == "function (a) {return a??5}";
 

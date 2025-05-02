@@ -227,7 +227,7 @@ typedef struct JsVarStruct {
 
   /** the flags determine the type of the variable - int/double/string/etc. */
   volatile JsVarFlags flags;
-} PACKED_FLAGS JsVar;
+} PACKED_FLAGS;
 
 /* We have a few different types:
  *

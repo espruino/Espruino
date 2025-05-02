@@ -1818,7 +1818,7 @@ NO_INLINE JsVar *jspeFactor() {
   } else if (lex->tk==LEX_INT) {
     JsVar *v = 0;
     if (JSP_SHOULD_EXECUTE) {
-      v = jsvNewFromLongInteger(stringToInt(jslGetTokenValueAsString()));
+      v = jslGetTokenValueAsVar();
     }
     JSP_ASSERT_MATCH(LEX_INT);
     return v;

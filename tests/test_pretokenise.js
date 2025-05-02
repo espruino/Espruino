@@ -17,13 +17,14 @@ try {
 
 // https://github.com/espruino/Espruino/issues/1745
 // 'get x' is ID followed by ID
-results.push((function () {
+var getx = (function() {
   let X = {
     _x:42,
     get x () { return this._x }
   };
   return X.x;
-})()==42);
+});
+results.push(getx()==42);
 
 // https://github.com/espruino/Espruino/issues/1868
 function go() {

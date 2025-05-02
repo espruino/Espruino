@@ -17,9 +17,9 @@ results = [
   orig["\xFFcod"] == "\"Hello\\1\\2\\3world\"",
   a["\xFFcod"] == "\xD1\rHello\1\2\3world",
   a()=="Hello\1\2\3world",
-  b["\xFFcod"] == "4+\xD1\vHello world+5",
+  b["\xFFcod"] == "\xD4\x04+\xD1\vHello world+\xD4\x05",
   b()=="4Hello world5",
-  c["\xFFcod"] == "\xD1\vHello World+\xD1\6 test +42;",
+  c["\xFFcod"] == "\xD1\vHello World+\xD1\6 test +\xD4*;",
   c()=="Hello World test 42",
   d["\xFFcod"] == "atob(\xD1\x10SGVsbG8gV29ybGQ=+\"\");",
   d()=="Hello World"

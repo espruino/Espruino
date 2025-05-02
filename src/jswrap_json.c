@@ -96,9 +96,9 @@ JsVar *jswrap_json_parse_internal(JSONFlags flags) {
     return r;
   }
   case LEX_INT: {
-    long long v = stringToInt(jslGetTokenValueAsString());
+    JsVar *v = jslGetTokenValueAsVar();
     jslGetNextToken();
-    return jsvNewFromLongInteger(v);
+    return v;
   }
   case LEX_FLOAT: {
     JsVarFloat v = stringToFloat(jslGetTokenValueAsString());

@@ -121,6 +121,9 @@ _LEX_OPERATOR2_START = _LEX_R_LIST_END+10, // padding for adding new symbols in 
     LEX_NULLISH = _LEX_OPERATOR2_START,
     LEX_RAW_STRING8, //< a pretokenised string stored as 0xD1,length,raw_binary_data
     LEX_RAW_STRING16, //< a pretokenised string stored as 0xD2,length_lo,length_hi,raw_binary_data
+    LEX_RAW_INT0, //< the integer value 0 stored as 0xD3
+    LEX_RAW_INT8, //< an integer value stored as 0xD4,value
+    LEX_RAW_INT16, //< an integer value stored as 0xD5,value_hi,value_lo
 _LEX_OPERATOR2_END = LEX_NULLISH,
 
 _LEX_TOKENS_END = _LEX_OPERATOR2_END, /* always the last entry for symbols */

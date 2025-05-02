@@ -375,7 +375,7 @@ void jsjFactor() {
     JSP_ASSERT_MATCH(LEX_ID);
     jsjFactorIDAndUnLock(name, LEX_ID);
   } else if (lex->tk==LEX_INT) {
-    int64_t v = stringToInt(jslGetTokenValueAsString());
+    int64_t v = jsvGetLongIntegerAndUnLock(jslGetTokenValueAsVar());
     JSP_ASSERT_MATCH(LEX_INT);
     if (jit.phase == JSJP_EMIT) {
       if (v>>32) {
