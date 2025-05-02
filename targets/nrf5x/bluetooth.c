@@ -2994,6 +2994,54 @@ void jsble_restart_softdevice(JsVar *jsFunction) {
   jsDebug(DBG_INFO,"jsble_restart_softdevice ends (%s)\n", (bleStatus&BLE_IS_SLEEPING)?"sleep":"awake");
 }
 
+static void jsble_set_scan_params(ble_gap_scan_params_t *scan_param, JsVar *options) {
+  #if NRF_SD_BLE_API_VERSION>5
+  scan_param->scan_phys         = BLE_GAP_PHY_AUTO;
+  scan_param->filter_policy     = BLE_GAP_SCAN_FP_ACCEPT_ALL;
+#endif
+  scan_param->interval     = SCAN_INTERVAL;// Scan interval.
+  scan_param->window       = SCAN_WINDOW;  // Scan window.
+
+  if (jsvIsObject(options)) {
+    scan_param->active = jsvObjectGetBoolChild(options, "active"); // Active scanning set.
+#if NRF_SD_BLE_API_VERSION>5
+    if (jsvObjectGetBoolChild(options, "extended"))
+      scan_param->extended = 1;
+    JsVar *advPhy = jsvObjectGetChildIfExists(options, "phy");
+    if (jsvIsUndefined(advPhy) || jsvIsStringEqual(advPhy,"1mbps")) {
+      // default
+    } else if (jsvIsStringEqual(advPhy,"2mbps")) {
+      scan_param->scan_phys = BLE_GAP_PHY_2MBPS;
+      scan_param->extended = 1;
+    } else if (jsvIsStringEqual(advPhy,"both")) {
+      scan_param->scan_phys = BLE_GAP_PHY_1MBPS|BLE_GAP_PHY_CODED;
+      scan_param->extended = 1;
+    } else if (jsvIsStringEqual(advPhy,"coded")) {
+      scan_param->scan_phys = BLE_GAP_PHY_CODED;
+      scan_param->extended = 1;
+    } else jsWarn("Unknown phy %q\n", advPhy);
+    // BLE_GAP_PHYS_SUPPORTED (all 3) doesn't appear to work - see https://github.com/espruino/Espruino/issues/2465
+    jsvUnLock(advPhy);
+#endif
+    uint32_t scan_window = MSEC_TO_UNITS(jsvObjectGetIntegerChild(options, "window"), UNIT_0_625_MS);
+    if (scan_window>=4 && scan_window<=16384)
+      scan_param->window = scan_window;
+    uint32_t scan_interval = MSEC_TO_UNITS(jsvObjectGetIntegerChild(options, "interval"), UNIT_0_625_MS);
+    if (scan_interval>=4 && scan_interval<=16384)
+      scan_param->interval = scan_interval;
+    if (scan_param->interval < scan_param->window)
+      scan_param->interval = scan_param->window;
+  }
+  // ensure that if using two phys, we leave time to scan on both of them
+  if (scan_param->scan_phys != BLE_GAP_PHY_AUTO &&
+      scan_param->scan_phys != BLE_GAP_PHY_1MBPS &&
+      scan_param->scan_phys != BLE_GAP_PHY_2MBPS &&
+      scan_param->scan_phys != BLE_GAP_PHY_CODED &&
+      scan_param->interval < scan_param->window*2)
+    scan_param->interval = scan_param->window*2;
+
+}
+
 uint32_t jsble_set_scanning(bool enabled, JsVar *options) {
   uint32_t err_code = 0;
   if (enabled) {
@@ -3001,45 +3049,8 @@ uint32_t jsble_set_scanning(bool enabled, JsVar *options) {
     bleStatus |= BLE_IS_SCANNING;
     ble_gap_scan_params_t     m_scan_param;
     memset(&m_scan_param,0,sizeof(m_scan_param));
-#if NRF_SD_BLE_API_VERSION>5
-    m_scan_param.scan_phys         = BLE_GAP_PHY_AUTO;
-    m_scan_param.filter_policy     = BLE_GAP_SCAN_FP_ACCEPT_ALL;
-#endif
-    m_scan_param.interval     = SCAN_INTERVAL;// Scan interval.
-    m_scan_param.window       = SCAN_WINDOW;  // Scan window.
     m_scan_param.timeout      = 0x0000;       // No timeout - BLE_GAP_SCAN_TIMEOUT_UNLIMITED
-
-    if (jsvIsObject(options)) {
-      m_scan_param.active = jsvObjectGetBoolChild(options, "active"); // Active scanning set.
-#if NRF_SD_BLE_API_VERSION>5
-      if (jsvObjectGetBoolChild(options, "extended"))
-        m_scan_param.extended = 1;
-      JsVar *advPhy = jsvObjectGetChildIfExists(options, "phy");
-      if (jsvIsUndefined(advPhy) || jsvIsStringEqual(advPhy,"1mbps")) {
-        // default
-      } else if (jsvIsStringEqual(advPhy,"2mbps")) {
-        m_scan_param.scan_phys = BLE_GAP_PHY_2MBPS;
-        m_scan_param.extended = 1;
-      } else if (jsvIsStringEqual(advPhy,"both")) {
-        m_scan_param.scan_phys = BLE_GAP_PHY_1MBPS|BLE_GAP_PHY_CODED;
-        m_scan_param.extended = 1;
-      } else if (jsvIsStringEqual(advPhy,"coded")) {
-        m_scan_param.scan_phys = BLE_GAP_PHY_CODED;
-        m_scan_param.extended = 1;
-      } else jsWarn("Unknown phy %q\n", advPhy);
-      // BLE_GAP_PHYS_SUPPORTED (all 3) doesn't appear to work - see https://github.com/espruino/Espruino/issues/2465
-      jsvUnLock(advPhy);
-#endif
-      uint32_t scan_window = MSEC_TO_UNITS(jsvObjectGetIntegerChild(options, "window"), UNIT_0_625_MS);
-      if (scan_window>=4 && scan_window<=16384)
-        m_scan_param.window = scan_window;
-      uint32_t scan_interval = MSEC_TO_UNITS(jsvObjectGetIntegerChild(options, "interval"), UNIT_0_625_MS);
-      if (scan_interval>=4 && scan_interval<=16384)
-        m_scan_param.interval = scan_interval;
-      if (m_scan_param.interval < m_scan_param.window)
-        m_scan_param.interval = m_scan_param.window;
-    }
-
+    jsble_set_scan_params(&m_scan_param, options);
     err_code = sd_ble_gap_scan_start(&m_scan_param
 #if NRF_SD_BLE_API_VERSION>5
          , &m_scan_buffer
@@ -3461,15 +3472,8 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
   ble_gap_scan_params_t     m_scan_param;
   memset(&m_scan_param, 0, sizeof(m_scan_param));
   m_scan_param.active       = 1;            // Active scanning set.
-  m_scan_param.interval     = MSEC_TO_UNITS(100, UNIT_0_625_MS); // Scan interval.
-  m_scan_param.window       = MSEC_TO_UNITS(90, UNIT_0_625_MS);  // Scan window.
   m_scan_param.timeout      = MSEC_TO_UNITS(4000, UNIT_10_MS);   // 4 second timeout (in 10ms units)
-#if NRF_SD_BLE_API_VERSION>5
-  // It seems we could force connect on coded phy with:
-  // m_scan_param.extended = 1;
-  // m_scan_param.scan_phys = BLE_GAP_PHY_CODED|BLE_GAP_PHY_1MBPS; BLE_GAP_PHYS_SUPPORTED results in INVALID_PARAM
-  // m_scan_param.interval = m_scan_param.window*2;
-#endif
+  jsble_set_scan_params(&m_scan_param, options);
 
   ble_gap_conn_params_t   gap_conn_params;
   memset(&gap_conn_params, 0, sizeof(gap_conn_params));

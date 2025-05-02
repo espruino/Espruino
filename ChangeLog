@@ -42,6 +42,7 @@
             nRF5x: Fix BLE connection timeout (was 40ms, not 4s) for more reliable outgoing connections
             Bangle.js2/Jolt.js: Increase GAP_EVENT_LENGTH to allow coded phy connections (1.2k more RAM used)
             nRF52840: Ensure scannable is disabled (and warn) when advertising on coded phy
+            nRF52840: Allow scan parameters to be passed to `connect` (enabling coded phy connection)
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

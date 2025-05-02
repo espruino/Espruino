@@ -3295,9 +3295,7 @@ filters: [ ... ] })`
   * `both` - standard and long range
   * `2mbps` - high speed 2mbps (not working)
 * `extended` - (NRF52833/NRF52840 only) support receiving extended-length advertising
-  packets (default=true if phy isn't `"1mbps"`)
-* `extended` - (NRF52833/NRF52840 only) support receiving extended-length advertising
-  packets (default=true if phy isn't `"1mbps"`)
+  packets (default=false, or true if phy isn't `"1mbps"`)
 * `window` - (2v22+) how long we scan for in milliseconds (default 100ms)
 * `interval` - (2v22+) how often we scan in milliseconds (default 100ms) - `window=interval=100`(default) is all the time. When
 scanning on both `1mbps` and `coded`, `interval` needs to be twice `window`.
@@ -3972,6 +3970,19 @@ See [`NRF.requestDevice`](/Reference#l_NRF_requestDevice) for usage examples.
 {
    minInterval // min connection interval in milliseconds, 7.5 ms to 4 s
    maxInterval // max connection interval in milliseconds, 7.5 ms to 4 s
+   phy : "1mbps/coded/both/2mbps"
+     // (2v26+, NRF52833/NRF52840 only) the type of Bluetooth signals to scan for
+     // `1mbps` (default) - standard Bluetooth LE advertising
+     // `coded` - long range
+     // `both` - standard and long range
+     // `2mbps` - high speed 2mbps (not working)
+   extended : bool
+     // (2v26+, NRF52833/NRF52840 only) support receiving extended-length advertising (default = false, or true if phy isn't `"1mbps"`)
+   window : int
+     // (2v26+) how long we scan for in milliseconds (default 100ms)
+   interval : int
+     // (2v26+) how often we scan in milliseconds (default 100ms)
+     // When scanning on both `1mbps` and `coded`, `interval` needs to be twice `window`.
 }
 ```
 
