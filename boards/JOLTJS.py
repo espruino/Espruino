@@ -44,8 +44,9 @@ info = {
      'DEFINES += -DNEOPIXEL_SCK_PIN=1 -DNEOPIXEL_LRCK_PIN=26', # nRF52840 needs LRCK pin defined for neopixel
      'DEFINES += -DESPR_USE_STEPPER_TIMER=1', # Build in the code for stepping using the timer
      'DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131', # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
+     'DEFINES += -DNRF_SDH_BLE_GAP_EVENT_LENGTH=6', # Needed to allow coded phy connections 
      'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
-     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3660', # set RAM base to match MTU=131 + CENTRAL_LINK_COUNT=2
+     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3b70', # set RAM base to match MTU=131 + CENTRAL_LINK_COUNT=2 + GAP_EVENT_LENGTH=6
      'DEFINES += -DAPP_TIMER_OP_QUEUE_SIZE=6',
      'DEFINES+= -DBLUETOOTH_NAME_PREFIX=\'"Jolt.js"\'',
 #    see targets/nrf5x/app_config.h for USB descriptors

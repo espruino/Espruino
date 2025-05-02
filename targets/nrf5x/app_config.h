@@ -167,7 +167,7 @@
 #ifdef NRF5X_SDK_15 // SDK15/NRF52840
 
 // To allow advertising transmit via coded phy (connectable:true,scannable:false)
-// #define NRF_SDH_BLE_GAP_EVENT_LENGTH 10
+// #define NRF_SDH_BLE_GAP_EVENT_LENGTH 6
 #endif // NRF52840
 
 #ifdef NRF5X_SDK_17
