@@ -3032,6 +3032,7 @@ static void jsble_set_scan_params(ble_gap_scan_params_t *scan_param, JsVar *opti
     if (scan_param->interval < scan_param->window)
       scan_param->interval = scan_param->window;
   }
+#if NRF_SD_BLE_API_VERSION>5
   // ensure that if using two phys, we leave time to scan on both of them
   if (scan_param->scan_phys != BLE_GAP_PHY_AUTO &&
       scan_param->scan_phys != BLE_GAP_PHY_1MBPS &&
@@ -3039,7 +3040,7 @@ static void jsble_set_scan_params(ble_gap_scan_params_t *scan_param, JsVar *opti
       scan_param->scan_phys != BLE_GAP_PHY_CODED &&
       scan_param->interval < scan_param->window*2)
     scan_param->interval = scan_param->window*2;
-
+#endif
 }
 
 uint32_t jsble_set_scanning(bool enabled, JsVar *options) {
