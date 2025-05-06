@@ -48,7 +48,7 @@ jobs:
         fetch-depth: 0
     - uses: actions/setup-python@v5
       with:
-          python-version: 3.8
+          python-version: 3.9
     - name: make ${{ matrix.board }}
       env:
         TRAVIS: 1
@@ -87,7 +87,7 @@ jobs:
         fetch-depth: 0    
     - uses: actions/setup-python@v5
       with:
-          python-version: 3.8
+          python-version: 3.9
     - name: make ${{ matrix.board }}
       env:
         TRAVIS: 1
@@ -125,7 +125,7 @@ jobs:
         fetch-depth: 0
     - uses: actions/setup-python@v5
       with:
-          python-version: 3.8
+          python-version: 3.9
     - name: make ${{ matrix.board }}
       env:
         TRAVIS: 1
@@ -148,7 +148,7 @@ jobs:
           bin/*.zip
  
 
-  # espressif builds - do not need python 3.8
+  # espressif builds - do not need python 3.9
   build_espressif:
     if: ${{ github.event_name != 'workflow_dispatch' || inputs.enable_main }}
     runs-on: ubuntu-24.04

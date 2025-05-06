@@ -170,23 +170,23 @@ if [ "$PROVISION_NRF52" = "1" ]; then
       #sudo pip install --ignore-installed nrfutil nrfutil
       # --ignore-installed is used because pip 10 fails because PyYAML was already installed by the system
 
-      # we need pipx and python 3.8 to allow us to run nrfutil under a python that's not the current version
+      # we need pipx and python 3.9 to allow us to run nrfutil under a python that's not the current version
       if pipx --version 2>/dev/null; then
         echo pipx installed
       else
         echo Installing pipx 
         sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y pipx
       fi
-      # we need python3.8 for nrfutil
-      if python3.8 --version 2>/dev/null; then
-        echo Python 3.8 installed
+      # we need python3.9 for nrfutil
+      if python3.9 --version 2>/dev/null; then
+        echo Python 3.9 installed
       else
-        echo Installing python3.8 
-        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python3.8
+        echo Installing python3.9
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -qq -y python3.9
       fi
       # Because nrfutil doesn't support the latest version of python! Yay!
       echo Installing nrfutil
-      sudo pipx install nrfutil --python "$(which python3.8)" --pip-args="ubjson==0.16.1" || cat /opt/pipx/logs/*
+      sudo pipx install nrfutil --python "$(which python3.9)" || cat /opt/pipx/logs/*
     fi
     ARM=1
 
