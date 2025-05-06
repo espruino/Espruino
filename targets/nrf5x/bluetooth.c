@@ -2778,9 +2778,6 @@ uint32_t jsble_advertising_start() {
     } else if (jsvIsStringEqual(advPhy,"coded")) {
       adv_params.primary_phy     = BLE_GAP_PHY_CODED; // must use 1mbps phy if connectable?
       adv_params.secondary_phy   = BLE_GAP_PHY_CODED;
-    } else if (jsvIsStringEqual(advPhy,"both")) {
-      adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
-      adv_params.secondary_phy   = BLE_GAP_PHY_CODED;
     } else jsWarn("Unknown phy %q\n", advPhy);
     jsvUnLock(advPhy);
   }
