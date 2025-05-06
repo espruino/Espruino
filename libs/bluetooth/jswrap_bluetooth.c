@@ -945,7 +945,7 @@ NRF.setAdvertising([
   interval: 600              // Advertising interval in msec, between 20 and 10000 (default is 375ms)
   manufacturer: 0x0590       // IF sending manufacturer data, this is the manufacturer ID
   manufacturerData: [...]    // IF sending manufacturer data, this is an array of data
-  phy: "1mbps/2mbps/coded"   // (NRF52833/NRF52840 only) use the long-range coded phy for transmission (1mbps default)
+  phy: "1mbps/2mbps/coded/both"   // (NRF52833/NRF52840 only) use the long-range coded phy for transmission (1mbps default)
 }
 ```
 
