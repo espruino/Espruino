@@ -96,8 +96,6 @@ jobs:
         BOARD: ${{ matrix.board }} 
         UPLOADTOKEN: ${{ secrets.UPLOADTOKEN }}  
       run: |
-        python3.8 -m pip install --user pipx # hack to ensure pipx runs in python 3.8
-        python3.8 -m pipx ensurepath
         source ./scripts/provision.sh  ${{ matrix.board }}
         make
         ./scripts/ci_upload.sh       
