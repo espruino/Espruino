@@ -186,7 +186,7 @@ if [ "$PROVISION_NRF52" = "1" ]; then
       fi
       # Because nrfutil doesn't support the latest version of python! Yay!
       echo Installing nrfutil
-      sudo pipx install nrfutil --python "$(which python3.8)"
+      sudo pipx install nrfutil --python "$(which python3.8)" || cat /opt/pipx/logs/*
     fi
     ARM=1
 
