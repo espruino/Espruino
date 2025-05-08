@@ -1503,7 +1503,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         adv.dlen = p_adv->data.len;
         memcpy(adv.data, p_adv->data.p_data, adv.dlen);
 #endif
-        size_t len = sizeof(BLEAdvReportData) + adv.dlen - BLE_GAP_ADV_MAX_SIZE;
+        size_t len = sizeof(BLEAdvReportData) + adv.dlen - BLE_GAP_ADV_MAX_SIZE/*BLEAdvReportData contans uint8_t[BLE_GAP_ADV_MAX_SIZE]*/;
         jsble_queue_pending_buf(BLEP_ADV_REPORT, 0, (char*)&adv, len);
 #if NRF_SD_BLE_API_VERSION>5
         // On new APIs we need to continue scanning
@@ -2654,7 +2654,7 @@ void jsble_setup_advdata(ble_advdata_t *advdata) {
 #if NRF_SD_BLE_API_VERSION>5
 static ble_gap_adv_data_t m_ble_gap_adv_data;
 // SoftDevice >= 6.1.0 needs this as static buffers
-static uint8_t m_adv_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
+static uint8_t m_adv_data[ESPR_MAX_ADVERTISEMENT_DATA];
 static uint8_t m_scan_rsp_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX]; // 31
 #endif
 
@@ -2664,7 +2664,7 @@ uint32_t jsble_advertising_update(uint8_t *advPtr, unsigned int advLen, uint8_t 
     // first we need to switch away from our static live advertising data buffers
     // otherwise we would get NRF_ERROR_INVALID_STATE from sd_ble_gap_adv_set_configure
     ble_gap_adv_data_t tmp;
-    uint8_t tmp_adv_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
+    uint8_t tmp_adv_data[ESPR_MAX_ADVERTISEMENT_DATA];
     uint8_t tmp_scan_rsp_data[BLE_GAP_ADV_SET_DATA_SIZE_MAX];
 
     tmp.adv_data.len = m_ble_gap_adv_data.adv_data.len;
@@ -2685,7 +2685,7 @@ uint32_t jsble_advertising_update(uint8_t *advPtr, unsigned int advLen, uint8_t 
   // now we can modify data and switch back to it
   if (advPtr){
     if (advLen){
-      advLen=MIN(advLen,BLE_GAP_ADV_SET_DATA_SIZE_MAX);
+      advLen=MIN(advLen,ESPR_MAX_ADVERTISEMENT_DATA);
       memcpy(m_adv_data, advPtr, advLen);
     }
     m_ble_gap_adv_data.adv_data.p_data = m_adv_data;
@@ -2778,10 +2778,20 @@ uint32_t jsble_advertising_start() {
     } else if (jsvIsStringEqual(advPhy,"coded")) {
       adv_params.primary_phy     = BLE_GAP_PHY_CODED; // must use 1mbps phy if connectable?
       adv_params.secondary_phy   = BLE_GAP_PHY_CODED;
+    } else if (jsvIsStringEqual(advPhy,"coded,1mbps")) {
+      adv_params.primary_phy     = BLE_GAP_PHY_CODED;
+      adv_params.secondary_phy   = BLE_GAP_PHY_1MBPS;
+    } else if (jsvIsStringEqual(advPhy,"1mbps,coded")) {
+      adv_params.primary_phy     = BLE_GAP_PHY_1MBPS;
+      adv_params.secondary_phy   = BLE_GAP_PHY_CODED;
     } else jsWarn("Unknown phy %q\n", advPhy);
     jsvUnLock(advPhy);
   }
-  if (adv_params.secondary_phy == BLE_GAP_PHY_AUTO) {
+  bool extended_advertising = (adv_params.secondary_phy != BLE_GAP_PHY_AUTO);
+  if (jsvObjectGetBoolChild(advOptions, "extended"))
+    extended_advertising = true;
+
+  if (!extended_advertising) {
     // the default...
     adv_params.properties.type = non_connectable
           ? (non_scannable ? BLE_GAP_ADV_TYPE_NONCONNECTABLE_NONSCANNABLE_UNDIRECTED : BLE_GAP_ADV_TYPE_NONCONNECTABLE_SCANNABLE_UNDIRECTED)

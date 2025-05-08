@@ -24,8 +24,12 @@
 #if NRF_SD_BLE_API_VERSION>5
 #include "nrf_sdh_ble.h"
 #define BLE_GAP_ADV_MAX_SIZE BLE_GAP_ADV_SET_DATA_SIZE_MAX
-#else
+#ifndef ESPR_MAX_ADVERTISEMENT_DATA // on new softdevice extended advertising allows us to advertise more data
+#define ESPR_MAX_ADVERTISEMENT_DATA  (63) // must be >=BLE_GAP_ADV_SET_DATA_SIZE_MAX (31)
+#endif // ESPR_MAX_ADVERTISEMENT_DATA
+#else // NRF_SD_BLE_API_VERSION<=5
 #include "ble.h"
+#define ESPR_MAX_ADVERTISEMENT_DATA  BLE_GAP_ADV_MAX_SIZE // on older SDKs we don't get extended advertising
 #endif
 #include "ble_advdata.h"
 
@@ -51,6 +55,7 @@ typedef struct {
 #define BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_RESOLVABLE (2)
 #define BLE_GAP_ADDR_TYPE_RANDOM_PRIVATE_NON_RESOLVABLE (3)
 #define BLE_GAP_ADV_MAX_SIZE (31)
+#define ESPR_MAX_ADVERTISEMENT_DATA  BLE_GAP_ADV_MAX_SIZE
 #define BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_MORE_AVAILABLE   0x02
 #define BLE_GAP_AD_TYPE_16BIT_SERVICE_UUID_COMPLETE         0x03
 #define BLE_GAP_AD_TYPE_128BIT_SERVICE_UUID_MORE_AVAILABLE  0x06

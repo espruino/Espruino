@@ -43,6 +43,9 @@
             Bangle.js2/Jolt.js: Increase GAP_EVENT_LENGTH to allow coded phy connections (1.2k more RAM used)
             nRF52840: Ensure scannable is disabled (and warn) when advertising on coded phy
             nRF52840: Allow scan parameters to be passed to `connect` (enabling coded phy connection)
+            nRF52840: Allow 1mbps,coded/coded,1mbps and up to double-length advertising in 'extended' advertising mode
+            BLE: Ensure all Espruino devices advertise the Espruino 0x0590 manufacturer ID by default
+               - The default Nordic UART scan response will be removed in future to reduce power usage
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)
