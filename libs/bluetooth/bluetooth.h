@@ -108,6 +108,8 @@ typedef struct {
 #define BLUETOOTH_ADVERTISING_INTERVAL 375
 #endif
 
+#define ADVERTISE_MAX_UUIDS             4 ///< maximum custom UUIDs to advertise
+
 typedef enum  {
   BLE_NONE = 0,
   BLE_IS_SENDING = 1,         //< sending data with jswrap_ble_transmit_string?

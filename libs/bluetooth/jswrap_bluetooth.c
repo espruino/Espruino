@@ -859,10 +859,21 @@ JsVar *_jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options, bool isForSet
   jsble_setup_advdata(&advdata);
   ble_advdata_manuf_data_t manuf_specific_data;
   memset(&manuf_specific_data, 0, sizeof(ble_advdata_manuf_data_t));
+  ble_uuid_t adv_uuids[ADVERTISE_MAX_UUIDS];
+  advdata.uuids_complete.uuid_cnt = 0;
+  advdata.uuids_complete.p_uuids  = &adv_uuids[0];
+
   if (isForSetAdvertising) { // if for setAdvertising add manufacturerData as Espruino
     advdata.p_manuf_specific_data = &manuf_specific_data;
     advdata.p_manuf_specific_data->company_identifier = 0x0590;
+
+    if (bleStatus & BLE_HID_INITED) {
+      advdata.uuids_complete.p_uuids[advdata.uuids_complete.uuid_cnt].uuid = BLE_UUID_HUMAN_INTERFACE_DEVICE_SERVICE;
+      advdata.uuids_complete.p_uuids[advdata.uuids_complete.uuid_cnt].type = BLE_UUID_TYPE_BLE;
+      advdata.uuids_complete.uuid_cnt++;
+    }
   }
+
 #endif
 
   if (jsvIsObject(options)) {
@@ -916,9 +927,7 @@ JsVar *_jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options, bool isForSet
     int maxServices = jsvGetChildren(data);
     ble_advdata_service_data_t *service_data = (ble_advdata_service_data_t*)alloca(maxServices*sizeof(ble_advdata_service_data_t));
     int service_data_cnt = 0;
-    ble_uuid_t *adv_uuid = (ble_uuid_t*)alloca(maxServices*sizeof(ble_uuid_t));
-    int adv_uuid_cnt = 0;
-    if (maxServices && (!service_data || !adv_uuid))
+    if (maxServices && !service_data)
       return 0; // allocation error
 #endif
     JsvObjectIterator it;
@@ -934,8 +943,10 @@ JsVar *_jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options, bool isForSet
       }
 #ifdef NRF5X
       if (jsvIsUndefined(v)) {
-        adv_uuid[adv_uuid_cnt]  = ble_uuid;
-        adv_uuid_cnt++;
+        if (advdata.uuids_complete.uuid_cnt < ADVERTISE_MAX_UUIDS)
+          advdata.uuids_complete.p_uuids[advdata.uuids_complete.uuid_cnt++]  = ble_uuid;
+        else
+          jsWarn("Too many UUIDs\n");
       } else {
         service_data[service_data_cnt].service_uuid = ble_uuid.uuid;
         service_data[service_data_cnt].data.size    = dLen;
@@ -950,8 +961,6 @@ JsVar *_jswrap_ble_getAdvertisingData(JsVar *data, JsVar *options, bool isForSet
 #ifdef NRF5X
     advdata.service_data_count   = service_data_cnt;
     advdata.p_service_data_array = service_data;
-    advdata.uuids_complete.uuid_cnt = adv_uuid_cnt;
-    advdata.uuids_complete.p_uuids  = adv_uuid;
 #endif
   } else if (!jsvIsUndefined(data)) {
     jsExceptionHere(JSET_TYPEERROR, "Expecting Object, Array or undefined, got %t", data);
@@ -1088,8 +1097,8 @@ NRF.setAdvertising([
   interval: 600              // Advertising interval in msec, between 20 and 10000 (default is 375ms)
   manufacturer: 0x0590       // This is the manufacturer ID. Set to `0/false` to disable manufacturer data (2v26+ advertises Espruino's 0x0590 by default)
   manufacturerData: [...]    // If sending manufacturer data, this is an array of data to send
-  phy: "1mbps/2mbps/coded/coded,1mbps/1mbps,coded"   // (NRF52833/NRF52840 only) use the long-range coded phy for transmission (1mbps default)
-  extended : true // (NRF52833/NRF52840 only) force use of extended (>31 byte) advertising packets - usually only done if phy isn't set to "1mbps"
+  phy: "1mbps/2mbps/coded/coded,1mbps/1mbps,coded"   // ((2v26+, NRF52833/NRF52840 only) use the long-range coded phy for transmission (1mbps default)
+  extended : true // (2v26+, NRF52833/NRF52840 only) force use of extended (>31 byte) advertising packets - usually only done if phy isn't set to "1mbps"
 }
 ```
 
@@ -1324,7 +1333,6 @@ In addition, `options` can contain:
 are left out (usually `[2,1,6]`). It can be very useful to do this
 if you're using `NRF.getAdvertisingData(...)` to set a scan response packet:
 
-
 ```
 NRF.setScanResponse(NRF.getAdvertisingData({
   0x1809 : [Math.round(E.getTemperature())] // temperature service data in scan response
@@ -1358,8 +1366,19 @@ NRF.setScanResponse([0x07,  // Length of Data
   'S', 'a', 'm', 'p', 'l', 'e']);
 ```
 
-**Note:** `NRF.setServices(..., {advertise:[ ... ]})` writes advertised services
-into the scan response - so you can't use both `advertise` and `NRF.setServices`
+Or you can use `NRF.getAdvertisingData` to correctly format the advertising data
+for you. For example to advertise the HRM service and temperature in the Scan
+Response you can do:
+
+```
+NRF.setScanResponse(NRF.getAdvertisingData({
+  0x180D: undefined, // HRM service
+  0x1809: [Math.round(E.getTemperature())] // temperature
+},{ flags:false, showName:false }))
+```
+
+**Note:** The deprecated `NRF.setServices(..., {advertise:[ ... ]})` writes advertised services
+into the scan response - so you can't use both `NRF.setScanResponse` and `NRF.setServices(..., {advertise:[...]})`
 or one will overwrite the other.
 */
 void jswrap_ble_setScanResponse(JsVar *data) {
@@ -1483,7 +1502,8 @@ NRF.setServices({
 NRF.setServices(undefined, {
   hid : new Uint8Array(...), // optional, default is undefined. Enable BLE HID support
   uart : true, // optional, default is true. Enable BLE UART support
-  advertise: [ '180D' ] // optional, list of service UUIDs to advertise
+  advertise: [ '180D' ] // optional, list of service UUIDs to advertise in the scan response
+                        // (deprecated - use `NRF.setScanResponse(NRF.getAdvertisingData({'180D':undefined},{flags:false, showName:false}))`)
   ancs : true, // optional, Bangle.js-only, enable Apple ANCS support for notifications (see `NRF.ancs*`)
   ams : true // optional, Bangle.js-only, enable Apple AMS support for media control (see `NRF.ams*`)
   cts : true // optional, Bangle.js-only, enable Apple Current Time Service support (see `NRF.ctsGetTime`)

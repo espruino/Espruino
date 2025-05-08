@@ -154,8 +154,6 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
-#define ADVERTISE_MAX_UUIDS             4 ///< maximum custom UUIDs to advertise
-
 #if NRF_SD_BLE_API_VERSION < 5
 static ble_nus_t                        m_nus;                                      /**< Structure to identify the Nordic UART Service. */
 #elif NRF_SD_BLE_API_VERSION < 6
