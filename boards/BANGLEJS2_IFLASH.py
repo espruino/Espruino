@@ -17,7 +17,9 @@
 # on-chip flash is now used for storage of any .js files (drive can be manually forced
 # by writing to a file named "C:filename" for example.
 #
-# It appears to have an issue with compaction: https://github.com/espruino/Espruino/issues/2509
+# In order to make a bit of room, Tensorflow is removed from this build
+#
+# TODO: We could remove/compress libs/banglejs/banglejs2_storage_default.c (factory firmware) to save another 120k
 
 import pinutils;
 
@@ -45,7 +47,6 @@ info = {
      'CRYPTO','SHA256','SHA512',
      'AES_CCM',
      'LCD_MEMLCD',
-     'TENSORFLOW',
      'SWDCON', # RTT console over SWD
      'JIT' # JIT compiler enabled
    ],
@@ -127,9 +128,9 @@ chip = {
   'dac' : 0,
   'saved_code' : {
     'page_size' : 4096,
-    'address' : ((246 - 60) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
-    'pages' : 60,
-    'flash_available' : 1024 - ((38 + 8 + 2 + 60)*4), # Softdevice uses 0x26=38 pages of flash, bootloader 8, FS 2, code 60. Each page is 4 kb.
+    'address' : ((246 - 68) * 4096), # Bootloader takes pages 248-255, FS takes 246-247
+    'pages' : 68,
+    'flash_available' : 1024 - ((38 + 8 + 2 + 68)*4), # Softdevice uses 0x26=38 pages of flash, bootloader 8, FS 2, code 68. Each page is 4 kb.
     'address2' : 0x60000000, # put this in external spiflash (see below)
     'pages2' : 2048, # Entire 8MB of external flash
 
