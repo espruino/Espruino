@@ -2473,7 +2473,7 @@ bool jshFlashErasePages(uint32_t addr, uint32_t byteLength) {
       jshFlashWriteProtect(startAddr + byteLength - 1))
     return false;
   uint32_t err;
-  while (byteLength>=4096 && !jspIsInterrupted()) {
+  while (byteLength>=4096) {
     flashIsBusy = true;
     while ((err = sd_flash_page_erase(startAddr / NRF_FICR->CODEPAGESIZE)) == NRF_ERROR_BUSY);
     if (err!=NRF_SUCCESS) flashIsBusy = false;
@@ -2487,7 +2487,7 @@ bool jshFlashErasePages(uint32_t addr, uint32_t byteLength) {
     jshKickWatchDog();
     jshKickSoftWatchDog();
   }
-  return !jspIsInterrupted();
+  return true;
 }
 
 /**
@@ -2644,7 +2644,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
   uint8_t *wrbuf = (uint8_t*)buf; // source, we increment this as we write
   uint8_t alignedBuf[32]; // aligned buffer if writes need it (misaligned source)
 
-  while (wrlen>0 && !jspIsInterrupted()) {
+  while (wrlen>0) {
     uint32_t l = wrlen;
     uint8_t *awrbuf = wrbuf; // write buffer pointer (always updated to be aligned)
 #ifdef NRF51_SERIES
@@ -2652,15 +2652,15 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
 #else // SD 6.1.1 doesn't like flash ops that take too long so we must not write the full 4096 (probably a good plan on older SD too)
     if (l>2048) l=2048; // max write size
 #endif
-    if ((size_t)wrbuf & 3) {
+    if (((size_t)wrbuf) & 3) {
       // Unaligned *SOURCE* is a problem on nRF5x, so if so we are unaligned, do a whole bunch of tiny writes via a buffer
       if (l>sizeof(alignedBuf)) l=sizeof(alignedBuf); // max write size
       memcpy(alignedBuf, wrbuf, l);
-      awrbuf = wrbuf;
+      awrbuf = alignedBuf;
     }
 
     flashIsBusy = true;
-    while ((err = sd_flash_write(wraddr, awrbuf, l>>2)) == NRF_ERROR_BUSY && !jspIsInterrupted());
+    while ((err = sd_flash_write((uint32_t*)wraddr, (uint32_t*)awrbuf, l>>2)) == NRF_ERROR_BUSY);
     if (err!=NRF_SUCCESS) flashIsBusy = false;
     WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
     wrlen -= l;
@@ -2964,12 +2964,12 @@ void COMP_LPCOMP_IRQHandler() {
   if (nrf_lpcomp_event_check(NRF_LPCOMP_EVENT_UP) && nrf_lpcomp_int_enable_check(LPCOMP_INTENSET_UP_Msk)) {
     nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_UP);
     IOCustomEventFlags customFlags = EVC_LPCOMP | EVC_DATA_LPCOMP_UP;
-    jshPushEvent(EV_CUSTOM, &customFlags, sizeof(customFlags));
+    jshPushEvent(EV_CUSTOM, (uint8_t*)&customFlags, sizeof(customFlags));
   }
   if (nrf_lpcomp_event_check(NRF_LPCOMP_EVENT_DOWN) && nrf_lpcomp_int_enable_check(LPCOMP_INTENSET_DOWN_Msk)) {
     nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_DOWN);
     IOCustomEventFlags customFlags = EVC_LPCOMP;
-    jshPushEvent(EV_CUSTOM, &customFlags, sizeof(customFlags));
+    jshPushEvent(EV_CUSTOM, (uint8_t*)&customFlags, sizeof(customFlags));
   }
 }
 
