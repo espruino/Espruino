@@ -47,6 +47,7 @@
             BLE: Ensure all Espruino devices advertise the Espruino 0x0590 manufacturer ID by default
                - The default Nordic UART scan response will be removed in future to reduce power usage
             nRF52: Ensure that if enabled the HID service gets added to the main advertising packet (#2631)
+            nRF52: Fix unreliable internal flash writes when writing >2k (big issue for compaction) (fix #2509)
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)

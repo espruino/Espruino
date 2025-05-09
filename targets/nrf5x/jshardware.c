@@ -2546,6 +2546,7 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len) {
  * Writes an array of bytes to memory. Addr must be word aligned and len must be a multiple of 4.
  */
 void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
+  assert((len&3)==0); // ensure we're always a multiple of 4 long
   //jsiConsolePrintf("\njshFlashWrite 0x%x addr 0x%x -> 0x%x, len %d\n", *(uint32_t*)buf, (uint32_t)buf, addr, len);
 #ifdef SPIFLASH_BASE
   if ((addr >= SPIFLASH_BASE) && (addr < (SPIFLASH_BASE+SPIFLASH_LENGTH))) {
@@ -2639,40 +2640,42 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len) {
   if (jshFlashWriteProtect(addr)) return;
   uint32_t err = 0;
 
-  if (((size_t)(char*)buf)&3) {
-    /* Unaligned *SOURCE* is a problem on nRF5x,
-     * so if so we are unaligned, do a whole bunch
-     * of tiny writes via a buffer */
-    while (len>=4 && !err) {
-      flashIsBusy = true;
-      uint32_t alignedBuf;
-      memcpy(&alignedBuf, buf, 4);
-      while ((err = sd_flash_write((uint32_t*)addr, &alignedBuf, 1)) == NRF_ERROR_BUSY);
-      if (err!=NRF_SUCCESS) flashIsBusy = false;
-      WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
-      len -= 4;
-      addr += 4;
-      buf = (void*)(4+(char*)buf);
-    }
-  } else {
-    flashIsBusy = true;
-    uint32_t wordOffset = 0;
-    while (len>0 && !jspIsInterrupted()) {
-      uint32_t l = len;
+  uint32_t wraddr = addr, wrlen = len; // destination + length, we increment these as we write
+  uint8_t *wrbuf = (uint8_t*)buf; // source, we increment this as we write
+  uint8_t alignedBuf[32]; // aligned buffer if writes need it (misaligned source)
+
+  while (wrlen>0 && !jspIsInterrupted()) {
+    uint32_t l = wrlen;
+    uint8_t *awrbuf = wrbuf; // write buffer pointer (always updated to be aligned)
 #ifdef NRF51_SERIES
-      if (l>1024) l=1024; // max write size
+    if (l>1024) l=1024; // max write size
 #else // SD 6.1.1 doesn't like flash ops that take too long so we must not write the full 4096 (probably a good plan on older SD too)
-      if (l>2048) l=2048; // max write size
+    if (l>2048) l=2048; // max write size
 #endif
-      len -= l;
-      while ((err = sd_flash_write(((uint32_t*)addr)+wordOffset, ((uint32_t *)buf)+wordOffset, l>>2)) == NRF_ERROR_BUSY && !jspIsInterrupted());
-      wordOffset += l>>2;
+    if ((size_t)wrbuf & 3) {
+      // Unaligned *SOURCE* is a problem on nRF5x, so if so we are unaligned, do a whole bunch of tiny writes via a buffer
+      if (l>sizeof(alignedBuf)) l=sizeof(alignedBuf); // max write size
+      memcpy(alignedBuf, wrbuf, l);
+      awrbuf = wrbuf;
     }
+
+    flashIsBusy = true;
+    while ((err = sd_flash_write(wraddr, awrbuf, l>>2)) == NRF_ERROR_BUSY && !jspIsInterrupted());
     if (err!=NRF_SUCCESS) flashIsBusy = false;
     WAIT_UNTIL(!flashIsBusy, "jshFlashWrite");
+    wrlen -= l;
+    wraddr += l;
+    wrbuf += l;
   }
   if (err!=NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR,"NRF ERROR 0x%x", err);
+  /* // (slow!) sanity check to ensure that all data is written correctly:
+  for (int i=0;i<len;i++) {
+    uint8_t a = ((uint8_t*)addr)[i];
+    uint8_t b = ((uint8_t*)buf)[i];
+    if (a!=b)
+      jsiConsolePrintf("Write failed at 0x%08x+%d %d!=%d\n", addr,i, a,b);
+  }*/
 }
 
 // Just pass data through, since we can access flash at the same address we wrote it
