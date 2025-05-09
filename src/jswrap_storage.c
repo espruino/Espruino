@@ -461,7 +461,7 @@ int jswrap_storage_getFree(bool checkInternalFlash) {
   "class" : "Storage",
   "name" : "getStats",
   "params" : [
-    ["checkInternalFlash","bool","Check the internal flash (rather than external SPI flash).  Default false, so will check external storage"]
+    ["checkInternalFlash","JsVar","`true` = Check internal flash, `false` = external SPI flash. Default `undefined`, so will check both"]
   ],
   "generate" : "jswrap_storage_getStats",
   "return" : ["JsVar","An object containing info about the current Storage system"]
@@ -479,17 +479,31 @@ Returns:
 }
 ```
 
-**NOTE:** `checkInternalFlash` is only useful on DICKENS devices - other devices don't use two different flash banks
+**NOTE:** `checkInternalFlash` is only useful on DICKENS/BANGLEJS2_IFLASH devices - other devices don't use two different flash banks
  */
-JsVar *jswrap_storage_getStats(bool checkInternalFlash) {
+JsVar *jswrap_storage_getStats(JsVar *checkInternalFlash) {
   JsVar *o = jsvNewObject();
   if (!o) return NULL;
-  uint32_t addr = 0;
-#ifdef FLASH_SAVED_CODE2_START
-  addr = checkInternalFlash ? FLASH_SAVED_CODE_START : FLASH_SAVED_CODE2_START;
 
+#ifdef FLASH_SAVED_CODE2_START
+  uint32_t addr = FLASH_SAVED_CODE2_START;
+  if (checkInternalFlash && jsvGetBool(checkInternalFlash))
+    addr = FLASH_SAVED_CODE_START;
+#else
+  uint32_t addr = FLASH_SAVED_CODE_START;
 #endif
   JsfStorageStats stats = jsfGetStorageStats(addr, true);
+#ifdef FLASH_SAVED_CODE2_START
+  if (!checkInternalFlash) { // the default - scan both and sum
+    JsfStorageStats stats2 = jsfGetStorageStats(FLASH_SAVED_CODE_START, true);
+    stats.total += stats2.total;
+    stats.free += stats2.free;
+    stats.fileBytes += stats2.fileBytes;
+    stats.fileCount += stats2.fileCount;
+    stats.trashBytes += stats2.trashBytes;
+    stats.trashCount += stats2.trashCount;
+  }
+#endif
   jsvObjectSetChildAndUnLock(o, "totalBytes", jsvNewFromInteger((JsVarInt)stats.total));
   jsvObjectSetChildAndUnLock(o, "freeBytes", jsvNewFromInteger((JsVarInt)stats.free));
   jsvObjectSetChildAndUnLock(o, "fileBytes", jsvNewFromInteger((JsVarInt)stats.fileBytes));

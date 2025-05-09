@@ -49,6 +49,8 @@
             nRF52: Ensure that if enabled the HID service gets added to the main advertising packet (#2631)
             nRF52: Fix unreliable internal flash writes when writing >2k (big issue for compaction) (fix #2509)
             nRF52: Don't break out of flash erase/writes if interrupted (Ctrl-C) - these shouldn't take too long and can corrupt data if interruptable
+            Bangle.js2_iflash: If we can't write a JS file to internal flash, attempt to write to external instead
+            Bangle.js2_iflash: require("Storage").getStats() now sums both Storage pools by default
 
      2v25 : ESP32C3: Get analogRead working correctly
             Graphics: Adjust image alignment when rotating images to avoid cropping (fix #2535)
