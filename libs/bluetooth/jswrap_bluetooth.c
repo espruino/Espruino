@@ -4655,7 +4655,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *ch
   uint16_t handle = (uint16_t)jsvObjectGetIntegerChild(characteristic, "handle_value");
   JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", JSV_ARRAY);
   if (handles) {
-    jsvSetArrayItem(handles, handle, characteristic);
+    jsvSetArrayItem(handles, handle | (jsble_get_central_connection_idx(central_conn_handle) << BLEP_CENTRAL_NOTIFICATION_CONN_SHIFT), characteristic);
     jsvUnLock(handles);
   }
 
@@ -4705,7 +4705,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *cha
   uint16_t handle = (uint16_t)jsvObjectGetIntegerChild(characteristic, "handle_value");
   JsVar *handles = jsvObjectGetChild(execInfo.hiddenRoot, "bleHdl", JSV_ARRAY);
   if (handles) {
-    jsvSetArrayItem(handles, handle, 0);
+    jsvSetArrayItem(handles, handle + (jsble_get_central_connection_idx(central_conn_handle) << BLEP_CENTRAL_NOTIFICATION_CONN_SHIFT), 0);
     jsvUnLock(handles);
   }
   JsVar *promise = jsvLockAgainSafe(blePromise);

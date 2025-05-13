@@ -1,4 +1,5 @@
-            ...
+            nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
+            nRF5x: Remove handlers from our handlers array when a device is disconnected
 
      2v26 : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
             Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)

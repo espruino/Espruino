@@ -539,6 +539,19 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
       jsvUnLock2(gattServer, bluetoothDevice);
     }
     bleSetActiveBluetoothGattServer(centralIdx, 0);
+    // when we disconnect, remove handles for notifications for this connection
+    JsVar *handles = jsvObjectGetChildIfExists(execInfo.hiddenRoot, "bleHdl");
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, handles); // it's actually an array, but object iterator is ok
+    while (jsvObjectIteratorHasValue(&it)) {
+      int handleValue = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
+      if ((handleValue >> BLEP_CENTRAL_NOTIFICATION_CONN_SHIFT) == centralIdx)
+        jsvObjectIteratorRemoveAndGotoNext(&it, handles);
+      else
+        jsvObjectIteratorNext(&it);
+    }
+    jsvObjectIteratorFree(&it);
+    jsvUnLock(handles);
     break;
   }
   case BLEP_CENTRAL_NOTIFICATION: {

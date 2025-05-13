@@ -214,6 +214,10 @@ typedef enum {
 #endif
 } BLEPending;
 
+/// amount to shift the connection index for the 16 bit 'data' field in jsble_queue_pending_buf(BLEP_CENTRAL_NOTIFICATION, ...
+#define BLEP_CENTRAL_NOTIFICATION_CONN_SHIFT (15)
+/// we need to mask off the handle (as we're using the top bits for the connection)
+#define BLEP_CENTRAL_NOTIFICATION_HANDLE_MASK (0x7FFF)
 
 extern volatile BLEStatus bleStatus;
 /// Filter to use when discovering BLE Services/Characteristics
