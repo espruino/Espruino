@@ -148,6 +148,11 @@ bool jsble_has_central_connection(){
 #endif
 }
 
+/** Return the index of the central connection in m_central_conn_handles, or -1 */
+int jsble_get_central_connection_idx(uint16_t handle) {
+  return 0; // only one central connection!
+}
+
 /** Is BLE connected to a server device at all (eg, the simple, 'slave' mode)? */
 bool jsble_has_peripheral_connection(){
   if(!ESP32_Get_NVS_Status(ESP_NETWORK_BLE))
