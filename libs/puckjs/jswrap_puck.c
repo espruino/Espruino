@@ -1738,7 +1738,7 @@ void jswrap_puck_init() {
   package don't do that as the device might be connected to something which will
   make the test keep failing.  */
   bool firstRunAfterFlash = false;
-#ifndef DFU_UPDATE_BUILD
+#ifdef ESPR_TEST_ON_FIRST_RUN
   uint32_t firstStartFlagAddr = FLASH_SAVED_CODE_START-4;
   if (firstStart) {
     // check the 4 bytes *right before* our saved code. If these are 0xFFFFFFFF
@@ -1755,7 +1755,7 @@ void jswrap_puck_init() {
     // if we're doing our first run after being flashed with new firmware, we set the advertising name
     // up to say PASS or FAIL, to work with the factory test process.
     bool result = _jswrap_puck_selfTest(firstRunAfterFlash);
-#ifndef DFU_UPDATE_BUILD
+#ifdef ESPR_TEST_ON_FIRST_RUN
     // if we passed, set the flag in flash so we don't self-test again
     if (firstRunAfterFlash && result) {
       uint32_t buf = 0;
