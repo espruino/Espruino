@@ -2526,10 +2526,10 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
               width += w;
               wordStartIdx = (int)jsvStringIteratorGetIndex(&wordIt);
 #ifdef ESPR_UNICODE_SUPPORT
-              jsvAppendUTF8Character(currentLine, wordCh);
-#else
-              jsvAppendCharacter(currentLine, wordCh);
+              if (jsvIsUTF8String(str)) jsvAppendUTF8Character(currentLine, wordCh);
+              else
 #endif
+              jsvAppendCharacter(currentLine, wordCh);
             } else
               break;
           }
