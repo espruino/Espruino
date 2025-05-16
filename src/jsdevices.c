@@ -449,8 +449,7 @@ bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, unsigne
    * USB and USART data to be coming in at the same time, and it can trip
    * things up if one IRQ interrupts another. */
   jshInterruptOff();
-  int available = IOBUFFERMASK+1-jshGetEventsUsed();
-  if (available < (int)length+2) {
+  if (jshGetIOCharEventsFree() < (int)length+2) {
     jshInterruptOn();
     jshIOEventOverflowed();
     return false; // queue full - dump this event!
@@ -491,7 +490,8 @@ void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count) {
   if (ioLastHead != ioHead &&  // we have a 'last head'
      ioLastHead != ioTail && // it's not something that'll be processed immediately (we're in IRQ so main loop might be in the process right now)
      ioBuffer[(ioLastHead+1)&IOBUFFERMASK] == channel && // same channel
-     ioBuffer[ioLastHead]+count < IOEVENT_MAX_LEN // we have space in this event!
+     ioBuffer[ioLastHead]+count < IOEVENT_MAX_LEN && // we have space in this event!
+     jshGetIOCharEventsFree()>0 // we actually have space in our queue!
      ) {
     // increase event count
     ioBuffer[ioLastHead] += (uint8_t)count;
