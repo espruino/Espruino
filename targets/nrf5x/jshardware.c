@@ -2857,21 +2857,14 @@ JsVarFloat jshReadTemperature() {
 #endif
 }
 
-// The voltage that a reading of 1 from `analogRead` actually represents
-JsVarFloat jshReadVRef() {
 #ifdef NRF52_SERIES
+nrf_saadc_value_t jshReadVDD(nrf_saadc_input_t pin, nrf_saadc_acqtime_t time, nrf_saadc_gain_t gain) {
   nrf_saadc_channel_config_t config;
-  config.acq_time = NRF_SAADC_ACQTIME_3US;
-  config.gain = NRF_SAADC_GAIN1_6; // 1/6 of input volts
+  config.acq_time = time;
+  config.gain = gain; 
   config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
-
-#ifdef ESPR_VREF_VDDH
-  config.pin_p = 0x0D; // Not in Nordic's libs, but this is VDDHDIV5 - we probably want to be looking at VDDH
-  config.pin_n = 0x0D;
-#else
-  config.pin_p = NRF_SAADC_INPUT_VDD;
-  config.pin_n = NRF_SAADC_INPUT_VDD;
-#endif
+  config.pin_p = pin;
+  config.pin_n = pin;
   config.reference = NRF_SAADC_REFERENCE_INTERNAL; // 0.6v reference.
   config.resistor_p = NRF_SAADC_RESISTOR_DISABLED;
   config.resistor_n = NRF_SAADC_RESISTOR_DISABLED;
@@ -2879,21 +2872,32 @@ JsVarFloat jshReadVRef() {
   bool adcInUse = nrf_analog_read_start();
 
   // make reading
-  JsVarFloat f;
+  nrf_saadc_value_t f;
   do {
     nrf_analog_read_interrupted = false;
     nrf_saadc_enable();
     nrf_saadc_resolution_set(NRF_SAADC_RESOLUTION_14BIT);
     nrf_saadc_channel_init(0, &config);
 
-    f = nrf_analog_read() * (6.0 * 0.6 / 16384.0);
+    f = nrf_analog_read();
   } while (nrf_analog_read_interrupted);
   nrf_analog_read_end(adcInUse);
-#ifdef ESPR_VREF_VDDH
-  f *= 5; // we were on VDDHDIV5
+  return f;
+}
 #endif
 
-  return f;
+#if defined(NRF52833) || defined(NRF52840)
+JsVarFloat jshReadVDDH() {
+    return jshReadVDD(0x0D, NRF_SAADC_ACQTIME_20US, NRF_SAADC_GAIN1_2) // When using VDDHDIV5 as input, the acquisition time must be 10 µs or longer.
+    *(2.0 * 5.0 * 0.6 / 16384.0); // gain 1/2, VDDHDIV5, 0.6v reference, 2^14 = 1.0 
+}
+#endif
+
+// The voltage that a reading of 1 from `analogRead` actually represents
+JsVarFloat jshReadVRef() {
+#ifdef NRF52_SERIES
+  return jshReadVDD(NRF_SAADC_INPUT_VDD, NRF_SAADC_ACQTIME_3US, NRF_SAADC_GAIN1_6)
+    *(6.0 * 0.6 / 16384.0); // gain 1/6, 0.6v reference, 2^14 = 1.0) 
 #else
   const nrf_adc_config_t nrf_adc_config =  {
        NRF_ADC_CONFIG_RES_10BIT,

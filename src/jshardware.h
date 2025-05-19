@@ -388,6 +388,8 @@ JsVarFloat jshReadTemperature();
 
 /// The voltage that a reading of 1 from `analogRead` actually represents, in volts
 JsVarFloat jshReadVRef();
+/// On nRF52833/40 this is the VDDH value (before the internal voltage regulator)
+JsVarFloat jshReadVDDH();
 
 /** Get a random number - either using special purpose hardware or by
  * reading noise from an analog input. If unimplemented, this should

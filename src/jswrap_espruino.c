@@ -182,6 +182,22 @@ While this is implemented on Espruino boards, it may not be implemented on other
 devices. If so it'll return NaN.
  */
 
+/*JSON{
+  "type" : "staticmethod",
+  "#if" : "defined(NRF52833) || defined(NRF52840)",
+  "class" : "E",
+  "name" : "getVDDH",
+  "generate_full" : "jshReadVDDH()",
+  "return" : ["float","The voltage on VDDH input"]
+}
+Return the voltage on VDDH input
+
+**Note:** This value is calculated by reading the voltage on an internal
+voltage reference with the ADC. It will be slightly noisy, so if you need this
+for accurate measurements we'd recommend that you call this function several
+times and average the results.
+ */
+
 
 int nativeCallGetCType() {
   if (lex->tk == LEX_R_VOID) {
