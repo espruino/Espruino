@@ -2648,7 +2648,6 @@ JsVar *jswrap_graphics_setFont4x6(JsVar *parent, int scale) {
   return jswrap_graphics_setFontSizeX(parent, 1+JSGRAPHICS_FONTSIZE_4X6, false);
 }
 
-
 JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   int width = gfx.data.width, height = gfx.data.height;
@@ -2687,6 +2686,7 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
     {"4x6", 6, 1, jswrap_graphics_setFont4x6}
 #endif
   };
+
   int fontIdx = 0;
   // check max font size
   while (fontIdx<FONTS-1 && FONT[fontIdx].height>maxHeight)
@@ -2701,11 +2701,10 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
     graphicsGetFromVar(&gfx, parent);
     if (wrap) {
       jsvUnLock2(finalText, finalLines);
-      finalLines= jswrap_graphics_wrapString(parent, text, width);
-      finalText = jsvArrayJoin(finalLines,newline,true);
-      _jswrap_graphics_stringMetrics(&gfx, finalText, -1, &stringMetrics);
-    } else
-      _jswrap_graphics_stringMetrics(&gfx, text, -1, &stringMetrics);
+      finalLines = jswrap_graphics_wrapString(parent, text, width);
+      finalText = jsvArrayJoin(finalLines, newline, true);
+    }
+    _jswrap_graphics_stringMetrics(&gfx, finalText, -1, &stringMetrics);
     if (((stringMetrics.stringWidth <= width) && (stringMetrics.stringHeight <= height)) || // all good!
         fontIdx==FONTS-1 || // no more fonts
         FONT[fontIdx+1].height<minHeight // next font is too small
@@ -2713,14 +2712,34 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
     fontIdx++;
   }
   const char *fontName = FONT[fontIdx].name;
-  // if there were unrenderable characters, use the international font instead if we have one
+  // if there were unrenderable characters, use the international font instead if we have one (Intl:2, then Intl)
   if (stringMetrics.unrenderableChars) {
     JsVar *intlFont = jspGetNamedField(parent, "setFontIntl", false);
     if (intlFont) {
-      fontName = "Intl";
+      fontName = "Intl:2"; // start off using double-size Intl
       jsvUnLock(jspExecuteFunction(intlFont, parent, 0, NULL));
       graphicsGetFromVar(&gfx, parent);
-      _jswrap_graphics_stringMetrics(&gfx, text, -1, &stringMetrics);
+      gfx.data.fontSize = (gfx.data.fontSize&~JSGRAPHICS_FONTSIZE_SCALE_MASK) | 2; // scale by 2
+      if (wrap) {
+        jsvUnLock2(finalText, finalLines);
+        finalLines = jswrap_graphics_wrapString(parent, text, width);
+        finalText = jsvArrayJoin(finalLines, newline, true);
+      }
+      _jswrap_graphics_stringMetrics(&gfx, finalText, -1, &stringMetrics);
+      // If it's too big, try again with normal size
+      if (((stringMetrics.stringWidth > width) || (stringMetrics.stringHeight > height)) &&
+        stringMetrics.lineHeight >= minHeight*2) { // next font is too small
+        fontName = "Intl";
+        gfx.data.fontSize = (gfx.data.fontSize&~JSGRAPHICS_FONTSIZE_SCALE_MASK) | 1; // scale by 1
+        if (wrap) {
+          jsvUnLock2(finalText, finalLines);
+          finalLines = jswrap_graphics_wrapString(parent, text, width);
+          finalText = jsvArrayJoin(finalLines, newline, true);
+        }
+        _jswrap_graphics_stringMetrics(&gfx, finalText, -1, &stringMetrics);
+      }
+      graphicsSetVar(&gfx); // gfx data changed because of font scale
+      jsvUnLock(intlFont);
     }
   }
   if (trim && stringMetrics.stringHeight > height) { // do we have to trim these lines to length?
@@ -2740,7 +2759,6 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
   jsvObjectSetChildAndUnLock(result, "font", jsvNewFromString(fontName));
   jsvObjectSetChildAndUnLock(result, "w", jsvNewFromInteger(stringMetrics.stringWidth));
   jsvObjectSetChildAndUnLock(result, "h", jsvNewFromInteger(stringMetrics.stringHeight));
-
   return result;
 }
 #endif

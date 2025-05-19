@@ -2,6 +2,7 @@
             nRF5x: Remove handlers from our handlers array when a device is disconnected
             Bangle.js: Fix wrapString when wrapping a non-UTF8 string containing UTF8 characters (fix #2633) 
             Ensure jshPushIOCharEvent is more stable when the FIFO is full
+            Bangle.js: g.findFont now attempts to use Intl:2 if there's room. Also fix memory leak
 
      2v26 : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
             Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)
