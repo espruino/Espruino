@@ -505,7 +505,7 @@ static void jslLexString() {
   else lex->tk = LEX_STR;
   // unfinished strings
   if (lex->currCh!=delim)
-    lex->tk++; // +1 gets you to 'unfinished X'
+    lex->tk = (delim=='`') ? LEX_UNFINISHED_TEMPLATE_LITERAL : LEX_UNFINISHED_STR;
   jslGetNextCh();
 }
 
