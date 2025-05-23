@@ -25,12 +25,13 @@ typedef enum {
   JSF_PRETOKENISE         = 1<<3, ///< When adding functions, pre-minify them and tokenise reserved words (adding "ram" at the start does this too)
 #endif
 #ifdef ESPR_JIT
-  JSF_JIT_DEBUG           = 1<<4, ///< When JIT enabled,
+  JSF_JIT_DEBUG           = 1<<4, ///< When JIT enabled, output debugging info
 #endif
+  JSF_NO_ERRORS_SAVE      = 1<<5, ///< If set, do not attempt to save errors to internal Storage
 } PACKED_FLAGS JsFlags;
 
 
-#define JSFLAG_NAMES "deepSleep\0unsafeFlash\0unsyncFiles\0pretokenise\0jitDebug\0"
+#define JSFLAG_NAMES "deepSleep\0unsafeFlash\0unsyncFiles\0pretokenise\0jitDebug\0noErrorSave\0"
 // NOTE: \0 also added by compiler - two \0's are required!
 
 extern volatile JsFlags jsFlags;

@@ -851,6 +851,10 @@ code.
 * `unsyncFiles` - When writing files, *don't* flush all data to the SD card
   after each command (the default is *to* flush). This is much faster, but can
   cause filesystem damage if power is lost without the filesystem unmounted.
+* `jitDebug` - When JIT compiling, outputs debug info to the console
+* `noErrorSave` - [2v27+] when an uncaught error occurs, by default it is now
+   written to a file called `ERROR` in Storage (the file is not updated). To
+   stop this happening, use `E.setFlags({noErrorSave:true})`
 */
 /*JSON{
   "type" : "staticmethod",

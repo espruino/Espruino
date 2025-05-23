@@ -954,12 +954,20 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
 #ifdef ESP8266
       jshPrintBanner();
 #endif
+#ifndef SAVE_ON_FLASH
+    if (jsfFindFile(jsfNameFromString("ERROR"),NULL))
+      jsiConsolePrint("\nAn Uncaught Error has been saved to Storage. Please type:\n"
+                        "  require('Storage').read('ERROR') to view it\n"
+                        "  require('Storage').erase('ERROR') to clear it\n");
+#endif
+
     }
 #ifdef USE_TERMINAL
     if (consoleDevice != EV_TERMINAL) // don't spam the terminal
 #endif
       jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
+
   }
 
 #ifdef BANGLEJS // On Bangle.js if Storage is corrupt, show a recovery menu
@@ -1289,13 +1297,31 @@ void jsiCheckErrors() {
     jsiConsoleRemoveInputLine();
     jsiConsolePrintf("Uncaught %v\n", exception);
     reportedError = true;
+#ifndef SAVE_ON_FLASH
+    JsVar *exceptionString = NULL;
+    if ((!jsfGetFlag(JSF_NO_ERRORS_SAVE)) && !jsfFindFile(jsfNameFromString("ERROR"),NULL))
+      exceptionString = jsvAsString(exception);
+#endif
+
     if (jsvIsObject(exception)) {
       JsVar *stackTrace = jsvObjectGetChildIfExists(exception, "stack");
       if (stackTrace) {
         jsiConsolePrintStringVar(stackTrace);
+#ifndef SAVE_ON_FLASH
+        if (exceptionString) {
+          jsvAppendCharacter(exceptionString, '\n');
+          jsvAppendStringVarComplete(exceptionString, stackTrace);
+        }
+#endif
         jsvUnLock(stackTrace);
       }
     }
+#ifndef SAVE_ON_FLASH
+    if (exceptionString) {
+      jsfWriteFile(jsfNameFromString("ERROR"), exceptionString, JSFF_NONE, 0, 0);
+      jsvUnLock(exceptionString);
+    }
+#endif
   }
   jsvUnLock(exception);
   if (jspIsInterrupted()
