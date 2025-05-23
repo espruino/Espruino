@@ -22,7 +22,7 @@ info = {
  'build' : {
    'libraries' : [
 #     'NET',
-     'TENSORFLOW',
+#     'TENSORFLOW', # New emscripten won't compile it!
      'TERMINAL',
      'GRAPHICS',
      'LCD_ST7789_8BIT',
