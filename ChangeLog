@@ -8,6 +8,7 @@
             Add a backtrace command to debugger, add console.trace command, set Error.stack in constructor (fix #2490)
             Error.stack/stack dump now uses more standard file:line:col format
             Out of memory errors now show a backtrace (previously it was very hard to track these down)
+            Increase chars shown in strings in console to 60
 
      2v26 : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
             Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)
