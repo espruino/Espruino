@@ -1229,9 +1229,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           // restart advertising after disconnection
           if (!(bleStatus & BLE_IS_SLEEPING))
             jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again
+#ifdef USE_DEBUGGER
           // If we were debugging and got disconnected, exit the debugger
           if (jsiStatus & JSIS_IN_DEBUGGER)
             jsiStatus |= JSIS_EXIT_DEBUGGER;
+#endif
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
           jsble_queue_pending(BLEP_RESTART_SOFTDEVICE, 0);
