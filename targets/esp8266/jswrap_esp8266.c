@@ -149,7 +149,7 @@ Prints the contents of the debug log to the console.
  */
 void jswrap_ESP8266_printLog() {
   JsVar *line = esp8266_logGetLine();
-  while (jsvGetStringLength(line) > 0) {
+  while (!jsvIsEmptyString(line)) {
     jsiConsolePrintStringVar(line);
     jsvUnLock(line);
     line = esp8266_logGetLine();

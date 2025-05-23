@@ -143,11 +143,11 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
   JsVar *v;
 
   v = jsvNewWritableStringFromStringVar(url, (size_t)pathStart, JSVAPPENDSTRINGVAR_MAXLENGTH);
-  if (jsvGetStringLength(v)==0) jsvAppendString(v, "/");
+  if (jsvIsEmptyString(v)) jsvAppendString(v, "/");
   jsvObjectSetChildAndUnLock(obj, "path", v);
 
   v = jsvNewWritableStringFromStringVar(url, (size_t)pathStart, (size_t)((searchStart>=0)?(searchStart-pathStart):JSVAPPENDSTRINGVAR_MAXLENGTH));
-  if (jsvGetStringLength(v)==0) jsvAppendString(v, "/");
+  if (jsvIsEmptyString(v)) jsvAppendString(v, "/");
   jsvObjectSetChildAndUnLock(obj, "pathname", v);
 
   jsvObjectSetChildAndUnLock(obj, "search", (searchStart>=0)?jsvNewFromStringVar(url, (size_t)searchStart, JSVAPPENDSTRINGVAR_MAXLENGTH):jsvNewNull());
@@ -167,7 +167,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
     while (jsvStringIteratorHasChar(&it)) {
       char ch = jsvStringIteratorGetCharAndNext(&it);
       if (ch=='&') {
-        if (jsvGetStringLength(key)>0 || jsvGetStringLength(val)>0) {
+        if (!jsvIsEmptyString(key) || !jsvIsEmptyString(val)) {
           key = jsvAsArrayIndexAndUnLock(key); // make sure "0" gets made into 0
           key = jsvMakeIntoVariableName(key, val);
           jsvAddName(query, key);
@@ -194,7 +194,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
     jsvStringIteratorFree(&it);
     jsvUnLock(queryStr);
 
-    if (jsvGetStringLength(key)>0 || jsvGetStringLength(val)>0) {
+    if (!jsvIsEmptyString(key) || !jsvIsEmptyString(val)) {
       key = jsvAsArrayIndexAndUnLock(key); // make sure "0" gets made into 0
       key = jsvMakeIntoVariableName(key, val);
       jsvAddName(query, key);

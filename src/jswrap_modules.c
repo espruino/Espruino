@@ -133,7 +133,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
         jsvUnLock2(fileContents, exception);
         fileContents = 0;
       }
-      if (fileContents && jsvGetStringLength(fileContents)>0)
+      if (fileContents && !jsvIsEmptyString(fileContents))
         moduleExport = jspEvaluateModule(fileContents);
       jsvUnLock(fileContents);
     }

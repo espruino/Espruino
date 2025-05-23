@@ -2012,7 +2012,7 @@ JsVar *jswrap_graphics_setFont(JsVar *parent, JsVar *fontId, int size) {
   unsigned short sz = 0xFFFF; // the actual data mask
   if (isVector) {
     sz = (unsigned short)size;
-  } else if (jsvIsUndefined(name) || jsvGetStringLength(name)==0 || jsvIsStringEqual(name, "4x6"))
+  } else if (jsvIsUndefined(name) || jsvIsEmptyString(name) || jsvIsStringEqual(name, "4x6"))
     sz = (unsigned short)(size + JSGRAPHICS_FONTSIZE_4X6);
 #ifdef USE_FONT_6X8
   if (jsvIsStringEqual(name, "6x8"))
@@ -2497,7 +2497,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
         lineWidth += wordWidth;
       } else { // doesn't fit on one line - put word on new line
         lineWidth = wordWidth;
-        if (jsvGetStringLength(currentLine) || wasNewLine)
+        if (!jsvIsEmptyString(currentLine) || wasNewLine)
           jsvArrayPush(lines, currentLine);
         jsvUnLock(currentLine);
         currentLine = 0;
@@ -2587,7 +2587,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   }
   jsvStringIteratorFree(&it);
   // deal with final line
-  if (jsvGetStringLength(currentLine)) {
+  if (!jsvIsEmptyString(currentLine)) {
     jsvArrayPush(lines, currentLine);
   }
   jsvUnLock2(str,currentLine);
@@ -3903,7 +3903,7 @@ JsVar *jswrap_graphics_drawImages(JsVar *parent, JsVar *layersVar, JsVar *option
         // compose operation
         JsVar *opVar = jsvObjectGetChildIfExists(layer,"compose");
         layers[i].compose = GFXDILC_REPLACE;
-        if (!opVar || !jsvGetStringLength(opVar)) layers[i].compose = GFXDILC_REPLACE;
+        if (!opVar || jsvIsEmptyString(opVar)) layers[i].compose = GFXDILC_REPLACE;
         else if (jsvIsStringEqual(opVar,"add")) layers[i].compose = GFXDILC_ADD;
         else if (jsvIsStringEqual(opVar,"or")) layers[i].compose = GFXDILC_OR;
         else if (jsvIsStringEqual(opVar,"xor")) layers[i].compose = GFXDILC_XOR;

@@ -2245,7 +2245,7 @@ void jsvSetInteger(JsVar *v, JsVarInt value) {
  */
 bool jsvGetBool(const JsVar *v) {
   if (jsvIsString(v))
-    return jsvGetStringLength((JsVar*)v)!=0;
+    return !jsvIsEmptyString((JsVar*)v);
 #ifndef ESPR_EMBED
   if (jsvIsPin(v))
     return jshIsPinValid(jshGetPinFromVar((JsVar*)v));

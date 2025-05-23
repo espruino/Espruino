@@ -426,7 +426,7 @@ void jswrap_pixljs_init() {
         (jshPinGetValue(BTN4_PININDEX) == BTN4_ONSTATE)))
     splashScreen = jsfReadFile(jsfNameFromString(".splash"),0,0);
   if (jsvIsString(splashScreen)) {
-    if (jsvGetStringLength(splashScreen)) {
+    if (!jsvIsEmptyString(splashScreen)) {
       graphicsSetVar(&gfx);
       jsvUnLock(jswrap_graphics_drawImage(graphics, splashScreen,0,0,0));
       graphicsGetFromVar(&gfx, graphics);

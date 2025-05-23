@@ -4016,7 +4016,7 @@ NO_INLINE void jswrap_banglejs_init() {
     bool drawInfo = false;
     JsVar *img = jsfReadFile(jsfNameFromString(".splash"),0,0);
     int w,h;
-    if (!jsvIsString(img) || !jsvGetStringLength(img)) {
+    if (!jsvIsString(img) || jsvIsEmptyString(img)) {
       jsvUnLock(img);
       drawInfo = true;
       img = jswrap_banglejs_getLogo();

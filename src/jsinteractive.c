@@ -1860,7 +1860,7 @@ static void jsiHandleConsoleChar(char ch) {
       execInfo.execute &= ~EXEC_CTRL_C_MASK; // if we got Ctrl-C, ignore it
 
   if (inputState == IPS_PACKET_TRANSFER_BYTE0) {
-    if (jsvGetStringLength(inputLine)==0)
+    if (jsvIsEmptyString(inputLine))
       jsiStatus &= ~JSIS_ECHO_OFF_FOR_LINE; // turn on echo (because it'd have been turned off by DLE on an empty line)
     inputPacketLength = ((uint8_t)ch) << 8;
     inputState = IPS_PACKET_TRANSFER_BYTE1;
@@ -1882,13 +1882,13 @@ static void jsiHandleConsoleChar(char ch) {
   } else if (ch == 3) { // Ctrl-c
     // Ctrl-C (char code 3) gets handled in an IRQ but we just ignore it here
   } else if (ch == 5) { // Ctrl-e
-    if (jsvGetStringLength(inputLine)==0)
+    if (jsvIsEmptyString(inputLine))
       jsiConsolePrintf("Espruino %s %s\n",JS_VERSION,PC_BOARD_ID); // 5=ENQ - if sent on empty line and Espruino new enough, we transmit what we are
   } else if (ch==16) {
     /* DLE - Data Link Escape
     Espruino uses DLE on the start of a line to signal that just the line in
     question should be executed without echo */
-    if (jsvGetStringLength(inputLine)==0)
+    if (jsvIsEmptyString(inputLine))
       jsiStatus |= JSIS_ECHO_OFF_FOR_LINE;
     inputState = IPS_HAD_DLE;
   } else if (ch == 27) {

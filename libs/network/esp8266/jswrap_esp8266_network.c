@@ -568,7 +568,7 @@ void jswrap_wifi_startAP(
     JsVar *jsPassword = jsvObjectGetChildIfExists(jsOptions, "password");
     if (jsPassword != NULL) {
       // handle password:null
-      if (jsvGetStringLength(jsPassword) != 0) {
+      if (!jsvIsEmptyString(jsPassword)) {
         if (!jsvIsString(jsPassword) || jsvGetStringLength(jsPassword) < 8) {
           jsExceptionHere(JSET_ERROR, "Password must be string of at least 8 characters");
           jsvUnLock(jsPassword);
