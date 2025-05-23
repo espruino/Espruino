@@ -540,7 +540,7 @@ void jsiSoftInit(bool hasBeenReset) {
   JsVar *initCode = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
   if (initCode) {
     jsvUnLock2(jspEvaluateVar(initCode, 0, "initcode", 0), initCode);
-    jsiCheckErrors();
+    jsiCheckErrors(false);
     jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
   }
 
@@ -566,13 +566,13 @@ void jsiSoftInit(bool hasBeenReset) {
 
   // Execute `init` events on `E`
   jsiExecuteEventCallbackOn("E", INIT_CALLBACK_NAME, 0, 0);
-  jsiCheckErrors();
+  jsiCheckErrors(false);
   // Execute the `onInit` function
   JsVar *onInit = jsvObjectGetChildIfExists(execInfo.root, JSI_ONINIT_NAME);
   if (onInit) {
     if (jsiEcho()) jsiConsolePrint("Running onInit()...\n");
     jsiExecuteEventCallback(0, onInit, 0, 0);
-    jsiCheckErrors();
+    jsiCheckErrors(false);
     jsvUnLock(onInit);
   }
 }
@@ -789,7 +789,7 @@ void jsiSoftKill() {
   jsiPacketExit();
   // Execute `kill` events on `E`
   jsiExecuteEventCallbackOn("E", KILL_CALLBACK_NAME, 0, 0);
-  jsiCheckErrors();
+  jsiCheckErrors(false);
   // Clear input line...
   inputCursorPos = 0;
   jsiInputLineCursorMoved();
@@ -1276,7 +1276,7 @@ bool jsiAtEndOfInputLine() {
   return true;
 }
 
-void jsiCheckErrors() {
+void jsiCheckErrors(bool wasREPL) {
   if (jsiStatus & JSIS_EVENTEMITTER_INTERRUPTED) {
     jspSetInterrupted(false);
     jsiStatus &= ~JSIS_EVENTEMITTER_INTERRUPTED;
@@ -1573,7 +1573,7 @@ void jsiHandleNewLine(bool execute) {
         }
         jsvUnLock(v);
       }
-      jsiCheckErrors();
+      jsiCheckErrors(true/*repl*/);
       // console will be returned next time around the input loop
       // if we had echo off just for this line, reinstate it!
       jsiStatus &= ~JSIS_ECHO_OFF_FOR_LINE;
@@ -1695,7 +1695,7 @@ static void jsiPacketProcess() {
     JsVar *result = jspEvaluateExpressionVar(inputLine);
     if (jspHasError()) {
       jsiConsolePrintChar(ASCII_NAK);
-      jsiCheckErrors();
+      jsiCheckErrors(true/*repl*/);
     } else {
       jsiConsolePrintChar(ASCII_ACK);
       JsVar *v = jswrap_espruino_toJS(result);
@@ -2647,7 +2647,7 @@ bool jsiLoop() {
   // Do general idle stuff
   jsiIdle();
   // check for and report errors
-  jsiCheckErrors();
+  jsiCheckErrors(false);
 
   // If Ctrl-C was pressed, clear the line (unless doing packet transfer)
   if ((execInfo.execute & EXEC_CTRL_C_MASK) && !IS_PACKET_TRANSFER(inputState)) {

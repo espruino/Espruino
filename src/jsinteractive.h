@@ -63,8 +63,8 @@ bool jsiExecuteEventCallbackName(JsVar *obj, const char *cbName, unsigned int ar
 /// Utility version of jsiExecuteEventCallback for calling events on global variables
 bool jsiExecuteEventCallbackOn(const char *objectName, const char *cbName, unsigned int argCount, JsVar **argPtr);
 
-/// Check for and report/handle interpreter errors (can be called after executing JS code)
-void jsiCheckErrors();
+/// Check for and report/handle interpreter errors (can be called after executing JS code). If wasREPL we won't save errors to storage as we assume they've been seen
+void jsiCheckErrors(bool wasREPL);
 
 /// Create a timeout in JS to execute the given native function (outside of an IRQ). Returns the index
 JsVar *jsiSetTimeout(void (*functionPtr)(void), JsVarFloat milliseconds);

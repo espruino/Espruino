@@ -1416,7 +1416,7 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
     JsVar *code = jsfReadFile(jsfNameFromString(".bootPowerOn"),0,0);
     if (code) {
       jsvUnLock2(jspEvaluateVar(code,0,".bootPowerOn",0), code);
-      jsiCheckErrors();
+      jsiCheckErrors(false);
     }
   }
 #endif
@@ -1438,7 +1438,7 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
       JsVar *code = jsfReadFile(jsfNameFromString(filename),0,0);
       if (code) {
         jsvUnLock2(jspEvaluateVar(code,0,filename,0), code);
-        jsiCheckErrors();
+        jsiCheckErrors(false);
       }
     }
   }
@@ -1446,7 +1446,7 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
   JsVar *code = jsfGetBootCodeFromFlash(isReset);
   if (!code) return false;
   jsvUnLock2(jspEvaluateVar(code,0,"boot code",0), code);
-  jsiCheckErrors();
+  jsiCheckErrors(false);
   return true;
 }
 
