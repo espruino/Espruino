@@ -304,7 +304,7 @@ int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
   assert(IOEVENT_MAX_LEN >= NRF_BLE_MAX_MTU_SIZE);
   int eventBytesHandled = 2+bufferLen;
   // Now handle the actual event
-  if (bufferLen<3) return;
+  if (bufferLen<3) return 0;
   BLEPending blep = (BLEPending)buffer[0];
   uint16_t data = (uint16_t)(buffer[1] | (buffer[2]<<8));
   // skip first 3 bytes
@@ -1213,7 +1213,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #else
         int centralIdx = -1;
 #endif
-        if (centralIdx<0) {
+        if (centralIdx<0) { // Peripheral Connection
           bleStatus &= ~BLE_IS_RSSI_SCANNING; // scanning will have stopped now we're disconnected
           m_peripheral_conn_handle = BLE_CONN_HANDLE_INVALID;
           // if we were on bluetooth and we disconnected, clear the input line so we're fresh next time (#2219)
@@ -1229,6 +1229,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           // restart advertising after disconnection
           if (!(bleStatus & BLE_IS_SLEEPING))
             jsble_queue_pending(BLEP_ADVERTISING_START, 0); // start advertising again
+          // If we were debugging and got disconnected, exit the debugger
+          if (jsiStatus & JSIS_IN_DEBUGGER)
+            jsiStatus |= JSIS_EXIT_DEBUGGER;
         }
         if ((bleStatus & BLE_NEEDS_SOFTDEVICE_RESTART) && !jsble_has_connection())
           jsble_queue_pending(BLEP_RESTART_SOFTDEVICE, 0);
