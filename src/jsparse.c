@@ -370,14 +370,6 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
       JSP_ASSERT_MATCH(LEX_R_RETURN);
     }
   }
-#ifndef ESPR_NO_LINE_NUMBERS
-  // Get the line number (if needed)
-  JsVarInt lineNumber = 0;
-  if (funcVar && lex->lineNumberOffset && !(forcePretokenise||jsfGetFlag(JSF_PRETOKENISE))) {
-    // jslGetLineNumber is slow, so we only do it if we have debug info
-    lineNumber = (JsVarInt)jslGetLineNumber() + (JsVarInt)lex->lineNumberOffset - 1;
-  }
-#endif
   // Get the code - parse it and figure out where it stops
   jslSkipWhiteSpace();
   jslCharPosNew(&funcBegin, lex->sourceVar, lex->tokenStart);
@@ -433,15 +425,6 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
     if (funcScopeVar) {
       jsvAddNamedChildAndUnLock(funcVar, funcScopeVar, JSPARSE_FUNCTION_SCOPE_NAME);
     }
-#ifndef ESPR_NO_LINE_NUMBERS
-    // If we've got a line number, add a var for it
-    if (lineNumber) {
-      JsVar *funcLineNumber = jsvNewFromInteger(lineNumber);
-      if (funcLineNumber) {
-        jsvAddNamedChildAndUnLock(funcVar, funcLineNumber, JSPARSE_FUNCTION_LINENUMBER_NAME);
-      }
-    }
-#endif
   }
 
   jslCharPosFree(&funcBegin);
@@ -661,9 +644,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       JsVar *functionScope = 0;
       JsVar *functionCode = 0;
       JsVar *functionInternalName = 0;
-#ifndef ESPR_NO_LINE_NUMBERS
-      uint16_t functionLineNumber = 0;
-#endif
 #ifdef ESPR_JIT
       bool functionIsJIT = false; // is functionCode actually Thumb Assembly (for JS)
 #endif
@@ -736,9 +716,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             jsvUnLock(thisVar);
             thisVar = jsvSkipName(param);
           }
-#ifndef ESPR_NO_LINE_NUMBERS
-          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_LINENUMBER_NAME)) functionLineNumber = (uint16_t)jsvGetIntegerAndUnLock(jsvSkipName(param));
-#endif
           else if (jsvIsFunctionParameter(param)) {
             JsVar *defaultVal = jsvSkipName(param);
             jsvAddFunctionParameter(functionRoot, jsvNewFromStringVar(param,1,JSVAPPENDSTRINGVAR_MAXLENGTH), defaultVal);
@@ -817,9 +794,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             newLex.lastLex = oldLex;
             jsvUnLock(functionCode); // unlock function code here to reduce amount of locks needed during recursion
             functionCode = 0;
-#ifndef ESPR_NO_LINE_NUMBERS
-            newLex.lineNumberOffset = functionLineNumber;
-#endif
             JSP_SAVE_EXECUTE();
             // force execute without any previous state
 #ifdef USE_DEBUGGER
@@ -3227,10 +3201,6 @@ JsVar *jspEvaluateExpressionVar(JsVar *str) {
   assert(jsvIsString(str));
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(str);
-#ifndef ESPR_NO_LINE_NUMBERS
-  lex.lineNumberOffset = oldLex->lineNumberOffset;
-#endif
-
   // actually do the parsing
   JsVar *v = jspeExpression();
   jslKill();
@@ -3239,9 +3209,8 @@ JsVar *jspEvaluateExpressionVar(JsVar *str) {
   return jsvSkipNameAndUnLock(v);
 }
 
-/** Execute code form a variable and return the result. If lineNumberOffset
- * is nonzero it's added to the line numbers that get reported for errors/debug */
-JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, const char *stackTraceName, uint16_t lineNumberOffset) {
+/** Execute code form a variable and return the result */
+JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, const char *stackTraceName) {
   JsLex lex;
 
   assert(jsvIsString(str));
@@ -3249,9 +3218,6 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, const char *stackTraceName, uint
   jslInit(str);
   lex.lastLex = oldLex;
   lex.functionName = stackTraceName?jsvNewFromString(stackTraceName):0;
-#ifndef ESPR_NO_LINE_NUMBERS
-  lex.lineNumberOffset = lineNumberOffset;
-#endif
 
   JsExecInfo oldExecInfo = execInfo;
   execInfo.execute = EXEC_YES;
@@ -3298,7 +3264,7 @@ JsVar *jspEvaluate(const char *str, bool stringIsStatic) {
 
   JsVar *v = 0;
   if (!jsvIsMemoryFull())
-    v = jspEvaluateVar(evCode, 0, "[raw]", 0);
+    v = jspEvaluateVar(evCode, 0, "[raw]");
   jsvUnLock(evCode);
 
   return v;
@@ -3379,7 +3345,7 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   execInfo.blockCount = 0;
 #endif
   execInfo.thisVar = scopeExports; // set 'this' variable to exports
-  jsvUnLock(jspEvaluateVar(moduleContents, scope, "module", 0));
+  jsvUnLock(jspEvaluateVar(moduleContents, scope, "module"));
 #ifndef ESPR_NO_LET_SCOPING
   assert(execInfo.blockCount==0);
   assert(execInfo.blockScope==0);

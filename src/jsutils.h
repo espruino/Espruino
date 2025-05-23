@@ -43,7 +43,6 @@
 #define ESPR_NO_OBJECT_METHODS 1
 #define ESPR_NO_PROPERTY_SHORTHAND 1
 #define ESPR_NO_GET_SET 1
-#define ESPR_NO_LINE_NUMBERS 1
 #define ESPR_NO_LET_SCOPING 1
 #ifndef ESPR_NO_PROMISES
   #define ESPR_NO_PROMISES 1
@@ -339,7 +338,6 @@ typedef int64_t JsSysTime;
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"sco" // the scope of the function's definition
 #define JSPARSE_FUNCTION_THIS_NAME JS_HIDDEN_CHAR_STR"ths" // the 'this' variable - for bound functions
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"nam" // for named functions (a = function foo() { foo(); })
-#define JSPARSE_FUNCTION_LINENUMBER_NAME JS_HIDDEN_CHAR_STR"lin" // The line number offset of the function
 #define JS_EVENT_PREFIX "#on"
 #define JS_TIMEZONE_VAR "tz"
 #ifndef ESPR_NO_DAYLIGHT_SAVING

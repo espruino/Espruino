@@ -163,7 +163,7 @@ Evaluate a string containing JavaScript code
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
   JsVar *s = jsvAsString(v); // get as a string
-  JsVar *result = jspEvaluateVar(s, 0, "eval", 0); // don't set scope, so we use the current scope
+  JsVar *result = jspEvaluateVar(s, 0, "eval"); // don't set scope, so we use the current scope
   jsvUnLock(s);
   return result;
 }

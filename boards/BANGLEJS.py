@@ -50,12 +50,11 @@ info = {
      'DEFINES+=-DESPR_UNICODE_SUPPORT=1',
      'DEFINES+=-DESPR_NO_SOFTWARE_SERIAL=1',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
-     'DEFINES+=-DSAVE_ON_FLASH_MATH', 
+     'DEFINES+=-DSAVE_ON_FLASH_MATH',
      'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS',
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
-     'DEFINES+=-DESPR_NO_LINE_NUMBERS=1', # we execute mainly from flash, so line numbers can be worked out
      'DEFINES+=-DAPP_TIMER_OP_QUEUE_SIZE=6', # Bangle.js accelerometer poll handler needs something else in queue size
      'DFU_PRIVATE_KEY=targets/nrf5x_dfu/dfu_private_key.pem',
      'DFU_SETTINGS=--application-version 0xff --hw-version 52 --sd-req 0x8C,0x91',

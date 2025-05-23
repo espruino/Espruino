@@ -64,9 +64,8 @@ void jspAppendStackTrace(JsVar *stackTrace, JsLex *lex);
 
 /** Evaluate the given variable as an expression (in current scope) */
 JsVar *jspEvaluateExpressionVar(JsVar *str);
-/** Execute code form a variable and return the result. If lineNumberOffset
- * is nonzero it's added to the line numbers that get reported for errors/debug */
-JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, const char *stackTraceName, uint16_t lineNumberOffset);
+/** Execute code form a variable and return the result */
+JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, const char *stackTraceName);
 /** Execute code form a string and return the result.
  * You should only set stringIsStatic if the string will hang around for
  * the life of the interpreter, as then the interpreter will use a pointer

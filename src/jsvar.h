@@ -509,7 +509,11 @@ JsVar *jsvGetFlatStringFromPointer(char *v); ///< Given a pointer to the first e
 char *jsvGetDataPointer(JsVar *v, size_t *len); ///< If the variable points to a *flat* area of memory, return a pointer (and set length). Otherwise return 0.
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
 size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
-void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col); ///< IN A STRING, get the 1-based line and column of the given character. Both values must be non-null
+
+/** IN A STRING, get the 1-based line and column of the given character. Both line+col must be non-null.
+If ignoredLines is set, this is the number of lines at the beginning we should ignore because the
+IDE might have added them automatically. */
+void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col, size_t *ignoredLines);
 size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col); ///<  IN A STRING, get a character index from a line and column
 
 

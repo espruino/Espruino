@@ -945,9 +945,6 @@ void jslInit(JsVar *var) {
   lex->tokenLastStart = 0;
   lex->tokenl = 0;
   lex->tokenValue = 0;
-#ifndef ESPR_NO_LINE_NUMBERS
-  lex->lineNumberOffset = 0;
-#endif
   lex->functionName = NULL;
   lex->lastLex = NULL;
   // set up iterator
@@ -1425,14 +1422,6 @@ JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo) {
   return var;
 }
 
-/// Return the line number at the current character position (this isn't fast as it searches the string)
-unsigned int jslGetLineNumber() {
-  size_t line;
-  size_t col;
-  jsvGetLineAndCol(lex->sourceVar, lex->tokenStart, &line, &col);
-  return (unsigned int)line;
-}
-
 /// Do we need a space between these two characters when printing a function's text?
 bool jslNeedSpaceBetween(unsigned char lastch, unsigned char ch) {
   return ((lastch>=_LEX_R_LIST_START && lastch<=_LEX_R_LIST_END) || (ch>=_LEX_R_LIST_START && ch<=_LEX_R_LIST_END)) &&
@@ -1505,7 +1494,7 @@ void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void
 }
 
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos) {
-  size_t line,col;
+  size_t line,col,ignoredLines;
 #if !defined(SAVE_ON_FLASH) && !defined(ESPR_EMBED)
   if (jsvIsNativeString(lex->sourceVar) || jsvIsFlashString(lex->sourceVar)) {
     uint32_t stringAddr = (uint32_t)(size_t)lex->sourceVar->varData.nativeStr.ptr;
@@ -1513,33 +1502,23 @@ void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, JsLex *
     uint32_t fileAddr = jsfFindFileFromAddr(stringAddr, &header);
     if (fileAddr) {
       JsVar *fileStr = jsvAddressToVar(fileAddr, jsfGetFileSize(&header));
-      jsvGetLineAndCol(fileStr, tokenPos + stringAddr - fileAddr, &line, &col);
+      jsvGetLineAndCol(fileStr, tokenPos + stringAddr - fileAddr, &line, &col, &ignoredLines);
       JsVar *name = jsfVarFromName(header.name);
-      cbprintf(user_callback, user_data,"%v:%d:%d", name, line, col);
+      cbprintf(user_callback, user_data,"%v:%d:%d", name, line-ignoredLines, col);
       jsvUnLock2(fileStr,name);
       return;
     }
   }
 #endif
-  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
-#ifndef ESPR_NO_LINE_NUMBERS
-  if (lex->lineNumberOffset)
-    line += (size_t)lex->lineNumberOffset - 1;
-#endif
-  cbprintf(user_callback, user_data, ":%d:%d", line, col);
+  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col, &ignoredLines);
+  cbprintf(user_callback, user_data, ":%d:%d", line-ignoredLines, col);
 }
 
-void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos, char *prefix) {
+void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos, size_t prefixLength) {
   size_t line = 1,col = 1;
-  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
+  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col, NULL); // we don't care about extra lines - all we care is outputting correctly
   size_t startOfLine = jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
   size_t lineLength = jsvGetCharsOnLine(lex->sourceVar, line);
-  size_t prefixLength = 0;
-
-  if (prefix) {
-    user_callback(prefix, user_data);
-    prefixLength = strlen(prefix);
-  }
 
   if (lineLength>60 && tokenPos-startOfLine>30) {
     cbprintf(user_callback, user_data, "...");

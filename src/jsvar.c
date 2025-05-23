@@ -1804,17 +1804,34 @@ size_t jsvGetCharsOnLine(JsVar *v, size_t line) {
   return chars;
 }
 
-//  IN A STRING, get the 1-based line and column of the given character. Both values must be non-null
-void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col) {
+/** IN A STRING, get the 1-based line and column of the given character. Both line+col must be non-null.
+If ignoredLines is set, this is the number of lines at the beginning we should ignore because the
+IDE might have added them automatically. */
+void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col, size_t *ignoredLines) {
   size_t x = 1;
   size_t y = 1;
   size_t n = 0;
   assert(line && col);
+  const char *ignoreLine = "Modules.addCached";
+  int ignoreLineIdx = 0;
+  if (ignoredLines) *ignoredLines=0;
 
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, 0);
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetCharAndNext(&it);
+#ifndef SAVE_ON_FLASH
+    /* Check for lines beginning with Modules.addCached right at the start
+    and ignore them, so that we get the correct line number in files where
+    the IDE had attempted to insert modules */
+    if (ignoredLines && y==1+*ignoredLines && ignoreLineIdx>=0 && ch==ignoreLine[ignoreLineIdx]) {
+      ignoreLineIdx++;
+      if (ignoreLine[ignoreLineIdx]==0) { // end of string
+        ignoreLineIdx=-1;
+        (*ignoredLines)++; // ensure we ignore this line
+      }
+    }
+#endif // SAVE_ON_FLASH
     if (n==charIdx) {
       jsvStringIteratorFree(&it);
       *line = y;
@@ -1824,6 +1841,7 @@ void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col) {
     x++;
     if (ch=='\n') {
       x=1; y++;
+      ignoreLineIdx = 0; // new line, we can start checking again now
     }
     n++;
   }

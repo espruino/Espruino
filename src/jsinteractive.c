@@ -128,7 +128,6 @@ size_t inputCursorPos = 0; ///< The position of the cursor in the input line
 InputState inputState = 0; ///< state for dealing with cursor keys
 uint16_t inputPacketLength; ///< When receiving an input packet, the length of it
 uint16_t inputStateNumber; ///< Number from when `Esc [ 1234` is sent - for storing line number
-uint16_t jsiLineNumberOffset; ///< When we execute code, this is the 'offset' we apply to line numbers in error/debug
 bool hasUsedHistory = false; ///< Used to speed up - if we were cycling through history and then edit, we need to copy the string
 unsigned char loopsIdling = 0; ///< How many times around the loop have we been entirely idle?
 JsErrorFlags lastJsErrorFlags = 0; ///< Compare with jsErrorFlags in order to report errors
@@ -284,8 +283,11 @@ NO_INLINE void jsiConsolePrintString(const char *str) {
   }
 }
 
+/// Used as a callback for using vcbprintf to write to the console. If given *size_t as user_data it incremenets it with the string length
 void vcbprintf_callback_jsiConsolePrintString(const char *str, void* user_data) {
-  NOT_USED(user_data);
+  if (user_data) {
+    *((size_t*)user_data) += strlen(str);
+  }
   jsiConsolePrintString(str);
 }
 
@@ -391,9 +393,9 @@ void jsiMoveCursor(size_t oldX, size_t oldY, size_t newX, size_t newY) {
 void jsiMoveCursorChar(JsVar *v, size_t fromCharacter, size_t toCharacter) {
   if (fromCharacter==toCharacter) return;
   size_t oldX, oldY;
-  jsvGetLineAndCol(v, fromCharacter, &oldY, &oldX);
+  jsvGetLineAndCol(v, fromCharacter, &oldY, &oldX, NULL);
   size_t newX, newY;
-  jsvGetLineAndCol(v, toCharacter, &newY, &newX);
+  jsvGetLineAndCol(v, toCharacter, &newY, &newX, NULL);
   jsiMoveCursor(oldX, oldY, newX, newY);
 }
 
@@ -501,7 +503,6 @@ void jsiSoftInit(bool hasBeenReset) {
   events = jsvNewEmptyArray();
   inputLine = jsvNewFromEmptyString();
   inputCursorPos = 0;
-  jsiLineNumberOffset = 0;
   jsiInputLineCursorMoved();
   inputLineIterator.var = 0;
 
@@ -539,7 +540,7 @@ void jsiSoftInit(bool hasBeenReset) {
   // Now run initialisation code
   JsVar *initCode = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
   if (initCode) {
-    jsvUnLock2(jspEvaluateVar(initCode, 0, "initcode", 0), initCode);
+    jsvUnLock2(jspEvaluateVar(initCode, 0, "initcode"), initCode);
     jsiCheckErrors(false);
     jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
   }
@@ -1239,20 +1240,20 @@ void jsiHandleEnd() {
 /** Page up/down move cursor to beginnint or end */
 void jsiHandlePageUpDown(bool isDown) {
   size_t x,y;
-  jsvGetLineAndCol(inputLine, inputCursorPos, &y, &x);
+  jsvGetLineAndCol(inputLine, inputCursorPos, &y, &x, NULL);
   if (!isDown) { // up
     inputCursorPos = 0;
   } else { // down
     inputCursorPos = jsvGetStringLength(inputLine);
   }
   size_t newX=x,newY=y;
-  jsvGetLineAndCol(inputLine, inputCursorPos, &newY, &newX);
+  jsvGetLineAndCol(inputLine, inputCursorPos, &newY, &newX, NULL);
   jsiMoveCursor(x,y,newX,newY);
 }
 
 void jsiHandleMoveUpDown(int direction) {
   size_t x,y, lines=jsvGetLinesInString(inputLine);
-  jsvGetLineAndCol(inputLine, inputCursorPos, &y, &x);
+  jsvGetLineAndCol(inputLine, inputCursorPos, &y, &x, NULL);
   size_t newX=x,newY=y;
   newY = (size_t)((int)newY + direction);
   if (newY<1) newY=1;
@@ -1260,7 +1261,7 @@ void jsiHandleMoveUpDown(int direction) {
   // work out cursor pos and feed back through - we might not be able to get right to the same place
   // if we move up
   inputCursorPos = jsvGetIndexFromLineAndCol(inputLine, newY, newX);
-  jsvGetLineAndCol(inputLine, inputCursorPos, &newY, &newX);
+  jsvGetLineAndCol(inputLine, inputCursorPos, &newY, &newX, NULL);
   if (jsiShowInputLine()) {
     jsiMoveCursor(x,y,newX,newY);
   }
@@ -1557,14 +1558,13 @@ void jsiHandleNewLine(bool execute) {
 #endif
       {
         // execute!
-        JsVar *v = jspEvaluateVar(lineToExecute, 0, "REPL", jsiLineNumberOffset);
+        JsVar *v = jspEvaluateVar(lineToExecute, 0, "REPL");
         // add input line to history
         bool isEmpty = jsvIsEmptyString(lineToExecute);
         // Don't store history if we're not echoing back to the console (it probably wasn't typed by the user)
         if (!isEmpty && jsiEcho())
           jsiHistoryAddLine(lineToExecute);
         jsvUnLock(lineToExecute);
-        jsiLineNumberOffset = 0; // forget the current line number now
         // print result (but NOT if we had an error)
         if (jsiEcho() && !jspHasError() && !isEmpty) {
           jsiConsolePrintChar('=');
@@ -1948,8 +1948,7 @@ static void jsiHandleConsoleChar(char ch) {
     if (ch>='0' && ch<='9') {
       inputStateNumber = (uint16_t)(10*inputStateNumber + ch - '0');
     } else {
-      if (ch=='d') jsiLineNumberOffset = inputStateNumber;
-      else if (ch=='H' /* 72 */) {
+      if (ch=='H' /* 72 */) {
         if (inputStateNumber==2) jsiClearInputLine(true); // Erase current line
       } else if (ch==126) {
         if (inputStateNumber==1) jsiHandleHome(); // Numpad Home
@@ -2069,7 +2068,7 @@ static NO_INLINE bool jsiExecuteEventCallbackInner(JsVar *thisVar, JsVar *callba
   } else if (jsvIsFunction(callbackNoNames)) {
     jsvUnLock(jspExecuteFunction(callbackNoNames, thisVar, (int)argCount, argPtr));
   } else if (jsvIsString(callbackNoNames)) {
-    jsvUnLock(jspEvaluateVar(callbackNoNames, 0, "event", 0));
+    jsvUnLock(jspEvaluateVar(callbackNoNames, 0, "event"));
   } else
     jsError("Unknown type of callback in Event Queue");
   return ok;
@@ -2594,7 +2593,7 @@ void jsiIdle() {
         // load the code we specified
         JsVar *code = jsfReadFile(filename,0,0);
         if (code) // only supply the filename if we're sure it's zero terminated
-          jsvUnLock2(jspEvaluateVar(code,0,filename.c[sizeof(filename.c)-1] ? filename.c : "load",0), code);
+          jsvUnLock2(jspEvaluateVar(code,0,filename.c[sizeof(filename.c)-1] ? filename.c : "load"), code);
       } else {
         jsiSoftKill();
         jspSoftKill();
@@ -2826,22 +2825,11 @@ void jsiDebuggerLoop() {
   jsiStatus = (jsiStatus & ~JSIS_ECHO_OFF_MASK) | JSIS_IN_DEBUGGER;
 
   if (lex) {
-    char lineStr[9];
-    // Get a string fo the form '1234    ' for the line number
-    // ... but only if the line number was set, otherwise use spaces
-#ifndef ESPR_NO_LINE_NUMBERS
-    if (lex->lineNumberOffset) {
-      itostr((JsVarInt)jslGetLineNumber() + (JsVarInt)lex->lineNumberOffset - 1, lineStr, 10);
-    } else
-#endif
-    { // FIXME: Maybe if executing from a Storage file we use line numbers within that file?
-      lineStr[0]=0;
-    }
-    size_t lineLen = strlen(lineStr);
-    while (lineLen < sizeof(lineStr)-1) lineStr[lineLen++]=' ';
-    lineStr[lineLen] = 0;
-    // print the line of code, prefixed by the line number, and with a pointer to the exact character in question
-    jslPrintTokenLineMarker(vcbprintf_callback_jsiConsolePrintString, 0, lex, lex->tokenLastStart, lineStr);
+    // print the line of code, prefixed by the file/line number, and with a pointer to the exact character in question
+    size_t prefixLength = 0;
+    jslPrintPosition(vcbprintf_callback_jsiConsolePrintString, &prefixLength, lex, lex->tokenLastStart);
+    jsiConsolePrint("   "); prefixLength+=3;
+    jslPrintTokenLineMarker(vcbprintf_callback_jsiConsolePrintString, 0, lex, lex->tokenLastStart, prefixLength);
   }
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&

@@ -160,12 +160,6 @@ typedef struct JsLex
   bool isUTF8;         ///< Is the current String a UTF8 String?
 #endif
 
-#ifndef ESPR_NO_LINE_NUMBERS
-  /** Amount we add to the line number when we're reporting to the user
-   * 1-based, so 0 means NO LINE NUMBER KNOWN */
-  uint16_t lineNumberOffset;
-#endif
-
   /* Where we get our data from...
    *
    * This is a bit more tricky than normal because the data comes from JsVars,
@@ -219,9 +213,6 @@ JsVar *jslNewStringFromLexer(JslCharPos *charFrom, size_t charTo);
 JsVar *jslNewTokenisedStringFromLexer(JslCharPos *charFrom, size_t charTo);
 #endif
 
-/// Return the line number at the current character position (this isn't fast as it searches the string)
-unsigned int jslGetLineNumber();
-
 /// Do we need a space between these two characters when printing a function's text?
 bool jslNeedSpaceBetween(unsigned char lastch, unsigned char ch);
 
@@ -233,7 +224,7 @@ void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, JsLex *
 
 /** Print the line of source code at `tokenPos`, prefixed with the string 'prefix' (0=no string).
  * Then, underneath it, print a '^' marker at the column tokenPos was at  */
-void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos, char *prefix);
+void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos, size_t prefixLength);
 
 /** Prints a full stack trace to the current callback function */
 void jslPrintStackTrace(vcbprintf_callback user_callback, void *user_data,  JsLex *lex);

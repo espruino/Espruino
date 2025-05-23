@@ -34,7 +34,7 @@ info = {
      'GRAPHICS',
      'FILESYSTEM', # for writing screenshots/etc
      'LCD_MEMLCD',
-#     'TENSORFLOW'  
+#     'TENSORFLOW'
    ],
    'makefile' : [
      'LINUX=1',
@@ -44,7 +44,6 @@ info = {
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
      'DEFINES += -DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DESPR_GRAPHICS_3BIT',
      'DEFINES += -DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
-     'DEFINES += -DESPR_NO_LINE_NUMBERS=1', # we execute mainly from flash, so line numbers can be worked out
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_6x15.c',
@@ -80,7 +79,7 @@ devices = {
   'BTN1' : { 'pin' : 'D17', 'pinstate' : 'IN_PULLDOWN' }, # Pin negated in software
   'LED1' : { 'pin' : 'D8', 'novariable':True }, # Backlight flash for low level debug - but in code we just use 'fake' LEDs
   'LCD' : {
-            'width' : 176, 'height' : 176, 
+            'width' : 176, 'height' : 176,
             'bpp' : 3,
             'controller' : 'LPM013M126', # LPM013M126C
             'pin_cs' : 'D5',
