@@ -948,6 +948,8 @@ void jslInit(JsVar *var) {
 #ifndef ESPR_NO_LINE_NUMBERS
   lex->lineNumberOffset = 0;
 #endif
+  lex->functionName = NULL;
+  lex->lastLex = NULL;
   // set up iterator
   jsvStringIteratorNew(&lex->it, lex->sourceVar, 0);
   jsvUnLock(lex->it.var); // see jslGetNextCh
@@ -1502,7 +1504,7 @@ void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void
   jsvStringIteratorFree(&it);
 }
 
-void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos) {
+void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos) {
   size_t line,col;
 #if !defined(SAVE_ON_FLASH) && !defined(ESPR_EMBED)
   if (jsvIsNativeString(lex->sourceVar) || jsvIsFlashString(lex->sourceVar)) {
@@ -1513,7 +1515,7 @@ void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t 
       JsVar *fileStr = jsvAddressToVar(fileAddr, jsfGetFileSize(&header));
       jsvGetLineAndCol(fileStr, tokenPos + stringAddr - fileAddr, &line, &col);
       JsVar *name = jsfVarFromName(header.name);
-      cbprintf(user_callback, user_data,"line %d col %d in %v\n", line, col, name);
+      cbprintf(user_callback, user_data,"%v:%d:%d", name, line, col);
       jsvUnLock2(fileStr,name);
       return;
     }
@@ -1524,10 +1526,10 @@ void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t 
   if (lex->lineNumberOffset)
     line += (size_t)lex->lineNumberOffset - 1;
 #endif
-  cbprintf(user_callback, user_data, "line %d col %d\n", line, col);
+  cbprintf(user_callback, user_data, ":%d:%d", line, col);
 }
 
-void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, size_t tokenPos, char *prefix) {
+void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos, char *prefix) {
   size_t line = 1,col = 1;
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
   size_t startOfLine = jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
@@ -1568,3 +1570,21 @@ void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, 
   user_callback("^\n", user_data);
 }
 
+void jslPrintStackTrace(vcbprintf_callback user_callback, void *user_data,  JsLex *lex) {
+  while (lex) {
+    user_callback("    at ", user_data);
+    if (lex->functionName) {
+      // can't use cbprintf here as it may try and allocate a var
+      // and we want to be able to use this when we're out of memory
+      char functionName[JSLEX_MAX_TOKEN_LENGTH];
+      jsvGetString(lex->functionName, functionName, sizeof(functionName));
+      user_callback(functionName, user_data);
+      user_callback(" (", user_data);
+    }
+    jslPrintPosition(user_callback, user_data, lex, lex->tokenLastStart);
+    user_callback(lex->functionName ? ")\n":"\n", user_data);
+    jslPrintTokenLineMarker(user_callback, user_data, lex, lex->tokenLastStart, 0);
+
+    lex = lex->lastLex; // go down to next lexer in list
+  }
+}

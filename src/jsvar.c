@@ -21,6 +21,7 @@
 #include "jswrap_object.h" // for jswrap_object_toString
 #include "jswrap_arraybuffer.h" // for jsvNewTypedArray
 #include "jswrap_dataview.h" // for jsvNewDataViewWithData
+#include "jswrap_functions.h" // jswrap_console_trace
 #if defined(ESPR_JIT) && defined(LINUX)
 #include <sys/mman.h>
 #endif
@@ -645,6 +646,13 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
   return jsvNewWithFlags(flags);
 #else
   // On a micro, we're screwed.
+#ifndef SAVE_ON_FLASH
+  if (!(jsErrorFlags & JSERR_MEMORY)) { // try and print a stack trace (if not already out of memory) - we should be able to do this without allocation
+    jsErrorFlags |= JSERR_MEMORY;
+    jsiConsolePrint("OUT OF MEMORY");
+    jswrap_console_trace(NULL);
+  }
+#endif
   jsErrorFlags |= JSERR_MEMORY;
   jspSetInterrupted(true);
   return 0;

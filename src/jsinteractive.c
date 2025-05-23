@@ -137,7 +137,6 @@ JsErrorFlags lastJsErrorFlags = 0; ///< Compare with jsErrorFlags in order to re
 #ifdef USE_DEBUGGER
 void jsiDebuggerLine(JsVar *line);
 #endif
-void jsiCheckErrors();
 
 static void jsiPacketFileEnd();
 static void jsiPacketExit();
@@ -535,11 +534,13 @@ void jsiSoftInit(bool hasBeenReset) {
 
   // Run 'boot code' - textual JS in flash
   jsfLoadBootCodeFromFlash(hasBeenReset);
+  //  jsiCheckErrors is performed internally
 
   // Now run initialisation code
   JsVar *initCode = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
   if (initCode) {
-    jsvUnLock2(jspEvaluateVar(initCode, 0, 0), initCode);
+    jsvUnLock2(jspEvaluateVar(initCode, 0, "initcode", 0), initCode);
+    jsiCheckErrors();
     jsvObjectRemoveChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
   }
 
@@ -565,11 +566,13 @@ void jsiSoftInit(bool hasBeenReset) {
 
   // Execute `init` events on `E`
   jsiExecuteEventCallbackOn("E", INIT_CALLBACK_NAME, 0, 0);
+  jsiCheckErrors();
   // Execute the `onInit` function
   JsVar *onInit = jsvObjectGetChildIfExists(execInfo.root, JSI_ONINIT_NAME);
   if (onInit) {
     if (jsiEcho()) jsiConsolePrint("Running onInit()...\n");
     jsiExecuteEventCallback(0, onInit, 0, 0);
+    jsiCheckErrors();
     jsvUnLock(onInit);
   }
 }
@@ -1528,7 +1531,7 @@ void jsiHandleNewLine(bool execute) {
 #endif
       {
         // execute!
-        JsVar *v = jspEvaluateVar(lineToExecute, 0, jsiLineNumberOffset);
+        JsVar *v = jspEvaluateVar(lineToExecute, 0, "REPL", jsiLineNumberOffset);
         // add input line to history
         bool isEmpty = jsvIsEmptyString(lineToExecute);
         // Don't store history if we're not echoing back to the console (it probably wasn't typed by the user)
@@ -2040,7 +2043,7 @@ static NO_INLINE bool jsiExecuteEventCallbackInner(JsVar *thisVar, JsVar *callba
   } else if (jsvIsFunction(callbackNoNames)) {
     jsvUnLock(jspExecuteFunction(callbackNoNames, thisVar, (int)argCount, argPtr));
   } else if (jsvIsString(callbackNoNames)) {
-    jsvUnLock(jspEvaluateVar(callbackNoNames, 0, 0));
+    jsvUnLock(jspEvaluateVar(callbackNoNames, 0, "event", 0));
   } else
     jsError("Unknown type of callback in Event Queue");
   return ok;
@@ -2146,7 +2149,7 @@ void jsiCtrlC() {
 /** Take an event for a UART and handle the characters we're getting, potentially
  * grabbing more characters as well if it's easy. If more character events are
  * grabbed, the number of extra events (not characters) is returned */
-int jsiHandleIOEventForSerial(JsVar *usartClass, IOEventFlags eventFlags, uint8_t *data, int length) {
+int jsiHandleIOEventForSerial(JsVar *usartClass, IOEventFlags eventFlags, uint8_t *data, unsigned int length) {
   int eventsHandled = length+2;
   JsVar *stringData = length ? jsvNewStringOfLength(length, (char*)data) : NULL;
   if (stringData) {
@@ -2178,7 +2181,7 @@ void jsiIdle() {
   bool wasBusy = false;
   IOEventFlags eventFlags;
   uint8_t eventData[IOEVENT_MAX_LEN];
-  int eventLen;
+  unsigned int eventLen;
   // ensure we can't get totally swamped by having more events than we can process.
   // Just process what was in the event queue at the start
   int maxEvents = jshGetEventsUsed();
@@ -2564,8 +2567,8 @@ void jsiIdle() {
         jsiSemiInit(false, &filename); // don't autoload code
         // load the code we specified
         JsVar *code = jsfReadFile(filename,0,0);
-        if (code)
-          jsvUnLock2(jspEvaluateVar(code,0,0), code);
+        if (code) // only supply the filename if we're sure it's zero terminated
+          jsvUnLock2(jspEvaluateVar(code,0,filename.c[sizeof(filename.c)-1] ? filename.c : "load",0), code);
       } else {
         jsiSoftKill();
         jspSoftKill();
@@ -2805,14 +2808,14 @@ void jsiDebuggerLoop() {
       itostr((JsVarInt)jslGetLineNumber() + (JsVarInt)lex->lineNumberOffset - 1, lineStr, 10);
     } else
 #endif
-    {
+    { // FIXME: Maybe if executing from a Storage file we use line numbers within that file?
       lineStr[0]=0;
     }
     size_t lineLen = strlen(lineStr);
     while (lineLen < sizeof(lineStr)-1) lineStr[lineLen++]=' ';
     lineStr[lineLen] = 0;
     // print the line of code, prefixed by the line number, and with a pointer to the exact character in question
-    jslPrintTokenLineMarker(vcbprintf_callback_jsiConsolePrintString, 0, lex->tokenLastStart, lineStr);
+    jslPrintTokenLineMarker(vcbprintf_callback_jsiConsolePrintString, 0, lex, lex->tokenLastStart, lineStr);
   }
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&
@@ -2822,7 +2825,7 @@ void jsiDebuggerLoop() {
     jshIdle();
     // If we have too many events (> half full) drain the queue
     uint8_t eventData[IOEVENT_MAX_LEN];
-    int eventLen;
+    unsigned int eventLen;
     while (jshGetEventsUsed()>IOBUFFERMASK*1/2 &&
            !(jsiStatus & JSIS_EXIT_DEBUGGER) &&
            !(execInfo.execute & EXEC_CTRL_C_MASK)) {
@@ -2906,7 +2909,8 @@ void jsiDebuggerLine(JsVar *line) {
                       "finish / f         - finish execution of the function call\n"
                       "print ... / p ...  - evaluate and print the next argument\n"
                       "info locals / i l)    - output local variables\n"
-                      "info scopechain / i s - output all variables in all scopes\n");
+                      "info scopechain / i s - output all variables in all scopes\n"
+                      "bt                 - print backtrace\n");
     } else if (!strcmp(id,"quit") || !strcmp(id,"q")) {
       jsiStatus |= JSIS_EXIT_DEBUGGER;
       execInfo.execute |= EXEC_INTERRUPTED;
@@ -2962,6 +2966,8 @@ void jsiDebuggerLine(JsVar *line) {
        } else {
          jsiConsolePrint("Unknown command\n");
        }
+    } else if (!strcmp(id,"bt")) {
+      jslPrintStackTrace(vcbprintf_callback_jsiConsolePrintString, NULL, oldLex);
     } else
       handled = false;
   }

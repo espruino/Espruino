@@ -74,10 +74,8 @@ void jspSetInterrupted(bool interrupt) {
 }
 
 /// Set the error flag - set lineReported if we've already output the line number
-void jspSetError(bool lineReported) {
+void jspSetError() {
   execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_YES) | EXEC_ERROR;
-  if (lineReported)
-    execInfo.execute |= EXEC_ERROR_LINE_REPORTED;
 }
 
 bool jspHasError() {
@@ -100,8 +98,6 @@ void jspeiRemoveScope() {
   if (!execInfo.scopesVar || !jsvGetArrayLength(execInfo.scopesVar)) {
     // This should never happen unless there's an interpreter error - no need to have an error message
     assert(0);
-    //jsExceptionHere(JSET_INTERNALERROR, "Too many scopes removed");
-    //jspSetError(false);
     return;
   }
   jsvUnLock(jsvArrayPop(execInfo.scopesVar));
@@ -237,12 +233,11 @@ void jspSetNoExecute() {
   execInfo.execute = (execInfo.execute & (JsExecFlags)(int)~EXEC_RUN_MASK) | EXEC_NO;
 }
 
-void jspAppendStackTrace(JsVar *stackTrace) {
+void jspAppendStackTrace(JsVar *stackTrace, JsLex *lex) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, stackTrace, 0);
   jsvStringIteratorGotoEnd(&it);
-  jslPrintPosition((vcbprintf_callback)jsvStringIteratorPrintfCallback, &it, lex->tokenLastStart);
-  jslPrintTokenLineMarker((vcbprintf_callback)jsvStringIteratorPrintfCallback, &it, lex->tokenLastStart, 0);
+  jslPrintStackTrace(jsvStringIteratorPrintfCallback, &it, lex);
   jsvStringIteratorFree(&it);
 }
 
@@ -256,18 +251,6 @@ void jspSetException(JsVar *value) {
   }
   // Set the exception flag
   execInfo.execute = execInfo.execute | EXEC_EXCEPTION;
-  // Try and do a stack trace
-  if (lex) {
-    JsVar *stackTrace = jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, JSV_STRING_0);
-    if (stackTrace) {
-      jsvAppendPrintf(stackTrace, " at ");
-      jspAppendStackTrace(stackTrace);
-      jsvUnLock(stackTrace);
-      // stop us from printing the trace in the same block
-      execInfo.execute = execInfo.execute | EXEC_ERROR_LINE_REPORTED;
-    }
-  }
-
 }
 
 /** Return the reported exception if there was one (and clear it). May return undefined even if there was an exception - eg `throw undefined` */
@@ -276,13 +259,6 @@ JsVar *jspGetException() {
   if (exceptionName) {
     JsVar *exception = jsvSkipName(exceptionName);
     jsvRemoveChildAndUnLock(execInfo.hiddenRoot, exceptionName);
-
-    JsVar *stack = jspGetStackTrace();
-    if (stack && jsvHasChildren(exception)) {
-      jsvObjectSetChild(exception, "stack", stack);
-    }
-    jsvUnLock(stack);
-
     return exception;
   }
   return 0;
@@ -311,7 +287,7 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
       strcpy(&buf[1], jslGetTokenValueAsString());
       JsVar *param = jsvAddNamedChild(funcVar, 0, buf);
       if (!param) { // out of memory
-        jspSetError(false);
+        jspSetError();
         return false;
       }
       param = jsvMakeFunctionParameter(param); // force this to be called a function parameter
@@ -677,7 +653,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       // OPT: Probably when calling a function ONCE, use it, otherwise when recursing, make new?
       JsVar *functionRoot = jsvNewWithFlags(JSV_FUNCTION);
       if (!functionRoot) { // out of memory
-        jspSetError(false);
+        jspSetError();
         jsvUnLock(thisVar);
         return 0;
       }
@@ -834,11 +810,11 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
                 execInfo.execute &= (JsExecFlags)~EXEC_DEBUGGER_NEXT_LINE;
             }
 #endif
-
-
             JsLex newLex;
             JsLex *oldLex = jslSetLex(&newLex);
             jslInit(functionCode);
+            newLex.functionName = functionName;
+            newLex.lastLex = oldLex;
             jsvUnLock(functionCode); // unlock function code here to reduce amount of locks needed during recursion
             functionCode = 0;
 #ifndef ESPR_NO_LINE_NUMBERS
@@ -889,9 +865,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 #ifdef USE_DEBUGGER
             bool calledDebugger = false;
             if (execInfo.execute & EXEC_DEBUGGER_MASK) {
-              jsiConsolePrint("Value returned is =");
+              jsiConsolePrintf(functionName?"Value returned from %v is =":"Value returned is =", functionName);
               jsfPrintJSON(returnVar, JSON_LIMIT | JSON_SOME_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
-              jsiConsolePrintChar('\n');
+              jsiConsolePrintString("\n"); // prints \r too
               if (execInfo.execute & EXEC_DEBUGGER_FINISH_FUNCTION) {
                 calledDebugger = true;
                 jsiDebuggerLoop();
@@ -904,19 +880,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             jslKill();
             jslSetLex(oldLex);
 
-            if (hasError) {
+            if (hasError)
               execInfo.execute |= hasError; // propogate error
-              JsVar *stackTrace = jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, JSV_STRING_0);
-              if (stackTrace) {
-                jsvAppendPrintf(stackTrace, jsvIsString(functionName)?"in function %q called from ":
-                    "in function called from ", functionName);
-                if (lex) {
-                  jspAppendStackTrace(stackTrace);
-                } else
-                  jsvAppendPrintf(stackTrace, "system\n");
-                jsvUnLock(stackTrace);
-              }
-            }
           }
 
           /* Return to old 'this' var. No need to unlock as we never locked before */
@@ -1236,7 +1201,7 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
 
     if (lex->tk==LEX_R_NEW) {
       jsExceptionHere(JSET_ERROR, "Nesting 'new' operators is unsupported");
-      jspSetError(false);
+      jspSetError();
       return 0;
     }
   }
@@ -1373,7 +1338,7 @@ NO_INLINE JsVar *jspeFactorObject() {
   if (JSP_SHOULD_EXECUTE) {
     JsVar *contents = jsvNewObject();
     if (!contents) { // out of memory
-      jspSetError(false);
+      jspSetError();
       return 0;
     }
     /* JSON-style object definition */
@@ -1466,7 +1431,7 @@ NO_INLINE JsVar *jspeFactorArray() {
   if (JSP_SHOULD_EXECUTE) {
     contents = jsvNewEmptyArray();
     if (!contents) { // out of memory
-      jspSetError(false);
+      jspSetError();
       return 0;
     }
   }
@@ -2325,17 +2290,6 @@ NO_INLINE void jspeBlockNoBrackets() {
       JsVar *a = jspeStatement();
       jsvCheckReferenceError(a);
       jsvUnLock(a);
-      if (JSP_HAS_ERROR) {
-        if (lex && !(execInfo.execute&EXEC_ERROR_LINE_REPORTED)) {
-          execInfo.execute = (JsExecFlags)(execInfo.execute | EXEC_ERROR_LINE_REPORTED);
-          JsVar *stackTrace = jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, JSV_STRING_0);
-          if (stackTrace) {
-            jsvAppendPrintf(stackTrace, "at ");
-            jspAppendStackTrace(stackTrace);
-            jsvUnLock(stackTrace);
-          }
-        }
-      }
       if (JSP_SHOULDNT_PARSE)
         break;
       if (!JSP_SHOULD_EXECUTE) {
@@ -2415,7 +2369,7 @@ NO_INLINE JsVar *jspeStatementVar() {
       jsvUnLock(scope);
 #endif
       if (!a) { // out of memory
-        jspSetError(false);
+        jspSetError();
         return lastDefined;
       }
     }
@@ -2909,7 +2863,7 @@ NO_INLINE JsVar *jspeStatementTry() {
     }
     if (shouldExecuteBefore) {
       // Now clear the exception flag (it's handled - we hope!)
-      execInfo.execute = execInfo.execute & (JsExecFlags)~(EXEC_EXCEPTION|EXEC_ERROR_LINE_REPORTED);
+      execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_EXCEPTION;
       jsvUnLock(exception);
     }
 
@@ -3287,16 +3241,17 @@ JsVar *jspEvaluateExpressionVar(JsVar *str) {
 
 /** Execute code form a variable and return the result. If lineNumberOffset
  * is nonzero it's added to the line numbers that get reported for errors/debug */
-JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
+JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, const char *stackTraceName, uint16_t lineNumberOffset) {
   JsLex lex;
 
   assert(jsvIsString(str));
   JsLex *oldLex = jslSetLex(&lex);
   jslInit(str);
+  lex.lastLex = oldLex;
+  lex.functionName = stackTraceName?jsvNewFromString(stackTraceName):0;
 #ifndef ESPR_NO_LINE_NUMBERS
   lex.lineNumberOffset = lineNumberOffset;
 #endif
-
 
   JsExecInfo oldExecInfo = execInfo;
   execInfo.execute = EXEC_YES;
@@ -3316,6 +3271,7 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   // clean up
   if (scope) jspeiClearScopes();
   jslKill();
+  jsvUnLock(lex.functionName);
   jslSetLex(oldLex);
 
   // restore state and execInfo (keep error flags & ctrl-c)
@@ -3342,7 +3298,7 @@ JsVar *jspEvaluate(const char *str, bool stringIsStatic) {
 
   JsVar *v = 0;
   if (!jsvIsMemoryFull())
-    v = jspEvaluateVar(evCode, 0, 0);
+    v = jspEvaluateVar(evCode, 0, "[raw]", 0);
   jsvUnLock(evCode);
 
   return v;
@@ -3423,7 +3379,7 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   execInfo.blockCount = 0;
 #endif
   execInfo.thisVar = scopeExports; // set 'this' variable to exports
-  jsvUnLock(jspEvaluateVar(moduleContents, scope, 0));
+  jsvUnLock(jspEvaluateVar(moduleContents, scope, "module", 0));
 #ifndef ESPR_NO_LET_SCOPING
   assert(execInfo.blockCount==0);
   assert(execInfo.blockScope==0);

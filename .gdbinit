@@ -2,10 +2,10 @@ break jsAssertFail
 break jsError
 define jsvTrace
   print jsvTrace($arg0, 0)
-end   
+end
 define whereami
- print jslPrintPosition(jsiConsolePrintString, 0, lex->tokenLastStart)
- print jslPrintTokenLineMarker(jsiConsolePrintString, 0, lex->tokenLastStart, 0)
+ print jslPrintPosition(jsiConsolePrintString, 0, lex, lex->tokenLastStart)
+ print jslPrintTokenLineMarker(jsiConsolePrintString, 0, lex, lex->tokenLastStart, 0)
 end
 define typeof
   if (($arg0)->flags&JSV_VARTYPEMASK)>=JSV_NAME_STRING_0 && (($arg0)->flags&JSV_VARTYPEMASK)<=JSV_NAME_STRING_MAX
@@ -25,7 +25,7 @@ end
 define asm
   set  disassemble-next-line on
   show disassemble-next-line
-  echo now use stepi 
+  echo now use stepi
 end
 # Watchdog timer off for NRF52 devices
 define wdt_off
@@ -56,9 +56,6 @@ define execflags
   if execInfo.execute&EXEC_ERROR
     printf "EXEC_ERROR\n"
   end
-  if execInfo.execute&EXEC_ERROR_LINE_REPORTED
-    printf "EXEC_ERROR_LINE_REPORTED\n"
-  end
   if execInfo.execute&EXEC_FOR_INIT
     printf "EXEC_FOR_INIT\n"
   end
@@ -82,7 +79,7 @@ end
 
 define hook-run
     set $primask=0
-end 
+end
 
 define hook-continue
     set $primask=0

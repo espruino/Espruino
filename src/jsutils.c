@@ -259,7 +259,7 @@ NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
 
   JsVar *var = jsvNewFromEmptyString();
   if (!var) {
-    jspSetError(false);
+    jspSetError();
     return; // out of memory
   }
 
@@ -337,7 +337,7 @@ NO_INLINE void jsExceptionHere_flash(JsExceptionType type, const char *ffmt, ...
 
   JsVar *var = jsvNewFromEmptyString();
   if (!var) {
-    jspSetError(false);
+    jspSetError();
     return; // out of memory
   }
 

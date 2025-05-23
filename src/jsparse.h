@@ -52,19 +52,21 @@ void jspSetInterrupted(bool interrupt);
 /// Has there been an error during parsing
 bool jspHasError();
 /// Set the error flag - set lineReported if we've already output the line number
-void jspSetError(bool lineReported);
+void jspSetError();
 /// We had an exception (argument is the exception's value)
 void jspSetException(JsVar *value);
 /** Return the reported exception if there was one (and clear it). May return undefined even if there was an exception - eg `throw undefined` */
 JsVar *jspGetException();
 /** Return a stack trace string if there was one (and clear it) */
 JsVar *jspGetStackTrace();
+/** Append a line marker for the current lex instanec to the given string */
+void jspAppendStackTrace(JsVar *stackTrace, JsLex *lex);
 
 /** Evaluate the given variable as an expression (in current scope) */
 JsVar *jspEvaluateExpressionVar(JsVar *str);
 /** Execute code form a variable and return the result. If lineNumberOffset
  * is nonzero it's added to the line numbers that get reported for errors/debug */
-JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset);
+JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, const char *stackTraceName, uint16_t lineNumberOffset);
 /** Execute code form a string and return the result.
  * You should only set stringIsStatic if the string will hang around for
  * the life of the interpreter, as then the interpreter will use a pointer
@@ -97,7 +99,7 @@ typedef enum  {
   EXEC_INTERRUPTED = 16, ///< true if execution has been interrupted
   EXEC_EXCEPTION = 32, ///< we had an exception, so don't execute until we hit a try/catch block
   EXEC_ERROR = 64,
-  EXEC_ERROR_LINE_REPORTED = 128, ///< if an error has been reported, set this so we don't do it too much (EXEC_ERROR will STILL be set)
+  // 128 is free now
 
   EXEC_FOR_INIT = 256, ///< when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
   EXEC_IN_LOOP = 512, ///< when in a loop, set this - we can then block break/continue outside it

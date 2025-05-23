@@ -1414,8 +1414,10 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
 #endif
   if (jsiStatus & JSIS_FIRST_BOOT) {
     JsVar *code = jsfReadFile(jsfNameFromString(".bootPowerOn"),0,0);
-    if (code)
-      jsvUnLock2(jspEvaluateVar(code,0,0), code);
+    if (code) {
+      jsvUnLock2(jspEvaluateVar(code,0,".bootPowerOn",0), code);
+      jsiCheckErrors();
+    }
   }
 #endif
   // Load code in .boot0/1/2/3 UNLESS BTN1 IS HELD DOWN FOR BANGLE.JS ON FIRST BOOT (BTN3 for Dickens)
@@ -1434,14 +1436,17 @@ bool jsfLoadBootCodeFromFlash(bool isReset) {
     for (int i=0;i<4;i++) {
       filename[5] = (char)('0'+i);
       JsVar *code = jsfReadFile(jsfNameFromString(filename),0,0);
-      if (code)
-        jsvUnLock2(jspEvaluateVar(code,0,0), code);
+      if (code) {
+        jsvUnLock2(jspEvaluateVar(code,0,filename,0), code);
+        jsiCheckErrors();
+      }
     }
   }
   // Load normal boot code
   JsVar *code = jsfGetBootCodeFromFlash(isReset);
   if (!code) return false;
-  jsvUnLock2(jspEvaluateVar(code,0,0), code);
+  jsvUnLock2(jspEvaluateVar(code,0,"boot code",0), code);
+  jsiCheckErrors();
   return true;
 }
 

@@ -32,6 +32,7 @@ JsVar *jswrap_decodeURIComponent(JsVar *arg);
 
 void jswrap_trace(JsVar *root);
 void jswrap_print(JsVar *v);
+void jswrap_console_trace(JsVar *v);
 
 
 #endif // JSWRAP_FUNCTIONS_H_

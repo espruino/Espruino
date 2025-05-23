@@ -55,6 +55,15 @@ JsVar *_jswrap_error_constructor(JsVar *msg, char *type) {
   if (msg)
     jsvObjectSetChildAndUnLock(d, "message", jsvAsString(msg));
   jsvObjectSetChildAndUnLock(d, "type", jsvNewFromString(type));
+  // add stack trace
+  if (lex) {
+    JsVar *stackTrace = jsvNewFromEmptyString();
+    if (stackTrace) { // memory?
+      jspAppendStackTrace(stackTrace, lex);
+      jsvObjectSetChildAndUnLock(d, "stack", stackTrace);
+    }
+  }
+
 
   return d;
 }

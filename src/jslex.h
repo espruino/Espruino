@@ -174,6 +174,11 @@ typedef struct JsLex
    */
   JsVar *sourceVar; // the actual string var
   JsvStringIterator it; // Iterator for the string
+
+  /// For stack traces - this is just a pointer to a function name if we have one (it's not 'owned')
+  JsVar *functionName;
+  /// For stack traces - this is just a pointer to the previous Lex on the stack
+  struct JsLex *lastLex;
 } JsLex;
 
 // The lexer
@@ -224,10 +229,13 @@ bool jslNeedSpaceBetween(unsigned char lastch, unsigned char ch);
 void jslPrintTokenisedString(JsVar *code, vcbprintf_callback user_callback, void *user_data);
 
 /// Print position in the form 'line X col Y'
-void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, size_t tokenPos);
+void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos);
 
 /** Print the line of source code at `tokenPos`, prefixed with the string 'prefix' (0=no string).
  * Then, underneath it, print a '^' marker at the column tokenPos was at  */
-void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, size_t tokenPos, char *prefix);
+void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, JsLex *lex, size_t tokenPos, char *prefix);
+
+/** Prints a full stack trace to the current callback function */
+void jslPrintStackTrace(vcbprintf_callback user_callback, void *user_data,  JsLex *lex);
 
 #endif /* JSLEX_H_ */
