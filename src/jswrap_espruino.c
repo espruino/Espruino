@@ -1563,7 +1563,8 @@ void jswrap_espruino_dumpFreeList() {
   "ifndef" : "SAVE_ON_FLASH",
   "generate" : "jswrap_e_dumpFragmentation"
 }
-Show fragmentation.
+Show fragmentation. As of 2v27 this stops at the last allocated variable
+so as to avoid outputting blank lines if memory isn't full.
 
 * ` ` is free space
 * `#` is a normal variable
@@ -1571,8 +1572,16 @@ Show fragmentation.
 * `=` represents data in a Flat String (must be contiguous)
  */
 void jswrap_e_dumpFragmentation() {
-  int l = 0;
+  // find last allocated
+  unsigned int lastAllocated = 0;
   for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
+    JsVar *v = _jsvGetAddressOf(i+1);
+    if ((v->flags&JSV_VARTYPEMASK)!=JSV_UNUSED)
+      lastAllocated = i;
+  }
+  // output data as lines
+  int l = 0;
+  for (unsigned int i=0;i<lastAllocated;i++) {
     JsVar *v = _jsvGetAddressOf(i+1);
     if ((v->flags&JSV_VARTYPEMASK)==JSV_UNUSED) {
       jsiConsolePrint(" ");
@@ -1662,7 +1671,16 @@ void jswrap_e_dumpVariables() {
   "name" : "defrag",
   "generate" : "jsvDefragment"
 }
-BETA: defragment memory!
+This defragment's Espruino's memory. 
+
+While Espruino does a lot of work to avoid fragmentation (variables spread over memory)
+and can usually work around it (such as by allocating data in chunks) sometimes
+it is useful to be able to allocate a large contiguous chunk of memory, and
+if memory is low and has been fragmented it may need defragmenting in order to
+find that chunk.
+
+See `E.dumpFragmentation()` to show a map of the arrangement of variables
+within memory.
 */
 
 /*TYPESCRIPT
