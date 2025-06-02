@@ -254,6 +254,10 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
 
   JsVar *data = jsvNewFlatStringOfLength(sizeof(JsFileData));
   if (!data) { // out of memory for flat string
+    jsvDefragment(); // defrag and try again in case it was a memory fragmentation issue
+    data = jsvNewFlatStringOfLength(sizeof(JsFileData));
+  }
+  if (!data) { // out of memory for flat string
     jsErrorFlags |= JSERR_LOW_MEMORY; // flag this up as an issue
     jsvUnLock(parent);
     return false;
