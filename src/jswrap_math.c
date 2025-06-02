@@ -49,6 +49,7 @@ double jswrap_math_sin(double x) {
    * So about 3k, just for sin.
    * */
   // exploit symmetry - we're only accurate when x is small
+  if (x<0) x=-x;
   int xi = (int)(x/PI);
   x -= xi*PI;
   if (x>PI/2) x=PI-x;

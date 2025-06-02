@@ -12,7 +12,8 @@
             The first Uncaught error is now saved to a file in Storage called ERROR (`E.setFlags({noErrorSave:true})` disables this) (#2583)
             If debugging via bluetooth and we disconnect, quit debugging (locks Bluetooth otherwise)
             Remove Line Number handling code (most code will be run out of Storage now, where we know the line number)
-            Debugger now uses jslPrintPosition to print file+line+col
+            Debugger now uses jslPrintPosition to print file+line+col, is aware of Modules.addCached that IDE adds and discounts it
+            Fix Math.sin on negative numbers on extremely constrained builds (Bangle.js 1/Microbit) where we have to use a very small sin implementation
 
      2v26 : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
             Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)
