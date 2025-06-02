@@ -4376,18 +4376,12 @@ static void _jsvDefragment_moveReferences(JsVarRef defragFromRef, JsVarRef defra
         // find the last available item by searching forward (we can't just search back as we might hit a flat string)
         vr += (unsigned int)jsvGetFlatStringBlocks(v); // skip forward
       } else {
-        if (jsvHasSingleChild(v))
+        if (jsvHasSingleChild(v) || jsvHasChildren(v))
           if (jsvGetFirstChild(v)==defragFromRef)
             jsvSetFirstChild(v,defragToRef);
-        if (jsvHasStringExt(v))
+        if (jsvHasStringExt(v) || jsvHasChildren(v))
           if (jsvGetLastChild(v)==defragFromRef)
             jsvSetLastChild(v,defragToRef);
-        if (jsvHasChildren(v)) {
-          if (jsvGetFirstChild(v)==defragFromRef)
-            jsvSetFirstChild(v,defragToRef);
-          if (jsvGetLastChild(v)==defragFromRef)
-            jsvSetLastChild(v,defragToRef);
-        }
         if (jsvIsName(v)) {
           if (jsvGetNextSibling(v)==defragFromRef)
             jsvSetNextSibling(v,defragToRef);
