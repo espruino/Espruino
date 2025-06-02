@@ -985,6 +985,10 @@ int jswrap_graphics_getBPP(JsVar *parent) {
 }
 Reset the state of Graphics to the defaults (e.g. Color, Font, etc) that would
 have been used when Graphics was initialised.
+
+**Note:** The current graphics theme is not reset when `g.reset()` is called. To reset that
+you must store the value from `g.getTheme()` before calling `g.setTheme()`, and manually
+set it back afterwards.
 */
 JsVar *jswrap_graphics_reset(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
