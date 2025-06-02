@@ -275,7 +275,7 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
   "generate" : "jswrap_E_openFile",
   "params" : [
     ["path","JsVar","the path to the file to open."],
-    ["mode","JsVar","The mode to use when opening the file. Valid values for mode are 'r' for read, 'w' for write new, 'w+' for write existing, and 'a' for append. If not specified, the default is 'r'."]
+    ["mode","JsVar","The mode to use when opening the file. Valid values for mode are 'r' for read, 'r+' for read+write [2v27+], 'w' for write new, 'w+' for write existing, and 'a' for append. If not specified, the default is 'r'."]
   ],
   "return" : ["JsVar","A File object"],
   "return_object" : "File"
@@ -313,11 +313,16 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
 #ifndef LINUX
         ff_mode = FA_READ | FA_OPEN_EXISTING;
 #endif
+      } else if(strcmp(modeStr,"r+") == 0) {
+        fMode = FM_READ_WRITE;
+      #ifndef LINUX
+        ff_mode = FA_READ | FA_WRITE | FA_OPEN_EXISTING;
+      #endif
       } else if(strcmp(modeStr,"a") == 0) {
         fMode = FM_WRITE;
 #ifndef LINUX
         ff_mode = FA_WRITE | FA_OPEN_ALWAYS;
-        append = true;
+        append = true; // FA_OPEN_APPEND only appeared in newer FatFS
 #endif
       } else if(strcmp(modeStr,"w") == 0) {
         fMode = FM_WRITE;
@@ -327,7 +332,7 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
       } else if(strcmp(modeStr,"w+") == 0) {
         fMode = FM_READ_WRITE;
 #ifndef LINUX
-        ff_mode = FA_WRITE | FA_OPEN_ALWAYS;
+        ff_mode = FA_READ | FA_WRITE | FA_OPEN_ALWAYS;
 #endif
       }
       if(fMode != FM_NONE && allocateJsFile(&file, fMode, FT_FILE)) {

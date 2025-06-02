@@ -16,6 +16,7 @@
             Fix Math.sin on negative numbers on extremely constrained builds (Bangle.js 1/Microbit) where we have to use a very small sin implementation
             Bangle.js2: Calling Bangle.getPressure() while a conversion is in progress now returns the same promise (so it will complete as soon as pressure data is ready) rather than erroring
             Bangle.js2: Fix 2v22 regression where `E.showMenu({test:{}})` would display 'test:undefined'
+            Fat FS: Added `r+` file open mode (and allow w+ to read)
 
      2v26 : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
             Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)
