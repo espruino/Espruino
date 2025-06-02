@@ -123,9 +123,11 @@
       if ("object" == typeof item) {
         var v = item.value;
         if (item.format) v=item.format(v);
-        var val = g.findFont(v, {w:r.w/2,h:r.h,wrap:1,trim:1});
-        g.setFontAlign(1,0).drawString(val.text,r.x+r.w-8,2+r.y+H/2);
-        pad += g.stringWidth(val.text);
+        if (v!==undefined) {
+          var val = g.findFont(v, {w:r.w/2,h:r.h,wrap:1,trim:1});
+          g.setFontAlign(1,0).drawString(val.text,r.x+r.w-8,2+r.y+H/2);
+          pad += g.stringWidth(val.text);
+        }
       } else if ("function" == typeof item) {
         g.drawImage(/* 9x18 */atob("CRKBAGA4Hg8DwPB4HgcDg8PB4eHg8HAwAA=="), r.x+r.w-21, r.y+H/2-9);
         pad += 16;
