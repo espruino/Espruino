@@ -14,6 +14,7 @@
             Remove Line Number handling code (most code will be run out of Storage now, where we know the line number)
             Debugger now uses jslPrintPosition to print file+line+col, is aware of Modules.addCached that IDE adds and discounts it
             Fix Math.sin on negative numbers on extremely constrained builds (Bangle.js 1/Microbit) where we have to use a very small sin implementation
+            Bangle.js2: Calling Bangle.getPressure() while a conversion is in progress now returns the same promise (so it will complete as soon as pressure data is ready) rather than erroring
 
      2v26 : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
             Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)

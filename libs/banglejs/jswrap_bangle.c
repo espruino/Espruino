@@ -5329,8 +5329,7 @@ JsVar *jswrap_banglejs_getBarometerObject() {
 JsVar *jswrap_banglejs_getPressure() {
 #ifdef PRESSURE_DEVICE
   if (promisePressure) {
-    jsExceptionHere(JSET_ERROR, "Conversion in progress");
-    return 0;
+    return jsvLockAgain(promisePressure); // just return the same promise if we were already doing a conversion
   }
   promisePressure = jspromise_create();
   if (!promisePressure) return 0;
