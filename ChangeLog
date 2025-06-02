@@ -18,6 +18,7 @@
             Bangle.js2: Fix 2v22 regression where `E.showMenu({test:{}})` would display 'test:undefined'
             Fat FS: Added `r+` file open mode (and allow w+ to read)
             Fat FS: If can't allocate file, attempt defragmentation and try again
+            E.defrag() now defrags everything, including Flat Strings (fix #1740)
 
      2v26 : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
             Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)

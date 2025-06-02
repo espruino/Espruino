@@ -664,6 +664,7 @@ static void jsvFreePtrInternal(JsVar *var) {
   var->flags = JSV_UNUSED;
   // add this to our free list
   jshInterruptOff(); // to allow this to be used from an IRQ
+  // OPT: would a small amount of sorting here when inserting (curRef>jsVarFirstEmpty) help to reduce fragmentation?
   jsvSetNextSibling(var, jsVarFirstEmpty);
   jsVarFirstEmpty = jsvGetRef(var);
   touchedFreeList = true;
@@ -671,6 +672,7 @@ static void jsvFreePtrInternal(JsVar *var) {
 }
 
 void jsvFreePtrStringExt(JsVar* var) {
+  // Inserts an entire string into the free list (in the correct order)
   JsVarRef ref = jsvGetLastChild(var);
   if (!ref) return;
   JsVar* ext = jsvGetAddressOf(ref);
@@ -4364,82 +4366,120 @@ int jsvGarbageCollect() {
 }
 
 #ifndef SAVE_ON_FLASH
-void jsvDefragment() {
-  /* FIXME: we should surely be able to go through without `defragVars`,
-  and just work from the beginning to the end. We really need to be able
-  to move flat strings: https://github.com/espruino/Espruino/issues/1740 */
-  // garbage collect - removes cruft
-  // also puts free list in order
-  jsvGarbageCollect();
-  // Fill defragVars with defraggable variables
-  jshInterruptOff();
-  const int DEFRAGVARS = 256; // POWER OF 2
-  JsVarRef defragVars[DEFRAGVARS];
-  memset(defragVars, 0, sizeof(defragVars));
-  int defragVarIdx = 0;
-  for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
-    JsVarRef vr = (JsVarRef)(i+1);
+static void _jsvDefragment_moveReferences(JsVarRef defragFromRef, JsVarRef defragToRef) {
+  // find references!
+  for (JsVarRef vr=1;vr<=jsVarsSize;vr++) {
     JsVar *v = _jsvGetAddressOf(vr);
     if ((v->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
       if (jsvIsFlatString(v)) {
-        i += (unsigned int)jsvGetFlatStringBlocks(v); // skip forward
-      } else if (jsvGetLocks(v)==0) {
-        defragVars[defragVarIdx] = vr;
-        defragVarIdx = (defragVarIdx+1) & (DEFRAGVARS-1);
-        // why do we roll over and not stop?
-      }
-    }
-  }
-  // Now go through defragVars defragging them
-  defragVarIdx--;
-  if (defragVarIdx<0) defragVarIdx+=DEFRAGVARS;
-  while (defragVars[defragVarIdx]) {
-    JsVarRef defragFromRef = defragVars[defragVarIdx];
-    JsVarRef defragToRef = jsVarFirstEmpty;
-    if (!defragToRef || defragFromRef<defragToRef) {
-      // we're done!
-      break;
-    }
-    // relocate!
-    JsVar *defragFrom = _jsvGetAddressOf(defragFromRef);
-    JsVar *defragTo = _jsvGetAddressOf(defragToRef);
-    jsVarFirstEmpty = jsvGetNextSibling(defragTo); // move our reference to the next in the free list
-    // copy data
-    *defragTo = *defragFrom;
-    defragFrom->flags = JSV_UNUSED;
-    // find references!
-    for (unsigned int i=0;i<jsvGetMemoryTotal();i++) {
-      JsVarRef vr = (JsVarRef)(i+1);
-      JsVar *v = _jsvGetAddressOf(vr);
-      if ((v->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
-        if (jsvIsFlatString(v)) {
-          i += (unsigned int)jsvGetFlatStringBlocks(v); // skip forward
-        } else {
-          if (jsvHasSingleChild(v))
-            if (jsvGetFirstChild(v)==defragFromRef)
-              jsvSetFirstChild(v,defragToRef);
-          if (jsvHasStringExt(v))
-            if (jsvGetLastChild(v)==defragFromRef)
-              jsvSetLastChild(v,defragToRef);
-          if (jsvHasChildren(v)) {
-            if (jsvGetFirstChild(v)==defragFromRef)
-              jsvSetFirstChild(v,defragToRef);
-            if (jsvGetLastChild(v)==defragFromRef)
-              jsvSetLastChild(v,defragToRef);
-          }
-          if (jsvIsName(v)) {
-            if (jsvGetNextSibling(v)==defragFromRef)
-              jsvSetNextSibling(v,defragToRef);
-            if (jsvGetPrevSibling(v)==defragFromRef)
-              jsvSetPrevSibling(v,defragToRef);
-          }
+        // finding a hole of the right size is a pain - so let's just shift back
+        // find the last available item by searching forward (we can't just search back as we might hit a flat string)
+        vr += (unsigned int)jsvGetFlatStringBlocks(v); // skip forward
+      } else {
+        if (jsvHasSingleChild(v))
+          if (jsvGetFirstChild(v)==defragFromRef)
+            jsvSetFirstChild(v,defragToRef);
+        if (jsvHasStringExt(v))
+          if (jsvGetLastChild(v)==defragFromRef)
+            jsvSetLastChild(v,defragToRef);
+        if (jsvHasChildren(v)) {
+          if (jsvGetFirstChild(v)==defragFromRef)
+            jsvSetFirstChild(v,defragToRef);
+          if (jsvGetLastChild(v)==defragFromRef)
+            jsvSetLastChild(v,defragToRef);
+        }
+        if (jsvIsName(v)) {
+          if (jsvGetNextSibling(v)==defragFromRef)
+            jsvSetNextSibling(v,defragToRef);
+          if (jsvGetPrevSibling(v)==defragFromRef)
+            jsvSetPrevSibling(v,defragToRef);
         }
       }
     }
-    // zero element and move to next...
-    defragVars[defragVarIdx] = 0;
-    defragVarIdx--;
-    if (defragVarIdx<0) defragVarIdx+=DEFRAGVARS;
+  }
+}
+
+void jsvDefragment() {
+  // https://github.com/espruino/Espruino/issues/1740
+  // garbage collect - removes cruft, also puts free list in order
+  jsvGarbageCollect();
+  jshInterruptOff();
+  // the var we're planning on writing to
+  JsVarRef defragToRef = 1;
+  // now for all blocks in memory...
+  for (JsVarRef defragFromRef=1;defragFromRef<=jsVarsSize;defragFromRef++) {
+    // First move our destination block on until we find an UNUSED one...
+    JsVar *defragTo = _jsvGetAddressOf(defragToRef);
+    while ((defragTo->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
+      if (jsvIsFlatString(defragTo)) {
+        defragToRef += 1+(unsigned int)jsvGetFlatStringBlocks(defragTo); // skip forward
+      } else defragToRef++;
+      if (defragToRef > jsVarsSize) { // no more free blocks? quit
+        jsvCreateEmptyVarList();
+        jshInterruptOn();
+        return;
+      }
+      defragTo = _jsvGetAddressOf(defragToRef);
+    }
+    // Now look at our current block - if it's USED
+    JsVar *defragFrom = _jsvGetAddressOf(defragFromRef);
+    if ((defragFrom->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
+      bool canMove = jsvGetLocks(defragFrom)==0;
+      if (jsvIsFlatString(defragFrom)) {
+        unsigned int blocksNeeded = 1+(unsigned int)jsvGetFlatStringBlocks(defragFrom);
+        if (canMove) { // moving a flat string
+          /* since a FlatString is >1 vars we need to find a hole big enough. Work forward
+          from defragToRef trying to see how many blocks we can move */
+          JsVarRef fsToRef = defragToRef;
+          bool isClear = false;
+          while (!isClear && fsToRef<defragFromRef) {
+            isClear = true;
+            // check area in fsToRef to see if it's clear
+            for (int i=0;i<blocksNeeded;i++) {
+              // TODO: what if we overlap with ourself?? would have to ensure we don't clear overlapping area
+              if ((_jsvGetAddressOf(fsToRef+i)->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
+                isClear = false; // it's not clear!
+                fsToRef += i; // jump to this used block
+                break;
+              }
+            }
+            // if it wasn't clear, try and jump to the next item
+            if (!isClear) {
+              JsVar *v = _jsvGetAddressOf(fsToRef);
+              while ((v->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
+                if (jsvIsFlatString(v)) {
+                  fsToRef += 1+(unsigned int)jsvGetFlatStringBlocks(v); // skip forward
+                } else fsToRef++;
+                if (fsToRef <= jsVarsSize)
+                  v = _jsvGetAddressOf(defragToRef);
+                else
+                  break; // end of memory
+              }
+            }
+          }
+          if (isClear && (defragFromRef > fsToRef)) {
+            //jsiConsolePrintf("Move FlatString %d -> %d\n", defragFromRef, fsToRef);
+            defragTo = _jsvGetAddressOf(fsToRef);
+            // copy data and clear old var
+            memmove(defragTo, defragFrom, sizeof(JsVar)*blocksNeeded);
+            memset(defragFrom, 0, sizeof(JsVar)*blocksNeeded);
+            // copy references
+            _jsvDefragment_moveReferences(defragFromRef, defragToRef);
+          }
+        }
+        defragFromRef += blocksNeeded-1; // skip forward (for loop adds 1)
+        // skip flat strings for now
+      } else if (canMove) { // moving a single var
+        if (defragFromRef > defragToRef) { // can we move back?
+          //jsiConsolePrintf("Move JsVar %d -> %d\n", defragFromRef, defragToRef);
+          // copy data and clear old var
+          *defragTo = *defragFrom;
+          memset(defragFrom, 0, sizeof(JsVar)); // set flags to 0=unused
+          // copy references
+          _jsvDefragment_moveReferences(defragFromRef, defragToRef);
+        }
+      }
+    }
     // bump watchdog just in case it took too long
     jshKickWatchDog();
     jshKickSoftWatchDog();
