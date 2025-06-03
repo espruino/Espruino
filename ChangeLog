@@ -13,7 +13,7 @@
             If debugging via bluetooth and we disconnect, quit debugging (locks Bluetooth otherwise)
             Remove Line Number handling code (most code will be run out of Storage now, where we know the line number)
             Debugger now uses jslPrintPosition to print file+line+col, is aware of Modules.addCached that IDE adds and discounts it
-            Fix Math.sin on negative numbers on extremely constrained builds (Bangle.js 1/Microbit) where we have to use a very small sin implementation
+            Fix Math.sin on negative numbers on extremely constrained builds (Bangle.js 1/Microbit) where we have to use a very small sin implementation (#2637)
             Bangle.js2: Calling Bangle.getPressure() while a conversion is in progress now returns the same promise (so it will complete as soon as pressure data is ready) rather than erroring
             Bangle.js2: Fix 2v22 regression where `E.showMenu({test:{}})` would display 'test:undefined'
             Fat FS: Added `r+` file open mode (and allow w+ to read)
