@@ -501,7 +501,7 @@ bool jshCanWatch(
 #ifdef CONFIG_IDF_TARGET_ESP32C3
   return (pin!=18) && (pin!=19); // USB
 #else
-  return !( pin == 0 || ( pin >= 12 && pin <= 19 ) || pin == 21 ||  pin == 22 || ( pin >= 25 && pin <= 27 ) || ( pin >= 34 && pin <= 39 ));
+  return !( pin >= 6 && pin <= 12 /*SPI FLASH*/);
 #endif
 }
 
