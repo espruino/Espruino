@@ -682,6 +682,17 @@ void graphicsDrawLine(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
 }
 
 #ifdef GRAPHICS_ANTIALIAS
+
+static void graphicsDrawLineAAPixel(JsGraphics *gfx, int x, int y, bool steep, int c1, int c2) {
+  if (steep) {
+    graphicsSetPixelDeviceBlended(gfx, y  , x, c1);
+    graphicsSetPixelDeviceBlended(gfx, y+1, x,  c2);
+  } else {
+    graphicsSetPixelDeviceBlended(gfx, x, y,  c1);
+    graphicsSetPixelDeviceBlended(gfx, x, y+1, c2);
+  }
+}
+
 // In 16x accuracy
 void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2) {
   // https://en.wikipedia.org/wiki/Xiaolin_Wu%27s_line_algorithm
@@ -712,13 +723,7 @@ void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2) {
   int xpxl1 = xend >> 8; // this will be used in the main loop
   int ypxl1 = yend >> 8;
   int c = yend & 255;
-  if (steep) {
-    graphicsSetPixelDeviceBlended(gfx, ypxl1,   xpxl1, ((256-c)*xgap)>>8);
-    graphicsSetPixelDeviceBlended(gfx, ypxl1+1, xpxl1, (c*xgap)>>8);
-  } else {
-    graphicsSetPixelDeviceBlended(gfx, xpxl1, ypxl1, ((256-c)*xgap)>>8);
-    graphicsSetPixelDeviceBlended(gfx, xpxl1, ypxl1+1, (c*xgap)>>8);
-  }
+  graphicsDrawLineAAPixel(gfx, xpxl1, ypxl1, steep, ((256-c)*xgap)>>8, (c*xgap)>>8);
 
   int intery = yend + gradient; // first y-intersection for the main loop
   // handle second endpoint
@@ -728,24 +733,12 @@ void graphicsDrawLineAA(JsGraphics *gfx, int ix1, int iy1, int ix2, int iy2) {
   int xpxl2 = xend>>8; //this will be used in the main loop
   int ypxl2 = yend>>8;
   c = yend & 255;
-  if (steep) {
-    graphicsSetPixelDeviceBlended(gfx, ypxl2  , xpxl2, ((256-c)*xgap)>>8);
-    graphicsSetPixelDeviceBlended(gfx, ypxl2+1, xpxl2, (c*xgap)>>8);
-  } else {
-    graphicsSetPixelDeviceBlended(gfx, xpxl2, ypxl2,  ((256-c)*xgap)>>8);
-    graphicsSetPixelDeviceBlended(gfx, xpxl2, ypxl2+1, (c*xgap)>>8);
-  }
+  graphicsDrawLineAAPixel(gfx, xpxl2, ypxl2, steep, ((256-c)*xgap)>>8, (c*xgap)>>8);
   // main loop
   for (int x=xpxl1+1;x<xpxl2;x++) {
     int y = intery>>8;
     c = intery & 255;
-    if (steep) {
-      graphicsSetPixelDeviceBlended(gfx, y  , x, 256-c);
-      graphicsSetPixelDeviceBlended(gfx, y+1, x,  c);
-    } else {
-      graphicsSetPixelDeviceBlended(gfx, x, y,  256-c);
-      graphicsSetPixelDeviceBlended(gfx, x, y+1, c);
-    }
+    graphicsDrawLineAAPixel(gfx, x, y, steep, 256-c, c);
     intery += gradient;
   }
 }
