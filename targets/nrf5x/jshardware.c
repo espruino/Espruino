@@ -2765,14 +2765,13 @@ bool jshSleep(JsSysTime timeUntilWake) {
   return true;
 }
 
-volatile bool utilTimerActive = false;
-volatile uint32_t utilTimerTriggerTime = 0;
+bool utilTimerActive = false;
 
 /// Reschedule the timer (it should already be running) to interrupt after 'period'
 void jshUtilTimerReschedule(JsSysTime period) {
   if (period < JSSYSTIME_MAX / NRF_TIMER_FREQ) {
     period = period * NRF_TIMER_FREQ / (long long)SYSCLK_FREQ;
-    if (period < 0) period=0;
+    if (period < 1) period=1;
     if (period > NRF_TIMER_MAX) period=NRF_TIMER_MAX;
   } else {
     // it's too big to do maths on... let's just use the maximum period
@@ -2783,45 +2782,35 @@ void jshUtilTimerReschedule(JsSysTime period) {
   /* Setting the timer is complicated because the compare register only compares for equality,
   so if we set the compare register even 1 less than the current timer it won't fire for 2^32 microsec
 
-  That would be fine but we're not ever allowed to totally disable the timer so we have to check *after*
-  we set it just to make sure it hasn't overflowed and if so go ahead and trigger the interrupt ourselves.
+  That would be fine but we're not ever allowed to totally disable interrupts so we have to check *after*
+  we set it just to make sure it hasn't overflowed and if so to redo it.
   */
   if (utilTimerActive) { // Reschedule an active timer...
+    // Find out what our last trigger time was
+    uint32_t lastCC = nrf_timer_cc_read(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0);
     // schedule timer to trigger at the last time we triggered PLUS our period
-    uint32_t thisCC = (utilTimerTriggerTime + period) & NRF_TIMER_MAX;
-    // set up the timer
-    nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)thisCC);
-    // Check that the timer hasn't already passed this value?
-    NRF_TIMER1->TASKS_CAPTURE[1] = 1; // get current timer value
-    uint32_t current = NRF_TIMER1->CC[1];
-    if (((int32_t)thisCC - (int32_t)current) <= -(int32_t)(NRF_TIMER_MAX  >> 2)) { // if we can't keep up and are already fairly far behind
-      // skip ahead to avoid falling victim to timer wraparound
-      // and potentially forgetting to schedule stuff altogether for some time
-      thisCC = current;
-      nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)current);
-    }
-    utilTimerTriggerTime = thisCC;
-    if (((int32_t)thisCC - (int32_t)current) < 2) { // if it's closer than 2us (or has already passed!)
-      // make sure that the timer doesn't trigger the interrupt shortly afterwards
-      nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)(current - 1));
-      // and manually trigger the interrupt now
-      NVIC_SetPendingIRQ(TIMER1_IRQn);
-    }
+    uint32_t thisCC = lastCC + period;
+    bool needsReschedule;
+    do {
+      // set up the timer
+      nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)thisCC);
+      needsReschedule = false;
+      // Check that the timer hasn't already passed this value? Reschedule it 2us in the future
+      NRF_TIMER1->TASKS_CAPTURE[1] = 1; // get current timer value
+      uint32_t current = NRF_TIMER1->CC[1];
+      if (((int32_t)thisCC - (int32_t)current) < 2) { // it it's closer than 2us (or has already passed!)
+        thisCC = current+2; // reschedule into the future
+        needsReschedule = true;
+      }
+    } while (needsReschedule);
   } else {
     // timer is off, it'll be cleared to literally just set the period
-    utilTimerTriggerTime = period;
     nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
   }
 }
 
 /// Start the timer and get it to interrupt after 'period'
 void jshUtilTimerStart(JsSysTime period) {
-  if (utilTimerActive) {
-    // schedule at the current time + period
-    // by pretending that the last time we wanted to be called at is now
-    NRF_TIMER1->TASKS_CAPTURE[1] = 1; // get current timer value
-    utilTimerTriggerTime = NRF_TIMER1->CC[1];
-  }
   jshUtilTimerReschedule(period);
   if (!utilTimerActive) {
     utilTimerActive = true;
