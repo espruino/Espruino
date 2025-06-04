@@ -2593,7 +2593,7 @@ void jsiIdle() {
         // load the code we specified
         JsVar *code = jsfReadFile(filename,0,0);
         if (code) // only supply the filename if we're sure it's zero terminated
-          jsvUnLock2(jspEvaluateVar(code,0,filename.c[sizeof(filename.c)-1] ? filename.c : "load"), code);
+          jsvUnLock2(jspEvaluateVar(code,0,filename.c[sizeof(filename.c)-1] ? "load" : filename.c), code);
       } else {
         jsiSoftKill();
         jspSoftKill();
