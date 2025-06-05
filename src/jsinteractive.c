@@ -1299,8 +1299,15 @@ void jsiCheckErrors(bool wasREPL) {
     jsiConsolePrintf("Uncaught %v\n", exception);
     reportedError = true;
 #ifndef SAVE_ON_FLASH
+#ifdef LED1_PININDEX
+    if (jsfGetFlag(JSF_ON_ERROR_FLASH_LED)) {
+      Pin pin = LED1_PININDEX;
+      jshPinOutput(pin, LED1_ONSTATE);
+      jstPinOutputAtTime(jshGetTimeFromMilliseconds(200), NULL, &pin, 1, !LED1_ONSTATE);
+    }
+#endif
     JsVar *exceptionString = NULL;
-    if ((!jsfGetFlag(JSF_NO_ERRORS_SAVE)) && !jsfFindFile(jsfNameFromString("ERROR"),NULL))
+    if (jsfGetFlag(JSF_ON_ERROR_SAVE) && !jsfFindFile(jsfNameFromString("ERROR"),NULL))
       exceptionString = jsvAsString(exception);
 #endif
 

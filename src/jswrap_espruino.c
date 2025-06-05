@@ -852,9 +852,10 @@ code.
   after each command (the default is *to* flush). This is much faster, but can
   cause filesystem damage if power is lost without the filesystem unmounted.
 * `jitDebug` - When JIT compiling, outputs debug info to the console
-* `noErrorSave` - [2v27+] when an uncaught error occurs, by default it is now
-   written to a file called `ERROR` in Storage (the file is not updated). To
-   stop this happening, use `E.setFlags({noErrorSave:true})`
+* `onErrorSave` - [2v27+] when an uncaught error occurs, write it to a
+  file called `ERROR` in Storage (the file is not updated)
+* `onErrorFlash` - [2v27+] when an uncaught error occurs, flash the red LED
+  for 200ms (only on devices with a physical LED)
 */
 /*JSON{
   "type" : "staticmethod",
@@ -1671,7 +1672,7 @@ void jswrap_e_dumpVariables() {
   "name" : "defrag",
   "generate" : "jsvDefragment"
 }
-This defragment's Espruino's memory. 
+This defragment's Espruino's memory.
 
 While Espruino does a lot of work to avoid fragmentation (variables spread over memory)
 and can usually work around it (such as by allocating data in chunks) sometimes

@@ -8,8 +8,7 @@
             Add a backtrace command to debugger, add console.trace command, set Error.stack in constructor (fix #2490)
             Error.stack/stack dump now uses more standard file:line:col format
             Out of memory errors now show a backtrace (previously it was very hard to track these down)
-            Increase chars shown in strings in console to 60
-            The first Uncaught error is now saved to a file in Storage called ERROR (`E.setFlags({noErrorSave:true})` disables this) (#2583)
+            Increase chars shown in strings in console to 60            
             If debugging via bluetooth and we disconnect, quit debugging (locks Bluetooth otherwise)
             Remove Line Number handling code (most code will be run out of Storage now, where we know the line number)
             Debugger now uses jslPrintPosition to print file+line+col, is aware of Modules.addCached that IDE adds and discounts it
@@ -21,6 +20,8 @@
             E.defrag() now defrags everything, including Flat Strings (fix #1740)
             ESP32: Fix 2v26 regression which stopped many pins from being watched
             Puck.js: Revert second timer accuracy tweak that broke Puck.IR in 2v26
+            E.setFlags({onErrorSave:true}) now saves any uncaught errors to a file in Storage called ERROR (#2583)
+            E.setFlags({onErrorFlash:true}) now flashes the red LED for 200ms on any uncaught errors
 
      2v26 : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
             Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)
