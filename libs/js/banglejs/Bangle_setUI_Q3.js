@@ -118,13 +118,13 @@
   if (options.redraw) // handler for redrawing the UI
     Bangle.uiRedraw = options.redraw;
   if (options.back) {
-    var btnWatch;
     // only add back button handler if there's no existing watch on BTN1
-    if (Bangle.btnWatches===undefined) 
-      btnWatch = setWatch(function() {
-        btnWatch = undefined;
+    if (Bangle.btnWatches===undefined) {
+      Bangle.btnWatches = [ setWatch(function() {
+        Bangle.btnWatches = undefined; // watch doesn't repeat
         options.back();
-      }, BTN1, {edge:"rising"});
+      }, BTN1, {edge:"rising"}) ];
+    }
     // if we have widgets loaded *and* visible at the top, add a back widget (see #3788)
     if (global.WIDGETS && Bangle.appRect.y) {
       // add our own touch handler for touching in the top left
@@ -143,7 +143,6 @@
         remove:function(noclear){
           var w = WIDGETS.back;
           if (w.area!="tl") noclear=true; // area="" is set by widget_utils.hide, so avoid drawing
-          if (btnWatch) clearWatch(btnWatch);
           Bangle.removeListener("touch", touchHandler);
           if (!noclear) g.reset().clearRect({x:w.x, y:w.y, w:24,h:24});
           delete WIDGETS.back;
