@@ -10,11 +10,10 @@
     hadBackWidget = true; // if we had a back widget already, don't redraw at the end
     WIDGETS.back.remove(options.back); // only redraw when removing if we don't have options.back
   }
-  let clearBtnWatches = function() {
+  if (Bangle.btnWatches) {
     Bangle.btnWatches.forEach(clearWatch);
     delete Bangle.btnWatches;
   }
-  if (Bangle.btnWatches) clearBtnWatches();
   if (Bangle.swipeHandler) {
     Bangle.removeListener("swipe", Bangle.swipeHandler);
     delete Bangle.swipeHandler;
@@ -119,14 +118,12 @@
   if (options.redraw) // handler for redrawing the UI
     Bangle.uiRedraw = options.redraw;
   if (options.back) {
-    let isBtnBackFunc = false;
     // only add back button handler if there's no existing watch on BTN1
     if (Bangle.btnWatches===undefined) {
       Bangle.btnWatches = [ setWatch(function() {
-        Bangle.btnWatches = undefined;
+        Bangle.btnWatches = undefined; // watch doesn't repeat
         options.back();
       }, BTN1, {edge:"rising"}) ];
-      isBtnBackFunc = true;
     }
     // if we have widgets loaded *and* visible at the top, add a back widget (see #3788)
     if (global.WIDGETS && Bangle.appRect.y) {
@@ -146,7 +143,6 @@
         remove:function(noclear){
           var w = WIDGETS.back;
           if (w.area!="tl") noclear=true; // area="" is set by widget_utils.hide, so avoid drawing
-          if (isBtnBackFunc && Bangle.btnWatches) clearBtnWatches();
           Bangle.removeListener("touch", touchHandler);
           if (!noclear) g.reset().clearRect({x:w.x, y:w.y, w:24,h:24});
           delete WIDGETS.back;
