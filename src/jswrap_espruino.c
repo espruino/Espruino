@@ -374,8 +374,13 @@ JsVarFloat jswrap_espruino_sum(JsVar *arr) {
   "typescript" : "variance(arr: string | number[] | ArrayBuffer, mean: number): number;"
 }
 Work out the variance of the contents of the given Array, String or ArrayBuffer
-and return the result. This is equivalent to `v=0;for (i in arr)
-v+=Math.pow(mean-arr[i],2)`
+and return the result. This is equivalent to:
+
+```
+v=0;
+for (i in arr)
+  v+=Math.pow(mean-arr[i],2);
+````
  */
 JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
   if (!(jsvIsIterable(arr))) {
