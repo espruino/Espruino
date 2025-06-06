@@ -22,6 +22,7 @@
             Puck.js: Revert second timer accuracy tweak that broke Puck.IR in 2v26
             E.setFlags({onErrorSave:true}) now saves any uncaught errors to a file in Storage called ERROR (#2583)
             E.setFlags({onErrorFlash:true}) now flashes the red LED for 200ms on any uncaught errors
+            Puck.js: Fix Puck.magTemp() for hardware 2.1
 
      2v26 : nRF5x: ensure TIMER1_IRQHandler doesn't always wake idle loop up (fix #1900)
             Puck.js: On v2.1 ensure Puck.mag behaves like other variants - just returning the last reading (avoids glitches when used with Puck.magOn)

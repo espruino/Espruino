@@ -59,6 +59,7 @@ const Pin PUCK_IO_PINS[] = {1,2,4,6,7,8,23,24,28,29,30,31};
 
 bool mag_enabled = false; //< Has the magnetometer been turned on?
 uint16_t mag_power; // est mag power in uA
+int mag_milliHz; // last set magnetometer speed
 int16_t mag_reading[3];  //< magnetometer xyz reading
 //int mag_zero[3]; //< magnetometer 'zero' reading, only for Puck 2.1 right now
 volatile bool mag_data_ready = false;
@@ -278,6 +279,7 @@ void mag_pin_on() {
 
 // Turn magnetometer on and configure. If instant=true we take a reading right away
 bool mag_on(int milliHz, bool instant) {
+  mag_milliHz = milliHz;
   //jsiConsolePrintf("mag_on\n");
   mag_pin_on();
   mag_power = 0;
@@ -450,7 +452,7 @@ void mag_read() {
 
 // Get temperature, shifted left 8 bits
 int mag_read_temp() {
-  unsigned char buf[2];
+  unsigned char buf[6];
   if (puckVersion == PUCKJS_1V0) { // MAG3110
     mag_rd(0x0F, buf, 1); // DIE_TEMP
     return ((int8_t)buf[0])<<8;
@@ -460,6 +462,7 @@ int mag_read_temp() {
     // 20 degree offset based on tests here
     return (int)(t >> 3) + (20 << 8);
   } else if (puckVersion == PUCKJS_2V1) { // MMC5603NJ
+    mag_wr(0x1D, 0); // turn off continuous mode
     mag_wr(0x1B, 0x02); // Take temperature measurement
     // Wait for completion
     int timeout = 100;
@@ -467,8 +470,9 @@ int mag_read_temp() {
       mag_rd(0x18, buf, 1); // Status
     } while (!(buf[0]&0x80) && --timeout); // check for Meas_t_done
     // get measurement
-    mag_rd(0x07, buf, 1); // Status
-    return (buf[0] - 75) << 8;
+    mag_rd(0x09, buf, 1); // Temperature
+    mag_on(mag_milliHz, true); // re-enable magnetometer continuous mode
+    return (buf[0] * 205 /* 256*0.8 */) - (75 << 8);
   } else
     return -1;
 }
