@@ -1,4 +1,4 @@
-            nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
+     2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected
             Bangle.js: Fix wrapString when wrapping a non-UTF8 string containing UTF8 characters (fix #2633) 
             Ensure jshPushIOCharEvent is more stable when the FIFO is full
