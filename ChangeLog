@@ -1,3 +1,5 @@
+          : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
+
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected
             Bangle.js: Fix wrapString when wrapping a non-UTF8 string containing UTF8 characters (fix #2633) 

@@ -134,6 +134,21 @@ E.on('touch',t=>{
 ```
 */
 
+
+/*JSON{
+  "type" : "staticproperty",
+  "class" : "E",
+  "name" : "internal",
+  "generate_full" : "jsvLockAgain(execInfo.hiddenRoot)",
+  "return" : ["JsVar","The 'hidden root'"]
+}
+[2v28+] A reference to the "hidden root" that contains
+internal Espruino JavaScript variables such as lists
+of timers and watches.
+
+On earlier firmwares this was accessible via `global["\xff"]`
+*/
+
 /*JSON{
   "type" : "staticmethod",
   "class" : "E",
