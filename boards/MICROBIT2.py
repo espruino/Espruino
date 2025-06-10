@@ -17,7 +17,6 @@ import pinutils;
 
 # TODO:
 # Move to SDK17 with proper nRF52833 support
-#   - expand RAM to 128k
 # Proper event handling for accelerometer/etc
 # Functions for sound
 
@@ -59,9 +58,9 @@ chip = {
   'part' : "NRF52832", # actually 52833 but we're using SDK12 for this at the moment, and it doesn't support it
   'family' : "NRF52",
   'package' : "QFN48",
-  'ram' : 64,
+  'ram' : 128,
   'flash' : 512,
-  'speed' : 64, # TODO: actually 128k
+  'speed' : 64,
   'usart' : 1,
   'spi' : 1,
   'i2c' : 1,
