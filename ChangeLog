@@ -1,4 +1,5 @@
           : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
+            Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
 
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected

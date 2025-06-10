@@ -119,12 +119,11 @@
     Bangle.uiRedraw = options.redraw;
   if (options.back) {
     // only add back button handler if there's no existing watch on BTN1
-    if (Bangle.btnWatches===undefined) {
+    if (Bangle.btnWatches===undefined)
       Bangle.btnWatches = [ setWatch(function() {
         Bangle.btnWatches = undefined; // watch doesn't repeat
         options.back();
       }, BTN1, {edge:"rising"}) ];
-    }
     // if we have widgets loaded *and* visible at the top, add a back widget (see #3788)
     if (global.WIDGETS && Bangle.appRect.y) {
       // add our own touch handler for touching in the top left
