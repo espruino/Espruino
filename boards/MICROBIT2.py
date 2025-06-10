@@ -38,7 +38,8 @@ info = {
 #     'NET',
      'GRAPHICS',
      'NEOPIXEL',
-     'TENSORFLOW'
+     'TENSORFLOW',
+     'JIT'
    ],
    'makefile' : [
      'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
