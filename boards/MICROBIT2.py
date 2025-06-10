@@ -43,7 +43,12 @@ info = {
    ],
    'makefile' : [
      'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
+     'DEFINES += -DNRF_BLE_GATT_MAX_MTU_SIZE=53 -DNRF_BLE_MAX_MTU_SIZE=53', # increase MTU from default of 23
+     'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
+     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3290', # set RAM base to match MTU=53 + CENTRAL_LINK_COUNT=2
+     'LDFLAGS += -nostartfiles', 'ASFLAGS += -D__STARTUP_CLEAR_BSS -D__START=main', # Save ~300b by not including CRT startup code
      'DEFINES += -DNEOPIXEL_SCK_PIN=27 -DNEOPIXEL_LRCK_PIN=18', # SCK pin needs defining as something unused for neopixel (HW errata means they can't be disabled) 
+     'DEFINES+=-DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
      'DEFINES += -DGPIO_COUNT=2 -DP1_PIN_NUM=16 -DNRF_P1_BASE=0x50000300UL "-DNRF_P1=((NRF_GPIO_Type*)NRF_P1_BASE)"', # Hack for 52833 on SDK12
      'DEFINES += -DMICROBIT', # enable microbit-specific stuff
      'INCLUDE += -I$(ROOT)/libs/microbit',
