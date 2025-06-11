@@ -251,7 +251,7 @@ show("#   #"+
 This means you can also use Espruino's graphics library:
 
 ```
-var g = Graphics.createArrayBuffer(5,5,1)
+var g = Graphics.createArrayBuffer(5,5,1,{msb:false})
 g.drawString("E",0,0)
 show(g.buffer)
 ```
