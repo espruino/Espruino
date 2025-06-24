@@ -69,6 +69,8 @@ void bleSwitchTask(BleTask task);
 void bleSetActiveBluetoothGattServer(int idx, JsVar *var);
 // Get the currently active GATT server based on the index in m_central_conn_handles (the return value needs unlocking)
 JsVar *bleGetActiveBluetoothGattServer(int idx);
+// Get the currently active BluetoothDevice based on the index in m_central_conn_handles (the return value needs unlocking)
+JsVar *bleGetActiveBluetoothDevice(int idx);
 
 uint16_t jswrap_ble_BluetoothRemoteGATTServer_getHandle(JsVar *parent);
 uint16_t jswrap_ble_BluetoothDevice_getHandle(JsVar *parent);

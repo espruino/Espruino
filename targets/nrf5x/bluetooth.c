@@ -295,6 +295,18 @@ JsVar *jsble_get_error_string(uint32_t err_code) {
     return jsvVarPrintf("ERR 0x%x", err_code);
 }
 
+/** If the connection handle matches a current connection, return the BluetoothDevice for that,
+otherwise just return the NRF object if it's a peripheral connection (or NULL if not known) */
+static JsVar *jsble_device_from_handle(uint16_t conn_handle) {
+  JsVar *device = 0;
+#if CENTRAL_LINK_COUNT>0
+  device = bleGetActiveBluetoothDevice(jsble_get_central_connection_idx(conn_handle));
+#endif
+  if (!device && conn_handle == m_peripheral_conn_handle)
+    device = jsvObjectGetChildIfExists(execInfo.root, "NRF");
+  return device;
+}
+
 // -----------------------------------------------------------------------------------
 // -----------------------------------------------------------------------------------
 
@@ -338,6 +350,30 @@ int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
      jsble_restart_softdevice(NULL);
      break;
    }
+#ifndef SAVE_ON_FLASH
+   case BLEP_PHY_UPDATE_REQUEST:
+   case BLEP_PHY_UPDATE: {
+     uint16_t conn_handle = data;
+     JsVar *eventTarget = jsble_device_from_handle(conn_handle);
+     if (eventTarget) {
+       JsVar *v = jsvNewArrayFromBytes(buffer, bufferLen);
+       const char *evt = (blep == BLEP_PHY_UPDATE_REQUEST) ? JS_EVENT_PREFIX"phy_req" : JS_EVENT_PREFIX"phy";
+       jsiQueueObjectCallbacks(eventTarget, evt, &v, 1);
+       jsvUnLock2(eventTarget, v);
+     }
+     break;
+   }
+   case BLEP_MTU_UPDATE: {
+     uint16_t conn_handle = data;
+     JsVar *eventTarget = jsble_device_from_handle(conn_handle);
+     if (eventTarget) {
+       JsVar *v = jsvNewFromInteger(*(uint16_t*)buffer);
+       jsiQueueObjectCallbacks(eventTarget, JS_EVENT_PREFIX"mtu", &v, 1);
+       jsvUnLock2(eventTarget, v);
+     }
+     break;
+   }
+#endif
    case BLEP_RSSI_PERIPH: {
      JsVar *evt = jsvNewFromInteger((signed char)data);
      if (evt) jsiQueueObjectCallbacks(execInfo.root, BLE_RSSI_EVENT, &evt, 1);
@@ -1397,6 +1433,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
           if (m_peripheral_conn_handle == conn_handle){
             m_peripheral_effective_mtu = effective_mtu;
           }
+#ifndef SAVE_ON_FLASH
+          jsble_queue_pending_buf(BLEP_MTU_UPDATE, p_ble_evt->evt.gap_evt.conn_handle, (char*)effective_mtu, sizeof(effective_mtu));
+#endif
         } break; // BLE_GATTC_EVT_EXCHANGE_MTU_RSP
 #endif
       case BLE_GATTS_EVT_EXCHANGE_MTU_REQUEST: {
@@ -1443,6 +1482,13 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
             /* Allow SoftDevice to choose PHY Update Procedure parameters automatically. */
             ble_gap_phys_t phys = {BLE_GAP_PHY_AUTO, BLE_GAP_PHY_AUTO};
             sd_ble_gap_phy_update(p_ble_evt->evt.gap_evt.conn_handle, &phys);
+#ifndef SAVE_ON_FLASH
+            uint8_t req_phys[] = {
+              p_ble_evt->evt.gap_evt.params.phy_update_request.peer_preferred_phys.tx_phys,
+              p_ble_evt->evt.gap_evt.params.phy_update_request.peer_preferred_phys.rx_phys
+            };
+            jsble_queue_pending_buf(BLEP_PHY_UPDATE_REQUEST, p_ble_evt->evt.gap_evt.conn_handle, (char*) req_phys, sizeof(req_phys));
+#endif
             break;
           }
           case BLE_GAP_EVT_PHY_UPDATE: {
@@ -1452,6 +1498,14 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
               p_ble_evt->evt.gap_evt.params.phy_update.rx_phy for the currently active PHYs of
               the link. */
             }
+#ifndef SAVE_ON_FLASH
+            uint8_t res[] = {
+              p_ble_evt->evt.gap_evt.params.phy_update.tx_phy,
+              p_ble_evt->evt.gap_evt.params.phy_update.rx_phy,
+              p_ble_evt->evt.gap_evt.params.phy_update.status
+            };
+            jsble_queue_pending_buf(BLEP_PHY_UPDATE, p_ble_evt->evt.gap_evt.conn_handle, (char*) res, sizeof(res));
+#endif
             break;
           }
 #endif

@@ -173,6 +173,14 @@ JsVar *bleGetActiveBluetoothGattServer(int idx) {
   return jsvObjectGetChildIfExists(execInfo.hiddenRoot, name);
 }
 
+JsVar *bleGetActiveBluetoothDevice(int idx) {
+  JsVar *gattServer = bleGetActiveBluetoothGattServer(idx);
+  if (!gattServer) return 0;
+  JsVar *bluetoothDevice = jsvObjectGetChildIfExists(gattServer, "device");
+  jsvUnLock(gattServer);
+  return bluetoothDevice;
+}
+
 uint16_t jswrap_ble_BluetoothRemoteGATTServer_getHandle(JsVar *parent) {
   JsVar *handle = jsvObjectGetChildIfExists(parent, "handle");
   if (!jsvIsInt(handle)) return BLE_CONN_HANDLE_INVALID;
@@ -492,7 +500,56 @@ Called with discovered services when discovery is finished
 }
 Called with discovered characteristics when discovery is finished
  */
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "phy",
+  "params" : [
+    ["arr","JsVar","An array containing `[tx_phy, rx_phy, status]` (see below)"]
+  ],
+  "#if" : "defined(NRF52_SERIES)"
+}
+(2v28+) This event is fired when the phy (radio) is changed for the active Bluetooth connection. The parameter is the data `[tx_phy, rx_phy, status]`
 
+`tx_phy`/`rx_phy` are integers where each bit corresponds to:
+
+* 1 : 1mbps phy
+* 2 : 2mbps phy
+* 4 : coded phy
+
+`status` is an integer containing the status code. 0 = success
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "phy_req",
+  "params" : [
+    ["arr","JsVar","An array containing `[tx_phy, rx_phy]` (see below)"]
+  ],
+  "#if" : "defined(NRF52_SERIES)"
+}
+(2v28+) This event is fired when the phy (radio) is requested to change for the active Bluetooth connection. The parameter is the data `[tx_phy, rx_phy]`
+
+`tx_phy`/`rx_phy` are integers where each bit corresponds to:
+
+* 1 : 1mbps phy
+* 2 : 2mbps phy
+* 4 : coded phy
+
+eg. `7` means all phys (eg any) have been requested
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "NRF",
+  "name" : "mtu",
+  "params" : [
+    ["arr","int","The negotiated MTU"]
+  ],
+  "#if" : "defined(NRF52_SERIES)"
+}
+(2v28+) This event is fired when the MTU changes for the active Bluetooth connection. Yhis is the amount of
+data that can be transferred in one packet.
+ */
 
 /*JSON{
   "type" : "event",
@@ -522,6 +579,56 @@ Called when an NFC field is no longer detected
 When NFC is started with `NRF.nfcStart`, this is fired when NFC data is
 received. It doesn't get called if NFC is started with `NRF.nfcURL` or
 `NRF.nfcRaw`
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "BluetoothDevice",
+  "name" : "phy",
+  "params" : [
+    ["arr","JsVar","An array containing `[tx_phy, rx_phy, status]` (see below)"]
+  ],
+  "#if" : "defined(NRF52_SERIES)"
+}
+(2v28+) This event is fired when the phy (radio) is changed for this Bluetooth connection. The parameter is the data `[tx_phy, rx_phy, status]`
+
+`tx_phy`/`rx_phy` are integers where each bit corresponds to:
+
+* 1 : 1mbps phy
+* 2 : 2mbps phy
+* 4 : coded phy
+
+`status` is an integer containing the status code. 0 = success
+ */
+/*JSON{
+  "type" : "event",
+  "class" : "BluetoothDevice",
+  "name" : "phy_req",
+  "params" : [
+    ["arr","JsVar","An array containing `[tx_phy, rx_phy]` (see below)"]
+  ],
+  "#if" : "defined(NRF52_SERIES)"
+}
+(2v28+) This event is fired when the phy (radio) is requested to change for this Bluetooth connection. The parameter is the data `[tx_phy, rx_phy]`
+
+`tx_phy`/`rx_phy` are integers where each bit corresponds to:
+
+* 1 : 1mbps phy
+* 2 : 2mbps phy
+* 4 : coded phy
+
+eg. `7` means all phys (eg any) have been requested
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "BluetoothDevice",
+  "name" : "mtu",
+  "params" : [
+    ["arr","int","The negotiated MTU"]
+  ],
+  "#if" : "defined(NRF52_SERIES)"
+}
+(2v28+) This event is fired when the MTU changes for the active Bluetooth connection. Yhis is the amount of
+data that can be transferred in one packet.
  */
 /*JSON{
   "type" : "event",
@@ -3957,7 +4064,20 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
     "generate" : false,
     "return" : ["bool", "The last received RSSI (signal strength) for this device" ]
 }
-*//*Documentation only*/
+This is set whenever the RSSI of the connection is changed. `BluetoothGATTServer.on("rssi", ...)` is also emitted.
+*/
+/*Documentation only*/
+/*JSON{
+    "type" : "event",
+    "class" : "BluetoothGATTServer",
+    "name" : "rssi",
+    "params" : [
+      ["rssi","int","The current RSSI value for this connection"]
+    ],
+    "ifdef" : "NRF52_SERIES"
+}
+This event is fired whenever the RSSI of the connection is changed. `BluetoothDevice.rssi` is also updated
+*/
 /*JSON{
     "type" : "event",
     "class" : "BluetoothDevice",
