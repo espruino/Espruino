@@ -4044,6 +4044,7 @@ See [`NRF.requestDevice`](/Reference#l_NRF_requestDevice) for usage examples.
 {
    minInterval // min connection interval in milliseconds, 7.5 ms to 4 s
    maxInterval // max connection interval in milliseconds, 7.5 ms to 4 s
+   slaveLatency : int // (2v28+) number of connection intervals missed before connection is closed, default 4 (or 2 if pre-2v28)
    phy : "1mbps/coded/both/2mbps"
      // (2v26+, NRF52833/NRF52840 only) the type of Bluetooth signals to scan for
      // `1mbps` (default) - standard Bluetooth LE advertising

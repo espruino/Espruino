@@ -124,7 +124,7 @@ __ALIGN(4) static ble_gap_lesc_dhkey_t m_lesc_dhkey;   /**< LESC ECC DH Key*/
 #define CONN_SUP_TIMEOUT                MSEC_TO_UNITS(4000, UNIT_10_MS) /**< Connection Supervision Timeout in 10 ms units, see @ref BLE_GAP_CP_LIMITS.*/
 // Slave latency - the number of missed responses to BLE requests we're happy to put up with - see BLE_GAP_CP_LIMITS
 #define SLAVE_LATENCY                   0        // latency for *us* - we want to respond on every event
-#define SLAVE_LATENCY_CENTRAL           2        // when connecting to something else, be willing to put up with some lack of response
+#define SLAVE_LATENCY_CENTRAL           4        // when connecting to something else, be willing to put up with some lack of response
 
 #if NRF_BLE_MAX_MTU_SIZE != GATT_MTU_SIZE_DEFAULT
 #define EXTENSIBLE_MTU // The MTU can be extended past the default of 23
@@ -3512,6 +3512,8 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
     if (!isnan(v)) gap_conn_params.min_conn_interval = (uint16_t)(MSEC_TO_UNITS(v, UNIT_1_25_MS)+0.5);
     v = jsvObjectGetFloatChild(options,"maxInterval");
     if (!isnan(v)) gap_conn_params.max_conn_interval = (uint16_t)(MSEC_TO_UNITS(v, UNIT_1_25_MS)+0.5);
+    int vi = jsvObjectGetIntegerChild(options,"slaveLatency");
+    if (vi>0) gap_conn_params.slave_latency = vi;
   }
   /* From NRF SDK: If both conn_sup_timeout and max_conn_interval are specified, then the following constraint applies:
      conn_sup_timeout * 4 > (1 + slave_latency) * max_conn_interval
