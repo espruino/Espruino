@@ -2,6 +2,7 @@
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
             nRF52: Add 'slaveLatency' option to BluetoothRemoteGATTServer.connect, default changed from 2 to 4
             nRF52: Add 'phy' and 'mtu' events to NRF/BluetoothDevice when these change on a connection
+            MDBT42Q: Remove SHA512 from the build (needs 2.5k flash, rarely used)
 
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected
