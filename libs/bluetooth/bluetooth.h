@@ -166,9 +166,11 @@ typedef enum {
   BLEP_RESTART_SOFTDEVICE,          //< Perform a softdevice restart (again, we don't want to do this in an IRQ!)
   BLEP_RSSI_PERIPH,                 //< RSSI data from peripheral connection (rssi as data)
   BLEP_ADV_REPORT,                  //< Advertising received (as buffer)
-#ifndef SAVE_ON_FLASH
+#if (NRF_SD_BLE_API_VERSION >= 5)
   BLEP_PHY_UPDATE_REQUEST,          //< PHY update request (connection handle as data, [tx_phy,rx_phy] as buffer)
   BLEP_PHY_UPDATE,                  //< PHY update finished (connection handle as data, [tx_phy,rx_phy,status] as buffer)
+#endif
+#ifndef SAVE_ON_FLASH
   BLEP_MTU_UPDATE,                  //< MTU update finished (connection handle as data, [mtu_16bit] as buffer)
 #endif
 #if CENTRAL_LINK_COUNT>0

@@ -509,7 +509,7 @@ Called with discovered characteristics when discovery is finished
   ],
   "#if" : "defined(NRF52_SERIES)"
 }
-(2v28+) This event is fired when the phy (radio) is changed for the active Bluetooth connection. The parameter is the data `[tx_phy, rx_phy, status]`
+(2v28+, nRF52840 only) This event is fired when the phy (radio) is changed for the active Bluetooth connection. The parameter is the data `[tx_phy, rx_phy, status]`
 
 `tx_phy`/`rx_phy` are integers where each bit corresponds to:
 
@@ -528,7 +528,7 @@ Called with discovered characteristics when discovery is finished
   ],
   "#if" : "defined(NRF52_SERIES)"
 }
-(2v28+) This event is fired when the phy (radio) is requested to change for the active Bluetooth connection. The parameter is the data `[tx_phy, rx_phy]`
+(2v28+, nRF52840 only) This event is fired when the phy (radio) is requested to change for the active Bluetooth connection. The parameter is the data `[tx_phy, rx_phy]`
 
 `tx_phy`/`rx_phy` are integers where each bit corresponds to:
 
@@ -547,7 +547,7 @@ eg. `7` means all phys (eg any) have been requested
   ],
   "#if" : "defined(NRF52_SERIES)"
 }
-(2v28+) This event is fired when the MTU changes for the active Bluetooth connection. Yhis is the amount of
+(2v28+) This event is fired when the MTU changes for the active Bluetooth connection. This is the amount of
 data that can be transferred in one packet.
  */
 
@@ -589,7 +589,7 @@ received. It doesn't get called if NFC is started with `NRF.nfcURL` or
   ],
   "#if" : "defined(NRF52_SERIES)"
 }
-(2v28+) This event is fired when the phy (radio) is changed for this Bluetooth connection. The parameter is the data `[tx_phy, rx_phy, status]`
+(2v28+, nRF52840 only) This event is fired when the phy (radio) is changed for this Bluetooth connection. The parameter is the data `[tx_phy, rx_phy, status]`
 
 `tx_phy`/`rx_phy` are integers where each bit corresponds to:
 
@@ -608,7 +608,7 @@ received. It doesn't get called if NFC is started with `NRF.nfcURL` or
   ],
   "#if" : "defined(NRF52_SERIES)"
 }
-(2v28+) This event is fired when the phy (radio) is requested to change for this Bluetooth connection. The parameter is the data `[tx_phy, rx_phy]`
+(2v28+, nRF52840 only) This event is fired when the phy (radio) is requested to change for this Bluetooth connection. The parameter is the data `[tx_phy, rx_phy]`
 
 `tx_phy`/`rx_phy` are integers where each bit corresponds to:
 
@@ -627,7 +627,7 @@ eg. `7` means all phys (eg any) have been requested
   ],
   "#if" : "defined(NRF52_SERIES)"
 }
-(2v28+) This event is fired when the MTU changes for the active Bluetooth connection. Yhis is the amount of
+(2v28+) This event is fired when the MTU changes for the active Bluetooth connection. This is the amount of
 data that can be transferred in one packet.
  */
 /*JSON{

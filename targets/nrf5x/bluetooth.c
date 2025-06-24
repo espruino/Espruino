@@ -350,7 +350,7 @@ int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
      jsble_restart_softdevice(NULL);
      break;
    }
-#ifndef SAVE_ON_FLASH
+#if (NRF_SD_BLE_API_VERSION >= 5)
    case BLEP_PHY_UPDATE_REQUEST:
    case BLEP_PHY_UPDATE: {
      uint16_t conn_handle = data;
@@ -363,6 +363,8 @@ int jsble_exec_pending(uint8_t *buffer, int bufferLen) {
      }
      break;
    }
+#endif
+#ifndef SAVE_ON_FLASH
    case BLEP_MTU_UPDATE: {
      uint16_t conn_handle = data;
      JsVar *eventTarget = jsble_device_from_handle(conn_handle);
@@ -1508,7 +1510,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #endif
             break;
           }
-#endif
+#endif // NRF_SD_BLE_API_VERSION >= 5
 
 #if NRF_SD_BLE_API_VERSION<5
       case BLE_EVT_TX_COMPLETE:
