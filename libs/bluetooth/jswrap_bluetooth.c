@@ -598,6 +598,9 @@ received. It doesn't get called if NFC is started with `NRF.nfcURL` or
 * 4 : coded phy
 
 `status` is an integer containing the status code. 0 = success
+
+**This is not part of the Web Bluetooth Specification.** It has been added
+specifically for Espruino.
  */
 /*JSON{
   "type" : "event",
@@ -617,6 +620,9 @@ received. It doesn't get called if NFC is started with `NRF.nfcURL` or
 * 4 : coded phy
 
 eg. `7` means all phys (eg any) have been requested
+
+**This is not part of the Web Bluetooth Specification.** It has been added
+specifically for Espruino.
 */
 /*JSON{
   "type" : "event",
@@ -629,6 +635,9 @@ eg. `7` means all phys (eg any) have been requested
 }
 (2v28+) This event is fired when the MTU changes for the active Bluetooth connection. This is the amount of
 data that can be transferred in one packet.
+
+**This is not part of the Web Bluetooth Specification.** It has been added
+specifically for Espruino.
  */
 /*JSON{
   "type" : "event",
@@ -1436,7 +1445,7 @@ it returns the packet that would be advertised as an array.
 
 In addition, `options` can contain:
 
-* [2v26+] `flags : bool` if `flags:false`, the Bluetooth appearance flags
+* (2v26+) `flags : bool` if `flags:false`, the Bluetooth appearance flags
 are left out (usually `[2,1,6]`). It can be very useful to do this
 if you're using `NRF.getAdvertisingData(...)` to set a scan response packet:
 
@@ -4065,6 +4074,9 @@ JsVar *jswrap_BluetoothDevice_gatt(JsVar *parent) {
     "return" : ["bool", "The last received RSSI (signal strength) for this device" ]
 }
 This is set whenever the RSSI of the connection is changed. `BluetoothGATTServer.on("rssi", ...)` is also emitted.
+
+**This is not part of the Web Bluetooth Specification.** It has been added
+specifically for Espruino.
 */
 /*Documentation only*/
 /*JSON{
@@ -4077,6 +4089,9 @@ This is set whenever the RSSI of the connection is changed. `BluetoothGATTServer
     "ifdef" : "NRF52_SERIES"
 }
 This event is fired whenever the RSSI of the connection is changed. `BluetoothDevice.rssi` is also updated
+
+**This is not part of the Web Bluetooth Specification.** It has been added
+specifically for Espruino.
 */
 /*JSON{
     "type" : "event",
@@ -4140,6 +4155,99 @@ void jswrap_ble_BluetoothDevice_sendPasskey(JsVar *parent, JsVar *passkeyVar) {
 #endif
 }
 #endif
+
+
+static void jsble_update_connection(uint16_t connection_handle, JsVar *options){
+#ifdef NRF52_SERIES
+  uint32_t err_code;
+#if (NRF_SD_BLE_API_VERSION >= 5)
+  ble_gap_phys_t gap_phys;
+  uint8_t phy = BLE_GAP_PHY_NOT_SET;
+  JsVar *advPhy = jsvObjectGetChildIfExists(options, "phy");
+  if (jsvIsStringEqual(advPhy,"1mbps")) {
+      phy = BLE_GAP_PHY_1MBPS;
+  } else if (jsvIsStringEqual(advPhy,"2mbps")) {
+      phy = BLE_GAP_PHY_2MBPS;
+  } else if (jsvIsStringEqual(advPhy,"auto")) {
+      phy = BLE_GAP_PHY_AUTO;
+#if NRF_SD_BLE_API_VERSION>5
+  } else if (jsvIsStringEqual(advPhy,"coded")) {
+    phy = BLE_GAP_PHY_CODED;
+#endif
+  } else jsWarn("Unknown phy %q\n", advPhy);
+  jsvUnLock(advPhy);
+  if (phy != BLE_GAP_PHY_NOT_SET){
+    gap_phys.rx_phys = phy;
+    gap_phys.tx_phys = phy;
+    err_code = sd_ble_gap_phy_update(connection_handle, &gap_phys);
+    jsble_check_error(err_code);
+  }
+#endif
+  #endif
+#ifdef ESP32
+  jsWarn("update not implemented\n");
+#endif
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "BluetoothRemoteGATTServer",
+  "name" : "updateConnection",
+  "generate" : "jswrap_BluetoothRemoteGATTServer_updateConnection",
+  "params" : [
+    ["options","JsVar","An object containing connection options"]
+  ],
+  "#if" : "defined(NRF52_SERIES)"
+}
+(2v28+) Update connection parameters on this central connection. Options can be:
+
+```
+{
+  phy : string // "1mpbs"/"2mpbs"/"coded"/"auto"
+}
+```
+
+**This is not part of the Web Bluetooth Specification.** It has been added
+specifically for Espruino.
+*/
+void jswrap_BluetoothRemoteGATTServer_updateConnection(JsVar *parent, JsVar *options) {
+#if CENTRAL_LINK_COUNT>0
+  uint16_t central_conn_handle = jswrap_ble_BluetoothRemoteGATTServer_getHandle(parent);
+  if (jsvObjectGetBoolChild(parent,"connected") && central_conn_handle != BLE_CONN_HANDLE_INVALID) {
+    // we have a connection, update it
+    jsble_update_connection(central_conn_handle, options);
+  } else {
+    jsExceptionHere(JSET_ERROR, "Not connected");
+  }
+#endif
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "NRF",
+    "name" : "updateConnection",
+    "ifdef" : "NRF52_SERIES",
+    "generate" : "jswrap_ble_updateConnection",
+    "params" : [
+      ["options","JsVar","An object containing connection options"]
+    ],
+    "#if" : "defined(NRF52_SERIES)"
+}
+(2v28+) Update connection parameters on the current peripheral connection. Options can be:
+
+```
+{
+  phy : string // "1mpbs"/"2mpbs"/"coded"/"auto"
+}
+```
+*/
+void jswrap_ble_updateConnection(JsVar *options) {
+  if (jsble_has_peripheral_connection()) {
+    jsble_update_connection(m_peripheral_conn_handle, options);
+  }else {
+    jsExceptionHere(JSET_ERROR, "Not connected");
+  }
+}
 
 /*JSON{
     "type" : "method",

@@ -113,6 +113,7 @@ void jswrap_ble_findDevices(JsVar *callback, JsVar *options);
 void jswrap_ble_setRSSIHandler(JsVar *callback);
 void jswrap_ble_setTxPower(JsVarInt pwr);
 void jswrap_ble_setLowPowerConnection(bool lowPower);
+void jswrap_ble_updateConnection(JsVar *options);
 
 void jswrap_nfc_URL(JsVar *url);
 void jswrap_nfc_pair(JsVar *key);
@@ -160,5 +161,7 @@ JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteri
 JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_readValue(JsVar *characteristic);
 JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_startNotifications(JsVar *characteristic);
 JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_stopNotifications(JsVar *characteristic);
+void jswrap_BluetoothRemoteGATTServer_updateConnection(JsVar *parent, JsVar *options);
+
 
 void jswrap_ble_powerusage(JsVar *devices);
