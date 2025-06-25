@@ -279,7 +279,7 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
   "generate" : "jswrap_E_openFile",
   "params" : [
     ["path","JsVar","the path to the file to open."],
-    ["mode","JsVar","The mode to use when opening the file. Valid values for mode are 'r' for read, 'r+' for read+write [2v27+], 'w' for write new, 'w+' for write existing, and 'a' for append. If not specified, the default is 'r'."]
+    ["mode","JsVar","The mode to use when opening the file. Valid values for mode are 'r' for read, 'r+' for read+write (2v27+), 'w' for write new, 'w+' for write existing, and 'a' for append. If not specified, the default is 'r'."]
   ],
   "return" : ["JsVar","A File object"],
   "return_object" : "File"

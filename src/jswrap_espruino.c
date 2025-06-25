@@ -142,7 +142,7 @@ E.on('touch',t=>{
   "generate_full" : "jsvLockAgain(execInfo.hiddenRoot)",
   "return" : ["JsVar","The 'hidden root'"]
 }
-[2v28+] A reference to the "hidden root" that contains
+(2v28+) A reference to the "hidden root" that contains
 internal Espruino JavaScript variables such as lists
 of timers and watches.
 
@@ -872,9 +872,9 @@ code.
   after each command (the default is *to* flush). This is much faster, but can
   cause filesystem damage if power is lost without the filesystem unmounted.
 * `jitDebug` - When JIT compiling, outputs debug info to the console
-* `onErrorSave` - [2v27+] when an uncaught error occurs, write it to a
+* `onErrorSave` - (2v27+) when an uncaught error occurs, write it to a
   file called `ERROR` in Storage (the file is not updated)
-* `onErrorFlash` - [2v27+] when an uncaught error occurs, flash the red LED
+* `onErrorFlash` - (2v27+) when an uncaught error occurs, flash the red LED
   for 200ms (only on devices with a physical LED)
 */
 /*JSON{
