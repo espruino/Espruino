@@ -62,12 +62,14 @@ bool hrm_new(int ppgValue, Vector3 *acc) {
   hrmInfo.raw = ppgValue;
   // Feed data into algorithm
   AlgoInputData_t inputData;
-  inputData.axes.x = acc->y >> 5;  // perpendicular to the direction of the arm
-  inputData.axes.y = acc->x >> 5;  // along the direction of the arm
-  inputData.axes.z = acc->z >> 5;
+  // Acceleration data should have 1G=256 (acc is 1G=8192, so shift by 5 bits)
+  inputData.axes.x = -acc->y >> 5;  // perpendicular to the direction of the arm (if left-hand, in direction of thumb)
+  inputData.axes.y = -acc->x >> 5;  // along the direction of the arm (if left-hand, in direction of middle finger)
+  inputData.axes.z = acc->z >> 5;   // if left-hand, running into palm
   inputData.ppgSample = vcInfo.ppgValue | (vcInfo.wasAdjusted ? 0x1000 : 0);
   inputData.envSample = vcInfo.envValue;
   hrmInfo.msSinceLastHRM += timeDiff;
+  // TODO: The VC31 example code uses a static value here (eg hrmPollInterval) - maybe we should do this
   Algo_Input(&inputData, timeDiff, hrmInfo.sportMode, 0/*surfaceRecogMode*/,0/*opticalAidMode*/);
   AlgoOutputData_t outputData;
   Algo_Output(&outputData);
