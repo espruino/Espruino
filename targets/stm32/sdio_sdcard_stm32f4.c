@@ -234,10 +234,12 @@ SD_Error SD_WaitReadOperation(void);
 SD_Error SD_WaitWriteOperation(void);
 
 // undo the STM32F1-specific defines
+#ifndef SD_OVERRIDE
 #undef SD_DMA_MODE
 #undef SD_INTERRUPT_MODE
 #undef SD_POLLING_MODE
 #define SD_DMA_MODE 1
+#endif
 
 SD_Error SD_SetDeviceMode(uint32_t Mode) {
   NOT_USED(Mode); // ignored, it's now build-time
@@ -416,6 +418,8 @@ SDCardState SD_GetState(void);
 
 #define SD_HALFFIFO                     ((uint32_t)0x00000008)
 #define SD_HALFFIFOBYTES                ((uint32_t)0x00000020)
+
+#define SD_WAIT_CYCLES                  ((uint32_t)1000000) // how long to wait at most if polling
 
 /**
   * @brief  Command Class Supported
@@ -1363,7 +1367,7 @@ SD_Error SD_ReadBlock(uint32_t ReadAddr, uint32_t *readbuff, uint16_t BlockSize)
     errorstatus = SD_START_BIT_ERR;
     return(errorstatus);
   }
-  count = SD_DATATIMEOUT;
+  count = SD_WAIT_CYCLES;
   while ((SDIO_GetFlagStatus(SDIO_FLAG_RXDAVL) != RESET) && (count > 0))
   {
     *tempbuff = SDIO_ReadData();
@@ -1539,16 +1543,17 @@ SD_Error SD_WaitReadOperation(void)
   SD_Error errorstatus = SD_OK;
   uint32_t timeout;
 
-  timeout = SD_DATATIMEOUT;
-
+#ifndef SD_POLLING_MODE
+  timeout = SD_WAIT_CYCLES;
   while ((DMAEndOfTransfer == 0x00) && (TransferEnd == 0) && (TransferError == SD_OK) && (timeout > 0))
   {
     timeout--;
   }
+#endif
 
   DMAEndOfTransfer = 0x00;
 
-  timeout = SD_DATATIMEOUT;
+  timeout = SD_WAIT_CYCLES;
 
   while(((SDIO->STA & SDIO_FLAG_RXACT)) && (timeout > 0))
   {
@@ -1929,7 +1934,7 @@ SD_Error SD_WaitWriteOperation(void)
   SD_Error errorstatus = SD_OK;
   uint32_t timeout;
 
-  timeout = SD_DATATIMEOUT;
+  timeout = SD_WAIT_CYCLES;
 
   while ((DMAEndOfTransfer == 0x00) && (TransferEnd == 0) && (TransferError == SD_OK) && (timeout > 0))
   {
@@ -1938,7 +1943,7 @@ SD_Error SD_WaitWriteOperation(void)
 
   DMAEndOfTransfer = 0x00;
 
-  timeout = SD_DATATIMEOUT;
+  timeout = SD_WAIT_CYCLES;
 
   while(((SDIO->STA & SDIO_FLAG_TXACT)) && (timeout > 0))
   {
@@ -2096,7 +2101,7 @@ SD_Error SD_Erase(uint32_t startaddr, uint32_t endaddr)
 
   /*!< Wait till the card is in programming state */
   errorstatus = IsCardProgramming(&cardstate);
-  delay = SD_DATATIMEOUT;
+  delay = SD_WAIT_CYCLES;
   while ((delay > 0) && (errorstatus == SD_OK) && ((SD_CARD_PROGRAMMING == cardstate) || (SD_CARD_RECEIVING == cardstate)))
   {
     errorstatus = IsCardProgramming(&cardstate);
@@ -2246,7 +2251,7 @@ SD_Error SD_SendSDStatus(uint32_t *psdstatus)
     return(errorstatus);
   }
 
-  count = SD_DATATIMEOUT;
+  count = SD_WAIT_CYCLES;
   while ((SDIO_GetFlagStatus(SDIO_FLAG_RXDAVL) != RESET) && (count > 0))
   {
     *psdstatus = SDIO_ReadData();
