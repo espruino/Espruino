@@ -36,6 +36,7 @@ typedef struct {
   bool allowGreenAdjust; // allow automatic adjustment of LED power
   bool allowWearDetect; // allow automatic check for whether HRM is worn
   bool pushEnvData; // call jsbangle_push_event to push data for every received ENV sample
+  bool useStaticSampleTime; // use a static time period for samples, rather than the time between them
 } PACKED_FLAGS VC31Info;
 
 extern VC31Info vcInfo;

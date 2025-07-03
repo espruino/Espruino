@@ -2721,6 +2721,7 @@ call `E.kickWatchdog()` from your code or the watch will reset after ~5 seconds.
 * `hrmGreenAdjust` - (Bangle.js 2, 2v19+) if false (default is true) the green LED intensity won't be adjusted to get the HRM sensor 'exposure' correct. This is reset when the HRM is initialised with `Bangle.setHRMPower`.
 * `hrmWearDetect` - (Bangle.js 2, 2v19+) if false (default is true) HRM readings won't be turned off if the watch isn't on your arm (based on HRM proximity sensor). This is reset when the HRM is initialised with `Bangle.setHRMPower`.
 * `hrmPushEnv` - (Bangle.js 2, 2v19+) if true (default is false) HRM environment readings will be produced as `Bangle.on(`HRM-env`, ...)` events. This is reset when the HRM is initialised with `Bangle.setHRMPower`.
+* `hrmStaticSampleTime` - (Bangle.js 2, 2v28+) if true (default is false) force the HRM to use hrmPollInterval as the sample time rather than the real poll interval
 * `seaLevelPressure` (Bangle.js 2) Default 1013.25 millibars - this is used when calculating altitude from pressure sensor values from `Bangle.getPressure`/`pressure` events.
 * `lcdBufferPtr` (Bangle.js 2 2v21+) Return a pointer to the first pixel of the 3 bit graphics buffer used by Bangle.js for the screen (stride = 178 bytes)
 * `lcdDoubleRefresh` (Bangle.js 2 2v22+) If enabled, pulses EXTCOMIN twice per poll interval (avoids off-axis flicker)
@@ -2771,6 +2772,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
       {"hrmGreenAdjust", JSV_BOOLEAN, &vcInfo.allowGreenAdjust},
       {"hrmWearDetect", JSV_BOOLEAN, &vcInfo.allowWearDetect},
       {"hrmPushEnv", JSV_BOOLEAN, &vcInfo.pushEnvData},
+      {"hrmStaticSampleTime", JSV_BOOLEAN, &vcInfo.useStaticSampleTime},
 #endif
 #ifdef PRESSURE_DEVICE
       {"seaLevelPressure", JSV_FLOAT, &barometerSeaLevelPressure},

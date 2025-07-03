@@ -70,7 +70,7 @@ bool hrm_new(int ppgValue, Vector3 *acc) {
   inputData.envSample = vcInfo.envValue;
   hrmInfo.msSinceLastHRM += timeDiff;
   // TODO: The VC31 example code uses a static value here (eg hrmPollInterval) - maybe we should do this
-  Algo_Input(&inputData, timeDiff, hrmInfo.sportMode, 0/*surfaceRecogMode*/,0/*opticalAidMode*/);
+  Algo_Input(&inputData, vcInfo.useStaticSampleTime ?  hrmPollInterval : timeDiff, hrmInfo.sportMode, 0/*surfaceRecogMode*/,0/*opticalAidMode*/);
   AlgoOutputData_t outputData;
   Algo_Output(&outputData);
   //jsiConsolePrintf("HRM %d %d %d\n", outputData.hrData, outputData.reliability, hrmInfo.msSinceLastHRM);
