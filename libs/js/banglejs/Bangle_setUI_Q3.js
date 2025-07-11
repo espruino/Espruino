@@ -130,6 +130,7 @@
       var touchHandler = function(_,e) {
         if (e.y<36 && e.x<48) {
           e.handled = true;
+          b();
           E.stopEventPropagation(); // stop subsequent touch handlers from being called
           options.back();
         }
