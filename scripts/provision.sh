@@ -273,7 +273,8 @@ if [ "$ARM" = "1" ]; then
     echo "===== ARM"
     EXPECTEDARMGCCVERSION="13.2.1"
     EXPECTEDARMGCCFILENAME="arm-gnu-toolchain-13.2.Rel1-x86_64-arm-none-eabi"
-    if type arm-none-eabi-gcc 2> /dev/null > /dev/null; then
+
+    if type arm-none-eabi-gcc 2> /dev/null > /dev/null && [[ -z $IGNORE_SYSTEM_GCC ]]; then
         ARMGCCVERSION=$(arm-none-eabi-gcc -dumpfullversion)
         echo arm-none-eabi-gcc installed, version $ARMGCCVERSION
         if [ ! "$ARMGCCVERSION" = "$EXPECTEDARMGCCVERSION" ]; then
@@ -284,7 +285,8 @@ if [ "$ARM" = "1" ]; then
           echo "***                                                               ***"
           echo "***   The build may work with your compiler version, but it       ***"
           echo "***   is possible you will encounter errors, or issues with       ***"
-          echo "***   build size                                                  ***"
+          echo "***   build size. If you wish to ignore the installed version     ***"
+          echo "***   and install and embedded version set IGNORE_SYSTEM_GCC=1    ***"
           echo "***                                                               ***"
           echo "*********************************************************************"
           echo "*********************************************************************"
@@ -292,18 +294,20 @@ if [ "$ARM" = "1" ]; then
           echo "      Got      $ARMGCCVERSION"
         fi
     else
-        echo "installing gcc-arm-embedded to Espruino/$EXPECTEDARMGCCFILENAME/bin"
         #sudo add-apt-repository -y ppa:team-gcc-arm-embedded/ppa
         #sudo apt-get update
         #sudo DEBIAN_FRONTEND=noninteractive apt-get --force-yes --yes install libsdl1.2-dev gcc-arm-embedded
         # OR download from https://developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-arm-none-eabi.tar.xz
         # Unpack from GitHub-hosted file - newer, and much faster
         if [ ! -d "$EXPECTEDARMGCCFILENAME" ]; then
+          echo "installing gcc-arm-embedded to Espruino/$EXPECTEDARMGCCFILENAME/bin"
           curl -Ls "https://github.com/espruino/EspruinoBuildTools/raw/master/arm/arm-gnu-toolchain-13.2.rel1-x86_64-arm-none-eabi-stripped.tar.xz" | tar xfJ - --no-same-owner
         else
-            echo "Folder found"
+            echo "gcc-arm-embedded installation found"
         fi
-	      export PATH=$PATH:$(pwd)/$EXPECTEDARMGCCFILENAME/bin
+
+        ARMGCCPATH="$(pwd)/$EXPECTEDARMGCCFILENAME/bin"
+        [[ ":$PATH:" != *":$ARMGCCPATH"* ]] && export PATH="$ARMGCCPATH:${PATH}"
     fi
 fi
 
