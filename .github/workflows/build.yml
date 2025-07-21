@@ -155,7 +155,7 @@ jobs:
     strategy:
       # devices to build for
       matrix:
-        board: [ESP32, ESP8266_BOARD, ESP8266_4MB, ESP32C3_IDF4]
+        board: [ESP32, ESP8266_BOARD, ESP8266_4MB, ESP32C3_IDF4, ESP32S3_IDF4]
       # try and build for all devices even if one fails
       fail-fast: false 
     steps:
