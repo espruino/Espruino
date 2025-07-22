@@ -1,4 +1,4 @@
-(function(mode, cb) {
+Bangle.setUI=(function(mode, cb) {
   var options = {};
   if ("object"==typeof mode) {
     options = mode;
@@ -36,7 +36,10 @@
   g.reset();// reset graphics state, just in case
   if (!mode) return;
   function b() {
-    try{Bangle.buzz(30);}catch(e){}
+    return new Promise((resolve) => {
+      try { Bangle.buzz(30); } catch(e) {}
+      setTimeout(resolve, 40); // let the promise finish immediately
+    });
   }
   if (mode=="updown") {
     if (options.drag) throw new Error("Custom drag handler not supported in mode updown!")
@@ -130,9 +133,8 @@
       var touchHandler = function(_,e) {
         if (e.y<36 && e.x<48) {
           e.handled = true;
-          b();
           E.stopEventPropagation(); // stop subsequent touch handlers from being called
-          options.back();
+          b().then(() => options.back());
         }
       };
       Bangle.prependListener("touch", touchHandler);
