@@ -1,11 +1,12 @@
 (function(mode, cb) {
-  var options = {};
+  var options = {},
+      hadBackWidget = false,
+      b = ()=>Bangle.buzz(30);
   if ("object"==typeof mode) {
     options = mode;
     mode = options.mode;
     if (!mode) throw new Error("Missing mode in setUI({...})");
   }
-  var hadBackWidget = false;
   if (global.WIDGETS && WIDGETS.back) {
     hadBackWidget = true; // if we had a back widget already, don't redraw at the end
     WIDGETS.back.remove(options.back); // only redraw when removing if we don't have options.back
@@ -39,9 +40,7 @@
   }
   g.reset();// reset graphics state, just in case
   if (!mode) return;
-  function b() {
-    try{Bangle.buzz(30);}catch(e){}
-  }
+
   if (mode=="updown") {
     if (options.drag) throw new Error("Custom drag handler not supported in mode updown!")
     var dy = 0;
@@ -103,13 +102,10 @@
     throw new Error("Unknown UI mode "+E.toJS(mode));
   if (options.clock) Bangle.CLOCK=1;
   if (options.touch) {
-    if (Bangle.touchHandler) { // don't overwrite existing touch handler if using updown/etc (#2648)
-      Bangle.touchHandler2 = options.touch;
-      Bangle.on("touch", Bangle.touchHandler2);
-    } else {
-      Bangle.touchHandler = options.touch;
-      Bangle.on("touch", Bangle.touchHandler);
-    }
+    if (Bangle.touchHandler) // don't overwrite existing touch handler if using updown/etc (#2648)
+      Bangle.on("touch", Bangle.touchHandler2 = options.touch);
+    else
+      Bangle.on("touch", Bangle.touchHandler = options.touch);
   }
   if (options.drag) {
     Bangle.dragHandler = options.drag;
@@ -131,7 +127,7 @@
     if (Bangle.btnWatches===undefined)
       Bangle.btnWatches = [ setWatch(function() {
         Bangle.btnWatches = undefined; // watch doesn't repeat
-        options.back();
+        b().then(() => options.back());
       }, BTN1, {edge:"rising"}) ];
     // if we have widgets loaded *and* visible at the top, add a back widget (see #3788)
     if (global.WIDGETS && Bangle.appRect.y) {
@@ -140,7 +136,7 @@
         if (e.y<36 && e.x<48) {
           e.handled = true;
           E.stopEventPropagation(); // stop subsequent touch handlers from being called
-          options.back();
+          b().then(() => options.back());
         }
       };
       Bangle.prependListener("touch", touchHandler);
