@@ -6,7 +6,7 @@
     if (!mode) throw new Error("Missing mode in setUI({...})");
   }
   var hadBackWidget = false;
-  if (global.WIDGETS && WIDGETS.back) { 
+  if (global.WIDGETS && WIDGETS.back) {
     hadBackWidget = true; // if we had a back widget already, don't redraw at the end
     WIDGETS.back.remove(options.back); // only redraw when removing if we don't have options.back
   }
@@ -25,6 +25,10 @@
   if (Bangle.touchHandler) {
     Bangle.removeListener("touch", Bangle.touchHandler);
     delete Bangle.touchHandler;
+  }
+  if (Bangle.touchHandler2) {
+    Bangle.removeListener("touch", Bangle.touchHandler2);
+    delete Bangle.touchHandler2;
   }
   delete Bangle.uiRedraw;
   delete Bangle.CLOCK;
@@ -99,8 +103,13 @@
     throw new Error("Unknown UI mode "+E.toJS(mode));
   if (options.clock) Bangle.CLOCK=1;
   if (options.touch) {
-    Bangle.touchHandler = options.touch;
-    Bangle.on("touch", Bangle.touchHandler);
+    if (Bangle.touchHandler) { // don't overwrite existing touch handler if using updown/etc (#2648)
+      Bangle.touchHandler2 = options.touch;
+      Bangle.on("touch", Bangle.touchHandler2);
+    } else {
+      Bangle.touchHandler = options.touch;
+      Bangle.on("touch", Bangle.touchHandler);
+    }
   }
   if (options.drag) {
     Bangle.dragHandler = options.drag;

@@ -6,6 +6,7 @@
             Bangle.js2: Adjust accelerometer axes for HRM algorithm to more closely match the datasheet
             nRF52: Add NRF/BluetoothRemoteGATTServer.updateConnection for setting the phy
             Bangle.js2: Add Bangle.setOptions({hrmStaticSampleTime})
+            Bangle.js2: Fix issue using touch handler with Bangle.setUI({mode:"updown",...}) (fix #2648)
 
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected
