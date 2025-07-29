@@ -268,6 +268,7 @@ ifdef USE_BOOTLOADER
 ifdef BOOTLOADER
   DEFINES += -DBOOTLOADER -DNRF_DFU_SETTINGS_VERSION=1
   DEFINES += $(BOOTLOADER_DEFINES)
+  DFU_BOOTLOADER_SETTINGS ?= --bootloader-version 0xff --hw-version 52 --sd-req 0x8C,0x91
 ifdef BOOTLOADER_ASFLAGS
   ASFLAGS += $(BOOTLOADER_ASFLAGS)
 endif
@@ -341,7 +342,6 @@ else # !NRF5X_SDK_12
     -I$(ROOT)/gen \
     -I$(ROOT)/src \
     -I$(ROOT)/targets/nrf5x_dfu \
-    -I$(ROOT)/targets/nrf5x_dfu/sdk15 \
     -I$(NRF5X_SDK_PATH)/external/micro-ecc \
     -I$(NRF5X_SDK_PATH)/components/libraries/sha256 \
     -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/micro_ecc \
@@ -387,15 +387,35 @@ else # !NRF5X_SDK_12
     -I$(NRF5X_SDK_PATH)/external/nano-pb \
     -I$(NRF5X_SDK_PATH)/components/libraries/queue \
     -I$(NRF5X_SDK_PATH)/components/libraries/experimental_memobj
-ifdef NRF5X_SDK_15_3
+ifdef NRF5X_SDK_17
+DEFINES += -DPB_FIELD_16BIT=1
 INCLUDE += \
+    -I$(ROOT)/targets/nrf5x_dfu/sdk17 \
     -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/optiga \
     -I$(NRF5X_SDK_PATH)/components/libraries/log \
     -I$(NRF5X_SDK_PATH)/components/libraries/log/src
 else
+ifdef NRF5X_SDK_15_3
 INCLUDE += \
+    -I$(ROOT)/targets/nrf5x_dfu/sdk15 \
+    -I$(NRF5X_SDK_PATH)/components/libraries/crypto/backend/optiga \
+    -I$(NRF5X_SDK_PATH)/components/libraries/log \
+    -I$(NRF5X_SDK_PATH)/components/libraries/log/src
+else # NRF5X_SDK_15
+INCLUDE += \
+    -I$(ROOT)/targets/nrf5x_dfu/sdk15 \
     -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log \
     -I$(NRF5X_SDK_PATH)/components/libraries/experimental_log/src
+endif
+endif
+ifdef NRF5X_SDK_17
+  TARGETSOURCES += \
+  $(NRF5X_SDK_PATH)/components/libraries/timer/drv_rtc.c \
+  $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer2.c 
+else
+  TARGETSOURCES += \
+  $(NRF5X_SDK_PATH)/components/libraries/timer/experimental/drv_rtc.c \
+  $(NRF5X_SDK_PATH)/components/libraries/timer/experimental/app_timer2.c 
 endif
   TARGETSOURCES += \
   $(NRF5X_SDK_PATH)/external/micro-ecc/uECC.c \
@@ -403,10 +423,8 @@ endif
   $(NRF5X_SDK_PATH)/components/libraries/crypto/backend/nrf_sw/nrf_sw_backend_hash.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error_weak.c \
   $(NRF5X_SDK_PATH)/components/libraries/scheduler/app_scheduler.c \
-  $(NRF5X_SDK_PATH)/components/libraries/timer/experimental/app_timer2.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_util_platform.c \
   $(NRF5X_SDK_PATH)/components/libraries/crc32/crc32.c \
-  $(NRF5X_SDK_PATH)/components/libraries/timer/experimental/drv_rtc.c \
   $(NRF5X_SDK_PATH)/components/libraries/mem_manager/mem_manager.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
   $(NRF5X_SDK_PATH)/components/libraries/atomic_fifo/nrf_atfifo.c \
@@ -518,7 +536,7 @@ $(PROJ_NAME).hex: $(PROJ_NAME).app_hex
   else
 	@echo Merging SoftDevice and Bootloader
 	@# build a DFU settings file we can merge in... family can be NRF52840 or NRF52
-	nrfutil settings generate --family $(BOOTLOADER_SETTINGS_FAMILY) --application $(PROJ_NAME).app_hex --app-boot-validation VALIDATE_GENERATED_CRC --application-version 0xff --bootloader-version 0xff --bl-settings-version 2 $(OBJDIR)/dfu_settings.hex
+	nrfutil settings generate --family $(BOOTLOADER_SETTINGS_FAMILY) --application $(PROJ_NAME).app_hex --app-boot-validation VALIDATE_GENERATED_CRC --application-version 0x01 --bootloader-version 0x01 --bl-settings-version 2 $(OBJDIR)/dfu_settings.hex
 	@echo FIXME - had to set --overlap=replace
 	python scripts/hexmerge.py --overlap=replace $(SOFTDEVICE) $(NRF_BOOTLOADER) $(PROJ_NAME).app_hex $(OBJDIR)/dfu_settings.hex -o $(PROJ_NAME).hex
   endif
@@ -542,8 +560,8 @@ else
 	@echo Creating DFU ZIP
 	# nrfutil  pkg generate --help
 	@cp $(PROJ_NAME).app_hex $(PROJ_NAME)_app.hex
-ifdef BOOTLOADER
-	nrfutil pkg generate $(PROJ_NAME).zip --bootloader $(PROJ_NAME)_app.hex --bootloader-version 0xff --hw-version 52 --sd-req 0x8C,0x91 --key-file $(DFU_PRIVATE_KEY)
+ifdef BOOTLOADER	
+	nrfutil pkg generate $(PROJ_NAME).zip --bootloader $(PROJ_NAME)_app.hex $(DFU_BOOTLOADER_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
 else
 	nrfutil pkg generate $(PROJ_NAME).zip --application $(PROJ_NAME)_app.hex $(DFU_SETTINGS) --key-file $(DFU_PRIVATE_KEY)
 endif
