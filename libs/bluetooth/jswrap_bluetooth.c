@@ -644,11 +644,20 @@ specifically for Espruino.
   "class" : "BluetoothDevice",
   "name" : "gattserverdisconnected",
   "params" : [
-    ["reason","int","The reason code reported back by the BLE stack - see Nordic's `ble_hci.h` file for more information"]
+    ["reason","int","The reason for the disconnect by the BLE stack - see below"]
   ],
   "ifdef" : "NRF52_SERIES"
 }
-Called when the device gets disconnected.
+This is called when the device gets disconnected.
+
+Common `reason` values for disconnection are:
+
+* 5 - `AUTHENTICATION_FAILURE`
+* 8 - `CONNECTION_TIMEOUT`
+* 19 - `REMOTE_USER_TERMINATED_CONNECTION`
+* 22 - `LOCAL_HOST_TERMINATED_CONNECTION`
+
+For a full list see [`BLE_HCI_STATUS_CODES` in `ble_hci.h`](https://github.com/espruino/Espruino/blob/ebf15226b165744ac40d94996698d53da7e03219/targetlibs/nrf5x_12/components/softdevice/s132/headers/ble_hci.h#L52-L121)
 
 To connect and then print `Disconnected` when the device is disconnected, just
 do the following:
