@@ -3553,11 +3553,11 @@ void jsble_central_connect(ble_gap_addr_t peer_addr, JsVar *options) {
   memset(&gap_conn_params, 0, sizeof(gap_conn_params));
   BLEFlags flags = jsvGetIntegerAndUnLock(jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_FLAGS));
   if (flags & BLE_FLAGS_LOW_POWER) {
-    gap_conn_params.min_conn_interval = MSEC_TO_UNITS(500, UNIT_1_25_MS);   // Minimum acceptable connection interval (500 ms)
-    gap_conn_params.max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS);    // Maximum acceptable connection interval (1000 ms)
+    gap_conn_params.min_conn_interval = MSEC_TO_UNITS(500, UNIT_1_25_MS);    // Minimum acceptable connection interval (500 ms)
+    gap_conn_params.max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS);   // Maximum acceptable connection interval (1000 ms)
   } else {
-    gap_conn_params.min_conn_interval = MSEC_TO_UNITS(20, UNIT_1_25_MS);   // Minimum acceptable connection interval (20 ms)
-    gap_conn_params.max_conn_interval = MSEC_TO_UNITS(200, UNIT_1_25_MS);    // Maximum acceptable connection interval (200 ms)
+    gap_conn_params.min_conn_interval = MSEC_TO_UNITS(7.5, UNIT_1_25_MS);    // Minimum acceptable connection interval (7.5 ms)
+    gap_conn_params.max_conn_interval = MSEC_TO_UNITS(1000, UNIT_1_25_MS);    // Maximum acceptable connection interval (1000 ms)
   }
   gap_conn_params.slave_latency     = SLAVE_LATENCY_CENTRAL;
   gap_conn_params.conn_sup_timeout  = CONN_SUP_TIMEOUT;
