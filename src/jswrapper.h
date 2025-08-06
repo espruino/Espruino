@@ -116,7 +116,7 @@ typedef struct {
 /// Do a binary search of the symbol table list
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name);
 
-/** If 'name' is something that belongs to an internal function, execute it.  */
+/** If 'name' is something that belongs to an internal function, return it (it'll be created on demand).  */
 JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name);
 
 /// Given an object, return the list of symbols for it

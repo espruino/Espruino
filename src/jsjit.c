@@ -226,26 +226,30 @@ void jsjFunctionReturn(bool isReturnStatement) {
 /* Called when we encounter an ID. This checks if it's in our 'jit.vars'
 list and if not either creates (creationOp==LEX_R_VAR/LET/CONST) or
 tries to find it (creationOp==LEX_ID) it in our global scope.
-hasInitialiser=true if an initial value is already on the stack */
-void jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
+hasInitialiser=true if an initial value is already on the stack.
+If the ID was something built-in, its value is returned (we pass this into FactorMember) */
+JsVar *jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
   const int VARINDEX_MASK = 0xFFFF; // mask to return the actual var index
   const int VARINDEX_NO_NAME = 0x10000; // flag set if we're sure there is no name
   // search for var in our list...
   JsVar *varIndex = jsvFindChildFromVar(jit.vars, name, true/*addIfNotFound*/);
   JsVar *varIndexVal = jsvSkipName(varIndex);
+  JsVar *builtin = NULL;
+  if (creationOp==LEX_ID) {
+    char tokenName[JSLEX_MAX_TOKEN_LENGTH];
+    jsvGetString(name, tokenName, sizeof(tokenName));
+    builtin = jswFindBuiltInFunction(0, tokenName);
+  }
   if (jit.phase == JSJP_SCAN && jsvIsUndefined(varIndexVal)) {
     // We don't have it yet - create a var list entry
     JsjValueType varType = JSJVT_JSVAR;
     // Now add the code which will create the variable right at the start of the file
     if (creationOp==LEX_ID) { // Just a normal ID
       // See if it's a builtin function, if builtinFunction!=0
-      char tokenName[JSLEX_MAX_TOKEN_LENGTH];
-      jsvGetString(name, tokenName, sizeof(tokenName));
-      JsVar *builtin = jswFindBuiltInFunction(0, tokenName);
       if (jsvIsNativeFunction(builtin)) { // it's a built-in function - just create it in place rather than searching
         jsjcDebugPrintf("; Native Function %j\n", name);
-        jsjcLiteral32(0, builtin->varData.native.ptr);
-        jsjcLiteral16(1, false, builtin->varData.native.argTypes);
+        jsjcLiteral32(0, (uint32_t)builtin->varData.native.ptr);
+        jsjcLiteral32(1, (uint16_t)builtin->varData.native.argTypes);
         jsjcCall(jsvNewNativeFunction); // JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes)
         varType = JSJVT_JSVAR_NO_NAME;
       } else if (jsvIsPin(builtin)) { // it's a built-in pin - just create it in place rather than searching
@@ -258,7 +262,6 @@ void jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
         jsjcLiteralString(0, name, true); // null terminated string in r0
         jsjcCall(jspGetNamedVariable); // Find the var in the current scopes (always returns something even if it's jsvNewChild)
       }
-      jsvUnLock(builtin);
     } else if (creationOp==LEX_R_VAR || creationOp==LEX_R_LET || creationOp==LEX_R_CONST) {
       jsjcDebugPrintf("; Variable Decl %j\n", name);
       jsjcLiteralString(0, name, true); // null terminated string in r0
@@ -286,6 +289,7 @@ void jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
     jsjcPush(0, varType); // Push, with the type we got from the varIndex flags
   }
   jsvUnLock2(varIndex, name);
+  return builtin;
 }
 
 void jsjFactorObject() {
@@ -369,11 +373,13 @@ void jsjFactorArray() {
   }
 }
 
-void jsjFactor() {
+/* If the Factor was something built-in, its value is returned (we pass this into FactorMember) */
+JsVar *jsjFactor() {
+  JsVar *builtin = NULL;
   if (lex->tk==LEX_ID) {
     JsVar *name = jslGetTokenValueAsVar();
     JSP_ASSERT_MATCH(LEX_ID);
-    jsjFactorIDAndUnLock(name, LEX_ID);
+    builtin = jsjFactorIDAndUnLock(name, LEX_ID);
   } else if (lex->tk==LEX_INT) {
     int64_t v = jsvGetLongIntegerAndUnLock(jslGetTokenValueAsVar());
     JSP_ASSERT_MATCH(LEX_INT);
@@ -400,7 +406,7 @@ void jsjFactor() {
     // Just parse a normal expression (which can include commas)
     jsjExpression();
     // FIXME: Arrow functions??
-    JSP_MATCH(')');
+    JSP_MATCH_WITH_RETURN(')', 0);
   } else if (lex->tk==LEX_R_TRUE || lex->tk==LEX_R_FALSE) {
     if (jit.phase == JSJP_EMIT) {
       jsjcLiteral32(0, lex->tk==LEX_R_TRUE);
@@ -457,23 +463,44 @@ void jsjFactor() {
       jsjcLiteral32(0, 0);
       jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
-  } else JSP_MATCH(LEX_EOF);
+  } else JSP_MATCH_WITH_RETURN(LEX_EOF, 0);
+  return builtin;
 }
 
-// Parse ./[] - return true if the parent of the current item is currently on the stack
-bool jsjFactorMember() {
+/* Parse ./[] - return true if the parent of the current item is currently on the stack
+builtin is set if the Factor was something built-in (eg `E`/`Math`/etc)
+*/
+bool jsjFactorMember(JsVar *builtin) {
   bool parentOnStack = false;
   while ((lex->tk=='.' || lex->tk=='[') && JSJ_PARSING) {
+    bool doLookup = true;
     if (lex->tk == '.') { // ------------------------------------- Record Access
       JSP_ASSERT_MATCH('.');
       if (jslIsIDOrReservedWord()) {
         if (jit.phase == JSJP_EMIT) {
-          JsVar *a = jslGetTokenValueAsVar();
-          jsjcLiteralString(0, a, true); // null terminated
-          jsvUnLock(a);
-          // r0 = string pointer
-          jsjcCall(jsvNewFromString);
-          // r0 = index (as JsVar)
+          if (builtin) {
+            JsVar *fn = jswFindBuiltInFunction(builtin, jslGetTokenValueAsString());
+            DEBUG_JIT("; Native member function .%s\n", jslGetTokenValueAsString());
+            if (jsvIsNativeFunction(fn)) {
+              jsjcLiteral32(0, (uint32_t)fn->varData.native.ptr);
+              jsjcLiteral32(1, (uint16_t)fn->varData.native.argTypes);
+              jsjcCall(jsvNewNativeFunction); // JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes)
+              doLookup = false;
+              jsjPopAsVar(1); // parent
+              jsjcPush(0, JSJVT_JSVAR); // the function itself
+              jsjcPush(1, JSJVT_JSVAR); // parent
+              parentOnStack = true;
+            }
+            jsvUnLock(fn);
+          }
+          if (doLookup) {
+            JsVar *a = jslGetTokenValueAsVar();
+            jsjcLiteralString(0, a, true); // null terminated
+            jsvUnLock(a);
+            // r0 = string pointer
+            jsjcCall(jsvNewFromString);
+            // r0 = index (as JsVar)
+          }
         }
         jslGetNextToken(); // skip over current token (we checked above that it was an ID or reserved word)
       } else {
@@ -492,7 +519,7 @@ bool jsjFactorMember() {
     } else {
       assert(0);
     }
-    if (jit.phase == JSJP_EMIT) {
+    if (doLookup && jit.phase == JSJP_EMIT) {
       // r0 currently = index
       if (parentOnStack) jsjPopAsVar(1); // r1 = parent
       else jsjcLiteral32(1, 0);
@@ -507,8 +534,9 @@ bool jsjFactorMember() {
 }
 
 void jsjFactorFunctionCall() {
-  jsjFactor();
-  bool parentOnStack = jsjFactorMember();
+  JsVar *builtin = jsjFactor();
+  bool parentOnStack = jsjFactorMember(builtin);
+  jsvUnLock(builtin);
   // FIXME: what about 'new'?
 
   while (lex->tk=='(' /*|| (isConstructor && JSP_SHOULD_EXECUTE))*/ && JSJ_PARSING) {
@@ -582,7 +610,7 @@ void jsjFactorFunctionCall() {
       // 'parent', 'funcName' and all args are unlocked by _jsjxFunctionCallAndUnLock
     }
     // Check for another '.'/etc after this function
-    parentOnStack = jsjFactorMember();
+    parentOnStack = jsjFactorMember(NULL);
   }
   if ((jit.phase == JSJP_EMIT) && parentOnStack) {
     jsjPopAsVar(0); // remove parent from the stack and unlock it
@@ -901,7 +929,7 @@ void jsjStatementVar() {
     /* create the variable locally, and in our var table. If we're emitting now
     and there's no initial value, we don't need to do anything */
     if (hasInitialiser || jit.phase != JSJP_EMIT)
-      jsjFactorIDAndUnLock(name, declType);
+      jsvUnLock(jsjFactorIDAndUnLock(name, declType));
     if (hasInitialiser) { // sort out initialiser
       DEBUG_JIT_EMIT("; Variable's initialiser\n");
       JSP_ASSERT_MATCH('=');

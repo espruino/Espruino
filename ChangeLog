@@ -8,6 +8,7 @@
             Bangle.js2: Add Bangle.setOptions({hrmStaticSampleTime})
             Bangle.js2: Fix issue using touch handler with Bangle.setUI({mode:"updown",...}) (fix #2648)
             Bangle.js2: Menus now buzz when back button pressed or icon tapped (fix #2642)
+            JIT: When referencing a built-in member function of a built-in (Math.*, E.*, PIN_NAME.*, etc) include address rather than looking up (#2398)
 
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected
