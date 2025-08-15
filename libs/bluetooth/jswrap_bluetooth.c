@@ -2553,7 +2553,7 @@ void jswrap_ble_setRSSIHandler(JsVar *callback) {
       ["power","int","Transmit power. Accepted values are -40(nRF52 only), -30(nRF51 only), -20, -16, -12, -8, -4, 0, and 4 dBm. On nRF52840 (eg Bangle.js 2) 5/6/7/8 dBm are available too. Others will give an error code."]
     ]
 }
-Set the BLE radio transmit power. The default TX power is 0 dBm, and
+Set the BLE radio transmit power. The default TX power is 0 dBm (or 4dBm for Bangle.js 2).
 */
 void jswrap_ble_setTxPower(JsVarInt pwr) {
   jsble_set_tx_power(pwr);
