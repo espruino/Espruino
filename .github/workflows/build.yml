@@ -43,7 +43,7 @@ jobs:
       # try and build for all devices even if one fails
       fail-fast: false 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
     - uses: actions/setup-python@v5
@@ -82,7 +82,7 @@ jobs:
       # try and build for all devices even if one fails
       fail-fast: false 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0    
     - uses: actions/setup-python@v5
@@ -120,7 +120,7 @@ jobs:
       # try and build for all devices even if one fails
       fail-fast: false 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
     - uses: actions/setup-python@v5
@@ -159,7 +159,7 @@ jobs:
       # try and build for all devices even if one fails
       fail-fast: false 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
     - name: make ${{ matrix.board }}
@@ -194,7 +194,7 @@ jobs:
       # try and build for all devices even if one fails
       fail-fast: false 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
     - name: make ${{ matrix.board }}
