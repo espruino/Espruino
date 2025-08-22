@@ -6342,18 +6342,19 @@ Bangle.setUI("updown", function (dir) {
 ```
 
 The first argument can also be an object, in which case more options can be
-specified with `mode:"custom"`:
+specified`:
 
 ```
 Bangle.setUI({
-  mode : "custom",
+  mode : "custom", // can also be set to one of the other modes presented above in order to extend them.
   back : function() {}, // optional - add a 'back' icon in top-left widget area and call this function when it is pressed , also call it when the hardware button is clicked (does not override btn if defined)
   remove : function() {}, // optional - add a handler for when the UI should be removed (eg stop any intervals/timers here)
   redraw : function() {}, // optional - add a handler to redraw the UI. Not needed but it can allow widgets/etc to provide other functionality that requires the screen to be redrawn
-  touch : function(n,e) {}, // optional - (mode:custom only) handler for 'touch' events
-  swipe : function(dir) {}, // optional - (mode:custom only) handler for 'swipe' events
-  drag : function(e) {}, // optional - (mode:custom only) handler for 'drag' events (Bangle.js 2 only)
-  btn : function(n) {}, // optional - (mode:custom only) handler for 'button' events (n==1 on Bangle.js 2, n==1/2/3 depending on button for Bangle.js 1)
+  touch : function(n,e) {}, // optional - handler for 'touch' events
+  swipe : function(dir) {}, // optional - handler for 'swipe' events
+  drag : function(e) {}, // optional - (mode:updown/leftright incompatible) handler for 'drag' events (Bangle.js 2 only)
+  btn : function(n) {}, // optional - handler for 'button' events (n==1 on Bangle.js 2, n==1/2/3 depending on button for Bangle.js 1)
+  btnRelease : function(n) {}, // optional - same as btn but react on release instead of press down.
   clock : 0 // optional - if set the behavior of 'clock' mode is added (does not override btn if defined)
 });
 ```
