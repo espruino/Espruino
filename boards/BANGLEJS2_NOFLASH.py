@@ -38,19 +38,23 @@ info = {
      'TERMINAL',
      'GRAPHICS',
      'CRYPTO','SHA256','SHA512',
+     'AES_CCM',
      'LCD_MEMLCD',
-#     'TENSORFLOW',
+     'TENSORFLOW',
+     'SWDCON', # RTT console over SWD
      'JIT' # JIT compiler enabled
    ],
    'makefile' : [
+     'DEFINES+=-DESPR_OFFICIAL_BOARD', # Don't display the donations nag screen
      'DEFINES += -DESPR_HWVERSION=2 -DBANGLEJS -DBANGLEJS_Q3',
 #     'DEFINES += -DCONFIG_GPIO_AS_PINRESET', # Allow the reset pin to work
      'DEFINES += -DCONFIG_NFCT_PINS_AS_GPIOS', # Allow us to use NFC pins as GPIO
      #'DEFINES += -DESPR_REGOUT0_1_8V=1', # this increases power draw, so probably not correct!
      'DEFINES += -DESPR_LSE_ENABLE', # Ensure low speed external osc enabled
      'DEFINES += -DNRF_SDH_BLE_GATT_MAX_MTU_SIZE=131', # 23+x*27 rule as per https://devzone.nordicsemi.com/f/nordic-q-a/44825/ios-mtu-size-why-only-185-bytes
+     'DEFINES += -DNRF_SDH_BLE_GAP_EVENT_LENGTH=6', # Needed to allow coded phy connections
      'DEFINES += -DCENTRAL_LINK_COUNT=2 -DNRF_SDH_BLE_CENTRAL_LINK_COUNT=2', # allow two outgoing connections at once
-     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3660', # set RAM base to match MTU=131 + CENTRAL_LINK_COUNT=2
+     'LDFLAGS += -Xlinker --defsym=LD_APP_RAM_BASE=0x3b70', # set RAM base to match MTU=131 + CENTRAL_LINK_COUNT=2 + GAP_EVENT_LENGTH=6
      'DEFINES += -DESPR_DCDC_ENABLE=1', # Use DC/DC converter
      'ESPR_BLUETOOTH_ANCS=1', # Enable ANCS (Apple notifications) support
      'DEFINES += -DSPIFLASH_SLEEP_CMD', # SPI flash needs to be explicitly slept and woken up
@@ -67,6 +71,10 @@ info = {
      'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_14.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_17.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_22.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_28.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_6x15.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_12x20.c',
      'SOURCES += libs/misc/nmea.c',
