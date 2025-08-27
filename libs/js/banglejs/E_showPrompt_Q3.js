@@ -64,10 +64,10 @@
           draw(i); // highlighted button
           g.flip(); // write to screen
           E.showPrompt(); // remove
-          if (e.type===2 /*long press*/ && options.buttonsLong && options.buttonsLong[btns[i]]) {
+          if (e.type===2 /*long press*/ && options.buttonsLong && options.buttonsLong[btns[i]])
             resolve(options.buttonsLong[btns[i]]);
-          }
-          resolve(options.buttons[btns[i]]);
+           else
+            resolve(options.buttons[btns[i]]);
         }
       });
     }};
