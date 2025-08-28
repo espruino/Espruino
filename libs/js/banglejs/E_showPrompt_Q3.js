@@ -64,7 +64,7 @@
           draw(i); // highlighted button
           g.flip(); // write to screen
           E.showPrompt(); // remove
-          if (e.type===2 /*long press*/ && options.buttonsLong && options.buttonsLong[btns[i]])
+          if (e.type===2 /*long press*/ && options.buttonsLong && btns[i] in options.buttonsLong)
             resolve(options.buttonsLong[btns[i]]);
            else
             resolve(options.buttons[btns[i]]);
