@@ -6073,7 +6073,7 @@ E.showMessage("Lots of text will wrap automatically",{
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
     "ifdef" : "BANGLEJS",
     "typescript" : [
-      "showPrompt<T = boolean>(message: string, options?: { title?: string, buttons?: { [key: string]: T }, buttonHeight?: number, image?: string, remove?: () => void }): Promise<T>;",
+      "showPrompt<T = boolean>(message: string, options?: { title?: string, buttons?: { [key: string]: T }, buttonsLong?: { [key: string]: T }, buttonHeight?: number, image?: string, remove?: () => void }): Promise<T>;",
       "showPrompt(): void;"
     ]
 }
