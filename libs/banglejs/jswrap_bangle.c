@@ -6073,7 +6073,7 @@ E.showMessage("Lots of text will wrap automatically",{
     "return" : ["JsVar","A promise that is resolved when 'Ok' is pressed"],
     "ifdef" : "BANGLEJS",
     "typescript" : [
-      "showPrompt<T = boolean>(message: string, options?: { title?: string, buttons?: { [key: string]: T }, buttonHeight?: number, image?: string, remove?: () => void }): Promise<T>;",
+      "showPrompt<T = boolean>(message: string, options?: { title?: string, buttons?: { [key: string]: T }, buttonsLong?: { [key: string]: T }, buttonHeight?: number, image?: string, remove?: () => void }): Promise<T>;",
       "showPrompt(): void;"
     ]
 }
@@ -6113,6 +6113,7 @@ The second `options` argument can contain:
 {
   title: "Hello",                       // optional Title
   buttons : {"Ok":true,"Cancel":false}, // optional list of button text & return value
+  buttonsLong : {"Ok":2,"Cancel":"Cancel"}, // Bangle.js2: optional subset of buttons that should also have a specific long press action
   img: "image_string"                   // optional image string to draw
   remove: function() { }                // Bangle.js: optional function to be called when the prompt is removed#
   buttonHeight : 30,                    // Bangle.js2: optional height to force the buttons to be
