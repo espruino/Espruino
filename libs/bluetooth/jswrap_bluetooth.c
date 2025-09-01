@@ -1274,11 +1274,11 @@ long when converted to a String.
 
 On NRF52833/NRF52840 based devices you can specify `phy` (the physical connection type used) as:
 
-* `1mbps` - the default Bluetooth phy (compatible with everything)
-* `2mbps` - a faster Bluetooth connection
-* `coded` - a slower connection with error correction (much longer range)
-* `coded,1mbps` - both long range and normal, but advertisements sent on the `coded` phy
-* `1mbps,coded` - both long range and normal, but advertisements sent on the `1mbps` phy - this allows for long range connections while also being compatible with everything
+* `phy:"1mbps""` - the default Bluetooth phy (compatible with everything)
+* `phy:"2mbps"` - a faster Bluetooth connection
+* `phy:"coded"` - a slower connection with error correction (much longer range)
+* `phy:"coded,1mbps"` - both long range and normal, but advertisements sent on the `coded` phy
+* `phy:"1mbps,coded"` - both long range and normal, but advertisements sent on the `1mbps` phy - this allows for long range connections while also being compatible with everything
 
 If you wish to have the best of both world (long range advertising and compatiblity) then
 Nordic suggest changing advertising between `coded,1mbps` and `1mbps,coded` every 500ms
@@ -2518,8 +2518,8 @@ void jswrap_ble_findDevices(JsVar *callback, JsVar *options) {
     ]
 }
 
-Start/stop listening for RSSI values on the currently active connection (where
-This device is a peripheral and is being connected to by a 'central' device)
+Start/stop listening for RSSI values on the currently active peripheral connection (eg when
+this device is being connected to by a 'central' device)
 
 ```
 // Start scanning
