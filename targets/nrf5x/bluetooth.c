@@ -1280,7 +1280,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
       case BLE_GAP_EVT_RSSI_CHANGED:  {
         int centralIdx = jsble_get_central_connection_idx(p_ble_evt->evt.gap_evt.conn_handle);
 #if CENTRAL_LINK_COUNT>0
-        if (centralIdx) {
+        if (centralIdx >= 0) {
           jsble_queue_pending(BLEP_RSSI_CENTRAL, (p_ble_evt->evt.gap_evt.params.rssi_changed.rssi&255) | (centralIdx<<8));
         }
 #endif

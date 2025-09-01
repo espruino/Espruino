@@ -11,6 +11,7 @@
             JIT: When referencing a built-in member function of a built-in (Math.*, E.*, PIN_NAME.*, etc) include address rather than looking up (#2398)
             nRF52 Central: Lower min connection interval from 20->7.5ms, max 200->1000ms (allows some extra devices to be connected to)
             Bangle.js2: Add optional long press button actions to `showPrompt` (#2656) 
+            nRF52: Fix gatt.setRSSIHandler on the first active connection
 
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected
