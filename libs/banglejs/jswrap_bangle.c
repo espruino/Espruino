@@ -4901,7 +4901,7 @@ JsVar *jswrap_banglejs_dbg() {
   jsvObjectSetChildAndUnLock(o,"hrmSportActivity",jsvNewFromInteger(hrmSportActivity)); // Sport activity running average
   jsvObjectSetChildAndUnLock(o,"hrmSportMode",jsvNewFromInteger(hrmInfo.sportMode)); // The sport mode the HRM is currently in (different to getOptions().hrmSportMode which is what we're requesting)
 #endif
-#ifdef BANGLEJS_Q3
+#if defined(BANGLEJS_Q3) && !defined(EMULATED)
   jsvObjectSetChildAndUnLock(o,"SPL06", jsvNewFromBool(pressureSPL06Enabled));
   jsvObjectSetChildAndUnLock(o,"BMP280", jsvNewFromBool(pressureBMP280Enabled));
   jsvObjectSetChildAndUnLock(o,"MAG0C", jsvNewFromBool(mag0CEnabled));
