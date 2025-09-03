@@ -1406,14 +1406,16 @@ void peripheralPollHandler() {
         data_temp[1] = buf[2] | (buf[3]<<8);
         data_temp[2] = buf[4] | (buf[5]<<8);
         // adjust range to be in uTesla (0.8 scaling according to datasheet)
+        // NOTE: it is possible to read calibration values from OTP and apply those but maybe we don't care
         mag.x = ((32768 - data_temp[0]) * 205) >> 8; // * 0.8
         mag.y = ((data_temp[2] - data_temp[1]) * 205) >> 8; // * 0.8
         mag.z = ((65536 - (data_temp[1] + data_temp[2])) * 276) >> 8; // * 1.35 * 0.8 (Z axis is scaled differently)
         // TODO: there are calibration registers
         newReading = true;
+        // TODO: should we call SET every so often to keep the sensor happy? example code does.
+        /* Write 0x01 to register 0x08, set TM_M bit high - kick off new reading */
+        jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x08/*MMC36X0_REG_CTRL0*/, 0x01/*MMC36X0_CMD_TM_M*/);
       }
-      /* Write 0x01 to register 0x08, set TM_M bit high - kick off new reading */
-      jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x08/*MMC36X0_REG_CTRL0*/, 0x01/*MMC36X0_CMD_TM_M*/);
     }
 #endif
     if (newReading) {
@@ -3275,23 +3277,23 @@ bool jswrap_banglejs_setCompassPower(bool isOn, JsVar *appId) {
 #endif
 #ifdef MAG_DEVICE_MMC36X0
       if (MAG_DEVICE_MMC36X0_EN) {
+        // NOTE: What follows is based on MMC36X0 example code but *isn't*in the datasheet
         /* Change the SET/RESET pulse width  */
         /* Write 0x00 to register 0x0A, set ULP_SEL bit low */
-        jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x0A/*MMC36X0_REG_CTRL2*/, 0x00/*MMC36X0_CMD_OTP_NACT*/);
-
+        //jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x0A/*MMC36X0_REG_CTRL2*/, 0x00/*MMC36X0_CMD_OTP_NACT*/);
         /* Write 0xE1 to register 0x0F, write password */
-        jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x0F/*MMC36X0_REG_PASSWORD*/, 0xE1/*MMC36X0_CMD_PASSWORD*/);
-
+        //jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x0F/*MMC36X0_REG_PASSWORD*/, 0xE1/*MMC36X0_CMD_PASSWORD*/);
         /* Read and write register 0x20, set SR_PW<1:0> = 00 = 1us */
-        unsigned char reg;
-        jsi2cReadReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x20/*MMC36X0_REG_SR_PWIDTH*/, 1, &reg);
-        reg = reg & 0xE7;
-        jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x20/*MMC36X0_REG_SR_PWIDTH*/, reg);
+        //unsigned char reg;
+        //jsi2cReadReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x20/*MMC36X0_REG_SR_PWIDTH*/, 1, &reg);
+        //reg = reg & 0xE7;
+        //jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x20/*MMC36X0_REG_SR_PWIDTH*/, reg);
+
         /* SET operation when using dual supply  - Write 0x08 to register 0x08, set SET bit high */
         jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x08/*MMC36X0_REG_CTRL0*/, 0x08/*MMC36X0_CMD_SET*/);
-        /* Write register 0x09, Set BW<1:0> = 0x00, 0x01, 0x02, or 0x03 */
+        /* Set highest accuracy mode, Write register 0x09, Set BW<1:0> = 0x00, 0x01, 0x02, or 0x03 */
       	jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x09/*MMC36X0_REG_CTRL1*/, 0/*MMC36X0_CMD_100HZ*/ );
-        /* Enable sensor when from pown down mode to normal mode, Write 0x01 to register 0x08, set TM_M bit high */
+        /* Enable sensor when from pown down mode to normal mode, Write 0x01 to register 0x08, set TM_M bit high to kick off a reading */
         jsi2cWriteReg(MAG_I2C, MAG_MMC36X0_ADDR, 0x08/*MMC36X0_REG_CTRL0*/, 1/*MMC36X0_CMD_TM_M*/);
         nrf_delay_ms(10);
       }
