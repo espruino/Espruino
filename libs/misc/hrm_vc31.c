@@ -215,8 +215,7 @@ VC31AInfo vcaInfo;
 VC31BInfo vcbInfo;
 
 static void vc31_w(uint8_t reg, uint8_t data) {
-  uint8_t buf[2] = {reg, data};
-  jsi2cWrite(&i2cHRM, HEARTRATE_ADDR, 2, buf, true);
+  jsi2cWriteReg(&i2cHRM, HEARTRATE_ADDR, reg, data);
 }
 static void vc31_wx(uint8_t reg, uint8_t *data, int cnt) {
   uint8_t buf[32];
@@ -226,10 +225,9 @@ static void vc31_wx(uint8_t reg, uint8_t *data, int cnt) {
 }
 
 static uint8_t vc31_r(uint8_t reg) {
-  uint8_t buf[1] = {reg};
-  jsi2cWrite(&i2cHRM, HEARTRATE_ADDR, 1, buf, false);
-  jsi2cRead(&i2cHRM, HEARTRATE_ADDR, 1, buf, true);
-  return buf[0];
+  uint8_t v;
+  jsi2cReadReg(&i2cHRM, HEARTRATE_ADDR, reg, 1, &v);
+  return v;
 }
 static void vc31_rx(uint8_t reg, uint8_t *data, int cnt) {
   uint8_t buf[1] = {reg};

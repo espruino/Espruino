@@ -254,10 +254,7 @@ void mag_rd(int addr, unsigned char *data, int cnt) {
     wr(MAG_PIN_SDA, 1);
     wr(MAG_PIN_SCL, 1);
   } else {
-    unsigned char buf[1];
-    buf[0] = addr;
-    jsi2cWrite(&i2cMag, iaddr, 1, buf, false);
-    jsi2cRead(&i2cMag, iaddr, cnt, data, true);
+    jsi2cReadReg(&i2cMag, iaddr, addr, cnt, data);
   }
 }
 
@@ -559,9 +556,7 @@ bool accel_on(int milliHz) {
 void accel_read() {
   unsigned char buf[12];
   // FIXME: If just the accelerometer is on, we could avoid reading the gyro and read only 6 bytes
-  buf[0] = 0x22; // OUTX_L_G
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, false);
-  jsi2cRead(&i2cAccel, ACCEL_ADDR, 12, buf, true);
+  jsi2cReadReg(&i2cAccel, ACCEL_ADDR, 0x22, 12, buf); // OUTX_L_G
   gyro_reading[0] = (buf[1]<<8) | buf[0];
   gyro_reading[1] = (buf[3]<<8) | buf[2];
   gyro_reading[2] = (buf[5]<<8) | buf[4];
@@ -575,9 +570,7 @@ void accel_wait() {
   unsigned char buf[1];
   timeout = 400;
   do {
-    buf[0] = 0x1E; // STATUS_REG
-    jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, false);
-    jsi2cRead(&i2cAccel, ACCEL_ADDR, 1, buf, true);
+    jsi2cReadReg(&i2cAccel, ACCEL_ADDR, 0x1E, 1, buf); // STATUS_REG
     //jsiConsolePrintf("M %d\n", buf[0]);
   } while (!(buf[0]&3) && --timeout); // ZYXDA
   if (!timeout) jsExceptionHere(JSET_INTERNALERROR, "Timeout (Accelerometer)");
@@ -950,9 +943,7 @@ JsVarFloat jswrap_puck_getTemperature() {
     //buf[1] = 1; // CONF
     //buf[0] = 0; // on
     //jsi2cWrite(&i2cTemp,TEMP_ADDR, 1, buf, false);
-    buf[0] = 0; // TEMP
-    jsi2cWrite(&i2cTemp,TEMP_ADDR, 1, buf, false);
-    jsi2cRead(&i2cTemp, TEMP_ADDR, 2, buf, true);
+    jsi2cReadReg(&i2cTemp, TEMP_ADDR, 0, 2, buf); // TEMP
     int t = (buf[0]<<3) | (buf[1]>>5);
     if (t&1024) t-=2048; // negative
     temp_off();
@@ -1153,9 +1144,7 @@ int jswrap_puck_accelRd(JsVarInt reg) {
     return -1;
   }
   unsigned char buf[1];
-  buf[0] = (unsigned char)reg;
-  jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, false);
-  jsi2cRead(&i2cAccel, ACCEL_ADDR, 1, buf, true);
+  jsi2cReadReg(&i2cAccel, ACCEL_ADDR, reg, 1, buf);
   return buf[0];
 }
 
@@ -1555,9 +1544,7 @@ bool _jswrap_puck_selfTest(bool advertisePassOrFail) {
   if (PUCKJS_HAS_ACCEL) {
     accel_on(1660000);
     unsigned char buf[1];
-    buf[0] = 0x0F; // WHOAMI
-    jsi2cWrite(&i2cAccel, ACCEL_ADDR, 1, buf, false);
-    jsi2cRead(&i2cAccel, ACCEL_ADDR, 1, buf, true);
+    jsi2cReadReg(&i2cAccel, ACCEL_ADDR, 0x0F, 1, buf); // WHOAMI
     accel_off();
     if (buf[0]!=106) {
       if (!err[0]) strcpy(err,"ACC");

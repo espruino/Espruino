@@ -47,14 +47,12 @@ JshI2CInfo i2cInfo = {
 
 // Write to IO expander
 void sxWriteReg(unsigned reg, unsigned d) {
-  unsigned char data[2] = {reg,d};
-  jsi2cWrite(&i2cInfo, SX_I2C_ADDR, sizeof(data), data, true);
+  jsi2cWriteReg(&i2cInfo, SX_I2C_ADDR, reg, d);
 }
 // Read from IO expander
 unsigned char sxReadReg(unsigned reg) {
-  unsigned char data = reg;
-  jsi2cWrite(&i2cInfo, SX_I2C_ADDR, 1, &data, true);
-  jsi2cRead(&i2cInfo, SX_I2C_ADDR, 1, &data, true);
+  unsigned char data;
+  jsi2cReadReg(&i2cInfo, SX_I2C_ADDR, reg, 1, &data);
   return data;
 }
 

@@ -120,7 +120,7 @@ static void i2c_wr_bit(i2cInfo *inf, bool b) {
   if (inf->timeout && !timeout) err("Timeout (wr)");
   i2c_pin_wr0(inf->pinSCL);
   i2c_pin_wr1(inf->pinSDA); // stop forcing SDA (needed?)
-  dly(inf);  
+  dly(inf);
 }
 
 static bool i2c_rd_bit(i2cInfo *inf) {
@@ -216,6 +216,18 @@ bool jsi2cRead(JshI2CInfo *inf, unsigned char address, int nBytes, unsigned char
   if (sendStop) i2c_stop(&d);
   inf->started = d.started;
   return true;
+}
+
+bool jsi2cWriteReg(JshI2CInfo *inf, unsigned char address, unsigned char reg, unsigned char value) {
+  unsigned char buf[2];
+  buf[0] = reg;
+  buf[1] = value;
+  return jsi2cWrite(inf, address, 2, buf, true);
+}
+
+bool jsi2cReadReg(JshI2CInfo *inf, unsigned char address, unsigned char reg, int nBytes, unsigned char *data) {
+  jsi2cWrite(inf, address, 1, &reg, false);
+  return jsi2cRead(inf, address, nBytes, data, true);
 }
 
 #endif // ESPR_NO_SOFT_I2C
