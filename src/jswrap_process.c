@@ -122,6 +122,8 @@ Returns an Object containing various pre-defined variables.
 * `APP_RAM_BASE` - On nRF5x boards, this is the RAM required by the Softdevice
   *if it doesn't exactly match what was allocated*. You can use this to update
   `LD_APP_RAM_BASE` in the `BOARD.py` file
+* `SOFTDEVICE` - (on nRF52840) the version of Bluetooth Softdevice that is installed on
+  the device, usually `"6.0.0"` or `"6.1.1"`
 
 For example, to get a list of built-in modules, you can use
 `process.env.MODULES.split(',')`
@@ -159,6 +161,17 @@ JsVar *jswrap_process_env() {
   extern uint32_t app_ram_base;
   if (app_ram_base)
     jsvObjectSetChildAndUnLock(obj, "APP_RAM_BASE", jsvNewFromInteger((JsVarInt)app_ram_base));
+#endif
+#ifdef NRF52840
+  // Do a CRC of the 32 bytes from offset 256 (in the softdevice area), eg E.CRC32(E.memoryArea(256,32))
+  const char *softdevice = "unknown";
+  JsVar *sdArea = jswrap_espruino_memoryArea(256,32);
+  uint32_t crc = (uint32_t)jsvGetIntegerAndUnLock(jswrap_espruino_CRC32(sdArea));
+  jsvUnLock(sdArea);
+  // compare with known values
+  if (crc == 3039104175) softdevice = "6.0.0";
+  if (crc == 2754746215) softdevice = "6.1.1";
+  jsvObjectSetChildAndUnLock(obj, "SOFTDEVICE", jsvNewFromString(softdevice));
 #endif
 #endif
   return obj;
