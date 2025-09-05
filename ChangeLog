@@ -14,7 +14,7 @@
             nRF52: Fix gatt.setRSSIHandler on the first active connection
             Added i2cRead/WriteReg for simplified internal I2C code
             Bangle.js2: Support for new Bangles with MMC36X0 magnetometer (Bangle.dbg() now shows info)
-            nRF52840: Add process.env.SOFTDEVICE for detecting which softdevice version is installed
+            nRF5x: Add process.env.SOFTDEVICE for detecting which softdevice version is installed
 
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected
