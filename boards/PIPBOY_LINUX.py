@@ -17,7 +17,7 @@ import pinutils;
 info = {
  'name' : "Pipboy Linux Debug Compilation",
  'default_console' : "EV_USBSERIAL",
- 'variables' :  5000, # 0 = resizable variables, rather than fixed
+ 'variables' :  15000, # 0 = resizable variables, rather than fixed
  'binary_name' : 'espruino_pb',
  'build' : {
    'libraries' : [
@@ -29,12 +29,20 @@ info = {
 #     'CFLAGS+=-m32', 'LDFLAGS+=-m32', 'DEFINES+=-DUSE_CALLFUNCTION_HACK', # For testing 32 bit builds
      'DEFINES+=-DLINUX -DEMULATED',
      'DEFINES+=-DESPR_UNICODE_SUPPORT=1',
+     'DEFINES+=-DESPR_FS_PREPEND_PATH=\'"sdcard/"\'',
      'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS -DESPR_GRAPHICS_INTERNAL -DESPR_GRAPHICS_SELF_INIT',
      'DEFINES+=-DSPIFLASH_BASE=0 -DSPIFLASH_LENGTH=FLASH_SAVED_CODE_LENGTH', # For Testing Flash Strings
      'LINUX=1',
      'INCLUDE += -I$(ROOT)/libs/pipboy',
      'WRAPPERSOURCES += libs/pipboy/avi.c libs/pipboy/stm32_i2s.c',
-     'WRAPPERSOURCES += libs/pipboy/jswrap_pipboy.c'     
+     'WRAPPERSOURCES += libs/pipboy/jswrap_pipboy.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_120.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_96.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_36.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_28.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_23.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_18.c',
+     'WRAPPERSOURCES += libs/pipboy/jswrap_font_monofonto_16.c'
    ]
  }
 };

@@ -100,7 +100,8 @@ void lcdIdle_SDL() {
   static bool down;
   extern void nativeQuit();
   SDL_Event event;
-  bool sendEvent = false;
+  bool sendTouchEvent = false;
+  char *sendKeyEvent = NULL;
 
   if (needsFlip) {
     needsFlip = false;
@@ -113,19 +114,29 @@ void lcdIdle_SDL() {
         nativeQuit();
         break;
       case SDL_MOUSEMOTION:
-	if (down) {
-	  sendEvent = true;
-	}
+        if (down) {
+          sendTouchEvent = true;
+        }
         break;
       case SDL_MOUSEBUTTONDOWN:
       case SDL_MOUSEBUTTONUP:
         down = event.type == SDL_MOUSEBUTTONDOWN;
-        sendEvent = true;
-	break;
+        sendTouchEvent = true;
+	      break;
+      case SDL_KEYDOWN:
+        sendKeyEvent = JS_EVENT_PREFIX"keydown";
+        switch (event.key.keysym.sym) {
+          case SDLK_ESCAPE: nativeQuit(); break;
+          default:break;
+        }
+        break;
+      case SDL_KEYUP:
+        sendKeyEvent = JS_EVENT_PREFIX"keyup";
+        break;
     }
   }
 
-  if (sendEvent) {
+  if (sendTouchEvent) {
     JsVar *E = jsvObjectGetChildIfExists(execInfo.root, "E");
     if (E) {
       JsVar *o = jsvNewObject();
@@ -133,6 +144,33 @@ void lcdIdle_SDL() {
       jsvObjectSetChildAndUnLock(o,"y", jsvNewFromInteger(event.button.y));
       jsvObjectSetChildAndUnLock(o,"b", jsvNewFromInteger(down?1:0));
       jsiQueueObjectCallbacks(E, JS_EVENT_PREFIX"touch", &o, 1);
+      jsvUnLock2(E,o);
+    }
+  }
+  if (sendKeyEvent) {
+    JsVar *E = jsvObjectGetChildIfExists(execInfo.root, "E");
+    if (E) {
+      JsVar *o = jsvNewObject();
+      jsvObjectSetChildAndUnLock(o,"keyCode", jsvNewFromInteger(event.key.keysym.scancode));
+      const char *name = NULL;
+      switch (event.key.keysym.sym) {
+        case SDLK_UP: name = "ArrowUp"; break;
+        case SDLK_DOWN: name = "ArrowDown"; break;
+        case SDLK_LEFT: name = "ArrowLeft"; break;
+        case SDLK_RIGHT: name = "ArrowRight"; break;
+        case SDLK_RETURN: name = "Enter"; break;
+        case SDLK_BACKSPACE: name = "Backspace"; break;
+        case SDLK_TAB: name = "Tab"; break;
+        case SDLK_DELETE: name = "Delete"; break;
+        case SDLK_HOME: name = "Home"; break;
+        case SDLK_END: name = "End"; break;
+        case SDLK_PAGEUP: name = "PageUp"; break;
+        case SDLK_PAGEDOWN: name = "PageDown"; break;
+        case SDLK_INSERT: name = "Insert"; break;
+        default:break;
+      }
+      if (name) jsvObjectSetChildAndUnLock(o,"key", jsvNewFromString(name));
+      jsiQueueObjectCallbacks(E, sendKeyEvent, &o, 1);
       jsvUnLock2(E,o);
     }
   }

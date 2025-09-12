@@ -392,6 +392,13 @@ int handleErrors() {
   if (hasException) {
     jsiConsolePrintf("Uncaught %v\n", exception);
     e = 1;
+    if (jsvIsObject(exception)) {
+      JsVar *stackTrace = jsvObjectGetChildIfExists(exception, "stack");
+      if (stackTrace) {
+        jsiConsolePrintStringVar(stackTrace);
+        jsvUnLock(stackTrace);
+      }
+    }
   }
   jsvUnLock(exception);
 

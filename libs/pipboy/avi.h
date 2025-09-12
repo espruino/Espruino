@@ -31,8 +31,8 @@ typedef struct {
   int audioBufferSize;
 } AviInfo;
 
-const uint16_t WAVFMT_RAW = 1;
-const uint16_t WAVFMT_IMA_ADPCM = 0x11; // https://wiki.multimedia.cx/index.php/Microsoft_IMA_ADPCM
+#define WAVFMT_RAW       1
+#define WAVFMT_IMA_ADPCM 0x11 // https://wiki.multimedia.cx/index.php/Microsoft_IMA_ADPCM
 
 #define AVI_STREAM_AUDIO 0x6277
 #define AVI_STREAM_VIDEO 0x6364

@@ -40,6 +40,12 @@ bool jsfsGetPathString(char *pathStr, JsVar *path) {
     jsExceptionHere(JSET_ERROR, "File path too long");
     return false;
   }
+#ifdef ESPR_FS_PREPEND_PATH
+  char buf[JS_DIR_BUF_SIZE];
+  strcpy(buf, ESPR_FS_PREPEND_PATH);
+  strcat(buf, pathStr);
+  strcpy(pathStr, buf);
+#endif
   return true;
 }
 
@@ -568,7 +574,7 @@ Skip the specified number of bytes forward in the file
   "name" : "seek",
   "generate_full" : "jswrap_file_skip_or_seek(parent,nBytes,false)",
   "params" : [
-    ["nBytes","int32","is an integer specifying the number of bytes to skip forwards."]
+    ["nBytes","int32","is an integer specifying the byte position in the file to move to."]
   ]
 }
 Seek to a certain position in the file
