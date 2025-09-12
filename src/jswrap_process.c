@@ -167,9 +167,9 @@ JsVar *jswrap_process_env() {
   extern uint32_t app_ram_base;
   if (app_ram_base)
     jsvObjectSetChildAndUnLock(obj, "APP_RAM_BASE", jsvNewFromInteger((JsVarInt)app_ram_base));
-#endif
   // https://devzone.nordicsemi.com/f/nordic-q-a/1171/how-do-i-access-softdevice-version-string
   jsvObjectSetChildAndUnLock(obj, "SOFTDEVICE", jsvNewFromInteger(*(uint16_t*)0x0000300C));
+#endif
 #endif
   return obj;
 }
