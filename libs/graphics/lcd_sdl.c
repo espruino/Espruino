@@ -88,7 +88,7 @@ void lcdInit_SDL(JsGraphics *gfx) {
     jsExceptionHere(JSET_ERROR, "SDL_Init failed");
     exit(1);
   }
-  if (!(screen = SDL_SetVideoMode(gfx->data.width, gfx->data.height, 32, SDL_SWSURFACE))) {
+  if (!(screen = SDL_SetVideoMode(gfx->data.width, gfx->data.height, 32, SDL_SWSURFACE | SDL_RESIZABLE))) {
     jsExceptionHere(JSET_ERROR, "SDL_SetVideoMode failed");
     SDL_Quit();
     exit(1);
