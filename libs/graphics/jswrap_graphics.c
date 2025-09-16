@@ -2487,7 +2487,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
   while ((jsvStringIteratorHasChar(&it) || endOfText) && !jspIsInterrupted()) {
     int ch = jsvStringIteratorGetUTF8CharAndNext(&it);
     bool canBreakOnCh = endOfText || ch=='\n' || ch==' ';
-    if (canBreakOnCh || canSplitAfter) { // is breakable - newline,space,dash, image before
+    if (canBreakOnCh || canSplitAfter) { // is breakable - newline,space,dash,image before
       size_t currentPos = jsvStringIteratorGetIndex(&it);
       if ((lineWidth + spaceWidth + wordWidth <= maxWidth) &&
           !wasNewLine) {
@@ -2496,7 +2496,7 @@ JsVar *jswrap_graphics_wrapString(JsVar *parent, JsVar *str, int maxWidth) {
           // add the space/etc before (but not a space at the start of a newline)
           jsvAppendCharacter(currentLine, wordBreakCharacter);
           lineWidth += spaceWidth;
-        }
+        } else if (canSplitAfter) wordWidth += _jswrap_graphics_getCharWidth(&info, ch);
         jsvAppendStringVar(currentLine, str, (size_t)wordStartIdx, currentPos-((size_t)wordStartIdx+1));
         lineWidth += wordWidth;
       } else { // doesn't fit on one line - put word on new line
