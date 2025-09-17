@@ -1224,11 +1224,14 @@ void jshJumpToDFU(void) {
 /// Reboot into DFU mode
 void jshRebootToDFU() {
   PWR_BackupAccessCmd(ENABLE);
+  jshDelayMicroseconds(10); // Some devices seem to need a delay
   RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_BOOT_DFU); // Write a magic number to the backup register
   jshReboot();
 }
 
 void jshTurnOff() {
+  PWR_BackupAccessCmd(ENABLE);
+  jshDelayMicroseconds(10); // Some devices seem to need a delay
   RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_TURN_OFF); // ensure that if we wake up
   PWR_WakeUpPinCmd(ENABLE);
   PWR_EnterSTANDBYMode();
@@ -1241,6 +1244,7 @@ void jshInit() {
   we detect that (with RTC_BKP_DR0_TURN_OFF written into RTC_BKP_DR0) and turn ourselves back off quickly */
   if (RTC_ReadBackupRegister(RTC_BKP_DR0)==RTC_BKP_DR0_TURN_OFF) {
     PWR_BackupAccessCmd(ENABLE);
+    jshDelayMicroseconds(10); // Some devices seem to need a delay    
     RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_NULL);
     if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST)) {
       PWR_WakeUpPinCmd(ENABLE);
@@ -1250,6 +1254,7 @@ void jshInit() {
   // Are we trying to reboot into the bootloader?
   if (RTC_ReadBackupRegister(RTC_BKP_DR0)==RTC_BKP_DR0_BOOT_DFU) {
     PWR_BackupAccessCmd(ENABLE);
+    jshDelayMicroseconds(10); // Some devices seem to need a delay
     RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_NULL);
     jshJumpToDFU();
   }
