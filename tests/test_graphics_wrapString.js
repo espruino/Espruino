@@ -137,4 +137,9 @@ lines = g.wrapString(require("Storage").read("x"), 176)
 require("Storage").erase("x")
 SHOULD_BE(lines, ["Compacting...","Takes approx","1 minute"]);
 
+// Issues when word-wrapping with a word with multiple hyphens
+g.clear().setFont("4x6");
+lines = g.wrapString("A a-b-c-d-e-f-g-h-i one two 3 one two 3 one two 3 one two 3", 40).map(t=>[t,g.stringWidth(t)])
+SHOULD_BE(lines, [["A a-b-c-d-",40],["e-f-g-h-i",36],["one two 3",36],["one two 3",36],["one two 3",36],["one two 3",36]]);
+
 result = ok;
