@@ -1,6 +1,7 @@
 (function() {
   Bangle.setUI();clearInterval();clearWatch();g.clear(1);
   Bangle.removeAllListeners();E.removeAllListeners();
+  Bangle.setPollInterval(80);
   Bangle.setBarometerPower(1, "app");
   Bangle.setCompassPower(1, "app");
   Bangle.setGPSPower(1, "app");
@@ -38,7 +39,7 @@
         var ok = vibMotion>3;
         draw("Vibrate",ok?"ok":"fail",ok);
       }
-    } else if ((vibMotion===undefined) && p.diff < 0.02){
+    } else if ((vibMotion===undefined) && p.diff < 0.12){
       // wait until the Bangle has been still for a few seconds before turning vib on
       vibCounter++;
       if (vibCounter>15) {
@@ -71,18 +72,21 @@
     if (!pass.every(a=>a)) return;
     Bangle.removeAllListeners();
     clearInterval();clearWatch();
-    NRF.sleep(); // Bluetooth off
-    Bangle.setBarometerPower(0, "app");
-    Bangle.setCompassPower(0, "app");
-    Bangle.setGPSPower(0, "app");
-    Bangle.setHRMPower(0, "app");
-    Bangle.setBacklight(0);
-    Bangle.setLocked(1); // touchscreen off
-    g.clear(1).setFont("12x20:2").setFontAlign(0,0).drawString("TEST\nPASS",88,88);
-    require('Storage').writeJSON('welcome.json', {welcomed: false});
-    Bangle.setPollInterval(800); // force low power accelerometer mode
+    g.clear();
     setTimeout(function() {
-      Bangle.off();
-    }, 60*60*1000); // 1 hour
+      Bangle.setBarometerPower(0, "app");
+      Bangle.setCompassPower(0, "app");
+      Bangle.setGPSPower(0, "app");
+      Bangle.setHRMPower(0, "app");
+      Bangle.setBacklight(0);
+      Bangle.setLocked(1); // touchscreen off
+      g.clear(1).setFont("12x20:2").setFontAlign(0,0).drawString("TEST\nPASS",88,88);
+      require('Storage').writeJSON('welcome.json', {welcomed: false});
+      Bangle.setPollInterval(800); // force low power accelerometer mode
+      NRF.sleep(); // Bluetooth off
+      setTimeout(function() {
+        Bangle.off();
+      }, 60*60*1000); // 1 hour
+    }, 100);
   });
 })
