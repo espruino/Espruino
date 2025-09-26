@@ -17,6 +17,7 @@
             nRF5x: Add process.env.SOFTDEVICE for detecting which softdevice version is installed
             Graphics.wrapString fix issue of line length of the line after a string with multiple dashes in
             Updated test screen to work better when watch has been idle for a while
+            nRF5x: Fix assertion failure caused by receiving manufacturer data with 0 length
 
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected
