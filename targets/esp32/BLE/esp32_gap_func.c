@@ -126,9 +126,9 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
       espbtaddr_TO_bleaddr(param->scan_rst.bda, param->scan_rst.ble_addr_type, &adv.peer_addr);
       adv.rssi = param->scan_rst.rssi;
       adv.dlen = param->scan_rst.adv_data_len;
-      if (adv.dlen > BLE_GAP_ADV_MAX_SIZE) adv.dlen = BLE_GAP_ADV_MAX_SIZE;
+      if (adv.dlen > sizeof(adv.data)) adv.dlen = sizeof(adv.data);
       memcpy(adv.data, param->scan_rst.ble_adv, adv.dlen);
-      size_t len = sizeof(BLEAdvReportData) + adv.dlen - BLE_GAP_ADV_MAX_SIZE;
+      size_t len = sizeof(BLEAdvReportData) + adv.dlen - sizeof(adv.data);
       jsble_queue_pending_buf(BLEP_ADV_REPORT, 0, (char*)&adv, len);
       break;
     }

@@ -413,7 +413,7 @@ bool jsble_exec_pending_common(BLEPending blep, uint16_t data, unsigned char *bu
   }
   case BLEP_ADV_REPORT: {
     BLEAdvReportData *p_adv = (BLEAdvReportData *)buffer;
-    size_t len = sizeof(BLEAdvReportData) + p_adv->dlen - BLE_GAP_ADV_MAX_SIZE;
+    size_t len = sizeof(BLEAdvReportData) + p_adv->dlen - sizeof(adv.data);
     if (bufferLen != len) {
 #ifndef RELEASE
       jsiConsolePrintf("BLEP_ADV %d %d %d\n", bufferLen,len,p_adv->dlen);

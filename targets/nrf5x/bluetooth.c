@@ -1559,10 +1559,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
         adv.dlen = p_adv->dlen;
         memcpy(adv.data, p_adv->data, adv.dlen);
 #else
-        adv.dlen = p_adv->data.len;
+        adv.dlen = (p_adv->data.len > sizeof(adv.data)) ? sizeof(adv.data) : p_adv->data.len;
         memcpy(adv.data, p_adv->data.p_data, adv.dlen);
 #endif
-        size_t len = sizeof(BLEAdvReportData) + adv.dlen - BLE_GAP_ADV_MAX_SIZE/*BLEAdvReportData contans uint8_t[BLE_GAP_ADV_MAX_SIZE]*/;
+        // FIXME: We might be getting *more* advertising data than we can push to our event queue, because we're limited by IOEVENT_MAX_LEN - I guess we could add >1 packet and decode it?
+        size_t len = sizeof(BLEAdvReportData) + adv.dlen - sizeof(adv.data)/* We don't want to add all of BLEAdvReportData if there isn't that much data */;
         jsble_queue_pending_buf(BLEP_ADV_REPORT, 0, (char*)&adv, len);
 #if NRF_SD_BLE_API_VERSION>5
         // On new APIs we need to continue scanning
