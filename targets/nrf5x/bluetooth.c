@@ -1567,7 +1567,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context) {
 #if NRF_SD_BLE_API_VERSION>5
         // On new APIs we need to continue scanning
         err_code = sd_ble_gap_scan_start(NULL, &m_scan_buffer);
-        APP_ERROR_CHECK(err_code);
+        APP_ERROR_CHECK_NOT_URGENT(err_code);
 #endif
         break;
         }
