@@ -54,6 +54,10 @@ To control the power, use `Qwiic.setPower`, for example: `Jolt.Q0.setPower(true)
   "return" : ["JsVar","The same Qwiic object (for call chaining)"]
 }
 This turns power for the given Qwiic connector on or off. See `Qwiic` for more information.
+
+* If the Qwiic connector has a `fet` pin, it's set to `isOn` (eg. the FET pin is connected low is `isOn`)
+* If the Qwiic connector has a `gnd` pin, it's always set to output `0`
+* If the Qwiic connector has a `vcc` pin, it's always set to output `isOn`
 */
 JsVar *jswrap_jqwiic_setPower(JsVar *parent, bool isOn) {
   JsVar *fet = jsvObjectGetChildIfExists(parent, "fet");
