@@ -18,6 +18,9 @@
             Graphics.wrapString fix issue of line length of the line after a string with multiple dashes in
             Updated test screen to work better when watch has been idle for a while
             nRF5x: Fix assertion failure caused by receiving manufacturer data with 0 length
+            Bluetooth: Increase size of max advertising received (now ~120b on high MTU builds)
+            nRF52840: Fix crash if receiving >32b of advertisement data
+            Jolt.js: Fix memory leak in Q0/1/2/3.setPower
 
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected

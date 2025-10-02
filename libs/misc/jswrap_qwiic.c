@@ -56,8 +56,6 @@ To control the power, use `Qwiic.setPower`, for example: `Jolt.Q0.setPower(true)
 This turns power for the given Qwiic connector on or off. See `Qwiic` for more information.
 */
 JsVar *jswrap_jqwiic_setPower(JsVar *parent, bool isOn) {
-  JsVar *o = jsvNewObject();
-  if (!o) return 0;
   JsVar *fet = jsvObjectGetChildIfExists(parent, "fet");
   if (fet) {
     jshPinOutput(jsvGetIntegerAndUnLock(fet), isOn);
