@@ -1,4 +1,5 @@
-          : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
+          : Bangle.js1,js2: Add accentColor option to E.showPrompt(), which changes the color of the tile bar and buttons.
+			Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
             nRF52: Add 'slaveLatency' option to BluetoothRemoteGATTServer.connect, default changed from 2 to 4
             nRF52: Add 'phy' and 'mtu' events to NRF/BluetoothDevice when these change on a connection
