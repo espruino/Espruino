@@ -21,7 +21,7 @@ cat libs/tensorflow/patches/* | patch -p1
 
 ## Actually using it
 
-Follow the steps here: https://github.com/tensorflow/tflite-micro/blob/main/tensorflow/lite/micro/examples/hello_world/train/train_hello_world_model.ipynb
+Follow the steps here: https://github.com/tensorflow/tflite-micro/tree/main/tensorflow/lite/micro/examples/hello_world
 
 Then right at the end when you have your model, do:
 
