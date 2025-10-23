@@ -154,6 +154,9 @@ On earlier firmwares this was accessible via `global["\xff"]`
   "class" : "E",
   "name" : "getTemperature",
   "generate" : "jswrap_espruino_getTemperature",
+  "params" : [
+    ["internal","bool","On Puck.js (where there is an external temperature sensor), set to true to use the internal microcontroller temperature sensor, false to use the external sensor. On other devices this parameter is ignored."]
+  ],
   "return" : ["float","The temperature in degrees C"]
 }
 Use the microcontroller's internal thermistor to work out the temperature.
@@ -169,12 +172,12 @@ devices. If so it'll return NaN.
  be reading 10 over degrees C above ambient temperature. When running from
  battery with `setDeepSleep(true)` it is much more accurate though.
 */
-JsVarFloat jswrap_espruino_getTemperature() {
+JsVarFloat jswrap_espruino_getTemperature(bool internal) {
 #ifdef PUCKJS
-  return jswrap_puck_getTemperature();
-#else
-  return jshReadTemperature();
+  if (!internal)
+    return jswrap_puck_getTemperature();
 #endif
+  return jshReadTemperature();
 }
 
 /*JSON{

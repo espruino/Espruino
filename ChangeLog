@@ -22,6 +22,7 @@
             nRF52840: Fix crash if receiving >32b of advertisement data
             Jolt.js: Fix memory leak in Q0/1/2/3.setPower
             I2C: Fix readReg to ensure it sends I2C STOP after the read
+            Puck.js: E.getTemperature(true) will now use the uC's internal temp sensor (previously only external was possible)
 
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected
