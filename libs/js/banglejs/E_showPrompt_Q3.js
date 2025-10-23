@@ -1,4 +1,4 @@
-(function(message,options) {
+E.showPrompt=(function(message,options) {
   if (!options) options={};
   if (!options.buttons)
     options.buttons = {"Yes":true,"No":false};
@@ -10,7 +10,7 @@
     var R = Bangle.appRect, Y = R.y, W = R.w;
     var title = g.findFont(options.title||"", {w:W-2,wrap:1,max:24});
     if (title.text) {
-      g.setColor(g.theme.fgH).setBgColor(g.theme.bgH).
+      g.setColor(g.theme.fgH).setBgColor(options.accentColor?options.accentColor:g.theme.bgH).
         clearRect(0,Y,W-1,Y+4+title.h).
         drawString(title.text,W/2,Y+4+title.h/2);
       Y += title.h+4;
@@ -43,7 +43,7 @@
       btnPos.push({x1:x-2, x2:x+BW-2,
                    y1:y, y2:y+BH});
       var btnText = g.findFont(btn, {w:bw-4,h:BH-4,wrap:1});
-      g.setColor(idx===highlightedButton ? g.theme.bgH : g.theme.bg2).fillPoly(poly).
+      g.setColor(idx===highlightedButton ? g.theme.bgH : options.accentColor?options.accentColor:g.theme.bg2).fillPoly(poly).
         setColor(idx===highlightedButton ? g.theme.fgH : g.theme.fg2).drawPoly(poly).drawString(btnText.text,x+bw/2,y+2+BH/2);
       if (idx&1) y+=BH;
     });
@@ -64,7 +64,7 @@
           draw(i); // highlighted button
           g.flip(); // write to screen
           E.showPrompt(); // remove
-          if (e.type===2 /*long press*/ && options.buttonsLong && btns[i] in options.buttonsLong)
+          if (e.type===2 /*long press*/ && options.buttonsLong && options.buttonsLong[btns[i]])
             resolve(options.buttonsLong[btns[i]]);
            else
             resolve(options.buttons[btns[i]]);
