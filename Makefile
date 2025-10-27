@@ -679,6 +679,11 @@ ifeq ($(USE_JIT),1)
   SOURCES += src/jsjit.c src/jsjitc.c
 endif
 
+ifeq ($(USE_I2S),1)
+  DEFINES += -DUSE_I2S
+  WRAPPERSOURCES += src/jswrap_i2s.c
+endif
+
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 
