@@ -794,7 +794,7 @@ JsVar *jswrap_arraybufferview_subarray(JsVar *parent, JsVarInt begin, JsVar *end
   "type" : "method",
   "class" : "ArrayBufferView",
   "name" : "indexOf",
-  "generate" : "jswrap_array_indexOf",
+  "generate" : "jswrap_arraybufferview_indexOf",
   "params" : [
     ["value","JsVar","The value to check for"],
     ["startIndex","int","[optional] the index to search from, or 0 if not specified"]
@@ -804,6 +804,28 @@ JsVar *jswrap_arraybufferview_subarray(JsVar *parent, JsVarInt begin, JsVar *end
 }
 Return the index of the value in the array, or `-1`
  */
+JsVar *jswrap_arraybufferview_indexOf(JsVar *array, JsVar *valueVar, JsVarInt startIdx) {
+#ifndef SAVE_ON_FLASH
+  if (!jsvIsArrayBuffer(array)) return 0;
+  if (!JSV_ARRAYBUFFER_IS_FLOAT(array->varData.arraybuffer.type)) {
+    // fast path for integer-based arraybuffers
+    JsVarInt value = jsvGetInteger(valueVar);
+    JsvArrayBufferIterator it;
+    jsvArrayBufferIteratorNew(&it, array, startIdx);
+    while (jsvArrayBufferIteratorHasElement(&it)) {
+      JsVarInt v = jsvArrayBufferIteratorGetIntegerValue(&it);
+      if (v == value) {
+        JsVar *r = jsvArrayBufferIteratorGetIndex(&it);
+        jsvArrayBufferIteratorFree(&it);
+        return r;
+      }
+      jsvArrayBufferIteratorNext(&it);
+    }
+    jsvArrayBufferIteratorFree(&it);
+  }
+#endif
+  return jswrap_array_indexOf(array, valueVar, startIdx);
+}
 /*JSON{
   "type" : "method",
   "class" : "ArrayBufferView",
