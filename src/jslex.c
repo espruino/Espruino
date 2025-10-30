@@ -352,7 +352,8 @@ static void jslLexString() {
         tempatedStringHasTemplate = true;
       } else if (nesting && lex->currCh=='}') nesting--;
     }
-    if (lex->currCh == '\\') {
+    if (nesting==0 && lex->currCh == '\\') {
+      // only handle escaped characters in the outer template string
       jslGetNextCh();
       char ch = lex->currCh;
       switch (lex->currCh) {
