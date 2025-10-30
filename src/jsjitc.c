@@ -207,8 +207,8 @@ void jsjcLiteral32(int reg, uint32_t data) {
 }
 
 void jsjcLiteral64(int reg, uint64_t data) {
-  jsjcLiteral32(reg, (uint32_t)(data>>32));
-  jsjcLiteral32(reg+1, (uint32_t)data);
+  jsjcLiteral32(reg, (uint32_t)data);
+  jsjcLiteral32(reg+1, (uint32_t)(data>>32));
 }
 
 int jsjcLiteralString(int reg, JsVar *str, bool nullTerminate) {
