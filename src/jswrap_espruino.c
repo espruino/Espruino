@@ -2033,6 +2033,7 @@ Perform a standard 32 bit CRC (Cyclic redundancy check) on the supplied data
 (one byte at a time) and return the result as an unsigned integer.
  */
 JsVar *jswrap_espruino_CRC32(JsVar *data) {
+  if (!jsvIsIterable(data)) return 0; // fix assert(0) if called with nothing in debug build
   JsvIterator it;
   jsvIteratorNew(&it, data, JSIF_EVERY_ARRAY_ELEMENT);
   uint32_t crc = 0xFFFFFFFF;

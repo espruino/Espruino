@@ -774,7 +774,7 @@ void jsvIteratorNew(JsvIterator *it, JsVar *obj, JsvIteratorFlags flags) {
     jsvStringIteratorNew(&it->it.str, obj, 0);
   } else {
     it->type = JSVI_NONE;
-    assert(0);
+    assert(0); // getting here won't break anything, but it's good to be warned about it
   }
 }
 
