@@ -2994,8 +2994,9 @@ void jswrap_nfc_send(JsVar *payload) {
     ],
     "typescript" : "sendHIDReport(data: number[], callback?: () => void): void"
 }
-Send a USB HID report. HID must first be enabled with `NRF.setServices({}, {hid:
-hid_report})`
+Send a USB HID report. HID must first be enabled with `NRF.setServices({}, {hid: hid_report})`
+
+See https://www.espruino.com/BLE+Keyboard for some libraries that use `NRF.sendHIDReport` internally.
 */
 void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback) {
 #if BLE_HIDS_ENABLED
