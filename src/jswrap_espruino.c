@@ -2546,7 +2546,7 @@ JsVarInt jswrap_espruino_getBattery() {
 
 /*JSON{
   "type" : "staticmethod",
-  "#if" : "defined(PICO) || defined(ESPRUINOWIFI) || defined(ESPRUINOBOARD)",
+  "#if" : "defined(PICO) || defined(ESPRUINOWIFI) || defined(ESPRUINOBOARD) || defined(PIPBOY)",
   "class" : "E",
   "name" : "setRTCPrescaler",
   "generate" : "jswrap_espruino_setRTCPrescaler",

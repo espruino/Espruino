@@ -24,7 +24,7 @@
   #error USE_CALLFUNCTION_HACK is required to make i386 builds work correctly
 #endif
 
-#if defined(__x86_64__) || defined(__arm64__)
+#if defined(__x86_64__) || defined(__arm64__) || defined(__aarch64__)
     #define USE_SEPARATE_DOUBLES
 #endif
 

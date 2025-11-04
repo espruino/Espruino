@@ -415,8 +415,37 @@ libs/graphics/lcd_js.c
 ifeq ($(USE_LCD_SDL),1)
   DEFINES += -DUSE_LCD_SDL
   SOURCES += libs/graphics/lcd_sdl.c
-  LIBS += -lSDL
-  INCLUDE += -I/usr/include/SDL
+  # Prefer SDL2 if available
+  SDL2_CONFIG?=$(shell which sdl2-config 2>/dev/null)
+
+  ifdef MACOSX
+    $(info ********* MacOS build - using static SDL2 *********)
+    ifneq ($(SDL2_CONFIG),)
+      INCLUDE += $(shell $(SDL2_CONFIG) --cflags)
+      LIBS += $(shell $(SDL2_CONFIG) --static-libs)
+    else
+      # Fallback: try Mac platform defaults
+      # Link frameworks and ObjC runtime; SDL2 static lib name left to user's LIBS if needed
+      LIBS += -lobjc \
+              -Wl,-framework,Cocoa \
+              -Wl,-framework,OpenGL \
+              -Wl,-framework,IOKit \
+              -Wl,-framework,CoreFoundation \
+              -Wl,-framework,CoreVideo \
+              -lSDL2
+      INCLUDE += -I/usr/local/include/SDL2 -I/opt/homebrew/include/SDL2 -I/usr/include/SDL2
+    endif
+  else
+    $(info ********* Linux build - using dynamic SDL2 *********)
+    ifneq ($(SDL2_CONFIG),)
+      INCLUDE += $(shell $(SDL2_CONFIG) --cflags)
+      LIBS += $(shell $(SDL2_CONFIG) --libs)
+    else
+      # Fallback to typical SDL2 defaults; users can adjust via environment
+      LIBS += -lSDL2
+      INCLUDE += -I/usr/include/SDL2
+    endif
+  endif
 endif
 
 ifdef USE_LCD_FSMC

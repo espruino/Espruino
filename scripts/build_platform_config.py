@@ -474,6 +474,16 @@ if "SD" in board.devices:
   if "pin_d3" in board.devices["SD"]: codeOutDevicePin("SD", "pin_d3", "SD_D3_PIN")
   if "pin_cmd" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cmd", "SD_CMD_PIN")
 
+
+if "DAC" in board.devices:
+  if "pin_scl" in board.devices["DAC"]: codeOutDevicePin("DAC", "pin_scl", "DAC_SCL_PIN")
+  if "pin_sda" in board.devices["DAC"]: codeOutDevicePin("DAC", "pin_sda", "DAC_SDA_PIN")
+  if "pin_lrck" in board.devices["DAC"]: codeOutDevicePin("DAC", "pin_lrck", "DAC_LRCK_PIN")
+  if "pin_sclk" in board.devices["DAC"]: codeOutDevicePin("DAC", "pin_sclk", "DAC_SCLK_PIN")
+  if "pin_mclk" in board.devices["DAC"]: codeOutDevicePin("DAC", "pin_mclk", "DAC_MCLK_PIN")
+  if "pin_miso" in board.devices["DAC"]: codeOutDevicePin("DAC", "pin_miso", "DAC_MISO_PIN")
+  if "pin_mosi" in board.devices["DAC"]: codeOutDevicePin("DAC", "pin_mosi", "DAC_MOSI_PIN")
+
 if "IR" in board.devices:
   codeOutDevicePin("IR", "pin_anode", "IR_ANODE_PIN")
   codeOutDevicePin("IR", "pin_cathode", "IR_CATHODE_PIN")
@@ -550,6 +560,9 @@ if "SPIFLASH" in board.devices:
   if "memmap_base" in board.devices["SPIFLASH"]:
     codeOut("#define SPIFLASH_BASE "+str(board.devices["SPIFLASH"]["memmap_base"])+"UL")
   codeOutDevicePins("SPIFLASH", "SPIFLASH")
+
+if "MISC" in board.devices:
+  codeOutDevicePins("MISC", "MISC")
 
 for device in pinutils.OTHER_DEVICES:
   if device in board.devices:

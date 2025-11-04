@@ -17,13 +17,46 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "lcd_sdl.h"
-#include <SDL/SDL.h>
+#include <SDL.h>
 
 #define BPP 4
 #define DEPTH 32
 
-SDL_Surface *screen = 0;
+SDL_Window *window = NULL;
+SDL_Renderer *renderer = NULL;
+SDL_Texture *texture = NULL; // holds uploaded framebuffer for rendering
+// 'screen' is our offscreen framebuffer at logical (gfx) size
+SDL_Surface *screen = NULL;
+int fbW = 0, fbH = 0; // logical framebuffer size
+int winW = 0, winH = 0; // current window (render) size
 bool needsFlip = false;
+
+// Compute a destination rect that preserves fb aspect ratio within the window
+static void compute_draw_rect(int winW, int winH, int fbW, int fbH, SDL_Rect *dst) {
+  if (!dst) return;
+  if (winW <= 0 || winH <= 0) {
+    dst->x = 0; dst->y = 0; dst->w = 0; dst->h = 0; return;
+  }
+  if (fbW <= 0 || fbH <= 0) {
+    dst->x = 0; dst->y = 0; dst->w = winW; dst->h = winH; return;
+  }
+  // Compare winW/fbW vs winH/fbH by cross-multiplying to avoid floats
+  long long w = winW, h = winH, fw = fbW, fh = fbH;
+  int drawW, drawH;
+  if (w * fh > h * fw) {
+    // window is wider -> fit by height
+    drawH = (int)h;
+    drawW = (int)((h * fw) / fh);
+  } else {
+    // window is taller -> fit by width
+    drawW = (int)w;
+    drawH = (int)((w * fh) / fw);
+  }
+  dst->w = drawW;
+  dst->h = drawH;
+  dst->x = (winW - drawW) / 2;
+  dst->y = (winH - drawH) / 2;
+}
 
 uint32_t palette_web[256] = {
     0x000000,0x000033,0x000066,0x000099,0x0000cc,0x0000ff,0x003300,0x003333,0x003366,0x003399,0x0033cc,
@@ -51,7 +84,8 @@ unsigned int lcdGetPixel_SDL(JsGraphics *gfx, int x, int y) {
   if (!screen) return 0;
   if(SDL_MUSTLOCK(screen))
       if(SDL_LockSurface(screen) < 0) return 0;
-  unsigned int *pixmem32 = ((unsigned int*)screen->pixels) + y*gfx->data.width + x;
+  int stride = screen->pitch / 4; // 32-bit pixels
+  unsigned int *pixmem32 = ((unsigned int*)screen->pixels) + y*stride + x;
   unsigned int col = *pixmem32;
   if(SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
   return col;
@@ -65,12 +99,15 @@ void lcdSetPixel_SDL(JsGraphics *gfx, int x, int y, unsigned int col) {
     if(SDL_LockSurface(screen) < 0) return;
   if (gfx->data.bpp==8) col = palette_web[col&255];
   if (gfx->data.bpp==16) {
-    int r = (col>>8)&0xF8;
-    int g = (col>>3)&0xFC;
-    int b = (col<<3)&0xFF;
+    unsigned int r = (col>>8)&0xF8;
+    unsigned int g = (col>>3)&0xFC;
+    unsigned int b = (col<<3)&0xFF;
     col = (r<<16)|(g<<8)|b;
   }
-  unsigned int *pixmem32 = ((unsigned int*)screen->pixels) + y*gfx->data.width + x;
+  // Ensure alpha channel is fully opaque for ARGB8888
+  col |= 0xFF000000u;
+  int stride = screen->pitch / 4; // 32-bit pixels
+  unsigned int *pixmem32 = ((unsigned int*)screen->pixels) + y*stride + x;
   *pixmem32 = col;
   if(SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
   needsFlip = true;
@@ -88,12 +125,60 @@ void lcdInit_SDL(JsGraphics *gfx) {
     jsExceptionHere(JSET_ERROR, "SDL_Init failed");
     exit(1);
   }
-  if (!(screen = SDL_SetVideoMode(gfx->data.width, gfx->data.height, 32, SDL_SWSURFACE | SDL_RESIZABLE))) {
-    jsExceptionHere(JSET_ERROR, "SDL_SetVideoMode failed");
+  // Help Linux WMs/Wayland display the app name/title correctly
+  SDL_SetHint(SDL_HINT_APP_NAME, "Espruino");
+  window = SDL_CreateWindow(
+      "Espruino",
+      SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+      gfx->data.width, gfx->data.height,
+      SDL_WINDOW_RESIZABLE
+  );
+  if (!window) {
+    jsExceptionHere(JSET_ERROR, "SDL_CreateWindow failed");
     SDL_Quit();
     exit(1);
   }
-  SDL_WM_SetCaption("Espruino", NULL);
+  // Ensure title is applied immediately and window is shown
+  SDL_SetWindowTitle(window, "Espruino");
+  SDL_ShowWindow(window);
+  // Create renderer (accelerated if possible, fallback to software)
+  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  if (!renderer) renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
+  if (!renderer) {
+    jsExceptionHere(JSET_ERROR, "SDL_CreateRenderer failed");
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    exit(1);
+  }
+  SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest"); // keep pixels crisp
+  if (SDL_GetRendererOutputSize(renderer, &winW, &winH) != 0) {
+    SDL_GetWindowSize(window, &winW, &winH);
+  }
+  fbW = gfx->data.width;
+  fbH = gfx->data.height;
+  // Create offscreen framebuffer in a known pixel format
+  screen = SDL_CreateRGBSurfaceWithFormat(0, fbW, fbH, 32, SDL_PIXELFORMAT_ARGB8888);
+  if (!screen) {
+    jsExceptionHere(JSET_ERROR, "SDL_CreateRGBSurfaceWithFormat failed");
+    if (renderer) SDL_DestroyRenderer(renderer);
+    if (window) SDL_DestroyWindow(window);
+    SDL_Quit();
+    exit(1);
+  }
+    SDL_SetSurfaceBlendMode(screen, SDL_BLENDMODE_NONE);
+  // Create texture to upload the framebuffer each frame
+  texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, fbW, fbH);
+  if (!texture) {
+    jsExceptionHere(JSET_ERROR, "SDL_CreateTexture failed");
+    if (screen) SDL_FreeSurface(screen);
+    if (renderer) SDL_DestroyRenderer(renderer);
+    if (window) SDL_DestroyWindow(window);
+    SDL_Quit();
+    exit(1);
+  }
+  SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
+  // Force an initial present
+  needsFlip = true;
 }
 
 void lcdIdle_SDL() {
@@ -102,10 +187,20 @@ void lcdIdle_SDL() {
   SDL_Event event;
   bool sendTouchEvent = false;
   char *sendKeyEvent = NULL;
+  static int mouseX = 0, mouseY = 0;
 
   if (needsFlip) {
     needsFlip = false;
-    SDL_Flip(screen);
+    if (renderer && texture && screen) {
+      // Upload framebuffer contents to texture
+      SDL_UpdateTexture(texture, NULL, screen->pixels, screen->pitch);
+      SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+      SDL_RenderClear(renderer);
+      SDL_Rect dst;
+      compute_draw_rect(winW, winH, fbW, fbH, &dst);
+      SDL_RenderCopy(renderer, texture, NULL, &dst);
+      SDL_RenderPresent(renderer);
+    }
   }
 
   if (SDL_PollEvent(&event)) {
@@ -113,14 +208,28 @@ void lcdIdle_SDL() {
       case SDL_QUIT:
         nativeQuit();
         break;
-      case SDL_MOUSEMOTION:
-        if (down) {
-          sendTouchEvent = true;
+      case SDL_WINDOWEVENT:
+        if (event.window.event == SDL_WINDOWEVENT_RESIZED || event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+          if (renderer && SDL_GetRendererOutputSize(renderer, &winW, &winH) != 0) {
+            SDL_GetWindowSize(window, &winW, &winH);
+          }
+          needsFlip = true;
+        } else if (event.window.event == SDL_WINDOWEVENT_EXPOSED) {
+          /* Some drivers/platforms don't send RESIZED/SIZE_CHANGED when window
+             is uncovered; EXPOSED indicates the window needs redraw. */
+          needsFlip = true;
         }
+        break;
+      case SDL_MOUSEMOTION:
+        mouseX = event.motion.x;
+        mouseY = event.motion.y;
+        if (down) sendTouchEvent = true;
         break;
       case SDL_MOUSEBUTTONDOWN:
       case SDL_MOUSEBUTTONUP:
         down = event.type == SDL_MOUSEBUTTONDOWN;
+        mouseX = event.button.x;
+        mouseY = event.button.y;
         sendTouchEvent = true;
 	      break;
       case SDL_KEYDOWN:
@@ -140,8 +249,22 @@ void lcdIdle_SDL() {
     JsVar *E = jsvObjectGetChildIfExists(execInfo.root, "E");
     if (E) {
       JsVar *o = jsvNewObject();
-      jsvObjectSetChildAndUnLock(o,"x", jsvNewFromInteger(event.button.x));
-      jsvObjectSetChildAndUnLock(o,"y", jsvNewFromInteger(event.button.y));
+      int lx = mouseX, ly = mouseY;
+      if (fbW > 0 && fbH > 0 && winW > 0 && winH > 0) {
+        SDL_Rect dst;
+        compute_draw_rect(winW, winH, fbW, fbH, &dst);
+        long long rx = (long long)(mouseX - dst.x);
+        long long ry = (long long)(mouseY - dst.y);
+        // Scale from draw area back to framebuffer pixels
+        if (dst.w > 0) lx = (int)(rx * fbW / dst.w); else lx = 0;
+        if (dst.h > 0) ly = (int)(ry * fbH / dst.h); else ly = 0;
+        if (lx < 0) lx = 0; 
+        if (lx >= fbW) lx = fbW-1;
+        if (ly < 0) ly = 0; 
+        if (ly >= fbH) ly = fbH-1;
+      }
+      jsvObjectSetChildAndUnLock(o,"x", jsvNewFromInteger(lx));
+      jsvObjectSetChildAndUnLock(o,"y", jsvNewFromInteger(ly));
       jsvObjectSetChildAndUnLock(o,"b", jsvNewFromInteger(down?1:0));
       jsiQueueObjectCallbacks(E, JS_EVENT_PREFIX"touch", &o, 1);
       jsvUnLock2(E,o);
@@ -151,23 +274,40 @@ void lcdIdle_SDL() {
     JsVar *E = jsvObjectGetChildIfExists(execInfo.root, "E");
     if (E) {
       JsVar *o = jsvNewObject();
-      jsvObjectSetChildAndUnLock(o,"keyCode", jsvNewFromInteger(event.key.keysym.scancode));
+      /* Backwards compatibility: historically (SDL 1.2) keyCode exposed the
+         keysym value. Preserve that behavior so existing code keeps working.
+         Also provide the scancode separately as `scanCode` for clients that
+         need the physical key position. */
+      jsvObjectSetChildAndUnLock(o,"keyCode", jsvNewFromInteger(event.key.keysym.sym));
+      jsvObjectSetChildAndUnLock(o,"scanCode", jsvNewFromInteger(event.key.keysym.scancode));
+      jsvObjectSetChildAndUnLock(o,"modifiers", jsvNewFromInteger(event.key.keysym.mod));
       const char *name = NULL;
-      switch (event.key.keysym.sym) {
-        case SDLK_UP: name = "ArrowUp"; break;
-        case SDLK_DOWN: name = "ArrowDown"; break;
-        case SDLK_LEFT: name = "ArrowLeft"; break;
-        case SDLK_RIGHT: name = "ArrowRight"; break;
-        case SDLK_RETURN: name = "Enter"; break;
-        case SDLK_BACKSPACE: name = "Backspace"; break;
-        case SDLK_TAB: name = "Tab"; break;
-        case SDLK_DELETE: name = "Delete"; break;
-        case SDLK_HOME: name = "Home"; break;
-        case SDLK_END: name = "End"; break;
-        case SDLK_PAGEUP: name = "PageUp"; break;
-        case SDLK_PAGEDOWN: name = "PageDown"; break;
-        case SDLK_INSERT: name = "Insert"; break;
-        default:break;
+      char tmpkey[2] = {0,0};
+      int sym = event.key.keysym.sym;
+      if (sym >= SDLK_a && sym <= SDLK_z) {
+        tmpkey[0] = (char)('a' + (sym - SDLK_a));
+        name = tmpkey;
+      } else if (sym >= SDLK_0 && sym <= SDLK_9) {
+        tmpkey[0] = (char)('0' + (sym - SDLK_0));
+        name = tmpkey;
+      } else {
+        switch (sym) {
+          case SDLK_SPACE: name = "Space"; break;
+          case SDLK_UP: name = "ArrowUp"; break;
+          case SDLK_DOWN: name = "ArrowDown"; break;
+          case SDLK_LEFT: name = "ArrowLeft"; break;
+          case SDLK_RIGHT: name = "ArrowRight"; break;
+          case SDLK_RETURN: name = "Enter"; break;
+          case SDLK_BACKSPACE: name = "Backspace"; break;
+          case SDLK_TAB: name = "Tab"; break;
+          case SDLK_DELETE: name = "Delete"; break;
+          case SDLK_HOME: name = "Home"; break;
+          case SDLK_END: name = "End"; break;
+          case SDLK_PAGEUP: name = "PageUp"; break;
+          case SDLK_PAGEDOWN: name = "PageDown"; break;
+          case SDLK_INSERT: name = "Insert"; break;
+          default: break;
+        }
       }
       if (name) jsvObjectSetChildAndUnLock(o,"key", jsvNewFromString(name));
       jsiQueueObjectCallbacks(E, sendKeyEvent, &o, 1);

@@ -27,6 +27,8 @@
             Add median-of-3 for Array.sort (1/3 of the compares for pre-sorted data)
             Fix escape characters in strings inside templates inside templated strings `${"\n"}`
             JIT: Fix floating point constants
+            Linux SDL: Use SDL2, more keys forwarded, allow resizing of gfx window
+            Fix Linux ARM64 build
 
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected
