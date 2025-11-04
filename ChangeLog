@@ -29,6 +29,7 @@
             JIT: Fix floating point constants
             Linux SDL: Use SDL2, more keys forwarded, allow resizing of gfx window
             Fix Linux ARM64 build
+            Graphics: fix cropping of images in strings when gfx instance is rotated by 90 degrees
 
      2v27 : nRF5x: Ensure Bluetooth notifications work correctly when two separate connections use the same handle for their characteristics
             nRF5x: Remove handlers from our handlers array when a device is disconnected
