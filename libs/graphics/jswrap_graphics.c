@@ -417,7 +417,8 @@ NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxD
   if (!(gfx->data.flags&JSGRAPHICSFLAGS_SWAP_XY)) {
     /* if we've not swapped X/Y we can so some optimisations
     to reduce what we draw - but if we swapped XY there's no real point
-    because of the difference in direction we scan out. Also it's hard to get right! */
+    because of the difference in direction we scan out. Also it's hard to get right!
+    see https://github.com/espruino/BangleApps/issues/4053 */
     graphicsSetModifiedAndClip(gfx,&x1,&y1,&x2,&y2, true); // ensure we clip Y
     /* force a skip forward as many bytes as we need. Ideally we would use
     jsvStringIteratorGotoUTF8 but we don't have the UTF8 index or
