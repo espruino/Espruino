@@ -27,9 +27,9 @@
 #endif
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "2v27"
+#define JS_VERSION "2v28"
 #else
-#define JS_VERSION "2v27." BUILDNUMBER
+#define JS_VERSION "2v28." BUILDNUMBER
 #endif
 /*
   In code:
