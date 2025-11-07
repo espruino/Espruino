@@ -824,12 +824,6 @@ JsVar *jsvLock(JsVarRef ref) {
   //var->locks++;
   if ((var->flags & JSV_LOCK_MASK)!=JSV_LOCK_MASK) // if we hit the max amount of locks, don't exceed it (see https://github.com/espruino/Espruino/issues/2616)
     var->flags += JSV_LOCK_ONE;
-#ifdef DEBUG
-  if (jsvGetLocks(var)==0) {
-    jsError("Too many locks to Variable!");
-    //jsPrint("Var #");jsPrintInt(ref);jsPrint("\n");
-  }
-#endif
   return var;
 }
 
