@@ -92,6 +92,8 @@ Pin watchedPins[16];
 
 // Whether a pin is being used for soft PWM or not
 BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+// Whether a pin is being used for hard PWM or not
+BITFIELD_DECL(jshPinHardPWM, JSH_PIN_COUNT);
 
 #ifdef STM32F1
 // F1 can't do opendrain pullup, so we do it manually!
@@ -134,6 +136,12 @@ void jshSetIsSerial7Bit(IOEventFlags device, bool is7Bit) {
   else  jsh7BitUART &= ~(1<<(device-EV_SERIAL1));
 }
 #endif
+
+bool jshIsHWPWMActive() {
+  for (unsigned int i=0;i<(sizeof(jshPinHardPWM)>>2);i++) // it's a uint32
+    if (jshPinHardPWM[i]) return true;
+  return false;
+}
 
 // ----------------------------------------------------------------------------
 //                                                                        PINS
@@ -958,14 +966,12 @@ void jshDelayMicroseconds(int microsec) {
   while (iter--) __NOP();
 }
 
-void jshPinSetState(Pin pin, JshPinState state) {
+/// Internal implementation (does not call jshPinUpdateFunction as this is itself called from jshPinSetFunction)
+static void jshPinSetState_intl(Pin pin, JshPinState state) {
   if (pinInfo[pin].port & JSH_PIN_NEGATED) {
     if (state==JSHPINSTATE_GPIO_IN_PULLUP) state=JSHPINSTATE_GPIO_IN_PULLDOWN;
     else if (state==JSHPINSTATE_GPIO_IN_PULLDOWN) state=JSHPINSTATE_GPIO_IN_PULLUP;
   }
-  // if this is about to mess up the neopixel output, so reset our var so we know to re-init
-  if (pin == jshNeoPixelPin)
-    jshNeoPixelPin = PIN_UNDEFINED;
   /* Make sure we kill software PWM if we set the pin state
    * after we've started it */
   if (BITFIELD_GET(jshPinSoftPWM, pin)) {
@@ -1057,21 +1063,31 @@ JshPinState jshPinGetState(Pin pin) {
   // GPIO_ReadOutputDataBit(port, pinn);
 }
 
+static NO_INLINE void jshPinUpdateFunction(Pin pin, JshPinFunction func) {
+  // keep track of whether we are doing PWM or not
+  if (JSH_PINFUNCTION_IS_TIMER(func)) {
+    BITFIELD_SET(jshPinHardPWM, pin, true);
+  } else {
+    BITFIELD_SET(jshPinHardPWM, pin, false);
+  }
+}
+
 static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
+  jshPinUpdateFunction(pin, func);
   if (JSH_PINFUNCTION_IS_USART(func)) {
     if ((func&JSH_MASK_INFO)==JSH_USART_RX)
-      jshPinSetState(pin, JSHPINSTATE_USART_IN);
+      jshPinSetState_intl(pin, JSHPINSTATE_USART_IN);
     else
-      jshPinSetState(pin,JSHPINSTATE_USART_OUT);
+      jshPinSetState_intl(pin, JSHPINSTATE_USART_OUT);
   } else if (JSH_PINFUNCTION_IS_I2C(func)) {
-    jshPinSetState(pin, JSHPINSTATE_I2C);
+    jshPinSetState_intl(pin, JSHPINSTATE_I2C);
 #ifdef STM32F1  // F4 needs SPI MOSI to be set as AF out
   } else if (JSH_PINFUNCTION_IS_SPI(func) && ((func&JSH_MASK_INFO)==JSH_SPI_MISO)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLUP); // input pullup for MISO
+    jshPinSetState_intl(pin, JSHPINSTATE_GPIO_IN_PULLUP); // input pullup for MISO
 #endif
   } else {
     bool opendrain = JSHPINSTATE_IS_OPENDRAIN(jshPinGetState(pin)&JSHPINSTATE_MASK);
-    jshPinSetState(pin, opendrain ? JSHPINSTATE_AF_OUT_OPENDRAIN : JSHPINSTATE_AF_OUT); // otherwise general AF out!
+    jshPinSetState_intl(pin, opendrain ? JSHPINSTATE_AF_OUT_OPENDRAIN : JSHPINSTATE_AF_OUT); // otherwise general AF out!
   }
   // now 'connect' the pin up
 #if defined(STM32F2) || defined(STM32F3) || defined(STM32F4)
@@ -1108,8 +1124,14 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
   }
 #endif
   else if (remap) jsError("(internal) Remap needed, but unknown device %d", func&JSH_MASK_TYPE);
-
 #endif
+}
+
+void jshPinSetState(Pin pin, JshPinState state) {
+  // If this was set to be some kind of AF (USART, etc), reset it.
+  jshPinUpdateFunction(pin, JSH_NOTHING);
+  // Now set the state properly
+  jshPinSetState_intl(pin, state);
 }
 
 void jshPinSetValue(Pin pin, bool value) {
@@ -1244,7 +1266,7 @@ void jshInit() {
   we detect that (with RTC_BKP_DR0_TURN_OFF written into RTC_BKP_DR0) and turn ourselves back off quickly */
   if (RTC_ReadBackupRegister(RTC_BKP_DR0)==RTC_BKP_DR0_TURN_OFF) {
     PWR_BackupAccessCmd(ENABLE);
-    jshDelayMicroseconds(10); // Some devices seem to need a delay    
+    jshDelayMicroseconds(10); // Some devices seem to need a delay
     RTC_WriteBackupRegister(RTC_BKP_DR0, RTC_BKP_DR0_NULL);
     if (RCC_GetFlagStatus(RCC_FLAG_IWDGRST)) {
       PWR_WakeUpPinCmd(ENABLE);
@@ -1265,6 +1287,7 @@ void jshInit() {
   for (i=0;i<16;i++)
     watchedPins[i] = PIN_UNDEFINED;
   BITFIELD_CLEAR(jshPinSoftPWM);
+  BITFIELD_CLEAR(jshPinHardPWM);
 #ifdef STM32F1
   BITFIELD_CLEAR(jshPinOpendrainPullup);
 #endif
@@ -2209,10 +2232,9 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
   void *ptr = setDeviceClockCmd(device, ENABLE);
   // now set up correct states
   for (i=0;i<count;i++)
-      if (jshIsPinValid(pins[i])) {
-        //pinState[pins[i]] = functions[i];
-        jshPinSetFunction(pins[i], functions[i]);
-      }
+    if (jshIsPinValid(pins[i])) {
+      jshPinSetFunction(pins[i], functions[i]);
+    }
   // all ok
   return ptr;
 }
@@ -2706,7 +2728,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
   /* TODO:
        Check jsiGetConsoleDevice to make sure we don't have to wake on USART (we can't do this fast enough)
        Check that we're not using EXTI 11 for something else
-       Check we're not using PWM as this will stop
        What about EXTI line 18 - USB Wakeup event
        Check time until wake against where we are in the RTC counter - we can sleep for 0.1 sec if we're 90% of the way through the counter...
    */
@@ -2717,6 +2738,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
       (timeUntilWake > (jshGetTimeForSecond()*16*2/jshRTCPrescaler)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake in time
 #endif
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop so we can't sleep
+      !jshIsHWPWMActive() && // Check we're not using PWM as this will stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
 #ifdef USB
       !USB_IsConnected() &&
@@ -3343,5 +3365,17 @@ void jshReboot() {
 /* Adds the estimated power usage of the microcontroller in uA to the 'devices' object. The CPU should be called 'CPU' */
 void jsvGetProcessorPowerUsage(JsVar *devices) {
   jsvObjectSetChildAndUnLock(devices, "CPU", jsvNewFromInteger(15000));
+  if (jshIsHWPWMActive()) {
+    jsvObjectSetChildAndUnLock(devices, "PWM", jsvNewFromInteger(1000)); // Guess
+    // report names of pins with PWM to aid debugging
+    char pwmPin[13] = "PWM";
+    for (Pin i=0;i<JSH_PIN_COUNT;i++) {
+      if (BITFIELD_GET(jshPinHardPWM,i)) {
+        jshGetPinString(&pwmPin[3], i);
+        jsvObjectSetChildAndUnLock(devices, pwmPin, jsvNewFromInteger(0));
+      }
+    }
+  }
   // we're not in deep sleep now (should we be able to figure out how long we were sleeping for?)
 }
+
