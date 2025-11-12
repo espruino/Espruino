@@ -1,4 +1,4 @@
-/* Copyright (c) 2024 Bangle.js contributors. See the file LICENSE for copying permission. */
+/* Copyright (c) 2025 Bangle.js contributors. See the file LICENSE for copying permission. */
 
 // See Layout.md for documentation
 
@@ -233,47 +233,6 @@ Layout.prototype.forgetLazyState = function () {
   this.rects = {};
 };
 
-Layout.prototype.layout = function (l) {
-  // l = current layout element
-  var floor = Math.floor, cb = {
-    "h" : function(l) {"ram";
-      var acc_w = l.x + (0|l.pad),
-          accfillx = 0,
-          fillx = l.c && l.c.reduce((a,l)=>a+(0|l.fillx),0);
-      if (!fillx) { acc_w += (l.w-l._w)>>1; fillx=1; }
-      var x = acc_w;
-      l.c.forEach(c => {
-        c.x = 0|x;
-        acc_w += c._w;
-        accfillx += 0|c.fillx;
-        x = acc_w + floor(accfillx*(l.w-l._w)/fillx);
-        c.w = 0|(x - c.x);
-        c.h = 0|(c.filly ? l.h - (l.pad<<1) : c._h);
-        c.y = 0|(l.y + (0|l.pad) + ((1+(0|c.valign))*(l.h-(l.pad<<1)-c.h)>>1));
-        if (c.c) cb[c.type](c);
-      });
-    },
-    "v" : function(l) {"ram";
-      var acc_h = l.y + (0|l.pad),
-          accfilly = 0,
-          filly = l.c && l.c.reduce((a,l)=>a+(0|l.filly),0);
-      if (!filly) { acc_h += (l.h-l._h)>>1; filly=1; }
-      var y = acc_h;
-      l.c.forEach(c => {
-        c.y = 0|y;
-        acc_h += c._h;
-        accfilly += 0|c.filly;
-        y = acc_h + floor(accfilly*(l.h-l._h)/filly);
-        c.h = 0|(y - c.y);
-        c.w = 0|(c.fillx ? l.w - (l.pad<<1) : c._w);
-        c.x = 0|(l.x + (0|l.pad) + ((1+(0|c.halign))*(l.w-(l.pad<<1)-c.w)>>1));
-        if (c.c) cb[c.type](c);
-      });
-    }
-  };
-  if (cb[l.type]) cb[l.type](l);
-};
-
 Layout.prototype.debug = function(l,c) {
   if (!l) l = this._l;
   c=c||1;
@@ -287,7 +246,7 @@ Layout.prototype.debug = function(l,c) {
 Layout.prototype.update = function() {
   delete this.updateNeeded;
   var gfx=g, max=Math.max, rnd=Math.round; // define locally, because this is faster
-  // update sizes
+  // update sizes. We first set _w/_h as the minimum sizes (working from the 'leaves' of the tree up)
   function updateMin(l) {"ram";
     cb[l.type](l);
     if (l.r&1) { // rotation
@@ -327,12 +286,12 @@ Layout.prototype.update = function() {
     }, "h": function(l) {"ram";
       l.c.forEach(updateMin);
       l._h = l.c.reduce((a,b)=>max(a,b._h),0);
-      l._w = l.c.reduce((a,b)=>a+b._w,0);
+      l.__w = l._w = l.c.reduce((a,b)=>a+b._w,0);  // set __w as minimum width which'll ignore .width
       if (l.fillx == null && l.c.some(c=>c.fillx)) l.fillx = 1;
       if (l.filly == null && l.c.some(c=>c.filly)) l.filly = 1;
     }, "v": function(l) {"ram";
       l.c.forEach(updateMin);
-      l._h = l.c.reduce((a,b)=>a+b._h,0);
+      l.__h = l._h = l.c.reduce((a,b)=>a+b._h,0); // set __h as minimum height which'll ignore .height
       l._w = l.c.reduce((a,b)=>max(a,b._w),0);
       if (l.fillx == null && l.c.some(c=>c.fillx)) l.fillx = 1;
       if (l.filly == null && l.c.some(c=>c.filly)) l.filly = 1;
@@ -340,7 +299,7 @@ Layout.prototype.update = function() {
   };
   var l = this._l;
   updateMin(l);
-  delete cb;
+  // set outer dimensions
   if (l.fillx || l.filly) { // fill all
     l.w = Bangle.appRect.w;
     l.h = Bangle.appRect.h;
@@ -352,8 +311,50 @@ Layout.prototype.update = function() {
     l.x = (Bangle.appRect.w-l.w)>>1;
     l.y = Bangle.appRect.y+((Bangle.appRect.h-l.h)>>1);
   }
-  // layout children
-  this.layout(l);
+  // Now work from top down using minimum _w/_h to set real w/h values
+  var floor = Math.floor;
+  cb = {
+    "h" : function(l) {"ram";
+      var acc_w = l.x + (0|l.pad),
+          accfillx = 0,
+          fillx = l.c && l.c.reduce((a,l)=>a+(0|l.fillx),0);
+      if (!fillx) { acc_w += (l.w-(l.pad<<1)-l.__w)>>1; fillx=1; }
+      var x = acc_w;
+      l.c.forEach(c => {
+        c.x = 0|x;
+        acc_w += c._w;
+        accfillx += 0|c.fillx;
+        x = acc_w + floor(accfillx*(l.w-l._w)/fillx);
+        c.w = 0|(x - c.x);
+        c.h = 0|(c.filly ? l.h - (l.pad<<1) : c._h);
+        c.y = 0|(l.y + (0|l.pad) + ((1+(0|c.valign))*(l.h-(l.pad<<1)-c.h)>>1));
+        if (c.c) cb[c.type](c);
+        delete c._w;delete c._h;// free memory
+      });
+      delete l.__w;
+    },
+    "v" : function(l) {"ram";
+      var acc_h = l.y + (0|l.pad),
+          accfilly = 0,
+          filly = l.c && l.c.reduce((a,l)=>a+(0|l.filly),0);
+      if (!filly) { acc_h += (l.h-(l.pad<<1)-l.__h)>>1; filly=1; }
+      var y = acc_h;
+      l.c.forEach(c => {
+        c.y = 0|y;
+        acc_h += c._h;
+        accfilly += 0|c.filly;
+        y = acc_h + floor(accfilly*(l.h-l._h)/filly);
+        c.h = 0|(y - c.y);
+        c.w = 0|(c.fillx ? l.w - (l.pad<<1) : c._w);
+        c.x = 0|(l.x + (0|l.pad) + ((1+(0|c.halign))*(l.w-(l.pad<<1)-c.w)>>1));
+        if (c.c) cb[c.type](c);
+        delete c._w;delete c._h;// free memory
+      });
+      delete l.__h;
+    }
+  };
+  if (cb[l.type]) cb[l.type](l);
+  delete l._w;delete l._h;// free memory
 };
 
 Layout.prototype.clear = function(l) {
