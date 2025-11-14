@@ -282,6 +282,7 @@ Get information about this pin and its capabilities. Of the form:
 {
   "port"        : "A",    // the Pin's port on the chip
   "num"         : 12,     // the Pin's number
+  "negated"     : (2v29+) // true if the pin is negated in firmware, field missing if not
   "mode"        : (2v25+) // string: the pin's mode (same as Pin.getMode())
   "output"      : (2v25+) // 0/1: the state of the pin's output register
   "in_addr"     : 0x..., // (if available) the address of the pin's input address in bit-banded memory (can be used with peek)
@@ -309,9 +310,12 @@ JsVar *jswrap_pin_getInfo(
   buf[1] = 0;
   jsvObjectSetChildAndUnLock(obj, "port", jsvNewFromString(buf));
   jsvObjectSetChildAndUnLock(obj, "num", jsvNewFromInteger(inf->pin-JSH_PIN0));
+  if (inf->port&JSH_PIN_NEGATED)
+    jsvObjectSetChildAndUnLock(obj, "negated", jsvNewFromBool(true));
   JshPinState state = jshPinGetState(pin);
   jsvObjectSetChildAndUnLock(obj, "mode", jshGetPinStateString(state));
   jsvObjectSetChildAndUnLock(obj, "output", jsvNewFromInteger((state&JSHPINSTATE_PIN_IS_ON)?1:0));
+
 #ifdef STM32
   volatile uint32_t *addr;
   addr = jshGetPinAddress(pin, JSGPAF_INPUT);

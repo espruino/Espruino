@@ -1,5 +1,7 @@
           : Array.sort: fix issue where *some* sorts of 10+ items could cause the array not to be GC'd
             Bangle.js: Updated built-in Layout.js with some minor fixes
+            STM32: Ensure setDeepSleep(1) will only sleep if there are no active PWM outputs
+            Pin.getInfo().negated now set if pin negated in firmware
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
