@@ -4,5 +4,6 @@
   {"class":"E","name":"dumpTimers"},
   {"class":"E","name":"enableWatchdog"},
   {"class":"E","name":"getClock"},
+  {"class":"E","name":"setBootCode"},
   {"class":"Pin","name":"writeAtTime"}
 ]
