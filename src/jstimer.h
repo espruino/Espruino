@@ -52,6 +52,8 @@ typedef enum {
 #define UET_IS_BUFFER_WRITE_EVENT(T) (\
   ((T)==UET_WRITE_BYTE) || \
   ((T)==UET_WRITE_SHORT))
+#else
+#define UET_IS_BUFFER_EVENT(T) false
 #endif
 
 #define UTILTIMERTASK_PIN_COUNT (8)

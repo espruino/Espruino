@@ -589,7 +589,7 @@ IOEventFlags jshPopIOEvent(uint8_t *data, unsigned int *length) {
   return evt;
 }
 
-// pop an IO event of type eventType, returns true on success
+// pop an IO event of type eventType, returns event type on success,EV_NONE on failure. data must be IOEVENT_MAX_LEN bytes
 IOEventFlags jshPopIOEventOfType(IOEventFlags eventType, uint8_t *data, unsigned int *length) {
   IOBufferIdx i = ioTail;
   while (ioHead!=i) {

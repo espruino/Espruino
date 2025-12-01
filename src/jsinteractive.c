@@ -3021,9 +3021,10 @@ void jsiDebuggerLine(JsVar *line) {
 /** This is called from the parser if EXEC_RUN_INTERRUPT_JS is set.
 It executes JavaScript code that was pushed to the queue by require("timer").add({type:"EXEC", fn:myFunction... */
 void jsiRunInterruptingJS() {
-  uint8_t data[8];
+  uint8_t data[IOEVENT_MAX_LEN];
   memset(data, 0, sizeof(data));
-  if (jshPopIOEventOfType(EV_RUN_INTERRUPT_JS, data, sizeof(data)))
+  unsigned int len = sizeof(data)
+  if (jshPopIOEventOfType(EV_RUN_INTERRUPT_JS, data, &len))
     jsiOnRunInterruptJSEvent(data, sizeof(data));
 }
 
