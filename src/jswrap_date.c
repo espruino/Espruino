@@ -157,7 +157,6 @@ int jsdGetEffectiveTimeZone(JsVarFloat ms, bool is_local_time, bool *is_dst) {
 
 // this needs to be called just before a TimeInDay is used -- unless the TimeInDay timezone has been determined by other means.
 void setCorrectTimeZone(TimeInDay *td) {
-  td->zone = 0;
   td->zone = jsdGetEffectiveTimeZone(fromTimeInDay(td),true,&(td->is_dst));
 }
 
@@ -837,15 +836,25 @@ static bool _parse_time(TimeInDay *time, int initialChars) {
               setCorrectTimeZone(time);
             }
           }
-          if (lex->tk == '+' || lex->tk == '-') {
+          if (lex->tk == '+' || lex->tk == '-') { // Timezone: HH:MM, HHMM, HH
             int sign = lex->tk == '+' ? 1 : -1;
             jslGetNextToken();
             if (lex->tk == LEX_INT) {
               int i = _parse_int();
-              // correct the fact that it's HHMM and turn it into just minutes
-              i = (i%100) + ((i/100)*60);
-              time->zone = i*sign;
+              int tzLength = jslGetTokenLength();
+              if (tzLength==4) {
+                // correct the fact that it's HHMM and turn it into just minutes
+                i = (i%100) + ((i/100)*60);
+              } else
+                i *= 60; // length = 2 => hours
               jslGetNextToken();
+              if (tzLength==2 && lex->tk == ':') {
+                jslGetNextToken();
+                if (lex->tk == LEX_INT) {
+                  i += _parse_int();
+                }
+              }
+              time->zone = i*sign;
             } else {
               setCorrectTimeZone(time);
             }
