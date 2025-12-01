@@ -3023,7 +3023,7 @@ It executes JavaScript code that was pushed to the queue by require("timer").add
 void jsiRunInterruptingJS() {
   uint8_t data[IOEVENT_MAX_LEN];
   memset(data, 0, sizeof(data));
-  unsigned int len = sizeof(data)
+  unsigned int len;
   if (jshPopIOEventOfType(EV_RUN_INTERRUPT_JS, data, &len))
     jsiOnRunInterruptJSEvent(data, sizeof(data));
 }
