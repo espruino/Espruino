@@ -910,6 +910,8 @@ int twistTimeout = 1000;
 
 /// Current steps since reset
 uint32_t stepCounter;
+/// Set if steps from the step counter should be ignored
+bool stepCounterDisabled = false;
 /// What state was the touchscreen last in
 typedef enum {
   TS_NONE = 0,
@@ -1650,7 +1652,7 @@ void peripheralPollHandler() {
       // we've come out of powersave, reset the algorithm
       stepcount_init();
     }
-    if (powerSaveTimer < POWER_SAVE_TIMEOUT) {
+    if ((powerSaveTimer < POWER_SAVE_TIMEOUT) && !stepCounterDisabled) {
       // only do step counting if power save is off (otherwise accel interval is too low - also wastes power)
       int newSteps = stepcount_new(accMagSquared);
       if (newSteps>0) {
@@ -2742,6 +2744,7 @@ call `E.kickWatchdog()` from your code or the watch will reset after ~5 seconds.
 * `seaLevelPressure` (Bangle.js 2) Default 1013.25 millibars - this is used when calculating altitude from pressure sensor values from `Bangle.getPressure`/`pressure` events.
 * `lcdBufferPtr` (Bangle.js 2 2v21+) Return a pointer to the first pixel of the 3 bit graphics buffer used by Bangle.js for the screen (stride = 178 bytes)
 * `lcdDoubleRefresh` (Bangle.js 2 2v22+) If enabled, pulses EXTCOMIN twice per poll interval (avoids off-axis flicker)
+* `stepCounterDisabled` (Bangle.js 2v29+) If set, this stops steps from being counted
 
 Where accelerations are used they are in internal units, where `8192 = 1g`
 
@@ -2800,6 +2803,7 @@ JsVar * _jswrap_banglejs_setOptions(JsVar *options, bool createObject) {
       {"gestureMinLength", JSV_INTEGER, &accelGestureMinLength},
       {"stepCounterThresholdLow", JSV_INTEGER, &stepCounterThresholdLow},
       {"stepCounterThresholdHigh", JSV_INTEGER, &stepCounterThresholdHigh},
+      {"stepCounterDisabled", JSV_BOOLEAN, &stepCounterDisabled},
       {"twistThreshold", JSV_INTEGER, &twistThreshold},
       {"twistTimeout", JSV_INTEGER, &twistTimeout},
       {"twistMaxY", JSV_INTEGER, &twistMaxY},
