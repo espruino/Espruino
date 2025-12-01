@@ -2699,8 +2699,10 @@ bool jsiLoop() {
 
 /** Output current interpreter state such that it can be copied to a new device */
 void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
+#if defined(ESPR_NO_DUMP_STATE)
+  cbprintf(user_callback, user_data, "// This build can't output RAM contants as JS (ESPR_NO_DUMP_STATE=1)\n");
+#else
   JsvObjectIterator it;
-
   jsvObjectIteratorNew(&it, execInfo.root);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *child = jsvObjectIteratorGetKey(&it);
@@ -2812,7 +2814,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 
   // and now the actual hardware
   jsiDumpHardwareInitialisation(user_callback, user_data, true/*human readable*/);
-
+#endif
   JsVar *code = jsfGetBootCodeFromFlash(false);
   if (code) {
     cbprintf(user_callback, user_data, "// Code saved with E.setBootCode\n");
