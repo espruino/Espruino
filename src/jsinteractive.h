@@ -201,5 +201,8 @@ extern void jsiTimersChanged(); // Flag timers changed so we can skip out of the
 extern void jsiDebuggerLoop(); ///< Enter the debugger loop
 #endif
 
+/** This is called from the parser if EXEC_RUN_INTERRUPT_JS is set.
+It executes JavaScript code that was pushed to the queue by require("timer").add({type:"EXEC", fn:myFunction... */
+void jsiRunInterruptingJS();
 
 #endif /* JSINTERACTIVE_H_ */

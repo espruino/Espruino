@@ -2959,6 +2959,10 @@ NO_INLINE JsVar *jspeStatement() {
     jsiDebuggerLoop();
   }
 #endif
+  if (execInfo.execute&EXEC_RUN_INTERRUPT_JS) {
+    execInfo.execute&=~EXEC_RUN_INTERRUPT_JS;
+    jsiRunInterruptingJS();
+  }
   if (lex->tk==LEX_ID ||
       lex->tk==LEX_INT ||
       lex->tk==LEX_FLOAT ||

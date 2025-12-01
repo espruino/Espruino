@@ -98,7 +98,7 @@ typedef enum  {
   EXEC_INTERRUPTED = 16, ///< true if execution has been interrupted
   EXEC_EXCEPTION = 32, ///< we had an exception, so don't execute until we hit a try/catch block
   EXEC_ERROR = 64,
-  // 128 is free now
+  EXEC_RUN_INTERRUPT_JS = 128, ///< when set, we should stop our execution to run some JavaScript code (used for immediate timers)
 
   EXEC_FOR_INIT = 256, ///< when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
   EXEC_IN_LOOP = 512, ///< when in a loop, set this - we can then block break/continue outside it

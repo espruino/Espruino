@@ -67,62 +67,6 @@ static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber, bool 
 
 
 /*JSON{
-  "type" : "idle",
-  "generate" : "jswrap_waveform_idle",
-  "ifndef" : "SAVE_ON_FLASH"
-}*/
-bool jswrap_waveform_idle() {
-  JsVar *waveforms = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_WAVEFORM_NAME);
-  if (waveforms) {
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, waveforms);
-    while (jsvObjectIteratorHasValue(&it)) {
-      JsVar *waveform = jsvObjectIteratorGetValue(&it);
-
-      bool running = jsvObjectGetBoolChild(waveform, "running");
-      if (running) {
-        JsVar *buffer = jswrap_waveform_getBuffer(waveform,0,0);
-        UtilTimerTask task;
-        // Search for a timer task
-        if (!jstGetLastBufferTimerTask(buffer, &task)) {
-          // if the timer task is now gone...
-          JsVar *arrayBuffer = jsvObjectGetChildIfExists(waveform, "buffer");
-          jsiQueueObjectCallbacks(waveform, JS_EVENT_PREFIX"finish", &arrayBuffer, 1);
-          jsvUnLock(arrayBuffer);
-          running = false;
-          jsvObjectSetChildAndUnLock(waveform, "running", jsvNewFromBool(running));
-        } else {
-          // If the timer task is still there...
-          if (task.data.buffer.nextBuffer &&
-              task.data.buffer.nextBuffer != task.data.buffer.currentBuffer) {
-            // if it is a double-buffered task
-            int currentBuffer = (jsvGetRef(buffer)==task.data.buffer.currentBuffer) ? 0 : 1;
-            int oldBuffer = jsvGetIntegerAndUnLock(jsvObjectGetChild(waveform, "currentBuffer", JSV_INTEGER));
-            if (oldBuffer != currentBuffer) {
-              // buffers have changed - fire off a 'buffer' event with the buffer that needs to be filled
-              jsvObjectSetChildAndUnLock(waveform, "currentBuffer", jsvNewFromInteger(currentBuffer));
-              JsVar *arrayBuffer = jsvObjectGetChildIfExists(waveform, (currentBuffer==0) ? "buffer2" : "buffer");
-              jsiQueueObjectCallbacks(waveform, JS_EVENT_PREFIX"buffer", &arrayBuffer, 1);
-              jsvUnLock(arrayBuffer);
-            }
-          }
-        }
-        jsvUnLock(buffer);
-      }
-      jsvUnLock(waveform);
-      // if not running, remove waveform from this list
-      if (!running)
-        jsvObjectIteratorRemoveAndGotoNext(&it, waveforms);
-      else
-        jsvObjectIteratorNext(&it);
-    }
-    jsvObjectIteratorFree(&it);
-    jsvUnLock(waveforms);
-  }
-  return false; // no need to stay awake - an IRQ will wake us
-}
-
-/*JSON{
   "type" : "kill",
   "generate" : "jswrap_waveform_kill",
   "ifndef" : "SAVE_ON_FLASH"
@@ -289,8 +233,11 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
 
 
   // And finally set it up
-  if (!jstStartSignal(startTime, jshGetTimeFromMilliseconds(1000.0 / freq), pin, npin, buffer, repeat?(buffer2?buffer2:buffer):0, eventType))
+  int timerId = jstStartSignal(startTime, jshGetTimeFromMilliseconds(1000.0 / freq), pin, npin, buffer, repeat?(buffer2?buffer2:buffer):0, eventType);
+  if (timerId<0)
     jsWarn("Unable to schedule a timer");
+  else
+    jsvObjectSetChildAndUnLock(waveform, "freq", jsvNewFromInteger(timerId));
   jsvUnLock2(buffer,buffer2);
 
   jsvObjectSetChildAndUnLock(waveform, "running", jsvNewFromBool(true));
@@ -298,7 +245,7 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
   // Add to our list of active waveforms
   JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, JSV_ARRAY);
   if (waveforms) {
-    jsvArrayPush(waveforms, waveform);
+    jsvSetArrayItem(waveforms, timerId, waveform);
     jsvUnLock(waveforms);
   }
 }
@@ -378,8 +325,57 @@ void jswrap_waveform_stop(JsVar *waveform) {
     jsExceptionHere(JSET_ERROR, "Waveform couldn't be stopped");
   }
   jsvUnLock(buffer);
-  // now run idle loop as this will issue the finish event and will clean up
-  jswrap_waveform_idle();
+}
+
+JsVar *_jswrap_waveform_getById(int id) {
+  JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, JSV_ARRAY);
+  if (!waveforms) return 0;
+  return jsvGetArrayItem(waveforms, id);
+}
+
+/*JSON{
+  "type" : "EV_CUSTOM",
+  "#if" : "!defined(SAVE_ON_FLASH)",
+  "generate" : "jswrap_waveform_eventHandler"
+}
+*/
+void jswrap_waveform_eventHandler(IOEventFlags eventFlags, uint8_t *data, int length) {
+  IOCustomEventFlags customFlags = *(IOCustomEventFlags*)data;
+  int id = customFlags >> EVC_DATA_SHIFT;
+  if ((customFlags&EVC_TYPE_MASK)==EVC_TIMER_FINISHED) {
+    JsVar *waveform = _jswrap_waveform_getById(id);
+    if (waveform) {
+      jsvObjectSetChildAndUnLock(waveform, "running", jsvNewFromBool(false));
+      JsVar *arrayBuffer = jsvObjectGetChildIfExists(waveform, "buffer");
+      jsiQueueObjectCallbacks(waveform, JS_EVENT_PREFIX"finish", &arrayBuffer, 1);
+      jsvUnLock(arrayBuffer);
+      JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, JSV_ARRAY);
+      if (waveforms) jsvRemoveArrayItem(waveforms, id);
+      jsvUnLock2(waveform, waveforms);
+    }
+  }
+  if ((customFlags&EVC_TYPE_MASK) == EVC_TIMER_BUFFER_FLIP) {
+    JsVar *waveform = _jswrap_waveform_getById(id);
+    if (waveform) {
+      UtilTimerTask *task = &utilTimerTaskInfo[id];
+      if (task->data.buffer.nextBuffer &&
+          task->data.buffer.nextBuffer != task->data.buffer.currentBuffer) {
+        // if it is a double-buffered task
+        JsVar *buffer = jswrap_waveform_getBuffer(waveform,0,0);
+        int currentBuffer = (jsvGetRef(buffer)==task->data.buffer.currentBuffer) ? 0 : 1;
+        jsvUnLock(buffer);
+        int oldBuffer = jsvGetIntegerAndUnLock(jsvObjectGetChild(waveform, "currentBuffer", JSV_INTEGER));
+        if (oldBuffer != currentBuffer) {
+          // buffers have changed - fire off a 'buffer' event with the buffer that needs to be filled
+          jsvObjectSetChildAndUnLock(waveform, "currentBuffer", jsvNewFromInteger(currentBuffer));
+          JsVar *arrayBuffer = jsvObjectGetChildIfExists(waveform, (currentBuffer==0) ? "buffer2" : "buffer");
+          jsiQueueObjectCallbacks(waveform, JS_EVENT_PREFIX"buffer", &arrayBuffer, 1);
+          jsvUnLock(arrayBuffer);
+        }
+      }
+      jsvUnLock(waveform);
+    }
+  }
 }
 #endif
 

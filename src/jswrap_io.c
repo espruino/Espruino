@@ -269,19 +269,20 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
   uint32_t timerOffset = jstGetUtilTimerOffset();
   bool hasTimer = jstGetLastPinTimerTask(pin, &task);
   if (!hasTimer) task.time = 0;
+  // set first edge
+  if (!hasTimer)
+    jshPinOutput(pin, value);
   // now start either one or a series of pulses
   if (jsvIsNumeric(times)) {
     JsVarFloat pulseTime = jsvGetFloat(times);
     if (pulseTime<0 || isnan(pulseTime)) {
       jsExceptionHere(JSET_ERROR, "Pulse Time is less than 0 or not a number");
     } else if (pulseTime>0) {
-      if (!hasTimer) jshPinOutput(pin, value);
       task.time += jshGetTimeFromMilliseconds(pulseTime);
       jstPinOutputAtTime(task.time, &timerOffset, &pin, 1, !value);
     } else jstUtilTimerWaitEmpty(); // time==0
   } else if (jsvIsIterable(times)) {
     // iterable, so output a square wave
-    if (!hasTimer) jshPinOutput(pin, value);
     JsvIterator it;
     jsvIteratorNew(&it, times, JSIF_EVERY_ARRAY_ELEMENT);
     while (jsvIteratorHasElement(&it)) {

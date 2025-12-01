@@ -1096,7 +1096,7 @@ void jshSetSystemTime(JsSysTime time) {
 
 /// Convert a time in Milliseconds to one in ticks.
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-  return (JsSysTime) (ms * (SYSCLK_FREQ / 1000.0));
+  return (JsSysTime)((ms * (SYSCLK_FREQ / 1000.0)) + 0.5);
 }
 
 /// Convert ticks to a time in Milliseconds.
@@ -2956,13 +2956,11 @@ void jsvGetProcessorPowerUsage(JsVar *devices) {
 void COMP_LPCOMP_IRQHandler() {
   if (nrf_lpcomp_event_check(NRF_LPCOMP_EVENT_UP) && nrf_lpcomp_int_enable_check(LPCOMP_INTENSET_UP_Msk)) {
     nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_UP);
-    IOCustomEventFlags customFlags = EVC_LPCOMP | EVC_DATA_LPCOMP_UP;
-    jshPushEvent(EV_CUSTOM, (uint8_t*)&customFlags, sizeof(customFlags));
+    jshPushCustomEvent(EVC_LPCOMP | EVC_DATA_LPCOMP_UP);
   }
   if (nrf_lpcomp_event_check(NRF_LPCOMP_EVENT_DOWN) && nrf_lpcomp_int_enable_check(LPCOMP_INTENSET_DOWN_Msk)) {
     nrf_lpcomp_event_clear(NRF_LPCOMP_EVENT_DOWN);
-    IOCustomEventFlags customFlags = EVC_LPCOMP;
-    jshPushEvent(EV_CUSTOM, (uint8_t*)&customFlags, sizeof(customFlags));
+    jshPushCustomEvent(EVC_LPCOMP);
   }
 }
 

@@ -1529,20 +1529,6 @@ int jswrap_espruino_reverseByte(int v) {
   return (((b * 0x0802LU & 0x22110LU) | (b * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16) & 0xFF;
 }
 
-
-/*JSON{
-  "type" : "staticmethod",
-  "class" : "E",
-  "name" : "dumpTimers",
-  "ifndef" : "SAVE_ON_FLASH",
-  "generate" : "jswrap_espruino_dumpTimers"
-}
-Output the current list of Utility Timer Tasks - for debugging only
- */
-void jswrap_espruino_dumpTimers() {
-  jstDumpUtilityTimers();
-}
-
 /*JSON{
   "type" : "staticmethod",
   "class" : "E",

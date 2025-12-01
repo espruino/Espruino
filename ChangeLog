@@ -2,6 +2,9 @@
             Bangle.js: Updated built-in Layout.js with some minor fixes
             STM32: Ensure setDeepSleep(1) will only sleep if there are no active PWM outputs
             Pin.getInfo().negated now set if pin negated in firmware
+            Timers now have unique IDs (#1444)
+            Added `require("timer")` to access timers, removed `E.dumpTimers` and `Pin.writeAtTime` (fix #2586)
+            Added ability to execute JS from an a timer with `require("timer").add({type:"EXEC",...)`
             Bangle.js: Add Bangle.setOptions({stepCounterDisabled:bool}) to disable the step counter
             Date: fix parsing of ISO8601 timezones (+HHMM worked, but +HH:MM and +HH added) (fix #2669)
 

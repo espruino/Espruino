@@ -86,66 +86,51 @@ static bool jswrap_stepper_getPattern(JsVar *stepper, uint8_t *pattern) {
   return ok;
 }
 
+JsVar *_jswrap_stepper_getById(int id) {
+  JsVar *steppers = jsvObjectGetChild(execInfo.hiddenRoot, JSI_STEPPER_NAME, JSV_ARRAY);
+  if (!steppers) return 0;
+  return jsvGetArrayItem(steppers, id);
+}
 
 /*JSON{
-  "type" : "idle",
-  "generate" : "jswrap_stepper_idle",
+  "type" : "EV_CUSTOM",
+  "generate" : "jswrap_stepper_eventHandler",
   "ifdef" : "ESPR_USE_STEPPER_TIMER"
-}*/
-bool jswrap_stepper_idle() {
-  JsVar *steppers = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_STEPPER_NAME);
-  if (steppers) {
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, steppers);
-    while (jsvObjectIteratorHasValue(&it)) {
-      JsVar *stepper = jsvObjectIteratorGetValue(&it);
-      bool running = jsvObjectGetBoolChild(stepper, "running");
-      Pin pins[4];
-      if (running) {
-        UtilTimerTask task;
-        // Search for a timer task
-        if (!jswrap_stepper_getPins(stepper, pins) || !jstGetLastPinTimerTask(pins[0], &task)) {
-          // if the task is now gone...
-          jsiQueueObjectCallbacks(stepper, JS_EVENT_PREFIX"finish", NULL, 0);
-          // Update current position
-          jsvObjectSetChildAndUnLock(stepper, "pos", jsvNewFromInteger(
-            jsvObjectGetIntegerChild(stepper, "pos")+
-            jsvObjectGetIntegerChild(stepper, "_direction")));
-          jsvObjectRemoveChild(stepper, "_direction");
-          if (jsvObjectGetBoolChild(stepper, "_turnOff")) {
-            Pin pins[4];
-            int offpattern = jsvObjectGetIntegerChild(stepper, "offpattern");
-            if (jswrap_stepper_getPins(stepper, pins)) {
-              for (int i=0;i<4;i++)
-                jshPinSetValue(pins[i], (offpattern>>i)&1);
-            }
-          }
-          jsvObjectRemoveChild(stepper, "_turnOff");
-          // set running flag
-          running = false;
-          jsvObjectSetChildAndUnLock(stepper, "running", jsvNewFromBool(running));
-          JsVar *promise = jsvObjectGetChildIfExists(stepper, "promise");
-          if (promise) {
-            jsvObjectRemoveChild(stepper, "promise");
-            jspromise_resolve(promise, 0);
-            jsvUnLock(promise);
-          }
-        } else {
-          // If the timer task is still there, don't do anything
-          // note... we could fire off a 'stepping' event?
+}
+*/
+void jswrap_stepper_eventHandler(IOEventFlags eventFlags, uint8_t *data, int length) {
+  IOCustomEventFlags customFlags = *(IOCustomEventFlags*)data;
+  if ((customFlags&EVC_TYPE_MASK)==EVC_TIMER_FINISHED) {
+    int id = customFlags >> EVC_DATA_SHIFT;
+    JsVar *stepper = _jswrap_stepper_getById(id);
+    if (stepper) {
+      jsiQueueObjectCallbacks(stepper, JS_EVENT_PREFIX"finish", NULL, 0);
+      // Update current position
+      jsvObjectSetChildAndUnLock(stepper, "pos", jsvNewFromInteger(
+        jsvObjectGetIntegerChild(stepper, "pos")+
+        jsvObjectGetIntegerChild(stepper, "_direction")));
+      jsvObjectRemoveChild(stepper, "_direction");
+      if (jsvObjectGetBoolChild(stepper, "_turnOff")) {
+        Pin pins[4];
+        int offpattern = jsvObjectGetIntegerChild(stepper, "offpattern");
+        if (jswrap_stepper_getPins(stepper, pins)) {
+          for (int i=0;i<4;i++)
+            jshPinSetValue(pins[i], (offpattern>>i)&1);
         }
       }
-      jsvUnLock(stepper);
-      // if not running, remove stepper from this list
-      if (!running)
-        jsvObjectIteratorRemoveAndGotoNext(&it, steppers);
-      else
-        jsvObjectIteratorNext(&it);
+      jsvObjectRemoveChild(stepper, "_turnOff");
+      jsvObjectSetChildAndUnLock(stepper, "running", jsvNewFromBool(false));
+      JsVar *promise = jsvObjectGetChildIfExists(stepper, "promise");
+      if (promise) {
+        jsvObjectRemoveChild(stepper, "promise");
+        jspromise_resolve(promise, 0);
+        jsvUnLock(promise);
+      }
+      JsVar *steppers = jsvObjectGetChild(execInfo.hiddenRoot, JSI_STEPPER_NAME, JSV_ARRAY);
+      if (steppers) jsvRemoveArrayItem(steppers, id);
+      jsvUnLock2(stepper, steppers);
     }
-    jsvObjectIteratorFree(&it);
-    jsvUnLock(steppers);
   }
-  return false; // no need to stay awake - an IRQ will wake us
 }
 
 /*JSON{
@@ -163,7 +148,7 @@ void jswrap_stepper_kill() { // be sure to remove all stepper instances...
       bool running = jsvObjectGetBoolChild(stepper, "running");
       if (running) {
         Pin pins[4];
-        if (!jswrap_stepper_getPins(stepper, pins) || !jstStopPinTimerTask(pins[0]))
+        if (!jswrap_stepper_getPins(stepper, pins) || !jstStopPinTimerTask(pins[0])) // FIXME: use timer index
           jsExceptionHere(JSET_ERROR, "Stepper couldn't be stopped");
       }
       jsvUnLock(stepper);
@@ -318,32 +303,33 @@ JsVar *jswrap_stepper_moveTo(JsVar *stepper, int position, JsVar *options) {
   JsVar *promise = jspromise_create();
   jsvObjectSetChild(stepper, "promise", promise);
 
-  UtilTimerTask task;
-  task.time = 0;
-  task.repeatInterval = jshGetTimeFromMilliseconds(1000.0 / freq);
-  task.type = UET_STEP;
-  jswrap_stepper_getPins(stepper, task.data.step.pins);
-  task.data.step.steps = direction;
-  task.data.step.pIndex = currentPos&7;
-  task.data.step.pattern[0] = 0b00010010;
-  task.data.step.pattern[1] = 0b01001000;
-  task.data.step.pattern[2] = 0b00010010;
-  task.data.step.pattern[3] = 0b01001000;
-  jswrap_stepper_getPattern(stepper, task.data.step.pattern);
-
-  if (!utilTimerInsertTask(&task, NULL)) {
-    jsExceptionHere(JSET_ERROR, "Failed to add timer task");
-    jsvUnLock(promise);
+  int idx = utilTimerGetUnusedIndex(true/*wait*/);
+  if (idx<0) {
+    jsvUnLock(promise); // WAIT_UNTIL already errored
     return 0;
   }
+  UtilTimerTask *task = &utilTimerTaskInfo[idx];
+  task->type = UET_STEP;
+  task->time = 0;
+  task->repeatInterval = jshGetTimeFromMilliseconds(1000.0 / freq);
+  jswrap_stepper_getPins(stepper, task->data.step.pins);
+  task->data.step.steps = direction;
+  task->data.step.pIndex = currentPos&7;
+  task->data.step.pattern[0] = 0b00010010;
+  task->data.step.pattern[1] = 0b01001000;
+  task->data.step.pattern[2] = 0b00010010;
+  task->data.step.pattern[3] = 0b01001000;
+  jswrap_stepper_getPattern(stepper, task->data.step.pattern);
+  utilTimerInsertTask(idx, NULL);
   // And finally set it up
+  jsvObjectSetChildAndUnLock(stepper, "timer", jsvNewFromInteger(idx));
   jsvObjectSetChildAndUnLock(stepper, "running", jsvNewFromBool(true));
   jsvObjectSetChildAndUnLock(stepper, "_direction", jsvNewFromInteger(direction));
   jsvObjectSetChildAndUnLock(stepper, "_turnOff", jsvNewFromBool(turnOff));
   // Add to our list of active steppers
   JsVar *steppers = jsvObjectGetChild(execInfo.hiddenRoot, JSI_STEPPER_NAME, JSV_ARRAY);
   if (steppers) {
-    jsvArrayPush(steppers, stepper);
+    jsvSetArrayItem(steppers, idx, stepper);
     jsvUnLock(steppers);
   }
   return promise;
@@ -373,7 +359,7 @@ void jswrap_stepper_stop(JsVar *stepper, JsVar *options) {
     bool turnOff = jsvObjectGetBoolChild(options, "turnOff");
     if (turnOff)
       jsvObjectSetChildAndUnLock(stepper, "_turnOff", jsvNewFromBool(turnOff));
-    // the _idle handler will see _turnOff and will turn off the stepper
+    // the event handler will see _turnOff and will turn off the stepper
   }
 
   Pin pins[4];
@@ -386,12 +372,10 @@ void jswrap_stepper_stop(JsVar *stepper, JsVar *options) {
             jsvObjectGetIntegerChild(stepper, "_direction") -
             task.data.step.steps));
     }
-    ok = jstStopPinTimerTask(pins[0]);
+    ok = jstStopPinTimerTask(pins[0]); // FIXME: use timer index
   }
   if (!ok)
     jsExceptionHere(JSET_ERROR, "Stepper couldn't be stopped");
-  // now run idle loop as this will issue the finish event and will clean up
-  jswrap_stepper_idle();
 }
 
 

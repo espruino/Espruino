@@ -87,7 +87,8 @@ typedef enum {
 #ifdef BLUETOOTH
   EV_BLUETOOTH_PENDING,      // Tasks that came from the Bluetooth Stack in an IRQ
 #endif
-  EV_CUSTOM, ///< Custom event (See IOCustomEventFlags)
+  EV_RUN_INTERRUPT_JS,   ///< Run some JavaScript code. See EXEC_RUN_INTERRUPT_JS. data is JsVarRef of code to run
+  EV_CUSTOM, ///< Custom event (First byte is IOCustomEventFlags to determine the event type)
 #ifdef BANGLEJS
   EV_BANGLEJS,               // sent whenever Bangle.js-specific data needs to be queued
 #endif
@@ -131,10 +132,13 @@ typedef enum {
 /** Event types for EV_CUSTOM */
 typedef enum {
   EVC_NONE,
+  EVC_TIMER_FINISHED,
+  EVC_TIMER_BUFFER_FLIP,
 #ifdef NRF52_SERIES
   EVC_LPCOMP, // jswrap_espruino: E.setComparator / E.on("comparator" event
 #endif
   EVC_TYPE_MASK = 255,
+  EVC_DATA_SHIFT = 8,
   EVC_DATA_LPCOMP_UP = 256
 } PACKED_FLAGS IOCustomEventFlags;
 
@@ -185,6 +189,8 @@ typedef enum {
 
 /// Push an IO event (max IOEVENT_MAX_LEN) into the ioBuffer (designed to be called from IRQ), returns true on success, Calls jshHadEvent();
 bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, unsigned int length);
+/// Push a Custom IO event into the ioBuffer (designed to be called from IRQ), returns true on success, Calls jshHadEvent();
+bool CALLED_FROM_INTERRUPT jshPushCustomEvent(IOCustomEventFlags customFlags);
 /// Add this IO event to the IO event queue. Calls jshHadEvent();
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time);
 /// Signal an IO watch event as having happened. Calls jshHadEvent();
@@ -196,7 +202,7 @@ void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count);
 
 /// pop an IO event, returns EV_NONE on failure. data must be IOEVENT_MAX_LEN bytes
 IOEventFlags jshPopIOEvent(uint8_t *data, unsigned int *length);
-// pop an IO event of type eventType, returns true on success. data must be IOEVENT_MAX_LEN bytes
+// pop an IO event of type eventType, returns event type on success,EV_NONE on failure. data must be IOEVENT_MAX_LEN bytes
 IOEventFlags jshPopIOEventOfType(IOEventFlags eventType, uint8_t *data, unsigned int *length);
 /// Do we have any events pending? Will jshPopIOEvent return true?
 bool jshHasEvents();

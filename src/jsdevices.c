@@ -470,6 +470,11 @@ bool CALLED_FROM_INTERRUPT jshPushEvent(IOEventFlags evt, uint8_t *data, unsigne
   return true;
 }
 
+/// Push a Custom IO event into the ioBuffer (designed to be called from IRQ), returns true on success, Calls jshHadEvent();
+bool CALLED_FROM_INTERRUPT jshPushCustomEvent(IOCustomEventFlags customFlags) {
+  jshPushEvent(EV_CUSTOM, (uint8_t*)&customFlags, sizeof(customFlags));
+}
+
 /// Try and handle events in the IRQ itself. true if handled and shouldn't go in queue
 static bool jshPushIOCharEventsHandler(IOEventFlags channel, char *data, unsigned int count) {
   // Check for a CTRL+C

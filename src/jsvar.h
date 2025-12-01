@@ -527,6 +527,7 @@ bool jsvIsStringEqualOrStartsWithOffset(JsVar *var, const char *str, bool isStar
 */
 bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith);
 bool jsvIsStringEqual(JsVar *var, const char *str); ///< is string equal. see jsvIsStringEqualOrStartsWith
+bool jsvIsStringIEqual(JsVar *var, const char *str); ///< is string equal (ignoring case). see jsvIsStringEqualOrStartsWithOffset
 bool jsvIsStringIEqualAndUnLock(JsVar *var, const char *str); ///< is string equal (ignoring case). see jsvIsStringEqualOrStartsWithOffset
 int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 /// Return a new string containing just the characters that are shared between two strings.
@@ -739,6 +740,7 @@ JsVar *jsvGetArrayIndex(const JsVar *arr, JsVarInt index); ///< Get a 'name' at 
 JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array if it exists (and lock it)
 JsVar *jsvGetLastArrayItem(const JsVar *arr); ///< Returns the last item in the given array (with string OR numeric index)
 void jsvSetArrayItem(JsVar *arr, JsVarInt index, JsVar *item); ///< Set an array item at the specified index in the array
+void jsvRemoveArrayItem(JsVar *arr, JsVarInt index); ///< Remove an item from the array (does not change the array length)
 void jsvGetArrayItems(JsVar *arr, unsigned int itemCount, JsVar **itemPtr); ///< Get all elements from arr and put them in itemPtr (unless it'd overflow). Makes sure all of itemPtr either contains a JsVar or 0
 JsVar *jsvGetIndexOfFull(JsVar *arr, JsVar *value, bool matchExact, bool matchIntegerIndices, int startIdx); ///< Get the index of the value in the array (matchExact==use pointer not equality check, matchIntegerIndices = don't check non-integers)
 JsVar *jsvGetIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array or object (matchExact==use pointer, not equality check)

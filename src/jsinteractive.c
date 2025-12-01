@@ -2204,6 +2204,20 @@ void jsiHandleIOEventForConsole(uint8_t *eventData, int eventLen) {
   jsiSetBusy(BUSY_INTERACTIVE, false);
 }
 
+/** This is called if a EV_RUN_INTERRUPT_JS is received, or when a EXEC_RUN_INTERRUPT_JS is set.
+It executes JavaScript code that was pushed to the queue by a require("timer").add({type:"EXEC", fn:myFunction... */
+static void jsiOnRunInterruptJSEvent(const uint8_t *eventData, unsigned int eventLen) {
+  for (unsigned int i=0;i<eventLen-1;i+=2) {
+    JsVarRef codeRef = *(JsVarRef *)&eventData[i];
+    if (codeRef) {
+      JsVar *code = jsvLock(codeRef);
+      if (!jsvIsFunction(code)) return; // invalid code - maybe things got moved?
+      jsvUnLock(jspExecuteFunction(code, execInfo.root, 0, NULL));
+      jsvUnLock(code);
+    }
+  }
+}
+
 void jsiIdle() {
   // This is how many times we have been here and not done anything.
   // It will be zeroed if we do stuff later
@@ -2248,7 +2262,10 @@ void jsiIdle() {
       }
       jsvUnLock(usartClass);
 #endif
+    } else if (eventType == EV_RUN_INTERRUPT_JS) {
+      jsiOnRunInterruptJSEvent(eventData, eventLen);
     } else if (eventType == EV_CUSTOM) {
+      jstOnCustomEvent(eventFlags, eventData, eventLen);
       jswOnCustomEvent(eventFlags, eventData, eventLen);
 #ifdef BLUETOOTH
     } else if (eventType == EV_BLUETOOTH_PENDING) {
@@ -3000,3 +3017,13 @@ void jsiDebuggerLine(JsVar *line) {
   jslSetLex(oldLex);
 }
 #endif // USE_DEBUGGER
+
+/** This is called from the parser if EXEC_RUN_INTERRUPT_JS is set.
+It executes JavaScript code that was pushed to the queue by require("timer").add({type:"EXEC", fn:myFunction... */
+void jsiRunInterruptingJS() {
+  uint8_t data[8];
+  memset(data, 0, sizeof(data));
+  if (jshPopIOEventOfType(EV_RUN_INTERRUPT_JS, data, sizeof(data)))
+    jsiOnRunInterruptJSEvent(data, sizeof(data));
+}
+

@@ -2684,6 +2684,10 @@ bool jsvIsStringIEqualAndUnLock(JsVar *var, const char *str) {
   jsvUnLock(var);
   return b;
 }
+// Also see jsvIsBasicVarEqual
+bool jsvIsStringIEqual(JsVar *var, const char *str) {
+  return jsvIsStringEqualOrStartsWithOffset(var, str, false, 0, true);
+}
 
 
 /** Compare 2 strings, starting from the given character positions. equalAtEndOfString means that
@@ -3527,6 +3531,12 @@ void jsvSetArrayItem(JsVar *arr, JsVarInt index, JsVar *item) {
       jsvAddName(arr, indexVar);
   }
   jsvUnLock(indexVar);
+}
+
+void jsvRemoveArrayItem(JsVar *arr, JsVarInt index) {
+  JsVar *indexVar = jsvGetArrayIndex(arr, index);
+  if (indexVar)
+    jsvRemoveChildAndUnLock(arr, indexVar);
 }
 
 // Get all elements from arr and put them in itemPtr (unless it'd overflow).
@@ -4617,6 +4627,8 @@ bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs) 
           case JSV_STRING_0:
           case JSV_ARRAY:
           case JSV_FUNCTION:
+            if (*((JsVar**)configs[i].ptr))
+              jsvUnLock(*((JsVar**)configs[i].ptr));
             *((JsVar**)configs[i].ptr) = jsvLockAgain(val); break;
 #ifndef ESPR_EMBED
           case JSV_PIN: *((Pin*)configs[i].ptr) = jshGetPinFromVar(val); break;

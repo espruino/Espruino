@@ -16,8 +16,8 @@
 
 #include "jshardware.h"
 
-bool jswrap_waveform_idle();
 void jswrap_waveform_kill();
+void jswrap_waveform_eventHandler(IOEventFlags eventFlags, uint8_t *data, int length);
 JsVar *jswrap_waveform_constructor(JsVar *samples, JsVar *options);
 void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options);
 void jswrap_waveform_startInput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options);

@@ -270,6 +270,7 @@ src/jswrap_json.c \
 src/jswrap_number.c \
 src/jswrap_object.c \
 src/jswrap_regexp.c \
+src/jswrap_timer.c \
 src/jswrap_string.c \
 src/jswrap_modules.c \
 src/jswrap_math.c

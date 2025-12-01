@@ -32,6 +32,7 @@ typedef enum {
 #ifdef ESPR_USE_STEPPER_TIMER
   UET_STEP, ///< Write stepper motor
 #endif
+  UET_FINISHED = 16, ///< OR this into a timer task to flag it as finished (it's then cleaned up outside the IRQ)
 } PACKED_FLAGS UtilTimerEventType;
 
 #define UET_IS_SET_EVENT(T) (\
@@ -54,6 +55,23 @@ typedef enum {
 #endif
 
 #define UTILTIMERTASK_PIN_COUNT (8)
+
+#ifdef ESPR_USE_STEPPER_TIMER
+#define UET_IS_STEPPER(T) ((T)==UET_STEP)
+#define UET_PIN_COUNT(T) (((T)==UET_STEP) ? 4 : UTILTIMERTASK_PIN_COUNT)
+#else
+#define UET_IS_STEPPER(T) ((T)==UET_SET)
+#define UET_PIN_COUNT(T) UTILTIMERTASK_PIN_COUNT
+#endif
+
+#define UET_EVENT_HAS_PINS(T) (((T)==UET_SET) || UET_IS_STEPPER(T))
+
+// Should we send EVC_TIMER_FINISHED for an event? Some like pin events are fast so we don't want to fill our buffer with them
+#define UET_EVENT_SEND_TIMER_FINISHED(T) (\
+  ((T)==UET_EXECUTE) || \
+  UET_IS_BUFFER_EVENT(T) || \
+  UET_IS_STEPPER(T) \
+)
 
 typedef struct UtilTimerTaskSet {
   Pin pins[UTILTIMERTASK_PIN_COUNT]; ///< pins to set (must be in same location as UtilTimerTaskStep.pins)
@@ -108,6 +126,10 @@ typedef struct UtilTimerTask {
   UtilTimerEventType type; // the type of this task - do we set pin(s) or read/write data
 } PACKED_FLAGS UtilTimerTask;
 
+/// Data for our tasks (eg when, what they are, etc)
+extern UtilTimerTask utilTimerTaskInfo[UTILTIMERTASK_TASKS];
+
+/// Called from the utility timer interrupt to handle timer events
 void jstUtilTimerInterruptHandler();
 
 /// Wait until the utility timer is totally empty (use with care as timers can repeat)
@@ -149,8 +171,8 @@ bool jstSetWakeUp(JsSysTime period);
  * before the wakeup event */
 void jstClearWakeUp();
 
-/// Start writing a string out at the given period between samples. 'time' is the time relative to the current time (0 = now). pin_neg is optional pin for writing opposite of signal to
-bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, Pin npin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type);
+/// Start writing a string out at the given period between samples. 'time' is the time relative to the current time (0 = now). pin_neg is optional pin for writing opposite of signal to. Returns -1 on failure or timer ID on success
+int jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, Pin npin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type);
 
 /// Remove the task that uses the buffer 'var'
 bool jstStopBufferTimerTask(JsVar *var);
@@ -165,26 +187,31 @@ void jstReset();
 This should be done with interrupts off */
 void jstSystemTimeChanged(JsSysTime diff);
 
-/// Dump the current list of timers
-void jstDumpUtilityTimers();
-
 /* Restart the utility timer with the right period. This should not normally
 need to be called by anything outside jstimer.c */
-void  jstRestartUtilTimer();
+void jstRestartUtilTimer();
+
+/// Get the index of next free task slot, or -1 if none free. If 'wait=true' will wait until one is free
+int utilTimerGetUnusedIndex(bool wait);
 
 /** Queue a task up to be executed when a timer fires... return false on failure.
  * task.time is the delay at which to execute the task. If timerOffset!==NULL then
  * task.time is relative to the time at which timerOffset=jstGetUtilTimerOffset().
  * This allows pulse trains/etc to be scheduled in sync.
  */
-bool utilTimerInsertTask(UtilTimerTask *task, uint32_t *timerOffset);
+void utilTimerInsertTask(uint8_t taskIdx, uint32_t *timerOffset);
 
-/// Remove the task that that 'checkCallback' returns true for. Returns false if none found
-bool utilTimerRemoveTask(bool (checkCallback)(UtilTimerTask *task, void* data), void *checkCallbackData);
+/// Find a task that 'checkCallback' returns true for. Returns -1 if none found
+int utilTimerFindTask(bool (checkCallback)(UtilTimerTask *task, void* data), void *checkCallbackData);
+
+/// Remove the task with the given ID. Also sets type to UET_NONE. Returns false if none found
+bool utilTimerRemoveTask(int id);
 
 /// If 'checkCallback' returns true for a task, set 'task' to it and return true. Returns false if none found
 bool utilTimerGetLastTask(bool (checkCallback)(UtilTimerTask *task, void* data), void *checkCallbackData, UtilTimerTask *task);
 
+/// Called from the idle loop if a custom event is received (could be for the timer)
+void jstOnCustomEvent(IOEventFlags eventFlags, uint8_t *data, int dataLen);
 
 #endif /* JSTIMER_H_ */
 

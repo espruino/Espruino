@@ -51,7 +51,6 @@ void jswrap_espruino_setConsole(JsVar *device, JsVar *options);
 JsVar *jswrap_espruino_getConsole();
 
 int jswrap_espruino_reverseByte(int v);
-void jswrap_espruino_dumpTimers();
 void jswrap_espruino_dumpLockedVars();
 void jswrap_espruino_dumpFreeList();
 void jswrap_e_dumpFragmentation();
