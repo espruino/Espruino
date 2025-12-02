@@ -87,7 +87,7 @@ typedef enum {
 #ifdef BLUETOOTH
   EV_BLUETOOTH_PENDING,      // Tasks that came from the Bluetooth Stack in an IRQ
 #endif
-  EV_RUN_INTERRUPT_JS,   ///< Run some JavaScript code. See EXEC_RUN_INTERRUPT_JS. data is JsVarRef of code to run
+  EV_RUN_INTERRUPT_JS,   ///< Run some JavaScript code. See EXEC_RUN_INTERRUPT_JS. JS function to run is in hiddenRoot.TMFN[data]
   EV_CUSTOM, ///< Custom event (First byte is IOCustomEventFlags to determine the event type)
 #ifdef BANGLEJS
   EV_BANGLEJS,               // sent whenever Bangle.js-specific data needs to be queued

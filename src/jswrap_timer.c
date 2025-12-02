@@ -34,8 +34,8 @@ This replaces `E.dumpTimers()` and `Pin.writeAtTime`
 */
 
 static void jswrap_timer_queue_interrupt_js(JsSysTime time, void* userdata) {
-  JsVarRef code = (JsVarRef)(size_t)userdata;
-  jshPushIOCharEvents(EV_RUN_INTERRUPT_JS, (char*)&code, sizeof(code));
+  uint8_t timerIdx = (uint8_t)(size_t)userdata;
+  jshPushIOCharEvents(EV_RUN_INTERRUPT_JS, (char*)&timerIdx, 1);
   execInfo.execute |= EXEC_RUN_INTERRUPT_JS;
   jshHadEvent();
 }
@@ -131,20 +131,25 @@ JsVar *jswrap_timer_get(int id) {
     typeStr="EXEC";
 #ifndef SAVE_ON_FLASH
     if (task.data.execute.fn == jswrap_timer_queue_interrupt_js) {
-      JsVar *fn = jsvLock((JsVarRef)(size_t)task.data.execute.userdata);
-      jsvObjectSetChildAndUnLock(obj, "fn", fn);
+      int timerIdx = (int)(size_t)task.data.execute.userdata;
+      JsVar *timerFns = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_TIMER_RUN_JS_NAME);
+      if (timerFns) {
+        jsvObjectSetChildAndUnLock(obj, "fn", jsvGetArrayItem(timerFns, timerIdx));
+        jsvUnLock(timerFns);
+      }
     } else {
       jsvObjectSetChildAndUnLock(obj, "ptr", jsvNewFromInteger((size_t)task.data.execute.fn));
       jsvObjectSetChildAndUnLock(obj, "userdata", jsvNewFromInteger((size_t)task.data.execute.userdata));
     }
 #endif
     break;
+  default: break; // could be other things if ORDed with UET_FINISHED - ignore them (fixed warning)
   }
 #ifndef SAVE_ON_FLASH
   if (UET_EVENT_HAS_PINS(task.type)) {
     JsVar *pinsArr = jsvNewEmptyArray();
     int pinCount = UET_PIN_COUNT(task.type);
-    for (int i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
+    for (int i=0;i<pinCount;i++)
       if (task.data.set.pins[i] != PIN_UNDEFINED)
         jsvArrayPushAndUnLock(pinsArr, jsvNewFromPin(task.data.set.pins[i]));
     jsvObjectSetChildAndUnLock(obj, "pins", pinsArr);
@@ -213,11 +218,17 @@ require("timer").add({
 })
 // eg. execute myFunction in 100ms, then 200ms thereafter
 require("timer").add({
-  type:"EXEC", fn:myFunction,
+  type:"EXEC", fn: () => LED.toggle(),
   time:100,
   interval:200,
 });
 ```
+
+**Note:** `require("timer").add({type:"EXEC",fn:...})` differs from `setInterval`/`setTimeout` in that
+it is scheduled using a hardware timer. When the timer fires, JavaScript that's executing will be
+paused at the next statement and the JS will be executed right away. This can be great for things
+like scanning out screens where you don't want your execution to be paused even if you're executing
+JavaScript code.
 */
 int jswrap_timer_add(JsVar *timer) {
   JsVarFloat time=0, interval=0;
@@ -265,13 +276,11 @@ int jswrap_timer_add(JsVar *timer) {
     task->data.set.value = value;
   } else if (evtType == UET_EXECUTE) {
     if (jsvIsFunction(fn)) { // if a function is passed we use EXEC_RUN_INTERRUPT_JS
-      if (jsvGetRefs(fn) == 0) {
-        jsExceptionHere(JSET_ERROR, "Function passed to timer must be referenced elsewhere");
-        jsvUnLock(fn);
-        return -1;
-      }
+      JsVar *timerFns = jsvObjectGetChild(execInfo.hiddenRoot, JSI_TIMER_RUN_JS_NAME, JSV_ARRAY); // set the timer function in the hidden scope so we can look it up later
+      if (timerFns) jsvSetArrayItem(timerFns, idx, fn);
+      jsvUnLock(timerFns);
       ptr = (size_t)jswrap_timer_queue_interrupt_js;
-      userdata = jsvGetRef(fn);
+      userdata = idx;
     }
     task->data.execute.fn = (UtilTimerTaskExecFn)(size_t)ptr;
     task->data.execute.userdata = (void*)(size_t)userdata;

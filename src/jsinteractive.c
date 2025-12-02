@@ -2207,13 +2207,14 @@ void jsiHandleIOEventForConsole(uint8_t *eventData, int eventLen) {
 /** This is called if a EV_RUN_INTERRUPT_JS is received, or when a EXEC_RUN_INTERRUPT_JS is set.
 It executes JavaScript code that was pushed to the queue by a require("timer").add({type:"EXEC", fn:myFunction... */
 static void jsiOnRunInterruptJSEvent(const uint8_t *eventData, unsigned int eventLen) {
-  for (unsigned int i=0;i<eventLen-1;i+=2) {
-    JsVarRef codeRef = *(JsVarRef *)&eventData[i];
-    if (codeRef) {
-      JsVar *code = jsvLock(codeRef);
-      if (!jsvIsFunction(code)) return; // invalid code - maybe things got moved?
-      jsvUnLock(jspExecuteFunction(code, execInfo.root, 0, NULL));
-      jsvUnLock(code);
+  for (unsigned int i=0;i<eventLen;i++) {
+    uint8_t timerIdx = eventData[i];
+    JsVar *timerFns = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_TIMER_RUN_JS_NAME);
+    if (timerFns) {
+      JsVar *fn = jsvGetArrayItem(timerFns, timerIdx);
+      if (jsvIsFunction(fn))
+        jsvUnLock(jspExecuteFunction(fn, execInfo.root, 0, NULL));
+      jsvUnLock2(timerFns, fn);
     }
   }
 }
