@@ -35,7 +35,7 @@ info = {
      'USB_HID',
      'NET',
      'GRAPHICS',
-     'TV',
+     #'TV', # removed to save space
      'FILESYSTEM',
      'CRYPTO','SHA256',#'SHA512',
      'TLS',
@@ -47,7 +47,8 @@ info = {
      'DEFINES+=-DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V3',
      'DEFINES+=-DPIN_NAMES_DIRECT=1', # Package skips out some pins, so we can't assume each port starts from 0
      'DEFINES += -DESPR_USE_STEPPER_TIMER=1', # Build in the code for stepping using the timer
-     'DEFINES += -DSAVE_ON_FLASH_MATH',      
+     'DEFINES += -DSAVE_ON_FLASH_MATH',
+     'DEFINES += -DESPR_NO_REGEX_OPTIMISE=1', # strip out regex optimisations to free some flash space
      'DEFINES += -DESPR_LIMIT_DATE_RANGE', # not enough code memory left for the full range of Date()
      'DEFINES += -DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol     
      'STLIB=STM32F401xE',

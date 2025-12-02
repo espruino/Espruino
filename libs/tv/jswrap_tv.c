@@ -28,9 +28,13 @@
   "class" : "tv",
   "ifdef" : "STM32"
 }
-This library provides TV out capability on the Espruino and Espruino Pico.
+This library provides TV out capability on the [Espruino WiFi](/WiFi)
 
 See the [Television](/Television) page for more information.
+
+**Note:** As of 2v29 the `tv` library is only included by default in
+the Espruino WiFi (Pico and Original boards have had to have it removed
+to free up some Flash memory)
 */
 
 

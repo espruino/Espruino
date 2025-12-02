@@ -8,6 +8,7 @@
             Bangle.js: Add Bangle.setOptions({stepCounterDisabled:bool}) to disable the step counter
             Date: fix parsing of ISO8601 timezones (+HHMM worked, but +HH:MM and +HH added) (fix #2669)
             Bangle.js1: dump() now doesn't write out interpreter state as JS (saves 1.5kB Flash)
+            Espruino Pico: Removed 'tv' library by default to free up flash storage
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
