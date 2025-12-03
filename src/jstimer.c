@@ -620,6 +620,7 @@ void jstClearWakeUp() {
   // while the first item is a wakeup, remove it
   while (utilTimerTasksTail!=utilTimerTasksHead &&
       utilTimerTaskInfo[utilTimerTasks[utilTimerTasksTail]].type == UET_WAKEUP) {
+    utilTimerTaskInfo[utilTimerTasks[utilTimerTasksTail]].type = UET_NONE;
     utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
     removedTimer = true;
   }
