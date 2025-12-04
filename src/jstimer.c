@@ -289,8 +289,9 @@ int utilTimerGetUnusedIndex(bool wait) {
  * task.time is the delay at which to execute the task. If timerOffset!==NULL then
  * task.time is relative to the time at which timerOffset=jstGetUtilTimerOffset().
  * This allows pulse trains/etc to be scheduled in sync.
+ * If firstOnly=true, only insert the task if it'll be the first in the queue (otherwise set task type to UET_NONE and exit)
  */
-void utilTimerInsertTask(uint8_t taskIdx, uint32_t *timerOffset) {
+bool utilTimerInsertTask(uint8_t taskIdx, uint32_t *timerOffset, bool firstOnly) {
   assert(!utilTimerIsFull()); // queue should not be full since we had to allocate a task to get the index
   UtilTimerTask *task = &utilTimerTaskInfo[taskIdx];
 
@@ -302,8 +303,14 @@ void utilTimerInsertTask(uint8_t taskIdx, uint32_t *timerOffset) {
   int timePassed = utilTimerOn ? (jshGetSystemTime() - utilTimerSetTime) : 0;
   // find out where to insert
   unsigned char insertPos = utilTimerTasksTail;
-  while (insertPos != utilTimerTasksHead && utilTimerTaskInfo[utilTimerTasks[insertPos]].time < (task->time+timePassed))
+  while (insertPos != utilTimerTasksHead && utilTimerTaskInfo[utilTimerTasks[insertPos]].time < (task->time+timePassed)) {
+    if (firstOnly) { // if we're only allowed to schedule as the first item, we must bail out now
+      jshInterruptOn();
+      utilTimerTaskInfo[taskIdx].type = UET_NONE;
+      return false;
+    }
     insertPos = (insertPos+1) & (UTILTIMERTASK_TASKS-1);
+  }
   bool haveChangedTimer = insertPos==utilTimerTasksTail;
   //jsiConsolePrintf("Insert at %d, Tail is %d\n",insertPos,utilTimerTasksTail);
   // shift items forward
@@ -336,6 +343,7 @@ void utilTimerInsertTask(uint8_t taskIdx, uint32_t *timerOffset) {
     jstRestartUtilTimer();
   }
   jshInterruptOn();
+  return true;
 }
 
 /// Find a task that 'checkCallback' returns true for. Returns -1 if none found
@@ -460,7 +468,7 @@ bool jstPinOutputAtTime(JsSysTime time, uint32_t *timerOffset, Pin *pins, int pi
   for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
     task->data.set.pins[i] = (Pin)((i<pinCount) ? pins[i] : PIN_UNDEFINED);
   task->data.set.value = value;
-  utilTimerInsertTask(idx, timerOffset);
+  utilTimerInsertTask(idx, timerOffset, false/*doesn't have to be first*/);
   return true;
 }
 
@@ -551,8 +559,8 @@ bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
   jshPinSetValue(pin, 1);
   uint32_t timerOffset = jstGetUtilTimerOffset();
   // now start the 2 PWM tasks
-  utilTimerInsertTask(onidx, &timerOffset);
-  utilTimerInsertTask(offidx, &timerOffset);
+  utilTimerInsertTask(onidx, &timerOffset, false/*doesn't have to be first*/);
+  utilTimerInsertTask(offidx, &timerOffset, false/*doesn't have to be first*/);
   return true;
 }
 
@@ -568,7 +576,7 @@ bool jstExecuteFn(UtilTimerTaskExecFn fn, void *userdata, JsSysTime startTime, u
   task->type = UET_EXECUTE;
   task->data.execute.fn = fn;
   task->data.execute.userdata = userdata;
-  utilTimerInsertTask(idx, timerOffset);
+  utilTimerInsertTask(idx, timerOffset, false/*doesn't have to be first*/);
   return true;
 }
 
@@ -581,35 +589,18 @@ bool jstStopExecuteFn(UtilTimerTaskExecFn fn, void *userdata) {
 }
 
 /// Set the utility timer so we're woken up in whatever time period
-bool jstSetWakeUp(JsSysTime period) {
+void jstSetWakeUp(JsSysTime period) {
   bool hasTimer = false;
   int wakeupTime = (int)period;
   int nextTime;
 
-
-  // work out if we're waiting for a timer,
-  // and if so, when it's going to be
-  jshInterruptOff();
-  if (utilTimerTasksTail!=utilTimerTasksHead) {
-    hasTimer = true;
-    nextTime = utilTimerTaskInfo[utilTimerTasks[utilTimerTasksTail]].time;
-  }
-  jshInterruptOn();
-  JsSysTime currTime = jshGetSystemTime();
-  if (hasTimer && ((currTime+wakeupTime) >= (utilTimerSetTime+nextTime))) {
-    // we already had a timer, and it's going to wake us up sooner.
-    // don't create a WAKEUP timer task
-    return true;
-  }
-
   int idx = utilTimerGetUnusedIndex(false/*don't wait*/);
-  if (idx<0) return false; // no free tasks!
+  if (idx<0) return; // no free tasks!
   UtilTimerTask *task = &utilTimerTaskInfo[idx];
   task->type = UET_WAKEUP;
   task->time = wakeupTime;
   task->repeatInterval = 0;
-  utilTimerInsertTask(idx, NULL);
-  return true;
+  utilTimerInsertTask(idx, NULL, true/* must be first! If not something else will wake us first so don't bother. */);
 }
 
 /** If the first timer task is a wakeup task, remove it. This stops
@@ -664,7 +655,7 @@ int jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, Pin npin, JsV
     task->data.buffer.nextBuffer = 0;
   }
   jstUtilTimerSetupBuffer(task);
-  utilTimerInsertTask(idx, NULL);
+  utilTimerInsertTask(idx, NULL, false/*doesn't have to be first*/);
   return idx;
 }
 

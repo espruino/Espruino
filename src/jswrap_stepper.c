@@ -320,7 +320,7 @@ JsVar *jswrap_stepper_moveTo(JsVar *stepper, int position, JsVar *options) {
   task->data.step.pattern[2] = 0b00010010;
   task->data.step.pattern[3] = 0b01001000;
   jswrap_stepper_getPattern(stepper, task->data.step.pattern);
-  utilTimerInsertTask(idx, NULL);
+  utilTimerInsertTask(idx, NULL, false/*doesn't have to be first*/);
   // And finally set it up
   jsvObjectSetChildAndUnLock(stepper, "timer", jsvNewFromInteger(idx));
   jsvObjectSetChildAndUnLock(stepper, "running", jsvNewFromBool(true));

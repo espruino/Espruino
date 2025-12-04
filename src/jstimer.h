@@ -166,7 +166,7 @@ bool jstExecuteFn(UtilTimerTaskExecFn fn, void *userdata, JsSysTime startTime, u
 bool jstStopExecuteFn(UtilTimerTaskExecFn fn, void *userdata);
 
 /// Set the utility timer so we're woken up in whatever time period
-bool jstSetWakeUp(JsSysTime period);
+void jstSetWakeUp(JsSysTime period);
 
 /** If the first timer task is a wakeup task, remove it. This stops
  * us filling the timer full of wakeup events if we wake up from sleep
@@ -200,8 +200,9 @@ int utilTimerGetUnusedIndex(bool wait);
  * task.time is the delay at which to execute the task. If timerOffset!==NULL then
  * task.time is relative to the time at which timerOffset=jstGetUtilTimerOffset().
  * This allows pulse trains/etc to be scheduled in sync.
+ * If firstOnly=true, only insert the task if it'll be the first in the queue (otherwise set task type to UET_NONE and exit)
  */
-void utilTimerInsertTask(uint8_t taskIdx, uint32_t *timerOffset);
+bool utilTimerInsertTask(uint8_t taskIdx, uint32_t *timerOffset, bool firstOnly);
 
 /// Find a task that 'checkCallback' returns true for. Returns -1 if none found
 int utilTimerFindTask(bool (checkCallback)(UtilTimerTask *task, void* data), void *checkCallbackData);

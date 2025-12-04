@@ -19,7 +19,7 @@
 JsVar *jswrap_timer_list();
 JsVar *jswrap_timer_get(int id);
 int jswrap_timer_add(JsVar *timer);
-void jswrap_timer_remove(int id);
+bool jswrap_timer_remove(int id);
 
 /** This is called if a EV_RUN_INTERRUPT_JS is received, or when a EXEC_RUN_INTERRUPT_JS is set.
 It executes JavaScript code that was pushed to the queue by a require("timer").add({type:"EXEC", fn:myFunction... */

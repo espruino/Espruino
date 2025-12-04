@@ -71,6 +71,12 @@ void jstRunInterruptingJS() {
   unsigned int len = 0;
   if (jshPopIOEventOfType(EV_RUN_INTERRUPT_JS, data, &len))
     jstOnRunInterruptJSEvent(data, len);
+  /*if (jshIsTopEvent(EV_RUN_INTERRUPT_JS)) {
+    jshPopIOEvent(data, &len);
+    jstOnRunInterruptJSEvent(data, len);
+  } else/
+    execInfo.execute &= ~EXEC_RUN_INTERRUPT_JS; // stop until idle
+  */
 }
 
 
@@ -320,7 +326,7 @@ int jswrap_timer_add(JsVar *timer) {
   }
   task->type = evtType; // set type here, as we may have returned with error earlier
   jsvUnLock(fn);
-  utilTimerInsertTask(idx, NULL);
+  utilTimerInsertTask(idx, NULL, false/*doesn't have to be first*/);
   return idx;
 }
 
@@ -332,10 +338,10 @@ int jswrap_timer_add(JsVar *timer) {
   "generate" : "jswrap_timer_remove",
   "params" : [
     ["timerID","int","The ID of the timer to remove"]
-  ]
+  ],
+  "return" : ["bool","`true` on success or `false` if there was no timer with that ID"]
 }
 */
-void jswrap_timer_remove(int id) {
-  if (!utilTimerRemoveTask(id))
-    jsExceptionHere(JSET_ERROR, "No timer with ID %d", id);
+bool jswrap_timer_remove(int id) {
+  return utilTimerRemoveTask(id);
 }
