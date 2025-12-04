@@ -200,6 +200,9 @@ void jshPushIOCharEvent(IOEventFlags channel, char ch);
 /// Push many character events at once (for example USB RX)
 void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count);
 
+/// Debugging only - prints the IO buffer, one item per line
+void jshDumpIOEvents();
+
 /// pop an IO event, returns EV_NONE on failure. data must be IOEVENT_MAX_LEN bytes
 IOEventFlags jshPopIOEvent(uint8_t *data, unsigned int *length);
 // pop an IO event of type eventType, returns event type on success,EV_NONE on failure. data must be IOEVENT_MAX_LEN bytes
