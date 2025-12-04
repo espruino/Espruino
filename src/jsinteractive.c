@@ -25,6 +25,7 @@
 #include "jsflash.h" // load and save to flash
 #include "jswrap_interactive.h" // jswrap_interactive_setTimeout
 #include "jswrap_object.h" // jswrap_object_keys_or_property_names
+#include "jswrap_timer.h" // jstOnRunInterruptJSEvent
 #include "jsnative.h" // jsnSanityTest
 #include "jswrap_storage.h" // for Packet Transfer IO
 #ifdef USE_FILESYSTEM
@@ -2204,21 +2205,6 @@ void jsiHandleIOEventForConsole(uint8_t *eventData, int eventLen) {
   jsiSetBusy(BUSY_INTERACTIVE, false);
 }
 
-/** This is called if a EV_RUN_INTERRUPT_JS is received, or when a EXEC_RUN_INTERRUPT_JS is set.
-It executes JavaScript code that was pushed to the queue by a require("timer").add({type:"EXEC", fn:myFunction... */
-static void jsiOnRunInterruptJSEvent(const uint8_t *eventData, unsigned int eventLen) {
-  for (unsigned int i=0;i<eventLen;i++) {
-    uint8_t timerIdx = eventData[i];
-    JsVar *timerFns = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_TIMER_RUN_JS_NAME);
-    if (timerFns) {
-      JsVar *fn = jsvGetArrayItem(timerFns, timerIdx);
-      if (jsvIsFunction(fn))
-        jsvUnLock(jspExecuteFunction(fn, execInfo.root, 0, NULL));
-      jsvUnLock2(timerFns, fn);
-    }
-  }
-}
-
 void jsiIdle() {
   // This is how many times we have been here and not done anything.
   // It will be zeroed if we do stuff later
@@ -2264,7 +2250,7 @@ void jsiIdle() {
       jsvUnLock(usartClass);
 #endif
     } else if (eventType == EV_RUN_INTERRUPT_JS) {
-      jsiOnRunInterruptJSEvent(eventData, eventLen);
+      jstOnRunInterruptJSEvent(eventData, eventLen);
     } else if (eventType == EV_CUSTOM) {
       jstOnCustomEvent(eventFlags, eventData, eventLen);
       jswOnCustomEvent(eventFlags, eventData, eventLen);
@@ -3021,13 +3007,4 @@ void jsiDebuggerLine(JsVar *line) {
 }
 #endif // USE_DEBUGGER
 
-/** This is called from the parser if EXEC_RUN_INTERRUPT_JS is set.
-It executes JavaScript code that was pushed to the queue by require("timer").add({type:"EXEC", fn:myFunction... */
-void jsiRunInterruptingJS() {
-  uint8_t data[IOEVENT_MAX_LEN];
-  memset(data, 0, sizeof(data));
-  unsigned int len;
-  if (jshPopIOEventOfType(EV_RUN_INTERRUPT_JS, data, &len))
-    jsiOnRunInterruptJSEvent(data, sizeof(data));
-}
 

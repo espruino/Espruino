@@ -20,6 +20,7 @@
 #include "jswrap_json.h" // for jsfPrintJSON
 #include "jswrap_espruino.h" // for jswrap_espruino_memoryArea
 #include "jswrap_string.h" // for jswrap_string_charAt
+#include "jswrap_timer.h" // jstRunInterruptingJS
 #ifndef ESPR_NO_REGEX
 #include "jswrap_regexp.h" // for jswrap_regexp_constructor
 #endif
@@ -2951,17 +2952,22 @@ NO_INLINE JsVar *jspeStatementFunctionDecl(bool isClass) {
 }
 
 NO_INLINE JsVar *jspeStatement() {
+  if (execInfo.execute&(EXEC_RUN_INTERRUPT_JS
 #ifdef USE_DEBUGGER
-  if (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE &&
-      lex->tk!=';' &&
-      JSP_SHOULD_EXECUTE) {
-    lex->tokenLastStart = lex->tokenStart;
-    jsiDebuggerLoop();
-  }
+    |EXEC_DEBUGGER_NEXT_LINE
 #endif
-  if (execInfo.execute&EXEC_RUN_INTERRUPT_JS) {
-    execInfo.execute&=~EXEC_RUN_INTERRUPT_JS;
-    jsiRunInterruptingJS();
+  )) {
+#ifdef USE_DEBUGGER
+    if (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE &&
+        lex->tk!=';' &&
+        JSP_SHOULD_EXECUTE) {
+      lex->tokenLastStart = lex->tokenStart;
+      jsiDebuggerLoop();
+    }
+#endif
+    if (execInfo.execute&EXEC_RUN_INTERRUPT_JS) {
+      jstRunInterruptingJS();
+    }
   }
   if (lex->tk==LEX_ID ||
       lex->tk==LEX_INT ||

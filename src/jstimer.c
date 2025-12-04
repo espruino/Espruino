@@ -357,6 +357,7 @@ bool utilTimerRemoveTask(int id) {
     // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
     while (ptr != endPtr) {
       if (utilTimerTasks[ptr]==id) {
+        utilTimerTaskInfo[utilTimerTasks[ptr]].type |= UET_FINISHED;
         // shift tail back along
         unsigned char next = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
         while (next!=endPtr) {
@@ -594,8 +595,8 @@ bool jstSetWakeUp(JsSysTime period) {
     nextTime = utilTimerTaskInfo[utilTimerTasks[utilTimerTasksTail]].time;
   }
   jshInterruptOn();
-
-  if (hasTimer && wakeupTime >= nextTime) {
+  JsSysTime currTime = jshGetSystemTime();
+  if (hasTimer && ((currTime+wakeupTime) >= (utilTimerSetTime+nextTime))) {
     // we already had a timer, and it's going to wake us up sooner.
     // don't create a WAKEUP timer task
     return true;

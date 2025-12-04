@@ -32,12 +32,45 @@ require("timer").list()
 
 This replaces `E.dumpTimers()` and `Pin.writeAtTime`
 */
+volatile bool runningInterruptingJS = false;
 
 static void jswrap_timer_queue_interrupt_js(JsSysTime time, void* userdata) {
   uint8_t timerIdx = (uint8_t)(size_t)userdata;
-  jshPushIOCharEvents(EV_RUN_INTERRUPT_JS, (char*)&timerIdx, 1);
-  execInfo.execute |= EXEC_RUN_INTERRUPT_JS;
-  jshHadEvent();
+  // if we were already running interrupting JS, don't interrupt it to run more!
+  if (!runningInterruptingJS) {
+    jshPushIOCharEvents(EV_RUN_INTERRUPT_JS, (char*)&timerIdx, 1);
+    execInfo.execute |= EXEC_RUN_INTERRUPT_JS;
+    jshHadEvent();
+  }
+}
+
+/** This is called if a EV_RUN_INTERRUPT_JS is received, or when a EXEC_RUN_INTERRUPT_JS is set.
+It executes JavaScript code that was pushed to the queue by a require("timer").add({type:"EXEC", fn:myFunction... */
+void jstOnRunInterruptJSEvent(const uint8_t *eventData, unsigned int eventLen) {
+  runningInterruptingJS = true;
+  execInfo.execute &= ~EXEC_RUN_INTERRUPT_JS;
+  for (unsigned int i=0;i<eventLen;i++) {
+    uint8_t timerIdx = eventData[i];
+    JsVar *timerFns = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_TIMER_RUN_JS_NAME);
+    if (timerFns) {
+      JsVar *fn = jsvGetArrayItem(timerFns, timerIdx);
+      if (jsvIsFunction(fn)) {
+        jsvUnLock(jspExecuteFunction(fn, execInfo.root, 0, NULL));
+        jsiCheckErrors(false); // check for any errors and report them
+      }
+      jsvUnLock2(timerFns, fn);
+    }
+  }
+  runningInterruptingJS = false;
+}
+
+/** This is called from the parser if EXEC_RUN_INTERRUPT_JS is set.
+It executes JavaScript code that was pushed to the queue by require("timer").add({type:"EXEC", fn:myFunction... */
+void jstRunInterruptingJS() {
+  uint8_t data[IOEVENT_MAX_LEN];
+  unsigned int len = 0;
+  if (jshPopIOEventOfType(EV_RUN_INTERRUPT_JS, data, &len))
+    jstOnRunInterruptJSEvent(data, len);
 }
 
 
