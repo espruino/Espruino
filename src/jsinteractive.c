@@ -107,8 +107,8 @@ Espruino.Core.Serial.write("\x10\x01\x80\x0Bhello world")
 #define ASCII_SOH (1)
 
 JsVar *events = 0; // Array of events to execute
-JsVarRef timerArray = 0; // Linked List of timers to check and run
-JsVarRef watchArray = 0; // Linked List of input watches to check and run
+JsVar *timerArray = 0; // Linked List of timers to check and run
+JsVar *watchArray = 0; // Linked List of input watches to check and run
 // ----------------------------------------------------------------------------
 IOEventFlags consoleDevice = DEFAULT_CONSOLE_DEVICE; ///< The console device for user interaction
 #ifndef SAVE_ON_FLASH
@@ -488,14 +488,6 @@ void jsiSetSleep(JsiSleepType isSleep) {
 #endif
 }
 
-static JsVarRef _jsiInitNamedArray(const char *name) {
-  JsVar *array = jsvObjectGetChild(execInfo.hiddenRoot, name, JSV_ARRAY);
-  JsVarRef arrayRef = 0;
-  if (array) arrayRef = jsvGetRef(jsvRef(array));
-  jsvUnLock(array);
-  return arrayRef;
-}
-
 // Used when recovering after being flashed
 // 'claim' anything we are using
 void jsiSoftInit(bool hasBeenReset) {
@@ -514,8 +506,8 @@ void jsiSoftInit(bool hasBeenReset) {
 #endif
 
   // Load timer/watch arrays
-  timerArray = _jsiInitNamedArray(JSI_TIMERS_NAME);
-  watchArray = _jsiInitNamedArray(JSI_WATCHES_NAME);
+  timerArray = jsvObjectGetChild(execInfo.hiddenRoot, JSI_TIMERS_NAME, JSV_ARRAY);
+  watchArray = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WATCHES_NAME, JSV_ARRAY);
 
   // Make sure we set up lastIdleTime, as this could be used
   // when adding an interval from onInit (called below)
@@ -548,9 +540,8 @@ void jsiSoftInit(bool hasBeenReset) {
 
   // Check any existing watches and set up interrupts for them
   if (watchArray) {
-    JsVar *watchArrayPtr = jsvLock(watchArray);
     JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, watchArrayPtr);
+    jsvObjectIteratorNew(&it, watchArray);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *watch = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChildIfExists(watch, "pin");
@@ -560,7 +551,6 @@ void jsiSoftInit(bool hasBeenReset) {
       jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
-    jsvUnLock(watchArrayPtr);
   }
 
   // Timers are stored by time in the future now, so no need
@@ -807,14 +797,13 @@ void jsiSoftKill() {
     events=0;
   }
   if (timerArray) {
-    jsvUnRefRef(timerArray);
+    jsvUnLock(timerArray);
     timerArray=0;
   }
   if (watchArray) {
     // Check any existing watches and disable interrupts for them
-    JsVar *watchArrayPtr = jsvLock(watchArray);
     JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, watchArrayPtr);
+    jsvObjectIteratorNew(&it, watchArray);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChildIfExists(watchPtr, "pin");
@@ -823,8 +812,7 @@ void jsiSoftKill() {
       jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
-    jsvUnRef(watchArrayPtr);
-    jsvUnLock(watchArrayPtr);
+    jsvUnLock(watchArray);
     watchArray=0;
   }
   // Save flags if required
@@ -2136,11 +2124,7 @@ void jsiClearTimeout(JsVar *timeout) {
 }
 
 bool jsiHasTimers() {
-  if (!timerArray) return false;
-  JsVar *timerArrayPtr = jsvLock(timerArray);
-  bool hasTimers = !jsvArrayIsEmpty(timerArrayPtr);
-  jsvUnLock(timerArrayPtr);
-  return hasTimers;
+  return !jsvArrayIsEmpty(timerArray);
 }
 
 /// Is the given watch object meant to be executed when the current value of the pin is pinIsHigh
@@ -2155,9 +2139,8 @@ bool jsiIsWatchingPin(Pin pin) {
   if (jshGetPinShouldStayWatched(pin))
     return true;
   bool isWatched = false;
-  JsVar *watchArrayPtr = jsvLock(watchArray);
   JsvObjectIterator it;
-  jsvObjectIteratorNew(&it, watchArrayPtr);
+  jsvObjectIteratorNew(&it, watchArray);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
     JsVar *pinVar = jsvObjectGetChildIfExists(watchPtr, "pin");
@@ -2167,7 +2150,6 @@ bool jsiIsWatchingPin(Pin pin) {
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
-  jsvUnLock(watchArrayPtr);
   return isWatched;
 }
 
@@ -2283,9 +2265,8 @@ void jsiIdle() {
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
       // we have an event... find out what it was for...
       // Check everything in our Watch array
-      JsVar *watchArrayPtr = jsvLock(watchArray);
       JsvObjectIterator it;
-      jsvObjectIteratorNew(&it, watchArrayPtr);
+      jsvObjectIteratorNew(&it, watchArray);
       while (jsvObjectIteratorHasValue(&it)) {
         bool hasDeletedWatch = false;
         JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
@@ -2385,7 +2366,7 @@ void jsiIdle() {
               jsvUnLock(data);
               if (!watchRecurring) {
                 // free all
-                jsvObjectIteratorRemoveAndGotoNext(&it, watchArrayPtr);
+                jsvObjectIteratorRemoveAndGotoNext(&it, watchArray);
                 hasDeletedWatch = true;
                 if (!jsiIsWatchingPin(pin))
                   jshPinWatch(pin, false, JSPW_NONE);
@@ -2401,7 +2382,6 @@ void jsiIdle() {
           jsvObjectIteratorNext(&it);
       }
       jsvObjectIteratorFree(&it);
-      jsvUnLock(watchArrayPtr);
     }
   }
 
@@ -2423,10 +2403,9 @@ void jsiIdle() {
     jsiTimeSinceCtrlC = 0xFFFFFFFF;
 #endif
 
-  JsVar *timerArrayPtr = jsvLock(timerArray);
   JsvObjectIterator it;
   // Go through all intervals and decrement time
-  jsvObjectIteratorNew(&it, timerArrayPtr);
+  jsvObjectIteratorNew(&it, timerArray);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *timerPtr = jsvObjectIteratorGetValue(&it);
     JsSysTime timerTime = (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChildIfExists(timerPtr, "time"));
@@ -2439,7 +2418,7 @@ void jsiIdle() {
   // Now go through intervals and execute if needed
   do {
     jsiStatus = jsiStatus & ~JSIS_TIMERS_CHANGED;
-    jsvObjectIteratorNew(&it, timerArrayPtr);
+    jsvObjectIteratorNew(&it, timerArray);
     while (jsvObjectIteratorHasValue(&it) && !(jsiStatus & JSIS_TIMERS_CHANGED)) {
       bool hasDeletedTimer = false;
       JsVar *timerPtr = jsvObjectIteratorGetValue(&it);
@@ -2507,12 +2486,10 @@ void jsiIdle() {
           if (exec) {
             bool watchRecurring = jsvObjectGetBoolChild(watchPtr,  "recur");
             if (!watchRecurring) {
-              JsVar *watchArrayPtr = jsvLock(watchArray);
-              JsVar *watchNamePtr = jsvGetIndexOf(watchArrayPtr, watchPtr, true);
+              JsVar *watchNamePtr = jsvGetIndexOf(watchArray, watchPtr, true);
               if (watchNamePtr) {
-                jsvRemoveChildAndUnLock(watchArrayPtr, watchNamePtr);
+                jsvRemoveChildAndUnLock(watchArray, watchNamePtr);
               }
-              jsvUnLock(watchArrayPtr);
               Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(watchPtr, "pin"));
               if (!jsiIsWatchingPin(pin))
                 jshPinWatch(pin, false, JSPW_NONE);
@@ -2528,7 +2505,7 @@ void jsiIdle() {
         } else {
           // free
           // Beware... may have already been removed!
-          jsvObjectIteratorRemoveAndGotoNext(&it, timerArrayPtr);
+          jsvObjectIteratorRemoveAndGotoNext(&it, timerArray);
           hasDeletedTimer = true;
           timerTime = -1;
         }
@@ -2544,7 +2521,6 @@ void jsiIdle() {
     }
     jsvObjectIteratorFree(&it);
   } while (jsiStatus & JSIS_TIMERS_CHANGED);
-  jsvUnLock(timerArrayPtr);
   /* We might have left the timers loop with stuff to do because the contents of it
    * changed. It's not a big deal because it could only have changed because a timer
    * got executed - so `wasBusy` got set and we know we're going to go around the
@@ -2755,9 +2731,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
   }
   jsvObjectIteratorFree(&it);
   // Now do timers
-  JsVar *timerArrayPtr = jsvLock(timerArray);
-  jsvObjectIteratorNew(&it, timerArrayPtr);
-  jsvUnLock(timerArrayPtr);
+  jsvObjectIteratorNew(&it, timerArray);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *timer = jsvObjectIteratorGetValue(&it);
     JsVar *timerNumber = jsvObjectIteratorGetKey(&it);
@@ -2773,9 +2747,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
   }
   jsvObjectIteratorFree(&it);
   // Now do watches
-  JsVar *watchArrayPtr = jsvLock(watchArray);
-  jsvObjectIteratorNew(&it, watchArrayPtr);
-  jsvUnLock(watchArrayPtr);
+  jsvObjectIteratorNew(&it, watchArray);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *watch = jsvObjectIteratorGetValue(&it);
     JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(watch, "cb"));
@@ -2811,10 +2783,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
 }
 
 JsVarInt jsiTimerAdd(JsVar *timerPtr) {
-  JsVar *timerArrayPtr = jsvLock(timerArray);
-  JsVarInt itemIndex = jsvArrayAddToEnd(timerArrayPtr, timerPtr, 1) - 1;
-  jsvUnLock(timerArrayPtr);
-  return itemIndex;
+  return jsvArrayAddToEnd(timerArray, timerPtr, 1) - 1;
 }
 
 void jsiTimersChanged() {

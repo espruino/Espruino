@@ -855,9 +855,8 @@ JsVar *jswrap_interface_setWatch(
     }
 
 
-    JsVar *watchArrayPtr = jsvLock(watchArray);
-    itemIndex = jsvArrayAddToEnd(watchArrayPtr, watchPtr, 1) - 1;
-    jsvUnLock2(watchArrayPtr, watchPtr);
+    itemIndex = jsvArrayAddToEnd(watchArray, watchPtr, 1) - 1;
+    jsvUnLock(watchPtr);
 
 
   }
@@ -882,9 +881,8 @@ To avoid accidentally deleting all Watches, if a parameter is supplied but is `u
  */
 void jswrap_interface_clearWatch(JsVar *idVarArr) {
   if (jsvIsUndefined(idVarArr) || jsvGetArrayLength(idVarArr)==0) {
-    JsVar *watchArrayPtr = jsvLock(watchArray);
     JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, watchArrayPtr);
+    jsvObjectIteratorNew(&it, watchArray);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChildIfExists(watchPtr, "pin");
@@ -896,25 +894,20 @@ void jswrap_interface_clearWatch(JsVar *idVarArr) {
     }
     jsvObjectIteratorFree(&it);
     // remove all items
-    jsvRemoveAllChildren(watchArrayPtr);
-    jsvUnLock(watchArrayPtr);
+    jsvRemoveAllChildren(watchArray);
   } else {
     JsVar *idVar = jsvGetArrayItem(idVarArr, 0);
     if (jsvIsUndefined(idVar)) {
       jsExceptionHere(JSET_ERROR, "clearWatch(undefined) not allowed. Use clearWatch() instead");
       return;
     }
-    JsVar *watchArrayPtr = jsvLock(watchArray);
-    JsVar *watchNamePtr = jsvFindChildFromVar(watchArrayPtr, idVar, false);
-    jsvUnLock(watchArrayPtr);
+    JsVar *watchNamePtr = jsvFindChildFromVar(watchArray, idVar, false);
     if (watchNamePtr) { // child is a 'name'
       JsVar *watchPtr = jsvSkipName(watchNamePtr);
       Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChildIfExists(watchPtr, "pin"));
       jsvUnLock(watchPtr);
 
-      JsVar *watchArrayPtr = jsvLock(watchArray);
-      jsvRemoveChildAndUnLock(watchArrayPtr, watchNamePtr);
-      jsvUnLock(watchArrayPtr);
+      jsvRemoveChildAndUnLock(watchArray, watchNamePtr);
 
       // Now check if this pin is still being watched
       if (!jsiIsWatchingPin(pin))
