@@ -58,7 +58,8 @@ const unsigned int jsVarsSize = JSVAR_CACHE_SIZE;
 typedef enum {
   MEM_NOT_BUSY,
   MEMBUSY_SYSTEM,
-  MEMBUSY_GC
+  MEMBUSY_GC,
+  MEMBUSY_DEFRAG
 } PACKED_FLAGS MemBusyType;
 
 volatile bool touchedFreeList = false;
@@ -4400,18 +4401,20 @@ static void _jsvDefragment_moveReferences(JsVarRef defragFromRef, JsVarRef defra
 void jsvDefragment() {
   // https://github.com/espruino/Espruino/issues/1740
   // garbage collect - removes cruft, also puts free list in order
+  if (isMemoryBusy) return 0;
   jsvGarbageCollect();
-  jshInterruptOff();
+  // Set memory busy so nobody can allocate, and we can defrag with IRQ on
+  isMemoryBusy = MEMBUSY_DEFRAG;
   const unsigned int minMove = 20; // don't move vars back less than this or we're just wasting CPU time
   // find last allocated block of memory - speeds up searches!
   unsigned int lastAllocated = 0;
   for (JsVarRef i=1;i<=jsVarsSize;i++) {
     JsVar *v = _jsvGetAddressOf(i);
     if ((v->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
-      if (jsvIsFlatString(v)) {
-        i += 1+(unsigned int)jsvGetFlatStringBlocks(v); // skip forward
-      }
       lastAllocated = i;
+      if (jsvIsFlatString(v)) {
+        i += (unsigned int)jsvGetFlatStringBlocks(v); // skip forward (loop will add 1 too)
+      }
     }
   }
   // the var we're planning on writing to
@@ -4425,8 +4428,8 @@ void jsvDefragment() {
         defragToRef += 1+(unsigned int)jsvGetFlatStringBlocks(defragTo); // skip forward
       } else defragToRef++;
       if (defragToRef > lastAllocated) { // no more free blocks? quit
+        isMemoryBusy = MEM_NOT_BUSY;
         jsvCreateEmptyVarList();
-        jshInterruptOn();
         return;
       }
       defragTo = _jsvGetAddressOf(defragToRef);
@@ -4435,6 +4438,8 @@ void jsvDefragment() {
     JsVar *defragFrom = _jsvGetAddressOf(defragFromRef);
     if ((defragFrom->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
       bool canMove = jsvGetLocks(defragFrom)==0;
+      if (defragFromRef-defragToRef < 32)
+        canMove = false; // don't bother moving if it's only going to be a short way (other stuff will fill up the gap)
       if (jsvIsFlatString(defragFrom)) {
         unsigned int blocksNeeded = 1+(unsigned int)jsvGetFlatStringBlocks(defragFrom);
         if (canMove) { // moving a flat string
@@ -4470,11 +4475,13 @@ void jsvDefragment() {
           if (isClear && (defragFromRef > fsToRef+minMove)) { // can we move it earlier in memory?
             //jsiConsolePrintf("Move FlatString %d -> %d\n", defragFromRef, fsToRef);
             defragTo = _jsvGetAddressOf(fsToRef);
+            jshInterruptOff(); // IRQ off while moving - jstimer might be reading vars
             // copy data and clear old var
             memmove(defragTo, defragFrom, sizeof(JsVar)*blocksNeeded);
             memset(defragFrom, 0, sizeof(JsVar)*blocksNeeded);
             // copy references
             _jsvDefragment_moveReferences(defragFromRef, fsToRef, lastAllocated);
+            jshInterruptOn();
           }
         }
         defragFromRef += blocksNeeded-1; // skip forward (for loop adds 1)
@@ -4482,10 +4489,12 @@ void jsvDefragment() {
         if (defragFromRef > defragToRef+minMove) { // can we move it earlier in memory?
           //jsiConsolePrintf("Move JsVar %d -> %d\n", defragFromRef, defragToRef);
           // copy data and clear old var
+          jshInterruptOff(); // IRQ off while moving - jstimer might be reading vars
           *defragTo = *defragFrom;
           memset(defragFrom, 0, sizeof(JsVar)); // set flags to 0=unused
           // copy references
           _jsvDefragment_moveReferences(defragFromRef, defragToRef, lastAllocated);
+          jshInterruptOn();
         }
       }
     }
@@ -4493,9 +4502,10 @@ void jsvDefragment() {
     jshKickWatchDog();
     jshKickSoftWatchDog();
   }
+  isMemoryBusy = MEM_NOT_BUSY;
   // rebuild free var list
   jsvCreateEmptyVarList();
-  jshInterruptOn();
+
 }
 #endif
 

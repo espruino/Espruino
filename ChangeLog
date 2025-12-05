@@ -11,6 +11,7 @@
             Espruino Pico: Removed 'tv' library by default to free up flash storage
             Fix jshPopIOEventOfType when the event to be popped is right at the start
             STM32: Tidy up WAKEUP timer handling to ensure the Wakeup is always the first item in the queue
+            E.defrag now defrags with interrupts enabled (also fix potential crash with 2 flat strings end to end)
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
