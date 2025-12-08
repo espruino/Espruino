@@ -4401,7 +4401,7 @@ static void _jsvDefragment_moveReferences(JsVarRef defragFromRef, JsVarRef defra
 void jsvDefragment() {
   // https://github.com/espruino/Espruino/issues/1740
   // garbage collect - removes cruft, also puts free list in order
-  if (isMemoryBusy) return 0;
+  if (isMemoryBusy) return;
   jsvGarbageCollect();
   // Set memory busy so nobody can allocate, and we can defrag with IRQ on
   isMemoryBusy = MEMBUSY_DEFRAG;
