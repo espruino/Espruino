@@ -127,7 +127,7 @@
     if (Bangle.btnWatches===undefined)
       Bangle.btnWatches = [ setWatch(function() {
         Bangle.btnWatches = undefined; // watch doesn't repeat
-        b().then(() => options.back());
+        options.back();
       }, BTN1, {edge:"rising"}) ];
     // if we have widgets loaded *and* visible at the top, add a back widget (see #3788)
     if (global.WIDGETS && Bangle.appRect.y) {
