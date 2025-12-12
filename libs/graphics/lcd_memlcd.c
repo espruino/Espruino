@@ -430,11 +430,15 @@ void lcdMemLCD_extcominBacklight(bool isOn) {
 
 // Enable overlay mode (to overlay a graphics instance on top of the LCD contents)
 void lcdMemLCD_setOverlay(JsVar *imgVar, int x, int y) {
-  if (lcdOverlayImage) jsvUnLock(lcdOverlayImage);
+  if (lcdOverlayImage) {
+    lcdMemLCD_setOverlayModified(&graphicsInternal); // add the area where the overlay *was*
+    jsvUnLock(lcdOverlayImage);
+  }
   if (imgVar) {
     lcdOverlayImage = jsvLockAgain(imgVar);
     lcdOverlayX = (short)x;
     lcdOverlayY = (short)y;
+    lcdMemLCD_setOverlayModified(&graphicsInternal); // add the area where the overlay *is now*
   } else {
     lcdOverlayImage = 0;
     lcdOverlayX = 0;
@@ -456,6 +460,11 @@ void lcdMemLCD_setOverlayModified(JsGraphics *gfx) {
       graphicsSetModified(gfx, x,y,x2,y2);
        _jswrap_graphics_freeImageInfo(&overlayImg);
     }
+  } else { // no overlay - redraw everything
+    graphicsInternal.data.modMinX = 0;
+    graphicsInternal.data.modMinY = 0;
+    graphicsInternal.data.modMaxX = LCD_WIDTH-1;
+    graphicsInternal.data.modMaxY = LCD_HEIGHT-1;
   }
 }
 
