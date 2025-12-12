@@ -14,6 +14,7 @@
             E.defrag now defrags with interrupts enabled (also fix potential crash with 2 flat strings end to end)
             Swap to using locks for watch&timer arrays (uses 4b more RAM, but faster and no defrag issues)
             Bangle.js2: Remove buzz when going back in a menu using the button (not the widget)
+            Bangle.js2: Ensure overlays don't use the current Graphics colors
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
