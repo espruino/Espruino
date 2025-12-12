@@ -1118,8 +1118,13 @@ void graphicsInternalFlip() {
 }
 
 /// Flip buffer contents with the screen.
-void lcd_flip(JsVar *parent, bool all) {
+void lcd_flip(JsVar *parent, int all) {
 #ifdef LCD_WIDTH
+#ifdef LCD_CONTROLLER_LPM013M126
+  if (all==2) {
+    lcdMemLCD_setOverlayModified(&graphicsInternal);
+  } else
+#endif
   if (all) {
     graphicsInternal.data.modMinX = 0;
     graphicsInternal.data.modMinY = 0;
@@ -3991,7 +3996,7 @@ NO_INLINE void jswrap_banglejs_init() {
   graphicsInternal.graphicsVar = graphics;
 
   // Create 'flip' fn
-  JsVar *fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_BOOL << (JSWAT_BITS*1)));
+  JsVar *fn = jsvNewNativeFunction((void (*)(void))lcd_flip, JSWAT_VOID|JSWAT_THIS_ARG|(JSWAT_INT32 << (JSWAT_BITS*1)));
   jsvObjectSetChildAndUnLock(graphics,"flip",fn);
 
   if (!firstRun) {

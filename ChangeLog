@@ -16,6 +16,7 @@
             Bangle.js2: Remove buzz when going back in a menu using the button (not the widget)
             Bangle.js2: Ensure overlays don't use the current Graphics colors
             Bangle.js2: Much faster rendering of overlays
+            Bangle.js2: g.flip(2) will now flip the screen *and* the entire area of the overlay
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)

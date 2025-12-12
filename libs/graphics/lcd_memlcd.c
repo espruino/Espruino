@@ -346,7 +346,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
       memcpy(buf, &lcdBuffer[LCD_STRIDE*y], LCD_STRIDE);
       // overwrite areas with overlay image
       if (y>=ovY && y<ovY+overlayImg.height) {
-        _jswrap_drawImageSimpleRow(gfx, lcdOverlayX, bufferLine, &overlayImg, &it, lcdMemLCD_setPixel, &bits, &colData);
+        _jswrap_drawImageSimpleRow(gfx, lcdOverlayX, bufferLine, &overlayImg, &it, setPixel, &bits, &colData);
       }
       // send the line
 #ifdef EMULATED
@@ -441,6 +441,24 @@ void lcdMemLCD_setOverlay(JsVar *imgVar, int x, int y) {
     lcdOverlayY = 0;
   }
 }
+
+// Sets the modified x/y to the overlay dimensions
+void lcdMemLCD_setOverlayModified(JsGraphics *gfx) {
+  if (lcdOverlayImage) {
+    GfxDrawImageInfo overlayImg;
+    if (_jswrap_graphics_parseImage(gfx, lcdOverlayImage, 0, &overlayImg)) {
+      int x = lcdOverlayX<0?0:lcdOverlayX;
+      int y = lcdOverlayY<0?0:lcdOverlayY;
+      int x2 = lcdOverlayX + overlayImg.width-1;
+      if (x2>LCD_WIDTH-1) x2=LCD_WIDTH-1;
+      int y2 = lcdOverlayY + overlayImg.height-1;
+      if (y2>LCD_HEIGHT-1) y2=LCD_HEIGHT-1;
+      graphicsSetModified(gfx, x,y,x2,y2);
+       _jswrap_graphics_freeImageInfo(&overlayImg);
+    }
+  }
+}
+
 
 void lcdMemLCD_setCallbacks(JsGraphics *gfx) {
   gfx->setPixel = lcdMemLCD_setPixel;
