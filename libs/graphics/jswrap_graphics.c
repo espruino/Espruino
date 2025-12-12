@@ -2680,9 +2680,10 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
     return 0;
   }
 
-  const int FONTS = 5;
-  JswFindFontFont FONT[5] = {
+
 #ifdef BANGLEJS2
+  const int FONTS = 6;
+  JswFindFontFont FONT[6] = {
     {"28", 28, 1, jswrap_graphics_setFont28},
     {"22", 22, 1, jswrap_graphics_setFont22},
     {"17", 17, 1, jswrap_graphics_setFont17},
@@ -2690,6 +2691,8 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
     {"6x8", 8, 1, jswrap_graphics_setFont6x8},
     {"4x6", 6, 1, jswrap_graphics_setFont4x6}
 #else  // BANGLEJS1
+  const int FONTS = 4;
+  JswFindFontFont FONT[4] = {
     {"6x8:3", 24, 3, jswrap_graphics_setFont6x8},
     {"6x8:2", 16, 2, jswrap_graphics_setFont6x8},
     {"6x8", 8, 1, jswrap_graphics_setFont6x8},
