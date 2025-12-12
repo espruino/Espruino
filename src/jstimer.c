@@ -672,12 +672,26 @@ bool jstStopPinTimerTask(Pin pin) {
   return utilTimerRemoveTask(utilTimerFindTask(jstPinTaskChecker, (void*)&pin));
 }
 
+static void jstOnTaskFinished(int id) {
+  if ((utilTimerTaskInfo[id].type&~UET_FINISHED) == UET_EXECUTE) { // if EXEC with a JS function, free the function
+    JsVar *timerFns = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_TIMER_RUN_JS_NAME);
+    if (timerFns) {
+      jsvRemoveArrayItem(timerFns, id);
+      jsvUnLock(timerFns);
+    }
+  }
+  utilTimerTaskInfo[id].type = UET_NONE;
+}
 
 
 void jstReset() {
   jshUtilTimerDisable();
   utilTimerOn = false;
   utilTimerTasksTail = utilTimerTasksHead = 0;
+  for (int i=0;i<UTILTIMERTASK_TASKS;i++) {
+    if (utilTimerTaskInfo[i].type != UET_NONE)
+      jstOnTaskFinished(i);
+  }
   utilTimerOffset = 0;
   utilTimerPeriod = 0;
   utilTimerSetTime = jshGetSystemTime();
@@ -695,14 +709,8 @@ void jstOnCustomEvent(IOEventFlags eventFlags, uint8_t *data, int dataLen) {
   if ((customFlags&EVC_TYPE_MASK)==EVC_TIMER_FINISHED) {
     int id = customFlags >> EVC_DATA_SHIFT;
     if (utilTimerTaskInfo[id].type & UET_FINISHED) {
-      if (utilTimerTaskInfo[id].type == (UET_FINISHED|UET_EXECUTE)) { // if EXEC with a JS function, free the function
-        JsVar *timerFns = jsvObjectGetChildIfExists(execInfo.hiddenRoot, JSI_TIMER_RUN_JS_NAME);
-        if (timerFns) {
-          jsvRemoveArrayItem(timerFns, id);
-          jsvUnLock(timerFns);
-        }
-      }
-      utilTimerTaskInfo[id].type = UET_NONE;
+      jstOnTaskFinished(id);
+
     }
   }
 }
