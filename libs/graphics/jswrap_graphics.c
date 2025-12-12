@@ -405,6 +405,30 @@ NO_INLINE void _jswrap_drawImageLayerNextY(GfxDrawImageLayer *l) {
   }
 }
 
+// Called by _jswrap_drawImageSimple to blit out a row
+NO_INLINE void _jswrap_drawImageSimpleRow(JsGraphics *gfx, int xPos, int y, GfxDrawImageInfo *img, JsvStringIterator *it, JsGraphicsSetPixelFn setPixel, int *_bits, uint32_t *_colData) {
+  int bits = *_bits;
+  uint32_t colData = *_colData;
+  for (int x=xPos;x<xPos+img->width;x++) {
+    // Get the data we need...
+    while (bits < img->bpp) {
+      colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetUTF8CharAndNext(it));
+      bits += 8;
+    }
+    // extract just the bits we want
+    unsigned int col = (colData>>(bits-img->bpp))&img->bitMask;
+    bits -= img->bpp;
+    // Try and write pixel!
+    if (img->transparentCol!=col) {
+      if (img->palettePtr) col = img->palettePtr[col&img->paletteMask];
+      setPixel(gfx, x, y, col);
+    }
+  }
+  *_bits = bits;
+  *_colData = colData;
+}
+
+
 /* Draw an image 1:1 at xPos,yPos. If parseFullImage=true we ensure
 we leave the StringIterator pointing right at the end of the image. If not
 we can optimise if the image is clipped/offscreen. */
@@ -438,21 +462,7 @@ NO_INLINE void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxD
 #endif
   JsGraphicsSetPixelFn setPixel = graphicsGetSetPixelUnclippedFn(gfx, xPos, y1, xPos+img->width-1, y2, true);
   for (int y=y1;y<=y2;y++) {
-    for (int x=xPos;x<xPos+img->width;x++) {
-      // Get the data we need...
-      while (bits < img->bpp) {
-        colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetUTF8CharAndNext(it));
-        bits += 8;
-      }
-      // extract just the bits we want
-      unsigned int col = (colData>>(bits-img->bpp))&img->bitMask;
-      bits -= img->bpp;
-      // Try and write pixel!
-      if (img->transparentCol!=col) {
-        if (img->palettePtr) col = img->palettePtr[col&img->paletteMask];
-        setPixel(gfx, x, y, col);
-      }
-    }
+    _jswrap_drawImageSimpleRow(gfx, xPos, y, img, it, setPixel, &bits, &colData);
   }
 #ifndef SAVE_ON_FLASH
   if (parseFullImage) {

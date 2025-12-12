@@ -277,6 +277,10 @@ void lcdMemLCD_flip_spi_callback() {
   jshPinSetValue(LCD_SPI_CS, 0);
   lcdIsBusy = false;
 }
+// Mirror X - use when doing overlays when screen is rotated 180
+static void _lcdMemLCD_setPixel_mirrored(JsGraphics *gfx, int x, int y, unsigned int col) {
+  lcdMemLCD_setPixel(gfx, (LCD_WIDTH-1)-x, y, col);
+}
 // send the data to the screen
 void lcdMemLCD_flip(JsGraphics *gfx) {
   if (gfx->data.modMinY > gfx->data.modMaxY) return; // nothing to do!
@@ -320,36 +324,30 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
     // Take account of rotation - only check for a full 180 rotation - doing 90 is too hard
     bool isRotated180 = (graphicsInternal.data.flags & (JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y)) ==
                       (JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y);
-    int ovY = isRotated180 ? (LCD_HEIGHT-(lcdOverlayY+overlayImg.height)) : lcdOverlayY;
-    // initialise image layer
-    GfxDrawImageLayer l;
-    l.x1 = 0;
-    l.y1 = ovY * 256;
-    l.img = overlayImg;
-    l.rotate = isRotated180 ? 3.141592 : 0;
-    l.scale = 1;
-    l.center = false;
-    l.repeat = false;
-    jsvStringIteratorNew(&l.it, l.img.buffer, (size_t)l.img.bitmapOffset);
-    _jswrap_drawImageLayerInit(&l);
-    _jswrap_drawImageLayerSetStart(&l, 0, y1);
-    for (int y=y1;y<=y2;y++) {
+    int ovY = lcdOverlayY;
+    int yd = 1;
+    JsGraphicsSetPixelFn setPixel = lcdMemLCD_setPixel;
+    int bits = (ovY<y1) ? (ovY-y1)*overlayImg.bpp*overlayImg.width : 0;
+    uint32_t colData;
+    if (isRotated180) {
+      yd = -1;
+      int y = y1;
+      y1 = y2;
+      y2 = y-1;
+      ovY = LCD_HEIGHT-(lcdOverlayY+overlayImg.height);
+      setPixel = _lcdMemLCD_setPixel_mirrored;
+    } else y2++;
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, overlayImg.buffer, (size_t)overlayImg.bitmapOffset);
+    for (int y=y1;y!=y2;y+=yd) {
       int bufferLine = LCD_HEIGHT + (y&1); // alternate lines so we still get dither AND we can send while calculating next line
       unsigned char *buf = &lcdBuffer[LCD_STRIDE*bufferLine]; // point to line right on the end of gfx
       // copy original line in
       memcpy(buf, &lcdBuffer[LCD_STRIDE*y], LCD_STRIDE);
       // overwrite areas with overlay image
       if (y>=ovY && y<ovY+overlayImg.height) {
-        _jswrap_drawImageLayerStartX(&l);
-        for (int x=0;x<overlayImg.width;x++) {
-          uint32_t c;
-          int ox = x+lcdOverlayX;
-          if (_jswrap_drawImageLayerGetPixel(&l, &c) && (ox < LCD_WIDTH) && (ox >= 0))
-            lcdMemLCD_setPixel(NULL, ox, bufferLine, c);
-          _jswrap_drawImageLayerNextX(&l);
-        }
+        _jswrap_drawImageSimpleRow(gfx, lcdOverlayX, bufferLine, &overlayImg, &it, lcdMemLCD_setPixel, &bits, &colData);
       }
-      _jswrap_drawImageLayerNextY(&l);
       // send the line
 #ifdef EMULATED
       memcpy(&fakeLCDBuffer[LCD_STRIDE*y], buf, LCD_STRIDE);
@@ -357,7 +355,7 @@ void lcdMemLCD_flip(JsGraphics *gfx) {
       jshSPISendMany(LCD_SPI, buf, NULL, LCD_STRIDE, lcdMemLCD_flip_spi_ovr_callback);
 #endif
     }
-    jsvStringIteratorFree(&l.it);
+    jsvStringIteratorFree(&it);
     _jswrap_graphics_freeImageInfo(&overlayImg);
     // and 2 final bytes to finish the transfer
 #ifndef EMULATED

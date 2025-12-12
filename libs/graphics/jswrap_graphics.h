@@ -153,4 +153,6 @@ void _jswrap_drawImageLayerStartX(GfxDrawImageLayer *l);
 void _jswrap_drawImageLayerNextX(GfxDrawImageLayer *l);
 void _jswrap_drawImageLayerNextXRepeat(GfxDrawImageLayer *l);
 void _jswrap_drawImageLayerNextY(GfxDrawImageLayer *l);
+// Called by _jswrap_drawImageSimple to blit out a row
+void _jswrap_drawImageSimpleRow(JsGraphics *gfx, int xPos, int y, GfxDrawImageInfo *img, JsvStringIterator *it, JsGraphicsSetPixelFn setPixel, int *_bits, uint32_t *_colData);
 void _jswrap_drawImageSimple(JsGraphics *gfx, int xPos, int yPos, GfxDrawImageInfo *img, JsvStringIterator *it, bool parseFullImage);
