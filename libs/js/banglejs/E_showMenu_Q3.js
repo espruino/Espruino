@@ -123,7 +123,7 @@ E.showMenu=(function(menu) {
       var item = menu[keys[idx]], pad = 16;
       var isSpacer = "string" == typeof item && (item == "separator" || item == "Separator")
       if(isSpacer){
-        g.setColor(g.theme.fg).drawLine(r.x, r.y+r.h-3, r.w, r.y+r.h-3)
+        g.setColor(g.theme.fg).drawLine(r.x, r.y+r.h-3, r.w, r.y+r.h-3);
       }else{
         g.setColor(g.theme.bg2).fillRect({x:r.x+4, y:r.y+2, w:r.w-8, h:r.h-4, r:5}).setColor(g.theme.fg2);
       }
