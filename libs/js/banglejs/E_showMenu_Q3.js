@@ -121,7 +121,7 @@ E.showMenu=(function(menu) {
       if (idx<0) // TITLE
         return g.drawString(g.findFont(menuIcon+" "+options.title, {w:r.w,h:24,max:24}).text, r.x+12, (r.y+r.h/2)+4);
       var item = menu[keys[idx]], pad = 16;
-      var isSpacer= "string" == typeof item&&(item=="separator"||item=="Separator")
+      var isSpacer = "string" == typeof item && (item == "separator" || item == "Separator")
       if(isSpacer){
         g.setColor(g.theme.fg).drawLine(r.x, r.y+r.h-3, r.w, r.y+r.h-3)
       }else{
