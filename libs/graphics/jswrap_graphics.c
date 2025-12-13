@@ -2638,7 +2638,7 @@ g.findFont("Hello World", {
   h : 100,    // optional: height available (default = screen height)
   min : 10,   // optional: min font height
   max : 30,   // optional: max font height
-  wrap : true // optional: allow word wrap?
+  wrap : true, // optional: allow word wrap?
   trim : true // optional: trim to the specified height, add '...'
 });
 ```
