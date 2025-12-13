@@ -61,7 +61,6 @@ E.showMenu=(function(menu) {
           menuIcon+" "+title, R.x+R.w/2,R.y+12);
 
       function draw() {
-        
         var mx = R.x+R.w/2, my = 12+R.y+R.h/2, txt = item.format?item.format(v,2):v, s = 30;
         g.reset().setColor(g.theme.bg2).fillRect({x:R.x+24, y:R.y+36, w:R.w-48, h:R.h-48, r:5});
         g.setColor(g.theme.fg2).setFontVector(Math.min(30,(R.w-52)*100/g.setFontVector(100).stringWidth(txt))).setFontAlign(0,0).drawString(txt, mx, my);
