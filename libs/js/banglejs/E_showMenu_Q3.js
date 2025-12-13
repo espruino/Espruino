@@ -18,7 +18,6 @@ E.showMenu=(function(menu) {
   });
   // Submenu for editing menu options...
   function showSubMenu(item, title) {
-    print("item rendered: "+item)
     /*if ("number"!=typeof item.value)
       return console.log("Unhandled item type");*/
     var step = item.step||1;
@@ -120,8 +119,8 @@ E.showMenu=(function(menu) {
       if (idx<0) // TITLE
         return g.drawString(g.findFont(menuIcon+" "+options.title, {w:r.w,h:24,max:24}).text, r.x+12, (r.y+r.h/2)+4);
       var item = menu[keys[idx]], pad = 16;
-      var isSpacer = "string" == typeof item && (item == "separator" || item == "Separator")
-      if(isSpacer){
+      var isSeparator = "string" == typeof item && (item == "separator" || item == "Separator")
+      if(isSeparator){
         g.setColor(g.theme.fg).drawLine(r.x, r.y+r.h-3, r.w, r.y+r.h-3);
       }else{
         g.setColor(g.theme.bg2).fillRect({x:r.x+4, y:r.y+2, w:r.w-8, h:r.h-4, r:5}).setColor(g.theme.fg2);
@@ -139,7 +138,7 @@ E.showMenu=(function(menu) {
         g.drawImage(/* 9x18 */atob("CRKBAGA4Hg8DwPB4HgcDg8PB4eHg8HAwAA=="), r.x+r.w-21, r.y+H/2-9);
         pad += 16;
       }
-      if(isSpacer){
+      if(isSeparator){
         g.setFontAlign(0).drawString(g.findFont((item&&item.title)??keys[idx], {w:r.w-pad,h:r.h-15,wrap:1,trim:1}).text,r.x+r.w/2, 2+r.y+H/2);
       }else{
         g.setFontAlign(-1,0).drawString(g.findFont((item&&item.title)??keys[idx], {w:r.w-pad,h:r.h,wrap:1,trim:1}).text,r.x+8, 2+r.y+H/2);
@@ -148,8 +147,8 @@ E.showMenu=(function(menu) {
     select : function(idx, touch) {
       if (idx<0) return back&&back(); // title
       var item = menu[keys[idx]];
-      var isSpacer= "string" == typeof item&&(item=="separator"||item=="Separator")
-      if(!isSpacer)Bangle.buzz(20);
+      var isSeparator= "string" == typeof item&&(item=="separator"||item=="Separator")
+      if(!isSeparator)Bangle.buzz(20);
       if ("function" == typeof item) item(touch);
       else if ("object" == typeof item) {
         if ("number" == typeof item.value) {
