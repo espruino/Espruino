@@ -1,4 +1,4 @@
-(function(menu) {
+E.showMenu=(function(menu) {
   const H = 40;
   if (menu===undefined) {
     g.clearRect(Bangle.appRect);
@@ -135,6 +135,7 @@
           var val = g.findFont(v, {w:r.w/2,h:r.h,wrap:1,trim:1});
           g.setFontAlign(1,0).drawString(val.text,r.x+r.w-8,2+r.y+H/2);
           pad += g.stringWidth(val.text);
+          pad+=5;//add more padding so text is not right against the box
         }
       } else if ("function" == typeof item) {
         g.drawImage(/* 9x18 */atob("CRKBAGA4Hg8DwPB4HgcDg8PB4eHg8HAwAA=="), r.x+r.w-21, r.y+H/2-9);
@@ -149,7 +150,8 @@
     select : function(idx, touch) {
       if (idx<0) return back&&back(); // title
       var item = menu[keys[idx]];
-      Bangle.buzz(20);
+      var isSpacer= "string" == typeof item&&(item=="separator"||item=="Separator")
+      if(!isSpacer)Bangle.buzz(20);
       if ("function" == typeof item) item(touch);
       else if ("object" == typeof item) {
         if ("number" == typeof item.value) {
