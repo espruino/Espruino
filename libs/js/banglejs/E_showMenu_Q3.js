@@ -127,7 +127,6 @@ E.showMenu=(function(menu) {
       }else{
         g.setColor(g.theme.bg2).fillRect({x:r.x+4, y:r.y+2, w:r.w-8, h:r.h-4, r:5}).setColor(g.theme.fg2);
       }
-      print("item rendered: "+item)
       if ("object" == typeof item) {
         var v = item.value;
         if (item.format) v=item.format(v);
