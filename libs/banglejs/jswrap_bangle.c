@@ -6001,7 +6001,8 @@ var mainmenu = {
   "" : { title : "-- Main Menu --" }, // options
   "LED On" : function() { LED1.set(); },
   "LED Off" : function() { LED1.reset(); },
-  "Submenu" : function() { E.showMenu(submenu); },
+  "Submenu" : function() { E.showMenu(submenu); }, // can call any function here
+  "A Separator":"separator", // displays a separator with the title "A Separator". 
   "A Boolean" : {
     value : boolean,
     format : v => v?"On":"Off",
