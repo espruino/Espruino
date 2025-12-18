@@ -196,6 +196,7 @@ static bool fileGetFromVar(JsFile *file, JsVar *parent) {
   if (fHandle && jsvIsFlatString(fHandle)) {
     file->data = (JsFileData*)jsvGetFlatStringPointer(fHandle);
     file->fileVar = parent;
+    file->dataVar = fHandle;
     if(file->data->state == FS_OPEN) {// return false if the file has been closed.
       ret = true;
     }
@@ -254,22 +255,22 @@ void jswrap_E_unmountSD() {
   jswrap_file_kill();
 }
 
-static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
+static bool allocateJsFile(JsFile* file, FileMode mode, FileType type) {
   JsVar *parent = jspNewObject(0, "File");
   if (!parent) return false; // low memory
 
-  JsVar *data = jsvNewFlatStringOfLength(sizeof(JsFileData));
-  if (!data) { // out of memory for flat string
+  file->dataVar = jsvNewFlatStringOfLength(sizeof(JsFileData));
+  if (!file->dataVar) { // out of memory for flat string
     jsvDefragment(); // defrag and try again in case it was a memory fragmentation issue
-    data = jsvNewFlatStringOfLength(sizeof(JsFileData));
+    file->dataVar = jsvNewFlatStringOfLength(sizeof(JsFileData));
   }
-  if (!data) { // out of memory for flat string
+  if (!file->dataVar) { // out of memory for flat string
     jsErrorFlags |= JSERR_LOW_MEMORY; // flag this up as an issue
     jsvUnLock(parent);
     return false;
   }
-  file->data = (JsFileData*)jsvGetFlatStringPointer(data);
-  jsvObjectSetChildAndUnLock(parent, JS_FS_DATA_NAME, data);
+  file->data = (JsFileData*)jsvGetFlatStringPointer(file->dataVar);
+  jsvObjectSetChild(parent, JS_FS_DATA_NAME, file->dataVar); // intentionally leave dataVar locked so it can't be moved by defrag
   file->fileVar = parent;
   assert(file->data);
   file->data->mode = mode;
@@ -359,8 +360,9 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
           jsvArrayPush(arr, file.fileVar);
         } else {
           // File open failed
-          jsvUnLock(file.fileVar);
+          jsvUnLock2(file.fileVar, file.dataVar);
           file.fileVar = 0;
+          file.dataVar = 0;
         }
 
         if(res != FR_OK)
@@ -402,8 +404,10 @@ void jswrap_file_close(JsVar* parent) {
       JsVar *arr = fsGetArray(false);
       if (arr) {
         JsVar *idx = jsvGetIndexOf(arr, file.fileVar, true);
-        if (idx)
+        if (idx) {
+          jsvUnLock(file.dataVar);
           jsvRemoveChildAndUnLock(arr, idx);
+        }
         jsvUnLock(arr);
       }
     }

@@ -59,6 +59,7 @@ typedef struct {
 
 typedef struct JsFile {
   JsVar* fileVar; //< this won't be locked again - we just know that it is already locked by something else
+  JsVar* dataVar; //< this won't be locked again - we just know that it is already locked when file is opened
   JsFileData *data;
 } PACKED_FLAGS JsFile;
 
