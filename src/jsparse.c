@@ -347,6 +347,7 @@ NO_INLINE bool jspeFunctionDefinitionInternal(JsVar *funcVar, bool expressionOnl
             jsvAddNamedChildAndUnLock(funcVar, funcScopeVar, JSPARSE_FUNCTION_SCOPE_NAME);
           JSP_MATCH('}');
           jslCharPosFree(&funcCodeStart);
+          jsvUnLock(tokenValue);
           return true;
         } else {
           if (funcCodeVar) {

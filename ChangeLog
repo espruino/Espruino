@@ -18,6 +18,7 @@
             Bangle.js2: Much faster rendering of overlays
             Bangle.js2: g.flip(2) will now flip the screen *and* the entire area of the overlay
             FAT Filesystem files are now left locked when open, meaning E.defrag can't move them and cause instability
+            JIT: jit compiler no longer leaks "jit" keyword (fix #2674)
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
