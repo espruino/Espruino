@@ -492,6 +492,7 @@ bool jsvIsEqual(JsVar *a, JsVar *b);
 const char *jsvGetConstString(const JsVar *v); ///< Get a const string representing this variable - if we can. Otherwise return 0
 const char *jsvGetTypeOf(const JsVar *v); ///< Return the 'type' of the JS variable (eg. JS's typeof operator)
 JsVar *jsvGetValueOf(JsVar *v); ///< Return the JsVar, or if it's an object and has a valueOf function, call that
+JsVar *jsvGetValueOfAndUnLock(JsVar *v); ///< Return the JsVar, or if it's an object and has a valueOf function, call that
 
 /** Save this var as a string to the given buffer with a null terminator, and return how long it was (excluding terminating 0)
 If the buffer length is exceeded, string it cropped and terminating 0 is still added */

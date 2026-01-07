@@ -1921,14 +1921,17 @@ NO_INLINE JsVar *jspeUnaryExpression() {
       return jspeUnaryExpression();
     }
     JsVar *v = jsvSkipNameAndUnLock(jspeUnaryExpression());
-    if (tk=='!') { // logical not
+    if (tk=='!') { // logical not (for some reason JS doesn't use valueOf here)
       return jsvNewFromBool(!jsvGetBoolAndUnLock(v));
-    } else if (tk=='~') { // bitwise not
-      return jsvNewFromInteger(~jsvGetIntegerAndUnLock(v));
-    } else if (tk=='-') { // unary minus
-      return jsvNegateAndUnLock(v);
-    }  else if (tk=='+') { // unary plus (convert to number)
-      return jsvAsNumberAndUnLock(v);
+    } else { // all of these will call `.valueOf` if it exists
+      v = jsvGetValueOfAndUnLock(v);
+      if (tk=='~') { // bitwise not
+        return jsvNewFromInteger(~jsvGetIntegerAndUnLock(v));
+      } else if (tk=='-') { // unary minus
+        return jsvNegateAndUnLock(v);
+      }  else if (tk=='+') { // unary plus (convert to number)
+        return jsvAsNumberAndUnLock(v);
+      }
     }
     assert(0);
     return 0;
@@ -1983,12 +1986,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
     JSP_ASSERT_MATCH(op);
     // We need to work out the value before we parse later args in case they have side-effects, see #2547
     if (JSP_SHOULD_EXECUTE) {
-      JsVar *an = jsvSkipNameAndUnLock(a);
-      if (op!=LEX_R_INSTANCEOF) { // instanceof doesn't want the value!
-        a = jsvGetValueOf(an);
-        jsvUnLock(an);
-      } else
-        a = an;
+      a = jsvSkipNameAndUnLock(a);
     }
     // if we have short-circuit ops, then if we know the outcome
     // we don't bother to execute the other op. Even if not
@@ -2086,10 +2084,10 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
           a = jsvNewFromBool(inst);
         } else {  // --------------------------------------------- NORMAL
           JsVar *pb = jsvSkipName(b);
-          JsVar *bv = jsvGetValueOf(pb);
-          jsvUnLock(pb);
-          JsVar *res = jsvMathsOp(a,bv,op);
-          jsvUnLock2(a,bv);
+          JsVar *av = jsvGetValueOfAndUnLock(a);
+          JsVar *bv = jsvGetValueOfAndUnLock(pb);
+          JsVar *res = jsvMathsOp(av,bv,op);
+          jsvUnLock2(av,bv);
           a = res;
         }
       } // else not executing, just leave 'a' alone
@@ -2113,7 +2111,7 @@ NO_INLINE JsVar *__jspeConditionalExpression(JsVar *lhs) {
       JSP_MATCH(':');
       jsvUnLock(jspeAssignmentExpression());
     } else {
-      bool first = jsvGetBoolAndUnLock(jsvSkipName(lhs));
+      bool first = jsvGetBoolAndUnLock(jsvGetValueOfAndUnLock(jsvSkipName(lhs)));
       jsvUnLock(lhs);
       if (first) {
         lhs = jsvSkipNameAndUnLock(jspeAssignmentExpression());
