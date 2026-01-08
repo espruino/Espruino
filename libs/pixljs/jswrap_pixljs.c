@@ -589,6 +589,7 @@ it references will be executed. For example:
 ```
 var boolean = false;
 var number = 50;
+var option = 0;
 // First menu
 var mainmenu = {
   "" : { "title" : "-- Main Menu --" },
@@ -602,9 +603,15 @@ var mainmenu = {
   },
   "A Number" : {
     value : number,
-    min:0,max:100,step:10,
+    min:0, max:100, step:10,
     // noList : true, // On Bangle.js devices this forces use of the number-chooser (and not a scrolling list)
     onchange : v => { number=v; }
+  },
+  "List of Options" : {
+    value : option,
+    min:0, max:3,
+    format : v => ["Zero","One","Two","Three"][v],
+    onchange : v => { option=v; }
   },
   "Exit" : function() { E.showMenu(); }, // remove the menu
 };
@@ -620,9 +627,10 @@ E.showMenu(mainmenu);
 ```
 
 The menu will stay onscreen and active until explicitly removed, which you can
-do by calling `E.showMenu()` without arguments.
+do by calling `E.showMenu()` without arguments (or `Bangle.setUI()` on Bangle.js).
 
-See http://www.espruino.com/graphical_menu for more detailed information.
+See http://www.espruino.com/graphical_menu for more detailed information. For
+Bangle.js Settings Pages see https://www.espruino.com/Bangle.js+App+Settings
 */
 
 /*JSON{
