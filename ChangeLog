@@ -21,6 +21,7 @@
             JIT: jit compiler no longer leaks "jit" keyword (fix #2674)
             Bring usage of .valueOf in ternary/unary/binary ops in line with spec (fix #2676)
             Much faster String.indexOf (100x when working on String from external flash)
+            Allow tab complete on REPL more than one level deep
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
