@@ -194,7 +194,7 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
     return -1;
   }
   int lastPossibleSearch = parentLength - subStringLength;
-  int idx, dir, end;
+  int idx, dir, end, r=-1;
   if (!lastIndexOf) { // normal indexOf
     dir = 1;
     end = lastPossibleSearch+1;
@@ -204,6 +204,29 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
       if (idx<0) idx=0;
       if (idx>end) idx=end;
     }
+#ifndef SAVE_ON_FLASH
+    /* if we're not trying to save memory, use StringIterator
+    to avoid us having to search to each char in the string which
+    can be slow for non-flat or external strings. Sadly we can't
+    do this when going backwards (esp for UTF8) so leave old
+    behaviour for lastIndexOf */
+    JsvStringIterator it;
+    jsvStringIteratorNewUTF8(&it, parent, idx);
+    while (jsvStringIteratorHasChar(&it)) {
+      JsvStringIterator itclone;
+      jsvStringIteratorClone(&itclone, &it);
+      int cmp = jsvCompareStringIt(&itclone, substring, 0, true);
+      jsvStringIteratorFree(&itclone);
+      if (cmp==0) {
+        r = idx;
+        break;
+      }
+      jsvStringIteratorNextUTF8(&it);idx++;
+    }
+    jsvStringIteratorFree(&it);
+    jsvUnLock(substring);
+    return r;
+#endif
   } else {
     dir = -1;
     end = -1;
@@ -217,12 +240,12 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
 
   for (;idx!=end;idx+=dir) {
     if (jsvCompareString(parent, substring, (size_t)idx, 0, true)==0) {
-      jsvUnLock(substring);
-      return idx;
+      r = idx;
+      break;
     }
   }
   jsvUnLock(substring);
-  return -1;
+  return r;
 }
 
 /*JSON{

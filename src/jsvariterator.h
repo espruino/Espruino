@@ -324,6 +324,7 @@ void jsvIteratorNext(JsvIterator *it);
 void jsvIteratorFree(JsvIterator *it);
 void jsvIteratorClone(JsvIterator *dstit, JsvIterator *it);
 
-
+/** Compare 2 strings, See jsvCompareString - this version uses an existing iterator for the first string (does not free it, but does advance it) */
+int jsvCompareStringIt(JsvStringIterator *ita, JsVar *vb, size_t startb, bool equalAtEndOfString);
 
 #endif /* JSVAR_H_ */

@@ -932,3 +932,25 @@ void jsvIteratorClone(JsvIterator *dstit, JsvIterator *it) {
   default: assert(0); break;
   }
 }
+
+/** Compare 2 strings, See jsvCompareString - this version uses an existing iterator for the first string (does not free it, but does advance it) */
+int jsvCompareStringIt(JsvStringIterator *ita, JsVar *vb, size_t startb, bool equalAtEndOfString) {
+  JsvStringIterator itb;
+  jsvStringIteratorNewUTF8(&itb, vb, startb);
+  // step to first positions
+  while (true) {
+    int ca = jsvStringIteratorGetUTF8CharAndNext(ita);
+    int cb = jsvStringIteratorGetUTF8CharAndNext(&itb);
+    if (ca != cb) {
+      jsvStringIteratorFree(&itb);
+      if ((ca<0 || cb<0) && equalAtEndOfString) return 0;
+      return ca - cb;
+    }
+    if (ca < 0) { // both equal, but end of string
+      jsvStringIteratorFree(&itb);
+      return 0;
+    }
+  }
+  // never get here, but the compiler warns...
+  return true;
+}
