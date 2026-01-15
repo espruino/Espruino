@@ -23,6 +23,8 @@
             Much faster String.indexOf (100x when working on String from external flash)
             Allow tab complete on REPL more than one level deep
             FatFS: deleting files now updates the value returned by getFree
+            Packets: Allow PT_TYPE_FILE_SEND with `c:1` to enable heatshrink compression 
+            Packets: Fix double-free of PK_FILE, as well as dangling file close timeout
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)

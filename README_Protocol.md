@@ -27,6 +27,8 @@ There are other codes added though:
 ## Packet Transfer
 
 Added in 2v25. There is currently an implementation of this in https://github.com/espruino/EspruinoWebTools/blob/master/uart.js
+Compression added in 2v29
+
 
 ### Control Characters
 
@@ -60,6 +62,19 @@ Following transmission of a packet (or after timeout of 1 second), there will be
 
 * If a single packet takes more than 2 sec to transmit (1 sec on 2v25) Espruino will send `NAK` and will return to normal REPL mode.
 * If there's more than a 10 sec gap between DATA transfers for a file, Espruino will automatically close the transfer and the file. Subsequent DATA packets will be `NAK`ed as no file is open.
+
+### FILE_SEND packet
+
+This is arbitrary RJSON (no quotes needed on field names). It can include:
+
+```
+{
+  fn : "", // filename
+  s : 123, // file size
+  fs : 0/1, // if 1 (and supported) store in the FAT filesystem
+  c : 0/1, // if 1 (and 2v29+) send packets heatshrink compressed - each packet is compressed in its own right
+}
+```
 
 ### Example
 

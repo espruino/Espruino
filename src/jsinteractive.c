@@ -38,6 +38,9 @@
 #ifdef BANGLEJS
 #include "jswrap_bangle.h" // jsbangle_exec_pending
 #endif
+#ifndef SAVE_ON_FLASH
+#include "compress_heatshrink.h" // for allowing transfer of compressed packets
+#endif
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -1669,6 +1672,42 @@ static void jsiPacketReply(PacketLengthFlags type, JsVar *data) { // data should
   if (data) jsiConsolePrintStringVar(data);
 }
 
+typedef struct {
+  unsigned char *buf;
+  int idx, fileOffset, fileSize;
+  JsVar *file;
+  JsVar *fn;
+} PacketWriteData;
+
+// called when we need to write packet data to a file (can do either FS or Storage)
+static bool packet_file_write(PacketWriteData *data, JsVar *var) {
+  bool ok;
+#ifdef USE_FILESYSTEM
+  if (data->file) {
+    ok = jswrap_file_write(data->file, var) == (size_t)jsvGetLength(var);
+  } else
+#endif
+  {
+    ok = jsfWriteFile(jsfNameFromVar(data->fn), inputLine, JSFF_NONE, data->fileOffset, data->fileSize);
+  }
+  data->fileOffset += data->idx;
+  data->idx = 0;
+  return ok;
+}
+
+#ifdef USE_FILESYSTEM
+// Called by heatshrink to output decompressed data in file packets
+static void packet_decompress_cb(unsigned char ch, uint32_t *cbdata) {
+  PacketWriteData *data = (PacketWriteData*)cbdata;
+  data->buf[data->idx++] = ch;
+  if (data->idx>=512) {
+    JsVar *var = jsvNewNativeString((char*)data->buf, data->idx);
+    packet_file_write(data, var);
+    jsvUnLock(var);
+  }
+}
+#endif
+
 // Called when all data we need is in inputLine, inputPacketLength contains length and flags
 static void jsiPacketProcess() {
   PacketLengthFlags packetType = inputPacketLength & PT_TYPE_MASK;
@@ -1740,19 +1779,21 @@ static void jsiPacketProcess() {
       ok = jsvIsString(fn);
       if (ok)
         ok = jsvObjectGetIntegerChild(r, "s") != 0;
-#ifdef USE_FILESYSTEM
       if (ok && jsvObjectGetBoolChild(r,"fs")) {
+#ifdef USE_FILESYSTEM
         JsVar *fMode = jsvNewFromString("w");
         JsVar *f = jswrap_E_openFile(fn, fMode);
         if (f) jsvObjectSetChild(r, "file", f);
         else ok = false;
         jsvUnLock2(fMode,f);
-      }
+#else
+        ok = false; // not supported if no filesystem
 #endif
+      }
       jsvUnLock(fn);
     }
     if (ok) {
-      jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, "PK_FILE", r);
+      jsvObjectSetChild(execInfo.hiddenRoot, "PK_FILE", r);
       jsiPacketFileSetTimeout(true); // add timeout to close file
     }
     jsvUnLock(r);
@@ -1762,24 +1803,49 @@ static void jsiPacketProcess() {
     JsVar *fn = jsvObjectGetChildIfExists(r, "fn"); // filename (ok to do this if r==0)
     bool ok;
     if (r && fn) {
-      int size = jsvObjectGetIntegerChild(r, "s"); // size
-      int offset = jsvObjectGetIntegerChild(r, "offs"); // offset
+      PacketWriteData out_data;
+      out_data.fileSize = jsvObjectGetIntegerChild(r, "s"); // size
+      out_data.fileOffset = jsvObjectGetIntegerChild(r, "offs"); // offset
+      out_data.fn = fn;
+      out_data.file = NULL; // if not set, we write to storage
+      out_data.idx = 0;
+
 #ifdef USE_FILESYSTEM
       if (jsvObjectGetBoolChild(r,"fs")) { // if fs is set, try and write to the file in FAT filesystem
-        JsVar *f = jsvObjectGetChildIfExists(r, "file");
-        ok = jswrap_file_write(f, inputLine) == inputPacketLength;
-        jsvUnLock(f);
+        out_data.file = jsvObjectGetChildIfExists(r, "file");
+      }
+#endif
+#ifndef SAVE_ON_FLASH
+      if (jsvObjectGetBoolChild(r,"c")) { // if c==1, we assume the file is compressed
+        /* decompress, but do this via callback so we can handle packets that decompress
+        to large buffers that might not fit in RAM */
+        unsigned char buf[512];
+        out_data.buf = buf;
+        JsvIterator in_it;
+        jsvIteratorNew(&in_it, inputLine, JSIF_EVERY_ARRAY_ELEMENT);
+        heatshrink_decode_cb(heatshrink_var_input_cb, (uint32_t*)&in_it, packet_decompress_cb, (uint32_t*)&out_data);
+        jsvIteratorFree(&in_it);
+        if (out_data.idx>0) {
+          JsVar *var = jsvNewNativeString((char*)out_data.buf, out_data.idx);
+          packet_file_write(&out_data, var);
+          jsvUnLock(var);
+        }
       } else
 #endif
-      ok = jsfWriteFile(jsfNameFromVar(fn), inputLine, JSFF_NONE, offset, size);
-      offset += inputPacketLength;
-      jsvObjectSetChildAndUnLock(r, "offs", jsvNewFromInteger(offset));
-      if (offset >= size) jsiPacketFileEnd(); // end file send
+      {
+        out_data.idx = inputPacketLength;
+        ok = packet_file_write(&out_data, inputLine);
+      }
+      jsvUnLock(out_data.file);
+      jsvObjectSetChildAndUnLock(r, "offs", jsvNewFromInteger(out_data.fileOffset));
+      if (out_data.fileOffset >= out_data.fileSize)
+        jsiPacketFileEnd(); // end file send
+      else
+        jsiPacketFileSetTimeout(true); // reschedule timeout to close file
     } else
       ok = false; // no file set up
     jsvUnLock2(fn,r);
     jsiConsolePrintChar(ok ? ASCII_ACK : ASCII_NAK);
-    jsiPacketFileSetTimeout(true); // reschedule timeout to close file
   } else
     jsiConsolePrintChar(ASCII_NAK);
   // exit packet mode
