@@ -3485,9 +3485,10 @@ FRESULT f_unlink (
 			} else {
 				if (dir[DIR_Attr] & AM_RDO)
 					res = FR_DENIED;		/* Cannot remove R/O object */
+				else
+					dclst = ld_clust(dj.fs, dir);	/* Get cluster chain for files and directories */
 			}
 			if (res == FR_OK && (dir[DIR_Attr] & AM_DIR)) {	/* Is it a sub-dir? */
-				dclst = ld_clust(dj.fs, dir);
 				if (!dclst) {
 					res = FR_INT_ERR;
 				} else {					/* Make sure the sub-directory is empty */
