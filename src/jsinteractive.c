@@ -1431,7 +1431,7 @@ void jsiTabComplete_printCommon(void *cbdata, JsVar *key) {
 
 void jsiTabComplete() {
   if (!jsvIsString(inputLine)) return;
-  JsVar *object = 0;
+  JsVar *object = jsvLockAgain(execInfo.root);
   JsiTabCompleteData data;
   data.partial = 0;
   size_t partialStart = 0;
@@ -1441,8 +1441,12 @@ void jsiTabComplete() {
   jslInit(inputLine);
   while (lex.tk!=LEX_EOF && (lex.tokenStart+1)<=inputCursorPos) {
     if (lex.tk=='.') {
-      jsvUnLock(object);
-      object = data.partial;
+      char s[JSLEX_MAX_TOKEN_LENGTH];
+      jsvGetString(data.partial, s, sizeof(s));
+      JsVar *v = jspGetNamedField(object, s, false);
+      jsvUnLock2(object, data.partial);
+      object = v;
+      if (!object) object = jsvNewObject(); // if not found, just use an empty object to suggest stuff an object might have
       data.partial = 0;
     } else if (lex.tk==LEX_ID) {
       jsvUnLock(data.partial);
@@ -1480,28 +1484,10 @@ void jsiTabComplete() {
     data.partialLen = 0;
   }
 
-  // If we had the name of an object here, try and look it up
-  if (object) {
-    char s[JSLEX_MAX_TOKEN_LENGTH];
-    jsvGetString(object, s, sizeof(s));
-    JsVar *v = jspGetNamedVariable(s);
-    if (jsvIsVariableDefined(v)) {
-      v = jsvSkipNameAndUnLock(v);
-    } else {
-      jsvUnLock(v);
-      v = 0;
-    }
-    jsvUnLock(object);
-    object = v;
-    // If we couldn't look it up, don't offer any suggestions
-    if (!v) {
-      jsvUnLock(data.partial);
-      return;
-    }
-  }
+  // If no object, don't offer any suggestions
   if (!object) {
-    // default to root scope
-    object = jsvLockAgain(execInfo.root);
+    jsvUnLock(data.partial);
+    return;
   }
   // Now try and autocomplete
   data.possible = 0;
