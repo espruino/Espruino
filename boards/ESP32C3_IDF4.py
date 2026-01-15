@@ -49,9 +49,9 @@
 # --------------------------------------------------------------
 # The 'makefile' list in the 'info' dictionary below can define ESP_USE_USB_SERIAL_JTAG using 'DEFINES+=-ESP_USE_USB_SERIAL_JTAG'
 # where necessary.  
-# When defined, ESP_USE_USB_SERIAL_JTAG enables the usb_serial_jtag_driver console for the ESP32-C3.
+# By default, ESP_USE_USB_SERIAL_JTAG is enabled below for the ESP32-C3.
 # This supports the case where the USB connector on the board is wired directly to the D+ and D- pins.
-# If the board uses a USB-to-UART converter, do not define this and the UART console will be used.
+# If the board uses a USB-to-UART converter, comment out the define so the UART console is used.
 # This method is introduced for fix to issue #2609 and replaces the previous method using the 'USB_CDC' identifier.
 
 
@@ -83,7 +83,7 @@ info = {
      'DEFINES+=-DESP_STACK_SIZE=25000',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
-     # 'DEFINES+=-ESP_USE_USB_SERIAL_JTAG' # See note above
+     'DEFINES+=-ESP_USE_USB_SERIAL_JTAG' # See note above
      'ESP32_FLASH_MAX=1572864'
    ]
  }
