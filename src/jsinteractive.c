@@ -1674,25 +1674,24 @@ static void jsiPacketReply(PacketLengthFlags type, JsVar *data) { // data should
 
 typedef struct {
   unsigned char *buf;
+  bool ok;
   int idx, fileOffset, fileSize;
   JsVar *file;
   JsVar *fn;
 } PacketWriteData;
 
 // called when we need to write packet data to a file (can do either FS or Storage)
-static bool packet_file_write(PacketWriteData *data, JsVar *var) {
-  bool ok;
+static void packet_file_write(PacketWriteData *data, JsVar *var) {
 #ifdef USE_FILESYSTEM
   if (data->file) {
-    ok = jswrap_file_write(data->file, var) == (size_t)jsvGetLength(var);
+    data->ok = jswrap_file_write(data->file, var) == (size_t)jsvGetLength(var);
   } else
 #endif
   {
-    ok = jsfWriteFile(jsfNameFromVar(data->fn), inputLine, JSFF_NONE, data->fileOffset, data->fileSize);
+    data->ok |= jsfWriteFile(jsfNameFromVar(data->fn), inputLine, JSFF_NONE, data->fileOffset, data->fileSize);
   }
   data->fileOffset += data->idx;
   data->idx = 0;
-  return ok;
 }
 
 #ifdef USE_FILESYSTEM
@@ -1809,6 +1808,7 @@ static void jsiPacketProcess() {
       out_data.fn = fn;
       out_data.file = NULL; // if not set, we write to storage
       out_data.idx = 0;
+      out_data.ok = true;
 
 #ifdef USE_FILESYSTEM
       if (jsvObjectGetBoolChild(r,"fs")) { // if fs is set, try and write to the file in FAT filesystem
@@ -1834,8 +1834,9 @@ static void jsiPacketProcess() {
 #endif
       {
         out_data.idx = inputPacketLength;
-        ok = packet_file_write(&out_data, inputLine);
+        packet_file_write(&out_data, inputLine);
       }
+      ok = out_data.ok;
       jsvUnLock(out_data.file);
       jsvObjectSetChildAndUnLock(r, "offs", jsvNewFromInteger(out_data.fileOffset));
       if (out_data.fileOffset >= out_data.fileSize)
