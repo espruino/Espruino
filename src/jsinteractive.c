@@ -1694,7 +1694,6 @@ static void packet_file_write(PacketWriteData *data, JsVar *var) {
   data->idx = 0;
 }
 
-#ifdef USE_FILESYSTEM
 // Called by heatshrink to output decompressed data in file packets
 static void packet_decompress_cb(unsigned char ch, uint32_t *cbdata) {
   PacketWriteData *data = (PacketWriteData*)cbdata;
@@ -1705,7 +1704,6 @@ static void packet_decompress_cb(unsigned char ch, uint32_t *cbdata) {
     jsvUnLock(var);
   }
 }
-#endif
 
 // Called when all data we need is in inputLine, inputPacketLength contains length and flags
 static void jsiPacketProcess() {
