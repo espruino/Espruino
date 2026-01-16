@@ -1700,7 +1700,7 @@ static void packet_decompress_cb(unsigned char ch, uint32_t *cbdata) {
   PacketWriteData *data = (PacketWriteData*)cbdata;
   data->buf[data->idx++] = ch;
   if (data->idx>=512) {
-    JsVar *var = jsvNewNativeString((char*)data->buf, data->idx);
+    JsVar *var = jsvNewNativeString((char*)data->buf, (unsigned)data->idx);
     packet_file_write(data, var);
     jsvUnLock(var);
   }
@@ -1826,7 +1826,7 @@ static void jsiPacketProcess() {
         heatshrink_decode_cb(heatshrink_var_input_cb, (uint32_t*)&in_it, packet_decompress_cb, (uint32_t*)&out_data);
         jsvIteratorFree(&in_it);
         if (out_data.idx>0) {
-          JsVar *var = jsvNewNativeString((char*)out_data.buf, out_data.idx);
+          JsVar *var = jsvNewNativeString((char*)out_data.buf, (unsigned)out_data.idx);
           packet_file_write(&out_data, var);
           jsvUnLock(var);
         }

@@ -1,5 +1,5 @@
 let repl = eval(process.env.CONSOLE);
-let data = "This is our long string of data that we're going to compress down to transfer as a packet. Let's compress more and more and more and see what happens.";
+let data = "This is our long string of data that we're going to compress down to transfer as a packet. Let's compress more and more and more and see what happens.".repeat(30);
 let compressedData = require("heatshrink").compress(data);
 console.log(`Compressed ${data.length} => ${compressedData.length}`);
 let json = E.toJS({fn:'test.txt',fs:true,c:1,s:data.length});
