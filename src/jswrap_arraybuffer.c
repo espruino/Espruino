@@ -1017,3 +1017,32 @@ Return a copy of a portion of this array (in a new array).
 
  **Note:** This currently returns a normal `Array`, not an `ArrayBuffer`
  */
+
+ /*JSON{
+  "type" : "method",
+  "class" : "ArrayBufferView",
+  "name" : "some",
+  "generate" : "jswrap_array_some",
+  "params" : [
+    ["function","JsVar","Function to be executed"],
+    ["thisArg","JsVar","[optional] If specified, the function is called with 'this' set to thisArg"]
+  ],
+  "return" : ["JsVar","A boolean containing the result"],
+  "typescript" : "some(predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean;"
+}
+Return 'true' if the callback returns 'true' for any of the elements in thearray
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "ArrayBufferView",
+  "name" : "every",
+  "generate" : "jswrap_array_every",
+  "params" : [
+    ["function","JsVar","Function to be executed"],
+    ["thisArg","JsVar","[optional] If specified, the function is called with 'this' set to thisArg"]
+  ],
+  "return" : ["JsVar","A boolean containing the result"],
+  "typescript" : "every(predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean;"
+}
+Return 'true' if the callback returns 'true' for every element in the array
+*/
