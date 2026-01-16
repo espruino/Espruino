@@ -24,9 +24,9 @@ info = {
  'build' : {
    'libraries' : [
      'NET',
-     'TELNET',
+     #'TELNET', # remove telnet functionality - unlikely to be used on 512k ESP8266 boards and gives us some room
      #'GRAPHICS',
-     # 'CRYPTO', # just provides SHA1, but is now too big for 512k ESP8266 build
+     #'CRYPTO', # just provides SHA1, but is now too big for 512k ESP8266 build
      'NEOPIXEL',
    ],
    'makefile' : [
