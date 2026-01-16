@@ -138,7 +138,6 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_PBF_FONTS` - Enable support for loading and displaying Pebble-style PBF font files with `g.setFontPBF`
 * `ESPR_BLUETOOTH_ANCS` - Enable Apple ANCS(notification), AMS and CTS support
 * `ESPR_USE_STEPPER_TIMER` - add builtin `Stepper` class to handle higher speed stepper handling
-* `USB_CDC` - without this on ESP32C3, USB CDC will not be used for outputting the console
 * `ESPR_RTC_INITIALISE_TICKS` - STM32: how many systicks do we wait for the LSE to initialise. Usually 2s, so the default of 10 is fine for 84Mhz. Higher clocks need higher values here
 * `ESPR_RTC_ALWAYS_TRY_LSE` - STM32: If we boot and RTC is initialised but using LSI, try again at starting LSE
 * `ESPR_DELAY_MULTIPLIER` - STM32: At boot Espruino works out how many iterations are needed to produce a set time period of delay. You can hard-code this for a faster boot
@@ -153,6 +152,7 @@ This is a partial list of definitions that can be added in a `BOARD.py` file's `
 * `ESPR_FS_GETFREE` - Add support for require("fs").getFree in the filesystem library
 * `ESPR_TEST_ON_FIRST_RUN` - on Jolt.js/Puck.js, run the self-test the very first time the board boots up (this is not the default since 2v27)
 * `ESPR_FS_PREPEND_PATH=""` - add something to the path when accessing files using 'fs' - eg on a linux build you might add `'sdcard'` to look for files in that directory
+* `ESPR_USE_USB_SERIAL_JTAG` - On ESP32 This supports the case where the USB connector on the board is wired directly to the D+ and D- pins. If the board uses a USB-to-UART converter, do not use the define so the UART console is used. This is introduced to fix issue #2609 and replaces the previous method using the `USB_CDC` identifier.
 
 
 There are some specifically that are useful for cutting a few bytes out of the build:

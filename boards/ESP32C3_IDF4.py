@@ -45,6 +45,16 @@
 # available memory. Using too small a JsVar format will under utilise
 # available memory.
 
+# MakeFile identifier ESPR_USE_USB_SERIAL_JTAG
+# --------------------------------------------------------------
+# The 'makefile' list in the 'info' dictionary below can define ESPR_USE_USB_SERIAL_JTAG using 'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG'
+# where necessary.
+# By default, ESPR_USE_USB_SERIAL_JTAG is enabled below for the ESP32-C3.
+# This supports the case where the USB connector on the board is wired directly to the D+ and D- pins.
+# If the board uses a USB-to-UART converter, comment out the define so the UART console is used.
+# This method is introduced for fix to issue #2609 and replaces the previous method using the 'USB_CDC' identifier.
+
+
 
 import pinutils;
 info = {
@@ -64,7 +74,7 @@ info = {
      'CRYPTO','SHA256','SHA512',
      'TLS',
 #     'TELNET',
-#     'FILESYSTEM',
+     'FILESYSTEM',
      'BLUETOOTH',
      'NEOPIXEL'
    ],
@@ -73,7 +83,7 @@ info = {
      'DEFINES+=-DESP_STACK_SIZE=25000',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
-     'DEFINES+=-DUSB_CDC',      # Comment out to disable USB_CDC if board has uart interface
+     'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG', # See note above
      'ESP32_FLASH_MAX=1572864'
    ]
  }

@@ -25,6 +25,7 @@
             FatFS: deleting files now updates the value returned by getFree
             Packets: Allow PT_TYPE_FILE_SEND with `c:1` to enable heatshrink compression 
             Packets: Fix double-free of PK_FILE, as well as dangling file close timeout
+            ESP32S3: Enable USB CDC console by default with ESPR_USE_USB_SERIAL_JTAG (this stops Serial1 RX working but lets Espruino run on 90% of ESP32S3 boards)
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)

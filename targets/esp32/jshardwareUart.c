@@ -21,8 +21,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <jsdevices.h>
+#include "jsinteractive.h"
 
-#ifdef CONFIG_IDF_TARGET_ESP32C3
+#ifdef ESPR_USE_USB_SERIAL_JTAG
 #include "driver/usb_serial_jtag.h"
 #endif
 
@@ -86,14 +87,12 @@ void initSerial(IOEventFlags device,JshUSARTInfo *inf){
 }
 
 void initConsole(){
-#ifdef CONFIG_IDF_TARGET_ESP32C3
-  #ifdef USB_CDC
+#ifdef ESPR_USE_USB_SERIAL_JTAG
   /* Configure USB-CDC */
   usb_serial_jtag_driver_config_t usb_serial_config = {.tx_buffer_size = 128,
                                                        .rx_buffer_size = 128};
-
+  jsDebug(DBG_INFO, "initConsole: Installing usb_serial_jtag_driver \n");
   ESP_ERROR_CHECK(usb_serial_jtag_driver_install(&usb_serial_config));
-  #endif
 #endif
 
   uart_config_t uart_config = {
@@ -118,12 +117,8 @@ void consoleToEspruino(){
 #if ESP_IDF_VERSION_MAJOR>=4
   ticksToWait = 50 / portTICK_RATE_MS;
 #endif
-#ifdef CONFIG_IDF_TARGET_ESP32C3
-  #ifdef USB_CDC
+#ifdef ESPR_USE_USB_SERIAL_JTAG
   int len = usb_serial_jtag_read_bytes(rxbuf, sizeof(rxbuf), ticksToWait);
-  #else
-  int len = uart_read_bytes(uart_console, rxbuf, sizeof(rxbuf), ticksToWait);  // Read data from UART
-  #endif
 #else
   int len = uart_read_bytes(uart_console, rxbuf, sizeof(rxbuf), ticksToWait);  // Read data from UART
 #endif
