@@ -73,7 +73,7 @@ info = {
      'DEFINES+=-DESP_STACK_SIZE=25000',
      'DEFINES+=-DJSVAR_MALLOC', # Allocate space for variables at jsvInit time
      'DEFINES+=-DUSE_FONT_6X8',
-     'DEFINES+=-DUSB_CDC', # Because now we have to explicitly request it
+     'DEFINES+=-DESPR_USE_USB_SERIAL_JTAG', # Using USB CDC directly (not via a USB-Serial converter on Serial1)
      'ESP32_FLASH_MAX=1572864',
 #     'DEFINES+=-DBLUETOOTH_NAME_PREFIX=\'\"Curio\"\'', # string passing in IDF4 makefile is broken
      'INCLUDE += -I$(ROOT)/libs/misc',
