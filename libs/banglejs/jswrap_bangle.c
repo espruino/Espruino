@@ -4018,36 +4018,7 @@ NO_INLINE void jswrap_banglejs_init() {
     showSplashScreen = false;
 #ifndef ESPR_NO_LOADING_SCREEN
     if (!firstRun && !recoveryMode) {
-      // Display a loading screen
-      // Check for a '.loading' file
-      JsVar *img = jsfReadFile(jsfNameFromString(".loading"),0,0);
-      if (jsvIsString(img)) {
-        if (jsvGetStringLength(img)>3) {
-          // if it exists and is big enough to store an image, render the image in the middle of the screen
-          int w,h;
-          w = (int)(unsigned char)jsvGetCharInString(img, 0);
-          h = (int)(unsigned char)jsvGetCharInString(img, 1);
-          jsvUnLock2(jswrap_graphics_drawImage(graphics,img,(LCD_WIDTH-w)/2,(LCD_HEIGHT-h)/2,NULL),img);
-          graphicsInternalFlip();
-        }
-        // else if <3 bytes we don't render anything
-      } else {
-        // otherwise render the standard 'Loading...' box
-        int x = LCD_WIDTH/2;
-        int y = LCD_HEIGHT/2;
-        graphicsFillRect(&graphicsInternal, x-49, y-19, x+49, y+19, graphicsTheme.bg);
-        graphicsInternal.data.fgColor = graphicsTheme.fg;
-        graphicsDrawRect(&graphicsInternal, x-50, y-20, x+50, y+20);
-        y -= 4;
-        x -= 4*6;
-        const char *s = "Loading...";
-        while (*s) {
-          graphicsDrawChar6x8(&graphicsInternal, x, y, *s, 1, 1, false);
-          x+=6;
-          s++;
-        }
-        graphicsInternalFlip();
-      }
+      jswrap_banglejs_showLoadingScreen();// Display a loading screen
     }
 #endif
   }
@@ -6449,6 +6420,47 @@ extern void ble_app_error_handler(uint32_t error_code, uint32_t line_num, const 
 void jswrap_banglejs_factoryReset(bool noReboot) {
   jsfResetStorage();
   if (!noReboot) jsiStatus |= JSIS_TODO_FLASH_LOAD;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bangle",
+    "name" : "showLoadingScreen",
+    "generate" : "jswrap_banglejs_showLoadingScreen",
+    "ifdef" : "BANGLEJS"
+}
+This displays the loading screen on Bangle.js. It is called automatically
+when an app is loaded with `load()` or `Bangle.load()`, but can be called manually
+*/
+void jswrap_banglejs_showLoadingScreen() {
+  // Check for a '.loading' file
+  JsVar *img = jsfReadFile(jsfNameFromString(".loading"),0,0);
+  if (jsvIsString(img)) {
+    if (jsvGetStringLength(img)>3) {
+      // if it exists and is big enough to store an image, render the image in the middle of the screen
+      int w,h;
+      w = (int)(unsigned char)jsvGetCharInString(img, 0);
+      h = (int)(unsigned char)jsvGetCharInString(img, 1);
+      jsvUnLock2(jswrap_graphics_drawImage(graphicsInternal.graphicsVar,img,(LCD_WIDTH-w)/2,(LCD_HEIGHT-h)/2,NULL),img);
+    }
+    // else if <3 bytes we don't render anything
+  } else {
+    // otherwise render the standard 'Loading...' box
+    int x = LCD_WIDTH/2;
+    int y = LCD_HEIGHT/2;
+    graphicsFillRect(&graphicsInternal, x-49, y-19, x+49, y+19, graphicsTheme.bg);
+    graphicsInternal.data.fgColor = graphicsTheme.fg;
+    graphicsDrawRect(&graphicsInternal, x-50, y-20, x+50, y+20);
+    y -= 4;
+    x -= 4*6;
+    const char *s = "Loading...";
+    while (*s) {
+      graphicsDrawChar6x8(&graphicsInternal, x, y, *s, 1, 1, false);
+      x+=6;
+      s++;
+    }
+  }
+  graphicsInternalFlip(); // update screen straight away
 }
 
 /*JSON{

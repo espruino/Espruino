@@ -76,6 +76,7 @@ void jswrap_banglejs_off();
 void jswrap_banglejs_softOff();
 JsVar *jswrap_banglejs_getLogo();
 void jswrap_banglejs_factoryReset(bool noReboot);
+void jswrap_banglejs_showLoadingScreen();
 
 JsVar *jswrap_banglejs_appRect();
 
