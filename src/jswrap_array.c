@@ -290,26 +290,13 @@ static JsVar *_jswrap_array_iterate_with_callback(
         jsvIteratorNext(&it); // go to next
         cb_result = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
         jsvUnLock(args[1]);
-        if (cb_result) {
-          bool matched;
-          if (isBoolCallback)
-            matched = (jsvGetBool(cb_result) == expectedValue);
-          if (returnType == RETURN_ARRAY) {
-            if (isBoolCallback) { // filter
-              if (matched) {
-                jsvArrayPush(result, value);
-              }
-            } else { // map
-              JsVar *name = jsvNewFromInteger(idxValue);
-              if (name) { // out of memory?
-                name = jsvMakeIntoVariableName(name, cb_result);
-                jsvAddName(result, name);
-                jsvUnLock(name);
-              }
-            }
-          } else if (isBoolCallback) {
-            if (returnType == RETURN_ARRAY_ELEMENT ||
-                returnType == RETURN_ARRAY_INDEX) {
+        if (isBoolCallback) {
+          bool matched = (jsvGetBool(cb_result) == expectedValue);
+          if (returnType == RETURN_ARRAY) { // filter
+            if (matched)
+              jsvArrayPush(result, value);
+          } else {
+            if (returnType == RETURN_ARRAY_ELEMENT || returnType == RETURN_ARRAY_INDEX) {
               if (matched) {
                 result = (returnType == RETURN_ARRAY_ELEMENT) ?
                     jsvLockAgain(value) :
@@ -319,9 +306,17 @@ static JsVar *_jswrap_array_iterate_with_callback(
             } else if (!matched) // eg for .some
               isDone = true;
           }
-          jsvUnLock(cb_result);
+        } else { // !isBoolCallback
+          if (returnType == RETURN_ARRAY) { // map
+            JsVar *name = jsvNewFromInteger(idxValue);
+            if (name) { // out of memory?
+              name = jsvMakeIntoVariableName(name, cb_result);
+              jsvAddName(result, name);
+              jsvUnLock(name);
+            }
+          } // forEach - we don't care about the result
         }
-        jsvUnLock(value);
+        jsvUnLock2(cb_result, value);
       } else {
         // just skip forward anyway
         jsvIteratorNext(&it);
