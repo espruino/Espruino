@@ -28,6 +28,7 @@
             ESP32S3: Enable USB CDC console by default with ESPR_USE_USB_SERIAL_JTAG (this stops Serial1 RX working but lets Espruino run on 90% of ESP32S3 boards)
             ESP8266 512k: remove Telnet access for the 512k ESP8266 variant (these are rare now and we need the Flash to keep building)
             Ensure Array.map always creates array elements even when the callback returns undefined (fix #2678) also fix `[1,undefined].every(a=>a)`
+            Add `Bangle.showLoadingScreen()` and call it from `Bangle.load()`
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
