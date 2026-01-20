@@ -939,6 +939,7 @@ static JSLEX_INLINE void jslPreload() {
 }
 
 void jslInit(JsVar *var) {
+  assert(jsvIsString(var));
   lex->sourceVar = jsvLockAgain(var);
   // reset stuff
   lex->tk = 0;

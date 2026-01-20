@@ -31,6 +31,7 @@
             Add `Bangle.showLoadingScreen()` and call it from `Bangle.load()`
             Fix sorting or sparse arrays with items not set (not just undefined) eg `[,1,2,,3,].sort()` (fix #2679)
             save() will now refuse to work if code has already been saved to flash as text
+            When erasing a storage file, set any vars pointing to data inside it to null (flags errors that might occur after compaction when they happen)
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)

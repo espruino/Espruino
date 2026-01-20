@@ -463,14 +463,19 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount) {
 #endif
 }
 
-/// Scan memory to find any JsVar that references a specific memory range, and if so update what it points to to point to the new address
+/// Scan memory to find any JsVar that references a specific memory range, and if so update what it points to to point to the new address. If newAddr==0 we just convert in to 'null'
 void jsvUpdateMemoryAddress(size_t oldAddr, size_t length, size_t newAddr) {
   for (unsigned int i=1;i<=jsVarsSize;i++) {
     JsVar *v = jsvGetAddressOf((JsVarRef)i);
     if (jsvIsNativeString(v) || jsvIsFlashString(v)) {
       size_t p = (size_t)v->varData.nativeStr.ptr;
-      if (p>=oldAddr && p<oldAddr+length)
-        v->varData.nativeStr.ptr = (char*)(p+newAddr-oldAddr);
+      if (p>=oldAddr && p<oldAddr+length) {
+        if (newAddr) {
+          v->varData.nativeStr.ptr = (char*)(p+newAddr-oldAddr);
+        } else {  // convert to empty string
+          v->flags = (v->flags & ~JSV_VARTYPEMASK) | JSV_NULL;
+        }
+      }
     } else if (jsvIsFlatString(v)) {
       i += (unsigned int)jsvGetFlatStringBlocks(v);
     }
@@ -4125,6 +4130,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
     if (jsvIsFunctionReturn(var)) jsiConsolePrint("return ");
     endBracket = '}';
   } else if (jsvIsPin(var)) jsiConsolePrintf("Pin %d", jsvGetInteger(var));
+  else if (jsvIsNull(var)) jsiConsolePrintf("NULL");
   else if (jsvIsInt(var)) jsiConsolePrintf("Integer %d", jsvGetInteger(var));
   else if (jsvIsBoolean(var)) jsiConsolePrintf("Bool %s", jsvGetBool(var)?"true":"false");
   else if (jsvIsFloat(var)) jsiConsolePrintf("Double %f", jsvGetFloat(var));

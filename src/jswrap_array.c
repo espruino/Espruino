@@ -943,7 +943,6 @@ JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
     return 0;
   }
   JsvIterator it;
-
   /* Arrays can be sparse and the iterators don't handle this. JS spec says
      that when we sort we should move all defined elements to the start of the array,
      so that's what we'll do here by just renumbering all the elements.

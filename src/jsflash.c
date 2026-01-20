@@ -272,14 +272,18 @@ bool jsfEraseAll() {
   jsfFilenameTableBank1Size = 0;
 #endif
 #ifdef JSF_BANK2_START_ADDRESS
+  jsvUpdateMemoryAddress(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS-JSF_BANK2_START_ADDRESS, 0); // if any JsVar points to this, clear it
   if (!jshFlashErasePages(JSF_BANK2_START_ADDRESS, JSF_BANK2_END_ADDRESS-JSF_BANK2_START_ADDRESS)) return false;
 #endif
+  jsvUpdateMemoryAddress(JSF_START_ADDRESS, JSF_END_ADDRESS-JSF_START_ADDRESS, 0); // if any JsVar points to this, clear it
   return jshFlashErasePages(JSF_START_ADDRESS, JSF_END_ADDRESS-JSF_START_ADDRESS);
 }
 
 /// When a file is found in memory, erase it (by setting first bytes of name to 0). addr=ptr to data, NOT header
 static void jsfEraseFileInternal(uint32_t addr, JsfFileHeader *header, bool createFilenameTable) {
   jsDebug(DBG_INFO,"EraseFile 0x%08x\n", addr);
+
+  jsvUpdateMemoryAddress(addr, jsfGetFileSize(header), 0); // if any JsVar points to this, clear it
 
   addr -= (uint32_t)sizeof(JsfFileHeader);
   addr += (uint32_t)((char*)&header->name.firstChars - (char*)header);
