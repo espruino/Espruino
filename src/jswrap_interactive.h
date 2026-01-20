@@ -22,6 +22,7 @@ void jswrap_interface_setBusyIndicator(JsVar *pinVar);
 void jswrap_interface_setSleepIndicator(JsVar *pinVar);
 void jswrap_interface_setDeepSleep(bool sleep);
 void jswrap_interface_load(JsVar *storageName);
+void jswrap_interface_save();
 void jswrap_interface_reset(bool clearFlash);
 void jswrap_interface_edit(JsVar *funcName);
 void jswrap_interface_echo(bool echoOn);

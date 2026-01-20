@@ -153,13 +153,20 @@ void jswrap_interface_load(JsVar *storageName) {
 /*JSON{
   "type" : "function",
   "name" : "save",
-  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;",
+  "generate" : "jswrap_interface_save",
   "#if" : "!defined(BANGLEJS)"
 }
-Save the state of the interpreter into flash (including the results of calling
+Save the current state of the interpreter to flash (including the results of calling
 `setWatch`, `setInterval`, `pinMode`, and any listeners). The state will then be
 loaded automatically every time Espruino powers on or is hard-reset. To see what
 will get saved you can call `dump()`.
+
+Using `save()` is different to saving to Flash with the Web IDE (which saves your
+program text to flash). `save()` saves the current state of the interpreter, which
+means if you modified any functions with the REPL, they will be saved too.
+
+Firmware 2v29+ will refuse to save to flash if the `.bootcde` file already exists
+(from Web IDE saving to flash), because this can cause unexpected behaviour.
 
 **Note:** If you set up intervals/etc in `onInit()` and you have already called
 `onInit` before running `save()`, when Espruino resumes there will be two copies
@@ -183,6 +190,13 @@ In order to stop the program saved with this command being loaded automatically,
 check out [the Troubleshooting
 guide](https://www.espruino.com/Troubleshooting#espruino-stopped-working-after-i-typed-save-)
  */
+void jswrap_interface_save() {
+  if (jsfFindFile(jsfNameFromString(".bootcde"), NULL)) {
+    jsExceptionHere(JSET_ERROR, "Cannot save: .bootcde file already exists. Please remove it first.");
+    return;
+  }
+  jsiStatus |= JSIS_TODO_FLASH_SAVE;
+}
 /*JSON{
   "type" : "function",
   "name" : "reset",
