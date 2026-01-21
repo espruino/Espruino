@@ -1,4 +1,4 @@
-(function(message,options) {
+E.showPrompt=(function(message,options) {
   if (!options) options={};
   if (!options.buttons)
     options.buttons = {"Yes":true,"No":false};
@@ -31,21 +31,19 @@
     btnPos = [];
     btns.forEach((btn,idx)=>{
       var ix=idx%BX,iy=0|(idx/BX),x = ix*BW + 2, y = R.y2-(BY-iy)*BH + 1,
-          bw = BW-4, bh = BH-2, poly = [x+4,y,
-                  x+bw-4,y,
-                  x+bw,y+4,
-                  x+bw,y+bh-4,
-                  x+bw-4,y+bh,
-                  x+4,y+bh,
-                  x,y+bh-4,
-                  x,y+4,
-                  x+4,y];
+          bw = BW-4, bh = BH-2;
       btnPos.push({x1:x-2, x2:x+BW-2,
                    y1:y, y2:y+BH});
       var btnText = g.findFont(btn, {w:bw-4,h:BH-4,wrap:1});
-      g.setColor(idx===highlightedButton ? g.theme.bgH : g.theme.bg2).fillPoly(poly).
-        setColor(idx===highlightedButton ? g.theme.fgH : g.theme.fg2).drawPoly(poly).drawString(btnText.text,x+bw/2,y+2+BH/2);
-      if (idx&1) y+=BH;
+      let r = 10;
+      let isHL = (idx===highlightedButton);
+      g.setColor(isHL ? g.theme.fgH : g.theme.fg2);
+      g.fillRect({x:x, y:y, w:bw, h:bh, r:r});
+      g.setColor(isHL ? g.theme.bgH : g.theme.bg2);
+      g.fillRect({x:x+1, y:y+1, w:bw-2, h:bh-2, r:r-1});
+      g.setFontAlign(0,0);
+      g.setColor(isHL ? g.theme.fgH : g.theme.fg2);
+      g.drawString(btnText.text, x + bw/2, y + bh/2+2);
     });
     Bangle.setLCDPower(1); // ensure screen is on
   }
