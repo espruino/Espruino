@@ -35,8 +35,8 @@
       btnPos.push({x1:x-2, x2:x+BW-2,
                    y1:y, y2:y+BH});
       var btnText = g.findFont(btn, {w:bw-4,h:BH-4,wrap:1});
-      let r = 10;
-      let isHL = (idx===highlightedButton);
+      var r = 10;
+      var isHL = (idx===highlightedButton);
       g.setColor(isHL ? g.theme.fgH : g.theme.fg2);
       g.fillRect({x:x, y:y, w:bw, h:bh, r:r});
       g.setColor(isHL ? g.theme.bgH : g.theme.bg2);
