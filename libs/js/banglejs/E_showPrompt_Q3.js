@@ -1,4 +1,4 @@
-E.showPrompt=(function(message,options) {
+(function(message,options) {
   if (!options) options={};
   if (!options.buttons)
     options.buttons = {"Yes":true,"No":false};
