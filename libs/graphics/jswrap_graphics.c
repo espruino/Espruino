@@ -1062,24 +1062,28 @@ void _jswrap_graphics_getRect(JsVar *opt, int *x1, int *y1, int *x2, int *y2, in
     *x1 = jsvGetInteger(opt);
 }
 
-JsVar *_jswrap_graphics_fillRect_col(JsVar *parent, JsVar *opt, int y1, int x2, int y2, bool isFgCol) {
+static void _jswrap_graphics_roundedRect_helper(JsGraphics *gfx, int *x1, int *y1, int *x2, int *y2, int *r) {
+  // rounded rects
+  graphicsToDeviceCoordinates(gfx, x1, y1);
+  graphicsToDeviceCoordinates(gfx, x2, y2);
+  int x,y;
+  if (*x1 > *x2) { x = *x1; *x1 = *x2; *x2 = x; }
+  if (*y1 > *y2) { y = *y1; *y1 = *y2; *y2 = y; }
+  // clip if radius too big
+  x = (*x2-*x1)/2;
+  y = (*y2-*y1)/2;
+  if (x<*r) *r=x;
+  if (y<*r) *r=y;
+}
+
+static JsVar *_jswrap_graphics_fillRect_col(JsVar *parent, JsVar *opt, int y1, int x2, int y2, bool isFgCol) {
   int x1, r;
   _jswrap_graphics_getRect(opt, &x1, &y1, &x2, &y2, &r);
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   uint32_t col = isFgCol ? gfx.data.fgColor : gfx.data.bgColor;
 #ifndef SAVE_ON_FLASH
   if (r>0) {
-    // rounded rects
-    graphicsToDeviceCoordinates(&gfx, &x1, &y1);
-    graphicsToDeviceCoordinates(&gfx, &x2, &y2);
-    int x,y;
-    if (x1 > x2) { x = x1; x1 = x2; x2 = x; }
-    if (y1 > y2) { y = y1; y1 = y2; y2 = y; }
-    // clip if radius too big
-    x = (x2-x1)/2;
-    y = (y2-y1)/2;
-    if (x<r) r=x;
-    if (y<r) r=y;
+    _jswrap_graphics_roundedRect_helper(&gfx, &x1, &y1, &x2, &y2, &r);
     // rect in middle
     int cx1 = x1+r, cx2 = x2-r;
     int cy1 = y1+r, cy2 = y2-r;
@@ -1185,11 +1189,29 @@ JsVar *jswrap_graphics_clearRect(JsVar *parent, JsVar *opt, int y1, int x2, int 
   ]
 }
 Draw an unfilled rectangle 1px wide in the Foreground Color
+
+On devices with enough memory, you can specify `{x,y,x2,y2,r}` as the first
+argument, which allows you to draw a rounded rectangle.
 */
 JsVar *jswrap_graphics_drawRect(JsVar *parent, JsVar *opt, int y1, int x2, int y2) {
   int x1, r;
   _jswrap_graphics_getRect(opt, &x1, &y1, &x2, &y2, &r);
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+#ifndef SAVE_ON_FLASH
+  if (r>0) {
+    _jswrap_graphics_roundedRect_helper(&gfx, &x1, &y1, &x2, &y2, &r);
+    // lines in middle
+    int cx1 = x1+r, cx2 = x2-r;
+    int cy1 = y1+r, cy2 = y2-r;
+    uint32_t col = gfx.data.fgColor;
+    graphicsFillRectDevice(&gfx, cx1, y1, cx2, y1, col);
+    graphicsFillRectDevice(&gfx, cx1, y2, cx2, y2, col);
+    graphicsFillRectDevice(&gfx, x1, cy1, x1, cy2, col);
+    graphicsFillRectDevice(&gfx, x2, cy1, x2, cy2, col);
+    // draw rounded corners
+    graphicsDrawEllipseInternal(&gfx, cx1, cy1, cx2, cy2, r, r);
+  } else
+#endif
   graphicsDrawRect(&gfx, x1,y1,x2,y2);
   graphicsSetVar(&gfx); // gfx data changed because modified area
   return jsvLockAgain(parent);

@@ -31,20 +31,11 @@
     btnPos = [];
     btns.forEach((btn,idx)=>{
       var ix=idx%BX,iy=0|(idx/BX),x = ix*BW + 2, y = R.y2-(BY-iy)*BH + 1,
-          bw = BW-4, bh = BH-2, poly = [x+4,y,
-                  x+bw-4,y,
-                  x+bw,y+4,
-                  x+bw,y+bh-4,
-                  x+bw-4,y+bh,
-                  x+4,y+bh,
-                  x,y+bh-4,
-                  x,y+4,
-                  x+4,y];
-      btnPos.push({x1:x-2, x2:x+BW-2,
-                   y1:y, y2:y+BH});
+          bw = BW-4, bh = BH-2;
+      btnPos.push({x1:x-2, x2:x+BW-2, y1:y, y2:y+BH});
       var btnText = g.findFont(btn, {w:bw-4,h:BH-4,wrap:1});
-      g.setColor(idx===highlightedButton ? g.theme.bgH : g.theme.bg2).fillPoly(poly).
-        setColor(idx===highlightedButton ? g.theme.fgH : g.theme.fg2).drawPoly(poly).drawString(btnText.text,x+bw/2,y+2+BH/2);
+      g.setBgColor(idx===highlightedButton ? g.theme.bgH : g.theme.bg2).clearRect({x:x+1, y:y+1, w:bw-2, h:bh-2, r:11})
+       .setColor(idx===highlightedButton ? g.theme.fgH : g.theme.fg2).drawRect({x:x, y:y, w:bw, h:bh, r:12}).drawString(btnText.text,x+bw/2,y+2+BH/2);
       if (idx&1) y+=BH;
     });
     Bangle.setLCDPower(1); // ensure screen is on

@@ -529,6 +529,34 @@ void graphicsDrawRect(JsGraphics *gfx, int x1, int y1, int x2, int y2) {
   graphicsFillRectDevice(gfx,x1,y2,x1,y1,gfx->data.fgColor);
 }
 
+/// Draws 4 corners of an ellipse with rx/ry, left corners at posX1, right at posX2 (same for top/bottom). Assumes pre-transformed coordinates
+void graphicsDrawEllipseInternal(JsGraphics *gfx, int posX1, int posY1, int posX2, int posY2, int rx, int ry) {
+  int dx = 0;
+  int dy = ry;
+  int a2 = rx*rx;
+  int b2 = ry*ry;
+  int err = b2-(2*ry-1)*a2;
+  int e2;
+  bool changed = false;
+
+  do {
+    changed = false;
+    graphicsSetPixelDevice(gfx,posX2+dx,posY2+dy,gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx,posX1-dx,posY2+dy,gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx,posX2+dx,posY1-dy,gfx->data.fgColor);
+    graphicsSetPixelDevice(gfx,posX1-dx,posY1-dy,gfx->data.fgColor);
+    e2 = 2*err;
+    if (e2 <  (2*dx+1)*b2) { dx++; err += (2*dx+1)*b2; changed=true; }
+    if (e2 > -(2*dy-1)*a2) { dy--; err -= (2*dy-1)*a2; changed=true; }
+  } while (changed && dy >= 0);
+
+  while (dx++ < rx) { /* erroneous termination in flat ellipses (b=1) */
+       graphicsSetPixelDevice(gfx,posX2+dx,posY1,gfx->data.fgColor);
+       graphicsSetPixelDevice(gfx,posX1-dx,posY1,gfx->data.fgColor);
+  }
+}
+
+
 void graphicsDrawEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int posY2){
   graphicsToDeviceCoordinates(gfx, &posX1, &posY1);
   graphicsToDeviceCoordinates(gfx, &posX2, &posY2);
@@ -538,34 +566,11 @@ void graphicsDrawEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int p
   if (posY1>posY2) {
     int t=posY1;posY1=posY2;posY2=t;
   }
-
   int posX =  (posX1+posX2)/2;
   int posY =  (posY1+posY2)/2;
-  int a = (posX2-posX1)/2;
-  int b = (posY2-posY1)/2;
-  int dx = 0;
-  int dy = b;
-  int a2 = a*a;
-  int b2 = b*b;
-  int err = b2-(2*b-1)*a2;
-  int e2;
-  bool changed = false;
-
-  do {
-    changed = false;
-    graphicsSetPixelDevice(gfx,posX+dx,posY+dy,gfx->data.fgColor);
-    graphicsSetPixelDevice(gfx,posX-dx,posY+dy,gfx->data.fgColor);
-    graphicsSetPixelDevice(gfx,posX+dx,posY-dy,gfx->data.fgColor);
-    graphicsSetPixelDevice(gfx,posX-dx,posY-dy,gfx->data.fgColor);
-    e2 = 2*err;
-    if (e2 <  (2*dx+1)*b2) { dx++; err += (2*dx+1)*b2; changed=true; }
-    if (e2 > -(2*dy-1)*a2) { dy--; err -= (2*dy-1)*a2; changed=true; }
-  } while (changed && dy >= 0);
-
-  while (dx++ < a) { /* erroneous termination in flat ellipses (b=1) */
-       graphicsSetPixelDevice(gfx,posX+dx,posY,gfx->data.fgColor);
-       graphicsSetPixelDevice(gfx,posX-dx,posY,gfx->data.fgColor);
-  }
+  int rx = (posX2-posX1)/2;
+  int ry = (posY2-posY1)/2;
+  graphicsDrawEllipseInternal(gfx, posX, posY, posX, posY, rx, ry);
 }
 
 void graphicsFillEllipse(JsGraphics *gfx, int posX1, int posY1, int posX2, int posY2){
