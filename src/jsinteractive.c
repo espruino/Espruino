@@ -1841,6 +1841,15 @@ static void jsiPacketProcess() {
         jsiPacketFileEnd(); // end file send
       else
         jsiPacketFileSetTimeout(true); // reschedule timeout to close file
+#ifndef SAVE_ON_FLASH // On Bangle.js, if we get a packet upload, fire an event (E.showMessage(...{uploadProgress:bytes})) can hook onto this
+      JsVar *o = jsvNewObject();
+      jsvObjectSetChildAndUnLock(o, "l", jsvNewFromInteger(inputPacketLength));
+      jsvObjectSetChildAndUnLock(o, "o", jsvNewFromInteger(out_data.fileOffset));
+      jsvObjectSetChildAndUnLock(o, "s", jsvNewFromInteger(out_data.fileSize));
+      jsvObjectSetChild(o, "fn", fn);
+      jsiExecuteEventCallbackOn("E", JS_EVENT_PREFIX"packetUpload", 1, &o);
+      jsvUnLock(o);
+#endif
     } else
       ok = false; // no file set up
     jsvUnLock2(fn,r);

@@ -134,7 +134,51 @@ E.on('touch',t=>{
 ```
 */
 
+/*JSON{
+  "type" : "event",
+  "class" : "E",
+  "name" : "packet",
+  "params" : [
+    ["event","JsVar","The decoded JSON object representing the packet"]
+  ]
+}
+[2v25+] Called when a packet of type `EVENT` is received via [Espruino's packet upload mechanism](https://github.com/espruino/Espruino/blob/master/README_Protocol.md)
 
+The packet's contents are decoded as RJSON (fields without quotes are allowed like `{a:1}`) and passed into this event.
+
+```
+E.on('packet', e => {
+  console.log("Packet received:", e);
+});
+```
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "E",
+  "name" : "packetUpload",
+  "params" : [
+    ["event","JsVar","An object containing `{ l : int, o : int, s : int, fn : string }`"]
+  ]
+}
+[2v29+] Called when a file is uploaded via [Espruino's packet upload mechanism](https://github.com/espruino/Espruino/blob/master/README_Protocol.md)
+
+This is used by `E.showMessage` for Bangle.js to show upload progress.
+
+```
+{
+  l : int, // bytes uploaded in this one packet
+  o : int, // bytes uploaded so far in the file
+  s : int, // total size of the file being uploaded
+  fn : string // filename being uploaded
+}
+```
+
+```
+E.on('packetUpload', e => {
+  console.log("Uploaded ${e.o}/${e.s} bytes to "+e.fn);
+});
+```
+*/
 /*JSON{
   "type" : "staticproperty",
   "class" : "E",
