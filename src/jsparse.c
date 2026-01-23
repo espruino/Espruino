@@ -859,7 +859,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             if (hasError)
               execInfo.execute |= hasError; // propogate error
           }
-          else jsExceptionHere(JSET_ERROR, "Function code is %t, not a string", functionCode);
+          else if (!jsvIsUndefined(functionCode)) {
+             jsExceptionHere(JSET_ERROR, "Function code is %t, not a string", functionCode);
+          }
           /* Return to old 'this' var. No need to unlock as we never locked before */
           if (execInfo.thisVar) jsvUnRef(execInfo.thisVar);
           execInfo.thisVar = oldThisVar;
