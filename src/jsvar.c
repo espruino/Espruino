@@ -472,8 +472,10 @@ void jsvUpdateMemoryAddress(size_t oldAddr, size_t length, size_t newAddr) {
       if (p>=oldAddr && p<oldAddr+length) {
         if (newAddr) {
           v->varData.nativeStr.ptr = (char*)(p+newAddr-oldAddr);
-        } else {  // convert to empty string
+        } else {  // convert to NULL which we can check for
           v->flags = (v->flags & ~JSV_VARTYPEMASK) | JSV_NULL;
+          v->varData.nativeStr.ptr = NULL;
+          v->varData.nativeStr.len = 0;
         }
       }
     } else if (jsvIsFlatString(v)) {
@@ -4094,13 +4096,15 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   if (!var) {
     jsiConsolePrint("undefined");
     return;
-  }
-  if (level>0 && var==execInfo.root) {
-    jsiConsolePrint("ROOT");
-    return;
+  } else {
+    if (level>0 && var==execInfo.root) {
+      jsiConsolePrint("ROOT");
+      return;
+    }
+    jsvTraceLockInfo(var);
   }
 
-  jsvTraceLockInfo(var);
+
 
   int lowestLevel = _jsvTraceGetLowestLevel(baseVar, var);
   if (level>16 || (lowestLevel>=0 && lowestLevel < level)) {

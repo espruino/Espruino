@@ -254,7 +254,14 @@ static void jsvStringIteratorCatchUp(JsvStringIterator *it) {
 }
 
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
-  assert(jsvHasCharacterData(str));
+  it->varIndex = 0;
+  if (!jsvHasCharacterData(str)) { // if not a string, set up empty iterator
+    it->var = 0;
+    it->ptr = 0;
+    it->charsInVar = 0;
+    it->charIdx = 0;
+    return;
+  }
 #ifdef ESPR_UNICODE_SUPPORT
   it->isUTF8 = jsvIsUTF8String(str);
   if (it->isUTF8) { // if it's UTF8, skip the UTF8 tag and go straight to the data
@@ -263,7 +270,6 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   } else
 #endif
     it->var = jsvLockAgain(str);
-  it->varIndex = 0;
   it->charsInVar = jsvGetCharactersInVar(it->var);
 #ifdef SPIFLASH_BASE
   if (jsvIsFlashString(it->var)) {

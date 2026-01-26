@@ -35,6 +35,7 @@
             Graphics: added g.drawRect({x,y,w,h,r}) for rounded rects
             E.showPrompt (on Bangle.js 2) now uses properly rounded corners (fix #2680)
             Packet uploads now send an E.packetUpload event, which E.showMessage(,uploadProgress:bytes) can use to update itself
+            Extra checks to ensure we handle functions that have their code deleted while being executed (eg .boot0 - #2681)
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
