@@ -353,7 +353,7 @@ Called when heart rate sensor data is available - see `Bangle.setHRMPower(1)`.
   "class" : "Bangle",
   "name" : "HRM-env",
   "params" : [["env","JsVar","An integer containing current environment reading (light level)"]],
-  "ifdef" : "BANGLEJS2"
+  "ifdef" : "BANGLEJS_Q3"
 }
 Called when an environment sample heart rate sensor data is available (this is the amount of light received by the HRM sensor from the environment when its LED is off). On the newest VC31B based watches this is only 4 bit (0..15).
 
@@ -4923,7 +4923,7 @@ JsVar *_jswrap_banglejs_i2cRd(JshI2CInfo *i2c, int i2cAddr, JsVarInt reg, JsVarI
       ["reg","int",""],
       ["data","int",""]
     ],
-    "ifdef" : "BANGLEJS"
+    "ifdef" : "BANGLEJS_Q3"
 }
 Writes a register on the touch controller
 */
@@ -4943,7 +4943,7 @@ void jswrap_banglejs_touchWr(JsVarInt reg, JsVarInt data) {
       ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
-    "ifdef" : "BANGLEJS2",
+    "ifdef" : "BANGLEJS_Q3",
     "typescript" : [
       "touchRd(reg: number, cnt?: 0): number;",
       "touchRd(reg: number, cnt: number): number[];"
@@ -4976,7 +4976,7 @@ JsVar *jswrap_banglejs_touchRd(JsVarInt reg, JsVarInt cnt) {
       ["reg","int","Register number to write"],
       ["data","int","An integer value to write to the register"]
     ],
-    "ifdef" : "BANGLEJS2"
+    "ifdef" : "BANGLEJS_Q3"
 }
 Writes a register on the accelerometer
 */
@@ -5138,7 +5138,7 @@ void jswrap_banglejs_hrmWr(JsVarInt reg, JsVarInt data) {
       ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
-    "ifdef" : "BANGLEJS",
+    "ifdef" : "BANGLEJS_Q3",
     "typescript" : [
       "hrmRd(reg: number, cnt?: 0): number;",
       "hrmRd(reg: number, cnt: number): number[];"
@@ -5911,7 +5911,7 @@ You can also enter this menu by restarting your Bangle while holding down the bu
     "class" : "Bangle",
     "name" : "showTestScreen",
     "generate_js" : "libs/js/banglejs/Bangle_showTestScreen.min.js",
-    "ifdef" : "BANGLEJS2"
+    "ifdef" : "BANGLEJS_Q3"
 }
 (2v20 and later) Show a test screen that lights green when each sensor on the Bangle
 works and reports within range.

@@ -4,5 +4,7 @@
   {"class":"E","name":"enableWatchdog"},
   {"class":"E","name":"getClock"},
   {"class":"E","name":"setBootCode"},
+  {"class":"E","name":"dumpStr"},
+  {"class":"E","name":"dumpFragmentation"},
   {"class":"timer","name":"*"}
 ]
