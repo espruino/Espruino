@@ -5462,6 +5462,9 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
   if (freq>60000) freq=60000;
   if (time<=0) time=200;
   if (time>5000) time=5000;
+#ifdef EMULATED
+  return jswrap_promise_resolve(NULL);
+#else
   if (promiseBeep) {
     JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_banglejs_beep, JSWAT_JSVAR|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_INT32<<(JSWAT_BITS*2)));
     JsVar *v;
@@ -5486,6 +5489,7 @@ JsVar *jswrap_banglejs_beep(int time, int freq) {
   }
   jstExecuteFn(jswrap_banglejs_beep_callback, NULL, jshGetTimeFromMilliseconds(time), 0, NULL);
   return jsvLockAgain(promiseBeep);
+#endif
 }
 
 /*JSON{
@@ -5514,6 +5518,9 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
   if (amt<0) amt=0;
   if (time<=0) time=200;
   if (time>5000) time=5000;
+#ifdef EMULATED
+  return jswrap_promise_resolve(NULL);
+#else
   if (promiseBuzz) {
     JsVar *fn = jsvNewNativeFunction((void (*)(void))jswrap_banglejs_buzz, JSWAT_JSVAR|(JSWAT_INT32<<JSWAT_BITS)|(JSWAT_JSVARFLOAT<<(JSWAT_BITS*2)));
     JsVar *v;
@@ -5536,6 +5543,7 @@ JsVar *jswrap_banglejs_buzz(int time, JsVarFloat amt) {
     buzzAmt = 0;
 
   return jsvLockAgain(promiseBuzz);
+#endif
 }
 
 static void jswrap_banglejs_periph_off() {
