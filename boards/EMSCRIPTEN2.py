@@ -37,24 +37,36 @@ info = {
      'USE_DEBUGGER=0', # We can't use debugger in emulator as we're single-threaded and it uses IRQs on embedded to work
      'DEFINES += -DESPR_HWVERSION=2',
      'DEFINES += -DUSE_CALLFUNCTION_HACK', # required to handle calls properly
-     'DEFINES += -DBANGLEJS -DBANGLEJS_Q3 -DEMULATED -DEMSCRIPTEN',
+     'DEFINES += -DBANGLEJS -DBANGLEJS2 -DBANGLEJS_Q3 -DEMULATED -DEMSCRIPTEN',
      'DEFINES += -DSPIFLASH_BASE=0x8000000 -DSPIFLASH_LENGTH=8388608',
 #     'DEFINES+=-DCUSTOM_GETBATTERY=jswrap_banglejs_getBattery',
+     'DEFINES+=-DESPR_UNICODE_SUPPORT=1',
      'DEFINES+=-DDUMP_IGNORE_VARIABLES=\'"g\\0"\'',
      'DEFINES+=-DESPR_GRAPHICS_INTERNAL=1',
-     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS',
+     'DEFINES+=-DESPR_BATTERY_FULL_VOLTAGE=0.3144',
+     'DEFINES+=-DUSE_FONT_6X8 -DGRAPHICS_PALETTED_IMAGES -DGRAPHICS_ANTIALIAS -DESPR_PBF_FONTS',
+     'DEFINES+=-DNO_DUMP_HARDWARE_INITIALISATION', # don't dump hardware init - not used and saves 1k of flash
      'INCLUDE += -I$(ROOT)/libs/banglejs -I$(ROOT)/libs/misc',
      'WRAPPERSOURCES += libs/banglejs/jswrap_bangle.c',
+     'WRAPPERSOURCES += libs/misc/jswrap_emulated.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_14.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_17.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_22.c',
+     'WRAPPERSOURCES += libs/graphics/jswrap_font_28.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_6x15.c',
      'WRAPPERSOURCES += libs/graphics/jswrap_font_12x20.c',
-     'WRAPPERSOURCES += libs/misc/jswrap_emulated.c',
      'SOURCES += libs/misc/nmea.c',
      'SOURCES += libs/misc/stepcount.c',
      'SOURCES += libs/misc/heartrate.c',
+# ------------------------
+     'SOURCES += libs/misc/unistroke.c',
+     'WRAPPERSOURCES += libs/misc/jswrap_unistroke.c',
+     'DEFINES += -DESPR_BANGLE_UNISTROKE=1',
+     'SOURCES += libs/banglejs/banglejs2_storage_default.c',
+     'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1', # use banglejs2_storage_default
+     'DEFINES += -DESPR_USE_STORAGE_CACHE=32', # Add a 32 entry cache to speed up finding files
      'JSMODULESOURCES += libs/js/banglejs/locale.min.js',
      'JSMODULESOURCES += libs/js/banglejs/Layout.min.js',
-     'SOURCES += libs/banglejs/banglejs2_storage_default.c',
-     'DEFINES += -DESPR_STORAGE_INITIAL_CONTENTS=1',
    ]
  }
 };

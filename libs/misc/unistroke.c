@@ -88,10 +88,9 @@
 // DollarRecognizer constants
 //
 
-const float Diagonal = sqrtf(SQUARESIZE * SQUARESIZE + SQUARESIZE * SQUARESIZE);
 const float AngleRange = 45.0f * PI / 180.0f;
 const float AnglePrecision = 2.0f * PI / 180.0f;
-const float Phi = 0.5f * (-1.0f + sqrtf(5.0f)); // Golden Ratio
+const float Phi = 0.61803398875f; // 0.5f * (-1.0f + sqrtf(5.0f)); // Golden Ratio (emscripten doesn't think this is constant)
 
 //
 // Point class
