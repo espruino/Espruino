@@ -861,6 +861,7 @@ if "USE_CALLFUNCTION_HACK" in board.defines:
   writeCallFunctionHackEntry(argSpecs, {'type': 'method', 'class': 'X', 'name': 'X', 'generate': 'X', 'params': [['1', 'JsVar', ''],['2', 'JsVar', '']]}) # jswrap_promise
   writeCallFunctionHackEntry(argSpecs, {'type': 'method', 'class': 'X', 'name': 'X', 'generate': 'X', 'params': [['1', 'JsVar', ''],['2', 'JsVar', ''],['3', 'JsVar', '']]}) # jswrap_promise
   writeCallFunctionHackEntry(argSpecs, {'type': 'method', 'class': 'X', 'name': 'X', 'generate': 'X', 'params': [['1', 'bool', '']]}) # jswrap_pixljs/banglejs
+  writeCallFunctionHackEntry(argSpecs, {'type': 'method', 'class': 'X', 'name': 'X', 'generate': 'X', 'params': [['1', 'int', '']]}) # jswrap_banglejs flip fn
   writeCallFunctionHackEntry(argSpecs, {'type': 'function', 'name': 'X', 'generate': 'X', 'params': [['1', 'int', ''],['1', 'int', '']], 'return': ['JsVar','']}) # jswrap_banglejs
   writeCallFunctionHackEntry(argSpecs, {'type': 'function', 'name': 'X', 'generate': 'X', 'params': [['1', 'float', ''],['1', 'float', '']], 'return': ['float','']}) # jswrap_banglejs + jswrap_arraybuffer
   writeCallFunctionHackEntry(argSpecs, {'type': 'function', 'name': 'X', 'generate': 'X', 'params': [['1', 'int', ''],['1', 'int', '']], 'return': ['int','']}) # jswrap_arraybuffer

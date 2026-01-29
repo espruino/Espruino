@@ -37,6 +37,7 @@
             Packet uploads now send an E.packetUpload event, which E.showMessage(,uploadProgress:bytes) can use to update itself
             Extra checks to ensure we handle functions that have their code deleted while being executed (eg .boot0 - #2681)
             Bangle.js1: Remove E.dumpStr/dumpFragmentation (and Bangle.touchWr/hrmRd which have no effect) to keep builds running after firmware size increase
+            Bangle.js Emulator: Fix `g.flip()` function after recent additions (fix #2684)
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)
