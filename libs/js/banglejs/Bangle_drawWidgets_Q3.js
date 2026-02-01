@@ -2,9 +2,9 @@
   if (!global.WIDGETS) return;
   var w=g.getWidth(), h=g.getHeight(), pos={
 	  tl:{x:0, y:0, r:0, c:0}, // if r==1, we're right->left
-	  tr:{x:w-1, y:0, r:1, c:0},
+	  tr:{x:w, y:0, r:1, c:0},
 	  bl:{x:0, y:h-24, r:0, c:0},
-	  br:{x:w-1, y:h-24, r:1, c:0}
+	  br:{x:w, y:h-24, r:1, c:0}
   }, p;
   for (var wd of WIDGETS) {
     p = pos[wd.area];
