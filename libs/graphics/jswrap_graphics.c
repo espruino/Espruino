@@ -2712,7 +2712,10 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
     return 0;
   }
 
-
+#ifdef BANGLEJS2_TEST // Bangle.js test build has no fonts
+  const int FONTS = 0;
+  JswFindFontFont FONT[0] = {
+#else
 #ifdef BANGLEJS2
   const int FONTS = 6;
   JswFindFontFont FONT[6] = {
@@ -2729,6 +2732,7 @@ JsVar *jswrap_graphics_findFont(JsVar *parent, JsVar *text, JsVar *options) {
     {"6x8:2", 16, 2, jswrap_graphics_setFont6x8},
     {"6x8", 8, 1, jswrap_graphics_setFont6x8},
     {"4x6", 6, 1, jswrap_graphics_setFont4x6}
+#endif
 #endif
   };
 
