@@ -57,6 +57,7 @@
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "esp_task_wdt.h"
+#include "esp_log.h"
 #include "rom/ets_sys.h"
 #include "rom/uart.h"
 #include "driver/gpio.h"
@@ -170,6 +171,9 @@ void jshPinDefaultPullup() {
  * Initialize the JavaScript hardware interface.
  */
 void jshInit() {
+#ifdef CONFIG_ESP_TASK_WDT
+  ESP_LOGW("Espruino", "ESP-IDF task watchdog enabled in sdkconfig; E.enableWatchdog may behave inconsistently");
+#endif
   if(ESP32_Get_NVS_Status(ESP_NETWORK_WIFI)) esp32_wifi_init();
 #ifdef BLUETOOTH
   if(ESP32_Get_NVS_Status(ESP_NETWORK_BLE)) gattc_init();
