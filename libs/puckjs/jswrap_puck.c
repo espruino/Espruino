@@ -25,6 +25,7 @@
 #include "jsflags.h"
 #include "jstimer.h"
 #include "jswrap_bluetooth.h"
+#include "jswrap_arraybuffer.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf5x_utils.h"
@@ -1126,26 +1127,42 @@ void jswrap_puck_accelWr(JsVarInt reg, JsVarInt data) {
     "name" : "accelRd",
     "generate" : "jswrap_puck_accelRd",
     "params" : [
-      ["reg","int",""]
+      ["reg","int",""],
+      ["cnt","int","If specified, returns a `Uint8Array` of the given length. If `undefined` (or 0) it returns a number"]
     ],
-    "return" : ["int",""],
+    "return" : ["JsVar",""],
     "ifdef" : "PUCKJS"
 }
 Reads a register from the LSM6DS3TR-C Accelerometer. Can be used for configuring
 advanced functions.
 
+* `Puck.accelRd(reg)` returns the value of the given register as a number.
+* `Puck.accelRd(reg, 64)` reads 64 bytes starting at the given register and returns
+  them as a `Uint8Array`.
+
+If the amount of data to read is too large to fit on the stack, `undefined` is returned.
+
 Check out [the Puck.js page on the
 accelerometer](http://www.espruino.com/Puck.js#on-board-peripherals) for more
 information and links to modules that use this function.
 */
-int jswrap_puck_accelRd(JsVarInt reg) {
+JsVar *jswrap_puck_accelRd(JsVarInt reg, JsVarInt cnt) {
   if (!PUCKJS_HAS_ACCEL) {
     jswrap_puck_notAvailableException("Accelerometer");
-    return -1;
+    return 0;
   }
-  unsigned char buf[1];
-  jsi2cReadReg(&i2cAccel, ACCEL_ADDR, reg, 1, buf);
-  return buf[0];
+  int max = jsuGetFreeStack() - 500;
+  if (cnt>max) return 0; // too big
+  if (cnt<0) cnt=0;
+  unsigned char *buf = (unsigned char *)alloca((size_t)cnt);
+  if (!buf) return 0;
+  jsi2cReadReg(&i2cAccel, ACCEL_ADDR, reg, (cnt==0)?1:cnt, buf);
+  if (cnt) {
+    JsVar *ab = jsvNewArrayBufferWithData(cnt, buf);
+    JsVar *d = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, ab,0,0);
+    jsvUnLock(ab);
+    return d;
+  } else return jsvNewFromInteger(buf[0]);
 }
 
 /*JSON{

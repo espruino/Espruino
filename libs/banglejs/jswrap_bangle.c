@@ -4993,7 +4993,7 @@ void jswrap_banglejs_accelWr(JsVarInt reg, JsVarInt data) {
     "generate" : "jswrap_banglejs_accelRd",
     "params" : [
       ["reg","int",""],
-      ["cnt","int","If specified, returns an array of the given length (max 128). If not (or 0) it returns a number"]
+      ["cnt","int","If specified, returns a `Uint8Array` of the given length (max 128). If `undefined` (or 0) it returns a number"]
     ],
     "return" : ["JsVar",""],
     "ifdef" : "BANGLEJS",
