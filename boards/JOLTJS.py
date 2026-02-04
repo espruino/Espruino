@@ -19,10 +19,7 @@ info = {
  'name' : "Jolt.js",
  'link' :  [ "https://www.espruino.com/Jolt.js" ],
  'espruino_page_link' : 'Jolt.js',
-# 'default_console' : "EV_SERIAL1",
-# 'default_console_tx' : "D6",
-# 'default_console_rx' : "D8",
-# 'default_console_baudrate' : "9600",
+ 'default_console' : "EV_BLUETOOTH",
  'variables' : 12000, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'io_buffer_size' : 2048, # How big is the input buffer (in bytes). Default on nRF52 is 1024
  'bootloader' : 1,
