@@ -963,7 +963,7 @@ void jsiSemiInit(bool autoLoad, JsfFileName *loadedFilename) {
 
   }
 
-#ifdef BANGLEJS // On Bangle.js if Storage is corrupt, show a recovery menu
+#if defined(BANGLEJS) && !defined(BANGLEJS2_TEST) // On Bangle.js if Storage is corrupt, show a recovery menu
   if (recoveryMode) // start recovery menu at end of init
     jsvUnLock(jspEvaluate("setTimeout(Bangle.showRecoveryMenu,100)",true));
 #endif

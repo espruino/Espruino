@@ -57,7 +57,6 @@ setTimeout(function() {
   });
   setWatch(e=>draw('Btn',e.state?"Press":"Released",true),BTN,{edge:0,repeat:1});
   NRF.findDevices(devs=>draw('BLE',devs.length+" devices", devs.length>0));
-  var bootcode=require("Storage").read(".bootcde");
   setTimeout(function() {
     var mv = (0.0001+analogRead(D3)+analogRead(D3)+analogRead(D3))/3, cup = 0, chg = 0;
     setInterval(function() {
