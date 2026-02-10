@@ -177,6 +177,7 @@ static char m_tx_buffer[NRF_DRV_USBD_EPSIZE];
 static bool m_usb_connected = false;
 static bool m_usb_open = false;
 static bool m_usb_transmitting = false;
+static bool m_usb_wait_rx = false; // are we waiting until we have space before reading from USB?
 
 void on_usb_disconnected() {
   m_usb_open = false;
@@ -187,15 +188,30 @@ void on_usb_disconnected() {
   jshTransmitClearDevice(EV_USBSERIAL); // clear the transmit queue
 }
 
+static void cdc_acm_rx() {
+  ret_code_t ret;
+  m_usb_wait_rx = false;
+  do {
+    // Get amount of data transfered
+    size_t size = app_usbd_cdc_acm_rx_size(&m_app_cdc_acm);
+    if (size > 0) {
+      jshPushIOCharEvents(EV_USBSERIAL,  m_rx_buffer, size);
+      jshHadEvent();
+    }
+
+    // Setup next transfer
+    ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
+                                  m_rx_buffer,
+                                  sizeof(m_rx_buffer));
+  } while (ret == NRF_SUCCESS);
+}
+
 /**
  * @brief User event handler @ref app_usbd_cdc_acm_user_ev_handler_t (headphones)
  * */
 static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
                                     app_usbd_cdc_acm_user_event_t event) {
   //jsiConsolePrintf("U %d\n",event);
-
-  app_usbd_cdc_acm_t const * p_cdc_acm = app_usbd_cdc_acm_class_get(p_inst);
-  jshHadEvent();
 
   switch (event)
   {
@@ -216,32 +232,27 @@ static void cdc_acm_user_ev_handler(app_usbd_class_inst_t const * p_inst,
           if (!jsiIsConsoleDeviceForced())
             jsiSetConsoleDevice(EV_USBSERIAL, false);
         }
+        jshHadEvent();
         break;
     }
     case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE: {
         //jsiConsolePrintf("APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE\n");
         on_usb_disconnected();
+        jshHadEvent();
         break;
     }
     case APP_USBD_CDC_ACM_USER_EVT_TX_DONE: {
         // TX finished - queue extra transmit here
         m_usb_transmitting = false;
         jshUSARTKick(EV_USBSERIAL);
+        jshHadEvent();
         break;
     }
     case APP_USBD_CDC_ACM_USER_EVT_RX_DONE: {
-        ret_code_t ret;
-        do {
-          /*Get amount of data transfered*/
-          size_t size = app_usbd_cdc_acm_rx_size(p_cdc_acm);
-          jshPushIOCharEvents(EV_USBSERIAL,  m_rx_buffer, size);
-          jshHadEvent();
-
-          /*Setup next transfer*/
-          ret = app_usbd_cdc_acm_read(&m_app_cdc_acm,
-                                                m_rx_buffer,
-                                                sizeof(m_rx_buffer));
-        } while (ret == NRF_SUCCESS);
+        if (!m_usb_wait_rx && jshGetEventsUsed() < IOBUFFER_XOFF)
+          cdc_acm_rx();
+        else
+          m_usb_wait_rx = true;
         break;
     }
     default:
@@ -1041,6 +1052,9 @@ void jshKill() {
 void jshIdle() {
 #if defined(NRF_USB)
   while (app_usbd_event_queue_process()); /* Nothing to do */
+  // if we were delaying reception until our buffer was empty, try now
+  if (m_usb_wait_rx && (jshGetEventsUsed() < IOBUFFER_XON))
+    cdc_acm_rx();
 #endif
 }
 
@@ -2850,7 +2864,7 @@ JsVarFloat jshReadTemperature() {
 nrf_saadc_value_t jshReadVDD(nrf_saadc_input_t pin, nrf_saadc_acqtime_t time, nrf_saadc_gain_t gain) {
   nrf_saadc_channel_config_t config;
   config.acq_time = time;
-  config.gain = gain; 
+  config.gain = gain;
   config.mode = NRF_SAADC_MODE_SINGLE_ENDED;
   config.pin_p = pin;
   config.pin_n = pin;
@@ -2878,7 +2892,7 @@ nrf_saadc_value_t jshReadVDD(nrf_saadc_input_t pin, nrf_saadc_acqtime_t time, nr
 #if defined(NRF52833) || defined(NRF52840)
 JsVarFloat jshReadVDDH() {
     return jshReadVDD(0x0D, NRF_SAADC_ACQTIME_20US, NRF_SAADC_GAIN1_2) // When using VDDHDIV5 as input, the acquisition time must be 10 µs or longer.
-    *(2.0 * 5.0 * 0.6 / 16384.0); // gain 1/2, VDDHDIV5, 0.6v reference, 2^14 = 1.0 
+    *(2.0 * 5.0 * 0.6 / 16384.0); // gain 1/2, VDDHDIV5, 0.6v reference, 2^14 = 1.0
 }
 #endif
 
@@ -2886,7 +2900,7 @@ JsVarFloat jshReadVDDH() {
 JsVarFloat jshReadVRef() {
 #ifdef NRF52_SERIES
   return jshReadVDD(NRF_SAADC_INPUT_VDD, NRF_SAADC_ACQTIME_3US, NRF_SAADC_GAIN1_6)
-    *(6.0 * 0.6 / 16384.0); // gain 1/6, 0.6v reference, 2^14 = 1.0) 
+    *(6.0 * 0.6 / 16384.0); // gain 1/6, 0.6v reference, 2^14 = 1.0)
 #else
   const nrf_adc_config_t nrf_adc_config =  {
        NRF_ADC_CONFIG_RES_10BIT,
