@@ -474,11 +474,13 @@ JsVar *jsjFactor() {
 
 // Just parses/executes arguments and throws them away
 void jsjFactorFunctionIgnoreRemainingArguments() {
-  DEBUG_JIT_EMIT("; FUNCTION CALL ignore arguments\n");
-  while (JSJ_PARSING && lex->tk!=')' && lex->tk!=LEX_EOF) {
-    jsjAssignmentExpression();
-    if (jit.phase == JSJP_EMIT) jsjPopAndUnLock();
-    if (lex->tk!=')') JSP_MATCH(',');
+  if (lex->tk!=')') {
+    DEBUG_JIT_EMIT("; FUNCTION CALL ignore arguments\n");
+    while (JSJ_PARSING && lex->tk!=')' && lex->tk!=LEX_EOF) {
+      jsjAssignmentExpression();
+      if (jit.phase == JSJP_EMIT) jsjPopAndUnLock();
+      if (lex->tk!=')') JSP_MATCH(',');
+    }
   }
   JSP_MATCH(')');
 }
@@ -494,7 +496,7 @@ bool jsjFactorMember(JsVar *builtin) {
       JSP_ASSERT_MATCH('.');
       if (jslIsIDOrReservedWord()) {
         if (jit.phase == JSJP_EMIT) {
-          if (builtin) {
+          if (builtin) { // FIXME: what about simple functions like 'getTime'? perhaps we need this check in a function we call in other places?
             JsVar *fn = jswFindBuiltInFunction(builtin, jslGetTokenValueAsString());
             DEBUG_JIT("; Native member function .%s\n", jslGetTokenValueAsString());
             if (jsvIsNativeFunction(fn)) {
@@ -502,14 +504,20 @@ bool jsjFactorMember(JsVar *builtin) {
               // TODO: in these cases with simple arguments, we could skip _jsjxFunctionCallAndUnLock and could parse
               // arguments onto the stack ourselves, which would be way faster
               doLookup = false;
-              DEBUG_JIT("; Native fn args 0x%04x %d\n", fn->varData.native.argTypes, lex->tk=='(');
               bool isFunctionCall = lex->tk=='(';
+              //if (isFunctionCall) DEBUG_JIT("; Native fn args 0x%04x\n", fn->varData.native.argTypes);
               //if (isFunctionCall && fn->varData.native.argTypes==(JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1))) { // void fn(JsVar)
-              if (isFunctionCall && ((fn->varData.native.argTypes==(JSWAT_VOID | JSWAT_THIS_ARG)) ||
+              if (isFunctionCall && ((fn->varData.native.argTypes==(JSWAT_VOID)) ||
+                                     (fn->varData.native.argTypes==(JSWAT_INT32)) ||
+                                     (fn->varData.native.argTypes==(JSWAT_BOOL)) ||
+                                     (fn->varData.native.argTypes==(JSWAT_JSVAR)) ||
+                                     (fn->varData.native.argTypes==(JSWAT_JSVARFLOAT)) ||
+                                     (fn->varData.native.argTypes==(JSWAT_VOID | JSWAT_THIS_ARG)) ||
                                      (fn->varData.native.argTypes==(JSWAT_INT32 | JSWAT_THIS_ARG)) ||
                                      (fn->varData.native.argTypes==(JSWAT_BOOL | JSWAT_THIS_ARG)) ||
-                                     (fn->varData.native.argTypes==(JSWAT_JSVAR | JSWAT_THIS_ARG)))) {
-                DEBUG_JIT_EMIT("; FUNCTION CALL NATIVE arguments\n");
+                                     (fn->varData.native.argTypes==(JSWAT_JSVAR | JSWAT_THIS_ARG)) ||
+                                     (fn->varData.native.argTypes==(JSWAT_JSVARFLOAT | JSWAT_THIS_ARG)))) {
+                DEBUG_JIT_EMIT("; FUNCTION CALL NATIVE\n");
                 JSP_ASSERT_MATCH('(');
                 jsjFactorFunctionIgnoreRemainingArguments();
                 // void this.fn()
@@ -521,8 +529,11 @@ bool jsjFactorMember(JsVar *builtin) {
                   jsjcPush(0, JSJVT_UNDEFINED);
                 } else if (returnType == JSWAT_INT32) {
                   jsjcPush(0, JSJVT_INT);
+                } else if (returnType == JSWAT_JSVARFLOAT) {
+                   jsjcCall(jsvNewFromFloat);
+                  jsjcPush(0, JSJVT_JSVAR_NO_NAME);
                 } else if (returnType == JSWAT_BOOL) {
-                  jsjcPush(0, JSJVT_BOOL);
+                  jsjcPush(0, JSJVT_INT);
                 } else {
                   assert(returnType==JSWAT_JSVAR);
                   jsjcPush(0, JSJVT_JSVAR_NO_NAME);
