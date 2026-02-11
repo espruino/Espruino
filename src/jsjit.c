@@ -148,11 +148,13 @@ NO_INLINE JsVar *_jsxGetThis() {
 }
 // ----------------------------------------------------------------------------
 
+/// Pop a var off the stack - we assume vars on the stack are locked
 void jsjPopAsVar(int reg) {
   JsjValueType varType = jsjcPop(reg);
   jsjcConvertToJsVar(reg, varType);
 }
 
+/// Pops a var without a name. If the var on the stack was a name we skip it and unlock it
 void jsjPopNoName(int reg) {
   if (jsjcGetTopType()==JSJVT_JSVAR_NO_NAME) {
     // if we know we don't have a name here, we can skip jsvSkipNameAndUnLock
@@ -246,13 +248,14 @@ JsVar *jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
     // Now add the code which will create the variable right at the start of the file
     if (creationOp==LEX_ID) { // Just a normal ID
       // See if it's a builtin function, if builtinFunction!=0
-      if (jsvIsNativeFunction(builtin)) { // it's a built-in function - just create it in place rather than searching
+      /*if (jsvIsNativeFunction(builtin)) { // it's a built-in function - just create it in place rather than searching
+        // we can't do this because of #2690 - eg `NRF.emit` needs to use the 'real' NRF as 'this'
         jsjcDebugPrintf("; Native Function %j\n", name);
         jsjcLiteral32(0, (uint32_t)builtin->varData.native.ptr);
         jsjcLiteral32(1, (uint16_t)builtin->varData.native.argTypes);
         jsjcCall(jsvNewNativeFunction); // JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes)
         varType = JSJVT_JSVAR_NO_NAME;
-      } else if (jsvIsPin(builtin)) { // it's a built-in pin - just create it in place rather than searching
+      } else */if (jsvIsPin(builtin)) { // it's a built-in pin - just create it in place rather than searching
         jsjcDebugPrintf("; Native Pin %j\n", name);
         jsjcLiteral32(0, jsvGetInteger(builtin));
         jsjcCall(jsvNewFromPin); // JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes)
@@ -321,11 +324,11 @@ void jsjFactorObject() {
     if (jit.phase == JSJP_EMIT) {
       varName = jsvAsArrayIndexAndUnLock(varName);
       jsjcDebugPrintf("; New Object field %j\n", varName);
-      jsjPopNoName(5); // r2 = array item
+      jsjPopNoName(5); // r5 = array item
       jsjJsVar(1, varName); // r1 = index
-      jsjcMov(2, 5); // r2 = array item
+      jsjcMov(2, 5); // r2 = array item (copy from r5)
       jsjcMov(0, 4); // r0 = array
-      jsjcCall(_jsxObjectNewElement);
+      jsjcCall(_jsxObjectNewElement); // unlocks r1 and r2
     }
     jsvUnLock(varName);
     // no need to clean here, as it will definitely be used
@@ -356,7 +359,7 @@ void jsjFactorArray() {
         jsjPopNoName(2); // r2 = array item
         jsjcLiteral32(1, idx); // r1 = index
         jsjcMov(0, 4); // r0 = array
-        jsjcCall(_jsxArrayNewElement);
+        jsjcCall(_jsxArrayNewElement); // unlocks r2
       }
     }
     if (lex->tk != ']') JSP_MATCH(',');
@@ -482,13 +485,15 @@ bool jsjFactorMember(JsVar *builtin) {
             JsVar *fn = jswFindBuiltInFunction(builtin, jslGetTokenValueAsString());
             DEBUG_JIT("; Native member function .%s\n", jslGetTokenValueAsString());
             if (jsvIsNativeFunction(fn)) {
+              // TODO: in these cases with simple arguments, we could skip _jsjxFunctionCallAndUnLock and could parse
+              // arguments onto the stack ourselves, which would be way faster
+              jsjPopNoName(4); // parent
               jsjcLiteral32(0, (uint32_t)fn->varData.native.ptr);
               jsjcLiteral32(1, (uint16_t)fn->varData.native.argTypes);
               jsjcCall(jsvNewNativeFunction); // JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes)
               doLookup = false;
-              jsjPopAsVar(1); // parent
               jsjcPush(0, JSJVT_JSVAR); // the function itself
-              jsjcPush(1, JSJVT_JSVAR); // parent
+              jsjcPush(4, JSJVT_JSVAR); // parent
               parentOnStack = true;
             }
             jsvUnLock(fn);
@@ -728,8 +733,8 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
     if (op==LEX_ANDAND || op==LEX_OROR) {
 
       if (jit.phase == JSJP_EMIT) {
-        DEBUG_JIT("; shortcitcuit (&&,||)  - first arg just parsed\n");
-        DEBUG_JIT("; shortcitcuit compare\n");
+        DEBUG_JIT("; shortcircuit (&&,||)  - first arg just parsed\n");
+        DEBUG_JIT("; shortcircuit compare\n");
         jsjPopNoName(0); // value -> r0 (but ensure it's not a name)
         jsjcPush(0, JSJVT_JSVAR_NO_NAME); // put value back
         jsjcCall(jsvGetBool); // now we have it as a boolean in r0
@@ -838,7 +843,7 @@ void jsjConditionalExpression() {
       DEBUG_JIT("; ternary false block\n");
       jsjcEmitBlock(falseBlock);
       DEBUG_JIT("; ternary end\n");
-      jsjcPush(0, JSJVT_JSVAR); // push the result (LHS) back on
+      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // push the result (LHS) back on
     }
     jsvUnLock2(trueBlock,falseBlock);
   }

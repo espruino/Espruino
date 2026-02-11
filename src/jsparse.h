@@ -195,7 +195,7 @@ JsVar *jspParse();
 JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr);
 
 
-// Find a variable (or built-in function) based on the current scopes
+// Find a variable (or built-in function) based on the current scopes. Returns a NAME
 JsVar *jspGetNamedVariable(const char *tokenName);
 
 /** Get the named function/variable on the object - whether it's built in, or predefined.

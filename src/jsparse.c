@@ -897,7 +897,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
   } else return 0;
 }
 
-// Find a variable (or built-in function) based on the current scopes
+// Find a variable (or built-in function) based on the current scopes. Returns a NAME
 JsVar *jspGetNamedVariable(const char *tokenName) {
   JsVar *a = JSP_SHOULD_EXECUTE ? jspeiFindInScopes(tokenName) : 0;
   if (JSP_SHOULD_EXECUTE && !a) {
