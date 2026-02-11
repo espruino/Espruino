@@ -524,7 +524,7 @@ bool jsjFactorMember(JsVar *builtin) {
                 } else if (returnType == JSWAT_BOOL) {
                   jsjcPush(0, JSJVT_BOOL);
                 } else {
-                  assert(returnType==JSJVT_JSVAR);
+                  assert(returnType==JSWAT_JSVAR);
                   jsjcPush(0, JSJVT_JSVAR_NO_NAME);
                 }
               } else {
@@ -791,6 +791,10 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
       }
       jsjUnaryExpression();
       __jsjBinaryExpression(precedence);
+      if (jit.phase == JSJP_EMIT) { // ensure we convert to a JsVar
+        jsjPopNoName(0); // value -> r0
+        jsjcPush(0, JSJVT_JSVAR_NO_NAME); // put value back
+      }
       JsVar *secondBlock = jsjcStopBlock(oldBlock);
       if (jit.phase == JSJP_EMIT) {
         DEBUG_JIT("; shortcircuit jump\n");
