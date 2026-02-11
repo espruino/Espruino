@@ -156,7 +156,7 @@ void jsjPopAsVar(int reg) {
 
 /// Pops a var without a name. If the var on the stack was a name we skip it and unlock it
 void jsjPopNoName(int reg) {
-  if (jsjcGetTopType()==JSJVT_JSVAR_NO_NAME) {
+  if (jsjcGetTopType()!=JSJVT_JSVAR) {
     // if we know we don't have a name here, we can skip jsvSkipNameAndUnLock
     jsjPopAsVar(reg);
     return;
@@ -167,16 +167,19 @@ void jsjPopNoName(int reg) {
 }
 
 void jsjPopAsBool(int reg) {
-  // FIXME handle int/bool differently?
-  jsjPopNoName(0);
-  jsjcCall(jsvGetBoolAndUnLock); // optimisation: we should know if we have a var or a name here, so can skip jsvSkipNameAndUnLock sometimes
-  if (reg != 0) jsjcMov(reg, 0);
+  JsjValueType varType = jsjcGetTopType();
+  if (varType == JSJVT_BOOL || varType == JSJVT_INT || varType == JSJVT_UNDEFINED) {
+    jsjcPop(reg); // easy - just pass through
+  } else { // JsVar - pop off and convert
+    jsjPopNoName(0);
+    jsjcCall(jsvGetBoolAndUnLock); // optimisation: we should know if we have a var or a name here, so can skip jsvSkipNameAndUnLock sometimes
+    if (reg != 0) jsjcMov(reg, 0);
+  }
 }
 
 void jsjPopAndUnLock() {
-  jsjPopAsVar(0); // a -> r0
-  // optimisation: if item on stack is NOT a variable, no need to covert+unlock!
-  jsjcCall(jsvUnLock); // we're throwing this away now - unlock
+  JsjValueType t = jsjcPop(0); // a -> r0
+  if (JSJVT_NEEDS_UNLOCK(t)) jsjcCall(jsvUnLock); // we're throwing this away now - unlock if needed
 }
 
 // Write the code to create variable 'var' in register 'reg'. Clobbers r0-r3
@@ -347,7 +350,7 @@ void jsjFactorArray() {
   if (jit.phase == JSJP_EMIT) {
     // create the array
     jsjcCall(jsvNewEmptyArray);
-    jsjcMov(4, 0); // Store it in r4
+    jsjcMov(5, 0); // Store it in r5
   }
 
   /* JSON-style array */
@@ -358,7 +361,7 @@ void jsjFactorArray() {
       if (jit.phase == JSJP_EMIT) {
         jsjPopNoName(2); // r2 = array item
         jsjcLiteral32(1, idx); // r1 = index
-        jsjcMov(0, 4); // r0 = array
+        jsjcMov(0, 5); // r0 = array
         jsjcCall(_jsxArrayNewElement); // unlocks r2
       }
     }
@@ -367,12 +370,12 @@ void jsjFactorArray() {
   }
   JSP_MATCH(']');
   if (jit.phase == JSJP_EMIT) {
-    jsjcMov(0, 4); // r0 = array
+    jsjcMov(0, 5); // r0 = array
     jsjcLiteral32(1, idx); // r1 = array size
     jsjcLiteral32(2, 0); // r1 = truncate = false
     jsjcCall(jsvSetArrayLength);
     // push the finished array on
-    jsjcPush(4, JSJVT_JSVAR_NO_NAME);
+    jsjcPush(5, JSJVT_JSVAR_NO_NAME);
   }
 }
 
@@ -390,11 +393,11 @@ JsVar *jsjFactor() {
       if (v>>32) {
         jsjcLiteral64(0, (uint64_t)v);
         jsjcCall(jsvNewFromLongInteger);
+        jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME, FIXME - push an int and convert later
       } else {
         jsjcLiteral32(0, (uint32_t)v);
-        jsjcCall(jsvNewFromInteger);
+        jsjcPush(0, JSJVT_INT);
       }
-      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME, FIXME - push an int and convert later
     }
   } else if (lex->tk==LEX_FLOAT) {
     double v = stringToFloat(jslGetTokenValueAsString());
@@ -413,8 +416,7 @@ JsVar *jsjFactor() {
   } else if (lex->tk==LEX_R_TRUE || lex->tk==LEX_R_FALSE) {
     if (jit.phase == JSJP_EMIT) {
       jsjcLiteral32(0, lex->tk==LEX_R_TRUE);
-      jsjcCall(jsvNewFromBool);
-      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
+      jsjcPush(0, JSJVT_BOOL);
     }
     JSP_ASSERT_MATCH(lex->tk);
   } else if (lex->tk==LEX_R_NULL) {
@@ -428,7 +430,7 @@ JsVar *jsjFactor() {
     JSP_ASSERT_MATCH(LEX_R_UNDEFINED);
     if (jit.phase == JSJP_EMIT) {
       jsjcLiteral32(0, 0);
-      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
+      jsjcPush(0, JSJVT_UNDEFINED);
     }
   } else if (lex->tk==LEX_STR) {
     JsVar *a = jslGetTokenValueAsVar();
@@ -470,6 +472,17 @@ JsVar *jsjFactor() {
   return builtin;
 }
 
+// Just parses/executes arguments and throws them away
+void jsjFactorFunctionIgnoreRemainingArguments() {
+  DEBUG_JIT_EMIT("; FUNCTION CALL ignore arguments\n");
+  while (JSJ_PARSING && lex->tk!=')' && lex->tk!=LEX_EOF) {
+    jsjAssignmentExpression();
+    if (jit.phase == JSJP_EMIT) jsjPopAndUnLock();
+    if (lex->tk!=')') JSP_MATCH(',');
+  }
+  JSP_MATCH(')');
+}
+
 /* Parse ./[] - return true if the parent of the current item is currently on the stack
 builtin is set if the Factor was something built-in (eg `E`/`Math`/etc)
 */
@@ -485,16 +498,44 @@ bool jsjFactorMember(JsVar *builtin) {
             JsVar *fn = jswFindBuiltInFunction(builtin, jslGetTokenValueAsString());
             DEBUG_JIT("; Native member function .%s\n", jslGetTokenValueAsString());
             if (jsvIsNativeFunction(fn)) {
+              jslGetNextToken(); // skip over current token (we checked above that it was an ID or reserved word)
               // TODO: in these cases with simple arguments, we could skip _jsjxFunctionCallAndUnLock and could parse
               // arguments onto the stack ourselves, which would be way faster
-              jsjPopNoName(4); // parent
-              jsjcLiteral32(0, (uint32_t)fn->varData.native.ptr);
-              jsjcLiteral32(1, (uint16_t)fn->varData.native.argTypes);
-              jsjcCall(jsvNewNativeFunction); // JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes)
               doLookup = false;
-              jsjcPush(0, JSJVT_JSVAR); // the function itself
-              jsjcPush(4, JSJVT_JSVAR); // parent
-              parentOnStack = true;
+              DEBUG_JIT("; Native fn args 0x%04x %d\n", fn->varData.native.argTypes, lex->tk=='(');
+              bool isFunctionCall = lex->tk=='(';
+              //if (isFunctionCall && fn->varData.native.argTypes==(JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1))) { // void fn(JsVar)
+              if (isFunctionCall && ((fn->varData.native.argTypes==(JSWAT_VOID | JSWAT_THIS_ARG)) ||
+                                     (fn->varData.native.argTypes==(JSWAT_INT32 | JSWAT_THIS_ARG)) ||
+                                     (fn->varData.native.argTypes==(JSWAT_BOOL | JSWAT_THIS_ARG)) ||
+                                     (fn->varData.native.argTypes==(JSWAT_JSVAR | JSWAT_THIS_ARG)))) {
+                DEBUG_JIT_EMIT("; FUNCTION CALL NATIVE arguments\n");
+                JSP_ASSERT_MATCH('(');
+                jsjFactorFunctionIgnoreRemainingArguments();
+                // void this.fn()
+                jsjPopNoName(0); // parent
+                jsjcCall(fn->varData.native.ptr);
+                JsnArgumentType returnType = fn->varData.native.argTypes&JSWAT_MASK;
+                if (returnType == JSWAT_VOID) {
+                  jsjcLiteral32(0, 0); // ensure we push 'undefined' for void
+                  jsjcPush(0, JSJVT_UNDEFINED);
+                } else if (returnType == JSWAT_INT32) {
+                  jsjcPush(0, JSJVT_INT);
+                } else if (returnType == JSWAT_BOOL) {
+                  jsjcPush(0, JSJVT_BOOL);
+                } else {
+                  assert(returnType==JSJVT_JSVAR);
+                  jsjcPush(0, JSJVT_JSVAR_NO_NAME);
+                }
+              } else {
+                jsjPopNoName(4); // parent
+                jsjcLiteral32(0, (uint32_t)fn->varData.native.ptr);
+                jsjcLiteral32(1, (uint16_t)fn->varData.native.argTypes);
+                jsjcCall(jsvNewNativeFunction); // JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes)
+                jsjcPush(0, JSJVT_JSVAR); // the function itself
+                jsjcPush(4, JSJVT_JSVAR); // parent
+                parentOnStack = true;
+              }
             }
             jsvUnLock(fn);
           }
@@ -502,12 +543,13 @@ bool jsjFactorMember(JsVar *builtin) {
             JsVar *a = jslGetTokenValueAsVar();
             jsjcLiteralString(0, a, true); // null terminated
             jsvUnLock(a);
+            jslGetNextToken(); // skip over current token (we checked above that it was an ID or reserved word)
             // r0 = string pointer
             jsjcCall(jsvNewFromString);
             // r0 = index (as JsVar)
           }
-        }
-        jslGetNextToken(); // skip over current token (we checked above that it was an ID or reserved word)
+        } else
+          jslGetNextToken(); // skip over current token (we checked above that it was an ID or reserved word)
       } else {
         // incorrect token - force a match fail by asking for an ID
         JSP_MATCH_WITH_RETURN(LEX_ID, false); // if we fail we're stopping compilation anyway
@@ -665,17 +707,18 @@ void jsjUnaryExpression() {
         jsjcMVN(0,0); // ~
         jsjcLiteral32(1, 1);
         jsjcAND(0,1); // &1   -> convert it back to a boolean
-        jsjcCall(jsvNewFromBool);
+        jsjcPush(0, JSJVT_BOOL);
       } else if (op=='~') { // bitwise not
         jsjcCall(jsvGetIntegerAndUnLock);
         jsjcMVN(0,0); // ~
-        jsjcCall(jsvNewFromInteger);
+        jsjcPush(0, JSJVT_INT);
       } else if (op=='-') { // unary minus
         jsjcCall(jsvNegateAndUnLock);
+        jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
       } else if (op=='+') { // unary plus (convert to number)
         jsjcCall(jsvAsNumberAndUnLock);
+        jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
       } else assert(0);
-      jsjcPush(0, JSJVT_JSVAR_NO_NAME); // a value, not a NAME
     }
   } else
     jsjPostfixExpression();
@@ -730,11 +773,11 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
     // if we have short-circuit ops, then if we know the outcome
     // we don't bother to execute the other op. Even if not
     // we need to tell mathsOp it's an & or |
-    if (op==LEX_ANDAND || op==LEX_OROR) {
+    if (op==LEX_ANDAND || op==LEX_OROR) { // FIXME function jit() {'jit';return 3||2;} fails
 
       if (jit.phase == JSJP_EMIT) {
         DEBUG_JIT("; shortcircuit (&&,||)  - first arg just parsed\n");
-        DEBUG_JIT("; shortcircuit compare\n");
+        DEBUG_JIT("; shortcircuit compare\n"); // TODO: could optimise for bool/int case
         jsjPopNoName(0); // value -> r0 (but ensure it's not a name)
         jsjcPush(0, JSJVT_JSVAR_NO_NAME); // put value back
         jsjcCall(jsvGetBool); // now we have it as a boolean in r0
@@ -743,19 +786,19 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
       // parse second argument
       JsVar *oldBlock = jsjcStartBlock();
       if (jit.phase == JSJP_EMIT) {
-        DEBUG_JIT("; shortcitcuit parse second block\n");
+        DEBUG_JIT("; shortcircuit parse second block\n");
         jsjPopAndUnLock(); // throw away result from first block!
       }
       jsjUnaryExpression();
       __jsjBinaryExpression(precedence);
       JsVar *secondBlock = jsjcStopBlock(oldBlock);
       if (jit.phase == JSJP_EMIT) {
-        DEBUG_JIT("; shortcitcuit jump\n");
+        DEBUG_JIT("; shortcircuit jump\n");
         // if false, jump after true block (if an 'else' we need to jump over the jsjcBranchRelative
         jsjcBranchConditionalRelative((op==LEX_ANDAND) ? JSJAC_EQ : JSJAC_NE, jsvGetStringLength(secondBlock), JSJC_NONE);
-        DEBUG_JIT("; shortcitcuit second block\n");
+        DEBUG_JIT("; shortcircuit second block\n");
         jsjcEmitBlock(secondBlock);
-        DEBUG_JIT("; shortcitcuit end\n");
+        DEBUG_JIT("; shortcircuit end\n");
       }
       jsvUnLock(secondBlock);
     } else { // else it's a more 'normal' logical expression - just use Maths
@@ -793,8 +836,9 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
         }
         jsvUnLock2(av, bv);
       } else */if (jit.phase == JSJP_EMIT) {  // --------------------------------------------- NORMAL
-        jsjPopAsVar(1); // b -> r1
+        jsjPopAsVar(4); // b -> r4
         jsjPopAsVar(0); // a -> r0
+        jsjcMov(1, 4); // b -> r1 (converting r0 could have clobbered r1)
         jsjcLiteral8(2, op);
         jsjcCall(_jsxMathsOpSkipNamesAndUnLock); // unlocks arguments
         jsjcPush(0, JSJVT_JSVAR_NO_NAME); // push result - a value, not a NAME
@@ -864,8 +908,9 @@ NO_INLINE void jsjAssignmentExpression() {
 
     jsjAssignmentExpression();
     if (jit.phase == JSJP_EMIT) {
-      jsjPopAsVar(1); // pop RHS to r1
+      jsjPopAsVar(4); // pop RHS to r4
       jsjPopAsVar(0); // pop LHS to r0
+      jsjcMov(1, 4); // RHS -> r1 (converting r0 could have clobbered r1)
       if (op=='=') {
         // this is like jsvReplaceWithOrAddToRoot but it unlocks the RHS for us
         jsjcCall(_jsxAssignment); // JsVar *_jsxAssignment(JsVar *dst, JsVar *src)
@@ -941,9 +986,10 @@ void jsjStatementVar() {
       jsjAssignmentExpression();
       if (jit.phase == JSJP_EMIT) {
         // _jsxVarInitialAssign(r0:var, r1:isConstant, r2:initialValue)
-        jsjcLiteral8(1, (declType==LEX_R_CONST)?1:0); // r1 -> if we're a constant
-        jsjPopAsVar(2); // r2 -> initial value
+        jsjPopAsVar(4); // r2 -> initial value
         jsjPopAsVar(0); // r0 -> variable (from jsjFactorIDAndUnLock)
+        jsjcLiteral8(1, (declType==LEX_R_CONST)?1:0); // r1 -> if we're a constant
+        jsjcMov(2, 4); // b -> r2 (converting r0 could have clobbered r1)
         jsjcCall(_jsxVarInitialAssign); // set the var's initial value
       }
     }

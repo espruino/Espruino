@@ -29,10 +29,14 @@ void jsjcDebugPrintf(const char *fmt, ...);
 #define JSJ_TYPE_STACK_SIZE 64 // Most amount of types stored on stack
 
 typedef enum {
+  JSJVT_UNDEFINED,
+  JSJVT_BOOL,
   JSJVT_INT,
   JSJVT_JSVAR,        ///< A JsVar
   JSJVT_JSVAR_NO_NAME ///< A JsVar, and we know it's not a name so it doesn't need SkipName
 } PACKED_FLAGS JsjValueType;
+
+#define JSJVT_NEEDS_UNLOCK(t) (((t)==JSJVT_JSVAR) || ((t)==JSJVT_JSVAR_NO_NAME))
 
 typedef enum {
   JSJAC_EQ, // Equal / equals zero
@@ -151,7 +155,7 @@ void jsjcMVN(int regTo, int regFrom);
 // regTo = regTo & regFrom
 void jsjcAND(int regTo, int regFrom);
 // Convert the var type in the given reg to a JsVar
-void jsjcConvertToJsVar(int reg, JsjValueType varType);
+JsjValueType jsjcConvertToJsVar(int reg, JsjValueType varType);
 // Push a register onto the stack
 void jsjcPush(int reg, JsjValueType type);
 // Get the type of the variable on the top of the stack
