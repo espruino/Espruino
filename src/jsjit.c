@@ -492,6 +492,15 @@ void jsjFactorFunctionIgnoreRemainingArguments() {
   JSP_MATCH(')');
 }
 
+bool jsjIsSupportedArgType(JsnArgumentType t) {
+  return
+    (t==JSWAT_VOID) ||
+    (t==JSWAT_INT32) ||
+    (t==JSWAT_BOOL) ||
+    (t==JSWAT_JSVAR) ||
+    (t==JSWAT_JSVARFLOAT);
+}
+
 /* Parse ./[] - return true if the parent of the current item is currently on the stack
 builtin is set if the Factor was something built-in (eg `E`/`Math`/etc)
 */
@@ -514,21 +523,37 @@ bool jsjFactorMember(JsVar *builtin) {
               bool isFunctionCall = lex->tk=='(';
               //if (isFunctionCall) DEBUG_JIT("; Native fn args 0x%04x\n", fn->varData.native.argTypes);
               //if (isFunctionCall && fn->varData.native.argTypes==(JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1))) { // void fn(JsVar)
-              if (isFunctionCall && ((fn->varData.native.argTypes==(JSWAT_VOID)) ||
-                                     (fn->varData.native.argTypes==(JSWAT_INT32)) ||
-                                     (fn->varData.native.argTypes==(JSWAT_BOOL)) ||
-                                     (fn->varData.native.argTypes==(JSWAT_JSVAR)) ||
-                                     (fn->varData.native.argTypes==(JSWAT_JSVARFLOAT)) ||
-                                     (fn->varData.native.argTypes==(JSWAT_VOID | JSWAT_THIS_ARG)) ||
-                                     (fn->varData.native.argTypes==(JSWAT_INT32 | JSWAT_THIS_ARG)) ||
-                                     (fn->varData.native.argTypes==(JSWAT_BOOL | JSWAT_THIS_ARG)) ||
-                                     (fn->varData.native.argTypes==(JSWAT_JSVAR | JSWAT_THIS_ARG)) ||
-                                     (fn->varData.native.argTypes==(JSWAT_JSVARFLOAT | JSWAT_THIS_ARG)))) {
-                DEBUG_JIT_EMIT("; FUNCTION CALL NATIVE\n");
+              uint16_t argType = fn->varData.native.argTypes;
+              JsnArgumentType returnType = argType&JSWAT_MASK;
+              JsnArgumentType arg1Type = (argType>>JSWAT_BITS)&JSWAT_MASK;
+              bool noOtherArgs = (argType&~(JSWAT_MASK | (JSWAT_MASK<<JSWAT_BITS) | JSWAT_THIS_ARG)) == 0;
+              if (isFunctionCall && jsjIsSupportedArgType(returnType) && jsjIsSupportedArgType(arg1Type) && noOtherArgs) {
+                bool hasThis = argType & JSWAT_THIS_ARG;
+                // handle supported args+return type only
                 JSP_ASSERT_MATCH('(');
+                if (arg1Type) {
+                  DEBUG_JIT_EMIT("; FUNCTION CALL NATIVE WITH ARGUMENT\n");
+                  if (lex->tk!=')') {
+                    jsjAssignmentExpression();
+                  } else { // no argument, but we still need something
+                    jsjcLiteral8(0,0);
+                    jsjcPush(0, JSJVT_UNDEFINED);
+                  }
+                } else DEBUG_JIT_EMIT("; FUNCTION CALL NATIVE\n");
                 jsjFactorFunctionIgnoreRemainingArguments();
                 // void this.fn()
-                jsjPopNoName(0); // parent
+                int argReg = hasThis ? 1 : 0;
+                if (arg1Type) {
+                  if (arg1Type == JSWAT_JSVAR) jsjPopNoName(argReg);
+                  else if (arg1Type == JSWAT_BOOL) jsjPopAsBool(argReg);
+                  else {
+                    jsExceptionHere(JSET_ERROR, "Unknown arg typoe");
+                    assert(0); // FIXME different arg types!
+                  }
+                }
+                if (hasThis) {
+                  jsjPopNoName(0); // parent
+                } else jsjPopAndUnLock(); // FIXME this'll clobber r0 :(
                 jsjcCall(fn->varData.native.ptr);
                 JsnArgumentType returnType = fn->varData.native.argTypes&JSWAT_MASK;
                 if (returnType == JSWAT_VOID) {
@@ -537,7 +562,7 @@ bool jsjFactorMember(JsVar *builtin) {
                 } else if (returnType == JSWAT_INT32) {
                   jsjcPush(0, JSJVT_INT);
                 } else if (returnType == JSWAT_JSVARFLOAT) {
-                   jsjcCall(jsvNewFromFloat);
+                  jsjcCall(jsvNewFromFloat);
                   jsjcPush(0, JSJVT_JSVAR_NO_NAME);
                 } else if (returnType == JSWAT_BOOL) {
                   jsjcPush(0, JSJVT_INT);
