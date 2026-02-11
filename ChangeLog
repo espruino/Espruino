@@ -46,6 +46,7 @@
             JIT: allow native functions (Date.now(), Pin.set(), Pin.read()) to be called directly
             JIT: allow int/bool/undefined to be stored on the stack and converted to JsVar only when needed
             JIT: cope with returning nested arrays/objects/etc by checking if upper registers are in use or not
+            JIT: Add peephole optimisations for push/pop (#2691)
 
      2v28 : Add `E.internal` as a way to access the 'hidden root' containing Espruino internal variables that previously needed `global["\xff"]`
             Bangle.js: Fix back handler not removed when using E.setUI with a back button but without widgets (#2636)

@@ -82,6 +82,10 @@ typedef struct {
   JsVar *code;
   /// An iterator to increase write speed for code
   JsvStringIterator codeIt;
+  /// The last 16 bits we are due to write to codeIt (for peephole optimisations)
+  uint16_t lastCode;
+  // Does lastCode contain any data? (do we have stuff we need to flush with jsjcFlushCode)
+  bool hasLastCode;
   /// The ARM Thumb-2 variable init code block (this goes right at the start of our function)
   JsVar *initCode;
   /// How many blocks deep are we? blockCount=0 means we're writing to the 'code' var

@@ -67,10 +67,23 @@ void jsjcDebugPrintf(const char *fmt, ...) {
   }
 }
 
+// flush any previously stored code (for peephole optimisations)
+static void jsjcFlushCode() {
+  if (jit.hasLastCode) {
+    char *bytes = (char *)&jit.lastCode;
+    //jsvAppendStringBuf(jit.code, bytes, 2);
+    jsvStringIteratorAppend(&jit.codeIt, bytes[0]);
+    jsvStringIteratorAppend(&jit.codeIt, bytes[1]);
+    jit.lastCode = 0;
+    jit.hasLastCode = false;
+  }
+}
+
 void jsjcStart() {
   jit.phase = JSJP_UNKNOWN;
   jit.code = jsvNewFromEmptyString();
   jsvStringIteratorNew(&jit.codeIt, jit.code, 0);
+  jit.hasLastCode = 0;
   jit.initCode = jsvNewFromEmptyString(); // FIXME: maybe we don't need this?
   jit.blockCount = 0;
   jit.vars = jsvNewObject();
@@ -95,6 +108,7 @@ JsVar *jsjcStop() {
   fclose(f);
 #endif
   // Like AsFlatString but we need to concat two blocks instead
+  jsjcFlushCode();
   size_t len = jsvGetStringLength(jit.code) + jsvGetStringLength(jit.initCode);
   JsVar *flat = jsvNewFlatStringOfLength((unsigned int)len);
   if (flat) {
@@ -124,6 +138,7 @@ JsVar *jsjcStop() {
 // Called before start of a block of code. Returns the old code jsVar that should be passed into jsjcStopBlock
 JsVar *jsjcStartBlock() {
   if (jit.phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
+  jsjcFlushCode();
   JsVar *v = jit.code;
   jsvStringIteratorFree(&jit.codeIt);
   jit.code = jsvNewFromEmptyString();
@@ -134,6 +149,7 @@ JsVar *jsjcStartBlock() {
 
 // Called to start writing to 'init code' (which is inserted before everything else). Returns the old code jsVar that should be passed into jsjcStopBlock
 JsVar *jsjcStartInitCodeBlock() {
+  jsjcFlushCode();
   JsVar *v = jit.code;
   jsvStringIteratorFree(&jit.codeIt);
   jit.code = jsvLockAgain(jit.initCode);
@@ -146,6 +162,7 @@ JsVar *jsjcStartInitCodeBlock() {
 // Called when JIT output stops, pass it the return value from jsjcStartBlock. Returns the code parsed in the block
 JsVar *jsjcStopBlock(JsVar *oldBlock) {
   if (jit.phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
+  jsjcFlushCode();
   JsVar *v = jit.code;
   jsvStringIteratorFree(&jit.codeIt);
   jit.code = oldBlock;
@@ -156,21 +173,32 @@ JsVar *jsjcStopBlock(JsVar *oldBlock) {
 }
 
 void jsjcEmit16(uint16_t v) {
-  //DEBUG_JIT("> %04x\n", v);
-  char *bytes = (char *)&v;
-  //jsvAppendStringBuf(jit.code, bytes, 2);
-  jsvStringIteratorAppend(&jit.codeIt, bytes[0]);
-  jsvStringIteratorAppend(&jit.codeIt, bytes[1]);
+  if (jit.hasLastCode) {
+    if (jit.lastCode==0b1011010000000001 && v==0b1011110000000001) {
+      jit.hasLastCode = false;
+      DEBUG_JIT("PEEPHOLE: PUSH r0 + POP r0 => nop");
+      return;
+    }
+    if (jit.lastCode==0b1011010000000001 && v==0b1011110000010000) {
+      jit.lastCode = 17924;
+      DEBUG_JIT("PEEPHOLE: PUSH r0 + POP r4 => MOV r4,r0");
+      return;
+    }
+  }
+  jsjcFlushCode();
+  jit.hasLastCode = true;
+  jit.lastCode = v;
 }
 
 // Emit a whole block of code
 void jsjcEmitBlock(JsVar *block) {
   DEBUG_JIT("... code block ...\n");
+  jsjcFlushCode();
   jsvStringIteratorAppendString(&jit.codeIt, block, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
 }
 
 int jsjcGetByteCount() {
-  return jsvGetStringLength(jit.code);
+  return jsvGetStringLength(jit.code) + (jit.hasLastCode?2:0);
 }
 
 void jsjcLiteral8(int reg, uint8_t data) {
