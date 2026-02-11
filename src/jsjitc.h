@@ -19,12 +19,18 @@
 #include "jsjit.h"
 #include "jsvariterator.h"
 
+#ifdef ESPR_SAVE_ON_FLASH_JIT
+#define DEBUG_JIT(...) {}
+// Write debug info to the console IF we're in the 'emit' phase
+#define DEBUG_JIT_EMIT(...) {}
+#else
 // Write debug info to the console
 #define DEBUG_JIT jsjcDebugPrintf
 // Write debug info to the console IF we're in the 'emit' phase
 #define DEBUG_JIT_EMIT if (jit->phase == JSJP_EMIT) jsjcDebugPrintf
 // Called to print debug info - best to use DEBUG_JIT so we can disable debug lines for final compiles though
 void jsjcDebugPrintf(const char *fmt, ...);
+#endif
 
 #define JSJ_TYPE_STACK_SIZE 64 // Most amount of types stored on stack
 

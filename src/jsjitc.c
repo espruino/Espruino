@@ -89,7 +89,7 @@ void jsjcStart(JsjInfo *_jit) {
 }
 
 JsVar *jsjcStop() {
-  jsjcDebugPrintf("; VARS: %j\n", jit->vars);
+  DEBUG_JIT("; VARS: %j\n", jit->vars);
   jsvUnLock(jit->vars);
   jit->vars = 0;
   assert(jspHasError() || jit->stackDepth == 0); // stack depth may be wrong if there's an exception

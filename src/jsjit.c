@@ -201,13 +201,13 @@ void jsjJsVar(int reg, JsVar *var) {
 
 /// Code to add at the beginning of the function
 void jsjFunctionStart() {
-  jsjcDebugPrintf("; Function start\n");
+  DEBUG_JIT("; Function start\n");
   jsjcPushAll(); // Function start - push all registers since we're not meant to mess with r4..r7
 }
 
 /// Code to add right at the end of the function (or when we return)
 void jsjFunctionReturn(bool isReturnStatement) {
-  jsjcDebugPrintf("; Function return\n");
+  DEBUG_JIT("; Function return\n");
   int oldStackDepth = jit->stackDepth;
   if (jit->varCount) {
     jsjcMov(4, 0); // save r0 (return value)
@@ -253,23 +253,23 @@ JsVar *jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
       // See if it's a builtin function, if builtinFunction!=0
       /*if (jsvIsNativeFunction(builtin)) { // it's a built-in function - just create it in place rather than searching
         // we can't do this because of #2690 - eg `NRF.emit` needs to use the 'real' NRF as 'this'
-        jsjcDebugPrintf("; Native Function %j\n", name);
+        DEBUG_JIT("; Native Function %j\n", name);
         jsjcLiteral32(0, (uint32_t)builtin->varData.native.ptr);
         jsjcLiteral32(1, (uint16_t)builtin->varData.native.argTypes);
         jsjcCall(jsvNewNativeFunction); // JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes)
         varType = JSJVT_JSVAR_NO_NAME;
       } else */if (jsvIsPin(builtin)) { // it's a built-in pin - just create it in place rather than searching
-        jsjcDebugPrintf("; Native Pin %j\n", name);
+        DEBUG_JIT("; Native Pin %j\n", name);
         jsjcLiteral32(0, jsvGetInteger(builtin));
         jsjcCall(jsvNewFromPin); // JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes)
         varType = JSJVT_JSVAR_NO_NAME;
       } else { // it's not a builtin function - just search for the variable the normal way
-        jsjcDebugPrintf("; Find Variable %j\n", name);
+        DEBUG_JIT("; Find Variable %j\n", name);
         jsjcLiteralString(0, name, true); // null terminated string in r0
         jsjcCall(jspGetNamedVariable); // Find the var in the current scopes (always returns something even if it's jsvNewChild)
       }
     } else if (creationOp==LEX_R_VAR || creationOp==LEX_R_LET || creationOp==LEX_R_CONST) {
-      jsjcDebugPrintf("; Variable Decl %j\n", name);
+      DEBUG_JIT("; Variable Decl %j\n", name);
       jsjcLiteralString(0, name, true); // null terminated string in r0
       // _jsxAddVar(r0:name)
       jsjcCall(_jsxAddVar); // add the variable
@@ -289,7 +289,7 @@ JsVar *jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
     if (varIndexI & VARINDEX_NO_NAME) // decode varType from the flags
       varType = JSJVT_JSVAR_NO_NAME;
     varIndexI &= VARINDEX_MASK;
-    jsjcDebugPrintf("; Reference var %j\n", name);
+    DEBUG_JIT("; Reference var %j\n", name);
     jsjcLoadImm(0, JSJAR_SP, (jit->stackDepth - (varIndexI+1)) * 4);
     jsjcCall(jsvLockAgain);
     jsjcPush(0, varType); // Push, with the type we got from the varIndex flags
@@ -301,7 +301,7 @@ JsVar *jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
 void jsjFactorObject() {
   int regObject;
   if (jit->phase == JSJP_EMIT) {
-    jsjcDebugPrintf("; New Object\n");
+    DEBUG_JIT("; New Object\n");
     // create the object
     jsjcCall(jsvNewObject);
     regObject = jsjcClaimFreeReg();
@@ -329,7 +329,7 @@ void jsjFactorObject() {
     if (jit->phase == JSJP_EMIT) {
       int regValue = jsjcClaimFreeReg();
       varName = jsvAsArrayIndexAndUnLock(varName);
-      jsjcDebugPrintf("; New Object field %j\n", varName);
+      DEBUG_JIT("; New Object field %j\n", varName);
       jsjPopNoName(regValue); // regValue = array item
       jsjJsVar(1, varName); // r1 = index
       jsjcMov(2, regValue); // r2 = array item (copy from regValue)

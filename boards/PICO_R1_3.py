@@ -50,7 +50,8 @@ info = {
      'DEFINES += -DSAVE_ON_FLASH_MATH',
      'DEFINES += -DESPR_NO_REGEX_OPTIMISE=1', # strip out regex optimisations to free some flash space
      'DEFINES += -DESPR_LIMIT_DATE_RANGE', # not enough code memory left for the full range of Date()
-     'DEFINES += -DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol     
+     'DEFINES += -DESPR_PACKED_SYMPTR', # Pack builtin symbols' offset into pointer to save 2 bytes/symbol
+     'DEFINES += -DESPR_SAVE_ON_FLASH_JIT', # Save space in JIT implementation by removing debug print statements (eg E.setFlags({jitDebug:1}))
      'STLIB=STM32F401xE',
      'PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o'
    ]
