@@ -173,12 +173,12 @@ void jsjcEmit16(uint16_t v) {
   if (jit->hasLastCode) {
     if (jit->lastCode==0b1011010000000001 && v==0b1011110000000001) {
       jit->hasLastCode = false;
-      DEBUG_JIT("PEEPHOLE: PUSH r0 + POP r0 => nop");
+      DEBUG_JIT("PEEPHOLE: PUSH r0 + POP r0 => nop\n");
       return;
     }
     if (jit->lastCode==0b1011010000000001 && v==0b1011110000010000) {
       jit->lastCode = 17924;
-      DEBUG_JIT("PEEPHOLE: PUSH r0 + POP r4 => MOV r4,r0");
+      DEBUG_JIT("PEEPHOLE: PUSH r0 + POP r4 => MOV r4,r0\n");
       return;
     }
   }
