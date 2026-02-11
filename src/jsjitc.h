@@ -94,6 +94,8 @@ typedef struct {
   int stackDepth;
   /// For each item on the stack, we store its type
   JsjValueType typeStack[JSJ_TYPE_STACK_SIZE];
+  /// A bit mask of registers that are currently in use (r4..r7) - see jsjcClaimFreeReg jsjcReturnFreeReg
+  uint8_t regsInUse;
 } JsjInfo;
 
 // JIT state
@@ -173,6 +175,11 @@ void jsjcStoreImm(int reg, int regAddr, int offset);
 
 void jsjcPushAll();
 void jsjcPopAllAndReturn();
+
+/// Get the number of a register that we're free to use (or error is none free) and mark as in use
+int jsjcClaimFreeReg();
+/// Mark a register returned by jsjcClaimFreeReg as unused
+void jsjcReturnFreeReg(int reg);
 
 #endif /* JSJITC_H_ */
 #endif /* ESPR_JIT */

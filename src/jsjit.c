@@ -299,11 +299,13 @@ JsVar *jsjFactorIDAndUnLock(JsVar *name, LEX_TYPES creationOp) {
 }
 
 void jsjFactorObject() {
+  int regObject;
   if (jit.phase == JSJP_EMIT) {
     jsjcDebugPrintf("; New Object\n");
     // create the object
     jsjcCall(jsvNewObject);
-    jsjcMov(4, 0); // Store it in r4
+    regObject = jsjcClaimFreeReg();
+    jsjcMov(regObject, 0); // Store it in regObject
   }
   /* JSON-style object definition */
   JSP_ASSERT_MATCH('{');
@@ -325,12 +327,14 @@ void jsjFactorObject() {
     JSP_MATCH_WITH_CLEANUP(':', jsvUnLock(varName));
     jsjAssignmentExpression();
     if (jit.phase == JSJP_EMIT) {
+      int regValue = jsjcClaimFreeReg();
       varName = jsvAsArrayIndexAndUnLock(varName);
       jsjcDebugPrintf("; New Object field %j\n", varName);
-      jsjPopNoName(5); // r5 = array item
+      jsjPopNoName(regValue); // regValue = array item
       jsjJsVar(1, varName); // r1 = index
-      jsjcMov(2, 5); // r2 = array item (copy from r5)
-      jsjcMov(0, 4); // r0 = array
+      jsjcMov(2, regValue); // r2 = array item (copy from regValue)
+      jsjcReturnFreeReg(regValue);
+      jsjcMov(0, regObject); // r0 = array
       jsjcCall(_jsxObjectNewElement); // unlocks r1 and r2
     }
     jsvUnLock(varName);
@@ -340,17 +344,19 @@ void jsjFactorObject() {
   JSP_ASSERT_MATCH('}');
   if (jit.phase == JSJP_EMIT) {
     // push the finished object on the stack
-    jsjcPush(4, JSJVT_JSVAR_NO_NAME);
+    jsjcPush(regObject, JSJVT_JSVAR_NO_NAME);
+    jsjcReturnFreeReg(regObject);
   }
 }
 
 void jsjFactorArray() {
   uint32_t idx = 0; // current array index
-
+  int regArray;
   if (jit.phase == JSJP_EMIT) {
     // create the array
     jsjcCall(jsvNewEmptyArray);
-    jsjcMov(5, 0); // Store it in r5
+    regArray = jsjcClaimFreeReg();
+    jsjcMov(regArray, 0); // Store it in regArray
   }
 
   /* JSON-style array */
@@ -361,7 +367,7 @@ void jsjFactorArray() {
       if (jit.phase == JSJP_EMIT) {
         jsjPopNoName(2); // r2 = array item
         jsjcLiteral32(1, idx); // r1 = index
-        jsjcMov(0, 5); // r0 = array
+        jsjcMov(0, regArray); // r0 = array
         jsjcCall(_jsxArrayNewElement); // unlocks r2
       }
     }
@@ -370,12 +376,13 @@ void jsjFactorArray() {
   }
   JSP_MATCH(']');
   if (jit.phase == JSJP_EMIT) {
-    jsjcMov(0, 5); // r0 = array
+    jsjcMov(0, regArray); // r0 = array
     jsjcLiteral32(1, idx); // r1 = array size
     jsjcLiteral32(2, 0); // r1 = truncate = false
     jsjcCall(jsvSetArrayLength);
     // push the finished array on
-    jsjcPush(5, JSJVT_JSVAR_NO_NAME);
+    jsjcPush(regArray, JSJVT_JSVAR_NO_NAME);
+    jsjcReturnFreeReg(regArray);
   }
 }
 
@@ -539,12 +546,14 @@ bool jsjFactorMember(JsVar *builtin) {
                   jsjcPush(0, JSJVT_JSVAR_NO_NAME);
                 }
               } else {
-                jsjPopNoName(4); // parent
+                int regTmp = jsjcClaimFreeReg();
+                jsjPopNoName(regTmp); // parent
                 jsjcLiteral32(0, (uint32_t)fn->varData.native.ptr);
                 jsjcLiteral32(1, (uint16_t)fn->varData.native.argTypes);
                 jsjcCall(jsvNewNativeFunction); // JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes)
                 jsjcPush(0, JSJVT_JSVAR); // the function itself
-                jsjcPush(4, JSJVT_JSVAR); // parent
+                jsjcPush(regTmp, JSJVT_JSVAR); // parent
+                jsjcReturnFreeReg(regTmp);
                 parentOnStack = true;
               }
             }
@@ -851,9 +860,11 @@ void __jsjBinaryExpression(unsigned int lastPrecedence) {
         }
         jsvUnLock2(av, bv);
       } else */if (jit.phase == JSJP_EMIT) {  // --------------------------------------------- NORMAL
-        jsjPopAsVar(4); // b -> r4
+        int regTmp = jsjcClaimFreeReg();
+        jsjPopAsVar(regTmp); // b -> rT
         jsjPopAsVar(0); // a -> r0
-        jsjcMov(1, 4); // b -> r1 (converting r0 could have clobbered r1)
+        jsjcMov(1, regTmp); // b -> r1 (converting r0 could have clobbered r1)
+        jsjcReturnFreeReg(regTmp);
         jsjcLiteral8(2, op);
         jsjcCall(_jsxMathsOpSkipNamesAndUnLock); // unlocks arguments
         jsjcPush(0, JSJVT_JSVAR_NO_NAME); // push result - a value, not a NAME
@@ -923,9 +934,11 @@ NO_INLINE void jsjAssignmentExpression() {
 
     jsjAssignmentExpression();
     if (jit.phase == JSJP_EMIT) {
-      jsjPopAsVar(4); // pop RHS to r4
+      int regTmp = jsjcClaimFreeReg();
+      jsjPopAsVar(regTmp); // pop RHS to regTmp
       jsjPopAsVar(0); // pop LHS to r0
-      jsjcMov(1, 4); // RHS -> r1 (converting r0 could have clobbered r1)
+      jsjcMov(1, regTmp); // RHS -> r1 (converting r0 could have clobbered r1)
+      jsjcReturnFreeReg(regTmp);
       if (op=='=') {
         // this is like jsvReplaceWithOrAddToRoot but it unlocks the RHS for us
         jsjcCall(_jsxAssignment); // JsVar *_jsxAssignment(JsVar *dst, JsVar *src)

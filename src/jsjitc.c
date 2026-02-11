@@ -76,6 +76,7 @@ void jsjcStart() {
   jit.vars = jsvNewObject();
   jit.varCount = 0;
   jit.stackDepth = 0;
+  jit.regsInUse = 0;
 }
 
 JsVar *jsjcStop() {
@@ -479,5 +480,19 @@ void jsjcPopAllAndReturn() {
   int reg = 14; // lr
   jsjcEmit16(0b0100011100000000 | (reg<<3));
 }*/
+
+/// Get the number of a register that we're free to use (or error is none free) and mark as in use
+int jsjcClaimFreeReg() {
+  int reg = 4;
+  while (jit.regsInUse & (1<<reg)) reg++;
+  if (reg>7) jsExceptionHere(JSET_ERROR, "JIT: too many registers needed");
+  jit.regsInUse |= 1<<reg;
+  return reg;
+}
+
+/// Mark a register returned by jsjcClaimFreeReg as unused
+void jsjcReturnFreeReg(int reg) {
+  jit.regsInUse &= ~(1<<reg);
+}
 
 #endif /* ESPR_JIT */
