@@ -14,14 +14,9 @@
  https://developer.arm.com/documentation/ddi0308/d/Thumb-Instructions/Alphabetical-list-of-Thumb-instructions?lang=en
  https://web.eecs.umich.edu/~prabal/teaching/eecs373-f11/readings/ARMv7-M_ARM.pdf
 
- optimisations to do:
 
- * Allow us to check what the last instruction was, and to replace it. Can then do peephole optimisations:
-   * 'push+pop' is just a 'mov' (or maybe even nothing)
-   *
- * Use a String iterator for writing to jit.code - it'll be a lot faster
-
- */
+ See README_JIT.md
+*/
 #ifdef ESPR_JIT
 
 #if defined(LINUX) && defined(DEBUG)
@@ -37,7 +32,7 @@
 #endif
 
 // JIT state
-JsjInfo jit;
+JsjInfo *jit;
 
 const char *JSJAC_STRINGS = JSJAC_STRING;
 
@@ -57,7 +52,7 @@ void jsjcDebugPrintf(const char *fmt, ...) {
     if (fmt[0]==';') { // just a comment - don't add address
       jsiConsolePrintf("      ");
     } else {
-      if (!jit.blockCount) jsiConsolePrintf("%6x: ", jsjcGetByteCount());
+      if (!jit->blockCount) jsiConsolePrintf("%6x: ", jsjcGetByteCount());
       else jsiConsolePrintf("       : ");
     }
     va_list argp;
@@ -69,136 +64,138 @@ void jsjcDebugPrintf(const char *fmt, ...) {
 
 // flush any previously stored code (for peephole optimisations)
 static void jsjcFlushCode() {
-  if (jit.hasLastCode) {
-    char *bytes = (char *)&jit.lastCode;
-    //jsvAppendStringBuf(jit.code, bytes, 2);
-    jsvStringIteratorAppend(&jit.codeIt, bytes[0]);
-    jsvStringIteratorAppend(&jit.codeIt, bytes[1]);
-    jit.lastCode = 0;
-    jit.hasLastCode = false;
+  if (jit->hasLastCode) {
+    char *bytes = (char *)&jit->lastCode;
+    //jsvAppendStringBuf(jit->code, bytes, 2);
+    jsvStringIteratorAppend(&jit->codeIt, bytes[0]);
+    jsvStringIteratorAppend(&jit->codeIt, bytes[1]);
+    jit->lastCode = 0;
+    jit->hasLastCode = false;
   }
 }
 
-void jsjcStart() {
-  jit.phase = JSJP_UNKNOWN;
-  jit.code = jsvNewFromEmptyString();
-  jsvStringIteratorNew(&jit.codeIt, jit.code, 0);
-  jit.hasLastCode = 0;
-  jit.initCode = jsvNewFromEmptyString(); // FIXME: maybe we don't need this?
-  jit.blockCount = 0;
-  jit.vars = jsvNewObject();
-  jit.varCount = 0;
-  jit.stackDepth = 0;
-  jit.regsInUse = 0;
+void jsjcStart(JsjInfo *_jit) {
+  jit = _jit;
+  jit->phase = JSJP_UNKNOWN;
+  jit->code = jsvNewFromEmptyString();
+  jsvStringIteratorNew(&jit->codeIt, jit->code, 0);
+  jit->hasLastCode = 0;
+  jit->initCode = jsvNewFromEmptyString(); // FIXME: maybe we don't need this?
+  jit->blockCount = 0;
+  jit->vars = jsvNewObject();
+  jit->varCount = 0;
+  jit->stackDepth = 0;
+  jit->regsInUse = 0;
 }
 
 JsVar *jsjcStop() {
-  jsjcDebugPrintf("; VARS: %j\n", jit.vars);
-  jsvUnLock(jit.vars);
-  jit.vars = 0;
-  assert(jspHasError() || jit.stackDepth == 0); // stack depth may be wrong if there's an exception
+  jsjcDebugPrintf("; VARS: %j\n", jit->vars);
+  jsvUnLock(jit->vars);
+  jit->vars = 0;
+  assert(jspHasError() || jit->stackDepth == 0); // stack depth may be wrong if there's an exception
 
-  assert(jit.blockCount==0);
+  assert(jit->blockCount==0);
 #ifdef JIT_OUTPUT_FILE
   FILE *f = fopen(JIT_OUTPUT_FILE, "wb");
-  JSV_GET_AS_CHAR_ARRAY(icPtr, icLen, jit.initCode);
+  JSV_GET_AS_CHAR_ARRAY(icPtr, icLen, jit->initCode);
   if (icPtr) fwrite(icPtr, 1, icLen, f);
-  JSV_GET_AS_CHAR_ARRAY(cPtr, cLen, jit.code);
+  JSV_GET_AS_CHAR_ARRAY(cPtr, cLen, jit->code);
   if (cPtr) fwrite(cPtr, 1, cLen, f);
   fclose(f);
 #endif
   // Like AsFlatString but we need to concat two blocks instead
   jsjcFlushCode();
-  size_t len = jsvGetStringLength(jit.code) + jsvGetStringLength(jit.initCode);
+  size_t len = jsvGetStringLength(jit->code) + jsvGetStringLength(jit->initCode);
   JsVar *flat = jsvNewFlatStringOfLength((unsigned int)len);
   if (flat) {
     JsvStringIterator src;
     JsvStringIterator dst;
-    jsvStringIteratorNew(&src, jit.initCode, 0);
+    jsvStringIteratorNew(&src, jit->initCode, 0);
     jsvStringIteratorNew(&dst, flat, 0);
     while (jsvStringIteratorHasChar(&src)) {
       jsvStringIteratorSetCharAndNext(&dst, jsvStringIteratorGetCharAndNext(&src));
     }
     jsvStringIteratorFree(&src);
-    jsvStringIteratorNew(&src, jit.code, 0);
+    jsvStringIteratorNew(&src, jit->code, 0);
     while (jsvStringIteratorHasChar(&src)) {
       jsvStringIteratorSetCharAndNext(&dst, jsvStringIteratorGetCharAndNext(&src));
     }
     jsvStringIteratorFree(&src);
     jsvStringIteratorFree(&dst);
   }
-  jsvStringIteratorFree(&jit.codeIt);
-  jsvUnLock(jit.code);
-  jit.code = 0;
-  jsvUnLock(jit.initCode);
-  jit.code = 0;
+  jsvStringIteratorFree(&jit->codeIt);
+  jsvUnLock(jit->code);
+  jit->code = 0;
+  jsvUnLock(jit->initCode);
+  jit->code = 0;
+  jit = NULL;
   return flat;
 }
 
 // Called before start of a block of code. Returns the old code jsVar that should be passed into jsjcStopBlock
 JsVar *jsjcStartBlock() {
-  if (jit.phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
+  if (jit->phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
   jsjcFlushCode();
-  JsVar *v = jit.code;
-  jsvStringIteratorFree(&jit.codeIt);
-  jit.code = jsvNewFromEmptyString();
-  jsvStringIteratorNew(&jit.codeIt, jit.code, 0);
-  jit.blockCount++;
+  JsVar *v = jit->code;
+  jsvStringIteratorFree(&jit->codeIt);
+  jit->code = jsvNewFromEmptyString();
+  jsvStringIteratorNew(&jit->codeIt, jit->code, 0);
+  jit->blockCount++;
   return v;
 }
 
 // Called to start writing to 'init code' (which is inserted before everything else). Returns the old code jsVar that should be passed into jsjcStopBlock
 JsVar *jsjcStartInitCodeBlock() {
   jsjcFlushCode();
-  JsVar *v = jit.code;
-  jsvStringIteratorFree(&jit.codeIt);
-  jit.code = jsvLockAgain(jit.initCode);
-  jsvStringIteratorNew(&jit.codeIt, jit.code, 0);
-  jsvStringIteratorGotoEnd(&jit.codeIt);
-  jit.blockCount++;
+  JsVar *v = jit->code;
+  jsvStringIteratorFree(&jit->codeIt);
+  jit->code = jsvLockAgain(jit->initCode);
+  jsvStringIteratorNew(&jit->codeIt, jit->code, 0);
+  jsvStringIteratorGotoEnd(&jit->codeIt);
+  jit->blockCount++;
   return v;
 }
 
 // Called when JIT output stops, pass it the return value from jsjcStartBlock. Returns the code parsed in the block
 JsVar *jsjcStopBlock(JsVar *oldBlock) {
-  if (jit.phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
+  if (jit->phase != JSJP_EMIT) return 0; // ignore block changes if not in emit phase
   jsjcFlushCode();
-  JsVar *v = jit.code;
-  jsvStringIteratorFree(&jit.codeIt);
-  jit.code = oldBlock;
-  jsvStringIteratorNew(&jit.codeIt, jit.code, 0);
-  jsvStringIteratorGotoEnd(&jit.codeIt);
-  jit.blockCount--;
+  JsVar *v = jit->code;
+  jsvStringIteratorFree(&jit->codeIt);
+  jit->code = oldBlock;
+  jsvStringIteratorNew(&jit->codeIt, jit->code, 0);
+  jsvStringIteratorGotoEnd(&jit->codeIt);
+  jit->blockCount--;
   return v;
 }
 
 void jsjcEmit16(uint16_t v) {
-  if (jit.hasLastCode) {
-    if (jit.lastCode==0b1011010000000001 && v==0b1011110000000001) {
-      jit.hasLastCode = false;
+  if (jit->hasLastCode) {
+    if (jit->lastCode==0b1011010000000001 && v==0b1011110000000001) {
+      jit->hasLastCode = false;
       DEBUG_JIT("PEEPHOLE: PUSH r0 + POP r0 => nop");
       return;
     }
-    if (jit.lastCode==0b1011010000000001 && v==0b1011110000010000) {
-      jit.lastCode = 17924;
+    if (jit->lastCode==0b1011010000000001 && v==0b1011110000010000) {
+      jit->lastCode = 17924;
       DEBUG_JIT("PEEPHOLE: PUSH r0 + POP r4 => MOV r4,r0");
       return;
     }
   }
   jsjcFlushCode();
-  jit.hasLastCode = true;
-  jit.lastCode = v;
+  jit->hasLastCode = true;
+  jit->lastCode = v;
 }
 
 // Emit a whole block of code
 void jsjcEmitBlock(JsVar *block) {
   DEBUG_JIT("... code block ...\n");
   jsjcFlushCode();
-  jsvStringIteratorAppendString(&jit.codeIt, block, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+  jsvStringIteratorAppendString(&jit->codeIt, block, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
 }
 
 int jsjcGetByteCount() {
-  return jsvGetStringLength(jit.code) + (jit.hasLastCode?2:0);
+  return jsvGetStringLength(jit->code) + (jit->hasLastCode?2:0);
 }
 
 void jsjcLiteral8(int reg, uint8_t data) {
@@ -426,30 +423,30 @@ JsjValueType jsjcConvertToJsVar(int reg, JsjValueType varType) {
 }
 
 void jsjcPush(int reg, JsjValueType type) {
-  DEBUG_JIT("PUSH {r%d}   (%s => stack depth %d)\n", reg, jsjcGetTypeName(type), jit.stackDepth+1);
-  if (jit.stackDepth>=JSJ_TYPE_STACK_SIZE) { // not enough space on type stack
+  DEBUG_JIT("PUSH {r%d}   (%s => stack depth %d)\n", reg, jsjcGetTypeName(type), jit->stackDepth+1);
+  if (jit->stackDepth>=JSJ_TYPE_STACK_SIZE) { // not enough space on type stack
     DEBUG_JIT("!!! not enough space on type stack - converting to JsVar\n");
     jsjcConvertToJsVar(reg, type);
     type = JSJVT_JSVAR;
   } else
-    jit.typeStack[jit.stackDepth] = type;
-  jit.stackDepth++;
+    jit->typeStack[jit->stackDepth] = type;
+  jit->stackDepth++;
   assert(reg>=0 && reg<8);
   jsjcEmit16((uint16_t)(0b1011010000000000 | (1<<reg)));
 }
 
 // Get the type of the variable on the top of the stack
 JsjValueType jsjcGetTopType() {
-  assert(jit.stackDepth>0);
-  if (jit.stackDepth==0) return JSJVT_UNDEFINED; // Error!
-  if (jit.stackDepth>JSJ_TYPE_STACK_SIZE) return JSJVT_JSVAR; // If too many types, assume JSVAR (we convert when we push)
-  return jit.typeStack[jit.stackDepth-1];
+  assert(jit->stackDepth>0);
+  if (jit->stackDepth==0) return JSJVT_UNDEFINED; // Error!
+  if (jit->stackDepth>JSJ_TYPE_STACK_SIZE) return JSJVT_JSVAR; // If too many types, assume JSVAR (we convert when we push)
+  return jit->typeStack[jit->stackDepth-1];
 }
 
 JsjValueType jsjcPop(int reg) {
   JsjValueType varType = jsjcGetTopType();
-  jit.stackDepth--;
-  DEBUG_JIT("POP {r%d}   (%s <= stack depth %d)\n", reg, jsjcGetTypeName(varType), jit.stackDepth);
+  jit->stackDepth--;
+  DEBUG_JIT("POP {r%d}   (%s <= stack depth %d)\n", reg, jsjcGetTypeName(varType), jit->stackDepth);
   assert(reg>=0 && reg<8);
   jsjcEmit16((uint16_t)(0b1011110000000000 | (1<<reg)));
   return varType;
@@ -457,15 +454,15 @@ JsjValueType jsjcPop(int reg) {
 
 void jsjcAddSP(int amt) {
   assert((amt&3)==0 && amt>0 && amt<512);
-  jit.stackDepth -= (amt>>2); // stack grows down -> negate
-  DEBUG_JIT("ADD SP,SP,#%d   (stack depth now %d)\n", amt, jit.stackDepth);
+  jit->stackDepth -= (amt>>2); // stack grows down -> negate
+  DEBUG_JIT("ADD SP,SP,#%d   (stack depth now %d)\n", amt, jit->stackDepth);
   jsjcEmit16((uint16_t)(0b1011000000000000 | (amt>>2)));
 }
 
 void jsjcSubSP(int amt) {
   assert((amt&3)==0 && amt>0 && amt<512);
-  jit.stackDepth += (amt>>2); // stack growsR down -> negate
-  DEBUG_JIT("SUB SP,SP,#%d   (stack depth now %d)\n", amt, jit.stackDepth);
+  jit->stackDepth += (amt>>2); // stack growsR down -> negate
+  DEBUG_JIT("SUB SP,SP,#%d   (stack depth now %d)\n", amt, jit->stackDepth);
   jsjcEmit16((uint16_t)(0b1011000010000000 | (amt>>2)));
 }
 
@@ -512,15 +509,15 @@ void jsjcPopAllAndReturn() {
 /// Get the number of a register that we're free to use (or error is none free) and mark as in use
 int jsjcClaimFreeReg() {
   int reg = 4;
-  while (jit.regsInUse & (1<<reg)) reg++;
+  while (jit->regsInUse & (1<<reg)) reg++;
   if (reg>7) jsExceptionHere(JSET_ERROR, "JIT: too many registers needed");
-  jit.regsInUse |= 1<<reg;
+  jit->regsInUse |= 1<<reg;
   return reg;
 }
 
 /// Mark a register returned by jsjcClaimFreeReg as unused
 void jsjcReturnFreeReg(int reg) {
-  jit.regsInUse &= ~(1<<reg);
+  jit->regsInUse &= ~(1<<reg);
 }
 
 #endif /* ESPR_JIT */

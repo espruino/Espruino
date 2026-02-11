@@ -22,7 +22,7 @@
 // Write debug info to the console
 #define DEBUG_JIT jsjcDebugPrintf
 // Write debug info to the console IF we're in the 'emit' phase
-#define DEBUG_JIT_EMIT if (jit.phase == JSJP_EMIT) jsjcDebugPrintf
+#define DEBUG_JIT_EMIT if (jit->phase == JSJP_EMIT) jsjcDebugPrintf
 // Called to print debug info - best to use DEBUG_JIT so we can disable debug lines for final compiles though
 void jsjcDebugPrintf(const char *fmt, ...);
 
@@ -103,15 +103,15 @@ typedef struct {
 } JsjInfo;
 
 // JIT state
-extern JsjInfo jit;
+extern JsjInfo *jit;
 
 typedef enum {
   JSJC_NONE = 0,        ///< emit normally
   JSJC_FORCE_4BYTE = 1  ///< create 4 byte instruction even if 2 byte would have done
 } JsjsEmitOptions;
 
-// Called before start of JIT output
-void jsjcStart();
+// Called before start of JIT output (give this a pointer to JsjInfo on the stack)
+void jsjcStart(JsjInfo *_jit);
 // Called when JIT output stops
 JsVar *jsjcStop();
 // Called before start of a block of code. Returns the old code jsVar that should be passed into jsjcStopBlock. Ignored unless in JSJP_EMIT phase
