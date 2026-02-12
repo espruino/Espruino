@@ -2541,7 +2541,7 @@ static void services_init() {
 #if BLE_HIDS_ENABLED
     JsVar *hidReport = jsvObjectGetChildIfExists(execInfo.hiddenRoot, BLE_NAME_HID_DATA);
     if (hidReport) {
-      JSV_GET_AS_CHAR_ARRAY(hidPtr, hidLen, hidReport);
+      JSV_GET_AS_CHAR_ARRAY_NO_ERROR(hidPtr, hidLen, hidReport);
       if (hidPtr && hidLen) {
         hids_init((uint8_t*)hidPtr, hidLen);
         bleStatus |= BLE_HID_INITED;
@@ -2780,6 +2780,10 @@ uint32_t jsble_advertising_start() {
 
   JsVar *advDataVar = jswrap_ble_getCurrentAdvertisingData();
   JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advDataVar);
+  if (!advPtr) {
+    jsvUnLock(advDataVar);
+    return NRF_ERROR_INVALID_PARAM; // couldn't convert advertising data to char array
+  }
 
   // Set up scan response packet's contents
   ble_uuid_t adv_uuids[ADVERTISE_MAX_UUIDS];

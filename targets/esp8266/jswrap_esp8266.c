@@ -315,7 +315,7 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
     return NULL;
   }
   JSV_GET_AS_CHAR_ARRAY(data, len, jsData);
-  uint32_t crc = crc32((uint8_t*)data, len);
+  uint32_t crc = data ? crc32((uint8_t*)data, len) : 0;
   return jsvNewFromInteger(crc);
 }
 

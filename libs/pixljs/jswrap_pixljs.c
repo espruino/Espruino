@@ -105,7 +105,7 @@ void lcd_flip_gfx(JsGraphics *gfx) {
   JsVar *buf = jsvObjectGetChildIfExists(gfx->graphicsVar,"buffer");
   if (!buf) return;
   JSV_GET_AS_CHAR_ARRAY(bPtr, bLen, buf);
-  if (!bPtr || bLen<128*8) return;
+  if (!bPtr || bLen<128*8) return; // already errored
 
   int xcoord = gfx->data.modMinX&~7;
   int xlen = gfx->data.modMaxX+1-xcoord;

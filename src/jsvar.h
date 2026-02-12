@@ -846,15 +846,29 @@ void jsvFree(void *ptr);
 #define JSV_GET_AS_CHAR_ARRAY(TARGET_PTR, TARGET_LENGTH, DATA)                \
   size_t TARGET_LENGTH = 0;                                                   \
   char *TARGET_PTR = jsvGetDataPointer(DATA, &TARGET_LENGTH);                 \
-  if (DATA && !TARGET_PTR) {                                                          \
+  if (DATA && !TARGET_PTR) {                                                  \
    TARGET_LENGTH = (size_t)jsvIterateCallbackCount(DATA);                     \
     if (TARGET_LENGTH+256 > jsuGetFreeStack()) {                              \
-      jsExceptionHere(JSET_ERROR, "Not enough stack memory for data");  \
+      TARGET_LENGTH = 0;                                                      \
+      jsExceptionHere(JSET_ERROR, "Not enough stack memory for data");        \
     } else {                                                                  \
       TARGET_PTR = (char *)alloca(TARGET_LENGTH);                             \
       jsvIterateCallbackToBytes(DATA, (unsigned char *)TARGET_PTR,            \
                                       (unsigned int)TARGET_LENGTH);           \
     }                                                                         \
+  }
+
+// Like JSV_GET_AS_CHAR_ARRAY but does not throw an exception if it can't do it (just sets TARGET_PTR=TARGET_LENGTH=0);
+#define JSV_GET_AS_CHAR_ARRAY_NO_ERROR(TARGET_PTR, TARGET_LENGTH, DATA)       \
+  size_t TARGET_LENGTH = 0;                                                   \
+  char *TARGET_PTR = jsvGetDataPointer(DATA, &TARGET_LENGTH);                 \
+  if (DATA && !TARGET_PTR) {                                                  \
+   TARGET_LENGTH = (size_t)jsvIterateCallbackCount(DATA);                     \
+    if (TARGET_LENGTH+256 <= jsuGetFreeStack()) {                             \
+      TARGET_PTR = (char *)alloca(TARGET_LENGTH);                             \
+      jsvIterateCallbackToBytes(DATA, (unsigned char *)TARGET_PTR,            \
+                                      (unsigned int)TARGET_LENGTH);           \
+    } else TARGET_LENGTH = 0;                                                 \
   }
 
 #if defined(JSVAR_MALLOC)

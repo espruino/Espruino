@@ -168,6 +168,7 @@ esp_err_t bluetooth_gap_startAdvertising(bool enable){
 int addAdvertisingData(uint8_t *advData,int pnt,int idx,JsVar *value){
   int len = 0;
   JSV_GET_AS_CHAR_ARRAY(dPtr,dLen,value);
+  if (!dPtr) return 0;
   len = 4 + dLen;
   advData[pnt++] = 3 + dLen;
   advData[pnt++] = 22;
@@ -186,6 +187,7 @@ int addAdvertisingDeviceName(uint8_t *advData,int pnt){
   }
   if(deviceName) {
     JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
+    if (!namePtr) return 0;
     if(nameLen > 0) {
       if((nameLen + pnt + 2) > BLE_GAP_ADV_MAX_SIZE) {
         nameLen = BLE_GAP_ADV_MAX_SIZE - 2 - pnt;
@@ -267,7 +269,7 @@ esp_err_t bluetooth_gap_setAdvertising(JsVar *advArray) {
     ret = esp_ble_gap_config_adv_data(&adv_data);
   } else {
     JSV_GET_AS_CHAR_ARRAY(advPtr, advLen, advArray);
-    ret = esp_ble_gap_config_adv_data_raw(advPtr, advLen);
+    if (advPtr) ret = esp_ble_gap_config_adv_data_raw(advPtr, advLen);
     jsvUnLock(allocatedData);
   }
   if (ret) {
@@ -280,7 +282,7 @@ esp_err_t bluetooth_setDeviceName(JsVar *deviceName){
   esp_err_t r;
   jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_DEVICE_NAME, deviceName);
   JSV_GET_AS_CHAR_ARRAY(namePtr, nameLen, deviceName);
-  r = esp_ble_gap_set_device_name((uint8_t *)namePtr);
+  if (namePtr) r = esp_ble_gap_set_device_name((uint8_t *)namePtr);
   return r;
 }
 

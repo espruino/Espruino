@@ -1081,7 +1081,7 @@ bool jsfWriteFile(JsfFileName name, JsVar *data, JsfFileFlags flags, JsVarInt of
   if (offset<0 || _size<0) return false;
   uint32_t size = (uint32_t)_size;
   // Data length
-  JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
+  JSV_GET_AS_CHAR_ARRAY_NO_ERROR(dPtr, dLen, data);
   if (!dPtr) {
     jsExceptionHere(JSET_ERROR, "Can't get pointer to data to write");
     return false;

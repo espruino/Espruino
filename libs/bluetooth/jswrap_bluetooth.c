@@ -1514,10 +1514,7 @@ void jswrap_ble_setScanResponse(JsVar *data) {
     jsvObjectRemoveChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA);
   } else if (jsvIsArray(data) || jsvIsArrayBuffer(data)) {
     JSV_GET_AS_CHAR_ARRAY(respPtr, respLen, data);
-    if (!respPtr) {
-      jsExceptionHere(JSET_TYPEERROR, "Unable to convert data argument to an array");
-      return;
-    }
+    if (!respPtr) return; // already errored
     // only set data if we managed to decode it ok
     jsvObjectSetOrRemoveChild(execInfo.hiddenRoot, BLE_NAME_SCAN_RESPONSE_DATA, data);
 
@@ -2677,8 +2674,7 @@ void jswrap_nfc_URL(JsVar *url) {
   }
 
   JSV_GET_AS_CHAR_ARRAY(urlPtr, urlLen, url);
-  if (!urlPtr || !urlLen)
-    return jsExceptionHere(JSET_ERROR, "Unable to get URL data");
+  if (!urlPtr) return; // already errored
 
   nfc_uri_id_t uriType = NFC_URI_NONE;
   if (memcmp(urlPtr, "http://", 7)==0) {
@@ -2740,7 +2736,7 @@ void jswrap_nfc_pair(JsVar *key) {
     return;
   }
 
-  JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, key);
+  JSV_GET_AS_CHAR_ARRAY_NO_ERROR(keyPtr, keyLen, key);
   if (!keyPtr || keyLen!=BLE_GAP_SEC_KEY_LEN)
     return jsExceptionHere(JSET_ERROR, "Unable to get key data or key isn't 16 bytes long");
 
@@ -2788,8 +2784,7 @@ void jswrap_nfc_androidApp(JsVar *appName) {
   }
 
   JSV_GET_AS_CHAR_ARRAY(appNamePtr, appNameLen, appName);
-  if (!appNamePtr || !appNameLen)
-    return jsExceptionHere(JSET_ERROR, "Unable to get app name");
+  if (!appNamePtr) return; // already errored
 
   /* assemble NDEF Message */
   /* Encode BLE pairing message into the buffer. */
@@ -2834,7 +2829,7 @@ void jswrap_nfc_raw(JsVar *payload) {
     return;
   }
 
-  JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, payload);
+  JSV_GET_AS_CHAR_ARRAY_NO_ERROR(dataPtr, dataLen, payload);
   if (!dataPtr || !dataLen || dataLen>NDEF_TAG2_VALUE_MAXLEN)
     return jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
 
@@ -2874,10 +2869,7 @@ JsVar *jswrap_nfc_start(JsVar *payload) {
   if (!jsvIsUndefined(payload)) {
     /* Custom UID */
     JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, payload);
-    if (!dataPtr || !dataLen) {
-      jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
-      return 0;
-    }
+    if (!dataPtr) return 0; // already errored
     flatStr = jsvNewFlatStringOfLength(dataLen);
     if (!flatStr) {
       jsExceptionHere(JSET_ERROR, "Unable to create string with NFC data in");
@@ -2975,8 +2967,7 @@ void jswrap_nfc_send(JsVar *payload) {
 
   /* Send n byte payload */
   JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, payload);
-  if (!dataPtr || !dataLen)
-    return jsExceptionHere(JSET_ERROR, "Unable to get NFC data");
+  if (!dataPtr) return; // already errored
 
   jsble_nfc_send((uint8_t*)dataPtr, dataLen);
 #endif
@@ -3005,9 +2996,7 @@ void jswrap_ble_sendHIDReport(JsVar *data, JsVar *callback) {
     if (jsvIsFunction(callback))
       jsvObjectSetChild(execInfo.root, BLE_HID_SENT_EVENT, callback);
     jsble_send_hid_input_report((uint8_t*)vPtr, vLen);
-  } else {
-    jsExceptionHere(JSET_ERROR, "Expecting Array, got %t", data);
-  }
+  } // already errored
 #endif
 }
 
@@ -4775,7 +4764,7 @@ NRF.connect(device_address).then(function(d) {
 JsVar *jswrap_ble_BluetoothRemoteGATTCharacteristic_writeValue(JsVar *characteristic, JsVar *data) {
 #if CENTRAL_LINK_COUNT>0
   JSV_GET_AS_CHAR_ARRAY(dataPtr, dataLen, data);
-  if (!dataPtr) return 0;
+  if (!dataPtr) return 0; // already errored
 
   if (!bleNewTask(BLETASK_CHARACTERISTIC_WRITE, 0))
     return 0;

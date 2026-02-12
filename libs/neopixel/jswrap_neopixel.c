@@ -111,10 +111,7 @@ range.
 */
 void jswrap_neopixel_write(Pin pin, JsVar *data) {
   JSV_GET_AS_CHAR_ARRAY(rgbData, rgbSize, data);
-  if (!rgbData) {
-    jsExceptionHere(JSET_ERROR, "Couldn't convert %t to data to send to LEDs", data);
-    return;
-  }
+  if (!rgbData) return; // already errored
   if (rgbSize == 0) {
     jsExceptionHere(JSET_ERROR, "Data must be a non empty array");
     return;

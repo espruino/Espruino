@@ -378,6 +378,10 @@ JsVar *load_cert_file(JsVar *cert) {
   }
 
   JSV_GET_AS_CHAR_ARRAY(pPtr, pLen, fileContents);
+  if (!pPtr) {
+    jsvUnLock(fileContents);
+    return 0; // already errored
+  }
   bool started = false;
   unsigned int i = 0;
   unsigned int j = 0;

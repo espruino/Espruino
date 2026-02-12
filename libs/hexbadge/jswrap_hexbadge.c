@@ -224,7 +224,7 @@ void badge_lcd_flip(JsVar *g) {
   JsVar *buf = jsvObjectGetChildIfExists(g,"buffer");
   if (!buf) return;
   JSV_GET_AS_CHAR_ARRAY(bPtr, bLen, buf);
-  if (!bPtr || bLen<128*8) return;
+  if (!bPtr || bLen<128*8) return; // already errored
 
   jshPinSetValue(LCD_CS,0);
   for (int y=0;y<8;y++) {
@@ -302,7 +302,7 @@ void jswrap_badge_init() {
     15, 11, 15, 15, 11, 15, 31, 22, 30, 30, 22, 30, 30, 8, 8, 12, 15, 11, 15, 3, 1
   };
   JsVar *buf = jsvObjectGetChildIfExists(graphics,"buffer");
-  JSV_GET_AS_CHAR_ARRAY(bPtr, bLen, buf);
+  JSV_GET_AS_CHAR_ARRAY_NO_ERROR(bPtr, bLen, buf);
   if (bPtr) memcpy(&bPtr[LCD_IMIT_IMG_OFFSET], LCD_INIT_IMG, sizeof(LCD_INIT_IMG));
   jsvUnLock(buf);
   // Create 'flip' fn

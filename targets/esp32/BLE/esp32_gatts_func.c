@@ -162,10 +162,12 @@ static void gatts_read_value_handler(esp_gatts_cb_event_t event, esp_gatt_if_t g
       }
       if(charValue){
         JSV_GET_AS_CHAR_ARRAY(vPtr,vLen,charValue);
-        for(uint16_t valpos = 0; valpos < vLen; valpos++){
-          rsp.attr_value.value[valpos] = vPtr[valpos];
+        if (vPtr) {
+          for(uint16_t valpos = 0; valpos < vLen; valpos++){
+            rsp.attr_value.value[valpos] = vPtr[valpos];
+          }
+          rsp.attr_value.len = (uint16_t)vLen;
         }
-        rsp.attr_value.len = (uint16_t)vLen;
         jsvUnLock(charValue);
       }
       break;

@@ -3067,6 +3067,7 @@ Writes a command directly to the ST7735 LCD controller
 */
 void jswrap_banglejs_lcdWr(JsVarInt cmd, JsVar *data) {
   JSV_GET_AS_CHAR_ARRAY(dPtr, dLen, data);
+  if (!dPtr) return;
 #ifdef LCD_CONTROLLER_ST7789_8BIT
   lcdST7789_cmd(cmd, dLen, (const uint8_t *)dPtr);
 #endif

@@ -5051,8 +5051,8 @@ JsVar *jswrap_graphics_filter(JsVar *parent, JsVar *filter, JsVar *options) {
     {"filter", JSV_STRING_0, &filtVar},
   };
   JSV_GET_AS_CHAR_ARRAY(filtPtr, filtLen, filter);
-  if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))
-      || !filtPtr) {
+  if (!filtPtr) return 0; // already errored
+  if (!jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
     jsExceptionHere(JSET_ERROR, "Invalid options");
     return 0;
   }
