@@ -42,6 +42,7 @@
         },
         select : function(idx) {
           if (idx<0) return; // TITLE
+          Bangle.haptic("touch");
           item.value = item.min + idx*step;
           if (item.onchange) item.onchange(item.value);
           if (scroller.isActive()) { // onchange may have changed menu!
@@ -134,10 +135,16 @@
       g.setFontAlign(-1,0).drawString(g.findFont((item&&item.title)??keys[idx], {w:r.w-pad,h:r.h,wrap:1,trim:1}).text, r.x+8, 2+r.y+H/2);
     },
     select : function(idx, touch) {
-      if (idx<0) return back&&back(); // title
+      if (idx<0) {
+        if (back) Bangle.haptic("back");
+        return back&&back(); // title
+      }
       var item = menu[keys[idx]];
-      if ("function" == typeof item) item(touch);
-      else if ("object" == typeof item) {
+      if ("function" == typeof item) {
+        Bangle.haptic("touch");
+        item(touch);
+      } else if ("object" == typeof item) {
+        Bangle.haptic("touch");
         if ("number" == typeof item.value) {
           showSubMenu(item, keys[idx]);
         } else {
