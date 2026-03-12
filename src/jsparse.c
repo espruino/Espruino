@@ -1291,6 +1291,17 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
     execInfo.currentClassConstructor = 0;
 #endif
 
+  if (parent && jsvGetRefs(parent)==0 && jsvIsBasicName(a) &&  !jsvIsNewChild(a) && !jsvGetFirstChild(a) ) {
+    /* #1916 - if we referenced a field that was undefined in an unreferenced object like ({a: undefined}).a
+    then we end up with a NAME datastructure the same as we get when accessing an undefined variable, and so we
+    get a ReferenceError when it is accessed. To work around this as a simple fix, we just remove the name
+    completely. So now `({a: undefined}).a=0` will still fail (but who does this?), but everything else will work.
+    If the object is referenced anywhere (eg. obj={a: undefined};obj.a) then this is not an issue. */
+    jsvUnLock(a);
+    a = NULL;
+    jsvUnLock(parent);
+    parent = NULL;
+  }
 #ifndef ESPR_NO_GET_SET
   /* If we've got something that we care about the parent of (eg. a getter/setter)
    * then we repackage it into a 'NewChild' name that references the parent before
